@@ -1040,8 +1040,6 @@ subroutine homogenization_RGC_stressPenalty(rPen,nMis,avgF,fDef,ip,el,homID)
    math_civita
  use material, only: &
    homogenization_maxNgrains,&
-   homogState, &
-   mappingHomogenization, &
    homogenization_Ngrains
  use numerics, only: &
    xSmoo_RGC
@@ -1339,11 +1337,8 @@ end function homogenization_RGC_relaxationVector
 !--------------------------------------------------------------------------------------------------
 function homogenization_RGC_interfaceNormal(intFace,ip,el)
  use debug, only: &
-   debug_level, &
    debug_homogenization,&
-   debug_levelExtensive, &
-   debug_e, &
-   debug_i
+   debug_levelExtensive
  use math, only: &
    math_mul33x3
  

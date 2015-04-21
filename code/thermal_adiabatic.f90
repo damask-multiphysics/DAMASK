@@ -42,7 +42,8 @@ module thermal_adiabatic
    thermal_adiabatic_microstructure, &
    thermal_adiabatic_LTAndItsTangent, &
    thermal_adiabatic_getTemperature, &
-   thermal_adiabatic_putTemperature, &
+   thermal_adiabatic_getLocalTemperature, &
+   thermal_adiabatic_putLocalTemperature, &
    thermal_adiabatic_getHeatGeneration, &
    thermal_adiabatic_postResults
 
@@ -59,9 +60,6 @@ subroutine thermal_adiabatic_init(fileUnit,temperature_init)
    debug_level,&
    debug_constitutive,&
    debug_levelBasic
- use mesh, only: &
-   mesh_maxNips, &
-   mesh_NcpElems
  use IO, only: &
    IO_read, &
    IO_lc, &
@@ -76,7 +74,6 @@ subroutine thermal_adiabatic_init(fileUnit,temperature_init)
    IO_timeStamp, &
    IO_EOF
  use material, only: &
-   homogenization_maxNgrains, &
    phase_thermal, &
    phase_thermalInstance, &
    phase_Noutput, &
@@ -254,11 +251,9 @@ end subroutine thermal_adiabatic_aTolState
 subroutine thermal_adiabatic_microstructure(Tstar_v, Lp, subdt, ipc, ip, el)
  use lattice, only: &
    lattice_massDensity, &
-   lattice_specificHeat, &
-   lattice_thermalExpansion33
+   lattice_specificHeat
  use material, only: &
    mappingConstitutive, &
-   phase_thermalInstance, &
    thermalState
  use math, only: &
    math_Mandel6to33
@@ -298,9 +293,7 @@ subroutine thermal_adiabatic_LTAndItsTangent(LT, dLT_dTstar3333, Tstar_v, Lp, ip
    lattice_specificHeat, &
    lattice_thermalExpansion33
  use material, only: &
-   mappingConstitutive, &
-   phase_thermalInstance, &
-   thermalState
+   mappingConstitutive
  use math, only: &
    math_Plain3333to99, &
    math_Mandel6to33
@@ -344,7 +337,40 @@ end subroutine thermal_adiabatic_LTAndItsTangent
 !--------------------------------------------------------------------------------------------------
 !> @brief returns temperature based on local damage model state layout 
 !--------------------------------------------------------------------------------------------------
-function thermal_adiabatic_getTemperature(ipc, ip, el)
+pure function thermal_adiabatic_getTemperature(ipc, ip, el)
+ use material, only: &
+   mappingHomogenization, &
+   fieldThermal, &
+   field_thermal_type, &
+   FIELD_THERMAL_nonlocal_ID, &
+   material_homog, &
+   mappingConstitutive, &
+   thermalState
+
+ implicit none
+ integer(pInt), intent(in) :: &
+   ipc, &                                                                                           !< grain number
+   ip, &                                                                                            !< integration point number
+   el                                                                                               !< element number
+ real(pReal) :: thermal_adiabatic_getTemperature
+ 
+ select case(field_thermal_type(material_homog(ip,el)))                                                   
+   case (FIELD_THERMAL_nonlocal_ID)
+    thermal_adiabatic_getTemperature = fieldThermal(material_homog(ip,el))% &
+      field(1,mappingHomogenization(1,ip,el))                                                     ! Taylor type 
+
+   case default
+    thermal_adiabatic_getTemperature = thermalState(mappingConstitutive(2,ipc,ip,el))% &
+      state(1,mappingConstitutive(1,ipc,ip,el))     
+    
+ end select
+ 
+end function thermal_adiabatic_getTemperature
+ 
+!--------------------------------------------------------------------------------------------------
+!> @brief returns temperature based on local damage model state layout 
+!--------------------------------------------------------------------------------------------------
+pure function thermal_adiabatic_getLocalTemperature(ipc, ip, el)
  use material, only: &
    mappingConstitutive, &
    ThermalState
@@ -354,17 +380,18 @@ function thermal_adiabatic_getTemperature(ipc, ip, el)
    ipc, &                                                                                           !< grain number
    ip, &                                                                                            !< integration point number
    el                                                                                               !< element number
- real(pReal) :: thermal_adiabatic_getTemperature
+ real(pReal)  :: &
+   thermal_adiabatic_getLocalTemperature
  
- thermal_adiabatic_getTemperature = &
+ thermal_adiabatic_getLocalTemperature = &
    thermalState(mappingConstitutive(2,ipc,ip,el))%state(1,mappingConstitutive(1,ipc,ip,el))
  
-end function thermal_adiabatic_getTemperature
+end function thermal_adiabatic_getLocalTemperature
  
 !--------------------------------------------------------------------------------------------------
 !> @brief returns temperature based on local damage model state layout 
 !--------------------------------------------------------------------------------------------------
-subroutine thermal_adiabatic_putTemperature(ipc, ip, el, localTemperature)
+subroutine thermal_adiabatic_putLocalTemperature(ipc, ip, el, localTemperature)
  use material, only: &
    mappingConstitutive, &
    ThermalState
@@ -380,12 +407,12 @@ subroutine thermal_adiabatic_putTemperature(ipc, ip, el, localTemperature)
  thermalState(mappingConstitutive(2,ipc,ip,el))%state(1,mappingConstitutive(1,ipc,ip,el))= &
    localTemperature
  
-end subroutine thermal_adiabatic_putTemperature
+end subroutine thermal_adiabatic_putLocalTemperature
  
 !--------------------------------------------------------------------------------------------------
 !> @brief returns heat generation rate
 !--------------------------------------------------------------------------------------------------
-function thermal_adiabatic_getHeatGeneration(Tstar_v, Lp)
+pure function thermal_adiabatic_getHeatGeneration(Tstar_v, Lp)
  use math, only: &
    math_Mandel6to33
 

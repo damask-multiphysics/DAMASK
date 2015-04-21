@@ -125,25 +125,26 @@ subroutine CPFEM_init
    IO_timeStamp, &
    IO_error
  use numerics, only: &
-   worldrank, &
-   DAMASK_NumThreadsInt
+   worldrank
  use debug, only: &
    debug_level, &
    debug_CPFEM, &
    debug_levelBasic, &
    debug_levelExtensive
  use FEsolving, only: &
+#if defined(Marc4DAMASK) || defined(Abaqus)
    symmetricSolver, &
+#endif
    restartRead, &
    modelName
+#if defined(Marc4DAMASK) || defined(Abaqus)
  use mesh, only: &
    mesh_NcpElems, &
    mesh_maxNips
+#endif
  use material, only: &
-   homogenization_maxNgrains, &
    material_phase, &
    homogState, &
-   mappingHomogenization, &
    phase_plasticity, &
    plasticState, &
    material_Nhomogenization
@@ -154,8 +155,7 @@ subroutine CPFEM_init
    crystallite_Fi0, &
    crystallite_Li0, &
    crystallite_dPdF0, &
-   crystallite_Tstar0_v, &
-   crystallite_localPlasticity
+   crystallite_Tstar0_v
 
  implicit none
  integer(pInt) :: k,l,m,ph,homog
@@ -276,8 +276,7 @@ subroutine CPFEM_general(mode, ffn, ffn1, temperature, dt, elFE, ip)
    debug_levelBasic, &
    debug_levelExtensive, &
    debug_levelSelective, &
-   debug_e, &
-   debug_i, &
+#if defined(Marc4DAMASK) || defined(Abaqus)
    debug_stressMaxLocation, &
    debug_stressMinLocation, &
    debug_jacobianMaxLocation, &
@@ -285,7 +284,10 @@ subroutine CPFEM_general(mode, ffn, ffn1, temperature, dt, elFE, ip)
    debug_stressMax, &
    debug_stressMin, &
    debug_jacobianMax, &
-   debug_jacobianMin
+   debug_jacobianMin, &
+#endif
+   debug_e, &
+   debug_i
  use FEsolving, only: &
    outdatedFFN1, &
    terminallyIll, &
@@ -312,7 +314,6 @@ subroutine CPFEM_general(mode, ffn, ffn1, temperature, dt, elFE, ip)
    mesh_maxNips, &
    mesh_element
  use material, only: &
-   homogenization_maxNgrains, &
    microstructure_elemhomo, &
    plasticState, &
    damageState, &
@@ -341,12 +342,12 @@ subroutine CPFEM_general(mode, ffn, ffn1, temperature, dt, elFE, ip)
  use homogenization, only: &  
    materialpoint_F, &
    materialpoint_F0, &
+#if defined(Marc4DAMASK) || defined(Abaqus)
    materialpoint_P, &
    materialpoint_dPdF, &
-#if defined(Marc4DAMASK) || defined(Abaqus)
    materialpoint_results, &
-#endif
    materialpoint_sizeResults, &
+#endif
    materialpoint_stressAndItsTangent, &
    materialpoint_postResults, &
    field_putFieldTemperature

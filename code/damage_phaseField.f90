@@ -343,7 +343,7 @@ end subroutine damage_phaseField_microstructure
 !--------------------------------------------------------------------------------------------------
 !> @brief returns damage
 !--------------------------------------------------------------------------------------------------
-function damage_phaseField_getDamage(ipc, ip, el)
+pure function damage_phaseField_getDamage(ipc, ip, el)
  use material, only: &
    material_homog, &
    mappingHomogenization, &
@@ -362,7 +362,7 @@ function damage_phaseField_getDamage(ipc, ip, el)
  real(pReal) :: damage_phaseField_getDamage
  
  select case(field_damage_type(material_homog(ip,el)))                                                   
-   case (FIELD_DAMAGE_LOCAL_ID)
+   case default
     damage_phaseField_getDamage = damageState(mappingConstitutive(2,ipc,ip,el))% &
       state0(1,mappingConstitutive(1,ipc,ip,el))
     
@@ -397,7 +397,7 @@ end subroutine damage_phaseField_putLocalDamage
 !--------------------------------------------------------------------------------------------------
 !> @brief returns local damage
 !--------------------------------------------------------------------------------------------------
-function damage_phaseField_getLocalDamage(ipc, ip, el)
+pure function damage_phaseField_getLocalDamage(ipc, ip, el)
  use material, only: &
    mappingConstitutive, &
    damageState
@@ -417,12 +417,11 @@ end function damage_phaseField_getLocalDamage
 !--------------------------------------------------------------------------------------------------
 !> @brief returns brittle damage diffusion tensor 
 !--------------------------------------------------------------------------------------------------
-function damage_phaseField_getDamageDiffusion33(ipc, ip, el)
+pure function damage_phaseField_getDamageDiffusion33(ipc, ip, el)
  use lattice, only: &
    lattice_DamageDiffusion33
  use material, only: &
-   mappingConstitutive, &
-   damageState
+   mappingConstitutive
 
  implicit none
  integer(pInt), intent(in) :: &
@@ -444,7 +443,7 @@ end function damage_phaseField_getDamageDiffusion33
 !--------------------------------------------------------------------------------------------------
 !> @brief returns brittle damaged stiffness tensor 
 !--------------------------------------------------------------------------------------------------
-function damage_phaseField_getDamagedC66(C, ipc, ip, el)
+pure function damage_phaseField_getDamagedC66(C, ipc, ip, el)
  use material, only: &
    mappingConstitutive
 

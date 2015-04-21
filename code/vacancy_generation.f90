@@ -349,7 +349,7 @@ end subroutine vacancy_generation_microstructure
 !--------------------------------------------------------------------------------------------------
 !> @brief returns vacancy concentration based on state layout 
 !--------------------------------------------------------------------------------------------------
-function vacancy_generation_getLocalConcentration(ipc, ip, el)
+pure function vacancy_generation_getLocalConcentration(ipc, ip, el)
  use material, only: &
    mappingConstitutive, &
    vacancyState
@@ -390,7 +390,7 @@ end subroutine vacancy_generation_putLocalConcentration
 !--------------------------------------------------------------------------------------------------
 !> @brief returns vacancy concentration based on state layout 
 !--------------------------------------------------------------------------------------------------
-function vacancy_generation_getConcentration(ipc, ip, el)
+pure function vacancy_generation_getConcentration(ipc, ip, el)
  use material, only: &
    mappingHomogenization, &
    material_phase, &
@@ -421,7 +421,7 @@ end function vacancy_generation_getConcentration
 !--------------------------------------------------------------------------------------------------
 !> @brief returns generation vacancy diffusion tensor 
 !--------------------------------------------------------------------------------------------------
-function vacancy_generation_getVacancyDiffusion33(ipc,ip,el)
+pure function vacancy_generation_getVacancyDiffusion33(ipc,ip,el)
  use lattice, only: &
    lattice_VacancyDiffusion33
  use material, only: &
@@ -443,7 +443,7 @@ end function vacancy_generation_getVacancyDiffusion33
 !--------------------------------------------------------------------------------------------------
 !> @brief returns generation vacancy mobility tensor 
 !--------------------------------------------------------------------------------------------------
-function vacancy_generation_getVacancyMobility33(temperature,ipc,ip,el)
+pure function vacancy_generation_getVacancyMobility33(temperature,ipc,ip,el)
  use math, only: &
    math_I3
  use material, only: &
@@ -458,7 +458,7 @@ function vacancy_generation_getVacancyMobility33(temperature,ipc,ip,el)
    el                                                                                               !< element number
  real(pReal), dimension(3,3) :: &
    vacancy_generation_getVacancyMobility33
- real(pReal) :: &
+ real(pReal), intent(in) :: &
    temperature
  integer(pInt) :: &
    phase, constituent, instance
@@ -475,7 +475,7 @@ end function vacancy_generation_getVacancyMobility33
 !--------------------------------------------------------------------------------------------------
 !> @brief returns generation vacancy mobility tensor 
 !--------------------------------------------------------------------------------------------------
-real(pReal) function vacancy_generation_getVacancyEnergy(ipc,ip,el)
+pure real(pReal) function vacancy_generation_getVacancyEnergy(ipc,ip,el)
  use material, only: &
    mappingConstitutive, &
    phase_vacancyInstance
