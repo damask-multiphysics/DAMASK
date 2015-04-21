@@ -46,8 +46,6 @@ module homogenization
    materialpoint_subFrac, &
    materialpoint_subStep, &
    materialpoint_subdt
- integer(pInt),                                      private :: &
-   homogenization_maxSizeState
  logical,       dimension(:,:),         allocatable, private :: &
    materialpoint_requested, &
    materialpoint_converged
@@ -126,18 +124,18 @@ subroutine homogenization_init()
    mesh_element, & 
    FE_Nips, &
    FE_geomtype
- use lattice, only: &
-   lattice_referenceTemperature
+#ifdef FEM
+ use crystallite, only: &
+   crystallite_sizePostResults
+#else
  use constitutive, only: &
    constitutive_maxSizePostResults, &
    constitutive_damage_maxSizePostResults, &
    constitutive_thermal_maxSizePostResults, &
    constitutive_vacancy_maxSizePostResults
  use crystallite, only: &
-#ifdef FEM
-   crystallite_sizePostResults, &
-#endif
    crystallite_maxSizePostResults
+#endif
  use material
  use homogenization_none
  use homogenization_isostrain
@@ -245,40 +243,42 @@ subroutine homogenization_init()
  if (worldrank == 0_pInt) then
    call IO_write_jobFile(FILEUNIT,'outputHomogenization')
    do p = 1,material_Nhomogenization
-     i = homogenization_typeInstance(p)                                                               ! which instance of this homogenization type
-     knownHomogenization = .true.                                                                     ! assume valid
-     select case(homogenization_type(p))                                                              ! split per homogenization type
-       case (HOMOGENIZATION_NONE_ID)
-         outputName = HOMOGENIZATION_NONE_label
-         thisNoutput => null()
-         thisOutput => null()
-         thisSize   => null()
-       case (HOMOGENIZATION_ISOSTRAIN_ID)
-         outputName = HOMOGENIZATION_ISOSTRAIN_label
-         thisNoutput => homogenization_isostrain_Noutput
-         thisOutput => homogenization_isostrain_output
-         thisSize   => homogenization_isostrain_sizePostResult
-       case (HOMOGENIZATION_RGC_ID)
-         outputName = HOMOGENIZATION_RGC_label
-         thisNoutput => homogenization_RGC_Noutput
-         thisOutput => homogenization_RGC_output
-         thisSize   => homogenization_RGC_sizePostResult
-       case default
-         knownHomogenization = .false.
-     end select   
-     write(FILEUNIT,'(/,a,/)')  '['//trim(homogenization_name(p))//']'
-     if (knownHomogenization) then
-       write(FILEUNIT,'(a)') '(type)'//char(9)//trim(outputName)
-       write(FILEUNIT,'(a,i4)') '(ngrains)'//char(9),homogenization_Ngrains(p)
-       if (homogenization_type(p) /= HOMOGENIZATION_NONE_ID) then
-         do e = 1,thisNoutput(i)
-           write(FILEUNIT,'(a,i4)') trim(thisOutput(e,i))//char(9),thisSize(e,i)
-         enddo
+     if (any(material_homog == p)) then
+       i = homogenization_typeInstance(p)                                                               ! which instance of this homogenization type
+       knownHomogenization = .true.                                                                     ! assume valid
+       select case(homogenization_type(p))                                                              ! split per homogenization type
+         case (HOMOGENIZATION_NONE_ID)
+           outputName = HOMOGENIZATION_NONE_label
+           thisNoutput => null()
+           thisOutput => null()
+           thisSize   => null()
+         case (HOMOGENIZATION_ISOSTRAIN_ID)
+           outputName = HOMOGENIZATION_ISOSTRAIN_label
+           thisNoutput => homogenization_isostrain_Noutput
+           thisOutput => homogenization_isostrain_output
+           thisSize   => homogenization_isostrain_sizePostResult
+         case (HOMOGENIZATION_RGC_ID)
+           outputName = HOMOGENIZATION_RGC_label
+           thisNoutput => homogenization_RGC_Noutput
+           thisOutput => homogenization_RGC_output
+           thisSize   => homogenization_RGC_sizePostResult
+         case default
+           knownHomogenization = .false.
+       end select   
+       write(FILEUNIT,'(/,a,/)')  '['//trim(homogenization_name(p))//']'
+       if (knownHomogenization) then
+         write(FILEUNIT,'(a)') '(type)'//char(9)//trim(outputName)
+         write(FILEUNIT,'(a,i4)') '(ngrains)'//char(9),homogenization_Ngrains(p)
+         if (homogenization_type(p) /= HOMOGENIZATION_NONE_ID) then
+           do e = 1,thisNoutput(i)
+             write(FILEUNIT,'(a,i4)') trim(thisOutput(e,i))//char(9),thisSize(e,i)
+           enddo
+         endif  
        endif  
-     endif  
-     do e = 1_pInt,field_Noutput(p)
-       write(FILEUNIT,'(a,i4)') trim(field_output(e,p))//char(9),field_sizePostResult(e,p)
-     enddo
+       do e = 1_pInt,field_Noutput(p)
+         write(FILEUNIT,'(a,i4)') trim(field_output(e,p))//char(9),field_sizePostResult(e,p)
+       enddo
+     endif
    enddo
    close(FILEUNIT)
  endif  
@@ -412,9 +412,7 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
    FEsolving_execIP, &
    terminallyIll
  use mesh, only: &
-   mesh_element, &
-   mesh_NcpElems, &
-   mesh_maxNips
+   mesh_element
  use material, only: &
    plasticState, &
    damageState, &
@@ -745,9 +743,6 @@ subroutine materialpoint_postResults
    FEsolving_execElem, &
    FEsolving_execIP
  use mesh, only: &
-#ifdef FEM
-   mesh_maxNips, &
-#endif
    mesh_element
  use material, only: &
    mappingHomogenization, &
@@ -902,7 +897,6 @@ subroutine homogenization_partitionDeformation(ip,el)
    HOMOGENIZATION_ISOSTRAIN_ID, &
    HOMOGENIZATION_RGC_ID
  use crystallite, only: &
-   crystallite_partionedF0, &
    crystallite_partionedF
  use homogenization_isostrain, only: &
    homogenization_isostrain_partitionDeformation
