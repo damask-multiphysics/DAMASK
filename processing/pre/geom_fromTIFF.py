@@ -83,17 +83,16 @@ for file in files:
 
 #--- write data -----------------------------------------------------------------------------------
   header = [' '.join([scriptID] + sys.argv[1:]),
-            "grid\ta %i\tb %i\tc %i"%(info['grid'][0],info['grid'][1],info['grid'][0]),
-            "size\tx %f\ty %f\tz %f"%(info['size'][0],info['size'][1],info['size'][0]),
+            "grid\ta %i\tb %i\tc %i"%(info['grid'][0],info['grid'][1],info['grid'][2]),
+            "size\tx %f\ty %f\tz %f"%(info['size'][0],info['size'][1],info['size'][2]),
             "origin\tx %f\ty %f\tz %f"%(info['origin'][0],info['origin'][1],info['origin'][2]),
             "microstructures\t%i"%info['microstructures'],
             "homogenization\t%i"%info['homogenization'],
             ]
   file['output'].write('\n'.join(['%i\theader'%(len(header))] + header) + '\n')
-  np.savetxt(file['output'],imarray.reshape([info['grid'][0],info['grid'][1]*info['grid'][2]]),fmt='%03d')
+  np.savetxt(file['output'],imarray.reshape([info['grid'][1]*info['grid'][2],info['grid'][0]]),fmt='%03d')
   
 #--- output finalization -------------------------------------------------------------------------- 
   if file['name'] != 'STDIN':
     file['output'].close()
-    os.rename(file['name']+'_tmp',
-              os.path.splitext(file['name'])[0] +'%s'%('_material.config' if options.config else '.geom'))
+    os.rename(file['name']+'_tmp', os.path.splitext(file['name'])[0] +'.geom')
