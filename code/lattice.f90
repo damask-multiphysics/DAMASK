@@ -1515,8 +1515,8 @@ subroutine lattice_initializeStructure(myPhase,CoverA,aA,aM,cM)
      myNtrans      = 0_pInt
      myNcleavage   = lattice_ortho_Ncleavage
      do i = 1_pInt, myNcleavage                                                                      ! assign cleavage system vectors
-       cd(1:3,i) = lattice_iso_systemCleavage(1:3,i)/math_norm3(lattice_iso_systemCleavage(1:3,i))
-       cn(1:3,i) = lattice_iso_systemCleavage(4:6,i)/math_norm3(lattice_iso_systemCleavage(4:6,i))
+       cd(1:3,i) = lattice_iso_systemCleavage(1:3,i)/math_norm3(LATTICE_ortho_systemCleavage(1:3,i))
+       cn(1:3,i) = lattice_iso_systemCleavage(4:6,i)/math_norm3(LATTICE_ortho_systemCleavage(4:6,i))
        ct(1:3,i) = math_vectorproduct(cd(1:3,i),cn(1:3,i))
      enddo  
      lattice_NcleavageSystem(1:lattice_maxNcleavageFamily,myPhase)  = lattice_iso_NcleavageSystem
