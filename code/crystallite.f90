@@ -1535,6 +1535,9 @@ subroutine crystallite_integrateStateRK4()
    debug_levelBasic, &
    debug_levelExtensive, &
    debug_levelSelective, &
+   debug_e, &
+   debug_i, &
+   debug_g, &
    debug_StateLoopDistribution
  use FEsolving, only: &
    FEsolving_execElem, &
@@ -1826,6 +1829,9 @@ subroutine crystallite_integrateStateRKCK45()
    debug_levelBasic, &
    debug_levelExtensive, &
    debug_levelSelective, &
+   debug_e, &
+   debug_i, &
+   debug_g, &
    debug_StateLoopDistribution
  use numerics, only: &
    rTol_crystalliteState, &
@@ -2356,6 +2362,9 @@ subroutine crystallite_integrateStateAdaptiveEuler()
    debug_levelBasic, &
    debug_levelExtensive, &
    debug_levelSelective, &
+   debug_e, &
+   debug_i, &
+   debug_g, &
    debug_StateLoopDistribution
  use numerics, only: &
    rTol_crystalliteState, &
@@ -2740,6 +2749,9 @@ subroutine crystallite_integrateStateEuler()
    debug_levelBasic, &
    debug_levelExtensive, &
    debug_levelSelective, &
+   debug_e, &
+   debug_i, &
+   debug_g, &
    debug_StateLoopDistribution
  use numerics, only: &
    numerics_integrationMode, &
@@ -2958,6 +2970,9 @@ subroutine crystallite_integrateStateFPI()
  use prec, only: &
    prec_isNaN
  use debug, only: &
+   debug_e, &
+   debug_i, &
+   debug_g, &
    debug_level,&
    debug_crystallite, &
    debug_levelBasic, &
@@ -3443,9 +3458,13 @@ end subroutine crystallite_integrateStateFPI
 !--------------------------------------------------------------------------------------------------
 logical function crystallite_stateJump(g,i,e)
  use debug, only: &
+   debug_level, &
    debug_crystallite, &
    debug_levelExtensive, &
-   debug_levelSelective
+   debug_levelSelective, &
+   debug_e, &
+   debug_i, &
+   debug_g
  use material, only: &
    plasticState, &
    mappingConstitutive
@@ -3537,6 +3556,9 @@ logical function crystallite_integrateStress(&
                          debug_levelBasic, &
                          debug_levelExtensive, &
                          debug_levelSelective, &
+                         debug_e, &
+                         debug_i, &
+                         debug_g, &
                          debug_cumLpCalls, &
                          debug_cumLpTicks, &
                          debug_StressLoopLpDistribution, &
@@ -3563,6 +3585,7 @@ logical function crystallite_integrateStress(&
                          math_Plain33to9, &
                          math_Plain9to33, &
                          math_Plain99to3333
+ use mesh, only:         mesh_element
 
  implicit none
  integer(pInt), intent(in)::         e, &                          ! element index
