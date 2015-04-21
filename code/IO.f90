@@ -582,11 +582,11 @@ function IO_hybridIA(Nast,ODFfileName)
                                                deltas
  real(pReal), dimension(:,:,:), allocatable :: dV_V
  character(len=1024) :: line, keyword
- logical :: gotRange, gotDelta
+ logical :: gotLimit, gotDelta
  integer(pInt)                                :: headerLength
  integer(pInt),               parameter       :: FILEUNIT = 999_pInt
 
- gotRange = .false.
+ gotLimit = .false.
  gotDelta = .false.
  IO_hybridIA = -1.0_pReal                                                                           ! initialize return value for case of error
  center = -1.0_pReal
@@ -637,22 +637,20 @@ function IO_hybridIA(Nast,ODFfileName)
          end select
        enddo
        deltas = deltas*INRAD
-     case ('origin')
-       if (IO_lc(IO_stringValue(line,positions,2_pInt)) == 'voxelboundary' .or.  &
-           IO_lc(IO_stringValue(line,positions,2_pInt)) == 'boundary') center = 0.5_pReal
-       if (IO_lc(IO_stringValue(line,positions,2_pInt)) == 'voxelcenter' .or.  &
-           IO_lc(IO_stringValue(line,positions,2_pInt)) == 'center') center = 0.0_pReal
+     case ('centration')
+       if (IO_lc(IO_stringValue(line,positions,2_pInt)) == 'cell') center = 0.5_pReal
+       if (IO_lc(IO_stringValue(line,positions,2_pInt)) == 'vertex')   center = 0.0_pReal
    end select
  enddo
  
- if (.not. gotRange) &
-   call IO_error(error_ID = 156_pInt, ext_msg='no range information found')
+ if (.not. gotLimit) &
+   call IO_error(error_ID = 156_pInt, ext_msg='no limit information found')
  if (.not. gotDelta) &
    call IO_error(error_ID = 156_pInt, ext_msg='no delta information found')
  if (center < 0.0_pReal) &
-   call IO_error(error_ID = 156_pInt, ext_msg='no origin information found')
+   call IO_error(error_ID = 156_pInt, ext_msg='no centration information found')
  if (any(limits<=0.0_pReal)) &
-   call IO_error(error_ID = 156_pInt, ext_msg='invalid range')
+   call IO_error(error_ID = 156_pInt, ext_msg='invalid limits')
  if (any(deltas<=0.0_pReal)) &
    call IO_error(error_ID = 156_pInt, ext_msg='invalid deltas')
 
