@@ -106,7 +106,7 @@ class Material():
   '''
   __slots__ = ['data']
 
-  def __init__(self):
+  def __init__(self,verbose=True):
     self.parts = [
              'homogenization',
              'microstructure',
@@ -121,11 +121,12 @@ class Material():
               'phase':          {'__order__': []},
               'texture':        {'__order__': []},
            }
+    self.verbose = verbose
            
   def __repr__(self):
     me = []
     for part in self.parts:
-      print('doing '+part)
+      if self.verbose: print('doing '+part)
       me += ['','#-----------------------------#','<%s>'%part,'#-----------------------------#',]
       for section in self.data[part]['__order__']:
         me += ['','[%s] %s'%(section,'-'*max(0,27-len(section))),'',]
@@ -189,7 +190,7 @@ class Material():
      i += 1
      saveFile = file+'_%i'%i
 
-    print('Writing material data to file %s'%saveFile)
+    if self.verbose: print('Writing material data to file %s'%saveFile)
     f=open(saveFile,'w')
     f.write(str(self)+'\n')                                          #newline at end
     f.close()
