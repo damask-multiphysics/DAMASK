@@ -81,7 +81,7 @@ header = ["5\theader",
           "grid\ta {}\tb {}\tc {}".format(options.grid[0],options.grid[1],options.grid[2]),
           "microstructures\t{}".format(options.N),
           "randomSeed\t{}".format(options.randomSeed),
-          "x\ty\tz\tphi1\tPhi\tphi2",
+          "1_coords\t2_coords\t3_coords\tphi1\tPhi\tphi2",
          ]
 
 for line in header:

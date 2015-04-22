@@ -105,26 +105,20 @@ for file in files:
   table = damask.ASCIItable(file['input'],file['output'],buffered = False)
   table.head_read()
 
-  labels = ['x','y','z']
-  index = 0
+  coordsCol = table.labels_index('1_coords')
+  if coordsCol < 0: 
+    coordsCol = table.labels_index('x')                                                            # try if file is in legacy format
+    if coordsCol < 0: 
+      file['croak'].write('column 1_coords/x not found...\n')
+      continue
 
   eulerCol = table.labels_index('phi1')
   hasEulers = np.all(table.labels_index(['phi1','Phi','phi2'])) != -1
   grainCol = table.labels_index('microstructure')
   hasGrains = grainCol != -1
 
-  if hasEulers:
-    labels += ['phi1','Phi','phi2']
-    index += 3
-
-
-  if hasGrains:
-    labels += ['microstructure']
-    index += 1
-
-
-  table.data_readArray(labels)
-  coords = table.data[:,0:3]
+  table.data_readArray()
+  coords = table.data[:,coordsCol:coordsCol+3]
   eulers = table.data[:,eulerCol:eulerCol+3] if hasEulers else np.zeros(3*len(coords))
   grain = table.data[:,grainCol] if hasGrains else 1+np.arange(len(eulers))
   grainIDs = np.unique(grain).astype('i')
@@ -185,8 +179,8 @@ for file in files:
     continue
 
 #--- prepare data ---------------------------------------------------------------------------------
-  coords = (coords*info['size']).transpose()
-  eulers = eulers.transpose()
+  coords = (coords*info['size']).T
+  eulers = eulers.T
 
 #--- switch according to task ---------------------------------------------------------------------
   if options.config:                                                                                # write config file

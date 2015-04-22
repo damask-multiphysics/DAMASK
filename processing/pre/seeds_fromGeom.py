@@ -136,7 +136,7 @@ for file in files:
                    "origin\tx %i\ty %i\tz %i"%(info['origin'][0],info['origin'][1],info['origin'][2],),
                   ]
   table.labels_clear()
-  table.labels_append(['x','y','z','microstructure'])                                  # implicitly switching label processing/writing on
+  table.labels_append(['1_coords','2_coords','3_coords','microstructure'])                    # implicitly switching label processing/writing on
   table.head_write()
   
 #--- filtering of grain voxels ------------------------------------------------------------------------------------

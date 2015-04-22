@@ -144,12 +144,12 @@ for file in files:
                                                                           map(str,boundingBox[1,:]-boundingBox[0,:])))))),
                   ]
   table.labels_clear()
-  table.labels_append(['x','y','z','microstructure'])                                  # implicitly switching label processing/writing on
+  table.labels_append(['1_coords','2_coords','3_coords','microstructure'])                          # implicitly switching label processing/writing on
   table.head_write()
   
   table.data_writeArray()
   table.output_flush()
   
-  table.input_close()                                                       # close input ASCII table
+  table.input_close()                                                                               # close input ASCII table
   if file['name'] != 'STDIN':
-    table.output_close()                                                    # close output ASCII table
+    table.output_close()                                                                            # close output ASCII table

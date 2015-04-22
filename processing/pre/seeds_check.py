@@ -61,17 +61,18 @@ for file in files:
   table = damask.ASCIItable(file['input'],file['output'])
   table.head_read()
 
-  labels = ['x','y','z']
+  coordsCol = table.labels_index('1_coords')
+  if coordsCol < 0: 
+    coordsCol = table.labels_index('x')                                                            # try if file is in legacy format
+    if coordsCol < 0: 
+      file['croak'].write('column 1_coords/x not found...\n')
+      continue
+
   grainCol = table.labels_index('microstructure')
   hasGrains = grainCol != -1
 
-  if hasGrains:
-    labels += ['microstructure']
-
-
-  table.data_readArray(labels)
-  coords = table.data[:,0:3]
-
+  table.data_readArray()
+  coords = table.data[:,coordsCol:coordsCol+3]
   grain = table.data[:,grainCol] if hasGrains else 1+np.arange(len(coords))
   grainIDs = np.unique(grain).astype('i')
   
