@@ -612,7 +612,7 @@ function IO_hybridIA(Nast,ODFfileName)
    positions = IO_stringPos(line,7_pInt)             
    select case ( IO_lc(IO_StringValue(line,positions,1_pInt,.true.)) )
      case ('limit')
-       gotRange = .true.
+       gotLimit = .true.
        do j = 2_pInt,6_pInt,2_pInt
          select case (IO_lc(IO_stringValue(line,positions,j)))
            case('phi1')
