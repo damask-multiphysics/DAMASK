@@ -27,9 +27,10 @@ def outStdout(cmd,locals):
     exec(cmd[3:])
   elif cmd[0:3] == '(?)':
     cmd = eval(cmd[3:])
-    print(cmd)
+    sys.stdout.write(cmd+'\n')
   else:
     print(cmd)
+    sys.stdout.write(cmd+'\n')
   return
 
 #-------------------------------------------------------------------------------------------------
@@ -232,31 +233,23 @@ def parse_spectralFile(content,homog):
 #--------------------------------------------------------------------------------------------------
 
 parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
-Generate FE hexahedral mesh from spectral description file.
+Generate MSC.Marc FE hexahedral mesh from spectral description file.
 
-Acceptable formats are
-geom: header plus list of grain numbers or
-spectral: phi1,Phi,phi2,x,y,z,id,phase.
 """, version = scriptID)
 
-parser.add_option("-p", "--port", type="int",\
-                  dest="port",\
+parser.add_option("-p", "--port", type="int",dest="port",metavar='int',
                   help="Mentat connection port")
-parser.add_option("-g", "--geom", action="store_const", const="geom",\
-                  dest="filetype",\
+parser.add_option("-g", "--geom", action="store_const", const="geom",dest="filetype",
                   help="file has 'geom' format")
-parser.add_option("-s", "--spectral", action="store_const", const="spectral",\
-                  dest="filetype",\
-                  help="file has 'spectral' format (VPSC Lebensohn)")
-parser.add_option("--homogenization", type="int",\
-                  dest="homogenization",\
-                  help="homogenization index from material.config (only required for geom file type)")
-
+parser.add_option("-s", "--spectral", action="store_const", const="spectral",dest="filetype",
+                  help="file has 'spectral' format (VPSC code by R.A. Lebensohn)")
+parser.add_option("--homogenization", type="int",dest="homogenization",metavar='int',
+                  help="homogenization index from material.config (only required for 'spectral' file type)")
 
 parser.set_defaults(filetype = 'geom')
 parser.set_defaults(homogenization = 1)
 
-(options, args) = parser.parse_args()
+(options, filenames) = parser.parse_args()
 
 
 sys.path.append(damask.solver.Marc().libraryPath('../../'))
@@ -267,43 +260,52 @@ except:
   print('no valid Mentat release found')
   if options.port != None: sys.exit(-1)
 
-if not os.path.isfile(args[0]):
-  parser.error("cannot open %s"%args[0])
-
-file = open(args[0])
-content = file.readlines()
-file.close()
-
-print('\033[1m'+scriptName+'\033[0m\n')
-if options.filetype not in ['spectral','geom']:
-  options.filetype = os.path.splitext(args[0])[1][1:]
-
-print('\nparsing %s...'%options.filetype,)
-sys.stdout.flush()
-
-(grid,size,homog,microstructures) = {\
-  'geom':     parse_geomFile,
-  'spectral': parse_spectralFile,
-  }[options.filetype](content,options.homogenization)
-
-print('%i microstructures in %s with grid %s and homogenization %i\n'%(len(list(set(microstructures))),str(size),str(grid),homog))
-
-
-cmds = [\
-  init(),
-  mesh(grid,size),
-  material(),
-  geometry(),
-  initial_conditions(homog,microstructures),
-  '*identify_sets',
-  '*redraw',
-]
-
-outputLocals = {}
-if (options.port != None):
-  py_connect('',options.port)
-  output(cmds,outputLocals,'Mentat')
-  py_disconnect()
+#--- setup file handles --------------------------------------------------------------------------   
+files = []
+if filenames == []:
+  files.append({'name':'STDIN',
+                'input':sys.stdin,
+                'output':sys.stdout,
+                'croak':sys.stderr,
+               })
 else:
-  output(cmds,outputLocals,'Stdout')
+  for name in filenames:
+    if os.path.exists(name):
+      files.append({'name':name,
+                    'input':open(name),
+                    'output':open(name+'_tmp','w'),
+                    'croak':sys.stdout,
+                    })
 
+#--- loop over input files ------------------------------------------------------------------------
+for file in files:
+  file['croak'].write('\033[1m' + scriptName + '\033[0m: ' + (file['name'] if file['name'] != 'STDIN' else '') + '\n')
+
+
+  content = file['input'].readlines()
+  
+  (grid,size,homog,microstructures) = {\
+    'geom':     parse_geomFile,
+    'spectral': parse_spectralFile,
+    }[options.filetype](content,options.homogenization)
+  
+  print('%i microstructures in %s with grid %s and homogenization %i\n'%(len(list(set(microstructures))),str(size),str(grid),homog))
+  
+  
+  cmds = [\
+    init(),
+    mesh(grid,size),
+    material(),
+    geometry(),
+    initial_conditions(homog,microstructures),
+    '*identify_sets',
+    '*redraw',
+  ]
+  
+  outputLocals = {}
+  if (options.port != None):
+    py_connect('',options.port)
+    output(cmds,outputLocals,'Mentat')
+    py_disconnect()
+  else:
+    output(cmds,outputLocals,'Stdout')

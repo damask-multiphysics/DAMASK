@@ -33,9 +33,9 @@ def outStdout(cmd,locals):
     exec(cmd[3:])
   elif cmd[0:3] == '(?)':
     cmd = eval(cmd[3:])
-    print cmd
+    sys.stdout.write(cmd+'\n')
   else:
-    print cmd
+    sys.stdout.write(cmd+'\n')
   return
 
 
@@ -163,11 +163,9 @@ Set up servo linking to achieve periodic boundary conditions for a regular hexah
 
 """, version = scriptID)
 
-parser.add_option("-p", "--port", type="int",\
-                                  dest="port",\
+parser.add_option("-p", "--port", type="int", dest="port", metavar='int',
                                   help="Mentat connection port [%default]")
-parser.add_option("-v", "--verbose", action="store_true",\
-                                  dest="verbose",\
+parser.add_option("-v", "--verbose", action="store_true", dest="verbose",
                                   help="write Mentat command stream also to stdout [%default]")
 parser.set_defaults(port = 40007)
 parser.set_defaults(verbose = False)
@@ -175,10 +173,15 @@ parser.set_defaults(verbose = False)
 (options, args) = parser.parse_args()
 
 outputLocals = {}
-print '\033[1m'+scriptName+'\033[0m\n'
-print 'waiting to connect...'
+if options.verbose:
+  file={'croak':sys.stderr}
+else:
+  file={'croak':sys.stdout}
+
+file['croak'].write('\033[1m'+scriptName+'\033[0m\n\n')
+file['croak'].write( 'waiting to connect...\n')
 py_connect('',options.port)
-print 'connected...'
+file['croak'].write('connected...\n')
 output([\
         '*draw_manual',              # prevent redrawing in "new" Mentat, should be much faster
         '*remove_all_servos',
