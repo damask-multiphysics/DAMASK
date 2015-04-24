@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 no BOM -*-
 
-import os,sys,string
+import os,sys,string,math,operator
 import numpy as np
 from collections import defaultdict
 from optparse import OptionParser
@@ -9,6 +9,51 @@ import damask
 
 scriptID   = string.replace('$Id$','\n','\\n')
 scriptName = os.path.splitext(scriptID.split()[1])[0]
+
+#--------------------------------------------------------------------------------------------------
+#> @brief calculates curl field using differentation in Fourier space
+#> @todo enable odd resolution
+#--------------------------------------------------------------------------------------------------
+
+def divFFT(geomdim,field):
+ grid = np.array(np.shape(field)[0:3])
+ wgt = 1.0/np.array(grid).prod()
+
+ field_fourier=np.fft.fftpack.rfftn(field,axes=(0,1,2))
+
+ if len(np.shape(field)) == 4:
+   dataType = 'vector'
+   div_fourier=np.zeros(field_fourier.shape[0:3],'c8') # div is a scalar
+ elif len(np.shape(field)) == 5:
+   dataType = 'tensor'
+   div_fourier=np.zeros(field_fourier.shape[0:4],'c8') # div is a vector
+
+# differentiation in Fourier space
+ k_s=np.zeros([3],'i')
+ TWOPIIMG = (0.0+2.0j*math.pi)
+ for i in xrange(grid[0]):
+   k_s[0] = i
+   if(i > grid[0]/2 ): k_s[0] = k_s[0] - grid[0]
+   for j in xrange(grid[1]):
+     k_s[1] = j
+     if(j > grid[1]/2 ): k_s[1] = k_s[1] - grid[1]
+     for k in xrange(grid[2]/2+1):
+       k_s[2] = k
+       if(k > grid[2]/2 ): k_s[2] = k_s[2] - grid[2]
+       xi=np.array([k_s[2]/geomdim[2]+0.0j,k_s[1]/geomdim[1]+0.j,k_s[0]/geomdim[0]+0.j],'c8')
+       if dataType == 'tensor': 
+         for l in xrange(3):
+           div_fourier[i,j,k,l] = sum(field_fourier[i,j,k,l,0:3]*xi) *TWOPIIMG
+       elif dataType == 'vector': 
+         div_fourier[i,j,k] = sum(field_fourier[i,j,k,0:3]*xi) *TWOPIIMG
+
+ div=np.fft.fftpack.irfftn(div_fourier,axes=(0,1,2))
+ print div.shape
+ if dataType == 'tensor': 
+   return  div.reshape([grid.prod(),3])
+ if dataType == 'vector': 
+   return  div.reshape([grid.prod(),1])
+
 
 # --------------------------------------------------------------------
 #                                MAIN
@@ -21,20 +66,13 @@ Deals with both vector- and tensor-valued fields.
 
 """, version = scriptID)
 
-accuracyChoices = ['2','4','6','8']
-parser.add_option('--fdm',              dest='accuracy', action='extend', metavar='<int LIST>',
-                                        help='degree of central difference accuracy (%s)'%(','.join(accuracyChoices)))
-parser.add_option('--fft',              dest='fft', action='store_true',
-                                        help='calculate divergence in Fourier space')
-parser.add_option('-c','--coordinates', dest='coords', metavar = 'string',
+parser.add_option('-c','--coordinates', dest='coords', metavar='string',
                                         help='column heading for coordinates [%default]')
 parser.add_option('-v','--vector',      dest='vector', action='extend', metavar='<string LIST>',
                                         help='heading of columns containing vector field values')
 parser.add_option('-t','--tensor',      dest='tensor', action='extend', metavar='<string LIST>',
                                         help='heading of columns containing tensor field values')
 parser.set_defaults(coords = 'ipinitialcoord')
-parser.set_defaults(accuracy = [])
-parser.set_defaults(fft = False)
 parser.set_defaults(vector = [])
 parser.set_defaults(tensor = [])
 
@@ -42,22 +80,18 @@ parser.set_defaults(tensor = [])
 
 if len(options.vector) + len(options.tensor) == 0:
   parser.error('no data column specified...')
-if not set(options.accuracy).issubset(set(accuracyChoices)):
-  parser.error('accuracy must be chosen from %s...'%(', '.join(accuracyChoices)))
 
-if options.fft: options.accuracy.append('FFT')
-if not options.accuracy:
-  parser.error('no accuracy selected')
-
-datainfo = {                                                               # list of requested labels per datatype
-             'vector':     {'len':3,
+datainfo = {                                                                                         # list of requested labels per datatype
+             'vector':     {'shape':[3],
+                            'len':3,
                             'label':[]},
-             'tensor':     {'len':9,
+             'tensor':     {'shape':[3,3],
+                            'len':9,
                             'label':[]},
            }
 
-if options.vector != None:    datainfo['vector']['label'] += options.vector
-if options.tensor != None:    datainfo['tensor']['label'] += options.tensor
+if options.vector != None:    datainfo['vector']['label'] = options.vector
+if options.tensor != None:    datainfo['tensor']['label'] = options.tensor
 
 # ------------------------------------------ setup file handles ------------------------------------
 files = []
@@ -73,20 +107,49 @@ for file in files:
   table.head_read()                                                                                 # read ASCII header info
   table.info_append(scriptID + '\t' + ' '.join(sys.argv[1:]))
 
-# --------------- figure out size and grid ---------------------------------------------------------
+# --------------- figure out columns for coordinates and vector/tensor fields to process  ---------
+  column = defaultdict(dict)
+  pos = 0                                                                                           # when reading in the table via data_readArray, the first key is at colum 0
   try:
-    locationCol = table.labels.index('1_%s'%options.coords)                                         # columns containing location data
+    column['coords'] = pos
+    pos+=3                                                                                          # advance by data len (columns) for next key
+    keys=['%i_%s'%(i+1,options.coords) for i in xrange(3)]                                          # store labels for column keys
   except ValueError:
     try:
-      locationCol = table.labels.index('%s.x'%options.coords)                                       # columns containing location data (legacy naming scheme)
+      column['coords'] = pos
+      pos+=3                                                                                        # advance by data len (columns) for next key
+      directions = ['x','y','z']
+      keys=['%s.%s'%(options.coords,directions[i]) for i in xrange(3)]                              # store labels for column keys
     except ValueError:
-      file['croak'].write('no coordinate data (1_%s/%s.x) found...\n'%(options.coords,options.coords))
+      file['croak'].write('no coordinate data (1_%s) found...\n'%options.coords)
       continue
 
+  active = defaultdict(list)
+  for datatype,info in datainfo.items():
+    for label in info['label']:
+      key = '1_%s'%label
+      if key not in table.labels:
+        file['croak'].write('column %s not found...\n'%key)
+      else:
+        active[datatype].append(label)
+        column[label] = pos
+        pos+=datainfo[datatype]['len']
+        keys+=['%i_%s'%(i+1,label) for i in xrange(datainfo[datatype]['len'])]                   # extend ASCII header with new labels
+
+  table.data_readArray(keys)
+
+# --------------- assemble new header (columns containing curl) -----------------------------------
+  for datatype,labels in active.items():                                                            # loop over vector,tensor
+    for label in labels:
+      table.labels_append(['divFFT(%s)'%(label) if datatype == 'vector' else
+                           '%i_divFFT(%s)'%(i+1,label) for i in xrange(datainfo[datatype]['len']//3)])# extend ASCII header with new labels
+  table.head_write()
+
+# --------------- figure out size and grid ---------------------------------------------------------
   coords = [{},{},{}]
-  while table.data_read():                                                                          # read next data line of ASCII table
+  for i in xrange(table.data.shape[0]):  
     for j in xrange(3):
-      coords[j][str(table.data[locationCol+j])] = True                                              # remember coordinate along x,y,z
+      coords[j][str(table.data[i,j])] = True                                                        # remember coordinate along x,y,z
   grid = np.array([len(coords[0]),\
                    len(coords[1]),\
                    len(coords[2]),],'i')                                                            # grid is number of distinct coordinates found
@@ -95,82 +158,32 @@ for file in files:
                       max(map(float,coords[1].keys()))-min(map(float,coords[1].keys())),\
                       max(map(float,coords[2].keys()))-min(map(float,coords[2].keys())),\
                       ],'d')                                                                        # size from bounding box, corrected for cell-centeredness
-
   for i, points in enumerate(grid):
     if points == 1:
       mask = np.ones(3,dtype=bool)
       mask[i]=0
       size[i] = min(size[mask]/grid[mask])                                                          # third spacing equal to smaller of other spacing
   
-  N = grid.prod()
-
-# --------------- figure out columns to process  ---------------------------------------------------
-  active     = defaultdict(list)
-  column     = defaultdict(dict)
-  values     = defaultdict(dict)
-  divergence = defaultdict(dict)
-
-  for datatype,info in datainfo.items():
-    for label in info['label']:
-      key = '1_%s'%label
-      if key not in table.labels:
-        file['croak'].write('column %s not found...\n'%key)
-      else:
-        active[datatype].append(label)
-        column[datatype][label] = table.labels.index(key)                                           # remember columns of requested data
-        values[datatype][label] = np.array([0.0 for i in xrange(N*datainfo[datatype]['len'])]).\
-                                           reshape(list(grid)+[datainfo[datatype]['len']//3,3])
-        if label not in divergence[datatype]: divergence[datatype][label] = {}
-        for accuracy in options.accuracy:
-          divergence[datatype][label][accuracy] = np.array([0.0 for i in xrange(N*datainfo[datatype]['len']//3)]).\
-                                                           reshape(list(grid)+[datainfo[datatype]['len']//3])
-        
-# ------------------------------------------ assemble header ---------------------------------------
-  for datatype,labels in active.items():                                                            # loop over vector,tensor
-    for label in labels:
-      for accuracy in options.accuracy:
-        table.labels_append({True: ['%i_div%s(%s)'%(i+1,accuracy,label) for i in xrange(3)],       # extend ASCII header with new labels
-                             False:['div%s(%s)'%(accuracy,label)]} [datatype == 'tensor'])
-  table.head_write()
-
-# ------------------------------------------ read value field --------------------------------------
-  table.data_rewind()
-  idx = 0
-  while table.data_read():                                                                          # read next data line of ASCII table
-    (x,y,z) = damask.util.gridLocation(idx,grid)                                                    # figure out (x,y,z) position from line count
-    idx += 1
-    for datatype,labels in active.items():                                                          # loop over vector,tensor
-      for label in labels:                                                                          # loop over all requested curls
-        values[datatype][label][x,y,z] = np.array(
-                map(float,table.data[column[datatype][label]:
-                                     column[datatype][label]+datainfo[datatype]['len']]),'d') \
-                                     .reshape(datainfo[datatype]['len']//3,3)
 
 # ------------------------------------------ process value field -----------------------------------
+  div = defaultdict(dict)
   for datatype,labels in active.items():                                                            # loop over vector,tensor
-    for label in labels:                                                                            # loop over all requested divergencies
-      for accuracy in options.accuracy:
-        if accuracy == 'FFT':
-          divergence[datatype][label][accuracy] =\
-            damask.core.math.divergenceFFT(size,values[datatype][label])
-        else:
-          divergence[datatype][label][accuracy] =\
-            damask.core.math.divergenceFDM(size,eval(accuracy)//2-1,values[datatype][label])
-
+    for label in labels:                                                                            # loop over all requested curls
+      div[datatype][label]  = divFFT(size[::-1],                                                    # we need to reverse order here, because x is fastest,ie rightmost, but leftmost in our x,y,z notation
+                              table.data[:,column[label]:column[label]+datainfo[datatype]['len']].\
+                              reshape([grid[2],grid[1],grid[0]]+datainfo[datatype]['shape']))
 # ------------------------------------------ process data ------------------------------------------
   table.data_rewind()
   idx = 0
   outputAlive = True
   while outputAlive and table.data_read():                                                          # read next data line of ASCII table
-    (x,y,z) = damask.util.gridLocation(idx,grid)                                                    # figure out (x,y,z) position from line count
-    idx += 1
     for datatype,labels in active.items():                                                          # loop over vector,tensor
-      for label in labels:                                                                          # loop over all requested 
-        for accuracy in options.accuracy:
-          table.data_append(list(divergence[datatype][label][accuracy][x,y,z].reshape(datainfo[datatype]['len']//3)))
+      for label in labels:                                                                          # loop over all requested norms
+        table.data_append(list(div[datatype][label][idx,:]))
+    idx+=1
     outputAlive = table.data_write()                                                                # output processed line
 
-# ------------------------------------------ output result -----------------------------------------
+# ------------------------------------------ output result -----------------------------------------  
   outputAlive and table.output_flush()                                                              # just in case of buffered ASCII table
 
   table.input_close()                                                                               # close input ASCII table
