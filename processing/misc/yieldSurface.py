@@ -1374,7 +1374,8 @@ for i in xrange(numParas):
 if options.vegter is True: 
   options.dimension = 2
 
-unitGPa = 10.e5
+if options.criterion == 'hill1948': stressUnit = 1.0e9
+else                              : stressUnit = 1.0e6
 N_simulations=0
 s=threading.Semaphore(1)
 myLoad = Loadcase(options.load[0],options.load[1],options.load[2],
