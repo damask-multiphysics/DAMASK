@@ -11,6 +11,43 @@ from damask.util import leastsqBound
 scriptID   = string.replace('$Id$','\n','\\n')
 scriptName = scriptID.split()[1][:-3]
 
+def runFit(exponent, eqStress, dimension, criterion):
+  global s, threads, myFit
+  global fitResults, fitErrors, fitResidual, stressAll, strainAll
+  global N_simulations, Guess, dDim, numParas
+  
+  fitResults = []; fitErrors = []; fitResidual = []; Guess = []; threads=[]
+  dDim = dimension - 3
+  numParas = len(fitCriteria[criterion]['bound'][dDim])
+  nExpo = fitCriteria[criterion]['nExpo']
+
+  if exponent > 0.0: 
+    numParas = numParas-nExpo # User defines the exponents
+    fitCriteria[criterion]['bound'][dDim] = fitCriteria[criterion]['bound'][dDim][:numParas]
+  for i in xrange(numParas):
+    temp = fitCriteria[criterion]['bound'][dDim][i]
+    if fitCriteria[criterion]['bound'][dDim][i] == (None,None): Guess.append(1.0)
+    else: 
+      g = (temp[0]+temp[1])/2.0
+      if g == 0: g = temp[1]*0.5
+      Guess.append(g)
+
+  N_simulations=0
+  s=threading.Semaphore(1)
+  myLoad = Loadcase(options.load[0],options.load[1],options.load[2],
+                    nSet = 10, dimension = dimension, vegter = options.vegter)
+  stressAll= [np.zeros(0,'d').reshape(0,0) for i in xrange(int(options.yieldValue[2]))]
+  strainAll= [np.zeros(0,'d').reshape(0,0) for i in xrange(int(options.yieldValue[2]))]
+
+  myFit = Criterion(exponent,eqStress, dimension, criterion)
+  for i in range(options.threads):
+    threads.append(myThread(i))
+    threads[i].start()
+
+  for i in range(options.threads):
+    threads[i].join()
+  print fitResidual
+
 def execute(cmd,streamIn=None,wd='./'):
   '''
     executes a command in given directory and returns stdout and stderr for optional stdin
@@ -44,8 +81,8 @@ def principalStress(p):
 
   I1s3I2= (I1**2 - 3.0*I2)**0.5
   numer = 2.0*I1**3 - 9.0*I1*I2 + 27.0*I3
-  denom = 0.5*I1s3I2**(-3.0)
-  cs    = numer*denom
+  denom = 2.0*I1s3I2**3
+  cs    = numer/denom
 
   phi   = np.arccos(cs)/3.0
   t1    = I1/3.0; t2 = 2.0/3.0*I1s3I2
@@ -59,11 +96,11 @@ def principalStrs_Der(p, (s1, s2, s3, s4, s5, s6), dim, Karafillis=False):
   I1,I2,I3 = invariant(p)
 
   third = 1.0/3.0
-  I1s3I2= (I1**2 - 3.0*I2)**0.5
-  numer = 2.0*I1**3 - 9.0*I1*I2 + 27.0*I3
-  denom = 0.5*I1s3I2**(-3.0)
-  cs    = numer*denom
-  phi   = np.arccos(cs)*third
+  I1s3I2= np.sqrt(I1**2 - 3.0*I2)
+  numer, denom = 2.0*I1**3 - 9.0*I1*I2 + 27.0*I3,  2.0*I1s3I2**3
+  cs    = numer/denom
+  phi   = np.arccos(cs)/3.0
+
 
   dphidcs   = -third/np.sqrt(1.0 - cs**2)
   dcsddenom = 0.5*numer*(-1.5)*I1s3I2**(-5.0)
@@ -820,6 +857,7 @@ def KarafillisBoyce(eqStress, paras, sigmas, mFix, criteria, dim, Jac=False):
 fitCriteria = {
   'tresca'         :{'func' : Tresca,
                      'nExpo': 0,'err':np.inf,
+                     'dimen': 3,
                      'bound': [ [(None,None)] ],
                      'paras': [ 'sigma0' ],
                      'text' : '\nCoefficient of Tresca criterion: ',
@@ -827,6 +865,7 @@ fitCriteria = {
                     },
   'vonmises'       :{'func' : Hosford,
                      'nExpo': 0,'err':np.inf,
+                     'dimen': 3,
                      'bound': [ [(None,None)] ],
                      'paras': [ 'sigma0' ],
                      'text' : '\nCoefficient of Huber-Mises-Hencky criterion: ',
@@ -834,6 +873,7 @@ fitCriteria = {
                     },
   'hershey'        :{'func' : Hosford,
                      'nExpo': 1,'err':np.inf,
+                     'dimen': 3, 
                      'bound': [ [(None,None)]+[(1.0,8.0)] ],
                      'paras': [ 'sigma0, a' ],
                      'text' : '\nCoefficients of Hershey criterion: ',
@@ -841,6 +881,7 @@ fitCriteria = {
                     },
   'ghosford'       :{'func' : Hosford,
                      'nExpo': 1,'err':np.inf,
+                     'dimen': 3,
                      'bound': [ [(0.0,2.0)]*3+[(1.0,8.0)] ],
                      'paras': [ 'F, G, H, a' ],
                      'text' : '\nCoefficients of Hosford criterion: ',
@@ -848,6 +889,7 @@ fitCriteria = {
                     },
   'hill1948'       :{'func' : Hill1948,
                      'nExpo': 0,'err':np.inf,
+                     'dimen': 3,
                      'bound': [ [(None,None)]*6, [(None,None)]*4 ],
                      'paras': [ 'F, G, H, L, M, N',  'F, G, H, N'],
                      'text' : '\nCoefficients of Hill1948 criterion: ',
@@ -855,6 +897,7 @@ fitCriteria = {
                     },
   'hill1979'       :{'func' : Hill1979,
                      'nExpo': 1,'err':np.inf,
+                     'dimen': 3,
                      'bound': [ [(-2.0,2.0)]*6+[(1.0,8.0)] ],
                      'paras': [ 'f,g,h,a,b,c,m' ],
                      'text' : '\nCoefficients of Hill1979 criterion: ' ,
@@ -862,6 +905,7 @@ fitCriteria = {
                     },
   'drucker'        :{'func' : Drucker,
                      'nExpo': 0,'err':np.inf,
+                     'dimen': 3,
                      'bound': [ [(None,None)]+[(-3.375, 2.25)] ],
                      'paras': [ 'sigma0, C_D' ],
                      'text' : '\nCoefficients of Drucker criterion: ',
@@ -869,6 +913,7 @@ fitCriteria = {
                     },
   'gdrucker'       :{'func' : Drucker,
                      'nExpo': 1,'err':np.inf,
+                     'dimen': 3,
                      'bound': [ [(None,None)]+[(-3.375, 2.25)]+[(1.0,8.0)] ],
                      'paras': [ 'sigma0, C_D, p' ],
                      'text' : '\nCoefficients of general Drucker criterion: ',
@@ -876,6 +921,7 @@ fitCriteria = {
                     },
   'barlat1989'     :{'func' : Barlat1989,
                      'nExpo': 1,'err':np.inf,
+                     'dimen': 2,
                      'bound': [ [(-3.0,3.0)]*4+[(1.0,8.0)] ],
                      'paras': [ 'a,c,h,f, m' ],
                      'text' : '\nCoefficients of isotropic Barlat 1989 criterion: ',
@@ -883,6 +929,7 @@ fitCriteria = {
                     },
   'barlat1991'     :{'func' : Barlat1991,
                      'nExpo': 1,'err':np.inf,
+                     'dimen': 3,
                      'bound': [ [(-2,2)]*6+[(1.0,8.0)], [(-2,2)]*4+[(1.0,8.0)] ],
                      'paras': ['a, b, c, f, g, h, m', 'a, b, c, f, m'],
                      'text' : '\nCoefficients of anisotropic Barlat 1991 criterion: ',
@@ -890,6 +937,7 @@ fitCriteria = {
                     },
   'bbc2000'        :{'func' : BBC2000,
                      'nExpo': 1,'err':np.inf,
+                     'dimen': 2,
                      'bound': [ [(None,None)]*7+[(1.0,8.0)] ], #[(None,None)]*6+[(0.0,1.0)]+[(1.0,9.0)],
                      'paras': [ 'd,e,f,g, b,c,a, k' ],
                      'text' : '\nCoefficients of Banabic-Balan-Comsa 2000 criterion: ',
@@ -897,6 +945,7 @@ fitCriteria = {
                     },
   'bbc2003'        :{'func' : BBC2003,
                      'nExpo': 1,'err':np.inf,
+                     'dimen': 2,
                      'bound': [ [(None,None)]*8+[(1.0,8.0)] ], #[(None,None)]*7+[(0.0,1.0)]+[(1.0,9.0)],
                      'paras': [ 'M, N, P, Q, R, S, T, a, k' ],
                      'text' : '\nCoefficients of Banabic-Balan-Comsa 2003 criterion: ',
@@ -904,6 +953,7 @@ fitCriteria = {
                     },
   'bbc2005'        :{'func' : BBC2005,
                      'nExpo': 1,'err':np.inf,
+                     'dimen': 2,
                      'bound': [ [(None,None)]*8+[(1.0,8.0)] ], #[(None,None)]*6+[(0.0,1.0)]*2+[(1.0,9.0)],
                      'paras': [ 'L ,M, N, P, Q, R, a, b, k' ],
                      'text' : '\nCoefficients of Banabic-Balan-Comsa 2005 criterion: ',
@@ -911,6 +961,7 @@ fitCriteria = {
                     },
   'cazacu'          :{'func' : Cazacu_Barlat,
                      'nExpo': 0,'err':np.inf,
+                     'dimen': 3,
                      'bound': [ [(None,None)]*16+[(-2.5,2.5)]+[(None,None)] ],
                      'paras': [ 'a1,a2,a3,a4,a5,a6; b1,b2,b3,b4,b5,b6,b7,b8,b9,b10,b11; c','a1,a2,a3,a6; b1,b2,b3,b4,b5,b10; c'],
                      'text' : '\nCoefficients of Cazacu Barlat yield criterion: ',
@@ -918,6 +969,7 @@ fitCriteria = {
                     },
   'yld2000'        :{'func' : Yld2000,
                      'nExpo': 1,'err':np.inf,
+                     'dimen': 2,
                      'bound': [ [(None,None)]*8+[(1.0,8.0)] ],
                      'paras': [ 'a1,a2,a7,a3,a4,a5,a6,a8,m' ],
                      'text' : '\nCoefficients of Yld2000-2D yield criterion: ',
@@ -925,6 +977,7 @@ fitCriteria = {
                     },
   'yld200418p'     :{'func' : Yld200418p,
                      'nExpo': 1,'err':np.inf,
+                     'dimen': 3,
                      'bound': [ [(None,None)]*18+[(1.0,8.0)], [(None,None)]*14+[(1.0,8.0)] ],
                      'paras': [ 'c12,c21,c23,c32,c31,c13,c44,c55,c66,d12,d21,d23,d32,d31,d13,d44,d55,d66,m', \
                                 'c12,c21,c23,c32,c31,c13,c44,d12,d21,d23,d32,d31,d13,d44,m' ],
@@ -933,12 +986,14 @@ fitCriteria = {
                     },
   'karafillis'     :{'func' : KarafillisBoyce,
                      'nExpo': 3,'err':np.inf,
+                     'dimen': 3,
                      'bound': [ [(None,None)]*12+[(0.0,1.0)]+[(1.0,8.0)]*3, [(None,None)]*8+[(0.0,1.0)]+[(1.0,8.0)]*3],
                      'paras': [ 'c11,c12,c13,c14,c15,c16,c21,c22,c23,c24,c25,c26,alpha,b1,b2,a', \
                                 'c11,c12,c13,c14,c21,c22,c23,c24,alpha,b1,b2,a' ],
                      'text' : '\nCoefficients of Karafillis-Boyce yield criterion: ',
                      'error': 'The standard deviation errors are: '
-                    }
+                    },
+  'all'            : 'fit all the criteria'
                   }
 
 thresholdParameter = ['totalshear','equivalentStrain']
@@ -1248,8 +1303,8 @@ def doSim(delay,thread):
   try:
     for i in xrange(int(options.yieldValue[2])):
       if validity[i]:
-        a = (yieldStress[0][2]/unitGPa)**2 + (yieldStress[0][4]/unitGPa)**2 + (yieldStress[0][5]/unitGPa)**2
-        stressAll[i]=np.append(stressAll[i], yieldStress[i]/unitGPa)
+        a = (yieldStress[0][2]/stressUnit)**2 + (yieldStress[0][4]/stressUnit)**2 + (yieldStress[0][5]/stressUnit)**2
+        stressAll[i]=np.append(stressAll[i], yieldStress[i]/stressUnit)
         strainAll[i]=np.append(strainAll[i], deformationRate[i])
         myFit.fit(stressAll[i].reshape(len(stressAll[i])//6,6).transpose())
   except Exception as detail:
@@ -1345,51 +1400,43 @@ if options.yieldValue[2] != int(options.yieldValue[2]):
   parser.error('count must be an integer')
 if options.dimension not in [2,3]:
   parser.error('Dimension is wrong, should be 2(plane stress state) or 3(general stress state)')
-if options.criterion not in ['tresca', 'vonmises', 'hershey','drucker', 'gdrucker', 'hill1948']:
-  if options.eqStress == None:
-    parser.error("The equivalent stress is indispensable for the yield criterion '"+ options.criterion+"'")
+#if options.criterion not in ['tresca', 'vonmises', 'hershey','drucker', 'gdrucker', 'hill1948']:
+  # if options.eqStress == None:
+   # parser.error("The equivalent stress is indispensable for the yield criterion '"+ options.criterion+"'")
 if not os.path.isfile('numerics.config'):
   print('numerics.config file not found')
 
 if not os.path.isfile('material.config'):
   print('material.config file not found')
 
-dDim = options.dimension - 3
-numParas = len(fitCriteria[options.criterion]['bound'][dDim])
-
-nExpo = fitCriteria[options.criterion]['nExpo']
-Guess = []
-
-if options.exponent > 0.0: 
-  numParas = numParas-nExpo # User defines the exponents
-  fitCriteria[options.criterion]['bound'][dDim] = fitCriteria[options.criterion]['bound'][dDim][:numParas]
-for i in xrange(numParas):
-  temp = fitCriteria[options.criterion]['bound'][dDim][i]
-  if fitCriteria[options.criterion]['bound'][dDim][i] == (None,None): Guess.append(1.0)
-  else: 
-    g = (temp[0]+temp[1])/2.0
-    if g == 0: g = temp[1]*0.5
-    Guess.append(g)
 
 if options.vegter is True: 
   options.dimension = 2
 
 if options.criterion == 'hill1948': stressUnit = 1.0e9
 else                              : stressUnit = 1.0e6
-N_simulations=0
-s=threading.Semaphore(1)
-myLoad = Loadcase(options.load[0],options.load[1],options.load[2],
-                  nSet = 10, dimension = options.dimension, vegter = options.vegter)
-stressAll= [np.zeros(0,'d').reshape(0,0) for i in xrange(int(options.yieldValue[2]))]
-strainAll= [np.zeros(0,'d').reshape(0,0) for i in xrange(int(options.yieldValue[2]))]
-
-fitResults = []; fitErrors = []; fitResidual = []; threads=[]
-myFit = Criterion(options.exponent,options.eqStress, options.dimension, options.criterion)
-for i in range(options.threads):
-  threads.append(myThread(i))
-  threads[i].start()
-
-for i in range(options.threads):
-  threads[i].join()
+fit_allResults = {}
+if options.criterion == 'all':
+  noExpoList = ['tresca', 'vonmises', 'hill1948', 'drucker']
+  for criter in noExpoList:
+    run = runFit(options.exponent, 0.0, fitCriteria[criter]['dimen'], criter)
+    fit_allResults[criter] = {'results': fitResults, 'errors': fitErrors, 'residual': fitResidual}
+  for criter in [x for x in fitCriteria.keys() if x not in noExpoList+['vegter','all'] ]:
+    if options.eqStress == None:  
+      # the user do not provide the equivalent stress, the equivalent stress will be fitted by von Mises
+      eqStress = fit_allResults['vonmises']['results'][-1]
+    run = runFit(options.exponent, eqStress, fitCriteria[criter]['dimen'], criter)
+    fit_allResults[criter] = {'results': fitResults, 'errors': fitErrors, 'residual': fitResidual}
+else:
+  criter = options.criterion
+  if fitCriteria[criter]['nExpo'] == 0:
+    run = runFit(options.exponent, 0.0, fitCriteria[criter]['dimen'], criter)
+  else:
+    if options.eqStress == None: 
+      # the user do not provide the equivalent stress, the equivalent stress will be fitted by von Mises
+      run = runFit(options.exponent, 0.0, fitCriteria[criter]['dimen'], 'vonmises')
+      eqStress = fitResults[-1]
+    run = runFit(options.exponent, eqStress, fitCriteria[criter]['dimen'], criter)
+  fit_allResults[criter] = {'results': fitResults, 'errors': fitErrors, 'residual': fitResidual}
 
 print 'Finished fitting to yield criteria'
