@@ -1105,7 +1105,7 @@ class Criterion(object):
     criteria      = Criteria(nameCriterion,self.uniaxial,self.expo, self.dimen)
     textParas     = fitCriteria[nameCriterion]['text']+fitCriteria[nameCriterion]['paras'][dDim]+':\n' + \
                     formatOutput(numParas+nExponent)
-    textError     = fitCriteria[nameCriterion]['error']+ formatOutput(numParas+nExponent,'%-14.8f')+'\n'
+    textError     = fitCriteria[nameCriterion]['error']+ formatOutput(numParas+nExponent,'%-14.8f')
     bounds        = fitCriteria[nameCriterion]['bound'][dDim]  # Default bounds, no bound
     guess0        = Guess                                # Default initial guess, depends on bounds
 
@@ -1212,6 +1212,7 @@ def doSim(delay,thread):
 
   line = 0
   lines = np.shape(table.data)[0]
+  validity = np.zeros((int(options.yieldValue[2])), dtype=bool)
   yieldStress     = np.empty((int(options.yieldValue[2]),6),'d')
   deformationRate = np.empty((int(options.yieldValue[2]),6),'d')
   for i,threshold in enumerate(np.linspace(options.yieldValue[0],options.yieldValue[1],options.yieldValue[2])):
@@ -1234,19 +1235,23 @@ def doSim(delay,thread):
         deformationRate[i,3]=(dstrain[0,1] + dstrain[1,0])/2.0     #   0  3  5
         deformationRate[i,4]=(dstrain[1,2] + dstrain[2,1])/2.0     #   *  1  4
         deformationRate[i,5]=(dstrain[2,0] + dstrain[0,2])/2.0     #   *  *  2
+        validity[i] = True
         break
       else:
         line+=1
-
+    if not validity[i]:
+      print ('The data of sim %i at the threshold %f is invalid, the fitting at this point is skipped'%(loadNo,threshold))
   s.acquire()
   global stressAll, strainAll
   print('number of yield points of sim %i: %i'%(loadNo,len(yieldStress)))
   print('starting fitting for sim %i from %s'%(loadNo,thread))
   try:
     for i in xrange(int(options.yieldValue[2])):
-      stressAll[i]=np.append(stressAll[i], yieldStress[i]/unitGPa)
-      strainAll[i]=np.append(strainAll[i], deformationRate[i])
-      myFit.fit(stressAll[i].reshape(len(stressAll[i])//6,6).transpose())
+      if validity[i]:
+        a = (yieldStress[0][2]/unitGPa)**2 + (yieldStress[0][4]/unitGPa)**2 + (yieldStress[0][5]/unitGPa)**2
+        stressAll[i]=np.append(stressAll[i], yieldStress[i]/unitGPa)
+        strainAll[i]=np.append(strainAll[i], deformationRate[i])
+        myFit.fit(stressAll[i].reshape(len(stressAll[i])//6,6).transpose())
   except Exception as detail:
     print('could not fit for sim %i from %s'%(loadNo,thread))
     print detail
