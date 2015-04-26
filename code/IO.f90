@@ -562,6 +562,8 @@ logical function IO_abaqus_hasNoPart(fileUnit)
 !> @brief hybrid IA sampling of ODFfile
 !--------------------------------------------------------------------------------------------------
 function IO_hybridIA(Nast,ODFfileName)
+ use prec, only: &
+   tol_math_check
 
  implicit none
  integer(pInt),                 intent(in)   :: Nast                                              !< number of samples?
@@ -575,29 +577,26 @@ function IO_hybridIA(Nast,ODFfileName)
 
  integer(pInt) :: i,j,bin,NnonZero,Nset,Nreps,reps,phi1,Phi,phi2
  integer(pInt), dimension(1_pInt + 7_pInt*2_pInt)  :: positions
- integer(pInt), dimension(3)                       :: steps
+ integer(pInt), dimension(3)                       :: steps                                         !< number of steps in phi1, Phi, and phi2 direction
+ integer(pInt), dimension(4)                       :: columns                                       !< columns in linearODF file where eulerangles and density are located
  integer(pInt), dimension(:), allocatable          :: binSet
  real(pReal) :: center,sum_dV_V,prob,dg_0,C,lowerC,upperC,rnd
- real(pReal), dimension(3)                  :: limits, &
-                                               deltas
+ real(pReal), dimension(2,3)                :: limits                                               !< starting and end values for eulerangles
+ real(pReal), dimension(3)                  :: deltas, &                                            !< angular step size in phi1, Phi, and phi2 direction
+                                               eulers                                               !< euler angles when reading from file
  real(pReal), dimension(:,:,:), allocatable :: dV_V
- character(len=1024) :: line, keyword
- logical :: gotLimit, gotDelta
+ character(len=65536) :: line, keyword
  integer(pInt)                                :: headerLength
  integer(pInt),               parameter       :: FILEUNIT = 999_pInt
 
- gotLimit = .false.
- gotDelta = .false.
- IO_hybridIA = -1.0_pReal                                                                           ! initialize return value for case of error
- center = -1.0_pReal
- headerLength = 0_pInt
+ IO_hybridIA = 0.0_pReal                                                                           ! initialize return value for case of error
+ write(6,'(/,a,/)',advance='no') ' Using linear ODF file:'//trim(ODFfileName)
 
 !--------------------------------------------------------------------------------------------------
 ! parse header of ODF file 
  call IO_open_file(FILEUNIT,ODFfileName)
-
-
- read(FILEUNIT,'(a1024)') line
+ headerLength = 0_pInt
+ line=IO_read(FILEUNIT)
  positions = IO_stringPos(line,7_pInt)
  keyword = IO_lc(IO_StringValue(line,positions,2_pInt,.true.))
  if (keyword(1:4) == 'head') then
@@ -606,64 +605,88 @@ function IO_hybridIA(Nast,ODFfileName)
    call IO_error(error_ID=156_pInt, ext_msg='no header found')
  endif
 
- call IO_checkAndRewind(FILEUNIT)
- do i = 1_pInt, headerLength
-   read(FILEUNIT,'(a1024)') line
-   positions = IO_stringPos(line,7_pInt)             
-   select case ( IO_lc(IO_StringValue(line,positions,1_pInt,.true.)) )
-     case ('limit')
-       gotLimit = .true.
-       do j = 2_pInt,6_pInt,2_pInt
-         select case (IO_lc(IO_stringValue(line,positions,j)))
-           case('phi1')
-              limits(1) = IO_floatValue(line,positions,j+1_pInt)
-           case('phi')
-              limits(2) = IO_floatValue(line,positions,j+1_pInt)
-           case('phi2')
-              limits(3) = IO_floatValue(line,positions,j+1_pInt)
-         end select
-       enddo
-       limits = limits*INRAD
-     case ('delta')
-       gotDelta = .true.
-       do j = 2_pInt,6_pInt,2_pInt
-         select case (IO_lc(IO_stringValue(line,positions,j)))
-           case('phi1')
-              deltas(1) = IO_floatValue(line,positions,j+1_pInt)
-           case('phi')
-              deltas(2) = IO_floatValue(line,positions,j+1_pInt)
-           case('phi2')
-              deltas(3) = IO_floatValue(line,positions,j+1_pInt)
-         end select
-       enddo
-       deltas = deltas*INRAD
-     case ('centration')
-       if (IO_lc(IO_stringValue(line,positions,2_pInt)) == 'cell') center = 0.5_pReal
-       if (IO_lc(IO_stringValue(line,positions,2_pInt)) == 'vertex')   center = 0.0_pReal
+!--------------------------------------------------------------------------------------------------
+! figure out columns containing data
+ do i = 1_pInt, headerLength-1_pInt
+   line=IO_read(FILEUNIT)
+ enddo
+ columns = 0_pInt
+ positions = IO_stringPos(line,7_pInt)             
+ do i = 1_pInt, positions(1)
+   select case ( IO_lc(IO_StringValue(line,positions,i,.true.)) )
+     case ('phi1')
+      columns(1) = i
+     case ('phi')
+      columns(2) = i
+     case ('phi2')
+      columns(3) = i
+     case ('intensity')
+      columns(4) = i
    end select
  enddo
+
+ if (any(columns<1)) call IO_error(error_ID = 156_pInt, ext_msg='could not find expected header')
+
+!--------------------------------------------------------------------------------------------------
+! determine limits, number of steps and step size
+ limits(1,1:3) = 720.0_pReal
+ limits(2,1:3) = 0.0_pReal
+ steps  = 0_pInt
+
+ line=IO_read(FILEUNIT)
+ do while (trim(line) /= IO_EOF)
+   positions = IO_stringPos(line,7_pInt)             
+   eulers=[IO_floatValue(line,positions,columns(1)),&
+           IO_floatValue(line,positions,columns(2)),&
+           IO_floatValue(line,positions,columns(3))]
+   steps = steps + merge(1,0,eulers>limits(2,1:3))
+   limits(1,1:3) = min(limits(1,1:3),eulers)
+   limits(2,1:3) = max(limits(2,1:3),eulers)
+   line=IO_read(FILEUNIT)
+ enddo
+
+ deltas = (limits(2,1:3)-limits(1,1:3))/real(steps-1_pInt,pReal)
+
+ write(6,'(/,a,/,3(2x,f12.4,1x))',advance='no') ' Starting angles / ° = ',limits(1,1:3)
+ write(6,'(/,a,/,3(2x,f12.4,1x))',advance='no') ' Ending angles / ° =   ',limits(2,1:3)
+ write(6,'(/,a,/,3(2x,f12.4,1x))',advance='no') ' Angular steps / ° =   ',deltas
+
+ limits = limits*INRAD
+ deltas = deltas*INRAD
  
- if (.not. gotLimit) &
-   call IO_error(error_ID = 156_pInt, ext_msg='no limit information found')
- if (.not. gotDelta) &
-   call IO_error(error_ID = 156_pInt, ext_msg='no delta information found')
- if (center < 0.0_pReal) &
-   call IO_error(error_ID = 156_pInt, ext_msg='no centration information found')
- if (any(limits<=0.0_pReal)) &
-   call IO_error(error_ID = 156_pInt, ext_msg='invalid limits')
- if (any(deltas<=0.0_pReal)) &
-   call IO_error(error_ID = 156_pInt, ext_msg='invalid deltas')
+ if (all(abs(limits(1,1:3)) < tol_math_check)) then
+   write(6,'(/,a,/)',advance='no') ' assuming vertex centered data'
+   center = 0.0_pReal                                                                               ! no need to shift
+   if (any(mod(int(limits(2,1:3),pInt),90)==0)) &
+     call IO_error(error_ID = 156_pInt, ext_msg='linear ODF data repeated at right boundary')
+ else
+   write(6,'(/,a,/)',advance='no') ' assuming cell centered data'
+   center = 0.5_pReal                                                                               ! shift data by half of a bin
+ endif
+ 
 
- steps = nint(limits/deltas,pInt)
-
+!--------------------------------------------------------------------------------------------------
+! read in data
  allocate(dV_V(steps(3),steps(2),steps(1)),source=0.0_pReal)
  sum_dV_V = 0.0_pReal
  dg_0 = deltas(1)*deltas(3)*2.0_pReal*sin(deltas(2)/2.0_pReal)
  NnonZero = 0_pInt
+
+ call IO_checkAndRewind(FILEUNIT)                                                                   ! forward
+ do i = 1_pInt, headerLength
+   line=IO_read(FILEUNIT)
+ enddo
+
  do phi1=1_pInt,steps(1); do Phi=1_pInt,steps(2); do phi2=1_pInt,steps(3)
-   read(FILEUNIT,'(a1024)') line
-   positions = IO_stringPos(line,7_pInt)
-   prob = IO_floatValue(line,positions,1)
+   line=IO_read(FILEUNIT)
+   positions = IO_stringPos(line,7_pInt)             
+   eulers=[IO_floatValue(line,positions,columns(1)),&                                               ! read in again for consistency check only
+           IO_floatValue(line,positions,columns(2)),&
+           IO_floatValue(line,positions,columns(3))]*INRAD
+   if (any(abs((real([phi1,phi,phi2],pReal)-1.0_pReal + center)*deltas-eulers)>tol_math_check)) &   ! check if data is in expected order (phi2 fast)
+     call IO_error(error_ID = 156_pInt, ext_msg='linear ODF data not in expected order')
+
+   prob = IO_floatValue(line,positions,columns(4))
    if (prob > 0.0_pReal) then
       NnonZero = NnonZero+1_pInt
       sum_dV_V = sum_dV_V+prob
