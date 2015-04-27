@@ -8,8 +8,6 @@ import numpy as np
 scriptID   = string.replace('$Id$','\n','\\n')
 scriptName = scriptID.split()[1]
 
-random.seed(1)
-
 # --- helper functions ---
 
 def binAsBins(bin,intervals):
@@ -78,10 +76,12 @@ def directInversion (ODF,nSamples):
       incFactor = 1.0
       nInvSamplesUpper = directInvRepetitions(ODF['dV_V'],scaleUpper)
     nIter += 1
-    print '%i:(%12.11f,%12.11f) %i <= %i <= %i'%(nIter,scaleLower,scaleUpper,nInvSamplesLower,nOptSamples,nInvSamplesUpper)
+    file['croak'].write('%i:(%12.11f,%12.11f) %i <= %i <= %i\n'\
+                        %(nIter,scaleLower,scaleUpper,nInvSamplesLower,nOptSamples,nInvSamplesUpper))
   nInvSamples = nInvSamplesUpper
   scale = scaleUpper
-  print 'created set of',nInvSamples,'samples (',float(nInvSamples)/nOptSamples-1.0,') with scaling',scale,'delivering',nSamples
+  file['croak'].write('created set of %i samples (%12.11f) with scaling %12.11f delivering %i\n'\
+                      %(nInvSamples,float(nInvSamples)/nOptSamples-1.0,scale,nSamples))
   repetition = [None]*ODF['nBins'] # preallocate and clear
     
   for bin in range(ODF['nBins']): # loop over bins
@@ -181,8 +181,7 @@ def TothVanHoutteSTAT (ODF,nSamples):
       reconstructedODF[bin] += unitInc
       countSamples += 1
       indexSelector += 1
-      
-  print 'created set of',countSamples,'when asked to deliver',nSamples
+  file['croak'].write('created set of %i when asked to deliver %i\n'%(countSamples,nSamples))
   
   return orientations, reconstructedODF
 
@@ -190,35 +189,23 @@ def TothVanHoutteSTAT (ODF,nSamples):
 # --------------------------------------------------------------------
 #                                MAIN
 # --------------------------------------------------------------------
-identifiers = {
-        'limit':   ['phi1','phi','phi2'],
-        'delta':   ['phi1','phi','phi2'],
-          }
-mappings = {
-        'limit':       lambda x: math.radians(float(x)),
-        'delta':       lambda x: math.radians(float(x)),
-        'origin':      lambda x: str(x),
-          }
-
 parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
 Transform linear binned data into Euler angles.
 
 """, version = scriptID)
 
 parser.add_option('-n', '--number', dest='number', type='int', metavar = 'int',
-                     help='the number of orientations needed to be generated, the default is [%default]')
+                  help='number of orientations to be generated [%default]')
 parser.add_option('-a','--algorithm', dest='algorithm', type='string', metavar = 'string',
-                     help='''The algorithm adopted, three algorithms are provided, 
-                           that is:                      
-                             [IA]:   direct inversion,                        
-                             [STAT]: Van Houtte,                 
-                             [MC]:   Monte Carlo.                      
-                           the default is [%default].''') #make (multiple) choice
+                  help='sampling algorithm. IA: direct inversion, STAT: Van Houtte, MC: Monte Carlo. [%default].') #make choice
 parser.add_option('-p','--phase', dest='phase', type='int', metavar = 'int',
                   help='phase index to be used [%default]')
 parser.add_option('--crystallite', dest='crystallite', type='int', metavar = 'int',
                   help='crystallite index to be used [%default]')
+parser.add_option('-r', '--rnd', dest='randomSeed', type='int', metavar='int', \
+                  help='seed of random number generator [%default]')
 
+parser.set_defaults(randomSeed = None)
 parser.set_defaults(number      = 500)
 parser.set_defaults(algorithm   = 'IA')
 parser.set_defaults(phase       = 1)
@@ -228,80 +215,86 @@ parser.set_defaults(crystallite = 1)
 nSamples       = options.number
 methods        = [options.algorithm]
 
+if options.randomSeed == None:
+  options.randomSeed = int(os.urandom(4).encode('hex'), 16)
+random.seed(options.randomSeed)
+
 #--- setup file handles ---------------------------------------------------------------------------
 files = []
 if filenames == []:
-  files.append({'name':'STDIN',
-                'input':sys.stdin,
-                'output':sys.stdout,
-                'croak':sys.stderr,
-               })
+  files.append({'name':'STDIN','input':sys.stdin,'output':sys.stdout,'croak':sys.stderr})
 else:
   for name in filenames:
     if os.path.exists(name):
-      files.append({'name':name,
-                    'input':open(name),
-                    'output':open(name+'_tmp','w'),
-                    'croak':sys.stdout,
-                    })
+      files.append({'name':name,'input':open(name),'output':open(name+'_tmp','w'),'croak':sys.stdout})
 
 #--- loop over input files ------------------------------------------------------------------------
 for file in files:
   file['croak'].write('\033[1m' + scriptName + '\033[0m: ' + (file['name'] if file['name'] != 'STDIN' else '') + '\n')
 
-  ODF = {
-          'limit':   np.empty(3,'d'),
-          'delta':   np.empty(3,'d'),
-          'interval':np.empty(3,'i'),
-          'origin':  '' 
-         }
-
   table = damask.ASCIItable(file['input'],file['output'],buffered = False)
   table.head_read()
 
-  for header in table.info:
-    headitems = map(str.lower,header.split())
-    if len(headitems) == 0: continue
-    if headitems[0] in mappings.keys():
-      if headitems[0] in identifiers.keys():
-        for i in xrange(len(identifiers[headitems[0]])):
-          ODF[headitems[0]][i] = \
-            mappings[headitems[0]](headitems[headitems.index(identifiers[headitems[0]][i])+1])
-      else:
-        ODF[headitems[0]] = mappings[headitems[0]](headitems[1])
+# --------------- figure out columns in table ----------- -----------------------------------------
+  column = {}
+  pos = 0
+  keys = ['phi1','Phi','phi2','intensity']
+  for key in keys:
+    if key not in table.labels:
+      file['croak'].write('column %s not found...\n'%key)
+    else:
+      column[key] = pos
+      pos+=1
+  if pos != 4: continue
 
-  ODF['interval'] = np.array([int(round(limit/delta)) for limit,delta in zip(ODF['limit'],ODF['delta'])])
-  ODF['nBins'] = ODF['interval'].prod()
-  
-  if re.search('boundary',ODF['origin'].lower()):
-    ODF['center'] = 0.5
-  else:
+  binnedODF = table.data_readArray(keys)
+# --------------- figure out limits (left/right), delta, and interval -----------------------------
+  ODF = {}
+  limits = np.array([[np.min(table.data[:,column['phi1']]),\
+                      np.min(table.data[:,column['Phi']]),\
+                      np.min(table.data[:,column['phi2']])],\
+                     [np.max(table.data[:,column['phi1']]),\
+                      np.max(table.data[:,column['Phi']]),\
+                      np.max(table.data[:,column['phi2']])]])
+  ODF['limit'] = np.radians(limits[1,:])
+
+  if all(limits[0,:]<1e-8):                                                                         # vertex centered
     ODF['center'] = 0.0
-  
-  binnedODF=table.data_readArray([table.labels.index('intensity')])
+  else:                                                                                             # cell centered
+    ODF['center'] = 0.5
+
+  eulers = [{},{},{}]
+  for i in xrange(table.data.shape[0]):  
+    for j in xrange(3):
+      eulers[j][str(table.data[i,column[keys[j]]])] = True                                          # remember eulers along phi1, Phi, and phi2
+  ODF['interval'] = np.array([len(eulers[0]),len(eulers[1]),len(eulers[2]),],'i')                   # steps are number of distict values
+  ODF['nBins'] = ODF['interval'].prod()
+  ODF['delta'] = np.radians(np.array(limits[1,0:3]-limits[0,0:3])/(ODF['interval']-1))
 
   if binnedODF[0] != ODF['nBins']:
-    print 'expecting', ODF['nBins'], 'values but got', len(linesBinnedODF)
-    sys.exit(1)
+    file['croak'].write('expecting %i values but got %i'%(ODF['nBins'],len(linesBinnedODF)))
+    continue
   
   # build binnedODF array
   sumdV_V = 0.0
   ODF['dV_V'] = [None]*ODF['nBins']
   ODF['nNonZero'] = 0
-  dg = ODF['delta'][0]*2*math.sin(ODF['delta'][1]/2.0)*ODF['delta'][2]
-  for bin in range(ODF['nBins']):
-    ODF['dV_V'][bin] = \
-    max(0.0,table.data[bin,0]) * dg * \
-    math.sin(((bin//ODF['interval'][2])%ODF['interval'][1]+ODF['center'])*ODF['delta'][1])
-    if ODF['dV_V'][bin] > 0.0:
-      sumdV_V += ODF['dV_V'][bin]
+  dg = ODF['delta'][0]*2.0*math.sin(ODF['delta'][1]/2.0)*ODF['delta'][2]
+  for b in range(ODF['nBins']):
+    ODF['dV_V'][b] = \
+    max(0.0,table.data[b,column['intensity']]) * dg * \
+    math.sin(((b//ODF['interval'][2])%ODF['interval'][1]+ODF['center'])*ODF['delta'][1])
+    if ODF['dV_V'][b] > 0.0:
+      sumdV_V += ODF['dV_V'][b]
       ODF['nNonZero'] += 1
   
-  for bin in range(ODF['nBins']): ODF['dV_V'][bin] /= sumdV_V # normalize dV/V
-  
-  print 'non-zero fraction:', float(ODF['nNonZero'])/ODF['nBins'],'(%i/%i)'%(ODF['nNonZero'],ODF['nBins'])
-  print 'Volume integral of ODF:', sumdV_V
-  print 'Reference Integral:', ODF['limit'][0]*ODF['limit'][2]*(1-math.cos(ODF['limit'][1]))
+  for b in range(ODF['nBins']): ODF['dV_V'][b] /= sumdV_V # normalize dV/V
+
+  file['croak'].write('non-zero fraction: %12.11f (%i/%i)\n'\
+                      %(float(ODF['nNonZero'])/ODF['nBins'],ODF['nNonZero'],ODF['nBins']))
+  file['croak'].write('Volume integral of ODF: %12.11f\n'%sumdV_V)
+  file['croak'].write('Reference Integral: %12.11f\n'\
+                      %(ODF['limit'][0]*ODF['limit'][2]*(1-math.cos(ODF['limit'][1]))))
   
   # call methods
   Functions = {'IA': 'directInversion', 'STAT': 'TothVanHoutteSTAT', 'MC': 'MonteCarloBins'}
@@ -326,15 +319,16 @@ for file in files:
   indivSum['orig'] += ODF['dV_V'][bin]
   indivSquaredSum['orig'] += ODF['dV_V'][bin]**2
   
-  print 'sqrt(N*)RMSD of ODFs:\t', math.sqrt(nSamples*squaredDiff[method])
-  print 'RMSrD of ODFs:\t',        math.sqrt(squaredRelDiff[method])
-  print 'rMSD of ODFs:\t',         squaredDiff[method]/indivSquaredSum['orig']
-  print 'nNonZero correlation slope:\t', (ODF['nNonZero']*mutualProd[method]-indivSum['orig']*indivSum[method])/\
-                                         (ODF['nNonZero']*indivSquaredSum['orig']-indivSum['orig']**2)
-  print 'nNonZero correlation confidence:\t',\
-            (mutualProd[method]-indivSum['orig']*indivSum[method]/ODF['nNonZero'])/\
-             (ODF['nNonZero']*math.sqrt((indivSquaredSum['orig']/ODF['nNonZero']-(indivSum['orig']/ODF['nNonZero'])**2)*\
-                                        (indivSquaredSum[method]/ODF['nNonZero']-(indivSum[method]/ODF['nNonZero'])**2)))
+  file['croak'].write('sqrt(N*)RMSD of ODFs:\t %12.11f\n'% math.sqrt(nSamples*squaredDiff[method]))
+  file['croak'].write('RMSrD of ODFs:\t %12.11f\n'%math.sqrt(squaredRelDiff[method]))
+  file['croak'].write('rMSD of ODFs:\t %12.11f\n'%(squaredDiff[method]/indivSquaredSum['orig']))
+  file['croak'].write('nNonZero correlation slope:\t %12.11f\n'\
+                      %((ODF['nNonZero']*mutualProd[method]-indivSum['orig']*indivSum[method])/\
+                        (ODF['nNonZero']*indivSquaredSum['orig']-indivSum['orig']**2)))
+  file['croak'].write( 'nNonZero correlation confidence:\t %12.11f\n'\
+                      %((mutualProd[method]-indivSum['orig']*indivSum[method]/ODF['nNonZero'])/\
+    (ODF['nNonZero']*math.sqrt((indivSquaredSum['orig']/ODF['nNonZero']-(indivSum['orig']/ODF['nNonZero'])**2)*\
+    (indivSquaredSum[method]/ODF['nNonZero']-(indivSum[method]/ODF['nNonZero'])**2)))))
   
   if method == 'IA' and nSamples < ODF['nNonZero']:
     strOpt = '(%i)'%ODF['nNonZero']
