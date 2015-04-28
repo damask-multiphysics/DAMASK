@@ -1176,10 +1176,14 @@ for incCount,position in enumerate(locations):     # walk through locations
           if assembleHeader: header += thisHead
           if resultType != 'Homogenization':
             thisHead = heading('_',[[g,component,label] for component in range(int(length>1),length+int(length>1))])
-          newby.append({'label':label,
-                        'len':length,
-                        'content':[ p.element_scalar(p.element_sequence(e),stat['IndexOfLabel'][head])[n_local].value 
-                                    for head in thisHead ]})
+          try:
+            newby.append({'label':label,
+                          'len':length,
+                          'content':[ p.element_scalar(p.element_sequence(e),stat['IndexOfLabel'][head])[n_local].value 
+                                      for head in thisHead ]})
+          except KeyError:
+            print '\nDAMASK outputs seem missing from "post" section of the *.dat file!'
+            sys.exit()
 
       assembleHeader = False
 
