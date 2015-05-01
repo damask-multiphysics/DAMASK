@@ -35,7 +35,7 @@ parser.add_option('--flipud',     dest='flipUD', action='store_true',
                                   help='flip around horizontal axis')
 parser.add_option('--color',      dest='color', type='string',
                                   help='color scheme')
-parser.add_option('--invertColor',dest='invert', action='store_true',
+parser.add_option('--invert',     dest='invert', action='store_true',
                                   help='invert color scheme')
 parser.add_option('--crop',       dest='crop', type='int', nargs=4, metavar='LEFT RIGHT TOP BOTTOM',
                                   help='pixels cropped on left, right, top, bottom')
@@ -93,8 +93,8 @@ for name in filenames:
     file['croak'].write('\033[1m'+scriptName+'\033[0m: '+file['name']+'\n')
 
   table = damask.ASCIItable(file['input'],file['output'],
-                            buffered = False,
-                            labels = options.label != None)                                        # make unbuffered ASCII_table
+                            buffered = False,                                                       # make unbuffered ASCII_table
+                            labels = options.label != None)                                         # no labels when taking 2D dataset
   table.head_read()                                                                                 # read ASCII header info
 
 # --------------- figure out column to process -----------------------------------------------------
@@ -134,7 +134,7 @@ for name in filenames:
                    width -options.crop[1],
                    height-options.crop[3]))
 
-# ------------------------------------------ output result -----------------------------------------  
+# ------------------------------------------ output result -----------------------------------------
   im.save(file['output'],format = "PNG")
   if options.show: im.show()
 
