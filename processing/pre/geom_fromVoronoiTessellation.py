@@ -30,6 +30,45 @@ def meshgrid2(*arrs):
     ans.insert(0,arr2)
   return tuple(ans)
 
+def laguerreTessellation(undeformed, coords):
+    bestdist = np.ones(len(undeformed)) * np.finfo('d').max
+    bestseed = np.zeros(len(undeformed))
+
+    for i,seed in enumerate(coords):
+      for copy in np.array([[1, 0, 0,    ],
+                            [0, 1, 0,    ],
+                            [0, 0, 1,    ],
+                            [-1, 0, 0,   ],
+                            [0, -1, 0,   ],
+                            [0, 0, -1,   ],
+                            [1, 1, 0,    ],
+                            [1, 0, 1,    ],
+                            [0, 1, 1,    ],
+                            [-1, 1, 0,   ],
+                            [-1, 0, 1,   ],
+                            [0, -1, 1,   ],
+                            [-1, -1, 0,  ],
+                            [-1, 0, -1,  ],
+                            [0, -1, -1,  ],
+                            [1, -1, 0,   ],
+                            [1, 0, -1,   ],
+                            [0, 1, -1,   ],
+                            [1, 1, 1,    ],
+                            [-1, 1, 1,   ],
+                            [1, -1, 1,   ],
+                            [1, 1, -1,   ],
+                            [-1, -1, -1, ],
+                            [1, -1, -1,  ],
+                            [-1, 1, -1,  ],
+                            [-1, -1, 1,  ]]).astype(float):
+
+        diff = undeformed - np.repeat((seed+info['size']*copy).reshape(3,1),len(undeformed),axis=1).T
+        dist = np.sum(diff*diff,axis=1) - weights[i]
+                      
+        bestseed = np.where(dist < bestdist, np.ones(len(undeformed))*(i+1),bestseed)
+        bestdist = np.where(dist < bestdist, dist,bestdist)
+    return bestseed 
+
 
 # --------------------------------------------------------------------
 #                                MAIN
@@ -68,6 +107,9 @@ parser.add_option('-c', '--configuration', dest='config', action='store_true',
                   help='output material configuration [%default]')
 parser.add_option('--secondphase', type='float', dest='secondphase', metavar= 'float',
                   help='volume fraction of randomly distribute second phase [%default]')
+parser.add_option('--laguerre', dest='laguerre', action='store_true',
+                  help='for weighted voronoi (Laguerre) tessellation [%default]')
+
 
 parser.set_defaults(grid   = (0,0,0))
 parser.set_defaults(size   = (0.0,0.0,0.0))
@@ -77,6 +119,7 @@ parser.set_defaults(phase          = 1)
 parser.set_defaults(crystallite    = 1)
 parser.set_defaults(secondphase    = 0.0)
 parser.set_defaults(config = False)
+parser.set_defaults(laguerre = False)
 
 (options,filenames) = parser.parse_args()
 
@@ -105,22 +148,29 @@ for file in files:
   table = damask.ASCIItable(file['input'],file['output'],buffered = False)
   table.head_read()
 
-  coordsCol = table.labels_index('1_coords')
-  if coordsCol < 0: 
-    coordsCol = table.labels_index('x')                                                            # try if file is in legacy format
-    if coordsCol < 0: 
-      file['croak'].write('column 1_coords/x not found...\n')
-      continue
+  labels = []
+  if np.any(table.labels_index(['1_coords','2_coords','3_coords'])) == -1:
+    parser.error("missing seed coordinate column")
+  else:
+    labels += ['1_coords','2_coords','3_coords']
 
-  eulerCol = table.labels_index('phi1')
   hasEulers = np.all(table.labels_index(['phi1','Phi','phi2'])) != -1
-  grainCol = table.labels_index('microstructure')
-  hasGrains = grainCol != -1
-
-  table.data_readArray()
-  coords = table.data[:,coordsCol:coordsCol+3]
-  eulers = table.data[:,eulerCol:eulerCol+3] if hasEulers else np.zeros(3*len(coords))
-  grain = table.data[:,grainCol] if hasGrains else 1+np.arange(len(eulers))
+  if hasEulers:
+    labels += ['phi1','Phi','phi2']
+    
+  hasGrains = table.labels_index('microstructure') != -1
+  if hasGrains:
+    labels += ['microstructure']
+    
+  hasWeight = table.labels_index('weight') != -1
+  if hasWeight:
+    labels += ['weight']
+      
+  table.data_readArray(labels)
+  coords = table.data[:,table.labels_index(['1_coords','2_coords','3_coords'])]
+  eulers = table.data[:,table.labels_index(['phi1','Phi','phi2'])] if hasEulers else np.zeros(3*len(coords))
+  grain = table.data[:,table.labels_index('microstructure')] if hasGrains else 1+np.arange(len(coords))
+  weights = table.data[:,table.labels_index('weight')] if hasWeight else np.zeros(len(coords))
   grainIDs = np.unique(grain).astype('i')
 
 
@@ -179,7 +229,6 @@ for file in files:
     continue
 
 #--- prepare data ---------------------------------------------------------------------------------
-  coords = (coords*info['size']).T
   eulers = eulers.T
 
 #--- switch according to task ---------------------------------------------------------------------
@@ -208,14 +257,20 @@ for file in files:
     x = (np.arange(info['grid'][0])+0.5)*info['size'][0]/info['grid'][0]
     y = (np.arange(info['grid'][1])+0.5)*info['size'][1]/info['grid'][1]
     z = (np.arange(info['grid'][2])+0.5)*info['size'][2]/info['grid'][2]
-    undeformed = np.vstack(map(np.ravel, meshgrid2(x, y, z)))
-
-    file['croak'].write('tessellating...\n')
-    indices = damask.core.math.periodicNearestNeighbor(\
-              info['size'],\
-              np.eye(3),\
-              undeformed,coords)//3**3 + 1                                                          # floor division to kill periodic images
-    indices = grain[indices-1]
+    
+    if options.laguerre == False :
+      coords = (coords*info['size']).T
+      undeformed = np.vstack(map(np.ravel, meshgrid2(x, y, z)))
+  
+      file['croak'].write('tessellating...\n')
+      indices = damask.core.math.periodicNearestNeighbor(\
+                info['size'],\
+                np.eye(3),\
+                undeformed,coords)//3**3 + 1                                                          # floor division to kill periodic images
+      indices = grain[indices-1]
+    else :
+      undeformed = np.vstack(np.meshgrid(x, y, z)).reshape(3,-1).T
+      indices = laguerreTessellation(undeformed, coords)
 
     newInfo['microstructures'] = info['microstructures']
     for i in grainIDs:

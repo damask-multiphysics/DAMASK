@@ -25,13 +25,27 @@ parser.add_option('-g','--grid', dest='grid', type='int', nargs=3, metavar='int 
                   help='min a,b,c grid of hexahedral box %default')
 parser.add_option('-r', '--rnd', dest='randomSeed', type='int', metavar='int', \
                   help='seed of random number generator [%default]')
+parser.add_option('-w', '--weights', dest='weights', action='store_true',
+                  help = 'assign random weigts (Gaussian Distribution) to seed points for laguerre tessellation [%default]')
+parser.add_option('--mean', dest='mean', type='float', metavar='float', \
+                  help='mean of Gaussian Distribution for weights [%default]')
+parser.add_option('--sigma', dest='sigma', type='float', metavar='float', \
+                  help='standard deviation of Gaussian Distribution for weights [%default]')
+      
+
 
 parser.set_defaults(randomSeed = None)
 parser.set_defaults(grid = (16,16,16))
 parser.set_defaults(N = 20)
+parser.set_defaults(weights=False)
+parser.set_defaults(mean = 0.0)
+parser.set_defaults(sigma = 1.0)
+
 
 (options,filename) = parser.parse_args()
 options.grid = np.array(options.grid)
+
+labels = "1_coords\t2_coords\t3_coords\tphi1\tPhi\tphi2"
 
 # ------------------------------------------ setup file handle -------------------------------------
 if filename == []:
@@ -48,6 +62,8 @@ if options.N > gridSize:
   options.N = gridSize
 if options.randomSeed == None:
   options.randomSeed = int(os.urandom(4).encode('hex'), 16)
+
+
 np.random.seed(options.randomSeed)                                                      # init random generators
 random.seed(options.randomSeed)
 
@@ -76,14 +92,24 @@ seeds[1,:] = (np.mod(seedpoints//                 options.grid[0] ,options.grid[
 seeds[2,:] = (np.mod(seedpoints//(options.grid[1]*options.grid[0]),options.grid[2])\
              +np.random.random())/options.grid[2]
 
+table = np.transpose(np.concatenate((seeds,grainEuler),axis = 0))
+
+if options.weights :
+   weight = np.random.normal(loc=options.mean, scale=options.sigma, size=options.N)
+   weight /= np.sum(weight)
+   table = np.append(table, weight.reshape(options.N,1), axis=1)
+   labels += "\tweight"
+
+
+
 header = ["5\theader",
           scriptID + " " + " ".join(sys.argv[1:]),
           "grid\ta {}\tb {}\tc {}".format(options.grid[0],options.grid[1],options.grid[2]),
           "microstructures\t{}".format(options.N),
           "randomSeed\t{}".format(options.randomSeed),
-          "1_coords\t2_coords\t3_coords\tphi1\tPhi\tphi2",
+          "%s"%labels,
          ]
 
 for line in header:
   file['output'].write(line+"\n")
-np.savetxt(file['output'],np.transpose(np.concatenate((seeds,grainEuler),axis = 0)),fmt='%10.6f',delimiter='\t')
+np.savetxt(file['output'], table, fmt='%10.6f', delimiter='\t')
