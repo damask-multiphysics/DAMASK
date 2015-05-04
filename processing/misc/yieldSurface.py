@@ -124,11 +124,11 @@ def principalStrs_Der(p, (s1, s2, s3, s4, s5, s6), dim, Karafillis=False):
                    [p[1]*p[2]-p[4]**2, p[2]*p[0]-p[5]**2, p[0]*p[1]-p[3]**2, 
                     -2.0*p[3]*p[2]+2.0*p[4]*p[5], -2.0*p[4]*p[0]+2.0*p[5]*p[3], -2.0*p[5]*p[1]+2.0*p[3]*p[4]] ]) 
   if Karafillis:
-    dpdc = np.array([[zero,s2-s3,s3-s2], [s1-s3,zero,s3-s1], [s1-s2,s2-s1,zero]])
+    dpdc = np.array([[zero,s1-s3,s1-s2], [s2-s3,zero,s2-s1], [s3-s2,s3-s1,zero]])/3.0
     dSdp = np.array([np.dot(dSdI[:,:,i],dIdp[:,:,i]).T for i in xrange(num)]).T
     if dim == 2: temp = np.vstack([dSdp[:,3]*s4]).T.reshape(num,1,3).T
     else:        temp = np.vstack([dSdp[:,3]*s4,dSdp[:,4]*s5,dSdp[:,5]*s6]).T.reshape(num,3,3).T
-    return np.concatenate((np.array([np.dot(dSdp[:,0:3,i], dpdc[:,:,i].T).T/3.0 for i in xrange(num)]).T,
+    return np.concatenate((np.array([np.dot(dSdp[:,0:3,i], dpdc[:,:,i]).T for i in xrange(num)]).T,
                            temp), axis=1)
   else:
     if dim == 2:
@@ -482,12 +482,13 @@ def Barlat1989(eqStress, paras, sigmas, mFix, criteria, dim, Jac=False):
   '''
     Barlat-Lian 1989 yield criteria
     the fitted parameters are:
-      Anisotropic: a, c, h, p, m; m is optional
+      Anisotropic: a, h, p, m; m is optional
   ''' 
-  a, c, h, p = paras[0:4]
+  a, h, p = paras[0:3]
   if mFix[0]: m = mFix[1]
   else:       m = paras[-1]
 
+  c = 2.0-a
   s11,s22,s12 = sigmas[0], sigmas[1], sigmas[3]
   k1,k2 = 0.5*(s11 + h*s22), (0.25*(s11 - h*s22)**2 + (p*s12)**2)**0.5
   fs  = np.array([ (k1+k2)**2, (k1-k2)**2, 4.0*k2**2 ]); fm = fs**(m/2.0)                
@@ -505,7 +506,7 @@ def Barlat1989(eqStress, paras, sigmas, mFix, criteria, dim, Jac=False):
     drdl,  drdm  = r/m/left, r*math_ln(0.5*left)*(-1.0/m/m) 
     dldm = np.dot(np.array([a,a,c]),fm*math_ln(fs))*0.5
 
-    ja,jc = drdl*dlda, drdl*dldc 
+    ja = drdl*dlda 
     jh,jp = drdl*(dldk1*dk1dh + dldk2*dk2dh), drdl*dldk2*dk2dp
     jm    = drdl*dldm + drdm
 
@@ -516,12 +517,10 @@ def Barlat1991(eqStress, paras, sigmas, mFix, criteria, dim, Jac=False):
   '''
     Barlat 1991 criteria
     the fitted parameters are:
-      Isotropic: sigma0, m
       Anisotropic: a, b, c, f, g, h, m for 3D
                    a, b, c, h, m for plane stress
     m is optional
   '''
-  sigma0 = eqStress
   if dim == 2: coeff = paras[0:4]    # plane stress  
   else:        coeff = paras[0:6]    # general case
   if mFix[0]:  m = mFix[1]
@@ -530,7 +529,7 @@ def Barlat1991(eqStress, paras, sigmas, mFix, criteria, dim, Jac=False):
   cos = np.cos; sin = np.sin; pi = np.pi; abs = np.abs
   s11,s22,s33,s12,s23,s31 = sigmas
   if dim == 2:
-    dXdx = np.array([s22,s33-s11,s11-s22,s12])
+    dXdx = np.array([s22,-s11,s11-s22,s12])
     A,B,C,H = np.array(coeff)[:,None]*dXdx; F=G=0.0
   else:
     dXdx = np.array([s22-s33,s33-s11,s11-s22,s23,s31,s12])
@@ -541,31 +540,37 @@ def Barlat1991(eqStress, paras, sigmas, mFix, criteria, dim, Jac=False):
   phi1 = np.arccos(I3/I2**1.5)/3.0 + pi/6.0; absc1 = 2.0*abs(cos(phi1))
   phi2 = phi1                      + pi/3.0; absc2 = 2.0*abs(cos(phi2))
   phi3 = phi2                      + pi/3.0; absc3 = 2.0*abs(cos(phi3))
-  left = ( absc1**m + absc2**m + absc3**m )/2.0
-  r    = left**(1.0/m)*np.sqrt(3.0*I2)/sigma0
+  left = ( absc1**m + absc2**m + absc3**m )
+  r    = (0.5*left)**(1.0/m)*np.sqrt(3.0*I2)/eqStress
 
   if not Jac:
     return (r - 1.0).ravel()
   else:
     dfdl = r/left/m
-    jm = r*math_ln(left)*(-1.0/m/m) + dfdl*0.5*(
+    jm = r*math_ln(0.5*left)*(-1.0/m/m) + dfdl*0.5*(
          absc1**m*math_ln(absc1) + absc2**m*math_ln(absc2) + absc3**m*math_ln(absc3) ) 
 
     da,db,dc = (2.0*A-B-C)/18.0, (2.0*B-C-A)/18.0, (2.0*C-A-B)/18.0
     if dim == 2:
       dI2dx = np.array([da, db, dc, H])/1.5*dXdx
-      dI3dx = np.array([da*(B-C) + (H**2-G**2)/2.0, db*(C-A) + (F**2-H**2)/2.0, dc*(A-B) + (G**2-F**2)/2.0,
-                       (G*F + (A-B))*H])/3.0*dXdx    
+      dI3dx = np.array([ da*(B-C) + (H**2-G**2)/2.0, 
+                         db*(C-A) + (F**2-H**2)/2.0, 
+                         dc*(A-B) + (G**2-F**2)/2.0,
+                         (G*F + (A-B))*H ])/3.0*dXdx
     else:
       dI2dx = np.array([da, db, dc, F,G,H])/1.5*dXdx
-      dI3dx = np.array([da*(B-C) + (H**2-G**2)/2.0, db*(C-A) + (F**2-H**2)/2.0, dc*(A-B) + (G**2-F**2)/2.0,
-                       (H*G + (B-C))*F, (F*H + (C-A))*G, (G*F + (A-B))*H])/3.0*dXdx
-    darccos = -(1.0 - I3**2/I2**3)**(-0.5)
+      dI3dx = np.array([ da*(B-C) + (H**2-G**2)/2.0, 
+                         db*(C-A) + (F**2-H**2)/2.0, 
+                         dc*(A-B) + (G**2-F**2)/2.0,
+                        (H*G*3.0 + (B-C))*F, 
+                        (F*H*3.0 + (C-A))*G, 
+                        (G*F*3.0 + (A-B))*H ])/3.0*dXdx
+    darccos = -1.0/np.sqrt(1.0 - I3**2/I2**3)
 
-    dfdc  = dfdl*0.5*m
-    dfdcos = lambda phi : dfdc*(2.0*abs(cos(phi)))**(1.0/m-1.0)*np.sign(cos(phi))*(-sin(phi)/1.5)
+    dfdcos = lambda phi : dfdl*m*(2.0*abs(cos(phi)))**(m-1.0)*np.sign(cos(phi))*(-sin(phi)/1.5)
+
     dfdthe= (dfdcos(phi1) + dfdcos(phi2) + dfdcos(phi3)) 
-    dfdI2, dfdI3 = dfdthe*darccos*I3*(-1.5)*I2**(-2.5), dfdthe*darccos*I2**(-1.5)
+    dfdI2, dfdI3 = dfdthe*darccos*I3*(-1.5)*I2**(-2.5)+r/2.0/I2, dfdthe*darccos*I2**(-1.5)
 
     if mFix[0]: return np.vstack((dfdI2*dI2dx + dfdI3*dI3dx)).T
     else:       return np.vstack((dfdI2*dI2dx + dfdI3*dI3dx, jm)).T
@@ -595,7 +600,7 @@ def BBC2000(eqStress, paras, sigmas, mFix, criteria, dim, Jac=False):
   if not Jac:
     return (r - 1.0).ravel()
   else:
-    drdl,drdk = r/left/k2, r*math_ln(left)*(-1.0/k2/k)*eqStress  ##****eqStress should be cut
+    drdl,drdk = r/left/k2, r*math_ln(left)*(-1.0/k2/k)
     dldl1,dldl2,dldl3 = a*k2*(l1s**k1)*l1, a*k2*(l2s**k1)*l2, (1-a)*k2*(l3s**k1)*l3
     dldGama, dldPsi = (dldl1 + dldl2)*b, (dldl1 - dldl2 + 2.0*dldl3)*c
     temp = (P*s11 + Q*s22)/Psi
@@ -636,7 +641,7 @@ def BBC2003(eqStress, paras, sigmas, mFix, criteria, dim, Jac=False):
   if not Jac:
     return (r - 1.0).ravel()
   else:
-    drdl,drdk = r/left/k2, r*math_ln(left)*(-1.0/k2/k)*eqStress  #***
+    drdl,drdk = r/left/k2, r*math_ln(left)*(-1.0/k2/k)
     dldl1,dldl2,dldl3 = a*k2*(l1s**k1)*l1, a*k2*(l2s**k1)*l2, (1-a)*k2*(l3s**k1)*l3
 
     dldGama, dldPsi, dldLambda  = dldl1+dldl2, dldl1-dldl2, 2.0*dldl3
