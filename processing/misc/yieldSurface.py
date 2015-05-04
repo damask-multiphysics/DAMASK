@@ -644,14 +644,14 @@ def BBC2003(eqStress, paras, sigmas, mFix, criteria, dim, Jac=False):
     drdl,drdk = r/left/k2, r*math_ln(left)*(-1.0/k2/k)
     dldl1,dldl2,dldl3 = a*k2*(l1s**k1)*l1, a*k2*(l2s**k1)*l2, (1-a)*k2*(l3s**k1)*l3
 
-    dldGama, dldPsi, dldLambda  = dldl1+dldl2, dldl1-dldl2, 2.0*dldl3
+    dldGamma, dldPsi, dldLambda  = dldl1+dldl2, dldl1-dldl2, 2.0*dldl3
     temp = 0.25/Psi*(N*s11 - P*s22)
     dPsidN, dPsidP, dPsidQ = s11*temp, -s22*temp, Q*s12**2/Psi
     temp = 0.25/Lambda*(R*s11 - S*s22)
     dLambdadR, dLambdadS, dLambdadT = s11*temp, -s22*temp, T*s12**2/Psi
     dldk = a*math_ln(l1s)*l1s**k + a*math_ln(l2s)*l2s**k + (1-a)*math_ln(l3s)*l3s**k
 
-    J = drdl * np.array([dldGama*s22*0.5,                                               #jM
+    J = drdl * np.array([dldGamma*s22*0.5,                                              #jM
                          dldPsi*dPsidN,       dldPsi*dPsidP,       dldPsi*dPsidQ,       #jN, jP, jQ
                          dldLambda*dLambdadR, dldLambda*dLambdadS, dldLambda*dLambdadT, #jR, jS, jT
                          l1s**k + l2s**k - l3s**k ])                                    #ja
@@ -711,47 +711,59 @@ def BBC2005(eqStress, paras, sigmas, mFix, criteria, dim, Jac=False):
 
 def Yld2000(eqStress, paras, sigmas, mFix, criteria, dim, Jac=False):
   '''
-    C: c11,c22,c66  c12=c21=1.0 PASS
+    C: c11,c22,c66  c12=c21=1.0 JAC NOT PASS
     D: d11,d12,d21,d22,d66 
   '''
   C,D = paras[0:3], paras[3:8]
   if mFix[0]: m = mFix[1]
   else:       m = paras[-1]
 
-  sdev = np.array([sigmas[0]*2.0/3.0-sigmas[1]/3.0, sigmas[1]*2.0/3.0-sigmas[0]/3.0, sigmas[3]])
-  X = np.array([ C[0]*sdev[0], C[1]*sdev[1], C[2]*sdev[2] ])
-  Y = np.array([ D[0]*sdev[0]+ D[1]*sdev[1], D[2]*sdev[0]+ D[3]*sdev[1], D[4]*sdev[2] ])
+  s11, s22, s12 = sigmas[0],sigmas[1],sigmas[3]
+  X = np.array([ 2.0*C[0]*s11-C[0]*s22, 2.0*C[1]*s22-C[1]*s11, 3.0*C[2]*s12 ])/3.0 # a1,a2,a7
+  Y = np.array([ (8.0*D[2]-2.0*D[0]-2.0*D[3]+2.0*D[1])*s11 + (4.0*D[3]-4.0*D[1]-4.0*D[2]+    D[0])*s22,
+                 (4.0*D[0]-4.0*D[2]-4.0*D[1]+    D[3])*s11 + (8.0*D[1]-2.0*D[3]-2.0*D[0]+2.0*D[2])*s22,
+                  9.0*D[4]*s12 ])/9.0
 
   def priStrs((sx,sy,sxy)):
     temp = np.sqrt( (sx-sy)**2 + 4.0*sxy**2 )
     return 0.5*(sx+sy + temp), 0.5*(sx+sy - temp)
-
+  m2 = m/2.0; m21 = m2 - 1.0
   (X1,X2), (Y1,Y2) = priStrs(X), priStrs(Y) # Principal values of X, Y
-  phi1, phi21, phi22 = ((X1-X2)**2)**(m/2.0), ((2.0*Y2+Y1)**2)**(m/2.0), ((2.0*Y1+Y2)**2)**(m/2.0) 
-  left = phi1+phi21+phi22
-  r = (0.5*left)**(1.0/m)
+  phi1s, phi21s, phi22s  = (X1-X2)**2, (2.0*Y2+Y1)**2, (2.0*Y1+Y2)**2
+  phi1,  phi21,  phi22 = phi1s**m2, phi21s**m2, phi22s**m2
+  left = phi1 + phi21 + phi22
+  r = (0.5*left)**(1.0/m)/eqStress
 
   if not Jac:
-    return (r/eqStress-1.0).ravel()
+    return (r-1.0).ravel()
   else:
+    drdl,  drdm  = r/m/left, r*math_ln(0.5*left)*(-1.0/m/m) #/(-m*m) 
+    dldm = ( phi1*math_ln(phi1s) + phi21*math_ln(phi21s) + phi22*math_ln(phi22s) )*0.5
+    zero = np.zeros_like(s11); num  = len(s11)
     def dPrincipalds((X1,X2,X12)): 
       # the derivative of principla with regards to stress
-      temp   = 0.5/( (X1-X2)**2 + 4.0*X12**2 )**0.5
-      dP1dsi = 0.5*np.array([ 1.0+temp*2.0*(X1-X2), 1.0-temp*2.0*(X1-X2),  temp*8.0*X12])
-      dP2dsi = 0.5*np.array([ 1.0-temp*2.0*(X1-X2), 1.0+temp*2.0*(X1-X2), -temp*8.0*X12])
-      return dP1dsi, dP2dsi
+      temp   = 1.0/np.sqrt( (X1-X2)**2 + 4.0*X12**2 )
+      dP1dsi = 0.5*np.array([ 1.0+temp*(X1-X2), 1.0-temp*(X1-X2),  temp*4.0*X12])
+      dP2dsi = 0.5*np.array([ 1.0-temp*(X1-X2), 1.0+temp*(X1-X2), -temp*4.0*X12])
+      return np.array([dP1dsi, dP2dsi])
     
-    (dX1dXi, dX2dXi), (dY1dYi, dY2dYi) = dPrincipalds(X), dPrincipalds(Y)
-    dX1dCi, dX2dCi = dX1dXi*sdev,dX2dXi*sdev
-    s1,s2,s12  = sdev
-    dY1dDi, dY2dDi = np.array([dY1dYi[0]*s1, dY1dYi[0]*s2, dY1dYi[1]*s1, dY1dYi[1]*s2, dY1dYi[2]*s12]), \
-                     np.array([dY2dYi[0]*s1, dY2dYi[0]*s2, dY2dYi[1]*s1, dY2dYi[1]*s2, dY2dYi[2]*s12])
-    dldX1, dldX2 = phi1* m/(X1-X2), phi1*m/(X2-X1)
-    dldY1, dldY2 = phi21*m/(2.0*Y2+Y1) + 2.0*phi22*m/(2.0*Y1+Y2), \
-                   phi22*m/(2.0*Y1+Y2) + 2.0*phi21*m/(2.0*Y2+Y1)
-    drdl,  drdm  = r/m/left, r*math_ln(0.5*left)/(-m*m)
-    dldm = ( phi1*math_ln((X1-X2)**2) + phi21*math_ln((2.0*Y2+Y1)**2) + phi22*math_ln((2.0*Y1+Y2)**2) )*0.5
-    jC,jD= drdl*(dldX1*dX1dCi + dldX2*dX2dCi), drdl*(dldY1*dY1dDi + dldY2*dY2dDi)
+    dXdXi, dYdYi = dPrincipalds(X), dPrincipalds(Y)
+    dXidC  = np.array([ [ 2.0*s11-s22,        zero,    zero ],  #dX11dC
+                        [        zero, 2.0*s22-s11,    zero ],  #dX22dC
+                        [        zero,        zero, 3.0*s12 ] ])/3.0  #dX12dC
+    dYidD  = np.array([ [ -2.0*s11+    s22,  2.0*s11-4.0*s22,  8.0*s11-4.0*s22, -2.0*s11+4.0*s22,    zero ],  #dY11dD
+                        [  4.0*s11-2.0*s22, -4.0*s11+8.0*s22, -4.0*s11+2.0*s22,      s11-2.0*s22,    zero ],  #dY22dD
+                        [             zero,             zero,             zero,             zero, 9.0*s12 ] ])/9.0  #dY12dD
+    
+    dXdC=np.array([np.dot(dXdXi[:,:,i], dXidC[:,:,i]).T for i in xrange(num)]).T
+    dYdD=np.array([np.dot(dYdYi[:,:,i], dYidD[:,:,i]).T for i in xrange(num)]).T
+    
+    dldX = m*np.array([ phi1s**m21*(X1-X2),           phi1s**m21*(X2-X1)])
+    dldY = m*np.array([phi21s**m21*(2.0*Y2+Y1) + 2.0*phi22s**m21*(2.0*Y1+Y2), \
+                       phi22s**m21*(2.0*Y1+Y2) + 2.0*phi21s**m21*(2.0*Y2+Y1) ])
+    jC = drdl*np.array([np.dot(dldX[:,i], dXdC[:,:,i]) for i in xrange(num)]).T
+    jD = drdl*np.array([np.dot(dldY[:,i], dYdD[:,:,i]) for i in xrange(num)]).T
+
     jm   = drdl*dldm + drdm
     if mFix[0]: return np.vstack((jC,jD)).T
     else:       return np.vstack((jC,jD,jm)).T
@@ -760,8 +772,8 @@ def Yld200418p(eqStress, paras, sigmas, mFix, criteria, dim, Jac=False):
   '''
     Yld2004-18p yield criterion
     the fitted parameters are 
-      C: c12,c21,c23,c32,c13,c31,c44,c55,c66; D: d12,d21,d23,d32,d31,d13,d44,d55,d66 for 3D
-      C: c12,c21,c23,c32,c13,c31,c44; D: d12,d21,d23,d32,d31,d13,d44 for 2D
+      C: c12,c21,c23,c32,c31,c13,c44,c55,c66; D: d12,d21,d23,d32,d31,d13,d44,d55,d66 for 3D
+      C: c12,c21,c23,c32,c31,c13,c44; D: d12,d21,d23,d32,d31,d13,d44 for 2D
     and m, m is optional
     criteria are invalid input
   '''
