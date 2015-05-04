@@ -815,60 +815,55 @@ def Yld200418p(eqStress, paras, sigmas, mFix, criteria, dim, Jac=False):
 
 def KarafillisBoyce(eqStress, paras, sigmas, mFix, criteria, dim, Jac=False):
   '''
-    Karafillis-Boyce yield criterion
+    Karafillis-Boyce
     the fitted parameters are 
-      c11,c12,c13,c14,c15,c16,c21,c22,c23,c24,c25,c26,alpha,b1,b2,a for 3D
-      c11,c12,c13,c14,c21,c22,c23,c24,alpha,b1,b2,a for plane stress
-    0<alpha<1, b1,b2,a are optional
+      c11,c12,c13,c14,c15,c16,c,m for 3D
+      c11,c12,c13,c14,c,m for plane stress
+    0<c<1, m are optional
     criteria are invalid input
   '''
   ks = lambda (s1,s2,s3,s4,s5,s6),(c1,c2,c3,c4,c5,c6): np.array( [
          ((c2+c3)*s1-c3*s2-c2*s3)/3.0,  ((c3+c1)*s2-c3*s1-c1*s3)/3.0,
          ((c1+c2)*s3-c2*s1-c1*s2)/3.0,  c4*s4, c5*s5, c6*s6 ])
-  if dim == 2: C1,C2,alpha = np.append(paras[0:4],[0.0,0.0]), np.append(paras[4:8],[0.0,0.0]), paras[8]
-  else:        C1,C2,alpha  = paras[0:6], paras[6:12], paras[12]
-  if mFix[0]:  b1=b2=a = mFix[1]
-  else:        b1,b2,a = paras[len(paras)-3:len(paras)]
+  if dim == 2: C1,c = np.append(paras[0:4],[0.0,0.0]), paras[4]
+  else:        C1,c = paras[0:6], paras[6]
+  if mFix[0]:  m = mFix[1]
+  else:        m = paras[-1]  # Karafillis-Boyce
 
-  p,q = ks(sigmas, C1), ks(sigmas, C2)
-  plambdas,qlambdas = principalStress(p), principalStress(q)
-  b1i,b2i,ai,rb2 = 1.0/b1, 1.0/b2, 1.0/a, 3.0**b2/(2.0**b2+2.0)
+  p= ks(sigmas, C1)
+  plambdas = principalStress(p)
+  reci_m, m2, rm2, m1 = 1.0/m, m/2.0, 3.0**m/(2.0**(m-1.0)+1.0), m-1.0
 
-  difP  = np.array([plambdas[1]-plambdas[2], plambdas[2]-plambdas[0], plambdas[0]-plambdas[1]])
-  difPs = difP**2; difPb1 = difPs**(b1/2.0-1.0)
-  Qs    = qlambdas**2
+  difP  = np.array([ plambdas[0]-plambdas[1], plambdas[1]-plambdas[2], plambdas[2]-plambdas[0] ])
+  difPs = difP**2; difPm1 = difPs**(m2-1.0)
+  Ps    = plambdas**2
 
-  phi10, phi20 = np.sum(difPs**(b1/2.0),axis = 0), np.sum(Qs**(b2/2.0),axis = 0)
-  phi1,  phi2  = (0.5*phi10)**b1i, (rb2*phi20)**b2i
-  Stress = alpha*phi1**a + (1.0-alpha)*phi2**a
-  r      = Stress**ai/eqStress
+  phi1, phi2 = np.sum(difPs**m2, axis = 0), np.sum(Ps**m2, axis = 0)
+  left = (1.0-c)*phi1+ c*rm2*phi2
+  r    = (0.5*left)**reci_m/eqStress
 
   if not Jac:
     return (r-1.0).ravel()
   else:
-    drds = r*ai/Stress
-    dsda = alpha*phi1**a*math_ln(phi1) + (1.0-alpha)*phi2**a*math_ln(phi2)
+    drdl, drdm = r*reci_m/left,  -r*math_ln(0.5*left)*reci_m*reci_m
+    dldm = (1.0-c)*np.sum(difPs**m2*math_ln(difPs), axis=0)*0.5 + \
+            rm2*c *np.sum(   Ps**m2*math_ln(Ps),    axis=0)*0.5 + \
+            rm2*c *phi2* ( np.log(3.0) - 2.0**m1/(2.0**m1 + 1.0)*np.log(2.0) )
+    dphi1dP = m*np.array([ difPm1[0]*difP[0] - difPm1[2]*difP[2], 
+                           difPm1[1]*difP[1] - difPm1[0]*difP[0], 
+                           difPm1[2]*difP[2] - difPm1[1]*difP[1] ])
+    dphi2dP = m*plambdas*Ps**(m2-1.0)
 
-    dphi1dP = phi1/phi10*np.array([       -difPb1[1]*difP[1]+difPb1[2]*difP[2],
-      difPb1[0]*difP[0]-difPb1[2]*difP[2], difPb1[1]*difP[1]-difPb1[0]*difP[0]])
-    dphi2dQ = phi2/phi20*Qs*qlambdas*(b2/2.0-1.0)
     dPdc = principalStrs_Der(p, sigmas, dim, Karafillis=True)
-    dQdc = principalStrs_Der(q, sigmas, dim, Karafillis=True)
-    dphi10db1 = np.sum(difPs**(b1/2.0)*math_ln(difPs), axis=0)*0.5
-    dphi20db2 = np.sum(   Qs**(b2/2.0)*math_ln(   Qs), axis=0)*0.5
+    dldP = (1.0-c)*dphi1dP + c*dphi2dP*rm2
 
-    drb2db2   = rb2*math_ln(3.0) - rb2*math_ln(2.0)/(1.0+2.0**(1.0-b2))
-    dphi1db1  = phi1*math_ln(phi10)*(-b1i*b1i) + b1i*phi1/(0.5*phi10)* 0.5*dphi10db1
-    dphi2db2  = phi2*math_ln(phi20)*(-b2i*b2i) + b2i*phi2/(rb2*phi20)*(rb2*dphi20db2 + drb2db2*phi20)
-    ja  = drds*dsda + r*math_ln(Stress)*(-1.0/a/a)  #drda
-    jb1 = dphi1db1*(drds*a*phi1**(a-1)*alpha ) 
-    jb2 = dphi2db2*(drds*a*phi2**(a-1)*(1.0-alpha))
-    jc1 = np.sum([dphi1dP[i]*dPdc[i] for i in xrange(3)],axis=0)*drds*a*phi1**(a-1.0)*alpha 
-    jc2 = np.sum([dphi2dQ[i]*dQdc[i] for i in xrange(3)],axis=0)*drds*a*phi2**(a-1.0)*(1.0-alpha)
-    jalpha = drds * (phi1**a - phi2**a)
+    jm  = drdl * dldm + drdm  #drda*(-1.0/m/m)
+    jc1 = drdl * np.sum([dldP[i]*dPdc[i] for i in xrange(3)],axis=0)
+    jc  = drdl * (-phi1 + rm2*phi2)
 
-    if mFix[0]: return np.vstack((jc1,jc2,jalpha)).T
-    else:       return np.vstack((jc1,jc2,jalpha,jb1,jb2,ja)).T
+    if mFix[0]: return np.vstack((jc1,jc)).T
+    else:       return np.vstack((jc1,jc,jm)).T
+
 
 
 fitCriteria = {
@@ -1002,11 +997,11 @@ fitCriteria = {
                      'error': 'The standard deviation errors are: '
                     },
   'karafillis'     :{'func' : KarafillisBoyce,
-                     'nExpo': 3,'err':np.inf,
+                     'nExpo': 1,'err':np.inf,
                      'dimen': 3,
-                     'bound': [ [(None,None)]*12+[(0.0,1.0)]+[(1.0,8.0)]*3, [(None,None)]*8+[(0.0,1.0)]+[(1.0,8.0)]*3],
-                     'paras': [ 'c11,c12,c13,c14,c15,c16,c21,c22,c23,c24,c25,c26,alpha,b1,b2,a', \
-                                'c11,c12,c13,c14,c21,c22,c23,c24,alpha,b1,b2,a' ],
+                     'bound': [ [(None,None)]*6+[(0.0,1.0)]+[(1.0,8.0)], [(None,None)]*4+[(0.0,1.0)]+[(1.0,8.0)]],
+                     'paras': [ 'c11,c12,c13,c14,c15,c16,c,m', \
+                                'c11,c12,c13,c14,c15,c16,c,m' ],
                      'text' : '\nCoefficients of Karafillis-Boyce yield criterion: ',
                      'error': 'The standard deviation errors are: '
                     },
