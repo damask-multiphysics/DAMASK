@@ -178,14 +178,7 @@ module math
    fftw_execute_dft_r2c, &
    fftw_execute_dft_c2r, &
    fftw_destroy_plan, &
-   math_curlFFT, &
-   math_gradFFT, &
-   math_divergenceFFT, &
-   math_divergenceFDM, &
    math_tensorAvg, &
-   math_logstrainSpat, &
-   math_logstrainMat, &
-   math_cauchy, &
    math_periodicNearestNeighbor, &
    math_nearestNeighbor, &
    math_periodicNearestNeighborDistances
@@ -456,17 +449,14 @@ end function math_civita
 !> @brief kronecker delta function d_ij
 ! d_ij = 1 if i = j
 ! d_ij = 0 otherwise
+! inspired by http://fortraninacworld.blogspot.de/2012/12/ternary-operator.html
 !--------------------------------------------------------------------------------------------------
 real(pReal) pure function math_delta(i,j)
 
  implicit none
  integer(pInt), intent (in) :: i,j
 
- if (i /= j) then
-   math_delta = 0.0_pReal
- else
-   math_delta = 1.0_pReal
- endif
+ math_delta = merge(0.0_pReal, 1.0_pReal, i /= j)
 
 end function math_delta
 
@@ -726,7 +716,6 @@ pure function math_transpose33(A)
 end function math_transpose33
 
 
-
 !--------------------------------------------------------------------------------------------------
 !> @brief Cramer inversion of 33 matrix (function)
 !   direct Cramer inversion of matrix A.
@@ -739,24 +728,24 @@ pure function math_inv33(A)
  real(pReal) :: DetA
  real(pReal),dimension(3,3) :: math_inv33
 
- math_inv33 = 0.0_pReal
+ math_inv33(1,1) =  A(2,2) * A(3,3) - A(2,3) * A(3,2)
+ math_inv33(2,1) = -A(2,1) * A(3,3) + A(2,3) * A(3,1)
+ math_inv33(3,1) =  A(2,1) * A(3,2) - A(2,2) * A(3,1)
 
- DetA =   A(1,1) * (A(2,2) * A(3,3) - A(2,3) * A(3,2))&
-        - A(1,2) * (A(2,1) * A(3,3) - A(2,3) * A(3,1))&
-        + A(1,3) * (A(2,1) * A(3,2) - A(2,2) * A(3,1))
+ DetA = A(1,1) * math_inv33(1,1) + A(1,2) * math_inv33(2,1) + A(1,3) * math_inv33(3,1)
 
- if (abs(DetA) > tiny(DetA)) then
-   math_inv33(1,1) = ( A(2,2) * A(3,3) - A(2,3) * A(3,2)) / DetA
-   math_inv33(2,1) = (-A(2,1) * A(3,3) + A(2,3) * A(3,1)) / DetA
-   math_inv33(3,1) = ( A(2,1) * A(3,2) - A(2,2) * A(3,1)) / DetA
+ if (abs(DetA) > tiny(DetA)) then                                             ! use a real threshold here
+   math_inv33(1,2) = -A(1,2) * A(3,3) + A(1,3) * A(3,2)
+   math_inv33(2,2) =  A(1,1) * A(3,3) - A(1,3) * A(3,1)
+   math_inv33(3,2) = -A(1,1) * A(3,2) + A(1,2) * A(3,1)
 
-   math_inv33(1,2) = (-A(1,2) * A(3,3) + A(1,3) * A(3,2)) / DetA
-   math_inv33(2,2) = ( A(1,1) * A(3,3) - A(1,3) * A(3,1)) / DetA
-   math_inv33(3,2) = (-A(1,1) * A(3,2) + A(1,2) * A(3,1)) / DetA
-
-   math_inv33(1,3) = ( A(1,2) * A(2,3) - A(1,3) * A(2,2)) / DetA
-   math_inv33(2,3) = (-A(1,1) * A(2,3) + A(1,3) * A(2,1)) / DetA
-   math_inv33(3,3) = ( A(1,1) * A(2,2) - A(1,2) * A(2,1)) / DetA
+   math_inv33(1,3) =  A(1,2) * A(2,3) - A(1,3) * A(2,2)
+   math_inv33(2,3) = -A(1,1) * A(2,3) + A(1,3) * A(2,1)
+   math_inv33(3,3) =  A(1,1) * A(2,2) - A(1,2) * A(2,1)
+   
+   math_inv33 = math_inv33/DetA
+ else
+   DetA = 0.0_pReal
  endif
 
 end function math_inv33
@@ -764,14 +753,11 @@ end function math_inv33
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Cramer inversion of 33 matrix (subroutine)
+!   direct Cramer inversion of matrix A.
+!   also returns determinant
+!   returns error if not possible, i.e. if det close to zero
 !--------------------------------------------------------------------------------------------------
 pure subroutine math_invert33(A, InvA, DetA, error)
-
-!   Bestimmung der Determinanten und Inversen einer 33-Matrix
-!   A      = Matrix A
-!   InvA   = Inverse of A
-!   DetA   = Determinant of A
-!   error  = logical
 
  implicit none
  logical, intent(out) :: error
@@ -779,25 +765,24 @@ pure subroutine math_invert33(A, InvA, DetA, error)
  real(pReal),dimension(3,3),intent(out) :: InvA
  real(pReal), intent(out) :: DetA
 
- DetA =   A(1,1) * (A(2,2) * A(3,3) - A(2,3) * A(3,2))&
-        - A(1,2) * (A(2,1) * A(3,3) - A(2,3) * A(3,1))&
-        + A(1,3) * (A(2,1) * A(3,2) - A(2,2) * A(3,1))
+ InvA(1,1) =  A(2,2) * A(3,3) - A(2,3) * A(3,2)
+ InvA(2,1) = -A(2,1) * A(3,3) + A(2,3) * A(3,1)
+ InvA(3,1) =  A(2,1) * A(3,2) - A(2,2) * A(3,1)
+
+ DetA = A(1,1) * InvA(1,1) + A(1,2) * InvA(2,1) + A(1,3) * InvA(3,1)
 
  if (abs(DetA) <= tiny(DetA)) then
    error = .true.
  else
-   InvA(1,1) = ( A(2,2) * A(3,3) - A(2,3) * A(3,2)) / DetA
-   InvA(2,1) = (-A(2,1) * A(3,3) + A(2,3) * A(3,1)) / DetA
-   InvA(3,1) = ( A(2,1) * A(3,2) - A(2,2) * A(3,1)) / DetA
+   InvA(1,2) = -A(1,2) * A(3,3) + A(1,3) * A(3,2)
+   InvA(2,2) =  A(1,1) * A(3,3) - A(1,3) * A(3,1)
+   InvA(3,2) = -A(1,1) * A(3,2) + A(1,2) * A(3,1)
 
-   InvA(1,2) = (-A(1,2) * A(3,3) + A(1,3) * A(3,2)) / DetA
-   InvA(2,2) = ( A(1,1) * A(3,3) - A(1,3) * A(3,1)) / DetA
-   InvA(3,2) = (-A(1,1) * A(3,2) + A(1,2) * A(3,1)) / DetA
+   InvA(1,3) =  A(1,2) * A(2,3) - A(1,3) * A(2,2)
+   InvA(2,3) = -A(1,1) * A(2,3) + A(1,3) * A(2,1)
+   InvA(3,3) =  A(1,1) * A(2,2) - A(1,2) * A(2,1)
 
-   InvA(1,3) = ( A(1,2) * A(2,3) - A(1,3) * A(2,2)) / DetA
-   InvA(2,3) = (-A(1,1) * A(2,3) + A(1,3) * A(2,1)) / DetA
-   InvA(3,3) = ( A(1,1) * A(2,2) - A(1,2) * A(2,1)) / DetA
-
+   InvA = InvA/DetA
    error = .false.
  endif
 
@@ -863,11 +848,7 @@ subroutine math_invert(myDim,A, InvA, error)
  call sgetrf(myDim,myDim,invA,myDim,ipiv,ierr)
  call sgetri(myDim,InvA,myDim,ipiv,work,myDim,ierr)
 #endif
- if (ierr == 0_pInt) then 
-   error = .false.
- else
-   error = .true.
- endif
+ error = merge(.true.,.false., ierr /= 0_pInt)                                                      ! http://fortraninacworld.blogspot.de/2012/12/ternary-operator.html
  
 end subroutine math_invert
 
@@ -936,28 +917,29 @@ end function math_deviatoric33
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief equivalent scalar quantity of a full strain tensor
+!> @brief equivalent scalar quantity of a full symmetric strain tensor
 !--------------------------------------------------------------------------------------------------
 pure function math_equivStrain33(m)
 
  implicit none
  real(pReal), dimension(3,3), intent(in) :: m
- real(pReal) :: math_equivStrain33,e11,e22,e33,s12,s23,s31
+ real(pReal), dimension(3) :: e,s
+ real(pReal) :: math_equivStrain33
+ real(pReal), parameter :: TWOTHIRD = 2.0_pReal/3.0_pReal
 
- e11 = (2.0_pReal*m(1,1)-m(2,2)-m(3,3))/3.0_pReal
- e22 = (2.0_pReal*m(2,2)-m(3,3)-m(1,1))/3.0_pReal
- e33 = (2.0_pReal*m(3,3)-m(1,1)-m(2,2))/3.0_pReal
- s12 = 2.0_pReal*m(1,2)
- s23 = 2.0_pReal*m(2,3)
- s31 = 2.0_pReal*m(3,1)
+ e = [2.0_pReal*m(1,1)-m(2,2)-m(3,3), &
+      2.0_pReal*m(2,2)-m(3,3)-m(1,1), &
+      2.0_pReal*m(3,3)-m(1,1)-m(2,2)]/3.0_pReal
+ s = [m(1,2),m(2,3),m(1,3)]*2.0_pReal
 
- math_equivStrain33 = 2.0_pReal*(1.50_pReal*(e11**2.0_pReal+e22**2.0_pReal+e33**2.0_pReal) + &
-                                 0.75_pReal*(s12**2.0_pReal+s23**2.0_pReal+s31**2.0_pReal))**(0.5_pReal)/3.0_pReal
+ math_equivStrain33 = TWOTHIRD*(1.50_pReal*(sum(e**2.0_pReal)) + &
+                                0.75_pReal*(sum(s**2.0_pReal)))**(0.5_pReal)
 
 end function math_equivStrain33
 
+
 !--------------------------------------------------------------------------------------------------
-!> @brief von Mises equivalent of a full stress tensor
+!> @brief von Mises equivalent of a full symmetric stress tensor
 !--------------------------------------------------------------------------------------------------
 pure function math_equivStress33(m)
 
@@ -965,11 +947,19 @@ pure function math_equivStress33(m)
  real(pReal), dimension(3,3), intent(in) :: m
  real(pReal) :: math_equivStress33
 
-
- math_equivStress33 =  (((m(1,1)-m(2,2))**2.0_pReal + (m(2,2)-m(3,3))**2.0_pReal + (m(3,3)-m(1,1))**2.0_pReal + &
-                         6*(m(1,2)**2.0_pReal + m(3,1)**2.0_pReal + m(2,3)**2.0_pReal))**(0.5_pReal))/sqrt(2.0_pReal)
+ math_equivStress33 =( ( (m(1,1)-m(2,2))**2.0_pReal + &
+                         (m(2,2)-m(3,3))**2.0_pReal + &
+                         (m(3,3)-m(1,1))**2.0_pReal + &
+                         6.0_pReal*( m(1,2)**2.0_pReal + &
+                                     m(2,3)**2.0_pReal + &
+                                     m(1,3)**2.0_pReal &
+                                   ) &
+                       )**0.5_pReal &
+                     )/sqrt(2.0_pReal)
 
 end function math_equivStress33
+
+
 !--------------------------------------------------------------------------------------------------
 !> @brief trace of a 33 matrix
 !--------------------------------------------------------------------------------------------------
@@ -981,6 +971,7 @@ real(pReal) pure function math_trace33(m)
  math_trace33 = m(1,1) + m(2,2) + m(3,3)
 
 end function math_trace33
+
 
 !--------------------------------------------------------------------------------------------------
 !> @brief invariant 3 of a 33 matrix
@@ -994,6 +985,7 @@ real(pReal) pure function math_j3_33(m)
 
 end function math_j3_33
 
+
 !--------------------------------------------------------------------------------------------------
 !> @brief determinant of a 33 matrix
 !--------------------------------------------------------------------------------------------------
@@ -1002,7 +994,6 @@ real(pReal) pure function math_det33(m)
  implicit none
  real(pReal), dimension(3,3), intent(in) :: m
  
-
  math_det33 = m(1,1)*(m(2,2)*m(3,3)-m(2,3)*m(3,2)) &
              -m(1,2)*(m(2,1)*m(3,3)-m(2,3)*m(3,1)) &
              +m(1,3)*(m(2,1)*m(3,2)-m(2,2)*m(3,1))
@@ -1017,7 +1008,6 @@ real(pReal) pure function math_norm33(m)
 
  implicit none
  real(pReal), dimension(3,3), intent(in) :: m
-
 
  math_norm33 = sqrt(sum(m**2.0_pReal))
 
@@ -1156,7 +1146,7 @@ pure function math_Plain66toMandel66(m66)
  implicit none
  real(pReal), dimension(6,6), intent(in) :: m66
  real(pReal), dimension(6,6) :: math_Plain66toMandel66
- integer(pInt) i,j
+ integer(pInt)  :: i,j
 
  forall (i=1_pInt:6_pInt,j=1_pInt:6_pInt) &
    math_Plain66toMandel66(i,j) = nrmMandel(i) * nrmMandel(j) * m66(i,j)
@@ -1753,11 +1743,7 @@ pure function math_qToRodrig(Q)
  real(pReal), dimension(4), intent(in) :: Q
  real(pReal), dimension(3) :: math_qToRodrig
 
- if (abs(Q(1)) > tol_math_check) then                                                               ! unless rotation by 180 deg
-   math_qToRodrig = Q(2:4)/Q(1)
- else
-   math_qToRodrig = DAMASK_NaN                                                                      ! NaN since Rodrig is unbound for 180 deg...
- endif
+ math_qToRodrig = merge(Q(2:4)/Q(1),DAMASK_NaN,abs(Q(1)) > tol_math_check)                          ! NaN for 180 deg since Rodrig is unbound
 
 end function math_qToRodrig
 
@@ -1849,9 +1835,9 @@ function math_sampleFiberOri(alpha,beta,noise)
  real(pReal), dimension(6) :: rnd
  real(pReal), dimension(3,3) :: oRot,fRot,pRot
  real(pReal) :: noise, scatter, cos2Scatter, angle
- integer(pInt), dimension(2,3), parameter :: rotMap = reshape([2_pInt,3_pInt,&
-                                                                3_pInt,1_pInt,&
-                                                                1_pInt,2_pInt],[2,3])
+ integer(pInt), dimension(2,3), parameter :: ROTMAP = reshape([2_pInt,3_pInt,&
+                                                               3_pInt,1_pInt,&
+                                                               1_pInt,2_pInt],[2,3])
  integer(pInt) :: i
 
 ! Helming uses different distribution with Bessel functions
@@ -1872,7 +1858,7 @@ function math_sampleFiberOri(alpha,beta,noise)
  angle = -acos(dot_product(fiberInC,fiberInS))
  if(abs(angle) > tol_math_check) then
 !   rotation axis between sample and crystal system (cross product)
-   forall(i=1_pInt:3_pInt) axis(i) = fiberInC(rotMap(1,i))*fiberInS(rotMap(2,i))-fiberInC(rotMap(2,i))*fiberInS(rotMap(1,i))
+   forall(i=1_pInt:3_pInt) axis(i) = fiberInC(ROTMAP(1,i))*fiberInS(ROTMAP(2,i))-fiberInC(ROTMAP(2,i))*fiberInS(ROTMAP(1,i))
    oRot = math_EulerAxisAngleToR(math_vectorproduct(fiberInC,fiberInS),angle)
  else
    oRot = math_I3
@@ -1935,11 +1921,7 @@ real(pReal) function math_sampleGaussVar(meanvalue, stddev, width)
    return
  endif
 
- if (present(width)) then
-   myWidth = width
- else
-   myWidth = 3.0_pReal                                         ! use +-3*sigma as default value for scatter
- endif
+ myWidth = merge(width,3.0_pReal,present(width))                                                    ! use +-3*sigma as default value for scatter if not given
 
  do
    call halton(2_pInt, rnd)
@@ -2123,15 +2105,20 @@ pure subroutine math_pDecomposition(FE,U,R,error)
  real(pReal), intent(out), dimension(3,3) :: R, U
  logical, intent(out) :: error
  real(pReal), dimension(3,3) :: CE, EB1, EB2, EB3, UI
- real(pReal) :: EW1, EW2, EW3, det
+ real(pReal) :: EW1, EW2, EW3
 
- error = .false.
  ce = math_mul33x33(math_transpose33(FE),FE)
 
- CALL math_spectralDecomposition(CE,EW1,EW2,EW3,EB1,EB2,EB3)
+ call math_spectralDecomposition(CE,EW1,EW2,EW3,EB1,EB2,EB3)
  U=sqrt(EW1)*EB1+sqrt(EW2)*EB2+sqrt(EW3)*EB3
- call math_invert33(U,UI,det,error)
- if (.not. error) R = math_mul33x33(FE,UI)
+ UI = math_inv33(U)
+ if (all(abs(UI) <= tiny(UI))) then                                                                      ! math_inv33 returns zero when faile, avoid floating point equality comparison
+   R = 0.0_pReal
+   error =.True.
+ else
+   R = math_mul33x33(FE,UI)
+   error = .False.
+ endif
 
 end subroutine math_pDecomposition
 
@@ -2347,12 +2334,12 @@ end subroutine halton_ndim_set
 subroutine halton_seed_set(seed)
  implicit none
 
- integer(pInt), parameter :: ndim = 1_pInt
+ integer(pInt), parameter :: NDIM = 1_pInt
  integer(pInt), intent(in) :: seed                                                                  !< seed for the Halton sequence.
  integer(pInt) :: value_halton(ndim)
 
  value_halton(1) = seed
- call halton_memory ('SET', 'SEED', ndim, value_halton)
+ call halton_memory ('SET', 'SEED', NDIM, value_halton)
 
 end subroutine halton_seed_set
 
@@ -2415,9 +2402,9 @@ integer(pInt) function prime(n)
 
  implicit none
  integer(pInt), intent(in) :: n                                                                     !< index of the desired prime number
- integer(pInt), parameter :: prime_max = 1500_pInt
+ integer(pInt), parameter :: PRIME_MAX = 1500_pInt
  integer(pInt), save :: icall = 0_pInt
- integer(pInt), save, dimension(prime_max) :: npvec
+ integer(pInt), save, dimension(PRIME_MAX) :: npvec
 
  if (icall == 0_pInt) then
    icall = 1_pInt
@@ -2590,10 +2577,10 @@ integer(pInt) function prime(n)
  endif
 
  if(n < 0_pInt) then
-   prime = prime_max
+   prime = PRIME_MAX
  else if (n == 0_pInt) then
    prime = 1_pInt
- else if (n <= prime_max) then
+ else if (n <= PRIME_MAX) then
    prime = npvec(n)
  else
    prime = -1_pInt
@@ -2735,492 +2722,6 @@ end function math_rotate_forward3333
 
 
 #ifdef Spectral
-!--------------------------------------------------------------------------------------------------
-!> @brief calculates curl field using differentation in Fourier space
-!> @todo enable odd resolution
-!--------------------------------------------------------------------------------------------------
-function math_curlFFT(geomdim,field)
- use IO, only: &
-   IO_error
- use numerics, only: &
-   fftw_timelimit, &
-   fftw_planner_flag  
- use debug, only: &
-   debug_math, &
-   debug_level, &
-   debug_levelBasic
- 
- implicit none
- real(pReal),    dimension(:,:,:,:,:),         intent(in) :: field                                  !< field of data, first three dimensions are resolution, 4th is 1 or 3 (vector or tensor), 5th is 3
- real(pReal),    dimension(size(field,1),size(field,2),size(field,3),size(field,4),size(field,5))::&
-   math_curlFFT
- real(pReal),    dimension(3),                 intent(in) :: geomdim                                !< physical length dimension in three directions
- real(pReal),    dimension(:,:,:,:,:), pointer ::            field_real
- complex(pReal), dimension(:,:,:,:,:), pointer ::            field_fourier
- real(pReal),    dimension(:,:,:,:,:), pointer ::            curl_real
- complex(pReal), dimension(:,:,:,:,:), pointer ::            curl_fourier
- integer(pInt),  dimension(3) :: &
-   k_s,&
-   res
- complex(pReal), dimension(3) :: &
-   xi
- type(C_PTR)   :: fftw_forth, fftw_back
- type(C_PTR)   :: field_fftw, curl_fftw
- integer(pInt) :: i, j, k, l, res1_red, vec_tens
- real(pReal)   :: wgt
-
- res =  [size(field,1),size(field,2),size(field,3)]
- vec_tens = size(field,4)
-
- if (iand(debug_level(debug_math),debug_levelBasic) /= 0_pInt) then
-   if (vec_tens == 1_pInt) write(6,'(a)') 'Calculating curl of vector field'
-   if (vec_tens == 3_pInt) write(6,'(a)') 'Calculating curl of tensor field'
-   write(6,'(a,3(e12.5))') ' Dimension: ', geomdim
-   write(6,'(a,3(i5))')    ' Resolution:', res
- endif
- 
-!--------------------------------------------------------------------------------------------------
-! sanity checks
- if (vec_tens /= 1_pInt .and. vec_tens /= 3_pInt) &
-   call IO_error(0_pInt, ext_msg = 'Invalid data type in math_curlFFT')
- if ((mod(res(3),2_pInt)/=0_pInt .and. res(3) /= 1_pInt) .or. &
-      mod(res(2),2_pInt)/=0_pInt .or. &
-      mod(res(1),2_pInt)/=0_pInt) & 
-   call IO_error(0_pInt,ext_msg='Resolution in math_curlFFT')
- if (pReal /= C_DOUBLE .or. pInt /= C_INT) &
-   call IO_error(0_pInt,ext_msg='Fortran to C in math_curlFFT')
- 
- wgt = 1.0_pReal/real(product(res),pReal)
- res1_red = res(1)/2_pInt + 1_pInt                                                                  ! size of complex array in first dimension (c2r, r2c)
-
-!--------------------------------------------------------------------------------------------------
-! allocation and FFTW initialization
- call fftw_set_timelimit(fftw_timelimit)
- field_fftw =         fftw_alloc_complex(int(res1_red     *res(2)*res(3)*vec_tens*3_pInt,C_SIZE_T)) !C_SIZE_T is of type integer(8)
- call c_f_pointer(field_fftw, field_real,   [res(1)+2_pInt,res(2),res(3),vec_tens,3_pInt])
- call c_f_pointer(field_fftw, field_fourier,[res1_red     ,res(2),res(3),vec_tens,3_pInt])
- curl_fftw =          fftw_alloc_complex(int(res1_red     *res(2)*res(3)*vec_tens*3_pInt,C_SIZE_T)) !C_SIZE_T is of type integer(8)
- call c_f_pointer(curl_fftw, curl_real,     [res(1)+2_pInt,res(2),res(3),vec_tens,3_pInt])
- call c_f_pointer(curl_fftw, curl_fourier,  [res1_red     ,res(2),res(3),vec_tens,3_pInt])
-
- fftw_forth = fftw_plan_many_dft_r2c(3_pInt,[res(3),res(2) ,res(1)],vec_tens*3_pInt,&               ! dimensions,  length in each dimension in reversed order,        total # of transforms
-                            field_real,[res(3),res(2) ,res(1)+2_pInt],&                             ! input data,  physical length in each dimension in reversed order
-                                     1_pInt,  res(3)*res(2)*(res(1)+2_pInt),&                       ! striding,    product of physical lenght in the 3 dimensions
-                         field_fourier,[res(3),res(2) ,res1_red],&                                  ! output data, physical length in each dimension in reversed order
-                                     1_pInt,  res(3)*res(2)* res1_red,fftw_planner_flag)            ! striding,    product of physical lenght in the 3 dimensions,    planner mode
- fftw_back  = fftw_plan_many_dft_c2r(3_pInt,[res(3),res(2) ,res(1)],vec_tens*3_pInt,&
-                          curl_fourier,[res(3),res(2) ,res1_red],&
-                                     1_pInt,  res(3)*res(2)* res1_red,&
-                             curl_real,[res(3),res(2) ,res(1)+2_pInt],&
-                                     1_pInt,  res(3)*res(2)*(res(1)+2_pInt),fftw_planner_flag)
-
- field_real(1:res(1),1:res(2),1:res(3),1:vec_tens,1:3) = field                                      ! field_real is overwritten during plan creation and is larger (padding)
-
-!--------------------------------------------------------------------------------------------------
-! FFT
- call fftw_execute_dft_r2c(fftw_forth, field_real, field_fourier)
-
-!--------------------------------------------------------------------------------------------------
-! remove highest frequency in each direction, in third direction only if not 2D
- field_fourier( res(1)/2_pInt+1_pInt,1:res(2)            ,1:res(3)            ,&
-                              1:vec_tens,1:3) = cmplx(0.0_pReal,0.0_pReal,pReal)
- field_fourier(1:res1_red           ,res(2)/2_pInt+1_pInt,1:res(3)            ,&
-                              1:vec_tens,1:3) = cmplx(0.0_pReal,0.0_pReal,pReal)
- if(res(3)>1_pInt) &
-   field_fourier(1:res1_red         ,1:res(2)            ,res(3)/2_pInt+1_pInt,&
-                              1:vec_tens,1:3) = cmplx(0.0_pReal,0.0_pReal,pReal)
-
-!--------------------------------------------------------------------------------------------------
-! differentiation in Fourier space
- do k = 1_pInt, res(3)
-   k_s(3) = k - 1_pInt
-   if(k > res(3)/2_pInt + 1_pInt) k_s(3) = k_s(3) - res(3)
-   do j = 1_pInt, res(2)
-     k_s(2) = j - 1_pInt
-     if(j > res(2)/2_pInt + 1_pInt) k_s(2) = k_s(2) - res(2)
-     do i = 1_pInt, res1_red
-       k_s(1) = i - 1_pInt
-       xi = cmplx(real(k_s, pReal)/geomdim,0.0_pReal)
-       do l = 1_pInt, vec_tens
-         curl_fourier(i,j,k,l,1) = ( field_fourier(i,j,k,l,3)*xi(2)&
-                                    -field_fourier(i,j,k,l,2)*xi(3))*TWOPIIMG
-         curl_fourier(i,j,k,l,2) = (-field_fourier(i,j,k,l,3)*xi(1)&
-                                    +field_fourier(i,j,k,l,1)*xi(3))*TWOPIIMG
-         curl_fourier(i,j,k,l,3) = ( field_fourier(i,j,k,l,2)*xi(1)&
-                                    -field_fourier(i,j,k,l,1)*xi(2))*TWOPIIMG
-       enddo
- enddo; enddo; enddo
-
-!--------------------------------------------------------------------------------------------------
-! iFFT
- call fftw_execute_dft_c2r(fftw_back, curl_fourier, curl_real)
- math_curlFFT = curl_real(1:res(1),1:res(2),1:res(3),1:vec_tens,1:3)*wgt                            ! copy to output and weight
-
- if (vec_tens == 3_pInt) &
-   forall(k = 1_pInt:res(3), j = 1_pInt:res(2), i = 1_pInt:res(1)) &
-     math_curlFFT(i,j,k,1:3,1:3) = math_transpose33(math_curlFFT(i,j,k,1:3,1:3))                    ! results are stored transposed
-
- call fftw_destroy_plan(fftw_forth)
- call fftw_destroy_plan(fftw_back)
- call fftw_free(field_fftw) 
- call fftw_free(curl_fftw)         
-
-end function math_curlFFT
-
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief calculates gradient field using differentation in Fourier space
-!> @todo enable odd resolution
-!--------------------------------------------------------------------------------------------------
-function math_gradFFT(geomdim,field)
- use IO, only: &
-   IO_error
- use numerics, only: &
-   fftw_timelimit, &
-   fftw_planner_flag  
- use debug, only: &
-   debug_math, &
-   debug_level, &
-   debug_levelBasic
- 
- implicit none
- real(pReal),    dimension(:,:,:,:),           intent(in) :: field                                  !< field of data, first three dimensions are resolution, 4th is 1 or 3 (scalar or vector)
- real(pReal),    dimension(size(field,1),size(field,2),size(field,3),3,size(field,4)) :: &
-   math_gradFFT
- real(pReal),    dimension(3),                 intent(in) :: geomdim                                !< physical length dimension in three directions
- real(pReal),    dimension(:,:,:,:),   pointer ::            field_real
- complex(pReal), dimension(:,:,:,:),   pointer ::            field_fourier
- real(pReal),    dimension(:,:,:,:,:), pointer ::            grad_real
- complex(pReal), dimension(:,:,:,:,:), pointer ::            grad_fourier
- integer(pInt),  dimension(3) :: &
-   k_s,&
-   res
- complex(pReal), dimension(3) :: xi
- type(C_PTR)   :: fftw_forth, fftw_back
- type(C_PTR)   :: field_fftw, grad_fftw
- integer(pInt) :: i, j, k, l, res1_red, vec_tens
- real(pReal)   :: wgt
-
- res =  [size(field,1),size(field,2),size(field,3)]
- vec_tens = size(field,4)
-
- if (iand(debug_level(debug_math),debug_levelBasic) /= 0_pInt) then
-   if (vec_tens == 1_pInt) write(6,'(a)') 'Calculating gradient of scalar field'
-   if (vec_tens == 3_pInt) write(6,'(a)') 'Calculating gradeint of vector field'
-   write(6,'(a,3(e12.5))') ' Dimension: ', geomdim
-   write(6,'(a,3(i5))')    ' Resolution:', res
- endif
- 
-!--------------------------------------------------------------------------------------------------
-! sanity checks
- if (vec_tens /= 1_pInt .and. vec_tens /= 3_pInt) &
-   call IO_error(0_pInt, ext_msg = 'Invalid data type in math_gradFFT')
- if ((mod(res(3),2_pInt)/=0_pInt .and. res(3) /= 1_pInt) .or. &
-      mod(res(2),2_pInt)/=0_pInt .or. &
-      mod(res(1),2_pInt)/=0_pInt) & 
-   call IO_error(0_pInt,ext_msg='Resolution in math_gradFFT')
- if (pReal /= C_DOUBLE .or. pInt /= C_INT) &
-   call IO_error(0_pInt,ext_msg='Fortran to C in math_gradFFT')
-
- wgt = 1.0_pReal/real(product(res),pReal)
- res1_red = res(1)/2_pInt + 1_pInt                                                                  ! size of complex array in first dimension (c2r, r2c)
-
-!--------------------------------------------------------------------------------------------------
-! allocation and FFTW initialization
- call fftw_set_timelimit(fftw_timelimit)
- field_fftw =         fftw_alloc_complex(int(res1_red     *res(2)*res(3)*vec_tens,C_SIZE_T))        ! C_SIZE_T is of type integer(8)
- call c_f_pointer(field_fftw, field_real,   [res(1)+2_pInt,res(2),res(3),vec_tens])
- call c_f_pointer(field_fftw, field_fourier,[res1_red     ,res(2),res(3),vec_tens])
- grad_fftw =          fftw_alloc_complex(int(res1_red     *res(2)*res(3)*vec_tens*3_pInt,C_SIZE_T)) ! C_SIZE_T is of type integer(8)
- call c_f_pointer(grad_fftw, grad_real,     [res(1)+2_pInt,res(2),res(3),3_pInt,vec_tens])
- call c_f_pointer(grad_fftw, grad_fourier,  [res1_red     ,res(2),res(3),3_pInt,vec_tens])
-
- fftw_forth = fftw_plan_many_dft_r2c(3_pInt,[res(3),res(2) ,res(1)],vec_tens*3_pInt,&               ! dimensions,  length in each dimension in reversed order,        total # of transforms
-                            field_real,[res(3),res(2) ,res(1)+2_pInt],&                             ! input data,  physical length in each dimension in reversed order
-                                     1_pInt,  res(3)*res(2)*(res(1)+2_pInt),&                       ! striding,    product of physical lenght in the 3 dimensions
-                         field_fourier,[res(3),res(2) ,res1_red],&                                  ! output data, physical length in each dimension in reversed order
-                                     1_pInt,  res(3)*res(2)* res1_red,fftw_planner_flag)            ! striding,    product of physical lenght in the 3 dimensions,    planner mode
- fftw_back  = fftw_plan_many_dft_c2r(3_pInt,[res(3),res(2) ,res(1)],vec_tens*3_pInt,&
-                          grad_fourier,[res(3),res(2) ,res1_red],&
-                                     1_pInt,  res(3)*res(2)* res1_red,&
-                             grad_real,[res(3),res(2) ,res(1)+2_pInt],&
-                                     1_pInt,  res(3)*res(2)*(res(1)+2_pInt),fftw_planner_flag)
-
- field_real(1:res(1),1:res(2),1:res(3),1:vec_tens) = field                                          ! field_real is overwritten during plan creation and is larger (padding)
-
-!--------------------------------------------------------------------------------------------------
-! FFT
- call fftw_execute_dft_r2c(fftw_forth, field_real, field_fourier)
-
-!--------------------------------------------------------------------------------------------------
-! remove highest frequency in each direction, in third direction only if not 2D
- field_fourier( res(1)/2_pInt+1_pInt,1:res(2)            ,1:res(3)            ,&
-                              1:vec_tens) = cmplx(0.0_pReal,0.0_pReal,pReal)
- field_fourier(1:res1_red           ,res(2)/2_pInt+1_pInt,1:res(3)            ,&
-                              1:vec_tens) = cmplx(0.0_pReal,0.0_pReal,pReal)
- if(res(3)>1_pInt) &
-   field_fourier(1:res1_red         ,1:res(2)            ,res(3)/2_pInt+1_pInt,&
-                              1:vec_tens) = cmplx(0.0_pReal,0.0_pReal,pReal)
-
-!--------------------------------------------------------------------------------------------------
-! differentiation in Fourier space
- do k = 1_pInt, res(3)
-   k_s(3) = k - 1_pInt
-   if(k > res(3)/2_pInt + 1_pInt) k_s(3) = k_s(3) - res(3)
-   do j = 1_pInt, res(2)
-     k_s(2) = j - 1_pInt
-     if(j > res(2)/2_pInt + 1_pInt) k_s(2) = k_s(2) - res(2)
-     do i = 1_pInt, res1_red
-       k_s(1) = i - 1_pInt
-       xi = cmplx(real(k_s, pReal)/geomdim,0.0_pReal)
-       do l = 1_pInt, vec_tens
-         grad_fourier(i,j,k,1,l) = field_fourier(i,j,k,l)*xi(1) * TWOPIIMG
-         grad_fourier(i,j,k,2,l) = field_fourier(i,j,k,l)*xi(2) * TWOPIIMG
-         grad_fourier(i,j,k,3,l) = field_fourier(i,j,k,l)*xi(3) * TWOPIIMG
-       enddo
- enddo; enddo; enddo
-
-!--------------------------------------------------------------------------------------------------
-! iFFT
- call fftw_execute_dft_c2r(fftw_back, grad_fourier, grad_real)
- math_gradFFT = grad_real(1:res(1),1:res(2),1:res(3),1:3,1:vec_tens)*wgt                            ! copy to output and weight
-
- if (vec_tens == 3_pInt) &
-   forall(k = 1_pInt:res(3), j = 1_pInt:res(2), i = 1_pInt: res(1)) &
-     math_gradFFT(i,j,k,1:3,1:3) = math_transpose33(math_gradFFT(i,j,k,1:3,1:3))                    ! results are stored transposed
-
- call fftw_destroy_plan(fftw_forth)
- call fftw_destroy_plan(fftw_back)
- call fftw_free(field_fftw) 
- call fftw_free(grad_fftw)         
-
-end function math_gradFFT
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief calculates divergence field using integration in Fourier space
-!> @todo enable odd resolution
-!--------------------------------------------------------------------------------------------------
-function math_divergenceFFT(geomdim,field)
- use IO, only: &
-   IO_error
- use numerics, only: &
-   fftw_timelimit, &
-   fftw_planner_flag  
- use debug, only: &
-   debug_math, &
-   debug_level, &
-   debug_levelBasic
-                  
- implicit none
- real(pReal),    dimension(:,:,:,:,:),         intent(in) :: field                                  !< field of data, first three dimensions are resolution, 4th is 1 or 3 (vector or tensor), 5th is 3
- real(pReal),    dimension(size(field,1),size(field,2),size(field,3),size(field,4)) :: &
-   math_divergenceFFT
- real(pReal),    dimension(3),                 intent(in) :: geomdim                                !< physical length dimension in three directions
- real(pReal),    dimension(:,:,:,:,:), pointer :: field_real
- complex(pReal), dimension(:,:,:,:,:), pointer :: field_fourier
- real(pReal),    dimension(:,:,:,:),   pointer :: divergence_real
- complex(pReal), dimension(:,:,:,:),   pointer :: divergence_fourier
- integer(pInt),  dimension(3) :: &
-   k_s, &
-   res
- complex(pReal), dimension(3) :: &
-   xi
- type(C_PTR)   :: fftw_forth, fftw_back
- type(C_PTR)   :: field_fftw, divergence_fftw
- integer(pInt) :: i, j, k, l, res1_red, vec_tens
- real(pReal)   :: wgt
-
- res =  [size(field,1),size(field,2),size(field,3)]
- vec_tens = size(field,4)
-
- if (iand(debug_level(debug_math),debug_levelBasic) /= 0_pInt) then
-   if (vec_tens == 1_pInt) write(6,'(a)') 'Calculating FFT divergence of vector field'
-   if (vec_tens == 3_pInt) write(6,'(a)') 'Calculating FFT divergence of tensor field'
-   write(6,'(a,3(e12.5))') ' Dimension: ', geomdim
-   write(6,'(a,3(i5))')    ' Resolution:', res
- endif
- 
-!--------------------------------------------------------------------------------------------------
-! sanity checks
- if (vec_tens /= 1_pInt .and. vec_tens /= 3_pInt) &
-   call IO_error(0_pInt, ext_msg = 'Invalid data type in math_divergenceFFT')
- if ((mod(res(3),2_pInt)/=0_pInt .and. res(3) /= 1_pInt) .or. &
-      mod(res(2),2_pInt)/=0_pInt .or. &
-      mod(res(1),2_pInt)/=0_pInt) & 
-   call IO_error(0_pInt,ext_msg='Resolution in math_divergenceFFT')
- if (pReal /= C_DOUBLE .or. pInt /= C_INT) &
-   call IO_error(0_pInt,ext_msg='Fortran to C in math_divergenceFFT')
- 
- res1_red = res(1)/2_pInt + 1_pInt                                                                  ! size of complex array in first dimension (c2r, r2c)
- wgt = 1.0_pReal/real(product(res),pReal)
-
-!--------------------------------------------------------------------------------------------------
-! allocation and FFTW initialization
- call fftw_set_timelimit(fftw_timelimit)
- field_fftw      = fftw_alloc_complex(int(res1_red*res(2)*res(3)*vec_tens*3_pInt,C_SIZE_T))         ! C_SIZE_T is of type integer(8)
- call c_f_pointer(field_fftw, field_real,             [res(1)+2_pInt,res(2),res(3),vec_tens,3_pInt])
- call c_f_pointer(field_fftw, field_fourier,          [res1_red     ,res(2),res(3),vec_tens,3_pInt])
- divergence_fftw = fftw_alloc_complex(int(res1_red*res(2)*res(3)*vec_tens,C_SIZE_T))                ! C_SIZE_T is of type integer(8)
- call c_f_pointer(divergence_fftw, divergence_real,   [res(1)+2_pInt,res(2),res(3),vec_tens])
- call c_f_pointer(divergence_fftw, divergence_fourier,[res1_red     ,res(2),res(3),vec_tens])
-
- fftw_forth = fftw_plan_many_dft_r2c(3_pInt,[res(3),res(2) ,res(1)],vec_tens*3_pInt,&               ! dimensions,  length in each dimension in reversed order,        total # of transforms
-                            field_real,[res(3),res(2) ,res(1)+2_pInt],&                             ! input data,  physical length in each dimension in reversed order
-                                     1_pInt,  res(3)*res(2)*(res(1)+2_pInt),&                       ! striding,    product of physical lenght in the 3 dimensions
-                         field_fourier,[res(3),res(2) ,res1_red],&                                  ! output data, physical length in each dimension in reversed order
-                                     1_pInt,  res(3)*res(2)* res1_red,fftw_planner_flag)            ! striding,    product of physical lenght in the 3 dimensions,    planner mode
- fftw_back  = fftw_plan_many_dft_c2r(3_pInt,[res(3),res(2) ,res(1)],vec_tens,&
-                    divergence_fourier,[res(3),res(2) ,res1_red],&
-                                     1_pInt,  res(3)*res(2)* res1_red,&
-                       divergence_real,[res(3),res(2) ,res(1)+2_pInt],&
-                                     1_pInt,  res(3)*res(2)*(res(1)+2_pInt),fftw_planner_flag)
- 
- field_real(1:res(1),1:res(2),1:res(3),1:vec_tens,1:3) = field                                      ! field_real is overwritten during plan creation and is larger (padding)
-
-!--------------------------------------------------------------------------------------------------
-! FFT
- call fftw_execute_dft_r2c(fftw_forth, field_real, field_fourier)
-
-!--------------------------------------------------------------------------------------------------
-! remove highest frequency in each direction, in third direction only if not 2D
- field_fourier( res(1)/2_pInt+1_pInt,1:res(2)            ,1:res(3)            ,&
-                              1:vec_tens,1:3) = cmplx(0.0_pReal,0.0_pReal,pReal)
- field_fourier(1:res1_red           ,res(2)/2_pInt+1_pInt,1:res(3)            ,&
-                              1:vec_tens,1:3) = cmplx(0.0_pReal,0.0_pReal,pReal)
- if(res(3)>1_pInt) &
-   field_fourier(1:res1_red         ,1:res(2)            ,res(3)/2_pInt+1_pInt,&
-                              1:vec_tens,1:3) = cmplx(0.0_pReal,0.0_pReal,pReal)
-
-!--------------------------------------------------------------------------------------------------
-! differentiation in Fourier space
- do k = 1_pInt, res(3)
-   k_s(3) = k - 1_pInt
-   if(k > res(3)/2_pInt + 1_pInt) k_s(3) = k_s(3) - res(3)
-   do j = 1_pInt, res(2)
-     k_s(2) = j - 1_pInt
-     if(j > res(2)/2_pInt + 1_pInt) k_s(2) = k_s(2) - res(2)
-     do i = 1_pInt, res1_red
-       k_s(1) = i - 1_pInt
-       xi = cmplx(real(k_s, pReal)/geomdim,0.0_pReal)
-       do l = 1_pInt, vec_tens
-         divergence_fourier(i,j,k,l)=sum(field_fourier(i,j,k,l,1:3)*xi)*TWOPIIMG
-       enddo
- enddo; enddo; enddo
-
-!--------------------------------------------------------------------------------------------------
-! iFFT
- call fftw_execute_dft_c2r(fftw_back, divergence_fourier, divergence_real)
- math_divergenceFFT = divergence_real(1:res(1),1:res(2),1:res(3),1:vec_tens)*wgt                    ! copy to output and weight
-
- call fftw_destroy_plan(fftw_forth)
- call fftw_destroy_plan(fftw_back)
- call fftw_free(field_fftw) 
- call fftw_free(divergence_fftw)
-
-end function math_divergenceFFT
-
-          
-!--------------------------------------------------------------------------------------------------
-!> @brief calculates divergence field using FDM with variable accuracy
-!--------------------------------------------------------------------------------------------------
-function math_divergenceFDM(geomdim,order,field)
- use IO, only: &
-   IO_error
- use debug, only: &
-   debug_math, &
-   debug_level, &
-   debug_levelBasic
- 
- implicit none
- real(pReal),    dimension(:,:,:,:,:),         intent(in) :: field                                  !< field of data, first three dimensions are resolution, 4th is 1 or 3 (vector or tensor), 5th is 3
- real(pReal),    dimension(size(field,1),size(field,2),size(field,3),size(field,4)) :: &
-   math_divergenceFDM
- real(pReal),    dimension(3),                 intent(in) :: geomdim                                !< physical length dimension in three directions
- integer(pInt),                                intent(in) :: order                                  !< order of Finite Differences
- real(pReal),    dimension(4,4),               parameter ::  FDcoefficient = reshape([ &
-    1.0_pReal/2.0_pReal,       0.0_pReal,           0.0_pReal,             0.0_pReal,&              ! from http://en.wikipedia.org/wiki/Finite_difference_coefficients
-    2.0_pReal/3.0_pReal,-1.0_pReal/12.0_pReal,      0.0_pReal,             0.0_pReal,&
-    3.0_pReal/4.0_pReal,-3.0_pReal/20.0_pReal,1.0_pReal/ 60.0_pReal,       0.0_pReal,&
-    4.0_pReal/5.0_pReal,-1.0_pReal/ 5.0_pReal,4.0_pReal/105.0_pReal,-1.0_pReal/280.0_pReal],[4,4])
- integer(pInt),  dimension(6,3) :: coordinates
- integer(pInt),  dimension(3) ::   res
- integer(pInt) :: i, j, k, m, l, vec_tens
- 
- res =  [size(field,1),size(field,2),size(field,3)]
- vec_tens = size(field,4)
-                               
- if (iand(debug_level(debug_math),debug_levelBasic) /= 0_pInt) then
-   if (vec_tens == 1_pInt) write(6,'(a)') 'Calculating FDM divergence of vector field'
-   if (vec_tens == 3_pInt) write(6,'(a)') 'Calculating FDM divergence of tensor field'
-   write(6,'(a,3(e12.5))') ' Dimension: ', geomdim
-   write(6,'(a,3(i5))')    ' Resolution:', res
- endif
-
-!--------------------------------------------------------------------------------------------------
-! sanity checks
- if (vec_tens /= 1_pInt .and. vec_tens /= 3_pInt) &
-  call IO_error(0_pInt, ext_msg = 'Invalid data type in math_divergenceFDM')
-   
-!--------------------------------------------------------------------------------------------------
-! differentiation in real space
- math_divergenceFDM = 0.0_pReal
- do k = 0_pInt, res(3)-1_pInt; do j = 0_pInt, res(2)-1_pInt; do i = 0_pInt, res(1)-1_pInt
-   do m = 1_pInt, order + 1_pInt
-     coordinates(1,1:3) = periodic_location(periodic_index([i+m,j,k],res),res)
-     coordinates(2,1:3) = periodic_location(periodic_index([i-m,j,k],res),res)
-     coordinates(3,1:3) = periodic_location(periodic_index([i,j+m,k],res),res)
-     coordinates(4,1:3) = periodic_location(periodic_index([i,j-m,k],res),res)
-     coordinates(5,1:3) = periodic_location(periodic_index([i,j,k+m],res),res)
-     coordinates(6,1:3) = periodic_location(periodic_index([i,j,k-m],res),res)
-     coordinates = coordinates + 1_pInt
-     do l = 1_pInt, vec_tens
-       math_divergenceFDM(i+1_pInt,j+1_pInt,k+1_pInt,l) = math_divergenceFDM(i+1_pInt,j+1_pInt,k+1_pInt,l) &
-                                                        + FDcoefficient(m,order+1_pInt) * &
-                ((field(coordinates(1,1),coordinates(1,2),coordinates(1,3),l,1)- &
-                  field(coordinates(2,1),coordinates(2,2),coordinates(2,3),l,1))*real(res(1),pReal)/geomdim(1) +&
-                 (field(coordinates(3,1),coordinates(3,2),coordinates(3,3),l,2)- &
-                  field(coordinates(4,1),coordinates(4,2),coordinates(4,3),l,2))*real(res(2),pReal)/geomdim(2) +&
-                 (field(coordinates(5,1),coordinates(5,2),coordinates(5,3),l,3)- &
-                  field(coordinates(6,1),coordinates(6,2),coordinates(6,3),l,3))*real(res(3),pReal)/geomdim(3))  
-     enddo
-   enddo
- enddo; enddo; enddo
- 
- contains
- !--------------------------------------------------------------------------------------------------
- !> @brief small helper functions for indexing. CAREFUL: index and location runs from 
- ! 0 to N-1 (python style)
- !--------------------------------------------------------------------------------------------------
- pure function periodic_location(idx,res)
-
-  implicit none
-  integer(pInt), intent(in) :: idx
-  integer(pInt), intent(in), dimension(3) :: res
-  integer(pInt), dimension(3) :: periodic_location
-  periodic_location = [modulo(idx/ res(3) / res(2),res(1)), &
-                       modulo(idx/ res(3),         res(2)), &
-                       modulo(idx,                 res(3))]
-
- end function periodic_location
-
- !--------------------------------------------------------------------------------------------------
- !> @brief small helper functions for indexing CAREFUL: index and location runs from 
- ! 0 to N-1 (python style)
- !--------------------------------------------------------------------------------------------------
- integer(pInt) pure function periodic_index(location,res)
-  
-  implicit none
-  integer(pInt), intent(in), dimension(3) :: res, location
-
-  periodic_index = modulo(location(3), res(3))     +&
-                  (modulo(location(2), res(2)))*res(3) +&
-                  (modulo(location(1), res(1)))*res(3)*res(2)
-
- end function periodic_index
-end function math_divergenceFDM
-
 !--------------------------------------------------------------------------------------------------
 !> @brief Obtain the nearest neighbor from periodic domainSet at points in querySet
 !--------------------------------------------------------------------------------------------------
@@ -3377,86 +2878,5 @@ function math_tensorAvg(field)
 
 end function math_tensorAvg
  
- 
-!--------------------------------------------------------------------------------------------------
-!> @brief calculate logarithmic strain in spatial configuration for given F field
-!--------------------------------------------------------------------------------------------------
-function math_logstrainSpat(F)
-
- implicit none
- real(pReal), intent(in),  dimension(:,:,:,:,:)   :: F
- real(pReal) ,             dimension(3,3,size(F,3),size(F,4),size(F,5)) :: math_logstrainSpat
- integer(pInt),            dimension(3) :: res
- real(pReal),              dimension(3,3) ::  temp33_Real, temp33_Real2
- real(pReal),              dimension(3,3,3) :: evbasis
- real(pReal),              dimension(3) ::  eigenvalue
- integer(pInt) :: i, j, k
- logical :: errmatinv
- 
- res = [size(F,3),size(F,4),size(F,5)]
- do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
-   call math_pDecomposition(F(1:3,1:3,i,j,k),temp33_Real2,temp33_Real,errmatinv)  !store R in temp33_Real
-   temp33_Real2 = math_inv33(temp33_Real)
-   temp33_Real = math_mul33x33(F(1:3,1:3,i,j,k),temp33_Real2)       ! v = F o inv(R), store in temp33_Real2
-   call math_spectralDecomposition(temp33_Real,eigenvalue(1),     eigenvalue(2),     eigenvalue(3),&
-                                          evbasis(1:3,1:3,1),evbasis(1:3,1:3,2),evbasis(1:3,1:3,3))
-   eigenvalue = log(sqrt(eigenvalue))
-   math_logstrainSpat(1:3,1:3,i,j,k) = eigenvalue(1)*evbasis(1:3,1:3,1)+&
-                                       eigenvalue(2)*evbasis(1:3,1:3,2)+&
-                                       eigenvalue(3)*evbasis(1:3,1:3,3)
- enddo; enddo; enddo
-
-end function math_logstrainSpat
- 
- 
-!--------------------------------------------------------------------------------------------------
-!> @brief calculate logarithmic strain in material configuration for given F field
-!--------------------------------------------------------------------------------------------------
-function math_logstrainMat(F)
- 
- implicit none
- real(pReal), intent(in),  dimension(:,:,:,:,:)   :: F
- real(pReal) ,             dimension(3,3,size(F,3),size(F,4),size(F,5)) :: math_logstrainMat
- integer(pInt),            dimension(3) :: res
- real(pReal),              dimension(3,3) ::  temp33_Real, temp33_Real2
- real(pReal),              dimension(3,3,3) :: evbasis
- real(pReal),              dimension(3) ::  eigenvalue
- integer(pInt) :: i, j, k
- logical :: errmatinv
- 
-  res = [size(F,3),size(F,4),size(F,5)]
- do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
-   call math_pDecomposition(F(1:3,1:3,i,j,k),temp33_Real,temp33_Real2,errmatinv)  !store U in temp33_Real
-   call math_spectralDecomposition(temp33_Real,eigenvalue(1),     eigenvalue(2),     eigenvalue(3),&
-                                          evbasis(1:3,1:3,1),evbasis(1:3,1:3,2),evbasis(1:3,1:3,3))
-   eigenvalue = log(sqrt(eigenvalue))
-   math_logstrainMat(1:3,1:3,i,j,k) = eigenvalue(1)*evbasis(1:3,1:3,1)+&
-                                      eigenvalue(2)*evbasis(1:3,1:3,2)+&
-                                      eigenvalue(3)*evbasis(1:3,1:3,3)
- enddo; enddo; enddo
-
-end function math_logstrainMat
- 
- 
-!--------------------------------------------------------------------------------------------------
-!> @brief calculate cauchy stress for given PK1 stress and F field
-!--------------------------------------------------------------------------------------------------
-function math_cauchy(F,P)
- 
- implicit none
- real(pReal), intent(in),  dimension(:,:,:,:,:)   :: F
- real(pReal), intent(in),  dimension(:,:,:,:,:)   :: P
- real(pReal) ,             dimension(3,3,size(F,3),size(F,4),size(F,5)) :: math_cauchy
- integer(pInt),            dimension(3) :: res
- real(pReal) :: jacobi
- integer(pInt) :: i, j, k
-
- res = [size(F,3),size(F,4),size(F,5)]
- do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
-   jacobi = math_det33(F(1:3,1:3,i,j,k))
-   math_cauchy(1:3,1:3,i,j,k) = matmul(P(1:3,1:3,i,j,k),transpose(F(1:3,1:3,i,j,k)))/jacobi
- enddo; enddo; enddo
-
-end function math_cauchy
 
 end module math

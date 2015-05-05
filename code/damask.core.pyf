@@ -44,31 +44,6 @@ python module core ! in
      module math ! in :math:math.f90
         subroutine math_init
         end subroutine math_init
-
-        function math_curlFFT(geomdim,field) ! in :math:math.f90
-            ! input variables
-            real*8,  dimension(3),                                     intent(in)                                          :: geomdim
-            real*8,  dimension(:,:,:,:,:),                             intent(in),                                         :: field
-            ! function definition
-            real*8,  dimension(size(field,1),size(field,2),size(field,3),size(field,4),size(field,5)),      depend(field)  :: math_curlFFT
-        end function math_curlFFT 
-
-        function math_divergenceFFT(geomdim,field) ! in :math:math.f90
-            ! input variables
-            real*8,  dimension(3),                                     intent(in)                                          :: geomdim
-            real*8,  dimension(:,:,:,:,:),                             intent(in),                                         :: field
-            ! function definition
-            real*8,  dimension(size(field,1),size(field,2),size(field,3),size(field,4)),                    depend(field)  :: math_divergenceFFT
-        end function math_divergenceFFT
-
-        function math_divergenceFDM(geomdim,order,field) ! in :math:math.f90
-            ! input variables
-            real*8  dimension(3),                                     intent(in)                                          :: geomdim
-            integer,                                                  intent(in)                                          :: order
-            real*8,  dimension(:,:,:,:,:),                            intent(in),                                         :: field
-            ! function definition
-            real*8,  dimension(size(field,1),size(field,2),size(field,3),size(field,4)),                   depend(field)  :: math_divergenceFDM
-        end function math_divergenceFDM
         
         function math_nearestNeighbor(querySet,domainSet) ! in :math:math.f90
              ! input variables
