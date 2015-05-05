@@ -30,9 +30,6 @@ try:
   core.numerics.init                 = core.numerics.numerics_init
   core.debug.init                    = core.debug.debug_init
   core.math.init                     = core.math.math_init
-  core.math.curlFFT                  = core.math.math_curlFFT
-  core.math.divergenceFFT            = core.math.math_divergenceFFT
-  core.math.divergenceFDM            = core.math.math_divergenceFDM
   core.math.periodicNearestNeighbor  = core.math.math_periodicNearestNeighbor
   core.math.periodicNearestNeighborDistances  = core.math.math_periodicNearestNeighborDistances
   core.math.tensorAvg                = core.math.math_tensorAvg
