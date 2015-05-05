@@ -46,7 +46,6 @@ module plastic_phenopowerlaw
    plastic_phenopowerlaw_twinD, &
    plastic_phenopowerlaw_twinE, &
    plastic_phenopowerlaw_h0_SlipSlip, &                                                        !< reference hardening slip - slip (input parameter)
-   plastic_phenopowerlaw_h0_SlipTwin, &                                                        !< reference hardening slip - twin (input parameter, no effect at the moment)
    plastic_phenopowerlaw_h0_TwinSlip, &                                                        !< reference hardening twin - slip (input parameter)
    plastic_phenopowerlaw_h0_TwinTwin, &                                                        !< reference hardening twin - twin (input parameter)
    plastic_phenopowerlaw_a_slip, &
@@ -207,7 +206,6 @@ subroutine plastic_phenopowerlaw_init(fileUnit)
  allocate(plastic_phenopowerlaw_twinD(maxNinstance),                         source=0.0_pReal)
  allocate(plastic_phenopowerlaw_twinE(maxNinstance),                         source=0.0_pReal)
  allocate(plastic_phenopowerlaw_h0_SlipSlip(maxNinstance),                   source=0.0_pReal)
- allocate(plastic_phenopowerlaw_h0_SlipTwin(maxNinstance),                   source=0.0_pReal)
  allocate(plastic_phenopowerlaw_h0_TwinSlip(maxNinstance),                   source=0.0_pReal)
  allocate(plastic_phenopowerlaw_h0_TwinTwin(maxNinstance),                   source=0.0_pReal)
  allocate(plastic_phenopowerlaw_interaction_SlipSlip(lattice_maxNinteraction,maxNinstance), &
@@ -419,9 +417,6 @@ subroutine plastic_phenopowerlaw_init(fileUnit)
          plastic_phenopowerlaw_twinE(instance) = IO_floatValue(line,positions,2_pInt)
        case ('h0_slipslip')
          plastic_phenopowerlaw_h0_SlipSlip(instance) = IO_floatValue(line,positions,2_pInt)
-       case ('h0_sliptwin')
-         plastic_phenopowerlaw_h0_SlipTwin(instance) = IO_floatValue(line,positions,2_pInt)
-         call IO_warning(42_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_PHENOPOWERLAW_label//')')
        case ('h0_twinslip')
          plastic_phenopowerlaw_h0_TwinSlip(instance) = IO_floatValue(line,positions,2_pInt)
        case ('h0_twintwin')
@@ -900,7 +895,7 @@ subroutine plastic_phenopowerlaw_dotState(Tstar_v,ipc,ip,el)
    offset_accshear_slip,offset_accshear_twin, &
    of
  real(pReal) :: &
-   c_SlipSlip,c_SlipTwin,c_TwinSlip,c_TwinTwin, &
+   c_SlipSlip,c_TwinSlip,c_TwinTwin, &
    ssat_offset, &
    tau_slip_pos,tau_slip_neg,tau_twin
 
@@ -928,7 +923,6 @@ subroutine plastic_phenopowerlaw_dotState(Tstar_v,ipc,ip,el)
  c_SlipSlip = plastic_phenopowerlaw_h0_SlipSlip(instance)*&
               (1.0_pReal + plastic_phenopowerlaw_twinC(instance)*plasticState(ph)%state(index_F,of)**&
                                                            plastic_phenopowerlaw_twinB(instance))
- c_SlipTwin = 0.0_pReal
  c_TwinSlip = plastic_phenopowerlaw_h0_TwinSlip(instance)*&
               plasticState(ph)%state(index_Gamma,of)**plastic_phenopowerlaw_twinE(instance)
  c_TwinTwin = plastic_phenopowerlaw_h0_TwinTwin(instance)*&
@@ -999,7 +993,6 @@ subroutine plastic_phenopowerlaw_dotState(Tstar_v,ipc,ip,el)
        c_SlipSlip * left_SlipSlip(j) * &
        dot_product(plastic_phenopowerlaw_hardeningMatrix_SlipSlip(j,1:nSlip,instance), &
                    right_SlipSlip*abs(gdot_slip)) + &                                               ! dot gamma_slip modulated by right-side slip factor
-       c_SlipTwin * left_SlipTwin(j) * &
        dot_product(plastic_phenopowerlaw_hardeningMatrix_SlipTwin(j,1:nTwin,instance), &
                    right_SlipTwin*gdot_twin)                                                        ! dot gamma_twin modulated by right-side twin factor
      plasticState(ph)%dotState(index_Gamma,of) = plasticState(ph)%dotState(index_Gamma,of) + &
