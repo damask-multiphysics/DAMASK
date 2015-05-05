@@ -14,16 +14,17 @@ scriptName = os.path.splitext(scriptID.split()[1])[0]
 # --------------------------------------------------------------------
 
 parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
-Replace all rows of a column by a single row containing their average.
+Replace all rows for which the indicator column has identical values by a single row containing their average.
+Output table will contain as many rows as there are different (unique) values in the indicator column.
 
 Examples:
-For grain averaged values , replace all rows of particular #texture# with a single row containing their average.
+For grain averaged values, replace all rows of particular #texture# with a single row containing their average.
 """, version = scriptID)
 
 parser.add_option('-l','--label',   dest='key', type="string", metavar='label',
                                     help='column label for averaging rows [%default]')
 
-parser.set_defaults(key = [])
+parser.set_defaults(key = None)
 
 (options,filenames) = parser.parse_args()
 
