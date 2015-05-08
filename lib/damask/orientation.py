@@ -1,26 +1,27 @@
 # -*- coding: UTF-8 no BOM -*-
 
 ###################################################
-# NOTE: everything here needs to be a numpy array #
+# NOTE: everything here needs to be a np array #
 ###################################################
 
-import numpy,math,random
+import math,random
+import numpy as np
 
 # ******************************************************************************************
 class Rodrigues:
 # ******************************************************************************************
 
-    def __init__(self, vector = numpy.zeros(3)):
+    def __init__(self, vector = np.zeros(3)):
       self.vector = vector
 
     def asQuaternion(self):
-      norm = numpy.linalg.norm(self.vector)
-      halfAngle = numpy.arctan(norm)
-      return Quaternion(numpy.cos(halfAngle),numpy.sin(halfAngle)*self.vector/norm)
+      norm = np.linalg.norm(self.vector)
+      halfAngle = np.arctan(norm)
+      return Quaternion(np.cos(halfAngle),np.sin(halfAngle)*self.vector/norm)
 
     def asAngleAxis(self):
-      norm = numpy.linalg.norm(self.vector)
-      halfAngle = numpy.arctan(norm)
+      norm = np.linalg.norm(self.vector)
+      halfAngle = np.arctan(norm)
       return (2.0*halfAngle,self.vector/norm)
 
 
@@ -69,7 +70,7 @@ class Quaternion:
       self.x *= vRescale
       self.y *= vRescale
       self.z *= vRescale
-      self.w = numpy.cos(exponent*omega)
+      self.w = np.cos(exponent*omega)
       return self
 
     def __mul__(self, other):
@@ -98,7 +99,7 @@ class Quaternion:
           Vy = other[1]
           Vz = other[2]
 
-          return numpy.array([\
+          return np.array([\
              w * w * Vx + 2 * y * w * Vz - 2 * z * w * Vy + \
              x * x * Vx + 2 * y * x * Vy + 2 * z * x * Vz - \
              z * z * Vx - y * y * Vx,
@@ -291,12 +292,12 @@ class Quaternion:
       return [i for i in self]
 
     def asM(self):                                                # to find Averaging Quaternions (see F. Landis Markley et al.)
-      return numpy.outer([i for i in self],[i for i in self])
+      return np.outer([i for i in self],[i for i in self])
 
     def asMatrix(self):
-      return numpy.array([[1.0-2.0*(self.y*self.y+self.z*self.z),     2.0*(self.x*self.y-self.z*self.w),     2.0*(self.x*self.z+self.y*self.w)],
-                          [    2.0*(self.x*self.y+self.z*self.w), 1.0-2.0*(self.x*self.x+self.z*self.z),     2.0*(self.y*self.z-self.x*self.w)],
-                          [    2.0*(self.x*self.z-self.y*self.w),     2.0*(self.x*self.w+self.y*self.z), 1.0-2.0*(self.x*self.x+self.y*self.y)]])
+      return np.array([[1.0-2.0*(self.y*self.y+self.z*self.z),     2.0*(self.x*self.y-self.z*self.w),     2.0*(self.x*self.z+self.y*self.w)],
+                       [    2.0*(self.x*self.y+self.z*self.w), 1.0-2.0*(self.x*self.x+self.z*self.z),     2.0*(self.y*self.z-self.x*self.w)],
+                       [    2.0*(self.x*self.z-self.y*self.w),     2.0*(self.x*self.w+self.y*self.z), 1.0-2.0*(self.x*self.x+self.y*self.y)]])
 
     def asAngleAxis(self):
       if self.w > 1:
@@ -309,15 +310,15 @@ class Quaternion:
       angle = math.atan2(y,x)
 
       if angle < 1e-3:
-          return angle, numpy.array([1.0, 0.0, 0.0])
+          return angle, np.array([1.0, 0.0, 0.0])
       else:
-          return angle, numpy.array([self.x / s, self.y / s, self.z / s])
+          return angle, np.array([self.x / s, self.y / s, self.z / s])
 
     def asRodrigues(self):
       if self.w != 0.0:
-          return numpy.array([self.x, self.y, self.z])/self.w
+          return np.array([self.x, self.y, self.z])/self.w
       else:
-          return numpy.array([float('inf')]*3)
+          return np.array([float('inf')]*3)
 
     def asEulers(self,type='bunge'):
       '''
@@ -384,8 +385,8 @@ class Quaternion:
 
     @classmethod
     def fromRodrigues(cls, rodrigues):
-        if not isinstance(rodrigues, numpy.ndarray): rodrigues = numpy.array(rodrigues)
-        halfangle = math.atan(numpy.linalg.norm(rodrigues))
+        if not isinstance(rodrigues, np.ndarray): rodrigues = np.array(rodrigues)
+        halfangle = math.atan(np.linalg.norm(rodrigues))
         c = math.cos(halfangle)
         w = c
         x,y,z = c*rodrigues
@@ -394,8 +395,8 @@ class Quaternion:
 
     @classmethod
     def fromAngleAxis(cls, angle, axis):
-        if not isinstance(axis, numpy.ndarray): axis = numpy.array(axis)
-        axis /= numpy.linalg.norm(axis)
+        if not isinstance(axis, np.ndarray): axis = np.array(axis)
+        axis /= np.linalg.norm(axis)
         s = math.sin(angle / 2.0)
         w = math.cos(angle / 2.0)
         x = axis[0] * s
@@ -677,52 +678,52 @@ class Symmetry:
     Check whether given vector falls into standard stereographic triangle of own symmetry.
     Return inverse pole figure color if requested.
     '''
-#     basis = {'cubic' :        numpy.linalg.inv(numpy.array([[0.,0.,1.],                                    # direction of red
-#                                                             [1.,0.,1.]/numpy.sqrt(2.),                     # direction of green
-#                                                             [1.,1.,1.]/numpy.sqrt(3.)]).transpose()),      # direction of blue
-#              'hexagonal' :    numpy.linalg.inv(numpy.array([[0.,0.,1.],                                    # direction of red
+#     basis = {'cubic' :        np.linalg.inv(np.array([[0.,0.,1.],                                    # direction of red
+#                                                             [1.,0.,1.]/np.sqrt(2.),                     # direction of green
+#                                                             [1.,1.,1.]/np.sqrt(3.)]).transpose()),      # direction of blue
+#              'hexagonal' :    np.linalg.inv(np.array([[0.,0.,1.],                                    # direction of red
 #                                                             [1.,0.,0.],                                    # direction of green
-#                                                 [numpy.sqrt(3.),1.,0.]/numpy.sqrt(4.)]).transpose()),      # direction of blue
-#              'tetragonal' :   numpy.linalg.inv(numpy.array([[0.,0.,1.],                                    # direction of red
+#                                                 [np.sqrt(3.),1.,0.]/np.sqrt(4.)]).transpose()),      # direction of blue
+#              'tetragonal' :   np.linalg.inv(np.array([[0.,0.,1.],                                    # direction of red
 #                                                             [1.,0.,0.],                                    # direction of green
-#                                                             [1.,1.,0.]/numpy.sqrt(2.)]).transpose()),      # direction of blue
-#              'orthorhombic' : numpy.linalg.inv(numpy.array([[0.,0.,1.],                                    # direction of red
+#                                                             [1.,1.,0.]/np.sqrt(2.)]).transpose()),      # direction of blue
+#              'orthorhombic' : np.linalg.inv(np.array([[0.,0.,1.],                                    # direction of red
 #                                                             [1.,0.,0.],                                    # direction of green
 #                                                             [0.,1.,0.]]).transpose()),                     # direction of blue
 #             }
     if self.lattice == 'cubic':
-      basis = numpy.array([ [-1.            ,  0.            ,  1. ],
-                            [ numpy.sqrt(2.), -numpy.sqrt(2.),  0. ],
-                            [ 0.            ,  numpy.sqrt(3.),  0. ] ])
+      basis = np.array([ [-1.            ,  0.            ,  1. ],
+                         [ np.sqrt(2.), -np.sqrt(2.),        0. ],
+                         [ 0.            ,  np.sqrt(3.),     0. ] ])
     elif self.lattice == 'hexagonal':
-      basis = numpy.array([ [ 0.            ,  0.            ,  1. ],
-                            [ 1.            , -numpy.sqrt(3.),  0. ],
-                            [ 0.            ,  2.            ,  0. ] ])
+      basis = np.array([ [ 0.            ,  0.            ,  1. ],
+                         [ 1.            , -np.sqrt(3.),     0. ],
+                         [ 0.            ,  2.            ,  0. ] ])
     elif self.lattice == 'tetragonal':
-      basis = numpy.array([ [ 0.            ,  0.            ,  1. ],
-                            [ 1.            , -1.            ,  0. ],
-                            [ 0.            ,  numpy.sqrt(2.),  0. ] ])
+      basis = np.array([ [ 0.            ,  0.            ,  1. ],
+                         [ 1.            , -1.            ,  0. ],
+                         [ 0.            ,  np.sqrt(2.),     0. ] ])
     elif self.lattice == 'orthorhombic':
-      basis = numpy.array([ [ 0., 0., 1.],
-                            [ 1., 0., 0.],
-                            [ 0., 1., 0.] ])
+      basis = np.array([ [ 0., 0., 1.],
+                         [ 1., 0., 0.],
+                         [ 0., 1., 0.] ])
     else:
       basis = None
 
     if basis == None:
-      theComponents = -numpy.ones(3,'d')
+      theComponents = -np.ones(3,'d')
     else:
-      theComponents = numpy.dot(basis,numpy.array([vector[0],vector[1],abs(vector[2])]))
+      theComponents = np.dot(basis,np.array([vector[0],vector[1],abs(vector[2])]))
 
-    inSST = numpy.all(theComponents >= 0.0)
+    inSST = np.all(theComponents >= 0.0)
 
     if color:                                                                      # have to return color array
       if inSST:
-        rgb = numpy.power(theComponents/numpy.linalg.norm(theComponents),0.5)      # smoothen color ramps
-        rgb = numpy.minimum(numpy.ones(3,'d'),rgb)                                 # limit to maximum intensity
+        rgb = np.power(theComponents/np.linalg.norm(theComponents),0.5)      # smoothen color ramps
+        rgb = np.minimum(np.ones(3,'d'),rgb)                                 # limit to maximum intensity
         rgb /= max(rgb)                                                            # normalize to (HS)V = 1
       else:
-        rgb = numpy.zeros(3,'d')
+        rgb = np.zeros(3,'d')
       return (inSST,rgb)
     else:
       return inSST
@@ -749,17 +750,17 @@ class Orientation:
               ):
     if random:                                                                         # produce random orientation
       self.quaternion = Quaternion.fromRandom()
-    elif isinstance(Eulers, numpy.ndarray) and Eulers.shape == (3,):                   # based on given Euler angles
+    elif isinstance(Eulers, np.ndarray) and Eulers.shape == (3,):                      # based on given Euler angles
       self.quaternion = Quaternion.fromEulers(Eulers,'bunge')
-    elif isinstance(matrix, numpy.ndarray) and matrix.shape == (3,3):                  # based on given rotation matrix
+    elif isinstance(matrix, np.ndarray) and matrix.shape == (3,3):                     # based on given rotation matrix
       self.quaternion = Quaternion.fromMatrix(matrix)
-    elif isinstance(angleAxis, numpy.ndarray) and angleAxis.shape == (4,):             # based on given angle and rotation axis
+    elif isinstance(angleAxis, np.ndarray) and angleAxis.shape == (4,):                # based on given angle and rotation axis
       self.quaternion = Quaternion.fromAngleAxis(angleAxis[0],angleAxis[1:4])
-    elif isinstance(Rodrigues, numpy.ndarray) and Rodrigues.shape == (3,):             # based on given Rodrigues vector
+    elif isinstance(Rodrigues, np.ndarray) and Rodrigues.shape == (3,):                # based on given Rodrigues vector
       self.quaternion = Quaternion.fromRodrigues(Rodrigues)
     elif isinstance(quaternion, Quaternion):                                           # based on given quaternion
       self.quaternion = quaternion.homomorphed()
-    elif isinstance(quaternion, numpy.ndarray) and quaternion.shape == (4,):           # based on given quaternion
+    elif isinstance(quaternion, np.ndarray) and quaternion.shape == (4,):              # based on given quaternion
       self.quaternion = Quaternion(quaternion).homomorphed()
 
     self.symmetry = Symmetry(symmetry)
@@ -774,7 +775,7 @@ class Orientation:
     return 'Symmetry: %s\n' % (self.symmetry) + \
            'Quaternion: %s\n' % (self.quaternion) + \
            'Matrix:\n%s\n' % ( '\n'.join(['\t'.join(map(str,self.asMatrix()[i,:])) for i in range(3)]) ) + \
-           'Bunge Eulers / deg: %s' % ('\t'.join(map(lambda x:str(numpy.degrees(x)),self.asEulers('bunge'))) )
+           'Bunge Eulers / deg: %s' % ('\t'.join(map(lambda x:str(np.degrees(x)),self.asEulers('bunge'))) )
 
   def asQuaternion(self):
     return self.quaternion.asList()
@@ -845,7 +846,7 @@ class Orientation:
     TSL color of inverse pole figure for given axis
     '''
 
-    color = numpy.zeros(3,'d')
+    color = np.zeros(3,'d')
 
     for i,q in enumerate(self.symmetry.equivalentQuaternions(self.quaternion)):
       pole = q.conjugated()*axis                               # align crystal direction to axis
@@ -871,5 +872,235 @@ class Orientation:
     tmp_m = orientationList.pop(0).quaternion.asM()
     for tmp_o in orientationList:
       tmp_m += tmp_o.quaternion.asM()
-    eig, vec = numpy.linalg.eig(tmp_m/n)
+    eig, vec = np.linalg.eig(tmp_m/n)
     return Orientation( quaternion=Quaternion(quatArray=vec.T[eig.argmax()]) )
+
+
+  def related(self, relationModel, direction, targetSymmetry):
+  
+    if relationModel not in ['KS','GT',"GT'",'NW','Bain']:  return None
+
+    variant  = int(abs(direction))
+    me    = 0 if direction > 0 else 1
+    other = 1 if direction > 0 else 0
+
+    planes = {'KS': \
+                    np.array([[[  1,  1,  1],[  0,  1,  1]],\
+                              [[  1,  1,  1],[  0,  1,  1]],\
+                              [[  1,  1,  1],[  0,  1,  1]],\
+                              [[  1,  1,  1],[  0,  1,  1]],\
+                              [[  1,  1,  1],[  0,  1,  1]],\
+                              [[  1,  1,  1],[  0,  1,  1]],\
+                              [[  1, -1,  1],[  0,  1,  1]],\
+                              [[  1, -1,  1],[  0,  1,  1]],\
+                              [[  1, -1,  1],[  0,  1,  1]],\
+                              [[  1, -1,  1],[  0,  1,  1]],\
+                              [[  1, -1,  1],[  0,  1,  1]],\
+                              [[  1, -1,  1],[  0,  1,  1]],\
+                              [[ -1,  1,  1],[  0,  1,  1]],\
+                              [[ -1,  1,  1],[  0,  1,  1]],\
+                              [[ -1,  1,  1],[  0,  1,  1]],\
+                              [[ -1,  1,  1],[  0,  1,  1]],\
+                              [[ -1,  1,  1],[  0,  1,  1]],\
+                              [[ -1,  1,  1],[  0,  1,  1]],\
+                              [[  1,  1,  1],[  0,  1,  1]],\
+                              [[  1,  1,  1],[  0,  1,  1]],\
+                              [[  1,  1,  1],[  0,  1,  1]],\
+                              [[  1,  1,  1],[  0,  1,  1]],\
+                              [[  1,  1,  1],[  0,  1,  1]],\
+                              [[  1,  1,  1],[  0,  1,  1]]]),
+              'GT': \
+                    np.array([[[  1,  1,  1],[  1,  1,  0]],\
+                              [[  1,  1,  1],[  1,  0,  1]],\
+                              [[ -1, -1,  1],[ -1, -1,  0]],\
+                              [[ -1, -1,  1],[ -1,  0,  1]],\
+                              [[ -1,  1,  1],[ -1,  1,  0]],\
+                              [[ -1,  1,  1],[ -1,  0,  1]],\
+                              [[  1, -1,  1],[  1, -1,  0]],\
+                              [[  1, -1,  1],[  1,  0,  1]],\
+                              [[  1,  1,  1],[  0,  1,  1]],\
+                              [[  1,  1,  1],[  1,  1,  0]],\
+                              [[ -1, -1,  1],[  0, -1,  1]],\
+                              [[ -1, -1,  1],[ -1, -1,  0]],\
+                              [[ -1,  1,  1],[  0,  1,  1]],\
+                              [[ -1,  1,  1],[ -1,  1,  0]],\
+                              [[  1, -1,  1],[  0, -1,  1]],\
+                              [[  1, -1,  1],[  1, -1,  0]],\
+                              [[  1,  1,  1],[  1,  0,  1]],\
+                              [[  1,  1,  1],[  0,  1,  1]],\
+                              [[ -1, -1,  1],[ -1,  0,  1]],\
+                              [[ -1, -1,  1],[  0, -1,  1]],\
+                              [[ -1,  1,  1],[ -1,  0,  1]],\
+                              [[ -1,  1,  1],[  0,  1,  1]],\
+                              [[  1, -1,  1],[  1,  0,  1]],\
+                              [[  1, -1,  1],[  0, -1,  1]]]),
+              "GT'": \
+                    np.array([[[ 17,  7, 17],[ 17, 12,  5]],\
+                              [[-17,  7,-17],[-17, 12, -5]],\
+                              [[-17, -7, 17],[-17,-12,  5]],\
+                              [[ 17, -7,-17],[ 17,-12, -5]],\
+                              [[ 17, 17,  7],[ 17,  5, 12]],\
+                              [[-17,-17,  7],[-17, -5, 12]],\
+                              [[ 17,-17, -7],[ 17, -5,-12]],\
+                              [[-17, 17, -7],[-17,  5,-12]],\
+                              [[ 17, 17,  7],[  5, 17, 12]],\
+                              [[-17,-17,  7],[ -5,-17, 12]],\
+                              [[ 17,-17, -7],[  5,-17,-12]],\
+                              [[-17, 17, -7],[ -5, 17,-12]],\
+                              [[  7, 17, 17],[ 12, 17,  5]],\
+                              [[  7,-17,-17],[ 12,-17, -5]],\
+                              [[ -7,-17, 17],[-12,-17,  5]],\
+                              [[ -7, 17,-17],[-12, 17, -5]],\
+                              [[  7, 17, 17],[ 12,  5, 17]],\
+                              [[  7,-17,-17],[ 12, -5,-17]],\
+                              [[ -7,-17, 17],[-12, -5, 17]],\
+                              [[ -7, 17,-17],[-12,  5,-17]],\
+                              [[ 17,  7, 17],[  5, 12, 17]],\
+                              [[-17,  7,-17],[ -5, 12,-17]],\
+                              [[-17, -7, 17],[ -5,-12, 17]],\
+                              [[ 17, -7,-17],[  5,-12,-17]]]),
+              'NW': \
+                    np.array([[[  1,  1,  1],[  0,  1,  1]],\
+                              [[  1,  1,  1],[  0,  1,  1]],\
+                              [[  1,  1,  1],[  0,  1,  1]],\
+                              [[ -1,  1,  1],[  0,  1,  1]],\
+                              [[ -1,  1,  1],[  0,  1,  1]],\
+                              [[ -1,  1,  1],[  0,  1,  1]],\
+                              [[  1, -1,  1],[  0,  1,  1]],\
+                              [[  1, -1,  1],[  0,  1,  1]],\
+                              [[  1, -1,  1],[  0,  1,  1]],\
+                              [[  1,  1, -1],[  0,  1,  1]],\
+                              [[  1,  1, -1],[  0,  1,  1]],\
+                              [[  1,  1, -1],[  0,  1,  1]]]),
+              'Bain': \
+                    np.array([[[  1,  0,  0],[  1,  0,  0]],\
+                              [[  0,  1,  0],[  0,  1,  0]],\
+                              [[  0,  0,  1],[  0,  0,  1]]]),
+              }
+
+    normals = {'KS': \
+                    np.array([[[ -1,  0,  1],[ -1, -1,  1]],\
+                              [[ -1,  0,  1],[ -1,  1, -1]],\
+                              [[  0,  1, -1],[ -1, -1,  1]],\
+                              [[  0,  1, -1],[ -1,  1, -1]],\
+                              [[  1, -1,  0],[ -1, -1,  1]],\
+                              [[  1, -1,  0],[ -1,  1, -1]],\
+                              [[ -1,  0,  1],[ -1, -1,  1]],\
+                              [[ -1,  0,  1],[ -1,  1, -1]],\
+                              [[  0,  1, -1],[ -1, -1,  1]],\
+                              [[  0,  1, -1],[ -1,  1, -1]],\
+                              [[  1, -1,  0],[ -1, -1,  1]],\
+                              [[  1, -1,  0],[ -1,  1, -1]],\
+                              [[ -1,  0,  1],[ -1, -1,  1]],\
+                              [[ -1,  0,  1],[ -1,  1, -1]],\
+                              [[  0,  1, -1],[ -1, -1,  1]],\
+                              [[  0,  1, -1],[ -1,  1, -1]],\
+                              [[  1, -1,  0],[ -1, -1,  1]],\
+                              [[  1, -1,  0],[ -1,  1, -1]],\
+                              [[ -1,  0,  1],[ -1, -1,  1]],\
+                              [[ -1,  0,  1],[ -1,  1, -1]],\
+                              [[  0,  1, -1],[ -1, -1,  1]],\
+                              [[  0,  1, -1],[ -1,  1, -1]],\
+                              [[  1, -1,  0],[ -1, -1,  1]],\
+                              [[  1, -1,  0],[ -1,  1, -1]]]),
+              'GT': \
+                    np.array([[[ 17, -5,-12],[ 17,-17, -7]],\
+                              [[ 17,-12, -5],[ 17, -7,-17]],\
+                              [[-17,  5,-12],[-17, 17, -7]],\
+                              [[-17, 12, -5],[-17,  7,-17]],\
+                              [[ 17,  5, 12],[ 17, 17,  7]],\
+                              [[ 17, 12,  5],[ 17,  7, 17]],\
+                              [[-17, -5, 12],[-17,-17,  7]],\
+                              [[-17,-12,  5],[-17, -7, 17]],\
+                              [[-12, 17, -5],[ -7, 17,-17]],\
+                              [[ -5, 17,-12],[-17, 17, -7]],\
+                              [[ 12,-17, -5],[  7,-17,-17]],\
+                              [[  5,-17,-12],[ 17,-17, -7]],\
+                              [[-12,-17,  5],[ -7,-17, 17]],\
+                              [[ -5,-17, 12],[-17,-17,  7]],\
+                              [[ 12, 17,  5],[  7, 17, 17]],\
+                              [[  5, 17, 12],[ 17, 17,  7]],\
+                              [[ -5,-12, 17],[-17, -7, 17]],\
+                              [[-12, -5, 17],[ -7,-17, 17]],\
+                              [[  5, 12, 17],[ 17,  7, 17]],\
+                              [[ 12,  5, 17],[  7, 17, 17]],\
+                              [[ -5, 12,-17],[-17,  7,-17]],\
+                              [[-12,  5,-17],[ -7, 17,-17]],\
+                              [[  5,-12,-17],[ 17, -7,-17]],\
+                              [[ 12, -5,-17],[  7,-17,-17]]]),
+              "GT'": \
+                    np.array([[[ -1,  0,  1],[ -1,  1,  1]],\
+                              [[ -1,  0,  1],[ -1, -1,  1]],\
+                              [[  1,  0,  1],[  1, -1,  1]],\
+                              [[  1,  0,  1],[  1,  1,  1]],\
+                              [[ -1,  1,  0],[ -1,  1,  1]],\
+                              [[ -1,  1,  0],[ -1,  1, -1]],\
+                              [[  1,  1,  0],[  1,  1,  1]],\
+                              [[  1,  1,  0],[  1,  1, -1]],\
+                              [[  1, -1,  0],[  1, -1,  1]],\
+                              [[  1, -1,  0],[  1, -1, -1]],\
+                              [[ -1, -1,  0],[ -1, -1,  1]],\
+                              [[ -1, -1,  0],[ -1, -1, -1]],\
+                              [[  0, -1,  1],[  1, -1,  1]],\
+                              [[  0, -1,  1],[ -1, -1,  1]],\
+                              [[  0,  1,  1],[ -1,  1,  1]],\
+                              [[  0,  1,  1],[  1,  1,  1]],\
+                              [[  0,  1, -1],[  1,  1, -1]],\
+                              [[  0,  1, -1],[ -1,  1, -1]],\
+                              [[  0, -1, -1],[ -1, -1, -1]],\
+                              [[  0, -1, -1],[  1, -1, -1]],\
+                              [[  1,  0, -1],[  1,  1, -1]],\
+                              [[  1,  0, -1],[  1, -1, -1]],\
+                              [[ -1,  0, -1],[ -1, -1, -1]],\
+                              [[ -1,  0, -1],[ -1,  1, -1]]]),
+              'NW': \
+                    np.array([[[  1, -1,  0],[  1,  0,  0]],\
+                              [[  1,  0, -1],[  1,  0,  0]],\
+                              [[  0, -1,  1],[  1,  0,  0]],\
+                              [[  1,  1,  0],[  1,  0,  0]],\
+                              [[  0,  1, -1],[  1,  0,  0]],\
+                              [[  1,  0,  1],[  1,  0,  0]],\
+                              [[  1,  1,  0],[  1,  0,  0]],\
+                              [[  0,  1,  1],[  1,  0,  0]],\
+                              [[ -1,  0,  1],[  1,  0,  0]],\
+                              [[  1,  0,  1],[  1,  0,  0]],\
+                              [[  1, -1,  0],[  1,  0,  0]],\
+                              [[  0,  1,  1],[  1,  0,  0]]]),
+              'Bain': \
+                    np.array([[[  0,  1,  0],[  0,  1,  1]],
+                              [[  0,  0,  1],[  1,  0,  1]],
+                              [[  1,  0,  0],[  1,  1,  0]]])]
+              }
+    myMatrix = np.array([[planes [relationModel][variant,me]],\
+                         [normals[relationModel][variant,me]],\
+                         [np.cross(normals[relationModel][variant,me],planes[relationModel][variant,me])]])
+    otherMatrix = np.array([[planes [relationModel][variant,other]],\
+                            [normals[relationModel][variant,other]],\
+                            [np.cross(normals[relationModel][variant,other],planes[relationModel][variant,other])]])
+  
+  def getRotation(self,variant):
+    fccN=np.array([1.,1.,1.])
+    fccN=fccN/np.linalg.norm(fccN)
+    fccN=self.orientation.asMatrix().dot(fccN)
+
+    fccD=np.array([17.,-5.,-12.])
+    fccD=fccD/np.linalg.norm(fccD)
+    fccD=self.orientation.asMatrix().dot(fccD)
+
+
+    bccN=np.array([1.,1.,0.])
+    bccN=bccN/np.linalg.norm(bccN)
+    bccN=self.orientation.asMatrix().dot(bccN)
+
+    bccD=np.array([17.,-17.,-7.])
+    bccD=bccD/np.linalg.norm(bccD)
+    bccD=self.orientation.asMatrix().dot(bccD)
+
+    B = np.array(np.outer(bccN,fccN.T)+np.outer(bccD,fccD.T))*0.5
+    U,S,VT = np.linalg.svd(B)
+    M=np.diag([1,1,np.linalg.det(U)*np.linalg.det(VT)])
+    R=(U.dot(M)).dot(VT)
+    return Orientation(matrix=R)
+    
+     
+
