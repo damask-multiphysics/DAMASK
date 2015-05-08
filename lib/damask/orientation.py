@@ -1069,7 +1069,7 @@ class Orientation:
               'Bain': \
                     np.array([[[  0,  1,  0],[  0,  1,  1]],
                               [[  0,  0,  1],[  1,  0,  1]],
-                              [[  1,  0,  0],[  1,  1,  0]]])]
+                              [[  1,  0,  0],[  1,  1,  0]]]),
               }
     myMatrix = np.array([[planes [relationModel][variant,me]],\
                          [normals[relationModel][variant,me]],\
