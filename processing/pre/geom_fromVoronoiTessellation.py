@@ -149,12 +149,17 @@ for file in files:
   table.head_read()
 
   labels = []
-  if np.any(table.labels_index(['1_coords','2_coords','3_coords'])) == -1:
-    parser.error("missing seed coordinate column")
-  else:
+  if np.all(np.asarray(table.labels_index(['1_coords','2_coords','3_coords'])) != -1):
     labels += ['1_coords','2_coords','3_coords']
+    coords = ['1_coords','2_coords','3_coords']
+  elif np.all(np.asarray(table.labels_index(['x','y','z'])) != -1):
+    labels += ['x','y','z']
+    coords = ['x','y','z']
+  else:
+    file['croak'].write('no coordinate data (1_coords/x) found ...')
+    continue
 
-  hasEulers = np.all(table.labels_index(['phi1','Phi','phi2'])) != -1
+  hasEulers = np.any(np.asarray(table.labels_index(['phi1','Phi','phi2'])) == -1)
   if hasEulers:
     labels += ['phi1','Phi','phi2']
     
@@ -167,7 +172,7 @@ for file in files:
     labels += ['weight']
       
   table.data_readArray(labels)
-  coords = table.data[:,table.labels_index(['1_coords','2_coords','3_coords'])]
+  coords = table.data[:,table.labels_index(coords)]
   eulers = table.data[:,table.labels_index(['phi1','Phi','phi2'])] if hasEulers else np.zeros(3*len(coords))
   grain = table.data[:,table.labels_index('microstructure')] if hasGrains else 1+np.arange(len(coords))
   weights = table.data[:,table.labels_index('weight')] if hasWeight else np.zeros(len(coords))
