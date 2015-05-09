@@ -21,29 +21,28 @@ Orientation is given by quaternion, Euler angles, rotation matrix, or crystal fr
 
 outputChoices = ['quaternion','eulers']
 parser.add_option('-o', '--output',     dest='output', action='extend', metavar='<string LIST>',
-                                        help = 'output orientation formats (%s)'%(','.join(outputChoices)))
+                  help = 'output orientation formats {%s}'%(','.join(outputChoices)))
 parser.add_option('-s', '--symmetry',   dest='symmetry', type='choice', 
-                                        choices=damask.Symmetry.lattices[1:], metavar='string',
-                                        help = 'crystal symmetry (%s) [cubic]'%(', '.join(damask.Symmetry.lattices[1:])))
+                  choices=damask.Symmetry.lattices[1:], metavar='string',
+                  help = 'crystal symmetry [cubic] {%s}'%(', '.join(damask.Symmetry.lattices[1:])))
 parser.add_option('-r', '--rotation',   dest='rotation', type='float', nargs=4, metavar='float float float float',
-                                        help = 'angle and axis to (pre)rotate orientation')
+                  help = 'angle and axis to (pre)rotate orientation')
 parser.add_option('-e', '--eulers',     dest='eulers', metavar='string',
-                                        help = 'Euler angles label')
+                  help = 'Euler angles label')
 parser.add_option('-d', '--degrees',    dest='degrees', action='store_true',
-                                        help = 'Euler angles are given in degrees [%default]')
+                  help = 'Euler angles are given in degrees [%default]')
 parser.add_option('-m', '--matrix',     dest='matrix', metavar='string',
-                                        help = 'orientation matrix label')
+                  help = 'orientation matrix label')
 parser.add_option('-a',                 dest='a', metavar='string',
-                                        help = 'crystal frame a vector label')
+                  help = 'crystal frame a vector label')
 parser.add_option('-b',                 dest='b', metavar='string',
-                                        help = 'crystal frame b vector label')
+                  help = 'crystal frame b vector label')
 parser.add_option('-c',                 dest='c', metavar='string',
-                                        help = 'crystal frame c vector label')
+                  help = 'crystal frame c vector label')
 parser.add_option('-q', '--quaternion', dest='quaternion', metavar='string',
-                                        help = 'quaternion label')
-parser.set_defaults(output = [])
+                  help = 'quaternion label')
 parser.set_defaults(symmetry = 'cubic')
-parser.set_defaults(rotation = [0.,1.,1.,1.])       # no rotation about 1,1,1
+parser.set_defaults(rotation = (0.,1.,1.,1.))       # no rotation about 1,1,1
 parser.set_defaults(degrees = False)
 
 (options, filenames) = parser.parse_args()
@@ -75,10 +74,8 @@ if options.quaternion != None:
   datainfo['quaternion']['label'] += [options.quaternion]
   input = 'quaternion'
 
-inputGiven = 0
-for datatype,info in datainfo.items():
-  inputGiven += len(info['label'])
-if inputGiven != 1: parser.error('select exactly one input format...')
+if len(input) != 1: parser.error('needs exactly one input format...')
+input = input[0]
 
 toRadians = math.pi/180.0 if options.degrees else 1.0                                               # rescale degrees to radians
 options.output = map(lambda x: x.lower(), options.output)

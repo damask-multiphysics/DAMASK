@@ -19,24 +19,24 @@ Add x,y coordinates of stereographic projection of given direction (pole) in cry
 """, version = scriptID)
 
 parser.add_option('-p', '--pole',       dest='pole', type='float', nargs=3, metavar='float float float',
-                                        help = 'crystal frame direction for pole figure %default')
+                  help = 'crystal frame direction for pole figure [%default]')
 parser.add_option('--polar',            dest='polar', action='store_true',
-                                        help = 'output polar coordinates r,phi [%default]')
+                  help = 'output polar coordinates r,phi [%default]')
 parser.add_option('-e', '--eulers',     dest='eulers', metavar='string',
-                                        help = 'Euler angles label')
+                  help = 'Euler angles label')
 parser.add_option('-d', '--degrees',    dest='degrees', action='store_true',
-                                        help = 'Euler angles are given in degrees [%default]')
+                  help = 'Euler angles are given in degrees [%default]')
 parser.add_option('-m', '--matrix',     dest='matrix', metavar='string',
-                                        help = 'orientation matrix label')
+                  help = 'orientation matrix label')
 parser.add_option('-a',                 dest='a', metavar='string',
-                                        help = 'crystal frame a vector label')
+                  help = 'crystal frame a vector label')
 parser.add_option('-b',                 dest='b', metavar='string',
-                                        help = 'crystal frame b vector label')
+                  help = 'crystal frame b vector label')
 parser.add_option('-c',                 dest='c', metavar='string',
-                                        help = 'crystal frame c vector label')
+                  help = 'crystal frame c vector label')
 parser.add_option('-q', '--quaternion', dest='quaternion', metavar='string',
-                                        help = 'quaternion label')
-parser.set_defaults(pole = [1.0,0.0,0.0])
+                  help = 'quaternion label')
+parser.set_defaults(pole = (1.0,0.0,0.0))
 parser.set_defaults(degrees = False)
 parser.set_defaults(polar   = False)
 

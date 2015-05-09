@@ -20,12 +20,11 @@ Add column(s) containing eigenvalues and eigenvectors of requested tensor column
 """, version = scriptID)
 
 parser.add_option('-t','--tensor',      dest='tensor', action='extend', metavar='<string LIST>',
-                                        help='heading of columns containing tensor field values')
-parser.set_defaults(tensor = [])
+                  help='heading of columns containing tensor field values')
 
 (options,filenames) = parser.parse_args()
 
-if len(options.tensor) == 0:
+if options.tensor == None:
   parser.error('no data column specified...')
 
 datainfo = {                                                                                        # list of requested labels per datatype

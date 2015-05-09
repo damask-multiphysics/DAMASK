@@ -20,23 +20,13 @@ Add column(s) containing Second Piola--Kirchhoff stress based on given column(s)
 """, version = scriptID)
 
 parser.add_option('-f','--defgrad',     dest='defgrad', metavar='string',
-                                        help='heading of columns containing deformation gradient [%default]')
+                  help='heading of columns containing deformation gradient [%default]')
 parser.add_option('-p','--stress',      dest='stress', metavar='string',
-                                        help='heading of columns containing first Piola--Kirchhoff stress [%default]')
+                  help='heading of columns containing first Piola--Kirchhoff stress [%default]')
 parser.set_defaults(defgrad = 'f')
 parser.set_defaults(stress = 'p')
 
 (options,filenames) = parser.parse_args()
-
-datainfo = {                                                                                        # list of requested labels per datatype
-             'defgrad':    {'len':9,
-                            'label':[]},
-             'stress':     {'len':9,
-                            'label':[]},
-           }
-
-datainfo['defgrad']['label'].append(options.defgrad)
-datainfo['stress']['label'].append(options.stress)
 
 # ------------------------------------------ setup file handles ------------------------------------
 files = []
@@ -56,37 +46,28 @@ for file in files:
   table.head_read()                                                                                 # read ASCII header info
   table.info_append(scriptID + '\t' + ' '.join(sys.argv[1:]))
 
+# --------------- figure out columns to process  ---------------------------------------------------
+  missingColumns = False
+  column={ 'defgrad': table.labels.index('1_'+options.defgrad), 
+           'stress':  table.labels.index('1_'+options.stress)}
+  for key in column:
+    if column[key]<1:
+      file['croak'].write('column %s not found...\n'%key)
+      missingColumns=True
+  if missingColumns: continue
   active = defaultdict(list)
   column = defaultdict(dict)
   missingColumns = False
-  
-  for datatype,info in datainfo.items():
-    for label in info['label']:
-      key = '1_%s'%label
-      if key not in table.labels:
-        file['croak'].write('column %s not found...\n'%key)
-        missingColumns = True                                                                       # break if label not found
-      else:
-        active[datatype].append(label)
-        column[datatype][label] = table.labels.index(key)                                           # remember columns of requested data
 
-  if missingColumns:
-    continue
-
- # ------------------------------------------ assemble header --------------------------------------
+# ------------------------------------------ assemble header --------------------------------------
   table.labels_append(['%i_S'%(i+1) for i in xrange(datainfo['stress']['len'])])                    # extend ASCII header with new labels
   table.head_write()
 
 # ------------------------------------------ process data ------------------------------------------
   outputAlive = True
   while outputAlive and table.data_read():                                                          # read next data line of ASCII table
-    F = np.array(map(float,table.data[column['defgrad'][active['defgrad'][0]]:
-                                      column['defgrad'][active['defgrad'][0]]+
-                                             datainfo['defgrad']['len']]),'d').reshape(3,3)
-    P = np.array(map(float,table.data[column['stress'][active['stress'][0]]:
-                                      column['stress'][active['stress'][0]]+
-                                             datainfo['stress']['len']]),'d').reshape(3,3)
-
+    F = np.array(map(float,table.data[column['defgrad']:column['defgrad']+9]),'d').reshape(3,3)
+    P = np.array(map(float,table.data[column['stress'] :column['stress']+9]),'d').reshape(3,3)
     table.data_append(list(np.dot(np.linalg.inv(F),P).reshape(9)))                                  # [S] =[P].[F-1]
     outputAlive = table.data_write()                                                                # output processed line
 
