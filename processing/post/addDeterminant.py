@@ -27,12 +27,11 @@ Add column(s) containing determinant of requested tensor column(s).
 """, version = scriptID)
 
 parser.add_option('-t','--tensor',      dest='tensor', action='extend', metavar='<string LIST>',
-                                        help='heading of columns containing tensor field values')
-parser.set_defaults(tensor = [])
+                  help='heading of columns containing tensor field values')
 
 (options,filenames) = parser.parse_args()
 
-if len(options.tensor) == 0:
+if options.tensor == None:
   parser.error('no data column specified...')
 
 datainfo = {                                                                                        # list of requested labels per datatype
@@ -60,10 +59,9 @@ for file in files:
   table.head_read()                                                                                 # read ASCII header info
   table.info_append(scriptID + '\t' + ' '.join(sys.argv[1:]))
 
+# --------------- figure out columns to process  ---------------------------------------------------
   active = []
   column = defaultdict(dict)
-
-# --------------- figure out columns to process  ---------------------------------------------------
   for label in datainfo['tensor']['label']:
     key = '1_%s'%label
     if key not in table.labels:

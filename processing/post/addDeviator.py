@@ -27,15 +27,13 @@ Add column(s) containing deviator of requested tensor column(s).
 """, version = scriptID)
 
 parser.add_option('-t','--tensor',      dest='tensor', action='extend', metavar='<string LIST>',
-                                        help='heading of columns containing tensor field values')
+                  help='heading of columns containing tensor field values')
 parser.add_option('-s','--spherical',   dest='hydrostatic', action='store_true',
-                                        help='also add sperical part of tensor (hydrostatic component, pressure)')
-parser.set_defaults(hydrostatic = False)
-parser.set_defaults(tensor = [])
+                  help='also add sperical part of tensor (hydrostatic component, pressure)')
 
 (options,filenames) = parser.parse_args()
 
-if len(options.tensor) == 0:
+if options.tensor == None:
   parser.error('no data column specified...')
 
 datainfo = {                                                                                        # list of requested labels per datatype

@@ -10,11 +10,6 @@ import damask
 scriptID   = string.replace('$Id$','\n','\\n')
 scriptName = os.path.splitext(scriptID.split()[1])[0]
 
-#--------------------------------------------------------------------------------------------------
-#> @brief calculates curl field using differentation in Fourier space
-#> @todo enable odd resolution
-#--------------------------------------------------------------------------------------------------
-
 def divFFT(geomdim,field):
  grid = np.array(np.shape(field)[0:3])
  wgt = 1.0/np.array(grid).prod()
@@ -67,18 +62,16 @@ Deals with both vector- and tensor-valued fields.
 """, version = scriptID)
 
 parser.add_option('-c','--coordinates', dest='coords', metavar='string',
-                                        help='column heading for coordinates [%default]')
+                  help='column heading for coordinates [%default]')
 parser.add_option('-v','--vector',      dest='vector', action='extend', metavar='<string LIST>',
-                                        help='heading of columns containing vector field values')
+                  help='heading of columns containing vector field values')
 parser.add_option('-t','--tensor',      dest='tensor', action='extend', metavar='<string LIST>',
-                                        help='heading of columns containing tensor field values')
+                  help='heading of columns containing tensor field values')
 parser.set_defaults(coords = 'ipinitialcoord')
-parser.set_defaults(vector = [])
-parser.set_defaults(tensor = [])
 
 (options,filenames) = parser.parse_args()
 
-if len(options.vector) + len(options.tensor) == 0:
+if (options.vector == None) and (options.tensor == None):
   parser.error('no data column specified...')
 
 datainfo = {                                                                                         # list of requested labels per datatype

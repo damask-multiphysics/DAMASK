@@ -27,17 +27,17 @@ Example: distance to IP coordinates -- "math.sqrt( #ip.x#**2 + #ip.y#**2 + round
 """, version = scriptID)
 
 parser.add_option('-l','--label',   dest='labels', action='extend', metavar='<string LIST>',
-                                    help='(list of) new column labels')
+                  help='(list of) new column labels')
 parser.add_option('-f','--formula', dest='formulas', action='extend', metavar='<string LIST>',
-                                    help='(list of) formulas corresponding to labels')
-parser.set_defaults(labels= [])
-parser.set_defaults(formulas= [])
+                  help='(list of) formulas corresponding to labels')
 
 (options,filenames) = parser.parse_args()
 
-if len(options.labels) != len(options.formulas):
+if options.labels == None or options.formulas == None:
+  parser.error('no formulas and/or labels specified')
+elif len(options.labels) != len(options.formulas):
   parser.error('number of labels (%i) and formulas (%i) do not match'%(len(options.labels),len(options.formulas)))
-  
+
 for i in xrange(len(options.formulas)):
   options.formulas[i]=options.formulas[i].replace(';',',')
 
@@ -104,8 +104,8 @@ for file in files:
         if labelLen[label] == 0:
           brokenFormula[label] = True
         if label not in brokenFormula:
-          table.labels_append({True:['%i_%s'%(i+1,label) for i in xrange(labelLen[label])],
-                               False:label}[labelLen[label]>1] )
+          table.labels_append(['%i_%s'%(i+1,label) for i in xrange(labelLen[label])] if labelLen[label]>1
+                               else label)
       table.head_write()
       firstLine = False
 
