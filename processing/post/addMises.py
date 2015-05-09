@@ -30,15 +30,13 @@ Add vonMises equivalent values for symmetric part of requested strains and/or st
 """, version = scriptID)
 
 parser.add_option('-e','--strain', dest='strain', action='extend', metavar='<string LIST>',
-                                   help='heading(s) of columns containing strain tensors')
+                  help='heading(s) of columns containing strain tensors')
 parser.add_option('-s','--stress', dest='stress', action='extend', metavar='<string LIST>',
-                                   help='heading(s) of columns containing stress tensors')
-parser.set_defaults(strain = [])
-parser.set_defaults(stress = [])
+                  help='heading(s) of columns containing stress tensors')
 
 (options,filenames) = parser.parse_args()
 
-if len(options.strain) + len(options.stress) == 0:
+if (not None) in [options.strain,options.stress]:
   parser.error('no data column specified...')
 
 datainfo = {                                                                                        # list of requested labels per datatype

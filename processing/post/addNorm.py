@@ -30,24 +30,21 @@ Add column(s) containing norm of requested column(s) being either vectors or ten
 
 normChoices = ['abs','frobenius','max']
 parser.add_option('-n','--norm',        dest='norm', type='choice', choices=normChoices, metavar='string',
-                                        help='type of element-wise p-norm (%s) [frobenius]'%(','.join(map(str,normChoices))))
+                  help='type of element-wise p-norm [frobenius] {%s}'%(','.join(map(str,normChoices))))
 parser.add_option('-v','--vector',      dest='vector', action='extend', metavar='<string LIST>',
-                                        help='heading of columns containing vector field values')
+                  help='heading of columns containing vector field values')
 parser.add_option('-t','--tensor',      dest='tensor', action='extend', metavar='<string LIST>',
-                                        help='heading of columns containing tensor field values')
+                  help='heading of columns containing tensor field values')
 parser.add_option('-s','--special',     dest='special', action='extend', metavar='<string LIST>',
-                                        help='heading of columns containing field values of special dimension')
+                  help='heading of columns containing field values of special dimension')
 parser.add_option('-d','--dimension',   dest='N', type='int', metavar='int',
-                                        help='dimension of special field values [%default]')
+                  help='dimension of special field values [%default]')
 parser.set_defaults(norm = 'frobenius')
-parser.set_defaults(vector = [])
-parser.set_defaults(tensor = [])
-parser.set_defaults(special = [])
 parser.set_defaults(N = 12)
 
 (options,filenames) = parser.parse_args()
 
-if len(options.vector) + len(options.tensor) + len(options.special)== 0:
+if (not None) in [options.vector,options.tensor,options.special]:
   parser.error('no data column specified...')
 
 datainfo = {                                                                                        # list of requested labels per datatype

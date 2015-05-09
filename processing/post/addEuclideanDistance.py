@@ -89,16 +89,15 @@ Add column(s) containing Euclidean distance to grain structural features: bounda
 """, version = scriptID)
 
 parser.add_option('-c','--coordinates', dest='coords', metavar='string',
-                                        help='column heading for coordinates [%default]')
+                  help='column heading for coordinates [%default]')
 parser.add_option('-i','--identifier',  dest='id', metavar = 'string',
-                                        help='heading of column containing grain identifier [%default]')
-parser.add_option('-t','--type',        dest = 'type', action = 'extend', type = 'string', metavar = '<string LIST>',
-                                        help = 'feature type (%s) '%(', '.join(map(lambda x:'|'.join(x['names']),features))) )
+                  help='heading of column containing grain identifier [%default]')
+parser.add_option('-t','--type',        dest = 'type', action = 'extend', metavar = '<string LIST>',
+                  help = 'feature type {%s} '%(', '.join(map(lambda x:'/'.join(x['names']),features))) )
 parser.add_option('-n','--neighborhood',dest='neighborhood', choices = neighborhoods.keys(), metavar = 'string',
-                                        help = 'type of neighborhood (%s) [neumann]'%(', '.join(neighborhoods.keys())))
+                  help = 'type of neighborhood [neumann] {%s}'%(', '.join(neighborhoods.keys())))
 parser.add_option('-s', '--scale',      dest = 'scale', type = 'float', metavar='float',
-                                        help = 'voxel size [%default]')
-parser.set_defaults(type = [])
+                  help = 'voxel size [%default]')
 parser.set_defaults(coords = 'ipinitialcoord')
 parser.set_defaults(id = 'texture')
 parser.set_defaults(neighborhood = 'neumann')
@@ -106,11 +105,12 @@ parser.set_defaults(scale = 1.0)
 
 (options,filenames) = parser.parse_args()
 
-if len(options.type) == 0: parser.error('please select a feature type')
+if options.type == None:
+  parser.error('please select a feature type')
 if not set(options.type).issubset(set(list(itertools.chain(*map(lambda x: x['names'],features))))):
   parser.error('type must be chosen from (%s)...'%(', '.join(map(lambda x:'|'.join(x['names']),features))) )
 if 'biplane' in options.type and 'boundary' in options.type:
-  parser.error("please select only one alias for 'biplane' and 'boundary'")
+  parser.error("both aliases 'biplane' and 'boundary' are selected")
 
 feature_list = []
 for i,feature in enumerate(features):

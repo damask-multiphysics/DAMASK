@@ -18,28 +18,25 @@ Add data in column(s) of second ASCIItable selected from row that is given by th
 """, version = scriptID)
 
 parser.add_option('-a','--asciitable',  dest='asciitable', metavar='string',
-                                        help='mapped ASCIItable')
+                  help='mapped ASCIItable')
 parser.add_option('-c','--map',         dest='map', metavar='string',
-                                        help='heading of column containing row mapping')
+                  help='heading of column containing row mapping')
 parser.add_option('-o','--offset',      dest='offset', type='int', metavar='int',
-                                        help='offset between mapped column value and row')
+                  help='offset between mapped column value and row [%default]')
 parser.add_option('-v','--vector',      dest='vector', action='extend', metavar='<string LIST>',
-                                        help='heading of columns containing vector field values')
+                  help='heading of columns containing vector field values')
 parser.add_option('-t','--tensor',      dest='tensor', action='extend', metavar='<string LIST>',
-                                        help='heading of columns containing tensor field values')
+                  help='heading of columns containing tensor field values')
 parser.add_option('-s','--special',     dest='special', action='extend', metavar='<string LIST>',
-                                        help='heading of columns containing field values of special dimension')
+                  help='heading of columns containing field values of special dimension')
 parser.add_option('-d','--dimension',   dest='N', type='int', metavar='int',
-                                        help='dimension of special field values [%default]')
-parser.set_defaults(vector = [])
-parser.set_defaults(tensor = [])
-parser.set_defaults(special = [])
+                  help='dimension of special field values [%default]')
 parser.set_defaults(offset = 0)
 parser.set_defaults(N = 1)
 
 (options,filenames) = parser.parse_args()
 
-if len(options.vector) + len(options.tensor) + len(options.special) == 0:
+if (not None) in [options.vector,options.tensor,options.special]:
   parser.error('no data column specified...')
 if options.map == None:
   parser.error('missing mapping column...')
