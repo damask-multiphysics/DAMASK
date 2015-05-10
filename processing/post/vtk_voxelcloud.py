@@ -34,17 +34,16 @@ Create hexahedral voxels around points in an ASCIItable.
 
 """, version = scriptID)
 
-parser.add_option('-p', '--positions',   dest='pos', type='string',
-                  help = 'coordinate label')
-parser.add_option('-s', '--size',   dest='size', type='float', nargs=3,
+parser.add_option('-p', '--positions',   dest='pos', type='string', metavar = 'string',
+                  help = 'coordinate label [%default]')
+parser.add_option('-s', '--size',   dest='size', type='float', nargs=3, metavar = 'float float float',
                   help = 'x,y,z size of voxel')
-parser.add_option('-o', '--origin',   dest='origin', type='float', nargs=3,
+parser.add_option('-o', '--origin',   dest='origin', type='float', nargs=3, metavar = 'float float float',
                   help = 'x,y,z origin of coordinate system')
 parser.add_option('-g', '--geom',   dest='geom', action='store_true',
                   help = 'derive geometry from geom-file header information')
-
 parser.set_defaults(pos = 'pos')
-parser.set_defaults(origin = [0.0,0.0,0.0])
+parser.set_defaults(origin = (0.0,0.0,0.0))
 parser.set_defaults(geom = False)
 
 (options, filenames) = parser.parse_args()

@@ -17,9 +17,8 @@ Add grain index based on similitude of crystal lattice orientation.
 
 """, version = scriptID)
 
-parser.add_option('-p', '--positions',   dest='pos', \
-                  help = 'coordinate label')
-
+parser.add_option('-p', '--positions', dest='pos', metavar='string',
+                  help = 'coordinate label [%default]')
 parser.set_defaults(pos = 'pos')
 
 (options, filenames) = parser.parse_args()
@@ -29,7 +28,7 @@ datainfo = {                                                               # lis
                             'label':[]},
            }
 
-if options.pos != None:  datainfo['vector']['label'] += [options.pos]
+datainfo['vector']['label'] += [options.pos]
 
 # ------------------------------------------ setup file handles ---------------------------------------  
 
