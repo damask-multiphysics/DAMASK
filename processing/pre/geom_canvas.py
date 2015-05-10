@@ -149,6 +149,9 @@ for file in files:
 
   newInfo['size']   = info['size']/info['grid']*newInfo['grid']
   newInfo['origin'] = info['origin']+info['size']/info['grid']*options.offset
+  a = np.bincount(microstructure_cropped.flatten())
+  b = np.nonzero(a)[0]
+  y = np.size(b)
   newInfo['microstructures'] = microstructure_cropped.max()
 
 

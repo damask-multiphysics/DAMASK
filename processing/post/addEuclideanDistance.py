@@ -106,11 +106,11 @@ parser.set_defaults(scale = 1.0)
 (options,filenames) = parser.parse_args()
 
 if options.type == None:
-  parser.error('please select a feature type')
+  parser.error('no feature type selected...')
 if not set(options.type).issubset(set(list(itertools.chain(*map(lambda x: x['names'],features))))):
   parser.error('type must be chosen from (%s)...'%(', '.join(map(lambda x:'|'.join(x['names']),features))) )
 if 'biplane' in options.type and 'boundary' in options.type:
-  parser.error("both aliases 'biplane' and 'boundary' are selected")
+  parser.error("both aliases 'biplane' and 'boundary' are selected...")
 
 feature_list = []
 for i,feature in enumerate(features):
@@ -131,45 +131,44 @@ for file in files:
 
   table = damask.ASCIItable(file['input'],file['output'],False)                                     # make unbuffered ASCII_table
   table.head_read()                                                                                 # read ASCII header info
-  table.info_append(scriptID + '\t' + ' '.join(sys.argv[1:]))
+  table.data_readArray()
 
-# --------------- figure out size and grid ---------------------------------------------------------
-  try:
-    locationCol = table.labels.index('1_%s'%options.coords)                                         # columns containing location data
-  except ValueError:
-    try:
-      locationCol = table.labels.index('%s.x'%options.coords)                                       # columns containing location data (legacy naming scheme)
-    except ValueError:
-      file['croak'].write('no coordinate data (1_%s/%s.x) found...\n'%(options.coords,options.coords))
+# --------------- figure out name of coordinate data (support for legacy .x notation) ------------
+  coordLabels=['%i_%s'%(i+1,options.coords) for i in xrange(3)]                                     # store labels for column keys
+  if not set(coordLabels).issubset(table.labels):
+    directions = ['x','y','z']
+    coordLabels=['%s.%s'%(options.coords,directions[i]) for i in xrange(3)]                         # store labels for column keys
+    if not set(coordLabels).issubset(table.labels):
+      file['croak'].write('no coordinate data (1_%s) found...\n'%options.coords)
       continue
-
+  coordColumns = [table.labels.index(label) for label in coordLabels]
+  
+# --------------- figure out active column --------------------------------------------------------
   if options.id not in table.labels:
     file['croak'].write('column %s not found...\n'%options.id)
     continue
 
 # ------------------------------------------ assemble header ---------------------------------------
+  table.info_append(scriptID + '\t' + ' '.join(sys.argv[1:]))
   for feature in feature_list:
     table.labels_append('ED_%s(%s)'%(features[feature]['names'][0],options.id))                         # extend ASCII header with new labels
-
   table.head_write()
 
-# ------------------------------------------ process data ------------------------------------------
-  
-  table.data_readArray(['1_'+options.coords,'2_'+options.coords,'3_'+options.coords,options.id])
-
+# --------------- figure out grid -----------------------------------------------------------------
   coords = [{},{},{}]
   for i in xrange(len(table.data)):
     for j in xrange(3):
-      coords[j][str(table.data[i,j])] = True
-
+      coords[j][str(table.data[i,coordColumns[j]])] = True
   grid = np.array(map(len,coords),'i')
+
+# ------------------------------------------ process value field -----------------------------------
   unitlength = 0.0
   for i,r in enumerate(grid):
     if r > 1: unitlength = max(unitlength,(max(map(float,coords[i].keys()))-min(map(float,coords[i].keys())))/(r-1.0))
 
   neighborhood = neighborhoods[options.neighborhood]
   convoluted = np.empty([len(neighborhood)]+list(grid+2),'i')
-  microstructure = periodic_3Dpad(np.array(table.data[:,3].reshape(grid),'i'))
+  microstructure = periodic_3Dpad(np.array(table.data[:,table.labels.index(options.id)].reshape(grid),'i'))
   
   for i,p in enumerate(neighborhood):
     stencil = np.zeros((3,3,3),'i')
@@ -197,18 +196,14 @@ for file in files:
     distance[i,:,:,:] = ndimage.morphology.distance_transform_edt(distance[i,:,:,:])*[options.scale]*3
   distance.shape = (len(feature_list),grid.prod())
   
-# ------------------------------------------ process data ------------------------------------------
-  table.data_rewind()
-  l = 0
-  while table.data_read():
-    for i in xrange(len(feature_list)):
-      table.data_append(distance[i,l])                                                              # add all distance fields
-    l += 1
-    outputAlive = table.data_write()                                                                # output processed line
+# ------------------------------------------ add data ------------------------------------------
+  for i in xrange(len(feature_list)):
+    lastRow = table.data.shape[1]
+    table.data=np.insert(table.data,lastRow,distance[i,:],1)
 
 # ------------------------------------------ output result -----------------------------------------
-  outputAlive and table.output_flush()                                                              # just in case of buffered ASCII table
-
-  table.input_close()                                                                               # close input ASCII table
-  table.output_close()                                                                              # close output ASCII table
-  os.rename(file['name']+'_tmp',file['name'])                                                       # overwrite old one with tmp new
+  table.data_writeArray('%.12g')
+  table.input_close()                                                                               # close input ASCII table (works for stdin)
+  table.output_close()                                                                              # close output ASCII table (works for stdout)
+  if file['name'] != 'STDIN':
+    os.rename(file['name']+'_tmp',file['name'])                                                     # overwrite old one with tmp new

@@ -56,23 +56,24 @@ datainfo = {                                                               # lis
                             'label':[]},
            }
 
-if not set(options.output).issubset(set(outputChoices)):
+if options.output == None or (not set(options.output).issubset(set(outputChoices))):
   parser.error('output must be chosen from %s...'%(', '.join(outputChoices)))
 
+input=[]
 if options.eulers     != None:
   datainfo['vector']['label'] += [options.eulers]
-  input = 'eulers'
+  input.append('eulers')
 if options.a          != None and \
    options.b          != None and \
    options.c          != None:
   datainfo['vector']['label'] += [options.a,options.b,options.c]
-  input = 'frame'
+  input.append('frame')
 if options.matrix     != None:
   datainfo['tensor']['label'] += [options.matrix]
-  input = 'matrix'
+  input.append('matrix')
 if options.quaternion != None:
   datainfo['quaternion']['label'] += [options.quaternion]
-  input = 'quaternion'
+  input.append('quaternion')
 
 if len(input) != 1: parser.error('needs exactly one input format...')
 input = input[0]

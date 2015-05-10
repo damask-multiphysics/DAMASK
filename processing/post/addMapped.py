@@ -60,21 +60,17 @@ if options.asciitable != None and os.path.isfile(options.asciitable):
   mappedTable.head_read()                                                                           # read ASCII header info of mapped table
 
   labels  = []
-  indices = []
-
   for datatype,info in datainfo.items():
     for label in info['label']:
-      key = '1_'+label if info['len'] > 1 else label
-      if key in mappedTable.labels:
-        labels.append(label)                                                                        # extend labels
-        indices += range(mappedTable.labels.index(key),
-                         mappedTable.labels.index(key)+datainfo[datatype]['len'])
+      keys = ['%i_'%(i+1)+label for i in xrange(info['len'])] if info['len'] > 1 else [label]
+      if set(keys).issubset(mappedTable.labels):
+        labels+=keys                                                                                # extend labels
       else:
         sys.stderr.write('column %s not found...\n'%label)
         break
 
-  mappedTable.data_readArray(indices)
-  mappedTable.input_close()                                                                        # close mapped input ASCII table
+  mappedTable.data_readArray(labels)
+  mappedTable.input_close()                                                                         # close mapped input ASCII table
 
 else:
   parser.error('missing mapped ASCIItable...')
@@ -95,17 +91,15 @@ for file in files:
 
   table = damask.ASCIItable(file['input'],file['output'],False)                                     # make unbuffered ASCII_table
   table.head_read()                                                                                 # read ASCII header info
-  table.info_append(scriptID + '\t' + ' '.join(sys.argv[1:]))
-
+  
   if options.map not in table.labels:
     file['croak'].write('column %s not found...\n'%options.map)
     continue
 
 # ------------------------------------------ assemble header --------------------------------------
-  for datatype,info in datainfo.items():
-    for label in info['label']:
-      table.labels_append(label if info['len'] == 1 else \
-                          ['%i_%s'%(i+1,label) for i in xrange(info['len'])])                       # extend ASCII header of current table with new labels
+  table.info_append(scriptID + '\t' + ' '.join(sys.argv[1:]))
+  for label in mappedTable.labels:
+    table.labels_append(label)
   table.head_write()
 
 # ------------------------------------------ process data ------------------------------------------

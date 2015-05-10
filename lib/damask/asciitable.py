@@ -258,13 +258,16 @@ class ASCIItable():
        read whole data of all (given) labels as numpy array
     '''
 
-    if labels == []: indices = range(self.__IO__['validReadSize'])              # use all columns
-    else: indices = self.labels_index(labels)                                   # use specified columns
-
-    try:
-      self.data_rewind()                                                        # try to wind back to start of data
+    if labels == []: indices = range(self.__IO__['validReadSize'])                                  # use all columns
+    else: 
+      indices = self.labels_index(labels)                                                           # use specified columns
+      dictionary = dict(zip(indices, labels))
+      self.labels_index = range(len(dictionary))
+      self.labels = [dictionary[label] for label in sorted(dictionary)]
+    try:                   
+      self.data_rewind()                                                                            # try to wind back to start of data
     except:
-      pass                                                                      # assume/hope we are at data start already...
+      pass                                                                                          # assume/hope we are at data start already...
     self.data = np.loadtxt(self.__IO__['in'], usecols=indices,ndmin=2)
     return self.data.shape
     

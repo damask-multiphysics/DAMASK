@@ -24,7 +24,7 @@ parser.add_option('-f','--defgrad',     dest='defgrad', metavar='string',
 parser.add_option('-p','--stress',      dest='stress', metavar='string',
                   help='heading of columns containing first Piola--Kirchhoff stress [%default]')
 parser.set_defaults(defgrad = 'f')
-parser.set_defaults(stress = 'p')
+parser.set_defaults(stress  = 'p')
 
 (options,filenames) = parser.parse_args()
 
@@ -55,12 +55,9 @@ for file in files:
       file['croak'].write('column %s not found...\n'%key)
       missingColumns=True
   if missingColumns: continue
-  active = defaultdict(list)
-  column = defaultdict(dict)
-  missingColumns = False
 
 # ------------------------------------------ assemble header --------------------------------------
-  table.labels_append(['%i_S'%(i+1) for i in xrange(datainfo['stress']['len'])])                    # extend ASCII header with new labels
+  table.labels_append(['%i_S'%(i+1) for i in xrange(9)])                                       # extend ASCII header with new labels
   table.head_write()
 
 # ------------------------------------------ process data ------------------------------------------
