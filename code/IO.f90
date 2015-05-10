@@ -84,8 +84,7 @@ module IO
  private :: &
    IO_fixedFloatValue, &
    IO_verifyFloatValue, &
-   IO_verifyIntValue, &
-   hybridIA_reps
+   IO_verifyIntValue
 #ifdef Abaqus 
  private :: &
    abaqus_assembleInputFile
@@ -750,6 +749,26 @@ function IO_hybridIA(Nast,ODFfileName)
    IO_hybridIA(3,i) = deltas(3)*(real(mod(bin                    ,steps(3)),pReal)+center)          ! phi2
    binSet(j) = binSet(i)
  enddo
+ 
+ contains
+ !--------------------------------------------------------------------------------------------------
+ !> @brief counts hybrid IA repetitions
+ !--------------------------------------------------------------------------------------------------
+ integer(pInt) pure function hybridIA_reps(dV_V,steps,C)
+ 
+  implicit none
+  integer(pInt), intent(in), dimension(3)                          :: steps                          !< needs description
+  real(pReal),   intent(in), dimension(steps(3),steps(2),steps(1)) :: dV_V                           !< needs description
+  real(pReal),   intent(in)                                        :: C                              !< needs description
+  
+  integer(pInt) :: phi1,Phi,phi2
+  
+  hybridIA_reps = 0_pInt
+  do phi1=1_pInt,steps(1); do Phi =1_pInt,steps(2); do phi2=1_pInt,steps(3)
+    hybridIA_reps = hybridIA_reps+nint(C*dV_V(phi2,Phi,phi1), pInt)
+  enddo; enddo; enddo
+  
+ end function hybridIA_reps
 
 end function IO_hybridIA
 
@@ -1879,26 +1898,6 @@ real(pReal) function IO_verifyFloatValue (string,validChars,myName)
  endif
   
 end function IO_verifyFloatValue
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief counts hybrid IA repetitions
-!--------------------------------------------------------------------------------------------------
-integer(pInt) pure function hybridIA_reps(dV_V,steps,C)
-
- implicit none
- integer(pInt), intent(in), dimension(3)                          :: steps                          !< needs description
- real(pReal),   intent(in), dimension(steps(3),steps(2),steps(1)) :: dV_V                           !< needs description
- real(pReal),   intent(in)                                        :: C                              !< needs description
- 
- integer(pInt) :: phi1,Phi,phi2
- 
- hybridIA_reps = 0_pInt
- do phi1=1_pInt,steps(1); do Phi =1_pInt,steps(2); do phi2=1_pInt,steps(3)
-   hybridIA_reps = hybridIA_reps+nint(C*dV_V(phi2,Phi,phi1), pInt)
- enddo; enddo; enddo
- 
-end function hybridIA_reps
  
 #ifdef Abaqus 
 !--------------------------------------------------------------------------------------------------
