@@ -19,28 +19,25 @@ Produces a binned grid of two columns from an ASCIItable, i.e. a two-dimensional
 """, version = scriptID)
 
 parser.add_option('-d','--data',    dest='data', nargs=2, type='string', metavar='string string',
-                                    help='column labels containing x and y [%default]')
+                  help='column labels containing x and y ')
 parser.add_option('-w','--weight',  dest='weight', metavar='string', type='string',
-                                    help='column label containing weight of (x,y) point [%default]')
+                  help='column label containing weight of (x,y) point')
 parser.add_option('-b','--bins',    dest='bins', nargs=2, type='int', metavar='int int',
-                                    help='number of bins in x and y direction %default')
+                  help='number of bins in x and y direction [%default]')
 parser.add_option('-t','--type',    dest='type', nargs=3, metavar='string string string',
-                                    help='type (linear/log) of x, y, and z axis [linear]')
+                  help='type (linear/log) of x, y, and z axis [%default]')
 parser.add_option('-x','--xrange',  dest='xrange', nargs=2, type='float', metavar='float float',
-                                    help='value minmax in x direction [auto]')
+                  help='min max value in x direction [autodetect]')
 parser.add_option('-y','--yrange',  dest='yrange', nargs=2, type='float', metavar='float float',
-                                    help='value minmax in y direction [auto]')
+                  help='min max value in y direction [autodetect]')
 parser.add_option('-z','--zrange',  dest='zrange', nargs=2, type='float', metavar='float float',
-                                    help='value minmax in z direction [auto]')
+                  help='min max value in z direction [autodetect]')
 parser.add_option('-i','--invert',  dest='invert', action='store_true',
-                                    help='invert probability density [%default]')
+                  help='invert probability density [%default]')
 parser.add_option('-r','--rownormalize',  dest='normRow', action='store_true',
-                                    help='normalize probability density in each row [%default]')
+                  help='normalize probability density in each row [%default]')
 parser.add_option('-c','--colnormalize',  dest='normCol', action='store_true',
-                                    help='normalize probability density in each column [%default]')
-
-parser.set_defaults(data = None)
-parser.set_defaults(weight = None)
+                  help='normalize probability density in each column [%default]')
 parser.set_defaults(bins = (10,10))
 parser.set_defaults(type = ('linear','linear','linear'))
 parser.set_defaults(xrange = (0.0,0.0))
