@@ -79,8 +79,7 @@ for file in files:
   else:                                                                       # tag individual candidates
     for datatype,info in datainfo.items():
       for label in info['label']:
-        key = {True :'1_%s',
-               False:'%s'   }[info['len']>1]%label
+        key = '1_%s' if [info['len']>1]%label else '%'
         if key not in table.labels:
           sys.stderr.write('column %s not found...\n'%key)
         else:

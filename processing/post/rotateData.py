@@ -20,16 +20,13 @@ Rotate vector and/or tensor column data by given angle around given axis.
 """, version = scriptID)
 
 parser.add_option('-v','--vector',  dest = 'vector', action = 'extend', metavar = '<string LIST>',
-                                    help = 'column heading of vector to rotate')
+                  help = 'column heading of vector to rotate')
 parser.add_option('-t','--tensor',  dest = 'tensor', action = 'extend', metavar = '<string LIST>',
-                                    help = 'column heading of tensor to rotate')
+                  help = 'column heading of tensor to rotate')
 parser.add_option('-r', '--rotation',dest = 'rotation', type = 'float', nargs = 4, metavar = ' '.join(['float']*4),
-                                    help = 'angle and axis to rotate data %default')
+                  help = 'angle and axis to rotate data [%default]')
 parser.add_option('-d', '--degrees', dest = 'degrees', action = 'store_true',
-                                    help = 'angles are given in degrees [%default]')
-
-parser.set_defaults(vector = [])
-parser.set_defaults(tensor = [])
+                  help = 'angles are given in degrees [%default]')
 parser.set_defaults(rotation = (0.,1.,1.,1.))                                                       # no rotation about 1,1,1
 parser.set_defaults(degrees = False)
 
@@ -42,8 +39,8 @@ datainfo = {                                                                    
                             'label':[]},
            }
 
-if options.vector != []: datainfo['vector']['label'] += options.vector
-if options.tensor != []: datainfo['tensor']['label'] += options.tensor
+if options.vector != None: datainfo['vector']['label'] += options.vector
+if options.tensor != None: datainfo['tensor']['label'] += options.tensor
 
 toRadians = math.pi/180.0 if options.degrees else 1.0                                               # rescale degrees to radians
 r = damask.Quaternion().fromAngleAxis(toRadians*options.rotation[0],options.rotation[1:])
