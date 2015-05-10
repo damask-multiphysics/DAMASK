@@ -71,7 +71,7 @@ parser.set_defaults(coords = 'ipinitialcoord')
 
 (options,filenames) = parser.parse_args()
 
-if (options.vector == None) and (options.tensor == None):
+if options.vector == None and options.tensor == None:
   parser.error('no data column specified...')
 
 datainfo = {                                                                                         # list of requested labels per datatype
@@ -88,35 +88,33 @@ if options.tensor != None:    datainfo['tensor']['label'] = options.tensor
 
 # ------------------------------------------ setup file handles ------------------------------------
 files = []
-for name in filenames:
-  if os.path.exists(name):
-    files.append({'name':name, 'input':open(name), 'output':open(name+'_tmp','w'), 'croak':sys.stderr})
+if filenames == []:
+  files.append({'name':'STDIN', 'input':sys.stdin, 'output':sys.stdout, 'croak':sys.stderr})
+else:
+  for name in filenames:
+    if os.path.exists(name):
+      files.append({'name':name, 'input':open(name), 'output':open(name+'_tmp','w'), 'croak':sys.stderr})
 
 #--- loop over input files -------------------------------------------------------------------------
 for file in files:
-  file['croak'].write('\033[1m'+scriptName+'\033[0m: '+file['name']+'\n')
+  if file['name'] != 'STDIN': file['croak'].write('\033[1m'+scriptName+'\033[0m: '+file['name']+'\n')
+  else: file['croak'].write('\033[1m'+scriptName+'\033[0m\n')
 
-  table = damask.ASCIItable(file['input'],file['output'],True)                                      # make unbuffered ASCII_table
+  table = damask.ASCIItable(file['input'],file['output'],False)                                     # make unbuffered ASCII_table
   table.head_read()                                                                                 # read ASCII header info
-  table.info_append(scriptID + '\t' + ' '.join(sys.argv[1:]))
+  table.data_readArray()
 
-# --------------- figure out columns for coordinates and vector/tensor fields to process  ---------
-  column = defaultdict(dict)
-  pos = 0                                                                                           # when reading in the table via data_readArray, the first key is at colum 0
-  try:
-    column['coords'] = pos
-    pos+=3                                                                                          # advance by data len (columns) for next key
-    keys=['%i_%s'%(i+1,options.coords) for i in xrange(3)]                                          # store labels for column keys
-  except ValueError:
-    try:
-      column['coords'] = pos
-      pos+=3                                                                                        # advance by data len (columns) for next key
-      directions = ['x','y','z']
-      keys=['%s.%s'%(options.coords,directions[i]) for i in xrange(3)]                              # store labels for column keys
-    except ValueError:
+# --------------- figure out name of coordinate data (support for legacy .x notation) -------------
+  coordLabels=['%i_%s'%(i+1,options.coords) for i in xrange(3)]                                     # store labels for column keys
+  if not set(coordLabels).issubset(table.labels):
+    directions = ['x','y','z']
+    coordLabels=['%s.%s'%(options.coords,directions[i]) for i in xrange(3)]                         # store labels for column keys
+    if not set(coordLabels).issubset(table.labels):
       file['croak'].write('no coordinate data (1_%s) found...\n'%options.coords)
       continue
+  coordColumns = [table.labels.index(label) for label in coordLabels]
 
+# --------------- figure out active columns -------------------------------------------------------
   active = defaultdict(list)
   for datatype,info in datainfo.items():
     for label in info['label']:
@@ -125,13 +123,9 @@ for file in files:
         file['croak'].write('column %s not found...\n'%key)
       else:
         active[datatype].append(label)
-        column[label] = pos
-        pos+=datainfo[datatype]['len']
-        keys+=['%i_%s'%(i+1,label) for i in xrange(datainfo[datatype]['len'])]                   # extend ASCII header with new labels
 
-  table.data_readArray(keys)
-
-# --------------- assemble new header (columns containing curl) -----------------------------------
+# --------------- assemble new header (metadata and columns containing curl) ----------------------
+  table.info_append(scriptID + '\t' + ' '.join(sys.argv[1:]))
   for datatype,labels in active.items():                                                            # loop over vector,tensor
     for label in labels:
       table.labels_append(['divFFT(%s)'%(label) if datatype == 'vector' else
@@ -142,10 +136,8 @@ for file in files:
   coords = [{},{},{}]
   for i in xrange(table.data.shape[0]):  
     for j in xrange(3):
-      coords[j][str(table.data[i,j])] = True                                                        # remember coordinate along x,y,z
-  grid = np.array([len(coords[0]),\
-                   len(coords[1]),\
-                   len(coords[2]),],'i')                                                            # grid is number of distinct coordinates found
+      coords[j][str(table.data[i,coordColumns[j]])] = True
+  grid = np.array(map(len,coords),'i')
   size = grid/np.maximum(np.ones(3,'d'),grid-1.0)* \
             np.array([max(map(float,coords[0].keys()))-min(map(float,coords[0].keys())),\
                       max(map(float,coords[1].keys()))-min(map(float,coords[1].keys())),\
@@ -155,30 +147,27 @@ for file in files:
     if points == 1:
       mask = np.ones(3,dtype=bool)
       mask[i]=0
-      size[i] = min(size[mask]/grid[mask])                                                          # third spacing equal to smaller of other spacing
-  
+      size[i] = min(size[mask]/grid[mask])                                                          # third spacing equal to smaller of other spacing 
 
 # ------------------------------------------ process value field -----------------------------------
   div = defaultdict(dict)
   for datatype,labels in active.items():                                                            # loop over vector,tensor
     for label in labels:                                                                            # loop over all requested curls
+      startColumn=table.labels.index('1_'+label)
       div[datatype][label]  = divFFT(size[::-1],                                                    # we need to reverse order here, because x is fastest,ie rightmost, but leftmost in our x,y,z notation
-                              table.data[:,column[label]:column[label]+datainfo[datatype]['len']].\
+                              table.data[:,startColumn:startColumn+datainfo[datatype]['len']].\
                               reshape([grid[2],grid[1],grid[0]]+datainfo[datatype]['shape']))
-# ------------------------------------------ process data ------------------------------------------
-  table.data_rewind()
-  idx = 0
-  outputAlive = True
-  while outputAlive and table.data_read():                                                          # read next data line of ASCII table
-    for datatype,labels in active.items():                                                          # loop over vector,tensor
-      for label in labels:                                                                          # loop over all requested norms
-        table.data_append(list(div[datatype][label][idx,:]))
-    idx+=1
-    outputAlive = table.data_write()                                                                # output processed line
 
-# ------------------------------------------ output result -----------------------------------------  
-  outputAlive and table.output_flush()                                                              # just in case of buffered ASCII table
+# ------------------------------------------ add data ------------------------------------------
+  for datatype,labels in active.items():                                                            # loop over vector,tensor
+    for label in labels:                                                                            # loop over all requested curls
+      for c in xrange(div[datatype][label][0,:].shape[0]):                                         # append column by column
+        lastRow = table.data.shape[1]
+        table.data=np.insert(table.data,lastRow,div[datatype][label][:,c],1)
 
-  table.input_close()                                                                               # close input ASCII table
-  table.output_close()                                                                              # close output ASCII table
-  os.rename(file['name']+'_tmp',file['name'])                                                       # overwrite old one with tmp new
+# ------------------------------------------ output result -----------------------------------------
+  table.data_writeArray('%.12g')
+  table.input_close()                                                                               # close input ASCII table (works for stdin)
+  table.output_close()                                                                              # close output ASCII table (works for stdout)
+  if file['name'] != 'STDIN':
+    os.rename(file['name']+'_tmp',file['name'])                                                     # overwrite old one with tmp new
