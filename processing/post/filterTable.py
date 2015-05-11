@@ -22,14 +22,11 @@ All rows where label 'foo' equals 'bar' -- " #foo# == \"bar\" "
 """, version = scriptID)
 
 parser.add_option('-w','--white',   dest='whitelist', action='extend', metavar='<string LIST>',
-                                    help='white list of column labels (a,b,c,...)')
+                  help='white list of column labels (a,b,c,...)')
 parser.add_option('-b','--black',   dest='blacklist', action='extend', metavar='<string LIST>',
-                                    help='black list of column labels (a,b,c,...)')
+                  help='black list of column labels (a,b,c,...)')
 parser.add_option('-c','--condition', dest='condition', metavar='string',
-                                    help='condition to filter rows')
-
-parser.set_defaults(whitelist = [])
-parser.set_defaults(blacklist = [])
+                  help='condition to filter rows')
 parser.set_defaults(condition = '')
 
 (options,filenames) = parser.parse_args()
@@ -58,8 +55,8 @@ for name in filenames:
   positions = []
 
   for position,label in enumerate(table.labels):
-    if    (options.whitelist == [] or     any([fnmatch.fnmatch(label,needle) for needle in options.whitelist])) \
-      and (options.blacklist == [] or not any([fnmatch.fnmatch(label,needle) for needle in options.blacklist])):  # a label to keep?
+    if    (options.whitelist == None or     any([fnmatch.fnmatch(label,needle) for needle in options.whitelist])) \
+      and (options.blacklist == None or not any([fnmatch.fnmatch(label,needle) for needle in options.blacklist])):  # a label to keep?
       labels.append(label)                                                                          # remember name...
       positions.append(position)                                                                    # ...and position
 
