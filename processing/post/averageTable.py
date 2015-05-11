@@ -22,10 +22,7 @@ For grain averaged values, replace all rows of particular #texture# with a singl
 """, version = scriptID)
 
 parser.add_option('-l','--label',   dest='key', type="string", metavar='label',
-                                    help='column label for averaging rows [%default]')
-
-parser.set_defaults(key = None)
-
+                  help='column label for averaging rows')
 (options,filenames) = parser.parse_args()
 
 if options.key == None:
