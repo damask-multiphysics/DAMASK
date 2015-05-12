@@ -95,8 +95,11 @@ for name in filenames:
   vec         = np.zeros(4)
   while outputAlive and table.data_read():                                                          # read next data line of ASCII table
     for i,label in enumerate(active):
-      vec[i] = table.data[column[label]]                                  
-    table.data_append(np.array([vec[0],-math.sqrt(0.5)*(vec[1]+vec[2]),-vec[3]]))               # change X,Y,Z (equivalent to x,y,z crystal orientation basis) to strain coordinate system (x radially outward of beam, y down on sample surface, z normal up from sample surface)
+      vec[i] = table.data[column[label]]
+    table.data_append(np.array([vec[0],
+                                math.sqrt(0.5)*(-vec[2]-vec[1])-vec[3],
+                                math.sqrt(0.5)*( vec[2]-vec[1])-vec[3]])
+                     )                                                                              # change X,Y,Z (equivalent to x,y,z crystal orientation basis) to strain coordinate system (x radially outward of beam, y down on sample surface, z normal up from sample surface)
     outputAlive = table.data_write()                                                                # output processed line
 
 # ------------------------------------------ output result -----------------------------------------
@@ -106,4 +109,3 @@ for name in filenames:
   table.output_close()                                                                              # close output ASCII table (works for stdout)
   if file['name'] != 'STDIN':
     os.rename(file['name']+'_tmp',file['name'])                                                     # overwrite old one with tmp new
-
