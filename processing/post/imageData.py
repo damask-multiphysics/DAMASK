@@ -114,7 +114,7 @@ for name in filenames:
   # convert data to values between 0 and 1 and arrange according to given options
   if options.dimension != []: table.data = table.data.reshape(options.dimension[1],options.dimension[0])
   if options.abs:             table.data = np.abs(table.data)
-  if options.log:             table.data = np.log10(table.data)
+  if options.log:             table.data = np.log10(table.data);options.range = np.log10(options.range)
   if options.flipLR:          table.data = np.fliplr(table.data)
   if options.flipUD:          table.data = np.flipud(table.data)
   if np.all(np.array(options.range) == 0.0): options.range = [table.data.min(),table.data.max()]
