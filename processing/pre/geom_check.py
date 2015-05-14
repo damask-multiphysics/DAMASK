@@ -40,19 +40,11 @@ parser.set_defaults(data = True)
 #--- setup file handles --------------------------------------------------------------------------  
 files = []
 if filenames == []:
-  files.append({'name':'STDIN',
-                'input':sys.stdin,
-                'output':sys.stdout,
-                'croak':sys.stderr,
-               })
+  files.append({'name':'STDIN', 'input':sys.stdin, 'output':sys.stdout, 'croak':sys.stderr, })
 else:
   for name in filenames:
     if os.path.exists(name):
-      files.append({'name':name,
-                    'input':open(name),
-                    'output':sys.stdout,
-                    'croak':sys.stdout,
-                    })
+      files.append({'name':name, 'input':open(name), 'output':sys.stdout, 'croak':sys.stdout, })
 
 #--- loop over input files ------------------------------------------------------------------------
 for file in files:

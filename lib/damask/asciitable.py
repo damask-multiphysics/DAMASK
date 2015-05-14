@@ -258,12 +258,14 @@ class ASCIItable():
        read whole data of all (given) labels as numpy array
     '''
 
-    if labels == []: indices = range(self.__IO__['validReadSize'])                                  # use all columns
-    else: 
-      indices = self.labels_index(labels)                                                           # use specified columns
-      dictionary = dict(zip(indices, labels))
-      self.labels_index = range(len(dictionary))
-      self.labels = [dictionary[label] for label in sorted(dictionary)]
+    if labels != []:                                                                                # read only some labels
+      indices = self.labels_index(labels)                                                           # get indices to read
+      tempDict = dict(zip(indices, labels))                                                         # column <> label connections
+      self.labels = [tempDict[label] for label in sorted(tempDict)]                                 # sort labels to reflect order from np.readtxt
+      self.__IO__['validReadSize'] = len(labels)
+    else:
+      indices = range(self.__IO__['validReadSize'])                                                 # use all columns
+    
     try:                   
       self.data_rewind()                                                                            # try to wind back to start of data
     except:

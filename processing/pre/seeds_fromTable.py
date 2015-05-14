@@ -36,22 +36,18 @@ Examples:
 
 """, version = scriptID)
 
-parser.add_option('-p', '--positions',   dest = 'pos', type = 'string',
-                                    help = 'coordinate label')
+parser.add_option('-p', '--positions',   dest = 'pos', metavar='string',
+                  help = 'coordinate label')
 parser.add_option('--boundingbox',  dest = 'box', type = 'float', nargs = 6,
-                                    help = 'min (x,y,z) and max (x,y,z) to specify bounding box [auto]')
+                  help = 'min (x,y,z) and max (x,y,z) to specify bounding box [auto]')
 parser.add_option('-i', '--index',  dest = 'index', type = 'string',
-                                    help = 'microstructure index label')
-parser.add_option('-w','--white',   dest = 'whitelist', action = 'extend', type = 'string', \
-                                    help = 'white list of microstructure indices', metavar = '<LIST>')
-parser.add_option('-b','--black',   dest = 'blacklist', action = 'extend', type = 'string', \
-                                    help = 'black list of microstructure indices', metavar = '<LIST>')
-
+                  help = 'microstructure index label')
+parser.add_option('-w','--white',   dest = 'whitelist', action = 'extend',\
+                  help = 'white list of microstructure indices', metavar = '<LIST>')
+parser.add_option('-b','--black',   dest = 'blacklist', action = 'extend',\
+                  help = 'black list of microstructure indices', metavar = '<LIST>')
 parser.set_defaults(pos = 'pos')
 parser.set_defaults(index = 'microstructure')
-parser.set_defaults(box = ())
-parser.set_defaults(whitelist = [])
-parser.set_defaults(blacklist = [])
 
 (options,filenames) = parser.parse_args()
 
@@ -62,10 +58,10 @@ datainfo = {                                                               # lis
                             'label':[]},
            }
 
-if options.pos   != None:  datainfo['vector']['label'] += [options.pos]
-if options.index != None:  datainfo['scalar']['label'] += [options.index]
-options.whitelist = map(int,options.whitelist)
-options.blacklist = map(int,options.blacklist)
+datainfo['vector']['label'] += [options.pos]
+datainfo['scalar']['label'] += [options.index]
+if options.whitelist != None: options.whitelist = map(int,options.whitelist)
+if options.blacklist != None: options.blacklist = map(int,options.blacklist)
 
 #--- setup file handles --------------------------------------------------------------------------   
 files = []
@@ -126,10 +122,10 @@ for file in files:
 #--- filtering of grain voxels ------------------------------------------------------------------------------------
   mask = np.logical_and(\
          np.ones_like(table.data[:,3],bool) \
-          if options.whitelist == [] \
+          if options.whitelist == None \
           else              np.in1d(table.data[:,3].ravel(), options.whitelist).reshape(table.data[:,3].shape),
          np.ones_like(table.data[:,3],bool) \
-          if options.blacklist == [] \
+          if options.blacklist == None \
           else np.invert(np.in1d(table.data[:,3].ravel(), options.blacklist).reshape(table.data[:,3].shape))
           )
   table.data = table.data[mask]

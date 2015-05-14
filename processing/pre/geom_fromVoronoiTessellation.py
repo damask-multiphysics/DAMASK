@@ -31,43 +31,43 @@ def meshgrid2(*arrs):
   return tuple(ans)
 
 def laguerreTessellation(undeformed, coords):
-    bestdist = np.ones(len(undeformed)) * np.finfo('d').max
-    bestseed = np.zeros(len(undeformed))
+  bestdist = np.ones(len(undeformed)) * np.finfo('d').max
+  bestseed = np.zeros(len(undeformed))
 
-    for i,seed in enumerate(coords):
-      for copy in np.array([[1, 0, 0,    ],
-                            [0, 1, 0,    ],
-                            [0, 0, 1,    ],
-                            [-1, 0, 0,   ],
-                            [0, -1, 0,   ],
-                            [0, 0, -1,   ],
-                            [1, 1, 0,    ],
-                            [1, 0, 1,    ],
-                            [0, 1, 1,    ],
-                            [-1, 1, 0,   ],
-                            [-1, 0, 1,   ],
-                            [0, -1, 1,   ],
-                            [-1, -1, 0,  ],
-                            [-1, 0, -1,  ],
-                            [0, -1, -1,  ],
-                            [1, -1, 0,   ],
-                            [1, 0, -1,   ],
-                            [0, 1, -1,   ],
-                            [1, 1, 1,    ],
-                            [-1, 1, 1,   ],
-                            [1, -1, 1,   ],
-                            [1, 1, -1,   ],
-                            [-1, -1, -1, ],
-                            [1, -1, -1,  ],
-                            [-1, 1, -1,  ],
-                            [-1, -1, 1,  ]]).astype(float):
+  for i,seed in enumerate(coords):
+    for copy in np.array([[1, 0, 0,    ],
+                          [0, 1, 0,    ],
+                          [0, 0, 1,    ],
+                          [-1, 0, 0,   ],
+                          [0, -1, 0,   ],
+                          [0, 0, -1,   ],
+                          [1, 1, 0,    ],
+                          [1, 0, 1,    ],
+                          [0, 1, 1,    ],
+                          [-1, 1, 0,   ],
+                          [-1, 0, 1,   ],
+                          [0, -1, 1,   ],
+                          [-1, -1, 0,  ],
+                          [-1, 0, -1,  ],
+                          [0, -1, -1,  ],
+                          [1, -1, 0,   ],
+                          [1, 0, -1,   ],
+                          [0, 1, -1,   ],
+                          [1, 1, 1,    ],
+                          [-1, 1, 1,   ],
+                          [1, -1, 1,   ],
+                          [1, 1, -1,   ],
+                          [-1, -1, -1, ],
+                          [1, -1, -1,  ],
+                          [-1, 1, -1,  ],
+                          [-1, -1, 1,  ]]).astype(float):
 
-        diff = undeformed - np.repeat((seed+info['size']*copy).reshape(3,1),len(undeformed),axis=1).T
-        dist = np.sum(diff*diff,axis=1) - weights[i]
-                      
-        bestseed = np.where(dist < bestdist, np.ones(len(undeformed))*(i+1),bestseed)
-        bestdist = np.where(dist < bestdist, dist,bestdist)
-    return bestseed 
+      diff = undeformed - np.repeat((seed+info['size']*copy).reshape(3,1),len(undeformed),axis=1).T
+      dist = np.sum(diff*diff,axis=1) - weights[i]
+                    
+      bestseed = np.where(dist < bestdist, np.ones(len(undeformed))*(i+1),bestseed)
+      bestdist = np.where(dist < bestdist, dist,bestdist)
+  return bestseed 
 
 
 # --------------------------------------------------------------------
@@ -109,8 +109,6 @@ parser.add_option('--secondphase', type='float', dest='secondphase', metavar= 'f
                   help='volume fraction of randomly distribute second phase [%default]')
 parser.add_option('--laguerre', dest='laguerre', action='store_true',
                   help='for weighted voronoi (Laguerre) tessellation [%default]')
-
-
 parser.set_defaults(grid   = (0,0,0))
 parser.set_defaults(size   = (0.0,0.0,0.0))
 parser.set_defaults(origin = (0.0,0.0,0.0))
@@ -159,7 +157,7 @@ for file in files:
     file['croak'].write('no coordinate data (1_coords/x) found ...')
     continue
 
-  hasEulers = np.any(np.asarray(table.labels_index(['phi1','Phi','phi2'])) == -1)
+  hasEulers = np.all(np.asarray(table.labels_index(['phi1','Phi','phi2'])) != -1)
   if hasEulers:
     labels += ['phi1','Phi','phi2']
     
@@ -174,8 +172,8 @@ for file in files:
   table.data_readArray(labels)
   coords = table.data[:,table.labels_index(coords)]
   eulers = table.data[:,table.labels_index(['phi1','Phi','phi2'])] if hasEulers else np.zeros(3*len(coords))
-  grain = table.data[:,table.labels_index('microstructure')] if hasGrains else 1+np.arange(len(coords))
-  weights = table.data[:,table.labels_index('weight')] if hasWeight else np.zeros(len(coords))
+  grain = table.data[:,table.labels.index('microstructure')]       if hasGrains else 1+np.arange(len(coords))
+  weights = table.data[:,table.labels.index('weight')]             if hasWeight else np.zeros(len(coords))
   grainIDs = np.unique(grain).astype('i')
 
 
@@ -308,6 +306,4 @@ for file in files:
   if file['name'] != 'STDIN':
     table.input_close()  
     table.output_close()  
-    os.rename(file['name']+'_tmp',os.path.splitext(file['name'])[0] + \
-                                  {True: '_material.config',
-                                   False:'.geom'}[options.config])
+    os.rename(file['name']+'_tmp',os.path.splitext(file['name'])[0] + '_material.config' if options.config else '.geom')
