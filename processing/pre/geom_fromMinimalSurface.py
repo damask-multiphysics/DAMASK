@@ -28,29 +28,28 @@ Generate a geometry file of a bicontinuous structure of given type.
 
 
 parser.add_option('-t','--type', dest='type', choices=minimal_surfaces, metavar='string', \
-                  help='type of minimal surface (%s) [primitive]' %(','.join(minimal_surfaces)))
+                  help='type of minimal surface [primitive] {%s}' %(','.join(minimal_surfaces)))
 parser.add_option('-f','--threshold', dest='threshold', type='float', metavar='float', \
                   help='threshold value defining minimal surface [%default]')
 parser.add_option('-g', '--grid', dest='grid', type='int', nargs=3, metavar='int int int', \
-                  help='a,b,c grid of hexahedral box %default')
+                  help='a,b,c grid of hexahedral box [%default]')
 parser.add_option('-s', '--size', dest='size', type='float', nargs=3, metavar='float float float', \
-                  help='x,y,z size of hexahedral box %default')
+                  help='x,y,z size of hexahedral box [%default]')
 parser.add_option('-p', '--periods', dest='periods', type='int', metavar= 'int', \
                   help='number of repetitions of unit cell [%default]')
 parser.add_option('--homogenization', dest='homogenization', type='int', metavar= 'int', \
                   help='homogenization index to be used [%default]')
 parser.add_option('--m', dest='microstructure', type='int', nargs = 2, metavar= 'int int', \
-                  help='two microstructure indices to be used %default')
+                  help='two microstructure indices to be used [%default]')
 parser.add_option('-2', '--twodimensional', dest='twoD', action='store_true', \
                   help='output geom file with two-dimensional data arrangement [%default]')
-
 parser.set_defaults(type = minimal_surfaces[0])
 parser.set_defaults(threshold = 0.0)
 parser.set_defaults(periods = 1)
-parser.set_defaults(grid = np.array([16,16,16]))
-parser.set_defaults(size = np.array([1.0,1.0,1.0]))
+parser.set_defaults(grid = (16,16,16))
+parser.set_defaults(size = (1.0,1.0,1.0))
 parser.set_defaults(homogenization = 1)
-parser.set_defaults(microstructure = [1,2])
+parser.set_defaults(microstructure = (1,2))
 parser.set_defaults(twoD  = False)
 
 (options,filename) = parser.parse_args()
@@ -100,7 +99,7 @@ for z in xrange(options.grid[2]):
     Y = options.periods*2.0*math.pi*(y+0.5)/options.grid[1]
     for x in xrange(options.grid[0]):
       X = options.periods*2.0*math.pi*(x+0.5)/options.grid[0]
-      file['output'].write(\
-        str({True:options.microstructure[0],False:options.microstructure[1]}[options.threshold > \
-            surface[options.type](X,Y,Z)]) + {True:' ',False:'\n'}[options.twoD] )
-    file['output'].write({True:'\n',False:''}[options.twoD])
+      file['output'].write(str(options.microstructure[0]) if options.threshold > surface[options.type](X,Y,Z)
+                      else str(options.microstructure[1]))
+      file['output'].write(' ' if options.twoD else '\n')
+    file['output'].write('\n' if options.twoD else '')
