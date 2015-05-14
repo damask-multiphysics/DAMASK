@@ -20,17 +20,17 @@ to resolution*packing.
 """, version = scriptID)
 
 parser.add_option('-c','--coordinates', dest='coords', metavar='string',
-                                        help='column heading for coordinates [%default]')
+                  help='column heading for coordinates [%default]')
 parser.add_option('-p','--packing',     dest='packing', type='int', nargs=3, metavar='int int int',
-                                        help='dimension of packed group %default')
+                  help='dimension of packed group [%default]')
 parser.add_option('-g','--grid',        dest='resolution', type='int', nargs=3, metavar='int int int',
-                                        help='resolution in x,y,z [autodetect]')
+                  help='resolution in x,y,z [autodetect]')
 parser.add_option('-s','--size',        dest='dimension', type='float', nargs=3, metavar='int int int',
-                                        help='dimension in x,y,z [autodetect]')
+                  help='dimension in x,y,z [autodetect]')
 parser.set_defaults(coords  = 'ipinitialcoord')
-parser.set_defaults(packing = [2,2,2])
-parser.set_defaults(grid    = [0,0,0])
-parser.set_defaults(size    = [0.0,0.0,0.0])
+parser.set_defaults(packing = (2,2,2))
+parser.set_defaults(grid    = (0,0,0))
+parser.set_defaults(size    = (0.0,0.0,0.0))
 
 (options,filenames) = parser.parse_args()
 
