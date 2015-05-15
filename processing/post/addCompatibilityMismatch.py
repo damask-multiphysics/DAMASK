@@ -26,21 +26,12 @@ parser.add_option('--no-volume','-v',   dest='noVolume', action='store_false',
                   help='do not calculate volume mismatch')
 parser.add_option('-c','--coordinates', dest='coords', metavar='string',
                   help='column heading for coordinates [%default]')
-parser.add_option('-f','--defgrad',     dest='defgrad', metavar='string',
-                  help='column heading for coordinates [%defgrad]')
-parser.set_defaults(noVolume = False)
-parser.set_defaults(noShape = False)
-parser.set_defaults(coords  = 'ipinitialcoord')
-parser.set_defaults(defgrad = 'f')
+parser.add_option('-f','--defgrad',     dest='defgrad', metavar='string ',
+                  help='column heading for coordinates [%default]')
+parser.set_defaults(coords   = 'ipinitialcoord')
+parser.set_defaults(defgrad  = 'f')
 
 (options,filenames) = parser.parse_args()
-
-datainfo = {                                                                                        # list of requested labels per datatype
-             'defgrad':    {'len':9,
-                            'label':[]},
-           }
-
-datainfo['defgrad']['label'].append(options.defgrad)
 
 # ------------------------------------------ setup file handles ------------------------------------
 files = []
@@ -79,18 +70,10 @@ for file in files:
                       max(map(float,coords[2].keys()))-min(map(float,coords[2].keys())),\
                       ],'d')                                                                        # size from bounding box, corrected for cell-centeredness
 
-  for i, points in enumerate(grid):
-    if points == 1:
-      options.packing[i] = 1
-      options.shift[i]   = 0
-      mask = np.ones(3,dtype=bool)
-      mask[i]=0
-      size[i] = min(size[mask]/grid[mask])                                                          # third spacing equal to smaller of other spacing
-  
   N = grid.prod()
 
 # --------------- figure out columns to process  ---------------------------------------------------
-  key = '1_%s'%datainfo['defgrad']['label'][0]
+  key = '1_%s'%options.defgrad
   if key not in table.labels:
     file['croak'].write('column %s not found...\n'%key)
     continue
