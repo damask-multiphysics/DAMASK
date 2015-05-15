@@ -31,17 +31,17 @@ Add column(s) containing given strains based on given stretches of requested def
 """, version = scriptID)
 
 parser.add_option('-u','--right',       dest='right', action='store_true',
-                  help='material strains based on right Cauchy--Green deformation, i.e., C and U [%default]')
+                  help='material strains based on right Cauchy--Green deformation, i.e., C and U')
 parser.add_option('-v','--left',        dest='left', action='store_true',
-                  help='spatial strains based on left Cauchy--Green deformation, i.e., B and V [%default]')
-parser.add_option('-l','-0','--logarithmic', dest='logarithmic', action='store_true',
-                  help='calculate logarithmic strain tensor [%default]')
-parser.add_option('-b','-1','--biot',   dest='biot', action='store_true',
-                  help='calculate biot strain tensor [%default]')
-parser.add_option('-g','-2','--green',  dest='green', action='store_true',
-                  help='calculate green strain tensor [%default]')
+                  help='spatial strains based on left Cauchy--Green deformation, i.e., B and V')
+parser.add_option('-0','--logarithmic', dest='logarithmic', action='store_true',
+                  help='calculate logarithmic strain tensor')
+parser.add_option('-1','--biot',   dest='biot', action='store_true',
+                  help='calculate biot strain tensor')
+parser.add_option('-2','--green',  dest='green', action='store_true',
+                  help='calculate green strain tensor')
 parser.add_option('-f','--defgrad',     dest='defgrad', action='extend', metavar = '<string LIST>',
-                  help='heading(s) of columns containing deformation tensor values %default')
+                  help='heading(s) of columns containing deformation tensor values [%default]')
 parser.set_defaults(right       = False)
 parser.set_defaults(left        = False)
 parser.set_defaults(logarithmic = False)
