@@ -876,7 +876,7 @@ class Orientation:
     return Orientation( quaternion=Quaternion(quatArray=vec.T[eig.argmax()]) )
 
 
-  def related(self, relationModel, direction, targetSymmetry):
+  def related(self, relationModel, direction, targetSymmetry=None):
   
     if relationModel not in ['KS','GT',"GT'",'NW','Bain']:  return None
 
@@ -1071,36 +1071,16 @@ class Orientation:
                               [[  0,  0,  1],[  1,  0,  1]],
                               [[  1,  0,  0],[  1,  1,  0]]]),
               }
-    myMatrix = np.array([[planes [relationModel][variant,me]],\
-                         [normals[relationModel][variant,me]],\
-                         [np.cross(normals[relationModel][variant,me],planes[relationModel][variant,me])]])
-    otherMatrix = np.array([[planes [relationModel][variant,other]],\
-                            [normals[relationModel][variant,other]],\
-                            [np.cross(normals[relationModel][variant,other],planes[relationModel][variant,other])]])
-  
-  def getRotation(self,variant):
-    fccN=np.array([1.,1.,1.])
-    fccN=fccN/np.linalg.norm(fccN)
-    fccN=self.orientation.asMatrix().dot(fccN)
+    myPlane  = planes [relationModel][variant,me]
+    myNormal = normals[relationModel][variant,me]
+    myPlane  = myPlane/np.linalg.norm(myPlane)
+    myNormal = myNormal/np.linalg.norm(myNormal)
+    myMatrix = np.array([myPlane,myNormal,np.cross(myNormal,myPlane)])
 
-    fccD=np.array([17.,-5.,-12.])
-    fccD=fccD/np.linalg.norm(fccD)
-    fccD=self.orientation.asMatrix().dot(fccD)
-
-
-    bccN=np.array([1.,1.,0.])
-    bccN=bccN/np.linalg.norm(bccN)
-    bccN=self.orientation.asMatrix().dot(bccN)
-
-    bccD=np.array([17.,-17.,-7.])
-    bccD=bccD/np.linalg.norm(bccD)
-    bccD=self.orientation.asMatrix().dot(bccD)
-
-    B = np.array(np.outer(bccN,fccN.T)+np.outer(bccD,fccD.T))*0.5
-    U,S,VT = np.linalg.svd(B)
-    M=np.diag([1,1,np.linalg.det(U)*np.linalg.det(VT)])
-    R=(U.dot(M)).dot(VT)
-    return Orientation(matrix=R)
-    
-     
-
+    otherPlane  = planes [relationModel][variant,other]
+    otherNormal = normals[relationModel][variant,other]
+    otherPlane  = otherPlane/np.linalg.norm(otherPlane)
+    otherNormal = otherNormal/np.linalg.norm(otherNormal)
+    otherMatrix = np.array([otherPlane,otherNormal,np.cross(otherNormal,otherPlane)])
+    myMatrix = np.dot(self.asMatrix(),myMatrix)
+    return Orientation(matrix=np.dot(otherMatrix.T,myMatrix))
