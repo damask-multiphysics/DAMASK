@@ -883,6 +883,7 @@ class Orientation:
     variant  = int(abs(direction))
     me    = 0 if direction > 0 else 1
     other = 1 if direction > 0 else 0
+    variant = variant -1
 
     planes = {'KS': \
                     np.array([[[  1,  1,  1],[  0,  1,  1]],\
