@@ -21,13 +21,13 @@ Operates on periodic ordered three-dimensional data sets.
 
 
 parser.add_option('--no-shape','-s',    dest='noShape', action='store_false',
-                                        help='do not calcuate shape mismatch [%default]')
+                  help='do not calcuate shape mismatch')
 parser.add_option('--no-volume','-v',   dest='noVolume', action='store_false',
-                                        help='do not calculate volume mismatch [%default]')
+                  help='do not calculate volume mismatch')
 parser.add_option('-c','--coordinates', dest='coords', metavar='string',
-                                        help='column heading for coordinates [%default]')
-parser.add_option('-f','--defgrad',     dest='defgrad', metavar='string ',
-                                        help='column heading for coordinates [%defgrad]')
+                  help='column heading for coordinates [%default]')
+parser.add_option('-f','--defgrad',     dest='defgrad', metavar='string',
+                  help='column heading for coordinates [%defgrad]')
 parser.set_defaults(noVolume = False)
 parser.set_defaults(noShape = False)
 parser.set_defaults(coords  = 'ipinitialcoord')
