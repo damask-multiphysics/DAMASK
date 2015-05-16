@@ -261,7 +261,7 @@ for file in files:
     y = (np.arange(info['grid'][1])+0.5)*info['size'][1]/info['grid'][1]
     z = (np.arange(info['grid'][2])+0.5)*info['size'][2]/info['grid'][2]
     
-    if options.laguerre == False :
+    if not options.laguerre:
       coords = (coords*info['size']).T
       undeformed = np.vstack(map(np.ravel, meshgrid2(x, y, z)))
   
