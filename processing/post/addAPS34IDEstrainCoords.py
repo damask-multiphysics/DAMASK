@@ -24,7 +24,7 @@ from collections import defaultdict
 from optparse import OptionParser
 import damask
 
-scriptID   = string.replace('$Id: addOIMTransCoord.py 3828M 2015-05-06 07:28:21Z (local) $','\n','\\n')
+scriptID   = string.replace('$Id: addAPS34IDEstrainCoord.py 3828M 2015-05-16 07:28:21Z (local) $','\n','\\n')
 scriptName = os.path.splitext(scriptID.split()[1])[0]
 
 
@@ -91,15 +91,19 @@ for name in filenames:
   table.head_write()
   
 # ------------------------------------------ process data ------------------------------------------
-  outputAlive = True
+  theta=-0.75*np.pi
+  RotMat2TSL=np.array([[1., 0., 0.],
+                       [0.,  np.cos(theta), np.sin(theta)],
+                       [0., -np.sin(theta), np.cos(theta)]])                                        # Orientation Matrix to account for -135 degree rotation for TSL Convention[Adapted from Chen Zhang's code]
   vec         = np.zeros(4)
+  
+  outputAlive = True
   while outputAlive and table.data_read():                                                          # read next data line of ASCII table
     for i,label in enumerate(active):
       vec[i] = table.data[column[label]]
-    table.data_append(np.array([vec[0],
-                                math.sqrt(0.5)*(-vec[2]-vec[1])-vec[3],
-                                math.sqrt(0.5)*( vec[2]-vec[1])-vec[3]])
-                     )                                                                              # change X,Y,Z (equivalent to x,y,z crystal orientation basis) to strain coordinate system (x radially outward of beam, y down on sample surface, z normal up from sample surface)
+
+    table.data_append(np.dot(RotMat2TSL,np.array([-vec[0], -vec[1],-vec[2]+vec[3]])))
+
     outputAlive = table.data_write()                                                                # output processed line
 
 # ------------------------------------------ output result -----------------------------------------
