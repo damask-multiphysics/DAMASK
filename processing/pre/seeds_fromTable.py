@@ -110,7 +110,7 @@ for file in files:
 
 #--- finding bounding box ------------------------------------------------------------------------------------
   boundingBox = np.array((np.amin(table.data[:,0:3],axis = 0),np.amax(table.data[:,0:3],axis = 0)))
-  if len(options.box) == 6:
+  if options.box:
     boundingBox[0,:] = np.minimum(options.box[0:3],boundingBox[0,:])
     boundingBox[1,:] = np.maximum(options.box[3:6],boundingBox[1,:])
 
