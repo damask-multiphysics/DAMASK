@@ -189,9 +189,9 @@ def parse_geomFile(content,homog):
   
   for line in content[:skip]:
     data = line.split()
-    if data[0].lower() == 'grid' or data[0].lower() == 'resolution':
+    if data[0].lower() == 'grid':
       grid = map(int,data[2:8:2])
-    if data[0].lower() == 'size' or data[0].lower() == 'dimension':
+    if data[0].lower() == 'size':
       size = map(float,data[2:8:2])
     if data[0].lower() == 'homogenization':
       homog = int(data[1])
@@ -200,31 +200,6 @@ def parse_geomFile(content,homog):
   for line in content[skip:]:
     for word in line.split():
       microstructures.append(int(word))
-
-  return (grid,size,homog,microstructures)
-
-#-------------------------------------------------------------------------------------------------
-def parse_spectralFile(content,homog):
-#-------------------------------------------------------------------------------------------------
-
-  coords = [{},{},{}]
-  maxBox = [-1.0e20,-1.0e20,-1.0e20]
-  minBox = [ 1.0e20, 1.0e20, 1.0e20]
-  grid = [0.0,0.0,0.0]
-  size = [0,0,0]
-  microstructures = []
-  
-  for line in content:
-    data = line.split()[3:7]
-    microstructures.append(int(data[3]))
-    for i in range(3):
-      maxBox[i] = max(maxBox[i],float(data[i]))
-      minBox[i] = min(minBox[i],float(data[i]))
-      coords[i][data[i]] = True
-      
-  for i in range(3):
-    grid[i] = len(coords[i])
-    size[i] = (maxBox[i]-minBox[i])*grid[i]/(grid[i]-1.0)
 
   return (grid,size,homog,microstructures)
 
@@ -237,16 +212,11 @@ Generate MSC.Marc FE hexahedral mesh from spectral description file.
 
 """, version = scriptID)
 
-parser.add_option("-p", "--port", type="int",dest="port",metavar='int',
-                  help="Mentat connection port")
-parser.add_option("-g", "--geom", action="store_const", const="geom",dest="filetype",
-                  help="file has 'geom' format")
-parser.add_option("-s", "--spectral", action="store_const", const="spectral",dest="filetype",
-                  help="file has 'spectral' format (VPSC code by R.A. Lebensohn)")
-parser.add_option("--homogenization", type="int",dest="homogenization",metavar='int',
-                  help="homogenization index from material.config (only required for 'spectral' file type)")
-
-parser.set_defaults(filetype = 'geom')
+parser.add_option('-p', '--port', type='int',dest='port',metavar='int',
+                  help='Mentat connection port [%default]')
+parser.add_option('--homogenization', dest='homogenization', type='int', metavar = 'int',
+                  help='homogenization index to be used [%default]')
+parser.set_defaults(port     = None)
 parser.set_defaults(homogenization = 1)
 
 (options, filenames) = parser.parse_args()
@@ -284,13 +254,10 @@ for file in files:
 
   content = file['input'].readlines()
   
-  (grid,size,homog,microstructures) = {\
-    'geom':     parse_geomFile,
-    'spectral': parse_spectralFile,
-    }[options.filetype](content,options.homogenization)
+  (grid,size,homog,microstructures) = parse_geomFile(content, options.homogenization)
   
-  print('%i microstructures in %s with grid %s and homogenization %i\n'%(len(list(set(microstructures))),str(size),str(grid),homog))
-  
+  file['croak'].write('%i microstructures in %s with grid %s and homogenization %i\n'
+                                     %(len(list(set(microstructures))),str(size),str(grid),homog))
   
   cmds = [\
     init(),
