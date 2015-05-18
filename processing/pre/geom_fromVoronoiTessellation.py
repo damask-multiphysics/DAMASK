@@ -306,4 +306,5 @@ for file in files:
   if file['name'] != 'STDIN':
     table.input_close()  
     table.output_close()  
-    os.rename(file['name']+'_tmp',os.path.splitext(file['name'])[0] + '_material.config' if options.config else '.geom')
+    os.rename(file['name']+'_tmp',
+              os.path.splitext(file['name'])[0] +'%s'%('_material.config' if options.config else '.geom'))
