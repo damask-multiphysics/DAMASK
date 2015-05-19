@@ -2,7 +2,7 @@
 
 # $Id$
 
-import sys
+import os,sys
 import numpy as np
 
 class ASCIItable():
@@ -44,12 +44,13 @@ class ASCIItable():
       return 0.0
 
 # ------------------------------------------------------------------
-  def close(self):
-    return self.input_close() and self.output_close()
+  def close(self,dismiss = False):
+    self.input_close()
+    self.output_close(dismiss)
 
 # ------------------------------------------------------------------
   def input_close(self):
-    return self.__IO__['in'].close()
+    self.__IO__['in'].close()
 
 # ------------------------------------------------------------------
   def output_write(self,
@@ -82,8 +83,9 @@ class ASCIItable():
     self.__IO__['output'] = []
 
 # ------------------------------------------------------------------
-  def output_close(self):
-    return self.__IO__['out'].close()
+  def output_close(self, dismiss = False):
+    self.__IO__['out'].close()
+    if dismiss: os.remove(self.__IO__['out'].name)
 
 # ------------------------------------------------------------------
   def head_read(self):
@@ -176,7 +178,7 @@ class ASCIItable():
           try:
             idx.append(self.labels.index(label))
           except ValueError:
-            idx.append(-1)
+            if label != None: idx.append(-1)
     else:
       try:
         idx = labels+0
@@ -184,7 +186,7 @@ class ASCIItable():
         try:
           idx = self.labels.index(labels)
         except(ValueError):
-          idx = -1
+          idx = None if labels == None else -1
 
     return idx
 
