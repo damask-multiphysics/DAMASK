@@ -333,7 +333,7 @@ DAMASK_spectral.exe: INTERFACENAME   := DAMASK_spectral_interface.f90
 
 
 SPECTRAL_FILES = prec.o DAMASK_interface.o IO.o libs.o numerics.o debug.o math.o \
-                 FEsolving.o mesh.o material.o lattice.o \
+                 FEsolving.o mesh.o material.o lattice.o constitutive.o \
                  $(DAMAGE_FILES) $(THERMAL_FILES) $(VACANCY_FILES) $(PLASTIC_FILES) \
                  crystallite.o $(HOMOGENIZATION_FILES) CPFEM.o \
                  DAMASK_spectral_utilities.o \
