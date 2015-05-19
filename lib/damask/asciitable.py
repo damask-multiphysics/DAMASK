@@ -44,6 +44,10 @@ class ASCIItable():
       return 0.0
 
 # ------------------------------------------------------------------
+  def close(self):
+    return self.input_close() and self.output_close()
+
+# ------------------------------------------------------------------
   def input_close(self):
     return self.__IO__['in'].close()
 
@@ -93,7 +97,7 @@ class ASCIItable():
     except:
       pass
     firstline = self.__IO__['in'].readline()
-    m = re.search('(\d+)\s*head', firstline.lower())
+    m = re.search('(\d+)\s+head', firstline.lower())
     if self.__IO__['labels']:                                                                       # table features labels
       if m:                                                                                         # found header info
         self.info      = [self.__IO__['in'].readline().strip() for i in xrange(1,int(m.group(1)))]
