@@ -99,17 +99,16 @@ for name in filenames:
 
 # --------------- figure out column to process -----------------------------------------------------
 
-  column = None
-  if options.label != None:
-    if options.label in table.labels:
-      column = table.labels.index(options.label)                                                    # remember columns of requested data
-    else:
-      file['croak'].write('column %s not found...\n'%options.label)
-      continue
+  column = table.labels_index([options.label])
+
+  if np.any(np.array(column) == -1):
+    file['croak'].write('column %s not found...\n'%options.label)
+    table.close(dismiss = True)                                                                     # close ASCIItable and remove empty file
+    continue
 
 # ------------------------------------------ process data ------------------------------------------
 
-  table.data_readArray([column] if column != None else [])
+  table.data_readArray(column)
 
   # convert data to values between 0 and 1 and arrange according to given options
   if options.dimension != []: table.data = table.data.reshape(options.dimension[1],options.dimension[0])
