@@ -316,7 +316,7 @@ VACANCY_FILES = \
 
 PLASTIC_FILES = \
    plastic_dislotwin.o plastic_disloUCLA.o plastic_disloKMC.o plastic_j2.o plastic_phenopowerlaw.o \
-   plastic_titanmod.o plastic_nonlocal.o plastic_none.o constitutive.o
+   plastic_titanmod.o plastic_nonlocal.o plastic_none.o
    
 
 HOMOGENIZATION_FILES = \
