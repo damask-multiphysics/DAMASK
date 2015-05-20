@@ -21,16 +21,15 @@ def outMentat(cmd,locals):
   return
 
 #-------------------------------------------------------------------------------------------------
-def outStdout(cmd,locals):
+def outFile(cmd,locals,dest):
 #-------------------------------------------------------------------------------------------------
   if cmd[0:3] == '(!)':
     exec(cmd[3:])
   elif cmd[0:3] == '(?)':
     cmd = eval(cmd[3:])
-    sys.stdout.write(cmd+'\n')
+    dest.write(cmd+'\n')
   else:
-    print(cmd)
-    sys.stdout.write(cmd+'\n')
+    dest.write(cmd+'\n')
   return
 
 #-------------------------------------------------------------------------------------------------
@@ -40,10 +39,10 @@ def output(cmds,locals,dest):
     if isinstance(cmd,list):
       output(cmd,locals,dest)
     else:
-      {\
-      'Mentat': outMentat,\
-      'Stdout': outStdout,\
-      }[dest](str(cmd),locals)
+      if dest == 'Mentat':
+        outMentat(str(cmd),locals)
+      else:
+        outFile(str(cmd),locals,dest)
   return
 
 
@@ -266,6 +265,7 @@ for file in files:
     geometry(),
     initial_conditions(homog,microstructures),
     '*identify_sets',
+    '*show_model',
     '*redraw',
   ]
   
@@ -275,4 +275,7 @@ for file in files:
     output(cmds,outputLocals,'Mentat')
     py_disconnect()
   else:
-    output(cmds,outputLocals,'Stdout')
+    output(cmds,outputLocals,file['output'])
+    if file['name'] != 'STDIN':
+      file['output'].close()
+      os.rename(file['name']+'_tmp',os.path.splitext(file['name'])[0] +'.proc')
