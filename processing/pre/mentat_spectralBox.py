@@ -50,7 +50,9 @@ def output(cmds,locals,dest):
 #-------------------------------------------------------------------------------------------------
 def init():
 #-------------------------------------------------------------------------------------------------
-    return ["*new_model yes",
+    return [
+      "#"+' '.join([scriptID] + sys.argv[1:]),
+      "*new_model yes",
       "*reset",
       "*select_clear",
       "*set_element_class hex8",
@@ -254,9 +256,12 @@ for file in files:
   content = file['input'].readlines()
   
   (grid,size,homog,microstructures) = parse_geomFile(content, options.homogenization)
-  
-  file['croak'].write('%i microstructures in %s with grid %s and homogenization %i\n'
-                                     %(len(list(set(microstructures))),str(size),str(grid),homog))
+
+#--- report ---------------------------------------------------------------------------------------
+  file['croak'].write('grid     a b c:  %s\n'%(' x '.join(map(str,grid))) +
+                      'size     x y z:  %s\n'%(' x '.join(map(str,size))) +
+                      'homogenization:  %i\n'%homog +
+                      'microstructures: %i\n\n'%(len(list(set(microstructures)))))
   
   cmds = [\
     init(),
