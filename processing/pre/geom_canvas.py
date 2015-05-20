@@ -109,7 +109,7 @@ for file in files:
     continue
 
 #--- read data ------------------------------------------------------------------------------------
-  microstructure = np.zeros(info['grid'].prod(),'i')                                            # initialize as flat array
+  microstructure = np.zeros(info['grid'].prod(),'i')                                                # initialize as flat array
   i = 0
   while table.data_read():
     items = table.data
@@ -124,7 +124,8 @@ for file in files:
     i += s
 
 #--- do work ------------------------------------------------------------------------------------
-  newInfo['grid'] = np.array(int(o*float(n.translate(None,'xX'))) if [n[-1].lower() == 'x' else int(n.translate(None,'xX'))}[n[-1].lower() == 'x'] for o,n in zip(info['grid'],options.grid)],'i')
+  newInfo['grid'] = np.array([{True:  int(o*float(n.translate(None,'xX'))), 
+                               False: int(n.translate(None,'xX'))}[n[-1].lower() == 'x'] for o,n in zip(info['grid'],options.grid)],'i')
   newInfo['grid'] = np.where(newInfo['grid'] <= 0  , info['grid'],newInfo['grid'])
 
   microstructure = microstructure.reshape(info['grid'],order='F')
