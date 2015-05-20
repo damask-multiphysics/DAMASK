@@ -20,9 +20,9 @@ Generate PNG image from data in given column vector containing RGB tuples.
 """, version = scriptID)
 
 parser.add_option('-l','--label', dest='label', type='string',
-                                  help='column containing RGB triplet)')
+                                  help='column containing RGB triplet')
 parser.add_option('-d','--dimension', dest='dimension', type='int', nargs=2,
-                                  help='data dimension (width height) [native]')
+                                  help='data dimension (width height)')
 parser.add_option('--fliplr',     dest='flipLR', action='store_true',
                                   help='flip around vertical axis')
 parser.add_option('--flipud',     dest='flipUD', action='store_true',
@@ -77,21 +77,16 @@ for name in filenames:
                             labels = options.label != None)                                         # no labels when taking 2D dataset
   table.head_read()                                                                                 # read ASCII header info
 
-# --------------- figure out column to process -----------------------------------------------------
-
-  columns = table.labels_index(["%i_%s"%(i,options.label) for i in [1,2,3]])
-
-  if np.any(np.array(columns) == -1):
-    file['croak'].write('column %s not found...\n'%options.label)
-    table.close(dismiss = True)                                                                     # close ASCII table file handles and delete output file
-    
-    continue
-
 # ------------------------------------------ process data ------------------------------------------
 
-  table.data_readArray(columns)
+  missing_labels = table.data_readArray(["%i_%s"%(i,options.label) for i in [1,2,3]])
 
-  # convert data to values between 0 and 1 and arrange according to given options
+  if len(missing_labels) > 0:
+    file['croak'].write('column%s %s not found...\n'%('s' if len(missing_labels) > 1 else '',', '.join(missing_labels)))
+    table.close(dismiss = True)                                                                     # close ASCII table file handles and delete output file
+    continue
+
+  # convert data to shape and arrange according to given options
   if options.dimension != []: table.data = table.data.reshape(options.dimension[1],options.dimension[0],3)
   if options.flipLR:          table.data = np.fliplr(table.data)
   if options.flipUD:          table.data = np.flipud(table.data)
@@ -101,7 +96,7 @@ for name in filenames:
                           repeat(options.pixelsizey,axis=0)
 
   table.data *= 1. if np.any(table.data > 1.0) else 255.0                                          # ensure 8 bit data range
-    
+
   (height,width,bands) = table.data.shape
 
   im = Image.fromarray(table.data.astype('uint8'), 'RGB').\
