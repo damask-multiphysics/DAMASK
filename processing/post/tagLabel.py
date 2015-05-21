@@ -50,21 +50,20 @@ if options.vector  != None:    datainfo['vector']['label']  += options.vector
 if options.tensor  != None:    datainfo['tensor']['label']  += options.tensor
 if options.special != None:    datainfo['special']['label'] += options.special
 
-
-# ------------------------------------------ setup file handles ---------------------------------------  
-
+# ------------------------------------------ setup file handles ------------------------------------
 files = []
 if filenames == []:
-  files.append({'name':'STDIN', 'input':sys.stdin, 'output':sys.stdout})
+  files.append({'name':'STDIN', 'input':sys.stdin, 'output':sys.stdout, 'croak':sys.stderr})
 else:
   for name in filenames:
     if os.path.exists(name):
-      files.append({'name':name, 'input':open(name), 'output':open(name+'_tmp','w')})
+      files.append({'name':name, 'input':open(name), 'output':open(name+'_tmp','w'), 'croak':sys.stderr})
 
 # ------------------------------------------ loop over input files ---------------------------------------  
 
 for file in files:
-  if file['name'] != 'STDIN': print file['name']
+  if file['name'] != 'STDIN': file['croak'].write('\033[1m'+scriptName+'\033[0m: '+file['name']+'\n')
+  else: file['croak'].write('\033[1m'+scriptName+'\033[0m\n')
 
   table = damask.ASCIItable(file['input'],file['output'],False)             # make unbuffered ASCII_table
   table.head_read()                                                         # read ASCII header info
@@ -79,9 +78,9 @@ for file in files:
   else:                                                                       # tag individual candidates
     for datatype,info in datainfo.items():
       for label in info['label']:
-        key = '1_%s' if [info['len']>1]%label else '%'
+        key = '1_%s'%label if info['len']>1 else label
         if key not in table.labels:
-          sys.stderr.write('column %s not found...\n'%key)
+          file['croak'].write('column %s not found...\n'%key)
         else:
           offset = table.labels.index(key)
           for i in xrange(info['len']):
