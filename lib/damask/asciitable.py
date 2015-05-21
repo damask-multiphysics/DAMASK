@@ -167,28 +167,30 @@ class ASCIItable():
   def labels_index(self,
                    labels):
     '''
-       tell index of column label(s)
+       tell index of column label(s).
+       return numpy array if asked for list of labels.
+       transparently deals with label positions implicitly given as numbers or their headings given as strings.
     '''
-    if isinstance(labels,list):
+    if isinstance(labels,list):                                         # check whether list of labels is requested
       idx = []
       for label in labels:
         try:
-          idx.append(label+0)
-        except TypeError:
+          idx.append(int(label))                                        # column given as integer number?
+        except ValueError:
           try:
-            idx.append(self.labels.index(label))
+            idx.append(self.labels.index(label))                        # locate string in label list
           except ValueError:
-            if label != None: idx.append(-1)
+            if label != None: idx.append(-1)                            # not found...
     else:
       try:
-        idx = labels+0
-      except TypeError:
+        idx = int(labels)
+      except ValueError:
         try:
           idx = self.labels.index(labels)
         except(ValueError):
           idx = None if labels == None else -1
 
-    return idx
+    return np.array(idx) if isinstance(idx,list) else idx
 
 # ------------------------------------------------------------------
   def info_append(self,
@@ -264,20 +266,24 @@ class ASCIItable():
        read whole data of all (given) labels as numpy array
     '''
 
-    if labels != []:                                                                                # read only some labels
-      indices = self.labels_index(labels)                                                           # get indices to read
-      tempDict = dict(zip(indices, labels))                                                         # column <> label connections
-      self.labels = [tempDict[label] for label in sorted(tempDict)]                                 # sort labels to reflect order from np.readtxt
-      self.__IO__['validReadSize'] = len(labels)
+    if labels == []:
+      use = np.arange(self.__IO__['validReadSize'])                                             # use all columns (and keep labels intact)
+      labels_missing = []
     else:
-      indices = range(self.__IO__['validReadSize'])                                                 # use all columns
+      indices = self.labels_index(labels)                                                           # check requested labels
+      present  = np.where(indices >= 0)[0]                                                          # positions in request list of labels that are present ...
+      missing  = np.where(indices <  0)[0]                                                          # ... and missing in table
+      labels_missing    =      np.array(     labels)        [missing]                               # corresponding labels ...
+      self.labels       = list(np.array(self.labels)[indices[present]])                             # ... for missing and present columns
+      self.__IO__['validReadSize'] = len(present)                                                   # update data width
+      use = indices[present]
     
-    try:                   
+    try:
       self.data_rewind()                                                                            # try to wind back to start of data
     except:
       pass                                                                                          # assume/hope we are at data start already...
-    self.data = np.loadtxt(self.__IO__['in'], usecols=indices,ndmin=2)
-    return self.data.shape
+    self.data = np.loadtxt(self.__IO__['in'], usecols=use,ndmin=2)
+    return labels_missing
     
 # ------------------------------------------------------------------
   def data_write(self,delimiter = '\t'):
