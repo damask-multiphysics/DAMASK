@@ -13,7 +13,7 @@ scriptName = os.path.splitext(scriptID.split()[1])[0]
 # --------------------------------------------------------------------
 
 parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
-Add grain index based on similitude of crystal lattice orientation.
+Produce a VTK point cloud dataset based on coordinates given in an ASCIItable.
 
 """, version = scriptID)
 
