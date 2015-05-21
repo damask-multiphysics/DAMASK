@@ -619,7 +619,7 @@ def ParsePostfile(p,filename, outputFormat):
         stat['LabelOfElementalScalar'][startIndex + offset] = label
         offset += 1
     stat['IndexOfLabel']['GrainCount'] = startIndex + offset
-    stat['LabelOfElementalScalar'][startIndex + offset] = 'GrainCount'                            # add GrainCount
+    stat['LabelOfElementalScalar'][startIndex + offset] = 'GrainCount'                             # add GrainCount
     offset += 1
 
     if '(ngrains)' in outputFormat['Homogenization']['specials']:
@@ -631,20 +631,18 @@ def ParsePostfile(p,filename, outputFormat):
 
         for (name,N) in outputFormat['Crystallite']['outputs']:                                     # add crystallite outputs
           for i in range(N):
-            label = {False:   '%i_%s'%(grain+1,    name),
-                      True:'%i_%i_%s'%(grain+1,i+1,name)}[N > 1]
+            label = '%i_'%(grain+1) + '%i_'%(i+1) if N>1 else '' + name
             stat['IndexOfLabel'][label] = startIndex + offset
             stat['LabelOfElementalScalar'][startIndex + offset] = label
             offset += 1
 
-        stat['IndexOfLabel']['%i_ConstitutiveCount'%(grain+1)] = startIndex + offset      # report constitutive count
-        stat['LabelOfElementalScalar'][startIndex + offset] = '%i_ConstitutiveCount'%(grain+1)    # add GrainCount
+        stat['IndexOfLabel']['%i_ConstitutiveCount'%(grain+1)] = startIndex + offset               # report constitutive count
+        stat['LabelOfElementalScalar'][startIndex + offset] = '%i_ConstitutiveCount'%(grain+1)     # add GrainCount
         offset += 1
 
-        for (name,N) in outputFormat['Constitutive']['outputs']:                               # add constitutive outputs
+        for (name,N) in outputFormat['Constitutive']['outputs']:                                   # add constitutive outputs
           for i in range(N):
-            label = {False:   '%i_%s'%(grain+1,    name),
-                      True:'%i_%i_%s'%(grain+1,i+1,name)}[N > 1]
+            label = '%i_'%(grain+1) + ('%i_'%(i+1) if N>1 else '') + name
             stat['IndexOfLabel'][label] = startIndex + offset
             try:
               stat['LabelOfElementalScalar'][startIndex + offset] = label
