@@ -97,18 +97,13 @@ for name in filenames:
                             labels = options.label != None)                                         # no labels when taking 2D dataset
   table.head_read()                                                                                 # read ASCII header info
 
-# --------------- figure out column to process -----------------------------------------------------
+# ------------------------------------------ process data ------------------------------------------
 
-  column = table.labels_index([options.label])
-
-  if np.any(np.array(column) == -1):
+  missing_labels = table.data_readArray(options.label)
+  if len(missing_labels) > 0:
     file['croak'].write('column %s not found...\n'%options.label)
     table.close(dismiss = True)                                                                     # close ASCIItable and remove empty file
     continue
-
-# ------------------------------------------ process data ------------------------------------------
-
-  table.data_readArray(column)
 
   # convert data to values between 0 and 1 and arrange according to given options
   if options.dimension != []: table.data = table.data.reshape(options.dimension[1],options.dimension[0])
