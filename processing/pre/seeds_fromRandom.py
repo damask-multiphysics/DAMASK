@@ -31,21 +31,21 @@ parser.add_option('--mean', dest='mean', type='float', metavar='float', \
                   help='mean of Gaussian Distribution for weights [%default]')
 parser.add_option('--sigma', dest='sigma', type='float', metavar='float', \
                   help='standard deviation of Gaussian Distribution for weights [%default]')
-      
-
-
+parser.add_option('-m', '--microstructure', dest='microstructure', type='int',
+                  help='first microstructure index [%default]', metavar='int')
 parser.set_defaults(randomSeed = None)
 parser.set_defaults(grid = (16,16,16))
 parser.set_defaults(N = 20)
 parser.set_defaults(weights=False)
 parser.set_defaults(mean = 0.0)
 parser.set_defaults(sigma = 1.0)
+parser.set_defaults(microstructure = 1)
 
 
 (options,filename) = parser.parse_args()
 options.grid = np.array(options.grid)
 
-labels = "1_coords\t2_coords\t3_coords\tphi1\tPhi\tphi2"
+labels = "1_coords\t2_coords\t3_coords\tphi1\tPhi\tphi2\tmicrostructure"
 
 # ------------------------------------------ setup file handle -------------------------------------
 if filename == []:
@@ -91,8 +91,9 @@ seeds[1,:] = (np.mod(seedpoints//                 options.grid[0] ,options.grid[
              +np.random.random())/options.grid[1]
 seeds[2,:] = (np.mod(seedpoints//(options.grid[1]*options.grid[0]),options.grid[2])\
              +np.random.random())/options.grid[2]
+microstructure=np.arange(options.microstructure,options.microstructure+options.N).reshape(1,options.N)
 
-table = np.transpose(np.concatenate((seeds,grainEuler),axis = 0))
+table = np.transpose(np.concatenate((seeds,grainEuler,microstructure),axis = 0))
 
 if options.weights :
    weight = np.random.normal(loc=options.mean, scale=options.sigma, size=options.N)
