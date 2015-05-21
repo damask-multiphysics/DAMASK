@@ -38,6 +38,7 @@ parser.add_option('-r','--rownormalize',  dest='normRow', action='store_true',
                   help='normalize probability density in each row [%default]')
 parser.add_option('-c','--colnormalize',  dest='normCol', action='store_true',
                   help='normalize probability density in each column [%default]')
+
 parser.set_defaults(bins = (10,10))
 parser.set_defaults(type = ('linear','linear','linear'))
 parser.set_defaults(xrange = (0.0,0.0))
@@ -49,10 +50,10 @@ parser.set_defaults(normCol = False)
 
 (options,filenames) = parser.parse_args()
 
-minmax =  np.array([np.array(options.xrange),
-                    np.array(options.yrange),
-                    np.array(options.zrange)])
-grid =   np.zeros(options.bins,'f')
+minmax = np.array([np.array(options.xrange),
+                   np.array(options.yrange),
+                   np.array(options.zrange)])
+grid   = np.zeros(options.bins,'f')
 result = np.zeros((options.bins[0],options.bins[1],3),'f')
 
 datainfo = {                                                                                        # list of requested labels per datatype
@@ -63,10 +64,8 @@ datainfo = {                                                                    
 if options.data   != None: datainfo['scalar']['label'] +=  options.data
 if options.weight != None: datainfo['scalar']['label'] += [options.weight]                          # prevent character splitting of single string value
 
-if len(datainfo['scalar']['label']) < 2:
-  parser.error('missing column labels')
+# --- loop over input files ------------------------------------------------------------------------
 
-# --- loop over input files -------------------------------------------------------------------------
 if filenames == []:
   filenames = ['STDIN']
 
@@ -82,34 +81,28 @@ for name in filenames:
   table = damask.ASCIItable(file['input'],file['output'],buffered = False)                          # make unbuffered ASCII_table
   table.head_read()                                                                                 # read ASCII header info
 
-# --------------- figure out columns to process and read ------------------------------------------
-  active = []
-  for label in datainfo['scalar']['label']:
-    if label in table.labels:
-      active.append(label)
-    else:
-      file['croak'].write('column %s not found...\n'%label)
-       
-  table.data_readArray([label for label in active])
+# --- process data ---------------------------------------------------------------------------------
 
-# ------------------------------------------ process data ------------------------------------------
-  for j in (0,1):                                                                                   # check data minmax for x and y
-    i = table.labels.index(options.data[j])
-    if (minmax[i] == 0.0).all(): minmax[i] = [table.data[:,i].min(),table.data[:,i].max()]
-    if options.type[i].lower() == 'log':                                                            # if log scale
-      table.data[:,i] = np.log(table.data[:,i])                                                     # change x,y coordinates to log
-      minmax[i] = np.log(minmax[i])                                                                 # change minmax to log, too
+  missing_labels = table.data_readArray(datainfo['scalar']['label'])
+ 
+  if len(missing_labels) > 0:
+    file['croak'].write('column%s %s not found...\n'%('s' if len(missing_labels) > 1 else '',', '.join(missing_labels)))
+    table.close(dismiss = True)
+    continue
+
+  for c in (0,1):                                                                                   # check data minmax for x and y (i = 0 and 1)
+    if (minmax[c] == 0.0).all(): minmax[c] = [table.data[:,c].min(),table.data[:,c].max()]
+    if options.type[c].lower() == 'log':                                                            # if log scale
+      table.data[:,c] = np.log(table.data[:,c])                                                     # change x,y coordinates to log
+      minmax[c] = np.log(minmax[c])                                                                 # change minmax to log, too
 
   delta = minmax[:,1]-minmax[:,0]
   
-  xCol = table.labels.index(options.data[0])
-  yCol = table.labels.index(options.data[1])
-  if options.weight != None: wCol = table.labels.index(options.weight)
   for i in xrange(len(table.data)):
-    x = int(options.bins[0]*(table.data[i,xCol]-minmax[0,0])/delta[0])
-    y = int(options.bins[1]*(table.data[i,yCol]-minmax[1,0])/delta[1])
+    x = int(options.bins[0]*(table.data[i,0]-minmax[0,0])/delta[0])
+    y = int(options.bins[1]*(table.data[i,1]-minmax[1,0])/delta[1])
     if x >= 0 and x < options.bins[0] and y >= 0 and y < options.bins[1]:
-      grid[x,y] += 1. if options.weight == None else table.data[i,wCol]                             # count (weighted) occurrences
+      grid[x,y] += 1. if options.weight == None else table.data[i,2]                                # count (weighted) occurrences
 
   if options.normCol:
     for x in xrange(options.bins[0]):
@@ -141,22 +134,24 @@ for name in filenames:
                        minmax[1,0]+delta[1]/options.bins[1]*(y+0.5),
                        min(1.0,max(0.0,(grid[x,y]-minmax[2,0])/delta[2]))]
 
-  for i in xrange(2):
-    if options.type[i].lower() == 'log': result[:,:,i] = np.exp(result[:,:,i])
+  for c in (0,1):
+    if options.type[c].lower() == 'log': result[:,:,c] = np.exp(result[:,:,c])
 
   if options.invert: result[:,:,2] = 1.0 - result[:,:,2]
 
-# ------------------------------------------ assemble header ---------------------------------------
+# --- assemble header -------------------------------------------------------------------------------
+
   table.info_clear()
   table.info_append(scriptID + '\t' + ' '.join(sys.argv[1:]))
   table.labels = ['bin_%s'%options.data[0],'bin_%s'%options.data[1],'z']
   table.head_write()
 
-# ------------------------------------------ output result -----------------------------------------       
-  prefix = 'binned%s-%s_'%(options.data[0],options.data[1])+ \
-                          ('weighted%s_'%(options.weight) if options.weight != None else '')
+# --- output result ---------------------------------------------------------------------------------
+
+  prefix = 'binned-%s-%s_'%(options.data[0],options.data[1])+ \
+                          ('weighted-%s_'%(options.weight) if options.weight != None else '')
   np.savetxt(file['output'],result.reshape(options.bins[0]*options.bins[1],3))
-  file['output'].close()                                                                            # close output ASCII table
+  table.output_close()                                                                               # close output ASCII table
   if file['name'] != 'STDIN':
     os.rename(file['name']+'_tmp',\
               os.path.join(os.path.dirname(file['name']),prefix+os.path.basename(file['name'])))
