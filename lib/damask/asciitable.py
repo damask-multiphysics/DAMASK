@@ -174,13 +174,14 @@ class ASCIItable():
     if isinstance(labels,list):                                         # check whether list of labels is requested
       idx = []
       for label in labels:
-        try:
-          idx.append(int(label))                                        # column given as integer number?
-        except ValueError:
+        if label != None:
           try:
-            idx.append(self.labels.index(label))                        # locate string in label list
+            idx.append(int(label))                                        # column given as integer number?
           except ValueError:
-            if label != None: idx.append(-1)                            # not found...
+            try:
+              idx.append(self.labels.index(label))                        # locate string in label list
+            except ValueError:
+             idx.append(-1)                                               # not found...
     else:
       try:
         idx = int(labels)
@@ -266,7 +267,9 @@ class ASCIItable():
        read whole data of all (given) labels as numpy array
     '''
 
-    if labels == []:
+    if not isinstance(labels,list):
+      labels = [labels]
+    if labels == [None] or labels == []:
       use = np.arange(self.__IO__['validReadSize'])                                             # use all columns (and keep labels intact)
       labels_missing = []
     else:
