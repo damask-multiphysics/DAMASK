@@ -60,12 +60,9 @@ if gridSize == 0:
 if options.N > gridSize: 
   file['croak'].write('accommodating only %i seeds on grid.\n'%gridSize)
   options.N = gridSize
-if options.randomSeed == None:
-  options.randomSeed = int(os.urandom(4).encode('hex'), 16)
-
-
-np.random.seed(options.randomSeed)                                                      # init random generators
-random.seed(options.randomSeed)
+randomSeed = int(os.urandom(4).encode('hex'), 16)  if options.randomSeed == None else options.randomSeed
+np.random.seed(randomSeed)                                                             # init random generators
+random.seed(randomSeed)
 
 grainEuler = np.random.rand(3,options.N)                                                # create random Euler triplets
 grainEuler[0,:] *= 360.0                                                                # phi_1    is uniformly distributed
@@ -107,7 +104,7 @@ header = ["5\theader",
           scriptID + " " + " ".join(sys.argv[1:]),
           "grid\ta {}\tb {}\tc {}".format(options.grid[0],options.grid[1],options.grid[2]),
           "microstructures\t{}".format(options.N),
-          "randomSeed\t{}".format(options.randomSeed),
+          "randomSeed\t{}".format(randomSeed),
           "%s"%labels,
          ]
 

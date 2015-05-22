@@ -205,7 +205,6 @@ if (args.seedsFile):
                                                     args.grid[1],
                                                     args.grid[2])
         outstr += "microstructures {}\n".format(len(set(s_id)))
-        outstr += "randomSeed 0\n"
         outstr += "x\ty\tz\tmicrostructure"
         if (args.addRim):
             for i in range(len(s_id)):

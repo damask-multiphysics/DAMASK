@@ -35,16 +35,19 @@ datainfo = {                                                                    
            }
 
 datainfo['scalar']['label'] += options.label
-np.random.seed(options.randomSeed)
+
 # --- loop over input files -------------------------------------------------------------------------
 for name in filenames:
   if not os.path.exists(name): continue
   file = {'name':name, 'input':open(name), 'output':open(name+'_tmp','w'), 'croak':sys.stderr}
   file['croak'].write('\033[1m'+scriptName+'\033[0m: '+file['name']+'\n')
 
+  randomSeed = int(os.urandom(4).encode('hex'), 16)  if options.randomSeed == None else options.randomSeed         # radom seed per file for second phase
+  np.random.seed(randomSeed)
   table = damask.ASCIItable(file['input'],file['output'],buffered=False)                            # make unbuffered ASCII_table
   table.head_read()                                                                                 # read ASCII header info
   table.info_append(scriptID + '\t' + ' '.join(sys.argv[1:]))
+  table.info_append('random seed %i'%randomSeed)
 
 # --------------- figure out columns to process  ---------------------------------------------------
   active = []
@@ -63,10 +66,10 @@ for name in filenames:
 # ------------------------------------------ process data ------------------------------------------
   permutation = {}
   table.data_readArray(active)
-  for i,label in enumerate(active):
 
-    mySeed = np.random.randint(9999999)
-    np.random.seed(mySeed)
+
+
+  for i,label in enumerate(active):
     unique = list(set(table.data[:,i]))
     permutated = np.random.permutation(unique)
     permutation[label] = dict(zip(unique,permutated))
@@ -76,9 +79,7 @@ for name in filenames:
   outputAlive = True
   while outputAlive and table.data_read():                                                          # read next data line of ASCII table
     for label in active:                                                                            # loop over all requested stiffnesses
-      for c in xrange(column[label],
-                      column[label]+datainfo['scalar']['len']):
-        table.data[c] = permutation[label][float(table.data[c])]                                    # apply permutation
+      table.data[column[label]] = permutation[label][float(table.data[column[label]])]                                    # apply permutation
     
     outputAlive = table.data_write()                                                                # output processed line
 

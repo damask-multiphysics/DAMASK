@@ -194,7 +194,7 @@ Transform linear binned data into Euler angles.
 
 """, version = scriptID)
 
-parser.add_option('-n', '--number', dest='number', type='int', metavar = 'int',
+parser.add_option('-n', '--nsamples', dest='number', type='int', metavar = 'int',
                   help='number of orientations to be generated [%default]')
 parser.add_option('-a','--algorithm', dest='algorithm', type='string', metavar = 'string',
                   help='sampling algorithm. IA: direct inversion, STAT: Van Houtte, MC: Monte Carlo. [%default].') #make choice
@@ -204,7 +204,6 @@ parser.add_option('--crystallite', dest='crystallite', type='int', metavar = 'in
                   help='crystallite index to be used [%default]')
 parser.add_option('-r', '--rnd', dest='randomSeed', type='int', metavar='int', \
                   help='seed of random number generator [%default]')
-
 parser.set_defaults(randomSeed = None)
 parser.set_defaults(number      = 500)
 parser.set_defaults(algorithm   = 'IA')
@@ -215,9 +214,6 @@ parser.set_defaults(crystallite = 1)
 nSamples       = options.number
 methods        = [options.algorithm]
 
-if options.randomSeed == None:
-  options.randomSeed = int(os.urandom(4).encode('hex'), 16)
-random.seed(options.randomSeed)
 
 #--- setup file handles ---------------------------------------------------------------------------
 files = []
@@ -234,6 +230,8 @@ for file in files:
 
   table = damask.ASCIItable(file['input'],file['output'],buffered = False)
   table.head_read()
+  randomSeed = int(os.urandom(4).encode('hex'), 16)  if options.randomSeed == None else options.randomSeed         # radom seed per file for second phase
+  random.seed(randomSeed)
 
 # --------------- figure out columns in table ----------- -----------------------------------------
   column = {}
@@ -334,6 +332,8 @@ for file in files:
     strOpt = '(%i)'%ODF['nNonZero']
   
   formatwidth = 1
+  file['output'].write('#' + scriptID + ' ' + ' '.join(sys.argv[1:])+'\n')
+  file['output'].write('# random seed %i\n'%randomSeed)
   file['output'].write('#-------------------#')
   file['output'].write('\n<microstructure>\n')
   file['output'].write('#-------------------#\n')

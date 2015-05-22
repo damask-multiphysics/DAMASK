@@ -23,7 +23,7 @@ Transform the binned texture data from "TSL OIM Analysis" into linear ODF data,
 """, version = scriptID)
 
 parser.add_option('-s', '--symmetry', dest='symmetry', choices=sampleSym.keys(),
-                     help='Sample symmetry, the default is [%default]')
+                     help='Sample symmetry {%s} [Triclinic]'%(' '.join(sampleSym.keys())))
                                      
 parser.set_defaults(symmetry = 'Triclinic')
 

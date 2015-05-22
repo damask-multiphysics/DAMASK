@@ -105,6 +105,8 @@ parser.add_option('--crystallite', dest='crystallite', type='int', metavar = 'in
                   help='crystallite index to be used [%default]')
 parser.add_option('-c', '--configuration', dest='config', action='store_true',
                   help='output material configuration [%default]')
+parser.add_option('-r', '--rnd', dest='randomSeed', type='int', metavar='int',
+                  help='seed of random number generator for second phase distribution [%default]')
 parser.add_option('--secondphase', type='float', dest='secondphase', metavar= 'float',
                   help='volume fraction of randomly distribute second phase [%default]')
 parser.add_option('--laguerre', dest='laguerre', action='store_true',
@@ -118,8 +120,12 @@ parser.set_defaults(crystallite    = 1)
 parser.set_defaults(secondphase    = 0.0)
 parser.set_defaults(config = False)
 parser.set_defaults(laguerre = False)
+parser.set_defaults(randomSeed = None)
 
 (options,filenames) = parser.parse_args()
+
+if options.secondphase > 1.0 or options.secondphase < 0.0:
+ parser.error('volume fraction of second phase (%f) out of bounds...'%options.secondphase)
 
 #--- setup file handles ---------------------------------------------------------------------------  
 files = []
@@ -239,9 +245,12 @@ for file in files:
     phase=np.empty(info['microstructures'],'i')
     phase.fill(options.phase)
     phase[0:int(float(info['microstructures'])*options.secondphase)] = options.phase+1
+    randomSeed = int(os.urandom(4).encode('hex'), 16)  if options.randomSeed == None else options.randomSeed         # radom seed per file for second phase
+    np.random.seed(randomSeed)
     np.random.shuffle(phase)
     formatwidth = 1+int(math.log10(info['microstructures']))
-    file['output'].write('#' + scriptID + ' ' + ' '.join(sys.argv[1:]))
+    file['output'].write('#' + scriptID + ' ' + ' '.join(sys.argv[1:])+'\n')
+    if options.secondphase > 0.0: file['output'].write('# random seed for second phase %i\n'%randomSeed)
     file['output'].write('\n<microstructure>\n')
     for i,ID in enumerate(grainIDs):
       file['output'].write('\n[Grain%s]\n'%(str(ID).zfill(formatwidth)) + \
@@ -278,9 +287,10 @@ for file in files:
     newInfo['microstructures'] = info['microstructures']
     for i in grainIDs:
       if i not in indices: newInfo['microstructures'] -= 1
-    file['croak'].write({True:'all',False:'only'}[newInfo['microstructures']  == info['microstructures'] ] +
+    file['croak'].write('all' if [newInfo['microstructures']  == info['microstructures'] ] else 'only' +
                         ' %i'%newInfo['microstructures'] + 
-                        {True:'',False:' out of %i'%info['microstructures']}[newInfo['microstructures'] == info['microstructures']] +
+                        '' if [newInfo['microstructures'] == info['microstructures']] else \
+                        'out of %i'%info['microstructures'] +
                         ' grains mapped.\n')
 
 #--- write header ---------------------------------------------------------------------------------
