@@ -631,7 +631,7 @@ def ParsePostfile(p,filename, outputFormat):
 
         for (name,N) in outputFormat['Crystallite']['outputs']:                                     # add crystallite outputs
           for i in range(N):
-            label = '%i_'%(grain+1) + '%i_'%(i+1) if N>1 else '' + name
+            label = '%i_'%(grain+1) + ('%i_'%(i+1) if N>1 else '') + name
             stat['IndexOfLabel'][label] = startIndex + offset
             stat['LabelOfElementalScalar'][startIndex + offset] = label
             offset += 1
