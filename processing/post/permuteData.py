@@ -19,16 +19,14 @@ Permute all values in given column(s).
 """, version = scriptID)
 
 parser.add_option('-l','--label',   dest='label', action='extend', metavar='<string LIST>',
-                                    help='heading(s) of column to permute')
+                  help='heading(s) of column to permute')
 parser.add_option('-r', '--rnd',    dest='randomSeed', type='int', metavar='int',
-                                    help='seed of random number generator [%default]')
-
-parser.set_defaults(label = [])
+                  help='seed of random number generator [%default]')
 parser.set_defaults(randomSeed = None)
 
 (options,filenames) = parser.parse_args()
 
-if len(options.label)== 0:
+if options.label == None:
   parser.error('no data column specified...')
 
 datainfo = {                                                                                        # list of requested labels per datatype
@@ -36,9 +34,8 @@ datainfo = {                                                                    
                             'label':[]},
            }
 
-if options.label != None: datainfo['scalar']['label'] += options.label
+datainfo['scalar']['label'] += options.label
 np.random.seed(options.randomSeed)
-
 # --- loop over input files -------------------------------------------------------------------------
 for name in filenames:
   if not os.path.exists(name): continue
@@ -65,8 +62,9 @@ for name in filenames:
 
 # ------------------------------------------ process data ------------------------------------------
   permutation = {}
-  table.data_readArray([column[label] for label in active])
+  table.data_readArray(active)
   for i,label in enumerate(active):
+
     mySeed = np.random.randint(9999999)
     np.random.seed(mySeed)
     unique = list(set(table.data[:,i]))
@@ -74,6 +72,7 @@ for name in filenames:
     permutation[label] = dict(zip(unique,permutated))
 
   table.data_rewind()
+  table.head_read()                                                                                 # read ASCII header info again to get the completed data
   outputAlive = True
   while outputAlive and table.data_read():                                                          # read next data line of ASCII table
     for label in active:                                                                            # loop over all requested stiffnesses

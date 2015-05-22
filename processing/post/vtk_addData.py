@@ -81,6 +81,3 @@ for geomtype in ['nodebased','ipbased']:
       for idx,label in enumerate(table.labels):                                        # write data
         vtkfile.write('\nSCALARS '+label+' double 1\nLOOKUP_TABLE default\n')          # all scalar data
         vtkfile.write('\n'.join(map(str,myData[idx])))
-
-
-# ---------------------------       DONE     --------------------------------

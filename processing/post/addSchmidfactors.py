@@ -250,30 +250,28 @@ Add columns listing Schmid factors (and optional trace vector of selected system
 parser.add_option('-l','--lattice',   dest='lattice', type='choice', choices=('fcc','bcc','hex'), metavar='string',
                   help="type of lattice structure [%default] {fcc,bcc',hex}")
 parser.add_option('--direction',      dest='forcedirection', type='int', nargs=3, metavar='int int int',
-                  help='force direction in lab coordinates %default')
+                                      help='force direction in lab coordinates %default')
 parser.add_option('-n','--normal',    dest='stressnormal', type='int', nargs=3, metavar='int int int',
-                  help='stress plane normal in lab coordinates ')
+                                      help='stress plane normal in lab coordinates ')
 parser.add_option('--trace',          dest='traceplane', type='int', nargs=3, metavar='int int int',
-                  help='normal (in lab coordinates) of plane on which the plane trace of the Schmid factor(s) is reported')
+                                      help='normal (in lab coordinates) of plane on which the plane trace of the Schmid factor(s) is reported')
 parser.add_option('--covera',         dest='CoverA', type='float', metavar='float',
-                  help='C over A ratio for hexagonal systems')
+                                      help='C over A ratio for hexagonal systems')
 parser.add_option('-r','--rank',      dest='rank', type='int', nargs=3, metavar='int int int',
-                  help="report trace of r'th highest Schmid factor [%default]")
+                                      help="report trace of r'th highest Schmid factor [%default]")
 parser.add_option('-e', '--eulers',   dest='eulers', metavar='string',
-                  help='Euler angles label')
+                                      help='Euler angles label')
 parser.add_option('-d', '--degrees',  dest='degrees', action='store_true',
-                  help='Euler angles are given in degrees [%default]')
+                                      help='Euler angles are given in degrees [%default]')
 parser.set_defaults(lattice = 'fcc')
-parser.set_defaults(forcedirection = (0, 0, 1))
+parser.set_defaults(forcedirection = [0, 0, 1])
 parser.set_defaults(stressnormal = None)
 parser.set_defaults(traceplane = None)
 parser.set_defaults(rank = 0)
+parser.set_defaults(CoverA = 1.587)
 parser.set_defaults(eulers = 'eulerangles')
 
 (options,filenames) = parser.parse_args()
-
-if options.lattice=='hex' and options.CoverA == None:
-  parser.error('hex lattice needs c over a ration...')
 
 options.forcedirection = normalize(options.forcedirection)
 if options.stressnormal:
