@@ -428,50 +428,52 @@ class Quaternion:
         return cls([w,x,y,z])
 
 
+## Modified Method to calculate Quaternion from Orientation Matrix, Source: http://www.euclideanspace.com/maths/geometry/rotations/conversions/matrixToQuaternion/
+
     @classmethod
     def fromMatrix(cls, m):
-      if m[0,0] + m[1,1] + m[2,2] > 0.00000001:
-        t = m[0,0] + m[1,1] + m[2,2] + 1.0
-        s = 0.5/math.sqrt(t)
+      tr=m[0,0]+m[1,1]+m[2,2]
+      if tr > 0.00000001:
+        s = math.sqrt(tr + 1.0)*2.0
 
         return cls(
-          [ s*t,
-            (m[1,2] - m[2,1])*s,
-            (m[2,0] - m[0,2])*s,
-            (m[0,1] - m[1,0])*s,
+          [ s*0.25,
+            (m[2,1] - m[1,2])/s,
+            (m[0,2] - m[2,0])/s,
+            (m[1,0] - m[0,1])/s,
           ])
 
       elif m[0,0] > m[1,1] and m[0,0] > m[2,2]:
         t = m[0,0] - m[1,1] - m[2,2] + 1.0
-        s = 0.5/math.sqrt(t)
+        s = 2.0*math.sqrt(t)
 
         return cls(
-          [ (m[1,2] - m[2,1])*s,
-            s*t,
-            (m[0,1] + m[1,0])*s,
-            (m[2,0] + m[0,2])*s,
+          [ (m[2,1] - m[1,2])/s,
+            s*0.25,
+            (m[0,1] + m[1,0])/s,
+            (m[2,0] + m[0,2])/s,
           ])
 
       elif m[1,1] > m[2,2]:
         t = -m[0,0] + m[1,1] - m[2,2] + 1.0
-        s = 0.5/math.sqrt(t)
+        s = 2.0*math.sqrt(t)
 
         return cls(
-          [ (m[2,0] - m[0,2])*s,
-            (m[0,1] + m[1,0])*s,
-            s*t,
-            (m[1,2] + m[2,1])*s,
+          [ (m[0,2] - m[2,0])/s,
+            (m[0,1] + m[1,0])/s,
+            s*0.25,
+            (m[1,2] + m[2,1])/s,
           ])
 
       else:
         t = -m[0,0] - m[1,1] + m[2,2] + 1.0
-        s = 0.5/math.sqrt(t)
+        s = 2.0*math.sqrt(t)
 
         return cls(
-          [ (m[0,1] - m[1,0])*s,
-            (m[2,0] + m[0,2])*s,
-            (m[1,2] + m[2,1])*s,
-            s*t,
+          [ (m[1,0] - m[0,1])/s,
+            (m[2,0] + m[0,2])/s,
+            (m[1,2] + m[2,1])/s,
+            s*0.25,
           ])
 
 
