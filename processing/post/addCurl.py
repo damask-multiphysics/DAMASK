@@ -20,7 +20,7 @@ def curlFFT(geomdim,field):
    dataType = 'tensor'
 
  field_fourier=np.fft.fftpack.rfftn(field,axes=(0,1,2))
- curl_fourier=np.zeros(field_fourier.shape,'c8')
+ curl_fourier=np.zeros(field_fourier.shape,'c16')
 
 # differentiation in Fourier space
  k_s=np.zeros([3],'i')
@@ -34,7 +34,7 @@ def curlFFT(geomdim,field):
      for k in xrange(grid[2]/2+1):
        k_s[2] = k
        if(k > grid[2]/2 ): k_s[2] = k_s[2] - grid[2]
-       xi=np.array([k_s[2]/geomdim[2]+0.0j,k_s[1]/geomdim[1]+0.j,k_s[0]/geomdim[0]+0.j],'c8')
+       xi=np.array([k_s[2]/geomdim[2]+0.0j,k_s[1]/geomdim[1]+0.j,k_s[0]/geomdim[0]+0.j],'c16')
        if dataType == 'tensor': 
          for l in xrange(3):
            curl_fourier[i,j,k,0,l] = ( field_fourier[i,j,k,l,2]*xi[1]\

@@ -18,10 +18,10 @@ def divFFT(geomdim,field):
 
  if len(np.shape(field)) == 4:
    dataType = 'vector'
-   div_fourier=np.zeros(field_fourier.shape[0:3],'c8') # div is a scalar
+   div_fourier=np.zeros(field_fourier.shape[0:3],'c16') # div is a scalar
  elif len(np.shape(field)) == 5:
    dataType = 'tensor'
-   div_fourier=np.zeros(field_fourier.shape[0:4],'c8') # div is a vector
+   div_fourier=np.zeros(field_fourier.shape[0:4],'c16') # div is a vector
 
 # differentiation in Fourier space
  k_s=np.zeros([3],'i')
@@ -35,7 +35,7 @@ def divFFT(geomdim,field):
      for k in xrange(grid[2]/2+1):
        k_s[2] = k
        if(k > grid[2]/2 ): k_s[2] = k_s[2] - grid[2]
-       xi=np.array([k_s[2]/geomdim[2]+0.0j,k_s[1]/geomdim[1]+0.j,k_s[0]/geomdim[0]+0.j],'c8')
+       xi=np.array([k_s[2]/geomdim[2]+0.0j,k_s[1]/geomdim[1]+0.j,k_s[0]/geomdim[0]+0.j],'c16')
        if dataType == 'tensor': 
          for l in xrange(3):
            div_fourier[i,j,k,l] = sum(field_fourier[i,j,k,l,0:3]*xi) *TWOPIIMG
