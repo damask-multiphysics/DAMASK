@@ -29,13 +29,6 @@ parser.set_defaults(randomSeed = None)
 if options.label == None:
   parser.error('no data column specified...')
 
-datainfo = {                                                                                        # list of requested labels per datatype
-             'scalar':     {'len':1,
-                            'label':[]},
-           }
-
-datainfo['scalar']['label'] += options.label
-
 # --- loop over input files -------------------------------------------------------------------------
 for name in filenames:
   if not os.path.exists(name): continue
@@ -53,7 +46,7 @@ for name in filenames:
   active = []
   column = {}
 
-  for label in datainfo['scalar']['label']:
+  for label in options.label:
     if label in table.labels:
       active.append(label)
       column[label] = table.labels.index(label)                                                     # remember columns of requested data
@@ -66,9 +59,6 @@ for name in filenames:
 # ------------------------------------------ process data ------------------------------------------
   permutation = {}
   table.data_readArray(active)
-
-
-
   for i,label in enumerate(active):
     unique = list(set(table.data[:,i]))
     permutated = np.random.permutation(unique)
