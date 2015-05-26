@@ -29,16 +29,22 @@ parser.add_option('-r', '--rnd', dest='randomSeed', type='int', metavar='int', \
                   help='seed of random number generator [%default]')
 parser.add_option('-w', '--weights', dest='weights', action='store_true',
                   help = 'assign random weigts (Gaussian Distribution) to seed points for laguerre tessellation [%default]')
-parser.add_option('--mean', dest='mean', type='float', metavar='float', \
-                  help='mean of Gaussian Distribution for weights [%default]')
-parser.add_option('--sigma', dest='sigma', type='float', metavar='float', \
-                  help='standard deviation of Gaussian Distribution for weights [%default]')
 parser.add_option('-m', '--microstructure', dest='microstructure', type='int',
                   help='first microstructure index [%default]', metavar='int')
 parser.add_option('-s','--selective', dest='selective', action='store_true',
                   help = 'selective picking of seed points from random seed points [%default]')
+
+group = OptionGroup(parser, "Laguerre Tesselation Options",
+                   "Parameters determining shape of weight distribution of seed points "
+                   )
+group.add_option('--mean', dest='mean', type='float', metavar='float', \
+                  help='mean of Gaussian Distribution for weights [%default]')
+group.add_option('--sigma', dest='sigma', type='float', metavar='float', \
+                  help='standard deviation of Gaussian Distribution for weights [%default]')
+parser.add_option_group(group)
+
 group = OptionGroup(parser, "Selective Seeding Options",
-                    "More uniform distribution of seed points using Mitchells Best Candidate Algorithm"
+                    "More uniform distribution of seed points using Mitchell\'s Best Candidate Algorithm"
                    )
 group.add_option('--distance', dest='bestDistance', type='float', metavar='float', \
                   help='minimum distance to the next neighbor  [%default]')
