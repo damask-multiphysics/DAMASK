@@ -432,6 +432,9 @@ class Quaternion:
 
     @classmethod
     def fromMatrix(cls, m):
+      if m.shape != (3,3) and np.prod(m.shape) == 9:
+        m = m.reshape(3,3)
+      
       tr=m[0,0]+m[1,1]+m[2,2]
       if tr > 0.00000001:
         s = math.sqrt(tr + 1.0)*2.0
@@ -681,17 +684,17 @@ class Symmetry:
     Return inverse pole figure color if requested.
     '''
 #     basis = {'cubic' :        np.linalg.inv(np.array([[0.,0.,1.],                                    # direction of red
-#                                                             [1.,0.,1.]/np.sqrt(2.),                     # direction of green
-#                                                             [1.,1.,1.]/np.sqrt(3.)]).transpose()),      # direction of blue
+#                                                       [1.,0.,1.]/np.sqrt(2.),                        # direction of green
+#                                                       [1.,1.,1.]/np.sqrt(3.)]).transpose()),         # direction of blue
 #              'hexagonal' :    np.linalg.inv(np.array([[0.,0.,1.],                                    # direction of red
-#                                                             [1.,0.,0.],                                    # direction of green
-#                                                 [np.sqrt(3.),1.,0.]/np.sqrt(4.)]).transpose()),      # direction of blue
+#                                                       [1.,0.,0.],                                    # direction of green
+#                                                       [np.sqrt(3.),1.,0.]/np.sqrt(4.)]).transpose()),      # direction of blue
 #              'tetragonal' :   np.linalg.inv(np.array([[0.,0.,1.],                                    # direction of red
-#                                                             [1.,0.,0.],                                    # direction of green
-#                                                             [1.,1.,0.]/np.sqrt(2.)]).transpose()),      # direction of blue
+#                                                       [1.,0.,0.],                                    # direction of green
+#                                                       [1.,1.,0.]/np.sqrt(2.)]).transpose()),         # direction of blue
 #              'orthorhombic' : np.linalg.inv(np.array([[0.,0.,1.],                                    # direction of red
-#                                                             [1.,0.,0.],                                    # direction of green
-#                                                             [0.,1.,0.]]).transpose()),                     # direction of blue
+#                                                       [1.,0.,0.],                                    # direction of green
+#                                                       [0.,1.,0.]]).transpose()),                     # direction of blue
 #             }
     if self.lattice == 'cubic':
       basis = np.array([ [-1.            ,  0.            ,  1. ],
@@ -710,9 +713,9 @@ class Symmetry:
                          [ 1., 0., 0.],
                          [ 0., 1., 0.] ])
     else:
-      basis = None
+      basis = np.zeros((3,3),dtype=float)
 
-    if basis == None:
+    if np.all(basis == 0.0):
       theComponents = -np.ones(3,'d')
     else:
       theComponents = np.dot(basis,np.array([vector[0],vector[1],abs(vector[2])]))
