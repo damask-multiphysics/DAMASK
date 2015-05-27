@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 no BOM -*-
 
-import os,re,sys,string,fnmatch
+import os,re,sys,string,fnmatch,numpy as np
 from optparse import OptionParser
 import damask
 
@@ -60,6 +60,18 @@ for name in filenames:
       labels.append(label)                                                                          # remember name...
       positions.append(position)                                                                    # ...and position
 
+  order = []
+  for label in labels:                                                                              # check each selected label
+    match = [fnmatch.fnmatch(label,needle) for needle in options.whitelist]                         # which whitelist items do match it
+    order.append(match.index(True) if np.sum(match) == 1 else -1)                                   # unique match --> store which
+  
+  if options.blacklist != None or np.any(order < 0):                                                # have blacklist or non-unique matching?
+    order = range(len(order))                                                                       # skip reordering
+  
+  reorder = np.zeros(len(order),dtype=int)
+  for i in xrange(len(order)):
+    reorder[order[i]] = i
+  
   interpolator = []
   condition = options.condition                                                                     # copy per file, might be altered
   for position,operand in enumerate(set(re.findall(r'#(([s]#)?(.+?))#',condition))):                # find three groups
@@ -79,10 +91,11 @@ for name in filenames:
   evaluator = "'" + condition + "'.format(" + ','.join(interpolator) + ")"
   
 # ------------------------------------------ assemble header ---------------------------------------
-  table.labels = labels                                                                             # update with new label set
+  table.labels = np.array(labels)[reorder]                                                          # update with new label set
   table.head_write()
 
 # ------------------------------------------ process data ------------------------------------------
+  positions = np.array(positions)[reorder]
   outputAlive = True
   while outputAlive and table.data_read():                                                          # read next data line of ASCII table
     specials['_row_'] += 1                                                                          # count row
