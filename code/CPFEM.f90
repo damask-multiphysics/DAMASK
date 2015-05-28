@@ -45,7 +45,7 @@ contains
 !--------------------------------------------------------------------------------------------------
 !> @brief call (thread safe) all module initializations
 !--------------------------------------------------------------------------------------------------
-subroutine CPFEM_initAll(temperature,el,ip)
+subroutine CPFEM_initAll(temperature_inp,el,ip)
  use prec, only: &
    prec_init
  use numerics, only: &
@@ -79,7 +79,7 @@ subroutine CPFEM_initAll(temperature,el,ip)
  implicit none
  integer(pInt), intent(in) ::                        el, &                                          !< FE el number
                                                      ip                                             !< FE integration point number
- real(pReal), intent(in) ::                          temperature                                    !< temperature
+ real(pReal), intent(in) ::                          temperature_inp                                !< temperature
 
  !$OMP CRITICAL (init)
    if (.not. CPFEM_init_done) then
@@ -97,10 +97,10 @@ subroutine CPFEM_initAll(temperature,el,ip)
      call FE_init
      call mesh_init(ip, el)                                                                        ! pass on coordinates to alter calcMode of first ip
      call lattice_init
-     call material_init(temperature)
-     call constitutive_init(temperature)
+     call material_init
+     call constitutive_init
      call crystallite_init
-     call homogenization_init
+     call homogenization_init(temperature_inp)
      call CPFEM_init
 #if defined(Marc4DAMASK) || defined(Abaqus)
      call DAMASK_interface_init                                                                    ! Spectral solver and FEM init is already done
@@ -262,9 +262,9 @@ end subroutine CPFEM_init
 !> @brief perform initialization at first call, update variables and call the actual material model
 !--------------------------------------------------------------------------------------------------
 #if defined(Marc4DAMASK) || defined(Abaqus)
-subroutine CPFEM_general(mode, parallelExecution, ffn, ffn1, temperature, dt, elFE, ip, cauchyStress, jacobian)
+subroutine CPFEM_general(mode, parallelExecution, ffn, ffn1, temperature_inp, dt, elFE, ip, cauchyStress, jacobian)
 #else
-subroutine CPFEM_general(mode, ffn, ffn1, temperature, dt, elFE, ip)
+subroutine CPFEM_general(mode, ffn, ffn1, temperature_inp, dt, elFE, ip)
 #endif
  use numerics, only: &
    defgradTolerance, &
@@ -316,13 +316,19 @@ subroutine CPFEM_general(mode, ffn, ffn1, temperature, dt, elFE, ip)
  use material, only: &
    microstructure_elemhomo, &
    plasticState, &
-   damageState, &
+   sourceState, &
    homogState, &
    thermalState, &
-   vacancyState,&
+   damageState, &
+   vacancyfluxState, &
+   hydrogenfluxState, &
    mappingConstitutive, &
    material_phase, &
    phase_plasticity, &
+   temperature, &
+   thermalMapping, &
+   phase_Nsources, &
+   material_homog, &
    material_Nhomogenization
  use crystallite, only: &
    crystallite_partionedF,&
@@ -349,8 +355,7 @@ subroutine CPFEM_general(mode, ffn, ffn1, temperature, dt, elFE, ip)
    materialpoint_sizeResults, &
 #endif
    materialpoint_stressAndItsTangent, &
-   materialpoint_postResults, &
-   field_putFieldTemperature
+   materialpoint_postResults
  use IO, only: &
    IO_write_jobRealFile, &
    IO_warning
@@ -359,7 +364,7 @@ subroutine CPFEM_general(mode, ffn, ffn1, temperature, dt, elFE, ip)
  implicit none
  integer(pInt), intent(in) ::                        elFE, &                                        !< FE element number
                                                      ip                                             !< integration point number
- real(pReal), intent(in) ::                          temperature                                    !< temperature
+ real(pReal), intent(in) ::                          temperature_inp                                !< temperature
  real(pReal), intent(in) ::                          dt                                             !< time increment
  real(pReal), dimension (3,3), intent(in) ::         ffn, &                                         !< deformation gradient for t=t0
                                                      ffn1                                           !< deformation gradient for t=t1
@@ -381,7 +386,7 @@ subroutine CPFEM_general(mode, ffn, ffn1, temperature, dt, elFE, ip)
 #endif
 
  integer(pInt)                                       elCP, &                                        ! crystal plasticity element number
-                                                     i, j, k, l, m, n, ph, homog
+                                                     i, j, k, l, m, n, ph, homog, mySource
  logical                                             updateJaco                                     ! flag indicating if JAcobian has to be updated
  character(len=1024) :: rankStr
 
@@ -427,10 +432,11 @@ subroutine CPFEM_general(mode, ffn, ffn1, temperature, dt, elFE, ip)
    crystallite_dPdF0 = crystallite_dPdF                                                        ! crystallite stiffness
    crystallite_Tstar0_v = crystallite_Tstar_v                                                  ! crystallite 2nd Piola Kirchhoff stress
 
-   forall ( i = 1:size(plasticState)) plasticState(i)%state0= plasticState(i)%state            ! copy state in this lenghty way because: A component cannot be an array if the encompassing structure is an array
-   forall ( i = 1:size(damageState))  damageState(i)%state0 = damageState(i)%state             ! copy state in this lenghty way because: A component cannot be an array if the encompassing structure is an array
-   forall ( i = 1:size(thermalState)) thermalState(i)%state0= thermalState(i)%state            ! copy state in this lenghty way because: A component cannot be an array if the encompassing structure is an array
-   forall ( i = 1:size(vacancyState)) vacancyState(i)%state0= vacancyState(i)%state            ! copy state in this lenghty way because: A component cannot be an array if the encompassing structure is an array
+   forall ( i = 1:size(plasticState    )) plasticState(i)%state0     = plasticState(i)%state   ! copy state in this lenghty way because: A component cannot be an array if the encompassing structure is an array
+   do i = 1, size(sourceState)
+     do mySource = 1,phase_Nsources(i)
+       sourceState(i)%p(mySource)%state0 = sourceState(i)%p(mySource)%state                    ! copy state in this lenghty way because: A component cannot be an array if the encompassing structure is an array
+   enddo; enddo
    if (iand(debug_level(debug_CPFEM), debug_levelBasic) /= 0_pInt) then
      write(6,'(a)') '<< CPFEM >> aging states'
      if (debug_e <= mesh_NcpElems .and. debug_i <= mesh_maxNips) then
@@ -441,7 +447,11 @@ subroutine CPFEM_general(mode, ffn, ffn1, temperature, dt, elFE, ip)
    endif
 
    do homog = 1_pInt, material_Nhomogenization
-     homogState(homog)%state0 =  homogState(homog)%state
+     homogState       (homog)%state0 =  homogState       (homog)%state
+     thermalState     (homog)%state0 =  thermalState     (homog)%state
+     damageState      (homog)%state0 =  damageState      (homog)%state
+     vacancyfluxState (homog)%state0 =  vacancyfluxState (homog)%state
+     hydrogenfluxState(homog)%state0 =  hydrogenfluxState(homog)%state
    enddo
   
 
@@ -523,7 +533,8 @@ subroutine CPFEM_general(mode, ffn, ffn1, temperature, dt, elFE, ip)
 
  if (.not. parallelExecution) then
 #if defined(Marc4DAMASK) || defined(Abaqus)
-   call field_putFieldTemperature(ip,elCP,temperature) 
+   temperature(material_homog(ip,elCP))%p(thermalMapping(material_homog(ip,elCP))%p(ip,elCP)) = &
+     temperature_inp
 #endif
    materialpoint_F0(1:3,1:3,ip,elCP) = ffn
    materialpoint_F(1:3,1:3,ip,elCP) = ffn1
@@ -536,7 +547,8 @@ subroutine CPFEM_general(mode, ffn, ffn1, temperature, dt, elFE, ip)
    CPFEM_dcsde(1:6,1:6,ip,elCP) = CPFEM_odd_jacobian * math_identity2nd(6)
 #endif
 #if defined(Marc4DAMASK) || defined(Abaqus) 
-   call field_putFieldTemperature(ip,elCP,temperature) 
+   temperature(material_homog(ip,elCP))%p(thermalMapping(material_homog(ip,elCP))%p(ip,elCP)) = &
+     temperature_inp
 #endif
    materialpoint_F0(1:3,1:3,ip,elCP) = ffn
    materialpoint_F(1:3,1:3,ip,elCP) = ffn1

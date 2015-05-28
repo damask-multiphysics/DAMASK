@@ -37,7 +37,11 @@ module homogenization
  integer(pInt),                                      public, protected  :: &
    materialpoint_sizeResults, &
    homogenization_maxSizePostResults, &
-   field_maxSizePostResults
+   thermal_maxSizePostResults, &
+   damage_maxSizePostResults, &
+   vacancyflux_maxSizePostResults, &
+   porosity_maxSizePostResults, &
+   hydrogenflux_maxSizePostResults
 
  real(pReal),   dimension(:,:,:,:),     allocatable, private :: &
    materialpoint_subF0, &                                                                           !< def grad of IP at beginning of homogenization increment
@@ -51,45 +55,11 @@ module homogenization
    materialpoint_converged
  logical,       dimension(:,:,:),       allocatable, private :: &
    materialpoint_doneAndHappy
- enum, bind(c) 
-   enumerator :: undefined_ID, &
-                 temperature_ID, &
-                 damage_ID, &
-                 vacancy_concentration_ID
- end enum
- integer(pInt),               dimension(:),   allocatable, public, protected :: &
-   field_sizePostResults
- integer(pInt),               dimension(:,:), allocatable, private :: &
-   field_sizePostResult
- 
- character(len=64),           dimension(:,:), allocatable, private :: &
-  field_output                                                                   !< name of each post result output
- integer(pInt),               dimension(:),   allocatable, private :: &
-   field_Noutput                                                                 !< number of outputs per homog instance
- integer(kind(undefined_ID)), dimension(:,:), allocatable, private :: &
-  field_outputID                                                                 !< ID of each post result output
 
  public ::  &
    homogenization_init, &
    materialpoint_stressAndItsTangent, &
-   field_getLocalDamage, &
-   field_getFieldDamage, &
-   field_putFieldDamage, &
-   field_getLocalTemperature, &
-   field_putFieldTemperature, &
-   field_getHeatGeneration, &
-   field_getLocalVacancyConcentration, &
-   field_putFieldVacancyConcentration, &
-   field_getDamageMobility, &
-   field_getDamageDiffusion33, &
-   field_getThermalConductivity33, &
-   field_getMassDensity, &
-   field_getSpecificHeat, &
-   field_getVacancyMobility33, &
-   field_getVacancyDiffusion33, &
-   field_getVacancyEnergy, &
-   materialpoint_postResults, &
-   field_postResults
+   materialpoint_postResults
  private :: &
    homogenization_partitionDeformation, &
    homogenization_updateState, &
@@ -102,7 +72,7 @@ contains
 !--------------------------------------------------------------------------------------------------
 !> @brief module initialization
 !--------------------------------------------------------------------------------------------------
-subroutine homogenization_init()
+subroutine homogenization_init(temperature_init)
 #ifdef HDF
  use hdf5, only: &
    HID_T
@@ -129,10 +99,8 @@ subroutine homogenization_init()
    crystallite_sizePostResults
 #else
  use constitutive, only: &
-   constitutive_maxSizePostResults, &
-   constitutive_damage_maxSizePostResults, &
-   constitutive_thermal_maxSizePostResults, &
-   constitutive_vacancy_maxSizePostResults
+   constitutive_plasticity_maxSizePostResults, &
+   constitutive_source_maxSizePostResults
  use crystallite, only: &
    crystallite_maxSizePostResults
 #endif
@@ -140,30 +108,38 @@ subroutine homogenization_init()
  use homogenization_none
  use homogenization_isostrain
  use homogenization_RGC
+ use thermal_isothermal
+ use thermal_adiabatic
+ use thermal_conduction
+ use damage_none
+ use damage_local
+ use damage_nonlocal
+ use vacancyflux_isoconc
+ use vacancyflux_isochempot
+ use vacancyflux_cahnhilliard
+ use porosity_none
+ use porosity_phasefield
+ use hydrogenflux_isoconc
+ use hydrogenflux_cahnhilliard
  use IO
  use numerics, only: &
    worldrank
 
  implicit none
+ real(pReal), intent(in)   :: temperature_init                                                      !< initial temperature
  integer(pInt), parameter :: FILEUNIT = 200_pInt
- integer(pInt) :: e,i,p,myInstance
+ integer(pInt) :: e,i,p
  integer(pInt), dimension(:,:), pointer :: thisSize
  integer(pInt), dimension(:)  , pointer :: thisNoutput
  character(len=64), dimension(:,:), pointer :: thisOutput
  character(len=32) :: outputName                                                                    !< name of output, intermediate fix until HDF5 output is ready
- logical :: knownHomogenization
+ logical :: knownHomogenization, knownThermal, knownDamage, knownVacancyflux, knownPorosity, knownHydrogenflux
 #ifdef HDF
  integer(pInt), dimension(:,:), allocatable :: mapping
  integer(pInt), dimension(:), allocatable :: InstancePosition
  allocate(mapping(mesh_ncpelems,4),source=0_pInt)
  allocate(InstancePosition(material_Nhomogenization),source=0_pInt)
 #endif
- integer(pInt),                                      parameter  :: MAXNCHUNKS = 2_pInt
- integer(pInt), dimension(1_pInt+2_pInt*MAXNCHUNKS)             :: positions
- integer(pInt) :: section = 0_pInt
- character(len=65536) :: &
-   tag  = '', &
-   line = ''
 
 !--------------------------------------------------------------------------------------------------
 ! parse homogenization from config file
@@ -178,64 +154,59 @@ subroutine homogenization_init()
  close(FILEUNIT)
  
 !--------------------------------------------------------------------------------------------------
-! parse field from config file
- allocate(field_sizePostResults(material_Nhomogenization),          source=0_pInt)
- allocate(field_sizePostResult(maxval(homogenization_Noutput),material_Nhomogenization), &
-                                                                    source=0_pInt)
- allocate(field_Noutput(material_Nhomogenization),                  source=0_pInt)
- allocate(field_outputID(maxval(homogenization_Noutput),material_Nhomogenization), &
-                                                                    source=undefined_ID)
- allocate(field_output(maxval(homogenization_Noutput),material_Nhomogenization))
- field_output = ''
-
+! parse thermal from config file
  if (.not. IO_open_jobFile_stat(FILEUNIT,material_localFileExt)) &                                  ! no local material configuration present...
    call IO_open_file(FILEUNIT,material_configFile)                                                  ! ... open material.config file
- rewind(FILEUNIT)
- do while (trim(line) /= IO_EOF .and. IO_lc(IO_getTag(line,'<','>')) /= material_partHomogenization)! wind forward to <homogenization>
-   line = IO_read(FILEUNIT)
- enddo
-
- parsingFile: do while (trim(line) /= IO_EOF)                                                       ! read through sections of homogenization part
-   line = IO_read(FILEUNIT)
-   if (IO_isBlank(line)) cycle                                                                      ! skip empty lines
-   if (IO_getTag(line,'<','>') /= '') then                                                          ! stop at next part
-     line = IO_read(FILEUNIT, .true.)                                                               ! reset IO_read
-     exit                                                                                           
-   endif
-   if (IO_getTag(line,'[',']') /= '') then                                                          ! next section
-     section = section + 1_pInt
-     cycle
-   endif
-   if (section > 0_pInt ) then                                                                      ! do not short-circuit here (.and. with next if-statement). It's not safe in Fortran
-     positions = IO_stringPos(line,MAXNCHUNKS)
-     tag = IO_lc(IO_stringValue(line,positions,1_pInt))                                           ! extract key
-     select case(tag)
-       case ('(output)')
-         select case(IO_lc(IO_stringValue(line,positions,2_pInt)))
-           case('temperature')
-             field_Noutput(section) = field_Noutput(section) + 1_pInt
-             field_outputID(field_Noutput(section),section) = temperature_ID
-             field_sizePostResult(field_Noutput(section),section) = 1_pInt
-             field_sizePostResults(section) = field_sizePostResults(section) + 1_pInt
-             field_output(field_Noutput(section),section) = IO_lc(IO_stringValue(line,positions,2_pInt))
-           case('damage')
-             field_Noutput(section) = field_Noutput(section) + 1_pInt
-             field_outputID(field_Noutput(section),section) = damage_ID
-             field_sizePostResult(field_Noutput(section),section) = 1_pInt
-             field_sizePostResults(section) = field_sizePostResults(section) + 1_pInt
-             field_output(field_Noutput(section),section) = IO_lc(IO_stringValue(line,positions,2_pInt))
-           case('vacancy_concentration')
-             field_Noutput(section) = field_Noutput(section) + 1_pInt
-             field_outputID(field_Noutput(section),section) = vacancy_concentration_ID
-             field_sizePostResult(field_Noutput(section),section) = 1_pInt
-             field_sizePostResults(section) = field_sizePostResults(section) + 1_pInt
-             field_output(field_Noutput(section),section) = IO_lc(IO_stringValue(line,positions,2_pInt))
-
-         end select
-
-     end select
-   endif
- enddo parsingFile
+ if (any(thermal_type == THERMAL_isothermal_ID)) &
+   call thermal_isothermal_init(temperature_init)
+ if (any(thermal_type == THERMAL_adiabatic_ID)) &
+   call thermal_adiabatic_init(FILEUNIT,temperature_init)
+ if (any(thermal_type == THERMAL_conduction_ID)) &
+   call thermal_conduction_init(FILEUNIT,temperature_init)
+ close(FILEUNIT)
+ 
+!--------------------------------------------------------------------------------------------------
+! parse damage from config file
+ if (.not. IO_open_jobFile_stat(FILEUNIT,material_localFileExt)) &                                  ! no local material configuration present...
+   call IO_open_file(FILEUNIT,material_configFile)                                                  ! ... open material.config file
+ if (any(damage_type == DAMAGE_none_ID)) &
+   call damage_none_init()
+ if (any(damage_type == DAMAGE_local_ID)) &
+   call damage_local_init(FILEUNIT)
+ if (any(damage_type == DAMAGE_nonlocal_ID)) &
+   call damage_nonlocal_init(FILEUNIT)
+ close(FILEUNIT)
+ 
+!--------------------------------------------------------------------------------------------------
+! parse vacancy transport from config file
+ if (.not. IO_open_jobFile_stat(FILEUNIT,material_localFileExt)) &                                  ! no local material configuration present...
+   call IO_open_file(FILEUNIT,material_configFile)                                                  ! ... open material.config file
+ if (any(vacancyflux_type == VACANCYFLUX_isoconc_ID)) &
+   call vacancyflux_isoconc_init()
+ if (any(vacancyflux_type == VACANCYFLUX_isochempot_ID)) &
+   call vacancyflux_isochempot_init(FILEUNIT)
+ if (any(vacancyflux_type == VACANCYFLUX_cahnhilliard_ID)) &
+   call vacancyflux_cahnhilliard_init(FILEUNIT)
+ close(FILEUNIT)
+ 
+!--------------------------------------------------------------------------------------------------
+! parse porosity from config file
+ if (.not. IO_open_jobFile_stat(FILEUNIT,material_localFileExt)) &                                  ! no local material configuration present...
+   call IO_open_file(FILEUNIT,material_configFile)                                                  ! ... open material.config file
+ if (any(porosity_type == POROSITY_none_ID)) &
+   call porosity_none_init()
+ if (any(porosity_type == POROSITY_phasefield_ID)) &
+   call porosity_phasefield_init(FILEUNIT)
+ close(FILEUNIT)
+ 
+!--------------------------------------------------------------------------------------------------
+! parse hydrogen transport from config file
+ if (.not. IO_open_jobFile_stat(FILEUNIT,material_localFileExt)) &                                  ! no local material configuration present...
+   call IO_open_file(FILEUNIT,material_configFile)                                                  ! ... open material.config file
+ if (any(hydrogenflux_type == HYDROGENFLUX_isoconc_ID)) &
+   call hydrogenflux_isoconc_init()
+ if (any(hydrogenflux_type == HYDROGENFLUX_cahnhilliard_ID)) &
+   call hydrogenflux_cahnhilliard_init(FILEUNIT)
  close(FILEUNIT)
 
 !--------------------------------------------------------------------------------------------------
@@ -275,9 +246,141 @@ subroutine homogenization_init()
            enddo
          endif  
        endif  
-       do e = 1_pInt,field_Noutput(p)
-         write(FILEUNIT,'(a,i4)') trim(field_output(e,p))//char(9),field_sizePostResult(e,p)
-       enddo
+       i = thermal_typeInstance(p)                                                                      ! which instance of this thermal type
+       knownThermal = .true.                                                                            ! assume valid
+       select case(thermal_type(p))                                                                     ! split per thermal type
+         case (THERMAL_isothermal_ID)
+           outputName = THERMAL_isothermal_label
+           thisNoutput => null()
+           thisOutput => null()
+           thisSize   => null()
+         case (THERMAL_adiabatic_ID)
+           outputName = THERMAL_adiabatic_label
+           thisNoutput => thermal_adiabatic_Noutput
+           thisOutput => thermal_adiabatic_output
+           thisSize   => thermal_adiabatic_sizePostResult
+         case (THERMAL_conduction_ID)
+           outputName = THERMAL_conduction_label
+           thisNoutput => thermal_conduction_Noutput
+           thisOutput => thermal_conduction_output
+           thisSize   => thermal_conduction_sizePostResult
+         case default
+           knownThermal = .false.
+       end select   
+       if (knownThermal) then
+         write(FILEUNIT,'(a)') '(thermal)'//char(9)//trim(outputName)
+         if (thermal_type(p) /= THERMAL_isothermal_ID) then
+           do e = 1,thisNoutput(i)
+             write(FILEUNIT,'(a,i4)') trim(thisOutput(e,i))//char(9),thisSize(e,i)
+           enddo
+         endif  
+       endif  
+       i = damage_typeInstance(p)                                                                       ! which instance of this damage type
+       knownDamage = .true.                                                                             ! assume valid
+       select case(damage_type(p))                                                                      ! split per damage type
+         case (DAMAGE_none_ID)
+           outputName = DAMAGE_none_label
+           thisNoutput => null()
+           thisOutput => null()
+           thisSize   => null()
+         case (DAMAGE_local_ID)
+           outputName = DAMAGE_local_label
+           thisNoutput => damage_local_Noutput
+           thisOutput => damage_local_output
+           thisSize   => damage_local_sizePostResult
+         case (DAMAGE_nonlocal_ID)
+           outputName = DAMAGE_nonlocal_label
+           thisNoutput => damage_nonlocal_Noutput
+           thisOutput => damage_nonlocal_output
+           thisSize   => damage_nonlocal_sizePostResult
+         case default
+           knownDamage = .false.
+       end select   
+       if (knownDamage) then
+         write(FILEUNIT,'(a)') '(damage)'//char(9)//trim(outputName)
+         if (damage_type(p) /= DAMAGE_none_ID) then
+           do e = 1,thisNoutput(i)
+             write(FILEUNIT,'(a,i4)') trim(thisOutput(e,i))//char(9),thisSize(e,i)
+           enddo
+         endif  
+       endif  
+       i = vacancyflux_typeInstance(p)                                                                  ! which instance of this vacancy flux type
+       knownVacancyflux = .true.                                                                        ! assume valid
+       select case(vacancyflux_type(p))                                                                 ! split per vacancy flux type
+         case (VACANCYFLUX_isoconc_ID)
+           outputName = VACANCYFLUX_isoconc_label
+           thisNoutput => null()
+           thisOutput => null()
+           thisSize   => null()
+         case (VACANCYFLUX_isochempot_ID)
+           outputName = VACANCYFLUX_isochempot_label
+           thisNoutput => vacancyflux_isochempot_Noutput
+           thisOutput => vacancyflux_isochempot_output
+           thisSize   => vacancyflux_isochempot_sizePostResult
+         case (VACANCYFLUX_cahnhilliard_ID)
+           outputName = VACANCYFLUX_cahnhilliard_label
+           thisNoutput => vacancyflux_cahnhilliard_Noutput
+           thisOutput => vacancyflux_cahnhilliard_output
+           thisSize   => vacancyflux_cahnhilliard_sizePostResult
+         case default
+           knownVacancyflux = .false.
+       end select   
+       if (knownVacancyflux) then
+         write(FILEUNIT,'(a)') '(vacancyflux)'//char(9)//trim(outputName)
+         if (vacancyflux_type(p) /= VACANCYFLUX_isoconc_ID) then
+           do e = 1,thisNoutput(i)
+             write(FILEUNIT,'(a,i4)') trim(thisOutput(e,i))//char(9),thisSize(e,i)
+           enddo
+         endif  
+       endif  
+       i = porosity_typeInstance(p)                                                                     ! which instance of this porosity type
+       knownPorosity = .true.                                                                           ! assume valid
+       select case(porosity_type(p))                                                                    ! split per porosity type
+         case (POROSITY_none_ID)
+           outputName = POROSITY_none_label
+           thisNoutput => null()
+           thisOutput => null()
+           thisSize   => null()
+         case (POROSITY_phasefield_ID)
+           outputName = POROSITY_phasefield_label
+           thisNoutput => porosity_phasefield_Noutput
+           thisOutput => porosity_phasefield_output
+           thisSize   => porosity_phasefield_sizePostResult
+         case default
+           knownPorosity = .false.
+       end select   
+       if (knownPorosity) then
+         write(FILEUNIT,'(a)') '(porosity)'//char(9)//trim(outputName)
+         if (porosity_type(p) /= POROSITY_none_ID) then
+           do e = 1,thisNoutput(i)
+             write(FILEUNIT,'(a,i4)') trim(thisOutput(e,i))//char(9),thisSize(e,i)
+           enddo
+         endif  
+       endif  
+       i = hydrogenflux_typeInstance(p)                                                                 ! which instance of this hydrogen flux type
+       knownHydrogenflux = .true.                                                                       ! assume valid
+       select case(hydrogenflux_type(p))                                                                ! split per hydrogen flux type
+         case (HYDROGENFLUX_isoconc_ID)
+           outputName = HYDROGENFLUX_isoconc_label
+           thisNoutput => null()
+           thisOutput => null()
+           thisSize   => null()
+         case (HYDROGENFLUX_cahnhilliard_ID)
+           outputName = HYDROGENFLUX_cahnhilliard_label
+           thisNoutput => hydrogenflux_cahnhilliard_Noutput
+           thisOutput => hydrogenflux_cahnhilliard_output
+           thisSize   => hydrogenflux_cahnhilliard_sizePostResult
+         case default
+           knownHydrogenflux = .false.
+       end select   
+       if (knownHydrogenflux) then
+         write(FILEUNIT,'(a)') '(hydrogenflux)'//char(9)//trim(outputName)
+         if (hydrogenflux_type(p) /= HYDROGENFLUX_isoconc_ID) then
+           do e = 1,thisNoutput(i)
+             write(FILEUNIT,'(a,i4)') trim(thisOutput(e,i))//char(9),thisSize(e,i)
+           enddo
+         endif  
+       endif  
      endif
    enddo
    close(FILEUNIT)
@@ -302,24 +405,30 @@ subroutine homogenization_init()
 
 !--------------------------------------------------------------------------------------------------
 ! allocate and initialize global state and postresutls variables
+#ifdef HDF
  elementLooping: do e = 1,mesh_NcpElems
    myInstance = homogenization_typeInstance(mesh_element(3,e))
    IpLooping: do i = 1,FE_Nips(FE_geomtype(mesh_element(2,e)))
-#ifdef HDF
        InstancePosition(myInstance) = InstancePosition(myInstance)+1_pInt
        mapping(e,1:4) = [instancePosition(myinstance),myinstance,e,i]
-#endif
    enddo IpLooping
  enddo elementLooping
-#ifdef HDF
  call  HDF5_mappingHomogenization(mapping)
 #endif
 
  homogenization_maxSizePostResults = 0_pInt
- field_maxSizePostResults = 0_pInt
+ thermal_maxSizePostResults        = 0_pInt
+ damage_maxSizePostResults         = 0_pInt
+ vacancyflux_maxSizePostResults    = 0_pInt
+ porosity_maxSizePostResults       = 0_pInt
+ hydrogenflux_maxSizePostResults   = 0_pInt
  do p = 1,material_Nhomogenization
-   homogenization_maxSizePostResults = max(homogenization_maxSizePostResults,homogState(p)%sizePostResults)
-   field_maxSizePostResults          = max(field_maxSizePostResults,field_sizePostResults(p))
+   homogenization_maxSizePostResults = max(homogenization_maxSizePostResults,homogState       (p)%sizePostResults)
+   thermal_maxSizePostResults        = max(thermal_maxSizePostResults,       thermalState     (p)%sizePostResults)
+   damage_maxSizePostResults         = max(damage_maxSizePostResults        ,damageState      (p)%sizePostResults)
+   vacancyflux_maxSizePostResults    = max(vacancyflux_maxSizePostResults   ,vacancyfluxState (p)%sizePostResults)
+   porosity_maxSizePostResults       = max(porosity_maxSizePostResults      ,porosityState    (p)%sizePostResults)
+   hydrogenflux_maxSizePostResults   = max(hydrogenflux_maxSizePostResults  ,hydrogenfluxState(p)%sizePostResults)
  enddo  
 
 #ifdef FEM
@@ -327,7 +436,12 @@ subroutine homogenization_init()
  allocate(crystalliteOutput(material_Ncrystallite,  homogenization_maxNgrains))
  allocate(phaseOutput      (material_Nphase,        homogenization_maxNgrains))
  do p = 1, material_Nhomogenization 
-   homogOutput(p)%sizeResults = homogState(p)%sizePostResults + field_sizePostResults(p)
+   homogOutput(p)%sizeResults = homogState       (p)%sizePostResults + &
+                                thermalState     (p)%sizePostResults + &
+                                damageState      (p)%sizePostResults + &
+                                vacancyfluxState (p)%sizePostResults + &
+                                porosityState    (p)%sizePostResults + &
+                                hydrogenfluxState(p)%sizePostResults
    homogOutput(p)%sizeIpCells = count(material_homog==p)
    allocate(homogOutput(p)%output(homogOutput(p)%sizeResults,homogOutput(p)%sizeIpCells))
  enddo                                                        
@@ -338,22 +452,22 @@ subroutine homogenization_init()
    allocate(crystalliteOutput(p,e)%output(crystalliteOutput(p,e)%sizeResults,crystalliteOutput(p,e)%sizeIpCells))
  enddo; enddo                                                        
  do p = 1, material_Nphase; do e = 1, homogenization_maxNgrains
-   phaseOutput(p,e)%sizeResults = plasticState(p)%sizePostResults + &
-                                  damageState (p)%sizePostResults + &
-                                  thermalState(p)%sizePostResults + &
-                                  vacancyState(p)%sizePostResults
+   phaseOutput(p,e)%sizeResults = plasticState    (p)%sizePostResults + &
+                                  sum(sourceState (p)%p(:)%sizePostResults)
    phaseOutput(p,e)%sizeIpCells = count(material_phase(e,:,:) == p)
    allocate(phaseOutput(p,e)%output(phaseOutput(p,e)%sizeResults,phaseOutput(p,e)%sizeIpCells))
  enddo; enddo                                                        
 #else
  materialpoint_sizeResults = 1 &                                                                    ! grain count
                            + 1 + homogenization_maxSizePostResults &                                ! homogSize & homogResult
-                               + field_maxSizePostResults &                                         ! field size & field result  
+                               + thermal_maxSizePostResults        &
+                               + damage_maxSizePostResults         &
+                               + vacancyflux_maxSizePostResults    &
+                               + porosity_maxSizePostResults       &
+                               + hydrogenflux_maxSizePostResults   &
                            + homogenization_maxNgrains * (1 + crystallite_maxSizePostResults &      ! crystallite size & crystallite results
-                                                        + 1 + constitutive_maxSizePostResults &     ! constitutive size & constitutive results
-                                                            + constitutive_damage_maxSizePostResults &     
-                                                            + constitutive_thermal_maxSizePostResults &    
-                                                            + constitutive_vacancy_maxSizePostResults)   
+                                                        + 1 + constitutive_plasticity_maxSizePostResults &     ! constitutive size & constitutive results
+                                                            + constitutive_source_maxSizePostResults)   
  allocate(materialpoint_results(materialpoint_sizeResults,mesh_maxNips,mesh_NcpElems))
 #endif
  
@@ -415,10 +529,14 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
    mesh_element
  use material, only: &
    plasticState, &
-   damageState, &
-   thermalState, &
-   vacancyState, &
+   sourceState, &
    homogState, &
+   thermalState, &
+   damageState, &
+   vacancyfluxState, &
+   porosityState, &
+   hydrogenfluxState, &
+   phase_Nsources, &
    mappingHomogenization, &  
    mappingConstitutive, &
    homogenization_Ngrains
@@ -472,6 +590,7 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
    g, &                                                                                             !< grain number
    i, &                                                                                             !< integration point number
    e, &                                                                                             !< element number
+   mySource, &
    myNgrains
 
 !--------------------------------------------------------------------------------------------------
@@ -491,16 +610,14 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
 ! initialize restoration points of ...
  do e = FEsolving_execElem(1),FEsolving_execElem(2)
    myNgrains = homogenization_Ngrains(mesh_element(3,e))
-   forall(i = FEsolving_execIP(1,e):FEsolving_execIP(2,e), g = 1:myNgrains)
+   do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e); do g = 1,myNgrains
 
-     plasticState(mappingConstitutive(2,g,i,e))%partionedState0(:,mappingConstitutive(1,g,i,e)) = &
-     plasticState(mappingConstitutive(2,g,i,e))%state0(         :,mappingConstitutive(1,g,i,e))
-     damageState( mappingConstitutive(2,g,i,e))%partionedState0(:,mappingConstitutive(1,g,i,e)) = &
-     damageState( mappingConstitutive(2,g,i,e))%state0(         :,mappingConstitutive(1,g,i,e))
-     thermalState(mappingConstitutive(2,g,i,e))%partionedState0(:,mappingConstitutive(1,g,i,e)) = &
-     thermalState(mappingConstitutive(2,g,i,e))%state0(         :,mappingConstitutive(1,g,i,e))
-     vacancyState(mappingConstitutive(2,g,i,e))%partionedState0(:,mappingConstitutive(1,g,i,e)) = &
-     vacancyState(mappingConstitutive(2,g,i,e))%state0(         :,mappingConstitutive(1,g,i,e))
+     plasticState    (mappingConstitutive(2,g,i,e))%partionedState0(:,mappingConstitutive(1,g,i,e)) = &
+     plasticState    (mappingConstitutive(2,g,i,e))%state0(         :,mappingConstitutive(1,g,i,e))
+     do mySource = 1_pInt, phase_Nsources(mappingConstitutive(2,g,i,e))
+       sourceState(mappingConstitutive(2,g,i,e))%p(mySource)%partionedState0(:,mappingConstitutive(1,g,i,e)) = &
+       sourceState(mappingConstitutive(2,g,i,e))%p(mySource)%state0(         :,mappingConstitutive(1,g,i,e))
+     enddo  
 
      crystallite_partionedFp0(1:3,1:3,g,i,e) = crystallite_Fp0(1:3,1:3,g,i,e)                       ! ...plastic def grads
      crystallite_partionedLp0(1:3,1:3,g,i,e) = crystallite_Lp0(1:3,1:3,g,i,e)                       ! ...plastic velocity grads
@@ -510,7 +627,7 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
      crystallite_partionedF0(1:3,1:3,g,i,e) = crystallite_F0(1:3,1:3,g,i,e)                         ! ...def grads
      crystallite_partionedTstar0_v(1:6,g,i,e) = crystallite_Tstar0_v(1:6,g,i,e)                     ! ...2nd PK stress
 
-   endforall
+   enddo; enddo
    forall(i = FEsolving_execIP(1,e):FEsolving_execIP(2,e))
      materialpoint_subF0(1:3,1:3,i,e) = materialpoint_F0(1:3,1:3,i,e)                               ! ...def grad
      materialpoint_subFrac(i,e) = 0.0_pReal
@@ -521,7 +638,27 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
    forall(i = FEsolving_execIP(1,e):FEsolving_execIP(2,e), &
      homogState(mappingHomogenization(2,i,e))%sizeState > 0_pInt) &
        homogState(mappingHomogenization(2,i,e))%subState0(:,mappingHomogenization(1,i,e)) = &
-       homogState(mappingHomogenization(2,i,e))%State0(   :,mappingHomogenization(1,i,e))      ! ...internal homogenization state
+       homogState(mappingHomogenization(2,i,e))%State0(   :,mappingHomogenization(1,i,e))           ! ...internal homogenization state
+   forall(i = FEsolving_execIP(1,e):FEsolving_execIP(2,e), &
+     thermalState(mappingHomogenization(2,i,e))%sizeState > 0_pInt) &
+       thermalState(mappingHomogenization(2,i,e))%subState0(:,mappingHomogenization(1,i,e)) = &
+       thermalState(mappingHomogenization(2,i,e))%State0(   :,mappingHomogenization(1,i,e))         ! ...internal thermal state
+   forall(i = FEsolving_execIP(1,e):FEsolving_execIP(2,e), &
+     damageState(mappingHomogenization(2,i,e))%sizeState > 0_pInt) &
+       damageState(mappingHomogenization(2,i,e))%subState0(:,mappingHomogenization(1,i,e)) = &
+       damageState(mappingHomogenization(2,i,e))%State0(   :,mappingHomogenization(1,i,e))          ! ...internal damage state
+   forall(i = FEsolving_execIP(1,e):FEsolving_execIP(2,e), &
+     vacancyfluxState(mappingHomogenization(2,i,e))%sizeState > 0_pInt) &
+       vacancyfluxState(mappingHomogenization(2,i,e))%subState0(:,mappingHomogenization(1,i,e)) = &
+       vacancyfluxState(mappingHomogenization(2,i,e))%State0(   :,mappingHomogenization(1,i,e))     ! ...internal vacancy transport state
+   forall(i = FEsolving_execIP(1,e):FEsolving_execIP(2,e), &
+     porosityState(mappingHomogenization(2,i,e))%sizeState > 0_pInt) &
+       porosityState(mappingHomogenization(2,i,e))%subState0(:,mappingHomogenization(1,i,e)) = &
+       porosityState(mappingHomogenization(2,i,e))%State0(   :,mappingHomogenization(1,i,e))        ! ...internal porosity state
+   forall(i = FEsolving_execIP(1,e):FEsolving_execIP(2,e), &
+     hydrogenfluxState(mappingHomogenization(2,i,e))%sizeState > 0_pInt) &
+       hydrogenfluxState(mappingHomogenization(2,i,e))%subState0(:,mappingHomogenization(1,i,e)) = &
+       hydrogenfluxState(mappingHomogenization(2,i,e))%State0(   :,mappingHomogenization(1,i,e))    ! ...internal hydrogen transport state
  enddo
  NiterationHomog = 0_pInt
  
@@ -549,35 +686,61 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
          materialpoint_subFrac(i,e) = materialpoint_subFrac(i,e) + materialpoint_subStep(i,e)
          !$OMP FLUSH(materialpoint_subFrac)
          materialpoint_subStep(i,e) = min(1.0_pReal-materialpoint_subFrac(i,e), &
-                                          stepIncreaseHomog*materialpoint_subStep(i,e))                   ! introduce flexibility for step increase/acceleration
+                                          stepIncreaseHomog*materialpoint_subStep(i,e))             ! introduce flexibility for step increase/acceleration
          !$OMP FLUSH(materialpoint_subStep)
                   
          steppingNeeded: if (materialpoint_subStep(i,e) > subStepMinHomog) then
          
            ! wind forward grain starting point of...
-           crystallite_partionedF0(1:3,1:3,1:myNgrains,i,e) = crystallite_partionedF(1:3,1:3,1:myNgrains,i,e) ! ...def grads
-           crystallite_partionedFp0(1:3,1:3,1:myNgrains,i,e) = crystallite_Fp(1:3,1:3,1:myNgrains,i,e)    ! ...plastic def grads
-           crystallite_partionedLp0(1:3,1:3,1:myNgrains,i,e) = crystallite_Lp(1:3,1:3,1:myNgrains,i,e)    ! ...plastic velocity grads
-           crystallite_partionedFi0(1:3,1:3,1:myNgrains,i,e) = crystallite_Fi(1:3,1:3,1:myNgrains,i,e)    ! ...intermediate def grads
-           crystallite_partionedLi0(1:3,1:3,1:myNgrains,i,e) = crystallite_Li(1:3,1:3,1:myNgrains,i,e)    ! ...intermediate velocity grads
-           crystallite_partioneddPdF0(1:3,1:3,1:3,1:3,1:myNgrains,i,e) = crystallite_dPdF(1:3,1:3,1:3,1:3,1:myNgrains,i,e)! ...stiffness
-           crystallite_partionedTstar0_v(1:6,1:myNgrains,i,e) = crystallite_Tstar_v(1:6,1:myNgrains,i,e)  ! ...2nd PK stress
-           forall (g = 1:myNgrains)
-             plasticState(mappingConstitutive(2,g,i,e))%partionedState0(:,mappingConstitutive(1,g,i,e)) = &
-             plasticState(mappingConstitutive(2,g,i,e))%state(          :,mappingConstitutive(1,g,i,e))
-             damageState( mappingConstitutive(2,g,i,e))%partionedState0(:,mappingConstitutive(1,g,i,e)) = &
-             damageState( mappingConstitutive(2,g,i,e))%state(          :,mappingConstitutive(1,g,i,e))
-             thermalState(mappingConstitutive(2,g,i,e))%partionedState0(:,mappingConstitutive(1,g,i,e)) = &
-             thermalState(mappingConstitutive(2,g,i,e))%state(          :,mappingConstitutive(1,g,i,e))
-             vacancyState(mappingConstitutive(2,g,i,e))%partionedState0(:,mappingConstitutive(1,g,i,e)) = &
-             vacancyState(mappingConstitutive(2,g,i,e))%state(          :,mappingConstitutive(1,g,i,e))
-           end forall    
-           if (homogState(mappingHomogenization(2,i,e))%sizeState > 0_pInt) &
-             homogState(mappingHomogenization(2,i,e))%subState0(:,mappingHomogenization(1,i,e)) = &
-             homogState(mappingHomogenization(2,i,e))%state(    :,mappingHomogenization(1,i,e))
-           materialpoint_subF0(1:3,1:3,i,e) = materialpoint_subF(1:3,1:3,i,e)                             ! ...def grad
+           crystallite_partionedF0(1:3,1:3,1:myNgrains,i,e) =  &
+              crystallite_partionedF(1:3,1:3,1:myNgrains,i,e)                                       ! ...def grads
+           crystallite_partionedFp0(1:3,1:3,1:myNgrains,i,e) = &
+             crystallite_Fp(1:3,1:3,1:myNgrains,i,e)                                                ! ...plastic def grads
+           crystallite_partionedLp0(1:3,1:3,1:myNgrains,i,e) = &
+             crystallite_Lp(1:3,1:3,1:myNgrains,i,e)                                                ! ...plastic velocity grads
+           crystallite_partionedFi0(1:3,1:3,1:myNgrains,i,e) = &
+             crystallite_Fi(1:3,1:3,1:myNgrains,i,e)                                                ! ...intermediate def grads
+           crystallite_partionedLi0(1:3,1:3,1:myNgrains,i,e) = &
+             crystallite_Li(1:3,1:3,1:myNgrains,i,e)                                                ! ...intermediate velocity grads
+           crystallite_partioneddPdF0(1:3,1:3,1:3,1:3,1:myNgrains,i,e) = &
+             crystallite_dPdF(1:3,1:3,1:3,1:3,1:myNgrains,i,e)                                      ! ...stiffness
+           crystallite_partionedTstar0_v(1:6,1:myNgrains,i,e) = &
+             crystallite_Tstar_v(1:6,1:myNgrains,i,e)                                               ! ...2nd PK stress
+           do g = 1,myNgrains
+             plasticState    (mappingConstitutive(2,g,i,e))%partionedState0(:,mappingConstitutive(1,g,i,e)) = &
+             plasticState    (mappingConstitutive(2,g,i,e))%state(          :,mappingConstitutive(1,g,i,e))
+             do mySource = 1_pInt, phase_Nsources(mappingConstitutive(2,g,i,e))
+               sourceState(mappingConstitutive(2,g,i,e))%p(mySource)%partionedState0(:,mappingConstitutive(1,g,i,e)) = &
+               sourceState(mappingConstitutive(2,g,i,e))%p(mySource)%state(          :,mappingConstitutive(1,g,i,e))
+             enddo
+           enddo    
+           forall(i = FEsolving_execIP(1,e):FEsolving_execIP(2,e), &
+             homogState(mappingHomogenization(2,i,e))%sizeState > 0_pInt) &
+               homogState(mappingHomogenization(2,i,e))%subState0(:,mappingHomogenization(1,i,e)) = &
+               homogState(mappingHomogenization(2,i,e))%State(    :,mappingHomogenization(1,i,e))   ! ...internal homogenization state
+           forall(i = FEsolving_execIP(1,e):FEsolving_execIP(2,e), &
+             thermalState(mappingHomogenization(2,i,e))%sizeState > 0_pInt) &
+               thermalState(mappingHomogenization(2,i,e))%subState0(:,mappingHomogenization(1,i,e)) = &
+               thermalState(mappingHomogenization(2,i,e))%State(    :,mappingHomogenization(1,i,e)) ! ...internal thermal state
+           forall(i = FEsolving_execIP(1,e):FEsolving_execIP(2,e), &
+             damageState(mappingHomogenization(2,i,e))%sizeState > 0_pInt) &
+               damageState(mappingHomogenization(2,i,e))%subState0(:,mappingHomogenization(1,i,e)) = &
+               damageState(mappingHomogenization(2,i,e))%State(    :,mappingHomogenization(1,i,e))  ! ...internal damage state
+           forall(i = FEsolving_execIP(1,e):FEsolving_execIP(2,e), &
+             vacancyfluxState(mappingHomogenization(2,i,e))%sizeState > 0_pInt) &
+               vacancyfluxState(mappingHomogenization(2,i,e))%subState0(:,mappingHomogenization(1,i,e)) = &
+               vacancyfluxState(mappingHomogenization(2,i,e))%State(    :,mappingHomogenization(1,i,e))! ...internal vacancy transport state
+           forall(i = FEsolving_execIP(1,e):FEsolving_execIP(2,e), &
+             porosityState(mappingHomogenization(2,i,e))%sizeState > 0_pInt) &
+               porosityState(mappingHomogenization(2,i,e))%subState0(:,mappingHomogenization(1,i,e)) = &
+               porosityState(mappingHomogenization(2,i,e))%State(    :,mappingHomogenization(1,i,e))! ...internal porosity state
+           forall(i = FEsolving_execIP(1,e):FEsolving_execIP(2,e), &
+             hydrogenfluxState(mappingHomogenization(2,i,e))%sizeState > 0_pInt) &
+               hydrogenfluxState(mappingHomogenization(2,i,e))%subState0(:,mappingHomogenization(1,i,e)) = &
+               hydrogenfluxState(mappingHomogenization(2,i,e))%State(    :,mappingHomogenization(1,i,e))! ...internal hydrogen transport state
+           materialpoint_subF0(1:3,1:3,i,e) = materialpoint_subF(1:3,1:3,i,e)                       ! ...def grad
            !$OMP FLUSH(materialpoint_subF0)
-         elseif (materialpoint_requested(i,e)) then steppingNeeded                                        ! already at final time (??)
+         elseif (materialpoint_requested(i,e)) then steppingNeeded                                  ! already at final time (??)
            if (iand(debug_level(debug_homogenization), debug_levelBasic) /= 0_pInt) then
              !$OMP CRITICAL (distributionHomog)
                debug_MaterialpointLoopDistribution(min(nHomog+1,NiterationHomog)) = &
@@ -587,20 +750,20 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
          endif steppingNeeded
 
        else converged
-         if ( (myNgrains == 1_pInt .and. materialpoint_subStep(i,e) <= 1.0 ) .or. &                         ! single grain already tried internal subStepping in crystallite
-              subStepSizeHomog * materialpoint_subStep(i,e) <=  subStepMinHomog ) then                      ! would require too small subStep
-                                                                                                            ! cutback makes no sense
+         if ( (myNgrains == 1_pInt .and. materialpoint_subStep(i,e) <= 1.0 ) .or. &                 ! single grain already tried internal subStepping in crystallite
+              subStepSizeHomog * materialpoint_subStep(i,e) <=  subStepMinHomog ) then              ! would require too small subStep
+                                                                                                    ! cutback makes no sense
            !$OMP FLUSH(terminallyIll)
-           if (.not. terminallyIll) then                                                                    ! so first signals terminally ill...
+           if (.not. terminallyIll) then                                                            ! so first signals terminally ill...
              !$OMP CRITICAL (write2out)
                write(6,*) 'Integration point ', i,' at element ', e, ' terminally ill'
              !$OMP END CRITICAL (write2out)
            endif
            !$OMP CRITICAL (setTerminallyIll)
-             terminallyIll = .true.                                                                         ! ...and kills all others
+             terminallyIll = .true.                                                                 ! ...and kills all others
            !$OMP END CRITICAL (setTerminallyIll)
-         else                                                                                               ! cutback makes sense
-           materialpoint_subStep(i,e) = subStepSizeHomog * materialpoint_subStep(i,e)                       ! crystallite had severe trouble, so do a significant cutback
+         else                                                                                       ! cutback makes sense
+           materialpoint_subStep(i,e) = subStepSizeHomog * materialpoint_subStep(i,e)               ! crystallite had severe trouble, so do a significant cutback
            !$OMP FLUSH(materialpoint_subStep)
            
 #ifndef _OPENMP
@@ -615,25 +778,50 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
   
 !--------------------------------------------------------------------------------------------------
 ! restore...
-           crystallite_Fp(1:3,1:3,1:myNgrains,i,e) = crystallite_partionedFp0(1:3,1:3,1:myNgrains,i,e)      ! ...plastic def grads
-           crystallite_Lp(1:3,1:3,1:myNgrains,i,e) = crystallite_partionedLp0(1:3,1:3,1:myNgrains,i,e)      ! ...plastic velocity grads
-           crystallite_Fi(1:3,1:3,1:myNgrains,i,e) = crystallite_partionedFi0(1:3,1:3,1:myNgrains,i,e)      ! ...intermediate def grads
-           crystallite_Li(1:3,1:3,1:myNgrains,i,e) = crystallite_partionedLi0(1:3,1:3,1:myNgrains,i,e)      ! ...intermediate velocity grads
-           crystallite_dPdF(1:3,1:3,1:3,1:3,1:myNgrains,i,e) = crystallite_partioneddPdF0(1:3,1:3,1:3,1:3,1:myNgrains,i,e) ! ...stiffness
-           crystallite_Tstar_v(1:6,1:myNgrains,i,e) = crystallite_partionedTstar0_v(1:6,1:myNgrains,i,e)    ! ...2nd PK stress
-           forall (g = 1:myNgrains)
-             plasticState(mappingConstitutive(2,g,i,e))%state(          :,mappingConstitutive(1,g,i,e)) = &
-             plasticState(mappingConstitutive(2,g,i,e))%partionedState0(:,mappingConstitutive(1,g,i,e))
-             damageState( mappingConstitutive(2,g,i,e))%state(          :,mappingConstitutive(1,g,i,e)) = &
-             damageState( mappingConstitutive(2,g,i,e))%partionedState0(:,mappingConstitutive(1,g,i,e))
-             thermalState(mappingConstitutive(2,g,i,e))%state(          :,mappingConstitutive(1,g,i,e)) = &
-             thermalState(mappingConstitutive(2,g,i,e))%partionedState0(:,mappingConstitutive(1,g,i,e))
-             vacancyState(mappingConstitutive(2,g,i,e))%state(          :,mappingConstitutive(1,g,i,e)) = &
-             vacancyState(mappingConstitutive(2,g,i,e))%partionedState0(:,mappingConstitutive(1,g,i,e))
-           end forall    
-           if (homogState(mappingHomogenization(2,i,e))%sizeState > 0_pInt) &
-             homogState(mappingHomogenization(2,i,e))%state(    :,mappingHomogenization(1,i,e)) = &
-             homogState(mappingHomogenization(2,i,e))%subState0(:,mappingHomogenization(1,i,e))
+           crystallite_Fp(1:3,1:3,1:myNgrains,i,e) = &
+             crystallite_partionedFp0(1:3,1:3,1:myNgrains,i,e)                                      ! ...plastic def grads
+           crystallite_Lp(1:3,1:3,1:myNgrains,i,e) = &
+             crystallite_partionedLp0(1:3,1:3,1:myNgrains,i,e)                                      ! ...plastic velocity grads
+           crystallite_Fi(1:3,1:3,1:myNgrains,i,e) = &
+             crystallite_partionedFi0(1:3,1:3,1:myNgrains,i,e)                                      ! ...intermediate def grads
+           crystallite_Li(1:3,1:3,1:myNgrains,i,e) = &
+             crystallite_partionedLi0(1:3,1:3,1:myNgrains,i,e)                                      ! ...intermediate velocity grads
+           crystallite_dPdF(1:3,1:3,1:3,1:3,1:myNgrains,i,e) = &
+             crystallite_partioneddPdF0(1:3,1:3,1:3,1:3,1:myNgrains,i,e)                            ! ...stiffness
+           crystallite_Tstar_v(1:6,1:myNgrains,i,e) = &
+              crystallite_partionedTstar0_v(1:6,1:myNgrains,i,e)                                    ! ...2nd PK stress
+           do g = 1, myNgrains
+             plasticState    (mappingConstitutive(2,g,i,e))%state(          :,mappingConstitutive(1,g,i,e)) = &
+             plasticState    (mappingConstitutive(2,g,i,e))%partionedState0(:,mappingConstitutive(1,g,i,e))
+             do mySource = 1_pInt, phase_Nsources(mappingConstitutive(2,g,i,e))
+               sourceState(mappingConstitutive(2,g,i,e))%p(mySource)%state(          :,mappingConstitutive(1,g,i,e)) = &
+               sourceState(mappingConstitutive(2,g,i,e))%p(mySource)%partionedState0(:,mappingConstitutive(1,g,i,e))
+             enddo
+           enddo    
+           forall(i = FEsolving_execIP(1,e):FEsolving_execIP(2,e), &
+             homogState(mappingHomogenization(2,i,e))%sizeState > 0_pInt) &
+               homogState(mappingHomogenization(2,i,e))%State(    :,mappingHomogenization(1,i,e)) = &
+               homogState(mappingHomogenization(2,i,e))%subState0(:,mappingHomogenization(1,i,e))   ! ...internal homogenization state
+           forall(i = FEsolving_execIP(1,e):FEsolving_execIP(2,e), &
+             thermalState(mappingHomogenization(2,i,e))%sizeState > 0_pInt) &
+               thermalState(mappingHomogenization(2,i,e))%State(    :,mappingHomogenization(1,i,e)) = &
+               thermalState(mappingHomogenization(2,i,e))%subState0(:,mappingHomogenization(1,i,e)) ! ...internal thermal state
+           forall(i = FEsolving_execIP(1,e):FEsolving_execIP(2,e), &
+             damageState(mappingHomogenization(2,i,e))%sizeState > 0_pInt) &
+               damageState(mappingHomogenization(2,i,e))%State(    :,mappingHomogenization(1,i,e)) = &
+               damageState(mappingHomogenization(2,i,e))%subState0(:,mappingHomogenization(1,i,e))  ! ...internal damage state
+           forall(i = FEsolving_execIP(1,e):FEsolving_execIP(2,e), &
+             vacancyfluxState(mappingHomogenization(2,i,e))%sizeState > 0_pInt) &
+               vacancyfluxState(mappingHomogenization(2,i,e))%State(    :,mappingHomogenization(1,i,e)) = &
+               vacancyfluxState(mappingHomogenization(2,i,e))%subState0(:,mappingHomogenization(1,i,e))! ...internal vacancy transport state
+           forall(i = FEsolving_execIP(1,e):FEsolving_execIP(2,e), &
+             porosityState(mappingHomogenization(2,i,e))%sizeState > 0_pInt) &
+               porosityState(mappingHomogenization(2,i,e))%State(    :,mappingHomogenization(1,i,e)) = &
+               porosityState(mappingHomogenization(2,i,e))%subState0(:,mappingHomogenization(1,i,e))! ...internal porosity state
+           forall(i = FEsolving_execIP(1,e):FEsolving_execIP(2,e), &
+             hydrogenfluxState(mappingHomogenization(2,i,e))%sizeState > 0_pInt) &
+               hydrogenfluxState(mappingHomogenization(2,i,e))%State(    :,mappingHomogenization(1,i,e)) = &
+               hydrogenfluxState(mappingHomogenization(2,i,e))%subState0(:,mappingHomogenization(1,i,e))! ...internal hydrogen transport state
          endif       
        endif converged
      
@@ -695,7 +883,7 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
              materialpoint_converged(i,e) = .false.
            else
              materialpoint_doneAndHappy(1:2,i,e) = homogenization_updateState(i,e)
-             materialpoint_converged(i,e) = all(homogenization_updateState(i,e))                     ! converged if done and happy
+             materialpoint_converged(i,e) = all(materialpoint_doneAndHappy(1:2,i,e))                  ! converged if done and happy
            endif
            !$OMP FLUSH(materialpoint_converged)
            if (materialpoint_converged(i,e)) then
@@ -751,21 +939,23 @@ subroutine materialpoint_postResults
    homogenization_maxNgrains, &
    material_Ncrystallite, &
    material_Nphase, & 
-#endif
+#else
    homogState, &
-   plasticState, &
-   damageState, &
    thermalState, &
-   vacancyState, &
+   damageState, &
+   vacancyfluxState, &
+   porosityState, &
+   hydrogenfluxState, &
+#endif
+   plasticState, &
+   sourceState, &
    material_phase, &
    homogenization_Ngrains, &
    microstructure_crystallite
  use constitutive, only: &
 #ifdef FEM
-   constitutive_maxSizePostResults, &
-   constitutive_damage_maxSizePostResults, &
-   constitutive_thermal_maxSizePostResults, &
-   constitutive_vacancy_maxSizePostResults, & 
+   constitutive_plasticity_maxSizePostResults, &
+   constitutive_source_maxSizePostResults, &
 #endif
    constitutive_postResults
  use crystallite, only: &
@@ -791,10 +981,8 @@ subroutine materialpoint_postResults
    crystalliteCtr(material_Ncrystallite,  homogenization_maxNgrains), &
    phaseCtr      (material_Nphase,        homogenization_maxNgrains)   
  real(pReal), dimension(1+crystallite_maxSizePostResults + &
-                        1+constitutive_maxSizePostResults + &
-                          constitutive_damage_maxSizePostResults + &
-                          constitutive_thermal_maxSizePostResults + &
-                          constitutive_vacancy_maxSizePostResults) :: & 
+                        1+constitutive_plasticity_maxSizePostResults + &
+                          constitutive_source_maxSizePostResults) :: & 
    crystalliteResults
 
 
@@ -807,35 +995,29 @@ subroutine materialpoint_postResults
      myHomog = mappingHomogenization(2,i,e)
      thePos =  mappingHomogenization(1,i,e)
      homogOutput(myHomog)%output(1: &
-                                 homogState(myHomog)%sizePostResults, &
+                                 homogOutput(myHomog)%sizeResults, &
                                  thePos) = homogenization_postResults(i,e)
-     homogOutput(myHomog)%output(homogState(myHomog)%sizePostResults+1: &
-                                 homogState(myHomog)%sizePostResults+field_sizePostResults(myHomog), &
-                                 thePos) = field_postResults(i,e)
      
      grainLooping :do g = 1,myNgrains
        myPhase = mappingConstitutive(2,g,i,e)
        crystalliteResults(1:1+crystallite_sizePostResults(myCrystallite) + &
                             1+plasticState(myPhase)%sizePostResults + &
-                              damageState (myPhase)%sizePostResults + &
-                              thermalState(myPhase)%sizePostResults + &
-                              vacancyState(myPhase)%sizePostResults) = crystallite_postResults(g,i,e)
+                              sum(sourceState(myPhase)%p(:)%sizePostResults)) = crystallite_postResults(g,i,e)
        if (microstructure_crystallite(mesh_element(4,e)) == myCrystallite .and. &
            homogenization_Ngrains    (mesh_element(3,e)) >= g) then
          crystalliteCtr(myCrystallite,g) = crystalliteCtr(myCrystallite,g) + 1_pInt
          crystalliteOutput(myCrystallite,g)% &
            output(1:crystalliteOutput(myCrystallite,g)%sizeResults,crystalliteCtr(myCrystallite,g)) = &  
-             crystalliteResults(2:1+crystallite_sizePostResults(myCrystallite))
+             crystalliteResults(2:1+crystalliteOutput(myCrystallite,g)%sizeResults)
        endif
        if (material_phase(g,i,e) == myPhase) then
          phaseCtr(myPhase,g) = phaseCtr(myPhase,g) + 1_pInt
          phaseOutput(myPhase,g)% &
            output(1:phaseOutput(myPhase,g)%sizeResults,phaseCtr(myPhase,g)) = &  
-             crystalliteResults(3 + crystallite_sizePostResults(myCrystallite): &
-                                    plasticState(myphase)%sizePostResults + &                    
-                                    damageState (myphase)%sizePostResults + &     
-                                    thermalState(myphase)%sizePostResults + &
-                                    vacancyState(myphase)%sizePostResults)
+             crystalliteResults(3 + crystalliteOutput(myCrystallite,g)%sizeResults: &
+                                1 + crystalliteOutput(myCrystallite,g)%sizeResults + & 
+                                1 + plasticState    (myphase)%sizePostResults + &                    
+                                    sum(sourceState(myphase)%p(:)%sizePostResults))
        endif
      enddo grainLooping
    enddo IpLooping
@@ -849,7 +1031,12 @@ subroutine materialpoint_postResults
      IpLooping: do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
        thePos = 0_pInt
        
-       theSize = homogState(mappingHomogenization(2,i,e))%sizePostResults
+       theSize = homogState       (mappingHomogenization(2,i,e))%sizePostResults &
+               + thermalState     (mappingHomogenization(2,i,e))%sizePostResults &
+               + damageState      (mappingHomogenization(2,i,e))%sizePostResults &
+               + vacancyfluxState (mappingHomogenization(2,i,e))%sizePostResults &
+               + porosityState    (mappingHomogenization(2,i,e))%sizePostResults &
+               + hydrogenfluxState(mappingHomogenization(2,i,e))%sizePostResults
        materialpoint_results(thePos+1,i,e) = real(theSize,pReal)                                    ! tell size of homogenization results
        thePos = thePos + 1_pInt
 
@@ -858,21 +1045,13 @@ subroutine materialpoint_postResults
          thePos = thePos + theSize
        endif
 
-       theSize = field_sizePostResults(mappingHomogenization(2,i,e))
-       if (theSize > 0_pInt) then                                                                   ! any homogenization results to mention?
-         materialpoint_results(thePos+1:thePos+theSize,i,e) = field_postResults(i,e)                ! tell field results 
-         thePos = thePos + theSize
-       endif
-       
        materialpoint_results(thePos+1,i,e) = real(myNgrains,pReal)                                  ! tell number of grains at materialpoint
        thePos = thePos + 1_pInt
 
        grainLooping :do g = 1,myNgrains
          theSize = 1 + crystallite_sizePostResults(myCrystallite) + &
-                   1 + plasticState(material_phase(g,i,e))%sizePostResults + &                    !ToDo
-                       damageState(material_phase(g,i,e))%sizePostResults + &     
-                       thermalState(material_phase(g,i,e))%sizePostResults + &
-                       vacancyState(material_phase(g,i,e))%sizePostResults
+                   1 + plasticState    (material_phase(g,i,e))%sizePostResults + &                    !ToDo
+                       sum(sourceState(material_phase(g,i,e))%p(:)%sizePostResults)
          materialpoint_results(thePos+1:thePos+theSize,i,e) = crystallite_postResults(g,i,e)        ! tell crystallite results
          thePos = thePos + theSize
        enddo grainLooping
@@ -940,8 +1119,14 @@ function homogenization_updateState(ip,el)
    mesh_element
  use material, only: &
    homogenization_type, &
+   thermal_type, &
+   damage_type, &
+   vacancyflux_type, &
    homogenization_maxNgrains, &
-   HOMOGENIZATION_RGC_ID
+   HOMOGENIZATION_RGC_ID, &
+   THERMAL_adiabatic_ID, &
+   DAMAGE_local_ID, &
+   VACANCYFLUX_isochempot_ID
  use crystallite, only: &
    crystallite_P, &
    crystallite_dPdF, &
@@ -949,6 +1134,12 @@ function homogenization_updateState(ip,el)
    crystallite_partionedF0
  use homogenization_RGC, only: &
    homogenization_RGC_updateState
+ use thermal_adiabatic, only: &
+   thermal_adiabatic_updateState
+ use damage_local, only: &
+   damage_local_updateState
+ use vacancyflux_isochempot, only: &
+   vacancyflux_isochempot_updateState
 
  implicit none
  integer(pInt), intent(in) :: &
@@ -956,22 +1147,59 @@ function homogenization_updateState(ip,el)
    el                                                                                               !< element number
  logical, dimension(2) :: homogenization_updateState
  
+ homogenization_updateState = .true.
  chosenHomogenization: select case(homogenization_type(mesh_element(3,el)))
-
    case (HOMOGENIZATION_RGC_ID) chosenHomogenization
      homogenization_updateState = &
-
+       homogenization_updateState .and. &
         homogenization_RGC_updateState(crystallite_P(1:3,1:3,1:homogenization_maxNgrains,ip,el), &
-                                        crystallite_partionedF(1:3,1:3,1:homogenization_maxNgrains,ip,el), &
-                                        crystallite_partionedF0(1:3,1:3,1:homogenization_maxNgrains,ip,el),&
-                                        materialpoint_subF(1:3,1:3,ip,el),&
-                                        materialpoint_subdt(ip,el), &
-                                        crystallite_dPdF(1:3,1:3,1:3,1:3,1:homogenization_maxNgrains,ip,el), &
-                                        ip, &
-                                        el)
+                                       crystallite_partionedF(1:3,1:3,1:homogenization_maxNgrains,ip,el), &
+                                       crystallite_partionedF0(1:3,1:3,1:homogenization_maxNgrains,ip,el),&
+                                       materialpoint_subF(1:3,1:3,ip,el),&
+                                       materialpoint_subdt(ip,el), &
+                                       crystallite_dPdF(1:3,1:3,1:3,1:3,1:homogenization_maxNgrains,ip,el), &
+                                       ip, &
+                                       el)
    case default chosenHomogenization
-     homogenization_updateState = .true.
+     homogenization_updateState = &
+       homogenization_updateState .and. [.true., .true.]
  end select chosenHomogenization
+
+ chosenThermal: select case (thermal_type(mesh_element(3,el)))
+   case (THERMAL_adiabatic_ID) chosenThermal
+     homogenization_updateState = &
+       homogenization_updateState .and. &
+       thermal_adiabatic_updateState(materialpoint_subdt(ip,el), &
+                                     ip, &
+                                     el)
+   case default chosenThermal
+     homogenization_updateState = &
+       homogenization_updateState .and. [.true., .true.]
+ end select chosenThermal
+
+ chosenDamage: select case (damage_type(mesh_element(3,el)))
+   case (DAMAGE_local_ID) chosenDamage
+     homogenization_updateState = &
+       homogenization_updateState .and. &
+       damage_local_updateState(materialpoint_subdt(ip,el), &
+                                ip, &
+                                el)
+   case default chosenDamage
+     homogenization_updateState = &
+       homogenization_updateState .and. [.true., .true.]
+ end select chosenDamage
+
+ chosenVacancyflux: select case (vacancyflux_type(mesh_element(3,el)))
+   case (VACANCYFLUX_isochempot_ID) chosenVacancyflux
+     homogenization_updateState = &
+       homogenization_updateState .and. &
+       vacancyflux_isochempot_updateState(materialpoint_subdt(ip,el), &
+                                          ip, &
+                                          el)
+   case default chosenVacancyflux
+     homogenization_updateState = &
+       homogenization_updateState .and. [.true., .true.]
+ end select chosenVacancyflux
 
 end function homogenization_updateState
 
@@ -1024,557 +1252,6 @@ subroutine homogenization_averageStressAndItsTangent(ip,el)
 end subroutine homogenization_averageStressAndItsTangent
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Returns average specific heat at each integration point 
-!--------------------------------------------------------------------------------------------------
-function field_getSpecificHeat(ip,el)
- use mesh, only: &
-   mesh_element
- use lattice, only: &
-   lattice_specificHeat
- use material, only: &
-   material_phase, &
-   material_homog, &
-   field_thermal_type, &
-   FIELD_THERMAL_local_ID, &
-   FIELD_THERMAL_nonlocal_ID, &
-   homogenization_Ngrains
-
- implicit none
- real(pReal)  :: field_getSpecificHeat
- integer(pInt), intent(in) :: &
-   ip, &                                                                                            !< integration point number
-   el                                                                                               !< element number
- integer(pInt) :: &
-   ipc
-
- field_getSpecificHeat =0.0_pReal
-                                                
- select case(field_thermal_type(material_homog(ip,el)))                                                   
-   
-   case (FIELD_THERMAL_local_ID)
-    field_getSpecificHeat = 0.0_pReal
-      
-   case (FIELD_THERMAL_nonlocal_ID)
-    do ipc = 1, homogenization_Ngrains(mesh_element(3,el))
-     field_getSpecificHeat = field_getSpecificHeat + lattice_specificHeat(material_phase(ipc,ip,el))
-    enddo
-      
- end select   
-
- field_getSpecificHeat = field_getSpecificHeat /homogenization_Ngrains(mesh_element(3,el))
-
-end function field_getSpecificHeat
-
-!--------------------------------------------------------------------------------------------------
-!> @brief Returns average mass density at each integration point 
-!--------------------------------------------------------------------------------------------------
-function field_getMassDensity(ip,el)
- use mesh, only: &
-   mesh_element
- use lattice, only: &
-   lattice_massDensity
- use material, only: &
-   material_phase, &
-   material_homog, &
-   field_thermal_type, &
-   FIELD_THERMAL_local_ID, &
-   FIELD_THERMAL_nonlocal_ID, &
-   homogenization_Ngrains
-
-
- implicit none
- real(pReal)  :: field_getMassDensity
- integer(pInt), intent(in) :: &
-   ip, &                                                                                            !< integration point number
-   el                                                                                               !< element number
- integer(pInt) :: &
-   ipc
-
- field_getMassDensity =0.0_pReal
-                                                
- select case(field_thermal_type(material_homog(ip,el)))                                                   
-   
-   case (FIELD_THERMAL_local_ID)
-     field_getMassDensity = 0.0_pReal
-      
-   case (FIELD_THERMAL_nonlocal_ID)
-    do ipc = 1, homogenization_Ngrains(mesh_element(3,el))
-      field_getMassDensity = field_getMassDensity + lattice_massDensity(material_phase(ipc,ip,el))
-    enddo
-      
- end select   
-
- field_getMassDensity = field_getMassDensity /homogenization_Ngrains(mesh_element(3,el))
-
-end function field_getMassDensity
-!-------------------------------------------------------------------------------------------
-!> @brief Returns average conductivity tensor for thermal field at each integration point 
-!-------------------------------------------------------------------------------------------
-function field_getThermalConductivity33(ip,el)
- use mesh, only: &
-   mesh_element
- use lattice, only: &
-   lattice_thermalConductivity33
- use material, only: &
-   material_phase, &
-   material_homog, &
-   field_thermal_type, &
-   FIELD_THERMAL_nonlocal_ID, &
-   homogenization_Ngrains
- use crystallite, only: &
-   crystallite_push33ToRef
-
-
- implicit none
- real(pReal), dimension(3,3) :: field_getThermalConductivity33
- integer(pInt), intent(in) :: &
-   ip, &                                                                                            !< integration point number
-   el                                                                                               !< element number
- integer(pInt) :: &
-   ipc
-
- field_getThermalConductivity33 =0.0_pReal
-                                                
- select case(field_thermal_type(material_homog(ip,el)))                                                   
-   case (FIELD_THERMAL_nonlocal_ID)
-     do ipc = 1, homogenization_Ngrains(mesh_element(3,el))
-       field_getThermalConductivity33 = field_getThermalConductivity33 + &
-        crystallite_push33ToRef(ipc,ip,el,lattice_thermalConductivity33(:,:,material_phase(ipc,ip,el)))
-    enddo
-      
- end select   
-
- field_getThermalConductivity33 = field_getThermalConductivity33 /homogenization_Ngrains(mesh_element(3,el))
-
-end function field_getThermalConductivity33
-!--------------------------------------------------------------------------------------------------
-!> @brief Returns average diffusion tensor for damage field at each integration point 
-!--------------------------------------------------------------------------------------------------
-function field_getDamageDiffusion33(ip,el)
- use mesh, only: &
-   mesh_element
- use material, only: &
-   material_homog, &
-   field_damage_type, &
-   FIELD_DAMAGE_NONLOCAL_ID, &
-   homogenization_Ngrains
- use crystallite, only: &
-   crystallite_push33ToRef
- use constitutive, only: &
-   constitutive_getDamageDiffusion33
-
- implicit none
- real(pReal), dimension(3,3) :: field_getDamageDiffusion33
- integer(pInt), intent(in) :: &
-   ip, &                                                                                            !< integration point number
-   el                                                                                               !< element number
- integer(pInt) :: &
-   ipc
-
- field_getDamageDiffusion33 =0.0_pReal
-                                                
- select case(field_damage_type(material_homog(ip,el)))                                                   
-   case (FIELD_DAMAGE_NONLOCAL_ID)
-     do ipc = 1, homogenization_Ngrains(mesh_element(3,el))
-      field_getDamageDiffusion33 = field_getDamageDiffusion33 + &
-        crystallite_push33ToRef(ipc,ip,el,constitutive_getDamageDiffusion33(ipc,ip,el))
-     enddo
-      
- end select   
-
- field_getDamageDiffusion33 = field_getDamageDiffusion33 /homogenization_Ngrains(mesh_element(3,el))
-
-end function field_getDamageDiffusion33
-
-!--------------------------------------------------------------------------------------------------
-!> @brief Returns average mobility for damage field at each integration point 
-!--------------------------------------------------------------------------------------------------
-real(pReal) function field_getDamageMobility(ip,el)
- use mesh, only: &
-   mesh_element
- use lattice, only: &
-   lattice_damageMobility
- use material, only: &
-   material_phase, &
-   material_homog, &
-   field_damage_type, &
-   FIELD_DAMAGE_NONLOCAL_ID, &
-   homogenization_Ngrains
-
- implicit none
- integer(pInt), intent(in) :: &
-   ip, &                                                                                            !< integration point number
-   el                                                                                               !< element number
- integer(pInt) :: &
-   ipc
- 
- field_getDamageMobility =0.0_pReal
-                                                
- select case(field_damage_type(material_homog(ip,el)))                                                   
-   case (FIELD_DAMAGE_NONLOCAL_ID)
-     do ipc = 1, homogenization_Ngrains(mesh_element(3,el))
-       field_getDamageMobility = field_getDamageMobility + lattice_DamageMobility(material_phase(ipc,ip,el))
-     enddo
-      
- end select   
-
- field_getDamageMobility = field_getDamageMobility /homogenization_Ngrains(mesh_element(3,el))
-
-end function field_getDamageMobility
-
-!--------------------------------------------------------------------------------------------------
-!> @brief Returns average diffusion tensor for vacancy field at each integration point 
-!--------------------------------------------------------------------------------------------------
-function field_getVacancyDiffusion33(ip,el)
- use mesh, only: &
-   mesh_element
- use material, only: &
-   material_homog, &
-   field_vacancy_type, &
-   FIELD_VACANCY_NONLOCAL_ID, &
-   homogenization_Ngrains
- use crystallite, only: &
-   crystallite_push33ToRef
- use constitutive, only: &
-   constitutive_getVacancyDiffusion33
-
- implicit none
- real(pReal), dimension(3,3) :: field_getVacancyDiffusion33
- integer(pInt), intent(in) :: &
-   ip, &                                                                                            !< integration point number
-   el                                                                                               !< element number
- integer(pInt) :: &
-   ipc
-
- field_getVacancyDiffusion33 = 0.0_pReal
-                                                
- select case(field_vacancy_type(material_homog(ip,el)))                                                   
-   case (FIELD_VACANCY_NONLOCAL_ID)
-     do ipc = 1, homogenization_Ngrains(mesh_element(3,el))
-      field_getVacancyDiffusion33 = field_getVacancyDiffusion33 + &
-        crystallite_push33ToRef(ipc,ip,el, &
-                                constitutive_getVacancyDiffusion33(ipc,ip,el))
-     enddo
-      
- end select   
-
- field_getVacancyDiffusion33 = field_getVacancyDiffusion33/ &
-                               homogenization_Ngrains(mesh_element(3,el))
-
-end function field_getVacancyDiffusion33
-
-!--------------------------------------------------------------------------------------------------
-!> @brief Returns average mobility for vacancy field at each integration point 
-!--------------------------------------------------------------------------------------------------
-function field_getVacancyMobility33(ip,el)
- use mesh, only: &
-   mesh_element
- use material, only: &
-   material_homog, &
-   field_vacancy_type, &
-   FIELD_VACANCY_NONLOCAL_ID, &
-   homogenization_Ngrains
- use crystallite, only: &
-   crystallite_push33ToRef
- use constitutive, only: &
-   constitutive_getVacancyMobility33
-
- implicit none
- integer(pInt), intent(in) :: &
-   ip, &                                                                                            !< integration point number
-   el                                                                                               !< element number
- real(pReal), dimension(3,3) :: &
-   field_getVacancyMobility33
- integer(pInt) :: &
-   ipc
-   
- 
- field_getVacancyMobility33 = 0.0_pReal
-                                                
- select case(field_vacancy_type(material_homog(ip,el)))                                                   
-   case (FIELD_VACANCY_NONLOCAL_ID)
-     do ipc = 1, homogenization_Ngrains(mesh_element(3,el))
-       field_getVacancyMobility33 = field_getVacancyMobility33 + &
-        crystallite_push33ToRef(ipc,ip,el, &
-                                constitutive_getVacancyMobility33(ipc,ip,el))
-     enddo
-      
- end select   
-
- field_getVacancyMobility33 = field_getVacancyMobility33/ &
-                              homogenization_Ngrains(mesh_element(3,el))
-
-end function field_getVacancyMobility33
-
-!--------------------------------------------------------------------------------------------------
-!> @brief Returns average driving for vacancy chemical potential at each integration point 
-!--------------------------------------------------------------------------------------------------
-real(pReal) function field_getVacancyEnergy(ip,el)
- use mesh, only: &
-   mesh_element
- use material, only: &
-   material_homog, &
-   field_vacancy_type, &
-   FIELD_VACANCY_NONLOCAL_ID, &
-   homogenization_Ngrains
- use constitutive, only: &
-   constitutive_getVacancyEnergy
-
- implicit none
- integer(pInt), intent(in) :: &
-   ip, &                                                                                            !< integration point number
-   el                                                                                               !< element number
- integer(pInt) :: &
-   ipc
-   
- 
- field_getVacancyEnergy = 0.0_pReal
-                                                
- select case(field_vacancy_type(material_homog(ip,el)))                                                   
-   case (FIELD_VACANCY_NONLOCAL_ID)
-     do ipc = 1, homogenization_Ngrains(mesh_element(3,el))
-       field_getVacancyEnergy = field_getVacancyEnergy + &
-         constitutive_getVacancyEnergy(ipc,ip,el)
-     enddo
-      
- end select   
-
- field_getVacancyEnergy = field_getVacancyEnergy/ &
-                          homogenization_Ngrains(mesh_element(3,el))
-
-end function field_getVacancyEnergy
-
-!--------------------------------------------------------------------------------------------------
-!> @brief ToDo
-!--------------------------------------------------------------------------------------------------
-real(pReal) function field_getLocalDamage(ip,el)
- use mesh, only: &
-   mesh_element
- use material, only: &
-   homogenization_Ngrains
- use constitutive, only: &
-   constitutive_getLocalDamage
-
- implicit none
- integer(pInt), intent(in) :: &
-   ip, &                                                                                            !< integration point number
-   el                                                                                               !< element number
- integer(pInt) :: &
-   ipc
-
-!--------------------------------------------------------------------------------------------------
-! computing the damage value needed to be passed to field solver
- field_getLocalDamage =0.0_pReal
-                                                
- do ipc = 1, homogenization_Ngrains(mesh_element(3,el))
-   field_getLocalDamage = field_getLocalDamage + constitutive_getLocalDamage(ipc,ip,el)
- enddo
-
- field_getLocalDamage = field_getLocalDamage/homogenization_Ngrains(mesh_element(3,el))
-
-end function field_getLocalDamage
-
-!--------------------------------------------------------------------------------------------------
-!> @brief ToDo
-!--------------------------------------------------------------------------------------------------
-real(pReal) function field_getFieldDamage(ip,el)
- use mesh, only: &
-   mesh_element
- use material, only: &
-   homogenization_Ngrains
- use constitutive, only: &
-   constitutive_getDamage
-
- implicit none
- integer(pInt), intent(in) :: &
-   ip, &                                                                                            !< integration point number
-   el                                                                                               !< element number
- integer(pInt) :: &
-   ipc
-
-!--------------------------------------------------------------------------------------------------
-! computing the damage value needed to be passed to field solver
- field_getFieldDamage = 0.0_pReal
-                                                
- do ipc = 1, homogenization_Ngrains(mesh_element(3,el))
-   field_getFieldDamage = field_getFieldDamage + constitutive_getDamage(ipc,ip,el)
- enddo
-
- field_getFieldDamage = field_getFieldDamage/homogenization_Ngrains(mesh_element(3,el))
-
-end function field_getFieldDamage
-
-!--------------------------------------------------------------------------------------------------
-!> @brief Sets the regularised damage value in field state
-!--------------------------------------------------------------------------------------------------
-subroutine field_putFieldDamage(ip,el,fieldDamageValue)  ! naming scheme
- use material, only: &
-   fieldDamage, &
-   material_homog, &
-   mappingHomogenization, &
-   field_damage_type, &
-   FIELD_DAMAGE_NONLOCAL_ID
-
- implicit none
- integer(pInt), intent(in) :: &
-   ip, &                                                                                            !< integration point number
-   el       
- real(pReal), intent(in) :: &
-   fieldDamageValue   
-
- select case(field_damage_type(material_homog(ip,el)))                                                   
-   case (FIELD_DAMAGE_NONLOCAL_ID)
-    fieldDamage(material_homog(ip,el))% &
-      field(1, mappingHomogenization(1,ip,el)) = fieldDamageValue 
-
- end select 
-
-end subroutine field_putFieldDamage
-
-!--------------------------------------------------------------------------------------------------
-!> @brief ToDo
-!--------------------------------------------------------------------------------------------------
-real(pReal) function field_getLocalTemperature(ip,el)
- use mesh, only: &
-   mesh_element
- use material, only: &
-   homogenization_Ngrains
- use constitutive, only: &
-   constitutive_getAdiabaticTemperature
-
- implicit none
- integer(pInt), intent(in) :: &
-   ip, &                                                                                            !< integration point number
-   el                                                                                               !< element number
- integer(pInt) :: &
-   ipc
-
- 
- field_getLocalTemperature = 0.0_pReal
- do ipc = 1, homogenization_Ngrains(mesh_element(3,el))
-   field_getLocalTemperature = field_getLocalTemperature + &
-                               constitutive_getAdiabaticTemperature(ipc,ip,el)                     ! array/function/subroutine which is faster
- enddo
- field_getLocalTemperature = field_getLocalTemperature/homogenization_Ngrains(mesh_element(3,el))
-
-end function field_getLocalTemperature
-
-!--------------------------------------------------------------------------------------------------
-!> @brief Sets the regularised temperature value in field state
-!--------------------------------------------------------------------------------------------------
-subroutine field_putFieldTemperature(ip,el,fieldThermalValue) 
- use material, only: &
-   material_homog, &
-   fieldThermal, &
-   mappingHomogenization, &
-   field_thermal_type, &
-   FIELD_THERMAL_nonlocal_ID
-
- implicit none
- integer(pInt), intent(in) :: &
-   ip, &                                                                                            !< integration point number
-   el
- real(pReal), intent(in) :: &
-   fieldThermalValue
-
- select case(field_thermal_type(material_homog(ip,el)))                                                   
-   case (FIELD_THERMAL_nonlocal_ID)
-     fieldThermal(material_homog(ip,el))% &
-        field(1,mappingHomogenization(1,ip,el)) = fieldThermalValue 
-
- end select 
-
-end subroutine field_putFieldTemperature
-
-!--------------------------------------------------------------------------------------------------
-!> @brief return heat generation rate
-!--------------------------------------------------------------------------------------------------
-real(pReal) function field_getHeatGeneration(ip,el)
- use mesh, only: &
-   mesh_element
- use material, only: &
-   homogenization_Ngrains
- use crystallite, only: &
-   crystallite_Tstar_v, &
-   crystallite_Lp
- use constitutive, only: &
-   constitutive_getHeatGeneration
-
- implicit none
- integer(pInt), intent(in) :: &
-   ip, &                                                                                            !< integration point number
-   el                                                                                               !< element number
- integer(pInt) :: &
-   ipc
- 
- field_getHeatGeneration = 0.0_pReal
- do ipc = 1, homogenization_Ngrains(mesh_element(3,el))
-   field_getHeatGeneration = field_getHeatGeneration + &
-                             constitutive_getHeatGeneration(crystallite_Tstar_v(1:6,ipc,ip,el), &
-                                                            crystallite_Lp (1:3,1:3,ipc,ip,el), &
-                                                            ipc,ip,el)                     
- enddo
- field_getHeatGeneration = field_getHeatGeneration/homogenization_Ngrains(mesh_element(3,el))
-
-end function field_getHeatGeneration
-
-!--------------------------------------------------------------------------------------------------
-!> @brief ToDo
-!--------------------------------------------------------------------------------------------------
-real(pReal) function field_getLocalVacancyConcentration(ip,el)
- use mesh, only: &
-   mesh_element
- use material, only: &
-   homogenization_Ngrains
- use constitutive, only: &
-   constitutive_getLocalVacancyConcentration
-
- implicit none
- integer(pInt), intent(in) :: &
-   ip, &                                                                                            !< integration point number
-   el                                                                                               !< element number
- integer(pInt) :: &
-   ipc
-
- 
- field_getLocalVacancyConcentration = 0.0_pReal
- do ipc = 1, homogenization_Ngrains(mesh_element(3,el))
-   field_getLocalVacancyConcentration = field_getLocalVacancyConcentration + &
-                               constitutive_getLocalVacancyConcentration(ipc,ip,el)                     ! array/function/subroutine which is faster
- enddo
- field_getLocalVacancyConcentration = field_getLocalVacancyConcentration/ &
-                                      homogenization_Ngrains(mesh_element(3,el))
-
-end function field_getLocalVacancyConcentration
-
-!--------------------------------------------------------------------------------------------------
-!> @brief Sets the diffused vacancy concentration in field state
-!--------------------------------------------------------------------------------------------------
-subroutine field_putFieldVacancyConcentration(ip,el,fieldVacancyConcentration) 
- use material, only: &
-   material_homog, &
-   fieldVacancy, &
-   mappingHomogenization, &
-   field_vacancy_type, &
-   FIELD_VACANCY_nonlocal_ID
-
- implicit none
- integer(pInt), intent(in) :: &
-   ip, &                                                                                            !< integration point number
-   el
- real(pReal), intent(in) :: &
-   fieldVacancyConcentration
-
- select case(field_vacancy_type(material_homog(ip,el)))                                                   
-   case (FIELD_VACANCY_nonlocal_ID)
-     fieldVacancy(material_homog(ip,el))% &
-        field(1,mappingHomogenization(1,ip,el)) = fieldVacancyConcentration 
-
- end select 
-
-end subroutine field_putFieldVacancyConcentration
-
-!--------------------------------------------------------------------------------------------------
 !> @brief return array of homogenization results for post file inclusion. call only, 
 !> if homogenization_sizePostResults(i,e) > 0 !!
 !--------------------------------------------------------------------------------------------------
@@ -1584,80 +1261,151 @@ function homogenization_postResults(ip,el)
  use material, only: &
    mappingHomogenization, &
    homogState, &
+   thermalState, &
+   damageState, &
+   vacancyfluxState, &
+   porosityState, &
+   hydrogenfluxState, &
    homogenization_type, &
+   thermal_type, &
+   damage_type, &
+   vacancyflux_type, &
+   porosity_type, &
+   hydrogenflux_type, &
    HOMOGENIZATION_NONE_ID, &
    HOMOGENIZATION_ISOSTRAIN_ID, &
-   HOMOGENIZATION_RGC_ID
+   HOMOGENIZATION_RGC_ID, &
+   THERMAL_isothermal_ID, &
+   THERMAL_adiabatic_ID, &
+   THERMAL_conduction_ID, &
+   DAMAGE_none_ID, &
+   DAMAGE_local_ID, &
+   DAMAGE_nonlocal_ID, &
+   VACANCYFLUX_isoconc_ID, &
+   VACANCYFLUX_isochempot_ID, &
+   VACANCYFLUX_cahnhilliard_ID, &
+   POROSITY_none_ID, &
+   POROSITY_phasefield_ID, &
+   HYDROGENFLUX_isoconc_ID, &
+   HYDROGENFLUX_cahnhilliard_ID
  use homogenization_isostrain, only: &
    homogenization_isostrain_postResults
  use homogenization_RGC, only: &
    homogenization_RGC_postResults
+ use thermal_adiabatic, only: &
+   thermal_adiabatic_postResults
+ use thermal_conduction, only: &
+   thermal_conduction_postResults
+ use damage_local, only: &
+   damage_local_postResults
+ use damage_nonlocal, only: &
+   damage_nonlocal_postResults
+ use vacancyflux_isochempot, only: &
+   vacancyflux_isochempot_postResults
+ use vacancyflux_cahnhilliard, only: &
+   vacancyflux_cahnhilliard_postResults
+ use porosity_phasefield, only: &
+   porosity_phasefield_postResults
+ use hydrogenflux_cahnhilliard, only: &
+   hydrogenflux_cahnhilliard_postResults
  
  implicit none
  integer(pInt), intent(in) :: &
    ip, &                                                                                            !< integration point
    el                                                                                               !< element number
- real(pReal), dimension(homogState(mappingHomogenization(2,ip,el))%sizePostResults) :: &
+ real(pReal), dimension(  homogState       (mappingHomogenization(2,ip,el))%sizePostResults &
+                        + thermalState     (mappingHomogenization(2,ip,el))%sizePostResults &
+                        + damageState      (mappingHomogenization(2,ip,el))%sizePostResults &
+                        + vacancyfluxState (mappingHomogenization(2,ip,el))%sizePostResults &
+                        + porosityState    (mappingHomogenization(2,ip,el))%sizePostResults &
+                        + hydrogenfluxState(mappingHomogenization(2,ip,el))%sizePostResults) :: &
    homogenization_postResults
-
+ integer(pInt) :: &
+   startPos, endPos
+ 
  homogenization_postResults = 0.0_pReal
+
+ startPos = 1_pInt
+ endPos   = homogState(mappingHomogenization(2,ip,el))%sizePostResults
  chosenHomogenization: select case (homogenization_type(mesh_element(3,el)))
    case (HOMOGENIZATION_NONE_ID) chosenHomogenization
 
    case (HOMOGENIZATION_ISOSTRAIN_ID) chosenHomogenization
-     homogenization_postResults = homogenization_isostrain_postResults(&
+     homogenization_postResults(startPos:endPos) = &
+       homogenization_isostrain_postResults(&
                                   ip, &
                                   el, &
                                   materialpoint_P(1:3,1:3,ip,el), &
                                   materialpoint_F(1:3,1:3,ip,el))
    case (HOMOGENIZATION_RGC_ID) chosenHomogenization
-     homogenization_postResults = homogenization_RGC_postResults(&
+     homogenization_postResults(startPos:endPos) = &
+       homogenization_RGC_postResults(&
                                   ip, &
                                   el, &
                                   materialpoint_P(1:3,1:3,ip,el), &
                                   materialpoint_F(1:3,1:3,ip,el))
  end select chosenHomogenization
 
+ startPos = endPos + 1_pInt
+ endPos   = endPos + thermalState(mappingHomogenization(2,ip,el))%sizePostResults
+ chosenThermal: select case (thermal_type(mesh_element(3,el)))
+   case (THERMAL_isothermal_ID) chosenThermal
+
+   case (THERMAL_adiabatic_ID) chosenThermal
+     homogenization_postResults(startPos:endPos) = &
+       thermal_adiabatic_postResults(ip, el)
+   case (THERMAL_conduction_ID) chosenThermal
+     homogenization_postResults(startPos:endPos) = &
+       thermal_conduction_postResults(ip, el)
+ end select chosenThermal
+
+ startPos = endPos + 1_pInt
+ endPos   = endPos + damageState(mappingHomogenization(2,ip,el))%sizePostResults
+ chosenDamage: select case (damage_type(mesh_element(3,el)))
+   case (DAMAGE_none_ID) chosenDamage
+
+   case (DAMAGE_local_ID) chosenDamage
+     homogenization_postResults(startPos:endPos) = &
+       damage_local_postResults(ip, el)
+
+   case (DAMAGE_nonlocal_ID) chosenDamage
+     homogenization_postResults(startPos:endPos) = &
+       damage_nonlocal_postResults(ip, el)
+ end select chosenDamage
+
+ startPos = endPos + 1_pInt
+ endPos   = endPos + vacancyfluxState(mappingHomogenization(2,ip,el))%sizePostResults
+ chosenVacancyflux: select case (vacancyflux_type(mesh_element(3,el)))
+   case (VACANCYFLUX_isoconc_ID) chosenVacancyflux
+
+   case (VACANCYFLUX_isochempot_ID) chosenVacancyflux
+     homogenization_postResults(startPos:endPos) = &
+       vacancyflux_isochempot_postResults(ip, el)
+   case (VACANCYFLUX_cahnhilliard_ID) chosenVacancyflux
+     homogenization_postResults(startPos:endPos) = &
+       vacancyflux_cahnhilliard_postResults(ip, el)
+ end select chosenVacancyflux
+
+ startPos = endPos + 1_pInt
+ endPos   = endPos + porosityState(mappingHomogenization(2,ip,el))%sizePostResults
+ chosenPorosity: select case (porosity_type(mesh_element(3,el)))
+   case (POROSITY_none_ID) chosenPorosity
+
+   case (POROSITY_phasefield_ID) chosenPorosity
+     homogenization_postResults(startPos:endPos) = &
+       porosity_phasefield_postResults(ip, el)
+ end select chosenPorosity
+
+ startPos = endPos + 1_pInt
+ endPos   = endPos + hydrogenfluxState(mappingHomogenization(2,ip,el))%sizePostResults
+ chosenHydrogenflux: select case (hydrogenflux_type(mesh_element(3,el)))
+   case (HYDROGENFLUX_isoconc_ID) chosenHydrogenflux
+
+   case (HYDROGENFLUX_cahnhilliard_ID) chosenHydrogenflux
+     homogenization_postResults(startPos:endPos) = &
+       hydrogenflux_cahnhilliard_postResults(ip, el)
+ end select chosenHydrogenflux
+
 end function homogenization_postResults
-
-!--------------------------------------------------------------------------------------------------
-!> @brief return array of homogenization results for post file inclusion. call only, 
-!> if homogenization_sizePostResults(i,e) > 0 !!
-!--------------------------------------------------------------------------------------------------
-function field_postResults(ip,el)
- use material, only: &
-   mappingHomogenization, &
-   fieldThermal, &
-   fieldDamage, &
-   fieldVacancy
- 
- implicit none
- integer(pInt), intent(in) :: &
-   ip, &                                                                                            !< integration point
-   el                                                                                               !< element number
- real(pReal), dimension(field_sizePostResults(mappingHomogenization(2,ip,el))) :: &
-   field_postResults
- integer(pInt) :: &
-   c, homog, pos, o 
-
- field_postResults = 0.0_pReal
- homog = mappingHomogenization(2,ip,el)
- pos   = mappingHomogenization(1,ip,el)
- c = 0_pInt
- do o = 1_pInt,field_Noutput(homog)
-   select case(field_outputID(o,homog))
-     case (temperature_ID)
-       field_postResults(c+1_pInt) = fieldThermal(homog)%field(1,pos)
-       c = c + 1_pInt
-     case (damage_ID)
-       field_postResults(c+1_pInt) = fieldDamage(homog)%field(1,pos)
-       c = c + 1_pInt
-     case (vacancy_concentration_ID)
-       field_postResults(c+1_pInt) = fieldVacancy(homog)%field(1,pos)
-       c = c + 1_pInt
-   end select
- enddo
-
-end function field_postResults
 
 end module homogenization

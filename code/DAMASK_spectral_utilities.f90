@@ -395,10 +395,13 @@ subroutine utilities_FFTforward()
  use numerics, only: &
    worldrank
  use mesh, only: &
-   gridOffset, &
    gridLocal
 
  implicit none
+ external :: &
+   MPI_Bcast, &
+   MPI_reduce
+ 
  integer(pInt)  :: row, column                                                                      ! if debug FFTW, compare 3D array field of row and column
  real(pReal), dimension(2) :: myRand, maxScalarField                                                ! random numbers
  integer(pInt) ::  i, j, k
@@ -433,7 +436,7 @@ subroutine utilities_FFTforward()
                           field_fourierMPI(row,column,1:grid1Red,1:gridLocal(2),1:gridLocal(3)))/&
                     scalarField_fourierMPI(1:grid1Red,1:gridLocal(2),1:gridLocal(3))
    else where
-     scalarField_realMPI = cmplx(0.0,0.0,pReal)
+     scalarField_fourierMPI = cmplx(0.0,0.0,pReal)
    end where
    maxScalarField(1) = maxval(real (scalarField_fourierMPI(1:grid1Red,1:gridLocal(2), &
                                                                      1:gridLocal(3))))
@@ -451,7 +454,7 @@ subroutine utilities_FFTforward()
 !--------------------------------------------------------------------------------------------------
 ! applying filter
  do k = 1_pInt, gridLocal(3);  do j = 1_pInt, gridLocal(2);  do i = 1_pInt,grid1Red
-   field_fourierMPI(1:3,1:3,i,j,k) = utilities_getFilter(xi(1:3,i,j,k))* &
+   field_fourierMPI(1:3,1:3,i,j,k) = cmplx(utilities_getFilter(xi(1:3,i,j,k)),0.0,pReal)* &
                                      field_fourierMPI(1:3,1:3,i,j,k)
  enddo; enddo; enddo
  
@@ -473,6 +476,10 @@ subroutine utilities_FFTbackward()
    gridLocal
 
  implicit none
+ external :: &
+   MPI_Bcast, &
+   MPI_reduce
+
  integer(pInt) :: row, column                                                                       !< if debug FFTW, compare 3D array field of row and column
  real(pReal), dimension(2) :: myRand 
  real(pReal) :: maxScalarField
@@ -506,7 +513,7 @@ subroutine utilities_FFTbackward()
      -  field_realMPI      (row,column,1:gridLocal(1),1:gridLocal(2),1:gridLocal(3)))/ &
        scalarField_realMPI(1:gridLocal(1),1:gridLocal(2),1:gridLocal(3))
    else where
-     scalarField_realMPI = cmplx(0.0,0.0,pReal)
+     scalarField_realMPI = 0.0_pReal
    end where
    maxScalarField = maxval(real (scalarField_realMPI(1:gridLocal(1),1:gridLocal(2),1:gridLocal(3))))
    call MPI_reduce(MPI_IN_PLACE,maxScalarField,1,MPI_DOUBLE,MPI_MAX,0,PETSC_COMM_WORLD,ierr)
@@ -627,6 +634,10 @@ real(pReal) function utilities_divergenceRMS()
    gridGlobal
 
  implicit none
+ external :: &
+   MPI_reduce, &
+   MPI_Allreduce
+
  integer(pInt) :: i, j, k 
  real(pReal) :: &
    err_real_div_RMS, &                                                                              !< RMS of divergence in real space
@@ -714,6 +725,9 @@ real(pReal) function utilities_curlRMS()
    gridGlobal
 
  implicit none
+ external :: &
+   MPI_Allreduce
+
  integer(pInt)  ::  i, j, k, l 
  complex(pReal), dimension(3,3) ::  curl_fourier
  PetscErrorCode :: ierr
@@ -898,10 +912,14 @@ subroutine utilities_constitutiveResponse(F_lastInc,F,temperature,timeinc,&
    materialpoint_F, &
    materialpoint_P, &
    materialpoint_dPdF
- use thermal_isothermal, only: &
-   thermal_isothermal_temperature
+! use thermal_isothermal, only: &
+!   thermal_isothermal_temperature
  
  implicit none
+ external :: &
+   MPI_reduce, &
+   MPI_Allreduce
+
  real(pReal), intent(in)                                         :: temperature                     !< temperature (no field)
  real(pReal), intent(in), dimension(3,3,gridLocal(1),gridLocal(2),gridLocal(3)) :: &
    F_lastInc, &                                                                                     !< target deformation gradient
@@ -937,7 +955,7 @@ subroutine utilities_constitutiveResponse(F_lastInc,F,temperature,timeinc,&
 
  call CPFEM_general(CPFEM_COLLECT,F_lastInc(1:3,1:3,1,1,1),F(1:3,1:3,1,1,1), &
                    temperature,timeinc,1_pInt,1_pInt)
- thermal_isothermal_temperature(:) = temperature
+! thermal_isothermal_temperature(:) = temperature
  materialpoint_F  = reshape(F,[3,3,1,product(gridLocal)])
 
  call debug_reset()
@@ -1044,6 +1062,9 @@ function utilities_forwardField(timeinc,field_lastInc,rate,aim)
    gridLocal
 
  implicit none
+ external :: &
+   MPI_Allreduce
+
  real(pReal), intent(in) :: & 
    timeinc                                                                                          !< timeinc of current step
  real(pReal), intent(in),           dimension(3,3,gridLocal(1),gridLocal(2),gridLocal(3)) :: &
@@ -1143,6 +1164,8 @@ subroutine utilities_updateIPcoords(F)
    geomSizeGlobal, &
    mesh_ipCoordinates 
  implicit none
+ external :: &
+   MPI_Bcast
 
  real(pReal),   dimension(3,3,gridLocal(1),gridLocal(2),gridLocal(3)), intent(in) :: F
  integer(pInt) :: i, j, k, m

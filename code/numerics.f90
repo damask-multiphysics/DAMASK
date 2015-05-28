@@ -71,6 +71,31 @@ module numerics
    numerics_timeSyncing       = .false.                                                             !< flag indicating if time synchronization in crystallite is used for nonlocal plasticity
 
 !--------------------------------------------------------------------------------------------------
+! field parameters:
+ real(pReal), protected, public :: &
+   err_struct_tolAbs          =  1.0e-10_pReal, &                                                   !< absolute tolerance for mechanical equilibrium
+   err_struct_tolRel          =  1.0e-4_pReal, &                                                    !< relative tolerance for mechanical equilibrium
+   err_thermal_tolAbs         =  1.0e-2_pReal, &                                                    !< absolute tolerance for thermal equilibrium
+   err_thermal_tolRel         =  1.0e-6_pReal, &                                                    !< relative tolerance for thermal equilibrium
+   err_damage_tolAbs          =  1.0e-2_pReal, &                                                    !< absolute tolerance for damage evolution
+   err_damage_tolRel          =  1.0e-6_pReal, &                                                    !< relative tolerance for damage evolution
+   err_vacancyflux_tolAbs     =  1.0e-8_pReal, &                                                    !< absolute tolerance for vacancy transport
+   err_vacancyflux_tolRel     =  1.0e-6_pReal, &                                                    !< relative tolerance for vacancy transport
+   err_porosity_tolAbs        =  1.0e-2_pReal, &                                                    !< absolute tolerance for porosity evolution
+   err_porosity_tolRel        =  1.0e-6_pReal, &                                                    !< relative tolerance for porosity evolution
+   err_hydrogenflux_tolAbs    =  1.0e-8_pReal, &                                                    !< absolute tolerance for hydrogen transport
+   err_hydrogenflux_tolRel    =  1.0e-6_pReal, &                                                    !< relative tolerance for hydrogen transport
+   vacancyBoundPenalty        =  1.0e+4_pReal, &                                                    !< penalty to enforce 0 < Cv < 1
+   hydrogenBoundPenalty       =  1.0e+4_pReal                                                       !< penalty to enforce 0 < Ch < 1
+ integer(pInt), protected, public :: &
+   itmax                      =  250_pInt, &                                                        !< maximum number of iterations
+   itmin                      =  1_pInt, &                                                          !< minimum number of iterations
+   stagItMax                  =  10_pInt, &                                                         !< max number of field level staggered iterations
+   maxCutBack                 =  3_pInt, &                                                          !< max number of cut backs
+   vacancyPolyOrder           =  10_pInt, &                                                         !< order of polynomial approximation of entropic contribution to vacancy chemical potential
+   hydrogenPolyOrder          =  10_pInt                                                            !< order of polynomial approximation of entropic contribution to hydrogen chemical potential
+
+!--------------------------------------------------------------------------------------------------
 ! spectral parameters:
 #ifdef Spectral
  real(pReal), protected, public :: &
@@ -94,9 +119,6 @@ module numerics
                                 &-snes_ngmres_anderson '
  integer(pInt), protected, public :: &
    fftw_planner_flag          =  32_pInt, &                                                         !< conversion of fftw_plan_mode to integer, basically what is usually done in the include file of fftw
-   itmax                      =  250_pInt, &                                                        !< maximum number of iterations
-   itmin                      =  2_pInt, &                                                          !< minimum number of iterations
-   maxCutBack                 =  3_pInt, &                                                          !< max number of cut backs
    continueCalculation        =  0_pInt, &                                                          !< 0: exit if BVP solver does not converge, 1: continue calculation if BVP solver does not converge
    divergence_correction      =  2_pInt                                                             !< correct divergence calculation in fourier space 0: no correction, 1: size scaled to 1, 2: size scaled to Npoints
  logical, protected, public :: &
@@ -107,13 +129,16 @@ module numerics
 !--------------------------------------------------------------------------------------------------
 ! FEM parameters:
 #ifdef FEM
- real(pReal), protected, public :: &
-   err_struct_tolAbs          =  1.0e-10_pReal, &                                                   !< absolute tolerance for equilibrium
-   err_struct_tolRel          =  1.0e-4_pReal, &                                                    !< relative tolerance for equilibrium
-   err_thermal_tol            =  1.0e-1_pReal, &
-   err_damage_tol             =  1.0e-2_pReal, &
-   err_vacancydiffusion_tol   =  1.0e-8_pReal, &
-   vacancyBoundPenalty        =  1.0e+4_pReal                                                       !< penalty to enforce 0 < Cv < 1
+ integer(pInt), protected, public :: &
+   integrationOrder           =  2_pInt, &                                                          !< order of quadrature rule required
+   structOrder                =  2_pInt, &                                                          !< order of displacement shape functions
+   thermalOrder               =  2_pInt, &                                                          !< order of temperature field shape functions
+   damageOrder                =  2_pInt, &                                                          !< order of damage field shape functions
+   vacancyfluxOrder           =  2_pInt, &                                                          !< order of vacancy concentration and chemical potential field shape functions
+   porosityOrder              =  2_pInt, &                                                          !< order of porosity field shape functions
+   hydrogenfluxOrder          =  2_pInt                                                             !< order of hydrogen concentration and chemical potential field shape functions  
+ logical, protected, public :: & 
+   BBarStabilisation          = .false.                                                  
  character(len=4096), protected, public :: &
    petsc_optionsFEM        = '-mech_snes_type newtonls &
                              &-mech_snes_linesearch_type cp &
@@ -123,50 +148,43 @@ module numerics
                              &-mech_ksp_type fgmres &
                              &-mech_ksp_max_it 25 &
                              &-mech_pc_type ml &
-                             &-mech_pc_ml_maxNlevels 2 &
-                             &-mech_mg_coarse_ksp_type preonly &
-                             &-mech_mg_coarse_pc_type lu &
-                             &-mech_mg_coarse_pc_factor_mat_solver_package superlu_dist &
                              &-mech_mg_levels_ksp_type chebyshev &
-                             &-mech_mg_levels_ksp_chebyshev_estimate_eigenvalues 0,0.1,0,1.1 &
                              &-mech_mg_levels_pc_type sor &
                              &-mech_pc_ml_nullspace user &
                              &-damage_snes_type newtonls &
                              &-damage_snes_linesearch_type cp &
                              &-damage_ksp_type fgmres &
+                             &-damage_ksp_max_it 25 &
                              &-damage_snes_atol 1e-8 &
-                             &-damage_pc_type ml &
-                             &-damage_mg_levels_ksp_type chebyshev &
-                             &-damage_mg_levels_ksp_chebyshev_estimate_eigenvalues 0,0.1,0,1.1 &
-                             &-damage_mg_levels_pc_type sor &
+                             &-damage_pc_type hypre &
                              &-thermal_snes_type newtonls &
                              &-thermal_snes_linesearch_type cp &
                              &-thermal_ksp_type fgmres &
+                             &-thermal_ksp_max_it 25 &
                              &-thermal_snes_atol 1e-1 &
-                             &-thermal_pc_type ml &
-                             &-thermal_mg_levels_ksp_type chebyshev &
-                             &-thermal_mg_levels_ksp_chebyshev_estimate_eigenvalues 0,0.1,0,1.1 &
-                             &-thermal_mg_levels_pc_type sor &
+                             &-thermal_pc_type hypre &
                              &-vacancy_snes_type newtonls &
                              &-vacancy_snes_linesearch_type cp &
-                             &-vacancy_ksp_type fgmres &
                              &-vacancy_snes_atol 1e-9 &
+                             &-vacancy_ksp_type fgmres &
+                             &-vacancy_ksp_max_it 25 &
                              &-vacancy_pc_type ml &
                              &-vacancy_mg_levels_ksp_type chebyshev &
-                             &-vacancy_mg_levels_ksp_chebyshev_estimate_eigenvalues 0,0.1,0,1.1 &
-                             &-vacancy_mg_levels_pc_type sor '
- integer(pInt), protected, public :: &
-   itmaxFEM                   =  25_pInt, &                                                         !< maximum number of iterations
-   itminFEM                   =  1_pInt, &                                                          !< minimum number of iterations
-   stagItMax                  =  10_pInt, &                                                         !< max number of field level staggered iterations
-   maxCutBackFEM              =  3_pInt, &                                                          !< max number of cut backs
-   integrationOrder           =  2_pInt, &
-   structOrder                =  2_pInt, &
-   thermalOrder               =  2_pInt, &
-   damageOrder                =  2_pInt, &
-   vacancyDiffusionOrder      =  2_pInt
- logical, protected, public :: & 
-   BBarStabilisation          = .false.                                                  
+                             &-vacancy_mg_levels_pc_type sor &
+                             &-porosity_snes_type newtonls &
+                             &-porosity_snes_linesearch_type cp &
+                             &-porosity_ksp_type fgmres &
+                             &-porosity_ksp_max_it 25 &
+                             &-porosity_snes_atol 1e-8 &
+                             &-porosity_pc_type hypre &
+                             &-hydrogen_snes_type newtonls &
+                             &-hydrogen_snes_linesearch_type cp &
+                             &-hydrogen_snes_atol 1e-9 &
+                             &-hydrogen_ksp_type fgmres &
+                             &-hydrogen_ksp_max_it 25 &
+                             &-hydrogen_pc_type ml &
+                             &-hydrogen_mg_levels_ksp_type chebyshev &
+                             &-hydrogen_mg_levels_pc_type sor '
 #endif
 
  public :: numerics_init
@@ -351,6 +369,49 @@ subroutine numerics_init
          residualStiffness = IO_floatValue(line,positions,2_pInt)
 
 !--------------------------------------------------------------------------------------------------
+! field parameters
+       case ('err_struct_tolabs')
+         err_struct_tolAbs = IO_floatValue(line,positions,2_pInt)
+       case ('err_struct_tolrel')
+         err_struct_tolRel = IO_floatValue(line,positions,2_pInt)
+       case ('err_thermal_tolabs')
+         err_thermal_tolabs = IO_floatValue(line,positions,2_pInt)
+       case ('err_thermal_tolrel')
+         err_thermal_tolrel = IO_floatValue(line,positions,2_pInt)
+       case ('err_damage_tolabs')
+         err_damage_tolabs = IO_floatValue(line,positions,2_pInt)
+       case ('err_damage_tolrel')
+         err_damage_tolrel = IO_floatValue(line,positions,2_pInt)
+       case ('err_vacancyflux_tolabs')
+         err_vacancyflux_tolabs = IO_floatValue(line,positions,2_pInt)
+       case ('err_vacancyflux_tolrel')
+         err_vacancyflux_tolrel = IO_floatValue(line,positions,2_pInt)
+       case ('err_porosity_tolabs')
+         err_porosity_tolabs = IO_floatValue(line,positions,2_pInt)
+       case ('err_porosity_tolrel')
+         err_porosity_tolrel = IO_floatValue(line,positions,2_pInt)
+       case ('err_hydrogenflux_tolabs')
+         err_hydrogenflux_tolabs = IO_floatValue(line,positions,2_pInt)
+       case ('err_hydrogenflux_tolrel')
+         err_hydrogenflux_tolrel = IO_floatValue(line,positions,2_pInt)
+       case ('vacancyboundpenalty')
+         vacancyBoundPenalty = IO_floatValue(line,positions,2_pInt)
+       case ('hydrogenboundpenalty')
+         hydrogenBoundPenalty = IO_floatValue(line,positions,2_pInt)
+       case ('itmax')
+         itmax = IO_intValue(line,positions,2_pInt)
+       case ('itmin')
+         itmin = IO_intValue(line,positions,2_pInt)
+       case ('maxcutback')
+         maxCutBack = IO_intValue(line,positions,2_pInt)
+       case ('maxstaggerediter')
+         stagItMax = IO_intValue(line,positions,2_pInt)
+       case ('vacancypolyorder')
+         vacancyPolyOrder = IO_intValue(line,positions,2_pInt)
+       case ('hydrogenpolyorder')
+         hydrogenPolyOrder = IO_intValue(line,positions,2_pInt)
+
+!--------------------------------------------------------------------------------------------------
 ! spectral parameters
 #ifdef Spectral
        case ('err_div_tolabs')
@@ -361,12 +422,6 @@ subroutine numerics_init
          err_stress_tolrel = IO_floatValue(line,positions,2_pInt)
        case ('err_stress_tolabs')
          err_stress_tolabs = IO_floatValue(line,positions,2_pInt)
-       case ('itmax')
-         itmax = IO_intValue(line,positions,2_pInt)
-       case ('itmin')
-         itmin = IO_intValue(line,positions,2_pInt)
-       case ('maxcutback')
-         maxCutBack = IO_intValue(line,positions,2_pInt)
        case ('continuecalculation')
          continueCalculation = IO_intValue(line,positions,2_pInt)
        case ('memory_efficient')
@@ -395,36 +450,16 @@ subroutine numerics_init
          polarBeta = IO_floatValue(line,positions,2_pInt)
 #else
       case ('err_div_tolabs','err_div_tolrel','err_stress_tolrel','err_stress_tolabs',&             ! found spectral parameter for FEM build
-            'itmax', 'itmin','memory_efficient','fftw_timelimit','fftw_plan_mode', &
+            'memory_efficient','fftw_timelimit','fftw_plan_mode', &
             'divergence_correction','update_gamma','spectralfilter','myfilter', &
             'err_curl_tolabs','err_curl_tolrel', &
-            'maxcutback','polaralpha','polarbeta')
+            'polaralpha','polarbeta')
          call IO_warning(40_pInt,ext_msg=tag)
 #endif
 
 !--------------------------------------------------------------------------------------------------
 ! FEM parameters
 #ifdef FEM
-       case ('err_struct_tolabs')
-         err_struct_tolAbs = IO_floatValue(line,positions,2_pInt)
-       case ('err_struct_tolrel')
-         err_struct_tolRel = IO_floatValue(line,positions,2_pInt)
-       case ('err_thermal_tol')
-         err_thermal_tol = IO_floatValue(line,positions,2_pInt)
-       case ('err_damage_tol')
-         err_damage_tol = IO_floatValue(line,positions,2_pInt)
-       case ('err_vacancydiffusion_tol')
-         err_vacancyDiffusion_tol = IO_floatValue(line,positions,2_pInt)
-       case ('vacancyboundpenalty')
-         vacancyBoundPenalty = IO_floatValue(line,positions,2_pInt)
-       case ('itmaxfem')
-         itmaxFEM = IO_intValue(line,positions,2_pInt)
-       case ('itminfem')
-         itminFEM = IO_intValue(line,positions,2_pInt)
-       case ('maxcutbackfem')
-         maxCutBackFEM = IO_intValue(line,positions,2_pInt)
-       case ('maxstaggerediter')
-         stagItMax = IO_intValue(line,positions,2_pInt)
        case ('integrationorder')
          integrationorder = IO_intValue(line,positions,2_pInt)
        case ('structorder')
@@ -433,16 +468,19 @@ subroutine numerics_init
          thermalorder = IO_intValue(line,positions,2_pInt)
        case ('damageorder')
          damageorder = IO_intValue(line,positions,2_pInt)
-       case ('vacancydiffusionorder')
-         vacancyDiffusionOrder = IO_intValue(line,positions,2_pInt)
+       case ('vacancyfluxorder')
+         vacancyfluxOrder = IO_intValue(line,positions,2_pInt)
+       case ('porosityorder')
+         porosityOrder = IO_intValue(line,positions,2_pInt)
+       case ('hydrogenfluxorder')
+         hydrogenfluxOrder = IO_intValue(line,positions,2_pInt)
        case ('petsc_optionsfem')
          petsc_optionsFEM = trim(line(positions(4):))
        case ('bbarstabilisation')
          BBarStabilisation = IO_intValue(line,positions,2_pInt) > 0_pInt
 #else
-      case ('err_struct_tolabs','err_struct_tolrel','err_thermal_tol','err_damage_tol','err_vacancydiffusion_tol',&         ! found FEM parameter for spectral/Abaqus/Marc build
-            'vacancyboundpenalty','itmaxfem', 'itminfem','maxcutbackfem','maxstaggerediter','integrationorder',&
-            'structorder','thermalorder', 'damageorder','petsc_optionsfem','bbarstabilisation')
+      case ('integrationorder','structorder','thermalorder', 'damageorder','vacancyfluxorder', &
+            'porosityorder','hydrogenfluxorder','petsc_optionsfem','bbarstabilisation')
          call IO_warning(40_pInt,ext_msg=tag)
 #endif
        case default                                                                                ! found unknown keyword
@@ -541,11 +579,31 @@ subroutine numerics_init
   !$  write(6,'(a24,1x,i8,/)')   ' number of threads:      ',DAMASK_NumThreadsInt
 
 !--------------------------------------------------------------------------------------------------
-! spectral parameters
-#ifdef Spectral
+! field parameters
    write(6,'(a24,1x,i8)')      ' itmax:                  ',itmax
    write(6,'(a24,1x,i8)')      ' itmin:                  ',itmin
    write(6,'(a24,1x,i8)')      ' maxCutBack:             ',maxCutBack
+   write(6,'(a24,1x,i8)')      ' maxStaggeredIter:       ',stagItMax
+   write(6,'(a24,1x,i8)')      ' vacancyPolyOrder:       ',vacancyPolyOrder
+   write(6,'(a24,1x,i8)')      ' hydrogenPolyOrder:      ',hydrogenPolyOrder
+   write(6,'(a24,1x,es8.1)')   ' err_struct_tolAbs:      ',err_struct_tolAbs
+   write(6,'(a24,1x,es8.1)')   ' err_struct_tolRel:      ',err_struct_tolRel
+   write(6,'(a24,1x,es8.1)')   ' err_thermal_tolabs:     ',err_thermal_tolabs
+   write(6,'(a24,1x,es8.1)')   ' err_thermal_tolrel:     ',err_thermal_tolrel
+   write(6,'(a24,1x,es8.1)')   ' err_damage_tolabs:      ',err_damage_tolabs
+   write(6,'(a24,1x,es8.1)')   ' err_damage_tolrel:      ',err_damage_tolrel
+   write(6,'(a24,1x,es8.1)')   ' err_vacancyflux_tolabs: ',err_vacancyflux_tolabs
+   write(6,'(a24,1x,es8.1)')   ' err_vacancyflux_tolrel: ',err_vacancyflux_tolrel
+   write(6,'(a24,1x,es8.1)')   ' err_porosity_tolabs:    ',err_porosity_tolabs
+   write(6,'(a24,1x,es8.1)')   ' err_porosity_tolrel:    ',err_porosity_tolrel
+   write(6,'(a24,1x,es8.1)')   ' err_hydrogenflux_tolabs:',err_hydrogenflux_tolabs
+   write(6,'(a24,1x,es8.1)')   ' err_hydrogenflux_tolrel:',err_hydrogenflux_tolrel
+   write(6,'(a24,1x,es8.1)')   ' vacancyBoundPenalty:    ',vacancyBoundPenalty
+   write(6,'(a24,1x,es8.1)')   ' hydrogenBoundPenalty:   ',hydrogenBoundPenalty
+
+!--------------------------------------------------------------------------------------------------
+! spectral parameters
+#ifdef Spectral
    write(6,'(a24,1x,i8)')      ' continueCalculation:    ',continueCalculation
    write(6,'(a24,1x,L8)')      ' memory_efficient:       ',memory_efficient
    write(6,'(a24,1x,i8)')      ' divergence_correction:  ',divergence_correction
@@ -573,21 +631,13 @@ subroutine numerics_init
 !--------------------------------------------------------------------------------------------------
 ! spectral parameters
 #ifdef FEM
-   write(6,'(a24,1x,i8)')      ' itmaxFEM:               ',itmaxFEM
-   write(6,'(a24,1x,i8)')      ' itminFEM:               ',itminFEM
-   write(6,'(a24,1x,i8)')      ' maxCutBackFEM:          ',maxCutBackFEM
-   write(6,'(a24,1x,i8)')      ' maxStaggeredIter:       ',stagItMax
    write(6,'(a24,1x,i8)')      ' integrationOrder:       ',integrationOrder
    write(6,'(a24,1x,i8)')      ' structOrder:            ',structOrder
    write(6,'(a24,1x,i8)')      ' thermalOrder:           ',thermalOrder
    write(6,'(a24,1x,i8)')      ' damageOrder:            ',damageOrder
-   write(6,'(a24,1x,i8)')      ' vacancyDiffusionOrder:  ',vacancyDiffusionOrder
-   write(6,'(a24,1x,es8.1)')   ' err_struct_tolAbs:      ',err_struct_tolAbs
-   write(6,'(a24,1x,es8.1)')   ' err_struct_tolRel:      ',err_struct_tolRel
-   write(6,'(a24,1x,es8.1)')   ' err_thermal_tol:        ',err_thermal_tol
-   write(6,'(a24,1x,es8.1)')   ' err_damage_tol:         ',err_damage_tol
-   write(6,'(a24,1x,es8.1)')   ' err_vacancyDiff_tol:    ',err_vacancyDiffusion_tol
-   write(6,'(a24,1x,es8.1)')   ' vacancyBoundPenalty:    ',vacancyBoundPenalty
+   write(6,'(a24,1x,i8)')      ' vacancyfluxOrder:       ',vacancyfluxOrder
+   write(6,'(a24,1x,i8)')      ' porosityOrder:          ',porosityOrder 
+   write(6,'(a24,1x,i8)')      ' hydrogenfluxOrder:      ',hydrogenfluxOrder
    write(6,'(a24,1x,a)')       ' PETSc_optionsFEM:       ',trim(petsc_optionsFEM)
    write(6,'(a24,1x,L8)')      ' B-Bar stabilisation:    ',BBarStabilisation
 #endif
@@ -634,14 +684,28 @@ subroutine numerics_init
  if (volDiscrMod_RGC < 0.0_pReal)          call IO_error(301_pInt,ext_msg='volDiscrMod_RGC')
  if (volDiscrPow_RGC <= 0.0_pReal)         call IO_error(301_pInt,ext_msg='volDiscrPw_RGC')
  if (residualStiffness <= 0.0_pReal)       call IO_error(301_pInt,ext_msg='residualStiffness')
-#ifdef Spectral
  if (itmax <= 1_pInt)                      call IO_error(301_pInt,ext_msg='itmax')
  if (itmin > itmax .or. itmin < 1_pInt)    call IO_error(301_pInt,ext_msg='itmin')
+ if (maxCutBack < 0_pInt)                  call IO_error(301_pInt,ext_msg='maxCutBack')
+ if (stagItMax < 0_pInt)                   call IO_error(301_pInt,ext_msg='maxStaggeredIter')
+ if (vacancyPolyOrder < 0_pInt)            call IO_error(301_pInt,ext_msg='vacancyPolyOrder')
+ if (err_struct_tolRel <= 0.0_pReal)       call IO_error(301_pInt,ext_msg='err_struct_tolRel')
+ if (err_struct_tolAbs <= 0.0_pReal)       call IO_error(301_pInt,ext_msg='err_struct_tolAbs')
+ if (err_thermal_tolabs <= 0.0_pReal)      call IO_error(301_pInt,ext_msg='err_thermal_tolabs')
+ if (err_thermal_tolrel <= 0.0_pReal)      call IO_error(301_pInt,ext_msg='err_thermal_tolrel')
+ if (err_damage_tolabs <= 0.0_pReal)       call IO_error(301_pInt,ext_msg='err_damage_tolabs')
+ if (err_damage_tolrel <= 0.0_pReal)       call IO_error(301_pInt,ext_msg='err_damage_tolrel')
+ if (err_vacancyflux_tolabs <= 0.0_pReal)  call IO_error(301_pInt,ext_msg='err_vacancyflux_tolabs')
+ if (err_vacancyflux_tolrel <= 0.0_pReal)  call IO_error(301_pInt,ext_msg='err_vacancyflux_tolrel')
+ if (err_porosity_tolabs <= 0.0_pReal)     call IO_error(301_pInt,ext_msg='err_porosity_tolabs')
+ if (err_porosity_tolrel <= 0.0_pReal)     call IO_error(301_pInt,ext_msg='err_porosity_tolrel')
+ if (err_hydrogenflux_tolabs <= 0.0_pReal) call IO_error(301_pInt,ext_msg='err_hydrogenflux_tolabs')
+ if (err_hydrogenflux_tolrel <= 0.0_pReal) call IO_error(301_pInt,ext_msg='err_hydrogenflux_tolrel')
+#ifdef Spectral
  if (continueCalculation /= 0_pInt .and. &
      continueCalculation /= 1_pInt)        call IO_error(301_pInt,ext_msg='continueCalculation')
  if (divergence_correction < 0_pInt .or. &
      divergence_correction > 2_pInt)       call IO_error(301_pInt,ext_msg='divergence_correction')
- if (maxCutBack < 0_pInt)                  call IO_error(301_pInt,ext_msg='maxCutBack')
  if (update_gamma .and. &
                    .not. memory_efficient) call IO_error(error_ID = 847_pInt)
  if (err_stress_tolrel <= 0.0_pReal)       call IO_error(301_pInt,ext_msg='err_stress_tolRel')
@@ -654,18 +718,6 @@ subroutine numerics_init
      polarAlpha >  2.0_pReal)              call IO_error(301_pInt,ext_msg='polarAlpha')
  if (polarBeta < 0.0_pReal .or. &
      polarBeta >  2.0_pReal)               call IO_error(301_pInt,ext_msg='polarBeta')
-#endif
-#ifdef FEM
- if (itmaxFEM <= 1_pInt)                   call IO_error(301_pInt,ext_msg='itmaxFEM')
- if (itminFEM > itmaxFEM .or. &
-     itminFEM < 0_pInt)                    call IO_error(301_pInt,ext_msg='itminFEM')
- if (maxCutBackFEM < 0_pInt)               call IO_error(301_pInt,ext_msg='maxCutBackFEM')
- if (stagItMax < 0_pInt)                   call IO_error(301_pInt,ext_msg='maxStaggeredIter')
- if (err_struct_tolRel <= 0.0_pReal)       call IO_error(301_pInt,ext_msg='err_struct_tolRel')
- if (err_struct_tolAbs <= 0.0_pReal)       call IO_error(301_pInt,ext_msg='err_struct_tolAbs')
- if (err_thermal_tol <= 0.0_pReal)         call IO_error(301_pInt,ext_msg='err_thermal_tol')
- if (err_damage_tol <= 0.0_pReal)          call IO_error(301_pInt,ext_msg='err_damage_tol')
- if (err_vacancyDiffusion_tol <= 0.0_pReal)call IO_error(301_pInt,ext_msg='err_vacancydiffusion_tol')
 #endif
 
 end subroutine numerics_init

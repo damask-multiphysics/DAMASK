@@ -187,7 +187,8 @@ COMPILE_OPTIONS_gfortran +=-ffree-line-length-132\
                            -Wsuggest-attribute=pure\
                            -Wsuggest-attribute=noreturn\
                            -Wconversion-extra\
-                           -Wimplicit-procedure
+                           -Wimplicit-procedure\
+                           -Wno-unused-parameter
 endif
 ###################################################################################################
 #COMPILE SWITCHES
@@ -305,22 +306,37 @@ PRECISION_gfortran :=-fdefault-real-8 -fdefault-double-8 -DFLOAT=8 -DINT=4
 COMPILE         =$(OPENMP_FLAG_$(F90)) $(COMPILE_OPTIONS_$(F90)) $(STANDARD_CHECK_$(F90)) $(OPTIMIZATION_$(OPTI)_$(F90)) $(INCLUDE_DIRS) $(PRECISION_$(F90))
 COMPILE_MAXOPTI =$(OPENMP_FLAG_$(F90)) $(COMPILE_OPTIONS_$(F90)) $(STANDARD_CHECK_$(F90)) $(OPTIMIZATION_$(MAXOPTI)_$(F90)) $(INCLUDE_DIRS) $(PRECISION_$(F90))
 ###################################################################################################
-DAMAGE_FILES = \
-   damage_none.o damage_isoBrittle.o damage_isoDuctile.o damage_gurson.o damage_anisoBrittle.o damage_anisoDuctile.o damage_phaseField.o
-
-THERMAL_FILES = \
-   thermal_isothermal.o thermal_adiabatic.o
-
-VACANCY_FILES = \
-   vacancy_constant.o vacancy_generation.o
-
+SOURCE_FILES = \
+   source_thermal_dissipation.o \
+   source_damage_isoBrittle.o source_damage_isoDuctile.o source_damage_anisoBrittle.o source_damage_anisoDuctile.o \
+   source_vacancy_phenoplasticity.o source_vacancy_irradiation.o source_vacancy_thermalfluc.o
+   
+KINEMATICS_FILES = \
+   kinematics_cleavage_opening.o kinematics_slipplane_opening.o \
+   kinematics_thermal_expansion.o \
+   kinematics_vacancy_strain.o kinematics_hydrogen_strain.o 
+   
 PLASTIC_FILES = \
    plastic_dislotwin.o plastic_disloUCLA.o plastic_disloKMC.o plastic_j2.o plastic_phenopowerlaw.o \
-   plastic_titanmod.o plastic_nonlocal.o plastic_none.o
+   plastic_titanmod.o plastic_nonlocal.o plastic_none.o 
    
+THERMAL_FILES = \
+   thermal_isothermal.o thermal_adiabatic.o thermal_conduction.o
+
+DAMAGE_FILES = \
+   damage_none.o damage_local.o damage_nonlocal.o
+
+VACANCYFLUX_FILES = \
+   vacancyflux_isoconc.o vacancyflux_isochempot.o vacancyflux_cahnhilliard.o
+
+POROSITY_FILES = \
+   porosity_none.o porosity_phasefield.o
+
+HYDROGENFLUX_FILES = \
+   hydrogenflux_isoconc.o hydrogenflux_cahnhilliard.o
 
 HOMOGENIZATION_FILES = \
-   homogenization_RGC.o homogenization_isostrain.o homogenization_none.o homogenization.o
+   homogenization_RGC.o homogenization_isostrain.o homogenization_none.o 
 
 #####################
 # Spectral Solver
@@ -332,12 +348,17 @@ DAMASK_spectral.exe: MESHNAME        := mesh.f90
 DAMASK_spectral.exe: INTERFACENAME   := DAMASK_spectral_interface.f90
 
 
+SPECTRAL_SOLVER_FILES = DAMASK_spectral_solverAL.o DAMASK_spectral_solverBasicPETSc.o DAMASK_spectral_solverPolarisation.o
+
 SPECTRAL_FILES = prec.o DAMASK_interface.o IO.o libs.o numerics.o debug.o math.o \
-                 FEsolving.o mesh.o material.o lattice.o constitutive.o \
-                 $(DAMAGE_FILES) $(THERMAL_FILES) $(VACANCY_FILES) $(PLASTIC_FILES) \
-                 crystallite.o $(HOMOGENIZATION_FILES) CPFEM.o \
+                 FEsolving.o mesh.o material.o lattice.o \
+                 $(SOURCE_FILES) $(KINEMATICS_FILES) $(PLASTIC_FILES) constitutive.o \
+                 crystallite.o \
+                 $(THERMAL_FILES) $(DAMAGE_FILES) $(VACANCYFLUX_FILES) $(HYDROGENFLUX_FILES) $(POROSITY_FILES) \
+                 $(HOMOGENIZATION_FILES) homogenization.o \
+                 CPFEM.o \
                  DAMASK_spectral_utilities.o \
-                 DAMASK_spectral_solverAL.o DAMASK_spectral_solverBasicPETSc.o DAMASK_spectral_solverPolarisation.o
+                 $(SPECTRAL_SOLVER_FILES)
 
 DAMASK_spectral.exe: DAMASK_spectral_driver.o 
 	$(PREFIX) $(LINKERNAME) $(OPENMP_FLAG_$(F90)) $(LINK_OPTIONS_$(F90)) $(STANDARD_CHECK_$(F90))  $(OPTIMIZATION_$(MAXOPTI)_$(F90)) \
@@ -346,9 +367,7 @@ DAMASK_spectral.exe: DAMASK_spectral_driver.o
     
     
 DAMASK_spectral_driver.o: DAMASK_spectral_driver.f90 \
-                          DAMASK_spectral_solverAL.o \
-                          DAMASK_spectral_solverBasicPETSc.o \
-                          DAMASK_spectral_solverPolarisation.o
+                           $(SPECTRAL_SOLVER_FILES)
 	$(PREFIX) $(COMPILERNAME) $(COMPILE_MAXOPTI) -c DAMASK_spectral_driver.f90 $(SUFFIX)
 
 DAMASK_spectral_solverAL.o:    DAMASK_spectral_solverAL.f90 \
@@ -373,18 +392,23 @@ DAMASK_FEM.exe: MESHNAME        := ../private/FEM/code/meshFEM.f90
 DAMASK_FEM.exe: INTERFACENAME   := ../private/FEM/code/DAMASK_FEM_interface.f90
 DAMASK_FEM.exe: INCLUDE_DIRS    += -I./
 
+FEM_SOLVER_FILES = FEM_mech.o FEM_thermal.o FEM_damage.o FEM_vacancyflux.o FEM_porosity.o FEM_hydrogenflux.o
+
 FEM_FILES      = prec.o DAMASK_interface.o FEZoo.o IO.o libs.o numerics.o debug.o math.o \
                  FEsolving.o mesh.o material.o lattice.o \
-                 $(DAMAGE_FILES) $(THERMAL_FILES) $(VACANCY_FILES) $(PLASTIC_FILES) \
-                 crystallite.o $(HOMOGENIZATION_FILES) CPFEM.o \
-                 FEM_utilities.o FEM_mech.o FEM_thermal.o FEM_damage.o FEM_vacancyDiffusion.o
+                 $(SOURCE_FILES) $(KINEMATICS_FILES) $(PLASTIC_FILES) constitutive.o \
+                 crystallite.o \
+                 $(THERMAL_FILES) $(DAMAGE_FILES) $(VACANCYFLUX_FILES) $(HYDROGENFLUX_FILES) $(POROSITY_FILES) \
+                 $(HOMOGENIZATION_FILES) homogenization.o \
+                 CPFEM.o \
+                 FEM_utilities.o $(FEM_SOLVER_FILES)
 
 DAMASK_FEM.exe:                DAMASK_FEM_driver.o
-	$(PREFIX) $(LINKERNAME) $(LINK_OPTIONS_$(F90)) $(STANDARD_CHECK_$(F90))  $(OPTIMIZATION_$(MAXOPTI)_$(F90)) \
+	$(PREFIX) $(LINKERNAME) $(OPENMP_FLAG_$(F90)) $(LINK_OPTIONS_$(F90)) $(STANDARD_CHECK_$(F90))  $(OPTIMIZATION_$(MAXOPTI)_$(F90)) \
   -o DAMASK_FEM.exe DAMASK_FEM_driver.o \
   $(FEM_FILES) $(LIBRARIES) $(SUFFIX)
 
-DAMASK_FEM_driver.o:           DAMASK_FEM_driver.f90 FEM_mech.o FEM_thermal.o FEM_damage.o FEM_vacancyDiffusion.o
+DAMASK_FEM_driver.o:           DAMASK_FEM_driver.f90 $(FEM_SOLVER_FILES)
 	$(PREFIX) $(COMPILERNAME) $(COMPILE_MAXOPTI) -c ../private/FEM/code/DAMASK_FEM_driver.f90 $(SUFFIX)
 
 FEM_mech.o:                    FEM_mech.f90 \
@@ -396,7 +420,13 @@ FEM_thermal.o:                 FEM_thermal.f90 \
 FEM_damage.o:                  FEM_damage.f90 \
                                FEM_utilities.o
 
-FEM_vacancyDiffusion.o:        FEM_vacancyDiffusion.f90 \
+FEM_vacancyflux.o:             FEM_vacancyflux.f90 \
+                               FEM_utilities.o
+
+FEM_porosity.o:                FEM_porosity.f90 \
+                               FEM_utilities.o
+
+FEM_hydrogenflux.o:            FEM_hydrogenflux.f90 \
                                FEM_utilities.o
 
 FEM_utilities.o:               FEM_utilities.f90 \
@@ -411,9 +441,54 @@ CPFEM.o:                       CPFEM.f90\
                                homogenization.o
 
 homogenization.o:              homogenization.f90\
-                               homogenization_none.o \
-                               homogenization_RGC.o \
-                               homogenization_isostrain.o
+                               $(THERMAL_FILES) \
+                               $(DAMAGE_FILES) \
+                               $(VACANCYFLUX_FILES) \
+                               $(POROSITY_FILES) \
+                               $(HYDROGENFLUX_FILES) \
+                               $(HOMOGENIZATION_FILES)
+
+thermal_isothermal.o:          thermal_isothermal.f90 \
+                               crystallite.o
+
+thermal_adiabatic.o:           thermal_adiabatic.f90 \
+                               crystallite.o
+
+thermal_conduction.o:          thermal_conduction.f90 \
+                               crystallite.o
+
+damage_none.o:                 damage_none.f90 \
+                               crystallite.o
+
+damage_local.o:                damage_local.f90 \
+                               crystallite.o
+
+damage_nonlocal.o:             damage_nonlocal.f90 \
+                               crystallite.o
+
+thermal_conduction.o:          thermal_conduction.f90 \
+                               crystallite.o
+
+vacancyflux_isoconc.o:         vacancyflux_isoconc.f90 \
+                               crystallite.o
+
+vacancyflux_isochempot.o:      vacancyflux_isochempot.f90 \
+                               crystallite.o
+
+vacancyflux_cahnhilliard.o:    vacancyflux_cahnhilliard.f90 \
+                               crystallite.o
+
+porosity_none.o:               porosity_none.f90 \
+                               crystallite.o
+
+porosity_phasefield.o:         porosity_phasefield.f90 \
+                               crystallite.o
+
+hydrogenflux_isoconc.o:        hydrogenflux_isoconc.f90 \
+                               crystallite.o
+
+hydrogenflux_cahnhilliard.o:   hydrogenflux_cahnhilliard.f90 \
+                               crystallite.o
 
 homogenization_RGC.o:          homogenization_RGC.f90 \
                                crystallite.o
@@ -428,11 +503,49 @@ crystallite.o:                 crystallite.f90 \
                                constitutive.o 
                             
 constitutive.o:                constitutive.f90 \
-                               $(PLASTIC_FILES) \
-                               $(DAMAGE_FILES) \
-                               $(THERMAL_FILES) \
-                               $(VACANCY_FILES)
+                               $(SOURCE_FILES) \
+                               $(KINEMATICS_FILES) \
+                               $(PLASTIC_FILES)
 
+source_thermal_dissipation.o:  source_thermal_dissipation.f90 \
+                               lattice.o
+
+source_damage_isoBrittle.o:    source_damage_isoBrittle.f90 \
+                               lattice.o
+
+source_damage_isoDuctile.o:    source_damage_isoDuctile.f90 \
+                               lattice.o
+                               
+source_damage_anisoBrittle.o:  source_damage_anisoBrittle.f90 \
+                               lattice.o
+                               
+source_damage_anisoDuctile.o:  source_damage_anisoDuctile.f90 \
+                               lattice.o
+                               
+source_vacancy_phenoplasticity.o: source_vacancy_phenoplasticity.f90 \
+                               lattice.o
+
+source_vacancy_irradiation.o:  source_vacancy_irradiation.f90 \
+                               lattice.o
+
+source_vacancy_thermalfluc.o:  source_vacancy_thermalfluc.f90 \
+                               lattice.o
+                               
+kinematics_cleavage_opening.o: kinematics_cleavage_opening.f90 \
+                               lattice.o
+                               
+kinematics_slipplane_opening.o: kinematics_slipplane_opening.f90 \
+                               lattice.o
+                               
+kinematics_thermal_expansion.o: kinematics_thermal_expansion.f90 \
+                               lattice.o
+                               
+kinematics_vacancy_strain.o:   kinematics_vacancy_strain.f90 \
+                               lattice.o
+                               
+kinematics_hydrogen_strain.o:  kinematics_hydrogen_strain.f90 \
+                               lattice.o
+                               
 plastic_nonlocal.o:            plastic_nonlocal.f90 \
                                lattice.o
 
@@ -455,39 +568,6 @@ plastic_j2.o:                  plastic_j2.f90 \
                                lattice.o
 
 plastic_none.o:                plastic_none.f90 \
-                               lattice.o
-
-damage_none.o:                 damage_none.f90 \
-                               lattice.o
-
-damage_isoBrittle.o:           damage_isoBrittle.f90 \
-                               lattice.o
-
-damage_isoDuctile.o:           damage_isoDuctile.f90 \
-                               lattice.o
-                               
-damage_anisoBrittle.o:         damage_anisoBrittle.f90 \
-                               lattice.o
-                               
-damage_anisoDuctile.o:         damage_anisoDuctile.f90 \
-                               lattice.o
-                               
-damage_phaseField.o:           damage_phaseField.f90 \
-                               lattice.o
-                               
-damage_gurson.o:               damage_gurson.f90 \
-                               lattice.o
-
-thermal_isothermal.o:          thermal_isothermal.f90 \
-                               lattice.o
-
-thermal_adiabatic.o:           thermal_adiabatic.f90 \
-                               lattice.o
-
-vacancy_constant.o:            vacancy_constant.f90 \
-                               lattice.o
-
-vacancy_generation.o:          vacancy_generation.f90 \
                                lattice.o
 
 lattice.o:                     lattice.f90 \

@@ -58,11 +58,11 @@ use ifport                                                                      
  real(pReal), parameter, public :: tol_math_check = 1.0e-8_pReal                                    !< tolerance for internal math self-checks (rotation)
 
  type, public :: p_vec                                                                              !< variable length datatype used for storage of state
-   real(pReal), dimension(:), allocatable :: p
+   real(pReal), dimension(:), pointer :: p
  end type p_vec
 
-type, public :: p_intvec
-   integer(pInt), dimension(:), allocatable :: p
+ type, public :: p_intvec
+   integer(pInt), dimension(:), pointer :: p
  end type p_intvec
 
 !http://stackoverflow.com/questions/3948210/can-i-have-a-pointer-to-an-item-in-an-allocatable-array
@@ -71,14 +71,11 @@ type, public :: p_intvec
      sizeState = 0_pInt , &                                                                         !< size of state
      sizeDotState = 0_pInt, &                                                                       !< size of dot state, i.e. parts of the state that are integrated
      sizePostResults = 0_pInt                                                                       !< size of output data
-   logical :: & 
-     nonlocal = .false.                                                                             !< absolute tolerance for state integration
    real(pReal), allocatable, dimension(:) :: &
      atolState
    real(pReal), pointer,     dimension(:,:), contiguous :: &                                        ! a pointer is needed here because we might point to state/doState. However, they will never point to something, but are rather allocated and, hence, contiguous 
      state, &                                                                                       !< state
-     dotState                                                                                       !< state rate
-   real(pReal), allocatable, dimension(:,:) :: &
+     dotState, &                                                                                    !< state rate
      state0, &
      partionedState0, &
      subState0, &
@@ -97,17 +94,23 @@ type, public :: p_intvec
      nSlip = 0_pInt , &
      nTwin = 0_pInt, &
      nTrans = 0_pInt
+   logical :: & 
+     nonlocal = .false.                                                                             !< absolute tolerance for state integration
    real(pReal), pointer,     dimension(:,:), contiguous :: &
      slipRate, &                                                                                    !< slip rate
      accumulatedSlip                                                                                !< accumulated plastic slip
  end type
 
- type, public :: tFieldData
-   integer(pInt) :: &
-     sizeField = 0_pInt , &
-     sizePostResults = 0_pInt
-   real(pReal), allocatable, dimension(:,:) :: &
-     field                                                                                          !< field data
+ type, public :: tSourceState
+   type(tState), dimension(:), allocatable :: p                                                     !< tState for each active source mechanism in a phase
+ end type
+ 
+ type, public :: tHomogMapping
+   integer(pInt), pointer, dimension(:,:) :: p                                  
+ end type 
+
+ type, public :: tPhaseMapping
+   integer(pInt), pointer, dimension(:,:,:) :: p
  end type 
 
 #ifdef FEM

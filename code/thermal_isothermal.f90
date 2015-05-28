@@ -1,107 +1,66 @@
 !--------------------------------------------------------------------------------------------------
 ! $Id$
 !--------------------------------------------------------------------------------------------------
-!> @author Franz Roters, Max-Planck-Institut für Eisenforschung GmbH
-!> @author Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
-!> @brief material subroutine for purely elastic material
+!> @author Pratheek Shanthraj, Max-Planck-Institut für Eisenforschung GmbH
+!> @brief material subroutine for isothermal temperature field
 !--------------------------------------------------------------------------------------------------
 module thermal_isothermal
- use prec, only: &
-   pInt, &
-   pReal
 
  implicit none
  private
- integer(pInt),                       dimension(:),     allocatable,          public, protected :: &
-   thermal_isothermal_sizePostResults
-
- integer(pInt),                       dimension(:,:),   allocatable, target,  public :: &
-   thermal_isothermal_sizePostResult                                                                 !< size of each post result output
-
- real(pReal),                         dimension(:),     allocatable,          public :: &
-   thermal_isothermal_temperature
-
+ 
  public :: &
    thermal_isothermal_init
 
 contains
 
-
 !--------------------------------------------------------------------------------------------------
-!> @brief module initialization
-!> @details reads in material parameters, allocates arrays, and does sanity checks
+!> @brief allocates all neccessary fields, reads information from material configuration file
 !--------------------------------------------------------------------------------------------------
 subroutine thermal_isothermal_init(temperature_init)
  use, intrinsic :: iso_fortran_env                                                                  ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
- use debug, only: &
-   debug_level, &
-   debug_constitutive, &
-   debug_levelBasic
+ use prec, only: &
+   pReal, &
+   pInt 
  use IO, only: &
    IO_timeStamp
+ use material
  use numerics, only: &
-   worldrank, &
-   numerics_integrator
- use material, only: &
-   phase_thermal, &
-   LOCAL_THERMAL_ISOTHERMAL_label, &
-   LOCAL_THERMAL_ISOTHERMAL_ID, &
-   material_phase, &
-   thermalState, &
-   MATERIAL_partPhase
-
+   worldrank
+ 
  implicit none
-
  real(pReal), intent(in)   :: temperature_init                                                      !< initial temperature
  integer(pInt) :: &
-   maxNinstance, &
-   phase, &
-   NofMyPhase, &
-   sizeState, &
-   sizeDotState
+   homog, &
+   NofMyHomog, &
+   sizeState
 
  mainProcess: if (worldrank == 0) then 
-   write(6,'(/,a)')   ' <<<+-  thermal_'//LOCAL_THERMAL_ISOTHERMAL_label//' init  -+>>>'
+   write(6,'(/,a)')   ' <<<+-  thermal_'//THERMAL_isothermal_label//' init  -+>>>'
    write(6,'(a)')     ' $Id$'
    write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
  endif mainProcess
 
- maxNinstance = int(count(phase_thermal == LOCAL_THERMAL_ISOTHERMAL_ID),pInt)
- if (maxNinstance == 0_pInt) return
+  initializeInstances: do homog = 1_pInt, material_Nhomogenization
+   
+   myhomog: if (thermal_type(homog) == THERMAL_isothermal_ID) then
+     NofMyHomog = count(material_homog == homog)
+     sizeState = 0_pInt
+     thermalState(homog)%sizeState = sizeState
+     thermalState(homog)%sizePostResults = sizeState
+     allocate(thermalState(homog)%state0   (sizeState,NofMyHomog), source=0.0_pReal)
+     allocate(thermalState(homog)%subState0(sizeState,NofMyHomog), source=0.0_pReal)
+     allocate(thermalState(homog)%state    (sizeState,NofMyHomog), source=0.0_pReal)
+     
+     deallocate(temperature    (homog)%p)
+     allocate  (temperature    (homog)%p(1), source=temperature_init)
+     deallocate(temperatureRate(homog)%p)
+     allocate  (temperatureRate(homog)%p(1), source=0.0_pReal)
 
- if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0_pInt) &
-   write(6,'(a16,1x,i5,/)') '# instances:',maxNinstance
-   
- initializeInstances: do phase = 1_pInt, size(phase_thermal)
-   NofMyPhase=count(material_phase==phase)
-   
-   if (phase_thermal(phase) == LOCAL_THERMAL_ISOTHERMAL_ID) then
-     sizeState    = 0_pInt
-     thermalState(phase)%sizeState = sizeState
-     sizeDotState = sizeState
-     thermalState(phase)%sizeDotState = sizeDotState
-     thermalState(phase)%sizePostResults = 0_pInt
-     allocate(thermalState(phase)%state0         (sizeState,NofMyPhase))
-     allocate(thermalState(phase)%partionedState0(sizeState,NofMyPhase))
-     allocate(thermalState(phase)%subState0      (sizeState,NofMyPhase))
-     allocate(thermalState(phase)%state          (sizeState,NofMyPhase))
-     allocate(thermalState(phase)%state_backup   (sizeState,NofMyPhase))
-     allocate(thermalState(phase)%aTolState      (NofMyPhase))
-     allocate(thermalState(phase)%dotState       (sizeDotState,NofMyPhase))
-     allocate(thermalState(phase)%dotState_backup(sizeDotState,NofMyPhase))
-     if (any(numerics_integrator == 1_pInt)) then
-       allocate(thermalState(phase)%previousDotState  (sizeDotState,NofMyPhase))
-       allocate(thermalState(phase)%previousDotState2 (sizeDotState,NofMyPhase))
-     endif
-     if (any(numerics_integrator == 4_pInt)) &
-       allocate(thermalState(phase)%RK4dotState       (sizeDotState,NofMyPhase))
-     if (any(numerics_integrator == 5_pInt)) &
-       allocate(thermalState(phase)%RKCK45dotState    (6,sizeDotState,NofMyPhase))
-   endif
+   endif myhomog
  enddo initializeInstances
- allocate(thermal_isothermal_sizePostResults(maxNinstance), source=0_pInt)
- allocate(thermal_isothermal_temperature(maxNinstance),     source=temperature_init)
+
 
 end subroutine thermal_isothermal_init
 

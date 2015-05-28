@@ -205,7 +205,7 @@ subroutine basicPETSc_init(temperature)
  call Utilities_updateIPcoords(F)
  call Utilities_constitutiveResponse(F_lastInc, F, &
     temperature, &
-    0.0_pReal, &
+    1.0_pReal, &
     P, &
     C_volAvg,C_minMaxAvg, &                                                                         ! global average of stiffness and (min+max)/2
     temp33_Real, &

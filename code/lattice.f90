@@ -833,12 +833,18 @@ module lattice
    lattice_thermalConductivity33, &
    lattice_thermalExpansion33, &
    lattice_damageDiffusion33, &
-   lattice_vacancyDiffusion33
+   lattice_vacancyfluxDiffusion33, &
+   lattice_vacancyfluxMobility33, &
+   lattice_porosityDiffusion33, &
+   lattice_hydrogenfluxDiffusion33, &
+   lattice_hydrogenfluxMobility33
  real(pReal),                              dimension(:),       allocatable, public, protected :: &
    lattice_damageMobility, &
-   lattice_vacancyMobility, &
+   lattice_porosityMobility, &
    lattice_massDensity, &
    lattice_specificHeat, &
+   lattice_vacancyVol, &
+   lattice_hydrogenVol, &
    lattice_referenceTemperature, &
    lattice_equilibriumVacancyConcentration
  enum, bind(c)
@@ -1101,15 +1107,21 @@ subroutine lattice_init
  allocate(lattice_structure(Nphases),source = LATTICE_undefined_ID)
  allocate(lattice_C66(6,6,Nphases),  source=0.0_pReal)
  allocate(lattice_C3333(3,3,3,3,Nphases),  source=0.0_pReal)
- allocate(lattice_thermalConductivity33(3,3,Nphases), source=0.0_pReal)
- allocate(lattice_thermalExpansion33   (3,3,Nphases), source=0.0_pReal)
- allocate(lattice_damageDiffusion33    (3,3,Nphases), source=0.0_pReal)
- allocate(lattice_vacancyDiffusion33   (3,3,Nphases), source=0.0_pReal)
- allocate(lattice_damageMobility       (    Nphases), source=0.0_pReal)
- allocate(lattice_vacancyMobility      (    Nphases), source=0.0_pReal)
- allocate(lattice_massDensity          (    Nphases), source=0.0_pReal)
- allocate(lattice_specificHeat         (    Nphases), source=0.0_pReal)
- allocate(lattice_referenceTemperature (    Nphases), source=0.0_pReal)
+ allocate(lattice_thermalConductivity33  (3,3,Nphases), source=0.0_pReal)
+ allocate(lattice_thermalExpansion33     (3,3,Nphases), source=0.0_pReal)
+ allocate(lattice_damageDiffusion33      (3,3,Nphases), source=0.0_pReal)
+ allocate(lattice_vacancyfluxDiffusion33 (3,3,Nphases), source=0.0_pReal)
+ allocate(lattice_vacancyfluxMobility33  (3,3,Nphases), source=0.0_pReal)
+ allocate(lattice_PorosityDiffusion33    (3,3,Nphases), source=0.0_pReal)
+ allocate(lattice_hydrogenfluxDiffusion33(3,3,Nphases), source=0.0_pReal)
+ allocate(lattice_hydrogenfluxMobility33 (3,3,Nphases), source=0.0_pReal)
+ allocate(lattice_damageMobility         (    Nphases), source=0.0_pReal)
+ allocate(lattice_PorosityMobility       (    Nphases), source=0.0_pReal)
+ allocate(lattice_massDensity            (    Nphases), source=0.0_pReal)
+ allocate(lattice_specificHeat           (    Nphases), source=0.0_pReal)
+ allocate(lattice_vacancyVol             (    Nphases), source=0.0_pReal)
+ allocate(lattice_hydrogenVol            (    Nphases), source=0.0_pReal)
+ allocate(lattice_referenceTemperature   (    Nphases), source=0.0_pReal)
  allocate(lattice_equilibriumVacancyConcentration(Nphases), source=0.0_pReal)
 
  allocate(lattice_mu(Nphases),       source=0.0_pReal)
@@ -1232,6 +1244,10 @@ subroutine lattice_init
        lattice_thermalExpansion33(3,3,section) = IO_floatValue(line,positions,2_pInt)
      case ('specific_heat')
        lattice_specificHeat(section) = IO_floatValue(line,positions,2_pInt)
+     case ('vacancyvolume')
+       lattice_vacancyVol(section) = IO_floatValue(line,positions,2_pInt)
+     case ('hydrogenvolume')
+       lattice_hydrogenVol(section) = IO_floatValue(line,positions,2_pInt)
      case ('mass_density')
        lattice_massDensity(section) = IO_floatValue(line,positions,2_pInt)
      case ('reference_temperature')
@@ -1244,14 +1260,38 @@ subroutine lattice_init
        lattice_DamageDiffusion33(3,3,section) = IO_floatValue(line,positions,2_pInt)
      case ('damage_mobility')
        lattice_DamageMobility(section) = IO_floatValue(line,positions,2_pInt)
-     case ('vacancy_diffusion11')
-       lattice_VacancyDiffusion33(1,1,section) = IO_floatValue(line,positions,2_pInt)
-     case ('vacancy_diffusion22')
-       lattice_VacancyDiffusion33(2,2,section) = IO_floatValue(line,positions,2_pInt)
-     case ('vacancy_diffusion33')
-       lattice_VacancyDiffusion33(3,3,section) = IO_floatValue(line,positions,2_pInt)
-     case ('vacancy_mobility')
-       lattice_VacancyMobility(section) = IO_floatValue(line,positions,2_pInt)
+     case ('vacancyflux_diffusion11')
+       lattice_vacancyfluxDiffusion33(1,1,section) = IO_floatValue(line,positions,2_pInt)
+     case ('vacancyflux_diffusion22')
+       lattice_vacancyfluxDiffusion33(2,2,section) = IO_floatValue(line,positions,2_pInt)
+     case ('vacancyflux_diffusion33')
+       lattice_vacancyfluxDiffusion33(3,3,section) = IO_floatValue(line,positions,2_pInt)
+     case ('vacancyflux_mobility11')
+       lattice_vacancyfluxMobility33(1,1,section) = IO_floatValue(line,positions,2_pInt)
+     case ('vacancyflux_mobility22')
+       lattice_vacancyfluxMobility33(2,2,section) = IO_floatValue(line,positions,2_pInt)
+     case ('vacancyflux_mobility33')
+       lattice_vacancyfluxMobility33(3,3,section) = IO_floatValue(line,positions,2_pInt)
+     case ('porosity_diffusion11')
+       lattice_PorosityDiffusion33(1,1,section) = IO_floatValue(line,positions,2_pInt)
+     case ('porosity_diffusion22')
+       lattice_PorosityDiffusion33(2,2,section) = IO_floatValue(line,positions,2_pInt)
+     case ('porosity_diffusion33')
+       lattice_PorosityDiffusion33(3,3,section) = IO_floatValue(line,positions,2_pInt)
+     case ('porosity_mobility')
+       lattice_PorosityMobility(section) = IO_floatValue(line,positions,2_pInt)
+     case ('hydrogenflux_diffusion11')
+       lattice_hydrogenfluxDiffusion33(1,1,section) = IO_floatValue(line,positions,2_pInt)
+     case ('hydrogenflux_diffusion22')
+       lattice_hydrogenfluxDiffusion33(2,2,section) = IO_floatValue(line,positions,2_pInt)
+     case ('hydrogenflux_diffusion33')
+       lattice_hydrogenfluxDiffusion33(3,3,section) = IO_floatValue(line,positions,2_pInt)
+     case ('hydrogenflux_mobility11')
+       lattice_hydrogenfluxMobility33(1,1,section) = IO_floatValue(line,positions,2_pInt)
+     case ('hydrogenflux_mobility22')
+       lattice_hydrogenfluxMobility33(2,2,section) = IO_floatValue(line,positions,2_pInt)
+     case ('hydrogenflux_mobility33')
+       lattice_hydrogenfluxMobility33(3,3,section) = IO_floatValue(line,positions,2_pInt)
      case ('vacancy_eqcv')
        lattice_equilibriumVacancyConcentration(section) = IO_floatValue(line,positions,2_pInt)
      end select
@@ -1322,7 +1362,7 @@ subroutine lattice_initializeStructure(myPhase,CoverA,aA,aM,cM)
    cd,  cn, ct
  integer(pInt) :: &
   i,j, &
-  myNslip, myNtwin, myNtrans, myNcleavage
+  myNslip = 0_pInt, myNtwin = 0_pInt, myNtrans = 0_pInt, myNcleavage = 0_pInt
 
  lattice_C66(1:6,1:6,myPhase) = lattice_symmetrizeC66(lattice_structure(myPhase),&
                                                       lattice_C66(1:6,1:6,myPhase))
@@ -1347,8 +1387,16 @@ subroutine lattice_initializeStructure(myPhase,CoverA,aA,aM,cM)
                                                                     lattice_thermalExpansion33(1:3,1:3,myPhase))
  lattice_DamageDiffusion33(1:3,1:3,myPhase) = lattice_symmetrize33(lattice_structure(myPhase),&
                                                                  lattice_DamageDiffusion33(1:3,1:3,myPhase))
- lattice_VacancyDiffusion33(1:3,1:3,myPhase) = lattice_symmetrize33(lattice_structure(myPhase),&
-                                                                 lattice_VacancyDiffusion33(1:3,1:3,myPhase))
+ lattice_vacancyfluxDiffusion33(1:3,1:3,myPhase) = lattice_symmetrize33(lattice_structure(myPhase),&
+                                                                 lattice_vacancyfluxDiffusion33(1:3,1:3,myPhase))
+ lattice_vacancyfluxMobility33(1:3,1:3,myPhase) = lattice_symmetrize33(lattice_structure(myPhase),&
+                                                                 lattice_vacancyfluxMobility33(1:3,1:3,myPhase))
+ lattice_PorosityDiffusion33(1:3,1:3,myPhase) = lattice_symmetrize33(lattice_structure(myPhase),&
+                                                                 lattice_PorosityDiffusion33(1:3,1:3,myPhase))
+ lattice_hydrogenfluxDiffusion33(1:3,1:3,myPhase) = lattice_symmetrize33(lattice_structure(myPhase),&
+                                                                 lattice_hydrogenfluxDiffusion33(1:3,1:3,myPhase))
+ lattice_hydrogenfluxMobility33(1:3,1:3,myPhase) = lattice_symmetrize33(lattice_structure(myPhase),&
+                                                                 lattice_hydrogenfluxMobility33(1:3,1:3,myPhase))
  
  select case(lattice_structure(myPhase))
 !--------------------------------------------------------------------------------------------------
