@@ -757,7 +757,7 @@ class Orientation:
       self.quaternion = Quaternion.fromRandom()
     elif isinstance(Eulers, np.ndarray) and Eulers.shape == (3,):                      # based on given Euler angles
       self.quaternion = Quaternion.fromEulers(Eulers,'bunge')
-    elif isinstance(matrix, np.ndarray) and matrix.shape == (3,3):                     # based on given rotation matrix
+    elif isinstance(matrix, np.ndarray) :                                              # based on given rotation matrix
       self.quaternion = Quaternion.fromMatrix(matrix)
     elif isinstance(angleAxis, np.ndarray) and angleAxis.shape == (4,):                # based on given angle and rotation axis
       self.quaternion = Quaternion.fromAngleAxis(angleAxis[0],angleAxis[1:4])
