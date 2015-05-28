@@ -34,7 +34,7 @@ parser.add_option('-m', '--microstructure', dest='microstructure', type='int',
 parser.add_option('-s','--selective', dest='selective', action='store_true',
                   help = 'selective picking of seed points from random seed points [%default]')
 
-group = OptionGroup(parser, "Laguerre Tesselation Options",
+group = OptionGroup(parser, "Laguerre Tessellation Options",
                    "Parameters determining shape of weight distribution of seed points "
                    )
 group.add_option('--mean', dest='mean', type='float', metavar='float', \

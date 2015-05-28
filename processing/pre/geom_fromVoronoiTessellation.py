@@ -30,7 +30,7 @@ def meshgrid2(*arrs):
     ans.insert(0,arr2)
   return tuple(ans)
 
-def laguerreTessellation(undeformed, coords):
+def laguerreTessellation(undeformed, coords, weights):
   bestdist = np.ones(len(undeformed)) * np.finfo('d').max
   bestseed = np.zeros(len(undeformed))
 
@@ -282,7 +282,7 @@ for file in files:
       indices = grain[indices-1]
     else :
       undeformed = np.vstack(np.meshgrid(x, y, z)).reshape(3,-1).T
-      indices = laguerreTessellation(undeformed, coords)
+      indices = laguerreTessellation(undeformed, coords, weights)
 
     newInfo['microstructures'] = info['microstructures']
     for i in grainIDs:
