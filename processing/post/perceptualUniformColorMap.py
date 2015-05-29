@@ -18,7 +18,7 @@ Produces perceptually linear diverging and sequential colormaps in formats suita
 """, version = scriptID)
 
 parser.add_option('-l','--left', dest='left', type='float', nargs=3, \
-                  help='left color [%default'])
+                  help='left color [%default]')
 parser.add_option('-r','--right', dest='right', type='float', nargs=3, \
                   help='right color [%default]')
 parser.add_option('-c','--colormodel', dest='colormodel', \
@@ -139,11 +139,11 @@ elif (len(filenames)> 0) and (options.format == ['']):
     myExtension = extensions[outtypes.index(myType)]
   files.append({'name':basename, 'output':open(basename+myExtension,'w'), 'outtype': myType})  
     
-leftColor = Color(options.colormodel.upper(),list(options.left))
-rightColor = Color(options.colormodel.upper(),list(options.right))
-myColormap = Colormap(leftColor,rightColor)
+leftColor = damask.Color(options.colormodel.upper(),list(options.left))
+rightColor = damask.Color(options.colormodel.upper(),list(options.right))
+myColormap = damask.Colormap(leftColor,rightColor)
 
 for file in files:
   outColormap = myColormap.export(file['name'],file['outtype'],options.steps,list(options.trim))
   file['output'].write(outColormap)
-  table.output_close()  
+  file['output'].close()  
