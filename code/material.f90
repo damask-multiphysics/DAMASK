@@ -27,7 +27,7 @@ module material
    PLASTICITY_none_label                = 'none', &
    PLASTICITY_j2_label                  = 'j2', &
    PLASTICITY_phenopowerlaw_label       = 'phenopowerlaw', &
-   PLASTICITY_dislotwin_label           = 'dislo&twin', &
+   PLASTICITY_dislotwin_label           = 'dislotwin', &
    PLASTICITY_dislokmc_label            = 'dislokmc', &
    PLASTICITY_disloucla_label           = 'disloucla', &
    PLASTICITY_titanmod_label            = 'titanmod', &
