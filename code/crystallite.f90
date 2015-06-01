@@ -3337,6 +3337,8 @@ logical function crystallite_stateJump(g,i,e)
    debug_g
  use material, only: &
    plasticState, &
+   sourceState, &
+   phase_Nsources, &
    mappingConstitutive
  use constitutive, only: &
    constitutive_collectDeltaState
@@ -3350,32 +3352,41 @@ logical function crystallite_stateJump(g,i,e)
  integer(pInt) :: &
    c, &
    p, &
-   mySizePlasticDotState
+   mySource, &
+   mySizePlasticDeltaState, &
+   mySizeSourceDeltaState
 
  c = mappingConstitutive(1,g,i,e)
  p = mappingConstitutive(2,g,i,e)
- if (constitutive_collectDeltaState(crystallite_Tstar_v(1:6,g,i,e), crystallite_Fe(1:3,1:3,g,i,e), g,i,e)) then
-   mySizePlasticDotState = plasticState(p)%sizeDotState
-   if( any(plasticState(p)%deltaState(:,c) /= plasticState(p)%deltaState(:,c))) then    ! NaN occured in deltaState
+ call constitutive_collectDeltaState(crystallite_Tstar_v(1:6,g,i,e), crystallite_Fe(1:3,1:3,g,i,e), g,i,e)
+ mySizePlasticDeltaState = plasticState(p)%sizeDeltaState
+ if( any(plasticState(p)%deltaState(:,c) /= plasticState(p)%deltaState(:,c))) then    ! NaN occured in deltaState
+   crystallite_stateJump = .false.
+   return
+ endif
+ plasticState(p)%state(1:mySizePlasticDeltaState,c) = plasticState(p)%state(1:mySizePlasticDeltaState,c) + &
+                                                      plasticState(p)%deltaState(1:mySizePlasticDeltaState,c)
+ do mySource = 1_pInt, phase_Nsources(p)
+   mySizeSourceDeltaState = sourceState(p)%p(mySource)%sizeDeltaState
+   if( any(sourceState(p)%p(mySource)%deltaState(:,c) /= sourceState(p)%p(mySource)%deltaState(:,c))) then    ! NaN occured in deltaState
      crystallite_stateJump = .false.
      return
    endif
-   plasticState(p)%state(1:mySizePlasticDotState,c) = plasticState(p)%state(1:mySizePlasticDotState,c) + &
-                                                      plasticState(p)%deltaState(1:mySizePlasticDotState,c)
+   sourceState(p)%p(mySource)%state(1:mySizeSourceDeltaState,c) = &
+     sourceState(p)%p(mySource)%state(1:mySizeSourceDeltaState,c) + &
+     sourceState(p)%p(mySource)%deltaState(1:mySizeSourceDeltaState,c)
+ enddo
 
 #ifndef _OPENMP
-   p = mappingConstitutive(2,g,i,e)
-   c = mappingConstitutive(1,g,i,e)
-   if (any(plasticState(p)%deltaState(1:mySizePlasticDotState,c) /= 0.0_pReal) &
-       .and. iand(debug_level(debug_crystallite), debug_levelExtensive) /= 0_pInt &
-       .and. ((e == debug_e .and. i == debug_i .and. g == debug_g) &
-               .or. .not. iand(debug_level(debug_crystallite), debug_levelSelective) /= 0_pInt)) then
-     write(6,'(a,i8,1x,i2,1x,i3, /)') '<< CRYST >> update state at el ip g ',e,i,g
-     write(6,'(a,/,(12x,12(e12.5,1x)),/)') '<< CRYST >> deltaState', plasticState(p)%deltaState(1:mySizePlasticDotState,c)
-     write(6,'(a,/,(12x,12(e12.5,1x)),/)') '<< CRYST >> new state',  plasticState(p)%state     (1:mySizePlasticDotState,c)
-   endif
-#endif
+ if (any(plasticState(p)%deltaState(1:mySizePlasticDeltaState,c) /= 0.0_pReal) &
+     .and. iand(debug_level(debug_crystallite), debug_levelExtensive) /= 0_pInt &
+     .and. ((e == debug_e .and. i == debug_i .and. g == debug_g) &
+             .or. .not. iand(debug_level(debug_crystallite), debug_levelSelective) /= 0_pInt)) then
+   write(6,'(a,i8,1x,i2,1x,i3, /)') '<< CRYST >> update state at el ip g ',e,i,g
+   write(6,'(a,/,(12x,12(e12.5,1x)),/)') '<< CRYST >> deltaState', plasticState(p)%deltaState(1:mySizePlasticDeltaState,c)
+   write(6,'(a,/,(12x,12(e12.5,1x)),/)') '<< CRYST >> new state',  plasticState(p)%state     (1:mySizePlasticDeltaState,c)
  endif
+#endif
 
  crystallite_stateJump = .true.
 

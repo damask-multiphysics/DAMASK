@@ -13,7 +13,8 @@ module DAMASK_spectral_solverPolarisation
  use math, only: &
    math_I3
  use DAMASK_spectral_utilities, only: &
-   tSolutionState
+   tSolutionState, &
+   tSolutionParams
  
  implicit none
  private
@@ -24,14 +25,6 @@ module DAMASK_spectral_solverPolarisation
    
 !--------------------------------------------------------------------------------------------------
 ! derived types 
- type tSolutionParams                                                                               !< @todo use here the type definition for a full loadcase including mask
-   real(pReal), dimension(3,3) :: P_BC, rotation_BC
-   real(pReal) :: timeinc
-   real(pReal) :: timeincOld
-   real(pReal) :: temperature
-   real(pReal) :: density
- end type tSolutionParams
- 
  type(tSolutionParams), private :: params
  real(pReal), private, dimension(3,3) :: mask_stress = 0.0_pReal
 
@@ -124,12 +117,9 @@ subroutine Polarisation_init(temperature)
  use DAMASK_interface, only: &
    getSolverJobName
  use DAMASK_spectral_Utilities, only: &
-   Utilities_init, &
    Utilities_constitutiveResponse, &
    Utilities_updateGamma, &
-   Utilities_updateIPcoords, &
-   grid1Red, &
-   wgt
+   Utilities_updateIPcoords
  use mesh, only: &
    gridLocal, &
    gridGlobal
@@ -150,7 +140,6 @@ subroutine Polarisation_init(temperature)
  integer(pInt) :: proc
  character(len=1024) :: rankStr
  
- call Utilities_init()
  if (worldrank == 0_pInt) then
    write(6,'(/,a)') ' <<<+-  DAMASK_spectral_solverPolarisation init  -+>>>'
    write(6,'(a)') ' $Id$'
@@ -169,6 +158,7 @@ subroutine Polarisation_init(temperature)
 !--------------------------------------------------------------------------------------------------
 ! PETSc Init
  call SNESCreate(PETSC_COMM_WORLD,snes,ierr); CHKERRQ(ierr)
+ call SNESSetOptionsPrefix(snes,'mech_',ierr);CHKERRQ(ierr) 
  allocate(localK(worldsize), source = 0); localK(worldrank+1) = gridLocal(3)
  do proc = 1, worldsize
    call MPI_Bcast(localK(proc),1,MPI_INTEGER,proc-1,PETSC_COMM_WORLD,ierr)
@@ -182,10 +172,10 @@ subroutine Polarisation_init(temperature)
         gridLocal (1),gridLocal (2),localK, &                                                       ! local grid
         da,ierr)                                                                                    ! handle, error
  CHKERRQ(ierr)
+ call SNESSetDM(snes,da,ierr); CHKERRQ(ierr)
  call DMCreateGlobalVector(da,solution_vec,ierr); CHKERRQ(ierr)
  call DMDASNESSetFunctionLocal(da,INSERT_VALUES,Polarisation_formResidual,dummy,ierr)
  CHKERRQ(ierr)
- call SNESSetDM(snes,da,ierr); CHKERRQ(ierr)
  call SNESSetConvergenceTest(snes,Polarisation_converged,dummy,PETSC_NULL_FUNCTION,ierr)
  CHKERRQ(ierr)
  call SNESSetFromOptions(snes,ierr); CHKERRQ(ierr)
@@ -265,7 +255,7 @@ end subroutine Polarisation_init
 !--------------------------------------------------------------------------------------------------
 type(tSolutionState) function &
   Polarisation_solution(incInfoIn,guess,timeinc,timeinc_old,loadCaseTime,P_BC,F_BC,temperature_bc, &
-                                                                               rotation_BC,density)
+                                                                               rotation_BC)
  use numerics, only: &
    update_gamma
  use math, only: &
@@ -277,8 +267,6 @@ type(tSolutionState) function &
  use FEsolving, only: &
    restartWrite, &
    terminallyIll
- use numerics, only: &
-   worldrank
  
  implicit none
 
@@ -288,8 +276,7 @@ type(tSolutionState) function &
    timeinc, &                                                                                       !< increment in time for current solution
    timeinc_old, &                                                                                   !< increment in time of last increment
    loadCaseTime, &                                                                                  !< remaining time of current load case
-   temperature_bc, &
-   density
+   temperature_bc
  logical, intent(in) :: &
    guess
  type(tBoundaryCondition),      intent(in) :: &
@@ -324,7 +311,6 @@ type(tSolutionState) function &
  params%timeinc = timeinc
  params%timeincOld = timeinc_old
  params%temperature = temperature_bc
- params%density = density
 
 !--------------------------------------------------------------------------------------------------
 ! solve BVP 
@@ -363,16 +349,14 @@ subroutine Polarisation_formResidual(in,x_scal,f_scal,dummy,ierr)
    math_transpose33, &
    math_mul3333xx33, &
    math_invSym3333, &
-   math_mul33x33, &
-   PI
+   math_mul33x33
  use DAMASK_spectral_Utilities, only: &
    wgt, &
-   field_realMPI, &
-   field_fourierMPI, &
-   Utilities_FFTforward, &
-   Utilities_fourierConvolution, &
+   tensorField_realMPI, &
+   utilities_FFTtensorForward, &
+   utilities_fourierGammaConvolution, &
    Utilities_inverseLaplace, &
-   Utilities_FFTbackward, &
+   utilities_FFTtensorBackward, &
    Utilities_constitutiveResponse, &
    Utilities_divergenceRMS, &
    Utilities_curlRMS
@@ -444,9 +428,9 @@ subroutine Polarisation_formResidual(in,x_scal,f_scal,dummy,ierr)
 
 !--------------------------------------------------------------------------------------------------
 ! 
- field_realMPI = 0.0_pReal
+ tensorField_realMPI = 0.0_pReal
  do k = 1_pInt, gridLocal(3); do j = 1_pInt, gridLocal(2); do i = 1_pInt, gridLocal(1)
-   field_realMPI(1:3,1:3,i,j,k) = &
+   tensorField_realMPI(1:3,1:3,i,j,k) = &
      polarBeta*math_mul3333xx33(C_scale,F(1:3,1:3,i,j,k) - math_I3) -&
      polarAlpha*math_mul33x33(F(1:3,1:3,i,j,k), &
                         math_mul3333xx33(C_scale,F_tau(1:3,1:3,i,j,k) - F(1:3,1:3,i,j,k) - math_I3))
@@ -454,13 +438,13 @@ subroutine Polarisation_formResidual(in,x_scal,f_scal,dummy,ierr)
  
 !--------------------------------------------------------------------------------------------------
 ! doing convolution in Fourier space 
- call Utilities_FFTforward()
- call Utilities_fourierConvolution(math_rotate_backward33(polarBeta*F_aim,params%rotation_BC)) 
- call Utilities_FFTbackward()
+ call utilities_FFTtensorForward()
+ call utilities_fourierGammaConvolution(math_rotate_backward33(polarBeta*F_aim,params%rotation_BC)) 
+ call utilities_FFTtensorBackward()
 
 !--------------------------------------------------------------------------------------------------
 ! constructing residual                         
- residual_F_tau = polarBeta*F - field_realMPI(1:3,1:3,1:gridLocal(1),1:gridLocal(2),1:gridLocal(3))
+ residual_F_tau = polarBeta*F - tensorField_realMPI(1:3,1:3,1:gridLocal(1),1:gridLocal(2),1:gridLocal(3))
 
 !--------------------------------------------------------------------------------------------------
 ! evaluate constitutive response
@@ -472,11 +456,11 @@ subroutine Polarisation_formResidual(in,x_scal,f_scal,dummy,ierr)
 
 !--------------------------------------------------------------------------------------------------
 ! calculate divergence
- field_realMPI = 0.0_pReal
- field_realMPI(1:3,1:3,1:gridLocal(1),1:gridLocal(2),1:gridLocal(3)) = residual_F
- call Utilities_FFTforward()
+ tensorField_realMPI = 0.0_pReal
+ tensorField_realMPI(1:3,1:3,1:gridLocal(1),1:gridLocal(2),1:gridLocal(3)) = residual_F
+ call utilities_FFTtensorForward()
  err_div = Utilities_divergenceRMS()
- call Utilities_FFTbackward()
+ call utilities_FFTtensorBackward()
  
 !--------------------------------------------------------------------------------------------------
 ! constructing residual
@@ -492,11 +476,11 @@ subroutine Polarisation_formResidual(in,x_scal,f_scal,dummy,ierr)
  
 !--------------------------------------------------------------------------------------------------
 ! calculating curl
- field_realMPI = 0.0_pReal
- field_realMPI(1:3,1:3,1:gridLocal(1),1:gridLocal(2),1:gridLocal(3)) = F
- call Utilities_FFTforward()
+ tensorField_realMPI = 0.0_pReal
+ tensorField_realMPI(1:3,1:3,1:gridLocal(1),1:gridLocal(2),1:gridLocal(3)) = F
+ call utilities_FFTtensorForward()
  err_curl = Utilities_curlRMS()
- call Utilities_FFTbackward()
+ call utilities_FFTtensorBackward()
  
 end subroutine Polarisation_formResidual
 
@@ -727,7 +711,6 @@ subroutine Polarisation_destroy()
  call VecDestroy(solution_vec,ierr); CHKERRQ(ierr)
  call SNESDestroy(snes,ierr); CHKERRQ(ierr)
  call DMDestroy(da,ierr); CHKERRQ(ierr)
- call Utilities_destroy()
 
 end subroutine Polarisation_destroy
 

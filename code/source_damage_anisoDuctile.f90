@@ -110,7 +110,7 @@ subroutine source_damage_anisoDuctile_init(fileUnit)
  integer(pInt), parameter :: MAXNCHUNKS = 7_pInt
  integer(pInt), dimension(1+2*MAXNCHUNKS) :: positions
  integer(pInt) :: maxNinstance,mySize=0_pInt,phase,instance,source,sourceOffset,o
- integer(pInt) :: sizeState, sizeDotState
+ integer(pInt) :: sizeState, sizeDotState, sizeDeltaState
  integer(pInt) :: NofMyPhase   
  integer(pInt) :: Nchunks_SlipFamilies = 0_pInt, j   
  character(len=65536) :: &
@@ -258,9 +258,11 @@ subroutine source_damage_anisoDuctile_init(fileUnit)
 !--------------------------------------------------------------------------------------------------
 ! Determine size of state array
      sizeDotState              = 1_pInt
+     sizeDeltaState            = 0_pInt
      sizeState                 = 1_pInt
-     sourceState(phase)%p(sourceOffset)%sizeState = sizeState
-     sourceState(phase)%p(sourceOffset)%sizeDotState = sizeDotState
+     sourceState(phase)%p(sourceOffset)%sizeState      = sizeState
+     sourceState(phase)%p(sourceOffset)%sizeDotState   = sizeDotState
+     sourceState(phase)%p(sourceOffset)%sizeDeltaState = sizeDeltaState
      sourceState(phase)%p(sourceOffset)%sizePostResults = source_damage_anisoDuctile_sizePostResults(instance)
      allocate(sourceState(phase)%p(sourceOffset)%aTolState           (sizeState),                &
               source=source_damage_anisoDuctile_aTol(instance))
@@ -271,7 +273,7 @@ subroutine source_damage_anisoDuctile_init(fileUnit)
      allocate(sourceState(phase)%p(sourceOffset)%state_backup        (sizeState,NofMyPhase),     source=0.0_pReal)
 
      allocate(sourceState(phase)%p(sourceOffset)%dotState            (sizeDotState,NofMyPhase),  source=0.0_pReal)
-     allocate(sourceState(phase)%p(sourceOffset)%deltaState          (sizeDotState,NofMyPhase),  source=0.0_pReal)
+     allocate(sourceState(phase)%p(sourceOffset)%deltaState        (sizeDeltaState,NofMyPhase),  source=0.0_pReal)
      allocate(sourceState(phase)%p(sourceOffset)%dotState_backup     (sizeDotState,NofMyPhase),  source=0.0_pReal)
      if (any(numerics_integrator == 1_pInt)) then
        allocate(sourceState(phase)%p(sourceOffset)%previousDotState  (sizeDotState,NofMyPhase),  source=0.0_pReal)

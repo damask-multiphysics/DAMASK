@@ -52,7 +52,8 @@ subroutine plastic_none_init
    phase, &
    NofMyPhase, &
    sizeState, &
-   sizeDotState
+   sizeDotState, &
+   sizeDeltaState
  
  mainProcess: if (worldrank == 0) then 
    write(6,'(/,a)')   ' <<<+-  constitutive_'//PLASTICITY_NONE_label//' init  -+>>>'
@@ -75,6 +76,8 @@ subroutine plastic_none_init
      plasticState(phase)%sizeState = sizeState
      sizeDotState = sizeState
      plasticState(phase)%sizeDotState = sizeDotState
+     sizeDeltaState = 0_pInt
+     plasticState(phase)%sizeDeltaState = sizeDeltaState
      plasticState(phase)%sizePostResults = 0_pInt
      plasticState(phase)%nSlip  = 0_pInt
      plasticState(phase)%nTwin  = 0_pInt
@@ -87,6 +90,7 @@ subroutine plastic_none_init
      allocate(plasticState(phase)%state_backup       (sizeState,NofMyPhase))
 
      allocate(plasticState(phase)%dotState           (sizeDotState,NofMyPhase))
+     allocate(plasticState(phase)%deltaState        (sizeDeltaState,NofMyPhase))
      allocate(plasticState(phase)%dotState_backup    (sizeDotState,NofMyPhase))
      if (any(numerics_integrator == 1_pInt)) then
        allocate(plasticState(phase)%previousDotState (sizeDotState,NofMyPhase))

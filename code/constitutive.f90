@@ -950,7 +950,7 @@ end subroutine constitutive_collectDotState
 !> @brief for constitutive models having an instantaneous change of state (so far, only nonlocal)
 !> will return false if delta state is not needed/supported by the constitutive model
 !--------------------------------------------------------------------------------------------------
-logical function constitutive_collectDeltaState(Tstar_v, Fe, ipc, ip, el)
+subroutine constitutive_collectDeltaState(Tstar_v, Fe, ipc, ip, el)
  use prec, only: &
    pReal, &
    pLongInt
@@ -998,26 +998,19 @@ logical function constitutive_collectDeltaState(Tstar_v, Fe, ipc, ip, el)
    call system_clock(count=tick,count_rate=tickrate,count_max=maxticks)
 
  select case (phase_plasticity(material_phase(ipc,ip,el)))
-
    case (PLASTICITY_NONLOCAL_ID)
-     constitutive_collectDeltaState = .true.
      call plastic_nonlocal_deltaState(Tstar_v,ip,el)
-   case default
-     constitutive_collectDeltaState = .false.
 
  end select
 
  do mySource = 1_pInt, phase_Nsources(material_phase(ipc,ip,el))
    select case (phase_source(mySource,material_phase(ipc,ip,el)))
      case (SOURCE_damage_isoBrittle_ID)
-       constitutive_collectDeltaState = constitutive_collectDeltaState .and. .true.
        call source_damage_isoBrittle_deltaState  (constitutive_homogenizedC(ipc,ip,el), Fe, &
                                                   ipc, ip, el)
      case (SOURCE_vacancy_irradiation_ID)
-       constitutive_collectDeltaState = constitutive_collectDeltaState .and. .true.
        call source_vacancy_irradiation_deltaState(ipc, ip, el)
      case (SOURCE_vacancy_thermalfluc_ID)
-       constitutive_collectDeltaState = constitutive_collectDeltaState .and. .true.
        call source_vacancy_thermalfluc_deltaState(ipc, ip, el)
 
    end select
@@ -1033,7 +1026,7 @@ logical function constitutive_collectDeltaState(Tstar_v, Fe, ipc, ip, el)
    !$OMP END CRITICAL (debugTimingDeltaState)
  endif
 
-end function constitutive_collectDeltaState
+end subroutine constitutive_collectDeltaState
 
 
 !--------------------------------------------------------------------------------------------------

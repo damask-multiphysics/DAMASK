@@ -158,7 +158,7 @@ subroutine plastic_phenopowerlaw_init(fileUnit)
    Nchunks_TransFamilies = 0_pInt, Nchunks_nonSchmid = 0_pInt, &
    NipcMyPhase, &
    offset_slip, index_myFamily, index_otherFamily, &
-   mySize=0_pInt,sizeState,sizeDotState
+   mySize=0_pInt,sizeState,sizeDotState, sizeDeltaState
  character(len=65536) :: &
    tag  = '', &
    line = ''
@@ -552,8 +552,10 @@ subroutine plastic_phenopowerlaw_init(fileUnit)
                + plastic_phenopowerlaw_totalNtwin(instance)                           ! accshear_twin
                
      sizeDotState = sizeState
+     sizeDeltaState = 0_pInt
      plasticState(phase)%sizeState = sizeState
      plasticState(phase)%sizeDotState = sizeDotState
+     plasticState(phase)%sizeDeltaState = sizeDeltaState
      plasticState(phase)%sizePostResults = plastic_phenopowerlaw_sizePostResults(instance)
      plasticState(phase)%nSlip =plastic_phenopowerlaw_totalNslip(instance)
      plasticState(phase)%nTwin =plastic_phenopowerlaw_totalNtwin(instance)
@@ -565,6 +567,7 @@ subroutine plastic_phenopowerlaw_init(fileUnit)
      allocate(plasticState(phase)%state              (   sizeState,NipcMyPhase), source=0.0_pReal)
      allocate(plasticState(phase)%state_backup       (   sizeState,NipcMyPhase), source=0.0_pReal)
      allocate(plasticState(phase)%dotState           (sizeDotState,NipcMyPhase), source=0.0_pReal)
+     allocate(plasticState(phase)%deltaState       (sizeDeltaState,NipcMyPhase), source=0.0_pReal)
      allocate(plasticState(phase)%dotState_backup    (sizeDotState,NipcMyPhase), source=0.0_pReal)
      if (any(numerics_integrator == 1_pInt)) then
        allocate(plasticState(phase)%previousDotState (sizeDotState,NipcMyPhase),source=0.0_pReal)

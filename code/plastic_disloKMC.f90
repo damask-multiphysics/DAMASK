@@ -201,7 +201,7 @@ subroutine plastic_disloKMC_init(fileUnit)
                   Nchunks_TwinSlip = 0_pInt, Nchunks_TwinTwin = 0_pInt, &
                   Nchunks_SlipFamilies = 0_pInt, Nchunks_TwinFamilies = 0_pInt, Nchunks_nonSchmid = 0_pInt, &
                   offset_slip, index_myFamily, index_otherFamily
- integer(pInt) :: sizeState, sizeDotState
+ integer(pInt) :: sizeState, sizeDotState, sizeDeltaState
  integer(pInt) :: NofMyPhase
  character(len=65536) :: &
    tag  = '', &
@@ -658,12 +658,14 @@ subroutine plastic_disloKMC_init(fileUnit)
 ! allocate state arrays
      sizeDotState              =   int(size(plastic_disloKMC_listBasicSlipStates),pInt) * ns &
                                  + int(size(plastic_disloKMC_listBasicTwinStates),pInt) * nt
+     sizeDeltaState            =   sizeDotState
      sizeState                 =   sizeDotState &
                                  + int(size(plastic_disloKMC_listDependentSlipStates),pInt) * ns &
                                  + int(size(plastic_disloKMC_listDependentTwinStates),pInt) * nt
                 
      plasticState(phase)%sizeState = sizeState
      plasticState(phase)%sizeDotState = sizeDotState
+     plasticState(phase)%sizeDeltaState = sizeDeltaState
      plasticState(phase)%sizePostResults = plastic_disloKMC_sizePostResults(instance)
      plasticState(phase)%nSlip = plastic_disloKMC_totalNslip(instance)
      plasticState(phase)%nTwin = 0_pInt
@@ -676,7 +678,7 @@ subroutine plastic_disloKMC_init(fileUnit)
      allocate(plasticState(phase)%state_backup        (sizeState,NofMyPhase),     source=0.0_pReal)
 
      allocate(plasticState(phase)%dotState            (sizeDotState,NofMyPhase),  source=0.0_pReal)
-     allocate(plasticState(phase)%deltaState          (sizeDotState,NofMyPhase),  source=0.0_pReal)
+     allocate(plasticState(phase)%deltaState        (sizeDeltaState,NofMyPhase),  source=0.0_pReal)
      allocate(plasticState(phase)%dotState_backup     (sizeDotState,NofMyPhase),  source=0.0_pReal)
      if (any(numerics_integrator == 1_pInt)) then
        allocate(plasticState(phase)%previousDotState  (sizeDotState,NofMyPhase),  source=0.0_pReal)

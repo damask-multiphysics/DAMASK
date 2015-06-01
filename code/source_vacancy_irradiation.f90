@@ -81,7 +81,7 @@ subroutine source_vacancy_irradiation_init(fileUnit)
  integer(pInt), parameter :: MAXNCHUNKS = 7_pInt
  integer(pInt), dimension(1+2*MAXNCHUNKS) :: positions
  integer(pInt) :: maxNinstance,phase,instance,source,sourceOffset
- integer(pInt) :: sizeState, sizeDotState
+ integer(pInt) :: sizeState, sizeDotState, sizeDeltaState
  integer(pInt) :: NofMyPhase   
  character(len=65536) :: &
    tag  = '', &
@@ -158,9 +158,11 @@ subroutine source_vacancy_irradiation_init(fileUnit)
      sourceOffset = source_vacancy_irradiation_offset(phase)
 
      sizeDotState              =   2_pInt
+     sizeDeltaState            =   2_pInt
      sizeState                 =   2_pInt
      sourceState(phase)%p(sourceOffset)%sizeState =       sizeState
      sourceState(phase)%p(sourceOffset)%sizeDotState =    sizeDotState
+     sourceState(phase)%p(sourceOffset)%sizeDeltaState =  sizeDeltaState
      sourceState(phase)%p(sourceOffset)%sizePostResults = source_vacancy_irradiation_sizePostResults(instance)
      allocate(sourceState(phase)%p(sourceOffset)%aTolState           (sizeState),                source=0.1_pReal)
      allocate(sourceState(phase)%p(sourceOffset)%state0              (sizeState,NofMyPhase),     source=0.0_pReal)
@@ -170,7 +172,7 @@ subroutine source_vacancy_irradiation_init(fileUnit)
      allocate(sourceState(phase)%p(sourceOffset)%state_backup        (sizeState,NofMyPhase),     source=0.0_pReal)
 
      allocate(sourceState(phase)%p(sourceOffset)%dotState            (sizeDotState,NofMyPhase),  source=0.0_pReal)
-     allocate(sourceState(phase)%p(sourceOffset)%deltaState          (sizeDotState,NofMyPhase),  source=0.0_pReal)
+     allocate(sourceState(phase)%p(sourceOffset)%deltaState        (sizeDeltaState,NofMyPhase),  source=0.0_pReal)
      allocate(sourceState(phase)%p(sourceOffset)%dotState_backup     (sizeDotState,NofMyPhase),  source=0.0_pReal)
      if (any(numerics_integrator == 1_pInt)) then
        allocate(sourceState(phase)%p(sourceOffset)%previousDotState  (sizeDotState,NofMyPhase),  source=0.0_pReal)

@@ -233,7 +233,7 @@ subroutine plastic_dislotwin_init(fileUnit)
                   Nchunks_TwinSlip = 0_pInt, Nchunks_TwinTwin = 0_pInt, &
                   Nchunks_SlipFamilies = 0_pInt, Nchunks_TwinFamilies = 0_pInt, Nchunks_TransFamilies = 0_pInt, &
                   offset_slip, index_myFamily, index_otherFamily
- integer(pInt) :: sizeState, sizeDotState
+ integer(pInt) :: sizeState, sizeDotState, sizeDeltaState
  integer(pInt) :: NofMyPhase   
  character(len=65536) :: &
    tag  = '', &
@@ -822,12 +822,14 @@ subroutine plastic_dislotwin_init(fileUnit)
      sizeDotState              =   int(size(plastic_dislotwin_listBasicSlipStates),pInt) * ns &
                                  + int(size(plastic_dislotwin_listBasicTwinStates),pInt) * nt &
                                  + int(size(plastic_dislotwin_listBasicTransStates),pInt) * nr
+     sizeDeltaState            =   0_pInt
      sizeState                 =   sizeDotState &
                                  + int(size(plastic_dislotwin_listDependentSlipStates),pInt) * ns &
                                  + int(size(plastic_dislotwin_listDependentTwinStates),pInt) * nt
                 
      plasticState(phase)%sizeState = sizeState
      plasticState(phase)%sizeDotState = sizeDotState
+     plasticState(phase)%sizeDeltaState = sizeDeltaState
      plasticState(phase)%sizePostResults = plastic_dislotwin_sizePostResults(instance)
      plasticState(phase)%nSlip = plastic_dislotwin_totalNslip(instance)
      plasticState(phase)%nTwin = plastic_dislotwin_totalNtwin(instance)
@@ -840,7 +842,7 @@ subroutine plastic_dislotwin_init(fileUnit)
      allocate(plasticState(phase)%state_backup        (sizeState,NofMyPhase),     source=0.0_pReal)
 
      allocate(plasticState(phase)%dotState            (sizeDotState,NofMyPhase),  source=0.0_pReal)
-     allocate(plasticState(phase)%deltaState          (sizeDotState,NofMyPhase),  source=0.0_pReal)
+     allocate(plasticState(phase)%deltaState        (sizeDeltaState,NofMyPhase),  source=0.0_pReal)
      allocate(plasticState(phase)%dotState_backup     (sizeDotState,NofMyPhase),  source=0.0_pReal)
      if (any(numerics_integrator == 1_pInt)) then
        allocate(plasticState(phase)%previousDotState  (sizeDotState,NofMyPhase),  source=0.0_pReal)

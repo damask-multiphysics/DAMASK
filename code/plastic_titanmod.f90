@@ -237,7 +237,7 @@ subroutine plastic_titanmod_init(fileUnit)
    Nchunks_SlipFamilies = 0_pInt, Nchunks_TwinFamilies = 0_pInt, &
    offset_slip, mySize, &
    maxTotalNslip,maxTotalNtwin, maxNinstance
- integer(pInt) :: sizeState, sizeDotState
+ integer(pInt) :: sizeState, sizeDotState, sizeDeltaState
  integer(pInt) :: NofMyPhase = 0_pInt  
  character(len=65536) :: &
    tag  = '', &
@@ -812,6 +812,7 @@ subroutine plastic_titanmod_init(fileUnit)
      sizeState    = sizeDotState+ &
        size(plastic_titanmod_listDependentSlipStates)*ns + &
        size(plastic_titanmod_listDependentTwinStates)*nt
+     sizeDeltaState = 0_pInt
 
 !--------------------------------------------------------------------------------------------------
 ! determine size of postResults array  
@@ -848,6 +849,7 @@ subroutine plastic_titanmod_init(fileUnit)
 ! Determine size of state array                
      plasticState(phase)%sizeState = sizeState
      plasticState(phase)%sizeDotState = sizeDotState
+     plasticState(phase)%sizeDeltaState = sizeDeltaState
      plasticState(phase)%sizePostResults = plastic_titanmod_sizePostResults(instance)
      plasticState(phase)%nSlip =plastic_titanmod_totalNslip(instance)
      plasticState(phase)%nTwin = 0_pInt
@@ -860,7 +862,7 @@ subroutine plastic_titanmod_init(fileUnit)
      allocate(plasticState(phase)%state_backup        (sizeState,NofMyPhase),     source=0.0_pReal)
 
      allocate(plasticState(phase)%dotState            (sizeDotState,NofMyPhase),  source=0.0_pReal)
-     allocate(plasticState(phase)%deltaState          (sizeDotState,NofMyPhase),     source=0.0_pReal)
+     allocate(plasticState(phase)%deltaState        (sizeDeltaState,NofMyPhase),  source=0.0_pReal)
      allocate(plasticState(phase)%dotState_backup     (sizeDotState,NofMyPhase),  source=0.0_pReal)
      if (any(numerics_integrator == 1_pInt)) then
        allocate(plasticState(phase)%previousDotState  (sizeDotState,NofMyPhase),  source=0.0_pReal)

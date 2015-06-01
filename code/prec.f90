@@ -70,6 +70,7 @@ use ifport                                                                      
    integer(pInt) :: &
      sizeState = 0_pInt , &                                                                         !< size of state
      sizeDotState = 0_pInt, &                                                                       !< size of dot state, i.e. parts of the state that are integrated
+     sizeDeltaState = 0_pInt, &                                                                     !< size of delta state, i.e. parts of the state that have discontinuous rates
      sizePostResults = 0_pInt                                                                       !< size of output data
    real(pReal), allocatable, dimension(:) :: &
      atolState

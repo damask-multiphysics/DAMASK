@@ -253,6 +253,8 @@ end subroutine damage_nonlocal_getSourceAndItsTangent
 !> @brief returns homogenized non local damage diffusion tensor in reference configuration
 !--------------------------------------------------------------------------------------------------
 function damage_nonlocal_getDiffusion33(ip,el)
+ use numerics, only: &
+   charLength
  use lattice, only: &
    lattice_DamageDiffusion33
  use material, only: &
@@ -280,6 +282,7 @@ function damage_nonlocal_getDiffusion33(ip,el)
  enddo
 
  damage_nonlocal_getDiffusion33 = &
+   charLength*charLength* &
    damage_nonlocal_getDiffusion33/ &
    homogenization_Ngrains(homog)
  

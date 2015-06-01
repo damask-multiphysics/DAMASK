@@ -330,7 +330,7 @@ integer(pInt)          ::                   phase, &
    tag  = '', &
    line = ''
 
- integer(pInt) :: sizeState, sizeDotState,sizeDependentState
+ integer(pInt) :: sizeState, sizeDotState,sizeDependentState, sizeDeltaState
 
 
  integer(pInt) :: NofMyPhase 
@@ -1144,6 +1144,7 @@ allocate(nonSchmidProjection(3,3,4,maxTotalNslip,maxNinstances),                
      sizeDependentState        = int(size(DEPENDENTSTATES),pInt) * ns
      sizeState                 = sizeDotState + sizeDependentState &
                                + int(size(OTHERSTATES),pInt) * ns
+     sizeDeltaState            = sizeDotState
 
      !*** determine indices to state array
 
@@ -1299,6 +1300,7 @@ allocate(nonSchmidProjection(3,3,4,maxTotalNslip,maxNinstances),                
                 
      plasticState(phase)%sizeState    = sizeState
      plasticState(phase)%sizeDotState = sizeDotState
+     plasticState(phase)%sizeDeltaState = sizeDeltaState
      plasticState(phase)%sizePostResults = plastic_nonlocal_sizePostResults(instance)
      plasticState(phase)%nonlocal = .true.
      plasticState(phase)%nSlip = totalNslip(instance)
@@ -1312,7 +1314,7 @@ allocate(nonSchmidProjection(3,3,4,maxTotalNslip,maxNinstances),                
      allocate(plasticState(phase)%state_backup        (sizeState,NofMyPhase),     source=0.0_pReal)
 
      allocate(plasticState(phase)%dotState            (sizeDotState,NofMyPhase),  source=0.0_pReal)
-     allocate(plasticState(phase)%deltaState          (sizeDotState,NofMyPhase),  source=0.0_pReal)
+     allocate(plasticState(phase)%deltaState        (sizeDeltaState,NofMyPhase),  source=0.0_pReal)
      allocate(plasticState(phase)%dotState_backup     (sizeDotState,NofMyPhase),  source=0.0_pReal)
      if (any(numerics_integrator == 1_pInt)) then
        allocate(plasticState(phase)%previousDotState  (sizeDotState,NofMyPhase),  source=0.0_pReal)

@@ -141,7 +141,8 @@ subroutine plastic_j2_init(fileUnit)
    instance, &
    mySize, &
    sizeDotState, &
-   sizeState
+   sizeState, &
+   sizeDeltaState
  character(len=65536) :: &
    tag  = '', &
    line = ''
@@ -324,8 +325,10 @@ subroutine plastic_j2_init(fileUnit)
 ! allocate state arrays
      sizeState    = 2_pInt
      sizeDotState = sizeState
+     sizeDeltaState = 0_pInt
      plasticState(phase)%sizeState = sizeState
      plasticState(phase)%sizeDotState = sizeDotState
+     plasticState(phase)%sizeDeltaState = sizeDeltaState
      plasticState(phase)%sizePostResults = plastic_j2_sizePostResults(instance)
      plasticState(phase)%nSlip = 1
      plasticState(phase)%nTwin = 0
@@ -341,6 +344,7 @@ subroutine plastic_j2_init(fileUnit)
      allocate(plasticState(phase)%state              (   sizeState,NofMyPhase),source=0.0_pReal)
      allocate(plasticState(phase)%state_backup       (   sizeState,NofMyPhase),source=0.0_pReal)
      allocate(plasticState(phase)%dotState           (sizeDotState,NofMyPhase),source=0.0_pReal)
+     allocate(plasticState(phase)%deltaState        (sizeDeltaState,NofMyPhase),  source=0.0_pReal)
      allocate(plasticState(phase)%dotState_backup    (sizeDotState,NofMyPhase),source=0.0_pReal)
      if (any(numerics_integrator == 1_pInt)) then
        allocate(plasticState(phase)%previousDotState (sizeDotState,NofMyPhase),source=0.0_pReal)
