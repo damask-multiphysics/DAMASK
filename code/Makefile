@@ -348,7 +348,8 @@ DAMASK_spectral.exe: MESHNAME        := mesh.f90
 DAMASK_spectral.exe: INTERFACENAME   := DAMASK_spectral_interface.f90
 
 
-SPECTRAL_SOLVER_FILES = DAMASK_spectral_solverAL.o DAMASK_spectral_solverBasicPETSc.o DAMASK_spectral_solverPolarisation.o
+SPECTRAL_SOLVER_FILES = DAMASK_spectral_solverAL.o DAMASK_spectral_solverBasicPETSc.o DAMASK_spectral_solverPolarisation.o \
+                        spectral_thermal.o spectral_damage.o
 
 SPECTRAL_FILES = prec.o DAMASK_interface.o IO.o libs.o numerics.o debug.o math.o \
                  FEsolving.o mesh.o material.o lattice.o \
@@ -379,6 +380,12 @@ DAMASK_spectral_solverPolarisation.o:    DAMASK_spectral_solverPolarisation.f90 
 DAMASK_spectral_solverBasicPETSc.o: DAMASK_spectral_solverBasicPETSc.f90 \
                                DAMASK_spectral_utilities.o
 
+spectral_thermal.o:            spectral_thermal.f90 \
+                               DAMASK_spectral_utilities.o
+  
+spectral_damage.o:             spectral_damage.f90 \
+                               DAMASK_spectral_utilities.o
+  
 DAMASK_spectral_utilities.o:   DAMASK_spectral_utilities.f90 \
                                CPFEM.o
 

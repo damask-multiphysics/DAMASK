@@ -52,37 +52,39 @@ program DAMASK_spectral_Driver
  use numerics, only: &
    worldrank, &
    worldsize, &
+   stagItMax, &
    maxCutBack, &
    spectral_solver, &
    continueCalculation
  use homogenization, only: &
    materialpoint_sizeResults, &
    materialpoint_results
+ use material, only: &
+   thermal_type, &
+   damage_type, &
+   THERMAL_conduction_ID, &
+   DAMAGE_nonlocal_ID
  use DAMASK_spectral_Utilities, only: &
-   tBoundaryCondition, &
+   utilities_init, &
+   utilities_destroy, &
    tSolutionState, &
-   cutBack
+   tLoadCase, &
+   cutBack, &
+   nActiveFields, &
+   FIELD_UNDEFINED_ID, &
+   FIELD_MECH_ID, &
+   FIELD_THERMAL_ID, &
+   FIELD_DAMAGE_ID
  use DAMASK_spectral_SolverBasicPETSC
  use DAMASK_spectral_SolverAL
  use DAMASK_spectral_SolverPolarisation
+ use spectral_damage
+ use spectral_thermal
+ 
 
  implicit none
 
 #include <petsc-finclude/petscsys.h>
-
- type tLoadCase
-   real(pReal), dimension (3,3) :: rotation               = math_I3                                 !< rotation of BC
-   type(tBoundaryCondition) ::     P, &                                                             !< stress BC
-                                   deformation                                                      !< deformation BC (Fdot or L)
-   real(pReal) ::                  time                   = 0.0_pReal, &                            !< length of increment
-                                   temperature            = 300.0_pReal, &                          !< isothermal starting conditions
-                                   density                = 0.0_pReal                               !< density
-   integer(pInt) ::                incs                   = 0_pInt, &                               !< number of increments
-                                   outputfrequency        = 1_pInt, &                               !< frequency of result writes
-                                   restartfrequency       = 0_pInt, &                               !< frequency of restart writes
-                                   logscale               = 0_pInt                                  !< linear/logarithmic time inc flag
-   logical ::                      followFormerTrajectory = .true.                                  !< follow trajectory of former loadcase 
- end type tLoadCase
 
 !--------------------------------------------------------------------------------------------------
 ! variables related to information from load case and geom file
@@ -117,7 +119,7 @@ program DAMASK_spectral_Driver
  logical :: &
    guess                                                                                            !< guess along former trajectory
  integer(pInt) :: &
-   i, j, k, l, &
+   i, j, k, l, field, &
    errorID, &
    cutBackLevel = 0_pInt, &                                                                         !< cut back level \f$ t = \frac{t_{inc}}{2^l} \f$
    stepFraction = 0_pInt                                                                            !< fraction of current time interval
@@ -133,9 +135,11 @@ program DAMASK_spectral_Driver
  character(len=6)  :: loadcase_string
  character(len=1024)  :: incInfo                                                                    !< string parsed to solution with information about current load case
  type(tLoadCase), allocatable, dimension(:) :: loadCases                                            !< array of all load cases
- type(tSolutionState) solres
+ type(tSolutionState), allocatable, dimension(:) :: solres
  integer(kind=MPI_OFFSET_KIND) :: my_offset
  integer, dimension(:), allocatable :: outputSize
+ integer(pInt) :: stagIter
+ logical :: stagIterate
  PetscErrorCode :: ierr
  external :: quit
 !--------------------------------------------------------------------------------------------------
@@ -147,6 +151,13 @@ program DAMASK_spectral_Driver
    write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
  endif mainProcess
+ 
+!--------------------------------------------------------------------------------------------------
+! initialize field solver information
+ nActiveFields = 1
+ if (any(thermal_type  == THERMAL_conduction_ID  )) nActiveFields = nActiveFields + 1
+ if (any(damage_type   == DAMAGE_nonlocal_ID     )) nActiveFields = nActiveFields + 1
+ allocate(solres(nActiveFields))
 
 !--------------------------------------------------------------------------------------------------
 ! reading basic information from load case file and allocate data structure containing load cases
@@ -173,6 +184,20 @@ program DAMASK_spectral_Driver
    call IO_error(error_ID=837_pInt,ext_msg = trim(loadCaseFile))                                    ! error message for incomplete loadcase
  allocate (loadCases(N_n))                                                                          ! array of load cases
  loadCases%P%myType='p'
+ 
+  do i = 1, size(loadCases)
+   allocate(loadCases(i)%ID(nActiveFields))
+   field = 1
+   loadCases(i)%ID(field) = FIELD_MECH_ID           ! mechanical active by default
+   if (any(thermal_type  == THERMAL_conduction_ID)) then ! thermal field active
+     field = field + 1
+     loadCases(i)%ID(field) = FIELD_THERMAL_ID 
+   endif  
+   if (any(damage_type   == DAMAGE_nonlocal_ID))  then ! damage field active
+     field = field + 1
+     loadCases(i)%ID(field) = FIELD_DAMAGE_ID
+   endif
+ enddo
 
 !--------------------------------------------------------------------------------------------------
 ! reading the load case and assign values to the allocated data structure
@@ -222,8 +247,6 @@ program DAMASK_spectral_Driver
          loadCases(currentLoadCase)%time = IO_floatValue(line,positions,i+1_pInt)
        case('temp','temperature')                                                                   ! starting temperature
          loadCases(currentLoadCase)%temperature = IO_floatValue(line,positions,i+1_pInt)
-       case('den','density')                                                                        ! starting density
-         loadCases(currentLoadCase)%density     = IO_floatValue(line,positions,i+1_pInt)
        case('n','incs','increments','steps')                                                        ! number of increments
          loadCases(currentLoadCase)%incs = IO_intValue(line,positions,i+1_pInt)
        case('logincs','logincrements','logsteps')                                                   ! number of increments (switch to log time scaling)
@@ -307,7 +330,6 @@ program DAMASK_spectral_Driver
        write(6,'(2x,a,/,3(3(3x,f12.7,1x)/))',advance='no') 'rotation of loadframe:',&
                 math_transpose33(loadCases(currentLoadCase)%rotation)
      write(6,'(2x,a,f12.6)') 'temperature:', loadCases(currentLoadCase)%temperature
-     write(6,'(2x,a,f12.6)') 'density:    ', loadCases(currentLoadCase)%density
      if (loadCases(currentLoadCase)%time < 0.0_pReal)          errorID = 834_pInt                   ! negative time increment
      write(6,'(2x,a,f12.6)') 'time:       ', loadCases(currentLoadCase)%time
      if (loadCases(currentLoadCase)%incs < 1_pInt)             errorID = 835_pInt                   ! non-positive incs count
@@ -323,20 +345,36 @@ program DAMASK_spectral_Driver
 
 !--------------------------------------------------------------------------------------------------
 ! doing initialization depending on selected solver 
- select case (spectral_solver)
-   case (DAMASK_spectral_SolverBasicPETSc_label)
-     call basicPETSc_init(loadCases(1)%temperature)
-   case (DAMASK_spectral_SolverAL_label)
-     if(iand(debug_level(debug_spectral),debug_levelBasic)/= 0 .and. worldrank == 0_pInt) &
-       call IO_warning(42_pInt, ext_msg='debug Divergence')
-     call AL_init(loadCases(1)%temperature)
-   case (DAMASK_spectral_SolverPolarisation_label)
-     if(iand(debug_level(debug_spectral),debug_levelBasic)/= 0 .and. worldrank == 0_pInt) &
-       call IO_warning(42_pInt, ext_msg='debug Divergence')
-     call Polarisation_init(loadCases(1)%temperature)
-   case default
-      call IO_error(error_ID = 891, ext_msg = trim(spectral_solver))
- end select 
+ call Utilities_init()
+ do field = 1, nActiveFields
+   select case (loadCases(1)%ID(field))
+     case(FIELD_MECH_ID)
+       select case (spectral_solver)
+         case (DAMASK_spectral_SolverBasicPETSc_label)
+           call basicPETSc_init(loadCases(1)%temperature)
+         case (DAMASK_spectral_SolverAL_label)
+           if(iand(debug_level(debug_spectral),debug_levelBasic)/= 0 .and. worldrank == 0_pInt) &
+           call IO_warning(42_pInt, ext_msg='debug Divergence')
+           call AL_init(loadCases(1)%temperature)
+         
+         case (DAMASK_spectral_SolverPolarisation_label)
+           if(iand(debug_level(debug_spectral),debug_levelBasic)/= 0 .and. worldrank == 0_pInt) &
+           call IO_warning(42_pInt, ext_msg='debug Divergence')
+           call Polarisation_init(loadCases(1)%temperature)
+         
+         case default
+           call IO_error(error_ID = 891, ext_msg = trim(spectral_solver))
+       
+       end select 
+     
+      case(FIELD_THERMAL_ID)
+       call spectral_thermal_init(loadCases(1)%temperature)
+ 
+     case(FIELD_DAMAGE_ID)
+       call spectral_damage_init()
+
+   end select
+ enddo
  
 !--------------------------------------------------------------------------------------------------
 ! write header of output file
@@ -442,30 +480,6 @@ program DAMASK_spectral_Driver
          time = time + timeinc                                                                      ! forward time
          stepFraction = stepFraction + 1_pInt 
          remainingLoadCaseTime = time0 - time + loadCases(currentLoadCase)%time + timeInc
-!--------------------------------------------------------------------------------------------------
-! forward solution 
-         select case(spectral_solver)
-           case (DAMASK_spectral_SolverBasicPETSC_label)
-             call BasicPETSC_forward (&
-                 guess,timeinc,timeIncOld,remainingLoadCaseTime, &
-                 P_BC               = loadCases(currentLoadCase)%P, &
-                 F_BC               = loadCases(currentLoadCase)%deformation, &
-                 rotation_BC        = loadCases(currentLoadCase)%rotation)
-           
-           case (DAMASK_spectral_SolverAL_label)
-             call AL_forward (&
-                 guess,timeinc,timeIncOld,remainingLoadCaseTime, &
-                 P_BC               = loadCases(currentLoadCase)%P, &
-                 F_BC               = loadCases(currentLoadCase)%deformation, &
-                 rotation_BC        = loadCases(currentLoadCase)%rotation)
-           
-           case (DAMASK_spectral_SolverPolarisation_label)
-             call Polarisation_forward (&
-                 guess,timeinc,timeIncOld,remainingLoadCaseTime, &
-                 P_BC               = loadCases(currentLoadCase)%P, &
-                 F_BC               = loadCases(currentLoadCase)%deformation, &
-                 rotation_BC        = loadCases(currentLoadCase)%rotation)
-         end select
            
 !--------------------------------------------------------------------------------------------------
 ! report begin of new increment
@@ -485,49 +499,107 @@ program DAMASK_spectral_Driver
                  'Increment ',totalIncsCounter,'/',sum(loadCases%incs),&
                  '-',stepFraction, '/', subStepFactor**cutBackLevel
          endif     
-         
+
 !--------------------------------------------------------------------------------------------------
-! calculate solution 
-         select case(spectral_solver)
-           case (DAMASK_spectral_SolverBasicPETSC_label)
-             solres = BasicPETSC_solution (&
-                 incInfo,guess,timeinc,timeIncOld,remainingLoadCaseTime, &
-                 P_BC               = loadCases(currentLoadCase)%P, &
-                 F_BC               = loadCases(currentLoadCase)%deformation, &
-                 temperature_bc     = loadCases(currentLoadCase)%temperature, &
-                 rotation_BC        = loadCases(currentLoadCase)%rotation, &
-                 density            = loadCases(currentLoadCase)%density)
-           case (DAMASK_spectral_SolverAL_label)
-             solres = AL_solution (&
-                 incInfo,guess,timeinc,timeIncOld,remainingLoadCaseTime, &
-                 P_BC               = loadCases(currentLoadCase)%P, &
-                 F_BC               = loadCases(currentLoadCase)%deformation, &
-                 temperature_bc     = loadCases(currentLoadCase)%temperature, &
-                 rotation_BC        = loadCases(currentLoadCase)%rotation, &
-                 density            = loadCases(currentLoadCase)%density)
-           case (DAMASK_spectral_SolverPolarisation_label)
-             solres = Polarisation_solution (&
-                 incInfo,guess,timeinc,timeIncOld,remainingLoadCaseTime, &
-                 P_BC               = loadCases(currentLoadCase)%P, &
-                 F_BC               = loadCases(currentLoadCase)%deformation, &
-                 temperature_bc     = loadCases(currentLoadCase)%temperature, &
-                 rotation_BC        = loadCases(currentLoadCase)%rotation, &
-                 density            = loadCases(currentLoadCase)%density)
-         end select 
+! forward fields
+         do field = 1, nActiveFields
+           select case(loadCases(currentLoadCase)%ID(field))
+             case(FIELD_MECH_ID)
+               select case (spectral_solver)
+                 case (DAMASK_spectral_SolverBasicPETSc_label)
+                   call BasicPETSc_forward (&
+                       guess,timeinc,timeIncOld,remainingLoadCaseTime, &
+                       F_BC               = loadCases(currentLoadCase)%deformation, &
+                       P_BC               = loadCases(currentLoadCase)%P, &
+                       rotation_BC        = loadCases(currentLoadCase)%rotation)
+                 case (DAMASK_spectral_SolverAL_label)
+                   call AL_forward (&
+                       guess,timeinc,timeIncOld,remainingLoadCaseTime, &
+                       F_BC               = loadCases(currentLoadCase)%deformation, &
+                       P_BC               = loadCases(currentLoadCase)%P, &
+                       rotation_BC        = loadCases(currentLoadCase)%rotation)
+                 case (DAMASK_spectral_SolverPolarisation_label)
+                   call Polarisation_forward (&
+                       guess,timeinc,timeIncOld,remainingLoadCaseTime, &
+                       F_BC               = loadCases(currentLoadCase)%deformation, &
+                       P_BC               = loadCases(currentLoadCase)%P, &
+                       rotation_BC        = loadCases(currentLoadCase)%rotation)
+               end select 
+     
+           case(FIELD_THERMAL_ID)
+               call spectral_thermal_forward (&
+                   guess,timeinc,timeIncOld,remainingLoadCaseTime)
+                   
+           case(FIELD_DAMAGE_ID)
+               call spectral_damage_forward (&
+                   guess,timeinc,timeIncOld,remainingLoadCaseTime)
+           end select
+         enddo       
+           
+!--------------------------------------------------------------------------------------------------
+! solve fields
+         stagIter = 0_pInt
+         stagIterate = .true.
+         do while (stagIterate)
+           do field = 1, nActiveFields
+             select case(loadCases(currentLoadCase)%ID(field))
+               case(FIELD_MECH_ID)
+                 select case (spectral_solver)
+                   case (DAMASK_spectral_SolverBasicPETSc_label)
+                     solres(field) = BasicPETSC_solution (&
+                         incInfo,guess,timeinc,timeIncOld,remainingLoadCaseTime, &
+                         P_BC               = loadCases(currentLoadCase)%P, &
+                         F_BC               = loadCases(currentLoadCase)%deformation, &
+                         temperature_bc     = loadCases(currentLoadCase)%temperature, &
+                         rotation_BC        = loadCases(currentLoadCase)%rotation)
+         
+                   case (DAMASK_spectral_SolverAL_label)
+                     solres(field) = AL_solution (&
+                         incInfo,guess,timeinc,timeIncOld,remainingLoadCaseTime, &
+                         P_BC               = loadCases(currentLoadCase)%P, &
+                         F_BC               = loadCases(currentLoadCase)%deformation, &
+                         temperature_bc     = loadCases(currentLoadCase)%temperature, &
+                         rotation_BC        = loadCases(currentLoadCase)%rotation)
+         
+                   case (DAMASK_spectral_SolverPolarisation_label)
+                     solres(field) = Polarisation_solution (&
+                         incInfo,guess,timeinc,timeIncOld,remainingLoadCaseTime, &
+                         P_BC               = loadCases(currentLoadCase)%P, &
+                         F_BC               = loadCases(currentLoadCase)%deformation, &
+                         temperature_bc     = loadCases(currentLoadCase)%temperature, &
+                         rotation_BC        = loadCases(currentLoadCase)%rotation)
+       
+                 end select 
+     
+               case(FIELD_THERMAL_ID)
+                 solres(field) = spectral_thermal_solution (&
+                     guess,timeinc,timeIncOld,remainingLoadCaseTime)
+ 
+               case(FIELD_DAMAGE_ID)
+                 solres(field) = spectral_damage_solution (&
+                     guess,timeinc,timeIncOld,remainingLoadCaseTime)
+
+             end select
+             if(.not. solres(field)%converged) exit                                                ! no solution found
+           enddo
+           stagIter = stagIter + 1_pInt
+           stagIterate = stagIter < stagItMax .and. &
+                         all(solres(:)%converged) .and. &
+                         .not. all(solres(:)%stagConverged)
+         enddo     
 
 !--------------------------------------------------------------------------------------------------
 ! check solution 
          cutBack = .False.                                                                   
-         if(solres%termIll .or. .not. solres%converged) then                                        ! no solution found
+         if(solres(1)%termIll .or. .not. all(solres(:)%converged .and. solres(:)%stagConverged)) then                      ! no solution found
            if (cutBackLevel < maxCutBack) then                                                      ! do cut back
              if (worldrank == 0) write(6,'(/,a)') ' cut back detected'
              cutBack = .True.
              stepFraction = (stepFraction - 1_pInt) * subStepFactor                                 ! adjust to new denominator
              cutBackLevel = cutBackLevel + 1_pInt
              time    = time - timeinc                                                               ! rewind time
-             timeIncOld = timeinc
              timeinc = timeinc/2.0_pReal
-           elseif (solres%termIll) then                                                             ! material point model cannot find a solution, exit in any casy
+           elseif (solres(1)%termIll) then                                                          ! material point model cannot find a solution, exit in any casy
              call IO_warning(850_pInt)
              call quit(-1_pInt*(lastRestartWritten+1_pInt))                                         ! quit and provide information about last restart inc written (e.g. for regridding)
            elseif (continueCalculation == 1_pInt)  then
@@ -548,7 +620,7 @@ program DAMASK_spectral_Driver
          endif  
        enddo subIncLooping
        cutBackLevel = max(0_pInt, cutBackLevel - 1_pInt)                                            ! try half number of subincs next inc
-       if(solres%converged) then                                                                    ! report converged inc
+       if(all(solres(:)%converged)) then                                                            ! report converged inc
          convergedCounter = convergedCounter + 1_pInt
          if (worldrank == 0) &
            write(6,'(/,a,'//IO_intOut(totalIncsCounter)//',a)') &
@@ -593,14 +665,24 @@ program DAMASK_spectral_Driver
  call MPI_file_close(resUnit,ierr)
  close(statUnit)
 
- select case (spectral_solver)
-   case (DAMASK_spectral_SolverBasicPETSC_label)
-     call BasicPETSC_destroy()
-   case (DAMASK_spectral_SolverAL_label)
-     call AL_destroy()
-   case (DAMASK_spectral_SolverPolarisation_label)
-     call Polarisation_destroy()
- end select
+ do field = 1, nActiveFields
+   select case(loadCases(1)%ID(field))
+     case(FIELD_MECH_ID)
+       select case (spectral_solver)
+         case (DAMASK_spectral_SolverBasicPETSc_label)
+           call BasicPETSC_destroy()
+         case (DAMASK_spectral_SolverAL_label)
+           call AL_destroy()
+         case (DAMASK_spectral_SolverPolarisation_label)
+           call Polarisation_destroy()
+       end select 
+     case(FIELD_THERMAL_ID)
+       call spectral_thermal_destroy()
+     case(FIELD_DAMAGE_ID)
+       call spectral_damage_destroy()
+   end select
+ enddo
+ call utilities_destroy()
  
  call PetscFinalize(ierr); CHKERRQ(ierr)
  

@@ -13,7 +13,8 @@ module DAMASK_spectral_SolverBasicPETSc
  use math, only: &
    math_I3
  use DAMASK_spectral_Utilities, only: &
-   tSolutionState
+   tSolutionState, &
+   tSolutionParams
 
  implicit none
  private
@@ -24,14 +25,6 @@ module DAMASK_spectral_SolverBasicPETSc
    
 !--------------------------------------------------------------------------------------------------
 ! derived types
- type tSolutionParams 
-   real(pReal), dimension(3,3) :: P_BC, rotation_BC
-   real(pReal) :: timeinc
-   real(pReal) :: timeincOld
-   real(pReal) :: temperature
-   real(pReal) :: density
- end type tSolutionParams
- 
  type(tSolutionParams), private :: params
 
 !--------------------------------------------------------------------------------------------------
@@ -58,7 +51,7 @@ module DAMASK_spectral_SolverBasicPETSc
    C_volAvgLastInc = 0.0_pReal, &                                                                   !< previous volume average stiffness
    C_minMaxAvg = 0.0_pReal, &                                                                       !< current (min+max)/2 stiffness
    S = 0.0_pReal                                                                                    !< current compliance (filled up with zeros)
- real(pReal), private :: err_stress, err_div, err_divPrev, err_divDummy
+ real(pReal), private :: err_stress, err_div
  logical, private :: ForwardData
  integer(pInt), private :: &
    totalIter = 0_pInt                                                                               !< total iteration in current increment
@@ -112,16 +105,13 @@ subroutine basicPETSc_init(temperature)
  use DAMASK_interface, only: &
    getSolverJobName
  use DAMASK_spectral_Utilities, only: &
-   Utilities_init, &
    Utilities_constitutiveResponse, &
    Utilities_updateGamma, &
    utilities_updateIPcoords, &
-   grid1Red, &
    wgt
  use mesh, only: &
    gridLocal, &
-   gridGlobal, &
-   mesh_ipCoordinates
+   gridGlobal
  use math, only: &
    math_invSym3333
    
@@ -138,7 +128,6 @@ subroutine basicPETSc_init(temperature)
  integer(pInt) :: proc
  character(len=1024) :: rankStr
 
- call Utilities_init()
  mainProcess: if (worldrank == 0_pInt) then
    write(6,'(/,a)') ' <<<+-  DAMASK_spectral_solverBasicPETSc init  -+>>>'
    write(6,'(a)') ' $Id$'
@@ -155,6 +144,7 @@ subroutine basicPETSc_init(temperature)
 !--------------------------------------------------------------------------------------------------
 ! initialize solver specific parts of PETSc
  call SNESCreate(PETSC_COMM_WORLD,snes,ierr); CHKERRQ(ierr)
+ call SNESSetOptionsPrefix(snes,'mech_',ierr);CHKERRQ(ierr) 
  allocate(localK(worldsize), source = 0); localK(worldrank+1) = gridLocal(3)
  do proc = 1, worldsize
    call MPI_Bcast(localK(proc),1,MPI_INTEGER,proc-1,PETSC_COMM_WORLD,ierr)
@@ -168,6 +158,7 @@ subroutine basicPETSc_init(temperature)
         gridLocal (1),gridLocal (2),localK, &                                                       ! local grid
         da,ierr)                                                                                    ! handle, error
  CHKERRQ(ierr)
+ call SNESSetDM(snes,da,ierr); CHKERRQ(ierr)
  call DMCreateGlobalVector(da,solution_vec,ierr); CHKERRQ(ierr)                                     ! global solution vector (grid x 9, i.e. every def grad tensor)
  call DMDASNESSetFunctionLocal(da,INSERT_VALUES,BasicPETSC_formResidual,dummy,ierr)                 ! residual vector of same shape as solution vector
  CHKERRQ(ierr) 
@@ -205,12 +196,13 @@ subroutine basicPETSc_init(temperature)
  call Utilities_updateIPcoords(F)
  call Utilities_constitutiveResponse(F_lastInc, F, &
     temperature, &
-    1.0_pReal, &
+    0.0_pReal, &
     P, &
     C_volAvg,C_minMaxAvg, &                                                                         ! global average of stiffness and (min+max)/2
     temp33_Real, &
     .false., &
     math_I3)
+
  call DMDAVecRestoreArrayF90(da,solution_vec,F,ierr); CHKERRQ(ierr)                                 ! write data back to PETSc
 
  if (restartInc > 1_pInt) then                                                                      ! using old values from files                                                    
@@ -237,11 +229,10 @@ end subroutine basicPETSc_init
 !> @brief solution for the Basic PETSC scheme with internal iterations
 !--------------------------------------------------------------------------------------------------
 type(tSolutionState) function basicPETSc_solution( &
-     incInfoIn,guess,timeinc,timeinc_old,loadCaseTime,P_BC,F_BC,temperature_bc,rotation_BC,density)
+     incInfoIn,guess,timeinc,timeinc_old,loadCaseTime,P_BC,F_BC,temperature_bc,rotation_BC)
  use numerics, only: &
    update_gamma, &
-   itmax, &
-   worldrank
+   itmax
  use DAMASK_spectral_Utilities, only: &
    tBoundaryCondition, &
    Utilities_maskedCompliance, &
@@ -258,8 +249,7 @@ type(tSolutionState) function basicPETSc_solution( &
    timeinc, &                                                                                       !< increment in time for current solution
    timeinc_old, &                                                                                   !< increment in time of last increment
    loadCaseTime, &                                                                                  !< remaining time of current load case
-   temperature_bc, &
-   density
+   temperature_bc
  type(tBoundaryCondition),      intent(in) :: &
    P_BC, &
    F_BC
@@ -290,7 +280,6 @@ type(tSolutionState) function basicPETSc_solution( &
  params%timeinc = timeinc
  params%timeincOld = timeinc_old
  params%temperature = temperature_BC
- params%density = density
 
  call SNESSolve(snes,PETSC_NULL_OBJECT,solution_vec,ierr); CHKERRQ(ierr)
  call SNESGetConvergedReason(snes,reason,ierr); CHKERRQ(ierr)
@@ -329,11 +318,11 @@ subroutine BasicPETSC_formResidual(in,x_scal,f_scal,dummy,ierr)
    debug_spectralRotation
  use DAMASK_spectral_Utilities, only: &
    wgt, &
-   field_realMPI, &
-   field_fourierMPI, &
-   Utilities_FFTforward, &
-   Utilities_FFTbackward, &
-   Utilities_fourierConvolution, &
+   tensorField_realMPI, &
+   tensorField_fourierMPI, &
+   utilities_FFTtensorForward, &
+   utilities_FFTtensorBackward, &
+   utilities_fourierGammaConvolution, &
    Utilities_inverseLaplace, &
    Utilities_constitutiveResponse, &
    Utilities_divergenceRMS
@@ -392,16 +381,16 @@ subroutine BasicPETSC_formResidual(in,x_scal,f_scal,dummy,ierr)
  
 !--------------------------------------------------------------------------------------------------
 ! updated deformation gradient using fix point algorithm of basic scheme
- field_realMPI = 0.0_pReal
- field_realMPI(1:3,1:3,1:gridLocal(1),1:gridLocal(2),1:gridLocal(3)) = f_scal
- call Utilities_FFTforward()
+ tensorField_realMPI = 0.0_pReal
+ tensorField_realMPI(1:3,1:3,1:gridLocal(1),1:gridLocal(2),1:gridLocal(3)) = f_scal
+ call utilities_FFTtensorForward()
  err_div = Utilities_divergenceRMS()
- call Utilities_fourierConvolution(math_rotate_backward33(F_aim_lastIter-F_aim,params%rotation_BC))
- call Utilities_FFTbackward()
+ call utilities_fourierGammaConvolution(math_rotate_backward33(F_aim_lastIter-F_aim,params%rotation_BC))
+ call utilities_FFTtensorBackward()
  
 !--------------------------------------------------------------------------------------------------
 ! constructing residual
- f_scal = field_realMPI(1:3,1:3,1:gridLocal(1),1:gridLocal(2),1:gridLocal(3))
+ f_scal = tensorField_realMPI(1:3,1:3,1:gridLocal(1),1:gridLocal(2),1:gridLocal(3))
 
 end subroutine BasicPETSc_formResidual
 
@@ -578,7 +567,6 @@ subroutine BasicPETSc_destroy()
  call VecDestroy(solution_vec,ierr); CHKERRQ(ierr)
  call SNESDestroy(snes,ierr); CHKERRQ(ierr)
  call DMDestroy(da,ierr); CHKERRQ(ierr)
- call Utilities_destroy()
 
 end subroutine BasicPETSc_destroy
 

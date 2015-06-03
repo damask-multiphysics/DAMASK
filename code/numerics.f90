@@ -115,8 +115,9 @@ module numerics
    spectral_solver            = 'basicpetsc'  , &                                                   !< spectral solution method 
    spectral_filter            = 'none'                                                              !< spectral filtering method
  character(len=1024), protected, public :: &
-   petsc_options              = '-snes_type ngmres &
-                                &-snes_ngmres_anderson '
+   petsc_options              = '-mech_snes_type ngmres &
+                                &-damage_snes_type ngmres &
+                                &-thermal_snes_type ngmres '
  integer(pInt), protected, public :: &
    fftw_planner_flag          =  32_pInt, &                                                         !< conversion of fftw_plan_mode to integer, basically what is usually done in the include file of fftw
    continueCalculation        =  0_pInt, &                                                          !< 0: exit if BVP solver does not converge, 1: continue calculation if BVP solver does not converge
