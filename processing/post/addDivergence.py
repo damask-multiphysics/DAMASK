@@ -15,13 +15,7 @@ def divFFT(geomdim,field):
  wgt = 1.0/np.array(grid).prod()
 
  field_fourier=np.fft.fftpack.rfftn(field,axes=(0,1,2))
-
- if len(np.shape(field)) == 4:
-   dataType = 'vector'
-   div_fourier=np.zeros(field_fourier.shape[0:3],'c16') # div is a scalar
- elif len(np.shape(field)) == 5:
-   dataType = 'tensor'
-   div_fourier=np.zeros(field_fourier.shape[0:4],'c16') # div is a vector
+ div_fourier=np.zeros(field_fourier.shape[0:len(np.shape(field))-1],'c16')                          # size depents on wether tensor or vector
 
 # differentiation in Fourier space
  k_s=np.zeros([3],'i')
@@ -36,17 +30,17 @@ def divFFT(geomdim,field):
        k_s[2] = k
        if(k > grid[2]/2 ): k_s[2] = k_s[2] - grid[2]
        xi=np.array([k_s[2]/geomdim[2]+0.0j,k_s[1]/geomdim[1]+0.j,k_s[0]/geomdim[0]+0.j],'c16')
-       if dataType == 'tensor': 
+       if len(np.shape(field)) == 5:                                                                # tensor, 3x3 -> 3
          for l in xrange(3):
            div_fourier[i,j,k,l] = sum(field_fourier[i,j,k,l,0:3]*xi) *TWOPIIMG
-       elif dataType == 'vector': 
+       elif len(np.shape(field)) == 4:                                                              # vector, 3 -> 1
          div_fourier[i,j,k] = sum(field_fourier[i,j,k,0:3]*xi) *TWOPIIMG
 
  div=np.fft.fftpack.irfftn(div_fourier,axes=(0,1,2))
- print div.shape
- if dataType == 'tensor': 
+
+ if len(np.shape(field)) == 5:                                                                      # tensor, 3x3 -> 3
    return  div.reshape([grid.prod(),3])
- if dataType == 'vector': 
+ elif len(np.shape(field)) == 4:                                                                    # vector, 3 -> 1
    return  div.reshape([grid.prod(),1])
 
 
