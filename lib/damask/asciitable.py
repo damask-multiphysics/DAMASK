@@ -164,8 +164,8 @@ class ASCIItable():
     self.__IO__['labels'] = False
 
 # ------------------------------------------------------------------
-  def labels_index(self,
-                   labels):
+  def label_index(self,
+                  labels):
     '''
        tell index of column label(s).
        return numpy array if asked for list of labels.
@@ -173,6 +173,36 @@ class ASCIItable():
     '''
     if isinstance(labels,list):                                         # check whether list of labels is requested
       idx = []
+      for label in labels:
+        if label != None:
+          try:
+            idx.append(int(label))                                        # column given as integer number?
+          except ValueError:
+            try:
+              idx.append(self.labels.index(label))                        # locate string in label list
+            except ValueError:
+             idx.append(-1)                                               # not found...
+    else:
+      try:
+        idx = int(labels)
+      except ValueError:
+        try:
+          idx = self.labels.index(labels)
+        except(ValueError):
+          idx = None if labels == None else -1
+
+    return np.array(idx) if isinstance(idx,list) else idx
+
+# ------------------------------------------------------------------
+  def labels_dimension(self,
+                       labels):
+    '''
+       tell dimension (length) of column label(s).
+       return numpy array if asked for list of labels.
+       transparently deals with label positions implicitly given as numbers or their headings given as strings.
+    '''
+    if isinstance(labels,list):                                           # check whether list of labels is requested
+      dim = []
       for label in labels:
         if label != None:
           try:
@@ -273,7 +303,7 @@ class ASCIItable():
       use = np.arange(self.__IO__['validReadSize'])                                             # use all columns (and keep labels intact)
       labels_missing = []
     else:
-      indices = self.labels_index(labels)                                                           # check requested labels
+      indices = self.label_index(labels)                                                           # check requested labels
       present  = np.where(indices >= 0)[0]                                                          # positions in request list of labels that are present ...
       missing  = np.where(indices <  0)[0]                                                          # ... and missing in table
       labels_missing    =      np.array(     labels)        [missing]                               # corresponding labels ...

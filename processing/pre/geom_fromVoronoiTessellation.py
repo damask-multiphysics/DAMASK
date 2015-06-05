@@ -153,32 +153,32 @@ for file in files:
   table.head_read()
 
   labels = []
-  if np.all(table.labels_index(['1_coords','2_coords','3_coords']) != -1):
+  if np.all(table.label_index(['1_coords','2_coords','3_coords']) != -1):
     coords = ['1_coords','2_coords','3_coords']
-  elif np.all(table.labels_index(['x','y','z']) != -1):
+  elif np.all(table.label_index(['x','y','z']) != -1):
     coords = ['x','y','z']
   else:
     file['croak'].write('no coordinate data (1/2/3_coords | x/y/z) found ...')
     continue
 
   labels += coords
-  hasEulers = np.all(table.labels_index(['phi1','Phi','phi2']) != -1)
+  hasEulers = np.all(table.label_index(['phi1','Phi','phi2']) != -1)
   if hasEulers:
     labels += ['phi1','Phi','phi2']
     
-  hasGrains = table.labels_index('microstructure') != -1
+  hasGrains = table.label_index('microstructure') != -1
   if hasGrains:
     labels += ['microstructure']
     
-  hasWeight = table.labels_index('weight') != -1
+  hasWeight = table.label_index('weight') != -1
   if hasWeight:
     labels += ['weight']
       
   table.data_readArray(labels)
-  coords = table.data[:,table.labels_index(coords)]
-  eulers = table.data[:,table.labels_index(['phi1','Phi','phi2'])] if hasEulers else np.zeros(3*len(coords))
-  grain = table.data[:,table.labels_index('microstructure')]       if hasGrains else 1+np.arange(len(coords))
-  weights = table.data[:,table.labels_index('weight')]             if hasWeight else np.zeros(len(coords))
+  coords = table.data[:,table.label_index(coords)]
+  eulers = table.data[:,table.label_index(['phi1','Phi','phi2'])] if hasEulers else np.zeros(3*len(coords))
+  grain = table.data[:,table.label_index('microstructure')]       if hasGrains else 1+np.arange(len(coords))
+  weights = table.data[:,table.label_index('weight')]             if hasWeight else np.zeros(len(coords))
   grainIDs = np.unique(grain).astype('i')
 
 

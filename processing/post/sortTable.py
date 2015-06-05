@@ -65,7 +65,7 @@ for file in files:
 
   table.data_readArray()
   cols = []
-  for column in table.labels_index(options.keys):
+  for column in table.label_index(options.keys):
     cols += [table.data[:,column]]
 
   ind = np.lexsort(cols)

@@ -58,9 +58,9 @@ for file in files:
 
   rows, cols = table.data_readArray()
 
-  table.data = table.data[np.lexsort([table.data[:,table.labels_index(options.key)]])]
+  table.data = table.data[np.lexsort([table.data[:,table.label_index(options.key)]])]
   
-  values, index = np.unique(table.data[:,table.labels_index(options.key)], return_index=True)
+  values, index = np.unique(table.data[:,table.label_index(options.key)], return_index=True)
   index = np.append(index,rows)
   avgTable = np.empty((len(values), cols))
   
