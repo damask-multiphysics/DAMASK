@@ -83,22 +83,20 @@ options.output = map(lambda x: x.lower(), options.output)
 
 r = damask.Quaternion().fromAngleAxis(toRadians*options.rotation[0],options.rotation[1:])
 
-# ------------------------------------------ setup file handles ------------------------------------
-
-files = []
+# --- loop over input files -------------------------------------------------------------------------
 if filenames == []:
-  files.append({'name':'STDIN', 'input':sys.stdin, 'output':sys.stdout, 'croak':sys.stderr})
-else:
-  for name in filenames:
-    if os.path.exists(name):
-      files.append({'name':name, 'input':open(name), 'output':open(name+'_tmp','w'), 'croak':sys.stderr})
+  filenames = ['STDIN']
 
-# ------------------------------------------ loop over input files ---------------------------------
-for file in files:
-  if file['name'] != 'STDIN': file['croak'].write('\033[1m'+scriptName+'\033[0m: '+file['name']+'\n')
-  else: file['croak'].write('\033[1m'+scriptName+'\033[0m\n')
+for name in filenames:
+  if name == 'STDIN':
+    file = {'name':'STDIN', 'input':sys.stdin, 'output':sys.stdout, 'croak':sys.stderr}
+    file['croak'].write('\033[1m'+scriptName+'\033[0m\n')
+  else:
+    if not os.path.exists(name): continue
+    file = {'name':name, 'input':open(name), 'output':open(name+'_tmp','w'), 'croak':sys.stderr}
+    file['croak'].write('\033[1m'+scriptName+'\033[0m: '+file['name']+'\n')
 
-  table = damask.ASCIItable(file['input'],file['output'],False)                                     # make unbuffered ASCII_table
+  table = damask.ASCIItable(file['input'],file['output'],buffered=False)                            # make unbuffered ASCII_table
   table.head_read()                                                                                 # read ASCII header info
   table.info_append(scriptID + '\t' + ' '.join(sys.argv[1:]))
 
@@ -107,7 +105,7 @@ for file in files:
 
   for datatype,info in datainfo.items():
     for label in info['label']:
-      key = '1_%s'%label
+      key = '1_'+label if info['len'] > 1 else label                                                # non-special labels have to start with '1_'
       if key not in table.labels:
         file['croak'].write('column %s not found...\n'%key)
         missingColumns = True                                                                       # break if label not found
@@ -136,7 +134,7 @@ for file in files:
     elif input == 'matrix':
       o = damask.Orientation(matrix=\
                  np.array([map(float,table.data[column[options.matrix]:\
-                                                column[options.matrix]+datainfo['tensor']['len']])]),
+                                                column[options.matrix]+datainfo['tensor']['len']])]).reshape(3,3),
                              symmetry=options.symmetry).reduced()
     elif input == 'frame':
       o = damask.Orientation(matrix=\
