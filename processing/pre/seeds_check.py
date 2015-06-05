@@ -37,44 +37,38 @@ parser.set_defaults(size = [0.0,0.0,0.0])
 
 (options, filenames) = parser.parse_args()
 
-#--- setup file handles --------------------------------------------------------------------------  
-files = []
+# --- loop over input files -------------------------------------------------------------------------
 if filenames == []:
-  files.append({'name':'STDIN',
-                'input':sys.stdin,
-                'output':sys.stdout,
-                'croak':sys.stderr,
-               })
-else:
-  for name in filenames:
-    if os.path.exists(name):
-      files.append({'name':name,
-                    'input':open(name),
-                    'output':sys.stdout,
-                    'croak':sys.stdout,
-                    })
+  filenames = ['STDIN']
 
-#--- loop over input files ------------------------------------------------------------------------
-for file in files:
-  file['croak'].write('\033[1m' + scriptName + '\033[0m: ' + (file['name'] if file['name'] != 'STDIN' else '') + '\n')
+for name in filenames:
+  if name == 'STDIN':
+    file = {'name':'STDIN', 'input':sys.stdin, 'output':sys.stdout, 'croak':sys.stderr}
+    file['croak'].write('\033[1m'+scriptName+'\033[0m\n')
+  else:
+    if not os.path.exists(name): continue
+    file = {'name':name, 'input':open(name), 'output':open(name+'_tmp','w'), 'croak':sys.stderr}
+    file['croak'].write('\033[1m'+scriptName+'\033[0m: '+file['name']+'\n')
 
-  table = damask.ASCIItable(file['input'],file['output'])
+  table = damask.ASCIItable(file['input'],file['output'],buffered = False)
   table.head_read()
 
-  coordsCol = table.labels_index('1_coords')
-  if coordsCol < 0: 
-    coordsCol = table.labels_index('x')                                                            # try if file is in legacy format
-    if coordsCol < 0: 
-      file['croak'].write('column 1_coords/x not found...\n')
-      continue
 
-  grainCol = table.labels_index('microstructure')
-  hasGrains = grainCol != -1
+  if np.all(table.label_index(['1_coords','2_coords','3_coords']) != -1):
+    labels = ['1_coords','2_coords','3_coords']
+  elif np.all(table.label_index(['x','y','z']) != -1):
+    labels = ['x','y','z']
+  else:
+    file['croak'].write('no coordinate data (1/2/3_coords | x/y/z) found ...')
+    continue
 
-  table.data_readArray()
-  coords = table.data[:,coordsCol:coordsCol+3]
-  grain = table.data[:,grainCol] if hasGrains else 1+np.arange(len(coords))
-  grainIDs = np.unique(grain).astype('i')
+  hasGrains = table.label_index('microstructure') != -1
+  labels += ['microstructure'] if hasGrains else []
+
+  table.data_readArray(labels)                                                                      # read ASCIItable columns
+  coords = table.data[:,:3]                                                                         # assign coordinates
+  grain = table.data[:,3].astype('i') if hasGrains else 1+np.arange(len(coords),dtype='i')          # assign grains
+  grainIDs = np.unique(grain).astype('i')                                                           # find all grainIDs present
   
 #--- interpret header ----------------------------------------------------------------------------
   info = {
@@ -121,7 +115,7 @@ for file in files:
     pointIds = vtk.vtkIdList()
     pointIds.InsertId(0, pid)
     grid.InsertNextCell(1, pointIds)
-    IDs.InsertNextValue(grainIDs[i])
+    IDs.InsertNextValue(grain[i])
 
   grid.SetPoints(pts)
   grid.GetCellData().AddArray(IDs)
@@ -139,6 +133,7 @@ for file in files:
     writer.Write()
     sys.stdout.write(writer.GetOutputString()[0:writer.GetOutputStringLength()])
   else:
+    table.close(dismiss=True)
     (head,tail) = os.path.split(file['name'])
     writer = vtk.vtkXMLUnstructuredGridWriter()
     writer.SetDataModeToBinary()
