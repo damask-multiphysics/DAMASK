@@ -12,141 +12,61 @@ scriptName = os.path.splitext(scriptID.split()[1])[0]
                                # MAIN
 # --------------------------------------------------------------------
 
+outtypes    = ['paraview','gmsh','raw','GOM']
+extensions  = ['.xml','.msh','.txt','.legend']
+colormodels = ['RGB','HSL','XYZ','CIELAB','MSH']
+
 parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
-Produces perceptually linear diverging and sequential colormaps in formats suitable for visualization software or simply as a list of interpolated colors.
+Produces perceptually linear diverging and sequential colormaps in formats suitable for visualization software
+or simply as a list of interpolated colors.
 
 """, version = scriptID)
 
-parser.add_option('-l','--left', dest='left', type='float', nargs=3, \
-                  help='left color [%default]')
-parser.add_option('-r','--right', dest='right', type='float', nargs=3, \
-                  help='right color [%default]')
-parser.add_option('-c','--colormodel', dest='colormodel', \
-                  help='colormodel of left and right "RGB","HSL","XYZ","CIELAB","MSH" [%default]')
-parser.add_option('-p','--predefined', dest='predefined', \
-                  help='predefined colormap [%default]')
-parser.add_option('-f','--format', dest='format', action='extend', \
-                  help='output file format "paraview","gmsh","raw","GOM",[paraview, autodetect if output file extension is given]')
-parser.add_option('-s','--steps', dest='steps', type='int', nargs = 1, \
+parser.add_option('-N','--steps', dest='N', type='int', nargs=1, metavar='int',
                   help='number of interpolation steps [%default]')
-parser.add_option('-t','--trim', dest='trim', type='float', nargs = 2, \
-                  help='trim the colormap w.r.t the given values [%default]')
+parser.add_option('-t','--trim', dest='trim', type='float', nargs=2, metavar='float float',
+                  help='relative trim of colormap range [%default]')
+parser.add_option('-l','--left', dest='left', type='float', nargs=3, metavar='float float float',
+                  help='left color [%default]')
+parser.add_option('-r','--right', dest='right', type='float', nargs=3, metavar='float float float',
+                  help='right color [%default]')
+parser.add_option('-c','--colormodel', dest='colormodel', metavar='string',
+                  help='colormodel: '+', '.join(colormodels)+' [%default]')
+parser.add_option('-p','--predefined', dest='predefined', metavar='string',
+                  help='predefined colormap [%default]')
+parser.add_option('-f','--format', dest='format', metavar='string',
+                  help='output format: '+', '.join(outtypes)+' [%default]')
+parser.add_option('-b','--basename', dest='basename', metavar='string',
+                  help='basename of output file [%default]')
 parser.set_defaults(colormodel = 'RGB')
 parser.set_defaults(predefined = None)
-parser.set_defaults(format = [''])
-parser.set_defaults(steps = 10)
+parser.set_defaults(basename = None)
+parser.set_defaults(format = 'paraview')
+parser.set_defaults(N = 10)
 parser.set_defaults(trim  = (-1.0,1.0))
 parser.set_defaults(left  = (1.0,1.0,1.0))
 parser.set_defaults(right = (0.0,0.0,0.0))
+
 (options,filenames) = parser.parse_args()
 
-outtypes   = ['paraview','gmsh','raw','GOM']
-extensions = ['.xml','.msh','.txt','.legend']
-if options.trim[0]< -1.0 or \
-   options.trim[1] > 1.0 or \
-   options.trim[0]>= options.trim[1]:
-  parser.error('invalid trim range ...')
+if options.format not in outtypes:
+  parser.error('invalid format: "%s" (can be %s).'%(options.format,', '.join(outtypes)))
 
-# ------------------------------------------ setup file handles ---------------------------------------  
+if options.N < 2:
+  parser.error('too few steps (need at least 2).')
 
-files = []
-if filenames == [] and options.format == ['']:
-  files.append({'outtype':'paraview','output':sys.stdout,'name':'colormap'})
+if options.trim[0] < -1.0 or \
+   options.trim[1] >  1.0 or \
+   options.trim[0] >= options.trim[1]:
+  parser.error('invalid trim range (-1 +1).')
 
-if (len(options.format) == (len(filenames)+1)) and (len(options.format) > 1):
-  for i in xrange(1,len(options.format)):
-    [basename,myExtension] = os.path.splitext(os.path.basename(filenames[i-1]))
-    if options.format[i] in outtypes:
-      myExtension = extensions[outtypes.index(options.format[i])]
-      myType = outtypes[extensions.index(myExtension)]
-    elif myExtension in extensions:
-      myType = outtypes[extensions.index(myExtension)]
-    else:
-      myType = 'paraview'
-      myExtension = extensions[outtypes.index(myType)]      
-    files.append({'name':basename, 'output':open(basename+myExtension,'w'), 'outtype': myType})
 
-if (len(options.format) > (len(filenames)+1)): 
-  if (len(filenames) == 1) :
-    [basename,myExtension] = os.path.splitext(os.path.basename(filenames[0]))
-    for i in xrange(1,len(options.format)):
-      if options.format[i] in outtypes:
-        myExtension = extensions[outtypes.index(options.format[i])]
-        myType = outtypes[extensions.index(myExtension)]
-      else:
-        myType = 'paraview'
-        myExtension = extensions[outtypes.index(myType)]
-      files.append({'name':basename, 'output':open(basename+myExtension,'w'), 'outtype': myType})
-  elif len(filenames) == 0:
-    for i in xrange(1,len(options.format)):
-      if options.format[i] in outtypes:
-        myExtension = extensions[outtypes.index(options.format[i])]
-        myType = outtypes[extensions.index(myExtension)]
-        basename = myType
-      else:
-        myType = 'paraview'
-        myExtension = extensions[outtypes.index(myType)]
-        basename = myType    
-      files.append({'name':basename, 'output':open(basename+myExtension,'w'), 'outtype': myType})
-  elif len(filenames) > 1:
-    for i in xrange(len(filenames)):
-      [basename,myExtension] = os.path.splitext(os.path.basename(filenames[i]))
-      if options.format[i+1] in outtypes:
-        myExtension = extensions[outtypes.index(options.format[i+1])]
-        myType = outtypes[extensions.index(myExtension)]
-      elif myExtension in extensions:
-        myType = outtypes[extensions.index(myExtension)]
-      else:
-        myType = 'paraview'
-        myExtension = extensions[outtypes.index(myType)]
-      files.append({'name':basename, 'output':open(basename+myExtension,'w'), 'outtype': myType})
-    for i in xrange(len(filenames)+1,len(options.format)):
-      if options.format[i] in outtypes:
-        myExtension = extensions[outtypes.index(options.format[i])]
-        myType = outtypes[extensions.index(myExtension)]
-        basename = myType
-      else:
-        myType = 'paraview'
-        myExtension = extensions[outtypes.index(myType)]
-        basename = myType
-      files.append({'name':basename, 'output':open(basename+myExtension,'w'), 'outtype': myType})
+name   = options.format if options.basename == None else options.basename
+output = sys.stdout     if options.basename == None else open(os.path.basename(options.basename)+extensions[outtypes.index(options.format)],'w')
 
-if (len(options.format) < (len(filenames)+1)) and (options.format!=['']):
-  for i in xrange(1,len(options.format)):
-    [basename,myExtension] = os.path.splitext(os.path.basename(filenames[i-1]))
-    if options.format[i] in outtypes:
-      myExtension = extensions[outtypes.index(options.format[i])]
-      myType = outtypes[extensions.index(myExtension)]
-    elif (options.format[i] not in outtypes) and (myExtension in extensions):
-      myType = outtypes[extensions.index(myExtension)]
-    else:
-      myType = 'paraview'
-      myExtension = extensions[outtypes.index(myType)]
-    files.append({'name':basename, 'output':open(basename+myExtension,'w'), 'outtype': myType})      # files.append({'name':basename, 'output':open(basename+myExtension,'w'), 'outtype': myType})
-  for i in xrange((len(options.format)-1),len(filenames)):
-    [basename,myExtension] = os.path.splitext(os.path.basename(filenames[i]))
-    if myExtension.lower() in extensions:
-      myType = outtypes[extensions.index(myExtension)]
-    else:
-      myType = 'paraview'
-      myExtension = extensions[outtypes.index(myType)]
-    files.append({'name':basename, 'output':open(basename+myExtension,'w'), 'outtype': myType})
-    
-elif (len(filenames)> 0) and (options.format == ['']):
- for [i,name] in enumerate(filenames):
-  [basename,myExtension] = os.path.splitext(os.path.basename(name))
-  if myExtension.lower() in extensions:
-    myType = outtypes[extensions.index(myExtension)]
-  else:
-    myType = 'paraview'
-    myExtension = extensions[outtypes.index(myType)]
-  files.append({'name':basename, 'output':open(basename+myExtension,'w'), 'outtype': myType})  
-    
-leftColor = damask.Color(options.colormodel.upper(),list(options.left))
-rightColor = damask.Color(options.colormodel.upper(),list(options.right))
-myColormap = damask.Colormap(leftColor,rightColor,predefined = options.predefined)
+colorLeft = damask.Color(options.colormodel.upper(), list(options.left))
+colorRight = damask.Color(options.colormodel.upper(), list(options.right))
+colormap = damask.Colormap(colorLeft, colorRight, predefined=options.predefined)
 
-for file in files:
-  outColormap = myColormap.export(file['name'],file['outtype'],options.steps,list(options.trim))
-  file['output'].write(outColormap)
-  file['output'].close()  
+output.write(colormap.export(name,options.format,options.N,list(options.trim)))
+output.close()
