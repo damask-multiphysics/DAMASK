@@ -60,7 +60,7 @@ for file in files:
       column[label] = table.labels.index(key)                                                       # remember columns of requested data
 
 # ------------------------------------------ assemble header ---------------------------------------
-  for labels in active: 
+  for label in active: 
     table.labels_append(['%i_eigval(%s)'%(i+1,label) for i in xrange(3)])                           # extend ASCII header with new labels
     table.labels_append(['%i_eigvec(%s)'%(i+1,label) for i in xrange(9)])                           # extend ASCII header with new labels
   table.head_write()
@@ -68,7 +68,7 @@ for file in files:
 # ------------------------------------------ process data ------------------------------------------
   outputAlive = True
   while outputAlive and table.data_read():                                                          # read next data line of ASCII table
-    for labels in active:                                                                           # loop over requested data
+    for label in active:                                                                            # loop over requested data
       tensor = np.array(map(float,table.data[column[label]:column[label]+datainfo['tensor']['len']])).\
                                                             reshape((datainfo['tensor']['len']//3,3))
       (u,v) = np.linalg.eig(tensor)
