@@ -399,24 +399,26 @@ class Colormap():
       return Color(lo.model,interpolation)
 
     def write_paraview(RGB_vector):
-      colormap ='<ColorMap name="'+str(name)+'" space="Diverging">\n'
+      colormap = '<ColorMap name="'+str(name)+'" space="Diverging">\n'
       for i in range(len(RGB_vector)):
-        colormap+='<Point x="'+str(i)+'" o="1" r="'+str(RGB_vector[i][0])+'" g="'+str(RGB_vector[i][1])+'" b="'+str(RGB_vector[i][2])+'"/>\n'
-      colormap+='</ColorMap>'
+        colormap += '<Point x="%i"'%i + \
+                    ' o="1" r="%g" g="%g" b="%g"/>\n'%(RGB_vector[i][0],RGB_vector[i][1],RGB_vector[i][2])
+      colormap += '</ColorMap>\n'
       return colormap
     
     def write_gmsh(RGB_vector):
-      return 'View.ColorTable = {\n' \
+      return  'View.ColorTable = {\n' \
             + ',\n'.join(['{%s}'%(','.join(map(lambda x:str(x*255.0),v))) for v in RGB_vector]) \
-            + '\n}'
+            + '\n}\n'
     
     def write_raw(RGB_vector):
-      return '\n'.join(['%s'%('\t'.join(map(lambda x:str(x),v))) for v in RGB_vector])
+      return  '\n'.join(['%s'%('\t'.join(map(lambda x:str(x),v))) for v in RGB_vector]) \
+            + '\n'
     
     def write_GOM(RGB_vector):
-      return '1 1 '+str(name)+' 9 '+str(name)+' 0 1 0 3 0 0 -1 9 \ 0 0 0 255 255 255 0 0 255 '\
-                  + '30 NO_UNIT 1 1 64 64 64 255 1 0 0 0 0 0 0 3 0 ' + str(len(RGB_vector))+' '\
-                  .join([' 0 %s 255 1'%(' '.join(map(lambda x:str(int(x*255.0)),v))) for v in reversed(RGB_vector)])+'  '
+      return '1 1 ' + str(name) + ' 9 ' + str(name) + ' 0 1 0 3 0 0 -1 9 \ 0 0 0 255 255 255 0 0 255 ' \
+                  + '30 NO_UNIT 1 1 64 64 64 255 1 0 0 0 0 0 0 3 0 ' + str(len(RGB_vector)) \
+                  + ' '.join([' 0 %s 255 1'%(' '.join(map(lambda x:str(int(x*255.0)),v))) for v in reversed(RGB_vector)])+'  '
       
       
     colors = []
