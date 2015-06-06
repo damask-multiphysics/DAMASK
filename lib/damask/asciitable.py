@@ -85,7 +85,7 @@ class ASCIItable():
 # ------------------------------------------------------------------
   def output_close(self, dismiss = False):
     self.__IO__['out'].close()
-    if dismiss: os.remove(self.__IO__['out'].name)
+    if dismiss and os.path.isfile(self.__IO__['out'].name): os.remove(self.__IO__['out'].name)
 
 # ------------------------------------------------------------------
   def head_read(self):
