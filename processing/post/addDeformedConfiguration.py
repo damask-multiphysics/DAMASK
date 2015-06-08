@@ -21,49 +21,49 @@ Operates on periodic ordered three-dimensional data sets.
 """, version = scriptID)
 
 parser.add_option('-c','--coordinates', dest='coords', metavar='string',
-                  help='column heading for coordinates [%default]')
+                  help='column label of coordinates [%default]')
 parser.add_option('-f','--defgrad',     dest='defgrad', metavar='string',
-                  help='heading of columns containing tensor field values [%default]')
+                  help='column label of deformation gradient [%default]')
 parser.set_defaults(coords  = 'ipinitialcoord')
 parser.set_defaults(defgrad = 'f' )
 
 (options,filenames) = parser.parse_args()
 
-datainfo = {                                                                                        # list of requested labels per datatype
-             'defgrad':    {'len':9,
-                            'label':[]},
-           }
+# --- loop over input files -------------------------------------------------------------------------
+if filenames == []:
+  filenames = ['STDIN']
 
-datainfo['defgrad']['label'].append(options.defgrad)
-
-# ------------------------------------------ setup file handles ------------------------------------
-files = []
 for name in filenames:
-  if os.path.exists(name):
-    files.append({'name':name, 'input':open(name), 'output':open(name+'_tmp','w'), 'croak':sys.stderr})
+  if name == 'STDIN':
+    file = {'name':'STDIN', 'input':sys.stdin, 'output':sys.stdout, 'croak':sys.stderr}
+    file['croak'].write('\033[1m'+scriptName+'\033[0m\n')
+  else:
+    if not os.path.exists(name): continue
+    file = {'name':name, 'input':open(name), 'output':open(name+'_tmp','w'), 'croak':sys.stderr}
+    file['croak'].write('\033[1m'+scriptName+'\033[0m: '+file['name']+'\n')
 
-#--- loop over input files -------------------------------------------------------------------------
-for file in files:
-  file['croak'].write('\033[1m'+scriptName+'\033[0m: '+file['name']+'\n')
-
-  table = damask.ASCIItable(file['input'],file['output'],False)                                     # make unbuffered ASCII_table
+  table = damask.ASCIItable(file['input'],file['output'],buffered=False)                            # make unbuffered ASCII_table
   table.head_read()                                                                                 # read ASCII header info
   table.info_append(scriptID + '\t' + ' '.join(sys.argv[1:]))
 
+# --------------- figure out columns to process  ---------------------------------------------------
+
+  if table.label_dimension(options.coords) != 3:
+    file['croak'].write('no coordinate vector (1/2/3_%s) found...\n'%options.coords)
+    continue
+  if table.label_dimension(options.defgrad) != 9:
+    file['croak'].write('no deformation gradient tensor (1..9_%s) found...\n'%options.defgrad)
+    continue
+
 # --------------- figure out size and grid ---------------------------------------------------------
-  try:
-    locationCol = table.labels.index('1_%s'%options.coords)                                         # columns containing location data
-  except ValueError:
-    try:
-      locationCol = table.labels.index('%s.x'%options.coords)                                       # columns containing location data (legacy naming scheme)
-    except ValueError:
-      file['croak'].write('no coordinate data (1_%s/%s.x) found...\n'%(options.coords,options.coords))
-      continue
+
+  colCoords  = table.label_index(options.coords)                                                    # starting column of location data
+  colDefGrad = table.label_index(options.defgrad)                                                   # remember columns of requested data
 
   coords = [{},{},{}]
   while table.data_read():                                                                          # read next data line of ASCII table
     for j in xrange(3):
-      coords[j][str(table.data[locationCol+j])] = True                                              # remember coordinate along x,y,z
+      coords[j][str(table.data[colCoords+j])] = True                                                # remember coordinate along x,y,z
   grid = np.array([len(coords[0]),\
                    len(coords[1]),\
                    len(coords[2]),],'i')                                                            # grid is number of distinct coordinates found
@@ -84,25 +84,20 @@ for file in files:
   N = grid.prod()
 
 # --------------- figure out columns to process  ---------------------------------------------------
-  key = '1_%s'%datainfo['defgrad']['label'][0]
-  if key not in table.labels:
-    file['croak'].write('column %s not found...\n'%key)
-    continue
-  else:
-    column = table.labels.index(key)                                                                # remember columns of requested data
+
 
 # ------------------------------------------ assemble header ---------------------------------------
-  table.labels_append(['%s_coords'%(coord+1) for coord in xrange(3)])                               # extend ASCII header with new labels
+  table.labels_append(['%s_%s%s'%(coord+1,options.defgrad,options.coords) for coord in xrange(3)])  # extend ASCII header with new labels
   table.head_write()
 
 # ------------------------------------------ read deformation gradient field -----------------------
   table.data_rewind()
   F = np.array([0.0 for i in xrange(N*9)]).reshape([3,3]+list(grid))
   idx = 0
-  while table.data_read():    
+  while table.data_read():
     (x,y,z) = damask.util.gridLocation(idx,grid)                                                    # figure out (x,y,z) position from line count
     idx += 1
-    F[0:3,0:3,x,y,z] = np.array(map(float,table.data[column:column+9]),'d').reshape(3,3)
+    F[0:3,0:3,x,y,z] = np.array(map(float,table.data[colDefGrad:colDefGrad+9]),'d').reshape(3,3)
 
 # ------------------------------------------ calculate coordinates ---------------------------------
   Favg = damask.core.math.tensorAvg(F)
@@ -121,6 +116,5 @@ for file in files:
 # ------------------------------------------ output result -----------------------------------------
   outputAlive and table.output_flush()                                                              # just in case of buffered ASCII table
 
-  table.input_close()                                                                               # close input ASCII table
-  table.output_close()                                                                              # close output ASCII table
+  table.close()                                                                                     # close tables
   os.rename(file['name']+'_tmp',file['name'])                                                       # overwrite old one with tmp new
