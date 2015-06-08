@@ -1021,9 +1021,8 @@ subroutine lattice_init
  integer(pInt) :: section = 0_pInt,i
  real(pReal),  dimension(:), allocatable :: &
    CoverA, &                                                                                        !< c/a ratio for hex type lattice
-   aA, &                                                                                            !< lattice parameter a for fcc austenite
-   aM, &                                                                                            !< lattice paramater a for bcc martensite
-   cM                                                                                            !< lattice parameter c for bcc martensite 
+   a_fcc, &                                                                                         !< lattice parameter a for fcc austenite
+   a_bcc                                                                                            !< lattice paramater a for bcc martensite
 
  mainProcess: if (worldrank == 0) then 
    write(6,'(/,a)') ' <<<+-  lattice init  -+>>>'
@@ -1164,9 +1163,8 @@ subroutine lattice_init
  allocate(lattice_interactionTwinTwin(lattice_maxNtwin,lattice_maxNtwin,Nphases),source=0_pInt)     ! other:me
 
  allocate(CoverA(Nphases),source=0.0_pReal)
- allocate(aA(Nphases),source=0.0_pReal)
- allocate(aM(Nphases),source=0.0_pReal)
- allocate(cM(Nphases),source=0.0_pReal)
+ allocate(a_fcc(Nphases),source=0.0_pReal)
+ allocate(a_bcc(Nphases),source=0.0_pReal)
 
  rewind(fileUnit)
  line        = ''                                                                                   ! to have it initialized
@@ -1224,12 +1222,10 @@ subroutine lattice_init
        lattice_C66(6,6,section) = IO_floatValue(line,positions,2_pInt)
      case ('covera_ratio','c/a_ratio','c/a')
        CoverA(section) = IO_floatValue(line,positions,2_pInt)
-     case ('aa', 'a_a', 'a_austenite', 'a_fcc')
-       aA(section) = IO_floatValue(line,positions,2_pInt)
-     case ('am', 'a_m', 'a_martensite', 'a_bcc')
-       aM(section) = IO_floatValue(line,positions,2_pInt)
-     case ('cm', 'c_m', 'c_martensite')
-       cM(section) = IO_floatValue(line,positions,2_pInt)
+     case ('a_fcc')
+       a_fcc(section) = IO_floatValue(line,positions,2_pInt)
+     case ('a_bcc')
+       a_bcc(section) = IO_floatValue(line,positions,2_pInt)
      case ('thermal_conductivity11')
        lattice_thermalConductivity33(1,1,section) = IO_floatValue(line,positions,2_pInt)
      case ('thermal_conductivity22')
@@ -1301,10 +1297,10 @@ subroutine lattice_init
  do i = 1_pInt,Nphases
    if ((CoverA(i) < 1.0_pReal .or. CoverA(i) > 2.0_pReal) &
        .and. lattice_structure(i) == LATTICE_hex_ID) call IO_error(131_pInt,el=i)                        ! checking physical significance of c/a
-   call lattice_initializeStructure(i, CoverA(i), aA(i), aM(i), cM(i))
+   call lattice_initializeStructure(i, CoverA(i), a_fcc(i), a_bcc(i))
  enddo
 
- deallocate(CoverA,aA,aM,cM)
+ deallocate(CoverA,a_fcc,a_bcc)
 
 end subroutine lattice_init
 
@@ -1312,7 +1308,7 @@ end subroutine lattice_init
 !--------------------------------------------------------------------------------------------------
 !> @brief   Calculation of Schmid matrices, etc.
 !--------------------------------------------------------------------------------------------------
-subroutine lattice_initializeStructure(myPhase,CoverA,aA,aM,cM)
+subroutine lattice_initializeStructure(myPhase,CoverA,a_fcc,a_bcc)
  use prec, only: &
   tol_math_check
  use math, only: &
@@ -1337,9 +1333,8 @@ subroutine lattice_initializeStructure(myPhase,CoverA,aA,aM,cM)
  integer(pInt), intent(in) :: myPhase
  real(pReal), intent(in) :: &
    CoverA, &
-   aA, &
-   aM, &
-   cM
+   a_fcc, &
+   a_bcc
 
  real(pReal), dimension(3) :: &
    sdU, snU, &
@@ -1426,10 +1421,10 @@ subroutine lattice_initializeStructure(myPhase,CoverA,aA,aM,cM)
        zb(1:3,i)     = real(LATTICE_fcc_bainVariant(7:9,i),pReal)
 
        ub(1:3,1:3,i) = 0.0_pReal
-       if ((aA > 0.0_pReal) .and. (aM > 0.0_pReal) .and. (abs(cM) <= tiny(0.0_pReal))) then
-         ub(1:3,1:3,i) = (aM/aA)*math_tensorproduct(xb(1:3,i), xb(1:3,i)) + &
-                         sqrt(2.0_pReal)*(aM/aA)*math_tensorproduct(yb(1:3,i), yb(1:3,i)) + &
-                         sqrt(2.0_pReal)*(aM/aA)*math_tensorproduct(zb(1:3,i), zb(1:3,i))
+       if ((a_fcc > 0.0_pReal) .and. (a_bcc > 0.0_pReal)) then
+         ub(1:3,1:3,i) = (a_bcc/a_fcc)*math_tensorproduct(xb(1:3,i), xb(1:3,i)) + &
+                         sqrt(2.0_pReal)*(a_bcc/a_fcc)*math_tensorproduct(yb(1:3,i), yb(1:3,i)) + &
+                         sqrt(2.0_pReal)*(a_bcc/a_fcc)*math_tensorproduct(zb(1:3,i), zb(1:3,i))
        endif
      enddo
      do i = 1_pInt, myNcleavage                                                                      ! assign cleavage system vectors
