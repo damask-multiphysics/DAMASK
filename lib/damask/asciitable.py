@@ -171,57 +171,87 @@ class ASCIItable():
        return numpy array if asked for list of labels.
        transparently deals with label positions implicitly given as numbers or their headings given as strings.
     '''
-    if isinstance(labels,list):                                         # check whether list of labels is requested
+    from collections import Iterable
+    
+    if isinstance(labels, Iterable) and not isinstance(labels, str):      # check whether list of labels is requested
       idx = []
       for label in labels:
         if label != None:
           try:
-            idx.append(int(label))                                        # column given as integer number?
+            idx.append(int(label))                                      # column given as integer number?
           except ValueError:
             try:
-              idx.append(self.labels.index(label))                        # locate string in label list
+              idx.append(self.labels.index(label))                      # locate string in label list
             except ValueError:
-             idx.append(-1)                                               # not found...
+              try:
+                idx.append(self.labels.index('1_'+label))               # locate '1_'+string in label list
+              except ValueError:
+               idx.append(-1)                                           # not found...
     else:
       try:
         idx = int(labels)
       except ValueError:
         try:
           idx = self.labels.index(labels)
-        except(ValueError):
-          idx = None if labels == None else -1
+        except ValueError:
+          try:
+            idx = self.labels.index('1_'+labels)                        # locate '1_'+string in label list
+          except ValueError:
+            idx = None if labels == None else -1
 
     return np.array(idx) if isinstance(idx,list) else idx
 
 # ------------------------------------------------------------------
-  def labels_dimension(self,
-                       labels):
+  def label_dimension(self,
+                      labels):
     '''
        tell dimension (length) of column label(s).
        return numpy array if asked for list of labels.
        transparently deals with label positions implicitly given as numbers or their headings given as strings.
     '''
-    if isinstance(labels,list):                                           # check whether list of labels is requested
+
+    from collections import Iterable
+    
+    if isinstance(labels, Iterable) and not isinstance(labels, str):      # check whether list of labels is requested
       dim = []
       for label in labels:
         if label != None:
-          try:
-            idx.append(int(label))                                        # column given as integer number?
-          except ValueError:
-            try:
-              idx.append(self.labels.index(label))                        # locate string in label list
-            except ValueError:
-             idx.append(-1)                                               # not found...
-    else:
-      try:
-        idx = int(labels)
-      except ValueError:
-        try:
-          idx = self.labels.index(labels)
-        except(ValueError):
-          idx = None if labels == None else -1
+          myDim = -1
+          try:                                                            # column given as number?
+            idx = int(label)
+            myDim = 1                                                     # if found has at least dimension 1
+            if self.labels[idx][:2] == '1_':                              # column has multidim indicator?
+              while idx+myDim < len(self.labels) and self.labels[idx+myDim][:2] == "%i_"%(myDim+1):
+                myDim += 1                                                # add while found
+          except ValueError:                                              # column has string label
+            if label in self.labels:                                      # can be directly found?
+              myDim = 1                                                   # scalar by definition
+            elif '1_'+label in self.labels:                               # look for first entry of possible multidim object
+              idx = self.labels.index('1_'+label)                         # get starting column
+              myDim = 1                                                   # (at least) one-dimensional
+              while idx+myDim < len(self.labels) and self.labels[idx+myDim][:2] == "%i_"%(myDim+1):
+                myDim += 1                                                # keep adding while going through object
 
-    return np.array(idx) if isinstance(idx,list) else idx
+          dim.append(myDim)
+    else:
+      dim = -1                                                            # assume invalid label
+      idx = -1
+      try:                                                                # column given as number?
+        idx = int(labels)
+        dim = 1                                                           # if found has at least dimension 1
+        if self.labels[idx][:2] == '1_':                                  # column has multidim indicator?
+          while idx+dim < len(self.labels) and self.labels[idx+dim][:2] == "%i_"%(dim+1):
+            dim += 1                                                      # add as long as found
+      except ValueError:                                                  # column has string label
+        if labels in self.labels:                                         # can be directly found?
+          dim = 1                                                         # scalar by definition
+        elif '1_'+labels in self.labels:                                  # look for first entry of possible multidim object
+          idx = self.labels.index('1_'+labels)                            # get starting column
+          dim = 1                                                         # is (at least) one-dimensional
+          while idx+dim < len(self.labels) and self.labels[idx+dim][:2] == "%i_"%(dim+1):
+            dim += 1                                                      # keep adding while going through object
+
+    return np.array(dim) if isinstance(dim,list) else dim
 
 # ------------------------------------------------------------------
   def info_append(self,
