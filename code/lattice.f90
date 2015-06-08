@@ -64,7 +64,7 @@ module lattice
    lattice_tt
 
  real(pReal), allocatable, dimension(:,:,:), protected, public :: &
-   lattice_NItrans_v, &                                                                             !< Eigendeformation tensor in vector form
+   lattice_Strans_v, &                                                                             !< Eigendeformation tensor in vector form
    lattice_projectionTrans                                                                          !< Matrix for projection of slip to fault-band (twin) systems for strain-induced martensite nucleation
 
  real(pReal), allocatable, dimension(:,:,:,:), protected, public :: &
@@ -72,7 +72,7 @@ module lattice
    lattice_Utrans, &                                                                                !< Bain deformation
    lattice_Btrans, &                                                                                !< Rotation of fcc to Bain coordinate system
    lattice_Qtrans, &                                                                                !< Total rotation: Q = R*B
-   lattice_NItrans                                                                                  !< Eigendeformation tensor for phase transformation
+   lattice_Strans                                                                                  !< Eigendeformation tensor for phase transformation
 
  real(pReal), allocatable, dimension(:,:), protected, public :: &
    lattice_shearTwin                                                                                !< characteristic twin shear
@@ -1148,8 +1148,8 @@ subroutine lattice_init
  allocate(lattice_Utrans(3,3,lattice_maxNtrans,Nphases),source=0.0_pReal)
  allocate(lattice_Btrans(3,3,lattice_maxNtrans,Nphases),source=0.0_pReal)
  allocate(lattice_Qtrans(3,3,lattice_maxNtrans,Nphases),source=0.0_pReal)
- allocate(lattice_NItrans(3,3,lattice_maxNtrans,Nphases),source=0.0_pReal)
- allocate(lattice_NItrans_v(6,lattice_maxNtrans,Nphases),source=0.0_pReal)
+ allocate(lattice_Strans(3,3,lattice_maxNtrans,Nphases),source=0.0_pReal)
+ allocate(lattice_Strans_v(6,lattice_maxNtrans,Nphases),source=0.0_pReal)
  allocate(lattice_projectionTrans(lattice_maxNtrans,lattice_maxNtrans,Nphases),source=0.0_pReal)
 
  allocate(lattice_NslipSystem(lattice_maxNslipFamily,Nphases),source=0_pInt)
@@ -1622,9 +1622,9 @@ subroutine lattice_initializeStructure(myPhase,CoverA,a_fcc,a_bcc)
    lattice_Btrans(1:3,1:3,i,myPhase)  = math_axisAngleToR(rb(1:3,i),ab(i)*INRAD)
    lattice_Qtrans(1:3,1:3,i,myPhase)  = math_mul33x33(lattice_Rtrans(1:3,1:3,i,myPhase), & 
                                                       lattice_Btrans(1:3,1:3,i,myPhase))
-   lattice_NItrans(1:3,1:3,i,myPhase) = math_mul33x33(lattice_Rtrans(1:3,1:3,i,myPhase), &
+   lattice_Strans(1:3,1:3,i,myPhase) = math_mul33x33(lattice_Rtrans(1:3,1:3,i,myPhase), &
                                                       lattice_Utrans(1:3,1:3,i,myPhase)) - math_identity2nd(3)
-   lattice_NItrans_v(1:6,i,myPhase)   = math_Mandel33to6(math_symmetric33(lattice_NItrans(1:3,1:3,i,myPhase)))
+   lattice_Strans_v(1:6,i,myPhase)   = math_Mandel33to6(math_symmetric33(lattice_Strans(1:3,1:3,i,myPhase)))
  enddo
  do i = 1_pInt,myNcleavage                                                                              ! store slip system vectors and Schmid matrix for my structure
    lattice_Scleavage(1:3,1:3,1,i,myPhase) = math_tensorproduct(cd(1:3,i),cn(1:3,i))

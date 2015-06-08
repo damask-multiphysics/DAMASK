@@ -1381,8 +1381,8 @@ subroutine plastic_dislotwin_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,Temperature
    lattice_Sslip_v, &
    lattice_Stwin, &
    lattice_Stwin_v, &
-   lattice_NItrans, &
-   lattice_NItrans_v, &
+   lattice_Strans, &
+   lattice_Strans_v, &
    lattice_maxNslipFamily,&
    lattice_maxNtwinFamily, &
    lattice_maxNtransFamily, &
@@ -1626,7 +1626,7 @@ subroutine plastic_dislotwin_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,Temperature
       j = j+1_pInt
 
       !* Resolved shear stress on transformation system
-      tau_trans(j) = dot_product(Tstar_v,lattice_NItrans_v(:,index_myFamily+i,ph))
+      tau_trans(j) = dot_product(Tstar_v,lattice_Strans_v(:,index_myFamily+i,ph))
 
       !* Total martensite volume fraction for transformation system
       V_trans(j) = plasticState(ph)%state(3*ns+2*nt+j, of) + plasticState(ph)%state(3*ns+2*nt+nr+j, of)
@@ -1643,14 +1643,14 @@ subroutine plastic_dislotwin_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,Temperature
       endif
 
       !* Plastic velocity gradient for phase transformation
-      Lp = Lp + Vdot_trans(j)*lattice_NItrans(:,:,index_myFamily+i,ph)
+      Lp = Lp + Vdot_trans(j)*lattice_Strans(:,:,index_myFamily+i,ph)
 
       !* Calculation of the tangent of Lp
       forall (k=1_pInt:3_pInt,l=1_pInt:3_pInt,m=1_pInt:3_pInt,n=1_pInt:3_pInt) &
         dLp_dTstar3333(k,l,m,n) = &
         dLp_dTstar3333(k,l,m,n) + dVdot_dtautrans(j)*&
-                                  lattice_NItrans(k,l,index_myFamily+i,ph)*&
-                                  lattice_NItrans(m,n,index_myFamily+i,ph)
+                                  lattice_Strans(k,l,index_myFamily+i,ph)*&
+                                  lattice_Strans(m,n,index_myFamily+i,ph)
 
    enddo transSystemsLoop
  enddo transFamiliesLoop
@@ -1676,7 +1676,7 @@ subroutine plastic_dislotwin_dotState(Tstar_v,Temperature,ipc,ip,el)
  use lattice,  only: &
    lattice_Sslip_v, &
    lattice_Stwin_v, &
-   lattice_NItrans_v, &
+   lattice_Strans_v, &
    lattice_maxNslipFamily, &
    lattice_maxNtwinFamily, &
    lattice_maxNtransFamily, &
@@ -1879,7 +1879,7 @@ subroutine plastic_dislotwin_dotState(Tstar_v,Temperature,ipc,ip,el)
       j = j+1_pInt
 
       !* Resolved shear stress on transformation system
-      tau_trans(j) = dot_product(Tstar_v,lattice_NItrans_v(:,index_myFamily+i,ph))
+      tau_trans(j) = dot_product(Tstar_v,lattice_Strans_v(:,index_myFamily+i,ph))
 
       !* Total martensite volume fraction for transformation system
       V_trans(j) = plasticState(ph)%state(3*ns+2*nt+j, of) + plasticState(ph)%state(3*ns+2*nt+nr+j, of)
