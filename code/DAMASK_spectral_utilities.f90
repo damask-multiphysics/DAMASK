@@ -174,6 +174,7 @@ subroutine utilities_init()
    fftw_planner_flag, &
    fftw_timelimit, &
    memory_efficient, &
+   petsc_defaultOptions, &
    petsc_options, &
    divergence_correction, &
    worldrank
@@ -238,6 +239,7 @@ subroutine utilities_init()
  flush(6)
  call PetscOptionsClear(ierr); CHKERRQ(ierr)
  if(debugPETSc) call PetscOptionsInsertString(trim(PETSCDEBUG),ierr); CHKERRQ(ierr)
+ call PetscOptionsInsertString(trim(petsc_defaultOptions),ierr); CHKERRQ(ierr)
  call PetscOptionsInsertString(trim(petsc_options),ierr); CHKERRQ(ierr)
 
  grid1Red = gridLocal(1)/2_pInt + 1_pInt

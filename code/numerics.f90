@@ -115,9 +115,10 @@ module numerics
    spectral_solver            = 'basicpetsc'  , &                                                   !< spectral solution method 
    spectral_filter            = 'none'                                                              !< spectral filtering method
  character(len=1024), protected, public :: &
-   petsc_options              = '-mech_snes_type ngmres &
+   petsc_defaultOptions       = '-mech_snes_type ngmres &
                                 &-damage_snes_type ngmres &
-                                &-thermal_snes_type ngmres '
+                                &-thermal_snes_type ngmres ', &
+   petsc_options              = ''
  integer(pInt), protected, public :: &
    fftw_planner_flag          =  32_pInt, &                                                         !< conversion of fftw_plan_mode to integer, basically what is usually done in the include file of fftw
    continueCalculation        =  0_pInt, &                                                          !< 0: exit if BVP solver does not converge, 1: continue calculation if BVP solver does not converge
@@ -134,14 +135,14 @@ module numerics
    integrationOrder           =  2_pInt, &                                                          !< order of quadrature rule required
    structOrder                =  2_pInt, &                                                          !< order of displacement shape functions
    thermalOrder               =  2_pInt, &                                                          !< order of temperature field shape functions
-   damageOrder                =  2_pInt, &                                                          !< order of damage field shape functions
+   damageOrder                =  1_pInt, &                                                          !< order of damage field shape functions
    vacancyfluxOrder           =  2_pInt, &                                                          !< order of vacancy concentration and chemical potential field shape functions
-   porosityOrder              =  2_pInt, &                                                          !< order of porosity field shape functions
+   porosityOrder              =  1_pInt, &                                                          !< order of porosity field shape functions
    hydrogenfluxOrder          =  2_pInt                                                             !< order of hydrogen concentration and chemical potential field shape functions  
  logical, protected, public :: & 
    BBarStabilisation          = .false.                                                  
  character(len=4096), protected, public :: &
-   petsc_optionsFEM        = '-mech_snes_type newtonls &
+   petsc_defaultOptions    = '-mech_snes_type newtonls &
                              &-mech_snes_linesearch_type cp &
                              &-mech_snes_ksp_ew &
                              &-mech_snes_ksp_ew_rtol0 0.01 &
@@ -152,12 +153,12 @@ module numerics
                              &-mech_mg_levels_ksp_type chebyshev &
                              &-mech_mg_levels_pc_type sor &
                              &-mech_pc_ml_nullspace user &
-                             &-damage_snes_type newtonls &
-                             &-damage_snes_linesearch_type cp &
-                             &-damage_ksp_type fgmres &
-                             &-damage_ksp_max_it 25 &
+                             &-damage_snes_type vinewtonrsls &
                              &-damage_snes_atol 1e-8 &
-                             &-damage_pc_type hypre &
+                             &-damage_ksp_type preonly &
+                             &-damage_ksp_max_it 25 &
+                             &-damage_pc_type cholesky &
+                             &-damage_pc_factor_mat_solver_package mumps &
                              &-thermal_snes_type newtonls &
                              &-thermal_snes_linesearch_type cp &
                              &-thermal_ksp_type fgmres &
@@ -172,12 +173,12 @@ module numerics
                              &-vacancy_pc_type ml &
                              &-vacancy_mg_levels_ksp_type chebyshev &
                              &-vacancy_mg_levels_pc_type sor &
-                             &-porosity_snes_type newtonls &
-                             &-porosity_snes_linesearch_type cp &
-                             &-porosity_ksp_type fgmres &
-                             &-porosity_ksp_max_it 25 &
+                             &-porosity_snes_type vinewtonrsls &
                              &-porosity_snes_atol 1e-8 &
-                             &-porosity_pc_type hypre &
+                             &-porosity_ksp_type preonly &
+                             &-porosity_ksp_max_it 25 &
+                             &-porosity_pc_type cholesky &
+                             &-porosity_pc_factor_mat_solver_package mumps &
                              &-hydrogen_snes_type newtonls &
                              &-hydrogen_snes_linesearch_type cp &
                              &-hydrogen_snes_atol 1e-9 &
@@ -185,7 +186,8 @@ module numerics
                              &-hydrogen_ksp_max_it 25 &
                              &-hydrogen_pc_type ml &
                              &-hydrogen_mg_levels_ksp_type chebyshev &
-                             &-hydrogen_mg_levels_pc_type sor '
+                             &-hydrogen_mg_levels_pc_type sor ', &
+   petsc_options           = ''
 #endif
 
  public :: numerics_init
@@ -475,13 +477,13 @@ subroutine numerics_init
          porosityOrder = IO_intValue(line,positions,2_pInt)
        case ('hydrogenfluxorder')
          hydrogenfluxOrder = IO_intValue(line,positions,2_pInt)
-       case ('petsc_optionsfem')
-         petsc_optionsFEM = trim(line(positions(4):))
+       case ('petsc_options')
+         petsc_options = trim(line(positions(4):))
        case ('bbarstabilisation')
          BBarStabilisation = IO_intValue(line,positions,2_pInt) > 0_pInt
 #else
       case ('integrationorder','structorder','thermalorder', 'damageorder','vacancyfluxorder', &
-            'porosityorder','hydrogenfluxorder','petsc_optionsfem','bbarstabilisation')
+            'porosityorder','hydrogenfluxorder','bbarstabilisation')
          call IO_warning(40_pInt,ext_msg=tag)
 #endif
        case default                                                                                ! found unknown keyword
@@ -626,7 +628,7 @@ subroutine numerics_init
    write(6,'(a24,1x,es8.1)')   ' polarAlpha:             ',polarAlpha
    write(6,'(a24,1x,es8.1)')   ' polarBeta:              ',polarBeta
    write(6,'(a24,1x,a)')       ' spectral solver:        ',trim(spectral_solver)
-   write(6,'(a24,1x,a)')       ' PETSc_options:          ',trim(petsc_options)
+   write(6,'(a24,1x,a)')       ' PETSc_options:          ',trim(petsc_defaultOptions)//' '//trim(petsc_options)
 #endif
 
 !--------------------------------------------------------------------------------------------------
@@ -639,7 +641,7 @@ subroutine numerics_init
    write(6,'(a24,1x,i8)')      ' vacancyfluxOrder:       ',vacancyfluxOrder
    write(6,'(a24,1x,i8)')      ' porosityOrder:          ',porosityOrder 
    write(6,'(a24,1x,i8)')      ' hydrogenfluxOrder:      ',hydrogenfluxOrder
-   write(6,'(a24,1x,a)')       ' PETSc_optionsFEM:       ',trim(petsc_optionsFEM)
+   write(6,'(a24,1x,a)')       ' PETSc_options:          ',trim(petsc_defaultOptions)//' '//trim(petsc_options)
    write(6,'(a24,1x,L8)')      ' B-Bar stabilisation:    ',BBarStabilisation
 #endif
  endif mainProcess3
@@ -684,7 +686,7 @@ subroutine numerics_init
  if (maxVolDiscr_RGC <= 0.0_pReal)         call IO_error(301_pInt,ext_msg='maxVolDiscr_RGC')
  if (volDiscrMod_RGC < 0.0_pReal)          call IO_error(301_pInt,ext_msg='volDiscrMod_RGC')
  if (volDiscrPow_RGC <= 0.0_pReal)         call IO_error(301_pInt,ext_msg='volDiscrPw_RGC')
- if (residualStiffness <= 0.0_pReal)       call IO_error(301_pInt,ext_msg='residualStiffness')
+ if (residualStiffness < 0.0_pReal)        call IO_error(301_pInt,ext_msg='residualStiffness')
  if (itmax <= 1_pInt)                      call IO_error(301_pInt,ext_msg='itmax')
  if (itmin > itmax .or. itmin < 1_pInt)    call IO_error(301_pInt,ext_msg='itmin')
  if (maxCutBack < 0_pInt)                  call IO_error(301_pInt,ext_msg='maxCutBack')
