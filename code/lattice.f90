@@ -68,11 +68,8 @@ module lattice
    lattice_projectionTrans                                                                          !< Matrix for projection of slip to fault-band (twin) systems for strain-induced martensite nucleation
 
  real(pReal), allocatable, dimension(:,:,:,:), protected, public :: &
-   lattice_Rtrans, &                                                                                !< Pitsch rotation
-   lattice_Utrans, &                                                                                !< Bain deformation
-   lattice_Btrans, &                                                                                !< Rotation of fcc to Bain coordinate system
    lattice_Qtrans, &                                                                                !< Total rotation: Q = R*B
-   lattice_Strans                                                                                  !< Eigendeformation tensor for phase transformation
+   lattice_Strans                                                                                   !< Eigendeformation tensor for phase transformation
 
  real(pReal), allocatable, dimension(:,:), protected, public :: &
    lattice_shearTwin                                                                                !< characteristic twin shear
@@ -1144,9 +1141,6 @@ subroutine lattice_init
 
  allocate(lattice_shearTwin(lattice_maxNtwin,Nphases),source=0.0_pReal)
 
- allocate(lattice_Rtrans(3,3,lattice_maxNtrans,Nphases),source=0.0_pReal)
- allocate(lattice_Utrans(3,3,lattice_maxNtrans,Nphases),source=0.0_pReal)
- allocate(lattice_Btrans(3,3,lattice_maxNtrans,Nphases),source=0.0_pReal)
  allocate(lattice_Qtrans(3,3,lattice_maxNtrans,Nphases),source=0.0_pReal)
  allocate(lattice_Strans(3,3,lattice_maxNtrans,Nphases),source=0.0_pReal)
  allocate(lattice_Strans_v(6,lattice_maxNtrans,Nphases),source=0.0_pReal)
@@ -1348,11 +1342,9 @@ subroutine lattice_initializeStructure(myPhase,CoverA,a_fcc,a_bcc)
  real(pReal), dimension(lattice_maxNtwin) :: &
    ts
  real(pReal), dimension(3,lattice_maxNtrans) :: &
-   rtr, rb, xb, yb, zb
- real(pReal), dimension(lattice_maxNtrans) :: &
-   atr, ab
+   xb, yb, zb
  real(pReal), dimension(3,3,lattice_maxNtrans) :: &
-   ub
+   Rtr, Utr, Btr
  real(pReal), dimension(3,lattice_maxNcleavage) :: &
    cd,  cn, ct
  integer(pInt) :: &
@@ -1411,18 +1403,17 @@ subroutine lattice_initializeStructure(myPhase,CoverA,a_fcc,a_bcc)
        ts(i)     = lattice_fcc_shearTwin(i)
      enddo
      do i = 1_pInt,myNtrans
-       rtr(1:3,i)    = lattice_fcc_systemTrans(1:3,i)
-       atr(i)        = lattice_fcc_systemTrans(4,i)
-       rb(1:3,i)     = lattice_fcc_bainRot(1:3,i)
-       ab(i)         = lattice_fcc_bainRot(4,i)
+       Rtr(1:3,1:3,i) = math_axisAngleToR(lattice_fcc_systemTrans(1:3,i), &                          ! Pitsch rotation (fcc to bcc transformation)
+                          lattice_fcc_systemTrans(4,i)*INRAD)
+       Btr(1:3,1:3,i) = math_axisAngleToR(lattice_fcc_bainRot(1:3,i), &                              ! Rotation of fcc to Bain coordinate system
+                          lattice_fcc_bainRot(4,i)*INRAD)
 
-       xb(1:3,i)     = real(LATTICE_fcc_bainVariant(1:3,i),pReal)
-       yb(1:3,i)     = real(LATTICE_fcc_bainVariant(4:6,i),pReal)
-       zb(1:3,i)     = real(LATTICE_fcc_bainVariant(7:9,i),pReal)
-
-       ub(1:3,1:3,i) = 0.0_pReal
+       xb(1:3,i) = real(LATTICE_fcc_bainVariant(1:3,i),pReal)
+       yb(1:3,i) = real(LATTICE_fcc_bainVariant(4:6,i),pReal)
+       zb(1:3,i) = real(LATTICE_fcc_bainVariant(7:9,i),pReal)
+       Utr(1:3,1:3,i) = 0.0_pReal                                                                    ! Bain deformation
        if ((a_fcc > 0.0_pReal) .and. (a_bcc > 0.0_pReal)) then
-         ub(1:3,1:3,i) = (a_bcc/a_fcc)*math_tensorproduct(xb(1:3,i), xb(1:3,i)) + &
+         Utr(1:3,1:3,i) = (a_bcc/a_fcc)*math_tensorproduct(xb(1:3,i), xb(1:3,i)) + &
                          sqrt(2.0_pReal)*(a_bcc/a_fcc)*math_tensorproduct(yb(1:3,i), yb(1:3,i)) + &
                          sqrt(2.0_pReal)*(a_bcc/a_fcc)*math_tensorproduct(zb(1:3,i), zb(1:3,i))
        endif
@@ -1617,13 +1608,8 @@ subroutine lattice_initializeStructure(myPhase,CoverA,a_fcc,a_bcc)
      call IO_error(301_pInt,myPhase,ext_msg = 'dilatational twin Schmid matrix')
  enddo
  do i = 1_pInt,myNtrans
-   lattice_Rtrans(1:3,1:3,i,myPhase)  = math_axisAngleToR(rtr(1:3,i),atr(i)*INRAD)
-   lattice_Utrans(1:3,1:3,i,myPhase)  = ub(1:3,1:3,i)
-   lattice_Btrans(1:3,1:3,i,myPhase)  = math_axisAngleToR(rb(1:3,i),ab(i)*INRAD)
-   lattice_Qtrans(1:3,1:3,i,myPhase)  = math_mul33x33(lattice_Rtrans(1:3,1:3,i,myPhase), & 
-                                                      lattice_Btrans(1:3,1:3,i,myPhase))
-   lattice_Strans(1:3,1:3,i,myPhase) = math_mul33x33(lattice_Rtrans(1:3,1:3,i,myPhase), &
-                                                      lattice_Utrans(1:3,1:3,i,myPhase)) - math_identity2nd(3)
+   lattice_Qtrans(1:3,1:3,i,myPhase) = math_mul33x33(Rtr(1:3,1:3,i), Btr(1:3,1:3,i))
+   lattice_Strans(1:3,1:3,i,myPhase) = math_mul33x33(Rtr(1:3,1:3,i), Utr(1:3,1:3,i)) - math_identity2nd(3)
    lattice_Strans_v(1:6,i,myPhase)   = math_Mandel33to6(math_symmetric33(lattice_Strans(1:3,1:3,i,myPhase)))
  enddo
  do i = 1_pInt,myNcleavage                                                                              ! store slip system vectors and Schmid matrix for my structure
