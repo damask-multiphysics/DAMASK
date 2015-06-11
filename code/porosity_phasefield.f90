@@ -24,10 +24,6 @@ module porosity_phasefield
  integer(pInt),                       dimension(:),           allocatable, target, public :: &
    porosity_phasefield_Noutput                                                                   !< number of outputs per instance of this porosity 
 
- real(pReal),                         dimension(:),           allocatable,        private :: &
-   porosity_phasefield_specificFormationEnergy, &
-   porosity_phasefield_surfaceEnergy
-
  enum, bind(c) 
    enumerator :: undefined_ID, &
                  porosity_ID
@@ -68,8 +64,6 @@ subroutine porosity_phasefield_init(fileUnit)
    IO_error, &
    IO_timeStamp, &
    IO_EOF
- use lattice, only: &
-   lattice_vacancyVol
  use material, only: &
    porosity_type, &
    porosity_typeInstance, &
@@ -77,7 +71,6 @@ subroutine porosity_phasefield_init(fileUnit)
    POROSITY_phasefield_label, &
    POROSITY_phasefield_ID, &
    material_homog, & 
-   material_Nphase, &
    mappingHomogenization, & 
    porosityState, &
    porosityMapping, &
@@ -115,8 +108,6 @@ subroutine porosity_phasefield_init(fileUnit)
           porosity_phasefield_output = ''
  allocate(porosity_phasefield_outputID       (maxval(homogenization_Noutput),maxNinstance),source=undefined_ID)
  allocate(porosity_phasefield_Noutput        (maxNinstance),                               source=0_pInt) 
- allocate(porosity_phasefield_specificFormationEnergy(material_Nphase),             source=0.0_pReal) 
- allocate(porosity_phasefield_surfaceEnergy          (material_Nphase),             source=0.0_pReal)
 
  rewind(fileUnit)
  section = 0_pInt
@@ -154,40 +145,6 @@ subroutine porosity_phasefield_init(fileUnit)
      end select
    endif; endif
  enddo parsingHomog
- 
- rewind(fileUnit)
- section = 0_pInt
- do while (trim(line) /= IO_EOF .and. IO_lc(IO_getTag(line,'<','>')) /= material_partPhase)         ! wind forward to <homogenization>
-   line = IO_read(fileUnit)
- enddo
- 
- parsingPhase: do while (trim(line) /= IO_EOF)                                                      ! read through sections of homog part
-   line = IO_read(fileUnit)
-   if (IO_isBlank(line)) cycle                                                                      ! skip empty lines
-   if (IO_getTag(line,'<','>') /= '') then                                                          ! stop at next part
-     line = IO_read(fileUnit, .true.)                                                               ! reset IO_read
-     exit                                                                                           
-   endif   
-   if (IO_getTag(line,'[',']') /= '') then                                                          ! next homog section
-     section = section + 1_pInt                                                                     ! advance homog section counter
-     cycle                                                                                          ! skip to next line
-   endif
-
-   if (section > 0_pInt ) then; if (porosity_type(section) == POROSITY_phasefield_ID) then          ! do not short-circuit here (.and. with next if statemen). It's not safe in Fortran
-
-     positions = IO_stringPos(line,MAXNCHUNKS)
-     tag = IO_lc(IO_stringValue(line,positions,1_pInt))                                             ! extract key
-     select case(tag)
-       case ('vacancyformationenergy')
-         porosity_phasefield_specificFormationEnergy(section) = IO_floatValue(line,positions,2_pInt)/&
-                                                                lattice_vacancyVol(section)
-
-       case ('voidsurfaceenergy')
-         porosity_phasefield_surfaceEnergy(section) = IO_floatValue(line,positions,2_pInt)
-
-     end select
-   endif; endif
- enddo parsingPhase
  
  initializeInstances: do section = 1_pInt, size(porosity_type)
    if (porosity_type(section) == POROSITY_phasefield_ID) then
@@ -230,6 +187,9 @@ end subroutine porosity_phasefield_init
 !> @brief returns homogenized vacancy formation energy
 !--------------------------------------------------------------------------------------------------
 function porosity_phasefield_getFormationEnergy(ip,el)
+ use lattice, only: &
+   lattice_vacancyFormationEnergy, &
+   lattice_vacancyVol
  use material, only: &
    homogenization_Ngrains, &
    material_phase
@@ -248,7 +208,8 @@ function porosity_phasefield_getFormationEnergy(ip,el)
  porosity_phasefield_getFormationEnergy = 0.0_pReal
  do grain = 1, homogenization_Ngrains(mesh_element(3,el))
    porosity_phasefield_getFormationEnergy = porosity_phasefield_getFormationEnergy + &
-    porosity_phasefield_specificFormationEnergy(material_phase(grain,ip,el))
+    lattice_vacancyFormationEnergy(material_phase(grain,ip,el))/ &
+    lattice_vacancyVol(material_phase(grain,ip,el))
  enddo
 
  porosity_phasefield_getFormationEnergy = &
@@ -261,6 +222,8 @@ end function porosity_phasefield_getFormationEnergy
 !> @brief returns homogenized pore surface energy (normalized by characteristic length)
 !--------------------------------------------------------------------------------------------------
 function porosity_phasefield_getSurfaceEnergy(ip,el)
+ use lattice, only: &
+   lattice_vacancySurfaceEnergy
  use material, only: &
    homogenization_Ngrains, &
    material_phase
@@ -279,7 +242,7 @@ function porosity_phasefield_getSurfaceEnergy(ip,el)
  porosity_phasefield_getSurfaceEnergy = 0.0_pReal
  do grain = 1, homogenization_Ngrains(mesh_element(3,el))
    porosity_phasefield_getSurfaceEnergy = porosity_phasefield_getSurfaceEnergy + &
-    porosity_phasefield_surfaceEnergy(material_phase(grain,ip,el))
+    lattice_vacancySurfaceEnergy(material_phase(grain,ip,el))
  enddo
 
  porosity_phasefield_getSurfaceEnergy = &

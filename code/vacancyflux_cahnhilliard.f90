@@ -26,9 +26,7 @@ module vacancyflux_cahnhilliard
    vacancyflux_cahnhilliard_Noutput                                                                   !< number of outputs per instance of this damage 
 
  real(pReal),                         dimension(:),           allocatable,        private :: &
-   vacancyflux_cahnhilliard_formationEnergyCoeff, &
-   vacancyflux_cahnhilliard_surfaceEnergy, &
-   vacancyflux_cahnhilliard_kBCoeff
+   vacancyflux_cahnhilliard_flucAmplitude
 
  type(p_vec),                         dimension(:),           allocatable,        private :: &
    vacancyflux_cahnhilliard_thermalFluc
@@ -79,8 +77,6 @@ subroutine vacancyflux_cahnhilliard_init(fileUnit)
    IO_error, &
    IO_timeStamp, &
    IO_EOF
- use lattice, only: &
-   lattice_vacancyVol
  use material, only: &
    vacancyflux_type, &
    vacancyflux_typeInstance, &
@@ -88,7 +84,6 @@ subroutine vacancyflux_cahnhilliard_init(fileUnit)
    VACANCYFLUX_cahnhilliard_label, &
    VACANCYFLUX_cahnhilliard_ID, &
    material_homog, &  
-   material_Nphase, &
    mappingHomogenization, &
    vacancyfluxState, &
    vacancyfluxMapping, &
@@ -128,11 +123,8 @@ subroutine vacancyflux_cahnhilliard_init(fileUnit)
  allocate(vacancyflux_cahnhilliard_outputID       (maxval(homogenization_Noutput),maxNinstance),source=undefined_ID)
  allocate(vacancyflux_cahnhilliard_Noutput        (maxNinstance),                               source=0_pInt) 
 
- allocate(vacancyflux_cahnhilliard_formationEnergyCoeff(material_Nphase),             source=0.0_pReal) 
- allocate(vacancyflux_cahnhilliard_kBCoeff                (material_Nphase),             source=0.0_pReal)
- allocate(vacancyflux_cahnhilliard_surfaceEnergy          (material_Nphase),             source=0.0_pReal)
-
- allocate(vacancyflux_cahnhilliard_thermalFluc(maxNinstance))
+ allocate(vacancyflux_cahnhilliard_flucAmplitude  (maxNinstance))
+ allocate(vacancyflux_cahnhilliard_thermalFluc    (maxNinstance))
 
  rewind(fileUnit)
  section = 0_pInt
@@ -167,42 +159,12 @@ subroutine vacancyflux_cahnhilliard_init(fileUnit)
                                                        IO_lc(IO_stringValue(line,positions,2_pInt))
           end select
 
+       case ('vacancyflux_flucamplitude')
+         vacancyflux_cahnhilliard_flucAmplitude(instance) = IO_floatValue(line,positions,2_pInt)
+         
      end select
    endif; endif
  enddo parsingHomog
- 
- rewind(fileUnit)
- section = 0_pInt
- do while (trim(line) /= IO_EOF .and. IO_lc(IO_getTag(line,'<','>')) /= material_partPhase)         ! wind forward to <homogenization>
-   line = IO_read(fileUnit)
- enddo
- 
- parsingPhase: do while (trim(line) /= IO_EOF)                                                      ! read through sections of homog part
-   line = IO_read(fileUnit)
-   if (IO_isBlank(line)) cycle                                                                      ! skip empty lines
-   if (IO_getTag(line,'<','>') /= '') then                                                          ! stop at next part
-     line = IO_read(fileUnit, .true.)                                                               ! reset IO_read
-     exit                                                                                           
-   endif   
-   if (IO_getTag(line,'[',']') /= '') then                                                          ! next homog section
-     section = section + 1_pInt                                                                     ! advance homog section counter
-     cycle                                                                                          ! skip to next line
-   endif
-
-   if (section > 0_pInt ) then; if (vacancyflux_type(section) == VACANCYFLUX_cahnhilliard_ID) then  ! do not short-circuit here (.and. with next if statemen). It's not safe in Fortran
-
-     positions = IO_stringPos(line,MAXNCHUNKS)
-     tag = IO_lc(IO_stringValue(line,positions,1_pInt))                                             ! extract key
-     select case(tag)
-       case ('vacancyformationenergy')
-         vacancyflux_cahnhilliard_formationEnergyCoeff(section) = IO_floatValue(line,positions,2_pInt)
-
-       case ('voidsurfaceenergy')
-         vacancyflux_cahnhilliard_surfaceEnergy(section) = IO_floatValue(line,positions,2_pInt)
-
-     end select
-   endif; endif
- enddo parsingPhase
  
  initializeInstances: do section = 1_pInt, size(vacancyflux_type)
    if (vacancyflux_type(section) == VACANCYFLUX_cahnhilliard_ID) then
@@ -234,6 +196,10 @@ subroutine vacancyflux_cahnhilliard_init(fileUnit)
      allocate(vacancyflux_cahnhilliard_thermalFluc(instance)%p(NofMyHomog))
      do offset = 1_pInt, NofMyHomog
        call random_number(vacancyflux_cahnhilliard_thermalFluc(instance)%p(offset))
+       vacancyflux_cahnhilliard_thermalFluc(instance)%p(offset) = &
+         1.0_pReal - &
+         vacancyflux_cahnhilliard_flucAmplitude(instance)* &
+         (vacancyflux_cahnhilliard_thermalFluc(instance)%p(offset) - 0.5_pReal)
      enddo  
 
      nullify(vacancyfluxMapping(section)%p)
@@ -246,17 +212,6 @@ subroutine vacancyflux_cahnhilliard_init(fileUnit)
    endif
  
  enddo initializeInstances
- 
- initializeParams: do section = 1_pInt, material_Nphase
-   vacancyflux_cahnhilliard_formationEnergyCoeff(section) = &
-     vacancyflux_cahnhilliard_formationEnergyCoeff(section)/ &
-     lattice_vacancyVol(section)/ &
-     vacancyflux_cahnhilliard_surfaceEnergy(section)
-   vacancyflux_cahnhilliard_kBCoeff(section) = &
-     kB/ &
-     lattice_vacancyVol(section)/ &
-     vacancyflux_cahnhilliard_surfaceEnergy(section)       
- enddo initializeParams
  
 end subroutine vacancyflux_cahnhilliard_init
 
@@ -393,6 +348,10 @@ end function vacancyflux_cahnhilliard_getDiffusion33
 !> @brief returns homogenized vacancy formation energy
 !--------------------------------------------------------------------------------------------------
 function vacancyflux_cahnhilliard_getFormationEnergy(ip,el)
+ use lattice, only: &
+   lattice_vacancyFormationEnergy, &
+   lattice_vacancyVol, &
+   lattice_vacancySurfaceEnergy
  use material, only: &
    homogenization_Ngrains, &
    material_phase
@@ -411,7 +370,9 @@ function vacancyflux_cahnhilliard_getFormationEnergy(ip,el)
  vacancyflux_cahnhilliard_getFormationEnergy = 0.0_pReal
  do grain = 1, homogenization_Ngrains(mesh_element(3,el))
    vacancyflux_cahnhilliard_getFormationEnergy = vacancyflux_cahnhilliard_getFormationEnergy + &
-    vacancyflux_cahnhilliard_formationEnergyCoeff(material_phase(grain,ip,el))
+    lattice_vacancyFormationEnergy(material_phase(grain,ip,el))/ &
+    lattice_vacancyVol(material_phase(grain,ip,el))/ &
+    lattice_vacancySurfaceEnergy(material_phase(grain,ip,el))
  enddo
 
  vacancyflux_cahnhilliard_getFormationEnergy = &
@@ -424,6 +385,9 @@ end function vacancyflux_cahnhilliard_getFormationEnergy
 !> @brief returns homogenized vacancy entropy coefficient
 !--------------------------------------------------------------------------------------------------
 function vacancyflux_cahnhilliard_getEntropicCoeff(ip,el)
+ use lattice, only: &
+   lattice_vacancyVol, &
+   lattice_vacancySurfaceEnergy
  use material, only: &
    homogenization_Ngrains, &
    material_homog, &
@@ -443,7 +407,9 @@ function vacancyflux_cahnhilliard_getEntropicCoeff(ip,el)
  vacancyflux_cahnhilliard_getEntropicCoeff = 0.0_pReal
  do grain = 1, homogenization_Ngrains(material_homog(ip,el))
    vacancyflux_cahnhilliard_getEntropicCoeff = vacancyflux_cahnhilliard_getEntropicCoeff + &
-    vacancyflux_cahnhilliard_kBCoeff(material_phase(grain,ip,el))
+    kB/ &
+    lattice_vacancyVol(material_phase(grain,ip,el))/ &
+    lattice_vacancySurfaceEnergy(material_phase(grain,ip,el))
  enddo
 
  vacancyflux_cahnhilliard_getEntropicCoeff = &
@@ -457,6 +423,8 @@ end function vacancyflux_cahnhilliard_getEntropicCoeff
 !> @brief returns homogenized kinematic contribution to chemical potential
 !--------------------------------------------------------------------------------------------------
 subroutine vacancyflux_cahnhilliard_KinematicChemPotAndItsTangent(KPot, dKPot_dCv, Cv, ip, el)
+ use lattice, only: &
+   lattice_vacancySurfaceEnergy
  use material, only: &
    homogenization_Ngrains, &
    material_homog, &
@@ -501,8 +469,8 @@ subroutine vacancyflux_cahnhilliard_KinematicChemPotAndItsTangent(KPot, dKPot_dC
          my_dKPot_dCv = 0.0_pReal
      
      end select
-     KPot = KPot + my_KPot/vacancyflux_cahnhilliard_surfaceEnergy(material_phase(grain,ip,el))
-     dKPot_dCv = dKPot_dCv + my_dKPot_dCv/vacancyflux_cahnhilliard_surfaceEnergy(material_phase(grain,ip,el))
+     KPot = KPot + my_KPot/lattice_vacancySurfaceEnergy(material_phase(grain,ip,el))
+     dKPot_dCv = dKPot_dCv + my_dKPot_dCv/lattice_vacancySurfaceEnergy(material_phase(grain,ip,el))
    enddo
  enddo 
  
@@ -520,6 +488,7 @@ subroutine vacancyflux_cahnhilliard_getChemPotAndItsTangent(ChemPot,dChemPot_dCv
    vacancyPolyOrder
  use material, only: &
    mappingHomogenization, &
+   vacancyflux_typeInstance, &
    porosity, &
    porosityMapping
 
@@ -541,7 +510,8 @@ subroutine vacancyflux_cahnhilliard_getChemPotAndItsTangent(ChemPot,dChemPot_dCv
  VoidPhaseFrac = porosity(homog)%p(porosityMapping(homog)%p(ip,el))
  kBT = vacancyflux_cahnhilliard_getEntropicCoeff(ip,el)
  
- ChemPot = vacancyflux_cahnhilliard_getFormationEnergy(ip,el)
+ ChemPot = vacancyflux_cahnhilliard_getFormationEnergy(ip,el)* &
+           vacancyflux_cahnhilliard_thermalFluc(vacancyflux_typeInstance(homog))%p(mappingHomogenization(1,ip,el))    
  dChemPot_dCv = 0.0_pReal
  do o = 1_pInt, vacancyPolyOrder
    ChemPot = ChemPot + kBT*((2.0_pReal*Cv - 1.0_pReal)**real(2_pInt*o-1_pInt,pReal))/ &

@@ -24,10 +24,6 @@ module hydrogenflux_cahnhilliard
  integer(pInt),                       dimension(:),           allocatable, target, public :: &
    hydrogenflux_cahnhilliard_Noutput                                                                   !< number of outputs per instance of this damage 
 
- real(pReal),                         dimension(:),           allocatable,        private :: &
-   hydrogenflux_cahnhilliard_formationEnergyCoeff, &
-   hydrogenflux_cahnhilliard_kBCoeff
-
  real(pReal),                                                 parameter,           private :: &
    kB = 1.3806488e-23_pReal                                                                          !< Boltzmann constant in J/Kelvin
 
@@ -71,8 +67,6 @@ subroutine hydrogenflux_cahnhilliard_init(fileUnit)
    IO_error, &
    IO_timeStamp, &
    IO_EOF
- use lattice, only: &
-   lattice_hydrogenVol
  use material, only: &
    hydrogenflux_type, &
    hydrogenflux_typeInstance, &
@@ -80,7 +74,6 @@ subroutine hydrogenflux_cahnhilliard_init(fileUnit)
    HYDROGENFLUX_cahnhilliard_label, &
    HYDROGENFLUX_cahnhilliard_ID, &
    material_homog, &  
-   material_Nphase, &
    mappingHomogenization, &
    hydrogenfluxState, &
    hydrogenfluxMapping, &
@@ -119,9 +112,6 @@ subroutine hydrogenflux_cahnhilliard_init(fileUnit)
           hydrogenflux_cahnhilliard_output = ''
  allocate(hydrogenflux_cahnhilliard_outputID       (maxval(homogenization_Noutput),maxNinstance),source=undefined_ID)
  allocate(hydrogenflux_cahnhilliard_Noutput        (maxNinstance),                               source=0_pInt) 
-
- allocate(hydrogenflux_cahnhilliard_kBCoeff                (material_Nphase),             source=0.0_pReal)
- allocate(hydrogenflux_cahnhilliard_formationEnergyCoeff(material_Nphase),             source=0.0_pReal) 
 
  rewind(fileUnit)
  section = 0_pInt
@@ -166,30 +156,6 @@ subroutine hydrogenflux_cahnhilliard_init(fileUnit)
    line = IO_read(fileUnit)
  enddo
  
- parsingPhase: do while (trim(line) /= IO_EOF)                                                      ! read through sections of homog part
-   line = IO_read(fileUnit)
-   if (IO_isBlank(line)) cycle                                                                      ! skip empty lines
-   if (IO_getTag(line,'<','>') /= '') then                                                          ! stop at next part
-     line = IO_read(fileUnit, .true.)                                                               ! reset IO_read
-     exit                                                                                           
-   endif   
-   if (IO_getTag(line,'[',']') /= '') then                                                          ! next homog section
-     section = section + 1_pInt                                                                     ! advance homog section counter
-     cycle                                                                                          ! skip to next line
-   endif
-
-   if (section > 0_pInt ) then; if (hydrogenflux_type(section) == HYDROGENFLUX_cahnhilliard_ID) then  ! do not short-circuit here (.and. with next if statemen). It's not safe in Fortran
-
-     positions = IO_stringPos(line,MAXNCHUNKS)
-     tag = IO_lc(IO_stringValue(line,positions,1_pInt))                                             ! extract key
-     select case(tag)
-       case ('hydrogenformationenergy')
-         hydrogenflux_cahnhilliard_formationEnergyCoeff(section) = IO_floatValue(line,positions,2_pInt)
-
-     end select
-   endif; endif
- enddo parsingPhase
- 
  initializeInstances: do section = 1_pInt, size(hydrogenflux_type)
    if (hydrogenflux_type(section) == HYDROGENFLUX_cahnhilliard_ID) then
      NofMyHomog=count(material_homog==section)
@@ -228,15 +194,6 @@ subroutine hydrogenflux_cahnhilliard_init(fileUnit)
  
  enddo initializeInstances
  
- initializeParams: do section = 1_pInt, material_Nphase
-   hydrogenflux_cahnhilliard_kBCoeff(section) = &
-     kB/ &
-     hydrogenflux_cahnhilliard_formationEnergyCoeff(section)       
-   hydrogenflux_cahnhilliard_formationEnergyCoeff(section) = &
-     hydrogenflux_cahnhilliard_formationEnergyCoeff(section)/ &
-     lattice_hydrogenVol(section)
- enddo initializeParams
-
 end subroutine hydrogenflux_cahnhilliard_init
 
 !--------------------------------------------------------------------------------------------------
@@ -313,6 +270,10 @@ end function hydrogenflux_cahnhilliard_getDiffusion33
 !> @brief returns homogenized solution energy
 !--------------------------------------------------------------------------------------------------
 function hydrogenflux_cahnhilliard_getFormationEnergy(ip,el)
+ use lattice, only: &
+   lattice_hydrogenFormationEnergy, &
+   lattice_hydrogenVol, &
+   lattice_hydrogenSurfaceEnergy
  use material, only: &
    homogenization_Ngrains, &
    material_phase
@@ -331,7 +292,9 @@ function hydrogenflux_cahnhilliard_getFormationEnergy(ip,el)
  hydrogenflux_cahnhilliard_getFormationEnergy = 0.0_pReal
  do grain = 1, homogenization_Ngrains(mesh_element(3,el))
    hydrogenflux_cahnhilliard_getFormationEnergy = hydrogenflux_cahnhilliard_getFormationEnergy + &
-    hydrogenflux_cahnhilliard_formationEnergyCoeff(material_phase(grain,ip,el))
+    lattice_hydrogenFormationEnergy(material_phase(grain,ip,el))/ &
+    lattice_hydrogenVol(material_phase(grain,ip,el))/ &
+    lattice_hydrogenSurfaceEnergy(material_phase(grain,ip,el))
  enddo
 
  hydrogenflux_cahnhilliard_getFormationEnergy = &
@@ -344,6 +307,9 @@ end function hydrogenflux_cahnhilliard_getFormationEnergy
 !> @brief returns homogenized hydrogen entropy coefficient
 !--------------------------------------------------------------------------------------------------
 function hydrogenflux_cahnhilliard_getEntropicCoeff(ip,el)
+ use lattice, only: &
+   lattice_hydrogenVol, &
+   lattice_hydrogenSurfaceEnergy
  use material, only: &
    homogenization_Ngrains, &
    material_homog, &
@@ -363,7 +329,9 @@ function hydrogenflux_cahnhilliard_getEntropicCoeff(ip,el)
  hydrogenflux_cahnhilliard_getEntropicCoeff = 0.0_pReal
  do grain = 1, homogenization_Ngrains(material_homog(ip,el))
    hydrogenflux_cahnhilliard_getEntropicCoeff = hydrogenflux_cahnhilliard_getEntropicCoeff + &
-    hydrogenflux_cahnhilliard_kBCoeff(material_phase(grain,ip,el))
+    kB/ &
+    lattice_hydrogenVol(material_phase(grain,ip,el))/ &
+    lattice_hydrogenSurfaceEnergy(material_phase(grain,ip,el))
  enddo
 
  hydrogenflux_cahnhilliard_getEntropicCoeff = &
@@ -377,6 +345,8 @@ end function hydrogenflux_cahnhilliard_getEntropicCoeff
 !> @brief returns homogenized kinematic contribution to chemical potential
 !--------------------------------------------------------------------------------------------------
 subroutine hydrogenflux_cahnhilliard_KinematicChemPotAndItsTangent(KPot, dKPot_dCh, Ch, ip, el)
+ use lattice, only: &
+   lattice_hydrogenSurfaceEnergy
  use material, only: &
    homogenization_Ngrains, &
    material_homog, &
@@ -421,8 +391,8 @@ subroutine hydrogenflux_cahnhilliard_KinematicChemPotAndItsTangent(KPot, dKPot_d
          my_dKPot_dCh = 0.0_pReal
      
      end select
-     KPot = KPot + my_KPot/hydrogenflux_cahnhilliard_formationEnergyCoeff(material_phase(grain,ip,el))
-     dKPot_dCh = dKPot_dCh + my_dKPot_dCh/hydrogenflux_cahnhilliard_formationEnergyCoeff(material_phase(grain,ip,el))
+     KPot = KPot + my_KPot/lattice_hydrogenSurfaceEnergy(material_phase(grain,ip,el))
+     dKPot_dCh = dKPot_dCh + my_dKPot_dCh/lattice_hydrogenSurfaceEnergy(material_phase(grain,ip,el))
    enddo
  enddo 
  
@@ -453,7 +423,7 @@ subroutine hydrogenflux_cahnhilliard_getChemPotAndItsTangent(ChemPot,dChemPot_dC
  integer(pInt) :: &
    o  
   
- ChemPot = 1.0_pReal
+ ChemPot = hydrogenflux_cahnhilliard_getFormationEnergy(ip,el)
  dChemPot_dCh = 0.0_pReal
  kBT = hydrogenflux_cahnhilliard_getEntropicCoeff(ip,el)
  do o = 1_pInt, hydrogenPolyOrder

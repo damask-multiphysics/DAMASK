@@ -840,7 +840,11 @@ module lattice
    lattice_porosityMobility, &
    lattice_massDensity, &
    lattice_specificHeat, &
+   lattice_vacancyFormationEnergy, &
+   lattice_vacancySurfaceEnergy, &
    lattice_vacancyVol, &
+   lattice_hydrogenFormationEnergy, &
+   lattice_hydrogenSurfaceEnergy, &
    lattice_hydrogenVol, &
    lattice_referenceTemperature, &
    lattice_equilibriumVacancyConcentration
@@ -1116,7 +1120,11 @@ subroutine lattice_init
  allocate(lattice_PorosityMobility       (    Nphases), source=0.0_pReal)
  allocate(lattice_massDensity            (    Nphases), source=0.0_pReal)
  allocate(lattice_specificHeat           (    Nphases), source=0.0_pReal)
+ allocate(lattice_vacancyFormationEnergy (    Nphases), source=0.0_pReal)
+ allocate(lattice_vacancySurfaceEnergy   (    Nphases), source=0.0_pReal)
  allocate(lattice_vacancyVol             (    Nphases), source=0.0_pReal)
+ allocate(lattice_hydrogenFormationEnergy(    Nphases), source=0.0_pReal)
+ allocate(lattice_hydrogenSurfaceEnergy  (    Nphases), source=0.0_pReal)
  allocate(lattice_hydrogenVol            (    Nphases), source=0.0_pReal)
  allocate(lattice_referenceTemperature   (    Nphases), source=0.0_pReal)
  allocate(lattice_equilibriumVacancyConcentration(Nphases), source=0.0_pReal)
@@ -1244,8 +1252,16 @@ subroutine lattice_init
        lattice_thermalExpansion33(3,3,section) = IO_floatValue(line,positions,2_pInt)
      case ('specific_heat')
        lattice_specificHeat(section) = IO_floatValue(line,positions,2_pInt)
+     case ('vacancyformationenergy')
+       lattice_vacancyFormationEnergy(section) = IO_floatValue(line,positions,2_pInt)
+     case ('vacancysurfaceenergy')
+       lattice_vacancySurfaceEnergy(section) = IO_floatValue(line,positions,2_pInt)
      case ('vacancyvolume')
        lattice_vacancyVol(section) = IO_floatValue(line,positions,2_pInt)
+     case ('hydrogenformationenergy')
+       lattice_hydrogenFormationEnergy(section) = IO_floatValue(line,positions,2_pInt)
+     case ('hydrogensurfaceenergy')
+       lattice_hydrogenSurfaceEnergy(section) = IO_floatValue(line,positions,2_pInt)
      case ('hydrogenvolume')
        lattice_hydrogenVol(section) = IO_floatValue(line,positions,2_pInt)
      case ('mass_density')
