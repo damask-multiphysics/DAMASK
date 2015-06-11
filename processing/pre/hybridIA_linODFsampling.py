@@ -9,6 +9,58 @@ scriptID   = string.replace('$Id$','\n','\\n')
 scriptName = scriptID.split()[1]
 
 # --- helper functions ---
+def integerFactorization(i):
+
+  j = int(math.floor(math.sqrt(float(i))))
+  while (j>1 and int(i)%j != 0):
+    j -= 1
+  return j
+
+def positiveRadians(angle):
+
+  angle = math.radians(float(angle))
+  while angle < 0.0:
+    angle += 2.0*math.pi
+
+  return angle
+
+
+def getHeader(sizeX,sizeY,step):
+  
+  return [ \
+  '# TEM_PIXperUM          1.000000', \
+  '# x-star                0.509548', \
+  '# y-star                0.795272', \
+  '# z-star                0.611799', \
+  '# WorkingDistance       18.000000', \
+  '#', \
+  '# Phase                 1', \
+  '# MaterialName          Al', \
+  '# Formula               Fe', \
+  '# Info', \
+  '# Symmetry              43', \
+  '# LatticeConstants      2.870 2.870 2.870  90.000  90.000  90.000', \
+  '# NumberFamilies        4', \
+  '# hklFamilies           1  1  0 1 0.000000 1', \
+  '# hklFamilies           2  0  0 1 0.000000 1', \
+  '# hklFamilies           2  1  1 1 0.000000 1', \
+  '# hklFamilies           3  1  0 1 0.000000 1', \
+  '# Categories            0 0 0 0 0 ', \
+  '#', \
+  '# GRID: SquareGrid', \
+  '# XSTEP: ' + str(step), \
+  '# YSTEP: ' + str(step), \
+  '# NCOLS_ODD: ' + str(sizeX), \
+  '# NCOLS_EVEN: ' + str(sizeX), \
+  '# NROWS: ' + str(sizeY), \
+  '#', \
+  '# OPERATOR: ODFsammpling', \
+  '#', \
+  '# SAMPLEID: ', \
+  '#', \
+  '# SCANID: ', \
+  '#', \
+  ]
 
 def binAsBins(bin,intervals):
   """ explode compound bin into 3D bins list """
@@ -204,11 +256,14 @@ parser.add_option('--crystallite', dest='crystallite', type='int', metavar = 'in
                   help='crystallite index to be used [%default]')
 parser.add_option('-r', '--rnd', dest='randomSeed', type='int', metavar='int', \
                   help='seed of random number generator [%default]')
+parser.add_option('--ang',       dest='ang', action='store_true',
+                  help='write .ang file [%default]')
 parser.set_defaults(randomSeed = None)
 parser.set_defaults(number      = 500)
 parser.set_defaults(algorithm   = 'IA')
 parser.set_defaults(phase       = 1)
 parser.set_defaults(crystallite = 1)
+parser.set_defaults(ang  = True)
 (options,filenames) = parser.parse_args()
 
 nSamples       = options.number
@@ -218,11 +273,11 @@ methods        = [options.algorithm]
 #--- setup file handles ---------------------------------------------------------------------------
 files = []
 if filenames == []:
-  files.append({'name':'STDIN','input':sys.stdin,'output':sys.stdout,'croak':sys.stderr})
+  files.append({'name':'STDIN','input':sys.stdin,'output':sys.stdout,'outang':sys.stdout,'croak':sys.stderr})
 else:
   for name in filenames:
     if os.path.exists(name):
-      files.append({'name':name,'input':open(name),'output':open(name+'_tmp','w'),'croak':sys.stdout})
+      files.append({'name':name,'input':open(name),'output':open(name+'_tmp','w'),'outang':open(name+'_ang_tmp','w'),'croak':sys.stdout})
 
 #--- loop over input files ------------------------------------------------------------------------
 for file in files:
@@ -357,3 +412,26 @@ for file in files:
      file['output'].close()
      os.rename(file['name']+'_tmp',
             os.path.splitext(file['name'])[0] +'_'+method+'%s'%('_material.config'))
+
+  # write ang file
+  if options.ang:
+    sizeY = integerFactorization(nSamples)
+    sizeX = nSamples / sizeY
+    print 'Writing .ang file: %i * %i = %i (== %i)'%(sizeX,sizeY,sizeX*sizeY,nSamples) 
+    # write header
+    for line in getHeader(sizeX,sizeY,1.0):
+      file['outang'].write(line + '\n')
+    
+    # write data
+    counter = 0
+    for line in Orientations:
+      eulers = re.split(r'[\t]', line.strip())
+      file['outang'].write(''.join(['%10.5f'%float(angle) for angle in eulers])+
+            ''.join(['%10.5f'%coord for coord in [counter%sizeX,counter//sizeX]])+
+            ' 100.0 1.0 0 1 1.0\n')
+      counter += 1
+    #--- output finalization -------------------------------------------------------------------------- 
+    if file['name'] != 'STDIN':
+      file['outang'].close()
+      os.rename(file['name']+'_ang_tmp',
+            os.path.splitext(file['name'])[0] +'_'+method+'%s'%('.ang'))
