@@ -74,24 +74,36 @@ for file in files:
           'microstructures': 0,
           'homogenization':  options.homogenization
          }
+         
+  coords = [{},{},{}]
+  pos = {'min':[ float("inf"), float("inf"), float("inf")],
+         'max':[-float("inf"),-float("inf"),-float("inf")]}
 
   phase =       []
   eulerangles = []
-  point          = 0
+# --------------- read data -----------------------------------------------------------------------
   for line in file['input']:
     if line.strip():
       words = line.split()
-      currPos = map(float,words[3:6])
+      currPos = words[3:6]
       for i in xrange(3):
-        if currPos[i] > info['grid'][i]: 
-          info['size'][i] = currPos[i]
-          info['grid'][i]+=1
-      eulerangles.append(map(float,words[:3]))
+        coords[i][currPos[i]] = True
+      currPos = map(float,currPos)
+      for i in xrange(3):
+        pos['min'][i] = min(pos['min'][i],currPos[i])
+        pos['max'][i] = max(pos['max'][i],currPos[i])
+      eulerangles.append(map(math.degrees,map(float,words[:3])))
       phase.append(options.phase[int(float(words[options.column-1]) > options.threshold)])
-  
+      
+# --------------- determine size and grid ---------------------------------------------------------
+  info['grid'] = np.array(map(len,coords),'i')
+  info['size'] = info['grid']/np.maximum(np.ones(3,'d'),info['grid']-1.0)* \
+                       np.array([pos['max'][0]-pos['min'][0],
+                                 pos['max'][1]-pos['min'][1],
+                                 pos['max'][2]-pos['min'][2]],'d')
   eulerangles = np.array(eulerangles,dtype='f').reshape(info['grid'].prod(),3)
   phase       = np.array(phase,dtype='i').reshape(info['grid'].prod())
-  
+
   limits = [360,180,360]
   if any([np.any(eulerangles[:,i]>=limits[i]) for i in [0,1,2]]):
     file['croak'].write('Error: euler angles out of bound. Ang file might contain unidexed poins.\n')
@@ -164,7 +176,7 @@ for file in files:
               ]
     file['output'].write('\n'.join(['%i\theader'%(len(header))] + header) + '\n')
     if options.compress:
-      matPoints = matPoints.reshape((info['grid'][1],info['grid'][0]))
+      matPoints = matPoints.reshape([info['grid'][1]*info['grid'][2],info['grid'][0]])
       np.savetxt(file['output'],matPoints,fmt='%0'+str(1+int(math.log10(np.amax(matPoints))))+'d')
     else:
       file['output'].write("1 to %i\n"%(info['microstructures']))

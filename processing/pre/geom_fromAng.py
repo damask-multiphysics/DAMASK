@@ -70,47 +70,53 @@ else:
                     'output':open(name+'_tmp','w'),
                     'croak':sys.stdout,
                     })
-
 #--- loop over input files ------------------------------------------------------------------------
 for file in files:
   file['croak'].write('\033[1m' + scriptName + '\033[0m: ' + (file['name'] if file['name'] != 'STDIN' else '') + '\n')
 
   info = {
-          'grid':   np.ones (3,'i'),
+          'grid':   np.zones(3,'i'),
           'size':   np.zeros(3,'d'),
           'origin': np.zeros(3,'d'),
           'microstructures': 0,
-          'homogenization':  options.homogenization,
+          'homogenization':  options.homogenization
          }
+         
+  coords = [{},{},{1:True}]
+  pos = {'min':[ float("inf"), float("inf")],
+         'max':[-float("inf"),-float("inf")]}
 
-  step  = [0,0]
-  point = 0
+  phase =       []
+  eulerangles = []
+# --------------- read data -----------------------------------------------------------------------
   for line in file['input']:
-    words = line.split()
-    if len(words) == 0: continue                                                                    # ignore empty lines
-    if words[0] == '#':                                                                             # process initial comments/header block
-      if len(words) > 2:
-        if words[2].lower() == 'hexgrid': 
-          file['croak'].write('The file has HexGrid format. Please first convert to SquareGrid...\n')
-          break
-        if words[1] == 'XSTEP:':     step[0] = float(words[2])
-        if words[1] == 'YSTEP:':     step[1] = float(words[2])
-        if words[1] == 'NCOLS_ODD:':                                                                # ignore order of NROWS/NCOLS
-          info['grid'][0] = int(words[2])
-          eulerangles = np.empty((info['grid'].prod(),3),dtype='f')
-          phase       = np.empty(info['grid'].prod(),dtype='i')
-        if words[1] == 'NROWS:':                                                                    # ignore order of NROWS/NCOLS
-          info['grid'][1] = int(words[2])
-          eulerangles = np.empty((info['grid'].prod(),3),dtype='f')
-          phase       = np.empty(info['grid'].prod(),dtype='i')
-    else:                                                                                           # finished with comments block
-      phase[point] = options.phase[int(float(words[options.column-1]) > options.threshold)]
-      eulerangles[point,...] = map(lambda x: math.degrees(float(x)), words[:3])
-      point += 1
+    if line.strip():
+      words = line.split()
+      if words[0] == '#':                                                                             # process initial comments/header block
+        if len(words) > 2:
+          if words[2].lower() == 'hexgrid': 
+            file['croak'].write('The file has HexGrid format. Please first convert to SquareGrid...\n')
+            break
+      else:
+        currPos = words[3:5]
+        for i in xrange(2):
+          coords[i][currPos[i]] = True
+        currPos = map(float,currPos)
+        for i in xrange(2):
+          pos['min'][i] = min(pos['min'][i],currPos[i])
+          pos['max'][i] = max(pos['max'][i],currPos[i])
+        eulerangles.append(map(math.degrees,map(float,words[:3])))
+        phase.append(options.phase[int(float(words[options.column-1]) > options.threshold)])
+        
+# --------------- determine size and grid ---------------------------------------------------------
+  info['grid'] = np.array(map(len,coords),'i')
+  info['size'][0:2] = info['grid'][0:2]/(info['grid'][0:2]-1.0)* \
+                                        np.array([pos['max'][0]-pos['min'][0],
+                                                  pos['max'][1]-pos['min'][1]],'d')
+  info['size'][2]=info['size'][0]/info['grid'][0]
+  eulerangles = np.array(eulerangles,dtype='f').reshape(info['grid'].prod(),3)
+  phase       = np.array(phase,dtype='i').reshape(info['grid'].prod())
 
-  if info['grid'].prod() != point:
-    file['croak'].write('Error: found %s microstructures. Header info in ang file might be wrong.\n'%point)
-    continue
   limits = [360,180,360]
   if any([np.any(eulerangles[:,i]>=limits[i]) for i in [0,1,2]]):
     file['croak'].write('Error: euler angles out of bound. Ang file might contain unidexed poins.\n')
@@ -128,7 +134,7 @@ for file in files:
     euleranglesRadInt = (eulerangles*10**int(options.precision)).astype('int')                      # scale by desired precision and convert to int
     eulerKeys = np.array([int(''.join(map(formatString.format,euleranglesRadInt[i,:]))) \
                                                              for i in xrange(info['grid'].prod())]) # create unique integer key from three euler angles by concatenating the string representation with leading zeros and store as integer
-    devNull, texture, eulerKeys_idx = np.unique(eulerKeys, return_index = True, return_inverse=True)# search unique euler angle keys. Texture IDs are the indices of the first occurence, the inverse is used to construct the microstructure
+    devNull, texture, eulerKeys_idx = np.unique(eulerKeys, return_index = True, return_inverse=True)# search unique euler angle keys. Texture IDs are the indices of the first occurrence, the inverse is used to construct the microstructure
     msFull = np.array([[eulerKeys_idx[i],phase[i]] for i in xrange(info['grid'].prod())],'i8')      # create a microstructure (texture/phase pair) for each point using unique texture IDs. Use longInt (64bit, i8) because the keys might be long
     devNull,msUnique,matPoints = np.unique(msFull.view('c16'),True,True)
     matPoints+=1
@@ -155,7 +161,6 @@ for file in files:
                          ]
 
   info['microstructures'] = len(microstructure)
-  info['size'] = step[0]*info['grid'][0],step[1]*info['grid'][1],min(step)
 
 #--- report ---------------------------------------------------------------------------------------
   file['croak'].write('grid     a b c:  %s\n'%(' x '.join(map(str,info['grid']))) +

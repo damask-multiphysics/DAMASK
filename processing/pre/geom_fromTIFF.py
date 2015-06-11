@@ -90,7 +90,8 @@ for file in files:
             "homogenization\t%i"%info['homogenization'],
             ]
   file['output'].write('\n'.join(['%i\theader'%(len(header))] + header) + '\n')
-  np.savetxt(file['output'],imarray.reshape([info['grid'][1]*info['grid'][2],info['grid'][0]]),fmt='%03d')
+  np.savetxt(file['output'],imarray.reshape([info['grid'][1]*info['grid'][2],info['grid'][0]]),
+                            fmt='%0'+str(1+int(math.log10(np.amax(imarray))))+'d'
   
 #--- output finalization -------------------------------------------------------------------------- 
   if file['name'] != 'STDIN':
