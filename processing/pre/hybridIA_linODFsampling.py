@@ -426,7 +426,7 @@ for file in files:
     counter = 0
     for line in Orientations:
       eulers = re.split(r'[\t]', line.strip())
-      file['outang'].write(''.join(['%10.5f'%float(angle) for angle in eulers])+
+      file['outang'].write(''.join(['%10.5f'%math.radians(float(angle)) for angle in eulers])+
             ''.join(['%10.5f'%coord for coord in [counter%sizeX,counter//sizeX]])+
             ' 100.0 1.0 0 1 1.0\n')
       counter += 1
