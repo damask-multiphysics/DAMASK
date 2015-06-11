@@ -1546,6 +1546,10 @@ subroutine IO_error(error_ID,el,ip,g,ext_msg)
    msg = 'unknown lattice structure encountered'
  case (131_pInt)
    msg = 'hex lattice structure with invalid c/a ratio'
+ case (132_pInt)
+   msg = 'trans_lattice_structure not possible'
+ case (133_pInt)
+   msg = 'transformed hex lattice structure with invalid c/a ratio'
  case (135_pInt)
    msg = 'zero entry on stiffness diagonal'
 

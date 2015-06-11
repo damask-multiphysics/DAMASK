@@ -853,7 +853,7 @@ module lattice
                  LATTICE_ort_ID
  end enum
  integer(kind(LATTICE_undefined_ID)),        dimension(:),       allocatable, public, protected :: &
-   lattice_structure
+   lattice_structure, trans_lattice_structure
 
 
 integer(pInt), dimension(2), parameter, private :: &
@@ -1101,6 +1101,7 @@ subroutine lattice_init
  endif
  
  allocate(lattice_structure(Nphases),source = LATTICE_undefined_ID)
+ allocate(trans_lattice_structure(Nphases),source = LATTICE_undefined_ID)
  allocate(lattice_C66(6,6,Nphases),  source=0.0_pReal)
  allocate(lattice_C3333(3,3,3,3,Nphases),  source=0.0_pReal)
  allocate(lattice_thermalConductivity33  (3,3,Nphases), source=0.0_pReal)
@@ -1196,6 +1197,15 @@ subroutine lattice_init
            case default
              call IO_error(130_pInt,ext_msg=trim(IO_lc(IO_stringValue(line,positions,2_pInt))))
          end select
+     case('trans_lattice_structure')
+       select case(trim(IO_lc(IO_stringValue(line,positions,2_pInt))))
+         case('bcc')
+           trans_lattice_structure(section) = LATTICE_bcc_ID
+         case('hex','hexagonal','hcp')
+           trans_lattice_structure(section) = LATTICE_hex_ID
+         case default
+           call IO_error(132_pInt,ext_msg=trim(IO_lc(IO_stringValue(line,positions,2_pInt))))
+       end select
      case ('c11')
        lattice_C66(1,1,section) = IO_floatValue(line,positions,2_pInt)
      case ('c12')
@@ -1402,27 +1412,34 @@ subroutine lattice_initializeStructure(myPhase,CoverA,a_fcc,a_bcc)
        tn(1:3,i) = lattice_fcc_systemTwin(4:6,i)
        ts(i)     = lattice_fcc_shearTwin(i)
      enddo
-     do i = 1_pInt,myNtrans
-       Rtr(1:3,1:3,i) = math_axisAngleToR(lattice_fcc_systemTrans(1:3,i), &                          ! Pitsch rotation (fcc to bcc transformation)
-                          lattice_fcc_systemTrans(4,i)*INRAD)
-       Btr(1:3,1:3,i) = math_axisAngleToR(lattice_fcc_bainRot(1:3,i), &                              ! Rotation of fcc to Bain coordinate system
-                          lattice_fcc_bainRot(4,i)*INRAD)
-
-       xb(1:3,i) = real(LATTICE_fcc_bainVariant(1:3,i),pReal)
-       yb(1:3,i) = real(LATTICE_fcc_bainVariant(4:6,i),pReal)
-       zb(1:3,i) = real(LATTICE_fcc_bainVariant(7:9,i),pReal)
-       Utr(1:3,1:3,i) = 0.0_pReal                                                                    ! Bain deformation
-       if ((a_fcc > 0.0_pReal) .and. (a_bcc > 0.0_pReal)) then
-         Utr(1:3,1:3,i) = (a_bcc/a_fcc)*math_tensorproduct(xb(1:3,i), xb(1:3,i)) + &
-                         sqrt(2.0_pReal)*(a_bcc/a_fcc)*math_tensorproduct(yb(1:3,i), yb(1:3,i)) + &
-                         sqrt(2.0_pReal)*(a_bcc/a_fcc)*math_tensorproduct(zb(1:3,i), zb(1:3,i))
-       endif
-     enddo
      do i = 1_pInt, myNcleavage                                                                      ! assign cleavage system vectors
        cd(1:3,i) = lattice_fcc_systemCleavage(1:3,i)/math_norm3(lattice_fcc_systemCleavage(1:3,i))
        cn(1:3,i) = lattice_fcc_systemCleavage(4:6,i)/math_norm3(lattice_fcc_systemCleavage(4:6,i))
        ct(1:3,i) = math_vectorproduct(cd(1:3,i),cn(1:3,i))
      enddo  
+
+     ! Phase transformation
+     select case(trans_lattice_structure(myPhase))
+       case (LATTICE_bcc_ID)                                                                         ! fcc to bcc transformation                         
+         do i = 1_pInt,myNtrans
+           Rtr(1:3,1:3,i) = math_axisAngleToR(lattice_fcc_systemTrans(1:3,i), &                      ! Pitsch rotation
+                              lattice_fcc_systemTrans(4,i)*INRAD)
+           Btr(1:3,1:3,i) = math_axisAngleToR(lattice_fcc_bainRot(1:3,i), &                          ! Rotation of fcc to Bain coordinate system
+                              lattice_fcc_bainRot(4,i)*INRAD)
+
+           xb(1:3,i) = real(LATTICE_fcc_bainVariant(1:3,i),pReal)
+           yb(1:3,i) = real(LATTICE_fcc_bainVariant(4:6,i),pReal)
+           zb(1:3,i) = real(LATTICE_fcc_bainVariant(7:9,i),pReal)
+           Utr(1:3,1:3,i) = 0.0_pReal                                                                ! Bain deformation
+           if ((a_fcc > 0.0_pReal) .and. (a_bcc > 0.0_pReal)) then
+             Utr(1:3,1:3,i) = (a_bcc/a_fcc)*math_tensorproduct(xb(1:3,i), xb(1:3,i)) + &
+              sqrt(2.0_pReal)*(a_bcc/a_fcc)*math_tensorproduct(yb(1:3,i), yb(1:3,i)) + &
+              sqrt(2.0_pReal)*(a_bcc/a_fcc)*math_tensorproduct(zb(1:3,i), zb(1:3,i))
+           endif
+         enddo
+       case default
+         call IO_error(132_pInt,ext_msg='lattice_initializeStructure')
+     end select
 
      lattice_NslipSystem(1:lattice_maxNslipFamily,myPhase)          = lattice_fcc_NslipSystem
      lattice_NtwinSystem(1:lattice_maxNtwinFamily,myPhase)          = lattice_fcc_NtwinSystem
