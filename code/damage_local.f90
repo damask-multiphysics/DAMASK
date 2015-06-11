@@ -182,6 +182,7 @@ end subroutine damage_local_init
 !--------------------------------------------------------------------------------------------------
 function damage_local_updateState(subdt, ip, el)
  use numerics, only: &
+   residualStiffness, &
    err_damage_tolAbs, &
    err_damage_tolRel
  use material, only: &
@@ -206,7 +207,7 @@ function damage_local_updateState(subdt, ip, el)
  offset = mappingHomogenization(1,ip,el)
  phi = damageState(homog)%subState0(1,offset)
  call damage_local_getSourceAndItsTangent(phiDot, dPhiDot_dPhi, phi, ip, el)
- phi = phi + subdt*phiDot
+ phi = max(residualStiffness,min(1.0_pReal,phi + subdt*phiDot))
  
  damage_local_updateState = [     abs(phi - damageState(homog)%state(1,offset)) &
                                <= err_damage_tolAbs &

@@ -376,10 +376,9 @@ subroutine source_damage_anisobrittle_getRateAndItsTangent(localphiDot, dLocalph
  sourceOffset = source_damage_anisoBrittle_offset(phase)
  
  localphiDot = 1.0_pReal - &
-               max(1.0_pReal,sourceState(phase)%p(sourceOffset)%state(1,constituent))* &
-               phi
+               sourceState(phase)%p(sourceOffset)%state(1,constituent)*phi
  
- dLocalphiDot_dPhi = -max(1.0_pReal,sourceState(phase)%p(sourceOffset)%state(1,constituent))
+ dLocalphiDot_dPhi = -sourceState(phase)%p(sourceOffset)%state(1,constituent)
  
 end subroutine source_damage_anisobrittle_getRateAndItsTangent
  

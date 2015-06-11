@@ -263,31 +263,42 @@ subroutine source_damage_isoBrittle_deltaState(C, Fe, ipc, ip, el)
    el                                                                                               !< element
  real(pReal),  intent(in), dimension(3,3) :: &
    Fe
+ real(pReal),  intent(in), dimension(6,6) :: &
+   C
  integer(pInt) :: &
    phase, constituent, instance, sourceOffset, mech
  real(pReal) :: &
    strain(6), &
-   C(6,6)
+   stiffness(6,6), &
+   strainenergy
 
  phase = mappingConstitutive(2,ipc,ip,el)
  constituent = mappingConstitutive(1,ipc,ip,el)
  instance = source_damage_isoBrittle_instance(phase)
  sourceOffset = source_damage_isoBrittle_offset(phase)
 
+ stiffness = C
  do mech = 1_pInt, phase_NstiffnessDegradations(phase)
    select case(phase_stiffnessDegradation(mech,phase))
      case (STIFFNESS_DEGRADATION_porosity_ID)
-       C = porosity(material_homog(ip,el))%p(porosityMapping(material_homog(ip,el))%p(ip,el))* &
-           porosity(material_homog(ip,el))%p(porosityMapping(material_homog(ip,el))%p(ip,el))* &
-           C 
+       stiffness = porosity(material_homog(ip,el))%p(porosityMapping(material_homog(ip,el))%p(ip,el))* &
+                   porosity(material_homog(ip,el))%p(porosityMapping(material_homog(ip,el))%p(ip,el))* &
+                   stiffness 
    end select
  enddo                                                 
  strain = 0.5_pReal*math_Mandel33to6(math_mul33x33(math_transpose33(Fe),Fe)-math_I3)
 
- sourceState(phase)%p(sourceOffset)%deltaState(1,constituent) = &
-   2.0_pReal*sum(strain*math_mul66x6(C,strain))/source_damage_isoBrittle_critStrainEnergy(instance) - &
-   sourceState(phase)%p(sourceOffset)%state(1,constituent)
-
+ strainenergy = 2.0_pReal*sum(strain*math_mul66x6(stiffness,strain))/ &
+                source_damage_isoBrittle_critStrainEnergy(instance) 
+ if (strainenergy > sourceState(phase)%p(sourceOffset)%subState0(1,constituent)) then
+   sourceState(phase)%p(sourceOffset)%deltaState(1,constituent) = &
+     strainenergy - sourceState(phase)%p(sourceOffset)%state(1,constituent)
+ else
+   sourceState(phase)%p(sourceOffset)%deltaState(1,constituent) = &
+     sourceState(phase)%p(sourceOffset)%subState0(1,constituent) - &
+     sourceState(phase)%p(sourceOffset)%state(1,constituent)
+ endif
+    
 end subroutine source_damage_isoBrittle_deltaState
  
 !--------------------------------------------------------------------------------------------------
@@ -315,11 +326,8 @@ subroutine source_damage_isoBrittle_getRateAndItsTangent(localphiDot, dLocalphiD
  constituent = mappingConstitutive(1,ipc,ip,el)
  sourceOffset = source_damage_isoBrittle_offset(phase)
  
- localphiDot = 1.0_pReal - &
-               max(1.0_pReal,sourceState(phase)%p(sourceOffset)%state(1,constituent))* &
-               phi
- 
- dLocalphiDot_dPhi = -max(1.0_pReal,sourceState(phase)%p(sourceOffset)%state(1,constituent))
+ localphiDot = 1.0_pReal - phi*sourceState(phase)%p(sourceOffset)%state(1,constituent)
+ dLocalphiDot_dPhi = -sourceState(phase)%p(sourceOffset)%state(1,constituent)
  
 end subroutine source_damage_isoBrittle_getRateAndItsTangent
  

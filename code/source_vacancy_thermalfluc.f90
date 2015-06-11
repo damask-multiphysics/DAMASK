@@ -159,7 +159,7 @@ subroutine source_vacancy_thermalfluc_init(fileUnit)
      sourceState(phase)%p(sourceOffset)%sizeDotState =    sizeDotState
      sourceState(phase)%p(sourceOffset)%sizeDeltaState =  sizeDeltaState
      sourceState(phase)%p(sourceOffset)%sizePostResults = source_vacancy_thermalfluc_sizePostResults(instance)
-     allocate(sourceState(phase)%p(sourceOffset)%aTolState           (sizeState),                source=0.0_pReal)
+     allocate(sourceState(phase)%p(sourceOffset)%aTolState           (sizeState),                source=0.1_pReal)
      allocate(sourceState(phase)%p(sourceOffset)%state0              (sizeState,NofMyPhase),     source=0.0_pReal)
      allocate(sourceState(phase)%p(sourceOffset)%partionedState0     (sizeState,NofMyPhase),     source=0.0_pReal)
      allocate(sourceState(phase)%p(sourceOffset)%subState0           (sizeState,NofMyPhase),     source=0.0_pReal)

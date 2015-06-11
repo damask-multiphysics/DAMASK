@@ -365,10 +365,10 @@ subroutine source_damage_anisoDuctile_getRateAndItsTangent(localphiDot, dLocalph
  sourceOffset = source_damage_anisoDuctile_offset(phase)
  
  localphiDot = 1.0_pReal - &
-               max(1.0_pReal,sourceState(phase)%p(sourceOffset)%state(1,constituent))* &
+               sourceState(phase)%p(sourceOffset)%state(1,constituent)* &
                phi
  
- dLocalphiDot_dPhi = -max(1.0_pReal,sourceState(phase)%p(sourceOffset)%state(1,constituent))
+ dLocalphiDot_dPhi = -sourceState(phase)%p(sourceOffset)%state(1,constituent)
  
 end subroutine source_damage_anisoDuctile_getRateAndItsTangent
  

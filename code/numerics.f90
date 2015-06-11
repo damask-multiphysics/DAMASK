@@ -137,7 +137,7 @@ module numerics
    thermalOrder               =  2_pInt, &                                                          !< order of temperature field shape functions
    damageOrder                =  1_pInt, &                                                          !< order of damage field shape functions
    vacancyfluxOrder           =  2_pInt, &                                                          !< order of vacancy concentration and chemical potential field shape functions
-   porosityOrder              =  1_pInt, &                                                          !< order of porosity field shape functions
+   porosityOrder              =  2_pInt, &                                                          !< order of porosity field shape functions
    hydrogenfluxOrder          =  2_pInt                                                             !< order of hydrogen concentration and chemical potential field shape functions  
  logical, protected, public :: & 
    BBarStabilisation          = .false.                                                  
@@ -173,12 +173,11 @@ module numerics
                              &-vacancy_pc_type ml &
                              &-vacancy_mg_levels_ksp_type chebyshev &
                              &-vacancy_mg_levels_pc_type sor &
-                             &-porosity_snes_type vinewtonrsls &
+                             &-porosity_snes_type newtonls &
                              &-porosity_snes_atol 1e-8 &
-                             &-porosity_ksp_type preonly &
+                             &-porosity_ksp_type fgmres &
                              &-porosity_ksp_max_it 25 &
-                             &-porosity_pc_type cholesky &
-                             &-porosity_pc_factor_mat_solver_package mumps &
+                             &-porosity_pc_type hypre &
                              &-hydrogen_snes_type newtonls &
                              &-hydrogen_snes_linesearch_type cp &
                              &-hydrogen_snes_atol 1e-9 &
