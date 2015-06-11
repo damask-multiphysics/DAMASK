@@ -1211,8 +1211,6 @@ subroutine lattice_init
            trans_lattice_structure(section) = LATTICE_bcc_ID
          case('hex','hexagonal','hcp')
            trans_lattice_structure(section) = LATTICE_hex_ID
-         case default
-           call IO_error(132_pInt,ext_msg=trim(IO_lc(IO_stringValue(line,positions,2_pInt))))
        end select
      case ('c11')
        lattice_C66(1,1,section) = IO_floatValue(line,positions,2_pInt)
@@ -1453,8 +1451,6 @@ subroutine lattice_initializeStructure(myPhase,CoverA,a_fcc,a_bcc)
               sqrt(2.0_pReal)*(a_bcc/a_fcc)*math_tensorproduct(zb(1:3,i), zb(1:3,i))
            endif
          enddo
-       case default
-         call IO_error(132_pInt,ext_msg='lattice_initializeStructure')
      end select
 
      lattice_NslipSystem(1:lattice_maxNslipFamily,myPhase)          = lattice_fcc_NslipSystem
