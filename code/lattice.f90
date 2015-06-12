@@ -1022,6 +1022,7 @@ subroutine lattice_init
  integer(pInt) :: section = 0_pInt,i
  real(pReal),  dimension(:), allocatable :: &
    CoverA, &                                                                                        !< c/a ratio for hex type lattice
+   CoverA_trans, &                                                                                  !< c/a ratio for transformed hex type lattice      
    a_fcc, &                                                                                         !< lattice parameter a for fcc austenite
    a_bcc                                                                                            !< lattice paramater a for bcc martensite
 
@@ -1166,6 +1167,7 @@ subroutine lattice_init
  allocate(lattice_interactionTwinTwin(lattice_maxNtwin,lattice_maxNtwin,Nphases),source=0_pInt)     ! other:me
 
  allocate(CoverA(Nphases),source=0.0_pReal)
+ allocate(CoverA_trans(Nphases),source=0.0_pReal)
  allocate(a_fcc(Nphases),source=0.0_pReal)
  allocate(a_bcc(Nphases),source=0.0_pReal)
 
@@ -1232,6 +1234,8 @@ subroutine lattice_init
        lattice_C66(6,6,section) = IO_floatValue(line,positions,2_pInt)
      case ('covera_ratio','c/a_ratio','c/a')
        CoverA(section) = IO_floatValue(line,positions,2_pInt)
+     case ('c/a_trans','c/a_martensite','c/a_mart')
+       CoverA_trans(section) = IO_floatValue(line,positions,2_pInt)
      case ('a_fcc')
        a_fcc(section) = IO_floatValue(line,positions,2_pInt)
      case ('a_bcc')
@@ -1311,14 +1315,14 @@ subroutine lattice_init
      end select
    endif
  enddo
-
+ 
  do i = 1_pInt,Nphases
    if ((CoverA(i) < 1.0_pReal .or. CoverA(i) > 2.0_pReal) &
        .and. lattice_structure(i) == LATTICE_hex_ID) call IO_error(131_pInt,el=i)                        ! checking physical significance of c/a
-   call lattice_initializeStructure(i, CoverA(i), a_fcc(i), a_bcc(i))
+   call lattice_initializeStructure(i, CoverA(i), CoverA_trans(i), a_fcc(i), a_bcc(i))
  enddo
 
- deallocate(CoverA,a_fcc,a_bcc)
+ deallocate(CoverA,CoverA_trans,a_fcc,a_bcc)
 
 end subroutine lattice_init
 
@@ -1326,7 +1330,7 @@ end subroutine lattice_init
 !--------------------------------------------------------------------------------------------------
 !> @brief   Calculation of Schmid matrices, etc.
 !--------------------------------------------------------------------------------------------------
-subroutine lattice_initializeStructure(myPhase,CoverA,a_fcc,a_bcc)
+subroutine lattice_initializeStructure(myPhase,CoverA,CoverA_trans,a_fcc,a_bcc)
  use prec, only: &
   tol_math_check
  use math, only: &
@@ -1351,6 +1355,7 @@ subroutine lattice_initializeStructure(myPhase,CoverA,a_fcc,a_bcc)
  integer(pInt), intent(in) :: myPhase
  real(pReal), intent(in) :: &
    CoverA, &
+   CoverA_trans, &
    a_fcc, &
    a_bcc
 
