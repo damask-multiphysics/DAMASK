@@ -330,16 +330,21 @@ class ASCIItable():
     if not isinstance(labels,list):
       labels = [labels]
     if labels == [None] or labels == []:
-      use = np.arange(self.__IO__['validReadSize'])                                             # use all columns (and keep labels intact)
+      use = np.arange(self.__IO__['validReadSize'])                                                 # use all columns (and keep labels intact)
       labels_missing = []
     else:
-      indices = self.label_index(labels)                                                           # check requested labels
+      indices = self.label_index(labels)                                                            # check requested labels
       present  = np.where(indices >= 0)[0]                                                          # positions in request list of labels that are present ...
       missing  = np.where(indices <  0)[0]                                                          # ... and missing in table
-      labels_missing    =      np.array(     labels)        [missing]                               # corresponding labels ...
-      self.labels       = list(np.array(self.labels)[indices[present]])                             # ... for missing and present columns
-      self.__IO__['validReadSize'] = len(present)                                                   # update data width
-      use = indices[present]
+      labels_missing = np.array(labels)[missing]                                                    # labels of missing data
+
+      columns = []
+      for c in indices[present]:                                                                    # for all valid labels ...
+        columns += range(c,c+self.label_dimension(c))                                               # ... transparently add all components
+      use = np.array(columns)
+
+      self.labels = list(np.array(self.labels)[use])                                                # ... for missing and present columns
+      self.__IO__['validReadSize'] = len(use)                                                       # update data width
     
     try:
       self.data_rewind()                                                                            # try to wind back to start of data
