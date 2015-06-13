@@ -837,12 +837,12 @@ class Orientation:
     axis rotated according to orientation (using crystal symmetry to ensure location falls into SST)
     '''
 
-    for i,q in enumerate(self.symmetry.equivalentQuaternions(self.quaternion)):                 # test all symmetric equivalent orientations
-      if SST:                                                                                   # pole requested to be within SST
-          pole = q.conjugated()*axis                                                            # align crystal direction to axis
-          if self.symmetry.inSST(pole): break
-      else:
-        pole = q.conjugated()*axis                                                              # align crystal direction to axis
+    if SST:                                                                                  # pole requested to be within SST
+      for i,q in enumerate(self.symmetry.equivalentQuaternions(self.quaternion)):                         # test all symmetric equivalent orientations
+        pole = q.conjugated()*axis                                                           # align crystal direction to axis
+        if self.symmetry.inSST(pole): print i;break                                                  # found SST version
+    else:
+      pole = self.quaternion.conjugated()*axis                                               # align crystal direction to axis
 
     return pole
 
@@ -853,8 +853,8 @@ class Orientation:
 
     color = np.zeros(3,'d')
 
-    for i,q in enumerate(self.symmetry.equivalentQuaternions(self.quaternion)):
-      pole = q.conjugated()*axis                               # align crystal direction to axis
+    for q in self.symmetry.equivalentQuaternions(self.quaternion):
+      pole = q.conjugated()*axis                                                             # align crystal direction to axis
       inSST,color = self.symmetry.inSST(pole,color=True)
       if inSST: break
 
@@ -870,25 +870,29 @@ class Orientation:
     usage:
          a = Orientation(Eulers=np.radians([10, 10, 0]), symmetry='hexagonal')
          b = Orientation(Eulers=np.radians([20, 0, 0]), symmetry='hexagonal')
-         avg = Orientation.getAverageOrientation([a,b])"""
+         avg = Orientation.getAverageOrientation([a,b])
+    """
+
     if not all(isinstance(item, Orientation) for item in orientationList):
-        raise TypeError("Only instances of Orientation can be averaged.")
+      raise TypeError("Only instances of Orientation can be averaged.")
+
     n = len(orientationList)
     tmp_m = orientationList.pop(0).quaternion.asM()
     for tmp_o in orientationList:
       tmp_m += tmp_o.quaternion.asM()
     eig, vec = np.linalg.eig(tmp_m/n)
-    return Orientation( quaternion=Quaternion(quatArray=vec.T[eig.argmax()]) )
+
+    return Orientation(quaternion = Quaternion(quatArray = vec.T[eig.argmax()]))
 
 
-  def related(self, relationModel, direction, targetSymmetry=None):
+  def related(self, relationModel, direction, targetSymmetry = None):
   
     if relationModel not in ['KS','GT',"GT'",'NW','Bain']:  return None
 
     variant  = int(abs(direction))
-    me    = 0 if direction > 0 else 1
-    other = 1 if direction > 0 else 0
-    variant = variant -1
+    (me,other)  = (0,1) if direction > 0 else (1,0)
+
+    variant -= 1                                                          # why not subtracting two lines above??
 
     planes = {'KS': \
                     np.array([[[  1,  1,  1],[  0,  1,  1]],\
