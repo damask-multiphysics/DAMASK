@@ -243,7 +243,7 @@ class Color():
     self.color = converted.color
 
   
-  # ------------------------------------------------------------------                                     
+  # ------------------------------------------------------------------
   # convert CIE Lab to Msh colorspace  
   # from http://www.cs.unm.edu/~kmorel/documents/ColorMaps/DivergingColorMapWorkshop.xls
   def _CIELAB2MSH(self):
@@ -342,6 +342,60 @@ class Colormap():
   
   
   # ------------------------------------------------------------------  
+  def color(self,fraction = 0.5):
+    
+    def interpolate_Msh(lo, hi, frac):
+      
+      import math,numpy as np
+      
+      def rad_diff(a,b):
+        return abs(a[2]-b[2])
+      
+      def adjust_hue(Msh_sat, Msh_unsat):                                                                                              # if saturation of one of the two colors is too less than the other, hue of the less
+        if Msh_sat[0] >= Msh_unsat[0]:
+          return Msh_sat[2]
+        else:
+          hSpin = Msh_sat[1]/math.sin(Msh_sat[1])*math.sqrt(Msh_unsat[0]**2.0-Msh_sat[0]**2)/Msh_sat[0]
+          if Msh_sat[2] < - math.pi/3.0: hSpin *= -1.0
+          return Msh_sat[2] + hSpin
+      
+      Msh1 = np.array(lo[:])
+      Msh2 = np.array(hi[:])
+      
+      if (Msh1[1] > 0.05 and Msh2[1] > 0.05 and rad_diff(Msh1,Msh2) > math.pi/3.0): 
+        M_mid = max(Msh1[0],Msh2[0],88.0)
+        if frac < 0.5:
+          Msh2 = np.array([M_mid,0.0,0.0],'d')
+          frac *= 2.0
+        else:
+          Msh1 = np.array([M_mid,0.0,0.0],'d')
+          frac = 2.0*frac - 1.0
+      if   Msh1[1] < 0.05 and Msh2[1] > 0.05: Msh1[2] = adjust_hue(Msh2,Msh1)
+      elif Msh1[1] > 0.05 and Msh2[1] < 0.05: Msh2[2] = adjust_hue(Msh1,Msh2)
+      Msh = (1.0 - frac) * Msh1 + frac * Msh2
+      
+      return Color('MSH',Msh)
+    
+    def interpolate_linear(lo, hi, frac):
+      '''
+      linearly interpolate color at given fraction between lower and higher color in model of lower color
+      '''
+      
+      interpolation = (1.0 - frac) * numpy.array(lo.color[:]) \
+                           + frac  * numpy.array(hi.expressAs(lo.model).color[:])
+      
+      return Color(lo.model,interpolation)
+    
+    if self.interpolate == 'perceptualuniform':
+      return interpolate_Msh(self.left.expressAs('MSH').color,
+                             self.right.expressAs('MSH').color,fraction)
+    elif self.interpolate == 'linear':
+      return interpolate_linear(self.left,
+                                self.right,fraction)
+    else:
+      raise NameError('unknown color interpolation method')
+  
+  # ------------------------------------------------------------------  
   def export(self,name = 'uniformPerceptualColorMap',\
                   format = 'paraview',\
                   steps = 2,\
@@ -356,91 +410,35 @@ class Colormap():
     diverging map otherwise.
     '''
     
-    import copy,numpy,math
+    format = format.lower()                                                                       # consistent comparison basis
+    frac = 0.5*(numpy.array(crop) + 1.0)                                                          # rescale crop range to fractions
+    colors = [self.color(float(i)/(steps-1)*(frac[1]-frac[0])+frac[0]).expressAs(model).color for i in xrange(steps)]
     
-    def interpolate_Msh(lo, hi, frac):
-
-      def rad_diff(a,b):
-        return abs(a[2]-b[2])
-
-      def adjust_hue(Msh_sat, Msh_unsat):                                                                                              # if saturation of one of the two colors is too less than the other, hue of the less
-        if Msh_sat[0] >= Msh_unsat[0]:
-          return Msh_sat[2]
-        else:
-          hSpin = Msh_sat[1]/math.sin(Msh_sat[1])*math.sqrt(Msh_unsat[0]**2.0-Msh_sat[0]**2)/Msh_sat[0]
-          if Msh_sat[2] < - math.pi/3.0: hSpin *= -1.0
-          return Msh_sat[2] + hSpin
-     
-      Msh1 = numpy.array(lo[:])
-      Msh2 = numpy.array(hi[:])
-
-      if (Msh1[1] > 0.05 and Msh2[1] > 0.05 and rad_diff(Msh1,Msh2) > math.pi/3.0): 
-        M_mid = max(Msh1[0],Msh2[0],88.0)
-        if frac < 0.5:
-          Msh2 = numpy.array([M_mid,0.0,0.0],'d')
-          frac *= 2.0
-        else:
-          Msh1 = numpy.array([M_mid,0.0,0.0],'d')
-          frac = 2.0*frac - 1.0
-      if   Msh1[1] < 0.05 and Msh2[1] > 0.05: Msh1[2] = adjust_hue(Msh2,Msh1)
-      elif Msh1[1] > 0.05 and Msh2[1] < 0.05: Msh2[2] = adjust_hue(Msh1,Msh2)
-      Msh = (1.0 - frac) * Msh1 + frac * Msh2
-
-      return Color('MSH',Msh)
-
-    def interpolate_linear(lo, hi, frac):
-      '''
-      linearly interpolate color at given fraction between lower and higher color in model of lower color
-      '''
-
-      interpolation = (1.0 - frac) * numpy.array(lo.color[:]) \
-                           + frac  * numpy.array(hi.expressAs(lo.model).color[:])
-
-      return Color(lo.model,interpolation)
-
-    def write_paraview(RGB_vector):
-      colormap = '<ColorMap name="'+str(name)+'" space="Diverging">\n'
-      for i in range(len(RGB_vector)):
-        colormap += '<Point x="%i"'%i + \
-                    ' o="1" r="%g" g="%g" b="%g"/>\n'%(RGB_vector[i][0],RGB_vector[i][1],RGB_vector[i][2])
-      colormap += '</ColorMap>\n'
-      return colormap
+    if   format == 'paraview':
+      colormap = ['<ColorMap name="'+str(name)+'" space="Diverging">'] \
+               + ['<Point x="%i"'%i + ' o="1" r="%g" g="%g" b="%g"/>'%(color[0],color[1],color[2],) for i,color in colors] \
+               + ['</ColorMap>']
     
-    def write_gmsh(RGB_vector):
-      return  'View.ColorTable = {\n' \
-            + ',\n'.join(['{%s}'%(','.join(map(lambda x:str(x*255.0),v))) for v in RGB_vector]) \
-            + '\n}\n'
+    elif format == 'gmsh':
+      colormap = ['View.ColorTable = {'] \
+               + [',\n'.join(['{%s}'%(','.join(map(lambda x:str(x*255.0),color))) for color in colors])] \
+               + ['}']
     
-    def write_raw(RGB_vector):
-      return  '\n'.join(['%s'%('\t'.join(map(lambda x:str(x),v))) for v in RGB_vector]) \
-            + '\n'
+    elif format == 'gom':
+      colormap = ['1 1 ' + str(name) \
+                 + ' 9 ' + str(name) \
+                 + ' 0 1 0 3 0 0 -1 9 \ 0 0 0 255 255 255 0 0 255 ' \
+                 + '30 NO_UNIT 1 1 64 64 64 255 1 0 0 0 0 0 0 3 0 ' + str(len(colors)) \
+                 + ' '.join([' 0 %s 255 1'%(' '.join(map(lambda x:str(int(x*255.0)),color))) for color in reversed(colors)])]
     
-    def write_GOM(RGB_vector):
-      return '1 1 ' + str(name) + ' 9 ' + str(name) + ' 0 1 0 3 0 0 -1 9 \ 0 0 0 255 255 255 0 0 255 ' \
-                  + '30 NO_UNIT 1 1 64 64 64 255 1 0 0 0 0 0 0 3 0 ' + str(len(RGB_vector)) \
-                  + ' '.join([' 0 %s 255 1'%(' '.join(map(lambda x:str(int(x*255.0)),v))) for v in reversed(RGB_vector)])+'  '
-      
-      
-    colors = []
-    frac = (numpy.array(crop) + 1.0)/2.0
-
-    if self.interpolate == 'perceptualuniform':
-      for i in range(steps):
-        colors.append(interpolate_Msh(self.left.expressAs('MSH').color,
-                                      self.right.expressAs('MSH').color,
-                                      float(i)/(steps-1)*(frac[1]-frac[0])+frac[0]))
-    elif self.interpolate == 'linear':
-      for i in range(steps):
-        colors.append(interpolate_linear(self.left,
-                                         self.right,
-                                         float(i)/(steps-1)*(frac[1]-frac[0])+frac[0]))
+    elif format == 'raw':
+      colormap = ['\t'.join(map(str,color)) for color in colors]
+    
+    elif format == 'list':
+      colormap = colors
+    
     else:
-      raise NameError('unknown interpolation method')
-
-    return {\
-            'paraview': write_paraview,
-            'gmsh':     write_gmsh,
-            'gom':      write_GOM,
-            'raw':      write_raw,
-            'list':     lambda x: x,
-    }[format.lower()](map(lambda x:x.expressAs(model).color,colors))
+      raise NameError('unknown color export format')
+    
+    return '\n'.join(colormap) + '\n' if type(colormap[0]) is str else colormap
+      
