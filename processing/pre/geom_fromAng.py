@@ -75,7 +75,7 @@ for file in files:
   file['croak'].write('\033[1m' + scriptName + '\033[0m: ' + (file['name'] if file['name'] != 'STDIN' else '') + '\n')
 
   info = {
-          'grid':   np.zones(3,'i'),
+          'grid':   np.ones(3,'i'),
           'size':   np.zeros(3,'d'),
           'origin': np.zeros(3,'d'),
           'microstructures': 0,
