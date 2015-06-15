@@ -1,5 +1,7 @@
 # -*- coding: UTF-8 no BOM -*-
 
+import math,numpy as np
+
 ### --- COLOR CLASS --------------------------------------------------
 
 class Color():
@@ -8,7 +10,6 @@ class Color():
     Color('model',[vector]).To convert and copy color from one space to other, use the methods 
     convertTo('model') and expressAs('model')spectively
   '''
-  import numpy
   
   __slots__ = [
                'model',
@@ -19,8 +20,7 @@ class Color():
   # ------------------------------------------------------------------
   def __init__(self,
                model = 'RGB',
-               color = numpy.zeros(3,'d')):
-    import numpy
+               color = np.zeros(3,'d')):
     
     self.__transforms__ = \
                    {'HSL':    {'index': 0, 'next': self._HSL2RGB},
@@ -42,7 +42,7 @@ class Color():
       while color[0] < 0.0:  color[0] += 1.0                                                                                                             # rewind to proper range
 
     self.model = model
-    self.color = numpy.array(color,'d')
+    self.color = np.array(color,'d')
   
   
   # ------------------------------------------------------------------
@@ -83,7 +83,7 @@ class Color():
   # with S,L,H,R,G,B running from 0 to 1
   # from http://en.wikipedia.org/wiki/HSL_and_HSV
   def _HSL2RGB(self):
-    import numpy
+
     if self.model != 'HSL': return
     
     sextant = self.color[0]*6.0
@@ -91,14 +91,14 @@ class Color():
     x = c*(1.0 - abs(sextant%2 - 1.0))
     m = self.color[2] - 0.5*c
 
-    converted = Color('RGB',numpy.array([
-                                    [c+m, x+m, m],
-                                    [x+m, c+m, m],
-                                    [m, c+m, x+m],
-                                    [m, x+m, c+m],
-                                    [x+m, m, c+m],
-                                    [c+m, m, x+m],
-                                   ][int(sextant)],'d'))
+    converted = Color('RGB',np.array([
+                                      [c+m, x+m, m],
+                                      [x+m, c+m, m],
+                                      [m, c+m, x+m],
+                                      [m, x+m, c+m],
+                                      [x+m, m, c+m],
+                                      [c+m, m, x+m],
+                                     ][int(sextant)],'d'))
     self.model = converted.model
     self.color = converted.color
   
@@ -108,10 +108,10 @@ class Color():
   # with S,L,H,R,G,B running from 0 to 1
   # from http://130.113.54.154/~monger/hsl-rgb.html  
   def _RGB2HSL(self):
-    import numpy
+
     if self.model != 'RGB': return
 
-    HSL = numpy.zeros(3,'d')
+    HSL = np.zeros(3,'d')
     maxcolor = self.color.max()
     mincolor = self.color.min()
     HSL[2] = (maxcolor + mincolor)/2.0
@@ -146,19 +146,19 @@ class Color():
   # with all values in the range of 0 to 1
   # from http://www.cs.rit.edu/~ncs/color/t_convert.html
   def _RGB2XYZ(self):
-    import numpy
+
     if self.model != 'RGB': return
 
-    XYZ     = numpy.zeros(3,'d') 
-    RGB_lin = numpy.zeros(3,'d')
-    convert = numpy.array([[0.412453,0.357580,0.180423],
-                           [0.212671,0.715160,0.072169],
-                           [0.019334,0.119193,0.950227]])
+    XYZ     = np.zeros(3,'d') 
+    RGB_lin = np.zeros(3,'d')
+    convert = np.array([[0.412453,0.357580,0.180423],
+                        [0.212671,0.715160,0.072169],
+                        [0.019334,0.119193,0.950227]])
  
     for i in xrange(3):
       if (self.color[i] > 0.04045): RGB_lin[i] = ((self.color[i]+0.0555)/1.0555)**2.4
       else:                         RGB_lin[i] =   self.color[i]        /12.92
-    XYZ = numpy.dot(convert,RGB_lin)
+    XYZ = np.dot(convert,RGB_lin)
     for i in xrange(3):
       
       XYZ[i] = max(XYZ[i],0.0) 
@@ -173,14 +173,14 @@ class Color():
   # with all values in the range of 0 to 1
   # from http://www.cs.rit.edu/~ncs/color/t_convert.html
   def _XYZ2RGB(self):
-    import numpy
+
     if self.model != 'XYZ': return
 
-    convert = numpy.array([[ 3.240479,-1.537150,-0.498535],
-                           [-0.969256, 1.875992, 0.041556],
-                           [ 0.055648,-0.204043, 1.057311]])
-    RGB_lin = numpy.dot(convert,self.color)
-    RGB     = numpy.zeros(3,'d')
+    convert = np.array([[ 3.240479,-1.537150,-0.498535],
+                        [-0.969256, 1.875992, 0.041556],
+                        [ 0.055648,-0.204043, 1.057311]])
+    RGB_lin = np.dot(convert,self.color)
+    RGB     = np.zeros(3,'d')
 
     for i in xrange(3):
       if (RGB_lin[i] > 0.0031308): RGB[i] = ((RGB_lin[i])**(1.0/2.4))*1.0555-0.0555
@@ -202,11 +202,11 @@ class Color():
   # with XYZ in the range of 0 to 1
   # from http://www.easyrgb.com/index.php?X=MATH&H=07#text7
   def _CIELAB2XYZ(self):
-    import numpy
+
     if self.model != 'CIELAB': return
     
-    ref_white = numpy.array([.95047, 1.00000, 1.08883],'d')                                                                                              # Observer = 2, Illuminant = D65
-    XYZ       = numpy.zeros(3,'d') 
+    ref_white = np.array([.95047, 1.00000, 1.08883],'d')                                                                                              # Observer = 2, Illuminant = D65
+    XYZ       = np.zeros(3,'d') 
 
     XYZ[1] = (self.color[0] + 16.0 ) / 116.0
     XYZ[0] = XYZ[1]   + self.color[1]/ 500.0
@@ -226,19 +226,19 @@ class Color():
   # with XYZ in the range of 0 to 1
   # from http://en.wikipedia.org/wiki/Lab_color_space, http://www.cs.rit.edu/~ncs/color/t_convert.html
   def _XYZ2CIELAB(self):
-    import numpy
+
     if self.model != 'XYZ': return
     
-    ref_white = numpy.array([.95047, 1.00000, 1.08883],'d')                                                                                              # Observer = 2, Illuminant = D65
+    ref_white = np.array([.95047, 1.00000, 1.08883],'d')                                                                                              # Observer = 2, Illuminant = D65
     XYZ = self.color/ref_white
       
     for i in xrange(len(XYZ)):
       if (XYZ[i] > 216./24389 ): XYZ[i] = XYZ[i]**(1.0/3.0)
       else:                      XYZ[i] = (841./108. * XYZ[i]) + 16.0/116.0
         
-    converted = Color('CIELAB', numpy.array([ 116.0 *  XYZ[1] - 16.0,
-                                              500.0 * (XYZ[0] - XYZ[1]),
-                                              200.0 * (XYZ[1] - XYZ[2]) ]))
+    converted = Color('CIELAB', np.array([ 116.0 *  XYZ[1] - 16.0,
+                                           500.0 * (XYZ[0] - XYZ[1]),
+                                           200.0 * (XYZ[1] - XYZ[2]) ]))
     self.model = converted.model
     self.color = converted.color
 
@@ -247,11 +247,11 @@ class Color():
   # convert CIE Lab to Msh colorspace  
   # from http://www.cs.unm.edu/~kmorel/documents/ColorMaps/DivergingColorMapWorkshop.xls
   def _CIELAB2MSH(self):
-    import numpy, math
+    
     if self.model != 'CIELAB': return
     
-    Msh = numpy.zeros(3,'d') 
-    Msh[0] = math.sqrt(numpy.dot(self.color,self.color))
+    Msh = np.zeros(3,'d') 
+    Msh[0] = math.sqrt(np.dot(self.color,self.color))
     if (Msh[0] > 0.001):
       Msh[1] = math.acos(self.color[0]/Msh[0])
       if (self.color[1] != 0.0):
@@ -267,10 +267,10 @@ class Color():
   # s,h in radians
   # from http://www.cs.unm.edu/~kmorel/documents/ColorMaps/DivergingColorMapWorkshop.xls
   def _MSH2CIELAB(self):
-    import numpy, math
+
     if self.model != 'MSH': return
     
-    Lab = numpy.zeros(3,'d') 
+    Lab = np.zeros(3,'d') 
     Lab[0] = self.color[0] * math.cos(self.color[1])
     Lab[1] = self.color[0] * math.sin(self.color[1]) * math.cos(self.color[2])
     Lab[2] = self.color[0] * math.sin(self.color[1]) * math.sin(self.color[2])
@@ -345,9 +345,7 @@ class Colormap():
   def color(self,fraction = 0.5):
     
     def interpolate_Msh(lo, hi, frac):
-      
-      import math,numpy as np
-      
+            
       def rad_diff(a,b):
         return abs(a[2]-b[2])
       
@@ -381,8 +379,8 @@ class Colormap():
       linearly interpolate color at given fraction between lower and higher color in model of lower color
       '''
       
-      interpolation = (1.0 - frac) * numpy.array(lo.color[:]) \
-                           + frac  * numpy.array(hi.expressAs(lo.model).color[:])
+      interpolation = (1.0 - frac) * np.array(lo.color[:]) \
+                           + frac  * np.array(hi.expressAs(lo.model).color[:])
       
       return Color(lo.model,interpolation)
     
@@ -411,7 +409,7 @@ class Colormap():
     '''
     
     format = format.lower()                                                                       # consistent comparison basis
-    frac = 0.5*(numpy.array(crop) + 1.0)                                                          # rescale crop range to fractions
+    frac = 0.5*(np.array(crop) + 1.0)                                                          # rescale crop range to fractions
     colors = [self.color(float(i)/(steps-1)*(frac[1]-frac[0])+frac[0]).expressAs(model).color for i in xrange(steps)]
     
     if   format == 'paraview':
