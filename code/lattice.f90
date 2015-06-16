@@ -998,8 +998,7 @@ subroutine lattice_init
    IO_isBlank, &
    IO_stringPos, &
    IO_stringValue, &
-   IO_floatValue, &
-   IO_EOF
+   IO_floatValue
  use material, only: &
    material_configfile, &
    material_localFileExt, &
