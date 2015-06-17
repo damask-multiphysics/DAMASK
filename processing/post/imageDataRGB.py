@@ -27,23 +27,23 @@ parser.add_option('--fliplr',     dest='flipLR', action='store_true',
                                   help='flip around vertical axis')
 parser.add_option('--flipud',     dest='flipUD', action='store_true',
                                   help='flip around horizontal axis')
-parser.add_option('--crop',       dest='crop', type='int', nargs=4, metavar='LEFT RIGHT TOP BOTTOM',
+parser.add_option('--crop',       dest='crop', type='int', nargs=4, metavar=' '.join(['int']*4),
                                   help='pixels cropped on left, right, top, bottom')
 parser.add_option('--show',       dest='show', action='store_true',
                                   help='show resulting image')
 parser.add_option('-N','--pixelsize', dest='pixelsize', type='int',
-                                  help='pixel per data point')
+                                  help='pixels per data point')
 parser.add_option('-x','--pixelsizex', dest='pixelsizex', type='int',
-                                  help='pixel per data point along x')
+                                  help='pixels per data point along x')
 parser.add_option('-y','--pixelsizey', dest='pixelsizey', type='int',
-                                  help='pixel per data point along y')
+                                  help='pixels per data point along y')
 
 parser.set_defaults(label = None,
                     dimension = [],
                     flipLR = False,
                     flipUD = False,
                     crop = [0,0,0,0],
-                    pixelsize = 1,
+                    pixelsize  = 1,
                     pixelsizex = 1,
                     pixelsizey = 1,
                     show = False,
@@ -74,15 +74,22 @@ for name in filenames:
 
   table = damask.ASCIItable(file['input'],file['output'],
                             buffered = False,                                                       # make unbuffered ASCII_table
-                            labels = options.label != None)                                         # no labels when taking 2D dataset
+                            labels = True)
   table.head_read()                                                                                 # read ASCII header info
 
 # ------------------------------------------ process data ------------------------------------------
 
-  missing_labels = table.data_readArray(["%i_%s"%(i,options.label) for i in [1,2,3]])
-
+  errors = []
+  
+  missing_labels = table.data_readArray(options.label)
   if len(missing_labels) > 0:
-    file['croak'].write('column%s %s not found...\n'%('s' if len(missing_labels) > 1 else '',', '.join(missing_labels)))
+    errors.append('column%s %s not found'%('s' if len(missing_labels) > 1 else '',
+                                                ', '.join(missing_labels)))
+  if table.label_dimension(options.label) != 3:
+    errors.append('column %s has wrong dimension'%options.label)
+
+  if errors != []:
+    file['croak'].write('\n'.join(errors))
     table.close(dismiss = True)                                                                     # close ASCII table file handles and delete output file
     continue
 
