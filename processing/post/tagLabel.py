@@ -42,7 +42,7 @@ for name in filenames:
 
   table = damask.ASCIItable(file['input'],file['output'],buffered=False)                            # make unbuffered ASCII_table
   table.head_read()                                                                                 # read ASCII header info
-  table.info_append(scriptID + '\t' + ' '.join(sys.argv[1:]))
+  
 
 # ------------------------------------------ process labels ---------------------------------------  
 
@@ -52,7 +52,6 @@ for name in filenames:
   else:                                                                                             # tag individual candidates
     indices    = table.label_index    (options.label)
     dimensions = table.label_dimension(options.label)
-    print indices,dimensions
     for i,index in enumerate(indices):
       if index == -1:
         file['croak'].write('label %s not present...\n'%options.label[i])
