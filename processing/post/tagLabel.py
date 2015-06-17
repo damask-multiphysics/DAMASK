@@ -41,7 +41,8 @@ for name in filenames:
     file['croak'].write('\033[1m'+scriptName+'\033[0m: '+file['name']+'\n')
 
   table = damask.ASCIItable(file['input'],file['output'],buffered=False)                            # make unbuffered ASCII_table
-  table.head_read()                                                                                 # read ASCII header info
+  table.head_read()
+  table.info_append(scriptID + '\t' + ' '.join(sys.argv[1:]))                                                                                # read ASCII header info
   
 
 # ------------------------------------------ process labels ---------------------------------------  
