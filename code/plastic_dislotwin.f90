@@ -1794,7 +1794,7 @@ subroutine plastic_dislotwin_dotState(Tstar_v,Temperature,ipc,ip,el)
         plastic_dislotwin_CAtomicVolume(instance)*plastic_dislotwin_burgersPerSlipSystem(j,instance)**(3.0_pReal)
       VacancyDiffusion = &
         plastic_dislotwin_D0(instance)*exp(-plastic_dislotwin_Qsd(instance)/(kB*Temperature))
-      if (abs(tau_slip(j)) <= tiny(0.0_pReal)) then
+      if (abs(tau_slip(j)) <= tiny(0.0_pReal)) then                                                                      ! why no annihilation if tau == 0???
         DotRhoEdgeDipClimb(j) = 0.0_pReal
       else
         ClimbVelocity(j) = &
@@ -2014,8 +2014,8 @@ function plastic_dislotwin_postResults(Tstar_v,Temperature,ipc,ip,el)
         j = 0_pInt
         do f = 1_pInt,lattice_maxNslipFamily                                                        ! loop over all slip families
            index_myFamily = sum(lattice_NslipSystem(1:f-1_pInt,ph))                                 ! at which index starts my family
-           do i = 1_pInt,plastic_dislotwin_Nslip(f,instance)                                   ! process each (active) slip system in family
-              j = j + 1_pInt
+           do i = 1_pInt,plastic_dislotwin_Nslip(f,instance)                                        ! process each (active) slip system in family
+              j = j + 1_pInt                                                                        ! could be taken from state by now!
  
               !* Resolved shear stress on slip system
               tau = dot_product(Tstar_v,lattice_Sslip_v(:,1,index_myFamily+i,ph))
