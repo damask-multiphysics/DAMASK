@@ -50,7 +50,10 @@ class ASCIItable():
 
 # ------------------------------------------------------------------
   def input_close(self):
-    self.__IO__['in'].close()
+    try:
+      self.__IO__['in'].close()
+    except:
+      pass
 
 # ------------------------------------------------------------------
   def output_write(self,
@@ -84,7 +87,10 @@ class ASCIItable():
 
 # ------------------------------------------------------------------
   def output_close(self, dismiss = False):
-    self.__IO__['out'].close()
+    try:
+      self.__IO__['out'].close()
+    except:
+      pass
     if dismiss and os.path.isfile(self.__IO__['out'].name): os.remove(self.__IO__['out'].name)
 
 # ------------------------------------------------------------------
@@ -343,7 +349,7 @@ class ASCIItable():
         columns += range(c,c+self.label_dimension(c))                                               # ... transparently add all components
       use = np.array(columns)
 
-      self.labels = list(np.array(self.labels)[use])                                                # ... for missing and present columns
+      self.labels = list(np.array(self.labels)[use]) if use != [] else []                           # ... for missing and present columns
       self.__IO__['validReadSize'] = len(use)                                                       # update data width
     
     try:
