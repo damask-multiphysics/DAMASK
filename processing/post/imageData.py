@@ -58,7 +58,7 @@ parser.set_defaults(label = None,
                     color = "gray",
                     invert = False,
                     crop = [0,0,0,0],
-                    pixelsize = 1,
+                    pixelsize  = 1,
                     pixelsizex = 1,
                     pixelsizey = 1,
                     show = False,
@@ -111,11 +111,19 @@ for name in filenames:
   if options.log:             table.data = np.log10(table.data);options.range = np.log10(options.range)
   if options.flipLR:          table.data = np.fliplr(table.data)
   if options.flipUD:          table.data = np.flipud(table.data)
-  if np.all(np.array(options.range) == 0.0): options.range = [table.data.min(),table.data.max()]
+  if np.all(np.array(options.range) == 0.0):
+    options.range = [table.data.min(),table.data.max()]
+    file['croak'].write('data range: %g -- %g\n'%(options.range[0],options.range[1]))
+
+  delta =      max(options.range) - min(options.range)
+  avg   = 0.5*(max(options.range) + min(options.range))
+  print delta,avg,delta/avg
+  if delta * 1e8 <= avg:                                                                           # delta around numerical noise
+    options.range = [min(options.range) - 0.5*avg, max(options.range) + 0.5*avg]                   # extend range to have actual data centered within
 
   table.data =         (table.data - min(options.range)) / \
                (max(options.range) - min(options.range))
-
+  
   table.data = np.clip(table.data,0.0,1.0).\
                   repeat(options.pixelsizex,axis=1).\
                   repeat(options.pixelsizey,axis=0)
