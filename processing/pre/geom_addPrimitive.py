@@ -60,7 +60,7 @@ if options.angleaxis != []:
   rotation = damask.Quaternion().fromAngleAxis(np.radians(options.angleaxis[0]) if options.degrees else options.angleaxis[0],
                                                options.angleaxis[1:4]).conjugated()
 elif options.quaternion != []:
-  options.rotation = map(float,options.rotation)
+  options.quaternion = map(float,options.quaternion)
   rotation = damask.Quaternion(options.quaternion).conjugated()
 else:
   rotation = damask.Quaternion().conjugated()
