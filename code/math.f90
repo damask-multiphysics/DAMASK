@@ -1465,10 +1465,10 @@ pure function math_EulerToR(Euler)
  real(pReal) c1, c, c2, s1, s, s2
 
  C1 = cos(Euler(1))
- C = cos(Euler(2))
+ C  = cos(Euler(2))
  C2 = cos(Euler(3))
  S1 = sin(Euler(1))
- S = sin(Euler(2))
+ S  = sin(Euler(2))
  S2 = sin(Euler(3))
 
  math_EulerToR(1,1)=C1*C2-S1*S2*C
@@ -1936,7 +1936,7 @@ end function math_sampleGaussVar
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief symmetric Euler angles for given symmetry 1:triclinic, 2:monoclinic, 4:orthotropic
+!> @brief symmetrically equivalent Euler angles for given sample symmetry 1:triclinic, 2:monoclinic, 4:orthotropic
 !--------------------------------------------------------------------------------------------------
 pure function math_symmetricEulers(sym,Euler)
 
