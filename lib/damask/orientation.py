@@ -58,36 +58,36 @@ class Quaternion:
       omega = math.acos(self.w)
       vRescale = math.sin(exponent*omega)/math.sin(omega)
       Q = Quaternion()
+      Q.w = math.cos(exponent*omega)
       Q.x = self.x * vRescale
       Q.y = self.y * vRescale
       Q.z = self.z * vRescale
-      Q.w = math.cos(exponent*omega)
       return Q
 
     def __ipow__(self, exponent):
-      omega = math.acos(self.w)
+      omega    = math.acos(self.w)
       vRescale = math.sin(exponent*omega)/math.sin(omega)
+      self.w  = np.cos(exponent*omega)
       self.x *= vRescale
       self.y *= vRescale
       self.z *= vRescale
-      self.w = np.cos(exponent*omega)
       return self
 
     def __mul__(self, other):
       try:                                                          # quaternion
+          Aw = self.w
           Ax = self.x
           Ay = self.y
           Az = self.z
-          Aw = self.w
+          Bw = other.w
           Bx = other.x
           By = other.y
           Bz = other.z
-          Bw = other.w
           Q = Quaternion()
+          Q.w = - Ax * Bx - Ay * By - Az * Bz + Aw * Bw
           Q.x = + Ax * Bw + Ay * Bz - Az * By + Aw * Bx
           Q.y = - Ax * Bz + Ay * Bw + Az * Bx + Aw * By
           Q.z = + Ax * By - Ay * Bx + Az * Bw + Aw * Bz
-          Q.w = - Ax * Bx - Ay * By - Az * Bz + Aw * Bw
           return Q
       except: pass
       try:                                                         # vector (perform active rotation, i.e. q*v*q.conjugated)
@@ -309,10 +309,7 @@ class Quaternion:
 
       angle = math.atan2(y,x)
 
-      if angle < 1e-3:
-          return angle, np.array([1.0, 0.0, 0.0])
-      else:
-          return angle, np.array([self.x / s, self.y / s, self.z / s])
+      return angle, np.array([1.0, 0.0, 0.0] if angle < 1e-3 else [self.x / s, self.y / s, self.z / s])
 
     def asRodrigues(self):
       if self.w != 0.0:
@@ -320,7 +317,7 @@ class Quaternion:
       else:
           return np.array([float('inf')]*3)
 
-    def asEulers(self,type='bunge'):
+    def asEulers(self,type='bunge',degrees=False):
       '''
       conversion taken from:
       Melcher, A.; Unser, A.; Reichhardt, M.; Nestler, B.; Pötschke, M.; Selzer, M.
@@ -362,7 +359,7 @@ class Quaternion:
 #        if angles[2] < 0.0:
 #          angles[2] += 2*math.pi
 
-      return angles
+      return np.degrees(angles) if degrees else angles
 
 
 #    # Static constructors
@@ -407,12 +404,15 @@ class Quaternion:
 
     @classmethod
     def fromEulers(cls, eulers, type = 'Bunge'):
-        c1 = math.cos(eulers[0] / 2.0)
-        s1 = math.sin(eulers[0] / 2.0)
-        c2 = math.cos(eulers[1] / 2.0)
-        s2 = math.sin(eulers[1] / 2.0)
-        c3 = math.cos(eulers[2] / 2.0)
-        s3 = math.sin(eulers[2] / 2.0)
+
+        eulers *= 0.5                                                                  # reduce to half angles
+
+        c1 = math.cos(eulers[0])
+        s1 = math.sin(eulers[0])
+        c2 = math.cos(eulers[1])
+        s2 = math.sin(eulers[1])
+        c3 = math.cos(eulers[2])
+        s3 = math.sin(eulers[2])
 
         if type.lower() == 'bunge' or type.lower() == 'zxz':
           w =   c1 * c2 * c3 - s1 * c2 * s3
@@ -797,10 +797,19 @@ class Orientation:
   def asMatrix(self):
     return self.quaternion.asMatrix()
 
+  def inFZ(self):
+    return self.symmetry.inFZ(self.quaternion.asRodrigues())
+
+  def equivalentQuaternions(self):
+    return self.symmetry.equivalentQuaternions(self.quaternion)
+
+  def equivalentOrientations(self):
+    return map(lambda q: Orientation(quaternion=q,symmetry=self.symmetry.lattice),
+               self.equivalentQuaternions())
 
   def reduced(self):
     '''
-    Transform orientation to fall into fundamental zone according to own (or given) symmetry
+    Transform orientation to fall into fundamental zone according to symmetry
     '''
 
     for me in self.symmetry.equivalentQuaternions(self.quaternion):
@@ -821,9 +830,7 @@ class Orientation:
     for me in self.symmetry.equivalentQuaternions(self.quaternion):
       me.conjugate()
       for they in other.symmetry.equivalentQuaternions(other.quaternion):
-#        theQ = me * they
         theQ = they * me
-#        if theQ.x < 0.0 or theQ.y < 0.0 or theQ.z < 0.0: theQ.conjugate()                   # speed up scanning since minimum angle is usually found for positive x,y,z
         breaker = lowerSymmetry.inDisorientationSST(theQ.asRodrigues()) #\
 #               or lowerSymmetry.inDisorientationSST(theQ.conjugated().asRodrigues())
         if breaker: break
@@ -838,9 +845,9 @@ class Orientation:
     '''
 
     if SST:                                                                                  # pole requested to be within SST
-      for i,q in enumerate(self.symmetry.equivalentQuaternions(self.quaternion)):                         # test all symmetric equivalent orientations
+      for i,q in enumerate(self.symmetry.equivalentQuaternions(self.quaternion)):            # test all symmetric equivalent quaternions
         pole = q.conjugated()*axis                                                           # align crystal direction to axis
-        if self.symmetry.inSST(pole): print i;break                                                  # found SST version
+        if self.symmetry.inSST(pole): break                                                  # found SST version
     else:
       pole = self.quaternion.conjugated()*axis                                               # align crystal direction to axis
 
@@ -869,18 +876,18 @@ class Orientation:
          doi: 10.2514/1.28949
     usage:
          a = Orientation(Eulers=np.radians([10, 10, 0]), symmetry='hexagonal')
-         b = Orientation(Eulers=np.radians([20, 0, 0]), symmetry='hexagonal')
+         b = Orientation(Eulers=np.radians([20, 0, 0]),  symmetry='hexagonal')
          avg = Orientation.getAverageOrientation([a,b])
     """
 
     if not all(isinstance(item, Orientation) for item in orientationList):
       raise TypeError("Only instances of Orientation can be averaged.")
 
-    n = len(orientationList)
-    tmp_m = orientationList.pop(0).quaternion.asM()
-    for tmp_o in orientationList:
-      tmp_m += tmp_o.quaternion.asM()
-    eig, vec = np.linalg.eig(tmp_m/n)
+    N = len(orientationList)
+    M = orientationList.pop(0).quaternion.asM()
+    for o in orientationList:
+      M += o.quaternion.asM()
+    eig, vec = np.linalg.eig(M/N)
 
     return Orientation(quaternion = Quaternion(quatArray = vec.T[eig.argmax()]))
 
@@ -1081,16 +1088,17 @@ class Orientation:
                               [[  0,  0,  1],[  1,  0,  1]],
                               [[  1,  0,  0],[  1,  1,  0]]]),
               }
-    myPlane  = planes [relationModel][variant,me]
-    myNormal = normals[relationModel][variant,me]
-    myPlane  = myPlane/np.linalg.norm(myPlane)
-    myNormal = myNormal/np.linalg.norm(myNormal)
-    myMatrix = np.array([myPlane,myNormal,np.cross(myNormal,myPlane)])
+    myPlane   = planes [relationModel][variant,me]
+    myPlane  /= np.linalg.norm(myPlane)
+    myNormal  = normals[relationModel][variant,me]
+    myNormal /= np.linalg.norm(myNormal)
+    myMatrix  = np.array([myPlane,myNormal,np.cross(myNormal,myPlane)])
 
-    otherPlane  = planes [relationModel][variant,other]
-    otherNormal = normals[relationModel][variant,other]
-    otherPlane  = otherPlane/np.linalg.norm(otherPlane)
-    otherNormal = otherNormal/np.linalg.norm(otherNormal)
-    otherMatrix = np.array([otherPlane,otherNormal,np.cross(otherNormal,otherPlane)])
-    myMatrix = np.dot(self.asMatrix(),myMatrix)
-    return Orientation(matrix=np.dot(otherMatrix.T,myMatrix))
+    otherPlane   = planes [relationModel][variant,other]
+    otherPlane  /= np.linalg.norm(otherPlane)
+    otherNormal  = normals[relationModel][variant,other]
+    otherNormal /= np.linalg.norm(otherNormal)
+    otherMatrix  = np.array([otherPlane,otherNormal,np.cross(otherNormal,otherPlane)])
+    myMatrix     = np.dot(self.asMatrix(),myMatrix)
+
+    return Orientation(matrix=np.dot(otherMatrix.T,myMatrix))                                       # no symmetry information ??
