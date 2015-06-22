@@ -294,6 +294,22 @@ module lattice
      6,  9  &
      ],pInt),[2_pInt,LATTICE_fcc_Ntrans])
  
+ real(pReal), dimension(3+3,LATTICE_fcc_Ntrans), parameter, private :: &
+   LATTICE_fccTohex_systemTrans = reshape(real( [&
+     -2, 1, 1,     1, 1, 1, &
+      1,-2, 1,     1, 1, 1, &
+      1, 1,-2,     1, 1, 1, &
+      2,-1, 1,    -1,-1, 1, &
+     -1, 2, 1,    -1,-1, 1, &
+     -1,-1,-2,    -1,-1, 1, &
+     -2,-1,-1,     1,-1,-1, &
+      1, 2,-1,     1,-1,-1, &
+      1,-1, 2,     1,-1,-1, &
+      2, 1,-1,    -1, 1,-1, &
+     -1,-2,-1,    -1, 1,-1, &
+     -1, 1, 2,    -1, 1,-1  &
+     ],pReal),[ 3_pInt + 3_pInt,LATTICE_fcc_Ntrans])
+
  real(pReal), dimension(3+3,LATTICE_fcc_Ncleavage), parameter, private :: &
    LATTICE_fcc_systemCleavage = reshape(real([&
     ! Cleavage direction     Plane normal
@@ -1338,6 +1354,7 @@ subroutine lattice_initializeStructure(myPhase,CoverA,CoverA_trans,a_fcc,a_bcc)
    math_norm3, &
    math_mul33x33, &
    math_mul33x3, &
+   math_transpose33, &
    math_trace33, &
    math_symmetric33, &
    math_Mandel33to6, &
@@ -1361,6 +1378,8 @@ subroutine lattice_initializeStructure(myPhase,CoverA,CoverA_trans,a_fcc,a_bcc)
  real(pReal), dimension(3) :: &
    sdU, snU, &
    np,  nn
+ real(pReal), dimension(3,3) :: &
+   sstr, sdtr, sttr
  real(pReal), dimension(3,lattice_maxNslip) :: &
    sd,  sn
  real(pReal), dimension(3,3,2,lattice_maxNnonSchmid,lattice_maxNslip) :: &
@@ -1455,6 +1474,25 @@ subroutine lattice_initializeStructure(myPhase,CoverA,CoverA_trans,a_fcc,a_bcc)
            endif
            Qtr(1:3,1:3,i) = math_mul33x33(Rtr(1:3,1:3,i), Btr(1:3,1:3,i))
            Str(1:3,1:3,i) = math_mul33x33(Rtr(1:3,1:3,i), Utr(1:3,1:3,i)) - MATH_I3
+         enddo
+       case (LATTICE_hex_ID)
+         sstr(1:3,1:3) = MATH_I3
+         sstr(1,3)     = sqrt(2.0_pReal)/4.0_pReal
+         sdtr(1:3,1:3) = MATH_I3
+         if (CoverA_trans > 1.0_pReal .and. CoverA_trans < 2.0_pReal) then
+           sdtr(3,3) = CoverA_trans/sqrt(8.0_pReal/3.0_pReal)
+         endif
+         sttr = math_mul33x33(sdtr, sstr)
+         do i = 1_pInt,myNtrans
+           xtr(1:3,i) = lattice_fccTohex_systemTrans(1:3,i)/math_norm3(lattice_fccTohex_systemTrans(1:3,i))
+           ztr(1:3,i) = lattice_fccTohex_systemTrans(4:6,i)/math_norm3(lattice_fccTohex_systemTrans(4:6,i))
+           ytr(1:3,i) = -math_vectorproduct(xtr(1:3,i), ztr(1:3,i))
+           Rtr(1:3,1,i) = xtr(1:3,i)
+           Rtr(1:3,2,i) = ytr(1:3,i)
+           Rtr(1:3,3,i) = ztr(1:3,i)
+           Qtr(1:3,1:3,i) = Rtr(1:3,1:3,i)
+           Str(1:3,1:3,i) = math_mul33x33(Rtr(1:3,1:3,i), math_mul33x33(sttr, math_transpose33(Rtr(1:3,1:3,i))))
+           Str(1:3,1:3,i) = Str(1:3,1:3,i) - MATH_I3
          enddo
        case default
          Qtr = 0.0_pReal
