@@ -89,13 +89,13 @@ module lattice
    LATTICE_fcc_NtransSystem = int([12, 0],pInt)                                                     !< total # of transformation systems per family for fcc
    
  integer(pInt), dimension(LATTICE_maxNcleavageFamily), parameter, public :: &
-   LATTICE_fcc_NcleavageSystem = int([3, 4, 0],pInt)                                                   !< total # of cleavage systems per family for fcc
+   LATTICE_fcc_NcleavageSystem = int([3, 4, 0],pInt)                                                !< total # of cleavage systems per family for fcc
    
  integer(pInt), parameter, private  :: &
    LATTICE_fcc_Nslip = 12_pInt, & ! sum(lattice_fcc_NslipSystem), &                                 !< total # of slip systems for fcc
    LATTICE_fcc_Ntwin = 12_pInt, & ! sum(lattice_fcc_NtwinSystem)                                    !< total # of twin systems for fcc
    LATTICE_fcc_NnonSchmid = 0_pInt, &                                                               !< total # of non-Schmid contributions for fcc
-   LATTICE_fcc_Ntrans  = 12_pInt, &                                                                 !< total # of transformations for fcc
+   LATTICE_fcc_Ntrans     = 12_pInt, &                                                              !< total # of transformations for fcc
    LATTICE_fcc_Ncleavage  = 7_pInt                                                                  !< total # of cleavage systems for fcc
  
  real(pReal), dimension(3+3,LATTICE_fcc_Nslip), parameter, private :: &
@@ -1333,7 +1333,6 @@ subroutine lattice_initializeStructure(myPhase,CoverA,CoverA_trans,a_fcc,a_bcc)
  use prec, only: &
   tol_math_check
  use math, only: &
-   math_identity2nd, &
    math_vectorproduct, &
    math_tensorproduct, &
    math_norm3, &
@@ -1345,7 +1344,8 @@ subroutine lattice_initializeStructure(myPhase,CoverA,CoverA_trans,a_fcc,a_bcc)
    math_Mandel3333to66, &
    math_Voigt66to3333, &
    math_axisAngleToR, &
-   INRAD
+   INRAD, &
+   MATH_I3
  use IO, only: &
    IO_error, &
    IO_warning
@@ -1370,9 +1370,9 @@ subroutine lattice_initializeStructure(myPhase,CoverA,CoverA_trans,a_fcc,a_bcc)
  real(pReal), dimension(lattice_maxNtwin) :: &
    ts
  real(pReal), dimension(3,lattice_maxNtrans) :: &
-   xb, yb, zb
+   xtr, ytr, ztr
  real(pReal), dimension(3,3,lattice_maxNtrans) :: &
-   Rtr, Utr, Btr
+   Rtr, Utr, Btr, Qtr, Str
  real(pReal), dimension(3,lattice_maxNcleavage) :: &
    cd,  cn, ct
  integer(pInt) :: &
@@ -1444,17 +1444,21 @@ subroutine lattice_initializeStructure(myPhase,CoverA,CoverA_trans,a_fcc,a_bcc)
                               lattice_fcc_systemTrans(4,i)*INRAD)
            Btr(1:3,1:3,i) = math_axisAngleToR(lattice_fcc_bainRot(1:3,i), &                          ! Rotation of fcc to Bain coordinate system
                               lattice_fcc_bainRot(4,i)*INRAD)
-
-           xb(1:3,i) = real(LATTICE_fcc_bainVariant(1:3,i),pReal)
-           yb(1:3,i) = real(LATTICE_fcc_bainVariant(4:6,i),pReal)
-           zb(1:3,i) = real(LATTICE_fcc_bainVariant(7:9,i),pReal)
+           xtr(1:3,i) = real(LATTICE_fcc_bainVariant(1:3,i),pReal)
+           ytr(1:3,i) = real(LATTICE_fcc_bainVariant(4:6,i),pReal)
+           ztr(1:3,i) = real(LATTICE_fcc_bainVariant(7:9,i),pReal)
            Utr(1:3,1:3,i) = 0.0_pReal                                                                ! Bain deformation
            if ((a_fcc > 0.0_pReal) .and. (a_bcc > 0.0_pReal)) then
-             Utr(1:3,1:3,i) = (a_bcc/a_fcc)*math_tensorproduct(xb(1:3,i), xb(1:3,i)) + &
-              sqrt(2.0_pReal)*(a_bcc/a_fcc)*math_tensorproduct(yb(1:3,i), yb(1:3,i)) + &
-              sqrt(2.0_pReal)*(a_bcc/a_fcc)*math_tensorproduct(zb(1:3,i), zb(1:3,i))
+             Utr(1:3,1:3,i) = (a_bcc/a_fcc)*math_tensorproduct(xtr(1:3,i), xtr(1:3,i)) + &
+              sqrt(2.0_pReal)*(a_bcc/a_fcc)*math_tensorproduct(ytr(1:3,i), ytr(1:3,i)) + &
+              sqrt(2.0_pReal)*(a_bcc/a_fcc)*math_tensorproduct(ztr(1:3,i), ztr(1:3,i))
            endif
+           Qtr(1:3,1:3,i) = math_mul33x33(Rtr(1:3,1:3,i), Btr(1:3,1:3,i))
+           Str(1:3,1:3,i) = math_mul33x33(Rtr(1:3,1:3,i), Utr(1:3,1:3,i)) - MATH_I3
          enddo
+       case default
+         Qtr = 0.0_pReal
+         Str = 0.0_pReal
      end select
 
      lattice_NslipSystem(1:lattice_maxNslipFamily,myPhase)          = lattice_fcc_NslipSystem
@@ -1641,8 +1645,8 @@ subroutine lattice_initializeStructure(myPhase,CoverA,CoverA_trans,a_fcc,a_bcc)
      call IO_error(301_pInt,myPhase,ext_msg = 'dilatational twin Schmid matrix')
  enddo
  do i = 1_pInt,myNtrans
-   lattice_Qtrans(1:3,1:3,i,myPhase) = math_mul33x33(Rtr(1:3,1:3,i), Btr(1:3,1:3,i))
-   lattice_Strans(1:3,1:3,i,myPhase) = math_mul33x33(Rtr(1:3,1:3,i), Utr(1:3,1:3,i)) - math_identity2nd(3)
+   lattice_Qtrans(1:3,1:3,i,myPhase) = Qtr(1:3,1:3,i)
+   lattice_Strans(1:3,1:3,i,myPhase) = Str(1:3,1:3,i)
    lattice_Strans_v(1:6,i,myPhase)   = math_Mandel33to6(math_symmetric33(lattice_Strans(1:3,1:3,i,myPhase)))
  enddo
  do i = 1_pInt,myNcleavage                                                                              ! store slip system vectors and Schmid matrix for my structure
