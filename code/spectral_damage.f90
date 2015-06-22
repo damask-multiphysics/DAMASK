@@ -257,6 +257,8 @@ end function spectral_damage_solution
 !> @brief forms the spectral damage residual vector
 !--------------------------------------------------------------------------------------------------
 subroutine spectral_damage_formResidual(in,x_scal,f_scal,dummy,ierr)
+ use numerics, only: &
+   residualStiffness
  use mesh, only: &
    gridLocal
  use math, only: &
@@ -325,7 +327,7 @@ subroutine spectral_damage_formResidual(in,x_scal,f_scal,dummy,ierr)
  call utilities_fourierGreenConvolution(D_ref, mobility_ref, params%timeinc)
  call utilities_FFTscalarBackward()
  where(scalarField_realMPI > 1.0_pReal) scalarField_realMPI = 1.0_pReal
- where(scalarField_realMPI < 0.0_pReal) scalarField_realMPI = 0.0_pReal
+ where(scalarField_realMPI < residualStiffness) scalarField_realMPI = residualStiffness
  
 !--------------------------------------------------------------------------------------------------
 ! constructing residual
