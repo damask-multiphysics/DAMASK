@@ -209,7 +209,7 @@ module lattice
      ],pInt),[lattice_fcc_Ntwin,lattice_fcc_Ntwin],order=[2,1])                                     !< Twin--twin interaction types for fcc
      
  real(pReal), dimension(4,LATTICE_fcc_Ntrans), parameter, private :: &
-   LATTICE_fcc_systemTrans = reshape([&
+   LATTICE_fccTobcc_systemTrans = reshape([&
      0.0, 1.0, 0.0,     10.26, &                                                                    ! Pitsch OR (Ma & Hartmaier 2014, Table 3)
      0.0, 1.0, 0.0,    -10.26, &
      0.0, 0.0, 1.0,     10.26, &
@@ -225,7 +225,7 @@ module lattice
      ],[ 4_pInt,LATTICE_fcc_Ntrans])
 
  integer(pInt), dimension(9,LATTICE_fcc_Ntrans), parameter, private :: &
-   LATTICE_fcc_bainVariant = reshape(int( [&
+   LATTICE_fccTobcc_bainVariant = reshape(int( [&
      1, 0, 0, 0, 1, 0, 0, 0, 1, &                                                                   ! Pitsch OR (Ma & Hartmaier 2014, Table 3)
      1, 0, 0, 0, 1, 0, 0, 0, 1, &
      1, 0, 0, 0, 1, 0, 0, 0, 1, &
@@ -241,7 +241,7 @@ module lattice
      ],pInt),[ 9_pInt, LATTICE_fcc_Ntrans])
 
  real(pReal), dimension(4,LATTICE_fcc_Ntrans), parameter, private :: &
-   LATTICE_fcc_bainRot = reshape([&
+   LATTICE_fccTobcc_bainRot = reshape([&
      1.0, 0.0, 0.0,     45.0, &                                                                    ! Rotate fcc austensite to bain variant
      1.0, 0.0, 0.0,     45.0, &
      1.0, 0.0, 0.0,     45.0, &
@@ -257,7 +257,7 @@ module lattice
      ],[ 4_pInt,LATTICE_fcc_Ntrans])
 
  real(pReal), dimension(LATTICE_fcc_Ntrans,LATTICE_fcc_Ntrans), parameter, private :: &            ! Matrix for projection of shear from slip system to fault-band (twin) systems
-   LATTICE_fcc_projectionTrans = reshape(real([&                                                        ! For ns = nt = nr
+   LATTICE_fccTobcc_projectionTrans = reshape(real([&                                                        ! For ns = nt = nr
      0, 1,-1,  0, 0, 0,  0, 0, 0,  0, 0, 0, &                                                                    
     -1, 0, 1,  0, 0, 0,  0, 0, 0,  0, 0, 0, &
      1,-1, 0,  0, 0, 0,  0, 0, 0,  0, 0, 0, &
@@ -273,13 +273,13 @@ module lattice
      ],pReal),[LATTICE_fcc_Ntrans,LATTICE_fcc_Ntrans],order=[2,1])
 
  real(pReal), parameter, private  :: &
-   LATTICE_fcc_projectionTransFactor = sqrt(3.0_pReal/4.0_pReal)
+   LATTICE_fccTobcc_projectionTransFactor = sqrt(3.0_pReal/4.0_pReal)
 
  real(pReal), parameter, public  :: &
-   LATTICE_fcc_shearCritTrans = 0.0224
+   LATTICE_fccTobcc_shearCritTrans = 0.0224
 
  integer(pInt), dimension(2_pInt,LATTICE_fcc_Ntrans), parameter, public :: &
-   LATTICE_fcc_transNucleationTwinPair = reshape(int( [&
+   LATTICE_fccTobcc_transNucleationTwinPair = reshape(int( [&
      4,  7, &
      1, 10, &
      1,  4, &
@@ -1440,13 +1440,13 @@ subroutine lattice_initializeStructure(myPhase,CoverA,CoverA_trans,a_fcc,a_bcc)
      select case(trans_lattice_structure(myPhase))
        case (LATTICE_bcc_ID)                                                                         ! fcc to bcc transformation                         
          do i = 1_pInt,myNtrans
-           Rtr(1:3,1:3,i) = math_axisAngleToR(lattice_fcc_systemTrans(1:3,i), &                      ! Pitsch rotation
-                              lattice_fcc_systemTrans(4,i)*INRAD)
-           Btr(1:3,1:3,i) = math_axisAngleToR(lattice_fcc_bainRot(1:3,i), &                          ! Rotation of fcc to Bain coordinate system
-                              lattice_fcc_bainRot(4,i)*INRAD)
-           xtr(1:3,i) = real(LATTICE_fcc_bainVariant(1:3,i),pReal)
-           ytr(1:3,i) = real(LATTICE_fcc_bainVariant(4:6,i),pReal)
-           ztr(1:3,i) = real(LATTICE_fcc_bainVariant(7:9,i),pReal)
+           Rtr(1:3,1:3,i) = math_axisAngleToR(lattice_fccTobcc_systemTrans(1:3,i), &                      ! Pitsch rotation
+                              lattice_fccTobcc_systemTrans(4,i)*INRAD)
+           Btr(1:3,1:3,i) = math_axisAngleToR(lattice_fccTobcc_bainRot(1:3,i), &                          ! Rotation of fcc to Bain coordinate system
+                              lattice_fccTobcc_bainRot(4,i)*INRAD)
+           xtr(1:3,i) = real(LATTICE_fccTobcc_bainVariant(1:3,i),pReal)
+           ytr(1:3,i) = real(LATTICE_fccTobcc_bainVariant(4:6,i),pReal)
+           ztr(1:3,i) = real(LATTICE_fccTobcc_bainVariant(7:9,i),pReal)
            Utr(1:3,1:3,i) = 0.0_pReal                                                                ! Bain deformation
            if ((a_fcc > 0.0_pReal) .and. (a_bcc > 0.0_pReal)) then
              Utr(1:3,1:3,i) = (a_bcc/a_fcc)*math_tensorproduct(xtr(1:3,i), xtr(1:3,i)) + &
@@ -1470,7 +1470,8 @@ subroutine lattice_initializeStructure(myPhase,CoverA,CoverA_trans,a_fcc,a_bcc)
      lattice_interactionSlipTwin(1:myNslip,1:myNtwin,myPhase)       = lattice_fcc_interactionSlipTwin
      lattice_interactionTwinSlip(1:myNtwin,1:myNslip,myPhase)       = lattice_fcc_interactionTwinSlip
      lattice_interactionTwinTwin(1:myNtwin,1:myNtwin,myPhase)       = lattice_fcc_interactionTwinTwin
-     lattice_projectionTrans(1:myNtrans,1:myNtrans,myPhase)         = LATTICE_fcc_projectionTrans*LATTICE_fcc_projectionTransFactor
+     lattice_projectionTrans(1:myNtrans,1:myNtrans,myPhase)         = LATTICE_fccTobcc_projectionTrans*&
+       LATTICE_fccTobcc_projectionTransFactor
 
 !--------------------------------------------------------------------------------------------------
 ! bcc

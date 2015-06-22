@@ -1687,8 +1687,8 @@ subroutine plastic_dislotwin_dotState(Tstar_v,Temperature,ipc,ip,el)
    lattice_mu, &
    lattice_structure, &
    lattice_fcc_twinNucleationSlipPair, &
-   lattice_fcc_transNucleationTwinPair, &
-   lattice_fcc_shearCritTrans, &
+   lattice_fccTobcc_transNucleationTwinPair, &
+   lattice_fccTobcc_shearCritTrans, &
    LATTICE_fcc_ID
 
  implicit none
@@ -1900,8 +1900,8 @@ subroutine plastic_dislotwin_dotState(Tstar_v,Temperature,ipc,ip,el)
       !* Probability rate of fault band intersection for strain-induced martensite nucleation
       select case(lattice_structure(ph))
         case (LATTICE_fcc_ID)
-          a = lattice_fcc_transNucleationTwinPair(1,j)
-          b = lattice_fcc_transNucleationTwinPair(2,j)
+          a = lattice_fccTobcc_transNucleationTwinPair(1,j)
+          b = lattice_fccTobcc_transNucleationTwinPair(2,j)
           sa  = sign(1_pInt, a)
           sb  = sign(1_pInt, b)
           ssa = int(sign(1.0_pReal, shearrate_trans(a)),pInt)
@@ -1912,7 +1912,7 @@ subroutine plastic_dislotwin_dotState(Tstar_v,Temperature,ipc,ip,el)
           else
             probrate_trans(j) = 0.0_pReal
           endif
-          probrate_trans(j) = probrate_trans(j)/lattice_fcc_shearCritTrans**2
+          probrate_trans(j) = probrate_trans(j)/lattice_fccTobcc_shearCritTrans**2
 
           !* Dotstate for strain-induced martensite volume fraction
           plasticState(ph)%dotState(3_pInt*ns+2_pInt*nt+nr+j, of) = plastic_dislotwin_Cnuc(instance)*&
