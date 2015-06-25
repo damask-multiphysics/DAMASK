@@ -1091,14 +1091,14 @@ class Orientation:
     myPlane  /= np.linalg.norm(myPlane)
     myNormal  = [float(i) for i in normals[relationModel][variant,me]]                              # map(float, planes[...]) does not work in python 3
     myNormal /= np.linalg.norm(myNormal)
-    myMatrix  = np.array([myPlane,myNormal,np.cross(myNormal,myPlane)])
+    myMatrix  = np.array([myPlane,myNormal,np.cross(myPlane,myNormal)])
 
     otherPlane   = [float(i) for i in planes[relationModel][variant,other]]                         # map(float, planes[...]) does not work in python 3
     otherPlane  /= np.linalg.norm(otherPlane)
     otherNormal  = [float(i) for i in normals[relationModel][variant,other]]                        # map(float, planes[...]) does not work in python 3
     otherNormal /= np.linalg.norm(otherNormal)
-    otherMatrix  = np.array([otherPlane,otherNormal,np.cross(otherNormal,otherPlane)])
-     
-    rot=np.dot(otherMatrix,myMatrix.T)
+    otherMatrix  = np.array([otherPlane,otherNormal,np.cross(otherPlane,otherNormal)])
+
+    rot=np.dot(otherMatrix.T,myMatrix)
 
     return Orientation(matrix=np.dot(rot,self.asMatrix()))                                      # no symmetry information ??
