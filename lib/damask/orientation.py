@@ -895,11 +895,10 @@ class Orientation:
   def related(self, relationModel, direction, targetSymmetry = None):
   
     if relationModel not in ['KS','GT',"GT'",'NW','Bain']:  return None
+    if int(direction) == 0:  return None
 
-    variant  = int(abs(direction))
+    variant  = int(abs(direction))-1
     (me,other)  = (0,1) if direction > 0 else (1,0)
-
-    variant -= 1                                                          # why not subtracting two lines above??
 
     planes = {'KS': \
                     np.array([[[  1,  1,  1],[  0,  1,  1]],\
@@ -1088,17 +1087,18 @@ class Orientation:
                               [[  0,  0,  1],[  1,  0,  1]],
                               [[  1,  0,  0],[  1,  1,  0]]]),
               }
-    myPlane   = planes [relationModel][variant,me]
+    myPlane   = [float(i) for i in planes[relationModel][variant,me]]                               # map(float, planes[...]) does not work in python 3
     myPlane  /= np.linalg.norm(myPlane)
-    myNormal  = normals[relationModel][variant,me]
+    myNormal  = [float(i) for i in normals[relationModel][variant,me]]                              # map(float, planes[...]) does not work in python 3
     myNormal /= np.linalg.norm(myNormal)
     myMatrix  = np.array([myPlane,myNormal,np.cross(myNormal,myPlane)])
 
-    otherPlane   = planes [relationModel][variant,other]
+    otherPlane   = [float(i) for i in planes[relationModel][variant,other]]                         # map(float, planes[...]) does not work in python 3
     otherPlane  /= np.linalg.norm(otherPlane)
-    otherNormal  = normals[relationModel][variant,other]
+    otherNormal  = [float(i) for i in normals[relationModel][variant,other]]                        # map(float, planes[...]) does not work in python 3
     otherNormal /= np.linalg.norm(otherNormal)
     otherMatrix  = np.array([otherPlane,otherNormal,np.cross(otherNormal,otherPlane)])
-    myMatrix     = np.dot(self.asMatrix(),myMatrix)
+     
+    rot=np.dot(otherMatrix,myMatrix.T)
 
-    return Orientation(matrix=np.dot(otherMatrix.T,myMatrix))                                       # no symmetry information ??
+    return Orientation(matrix=np.dot(rot,self.asMatrix()))                                      # no symmetry information ??
