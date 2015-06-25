@@ -1189,7 +1189,7 @@ class Criterion(object):
         raise RuntimeError("Optimal parameters not found: " + errmsg)
       else:
         residual = criteria.fun(popt, ydata, stress)
-        fitResidual.append(np.linalg.norm(residual)/len(residual))
+        fitResidual.append(np.linalg.norm(residual)/np.sqrt(len(residual)))
       if (len(ydata) > len(initialguess)) and pcov is not None:
         s_sq = (criteria.fun(popt, *(ydata,stress))**2).sum()/(len(ydata)-len(initialguess))
         pcov = pcov * s_sq
