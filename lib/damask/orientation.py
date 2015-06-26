@@ -4,7 +4,7 @@
 # NOTE: everything here needs to be a np array #
 ###################################################
 
-import math,random
+import math,random,os
 import numpy as np
 
 # ******************************************************************************************
@@ -369,7 +369,10 @@ class Quaternion:
 
 
     @classmethod
-    def fromRandom(cls):
+    def fromRandom(cls,randomSeed=None):
+        if randomSeed == None:
+          randomSeed = int(os.urandom(4).encode('hex'), 16)
+        random.seed(randomSeed)
         r1 = random.random()
         r2 = random.random()
         r3 = random.random()
@@ -750,11 +753,14 @@ class Orientation:
                angleAxis  = None,
                matrix     = None,
                Eulers     = None,
-               random     = False,
+               random     = False,                                                     # put any integer to have a fixed seed or True for real random
                symmetry   = None,
               ):
     if random:                                                                         # produce random orientation
-      self.quaternion = Quaternion.fromRandom()
+      if isinstance(random, bool ):
+        self.quaternion = Quaternion.fromRandom()
+      else:
+        self.quaternion = Quaternion.fromRandom(randomSeed=random)
     elif isinstance(Eulers, np.ndarray) and Eulers.shape == (3,):                      # based on given Euler angles
       self.quaternion = Quaternion.fromEulers(Eulers,'bunge')
     elif isinstance(matrix, np.ndarray) :                                              # based on given rotation matrix
