@@ -16,13 +16,13 @@ module lattice
  implicit none
  private
  integer(pInt), parameter, public :: &
-   LATTICE_maxNslipFamily     =  6_pInt, &                                                          !< max # of slip system families over lattice structures
+   LATTICE_maxNslipFamily     =  10_pInt, &                                                          !< max # of slip system families over lattice structures
    LATTICE_maxNtwinFamily     =  4_pInt, &                                                          !< max # of twin system families over lattice structures
    LATTICE_maxNtransFamily    =  2_pInt, &                                                          !< max # of transformation system families over lattice structures
    LATTICE_maxNcleavageFamily =  3_pInt, &                                                          !< max # of transformation system families over lattice structures
    LATTICE_maxNslip           = 33_pInt, &                                                          !< max # of slip systems over lattice structures
    LATTICE_maxNtwin           = 24_pInt, &                                                          !< max # of twin systems over lattice structures
-   LATTICE_maxNinteraction    = 42_pInt, &                                                          !< max # of interaction types (in hardening matrix part)
+   LATTICE_maxNinteraction    = 110_pInt, &                                                          !< max # of interaction types (in hardening matrix part)
    LATTICE_maxNnonSchmid      = 6_pInt, &                                                           !< max # of non schmid contributions over lattice structures
    LATTICE_maxNtrans          = 12_pInt, &                                                          !< max # of transformations over lattice structures
    LATTICE_maxNcleavage       = 9_pInt                                                              !< max # of cleavage over lattice structures
@@ -80,7 +80,7 @@ module lattice
 !--------------------------------------------------------------------------------------------------
 ! fcc
  integer(pInt), dimension(LATTICE_maxNslipFamily), parameter, public :: & 
-   LATTICE_fcc_NslipSystem = int([12, 0, 0, 0, 0, 0],pInt)                                          !< total # of slip systems per family for fcc
+   LATTICE_fcc_NslipSystem = int([12, 0, 0, 0, 0, 0, 0, 0, 0, 0],pInt)                        !< total # of slip systems per family for fcc
    
  integer(pInt), dimension(LATTICE_maxNtwinFamily), parameter, public :: &
    LATTICE_fcc_NtwinSystem = int([12, 0, 0, 0],pInt)                                                !< total # of twin systems per family for fcc
@@ -325,7 +325,7 @@ module lattice
 !--------------------------------------------------------------------------------------------------
 ! bcc
  integer(pInt), dimension(LATTICE_maxNslipFamily), parameter, public :: &
-   LATTICE_bcc_NslipSystem = int([ 12, 12, 0, 0, 0, 0], pInt)                                       !< total # of slip systems per family for bcc
+   LATTICE_bcc_NslipSystem = int([ 12, 12, 0, 0, 0, 0, 0, 0, 0, 0], pInt)                      !< total # of slip systems per family for bcc
    
  integer(pInt), dimension(LATTICE_maxNtwinFamily), parameter, public :: &
    LATTICE_bcc_NtwinSystem = int([ 12, 0, 0, 0], pInt)                                              !< total # of twin systems per family for bcc
@@ -506,8 +506,6 @@ module lattice
                                                                                                     !< 1: self interaction
                                                                                                     !< 2: collinear interaction
                                                                                                     !< 3: other interaction
- 
-
  real(pReal), dimension(3+3,LATTICE_bcc_Ncleavage), parameter, private :: &
    LATTICE_bcc_systemCleavage = reshape(real([&
     ! Cleavage direction     Plane normal
@@ -525,7 +523,7 @@ module lattice
 !--------------------------------------------------------------------------------------------------
 ! hex
  integer(pInt), dimension(LATTICE_maxNslipFamily), parameter, public :: &
-   lattice_hex_NslipSystem = int([ 3, 3, 3, 6, 12, 6],pInt)                                         !< # of slip systems per family for hex
+   lattice_hex_NslipSystem = int([ 3, 3, 3, 6, 12, 6, 0, 0, 0, 0],pInt)                             !< # of slip systems per family for hex
    
  integer(pInt), dimension(LATTICE_maxNtwinFamily), parameter, public :: &
    lattice_hex_NtwinSystem = int([ 6, 6, 6, 6],pInt)                                                !< # of slip systems per family for hex 
@@ -688,7 +686,7 @@ module lattice
      42,42,42,  41,41,41,  40,40,40,  39,39,39,39,39,39,  38,38,38,38,38,38,38,38,38,38,38,38,  37,37,37,37,36,37, &
      42,42,42,  41,41,41,  40,40,40,  39,39,39,39,39,39,  38,38,38,38,38,38,38,38,38,38,38,38,  37,37,37,37,37,36  &  
     !
-           ],pInt),[LATTICE_hex_Nslip,LATTICE_hex_Nslip],order=[2,1])                                     !< Slip--slip interaction types for hex (32? in total)
+           ],pInt),[LATTICE_hex_Nslip,LATTICE_hex_Nslip],order=[2,1])                                     !< Slip--slip interaction types for hex (onion peel naming scheme)
   
  integer(pInt), dimension(LATTICE_hex_Nslip,LATTICE_hex_Ntwin), parameter, public :: &
    LATTICE_hex_interactionSlipTwin = reshape(int( [&
@@ -803,6 +801,216 @@ module lattice
       0, 0, 0, 1,     0, 1,-1, 0  &
      ],pReal),[ 4_pInt + 4_pInt,LATTICE_hex_Ncleavage])
 
+
+
+!--------------------------------------------------------------------------------------------------
+! bct
+ integer(pInt), dimension(LATTICE_maxNslipFamily), parameter, public :: &
+   LATTICE_bct_NslipSystem = int([2, 2, 2, 4, 2, 4, 2, 2, 4, 8 ],pInt)                         !< # of slip systems per family for bct (Sn) Bieler J. Electr Mater 2009
+
+ integer(pInt), dimension(LATTICE_maxNtwinFamily), parameter, public :: &
+   LATTICE_bct_NtwinSystem = int([0, 0, 0, 0], pInt)                                              !< total # of twin systems per family for bct-example
+
+ integer(pInt), dimension(LATTICE_maxNtransFamily), parameter, public :: &
+   LATTICE_bct_NtransSystem = int([0,0],pInt)                                                       !< total # of transformation systems per family for bcc
+
+ integer(pInt), dimension(LATTICE_maxNcleavageFamily), parameter, public :: &
+   LATTICE_bct_NcleavageSystem = int([0,0,0],pInt)                                                    !< total # of cleavage systems per family for bcc
+ 
+   
+ integer(pInt), parameter , private :: &
+   LATTICE_bct_Nslip = 32_pInt, & ! sum(lattice_bct_NslipSystem),                                   !< total # of slip systems for bct 
+   LATTICE_bct_Ntwin = 0_pInt, & ! sum(lattice_bcc_NtwinSystem)                                    !< total # of twin systems for bcc
+   LATTICE_bct_NnonSchmid = 0_pInt, &                                                               !< # of non-Schmid contributions for bcc
+   LATTICE_bct_Ntrans  = 0_pInt, &                                                                  !< total # of transformations for bcc
+   LATTICE_bct_Ncleavage  = 0_pInt                                                                  !< total # of transformations for bcc
+ 
+ real(pReal), dimension(3+3,LATTICE_bct_Nslip), parameter, private :: &
+   LATTICE_bct_systemSlip = reshape(real([&
+    ! Slip direction     Plane normal
+    ! Slip family 1 {100)<001] (Bravais notation {hkl)<uvw] for bct c/a = 0.5456)
+      0, 0, 1,      1, 0, 0, &
+      0, 0, 1,      0, 1, 0, &
+    ! Slip family 2 {110)<001]
+      0, 0, 1,      1, 1, 0, &
+      0, 0, 1,     -1, 1, 0, &
+    ! slip family 3 {100)<010] 
+      0,  1, 0,     1, 0, 0, &
+      1,  0, 0,     0, 1, 0, &
+    ! Slip family 4 {110)<1-11]
+      1,-1, 1,      1, 1, 0, &
+      1,-1,-1,      1, 1, 0, &
+     -1,-1,-1,     -1, 1, 0, &
+     -1,-1, 1,     -1, 1, 0, &
+    ! Slip family 5 {110)<1-10]
+      1, -1, 0,     1, 1, 0, &
+      1,  1, 0,     1,-1, 0, &
+    ! Slip family 6 {100)<011] 
+      0, 1, 1,      1, 0, 0, &
+      0,-1, 1,      1, 0, 0, &
+     -1, 0, 1,      0, 1, 0, &
+      1, 0, 1,      0, 1, 0, &  
+    ! Slip family 7 {001)<010] 
+      0, 1, 0,      0, 0, 1, &
+      1, 0, 0,      0, 0, 1, &
+    ! Slip family 8 {001)<110] 
+      1, 1, 0,      0, 0, 1, &
+     -1, 1, 0,      0, 0, 1, &  
+    ! Slip family 9 {011)<01-1] 
+      0, 1,-1,      0, 1, 1, &
+      0,-1,-1,      0,-1, 1, &
+     -1, 0,-1,     -1, 0, 1, &
+      1, 0,-1,      1, 0, 1, &  
+    ! Slip family 10 {211)<01-1] 
+      0, 1,-1,      2, 1, 1, &
+      0,-1,-1,      2,-1, 1, &
+      1, 0,-1,      1, 2, 1, &
+     -1, 0,-1,     -1, 2, 1, &  
+      0, 1,-1,     -2, 1, 1, &
+      0,-1,-1,     -2,-1, 1, &
+     -1, 0,-1,     -1,-2, 1, &
+      1, 0,-1,      1,-2, 1  &  
+      ],pReal),[ 3_pInt + 3_pInt,LATTICE_bct_Nslip])                                                 !< slip systems for bct sorted by Bieler
+
+ integer(pInt), dimension(LATTICE_bct_Nslip,LATTICE_bct_Nslip), parameter, public :: &
+   LATTICE_bct_interactionSlipSlip = reshape(int( [&
+ 1,2, 3,3, 7,7, 13,13,13,13, 21, 21,     31, 31, 31, 31,     43, 43,  57, 57,  73, 73, 73, 73,& 
+ 91, 91, 91, 91, 91, 91, 91, 91,&
+ 2,1, 3,3,  7,7, 13,13,13,13, 21, 21,     31, 31, 31, 31,  43, 43,  57, 57,  73, 73, 73, 73,   & 
+ 91, 91, 91, 91, 91, 91, 91, 91,&
+ 
+ 6,6,  4,5, 8,8, 14,14,14,14, 22, 22,  32, 32, 32, 32,  44, 44,  58, 58,  74, 74, 74, 74,& 
+ 92, 92, 92, 92, 92, 92, 92, 92,&
+ 6,6, 5,4, 8,8, 14,14,14,14, 22, 22,  32, 32, 32, 32,  44, 44,  58, 58,  74, 74, 74, 74,   & 
+ 92, 92, 92, 92, 92, 92, 92, 92,&
+ 
+ 12,12, 11,11, 9,10, 15,15,15,15, 23, 23,  33, 33, 33, 33,     45, 45,  59, 59,  75, 75, 75, 75,& 
+ 93, 93, 93, 93, 93, 93, 93, 93,&
+ 12,12, 11,11, 10,9, 15,15,15,15, 23, 23,  33, 33, 33, 33,     45, 45,  59, 59,  75, 75, 75, 75,& 
+ 93, 93, 93, 93, 93, 93, 93, 93,&
+ 
+ 20,20, 19,19, 18,18, 16,17,17,17, 24, 24,  34, 34, 34, 34,     46, 46,  60, 60,  76, 76, 76, 76,   & 
+ 94, 94, 94, 94, 94, 94, 94, 94,&
+ 20,20, 19,19, 18,18, 17,16,17,17, 24, 24,  34, 34, 34, 34,     46, 46,     60, 60,  76, 76, 76, 76,   & 
+ 94, 94, 94, 94, 94, 94, 94, 94,&
+ 20,20, 19,19, 18,18, 17,17,16,17, 24, 24,  34, 34, 34, 34,     46, 46,  60, 60,  76, 76, 76, 76,& 
+ 94, 94, 94, 94, 94, 94, 94, 94,&
+ 20,20, 19,19, 18,18,  17,17,17,16, 24, 24,     34, 34, 34, 34,  46, 46,  60, 60,  76, 76, 76, 76,& 
+ 94, 94, 94, 94, 94, 94, 94, 94,&
+ 
+ 30,30, 29,29, 28,28, 27,27,27,27,    25, 26,  35, 35, 35, 35,  47, 47,  61, 61,  77, 77, 77, 77,   & 
+ 95, 95, 95, 95, 95, 95, 95, 95,&
+ 30,30, 29,29, 28,28, 27,27,27,27, 26, 25,  35, 35, 35, 35,  47, 47,  61, 61,  77, 77, 77, 77,& 
+ 95, 95, 95, 95, 95, 95, 95, 95,&
+ 
+ 42,42, 41,41, 40,40, 39,39,39,39, 38, 38,     36, 37, 37, 37,     48, 48,  62, 62,  78, 78, 78, 78,   & 
+ 96, 96, 96, 96, 96, 96, 96, 96,&
+ 42,42, 41,41, 40,40, 39,39,39,39, 38, 38,  37, 36, 37, 37,  48, 48,  62, 62,  78, 78, 78, 78,   & 
+ 96, 96, 96, 96, 96, 96, 96, 96,&
+ 42,42, 41,41, 40,40, 39,39,39,39, 38, 38,  37, 37, 36, 37,     48, 48,   62, 62,  78, 78, 78, 78,   & 
+ 96, 96, 96, 96, 96, 96, 96, 96,&
+ 42,42, 41,41, 40,40, 39,39,39,39, 38, 38,  37, 37, 37, 36,     48, 48,  62, 62,  78, 78, 78, 78,   & 
+ 96, 96, 96, 96, 96, 96, 96, 96,&
+ 
+ 56,56, 55,55,  54,54, 53,53,53,53, 52, 52,  51, 51, 51, 51,     49, 50,  63, 63,  79, 79, 79, 79,   & 
+ 97, 97, 97, 97, 97, 97, 97, 97,&
+ 56,56, 55,55,  54,54, 53,53,53,53, 52, 52,  51, 51, 51, 51,     50, 49,  63, 63,  79, 79, 79, 79,   & 
+ 97, 97, 97, 97, 97, 97, 97, 97,&
+
+ 72,72, 71,71,  70,70, 69,69,69,69, 68, 68,  67, 67, 67, 67,     66, 66,     64, 65,     80, 80, 80, 80,   & 
+ 98, 98, 98, 98, 98, 98, 98, 98,&
+ 72,72, 71,71,  70,70, 69,69,69,69, 68, 68,  67, 67, 67, 67,     66, 66,     65, 64,  80, 80, 80, 80,& 
+ 98, 98, 98, 98, 98, 98, 98, 98,&
+
+ 90,90, 89,89,  88,88, 87,87,87,87, 86, 86,  85, 85, 85, 85,  84, 84,  83, 83,  81, 82, 82, 82,& 
+ 99, 99, 99, 99, 99, 99, 99, 99,&
+ 90,90, 89,89,  88,88, 87,87,87,87, 86, 86,  85, 85, 85, 85,     84, 84,  83, 83,  82, 81, 82, 82,& 
+ 99, 99, 99, 99, 99, 99, 99, 99,&
+ 90,90, 89,89,  88,88, 87,87,87,87, 86, 86,  85, 85, 85, 85,  84, 84,  83, 83,  82, 82, 81, 82,& 
+ 99, 99, 99, 99, 99, 99, 99, 99,&
+ 90,90, 89,89,  88,88, 87,87,87,87, 86, 86,  85, 85, 85, 85,  84, 84,  83, 83,  82, 82, 82, 81,& 
+ 99, 99, 99, 99, 99, 99, 99, 99,&
+
+ 110,110, 109,109, 108,108, 107,107,107,107, 106, 106,  105, 105, 105, 105,  104, 104,  103, 103,&
+  102, 102, 102, 102,  100, 101, 101, 101, 101, 101, 101, 101,&
+ 110,110, 109,109, 108,108, 107,107,107,107, 106, 106,  105, 105, 105, 105,  104, 104,  103, 103,&
+  102, 102, 102, 102,  101, 100, 101, 101, 101, 101, 101, 101,&
+ 110,110, 109,109, 108,108, 107,107,107,107, 106, 106,  105, 105, 105, 105,  104, 104,  103, 103,&
+  102, 102, 102, 102,  101, 101, 100, 101, 101, 101, 101, 101,&
+ 110,110, 109,109, 108,108, 107,107,107,107, 106, 106,  105, 105, 105, 105,  104, 104,  103, 103,&
+  102, 102, 102, 102,  101, 101, 101, 100, 101, 101, 101, 101,&
+ 110,110, 109,109, 108,108, 107,107,107,107, 106, 106,  105, 105, 105, 105,  104, 104,  103, 103,&
+  102, 102, 102, 102,  101, 101, 101, 101, 100, 101, 101, 101,&
+ 110,110, 109,109, 108,108, 107,107,107,107, 106, 106,  105, 105, 105, 105,  104, 104,  103, 103,&
+  102, 102, 102, 102,  101, 101, 101, 101, 101, 100, 101, 101,&
+ 110,110, 109,109, 108,108, 107,107,107,107, 106, 106,  105, 105, 105, 105,  104, 104,  103, 103,&
+  102, 102, 102, 102,  101, 101, 101, 101, 101, 101, 100, 101,&
+ 110,110, 109,109, 108,108, 107,107,107,107, 106, 106,  105, 105, 105, 105,  104, 104,  103, 103,&
+  102, 102, 102, 102,     101, 101, 101, 101, 101, 101, 101, 100 &
+ ],pInt),[lattice_bct_Nslip,lattice_bct_Nslip],order=[2,1])                                  
+
+! integer(pInt), dimension(LATTICE_bct_Nslip,LATTICE_bct_Ntwin), parameter, public :: &
+!  LATTICE_bct_interactionSlipTwin = reshape(int( [&
+! 1, 1,   2, 2, &    ! ---> twin
+! 1, 1,   2, 2, &    ! |
+!                    ! v  slip 
+! 3, 3,   4, 4, &
+! 3, 3,   4, 4, &
+!!
+! 5, 5,   6, 6, &
+! 5, 5,   6, 6, &
+!!
+! 7, 7,   8, 8, &
+! 7, 7,   8, 8, &
+! 7, 7,   8, 8, &
+! 7, 7,   8, 8, &
+!!
+! 9, 9,   10, 10, &
+! 9, 9,   10, 10, &
+! !
+! 11, 11,   12, 12, & 
+! 11, 11,   12, 12, & 
+! 11, 11,   12, 12, & 
+! 11, 11,   12, 12, & 
+!!
+! 13, 13,   14, 14, &
+! 13, 13,   14, 14, &
+! !
+! 15, 15,   16, 16, &
+! 15, 15,   16, 16, &
+!!
+! 17, 17,   18, 18, & 
+! 17, 17,   18, 18, & 
+! 17, 17,   18, 18, & 
+! 17, 17,   18, 18, & 
+!!
+! 19, 19,   20, 20, 20, &
+! 19, 19,   20, 20, 20, &
+! 19, 19,   20, 20, 20, &
+! 19, 19,   20, 20, 20, &
+! 19, 19,   20, 20, 20, &
+! 19, 19,   20, 20, 20, &
+! 19, 19,   20, 20, 20, &
+! 19, 19,   20, 20, 20  &
+!     ],pInt),[LATTICE_bct_Nslip,LATTICE_bct_Ntwin],order=[2,1])                                     !< Slip--twin interaction types for bcc
+!
+! integer(pInt), dimension(LATTICE_bct_Ntwin,LATTICE_bct_Nslip), parameter, public :: &
+!   LATTICE_bct_interactionTwinSlip = 1_pInt                                                         !< Twin--slip interaction types for bcc @todo not implemented yet
+!
+! integer(pInt), dimension(LATTICE_bct_Ntwin,LATTICE_bct_Ntwin), parameter, public :: &
+!   LATTICE_bct_interactionTwinTwin = reshape(int( [&
+!     1, 2, &
+!     2, 1  &
+!     ],pInt),[LATTICE_bct_Ntwin,LATTICE_bct_Ntwin],order=[2,1])                                     !< Twin--twin interaction types for bcc
+!
+! real(pReal), dimension(3+3,LATTICE_bct_Ncleavage), parameter, private :: &
+!   LATTICE_bct_systemCleavage = reshape(real([&
+!    ! Cleavage direction     Plane normal
+!      1, 1, 1,    -1, 0, 1, &
+!     -1, 1, 1,     1, 1, 0, &
+!      1, 1, 1,    -1, 1, 0  &
+!     ],pReal),[ 3_pInt + 3_pInt,LATTICE_bct_Ncleavage])
+    
 !--------------------------------------------------------------------------------------------------
 ! isotropic
  integer(pInt), dimension(LATTICE_maxNcleavageFamily), parameter, public :: &
@@ -870,10 +1078,12 @@ module lattice
                  LATTICE_fcc_ID, &
                  LATTICE_bcc_ID, &
                  LATTICE_hex_ID, &
+                 LATTICE_bct_ID, &
                  LATTICE_ort_ID
  end enum
  integer(kind(LATTICE_undefined_ID)),        dimension(:),       allocatable, public, protected :: &
    lattice_structure, trans_lattice_structure
+
 
 
 integer(pInt), dimension(2), parameter, private :: &
@@ -990,7 +1200,9 @@ real(pReal), dimension(4,36), parameter, private :: &
   lattice_qDisorientation, &
   LATTICE_fcc_ID, &
   LATTICE_bcc_ID, &
+  LATTICE_bct_ID, &
   LATTICE_hex_ID
+!  LATTICE_spacegroup__ID
 
 contains
 
@@ -1036,7 +1248,7 @@ subroutine lattice_init
  integer(pInt), dimension(1+2*MAXNCHUNKS) :: positions
  integer(pInt) :: section = 0_pInt,i
  real(pReal),  dimension(:), allocatable :: &
-   CoverA, &                                                                                        !< c/a ratio for hex type lattice
+   CoverA, &                                                                                        !!!!!!< c/a ratio for low symmetry type lattice
    CoverA_trans, &                                                                                  !< c/a ratio for transformed hex type lattice      
    a_fcc, &                                                                                         !< lattice parameter a for fcc austenite
    a_bcc                                                                                            !< lattice paramater a for bcc martensite
@@ -1050,7 +1262,8 @@ subroutine lattice_init
 
 !--------------------------------------------------------------------------------------------------
 ! consistency checks
- if (LATTICE_maxNslip /= maxval([LATTICE_fcc_Nslip,LATTICE_bcc_Nslip,LATTICE_hex_Nslip])) &
+
+ if (LATTICE_maxNslip /= maxval([LATTICE_fcc_Nslip,LATTICE_bcc_Nslip,LATTICE_hex_Nslip,LATTICE_bct_Nslip])) &
    call IO_error(0_pInt,ext_msg = 'LATTICE_maxNslip')
  if (LATTICE_maxNtwin /= maxval([LATTICE_fcc_Ntwin,LATTICE_bcc_Ntwin,LATTICE_hex_Ntwin])) &
    call IO_error(0_pInt,ext_msg = 'LATTICE_maxNtwin')
@@ -1065,6 +1278,11 @@ subroutine lattice_init
    call IO_error(0_pInt,ext_msg = 'LATTICE_bcc_Nslip')
  if (LATTICE_hex_Nslip /= sum(lattice_hex_NslipSystem)) &
    call IO_error(0_pInt,ext_msg = 'LATTICE_hex_Nslip')
+ if (LATTICE_bct_Nslip /= sum(lattice_bct_NslipSystem)) &
+   call IO_error(0_pInt,ext_msg = 'LATTICE_bct_Nslip')
+
+
+
 
  if (LATTICE_fcc_Ntwin /= sum(lattice_fcc_NtwinSystem)) &
    call IO_error(0_pInt,ext_msg = 'LATTICE_fcc_Ntwin')
@@ -1072,6 +1290,10 @@ subroutine lattice_init
    call IO_error(0_pInt,ext_msg = 'LATTICE_bcc_Ntwin')
  if (LATTICE_hex_Ntwin /= sum(lattice_hex_NtwinSystem)) &
    call IO_error(0_pInt,ext_msg = 'LATTICE_hex_Ntwin')
+ if (LATTICE_bct_Ntwin /= sum(lattice_bct_NtwinSystem)) &
+   call IO_error(0_pInt,ext_msg = 'LATTICE_bct_Ntwin')
+
+
 
  if (LATTICE_fcc_Ntrans /= sum(lattice_fcc_NtransSystem)) &
    call IO_error(0_pInt,ext_msg = 'LATTICE_fcc_Ntrans')
@@ -1079,6 +1301,8 @@ subroutine lattice_init
    call IO_error(0_pInt,ext_msg = 'LATTICE_bcc_Ntrans')
  if (LATTICE_hex_Ntrans /= sum(lattice_hex_NtransSystem)) &
    call IO_error(0_pInt,ext_msg = 'LATTICE_hex_Ntrans')
+ if (LATTICE_bct_Ntrans /= sum(lattice_bct_NtransSystem)) &
+   call IO_error(0_pInt,ext_msg = 'LATTICE_bct_Ntrans')
 
  if (LATTICE_fcc_Ncleavage /= sum(lattice_fcc_NcleavageSystem)) &
    call IO_error(0_pInt,ext_msg = 'LATTICE_fcc_Ncleavage')
@@ -1086,6 +1310,8 @@ subroutine lattice_init
    call IO_error(0_pInt,ext_msg = 'LATTICE_bcc_Ncleavage')
  if (LATTICE_hex_Ncleavage /= sum(lattice_hex_NcleavageSystem)) &
    call IO_error(0_pInt,ext_msg = 'LATTICE_hex_Ncleavage')
+ if (LATTICE_bct_Ncleavage /= sum(lattice_bct_NcleavageSystem)) &
+   call IO_error(0_pInt,ext_msg = 'LATTICE_bct_Ncleavage')
  if (LATTICE_iso_Ncleavage /= sum(lattice_iso_NcleavageSystem)) &
    call IO_error(0_pInt,ext_msg = 'LATTICE_iso_Ncleavage')
 
@@ -1093,18 +1319,22 @@ subroutine lattice_init
    maxval(lattice_fcc_interactionSlipSlip), &
    maxval(lattice_bcc_interactionSlipSlip), &
    maxval(lattice_hex_interactionSlipSlip), &
+   maxval(lattice_bct_interactionSlipSlip), &
    !
    maxval(lattice_fcc_interactionSlipTwin), &
    maxval(lattice_bcc_interactionSlipTwin), &
    maxval(lattice_hex_interactionSlipTwin), &
+ !  maxval(lattice_bct_interactionSlipTwin), &
    !
    maxval(lattice_fcc_interactionTwinSlip), &
    maxval(lattice_bcc_interactionTwinSlip), &
    maxval(lattice_hex_interactionTwinSlip), &
+ !  maxval(lattice_bct_interactionTwinSlip), &
    !
    maxval(lattice_fcc_interactionTwinTwin), &
    maxval(lattice_bcc_interactionTwinTwin), &
    maxval(lattice_hex_interactionTwinTwin))) &
+ !  maxval(lattice_bct_interactionTwinTwin))) &
    call IO_error(0_pInt,ext_msg = 'LATTICE_maxNinteraction')
 
 !--------------------------------------------------------------------------------------------------
@@ -1217,6 +1447,8 @@ subroutine lattice_init
              lattice_structure(section) = LATTICE_bcc_ID
            case('hex','hexagonal')
              lattice_structure(section) = LATTICE_hex_ID
+           case('bct')
+             lattice_structure(section) = LATTICE_bct_ID
            case('ort','orthorhombic')
              lattice_structure(section) = LATTICE_ort_ID
            case default
@@ -1334,6 +1566,8 @@ subroutine lattice_init
  do i = 1_pInt,Nphases
    if ((CoverA(i) < 1.0_pReal .or. CoverA(i) > 2.0_pReal) &
        .and. lattice_structure(i) == LATTICE_hex_ID) call IO_error(131_pInt,el=i)                        ! checking physical significance of c/a
+   if ((CoverA(i) > 2.0_pReal) &
+       .and. lattice_structure(i) == LATTICE_bct_ID) call IO_error(131_pInt,el=i)                        ! checking physical significance of c/a
    call lattice_initializeStructure(i, CoverA(i), CoverA_trans(i), a_fcc(i), a_bcc(i))
  enddo
 
@@ -1400,6 +1634,7 @@ subroutine lattice_initializeStructure(myPhase,CoverA,CoverA_trans,a_fcc,a_bcc)
 
  lattice_C66(1:6,1:6,myPhase) = lattice_symmetrizeC66(lattice_structure(myPhase),&
                                                       lattice_C66(1:6,1:6,myPhase))
+ 
  lattice_mu(myPhase) = 0.2_pReal *(  lattice_C66(1,1,myPhase) &
                                    - lattice_C66(1,2,myPhase) &
                                    + 3.0_pReal*lattice_C66(4,4,myPhase))                             ! (C11iso-C12iso)/2 with C11iso=(3*C11+2*C12+4*C44)/5 and C12iso=(C11+4*C12-2*C44)/5
@@ -1618,6 +1853,47 @@ subroutine lattice_initializeStructure(myPhase,CoverA,CoverA_trans,a_fcc,a_bcc)
      lattice_interactionTwinTwin(1:myNtwin,1:myNtwin,myPhase)       = lattice_hex_interactionTwinTwin
 
 !--------------------------------------------------------------------------------------------------
+! bct
+   case (LATTICE_bct_ID)
+     myNslip = lattice_bct_Nslip
+     myNtwin = lattice_bct_Ntwin
+     myNcleavage = lattice_bct_Ncleavage
+     do i = 1_pInt,myNslip                                                                          ! assign slip system vectors
+       sd(1:2,i) = lattice_bct_systemSlip(1:2,i)
+       sd(3,i) = lattice_bct_systemSlip(3,i)*CoverA
+       sn(1:2,i) = lattice_bct_systemSlip(4:5,i)
+       sn(3,i) =  lattice_bct_systemSlip(6,i)/CoverA
+       sdU = sd(1:3,i) / math_norm3(sd(1:3,i))
+       snU = sn(1:3,i) / math_norm3(sn(1:3,i))
+       !used bcc type 
+!       np = math_mul33x3(math_axisAngleToR(sdU,60.0_pReal*INRAD), snU)
+!       nn = math_mul33x3(math_axisAngleToR(-sdU,60.0_pReal*INRAD), snU)
+     enddo
+
+!     do i = 1_pInt,myNtwin                                                                          ! assign twin system vectors and shears
+!       td(1:2,i) = lattice_bct_systemTwin(1:2,i)
+!       td(3,i) = lattice_bct_systemTwin(3,i)*CoverA
+!       tn(1:2,i) = lattice_bct_systemTwin(4:5,i)
+!       tn(3,i) = lattice_bct_systemTwin(6,i)/CoverA
+!       ts(i)     = lattice_bct_shearTwin(i)
+!     enddo
+!     do i = 1_pInt, myNcleavage                                                                      ! assign cleavage system vectors
+!       cd(1:3,i) = lattice_bct_systemCleavage(1:3,i)/math_norm3(lattice_bct_systemCleavage(1:3,i))
+!       cn(1:3,i) = lattice_bct_systemCleavage(4:6,i)/math_norm3(lattice_bct_systemCleavage(4:6,i))
+!       ct(1:3,i) = math_vectorproduct(cd(1:3,i),cn(1:3,i))
+!     enddo  
+
+     lattice_NslipSystem(1:lattice_maxNslipFamily,myPhase)          = lattice_bct_NslipSystem
+     lattice_NtwinSystem(1:lattice_maxNtwinFamily,myPhase)          = lattice_bct_NtwinSystem
+     lattice_NtransSystem(1:lattice_maxNtransFamily,myPhase)        = lattice_bct_NtransSystem
+     lattice_NcleavageSystem(1:lattice_maxNcleavageFamily,myPhase)  = lattice_bct_NcleavageSystem
+     lattice_NnonSchmid(myPhase)                                    = lattice_bct_NnonSchmid
+     lattice_interactionSlipSlip(1:myNslip,1:myNslip,myPhase)       = lattice_bct_interactionSlipSlip
+!     lattice_interactionSlipTwin(1:myNslip,1:myNtwin,myPhase)       = lattice_bct_interactionSlipTwin
+!     lattice_interactionTwinSlip(1:myNtwin,1:myNslip,myPhase)       = lattice_bct_interactionTwinSlip
+!     lattice_interactionTwinTwin(1:myNtwin,1:myNtwin,myPhase)       = lattice_bct_interactionTwinTwin
+
+!--------------------------------------------------------------------------------------------------
 ! orthorhombic (no crystal plasticity)
    case (LATTICE_ort_ID)
      myNslip       = 0_pInt
@@ -1753,6 +2029,19 @@ pure function lattice_symmetrizeC66(struct,C66)
      lattice_symmetrizeC66(4,4) = C66(4,4)
      lattice_symmetrizeC66(5,5) = C66(5,5)
      lattice_symmetrizeC66(6,6) = C66(6,6)
+   case (LATTICE_bct_ID)
+     lattice_symmetrizeC66(1,1) = C66(1,1)
+     lattice_symmetrizeC66(2,2) = C66(1,1)
+     lattice_symmetrizeC66(3,3) = C66(3,3)
+     lattice_symmetrizeC66(1,2) = C66(1,2)
+     lattice_symmetrizeC66(2,1) = C66(1,2)
+     lattice_symmetrizeC66(1,3) = C66(1,3)
+     lattice_symmetrizeC66(3,1) = C66(1,3)
+     lattice_symmetrizeC66(2,3) = C66(1,3)
+     lattice_symmetrizeC66(3,2) = C66(1,3)
+     lattice_symmetrizeC66(4,4) = C66(4,4)
+     lattice_symmetrizeC66(5,5) = C66(4,4)
+     lattice_symmetrizeC66(6,6) = C66(6,6)        !J. A. Rayne and B. S. Chandrasekhar Phys. Rev. 120, 1658 Erratum Phys. Rev. 122, 1962
    case default
      lattice_symmetrizeC66 = C66
   end select
@@ -1779,7 +2068,7 @@ pure function lattice_symmetrize33(struct,T33)
      lattice_symmetrize33(1,1) = T33(1,1)
      lattice_symmetrize33(2,2) = T33(1,1)
      lattice_symmetrize33(3,3) = T33(3,3)
-   case (LATTICE_ort_ID)
+   case (LATTICE_ort_ID,lattice_bct_ID)
      lattice_symmetrize33(1,1) = T33(1,1)
      lattice_symmetrize33(2,2) = T33(2,2)
      lattice_symmetrize33(3,3) = T33(3,3)
