@@ -31,44 +31,50 @@ def meshgrid2(*arrs):
   return tuple(ans)
 
 def laguerreTessellation(undeformed, coords, weights):
-  bestdist = np.ones(len(undeformed)) * np.finfo('d').max
-  bestseed = np.zeros(len(undeformed))
 
-  for i,seed in enumerate(coords):
-    for copy in np.array([[1, 0, 0,    ],
-                          [0, 1, 0,    ],
-                          [0, 0, 1,    ],
-                          [-1, 0, 0,   ],
-                          [0, -1, 0,   ],
-                          [0, 0, -1,   ],
-                          [1, 1, 0,    ],
-                          [1, 0, 1,    ],
-                          [0, 1, 1,    ],
-                          [-1, 1, 0,   ],
-                          [-1, 0, 1,   ],
-                          [0, -1, 1,   ],
-                          [-1, -1, 0,  ],
-                          [-1, 0, -1,  ],
-                          [0, -1, -1,  ],
-                          [1, -1, 0,   ],
-                          [1, 0, -1,   ],
-                          [0, 1, -1,   ],
-                          [1, 1, 1,    ],
-                          [-1, 1, 1,   ],
-                          [1, -1, 1,   ],
-                          [1, 1, -1,   ],
-                          [-1, -1, -1, ],
-                          [1, -1, -1,  ],
-                          [-1, 1, -1,  ],
-                          [-1, -1, 1,  ]]).astype(float):
-
-      diff = undeformed - np.repeat((seed+info['size']*copy).reshape(3,1),len(undeformed),axis=1).T
-      dist = np.sum(diff*diff,axis=1) - weights[i]
-                    
-      bestseed = np.where(dist < bestdist, np.ones(len(undeformed))*(i+1),bestseed)
-      bestdist = np.where(dist < bestdist, dist,bestdist)
-  return bestseed 
-
+    weight = np.power(np.tile(weights, 27),2)                        # Laguerre weights (squared)
+    micro = np.zeros(undeformed.shape[0])
+    N = coords.shape[0]                                              # Number of seeds points 
+    periodic =  np.array([
+                          [ -1,-1,-1 ],
+                          [  0,-1,-1 ],
+                          [  1,-1,-1 ],
+                          [ -1, 0,-1 ],
+                          [  0, 0,-1 ],
+                          [  1, 0,-1 ],
+                          [ -1, 1,-1 ],
+                          [  0, 1,-1 ],
+                          [  1, 1,-1 ],
+                          [ -1,-1, 0 ],
+                          [  0,-1, 0 ],
+                          [  1,-1, 0 ],
+                          [ -1, 0, 0 ],
+                          [  0, 0, 0 ],
+                          [  1, 0, 0 ],
+                          [ -1, 1, 0 ],
+                          [  0, 1, 0 ],
+                          [  1, 1, 0 ],
+                          [ -1,-1, 1 ],
+                          [  0,-1, 1 ],
+                          [  1,-1, 1 ],
+                          [ -1, 0, 1 ],
+                          [  0, 0, 1 ],
+                          [  1, 0, 1 ],
+                          [ -1, 1, 1 ],
+                          [  0, 1, 1 ],
+                          [  1, 1, 1 ],
+                         ]).astype(float)
+    
+    for i,vec in enumerate(periodic):
+        seeds = np.append(seeds, coords+vec, axis=0) if i > 0 else coords+vec
+    
+    for i,point in enumerate(undeformed):
+        
+        tmp = np.repeat(point.reshape(3,1), N*27, axis=1).T
+        dist = np.sum((tmp - seeds)*(tmp - seeds),axis=1) - weight
+        micro[i] = np.argmin(dist)%N
+    
+    return micro
 
 # --------------------------------------------------------------------
 #                                MAIN
@@ -109,48 +115,39 @@ parser.add_option('-r', '--rnd', dest='randomSeed', type='int', metavar='int',
                   help='seed of random number generator for second phase distribution [%default]')
 parser.add_option('--secondphase', type='float', dest='secondphase', metavar= 'float',
                   help='volume fraction of randomly distribute second phase [%default]')
-parser.add_option('--laguerre', dest='laguerre', action='store_true',
-                  help='for weighted voronoi (Laguerre) tessellation [%default]')
-parser.set_defaults(grid   = (0,0,0))
-parser.set_defaults(size   = (0.0,0.0,0.0))
-parser.set_defaults(origin = (0.0,0.0,0.0))
-parser.set_defaults(homogenization = 1)
-parser.set_defaults(phase          = 1)
-parser.set_defaults(crystallite    = 1)
-parser.set_defaults(secondphase    = 0.0)
-parser.set_defaults(config = False)
-parser.set_defaults(laguerre = False)
-parser.set_defaults(randomSeed = None)
-
+parser.add_option('-l', '--laguerre', dest='laguerre', action='store_true',
+                  help='use Laguerre (weighted Voronoi) tessellation [%default]')
+parser.set_defaults(grid   = (0,0,0),
+                    size   = (0.0,0.0,0.0),
+                    origin = (0.0,0.0,0.0),
+                    homogenization = 1,
+                    phase          = 1,
+                    crystallite    = 1,
+                    secondphase    = 0.0,
+                    config = False,
+                    laguerre = False,
+                    randomSeed = None,
+                  )
 (options,filenames) = parser.parse_args()
 
 if options.secondphase > 1.0 or options.secondphase < 0.0:
  parser.error('volume fraction of second phase (%f) out of bounds...'%options.secondphase)
 
-#--- setup file handles ---------------------------------------------------------------------------  
-files = []
+# --- loop over input files -------------------------------------------------------------------------
 if filenames == []:
-  files.append({'name':   'STDIN',
-                'input':  sys.stdin,
-                'output': sys.stdout,
-                'croak':  sys.stderr,
-               })
-else:
-  for name in filenames:
-    if os.path.exists(name):
-      files.append({'name':   name,
-                    'input':  open(name),
-                    'output': open(name+'_tmp','w'),
-                    'croak':  sys.stdout,
-                    })
+  filenames = ['STDIN']
 
+for name in filenames:
+  if name == 'STDIN':
+    file = {'name':'STDIN', 'input':sys.stdin, 'output':sys.stdout, 'croak':sys.stderr}
+    file['croak'].write('\033[1m'+scriptName+'\033[0m\n')
+  else:
+    if not os.path.exists(name): continue
+    file = {'name':name, 'input':open(name), 'output':open(name+'_tmp','w'), 'croak':sys.stderr}
+    file['croak'].write('\033[1m'+scriptName+'\033[0m: '+file['name']+'\n')
 
-#--- loop over input files ------------------------------------------------------------------------
-for file in files:
-  file['croak'].write('\033[1m' + scriptName + '\033[0m: ' + (file['name'] if file['name'] != 'STDIN' else '') + '\n')
-
-  table = damask.ASCIItable(file['input'],file['output'],buffered = False)
-  table.head_read()
+  table = damask.ASCIItable(file['input'],file['output'],buffered=False)                            # make unbuffered ASCII_table
+  table.head_read()                                                                                 # read ASCII header info
 
   labels = []
   if np.all(table.label_index(['1_coords','2_coords','3_coords']) != -1):
@@ -241,7 +238,7 @@ for file in files:
 
 #--- switch according to task ---------------------------------------------------------------------
   if options.config:                                                                                # write config file
-    phase=np.empty(info['microstructures'],'i')
+    phase = np.empty(info['microstructures'],'i')
     phase.fill(options.phase)
     phase[0:int(float(info['microstructures'])*options.secondphase)] = options.phase+1
     randomSeed = int(os.urandom(4).encode('hex'), 16)  if options.randomSeed == None else options.randomSeed         # radom seed per file for second phase
@@ -286,10 +283,10 @@ for file in files:
     newInfo['microstructures'] = info['microstructures']
     for i in grainIDs:
       if i not in indices: newInfo['microstructures'] -= 1
-    file['croak'].write('all' if [newInfo['microstructures']  == info['microstructures'] ] else 'only' +
+    file['croak'].write(('all' if newInfo['microstructures']  == info['microstructures'] else 'only') +
                         ' %i'%newInfo['microstructures'] + 
-                        '' if [newInfo['microstructures'] == info['microstructures']] else \
-                        'out of %i'%info['microstructures'] +
+                        ('' if newInfo['microstructures'] == info['microstructures'] else \
+                        ' out of %i'%info['microstructures']) +
                         ' grains mapped.\n')
 
 #--- write header ---------------------------------------------------------------------------------
@@ -312,8 +309,7 @@ for file in files:
     
 #--- output finalization --------------------------------------------------------------------------
 
+  table.close()  
   if file['name'] != 'STDIN':
-    table.input_close()  
-    table.output_close()  
     os.rename(file['name']+'_tmp',
               os.path.splitext(file['name'])[0] +'%s'%('_material.config' if options.config else '.geom'))
