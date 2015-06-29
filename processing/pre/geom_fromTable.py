@@ -36,6 +36,8 @@ parser.add_option('--coordinates',      dest='coordinates', type='string', metav
                   help='coordinates label')
 parser.add_option('--phase',            dest='phase', type='string', metavar='string',
                   help='phase label')
+parser.add_option('-t', '--tolerance', dest='tolerance', type='float', metavar='float',
+                  help = 'angular tolerance for orientation squashing [%default]')
 parser.add_option('-e', '--eulers',     dest='eulers', metavar='string',
                   help = 'Euler angles label')
 parser.add_option('-d', '--degrees',    dest='degrees', action='store_true',
@@ -56,8 +58,6 @@ parser.add_option('-s', '--symmetry',   dest='symmetry', action='extend',
                   metavar='<string LIST>',
                   help = 'crystal symmetry [%s] {%s} '%(damask.Symmetry.lattices[-1],
                                                         ', '.join(damask.Symmetry.lattices[1:])))
-parser.add_option('-t', '--tolerance', dest='tolerance', type='float', metavar='float',
-                  help = 'angular tolerance for orientation squashing [%default]')
 parser.add_option('--homogenization',   dest='homogenization', type='int', metavar='int',
                   help='homogenization index to be used [%default]')
 parser.add_option('--crystallite',      dest='crystallite', type='int', metavar='int',
