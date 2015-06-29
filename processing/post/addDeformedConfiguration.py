@@ -15,7 +15,7 @@ scriptName = os.path.splitext(scriptID.split()[1])[0]
 # --------------------------------------------------------------------
 
 parser = OptionParser(option_class=damask.extendableOption, usage='%prog options file[s]', description = """
-Add column(s) containing deformed configuration of requested column(s).
+Add deformed configuration of given initial coordinates.
 Operates on periodic ordered three-dimensional data sets.
 
 """, version = scriptID)
@@ -24,8 +24,12 @@ parser.add_option('-c','--coordinates', dest='coords', metavar='string',
                   help='column label of coordinates [%default]')
 parser.add_option('-f','--defgrad',     dest='defgrad', metavar='string',
                   help='column label of deformation gradient [%default]')
-parser.set_defaults(coords  = 'ipinitialcoord')
-parser.set_defaults(defgrad = 'f' )
+parser.add_option('--scaling', dest='scaling', type='float', nargs=3, , metavar = ' '.join(['float']*3),
+                  help='x/y/z scaling of displacment fluctuation')
+parser.set_defaults(coords  = 'ipinitialcoord',
+                    defgrad = 'f',
+                    scaling = [1.,1.,1.],
+                   )
 
 (options,filenames) = parser.parse_args()
 
@@ -83,8 +87,6 @@ for name in filenames:
   
   N = grid.prod()
 
-# --------------- figure out columns to process  ---------------------------------------------------
-
 
 # ------------------------------------------ assemble header ---------------------------------------
   table.labels_append(['%s_%s%s'%(coord+1,options.defgrad,options.coords) for coord in xrange(3)])  # extend ASCII header with new labels
@@ -101,7 +103,7 @@ for name in filenames:
 
 # ------------------------------------------ calculate coordinates ---------------------------------
   Favg = damask.core.math.tensorAvg(F)
-  centroids = damask.core.mesh.deformedCoordsFFT(size,F,Favg)
+  centroids = damask.core.mesh.deformedCoordsFFT(size,F,Favg,options.scaling)
   
 # ------------------------------------------ process data ------------------------------------------
   table.data_rewind()
