@@ -11,7 +11,8 @@ scriptName = os.path.splitext(scriptID.split()[1])[0]
 # --------------------------------------------------------------------
                                # MAIN
 # --------------------------------------------------------------------
-
+#Borland, D., & Taylor, R. M. (2007). Rainbow Color Map (Still) Considered Harmful. Computer Graphics and Applications, IEEE, 27(2), 14--17.
+#Moreland, K. (2009). Diverging Color Maps for Scientific Visualization. In Proc. 5th Int. Symp. Visual Computing (pp. 92--103).
 outtypes    = ['paraview','gmsh','raw','GOM']
 extensions  = ['.xml','.msh','.txt','.legend']
 colormodels = ['RGB','HSL','XYZ','CIELAB','MSH']
