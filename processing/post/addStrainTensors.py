@@ -58,15 +58,8 @@ strains = []
 if options.right: stretches.append('U')
 if options.left:  stretches.append('V')
 if options.logarithmic: strains.append('ln')
-if options.biot: strains.append('Biot')
-if options.green: strains.append('Green')
-
-datainfo = {                                                                                        # list of requested labels per datatype
-             'defgrad':     {'len':9,
-                             'label':[]},
-           }
-
-datainfo['defgrad']['label'] = options.defgrad
+if options.biot:        strains.append('Biot')
+if options.green:       strains.append('Green')
 
 # ------------------------------------------ setup file handles ------------------------------------
 files = []
@@ -86,38 +79,43 @@ for file in files:
   table.head_read()                                                                                 # read ASCII header info
   table.info_append(scriptID + '\t' + ' '.join(sys.argv[1:]))
 
-  active = []
-  column = defaultdict(dict)
+# --------------- figure out columns to process  ---------------------------------------------------
 
-  for label in datainfo['defgrad']['label']:
-    key = '1_%s'%label
-    if key not in table.labels:
-      sys.stderr.write('column %s not found...\n'%key)
+  errors = []
+  active = []
+  for i,length in enumerate(table.label_dimension(options.defgrad)):
+    if length == 9:
+      active.append(options.defgrad[i])
     else:
-      active.append(label)
-      column[label] = table.labels.index(key)
+      errors.append('no deformation gradient tensor (1..9_%s) found...'%options.defgrad[i])
+
+  if errors != []:
+    file['croak'].write('\n'.join(errors)+'\n')
+    table.close(dismiss = True)
+    continue
 
 # ------------------------------------------ assemble header ---------------------------------------
 
   for label in active:
     for theStretch in stretches:
       for theStrain in strains:
-        table.labels_append(['%i_%s(%s)%s'%(i+1,theStrain,theStretch,
-                             {True: label,False: ''}[label!='f'])for i in xrange(9)])               # extend ASCII header with new labels  
+        table.labels_append(['%i_%s(%s)%s'%(i+1,
+                                            theStrain,
+                                            theStretch,
+                                            label if label != 'f' else '') for i in xrange(9)])               # extend ASCII header with new labels  
   table.head_write()
 
 # ------------------------------------------ process data ------------------------------------------
   outputAlive = True
   while outputAlive and table.data_read():                                                          # read next data line of ASCII table
-    for label in active:                                                                             # loop over all requested norms
-      F = np.array(map(float,table.data[column[label]:
-                                        column[label]+datainfo['defgrad']['len']]),'d').reshape(3,3)
+    for column in table.label_index(active):                                                        # loop over all requested norms
+      F = np.array(map(float,table.data[column:column+9]),'d').reshape(3,3)
       (U,S,Vh) = np.linalg.svd(F)
       R = np.dot(U,Vh)
       stretch['U'] = np.dot(np.linalg.inv(R),F)
       stretch['V'] = np.dot(F,np.linalg.inv(R))
       for theStretch in stretches:
-        for i in range(9):
+        for i in xrange(9):
           if abs(stretch[theStretch][i%3,i//3]) < 1e-12:                                            # kill nasty noisy data
             stretch[theStretch][i%3,i//3] = 0.0
         (D,V) = np.linalg.eig(stretch[theStretch])                                                  # eigen decomposition (of symmetric matrix)
@@ -138,7 +136,6 @@ for file in files:
 # ------------------------------------------ output result -----------------------------------------
   outputAlive and table.output_flush()                                                              # just in case of buffered ASCII table
 
-  table.input_close()                                                                               # close input ASCII table (works for stdin)
-  table.output_close()                                                                              # close output ASCII table (works for stdout)
+  table.close()                                                                                     # close ASCII table
   if file['name'] != 'STDIN':
     os.rename(file['name']+'_tmp',file['name'])                                                     # overwrite old one with tmp new
