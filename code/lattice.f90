@@ -532,7 +532,7 @@ module lattice
    LATTICE_hex_NtransSystem = int([0,0],pInt)                                                       !< total # of transformation systems per family for hex
    
  integer(pInt), dimension(LATTICE_maxNcleavageFamily), parameter, public :: &
-   LATTICE_hex_NcleavageSystem = int([3,0,0],pInt)                                                    !< total # of cleavage systems per family for hex
+   LATTICE_hex_NcleavageSystem = int([3,0,0],pInt)                                                  !< total # of cleavage systems per family for hex
    
  integer(pInt), parameter , private :: &
    LATTICE_hex_Nslip = 33_pInt, & ! sum(lattice_hex_NslipSystem),                                   !< total # of slip systems for hex 
@@ -806,21 +806,21 @@ module lattice
 !--------------------------------------------------------------------------------------------------
 ! bct
  integer(pInt), dimension(LATTICE_maxNslipFamily), parameter, public :: &
-   LATTICE_bct_NslipSystem = int([2, 2, 2, 4, 2, 4, 2, 2, 4, 8 ],pInt)                         !< # of slip systems per family for bct (Sn) Bieler J. Electr Mater 2009
+   LATTICE_bct_NslipSystem = int([2, 2, 2, 4, 2, 4, 2, 2, 4, 8],pInt)                               !< # of slip systems per family for bct (Sn) Bieler J. Electr Mater 2009
 
  integer(pInt), dimension(LATTICE_maxNtwinFamily), parameter, public :: &
-   LATTICE_bct_NtwinSystem = int([0, 0, 0, 0], pInt)                                              !< total # of twin systems per family for bct-example
+   LATTICE_bct_NtwinSystem = int([0, 0, 0, 0], pInt)                                                !< total # of twin systems per family for bct
 
  integer(pInt), dimension(LATTICE_maxNtransFamily), parameter, public :: &
    LATTICE_bct_NtransSystem = int([0,0],pInt)                                                       !< total # of transformation systems per family for bcc
 
  integer(pInt), dimension(LATTICE_maxNcleavageFamily), parameter, public :: &
-   LATTICE_bct_NcleavageSystem = int([0,0,0],pInt)                                                    !< total # of cleavage systems per family for bcc
+   LATTICE_bct_NcleavageSystem = int([0,0,0],pInt)                                                  !< total # of cleavage systems per family for bcc
  
    
  integer(pInt), parameter , private :: &
    LATTICE_bct_Nslip = 32_pInt, & ! sum(lattice_bct_NslipSystem),                                   !< total # of slip systems for bct 
-   LATTICE_bct_Ntwin = 0_pInt, & ! sum(lattice_bcc_NtwinSystem)                                    !< total # of twin systems for bcc
+   LATTICE_bct_Ntwin = 0_pInt, & ! sum(lattice_bcc_NtwinSystem)                                     !< total # of twin systems for bcc
    LATTICE_bct_NnonSchmid = 0_pInt, &                                                               !< # of non-Schmid contributions for bcc
    LATTICE_bct_Ntrans  = 0_pInt, &                                                                  !< total # of transformations for bcc
    LATTICE_bct_Ncleavage  = 0_pInt                                                                  !< total # of transformations for bcc
@@ -874,29 +874,19 @@ module lattice
 
  integer(pInt), dimension(LATTICE_bct_Nslip,LATTICE_bct_Nslip), parameter, public :: &
    LATTICE_bct_interactionSlipSlip = reshape(int( [&
- 1,2, 3,3, 7,7, 13,13,13,13, 21, 21,     31, 31, 31, 31,     43, 43,  57, 57,  73, 73, 73, 73,& 
- 91, 91, 91, 91, 91, 91, 91, 91,&
- 2,1, 3,3,  7,7, 13,13,13,13, 21, 21,     31, 31, 31, 31,  43, 43,  57, 57,  73, 73, 73, 73,   & 
- 91, 91, 91, 91, 91, 91, 91, 91,&
+       1,  2,   3,  3,   7,  7,  13, 13, 13, 13,  21, 21,  31, 31, 31, 31,  43, 43,  57, 57,  73, 73, 73, 73,  91, 91, 91, 91, 91, 91, 91, 91,&
+       2,  1,   3,  3,   7,  7,  13, 13, 13, 13,  21, 21,  31, 31, 31, 31,  43, 43,  57, 57,  73, 73, 73, 73,  91, 91, 91, 91, 91, 91, 91, 91,&
+
+       6,  6,   4,  5,   8,  8,  14, 14, 14, 14,  22, 22,  32, 32, 32, 32,  44, 44,  58, 58,  74, 74, 74, 74,  92, 92, 92, 92, 92, 92, 92, 92,&
+       6,  6,   5,  4,   8,  8,  14, 14, 14, 14,  22, 22,  32, 32, 32, 32,  44, 44,  58, 58,  74, 74, 74, 74,  92, 92, 92, 92, 92, 92, 92, 92,&
  
- 6,6,  4,5, 8,8, 14,14,14,14, 22, 22,  32, 32, 32, 32,  44, 44,  58, 58,  74, 74, 74, 74,& 
- 92, 92, 92, 92, 92, 92, 92, 92,&
- 6,6, 5,4, 8,8, 14,14,14,14, 22, 22,  32, 32, 32, 32,  44, 44,  58, 58,  74, 74, 74, 74,   & 
- 92, 92, 92, 92, 92, 92, 92, 92,&
- 
- 12,12, 11,11, 9,10, 15,15,15,15, 23, 23,  33, 33, 33, 33,     45, 45,  59, 59,  75, 75, 75, 75,& 
- 93, 93, 93, 93, 93, 93, 93, 93,&
- 12,12, 11,11, 10,9, 15,15,15,15, 23, 23,  33, 33, 33, 33,     45, 45,  59, 59,  75, 75, 75, 75,& 
- 93, 93, 93, 93, 93, 93, 93, 93,&
- 
- 20,20, 19,19, 18,18, 16,17,17,17, 24, 24,  34, 34, 34, 34,     46, 46,  60, 60,  76, 76, 76, 76,   & 
- 94, 94, 94, 94, 94, 94, 94, 94,&
- 20,20, 19,19, 18,18, 17,16,17,17, 24, 24,  34, 34, 34, 34,     46, 46,     60, 60,  76, 76, 76, 76,   & 
- 94, 94, 94, 94, 94, 94, 94, 94,&
- 20,20, 19,19, 18,18, 17,17,16,17, 24, 24,  34, 34, 34, 34,     46, 46,  60, 60,  76, 76, 76, 76,& 
- 94, 94, 94, 94, 94, 94, 94, 94,&
- 20,20, 19,19, 18,18,  17,17,17,16, 24, 24,     34, 34, 34, 34,  46, 46,  60, 60,  76, 76, 76, 76,& 
- 94, 94, 94, 94, 94, 94, 94, 94,&
+      12, 12,  11, 11,   9, 10,  15, 15, 15, 15,  23, 23,  33, 33, 33, 33,  45, 45,  59, 59,  75, 75, 75, 75,  93, 93, 93, 93, 93, 93, 93, 93,&
+      12, 12,  11, 11,  10,  9,  15, 15, 15, 15,  23, 23,  33, 33, 33, 33,  45, 45,  59, 59,  75, 75, 75, 75,  93, 93, 93, 93, 93, 93, 93, 93,&
+      
+      20, 20,  19, 19,  18, 18,  16, 17, 17, 17,  24, 24,  34, 34, 34, 34,  46, 46,  60, 60,  76, 76, 76, 76,  94, 94, 94, 94, 94, 94, 94, 94,&
+      20, 20,  19, 19,  18, 18,  17, 16, 17, 17,  24, 24,  34, 34, 34, 34,  46, 46,  60, 60,  76, 76, 76, 76,  94, 94, 94, 94, 94, 94, 94, 94,&
+      20, 20,  19, 19,  18, 18,  17, 17, 16, 17,  24, 24,  34, 34, 34, 34,  46, 46,  60, 60,  76, 76, 76, 76,  94, 94, 94, 94, 94, 94, 94, 94,&
+      20, 20,  19, 19,  18, 18,  17, 17, 17, 16,  24, 24,  34, 34, 34, 34,  46, 46,  60, 60,  76, 76, 76, 76,  94, 94, 94, 94, 94, 94, 94, 94,&
  
  30,30, 29,29, 28,28, 27,27,27,27,    25, 26,  35, 35, 35, 35,  47, 47,  61, 61,  77, 77, 77, 77,   & 
  95, 95, 95, 95, 95, 95, 95, 95,&

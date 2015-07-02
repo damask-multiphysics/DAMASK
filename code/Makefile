@@ -576,9 +576,15 @@ plastic_j2.o:                  plastic_j2.f90 \
 
 plastic_none.o:                plastic_none.f90 \
                                lattice.o
-
+ifeq "$(F90)" "gfortran"
 lattice.o:                     lattice.f90 \
                                material.o
+	$(PREFIX) $(COMPILERNAME) $(COMPILE) -ffree-line-length-150 -c lattice.f90 $(SUFFIX)
+# long lines for interaction matrix
+else
+lattice.o:                     lattice.f90 \
+                               material.o
+endif
 
 material.o:                    material.f90 \
                                mesh.o
