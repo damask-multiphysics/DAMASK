@@ -277,7 +277,6 @@ subroutine source_damage_isoBrittle_deltaState(C, Fe, ipc, ip, el)
  instance = source_damage_isoBrittle_instance(phase)
  sourceOffset = source_damage_isoBrittle_offset(phase)
 
- stiffness = C
  do mech = 1_pInt, phase_NstiffnessDegradations(phase)
    select case(phase_stiffnessDegradation(mech,phase))
      case (STIFFNESS_DEGRADATION_porosity_ID)
@@ -290,15 +289,14 @@ subroutine source_damage_isoBrittle_deltaState(C, Fe, ipc, ip, el)
 
  strainenergy = 2.0_pReal*sum(strain*math_mul66x6(stiffness,strain))/ &
                 source_damage_isoBrittle_critStrainEnergy(instance) 
- if (strainenergy > sourceState(phase)%p(sourceOffset)%subState0(1,constituent)) then
+ if (strainenergy > sourceState(phase)%p(sourceOffset)%state(1,constituent)) then 
    sourceState(phase)%p(sourceOffset)%deltaState(1,constituent) = &
      strainenergy - sourceState(phase)%p(sourceOffset)%state(1,constituent)
- else
+ else    
    sourceState(phase)%p(sourceOffset)%deltaState(1,constituent) = &
-     sourceState(phase)%p(sourceOffset)%subState0(1,constituent) - &
-     sourceState(phase)%p(sourceOffset)%state(1,constituent)
+     0.0_pReal
  endif
-    
+ 
 end subroutine source_damage_isoBrittle_deltaState
  
 !--------------------------------------------------------------------------------------------------
