@@ -4,7 +4,7 @@
 import os,sys,string
 import numpy as np
 from optparse import OptionParser
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageOps
 import damask
 
 scriptID   = string.replace('$Id$','\n','\\n')
@@ -23,6 +23,8 @@ parser.add_option('-l','--label', dest='label', type='string',
                                   help='column containing data [all])')
 parser.add_option('-r','--range', dest='range', type='float', nargs=2,
                                   help='data range (min max) [auto]')
+parser.add_option('--gap', '--transparent', dest='gap', type='float',
+                                  help='value to treat as transparent [%default]')
 parser.add_option('-d','--dimension', dest='dimension', type='int', nargs=2,
                                   help='data dimension (width height) [native]')
 parser.add_option('--abs',        dest='abs', action='store_true',
@@ -50,6 +52,7 @@ parser.add_option('-y','--pixelsizey', dest='pixelsizey', type='int',
 
 parser.set_defaults(label = None,
                     range = [0.0,0.0],
+                    gap = None,
                     dimension = [],
                     abs = False,
                     log = False,
@@ -111,13 +114,16 @@ for name in filenames:
   if options.log:             table.data = np.log10(table.data);options.range = np.log10(options.range)
   if options.flipLR:          table.data = np.fliplr(table.data)
   if options.flipUD:          table.data = np.flipud(table.data)
+
+  mask = np.where(table.data != options.gap,True,False) if options.gap != None else np.ones_like(table.data,dtype='bool')
   if np.all(np.array(options.range) == 0.0):
-    options.range = [table.data.min(),table.data.max()]
-    file['croak'].write('data range: %g -- %g\n'%(options.range[0],options.range[1]))
+    options.range = [table.data[mask].min(),
+                     table.data[mask].max()]
+    file['croak'].write('data range: %g – %g\n'%(options.range[0],options.range[1]))
 
   delta =      max(options.range) - min(options.range)
   avg   = 0.5*(max(options.range) + min(options.range))
-  print delta,avg,delta/avg
+
   if delta * 1e8 <= avg:                                                                           # delta around numerical noise
     options.range = [min(options.range) - 0.5*avg, max(options.range) + 0.5*avg]                   # extend range to have actual data centered within
 
@@ -125,12 +131,14 @@ for name in filenames:
                (max(options.range) - min(options.range))
   
   table.data = np.clip(table.data,0.0,1.0).\
-                  repeat(options.pixelsizex,axis=1).\
-                  repeat(options.pixelsizey,axis=0)
+                  repeat(options.pixelsizex,axis = 1).\
+                  repeat(options.pixelsizey,axis = 0)
 
   (height,width) = table.data.shape
+  file['croak'].write('image dimension: %i x %i\n'%(width,height))
 
-  im = Image.fromarray(theColors[np.array(255*table.data,dtype='i')], 'RGB').\
+  im = Image.fromarray(np.dstack((theColors[np.array(255*table.data,dtype=np.uint8)],
+                                  255*mask.astype(np.uint8))), 'RGBA').\
              crop((       options.crop[0],
                           options.crop[2],
                    width -options.crop[1],
