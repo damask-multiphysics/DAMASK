@@ -1012,12 +1012,14 @@ module lattice
      ],pReal),[ 3_pInt + 3_pInt,LATTICE_ortho_Ncleavage])
 
  real(pReal),                              dimension(:,:,:),   allocatable, public, protected :: &
-   lattice_C66
+   lattice_C66,   lattice_trans_C66
  real(pReal),                              dimension(:,:,:,:,:),   allocatable, public, protected :: &
-   lattice_C3333
+   lattice_C3333, lattice_trans_C3333
  real(pReal),                              dimension(:),   allocatable, public, protected :: &
    lattice_mu, &
-   lattice_nu
+   lattice_nu, &
+   lattice_trans_mu, &
+   lattice_trans_nu
  real(pReal),                              dimension(:,:,:),   allocatable, public, protected :: &
    lattice_thermalConductivity33, &
    lattice_thermalExpansion33, &
@@ -1322,6 +1324,8 @@ subroutine lattice_init
  allocate(trans_lattice_structure(Nphases),source = LATTICE_undefined_ID)
  allocate(lattice_C66(6,6,Nphases),  source=0.0_pReal)
  allocate(lattice_C3333(3,3,3,3,Nphases),  source=0.0_pReal)
+ allocate(lattice_trans_C66(6,6,Nphases),  source=0.0_pReal)
+ allocate(lattice_trans_C3333(3,3,3,3,Nphases),  source=0.0_pReal)
  allocate(lattice_thermalConductivity33  (3,3,Nphases), source=0.0_pReal)
  allocate(lattice_thermalExpansion33     (3,3,Nphases), source=0.0_pReal)
  allocate(lattice_damageDiffusion33      (3,3,Nphases), source=0.0_pReal)
@@ -1345,6 +1349,8 @@ subroutine lattice_init
 
  allocate(lattice_mu(Nphases),       source=0.0_pReal)
  allocate(lattice_nu(Nphases),       source=0.0_pReal)
+ allocate(lattice_trans_mu(Nphases), source=0.0_pReal)
+ allocate(lattice_trans_nu(Nphases), source=0.0_pReal)
 
  allocate(lattice_NnonSchmid(Nphases), source=0_pInt)
  allocate(lattice_Sslip(3,3,1+2*lattice_maxNnonSchmid,lattice_maxNslip,Nphases),source=0.0_pReal)
@@ -1447,6 +1453,24 @@ subroutine lattice_init
        lattice_C66(5,5,section) = IO_floatValue(line,positions,2_pInt)
      case ('c66')
        lattice_C66(6,6,section) = IO_floatValue(line,positions,2_pInt)
+     case ('c11_trans')
+       lattice_trans_C66(1,1,section) = IO_floatValue(line,positions,2_pInt)
+     case ('c12_trans')
+       lattice_trans_C66(1,2,section) = IO_floatValue(line,positions,2_pInt)
+     case ('c13_trans')
+       lattice_trans_C66(1,3,section) = IO_floatValue(line,positions,2_pInt)
+     case ('c22_trans')
+       lattice_trans_C66(2,2,section) = IO_floatValue(line,positions,2_pInt)
+     case ('c23_trans')
+       lattice_trans_C66(2,3,section) = IO_floatValue(line,positions,2_pInt)
+     case ('c33_trans')
+       lattice_trans_C66(3,3,section) = IO_floatValue(line,positions,2_pInt)
+     case ('c44_trans')
+       lattice_trans_C66(4,4,section) = IO_floatValue(line,positions,2_pInt)
+     case ('c55_trans')
+       lattice_trans_C66(5,5,section) = IO_floatValue(line,positions,2_pInt)
+     case ('c66_trans')
+       lattice_trans_C66(6,6,section) = IO_floatValue(line,positions,2_pInt)
      case ('covera_ratio','c/a_ratio','c/a')
        CoverA(section) = IO_floatValue(line,positions,2_pInt)
      case ('c/a_trans','c/a_martensite','c/a_mart')
