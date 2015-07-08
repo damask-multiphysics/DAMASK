@@ -693,6 +693,10 @@ subroutine plastic_dislotwin_init(fileUnit)
           call IO_error(211_pInt,el=instance,ext_msg='aTolTwinFrac ('//PLASTICITY_DISLOTWIN_label//')')
       endif
       if (sum(plastic_dislotwin_Ntrans(:,instance)) > 0_pInt) then
+        if (abs(plastic_dislotwin_SFE_0K(instance))  <= tiny(0.0_pReal) .and. &
+            abs(plastic_dislotwin_dSFE_dT(instance)) <= tiny(0.0_pReal) .and. &
+                            lattice_structure(phase) == LATTICE_fcc_ID) &
+          call IO_error(211_pInt,el=instance,ext_msg='SFE0K ('//PLASTICITY_DISLOTWIN_label//')')
         if (plastic_dislotwin_aTolTransFrac(instance) <= 0.0_pReal) &
           call IO_error(211_pInt,el=instance,ext_msg='aTolTransFrac ('//PLASTICITY_DISLOTWIN_label//')')
         if (plastic_dislotwin_Cdwp(instance) < 0.0_pReal) &
