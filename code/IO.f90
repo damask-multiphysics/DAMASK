@@ -1552,6 +1552,8 @@ subroutine IO_error(error_ID,el,ip,g,ext_msg)
    msg = 'transformed hex lattice structure with invalid c/a ratio'
  case (135_pInt)
    msg = 'zero entry on stiffness diagonal'
+ case (136_pInt)
+   msg = 'zero entry on stiffness diagonal for transformed phase'
 
 !--------------------------------------------------------------------------------------------------
 ! material error messages and related messages in mesh

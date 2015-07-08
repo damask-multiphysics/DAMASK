@@ -982,7 +982,7 @@ subroutine plastic_dislotwin_init(fileUnit)
            do p = 1_pInt,3_pInt; do q = 1_pInt,3_pInt; do r = 1_pInt,3_pInt; do s = 1_pInt,3_pInt
              plastic_dislotwin_Ctrans3333(l,m,n,o,index_myFamily+j,instance) = &
              plastic_dislotwin_Ctrans3333(l,m,n,o,index_myFamily+j,instance) + &
-               lattice_C3333(p,q,r,s,instance) * &
+               lattice_trans_C3333(p,q,r,s,instance) * &
                lattice_Qtrans(l,p,index_otherFamily+j,phase) * &
                lattice_Qtrans(m,q,index_otherFamily+j,phase) * &
                lattice_Qtrans(n,r,index_otherFamily+j,phase) * &
@@ -993,14 +993,17 @@ subroutine plastic_dislotwin_init(fileUnit)
            math_Mandel3333to66(plastic_dislotwin_Ctrans3333(1:3,1:3,1:3,1:3,index_myFamily+j,instance))
 
          !* Projection matrices for shear from slip systems to fault-band (twin) systems for strain-induced martensite nucleation
-         do o = 1_pInt,lattice_maxNtransFamily
-           index_otherFamily = sum(plastic_dislotwin_Nslip(1:o-1_pInt,instance))
-           do k = 1_pInt,plastic_dislotwin_Nslip(o,instance)                                   ! loop over (active) systems in other family (trans)
-             plastic_dislotwin_projectionMatrix_Trans(index_myFamily+j,index_otherFamily+k,instance) = &
-                   lattice_projectionTrans( sum(lattice_NtransSystem(1:f-1,phase))+j, &
-                                            sum(lattice_NslipSystem(1:o-1,phase))+k, phase)
-         enddo; enddo
- 
+         select case(trans_lattice_structure(phase))
+           case (LATTICE_bcc_ID)
+             do o = 1_pInt,lattice_maxNtransFamily
+               index_otherFamily = sum(plastic_dislotwin_Nslip(1:o-1_pInt,instance))
+               do k = 1_pInt,plastic_dislotwin_Nslip(o,instance)                                   ! loop over (active) systems in other family (trans)
+                 plastic_dislotwin_projectionMatrix_Trans(index_myFamily+j,index_otherFamily+k,instance) = &
+                       lattice_projectionTrans( sum(lattice_NtransSystem(1:f-1,phase))+j, &
+                                                sum(lattice_NslipSystem(1:o-1,phase))+k, phase)
+             enddo; enddo
+         end select 
+
        enddo transSystemsLoop
      enddo transFamiliesLoop
 

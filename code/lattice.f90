@@ -1642,6 +1642,37 @@ subroutine lattice_initializeStructure(myPhase,CoverA,CoverA_trans,a_fcc,a_bcc)
    if (abs(lattice_C66(i,i,myPhase))<tol_math_check) &
      call IO_error(135_pInt,el=i,ip=myPhase,ext_msg='matrix diagonal "el"ement of phase "ip"')
  enddo
+
+ ! Elasticity matrices for transformed phase
+ select case(lattice_structure(myPhase))
+   case (LATTICE_fcc_ID)
+     select case(trans_lattice_structure(myPhase))
+       case (LATTICE_bcc_ID)
+         lattice_trans_C66(1:6,1:6,myPhase) = lattice_C66(1:6,1:6,myPhase)
+         lattice_trans_mu(myPhase) = lattice_mu(myPhase)
+         lattice_trans_nu(myPhase) = lattice_nu(myPhase)
+         lattice_trans_C3333(1:3,1:3,1:3,1:3,myPhase) = lattice_C3333(1:3,1:3,1:3,1:3,myPhase)
+       case (LATTICE_hex_ID)
+         lattice_trans_C66(1:6,1:6,myPhase) = lattice_symmetrizeC66(trans_lattice_structure(myPhase),&
+                                                                   lattice_trans_C66(1:6,1:6,myPhase))
+         lattice_trans_mu(myPhase) = 0.2_pReal *(  lattice_trans_C66(1,1,myPhase) &
+                                                 - lattice_trans_C66(1,2,myPhase) &
+                                                 + 3.0_pReal*lattice_trans_C66(4,4,myPhase))
+         lattice_trans_nu(myPhase) = (  lattice_trans_C66(1,1,myPhase) &
+                                      + 4.0_pReal*lattice_trans_C66(1,2,myPhase) &
+                                      - 2.0_pReal*lattice_trans_C66(4,4,myPhase)) &
+                                                     /(  4.0_pReal*lattice_trans_C66(1,1,myPhase) &
+                                                       + 6.0_pReal*lattice_trans_C66(1,2,myPhase) &
+                                                       + 2.0_pReal*lattice_trans_C66(4,4,myPhase))
+         lattice_trans_C3333(1:3,1:3,1:3,1:3,myPhase) = math_Voigt66to3333(lattice_trans_C66(1:6,1:6,myPhase))
+         lattice_trans_C66(1:6,1:6,myPhase) = math_Mandel3333to66(lattice_trans_C3333(1:3,1:3,1:3,1:3,myPhase))
+         do i = 1_pInt, 6_pInt
+           if (abs(lattice_trans_C66(i,i,myPhase))<tol_math_check) &
+           call IO_error(136_pInt,el=i,ip=myPhase,ext_msg='matrix diagonal "el"ement of phase "ip"')
+         enddo
+     end select
+ end select
+
  lattice_thermalConductivity33(1:3,1:3,myPhase) = lattice_symmetrize33(lattice_structure(myPhase),&
                                                                        lattice_thermalConductivity33(1:3,1:3,myPhase))
  lattice_thermalExpansion33(1:3,1:3,myPhase) = lattice_symmetrize33(lattice_structure(myPhase),&
@@ -1686,9 +1717,9 @@ subroutine lattice_initializeStructure(myPhase,CoverA,CoverA_trans,a_fcc,a_bcc)
      select case(trans_lattice_structure(myPhase))
        case (LATTICE_bcc_ID)                                                                         ! fcc to bcc transformation                         
          do i = 1_pInt,myNtrans
-           Rtr(1:3,1:3,i) = math_axisAngleToR(lattice_fccTobcc_systemTrans(1:3,i), &                      ! Pitsch rotation
+           Rtr(1:3,1:3,i) = math_axisAngleToR(lattice_fccTobcc_systemTrans(1:3,i), &                 ! Pitsch rotation
                               lattice_fccTobcc_systemTrans(4,i)*INRAD)
-           Btr(1:3,1:3,i) = math_axisAngleToR(lattice_fccTobcc_bainRot(1:3,i), &                          ! Rotation of fcc to Bain coordinate system
+           Btr(1:3,1:3,i) = math_axisAngleToR(lattice_fccTobcc_bainRot(1:3,i), &                     ! Rotation of fcc to Bain coordinate system
                               lattice_fccTobcc_bainRot(4,i)*INRAD)
            xtr(1:3,i) = real(LATTICE_fccTobcc_bainVariant(1:3,i),pReal)
            ytr(1:3,i) = real(LATTICE_fccTobcc_bainVariant(4:6,i),pReal)
