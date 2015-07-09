@@ -124,10 +124,6 @@ class ASCIItable():
     except(IOError):
       pass
 
-    if self.__IO__['validReadSize'] == 0:                                                           # in case no valid data length is known
-      self.data_read(advance = False)
-      self.__IO__['validReadSize'] = len(self.data)                                                 # assume constant data width from first line
-
 # ------------------------------------------------------------------
   def head_write(self):
     '''
@@ -336,7 +332,7 @@ class ASCIItable():
     if not isinstance(labels,list):
       labels = [labels]
     if labels == [None] or labels == []:
-      use = np.arange(self.__IO__['validReadSize'])                                                 # use all columns (and keep labels intact)
+      use = None                                                                                    # use all columns (and keep labels intact)
       labels_missing = []
     else:
       indices = self.label_index(labels)                                                            # check requested labels
