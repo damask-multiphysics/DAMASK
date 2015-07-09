@@ -326,7 +326,7 @@ subroutine spectral_damage_formResidual(in,x_scal,f_scal,dummy,ierr)
  call utilities_FFTscalarForward()
  call utilities_fourierGreenConvolution(D_ref, mobility_ref, params%timeinc)
  call utilities_FFTscalarBackward()
- where(scalarField_realMPI > 1.0_pReal) scalarField_realMPI = 1.0_pReal
+ where(scalarField_realMPI > damage_lastInc) scalarField_realMPI = damage_lastInc
  where(scalarField_realMPI < residualStiffness) scalarField_realMPI = residualStiffness
  
 !--------------------------------------------------------------------------------------------------
