@@ -56,15 +56,15 @@ module DAMASK_spectral_utilities
 !--------------------------------------------------------------------------------------------------
 ! plans for FFTW
  type(C_PTR),   private :: &
-   planTensorForthMPI, &                                                                            !< FFTW MPI plan P(x) to P(k)
-   planTensorBackMPI, &                                                                             !< FFTW MPI plan F(k) to F(x)
-   planVectorForthMPI, &                                                                            !< FFTW MPI plan P(x) to P(k)
-   planVectorBackMPI, &                                                                             !< FFTW MPI plan F(k) to F(x)
-   planScalarForthMPI, &                                                                            !< FFTW MPI plan P(x) to P(k)
-   planScalarBackMPI, &                                                                             !< FFTW MPI plan F(k) to F(x)
-   planDebugForthMPI, &                                                                             !< FFTW MPI plan for scalar field
-   planDebugBackMPI, &                                                                              !< FFTW MPI plan for scalar field inverse
-   planDivMPI                                                                                       !< FFTW MPI plan for FFTW in case of debugging divergence calculation
+   planTensorForth, &                                                                            !< FFTW MPI plan P(x) to P(k)
+   planTensorBack, &                                                                             !< FFTW MPI plan F(k) to F(x)
+   planVectorForth, &                                                                            !< FFTW MPI plan P(x) to P(k)
+   planVectorBack, &                                                                             !< FFTW MPI plan F(k) to F(x)
+   planScalarForth, &                                                                            !< FFTW MPI plan P(x) to P(k)
+   planScalarBack, &                                                                             !< FFTW MPI plan F(k) to F(x)
+   planDebugForth, &                                                                             !< FFTW MPI plan for scalar field
+   planDebugBack, &                                                                              !< FFTW MPI plan for scalar field inverse
+   planDiv                                                                                       !< FFTW MPI plan for FFTW in case of debugging divergence calculation
 
 !--------------------------------------------------------------------------------------------------
 ! variables controlling debugging
@@ -295,54 +295,63 @@ subroutine utilities_init()
  
 !--------------------------------------------------------------------------------------------------
 ! tensor MPI fftw plans
- planTensorForthMPI = fftw_mpi_plan_many_dft_r2c(3, [gridFFTW(3),gridFFTW(2),gridFFTW(1)], &        ! dimension, logical length in each dimension in reversed order
+ planTensorForth = fftw_mpi_plan_many_dft_r2c(3, [gridFFTW(3),gridFFTW(2),gridFFTW(1)], &        ! dimension, logical length in each dimension in reversed order
                                        tensorSize, FFTW_MPI_DEFAULT_BLOCK, FFTW_MPI_DEFAULT_BLOCK, &! no. of transforms, default iblock and oblock
                                                       tensorField_realMPI, tensorField_fourierMPI, &! input data, output data
                                                                 MPI_COMM_WORLD, fftw_planner_flag)  ! use all processors, planer precision
- planTensorBackMPI  = fftw_mpi_plan_many_dft_c2r(3, [gridFFTW(3),gridFFTW(2),gridFFTW(1)], &        ! dimension, logical length in each dimension in reversed order
+ if (.not. C_ASSOCIATED(planTensorForth)) call IO_error(810, ext_msg='planTensorForth')
+ planTensorBack  = fftw_mpi_plan_many_dft_c2r(3, [gridFFTW(3),gridFFTW(2),gridFFTW(1)], &        ! dimension, logical length in each dimension in reversed order
                                       tensorSize,  FFTW_MPI_DEFAULT_BLOCK, FFTW_MPI_DEFAULT_BLOCK, &! no. of transforms, default iblock and oblock
                                                        tensorField_fourierMPI,tensorField_realMPI, &! input data, output data
                                                                 MPI_COMM_WORLD, fftw_planner_flag)  ! all processors, planer precision
+ if (.not. C_ASSOCIATED(planTensorBack)) call IO_error(810, ext_msg='planTensorBack')
    
 !--------------------------------------------------------------------------------------------------
 ! vector MPI fftw plans
- planVectorForthMPI = fftw_mpi_plan_many_dft_r2c(3, [gridFFTW(3),gridFFTW(2),gridFFTW(1)], &        ! dimension, logical length in each dimension in reversed order
+ planVectorForth = fftw_mpi_plan_many_dft_r2c(3, [gridFFTW(3),gridFFTW(2),gridFFTW(1)], &        ! dimension, logical length in each dimension in reversed order
                                           vecSize, FFTW_MPI_DEFAULT_BLOCK, FFTW_MPI_DEFAULT_BLOCK, &! no. of transforms, default iblock and oblock
                                                       vectorField_realMPI, vectorField_fourierMPI, &! input data, output data
                                                                 MPI_COMM_WORLD, fftw_planner_flag)  ! use all processors, planer precision
- planVectorBackMPI  = fftw_mpi_plan_many_dft_c2r(3, [gridFFTW(3),gridFFTW(2),gridFFTW(1)],  &       ! dimension, logical length in each dimension in reversed order
+ if (.not. C_ASSOCIATED(planVectorForth)) call IO_error(810, ext_msg='planVectorForth')
+ planVectorBack  = fftw_mpi_plan_many_dft_c2r(3, [gridFFTW(3),gridFFTW(2),gridFFTW(1)],  &       ! dimension, logical length in each dimension in reversed order
                                         vecSize, FFTW_MPI_DEFAULT_BLOCK, FFTW_MPI_DEFAULT_BLOCK, &  ! no. of transforms, default iblock and oblock
                                                      vectorField_fourierMPI,vectorField_realMPI, &  ! input data, output data
                                                                 MPI_COMM_WORLD, fftw_planner_flag)  ! all processors, planer precision
+ if (.not. C_ASSOCIATED(planVectorBack)) call IO_error(810, ext_msg='planVectorBack')
    
 !--------------------------------------------------------------------------------------------------
 ! scalar MPI fftw plans                            
- planScalarForthMPI = fftw_mpi_plan_many_dft_r2c(3, [gridFFTW(3),gridFFTW(2),gridFFTW(1)], &        ! dimension, logical length in each dimension in reversed order 
+ planScalarForth = fftw_mpi_plan_many_dft_r2c(3, [gridFFTW(3),gridFFTW(2),gridFFTW(1)], &        ! dimension, logical length in each dimension in reversed order 
                                       scalarSize, FFTW_MPI_DEFAULT_BLOCK, FFTW_MPI_DEFAULT_BLOCK, & ! no. of transforms, default iblock and oblock
                                                       scalarField_realMPI, scalarField_fourierMPI, & ! input data, output data
                                                                MPI_COMM_WORLD, fftw_planner_flag)   ! use all processors, planer precision
- planScalarBackMPI  = fftw_mpi_plan_many_dft_c2r(3, [gridFFTW(3),gridFFTW(2),gridFFTW(1)], &        ! dimension, logical length in each dimension in reversed order, no. of transforms
+ if (.not. C_ASSOCIATED(planScalarForth)) call IO_error(810, ext_msg='planScalarForth')
+ planScalarBack  = fftw_mpi_plan_many_dft_c2r(3, [gridFFTW(3),gridFFTW(2),gridFFTW(1)], &        ! dimension, logical length in each dimension in reversed order, no. of transforms
                                       scalarSize, FFTW_MPI_DEFAULT_BLOCK, FFTW_MPI_DEFAULT_BLOCK, & ! no. of transforms, default iblock and oblock
                                                       scalarField_fourierMPI,scalarField_realMPI, & ! input data, output data
                                                                MPI_COMM_WORLD, fftw_planner_flag)   ! use all processors, planer precision
+ if (.not. C_ASSOCIATED(planScalarBack)) call IO_error(810, ext_msg='planScalarBack')
 !--------------------------------------------------------------------------------------------------
 ! depending on debug options, allocate more memory and create additional plans 
  if (debugDivergence) then
-   planDivMPI  = fftw_mpi_plan_many_dft_c2r(3, [gridFFTW(3),gridFFTW(2) ,gridFFTW(1)],vecSize, &
+   planDiv  = fftw_mpi_plan_many_dft_c2r(3, [gridFFTW(3),gridFFTW(2) ,gridFFTW(1)],vecSize, &
                                             FFTW_MPI_DEFAULT_BLOCK, FFTW_MPI_DEFAULT_BLOCK, &
                                                vectorField_fourierMPI, vectorField_realMPI, &
                                                          MPI_COMM_WORLD, fftw_planner_flag)
+   if (.not. C_ASSOCIATED(planDiv)) call IO_error(810, ext_msg='planDiv')
  endif
 
  if (debugFFTW) then
-   planDebugForthMPI = fftw_mpi_plan_many_dft_r2c(3, [gridFFTW(3),gridFFTW(2),gridFFTW(1)], &
+   planDebugForth = fftw_mpi_plan_many_dft_r2c(3, [gridFFTW(3),gridFFTW(2),gridFFTW(1)], &
                                 scalarSize, FFTW_MPI_DEFAULT_BLOCK, FFTW_MPI_DEFAULT_BLOCK, &
                                                scalarField_realMPI, scalarField_fourierMPI, &
                                                          MPI_COMM_WORLD, fftw_planner_flag)
-   planDebugBackMPI  = fftw_mpi_plan_many_dft_c2r(3, [gridFFTW(3),gridFFTW(2),gridFFTW(1)], &
+   if (.not. C_ASSOCIATED(planDebugForth)) call IO_error(810, ext_msg='planDebugForth')
+   planDebugBack  = fftw_mpi_plan_many_dft_c2r(3, [gridFFTW(3),gridFFTW(2),gridFFTW(1)], &
                                 scalarSize, FFTW_MPI_DEFAULT_BLOCK, FFTW_MPI_DEFAULT_BLOCK, &
                                                 scalarField_fourierMPI,scalarField_realMPI, &
                                                          MPI_COMM_WORLD, fftw_planner_flag)
+   if (.not. C_ASSOCIATED(planDebugBack)) call IO_error(810, ext_msg='planDebugBack')
  endif 
 !--------------------------------------------------------------------------------------------------
 ! general initialization of FFTW (see manual on fftw.org for more details)
@@ -465,12 +474,12 @@ subroutine utilities_FFTtensorForward()
 
 !--------------------------------------------------------------------------------------------------
 ! doing the FFT
- call fftw_mpi_execute_dft_r2c(planTensorForthMPI,tensorField_realMPI,tensorField_fourierMPI)
+ call fftw_mpi_execute_dft_r2c(planTensorForth,tensorField_realMPI,tensorField_fourierMPI)
   
 !--------------------------------------------------------------------------------------------------
 ! comparing 1 and 3x3 FT results
  if (debugFFTW) then
-   call fftw_mpi_execute_dft_r2c(planDebugForthMPI,scalarField_realMPI,scalarField_fourierMPI)
+   call fftw_mpi_execute_dft_r2c(planDebugForth,scalarField_realMPI,scalarField_fourierMPI)
    where(abs(scalarField_fourierMPI(1:grid1Red,1:gridLocal(2),1:gridLocal(3))) > tiny(1.0_pReal))   ! avoid division by zero
      scalarField_fourierMPI(1:grid1Red,1:gridLocal(2),1:gridLocal(3)) = &  
                    (scalarField_fourierMPI(1:grid1Red,1:gridLocal(2),1:gridLocal(3))-&
@@ -538,12 +547,12 @@ subroutine utilities_FFTtensorBackward()
  
 !--------------------------------------------------------------------------------------------------
 ! doing the iFFT
- call fftw_mpi_execute_dft_c2r(planTensorBackMPI,tensorField_fourierMPI,tensorField_realMPI)        ! back transform of fluct deformation gradient
+ call fftw_mpi_execute_dft_c2r(planTensorBack,tensorField_fourierMPI,tensorField_realMPI)        ! back transform of fluct deformation gradient
 
 !--------------------------------------------------------------------------------------------------
 ! comparing 1 and 3x3 inverse FT results
  if (debugFFTW) then
-   call fftw_mpi_execute_dft_c2r(planDebugBackMPI,scalarField_fourierMPI,scalarField_realMPI)
+   call fftw_mpi_execute_dft_c2r(planDebugBack,scalarField_fourierMPI,scalarField_realMPI)
    where(abs(real(scalarField_realMPI,pReal)) > tiny(1.0_pReal))                                    ! avoid division by zero
      scalarField_realMPI(1:gridLocal(1),1:gridLocal(2),1:gridLocal(3)) = &
    (scalarField_realMPI(1:gridLocal(1),1:gridLocal(2),1:gridLocal(3)) &
@@ -579,7 +588,7 @@ subroutine utilities_FFTscalarForward()
  integer(pInt) ::  i, j, k
    
 ! doing the scalar FFT
- call fftw_mpi_execute_dft_r2c(planScalarForthMPI,scalarField_realMPI,scalarField_fourierMPI)
+ call fftw_mpi_execute_dft_r2c(planScalarForth,scalarField_realMPI,scalarField_fourierMPI)
 
 ! applying filter
  do k = 1_pInt, gridLocal(3);  do j = 1_pInt, gridLocal(2);  do i = 1_pInt,grid1Red
@@ -600,7 +609,7 @@ subroutine utilities_FFTscalarBackward()
  use math
  
 ! doing the scalar iFFT
- call fftw_mpi_execute_dft_c2r(planScalarBackMPI,scalarField_fourierMPI,scalarField_realMPI)
+ call fftw_mpi_execute_dft_c2r(planScalarBack,scalarField_fourierMPI,scalarField_realMPI)
 
  scalarField_realMPI = scalarField_realMPI * wgt                                                    ! normalize the result by number of elements
 
@@ -620,7 +629,7 @@ subroutine utilities_FFTvectorForward()
  integer(pInt) ::  i, j, k
    
 ! doing the vecotr FFT
- call fftw_mpi_execute_dft_r2c(planVectorForthMPI,vectorField_realMPI,vectorField_fourierMPI)
+ call fftw_mpi_execute_dft_r2c(planVectorForth,vectorField_realMPI,vectorField_fourierMPI)
 
 ! applying filter
  do k = 1_pInt, gridLocal(3);  do j = 1_pInt, gridLocal(2);  do i = 1_pInt,grid1Red
@@ -641,7 +650,7 @@ subroutine utilities_FFTvectorBackward()
  use math
  
 ! doing the vector iFFT
- call fftw_mpi_execute_dft_c2r(planVectorBackMPI,vectorField_fourierMPI,vectorField_realMPI)
+ call fftw_mpi_execute_dft_c2r(planVectorBack,vectorField_fourierMPI,vectorField_realMPI)
 
  vectorField_realMPI = vectorField_realMPI * wgt                                                    ! normalize the result by number of elements
 
@@ -841,7 +850,7 @@ real(pReal) function utilities_divergenceRMS()
      vectorField_fourierMPI(1:3,i,j,k) = temp3_Complex                                              ! need divergence NOT squared
    enddo; enddo; enddo
    
-   call fftw_mpi_execute_dft_c2r(planDivMPI,vectorField_fourierMPI,vectorField_realMPI)             ! already weighted
+   call fftw_mpi_execute_dft_c2r(planDiv,vectorField_fourierMPI,vectorField_realMPI)             ! already weighted
 
    err_real_div_RMS = sum(vectorField_realMPI**2.0_pReal)
    call MPI_reduce(MPI_IN_PLACE,err_real_div_RMS,1,MPI_DOUBLE,MPI_SUM,0,PETSC_COMM_WORLD,ierr)
@@ -1324,15 +1333,15 @@ subroutine utilities_destroy()
 
  implicit none
 
- if (debugDivergence) call fftw_destroy_plan(planDivMPI)
- if (debugFFTW) call fftw_destroy_plan(planDebugForthMPI)
- if (debugFFTW) call fftw_destroy_plan(planDebugBackMPI)
- call fftw_destroy_plan(planTensorForthMPI)
- call fftw_destroy_plan(planTensorBackMPI)
- call fftw_destroy_plan(planVectorForthMPI)
- call fftw_destroy_plan(planVectorBackMPI)
- call fftw_destroy_plan(planScalarForthMPI)
- call fftw_destroy_plan(planScalarBackMPI)
+ if (debugDivergence) call fftw_destroy_plan(planDiv)
+ if (debugFFTW) call fftw_destroy_plan(planDebugForth)
+ if (debugFFTW) call fftw_destroy_plan(planDebugBack)
+ call fftw_destroy_plan(planTensorForth)
+ call fftw_destroy_plan(planTensorBack)
+ call fftw_destroy_plan(planVectorForth)
+ call fftw_destroy_plan(planVectorBack)
+ call fftw_destroy_plan(planScalarForth)
+ call fftw_destroy_plan(planScalarBack)
 
 end subroutine utilities_destroy
 
@@ -1383,7 +1392,7 @@ subroutine utilities_updateIPcoords(F)
      vectorField_fourierMPI(1:3,i,j,k)/cmplx(-sum(xi(1:3,i,j,k)*scaledGeomSize*xi(1:3,i,j,k)* &
                                                      scaledGeomSize),0.0_pReal,pReal)
  enddo; enddo; enddo
- call fftw_mpi_execute_dft_c2r(planVectorBackMPI,vectorField_fourierMPI,vectorField_realMPI)
+ call fftw_mpi_execute_dft_c2r(planVectorBack,vectorField_fourierMPI,vectorField_realMPI)
 
 !--------------------------------------------------------------------------------------------------
 ! add average to fluctuation and put (0,0,0) on (0,0,0)

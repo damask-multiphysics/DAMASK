@@ -1651,10 +1651,12 @@ subroutine IO_error(error_ID,el,ip,g,ext_msg)
 ! errors related to spectral solver
  case (809_pInt)
    msg = 'initializing FFTW'
+ case (810_pInt)
+   msg = 'FFTW plan creation'
  case (831_pInt)
    msg = 'mask consistency violated in spectral loadcase'
  case (832_pInt)
-   msg = 'ill-defined L (line party P) in spectral loadcase'
+   msg = 'ill-defined L (line partly defined) in spectral loadcase'
  case (834_pInt)
    msg = 'negative time increment in spectral loadcase'
  case (835_pInt)
