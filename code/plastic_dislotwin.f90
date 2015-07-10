@@ -82,10 +82,13 @@ module plastic_dislotwin
    plastic_dislotwin_aTolRho, &                                                                !< absolute tolerance for integration of dislocation density
    plastic_dislotwin_aTolTwinFrac, &                                                           !< absolute tolerance for integration of twin volume fraction
    plastic_dislotwin_aTolTransFrac, &                                                          !< absolute tolerance for integration of trans volume fraction
-   plastic_dislotwin_Cdwp, &                                                                   !< Coefficient for double well potential 
-   plastic_dislotwin_Cnuc, &                                                                   !< Coefficient for strain-induced martensite nucleation  
-   plastic_dislotwin_Cgro, &                                                                   !< Coefficient for stress-assisted martensite growth  
-   plastic_dislotwin_deltaG                                                                    !< Free energy difference between austensite and martensite [MPa]
+   plastic_dislotwin_Cdwp, &                                                                   !< Coefficient for double well potential (fcc to bcc transformation)
+   plastic_dislotwin_Cnuc, &                                                                   !< Coefficient for strain-induced martensite nucleation (fcc to bcc transformation) 
+   plastic_dislotwin_Cgro, &                                                                   !< Coefficient for stress-assisted martensite growth (fcc to bcc transformation) 
+   plastic_dislotwin_deltaG, &                                                                 !< Free energy difference between austensite and martensite
+   plastic_dislotwin_Cmfptrans, &                                                              !<
+   plastic_dislotwin_Cthresholdtrans, &                                                        !<
+   plastic_dislotwin_transStackHeight                                                          !< Stack height of hex nucleus
 
  real(pReal),                         dimension(:,:,:,:),     allocatable,         private :: &
    plastic_dislotwin_Ctwin66                                                                   !< twin elasticity matrix in Mandel notation for each instance
@@ -102,6 +105,8 @@ module plastic_dislotwin
    plastic_dislotwin_burgersPerSlipSystem, &                                                   !< absolute length of burgers vector [m] for each slip system and instance
    plastic_dislotwin_burgersPerTwinFamily, &                                                   !< absolute length of burgers vector [m] for each twin family and instance
    plastic_dislotwin_burgersPerTwinSystem, &                                                   !< absolute length of burgers vector [m] for each twin system and instance
+   plastic_dislotwin_burgersPerTransFamily, &                                                  !< absolute length of burgers vector [m] for each trans family and instance
+   plastic_dislotwin_burgersPerTransSystem, &                                                  !< absolute length of burgers vector [m] for each trans system and instance
    plastic_dislotwin_QedgePerSlipFamily, &                                                     !< activation energy for glide [J] for each slip family and instance
    plastic_dislotwin_QedgePerSlipSystem, &                                                     !< activation energy for glide [J] for each slip system and instance
    plastic_dislotwin_v0PerSlipFamily, &                                                        !< dislocation velocity prefactor [m/s] for each family and instance
@@ -122,7 +127,8 @@ module plastic_dislotwin
    plastic_dislotwin_interaction_TwinTwin, &                                                   !< coefficients for twin-twin interaction for each interaction type and instance
    plastic_dislotwin_pPerSlipFamily, &                                                         !< p-exponent in glide velocity
    plastic_dislotwin_qPerSlipFamily, &                                                         !< q-exponent in glide velocity
-   plastic_dislotwin_rPerTwinFamily                                                            !< r-exponent in twin nucleation rate
+   plastic_dislotwin_rPerTwinFamily, &                                                         !< r-exponent in twin nucleation rate
+   plastic_dislotwin_sPerTransFamily                                                           !< s-exponent in trans nucleation rate
  real(pReal),                         dimension(:,:,:),       allocatable,         private :: &
    plastic_dislotwin_interactionMatrix_SlipSlip, &                                             !< interaction matrix of the different slip systems for each instance
    plastic_dislotwin_interactionMatrix_SlipTwin, &                                             !< interaction matrix of slip systems with twin systems for each instance
@@ -292,11 +298,16 @@ subroutine plastic_dislotwin_init(fileUnit)
  allocate(plastic_dislotwin_Cnuc(maxNinstance),                                source=0.0_pReal)
  allocate(plastic_dislotwin_Cgro(maxNinstance),                                source=0.0_pReal)
  allocate(plastic_dislotwin_deltaG(maxNinstance),                              source=0.0_pReal)
+ allocate(plastic_dislotwin_Cmfptrans(maxNinstance),                           source=0.0_pReal)
+ allocate(plastic_dislotwin_Cthresholdtrans(maxNinstance),                     source=0.0_pReal)
+ allocate(plastic_dislotwin_transStackHeight(maxNinstance),                    source=0.0_pReal)
  allocate(plastic_dislotwin_rhoEdge0(lattice_maxNslipFamily,maxNinstance),     source=0.0_pReal)
  allocate(plastic_dislotwin_rhoEdgeDip0(lattice_maxNslipFamily,maxNinstance),  source=0.0_pReal)
  allocate(plastic_dislotwin_burgersPerSlipFamily(lattice_maxNslipFamily,maxNinstance), &
                                                                                     source=0.0_pReal)
  allocate(plastic_dislotwin_burgersPerTwinFamily(lattice_maxNtwinFamily,maxNinstance), &
+                                                                                    source=0.0_pReal)
+ allocate(plastic_dislotwin_burgersPerTransFamily(lattice_maxNtransFamily,maxNinstance), &
                                                                                     source=0.0_pReal)
  allocate(plastic_dislotwin_QedgePerSlipFamily(lattice_maxNslipFamily,maxNinstance), &
                                                                                     source=0.0_pReal)
@@ -325,7 +336,8 @@ subroutine plastic_dislotwin_init(fileUnit)
                                                                                     source=0.0_pReal)
  allocate(plastic_dislotwin_lamellarsizePerTransFamily(lattice_maxNtransFamily,maxNinstance), &
                                                                                     source=0.0_pReal)
- 
+ allocate(plastic_dislotwin_sPerTransFamily(lattice_maxNtransFamily,maxNinstance),source=0.0_pReal)
+
 
  rewind(fileUnit)
  phase = 0_pInt
@@ -553,11 +565,18 @@ subroutine plastic_dislotwin_init(fileUnit)
          do j = 1_pInt, Nchunks_TransFamilies
            plastic_dislotwin_Ntrans(j,instance) = IO_intValue(line,positions,1_pInt+j)
          enddo
-       case ('lamellarsize')
+       case ('lamellarsize','transburgers','s_trans')
          do j = 1_pInt, Nchunks_TransFamilies
            tempPerTrans(j) = IO_floatValue(line,positions,1_pInt+j)
          enddo
-         plastic_dislotwin_lamellarsizePerTransFamily(1:Nchunks_TransFamilies,instance) = tempPerTrans(1:Nchunks_TransFamilies)
+         select case(tag)
+           case ('lamellarsize')
+             plastic_dislotwin_lamellarsizePerTransFamily(1:Nchunks_TransFamilies,instance) = tempPerTrans(1:Nchunks_TransFamilies)
+           case ('transburgers')
+             plastic_dislotwin_burgersPerTransFamily(1:Nchunks_TransFamilies,instance) = tempPerTrans(1:Nchunks_TransFamilies)
+           case ('s_trans')
+             plastic_dislotwin_sPerTransFamily(1:Nchunks_TransFamilies,instance) = tempPerTrans(1:Nchunks_TransFamilies)
+         end select
 !--------------------------------------------------------------------------------------------------
 ! parameters depending on number of interactions
        case ('interaction_slipslip','interactionslipslip')
@@ -585,7 +604,7 @@ subroutine plastic_dislotwin_init(fileUnit)
            plastic_dislotwin_interaction_TwinTwin(j,instance) = IO_floatValue(line,positions,1_pInt+j)
          enddo
 !--------------------------------------------------------------------------------------------------
-! parameters independent of number of slip/twin systems
+! parameters independent of number of slip/twin/trans systems
        case ('grainsize')
          plastic_dislotwin_GrainSize(instance) = IO_floatValue(line,positions,2_pInt)
        case ('maxtwinfraction')
@@ -640,6 +659,12 @@ subroutine plastic_dislotwin_init(fileUnit)
          plastic_dislotwin_Cgro(instance) = IO_floatValue(line,positions,2_pInt)
        case ('deltag')
          plastic_dislotwin_deltaG(instance) = IO_floatValue(line,positions,2_pInt)
+       case ('cmfptrans')
+         plastic_dislotwin_Cmfptrans(instance) = IO_floatValue(line,positions,2_pInt)
+       case ('cthresholdtrans')
+         plastic_dislotwin_Cthresholdtrans(instance) = IO_floatValue(line,positions,2_pInt)
+       case ('transstackheight')
+         plastic_dislotwin_transStackHeight(instance) = IO_floatValue(line,positions,2_pInt)
      end select
    endif; endif
  enddo parsingFile
@@ -739,6 +764,7 @@ subroutine plastic_dislotwin_init(fileUnit)
 
  allocate(plastic_dislotwin_burgersPerSlipSystem(maxTotalNslip, maxNinstance),    source=0.0_pReal)
  allocate(plastic_dislotwin_burgersPerTwinSystem(maxTotalNtwin, maxNinstance),    source=0.0_pReal)
+ allocate(plastic_dislotwin_burgersPerTransSystem(maxTotalNtrans, maxNinstance),  source=0.0_pReal)
  allocate(plastic_dislotwin_QedgePerSlipSystem(maxTotalNslip, maxNinstance),      source=0.0_pReal)
  allocate(plastic_dislotwin_v0PerSlipSystem(maxTotalNslip, maxNinstance),         source=0.0_pReal)
  allocate(plastic_dislotwin_Ndot0PerTwinSystem(maxTotalNtwin, maxNinstance),      source=0.0_pReal)
@@ -979,6 +1005,10 @@ subroutine plastic_dislotwin_init(fileUnit)
        !* Martensite lamellar size
        plastic_dislotwin_lamellarsizePerTransSystem(index_myFamily+j,instance) = &
        plastic_dislotwin_lamellarsizePerTransFamily(f,instance)
+
+       ! Burgers vector for transformation system   
+       plastic_dislotwin_burgersPerTransSystem(index_myFamily+j,instance)  = &
+       plastic_dislotwin_burgersPerTransFamily(f,instance)
 
        !* Rotate trans elasticity matrices
        index_otherFamily = sum(lattice_NtransSystem(1:f-1_pInt,phase))                               ! index in full lattice trans list
