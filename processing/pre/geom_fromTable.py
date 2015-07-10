@@ -63,7 +63,7 @@ parser.add_option('--homogenization',   dest='homogenization', type='int', metav
 parser.add_option('--crystallite',      dest='crystallite', type='int', metavar='int',
                   help='crystallite index to be used [%default]')
 
-parser.set_defaults(symmetry       = [],
+parser.set_defaults(symmetry       = [damask.Symmetry.lattices[-1]],
                     tolerance      = 0.0,
                     degrees        = False,
                     homogenization = 1,
