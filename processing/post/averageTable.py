@@ -6,7 +6,7 @@ import numpy as np
 from optparse import OptionParser
 import damask
 
-scriptID   = string.replace('$Id: AverageTable.py 3878 2015-02-22 19:26:52Z t.maiti $','\n','\\n')
+scriptID   = string.replace('$Id$','\n','\\n')
 scriptName = os.path.splitext(scriptID.split()[1])[0]
 
 # --------------------------------------------------------------------
@@ -14,53 +14,58 @@ scriptName = os.path.splitext(scriptID.split()[1])[0]
 # --------------------------------------------------------------------
 
 parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
-Replace all rows for which the indicator column has identical values by a single row containing their average.
-Output table will contain as many rows as there are different (unique) values in the indicator column.
+Replace all rows for which column 'label' has identical values by a single row containing their average.
+Output table will contain as many rows as there are different (unique) values in the grouping column.
 
 Examples:
-For grain averaged values, replace all rows of particular #texture# with a single row containing their average.
+For grain averaged values, replace all rows of particular 'texture' with a single row containing their average.
 """, version = scriptID)
 
-parser.add_option('-l','--label',   dest='key', type="string", metavar='label',
-                  help='column label for averaging rows')
+parser.add_option('-l','--label',   dest='label', type="string", metavar='string',
+                  help='column label for grouping rows')
 (options,filenames) = parser.parse_args()
 
-if options.key == None:
+if options.label == None:
   parser.error('No sorting column specified.')
 
 
-# ------------------------------------------ setup file handles ---------------------------------------  
+# --- loop over input files -------------------------------------------------------------------------
 
-files = []
 if filenames == []:
-  files.append({'name':'STDIN', 'input':sys.stdin, 'output':sys.stdout, 'croak':sys.stderr})
-else:
-  for name in filenames:
-    if os.path.exists(name):
-      files.append({'name':name, 'input':open(name), 'output':open(name+'_tmp','w'), 'croak':sys.stderr})
+  filenames = ['STDIN']
 
-# ------------------------------------------ loop over input files -----------------------  
+for name in filenames:
+  if name == 'STDIN':
+    file = {'name':'STDIN', 'input':sys.stdin, 'output':sys.stdout, 'croak':sys.stderr}
+    file['croak'].write('\033[1m'+scriptName+'\033[0m\n')
+  else:
+    if not os.path.exists(name): continue
+    file = {'name':name, 'input':open(name), 'output':open(name+'_tmp','w'), 'croak':sys.stderr}
+    file['croak'].write('\033[1m'+scriptName+'\033[0m: '+file['name']+'\n')
 
-for file in files:
-  if file['name'] != 'STDIN': file['croak'].write('\033[1m'+scriptName+'\033[0m: '+file['name']+'\n')
-  else: file['croak'].write('\033[1m'+scriptName+'\033[0m\n')
+  table = damask.ASCIItable(file['input'],file['output'],buffered=False)                            # make unbuffered ASCII_table
+  table.head_read()                                                                                 # read ASCII header info
 
-  table = damask.ASCIItable(file['input'],file['output'],False)             # make unbuffered ASCII_table
-  table.head_read()                                                         # read ASCII header info
-  table.info_append(string.replace(scriptID,'\n','\\n') + \
-                    '\t' + ' '.join(sys.argv[1:]))
+  if table.label_dimension(options.label) != 1:
+    file['croak'].write('column {0} is not of scalar dimension...\n'.format(options.label))
+    table.close(dismiss = True)                                                                     # close ASCIItable and remove empty file
+    continue
+
 
 # ------------------------------------------ assemble header -----------------------------  
 
+  table.info_append(string.replace(scriptID,'\n','\\n') + \
+                    '\t' + ' '.join(sys.argv[1:]))
   table.head_write()
 
 # ------------------------------------------ process data -------------------------------- 
 
-  rows, cols = table.data_readArray()
+  table.data_readArray()
+  rows,cols  = table.data.shape
 
-  table.data = table.data[np.lexsort([table.data[:,table.label_index(options.key)]])]
+  table.data = table.data[np.lexsort([table.data[:,table.label_index(options.label)]])]
   
-  values, index = np.unique(table.data[:,table.label_index(options.key)], return_index=True)
+  values,index = np.unique(table.data[:,table.label_index(options.label)], return_index=True)
   index = np.append(index,rows)
   avgTable = np.empty((len(values), cols))
   
@@ -69,12 +74,12 @@ for file in files:
       avgTable[i,j] = np.average(table.data[index[i]:index[i+1],j])
   
   table.data = avgTable
-  table.data_writeArray()
+
 # ------------------------------------------ output result -------------------------------  
 
-  table.output_flush()                                                      # just in case of buffered ASCII table
+  table.data_writeArray()
+  table.output_flush()                                                                               # just in case of buffered ASCII table
 
-  table.input_close()                                                       # close input ASCII table
+  table.close()                                                                                      # close ASCII table
   if file['name'] != 'STDIN':
-    table.output_close()                                                    # close output ASCII table
     os.rename(file['name']+'_tmp',options.key+'_averaged_'+file['name'])                             # overwrite old one with tmp new
