@@ -82,4 +82,4 @@ for name in filenames:
 
   table.close()                                                                                      # close ASCII table
   if file['name'] != 'STDIN':
-    os.rename(file['name']+'_tmp',options.key+'_averaged_'+file['name'])                             # overwrite old one with tmp new
+    os.rename(file['name']+'_tmp',options.label+'_averaged_'+file['name'])                             # overwrite old one with tmp new
