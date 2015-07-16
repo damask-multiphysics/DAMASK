@@ -119,7 +119,7 @@ for name in filenames:
   if np.all(np.array(options.range) == 0.0):
     options.range = [table.data[mask].min(),
                      table.data[mask].max()]
-    file['croak'].write('data range: %g – %g\n'%(options.range[0],options.range[1]))
+    file['croak'].write('data range: {0} – {1}\n'.format(*options.range))
 
   delta =      max(options.range) - min(options.range)
   avg   = 0.5*(max(options.range) + min(options.range))
@@ -134,8 +134,12 @@ for name in filenames:
                   repeat(options.pixelsizex,axis = 1).\
                   repeat(options.pixelsizey,axis = 0)
 
+  mask =       mask.\
+                  repeat(options.pixelsizex,axis = 1).\
+                  repeat(options.pixelsizey,axis = 0)
+
   (height,width) = table.data.shape
-  file['croak'].write('image dimension: %i x %i\n'%(width,height))
+  file['croak'].write('image dimension: {0} x {1}\n'.format(width,height))
 
   im = Image.fromarray(np.dstack((theColors[np.array(255*table.data,dtype=np.uint8)],
                                   255*mask.astype(np.uint8))), 'RGBA').\
