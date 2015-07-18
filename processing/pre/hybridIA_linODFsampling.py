@@ -411,7 +411,7 @@ for file in files:
   if file['name'] != 'STDIN':
      file['output'].close()
      os.rename(file['name']+'_tmp',
-            os.path.splitext(file['name'])[0] +'_'+method+'%s'%('_material.config'))
+            os.path.splitext(file['name'])[0] +'_'+method+'_'+str(nSamples)+'%s'%('_material.config'))
 
   # write ang file
   if options.ang:
@@ -434,4 +434,4 @@ for file in files:
     if file['name'] != 'STDIN':
       file['outang'].close()
       os.rename(file['name']+'_ang_tmp',
-            os.path.splitext(file['name'])[0] +'_'+method+'%s'%('.ang'))
+            os.path.splitext(file['name'])[0] +'_'+method+'_'+str(nSamples)+'%s'%('.ang'))
