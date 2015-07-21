@@ -77,9 +77,9 @@ def kdtree_search(xyz, point) :
     return dist
     
 def generatePoint() :
-    return np.array([random.uniform(0,options.grid[0]/max(options.grid)), \
-                     random.uniform(0,options.grid[1]/max(options.grid)), \
-                     random.uniform(0,options.grid[2]/max(options.grid))])
+    return np.array([random.uniform(0,float(options.grid[0])/float(max(options.grid))), \
+                     random.uniform(0,float(options.grid[1])/float(max(options.grid))), \
+                     random.uniform(0,float(options.grid[2])/float(max(options.grid)))])
 
 
 # ------------------------------------------ setup file handle -------------------------------------
