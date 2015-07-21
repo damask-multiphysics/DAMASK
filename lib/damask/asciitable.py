@@ -80,7 +80,7 @@ class ASCIItable():
       return False
     if clear: self.output_clear()
     return True
-    
+
 # ------------------------------------------------------------------
   def output_clear(self):
     self.__IO__['output'] = []
@@ -96,7 +96,7 @@ class ASCIItable():
 # ------------------------------------------------------------------
   def head_read(self):
     '''
-       get column labels by either read the first row, or 
+       get column labels by either read the first row, or
        --if keyword "head[*]" is present-- the last line of the header
     '''
     import re
@@ -112,7 +112,7 @@ class ASCIItable():
         self.labels    =  self.__IO__['in'].readline().split()
       else:                                                                                         # no header info (but labels)
         self.labels    = firstline.split()
-  
+
       self.__IO__['validReadSize'] = len(self.labels)
 
     else:                                                                                           # no labels present in table
@@ -174,7 +174,7 @@ class ASCIItable():
        transparently deals with label positions implicitly given as numbers or their headings given as strings.
     '''
     from collections import Iterable
-    
+
     if isinstance(labels, Iterable) and not isinstance(labels, str):      # check whether list of labels is requested
       idx = []
       for label in labels:
@@ -213,7 +213,7 @@ class ASCIItable():
     '''
 
     from collections import Iterable
-    
+
     if isinstance(labels, Iterable) and not isinstance(labels, str):      # check whether list of labels is requested
       dim = []
       for label in labels:
@@ -280,7 +280,7 @@ class ASCIItable():
   def data_rewind(self):
     self.__IO__['in'].seek(self.__IO__['dataStart'])                                  # position file to start of data section
     self.__IO__['readBuffer'] = []                                                    # delete any non-advancing data reads
-    
+
 # ------------------------------------------------------------------
   def data_skipLines(self,count):
     '''
@@ -300,7 +300,7 @@ class ASCIItable():
       line = self.__IO__['readBuffer'].pop(0)                                         # take buffered content
     else:
       line = self.__IO__['in'].readline()                                             # get next data row from file
-    
+
     if not advance:
       self.__IO__['readBuffer'].append(line)                                          # keep line just read in buffer
 
@@ -309,9 +309,9 @@ class ASCIItable():
       self.data = items if len(items) == self.__IO__['validReadSize'] else []         # take if correct number of entries
     else:
       self.data = line.split()                                                        # take all
-      
+
     return self.data != []
-    
+
 # ------------------------------------------------------------------
   def data_readLine(self,line):
     '''
@@ -341,27 +341,29 @@ class ASCIItable():
       labels_missing = np.array(labels)[missing]                                                    # labels of missing data
 
       columns = []
-      for c in indices[present]:                                                                    # for all valid labels ...
-        columns += range(c,c+self.label_dimension(c))                                               # ... transparently add all components
+      for i,c in enumerate(indices[present]):                                                       # for all valid labels ...
+        columns += range(c,c + \
+                           (self.label_dimension(c) if str(c) != str(labels[present[i]]) \
+                            else 1))                                                                # ... transparently add all components unless column referenced by number
       use = np.array(columns)
 
       self.labels = list(np.array(self.labels)[use]) if use != [] else []                           # ... for missing and present columns
       self.__IO__['validReadSize'] = len(use)                                                       # update data width
-    
+
     try:
       self.data_rewind()                                                                            # try to wind back to start of data
     except:
       pass                                                                                          # assume/hope we are at data start already...
     self.data = np.loadtxt(self.__IO__['in'], usecols=use,ndmin=2)
     return labels_missing
-    
+
 # ------------------------------------------------------------------
   def data_write(self,delimiter = '\t'):
     '''
        write current data array and report alive output back
     '''
     if len(self.data) == 0: return True
-    
+
     if isinstance(self.data[0],list):
       return self.output_write([delimiter.join(map(str,items)) for items in self.data])
     else:
@@ -398,7 +400,7 @@ class ASCIItable():
       pass
 
     return idx
-    
+
 # ------------------------------------------------------------------
   def data_clear(self):
     self.data = []
