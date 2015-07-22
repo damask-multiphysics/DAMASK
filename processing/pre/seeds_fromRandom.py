@@ -146,7 +146,6 @@ else :
 
 if options.weights :
    weight = np.random.normal(loc=options.mean, scale=options.sigma, size=options.N)
-   weight /= np.sum(weight)
    table = np.append(table, weight.reshape(options.N,1), axis=1)
    labels += "\tweight"
 
