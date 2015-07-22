@@ -437,7 +437,7 @@ class Quaternion:
     def fromMatrix(cls, m):
       if m.shape != (3,3) and np.prod(m.shape) == 9:
         m = m.reshape(3,3)
-      
+
       tr=m[0,0]+m[1,1]+m[2,2]
       if tr > 0.00000001:
         s = math.sqrt(tr + 1.0)*2.0
@@ -799,6 +799,8 @@ class Orientation:
   def asRodrigues(self):
     return self.quaternion.asRodrigues()
 
+  def asAngleAxis(self):
+    return self.quaternion.asAngleAxis()
 
   def asMatrix(self):
     return self.quaternion.asMatrix()
@@ -899,16 +901,16 @@ class Orientation:
 
 
   def related(self, relationModel, direction, targetSymmetry = None):
-  
+
     if relationModel not in ['KS','GT','GTdash','NW','Pitsch','Bain']:  return None
     if int(direction) == 0:  return None
-    
+
     # KS from S. Morito et al./Journal of Alloys and Compounds 5775 (2013) S587-S592
     # GT from Y. He et al./Journal of Applied Crystallography (2006). 39, 72-81
     # GT' from Y. He et al./Journal of Applied Crystallography (2006). 39, 72-81
     # NW from H. Kitahara et al./Materials Characterization 54 (2005) 378-386
     # Pitsch from Y. He et al./Acta Materialia 53 (2005) 1179-1190
-    # Bain from Y. He et al./Journal of Applied Crystallography (2006). 39, 72-81 
+    # Bain from Y. He et al./Journal of Applied Crystallography (2006). 39, 72-81
 
     variant  = int(abs(direction))-1
     (me,other)  = (0,1) if direction > 0 else (1,0)
@@ -1137,7 +1139,7 @@ class Orientation:
     otherNormal  = [float(i) for i in normals[relationModel][variant,other]]                        # map(float, planes[...]) does not work in python 3
     otherNormal /= np.linalg.norm(otherNormal)
     otherMatrix  = np.array([otherPlane,otherNormal,np.cross(otherPlane,otherNormal)])
-   
+
     rot=np.dot(otherMatrix.T,myMatrix)
 
     return Orientation(matrix=np.dot(rot,self.asMatrix()))                                      # no symmetry information ??
