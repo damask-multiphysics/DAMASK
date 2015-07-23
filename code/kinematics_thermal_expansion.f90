@@ -166,7 +166,7 @@ use math, only: &
    lattice_referenceTemperature
  
  implicit none
- integer(pInt) :: &
+ integer(pInt), intent(in) :: &
    ipc, &                                                                                           !< grain number
    ip, &                                                                                            !< integration point number
    el                                                                                               !< element number
@@ -206,7 +206,7 @@ subroutine kinematics_thermal_expansion_LiAndItsTangent(Li, dLi_dTstar3333, ipc,
  real(pReal),   intent(out), dimension(3,3) :: &
    Li                                                                                               !< thermal velocity gradient
  real(pReal),   intent(out), dimension(3,3,3,3) :: &
-   dLi_dTstar3333 = 0.0_pReal                                                                       !< derivative of Li with respect to Tstar (4th-order tensor defined to be zero)
+   dLi_dTstar3333                                                                                   !< derivative of Li with respect to Tstar (4th-order tensor defined to be zero)
  integer(pInt) :: &
    phase, &
    homog, offset
@@ -216,6 +216,7 @@ subroutine kinematics_thermal_expansion_LiAndItsTangent(Li, dLi_dTstar3333, ipc,
  offset = thermalMapping(homog)%p(ip,el)
  
  Li = temperatureRate(homog)%p(offset) * lattice_thermalExpansion33(1:3,1:3,phase)
+ dLi_dTstar3333 = 0.0_pReal 
   
 end subroutine kinematics_thermal_expansion_LiAndItsTangent
 
