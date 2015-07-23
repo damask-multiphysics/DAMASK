@@ -26,11 +26,13 @@ module kinematics_thermal_expansion
  integer(pInt),                       dimension(:),           allocatable, target, public  :: &
    kinematics_thermal_expansion_Noutput                                                                           !< number of outputs per instance of this damage 
 
- real(pReal),                         dimension(:),           allocatable,         private :: &
-   kinematics_thermal_expansion_coeff
-
+! enum, bind(c)                                                                                                   ! ToDo kinematics need state machinery to deal with sizePostResult
+!   enumerator :: undefined_ID, &                                                                                 ! possible remedy is to decouple having state vars from having output
+!                 thermalexpansionrate_ID                                                                         ! which means to separate user-defined types tState + tOutput...
+! end enum
  public :: &
    kinematics_thermal_expansion_init, &
+   kinematics_thermal_expansion_initialFi, &
    kinematics_thermal_expansion_LiAndItsTangent
 
 contains
@@ -77,8 +79,9 @@ subroutine kinematics_thermal_expansion_init(fileUnit)
  integer(pInt), dimension(1+2*MAXNCHUNKS) :: positions
  integer(pInt) :: maxNinstance,phase,instance,kinematics
  character(len=65536) :: &
-   tag  = '', &
-   line = ''
+   tag     = '', &
+   output  = '', &
+   line    = ''
 
  mainProcess: if (worldrank == 0) then 
    write(6,'(/,a)')   ' <<<+-  kinematics_'//KINEMATICS_thermal_expansion_LABEL//' init  -+>>>'
@@ -108,7 +111,6 @@ subroutine kinematics_thermal_expansion_init(fileUnit)
  allocate(kinematics_thermal_expansion_output(maxval(phase_Noutput),maxNinstance))
           kinematics_thermal_expansion_output = ''
  allocate(kinematics_thermal_expansion_Noutput(maxNinstance),                             source=0_pInt) 
- allocate(kinematics_thermal_expansion_coeff(maxNinstance),                               source=0.0_pReal) 
 
  rewind(fileUnit)
  phase = 0_pInt
@@ -130,16 +132,59 @@ subroutine kinematics_thermal_expansion_init(fileUnit)
    if (phase > 0_pInt ) then; if (any(phase_kinematics(:,phase) == KINEMATICS_thermal_expansion_ID)) then         ! do not short-circuit here (.and. with next if statemen). It's not safe in Fortran
      instance = kinematics_thermal_expansion_instance(phase)                                                         ! which instance of my damage is present phase
      positions = IO_stringPos(line,MAXNCHUNKS)
-     tag = IO_lc(IO_stringValue(line,positions,1_pInt))                                             ! extract key
+     tag = IO_lc(IO_stringValue(line,positions,1_pInt))                                             ! extract key...
      select case(tag)
-       case ('thermal_expansion_coeff')
-         kinematics_thermal_expansion_coeff(instance) = IO_floatValue(line,positions,2_pInt)
+!       case ('(output)')
+!         output = IO_lc(IO_stringValue(line,positions,2_pInt))                                       ! ...and corresponding output
+!         select case(output)
+!           case ('thermalexpansionrate')
+!             kinematics_thermal_expansion_Noutput(instance) = kinematics_thermal_expansion_Noutput(instance) + 1_pInt
+!             kinematics_thermal_expansion_outputID(kinematics_thermal_expansion_Noutput(instance),instance) = &
+!               thermalexpansionrate_ID
+!             kinematics_thermal_expansion_output(kinematics_thermal_expansion_Noutput(instance),instance) = output
+! ToDo add sizePostResult loop afterwards...
 
      end select
    endif; endif
  enddo parsingFile
 
 end subroutine kinematics_thermal_expansion_init
+
+!--------------------------------------------------------------------------------------------------
+!> @brief  report initial thermal strain based on current temperature deviation from reference
+!--------------------------------------------------------------------------------------------------
+pure function kinematics_thermal_expansion_initialFi(ipc, ip, el)
+ use material, only: &
+   material_phase, &
+   material_homog, &
+   temperature, &
+   thermalMapping
+use math, only: &
+   math_I3
+ use lattice, only: &
+   lattice_thermalExpansion33, &
+   lattice_referenceTemperature
+ 
+ implicit none
+ integer(pInt) :: &
+   ipc, &                                                                                           !< grain number
+   ip, &                                                                                            !< integration point number
+   el                                                                                               !< element number
+ real(pReal), dimension(3,3) :: &
+   kinematics_thermal_expansion_initialFi                                                           !< initial thermal strain (should be small strain, though)
+ integer(pInt) :: &
+   phase, &
+   homog, offset
+   
+ phase = material_phase(ipc,ip,el)
+ homog = material_homog(ip,el)
+ offset = thermalMapping(homog)%p(ip,el)
+ 
+ kinematics_thermal_expansion_initialFi = math_I3 + &
+   (temperature(homog)%p(offset) - lattice_referenceTemperature(phase)) * &
+   lattice_thermalExpansion33(1:3,1:3,phase)
+  
+end function kinematics_thermal_expansion_initialFi
 
 !--------------------------------------------------------------------------------------------------
 !> @brief  contains the constitutive equation for calculating the velocity gradient  
@@ -150,8 +195,8 @@ subroutine kinematics_thermal_expansion_LiAndItsTangent(Li, dLi_dTstar3333, ipc,
    material_homog, &
    temperatureRate, &
    thermalMapping
- use math, only: &
-   math_I3
+ use lattice, only: &
+   lattice_thermalExpansion33
  
  implicit none
  integer(pInt), intent(in) :: &
@@ -161,21 +206,16 @@ subroutine kinematics_thermal_expansion_LiAndItsTangent(Li, dLi_dTstar3333, ipc,
  real(pReal),   intent(out), dimension(3,3) :: &
    Li                                                                                               !< thermal velocity gradient
  real(pReal),   intent(out), dimension(3,3,3,3) :: &
-   dLi_dTstar3333                                                                                   !< derivative of Li with respect to Tstar (4th-order tensor)
+   dLi_dTstar3333 = 0.0_pReal                                                                       !< derivative of Li with respect to Tstar (4th-order tensor defined to be zero)
  integer(pInt) :: &
    phase, &
-   instance, &
    homog, offset
    
  phase = material_phase(ipc,ip,el)
- instance = kinematics_thermal_expansion_instance(phase)
  homog = material_homog(ip,el)
  offset = thermalMapping(homog)%p(ip,el)
  
- Li = temperatureRate(homog)%p(offset)* &
-      kinematics_thermal_expansion_coeff(instance)* &
-      math_I3
- dLi_dTstar3333 = 0.0_pReal
+ Li = temperatureRate(homog)%p(offset) * lattice_thermalExpansion33(1:3,1:3,phase)
   
 end subroutine kinematics_thermal_expansion_LiAndItsTangent
 
