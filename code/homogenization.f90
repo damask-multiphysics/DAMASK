@@ -158,11 +158,11 @@ subroutine homogenization_init(temperature_init)
  if (.not. IO_open_jobFile_stat(FILEUNIT,material_localFileExt)) &                                  ! no local material configuration present...
    call IO_open_file(FILEUNIT,material_configFile)                                                  ! ... open material.config file
  if (any(thermal_type == THERMAL_isothermal_ID)) &
-   call thermal_isothermal_init(temperature_init)
+   call thermal_isothermal_init()
  if (any(thermal_type == THERMAL_adiabatic_ID)) &
-   call thermal_adiabatic_init(FILEUNIT,temperature_init)
+   call thermal_adiabatic_init(FILEUNIT)
  if (any(thermal_type == THERMAL_conduction_ID)) &
-   call thermal_conduction_init(FILEUNIT,temperature_init)
+   call thermal_conduction_init(FILEUNIT)
  close(FILEUNIT)
  
 !--------------------------------------------------------------------------------------------------

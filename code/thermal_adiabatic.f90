@@ -47,7 +47,7 @@ contains
 !> @brief module initialization
 !> @details reads in material parameters, allocates arrays, and does sanity checks
 !--------------------------------------------------------------------------------------------------
-subroutine thermal_adiabatic_init(fileUnit,temperature_init)
+subroutine thermal_adiabatic_init(fileUnit)
  use, intrinsic :: iso_fortran_env                                                                  ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
  use IO, only: &
    IO_read, &
@@ -72,6 +72,7 @@ subroutine thermal_adiabatic_init(fileUnit,temperature_init)
    mappingHomogenization, & 
    thermalState, &
    thermalMapping, &
+   thermal_initialT, &
    temperature, &
    temperatureRate, &
    material_partHomogenization
@@ -79,7 +80,6 @@ subroutine thermal_adiabatic_init(fileUnit,temperature_init)
    worldrank
 
  implicit none
- real(pReal), intent(in)   :: temperature_init                                                      !< initial temperature
  integer(pInt), intent(in) :: fileUnit
 
  integer(pInt), parameter :: MAXNCHUNKS = 7_pInt
@@ -168,9 +168,9 @@ subroutine thermal_adiabatic_init(fileUnit,temperature_init)
      sizeState = 1_pInt
      thermalState(section)%sizeState = sizeState
      thermalState(section)%sizePostResults = thermal_adiabatic_sizePostResults(instance)
-     allocate(thermalState(section)%state0   (sizeState,NofMyHomog), source=temperature_init)
-     allocate(thermalState(section)%subState0(sizeState,NofMyHomog), source=temperature_init)
-     allocate(thermalState(section)%state    (sizeState,NofMyHomog), source=temperature_init)
+     allocate(thermalState(section)%state0   (sizeState,NofMyHomog), source=thermal_initialT(section))
+     allocate(thermalState(section)%subState0(sizeState,NofMyHomog), source=thermal_initialT(section))
+     allocate(thermalState(section)%state    (sizeState,NofMyHomog), source=thermal_initialT(section))
 
      nullify(thermalMapping(section)%p)
      thermalMapping(section)%p => mappingHomogenization(1,:,:)

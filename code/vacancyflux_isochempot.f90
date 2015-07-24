@@ -72,6 +72,7 @@ subroutine vacancyflux_isochempot_init(fileUnit)
    vacancyfluxMapping, &
    vacancyConc, &
    vacancyConcRate, &
+   vacancyflux_initialCv, &
    material_partHomogenization
  use numerics,only: &
    worldrank
@@ -165,9 +166,9 @@ subroutine vacancyflux_isochempot_init(fileUnit)
      sizeState = 1_pInt
      vacancyfluxState(section)%sizeState = sizeState
      vacancyfluxState(section)%sizePostResults = vacancyflux_isochempot_sizePostResults(instance)
-     allocate(vacancyfluxState(section)%state0   (sizeState,NofMyHomog), source=0.0_pReal)
-     allocate(vacancyfluxState(section)%subState0(sizeState,NofMyHomog), source=0.0_pReal)
-     allocate(vacancyfluxState(section)%state    (sizeState,NofMyHomog), source=0.0_pReal)
+     allocate(vacancyfluxState(section)%state0   (sizeState,NofMyHomog), source=vacancyflux_initialCv(section))
+     allocate(vacancyfluxState(section)%subState0(sizeState,NofMyHomog), source=vacancyflux_initialCv(section))
+     allocate(vacancyfluxState(section)%state    (sizeState,NofMyHomog), source=vacancyflux_initialCv(section))
 
      nullify(vacancyfluxMapping(section)%p)
      vacancyfluxMapping(section)%p => mappingHomogenization(1,:,:)

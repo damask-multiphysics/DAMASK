@@ -75,6 +75,7 @@ subroutine porosity_phasefield_init(fileUnit)
    porosityState, &
    porosityMapping, &
    porosity, &
+   porosity_initialPhi, &
    material_partHomogenization, &
    material_partPhase
  use numerics,only: &
@@ -176,7 +177,7 @@ subroutine porosity_phasefield_init(fileUnit)
      nullify(porosityMapping(section)%p)
      porosityMapping(section)%p => mappingHomogenization(1,:,:)
      deallocate(porosity(section)%p)
-     allocate(porosity(section)%p(NofMyHomog), source=1.0_pReal)
+     allocate(porosity(section)%p(NofMyHomog), source=porosity_initialPhi(section))
      
    endif
  

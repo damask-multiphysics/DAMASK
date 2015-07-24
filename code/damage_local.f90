@@ -68,6 +68,7 @@ subroutine damage_local_init(fileUnit)
    damageState, &
    damageMapping, &
    damage, &
+   damage_initialPhi, &
    material_partHomogenization
  use numerics,only: &
    worldrank
@@ -162,9 +163,9 @@ subroutine damage_local_init(fileUnit)
      sizeState = 1_pInt
      damageState(homog)%sizeState = sizeState
      damageState(homog)%sizePostResults = damage_local_sizePostResults(instance)
-     allocate(damageState(homog)%state0   (sizeState,NofMyHomog))
-     allocate(damageState(homog)%subState0(sizeState,NofMyHomog))
-     allocate(damageState(homog)%state    (sizeState,NofMyHomog))
+     allocate(damageState(homog)%state0   (sizeState,NofMyHomog), source=damage_initialPhi(homog))
+     allocate(damageState(homog)%subState0(sizeState,NofMyHomog), source=damage_initialPhi(homog))
+     allocate(damageState(homog)%state    (sizeState,NofMyHomog), source=damage_initialPhi(homog))
 
      nullify(damageMapping(homog)%p)
      damageMapping(homog)%p => mappingHomogenization(1,:,:)

@@ -46,12 +46,12 @@ subroutine damage_none_init()
      NofMyHomog = count(material_homog == homog)
      damageState(homog)%sizeState = 0_pInt
      damageState(homog)%sizePostResults = 0_pInt
-     allocate(damageState(homog)%state0   (0_pInt,NofMyHomog), source=0.0_pReal)
-     allocate(damageState(homog)%subState0(0_pInt,NofMyHomog), source=0.0_pReal)
-     allocate(damageState(homog)%state    (0_pInt,NofMyHomog), source=0.0_pReal)
+     allocate(damageState(homog)%state0   (0_pInt,NofMyHomog))
+     allocate(damageState(homog)%subState0(0_pInt,NofMyHomog))
+     allocate(damageState(homog)%state    (0_pInt,NofMyHomog))
      
      deallocate(damage(homog)%p)
-     allocate  (damage(homog)%p(1), source=1.0_pReal)
+     allocate  (damage(homog)%p(1), source=damage_initialPhi(homog))
      
    endif myhomog
  enddo initializeInstances

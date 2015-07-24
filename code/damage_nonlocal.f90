@@ -73,6 +73,7 @@ subroutine damage_nonlocal_init(fileUnit)
    damageState, &
    damageMapping, &
    damage, &
+   damage_initialPhi, &
    material_partHomogenization
  use numerics,only: &
    worldrank
@@ -173,7 +174,7 @@ subroutine damage_nonlocal_init(fileUnit)
      nullify(damageMapping(section)%p)
      damageMapping(section)%p => mappingHomogenization(1,:,:)
      deallocate(damage(section)%p)
-     allocate(damage(section)%p(NofMyHomog), source=1.0_pReal)
+     allocate(damage(section)%p(NofMyHomog), source=damage_initialPhi(section))
      
    endif
  

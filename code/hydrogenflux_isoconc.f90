@@ -52,7 +52,7 @@ subroutine hydrogenflux_isoconc_init()
      
      deallocate(hydrogenConc    (homog)%p)
      deallocate(hydrogenConcRate(homog)%p)
-     allocate  (hydrogenConc    (homog)%p(1), source=0.0_pReal)
+     allocate  (hydrogenConc    (homog)%p(1), source=hydrogenflux_initialCh(homog))
      allocate  (hydrogenConcRate(homog)%p(1), source=0.0_pReal)
 
    endif myhomog

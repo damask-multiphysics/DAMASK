@@ -46,12 +46,12 @@ subroutine vacancyflux_isoconc_init()
      NofMyHomog = count(material_homog == homog)
      vacancyfluxState(homog)%sizeState = 0_pInt
      vacancyfluxState(homog)%sizePostResults = 0_pInt
-     allocate(vacancyfluxState(homog)%state0   (0_pInt,NofMyHomog), source=0.0_pReal)
-     allocate(vacancyfluxState(homog)%subState0(0_pInt,NofMyHomog), source=0.0_pReal)
-     allocate(vacancyfluxState(homog)%state    (0_pInt,NofMyHomog), source=0.0_pReal)
+     allocate(vacancyfluxState(homog)%state0   (0_pInt,NofMyHomog))
+     allocate(vacancyfluxState(homog)%subState0(0_pInt,NofMyHomog))
+     allocate(vacancyfluxState(homog)%state    (0_pInt,NofMyHomog))
      
      deallocate(vacancyConc    (homog)%p)
-     allocate  (vacancyConc    (homog)%p(1), source=0.0_pReal)
+     allocate  (vacancyConc    (homog)%p(1), source=vacancyflux_initialCv(homog))
      deallocate(vacancyConcRate(homog)%p)
      allocate  (vacancyConcRate(homog)%p(1), source=0.0_pReal)
 

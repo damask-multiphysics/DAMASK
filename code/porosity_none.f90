@@ -51,7 +51,7 @@ subroutine porosity_none_init()
      allocate(porosityState(homog)%state    (0_pInt,NofMyHomog), source=0.0_pReal)
      
      deallocate(porosity(homog)%p)
-     allocate  (porosity(homog)%p(1), source=1.0_pReal)
+     allocate  (porosity(homog)%p(1), source=porosity_initialPhi(homog))
      
    endif myhomog
  enddo initializeInstances

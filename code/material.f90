@@ -190,15 +190,17 @@ module material
  integer(pInt), dimension(:), allocatable, public, protected :: &
    phase_Nsources, &                                                                                !< number of source mechanisms active in each phase
    phase_Nkinematics, &                                                                             !< number of kinematic mechanisms active in each phase
-   phase_NstiffnessDegradations                                                                     !< number of stiffness degradation mechanisms active in each phase
+   phase_NstiffnessDegradations, &                                                                  !< number of stiffness degradation mechanisms active in each phase
+   phase_Noutput, &                                                                                 !< number of '(output)' items per phase
+   phase_elasticityInstance, &                                                                      !< instance of particular elasticity of each phase
+   phase_plasticityInstance                                                                         !< instance of particular plasticity of each phase
+
+ integer(pInt), dimension(:), allocatable, public, protected :: &
+   crystallite_Noutput                                                                              !< number of '(output)' items per crystallite setting
 
  integer(pInt), dimension(:), allocatable, public, protected :: &
    homogenization_Ngrains, &                                                                        !< number of grains in each homogenization
    homogenization_Noutput, &                                                                        !< number of '(output)' items per homogenization
-   phase_Noutput, &                                                                                 !< number of '(output)' items per phase
-   phase_elasticityInstance, &                                                                      !< instance of particular elasticity of each phase
-   phase_plasticityInstance, &                                                                      !< instance of particular plasticity of each phase
-   crystallite_Noutput, &                                                                           !< number of '(output)' items per crystallite setting
    homogenization_typeInstance, &                                                                   !< instance of particular type of each homogenization
    thermal_typeInstance, &                                                                          !< instance of particular type of each thermal transport
    damage_typeInstance, &                                                                           !< instance of particular type of each nonlocal damage
@@ -206,6 +208,13 @@ module material
    porosity_typeInstance, &                                                                         !< instance of particular type of each porosity model
    hydrogenflux_typeInstance, &                                                                     !< instance of particular type of each hydrogen flux
    microstructure_crystallite                                                                       !< crystallite setting ID of each microstructure
+
+ real(pReal), dimension(:), allocatable, public, protected :: &
+   thermal_initialT, &                                                                              !< initial temperature per each homogenization     
+   damage_initialPhi, &                                                                             !< initial damage per each homogenization
+   vacancyflux_initialCv, &                                                                         !< initial vacancy concentration per each homogenization     
+   porosity_initialPhi, &                                                                           !< initial posority per each homogenization
+   hydrogenflux_initialCh                                                                           !< initial hydrogen concentration per each homogenization     
 
  integer(pInt), dimension(:,:,:), allocatable, public :: &
    material_phase                                                                                   !< phase (index) of each grain,IP,element
@@ -511,11 +520,11 @@ subroutine material_init()
    vacancyfluxMapping (myHomog)%p => mappingHomogenizationConst
    porosityMapping    (myHomog)%p => mappingHomogenizationConst
    hydrogenfluxMapping(myHomog)%p => mappingHomogenizationConst
-   allocate(temperature     (myHomog)%p(1), source=300.0_pReal)
-   allocate(damage          (myHomog)%p(1), source=1.0_pReal)
-   allocate(vacancyConc     (myHomog)%p(1), source=0.0_pReal)
-   allocate(porosity        (myHomog)%p(1), source=1.0_pReal)
-   allocate(hydrogenConc    (myHomog)%p(1), source=0.0_pReal)
+   allocate(temperature     (myHomog)%p(1), source=thermal_initialT(myHomog))
+   allocate(damage          (myHomog)%p(1), source=damage_initialPhi(myHomog))
+   allocate(vacancyConc     (myHomog)%p(1), source=vacancyflux_initialCv(myHomog))
+   allocate(porosity        (myHomog)%p(1), source=porosity_initialPhi(myHomog))
+   allocate(hydrogenConc    (myHomog)%p(1), source=hydrogenflux_initialCh(myHomog))
    allocate(temperatureRate (myHomog)%p(1), source=0.0_pReal)
    allocate(vacancyConcRate (myHomog)%p(1), source=0.0_pReal)
    allocate(hydrogenConcRate(myHomog)%p(1), source=0.0_pReal)
@@ -539,6 +548,7 @@ subroutine material_parseHomogenization(fileUnit,myPart)
    IO_isBlank, &
    IO_stringValue, &
    IO_intValue, &
+   IO_floatValue, &
    IO_stringPos, &
    IO_EOF
  use mesh, only: &
@@ -577,6 +587,11 @@ subroutine material_parseHomogenization(fileUnit,myPart)
  allocate(homogenization_Ngrains(Nsections),        source=0_pInt)
  allocate(homogenization_Noutput(Nsections),        source=0_pInt)
  allocate(homogenization_active(Nsections),         source=.false.)  !!!!!!!!!!!!!!!
+ allocate(thermal_initialT(Nsections),              source=300.0_pReal)
+ allocate(damage_initialPhi(Nsections),             source=1.0_pReal)
+ allocate(vacancyflux_initialCv(Nsections),         source=0.0_pReal)
+ allocate(porosity_initialPhi(Nsections),           source=1.0_pReal)
+ allocate(hydrogenflux_initialCh(Nsections),        source=0.0_pReal)
 
  forall (s = 1_pInt:Nsections) homogenization_active(s) = any(mesh_element(3,:) == s)               ! current homogenization used in model? Homogenization view, maximum operations depend on maximum number of homog schemes
    homogenization_Noutput = IO_countTagInPart(fileUnit,myPart,'(output)',Nsections)
@@ -677,6 +692,22 @@ subroutine material_parseHomogenization(fileUnit,myPart)
 
        case ('nconstituents','ngrains')
          homogenization_Ngrains(section) = IO_intValue(line,positions,2_pInt)
+
+       case ('initialtemperature','initialt')
+         thermal_initialT(section) = IO_floatValue(line,positions,2_pInt)
+     
+       case ('initialdamage')
+         damage_initialPhi(section) = IO_floatValue(line,positions,2_pInt)
+     
+       case ('initialvacancyconc','initialcv')
+         vacancyflux_initialCv(section) = IO_floatValue(line,positions,2_pInt)
+     
+       case ('initialporosity')
+         porosity_initialPhi(section) = IO_floatValue(line,positions,2_pInt)
+     
+       case ('initialhydrogenconc','initialch')
+         hydrogenflux_initialCh(section) = IO_floatValue(line,positions,2_pInt)
+     
      end select
    endif
  enddo

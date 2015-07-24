@@ -79,6 +79,7 @@ subroutine hydrogenflux_cahnhilliard_init(fileUnit)
    hydrogenfluxMapping, &
    hydrogenConc, &
    hydrogenConcRate, &
+   hydrogenflux_initialCh, &
    material_partHomogenization, &
    material_partPhase
  use numerics,only: &
@@ -187,7 +188,7 @@ subroutine hydrogenflux_cahnhilliard_init(fileUnit)
      hydrogenfluxMapping(section)%p => mappingHomogenization(1,:,:)
      deallocate(hydrogenConc    (section)%p)
      deallocate(hydrogenConcRate(section)%p)
-     allocate  (hydrogenConc    (section)%p(NofMyHomog), source=0.0_pReal)
+     allocate  (hydrogenConc    (section)%p(NofMyHomog), source=hydrogenflux_initialCh(section))
      allocate  (hydrogenConcRate(section)%p(NofMyHomog), source=0.0_pReal)
      
    endif

@@ -89,6 +89,7 @@ subroutine vacancyflux_cahnhilliard_init(fileUnit)
    vacancyfluxMapping, &
    vacancyConc, &
    vacancyConcRate, &
+   vacancyflux_initialCv, &
    material_partHomogenization, &
    material_partPhase
  use numerics,only: &
@@ -205,7 +206,7 @@ subroutine vacancyflux_cahnhilliard_init(fileUnit)
      nullify(vacancyfluxMapping(section)%p)
      vacancyfluxMapping(section)%p => mappingHomogenization(1,:,:)
      deallocate(vacancyConc    (section)%p)
-     allocate  (vacancyConc    (section)%p(NofMyHomog), source=0.0_pReal)
+     allocate  (vacancyConc    (section)%p(NofMyHomog), source=vacancyflux_initialCv(section))
      deallocate(vacancyConcRate(section)%p)
      allocate  (vacancyConcRate(section)%p(NofMyHomog), source=0.0_pReal)
      
@@ -510,8 +511,7 @@ subroutine vacancyflux_cahnhilliard_getChemPotAndItsTangent(ChemPot,dChemPot_dCv
  VoidPhaseFrac = porosity(homog)%p(porosityMapping(homog)%p(ip,el))
  kBT = vacancyflux_cahnhilliard_getEntropicCoeff(ip,el)
  
- ChemPot = vacancyflux_cahnhilliard_getFormationEnergy(ip,el)* &
-           vacancyflux_cahnhilliard_thermalFluc(vacancyflux_typeInstance(homog))%p(mappingHomogenization(1,ip,el))    
+ ChemPot = vacancyflux_cahnhilliard_getFormationEnergy(ip,el)    
  dChemPot_dCv = 0.0_pReal
  do o = 1_pInt, vacancyPolyOrder
    ChemPot = ChemPot + kBT*((2.0_pReal*Cv - 1.0_pReal)**real(2_pInt*o-1_pInt,pReal))/ &
@@ -535,7 +535,12 @@ subroutine vacancyflux_cahnhilliard_getChemPotAndItsTangent(ChemPot,dChemPot_dCv
  elseif (Cv > 1.0_pReal) then
    ChemPot = ChemPot + 3.0_pReal*vacancyBoundPenalty*(1.0_pReal - Cv)*(1.0_pReal - Cv)
    dChemPot_dCv = dChemPot_dCv - 6.0_pReal*vacancyBoundPenalty*(1.0_pReal - Cv)
- endif       
+ endif
+ 
+ ChemPot = ChemPot* &
+           vacancyflux_cahnhilliard_thermalFluc(vacancyflux_typeInstance(homog))%p(mappingHomogenization(1,ip,el))
+ dChemPot_dCv = dChemPot_dCv* &
+           vacancyflux_cahnhilliard_thermalFluc(vacancyflux_typeInstance(homog))%p(mappingHomogenization(1,ip,el))                 
  
 end subroutine vacancyflux_cahnhilliard_getChemPotAndItsTangent
  
