@@ -31,6 +31,7 @@ module kinematics_hydrogen_strain
 
  public :: &
    kinematics_hydrogen_strain_init, &
+   kinematics_hydrogen_strain_initialStrain, &
    kinematics_hydrogen_strain_LiAndItsTangent, &
    kinematics_hydrogen_strain_ChemPotAndItsTangent
 
@@ -141,6 +142,43 @@ subroutine kinematics_hydrogen_strain_init(fileUnit)
  enddo parsingFile
 
 end subroutine kinematics_hydrogen_strain_init
+
+!--------------------------------------------------------------------------------------------------
+!> @brief  report initial hydrogen strain based on current hydrogen conc deviation from 
+!>         equillibrium (0)
+!--------------------------------------------------------------------------------------------------
+pure function kinematics_hydrogen_strain_initialStrain(ipc, ip, el)
+ use math, only: &
+   math_I3
+ use material, only: &
+   material_phase, &
+   material_homog, &
+   hydrogenConc, &
+   hydrogenfluxMapping
+ use lattice, only: &
+   lattice_equilibriumHydrogenConcentration
+ 
+ implicit none
+ integer(pInt), intent(in) :: &
+   ipc, &                                                                                           !< grain number
+   ip, &                                                                                            !< integration point number
+   el                                                                                               !< element number
+ real(pReal), dimension(3,3) :: &
+   kinematics_hydrogen_strain_initialStrain                                                       !< initial thermal strain (should be small strain, though)
+ integer(pInt) :: &
+   phase, &
+   homog, offset, instance
+   
+ phase = material_phase(ipc,ip,el)
+ instance = kinematics_hydrogen_strain_instance(phase)
+ homog = material_homog(ip,el)
+ offset = hydrogenfluxMapping(homog)%p(ip,el)
+ 
+ kinematics_hydrogen_strain_initialStrain = &
+   (hydrogenConc(homog)%p(offset) - lattice_equilibriumHydrogenConcentration(phase)) * &
+   kinematics_hydrogen_strain_coeff(instance)* math_I3
+  
+end function kinematics_hydrogen_strain_initialStrain
 
 !--------------------------------------------------------------------------------------------------
 !> @brief  contains the constitutive equation for calculating the velocity gradient  

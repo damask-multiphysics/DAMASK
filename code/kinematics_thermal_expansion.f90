@@ -32,7 +32,7 @@ module kinematics_thermal_expansion
 ! end enum
  public :: &
    kinematics_thermal_expansion_init, &
-   kinematics_thermal_expansion_initialFi, &
+   kinematics_thermal_expansion_initialStrain, &
    kinematics_thermal_expansion_LiAndItsTangent
 
 contains
@@ -153,14 +153,12 @@ end subroutine kinematics_thermal_expansion_init
 !--------------------------------------------------------------------------------------------------
 !> @brief  report initial thermal strain based on current temperature deviation from reference
 !--------------------------------------------------------------------------------------------------
-pure function kinematics_thermal_expansion_initialFi(ipc, ip, el)
+pure function kinematics_thermal_expansion_initialStrain(ipc, ip, el)
  use material, only: &
    material_phase, &
    material_homog, &
    temperature, &
    thermalMapping
-use math, only: &
-   math_I3
  use lattice, only: &
    lattice_thermalExpansion33, &
    lattice_referenceTemperature
@@ -171,7 +169,7 @@ use math, only: &
    ip, &                                                                                            !< integration point number
    el                                                                                               !< element number
  real(pReal), dimension(3,3) :: &
-   kinematics_thermal_expansion_initialFi                                                           !< initial thermal strain (should be small strain, though)
+   kinematics_thermal_expansion_initialStrain                                                       !< initial thermal strain (should be small strain, though)
  integer(pInt) :: &
    phase, &
    homog, offset
@@ -180,11 +178,11 @@ use math, only: &
  homog = material_homog(ip,el)
  offset = thermalMapping(homog)%p(ip,el)
  
- kinematics_thermal_expansion_initialFi = math_I3 + &
+ kinematics_thermal_expansion_initialStrain = &
    (temperature(homog)%p(offset) - lattice_referenceTemperature(phase)) * &
    lattice_thermalExpansion33(1:3,1:3,phase)
   
-end function kinematics_thermal_expansion_initialFi
+end function kinematics_thermal_expansion_initialStrain
 
 !--------------------------------------------------------------------------------------------------
 !> @brief  contains the constitutive equation for calculating the velocity gradient  

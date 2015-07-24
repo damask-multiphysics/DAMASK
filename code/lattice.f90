@@ -1041,7 +1041,8 @@ module lattice
    lattice_hydrogenSurfaceEnergy, &
    lattice_hydrogenVol, &
    lattice_referenceTemperature, &
-   lattice_equilibriumVacancyConcentration
+   lattice_equilibriumVacancyConcentration, &
+   lattice_equilibriumHydrogenConcentration
  enum, bind(c)
    enumerator :: LATTICE_undefined_ID, &
                  LATTICE_iso_ID, &
@@ -1344,8 +1345,9 @@ subroutine lattice_init
  allocate(lattice_hydrogenFormationEnergy(    Nphases), source=0.0_pReal)
  allocate(lattice_hydrogenSurfaceEnergy  (    Nphases), source=0.0_pReal)
  allocate(lattice_hydrogenVol            (    Nphases), source=0.0_pReal)
- allocate(lattice_referenceTemperature   (    Nphases), source=0.0_pReal)
+ allocate(lattice_referenceTemperature   (    Nphases), source=300.0_pReal)
  allocate(lattice_equilibriumVacancyConcentration(Nphases), source=0.0_pReal)
+ allocate(lattice_equilibriumHydrogenConcentration(Nphases),source=0.0_pReal)
 
  allocate(lattice_mu(Nphases),       source=0.0_pReal)
  allocate(lattice_nu(Nphases),       source=0.0_pReal)
@@ -1551,6 +1553,8 @@ subroutine lattice_init
        lattice_hydrogenfluxMobility33(3,3,section) = IO_floatValue(line,positions,2_pInt)
      case ('vacancy_eqcv')
        lattice_equilibriumVacancyConcentration(section) = IO_floatValue(line,positions,2_pInt)
+     case ('hydrogen_eqch')
+       lattice_equilibriumHydrogenConcentration(section) = IO_floatValue(line,positions,2_pInt)
      end select
    endif
  enddo

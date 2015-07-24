@@ -179,6 +179,7 @@ subroutine crystallite_init
    IO_EOF
  use material
  use constitutive, only: &
+   constitutive_initialFi, &
    constitutive_microstructure                                                                     ! derived (shortcut) quantities of given state
 
  implicit none
@@ -415,10 +416,11 @@ subroutine crystallite_init
      myNgrains = homogenization_Ngrains(mesh_element(3,e))                                            ! look up homogenization-->grainCount
      forall (i = FEsolving_execIP(1,e):FEsolving_execIP(2,e), g = 1_pInt:myNgrains)
        crystallite_Fp0(1:3,1:3,g,i,e) = math_EulerToR(material_EulerAngles(1:3,g,i,e))                ! plastic def gradient reflects init orientation
-       crystallite_Fi0(1:3,1:3,g,i,e) = math_I3
+       crystallite_Fi0(1:3,1:3,g,i,e) = constitutive_initialFi(g,i,e)
        crystallite_F0(1:3,1:3,g,i,e)  = math_I3
        crystallite_localPlasticity(g,i,e) = phase_localPlasticity(material_phase(g,i,e))
-       crystallite_Fe(1:3,1:3,g,i,e)  = math_transpose33(crystallite_Fp0(1:3,1:3,g,i,e))
+       crystallite_Fe(1:3,1:3,g,i,e)  = math_inv33(math_mul33x33(crystallite_Fi0(1:3,1:3,g,i,e), &
+                                                                 crystallite_Fp0(1:3,1:3,g,i,e)))     ! assuming that euler angles are given in internal strain free configuration 
        crystallite_Fp(1:3,1:3,g,i,e)  = crystallite_Fp0(1:3,1:3,g,i,e)
        crystallite_Fi(1:3,1:3,g,i,e)  = crystallite_Fi0(1:3,1:3,g,i,e)
        crystallite_requested(g,i,e) = .true.

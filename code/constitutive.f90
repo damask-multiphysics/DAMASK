@@ -23,6 +23,7 @@ module constitutive
    constitutive_microstructure, &
    constitutive_LpAndItsTangent, &
    constitutive_LiAndItsTangent, &
+   constitutive_initialFi, &
    constitutive_TandItsTangent, &
    constitutive_collectDotState, &
    constitutive_collectDeltaState, &
@@ -711,6 +712,64 @@ enddo
  enddo; enddo    
  
 end subroutine constitutive_LiAndItsTangent
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief  collects initial intermediate deformation gradient  
+!--------------------------------------------------------------------------------------------------
+pure function constitutive_initialFi(ipc, ip, el)
+ use prec, only: &
+   pReal 
+ use math, only: &
+   math_I3, &
+   math_inv33, &
+   math_mul33x33
+ use material, only: &
+   phase_kinematics, &
+   phase_Nkinematics, &
+   material_phase, &
+   KINEMATICS_thermal_expansion_ID, &
+   KINEMATICS_vacancy_strain_ID, &
+   KINEMATICS_hydrogen_strain_ID
+ use kinematics_thermal_expansion, only: &
+   kinematics_thermal_expansion_initialStrain
+ use kinematics_vacancy_strain, only: &
+   kinematics_vacancy_strain_initialStrain
+ use kinematics_hydrogen_strain, only: &
+   kinematics_hydrogen_strain_initialStrain
+ 
+ implicit none
+ integer(pInt), intent(in) :: &
+   ipc, &                                                                                           !< grain number
+   ip, &                                                                                            !< integration point number
+   el                                                                                               !< element number
+ real(pReal), dimension(3,3) :: &
+   constitutive_initialFi                                                                           !< composite initial intermediate deformation gradient
+ real(pReal), dimension(3,3) :: &
+   my_Fi                                                                                            !< individual intermediate deformation gradients
+ integer(pInt) :: &
+   kinematics    
+
+ constitutive_initialFi = math_I3
+ 
+ do kinematics = 1_pInt, phase_Nkinematics(material_phase(ipc,ip,el))                               !< Warning: small initial strain assumption
+   select case (phase_kinematics(kinematics,material_phase(ipc,ip,el)))
+     case (KINEMATICS_thermal_expansion_ID)
+       constitutive_initialFi = &
+         constitutive_initialFi + kinematics_thermal_expansion_initialStrain(ipc, ip, el)
+     
+     case (KINEMATICS_vacancy_strain_ID)
+       constitutive_initialFi = &
+         constitutive_initialFi + kinematics_vacancy_strain_initialStrain(ipc, ip, el)
+     
+     case (KINEMATICS_hydrogen_strain_ID)
+       constitutive_initialFi = &
+         constitutive_initialFi + kinematics_hydrogen_strain_initialStrain(ipc, ip, el)
+     
+   end select
+enddo  
+ 
+end function constitutive_initialFi
 
 
 !--------------------------------------------------------------------------------------------------

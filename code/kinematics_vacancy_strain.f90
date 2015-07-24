@@ -31,6 +31,7 @@ module kinematics_vacancy_strain
 
  public :: &
    kinematics_vacancy_strain_init, &
+   kinematics_vacancy_strain_initialStrain, &
    kinematics_vacancy_strain_LiAndItsTangent, &
    kinematics_vacancy_strain_ChemPotAndItsTangent
 
@@ -141,6 +142,42 @@ subroutine kinematics_vacancy_strain_init(fileUnit)
  enddo parsingFile
 
 end subroutine kinematics_vacancy_strain_init
+
+!--------------------------------------------------------------------------------------------------
+!> @brief  report initial vacancy strain based on current vacancy conc deviation from equillibrium
+!--------------------------------------------------------------------------------------------------
+pure function kinematics_vacancy_strain_initialStrain(ipc, ip, el)
+ use math, only: &
+   math_I3
+ use material, only: &
+   material_phase, &
+   material_homog, &
+   vacancyConc, &
+   vacancyfluxMapping
+ use lattice, only: &
+   lattice_equilibriumVacancyConcentration
+ 
+ implicit none
+ integer(pInt), intent(in) :: &
+   ipc, &                                                                                           !< grain number
+   ip, &                                                                                            !< integration point number
+   el                                                                                               !< element number
+ real(pReal), dimension(3,3) :: &
+   kinematics_vacancy_strain_initialStrain                                                       !< initial thermal strain (should be small strain, though)
+ integer(pInt) :: &
+   phase, &
+   homog, offset, instance
+   
+ phase = material_phase(ipc,ip,el)
+ instance = kinematics_vacancy_strain_instance(phase)
+ homog = material_homog(ip,el)
+ offset = vacancyfluxMapping(homog)%p(ip,el)
+ 
+ kinematics_vacancy_strain_initialStrain = &
+   (vacancyConc(homog)%p(offset) - lattice_equilibriumVacancyConcentration(phase)) * &
+   kinematics_vacancy_strain_coeff(instance)* math_I3
+  
+end function kinematics_vacancy_strain_initialStrain
 
 !--------------------------------------------------------------------------------------------------
 !> @brief  contains the constitutive equation for calculating the velocity gradient  
