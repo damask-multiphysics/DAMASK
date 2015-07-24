@@ -253,7 +253,7 @@ subroutine hypela2(d,g,e,de,s,t,dt,ngens,m,nn,kcus,matus,ndi,nshear,disp, &
 
  !$ defaultNumThreadsInt = omp_get_num_threads()                                                    ! remember number of threads set by Marc
 
- if (.not. CPFEM_init_done) call CPFEM_initAll(t(1),m(1),nn)
+ if (.not. CPFEM_init_done) call CPFEM_initAll(m(1),nn)
 
  !$ call omp_set_num_threads(DAMASK_NumThreadsInt)                                                  ! set number of threads for parallel execution set by DAMASK_NUM_THREADS
 

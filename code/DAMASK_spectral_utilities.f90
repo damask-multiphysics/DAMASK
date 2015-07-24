@@ -96,8 +96,7 @@ module DAMASK_spectral_utilities
    real(pReal), dimension (3,3) :: rotation               = math_I3                                 !< rotation of BC
    type(tBoundaryCondition) ::     P, &                                                             !< stress BC
                                    deformation                                                      !< deformation BC (Fdot or L)
-   real(pReal) ::                  time                   = 0.0_pReal, &                            !< length of increment
-                                   temperature            = 300.0_pReal                             !< isothermal starting conditions
+   real(pReal) ::                  time                   = 0.0_pReal                               !< length of increment
    integer(pInt) ::                incs                   = 0_pInt, &                               !< number of increments
                                    outputfrequency        = 1_pInt, &                               !< frequency of result writes
                                    restartfrequency       = 0_pInt, &                               !< frequency of restart writes
@@ -110,7 +109,6 @@ module DAMASK_spectral_utilities
    real(pReal), dimension(3,3) :: P_BC, rotation_BC
    real(pReal) :: timeinc
    real(pReal) :: timeincOld
-   real(pReal) :: temperature
    real(pReal) :: density
  end type tSolutionParams
  
@@ -1088,7 +1086,7 @@ end subroutine utilities_fourierVectorDivergence
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates constitutive response
 !--------------------------------------------------------------------------------------------------
-subroutine utilities_constitutiveResponse(F_lastInc,F,temperature,timeinc,&
+subroutine utilities_constitutiveResponse(F_lastInc,F,timeinc,&
                                           P,C_volAvg,C_minmaxAvg,P_av,forwardData,rotation_BC)
  use debug, only: &
    debug_reset, &
@@ -1115,7 +1113,6 @@ subroutine utilities_constitutiveResponse(F_lastInc,F,temperature,timeinc,&
    materialpoint_dPdF
  
  implicit none
- real(pReal), intent(in)                                         :: temperature                     !< temperature (no field)
  real(pReal), intent(in), dimension(3,3,gridLocal(1),gridLocal(2),gridLocal(3)) :: &
    F_lastInc, &                                                                                     !< target deformation gradient
    F                                                                                                !< previous deformation gradient
@@ -1149,7 +1146,7 @@ subroutine utilities_constitutiveResponse(F_lastInc,F,temperature,timeinc,&
  endif
 
  call CPFEM_general(CPFEM_COLLECT,F_lastInc(1:3,1:3,1,1,1),F(1:3,1:3,1,1,1), &
-                   temperature,timeinc,1_pInt,1_pInt)
+                   timeinc,1_pInt,1_pInt)
 
  materialpoint_F  = reshape(F,[3,3,1,product(gridLocal)])
  call debug_reset()
@@ -1174,7 +1171,7 @@ subroutine utilities_constitutiveResponse(F_lastInc,F,temperature,timeinc,&
  endif
 
  call CPFEM_general(calcMode,F_lastInc(1:3,1:3,1,1,1), F(1:3,1:3,1,1,1), &                          ! first call calculates everything
-                    temperature,timeinc,1_pInt,1_pInt)
+                    timeinc,1_pInt,1_pInt)
 
  max_dPdF = 0.0_pReal
  max_dPdF_norm = 0.0_pReal

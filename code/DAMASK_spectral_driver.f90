@@ -144,7 +144,7 @@ program DAMASK_spectral_Driver
  external :: quit
 !--------------------------------------------------------------------------------------------------
 ! init DAMASK (all modules)
- call CPFEM_initAll(temperature_inp = 300.0_pReal, el = 1_pInt, ip = 1_pInt)
+ call CPFEM_initAll(el = 1_pInt, ip = 1_pInt)
  mainProcess: if (worldrank == 0) then
    write(6,'(/,a)')   ' <<<+-  DAMASK_spectral_driver init  -+>>>'
    write(6,'(a)')     ' $Id$'
@@ -245,8 +245,6 @@ program DAMASK_spectral_Driver
          loadCases(currentLoadCase)%P%values      = math_plain9to33(temp_valueVector)
        case('t','time','delta')                                                                     ! increment time
          loadCases(currentLoadCase)%time = IO_floatValue(line,positions,i+1_pInt)
-       case('temp','temperature')                                                                   ! starting temperature
-         loadCases(currentLoadCase)%temperature = IO_floatValue(line,positions,i+1_pInt)
        case('n','incs','increments','steps')                                                        ! number of increments
          loadCases(currentLoadCase)%incs = IO_intValue(line,positions,i+1_pInt)
        case('logincs','logincrements','logsteps')                                                   ! number of increments (switch to log time scaling)
@@ -329,7 +327,6 @@ program DAMASK_spectral_Driver
      if (any(loadCases(currentLoadCase)%rotation /= math_I3)) &
        write(6,'(2x,a,/,3(3(3x,f12.7,1x)/))',advance='no') 'rotation of loadframe:',&
                 math_transpose33(loadCases(currentLoadCase)%rotation)
-     write(6,'(2x,a,f12.6)') 'temperature:', loadCases(currentLoadCase)%temperature
      if (loadCases(currentLoadCase)%time < 0.0_pReal)          errorID = 834_pInt                   ! negative time increment
      write(6,'(2x,a,f12.6)') 'time:       ', loadCases(currentLoadCase)%time
      if (loadCases(currentLoadCase)%incs < 1_pInt)             errorID = 835_pInt                   ! non-positive incs count
@@ -351,16 +348,16 @@ program DAMASK_spectral_Driver
      case(FIELD_MECH_ID)
        select case (spectral_solver)
          case (DAMASK_spectral_SolverBasicPETSc_label)
-           call basicPETSc_init(loadCases(1)%temperature)
+           call basicPETSc_init
          case (DAMASK_spectral_SolverAL_label)
            if(iand(debug_level(debug_spectral),debug_levelBasic)/= 0 .and. worldrank == 0_pInt) &
            call IO_warning(42_pInt, ext_msg='debug Divergence')
-           call AL_init(loadCases(1)%temperature)
+           call AL_init
          
          case (DAMASK_spectral_SolverPolarisation_label)
            if(iand(debug_level(debug_spectral),debug_levelBasic)/= 0 .and. worldrank == 0_pInt) &
            call IO_warning(42_pInt, ext_msg='debug Divergence')
-           call Polarisation_init(loadCases(1)%temperature)
+           call Polarisation_init
          
          case default
            call IO_error(error_ID = 891, ext_msg = trim(spectral_solver))
@@ -368,7 +365,7 @@ program DAMASK_spectral_Driver
        end select 
      
       case(FIELD_THERMAL_ID)
-       call spectral_thermal_init(loadCases(1)%temperature)
+       call spectral_thermal_init
  
      case(FIELD_DAMAGE_ID)
        call spectral_damage_init()
@@ -550,7 +547,6 @@ program DAMASK_spectral_Driver
                          incInfo,guess,timeinc,timeIncOld,remainingLoadCaseTime, &
                          P_BC               = loadCases(currentLoadCase)%P, &
                          F_BC               = loadCases(currentLoadCase)%deformation, &
-                         temperature_bc     = loadCases(currentLoadCase)%temperature, &
                          rotation_BC        = loadCases(currentLoadCase)%rotation)
          
                    case (DAMASK_spectral_SolverAL_label)
@@ -558,7 +554,6 @@ program DAMASK_spectral_Driver
                          incInfo,guess,timeinc,timeIncOld,remainingLoadCaseTime, &
                          P_BC               = loadCases(currentLoadCase)%P, &
                          F_BC               = loadCases(currentLoadCase)%deformation, &
-                         temperature_bc     = loadCases(currentLoadCase)%temperature, &
                          rotation_BC        = loadCases(currentLoadCase)%rotation)
          
                    case (DAMASK_spectral_SolverPolarisation_label)
@@ -566,7 +561,6 @@ program DAMASK_spectral_Driver
                          incInfo,guess,timeinc,timeIncOld,remainingLoadCaseTime, &
                          P_BC               = loadCases(currentLoadCase)%P, &
                          F_BC               = loadCases(currentLoadCase)%deformation, &
-                         temperature_bc     = loadCases(currentLoadCase)%temperature, &
                          rotation_BC        = loadCases(currentLoadCase)%rotation)
        
                  end select 

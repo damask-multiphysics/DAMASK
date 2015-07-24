@@ -45,7 +45,7 @@ contains
 !--------------------------------------------------------------------------------------------------
 !> @brief call (thread safe) all module initializations
 !--------------------------------------------------------------------------------------------------
-subroutine CPFEM_initAll(temperature_inp,el,ip)
+subroutine CPFEM_initAll(el,ip)
  use prec, only: &
    prec_init
  use numerics, only: &
@@ -79,7 +79,6 @@ subroutine CPFEM_initAll(temperature_inp,el,ip)
  implicit none
  integer(pInt), intent(in) ::                        el, &                                          !< FE el number
                                                      ip                                             !< FE integration point number
- real(pReal), intent(in) ::                          temperature_inp                                !< temperature
 
  !$OMP CRITICAL (init)
    if (.not. CPFEM_init_done) then
@@ -100,7 +99,7 @@ subroutine CPFEM_initAll(temperature_inp,el,ip)
      call material_init
      call constitutive_init
      call crystallite_init
-     call homogenization_init(temperature_inp)
+     call homogenization_init
      call CPFEM_init
 #if defined(Marc4DAMASK) || defined(Abaqus)
      call DAMASK_interface_init                                                                    ! Spectral solver and FEM init is already done
@@ -264,7 +263,7 @@ end subroutine CPFEM_init
 #if defined(Marc4DAMASK) || defined(Abaqus)
 subroutine CPFEM_general(mode, parallelExecution, ffn, ffn1, temperature_inp, dt, elFE, ip, cauchyStress, jacobian)
 #else
-subroutine CPFEM_general(mode, ffn, ffn1, temperature_inp, dt, elFE, ip)
+subroutine CPFEM_general(mode, ffn, ffn1, dt, elFE, ip)
 #endif
  use numerics, only: &
    defgradTolerance, &
@@ -364,12 +363,12 @@ subroutine CPFEM_general(mode, ffn, ffn1, temperature_inp, dt, elFE, ip)
  implicit none
  integer(pInt), intent(in) ::                        elFE, &                                        !< FE element number
                                                      ip                                             !< integration point number
- real(pReal), intent(in) ::                          temperature_inp                                !< temperature
  real(pReal), intent(in) ::                          dt                                             !< time increment
  real(pReal), dimension (3,3), intent(in) ::         ffn, &                                         !< deformation gradient for t=t0
                                                      ffn1                                           !< deformation gradient for t=t1
  integer(pInt), intent(in) ::                        mode                                           !< computation mode  1: regular computation plus aging of results
 #if defined(Marc4DAMASK) || defined(Abaqus)
+ real(pReal), intent(in) ::                          temperature_inp                                !< temperature
  logical, intent(in) ::                              parallelExecution                              !< flag indicating parallel computation of requested IPs
  real(pReal), dimension(6), intent(out) ::           cauchyStress                                   !< stress vector in Mandel notation
  real(pReal), dimension(6,6), intent(out) ::         jacobian                                       !< jacobian in Mandel notation (Consistent tangent dcs/dE)

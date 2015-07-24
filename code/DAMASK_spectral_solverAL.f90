@@ -99,7 +99,7 @@ contains
 !> @brief allocates all neccessary fields and fills them with data, potentially from restart info
 !> @todo use sourced allocation, e.g. allocate(Fdot,source = F_lastInc)
 !--------------------------------------------------------------------------------------------------
-subroutine AL_init(temperature)
+subroutine AL_init
  use, intrinsic :: iso_fortran_env                                                                  ! to get compiler_version and compiler_options (at least for gfortran >4.6 at the moment)
  use IO, only: &
    IO_intOut, &
@@ -127,8 +127,6 @@ subroutine AL_init(temperature)
    math_invSym3333
    
  implicit none
- real(pReal), intent(inout) :: &
-   temperature
  real(pReal), dimension(:,:,:,:,:), allocatable :: P
  real(pReal), dimension(3,3) :: &
    temp33_Real = 0.0_pReal
@@ -224,7 +222,7 @@ subroutine AL_init(temperature)
  
  call utilities_updateIPcoords(F)
  call Utilities_constitutiveResponse(F_lastInc,F,&
-                   temperature,0.0_pReal,P,C_volAvg,C_minMaxAvg,temp33_Real,.false.,math_I3)
+                   0.0_pReal,P,C_volAvg,C_minMaxAvg,temp33_Real,.false.,math_I3)
  nullify(F)
  nullify(F_lambda)
  call DMDAVecRestoreArrayF90(da,solution_vec,xx_psc,ierr); CHKERRQ(ierr)                            ! write data back to PETSc
@@ -256,8 +254,7 @@ end subroutine AL_init
 !> @brief solution for the AL scheme with internal iterations
 !--------------------------------------------------------------------------------------------------
 type(tSolutionState) function &
-  AL_solution(incInfoIn,guess,timeinc,timeinc_old,loadCaseTime,P_BC,F_BC,temperature_bc, &
-                                                                     rotation_BC)
+  AL_solution(incInfoIn,guess,timeinc,timeinc_old,loadCaseTime,P_BC,F_BC,rotation_BC)
  use numerics, only: &
    update_gamma
  use math, only: &
@@ -277,8 +274,7 @@ type(tSolutionState) function &
  real(pReal), intent(in) :: &
    timeinc, &                                                                                       !< increment in time for current solution
    timeinc_old, &                                                                                   !< increment in time of last increment
-   loadCaseTime, &                                                                                  !< remaining time of current load case
-   temperature_bc
+   loadCaseTime                                                                                     !< remaining time of current load case
  logical, intent(in) :: &
    guess
  type(tBoundaryCondition),      intent(in) :: &
@@ -313,7 +309,6 @@ type(tSolutionState) function &
  params%rotation_BC = rotation_BC
  params%timeinc = timeinc
  params%timeincOld = timeinc_old
- params%temperature = temperature_bc
 
 !--------------------------------------------------------------------------------------------------
 ! solve BVP 
@@ -453,7 +448,7 @@ subroutine AL_formResidual(in,x_scal,f_scal,dummy,ierr)
 !--------------------------------------------------------------------------------------------------
 ! evaluate constitutive response
  P_avLastEval = P_av
- call Utilities_constitutiveResponse(F_lastInc,F - residual_F_lambda/polarBeta,params%temperature,params%timeinc, &
+ call Utilities_constitutiveResponse(F_lastInc,F - residual_F_lambda/polarBeta,params%timeinc, &
                                      residual_F,C_volAvg,C_minMaxAvg,P_av,ForwardData,params%rotation_BC)
  call MPI_Allreduce(MPI_IN_PLACE,terminallyIll,1,MPI_LOGICAL,MPI_LOR,PETSC_COMM_WORLD,ierr)
  ForwardData = .False.

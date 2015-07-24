@@ -186,7 +186,7 @@ subroutine vumat(nBlock, nDir, nshr, nStateV, nFieldV, nProps, lAnneal, &
  do n = 1,nblock(1)                                                                                 ! loop over vector of IPs
    temp    = tempOld(n)                                                                             ! temp is intent(in)
    if ( .not. CPFEM_init_done ) then
-     call CPFEM_initAll(temp,nBlock(4_pInt+n),nBlock(2))
+     call CPFEM_initAll(nBlock(4_pInt+n),nBlock(2))
      outdatedByNewInc = .false.
 
      if (iand(debug_level(debug_abaqus),debug_levelBasic) /= 0) then

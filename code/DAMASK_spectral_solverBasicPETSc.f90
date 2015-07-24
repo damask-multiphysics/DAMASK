@@ -87,7 +87,7 @@ contains
 !--------------------------------------------------------------------------------------------------
 !> @brief allocates all neccessary fields and fills them with data, potentially from restart info
 !--------------------------------------------------------------------------------------------------
-subroutine basicPETSc_init(temperature)
+subroutine basicPETSc_init
  use, intrinsic :: iso_fortran_env                                                                  ! to get compiler_version and compiler_options (at least for gfortran >4.6 at the moment)
  use IO, only: &
    IO_intOut, &
@@ -116,8 +116,6 @@ subroutine basicPETSc_init(temperature)
    math_invSym3333
    
  implicit none
- real(pReal), intent(inout) :: &
-   temperature
  real(pReal), dimension(:,:,:,:,:), allocatable :: P
  PetscScalar,  dimension(:,:,:,:), pointer     ::  F
  PetscErrorCode :: ierr
@@ -195,7 +193,6 @@ subroutine basicPETSc_init(temperature)
 
  call Utilities_updateIPcoords(F)
  call Utilities_constitutiveResponse(F_lastInc, F, &
-    temperature, &
     0.0_pReal, &
     P, &
     C_volAvg,C_minMaxAvg, &                                                                         ! global average of stiffness and (min+max)/2
@@ -229,7 +226,7 @@ end subroutine basicPETSc_init
 !> @brief solution for the Basic PETSC scheme with internal iterations
 !--------------------------------------------------------------------------------------------------
 type(tSolutionState) function basicPETSc_solution( &
-     incInfoIn,guess,timeinc,timeinc_old,loadCaseTime,P_BC,F_BC,temperature_bc,rotation_BC)
+     incInfoIn,guess,timeinc,timeinc_old,loadCaseTime,P_BC,F_BC,rotation_BC)
  use numerics, only: &
    update_gamma, &
    itmax
@@ -248,8 +245,7 @@ type(tSolutionState) function basicPETSc_solution( &
  real(pReal), intent(in) :: &
    timeinc, &                                                                                       !< increment in time for current solution
    timeinc_old, &                                                                                   !< increment in time of last increment
-   loadCaseTime, &                                                                                  !< remaining time of current load case
-   temperature_bc
+   loadCaseTime                                                                                     !< remaining time of current load case
  type(tBoundaryCondition),      intent(in) :: &
    P_BC, &
    F_BC
@@ -279,7 +275,6 @@ type(tSolutionState) function basicPETSc_solution( &
  params%rotation_BC = rotation_BC
  params%timeinc = timeinc
  params%timeincOld = timeinc_old
- params%temperature = temperature_BC
 
  call SNESSolve(snes,PETSC_NULL_OBJECT,solution_vec,ierr); CHKERRQ(ierr)
  call SNESGetConvergedReason(snes,reason,ierr); CHKERRQ(ierr)
@@ -368,7 +363,7 @@ subroutine BasicPETSC_formResidual(in,x_scal,f_scal,dummy,ierr)
 
 !--------------------------------------------------------------------------------------------------
 ! evaluate constitutive response
- call Utilities_constitutiveResponse(F_lastInc,x_scal,params%temperature,params%timeinc, &
+ call Utilities_constitutiveResponse(F_lastInc,x_scal,params%timeinc, &
                                      f_scal,C_volAvg,C_minmaxAvg,P_av,ForwardData,params%rotation_BC)
  call MPI_Allreduce(MPI_IN_PLACE,terminallyIll,1,MPI_LOGICAL,MPI_LOR,PETSC_COMM_WORLD,ierr)
  ForwardData = .false.

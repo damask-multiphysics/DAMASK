@@ -76,7 +76,7 @@ contains
 !--------------------------------------------------------------------------------------------------
 !> @brief allocates all neccessary fields and fills them with data, potentially from restart info
 !--------------------------------------------------------------------------------------------------
-subroutine spectral_thermal_init(temperature0)
+subroutine spectral_thermal_init
  use, intrinsic :: iso_fortran_env                                                                  ! to get compiler_version and compiler_options (at least for gfortran >4.6 at the moment)
  use IO, only: &
    IO_intOut, &
@@ -91,13 +91,17 @@ subroutine spectral_thermal_init(temperature0)
    thermal_conduction_getConductivity33, &
    thermal_conduction_getMassDensity, &
    thermal_conduction_getSpecificHeat
+ use material, only: &
+   mappingHomogenization, &
+   temperature, &
+   thermalMapping
    
  implicit none
- real(pReal), intent(inOut) :: temperature0
  integer(pInt), dimension(:), allocatable :: localK  
  integer(pInt) :: proc
  integer(pInt) :: i, j, k, cell
  DM :: thermal_grid
+ PetscScalar, pointer :: x_scal(:,:,:)          
  PetscErrorCode :: ierr
  PetscObject    :: dummy
 
@@ -138,10 +142,20 @@ subroutine spectral_thermal_init(temperature0)
  xend = xstart + xend - 1
  yend = ystart + yend - 1
  zend = zstart + zend - 1 
- call VecSet(solution,temperature0,ierr); CHKERRQ(ierr)
- allocate(temperature_current(gridLocal(1),gridLocal(2),gridLocal(3)), source=temperature0)
- allocate(temperature_lastInc(gridLocal(1),gridLocal(2),gridLocal(3)), source=temperature0)
- allocate(temperature_stagInc(gridLocal(1),gridLocal(2),gridLocal(3)), source=temperature0)
+ allocate(temperature_current(gridLocal(1),gridLocal(2),gridLocal(3)), source=0.0_pReal)
+ allocate(temperature_lastInc(gridLocal(1),gridLocal(2),gridLocal(3)), source=0.0_pReal)
+ allocate(temperature_stagInc(gridLocal(1),gridLocal(2),gridLocal(3)), source=0.0_pReal)
+ cell = 0_pInt
+ do k = 1_pInt, gridLocal(3);  do j = 1_pInt, gridLocal(2);  do i = 1_pInt,gridLocal(1)
+   cell = cell + 1_pInt
+   temperature_current(i,j,k) = temperature(mappingHomogenization(2,1,cell))% &
+                                  p(thermalMapping(mappingHomogenization(2,1,cell))%p(1,cell))
+   temperature_lastInc(i,j,k) = temperature_current(i,j,k)
+   temperature_stagInc(i,j,k) = temperature_current(i,j,k)
+ enddo; enddo; enddo
+ call DMDAVecGetArrayF90(thermal_grid,solution,x_scal,ierr); CHKERRQ(ierr)                              !< get the data out of PETSc to work with
+ x_scal(xstart:xend,ystart:yend,zstart:zend) = temperature_current
+ call DMDAVecRestoreArrayF90(thermal_grid,solution,x_scal,ierr); CHKERRQ(ierr)
 
  cell = 0_pInt
  D_ref = 0.0_pReal

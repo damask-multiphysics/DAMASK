@@ -200,7 +200,7 @@ subroutine UMAT(STRESS,STATEV,DDSDDE,SSE,SPD,SCD,&
    flush(6)
  endif
 
- if (.not. CPFEM_init_done) call CPFEM_initAll(temperature,noel,npt)
+ if (.not. CPFEM_init_done) call CPFEM_initAll(noel,npt)
 
  computationMode = 0
  cp_en = mesh_FEasCP('elem',noel)

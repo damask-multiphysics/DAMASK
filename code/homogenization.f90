@@ -72,7 +72,7 @@ contains
 !--------------------------------------------------------------------------------------------------
 !> @brief module initialization
 !--------------------------------------------------------------------------------------------------
-subroutine homogenization_init(temperature_init)
+subroutine homogenization_init
 #ifdef HDF
  use hdf5, only: &
    HID_T
@@ -126,7 +126,6 @@ subroutine homogenization_init(temperature_init)
    worldrank
 
  implicit none
- real(pReal), intent(in)   :: temperature_init                                                      !< initial temperature
  integer(pInt), parameter :: FILEUNIT = 200_pInt
  integer(pInt) :: e,i,p
  integer(pInt), dimension(:,:), pointer :: thisSize
