@@ -135,7 +135,7 @@ module numerics
    integrationOrder           =  2_pInt, &                                                          !< order of quadrature rule required
    structOrder                =  2_pInt, &                                                          !< order of displacement shape functions
    thermalOrder               =  2_pInt, &                                                          !< order of temperature field shape functions
-   damageOrder                =  1_pInt, &                                                          !< order of damage field shape functions
+   damageOrder                =  2_pInt, &                                                          !< order of damage field shape functions
    vacancyfluxOrder           =  2_pInt, &                                                          !< order of vacancy concentration and chemical potential field shape functions
    porosityOrder              =  2_pInt, &                                                          !< order of porosity field shape functions
    hydrogenfluxOrder          =  2_pInt                                                             !< order of hydrogen concentration and chemical potential field shape functions  

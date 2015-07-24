@@ -29,6 +29,7 @@ module source_damage_isoBrittle
 
  real(pReal),                         dimension(:),     allocatable,         private :: &
    source_damage_isoBrittle_aTol, &
+   source_damage_isoBrittle_N, &
    source_damage_isoBrittle_critStrainEnergy
 
  enum, bind(c) 
@@ -128,6 +129,7 @@ subroutine source_damage_isoBrittle_init(fileUnit)
  allocate(source_damage_isoBrittle_outputID(maxval(phase_Noutput),maxNinstance),      source=undefined_ID)
  allocate(source_damage_isoBrittle_Noutput(maxNinstance),                             source=0_pInt) 
  allocate(source_damage_isoBrittle_critStrainEnergy(maxNinstance),                    source=0.0_pReal) 
+ allocate(source_damage_isoBrittle_N(maxNinstance),                                   source=1.0_pReal) 
  allocate(source_damage_isoBrittle_aTol(maxNinstance),                                source=0.0_pReal) 
 
  rewind(fileUnit)
@@ -163,6 +165,9 @@ subroutine source_damage_isoBrittle_init(fileUnit)
 
        case ('isobrittle_criticalstrainenergy')
          source_damage_isoBrittle_critStrainEnergy(instance) = IO_floatValue(line,positions,2_pInt)
+
+       case ('isobrittle_n')
+         source_damage_isoBrittle_N(instance) = IO_floatValue(line,positions,2_pInt)
 
        case ('isobrittle_atol')
          source_damage_isoBrittle_aTol(instance) = IO_floatValue(line,positions,2_pInt)
@@ -321,14 +326,18 @@ subroutine source_damage_isoBrittle_getRateAndItsTangent(localphiDot, dLocalphiD
    localphiDot, &
    dLocalphiDot_dPhi
  integer(pInt) :: &
-   phase, constituent, sourceOffset
+   phase, constituent, instance, sourceOffset
 
  phase = mappingConstitutive(2,ipc,ip,el)
  constituent = mappingConstitutive(1,ipc,ip,el)
+ instance = source_damage_isoBrittle_instance(phase)
  sourceOffset = source_damage_isoBrittle_offset(phase)
  
- localphiDot = 1.0_pReal - phi*sourceState(phase)%p(sourceOffset)%state(1,constituent)
- dLocalphiDot_dPhi = -sourceState(phase)%p(sourceOffset)%state(1,constituent)
+ localphiDot = (1.0_pReal - phi)**(source_damage_isoBrittle_N(instance) - 1.0_pReal) - &
+               phi*sourceState(phase)%p(sourceOffset)%state(1,constituent)
+ dLocalphiDot_dPhi = - (source_damage_isoBrittle_N(instance) - 1.0_pReal)* &
+                       (1.0_pReal - phi)**max(0.0_pReal,source_damage_isoBrittle_N(instance) - 2.0_pReal) &
+                     - sourceState(phase)%p(sourceOffset)%state(1,constituent)
  
 end subroutine source_damage_isoBrittle_getRateAndItsTangent
  
