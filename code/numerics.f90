@@ -163,7 +163,7 @@ module numerics
                              &-thermal_snes_linesearch_type cp &
                              &-thermal_ksp_type fgmres &
                              &-thermal_ksp_max_it 25 &
-                             &-thermal_snes_atol 1e-1 &
+                             &-thermal_snes_atol 1e-3 &
                              &-thermal_pc_type hypre &
                              &-vacancy_snes_type newtonls &
                              &-vacancy_snes_linesearch_type cp &
