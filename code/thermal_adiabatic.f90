@@ -217,7 +217,7 @@ function thermal_adiabatic_updateState(subdt, ip, el)
  
  T = thermalState(homog)%subState0(1,offset)
  call thermal_adiabatic_getSourceAndItsTangent(Tdot, dTdot_dT, T, ip, el)
- T = T + subdt*thermal_adiabatic_getSpecificHeat(ip,el)*thermal_adiabatic_getMassDensity(ip,el)*Tdot
+ T = T + subdt*Tdot/(thermal_adiabatic_getSpecificHeat(ip,el)*thermal_adiabatic_getMassDensity(ip,el))
  
  thermal_adiabatic_updateState = [     abs(T - thermalState(homog)%state(1,offset)) &
                                     <= err_thermal_tolAbs &
@@ -244,9 +244,12 @@ subroutine thermal_adiabatic_getSourceAndItsTangent(Tdot, dTdot_dT, T, ip, el)
    thermal_typeInstance, &
    phase_Nsources, &
    phase_source, &
-   SOURCE_thermal_dissipation_ID
+   SOURCE_thermal_dissipation_ID, &
+   SOURCE_thermal_externalheat_ID
  use source_thermal_dissipation, only: &
    source_thermal_dissipation_getRateAndItsTangent
+ use source_thermal_externalheat, only: &
+   source_thermal_externalheat_getRateAndItsTangent
  use crystallite, only: &
    crystallite_Tstar_v, &
    crystallite_Lp  
@@ -284,6 +287,10 @@ subroutine thermal_adiabatic_getSourceAndItsTangent(Tdot, dTdot_dT, T, ip, el)
                                                              crystallite_Tstar_v(1:6,grain,ip,el), &
                                                              crystallite_Lp(1:3,1:3,grain,ip,el), &
                                                              grain, ip, el)
+
+       case (SOURCE_thermal_externalheat_ID)
+        call source_thermal_externalheat_getRateAndItsTangent(my_Tdot, my_dTdot_dT, &
+                                                              grain, ip, el)
 
        case default
         my_Tdot = 0.0_pReal

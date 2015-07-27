@@ -84,6 +84,7 @@ subroutine constitutive_init()
    PLASTICITY_titanmod_ID, &
    PLASTICITY_nonlocal_ID ,&
    SOURCE_thermal_dissipation_ID, &
+   SOURCE_thermal_externalheat_ID, &
    SOURCE_damage_isoBrittle_ID, &
    SOURCE_damage_isoDuctile_ID, &
    SOURCE_damage_anisoBrittle_ID, &
@@ -106,6 +107,7 @@ subroutine constitutive_init()
    PLASTICITY_TITANMOD_label, &
    PLASTICITY_NONLOCAL_label, &
    SOURCE_thermal_dissipation_label, &
+   SOURCE_thermal_externalheat_label, &
    SOURCE_damage_isoBrittle_label, &
    SOURCE_damage_isoDuctile_label, &
    SOURCE_damage_anisoBrittle_label, &
@@ -125,6 +127,7 @@ subroutine constitutive_init()
  use plastic_titanmod
  use plastic_nonlocal
  use source_thermal_dissipation
+ use source_thermal_externalheat
  use source_damage_isoBrittle
  use source_damage_isoDuctile
  use source_damage_anisoBrittle
@@ -175,6 +178,7 @@ subroutine constitutive_init()
  if (.not. IO_open_jobFile_stat(FILEUNIT,material_localFileExt)) &                                  ! no local material configuration present...
    call IO_open_file(FILEUNIT,material_configFile)                                                  ! ... open material.config file
  if (any(phase_source == SOURCE_thermal_dissipation_ID))     call source_thermal_dissipation_init(FILEUNIT)
+ if (any(phase_source == SOURCE_thermal_externalheat_ID))    call source_thermal_externalheat_init(FILEUNIT)
  if (any(phase_source == SOURCE_damage_isoBrittle_ID))       call source_damage_isoBrittle_init(FILEUNIT)
  if (any(phase_source == SOURCE_damage_isoDuctile_ID))       call source_damage_isoDuctile_init(FILEUNIT)
  if (any(phase_source == SOURCE_damage_anisoBrittle_ID))     call source_damage_anisoBrittle_init(FILEUNIT)
@@ -272,6 +276,12 @@ subroutine constitutive_init()
              thisNoutput => source_thermal_dissipation_Noutput
              thisOutput => source_thermal_dissipation_output
              thisSize   => source_thermal_dissipation_sizePostResult
+           case (SOURCE_thermal_externalheat_ID)
+             instance = source_thermal_externalheat_instance(phase)
+             outputName = SOURCE_thermal_externalheat_label
+             thisNoutput => source_thermal_externalheat_Noutput
+             thisOutput => source_thermal_externalheat_output
+             thisSize   => source_thermal_externalheat_sizePostResult
            case (SOURCE_damage_isoBrittle_ID)
              instance = source_damage_isoBrittle_instance(phase)
              outputName = SOURCE_damage_isoBrittle_label
@@ -745,8 +755,6 @@ pure function constitutive_initialFi(ipc, ip, el)
    el                                                                                               !< element number
  real(pReal), dimension(3,3) :: &
    constitutive_initialFi                                                                           !< composite initial intermediate deformation gradient
- real(pReal), dimension(3,3) :: &
-   my_Fi                                                                                            !< individual intermediate deformation gradients
  integer(pInt) :: &
    kinematics    
 
@@ -911,7 +919,8 @@ subroutine constitutive_collectDotState(Tstar_v, FeArray, FpArray, subdt, subfra
    PLASTICITY_nonlocal_ID, &
    SOURCE_damage_isoDuctile_ID, &
    SOURCE_damage_anisoBrittle_ID, &
-   SOURCE_damage_anisoDuctile_ID
+   SOURCE_damage_anisoDuctile_ID, &
+   SOURCE_thermal_externalheat_ID
  use plastic_j2, only:  &
    plastic_j2_dotState
  use plastic_phenopowerlaw, only: &
@@ -932,6 +941,8 @@ subroutine constitutive_collectDotState(Tstar_v, FeArray, FpArray, subdt, subfra
    source_damage_anisoBrittle_dotState
  use source_damage_anisoDuctile, only: &
    source_damage_anisoDuctile_dotState
+ use source_thermal_externalheat, only: &
+   source_thermal_externalheat_dotState
 
  implicit none
  integer(pInt), intent(in) :: &
@@ -985,11 +996,13 @@ subroutine constitutive_collectDotState(Tstar_v, FeArray, FpArray, subdt, subfra
  do mySource = 1_pInt, phase_Nsources(phase)
    select case (phase_source(mySource,phase))
      case (SOURCE_damage_anisoBrittle_ID)
-       call source_damage_anisoBrittle_dotState(Tstar_v, ipc, ip, el)
+       call source_damage_anisoBrittle_dotState (Tstar_v, ipc, ip, el)
      case (SOURCE_damage_isoDuctile_ID)
-       call source_damage_isoDuctile_dotState  (         ipc, ip, el)
+       call source_damage_isoDuctile_dotState   (         ipc, ip, el)
      case (SOURCE_damage_anisoDuctile_ID)
-       call source_damage_anisoDuctile_dotState(         ipc, ip, el)
+       call source_damage_anisoDuctile_dotState (         ipc, ip, el)
+     case (SOURCE_thermal_externalheat_ID)
+       call source_thermal_externalheat_dotState(         ipc, ip, el)
 
    end select
  enddo  

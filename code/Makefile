@@ -307,7 +307,7 @@ COMPILE         =$(OPENMP_FLAG_$(F90)) $(COMPILE_OPTIONS_$(F90)) $(STANDARD_CHEC
 COMPILE_MAXOPTI =$(OPENMP_FLAG_$(F90)) $(COMPILE_OPTIONS_$(F90)) $(STANDARD_CHECK_$(F90)) $(OPTIMIZATION_$(MAXOPTI)_$(F90)) $(INCLUDE_DIRS) $(PRECISION_$(F90))
 ###################################################################################################
 SOURCE_FILES = \
-   source_thermal_dissipation.o \
+   source_thermal_dissipation.o source_thermal_externalheat.o \
    source_damage_isoBrittle.o source_damage_isoDuctile.o source_damage_anisoBrittle.o source_damage_anisoDuctile.o \
    source_vacancy_phenoplasticity.o source_vacancy_irradiation.o source_vacancy_thermalfluc.o
    
@@ -515,6 +515,9 @@ constitutive.o:                constitutive.f90 \
                                $(PLASTIC_FILES)
 
 source_thermal_dissipation.o:  source_thermal_dissipation.f90 \
+                               lattice.o
+
+source_thermal_externalheat.o: source_thermal_externalheat.f90 \
                                lattice.o
 
 source_damage_isoBrittle.o:    source_damage_isoBrittle.f90 \

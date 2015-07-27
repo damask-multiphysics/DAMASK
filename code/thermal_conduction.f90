@@ -198,9 +198,12 @@ subroutine thermal_conduction_getSourceAndItsTangent(Tdot, dTdot_dT, T, ip, el)
    thermal_typeInstance, &
    phase_Nsources, &
    phase_source, &
-   SOURCE_thermal_dissipation_ID
+   SOURCE_thermal_dissipation_ID, &
+   SOURCE_thermal_externalheat_ID
  use source_thermal_dissipation, only: &
    source_thermal_dissipation_getRateAndItsTangent
+ use source_thermal_externalheat, only: &
+   source_thermal_externalheat_getRateAndItsTangent
  use crystallite, only: &
    crystallite_Tstar_v, &
    crystallite_Lp  
@@ -238,6 +241,10 @@ subroutine thermal_conduction_getSourceAndItsTangent(Tdot, dTdot_dT, T, ip, el)
                                                              crystallite_Tstar_v(1:6,grain,ip,el), &
                                                              crystallite_Lp(1:3,1:3,grain,ip,el), &
                                                              grain, ip, el)
+
+       case (SOURCE_thermal_externalheat_ID)
+        call source_thermal_externalheat_getRateAndItsTangent(my_Tdot, my_dTdot_dT, &
+                                                              grain, ip, el)
 
        case default
         my_Tdot = 0.0_pReal

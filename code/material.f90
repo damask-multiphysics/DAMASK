@@ -33,6 +33,7 @@ module material
    PLASTICITY_titanmod_label            = 'titanmod', &
    PLASTICITY_nonlocal_label            = 'nonlocal', &
    SOURCE_thermal_dissipation_label     = 'thermal_dissipation', &
+   SOURCE_thermal_externalheat_label    = 'thermal_externalheat', &
    SOURCE_damage_isoBrittle_label       = 'damage_isobrittle', &
    SOURCE_damage_isoDuctile_label       = 'damage_isoductile', &
    SOURCE_damage_anisoBrittle_label     = 'damage_anisobrittle', &
@@ -85,6 +86,7 @@ module material
  enum, bind(c)
    enumerator :: SOURCE_undefined_ID, &
                  SOURCE_thermal_dissipation_ID, &
+                 SOURCE_thermal_externalheat_ID, &
                  SOURCE_damage_isoBrittle_ID, &
                  SOURCE_damage_isoDuctile_ID, &
                  SOURCE_damage_anisoBrittle_ID, &
@@ -317,6 +319,7 @@ module material
    PLASTICITY_titanmod_ID, &
    PLASTICITY_nonlocal_ID, &
    SOURCE_thermal_dissipation_ID, &
+   SOURCE_thermal_externalheat_ID, &
    SOURCE_damage_isoBrittle_ID, &
    SOURCE_damage_isoDuctile_ID, &
    SOURCE_damage_anisoBrittle_ID, &
@@ -999,6 +1002,8 @@ subroutine material_parsePhase(fileUnit,myPart)
          select case (IO_lc(IO_stringValue(line,positions,2_pInt)))
            case (SOURCE_thermal_dissipation_label)
              phase_source(sourceCtr,section) = SOURCE_thermal_dissipation_ID
+           case (SOURCE_thermal_externalheat_label)
+             phase_source(sourceCtr,section) = SOURCE_thermal_externalheat_ID
            case (SOURCE_damage_isoBrittle_label)
              phase_source(sourceCtr,section) = SOURCE_damage_isoBrittle_ID
            case (SOURCE_damage_isoDuctile_label)

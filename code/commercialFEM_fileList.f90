@@ -15,6 +15,7 @@
 #include "material.f90"
 #include "lattice.f90"
 #include "source_thermal_dissipation.f90"
+#include "source_thermal_externalheat.f90"
 #include "source_damage_isoBrittle.f90"
 #include "source_damage_isoDuctile.f90"
 #include "source_damage_anisoBrittle.f90"
