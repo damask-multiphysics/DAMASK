@@ -72,7 +72,7 @@ def laguerreTessellation(undeformed, coords, weights):
         
         tmp = np.repeat(point.reshape(3,1), N*27, axis=1).T
         dist = np.sum((tmp - seeds)*(tmp - seeds),axis=1) - weight
-        micro[i] = np.argmin(dist)%N
+        micro[i] = np.argmin(dist)%N + 1
     
     return micro
 
