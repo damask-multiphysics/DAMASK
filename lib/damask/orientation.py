@@ -219,7 +219,7 @@ class Quaternion:
               abs(-self.z-other.z) < 1e-8)
 
     def __ne__(self,other):
-      return not __eq__(self,other)
+      return not self.__eq__(self,other)
 
     def __cmp__(self,other):
       return cmp(self.Rodrigues(),other.Rodrigues())
@@ -241,7 +241,7 @@ class Quaternion:
       self *= Quaternion.fromAngleAxis(angle, axis)
       return self
 
-    def rotateBy_Eulers(self, heading, attitude, bank):
+    def rotateBy_Eulers(self, eulers):
       self *= Quaternion.fromEulers(eulers, type)
       return self
 
