@@ -604,20 +604,19 @@ cdef class Symmetry:
     #     HEXAGONAL = 3
     #     CUBIC = 4
 
-    def __init__(self, int symmetry):
-        if symmetry == 0:
+    def __init__(self, symmetry):
+        if symmetry == 0 or symmetry == None:
             self.lattice = NONE
-        elif symmetry == 1:
+        elif symmetry == 1 or symmetry == 'orthorhombic':
             self.lattice = ORTHORHOMBIC
-        elif symmetry == 2:
+        elif symmetry == 2 or symmetry == 'tetragonal':
             self.lattice = TETRAGONAL
-        elif symmetry == 3:
+        elif symmetry == 3 or symmetry == 'hexagonal':
             self.lattice = HEXAGONAL
-        elif symmetry == 4:
+        elif symmetry == 4 or symmetry == 'cubic':
             self.lattice = CUBIC
         else:
             self.lattice = NONE
-        # self.lattice = symmetry  # use code here
 
     def __copy__(self):
         return self.__class__(self.lattice)
