@@ -35,7 +35,7 @@ try:
   core.debug.init                    = core.debug.debug_init
   core.math.init                     = core.math.math_init
   core.math.periodicNearestNeighbor  = core.math.math_periodicNearestNeighbor
-  core.math.barycentricInterpolate   = core.math.math_barycentricInterpolate
+#  core.math.barycentricInterpolate   = core.math.math_barycentricInterpolate
   core.math.periodicNearestNeighborDistances  = core.math.math_periodicNearestNeighborDistances
   core.math.tensorAvg                = core.math.math_tensorAvg
   core.FEsolving.init                = core.FEsolving.FE_init
