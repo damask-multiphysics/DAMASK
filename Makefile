@@ -19,14 +19,20 @@ marc:
 
 .PHONY: processing
 processing:
+	@if hash cython 2>/dev/null; then \
+		cd ./lib/damask; \
+		python setup_corientation.py build_ext --inplace; \
+		rm -rv build; \
+		rm *.c; \
+	fi
 	@./installation/compile_CoreModule.py ${MAKEFLAGS}
 
 .PHONY: tidy
-tidy: 
+tidy:
 	@$(MAKE) tidy -C code >/dev/null
 
 .PHONY: clean
-clean: 
+clean:
 	@$(MAKE) clean -C code >/dev/null
 
 .PHONY: install

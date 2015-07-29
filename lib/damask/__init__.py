@@ -7,9 +7,13 @@ from .environment import Environment      # only one class
 from .asciitable  import ASCIItable       # only one class
 from .config      import Material         # will be extended to debug and numerics
 from .colormaps   import Colormap, Color
-from .orientation import Quaternion, Rodrigues, Symmetry, Orientation
+try:
+    from .corientation import Quaternion, Rodrigues, Symmetry, Orientation
+    print "Import Cython version of Orientation module"
+except:
+    from .orientation import Quaternion, Rodrigues, Symmetry, Orientation
 #from .block       import Block           # only one class
-from .result      import Result           # only one class 
+from .result      import Result           # only one class
 from .geometry    import Geometry         # one class with subclasses
 from .solver      import Solver           # one class with subclasses
 from .test        import Test
@@ -31,6 +35,7 @@ try:
   core.debug.init                    = core.debug.debug_init
   core.math.init                     = core.math.math_init
   core.math.periodicNearestNeighbor  = core.math.math_periodicNearestNeighbor
+  core.math.barycentricInterpolate   = core.math.math_barycentricInterpolate
   core.math.periodicNearestNeighborDistances  = core.math.math_periodicNearestNeighborDistances
   core.math.tensorAvg                = core.math.math_tensorAvg
   core.FEsolving.init                = core.FEsolving.FE_init
