@@ -254,7 +254,7 @@ subroutine kinematics_cleavage_opening_LiAndItsTangent(Ld, dLd_dTstar3333, Tstar
      traction_t    = dot_product(Tstar_v,lattice_Scleavage_v(1:6,2,index_myFamily+i,phase))
      traction_n    = dot_product(Tstar_v,lattice_Scleavage_v(1:6,3,index_myFamily+i,phase))
      traction_crit = kinematics_cleavage_opening_critLoad(f,instance)* &
-                     damage(homog)%p(damageOffset)
+                     damage(homog)%p(damageOffset)*damage(homog)%p(damageOffset)
      udotd = &
        sign(1.0_pReal,traction_d)* &
        kinematics_cleavage_opening_sdot_0(instance)* &

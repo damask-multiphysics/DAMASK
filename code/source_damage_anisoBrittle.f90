@@ -336,7 +336,7 @@ subroutine source_damage_anisoBrittle_dotState(Tstar_v, ipc, ip, el)
      traction_n    = dot_product(Tstar_v,lattice_Scleavage_v(1:6,3,index_myFamily+i,phase))
      
      traction_crit = source_damage_anisoBrittle_critLoad(f,instance)* &
-                     damage(homog)%p(damageOffset)
+                     damage(homog)%p(damageOffset)*damage(homog)%p(damageOffset)
      sourceState(phase)%p(sourceOffset)%dotState(1,constituent) = &
        sourceState(phase)%p(sourceOffset)%dotState(1,constituent) + &
        source_damage_anisoBrittle_sdot_0(instance)* &
