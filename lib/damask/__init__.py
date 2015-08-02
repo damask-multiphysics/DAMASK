@@ -7,11 +7,12 @@ from .environment import Environment      # only one class
 from .asciitable  import ASCIItable       # only one class
 from .config      import Material         # will be extended to debug and numerics
 from .colormaps   import Colormap, Color
-try:
-    from .corientation import Quaternion, Rodrigues, Symmetry, Orientation
-    print "Import Cython version of Orientation module"
-except:
-    from .orientation import Quaternion, Rodrigues, Symmetry, Orientation
+from .orientation import Quaternion, Rodrigues, Symmetry, Orientation
+# try:
+#     from .corientation import Quaternion, Rodrigues, Symmetry, Orientation
+#     print "Import Cython version of Orientation module"
+# except:
+#     from .orientation import Quaternion, Rodrigues, Symmetry, Orientation
 #from .block       import Block           # only one class
 from .result      import Result           # only one class
 from .geometry    import Geometry         # one class with subclasses
