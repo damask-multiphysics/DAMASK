@@ -27,7 +27,8 @@ module source_vacancy_thermalfluc
    source_vacancy_thermalfluc_Noutput                                                                   !< number of outputs per instance of this damage 
 
  real(pReal),                         dimension(:),           allocatable,        private :: &
-   source_vacancy_thermalfluc_amplitude
+   source_vacancy_thermalfluc_amplitude, &
+   source_vacancy_thermalfluc_normVacancyEnergy
 
  public :: &
    source_vacancy_thermalfluc_init, &
@@ -60,6 +61,8 @@ subroutine source_vacancy_thermalfluc_init(fileUnit)
    IO_error, &
    IO_timeStamp, &
    IO_EOF
+ use lattice, only: &
+   lattice_vacancyFormationEnergy
  use material, only: &
    phase_source, &
    phase_Nsources, &
@@ -114,6 +117,7 @@ subroutine source_vacancy_thermalfluc_init(fileUnit)
           source_vacancy_thermalfluc_output = ''
  allocate(source_vacancy_thermalfluc_Noutput(maxNinstance),                             source=0_pInt) 
  allocate(source_vacancy_thermalfluc_amplitude(maxNinstance),                           source=0.0_pReal) 
+ allocate(source_vacancy_thermalfluc_normVacancyEnergy(maxNinstance),                   source=0.0_pReal) 
 
  rewind(fileUnit)
  phase = 0_pInt
@@ -150,6 +154,8 @@ subroutine source_vacancy_thermalfluc_init(fileUnit)
    if (any(phase_source(:,phase) == SOURCE_vacancy_thermalfluc_ID)) then
      NofMyPhase=count(material_phase==phase)
      instance = source_vacancy_thermalfluc_instance(phase)
+     source_vacancy_thermalfluc_normVacancyEnergy(instance) = &
+       lattice_vacancyFormationEnergy(phase)/1.3806488e-23_pReal
      sourceOffset = source_vacancy_thermalfluc_offset(phase)
 
      sizeDotState              =   1_pInt
@@ -207,7 +213,7 @@ subroutine source_vacancy_thermalfluc_deltaState(ipc, ip, el)
 
  call random_number(randNo)
  sourceState(phase)%p(sourceOffset)%deltaState(1,constituent) = &
-   randNo - sourceState(phase)%p(sourceOffset)%state(1,constituent)
+   randNo - 0.5_pReal - sourceState(phase)%p(sourceOffset)%state(1,constituent)
 
 end subroutine source_vacancy_thermalfluc_deltaState
 
@@ -217,6 +223,9 @@ end subroutine source_vacancy_thermalfluc_deltaState
 subroutine source_vacancy_thermalfluc_getRateAndItsTangent(CvDot, dCvDot_dCv, ipc, ip, el)
  use material, only: &
    mappingConstitutive, &
+   material_homog, &
+   temperature, &
+   thermalMapping, &
    sourceState
 
  implicit none
@@ -234,7 +243,10 @@ subroutine source_vacancy_thermalfluc_getRateAndItsTangent(CvDot, dCvDot_dCv, ip
  instance = source_vacancy_thermalfluc_instance(phase)
  sourceOffset = source_vacancy_thermalfluc_offset(phase)
  
- CvDot = source_vacancy_thermalfluc_amplitude(instance)*(sourceState(phase)%p(sourceOffset)%state0(2,constituent) - 0.5_pReal)
+ CvDot = source_vacancy_thermalfluc_amplitude(instance)* &
+         sourceState(phase)%p(sourceOffset)%state0(2,constituent)* &
+         exp(-source_vacancy_thermalfluc_normVacancyEnergy(instance)/ &
+              temperature(material_homog(ip,el))%p(thermalMapping(material_homog(ip,el))%p(ip,el)))
  dCvDot_dCv = 0.0_pReal
  
 end subroutine source_vacancy_thermalfluc_getRateAndItsTangent
