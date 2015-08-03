@@ -3400,19 +3400,25 @@ end function crystallite_stateJump
 !--------------------------------------------------------------------------------------------------
 function crystallite_push33ToRef(g,i,e, tensor33)
  use math, only: &
-  math_inv33
+  math_mul33x33, &
+  math_inv33, &
+  math_transpose33, &
+  math_EulerToR
+ use material, only: &
+  material_EulerAngles
 
  implicit none
  real(pReal), dimension(3,3) :: crystallite_push33ToRef
  real(pReal), dimension(3,3), intent(in) :: tensor33
- real(pReal), dimension(3,3)              :: invFp
+ real(pReal), dimension(3,3)             :: T
  integer(pInt), intent(in):: &
    e, &                      ! element index
    i, &                      ! integration point index
    g                         ! grain index
 
- invFp = math_inv33(crystallite_Fp(1:3,1:3,g,i,e))
- crystallite_push33ToRef = matmul(invFp,matmul(tensor33,transpose(invFp)))
+ T = math_mul33x33(math_EulerToR(material_EulerAngles(1:3,g,i,e)), &
+                   math_transpose33(math_inv33(crystallite_subF(1:3,1:3,g,i,e))))
+ crystallite_push33ToRef = math_mul33x33(math_transpose33(T),math_mul33x33(tensor33,T))
 
 end function crystallite_push33ToRef
 
