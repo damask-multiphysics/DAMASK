@@ -790,30 +790,36 @@ class Orientation:
 
   def asQuaternion(self):
     return self.quaternion.asList()
-
+  quaternion = property(asQuaternion)
 
   def asEulers(self,type='bunge'):
     return self.quaternion.asEulers(type)
-
+  eulers = property(asEulers)
 
   def asRodrigues(self):
     return self.quaternion.asRodrigues()
+  rodrigues = property(asRodrigues)
 
   def asAngleAxis(self):
     return self.quaternion.asAngleAxis()
+  angleAxis = property(asAngleAxis)
 
   def asMatrix(self):
     return self.quaternion.asMatrix()
+  matrix = property(asMatrix)
 
   def inFZ(self):
     return self.symmetry.inFZ(self.quaternion.asRodrigues())
+  infz = property(inFZ)
 
   def equivalentQuaternions(self):
     return self.symmetry.equivalentQuaternions(self.quaternion)
+  equiQuaternions = property(equivalentQuaternions)
 
   def equivalentOrientations(self):
     return map(lambda q: Orientation(quaternion=q,symmetry=self.symmetry.lattice),
                self.equivalentQuaternions())
+  equiOrientation = property(equivalentQuaternions)
 
   def reduced(self):
     '''
