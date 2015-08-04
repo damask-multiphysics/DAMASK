@@ -226,9 +226,13 @@ function thermal_adiabatic_updateState(subdt, ip, el)
                                   .true.]
 
  temperature    (homog)%p(thermalMapping(homog)%p(ip,el)) = T  
- temperatureRate(homog)%p(thermalMapping(homog)%p(ip,el)) = &
-   (thermalState(homog)%state(1,offset) - thermalState(homog)%subState0(1,offset))/subdt
- 
+ if (subdt > tiny(0.0_pReal)) then 
+   temperatureRate(homog)%p(thermalMapping(homog)%p(ip,el)) = &
+     (thermalState(homog)%state(1,offset) - thermalState(homog)%subState0(1,offset))/subdt
+ else
+   temperatureRate(homog)%p(thermalMapping(homog)%p(ip,el)) = 0.0_pReal
+ endif
+  
 end function thermal_adiabatic_updateState
 
 !--------------------------------------------------------------------------------------------------

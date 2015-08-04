@@ -227,8 +227,13 @@ function vacancyflux_isochempot_updateState(subdt, ip, el)
                                       .true.]
 
  vacancyConc    (homog)%p(vacancyfluxMapping(homog)%p(ip,el)) = Cv
- vacancyConcRate(homog)%p(vacancyfluxMapping(homog)%p(ip,el)) = &
-   (vacancyfluxState(homog)%state(1,offset) - vacancyfluxState(homog)%subState0(1,offset))/subdt
+
+ if (subdt > tiny(0.0_pReal)) then 
+   vacancyConcRate(homog)%p(vacancyfluxMapping(homog)%p(ip,el)) = &
+     (vacancyfluxState(homog)%state(1,offset) - vacancyfluxState(homog)%subState0(1,offset))/subdt
+ else
+   vacancyConcRate(homog)%p(vacancyfluxMapping(homog)%p(ip,el)) = 0.0_pReal
+ endif
  
 end function vacancyflux_isochempot_updateState
 
