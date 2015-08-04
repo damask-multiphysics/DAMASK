@@ -709,7 +709,7 @@ subroutine constitutive_LiAndItsTangent(Li, dLi_dTstar3333, dLi_dFi3333, Tstar_v
    end select
    Li = Li + my_Li
    dLi_dTstar3333 = dLi_dTstar3333 + my_dLi_dTstar
-enddo  
+ enddo  
 
  FiInv = math_inv33(Fi)
  detFi = math_det33(Fi)
