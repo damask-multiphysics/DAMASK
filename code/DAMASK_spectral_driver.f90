@@ -84,7 +84,7 @@ program DAMASK_spectral_Driver
 
  implicit none
 
-#include <petsc-finclude/petscsys.h>
+#include <petsc/finclude/petscsys.h>
 
 !--------------------------------------------------------------------------------------------------
 ! variables related to information from load case and geom file

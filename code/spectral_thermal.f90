@@ -20,7 +20,7 @@ module spectral_thermal
 
  implicit none
  private
-#include <petsc-finclude/petsc.h90>
+#include <petsc/finclude/petsc.h90>
 
  character (len=*), parameter, public :: &
    spectral_thermal_label = 'spectralthermal'

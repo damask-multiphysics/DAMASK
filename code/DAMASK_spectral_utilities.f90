@@ -17,7 +17,7 @@ module DAMASK_spectral_utilities
  implicit none
  private
 #ifdef PETSc
-#include <petsc-finclude/petscsys.h>
+#include <petsc/finclude/petscsys.h>
 #endif
  include 'fftw3-mpi.f03'
  

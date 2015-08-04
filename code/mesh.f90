@@ -117,7 +117,7 @@ module mesh
 
 #ifdef Spectral
 #ifdef PETSc
-#include <petsc-finclude/petscsys.h>
+#include <petsc/finclude/petscsys.h>
  include 'fftw3-mpi.f03'
 #else
  include 'fftw3.f03'

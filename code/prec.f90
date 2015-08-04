@@ -141,7 +141,7 @@ subroutine prec_init
  implicit none
  integer(pInt) :: worldrank = 0_pInt
 #ifdef PETSc
-#include <petsc-finclude/petscsys.h>
+#include <petsc/finclude/petscsys.h>
  PetscErrorCode :: ierr
 #endif
  external :: &

@@ -18,7 +18,7 @@ module DAMASK_spectral_solverAL
  
  implicit none
  private
-#include <petsc-finclude/petsc.h90>
+#include <petsc/finclude/petsc.h90>
 
  character (len=*), parameter, public :: &
    DAMASK_spectral_solverAL_label = 'al'

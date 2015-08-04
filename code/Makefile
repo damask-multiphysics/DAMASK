@@ -17,7 +17,7 @@ SHELL = /bin/sh
 # STANDARD_CHECK = checking for Fortran 2008, compiler dependend
 ########################################################################################
 
-include $(PETSC_DIR)/lib/petsc-conf/variables
+include $(PETSC_DIR)/lib/petsc/conf/variables
 INCLUDE_DIRS := $(PETSC_FC_INCLUDES) -DPETSc -I../lib
 LIBRARIES    := $(PETSC_WITH_EXTERNAL_LIB)
 COMPILERNAME ?= $(FC)

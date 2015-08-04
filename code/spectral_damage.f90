@@ -20,7 +20,7 @@ module spectral_damage
 
  implicit none
  private
-#include <petsc-finclude/petsc.h90>
+#include <petsc/finclude/petsc.h90>
 
  character (len=*), parameter, public :: &
    spectral_damage_label = 'spectraldamage'

@@ -13,7 +13,7 @@ module numerics
  implicit none
  private
 #ifdef PETSc
-#include <petsc-finclude/petsc.h90>
+#include <petsc/finclude/petsc.h90>
 #endif
  character(len=64), parameter, private :: &
    numerics_CONFIGFILE        = 'numerics.config'                                                   !< name of configuration file
