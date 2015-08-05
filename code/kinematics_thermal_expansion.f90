@@ -191,10 +191,12 @@ subroutine kinematics_thermal_expansion_LiAndItsTangent(Li, dLi_dTstar3333, ipc,
  use material, only: &
    material_phase, &
    material_homog, &
+   temperature, &
    temperatureRate, &
    thermalMapping
  use lattice, only: &
-   lattice_thermalExpansion33
+   lattice_thermalExpansion33, &
+   lattice_referenceTemperature
  
  implicit none
  integer(pInt), intent(in) :: &
@@ -208,12 +210,19 @@ subroutine kinematics_thermal_expansion_LiAndItsTangent(Li, dLi_dTstar3333, ipc,
  integer(pInt) :: &
    phase, &
    homog, offset
+ real(pReal) :: &
+   T, TRef, TDot  
    
  phase = material_phase(ipc,ip,el)
  homog = material_homog(ip,el)
  offset = thermalMapping(homog)%p(ip,el)
+ T = temperature(homog)%p(offset)
+ TDot = temperatureRate(homog)%p(offset)
+ TRef = lattice_referenceTemperature(phase)
  
- Li = temperatureRate(homog)%p(offset) * lattice_thermalExpansion33(1:3,1:3,phase)
+ Li = TDot* &
+      lattice_thermalExpansion33(1:3,1:3,phase)/ &
+      (1.0_pReal + lattice_thermalExpansion33(1:3,1:3,phase)*(T - TRef))
  dLi_dTstar3333 = 0.0_pReal 
   
 end subroutine kinematics_thermal_expansion_LiAndItsTangent

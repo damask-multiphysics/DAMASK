@@ -187,10 +187,13 @@ subroutine kinematics_hydrogen_strain_LiAndItsTangent(Li, dLi_dTstar3333, ipc, i
  use material, only: &
    material_phase, &
    material_homog, &
+   hydrogenConc, &
    hydrogenConcRate, &
    hydrogenfluxMapping
  use math, only: &
    math_I3
+ use lattice, only: &
+   lattice_equilibriumHydrogenConcentration
  
  implicit none
  integer(pInt), intent(in) :: &
@@ -205,15 +208,20 @@ subroutine kinematics_hydrogen_strain_LiAndItsTangent(Li, dLi_dTstar3333, ipc, i
    phase, &
    instance, &
    homog, offset
+ real(pReal) :: &
+   Ch, ChEq, ChDot  
    
  phase = material_phase(ipc,ip,el)
  instance = kinematics_hydrogen_strain_instance(phase)
  homog = material_homog(ip,el)
  offset = hydrogenfluxMapping(homog)%p(ip,el)
+ Ch = hydrogenConc(homog)%p(offset)
+ ChDot = hydrogenConcRate(homog)%p(offset)
+ ChEq = lattice_equilibriumHydrogenConcentration(phase)
  
- Li = hydrogenConcRate(homog)%p(offset)* &
-      kinematics_hydrogen_strain_coeff(instance)* &
-      math_I3
+ Li = ChDot*math_I3* &
+      kinematics_hydrogen_strain_coeff(instance)/ &
+      (1.0_pReal + kinematics_hydrogen_strain_coeff(instance)*(Ch - ChEq))
  dLi_dTstar3333 = 0.0_pReal
   
 end subroutine kinematics_hydrogen_strain_LiAndItsTangent

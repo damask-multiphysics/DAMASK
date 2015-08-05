@@ -186,10 +186,13 @@ subroutine kinematics_vacancy_strain_LiAndItsTangent(Li, dLi_dTstar3333, ipc, ip
  use material, only: &
    material_phase, &
    material_homog, &
+   vacancyConc, &
    vacancyConcRate, &
    vacancyfluxMapping
  use math, only: &
    math_I3
+ use lattice, only: &
+   lattice_equilibriumVacancyConcentration
  
  implicit none
  integer(pInt), intent(in) :: &
@@ -204,15 +207,22 @@ subroutine kinematics_vacancy_strain_LiAndItsTangent(Li, dLi_dTstar3333, ipc, ip
    phase, &
    instance, &
    homog, offset
+ real(pReal) :: &
+   Cv, CvEq, CvDot  
    
  phase = material_phase(ipc,ip,el)
  instance = kinematics_vacancy_strain_instance(phase)
  homog = material_homog(ip,el)
  offset = vacancyfluxMapping(homog)%p(ip,el)
  
- Li = vacancyConcRate(homog)%p(offset)* &
-      kinematics_vacancy_strain_coeff(instance)* &
-      math_I3
+ Cv = vacancyConc(homog)%p(offset)
+ CvDot = vacancyConcRate(homog)%p(offset)
+ CvEq = lattice_equilibriumvacancyConcentration(phase)
+ 
+ Li = CvDot*math_I3* &
+      kinematics_vacancy_strain_coeff(instance)/ &
+      (1.0_pReal + kinematics_vacancy_strain_coeff(instance)*(Cv - CvEq))
+      
  dLi_dTstar3333 = 0.0_pReal
   
 end subroutine kinematics_vacancy_strain_LiAndItsTangent
