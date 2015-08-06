@@ -90,11 +90,11 @@ program DAMASK_spectral_Driver
 ! variables related to information from load case and geom file
  real(pReal), dimension(9) :: temp_valueVector = 0.0_pReal                                          !< temporarily from loadcase file when reading in tensors (initialize to 0.0)
  logical,     dimension(9) :: temp_maskVector  = .false.                                            !< temporarily from loadcase file when reading in tensors
- integer(pInt), parameter  :: maxNchunks       = (1_pInt + 9_pInt)*3_pInt + &                       ! deformation, rotation, and stress
+ integer(pInt), parameter  :: MAXNCHUNKS       = (1_pInt + 9_pInt)*3_pInt + &                       ! deformation, rotation, and stress
                                                  (1_pInt + 1_pInt)*5_pInt + &                       ! time, (log)incs, temp, restartfrequency, and outputfrequency
                                                   1_pInt, &                                         ! dropguessing
                               FILEUNIT           = 234_pInt                                         !< file unit, DAMASK IO does not support newunit feature
- integer(pInt), dimension(1_pInt + maxNchunks*2_pInt) :: positions                                  ! this is longer than needed for geometry parsing
+ integer(pInt), dimension(1_pInt + MAXNCHUNKS*2_pInt) :: positions                                  ! this is longer than needed for geometry parsing
  
  integer(pInt) :: &
    N_t   = 0_pInt, &                                                                                !< # of time indicators found in load case file 
@@ -167,7 +167,7 @@ program DAMASK_spectral_Driver
    line = IO_read(FILEUNIT)
    if (trim(line) == IO_EOF) exit
    if (IO_isBlank(line)) cycle                                                                      ! skip empty lines
-   positions = IO_stringPos(line,maxNchunks)
+   positions = IO_stringPos(line,MAXNCHUNKS)
    do i = 1_pInt, positions(1)                                                                      ! reading compulsory parameters for loadcase
      select case (IO_lc(IO_stringValue(line,positions,i)))
        case('l','velocitygrad','velgrad','velocitygradient','fdot','dotf','f')
@@ -207,7 +207,7 @@ program DAMASK_spectral_Driver
    if (trim(line) == IO_EOF) exit
    if (IO_isBlank(line)) cycle                                                                      ! skip empty lines
    currentLoadCase = currentLoadCase + 1_pInt
-   positions = IO_stringPos(line,maxNchunks)
+   positions = IO_stringPos(line,MAXNCHUNKS)
    do i = 1_pInt, positions(1)
      select case (IO_lc(IO_stringValue(line,positions,i)))
        case('fdot','dotf','l','velocitygrad','velgrad','velocitygradient','f')                      ! assign values for the deformation BC matrix

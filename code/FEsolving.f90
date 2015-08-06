@@ -80,11 +80,11 @@ subroutine FE_init
 #if defined(Marc4DAMASK) || defined(Abaqus)
  integer(pInt), parameter :: &
    FILEUNIT = 222_pInt, &
-   maxNchunks = 6_pInt
+   MAXNCHUNKS = 6_pInt
  integer(pInt) :: j
  character(len=64)   :: tag
  character(len=1024) :: line
- integer(pInt), dimension(1_pInt+2_pInt*maxNchunks) :: positions
+ integer(pInt), dimension(1_pInt+2_pInt*MAXNCHUNKS) :: positions
 #endif
 
  mainProcess: if (worldrank == 0) then 
@@ -114,16 +114,16 @@ subroutine FE_init
  rewind(FILEUNIT)
  do
    read (FILEUNIT,'(a1024)',END=100) line
-   positions = IO_stringPos(line,maxNchunks)
+   positions = IO_stringPos(line,MAXNCHUNKS)
    tag = IO_lc(IO_stringValue(line,positions,1_pInt))                                               ! extract key
    select case(tag)
      case ('solver')
        read (FILEUNIT,'(a1024)',END=100) line                                                       ! next line
-       positions = IO_stringPos(line,maxNchunks)
+       positions = IO_stringPos(line,MAXNCHUNKS)
        symmetricSolver = (IO_intValue(line,positions,2_pInt) /= 1_pInt)
      case ('restart')
        read (FILEUNIT,'(a1024)',END=100) line                                                       ! next line
-       positions = IO_stringPos(line,maxNchunks)
+       positions = IO_stringPos(line,MAXNCHUNKS)
        restartWrite = iand(IO_intValue(line,positions,1_pInt),1_pInt) > 0_pInt
        restartRead  = iand(IO_intValue(line,positions,1_pInt),2_pInt) > 0_pInt
      case ('*restart')
@@ -146,7 +146,7 @@ subroutine FE_init
    rewind(FILEUNIT)
    do
      read (FILEUNIT,'(a1024)',END=200) line
-     positions = IO_stringPos(line,maxNchunks)
+     positions = IO_stringPos(line,MAXNCHUNKS)
      if ( IO_lc(IO_stringValue(line,positions,1_pInt)) == 'restart' .and. &
           IO_lc(IO_stringValue(line,positions,2_pInt)) == 'file' .and. &
           IO_lc(IO_stringValue(line,positions,3_pInt)) == 'job' .and. &
@@ -158,10 +158,10 @@ subroutine FE_init
    rewind(FILEUNIT)
    do
      read (FILEUNIT,'(a1024)',END=200) line
-     positions = IO_stringPos(line,maxNchunks)
+     positions = IO_stringPos(line,MAXNCHUNKS)
      if ( IO_lc(IO_stringValue(line,positions,1_pInt))=='*heading') then
        read (FILEUNIT,'(a1024)',END=200) line
-       positions = IO_stringPos(line,maxNchunks)
+       positions = IO_stringPos(line,MAXNCHUNKS)
        modelName = IO_StringValue(line,positions,1_pInt)
      endif
    enddo

@@ -2367,8 +2367,8 @@ subroutine mesh_marc_get_tableStyles(fileUnit)
  implicit none
  integer(pInt), intent(in) :: fileUnit
  
- integer(pInt), parameter :: maxNchunks = 6_pInt
- integer(pInt), dimension (1+2*maxNchunks) :: myPos
+ integer(pInt), parameter :: MAXNCHUNKS = 6_pInt
+ integer(pInt), dimension (1+2*MAXNCHUNKS) :: myPos
  character(len=300) line
 
  initialcondTableStyle = 0_pInt
@@ -2379,7 +2379,7 @@ subroutine mesh_marc_get_tableStyles(fileUnit)
  rewind(fileUnit)
  do 
    read (fileUnit,610,END=620) line
-   myPos = IO_stringPos(line,maxNchunks)
+   myPos = IO_stringPos(line,MAXNCHUNKS)
 
    if ( IO_lc(IO_stringValue(line,myPos,1_pInt)) == 'table' .and. myPos(1_pInt) > 5) then
      initialcondTableStyle = IO_intValue(line,myPos,4_pInt)
@@ -2405,8 +2405,8 @@ subroutine mesh_marc_count_nodesAndElements(fileUnit)
  implicit none
  integer(pInt), intent(in) :: fileUnit
  
- integer(pInt), parameter :: maxNchunks = 4_pInt
- integer(pInt), dimension (1+2*maxNchunks) :: myPos
+ integer(pInt), parameter :: MAXNCHUNKS = 4_pInt
+ integer(pInt), dimension (1+2*MAXNCHUNKS) :: myPos
  character(len=300) line
 
  mesh_Nnodes = 0_pInt
@@ -2417,13 +2417,13 @@ subroutine mesh_marc_count_nodesAndElements(fileUnit)
  rewind(fileUnit)
  do 
    read (fileUnit,610,END=620) line
-   myPos = IO_stringPos(line,maxNchunks)
+   myPos = IO_stringPos(line,MAXNCHUNKS)
 
    if ( IO_lc(IO_StringValue(line,myPos,1_pInt)) == 'sizing') &
        mesh_Nelems = IO_IntValue (line,myPos,3_pInt)
    if ( IO_lc(IO_StringValue(line,myPos,1_pInt)) == 'coordinates') then
      read (fileUnit,610,END=620) line
-     myPos = IO_stringPos(line,maxNchunks)
+     myPos = IO_stringPos(line,MAXNCHUNKS)
      mesh_Nnodes = IO_IntValue (line,myPos,2_pInt)
      exit                                                                                          ! assumes that "coordinates" comes later in file
    endif
@@ -2446,8 +2446,8 @@ subroutine mesh_marc_count_nodesAndElements(fileUnit)
  implicit none
  integer(pInt), intent(in) :: fileUnit
 
- integer(pInt), parameter :: maxNchunks = 2_pInt
- integer(pInt), dimension (1+2*maxNchunks) :: myPos
+ integer(pInt), parameter :: MAXNCHUNKS = 2_pInt
+ integer(pInt), dimension (1+2*MAXNCHUNKS) :: myPos
  character(len=300) line
 
  mesh_NelemSets     = 0_pInt
@@ -2458,7 +2458,7 @@ subroutine mesh_marc_count_nodesAndElements(fileUnit)
  rewind(fileUnit)
  do 
    read (fileUnit,610,END=620) line
-   myPos = IO_stringPos(line,maxNchunks)
+   myPos = IO_stringPos(line,MAXNCHUNKS)
 
    if ( IO_lc(IO_StringValue(line,myPos,1_pInt)) == 'define' .and. &
         IO_lc(IO_StringValue(line,myPos,2_pInt)) == 'element' ) then
@@ -2486,8 +2486,8 @@ subroutine mesh_marc_map_elementSets(fileUnit)
  implicit none
  integer(pInt), intent(in) :: fileUnit
  
- integer(pInt), parameter :: maxNchunks = 4_pInt
- integer(pInt), dimension (1+2*maxNchunks) :: myPos
+ integer(pInt), parameter :: MAXNCHUNKS = 4_pInt
+ integer(pInt), dimension (1+2*MAXNCHUNKS) :: myPos
  character(len=300) :: line
  integer(pInt) :: elemSet = 0_pInt
 
@@ -2499,7 +2499,7 @@ subroutine mesh_marc_map_elementSets(fileUnit)
  rewind(fileUnit)
  do
    read (fileUnit,610,END=640) line
-   myPos = IO_stringPos(line,maxNchunks)
+   myPos = IO_stringPos(line,MAXNCHUNKS)
    if( (IO_lc(IO_stringValue(line,myPos,1_pInt)) == 'define' ) .and. &
        (IO_lc(IO_stringValue(line,myPos,2_pInt)) == 'element' ) ) then
       elemSet = elemSet+1_pInt
@@ -2525,8 +2525,8 @@ subroutine mesh_marc_count_cpElements(fileUnit)
  implicit none
  integer(pInt), intent(in) :: fileUnit
  
- integer(pInt), parameter :: maxNchunks = 1_pInt
- integer(pInt), dimension (1+2*maxNchunks) :: myPos
+ integer(pInt), parameter :: MAXNCHUNKS = 1_pInt
+ integer(pInt), dimension (1+2*MAXNCHUNKS) :: myPos
  integer(pInt) :: i
  character(len=300):: line
 
@@ -2537,7 +2537,7 @@ subroutine mesh_marc_count_cpElements(fileUnit)
  rewind(fileUnit)
  do 
    read (fileUnit,610,END=620) line
-   myPos = IO_stringPos(line,maxNchunks)
+   myPos = IO_stringPos(line,MAXNCHUNKS)
 
    if ( IO_lc(IO_stringValue(line,myPos,1_pInt)) == 'hypoelastic') then
        do i=1_pInt,3_pInt+hypoelasticTableStyle  ! Skip 3 or 4 lines
@@ -2566,8 +2566,8 @@ subroutine mesh_marc_map_elements(fileUnit)
  implicit none
  integer(pInt), intent(in) :: fileUnit
 
- integer(pInt), parameter :: maxNchunks = 1_pInt
- integer(pInt), dimension (1_pInt+2_pInt*maxNchunks) :: myPos
+ integer(pInt), parameter :: MAXNCHUNKS = 1_pInt
+ integer(pInt), dimension (1_pInt+2_pInt*MAXNCHUNKS) :: myPos
  character(len=300) line
 
  integer(pInt), dimension (1_pInt+mesh_NcpElems) :: contInts
@@ -2580,7 +2580,7 @@ subroutine mesh_marc_map_elements(fileUnit)
  rewind(fileUnit)
  do
    read (fileUnit,610,END=660) line
-   myPos = IO_stringPos(line,maxNchunks)
+   myPos = IO_stringPos(line,MAXNCHUNKS)
    if( IO_lc(IO_stringValue(line,myPos,1_pInt)) == 'hypoelastic' ) then
      do i=1_pInt,3_pInt+hypoelasticTableStyle                                                       ! skip three (or four if new table style!) lines
        read (fileUnit,610,END=660) line 
@@ -2615,8 +2615,8 @@ subroutine mesh_marc_map_nodes(fileUnit)
  implicit none
  integer(pInt), intent(in) :: fileUnit
 
- integer(pInt), parameter :: maxNchunks = 1_pInt
- integer(pInt), dimension (1_pInt+2_pInt*maxNchunks) :: myPos
+ integer(pInt), parameter :: MAXNCHUNKS = 1_pInt
+ integer(pInt), dimension (1_pInt+2_pInt*MAXNCHUNKS) :: myPos
  character(len=300) line
 
  integer(pInt), dimension (mesh_Nnodes) :: node_count
@@ -2631,7 +2631,7 @@ subroutine mesh_marc_map_nodes(fileUnit)
  rewind(fileUnit)
  do
    read (fileUnit,610,END=650) line
-   myPos = IO_stringPos(line,maxNchunks)
+   myPos = IO_stringPos(line,MAXNCHUNKS)
    if( IO_lc(IO_stringValue(line,myPos,1_pInt)) == 'coordinates' ) then
      read (fileUnit,610,END=650) line                                                               ! skip crap line
      do i = 1_pInt,mesh_Nnodes
@@ -2665,8 +2665,8 @@ subroutine mesh_marc_build_nodes(fileUnit)
  integer(pInt), intent(in) :: fileUnit
 
  integer(pInt), dimension(5), parameter :: node_ends = int([0,10,30,50,70],pInt)
- integer(pInt), parameter :: maxNchunks = 1_pInt
- integer(pInt), dimension (1_pInt+2_pInt*maxNchunks) :: myPos
+ integer(pInt), parameter :: MAXNCHUNKS = 1_pInt
+ integer(pInt), dimension (1_pInt+2_pInt*MAXNCHUNKS) :: myPos
  character(len=300) :: line
  integer(pInt) :: i,j,m
 
@@ -2678,7 +2678,7 @@ subroutine mesh_marc_build_nodes(fileUnit)
  rewind(fileUnit)
  do
    read (fileUnit,610,END=670) line
-   myPos = IO_stringPos(line,maxNchunks)
+   myPos = IO_stringPos(line,MAXNCHUNKS)
    if( IO_lc(IO_stringValue(line,myPos,1_pInt)) == 'coordinates' ) then
      read (fileUnit,610,END=670) line                                                               ! skip crap line
      do i=1_pInt,mesh_Nnodes
@@ -2713,8 +2713,8 @@ subroutine mesh_marc_count_cpSizes(fileUnit)
  implicit none
  integer(pInt), intent(in) :: fileUnit
  
- integer(pInt), parameter :: maxNchunks = 2_pInt
- integer(pInt), dimension (1_pInt+2_pInt*maxNchunks) :: myPos
+ integer(pInt), parameter :: MAXNCHUNKS = 2_pInt
+ integer(pInt), dimension (1_pInt+2_pInt*MAXNCHUNKS) :: myPos
  character(len=300) :: line
  integer(pInt) :: i,t,g,e,c
 
@@ -2727,12 +2727,12 @@ subroutine mesh_marc_count_cpSizes(fileUnit)
  rewind(fileUnit)
  do
    read (fileUnit,610,END=630) line
-   myPos = IO_stringPos(line,maxNchunks)
+   myPos = IO_stringPos(line,MAXNCHUNKS)
    if( IO_lc(IO_stringValue(line,myPos,1_pInt)) == 'connectivity' ) then
      read (fileUnit,610,END=630) line                                                               ! Garbage line
      do i=1_pInt,mesh_Nelems                                                                        ! read all elements
        read (fileUnit,610,END=630) line
-       myPos = IO_stringPos(line,maxNchunks)                                                        ! limit to id and type
+       myPos = IO_stringPos(line,MAXNCHUNKS)                                                        ! limit to id and type
        e = mesh_FEasCP('elem',IO_intValue(line,myPos,1_pInt))
        if (e /= 0_pInt) then
          t = FE_mapElemtype(IO_stringValue(line,myPos,2_pInt))
@@ -2769,8 +2769,8 @@ subroutine mesh_marc_build_elements(fileUnit)
  implicit none
  integer(pInt), intent(in) :: fileUnit
 
- integer(pInt), parameter :: maxNchunks = 66_pInt                                                   ! limit to 64 nodes max (plus ID, type)
- integer(pInt), dimension (1_pInt+2_pInt*maxNchunks) :: myPos
+ integer(pInt), parameter :: MAXNCHUNKS = 66_pInt                                                   ! limit to 64 nodes max (plus ID, type)
+ integer(pInt), dimension (1_pInt+2_pInt*MAXNCHUNKS) :: myPos
  character(len=300) line
 
  integer(pInt), dimension(1_pInt+mesh_NcpElems) :: contInts
@@ -2788,7 +2788,7 @@ subroutine mesh_marc_build_elements(fileUnit)
      read (fileUnit,610,END=620) line                                                               ! garbage line
      do i = 1_pInt,mesh_Nelems
        read (fileUnit,610,END=620) line
-       myPos = IO_stringPos(line,maxNchunks)
+       myPos = IO_stringPos(line,MAXNCHUNKS)
        e = mesh_FEasCP('elem',IO_intValue(line,myPos,1_pInt))
        if (e /= 0_pInt) then                                                                        ! disregard non CP elems
          mesh_element(1,e) = IO_IntValue (line,myPos,1_pInt)                                        ! FE id
@@ -2801,7 +2801,7 @@ subroutine mesh_marc_build_elements(fileUnit)
          nNodesAlreadyRead = myPos(1) - 2_pInt
          do while(nNodesAlreadyRead < FE_Nnodes(t))                                                 ! read on if not all nodes in one line
            read (fileUnit,610,END=620) line
-           myPos = IO_stringPos(line,maxNchunks)
+           myPos = IO_stringPos(line,MAXNCHUNKS)
            do j = 1_pInt,myPos(1)
              mesh_element(4_pInt+nNodesAlreadyRead+j,e) &
                = mesh_FEasCP('node',IO_IntValue(line,myPos,j))                                      ! CP ids of nodes
@@ -2869,8 +2869,8 @@ subroutine mesh_abaqus_count_nodesAndElements(fileUnit)
  implicit none
  integer(pInt), intent(in) :: fileUnit
  
- integer(pInt), parameter :: maxNchunks = 2_pInt
- integer(pInt), dimension (1+2*maxNchunks) :: myPos
+ integer(pInt), parameter :: MAXNCHUNKS = 2_pInt
+ integer(pInt), dimension (1+2*MAXNCHUNKS) :: myPos
  character(len=300) :: line
  logical :: inPart
 
@@ -2883,7 +2883,7 @@ subroutine mesh_abaqus_count_nodesAndElements(fileUnit)
  rewind(fileUnit)
  do 
    read (fileUnit,610,END=620) line
-   myPos = IO_stringPos(line,maxNchunks)
+   myPos = IO_stringPos(line,MAXNCHUNKS)
    if ( IO_lc(IO_stringValue(line,myPos,1_pInt)) == '*part' ) inPart = .true.
    if ( IO_lc(IO_stringValue(line,myPos,1_pInt)) == '*end' .and. &
         IO_lc(IO_stringValue(line,myPos,2_pInt)) == 'part' ) inPart = .false.
@@ -2930,8 +2930,8 @@ subroutine mesh_abaqus_count_elementSets(fileUnit)
  implicit none
  integer(pInt), intent(in) :: fileUnit
 
- integer(pInt), parameter :: maxNchunks = 2_pInt
- integer(pInt), dimension (1+2*maxNchunks) :: myPos
+ integer(pInt), parameter :: MAXNCHUNKS = 2_pInt
+ integer(pInt), dimension (1+2*MAXNCHUNKS) :: myPos
  character(len=300) :: line
  logical :: inPart
  
@@ -2944,7 +2944,7 @@ subroutine mesh_abaqus_count_elementSets(fileUnit)
  rewind(fileUnit)
  do 
    read (fileUnit,610,END=620) line
-   myPos = IO_stringPos(line,maxNchunks)
+   myPos = IO_stringPos(line,MAXNCHUNKS)
    if ( IO_lc(IO_stringValue(line,myPos,1_pInt)) == '*part' ) inPart = .true.
    if ( IO_lc(IO_stringValue(line,myPos,1_pInt)) == '*end' .and. &
         IO_lc(IO_stringValue(line,myPos,2_pInt)) == 'part' ) inPart = .false.
@@ -2974,8 +2974,8 @@ subroutine mesh_abaqus_count_materials(fileUnit)
  implicit none
  integer(pInt), intent(in) :: fileUnit
  
- integer(pInt), parameter :: maxNchunks = 2_pInt
- integer(pInt), dimension (1_pInt+2_pInt*maxNchunks) :: myPos
+ integer(pInt), parameter :: MAXNCHUNKS = 2_pInt
+ integer(pInt), dimension (1_pInt+2_pInt*MAXNCHUNKS) :: myPos
  character(len=300) :: line
  logical inPart
  
@@ -2987,7 +2987,7 @@ subroutine mesh_abaqus_count_materials(fileUnit)
  rewind(fileUnit)
  do 
    read (fileUnit,610,END=620) line
-   myPos = IO_stringPos(line,maxNchunks)
+   myPos = IO_stringPos(line,MAXNCHUNKS)
    if ( IO_lc(IO_stringValue(line,myPos,1_pInt)) == '*part' ) inPart = .true.
    if ( IO_lc(IO_stringValue(line,myPos,1_pInt)) == '*end' .and. &
         IO_lc(IO_stringValue(line,myPos,2_pInt)) == 'part' ) inPart = .false.
@@ -3020,8 +3020,8 @@ subroutine mesh_abaqus_map_elementSets(fileUnit)
  implicit none
  integer(pInt), intent(in) :: fileUnit
 
- integer(pInt), parameter :: maxNchunks = 4_pInt
- integer(pInt), dimension (1_pInt+2_pInt*maxNchunks) :: myPos
+ integer(pInt), parameter :: MAXNCHUNKS = 4_pInt
+ integer(pInt), dimension (1_pInt+2_pInt*MAXNCHUNKS) :: myPos
  character(len=300) :: line
  integer(pInt) :: elemSet = 0_pInt,i
  logical :: inPart = .false.
@@ -3035,7 +3035,7 @@ subroutine mesh_abaqus_map_elementSets(fileUnit)
  rewind(fileUnit)
  do
    read (fileUnit,610,END=640) line
-   myPos = IO_stringPos(line,maxNchunks)
+   myPos = IO_stringPos(line,MAXNCHUNKS)
    if ( IO_lc(IO_stringValue(line,myPos,1_pInt)) == '*part' ) inPart = .true.
    if ( IO_lc(IO_stringValue(line,myPos,1_pInt)) == '*end' .and. &
         IO_lc(IO_stringValue(line,myPos,2_pInt)) == 'part' ) inPart = .false.
@@ -3071,8 +3071,8 @@ subroutine mesh_abaqus_map_materials(fileUnit)
  implicit none
  integer(pInt), intent(in) :: fileUnit
 
- integer(pInt), parameter :: maxNchunks = 20_pInt
- integer(pInt), dimension (1_pInt+2_pInt*maxNchunks) :: myPos
+ integer(pInt), parameter :: MAXNCHUNKS = 20_pInt
+ integer(pInt), dimension (1_pInt+2_pInt*MAXNCHUNKS) :: myPos
  character(len=300) line
 
  integer(pInt) :: i,c = 0_pInt
@@ -3087,7 +3087,7 @@ subroutine mesh_abaqus_map_materials(fileUnit)
  rewind(fileUnit)
  do 
    read (fileUnit,610,END=620) line
-   myPos = IO_stringPos(line,maxNchunks)
+   myPos = IO_stringPos(line,MAXNCHUNKS)
    if ( IO_lc(IO_stringValue(line,myPos,1_pInt)) == '*part' ) inPart = .true.
    if ( IO_lc(IO_stringValue(line,myPos,1_pInt)) == '*end' .and. &
         IO_lc(IO_stringValue(line,myPos,2_pInt)) == 'part' ) inPart = .false.
@@ -3136,8 +3136,8 @@ subroutine mesh_abaqus_count_cpElements(fileUnit)
  implicit none
  integer(pInt), intent(in) :: fileUnit
  
- integer(pInt), parameter :: maxNchunks = 2_pInt
- integer(pInt), dimension (1+2*maxNchunks) :: myPos
+ integer(pInt), parameter :: MAXNCHUNKS = 2_pInt
+ integer(pInt), dimension (1+2*MAXNCHUNKS) :: myPos
  character(len=300) line
  integer(pInt) :: i,k
  logical :: materialFound = .false.
@@ -3150,7 +3150,7 @@ subroutine mesh_abaqus_count_cpElements(fileUnit)
  rewind(fileUnit)
  do 
    read (fileUnit,610,END=620) line
-   myPos = IO_stringPos(line,maxNchunks)
+   myPos = IO_stringPos(line,MAXNCHUNKS)
    select case ( IO_lc(IO_stringValue(line,myPos,1_pInt)) )
      case('*material')
        materialName = trim(IO_extractValue(IO_lc(IO_stringValue(line,myPos,2_pInt)),'name'))        ! extract name=value
@@ -3192,8 +3192,8 @@ subroutine mesh_abaqus_map_elements(fileUnit)
  implicit none
  integer(pInt), intent(in) :: fileUnit
 
- integer(pInt), parameter :: maxNchunks = 2_pInt
- integer(pInt), dimension (1_pInt+2_pInt*maxNchunks) :: myPos
+ integer(pInt), parameter :: MAXNCHUNKS = 2_pInt
+ integer(pInt), dimension (1_pInt+2_pInt*MAXNCHUNKS) :: myPos
  character(len=300) :: line
  integer(pInt) ::i,j,k,cpElem = 0_pInt
  logical :: materialFound = .false.
@@ -3206,7 +3206,7 @@ subroutine mesh_abaqus_map_elements(fileUnit)
  rewind(fileUnit)
  do 
    read (fileUnit,610,END=660) line
-   myPos = IO_stringPos(line,maxNchunks)
+   myPos = IO_stringPos(line,MAXNCHUNKS)
    select case ( IO_lc(IO_stringValue(line,myPos,1_pInt)) )
      case('*material')
        materialName = trim(IO_extractValue(IO_lc(IO_stringValue(line,myPos,2_pInt)),'name'))        ! extract name=value
@@ -3256,8 +3256,8 @@ subroutine mesh_abaqus_map_nodes(fileUnit)
  implicit none
  integer(pInt), intent(in) :: fileUnit
 
- integer(pInt), parameter :: maxNchunks = 2_pInt
- integer(pInt), dimension (1_pInt+2_pInt*maxNchunks) :: myPos
+ integer(pInt), parameter :: MAXNCHUNKS = 2_pInt
+ integer(pInt), dimension (1_pInt+2_pInt*MAXNCHUNKS) :: myPos
  character(len=300) line
 
  integer(pInt) :: i,c,cpNode = 0_pInt
@@ -3270,7 +3270,7 @@ subroutine mesh_abaqus_map_nodes(fileUnit)
  rewind(fileUnit)
  do
    read (fileUnit,610,END=650) line
-   myPos = IO_stringPos(line,maxNchunks)
+   myPos = IO_stringPos(line,MAXNCHUNKS)
    if ( IO_lc(IO_stringValue(line,myPos,1_pInt)) == '*part' ) inPart = .true.
    if ( IO_lc(IO_stringValue(line,myPos,1_pInt)) == '*end' .and. &
         IO_lc(IO_stringValue(line,myPos,2_pInt)) == 'part' ) inPart = .false.
@@ -3288,7 +3288,7 @@ subroutine mesh_abaqus_map_nodes(fileUnit)
      enddo
      do i = 1_pInt,c
        read (fileUnit,610,END=650) line
-       myPos = IO_stringPos(line,maxNchunks)
+       myPos = IO_stringPos(line,MAXNCHUNKS)
        cpNode = cpNode + 1_pInt
        mesh_mapFEtoCPnode(1_pInt,cpNode) = IO_intValue(line,myPos,1_pInt)
        mesh_mapFEtoCPnode(2_pInt,cpNode) = cpNode
@@ -3320,8 +3320,8 @@ subroutine mesh_abaqus_build_nodes(fileUnit)
  implicit none
  integer(pInt), intent(in) :: fileUnit
 
- integer(pInt), parameter :: maxNchunks = 4_pInt
- integer(pInt), dimension (1_pInt+2_pInt*maxNchunks) :: myPos
+ integer(pInt), parameter :: MAXNCHUNKS = 4_pInt
+ integer(pInt), dimension (1_pInt+2_pInt*MAXNCHUNKS) :: myPos
  character(len=300) :: line
  integer(pInt) :: i,j,m,c
  logical :: inPart
@@ -3335,7 +3335,7 @@ subroutine mesh_abaqus_build_nodes(fileUnit)
  rewind(fileUnit)
  do
    read (fileUnit,610,END=670) line
-   myPos = IO_stringPos(line,maxNchunks)
+   myPos = IO_stringPos(line,MAXNCHUNKS)
    if ( IO_lc(IO_stringValue(line,myPos,1_pInt)) == '*part' ) inPart = .true.
    if ( IO_lc(IO_stringValue(line,myPos,1_pInt)) == '*end' .and. &
         IO_lc(IO_stringValue(line,myPos,2_pInt)) == 'part' ) inPart = .false.
@@ -3353,7 +3353,7 @@ subroutine mesh_abaqus_build_nodes(fileUnit)
      enddo
      do i = 1_pInt,c
        read (fileUnit,610,END=670) line
-       myPos = IO_stringPos(line,maxNchunks)
+       myPos = IO_stringPos(line,MAXNCHUNKS)
        m = mesh_FEasCP('node',IO_intValue(line,myPos,1_pInt))
        do j=1_pInt, 3_pInt
          mesh_node0(j,m) = mesh_unitlength * IO_floatValue(line,myPos,j+1_pInt)
@@ -3386,8 +3386,8 @@ subroutine mesh_abaqus_count_cpSizes(fileUnit)
  implicit none
  integer(pInt), intent(in) :: fileUnit
 
- integer(pInt), parameter :: maxNchunks = 2_pInt
- integer(pInt), dimension (1_pInt+2_pInt*maxNchunks) :: myPos
+ integer(pInt), parameter :: MAXNCHUNKS = 2_pInt
+ integer(pInt), dimension (1_pInt+2_pInt*MAXNCHUNKS) :: myPos
  character(len=300) :: line
  integer(pInt) :: i,c,t,g
  logical :: inPart
@@ -3403,7 +3403,7 @@ subroutine mesh_abaqus_count_cpSizes(fileUnit)
  rewind(fileUnit)
  do
    read (fileUnit,610,END=620) line
-   myPos = IO_stringPos(line,maxNchunks)
+   myPos = IO_stringPos(line,MAXNCHUNKS)
    if ( IO_lc(IO_stringValue(line,myPos,1_pInt)) == '*part' ) inPart = .true.
    if ( IO_lc(IO_stringValue(line,myPos,1_pInt)) == '*end' .and. &
         IO_lc(IO_stringValue(line,myPos,2_pInt)) == 'part' ) inPart = .false.
@@ -3446,8 +3446,8 @@ subroutine mesh_abaqus_build_elements(fileUnit)
  implicit none
  integer(pInt), intent(in) :: fileUnit
 
- integer(pInt), parameter :: maxNchunks = 65_pInt
- integer(pInt), dimension (1_pInt+2_pInt*maxNchunks) :: myPos
+ integer(pInt), parameter :: MAXNCHUNKS = 65_pInt
+ integer(pInt), dimension (1_pInt+2_pInt*MAXNCHUNKS) :: myPos
 
  integer(pInt) :: i,j,k,c,e,t,homog,micro, nNodesAlreadyRead
  logical inPart,materialFound
@@ -3480,7 +3480,7 @@ subroutine mesh_abaqus_build_elements(fileUnit)
      enddo
      do i = 1_pInt,c
        read (fileUnit,610,END=620) line
-       myPos = IO_stringPos(line,maxNchunks)                                                       ! limit to 64 nodes max
+       myPos = IO_stringPos(line,MAXNCHUNKS)                                                       ! limit to 64 nodes max
        e = mesh_FEasCP('elem',IO_intValue(line,myPos,1_pInt))
        if (e /= 0_pInt) then                                                                       ! disregard non CP elems
          mesh_element(1,e) = IO_intValue(line,myPos,1_pInt)                                        ! FE id
@@ -3492,7 +3492,7 @@ subroutine mesh_abaqus_build_elements(fileUnit)
          nNodesAlreadyRead = myPos(1) - 1_pInt
          do while(nNodesAlreadyRead < FE_Nnodes(t))                                                ! read on if not all nodes in one line
            read (fileUnit,610,END=620) line
-           myPos = IO_stringPos(line,maxNchunks)
+           myPos = IO_stringPos(line,MAXNCHUNKS)
            do j = 1_pInt,myPos(1)
              mesh_element(4_pInt+nNodesAlreadyRead+j,e) &
                = mesh_FEasCP('node',IO_IntValue(line,myPos,j))                                     ! CP ids of nodes
@@ -3510,7 +3510,7 @@ subroutine mesh_abaqus_build_elements(fileUnit)
  materialFound = .false.
  do 
    read (fileUnit,610,END=630) line
-   myPos = IO_stringPos(line,maxNchunks)
+   myPos = IO_stringPos(line,MAXNCHUNKS)
    select case ( IO_lc(IO_StringValue(line,myPos,1_pInt)))
      case('*material')
        materialName = trim(IO_extractValue(IO_lc(IO_StringValue(line,myPos,2_pInt)),'name'))        ! extract name=value
@@ -3561,8 +3561,8 @@ use IO, only: &
  integer(pInt), intent(in) :: fileUnit
 
 #ifndef Spectral
- integer(pInt), parameter :: maxNchunks = 5_pInt
- integer(pInt), dimension (1+2*maxNchunks) :: myPos
+ integer(pInt), parameter :: MAXNCHUNKS = 5_pInt
+ integer(pInt), dimension (1+2*MAXNCHUNKS) :: myPos
  integer(pInt) chunk, Nchunks
  character(len=300) :: line, damaskOption, v
  character(len=300) :: keyword 
@@ -3582,7 +3582,7 @@ use IO, only: &
  rewind(fileUnit)
  do 
    read (fileUnit,610,END=620) line
-   myPos = IO_stringPos(line,maxNchunks)
+   myPos = IO_stringPos(line,MAXNCHUNKS)
    Nchunks = myPos(1)
    if (IO_lc(IO_stringValue(line,myPos,1_pInt)) == keyword .and. Nchunks > 1_pInt) then             ! found keyword for damask option and there is at least one more chunk to read
      damaskOption = IO_lc(IO_stringValue(line,myPos,2_pInt))

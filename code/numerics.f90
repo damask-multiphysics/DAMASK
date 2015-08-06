@@ -222,10 +222,10 @@ subroutine numerics_init
 !$ include "omp_lib.h"                                                                              ! use the not F90 standard conforming include file to prevent crashes with some versions of MSC.Marc
 #endif
  integer(pInt), parameter ::                 FILEUNIT = 300_pInt ,&
-                                             maxNchunks = 2_pInt
+                                             MAXNCHUNKS = 2_pInt
 !$ integer ::                                gotDAMASK_NUM_THREADS = 1
  integer :: i, ierr                                                                                 ! no pInt
- integer(pInt), dimension(1+2*maxNchunks) :: positions
+ integer(pInt), dimension(1+2*MAXNCHUNKS) :: positions
  character(len=65536) :: &
    tag ,&
    line
@@ -273,7 +273,7 @@ subroutine numerics_init
        if(line(i:i) == '=') line(i:i) = ' '                                                         ! also allow keyword = value version
      enddo
      if (IO_isBlank(line)) cycle                                                                    ! skip empty lines
-     positions = IO_stringPos(line,maxNchunks)
+     positions = IO_stringPos(line,MAXNCHUNKS)
      tag = IO_lc(IO_stringValue(line,positions,1_pInt))                                             ! extract key
      select case(tag)
        case ('relevantstrain')

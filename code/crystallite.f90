@@ -299,7 +299,7 @@ subroutine crystallite_init
      cycle                                                                                          ! skip to next line
    endif
    if (section > 0_pInt) then
-     positions = IO_stringPos(line,maxNchunks)
+     positions = IO_stringPos(line,MAXNCHUNKS)
      tag = IO_lc(IO_stringValue(line,positions,1_pInt))                                             ! extract key
      select case(tag)
        case ('(output)')

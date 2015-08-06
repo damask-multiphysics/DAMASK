@@ -1011,9 +1011,7 @@ pure function IO_stringPos(string,N)
  do while (verify(string(right+1:),SEP)>0)
    left  = right + verify(string(right+1:),SEP)
    right = left + scan(string(left:),SEP) - 2
-   if ( string(left:left) == '#' ) then
-     exit
-   endif
+   if ( string(left:left) == '#' ) exit
    if ( IO_stringPos(1)<N ) then
      IO_stringPos(1_pInt+IO_stringPos(1)*2_pInt+1_pInt) = int(left, pInt)
      IO_stringPos(1_pInt+IO_stringPos(1)*2_pInt+2_pInt) = int(right, pInt)

@@ -67,8 +67,8 @@ subroutine DAMASK_interface_init(loadCaseParameterIn,geometryParameterIn)
    i, &
    worldrank = 0
  integer, parameter :: &
-   maxNchunks = 128                                                                                 !< DAMASK_spectral + (l,g,w,r)*2 + h
- integer, dimension(1+ 2* maxNchunks) :: &
+   MAXNCHUNKS = 128                                                                                 !< DAMASK_spectral + (l,g,w,r)*2 + h
+ integer, dimension(1+ 2* MAXNCHUNKS) :: &
    positions
  integer, dimension(8) :: &
    dateAndTime                                                                                      ! type default integer
@@ -102,7 +102,7 @@ subroutine DAMASK_interface_init(loadCaseParameterIn,geometryParameterIn)
    commandLine = 'n/a'
  else if ( .not.( present(loadcaseParameterIn) .and. present(geometryParameterIn))) then            ! none parameters given in function call, trying to get them from command line
    call get_command(commandLine)
-   positions = IIO_stringPos(commandLine,maxNchunks)
+   positions = IIO_stringPos(commandLine,MAXNCHUNKS)
    do i = 1, positions(1)
      tag = IIO_lc(IIO_stringValue(commandLine,positions,i))                                         ! extract key
      select case(tag)
@@ -540,16 +540,14 @@ end function IIO_lc
 !--------------------------------------------------------------------------------------------------
 !> @brief taken from IO, check IO_stringPos for documentation 
 !--------------------------------------------------------------------------------------------------
-pure function IIO_stringPos(line,N)
+pure function IIO_stringPos(string,N)
 
  implicit none
- integer(pInt),    intent(in) :: N
- integer(pInt)                :: IIO_stringPos(1_pInt+N*2_pInt)
+ integer(pInt),                           intent(in) :: N                                           !< maximum number of parts
+ integer(pInt), dimension(1_pInt+N*2_pInt)           :: IIO_stringPos
+ character(len=*),                        intent(in) :: string                                      !< string in which parts are searched for
  
- character(len=*), intent(in) :: line
- 
- character(len=*), parameter  :: sep=achar(44)//achar(32)//achar(9)//achar(10)//achar(13)           ! comma and whitespaces
-
+ character(len=*), parameter  :: SEP=achar(44)//achar(32)//achar(9)//achar(10)//achar(13)           ! comma and whitespaces
  integer                      :: left, right                                                        ! no pInt (verify and scan return default integer)
 
 
@@ -557,12 +555,10 @@ pure function IIO_stringPos(line,N)
  IIO_stringPos(1) = 0_pInt
  right = 0
  
- do while (verify(line(right+1:),sep)>0)
-   left  = right + verify(line(right+1:),sep)
-   right = left + scan(line(left:),sep) - 2
-   if ( line(left:left) == '#' ) then
-     exit
-   endif
+ do while (verify(string(right+1:),SEP)>0)
+   left  = right + verify(string(right+1:),SEP)
+   right = left + scan(string(left:),SEP) - 2
+   if ( string(left:left) == '#' ) exit
    if ( IIO_stringPos(1)<N ) then
      IIO_stringPos(1_pInt+IIO_stringPos(1)*2_pInt+1_pInt) = int(left, pInt)
      IIO_stringPos(1_pInt+IIO_stringPos(1)*2_pInt+2_pInt) = int(right, pInt)

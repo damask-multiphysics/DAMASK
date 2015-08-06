@@ -124,10 +124,10 @@ subroutine debug_init
 
  implicit none
  integer(pInt), parameter                 :: FILEUNIT    = 300_pInt  
- integer(pInt), parameter                 :: maxNchunks  = 7_pInt  
+ integer(pInt), parameter                 :: MAXNCHUNKS  = 7_pInt  
  
  integer(pInt)                            :: i, what
- integer(pInt), dimension(1+2*maxNchunks) :: positions
+ integer(pInt), dimension(1+2*MAXNCHUNKS) :: positions
  character(len=65536)                     :: tag
  character(len=65536)                     :: line
 
@@ -171,7 +171,7 @@ subroutine debug_init
    do while (trim(line) /= IO_EOF)                                                                 ! read thru sections of phase part
      line = IO_read(FILEUNIT)
      if (IO_isBlank(line)) cycle                                                                    ! skip empty lines
-     positions = IO_stringPos(line,maxNchunks)
+     positions = IO_stringPos(line,MAXNCHUNKS)
      tag = IO_lc(IO_stringValue(line,positions,1_pInt))                                             ! extract key
      select case(tag)
        case ('element','e','el')
