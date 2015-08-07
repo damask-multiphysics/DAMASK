@@ -20,10 +20,10 @@ def E_hkl(stiffness,vec):   # stiffness = (c11,c12,c44)
     S44 = 1.0/stiffness[2]
 
     invE = S11-(S11-S12-0.5*S44)* (1.0 - \
-                 (v[0]**4+v[1]**4+v[2]**4) \
-            /#------------------------------------
-                 np.inner(v,v)**2 \
-                )
+                                         (v[0]**4+v[1]**4+v[2]**4) \
+                                    /#------------------------------------
+                                         np.inner(v,v)**2 \
+                                  )
 
     return 1.0/invE
 
@@ -36,73 +36,62 @@ Add column(s) containing directional stiffness based on given cubic stiffness va
 
 """, version = scriptID)
 
-parser.add_option('-c','--stiffness',         dest='vector', action='extend', metavar='<string LIST>',
-                  help='heading of column containing C11 (followed by C12, C44) field values')
-parser.add_option('-d','--direction','--hkl', dest='hkl', type='int', nargs=3, metavar='int int int',
-                  help='direction of elastic modulus [%default]')
-parser.set_defaults(hkl = (1,1,1))
+parser.add_option('-c','--stiffness',
+                  dest = 'stiffness',
+                  action = 'extend', metavar = '<string LIST>',
+                  help = 'heading of column containing C11 (followed by C12, C44) field values')
+parser.add_option('-d','--direction','--hkl',
+                  dest = 'hkl',
+                  type = 'int', nargs = 3, metavar = 'int int int',
+                  help = 'direction of elastic modulus [%default]')
+parser.set_defaults(hkl = (1,1,1),
+                    )
 
 (options,filenames) = parser.parse_args()
 
-if options.vector == None:
+if options.stiffness == None:
   parser.error('no data column specified...')
 
-datainfo = {                                                                                        # list of requested labels per datatype
-             'vector':     {'len':3,
-                            'label':[]},
-           }
+# --- loop over input files -------------------------------------------------------------------------
 
-datainfo['vector']['label']  += options.vector
+if filenames == []: filenames = ['STDIN']
 
-# ------------------------------------------ setup file handles ------------------------------------
+for name in filenames:
+  if not (name == 'STDIN' or os.path.exists(name)): continue
+  table = damask.ASCIItable(name = name, outname = name+'_tmp',
+                            buffered = False)
+  table.croak('\033[1m'+scriptName+'\033[0m'+(': '+name if name != 'STDIN' else ''))
 
-files = []
-if filenames == []:
-  files.append({'name':'STDIN', 'input':sys.stdin, 'output':sys.stdout, 'croak':sys.stderr})
-else:
-  for name in filenames:
-    if os.path.exists(name):
-      files.append({'name':name, 'input':open(name), 'output':open(name+'_tmp','w'), 'croak':sys.stderr})
+# ------------------------------------------ read header ------------------------------------------
 
-# ------------------------------------------ loop over input files ---------------------------------
-for file in files:
-  if file['name'] != 'STDIN': file['croak'].write('\033[1m'+scriptName+'\033[0m: '+file['name']+'\n')
-  else: file['croak'].write('\033[1m'+scriptName+'\033[0m\n')
+  table.head_read()
 
-  table = damask.ASCIItable(file['input'],file['output'],False)                                     # make unbuffered ASCII_table
-  table.head_read()                                                                                 # read ASCII header info
-  table.info_append(scriptID + '\t' + ' '.join(sys.argv[1:]))
+# ------------------------------------------ sanity checks ----------------------------------------
 
-  active = []
-  column = defaultdict(dict)
-
-  for label in datainfo['vector']['label']:
-    key = '1_%s'%label
-    if key not in table.labels:
-      file['croak'].write('column %s not found...\n'%key)
+  remarks = []
+  columns = []
+  
+  for i,column in enumerate(table.label_index(options.stiffness)):
+    if   column <  0: remarks.append('column {} not found.'.format(options.stiffness[i]))
     else:
-      active.append(label)
-      column[label] = table.labels.index(key)                                                       # remember columns of requested data
+      columns.append(column)
+      table.labels_append(['E{}{}{}({})'.format(*options.hkl,options.stiffness[i]))                 # extend ASCII header with new labels
 
-# ------------------------------------------ assemble header ---------------------------------------
-  for label in active:
-    table.labels_append('E%i%i%i(%s)'%(options.hkl[0],
-                                       options.hkl[1],
-                                       options.hkl[2],label))                                       # extend ASCII header with new labels
+  if remarks != []: table.croak(remarks)
+
+# ------------------------------------------ assemble header --------------------------------------
+
+  table.info_append(scriptID + '\t' + ' '.join(sys.argv[1:]))
   table.head_write()
 
 # ------------------------------------------ process data ------------------------------------------
   outputAlive = True
   while outputAlive and table.data_read():                                                          # read next data line of ASCII table
-    for label in active:
-      table.data_append(E_hkl(map(float,table.data[column[label]:\
-                                                   column[label]+datainfo['vector']['len']]),options.hkl))
+    for column in columns:
+      table.data_append(E_hkl(map(float,table.data[column:column+3]),options.hkl))
     outputAlive = table.data_write()                                                                # output processed line
 
-# ------------------------------------------ output result -----------------------------------------
-  outputAlive and table.output_flush()                                                              # just in case of buffered ASCII table
+# ------------------------------------------ output finalization -----------------------------------  
 
-  table.input_close()                                                                               # close input ASCII table (works for stdin)
-  table.output_close()                                                                              # close output ASCII table (works for stdout)
-  if file['name'] != 'STDIN':
-    os.rename(file['name']+'_tmp',file['name'])                                                     # overwrite old one with tmp new
+  table.close()                                                                                     # close ASCII tables
+  if name != 'STDIN': os.rename(name+'_tmp',name)                                                   # overwrite old one with tmp new

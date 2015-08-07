@@ -14,107 +14,110 @@ scriptName = os.path.splitext(scriptID.split()[1])[0]
 # --------------------------------------------------------------------
 
 parser = OptionParser(option_class=damask.extendableOption, usage='%prog options file[s]', description = """
-Add column containing debug information.
-Operates on periodic ordered three-dimensional data sets.
+Add column(s) containing the shape and volume mismatch resulting from given deformation gradient.
+Operates on periodic three-dimensional x,y,z-ordered data sets.
 
 """, version = scriptID)
 
 
-parser.add_option('--no-shape','-s',    dest='noShape', action='store_false',
-                  help='do not calcuate shape mismatch')
-parser.add_option('--no-volume','-v',   dest='noVolume', action='store_false',
-                  help='do not calculate volume mismatch')
-parser.add_option('-c','--coordinates', dest='coords', metavar='string',
-                  help='column heading for coordinates [%default]')
-parser.add_option('-f','--defgrad',     dest='defgrad', metavar='string ',
-                  help='column heading for coordinates [%default]')
-parser.set_defaults(coords   = 'ipinitialcoord')
-parser.set_defaults(defgrad  = 'f')
+parser.add_option('-c','--coordinates',
+                  dest = 'coords',
+                  type = 'string', metavar = 'string',
+                  help = 'column heading of coordinates [%default]')
+parser.add_option('-f','--defgrad',
+                  dest = 'defgrad',
+                  type = 'string', metavar = 'string ',
+                  help = 'column heading of deformation gradient [%default]')
+parser.add_option('--no-shape','-s',
+                  dest = 'shape',
+                  action = 'store_false',
+                  help = 'omit shape mismatch')
+parser.add_option('--no-volume','-v',
+                  dest = 'volume',
+                  action = 'store_false',
+                  help = 'omit volume mismatch')
+parser.set_defaults(coords   = 'ipinitialcoord',
+                    defgrad  = 'f',
+                    shape = True,
+                    volume = True,
+                   )
 
 (options,filenames) = parser.parse_args()
 
-# ------------------------------------------ setup file handles ------------------------------------
-files = []
+# --- loop over input files -------------------------------------------------------------------------
+
+if filenames == []: filenames = ['STDIN']
+
 for name in filenames:
-  if os.path.exists(name):
-    files.append({'name':name, 'input':open(name), 'output':open(name+'_tmp','w'), 'croak':sys.stderr})
+  if not (name == 'STDIN' or os.path.exists(name)): continue
+  table = damask.ASCIItable(name = name, outname = name+'_tmp',
+                            buffered = False)
+  table.croak('\033[1m'+scriptName+'\033[0m'+(': '+name if name != 'STDIN' else ''))
 
-#--- loop over input files -------------------------------------------------------------------------
-for file in files:
-  file['croak'].write('\033[1m'+scriptName+'\033[0m: '+file['name']+'\n')
+# ------------------------------------------ read header ------------------------------------------
 
-  table = damask.ASCIItable(file['input'],file['output'],False)                                     # make unbuffered ASCII_table
-  table.head_read()                                                                                 # read ASCII header info
+  table.head_read()
+
+# ------------------------------------------ sanity checks ----------------------------------------
+
+  errors  = []
+  remarks = []
+  
+  if table.label_dimension(options.coords) != 3:  errors.append('coordinates {} are not a vector.'.format(options.coords))
+  else: colCoord = table.label_index(options.coords)
+
+  if table.label_dimension(options.defgrad) != 9: errors.append('deformation gradient {} is not a tensor.'.format(options.defgrad))
+  else: colF = table.label_index(options.defgrad)
+
+  if remarks != []: table.croak(remarks)
+  if errors  != []:
+    table.croak(errors)
+    table.close(dismiss = True)
+    continue
+
+# ------------------------------------------ assemble header --------------------------------------
+
   table.info_append(scriptID + '\t' + ' '.join(sys.argv[1:]))
+  if options.shape:  table.labels_append('shapeMismatch({})'.format(options.defgrad))
+  if options.volume: table.labels_append('volMismatch({})'.format(options.defgrad))
+  table.head_write()
 
 # --------------- figure out size and grid ---------------------------------------------------------
-  try:
-    locationCol = table.labels.index('1_%s'%options.coords)                                         # columns containing location data
-  except ValueError:
-    try:
-      locationCol = table.labels.index('%s.x'%options.coords)                                       # columns containing location data (legacy naming scheme)
-    except ValueError:
-      file['croak'].write('no coordinate data (1_%s/%s.x) found...\n'%(options.coords,options.coords))
-      continue
+
+  table.data_readArray()
 
   coords = [{},{},{}]
-  while table.data_read():                                                                          # read next data line of ASCII table
+  for i in xrange(len(table.data)):  
     for j in xrange(3):
-      coords[j][str(table.data[locationCol+j])] = True                                              # remember coordinate along x,y,z
-  grid = np.array([len(coords[0]),\
-                   len(coords[1]),\
-                   len(coords[2]),],'i')                                                            # grid is number of distinct coordinates found
+      coords[j][str(table.data[i,colCoord+j])] = True
+  grid = np.array(map(len,coords),'i')
   size = grid/np.maximum(np.ones(3,'d'),grid-1.0)* \
             np.array([max(map(float,coords[0].keys()))-min(map(float,coords[0].keys())),\
                       max(map(float,coords[1].keys()))-min(map(float,coords[1].keys())),\
                       max(map(float,coords[2].keys()))-min(map(float,coords[2].keys())),\
                       ],'d')                                                                        # size from bounding box, corrected for cell-centeredness
 
+  size = np.where(grid > 1, size, min(size[grid > 1]/grid[grid > 1]))                               # spacing for grid==1 equal to smallest among other spacings
+
   N = grid.prod()
-
-# --------------- figure out columns to process  ---------------------------------------------------
-  key = '1_%s'%options.defgrad
-  if key not in table.labels:
-    file['croak'].write('column %s not found...\n'%key)
-    continue
-  else:
-    column = table.labels.index(key)                                                                # remember columns of requested data
-
-# ------------------------------------------ assemble header ---------------------------------------
-  if not options.noShape:  table.labels_append(['shapeMismatch(%s)' %options.defgrad])
-  if not options.noVolume: table.labels_append(['volMismatch(%s)'%options.defgrad])
-  table.head_write()
-
-# ------------------------------------------ read deformation gradient field -----------------------
-  table.data_rewind()
-  F = np.zeros(N*9,'d').reshape([3,3]+list(grid))
-  idx = 0
-  while table.data_read():    
-    (x,y,z) = damask.util.gridLocation(idx,grid)                                                     # figure out (x,y,z) position from line count
-    idx += 1
-    F[0:3,0:3,x,y,z] = np.array(map(float,table.data[column:column+9]),'d').reshape(3,3)                                               
   
-  Favg = damask.core.math.tensorAvg(F)
+# ------------------------------------------ process deformation gradient --------------------------
+
+  F = table.data[:,colF:colF+9].transpose().reshape([3,3]+list(options.dimension),order='F')
+  Favg    = damask.core.math.tensorAvg(F)
   centres = damask.core.mesh.deformedCoordsFFT(size,F,Favg,[1.0,1.0,1.0])
-  
   nodes   = damask.core.mesh.nodesAroundCentres(size,Favg,centres)
-  if not options.noShape:   shapeMismatch = damask.core.mesh.shapeMismatch( size,F,nodes,centres)
-  if not options.noVolume: volumeMismatch = damask.core.mesh.volumeMismatch(size,F,nodes)
 
-# ------------------------------------------ process data ------------------------------------------
-  table.data_rewind()
-  idx = 0
-  outputAlive = True
-  while outputAlive and table.data_read():                                                          # read next data line of ASCII table
-    (x,y,z) = damask.util.gridLocation(idx,grid)                                                    # figure out (x,y,z) position from line count
-    idx += 1
-    if not options.noShape:  table.data_append( shapeMismatch[x,y,z])
-    if not options.noVolume: table.data_append(volumeMismatch[x,y,z])
-    outputAlive = table.data_write()                                                                # output processed line
+  stack = [table.data]
+  if options.shape:  stack.append(damask.core.mesh.shapeMismatch( size,F,nodes,centres))
+  if options.volume: stack.append(damask.core.mesh.volumeMismatch(size,F,nodes))
 
-# ------------------------------------------ output result ---------------------------------------  
-  outputAlive and table.output_flush()                                                              # just in case of buffered ASCII table
+# ------------------------------------------ output result -----------------------------------------
 
-  table.input_close()                                                                               # close input ASCII table
-  table.output_close()                                                                              # close output ASCII table
-  os.rename(file['name']+'_tmp',file['name'])                                                       # overwrite old one with tmp new
+  if len(stack) > 1: table.data = np.hstack(tuple(stack))
+  table.data_writeArray('%.12g')
+
+# ------------------------------------------ output finalization -----------------------------------  
+
+  table.close()                                                                                     # close ASCII tables
+  if name != 'STDIN': os.rename(name+'_tmp',name)                                                   # overwrite old one with tmp new

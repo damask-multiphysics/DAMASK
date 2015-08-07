@@ -3,6 +3,7 @@
 
 import os,re,sys,math,string
 import numpy as np
+import multiprocessing
 from optparse import OptionParser
 import damask
 
@@ -30,286 +31,323 @@ def meshgrid2(*arrs):
     ans.insert(0,arr2)
   return tuple(ans)
 
-def laguerreTessellation(undeformed, coords, weights, grain):
+def findClosestSeed(fargs):
+    point, seeds, weightssquared = fargs
+    tmp = np.repeat(point.reshape(3,1), len(seeds), axis=1).T
+    dist = np.sum((tmp - seeds)*(tmp - seeds),axis=1) - weightssquared
+    return np.argmin(dist)                                                                          # seed point closest to point
 
-    weight = np.power(np.tile(weights, 27),2)                        # Laguerre weights (squared)
-    micro = np.zeros(undeformed.shape[0])
-    N = coords.shape[0]                                              # Number of seeds points 
-    periodic =  np.array([
-                          [ -1,-1,-1 ],
-                          [  0,-1,-1 ],
-                          [  1,-1,-1 ],
-                          [ -1, 0,-1 ],
-                          [  0, 0,-1 ],
-                          [  1, 0,-1 ],
-                          [ -1, 1,-1 ],
-                          [  0, 1,-1 ],
-                          [  1, 1,-1 ],
-                          [ -1,-1, 0 ],
-                          [  0,-1, 0 ],
-                          [  1,-1, 0 ],
-                          [ -1, 0, 0 ],
-                          [  0, 0, 0 ],
-                          [  1, 0, 0 ],
-                          [ -1, 1, 0 ],
-                          [  0, 1, 0 ],
-                          [  1, 1, 0 ],
-                          [ -1,-1, 1 ],
-                          [  0,-1, 1 ],
-                          [  1,-1, 1 ],
-                          [ -1, 0, 1 ],
-                          [  0, 0, 1 ],
-                          [  1, 0, 1 ],
-                          [ -1, 1, 1 ],
-                          [  0, 1, 1 ],
-                          [  1, 1, 1 ],
-                         ]).astype(float)
+
+def laguerreTessellation(undeformed, coords, weights, grains, nonperiodic = False, cpus = 2):
+
+    copies = \
+      np.array([
+                [  0, 0, 0 ],
+               ]).astype(float) if nonperiodic else \
+     np.array([
+                [ -1,-1,-1 ],
+                [  0,-1,-1 ],
+                [  1,-1,-1 ],
+                [ -1, 0,-1 ],
+                [  0, 0,-1 ],
+                [  1, 0,-1 ],
+                [ -1, 1,-1 ],
+                [  0, 1,-1 ],
+                [  1, 1,-1 ],
+                [ -1,-1, 0 ],
+                [  0,-1, 0 ],
+                [  1,-1, 0 ],
+                [ -1, 0, 0 ],
+                [  0, 0, 0 ],
+                [  1, 0, 0 ],
+                [ -1, 1, 0 ],
+                [  0, 1, 0 ],
+                [  1, 1, 0 ],
+                [ -1,-1, 1 ],
+                [  0,-1, 1 ],
+                [  1,-1, 1 ],
+                [ -1, 0, 1 ],
+                [  0, 0, 1 ],
+                [  1, 0, 1 ],
+                [ -1, 1, 1 ],
+                [  0, 1, 1 ],
+                [  1, 1, 1 ],
+               ]).astype(float)
+      
+    squaredweights = np.power(np.tile(weights,len(copies)),2)                                       # Laguerre weights (squared, size N*n)
+#    micro          = np.zeros(undeformed.shape[0],'i')
+    N              = coords.shape[0]                                                                # Number of seeds points 
     
-    for i,vec in enumerate(periodic):
+    for i,vec in enumerate(copies):                                                                 # periodic copies of seed points (size N*n)
         seeds = np.append(seeds, coords+vec, axis=0) if i > 0 else coords+vec
+
+    arguments = [[arg] + [seeds,squaredweights] for arg in list(undeformed)]
+
+    # Initialize workers
+    pool = multiprocessing.Pool(processes = cpus) 
+
+    # Evaluate function
+    result = pool.map_async(findClosestSeed, arguments)
+#    closestSeeds = np.array(pool.map_async(findClosestSeed, arguments),'i')
+    pool.close()
+    pool.join()
     
-    for i,point in enumerate(undeformed):
-        
-        tmp = np.repeat(point.reshape(3,1), N*27, axis=1).T
-        dist = np.sum((tmp - seeds)*(tmp - seeds),axis=1) - weight
-        micro[i] = grain[np.argmin(dist)%N]
-    
-    return micro
+    closestSeeds = np.array(result.get()).flatten()
+    print 'shape of result',closestSeeds.shape
+
+    return grains[closestSeeds%N]
+
+#     for i,point in enumerate(undeformed):
+#         tmp = np.repeat(point.reshape(3,1), N*len(copies), axis=1).T
+#         dist = np.sum((tmp - seeds)*(tmp - seeds),axis=1) - squaredweights
+#         micro[i] = grains[np.argmin(dist)%N]
+# 
+#     return micro
 
 # --------------------------------------------------------------------
 #                                MAIN
 # --------------------------------------------------------------------
-identifiers = {
-        'grid':   ['a','b','c'],
-        'size':   ['x','y','z'],
-        'origin': ['x','y','z'],
-          }
-mappings = {
-        'grid':            lambda x: int(x),
-        'size':            lambda x: float(x),
-        'origin':          lambda x: float(x),
-        'homogenization':  lambda x: int(x),
-        'microstructures': lambda x: int(x),
-          }
 
 parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
 Generate geometry description and material configuration by standard Voronoi tessellation of given seeds file.
 
 """, version = scriptID)
 
-parser.add_option('-g', '--grid', dest='grid', type='int', nargs = 3, metavar=' '.join(['int']*3),
-                  help='a,b,c grid of hexahedral box [from seeds file]')
-parser.add_option('-s', '--size', dest='size', type='float', nargs = 3, metavar=' '.join(['float']*3),
-                  help='x,y,z size of hexahedral box [1.0 along largest grid point number]')
-parser.add_option('-o', '--origin', dest='origin', type='float', nargs = 3, metavar=' '.join(['float']*3),
-                  help='offset from old to new origin of grid')
-parser.add_option('--homogenization', dest='homogenization', type='int', metavar = 'int',
-                  help='homogenization index to be used [%default]')
-parser.add_option('--phase', dest='phase', type='int', metavar = 'int',
-                  help='phase index to be used [%default]')
-parser.add_option('--crystallite', dest='crystallite', type='int', metavar = 'int',
-                  help='crystallite index to be used [%default]')
-parser.add_option('-c', '--configuration', dest='config', action='store_true',
-                  help='output material configuration [%default]')
-parser.add_option('-r', '--rnd', dest='randomSeed', type='int', metavar='int',
-                  help='seed of random number generator for second phase distribution [%default]')
-parser.add_option('--secondphase', type='float', dest='secondphase', metavar= 'float',
-                  help='volume fraction of randomly distribute second phase [%default]')
-parser.add_option('-l', '--laguerre', dest='laguerre', action='store_true',
-                  help='use Laguerre (weighted Voronoi) tessellation [%default]')
-parser.set_defaults(grid   = (0,0,0),
-                    size   = (0.0,0.0,0.0),
-                    origin = (0.0,0.0,0.0),
+parser.add_option('-g', '--grid',
+                  dest = 'grid',
+                  type = 'int', nargs = 3, metavar = ' '.join(['int']*3),
+                  help = 'a,b,c grid of hexahedral box [from seeds file]')
+parser.add_option('-s', '--size',
+                  dest = 'size',
+                  type = 'float', nargs = 3, metavar=' '.join(['float']*3),
+                  help = 'x,y,z size of hexahedral box [from seeds file or 1.0 along largest grid point number]')
+parser.add_option('-o', '--origin',
+                  dest = 'origin',
+                  type = 'float', nargs = 3, metavar=' '.join(['float']*3),
+                  help = 'offset from old to new origin of grid')
+parser.add_option('-p', '--position',
+                  dest = 'position',
+                  type = 'string', metavar = 'string',
+                  help = 'column label for seed positions [%default]')
+parser.add_option('-w', '--weight',
+                  dest = 'weight',
+                  type = 'string', metavar = 'string',
+                  help = 'column label for seed weights [%default]')
+parser.add_option('-m', '--microstructure',
+                  dest = 'microstructure',
+                  type = 'string', metavar = 'string',
+                  help = 'column label for seed microstructures [%default]')
+parser.add_option('-e', '--eulers',
+                  dest = 'eulers',
+                  type = 'string', metavar = 'string',
+                  help = 'column label for seed Euler angles [%default]')
+parser.add_option('--axes',
+                  dest = 'axes',
+                  type = 'string', nargs = 3, metavar = ' '.join(['string']*3),
+                  help = 'orientation coordinate frame in terms of position coordinate frame [same]')
+parser.add_option('--homogenization',
+                  dest = 'homogenization',
+                  type = 'int', metavar = 'int',
+                  help = 'homogenization index to be used [%default]')
+parser.add_option('--crystallite',
+                  dest = 'crystallite',
+                  type = 'int', metavar = 'int',
+                  help = 'crystallite index to be used [%default]')
+parser.add_option('--phase',
+                  dest = 'phase',
+                  type = 'int', metavar = 'int',
+                  help = 'phase index to be used [%default]')
+parser.add_option('-r', '--rnd',
+                  dest = 'randomSeed',
+                  type = 'int', metavar='int',
+                  help = 'seed of random number generator for second phase distribution [%default]')
+parser.add_option('--secondphase',
+                  dest = 'secondphase',
+                  type = 'float', metavar= 'float',
+                  help = 'volume fraction of randomly distribute second phase [%default]')
+parser.add_option('-l', '--laguerre',
+                  dest = 'laguerre',
+                  action = 'store_true',
+                  help = 'use Laguerre (weighted Voronoi) tessellation [%default]')
+parser.add_option('--cpus',
+                  dest = 'cpus',
+                  type = 'int', metavar = 'int',
+                  help = 'number of parallel processes to use for Laguerre tessellation [%default]')
+parser.add_option('--nonperiodic',
+                  dest = 'nonperiodic',
+                  action = 'store_true',
+                  help = 'use nonperiodic tessellation [%default]')
+
+parser.set_defaults(grid   = None,
+                    size   = None,
+                    origin = None,
+                    position       = 'pos',
+                    weight         = 'weight',
+                    microstructure = 'microstructure',
+                    eulers         = 'Euler',
                     homogenization = 1,
-                    phase          = 1,
                     crystallite    = 1,
+                    phase          = 1,
                     secondphase    = 0.0,
-                    config = False,
-                    laguerre = False,
-                    randomSeed = None,
+                    cpus           = 2,
+                    laguerre       = False,
+                    nonperiodic    = False,
+                    randomSeed     = None,
                   )
 (options,filenames) = parser.parse_args()
 
 if options.secondphase > 1.0 or options.secondphase < 0.0:
- parser.error('volume fraction of second phase (%f) out of bounds...'%options.secondphase)
+ parser.error('volume fraction of second phase ({}) out of bounds.'.format(options.secondphase))
 
 # --- loop over input files -------------------------------------------------------------------------
-if filenames == []:
-  filenames = ['STDIN']
+
+if filenames == []: filenames = ['STDIN']
 
 for name in filenames:
-  if name == 'STDIN':
-    file = {'name':'STDIN', 'input':sys.stdin, 'output':sys.stdout, 'croak':sys.stderr}
-    file['croak'].write('\033[1m'+scriptName+'\033[0m\n')
-  else:
-    if not os.path.exists(name): continue
-    file = {'name':name, 'input':open(name), 'output':open(name+'_tmp','w'), 'croak':sys.stderr}
-    file['croak'].write('\033[1m'+scriptName+'\033[0m: '+file['name']+'\n')
+  if not (name == 'STDIN' or os.path.exists(name)): continue
+  table = damask.ASCIItable(name    = name,
+                            outname = os.path.splitext(name)[0]+'.geom',
+                            buffered = False)
+  table.croak('\033[1m'+scriptName+'\033[0m'+(': '+name if name != 'STDIN' else ''))
 
-  table = damask.ASCIItable(file['input'],file['output'],buffered=False)                            # make unbuffered ASCII_table
-  table.head_read()                                                                                 # read ASCII header info
+# --- read header ----------------------------------------------------------------------------
 
+  table.head_read()
+  info,extra_header = table.head_getGeom()
+  
+  if options.grid   != None: info['grid']   = options.grid
+  if options.size   != None: info['size']   = options.size
+  if options.origin != None: info['origin'] = options.origin
+  
+# ------------------------------------------ sanity checks ---------------------------------------  
+
+  remarks = []
+  errors = []
   labels = []
-  if np.all(table.label_index(['1_coords','2_coords','3_coords']) != -1):
-    coords = ['1_coords','2_coords','3_coords']
-  elif np.all(table.label_index(['x','y','z']) != -1):
-    coords = ['x','y','z']
+  
+  hasGrains  = table.label_dimension(options.microstructure) == 1
+  hasEulers  = table.label_dimension(options.eulers) == 3
+  hasWeights = table.label_dimension(options.weight) == 1
+
+  if     np.any(info['grid'] < 1):   errors.append('invalid grid a b c.')
+  if     np.any(info['size'] <= 0.0) \
+     and np.all(info['grid'] < 1):   errors.append('invalid size x y z.')
   else:
-    file['croak'].write('no coordinate data (1/2/3_coords | x/y/z) found ...')
+    for i in xrange(3):
+      if info['size'][i] <= 0.0:                                                                      # any invalid size?
+        info['size'][i] = float(info['grid'][i])/max(info['grid'])                                    # normalize to grid
+        remarks.append('rescaling size {} to {}...'.format({0:'x',1:'y',2:'z'}[i],info['size'][i]))
+
+  if table.label_dimension(options.position) != 3:
+    errors.append('position columns "{}" have dimension {}.'.format(options.position,
+                                                                    table.label_dimension(options.position)))
+  else:
+    labels += [options.position]
+
+  if not hasEulers: remarks.append('missing seed orientations...')
+  else: labels += [options.eulers]
+  if not hasGrains: remarks.append('missing seed microstructure indices...')
+  else: labels += [options.microstructure]
+  if options.laguerre and not hasWeights: remarks.append('missing seed weights...')
+  else: labels += [options.weight]
+
+  if remarks != []: table.croak(remarks)
+  if errors != []:
+    table.croak(errors)
+    table.close(dismiss=True)
     continue
 
-  labels += coords
-  hasEulers = np.all(table.label_index(['phi1','Phi','phi2']) != -1)
-  if hasEulers:
-    labels += ['phi1','Phi','phi2']
-    
-  hasGrains = table.label_index('microstructure') != -1
-  if hasGrains:
-    labels += ['microstructure']
-    
-  hasWeight = table.label_index('weight') != -1
-  if hasWeight:
-    labels += ['weight']
+# ------------------------------------------ read seeds ---------------------------------------  
       
   table.data_readArray(labels)
-  coords = table.data[:,table.label_index(coords)]
-  eulers = table.data[:,table.label_index(['phi1','Phi','phi2'])] if hasEulers else np.zeros(3*len(coords))
-  grain = table.data[:,table.label_index('microstructure')]       if hasGrains else 1+np.arange(len(coords))
-  weights = table.data[:,table.label_index('weight')]             if hasWeight else np.zeros(len(coords))
-  grainIDs = np.unique(grain).astype('i')
+  coords = table.data[:,table.label_index(options.position):table.label_index(options.position)+3]
+  eulers = table.data[:,table.label_index(options.eulers  ):table.label_index(options.eulers  )+3] if hasEulers  else np.zeros(3*len(coords))
+  grains = table.data[:,table.label_index(options.microstructure)].astype('i')                     if hasGrains  else 1+np.arange(len(coords))
+  weights = table.data[:,table.label_index(options.weight)]                                        if hasWeights else np.zeros(len(coords))
+  grainIDs = np.unique(grains).astype('i')
+  NgrainIDs = len(grainIDs)
 
+# --- tessellate microstructure ------------------------------------------------------------
 
-#--- interpret header ----------------------------------------------------------------------------
-  info = {
-          'grid':    np.zeros(3,'i'),
-          'size':    np.array(options.size),
-          'origin':  np.zeros(3,'d'),
-          'microstructures':  0,
-          'homogenization': options.homogenization,
-         }
-  newInfo = {
-          'microstructures': 0,
-         }
-  extra_header = []
-
-  for header in table.info:
-    headitems = map(str.lower,header.split())
-    if len(headitems) == 0: continue
-    if headitems[0] in mappings.keys():
-      if headitems[0] in identifiers.keys():
-        for i in xrange(len(identifiers[headitems[0]])):
-          info[headitems[0]][i] = \
-            mappings[headitems[0]](headitems[headitems.index(identifiers[headitems[0]][i])+1])
-      else:
-        info[headitems[0]] = mappings[headitems[0]](headitems[1])
-    else:
-      extra_header.append(header)
-
-  if info['microstructures'] != len(grainIDs):
-    file['croak'].write('grain data not matching grain count (%i)...\n'%(len(grainIDs)))
-    info['microstructures'] = len(grainIDs)
+  x = (np.arange(info['grid'][0])+0.5)*info['size'][0]/info['grid'][0]
+  y = (np.arange(info['grid'][1])+0.5)*info['size'][1]/info['grid'][1]
+  z = (np.arange(info['grid'][2])+0.5)*info['size'][2]/info['grid'][2]
   
-  if 0 not in options.grid:                                                                         # user-specified grid
-    info['grid'] = np.array(options.grid)
+  table.croak('tessellating...')
 
-  for i in xrange(3):
-    if info['size'][i] <= 0.0:                                                                      # any invalid size?
-      info['size'][i] = float(info['grid'][i])/max(info['grid'])
-      file['croak'].write('rescaling size %s...\n'%{0:'x',1:'y',2:'z'}[i])
+  if options.laguerre:
+    undeformed = np.vstack(np.meshgrid(x, y, z)).reshape(3,-1).T
+    indices = laguerreTessellation(undeformed, coords, weights, grains, options.nonperiodic, options.cpus)
+  else:
+    coords = (coords*info['size']).T
+    undeformed = np.vstack(map(np.ravel, meshgrid2(x, y, z)))
 
-  file['croak'].write('grains to map:  %i\n'%info['microstructures'] + \
-                      'grid     a b c: %s\n'%(' x '.join(map(str,info['grid']))) + \
-                      'size     x y z: %s\n'%(' x '.join(map(str,info['size']))) + \
-                      'origin   x y z: %s\n'%(' : '.join(map(str,info['origin']))) + \
-                      'homogenization: %i\n'%info['homogenization'])
+    indices = damask.core.math.periodicNearestNeighbor(\
+              info['size'],\
+              np.eye(3),\
+              undeformed,coords)//3**3 + 1                                                          # floor division to kill periodic images
+    indices = grains[indices-1]
+    
+# --- write header ---------------------------------------------------------------------------------
+
+  grainIDs = np.intersect1d(grainIDs,indices)
+  info['microstructures'] = len(grainIDs)
+
+  if info['homogenization'] == 0: info['homogenization'] = options.homogenization
   
-  if np.any(info['grid'] < 1):
-    file['croak'].write('invalid grid a b c.\n')
-    continue
-  if np.any(info['size'] <= 0.0):
-    file['croak'].write('invalid size x y z.\n')
-    continue
-  if info['microstructures'] == 0:
-    file['croak'].write('no grain info found.\n')
-    continue
+  table.croak(['grid     a b c:  %s'%(' x '.join(map(str,info['grid']))),
+               'size     x y z:  %s'%(' x '.join(map(str,info['size']))),
+               'origin   x y z:  %s'%(' : '.join(map(str,info['origin']))),
+               'homogenization:  %i'%info['homogenization'],
+               'microstructures: %i%s'%(info['microstructures'],
+                                        (' out of %i'%NgrainIDs if NgrainIDs != info['microstructures'] else '')),
+              ])
 
-#--- prepare data ---------------------------------------------------------------------------------
-  eulers = eulers.T
+  config_header = []
+  formatwidth = 1+int(math.log10(info['microstructures']))
 
-#--- switch according to task ---------------------------------------------------------------------
-  if options.config:                                                                                # write config file
-    phase = np.empty(info['microstructures'],'i')
-    phase.fill(options.phase)
-    phase[0:int(float(info['microstructures'])*options.secondphase)] = options.phase+1
-    randomSeed = int(os.urandom(4).encode('hex'), 16)  if options.randomSeed == None else options.randomSeed         # radom seed per file for second phase
+  phase = options.phase * np.ones(info['microstructures'],'i')
+  if int(options.secondphase*info['microstructures']) > 0:
+    phase[0:int(options.secondphase*info['microstructures'])] += 1
+    randomSeed = int(os.urandom(4).encode('hex'), 16)  if options.randomSeed == None \
+                                                       else options.randomSeed                      # random seed for second phase
     np.random.seed(randomSeed)
     np.random.shuffle(phase)
-    formatwidth = 1+int(math.log10(info['microstructures']))
-    file['output'].write('#' + scriptID + ' ' + ' '.join(sys.argv[1:])+'\n')
-    if options.secondphase > 0.0: file['output'].write('# random seed for second phase %i\n'%randomSeed)
-    file['output'].write('\n<microstructure>\n')
-    for i,ID in enumerate(grainIDs):
-      file['output'].write('\n[Grain%s]\n'%(str(ID).zfill(formatwidth)) + \
-                           'crystallite %i\n'%options.crystallite + \
-                           '(constituent)\tphase %i\ttexture %s\tfraction 1.0\n'%(phase[i],str(ID).rjust(formatwidth)))
-  
-    file['output'].write('\n<texture>\n')
+    config_header += ['# random seed (phase shuffling): {}'.format(randomSeed)]
+
+  config_header += ['<microstructure>']
+  for i,ID in enumerate(grainIDs):
+    config_header += ['[Grain%s]'%(str(ID).zfill(formatwidth)),
+                      'crystallite %i'%options.crystallite,
+                      '(constituent)\tphase %i\ttexture %s\tfraction 1.0'%(phase[i],str(ID).rjust(formatwidth)),
+                     ]
+  if hasEulers:
+    config_header += ['<texture>']
     for ID in grainIDs:
-      eulerID = np.nonzero(grain == ID)[0][0]                                                       # find first occurrence of this grain id
-      file['output'].write('\n[Grain%s]\n'%(str(ID).zfill(formatwidth)) + \
-                           '(gauss)\tphi1 %g\tPhi %g\tphi2 %g\tscatter 0.0\tfraction 1.0\n'%(eulers[0,eulerID],
-                                                                                             eulers[1,eulerID],
-                                                                                             eulers[2,eulerID]))
-
-  else:                                                                                             # write geometry file
-    x = (np.arange(info['grid'][0])+0.5)*info['size'][0]/info['grid'][0]
-    y = (np.arange(info['grid'][1])+0.5)*info['size'][1]/info['grid'][1]
-    z = (np.arange(info['grid'][2])+0.5)*info['size'][2]/info['grid'][2]
-    
-    if not options.laguerre:
-      coords = (coords*info['size']).T
-      undeformed = np.vstack(map(np.ravel, meshgrid2(x, y, z)))
+      eulerID = np.nonzero(grains == ID)[0][0]                                                      # find first occurrence of this grain id
+      config_header += ['[Grain%s]'%(str(ID).zfill(formatwidth)),
+                        'axes\t%s %s %s'%tuple(options.axes) if options.axes != None else '',
+                        '(gauss)\tphi1 %g\tPhi %g\tphi2 %g\tscatter 0.0\tfraction 1.0'%tuple(eulers[eulerID]),
+                       ]
   
-      file['croak'].write('tessellating...\n')
-      indices = damask.core.math.periodicNearestNeighbor(\
-                info['size'],\
-                np.eye(3),\
-                undeformed,coords)//3**3 + 1                                                          # floor division to kill periodic images
-      indices = grain[indices-1]
-    else :
-      undeformed = np.vstack(np.meshgrid(x, y, z)).reshape(3,-1).T
-      indices = laguerreTessellation(undeformed, coords, weights, grain)
+  table.labels_clear()
+  table.info_clear()
+  table.info_append([
+    scriptID + ' ' + ' '.join(sys.argv[1:]),
+    "grid\ta {grid[0]}\tb {grid[1]}\tc {grid[2]}".format(grid=info['grid']),
+    "size\tx {size[0]}\ty {size[1]}\tz {size[2]}".format(size=info['size']),
+    "origin\tx {origin[0]}\ty {origin[1]}\tz {origin[2]}".format(origin=info['origin']),
+    "homogenization\t{homog}".format(homog=info['homogenization']),
+    "microstructures\t{microstructures}".format(microstructures=info['microstructures']),
+    config_header,
+    ])
+  table.head_write()
       
-    newInfo['microstructures'] = info['microstructures']
-    for i in grainIDs:
-      if i not in indices: newInfo['microstructures'] -= 1
-    file['croak'].write(('all' if newInfo['microstructures']  == info['microstructures'] else 'only') +
-                        ' %i'%newInfo['microstructures'] + 
-                        ('' if newInfo['microstructures'] == info['microstructures'] else \
-                        ' out of %i'%info['microstructures']) +
-                        ' grains mapped.\n')
-
-#--- write header ---------------------------------------------------------------------------------
-    table.labels_clear()
-    table.info_clear()
-    table.info_append(extra_header+[
-      scriptID + ' ' + ' '.join(sys.argv[1:]),
-      "grid\ta %i\tb %i\tc %i"%(info['grid'][0],info['grid'][1],info['grid'][2],),
-      "size\tx %f\ty %f\tz %f"%(info['size'][0],info['size'][1],info['size'][2],),
-      "origin\tx %f\ty %f\tz %f"%(info['origin'][0],info['origin'][1],info['origin'][2],),
-      "homogenization\t%i"%info['homogenization'],
-      "microstructures\t%i"%(newInfo['microstructures']),
-      ])
-    table.head_write()
-    
 # --- write microstructure information ------------------------------------------------------------
-    formatwidth = 1+int(math.log10(newInfo['microstructures']))
-    table.data = indices.reshape(info['grid'][1]*info['grid'][2],info['grid'][0])
-    table.data_writeArray('%%%ii'%(formatwidth),delimiter=' ')
+
+  table.data = indices.reshape(info['grid'][1]*info['grid'][2],info['grid'][0])
+  table.data_writeArray('%%%ii'%(formatwidth),delimiter=' ')
     
 #--- output finalization --------------------------------------------------------------------------
 
   table.close()  
-  if file['name'] != 'STDIN':
-    os.rename(file['name']+'_tmp',
-              os.path.splitext(file['name'])[0] +'%s'%('_material.config' if options.config else '.geom'))

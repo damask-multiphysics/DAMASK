@@ -17,102 +17,89 @@ Add data in column(s) of second ASCIItable selected from row that is given by th
 
 """, version = scriptID)
 
-parser.add_option('-a','--asciitable',  dest='asciitable', metavar='string',
-                  help='mapped ASCIItable')
-parser.add_option('-c','--map',         dest='map', metavar='string',
-                  help='heading of column containing row mapping')
-parser.add_option('-o','--offset',      dest='offset', type='int', metavar='int',
-                  help='offset between mapped column value and row [%default]')
-parser.add_option('-v','--vector',      dest='vector', action='extend', metavar='<string LIST>',
-                  help='heading of columns containing vector field values')
-parser.add_option('-t','--tensor',      dest='tensor', action='extend', metavar='<string LIST>',
-                  help='heading of columns containing tensor field values')
-parser.add_option('-s','--special',     dest='special', action='extend', metavar='<string LIST>',
-                  help='heading of columns containing field values of special dimension')
-parser.add_option('-d','--dimension',   dest='N', type='int', metavar='int',
-                  help='dimension of special field values [%default]')
-parser.set_defaults(offset = 0)
-parser.set_defaults(N = 1)
+parser.add_option('-c','--map',
+                  dest = 'map',
+                  type = 'string', metavar = 'string',
+                  help = 'heading of column containing row mapping')
+parser.add_option('-o','--offset',
+                  dest = 'offset',
+                  type = 'int', metavar = 'int',
+                  help = 'offset between mapping column value and actual row in mapped table [%default]')
+parser.add_option('-l','--label',
+                  dest = 'label',
+                  action = 'extend', metavar = '<string LIST>',
+                  help='heading of column(s) to be mapped')
+parser.add_option('-a','--asciitable',
+                  dest = 'asciitable',
+                  type = 'string', metavar = 'string',
+                  help = 'mapped ASCIItable')
+
+parser.set_defaults(offset = 0,
+                   )
 
 (options,filenames) = parser.parse_args()
 
-if (not None) in [options.vector,options.tensor,options.special]:
-  parser.error('no data column specified...')
+if options.label == None:
+  parser.error('no data columns specified.')
 if options.map == None:
-  parser.error('missing mapping column...')
+  parser.error('no mapping column given.')
 
-datainfo = {                                                                                        # list of requested labels per datatype
-             'vector':     {'len':3,
-                            'label':[]},
-             'tensor':     {'len':9,
-                            'label':[]},
-             'special':    {'len':options.N,
-                            'label':[]},
-           }
+# ------------------------------------------ process mapping ASCIItable ---------------------------
 
-if options.vector  != None:    datainfo['vector']['label']  += options.vector
-if options.tensor  != None:    datainfo['tensor']['label']  += options.tensor
-if options.special != None:    datainfo['special']['label'] += options.special
-
-# ------------------------------------------ processing mapping ASCIItable -------------------------
 if options.asciitable != None and os.path.isfile(options.asciitable):
-  mappedTable = damask.ASCIItable(open(options.asciitable),None,False) 
+
+  mappedTable = damask.ASCIItable(name = options.asciitable,buffered = False, readonly = True) 
   mappedTable.head_read()                                                                           # read ASCII header info of mapped table
+  missing_labels = mappedTable.data_readArray(options.label)
 
-  labels  = []
-  for datatype,info in datainfo.items():
-    for label in info['label']:
-      keys = ['%i_'%(i+1)+label for i in xrange(info['len'])] if info['len'] > 1 else [label]
-      if set(keys).issubset(mappedTable.labels):
-        labels+=keys                                                                                # extend labels
-      else:
-        sys.stderr.write('column %s not found...\n'%label)
-        break
-
-  mappedTable.data_readArray(labels)
-  mappedTable.input_close()                                                                         # close mapped input ASCII table
+  if len(missing_labels) > 0:
+    mappedTable.croak('column{} {} not found...'.format('s' if len(missing_labels) > 1 else '',', '.join(missing_labels)))
 
 else:
-  parser.error('missing mapped ASCIItable...')
+  parser.error('no mapped ASCIItable given.')
 
-# ------------------------------------------ setup file handles ------------------------------------
-files = []
-if filenames == []:
-  files.append({'name':'STDIN', 'input':sys.stdin, 'output':sys.stdout, 'croak':sys.stderr})
-else:
-  for name in filenames:
-    if os.path.exists(name):
-      files.append({'name':name, 'input':open(name), 'output':open(name+'_tmp','w'), 'croak':sys.stderr})
+# --- loop over input files -------------------------------------------------------------------------
 
-# ------------------------------------------ loop over input files ---------------------------------
-for file in files:
-  if file['name'] != 'STDIN': file['croak'].write('\033[1m'+scriptName+'\033[0m: '+file['name']+'\n')
-  else: file['croak'].write('\033[1m'+scriptName+'\033[0m\n')
+if filenames == []: filenames = ['STDIN']
 
-  table = damask.ASCIItable(file['input'],file['output'],False)                                     # make unbuffered ASCII_table
-  table.head_read()                                                                                 # read ASCII header info
-  
-  if options.map not in table.labels:
-    file['croak'].write('column %s not found...\n'%options.map)
+for name in filenames:
+  if not (name == 'STDIN' or os.path.exists(name)): continue
+  table = damask.ASCIItable(name = name, outname = name+'_tmp',
+                            buffered = False)
+  table.croak('\033[1m'+scriptName+'\033[0m'+(': '+name if name != 'STDIN' else ''))
+
+# ------------------------------------------ read header ------------------------------------------
+
+  table.head_read()
+
+# ------------------------------------------ sanity checks ----------------------------------------
+
+  errors = []
+
+  mappedColumn = table.label_index(options.map)  
+  if mappedColumn <  0: errors.append('mapping column {} not found.'.format(options.map))
+
+  if errors != []:
+    table.croak(errors)
+    table.close(dismiss = True)
     continue
 
 # ------------------------------------------ assemble header --------------------------------------
+
   table.info_append(scriptID + '\t' + ' '.join(sys.argv[1:]))
-  for label in mappedTable.labels:
-    table.labels_append(label)
+  table.labels_append(mappedTable.labels)                                                           # extend ASCII header with new labels
   table.head_write()
 
 # ------------------------------------------ process data ------------------------------------------
-  mappedColumn = table.labels.index(options.map)
+
   outputAlive = True
   while outputAlive and table.data_read():                                                          # read next data line of ASCII table
     table.data_append(mappedTable.data[int(table.data[mappedColumn])+options.offset-1])             # add all mapped data types
     outputAlive = table.data_write()                                                                # output processed line
 
-# ------------------------------------------ output result -----------------------------------------
-  outputAlive and table.output_flush()                                                              # just in case of buffered ASCII table
+# ------------------------------------------ output finalization -----------------------------------  
 
-  table.input_close()                                                                               # close input ASCII table (works for stdin)
-  table.output_close()                                                                              # close output ASCII table (works for stdout)
-  if file['name'] != 'STDIN':
-    os.rename(file['name']+'_tmp',file['name'])                                                     # overwrite old one with tmp new
+  table.close()                                                                                     # close ASCII tables
+  if name != 'STDIN': os.rename(name+'_tmp',name)                                                   # overwrite old one with tmp new
+
+mappedTable.close()                                                                                 # close mapped input ASCII table

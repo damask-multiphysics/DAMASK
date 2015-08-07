@@ -15,94 +15,75 @@ scriptName = os.path.splitext(scriptID.split()[1])[0]
 # --------------------------------------------------------------------
 
 parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
-Uniformly scale values in scalar/special, vector, or tensor columns by given factor.
+Uniformly scale column values by given factor.
 
 """, version = scriptID)
 
-parser.add_option('-s','--special',  dest='special', action='extend', metavar='<string LIST>',
-                                     help='heading of columns containing field values of special dimension')
-parser.add_option('-d','--dimension',dest='N', type='int', metavar='int',
-                                     help='dimension of special field values [%default]')
-parser.add_option('-v','--vector',   dest='vector', action='extend', metavar='<string LIST>',
-                                     help='column heading of vector to scale')
-parser.add_option('-t','--tensor',   dest='tensor', action='extend', metavar='<string LIST>',
-                                     help='column heading of tensor to scale')
-parser.add_option('-f','--factor',   dest='factor', action='extend', metavar='<float LIST>',
-                                     help='list of scalar/special, vector, and tensor scaling factors (in this order!)')
+parser.add_option('-l','--label',
+                  dest = 'label',
+                  action = 'extend', metavar = '<string LIST>',
+                  help  ='column(s) to scale')
+parser.add_option('-f','--factor',
+                  dest = 'factor',
+                  action = 'extend', metavar='<float LIST>',
+                  help = 'factor(s) per column')
 
-parser.set_defaults(special = [])
-parser.set_defaults(vector = [])
-parser.set_defaults(tensor = [])
-parser.set_defaults(factor  = [])
-parser.set_defaults(N = 1)
+parser.set_defaults(label  = [],
+                   )
 
 (options,filenames) = parser.parse_args()
 
-options.factor = np.array(options.factor,'d')
-datainfo = {                                                              # list of requested labels per datatype
-             'special':    {'len':options.N,
-                            'label':[]},
-             'vector':     {'len':3,
-                            'label':[]},
-             'tensor':     {'len':9,
-                            'label':[]},
-           }
-
-length = 0
-if options.special != []: datainfo['special']['label'] += options.special; length += len(options.special)
-if options.vector  != []: datainfo['vector']['label']  += options.vector;  length += len(options.vector)
-if options.tensor  != []: datainfo['tensor']['label']  += options.tensor;  length += len(options.tensor)
-if len(options.factor) != length:
-  parser.error('length of scaling vector does not match column count...')
+if len(options.label) != len(options.factor):
+  parser.error('number of column labels and factors do not match.')
 
 # --- loop over input files -------------------------------------------------------------------------
-if filenames == []:
-  filenames = ['STDIN']
+
+if filenames == []: filenames = ['STDIN']
 
 for name in filenames:
-  if name == 'STDIN':
-    file = {'name':'STDIN', 'input':sys.stdin, 'output':sys.stdout, 'croak':sys.stderr}
-    file['croak'].write('\033[1m'+scriptName+'\033[0m\n')
-  else:
-    if not os.path.exists(name): continue
-    file = {'name':name, 'input':open(name), 'output':open(name+'_tmp','w'), 'croak':sys.stderr}
-    file['croak'].write('\033[1m'+scriptName+'\033[0m: '+file['name']+'\n')
+  if not (name == 'STDIN' or os.path.exists(name)): continue
+  table = damask.ASCIItable(name = name, outname = name+'_tmp',
+                            buffered = False)
+  table.croak('\033[1m'+scriptName+'\033[0m'+(': '+name if name != 'STDIN' else ''))
 
-  table = damask.ASCIItable(file['input'],file['output'],buffered=False)                            # make unbuffered ASCII_table
-  table.head_read()                                                                                 # read ASCII header info
-  table.info_append(scriptID + '\t' + ' '.join(sys.argv[1:]))
+# ------------------------------------------ read header ------------------------------------------
 
-# --------------- figure out columns to process  ---------------------------------------------------
-  active = defaultdict(list)
-  column = defaultdict(dict)
+  table.head_read()
 
-  for datatype,info in datainfo.items():
-    for label in info['label']:
-      key = '1_'+label if info['len'] > 1 else label
-      if key in table.labels:
-          active[datatype].append(label)
-          column[datatype][label] = table.labels.index(key)                                         # remember columns of requested data
-      else:
-        file['croak'].write('column %s not found...\n'%label)
+  errors  = []
+  remarks = []
+  columns  = []
+  dims     = []
+  factors  = []
+
+  for what,factor in zip(options.label,options.factor):
+    col = table.label_index(what)
+    if col < 0: remarks.append('column {} not found...'.format(what,type))
+    else:
+      columns.append(col)
+      factors.append(float(factor))
+      dims.append(table.label_dimension(what))
+
+  if remarks != []: table.croak(remarks)
+  if errors  != []:
+    table.croak(errors)
+    table.close(dismiss = True)
+    continue
        
-# ------------------------------------------ assemble header ---------------------------------------
+# ------------------------------------------ assemble header ---------------------------------------  
+
+  table.info_append(scriptID + '\t' + ' '.join(sys.argv[1:]))
   table.head_write()
 
 # ------------------------------------------ process data ------------------------------------------
+
   outputAlive = True
   while outputAlive and table.data_read():                                                          # read next data line of ASCII table
-    i = 0
-    for datatype,labels in sorted(active.items(),key=lambda x:datainfo[x[0]]['len']):               # loop over special,vector,tensor
-      for label in labels:                                                                          # loop over all requested labels
-        for j in xrange(datainfo[datatype]['len']):                                                 # loop over entity elements
-          table.data[column[datatype][label]+j] = float(table.data[column[datatype][label]+j]) * options.factor[i]
-        i += 1
+    for col,dim,factor in zip(columns,dims,factors):                                                # loop over items
+      table.data[col:col+dim] = factor * np.array(table.data[col:col+dim],'d')
     outputAlive = table.data_write()                                                                # output processed line
 
-# ------------------------------------------ output result -----------------------------------------
-  outputAlive and table.output_flush()                                                              # just in case of buffered ASCII table
+# ------------------------------------------ output finalization -----------------------------------  
 
-  table.input_close()                                                                               # close input ASCII table (works for stdin)
-  table.output_close()                                                                              # close output ASCII table (works for stdout)
-  if file['name'] != 'STDIN':
-    os.rename(file['name']+'_tmp',file['name'])                                                     # overwrite old one with tmp new
+  table.close()                                                                                     # close ASCII tables
+  if name != 'STDIN': os.rename(name+'_tmp',name)                                                   # overwrite old one with tmp new

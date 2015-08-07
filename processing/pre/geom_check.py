@@ -12,82 +12,54 @@ scriptName = os.path.splitext(scriptID.split()[1])[0]
 #--------------------------------------------------------------------------------------------------
 #                                MAIN
 #--------------------------------------------------------------------------------------------------
-identifiers = {
-        'grid':    ['a','b','c'],
-        'size':    ['x','y','z'],
-        'origin':  ['x','y','z'],
-          }
-mappings = {
-        'grid':            lambda x: int(x),
-        'size':            lambda x: float(x),
-        'origin':          lambda x: float(x),
-        'homogenization':  lambda x: int(x),
-        'microstructures': lambda x: int(x),
-          }
 
 parser = OptionParser(option_class=damask.extendableOption, usage='%prog [file[s]]', description = """
 Produce VTK rectilinear mesh of structure data from geom description
 
 """, version = scriptID)
 
-parser.add_option('-n','--nodata',      dest='data', action='store_false',
-                                        help='omit microstructure data, just generate mesh')
+parser.add_option('-m','--nodata',
+                  dest   = 'data',
+                  action = 'store_false',
+                  help   = 'generate mesh without microstructure index data')
 
-parser.set_defaults(data = True)
+parser.set_defaults(data = True,
+                   )
 
 (options, filenames) = parser.parse_args()
 
-#--- setup file handles --------------------------------------------------------------------------  
-files = []
-if filenames == []:
-  files.append({'name':'STDIN', 'input':sys.stdin, 'output':sys.stdout, 'croak':sys.stderr, })
-else:
-  for name in filenames:
-    if os.path.exists(name):
-      files.append({'name':name, 'input':open(name), 'output':sys.stdout, 'croak':sys.stdout, })
+# --- loop over input files -------------------------------------------------------------------------
 
-#--- loop over input files ------------------------------------------------------------------------
-for file in files:
-  file['croak'].write('\033[1m' + scriptName + '\033[0m: ' + (file['name'] if file['name'] != 'STDIN' else '') + '\n')
+if filenames == []: filenames = ['STDIN']
 
-  theTable = damask.ASCIItable(file['input'],file['output'],labels=False)
-  theTable.head_read()
+for name in filenames:
+  if not (name == 'STDIN' or os.path.exists(name)): continue
+  table = damask.ASCIItable(name = name, outname = None,
+                            buffered = False, labeled = False, readonly = True)
+  table.croak('\033[1m'+scriptName+'\033[0m'+(': '+name if name != 'STDIN' else ''))
 
-#--- interpret header ----------------------------------------------------------------------------
-  info = {
-          'grid':   np.zeros(3,'i'),
-          'size':   np.zeros(3,'d'),
-          'origin': np.zeros(3,'d'),
-          'homogenization':  0,
-          'microstructures': 0,
-         }
+# --- interpret header ----------------------------------------------------------------------------
 
-  for header in theTable.info:
-    headitems = map(str.lower,header.split())
-    if len(headitems) == 0: continue
-    if headitems[0] in mappings.keys():
-      if headitems[0] in identifiers.keys():
-        for i in xrange(len(identifiers[headitems[0]])):
-          info[headitems[0]][i] = \
-            mappings[headitems[0]](headitems[headitems.index(identifiers[headitems[0]][i])+1])
-      else:
-        info[headitems[0]] = mappings[headitems[0]](headitems[1])
+  table.head_read()
+  info,extra_header = table.head_getGeom()
+  
+  table.croak(['grid     a b c:  %s'%(' x '.join(map(str,info['grid']))),
+               'size     x y z:  %s'%(' x '.join(map(str,info['size']))),
+               'origin   x y z:  %s'%(' : '.join(map(str,info['origin']))),
+               'homogenization:  %i'%info['homogenization'],
+               'microstructures: %i'%info['microstructures'],
+              ])
 
-  file['croak'].write('grid     a b c:  %s\n'%(' x '.join(map(str,info['grid']))) + \
-                      'size     x y z:  %s\n'%(' x '.join(map(str,info['size']))) + \
-                      'origin   x y z:  %s\n'%(' : '.join(map(str,info['origin']))) + \
-                      'homogenization:  %i\n'%info['homogenization'] + \
-                      'microstructures: %i\n'%info['microstructures'])
-
-  if np.any(info['grid'] < 1):
-    file['croak'].write('invalid grid a b c.\n')
-    continue
-  if np.any(info['size'] <= 0.0):
-    file['croak'].write('invalid size x y z.\n')
+  errors = []
+  if np.any(info['grid'] < 1):    errors.append('invalid grid a b c.')
+  if np.any(info['size'] <= 0.0): errors.append('invalid size x y z.')
+  if errors != []:
+    file['croak'](errors)
+    table.close(dismiss = True)
     continue
 
+# --- generate VTK rectilinear grid --------------------------------------------------------------------------------
 
-#--- generate grid --------------------------------------------------------------------------------
   grid = vtk.vtkRectilinearGrid()
   grid.SetDimensions([x+1 for x in info['grid']])
   for i in xrange(3):
@@ -102,43 +74,36 @@ for file in files:
 #--- read microstructure information --------------------------------------------------------------
 
   if options.data:
+    microstructure = table.microstructure_read(info['grid'])                                        # read microstructure
+
     structure = vtk.vtkIntArray()
     structure.SetName('Microstructures')
 
-    while theTable.data_read():
-      items = theTable.data
-      if len(items) > 2:
-        if   items[1].lower() == 'of': items = [int(items[2])]*int(items[0])
-        elif items[1].lower() == 'to': items = xrange(int(items[0]),1+int(items[2]))
-        else:                          items = map(int,items)
-      else:                            items = map(int,items)
-
-      for item in items:
-        structure.InsertNextValue(item)
+    for idx in microstructure:
+      structure.InsertNextValue(idx)
 
     grid.GetCellData().AddArray(structure)
 
-#--- write data -----------------------------------------------------------------------------------
-  if file['name'] == 'STDIN':
+# --- write data -----------------------------------------------------------------------------------
+
+  if name == 'STDIN':
     writer = vtk.vtkRectilinearGridWriter()
     writer.WriteToOutputStringOn()
     writer.SetFileTypeToASCII()
     writer.SetHeader('# powered by '+scriptID)
-    if vtk.VTK_MAJOR_VERSION <= 5:
-      writer.SetInput(grid)
-    else:
-      writer.SetInputData(grid)
+    if vtk.VTK_MAJOR_VERSION <= 5: writer.SetInput(grid)
+    else:                          writer.SetInputData(grid)
     writer.Write()
-    file['output'].write(writer.GetOutputString()[0:writer.GetOutputStringLength()])
+    sys.stdout.write(writer.GetOutputString()[0:writer.GetOutputStringLength()])
   else:
-    (dir,file) = os.path.split(file['name'])
+    (dir,filename) = os.path.split(name)
     writer = vtk.vtkXMLRectilinearGridWriter()
     writer.SetDataModeToBinary()
     writer.SetCompressorTypeToZLib()
-    writer.SetFileName(os.path.join(dir,'mesh_'+os.path.splitext(file)[0]
+    writer.SetFileName(os.path.join(dir,'mesh_'+os.path.splitext(filename)[0]
                                                    +'.'+writer.GetDefaultFileExtension()))
-    if vtk.VTK_MAJOR_VERSION <= 5:
-      writer.SetInput(grid)
-    else:
-      writer.SetInputData(grid)
+    if vtk.VTK_MAJOR_VERSION <= 5: writer.SetInput(grid)
+    else:                          writer.SetInputData(grid)
     writer.Write()
+
+  table.close()

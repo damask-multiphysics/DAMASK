@@ -11,11 +11,14 @@ scriptName = os.path.splitext(scriptID.split()[1])[0]
 
 oneThird = 1.0/3.0
 
-def deviator(m):                                                                                    # Carefull, do not change the value of m (its intent(inout)!)
+def deviator(m,spherical = False):                                                                                    # Carefull, do not change the value of m (its intent(inout)!)
   sph = oneThird*(m[0]+m[4]+m[8])
-  return  [m[0] -sph, m[1],     m[2],
+  dev = [
+           m[0]-sph,  m[1],     m[2],
            m[3],      m[4]-sph, m[5],
-           m[6],      m[7],     m[8]-sph]
+           m[6],      m[7],     m[8]-sph,
+        ]
+  return dev,sph if spherical else dev
 
 # --------------------------------------------------------------------
 #                                MAIN
@@ -26,72 +29,77 @@ Add column(s) containing deviator of requested tensor column(s).
 
 """, version = scriptID)
 
-parser.add_option('-t','--tensor',      dest='tensor', action='extend', metavar='<string LIST>',
-                  help='heading of columns containing tensor field values')
-parser.add_option('-s','--spherical',   dest='hydrostatic', action='store_true',
-                  help='also add sperical part of tensor (hydrostatic component, pressure)')
+parser.add_option('-t','--tensor',
+                  dest = 'tensor',
+                  action = 'extend', metavar='<string LIST>',
+                  help = 'heading of columns containing tensor field values')
+parser.add_option('-s','--spherical',
+                  dest = 'spherical',
+                  action = 'store_true',
+                  help = 'report spherical part of tensor (hydrostatic component, pressure)')
 
 (options,filenames) = parser.parse_args()
 
 if options.tensor == None:
   parser.error('no data column specified...')
 
-datainfo = {                                                                                        # list of requested labels per datatype
-             'tensor':     {'len':9,
-                            'label':[]},
-           }
+# --- loop over input files -------------------------------------------------------------------------
 
-datainfo['tensor']['label'] += options.tensor
+if filenames == []: filenames = ['STDIN']
 
-# ------------------------------------------ setup file handles ------------------------------------
-files = []
-if filenames == []:
-  files.append({'name':'STDIN', 'input':sys.stdin, 'output':sys.stdout, 'croak':sys.stderr})
-else:
-  for name in filenames:
-    if os.path.exists(name):
-      files.append({'name':name, 'input':open(name), 'output':open(name+'_tmp','w'), 'croak':sys.stderr})
+for name in filenames:
+  if not (name == 'STDIN' or os.path.exists(name)): continue
+  table = damask.ASCIItable(name = name, outname = name+'_tmp',
+                            buffered = False)
+  table.croak('\033[1m'+scriptName+'\033[0m'+(': '+name if name != 'STDIN' else ''))
 
-# ------------------------------------------ loop over input files ---------------------------------
-for file in files:
-  if file['name'] != 'STDIN': file['croak'].write('\033[1m'+scriptName+'\033[0m: '+file['name']+'\n')
-  else: file['croak'].write('\033[1m'+scriptName+'\033[0m\n')
+# ------------------------------------------ read header ------------------------------------------
 
-  table = damask.ASCIItable(file['input'],file['output'],False)                                     # make unbuffered ASCII_table
-  table.head_read()                                                                                 # read ASCII header info
+  table.head_read()
+
+# ------------------------------------------ sanity checks ----------------------------------------
+
+  items = {
+            'tensor': {'dim': 9, 'shape': [3,3], 'labels':options.tensor, 'active':[], 'column': []},
+          }
+  errors  = []
+  remarks = []
+  column = {}
+  
+  for type, data in items.iteritems():
+    for what in data['labels']:
+      dim = table.label_dimension(what)
+      if dim != data['dim']: remarks.append('column {} is not a {}.'.format(what,type))
+      else:
+        items[type]['active'].append(what)
+        items[type]['column'].append(table.label_index(what))
+
+  if remarks != []: table.croak(remarks)
+  if errors  != []:
+    table.croak(errors)
+    table.close(dismiss = True)
+    continue
+
+# ------------------------------------------ assemble header --------------------------------------
+
   table.info_append(scriptID + '\t' + ' '.join(sys.argv[1:]))
-
-  active = []
-  column = defaultdict(dict)
-
-  for label in datainfo['tensor']['label']:
-    key = '1_%s'%label
-    if key not in table.labels:
-      file['croak'].write('column %s not found...\n'%key)
-    else:
-      active.append(label)
-      column[label] = table.labels.index(key)                                                       # remember columns of requested data
-
-# ------------------------------------------ assemble header ---------------------------------------
-  for label in active:
-    table.labels_append(['%i_dev(%s)'%(i+1,label) for i in xrange(9)])                              # extend ASCII header with new labels
-    if(options.hydrostatic): table.labels_append('sph(%s)'%label)
+  for type, data in items.iteritems():
+    for label in data['active']:
+      table.labels_append(['{}_dev({})'.format(i+1,label) for i in xrange(data['dim'])] + \
+                         (['sph({})'.format(label)] if options.spherical else []))                  # extend ASCII header with new labels
   table.head_write()
 
 # ------------------------------------------ process data ------------------------------------------
+
   outputAlive = True
   while outputAlive and table.data_read():                                                          # read next data line of ASCII table
-    for label in active:
-      myTensor = map(float,table.data[column[label]:
-                                      column[label]+datainfo['tensor']['len']])
-      table.data_append(deviator(myTensor))
-      if(options.hydrostatic): table.data_append(oneThird*(myTensor[0]+myTensor[4]+myTensor[8]))
+    for type, data in items.iteritems():
+      for column in data['column']:
+        table.data_append(deviator(map(float,table.data[column:
+                                                        column+data['dim']]),options.spherical))
     outputAlive = table.data_write()                                                                # output processed line
 
-# ------------------------------------------ output result -----------------------------------------
-  outputAlive and table.output_flush()                                                              # just in case of buffered ASCII table
+# ------------------------------------------ output finalization -----------------------------------
 
-  table.input_close()                                                                               # close input ASCII table (works for stdin)
-  table.output_close()                                                                              # close output ASCII table (works for stdout)
-  if file['name'] != 'STDIN':
-    os.rename(file['name']+'_tmp',file['name'])                                                     # overwrite old one with tmp new
+  table.close()                                                                                     # close input ASCII table (works for stdin)
+  if name != 'STDIN': os.rename(name+'_tmp',name)                                                   # overwrite old one with tmp new

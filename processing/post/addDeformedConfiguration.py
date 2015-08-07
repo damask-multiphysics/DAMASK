@@ -16,16 +16,23 @@ scriptName = os.path.splitext(scriptID.split()[1])[0]
 
 parser = OptionParser(option_class=damask.extendableOption, usage='%prog options file[s]', description = """
 Add deformed configuration of given initial coordinates.
-Operates on periodic ordered three-dimensional data sets.
+Operates on periodic three-dimensional x,y,z-ordered data sets.
 
 """, version = scriptID)
 
-parser.add_option('-c','--coordinates', dest='coords', metavar='string',
-                  help='column label of coordinates [%default]')
-parser.add_option('-f','--defgrad',     dest='defgrad', metavar='string',
-                  help='column label of deformation gradient [%default]')
-parser.add_option('--scaling', dest='scaling', type='float', nargs=3, , metavar = ' '.join(['float']*3),
-                  help='x/y/z scaling of displacment fluctuation')
+parser.add_option('-c','--coordinates',
+                  dest = 'coords',
+                  type = 'string', metavar = 'string',
+                  help = 'column label of coordinates [%default]')
+parser.add_option('-f','--defgrad',
+                  dest = 'defgrad',
+                  type = 'string', metavar = 'string',
+                  help = 'column label of deformation gradient [%default]')
+parser.add_option('--scaling',
+                  dest = 'scaling',
+                  type = 'float', nargs = 3, metavar = ' '.join(['float']*3),
+                  help = 'x/y/z scaling of displacement fluctuation')
+
 parser.set_defaults(coords  = 'ipinitialcoord',
                     defgrad = 'f',
                     scaling = [1.,1.,1.],
@@ -34,89 +41,75 @@ parser.set_defaults(coords  = 'ipinitialcoord',
 (options,filenames) = parser.parse_args()
 
 # --- loop over input files -------------------------------------------------------------------------
-if filenames == []:
-  filenames = ['STDIN']
+
+if filenames == []: filenames = ['STDIN']
 
 for name in filenames:
-  if name == 'STDIN':
-    file = {'name':'STDIN', 'input':sys.stdin, 'output':sys.stdout, 'croak':sys.stderr}
-    file['croak'].write('\033[1m'+scriptName+'\033[0m\n')
-  else:
-    if not os.path.exists(name): continue
-    file = {'name':name, 'input':open(name), 'output':open(name+'_tmp','w'), 'croak':sys.stderr}
-    file['croak'].write('\033[1m'+scriptName+'\033[0m: '+file['name']+'\n')
+  if not (name == 'STDIN' or os.path.exists(name)): continue
+  table = damask.ASCIItable(name = name, outname = name+'_tmp',
+                            buffered = False)
+  table.croak('\033[1m'+scriptName+'\033[0m'+(': '+name if name != 'STDIN' else ''))
 
-  table = damask.ASCIItable(file['input'],file['output'],buffered=False)                            # make unbuffered ASCII_table
-  table.head_read()                                                                                 # read ASCII header info
-  table.info_append(scriptID + '\t' + ' '.join(sys.argv[1:]))
+# ------------------------------------------ read header ------------------------------------------
 
-# --------------- figure out columns to process  ---------------------------------------------------
+  table.head_read()
 
-  if table.label_dimension(options.coords) != 3:
-    file['croak'].write('no coordinate vector (1/2/3_%s) found...\n'%options.coords)
-    continue
-  if table.label_dimension(options.defgrad) != 9:
-    file['croak'].write('no deformation gradient tensor (1..9_%s) found...\n'%options.defgrad)
+# ------------------------------------------ sanity checks ----------------------------------------
+
+  errors  = []
+  remarks = []
+  
+  if table.label_dimension(options.coords) != 3:  errors.append('coordinates {} are not a vector.'.format(options.coords))
+  else: colCoord = table.label_index(options.coords)
+
+  if table.label_dimension(options.defgrad) != 9: errors.append('deformation gradient {} is not a tensor.'.format(options.defgrad))
+  else: colF = table.label_index(options.defgrad)
+
+  if remarks != []: table.croak(remarks)
+  if errors  != []:
+    table.croak(errors)
+    table.close(dismiss = True)
     continue
 
 # --------------- figure out size and grid ---------------------------------------------------------
 
-  colCoords  = table.label_index(options.coords)                                                    # starting column of location data
-  colDefGrad = table.label_index(options.defgrad)                                                   # remember columns of requested data
+  table.data_readArray()
 
   coords = [{},{},{}]
-  while table.data_read():                                                                          # read next data line of ASCII table
+  for i in xrange(len(table.data)):  
     for j in xrange(3):
-      coords[j][str(table.data[colCoords+j])] = True                                                # remember coordinate along x,y,z
-  grid = np.array([len(coords[0]),\
-                   len(coords[1]),\
-                   len(coords[2]),],'i')                                                            # grid is number of distinct coordinates found
+      coords[j][str(table.data[i,colCoord+j])] = True
+  grid = np.array(map(len,coords),'i')
   size = grid/np.maximum(np.ones(3,'d'),grid-1.0)* \
             np.array([max(map(float,coords[0].keys()))-min(map(float,coords[0].keys())),\
                       max(map(float,coords[1].keys()))-min(map(float,coords[1].keys())),\
                       max(map(float,coords[2].keys()))-min(map(float,coords[2].keys())),\
                       ],'d')                                                                        # size from bounding box, corrected for cell-centeredness
 
-  for i, points in enumerate(grid):
-    if points == 1:
-      options.packing[i] = 1
-      options.shift[i]   = 0
-      mask = np.ones(3,dtype=bool)
-      mask[i]=0
-      size[i] = min(size[mask]/grid[mask])                                                          # third spacing equal to smaller of other spacing
-  
+  size = np.where(grid > 1, size, min(size[grid > 1]/grid[grid > 1]))                               # spacing for grid==1 equal to smallest among other spacings
+
   N = grid.prod()
 
-
 # ------------------------------------------ assemble header ---------------------------------------
-  table.labels_append(['%s_%s%s'%(coord+1,options.defgrad,options.coords) for coord in xrange(3)])  # extend ASCII header with new labels
+
+  table.info_append(scriptID + '\t' + ' '.join(sys.argv[1:]))
+  table.labels_append(['{}_{}.{}'%(coord+1,options.defgrad,options.coords) for coord in xrange(3)])  # extend ASCII header with new labels
   table.head_write()
 
-# ------------------------------------------ read deformation gradient field -----------------------
-  table.data_rewind()
-  F = np.array([0.0 for i in xrange(N*9)]).reshape([3,3]+list(grid))
-  idx = 0
-  while table.data_read():
-    (x,y,z) = damask.util.gridLocation(idx,grid)                                                    # figure out (x,y,z) position from line count
-    idx += 1
-    F[0:3,0:3,x,y,z] = np.array(map(float,table.data[colDefGrad:colDefGrad+9]),'d').reshape(3,3)
+# ------------------------------------------ process deformation gradient --------------------------
 
-# ------------------------------------------ calculate coordinates ---------------------------------
-  Favg = damask.core.math.tensorAvg(F)
-  centroids = damask.core.mesh.deformedCoordsFFT(size,F,Favg,options.scaling)
-  
-# ------------------------------------------ process data ------------------------------------------
-  table.data_rewind()
-  idx = 0
-  outputAlive = True
-  while outputAlive and table.data_read():                                                          # read next data line of ASCII table
-    (x,y,z) = damask.util.gridLocation(idx,grid)                                                    # figure out (x,y,z) position from line count
-    idx += 1
-    table.data_append(list(centroids[:,x,y,z]))
-    outputAlive = table.data_write()                                                                # output processed line
-  
+  F = table.data[:,colF:colF+9].transpose().reshape([3,3]+list(options.dimension),order='F')
+  Favg    = damask.core.math.tensorAvg(F)
+  centres = damask.core.mesh.deformedCoordsFFT(size,F,Favg,[1.0,1.0,1.0])
+
+  stack = [table.data,centres]
+
 # ------------------------------------------ output result -----------------------------------------
-  outputAlive and table.output_flush()                                                              # just in case of buffered ASCII table
 
-  table.close()                                                                                     # close tables
-  os.rename(file['name']+'_tmp',file['name'])                                                       # overwrite old one with tmp new
+  if len(stack) > 1: table.data = np.hstack(tuple(stack))
+  table.data_writeArray('%.12g')
+
+# ------------------------------------------ output finalization -----------------------------------  
+
+  table.close()                                                                                     # close ASCII tables
+  if name != 'STDIN': os.rename(name+'_tmp',name)                                                   # overwrite old one with tmp new

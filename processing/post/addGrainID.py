@@ -10,25 +10,6 @@ from optparse import OptionParser, OptionGroup, Option, SUPPRESS_HELP
 scriptID   = string.replace('$Id: addGrainID.py 2549 2013-07-10 09:13:21Z MPIE\p.eisenlohr $','\n','\\n')
 scriptName = os.path.splitext(scriptID.split()[1])[0]
 
-#--------------------------------------------------------------------------------------------------
-class extendedOption(Option):
-#--------------------------------------------------------------------------------------------------
-# used for definition of new option parser action 'extend', which enables to take multiple option arguments
-# taken from online tutorial http://docs.python.org/library/optparse.html
-
-    ACTIONS = Option.ACTIONS + ("extend",)
-    STORE_ACTIONS = Option.STORE_ACTIONS + ("extend",)
-    TYPED_ACTIONS = Option.TYPED_ACTIONS + ("extend",)
-    ALWAYS_TYPED_ACTIONS = Option.ALWAYS_TYPED_ACTIONS + ("extend",)
-
-    def take_action(self, action, dest, opt, value, values, parser):
-        if action == "extend":
-            lvalue = value.split(",")
-            values.ensure_value(dest, []).extend(lvalue)
-        else:
-            Option.take_action(self, action, dest, opt, value, values, parser)
-
-
 # -----------------------------
 class backgroundMessage(threading.Thread):
 # -----------------------------
@@ -67,117 +48,121 @@ class backgroundMessage(threading.Thread):
     self.print_message()
 
 
-parser = OptionParser(option_class=extendedOption, usage='%prog options [file[s]]', description = """
+parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
 Add grain index based on similiarity of crystal lattice orientation.
 """ + string.replace(scriptID,'\n','\\n')
 )
 
-parser.add_option('-r', '--radius', dest='radius', type='float',
+parser.add_option('-r', '--radius',
+                  dest = 'radius',
+                  type = 'float', metavar = 'float',
                   help = 'search radius')
-parser.add_option('-d', '--disorientation', dest='disorientation', type='float', metavar='ANGLE',
+parser.add_option('-d', '--disorientation',
+                  dest = 'disorientation',
+                  type = 'float', metavar = 'float',
                   help = 'disorientation threshold per grain [%default] (degrees)')
-parser.add_option('-s', '--symmetry', dest='symmetry', type='string',
+parser.add_option('-s', '--symmetry',
+                  dest = 'symmetry',
+                  type = 'string', metavar = 'string',
                   help = 'crystal symmetry [%default]')
-parser.add_option('-e', '--eulers',   dest='eulers', type='string', metavar='LABEL',
+parser.add_option('-e', '--eulers',
+                  dest = 'eulers',
+                  type = 'string', metavar = 'string',
                   help = 'Euler angles')
-parser.add_option(     '--degrees',   dest='degrees', action='store_true',
+parser.add_option(     '--degrees',
+                  dest = 'degrees',
+                  action = 'store_true',
                   help = 'Euler angles are given in degrees [%default]')
-parser.add_option('-m', '--matrix',   dest='matrix', type='string', metavar='LABEL',
+parser.add_option('-m', '--matrix',
+                  dest = 'matrix',
+                  type = 'string', metavar = 'string',
                   help = 'orientation matrix')
-parser.add_option('-a',               dest='a', type='string', metavar='LABEL',
+parser.add_option('-a',
+                  dest = 'a',
+                  type = 'string', metavar = 'string',
                   help = 'crystal frame a vector')
-parser.add_option('-b',               dest='b', type='string', metavar='LABEL',
+parser.add_option('-b',
+                  dest = 'b',
+                  type = 'string', metavar = 'string',
                   help = 'crystal frame b vector')
-parser.add_option('-c',               dest='c', type='string', metavar='LABEL',
+parser.add_option('-c',
+                  dest = 'c',
+                  type = 'string', metavar = 'string',
                   help = 'crystal frame c vector')
-parser.add_option('-q', '--quaternion', dest='quaternion', type='string', metavar='LABEL',
+parser.add_option('-q', '--quaternion',
+                  dest = 'quaternion',
+                  type = 'string', metavar = 'string',
                   help = 'quaternion')
-parser.add_option('-p', '--position', dest='position', type='string', metavar='LABEL',
+parser.add_option('-p', '--position',
+                  dest = 'coords',
+                  type = 'string', metavar = 'string',
                   help = 'spatial position of voxel [%default]')
 
-parser.set_defaults(symmetry = 'cubic')
-parser.set_defaults(position = 'pos')
-parser.set_defaults(degrees = False)
+parser.set_defaults(symmetry = 'cubic',
+                    coords   = 'pos',
+                    degrees  = False,
+                   )
 
 (options, filenames) = parser.parse_args()
 
 if options.radius == None:
   parser.error('no radius specified.')
 
-datainfo = {                                                               # list of requested labels per datatype
-             'tensor':     {'len':9,
-                            'label':[]},
-             'vector':     {'len':3,
-                            'label':[]},
-             'quaternion': {'len':4,
-                            'label':[]},
-           }
+input = [options.eulers     != None,
+         options.a          != None and \
+         options.b          != None and \
+         options.c          != None,
+         options.matrix     != None,
+         options.quaternion != None,
+        ]
 
-if options.eulers     != None:  datainfo['vector']['label'] += [options.eulers];                input = 'eulers'
-if options.a          != None and \
-   options.b          != None and \
-   options.c          != None:  datainfo['vector']['label'] += [options.a,options.b,options.c]; input = 'frame'
-if options.matrix     != None:  datainfo['tensor']['label'] += [options.matrix];                input = 'matrix'
-if options.quaternion != None:  datainfo['quaternion']['label'] += [options.quaternion];        input = 'quaternion'
+if np.sum(input) != 1: parser.error('needs exactly one input format.')
 
-datainfo['vector']['label'] += [options.position]
+(label,dim,inputtype) = [(options.eulers,3,'eulers'),
+                         ([options.a,options.b,options.c],[3,3,3],'frame'),
+                         (options.matrix,9,'matrix'),
+                         (options.quaternion,4,'quaternion'),
+                        ][np.where(input)[0][0]]                                                    # select input label that was requested
+toRadians = math.pi/180.0 if options.degrees else 1.0                                               # rescale degrees to radians
 
-toRadians = np.pi/180.0 if options.degrees else 1.0                                                                               # rescale degrees to radians
-cos_disorientation = np.cos(options.disorientation/2.0*toRadians)
+# --- loop over input files -------------------------------------------------------------------------
 
-# ------------------------------------------ setup file handles ---------------------------------------
+if filenames == []: filenames = ['STDIN']
 
-files = []
-if filenames == []:
-  files.append({'name':'STDIN',
-                'input':sys.stdin,
-                'output':sys.stdout,
-                'croak':sys.stderr})
-else:
-  for name in filenames:
-    if os.path.exists(name):
-      files.append({'name':name,
-                    'input':open(name),
-                    'output':open(name+'_tmp','w'),
-                    'croak':sys.stderr})
+for name in filenames:
+  if not (name == 'STDIN' or os.path.exists(name)): continue
+  table = damask.ASCIItable(name = name, outname = name+'_tmp',
+                            buffered = False)
+  table.croak('\033[1m'+scriptName+'\033[0m'+(': '+name if name != 'STDIN' else ''))
 
-#--- loop over input files ------------------------------------------------------------------------
+# ------------------------------------------ read header -------------------------------------------  
 
-for file in files:
-  if file['name'] != 'STDIN': file['croak'].write('\033[1m'+scriptName+'\033[0m: '+file['name']+'\n')
-  else: file['croak'].write('\033[1m'+scriptName+'\033[0m\n')
+  table.head_read()
 
-  table = damask.ASCIItable(file['input'],file['output'],buffered = False)  # make unbuffered ASCII_table
-  table.head_read()                                                         # read ASCII header info
+# ------------------------------------------ sanity checks -----------------------------------------
 
-# --------------- figure out columns to process
+  errors  = []
+  remarks = []
+  
+  if table.label_dimension(options.coords) != 3:       errors.append('coordinates {} are not a vector.'.format(options.coords))
+  if not np.all(table.label_dimension(label) == dim):  errors.append('input {} has wrong dimension {}.'.format(label,dim))
+  else:  column = table.label_index(label)
 
-  column = {}
-  missingColumns = False
-
-  for datatype,info in datainfo.items():
-    for label in info['label']:
-      key = list(set([label, '1_'+label]) & set(table.labels))                                      # check for intersection with table labels
-      if key == []:
-        file['croak'].write('column %s not found...\n'%label)
-        missingColumns = True                                                                       # break if label not found
-      else:
-        column[label] = table.labels.index(key[0])                                                  # remember columns of requested data
-
-  if missingColumns:
+  if remarks != []: table.croak(remarks)
+  if errors  != []:
+    table.croak(errors)
+    table.close(dismiss = True)
     continue
-
-  table.labels_append('grainID_%g'%options.disorientation)
 
 # ------------------------------------------ assemble header ---------------------------------------
 
-  table.info_append(string.replace(scriptID,'\n','\\n') + '\t' + ' '.join(sys.argv[1:]))
+  table.info_append(scriptID + '\t' + ' '.join(sys.argv[1:]))
+  table.labels_append('grainID_{}@{}'.format(','.join(labels),options.disorientation/toRadians))    # report orientation source and disorientation in degrees
   table.head_write()
 
-# ------------------------------------------ process data ---------------------------------------
+# ------------------------------------------ process data ------------------------------------------
 
-# ------------------------------------------ build KD tree ---------------------------------------
-
+# ------------------------------------------ build KD tree -----------------------------------------
 
 # --- start background messaging
 
@@ -186,178 +171,129 @@ for file in files:
 
   bg.set_message('reading positions...')
 
-  backup_readSize = table.__IO__['validReadSize']          # bad hack to circumvent overwriting by readArray...
-  backup_labels = table.labels                             # bad hack...
-  table.data_rewind()
-  table.data_readArray(range(column[options.position],
-                             column[options.position]+datainfo['vector']['len']))   # read position vectors
-#  file['croak'].write('%i\n'%(len(table.data)))
+  table.data_readArray(options.coords)                                                              # read position vectors
   grainID = -np.ones(len(table.data),dtype=int)
 
   start = tick = time.clock()
   bg.set_message('building KD tree...')
   kdtree = spatial.KDTree(copy.deepcopy(table.data))
-#  neighborhood = kdtree.query_ball_tree(kdtree,options.radius)
-#  file['croak'].write('%.2f seconds\n'%(time.clock()-tick))
-#  file['croak'].write('%i points\n'%(len(neighborhood)))
 
-
-# ------------------------------------------ assign grain IDs ---------------------------------------
-
-  orientations = []                                                         # quaternions found for grain
-  memberCounts = []                                                         # number of voxels in grain
-
-  table.data_rewind()
-  table.__IO__['validReadSize'] = backup_readSize           # bad hack to circumvent overwriting by readArray...
-  table.labels = backup_labels                              # bad hack...
-  p = 0                                                                     # point counter
-  g = 0                                                                     # grain counter
-  matchedID = -1
-  lastDistance = np.dot(kdtree.data[-1]-kdtree.data[0],kdtree.data[-1]-kdtree.data[0]) # (arbitrarily) use diagonal of cloud
+# ------------------------------------------ assign grain IDs --------------------------------------
 
   tick = time.clock()
-  while table.data_read():                                                  # read next data line of ASCII table
+
+  orientations = []                                                                                 # quaternions found for grain
+  memberCounts = []                                                                                 # number of voxels in grain
+  p = 0                                                                                             # point counter
+  g = 0                                                                                             # grain counter
+  matchedID = -1
+  lastDistance = np.dot(kdtree.data[-1]-kdtree.data[0],kdtree.data[-1]-kdtree.data[0])              # (arbitrarily) use diagonal of cloud
+
+  table.data_rewind()
+  while table.data_read():                                                                          # read next data line of ASCII table
 
     if p > 0 and p % 1000 == 0:
 
       time_delta = (time.clock()-tick) * (len(grainID) - p) / p
       bg.set_message('(%02i:%02i:%02i) processing point %i of %i (grain count %i)...'%(time_delta//3600,time_delta%3600//60,time_delta%60,p,len(grainID),len(orientations)))
 
-    if input == 'eulers':
-      o = damask.Orientation(Eulers=toRadians*\
-                 np.array(map(float,table.data[column[options.eulers]:\
-                                               column[options.eulers]+datainfo['vector']['len']])),
-                             symmetry=options.symmetry).reduced()
-    elif input == 'matrix':
-      o = damask.Orientation(matrix=\
-                 np.array([map(float,table.data[column[options.matrix]:\
-                                                column[options.matrix]+datainfo['tensor']['len']])]).reshape(np.sqrt(datainfo['tensor']['len']),
-                                                                                                             np.sqrt(datainfo['tensor']['len'])).transpose(),
-                             symmetry=options.symmetry).reduced()
-    elif input == 'frame':
-      o = damask.Orientation(matrix=\
-                 np.array([map(float,table.data[column[options.a]:\
-                                                column[options.a]+datainfo['vector']['len']] + \
-                                     table.data[column[options.b]:\
-                                                column[options.b]+datainfo['vector']['len']] + \
-                                     table.data[column[options.c]:\
-                                                column[options.c]+datainfo['vector']['len']]
-                                                    )]).reshape(3,3),
-                             symmetry=options.symmetry).reduced()
-    elif input == 'quaternion':
-      o = damask.Orientation(quaternion=\
-                 np.array(map(float,table.data[column[options.quaternion]:\
-                                               column[options.quaternion]+datainfo['quaternion']['len']])),
-                             symmetry=options.symmetry).reduced()
+    if inputtype == 'eulers':
+      o = damask.Orientation(Eulers   = np.array(map(float,table.data[column:column+3]))*toRadians,
+                             symmetry = options.symmetry).reduced()
+    elif inputtype == 'matrix':
+      o = damask.Orientation(matrix   = np.array(map(float,table.data[column:column+9])).reshape(3,3).transpose(),
+                             symmetry = options.symmetry).reduced()
+    elif inputtype == 'frame':
+      o = damask.Orientation(matrix = np.array(map(float,table.data[column[0]:column[0]+3] + \
+                                                         table.data[column[1]:column[1]+3] + \
+                                                         table.data[column[2]:column[2]+3])).reshape(3,3),
+                             symmetry = options.symmetry).reduced()
+    elif inputtype == 'quaternion':
+      o = damask.Orientation(quaternion = np.array(map(float,table.data[column:column+4])),
+                             symmetry   = options.symmetry).reduced()
 
     matched = False
 
 # check against last matched needs to be really picky. best would be to exclude jumps across the poke (checking distance between last and me?)
 # when walking through neighborhood first check whether grainID of that point has already been tested, if yes, skip!
 
-    if matchedID != -1:                                                       # has matched before?
+    if matchedID != -1:                                                                             # has matched before?
       matched = (o.quaternion.conjugated() * orientations[matchedID].quaternion).w > cos_disorientation
-#     if matchedID > 0:                                                       # has matched before?
-#       thisDistance = np.dot(kdtree.data[p]-kdtree.data[p-1],kdtree.data[p]-kdtree.data[p-1],)
-#       if thisDistance < 4.*lastDistance:                                    # about as close as last point pair?
-#         disorientation = o.disorientation(orientations[matchedID-1]).quaternion.w  # check whether former grainID matches now again
-#         matched = disorientation > cos_disorientation
-#       lastDistance = thisDistance
-#
 
     if not matched:
       alreadyChecked = {}
-      bestDisorientation = damask.Orientation(quaternion=np.array([0,0,0,1]),symmetry = options.symmetry)  # initialize to 180 deg rotation as worst case
-      for i in kdtree.query_ball_point(kdtree.data[p],options.radius):      # check all neighboring points
+      bestDisorientation = damask.Orientation(quaternion = np.array([0,0,0,1]),
+                                              symmetry = options.symmetry)                          # initialize to 180 deg rotation as worst case
+      for i in kdtree.query_ball_point(kdtree.data[p],options.radius):                              # check all neighboring points
         gID = grainID[i]
-        if gID != -1 and gID not in alreadyChecked:                         # an already indexed point belonging to a grain not yet tested?
-          alreadyChecked[gID] = True                                        # remember not to check again
-          disorientation = o.disorientation(orientations[gID])              # compare against that grain's orientation
+        if gID != -1 and gID not in alreadyChecked:                                                 # an already indexed point belonging to a grain not yet tested?
+          alreadyChecked[gID] = True                                                                # remember not to check again
+          disorientation = o.disorientation(orientations[gID])                                      # compare against that grain's orientation
           if disorientation.quaternion.w > cos_disorientation and \
-             disorientation.quaternion.w >= bestDisorientation.quaternion.w:  # within disorientation threshold and better than current best?
+             disorientation.quaternion.w >= bestDisorientation.quaternion.w:                        # within disorientation threshold and better than current best?
             matched = True
-            matchedID = gID                                                 # remember that grain
-#            file['croak'].write('%i %f '%(matchedID,disorientation.quaternion.w))
-
+            matchedID = gID                                                                         # remember that grain
             bestDisorientation = disorientation
 
-    if not matched:                                                         # no match -> new grain found
-      memberCounts += [1]                                                   # start new membership counter
-      orientations += [o]                                                   # initialize with current orientation
+    if not matched:                                                                                 # no match -> new grain found
+      memberCounts += [1]                                                                           # start new membership counter
+      orientations += [o]                                                                           # initialize with current orientation
       matchedID = g
-      g += 1                                                                # increment grain counter
-#      file['croak'].write('+')
+      g += 1                                                                                        # increment grain counter
 
-    else:                                                                   # did match existing grain
+    else:                                                                                           # did match existing grain
       memberCounts[matchedID] += 1
-#      file['croak'].write('got back %s is close by %f to %s\n'%(np.degrees(bestQ.asEulers()),np.degrees(2*np.arccos(bestDisorientation.quaternion.w)),np.degrees(bestFormerQ.asEulers())))
-#      file['croak'].write('.%i %s'%(matchedID, orientations[matchedID-1].quaternion))
-#      M = (1. - 1./memberCounts[matchedID-1]) * bestFormerQ.asM() + 1./memberCounts[matchedID-1] * bestQ.asM() # 4x4 matrix holding weighted quaternion outer products per grain
-#      w,v = np.linalg.eigh(M)
-#      avgQ = damask.Orientation(quaternion=v[:,w.argmax()],symmetry=options.symmetry)
-#      file['croak'].write('new avg has misori of %f\n'%np.degrees(2*np.arccos(orientations[matchedID-1].disorientation(avgQ)[0].quaternion.w)))
-#      orientations[matchedID-1].quaternion = damask.Quaternion(v[:,w.argmax()])
-#      orientations[matchedID-1] = damask.Orientation(quaternion = bestDisorientation.quaternion**(1./memberCounts[matchedID-1]) \
-#                                                                * orientations[matchedID-1].quaternion,
-#                                                     symmetry = options.symmetry)   # adjust average orientation taking newest member into account
-#      file['croak'].write(' stored --> %s\n'%(np.degrees(orientations[matchedID-1].quaternion.asEulers())))
-#      file['croak'].write('.')
 
-    grainID[p] = matchedID                                                  # remember grain index assigned to point
-    p += 1                                                                  # increment point
+    grainID[p] = matchedID                                                                          # remember grain index assigned to point
+    p += 1                                                                                          # increment point
 
-  bg.set_message('identifying similar orientations among %i grains...'%(len(orientations)))
+  bg.set_message('identifying similar orientations among {} grains...'.format(len(orientations)))
 
   memberCounts = np.array(memberCounts)
   similarOrientations = [[] for i in xrange(len(orientations))]
 
-  for i,orientation in enumerate(orientations):                             # compare each identified orientation...
-    for j in xrange(i+1,len(orientations)):                                 # ...against all others that were defined afterwards
-      if orientation.disorientation(orientations[j]).quaternion.w > cos_disorientation:      # similar orientations in both grainIDs?
-        similarOrientations[i].append(j)                                    # remember in upper triangle...
-        similarOrientations[j].append(i)                                    # ...and lower triangle of matrix
+  for i,orientation in enumerate(orientations):                                                     # compare each identified orientation...
+    for j in xrange(i+1,len(orientations)):                                                         # ...against all others that were defined afterwards
+      if orientation.disorientation(orientations[j]).quaternion.w > cos_disorientation:             # similar orientations in both grainIDs?
+        similarOrientations[i].append(j)                                                            # remember in upper triangle...
+        similarOrientations[j].append(i)                                                            # ...and lower triangle of matrix
 
     if similarOrientations[i] != []:
-      bg.set_message('grainID %i is as: %s'%(i,' '.join(map(lambda x:str(x),similarOrientations[i]))))
+      bg.set_message('grainID {} is as: {}'.format(i,' '.join(map(lambda x:str(x),similarOrientations[i]))))
 
   stillShifting = True
   while stillShifting:
     stillShifting = False
     tick = time.clock()
 
-    for p,gID in enumerate(grainID):                                        # walk through all points
+    for p,gID in enumerate(grainID):                                                                # walk through all points
       if p > 0 and p % 1000 == 0:
 
         time_delta = (time.clock()-tick) * (len(grainID) - p) / p
         bg.set_message('(%02i:%02i:%02i) shifting ID of point %i out of %i (grain count %i)...'%(time_delta//3600,time_delta%3600//60,time_delta%60,p,len(grainID),len(orientations)))
-      if similarOrientations[gID] != []:                                    # orientation of my grainID is similar to someone else?
-        similarNeighbors = defaultdict(int)                                 # dict holding frequency of neighboring grainIDs that share my orientation (freq info not used...)
-        for i in kdtree.query_ball_point(kdtree.data[p],options.radius):    # check all neighboring points
-          if grainID[i] in similarOrientations[gID]:                        # neighboring point shares my orientation?
-            similarNeighbors[grainID[i]] += 1                               # remember its grainID
-        if similarNeighbors != {}:                                          # found similar orientation(s) in neighborhood
-          candidates = np.array([gID]+similarNeighbors.keys())              # possible replacement grainIDs for me
-          grainID[p] = candidates[np.argsort(memberCounts[candidates])[-1]] # adopt ID that is most frequent in overall dataset
-          memberCounts[gID]        -= 1                                     # my former ID loses one fellow
-          memberCounts[grainID[p]] += 1                                     # my new ID gains one fellow
-          bg.set_message('%i:%i --> %i'%(p,gID,grainID[p]))                 # report switch of grainID
+      if similarOrientations[gID] != []:                                                            # orientation of my grainID is similar to someone else?
+        similarNeighbors = defaultdict(int)                                                         # dict holding frequency of neighboring grainIDs that share my orientation (freq info not used...)
+        for i in kdtree.query_ball_point(kdtree.data[p],options.radius):                            # check all neighboring points
+          if grainID[i] in similarOrientations[gID]:                                                # neighboring point shares my orientation?
+            similarNeighbors[grainID[i]] += 1                                                       # remember its grainID
+        if similarNeighbors != {}:                                                                  # found similar orientation(s) in neighborhood
+          candidates = np.array([gID]+similarNeighbors.keys())                                      # possible replacement grainIDs for me
+          grainID[p] = candidates[np.argsort(memberCounts[candidates])[-1]]                         # adopt ID that is most frequent in overall dataset
+          memberCounts[gID]        -= 1                                                             # my former ID loses one fellow
+          memberCounts[grainID[p]] += 1                                                             # my new ID gains one fellow
+          bg.set_message('{}:{} --> {}'.format(p,gID,grainID[p]))                                   # report switch of grainID
           stillShifting = True
 
   table.data_rewind()
   p = 0
-  while table.data_read():                                                  # read next data line of ASCII table
-    table.data_append(1+grainID[p])                                         # add grain ID
-    table.data_write()                                                      # output processed line
+  while table.data_read():                                                                          # read next data line of ASCII table
+    table.data_append(1+grainID[p])                                                                 # add grain ID
+    table.data_write()                                                                              # output processed line
     p += 1
 
-  bg.set_message('done after %i seconds'%(time.clock()-start))
+  bg.set_message('done after {} seconds'.format(time.clock()-start))
 
-#  for i,o in enumerate(orientations):                                       # croak about average grain orientations
-#    file['croak'].write('%i: %s\n'%(i,' '.join(map(str,o.quaternion.asEulers()))))
+# ------------------------------------------ output finalization -----------------------------------  
 
-# ------------------------------------------ output result ---------------------------------------
-
-  table.output_flush()                                                      # just in case of buffered ASCII table
-  table.close()                                                             # close ASCII tables
-  if file['name'] != 'STDIN':
-    os.rename(file['name']+'_tmp',file['name'])                             # overwrite old one with tmp new
+  table.close()                                                                                     # close ASCII tables
+  if name != 'STDIN': os.rename(name+'_tmp',name)                                                   # overwrite old one with tmp new

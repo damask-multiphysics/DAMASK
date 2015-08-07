@@ -32,36 +32,62 @@ Generate geometry description and material configuration from position, phase, a
 
 """, version = scriptID)
 
-parser.add_option('--coordinates',      dest='coordinates', type='string', metavar='string',
-                  help='coordinates label')
-parser.add_option('--phase',            dest='phase', type='string', metavar='string',
-                  help='phase label')
-parser.add_option('-t', '--tolerance', dest='tolerance', type='float', metavar='float',
+parser.add_option('--coordinates',
+                  dest = 'coordinates',
+                  type = 'string', metavar = 'string',
+                  help = 'coordinates label')
+parser.add_option('--phase',
+                  dest = 'phase',
+                  type = 'string', metavar = 'string',
+                  help = 'phase label')
+parser.add_option('-t', '--tolerance',
+                  dest = 'tolerance',
+                  type = 'float', metavar = 'float',
                   help = 'angular tolerance for orientation squashing [%default]')
-parser.add_option('-e', '--eulers',     dest='eulers', metavar='string',
+parser.add_option('-e', '--eulers',
+                  dest = 'eulers',
+                  type = 'string', metavar = 'string',
                   help = 'Euler angles label')
-parser.add_option('-d', '--degrees',    dest='degrees', action='store_true',
+parser.add_option('-d', '--degrees',
+                  dest = 'degrees',
+                  action = 'store_true',
                   help = 'angles are given in degrees [%default]')
-parser.add_option('-m', '--matrix',     dest='matrix', metavar='string',
+parser.add_option('-m', '--matrix',
+                  dest = 'matrix',
+                  type = 'string', metavar = 'string',
                   help = 'orientation matrix label')
-parser.add_option('-a',                 dest='a', metavar='string',
+parser.add_option('-a',
+                  dest='a',
+                  type = 'string', metavar = 'string',
                   help = 'crystal frame a vector label')
-parser.add_option('-b',                 dest='b', metavar='string',
+parser.add_option('-b',
+                  dest='b',
+                  type = 'string', metavar = 'string',
                   help = 'crystal frame b vector label')
-parser.add_option('-c',                 dest='c', metavar='string',
+parser.add_option('-c',
+                  dest = 'c',
+                  type =  'string', metavar='string',
                   help = 'crystal frame c vector label')
-parser.add_option('-q', '--quaternion', dest='quaternion', metavar='string',
+parser.add_option('-q', '--quaternion',
+                  dest = 'quaternion',
+                  type = 'string', metavar='string',
                   help = 'quaternion label')
-parser.add_option(      '--axes', dest='axes', nargs=3, metavar=' '.join(['string']*3),
+parser.add_option('--axes',
+                  dest = 'axes',
+                  type = 'string', nargs = 3, metavar = ' '.join(['string']*3),
                   help = 'orientation coordinate frame in terms of position coordinate frame [same]')
-parser.add_option('-s', '--symmetry',   dest='symmetry', action='extend',
-                  metavar='<string LIST>',
-                  help = 'crystal symmetry [%s] {%s} '%(damask.Symmetry.lattices[-1],
-                                                        ', '.join(damask.Symmetry.lattices[1:])))
-parser.add_option('--homogenization',   dest='homogenization', type='int', metavar='int',
-                  help='homogenization index to be used [%default]')
-parser.add_option('--crystallite',      dest='crystallite', type='int', metavar='int',
-                  help='crystallite index to be used [%default]')
+parser.add_option('-s', '--symmetry',
+                  dest = 'symmetry',
+                  action = 'extend', metavar = '<string LIST>',
+                  help = 'crystal symmetry %default {{{}}} '.format(', '.join(damask.Symmetry.lattices[1:])))
+parser.add_option('--homogenization',
+                  dest = 'homogenization',
+                  type = 'int', metavar = 'int',
+                  help = 'homogenization index to be used [%default]')
+parser.add_option('--crystallite',
+                  dest = 'crystallite',
+                  type = 'int', metavar = 'int',
+                  help = 'crystallite index to be used [%default]')
 
 parser.set_defaults(symmetry       = [damask.Symmetry.lattices[-1]],
                     tolerance      = 0.0,
@@ -82,7 +108,7 @@ input = [options.eulers     != None,
 
 if np.sum(input) != 1: parser.error('needs exactly one orientation input format...')
 if options.axes != None and not set(options.axes).issubset(set(['x','+x','-x','y','+y','-y','z','+z','-z'])):
-  parser.error('invalid axes %s %s %s'%tuple(options.axes))
+  parser.error('invalid axes {axes[0]} {axes[1]} {axes[2]}'.format(axes=options.axes))
 
 (label,dim,inputtype) = [(options.eulers,3,'eulers'),
                          ([options.a,options.b,options.c],[3,3,3],'frame'),
@@ -90,36 +116,33 @@ if options.axes != None and not set(options.axes).issubset(set(['x','+x','-x','y
                          (options.quaternion,4,'quaternion'),
                         ][np.where(input)[0][0]]                                                    # select input label that was requested
 toRadians = math.pi/180.0 if options.degrees else 1.0                                               # rescale degrees to radians
-options.tolerance *= toRadians                                                                      # angular tolerance in radians
+options.tolerance *= toRadians                                                                      # ensure angular tolerance in radians
 
 # --- loop over input files -------------------------------------------------------------------------
-if filenames == []:
-  filenames = ['STDIN']
+
+if filenames == []: filenames = ['STDIN']
 
 for name in filenames:
-  if name == 'STDIN':
-    file = {'name':'STDIN', 'input':sys.stdin, 'output':sys.stdout, 'croak':sys.stderr}
-    file['croak'].write('\033[1m'+scriptName+'\033[0m\n')
-  else:
-    if not os.path.exists(name): continue
-    file = {'name':name,
-            'input':open(name),
-            'output':open(name + '_tmp','w'),
-            'croak':sys.stderr}
-    file['croak'].write('\033[1m'+scriptName+'\033[0m: '+file['name']+'\n')
+  if not (name == 'STDIN' or os.path.exists(name)): continue
+  table = damask.ASCIItable(name = name, outname = os.path.splitext(name)[0] + '.geom',
+                            buffered = False)
+  table.croak('\033[1m'+scriptName+'\033[0m'+(': '+name if name != 'STDIN' else ''))
 
-  table = damask.ASCIItable(file['input'],file['output'],buffered=False)                            # make unbuffered ASCII_table
+# ------------------------------------------ read head ---------------------------------------  
+
   table.head_read()                                                                                 # read ASCII header info
+
+# ------------------------------------------ sanity checks ---------------------------------------  
 
   errors = []
   if table.label_dimension(options.coordinates) != 2:
-    errors.append('coordinates %s need to have two dimensions...'%options.coordinates)
+    errors.append('coordinates {} need to have two dimensions.'.format(options.coordinates))
   if not np.all(table.label_dimension(label) == dim):
-    errors.append('orientation %s needs to have dimension %i...\n'%(label,dim))
+    errors.append('orientation {} needs to have dimension {}.'.format(label,dim))
   if options.phase != None and table.label_dimension(options.phase) != 1:
-    errors.append('phase column %s is not scalar...'%options.phase)
+    errors.append('phase column {} is not scalar.'.format(options.phase))
   
-  if errors == []:
+  if errors == []:                                                                                # so far no errors?
     table.data_readArray([options.coordinates,label]+([] if options.phase == None else [options.phase]))
     
     if options.phase == None:
@@ -135,10 +158,10 @@ for name in filenames:
     if    nX*nY != len(table.data) \
        or np.any(np.abs(np.log10((coordsX[1:]-coordsX[:-1])/dX)) > 0.01) \
        or np.any(np.abs(np.log10((coordsY[1:]-coordsY[:-1])/dY)) > 0.01):
-      errors.append('data is not on square grid...')
+      errors.append('data is not on square grid.')
   
   if errors != []:
-    file['croak'].write('\n'.join(errors)+'\n')
+    table.croak(errors)
     table.close(dismiss = True)
     continue
   
@@ -149,7 +172,7 @@ for name in filenames:
   index = np.lexsort((table.data[:,0],table.data[:,1]))                                           # index of rank when sorting x fast, y slow
   rank  = np.argsort(index)                                                                       # rank of index
   KDTree = scipy.spatial.KDTree((table.data[:,:2]-np.array([coordsX[0],coordsY[0]])) \
-                                /               np.array([dX,dY]))                                # build KDTree with dX = dY = 1
+                                /              np.array([dX,dY]))                                 # build KDTree with dX = dY = 1
   
   microstructure = np.zeros(nX*nY,dtype='uint32')                                                 # initialize empty microstructure
   symQuats = []                                                                                   # empty list of sym equiv orientations
@@ -158,8 +181,7 @@ for name in filenames:
   myRank  = 0                                                                                     # rank of current grid point
   for y in xrange(nY):
     for x in xrange(nX):
-      if (myRank+1)%max(1,nX*nY/100) == 0:
-        file['croak'].write('.')
+      if (myRank+1)%(nX*nY/100.) < 1: table.croak('.',False)
       myData = table.data[index[myRank]]
       mySym = options.symmetry[min(int(myData[colPhase]),len(options.symmetry))-1]                # select symmetry from option (take last specified option for all with higher index)
       if inputtype == 'eulers':
@@ -189,21 +211,22 @@ for name in filenames:
       for n in neighbors:                                                                         # check each neighbor
         if myRank <= rank[n] or table.data[n,colPhase] != myData[colPhase]: continue              # skip myself, anyone further ahead (cannot yet have a grain ID), and other phases
         for q in symQuats[microstructure[rank[n]]-1]:
-          if abs((q*oInv).asAngleAxis()[0]) <= options.tolerance:                                      # found existing orientation resembling me
+          if abs((q*oInv).asAngleAxis()[0]) <= options.tolerance:                                 # found existing orientation resembling me
             microstructure[myRank] = microstructure[rank[n]]
             breaker = True; break
         if breaker: break
 
       if microstructure[myRank] == 0:                                                             # no other orientation resembled me
-        nGrains += 1
-        microstructure[myRank] = nGrains
+        nGrains += 1                                                                              # make new grain ...
+        microstructure[myRank] = nGrains                                                          # ... and assign to me
         symQuats.append(o.equivalentQuaternions())                                                # store all symmetrically equivalent orientations for future comparison
         phases.append(myData[colPhase])                                                           # store phase info for future reporting
 
       myRank += 1
 
-  file['croak'].write('\n')
-#--- generate header ----------------------------------------------------------------------------
+  table.croak('')
+
+# --- generate header ----------------------------------------------------------------------------
 
   info = {
           'grid':    np.array([nX,nY,1]),
@@ -217,14 +240,15 @@ for name in filenames:
           'microstructures': nGrains,
           'homogenization':  options.homogenization,
          }
-  
-  file['croak'].write('grid     a b c: %s\n'%(' x '.join(map(str,info['grid']))) + \
-                      'size     x y z: %s\n'%(' x '.join(map(str,info['size']))) + \
-                      'origin   x y z: %s\n'%(' : '.join(map(str,info['origin']))) + \
-                      'homogenization: %i\n'%info['homogenization'] + \
-                      'microstructures: %i\n'%info['microstructures'])
-  
-#--- write header ---------------------------------------------------------------------------------
+
+  table.croak(['grid     a b c:  %s'%(' x '.join(map(str,info['grid']))),
+               'size     x y z:  %s'%(' x '.join(map(str,info['size']))),
+               'origin   x y z:  %s'%(' : '.join(map(str,info['origin']))),
+               'homogenization:  %i'%info['homogenization'],
+               'microstructures: %i'%info['microstructures'],
+              ])
+    
+# --- write header ---------------------------------------------------------------------------------
 
   formatwidth = 1+int(math.log10(info['microstructures']))
 
@@ -246,11 +270,11 @@ for name in filenames:
   table.info_clear()
   table.info_append([
     scriptID + ' ' + ' '.join(sys.argv[1:]),
-    "grid\ta %i\tb %i\tc %i"%(info['grid'][0],info['grid'][1],info['grid'][2],),
-    "size\tx %f\ty %f\tz %f"%(info['size'][0],info['size'][1],info['size'][2],),
-    "origin\tx %f\ty %f\tz %f"%(info['origin'][0],info['origin'][1],info['origin'][2],),
-    "homogenization\t%i"%info['homogenization'],
-    "microstructures\t%i"%(info['microstructures']),
+    "grid\ta {grid[0]}\tb {grid[1]}\tc {grid[2]}".format(grid=info['grid']),
+    "size\tx {size[0]}\ty {size[1]}\tz {size[2]}".format(size=info['size']),
+    "origin\tx {origin[0]}\ty {origin[1]}\tz {origin[2]}".format(origin=info['origin']),
+    "homogenization\t{homog}".format(homog=info['homogenization']),
+    "microstructures\t{microstructures}".format(microstructures=info['microstructures']),
     config_header,
     ])
   table.head_write()
@@ -263,6 +287,3 @@ for name in filenames:
 #--- output finalization --------------------------------------------------------------------------
 
   table.close()
-  if file['name'] != 'STDIN':
-    os.rename(file['name']+'_tmp',
-              os.path.splitext(file['name'])[0] + '.geom')

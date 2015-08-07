@@ -19,59 +19,67 @@ Add column(s) containing Second Piola--Kirchhoff stress based on given column(s)
 
 """, version = scriptID)
 
-parser.add_option('-f','--defgrad',     dest='defgrad', metavar='string',
-                  help='heading of columns containing deformation gradient [%default]')
-parser.add_option('-p','--stress',      dest='stress', metavar='string',
-                  help='heading of columns containing first Piola--Kirchhoff stress [%default]')
-parser.set_defaults(defgrad = 'f')
-parser.set_defaults(stress  = 'p')
+parser.add_option('-f','--defgrad',
+                  dest = 'defgrad',
+                  type = 'string', metavar = 'string',
+                  help = 'heading of columns containing deformation gradient [%default]')
+parser.add_option('-p','--stress',
+                  dest = 'stress',
+                  type = 'string', metavar = 'string',
+                  help = 'heading of columns containing first Piola--Kirchhoff stress [%default]')
+
+parser.set_defaults(defgrad = 'f',
+                    stress  = 'p',
+                   )
 
 (options,filenames) = parser.parse_args()
 
-# ------------------------------------------ setup file handles ------------------------------------
-files = []
-if filenames == []:
-  files.append({'name':'STDIN', 'input':sys.stdin, 'output':sys.stdout, 'croak':sys.stderr})
-else:
-  for name in filenames:
-    if os.path.exists(name):
-      files.append({'name':name, 'input':open(name), 'output':open(name+'_tmp','w'), 'croak':sys.stderr})
+# --- loop over input files -------------------------------------------------------------------------
 
-# ------------------------------------------ loop over input files ---------------------------------
-for file in files:
-  if file['name'] != 'STDIN': file['croak'].write('\033[1m'+scriptName+'\033[0m: '+file['name']+'\n')
-  else: file['croak'].write('\033[1m'+scriptName+'\033[0m\n')
+if filenames == []: filenames = ['STDIN']
 
-  table = damask.ASCIItable(file['input'],file['output'],False)                                     # make unbuffered ASCII_table
-  table.head_read()                                                                                 # read ASCII header info
-  table.info_append(scriptID + '\t' + ' '.join(sys.argv[1:]))
+for name in filenames:
+  if not (name == 'STDIN' or os.path.exists(name)): continue
+  table = damask.ASCIItable(name = name, outname = name+'_tmp',
+                            buffered = False)
+  table.croak('\033[1m'+scriptName+'\033[0m'+(': '+name if name != 'STDIN' else ''))
 
-# --------------- figure out columns to process  ---------------------------------------------------
-  missingColumns = False
-  column={ 'defgrad': table.labels.index('1_'+options.defgrad), 
-           'stress':  table.labels.index('1_'+options.stress)}
-  for key in column:
-    if column[key]<1:
-      file['croak'].write('column %s not found...\n'%key)
-      missingColumns=True
-  if missingColumns: continue
+# ------------------------------------------ read header ------------------------------------------
+
+  table.head_read()
+
+# ------------------------------------------ sanity checks ----------------------------------------
+
+  errors = []
+  column = {}
+  
+  for tensor in [options.defgrad,options.stress]:
+    dim = table.label_dimension(tensor)
+    if   dim <  0: errors.append('column {} not found.'.format(tensor))
+    elif dim != 9: errors.append('column {} is not a tensor.'.format(tensor))
+    else:
+      column[tensor] = table.label_index(tensor)
+
+  if errors != []:
+    table.croak(errors)
+    table.close(dismiss = True)
+    continue
 
 # ------------------------------------------ assemble header --------------------------------------
+
+  table.info_append(scriptID + '\t' + ' '.join(sys.argv[1:]))
   table.labels_append(['%i_S'%(i+1) for i in xrange(9)])                                       # extend ASCII header with new labels
   table.head_write()
 
 # ------------------------------------------ process data ------------------------------------------
   outputAlive = True
   while outputAlive and table.data_read():                                                          # read next data line of ASCII table
-    F = np.array(map(float,table.data[column['defgrad']:column['defgrad']+9]),'d').reshape(3,3)
-    P = np.array(map(float,table.data[column['stress'] :column['stress']+9]),'d').reshape(3,3)
+    F = np.array(map(float,table.data[column[options.defgrad]:column[options.defgrad]+9]),'d').reshape(3,3)
+    P = np.array(map(float,table.data[column[options.stress ]:column[options.stress ]+9]),'d').reshape(3,3)
     table.data_append(list(np.dot(np.linalg.inv(F),P).reshape(9)))                                  # [S] =[P].[F-1]
     outputAlive = table.data_write()                                                                # output processed line
 
-# ------------------------------------------ output result -----------------------------------------
-  outputAlive and table.output_flush()                                                              # just in case of buffered ASCII table
+# ------------------------------------------ output finalization -----------------------------------
 
-  table.input_close()                                                                               # close input ASCII table (works for stdin)
-  table.output_close()                                                                              # close output ASCII table (works for stdout)
-  if file['name'] != 'STDIN':
-    os.rename(file['name']+'_tmp',file['name'])                                                     # overwrite old one with tmp new
+  table.close()                                                                                     # close input ASCII table (works for stdin)
+  if name != 'STDIN': os.rename(name+'_tmp',name)                                                   # overwrite old one with tmp new

@@ -19,24 +19,42 @@ Generate PNG image from data in given column vector containing RGB tuples.
 
 """, version = scriptID)
 
-parser.add_option('-l','--label', dest='label', type='string',
-                                  help='column containing RGB triplet')
-parser.add_option('-d','--dimension', dest='dimension', type='int', nargs=2,
-                                  help='data dimension (width height)')
-parser.add_option('--fliplr',     dest='flipLR', action='store_true',
-                                  help='flip around vertical axis')
-parser.add_option('--flipud',     dest='flipUD', action='store_true',
-                                  help='flip around horizontal axis')
-parser.add_option('--crop',       dest='crop', type='int', nargs=4, metavar=' '.join(['int']*4),
-                                  help='pixels cropped on left, right, top, bottom')
-parser.add_option('--show',       dest='show', action='store_true',
-                                  help='show resulting image')
-parser.add_option('-N','--pixelsize', dest='pixelsize', type='int',
-                                  help='pixels per data point')
-parser.add_option('-x','--pixelsizex', dest='pixelsizex', type='int',
-                                  help='pixels per data point along x')
-parser.add_option('-y','--pixelsizey', dest='pixelsizey', type='int',
-                                  help='pixels per data point along y')
+parser.add_option('-l','--label',
+                 dest = 'label',
+                 type = 'string', metavar = 'string',
+                 help = 'column containing RGB triplet')
+parser.add_option('-d','--dimension',
+                  dest = 'dimension',
+                  type = 'int', nargs = 2, metavar = 'int int',
+                  help = 'data dimension (width height)')
+parser.add_option('--fliplr',
+                  dest = 'flipLR',
+                  action = 'store_true',
+                  help = 'flip around vertical axis')
+parser.add_option('--flipud',
+                  dest = 'flipUD',
+                  action = 'store_true',
+                  help = 'flip around horizontal axis')
+parser.add_option('--crop',
+                  dest = 'crop',
+                  type = 'int', nargs = 4, metavar = ' '.join(['int']*4),
+                  help = 'pixels cropped on left, right, top, bottom')
+parser.add_option('-N','--pixelsize',
+                  dest = 'pixelsize',
+                  type = 'int', metavar = 'int',
+                  help = 'pixels per data point')
+parser.add_option('-x','--pixelsizex',
+                  dest = 'pixelsizex',
+                  type = 'int', metavar = 'int',
+                  help = 'pixels per data point along x')
+parser.add_option('-y','--pixelsizey',
+                  dest = 'pixelsizey',
+                  type = 'int', metavar = 'int',
+                  help = 'pixels per data point along y')
+parser.add_option('--show',
+                  dest = 'show',
+                  action = 'store_true',
+                  help = 'show resulting image')
 
 parser.set_defaults(label = None,
                     dimension = [],
@@ -55,27 +73,21 @@ if options.dimension == []: parser.error('dimension of data array missing')
 if options.pixelsize > 1: (options.pixelsizex,options.pixelsizey) = [options.pixelsize]*2
 
 # --- loop over input files -------------------------------------------------------------------------
-if filenames == []:
-  filenames = ['STDIN']
+
+if filenames == []: filenames = ['STDIN']
 
 for name in filenames:
-  if name == 'STDIN':
-    file = {'name':'STDIN', 'input':sys.stdin, 'output':sys.stdout, 'croak':sys.stderr}
-    file['croak'].write('\033[1m'+scriptName+'\033[0m\n')
-  else:
-    if not os.path.exists(name): continue
-    file = {'name':name,
-            'input':open(name),
-            'output':open(os.path.splitext(name)[0]+ \
-                         ('' if options.label == None else '_'+options.label)+ \
-                         '.png','w'),
-            'croak':sys.stderr}
-    file['croak'].write('\033[1m'+scriptName+'\033[0m: '+file['name']+'\n')
+  if not (name == 'STDIN' or os.path.exists(name)): continue
+  table = damask.ASCIItable(name = name,
+                            outname = None,
+                            buffered = False,
+                            labeled = options.label != None,
+                            readonly = True)
+  table.croak('\033[1m'+scriptName+'\033[0m'+(': '+name if name != 'STDIN' else ''))
 
-  table = damask.ASCIItable(file['input'],file['output'],
-                            buffered = False,                                                       # make unbuffered ASCII_table
-                            labels = True)
-  table.head_read()                                                                                 # read ASCII header info
+# ------------------------------------------ read header ------------------------------------------
+
+  table.head_read()
 
 # ------------------------------------------ process data ------------------------------------------
 
@@ -83,13 +95,13 @@ for name in filenames:
   
   missing_labels = table.data_readArray(options.label)
   if len(missing_labels) > 0:
-    errors.append('column%s %s not found'%('s' if len(missing_labels) > 1 else '',
-                                                ', '.join(missing_labels)))
+    errors.append('column{} {} not found'.format('s' if len(missing_labels) > 1 else '',
+                                                 ', '.join(missing_labels)))
   if table.label_dimension(options.label) != 3:
-    errors.append('column %s has wrong dimension'%options.label)
+    errors.append('column {} has wrong dimension'.format(options.label))
 
   if errors != []:
-    file['croak'].write('\n'.join(errors))
+    table.croak(errors)
     table.close(dismiss = True)                                                                     # close ASCII table file handles and delete output file
     continue
 
@@ -98,13 +110,13 @@ for name in filenames:
   if options.flipLR:          table.data = np.fliplr(table.data)
   if options.flipUD:          table.data = np.flipud(table.data)
 
-  table.data = table.data.\
-                          repeat(options.pixelsizex,axis=1).\
+  table.data = table.data.repeat(options.pixelsizex,axis=1).\
                           repeat(options.pixelsizey,axis=0)
 
   table.data *= 1. if np.any(table.data > 1.0) else 255.0                                          # ensure 8 bit data range
 
   (height,width,bands) = table.data.shape
+  table.croak('image dimension: {0} x {1}'.format(width,height))
 
   im = Image.fromarray(table.data.astype('uint8'), 'RGB').\
              crop((       options.crop[0],
@@ -114,7 +126,11 @@ for name in filenames:
 
 # ------------------------------------------ output result -----------------------------------------
 
-  im.save(file['output'],format = "PNG")
-  if options.show: im.show()
+  im.save(sys.stdout if name == 'STDIN' else
+          os.path.splitext(name)[0]+ \
+          ('' if options.label == None else '_'+options.label)+ \
+          '.png',
+          format = "PNG")
 
-  table.close()                                                                                    # close ASCII table file handles
+  table.close()                                                                                     # close ASCII table
+  if options.show: im.show()

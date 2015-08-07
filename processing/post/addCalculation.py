@@ -18,104 +18,111 @@ def unravel(item):
 # --------------------------------------------------------------------
 
 parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
-Add column(s) with derived values according to user defined arithmetic operation between column(s).
-Columns can be specified either by label or index. Use ';' for ',' in functions.
+Add column(s) with derived values according to user-defined arithmetic operation between column(s).
+Column labels are tagged by '#label#' in formulas. Use ';' for ',' in functions.
 Numpy is available as np.
 
-Example: distance to IP coordinates -- "math.sqrt( #ip.x#**2 + #ip.y#**2 + round(#ip.z#;3)**2 )"
+Special variables: #_row_# -- row index
+Examples: (1) magnitude of vector -- "np.linalg.norm(#vec#)" (2) rounded root of row number -- "round(math.sqrt(#_row_#);3)"
 
 """, version = scriptID)
 
-parser.add_option('-l','--label',   dest='labels', action='extend', metavar='<string LIST>',
-                  help='(list of) new column labels')
-parser.add_option('-f','--formula', dest='formulas', action='extend', metavar='<string LIST>',
-                  help='(list of) formulas corresponding to labels')
+parser.add_option('-l','--label',
+                  dest = 'labels',
+                  action = 'extend', metavar = '<string LIST>',
+                  help = '(list of) new column labels')
+parser.add_option('-f','--formula',
+                  dest = 'formulas',
+                  action = 'extend', metavar = '<string LIST>',
+                  help = '(list of) formulas corresponding to labels')
 
 (options,filenames) = parser.parse_args()
 
 if options.labels == None or options.formulas == None:
-  parser.error('no formulas and/or labels specified')
-elif len(options.labels) != len(options.formulas):
-  parser.error('number of labels (%i) and formulas (%i) do not match'%(len(options.labels),len(options.formulas)))
+  parser.error('no formulas and/or labels specified.')
+if len(options.labels) != len(options.formulas):
+  parser.error('number of labels ({}) and formulas ({}) do not match.'.format(len(options.labels),len(options.formulas)))
 
 for i in xrange(len(options.formulas)):
-  options.formulas[i]=options.formulas[i].replace(';',',')
+  options.formulas[i] = options.formulas[i].replace(';',',')
 
-# ------------------------------------------ setup file handles ------------------------------------
-files = []
-if filenames == []:
-  files.append({'name':'STDIN', 'input':sys.stdin, 'output':sys.stdout, 'croak':sys.stderr})
-else:
-  for name in filenames:
-    if os.path.exists(name):
-      files.append({'name':name, 'input':open(name), 'output':open(name+'_tmp','w'), 'croak':sys.stderr})
+# --- loop over input files -------------------------------------------------------------------------
 
-#--- loop over input files ------------------------------------------------------------------------
-for file in files:
-  if file['name'] != 'STDIN': file['croak'].write('\033[1m'+scriptName+'\033[0m: '+file['name']+'\n')
-  else: file['croak'].write('\033[1m'+scriptName+'\033[0m\n')
+if filenames == []: filenames = ['STDIN']
+
+for name in filenames:
+  if not (name == 'STDIN' or os.path.exists(name)): continue
+  table = damask.ASCIItable(name = name, outname = name+'_tmp',
+                            buffered = False)
+  table.croak('\033[1m'+scriptName+'\033[0m'+(': '+name if name != 'STDIN' else ''))
+
+# ------------------------------------------ read header -------------------------------------------  
+
+  table.head_read()
+
+# ------------------------------------------ build formulae ----------------------------------------
 
   specials = { \
                '_row_': 0,
              }
 
-  table = damask.ASCIItable(file['input'],file['output'],False)                                     # make unbuffered ASCII_table
-  table.head_read()                                                                                 # read ASCII header info
-  table.info_append(scriptID + '\t' + ' '.join(sys.argv[1:]))
-
   evaluator = {}
   brokenFormula = {}
   
   for label,formula in zip(options.labels,options.formulas):
-    interpolator = []
     for column in re.findall(r'#(.+?)#',formula):                                                   # loop over column labels in formula
-      formula = formula.replace('#'+column+'#','%f')
+      idx = table.label_index(column)
+      dim = table.label_dimension(column)
       if column in specials:
-        interpolator += ['specials["%s"]'%column]
-      elif column.isdigit():
-        if len(table.labels) > int(column):
-          interpolator += ['float(table.data[%i])'%(int(column))]
-        else:
-          file['croak'].write('column %s not found...\n'%column)
-          brokenFormula[label] = True
+        replacement = 'specials["{}"]'.format(column)
+      elif dim == 1:                                                                                # scalar input
+        replacement = 'float(table.data[{}])'.format(idx)                                           # take float value of data column
+      elif dim > 1:                                                                                 # multidimensional input (vector, tensor, etc.)
+        replacement = 'np.array(table.data[{}:{}],dtype=float)'.format(idx,idx+dim)                 # use (flat) array representation
       else:
-        try:
-          interpolator += ['float(table.data[%i])'%table.labels.index(column)]
-        except:
-          file['croak'].write('column %s not found...\n'%column)
-          brokenFormula[label] = True
+        table.croak('column {} not found...'.format(column))
+        brokenFormula[label] = True
+        break
+
+      formula = formula.replace('#'+column+'#',replacement)
     
     if label not in brokenFormula:
-      evaluator[label] = "'" + formula + "'%(" + ','.join(interpolator) + ")"
+      evaluator[label] = formula
 
 # ------------------------------------------ process data ------------------------------------------
-  firstLine=True 
+
+  firstLine   = True
   outputAlive = True
+
   while outputAlive and table.data_read():                                                          # read next data line of ASCII table
     specials['_row_'] += 1                                                                          # count row
+
 # ------------------------------------------ calculate one result to get length of labels  ---------
+
     if firstLine:
-      labelLen = {}
-      for label in options.labels:
-        labelLen[label] = np.size(eval(eval(evaluator[label])))
+      firstLine = False
+      labelDim  = {}
+      for label in [x for x in options.labels if x not in set(brokenFormula)]:
+        labelDim[label] = np.size(eval(evaluator[label]))
+        if labelDim[label] == 0: brokenFormula[label] = True
 
 # ------------------------------------------ assemble header ---------------------------------------
-      for label,formula in zip(options.labels,options.formulas):
-        if labelLen[label] == 0:
-          brokenFormula[label] = True
-        if label not in brokenFormula:
-          table.labels_append(['%i_%s'%(i+1,label) for i in xrange(labelLen[label])] if labelLen[label]>1
-                               else label)
-      table.head_write()
-      firstLine = False
 
-    for label in options.labels: table.data_append(unravel(eval(eval(evaluator[label]))))
+        if label not in brokenFormula:
+          table.labels_append(['{}_{}'.format(i+1,label) for i in xrange(labelDim[label])] if labelDim[label] > 1
+                               else label)
+
+      table.info_append(scriptID + '\t' + ' '.join(sys.argv[1:]))
+      table.head_write()
+
+# ------------------------------------------ process data ------------------------------------------
+
+    for label in [x for x in options.labels if x not in set(brokenFormula)]:
+      table.data_append(unravel(eval(evaluator[label])))
+#      table.data_append(unravel(eval(eval(evaluator[label]))))
     outputAlive = table.data_write()                                                                # output processed line
 
-# ------------------------------------------ output result -----------------------------------------
-  outputAlive and table.output_flush()                                                              # just in case of buffered ASCII table
+# ------------------------------------------ output finalization -----------------------------------  
 
-  table.input_close()                                                                               # close input ASCII table (works for stdin)
-  table.output_close()                                                                              # close output ASCII table (works for stdout)
-  if file['name'] != 'STDIN':
-    os.rename(file['name']+'_tmp',file['name'])                                                     # overwrite old one with tmp new
+  table.close()                                                                                     # close ASCII tables
+  if name != 'STDIN': os.rename(name+'_tmp',name)                                                   # overwrite old one with tmp new

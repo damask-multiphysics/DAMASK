@@ -12,54 +12,46 @@ scriptName = scriptID.split()[1]
 def integerFactorization(i):
 
   j = int(math.floor(math.sqrt(float(i))))
-  while (j>1 and int(i)%j != 0):
+  while j>1 and int(i)%j != 0:
     j -= 1
   return j
 
-def positiveRadians(angle):
 
-  angle = math.radians(float(angle))
-  while angle < 0.0:
-    angle += 2.0*math.pi
-
-  return angle
-
-
-def getHeader(sizeX,sizeY,step):
+def TSLheader(sizeX,sizeY,step):
   
-  return [ \
-  '# TEM_PIXperUM          1.000000', \
-  '# x-star                0.509548', \
-  '# y-star                0.795272', \
-  '# z-star                0.611799', \
-  '# WorkingDistance       18.000000', \
-  '#', \
-  '# Phase                 1', \
-  '# MaterialName          Al', \
-  '# Formula               Fe', \
-  '# Info', \
-  '# Symmetry              43', \
-  '# LatticeConstants      2.870 2.870 2.870  90.000  90.000  90.000', \
-  '# NumberFamilies        4', \
-  '# hklFamilies           1  1  0 1 0.000000 1', \
-  '# hklFamilies           2  0  0 1 0.000000 1', \
-  '# hklFamilies           2  1  1 1 0.000000 1', \
-  '# hklFamilies           3  1  0 1 0.000000 1', \
-  '# Categories            0 0 0 0 0 ', \
-  '#', \
-  '# GRID: SquareGrid', \
-  '# XSTEP: ' + str(step), \
-  '# YSTEP: ' + str(step), \
-  '# NCOLS_ODD: ' + str(sizeX), \
-  '# NCOLS_EVEN: ' + str(sizeX), \
-  '# NROWS: ' + str(sizeY), \
-  '#', \
-  '# OPERATOR: ODFsammpling', \
-  '#', \
-  '# SAMPLEID: ', \
-  '#', \
-  '# SCANID: ', \
-  '#', \
+  return [
+  '# TEM_PIXperUM          1.000000',
+  '# x-star                0.509548',
+  '# y-star                0.795272',
+  '# z-star                0.611799',
+  '# WorkingDistance       18.000000',
+  '#',
+  '# Phase                 1',
+  '# MaterialName          Al',
+  '# Formula               Fe',
+  '# Info',
+  '# Symmetry              43',
+  '# LatticeConstants      2.870 2.870 2.870  90.000  90.000  90.000',
+  '# NumberFamilies        4',
+  '# hklFamilies           1  1  0 1 0.000000 1',
+  '# hklFamilies           2  0  0 1 0.000000 1',
+  '# hklFamilies           2  1  1 1 0.000000 1',
+  '# hklFamilies           3  1  0 1 0.000000 1',
+  '# Categories            0 0 0 0 0 ',
+  '#',
+  '# GRID: SquareGrid',
+  '# XSTEP: ' + str(step),
+  '# YSTEP: ' + str(step),
+  '# NCOLS_ODD: ' + str(sizeX),
+  '# NCOLS_EVEN: ' + str(sizeX),
+  '# NROWS: ' + str(sizeY),
+  '#',
+  '# OPERATOR: ODFsammpling',
+  '#',
+  '# SAMPLEID: ',
+  '#',
+  '# SCANID: ',
+  '#',
   ]
 
 def binAsBins(bin,intervals):
@@ -91,8 +83,8 @@ def binAsEulers(bin,intervals,deltas,center):
 def directInvRepetitions(probability,scale):
   """ calculate number of samples drawn by direct inversion """
   nDirectInv = 0
-  for bin in range(len(probability)): # loop over bins
-    nDirectInv += int(round(probability[bin]*scale)) # calc repetition
+  for bin in range(len(probability)):                                                               # loop over bins
+    nDirectInv += int(round(probability[bin]*scale))                                                # calc repetition
   return nDirectInv
 
 
@@ -103,11 +95,11 @@ def directInvRepetitions(probability,scale):
 def directInversion (ODF,nSamples):
   """ ODF contains 'dV_V' (normalized to 1), 'center', 'intervals', 'limits' (in radians) """
   
-  nOptSamples = max(ODF['nNonZero'],nSamples)         # random subsampling if too little samples requested
+  nOptSamples = max(ODF['nNonZero'],nSamples)                                                       # random subsampling if too little samples requested
 
   nInvSamples = 0
   repetition = [None]*ODF['nBins']
-  probabilityScale = nOptSamples # guess
+  probabilityScale = nOptSamples                                                                    # guess
 
   scaleLower = 0.0
   nInvSamplesLower = 0
@@ -118,7 +110,7 @@ def directInversion (ODF,nSamples):
   while (\
       (scaleUpper-scaleLower > scaleUpper*1e-15 or nInvSamplesUpper < nOptSamples) and \
       nInvSamplesUpper != nOptSamples \
-      ): # closer match required?
+      ):                                                                                            # closer match required?
     if nInvSamplesUpper < nOptSamples:
       scaleLower,scaleUpper = scaleUpper,scaleUpper+incFactor*(scaleUpper-scaleLower)/2.0
       incFactor *= 2.0
@@ -128,36 +120,37 @@ def directInversion (ODF,nSamples):
       incFactor = 1.0
       nInvSamplesUpper = directInvRepetitions(ODF['dV_V'],scaleUpper)
     nIter += 1
-    file['croak'].write('%i:(%12.11f,%12.11f) %i <= %i <= %i\n'\
-                        %(nIter,scaleLower,scaleUpper,nInvSamplesLower,nOptSamples,nInvSamplesUpper))
+    table.croak('%i:(%12.11f,%12.11f) %i <= %i <= %i'%(nIter,scaleLower,scaleUpper,
+                                                         nInvSamplesLower,nOptSamples,nInvSamplesUpper))
   nInvSamples = nInvSamplesUpper
   scale = scaleUpper
-  file['croak'].write('created set of %i samples (%12.11f) with scaling %12.11f delivering %i\n'\
-                      %(nInvSamples,float(nInvSamples)/nOptSamples-1.0,scale,nSamples))
-  repetition = [None]*ODF['nBins'] # preallocate and clear
+  table.croak('created set of %i samples (%12.11f) with scaling %12.11f delivering %i'%(nInvSamples,
+                                                                                        float(nInvSamples)/nOptSamples-1.0,
+                                                                                        scale,nSamples))
+  repetition = [None]*ODF['nBins']                                                                  # preallocate and clear
     
-  for bin in range(ODF['nBins']): # loop over bins
-    repetition[bin] = int(round(ODF['dV_V'][bin]*scale)) # calc repetition
+  for bin in range(ODF['nBins']):                                                                   # loop over bins
+    repetition[bin] = int(round(ODF['dV_V'][bin]*scale))                                            # calc repetition
 
   # build set
   set = [None]*nInvSamples
   i = 0
   for bin in range(ODF['nBins']):
-    set[i:i+repetition[bin]] = [bin]*repetition[bin] # fill set with bin, i.e. orientation
-    i += repetition[bin] # advance set counter
+    set[i:i+repetition[bin]] = [bin]*repetition[bin]                                                # fill set with bin, i.e. orientation
+    i += repetition[bin]                                                                            # advance set counter
   
-  orientations = [None]*nSamples
-  reconstructedODF = [0.0]*ODF['nBins']
+  orientations     = np.zeros((nSamples,3),'f')
+  reconstructedODF = np.zeros(ODF['nBins'],'f')
   unitInc = 1.0/nSamples
   for j in range(nSamples):
     if (j == nInvSamples-1): ex = j
     else: ex = int(round(random.uniform(j+0.5,nInvSamples-0.5)))
     bin = set[ex]
-    bins = binAsBins(bin,ODF['interval'])
+    bins = binAsBins(bin,ODF['interval'])                                                           # PE: why are we doing this??
     Eulers = binAsEulers(bin,ODF['interval'],ODF['delta'],ODF['center'])
-    orientations[j] = '%g\t%g\t%g' %( math.degrees(Eulers[0]),math.degrees(Eulers[1]),math.degrees(Eulers[2]) )
+    orientations[j] = np.degrees(Eulers)
     reconstructedODF[bin] += unitInc
-    set[ex] = set[j] # exchange orientations
+    set[ex] = set[j]                                                                                # exchange orientations
   
   return orientations, reconstructedODF
 
@@ -169,8 +162,8 @@ def MonteCarloEulers (ODF,nSamples):
   
   countMC = 0
   maxdV_V = max(ODF['dV_V'])
-  orientations = [None]*nSamples
-  reconstructedODF = [0.0]*ODF['nBins']
+  orientations     = np.zeros((nSamples,3),'f')
+  reconstructedODF = np.zeros(ODF['nBins'],'f')
   unitInc = 1.0/nSamples
   
   for j in range(nSamples):
@@ -182,7 +175,7 @@ def MonteCarloEulers (ODF,nSamples):
     Eulers = [limit*random.random() for limit in ODF['limit']]
     bins = EulersAsBins(Eulers,ODF['interval'],ODF['delta'],ODF['center'])
     bin = binsAsBin(bins,ODF['interval'])
-    orientations[j] = '%g\t%g\t%g' %( math.degrees(Eulers[0]),math.degrees(Eulers[1]),math.degrees(Eulers[2]) )
+    orientations[j] = np.degrees(Eulers)
     reconstructedODF[bin] += unitInc
 
   return orientations, reconstructedODF, countMC
@@ -193,8 +186,8 @@ def MonteCarloBins (ODF,nSamples):
   
   countMC = 0
   maxdV_V = max(ODF['dV_V'])
-  orientations = [None]*nSamples
-  reconstructedODF = [0.0]*ODF['nBins']
+  orientations     = np.zeros((nSamples,3),'f')
+  reconstructedODF = np.zeros(ODF['nBins'],'f')
   unitInc = 1.0/nSamples
   
   for j in range(nSamples):
@@ -205,7 +198,7 @@ def MonteCarloBins (ODF,nSamples):
       MC  = maxdV_V*random.random()
       bin = int(ODF['nBins'] * random.random())
     Eulers = binAsEulers(bin,ODF['interval'],ODF['delta'],ODF['center'])
-    orientations[j] = '%g\t%g\t%g' %( math.degrees(Eulers[0]),math.degrees(Eulers[1]),math.degrees(Eulers[2]) )
+    orientations[j] = np.degrees(Eulers)
     reconstructedODF[bin] += unitInc
 
   return orientations, reconstructedODF
@@ -214,8 +207,8 @@ def MonteCarloBins (ODF,nSamples):
 def TothVanHoutteSTAT (ODF,nSamples):
   """ ODF contains 'dV_V' (normalized to 1), 'center', 'intervals', 'limits' (in radians) """
 
-  orientations = [None]*nSamples
-  reconstructedODF = [0.0]*ODF['nBins']
+  orientations     = np.zeros((nSamples,3),'f')
+  reconstructedODF = np.zeros(ODF['nBins'],'f')
   unitInc = 1.0/nSamples
   
   selectors = [random.random() for i in range(nSamples)]
@@ -229,11 +222,12 @@ def TothVanHoutteSTAT (ODF,nSamples):
     cumdV_V += ODF['dV_V'][bin]
     while indexSelector < nSamples and selectors[indexSelector] < cumdV_V:
       Eulers = binAsEulers(bin,ODF['interval'],ODF['delta'],ODF['center'])
-      orientations[countSamples] = '%g\t%g\t%g' %( math.degrees(Eulers[0]),math.degrees(Eulers[1]),math.degrees(Eulers[2]) )
+      orientations[countSamples] = np.degrees(Eulers)
       reconstructedODF[bin] += unitInc
       countSamples += 1
       indexSelector += 1
-  file['croak'].write('created set of %i when asked to deliver %i\n'%(countSamples,nSamples))
+
+  table.croak('created set of %i when asked to deliver %i'%(countSamples,nSamples))
   
   return orientations, reconstructedODF
 
@@ -242,73 +236,83 @@ def TothVanHoutteSTAT (ODF,nSamples):
 #                                MAIN
 # --------------------------------------------------------------------
 parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
-Transform linear binned data into Euler angles.
+Transform linear binned ODF data into given number of orientations.
 
 """, version = scriptID)
 
-parser.add_option('-n', '--nsamples', dest='number', type='int', metavar = 'int',
-                  help='number of orientations to be generated [%default]')
-parser.add_option('-a','--algorithm', dest='algorithm', type='string', metavar = 'string',
-                  help='sampling algorithm. IA: direct inversion, STAT: Van Houtte, MC: Monte Carlo. [%default].') #make choice
-parser.add_option('-p','--phase', dest='phase', type='int', metavar = 'int',
-                  help='phase index to be used [%default]')
-parser.add_option('--crystallite', dest='crystallite', type='int', metavar = 'int',
-                  help='crystallite index to be used [%default]')
-parser.add_option('-r', '--rnd', dest='randomSeed', type='int', metavar='int', \
-                  help='seed of random number generator [%default]')
-parser.add_option('--ang',       dest='ang', action='store_true',
-                  help='write .ang file [%default]')
-parser.set_defaults(randomSeed = None)
-parser.set_defaults(number      = 500)
-parser.set_defaults(algorithm   = 'IA')
-parser.set_defaults(phase       = 1)
-parser.set_defaults(crystallite = 1)
-parser.set_defaults(ang  = True)
+parser.add_option('-n', '--nsamples',
+                  dest = 'number',
+                  type = 'int', metavar = 'int',
+                  help = 'number of orientations to be generated [%default]')
+parser.add_option('-a','--algorithm',
+                  dest = 'algorithm',
+                  type = 'string', metavar = 'string',
+                  help = 'sampling algorithm. IA: integral approximation, STAT: Van Houtte, MC: Monte Carlo. [%default].') #make choice
+parser.add_option('-p','--phase',
+                  dest = 'phase',
+                  type = 'int', metavar = 'int',
+                  help = 'phase index to be used [%default]')
+parser.add_option('--crystallite',
+                  dest = 'crystallite',
+                  type = 'int', metavar = 'int',
+                  help = 'crystallite index to be used [%default]')
+parser.add_option('-r', '--rnd',
+                  dest = 'randomSeed',
+                  type = 'int', metavar = 'int', \
+                  help = 'seed of random number generator [%default]')
+parser.add_option('--ang',
+                  dest = 'ang',
+                  action = 'store_true',
+                  help = 'write TSL/EDAX .ang file [%default]')
+parser.set_defaults(randomSeed = None,
+                    number      = 500,
+                    algorithm   = 'IA',
+                    phase       = 1,
+                    crystallite = 1,
+                    ang  = True,
+                   )
+
 (options,filenames) = parser.parse_args()
 
 nSamples       = options.number
 methods        = [options.algorithm]
 
 
-#--- setup file handles ---------------------------------------------------------------------------
-files = []
-if filenames == []:
-  files.append({'name':'STDIN','input':sys.stdin,'output':sys.stdout,'outang':sys.stdout,'croak':sys.stderr})
-else:
-  for name in filenames:
-    if os.path.exists(name):
-      files.append({'name':name,'input':open(name),'output':open(name+'_tmp','w'),'outang':open(name+'_ang_tmp','w'),'croak':sys.stdout})
+# --- loop over input files -------------------------------------------------------------------------
 
-#--- loop over input files ------------------------------------------------------------------------
-for file in files:
-  file['croak'].write('\033[1m' + scriptName + '\033[0m: ' + (file['name'] if file['name'] != 'STDIN' else '') + '\n')
+if filenames == []: filenames = ['STDIN']
 
-  table = damask.ASCIItable(file['input'],file['output'],buffered = False)
-  table.head_read()
-  randomSeed = int(os.urandom(4).encode('hex'), 16)  if options.randomSeed == None else options.randomSeed         # radom seed per file for second phase
+for name in filenames:
+  if not (name == 'STDIN' or os.path.exists(name)): continue
+  table = damask.ASCIItable(name = name, outname = None,
+                            buffered = False, readonly = True)
+  table.croak('\033[1m'+scriptName+'\033[0m'+(': '+name if name != 'STDIN' else ''))
+
+  randomSeed = int(os.urandom(4).encode('hex'), 16)  if options.randomSeed == None else options.randomSeed         # random seed per file for second phase
   random.seed(randomSeed)
 
-# --------------- figure out columns in table ----------- -----------------------------------------
-  column = {}
-  pos = 0
-  keys = ['phi1','Phi','phi2','intensity']
-  for key in keys:
-    if key not in table.labels:
-      file['croak'].write('column %s not found...\n'%key)
-    else:
-      column[key] = pos
-      pos+=1
-  if pos != 4: continue
+# ------------------------------------------ read header ---------------------------------------  
 
-  binnedODF = table.data_readArray(keys)
+  table.head_read()
+
+  errors = []
+  labels = ['phi1','Phi','phi2','intensity']
+  for i,index in enumerate(table.label_index(labels)):
+    if index < 0: errors.append('label {} not present.'.format(labels[i])
+  
+  if errors != []:
+    table.croak(errors)
+    table.close(dismiss = True)
+    continue
+
+# ------------------------------------------ read data ---------------------------------------  
+
+  binnedODF = table.data_readArray(labels)
+  
 # --------------- figure out limits (left/right), delta, and interval -----------------------------
   ODF = {}
-  limits = np.array([[np.min(table.data[:,column['phi1']]),\
-                      np.min(table.data[:,column['Phi']]),\
-                      np.min(table.data[:,column['phi2']])],\
-                     [np.max(table.data[:,column['phi1']]),\
-                      np.max(table.data[:,column['Phi']]),\
-                      np.max(table.data[:,column['phi2']])]])
+  limits = np.array([np.min(table.data,axis=0),
+                     np.max(table.data,axis=0)])
   ODF['limit'] = np.radians(limits[1,:])
 
   if all(limits[0,:]<1e-8):                                                                         # vertex centered
@@ -319,13 +323,13 @@ for file in files:
   eulers = [{},{},{}]
   for i in xrange(table.data.shape[0]):  
     for j in xrange(3):
-      eulers[j][str(table.data[i,column[keys[j]]])] = True                                          # remember eulers along phi1, Phi, and phi2
+      eulers[j][str(table.data[i,j]])] = True                                                       # remember eulers along phi1, Phi, and phi2
   ODF['interval'] = np.array([len(eulers[0]),len(eulers[1]),len(eulers[2]),],'i')                   # steps are number of distict values
   ODF['nBins'] = ODF['interval'].prod()
   ODF['delta'] = np.radians(np.array(limits[1,0:3]-limits[0,0:3])/(ODF['interval']-1))
 
   if binnedODF[0] != ODF['nBins']:
-    file['croak'].write('expecting %i values but got %i'%(ODF['nBins'],len(linesBinnedODF)))
+    table.croak('expecting %i values but got %i'%(ODF['nBins'],len(linesBinnedODF)))
     continue
   
   # build binnedODF array
@@ -335,20 +339,21 @@ for file in files:
   dg = ODF['delta'][0]*2.0*math.sin(ODF['delta'][1]/2.0)*ODF['delta'][2]
   for b in range(ODF['nBins']):
     ODF['dV_V'][b] = \
-    max(0.0,table.data[b,column['intensity']]) * dg * \
-    math.sin(((b//ODF['interval'][2])%ODF['interval'][1]+ODF['center'])*ODF['delta'][1])
+      max(0.0,table.data[b,column['intensity']]) * dg * \
+      math.sin(((b//ODF['interval'][2])%ODF['interval'][1]+ODF['center'])*ODF['delta'][1])
     if ODF['dV_V'][b] > 0.0:
       sumdV_V += ODF['dV_V'][b]
       ODF['nNonZero'] += 1
   
-  for b in range(ODF['nBins']): ODF['dV_V'][b] /= sumdV_V # normalize dV/V
+  for b in range(ODF['nBins']): ODF['dV_V'][b] /= sumdV_V                                           # normalize dV/V
 
-  file['croak'].write('non-zero fraction: %12.11f (%i/%i)\n'\
-                      %(float(ODF['nNonZero'])/ODF['nBins'],ODF['nNonZero'],ODF['nBins']))
-  file['croak'].write('Volume integral of ODF: %12.11f\n'%sumdV_V)
-  file['croak'].write('Reference Integral: %12.11f\n'\
-                      %(ODF['limit'][0]*ODF['limit'][2]*(1-math.cos(ODF['limit'][1]))))
-  
+  table.croak(['non-zero fraction: %12.11f (%i/%i)'%(float(ODF['nNonZero'])/ODF['nBins'],
+                                                     ODF['nNonZero'],
+                                                     ODF['nBins']),
+               'Volume integral of ODF: %12.11f\n'%sumdV_V,
+               'Reference Integral: %12.11f\n'%(ODF['limit'][0]*ODF['limit'][2]*(1-math.cos(ODF['limit'][1]))),
+               ])
+                                                     
   # call methods
   Functions = {'IA': 'directInversion', 'STAT': 'TothVanHoutteSTAT', 'MC': 'MonteCarloBins'}
   method = Functions[options.algorithm]
@@ -372,66 +377,72 @@ for file in files:
   indivSum['orig'] += ODF['dV_V'][bin]
   indivSquaredSum['orig'] += ODF['dV_V'][bin]**2
   
-  file['croak'].write('sqrt(N*)RMSD of ODFs:\t %12.11f\n'% math.sqrt(nSamples*squaredDiff[method]))
-  file['croak'].write('RMSrD of ODFs:\t %12.11f\n'%math.sqrt(squaredRelDiff[method]))
-  file['croak'].write('rMSD of ODFs:\t %12.11f\n'%(squaredDiff[method]/indivSquaredSum['orig']))
-  file['croak'].write('nNonZero correlation slope:\t %12.11f\n'\
+  table.croak(['sqrt(N*)RMSD of ODFs:\t %12.11f'% math.sqrt(nSamples*squaredDiff[method]),
+               'RMSrD of ODFs:\t %12.11f'%math.sqrt(squaredRelDiff[method]),
+               'rMSD of ODFs:\t %12.11f'%(squaredDiff[method]/indivSquaredSum['orig']),
+               'nNonZero correlation slope:\t %12.11f'\
                       %((ODF['nNonZero']*mutualProd[method]-indivSum['orig']*indivSum[method])/\
-                        (ODF['nNonZero']*indivSquaredSum['orig']-indivSum['orig']**2)))
-  file['croak'].write( 'nNonZero correlation confidence:\t %12.11f\n'\
+                        (ODF['nNonZero']*indivSquaredSum['orig']-indivSum['orig']**2)),
+               'nNonZero correlation confidence:\t %12.11f'\
                       %((mutualProd[method]-indivSum['orig']*indivSum[method]/ODF['nNonZero'])/\
-    (ODF['nNonZero']*math.sqrt((indivSquaredSum['orig']/ODF['nNonZero']-(indivSum['orig']/ODF['nNonZero'])**2)*\
-    (indivSquaredSum[method]/ODF['nNonZero']-(indivSum[method]/ODF['nNonZero'])**2)))))
+                        (ODF['nNonZero']*math.sqrt((indivSquaredSum['orig']/ODF['nNonZero']-(indivSum['orig']/ODF['nNonZero'])**2)*\
+                        (indivSquaredSum[method]/ODF['nNonZero']-(indivSum[method]/ODF['nNonZero'])**2)))),
+              ])
   
   if method == 'IA' and nSamples < ODF['nNonZero']:
     strOpt = '(%i)'%ODF['nNonZero']
   
-  formatwidth = 1
-  file['output'].write('#' + scriptID + ' ' + ' '.join(sys.argv[1:])+'\n')
-  file['output'].write('# random seed %i\n'%randomSeed)
-  file['output'].write('#-------------------#')
-  file['output'].write('\n<microstructure>\n')
-  file['output'].write('#-------------------#\n')
+  formatwidth = 1+int(math.log10(nSamples))
+
+  materialConfig = [
+      '#' + scriptID + ' ' + ' '.join(sys.argv[1:]),
+      '# random seed %i'%randomSeed
+      '#-------------------#',
+      '<microstructure>',
+      '#-------------------#',
+      ]
   
   for i,ID in enumerate(xrange(nSamples)):
-    file['output'].write('[Grain%s]\n'%(str(ID+1).zfill(formatwidth)) + \
-                     'crystallite %i\n'%options.crystallite + \
-                     '(constituent)   phase %i   texture %s   fraction 1.0\n'%(options.phase,str(ID+1).rjust(formatwidth)))
+    materialConfig += ['[Grain%s]'%(str(ID+1).zfill(formatwidth)),
+                      'crystallite %i'%options.crystallite,
+                      '(constituent)   phase %i   texture %s   fraction 1.0'%(options.phase,str(ID+1).rjust(formatwidth)),
+                     ]
   
-  file['output'].write('\n#-------------------#')
-  file['output'].write('\n<texture>\n')
-  file['output'].write('#-------------------#\n')
+  materialConfig += [
+      '#-------------------#',
+      '<texture>',
+      '#-------------------#',
+      ]
+
   for ID in xrange(nSamples):
-    eulers = re.split(r'[\t]', Orientations[ID].strip())
+    eulers = Orientations[ID]
   
-    file['output'].write('[Grain%s]\n'%(str(ID+1).zfill(formatwidth)) + \
-                     '(gauss)   phi1 %10.5f   Phi %10.5f   phi2 %10.6f   scatter 0.0   fraction 1.0\n'\
-                     %(float(eulers[0]),float(eulers[1]),float(eulers[2])))
+    materialConfig += ['[Grain%s]'%(str(ID+1).zfill(formatwidth)),
+                     '(gauss)   phi1 %10.5f   Phi %10.5f   phi2 %10.6f   scatter 0.0   fraction 1.0'%(*eulers),
+                     ]
+
   #--- output finalization -------------------------------------------------------------------------- 
-  if file['name'] != 'STDIN':
-     file['output'].close()
-     os.rename(file['name']+'_tmp',
-            os.path.splitext(file['name'])[0] +'_'+method+'_'+str(nSamples)+'%s'%('_material.config'))
+
+  with (open(os.path.splitext(name)[0]+'_'+method+'_'+str(nSamples)+'_material.config','w') as outfile:
+    outfile.write('\n'.join(materialConfig)+'\n')
 
   # write ang file
   if options.ang:
-    sizeY = integerFactorization(nSamples)
-    sizeX = nSamples / sizeY
-    print 'Writing .ang file: %i * %i = %i (== %i)'%(sizeX,sizeY,sizeX*sizeY,nSamples) 
-    # write header
-    for line in getHeader(sizeX,sizeY,1.0):
-      file['outang'].write(line + '\n')
+    with open(os.path.splitext(name)[0]+'_'+method+'_'+str(nSamples)+'.ang','w') as outfile:
+      sizeY = integerFactorization(nSamples)
+      sizeX = nSamples / sizeY
+      table.croak('Writing .ang file: %i * %i = %i (== %i)'%(sizeX,sizeY,sizeX*sizeY,nSamples))
+      # write header
+      outfile.write('\n'.join(TSLheader(sizeX,sizeY,1.0))+'\n')
     
-    # write data
-    counter = 0
-    for line in Orientations:
-      eulers = re.split(r'[\t]', line.strip())
-      file['outang'].write(''.join(['%10.5f'%math.radians(float(angle)) for angle in eulers])+
-            ''.join(['%10.5f'%coord for coord in [counter%sizeX,counter//sizeX]])+
-            ' 100.0 1.0 0 1 1.0\n')
-      counter += 1
+      # write data
+      counter = 0
+      for eulers in Orientations:
+        outfile.write('%10.5f %10.5f %10.5f '%(*np.radians(eulers)) +
+                      '%10.5f %10.5f '%(counter%sizeX,counter//sizeX) +
+                      '100.0 1.0 0 1 1.0\n')
+        counter += 1
+
     #--- output finalization -------------------------------------------------------------------------- 
-    if file['name'] != 'STDIN':
-      file['outang'].close()
-      os.rename(file['name']+'_ang_tmp',
-            os.path.splitext(file['name'])[0] +'_'+method+'_'+str(nSamples)+'%s'%('.ang'))
+
+  table.close()

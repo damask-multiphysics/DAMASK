@@ -11,6 +11,21 @@ from scipy import spatial
 scriptID   = string.replace('$Id$','\n','\\n')
 scriptName = os.path.splitext(scriptID.split()[1])[0]
 
+# ------------------------------------------ aux functions ---------------------------------
+
+def kdtree_search(cloud, queryPoints):
+  '''
+  find distances to nearest neighbor among cloud (N,d) for each of the queryPoints (n,d)
+  '''
+  n = queryPoints.shape[0]
+  distances = np.zeros(n,dtype=float)
+  tree = spatial.cKDTree(cloud)
+  
+  for i in xrange(n):
+    distances[i], index = tree.query(queryPoints[i])
+
+  return distances
+    
 # --------------------------------------------------------------------
 #                                MAIN
 # --------------------------------------------------------------------
@@ -21,144 +36,172 @@ Reports positions with random crystal orientations in seeds file format to STDOU
 
 """, version = scriptID)
 
-parser.add_option('-N', dest='N', type='int', metavar='int', \
-                  help='number of seed points to distribute [%default]')
-parser.add_option('-g','--grid', dest='grid', type='int', nargs=3, metavar='int int int', \
+parser.add_option('-N', dest='N',
+                  type = 'int', metavar = 'int',
+                  help = 'number of seed points to distribute [%default]')
+parser.add_option('-g','--grid',
+                  dest = 'grid',
+                  type = 'int', nargs = 3, metavar = 'int int int',
                   help='min a,b,c grid of hexahedral box %default')
-parser.add_option('-r', '--rnd', dest='randomSeed', type='int', metavar='int', \
-                  help='seed of random number generator [%default]')
-parser.add_option('-w', '--weights', dest='weights', action='store_true',
-                  help = 'assign random weigts (Gaussian Distribution) to seed points for laguerre tessellation [%default]')
-parser.add_option('-m', '--microstructure', dest='microstructure', type='int',
-                  help='first microstructure index [%default]', metavar='int')
-parser.add_option('-s','--selective', dest='selective', action='store_true',
-                  help = 'selective picking of seed points from random seed points [%default]')
+parser.add_option('-m', '--microstructure',
+                  dest = 'microstructure',
+                  type = 'int', metavar='int',
+                  help = 'first microstructure index [%default]')
+parser.add_option('-r', '--rnd',
+                  dest = 'randomSeed', type = 'int', metavar = 'int',
+                  help = 'seed of random number generator [%default]')
 
 group = OptionGroup(parser, "Laguerre Tessellation Options",
-                   "Parameters determining shape of weight distribution of seed points "
+                   "Parameters determining shape of weight distribution of seed points"
                    )
-group.add_option('--mean', dest='mean', type='float', metavar='float', \
-                  help='mean of Gaussian Distribution for weights [%default]')
-group.add_option('--sigma', dest='sigma', type='float', metavar='float', \
-                  help='standard deviation of Gaussian Distribution for weights [%default]')
+group.add_option('-w', '--weights',
+                  action = 'store_true',
+                  dest   = 'weights',
+                  help   = 'assign random weigts (normal distribution) to seed points for Laguerre tessellation [%default]')
+group.add_option('--mean',
+                  dest = 'mean',
+                  type = 'float', metavar = 'float',
+                  help = 'mean of normal distribution for weights [%default]')
+group.add_option('--sigma',
+                 dest = 'sigma',
+                 type = 'float', metavar = 'float',
+                 help='standard deviation of normal distribution for weights [%default]')
 parser.add_option_group(group)
 
 group = OptionGroup(parser, "Selective Seeding Options",
                     "More uniform distribution of seed points using Mitchell\'s Best Candidate Algorithm"
                    )
-group.add_option('--distance', dest='bestDistance', type='float', metavar='float', \
-                  help='minimum distance to the next neighbor  [%default]')
-group.add_option('--numCandidates', dest='numCandidates', type='int', metavar='int', \
-                  help='maximum number of point to consider for initial random points generation  [%default]')    
+group.add_option('-s','--selective',
+                  action = 'store_true',
+                  dest   = 'selective',
+                  help   = 'selective picking of seed points from random seed points [%default]')
+group.add_option('--distance',
+                 dest = 'distance',
+                 type = 'float', metavar = 'float',
+                 help = 'minimum distance to the next neighbor [%default]')
+group.add_option('--numCandidates',
+                 dest = 'numCandidates',
+                 type = 'int', metavar = 'int',
+                 help = 'size of point group to select best distance from [%default]')    
 parser.add_option_group(group)
 
-parser.set_defaults(randomSeed = None)
-parser.set_defaults(grid = (16,16,16))
-parser.set_defaults(N = 20)
-parser.set_defaults(weights=False)
-parser.set_defaults(mean = 0.0)
-parser.set_defaults(sigma = 1.0)
-parser.set_defaults(microstructure = 1)
-parser.set_defaults(selective = False)
-parser.set_defaults(bestDistance = 0.2)
-parser.set_defaults(numCandidates = 10)
+parser.set_defaults(randomSeed = None,
+                    grid = (16,16,16),
+                    N = 20,
+                    weights = False,
+                    mean = 0.0,
+                    sigma = 1.0,
+                    microstructure = 1,
+                    selective = False,
+                    distance = 0.2,
+                    numCandidates = 10,
+                   )
 
+(options,filenames) = parser.parse_args()
 
-
-(options,filename) = parser.parse_args()
 options.grid = np.array(options.grid)
-
-labels = "1_coords\t2_coords\t3_coords\tphi1\tPhi\tphi2\tmicrostructure"
-
-# ------------------------------------------ Functions Definitions ---------------------------------
-
-def kdtree_search(xyz, point) :
-    dist, index = spatial.cKDTree(xyz).query(np.array(point))
-    return dist
-    
-def generatePoint() :
-    return np.array([random.uniform(0,float(options.grid[0])/float(max(options.grid))), \
-                     random.uniform(0,float(options.grid[1])/float(max(options.grid))), \
-                     random.uniform(0,float(options.grid[2])/float(max(options.grid)))])
-
-
-# ------------------------------------------ setup file handle -------------------------------------
-if filename == []:
-  file = {'output':sys.stdout, 'croak':sys.stderr}
-else:
-  file = {'output':open(filename[0],'w'), 'croak':sys.stderr}
-
 gridSize = options.grid.prod()
-if gridSize == 0:
-  file['croak'].write('zero grid dimension for %s.\n'%(', '.join([['a','b','c'][x] for x in np.where(options.grid == 0)[0]])))
-  sys.exit()
-if options.N > gridSize: 
-  file['croak'].write('accommodating only %i seeds on grid.\n'%gridSize)
-  options.N = gridSize
-randomSeed = int(os.urandom(4).encode('hex'), 16)  if options.randomSeed == None else options.randomSeed
-np.random.seed(randomSeed)                                                             # init random generators
-random.seed(randomSeed)
 
-grainEuler = np.random.rand(3,options.N)                                                # create random Euler triplets
-grainEuler[0,:] *= 360.0                                                                # phi_1    is uniformly distributed
-grainEuler[1,:] = np.arccos(2*grainEuler[1,:]-1)*180.0/math.pi                          # cos(Phi) is uniformly distributed
-grainEuler[2,:] *= 360.0                                                                # phi_2    is uniformly distributed
+if options.randomSeed == None: options.randomSeed = int(os.urandom(4).encode('hex'), 16)
+np.random.seed(options.randomSeed)                                                                  # init random generators
+random.seed(options.randomSeed)
 
-microstructure=np.arange(options.microstructure,options.microstructure+options.N).reshape(1,options.N)
 
-if options.selective == False :
-  seedpoints = -np.ones(options.N,dtype='int')                                            # init grid positions of seed points
+# --- loop over output files -------------------------------------------------------------------------
 
-  if options.N * 1024 < gridSize:                                                         # heuristic limit for random search
-    i = 0
-    while i < options.N:                                                                  # until all (unique) points determined
-      p = np.random.randint(gridSize)                                                     # pick a location
-      if p not in seedpoints:                                                             # not yet taken?
-        seedpoints[i] = p                                                                 # take it
-        i += 1                                                                            # advance stepper
+if filenames == []: filenames = ['STDIN']
+
+for name in filenames:
+
+  table = damask.ASCIItable(name = name, outname = None,
+                            buffered = False, writeonly = True)
+  table.croak('\033[1m'+scriptName+'\033[0m'+(': '+name if name != 'STDIN' else ''))
+
+# --- sanity checks -------------------------------------------------------------------------
+
+  errors = []
+  if gridSize == 0:            errors.append('zero grid dimension for %s.'%(', '.join([['a','b','c'][x] for x in np.where(options.grid == 0)[0]])))
+  if options.N > gridSize/10.: errors.append('seed count exceeds 0.1 of grid points.')
+  if options.selective and 4./3.*math.pi*(options.distance/2.)**3*options.N > 0.5:
+                               errors.append('maximum recommended seed point count for given distance is {}.'.format(int(3./8./math.pi/(options.distance/2.)**3)))
+  if errors != []:
+    table.croak(errors)
+    sys.exit()
+
+# --- do work ------------------------------------------------------------------------------------
+ 
+  grainEuler = np.random.rand(3,options.N)                                                          # create random Euler triplets
+  grainEuler[0,:] *= 360.0                                                                          # phi_1    is uniformly distributed
+  grainEuler[1,:] = np.degrees(np.arccos(2*grainEuler[1,:]-1))                                      # cos(Phi) is uniformly distributed
+  grainEuler[2,:] *= 360.0                                                                          # phi_2    is uniformly distributed
+
+  if not options.selective:
+
+    seeds = np.zeros((3,options.N),dtype=float)                                                     # seed positions array
+    gridpoints = random.sample(range(gridSize),options.N)                                           # create random permutation of all grid positions and choose first N
+
+    seeds[0,:] = (np.mod(gridpoints                                   ,options.grid[0])\
+                 +np.random.random())                                 /options.grid[0]
+    seeds[1,:] = (np.mod(gridpoints//                 options.grid[0] ,options.grid[1])\
+                 +np.random.random())                                 /options.grid[1]
+    seeds[2,:] = (np.mod(gridpoints//(options.grid[1]*options.grid[0]),options.grid[2])\
+                 +np.random.random())                                 /options.grid[2]
+
   else:
-    seedpoints = np.array(random.sample(range(gridSize),options.N))                       # create random permutation of all grid positions and choose first N
 
-  seeds = np.zeros((3,options.N),float)                                                   # init seed positions
-  seeds[0,:] = (np.mod(seedpoints                                   ,options.grid[0])\
-               +np.random.random())/options.grid[0]
-  seeds[1,:] = (np.mod(seedpoints//                 options.grid[0] ,options.grid[1])\
-               +np.random.random())/options.grid[1]
-  seeds[2,:] = (np.mod(seedpoints//(options.grid[1]*options.grid[0]),options.grid[2])\
-               +np.random.random())/options.grid[2]
-  table = np.transpose(np.concatenate((seeds,grainEuler,microstructure),axis = 0))
-else :
-  samples = generatePoint().reshape(1,3)
+    seeds = np.zeros((options.N,3),dtype=float)                                                     # seed positions array
+    seeds[0] = np.random.random(3)*options.grid/max(options.grid)
+    i = 1                                                                                           # start out with one given point
+    if i%(options.N/100.) < 1: table.croak('.',False)
 
-  while  samples.shape[0] < options.N :
-     bestDistance  = options.bestDistance
-     for i in xrange(options.numCandidates) :
-       c = generatePoint()
-       d = kdtree_search(samples, c)
-       if (d > bestDistance) :
-        bestDistance = d
-        bestCandidate = c
-     if kdtree_search(samples,bestCandidate) != 0.0 :
-        samples = np.append(samples,bestCandidate.reshape(1,3),axis=0)
-     else :
-        continue
-  table = np.transpose(np.concatenate((samples.T,grainEuler,microstructure),axis = 0))
+    while i < options.N:
+      candidates = np.random.random(options.numCandidates*3).reshape(options.numCandidates,3)
+      distances  = kdtree_search(seeds[:i],candidates)
+      best = distances.argmax()
+      if distances[best] > options.distance:                                                        # require minimum separation
+        seeds[i] = candidates[best]                                                                 # take candidate with maximum separation to existing point cloud
+        i += 1
+        if i%(options.N/100.) < 1: table.croak('.',False)
 
-if options.weights :
-   weight = np.random.normal(loc=options.mean, scale=options.sigma, size=options.N)
-   table = np.append(table, weight.reshape(options.N,1), axis=1)
-   labels += "\tweight"
+    table.croak('')
+    seeds = np.transpose(seeds)                                                                     # prepare shape for stacking
 
-# -------------------------------------- Write Data --------------------------------------------------
+  if options.weights:
+    seeds = np.transpose(np.vstack((seeds,
+                                    grainEuler,
+                                    np.arange(options.microstructure,
+                                              options.microstructure + options.N),
+                                    np.random.normal(loc=options.mean, scale=options.sigma, size=options.N),
+                                   )))
+  else:
+    seeds = np.transpose(np.vstack((seeds,
+                                    grainEuler,
+                                    np.arange(options.microstructure,
+                                              options.microstructure + options.N),
+                                   )))
 
-header = ["5\theader",
-          scriptID + " " + " ".join(sys.argv[1:]),
-          "grid\ta {}\tb {}\tc {}".format(options.grid[0],options.grid[1],options.grid[2]),
-          "microstructures\t{}".format(options.N),
-          "randomSeed\t{}".format(randomSeed),
-          "%s"%labels,
-         ]
+# ------------------------------------------ assemble header ---------------------------------------
 
-for line in header:
-  file['output'].write(line+"\n")
-np.savetxt(file['output'], table, fmt='%10.6f', delimiter='\t')
+  table.info_clear()
+  table.info_append([
+    scriptID + ' ' + ' '.join(sys.argv[1:]),
+    "grid\ta {grid[0]}\tb {grid[1]}\tc {grid[2]}".format(grid=options.grid),
+    "microstructures\t{}".format(options.N),
+    "randomSeed\t{}".format(options.randomSeed),
+    ])
+  table.labels_clear()
+  table.labels_append( ['{dim}_{label}'.format(dim = 1+i,label = 'pos')   for i in xrange(3)] +
+                       ['{dim}_{label}'.format(dim = 1+i,label = 'Euler') for i in xrange(3)] + 
+                       ['microstructure'] +
+                      (['weight'] if options.weights else []))
+  table.head_write()
+  table.output_flush()
+  
+# --- write seeds information ------------------------------------------------------------
+
+  table.data = seeds
+  table.data_writeArray()
+    
+# --- output finalization --------------------------------------------------------------------------
+
+  table.close()                                                                                     # close ASCII table

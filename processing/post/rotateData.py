@@ -19,64 +19,77 @@ Rotate vector and/or tensor column data by given angle around given axis.
 
 """, version = scriptID)
 
-parser.add_option('-v','--vector',  dest = 'vector', action = 'extend', metavar = '<string LIST>',
-                  help = 'column heading of vector to rotate')
-parser.add_option('-t','--tensor',  dest = 'tensor', action = 'extend', metavar = '<string LIST>',
-                  help = 'column heading of tensor to rotate')
-parser.add_option('-r', '--rotation',dest = 'rotation', type = 'float', nargs = 4, metavar = ' '.join(['float']*4),
+parser.add_option('-v','--vector',
+                  dest = 'vector',
+                  action = 'extend', metavar = '<string LIST>',
+                  help = 'column heading of vector(s) to rotate')
+parser.add_option('-t','--tensor',
+                  dest = 'tensor',
+                  action = 'extend', metavar = '<string LIST>',
+                  help = 'column heading of tensor(s) to rotate')
+parser.add_option('-r', '--rotation',
+                  dest = 'rotation',
+                  type = 'float', nargs = 4, metavar = ' '.join(['float']*4),
                   help = 'angle and axis to rotate data [%default]')
-parser.add_option('-d', '--degrees', dest = 'degrees', action = 'store_true',
+parser.add_option('-d', '--degrees',
+                  dest = 'degrees',
+                  action = 'store_true',
                   help = 'angles are given in degrees [%default]')
-parser.set_defaults(rotation = (0.,1.,1.,1.))                                                       # no rotation about 1,1,1
-parser.set_defaults(degrees = False)
 
+parser.set_defaults(rotation = (0.,1.,1.,1.),                                                       # no rotation about 1,1,1
+                    degrees = False,
+                   )
+                    
 (options,filenames) = parser.parse_args()
 
-datainfo = {                                                                                       # list of requested labels per datatype
-             'vector':     {'len':3,
-                            'label':[]},
-             'tensor':     {'len':9,
-                            'label':[]},
-           }
-
-if options.vector != None: datainfo['vector']['label'] += options.vector
-if options.tensor != None: datainfo['tensor']['label'] += options.tensor
+if options.vector == None and options.tensor == None:
+  parser.error('no data column specified.')
 
 toRadians = math.pi/180.0 if options.degrees else 1.0                                               # rescale degrees to radians
-r = damask.Quaternion().fromAngleAxis(toRadians*options.rotation[0],options.rotation[1:])
-R = r.asMatrix()
+q = damask.Quaternion().fromAngleAxis(toRadians*options.rotation[0],options.rotation[1:])
+R = q.asMatrix()
 
 # --- loop over input files -------------------------------------------------------------------------
-if filenames == []:
-  filenames = ['STDIN']
+
+if filenames == []: filenames = ['STDIN']
 
 for name in filenames:
-  if name == 'STDIN':
-    file = {'name':'STDIN', 'input':sys.stdin, 'output':sys.stdout, 'croak':sys.stderr}
-    file['croak'].write('\033[1m'+scriptName+'\033[0m\n')
-  else:
-    if not os.path.exists(name): continue
-    file = {'name':name, 'input':open(name), 'output':open(name+'_tmp','w'), 'croak':sys.stderr}
-    file['croak'].write('\033[1m'+scriptName+'\033[0m: '+file['name']+'\n')
+  if not (name == 'STDIN' or os.path.exists(name)): continue
+  table = damask.ASCIItable(name = name, outname = name+'_tmp',
+                            buffered = False)
+  table.croak('\033[1m'+scriptName+'\033[0m'+(': '+name if name != 'STDIN' else ''))
 
-  table = damask.ASCIItable(file['input'],file['output'],buffered=False)                            # make unbuffered ASCII_table
-  table.head_read()                                                                                 # read ASCII header info
-  table.info_append(scriptID + '\t' + ' '.join(sys.argv[1:]))
+# ------------------------------------------ read header ------------------------------------------
 
-# --------------- figure out columns to process  ---------------------------------------------------
-  active = defaultdict(list)
-  column = defaultdict(dict)
+  table.head_read()
 
-  for datatype,info in datainfo.items():
-    for label in info['label']:
-      key = '1_'+label
-      if key in table.labels:
-        active[datatype].append(label)
-        column[datatype][label] = table.labels.index(key)                                           # remember columns of requested data
+# ------------------------------------------ sanity checks ----------------------------------------
+
+  items = {
+            'tensor': {'dim': 9, 'shape': [3,3], 'labels':options.tensor, 'active':[], 'column': []},
+            'vector': {'dim': 3, 'shape': [3],   'labels':options.vector, 'active':[], 'column': []},
+          }
+  errors  = []
+  remarks = []
+  column = {}
+  
+  for type, data in items.iteritems():
+    for what in data['labels']:
+      dim = table.label_dimension(what)
+      if dim != data['dim']: remarks.append('column {} is not a {}.'.format(what,type))
       else:
-        file['croak'].write('column %s not found...\n'%label)
-       
-# ------------------------------------------ assemble header ---------------------------------------
+        items[type]['active'].append(what)
+        items[type]['column'].append(table.label_index(what))
+
+  if remarks != []: table.croak(remarks)
+  if errors  != []:
+    table.croak(errors)
+    table.close(dismiss = True)
+    continue
+
+# ------------------------------------------ assemble header --------------------------------------
+
+  table.info_append(scriptID + '\t' + ' '.join(sys.argv[1:]))
   table.head_write()
 
 # ------------------------------------------ process data ------------------------------------------
@@ -85,28 +98,21 @@ for name in filenames:
 
     datatype = 'vector'
 
-    for label in active[datatype] if datatype in active else []:                                    # loop over all requested labels
-      table.data[column[datatype][label]:column[datatype][label]+datainfo[datatype]['len']] = \
-        r * np.array(map(float,
-                         table.data[column[datatype][label]:\
-                                    column[datatype][label]+datainfo[datatype]['len']]))
+    for column in items[datatype]['column']:                                                        # loop over all requested labels
+      table.data[column:column+items[datatype]['dim']] = \
+        r * np.array(map(float,table.data[column:column+items[datatype]['dim']]))
 
     datatype = 'tensor'
 
-    for label in active[datatype] if datatype in active else []:                                    # loop over all requested labels
-      A = np.array(map(float,table.data[column[datatype][label]:\
-                                        column[datatype][label]+datainfo[datatype]['len']])).\
-                  reshape(np.sqrt(datainfo[datatype]['len']),
-                          np.sqrt(datainfo[datatype]['len']))
-      table.data[column[datatype][label]:\
-                 column[datatype][label]+datainfo[datatype]['len']] = \
-          np.dot(R,np.dot(A,R.transpose())).reshape(datainfo[datatype]['len'])
+    for column in items[datatype]['column']:                                                        # loop over all requested labels
+      table.data[column:column+items[datatype]['dim']] = \
+        np.dot(R,np.dot(np.array(map(float,table.data[column:column+items[datatype]['dim']])).\
+                        reshape(items[datatype]['shape']),R.transpose()
+              ).reshape(items[datatype]['dim'])
+
     outputAlive = table.data_write()                                                                # output processed line
 
-# ------------------------------------------ output result -----------------------------------------
-  outputAlive and table.output_flush() 
+# ------------------------------------------ output finalization -----------------------------------  
 
-  table.input_close()                                                                               # close input ASCII table (works for stdin)
-  table.output_close()                                                                              # close output ASCII table (works for stdout)
-  if file['name'] != 'STDIN':
-    os.rename(file['name']+'_tmp',file['name'])                                                     # overwrite old one with tmp new
+  table.close()                                                                                     # close ASCII tables
+  if name != 'STDIN': os.rename(name+'_tmp',name)                                                   # overwrite old one with tmp new

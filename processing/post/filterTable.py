@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 no BOM -*-
 
-import os,re,sys,string,fnmatch,numpy as np
+import os,re,sys,string,fnmatch,math,random,numpy as np
 from optparse import OptionParser
 import damask
 
@@ -21,32 +21,39 @@ All rows where label 'foo' equals 'bar' -- " #foo# == \"bar\" "
 
 """, version = scriptID)
 
-parser.add_option('-w','--white',   dest='whitelist', action='extend', metavar='<string LIST>',
-                  help='white list of column labels (a,b,c,...)')
-parser.add_option('-b','--black',   dest='blacklist', action='extend', metavar='<string LIST>',
-                  help='black list of column labels (a,b,c,...)')
-parser.add_option('-c','--condition', dest='condition', metavar='string',
-                  help='condition to filter rows')
-parser.set_defaults(condition = '')
+parser.add_option('-w','--white',
+                  dest   = 'whitelist',
+                  action = 'extend', metavar = '<string LIST>',
+                  help   = 'whitelist of column labels (a,b,c,...)')
+parser.add_option('-b','--black',
+                  dest   = 'blacklist',
+                  action = 'extend', metavar='<string LIST>',
+                  help   = 'blacklist of column labels (a,b,c,...)')
+parser.add_option('-c','--condition',
+                  dest   = 'condition', metavar='string',
+                  help   = 'condition to filter rows')
+
+parser.set_defaults(condition = '',
+                   )
 
 (options,filenames) = parser.parse_args()
 
-if filenames == []:
-  filenames = ['STDIN']
+# --- loop over input files -------------------------------------------------------------------------
 
-#--- loop over input files -------------------------------------------------------------------------
+if filenames == []: filenames = ['STDIN']
+
 for name in filenames:
-  if name == 'STDIN':
-    file = {'name':'STDIN', 'input':sys.stdin, 'output':sys.stdout, 'croak':sys.stderr}
-    file['croak'].write('\033[1m'+scriptName+'\033[0m\n')
-  else:
-    if not os.path.exists(name): continue
-    file = {'name':name, 'input':open(name), 'output':open(name+'_tmp','w'), 'croak':sys.stderr}
-    file['croak'].write('\033[1m'+scriptName+'\033[0m: '+file['name']+'\n')
+  if not (name == 'STDIN' or os.path.exists(name)): continue
+  table = damask.ASCIItable(name = name, outname = name+'_tmp',
+                            buffered = False)
+  table.croak('\033[1m'+scriptName+'\033[0m'+(': '+name if name != 'STDIN' else ''))
 
-  table = damask.ASCIItable(file['input'],file['output'],False)                                     # make unbuffered ASCII_table
-  table.head_read()                                                                                 # read ASCII header info
-  table.info_append(scriptID + '\t' + ' '.join(sys.argv[1:]))
+# ------------------------------------------ assemble info ---------------------------------------  
+
+  table.head_read()
+  table.info_append(scriptID + '\t' + ' '.join(sys.argv[1:]))                                                                                # read ASCII header info
+
+# ------------------------------------------ process data ---------------------------------------  
 
   specials = { \
                '_row_': 0,
@@ -55,18 +62,21 @@ for name in filenames:
   positions = []
 
   for position,label in enumerate(table.labels):
-    if    (options.whitelist == None or     any([fnmatch.fnmatch(label,needle) for needle in options.whitelist])) \
-      and (options.blacklist == None or not any([fnmatch.fnmatch(label,needle) for needle in options.blacklist])):  # a label to keep?
+    if    (options.whitelist == None or     any([   position in table.label_indexrange(needle) \
+                                                 or fnmatch.fnmatch(label,needle) for needle in options.whitelist])) \
+      and (options.blacklist == None or not any([   position in table.label_indexrange(needle) \
+                                                 or fnmatch.fnmatch(label,needle) for needle in options.blacklist])):  # a label to keep?
       labels.append(label)                                                                          # remember name...
       positions.append(position)                                                                    # ...and position
 
-  if options.whitelist != None and options.blacklist == None:                                       # check whether reordering is possible
+  if len(labels) > 0 and options.whitelist != None and options.blacklist == None:                   # check whether reordering is possible
     position = np.zeros(len(labels))
     for i,label in enumerate(labels):                                                               # check each selected label
-      match = [fnmatch.fnmatch(label,needle) for needle in options.whitelist]                       # which whitelist items do match it
+      match = [   positions[i] in table.label_indexrange(needle) \
+               or fnmatch.fnmatch(label,needle) for needle in options.whitelist]                       # which whitelist items do match it
       position[i] = match.index(True) if np.sum(match) == 1 else -1                                 # unique match --> store which
 
-    sorted = np.argsort(position)
+    sorted = np.lexsort((labels,position))
     order = range(len(labels)) if sorted[0] < 0 else sorted                                         # skip reordering if non-unique, i.e. first sorted is "-1"
   else:
     order = range(len(labels))                                                                      # maintain original order of labels
@@ -90,10 +100,13 @@ for name in filenames:
   evaluator = "'" + condition + "'.format(" + ','.join(interpolator) + ")"
   
 # ------------------------------------------ assemble header ---------------------------------------
-  table.labels = np.array(labels)[order]                                                          # update with new label set
+
+  table.labels_clear()
+  table.labels_append(np.array(labels)[order])                                                      # update with new label set
   table.head_write()
 
-# ------------------------------------------ process data ------------------------------------------
+# ------------------------------------------ process and output data ------------------------------------------
+
   positions = np.array(positions)[order]
   outputAlive = True
   while outputAlive and table.data_read():                                                          # read next data line of ASCII table
@@ -102,10 +115,8 @@ for name in filenames:
       table.data = [table.data[position] for position in positions]                                 # retain filtered columns
       outputAlive = table.data_write()                                                              # output processed line
 
-# ------------------------------------------ output result -----------------------------------------
-  outputAlive and table.output_flush()                                                              # just in case of buffered ASCII table
+# ------------------------------------------ finalize output -----------------------------------------
 
-  table.input_close()                                                                               # close input ASCII table (works for stdin)
-  table.output_close()                                                                              # close output ASCII table (works for stdout)
-  if file['name'] != 'STDIN':
-    os.rename(file['name']+'_tmp',file['name'])                                                     # overwrite old one with tmp new
+  table.close()                                                                                     # close input ASCII table (works for stdin)
+
+  if name != 'STDIN': os.rename(name+'_tmp',name)                                                   # overwrite old one with tmp new

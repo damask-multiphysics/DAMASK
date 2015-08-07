@@ -13,18 +13,6 @@ scriptName = os.path.splitext(scriptID.split()[1])[0]
 #--------------------------------------------------------------------------------------------------
 #                                MAIN
 #--------------------------------------------------------------------------------------------------
-identifiers = {
-        'grid':   ['a','b','c'],
-        'size':   ['x','y','z'],
-        'origin': ['x','y','z'],
-          }
-mappings = {
-        'grid':            lambda x: int(x),
-        'size':            lambda x: float(x),
-        'origin':          lambda x: float(x),
-        'homogenization':  lambda x: int(x),
-        'microstructures': lambda x: int(x),
-          }
 
 parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
 Create seed file by taking microstructure indices from given ASCIItable column.
@@ -36,16 +24,27 @@ Examples:
 
 """, version = scriptID)
 
-parser.add_option('-p', '--positions',   dest = 'pos', metavar = 'string',
-                  help = 'coordinate label')
-parser.add_option('--boundingbox',  dest = 'box', type = 'float', nargs = 6, metavar = ' '.join(['float']*6),
-                  help = 'min (x,y,z) and max (x,y,z) coordinates of bounding box [auto]')
-parser.add_option('-i', '--index',  dest = 'index', type = 'string', metavar = 'string',
-                  help = 'microstructure index label')
-parser.add_option('-w','--white',   dest = 'whitelist', action = 'extend',
-                  help = 'white list of microstructure indices', metavar = '<LIST>')
-parser.add_option('-b','--black',   dest = 'blacklist', action = 'extend',
-                  help = 'black list of microstructure indices', metavar = '<LIST>')
+parser.add_option('-p', '--positions',
+                  dest = 'pos',
+                  type = 'string', metavar = 'string',
+                  help = 'coordinate label [%default]')
+parser.add_option('--boundingbox',
+                  dest = 'box',
+                  type = 'float', nargs = 6, metavar = ' '.join(['float']*6),
+                  help = 'min (x,y,z) and max (x,y,z) coordinates of bounding box [tight]')
+parser.add_option('-i', '--index',
+                  dest = 'index',
+                  type = 'string', metavar = 'string',
+                  help = 'microstructure index label [%default]')
+parser.add_option('-w','--white',
+                  dest = 'whitelist',
+                  action = 'extend', metavar = '<int LIST>',
+                  help = 'whitelist of microstructure indices')
+parser.add_option('-b','--black',
+                  dest = 'blacklist',
+                  action = 'extend', metavar = '<int LIST>',
+                  help = 'blacklist of microstructure indices')
+
 parser.set_defaults(pos = 'pos',
                     index ='microstructure',
                    )
@@ -57,58 +56,51 @@ if options.blacklist != None: options.blacklist = map(int,options.blacklist)
 
 # --- loop over input files -------------------------------------------------------------------------
 
-if filenames == []:
-  filenames = ['STDIN']
+if filenames == []: filenames = ['STDIN']
 
 for name in filenames:
-  if name == 'STDIN':
-    file = {'name':'STDIN', 'input':sys.stdin, 'output':sys.stdout, 'croak':sys.stderr}
-    file['croak'].write('\033[1m'+scriptName+'\033[0m\n')
-  else:
-    if not os.path.exists(name): continue
-    file = {'name':name,
-            'input':open(name),
-            'output':open(os.path.splitext(name)[0]+ \
-                         ('' if options.label == None else '_'+options.label)+ \
-                         '.png','w'),
-            'croak':sys.stderr}
-    file['croak'].write('\033[1m'+scriptName+'\033[0m: '+file['name']+'\n')
-  
-  table = damask.ASCIItable(file['input'],file['output'],
-                            buffered = False)                                                       # make unbuffered ASCII_table
+  if not (name == 'STDIN' or os.path.exists(name)): continue
+  table = damask.ASCIItable(name = name, outname = os.path.splitext(name)[0]+'.seeds',
+                            buffered = False)
+  table.croak('\033[1m'+scriptName+'\033[0m'+(': '+name if name != 'STDIN' else ''))
+
   table.head_read()                                                                                 # read ASCII header info
 
-# ------------------------------------------ process data ------------------------------------------
+# ------------------------------------------ sanity checks ---------------------------------------  
+
+  missing_labels = table.data_readArray([options.pos,options.index])
 
   errors = []
-  
-  missing_labels = table.data_readArray(options.pos,options.label)
   if len(missing_labels) > 0:
-    errors.append('column%s %s not found'%('s' if len(missing_labels) > 1 else '',
+    errors.append('column{} {} not found'.format('s' if len(missing_labels) > 1 else '',
                                                 ', '.join(missing_labels)))
-  
   for label, dim in {options.pos: 3,
-                     options.label: 1}.iteritems():
+                     options.index: 1}.iteritems():
     if table.label_dimension(label) != dim:
-      errors.append('column %s has wrong dimension'%label)
+      errors.append('column {} has wrong dimension'.format(label))
   
   if errors != []:
-    file['croak'].write('\n'.join(errors))
+    table.croak(errors)
     table.close(dismiss = True)                                                                     # close ASCII table file handles and delete output file
     continue
+
+# ------------------------------------------ process data ------------------------------------------
   
-#--- finding bounding box ------------------------------------------------------------------------------------
+# --- finding bounding box -------------------------------------------------------------------------
+
   boundingBox = np.array((np.amin(table.data[:,0:3],axis = 0),np.amax(table.data[:,0:3],axis = 0)))
   if options.box:
     boundingBox[0,:] = np.minimum(options.box[0:3],boundingBox[0,:])
     boundingBox[1,:] = np.maximum(options.box[3:6],boundingBox[1,:])
 
-#--- rescaling coordinates ------------------------------------------------------------------------------------
+# --- rescaling coordinates ------------------------------------------------------------------------
+
   table.data[:,0:3] -= boundingBox[0,:]
   table.data[:,0:3] /= boundingBox[1,:]-boundingBox[0,:]
 
 
-#--- filtering of grain voxels ------------------------------------------------------------------------------------
+# --- filtering of grain voxels --------------------------------------------------------------------
+
   mask = np.logical_and(\
          np.ones_like(table.data[:,3],bool) \
           if options.whitelist == None \
@@ -129,10 +121,8 @@ for name in filenames:
                                                                        map(str,boundingBox[1,:]-boundingBox[0,:])))))),
                ]
   table.labels_clear()
-  table.labels_append(['1_coords','2_coords','3_coords','microstructure'])                          # implicitly switching label processing/writing on
+  table.labels_append(['1_pos','2_pos','3_pos','microstructure'])                                   # implicitly switching label processing/writing on
   table.head_write()
   
   table.data_writeArray()
-  table.output_flush()
-  
   table.close()                                                                                     # close ASCII tables

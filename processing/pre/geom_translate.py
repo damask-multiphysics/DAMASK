@@ -12,35 +12,29 @@ scriptName = os.path.splitext(scriptID.split()[1])[0]
 #--------------------------------------------------------------------------------------------------
 #                                MAIN
 #--------------------------------------------------------------------------------------------------
-identifiers = {
-        'grid':    ['a','b','c'],
-        'size':    ['x','y','z'],
-        'origin':  ['x','y','z'],
-          }
-mappings = {
-        'grid':            lambda x: int(x),
-        'size':            lambda x: float(x),
-        'origin':          lambda x: float(x),
-        'homogenization':  lambda x: int(x),
-        'microstructures': lambda x: int(x),
-          }
 
 parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
 translate microstructure indices (shift or substitute) and/or geometry origin.
 
 """, version=scriptID)
 
-parser.add_option('-o', '--origin', dest='origin', type='float', nargs = 3,
-                  help='offset from old to new origin of grid', metavar=' '.join(['float']*3))
-parser.add_option('-m', '--microstructure', dest='microstructure', type='int',
-                  help='offset from old to new microstructure indices', metavar='int')
-parser.add_option('-s', '--substitute', action='extend', dest='substitute',
-                  help='substitutions of microstructure indices from,to,from,to,...', metavar='<string LIST>')
+parser.add_option('-o', '--origin',
+                  dest = 'origin',
+                  type = 'float', nargs = 3, metavar = ' '.join(['float']*3),
+                  help = 'offset from old to new origin of grid')
+parser.add_option('-m', '--microstructure',
+                  dest = 'microstructure',
+                  type = 'int', metavar = 'int',
+                  help = 'offset from old to new microstructure indices')
+parser.add_option('-s', '--substitute',
+                  dest = 'substitute',
+                  action = 'extend', metavar = '<string LIST>',
+                  help = 'substitutions of microstructure indices from,to,from,to,...')
 
-parser.set_defaults(origin = (0.0,0.0,0.0))
-parser.set_defaults(microstructure = 0)
-parser.set_defaults(substitute = [])
-parser.set_defaults(twoD = False)
+parser.set_defaults(origin = (0.0,0.0,0.0),
+                    microstructure = 0,
+                    substitute = [],
+                   )
 
 (options, filenames) = parser.parse_args()
 
@@ -48,121 +42,84 @@ sub = {}
 for i in xrange(len(options.substitute)/2):                                                         # split substitution list into "from" -> "to"
   sub[int(options.substitute[i*2])] = int(options.substitute[i*2+1])
 
-#--- setup file handles ---------------------------------------------------------------------------  
-files = []
-if filenames == []:
-  files.append({'name':'STDIN',
-                'input':sys.stdin,
-                'output':sys.stdout,
-                'croak':sys.stderr,
-               })
-else:
-  for name in filenames:
-    if os.path.exists(name):
-      files.append({'name':name,
-                    'input':open(name),
-                    'output':open(name+'_tmp','w'),
-                    'croak':sys.stdout,
-                    })
+# --- loop over input files -------------------------------------------------------------------------
 
-#--- loop over input files ------------------------------------------------------------------------
-for file in files:
-  file['croak'].write('\033[1m' + scriptName + '\033[0m: ' + (file['name'] if file['name'] != 'STDIN' else '') + '\n')
+if filenames == []: filenames = ['STDIN']
 
-  theTable = damask.ASCIItable(file['input'],file['output'],labels=False)
-  theTable.head_read()
+for name in filenames:
+  if not (name == 'STDIN' or os.path.exists(name)): continue
+  table = damask.ASCIItable(name = name, outname = name+'_tmp',
+                            buffered = False, labeled = False)
+  table.croak('\033[1m'+scriptName+'\033[0m'+(': '+name if name != 'STDIN' else ''))
 
-#--- interpret header ----------------------------------------------------------------------------
-  info = {
-          'grid':    np.zeros(3,'i'),
-          'size':    np.zeros(3,'d'),
-          'origin':  np.zeros(3,'d'),
-          'homogenization':  0,
-          'microstructures': 0,
-         }
+# --- interpret header ----------------------------------------------------------------------------
+
+  table.head_read()
+  info,extra_header = table.head_getGeom()
+  
+  table.croak(['grid     a b c:  %s'%(' x '.join(map(str,info['grid']))),
+               'size     x y z:  %s'%(' x '.join(map(str,info['size']))),
+               'origin   x y z:  %s'%(' : '.join(map(str,info['origin']))),
+               'homogenization:  %i'%info['homogenization'],
+               'microstructures: %i'%info['microstructures'],
+              ])
+
+  errors = []
+  if np.any(info['grid'] < 1):    errors.append('invalid grid a b c.')
+  if np.any(info['size'] <= 0.0): errors.append('invalid size x y z.')
+  if errors != []:
+    table.croak(errors)
+    table.close(dismiss = True)
+    continue
+
+# --- read data ------------------------------------------------------------------------------------
+
+  microstructure = table.microstructure_read(info['grid'])                                          # read microstructure
+
+# --- do work ------------------------------------------------------------------------------------
+
   newInfo = {
-          'origin':  np.zeros(3,'d'),
-          'microstructures': 0,
-         }
-  extra_header = []
+             'origin':  np.zeros(3,'d'),
+             'microstructures': 0,
+            }
 
-  for header in theTable.info:
-    headitems = map(str.lower,header.split())
-    if len(headitems) == 0: continue
-    if headitems[0] in mappings.keys():
-      if headitems[0] in identifiers.keys():
-        for i in xrange(len(identifiers[headitems[0]])):
-          info[headitems[0]][i] = \
-            mappings[headitems[0]](headitems[headitems.index(identifiers[headitems[0]][i])+1])
-      else:
-        info[headitems[0]] = mappings[headitems[0]](headitems[1])
-    else:
-      extra_header.append(header)
-
-  file['croak'].write('grid     a b c:  %s\n'%(' x '.join(map(str,info['grid']))) + \
-                      'size     x y z:  %s\n'%(' x '.join(map(str,info['size']))) + \
-                      'origin   x y z:  %s\n'%(' : '.join(map(str,info['origin']))) + \
-                      'homogenization:  %i\n'%info['homogenization'] + \
-                      'microstructures: %i\n'%info['microstructures'])
-
-  if np.any(info['grid'] < 1):
-    file['croak'].write('invalid grid a b c.\n')
-    continue
-  if np.any(info['size'] <= 0.0):
-    file['croak'].write('invalid size x y z.\n')
-    continue
-
-#--- read data ------------------------------------------------------------------------------------
-  microstructure = np.zeros(info['grid'].prod(),'i')
-  i = 0
-  while theTable.data_read():
-    items = theTable.data
-    if len(items) > 2:
-      if   items[1].lower() == 'of': items = [int(items[2])]*int(items[0])
-      elif items[1].lower() == 'to': items = xrange(int(items[0]),1+int(items[2]))
-      else:                          items = map(int,items)
-    else:                            items = map(int,items)
-
-    s = len(items)
-    microstructure[i:i+s] = items
-    i += s
-
-#--- do work ------------------------------------------------------------------------------------
   substituted = np.copy(microstructure)
-  for k, v in sub.iteritems(): substituted[microstructure==k] = v                                    # substitute microstructure indices
+  for k, v in sub.iteritems(): substituted[microstructure==k] = v                                   # substitute microstructure indices
 
-  substituted += options.microstructure                                                              # shift microstructure indices
+  substituted += options.microstructure                                                             # shift microstructure indices
 
   newInfo['origin'] = info['origin'] + options.origin
   newInfo['microstructures'] = substituted.max()
 
-#--- report ---------------------------------------------------------------------------------------
-  if (any(newInfo['origin'] != info['origin'])):
-    file['croak'].write('--> origin     x y z:  %s\n'%(' : '.join(map(str,newInfo['origin']))))
-  if (newInfo['microstructures'] != info['microstructures']):
-    file['croak'].write('--> microstructures: %i\n'%newInfo['microstructures'])
+# --- report ---------------------------------------------------------------------------------------
 
-#--- write header ---------------------------------------------------------------------------------
-  theTable.labels_clear()
-  theTable.info_clear()
-  theTable.info_append(extra_header+[
+  remarks = []
+  if (any(newInfo['origin']          != info['origin'])):         remarks.append('--> origin   x y z:  %s'%(' : '.join(map(str,newInfo['origin']))))
+  if (    newInfo['microstructures'] != info['microstructures']): remarks.append('--> microstructures: %i'%newInfo['microstructures'])
+  if remarks != []: file['croak'](remarks)
+
+# --- write header ---------------------------------------------------------------------------------
+
+  table.labels_clear()
+  table.info_clear()
+  table.info_append(extra_header+[
     scriptID + ' ' + ' '.join(sys.argv[1:]),
-    "grid\ta %i\tb %i\tc %i"%(info['grid'][0],info['grid'][1],info['grid'][2],),
-    "size\tx %f\ty %f\tz %f"%(info['size'][0],info['size'][1],info['size'][2],),
-    "origin\tx %f\ty %f\tz %f"%(newInfo['origin'][0],newInfo['origin'][1],newInfo['origin'][2],),
-    "homogenization\t%i"%info['homogenization'],
-    "microstructures\t%i"%(newInfo['microstructures']),
+    "grid\ta {grid[0]}\tb {grid[1]}\tc {grid[2]}".format(grid=info['grid']),
+    "size\tx {size[0]}\ty {size[1]}\tz {size[2]}".format(size=info['size']),
+    "origin\tx {origin[0]}\ty {origin[1]}\tz {origin[2]}".format(origin=newInfo['origin']),
+    "homogenization\t{homog}".format(homog=info['homogenization']),
+    "microstructures\t{microstructures}".format(microstructures=newInfo['microstructures']),
     ])
-  theTable.head_write()
-  theTable.output_flush()
+  table.head_write()
+  table.output_flush()
   
 # --- write microstructure information ------------------------------------------------------------
-  formatwidth = int(math.floor(math.log10(substituted.max())+1))
-  theTable.data = substituted.reshape((info['grid'][0],info['grid'][1]*info['grid'][2]),order='F').transpose()
-  theTable.data_writeArray('%%%ii'%(formatwidth),delimiter=' ')
+
+  formatwidth = int(math.floor(math.log10(microstructure.max())+1))
+  table.data = microstructure.reshape((info['grid'][0],info['grid'][1]*info['grid'][2]),order='F').transpose()
+  table.data_writeArray('%%%ii'%(formatwidth),delimiter = ' ')
     
-#--- output finalization --------------------------------------------------------------------------
-  if file['name'] != 'STDIN':
-    theTable.input_close()  
-    theTable.output_close()  
-    os.rename(file['name']+'_tmp',file['name'])
+# --- output finalization --------------------------------------------------------------------------
+
+  table.close()                                                                                     # close ASCII table
+  if name != 'STDIN': os.rename(name+'_tmp',name)                                                   # overwrite old one with tmp new

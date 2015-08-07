@@ -19,38 +19,61 @@ Generate PNG image from scalar data on grid deformed by (periodic) deformation g
 
 """, version = scriptID)
 
-parser.add_option('-l','--label', dest='label', type='string', metavar='string',
-                                  help='column containing data)')
-parser.add_option('-r','--range', dest='range', type='float', nargs=2, metavar='float float',
-                                  help='data range (min max) [auto]')
-parser.add_option('--color',      dest='color', type='string', metavar='string',
-                                  help='color scheme')
-parser.add_option('--invert',     dest='invert', action='store_true',
-                                  help='invert color scheme')
-parser.add_option('--abs',        dest='abs', action='store_true',
-                                  help='magnitude of values')
-parser.add_option('--log',        dest='log', action='store_true',
-                                  help='log10 of values')
-parser.add_option('-d','--dimension', dest='dimension', type='int', nargs=3, metavar=' '.join(['int']*3),
-                                  help='data dimension (x/y/z)')
-parser.add_option('-s','--size',  dest='size', type='float', nargs=3, metavar=' '.join(['float']*3),
-                                  help='box size (x/y/z)')
-parser.add_option('-f','--defgrad',   dest='defgrad', metavar='string',
-                                  help='column label of deformation gradient [%default]')
-parser.add_option('--scaling',    dest='scaling', type='float', nargs=3, metavar = ' '.join(['float']*3),
-                                  help='x/y/z scaling of displacment fluctuation [%default]')
-parser.add_option('-z','--layer', dest='z', type='int', metavar='int',
-                                  help='index of z plane to plot [%default]')
-parser.add_option('--fliplr',     dest='flipLR', action='store_true',
-                                  help='flip around vertical axis')
-parser.add_option('--flipud',     dest='flipUD', action='store_true',
-                                  help='flip around horizontal axis')
-parser.add_option('--crop',       dest='crop', type='int', nargs=4, metavar=' '.join(['int']*3),
-                                  help='pixels cropped on left, right, top, bottom')
-parser.add_option('--show',       dest='show', action='store_true',
-                                  help='show resulting image')
-parser.add_option('-N','--pixelsize', dest='pixelsize', type='int', metavar='int',
-                                  help='pixels per cell edge')
+parser.add_option('-l','--label',
+                  dest = 'label',
+                  type = 'string', metavar = 'string',
+                  help = 'column containing data [all]')
+parser.add_option('-r','--range',
+                  dest = 'range',
+                  type = 'float', nargs = 2, metavar = 'float float',
+                  help = 'data range (min max) [auto]')
+parser.add_option('--gap', '--transparent',
+                  dest = 'gap',
+                  type = 'float', metavar = 'float',
+                  help = 'value to treat as transparent [%default]')
+parser.add_option('-d','--dimension',
+                  dest = 'dimension',
+                  type = 'int', nargs = 3, metavar = ' '.join(['int']*3),
+                  help = 'data dimension (x/y/z)')
+parser.add_option('-s','--size',
+                  dest = 'size',
+                  type = 'float', nargs = 3, metavar = ' '.join(['float']*3),
+                  help = 'box size (x/y/z)')
+parser.add_option('-f','--defgrad',
+                  dest = 'defgrad', metavar = 'string',
+                  help = 'column label of deformation gradient [%default]')
+parser.add_option('--scaling',
+                  dest = 'scaling',
+                  type = 'float', nargs = 3, metavar = ' '.join(['float']*3),
+                  help = 'x/y/z scaling of displacement fluctuation [%default]')
+parser.add_option('-z','--layer',
+                  dest = 'z',
+                  type = 'int', metavar = 'int',
+                  help = 'index of z plane to plot [%default]')
+parser.add_option('--color',
+                  dest = 'color',
+                  type = 'string', metavar = 'string',
+                  help = 'color scheme')
+parser.add_option('--invert',
+                  dest = 'invert',
+                  action = 'store_true',
+                  help = 'invert color scheme')
+parser.add_option('--abs',
+                  dest = 'abs',
+                  action = 'store_true',
+                  help = 'magnitude of values')
+parser.add_option('--log',
+                  dest = 'log',
+                  action = 'store_true',
+                  help = 'log10 of values')
+parser.add_option('-N','--pixelsize',
+                  dest = 'pixelsize',
+                  type = 'int', metavar = 'int',
+                  help = 'pixels per cell edge')
+parser.add_option('--show',
+                  dest = 'show',
+                  action = 'store_true',
+                  help = 'show resulting image')
 
 parser.set_defaults(label = None,
                     range = [0.0,0.0],
@@ -61,11 +84,8 @@ parser.set_defaults(label = None,
                     log = False,
                     defgrad = 'f',
                     scaling = [1.,1.,1.],
-                    flipLR = False,
-                    flipUD = False,
                     color = "gray",
                     invert = False,
-                    crop = [0,0,0,0],
                     pixelsize = 1,
                     show = False,
                    )
@@ -86,35 +106,28 @@ theColors = np.uint8(np.array(theMap.export(format='list',steps=256))*255)
 
 # --- loop over input files -------------------------------------------------------------------------
 
-if filenames == []:
-  filenames = ['STDIN']
+if filenames == []: filenames = ['STDIN']
 
 for name in filenames:
-  if name == 'STDIN':
-    file = {'name':'STDIN', 'input':sys.stdin, 'output':sys.stdout, 'croak':sys.stderr}
-    file['croak'].write('\033[1m'+scriptName+'\033[0m\n')
-  else:
-    if not os.path.exists(name): continue
-    file = {'name':name,
-            'input':open(name),
-            'output':open(os.path.splitext(name)[0]+ \
-                         ('' if options.label == None else '_'+options.label)+ \
-                         '.png','w'),
-            'croak':sys.stderr}
-    file['croak'].write('\033[1m'+scriptName+'\033[0m: '+file['name']+'\n')
-  
-  table = damask.ASCIItable(file['input'],file['output'],
-                            buffered = False,                                                       # make unbuffered ASCII_table
-                            labels = options.label != None)                                         # no labels when taking 2D dataset
-  table.head_read()                                                                                 # read ASCII header info
-  
+  if not (name == 'STDIN' or os.path.exists(name)): continue
+  table = damask.ASCIItable(name = name,
+                            outname = None,
+                            buffered = False,
+                            labeled = options.label != None,
+                            readonly = True)
+  table.croak('\033[1m'+scriptName+'\033[0m'+(': '+name if name != 'STDIN' else ''))
+
+# ------------------------------------------ read header ------------------------------------------
+
+  table.head_read()
+
 # --------------- figure out columns to process  ---------------------------------------------------
   
   errors = []
   if table.label_dimension(options.label) != 1:
-    errors.append('no scalar data (%s) found...'%options.label)
+    errors.append('no scalar data ({}) found.'.format(options.label))
   if table.label_dimension(options.defgrad) != 9:
-    errors.append('no deformation gradient tensor (1..9_%s) found...'%options.defgrad)
+    errors.append('no deformation gradient tensor (1..9_{}) found.'.format(options.defgrad))
   
   if errors != []:
     file['croak'].write('\n'.join(errors)+'\n')
@@ -123,8 +136,8 @@ for name in filenames:
   
   table.data_readArray([options.label,options.defgrad])
   
-  F =    table.data[:,1:10].transpose().reshape([3,3]+list(options.dimension),order='F')
   data = table.data[:,0   ].transpose().reshape(      list(options.dimension),order='F')
+  F    = table.data[:,1:10].transpose().reshape([3,3]+list(options.dimension),order='F')
 
   if options.abs:  data = np.abs(data)
   if options.log:  data = np.log10(data)
@@ -165,24 +178,17 @@ for name in filenames:
                     nodes[0,x  ,y+1,options.z],
                     nodes[1,x  ,y+1,options.z],
                    ],
-                   fill =    tuple(theColors[int(255*data[x,y,options.z])]),
+                   fill =    tuple(theColors[int(255*data[x,y,options.z])],
+                                   0 if data[x,y,options.z] == options.gap else 255),
                    outline = None)
   
-#  if options.flipLR:          table.data = np.fliplr(table.data)
-#  if options.flipUD:          table.data = np.flipud(table.data)
-
-
-#  (height,width,bands) = table.data.shape
-
-#  im = Image.fromarray(table.data.astype('uint8'), 'RGB').\
-#             crop((       options.crop[0],
-#                          options.crop[2],
-#                   width -options.crop[1],
-#                   height-options.crop[3]))
-
 # ------------------------------------------ output result -----------------------------------------
-  
-  im.save(file['output'],format = "PNG")
+
+  im.save(sys.stdout if name == 'STDIN' else
+          os.path.splitext(name)[0]+ \
+          ('' if options.label == None else '_'+options.label)+ \
+          '.png',
+          format = "PNG")
+
+  table.close()                                                                                     # close ASCII table
   if options.show: im.show()
-  
-  table.close()                                                                                    # close ASCII table file handles

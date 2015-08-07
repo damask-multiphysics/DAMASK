@@ -21,41 +21,39 @@ Examples:
 For grain averaged values, replace all rows of particular 'texture' with a single row containing their average.
 """, version = scriptID)
 
-parser.add_option('-l','--label',   dest='label', type="string", metavar='string',
-                  help='column label for grouping rows')
+parser.add_option('-l','--label',
+                  dest = 'label',
+                  type = 'string', metavar = 'string',
+                  help = 'column label for grouping rows')
+
 (options,filenames) = parser.parse_args()
 
 if options.label == None:
-  parser.error('No sorting column specified.')
+  parser.error('no grouping column specified.')
 
 
 # --- loop over input files -------------------------------------------------------------------------
 
-if filenames == []:
-  filenames = ['STDIN']
+if filenames == []: filenames = ['STDIN']
 
 for name in filenames:
-  if name == 'STDIN':
-    file = {'name':'STDIN', 'input':sys.stdin, 'output':sys.stdout, 'croak':sys.stderr}
-    file['croak'].write('\033[1m'+scriptName+'\033[0m\n')
-  else:
-    if not os.path.exists(name): continue
-    file = {'name':name, 'input':open(name), 'output':open(name+'_tmp','w'), 'croak':sys.stderr}
-    file['croak'].write('\033[1m'+scriptName+'\033[0m: '+file['name']+'\n')
+  if not (name == 'STDIN' or os.path.exists(name)): continue
+  table = damask.ASCIItable(name    = name,
+                            outname = options.label+'_averaged_'+name,
+                            buffered = False)
+  table.croak('\033[1m'+scriptName+'\033[0m'+(': '+name if name != 'STDIN' else ''))
 
-  table = damask.ASCIItable(file['input'],file['output'],buffered=False)                            # make unbuffered ASCII_table
-  table.head_read()                                                                                 # read ASCII header info
+# ------------------------------------------ sanity checks ---------------------------------------  
 
+  table.head_read()
   if table.label_dimension(options.label) != 1:
-    file['croak'].write('column {0} is not of scalar dimension...\n'.format(options.label))
+    table.croak('column {} is not of scalar dimension.'.format(options.label))
     table.close(dismiss = True)                                                                     # close ASCIItable and remove empty file
     continue
 
+# ------------------------------------------ assemble info ---------------------------------------  
 
-# ------------------------------------------ assemble header -----------------------------  
-
-  table.info_append(string.replace(scriptID,'\n','\\n') + \
-                    '\t' + ' '.join(sys.argv[1:]))
+  table.info_append(scriptID + '\t' + ' '.join(sys.argv[1:]))
   table.head_write()
 
 # ------------------------------------------ process data -------------------------------- 
@@ -65,7 +63,7 @@ for name in filenames:
 
   table.data = table.data[np.lexsort([table.data[:,table.label_index(options.label)]])]
   
-  values,index = np.unique(table.data[:,table.label_index(options.label)], return_index=True)
+  values,index = np.unique(table.data[:,table.label_index(options.label)], return_index = True)
   index = np.append(index,rows)
   avgTable = np.empty((len(values), cols))
   
@@ -78,8 +76,4 @@ for name in filenames:
 # ------------------------------------------ output result -------------------------------  
 
   table.data_writeArray()
-  table.output_flush()                                                                               # just in case of buffered ASCII table
-
-  table.close()                                                                                      # close ASCII table
-  if file['name'] != 'STDIN':
-    os.rename(file['name']+'_tmp',options.label+'_averaged_'+file['name'])                             # overwrite old one with tmp new
+  table.close()                                                                                     # close ASCII table

@@ -106,11 +106,11 @@ parser.set_defaults(scale = 1.0)
 (options,filenames) = parser.parse_args()
 
 if options.type == None:
-  parser.error('no feature type selected...')
+  parser.error('no feature type selected.')
 if not set(options.type).issubset(set(list(itertools.chain(*map(lambda x: x['names'],features))))):
-  parser.error('type must be chosen from (%s)...'%(', '.join(map(lambda x:'|'.join(x['names']),features))) )
+  parser.error('type must be chosen from (%s).'%(', '.join(map(lambda x:'|'.join(x['names']),features))) )
 if 'biplane' in options.type and 'boundary' in options.type:
-  parser.error("both aliases 'biplane' and 'boundary' are selected...")
+  parser.error("only one from aliases 'biplane' and 'boundary' possible.")
 
 feature_list = []
 for i,feature in enumerate(features):
@@ -120,55 +120,69 @@ for i,feature in enumerate(features):
         feature_list.append(i)                                                                      # remember valid features
         break
 
-files = []
+# --- loop over input files -------------------------------------------------------------------------
+
+if filenames == []: filenames = ['STDIN']
+
 for name in filenames:
-  if os.path.exists(name):
-    files.append({'name':name, 'input':open(name), 'output':open(name+'_tmp','w'), 'croak':sys.stderr})
+  if not (name == 'STDIN' or os.path.exists(name)): continue
+  table = damask.ASCIItable(name = name, outname = name+'_tmp',
+                            buffered = False)
+  table.croak('\033[1m'+scriptName+'\033[0m'+(': '+name if name != 'STDIN' else ''))
 
-# ------------------------------------------ loop over input files ---------------------------------
-for file in files:
-  file['croak'].write('\033[1m'+scriptName+'\033[0m: '+file['name']+'\n')
+# ------------------------------------------ read header ------------------------------------------
 
-  table = damask.ASCIItable(file['input'],file['output'],False)                                     # make unbuffered ASCII_table
-  table.head_read()                                                                                 # read ASCII header info
-  table.data_readArray()
+  table.head_read()
 
-# --------------- figure out name of coordinate data (support for legacy .x notation) ------------
-  coordLabels=['%i_%s'%(i+1,options.coords) for i in xrange(3)]                                     # store labels for column keys
-  if not set(coordLabels).issubset(table.labels):
-    directions = ['x','y','z']
-    coordLabels=['%s.%s'%(options.coords,directions[i]) for i in xrange(3)]                         # store labels for column keys
-    if not set(coordLabels).issubset(table.labels):
-      file['croak'].write('no coordinate data (1_%s) found...\n'%options.coords)
-      continue
-  coordColumns = [table.labels.index(label) for label in coordLabels]
+# ------------------------------------------ sanity checks ----------------------------------------
+
+  errors  = []
+  remarks = []
+  column = {}
   
-# --------------- figure out active column --------------------------------------------------------
-  if options.id not in table.labels:
-    file['croak'].write('column %s not found...\n'%options.id)
+  if table.label_dimension(options.coords) != 3: errors.append('coordinates {} are not a vector.'.format(options.coords))
+  else: coordCol = table.label_index(options.coords)
+
+  if table.label_dimension(options.id) != 1: errors.append('grain identifier {} not found.'.format(options.id))
+  else: idCol = table.label_index(options.id)
+
+  if remarks != []: table.croak(remarks)
+  if errors  != []:
+    table.croak(errors)
+    table.close(dismiss = True)
     continue
 
 # ------------------------------------------ assemble header ---------------------------------------
+
   table.info_append(scriptID + '\t' + ' '.join(sys.argv[1:]))
   for feature in feature_list:
-    table.labels_append('ED_%s(%s)'%(features[feature]['names'][0],options.id))                         # extend ASCII header with new labels
+    table.labels_append('ED_{}({})'.format(features[feature]['names'][0],options.id))               # extend ASCII header with new labels
   table.head_write()
 
-# --------------- figure out grid -----------------------------------------------------------------
+# --------------- figure out size and grid ---------------------------------------------------------
+
+  table.data_readArray()
+
   coords = [{},{},{}]
-  for i in xrange(len(table.data)):
+  for i in xrange(len(table.data)):  
     for j in xrange(3):
-      coords[j][str(table.data[i,coordColumns[j]])] = True
+      coords[j][str(table.data[i,coordCol+j])] = True
   grid = np.array(map(len,coords),'i')
+  size = grid/np.maximum(np.ones(3,'d'),grid-1.0)* \
+            np.array([max(map(float,coords[0].keys()))-min(map(float,coords[0].keys())),\
+                      max(map(float,coords[1].keys()))-min(map(float,coords[1].keys())),\
+                      max(map(float,coords[2].keys()))-min(map(float,coords[2].keys())),\
+                      ],'d')                                                                        # size from bounding box, corrected for cell-centeredness
+
+  size = np.where(grid > 1, size, min(size[grid > 1]/grid[grid > 1]))                               # spacing for grid==1 equal to smallest among other spacings
 
 # ------------------------------------------ process value field -----------------------------------
-  unitlength = 0.0
-  for i,r in enumerate(grid):
-    if r > 1: unitlength = max(unitlength,(max(map(float,coords[i].keys()))-min(map(float,coords[i].keys())))/(r-1.0))
+
+  stack = [table.data]
 
   neighborhood = neighborhoods[options.neighborhood]
   convoluted = np.empty([len(neighborhood)]+list(grid+2),'i')
-  microstructure = periodic_3Dpad(np.array(table.data[:,table.labels.index(options.id)].reshape(grid),'i'))
+  microstructure = periodic_3Dpad(np.array(table.data[:,idCol].reshape(grid),'i'))
   
   for i,p in enumerate(neighborhood):
     stencil = np.zeros((3,3,3),'i')
@@ -181,29 +195,28 @@ for file in files:
   distance = np.ones((len(feature_list),grid[0],grid[1],grid[2]),'d')
   
   convoluted = np.sort(convoluted,axis = 0)
-  uniques = np.where(convoluted[0,1:-1,1:-1,1:-1] != 0, 1,0)                   # initialize unique value counter (exclude myself [= 0])
+  uniques = np.where(convoluted[0,1:-1,1:-1,1:-1] != 0, 1,0)                                        # initialize unique value counter (exclude myself [= 0])
 
-  for i in xrange(1,len(neighborhood)):                                           # check remaining points in neighborhood
+  for i in xrange(1,len(neighborhood)):                                                             # check remaining points in neighborhood
     uniques += np.where(np.logical_and(
-                           convoluted[i,1:-1,1:-1,1:-1] != convoluted[i-1,1:-1,1:-1,1:-1],    # flip of ID difference detected?
-                           convoluted[i,1:-1,1:-1,1:-1] != 0),                                # not myself?
-                           1,0)                                                   # count flip
+                           convoluted[i,1:-1,1:-1,1:-1] != convoluted[i-1,1:-1,1:-1,1:-1],          # flip of ID difference detected?
+                           convoluted[i,1:-1,1:-1,1:-1] != 0),                                      # not myself?
+                           1,0)                                                                     # count flip
 
   for i,feature_id in enumerate(feature_list):
-    distance[i,:,:,:] = np.where(uniques >= features[feature_id]['aliens'],0.0,1.0) # seed with 0.0 when enough unique neighbor IDs are present
-
-  for i in xrange(len(feature_list)):
+    distance[i,:,:,:] = np.where(uniques >= features[feature_id]['aliens'],0.0,1.0)                 # seed with 0.0 when enough unique neighbor IDs are present
     distance[i,:,:,:] = ndimage.morphology.distance_transform_edt(distance[i,:,:,:])*[options.scale]*3
+
   distance.shape = (len(feature_list),grid.prod())
-  
-# ------------------------------------------ add data ------------------------------------------
   for i in xrange(len(feature_list)):
-    lastRow = table.data.shape[1]
-    table.data=np.insert(table.data,lastRow,distance[i,:],1)
+    stack.append(distance[i,:])
 
 # ------------------------------------------ output result -----------------------------------------
+
+  if len(stack) > 1: table.data = np.hstack(tuple(stack))
   table.data_writeArray('%.12g')
-  table.input_close()                                                                               # close input ASCII table (works for stdin)
-  table.output_close()                                                                              # close output ASCII table (works for stdout)
-  if file['name'] != 'STDIN':
-    os.rename(file['name']+'_tmp',file['name'])                                                     # overwrite old one with tmp new
+
+# ------------------------------------------ output finalization -----------------------------------
+
+  table.close()                                                                                     # close input ASCII table (works for stdin)
+  if name != 'STDIN': os.rename(name+'_tmp',name)                                                   # overwrite old one with tmp new

@@ -18,64 +18,80 @@ Permute all values in given column(s).
 
 """, version = scriptID)
 
-parser.add_option('-l','--label',   dest='label', action='extend', metavar='<string LIST>',
-                  help='heading(s) of column to permute')
-parser.add_option('-r', '--rnd',    dest='randomSeed', type='int', metavar='int',
-                  help='seed of random number generator [%default]')
-parser.set_defaults(randomSeed = None)
+parser.add_option('-l','--label',
+                  dest = 'label',
+                  action = 'extend', metavar = '<string LIST>',
+                  help  ='column(s) to permute')
+parser.add_option('-r', '--rnd',
+                  dest = 'randomSeed',
+                  type = 'int', metavar = 'int',
+                  help = 'seed of random number generator [%default]')
+
+parser.set_defaults(label = [],
+                    randomSeed = None,
+                   )
 
 (options,filenames) = parser.parse_args()
 
-if options.label == None:
-  parser.error('no data column specified...')
+if len(options.label) == 0:
+  parser.error('no labels specified.')
 
 # --- loop over input files -------------------------------------------------------------------------
+
+if filenames == []: filenames = ['STDIN']
+
 for name in filenames:
-  if not os.path.exists(name): continue
-  file = {'name':name, 'input':open(name), 'output':open(name+'_tmp','w'), 'croak':sys.stderr}
-  file['croak'].write('\033[1m'+scriptName+'\033[0m: '+file['name']+'\n')
+  if not (name == 'STDIN' or os.path.exists(name)): continue
+  table = damask.ASCIItable(name = name, outname = name+'_tmp',
+                            buffered = False)
+  table.croak('\033[1m'+scriptName+'\033[0m'+(': '+name if name != 'STDIN' else ''))
 
-  randomSeed = int(os.urandom(4).encode('hex'), 16)  if options.randomSeed == None else options.randomSeed         # radom seed per file for second phase
-  np.random.seed(randomSeed)
-  table = damask.ASCIItable(file['input'],file['output'],buffered=False)                            # make unbuffered ASCII_table
-  table.head_read()                                                                                 # read ASCII header info
-  table.info_append(scriptID + '\t' + ' '.join(sys.argv[1:]))
-  table.info_append('random seed %i'%randomSeed)
+# ------------------------------------------ read header ------------------------------------------
 
-# --------------- figure out columns to process  ---------------------------------------------------
-  active = []
-  column = {}
+  table.head_read()
 
-  for label in options.label:
-    if label in table.labels:
-      active.append(label)
-      column[label] = table.labels.index(label)                                                     # remember columns of requested data
+# ------------------------------------------ process labels ---------------------------------------  
+
+  errors  = []
+  remarks = []
+  columns = []
+  dims    = []
+
+  indices    = table.label_index    (options.label)
+  dimensions = table.label_dimension(options.label)
+  for i,index in enumerate(indices):
+    if index == -1: remarks.append('label {} not present...'.format(options.label[i]))
     else:
-      file['croak'].write('column %s not found...\n'%label)
+      columns.append(index)
+      dims.append(dimensions[i])
+
+  if remarks != []: table.croak(remarks)
+  if errors  != []:
+    table.croak(errors)
+    table.close(dismiss = True)
+    continue
        
 # ------------------------------------------ assemble header ---------------------------------------
+
+  randomSeed = int(os.urandom(4).encode('hex'), 16) if options.randomSeed == None else options.randomSeed         # random seed per file
+  np.random.seed(randomSeed)
+
+  table.info_append([scriptID + '\t' + ' '.join(sys.argv[1:]),
+                     'random seed {}'.format(randomSeed),
+                    ])
   table.head_write()
 
 # ------------------------------------------ process data ------------------------------------------
-  permutation = {}
-  table.data_readArray(active)
-  for i,label in enumerate(active):
-    unique = list(set(table.data[:,i]))
-    permutated = np.random.permutation(unique)
-    permutation[label] = dict(zip(unique,permutated))
 
-  table.data_rewind()
-  table.head_read()                                                                                 # read ASCII header info again to get the completed data
-  outputAlive = True
-  while outputAlive and table.data_read():                                                          # read next data line of ASCII table
-    for label in active:                                                                            # loop over all requested stiffnesses
-      table.data[column[label]] = permutation[label][float(table.data[column[label]])]                                    # apply permutation
-    
-    outputAlive = table.data_write()                                                                # output processed line
+  table.data_readArray()                                                                            # read all data at once
+  for col,dim in zip(columns,dims):
+    table.data[:,col:col+dim] = np.random.permutation(table.data[:,col:col+dim])
 
 # ------------------------------------------ output result -----------------------------------------  
-  outputAlive and table.output_flush()                                                              # just in case of buffered ASCII table
 
-  table.input_close()                                                                               # close input ASCII table
-  table.output_close()                                                                              # close output ASCII table
-  os.rename(file['name']+'_tmp',file['name'])                                                       # overwrite old one with tmp new
+  table.data_writeArray()
+
+# ------------------------------------------ output finalization -----------------------------------  
+
+  table.close()                                                                                     # close ASCII tables
+  if name != 'STDIN': os.rename(name+'_tmp',name)                                                   # overwrite old one with tmp new

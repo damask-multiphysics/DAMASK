@@ -12,136 +12,118 @@ scriptName = os.path.splitext(scriptID.split()[1])[0]
 #--------------------------------------------------------------------------------------------------
 #                                MAIN
 #--------------------------------------------------------------------------------------------------
-identifiers = {
-        'grid':   ['a','b','c'],
-        'size':   ['x','y','z'],
-        'origin': ['x','y','z'],
-          }
-mappings = {
-        'grid':            lambda x: int(x),
-        'size':            lambda x: float(x),
-        'origin':          lambda x: float(x),
-        'microstructures': lambda x: int(x),
-          }
-
-
 parser = OptionParser(option_class=damask.extendableOption, usage='%prog [seedsfile[s]]', description = """
 Produce VTK point mesh from seeds file
 
 """, version = scriptID)
 
-parser.add_option('-s', '--size', dest='size', type='float', nargs = 3, metavar='float float float',\
-                  help='x,y,z size of hexahedral box [1.0 along largest grid point number]')
+parser.add_option('-s', '--size',
+                  dest = 'size',
+                  type = 'float', nargs = 3, metavar = 'float float float',
+                  help = 'x,y,z size of hexahedral box [1.0 along largest grid point number]')
+parser.add_option('-p','--position',
+                  dest = 'position',
+                  type = 'string', metavar = 'string',
+                  help = 'column label for coordinates [%default]')
 
-parser.set_defaults(size = [0.0,0.0,0.0])
+parser.set_defaults(size = [0.0,0.0,0.0],
+                    position = 'pos',
+                   )
 
 (options, filenames) = parser.parse_args()
 
 # --- loop over input files -------------------------------------------------------------------------
-if filenames == []:
-  filenames = ['STDIN']
+
+if filenames == []: filenames = ['STDIN']
 
 for name in filenames:
-  if name == 'STDIN':
-    file = {'name':'STDIN', 'input':sys.stdin, 'output':sys.stdout, 'croak':sys.stderr}
-    file['croak'].write('\033[1m'+scriptName+'\033[0m\n')
-  else:
-    if not os.path.exists(name): continue
-    file = {'name':name, 'input':open(name), 'output':open(name+'_tmp','w'), 'croak':sys.stderr}
-    file['croak'].write('\033[1m'+scriptName+'\033[0m: '+file['name']+'\n')
+  if not (name == 'STDIN' or os.path.exists(name)): continue
+  table = damask.ASCIItable(name = name, outname = None,
+                            buffered = False, readonly = True)
+  table.croak('\033[1m'+scriptName+'\033[0m'+(': '+name if name != 'STDIN' else ''))
 
-  table = damask.ASCIItable(file['input'],file['output'],buffered = False)
+# --- interpret header ----------------------------------------------------------------------------
+
   table.head_read()
+  info,extra_header = table.head_getGeom()
+  
+  table.croak(['grid     a b c:  %s'%(' x '.join(map(str,info['grid']))),
+               'size     x y z:  %s'%(' x '.join(map(str,info['size']))),
+               'origin   x y z:  %s'%(' : '.join(map(str,info['origin']))),
+               'homogenization:  %i'%info['homogenization'],
+               'microstructures: %i'%info['microstructures'],
+              ])
 
+  remarks = []
+  errors = []
 
-  if np.all(table.label_index(['1_coords','2_coords','3_coords']) != -1):
-    labels = ['1_coords','2_coords','3_coords']
-  elif np.all(table.label_index(['x','y','z']) != -1):
-    labels = ['x','y','z']
+  if     np.any(info['grid'] < 1):   remarks.append('invalid grid a b c.')
+  if     np.any(info['size'] <= 0.0) \
+     and np.all(info['grid'] < 1):   errors.append('invalid size x y z.')
   else:
-    file['croak'].write('no coordinate data (1/2/3_coords | x/y/z) found ...')
+    for i in xrange(3):
+      if info['size'][i] <= 0.0:                                                                      # any invalid size?
+        info['size'][i] = float(info['grid'][i])/max(info['grid'])                                    # normalize to grid
+        remarks.append('rescaling size {} to {}...'.format({0:'x',1:'y',2:'z'}[i],info['size'][i]))
+  if table.label_dimension(options.position) != 3: errors.append('columns "{}" have dimension {}'.format(options.position,
+                                                                                                         table.label_dimension(options.position)))
+  if remarks != []: table.croak(remarks)
+  if errors != []:
+    table.croak(errors)
+    table.close(dismiss=True)
     continue
 
+  labels = ['{dim}_{label}'.format(dim = 1+i,label = options.position) for i in xrange(3)]
   hasGrains = table.label_index('microstructure') != -1
   labels += ['microstructure'] if hasGrains else []
 
   table.data_readArray(labels)                                                                      # read ASCIItable columns
+
   coords = table.data[:,:3]                                                                         # assign coordinates
   grain = table.data[:,3].astype('i') if hasGrains else 1+np.arange(len(coords),dtype='i')          # assign grains
-  grainIDs = np.unique(grain).astype('i')                                                           # find all grainIDs present
-  
-#--- interpret header ----------------------------------------------------------------------------
-  info = {
-          'grid':    np.zeros(3,'i'),
-          'size':    np.array(options.size),
-          'origin':  np.zeros(3,'d'),
-          'microstructures':  0,
-         }
+#  grainIDs = np.unique(grain).astype('i')                                                           # find all grainIDs present
+ 
+# --- generate grid --------------------------------------------------------------------------------
 
-  for header in table.info:
-    headitems = map(str.lower,header.split())
-    if len(headitems) == 0: continue
-    if headitems[0] in mappings.keys():
-      if headitems[0] in identifiers.keys():
-        for i in xrange(len(identifiers[headitems[0]])):
-          info[headitems[0]][i] = \
-            mappings[headitems[0]](headitems[headitems.index(identifiers[headitems[0]][i])+1])
-      else:
-        info[headitems[0]] = mappings[headitems[0]](headitems[1])
-
-  if info['microstructures'] != len(grainIDs):
-    file['croak'].write('grain data not matching grain count (%i)...\n'%(len(grainIDs)))
-    info['microstructures'] = len(grainIDs)
-  if np.any(info['grid'] < 1):
-    file['croak'].write('invalid grid a b c.\n')
-    continue
-
-  for i in xrange(3):
-    if info['size'][i] <= 0.0:                                                                      # any invalid size?
-      info['size'][i] = float(info['grid'][i])/max(info['grid'])
-      file['croak'].write('rescaling size %s...\n'%{0:'x',1:'y',2:'z'}[i])
-
-#--- generate grid --------------------------------------------------------------------------------
   grid = vtk.vtkUnstructuredGrid()
   pts = vtk.vtkPoints()
 
-#--- process microstructure information --------------------------------------------------------------
+# --- process microstructure information --------------------------------------------------------------
+
   IDs = vtk.vtkIntArray()
   IDs.SetNumberOfComponents(1)
   IDs.SetName("GrainID")
 
   for i,item in enumerate(coords):
+    IDs.InsertNextValue(grain[i])
     pid = pts.InsertNextPoint(item[0:3])
     pointIds = vtk.vtkIdList()
     pointIds.InsertId(0, pid)
     grid.InsertNextCell(1, pointIds)
-    IDs.InsertNextValue(grain[i])
 
   grid.SetPoints(pts)
   grid.GetCellData().AddArray(IDs)
 
-#--- write data -----------------------------------------------------------------------------------
-  if file['name'] == 'STDIN':
+# --- write data -----------------------------------------------------------------------------------
+
+  if name == 'STDIN':
     writer = vtk.vtkUnstructuredGridWriter()
     writer.WriteToOutputStringOn()
     writer.SetFileTypeToASCII()
     writer.SetHeader('# powered by '+scriptID)
-    if vtk.VTK_MAJOR_VERSION <= 5:
-      writer.SetInput(grid)
-    else:
-      writer.SetInputData(grid)
+    if vtk.VTK_MAJOR_VERSION <= 5: writer.SetInput(grid)
+    else:                          writer.SetInputData(grid)
     writer.Write()
     sys.stdout.write(writer.GetOutputString()[0:writer.GetOutputStringLength()])
   else:
-    table.close(dismiss=True)
-    (head,tail) = os.path.split(file['name'])
+    (dir,filename) = os.path.split(name)
     writer = vtk.vtkXMLUnstructuredGridWriter()
     writer.SetDataModeToBinary()
     writer.SetCompressorTypeToZLib()
-    writer.SetFileName(os.path.join(head,'seeds_'+os.path.splitext(tail)[0]
-                                                   +'.'+writer.GetDefaultFileExtension()))
-    if vtk.VTK_MAJOR_VERSION <= 5:
-      writer.SetInput(grid)
-    else:
-      writer.SetInputData(grid)
+    writer.SetFileName(os.path.join(dir,'seeds_'+os.path.splitext(filename)[0]
+                                                 +'.'+writer.GetDefaultFileExtension()))
+    if vtk.VTK_MAJOR_VERSION <= 5: writer.SetInput(grid)
+    else:                          writer.SetInputData(grid)
     writer.Write()
+
+  table.close()

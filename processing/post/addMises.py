@@ -29,76 +29,78 @@ Add vonMises equivalent values for symmetric part of requested strains and/or st
 
 """, version = scriptID)
 
-parser.add_option('-e','--strain', dest='strain', action='extend', metavar='<string LIST>',
-                  help='heading(s) of columns containing strain tensors')
-parser.add_option('-s','--stress', dest='stress', action='extend', metavar='<string LIST>',
-                  help='heading(s) of columns containing stress tensors')
+parser.add_option('-e','--strain',
+                  dest = 'strain',
+                  action = 'extend', metavar = '<string LIST>',
+                  help = 'heading(s) of columns containing strain tensors')
+parser.add_option('-s','--stress',
+                  dest = 'stress',
+                  action = 'extend', metavar = '<string LIST>',
+                  help = 'heading(s) of columns containing stress tensors')
+
+parser.set_defaults(strain = [],
+                    stress = [],
+                   )
 
 (options,filenames) = parser.parse_args()
 
-if (not None) in [options.strain,options.stress]:
+if len(options.stress+options.strain) == 0:
   parser.error('no data column specified...')
 
-datainfo = {                                                                                        # list of requested labels per datatype
-             'strain':     {'len':9,
-                            'label':[]},
-             'stress':     {'len':9,
-                            'label':[]},
-           }
+# --- loop over input files -------------------------------------------------------------------------
 
-if options.strain != None:    datainfo['strain']['label'] += options.strain
-if options.stress != None:    datainfo['stress']['label'] += options.stress
+if filenames == []: filenames = ['STDIN']
 
-# ------------------------------------------ setup file handles ------------------------------------
-files = []
-if filenames == []:
-  files.append({'name':'STDIN', 'input':sys.stdin, 'output':sys.stdout, 'croak':sys.stderr})
-else:
-  for name in filenames:
-    if os.path.exists(name):
-      files.append({'name':name, 'input':open(name), 'output':open(name+'_tmp','w'), 'croak':sys.stderr})
+for name in filenames:
+  if not (name == 'STDIN' or os.path.exists(name)): continue
+  table = damask.ASCIItable(name = name, outname = name+'_tmp',
+                            buffered = False)
+  table.croak('\033[1m'+scriptName+'\033[0m'+(': '+name if name != 'STDIN' else ''))
 
-# ------------------------------------------ loop over input files ---------------------------------
-for file in files:
-  if file['name'] != 'STDIN': file['croak'].write('\033[1m'+scriptName+'\033[0m: '+file['name']+'\n')
-  else: file['croak'].write('\033[1m'+scriptName+'\033[0m\n')
+# ------------------------------------------ read header ------------------------------------------
 
-  table = damask.ASCIItable(file['input'],file['output'],False)                                     # make unbuffered ASCII_table
-  table.head_read()                                                                                 # read ASCII header info
-  table.info_append(scriptID + '\t' + ' '.join(sys.argv[1:]))
+  table.head_read()
 
-  active = defaultdict(list)
-  column = defaultdict(dict)
+# ------------------------------------------ sanity checks ----------------------------------------
 
-  for datatype,info in datainfo.items():
-    for label in info['label']:
-      key = '1_%s'%label
-      if key not in table.labels:
-        file['croak'].write('column %s not found...\n'%key)
+  items = {
+            'strain': {'dim': 9, 'shape': [3,3], 'labels':options.strain, 'active':[], 'column': []},
+            'stress': {'dim': 9, 'shape': [3,3], 'labels':options.stress, 'active':[], 'column': []},
+          }
+  errors  = []
+  remarks = []
+  
+  for type, data in items.iteritems():
+    for what in data['labels']:
+      dim = table.label_dimension(what)
+      if dim != data['dim']: remarks.append('column {} is not a {}...'.format(what,type))
       else:
-        active[datatype].append(label)
-        column[datatype][label] = table.labels.index(key)                                           # remember columns of requested data
+        items[type]['active'].append(what)
+        items[type]['column'].append(table.label_index(what))
+        table.labels_append('Mises({})'.format(what))                                               # extend ASCII header with new labels
 
-# ------------------------------------------ assemble header ---------------------------------------
-  for datatype,labels in active.items():                                                            # loop over vector,tensor
-    for label in labels:                                                                            # loop over all requested determinants
-      table.labels_append('Mises(%s)'%label)                                                        # extend ASCII header with new labels
+  if remarks != []: table.croak(remarks)
+  if errors  != []:
+    table.croak(errors)
+    table.close(dismiss = True)
+    continue
+
+# ------------------------------------------ assemble header --------------------------------------
+
+  table.info_append(scriptID + '\t' + ' '.join(sys.argv[1:]))
   table.head_write()
 
 # ------------------------------------------ process data ------------------------------------------
+
   outputAlive = True
   while outputAlive and table.data_read():                                                          # read next data line of ASCII table
-    for datatype,labels in active.items():                                                          # loop over vector,tensor
-      for label in labels:                                                                          # loop over all requested norms
-        table.data_append(Mises(datatype,
-                    np.array(map(float,table.data[column[datatype][label]:
-                                                  column[datatype][label]+datainfo[datatype]['len']]),'d').reshape(3,3)))
+    for type, data in items.iteritems():
+      for column in data['column']:
+        table.data_append(Mises(type,
+                                np.array(table.data[column:column+data['dim']],'d').reshape(data['shape'])))
     outputAlive = table.data_write()                                                                # output processed line
 
-# ------------------------------------------ output result -----------------------------------------
-  outputAlive and table.output_flush()                                                              # just in case of buffered ASCII table
+# ------------------------------------------ output finalization -----------------------------------
 
-  table.input_close()                                                                               # close input ASCII table (works for stdin)
-  table.output_close()                                                                              # close output ASCII table (works for stdout)
-  if file['name'] != 'STDIN':
-    os.rename(file['name']+'_tmp',file['name'])                                                     # overwrite old one with tmp new
+  table.close()                                                                                     # close input ASCII table (works for stdin)
+  if name != 'STDIN': os.rename(name+'_tmp',name)                                                   # overwrite old one with tmp new

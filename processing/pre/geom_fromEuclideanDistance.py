@@ -34,23 +34,11 @@ def periodic_3Dpad(array, rimdim=(1,1,1)):
 #--------------------------------------------------------------------------------------------------
 #                                MAIN
 #--------------------------------------------------------------------------------------------------
-identifiers = {
-        'grid':   ['a','b','c'],
-        'size':   ['x','y','z'],
-        'origin': ['x','y','z'],
-          }
-mappings = {
-        'grid':            lambda x: int(x),
-        'size':            lambda x: float(x),
-        'origin':          lambda x: float(x),
-        'homogenization':  lambda x: int(x),
-        'microstructures': lambda x: int(x),
-          }
 
 features = [
-            {'aliens': 1, 'names': ['boundary','biplane'],},
-            {'aliens': 2, 'names': ['tripleline',],},
-            {'aliens': 3, 'names': ['quadruplepoint',],}
+            {'aliens': 1, 'alias': ['boundary','biplane'],},
+            {'aliens': 2, 'alias': ['tripleline',],},
+            {'aliens': 3, 'alias': ['quadruplepoint',],}
            ]
 
 neighborhoods = {
@@ -101,118 +89,79 @@ boundaries, triple lines, and quadruple points.
 
 """, version = scriptID)
 
-parser.add_option('-t','--type',          dest = 'type', action = 'extend', type = 'string', metavar = '<string LIST>',
-                  help = 'feature type (%s) '%(', '.join(map(lambda x:'|'.join(x['names']),features))) )
-parser.add_option('-n','--neighborhood',  dest='neighborhood', choices = neighborhoods.keys(), metavar = 'string',
+parser.add_option('-t','--type',
+                  dest = 'type',
+                  action = 'extend', metavar = '<string LIST>',
+                  help = 'feature type (%s) '%(', '.join(map(lambda x:'|'.join(x['alias']),features))) )
+parser.add_option('-n','--neighborhood',
+                  dest = 'neighborhood',
+                  choices = neighborhoods.keys(), metavar = 'string',
                   help = 'type of neighborhood (%s) [neumann]'%(', '.join(neighborhoods.keys())))
-parser.add_option('-s', '--scale',        dest = 'scale', type = 'float', metavar='float',
+parser.add_option('-s', '--scale',
+                  dest = 'scale',
+                  type = 'float', metavar = 'float',
                   help = 'voxel size [%default]')
 
-parser.set_defaults(type = [])
-parser.set_defaults(neighborhood = 'neumann')
-parser.set_defaults(scale = 1.0)
+parser.set_defaults(type = [],
+                    neighborhood = 'neumann',
+                    scale = 1.0,
+                   )
 
 (options,filenames) = parser.parse_args()
 
-if len(options.type) == 0: parser.error('please select a feature type')
-if not set(options.type).issubset(set(list(itertools.chain(*map(lambda x: x['names'],features))))):
-  parser.error('type must be chosen from (%s)...'%(', '.join(map(lambda x:'|'.join(x['names']),features))) )
+if len(options.type) == 0 or \
+   not set(options.type).issubset(set(list(itertools.chain(*map(lambda x: x['alias'],features))))):
+  parser.error('sleect feature type from (%s).'%(', '.join(map(lambda x:'|'.join(x['alias']),features))) )
 if 'biplane' in options.type and 'boundary' in options.type:
-  parser.error("please select only one alias for 'biplane' and 'boundary'")
+  parser.error("only one alias out 'biplane' and 'boundary' required")
   
 feature_list = []
 for i,feature in enumerate(features):
-  for name in feature['names']:
+  for name in feature['alias']:
     for myType in options.type:
       if name.startswith(myType):
-        feature_list.append(i)                                                                      # remember valid features
+        feature_list.append(i)                                                                      # remember selected features
         break
 
-#--- setup file handles ---------------------------------------------------------------------------  
-files = []
-if filenames == []:
-  files.append({'name':'STDIN',
-                'input':sys.stdin,
-                'output':sys.stdout,
-                'croak':sys.stderr,
-               })
-else:
-  for name in filenames:
-    if os.path.exists(name):
-      files.append({'name':name,
-                    'input':open(name),
-                    'output':[open(features[feature]['names'][0]+'_'+name,'w') for feature in feature_list],
-                    'croak':sys.stdout,
-                    })
+# --- loop over input files -------------------------------------------------------------------------
 
-#--- loop over input files ------------------------------------------------------------------------
-for file in files:
-  file['croak'].write('\033[1m' + scriptName + '\033[0m: ' + (file['name'] if file['name'] != 'STDIN' else '') + '\n')
+if filenames == []: filenames = ['STDIN']
 
-  table = damask.ASCIItable(file['input'],file['output'][0],labels = False)
+for name in filenames:
+  if not (name == 'STDIN' or os.path.exists(name)): continue
+  table = damask.ASCIItable(name = name, outname = None,
+                            buffered = False, labeled = False, readonly = True)
+  table.croak('\033[1m'+scriptName+'\033[0m'+(': '+name if name != 'STDIN' else ''))
+
+# --- interpret header ----------------------------------------------------------------------------
+
   table.head_read()
+  info,extra_header = table.head_getGeom()
+  
+  table.croak(['grid     a b c:  %s'%(' x '.join(map(str,info['grid']))),
+               'size     x y z:  %s'%(' x '.join(map(str,info['size']))),
+               'origin   x y z:  %s'%(' : '.join(map(str,info['origin']))),
+               'homogenization:  %i'%info['homogenization'],
+               'microstructures: %i'%info['microstructures'],
+              ])
 
-#--- interpret header ----------------------------------------------------------------------------
-  info = {
-          'grid':    np.zeros(3,'i'),
-          'size':    np.zeros(3,'d'),
-          'origin':  np.zeros(3,'d'),
-          'homogenization':  0,
-          'microstructures': 0,
-         }
-  newInfo = {
-          'grid':    np.zeros(3,'i'),
-          'origin':  np.zeros(3,'d'),
-          'microstructures': 0,
-         }
-  extra_header = []
-
-  for header in table.info:
-    headitems = map(str.lower,header.split())
-    if len(headitems) == 0: continue                                                              # skip blank lines
-    if headitems[0] in mappings.keys():
-      if headitems[0] in identifiers.keys():
-        for i in xrange(len(identifiers[headitems[0]])):
-          info[headitems[0]][i] = \
-            mappings[headitems[0]](headitems[headitems.index(identifiers[headitems[0]][i])+1])
-      else:
-        info[headitems[0]] = mappings[headitems[0]](headitems[1])
-    else:
-      extra_header.append(header)
-
-  file['croak'].write('grid     a b c:  %s\n'%(' x '.join(map(str,info['grid']))) + \
-                      'size     x y z:  %s\n'%(' x '.join(map(str,info['size']))) + \
-                      'origin   x y z:  %s\n'%(' : '.join(map(str,info['origin']))) + \
-                      'homogenization:  %i\n'%info['homogenization'] + \
-                      'microstructures: %i\n'%info['microstructures'])
-
-  if np.any(info['grid'] < 1):
-    file['croak'].write('invalid grid a b c.\n')
-    continue
-  if np.any(info['size'] <= 0.0):
-    file['croak'].write('invalid size x y z.\n')
+  errors = []
+  if np.any(info['grid'] < 1):    errors.append('invalid grid a b c.')
+  if np.any(info['size'] <= 0.0): errors.append('invalid size x y z.')
+  if errors != []:
+    table.croak(errors)
+    table.close(dismiss = True)
     continue
 
-#--- read data ------------------------------------------------------------------------------------
-  microstructure = np.zeros(info['grid'].prod(),'i')                                            # initialize as flat array
-  i = 0
+# --- read data ------------------------------------------------------------------------------------
 
-  while table.data_read():
-    items = table.data
-    if len(items) > 2:
-      if   items[1].lower() == 'of': items = [int(items[2])]*int(items[0])
-      elif items[1].lower() == 'to': items = xrange(int(items[0]),1+int(items[2]))
-      else:                            items = map(int,items)
-    else:                              items = map(int,items)
+  microstructure = table.microstructure_read(info['grid']).reshape(info['grid'],order='F')          # read microstructure
 
-    s = len(items)
-    microstructure[i:i+s] = items
-    i += s
-
+  table.close()
   
   neighborhood = neighborhoods[options.neighborhood]
   convoluted = np.empty([len(neighborhood)]+list(info['grid']+2),'i')
-  structure = periodic_3Dpad(microstructure.reshape(info['grid'],order='F'))
+  structure = periodic_3Dpad(microstructure)
   
   for i,p in enumerate(neighborhood):
     stencil = np.zeros((3,3,3),'i')
@@ -222,47 +171,56 @@ for file in files:
             p[2]+1] = 1
     convoluted[i,:,:,:] = ndimage.convolve(structure,stencil)
   
-  distance = np.ones((len(feature_list),info['grid'][0],info['grid'][1],info['grid'][2]),'d')
+#  distance = np.ones(info['grid'],'d')
   
   convoluted = np.sort(convoluted,axis = 0)
-  uniques = np.where(convoluted[0,1:-1,1:-1,1:-1] != 0, 1,0)                   # initialize unique value counter (exclude myself [= 0])
+  uniques = np.where(convoluted[0,1:-1,1:-1,1:-1] != 0, 1,0)                                        # initialize unique value counter (exclude myself [= 0])
 
-  for i in xrange(1,len(neighborhood)):                                           # check remaining points in neighborhood
+  for i in xrange(1,len(neighborhood)):                                                             # check remaining points in neighborhood
     uniques += np.where(np.logical_and(
-                           convoluted[i,1:-1,1:-1,1:-1] != convoluted[i-1,1:-1,1:-1,1:-1],    # flip of ID difference detected?
-                           convoluted[i,1:-1,1:-1,1:-1] != 0),                                # not myself?
-                           1,0)                                                   # count flip
+                           convoluted[i,1:-1,1:-1,1:-1] != convoluted[i-1,1:-1,1:-1,1:-1],          # flip of ID difference detected?
+                           convoluted[i,1:-1,1:-1,1:-1] != 0),                                      # not myself?
+                           1,0)                                                                     # count flip
 
-  for i,feature_id in enumerate(feature_list):
-    distance[i,:,:,:] = np.where(uniques >= features[feature_id]['aliens'],0.0,1.0) # seed with 0.0 when enough unique neighbor IDs are present
+  for feature in feature_list:
 
-  for i in xrange(len(feature_list)):
-    distance[i,:,:,:] = ndimage.morphology.distance_transform_edt(distance[i,:,:,:])*[options.scale]*3
+    table = damask.ASCIItable(name = name, outname = features[feature]['alias'][0]+'_'+name,
+                              buffered = False, labeled = False, writeonly = True)
 
-  for i,feature in enumerate(feature_list):
-    newInfo['microstructures'] = int(math.ceil(distance[i,:,:,:].max()))
+    distance = np.where(uniques >= features[feature]['aliens'],0.0,1.0)                             # seed with 0.0 when enough unique neighbor IDs are present
+    distance = ndimage.morphology.distance_transform_edt(distance)*[options.scale]*3
+
+#  for i in xrange(len(feature_list)):
+#    distance[i,:,:,:] = ndimage.morphology.distance_transform_edt(distance[i,:,:,:])*[options.scale]*3
+
+#  for i,feature in enumerate(feature_list):
+    info['microstructures'] = int(math.ceil(distance.max()))
 
 #--- write header ---------------------------------------------------------------------------------
-    table = damask.ASCIItable(file['input'],file['output'][i],labels = False)
-    table.labels_clear()
+
     table.info_clear()
     table.info_append(extra_header+[
       scriptID + ' ' + ' '.join(sys.argv[1:]),
-      "grid\ta %i\tb %i\tc %i"%(info['grid'][0],info['grid'][1],info['grid'][2],),
-      "size\tx %f\ty %f\tz %f"%(info['size'][0],info['size'][1],info['size'][2],),
-      "origin\tx %f\ty %f\tz %f"%(info['origin'][0],info['origin'][1],info['origin'][2],),
-      "homogenization\t%i"%info['homogenization'],
-      "microstructures\t%i"%(newInfo['microstructures']),
+      "grid\ta {grid[0]}\tb {grid[1]}\tc {grid[2]}".format(grid=info['grid']),
+      "size\tx {size[0]}\ty {size[1]}\tz {size[2]}".format(size=info['size']),
+      "origin\tx {origin[0]}\ty {origin[1]}\tz {origin[2]}".format(origin=info['origin']),
+      "homogenization\t{homog}".format(homog=info['homogenization']),
+      "microstructures\t{microstructures}".format(microstructures=info['microstructures']),
       ])
+    table.labels_clear()
     table.head_write()
     table.output_flush()
     
 # --- write microstructure information ------------------------------------------------------------
-    formatwidth = int(math.floor(math.log10(distance[i,:,:,:].max())+1))
-    table.data = distance[i,:,:,:].reshape((info['grid'][0],info['grid'][1]*info['grid'][2]),order='F').transpose()
+
+    formatwidth = int(math.floor(math.log10(distance.max())+1))
+    table.data = distance.reshape((info['grid'][0],info['grid'][1]*info['grid'][2]),order='F').transpose()
     table.data_writeArray('%%%ii'%(formatwidth),delimiter=' ')
-    file['output'][i].close()
     
 #--- output finalization --------------------------------------------------------------------------
-  if file['name'] != 'STDIN':
-    table.input_close()  
+
+    table.close()
+
+
+
+### 'output':[open(features[feature]['names'][0]+'_'+name,'w') for feature in feature_list],
