@@ -88,12 +88,10 @@ def laguerreTessellation(undeformed, coords, weights, grains, nonperiodic = Fals
 
     # Evaluate function
     result = pool.map_async(findClosestSeed, arguments)
-#    closestSeeds = np.array(pool.map_async(findClosestSeed, arguments),'i')
     pool.close()
     pool.join()
     
     closestSeeds = np.array(result.get()).flatten()
-    print 'shape of result',closestSeeds.shape
 
     return grains[closestSeeds%N]
 
