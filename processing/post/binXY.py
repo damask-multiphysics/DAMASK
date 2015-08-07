@@ -18,35 +18,56 @@ Produces a binned grid of two columns from an ASCIItable, i.e. a two-dimensional
 
 """, version = scriptID)
 
-parser.add_option('-d','--data',    dest='data', nargs=2, type='string', metavar='string string',
-                  help='column labels containing x and y ')
-parser.add_option('-w','--weight',  dest='weight', metavar='string', type='string',
-                  help='column label containing weight of (x,y) point')
-parser.add_option('-b','--bins',    dest='bins', nargs=2, type='int', metavar='int int',
-                  help='number of bins in x and y direction [%default]')
-parser.add_option('-t','--type',    dest='type', nargs=3, metavar='string string string',
-                  help='type (linear/log) of x, y, and z axis [%default]')
-parser.add_option('-x','--xrange',  dest='xrange', nargs=2, type='float', metavar='float float',
-                  help='min max value in x direction [autodetect]')
-parser.add_option('-y','--yrange',  dest='yrange', nargs=2, type='float', metavar='float float',
-                  help='min max value in y direction [autodetect]')
-parser.add_option('-z','--zrange',  dest='zrange', nargs=2, type='float', metavar='float float',
-                  help='min max value in z direction [autodetect]')
-parser.add_option('-i','--invert',  dest='invert', action='store_true',
-                  help='invert probability density [%default]')
-parser.add_option('-r','--rownormalize',  dest='normRow', action='store_true',
-                  help='normalize probability density in each row [%default]')
-parser.add_option('-c','--colnormalize',  dest='normCol', action='store_true',
-                  help='normalize probability density in each column [%default]')
+parser.add_option('-d','--data',
+                  dest = 'data',
+                  type='string', nargs = 2, metavar = 'string string',
+                  help = 'column labels containing x and y ')
+parser.add_option('-w','--weight',
+                  dest = 'weight',
+                  type = 'string', metavar = 'string',
+                  help = 'column label containing weight of (x,y) point')
+parser.add_option('-b','--bins',
+                  dest = 'bins',
+                  type = 'int', nargs = 2, metavar = 'int int',
+                  help = 'number of bins in x and y direction [%default]')
+parser.add_option('-t','--type',
+                  dest = 'type',
+                  type = 'string', nargs = 3, metavar = 'string string string',
+                  help = 'type (linear/log) of x, y, and z axis [%default]')
+parser.add_option('-x','--xrange',
+                  dest = 'xrange',
+                  type = 'float', nargs = 2, metavar = 'float float',
+                  help = 'min max value in x direction [autodetect]')
+parser.add_option('-y','--yrange',
+                  dest = 'yrange',
+                  type = 'float', nargs = 2, metavar = 'float float',
+                  help = 'min max value in y direction [autodetect]')
+parser.add_option('-z','--zrange',
+                  dest = 'zrange',
+                  type = 'float', nargs = 2, metavar = 'float float',
+                  help = 'min max value in z direction [autodetect]')
+parser.add_option('-i','--invert',
+                  dest = 'invert',
+                  action = 'store_true',
+                  help = 'invert probability density [%default]')
+parser.add_option('-r','--rownormalize',
+                  dest = 'normRow',
+                  action = 'store_true',
+                  help = 'normalize probability density in each row [%default]')
+parser.add_option('-c','--colnormalize',
+                  dest = 'normCol',
+                  action = 'store_true',
+                  help = 'normalize probability density in each column [%default]')
 
-parser.set_defaults(bins = (10,10))
-parser.set_defaults(type = ('linear','linear','linear'))
-parser.set_defaults(xrange = (0.0,0.0))
-parser.set_defaults(yrange = (0.0,0.0))
-parser.set_defaults(zrange = (0.0,0.0))
-parser.set_defaults(invert = False)
-parser.set_defaults(normRow = False)
-parser.set_defaults(normCol = False)
+parser.set_defaults(bins = (10,10),
+                    type = ('linear','linear','linear'),
+                    xrange = (0.0,0.0),
+                    yrange = (0.0,0.0),
+                    zrange = (0.0,0.0),
+                    invert = False,
+                    normRow = False,
+                    normCol = False,
+                   )
 
 (options,filenames) = parser.parse_args()
 
@@ -56,37 +77,36 @@ minmax = np.array([np.array(options.xrange),
 grid   = np.zeros(options.bins,'f')
 result = np.zeros((options.bins[0],options.bins[1],3),'f')
 
-datainfo = {                                                                                        # list of requested labels per datatype
-             'scalar':     {'len':1,
-                            'label':[]},
-           }
+if options.data   == None: parser.error('no data columns specified.')
 
-if options.data   != None: datainfo['scalar']['label'] +=  options.data
-if options.weight != None: datainfo['scalar']['label'] += [options.weight]                          # prevent character splitting of single string value
+labels = options.data
 
-# --- loop over input files ------------------------------------------------------------------------
+if options.weight != None: labels += [options.weight]                                               # prevent character splitting of single string value
 
-if filenames == []:
-  filenames = ['STDIN']
+# --- loop over input files -------------------------------------------------------------------------
+
+if filenames == []: filenames = ['STDIN']
 
 for name in filenames:
-  if name == 'STDIN':
-    file = {'name':'STDIN', 'input':sys.stdin, 'output':sys.stdout, 'croak':sys.stderr}
-    file['croak'].write('\033[1m'+scriptName+'\033[0m\n')
-  else:
-    if not os.path.exists(name): continue
-    file = {'name':name, 'input':open(name), 'output':open(name+'_tmp','w'), 'croak':sys.stderr}
-    file['croak'].write('\033[1m'+scriptName+'\033[0m: '+file['name']+'\n')
+  if not (name == 'STDIN' or os.path.exists(name)): continue
+  table = damask.ASCIItable(name = name,
+                            outname = os.path.join(os.path.dirname(name),
+                                                   'binned-%s-%s_'%(options.data[0],options.data[1])+ \
+                                                  ('weighted-%s_'%(options.weight) if options.weight != None else '') + \
+                                                  os.path.basename(name))
+                            buffered = False)
+  table.croak('\033[1m'+scriptName+'\033[0m'+(': '+name if name != 'STDIN' else ''))
 
-  table = damask.ASCIItable(file['input'],file['output'],buffered = False)                          # make unbuffered ASCII_table
-  table.head_read()                                                                                 # read ASCII header info
+# ------------------------------------------ read header ------------------------------------------
 
-# --- process data ---------------------------------------------------------------------------------
+  table.head_read()
 
-  missing_labels = table.data_readArray(datainfo['scalar']['label'])
+# ------------------------------------------ sanity checks ----------------------------------------
+
+  missing_labels = table.data_readArray(labels)
  
   if len(missing_labels) > 0:
-    file['croak'].write('column%s %s not found...\n'%('s' if len(missing_labels) > 1 else '',', '.join(missing_labels)))
+    table.croak('column{} {} not found.'.format('s' if len(missing_labels) > 1 else '',', '.join(missing_labels)))
     table.close(dismiss = True)
     continue
 
@@ -120,7 +140,7 @@ for name in filenames:
     minmax[2,0] -= 1.
     minmax[2,1] += 1.
   if (minmax[2] == 0.0).all():                                                                       # no data in grid?
-    file['croak'].write('no data found on grid...\n')
+    table.croak('no data found on grid...')
     minmax[2,:] = np.array([0.0,1.0])                                                                # making up arbitrary z minmax
   if options.type[2].lower() == 'log':
     grid = np.log(grid)
@@ -148,10 +168,7 @@ for name in filenames:
 
 # --- output result ---------------------------------------------------------------------------------
 
-  prefix = 'binned-%s-%s_'%(options.data[0],options.data[1])+ \
-                          ('weighted-%s_'%(options.weight) if options.weight != None else '')
-  np.savetxt(file['output'],result.reshape(options.bins[0]*options.bins[1],3))
-  table.output_close()                                                                               # close output ASCII table
-  if file['name'] != 'STDIN':
-    os.rename(file['name']+'_tmp',\
-              os.path.join(os.path.dirname(file['name']),prefix+os.path.basename(file['name'])))
+  table.data = result.reshape(options.bins[0]*options.bins[1],3)
+  table.data_writeArray()
+
+  table.close()
