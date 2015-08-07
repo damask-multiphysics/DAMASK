@@ -75,8 +75,6 @@ def laguerreTessellation(undeformed, coords, weights, grains, nonperiodic = Fals
                ]).astype(float)
       
     squaredweights = np.power(np.tile(weights,len(copies)),2)                                       # Laguerre weights (squared, size N*n)
-#    micro          = np.zeros(undeformed.shape[0],'i')
-    N              = coords.shape[0]                                                                # Number of seeds points 
     
     for i,vec in enumerate(copies):                                                                 # periodic copies of seed points (size N*n)
         seeds = np.append(seeds, coords+vec, axis=0) if i > 0 else coords+vec
@@ -93,14 +91,7 @@ def laguerreTessellation(undeformed, coords, weights, grains, nonperiodic = Fals
     
     closestSeeds = np.array(result.get()).flatten()
 
-    return grains[closestSeeds%N]
-
-#     for i,point in enumerate(undeformed):
-#         tmp = np.repeat(point.reshape(3,1), N*len(copies), axis=1).T
-#         dist = np.sum((tmp - seeds)*(tmp - seeds),axis=1) - squaredweights
-#         micro[i] = grains[np.argmin(dist)%N]
-# 
-#     return micro
+    return grains[closestSeeds%coords.shape[0]]                                                     # closestSeed is modulo number of original seed points (i.e. excluding periodic copies)
 
 # --------------------------------------------------------------------
 #                                MAIN
@@ -242,11 +233,11 @@ for name in filenames:
   else:
     labels += [options.position]
 
-  if not hasEulers: remarks.append('missing seed orientations...')
+  if not hasEulers:                        remarks.append('missing seed orientations...')
   else: labels += [options.eulers]
-  if not hasGrains: remarks.append('missing seed microstructure indices...')
+  if not hasGrains:                        remarks.append('missing seed microstructure indices...')
   else: labels += [options.microstructure]
-  if options.laguerre and not hasWeights: remarks.append('missing seed weights...')
+  if options.laguerre and not hasWeights:  remarks.append('missing seed weights...')
   else: labels += [options.weight]
 
   if remarks != []: table.croak(remarks)
@@ -274,6 +265,7 @@ for name in filenames:
   table.croak('tessellating...')
 
   if options.laguerre:
+    table.croak('...using {} cpu{}'.format(options.cpus, 's' if options.cpus > 1 else ''))
     undeformed = np.vstack(np.meshgrid(x, y, z)).reshape(3,-1).T
     indices = laguerreTessellation(undeformed, coords, weights, grains, options.nonperiodic, options.cpus)
   else:
