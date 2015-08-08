@@ -75,6 +75,10 @@ group.add_option('-s','--selective',
                   action = 'store_true',
                   dest   = 'selective',
                   help   = 'selective picking of seed points from random seed points [%default]')
+group.add_option('-f','--force',
+                  action = 'store_true',
+                  dest   = 'force',
+                  help   = 'try selective picking despite large seed point number [%default]')
 group.add_option('--distance',
                  dest = 'distance',
                  type = 'float', metavar = 'float',
@@ -93,6 +97,7 @@ parser.set_defaults(randomSeed = None,
                     sigma = 0.1,
                     microstructure = 1,
                     selective = False,
+                    force = False,
                     distance = 0.2,
                     numCandidates = 10,
                    )
@@ -119,12 +124,15 @@ for name in filenames:
 
 # --- sanity checks -------------------------------------------------------------------------
 
-  errors = []
+  remarks = []
+  errors  = []
   if gridSize == 0:            errors.append('zero grid dimension for %s.'%(', '.join([['a','b','c'][x] for x in np.where(options.grid == 0)[0]])))
   if options.N > gridSize/10.: errors.append('seed count exceeds 0.1 of grid points.')
   if options.selective and 4./3.*math.pi*(options.distance/2.)**3*options.N > 0.5:
-                               errors.append('maximum recommended seed point count for given distance is {}.'.format(int(3./8./math.pi/(options.distance/2.)**3)))
-  if errors != []:
+    (remarks if options.force else errors).append('maximum recommended seed point count for given distance is {}.{}'.format(int(3./8./math.pi/(options.distance/2.)**3),'..'*options.force))
+
+  if remarks != []: table.croak(remarks)
+  if errors  != []:
     table.croak(errors)
     sys.exit()
 
