@@ -81,15 +81,16 @@ def laguerreTessellation(undeformed, coords, weights, grains, nonperiodic = Fals
 
     arguments = [[arg] + [seeds,squaredweights] for arg in list(undeformed)]
 
-    # Initialize workers
-    pool = multiprocessing.Pool(processes = cpus) 
-
-    # Evaluate function
-    result = pool.map_async(findClosestSeed, arguments)
-    pool.close()
-    pool.join()
-    
-    closestSeeds = np.array(result.get()).flatten()
+    if cpus > 1:                                                                                    # use multithreading
+      pool = multiprocessing.Pool(processes = cpus)                                                 # initialize workers
+      result = pool.map_async(findClosestSeed, arguments)                                           # evaluate function in parallel
+      pool.close()
+      pool.join()
+      closestSeeds = np.array(result.get()).flatten()
+    else:
+      closestSeeds = np.zeros(len(arguments),dtype='i')
+      for i,arg in enumerate(arguments):
+        closestSeeds[i] = findClosestSeed(arg)
 
     return grains[closestSeeds%coords.shape[0]]                                                     # closestSeed is modulo number of original seed points (i.e. excluding periodic copies)
 
