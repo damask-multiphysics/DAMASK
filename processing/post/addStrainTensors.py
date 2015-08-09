@@ -112,7 +112,7 @@ for name in filenames:
             table.labels_append(['{}_{}({}){}'.format(i+1,                                          # extend ASCII header with new labels  
                                                       theStrain,
                                                       theStretch,
-                                                      label if label != 'f' else '') for i in xrange(9)])
+                                                      what if what != 'f' else '') for i in xrange(9)])
 
   if remarks != []: table.croak(remarks)
   if errors  != []:
@@ -139,7 +139,7 @@ for name in filenames:
       stretch['V'] = np.dot(F,np.linalg.inv(R))                                                     # F = VR
 
       for theStretch in stretches:
-        stretch[theStretch] = np.where(abs(stretch[theStretch]) < 1e-12, 0, stretch[theStretch]))   # kill nasty noisy data
+        stretch[theStretch] = np.where(abs(stretch[theStretch]) < 1e-12, 0, stretch[theStretch])    # kill nasty noisy data
         (D,V) = np.linalg.eig(stretch[theStretch])                                                  # eigen decomposition (of symmetric matrix)
         neg = np.where(D < 0.0)                                                                     # find negative eigenvalues ...
         D[neg]   *= -1.                                                                             # ... flip value ...
