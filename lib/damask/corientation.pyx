@@ -14,9 +14,16 @@
 # orientation class, mainly for speed improvement.   #
 ######################################################
 
+"""
+NOTE
+----
+The static method in Cython is different from Python, need more
+time to figure out details.
+"""
+
 import math, random, os
 import numpy as np
-#cimport numpy as np
+cimport numpy as np
 
 
 ##
@@ -67,7 +74,14 @@ cdef class Quaternion:
     cdef public double w,x,y,z
 
     def __init__(self, data):
-        """ copy constructor friendly """
+        """
+        @description
+        ------------
+            copy constructor friendly
+        @parameters
+        -----------
+        data: array
+        """
         cdef double[4] q
 
         if isinstance(data, Quaternion):
@@ -85,8 +99,13 @@ cdef class Quaternion:
 
     cdef Quaternion(self, double* quatArray):
         """
-        @para:  quatArray = <w, x, y, z>
-        w is the real part, (x, y, z) are the imaginary parts
+        @description
+        ------------
+        internal constructor for Quaternion
+        @parameters
+        -----------
+        quatArray:  double[4] // <w, x, y, z>
+            w is the real part, (x, y, z) are the imaginary parts
         """
         if quatArray[0] < 0:
             self.w = -quatArray[0]
@@ -448,16 +467,16 @@ cdef class Quaternion:
         return Quaternion(q)
 
     @staticmethod
-    def fromRodrigues(cls, rodrigues):
+    def fromRodrigues(rodrigues):
         if not isinstance(rodrigues, np.ndarray): rodrigues = np.array(rodrigues)
         halfangle = math.atan(np.linalg.norm(rodrigues))
         c = math.cos(halfangle)
         w = c
         x,y,z = c*rodrigues
-        return cls([w,x,y,z])
+        return Quaternion([w,x,y,z])
 
     @staticmethod
-    def fromAngleAxis(cls, angle, axis):
+    def fromAngleAxis(angle, axis):
         if not isinstance(axis, np.ndarray): axis = np.array(axis)
         axis /= np.linalg.norm(axis)
         s = math.sin(angle / 2.0)
@@ -465,21 +484,25 @@ cdef class Quaternion:
         x = axis[0] * s
         y = axis[1] * s
         z = axis[2] * s
-        return cls([w,x,y,z])
+        return Quaternion([w,x,y,z])
 
     @staticmethod
-    def fromEulers(cls, eulers, type = 'Bunge'):
+    def fromEulers(eulers, type = 'Bunge'):
         cdef double c1,s1,c2,s2,c3,s3
         cdef double[4] q
+        cdef double[3] halfEulers
+        cdef int i
 
-        eulers *= 0.5                                                                  # reduce to half angles
+        for i in range(3):
+            halfEulers[i] = eulers[i] * 0.5                                                                  # reduce to half angles
 
-        c1 = math.cos(eulers[0])
-        s1 = math.sin(eulers[0])
-        c2 = math.cos(eulers[1])
-        s2 = math.sin(eulers[1])
-        c3 = math.cos(eulers[2])
-        s3 = math.sin(eulers[2])
+
+        c1 = math.cos(halfEulers[0])
+        s1 = math.sin(halfEulers[0])
+        c2 = math.cos(halfEulers[1])
+        s2 = math.sin(halfEulers[1])
+        c3 = math.cos(halfEulers[2])
+        s3 = math.sin(halfEulers[2])
 
         if type.lower() == 'bunge' or type.lower() == 'zxz':
             q[0] =   c1 * c2 * c3 - s1 * c2 * s3
@@ -496,7 +519,7 @@ cdef class Quaternion:
     ## Modified Method to calculate Quaternion from Orientation Matrix, Source: http://www.euclideanspace.com/maths/geometry/rotations/conversions/matrixToQuaternion/
 
     @staticmethod
-    def fromMatrix(cls, m):
+    def fromMatrix(m):
         # This is a slow implementation
         if m.shape != (3,3) and np.prod(m.shape) == 9:
             m = m.reshape(3,3)
@@ -516,7 +539,7 @@ cdef class Quaternion:
             t = m[0,0] - m[1,1] - m[2,2] + 1.0
             s = 2.0*math.sqrt(t)
 
-            return cls(
+            return Quaternion(
                 [ (m[2,1] - m[1,2])/s,
                    s*0.25,
                    (m[0,1] + m[1,0])/s,
@@ -527,7 +550,7 @@ cdef class Quaternion:
             t = -m[0,0] + m[1,1] - m[2,2] + 1.0
             s = 2.0*math.sqrt(t)
 
-            return cls(
+            return Quaternion(
               [ (m[0,2] - m[2,0])/s,
                 (m[0,1] + m[1,0])/s,
                 s*0.25,
@@ -538,7 +561,7 @@ cdef class Quaternion:
             t = -m[0,0] - m[1,1] + m[2,2] + 1.0
             s = 2.0*math.sqrt(t)
 
-            return cls(
+            return Quaternion(
               [ (m[1,0] - m[0,1])/s,
                 (m[2,0] + m[0,2])/s,
                 (m[1,2] + m[2,1])/s,
@@ -546,7 +569,7 @@ cdef class Quaternion:
               ])
 
     @staticmethod
-    def new_interpolate(cls, q1, q2, t):
+    def new_interpolate(q1, q2, t):
         # see http://ntrs.nasa.gov/archive/nasa/casi.ntrs.nasa.gov/20070017872_2007014421.pdf for (another?) way to interpolate quaternions
 
         assert isinstance(q1, Quaternion) and isinstance(q2, Quaternion)
@@ -834,8 +857,8 @@ cdef class Orientation:
                  angleAxis  = None,
                  matrix     = None,
                  Eulers     = None,
-                 random     = False,                                                     # put any integer to have a fixed seed or True for real random
-                 symmetry   = None,
+                 random     = False,                                                       # put any integer to have a fixed seed or True for real random
+                 symmetry   = None
                 ):
         if random:                                                                         # produce random orientation
             if isinstance(random, bool ):
@@ -843,7 +866,7 @@ cdef class Orientation:
             else:
                 self.quaternion = Quaternion.fromRandom(randomSeed=random)
         elif isinstance(Eulers, np.ndarray) and Eulers.shape == (3,):                      # based on given Euler angles
-            self.quaternion = Quaternion.fromEulers(Eulers,'bunge')
+            self.quaternion = Quaternion.fromEulers(Eulers, type='bunge')
         elif isinstance(matrix, np.ndarray) :                                              # based on given rotation matrix
             self.quaternion = Quaternion.fromMatrix(matrix)
         elif isinstance(angleAxis, np.ndarray) and angleAxis.shape == (4,):                # based on given angle and rotation axis
@@ -946,7 +969,7 @@ cdef class Orientation:
         return color
 
     @staticmethod
-    def getAverageOrientation(cls, orientationList):
+    def getAverageOrientation(orientationList):
         """
         RETURN THE AVERAGE ORIENTATION
         ref: F. Landis Markley, Yang Cheng, John Lucas Crassidis, and Yaakov Oshman.
@@ -957,6 +980,9 @@ cdef class Orientation:
              a = Orientation(Eulers=np.radians([10, 10, 0]), symmetry=3)
              b = Orientation(Eulers=np.radians([20, 0, 0]),  symmetry=3)
              avg = Orientation.getAverageOrientation([a,b])
+        NOTE
+        ----
+        No symmetry information is available for the average orientation.
         """
 
         if not all(isinstance(item, Orientation) for item in orientationList):
@@ -968,7 +994,7 @@ cdef class Orientation:
           M += o.quaternion.asM()
         eig, vec = np.linalg.eig(M/N)
 
-        return Orientation(quaternion = Quaternion(quatArray = vec.T[eig.argmax()]))
+        return Orientation(quaternion = Quaternion(vec.T[eig.argmax()]))
 
     def related(self, relationModel, direction, targetSymmetry = None):
 
