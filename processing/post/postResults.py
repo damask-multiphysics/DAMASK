@@ -143,13 +143,20 @@ class MPIEspectral_result:    # mimic py_post result object
     for i in range(self.N_loadcases):
       self.N_increments += self._increments[i]//self._frequencies[i]
     
-    
-    
-  def __str__(self):
+# parameters for file handling depending on output format
+
     if options.legacy:
-       tagLen=8
+       self.tagLen=8
+       self.fourByteLimit = 2**31 -1 -8
     else:
-       tagLen=0
+       self.tagLen=0
+
+  def __str__(self):
+
+    expectedFileSize = self.dataOffset+self.N_increments*(self.tagLen+self.N_elements*self.N_element_scalars*8)
+    if options.legacy:
+      expectedFileSize+=expectedFileSize//self.fourByteLimit*8             # add extra 8 bytes for additional headers at 4 GB limits
+
     return '\n'.join([
       'workdir: %s'%self.wd,
       'geometry: %s'%self.geometry,
@@ -158,7 +165,7 @@ class MPIEspectral_result:    # mimic py_post result object
       'size: %s'%(','.join(map(str,self.size))),
       'header size: %i'%self.dataOffset,
       'actual   file size: %i'%self.filesize,
-      'expected file size: %i'%(self.dataOffset+self.N_increments*(tagLen+self.N_elements*self.N_element_scalars*8)),
+      'expected file size: %i'%expectedFileSize,
       'positions in file : %i'%self.N_positions,
       'starting increment: %i'%self.startingIncrement,
       ]
@@ -291,27 +298,27 @@ class MPIEspectral_result:    # mimic py_post result object
         sys.exit(1)
     
     else:
-      fourByteLimit = 2**31 -1 -8
+      self.fourByteLimit = 2**31 -1 -8
       incStart =  self.dataOffset \
-               +  self.position*8*( 1 + self.N_elements*self.N_element_scalars*8//fourByteLimit \
+               +  self.position*8*( 1 + self.N_elements*self.N_element_scalars*8//self.fourByteLimit \
                                     + self.N_elements*self.N_element_scalars)
                                   # header & footer + extra header and footer for 4 byte int range (Fortran)
                                   # values
 
       where = (e*self.N_element_scalars + idx)*8
       try:
-        if where%fourByteLimit + 8 >= fourByteLimit:                                                  # danger of reading into fortran record footer at 4 byte limit
+        if where%self.fourByteLimit + 8 >= self.fourByteLimit:                                        # danger of reading into fortran record footer at 4 byte limit
           data=''
           for i in xrange(8):
-            self.file.seek(incStart+where+(where//fourByteLimit)*8+4)
+            self.file.seek(incStart+where+(where//self.fourByteLimit)*8+4)
             data  += self.file.read(1)
             where += 1
           value = struct.unpack('d',data)[0]
         else: 
-          self.file.seek(incStart+where+(where//fourByteLimit)*8+4)
+          self.file.seek(incStart+where+(where//self.fourByteLimit)*8+4)
           value = struct.unpack('d',self.file.read(8))[0]
       except:
-        print 'seeking',incStart+where+(where//fourByteLimit)*8+4
+        print 'seeking',incStart+where+(where//self.fourByteLimit)*8+4
         print 'e',e,'idx',idx
         sys.exit(1)
 
