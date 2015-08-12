@@ -40,18 +40,18 @@ parser.set_defaults(condition = '',
 
 # --- loop over input files -------------------------------------------------------------------------
 
-if filenames == []: filenames = ['STDIN']
+if filenames == []: filenames = [None]
 
 for name in filenames:
-  if not (name == 'STDIN' or os.path.exists(name)): continue
-  table = damask.ASCIItable(name = name, outname = name+'_tmp',
-                            buffered = False)
-  table.croak('\033[1m'+scriptName+'\033[0m'+(': '+name if name != 'STDIN' else ''))
+  try:
+    table = damask.ASCIItable(name = name,
+                              buffered = False)
+  except: continue
+  table.croak('\033[1m'+scriptName+'\033[0m'+(': '+name if name else ''))
 
 # ------------------------------------------ assemble info ---------------------------------------  
 
   table.head_read()
-  table.info_append(scriptID + '\t' + ' '.join(sys.argv[1:]))                                                                                # read ASCII header info
 
 # ------------------------------------------ process data ---------------------------------------  
 
@@ -101,6 +101,7 @@ for name in filenames:
   
 # ------------------------------------------ assemble header ---------------------------------------
 
+  table.info_append(scriptID + '\t' + ' '.join(sys.argv[1:]))                                                                                # read ASCII header info
   table.labels_clear()
   table.labels_append(np.array(labels)[order])                                                      # update with new label set
   table.head_write()
@@ -118,5 +119,3 @@ for name in filenames:
 # ------------------------------------------ finalize output -----------------------------------------
 
   table.close()                                                                                     # close input ASCII table (works for stdin)
-
-  if name != 'STDIN': os.rename(name+'_tmp',name)                                                   # overwrite old one with tmp new
