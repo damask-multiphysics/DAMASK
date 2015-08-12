@@ -14,21 +14,9 @@ scriptName = os.path.splitext(scriptID.split()[1])[0]
 # --------------------------------------------------------------------
 #                                MAIN
 # --------------------------------------------------------------------
-identifiers = {
-        'grid':   ['a','b','c'],
-        'size':   ['x','y','z'],
-        'origin': ['x','y','z'],
-          }
-mappings = {
-        'grid':            lambda x: int(x),
-        'size':            lambda x: float(x),
-        'origin':          lambda x: float(x),
-        'homogenization':  lambda x: int(x),
-        'microstructures': lambda x: int(x),
-          }
 
 parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
-Generate geometry description and material configuration from position, phase, and orientation data.
+Generate geometry description and material configuration from position, phase, and orientation (or microstructure) data.
 
 """, version = scriptID)
 
@@ -40,6 +28,10 @@ parser.add_option('--phase',
                   dest = 'phase',
                   type = 'string', metavar = 'string',
                   help = 'phase label')
+parser.add_option('--microstructure',
+                  dest = 'microstructure',
+                  type = 'string', metavar = 'string',
+                  help = 'microstructure label')
 parser.add_option('-t', '--tolerance',
                   dest = 'tolerance',
                   type = 'float', metavar = 'float',
@@ -106,9 +98,10 @@ input = [options.eulers     != None,
          options.quaternion != None,
         ]
 
-if np.sum(input) != 1: parser.error('needs exactly one orientation input format...')
+if np.sum(input) != 1 and options.microstructure == None:
+  parser.error('need either microstructure label or exactly one orientation input format.')
 if options.axes != None and not set(options.axes).issubset(set(['x','+x','-x','y','+y','-y','z','+z','-z'])):
-  parser.error('invalid axes {axes[0]} {axes[1]} {axes[2]}'.format(axes=options.axes))
+  parser.error('invalid axes {} {} {}.'.format(*options.axes))
 
 (label,dim,inputtype) = [(options.eulers,3,'eulers'),
                          ([options.a,options.b,options.c],[3,3,3],'frame'),
@@ -120,13 +113,14 @@ options.tolerance *= toRadians                                                  
 
 # --- loop over input files -------------------------------------------------------------------------
 
-if filenames == []: filenames = ['STDIN']
+if filenames == []: filenames = [None]
 
 for name in filenames:
-  if not (name == 'STDIN' or os.path.exists(name)): continue
-  table = damask.ASCIItable(name = name, outname = os.path.splitext(name)[0] + '.geom',
-                            buffered = False)
-  table.croak('\033[1m'+scriptName+'\033[0m'+(': '+name if name != 'STDIN' else ''))
+  try:
+    table = damask.ASCIItable(name = name, outname = os.path.splitext(name)[0] + '.geom',
+                              buffered = False)
+  except: continue
+  table.croak('\033[1m'+scriptName+'\033[0m'+(': '+name if name else ''))
 
 # ------------------------------------------ read head ---------------------------------------  
 
@@ -135,8 +129,8 @@ for name in filenames:
 # ------------------------------------------ sanity checks ---------------------------------------  
 
   errors = []
-  if table.label_dimension(options.coordinates) != 2:
-    errors.append('coordinates {} need to have two dimensions.'.format(options.coordinates))
+  if not 3 >= table.label_dimension(options.coordinates) >= 2:                                      # TODO need to deal with 3D case!!
+    errors.append('coordinates {} need to have two or three dimensions.'.format(options.coordinates))
   if not np.all(table.label_dimension(label) == dim):
     errors.append('orientation {} needs to have dimension {}.'.format(label,dim))
   if options.phase != None and table.label_dimension(options.phase) != 1:
@@ -174,7 +168,7 @@ for name in filenames:
   KDTree = scipy.spatial.KDTree((table.data[:,:2]-np.array([coordsX[0],coordsY[0]])) \
                                 /              np.array([dX,dY]))                                 # build KDTree with dX = dY = 1
   
-  microstructure = np.zeros(nX*nY,dtype='uint32')                                                 # initialize empty microstructure
+  microstructure = np.zeros(nX*nY,dtype = 'uint32')                                               # initialize empty microstructure
   symQuats = []                                                                                   # empty list of sym equiv orientations
   phases   = []                                                                                   # empty list of phase info
   nGrains = 0                                                                                     # counter for detected grains
@@ -185,24 +179,20 @@ for name in filenames:
       myData = table.data[index[myRank]]
       mySym = options.symmetry[min(int(myData[colPhase]),len(options.symmetry))-1]                # select symmetry from option (take last specified option for all with higher index)
       if inputtype == 'eulers':
-        o = damask.Orientation(Eulers=toRadians*\
-                               np.array(map(float,myData[colOri:colOri+3])),
-                               symmetry=mySym).reduced()
+        o = damask.Orientation(Eulers = np.array(map(float,myData[colOri:colOri+3]))*toRadians,
+                               symmetry = mySym).reduced()
       elif inputtype == 'matrix':
-        o = damask.Orientation(matrix=\
-                               np.array([map(float,myData[colOri:colOri+9])]).reshape(3,3).transpose(),
-                               symmetry=mySym).reduced()
+        o = damask.Orientation(matrix = np.array([map(float,myData[colOri:colOri+9])]).reshape(3,3).transpose(),
+                               symmetry = mySym).reduced()
       elif inputtype == 'frame':
-        o = damask.Orientation(matrix=\
-                               np.array([map(float,myData[colOri[0]:colOri[0]+3] + \
-                                                   myData[colOri[1]:colOri[1]+3] + \
-                                                   myData[colOri[2]:colOri[2]+3]
-                                       )]).reshape(3,3),
-                               symmetry=mySym).reduced()
+        o = damask.Orientation(matrix = np.array([map(float,myData[colOri[0]:colOri[0]+3] + \
+                                                            myData[colOri[1]:colOri[1]+3] + \
+                                                            myData[colOri[2]:colOri[2]+3]
+                                                     )]).reshape(3,3),
+                               symmetry = mySym).reduced()
       elif inputtype == 'quaternion':
-        o = damask.Orientation(quaternion=\
-                               np.array(map(float,myData[colOri:colOri+4])),
-                               symmetry=mySym).reduced()
+        o = damask.Orientation(quaternion = np.array(map(float,myData[colOri:colOri+4])),
+                               symmetry = mySym).reduced()
 
       oInv = o.quaternion.conjugated()
       neighbors = KDTree.query_ball_point([x,y], 3)                                               # search points within radius

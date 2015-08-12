@@ -32,13 +32,14 @@ parser.set_defaults(homogenization = 1,
 
 # --- loop over input files -------------------------------------------------------------------------
 
-if filenames == []: filenames = ['STDIN']
+if filenames == []: filenames = [None]
 
 for name in filenames:
-  if not (name == 'STDIN' or os.path.exists(name)): continue
-  table = damask.ASCIItable(name = name, outname = os.path.splitext(name)[0] +'.geom',
-                            buffered = False, labeled = False)
-  table.croak('\033[1m'+scriptName+'\033[0m'+(': '+name if name != 'STDIN' else ''))
+  try:
+    table = damask.ASCIItable(name = name, outname = os.path.splitext(name)[0] +'.geom',
+                              buffered = False, labeled = False)
+  except: continue
+  table.croak('\033[1m'+scriptName+'\033[0m'+(': '+name if name else ''))
 
 # --- read image ------------------------------------------------------------------------------------
 
@@ -48,7 +49,7 @@ for name in filenames:
   while True:
     try:
       img.seek(slice)                                                                               # advance to slice
-      layer = np.expand_dims(1+np.array(img,dtype='uint16'),axis = 0)                               # read image layer
+      layer = np.expand_dims(1+np.array(img,dtype = 'uint16'),axis = 0)                             # read image layer
       microstructure = layer if slice == 0 else np.vstack((microstructure,layer))                   # add to microstructure data
       slice += 1                                                                                    # advance to next slice
     except EOFError:

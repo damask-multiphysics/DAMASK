@@ -30,13 +30,14 @@ parser.set_defaults(data = True,
 
 # --- loop over input files -------------------------------------------------------------------------
 
-if filenames == []: filenames = ['STDIN']
+if filenames == []: filenames = [None]
 
 for name in filenames:
-  if not (name == 'STDIN' or os.path.exists(name)): continue
-  table = damask.ASCIItable(name = name, outname = None,
-                            buffered = False, labeled = False, readonly = True)
-  table.croak('\033[1m'+scriptName+'\033[0m'+(': '+name if name != 'STDIN' else ''))
+  try:
+    table = damask.ASCIItable(name = name,
+                              buffered = False, labeled = False, readonly = True)
+  except: continue
+  table.croak('\033[1m'+scriptName+'\033[0m'+(': '+name if name else ''))
 
 # --- interpret header ----------------------------------------------------------------------------
 
@@ -86,16 +87,7 @@ for name in filenames:
 
 # --- write data -----------------------------------------------------------------------------------
 
-  if name == 'STDIN':
-    writer = vtk.vtkRectilinearGridWriter()
-    writer.WriteToOutputStringOn()
-    writer.SetFileTypeToASCII()
-    writer.SetHeader('# powered by '+scriptID)
-    if vtk.VTK_MAJOR_VERSION <= 5: writer.SetInput(grid)
-    else:                          writer.SetInputData(grid)
-    writer.Write()
-    sys.stdout.write(writer.GetOutputString()[0:writer.GetOutputStringLength()])
-  else:
+  if name:
     (dir,filename) = os.path.split(name)
     writer = vtk.vtkXMLRectilinearGridWriter()
     writer.SetDataModeToBinary()
@@ -105,5 +97,14 @@ for name in filenames:
     if vtk.VTK_MAJOR_VERSION <= 5: writer.SetInput(grid)
     else:                          writer.SetInputData(grid)
     writer.Write()
+  else:
+    writer = vtk.vtkRectilinearGridWriter()
+    writer.WriteToOutputStringOn()
+    writer.SetFileTypeToASCII()
+    writer.SetHeader('# powered by '+scriptID)
+    if vtk.VTK_MAJOR_VERSION <= 5: writer.SetInput(grid)
+    else:                          writer.SetInputData(grid)
+    writer.Write()
+    sys.stdout.write(writer.GetOutputString()[0:writer.GetOutputStringLength()])
 
   table.close()
