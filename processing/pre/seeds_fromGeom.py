@@ -43,13 +43,15 @@ options.blacklist = map(int,options.blacklist)
 
 # --- loop over output files -------------------------------------------------------------------------
 
-if filenames == []: filenames = ['STDIN']
+if filenames == []: filenames = [None]
 
 for name in filenames:
-  if not (name == 'STDIN' or os.path.exists(name)): continue
-  table = damask.ASCIItable(name = name, outname = os.path.splitext(name)[0]+'.seeds',
-                            buffered = False, labeled = False)
-  table.croak('\033[1m'+scriptName+'\033[0m'+(': '+name if name != 'STDIN' else ''))
+  try:
+    table = damask.ASCIItable(name = name, outname = os.path.splitext(name)[0]+'.seeds',
+                              buffered = False, labeled = False)
+  except:
+    continue
+  table.croak('\033[1m'+scriptName+'\033[0m'+(': '+name if name else ''))
 
 # --- interpret header ----------------------------------------------------------------------------
 
@@ -93,11 +95,11 @@ for name in filenames:
   table.info_clear()
   table.info_append(extra_header+[
     scriptID + ' ' + ' '.join(sys.argv[1:]),
-    "grid\ta {grid[0]}\tb {grid[1]}\tc {grid[2]}".format(grid=newInfo['grid']),
-    "size\tx {size[0]}\ty {size[1]}\tz {size[2]}".format(size=newInfo['size']),
+    "grid\ta {grid[0]}\tb {grid[1]}\tc {grid[2]}".format(grid=info['grid']),
+    "size\tx {size[0]}\ty {size[1]}\tz {size[2]}".format(size=info['size']),
     "origin\tx {origin[0]}\ty {origin[1]}\tz {origin[2]}".format(origin=info['origin']),
     "homogenization\t{homog}".format(homog=info['homogenization']),
-    "microstructures\t{microstructures}".format(microstructures=newInfo['microstructures']),
+    "microstructures\t{microstructures}".format(microstructures=info['microstructures']),
     ])
   table.labels_clear()
   table.labels_append(['{dim}_{label}'.format(dim = 1+i,label = options.position) for i in range(3)]+['microstructure'])
