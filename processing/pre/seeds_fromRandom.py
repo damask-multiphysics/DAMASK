@@ -57,7 +57,11 @@ group = OptionGroup(parser, "Laguerre Tessellation Options",
 group.add_option('-w', '--weights',
                   action = 'store_true',
                   dest   = 'weights',
-                  help   = 'assign random weigts (normal distribution) to seed points for Laguerre tessellation [%default]')
+                  help   = 'assign random weigts to seed points for Laguerre tessellation [%default]')
+group.add_option('--max',
+                  dest = 'max',
+                  type = 'float', metavar = 'float',
+                  help = 'max of uniform distribution for weights [%default]')
 group.add_option('--mean',
                   dest = 'mean',
                   type = 'float', metavar = 'float',
@@ -93,8 +97,9 @@ parser.set_defaults(randomSeed = None,
                     grid = (16,16,16),
                     N = 20,
                     weights = False,
-                    mean = 0.0,
-                    sigma = 0.1,
+                    max = 0.0,
+                    mean = 0.2,
+                    sigma = 0.05,
                     microstructure = 1,
                     selective = False,
                     force = False,
@@ -114,13 +119,15 @@ random.seed(options.randomSeed)
 
 # --- loop over output files -------------------------------------------------------------------------
 
-if filenames == []: filenames = ['STDIN']
+if filenames == []: filenames = [None]
 
 for name in filenames:
-
-  table = damask.ASCIItable(name = name, outname = None,
-                            buffered = False, writeonly = True)
-  table.croak('\033[1m'+scriptName+'\033[0m'+(': '+name if name != 'STDIN' else ''))
+  try:
+    table = damask.ASCIItable(outname = name,
+                              buffered = False)
+  except:
+    continue
+  table.croak('\033[1m'+scriptName+'\033[0m'+(': '+name if name else ''))
 
 # --- sanity checks -------------------------------------------------------------------------
 
@@ -172,21 +179,21 @@ for name in filenames:
         if i%(options.N/100.) < 1: table.croak('.',False)
 
     table.croak('')
-    seeds = np.transpose(seeds)                                                                     # prepare shape for stacking
+    seeds = seeds.T                                                                                 # prepare shape for stacking
 
   if options.weights:
-    seeds = np.transpose(np.vstack((seeds,
-                                    grainEuler,
-                                    np.arange(options.microstructure,
-                                              options.microstructure + options.N),
-                                    np.random.normal(loc=options.mean, scale=options.sigma, size=options.N),
-                                   )))
+    if options.max > 0.0:
+      weights = [np.random.uniform(low = 0, high = options.max, size = options.N)]
+    else:
+      weights = [np.random.normal(loc = options.mean, scale = options.sigma, size = options.N)]
   else:
-    seeds = np.transpose(np.vstack((seeds,
-                                    grainEuler,
-                                    np.arange(options.microstructure,
-                                              options.microstructure + options.N),
-                                   )))
+    weights = []
+  seeds = np.transpose(np.vstack(tuple([seeds,
+                                        grainEuler,
+                                        np.arange(options.microstructure,
+                                                  options.microstructure + options.N),
+                                       ] + weights
+                                 )))
 
 # ------------------------------------------ assemble header ---------------------------------------
 
