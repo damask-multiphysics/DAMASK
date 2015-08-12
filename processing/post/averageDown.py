@@ -18,21 +18,32 @@ Average each data block of size 'packing' into single values thus reducing the f
 
 """, version = scriptID)
 
-parser.add_option('-c','--coordinates', dest='coords', metavar='string',
+parser.add_option('-c','--coordinates',
+                  dest='coords',
+                  metavar='string',
                   help='column heading for coordinates [%default]')
-parser.add_option('-p','--packing',     dest='packing', type='int', nargs=3, metavar='int int int',
+parser.add_option('-p','--packing',
+                  dest='packing',
+                  type='int', nargs=3,
+                  metavar='int int int',
                   help='size of packed group [%default]')
-parser.add_option('--shift',            dest='shift', type='int', nargs=3, metavar='int int int',
+parser.add_option('--shift',
+                  dest='shift',
+                  type='int', nargs=3,
+                  metavar='int int int',
                   help='shift vector of packing stencil [%default]')
-parser.add_option('-g', '--grid',       dest='grid', type='int', nargs=3, metavar='int int int',
+parser.add_option('-g', '--grid',
+                  dest='grid',
+                  type='int', nargs=3,
+                  metavar='int int int',
                   help='grid in x,y,z [autodetect]')
 parser.add_option('-s', '--size',       dest='size', type='float', nargs=3, metavar='float float float',
                   help='size in x,y,z [autodetect]')
-parser.set_defaults(coords  = 'ipinitialcoord')
-parser.set_defaults(packing = (2,2,2))
-parser.set_defaults(shift   = (0,0,0))
-parser.set_defaults(grid    = (0,0,0))
-parser.set_defaults(size    = (0.0,0.0,0.0))
+parser.set_defaults(coords  = 'ipinitialcoord',
+                    packing = (2,2,2),
+                    shift   = (0,0,0),
+                    grid    = (0,0,0),
+                    size    = (0.0,0.0,0.0))
 
 (options,filenames) = parser.parse_args()
 
@@ -43,19 +54,19 @@ prefix = 'averagedDown%ix%ix%i_'%(options.packing[0],options.packing[1],options.
 if np.any(options.shift != 0):
   prefix += 'shift%+i%+i%+i_'%(options.shift[0],options.shift[1],options.shift[2])
 
-# ------------------------------------------ setup file handles ------------------------------------
-files = []
+# --- loop over input files -------------------------------------------------------------------------
+
+if filenames == []: filenames = ['STDIN']
+
 for name in filenames:
-  if os.path.exists(name):
-    files.append({'name':name, 'input':open(name), 'output':open(name+'_tmp','w'), 'croak':sys.stderr})
+  if not (name == 'STDIN' or os.path.exists(name)): continue
+  table = damask.ASCIItable(name = name, outname = prefix+name,
+                            buffered = False)
+  table.croak('\033[1m'+scriptName+'\033[0m'+(': '+name if name != 'STDIN' else ''))
 
-#--- loop over input files -------------------------------------------------------------------------
-for file in files:
-  file['croak'].write('\033[1m'+scriptName+'\033[0m: '+file['name']+'\n')
+# ------------------------------------------ read header -------------------------------------------  
 
-  table = damask.ASCIItable(file['input'],file['output'],False)                                     # make unbuffered ASCII_table
-  table.head_read()                                                                                 # read ASCII header info
-  table.info_append(scriptID + '\t' + ' '.join(sys.argv[1:]))
+  table.head_read()
 
 # --------------- figure out size and grid ---------------------------------------------------------
   try:
@@ -65,7 +76,7 @@ for file in files:
     try:
       locationCol = table.labels.index('%s.x'%options.coords)                                       # columns containing location data (legacy naming scheme)
     except ValueError:
-      file['croak'].write('no coordinate (1_%s/%s.x) and/or elem data found...\n'%(options.coords,options.coords))
+      table.croak('no coordinate (1_%s/%s.x) and/or elem data found...\n'%(options.coords,options.coords))
       continue
 
   if (any(options.grid)==0 or any(options.size)==0.0):
@@ -133,10 +144,6 @@ for file in files:
         outputAlive = table.data_write()                                                            # output processed line
         elem += 1
 
-# ------------------------------------------ output result -----------------------------------------  
-  outputAlive and table.output_flush()                                                              # just in case of buffered ASCII table
+# ------------------------------------------ output finalization -----------------------------------  
 
-  table.input_close()                                                                               # close input ASCII table
-  table.output_close()                                                                              # close output ASCII table
-  os.rename(file['name']+'_tmp',\
-            os.path.join(os.path.dirname(file['name']),prefix+os.path.basename(file['name'])))
+  table.close()                                                                                     # close ASCII tables

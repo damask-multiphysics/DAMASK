@@ -248,11 +248,15 @@ class Test():
   
     import numpy
     logging.info('comparing\n '+File1+'\n '+File2)
-    table = damask.ASCIItable(File1,readonly=True)
-    table.head_read()
+    table1 = damask.ASCIItable(File1,readonly=True)
+    table1.head_read()
+    len1=len(table1.info)+2
+    table2 = damask.ASCIItable(File2,readonly=True)
+    table2.head_read()
+    len2=len(table2.info)+2
 
-    refArray = numpy.nan_to_num(numpy.genfromtxt(File1,missing_values='n/a',skip_header = len(table.info)+2,autostrip=True))
-    curArray = numpy.nan_to_num(numpy.genfromtxt(File2,missing_values='n/a',skip_header = len(table.info)+2,autostrip=True))
+    refArray = numpy.nan_to_num(numpy.genfromtxt(File1,missing_values='n/a',skip_header = len1,autostrip=True))
+    curArray = numpy.nan_to_num(numpy.genfromtxt(File2,missing_values='n/a',skip_header = len2,autostrip=True))
 
     if len(curArray) == len(refArray):
       refArrayNonZero = refArray[refArray.nonzero()]
