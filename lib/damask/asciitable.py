@@ -35,10 +35,12 @@ class ASCIItable():
                   }
 
     self.__IO__['inPlace'] = not outname and name and not readonly
-    if self.__IO__['inPlace']: outname = name+tmpext                                                # transparently create tmp file
-    self.__IO__['in']  = (open(   name,'r') if os.access(   name, os.R_OK) else None) if    name else sys.stdin
-    self.__IO__['out'] = (open(outname,'w') if not os.path.isfile(outname) \
-                                            or os.access(outname, os.W_OK) else None) if outname else sys.stdout
+    if self.__IO__['inPlace']: outname = name + self.tmpext                                         # transparently create tmp file
+    self.__IO__['in']  = (open(   name,'r') if os.access(   name, os.R_OK) else None)     if    name else sys.stdin
+    self.__IO__['out'] = (open(outname,'w') if (not os.path.isfile(outname) \
+                                                or  os.access(outname, os.W_OK)) \
+                                            and (not self.__IO__['inPlace'] \
+                                                 or  os.access(name, os.W_OK)) else None) if outname else sys.stdout
 
     self.info   = []
     self.labels = []
@@ -116,7 +118,7 @@ class ASCIItable():
     except:
       pass
     if dismiss and os.path.isfile(self.__IO__['out'].name): os.remove(self.__IO__['out'].name)
-    if self.__IO__['inPlace']: os.rename(self.__IO__['out'].name, self.__IO__['out'].name[:-len(tmpext)])
+    if self.__IO__['inPlace']: os.rename(self.__IO__['out'].name, self.__IO__['out'].name[:-len(self.tmpext)])
 
 # ------------------------------------------------------------------
   def head_read(self):
