@@ -191,14 +191,15 @@ if options.secondphase > 1.0 or options.secondphase < 0.0:
 
 # --- loop over input files -------------------------------------------------------------------------
 
-if filenames == []: filenames = ['STDIN']
+if filenames == []: filenames = [None]
 
 for name in filenames:
-  if not (name == 'STDIN' or os.path.exists(name)): continue
-  table = damask.ASCIItable(name    = name,
-                            outname = os.path.splitext(name)[0]+'.geom',
-                            buffered = False)
-  table.croak('\033[1m'+scriptName+'\033[0m'+(': '+name if name != 'STDIN' else ''))
+  try:
+    table = damask.ASCIItable(name = name,
+                              outname = os.path.splitext(name)[0]+'.geom',
+                              buffered = False)
+  except: continue
+  table.croak('\033[1m'+scriptName+'\033[0m'+(': '+name if name else ''))
 
 # --- read header ----------------------------------------------------------------------------
 
@@ -217,7 +218,7 @@ for name in filenames:
   
   hasGrains  = table.label_dimension(options.microstructure) == 1
   hasEulers  = table.label_dimension(options.eulers) == 3
-  hasWeights = table.label_dimension(options.weight) == 1
+  hasWeights = table.label_dimension(options.weight) == 1 and options.laguerre
 
   if     np.any(info['grid'] < 1):   errors.append('invalid grid a b c.')
   if     np.any(info['size'] <= 0.0) \
@@ -250,7 +251,7 @@ for name in filenames:
 # ------------------------------------------ read seeds ---------------------------------------  
       
   table.data_readArray(labels)
-  coords = table.data[:,table.label_index(options.position):table.label_index(options.position)+3]
+  coords = table.data[:,table.label_index(options.position):table.label_index(options.position)+3] * info['size']
   eulers = table.data[:,table.label_index(options.eulers  ):table.label_index(options.eulers  )+3] if hasEulers  else np.zeros(3*len(coords))
   grains = table.data[:,table.label_index(options.microstructure)].astype('i')                     if hasGrains  else 1+np.arange(len(coords))
   weights = table.data[:,table.label_index(options.weight)]                                        if hasWeights else np.zeros(len(coords))
@@ -265,19 +266,10 @@ for name in filenames:
   
   table.croak('tessellating...')
 
-  if options.laguerre:
-    table.croak('...using {} cpu{}'.format(options.cpus, 's' if options.cpus > 1 else ''))
-    undeformed = np.vstack(np.meshgrid(x, y, z)).reshape(3,-1).T
-    indices = laguerreTessellation(undeformed, coords, weights, grains, options.nonperiodic, options.cpus)
-  else:
-    coords = (coords*info['size']).T
-    undeformed = np.vstack(map(np.ravel, meshgrid2(x, y, z)))
 
-    indices = damask.core.math.periodicNearestNeighbor(\
-              info['size'],\
-              np.eye(3),\
-              undeformed,coords)//3**3 + 1                                                          # floor division to kill periodic images
-    indices = grains[indices-1]
+  table.croak('...using {} cpu{}'.format(options.cpus, 's' if options.cpus > 1 else ''))
+  grid = np.vstack(meshgrid2(x, y, z)).reshape(3,-1).T
+  indices = laguerreTessellation(grid, coords, weights, grains, options.nonperiodic, options.cpus)
     
 # --- write header ---------------------------------------------------------------------------------
 
