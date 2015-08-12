@@ -16,14 +16,15 @@ class ASCIItable():
                'data',
               ]
 
+  tmpext = '_tmp'                                                                                   # filename extension for in-place access
+  
 # ------------------------------------------------------------------
   def __init__(self,
-               name    = 'STDIN',
+               name    = None,
                outname = None,
                buffered  = False,                                                                   # flush writes
                labeled   = True,                                                                    # assume table has labels
                readonly  = False,                                                                   # no reading from file
-               writeonly = False,                                                                   # no writing to file
               ):
     self.__IO__ = {'output': [],
                    'buffered':  buffered,
@@ -33,17 +34,19 @@ class ASCIItable():
                    'dataStart': 0,
                   }
 
-    self.__IO__ .update({'in':  sys.stdin,
-                         'out': sys.stdout,
-                        } if name == 'STDIN' else
-                        {'in':  sys.stdin if writeonly else open(name,'r') ,
-                         'out': sys.stdout if readonly else open(outname,'w'),
-                        }
-                       )
+    self.__IO__['inPlace'] = not outname and name and not readonly
+    if self.__IO__['inPlace']: outname = name+tmpext                                                # transparently create tmp file
+    self.__IO__['in']  = (open(   name,'r') if os.access(   name, os.R_OK) else None) if    name else sys.stdin
+    self.__IO__['out'] = (open(outname,'w') if not os.path.isfile(outname) \
+                                            or os.access(outname, os.W_OK) else None) if outname else sys.stdout
+
     self.info   = []
     self.labels = []
     self.data   = []
 
+    if   self.__IO__['in']  == None \
+      or self.__IO__['out'] == None: raise IOError                                                 # complain if any required file access not possible
+     
 # ------------------------------------------------------------------
   def _transliterateToFloat(self,
                             x):
@@ -113,6 +116,7 @@ class ASCIItable():
     except:
       pass
     if dismiss and os.path.isfile(self.__IO__['out'].name): os.remove(self.__IO__['out'].name)
+    if self.__IO__['inPlace']: os.rename(self.__IO__['out'].name, self.__IO__['out'].name[:-len(tmpext)])
 
 # ------------------------------------------------------------------
   def head_read(self):
