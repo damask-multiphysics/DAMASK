@@ -248,9 +248,8 @@ class Test():
   
     import numpy
     logging.info('comparing\n '+File1+'\n '+File2)
-    with open(File1) as refFile:
-      table = damask.ASCIItable(refFile)
-      table.head_read()
+    table = damask.ASCIItable(File1,readonly=True)
+    table.head_read()
 
     refArray = numpy.nan_to_num(numpy.genfromtxt(File1,missing_values='n/a',skip_header = len(table.info)+2,autostrip=True))
     curArray = numpy.nan_to_num(numpy.genfromtxt(File2,missing_values='n/a',skip_header = len(table.info)+2,autostrip=True))
@@ -316,9 +315,9 @@ class Test():
     else:
       raise Exception('trying to compare %i with %i normed by %i data sets'%(len(headings0),len(headings1),len(normHeadings)))
 
-    table0 = damask.ASCIItable(open(file0))
+    table0 = damask.ASCIItable(file0)
     table0.head_read()
-    table1 = damask.ASCIItable(open(file1))
+    table1 = damask.ASCIItable(file1)
     table1.head_read()   
 
     for i in xrange(dataLength):
