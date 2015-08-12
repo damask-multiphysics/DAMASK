@@ -317,7 +317,7 @@ class Quaternion:
       else:
           return np.array([float('inf')]*3)
 
-    def asEulers(self,type='bunge',degrees=False):
+    def asEulers(self,type='bunge',degrees=False,standardRange=False):
       '''
       conversion taken from:
       Melcher, A.; Unser, A.; Reichhardt, M.; Nestler, B.; Pötschke, M.; Selzer, M.
@@ -351,13 +351,12 @@ class Quaternion:
           y = (self.z * self.x - self.y * self.w)/2./chi
           angles[2] = math.atan2(y,x)
 
-#        if angles[0] < 0.0:
-#          angles[0] += 2*math.pi
-#        if angles[1] < 0.0:
-#          angles[1] += math.pi
-#          angles[2] *= -1
-#        if angles[2] < 0.0:
-#          angles[2] += 2*math.pi
+        if standardRange:
+          angles[0] %= 2*math.pi
+          if angles[1] < 0.0:
+            angles[1] += math.pi
+            angles[2] *= -1.0
+          angles[2] %= 2*math.pi
 
       return np.degrees(angles) if degrees else angles
 
@@ -562,30 +561,30 @@ class Symmetry:
     '''
     if self.lattice == 'cubic':
       symQuats =  [
-                    [ 1.0,0.0,0.0,0.0 ],
-                    [ 0.0,1.0,0.0,0.0 ],
-                    [ 0.0,0.0,1.0,0.0 ],
-                    [ 0.0,0.0,0.0,1.0 ],
-                    [ 0.0, 0.0, 0.5*math.sqrt(2), 0.5*math.sqrt(2) ],
-                    [ 0.0, 0.0, 0.5*math.sqrt(2),-0.5*math.sqrt(2) ],
-                    [ 0.0, 0.5*math.sqrt(2), 0.0, 0.5*math.sqrt(2) ],
-                    [ 0.0, 0.5*math.sqrt(2), 0.0,-0.5*math.sqrt(2) ],
-                    [ 0.0, 0.5*math.sqrt(2),-0.5*math.sqrt(2), 0.0 ],
-                    [ 0.0,-0.5*math.sqrt(2),-0.5*math.sqrt(2), 0.0 ],
-                    [ 0.5, 0.5, 0.5, 0.5 ],
-                    [-0.5, 0.5, 0.5, 0.5 ],
-                    [-0.5, 0.5, 0.5,-0.5 ],
-                    [-0.5, 0.5,-0.5, 0.5 ],
-                    [-0.5,-0.5, 0.5, 0.5 ],
-                    [-0.5,-0.5, 0.5,-0.5 ],
-                    [-0.5,-0.5,-0.5, 0.5 ],
-                    [-0.5, 0.5,-0.5,-0.5 ],
-                    [-0.5*math.sqrt(2), 0.0, 0.0, 0.5*math.sqrt(2) ],
-                    [ 0.5*math.sqrt(2), 0.0, 0.0, 0.5*math.sqrt(2) ],
-                    [-0.5*math.sqrt(2), 0.0, 0.5*math.sqrt(2), 0.0 ],
-                    [-0.5*math.sqrt(2), 0.0,-0.5*math.sqrt(2), 0.0 ],
-                    [-0.5*math.sqrt(2), 0.5*math.sqrt(2), 0.0, 0.0 ],
-                    [-0.5*math.sqrt(2),-0.5*math.sqrt(2), 0.0, 0.0 ],
+                    [ 1.0,              0.0,              0.0,              0.0              ],
+                    [ 0.0,              1.0,              0.0,              0.0              ],
+                    [ 0.0,              0.0,              1.0,              0.0              ],
+                    [ 0.0,              0.0,              0.0,              1.0              ],
+                    [ 0.0,              0.0,              0.5*math.sqrt(2), 0.5*math.sqrt(2) ],
+                    [ 0.0,              0.0,              0.5*math.sqrt(2),-0.5*math.sqrt(2) ],
+                    [ 0.0,              0.5*math.sqrt(2), 0.0,              0.5*math.sqrt(2) ],
+                    [ 0.0,              0.5*math.sqrt(2), 0.0,             -0.5*math.sqrt(2) ],
+                    [ 0.0,              0.5*math.sqrt(2),-0.5*math.sqrt(2), 0.0              ],
+                    [ 0.0,             -0.5*math.sqrt(2),-0.5*math.sqrt(2), 0.0              ],
+                    [ 0.5,              0.5,              0.5,              0.5              ],
+                    [-0.5,              0.5,              0.5,              0.5              ],
+                    [-0.5,              0.5,              0.5,             -0.5              ],
+                    [-0.5,              0.5,             -0.5,              0.5              ],
+                    [-0.5,             -0.5,              0.5,              0.5              ],
+                    [-0.5,             -0.5,              0.5,             -0.5              ],
+                    [-0.5,             -0.5,             -0.5,              0.5              ],
+                    [-0.5,              0.5,             -0.5,             -0.5              ],
+                    [-0.5*math.sqrt(2), 0.0,              0.0,              0.5*math.sqrt(2) ],
+                    [ 0.5*math.sqrt(2), 0.0,              0.0,              0.5*math.sqrt(2) ],
+                    [-0.5*math.sqrt(2), 0.0,              0.5*math.sqrt(2), 0.0              ],
+                    [-0.5*math.sqrt(2), 0.0,             -0.5*math.sqrt(2), 0.0              ],
+                    [-0.5*math.sqrt(2), 0.5*math.sqrt(2), 0.0,              0.0              ],
+                    [-0.5*math.sqrt(2),-0.5*math.sqrt(2), 0.0,              0.0              ],
                   ]
     elif self.lattice == 'hexagonal':
       symQuats =  [
@@ -786,13 +785,13 @@ class Orientation:
     return 'Symmetry: %s\n' % (self.symmetry) + \
            'Quaternion: %s\n' % (self.quaternion) + \
            'Matrix:\n%s\n' % ( '\n'.join(['\t'.join(map(str,self.asMatrix()[i,:])) for i in range(3)]) ) + \
-           'Bunge Eulers / deg: %s' % ('\t'.join(map(lambda x:str(np.degrees(x)),self.asEulers('bunge'))) )
+           'Bunge Eulers / deg: %s' % ('\t'.join(map(str,self.asEulers('bunge',degrees=True))) )
 
   def asQuaternion(self):
     return self.quaternion.asList()
   quaternion = property(asQuaternion)
 
-  def asEulers(self,type='bunge'):
+  def asEulers(self,type='bunge',degrees=False,standardRange=False):
     return self.quaternion.asEulers(type)
   eulers = property(asEulers)
 
