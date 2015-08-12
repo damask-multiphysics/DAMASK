@@ -245,8 +245,8 @@ class Test():
 
     
   def compare_Array(self,File1,File2):
-  
-    import numpy
+
+    import numpy as np
     logging.info('comparing\n '+File1+'\n '+File2)
     table1 = damask.ASCIItable(File1,readonly=True)
     table1.head_read()
@@ -255,14 +255,14 @@ class Test():
     table2.head_read()
     len2=len(table2.info)+2
 
-    refArray = numpy.nan_to_num(numpy.genfromtxt(File1,missing_values='n/a',skip_header = len1,autostrip=True))
-    curArray = numpy.nan_to_num(numpy.genfromtxt(File2,missing_values='n/a',skip_header = len2,autostrip=True))
+    refArray = np.nan_to_num(np.genfromtxt(File1,missing_values='n/a',skip_header = len1,autostrip=True))
+    curArray = np.nan_to_num(np.genfromtxt(File2,missing_values='n/a',skip_header = len2,autostrip=True))
 
     if len(curArray) == len(refArray):
       refArrayNonZero = refArray[refArray.nonzero()]
       curArray = curArray[refArray.nonzero()]
-      max_err=numpy.max(abs(refArrayNonZero[curArray.nonzero()]/curArray[curArray.nonzero()]-1.))
-      max_loc=numpy.argmax(abs(refArrayNonZero[curArray.nonzero()]/curArray[curArray.nonzero()]-1.))
+      max_err=np.max(abs(refArrayNonZero[curArray.nonzero()]/curArray[curArray.nonzero()]-1.))
+      max_loc=np.argmax(abs(refArrayNonZero[curArray.nonzero()]/curArray[curArray.nonzero()]-1.))
       refArrayNonZero = refArrayNonZero[curArray.nonzero()]
       curArray = curArray[curArray.nonzero()]
       print(' ********\n * maximum relative error %e for %e and %e\n ********'
@@ -289,7 +289,7 @@ class Test():
   def compare_Table(self,headings0,file0,headings1,file1,normHeadings='',normType=None,\
                                      absoluteTolerance=False,perLine=False,skipLines=[]):
     
-    import numpy
+    import numpy as np
     logging.info('comparing ASCII Tables\n %s \n %s'%(file0,file1))
     if normHeadings == '': normHeadings = headings0
 
@@ -311,17 +311,17 @@ class Test():
         if headings0[i]['shape'] != headings1[i]['shape']: 
           raise Exception('shape mismatch when comparing %s with %s '%(headings0[i]['label'],headings1[i]['label']))
         shape[i] = headings0[i]['shape']
-        for j in xrange(numpy.shape(shape[i])[0]):
+        for j in xrange(np.shape(shape[i])[0]):
           length[i] *= shape[i][j]
         normShape[i] = normHeadings[i]['shape']
-        for j in xrange(numpy.shape(normShape[i])[0]):
+        for j in xrange(np.shape(normShape[i])[0]):
           normLength[i] *= normShape[i][j]
     else:
       raise Exception('trying to compare %i with %i normed by %i data sets'%(len(headings0),len(headings1),len(normHeadings)))
 
-    table0 = damask.ASCIItable(file0)
+    table0 = damask.ASCIItable(file0,readonly=True)
     table0.head_read()
-    table1 = damask.ASCIItable(file1)
+    table1 = damask.ASCIItable(file1,readonly=True)
     table1.head_read()   
 
     for i in xrange(dataLength):
@@ -346,20 +346,20 @@ class Test():
     while table0.data_read():                                                     # read next data line of ASCII table
       if line0 not in skipLines:
         for i in xrange(dataLength):
-          myData = numpy.array(map(float,table0.data[column[0][i]:\
+          myData = np.array(map(float,table0.data[column[0][i]:\
                                                      column[0][i]+length[i]]),'d')
-          normData = numpy.array(map(float,table0.data[normColumn[i]:\
+          normData = np.array(map(float,table0.data[normColumn[i]:\
                                                        normColumn[i]+normLength[i]]),'d')
-          data[i] = numpy.append(data[i],numpy.reshape(myData,shape[i]))
+          data[i] = np.append(data[i],np.reshape(myData,shape[i]))
           if normType == 'pInf':
-            norm[i] = numpy.append(norm[i],numpy.max(numpy.abs(normData)))
+            norm[i] = np.append(norm[i],np.max(np.abs(normData)))
           else:
-            norm[i] = numpy.append(norm[i],numpy.linalg.norm(numpy.reshape(normData,normShape[i]),normType))
+            norm[i] = np.append(norm[i],np.linalg.norm(np.reshape(normData,normShape[i]),normType))
       line0 +=1
     
     for i in xrange(dataLength):
-      if not perLine: norm[i] = [numpy.max(norm[i]) for j in xrange(line0-len(skipLines))]
-      data[i] = numpy.reshape(data[i],[line0-len(skipLines),length[i]])
+      if not perLine: norm[i] = [np.max(norm[i]) for j in xrange(line0-len(skipLines))]
+      data[i] = np.reshape(data[i],[line0-len(skipLines),length[i]])
       if any(norm[i]) == 0.0 or absTol[i]:
         norm[i] = [1.0 for j in xrange(line0-len(skipLines))]
         absTol[i] = True
@@ -372,9 +372,9 @@ class Test():
     while table1.data_read():                                                     # read next data line of ASCII table
       if line1 not in skipLines:
         for i in xrange(dataLength):
-          myData = numpy.array(map(float,table1.data[column[1][i]:\
+          myData = np.array(map(float,table1.data[column[1][i]:\
                                                      column[1][i]+length[i]]),'d')
-          maxError[i] = max(maxError[i],numpy.linalg.norm(numpy.reshape(myData-data[i][line1-len(skipLines),:],shape[i]))/
+          maxError[i] = max(maxError[i],np.linalg.norm(np.reshape(myData-data[i][line1-len(skipLines),:],shape[i]))/
                                                                                    norm[i][line1-len(skipLines)])
       line1 +=1
 
