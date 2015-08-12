@@ -117,7 +117,8 @@ if filenames == []: filenames = [None]
 
 for name in filenames:
   try:
-    table = damask.ASCIItable(name = name, outname = os.path.splitext(name)[0] + '.geom',
+    table = damask.ASCIItable(name = name,
+                              outname = os.path.splitext(name)[0]+'.geom' if name else name,
                               buffered = False)
   except: continue
   table.croak('\033[1m'+scriptName+'\033[0m'+(': '+name if name else ''))

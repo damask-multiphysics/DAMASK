@@ -47,7 +47,8 @@ if filenames == []: filenames = [None]
 
 for name in filenames:
   try:
-    table = damask.ASCIItable(name = name, outname = os.path.splitext(name)[0]+'.seeds',
+    table = damask.ASCIItable(name = name,
+                              outname = os.path.splitext(name)[0]+'.seeds' if name else name,
                               buffered = False, labeled = False)
   except:
     continue

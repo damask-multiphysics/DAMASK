@@ -59,10 +59,12 @@ if options.blacklist != None: options.blacklist = map(int,options.blacklist)
 if filenames == []: filenames = ['STDIN']
 
 for name in filenames:
-  if not (name == 'STDIN' or os.path.exists(name)): continue
-  table = damask.ASCIItable(name = name, outname = os.path.splitext(name)[0]+'.seeds',
-                            buffered = False)
-  table.croak('\033[1m'+scriptName+'\033[0m'+(': '+name if name != 'STDIN' else ''))
+  try:
+    table = damask.ASCIItable(name = name,
+                              outname = os.path.splitext(name)[0]+'.seeds' if name else name,
+                              buffered = False)
+  except: continue
+  table.croak('\033[1m'+scriptName+'\033[0m'+(': '+name if name else ''))
 
   table.head_read()                                                                                 # read ASCII header info
 
@@ -98,7 +100,6 @@ for name in filenames:
   table.data[:,0:3] -= boundingBox[0,:]
   table.data[:,0:3] /= boundingBox[1,:]-boundingBox[0,:]
 
-
 # --- filtering of grain voxels --------------------------------------------------------------------
 
   mask = np.logical_and(\
@@ -111,8 +112,6 @@ for name in filenames:
           )
   table.data = table.data[mask]
 
-# ------------------------------------------ output result ---------------------------------------  
-
 # ------------------------------------------ assemble header ---------------------------------------  
 
   table.info = [
@@ -124,5 +123,7 @@ for name in filenames:
   table.labels_append(['1_pos','2_pos','3_pos','microstructure'])                                   # implicitly switching label processing/writing on
   table.head_write()
   
+# ------------------------------------------ output result ---------------------------------------  
+
   table.data_writeArray()
   table.close()                                                                                     # close ASCII tables
