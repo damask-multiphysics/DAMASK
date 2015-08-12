@@ -73,13 +73,15 @@ parser.set_defaults(type = minimal_surfaces[0],
 
 # --- loop over input files -------------------------------------------------------------------------
 
-if filenames == []: filenames = ['STDIN']
+if filenames == []: filenames = [None]
 
 for name in filenames:
-  if not (name == 'STDIN' or os.path.exists(name)): continue
-  table = damask.ASCIItable(name = name, outname = name,
-                            buffered = False, labeled = False, writeonly = True)
-  table.croak('\033[1m'+scriptName+'\033[0m'+(': '+name if name != 'STDIN' else ''))
+  try:
+    table = damask.ASCIItable(outname = name,
+                              buffered = False, labeled = False)
+  except:
+    continue
+  table.croak('\033[1m'+scriptName+'\033[0m'+(': '+name if name else ''))
 
 
 # ------------------------------------------ make grid -------------------------------------
