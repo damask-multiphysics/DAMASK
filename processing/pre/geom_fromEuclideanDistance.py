@@ -125,13 +125,15 @@ for i,feature in enumerate(features):
 
 # --- loop over input files -------------------------------------------------------------------------
 
-if filenames == []: filenames = ['STDIN']
+if filenames == []: filenames = [None]
 
 for name in filenames:
-  if not (name == 'STDIN' or os.path.exists(name)): continue
-  table = damask.ASCIItable(name = name, outname = None,
-                            buffered = False, labeled = False, readonly = True)
-  table.croak('\033[1m'+scriptName+'\033[0m'+(': '+name if name != 'STDIN' else ''))
+  try:
+    table = damask.ASCIItable(name = name,
+                              buffered = False, labeled = False, readonly = True)
+  except:
+    continue
+  table.croak('\033[1m'+scriptName+'\033[0m'+(': '+name if name else ''))
 
 # --- interpret header ----------------------------------------------------------------------------
 
@@ -183,10 +185,14 @@ for name in filenames:
                            1,0)                                                                     # count flip
 
   for feature in feature_list:
+    try:
+      table = damask.ASCIItable(outname = features[feature]['alias'][0]+'_'+name,
+                                buffered = False, labeled = False)
+    except:
+      continue
 
-    table = damask.ASCIItable(name = name, outname = features[feature]['alias'][0]+'_'+name,
-                              buffered = False, labeled = False, writeonly = True)
-
+    table.croak(features[feature]['alias'][0])
+      
     distance = np.where(uniques >= features[feature]['aliens'],0.0,1.0)                             # seed with 0.0 when enough unique neighbor IDs are present
     distance = ndimage.morphology.distance_transform_edt(distance)*[options.scale]*3
 
@@ -220,7 +226,3 @@ for name in filenames:
 #--- output finalization --------------------------------------------------------------------------
 
     table.close()
-
-
-
-### 'output':[open(features[feature]['names'][0]+'_'+name,'w') for feature in feature_list],
