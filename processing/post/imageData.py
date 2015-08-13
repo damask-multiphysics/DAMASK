@@ -109,16 +109,16 @@ theColors = np.uint8(np.array(theMap.export(format = 'list',steps = 256))*255)
 
 # --- loop over input files -------------------------------------------------------------------------
 
-if filenames == []: filenames = ['STDIN']
+if filenames == []: filenames = [None]
 
 for name in filenames:
-  if not (name == 'STDIN' or os.path.exists(name)): continue
-  table = damask.ASCIItable(name = name,
-                            outname = None,
+  try:
+    table = damask.ASCIItable(name = name,
                             buffered = False,
                             labeled = options.label != None,
                             readonly = True)
-  table.croak('\033[1m'+scriptName+'\033[0m'+(': '+name if name != 'STDIN' else ''))
+  except: continue
+  table.croak('\033[1m'+scriptName+'\033[0m'+(': '+name if name else ''))
 
 # ------------------------------------------ read header ------------------------------------------
 
@@ -174,7 +174,7 @@ for name in filenames:
 
 # ------------------------------------------ output result -----------------------------------------
 
-  im.save(sys.stdout if name == 'STDIN' else
+  im.save(sys.stdout if name else
           os.path.splitext(name)[0]+ \
           ('' if options.label == None else '_'+options.label)+ \
           '.png',
