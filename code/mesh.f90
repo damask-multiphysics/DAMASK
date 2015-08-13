@@ -1042,7 +1042,7 @@ function mesh_spectral_getGrid(fileUnit)
  use IO, only: &
    IO_checkAndRewind, &
    IO_open_file, &
-   IO_stringPos, &
+   IO_stringPos2, &
    IO_lc, &
    IO_stringValue, &
    IO_intValue, &
@@ -1054,7 +1054,7 @@ function mesh_spectral_getGrid(fileUnit)
  implicit none
  integer(pInt), dimension(3)                      :: mesh_spectral_getGrid
  integer(pInt), intent(in), optional              :: fileUnit
- integer(pInt), dimension(1_pInt + 7_pInt*2_pInt) :: positions                                     ! for a,b,c + 3 values + keyword
+ integer(pInt), dimension(:), allocatable         :: positions
 
  integer(pInt)                                    :: headerLength = 0_pInt
  character(len=1024) :: line, &
@@ -1073,7 +1073,7 @@ function mesh_spectral_getGrid(fileUnit)
  call IO_checkAndRewind(myFileUnit)
 
  read(myFileUnit,'(a1024)') line
- positions = IO_stringPos(line,7_pInt)
+ positions = IO_stringPos2(line)
  keyword = IO_lc(IO_StringValue(line,positions,2_pInt,.true.))
  if (keyword(1:4) == 'head') then
    headerLength = IO_intValue(line,positions,1_pInt) + 1_pInt
@@ -1083,7 +1083,7 @@ function mesh_spectral_getGrid(fileUnit)
  rewind(myFileUnit)
  do i = 1_pInt, headerLength
    read(myFileUnit,'(a1024)') line
-   positions = IO_stringPos(line,7_pInt)             
+   positions = IO_stringPos2(line)             
    select case ( IO_lc(IO_StringValue(line,positions,1_pInt,.true.)) )
      case ('grid')
        gotGrid = .true.
@@ -1118,7 +1118,7 @@ function mesh_spectral_getSize(fileUnit)
  use IO, only: &
    IO_checkAndRewind, &
    IO_open_file, &
-   IO_stringPos, &
+   IO_stringPos2, &
    IO_lc, &
    IO_stringValue, &
    IO_intValue, &
@@ -1130,7 +1130,7 @@ function mesh_spectral_getSize(fileUnit)
  implicit none
  real(pReal), dimension(3)                        :: mesh_spectral_getSize
  integer(pInt), intent(in), optional              :: fileUnit
- integer(pInt), dimension(1_pInt + 7_pInt*2_pInt) :: positions                                      ! for x,y,z + 3 values + keyword
+ integer(pInt), dimension(:), allocatable         :: positions
  integer(pInt)                                    :: headerLength = 0_pInt
  character(len=1024) :: line, &
                         keyword
@@ -1148,7 +1148,7 @@ function mesh_spectral_getSize(fileUnit)
  call IO_checkAndRewind(myFileUnit)
 
  read(myFileUnit,'(a1024)') line
- positions = IO_stringPos(line,7_pInt)
+ positions = IO_stringPos2(line)
  keyword = IO_lc(IO_StringValue(line,positions,2_pInt,.true.))
  if (keyword(1:4) == 'head') then
    headerLength = IO_intValue(line,positions,1_pInt) + 1_pInt
@@ -1158,7 +1158,7 @@ function mesh_spectral_getSize(fileUnit)
  rewind(myFileUnit)
  do i = 1_pInt, headerLength
    read(myFileUnit,'(a1024)') line
-   positions = IO_stringPos(line,7_pInt)             
+   positions = IO_stringPos2(line)             
    select case ( IO_lc(IO_StringValue(line,positions,1,.true.)) )
      case ('size')
        gotSize = .true.
@@ -1193,7 +1193,7 @@ integer(pInt) function mesh_spectral_getHomogenization(fileUnit)
  use IO, only: &
    IO_checkAndRewind, &
    IO_open_file, &
-   IO_stringPos, &
+   IO_stringPos2, &
    IO_lc, &
    IO_stringValue, &
    IO_intValue, &
@@ -1203,7 +1203,7 @@ integer(pInt) function mesh_spectral_getHomogenization(fileUnit)
   
  implicit none
  integer(pInt), intent(in), optional              :: fileUnit
- integer(pInt), dimension(1_pInt + 7_pInt*2_pInt) :: positions                                      ! for a, b,  c + 3 values + keyword
+ integer(pInt), dimension(:), allocatable         :: positions
  integer(pInt)                                    :: headerLength = 0_pInt
  character(len=1024) :: line, &
                         keyword
@@ -1221,7 +1221,7 @@ integer(pInt) function mesh_spectral_getHomogenization(fileUnit)
  call IO_checkAndRewind(myFileUnit)
 
  read(myFileUnit,'(a1024)') line
- positions = IO_stringPos(line,7_pInt)
+ positions = IO_stringPos2(line)
  keyword = IO_lc(IO_StringValue(line,positions,2_pInt,.true.))
  if (keyword(1:4) == 'head') then
    headerLength = IO_intValue(line,positions,1_pInt) + 1_pInt
@@ -1231,7 +1231,7 @@ integer(pInt) function mesh_spectral_getHomogenization(fileUnit)
  rewind(myFileUnit)
  do i = 1_pInt, headerLength
    read(myFileUnit,'(a1024)') line
-   positions = IO_stringPos(line,7_pInt)             
+   positions = IO_stringPos2(line)             
    select case ( IO_lc(IO_StringValue(line,positions,1,.true.)) )
      case ('homogenization')
        gotHomogenization = .true.
@@ -1346,7 +1346,7 @@ subroutine mesh_spectral_build_elements(fileUnit)
    IO_checkAndRewind, &
    IO_lc, &
    IO_stringValue, &
-   IO_stringPos, &
+   IO_stringPos2, &
    IO_error, &
    IO_continuousIntValues, &
    IO_intValue, &
@@ -1381,7 +1381,7 @@ subroutine mesh_spectral_build_elements(fileUnit)
 ! get header length
  call IO_checkAndRewind(fileUnit)
  read(fileUnit,'(a65536)') line
- myPos = IO_stringPos(line,7_pInt)
+ myPos = IO_stringPos2(line)
  keyword = IO_lc(IO_StringValue(line,myPos,2_pInt,.true.))
  if (keyword(1:4) == 'head') then
    headerLength = IO_intValue(line,myPos,1_pInt) + 1_pInt

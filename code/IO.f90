@@ -56,6 +56,7 @@ module IO
    IO_spotTagInPart, &
    IO_globalTagInPart, &
    IO_stringPos, &
+   IO_stringPos2, &
    IO_stringValue, &
    IO_fixedStringValue ,&
    IO_floatValue, &
@@ -1020,6 +1021,35 @@ pure function IO_stringPos(string,N)
  enddo
 
 end function IO_stringPos
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief locates at all space-separated parts in string and returns array containing number of 
+!! parts in string and the left/right positions to be used by IO_xxxVal
+!! Array size is dynamically adjusted to number of chunks found in string
+!! IMPORTANT: first element contains number of chunks!
+!--------------------------------------------------------------------------------------------------
+pure function IO_stringPos2(string)
+
+ implicit none
+ integer(pInt), dimension(:), allocatable            :: IO_stringPos2
+ character(len=*),                        intent(in) :: string                                      !< string in which parts are searched for
+ 
+ character(len=*), parameter  :: SEP=achar(44)//achar(32)//achar(9)//achar(10)//achar(13)           ! comma and whitespaces
+ integer                      :: left, right                                                        ! no pInt (verify and scan return default integer)
+
+ allocate(IO_stringPos2(1), source=0_pInt)
+ right = 0
+ 
+ do while (verify(string(right+1:),SEP)>0)
+   left  = right + verify(string(right+1:),SEP)
+   right = left + scan(string(left:),SEP) - 2
+   if ( string(left:left) == '#' ) exit
+   IO_stringPos2 = [IO_stringPos2,int(left, pInt), int(right, pInt)]
+   IO_stringPos2(1) = IO_stringPos2(1)+1_pInt
+ enddo
+
+end function IO_stringPos2
 
 
 !--------------------------------------------------------------------------------------------------
