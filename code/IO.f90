@@ -1474,7 +1474,7 @@ function IO_continuousIntValues(fileUnit,maxN,lookupName,lookupMap,lookupMaxN)
    myPos = IO_stringPos(line,MAXNCHUNKS)
    if (verify(IO_stringValue(line,myPos,1_pInt),'0123456789') > 0) then                             ! a non-int, i.e. set names follow on this line
      do i = 1_pInt,myPos(1)                                                                         ! loop over set names in line
-       do j = 1_pInt,lookupMaxN                                                                     ! look thru known set names
+       do j = 1_pInt,lookupMaxN                                                                     ! look through known set names
          if (IO_stringValue(line,myPos,i) == lookupName(j)) then                                    ! found matching name
            first = 2_pInt + IO_continuousIntValues(1)                                               ! where to start appending data
            last  = first + lookupMap(1,j) - 1_pInt                                                  ! up to where to append data
@@ -1506,11 +1506,11 @@ function IO_continuousIntValues(fileUnit,maxN,lookupName,lookupMap,lookupMaxN)
 pure function IO_intOut(intToPrint)
 
   implicit none
-  character(len=16) :: N_Digits
-  character(len=34) :: IO_intOut
+  character(len=19) :: N_Digits                                                                     ! maximum digits for 64 bit integer
+  character(len=40) :: IO_intOut
   integer(pInt), intent(in) :: intToPrint
   
-  write(N_Digits, '(I16.16)') 1_pInt + int(log10(real(intToPrint)),pInt)
+  write(N_Digits, '(I19.19)') 1_pInt + int(log10(real(intToPrint)),pInt)
   IO_intOut = 'I'//trim(N_Digits)//'.'//trim(N_Digits)
 
 end function IO_intOut
