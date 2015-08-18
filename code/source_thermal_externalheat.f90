@@ -81,7 +81,7 @@ subroutine source_thermal_externalheat_init(fileUnit)
  implicit none
  integer(pInt), intent(in) :: fileUnit
 
- integer(pInt), parameter :: MAXNCHUNKS = 7_pInt
+ integer(pInt), parameter :: MAXNCHUNKS = 1000_pInt
  integer(pInt), dimension(1+2*MAXNCHUNKS) :: positions
  integer(pInt) :: maxNinstance,phase,instance,source,sourceOffset
  integer(pInt) :: sizeState, sizeDotState, sizeDeltaState
