@@ -85,17 +85,18 @@ if options.weight != None: labels += [options.weight]                           
 
 # --- loop over input files -------------------------------------------------------------------------
 
-if filenames == []: filenames = ['STDIN']
+if filenames == []: filenames = [None]
 
 for name in filenames:
-  if not (name == 'STDIN' or os.path.exists(name)): continue
-  table = damask.ASCIItable(name = name,
-                            outname = os.path.join(os.path.dirname(name),
-                                                   'binned-%s-%s_'%(options.data[0],options.data[1])+ \
-                                                  ('weighted-%s_'%(options.weight) if options.weight != None else '') + \
-                                                  os.path.basename(name))
-                            buffered = False)
-  table.croak('\033[1m'+scriptName+'\033[0m'+(': '+name if name != 'STDIN' else ''))
+  try:
+    table = damask.ASCIItable(name = name,
+            outname = os.path.join(os.path.dirname(name),
+                       'binned-%s-%s_'%(options.data[0],options.data[1])+ \
+                      ('weighted-%s_'%(options.weight) if options.weight != None else '') + \
+                                                  os.path.basename(name)), buffered = False)
+  except:
+    continue
+  table.croak('\033[1m'+scriptName+'\033[0m'+(': '+name if name else ''))
 
 # ------------------------------------------ read header ------------------------------------------
 
