@@ -80,7 +80,7 @@ for name in filenames:
   if np.any(info['grid'] < 1):    errors.append('invalid grid a b c.')
   if np.any(info['size'] <= 0.0): errors.append('invalid size x y z.')
   if errors != []:
-    file['croak'](errors)
+    table.croak(errors)
     table.close(dismiss = True)
     continue
 

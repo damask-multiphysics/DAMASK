@@ -88,7 +88,7 @@ for name in filenames:
 
   remarks = []
   if (    newInfo['microstructures'] != info['microstructures']): remarks.append('--> microstructures: %i'%newInfo['microstructures'])
-  if remarks != []: file['croak'](remarks)
+  if remarks != []: table.croak(remarks)
 
 # --- write header ---------------------------------------------------------------------------------
 
