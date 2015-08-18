@@ -54,13 +54,14 @@ if options.stiffness == None:
 
 # --- loop over input files -------------------------------------------------------------------------
 
-if filenames == []: filenames = ['STDIN']
+if filenames == []: filenames = [None]
 
 for name in filenames:
-  if not (name == 'STDIN' or os.path.exists(name)): continue
-  table = damask.ASCIItable(name = name, outname = name+'_tmp',
-                            buffered = False)
-  table.croak('\033[1m'+scriptName+'\033[0m'+(': '+name if name != 'STDIN' else ''))
+  try:
+    table = damask.ASCIItable(name = name, buffered = False)
+  except:
+    continue
+  table.croak('\033[1m'+scriptName+'\033[0m'+(': '+name if name else ''))
 
 # ------------------------------------------ read header ------------------------------------------
 
@@ -75,7 +76,7 @@ for name in filenames:
     if   column <  0: remarks.append('column {} not found.'.format(options.stiffness[i]))
     else:
       columns.append(column)
-      table.labels_append(['E{}{}{}({})'.format(*options.hkl,options.stiffness[i]))                 # extend ASCII header with new labels
+      table.labels_append(['E{}{}{}({arg2})'.format(*options.hkl,arg2=options.stiffness[i])])       # extend ASCII header with new labels
 
   if remarks != []: table.croak(remarks)
 
@@ -94,4 +95,3 @@ for name in filenames:
 # ------------------------------------------ output finalization -----------------------------------  
 
   table.close()                                                                                     # close ASCII tables
-  if name != 'STDIN': os.rename(name+'_tmp',name)                                                   # overwrite old one with tmp new
