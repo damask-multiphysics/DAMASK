@@ -4144,7 +4144,6 @@ end subroutine mesh_tell_statistics
 !> @brief mapping of FE element types to internal representation
 !--------------------------------------------------------------------------------------------------
 integer(pInt) function FE_mapElemtype(what)
- 
  use IO, only: IO_lc, IO_error
 
  implicit none
