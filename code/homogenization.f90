@@ -210,7 +210,7 @@ subroutine homogenization_init
 
 !--------------------------------------------------------------------------------------------------
 ! write description file for homogenization output
- if (worldrank == 0_pInt) then
+ mainProcess2: if (worldrank == 0) then
    call IO_write_jobFile(FILEUNIT,'outputHomogenization')
    do p = 1,material_Nhomogenization
      if (any(material_homog == p)) then
@@ -383,7 +383,7 @@ subroutine homogenization_init
      endif
    enddo
    close(FILEUNIT)
- endif  
+ endif mainProcess2
 
 !--------------------------------------------------------------------------------------------------
 ! allocate and initialize global variables
