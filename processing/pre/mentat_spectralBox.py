@@ -7,6 +7,7 @@ import damask
 
 scriptID   = string.replace('$Id$','\n','\\n')
 scriptName = os.path.splitext(scriptID.split()[1])[0]
+sys.path.append(damask.solver.Marc().libraryPath('../../'))
 
 #-------------------------------------------------------------------------------------------------
 def outMentat(cmd,locals):
@@ -52,6 +53,7 @@ def init():
 #-------------------------------------------------------------------------------------------------
     return [
       "#"+' '.join([scriptID] + sys.argv[1:]),
+      "*draw_manual",              # prevent redrawing in Mentat, should be much faster
       "*new_model yes",
       "*reset",
       "*select_clear",
@@ -223,14 +225,6 @@ parser.set_defaults(homogenization = 1)
 (options, filenames) = parser.parse_args()
 
 
-sys.path.append(damask.solver.Marc().libraryPath('../../'))
-
-try:
-  from py_mentat import *
-except:
-  print('no valid Mentat release found')
-  if options.port != None: sys.exit(-1)
-
 #--- setup file handles --------------------------------------------------------------------------   
 files = []
 if filenames == []:
@@ -248,15 +242,20 @@ else:
                     'croak':sys.stdout,
                     })
 
+try:
+  from py_mentat import *
+except:
+  file['croak'].write('no valid Mentat release found')
+  if options.port != None: sys.exit(-1)
+
 #--- loop over input files ------------------------------------------------------------------------
 for file in files:
   file['croak'].write('\033[1m' + scriptName + '\033[0m: ' + (file['name'] if file['name'] != 'STDIN' else '') + '\n')
 
-
   content = file['input'].readlines()
   
   (grid,size,homog,microstructures) = parse_geomFile(content, options.homogenization)
-
+  
 #--- report ---------------------------------------------------------------------------------------
   file['croak'].write('grid     a b c:  %s\n'%(' x '.join(map(str,grid))) +
                       'size     x y z:  %s\n'%(' x '.join(map(str,size))) +
