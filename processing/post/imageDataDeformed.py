@@ -130,7 +130,7 @@ for name in filenames:
     errors.append('no deformation gradient tensor (1..9_{}) found.'.format(options.defgrad))
   
   if errors != []:
-    table.croak.write('\n'.join(errors)+'\n')
+    table.croak('\n'.join(errors)+'\n')
     table.close(dismiss = True)
     continue
   
