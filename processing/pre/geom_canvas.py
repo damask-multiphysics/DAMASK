@@ -81,9 +81,8 @@ for name in filenames:
              'microstructures': 0,
             }
 
-  newInfo['grid'] = np.array([{True:  int(o*float(n.translate(None,'xX'))), 
-                               False: int(n.translate(None,'xX'))}[n[-1].lower() == 'x'] for o,n in zip(info['grid'],options.grid)],'i')
-  newInfo['grid'] = np.where(newInfo['grid'] <= 0, info['grid'],newInfo['grid'])
+  newInfo['grid'] = np.array([int(o*float(n.translate(None,'xX'))) if n[-1].lower() == 'x' else int(n) for o,n in zip(info['grid'],options.grid)],'i')
+  newInfo['grid'] = np.where(newInfo['grid'] > 0, newInfo['grid'],info['grid'])
 
   microstructure_cropped = np.zeros(newInfo['grid'],'i')
   microstructure_cropped.fill(options.fill if options.fill > 0 else microstructure.max()+1)
