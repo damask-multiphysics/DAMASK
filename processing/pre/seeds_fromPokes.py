@@ -49,13 +49,15 @@ parser.set_defaults(x = False,
 
 # --- loop over output files -------------------------------------------------------------------------
 
-if filenames == []: filenames = ['STDIN']
+if filenames == []: filenames = [None]
 
 for name in filenames:
-  if not (name == 'STDIN' or os.path.exists(name)): continue
-  table = damask.ASCIItable(name = name, outname = name+'_tmp',
-                            buffered = False, labeled = False)
-  table.croak('\033[1m'+scriptName+'\033[0m'+(': '+name if name != 'STDIN' else ''))
+  try:
+    table = damask.ASCIItable(name = name,
+                              outname = os.path.splitext(name])[0]+'_poked_{}.seeds'.format(options.N) if name else name,
+                              buffered = False, labeled = False)
+  except: continue
+  table.croak('\033[1m'+scriptName+'\033[0m'+(': '+name if name else ''))
 
 # --- interpret header ----------------------------------------------------------------------------
 
@@ -91,7 +93,7 @@ for name in filenames:
   Ny = int(options.N/math.sqrt(options.N*info['size'][0]/info['size'][1]))
   Nz = int((max(options.z)-min(options.z))/info['size'][2]*info['grid'][2])
 
-  table.croak('poking {0} x {1} x {2}...'.format(Nx,Ny,Nz))
+  table.croak('poking {} x {} x {}...'.format(Nx,Ny,Nz))
 
   seeds = np.zeros((Nx*Ny*Nz,4),'d')
   grid = np.zeros(3,'i')
@@ -125,11 +127,12 @@ for name in filenames:
   table.info_clear()
   table.info_append(extra_header+[
     scriptID + ' ' + ' '.join(sys.argv[1:]),
-    "grid\ta {grid[0]}\tb {grid[1]}\tc {grid[2]}".format(grid=newInfo['grid']),
-    "size\tx {size[0]}\ty {size[1]}\tz {size[2]}".format(size=newInfo['size']),
-    "origin\tx {origin[0]}\ty {origin[1]}\tz {origin[2]}".format(origin=info['origin']),
-    "homogenization\t{homog}".format(homog=info['homogenization']),
-    "microstructures\t{microstructures}".format(microstructures=newInfo['microstructures']),
+    "poking\ta {}\tb {}\tc {}".format(Nx,Ny,Nz),
+    "grid\ta {}\tb {}\tc {}".format(newInfo['grid']),
+    "size\tx {}\ty {}\tz {}".format(newInfo['size']),
+    "origin\tx {}\ty {}\tz {}".format(info['origin']),
+    "homogenization\t{}".format(info['homogenization']),
+    "microstructures\t{}".format(newInfo['microstructures']),
     ])
   table.labels_clear()
   table.labels_append(['{dim}_{label}'.format(dim = 1+i,label = options.position) for i in range(3)]+['microstructure'])
@@ -144,5 +147,3 @@ for name in filenames:
 # --- output finalization --------------------------------------------------------------------------
 
   table.close()                                                                                     # close ASCII table
-  if name != 'STDIN': 
-    os.rename(name+'_tmp',os.path.splitext(name])[0] + '_poked_%ix%ix%i.seeds'%(Nx,Ny,Nz))

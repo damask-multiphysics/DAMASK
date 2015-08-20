@@ -280,18 +280,19 @@ methods        = [options.algorithm]
 
 # --- loop over input files -------------------------------------------------------------------------
 
-if filenames == []: filenames = ['STDIN']
+if filenames == []: filenames = [None]
 
 for name in filenames:
-  if not (name == 'STDIN' or os.path.exists(name)): continue
-  table = damask.ASCIItable(name = name, outname = None,
-                            buffered = False, readonly = True)
-  table.croak('\033[1m'+scriptName+'\033[0m'+(': '+name if name != 'STDIN' else ''))
+  try:
+    table = damask.ASCIItable(name = name,
+                              buffered = False, readonly = True)
+  except: continue
+  table.croak('\033[1m'+scriptName+'\033[0m'+(': '+name if name else ''))
 
   randomSeed = int(os.urandom(4).encode('hex'), 16)  if options.randomSeed == None else options.randomSeed         # random seed per file for second phase
   random.seed(randomSeed)
 
-# ------------------------------------------ read header ---------------------------------------  
+# ------------------------------------------ read header ------------------------------------------
 
   table.head_read()
 
@@ -305,26 +306,19 @@ for name in filenames:
     table.close(dismiss = True)
     continue
 
-# ------------------------------------------ read data ---------------------------------------  
+# ------------------------------------------ read data --------------------------------------------  
 
   binnedODF = table.data_readArray(labels)
   
 # --------------- figure out limits (left/right), delta, and interval -----------------------------
+
   ODF = {}
   limits = np.array([np.min(table.data,axis=0),
                      np.max(table.data,axis=0)])
   ODF['limit'] = np.radians(limits[1,:])
+  ODF['center'] = 0.0 if all(limits[0,:]<1e-8) else 0.5                                             # vertex or cell centered
 
-  if all(limits[0,:]<1e-8):                                                                         # vertex centered
-    ODF['center'] = 0.0
-  else:                                                                                             # cell centered
-    ODF['center'] = 0.5
-
-  eulers = [{},{},{}]
-  for i in xrange(table.data.shape[0]):  
-    for j in xrange(3):
-      eulers[j][str(table.data[i,j]])] = True                                                       # remember eulers along phi1, Phi, and phi2
-  ODF['interval'] = np.array([len(eulers[0]),len(eulers[1]),len(eulers[2]),],'i')                   # steps are number of distict values
+  ODF['interval'] = np.array(map(len,[np.unique(table.data[:,i]) for i in xrange(3)]),'i')          # steps are number of distict values
   ODF['nBins'] = ODF['interval'].prod()
   ODF['delta'] = np.radians(np.array(limits[1,0:3]-limits[0,0:3])/(ODF['interval']-1))
 

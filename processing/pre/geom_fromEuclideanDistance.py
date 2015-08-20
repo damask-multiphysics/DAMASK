@@ -131,8 +131,7 @@ for name in filenames:
   try:
     table = damask.ASCIItable(name = name,
                               buffered = False, labeled = False, readonly = True)
-  except:
-    continue
+  except: continue
   table.croak('\033[1m'+scriptName+'\033[0m'+(': '+name if name else ''))
 
 # --- interpret header ----------------------------------------------------------------------------
@@ -173,8 +172,6 @@ for name in filenames:
             p[2]+1] = 1
     convoluted[i,:,:,:] = ndimage.convolve(structure,stencil)
   
-#  distance = np.ones(info['grid'],'d')
-  
   convoluted = np.sort(convoluted,axis = 0)
   uniques = np.where(convoluted[0,1:-1,1:-1,1:-1] != 0, 1,0)                                        # initialize unique value counter (exclude myself [= 0])
 
@@ -186,20 +183,15 @@ for name in filenames:
 
   for feature in feature_list:
     try:
-      table = damask.ASCIItable(outname = features[feature]['alias'][0]+'_'+name,
+      table = damask.ASCIItable(outname = features[feature]['alias'][0]+'_'+name if name else name,
                                 buffered = False, labeled = False)
-    except:
-      continue
+    except: continue
 
     table.croak(features[feature]['alias'][0])
       
     distance = np.where(uniques >= features[feature]['aliens'],0.0,1.0)                             # seed with 0.0 when enough unique neighbor IDs are present
     distance = ndimage.morphology.distance_transform_edt(distance)*[options.scale]*3
 
-#  for i in xrange(len(feature_list)):
-#    distance[i,:,:,:] = ndimage.morphology.distance_transform_edt(distance[i,:,:,:])*[options.scale]*3
-
-#  for i,feature in enumerate(feature_list):
     info['microstructures'] = int(math.ceil(distance.max()))
 
 #--- write header ---------------------------------------------------------------------------------
@@ -215,7 +207,6 @@ for name in filenames:
       ])
     table.labels_clear()
     table.head_write()
-    table.output_flush()
     
 # --- write microstructure information ------------------------------------------------------------
 

@@ -114,9 +114,9 @@ if filenames == []: filenames = [None]
 for name in filenames:
   try:
     table = damask.ASCIItable(name = name,
-                            buffered = False,
-                            labeled = options.label != None,
-                            readonly = True)
+                              buffered = False,
+                              labeled = options.label != None,
+                              readonly = True)
   except: continue
   table.croak('\033[1m'+scriptName+'\033[0m'+(': '+name if name else ''))
 
@@ -174,7 +174,7 @@ for name in filenames:
 
 # ------------------------------------------ output result -----------------------------------------
 
-  im.save(sys.stdout if name else
+  im.save(sys.stdout if not name else
           os.path.splitext(name)[0]+ \
           ('' if options.label == None else '_'+options.label)+ \
           '.png',

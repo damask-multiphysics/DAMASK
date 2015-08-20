@@ -177,109 +177,90 @@ def initial_conditions(homogenization,microstructures):
   return cmds
 
 
-#-------------------------------------------------------------------------------------------------
-def parse_geomFile(content,homog):
-#-------------------------------------------------------------------------------------------------
-  (skip,key) = content[0].split()[:2]
-  if key[:4].lower() == 'head':
-    skip = int(skip)+1
-  else:
-    skip = 0
-  
-  grid = [0,0,0]
-  size = [0.0,0.0,0.0]
-  homog = 0
-  
-  for line in content[:skip]:
-    data = line.split()
-    if data[0].lower() == 'grid':
-      grid = map(int,data[2:8:2])
-    if data[0].lower() == 'size':
-      size = map(float,data[2:8:2])
-    if data[0].lower() == 'homogenization':
-      homog = int(data[1])
-
-  microstructures = []
-  for line in content[skip:]:
-    for word in line.split():
-      microstructures.append(int(word))
-
-  return (grid,size,homog,microstructures)
-
 #--------------------------------------------------------------------------------------------------
 #                                MAIN
 #--------------------------------------------------------------------------------------------------
 
 parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
-Generate MSC.Marc FE hexahedral mesh from spectral description file.
+Generate MSC.Marc FE hexahedral mesh from geom file.
 
 """, version = scriptID)
 
-parser.add_option('-p', '--port', type='int',dest='port',metavar='int',
-                  help='Mentat connection port [%default]')
-parser.add_option('--homogenization', dest='homogenization', type='int', metavar = 'int',
-                  help='homogenization index to be used [%default]')
-parser.set_defaults(port     = None)
-parser.set_defaults(homogenization = 1)
+parser.add_option('-p', '--port',
+                  dest = 'port',
+                  type = 'int', metavar = 'int',
+                  help = 'Mentat connection port [%default]')
+parser.add_option('--homogenization',
+                  dest = 'homogenization',
+                  type = 'int', metavar = 'int',
+                  help = 'homogenization index to be used [auto]')
+
+parser.set_defaults(port           = None,
+                    homogenization = None,
+)
 
 (options, filenames) = parser.parse_args()
 
+if options.port:
+  try:
+    from py_mentat import *
+  except:
+    parser.error('no valid Mentat release found.')
 
-#--- setup file handles --------------------------------------------------------------------------   
-files = []
-if filenames == []:
-  files.append({'name':'STDIN',
-                'input':sys.stdin,
-                'output':sys.stdout,
-                'croak':sys.stderr,
-               })
-else:
-  for name in filenames:
-    if os.path.exists(name):
-      files.append({'name':name,
-                    'input':open(name),
-                    'output':open(name+'_tmp','w'),
-                    'croak':sys.stdout,
-                    })
+# --- loop over input files -------------------------------------------------------------------------
 
-try:
-  from py_mentat import *
-except:
-  file['croak'].write('no valid Mentat release found')
-  if options.port != None: sys.exit(-1)
+if filenames == []: filenames = [None]
 
-#--- loop over input files ------------------------------------------------------------------------
-for file in files:
-  file['croak'].write('\033[1m' + scriptName + '\033[0m: ' + (file['name'] if file['name'] != 'STDIN' else '') + '\n')
+for name in filenames:
+  try:
+    table = damask.ASCIItable(name    = name,
+                              outname = os.path.splitext(name)[0]+'.proc' if name else name,
+                              buffered = False, labeled = False)
+  except: continue
+  table.croak('\033[1m'+scriptName+'\033[0m'+(': '+name if name else ''))
 
-  content = file['input'].readlines()
-  
-  (grid,size,homog,microstructures) = parse_geomFile(content, options.homogenization)
-  
-#--- report ---------------------------------------------------------------------------------------
-  file['croak'].write('grid     a b c:  %s\n'%(' x '.join(map(str,grid))) +
-                      'size     x y z:  %s\n'%(' x '.join(map(str,size))) +
-                      'homogenization:  %i\n'%homog +
-                      'microstructures: %i\n\n'%(len(list(set(microstructures)))))
-  
+# --- interpret header ----------------------------------------------------------------------------
+
+  table.head_read()
+  info,extra_header = table.head_getGeom()
+  if options.homogenization: info['homogenization'] = options.homogenization
+    
+  table.croak(['grid     a b c:  %s'%(' x '.join(map(str,info['grid']))),
+               'size     x y z:  %s'%(' x '.join(map(str,info['size']))),
+               'origin   x y z:  %s'%(' : '.join(map(str,info['origin']))),
+               'homogenization:  %i'%info['homogenization'],
+               'microstructures: %i'%info['microstructures'],
+              ])
+
+  errors = []
+  if np.any(info['grid'] < 1):    errors.append('invalid grid a b c.')
+  if np.any(info['size'] <= 0.0): errors.append('invalid size x y z.')
+  if errors != []:
+    table.croak(errors)
+    table.close(dismiss = True)
+    continue
+
+# --- read data ------------------------------------------------------------------------------------
+
+  microstructure = table.microstructure_read(info['grid']).reshape(info['grid'],order='F')          # read microstructure
+
   cmds = [\
     init(),
-    mesh(grid,size),
+    mesh(info['grid'],info['size']),
     material(),
     geometry(),
-    initial_conditions(homog,microstructures),
+    initial_conditions(info['homogenization'],microstructure),
     '*identify_sets',
     '*show_model',
     '*redraw',
   ]
   
   outputLocals = {}
-  if (options.port != None):
+  if options.port:
     py_connect('',options.port)
     output(cmds,outputLocals,'Mentat')
     py_disconnect()
   else:
-    output(cmds,outputLocals,file['output'])
-    if file['name'] != 'STDIN':
-      file['output'].close()
-      os.rename(file['name']+'_tmp',os.path.splitext(file['name'])[0] +'.proc')
+    output(cmds,outputLocals,table.__IO__['out'])                                                   # bad hack into internals of table class...
+
+  table.close()

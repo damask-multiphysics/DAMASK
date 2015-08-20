@@ -29,13 +29,14 @@ parser.set_defaults(oneD = False,
 
 # --- loop over input files -------------------------------------------------------------------------
 
-if filenames == []: filenames = ['STDIN']
+if filenames == []: filenames = [None]
 
 for name in filenames:
-  if not (name == 'STDIN' or os.path.exists(name)): continue
-  table = damask.ASCIItable(name = name, outname = name+'_tmp',
-                            buffered = False, labeled = False)
-  table.croak('\033[1m'+scriptName+'\033[0m'+(': '+name if name != 'STDIN' else ''))
+  try:
+    table = damask.ASCIItable(name = name,
+                              buffered = False, labeled = False)
+  except: continue
+  table.croak('\033[1m'+scriptName+'\033[0m'+(': '+name if name else ''))
 
 # --- interpret header ----------------------------------------------------------------------------
 
@@ -70,7 +71,6 @@ for name in filenames:
     "microstructures\t{microstructures}".format(microstructures=info['microstructures']),
     ])
   table.head_write()
-  table.output_flush()
   
 # --- write microstructure information ------------------------------------------------------------
 
@@ -83,4 +83,3 @@ for name in filenames:
 #--- output finalization --------------------------------------------------------------------------
 
   table.close()                                                                                     # close ASCII table
-  if name != 'STDIN': os.rename(name+'_tmp',name)                                                   # overwrite old one with tmp new

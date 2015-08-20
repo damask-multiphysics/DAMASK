@@ -34,14 +34,15 @@ if options.label == None:
 
 # --- loop over input files -------------------------------------------------------------------------
 
-if filenames == []: filenames = ['STDIN']
+if filenames == []: filenames = [None]
 
 for name in filenames:
-  if not (name == 'STDIN' or os.path.exists(name)): continue
-  table = damask.ASCIItable(name    = name,
-                            outname = options.label+'_averaged_'+name,
-                            buffered = False)
-  table.croak('\033[1m'+scriptName+'\033[0m'+(': '+name if name != 'STDIN' else ''))
+  try:
+    table = damask.ASCIItable(name = name,
+                              outname = options.label+'_averaged_'+name if name else name,
+                              buffered = False)
+  except: continue
+  table.croak('\033[1m'+scriptName+'\033[0m'+(': '+name if name else ''))
 
 # ------------------------------------------ sanity checks ---------------------------------------  
 

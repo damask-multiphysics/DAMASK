@@ -127,13 +127,14 @@ toRadians = math.pi/180.0 if options.degrees else 1.0                           
 
 # --- loop over input files -------------------------------------------------------------------------
 
-if filenames == []: filenames = ['STDIN']
+if filenames == []: filenames = [None]
 
 for name in filenames:
-  if not (name == 'STDIN' or os.path.exists(name)): continue
-  table = damask.ASCIItable(name = name, outname = name+'_tmp',
-                            buffered = False)
-  table.croak('\033[1m'+scriptName+'\033[0m'+(': '+name if name != 'STDIN' else ''))
+  try:
+    table = damask.ASCIItable(name = name,
+                              buffered = False)
+  except: continue
+  table.croak('\033[1m'+scriptName+'\033[0m'+(': '+name if name else ''))
 
 # ------------------------------------------ read header -------------------------------------------  
 
@@ -296,4 +297,3 @@ for name in filenames:
 # ------------------------------------------ output finalization -----------------------------------  
 
   table.close()                                                                                     # close ASCII tables
-  if name != 'STDIN': os.rename(name+'_tmp',name)                                                   # overwrite old one with tmp new

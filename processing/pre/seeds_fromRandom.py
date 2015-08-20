@@ -152,15 +152,15 @@ for name in filenames:
 
   if not options.selective:
 
-    seeds = np.zeros((3,options.N),dtype=float)                                                     # seed positions array
+    seeds = np.zeros((3,options.N),dtype='d')                                                       # seed positions array
     gridpoints = random.sample(range(gridSize),options.N)                                           # create random permutation of all grid positions and choose first N
 
     seeds[0,:] = (np.mod(gridpoints                                   ,options.grid[0])\
-                 +np.random.random())                                 /options.grid[0]
+                 +np.random.random(options.N))                        /options.grid[0]
     seeds[1,:] = (np.mod(gridpoints//                 options.grid[0] ,options.grid[1])\
-                 +np.random.random())                                 /options.grid[1]
+                 +np.random.random(options.N))                        /options.grid[1]
     seeds[2,:] = (np.mod(gridpoints//(options.grid[1]*options.grid[0]),options.grid[2])\
-                 +np.random.random())                                 /options.grid[2]
+                 +np.random.random(options.N))                        /options.grid[2]
 
   else:
 

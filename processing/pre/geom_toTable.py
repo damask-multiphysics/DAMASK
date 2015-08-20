@@ -31,7 +31,7 @@ parser.set_defaults(position = 'pos',
 
 # --- loop over input files -------------------------------------------------------------------------
 
-if filenames == []: filenames = ['STDIN']
+if filenames == []: filenames = [None]
 
 for name in filenames:
   try:

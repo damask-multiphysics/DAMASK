@@ -90,10 +90,11 @@ if filenames == []: filenames = [None]
 for name in filenames:
   try:
     table = damask.ASCIItable(name = name,
-            outname = os.path.join(os.path.dirname(name),
-                       'binned-%s-%s_'%(options.data[0],options.data[1])+ \
-                      ('weighted-%s_'%(options.weight) if options.weight != None else '') + \
-                                                  os.path.basename(name)), buffered = False)
+                              outname = os.path.join(os.path.dirname(name),
+                                                     'binned-{}-{}_'.format(*options.data)+ \
+                                                    ('weighted-{}_'.format(options.weight) if options.weight else '') + \
+                                                     os.path.basename(name)) if name else name,
+                              buffered = False)
   except:
     continue
   table.croak('\033[1m'+scriptName+'\033[0m'+(': '+name if name else ''))

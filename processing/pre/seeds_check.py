@@ -34,13 +34,14 @@ parser.set_defaults(size = [0.0,0.0,0.0],
 
 # --- loop over input files -------------------------------------------------------------------------
 
-if filenames == []: filenames = ['STDIN']
+if filenames == []: filenames = [None]
 
 for name in filenames:
-  if not (name == 'STDIN' or os.path.exists(name)): continue
-  table = damask.ASCIItable(name = name, outname = None,
-                            buffered = False, readonly = True)
-  table.croak('\033[1m'+scriptName+'\033[0m'+(': '+name if name != 'STDIN' else ''))
+  try:
+    table = damask.ASCIItable(name = name,
+                              buffered = False, readonly = True)
+  except: continue
+  table.croak('\033[1m'+scriptName+'\033[0m'+(': '+name if name else ''))
 
 # --- interpret header ----------------------------------------------------------------------------
 
@@ -62,13 +63,13 @@ for name in filenames:
      and np.all(info['grid'] < 1):   errors.append('invalid size x y z.')
   else:
     for i in xrange(3):
-      if info['size'][i] <= 0.0:                                                                      # any invalid size?
-        info['size'][i] = float(info['grid'][i])/max(info['grid'])                                    # normalize to grid
+      if info['size'][i] <= 0.0:                                                                    # any invalid size?
+        info['size'][i] = float(info['grid'][i])/max(info['grid'])                                  # normalize to grid
         remarks.append('rescaling size {} to {}...'.format({0:'x',1:'y',2:'z'}[i],info['size'][i]))
   if table.label_dimension(options.position) != 3: errors.append('columns "{}" have dimension {}'.format(options.position,
                                                                                                          table.label_dimension(options.position)))
   if remarks != []: table.croak(remarks)
-  if errors != []:
+  if errors  != []:
     table.croak(errors)
     table.close(dismiss=True)
     continue
@@ -81,14 +82,14 @@ for name in filenames:
 
   coords = table.data[:,:3]                                                                         # assign coordinates
   grain = table.data[:,3].astype('i') if hasGrains else 1+np.arange(len(coords),dtype='i')          # assign grains
-#  grainIDs = np.unique(grain).astype('i')                                                           # find all grainIDs present
+#  grainIDs = np.unique(grain).astype('i')                                                          # find all grainIDs present
  
 # --- generate grid --------------------------------------------------------------------------------
 
   grid = vtk.vtkUnstructuredGrid()
   pts = vtk.vtkPoints()
 
-# --- process microstructure information --------------------------------------------------------------
+# --- process microstructure information -----------------------------------------------------------
 
   IDs = vtk.vtkIntArray()
   IDs.SetNumberOfComponents(1)
@@ -106,7 +107,17 @@ for name in filenames:
 
 # --- write data -----------------------------------------------------------------------------------
 
-  if name == 'STDIN':
+  if name:
+    (dir,filename) = os.path.split(name)
+    writer = vtk.vtkXMLUnstructuredGridWriter()
+    writer.SetDataModeToBinary()
+    writer.SetCompressorTypeToZLib()
+    writer.SetFileName(os.path.join(dir,'seeds_'+os.path.splitext(filename)[0]
+                                                +'.'+writer.GetDefaultFileExtension()))
+    if vtk.VTK_MAJOR_VERSION <= 5: writer.SetInput(grid)
+    else:                          writer.SetInputData(grid)
+    writer.Write()
+  else:
     writer = vtk.vtkUnstructuredGridWriter()
     writer.WriteToOutputStringOn()
     writer.SetFileTypeToASCII()
@@ -115,15 +126,5 @@ for name in filenames:
     else:                          writer.SetInputData(grid)
     writer.Write()
     sys.stdout.write(writer.GetOutputString()[0:writer.GetOutputStringLength()])
-  else:
-    (dir,filename) = os.path.split(name)
-    writer = vtk.vtkXMLUnstructuredGridWriter()
-    writer.SetDataModeToBinary()
-    writer.SetCompressorTypeToZLib()
-    writer.SetFileName(os.path.join(dir,'seeds_'+os.path.splitext(filename)[0]
-                                                 +'.'+writer.GetDefaultFileExtension()))
-    if vtk.VTK_MAJOR_VERSION <= 5: writer.SetInput(grid)
-    else:                          writer.SetInputData(grid)
-    writer.Write()
 
   table.close()

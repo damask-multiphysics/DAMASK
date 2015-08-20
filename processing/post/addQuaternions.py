@@ -55,21 +55,17 @@ datainfo = {'len':4,
 if options.frame  != None:    datainfo['label']  += options.frame
 
 # --- loop over input files -------------------------------------------------------------------------
-if filenames == []:
-  filenames = ['STDIN']
+
+if filenames == []: filenames = [None]
 
 for name in filenames:
-  if name == 'STDIN':
-    file = {'name':'STDIN', 'input':sys.stdin, 'output':sys.stdout, 'croak':sys.stderr}
-    file['croak'].write('\033[1m'+scriptName+'\033[0m\n')
-  else:
-    if not os.path.exists(name): continue
-    file = {'name':name, 'input':open(name), 'output':open(name+'_tmp','w'), 'croak':sys.stderr}
-    file['croak'].write('\033[1m'+scriptName+'\033[0m: '+file['name']+'\n')
+  try:
+    table = damask.ASCIItable(name = name,
+                              buffered = False)
+  except: continue
+  table.croak('\033[1m'+scriptName+'\033[0m'+(': '+name if name else ''))
 
-  table = damask.ASCIItable(file['input'],file['output'],buffered=False)                            # make unbuffered ASCII_table
   table.head_read()                                                                                 # read ASCII header info
-  table.info_append(scriptID + '\t' + ' '.join(sys.argv[1:]))
 
 # --------------- figure out columns to process  ---------------------------------------------------
   active = []
@@ -81,10 +77,11 @@ for name in filenames:
         active.append(label)
         column[label] = table.labels.index(key)                                                     # remember columns of requested data
     else:
-      file['croak'].write('column %s not found...\n'%label)
+      table.croak('column %s not found...'%label)
 
 # ------------------------------------------ assemble header ---------------------------------------
   
+  table.info_append(scriptID + '\t' + ' '.join(sys.argv[1:]))
   table.labels_append(['Q_%i'%(i+1) for i in xrange(4)])                              # extend ASCII header with new labels [1 real, 3 imaginary components]
   table.head_write()
   
@@ -117,8 +114,4 @@ for name in filenames:
 # ------------------------------------------ output result -----------------------------------------
   outputAlive and table.output_flush()                                                              # just in case of buffered ASCII table
 
-  table.input_close()                                                                               # close input ASCII table (works for stdin)
-  table.output_close()                                                                              # close output ASCII table (works for stdout)
-  if file['name'] != 'STDIN':
-    os.rename(file['name']+'_tmp',file['name'])                                                     # overwrite old one with tmp new
-
+  table.close()                                                                                     # close ASCII tables

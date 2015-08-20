@@ -79,8 +79,7 @@ for name in filenames:
   try:
     table = damask.ASCIItable(outname = name,
                               buffered = False, labeled = False)
-  except:
-    continue
+  except: continue
   table.croak('\033[1m'+scriptName+'\033[0m'+(': '+name if name else ''))
 
 
@@ -126,6 +125,7 @@ for name in filenames:
   table.head_write()
   
 #--- write data -----------------------------------------------------------------------------------
+
   X = options.periods*2.0*math.pi*(np.arange(options.grid[0])+0.5)/options.grid[0]
   Y = options.periods*2.0*math.pi*(np.arange(options.grid[1])+0.5)/options.grid[1]
   Z = options.periods*2.0*math.pi*(np.arange(options.grid[2])+0.5)/options.grid[2]

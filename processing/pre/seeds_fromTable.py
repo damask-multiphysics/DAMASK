@@ -56,7 +56,7 @@ if options.blacklist != None: options.blacklist = map(int,options.blacklist)
 
 # --- loop over input files -------------------------------------------------------------------------
 
-if filenames == []: filenames = ['STDIN']
+if filenames == []: filenames = [None]
 
 for name in filenames:
   try:

@@ -46,13 +46,14 @@ parser.set_defaults(coords   = 'ipinitialcoord',
 
 # --- loop over input files -------------------------------------------------------------------------
 
-if filenames == []: filenames = ['STDIN']
+if filenames == []: filenames = [None]
 
 for name in filenames:
-  if not (name == 'STDIN' or os.path.exists(name)): continue
-  table = damask.ASCIItable(name = name, outname = name+'_tmp',
-                            buffered = False)
-  table.croak('\033[1m'+scriptName+'\033[0m'+(': '+name if name != 'STDIN' else ''))
+  try:
+    table = damask.ASCIItable(name = name,
+                              buffered = False)
+  except: continue
+  table.croak('\033[1m'+scriptName+'\033[0m'+(': '+name if name else ''))
 
 # ------------------------------------------ read header ------------------------------------------
 
@@ -86,18 +87,12 @@ for name in filenames:
 
   table.data_readArray()
 
-  coords = [{},{},{}]
-  for i in xrange(len(table.data)):  
-    for j in xrange(3):
-      coords[j][str(table.data[i,colCoord+j])] = True
-  grid = np.array(map(len,coords),'i')
-  size = grid/np.maximum(np.ones(3,'d'),grid-1.0)* \
-            np.array([max(map(float,coords[0].keys()))-min(map(float,coords[0].keys())),\
-                      max(map(float,coords[1].keys()))-min(map(float,coords[1].keys())),\
-                      max(map(float,coords[2].keys()))-min(map(float,coords[2].keys())),\
-                      ],'d')                                                                        # size from bounding box, corrected for cell-centeredness
-
-  size = np.where(grid > 1, size, min(size[grid > 1]/grid[grid > 1]))                               # spacing for grid==1 equal to smallest among other spacings
+  coords = [np.unique(table.data[:,colCoord+i]) for i in xrange(3)]
+  mincorner = np.array(map(min,coords))
+  maxcorner = np.array(map(max,coords))
+  grid   = np.array(map(len,coords),'i')
+  size   = grid/np.maximum(np.ones(3,'d'), grid-1.0) * (maxcorner-mincorner)                        # size from edge to edge = dim * n/(n-1) 
+  size   = np.where(grid > 1, size, min(size[grid > 1]/grid[grid > 1]))                             # spacing for grid==1 equal to smallest among other spacings
 
   N = grid.prod()
   
@@ -115,9 +110,8 @@ for name in filenames:
 # ------------------------------------------ output result -----------------------------------------
 
   if len(stack) > 1: table.data = np.hstack(tuple(stack))
-  table.data_writeArray('%.12g')
+  table.data_writeArray()
 
 # ------------------------------------------ output finalization -----------------------------------  
 
   table.close()                                                                                     # close ASCII tables
-  if name != 'STDIN': os.rename(name+'_tmp',name)                                                   # overwrite old one with tmp new
