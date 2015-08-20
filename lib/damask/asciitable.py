@@ -45,6 +45,7 @@ class ASCIItable():
     self.info   = []
     self.labels = []
     self.data   = []
+    self.line   = ''
 
     if   self.__IO__['in']  == None \
       or self.__IO__['out'] == None: raise IOError                                                 # complain if any required file access not possible
@@ -215,7 +216,8 @@ class ASCIItable():
     
 # ------------------------------------------------------------------
   def labels_append(self,
-                    what):
+                    what,
+                    reset = False):
     '''
        add item or list to existing set of labels (and switch on labeling)
     '''
@@ -228,6 +230,7 @@ class ASCIItable():
       self.labels += [what]
 
     self.__IO__['labeled'] = True                                                                  # switch on processing (in particular writing) of labels
+    if reset: self.__IO__['labels'] = list(self.labels)                                            # subsequent data_read uses current labels as data size
 
 # ------------------------------------------------------------------
   def labels_clear(self):
@@ -390,18 +393,20 @@ class ASCIItable():
        read next line (possibly buffered) and parse it into data array
     '''
     if len(self.__IO__['readBuffer']) > 0:
-      line = self.__IO__['readBuffer'].pop(0)                                                       # take buffered content
+      self.line = self.__IO__['readBuffer'].pop(0)                                                  # take buffered content
     else:
-      line = self.__IO__['in'].readline()                                                           # get next data row from file
+      self.line = self.__IO__['in'].readline()                                                      # get next data row from file
 
     if not advance:
-      self.__IO__['readBuffer'].append(line)                                                        # keep line just read in buffer
+      self.__IO__['readBuffer'].append(self.line)                                                   # keep line just read in buffer
+
+    self.line = self.line.rstrip('\n')
 
     if self.__IO__['labeled']:                                                                      # if table has labels
-      items = line.split()[:len(self.__IO__['labels'])]                                             # use up to label count (from original file info)
+      items = self.line.split()[:len(self.__IO__['labels'])]                                        # use up to label count (from original file info)
       self.data = items if len(items) == len(self.__IO__['labels']) else []                         # take entries if correct number, i.e. not too few compared to label count
     else:
-      self.data = line.split()                                                                      # otherwise take all
+      self.data = self.line.split()                                                                 # otherwise take all
 
     return self.data != []
 
@@ -454,12 +459,12 @@ class ASCIItable():
       return self.output_write(delimiter.join(map(str,self.data)))
 
 # ------------------------------------------------------------------
-  def data_writeArray(self,
-                      format = '%g', delimiter = '\t'):
+  def data_writeArray(self, fmt = None, delimiter = '\t'):
     '''
        write whole numpy array data
     '''
-    return np.savetxt(self.__IO__['out'],self.data,fmt = format,delimiter = delimiter)
+    for row in self.data:
+      self.__IO__['out'].write(delimiter.join([fmt % value for value in row] if fmt else map(repr,row)) + '\n')
 
 # ------------------------------------------------------------------
   def data_append(self,
