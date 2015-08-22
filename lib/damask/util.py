@@ -1,9 +1,14 @@
 # -*- coding: UTF-8 no BOM -*-
 
 # damask utility functions
-import threading
+import sys,time,random,threading
 import numpy as np
 from optparse import OptionParser, Option
+
+# -----------------------------
+def emph(what):
+# -----------------------------
+  return '\033[1m'+str(what)+'\033[0m'
 
 # -----------------------------
 # Matlab like trigonometric functions that take and return angles in degrees.
@@ -51,39 +56,56 @@ class extendableOption(Option):
 # -----------------------------
 class backgroundMessage(threading.Thread):
 # -----------------------------
-    
-    def __init__(self):
-        threading.Thread.__init__(self)
-        self.message = ''
-        self.new_message = ''
-        self.counter = 0
-        self.symbols = ['- ', '\ ', '| ', '/ ']
-        self.waittime = 0.5
-    
-    def __quit__(self):
-        length = len(self.message) + len(self.symbols[self.counter])
-        sys.stderr.write(chr(8)*length + ' '*length + chr(8)*length)
-        sys.stderr.write('')
-    
-    def run(self):
-        while not threading.enumerate()[0]._Thread__stopped:
-            time.sleep(self.waittime)
-            self.update_message()
-        self.__quit__()
+  choices = {'bounce':['_','o','O','°','¯','¯','°','O','o',],
+             'circle': [u'\u25f4',u'\u25f5',u'\u25f6',u'\u25f7'],
+             'hexagon': [u'\u2b22',u'\u2b23'],
+             'pentagon': [u'\u2b20',u'\u2b54'],
+             'square': [u'\u2596',u'\u2598',u'\u259d',u'\u2597'],
+             'triangle': [u'\u140a',u'\u140a',u'\u1403',u'\u1405',u'\u1405',u'\u1403'],
+             'amoeba': [u'\u2596',u'\u258f',u'\u2598',u'\u2594',u'\u259d',u'\u2595',u'\u2597',u'\u2582'],
+             'beat': [u'\u2581',u'\u2582',u'\u2583',u'\u2584',u'\u2585',u'\u2586',u'\u2587',u'\u2588',u'\u2587',u'\u2586',u'\u2585',u'\u2584',u'\u2583',u'\u2582',],
+             'prison': [u'\u168b',u'\u168c',u'\u168d',u'\u168f',u'\u168e',u'\u168d',u'\u168c',u'\u168b',],
+             'breath': [u'\u1690',u'\u1691',u'\u1692',u'\u1693',u'\u1694',u'\u1693',u'\u1692',u'\u1691',u'\u1690'],
+             'pulse': ['·','•',u'\u25cf',u'\u25cf','•',],
+             'ant': [u'\u2801',u'\u2802',u'\u2810',u'\u2820',u'\u2804',u'\u2840',u'\u2880',u'\u2820',u'\u2804',u'\u2802',u'\u2810',u'\u2808'],
+             'classic':['-', '\\', '|', '/',],
+            }    
 
-    def set_message(self, new_message):
-        self.new_message = new_message
-        self.print_message()
-    
-    def print_message(self):
-        length = len(self.message) + len(self.symbols[self.counter])
-        sys.stderr.write(chr(8)*length + ' '*length + chr(8)*length)                                # delete former message
-        sys.stderr.write(self.symbols[self.counter] + self.new_message)                             # print new message
-        self.message = self.new_message
-        
-    def update_message(self):
-        self.counter = (self.counter + 1)%len(self.symbols)
-        self.print_message()
+  def __init__(self,
+               symbol,
+               wait = 0.1):
+    threading.Thread.__init__(self)
+    self.message = ''
+    self.new_message = ''
+    self.counter = 0
+    self.gap     = ' '
+    self.symbols = self.choices[symbol if symbol in self.choices else random.choice(self.choices.keys())]
+    self.waittime = wait
+  
+  def __quit__(self):
+    length = len(self.symbols[self.counter] + self.gap + self.message)
+    sys.stderr.write(chr(8)*length + ' '*length + chr(8)*length)
+    sys.stderr.write('')
+  
+  def run(self):
+    while not threading.enumerate()[0]._Thread__stopped:
+      time.sleep(self.waittime)
+      self.update_message()
+    self.__quit__()
+
+  def set_message(self, new_message):
+    self.new_message = new_message
+    self.print_message()
+  
+  def print_message(self):
+    length = len(self.symbols[self.counter] + self.gap + self.message)
+    sys.stderr.write(chr(8)*length + ' '*length + chr(8)*length)                                # delete former message
+    sys.stderr.write(self.symbols[self.counter] + self.gap + self.new_message)                  # print new message
+    self.message = self.new_message
+      
+  def update_message(self):
+    self.counter = (self.counter + 1)%len(self.symbols)
+    self.print_message()
 
 '''
 Non-linear least square fitting (Levenberg-Marquardt method) with 
