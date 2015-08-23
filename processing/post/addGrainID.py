@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import os,sys,string,itertools,re,time,copy,operator,threading
+import os,sys,string,itertools,re,time,copy,operator
 import numpy as np
 import damask
 from scipy import spatial
@@ -9,43 +9,6 @@ from optparse import OptionParser, OptionGroup, Option, SUPPRESS_HELP
 
 scriptID   = string.replace('$Id: addGrainID.py 2549 2013-07-10 09:13:21Z MPIE\p.eisenlohr $','\n','\\n')
 scriptName = os.path.splitext(scriptID.split()[1])[0]
-
-# -----------------------------
-class backgroundMessage(threading.Thread):
-# -----------------------------
-
-  def __init__(self):
-    threading.Thread.__init__(self)
-    self.message = ''
-    self.new_message = ''
-    self.counter = 0
-    self.symbols = ['- ', '\ ', '| ', '/ ',]
-    self.waittime = 0.5
-
-  def __quit__(self):
-    length = len(self.message) + len(self.symbols[self.counter])
-    sys.stderr.write(chr(8)*length + ' '*length + chr(8)*length)
-    sys.stderr.write('')
-
-  def run(self):
-    while not threading.enumerate()[0]._Thread__stopped:
-      time.sleep(self.waittime)
-      self.update_message()
-    self.__quit__()
-
-  def set_message(self, new_message):
-    self.new_message = new_message
-    self.print_message()
-
-  def print_message(self):
-    length = len(self.message) + len(self.symbols[self.counter])
-    sys.stderr.write(chr(8)*length + ' '*length + chr(8)*length)                  # delete former message
-    sys.stderr.write(self.symbols[self.counter] + self.new_message)               # print new message
-    self.message = self.new_message
-
-  def update_message(self):
-    self.counter = (self.counter + 1)%len(self.symbols)
-    self.print_message()
 
 
 parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
@@ -134,7 +97,7 @@ for name in filenames:
     table = damask.ASCIItable(name = name,
                               buffered = False)
   except: continue
-  table.croak('\033[1m'+scriptName+'\033[0m'+(': '+name if name else ''))
+  table.croak(damask.util.emph(scriptName)+(': '+name if name else ''))
 
 # ------------------------------------------ read header -------------------------------------------  
 
@@ -167,7 +130,7 @@ for name in filenames:
 
 # --- start background messaging
 
-  bg = backgroundMessage()
+  bg = damask.util.backgroundMessage()
   bg.start()
 
   bg.set_message('reading positions...')
