@@ -416,6 +416,7 @@ class ASCIItable():
     '''
        read whole data of all (given) labels as numpy array
     '''
+    from collections import Iterable
 
     try:
       self.data_rewind()                                                                            # try to wind back to start of data
@@ -426,6 +427,8 @@ class ASCIItable():
       use = None                                                                                    # use all columns (and keep labels intact)
       labels_missing = []
     else:
+      if isinstance(labels, str) or not isinstance(labels, Iterable):                               # check whether labels are a list or single item
+        labels = [labels]
       indices    = self.label_index(labels)                                                         # check requested labels ...
       dimensions = self.label_dimension(labels)                                                     # ... and remember their dimension
       present  = np.where(indices >= 0)[0]                                                          # positions in request list of labels that are present ...
