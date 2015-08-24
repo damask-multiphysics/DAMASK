@@ -77,7 +77,7 @@ class ASCIItable():
 # ------------------------------------------------------------------
   def input_close(self):
     try:
-      self.__IO__['in'].close()
+      if self.__IO__['in'] != sys.stdin: self.__IO__['in'].close()
     except:
       pass
 
@@ -115,7 +115,7 @@ class ASCIItable():
   def output_close(self,
                    dismiss = False):
     try:
-      self.__IO__['out'].close()
+      if self.__IO__['out'] != sys.stdout: self.__IO__['out'].close()
     except:
       pass
     if dismiss and os.path.isfile(self.__IO__['out'].name): os.remove(self.__IO__['out'].name)
