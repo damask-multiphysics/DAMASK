@@ -17,61 +17,48 @@ Produce a VTK point cloud dataset based on coordinates given in an ASCIItable.
 
 """, version = scriptID)
 
-parser.add_option('-p', '--positions', dest='pos', metavar='string',
-                  help = 'coordinate label [%default]')
-parser.set_defaults(pos = 'pos')
+parser.add_option('-p','--position',
+                  dest = 'position',
+                  type = 'string', metavar = 'string',
+                  help = 'column label for coordinates [%default]')
+
+parser.set_defaults(position = 'pos',
+                   )
 
 (options, filenames) = parser.parse_args()
 
-datainfo = {                                                               # list of requested labels per datatype
-             'vector':     {'len':3,
-                            'label':[]},
-           }
+# --- loop over input files -------------------------------------------------------------------------
 
-datainfo['vector']['label'] += [options.pos]
+if filenames == []: filenames = [None]
 
-# ------------------------------------------ setup file handles ---------------------------------------  
-
-files = []
 for name in filenames:
-  if os.path.exists(name):
-    files.append({'name':name, 'input':open(name), 'output':os.path.splitext(name)[0]+'.vtp', 'croak':sys.stderr})
+  try:
+    table = damask.ASCIItable(name = name,
+                              buffered = False, readonly = True)
+  except: continue
+  table.croak(damask.util.emph(scriptName)+(': '+name if name else ''))
 
-#--- loop over input files ------------------------------------------------------------------------
-for file in files:
-  if file['name'] != 'STDIN': file['croak'].write('\033[1m'+scriptName+'\033[0m: '+file['name']+'\n')
-  else: file['croak'].write('\033[1m'+scriptName+'\033[0m\n')
+# --- interpret header ----------------------------------------------------------------------------
 
-  table = damask.ASCIItable(file['input'],file['croak'],False)             # make unbuffered ASCII_table
-  table.head_read()                                                         # read ASCII header info
+  table.head_read()
 
-# --------------- figure out columns to process
-  active = {}
-  column = {}
-  head = []
-
-  for datatype,info in datainfo.items():
-    for label in info['label']:
-      foundIt = False
-      for key in ['1_'+label,label]:
-        if key in table.labels:
-          foundIt = True
-          if datatype not in active: active[datatype] = []
-          if datatype not in column: column[datatype] = {}
-          active[datatype].append(label)
-          column[datatype][label] = table.labels.index(key)                 # remember columns of requested data
-      if not foundIt:
-        file['croak'].write('column %s not found...\n'%label)
-        break
-
+  errors =  []
+  remarks = []
+  if table.label_dimension(options.position) != 3: errors.append('columns "{}" have dimension {}'.format(options.position,
+                                                                                                         table.label_dimension(options.position)))
+  if remarks != []: table.croak(remarks)
+  if errors  != []:
+    table.croak(errors)
+    table.close(dismiss=True)
+    continue
 
 # ------------------------------------------ process data ---------------------------------------  
+
+  table.data_readArray(options.position)
 
   Polydata = vtk.vtkPolyData()
   Points = vtk.vtkPoints()
   Vertices = vtk.vtkCellArray()
-  table.data_readArray(range(column['vector'][options.pos],\
-                             column['vector'][options.pos]+datainfo['vector']['len']))
 
   for p in table.data:
     id = Points.InsertNextPoint(p)
@@ -81,19 +68,29 @@ for file in files:
   Polydata.SetPoints(Points)
   Polydata.SetVerts(Vertices)
   Polydata.Modified()
-  if vtk.VTK_MAJOR_VERSION <= 5:
-    Polydata.Update()
+  if vtk.VTK_MAJOR_VERSION <= 5: Polydata.Update()
  
 # ------------------------------------------ output result ---------------------------------------  
 
-  writer = vtk.vtkXMLPolyDataWriter()
-  writer.SetDataModeToBinary()
-  writer.SetCompressorTypeToZLib()
-  writer.SetFileName(file['output'])
-  if vtk.VTK_MAJOR_VERSION <= 5:
-      writer.SetInput(Polydata)
-  else:
-      writer.SetInputData(Polydata)
-  writer.Write()
+  if name:
+    (dir,filename) = os.path.split(name)
+    writer = vtk.vtkXMLPolyDataWriter()
+    writer.SetDataModeToBinary()
+    writer.SetCompressorTypeToZLib()
+    writer.SetFileName(os.path.join(dir,os.path.splitext(filename)[0]+'_{}'.format(options.position) \
+                                        +'.'+writer.GetDefaultFileExtension()))
+    if vtk.VTK_MAJOR_VERSION <= 5: writer.SetInput(Polydata)
+    else:                          writer.SetInputData(Polydata)
+    writer.Write()
 
-  table.input_close()                                                     # close input ASCII table
+  else:
+    writer = vtk.vtkPolyDataWriter()
+    writer.WriteToOutputStringOn()
+    writer.SetFileTypeToASCII()
+    writer.SetHeader('# powered by '+scriptID)
+    if vtk.VTK_MAJOR_VERSION <= 5: writer.SetInput(Polydata)
+    else:                          writer.SetInputData(Polydata)
+    writer.Write()
+    sys.stdout.write(writer.GetOutputString()[0:writer.GetOutputStringLength()])
+
+  table.close()                                                     # close input ASCII table
