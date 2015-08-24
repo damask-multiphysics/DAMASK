@@ -186,15 +186,14 @@ for name in filenames:
 
     if not matched:
       alreadyChecked = {}
-      bestDisorientation = damask.Orientation(quaternion = np.array([0,0,0,1]),
-                                              symmetry = options.symmetry)                          # initialize to 180 deg rotation as worst case
+      bestDisorientation = damask.Quaternion([0,0,0,1])                                             # initialize to 180 deg rotation as worst case
       for i in kdtree.query_ball_point(kdtree.data[p],options.radius):                              # check all neighboring points
         gID = grainID[i]
         if gID != -1 and gID not in alreadyChecked:                                                 # an already indexed point belonging to a grain not yet tested?
           alreadyChecked[gID] = True                                                                # remember not to check again
-          disorientation = o.disorientation(orientations[gID])                                      # compare against that grain's orientation
-          if disorientation.quaternion.w > cos_disorientation and \
-             disorientation.quaternion.w >= bestDisorientation.quaternion.w:                        # within disorientation threshold and better than current best?
+          disorientation = o.disorientation(orientations[gID])[0]                                   # compare against that grain's orientation
+          if disorientation.w >  cos_disorientation and \
+             disorientation.w >= bestDisorientation.w:                                              # within disorientation threshold and better than current best?
             matched = True
             matchedID = gID                                                                         # remember that grain
             bestDisorientation = disorientation
@@ -216,14 +215,14 @@ for name in filenames:
   memberCounts = np.array(memberCounts)
   similarOrientations = [[] for i in xrange(len(orientations))]
 
-  for i,orientation in enumerate(orientations):                                                     # compare each identified orientation...
+  for i,orientation in enumerate(orientations[:-1]):                                                # compare each identified orientation...
     for j in xrange(i+1,len(orientations)):                                                         # ...against all others that were defined afterwards
-      if orientation.disorientation(orientations[j]).quaternion.w > cos_disorientation:             # similar orientations in both grainIDs?
+      if orientation.disorientation(orientations[j])[0].w > cos_disorientation:                     # similar orientations in both grainIDs?
         similarOrientations[i].append(j)                                                            # remember in upper triangle...
         similarOrientations[j].append(i)                                                            # ...and lower triangle of matrix
 
     if similarOrientations[i] != []:
-      bg.set_message('grainID {} is as: {}'.format(i,' '.join(map(lambda x:str(x),similarOrientations[i]))))
+      bg.set_message('grainID {} is as: {}'.format(i,' '.join(map(str,similarOrientations[i]))))
 
   stillShifting = True
   while stillShifting:
@@ -249,10 +248,12 @@ for name in filenames:
           stillShifting = True
 
   table.data_rewind()
+
+  outputAlive = True
   p = 0
-  while table.data_read():                                                                          # read next data line of ASCII table
+  while outputAlive and table.data_read():                                                          # read next data line of ASCII table
     table.data_append(1+grainID[p])                                                                 # add grain ID
-    table.data_write()                                                                              # output processed line
+    outputAlive = table.data_write()                                                                # output processed line
     p += 1
 
   bg.set_message('done after {} seconds'.format(time.clock()-start))
