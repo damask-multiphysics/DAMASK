@@ -6,7 +6,8 @@ from distutils.extension import Extension
 from Cython.Distutils import build_ext
 import numpy as np
 
-ext = [Extension("corientation", ["corientation.pyx"])]
+ext = [Extension("corientation", ["corientation.pyx"],
+                 include_dirs=[np.get_include()])]
 
 setup(
       name="corientation",
