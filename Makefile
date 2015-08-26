@@ -21,7 +21,7 @@ marc:
 processing:
 	@if hash cython 2>/dev/null; then \
 		cd ./lib/damask; \
-		python setup_corientation.py build_ext --inplace; \
+	    CC=gcc python setup_corientation.py build_ext --inplace; \
 		rm -rv build; \
 		rm *.c; \
 	fi
