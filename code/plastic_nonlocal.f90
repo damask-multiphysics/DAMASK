@@ -297,8 +297,9 @@ use material, only: phase_plasticity, &
                     material_phase
 use lattice
 use numerics,only: &
+   analyticJaco, &
    worldrank, &
-  numerics_integrator
+   numerics_integrator
 
 
 implicit none
@@ -1309,11 +1310,13 @@ allocate(nonSchmidProjection(3,3,4,maxTotalNslip,maxNinstances),                
      allocate(plasticState(phase)%partionedState0     (sizeState,NofMyPhase),     source=0.0_pReal)
      allocate(plasticState(phase)%subState0           (sizeState,NofMyPhase),     source=0.0_pReal)
      allocate(plasticState(phase)%state               (sizeState,NofMyPhase),     source=0.0_pReal)
-     allocate(plasticState(phase)%state_backup        (sizeState,NofMyPhase),     source=0.0_pReal)
 
      allocate(plasticState(phase)%dotState            (sizeDotState,NofMyPhase),  source=0.0_pReal)
      allocate(plasticState(phase)%deltaState        (sizeDeltaState,NofMyPhase),  source=0.0_pReal)
-     allocate(plasticState(phase)%dotState_backup     (sizeDotState,NofMyPhase),  source=0.0_pReal)
+     if (.not. analyticJaco) then
+       allocate(plasticState(phase)%state_backup      (sizeState,NofMyPhase),     source=0.0_pReal)
+       allocate(plasticState(phase)%dotState_backup   (sizeDotState,NofMyPhase),  source=0.0_pReal)
+     endif
      if (any(numerics_integrator == 1_pInt)) then
        allocate(plasticState(phase)%previousDotState  (sizeDotState,NofMyPhase),  source=0.0_pReal)
        allocate(plasticState(phase)%previousDotState2 (sizeDotState,NofMyPhase),  source=0.0_pReal)

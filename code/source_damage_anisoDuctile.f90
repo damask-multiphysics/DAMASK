@@ -98,6 +98,7 @@ subroutine source_damage_anisoDuctile_init(fileUnit)
    sourceState, &
    MATERIAL_partPhase
  use numerics,only: &
+   analyticJaco, &
    worldrank, &
    numerics_integrator
  use lattice, only: &
@@ -269,11 +270,13 @@ subroutine source_damage_anisoDuctile_init(fileUnit)
      allocate(sourceState(phase)%p(sourceOffset)%partionedState0     (sizeState,NofMyPhase),     source=0.0_pReal)
      allocate(sourceState(phase)%p(sourceOffset)%subState0           (sizeState,NofMyPhase),     source=0.0_pReal)
      allocate(sourceState(phase)%p(sourceOffset)%state               (sizeState,NofMyPhase),     source=0.0_pReal)
-     allocate(sourceState(phase)%p(sourceOffset)%state_backup        (sizeState,NofMyPhase),     source=0.0_pReal)
 
      allocate(sourceState(phase)%p(sourceOffset)%dotState            (sizeDotState,NofMyPhase),  source=0.0_pReal)
      allocate(sourceState(phase)%p(sourceOffset)%deltaState        (sizeDeltaState,NofMyPhase),  source=0.0_pReal)
-     allocate(sourceState(phase)%p(sourceOffset)%dotState_backup     (sizeDotState,NofMyPhase),  source=0.0_pReal)
+     if (.not. analyticJaco) then
+       allocate(sourceState(phase)%p(sourceOffset)%state_backup      (sizeState,NofMyPhase),     source=0.0_pReal)
+       allocate(sourceState(phase)%p(sourceOffset)%dotState_backup   (sizeDotState,NofMyPhase),  source=0.0_pReal)
+     endif
      if (any(numerics_integrator == 1_pInt)) then
        allocate(sourceState(phase)%p(sourceOffset)%previousDotState  (sizeDotState,NofMyPhase),  source=0.0_pReal)
        allocate(sourceState(phase)%p(sourceOffset)%previousDotState2 (sizeDotState,NofMyPhase),  source=0.0_pReal)

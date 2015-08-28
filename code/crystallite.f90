@@ -593,10 +593,10 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
    invFp, &                                                                                         ! inverse of the plastic deformation gradient
    Fe_guess, &                                                                                      ! guess for elastic deformation gradient
    Tstar                                                                                            ! 2nd Piola-Kirchhoff stress tensor
- real(pReal), dimension(3,3,3,3,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems) :: &
+ real(pReal), allocatable, dimension(:,:,:,:,:,:,:) :: &
    dPdF_perturbation1, &
    dPdF_perturbation2
- real(pReal), dimension(3,3,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems) :: &
+ real(pReal), allocatable, dimension(:,:,:,:,:) :: &
    F_backup, &
    Fp_backup, &
    InvFp_backup, &
@@ -606,8 +606,10 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
    Lp_backup, &
    Li_backup, &
    P_backup
- real(pReal), dimension(6,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems) :: &
+ real(pReal), allocatable, dimension(:,:,:,:) :: &
    Tstar_v_backup
+ logical,     allocatable, dimension(:,:,:) :: &
+   convergenceFlag_backup
  integer(pInt) :: &
    NiterationCrystallite, &                                                                         ! number of iterations in crystallite loop
    e, &                                                                                             ! element index
@@ -623,8 +625,6 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
    perturbation , &                                                                                 ! loop counter for forward,backward perturbation mode
    myNgrains, &
    mySource
- logical, dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems) :: &
-                                                       convergenceFlag_backup
  ! local variables used for calculating analytic Jacobian
  real(pReal), dimension(3,3)     ::   temp_33
  real(pReal), dimension(3,3,3,3) ::   dSdFe, &
@@ -1279,6 +1279,20 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
      numerics_integrationMode = 2_pInt
 
      ! --- BACKUP ---
+     allocate(dPdF_perturbation1(3,3,3,3,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), source = 0.0_pReal)
+     allocate(dPdF_perturbation2(3,3,3,3,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), source = 0.0_pReal)
+     allocate(F_backup          (3,3,    homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), source = 0.0_pReal)
+     allocate(Fp_backup         (3,3,    homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), source = 0.0_pReal)
+     allocate(InvFp_backup      (3,3,    homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), source = 0.0_pReal)
+     allocate(Fi_backup         (3,3,    homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), source = 0.0_pReal)
+     allocate(InvFi_backup      (3,3,    homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), source = 0.0_pReal)
+     allocate(Fe_backup         (3,3,    homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), source = 0.0_pReal)
+     allocate(Lp_backup         (3,3,    homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), source = 0.0_pReal)
+     allocate(Li_backup         (3,3,    homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), source = 0.0_pReal)
+     allocate(P_backup          (3,3,    homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), source = 0.0_pReal)
+     allocate(Tstar_v_backup    (6,      homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), source = 0.0_pReal)
+     allocate(convergenceFlag_backup    (homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), source = .false.)
+
      !$OMP PARALLEL DO PRIVATE(myNgrains)
        elementLooping7: do e = FEsolving_execElem(1),FEsolving_execElem(2)
          myNgrains = homogenization_Ngrains(mesh_element(3,e))
@@ -1493,6 +1507,20 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
          crystallite_converged(g,i,e)     = convergenceFlag_backup(g,i,e)
        enddo; enddo
      enddo elementLooping10
+     
+     deallocate(dPdF_perturbation1)
+     deallocate(dPdF_perturbation2)
+     deallocate(F_backup          )
+     deallocate(Fp_backup         )
+     deallocate(InvFp_backup      )
+     deallocate(Fi_backup         )
+     deallocate(InvFi_backup      )
+     deallocate(Fe_backup         )
+     deallocate(Lp_backup         )
+     deallocate(Li_backup         )
+     deallocate(P_backup          )
+     deallocate(Tstar_v_backup    )
+     deallocate(convergenceFlag_backup)
 
    endif jacobianMethod
  endif computeJacobian

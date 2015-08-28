@@ -95,6 +95,7 @@ subroutine plastic_j2_init(fileUnit)
    debug_constitutive, &
    debug_levelBasic
  use numerics, only: &
+   analyticJaco, &
    worldrank, &
    numerics_integrator
  use math, only: &
@@ -341,10 +342,12 @@ subroutine plastic_j2_init(fileUnit)
      allocate(plasticState(phase)%partionedState0    (   sizeState,NofMyPhase),source=0.0_pReal)
      allocate(plasticState(phase)%subState0          (   sizeState,NofMyPhase),source=0.0_pReal)
      allocate(plasticState(phase)%state              (   sizeState,NofMyPhase),source=0.0_pReal)
-     allocate(plasticState(phase)%state_backup       (   sizeState,NofMyPhase),source=0.0_pReal)
      allocate(plasticState(phase)%dotState           (sizeDotState,NofMyPhase),source=0.0_pReal)
-     allocate(plasticState(phase)%deltaState        (sizeDeltaState,NofMyPhase),  source=0.0_pReal)
-     allocate(plasticState(phase)%dotState_backup    (sizeDotState,NofMyPhase),source=0.0_pReal)
+     allocate(plasticState(phase)%deltaState       (sizeDeltaState,NofMyPhase),source=0.0_pReal)
+     if (.not. analyticJaco) then
+       allocate(plasticState(phase)%state_backup     (   sizeState,NofMyPhase),source=0.0_pReal)
+       allocate(plasticState(phase)%dotState_backup  (sizeDotState,NofMyPhase),source=0.0_pReal)
+     endif
      if (any(numerics_integrator == 1_pInt)) then
        allocate(plasticState(phase)%previousDotState (sizeDotState,NofMyPhase),source=0.0_pReal)
        allocate(plasticState(phase)%previousDotState2(sizeDotState,NofMyPhase),source=0.0_pReal)

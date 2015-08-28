@@ -141,6 +141,7 @@ subroutine plastic_phenopowerlaw_init(fileUnit)
    MATERIAL_partPhase
  use lattice
  use numerics,only: &
+   analyticJaco, &
    worldrank, &
    numerics_integrator
 
@@ -564,10 +565,12 @@ subroutine plastic_phenopowerlaw_init(fileUnit)
      allocate(plasticState(phase)%partionedState0    (   sizeState,NipcMyPhase), source=0.0_pReal)
      allocate(plasticState(phase)%subState0          (   sizeState,NipcMyPhase), source=0.0_pReal)
      allocate(plasticState(phase)%state              (   sizeState,NipcMyPhase), source=0.0_pReal)
-     allocate(plasticState(phase)%state_backup       (   sizeState,NipcMyPhase), source=0.0_pReal)
      allocate(plasticState(phase)%dotState           (sizeDotState,NipcMyPhase), source=0.0_pReal)
      allocate(plasticState(phase)%deltaState       (sizeDeltaState,NipcMyPhase), source=0.0_pReal)
-     allocate(plasticState(phase)%dotState_backup    (sizeDotState,NipcMyPhase), source=0.0_pReal)
+     if (.not. analyticJaco) then
+       allocate(plasticState(phase)%state_backup     (   sizeState,NipcMyPhase),source=0.0_pReal)
+       allocate(plasticState(phase)%dotState_backup  (sizeDotState,NipcMyPhase),source=0.0_pReal)
+     endif
      if (any(numerics_integrator == 1_pInt)) then
        allocate(plasticState(phase)%previousDotState (sizeDotState,NipcMyPhase),source=0.0_pReal)
        allocate(plasticState(phase)%previousDotState2(sizeDotState,NipcMyPhase),source=0.0_pReal)
