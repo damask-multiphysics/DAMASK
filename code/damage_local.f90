@@ -76,8 +76,7 @@ subroutine damage_local_init(fileUnit)
  implicit none
  integer(pInt), intent(in) :: fileUnit
 
- integer(pInt), parameter :: MAXNCHUNKS = 7_pInt
- integer(pInt), dimension(1+2*MAXNCHUNKS) :: positions
+ integer(pInt), allocatable, dimension(:) :: chunkPos
  integer(pInt) :: maxNinstance,mySize=0_pInt,homog,instance,o
  integer(pInt) :: sizeState
  integer(pInt) :: NofMyHomog   
@@ -123,16 +122,16 @@ subroutine damage_local_init(fileUnit)
    if (homog > 0_pInt ) then; if (damage_type(homog) == DAMAGE_local_ID) then                       ! do not short-circuit here (.and. with next if statemen). It's not safe in Fortran
 
      instance = damage_typeInstance(homog)                                                          ! which instance of my damage is present homog
-     positions = IO_stringPos(line,MAXNCHUNKS)
-     tag = IO_lc(IO_stringValue(line,positions,1_pInt))                                             ! extract key
+     chunkPos = IO_stringPos(line)
+     tag = IO_lc(IO_stringValue(line,chunkPos,1_pInt))                                              ! extract key
      select case(tag)
        case ('(output)')
-         select case(IO_lc(IO_stringValue(line,positions,2_pInt)))
+         select case(IO_lc(IO_stringValue(line,chunkPos,2_pInt)))
            case ('damage')
              damage_local_Noutput(instance) = damage_local_Noutput(instance) + 1_pInt
              damage_local_outputID(damage_local_Noutput(instance),instance) = damage_ID
              damage_local_output(damage_local_Noutput(instance),instance) = &
-                                                       IO_lc(IO_stringValue(line,positions,2_pInt))
+                                                       IO_lc(IO_stringValue(line,chunkPos,2_pInt))
           end select
 
      end select

@@ -65,8 +65,7 @@ subroutine homogenization_isostrain_init(fileUnit)
  
  implicit none
  integer(pInt),                                      intent(in) :: fileUnit
- integer(pInt),                                      parameter  :: MAXNCHUNKS = 2_pInt
- integer(pInt), dimension(1_pInt+2_pInt*MAXNCHUNKS)             :: positions
+ integer(pInt), allocatable, dimension(:) :: chunkPos
  integer(pInt) :: &
    section = 0_pInt, i, mySize, o
  integer :: &
@@ -121,37 +120,37 @@ subroutine homogenization_isostrain_init(fileUnit)
    if (section > 0_pInt ) then                                                                      ! do not short-circuit here (.and. with next if-statement). It's not safe in Fortran
      if (homogenization_type(section) == HOMOGENIZATION_ISOSTRAIN_ID) then                          ! one of my sections
        i = homogenization_typeInstance(section)                                                     ! which instance of my type is present homogenization
-       positions = IO_stringPos(line,MAXNCHUNKS)
-       tag = IO_lc(IO_stringValue(line,positions,1_pInt))                                           ! extract key
+       chunkPos = IO_stringPos(line)
+       tag = IO_lc(IO_stringValue(line,chunkPos,1_pInt))                                           ! extract key
        select case(tag)
          case ('(output)')
-           select case(IO_lc(IO_stringValue(line,positions,2_pInt)))
+           select case(IO_lc(IO_stringValue(line,chunkPos,2_pInt)))
              case('nconstituents','ngrains')
                homogenization_isostrain_Noutput(i) = homogenization_isostrain_Noutput(i) + 1_pInt
                homogenization_isostrain_outputID(homogenization_isostrain_Noutput(i),i) = nconstituents_ID
                homogenization_isostrain_output(homogenization_isostrain_Noutput(i),i) = &
-                 IO_lc(IO_stringValue(line,positions,2_pInt))
+                 IO_lc(IO_stringValue(line,chunkPos,2_pInt))
              case('ipcoords')
                homogenization_isostrain_Noutput(i) = homogenization_isostrain_Noutput(i) + 1_pInt
                homogenization_isostrain_outputID(homogenization_isostrain_Noutput(i),i) = ipcoords_ID
                homogenization_isostrain_output(homogenization_isostrain_Noutput(i),i) = &
-                 IO_lc(IO_stringValue(line,positions,2_pInt))
+                 IO_lc(IO_stringValue(line,chunkPos,2_pInt))
              case('avgdefgrad','avgf')
                homogenization_isostrain_Noutput(i) = homogenization_isostrain_Noutput(i) + 1_pInt
                homogenization_isostrain_outputID(homogenization_isostrain_Noutput(i),i) = avgdefgrad_ID
                homogenization_isostrain_output(homogenization_isostrain_Noutput(i),i) = &
-                 IO_lc(IO_stringValue(line,positions,2_pInt))
+                 IO_lc(IO_stringValue(line,chunkPos,2_pInt))
              case('avgp','avgfirstpiola','avg1stpiola')
                homogenization_isostrain_Noutput(i) = homogenization_isostrain_Noutput(i) + 1_pInt
                homogenization_isostrain_outputID(homogenization_isostrain_Noutput(i),i) = avgfirstpiola_ID
                homogenization_isostrain_output(homogenization_isostrain_Noutput(i),i) = &
-                 IO_lc(IO_stringValue(line,positions,2_pInt))
+                 IO_lc(IO_stringValue(line,chunkPos,2_pInt))
 
            end select
          case ('nconstituents','ngrains')
-           homogenization_isostrain_Ngrains(i) = IO_intValue(line,positions,2_pInt)
+           homogenization_isostrain_Ngrains(i) = IO_intValue(line,chunkPos,2_pInt)
          case ('mapping')
-           select case(IO_lc(IO_stringValue(line,positions,2_pInt)))
+           select case(IO_lc(IO_stringValue(line,chunkPos,2_pInt)))
              case ('parallel','sum')
                homogenization_isostrain_mapping(i) = parallel_ID
              case ('average','mean','avg')

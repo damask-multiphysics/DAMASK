@@ -88,8 +88,7 @@ subroutine kinematics_slipplane_opening_init(fileUnit)
  implicit none
  integer(pInt), intent(in) :: fileUnit
 
- integer(pInt), parameter :: MAXNCHUNKS = 7_pInt
- integer(pInt), dimension(1+2*MAXNCHUNKS) :: positions
+ integer(pInt), allocatable, dimension(:) :: chunkPos
  integer(pInt) :: maxNinstance,phase,instance,kinematics
  integer(pInt) :: Nchunks_SlipFamilies = 0_pInt, j   
  character(len=65536) :: &
@@ -150,29 +149,29 @@ subroutine kinematics_slipplane_opening_init(fileUnit)
    endif
    if (phase > 0_pInt ) then; if (any(phase_kinematics(:,phase) == KINEMATICS_slipplane_opening_ID)) then         ! do not short-circuit here (.and. with next if statemen). It's not safe in Fortran
      instance = kinematics_slipplane_opening_instance(phase)                                                         ! which instance of my damage is present phase
-     positions = IO_stringPos(line,MAXNCHUNKS)
-     tag = IO_lc(IO_stringValue(line,positions,1_pInt))                                             ! extract key
+     chunkPos = IO_stringPos(line)
+     tag = IO_lc(IO_stringValue(line,chunkPos,1_pInt))                                             ! extract key
      select case(tag)
        case ('nslip')  !
-         Nchunks_SlipFamilies = positions(1) - 1_pInt
+         Nchunks_SlipFamilies = chunkPos(1) - 1_pInt
          do j = 1_pInt, Nchunks_SlipFamilies
-           kinematics_slipplane_opening_Nslip(j,instance) = IO_intValue(line,positions,1_pInt+j)
+           kinematics_slipplane_opening_Nslip(j,instance) = IO_intValue(line,chunkPos,1_pInt+j)
          enddo
 
        case ('anisoductile_sdot0')
-         kinematics_slipplane_opening_sdot_0(instance) = IO_floatValue(line,positions,2_pInt)
+         kinematics_slipplane_opening_sdot_0(instance) = IO_floatValue(line,chunkPos,2_pInt)
          
        case ('anisoductile_criticalplasticstrain')
          do j = 1_pInt, Nchunks_SlipFamilies
-           kinematics_slipplane_opening_critPlasticStrain(j,instance) = IO_floatValue(line,positions,1_pInt+j)
+           kinematics_slipplane_opening_critPlasticStrain(j,instance) = IO_floatValue(line,chunkPos,1_pInt+j)
          enddo
          
        case ('anisoductile_ratesensitivity')
-         kinematics_slipplane_opening_N(instance) = IO_floatValue(line,positions,2_pInt)
+         kinematics_slipplane_opening_N(instance) = IO_floatValue(line,chunkPos,2_pInt)
 
        case ('anisoductile_criticalload')
          do j = 1_pInt, Nchunks_SlipFamilies
-           kinematics_slipplane_opening_critLoad(j,instance) = IO_floatValue(line,positions,1_pInt+j)
+           kinematics_slipplane_opening_critLoad(j,instance) = IO_floatValue(line,chunkPos,1_pInt+j)
          enddo
          
      end select

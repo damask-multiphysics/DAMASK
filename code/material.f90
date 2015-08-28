@@ -561,9 +561,8 @@ subroutine material_parseHomogenization(fileUnit,myPart)
  character(len=*), intent(in) :: myPart
  integer(pInt),    intent(in) :: fileUnit
  
- integer(pInt),     parameter :: MAXNCHUNKS = 2_pInt
  
- integer(pInt), dimension(1+2*MAXNCHUNKS) :: positions
+ integer(pInt), allocatable, dimension(:) :: chunkPos
  integer(pInt)        :: Nsections, section, s, p
  character(len=65536) :: &
    tag, line
@@ -620,11 +619,11 @@ subroutine material_parseHomogenization(fileUnit,myPart)
      homogenization_name(section) = IO_getTag(line,'[',']')
    endif
    if (section > 0_pInt) then
-     positions = IO_stringPos(line,MAXNCHUNKS)
-     tag = IO_lc(IO_stringValue(line,positions,1_pInt))                                             ! extract key
+     chunkPos = IO_stringPos(line)
+     tag = IO_lc(IO_stringValue(line,chunkPos,1_pInt))                                             ! extract key
      select case(tag)
        case ('type')
-         select case (IO_lc(IO_stringValue(line,positions,2_pInt)))
+         select case (IO_lc(IO_stringValue(line,chunkPos,2_pInt)))
            case(HOMOGENIZATION_NONE_label)
              homogenization_type(section) = HOMOGENIZATION_NONE_ID
              homogenization_Ngrains(section) = 1_pInt
@@ -633,12 +632,12 @@ subroutine material_parseHomogenization(fileUnit,myPart)
            case(HOMOGENIZATION_RGC_label)
              homogenization_type(section) = HOMOGENIZATION_RGC_ID
            case default
-             call IO_error(500_pInt,ext_msg=trim(IO_stringValue(line,positions,2_pInt)))
+             call IO_error(500_pInt,ext_msg=trim(IO_stringValue(line,chunkPos,2_pInt)))
          end select
          homogenization_typeInstance(section) = &
                                           count(homogenization_type==homogenization_type(section))  ! count instances
         case ('thermal')
-         select case (IO_lc(IO_stringValue(line,positions,2_pInt)))
+         select case (IO_lc(IO_stringValue(line,chunkPos,2_pInt)))
            case(THERMAL_isothermal_label)
              thermal_type(section) = THERMAL_isothermal_ID       
            case(THERMAL_adiabatic_label)
@@ -646,11 +645,11 @@ subroutine material_parseHomogenization(fileUnit,myPart)
            case(THERMAL_conduction_label)
              thermal_type(section) = THERMAL_conduction_ID
            case default
-             call IO_error(500_pInt,ext_msg=trim(IO_stringValue(line,positions,2_pInt)))
+             call IO_error(500_pInt,ext_msg=trim(IO_stringValue(line,chunkPos,2_pInt)))
          end select
 
         case ('damage')
-         select case (IO_lc(IO_stringValue(line,positions,2_pInt)))
+         select case (IO_lc(IO_stringValue(line,chunkPos,2_pInt)))
            case(DAMAGE_NONE_label)
              damage_type(section) = DAMAGE_none_ID       
            case(DAMAGE_LOCAL_label)
@@ -658,11 +657,11 @@ subroutine material_parseHomogenization(fileUnit,myPart)
            case(DAMAGE_NONLOCAL_label)
              damage_type(section) = DAMAGE_nonlocal_ID
            case default
-             call IO_error(500_pInt,ext_msg=trim(IO_stringValue(line,positions,2_pInt)))
+             call IO_error(500_pInt,ext_msg=trim(IO_stringValue(line,chunkPos,2_pInt)))
          end select
                                           
         case ('vacancyflux')
-         select case (IO_lc(IO_stringValue(line,positions,2_pInt)))
+         select case (IO_lc(IO_stringValue(line,chunkPos,2_pInt)))
            case(VACANCYFLUX_isoconc_label)
              vacancyflux_type(section) = VACANCYFLUX_isoconc_ID       
            case(VACANCYFLUX_isochempot_label)
@@ -670,46 +669,46 @@ subroutine material_parseHomogenization(fileUnit,myPart)
            case(VACANCYFLUX_cahnhilliard_label)
              vacancyflux_type(section) = VACANCYFLUX_cahnhilliard_ID
            case default
-             call IO_error(500_pInt,ext_msg=trim(IO_stringValue(line,positions,2_pInt)))
+             call IO_error(500_pInt,ext_msg=trim(IO_stringValue(line,chunkPos,2_pInt)))
          end select
 
         case ('porosity')
-         select case (IO_lc(IO_stringValue(line,positions,2_pInt)))
+         select case (IO_lc(IO_stringValue(line,chunkPos,2_pInt)))
            case(POROSITY_NONE_label)
              porosity_type(section) = POROSITY_none_ID       
            case(POROSITY_phasefield_label)
              porosity_type(section) = POROSITY_phasefield_ID       
            case default
-             call IO_error(500_pInt,ext_msg=trim(IO_stringValue(line,positions,2_pInt)))
+             call IO_error(500_pInt,ext_msg=trim(IO_stringValue(line,chunkPos,2_pInt)))
          end select
                                           
         case ('hydrogenflux')
-         select case (IO_lc(IO_stringValue(line,positions,2_pInt)))
+         select case (IO_lc(IO_stringValue(line,chunkPos,2_pInt)))
            case(HYDROGENFLUX_isoconc_label)
              hydrogenflux_type(section) = HYDROGENFLUX_isoconc_ID       
            case(HYDROGENFLUX_cahnhilliard_label)
              hydrogenflux_type(section) = HYDROGENFLUX_cahnhilliard_ID
            case default
-             call IO_error(500_pInt,ext_msg=trim(IO_stringValue(line,positions,2_pInt)))
+             call IO_error(500_pInt,ext_msg=trim(IO_stringValue(line,chunkPos,2_pInt)))
          end select
 
        case ('nconstituents','ngrains')
-         homogenization_Ngrains(section) = IO_intValue(line,positions,2_pInt)
+         homogenization_Ngrains(section) = IO_intValue(line,chunkPos,2_pInt)
 
        case ('initialtemperature','initialt')
-         thermal_initialT(section) = IO_floatValue(line,positions,2_pInt)
+         thermal_initialT(section) = IO_floatValue(line,chunkPos,2_pInt)
      
        case ('initialdamage')
-         damage_initialPhi(section) = IO_floatValue(line,positions,2_pInt)
+         damage_initialPhi(section) = IO_floatValue(line,chunkPos,2_pInt)
      
        case ('initialvacancyconc','initialcv')
-         vacancyflux_initialCv(section) = IO_floatValue(line,positions,2_pInt)
+         vacancyflux_initialCv(section) = IO_floatValue(line,chunkPos,2_pInt)
      
        case ('initialporosity')
-         porosity_initialPhi(section) = IO_floatValue(line,positions,2_pInt)
+         porosity_initialPhi(section) = IO_floatValue(line,chunkPos,2_pInt)
      
        case ('initialhydrogenconc','initialch')
-         hydrogenflux_initialCh(section) = IO_floatValue(line,positions,2_pInt)
+         hydrogenflux_initialCh(section) = IO_floatValue(line,chunkPos,2_pInt)
      
      end select
    endif
@@ -742,9 +741,8 @@ subroutine material_parseMicrostructure(fileUnit,myPart)
  character(len=*), intent(in) :: myPart
  integer(pInt),    intent(in) :: fileUnit
  
- integer(pInt), parameter :: MAXNCHUNKS = 7_pInt
  
- integer(pInt), dimension(1_pInt+2_pInt*MAXNCHUNKS) :: positions
+ integer(pInt), allocatable, dimension(:) :: chunkPos
  integer(pInt) :: Nsections, section, constituent, e, i
  character(len=65536) :: &
    tag, line
@@ -799,22 +797,22 @@ subroutine material_parseMicrostructure(fileUnit,myPart)
      microstructure_name(section) = IO_getTag(line,'[',']')
    endif
    if (section > 0_pInt) then
-     positions = IO_stringPos(line,MAXNCHUNKS)
-     tag = IO_lc(IO_stringValue(line,positions,1_pInt))                                             ! extract key
+     chunkPos = IO_stringPos(line)
+     tag = IO_lc(IO_stringValue(line,chunkPos,1_pInt))                                             ! extract key
      select case(tag)
        case ('crystallite')
-         microstructure_crystallite(section) = IO_intValue(line,positions,2_pInt)
+         microstructure_crystallite(section) = IO_intValue(line,chunkPos,2_pInt)
        case ('(constituent)')
          constituent = constituent + 1_pInt
          do i=2_pInt,6_pInt,2_pInt
-           tag = IO_lc(IO_stringValue(line,positions,i))
+           tag = IO_lc(IO_stringValue(line,chunkPos,i))
            select case (tag)
              case('phase')
-               microstructure_phase(constituent,section) =    IO_intValue(line,positions,i+1_pInt)
+               microstructure_phase(constituent,section) =    IO_intValue(line,chunkPos,i+1_pInt)
              case('texture')
-               microstructure_texture(constituent,section) =  IO_intValue(line,positions,i+1_pInt)
+               microstructure_texture(constituent,section) =  IO_intValue(line,chunkPos,i+1_pInt)
              case('fraction')
-               microstructure_fraction(constituent,section) = IO_floatValue(line,positions,i+1_pInt)
+               microstructure_fraction(constituent,section) = IO_floatValue(line,chunkPos,i+1_pInt)
            end select
          enddo
      end select
@@ -906,9 +904,8 @@ subroutine material_parsePhase(fileUnit,myPart)
  character(len=*), intent(in) :: myPart
  integer(pInt),    intent(in) :: fileUnit
  
- integer(pInt), parameter :: MAXNCHUNKS = 2_pInt
  
- integer(pInt), dimension(1+2*MAXNCHUNKS) :: positions
+ integer(pInt), allocatable, dimension(:) :: chunkPos
  integer(pInt) :: Nsections, section, sourceCtr, kinematicsCtr, stiffDegradationCtr, p 
  character(len=65536) :: &
   tag,line
@@ -966,18 +963,18 @@ subroutine material_parsePhase(fileUnit,myPart)
      phase_name(section) = IO_getTag(line,'[',']')
    endif
    if (section > 0_pInt) then
-     positions = IO_stringPos(line,MAXNCHUNKS)
-     tag = IO_lc(IO_stringValue(line,positions,1_pInt))                                             ! extract key
+     chunkPos = IO_stringPos(line)
+     tag = IO_lc(IO_stringValue(line,chunkPos,1_pInt))                                             ! extract key
      select case(tag)
        case ('elasticity')
-         select case (IO_lc(IO_stringValue(line,positions,2_pInt)))
+         select case (IO_lc(IO_stringValue(line,chunkPos,2_pInt)))
            case (ELASTICITY_HOOKE_label)
              phase_elasticity(section) = ELASTICITY_HOOKE_ID
            case default
-             call IO_error(200_pInt,ext_msg=trim(IO_stringValue(line,positions,2_pInt)))
+             call IO_error(200_pInt,ext_msg=trim(IO_stringValue(line,chunkPos,2_pInt)))
          end select
        case ('plasticity')
-         select case (IO_lc(IO_stringValue(line,positions,2_pInt)))
+         select case (IO_lc(IO_stringValue(line,chunkPos,2_pInt)))
            case (PLASTICITY_NONE_label)
              phase_plasticity(section) = PLASTICITY_NONE_ID
            case (PLASTICITY_J2_label)
@@ -995,11 +992,11 @@ subroutine material_parsePhase(fileUnit,myPart)
            case (PLASTICITY_NONLOCAL_label)
              phase_plasticity(section) = PLASTICITY_NONLOCAL_ID
            case default
-             call IO_error(201_pInt,ext_msg=trim(IO_stringValue(line,positions,2_pInt)))
+             call IO_error(201_pInt,ext_msg=trim(IO_stringValue(line,chunkPos,2_pInt)))
          end select
        case ('(source)')
          sourceCtr = sourceCtr + 1_pInt
-         select case (IO_lc(IO_stringValue(line,positions,2_pInt)))
+         select case (IO_lc(IO_stringValue(line,chunkPos,2_pInt)))
            case (SOURCE_thermal_dissipation_label)
              phase_source(sourceCtr,section) = SOURCE_thermal_dissipation_ID
            case (SOURCE_thermal_externalheat_label)
@@ -1021,7 +1018,7 @@ subroutine material_parsePhase(fileUnit,myPart)
          end select
        case ('(kinematics)')
          kinematicsCtr = kinematicsCtr + 1_pInt
-         select case (IO_lc(IO_stringValue(line,positions,2_pInt)))
+         select case (IO_lc(IO_stringValue(line,chunkPos,2_pInt)))
            case (KINEMATICS_cleavage_opening_label)
              phase_kinematics(kinematicsCtr,section) = KINEMATICS_cleavage_opening_ID
            case (KINEMATICS_slipplane_opening_label)
@@ -1035,7 +1032,7 @@ subroutine material_parsePhase(fileUnit,myPart)
          end select
        case ('(stiffness_degradation)')
          stiffDegradationCtr = stiffDegradationCtr + 1_pInt
-         select case (IO_lc(IO_stringValue(line,positions,2_pInt)))
+         select case (IO_lc(IO_stringValue(line,chunkPos,2_pInt)))
            case (STIFFNESS_DEGRADATION_damage_label)
              phase_stiffnessDegradation(stiffDegradationCtr,section) = STIFFNESS_DEGRADATION_damage_ID
            case (STIFFNESS_DEGRADATION_porosity_label)
@@ -1081,9 +1078,8 @@ subroutine material_parseTexture(fileUnit,myPart)
  character(len=*), intent(in) :: myPart
  integer(pInt),    intent(in) :: fileUnit
  
- integer(pInt), parameter     :: MAXNCHUNKS = 13_pInt
  
- integer(pInt), dimension(1+2*MAXNCHUNKS) :: positions
+ integer(pInt), allocatable, dimension(:) :: chunkPos
  integer(pInt) :: Nsections, section, gauss, fiber, j
  character(len=65536) :: tag
  character(len=65536) :: line
@@ -1136,13 +1132,13 @@ subroutine material_parseTexture(fileUnit,myPart)
      texture_name(section) = IO_getTag(line,'[',']')
    endif
    if (section > 0_pInt) then
-     positions = IO_stringPos(line,MAXNCHUNKS)
-     tag = IO_lc(IO_stringValue(line,positions,1_pInt))                                             ! extract key
+     chunkPos = IO_stringPos(line)
+     tag = IO_lc(IO_stringValue(line,chunkPos,1_pInt))                                             ! extract key
      textureType: select case(tag)
 
        case ('axes', 'rotation') textureType
          do j = 1_pInt, 3_pInt                                                                      ! look for "x", "y", and "z" entries
-           tag = IO_lc(IO_stringValue(line,positions,j+1_pInt))
+           tag = IO_lc(IO_stringValue(line,chunkPos,j+1_pInt))
            select case (tag)
              case('x', '+x')
                texture_transformation(j,1:3,section) = [ 1.0_pReal, 0.0_pReal, 0.0_pReal]           ! original axis is now +x-axis
@@ -1162,10 +1158,10 @@ subroutine material_parseTexture(fileUnit,myPart)
          enddo
        
        case ('hybridia') textureType
-         texture_ODFfile(section) = IO_stringValue(line,positions,2_pInt)
+         texture_ODFfile(section) = IO_stringValue(line,chunkPos,2_pInt)
 
        case ('symmetry') textureType
-         tag = IO_lc(IO_stringValue(line,positions,2_pInt))
+         tag = IO_lc(IO_stringValue(line,chunkPos,2_pInt))
          select case (tag)
            case('orthotropic')
              texture_symmetry(section) = 4_pInt
@@ -1179,50 +1175,50 @@ subroutine material_parseTexture(fileUnit,myPart)
          gauss = gauss + 1_pInt
          texture_Gauss(1:3,gauss,section) = math_sampleRandomOri()
          do j = 2_pInt,4_pInt,2_pInt
-           tag = IO_lc(IO_stringValue(line,positions,j))
+           tag = IO_lc(IO_stringValue(line,chunkPos,j))
            select case (tag)
              case('scatter')
-                 texture_Gauss(4,gauss,section) = IO_floatValue(line,positions,j+1_pInt)*inRad
+                 texture_Gauss(4,gauss,section) = IO_floatValue(line,chunkPos,j+1_pInt)*inRad
              case('fraction')
-                 texture_Gauss(5,gauss,section) = IO_floatValue(line,positions,j+1_pInt)
+                 texture_Gauss(5,gauss,section) = IO_floatValue(line,chunkPos,j+1_pInt)
            end select
          enddo
 
        case ('(gauss)') textureType
          gauss = gauss + 1_pInt
          do j = 2_pInt,10_pInt,2_pInt
-           tag = IO_lc(IO_stringValue(line,positions,j))
+           tag = IO_lc(IO_stringValue(line,chunkPos,j))
            select case (tag)
              case('phi1')
-                 texture_Gauss(1,gauss,section) = IO_floatValue(line,positions,j+1_pInt)*inRad
+                 texture_Gauss(1,gauss,section) = IO_floatValue(line,chunkPos,j+1_pInt)*inRad
              case('phi')
-                 texture_Gauss(2,gauss,section) = IO_floatValue(line,positions,j+1_pInt)*inRad
+                 texture_Gauss(2,gauss,section) = IO_floatValue(line,chunkPos,j+1_pInt)*inRad
              case('phi2')
-                 texture_Gauss(3,gauss,section) = IO_floatValue(line,positions,j+1_pInt)*inRad
+                 texture_Gauss(3,gauss,section) = IO_floatValue(line,chunkPos,j+1_pInt)*inRad
              case('scatter')
-                 texture_Gauss(4,gauss,section) = IO_floatValue(line,positions,j+1_pInt)*inRad
+                 texture_Gauss(4,gauss,section) = IO_floatValue(line,chunkPos,j+1_pInt)*inRad
              case('fraction')
-                 texture_Gauss(5,gauss,section) = IO_floatValue(line,positions,j+1_pInt)
+                 texture_Gauss(5,gauss,section) = IO_floatValue(line,chunkPos,j+1_pInt)
            end select
          enddo
 
        case ('(fiber)') textureType
          fiber = fiber + 1_pInt
          do j = 2_pInt,12_pInt,2_pInt
-           tag = IO_lc(IO_stringValue(line,positions,j))
+           tag = IO_lc(IO_stringValue(line,chunkPos,j))
            select case (tag)
              case('alpha1')
-                 texture_Fiber(1,fiber,section) = IO_floatValue(line,positions,j+1_pInt)*inRad
+                 texture_Fiber(1,fiber,section) = IO_floatValue(line,chunkPos,j+1_pInt)*inRad
              case('alpha2')
-                 texture_Fiber(2,fiber,section) = IO_floatValue(line,positions,j+1_pInt)*inRad
+                 texture_Fiber(2,fiber,section) = IO_floatValue(line,chunkPos,j+1_pInt)*inRad
              case('beta1')
-                 texture_Fiber(3,fiber,section) = IO_floatValue(line,positions,j+1_pInt)*inRad
+                 texture_Fiber(3,fiber,section) = IO_floatValue(line,chunkPos,j+1_pInt)*inRad
              case('beta2')
-                 texture_Fiber(4,fiber,section) = IO_floatValue(line,positions,j+1_pInt)*inRad
+                 texture_Fiber(4,fiber,section) = IO_floatValue(line,chunkPos,j+1_pInt)*inRad
              case('scatter')
-                 texture_Fiber(5,fiber,section) = IO_floatValue(line,positions,j+1_pInt)*inRad
+                 texture_Fiber(5,fiber,section) = IO_floatValue(line,chunkPos,j+1_pInt)*inRad
              case('fraction')
-                 texture_Fiber(6,fiber,section) = IO_floatValue(line,positions,j+1_pInt)
+                 texture_Fiber(6,fiber,section) = IO_floatValue(line,chunkPos,j+1_pInt)
            end select
          enddo
 

@@ -91,11 +91,8 @@ program DAMASK_spectral_Driver
 ! variables related to information from load case and geom file
  real(pReal), dimension(9) :: temp_valueVector = 0.0_pReal                                          !< temporarily from loadcase file when reading in tensors (initialize to 0.0)
  logical,     dimension(9) :: temp_maskVector  = .false.                                            !< temporarily from loadcase file when reading in tensors
- integer(pInt), parameter  :: MAXNCHUNKS       = (1_pInt + 9_pInt)*3_pInt + &                       ! deformation, rotation, and stress
-                                                 (1_pInt + 1_pInt)*5_pInt + &                       ! time, (log)incs, temp, restartfrequency, and outputfrequency
-                                                  1_pInt, &                                         ! dropguessing
-                              FILEUNIT           = 234_pInt                                         !< file unit, DAMASK IO does not support newunit feature
- integer(pInt), dimension(1_pInt + MAXNCHUNKS*2_pInt) :: positions                                  ! this is longer than needed for geometry parsing
+ integer(pInt), parameter  :: FILEUNIT         = 234_pInt                                           !< file unit, DAMASK IO does not support newunit feature
+ integer(pInt), allocatable, dimension(:) :: chunkPos
  
  integer(pInt) :: &
    N_t   = 0_pInt, &                                                                                !< # of time indicators found in load case file 
@@ -178,9 +175,9 @@ program DAMASK_spectral_Driver
    line = IO_read(FILEUNIT)
    if (trim(line) == IO_EOF) exit
    if (IO_isBlank(line)) cycle                                                                      ! skip empty lines
-   positions = IO_stringPos(line,MAXNCHUNKS)
-   do i = 1_pInt, positions(1)                                                                      ! reading compulsory parameters for loadcase
-     select case (IO_lc(IO_stringValue(line,positions,i)))
+   chunkPos = IO_stringPos(line)
+   do i = 1_pInt, chunkPos(1)                                                                       ! reading compulsory parameters for loadcase
+     select case (IO_lc(IO_stringValue(line,chunkPos,i)))
        case('l','velocitygrad','velgrad','velocitygradient','fdot','dotf','f')
          N_def = N_def + 1_pInt
        case('t','time','delta')
@@ -188,7 +185,7 @@ program DAMASK_spectral_Driver
        case('n','incs','increments','steps','logincs','logincrements','logsteps')
          N_n = N_n + 1_pInt
      end select
-   enddo                                                                                            ! count all identifiers to allocate memory and do sanity check
+   enddo                                                                                             ! count all identifiers to allocate memory and do sanity check
  enddo
 
  if ((N_def /= N_n) .or. (N_n /= N_t)) &                                                            ! sanity check
@@ -218,24 +215,24 @@ program DAMASK_spectral_Driver
    if (trim(line) == IO_EOF) exit
    if (IO_isBlank(line)) cycle                                                                      ! skip empty lines
    currentLoadCase = currentLoadCase + 1_pInt
-   positions = IO_stringPos(line,MAXNCHUNKS)
-   do i = 1_pInt, positions(1)
-     select case (IO_lc(IO_stringValue(line,positions,i)))
+   chunkPos = IO_stringPos(line)
+   do i = 1_pInt, chunkPos(1)
+     select case (IO_lc(IO_stringValue(line,chunkPos,i)))
        case('fdot','dotf','l','velocitygrad','velgrad','velocitygradient','f')                      ! assign values for the deformation BC matrix
          temp_valueVector = 0.0_pReal
-         if (IO_lc(IO_stringValue(line,positions,i)) == 'fdot'.or. &                                ! in case of Fdot, set type to fdot
-             IO_lc(IO_stringValue(line,positions,i)) == 'dotf') then
+         if (IO_lc(IO_stringValue(line,chunkPos,i)) == 'fdot'.or. &                                 ! in case of Fdot, set type to fdot
+             IO_lc(IO_stringValue(line,chunkPos,i)) == 'dotf') then
            loadCases(currentLoadCase)%deformation%myType = 'fdot'
-         else if (IO_lc(IO_stringValue(line,positions,i)) == 'f') then
+         else if (IO_lc(IO_stringValue(line,chunkPos,i)) == 'f') then
            loadCases(currentLoadCase)%deformation%myType = 'f'
          else
            loadCases(currentLoadCase)%deformation%myType = 'l'
          endif
          do j = 1_pInt, 9_pInt
-           temp_maskVector(j) = IO_stringValue(line,positions,i+j) /= '*'  ! true if not a *
+           temp_maskVector(j) = IO_stringValue(line,chunkPos,i+j) /= '*'                            ! true if not a *
          enddo
          do j = 1_pInt,9_pInt 
-           if (temp_maskVector(j)) temp_valueVector(j) = IO_floatValue(line,positions,i+j)          ! read value where applicable
+           if (temp_maskVector(j)) temp_valueVector(j) = IO_floatValue(line,chunkPos,i+j)           ! read value where applicable
          enddo
          loadCases(currentLoadCase)%deformation%maskLogical = &                                     ! logical mask in 3x3 notation
                transpose(reshape(temp_maskVector,[ 3,3]))  
@@ -245,34 +242,34 @@ program DAMASK_spectral_Driver
        case('p','pk1','piolakirchhoff','stress', 's')
          temp_valueVector = 0.0_pReal
          do j = 1_pInt, 9_pInt
-           temp_maskVector(j) = IO_stringValue(line,positions,i+j) /= '*'                           ! true if not an asterisk
+           temp_maskVector(j) = IO_stringValue(line,chunkPos,i+j) /= '*'                            ! true if not an asterisk
          enddo
          do j = 1_pInt,9_pInt
-           if (temp_maskVector(j)) temp_valueVector(j) = IO_floatValue(line,positions,i+j)          ! read value where applicable
+           if (temp_maskVector(j)) temp_valueVector(j) = IO_floatValue(line,chunkPos,i+j)           ! read value where applicable
          enddo
          loadCases(currentLoadCase)%P%maskLogical = transpose(reshape(temp_maskVector,[ 3,3]))
          loadCases(currentLoadCase)%P%maskFloat   = merge(ones,zeros,&
                                                         loadCases(currentLoadCase)%P%maskLogical)
          loadCases(currentLoadCase)%P%values      = math_plain9to33(temp_valueVector)
        case('t','time','delta')                                                                     ! increment time
-         loadCases(currentLoadCase)%time = IO_floatValue(line,positions,i+1_pInt)
+         loadCases(currentLoadCase)%time = IO_floatValue(line,chunkPos,i+1_pInt)
        case('n','incs','increments','steps')                                                        ! number of increments
-         loadCases(currentLoadCase)%incs = IO_intValue(line,positions,i+1_pInt)
+         loadCases(currentLoadCase)%incs = IO_intValue(line,chunkPos,i+1_pInt)
        case('logincs','logincrements','logsteps')                                                   ! number of increments (switch to log time scaling)
-         loadCases(currentLoadCase)%incs = IO_intValue(line,positions,i+1_pInt)
+         loadCases(currentLoadCase)%incs = IO_intValue(line,chunkPos,i+1_pInt)
          loadCases(currentLoadCase)%logscale = 1_pInt
        case('freq','frequency','outputfreq')                                                        ! frequency of result writings
-         loadCases(currentLoadCase)%outputfrequency = IO_intValue(line,positions,i+1_pInt)                
+         loadCases(currentLoadCase)%outputfrequency = IO_intValue(line,chunkPos,i+1_pInt)                
        case('r','restart','restartwrite')                                                           ! frequency of writing restart information
          loadCases(currentLoadCase)%restartfrequency = &
-               max(0_pInt,IO_intValue(line,positions,i+1_pInt))                
+               max(0_pInt,IO_intValue(line,chunkPos,i+1_pInt))                
        case('guessreset','dropguessing')
          loadCases(currentLoadCase)%followFormerTrajectory = .false.                                ! do not continue to predict deformation along former trajectory
        case('euler')                                                                                ! rotation of currentLoadCase given in euler angles
          temp_valueVector = 0.0_pReal
          l = 1_pInt                                                                                 ! assuming values given in degrees
          k = 1_pInt                                                                                 ! assuming keyword indicating degree/radians present
-         select case (IO_lc(IO_stringValue(line,positions,i+1_pInt)))
+         select case (IO_lc(IO_stringValue(line,chunkPos,i+1_pInt)))
            case('deg','degree')
            case('rad','radian')                                                                     ! don't convert from degree to radian           
              l = 0_pInt
@@ -280,14 +277,14 @@ program DAMASK_spectral_Driver
              k = 0_pInt           
          end select
          do j = 1_pInt, 3_pInt
-           temp_valueVector(j) = IO_floatValue(line,positions,i+k+j)
+           temp_valueVector(j) = IO_floatValue(line,chunkPos,i+k+j)
          enddo
          if (l == 1_pInt) temp_valueVector(1:3) = temp_valueVector(1:3) * inRad                     ! convert to rad
          loadCases(currentLoadCase)%rotation = math_EulerToR(temp_valueVector(1:3))                 ! convert rad Eulers to rotation matrix
        case('rotation','rot')                                                                       ! assign values for the rotation of currentLoadCase matrix
          temp_valueVector = 0.0_pReal
          do j = 1_pInt, 9_pInt
-           temp_valueVector(j) = IO_floatValue(line,positions,i+j)
+           temp_valueVector(j) = IO_floatValue(line,chunkPos,i+j)
          enddo
          loadCases(currentLoadCase)%rotation = math_plain9to33(temp_valueVector)
      end select

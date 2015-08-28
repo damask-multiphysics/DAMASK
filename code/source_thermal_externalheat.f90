@@ -81,8 +81,7 @@ subroutine source_thermal_externalheat_init(fileUnit)
  implicit none
  integer(pInt), intent(in) :: fileUnit
 
- integer(pInt), parameter :: MAXNCHUNKS = 1000_pInt
- integer(pInt), dimension(1+2*MAXNCHUNKS) :: positions
+ integer(pInt), allocatable, dimension(:) :: chunkPos
  integer(pInt) :: maxNinstance,phase,instance,source,sourceOffset
  integer(pInt) :: sizeState, sizeDotState, sizeDeltaState
  integer(pInt) :: NofMyPhase,interval   
@@ -144,20 +143,20 @@ subroutine source_thermal_externalheat_init(fileUnit)
    if (phase > 0_pInt ) then; if (any(phase_source(:,phase) == SOURCE_thermal_externalheat_ID)) then ! do not short-circuit here (.and. with next if statemen). It's not safe in Fortran
 
      instance = source_thermal_externalheat_instance(phase)                                          ! which instance of my source is present phase
-     positions = IO_stringPos(line,MAXNCHUNKS)
-     tag = IO_lc(IO_stringValue(line,positions,1_pInt))                                             ! extract key
+     chunkPos = IO_stringPos(line)
+     tag = IO_lc(IO_stringValue(line,chunkPos,1_pInt))                                             ! extract key
      select case(tag)
        case ('externalheat_time')
-         if (positions(1) <= 2_pInt) &
+         if (chunkPos(1) <= 2_pInt) &
            call IO_error(150_pInt,ext_msg=trim(tag)//' ('//SOURCE_thermal_externalheat_label//')')
-         source_thermal_externalheat_nIntervals(instance) = positions(1) - 2_pInt
+         source_thermal_externalheat_nIntervals(instance) = chunkPos(1) - 2_pInt
          do interval = 1, source_thermal_externalheat_nIntervals(instance) + 1_pInt
-           temp_time(instance, interval) = IO_floatValue(line,positions,1_pInt + interval)
+           temp_time(instance, interval) = IO_floatValue(line,chunkPos,1_pInt + interval)
          enddo  
 
        case ('externalheat_rate')
          do interval = 1, source_thermal_externalheat_nIntervals(instance) + 1_pInt
-           temp_rate(instance, interval) = IO_floatValue(line,positions,1_pInt + interval)
+           temp_rate(instance, interval) = IO_floatValue(line,chunkPos,1_pInt + interval)
          enddo  
 
      end select

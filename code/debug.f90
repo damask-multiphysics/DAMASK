@@ -124,12 +124,10 @@ subroutine debug_init
 
  implicit none
  integer(pInt), parameter                 :: FILEUNIT    = 300_pInt  
- integer(pInt), parameter                 :: MAXNCHUNKS  = 7_pInt  
  
  integer(pInt)                            :: i, what
- integer(pInt), dimension(1+2*MAXNCHUNKS) :: positions
- character(len=65536)                     :: tag
- character(len=65536)                     :: line
+ integer(pInt), allocatable, dimension(:) :: chunkPos
+ character(len=65536)                     :: tag, line
 
  mainProcess: if (worldrank == 0) then 
    write(6,'(/,a)')   ' <<<+-  debug init  -+>>>'
@@ -171,15 +169,15 @@ subroutine debug_init
    do while (trim(line) /= IO_EOF)                                                                 ! read thru sections of phase part
      line = IO_read(FILEUNIT)
      if (IO_isBlank(line)) cycle                                                                    ! skip empty lines
-     positions = IO_stringPos(line,MAXNCHUNKS)
-     tag = IO_lc(IO_stringValue(line,positions,1_pInt))                                             ! extract key
+     chunkPos = IO_stringPos(line)
+     tag = IO_lc(IO_stringValue(line,chunkPos,1_pInt))                                             ! extract key
      select case(tag)
        case ('element','e','el')
-         debug_e = IO_intValue(line,positions,2_pInt)
+         debug_e = IO_intValue(line,chunkPos,2_pInt)
        case ('integrationpoint','i','ip')
-         debug_i = IO_intValue(line,positions,2_pInt)
+         debug_i = IO_intValue(line,chunkPos,2_pInt)
        case ('grain','g','gr')
-         debug_g = IO_intValue(line,positions,2_pInt)
+         debug_g = IO_intValue(line,chunkPos,2_pInt)
      end select
      
      what = 0_pInt
@@ -216,8 +214,8 @@ subroutine debug_init
          what = debug_MAXNTYPE + 2_pInt
      end select
      if (what /= 0) then
-       do i = 2_pInt, positions(1)
-         select case(IO_lc(IO_stringValue(line,positions,i)))
+       do i = 2_pInt, chunkPos(1)
+         select case(IO_lc(IO_stringValue(line,chunkPos,i)))
            case('basic')
              debug_level(what) = ior(debug_level(what), debug_LEVELBASIC)
            case('extensive')

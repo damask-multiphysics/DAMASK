@@ -45,37 +45,6 @@ python module core ! in
         subroutine math_init
         end subroutine math_init
         
-        function math_nearestNeighbor(querySet,domainSet) ! in :math:math.f90
-             ! input variables
-             real*8,  dimension(:,:),                           intent(in)  :: querySet
-             real*8,  dimension(:,:),                           intent(in)  :: domainSet
-            ! function definition
-             integer, dimension(size(querySet,2)),         depend(querySet) :: math_nearestNeighbor
-        end function math_nearestNeighbor
-        
-        function math_periodicNearestNeighbor(geomdim,Favg,querySet,domainSet) ! in :math:math.f90
-             ! input variables
-             real*8,  dimension(3),                             intent(in)  :: geomdim
-             real*8,  dimension(3,3),                           intent(in)  :: Favg
-             real*8,  dimension(:,:),                           intent(in)  :: querySet
-             real*8,  dimension(:,:),                           intent(in)  :: domainSet
-             integer, dimension(size(querySet,2)),         depend(querySet) :: math_periodicNearestNeighbor
-             ! depending on input
-             real*8,   dimension(size(domainSet,1),(3_pInt**size(domainSet,1))*size(domainSet,2)), depend(domainSet)   :: domainSetLarge
-        end function math_periodicNearestNeighbor
-        
-        function math_periodicNearestNeighborDistances(geomdim,Favg,querySet,domainSet,Ndist) ! in :math:math.f90
-             ! input variables
-             real*8,  dimension(3),                             intent(in)  :: geomdim
-             real*8,  dimension(3,3),                           intent(in)  :: Favg
-             integer,                                           intent(in)  :: Ndist
-             real*8,  dimension(:,:),                           intent(in)  :: querySet
-             real*8,  dimension(:,:),                           intent(in)  :: domainSet
-             real*8,  dimension(Ndist,size(querySet,2)), depend(Ndist,querySet) :: math_periodicNearestNeighborDistances
-             ! depending on input
-             real*8,   dimension(size(domainSet,1),(3_pInt**size(domainSet,1))*size(domainSet,2)), depend(domainSet)   :: domainSetLarge
-        end function math_periodicNearestNeighborDistances
-        
         function math_tensorAvg(field) ! in :math:math.f90
             ! input variables
             real*8  dimension(:,:,:,:,:),                    intent(in),                                     :: field
@@ -95,13 +64,6 @@ python module core ! in
              integer, parameter                   ::      ip = 1
              integer, parameter                   :: element = 1
         end subroutine mesh_init
-
-        function mesh_regrid(adaptive,resNewInput,minRes) ! in :mesh:mesh.f90
-             logical, intent(in)                                  :: adaptive
-             integer, dimension(3)                                :: mesh_regrid
-             integer, dimension(3), intent(in), optional          :: resNewInput = -1
-             integer, dimension(3), intent(in), optional          :: minRes = -1
-        end function mesh_regrid   
         
         function mesh_nodesAroundCentres(gDim,Favg,centres) ! in :mesh:mesh.f90
             real*8,  dimension(:,:,:,:),                       intent(in)                  :: centres

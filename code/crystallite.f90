@@ -184,10 +184,9 @@ subroutine crystallite_init
 
  implicit none
  integer(pInt), parameter :: &
-   FILEUNIT = 200_pInt, &
-   MAXNCHUNKS = 2_pInt
+   FILEUNIT = 200_pInt
 
- integer(pInt), dimension(1+2*MAXNCHUNKS) :: positions
+ integer(pInt), allocatable, dimension(:) :: chunkPos
  integer(pInt) :: &
    g, &                                                                                             !< grain number
    i, &                                                                                             !< integration point number
@@ -299,12 +298,12 @@ subroutine crystallite_init
      cycle                                                                                          ! skip to next line
    endif
    if (section > 0_pInt) then
-     positions = IO_stringPos(line,MAXNCHUNKS)
-     tag = IO_lc(IO_stringValue(line,positions,1_pInt))                                             ! extract key
+     chunkPos = IO_stringPos(line)
+     tag = IO_lc(IO_stringValue(line,chunkPos,1_pInt))                                              ! extract key
      select case(tag)
        case ('(output)')
          output = output + 1_pInt
-         crystallite_output(output,section) = IO_lc(IO_stringValue(line,positions,2_pInt))
+         crystallite_output(output,section) = IO_lc(IO_stringValue(line,chunkPos,2_pInt))
          select case(crystallite_output(output,section))
            case ('phase')
              crystallite_outputID(output,section) = phase_ID
@@ -351,7 +350,7 @@ subroutine crystallite_init
            case ('neighboringelement')
              crystallite_outputID(output,section) = neighboringelement_ID
            case default
-             call IO_error(105_pInt,ext_msg=IO_stringValue(line,positions,2_pInt)//' (Crystallite)')
+             call IO_error(105_pInt,ext_msg=IO_stringValue(line,chunkPos,2_pInt)//' (Crystallite)')
          end select
      end select
    endif

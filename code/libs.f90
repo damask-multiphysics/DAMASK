@@ -8,9 +8,6 @@ module libs
 !nothing in here
 end module libs
 
-#if defined(Spectral) || defined(FEM)
-#include "../lib/kdtree2.f90"
-#endif
 #include "../lib/IR_Precision.f90"
 #include "../lib/Lib_Base64.f90"
 #include "../lib/Lib_VTK_IO.f90"

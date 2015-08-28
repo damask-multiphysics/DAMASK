@@ -193,8 +193,7 @@ subroutine plastic_disloKMC_init(fileUnit)
  implicit none
  integer(pInt), intent(in) :: fileUnit
 
- integer(pInt), parameter :: MAXNCHUNKS = LATTICE_maxNinteraction + 1_pInt
- integer(pInt), dimension(1+2*MAXNCHUNKS) :: positions
+ integer(pInt), allocatable, dimension(:) :: chunkPos
  integer(pInt) :: maxNinstance,mySize=0_pInt,phase,maxTotalNslip,maxTotalNtwin,&
                   f,instance,j,k,l,m,n,o,p,q,r,s,ns,nt, &
                   Nchunks_SlipSlip = 0_pInt, Nchunks_SlipTwin = 0_pInt, &
@@ -304,102 +303,102 @@ subroutine plastic_disloKMC_init(fileUnit)
    endif
    if (phase > 0_pInt ) then; if (phase_plasticity(phase) == PLASTICITY_DISLOKMC_ID) then           ! do not short-circuit here (.and. with next if statemen). It's not safe in Fortran
      instance = phase_plasticityInstance(phase)                                                     ! which instance of my plasticity is present phase
-     positions = IO_stringPos(line,MAXNCHUNKS)
-     tag = IO_lc(IO_stringValue(line,positions,1_pInt))                                             ! extract key
+     chunkPos = IO_stringPos(line)
+     tag = IO_lc(IO_stringValue(line,chunkPos,1_pInt))                                             ! extract key
       select case(tag)
        case ('(output)')
-         select case(IO_lc(IO_stringValue(line,positions,2_pInt)))
+         select case(IO_lc(IO_stringValue(line,chunkPos,2_pInt)))
            case ('edge_density')
              plastic_disloKMC_Noutput(instance) = plastic_disloKMC_Noutput(instance) + 1_pInt
              plastic_disloKMC_outputID(plastic_disloKMC_Noutput(instance),instance) = edge_density_ID
              plastic_disloKMC_output(plastic_disloKMC_Noutput(instance),instance) = &
-                                                       IO_lc(IO_stringValue(line,positions,2_pInt))
+                                                       IO_lc(IO_stringValue(line,chunkPos,2_pInt))
            case ('dipole_density')
              plastic_disloKMC_Noutput(instance) = plastic_disloKMC_Noutput(instance) + 1_pInt
              plastic_disloKMC_outputID(plastic_disloKMC_Noutput(instance),instance) = dipole_density_ID
              plastic_disloKMC_output(plastic_disloKMC_Noutput(instance),instance) = &
-                                                       IO_lc(IO_stringValue(line,positions,2_pInt))
+                                                       IO_lc(IO_stringValue(line,chunkPos,2_pInt))
            case ('shear_rate_slip','shearrate_slip')
              plastic_disloKMC_Noutput(instance) = plastic_disloKMC_Noutput(instance) + 1_pInt
              plastic_disloKMC_outputID(plastic_disloKMC_Noutput(instance),instance) = shear_rate_slip_ID
              plastic_disloKMC_output(plastic_disloKMC_Noutput(instance),instance) = &
-                                                       IO_lc(IO_stringValue(line,positions,2_pInt))
+                                                       IO_lc(IO_stringValue(line,chunkPos,2_pInt))
            case ('accumulated_shear_slip')
              plastic_disloKMC_Noutput(instance) = plastic_disloKMC_Noutput(instance) + 1_pInt
              plastic_disloKMC_outputID(plastic_disloKMC_Noutput(instance),instance) = accumulated_shear_slip_ID
              plastic_disloKMC_output(plastic_disloKMC_Noutput(instance),instance) = &
-                                                       IO_lc(IO_stringValue(line,positions,2_pInt))
+                                                       IO_lc(IO_stringValue(line,chunkPos,2_pInt))
            case ('mfp_slip')
              plastic_disloKMC_Noutput(instance) = plastic_disloKMC_Noutput(instance) + 1_pInt
              plastic_disloKMC_outputID(plastic_disloKMC_Noutput(instance),instance) = mfp_slip_ID
              plastic_disloKMC_output(plastic_disloKMC_Noutput(instance),instance) = &
-                                                       IO_lc(IO_stringValue(line,positions,2_pInt))
+                                                       IO_lc(IO_stringValue(line,chunkPos,2_pInt))
            case ('resolved_stress_slip')
              plastic_disloKMC_Noutput(instance) = plastic_disloKMC_Noutput(instance) + 1_pInt
              plastic_disloKMC_outputID(plastic_disloKMC_Noutput(instance),instance) = resolved_stress_slip_ID
              plastic_disloKMC_output(plastic_disloKMC_Noutput(instance),instance) = &
-                                                       IO_lc(IO_stringValue(line,positions,2_pInt))
+                                                       IO_lc(IO_stringValue(line,chunkPos,2_pInt))
            case ('threshold_stress_slip')
              plastic_disloKMC_Noutput(instance) = plastic_disloKMC_Noutput(instance) + 1_pInt
              plastic_disloKMC_outputID(plastic_disloKMC_Noutput(instance),instance) = threshold_stress_slip_ID
              plastic_disloKMC_output(plastic_disloKMC_Noutput(instance),instance) = &
-                                                       IO_lc(IO_stringValue(line,positions,2_pInt))
+                                                       IO_lc(IO_stringValue(line,chunkPos,2_pInt))
            case ('edge_dipole_distance')
              plastic_disloKMC_Noutput(instance) = plastic_disloKMC_Noutput(instance) + 1_pInt
              plastic_disloKMC_outputID(plastic_disloKMC_Noutput(instance),instance) = edge_dipole_distance_ID
              plastic_disloKMC_output(plastic_disloKMC_Noutput(instance),instance) = &
-                                                       IO_lc(IO_stringValue(line,positions,2_pInt))
+                                                       IO_lc(IO_stringValue(line,chunkPos,2_pInt))
            case ('stress_exponent')
              plastic_disloKMC_Noutput(instance) = plastic_disloKMC_Noutput(instance) + 1_pInt
              plastic_disloKMC_outputID(plastic_disloKMC_Noutput(instance),instance) = stress_exponent_ID
              plastic_disloKMC_output(plastic_disloKMC_Noutput(instance),instance) = &
-                                                       IO_lc(IO_stringValue(line,positions,2_pInt))
+                                                       IO_lc(IO_stringValue(line,chunkPos,2_pInt))
            case ('twin_fraction')
              plastic_disloKMC_Noutput(instance) = plastic_disloKMC_Noutput(instance) + 1_pInt
              plastic_disloKMC_outputID(plastic_disloKMC_Noutput(instance),instance) = twin_fraction_ID
              plastic_disloKMC_output(plastic_disloKMC_Noutput(instance),instance) = &
-                                                       IO_lc(IO_stringValue(line,positions,2_pInt))
+                                                       IO_lc(IO_stringValue(line,chunkPos,2_pInt))
            case ('shear_rate_twin','shearrate_twin')
              plastic_disloKMC_Noutput(instance) = plastic_disloKMC_Noutput(instance) + 1_pInt
              plastic_disloKMC_outputID(plastic_disloKMC_Noutput(instance),instance) = shear_rate_twin_ID
              plastic_disloKMC_output(plastic_disloKMC_Noutput(instance),instance) = &
-                                                       IO_lc(IO_stringValue(line,positions,2_pInt))
+                                                       IO_lc(IO_stringValue(line,chunkPos,2_pInt))
            case ('accumulated_shear_twin')
              plastic_disloKMC_Noutput(instance) = plastic_disloKMC_Noutput(instance) + 1_pInt
              plastic_disloKMC_outputID(plastic_disloKMC_Noutput(instance),instance) = accumulated_shear_twin_ID
              plastic_disloKMC_output(plastic_disloKMC_Noutput(instance),instance) = &
-                                                       IO_lc(IO_stringValue(line,positions,2_pInt))
+                                                       IO_lc(IO_stringValue(line,chunkPos,2_pInt))
            case ('mfp_twin')
              plastic_disloKMC_Noutput(instance) = plastic_disloKMC_Noutput(instance) + 1_pInt
              plastic_disloKMC_outputID(plastic_disloKMC_Noutput(instance),instance) = mfp_twin_ID
              plastic_disloKMC_output(plastic_disloKMC_Noutput(instance),instance) = &
-                                                       IO_lc(IO_stringValue(line,positions,2_pInt))
+                                                       IO_lc(IO_stringValue(line,chunkPos,2_pInt))
            case ('resolved_stress_twin')
              plastic_disloKMC_Noutput(instance) = plastic_disloKMC_Noutput(instance) + 1_pInt
              plastic_disloKMC_outputID(plastic_disloKMC_Noutput(instance),instance) = resolved_stress_twin_ID
              plastic_disloKMC_output(plastic_disloKMC_Noutput(instance),instance) = &
-                                                       IO_lc(IO_stringValue(line,positions,2_pInt))
+                                                       IO_lc(IO_stringValue(line,chunkPos,2_pInt))
            case ('threshold_stress_twin')
              plastic_disloKMC_Noutput(instance) = plastic_disloKMC_Noutput(instance) + 1_pInt
              plastic_disloKMC_outputID(plastic_disloKMC_Noutput(instance),instance) = threshold_stress_twin_ID
              plastic_disloKMC_output(plastic_disloKMC_Noutput(instance),instance) = &
-                                                       IO_lc(IO_stringValue(line,positions,2_pInt))
+                                                       IO_lc(IO_stringValue(line,chunkPos,2_pInt))
           end select
 !--------------------------------------------------------------------------------------------------
 ! parameters depending on number of slip system families
        case ('nslip')
-         if (positions(1) < Nchunks_SlipFamilies + 1_pInt) &
+         if (chunkPos(1) < Nchunks_SlipFamilies + 1_pInt) &
            call IO_warning(50_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_DISLOKMC_label//')')
-         if (positions(1) > Nchunks_SlipFamilies + 1_pInt) &
+         if (chunkPos(1) > Nchunks_SlipFamilies + 1_pInt) &
            call IO_error(150_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_DISLOKMC_label//')')
-         Nchunks_SlipFamilies = positions(1) - 1_pInt
+         Nchunks_SlipFamilies = chunkPos(1) - 1_pInt
          do j = 1_pInt, Nchunks_SlipFamilies
-             plastic_disloKMC_Nslip(j,instance) = IO_intValue(line,positions,1_pInt+j)
+             plastic_disloKMC_Nslip(j,instance) = IO_intValue(line,chunkPos,1_pInt+j)
          enddo
        case ('rhoedge0','rhoedgedip0','slipburgers','qedge','v0','clambdaslip','tau_peierls','p_slip','q_slip',&
             'u_slip','s_slip')
          do j = 1_pInt, Nchunks_SlipFamilies
-           tempPerSlip(j) = IO_floatValue(line,positions,1_pInt+j)
+           tempPerSlip(j) = IO_floatValue(line,chunkPos,1_pInt+j)
          enddo
          select case(tag)
            case ('rhoedge0')
@@ -430,17 +429,17 @@ subroutine plastic_disloKMC_init(fileUnit)
 !--------------------------------------------------------------------------------------------------
 ! parameters depending on slip number of twin families
        case ('ntwin')
-         if (positions(1) < Nchunks_TwinFamilies + 1_pInt) &
+         if (chunkPos(1) < Nchunks_TwinFamilies + 1_pInt) &
            call IO_warning(51_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_DISLOKMC_label//')')
-         if (positions(1) > Nchunks_TwinFamilies + 1_pInt) &
+         if (chunkPos(1) > Nchunks_TwinFamilies + 1_pInt) &
            call IO_error(150_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_DISLOKMC_label//')')
-         Nchunks_TwinFamilies = positions(1) - 1_pInt
+         Nchunks_TwinFamilies = chunkPos(1) - 1_pInt
          do j = 1_pInt, Nchunks_TwinFamilies
-             plastic_disloKMC_Ntwin(j,instance) = IO_intValue(line,positions,1_pInt+j)
+             plastic_disloKMC_Ntwin(j,instance) = IO_intValue(line,chunkPos,1_pInt+j)
          enddo
        case ('ndot0','twinsize','twinburgers','r_twin')
          do j = 1_pInt, Nchunks_TwinFamilies
-           tempPerTwin(j) = IO_floatValue(line,positions,1_pInt+j)
+           tempPerTwin(j) = IO_floatValue(line,chunkPos,1_pInt+j)
          enddo
          select case(tag)
            case ('ndot0')
@@ -457,71 +456,71 @@ subroutine plastic_disloKMC_init(fileUnit)
 !--------------------------------------------------------------------------------------------------
 ! parameters depending on number of interactions
        case ('interaction_slipslip','interactionslipslip')
-         if (positions(1) < 1_pInt + Nchunks_SlipSlip) &
+         if (chunkPos(1) < 1_pInt + Nchunks_SlipSlip) &
            call IO_warning(52_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_DISLOKMC_label//')')
          do j = 1_pInt, Nchunks_SlipSlip
-           plastic_disloKMC_interaction_SlipSlip(j,instance) = IO_floatValue(line,positions,1_pInt+j)
+           plastic_disloKMC_interaction_SlipSlip(j,instance) = IO_floatValue(line,chunkPos,1_pInt+j)
          enddo
        case ('interaction_sliptwin','interactionsliptwin')
-         if (positions(1) < 1_pInt + Nchunks_SlipTwin) &
+         if (chunkPos(1) < 1_pInt + Nchunks_SlipTwin) &
            call IO_warning(52_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_DISLOKMC_label//')')
          do j = 1_pInt, Nchunks_SlipTwin
-           plastic_disloKMC_interaction_SlipTwin(j,instance) = IO_floatValue(line,positions,1_pInt+j)
+           plastic_disloKMC_interaction_SlipTwin(j,instance) = IO_floatValue(line,chunkPos,1_pInt+j)
          enddo
        case ('interaction_twinslip','interactiontwinslip')
-         if (positions(1) < 1_pInt + Nchunks_TwinSlip) &
+         if (chunkPos(1) < 1_pInt + Nchunks_TwinSlip) &
            call IO_warning(52_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_DISLOKMC_label//')')
          do j = 1_pInt, Nchunks_TwinSlip
-           plastic_disloKMC_interaction_TwinSlip(j,instance) = IO_floatValue(line,positions,1_pInt+j)
+           plastic_disloKMC_interaction_TwinSlip(j,instance) = IO_floatValue(line,chunkPos,1_pInt+j)
          enddo
        case ('interaction_twintwin','interactiontwintwin')
-         if (positions(1) < 1_pInt + Nchunks_TwinTwin) &
+         if (chunkPos(1) < 1_pInt + Nchunks_TwinTwin) &
            call IO_warning(52_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_DISLOKMC_label//')')
          do j = 1_pInt, Nchunks_TwinTwin
-           plastic_disloKMC_interaction_TwinTwin(j,instance) = IO_floatValue(line,positions,1_pInt+j)
+           plastic_disloKMC_interaction_TwinTwin(j,instance) = IO_floatValue(line,chunkPos,1_pInt+j)
          enddo
        case ('nonschmid_coefficients')
-         if (positions(1) < 1_pInt + Nchunks_nonSchmid) &
+         if (chunkPos(1) < 1_pInt + Nchunks_nonSchmid) &
            call IO_warning(52_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_DISLOKMC_label//')')
          do j = 1_pInt,Nchunks_nonSchmid
-           plastic_disloKMC_nonSchmidCoeff(j,instance) = IO_floatValue(line,positions,1_pInt+j)
+           plastic_disloKMC_nonSchmidCoeff(j,instance) = IO_floatValue(line,chunkPos,1_pInt+j)
          enddo
 !--------------------------------------------------------------------------------------------------
 ! parameters independent of number of slip/twin systems
        case ('grainsize')
-         plastic_disloKMC_GrainSize(instance) = IO_floatValue(line,positions,2_pInt)
+         plastic_disloKMC_GrainSize(instance) = IO_floatValue(line,chunkPos,2_pInt)
        case ('maxtwinfraction')
-         plastic_disloKMC_MaxTwinFraction(instance) = IO_floatValue(line,positions,2_pInt)
+         plastic_disloKMC_MaxTwinFraction(instance) = IO_floatValue(line,chunkPos,2_pInt)
        case ('d0')
-         plastic_disloKMC_D0(instance) = IO_floatValue(line,positions,2_pInt)
+         plastic_disloKMC_D0(instance) = IO_floatValue(line,chunkPos,2_pInt)
        case ('qsd')
-         plastic_disloKMC_Qsd(instance) = IO_floatValue(line,positions,2_pInt)
+         plastic_disloKMC_Qsd(instance) = IO_floatValue(line,chunkPos,2_pInt)
        case ('atol_rho')
-         plastic_disloKMC_aTolRho(instance) = IO_floatValue(line,positions,2_pInt)
+         plastic_disloKMC_aTolRho(instance) = IO_floatValue(line,chunkPos,2_pInt)
        case ('atol_twinfrac')
-         plastic_disloKMC_aTolTwinFrac(instance) = IO_floatValue(line,positions,2_pInt)
+         plastic_disloKMC_aTolTwinFrac(instance) = IO_floatValue(line,chunkPos,2_pInt)
        case ('cmfptwin')
-         plastic_disloKMC_Cmfptwin(instance) = IO_floatValue(line,positions,2_pInt)
+         plastic_disloKMC_Cmfptwin(instance) = IO_floatValue(line,chunkPos,2_pInt)
        case ('cthresholdtwin')
-         plastic_disloKMC_Cthresholdtwin(instance) = IO_floatValue(line,positions,2_pInt)
+         plastic_disloKMC_Cthresholdtwin(instance) = IO_floatValue(line,chunkPos,2_pInt)
        case ('solidsolutionstrength')
-         plastic_disloKMC_SolidSolutionStrength(instance) = IO_floatValue(line,positions,2_pInt)
+         plastic_disloKMC_SolidSolutionStrength(instance) = IO_floatValue(line,chunkPos,2_pInt)
        case ('l0')
-         plastic_disloKMC_L0(instance) = IO_floatValue(line,positions,2_pInt)
+         plastic_disloKMC_L0(instance) = IO_floatValue(line,chunkPos,2_pInt)
        case ('xc')
-         plastic_disloKMC_xc(instance) = IO_floatValue(line,positions,2_pInt)
+         plastic_disloKMC_xc(instance) = IO_floatValue(line,chunkPos,2_pInt)
        case ('vcrossslip')
-         plastic_disloKMC_VcrossSlip(instance) = IO_floatValue(line,positions,2_pInt)
+         plastic_disloKMC_VcrossSlip(instance) = IO_floatValue(line,chunkPos,2_pInt)
        case ('cedgedipmindistance')
-         plastic_disloKMC_CEdgeDipMinDistance(instance) = IO_floatValue(line,positions,2_pInt)
+         plastic_disloKMC_CEdgeDipMinDistance(instance) = IO_floatValue(line,chunkPos,2_pInt)
        case ('catomicvolume')
-         plastic_disloKMC_CAtomicVolume(instance) = IO_floatValue(line,positions,2_pInt)
+         plastic_disloKMC_CAtomicVolume(instance) = IO_floatValue(line,chunkPos,2_pInt)
        case ('sfe_0k')
-         plastic_disloKMC_SFE_0K(instance) = IO_floatValue(line,positions,2_pInt)
+         plastic_disloKMC_SFE_0K(instance) = IO_floatValue(line,chunkPos,2_pInt)
        case ('dsfe_dt')
-         plastic_disloKMC_dSFE_dT(instance) = IO_floatValue(line,positions,2_pInt)
+         plastic_disloKMC_dSFE_dT(instance) = IO_floatValue(line,chunkPos,2_pInt)
        case ('dipoleformationfactor')
-         plastic_disloKMC_dipoleFormationFactor(instance) = IO_floatValue(line,positions,2_pInt)
+         plastic_disloKMC_dipoleFormationFactor(instance) = IO_floatValue(line,chunkPos,2_pInt)
      end select
    endif; endif
  enddo parsingFile

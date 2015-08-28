@@ -88,8 +88,7 @@ subroutine kinematics_cleavage_opening_init(fileUnit)
  implicit none
  integer(pInt), intent(in) :: fileUnit
 
- integer(pInt), parameter :: MAXNCHUNKS = 7_pInt
- integer(pInt), dimension(1+2*MAXNCHUNKS) :: positions
+ integer(pInt), allocatable, dimension(:) :: chunkPos
  integer(pInt) :: maxNinstance,phase,instance,kinematics
  integer(pInt) :: Nchunks_CleavageFamilies = 0_pInt, j   
  character(len=65536) :: &
@@ -150,29 +149,29 @@ subroutine kinematics_cleavage_opening_init(fileUnit)
    endif
    if (phase > 0_pInt ) then; if (any(phase_kinematics(:,phase) == KINEMATICS_cleavage_opening_ID)) then         ! do not short-circuit here (.and. with next if statemen). It's not safe in Fortran
      instance = kinematics_cleavage_opening_instance(phase)                                                         ! which instance of my damage is present phase
-     positions = IO_stringPos(line,MAXNCHUNKS)
-     tag = IO_lc(IO_stringValue(line,positions,1_pInt))                                             ! extract key
+     chunkPos = IO_stringPos(line)
+     tag = IO_lc(IO_stringValue(line,chunkPos,1_pInt))                                             ! extract key
      select case(tag)
        case ('anisobrittle_sdot0')
-         kinematics_cleavage_opening_sdot_0(instance) = IO_floatValue(line,positions,2_pInt)
+         kinematics_cleavage_opening_sdot_0(instance) = IO_floatValue(line,chunkPos,2_pInt)
          
        case ('anisobrittle_ratesensitivity')
-         kinematics_cleavage_opening_N(instance) = IO_floatValue(line,positions,2_pInt)
+         kinematics_cleavage_opening_N(instance) = IO_floatValue(line,chunkPos,2_pInt)
          
        case ('ncleavage')  !
-         Nchunks_CleavageFamilies = positions(1) - 1_pInt
+         Nchunks_CleavageFamilies = chunkPos(1) - 1_pInt
          do j = 1_pInt, Nchunks_CleavageFamilies
-           kinematics_cleavage_opening_Ncleavage(j,instance) = IO_intValue(line,positions,1_pInt+j)
+           kinematics_cleavage_opening_Ncleavage(j,instance) = IO_intValue(line,chunkPos,1_pInt+j)
          enddo
 
        case ('anisobrittle_criticaldisplacement')
          do j = 1_pInt, Nchunks_CleavageFamilies
-           kinematics_cleavage_opening_critDisp(j,instance) = IO_floatValue(line,positions,1_pInt+j)
+           kinematics_cleavage_opening_critDisp(j,instance) = IO_floatValue(line,chunkPos,1_pInt+j)
          enddo
 
        case ('anisobrittle_criticalload')
          do j = 1_pInt, Nchunks_CleavageFamilies
-           kinematics_cleavage_opening_critLoad(j,instance) = IO_floatValue(line,positions,1_pInt+j)
+           kinematics_cleavage_opening_critLoad(j,instance) = IO_floatValue(line,chunkPos,1_pInt+j)
          enddo
 
      end select

@@ -90,8 +90,7 @@ subroutine source_damage_isoBrittle_init(fileUnit)
  implicit none
  integer(pInt), intent(in) :: fileUnit
 
- integer(pInt), parameter :: MAXNCHUNKS = 7_pInt
- integer(pInt), dimension(1+2*MAXNCHUNKS) :: positions
+ integer(pInt), allocatable, dimension(:) :: chunkPos
  integer(pInt) :: maxNinstance,mySize=0_pInt,phase,instance,source,sourceOffset,o
  integer(pInt) :: sizeState, sizeDotState, sizeDeltaState
  integer(pInt) :: NofMyPhase   
@@ -151,26 +150,26 @@ subroutine source_damage_isoBrittle_init(fileUnit)
    endif
    if (phase > 0_pInt ) then; if (any(phase_source(:,phase) == SOURCE_damage_isoBrittle_ID)) then   ! do not short-circuit here (.and. with next if statemen). It's not safe in Fortran
      instance = source_damage_isoBrittle_instance(phase)                                            ! which instance of my damage is present phase
-     positions = IO_stringPos(line,MAXNCHUNKS)
-     tag = IO_lc(IO_stringValue(line,positions,1_pInt))                                             ! extract key
+     chunkPos = IO_stringPos(line)
+     tag = IO_lc(IO_stringValue(line,chunkPos,1_pInt))                                             ! extract key
      select case(tag)
        case ('(output)')
-         select case(IO_lc(IO_stringValue(line,positions,2_pInt)))
+         select case(IO_lc(IO_stringValue(line,chunkPos,2_pInt)))
            case ('isobrittle_drivingforce')
              source_damage_isoBrittle_Noutput(instance) = source_damage_isoBrittle_Noutput(instance) + 1_pInt
              source_damage_isoBrittle_outputID(source_damage_isoBrittle_Noutput(instance),instance) = damage_drivingforce_ID
              source_damage_isoBrittle_output(source_damage_isoBrittle_Noutput(instance),instance) = &
-                                                       IO_lc(IO_stringValue(line,positions,2_pInt))
+                                                       IO_lc(IO_stringValue(line,chunkPos,2_pInt))
           end select
 
        case ('isobrittle_criticalstrainenergy')
-         source_damage_isoBrittle_critStrainEnergy(instance) = IO_floatValue(line,positions,2_pInt)
+         source_damage_isoBrittle_critStrainEnergy(instance) = IO_floatValue(line,chunkPos,2_pInt)
 
        case ('isobrittle_n')
-         source_damage_isoBrittle_N(instance) = IO_floatValue(line,positions,2_pInt)
+         source_damage_isoBrittle_N(instance) = IO_floatValue(line,chunkPos,2_pInt)
 
        case ('isobrittle_atol')
-         source_damage_isoBrittle_aTol(instance) = IO_floatValue(line,positions,2_pInt)
+         source_damage_isoBrittle_aTol(instance) = IO_floatValue(line,chunkPos,2_pInt)
 
      end select
    endif; endif

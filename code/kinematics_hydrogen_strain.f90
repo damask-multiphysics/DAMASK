@@ -75,8 +75,7 @@ subroutine kinematics_hydrogen_strain_init(fileUnit)
  implicit none
  integer(pInt), intent(in) :: fileUnit
 
- integer(pInt), parameter :: MAXNCHUNKS = 7_pInt
- integer(pInt), dimension(1+2*MAXNCHUNKS) :: positions
+ integer(pInt), allocatable, dimension(:) :: chunkPos
  integer(pInt) :: maxNinstance,phase,instance,kinematics
  character(len=65536) :: &
    tag  = '', &
@@ -131,11 +130,11 @@ subroutine kinematics_hydrogen_strain_init(fileUnit)
    endif
    if (phase > 0_pInt ) then; if (any(phase_kinematics(:,phase) == KINEMATICS_hydrogen_strain_ID)) then         ! do not short-circuit here (.and. with next if statemen). It's not safe in Fortran
      instance = kinematics_hydrogen_strain_instance(phase)                                                         ! which instance of my damage is present phase
-     positions = IO_stringPos(line,MAXNCHUNKS)
-     tag = IO_lc(IO_stringValue(line,positions,1_pInt))                                             ! extract key
+     chunkPos = IO_stringPos(line)
+     tag = IO_lc(IO_stringValue(line,chunkPos,1_pInt))                                             ! extract key
      select case(tag)
        case ('hydrogen_strain_coeff')
-         kinematics_hydrogen_strain_coeff(instance) = IO_floatValue(line,positions,2_pInt)
+         kinematics_hydrogen_strain_coeff(instance) = IO_floatValue(line,chunkPos,2_pInt)
 
      end select
    endif; endif

@@ -80,8 +80,7 @@ subroutine source_vacancy_thermalfluc_init(fileUnit)
  implicit none
  integer(pInt), intent(in) :: fileUnit
 
- integer(pInt), parameter :: MAXNCHUNKS = 7_pInt
- integer(pInt), dimension(1+2*MAXNCHUNKS) :: positions
+ integer(pInt), allocatable, dimension(:) :: chunkPos
  integer(pInt) :: maxNinstance,phase,instance,source,sourceOffset
  integer(pInt) :: sizeState, sizeDotState, sizeDeltaState
  integer(pInt) :: NofMyPhase   
@@ -140,11 +139,11 @@ subroutine source_vacancy_thermalfluc_init(fileUnit)
    if (phase > 0_pInt ) then; if (any(phase_source(:,phase) == SOURCE_vacancy_thermalfluc_ID)) then ! do not short-circuit here (.and. with next if statemen). It's not safe in Fortran
 
      instance = source_vacancy_thermalfluc_instance(phase)                                          ! which instance of my vacancy is present phase
-     positions = IO_stringPos(line,MAXNCHUNKS)
-     tag = IO_lc(IO_stringValue(line,positions,1_pInt))                                             ! extract key
+     chunkPos = IO_stringPos(line)
+     tag = IO_lc(IO_stringValue(line,chunkPos,1_pInt))                                             ! extract key
      select case(tag)
        case ('thermalfluctuation_amplitude')
-         source_vacancy_thermalfluc_amplitude(instance) = IO_floatValue(line,positions,2_pInt)
+         source_vacancy_thermalfluc_amplitude(instance) = IO_floatValue(line,chunkPos,2_pInt)
 
      end select
    endif; endif

@@ -147,8 +147,7 @@ subroutine plastic_phenopowerlaw_init(fileUnit)
  implicit none
  integer(pInt), intent(in) :: fileUnit
 
- integer(pInt), parameter :: MAXNCHUNKS = LATTICE_maxNinteraction + 1_pInt
- integer(pInt), dimension(1_pInt+2_pInt*MAXNCHUNKS) :: positions
+ integer(pInt), allocatable, dimension(:) :: chunkPos
  integer(pInt) :: &
    maxNinstance, &
    instance,phase,j,k, f,o, &
@@ -259,80 +258,80 @@ subroutine plastic_phenopowerlaw_init(fileUnit)
    endif
    if (phase > 0_pInt ) then; if (phase_plasticity(phase) == PLASTICITY_PHENOPOWERLAW_ID) then      ! one of my phases. Do not short-circuit here (.and. between if-statements), it's not safe in Fortran
      instance = phase_plasticityInstance(phase)                                                     ! which instance of my plasticity is present phase
-     positions = IO_stringPos(line,MAXNCHUNKS)
-     tag = IO_lc(IO_stringValue(line,positions,1_pInt))                                             ! extract key
+     chunkPos = IO_stringPos(line)
+     tag = IO_lc(IO_stringValue(line,chunkPos,1_pInt))                                             ! extract key
      select case(tag)
        case ('(output)')
-         select case(IO_lc(IO_stringValue(line,positions,2_pInt)))
+         select case(IO_lc(IO_stringValue(line,chunkPos,2_pInt)))
            case ('resistance_slip')
              plastic_phenopowerlaw_Noutput(instance) = plastic_phenopowerlaw_Noutput(instance) + 1_pInt
              plastic_phenopowerlaw_outputID(plastic_phenopowerlaw_Noutput(instance),instance) = resistance_slip_ID
              plastic_phenopowerlaw_output(plastic_phenopowerlaw_Noutput(instance),instance) = &
-                                                           IO_lc(IO_stringValue(line,positions,2_pInt))
+                                                           IO_lc(IO_stringValue(line,chunkPos,2_pInt))
            case ('accumulatedshear_slip','accumulated_shear_slip')
              plastic_phenopowerlaw_Noutput(instance) = plastic_phenopowerlaw_Noutput(instance) + 1_pInt
              plastic_phenopowerlaw_outputID(plastic_phenopowerlaw_Noutput(instance),instance) = accumulatedshear_slip_ID
              plastic_phenopowerlaw_output(plastic_phenopowerlaw_Noutput(instance),instance) = &
-                                                           IO_lc(IO_stringValue(line,positions,2_pInt))
+                                                           IO_lc(IO_stringValue(line,chunkPos,2_pInt))
            case ('shearrate_slip')
              plastic_phenopowerlaw_Noutput(instance) = plastic_phenopowerlaw_Noutput(instance) + 1_pInt
              plastic_phenopowerlaw_outputID(plastic_phenopowerlaw_Noutput(instance),instance) = shearrate_slip_ID
              plastic_phenopowerlaw_output(plastic_phenopowerlaw_Noutput(instance),instance) = &
-                                                           IO_lc(IO_stringValue(line,positions,2_pInt))
+                                                           IO_lc(IO_stringValue(line,chunkPos,2_pInt))
            case ('resolvedstress_slip')
              plastic_phenopowerlaw_Noutput(instance) = plastic_phenopowerlaw_Noutput(instance) + 1_pInt
              plastic_phenopowerlaw_outputID(plastic_phenopowerlaw_Noutput(instance),instance) = resolvedstress_slip_ID
              plastic_phenopowerlaw_output(plastic_phenopowerlaw_Noutput(instance),instance) = &
-                                                           IO_lc(IO_stringValue(line,positions,2_pInt))
+                                                           IO_lc(IO_stringValue(line,chunkPos,2_pInt))
            case ('totalshear')
              plastic_phenopowerlaw_Noutput(instance) = plastic_phenopowerlaw_Noutput(instance) + 1_pInt
              plastic_phenopowerlaw_outputID(plastic_phenopowerlaw_Noutput(instance),instance) = totalshear_ID
              plastic_phenopowerlaw_output(plastic_phenopowerlaw_Noutput(instance),instance) = &
-                                                           IO_lc(IO_stringValue(line,positions,2_pInt))
+                                                           IO_lc(IO_stringValue(line,chunkPos,2_pInt))
            case ('resistance_twin')
              plastic_phenopowerlaw_Noutput(instance) = plastic_phenopowerlaw_Noutput(instance) + 1_pInt
              plastic_phenopowerlaw_outputID(plastic_phenopowerlaw_Noutput(instance),instance) = resistance_twin_ID
              plastic_phenopowerlaw_output(plastic_phenopowerlaw_Noutput(instance),instance) = &
-                                                           IO_lc(IO_stringValue(line,positions,2_pInt))
+                                                           IO_lc(IO_stringValue(line,chunkPos,2_pInt))
            case ('accumulatedshear_twin','accumulated_shear_twin')
              plastic_phenopowerlaw_Noutput(instance) = plastic_phenopowerlaw_Noutput(instance) + 1_pInt
              plastic_phenopowerlaw_outputID(plastic_phenopowerlaw_Noutput(instance),instance) = accumulatedshear_twin_ID
              plastic_phenopowerlaw_output(plastic_phenopowerlaw_Noutput(instance),instance) = &
-                                                           IO_lc(IO_stringValue(line,positions,2_pInt))
+                                                           IO_lc(IO_stringValue(line,chunkPos,2_pInt))
            case ('shearrate_twin')
              plastic_phenopowerlaw_Noutput(instance) = plastic_phenopowerlaw_Noutput(instance) + 1_pInt
              plastic_phenopowerlaw_outputID(plastic_phenopowerlaw_Noutput(instance),instance) = shearrate_twin_ID
              plastic_phenopowerlaw_output(plastic_phenopowerlaw_Noutput(instance),instance) = &
-                                                           IO_lc(IO_stringValue(line,positions,2_pInt))
+                                                           IO_lc(IO_stringValue(line,chunkPos,2_pInt))
            case ('resolvedstress_twin')
              plastic_phenopowerlaw_Noutput(instance) = plastic_phenopowerlaw_Noutput(instance) + 1_pInt
              plastic_phenopowerlaw_outputID(plastic_phenopowerlaw_Noutput(instance),instance) = resolvedstress_twin_ID
              plastic_phenopowerlaw_output(plastic_phenopowerlaw_Noutput(instance),instance) = &
-                                                           IO_lc(IO_stringValue(line,positions,2_pInt))
+                                                           IO_lc(IO_stringValue(line,chunkPos,2_pInt))
            case ('totalvolfrac_twin')
              plastic_phenopowerlaw_Noutput(instance) = plastic_phenopowerlaw_Noutput(instance) + 1_pInt
              plastic_phenopowerlaw_outputID(plastic_phenopowerlaw_Noutput(instance),instance) = totalvolfrac_twin_ID
              plastic_phenopowerlaw_output(plastic_phenopowerlaw_Noutput(instance),instance) = &
-                                                           IO_lc(IO_stringValue(line,positions,2_pInt))
+                                                           IO_lc(IO_stringValue(line,chunkPos,2_pInt))
            case default
 
          end select
 !--------------------------------------------------------------------------------------------------
 ! parameters depending on number of slip families
        case ('nslip')
-         if (positions(1) < Nchunks_SlipFamilies + 1_pInt) &
+         if (chunkPos(1) < Nchunks_SlipFamilies + 1_pInt) &
            call IO_warning(50_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_PHENOPOWERLAW_label//')')
-         if (positions(1) > Nchunks_SlipFamilies + 1_pInt) &
+         if (chunkPos(1) > Nchunks_SlipFamilies + 1_pInt) &
            call IO_error(150_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_PHENOPOWERLAW_label//')')
-         Nchunks_SlipFamilies = positions(1) - 1_pInt                                                 ! user specified number of (possibly) active slip families (e.g. 6 0 6 --> 3)
+         Nchunks_SlipFamilies = chunkPos(1) - 1_pInt                                                 ! user specified number of (possibly) active slip families (e.g. 6 0 6 --> 3)
          do j = 1_pInt, Nchunks_SlipFamilies
-           plastic_phenopowerlaw_Nslip(j,instance) = IO_intValue(line,positions,1_pInt+j)
+           plastic_phenopowerlaw_Nslip(j,instance) = IO_intValue(line,chunkPos,1_pInt+j)
          enddo
        case ('tausat_slip','tau0_slip')
          tempPerSlip = 0.0_pReal
          do j = 1_pInt, Nchunks_SlipFamilies
            if (plastic_phenopowerlaw_Nslip(j,instance) > 0_pInt) &
-             tempPerSlip(j) = IO_floatValue(line,positions,1_pInt+j)
+             tempPerSlip(j) = IO_floatValue(line,chunkPos,1_pInt+j)
          enddo
          select case(tag)
            case ('tausat_slip')
@@ -343,105 +342,105 @@ subroutine plastic_phenopowerlaw_init(fileUnit)
 !--------------------------------------------------------------------------------------------------
 ! parameters depending on number of twin families
        case ('ntwin')
-         if (positions(1) < Nchunks_TwinFamilies + 1_pInt) &
+         if (chunkPos(1) < Nchunks_TwinFamilies + 1_pInt) &
            call IO_warning(51_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_PHENOPOWERLAW_label//')')
-         if (positions(1) > Nchunks_TwinFamilies + 1_pInt) &
+         if (chunkPos(1) > Nchunks_TwinFamilies + 1_pInt) &
            call IO_error(150_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_PHENOPOWERLAW_label//')')
-         Nchunks_TwinFamilies = positions(1) - 1_pInt
+         Nchunks_TwinFamilies = chunkPos(1) - 1_pInt
          do j = 1_pInt, Nchunks_TwinFamilies
-             plastic_phenopowerlaw_Ntwin(j,instance) = IO_intValue(line,positions,1_pInt+j)
+             plastic_phenopowerlaw_Ntwin(j,instance) = IO_intValue(line,chunkPos,1_pInt+j)
          enddo
        case ('tau0_twin')
          do j = 1_pInt, Nchunks_TwinFamilies
            if (plastic_phenopowerlaw_Ntwin(j,instance) > 0_pInt) &
-             plastic_phenopowerlaw_tau0_twin(j,instance) = IO_floatValue(line,positions,1_pInt+j)
+             plastic_phenopowerlaw_tau0_twin(j,instance) = IO_floatValue(line,chunkPos,1_pInt+j)
          enddo
 !--------------------------------------------------------------------------------------------------
 ! parameters depending on number of transformation families
        case ('ntrans')
-         if (positions(1) < Nchunks_TransFamilies + 1_pInt) &
+         if (chunkPos(1) < Nchunks_TransFamilies + 1_pInt) &
            call IO_warning(51_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_PHENOPOWERLAW_label//')')
-         if (positions(1) > Nchunks_TransFamilies + 1_pInt) &
+         if (chunkPos(1) > Nchunks_TransFamilies + 1_pInt) &
            call IO_error(150_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_PHENOPOWERLAW_label//')')
-         Nchunks_TransFamilies = positions(1) - 1_pInt
+         Nchunks_TransFamilies = chunkPos(1) - 1_pInt
          do j = 1_pInt, Nchunks_TransFamilies
-             plastic_phenopowerlaw_Ntrans(j,instance) = IO_intValue(line,positions,1_pInt+j)
+             plastic_phenopowerlaw_Ntrans(j,instance) = IO_intValue(line,chunkPos,1_pInt+j)
          enddo
 !--------------------------------------------------------------------------------------------------
 ! parameters depending on number of interactions
        case ('interaction_sliptwin')
-         if (positions(1) < 1_pInt + Nchunks_SlipTwin) &
+         if (chunkPos(1) < 1_pInt + Nchunks_SlipTwin) &
            call IO_warning(52_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_PHENOPOWERLAW_label//')')
          do j = 1_pInt, Nchunks_SlipTwin
-           plastic_phenopowerlaw_interaction_SlipTwin(j,instance) = IO_floatValue(line,positions,1_pInt+j)
+           plastic_phenopowerlaw_interaction_SlipTwin(j,instance) = IO_floatValue(line,chunkPos,1_pInt+j)
          enddo
        case ('interaction_twinslip')
-         if (positions(1) < 1_pInt + Nchunks_TwinSlip) &
+         if (chunkPos(1) < 1_pInt + Nchunks_TwinSlip) &
            call IO_warning(52_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_PHENOPOWERLAW_label//')')
          do j = 1_pInt, Nchunks_TwinSlip
-           plastic_phenopowerlaw_interaction_TwinSlip(j,instance) = IO_floatValue(line,positions,1_pInt+j)
+           plastic_phenopowerlaw_interaction_TwinSlip(j,instance) = IO_floatValue(line,chunkPos,1_pInt+j)
          enddo
        case ('interaction_twintwin')
-         if (positions(1) < 1_pInt + Nchunks_TwinTwin) &
+         if (chunkPos(1) < 1_pInt + Nchunks_TwinTwin) &
            call IO_warning(52_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_PHENOPOWERLAW_label//')')
          do j = 1_pInt, Nchunks_TwinTwin
-           plastic_phenopowerlaw_interaction_TwinTwin(j,instance) = IO_floatValue(line,positions,1_pInt+j)
+           plastic_phenopowerlaw_interaction_TwinTwin(j,instance) = IO_floatValue(line,chunkPos,1_pInt+j)
          enddo
        case ('nonschmid_coefficients')
-         if (positions(1) < 1_pInt + Nchunks_nonSchmid) &
+         if (chunkPos(1) < 1_pInt + Nchunks_nonSchmid) &
            call IO_warning(52_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_PHENOPOWERLAW_label//')')
          do j = 1_pInt,Nchunks_nonSchmid
-           plastic_phenopowerlaw_nonSchmidCoeff(j,instance) = IO_floatValue(line,positions,1_pInt+j)
+           plastic_phenopowerlaw_nonSchmidCoeff(j,instance) = IO_floatValue(line,chunkPos,1_pInt+j)
          enddo
 !--------------------------------------------------------------------------------------------------
 ! parameters independent of number of slip/twin systems
        case ('gdot0_slip')
-         plastic_phenopowerlaw_gdot0_slip(instance) = IO_floatValue(line,positions,2_pInt)
+         plastic_phenopowerlaw_gdot0_slip(instance) = IO_floatValue(line,chunkPos,2_pInt)
        case ('n_slip')
-         plastic_phenopowerlaw_n_slip(instance) = IO_floatValue(line,positions,2_pInt)
+         plastic_phenopowerlaw_n_slip(instance) = IO_floatValue(line,chunkPos,2_pInt)
        case ('a_slip', 'w0_slip')
-         plastic_phenopowerlaw_a_slip(instance) = IO_floatValue(line,positions,2_pInt)
+         plastic_phenopowerlaw_a_slip(instance) = IO_floatValue(line,chunkPos,2_pInt)
        case ('gdot0_twin')
-         plastic_phenopowerlaw_gdot0_twin(instance) = IO_floatValue(line,positions,2_pInt)
+         plastic_phenopowerlaw_gdot0_twin(instance) = IO_floatValue(line,chunkPos,2_pInt)
        case ('n_twin')
-         plastic_phenopowerlaw_n_twin(instance) = IO_floatValue(line,positions,2_pInt)
+         plastic_phenopowerlaw_n_twin(instance) = IO_floatValue(line,chunkPos,2_pInt)
        case ('s_pr')
-         plastic_phenopowerlaw_spr(instance) = IO_floatValue(line,positions,2_pInt)
+         plastic_phenopowerlaw_spr(instance) = IO_floatValue(line,chunkPos,2_pInt)
        case ('twin_b')
-         plastic_phenopowerlaw_twinB(instance) = IO_floatValue(line,positions,2_pInt)
+         plastic_phenopowerlaw_twinB(instance) = IO_floatValue(line,chunkPos,2_pInt)
        case ('twin_c')
-         plastic_phenopowerlaw_twinC(instance) = IO_floatValue(line,positions,2_pInt)
+         plastic_phenopowerlaw_twinC(instance) = IO_floatValue(line,chunkPos,2_pInt)
        case ('twin_d')
-         plastic_phenopowerlaw_twinD(instance) = IO_floatValue(line,positions,2_pInt)
+         plastic_phenopowerlaw_twinD(instance) = IO_floatValue(line,chunkPos,2_pInt)
        case ('twin_e')
-         plastic_phenopowerlaw_twinE(instance) = IO_floatValue(line,positions,2_pInt)
+         plastic_phenopowerlaw_twinE(instance) = IO_floatValue(line,chunkPos,2_pInt)
        case ('h0_slipslip')
-         plastic_phenopowerlaw_h0_SlipSlip(instance) = IO_floatValue(line,positions,2_pInt)
+         plastic_phenopowerlaw_h0_SlipSlip(instance) = IO_floatValue(line,chunkPos,2_pInt)
        case ('h0_twinslip')
-         plastic_phenopowerlaw_h0_TwinSlip(instance) = IO_floatValue(line,positions,2_pInt)
+         plastic_phenopowerlaw_h0_TwinSlip(instance) = IO_floatValue(line,chunkPos,2_pInt)
        case ('h0_twintwin')
-         plastic_phenopowerlaw_h0_TwinTwin(instance) = IO_floatValue(line,positions,2_pInt)
+         plastic_phenopowerlaw_h0_TwinTwin(instance) = IO_floatValue(line,chunkPos,2_pInt)
        case ('atol_resistance')
-         plastic_phenopowerlaw_aTolResistance(instance) = IO_floatValue(line,positions,2_pInt)
+         plastic_phenopowerlaw_aTolResistance(instance) = IO_floatValue(line,chunkPos,2_pInt)
        case ('atol_shear')
-         plastic_phenopowerlaw_aTolShear(instance)      = IO_floatValue(line,positions,2_pInt)
+         plastic_phenopowerlaw_aTolShear(instance)      = IO_floatValue(line,chunkPos,2_pInt)
        case ('atol_twinfrac')
-         plastic_phenopowerlaw_aTolTwinfrac(instance)   = IO_floatValue(line,positions,2_pInt)
+         plastic_phenopowerlaw_aTolTwinfrac(instance)   = IO_floatValue(line,chunkPos,2_pInt)
        case ('atol_transfrac')
-         plastic_phenopowerlaw_aTolTransfrac(instance)  = IO_floatValue(line,positions,2_pInt)
+         plastic_phenopowerlaw_aTolTransfrac(instance)  = IO_floatValue(line,chunkPos,2_pInt)
        case ('cnuc')
-         plastic_phenopowerlaw_Cnuc(instance) = IO_floatValue(line,positions,2_pInt)
+         plastic_phenopowerlaw_Cnuc(instance) = IO_floatValue(line,chunkPos,2_pInt)
        case ('cdwp')
-         plastic_phenopowerlaw_Cdwp(instance) = IO_floatValue(line,positions,2_pInt)
+         plastic_phenopowerlaw_Cdwp(instance) = IO_floatValue(line,chunkPos,2_pInt)
        case ('cgro')
-         plastic_phenopowerlaw_Cgro(instance) = IO_floatValue(line,positions,2_pInt)
+         plastic_phenopowerlaw_Cgro(instance) = IO_floatValue(line,chunkPos,2_pInt)
        case ('deltag')
-         plastic_phenopowerlaw_deltaG(instance) = IO_floatValue(line,positions,2_pInt)
+         plastic_phenopowerlaw_deltaG(instance) = IO_floatValue(line,chunkPos,2_pInt)
        case ('interaction_slipslip')
-         if (positions(1) < 1_pInt + Nchunks_SlipSlip) &
+         if (chunkPos(1) < 1_pInt + Nchunks_SlipSlip) &
            call IO_warning(52_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_PHENOPOWERLAW_label//')')
          do j = 1_pInt, Nchunks_SlipSlip
-           plastic_phenopowerlaw_interaction_SlipSlip(j,instance) = IO_floatValue(line,positions,1_pInt+j)
+           plastic_phenopowerlaw_interaction_SlipSlip(j,instance) = IO_floatValue(line,chunkPos,1_pInt+j)
          enddo
        case default
 

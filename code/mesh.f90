@@ -421,7 +421,6 @@ module mesh
  public :: &
    mesh_spectral_getGrid, &
    mesh_spectral_getSize, &
-   mesh_regrid, &
    mesh_nodesAroundCentres, &
    mesh_deformedCoordsFFT, &
    mesh_volumeMismatch, &
@@ -1042,7 +1041,7 @@ function mesh_spectral_getGrid(fileUnit)
  use IO, only: &
    IO_checkAndRewind, &
    IO_open_file, &
-   IO_stringPos2, &
+   IO_stringPos, &
    IO_lc, &
    IO_stringValue, &
    IO_intValue, &
@@ -1054,7 +1053,7 @@ function mesh_spectral_getGrid(fileUnit)
  implicit none
  integer(pInt), dimension(3)                      :: mesh_spectral_getGrid
  integer(pInt), intent(in), optional              :: fileUnit
- integer(pInt), dimension(:), allocatable         :: positions
+ integer(pInt), allocatable, dimension(:)         :: chunkPos
 
  integer(pInt)                                    :: headerLength = 0_pInt
  character(len=1024) :: line, &
@@ -1073,28 +1072,28 @@ function mesh_spectral_getGrid(fileUnit)
  call IO_checkAndRewind(myFileUnit)
 
  read(myFileUnit,'(a1024)') line
- positions = IO_stringPos2(line)
- keyword = IO_lc(IO_StringValue(line,positions,2_pInt,.true.))
+ chunkPos = IO_stringPos(line)
+ keyword = IO_lc(IO_StringValue(line,chunkPos,2_pInt,.true.))
  if (keyword(1:4) == 'head') then
-   headerLength = IO_intValue(line,positions,1_pInt) + 1_pInt
+   headerLength = IO_intValue(line,chunkPos,1_pInt) + 1_pInt
  else
    call IO_error(error_ID=841_pInt, ext_msg='mesh_spectral_getGrid')
  endif
  rewind(myFileUnit)
  do i = 1_pInt, headerLength
    read(myFileUnit,'(a1024)') line
-   positions = IO_stringPos2(line)             
-   select case ( IO_lc(IO_StringValue(line,positions,1_pInt,.true.)) )
+   chunkPos = IO_stringPos(line)             
+   select case ( IO_lc(IO_StringValue(line,chunkPos,1_pInt,.true.)) )
      case ('grid')
        gotGrid = .true.
        do j = 2_pInt,6_pInt,2_pInt
-         select case (IO_lc(IO_stringValue(line,positions,j)))
+         select case (IO_lc(IO_stringValue(line,chunkPos,j)))
            case('a')
-              mesh_spectral_getGrid(1) = IO_intValue(line,positions,j+1_pInt)
+              mesh_spectral_getGrid(1) = IO_intValue(line,chunkPos,j+1_pInt)
            case('b')
-              mesh_spectral_getGrid(2) = IO_intValue(line,positions,j+1_pInt)
+              mesh_spectral_getGrid(2) = IO_intValue(line,chunkPos,j+1_pInt)
            case('c')
-              mesh_spectral_getGrid(3) = IO_intValue(line,positions,j+1_pInt)
+              mesh_spectral_getGrid(3) = IO_intValue(line,chunkPos,j+1_pInt)
          end select
        enddo
    end select
@@ -1118,7 +1117,7 @@ function mesh_spectral_getSize(fileUnit)
  use IO, only: &
    IO_checkAndRewind, &
    IO_open_file, &
-   IO_stringPos2, &
+   IO_stringPos, &
    IO_lc, &
    IO_stringValue, &
    IO_intValue, &
@@ -1130,7 +1129,7 @@ function mesh_spectral_getSize(fileUnit)
  implicit none
  real(pReal), dimension(3)                        :: mesh_spectral_getSize
  integer(pInt), intent(in), optional              :: fileUnit
- integer(pInt), dimension(:), allocatable         :: positions
+ integer(pInt), allocatable, dimension(:)         :: chunkPos
  integer(pInt)                                    :: headerLength = 0_pInt
  character(len=1024) :: line, &
                         keyword
@@ -1148,28 +1147,28 @@ function mesh_spectral_getSize(fileUnit)
  call IO_checkAndRewind(myFileUnit)
 
  read(myFileUnit,'(a1024)') line
- positions = IO_stringPos2(line)
- keyword = IO_lc(IO_StringValue(line,positions,2_pInt,.true.))
+ chunkPos = IO_stringPos(line)
+ keyword = IO_lc(IO_StringValue(line,chunkPos,2_pInt,.true.))
  if (keyword(1:4) == 'head') then
-   headerLength = IO_intValue(line,positions,1_pInt) + 1_pInt
+   headerLength = IO_intValue(line,chunkPos,1_pInt) + 1_pInt
  else
    call IO_error(error_ID=841_pInt, ext_msg='mesh_spectral_getSize')
  endif
  rewind(myFileUnit)
  do i = 1_pInt, headerLength
    read(myFileUnit,'(a1024)') line
-   positions = IO_stringPos2(line)             
-   select case ( IO_lc(IO_StringValue(line,positions,1,.true.)) )
+   chunkPos = IO_stringPos(line)             
+   select case ( IO_lc(IO_StringValue(line,chunkPos,1,.true.)) )
      case ('size')
        gotSize = .true.
        do j = 2_pInt,6_pInt,2_pInt
-         select case (IO_lc(IO_stringValue(line,positions,j)))
+         select case (IO_lc(IO_stringValue(line,chunkPos,j)))
            case('x')
-              mesh_spectral_getSize(1) = IO_floatValue(line,positions,j+1_pInt)
+              mesh_spectral_getSize(1) = IO_floatValue(line,chunkPos,j+1_pInt)
            case('y')
-              mesh_spectral_getSize(2) = IO_floatValue(line,positions,j+1_pInt)
+              mesh_spectral_getSize(2) = IO_floatValue(line,chunkPos,j+1_pInt)
            case('z')
-              mesh_spectral_getSize(3) = IO_floatValue(line,positions,j+1_pInt)
+              mesh_spectral_getSize(3) = IO_floatValue(line,chunkPos,j+1_pInt)
          end select
        enddo
    end select
@@ -1193,7 +1192,7 @@ integer(pInt) function mesh_spectral_getHomogenization(fileUnit)
  use IO, only: &
    IO_checkAndRewind, &
    IO_open_file, &
-   IO_stringPos2, &
+   IO_stringPos, &
    IO_lc, &
    IO_stringValue, &
    IO_intValue, &
@@ -1203,7 +1202,7 @@ integer(pInt) function mesh_spectral_getHomogenization(fileUnit)
   
  implicit none
  integer(pInt), intent(in), optional              :: fileUnit
- integer(pInt), dimension(:), allocatable         :: positions
+ integer(pInt), allocatable, dimension(:)         :: chunkPos
  integer(pInt)                                    :: headerLength = 0_pInt
  character(len=1024) :: line, &
                         keyword
@@ -1221,21 +1220,21 @@ integer(pInt) function mesh_spectral_getHomogenization(fileUnit)
  call IO_checkAndRewind(myFileUnit)
 
  read(myFileUnit,'(a1024)') line
- positions = IO_stringPos2(line)
- keyword = IO_lc(IO_StringValue(line,positions,2_pInt,.true.))
+ chunkPos = IO_stringPos(line)
+ keyword = IO_lc(IO_StringValue(line,chunkPos,2_pInt,.true.))
  if (keyword(1:4) == 'head') then
-   headerLength = IO_intValue(line,positions,1_pInt) + 1_pInt
+   headerLength = IO_intValue(line,chunkPos,1_pInt) + 1_pInt
  else
    call IO_error(error_ID=841_pInt, ext_msg='mesh_spectral_getHomogenization')
  endif
  rewind(myFileUnit)
  do i = 1_pInt, headerLength
    read(myFileUnit,'(a1024)') line
-   positions = IO_stringPos2(line)             
-   select case ( IO_lc(IO_StringValue(line,positions,1,.true.)) )
+   chunkPos = IO_stringPos(line)             
+   select case ( IO_lc(IO_StringValue(line,chunkPos,1,.true.)) )
      case ('homogenization')
        gotHomogenization = .true.
-       mesh_spectral_getHomogenization = IO_intValue(line,positions,2_pInt)
+       mesh_spectral_getHomogenization = IO_intValue(line,chunkPos,2_pInt)
    end select
  enddo
  
@@ -1346,7 +1345,7 @@ subroutine mesh_spectral_build_elements(fileUnit)
    IO_checkAndRewind, &
    IO_lc, &
    IO_stringValue, &
-   IO_stringPos2, &
+   IO_stringPos, &
    IO_error, &
    IO_continuousIntValues, &
    IO_intValue, &
@@ -1355,8 +1354,7 @@ subroutine mesh_spectral_build_elements(fileUnit)
  implicit none
  integer(pInt), intent(in) :: &
    fileUnit
- integer(pInt),     dimension(1_pInt+7_pInt*2_pInt) :: &
-   myPos
+ integer(pInt), allocatable, dimension(:)         :: chunkPos
  integer(pInt) :: &
    e, i, &
    headerLength = 0_pInt, &
@@ -1381,10 +1379,10 @@ subroutine mesh_spectral_build_elements(fileUnit)
 ! get header length
  call IO_checkAndRewind(fileUnit)
  read(fileUnit,'(a65536)') line
- myPos = IO_stringPos2(line)
- keyword = IO_lc(IO_StringValue(line,myPos,2_pInt,.true.))
+ chunkPos = IO_stringPos(line)
+ keyword = IO_lc(IO_StringValue(line,chunkPos,2_pInt,.true.))
  if (keyword(1:4) == 'head') then
-   headerLength = IO_intValue(line,myPos,1_pInt) + 1_pInt
+   headerLength = IO_intValue(line,chunkPos,1_pInt) + 1_pInt
  else
    call IO_error(error_ID=841_pInt, ext_msg='mesh_spectral_build_elements')
  endif
@@ -1507,435 +1505,6 @@ subroutine mesh_spectral_build_ipNeighborhood(fileUnit)
  enddo
 
 end subroutine mesh_spectral_build_ipNeighborhood
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief Performes a regridding from saved restart information
-!--------------------------------------------------------------------------------------------------
-function mesh_regrid(adaptive,resNewInput,minRes)
- use prec, only: &
-   pInt, &
-   pReal
- use DAMASK_interface, only: &
-   getSolverWorkingDirectoryName, &
-   getSolverJobName, &
-   GeometryFile
- use IO, only: &
-   IO_open_file, &
-   IO_read_realFile ,&
-   IO_read_intFile ,&
-   IO_write_jobRealFile, &
-   IO_write_jobIntFile, &
-   IO_write_jobFile, &
-   IO_error
- use numerics, only: &
-   spectral_solver
- use math, only: &
-   math_periodicNearestNeighbor, &
-   math_mul33x3
-
- implicit none
- logical, intent(in)                                    :: adaptive                                 ! if true, choose adaptive grid based on resNewInput, otherwise keep it constant
- integer(pInt), dimension(3), optional, intent(in)      :: resNewInput                              ! f2py cannot handle optional arguments correctly (they are always present)
- integer(pInt), dimension(3), optional, intent(in)      :: minRes
- integer(pInt), dimension(3)                            :: mesh_regrid, ratio, grid
- integer(pInt),                         parameter       :: FILEUNIT = 777_pInt
- integer(pInt), dimension(3,2)                          :: possibleResNew
- integer(pInt):: maxsize, i, j, k, ielem, NpointsNew, spatialDim, Nelems
- integer(pInt), dimension(3)                            :: resNew
- integer(pInt), dimension(:),            allocatable    :: indices
- real(pReal)                                            :: wgt
- real(pReal),   dimension(3)                            :: geomSizeNew, geomSize
- real(pReal),   dimension(3,3)                          :: Favg, Favg_LastInc
- real(pReal),   dimension(:,:),           allocatable :: & 
-   coordinates,   coordinatesNew  
- real(pReal),   dimension(:,:,:),         allocatable :: & 
-   stateHomog
- real(pReal),   dimension (:,:,:,:),      allocatable :: &
-   spectralF9,   spectralF9New, &
-   Tstar,           TstarNew, &
-   stateConst 
- real(pReal),   dimension(:,:,:,:,:),     allocatable :: & 
-   F,                  FNew, &
-   Fp,                FpNew, &
-   Lp,                LpNew, &
-   dcsdE,          dcsdENew, &
-   F_lastIncNew
- real(pReal),   dimension (:,:,:,:,:,:,:), allocatable :: &
-   dPdF,            dPdFNew
- character(len=1024):: formatString, N_Digits
- integer(pInt), dimension(:,:), allocatable :: &
-   sizeStateHomog
- integer(pInt), dimension(:,:,:), allocatable :: &
-   material_phase, material_phaseNew, &
-   sizeStateConst
-
- call IO_open_file(FILEUNIT,trim(geometryFile))
- grid     = mesh_spectral_getGrid(FILEUNIT)
- geomSize = mesh_spectral_getsize(FILEUNIT)
- close(FILEUNIT)
-
- Nelems = product(grid)
- wgt = 1.0_pReal/real(Nelems,pReal)
-
- write(6,'(a)') 'Regridding geometry'
- if (adaptive) then
-   write(6,'(a)') 'adaptive resolution determination'
-   if (present(minRes)) then
-     if (all(minRes /= -1_pInt)) &                                                                  !the f2py way to tell it is present
-       write(6,'(a,3(i12))') ' given minimum resolution ', minRes
-   endif
-   if (present(resNewInput)) then
-     if (any (resNewInput<1)) call IO_error(890_pInt, ext_msg = 'resNewInput')                      !the f2py way to tell it is not present
-     write(6,'(a,3(i12))') ' target resolution ', resNewInput
-   else
-     call IO_error(890_pInt, ext_msg = 'resNewInput')
-   endif
- endif
- 
- allocate(coordinates(3,Nelems))
- 
- 
-!--------------------------------------------------------------------------------------------------
-! read in deformation gradient to calculate coordinates, shape depend of selected solver
- select case(spectral_solver)
-   case('basicpetsc','al','polarization')
-     allocate(spectralF9(9,grid(1),grid(2),grid(3)))
-     call IO_read_realFile(FILEUNIT,'F',trim(getSolverJobName()),size(spectralF9))
-     read (FILEUNIT,rec=1) spectralF9
-     close (FILEUNIT)
-     Favg = reshape(sum(sum(sum(spectralF9,dim=4),dim=3),dim=2) * wgt, [3,3])
-     coordinates = reshape(mesh_deformedCoordsFFT(geomSize,reshape(spectralF9, &
-                                      [3,3,grid(1),grid(2),grid(3)])),[3,mesh_NcpElems])
-  end select
-  
-!--------------------------------------------------------------------------------------------------
-!  sanity check 2D/3D case
- if (grid(3)== 1_pInt) then
-   spatialDim = 2_pInt
-   if (present (minRes)) then
-     if (minRes(1) > 0_pInt .or. minRes(2) > 0_pInt) then
-        if (minRes(3) /= 1_pInt .or. &
-           mod(minRes(1),2_pInt) /= 0_pInt .or. &
-           mod(minRes(2),2_pInt) /= 0_pInt)  call IO_error(890_pInt, ext_msg = '2D minRes')         ! as f2py has problems with present, use pyf file for initialization to -1
-   endif; endif
- else
-   spatialDim = 3_pInt
-   if (present (minRes)) then
-     if (any(minRes > 0_pInt)) then
-        if (mod(minRes(1),2_pInt) /= 0_pInt .or. &
-            mod(minRes(2),2_pInt) /= 0_pInt .or. &
-            mod(minRes(3),2_pInt) /= 0_pInt)  call IO_error(890_pInt, ext_msg = '3D minRes')        ! as f2py has problems with present, use pyf file for initialization to -1
-   endif; endif
- endif
- 
-!--------------------------------------------------------------------------------------------------
-!  Automatic detection based on current geom
- geomSizeNew =  math_mul33x3(Favg,geomSize)
- if (adaptive) then
-   ratio = floor(real(resNewInput,pReal) * (geomSizeNew/geomSize), pInt)
-   
-   possibleResNew = 1_pInt
-   do i = 1_pInt, spatialDim
-     if (mod(ratio(i),2) == 0_pInt) then
-       possibleResNew(i,1:2) = [ratio(i),ratio(i) + 2_pInt]
-     else
-       possibleResNew(i,1:2) = [ratio(i)-1_pInt, ratio(i) + 1_pInt]
-     endif
-     if (.not.present(minRes)) then                                                                 ! calling from fortran, optional argument not given
-       possibleResNew = possibleResNew
-     else                                                                                           ! optional argument is there
-       if (any(minRes<1_pInt)) then
-         possibleResNew = possibleResNew                                                            ! f2py calling, but without specification (or choosing invalid values), standard from pyf = -1
-       else                                                                                         ! given useful values
-         forall(k = 1_pInt:3_pInt, j = 1_pInt:3_pInt) &
-           possibleResNew(j,k) = max(possibleResNew(j,k), minRes(j))
-       endif
-     endif
-   enddo
-   
-   k = huge(1_pInt)
-   do i = 0_pInt, 2_pInt**spatialDim - 1
-      j = abs( possibleResNew(1,iand(i,1_pInt)/1_pInt + 1_pInt) &
-             * possibleResNew(2,iand(i,2_pInt)/2_pInt + 1_pInt) &
-             * possibleResNew(3,iand(i,4_pInt)/4_pInt + 1_pInt) &
-             - resNewInput(1)*resNewInput(2)*resNewInput(3))
-       
-     if (j < k) then 
-       k = j
-       resNew =[ possibleResNew(1,iand(i,1_pInt)/1_pInt + 1_pInt), &
-                 possibleResNew(2,iand(i,2_pInt)/2_pInt + 1_pInt), &
-                 possibleResNew(3,iand(i,4_pInt)/4_pInt + 1_pInt) ] 
-     endif
-   enddo 
- else 
-   resNew = grid
- endif
-
- mesh_regrid = resNew
- NpointsNew = product(resNew)
-
-!--------------------------------------------------------------------------------------------------
-!  Calculate regular new coordinates
- allocate(coordinatesNew(3,NpointsNew))
- ielem = 0_pInt
- do k=1_pInt,resNew(3); do j=1_pInt, resNew(2); do i=1_pInt, resNew(1)
-   ielem = ielem + 1_pInt
-   coordinatesNew(1:3,ielem) = math_mul33x3(Favg,  geomSize/real(resNew,pReal)*real([i,j,k],pReal) &
-                                                 - geomSize/real(2_pInt*resNew,pReal))
- enddo; enddo; enddo
-
-!--------------------------------------------------------------------------------------------------
-!  Nearest neighbour search
- allocate(indices(NpointsNew))
- indices =  math_periodicNearestNeighbor(geomSize, Favg, coordinatesNew, coordinates)
- deallocate(coordinates)
-
-!--------------------------------------------------------------------------------------------------
-!  write out indices periodic
- write(N_Digits, '(I16.16)') 1_pInt + int(log10(real(maxval(indices),pReal)))
- N_Digits = adjustl(N_Digits)
- formatString = '(I'//trim(N_Digits)//'.'//trim(N_Digits)//',a)'
-
- call IO_write_jobFile(FILEUNIT,'IDX')                                                              ! make it a general open-write file
- write(FILEUNIT, '(A)') '1 header'
- write(FILEUNIT, '(A)') 'Numbered indices as per the large set'
- do i = 1_pInt, NpointsNew
-   write(FILEUNIT,trim(formatString),advance='no') indices(i), ' '
-   if(mod(i,resNew(1)) == 0_pInt) write(FILEUNIT,'(A)') ''
- enddo
- close(FILEUNIT)
- 
- 
-!--------------------------------------------------------------------------------------------------
-! calculate and write out indices non periodic
- do i = 1_pInt, NpointsNew
-   indices(i) = indices(i) / 3_pInt**spatialDim +1_pInt                                             ! +1 b'coz index count starts from '0'
- enddo 
- write(N_Digits, '(I16.16)') 1_pInt + int(log10(real(maxval(indices),pReal)))
- N_Digits = adjustl(N_Digits)
- formatString = '(I'//trim(N_Digits)//'.'//trim(N_Digits)//',a)'
-
- call IO_write_jobFile(FILEUNIT,'idx')                                                              ! make it a general open-write file
- write(FILEUNIT, '(A)') '1 header'
- write(FILEUNIT, '(A)') 'Numbered indices as per the small set'
- do i = 1_pInt, NpointsNew
-   write(FILEUNIT,trim(formatString),advance='no') indices(i), ' '
-   if(mod(i,resNew(1)) == 0_pInt) write(FILEUNIT,'(A)') ''
- enddo
- close(FILEUNIT)
-
-!--------------------------------------------------------------------------------------------------
-! write out new geom file
- write(N_Digits, '(I16.16)') 1_pInt+int(log10(real(maxval(mesh_element(4,1:mesh_NcpElems)),pReal)),pInt)
- N_Digits = adjustl(N_Digits)
- formatString = '(I'//trim(N_Digits)//'.'//trim(N_Digits)//',a)'
- open(FILEUNIT,file=trim(getSolverWorkingDirectoryName())//trim(GeometryFile),status='REPLACE')
- write(FILEUNIT, '(A)') '3 header'
- write(FILEUNIT, '(3(A, I8))') 'grid  a ', resNew(1), '  b ', resNew(2), '  c ', resNew(3)
- write(FILEUNIT, '(3(A, g17.10))') 'size   x ', geomSize(1), '  y ', geomSize(2), '  z ', geomSize(3)
- write(FILEUNIT, '(A)') 'homogenization  1'
- do i = 1_pInt, NpointsNew
-   write(FILEUNIT,trim(formatString),advance='no') mesh_element(4,indices(i)), ' '
-   if(mod(i,resNew(1)) == 0_pInt) write(FILEUNIT,'(A)') ''
- enddo
- close(FILEUNIT)
- 
-!--------------------------------------------------------------------------------------------------
-! set F to average values
- select case(spectral_solver)     
-   case('basicpetsc','al','polarization')
-     allocate(spectralF9New(9,resNew(1),resNew(2),resNew(3)))
-     spectralF9New = spread(spread(spread(reshape(Favg,[9]),2,resNew(1)),3,resNew(2)),4,resNew(3))
-     call IO_write_jobRealFile(FILEUNIT,'F',size(spectralF9New))
-     write (FILEUNIT,rec=1) spectralF9New
-     close (FILEUNIT)
-  end select
-
-!---------------------------------------------------------------------------------
- allocate(F_lastIncNew(3,3,resNew(1),resNew(2),resNew(3)))
-
- call IO_read_realFile(FILEUNIT,'F_aim_lastInc', &
-                                 trim(getSolverJobName()),size(Favg_LastInc))
- read (FILEUNIT,rec=1) Favg_LastInc
- close (FILEUNIT)
- 
- F_lastIncNew = spread(spread(spread(Favg_LastInc,3,resNew(1)),4,resNew(2)),5,resNew(3))
- 
- call IO_write_jobRealFile(FILEUNIT,'convergedSpectralDefgrad_lastInc',size(F_LastIncNew))
- write (FILEUNIT,rec=1) F_LastIncNew
- close (FILEUNIT)
- 
- deallocate(F_lastIncNew)
-
-! relocating data of material subroutine ---------------------------------------------------------
- allocate(material_phase    (1,1, mesh_NcpElems))
- allocate(material_phaseNew (1,1, NpointsNew))
- call IO_read_intFile(FILEUNIT,'recordedPhase',trim(getSolverJobName()),size(material_phase))
- read (FILEUNIT,rec=1) material_phase
- close (FILEUNIT)
- do i = 1, NpointsNew
-   material_phaseNew(1,1,i) = material_phase(1,1,indices(i))
- enddo
- do i = 1, mesh_NcpElems
-   if (all(material_phaseNew(1,1,:) /= material_phase(1,1,i))) then
-     write(6,*) 'mismatch in regridding'
-     write(6,*) material_phase(1,1,i), 'not found in material_phaseNew'
-   endif
- enddo
- call IO_write_jobIntFile(FILEUNIT,'recordedPhase',size(material_phaseNew))
- write (FILEUNIT,rec=1) material_phaseNew
- close (FILEUNIT) 
- deallocate(material_phase)
- deallocate(material_phaseNew)
-!---------------------------------------------------------------------------
- allocate(F    (3,3,1,1, mesh_NcpElems))
- allocate(FNew (3,3,1,1, NpointsNew))
- call IO_read_realFile(FILEUNIT,'convergedF',trim(getSolverJobName()),size(F))
- read (FILEUNIT,rec=1) F
- close (FILEUNIT)
- do i = 1, NpointsNew
-   FNew(1:3,1:3,1,1,i) = F(1:3,1:3,1,1,indices(i))
- enddo
-
- call IO_write_jobRealFile(FILEUNIT,'convergedF',size(FNew))
- write (FILEUNIT,rec=1) FNew
- close (FILEUNIT) 
- deallocate(F)
- deallocate(FNew)
-!--------------------------------------------------------------------- 
- allocate(Fp       (3,3,1,1,mesh_NcpElems))
- allocate(FpNew (3,3,1,1,NpointsNew))  
- call IO_read_realFile(FILEUNIT,'convergedFp',trim(getSolverJobName()),size(Fp))
- read (FILEUNIT,rec=1) Fp
- close (FILEUNIT) 
- do i = 1, NpointsNew
-   FpNew(1:3,1:3,1,1,i) = Fp(1:3,1:3,1,1,indices(i))
- enddo
- 
- call IO_write_jobRealFile(FILEUNIT,'convergedFp',size(FpNew))
- write (FILEUNIT,rec=1) FpNew
- close (FILEUNIT) 
- deallocate(Fp)
- deallocate(FpNew)
-!------------------------------------------------------------------------
- allocate(Lp       (3,3,1,1,mesh_NcpElems))
- allocate(LpNew  (3,3,1,1,NpointsNew)) 
- call IO_read_realFile(FILEUNIT,'convergedLp',trim(getSolverJobName()),size(Lp))
- read (FILEUNIT,rec=1) Lp
- close (FILEUNIT)
- do i = 1, NpointsNew
-   LpNew(1:3,1:3,1,1,i) = Lp(1:3,1:3,1,1,indices(i))
- enddo
- call IO_write_jobRealFile(FILEUNIT,'convergedLp',size(LpNew))
- write (FILEUNIT,rec=1) LpNew
- close (FILEUNIT)
- deallocate(Lp)
- deallocate(LpNew)
-!----------------------------------------------------------------------------
- allocate(dcsdE       (6,6,1,1,mesh_NcpElems)) 
- allocate(dcsdENew (6,6,1,1,NpointsNew)) 
- call IO_read_realFile(FILEUNIT,'convergeddcsdE',trim(getSolverJobName()),size(dcsdE))
- read (FILEUNIT,rec=1) dcsdE
- close (FILEUNIT)
- do i = 1, NpointsNew
-   dcsdENew(1:6,1:6,1,1,i) = dcsdE(1:6,1:6,1,1,indices(i))
- enddo
- call IO_write_jobRealFile(FILEUNIT,'convergeddcsdE',size(dcsdENew))
- write (FILEUNIT,rec=1) dcsdENew
- close (FILEUNIT)
- deallocate(dcsdE)
- deallocate(dcsdENew)
-!---------------------------------------------------------------------------
- allocate(dPdF       (3,3,3,3,1,1,mesh_NcpElems))
- allocate(dPdFNew (3,3,3,3,1,1,NpointsNew)) 
- call IO_read_realFile(FILEUNIT,'convergeddPdF',trim(getSolverJobName()),size(dPdF))
- read (FILEUNIT,rec=1) dPdF
- close (FILEUNIT)
- do i = 1, NpointsNew
-   dPdFNew(1:3,1:3,1:3,1:3,1,1,i) = dPdF(1:3,1:3,1:3,1:3,1,1,indices(i))
- enddo
- call IO_write_jobRealFile(FILEUNIT,'convergeddPdF',size(dPdFNew))
- write (FILEUNIT,rec=1) dPdFNew
- close (FILEUNIT)
- deallocate(dPdF)
- deallocate(dPdFNew)
-!---------------------------------------------------------------------------
- allocate(Tstar        (6,1,1,mesh_NcpElems))
- allocate(TstarNew  (6,1,1,NpointsNew)) 
- call IO_read_realFile(FILEUNIT,'convergedTstar',trim(getSolverJobName()),size(Tstar))
- read (FILEUNIT,rec=1) Tstar
- close (FILEUNIT)
- do i = 1, NpointsNew
-   TstarNew(1:6,1,1,i) = Tstar(1:6,1,1,indices(i))
- enddo
- call IO_write_jobRealFile(FILEUNIT,'convergedTstar',size(TstarNew))
- write (FILEUNIT,rec=1) TstarNew
- close (FILEUNIT)
- deallocate(Tstar)
- deallocate(TstarNew)
- 
-! for the state, we first have to know the size----------------------------------------------------
- allocate(sizeStateConst(1,1,mesh_NcpElems))
- call IO_read_intFile(FILEUNIT,'sizeStateConst',trim(getSolverJobName()),size(sizeStateConst))
- read (FILEUNIT,rec=1) sizeStateConst
- close (FILEUNIT)
- maxsize = maxval(sizeStateConst(1,1,1:mesh_NcpElems))
- allocate(StateConst      (1,1,mesh_NcpElems,maxsize))
-
- call IO_read_realFile(FILEUNIT,'convergedStateConst',trim(getSolverJobName()))
- k = 0_pInt
- do i =1, mesh_NcpElems
-   do j = 1,sizeStateConst(1,1,i)
-     k = k+1_pInt
-     read(FILEUNIT,rec=k) StateConst(1,1,i,j)
-   enddo
- enddo
- close(FILEUNIT)
- call IO_write_jobRealFile(FILEUNIT,'convergedStateConst')
- k = 0_pInt
- do i = 1,NpointsNew
-   do j = 1,sizeStateConst(1,1,indices(i))
-     k=k+1_pInt
-     write(FILEUNIT,rec=k) StateConst(1,1,indices(i),j)
-   enddo
- enddo
- close (FILEUNIT)
- deallocate(sizeStateConst)
- deallocate(StateConst)
-!---------------------------------------------------------------------------- 
- allocate(sizeStateHomog(1,mesh_NcpElems))
- call IO_read_intFile(FILEUNIT,'sizeStateHomog',trim(getSolverJobName()),size(sizeStateHomog))
- read (FILEUNIT,rec=1) sizeStateHomog
- close (FILEUNIT)
- maxsize = maxval(sizeStateHomog(1,1:mesh_NcpElems))
- allocate(stateHomog      (1,mesh_NcpElems,maxsize))
-
- call IO_read_realFile(FILEUNIT,'convergedStateHomog',trim(getSolverJobName()))
- k = 0_pInt
- do i =1, mesh_NcpElems
-   do j = 1,sizeStateHomog(1,i)
-     k = k+1_pInt
-     read(FILEUNIT,rec=k) stateHomog(1,i,j)
-   enddo
- enddo
- close(FILEUNIT)
- call IO_write_jobRealFile(FILEUNIT,'convergedStateHomog')
- k = 0_pInt
- do i = 1,NpointsNew
-   do j = 1,sizeStateHomog(1,indices(i))
-     k=k+1_pInt
-     write(FILEUNIT,rec=k) stateHomog(1,indices(i),j)
-   enddo
- enddo
- close (FILEUNIT)
- deallocate(sizeStateHomog)
- deallocate(stateHomog)
-  
- deallocate(indices)
- write(6,*) 'finished regridding'
- 
-end function mesh_regrid
 
 
 !--------------------------------------------------------------------------------------------------
@@ -2367,8 +1936,7 @@ subroutine mesh_marc_get_tableStyles(fileUnit)
  implicit none
  integer(pInt), intent(in) :: fileUnit
  
- integer(pInt), parameter :: MAXNCHUNKS = 6_pInt
- integer(pInt), dimension (1+2*MAXNCHUNKS) :: myPos
+ integer(pInt), allocatable, dimension(:) :: chunkPos
  character(len=300) line
 
  initialcondTableStyle = 0_pInt
@@ -2379,11 +1947,11 @@ subroutine mesh_marc_get_tableStyles(fileUnit)
  rewind(fileUnit)
  do 
    read (fileUnit,610,END=620) line
-   myPos = IO_stringPos(line,MAXNCHUNKS)
+   chunkPos = IO_stringPos(line)
 
-   if ( IO_lc(IO_stringValue(line,myPos,1_pInt)) == 'table' .and. myPos(1_pInt) > 5) then
-     initialcondTableStyle = IO_intValue(line,myPos,4_pInt)
-     hypoelasticTableStyle = IO_intValue(line,myPos,5_pInt)
+   if ( IO_lc(IO_stringValue(line,chunkPos,1_pInt)) == 'table' .and. chunkPos(1_pInt) > 5) then
+     initialcondTableStyle = IO_intValue(line,chunkPos,4_pInt)
+     hypoelasticTableStyle = IO_intValue(line,chunkPos,5_pInt)
      exit
    endif
  enddo
@@ -2405,8 +1973,7 @@ subroutine mesh_marc_count_nodesAndElements(fileUnit)
  implicit none
  integer(pInt), intent(in) :: fileUnit
  
- integer(pInt), parameter :: MAXNCHUNKS = 4_pInt
- integer(pInt), dimension (1+2*MAXNCHUNKS) :: myPos
+ integer(pInt), allocatable, dimension(:) :: chunkPos
  character(len=300) line
 
  mesh_Nnodes = 0_pInt
@@ -2417,14 +1984,14 @@ subroutine mesh_marc_count_nodesAndElements(fileUnit)
  rewind(fileUnit)
  do 
    read (fileUnit,610,END=620) line
-   myPos = IO_stringPos(line,MAXNCHUNKS)
+   chunkPos = IO_stringPos(line)
 
-   if ( IO_lc(IO_StringValue(line,myPos,1_pInt)) == 'sizing') &
-       mesh_Nelems = IO_IntValue (line,myPos,3_pInt)
-   if ( IO_lc(IO_StringValue(line,myPos,1_pInt)) == 'coordinates') then
+   if ( IO_lc(IO_StringValue(line,chunkPos,1_pInt)) == 'sizing') &
+       mesh_Nelems = IO_IntValue (line,chunkPos,3_pInt)
+   if ( IO_lc(IO_StringValue(line,chunkPos,1_pInt)) == 'coordinates') then
      read (fileUnit,610,END=620) line
-     myPos = IO_stringPos(line,MAXNCHUNKS)
-     mesh_Nnodes = IO_IntValue (line,myPos,2_pInt)
+     chunkPos = IO_stringPos(line)
+     mesh_Nnodes = IO_IntValue (line,chunkPos,2_pInt)
      exit                                                                                          ! assumes that "coordinates" comes later in file
    endif
  enddo
@@ -2446,8 +2013,7 @@ subroutine mesh_marc_count_nodesAndElements(fileUnit)
  implicit none
  integer(pInt), intent(in) :: fileUnit
 
- integer(pInt), parameter :: MAXNCHUNKS = 2_pInt
- integer(pInt), dimension (1+2*MAXNCHUNKS) :: myPos
+ integer(pInt), allocatable, dimension(:) :: chunkPos
  character(len=300) line
 
  mesh_NelemSets     = 0_pInt
@@ -2458,10 +2024,10 @@ subroutine mesh_marc_count_nodesAndElements(fileUnit)
  rewind(fileUnit)
  do 
    read (fileUnit,610,END=620) line
-   myPos = IO_stringPos(line,MAXNCHUNKS)
+   chunkPos = IO_stringPos(line)
 
-   if ( IO_lc(IO_StringValue(line,myPos,1_pInt)) == 'define' .and. &
-        IO_lc(IO_StringValue(line,myPos,2_pInt)) == 'element' ) then
+   if ( IO_lc(IO_StringValue(line,chunkPos,1_pInt)) == 'define' .and. &
+        IO_lc(IO_StringValue(line,chunkPos,2_pInt)) == 'element' ) then
      mesh_NelemSets = mesh_NelemSets + 1_pInt
      mesh_maxNelemInSet = max(mesh_maxNelemInSet, &
                               IO_countContinuousIntValues(fileUnit))
@@ -2486,8 +2052,7 @@ subroutine mesh_marc_map_elementSets(fileUnit)
  implicit none
  integer(pInt), intent(in) :: fileUnit
  
- integer(pInt), parameter :: MAXNCHUNKS = 4_pInt
- integer(pInt), dimension (1+2*MAXNCHUNKS) :: myPos
+ integer(pInt), allocatable, dimension(:) :: chunkPos
  character(len=300) :: line
  integer(pInt) :: elemSet = 0_pInt
 
@@ -2499,11 +2064,11 @@ subroutine mesh_marc_map_elementSets(fileUnit)
  rewind(fileUnit)
  do
    read (fileUnit,610,END=640) line
-   myPos = IO_stringPos(line,MAXNCHUNKS)
-   if( (IO_lc(IO_stringValue(line,myPos,1_pInt)) == 'define' ) .and. &
-       (IO_lc(IO_stringValue(line,myPos,2_pInt)) == 'element' ) ) then
+   chunkPos = IO_stringPos(line)
+   if( (IO_lc(IO_stringValue(line,chunkPos,1_pInt)) == 'define' ) .and. &
+       (IO_lc(IO_stringValue(line,chunkPos,2_pInt)) == 'element' ) ) then
       elemSet = elemSet+1_pInt
-      mesh_nameElemSet(elemSet) = trim(IO_stringValue(line,myPos,4_pInt))
+      mesh_nameElemSet(elemSet) = trim(IO_stringValue(line,chunkPos,4_pInt))
       mesh_mapElemSet(:,elemSet) = &
         IO_continuousIntValues(fileUnit,mesh_maxNelemInSet,mesh_nameElemSet,mesh_mapElemSet,mesh_NelemSets)
    endif
@@ -2525,8 +2090,7 @@ subroutine mesh_marc_count_cpElements(fileUnit)
  implicit none
  integer(pInt), intent(in) :: fileUnit
  
- integer(pInt), parameter :: MAXNCHUNKS = 1_pInt
- integer(pInt), dimension (1+2*MAXNCHUNKS) :: myPos
+ integer(pInt), allocatable, dimension(:) :: chunkPos
  integer(pInt) :: i
  character(len=300):: line
 
@@ -2537,9 +2101,9 @@ subroutine mesh_marc_count_cpElements(fileUnit)
  rewind(fileUnit)
  do 
    read (fileUnit,610,END=620) line
-   myPos = IO_stringPos(line,MAXNCHUNKS)
+   chunkPos = IO_stringPos(line)
 
-   if ( IO_lc(IO_stringValue(line,myPos,1_pInt)) == 'hypoelastic') then
+   if ( IO_lc(IO_stringValue(line,chunkPos,1_pInt)) == 'hypoelastic') then
        do i=1_pInt,3_pInt+hypoelasticTableStyle  ! Skip 3 or 4 lines
          read (fileUnit,610,END=620) line
        enddo
@@ -2566,8 +2130,7 @@ subroutine mesh_marc_map_elements(fileUnit)
  implicit none
  integer(pInt), intent(in) :: fileUnit
 
- integer(pInt), parameter :: MAXNCHUNKS = 1_pInt
- integer(pInt), dimension (1_pInt+2_pInt*MAXNCHUNKS) :: myPos
+ integer(pInt), allocatable, dimension(:) :: chunkPos
  character(len=300) line
 
  integer(pInt), dimension (1_pInt+mesh_NcpElems) :: contInts
@@ -2580,8 +2143,8 @@ subroutine mesh_marc_map_elements(fileUnit)
  rewind(fileUnit)
  do
    read (fileUnit,610,END=660) line
-   myPos = IO_stringPos(line,MAXNCHUNKS)
-   if( IO_lc(IO_stringValue(line,myPos,1_pInt)) == 'hypoelastic' ) then
+   chunkPos = IO_stringPos(line)
+   if( IO_lc(IO_stringValue(line,chunkPos,1_pInt)) == 'hypoelastic' ) then
      do i=1_pInt,3_pInt+hypoelasticTableStyle                                                       ! skip three (or four if new table style!) lines
        read (fileUnit,610,END=660) line 
      enddo
@@ -2615,8 +2178,7 @@ subroutine mesh_marc_map_nodes(fileUnit)
  implicit none
  integer(pInt), intent(in) :: fileUnit
 
- integer(pInt), parameter :: MAXNCHUNKS = 1_pInt
- integer(pInt), dimension (1_pInt+2_pInt*MAXNCHUNKS) :: myPos
+ integer(pInt), allocatable, dimension(:) :: chunkPos
  character(len=300) line
 
  integer(pInt), dimension (mesh_Nnodes) :: node_count
@@ -2631,8 +2193,8 @@ subroutine mesh_marc_map_nodes(fileUnit)
  rewind(fileUnit)
  do
    read (fileUnit,610,END=650) line
-   myPos = IO_stringPos(line,MAXNCHUNKS)
-   if( IO_lc(IO_stringValue(line,myPos,1_pInt)) == 'coordinates' ) then
+   chunkPos = IO_stringPos(line)
+   if( IO_lc(IO_stringValue(line,chunkPos,1_pInt)) == 'coordinates' ) then
      read (fileUnit,610,END=650) line                                                               ! skip crap line
      do i = 1_pInt,mesh_Nnodes
        read (fileUnit,610,END=650) line
@@ -2665,8 +2227,7 @@ subroutine mesh_marc_build_nodes(fileUnit)
  integer(pInt), intent(in) :: fileUnit
 
  integer(pInt), dimension(5), parameter :: node_ends = int([0,10,30,50,70],pInt)
- integer(pInt), parameter :: MAXNCHUNKS = 1_pInt
- integer(pInt), dimension (1_pInt+2_pInt*MAXNCHUNKS) :: myPos
+ integer(pInt), allocatable, dimension(:) :: chunkPos
  character(len=300) :: line
  integer(pInt) :: i,j,m
 
@@ -2678,8 +2239,8 @@ subroutine mesh_marc_build_nodes(fileUnit)
  rewind(fileUnit)
  do
    read (fileUnit,610,END=670) line
-   myPos = IO_stringPos(line,MAXNCHUNKS)
-   if( IO_lc(IO_stringValue(line,myPos,1_pInt)) == 'coordinates' ) then
+   chunkPos = IO_stringPos(line)
+   if( IO_lc(IO_stringValue(line,chunkPos,1_pInt)) == 'coordinates' ) then
      read (fileUnit,610,END=670) line                                                               ! skip crap line
      do i=1_pInt,mesh_Nnodes
        read (fileUnit,610,END=670) line
@@ -2713,8 +2274,7 @@ subroutine mesh_marc_count_cpSizes(fileUnit)
  implicit none
  integer(pInt), intent(in) :: fileUnit
  
- integer(pInt), parameter :: MAXNCHUNKS = 2_pInt
- integer(pInt), dimension (1_pInt+2_pInt*MAXNCHUNKS) :: myPos
+ integer(pInt), allocatable, dimension(:) :: chunkPos
  character(len=300) :: line
  integer(pInt) :: i,t,g,e,c
 
@@ -2727,22 +2287,22 @@ subroutine mesh_marc_count_cpSizes(fileUnit)
  rewind(fileUnit)
  do
    read (fileUnit,610,END=630) line
-   myPos = IO_stringPos(line,MAXNCHUNKS)
-   if( IO_lc(IO_stringValue(line,myPos,1_pInt)) == 'connectivity' ) then
+   chunkPos = IO_stringPos(line)
+   if( IO_lc(IO_stringValue(line,chunkPos,1_pInt)) == 'connectivity' ) then
      read (fileUnit,610,END=630) line                                                               ! Garbage line
      do i=1_pInt,mesh_Nelems                                                                        ! read all elements
        read (fileUnit,610,END=630) line
-       myPos = IO_stringPos(line,MAXNCHUNKS)                                                        ! limit to id and type
-       e = mesh_FEasCP('elem',IO_intValue(line,myPos,1_pInt))
+       chunkPos = IO_stringPos(line)                                                        ! limit to id and type
+       e = mesh_FEasCP('elem',IO_intValue(line,chunkPos,1_pInt))
        if (e /= 0_pInt) then
-         t = FE_mapElemtype(IO_stringValue(line,myPos,2_pInt))
+         t = FE_mapElemtype(IO_stringValue(line,chunkPos,2_pInt))
          g = FE_geomtype(t)
          c = FE_celltype(g)
          mesh_maxNnodes =       max(mesh_maxNnodes,FE_Nnodes(t))
          mesh_maxNips =         max(mesh_maxNips,FE_Nips(g))
          mesh_maxNipNeighbors = max(mesh_maxNipNeighbors,FE_NipNeighbors(c))
          mesh_maxNcellnodes =   max(mesh_maxNcellnodes,FE_Ncellnodes(g))
-         call IO_skipChunks(fileUnit,FE_Nnodes(t)-(myPos(1_pInt)-2_pInt))                           ! read on if FE_Nnodes exceeds node count present on current line
+         call IO_skipChunks(fileUnit,FE_Nnodes(t)-(chunkPos(1_pInt)-2_pInt))                           ! read on if FE_Nnodes exceeds node count present on current line
        endif
      enddo
      exit
@@ -2769,8 +2329,7 @@ subroutine mesh_marc_build_elements(fileUnit)
  implicit none
  integer(pInt), intent(in) :: fileUnit
 
- integer(pInt), parameter :: MAXNCHUNKS = 66_pInt                                                   ! limit to 64 nodes max (plus ID, type)
- integer(pInt), dimension (1_pInt+2_pInt*MAXNCHUNKS) :: myPos
+ integer(pInt), allocatable, dimension(:) :: chunkPos
  character(len=300) line
 
  integer(pInt), dimension(1_pInt+mesh_NcpElems) :: contInts
@@ -2783,30 +2342,30 @@ subroutine mesh_marc_build_elements(fileUnit)
  rewind(fileUnit)
  do
    read (fileUnit,610,END=620) line
-   myPos(1:1+2*1) = IO_stringPos(line,1_pInt)
-   if( IO_lc(IO_stringValue(line,myPos,1_pInt)) == 'connectivity' ) then
+   chunkPos(1:1+2*1) = IO_stringPos(line)
+   if( IO_lc(IO_stringValue(line,chunkPos,1_pInt)) == 'connectivity' ) then
      read (fileUnit,610,END=620) line                                                               ! garbage line
      do i = 1_pInt,mesh_Nelems
        read (fileUnit,610,END=620) line
-       myPos = IO_stringPos(line,MAXNCHUNKS)
-       e = mesh_FEasCP('elem',IO_intValue(line,myPos,1_pInt))
+       chunkPos = IO_stringPos(line)
+       e = mesh_FEasCP('elem',IO_intValue(line,chunkPos,1_pInt))
        if (e /= 0_pInt) then                                                                        ! disregard non CP elems
-         mesh_element(1,e) = IO_IntValue (line,myPos,1_pInt)                                        ! FE id
-         t = FE_mapElemtype(IO_StringValue(line,myPos,2_pInt))                                      ! elem type
+         mesh_element(1,e) = IO_IntValue (line,chunkPos,1_pInt)                                        ! FE id
+         t = FE_mapElemtype(IO_StringValue(line,chunkPos,2_pInt))                                      ! elem type
          mesh_element(2,e) = t
          nNodesAlreadyRead = 0_pInt
-         do j = 1_pInt,myPos(1)-2_pInt
-           mesh_element(4_pInt+j,e) = mesh_FEasCP('node',IO_IntValue(line,myPos,j+2_pInt))          ! CP ids of nodes
+         do j = 1_pInt,chunkPos(1)-2_pInt
+           mesh_element(4_pInt+j,e) = mesh_FEasCP('node',IO_IntValue(line,chunkPos,j+2_pInt))          ! CP ids of nodes
          enddo  
-         nNodesAlreadyRead = myPos(1) - 2_pInt
+         nNodesAlreadyRead = chunkPos(1) - 2_pInt
          do while(nNodesAlreadyRead < FE_Nnodes(t))                                                 ! read on if not all nodes in one line
            read (fileUnit,610,END=620) line
-           myPos = IO_stringPos(line,MAXNCHUNKS)
-           do j = 1_pInt,myPos(1)
+           chunkPos = IO_stringPos(line)
+           do j = 1_pInt,chunkPos(1)
              mesh_element(4_pInt+nNodesAlreadyRead+j,e) &
-               = mesh_FEasCP('node',IO_IntValue(line,myPos,j))                                      ! CP ids of nodes
+               = mesh_FEasCP('node',IO_IntValue(line,chunkPos,j))                                      ! CP ids of nodes
            enddo
-           nNodesAlreadyRead = nNodesAlreadyRead + myPos(1)
+           nNodesAlreadyRead = nNodesAlreadyRead + chunkPos(1)
          enddo
        endif
      enddo
@@ -2817,17 +2376,17 @@ subroutine mesh_marc_build_elements(fileUnit)
 620 rewind(fileUnit)                                                                                ! just in case "initial state" appears before "connectivity"
  read (fileUnit,610,END=620) line
  do
-   myPos(1:1+2*2) = IO_stringPos(line,2_pInt)
-   if( (IO_lc(IO_stringValue(line,myPos,1_pInt)) == 'initial') .and. &
-       (IO_lc(IO_stringValue(line,myPos,2_pInt)) == 'state') ) then
+   chunkPos(1:1+2*2) = IO_stringPos(line)
+   if( (IO_lc(IO_stringValue(line,chunkPos,1_pInt)) == 'initial') .and. &
+       (IO_lc(IO_stringValue(line,chunkPos,2_pInt)) == 'state') ) then
      if (initialcondTableStyle == 2_pInt) read (fileUnit,610,END=620) line                          ! read extra line for new style
      read (fileUnit,610,END=630) line                                                               ! read line with index of state var
-     myPos(1:1+2*1) = IO_stringPos(line,1_pInt)
-     sv = IO_IntValue(line,myPos,1_pInt)                                                            ! figure state variable index
+     chunkPos(1:1+2*1) = IO_stringPos(line)
+     sv = IO_IntValue(line,chunkPos,1_pInt)                                                            ! figure state variable index
      if( (sv == 2_pInt).or.(sv == 3_pInt) ) then                                                    ! only state vars 2 and 3 of interest
        read (fileUnit,610,END=620) line                                                             ! read line with value of state var
-       myPos(1:1+2*1) = IO_stringPos(line,1_pInt)
-       do while (scan(IO_stringValue(line,myPos,1_pInt),'+-',back=.true.)>1)                        ! is noEfloat value?
+       chunkPos(1:1+2*1) = IO_stringPos(line)
+       do while (scan(IO_stringValue(line,chunkPos,1_pInt),'+-',back=.true.)>1)                        ! is noEfloat value?
          myVal = nint(IO_fixedNoEFloatValue(line,[0_pInt,20_pInt],1_pInt),pInt)                     ! state var's value
          mesh_maxValStateVar(sv-1_pInt) = max(myVal,mesh_maxValStateVar(sv-1_pInt))                 ! remember max val of homogenization and microstructure index
          if (initialcondTableStyle == 2_pInt) then
@@ -2842,7 +2401,7 @@ subroutine mesh_marc_build_elements(fileUnit)
          enddo
          if (initialcondTableStyle == 0_pInt) read (fileUnit,610,END=620) line                      ! ignore IP range for old table style
          read (fileUnit,610,END=630) line
-         myPos(1:1+2*1) = IO_stringPos(line,1_pInt)
+         chunkPos(1:1+2*1) = IO_stringPos(line)
        enddo
      endif
    else   
@@ -2869,8 +2428,7 @@ subroutine mesh_abaqus_count_nodesAndElements(fileUnit)
  implicit none
  integer(pInt), intent(in) :: fileUnit
  
- integer(pInt), parameter :: MAXNCHUNKS = 2_pInt
- integer(pInt), dimension (1+2*MAXNCHUNKS) :: myPos
+ integer(pInt), allocatable, dimension(:) :: chunkPos
  character(len=300) :: line
  logical :: inPart
 
@@ -2883,26 +2441,26 @@ subroutine mesh_abaqus_count_nodesAndElements(fileUnit)
  rewind(fileUnit)
  do 
    read (fileUnit,610,END=620) line
-   myPos = IO_stringPos(line,MAXNCHUNKS)
-   if ( IO_lc(IO_stringValue(line,myPos,1_pInt)) == '*part' ) inPart = .true.
-   if ( IO_lc(IO_stringValue(line,myPos,1_pInt)) == '*end' .and. &
-        IO_lc(IO_stringValue(line,myPos,2_pInt)) == 'part' ) inPart = .false.
+   chunkPos = IO_stringPos(line)
+   if ( IO_lc(IO_stringValue(line,chunkPos,1_pInt)) == '*part' ) inPart = .true.
+   if ( IO_lc(IO_stringValue(line,chunkPos,1_pInt)) == '*end' .and. &
+        IO_lc(IO_stringValue(line,chunkPos,2_pInt)) == 'part' ) inPart = .false.
    
    if (inPart .or. noPart) then
-     select case ( IO_lc(IO_stringValue(line,myPos,1_pInt)))
+     select case ( IO_lc(IO_stringValue(line,chunkPos,1_pInt)))
        case('*node')
           if( &
-              IO_lc(IO_stringValue(line,myPos,2_pInt)) /= 'output'   .and. &
-              IO_lc(IO_stringValue(line,myPos,2_pInt)) /= 'print'    .and. &
-              IO_lc(IO_stringValue(line,myPos,2_pInt)) /= 'file'     .and. &
-              IO_lc(IO_stringValue(line,myPos,2_pInt)) /= 'response' &
+              IO_lc(IO_stringValue(line,chunkPos,2_pInt)) /= 'output'   .and. &
+              IO_lc(IO_stringValue(line,chunkPos,2_pInt)) /= 'print'    .and. &
+              IO_lc(IO_stringValue(line,chunkPos,2_pInt)) /= 'file'     .and. &
+              IO_lc(IO_stringValue(line,chunkPos,2_pInt)) /= 'response' &
              ) &
             mesh_Nnodes = mesh_Nnodes + IO_countDataLines(fileUnit)
        case('*element')
           if( &
-              IO_lc(IO_stringValue(line,myPos,2_pInt)) /= 'output'   .and. &
-              IO_lc(IO_stringValue(line,myPos,2_pInt)) /= 'matrix'   .and. &
-              IO_lc(IO_stringValue(line,myPos,2_pInt)) /= 'response' &
+              IO_lc(IO_stringValue(line,chunkPos,2_pInt)) /= 'output'   .and. &
+              IO_lc(IO_stringValue(line,chunkPos,2_pInt)) /= 'matrix'   .and. &
+              IO_lc(IO_stringValue(line,chunkPos,2_pInt)) /= 'response' &
              ) then
             mesh_Nelems = mesh_Nelems + IO_countDataLines(fileUnit)
           endif
@@ -2930,8 +2488,7 @@ subroutine mesh_abaqus_count_elementSets(fileUnit)
  implicit none
  integer(pInt), intent(in) :: fileUnit
 
- integer(pInt), parameter :: MAXNCHUNKS = 2_pInt
- integer(pInt), dimension (1+2*MAXNCHUNKS) :: myPos
+ integer(pInt), allocatable, dimension(:) :: chunkPos
  character(len=300) :: line
  logical :: inPart
  
@@ -2944,12 +2501,12 @@ subroutine mesh_abaqus_count_elementSets(fileUnit)
  rewind(fileUnit)
  do 
    read (fileUnit,610,END=620) line
-   myPos = IO_stringPos(line,MAXNCHUNKS)
-   if ( IO_lc(IO_stringValue(line,myPos,1_pInt)) == '*part' ) inPart = .true.
-   if ( IO_lc(IO_stringValue(line,myPos,1_pInt)) == '*end' .and. &
-        IO_lc(IO_stringValue(line,myPos,2_pInt)) == 'part' ) inPart = .false.
+   chunkPos = IO_stringPos(line)
+   if ( IO_lc(IO_stringValue(line,chunkPos,1_pInt)) == '*part' ) inPart = .true.
+   if ( IO_lc(IO_stringValue(line,chunkPos,1_pInt)) == '*end' .and. &
+        IO_lc(IO_stringValue(line,chunkPos,2_pInt)) == 'part' ) inPart = .false.
    
-   if ( (inPart .or. noPart) .and. IO_lc(IO_stringValue(line,myPos,1_pInt)) == '*elset' ) &
+   if ( (inPart .or. noPart) .and. IO_lc(IO_stringValue(line,chunkPos,1_pInt)) == '*elset' ) &
      mesh_NelemSets = mesh_NelemSets + 1_pInt
  enddo
 
@@ -2974,8 +2531,7 @@ subroutine mesh_abaqus_count_materials(fileUnit)
  implicit none
  integer(pInt), intent(in) :: fileUnit
  
- integer(pInt), parameter :: MAXNCHUNKS = 2_pInt
- integer(pInt), dimension (1_pInt+2_pInt*MAXNCHUNKS) :: myPos
+ integer(pInt), allocatable, dimension(:) :: chunkPos
  character(len=300) :: line
  logical inPart
  
@@ -2987,14 +2543,14 @@ subroutine mesh_abaqus_count_materials(fileUnit)
  rewind(fileUnit)
  do 
    read (fileUnit,610,END=620) line
-   myPos = IO_stringPos(line,MAXNCHUNKS)
-   if ( IO_lc(IO_stringValue(line,myPos,1_pInt)) == '*part' ) inPart = .true.
-   if ( IO_lc(IO_stringValue(line,myPos,1_pInt)) == '*end' .and. &
-        IO_lc(IO_stringValue(line,myPos,2_pInt)) == 'part' ) inPart = .false.
+   chunkPos = IO_stringPos(line)
+   if ( IO_lc(IO_stringValue(line,chunkPos,1_pInt)) == '*part' ) inPart = .true.
+   if ( IO_lc(IO_stringValue(line,chunkPos,1_pInt)) == '*end' .and. &
+        IO_lc(IO_stringValue(line,chunkPos,2_pInt)) == 'part' ) inPart = .false.
 
    if ( (inPart .or. noPart) .and. &
-        IO_lc(IO_StringValue(line,myPos,1_pInt)) == '*solid' .and. &
-        IO_lc(IO_StringValue(line,myPos,2_pInt)) == 'section' ) &
+        IO_lc(IO_StringValue(line,chunkPos,1_pInt)) == '*solid' .and. &
+        IO_lc(IO_StringValue(line,chunkPos,2_pInt)) == 'section' ) &
      mesh_Nmaterials = mesh_Nmaterials + 1_pInt
  enddo
 
@@ -3020,8 +2576,7 @@ subroutine mesh_abaqus_map_elementSets(fileUnit)
  implicit none
  integer(pInt), intent(in) :: fileUnit
 
- integer(pInt), parameter :: MAXNCHUNKS = 4_pInt
- integer(pInt), dimension (1_pInt+2_pInt*MAXNCHUNKS) :: myPos
+ integer(pInt), allocatable, dimension(:) :: chunkPos
  character(len=300) :: line
  integer(pInt) :: elemSet = 0_pInt,i
  logical :: inPart = .false.
@@ -3035,14 +2590,14 @@ subroutine mesh_abaqus_map_elementSets(fileUnit)
  rewind(fileUnit)
  do
    read (fileUnit,610,END=640) line
-   myPos = IO_stringPos(line,MAXNCHUNKS)
-   if ( IO_lc(IO_stringValue(line,myPos,1_pInt)) == '*part' ) inPart = .true.
-   if ( IO_lc(IO_stringValue(line,myPos,1_pInt)) == '*end' .and. &
-        IO_lc(IO_stringValue(line,myPos,2_pInt)) == 'part' ) inPart = .false.
+   chunkPos = IO_stringPos(line)
+   if ( IO_lc(IO_stringValue(line,chunkPos,1_pInt)) == '*part' ) inPart = .true.
+   if ( IO_lc(IO_stringValue(line,chunkPos,1_pInt)) == '*end' .and. &
+        IO_lc(IO_stringValue(line,chunkPos,2_pInt)) == 'part' ) inPart = .false.
    
-   if ( (inPart .or. noPart) .and. IO_lc(IO_stringValue(line,myPos,1_pInt)) == '*elset' ) then
+   if ( (inPart .or. noPart) .and. IO_lc(IO_stringValue(line,chunkPos,1_pInt)) == '*elset' ) then
      elemSet = elemSet + 1_pInt
-     mesh_nameElemSet(elemSet)  = trim(IO_extractValue(IO_lc(IO_stringValue(line,myPos,2_pInt)),'elset'))
+     mesh_nameElemSet(elemSet)  = trim(IO_extractValue(IO_lc(IO_stringValue(line,chunkPos,2_pInt)),'elset'))
      mesh_mapElemSet(:,elemSet) = IO_continuousIntValues(fileUnit,mesh_Nelems,mesh_nameElemSet,&
                                           mesh_mapElemSet,elemSet-1_pInt)
    endif
@@ -3071,8 +2626,7 @@ subroutine mesh_abaqus_map_materials(fileUnit)
  implicit none
  integer(pInt), intent(in) :: fileUnit
 
- integer(pInt), parameter :: MAXNCHUNKS = 20_pInt
- integer(pInt), dimension (1_pInt+2_pInt*MAXNCHUNKS) :: myPos
+ integer(pInt), allocatable, dimension(:) :: chunkPos
  character(len=300) line
 
  integer(pInt) :: i,c = 0_pInt
@@ -3087,23 +2641,23 @@ subroutine mesh_abaqus_map_materials(fileUnit)
  rewind(fileUnit)
  do 
    read (fileUnit,610,END=620) line
-   myPos = IO_stringPos(line,MAXNCHUNKS)
-   if ( IO_lc(IO_stringValue(line,myPos,1_pInt)) == '*part' ) inPart = .true.
-   if ( IO_lc(IO_stringValue(line,myPos,1_pInt)) == '*end' .and. &
-        IO_lc(IO_stringValue(line,myPos,2_pInt)) == 'part' ) inPart = .false.
+   chunkPos = IO_stringPos(line)
+   if ( IO_lc(IO_stringValue(line,chunkPos,1_pInt)) == '*part' ) inPart = .true.
+   if ( IO_lc(IO_stringValue(line,chunkPos,1_pInt)) == '*end' .and. &
+        IO_lc(IO_stringValue(line,chunkPos,2_pInt)) == 'part' ) inPart = .false.
 
    if ( (inPart .or. noPart) .and. &
-        IO_lc(IO_StringValue(line,myPos,1_pInt)) == '*solid' .and. &
-        IO_lc(IO_StringValue(line,myPos,2_pInt)) == 'section' ) then
+        IO_lc(IO_StringValue(line,chunkPos,1_pInt)) == '*solid' .and. &
+        IO_lc(IO_StringValue(line,chunkPos,2_pInt)) == 'section' ) then
 
      elemSetName = ''
      materialName = ''
 
-     do i = 3_pInt,myPos(1_pInt)
-       if (IO_extractValue(IO_lc(IO_stringValue(line,myPos,i)),'elset') /= '') &
-         elemSetName = trim(IO_extractValue(IO_lc(IO_stringValue(line,myPos,i)),'elset'))
-       if (IO_extractValue(IO_lc(IO_stringValue(line,myPos,i)),'material') /= '') &
-         materialName = trim(IO_extractValue(IO_lc(IO_stringValue(line,myPos,i)),'material'))
+     do i = 3_pInt,chunkPos(1_pInt)
+       if (IO_extractValue(IO_lc(IO_stringValue(line,chunkPos,i)),'elset') /= '') &
+         elemSetName = trim(IO_extractValue(IO_lc(IO_stringValue(line,chunkPos,i)),'elset'))
+       if (IO_extractValue(IO_lc(IO_stringValue(line,chunkPos,i)),'material') /= '') &
+         materialName = trim(IO_extractValue(IO_lc(IO_stringValue(line,chunkPos,i)),'material'))
      enddo
 
      if (elemSetName /= '' .and. materialName /= '') then
@@ -3136,8 +2690,7 @@ subroutine mesh_abaqus_count_cpElements(fileUnit)
  implicit none
  integer(pInt), intent(in) :: fileUnit
  
- integer(pInt), parameter :: MAXNCHUNKS = 2_pInt
- integer(pInt), dimension (1+2*MAXNCHUNKS) :: myPos
+ integer(pInt), allocatable, dimension(:) :: chunkPos
  character(len=300) line
  integer(pInt) :: i,k
  logical :: materialFound = .false.
@@ -3150,13 +2703,13 @@ subroutine mesh_abaqus_count_cpElements(fileUnit)
  rewind(fileUnit)
  do 
    read (fileUnit,610,END=620) line
-   myPos = IO_stringPos(line,MAXNCHUNKS)
-   select case ( IO_lc(IO_stringValue(line,myPos,1_pInt)) )
+   chunkPos = IO_stringPos(line)
+   select case ( IO_lc(IO_stringValue(line,chunkPos,1_pInt)) )
      case('*material')
-       materialName = trim(IO_extractValue(IO_lc(IO_stringValue(line,myPos,2_pInt)),'name'))        ! extract name=value
+       materialName = trim(IO_extractValue(IO_lc(IO_stringValue(line,chunkPos,2_pInt)),'name'))        ! extract name=value
        materialFound = materialName /= ''                                                           ! valid name?
      case('*user')
-       if (IO_lc(IO_StringValue(line,myPos,2_pInt)) == 'material' .and. materialFound) then
+       if (IO_lc(IO_StringValue(line,chunkPos,2_pInt)) == 'material' .and. materialFound) then
          do i = 1_pInt,mesh_Nmaterials                                                              ! look thru material names
            if (materialName == mesh_nameMaterial(i)) then                                           ! found one
              elemSetName = mesh_mapMaterial(i)                                                      ! take corresponding elemSet
@@ -3192,8 +2745,7 @@ subroutine mesh_abaqus_map_elements(fileUnit)
  implicit none
  integer(pInt), intent(in) :: fileUnit
 
- integer(pInt), parameter :: MAXNCHUNKS = 2_pInt
- integer(pInt), dimension (1_pInt+2_pInt*MAXNCHUNKS) :: myPos
+ integer(pInt), allocatable, dimension(:) :: chunkPos
  character(len=300) :: line
  integer(pInt) ::i,j,k,cpElem = 0_pInt
  logical :: materialFound = .false.
@@ -3206,13 +2758,13 @@ subroutine mesh_abaqus_map_elements(fileUnit)
  rewind(fileUnit)
  do 
    read (fileUnit,610,END=660) line
-   myPos = IO_stringPos(line,MAXNCHUNKS)
-   select case ( IO_lc(IO_stringValue(line,myPos,1_pInt)) )
+   chunkPos = IO_stringPos(line)
+   select case ( IO_lc(IO_stringValue(line,chunkPos,1_pInt)) )
      case('*material')
-       materialName = trim(IO_extractValue(IO_lc(IO_stringValue(line,myPos,2_pInt)),'name'))        ! extract name=value
+       materialName = trim(IO_extractValue(IO_lc(IO_stringValue(line,chunkPos,2_pInt)),'name'))        ! extract name=value
        materialFound = materialName /= ''                                                           ! valid name?
      case('*user')
-       if (IO_lc(IO_stringValue(line,myPos,2_pInt)) == 'material' .and. materialFound) then
+       if (IO_lc(IO_stringValue(line,chunkPos,2_pInt)) == 'material' .and. materialFound) then
          do i = 1_pInt,mesh_Nmaterials                                                              ! look thru material names
            if (materialName == mesh_nameMaterial(i)) then                                           ! found one
              elemSetName = mesh_mapMaterial(i)                                                      ! take corresponding elemSet
@@ -3256,8 +2808,7 @@ subroutine mesh_abaqus_map_nodes(fileUnit)
  implicit none
  integer(pInt), intent(in) :: fileUnit
 
- integer(pInt), parameter :: MAXNCHUNKS = 2_pInt
- integer(pInt), dimension (1_pInt+2_pInt*MAXNCHUNKS) :: myPos
+ integer(pInt), allocatable, dimension(:) :: chunkPos
  character(len=300) line
 
  integer(pInt) :: i,c,cpNode = 0_pInt
@@ -3270,17 +2821,17 @@ subroutine mesh_abaqus_map_nodes(fileUnit)
  rewind(fileUnit)
  do
    read (fileUnit,610,END=650) line
-   myPos = IO_stringPos(line,MAXNCHUNKS)
-   if ( IO_lc(IO_stringValue(line,myPos,1_pInt)) == '*part' ) inPart = .true.
-   if ( IO_lc(IO_stringValue(line,myPos,1_pInt)) == '*end' .and. &
-        IO_lc(IO_stringValue(line,myPos,2_pInt)) == 'part' ) inPart = .false.
+   chunkPos = IO_stringPos(line)
+   if ( IO_lc(IO_stringValue(line,chunkPos,1_pInt)) == '*part' ) inPart = .true.
+   if ( IO_lc(IO_stringValue(line,chunkPos,1_pInt)) == '*end' .and. &
+        IO_lc(IO_stringValue(line,chunkPos,2_pInt)) == 'part' ) inPart = .false.
 
    if( (inPart .or. noPart) .and. &
-       IO_lc(IO_stringValue(line,myPos,1_pInt)) == '*node' .and. &
-       ( IO_lc(IO_stringValue(line,myPos,2_pInt)) /= 'output'   .and. &
-         IO_lc(IO_stringValue(line,myPos,2_pInt)) /= 'print'    .and. &
-         IO_lc(IO_stringValue(line,myPos,2_pInt)) /= 'file'     .and. &
-         IO_lc(IO_stringValue(line,myPos,2_pInt)) /= 'response' ) &
+       IO_lc(IO_stringValue(line,chunkPos,1_pInt)) == '*node' .and. &
+       ( IO_lc(IO_stringValue(line,chunkPos,2_pInt)) /= 'output'   .and. &
+         IO_lc(IO_stringValue(line,chunkPos,2_pInt)) /= 'print'    .and. &
+         IO_lc(IO_stringValue(line,chunkPos,2_pInt)) /= 'file'     .and. &
+         IO_lc(IO_stringValue(line,chunkPos,2_pInt)) /= 'response' ) &
    ) then
      c = IO_countDataLines(fileUnit)
      do i = 1_pInt,c
@@ -3288,9 +2839,9 @@ subroutine mesh_abaqus_map_nodes(fileUnit)
      enddo
      do i = 1_pInt,c
        read (fileUnit,610,END=650) line
-       myPos = IO_stringPos(line,MAXNCHUNKS)
+       chunkPos = IO_stringPos(line)
        cpNode = cpNode + 1_pInt
-       mesh_mapFEtoCPnode(1_pInt,cpNode) = IO_intValue(line,myPos,1_pInt)
+       mesh_mapFEtoCPnode(1_pInt,cpNode) = IO_intValue(line,chunkPos,1_pInt)
        mesh_mapFEtoCPnode(2_pInt,cpNode) = cpNode
      enddo
    endif
@@ -3320,8 +2871,7 @@ subroutine mesh_abaqus_build_nodes(fileUnit)
  implicit none
  integer(pInt), intent(in) :: fileUnit
 
- integer(pInt), parameter :: MAXNCHUNKS = 4_pInt
- integer(pInt), dimension (1_pInt+2_pInt*MAXNCHUNKS) :: myPos
+ integer(pInt), allocatable, dimension(:) :: chunkPos
  character(len=300) :: line
  integer(pInt) :: i,j,m,c
  logical :: inPart
@@ -3335,17 +2885,17 @@ subroutine mesh_abaqus_build_nodes(fileUnit)
  rewind(fileUnit)
  do
    read (fileUnit,610,END=670) line
-   myPos = IO_stringPos(line,MAXNCHUNKS)
-   if ( IO_lc(IO_stringValue(line,myPos,1_pInt)) == '*part' ) inPart = .true.
-   if ( IO_lc(IO_stringValue(line,myPos,1_pInt)) == '*end' .and. &
-        IO_lc(IO_stringValue(line,myPos,2_pInt)) == 'part' ) inPart = .false.
+   chunkPos = IO_stringPos(line)
+   if ( IO_lc(IO_stringValue(line,chunkPos,1_pInt)) == '*part' ) inPart = .true.
+   if ( IO_lc(IO_stringValue(line,chunkPos,1_pInt)) == '*end' .and. &
+        IO_lc(IO_stringValue(line,chunkPos,2_pInt)) == 'part' ) inPart = .false.
 
    if( (inPart .or. noPart) .and. &
-       IO_lc(IO_stringValue(line,myPos,1_pInt)) == '*node' .and. &
-       ( IO_lc(IO_stringValue(line,myPos,2_pInt)) /= 'output'   .and. &
-         IO_lc(IO_stringValue(line,myPos,2_pInt)) /= 'print'    .and. &
-         IO_lc(IO_stringValue(line,myPos,2_pInt)) /= 'file'     .and. &
-         IO_lc(IO_stringValue(line,myPos,2_pInt)) /= 'response' ) &
+       IO_lc(IO_stringValue(line,chunkPos,1_pInt)) == '*node' .and. &
+       ( IO_lc(IO_stringValue(line,chunkPos,2_pInt)) /= 'output'   .and. &
+         IO_lc(IO_stringValue(line,chunkPos,2_pInt)) /= 'print'    .and. &
+         IO_lc(IO_stringValue(line,chunkPos,2_pInt)) /= 'file'     .and. &
+         IO_lc(IO_stringValue(line,chunkPos,2_pInt)) /= 'response' ) &
    ) then
      c = IO_countDataLines(fileUnit)                                                                  ! how many nodes are defined here?
      do i = 1_pInt,c
@@ -3353,10 +2903,10 @@ subroutine mesh_abaqus_build_nodes(fileUnit)
      enddo
      do i = 1_pInt,c
        read (fileUnit,610,END=670) line
-       myPos = IO_stringPos(line,MAXNCHUNKS)
-       m = mesh_FEasCP('node',IO_intValue(line,myPos,1_pInt))
+       chunkPos = IO_stringPos(line)
+       m = mesh_FEasCP('node',IO_intValue(line,chunkPos,1_pInt))
        do j=1_pInt, 3_pInt
-         mesh_node0(j,m) = mesh_unitlength * IO_floatValue(line,myPos,j+1_pInt)
+         mesh_node0(j,m) = mesh_unitlength * IO_floatValue(line,chunkPos,j+1_pInt)
        enddo  
      enddo
    endif
@@ -3386,8 +2936,7 @@ subroutine mesh_abaqus_count_cpSizes(fileUnit)
  implicit none
  integer(pInt), intent(in) :: fileUnit
 
- integer(pInt), parameter :: MAXNCHUNKS = 2_pInt
- integer(pInt), dimension (1_pInt+2_pInt*MAXNCHUNKS) :: myPos
+ integer(pInt), allocatable, dimension(:) :: chunkPos
  character(len=300) :: line
  integer(pInt) :: i,c,t,g
  logical :: inPart
@@ -3403,18 +2952,18 @@ subroutine mesh_abaqus_count_cpSizes(fileUnit)
  rewind(fileUnit)
  do
    read (fileUnit,610,END=620) line
-   myPos = IO_stringPos(line,MAXNCHUNKS)
-   if ( IO_lc(IO_stringValue(line,myPos,1_pInt)) == '*part' ) inPart = .true.
-   if ( IO_lc(IO_stringValue(line,myPos,1_pInt)) == '*end' .and. &
-        IO_lc(IO_stringValue(line,myPos,2_pInt)) == 'part' ) inPart = .false.
+   chunkPos = IO_stringPos(line)
+   if ( IO_lc(IO_stringValue(line,chunkPos,1_pInt)) == '*part' ) inPart = .true.
+   if ( IO_lc(IO_stringValue(line,chunkPos,1_pInt)) == '*end' .and. &
+        IO_lc(IO_stringValue(line,chunkPos,2_pInt)) == 'part' ) inPart = .false.
 
    if( (inPart .or. noPart) .and. &
-       IO_lc(IO_stringValue(line,myPos,1_pInt)) == '*element' .and. &
-       ( IO_lc(IO_stringValue(line,myPos,2_pInt)) /= 'output'   .and. &
-         IO_lc(IO_stringValue(line,myPos,2_pInt)) /= 'matrix'   .and. &
-         IO_lc(IO_stringValue(line,myPos,2_pInt)) /= 'response' ) &
+       IO_lc(IO_stringValue(line,chunkPos,1_pInt)) == '*element' .and. &
+       ( IO_lc(IO_stringValue(line,chunkPos,2_pInt)) /= 'output'   .and. &
+         IO_lc(IO_stringValue(line,chunkPos,2_pInt)) /= 'matrix'   .and. &
+         IO_lc(IO_stringValue(line,chunkPos,2_pInt)) /= 'response' ) &
      ) then
-     t = FE_mapElemtype(IO_extractValue(IO_lc(IO_stringValue(line,myPos,2_pInt)),'type'))           ! remember elem type
+     t = FE_mapElemtype(IO_extractValue(IO_lc(IO_stringValue(line,chunkPos,2_pInt)),'type'))           ! remember elem type
      g = FE_geomtype(t)
      c = FE_celltype(g)
      mesh_maxNnodes =       max(mesh_maxNnodes,FE_Nnodes(t))
@@ -3446,8 +2995,7 @@ subroutine mesh_abaqus_build_elements(fileUnit)
  implicit none
  integer(pInt), intent(in) :: fileUnit
 
- integer(pInt), parameter :: MAXNCHUNKS = 65_pInt
- integer(pInt), dimension (1_pInt+2_pInt*MAXNCHUNKS) :: myPos
+ integer(pInt), allocatable, dimension(:) :: chunkPos
 
  integer(pInt) :: i,j,k,c,e,t,homog,micro, nNodesAlreadyRead
  logical inPart,materialFound
@@ -3462,42 +3010,42 @@ subroutine mesh_abaqus_build_elements(fileUnit)
  rewind(fileUnit)
  do
    read (fileUnit,610,END=620) line
-   myPos(1:1+2*2) = IO_stringPos(line,2_pInt)
-   if ( IO_lc(IO_stringValue(line,myPos,1_pInt)) == '*part' ) inPart = .true.
-   if ( IO_lc(IO_stringValue(line,myPos,1_pInt)) == '*end' .and. &
-        IO_lc(IO_stringValue(line,myPos,2_pInt)) == 'part' ) inPart = .false.
+   chunkPos(1:1+2*2) = IO_stringPos(line)
+   if ( IO_lc(IO_stringValue(line,chunkPos,1_pInt)) == '*part' ) inPart = .true.
+   if ( IO_lc(IO_stringValue(line,chunkPos,1_pInt)) == '*end' .and. &
+        IO_lc(IO_stringValue(line,chunkPos,2_pInt)) == 'part' ) inPart = .false.
 
    if( (inPart .or. noPart) .and. &
-       IO_lc(IO_stringValue(line,myPos,1_pInt)) == '*element' .and. &
-       ( IO_lc(IO_stringValue(line,myPos,2_pInt)) /= 'output'   .and. &
-         IO_lc(IO_stringValue(line,myPos,2_pInt)) /= 'matrix'   .and. &
-         IO_lc(IO_stringValue(line,myPos,2_pInt)) /= 'response' ) &
+       IO_lc(IO_stringValue(line,chunkPos,1_pInt)) == '*element' .and. &
+       ( IO_lc(IO_stringValue(line,chunkPos,2_pInt)) /= 'output'   .and. &
+         IO_lc(IO_stringValue(line,chunkPos,2_pInt)) /= 'matrix'   .and. &
+         IO_lc(IO_stringValue(line,chunkPos,2_pInt)) /= 'response' ) &
      ) then
-     t = FE_mapElemtype(IO_extractValue(IO_lc(IO_stringValue(line,myPos,2_pInt)),'type'))          ! remember elem type
+     t = FE_mapElemtype(IO_extractValue(IO_lc(IO_stringValue(line,chunkPos,2_pInt)),'type'))          ! remember elem type
      c = IO_countDataLines(fileUnit)
      do i = 1_pInt,c
        backspace(fileUnit)
      enddo
      do i = 1_pInt,c
        read (fileUnit,610,END=620) line
-       myPos = IO_stringPos(line,MAXNCHUNKS)                                                       ! limit to 64 nodes max
-       e = mesh_FEasCP('elem',IO_intValue(line,myPos,1_pInt))
+       chunkPos = IO_stringPos(line)                                                       ! limit to 64 nodes max
+       e = mesh_FEasCP('elem',IO_intValue(line,chunkPos,1_pInt))
        if (e /= 0_pInt) then                                                                       ! disregard non CP elems
-         mesh_element(1,e) = IO_intValue(line,myPos,1_pInt)                                        ! FE id
+         mesh_element(1,e) = IO_intValue(line,chunkPos,1_pInt)                                        ! FE id
          mesh_element(2,e) = t                                                                     ! elem type
          nNodesAlreadyRead = 0_pInt
-         do j = 1_pInt,myPos(1)-1_pInt
-           mesh_element(4_pInt+j,e) = mesh_FEasCP('node',IO_intValue(line,myPos,1_pInt+j))         ! put CP ids of nodes to position 5:
+         do j = 1_pInt,chunkPos(1)-1_pInt
+           mesh_element(4_pInt+j,e) = mesh_FEasCP('node',IO_intValue(line,chunkPos,1_pInt+j))         ! put CP ids of nodes to position 5:
          enddo
-         nNodesAlreadyRead = myPos(1) - 1_pInt
+         nNodesAlreadyRead = chunkPos(1) - 1_pInt
          do while(nNodesAlreadyRead < FE_Nnodes(t))                                                ! read on if not all nodes in one line
            read (fileUnit,610,END=620) line
-           myPos = IO_stringPos(line,MAXNCHUNKS)
-           do j = 1_pInt,myPos(1)
+           chunkPos = IO_stringPos(line)
+           do j = 1_pInt,chunkPos(1)
              mesh_element(4_pInt+nNodesAlreadyRead+j,e) &
-               = mesh_FEasCP('node',IO_IntValue(line,myPos,j))                                     ! CP ids of nodes
+               = mesh_FEasCP('node',IO_IntValue(line,chunkPos,j))                                     ! CP ids of nodes
            enddo
-           nNodesAlreadyRead = nNodesAlreadyRead + myPos(1)
+           nNodesAlreadyRead = nNodesAlreadyRead + chunkPos(1)
          enddo
        endif
      enddo
@@ -3510,18 +3058,18 @@ subroutine mesh_abaqus_build_elements(fileUnit)
  materialFound = .false.
  do 
    read (fileUnit,610,END=630) line
-   myPos = IO_stringPos(line,MAXNCHUNKS)
-   select case ( IO_lc(IO_StringValue(line,myPos,1_pInt)))
+   chunkPos = IO_stringPos(line)
+   select case ( IO_lc(IO_StringValue(line,chunkPos,1_pInt)))
      case('*material')
-       materialName = trim(IO_extractValue(IO_lc(IO_StringValue(line,myPos,2_pInt)),'name'))        ! extract name=value
+       materialName = trim(IO_extractValue(IO_lc(IO_StringValue(line,chunkPos,2_pInt)),'name'))        ! extract name=value
        materialFound = materialName /= ''                                                           ! valid name?
      case('*user')
-       if ( IO_lc(IO_StringValue(line,myPos,2_pInt)) == 'material' .and. &
+       if ( IO_lc(IO_StringValue(line,chunkPos,2_pInt)) == 'material' .and. &
             materialFound ) then
          read (fileUnit,610,END=630) line                                                           ! read homogenization and microstructure
-         myPos(1:1+2*2) = IO_stringPos(line,2_pInt)
-         homog = nint(IO_floatValue(line,myPos,1_pInt),pInt)
-         micro = nint(IO_floatValue(line,myPos,2_pInt),pInt)
+         chunkPos(1:1+2*2) = IO_stringPos(line)
+         homog = nint(IO_floatValue(line,chunkPos,1_pInt),pInt)
+         micro = nint(IO_floatValue(line,chunkPos,2_pInt),pInt)
          do i = 1_pInt,mesh_Nmaterials                                                              ! look thru material names
            if (materialName == mesh_nameMaterial(i)) then                                           ! found one
              elemSetName = mesh_mapMaterial(i)                                                      ! take corresponding elemSet
@@ -3561,8 +3109,7 @@ use IO, only: &
  integer(pInt), intent(in) :: fileUnit
 
 #ifndef Spectral
- integer(pInt), parameter :: MAXNCHUNKS = 5_pInt
- integer(pInt), dimension (1+2*MAXNCHUNKS) :: myPos
+ integer(pInt), allocatable, dimension(:) :: chunkPos
  integer(pInt) chunk, Nchunks
  character(len=300) :: line, damaskOption, v
  character(len=300) :: keyword 
@@ -3582,14 +3129,14 @@ use IO, only: &
  rewind(fileUnit)
  do 
    read (fileUnit,610,END=620) line
-   myPos = IO_stringPos(line,MAXNCHUNKS)
-   Nchunks = myPos(1)
-   if (IO_lc(IO_stringValue(line,myPos,1_pInt)) == keyword .and. Nchunks > 1_pInt) then             ! found keyword for damask option and there is at least one more chunk to read
-     damaskOption = IO_lc(IO_stringValue(line,myPos,2_pInt))
+   chunkPos = IO_stringPos(line)
+   Nchunks = chunkPos(1)
+   if (IO_lc(IO_stringValue(line,chunkPos,1_pInt)) == keyword .and. Nchunks > 1_pInt) then             ! found keyword for damask option and there is at least one more chunk to read
+     damaskOption = IO_lc(IO_stringValue(line,chunkPos,2_pInt))
      select case(damaskOption)
        case('periodic')                                                                             ! damask Option that allows to specify periodic fluxes
          do chunk = 3_pInt,Nchunks                                                                  ! loop through chunks (skipping the keyword)
-            v = IO_lc(IO_stringValue(line,myPos,chunk))                                             ! chunk matches keyvalues x,y, or z?
+            v = IO_lc(IO_stringValue(line,chunkPos,chunk))                                             ! chunk matches keyvalues x,y, or z?
             mesh_periodicSurface(1) = mesh_periodicSurface(1) .or. v == 'x'
             mesh_periodicSurface(2) = mesh_periodicSurface(2) .or. v == 'y'
             mesh_periodicSurface(3) = mesh_periodicSurface(3) .or. v == 'z'

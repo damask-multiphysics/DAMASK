@@ -56,7 +56,6 @@ module IO
    IO_spotTagInPart, &
    IO_globalTagInPart, &
    IO_stringPos, &
-   IO_stringPos2, &
    IO_stringValue, &
    IO_fixedStringValue ,&
    IO_floatValue, &
@@ -538,8 +537,7 @@ logical function IO_abaqus_hasNoPart(fileUnit)
  implicit none
  integer(pInt),    intent(in)                :: fileUnit
 
- integer(pInt),    parameter                 :: MAXNCHUNKS = 1_pInt
- integer(pInt),    dimension(1+2*MAXNCHUNKS) :: myPos
+ integer(pInt), allocatable, dimension(:)    :: chunkPos
  character(len=65536)                        :: line
  
  IO_abaqus_hasNoPart = .true.
@@ -548,8 +546,8 @@ logical function IO_abaqus_hasNoPart(fileUnit)
  rewind(fileUnit)
  do
    read(fileUnit,610,END=620) line
-   myPos = IO_stringPos(line,MAXNCHUNKS)
-   if (IO_lc(IO_stringValue(line,myPos,1_pInt)) == '*part' ) then
+   chunkPos = IO_stringPos(line)
+   if (IO_lc(IO_stringValue(line,chunkPos,1_pInt)) == '*part' ) then
      IO_abaqus_hasNoPart = .false.
      exit
    endif
@@ -566,9 +564,9 @@ function IO_hybridIA(Nast,ODFfileName)
    tol_math_check
 
  implicit none
- integer(pInt),                 intent(in)   :: Nast                                              !< number of samples?
+ integer(pInt),                 intent(in)   :: Nast                                                !< number of samples?
  real(pReal), dimension(3,Nast)              :: IO_hybridIA
- character(len=*),              intent(in)   :: ODFfileName                                       !< name of ODF file including total path
+ character(len=*),              intent(in)   :: ODFfileName                                         !< name of ODF file including total path
   
 !--------------------------------------------------------------------------------------------------
 ! math module is not available
@@ -576,10 +574,10 @@ function IO_hybridIA(Nast,ODFfileName)
  real(pReal),      parameter  :: INRAD = PI/180.0_pReal
 
  integer(pInt) :: i,j,bin,NnonZero,Nset,Nreps,reps,phi1,Phi,phi2
- integer(pInt), dimension(1_pInt + 7_pInt*2_pInt)  :: positions
- integer(pInt), dimension(3)                       :: steps                                         !< number of steps in phi1, Phi, and phi2 direction
- integer(pInt), dimension(4)                       :: columns                                       !< columns in linearODF file where eulerangles and density are located
- integer(pInt), dimension(:), allocatable          :: binSet
+ integer(pInt), allocatable, dimension(:)   :: chunkPos
+ integer(pInt), dimension(3)                :: steps                                                !< number of steps in phi1, Phi, and phi2 direction
+ integer(pInt), dimension(4)                :: columns                                              !< columns in linearODF file where eulerangles and density are located
+ integer(pInt), dimension(:), allocatable   :: binSet
  real(pReal) :: center,sum_dV_V,prob,dg_0,C,lowerC,upperC,rnd
  real(pReal), dimension(2,3)                :: limits                                               !< starting and end values for eulerangles
  real(pReal), dimension(3)                  :: deltas, &                                            !< angular step size in phi1, Phi, and phi2 direction
@@ -597,10 +595,10 @@ function IO_hybridIA(Nast,ODFfileName)
  call IO_open_file(FILEUNIT,ODFfileName)
  headerLength = 0_pInt
  line=IO_read(FILEUNIT)
- positions = IO_stringPos(line,7_pInt)
- keyword = IO_lc(IO_StringValue(line,positions,2_pInt,.true.))
+ chunkPos = IO_stringPos(line)
+ keyword = IO_lc(IO_StringValue(line,chunkPos,2_pInt,.true.))
  if (keyword(1:4) == 'head') then
-   headerLength = IO_intValue(line,positions,1_pInt) + 1_pInt
+   headerLength = IO_intValue(line,chunkPos,1_pInt) + 1_pInt
  else
    call IO_error(error_ID=156_pInt, ext_msg='no header found')
  endif
@@ -611,9 +609,9 @@ function IO_hybridIA(Nast,ODFfileName)
    line=IO_read(FILEUNIT)
  enddo
  columns = 0_pInt
- positions = IO_stringPos(line,7_pInt)             
- do i = 1_pInt, positions(1)
-   select case ( IO_lc(IO_StringValue(line,positions,i,.true.)) )
+ chunkPos = IO_stringPos(line)             
+ do i = 1_pInt, chunkPos(1)
+   select case ( IO_lc(IO_StringValue(line,chunkPos,i,.true.)) )
      case ('phi1')
       columns(1) = i
      case ('phi')
@@ -635,10 +633,10 @@ function IO_hybridIA(Nast,ODFfileName)
 
  line=IO_read(FILEUNIT)
  do while (trim(line) /= IO_EOF)
-   positions = IO_stringPos(line,7_pInt)             
-   eulers=[IO_floatValue(line,positions,columns(1)),&
-           IO_floatValue(line,positions,columns(2)),&
-           IO_floatValue(line,positions,columns(3))]
+   chunkPos = IO_stringPos(line)             
+   eulers=[IO_floatValue(line,chunkPos,columns(1)),&
+           IO_floatValue(line,chunkPos,columns(2)),&
+           IO_floatValue(line,chunkPos,columns(3))]
    steps = steps + merge(1,0,eulers>limits(2,1:3))
    limits(1,1:3) = min(limits(1,1:3),eulers)
    limits(2,1:3) = max(limits(2,1:3),eulers)
@@ -679,14 +677,14 @@ function IO_hybridIA(Nast,ODFfileName)
 
  do phi1=1_pInt,steps(1); do Phi=1_pInt,steps(2); do phi2=1_pInt,steps(3)
    line=IO_read(FILEUNIT)
-   positions = IO_stringPos(line,7_pInt)             
-   eulers=[IO_floatValue(line,positions,columns(1)),&                                               ! read in again for consistency check only
-           IO_floatValue(line,positions,columns(2)),&
-           IO_floatValue(line,positions,columns(3))]*INRAD
+   chunkPos = IO_stringPos(line)             
+   eulers=[IO_floatValue(line,chunkPos,columns(1)),&                                               ! read in again for consistency check only
+           IO_floatValue(line,chunkPos,columns(2)),&
+           IO_floatValue(line,chunkPos,columns(3))]*INRAD
    if (any(abs((real([phi1,phi,phi2],pReal)-1.0_pReal + center)*deltas-eulers)>tol_math_check)) &   ! check if data is in expected order (phi2 fast)
      call IO_error(error_ID = 156_pInt, ext_msg='linear ODF data not in expected order')
 
-   prob = IO_floatValue(line,positions,columns(4))
+   prob = IO_floatValue(line,chunkPos,columns(4))
    if (prob > 0.0_pReal) then
       NnonZero = NnonZero+1_pInt
       sum_dV_V = sum_dV_V+prob
@@ -865,10 +863,9 @@ function IO_countTagInPart(fileUnit,part,tag,Nsections)
  character(len=*),intent(in)                :: part, &                                              !< part in which tag is searched for
                                                tag                                                  !< tag to search for
 
- integer(pInt),   parameter                 :: MAXNCHUNKS = 1_pInt
 
  integer(pInt),   dimension(Nsections)      :: counter
- integer(pInt),   dimension(1+2*MAXNCHUNKS) :: positions
+ integer(pInt), allocatable, dimension(:)   :: chunkPos
  integer(pInt)                              :: section
  character(len=65536)                       :: line
  
@@ -890,8 +887,8 @@ function IO_countTagInPart(fileUnit,part,tag,Nsections)
    endif
    if (IO_getTag(line,'[',']') /= '') section = section + 1_pInt                                    ! found [section] identifier
    if (section > 0) then
-     positions = IO_stringPos(line,MAXNCHUNKS)
-     if (tag == trim(IO_lc(IO_stringValue(line,positions,1_pInt)))) &                               ! match
+     chunkPos = IO_stringPos(line)
+     if (tag == trim(IO_lc(IO_stringValue(line,chunkPos,1_pInt)))) &                                ! match
        counter(section) = counter(section) + 1_pInt
    endif   
  enddo
@@ -913,9 +910,8 @@ function IO_spotTagInPart(fileUnit,part,tag,Nsections)
  character(len=*),intent(in)                :: part, &                                              !< part in which tag is searched for
                                                tag                                                  !< tag to search for
 
- integer(pInt), parameter      :: MAXNCHUNKS = 1_pInt
 
- integer(pInt), dimension(1+2*MAXNCHUNKS) :: positions
+ integer(pInt), allocatable, dimension(:) :: chunkPos
  integer(pInt)                            :: section
  character(len=65536)                     :: line
 
@@ -937,8 +933,8 @@ function IO_spotTagInPart(fileUnit,part,tag,Nsections)
    endif
    if (IO_getTag(line,'[',']') /= '') section = section + 1_pInt                                    ! found [section] identifier
    if (section > 0_pInt) then
-     positions = IO_stringPos(line,MAXNCHUNKS)                                          
-     if (tag == trim(IO_lc(IO_stringValue(line,positions,1_pInt)))) &                               ! matsch                                                                    ! match
+     chunkPos = IO_stringPos(line)                                          
+     if (tag == trim(IO_lc(IO_stringValue(line,chunkPos,1_pInt)))) &                                ! match
        IO_spotTagInPart(section) = .true.
    endif
  enddo
@@ -956,9 +952,8 @@ logical function IO_globalTagInPart(fileUnit,part,tag)
  character(len=*),intent(in)                :: part, &                                              !< part in which tag is searched for
                                                tag                                                  !< tag to search for
 
- integer(pInt), parameter      :: MAXNCHUNKS = 1_pInt
 
- integer(pInt), dimension(1+2*MAXNCHUNKS) :: positions
+ integer(pInt), allocatable, dimension(:) :: chunkPos
  integer(pInt)                            :: section
  character(len=65536)                     :: line
 
@@ -980,8 +975,8 @@ logical function IO_globalTagInPart(fileUnit,part,tag)
    endif
    if (IO_getTag(line,'[',']') /= '') section = section + 1_pInt                                    ! found [section] identifier
    if (section == 0_pInt) then
-     positions = IO_stringPos(line,MAXNCHUNKS)
-     if (tag == trim(IO_lc(IO_stringValue(line,positions,1_pInt)))) &                               ! match
+     chunkPos = IO_stringPos(line)
+     if (tag == trim(IO_lc(IO_stringValue(line,chunkPos,1_pInt)))) &                                ! match
        IO_globalTagInPart = .true.
    endif   
  enddo
@@ -990,33 +985,28 @@ end function IO_globalTagInPart
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief locates at most N space-separated parts in string and returns array containing number of 
-!! parts in string and the left/right positions of at most N to be used by IO_xxxVal
+!> @brief locates all space-separated chunks in given string and returns array containing number 
+!! them and the left/right position to be used by IO_xxxVal
+!! Array size is dynamically adjusted to number of chunks found in string
 !! IMPORTANT: first element contains number of chunks!
 !--------------------------------------------------------------------------------------------------
-pure function IO_stringPos(string,N)
+pure function IO_stringPos(string)
 
  implicit none
- integer(pInt),                           intent(in) :: N                                           !< maximum number of parts
- integer(pInt), dimension(1_pInt+N*2_pInt)           :: IO_stringPos
- character(len=*),                        intent(in) :: string                                      !< string in which parts are searched for
+ integer(pInt), dimension(:), allocatable            :: IO_stringPos
+ character(len=*),                        intent(in) :: string                                      !< string in which chunk positions are searched for
  
  character(len=*), parameter  :: SEP=achar(44)//achar(32)//achar(9)//achar(10)//achar(13)           ! comma and whitespaces
  integer                      :: left, right                                                        ! no pInt (verify and scan return default integer)
 
-
- IO_stringPos = -1_pInt
- IO_stringPos(1) = 0_pInt
+ allocate(IO_stringPos(1), source=0_pInt)
  right = 0
  
  do while (verify(string(right+1:),SEP)>0)
    left  = right + verify(string(right+1:),SEP)
    right = left + scan(string(left:),SEP) - 2
    if ( string(left:left) == '#' ) exit
-   if ( IO_stringPos(1)<N ) then
-     IO_stringPos(1_pInt+IO_stringPos(1)*2_pInt+1_pInt) = int(left, pInt)
-     IO_stringPos(1_pInt+IO_stringPos(1)*2_pInt+2_pInt) = int(right, pInt)
-   endif
+   IO_stringPos = [IO_stringPos,int(left, pInt), int(right, pInt)]
    IO_stringPos(1) = IO_stringPos(1)+1_pInt
  enddo
 
@@ -1024,45 +1014,17 @@ end function IO_stringPos
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief locates at all space-separated parts in string and returns array containing number of 
-!! parts in string and the left/right positions to be used by IO_xxxVal
-!! Array size is dynamically adjusted to number of chunks found in string
-!! IMPORTANT: first element contains number of chunks!
+!> @brief reads string value at myChunk from string
 !--------------------------------------------------------------------------------------------------
-pure function IO_stringPos2(string)
-
- implicit none
- integer(pInt), dimension(:), allocatable            :: IO_stringPos2
- character(len=*),                        intent(in) :: string                                      !< string in which parts are searched for
- 
- character(len=*), parameter  :: SEP=achar(44)//achar(32)//achar(9)//achar(10)//achar(13)           ! comma and whitespaces
- integer                      :: left, right                                                        ! no pInt (verify and scan return default integer)
-
- allocate(IO_stringPos2(1), source=0_pInt)
- right = 0
- 
- do while (verify(string(right+1:),SEP)>0)
-   left  = right + verify(string(right+1:),SEP)
-   right = left + scan(string(left:),SEP) - 2
-   if ( string(left:left) == '#' ) exit
-   IO_stringPos2 = [IO_stringPos2,int(left, pInt), int(right, pInt)]
-   IO_stringPos2(1) = IO_stringPos2(1)+1_pInt
- enddo
-
-end function IO_stringPos2
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief reads string value at myPos from string
-!--------------------------------------------------------------------------------------------------
-function IO_stringValue(string,positions,myPos,silent)
+function IO_stringValue(string,chunkPos,myChunk,silent)
  
  implicit none
- integer(pInt),   dimension(:),                intent(in) :: positions                            !< positions of tags in string
- integer(pInt),                                intent(in) :: myPos                                !< position of desired sub string
- character(len=1+positions(myPos*2+1)-positions(myPos*2)) :: IO_stringValue
- character(len=*),                             intent(in) :: string                               !< raw input with known positions
- logical,                             optional,intent(in) :: silent                               !< switch to trigger verbosity
+ integer(pInt),   dimension(:),                intent(in) :: chunkPos                               !< positions of start and end of each tag/chunk in given string
+ integer(pInt),                                intent(in) :: myChunk                                !< position number of desired chunk
+ character(len=*),                             intent(in) :: string                                 !< raw input with known start and end of each chunk
+ character(len=:), allocatable                            :: IO_stringValue
+
+ logical,                             optional,intent(in) :: silent                                 !< switch to trigger verbosity
  character(len=16), parameter                             :: MYNAME = 'IO_stringValue: '
 
  logical                                                  :: warn
@@ -1074,84 +1036,84 @@ function IO_stringValue(string,positions,myPos,silent)
  endif
  
  IO_stringValue = ''
- if (myPos > positions(1) .or. myPos < 1_pInt) then                                               ! trying to access non-present value
-   if (warn) call IO_warning(201,el=myPos,ext_msg=MYNAME//trim(string))
- else
-   IO_stringValue = string(positions(myPos*2):positions(myPos*2+1))
- endif
+ valuePresent: if (myChunk > chunkPos(1) .or. myChunk < 1_pInt) then
+   if (warn) call IO_warning(201,el=myChunk,ext_msg=MYNAME//trim(string))
+ else valuePresent
+   IO_stringValue = string(chunkPos(myChunk*2):chunkPos(myChunk*2+1))
+ endif valuePresent
 
 end function IO_stringValue
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief reads string value at myPos from fixed format string
+!> @brief reads string value at myChunk from fixed format string
 !--------------------------------------------------------------------------------------------------
-pure function IO_fixedStringValue (string,ends,myPos)
+pure function IO_fixedStringValue (string,ends,myChunk)
  
  implicit none
- integer(pInt),                  intent(in) :: myPos                                              !< position of desired sub string
- integer(pInt),   dimension(:),  intent(in) :: ends                                               !< positions of ends in string
- character(len=ends(myPos+1)-ends(myPos))   :: IO_fixedStringValue 
- character(len=*),               intent(in) :: string                                             !< raw input with known ends
+ integer(pInt),                                intent(in) :: myChunk                                !< position number of desired chunk
+ integer(pInt),   dimension(:),  intent(in)               :: ends                                   !< positions of end of each tag/chunk in given string
+ character(len=ends(myChunk+1)-ends(myChunk))             :: IO_fixedStringValue 
+ character(len=*),               intent(in)               :: string                                 !< raw input with known ends of each chunk
 
- IO_fixedStringValue = string(ends(myPos)+1:ends(myPos+1))
+ IO_fixedStringValue = string(ends(myChunk)+1:ends(myChunk+1))
 
 end function IO_fixedStringValue
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief reads float value at myPos from string
+!> @brief reads float value at myChunk from string
 !--------------------------------------------------------------------------------------------------
-real(pReal) function IO_floatValue (string,positions,myPos)
+real(pReal) function IO_floatValue (string,chunkPos,myChunk)
 
  implicit none
- integer(pInt),   dimension(:),                intent(in) :: positions                            !< positions of tags in string
- integer(pInt),                                intent(in) :: myPos                                !< position of desired sub string
- character(len=*),                             intent(in) :: string                               !< raw input with known positions
+ integer(pInt),   dimension(:),                intent(in) :: chunkPos                               !< positions of start and end of each tag/chunk in given string
+ integer(pInt),                                intent(in) :: myChunk                                !< position number of desired chunk
+ character(len=*),                             intent(in) :: string                                 !< raw input with known start and end of each chunk
  character(len=15),              parameter  :: MYNAME = 'IO_floatValue: '
  character(len=17),              parameter  :: VALIDCHARACTERS = '0123456789eEdD.+-'
 
  IO_floatValue = 0.0_pReal
 
- if (myPos > positions(1) .or. myPos < 1_pInt) then                                               ! trying to access non-present value
-   call IO_warning(201,el=myPos,ext_msg=MYNAME//trim(string))
- else
+ valuePresent: if (myChunk > chunkPos(1) .or. myChunk < 1_pInt) then
+   call IO_warning(201,el=myChunk,ext_msg=MYNAME//trim(string))
+ else  valuePresent
    IO_floatValue = &
-               IO_verifyFloatValue(trim(adjustl(string(positions(myPos*2):positions(myPos*2+1)))),&
+               IO_verifyFloatValue(trim(adjustl(string(chunkPos(myChunk*2):chunkPos(myChunk*2+1)))),&
                                        VALIDCHARACTERS,MYNAME)
- endif
+ endif  valuePresent
 
 end function IO_floatValue
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief reads float value at myPos from fixed format string
+!> @brief reads float value at myChunk from fixed format string
 !--------------------------------------------------------------------------------------------------
-real(pReal) function IO_fixedFloatValue (string,ends,myPos)
+real(pReal) function IO_fixedFloatValue (string,ends,myChunk)
  
  implicit none
- character(len=*),               intent(in) :: string                                             !< raw input with known ends
- integer(pInt),                  intent(in) :: myPos                                              !< position of desired sub string
- integer(pInt),   dimension(:),  intent(in) :: ends                                               !< positions of ends in string
+ character(len=*),               intent(in) :: string                                               !< raw input with known ends of each chunk
+ integer(pInt),                                intent(in) :: myChunk                                !< position number of desired chunk
+ integer(pInt),   dimension(:),  intent(in) :: ends                                                 !< positions of end of each tag/chunk in given string
  character(len=20),              parameter  :: MYNAME = 'IO_fixedFloatValue: '
  character(len=17),              parameter  :: VALIDCHARACTERS = '0123456789eEdD.+-'
 
  IO_fixedFloatValue = &
-                  IO_verifyFloatValue(trim(adjustl(string(ends(myPos)+1_pInt:ends(myPos+1_pInt)))),&
+                  IO_verifyFloatValue(trim(adjustl(string(ends(myChunk)+1_pInt:ends(myChunk+1_pInt)))),&
                                           VALIDCHARACTERS,MYNAME)
 
 end function IO_fixedFloatValue
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief reads float x.y+z value at myPos from format string
+!> @brief reads float x.y+z value at myChunk from format string
 !--------------------------------------------------------------------------------------------------
-real(pReal) function IO_fixedNoEFloatValue (string,ends,myPos)
+real(pReal) function IO_fixedNoEFloatValue (string,ends,myChunk)
 
  implicit none
- character(len=*),               intent(in) :: string                                             !< raw input with known ends
- integer(pInt),                  intent(in) :: myPos                                              !< position of desired sub string
- integer(pInt),   dimension(:),  intent(in) :: ends                                               !< positions of ends in string
+ character(len=*),               intent(in) :: string                                               !< raw input with known ends of each chunk
+ integer(pInt),                                intent(in) :: myChunk                                !< position number of desired chunk
+ integer(pInt),   dimension(:),  intent(in) :: ends                                                 !< positions of end of each tag/chunk in given string
  character(len=22),              parameter  :: MYNAME = 'IO_fixedNoEFloatValue '
  character(len=13),              parameter  :: VALIDBASE = '0123456789.+-'
  character(len=12),              parameter  :: VALIDEXP  = '0123456789+-'
@@ -1160,59 +1122,59 @@ real(pReal) function IO_fixedNoEFloatValue (string,ends,myPos)
  integer(pInt) :: expon
  integer       :: pos_exp
  
- pos_exp = scan(string(ends(myPos)+1:ends(myPos+1)),'+-',back=.true.)
- if (pos_exp > 1) then
-   base  = IO_verifyFloatValue(trim(adjustl(string(ends(myPos)+1_pInt:ends(myPos)+pos_exp-1_pInt))),&
+ pos_exp = scan(string(ends(myChunk)+1:ends(myChunk+1)),'+-',back=.true.)
+ hasExponent: if (pos_exp > 1) then
+   base  = IO_verifyFloatValue(trim(adjustl(string(ends(myChunk)+1_pInt:ends(myChunk)+pos_exp-1_pInt))),&
                                VALIDBASE,MYNAME//'(base): ')
-   expon = IO_verifyIntValue(trim(adjustl(string(ends(myPos)+pos_exp:ends(myPos+1_pInt)))),&
+   expon = IO_verifyIntValue(trim(adjustl(string(ends(myChunk)+pos_exp:ends(myChunk+1_pInt)))),&
                                VALIDEXP,MYNAME//'(exp): ')
- else
-   base  = IO_verifyFloatValue(trim(adjustl(string(ends(myPos)+1_pInt:ends(myPos+1_pInt)))),&
+ else hasExponent
+   base  = IO_verifyFloatValue(trim(adjustl(string(ends(myChunk)+1_pInt:ends(myChunk+1_pInt)))),&
                                VALIDBASE,MYNAME//'(base): ')
    expon = 0_pInt
- endif
+ endif hasExponent
  IO_fixedNoEFloatValue = base*10.0_pReal**real(expon,pReal)
 
 end function IO_fixedNoEFloatValue
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief reads integer value at myPos from string
+!> @brief reads integer value at myChunk from string
 !--------------------------------------------------------------------------------------------------
-integer(pInt) function IO_intValue(string,ends,myPos)
+integer(pInt) function IO_intValue(string,chunkPos,myChunk)
 
  implicit none
- character(len=*),               intent(in) :: string                                             !< raw input with known ends
- integer(pInt),                  intent(in) :: myPos                                              !< position of desired sub string
- integer(pInt),   dimension(:),  intent(in) :: ends                                               !< positions of ends in string
+ character(len=*),                             intent(in) :: string                                 !< raw input with known start and end of each chunk
+ integer(pInt),                                intent(in) :: myChunk                                !< position number of desired chunk
+ integer(pInt),   dimension(:),                intent(in) :: chunkPos                               !< positions of start and end of each tag/chunk in given string
  character(len=13),              parameter  :: MYNAME = 'IO_intValue: '
  character(len=12),              parameter  :: VALIDCHARACTERS = '0123456789+-'
 
  IO_intValue = 0_pInt
 
- if (myPos > ends(1) .or. myPos < 1_pInt) then                                                    ! trying to access non-present value
-   call IO_warning(201,el=myPos,ext_msg=MYNAME//trim(string))
- else
-   IO_intValue = IO_verifyIntValue(trim(adjustl(string(ends(myPos*2):ends(myPos*2+1)))),&
+ valuePresent: if (myChunk > chunkPos(1) .or. myChunk < 1_pInt) then
+   call IO_warning(201,el=myChunk,ext_msg=MYNAME//trim(string))
+ else valuePresent
+   IO_intValue = IO_verifyIntValue(trim(adjustl(string(chunkPos(myChunk*2):chunkPos(myChunk*2+1)))),&
                                    VALIDCHARACTERS,MYNAME)
- endif
+ endif valuePresent
 
 end function IO_intValue
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief reads integer value at myPos from fixed format string
+!> @brief reads integer value at myChunk from fixed format string
 !--------------------------------------------------------------------------------------------------
-integer(pInt) function IO_fixedIntValue(string,ends,myPos)
+integer(pInt) function IO_fixedIntValue(string,ends,myChunk)
  
  implicit none
- character(len=*),               intent(in) :: string                                             !< raw input with known ends
- integer(pInt),                  intent(in) :: myPos                                              !< position of desired sub string
- integer(pInt),   dimension(:),  intent(in) :: ends                                               !< positions of ends in string
+ character(len=*),               intent(in) :: string                                               !< raw input with known ends of each chunk
+ integer(pInt),                                intent(in) :: myChunk                                !< position number of desired chunk
+ integer(pInt),   dimension(:),  intent(in) :: ends                                                 !< positions of end of each tag/chunk in given string
  character(len=20),              parameter  :: MYNAME = 'IO_fixedIntValue: '
  character(len=12),              parameter  :: VALIDCHARACTERS = '0123456789+-'
 
- IO_fixedIntValue = IO_verifyIntValue(trim(adjustl(string(ends(myPos)+1_pInt:ends(myPos+1_pInt)))),&
+ IO_fixedIntValue = IO_verifyIntValue(trim(adjustl(string(ends(myChunk)+1_pInt:ends(myChunk+1_pInt)))),&
                                       VALIDCHARACTERS,MYNAME)
 
 end function IO_fixedIntValue
@@ -1250,10 +1212,7 @@ subroutine IO_skipChunks(fileUnit,N)
  integer(pInt), intent(in)                :: fileUnit, &                                            !< file handle 
                                              N                                                      !< minimum number of chunks to skip 
 
- integer(pInt), parameter                 :: MAXNCHUNKS = 64_pInt
- 
  integer(pInt)                            :: remainingChunks
- integer(pInt), dimension(1+2*MAXNCHUNKS) :: myPos
  character(len=65536)                     :: line
 
  line = ''
@@ -1261,8 +1220,7 @@ subroutine IO_skipChunks(fileUnit,N)
 
  do while (trim(line) /= IO_EOF .and. remainingChunks > 0)
    line = IO_read(fileUnit)
-   myPos = IO_stringPos(line,MAXNCHUNKS)
-   remainingChunks = remainingChunks - myPos(1)
+   remainingChunks = remainingChunks - (size(IO_stringPos(line))-1_pInt)/2_pInt
  enddo
 end subroutine IO_skipChunks
 
@@ -1278,13 +1236,13 @@ character(len=300) pure function IO_extractValue(pair,key)
 
  character(len=*), parameter  :: SEP = achar(61)                                                    ! '='
 
- integer                      :: myPos                                                              ! no pInt (scan returns default integer)
+ integer                      :: myChunk                                                            !< position number of desired chunk
 
  IO_extractValue = ''
 
- myPos = scan(pair,SEP)
- if (myPos > 0 .and. pair(:myPos-1) == key(:myPos-1)) &                                             ! key matches expected key
-   IO_extractValue = pair(myPos+1:)                                                                 ! extract value
+ myChunk = scan(pair,SEP)
+ if (myChunk > 0 .and. pair(:myChunk-1) == key(:myChunk-1)) &                                         
+   IO_extractValue = pair(myChunk+1:)                                                               ! extract value if key matches
 
 end function IO_extractValue
 
@@ -1297,9 +1255,8 @@ integer(pInt) function IO_countDataLines(fileUnit)
  implicit none
  integer(pInt), intent(in)                :: fileUnit                                               !< file handle 
  
- integer(pInt), parameter                 :: MAXNCHUNKS = 1_pInt
 
- integer(pInt), dimension(1+2*MAXNCHUNKS) :: myPos
+ integer(pInt), allocatable, dimension(:) :: chunkPos
  character(len=65536)                     :: line, &
                                              tmp
 
@@ -1308,8 +1265,8 @@ integer(pInt) function IO_countDataLines(fileUnit)
 
  do while (trim(line) /= IO_EOF)
    line = IO_read(fileUnit)
-   myPos = IO_stringPos(line,MAXNCHUNKS)
-   tmp = IO_lc(IO_stringValue(line,myPos,1_pInt))
+   chunkPos = IO_stringPos(line)
+   tmp = IO_lc(IO_stringValue(line,chunkPos,1_pInt))
    if (tmp(1:1) == '*' .and. tmp(2:2) /= '*') then                                                  ! found keyword
      line = IO_read(fileUnit, .true.)                                                               ! reset IO_read                                                                                          
      exit
@@ -1333,11 +1290,10 @@ integer(pInt) function IO_countContinuousIntValues(fileUnit)
  implicit none
  integer(pInt), intent(in) :: fileUnit
  
- integer(pInt), parameter :: MAXNCHUNKS = 8192_pInt
 #ifdef Abaqus 
  integer(pInt)                            :: l,c
 #endif
- integer(pInt), dimension(1+2*MAXNCHUNKS) :: myPos
+ integer(pInt), allocatable, dimension(:) :: chunkPos
  character(len=65536)                     :: line
 
  IO_countContinuousIntValues = 0_pInt
@@ -1346,22 +1302,22 @@ integer(pInt) function IO_countContinuousIntValues(fileUnit)
 #ifndef Abaqus
  do while (trim(line) /= IO_EOF)
    line = IO_read(fileUnit)
-   myPos = IO_stringPos(line,MAXNCHUNKS)
-   if (myPos(1) < 1_pInt) then                                                                      ! empty line
+   chunkPos = IO_stringPos(line)
+   if (chunkPos(1) < 1_pInt) then                                                                   ! empty line
      line = IO_read(fileUnit, .true.)                                                               ! reset IO_read 
      exit
-   elseif (IO_lc(IO_stringValue(line,myPos,2_pInt)) == 'to' ) then                                  ! found range indicator
-     IO_countContinuousIntValues = 1_pInt + IO_intValue(line,myPos,3_pInt) &
-                                          - IO_intValue(line,myPos,1_pInt)
+   elseif (IO_lc(IO_stringValue(line,chunkPos,2_pInt)) == 'to' ) then                               ! found range indicator
+     IO_countContinuousIntValues = 1_pInt + IO_intValue(line,chunkPos,3_pInt) &
+                                          - IO_intValue(line,chunkPos,1_pInt)
      line = IO_read(fileUnit, .true.)                                                               ! reset IO_read 
      exit                                                                                           ! only one single range indicator allowed
-   else if (IO_lc(IO_stringValue(line,myPos,2_pInt)) == 'of' ) then                                 ! found multiple entries indicator
-     IO_countContinuousIntValues = IO_intValue(line,myPos,1_pInt)
+   else if (IO_lc(IO_stringValue(line,chunkPos,2_pInt)) == 'of' ) then                              ! found multiple entries indicator
+     IO_countContinuousIntValues = IO_intValue(line,chunkPos,1_pInt)
      line = IO_read(fileUnit, .true.)                                                               ! reset IO_read 
      exit                                                                                           ! only one single multiplier allowed
    else
-     IO_countContinuousIntValues = IO_countContinuousIntValues+myPos(1)-1_pInt                      ! add line's count when assuming 'c'
-     if ( IO_lc(IO_stringValue(line,myPos,myPos(1))) /= 'c' ) then                                  ! line finished, read last value
+     IO_countContinuousIntValues = IO_countContinuousIntValues+chunkPos(1)-1_pInt                   ! add line's count when assuming 'c'
+     if ( IO_lc(IO_stringValue(line,chunkPos,chunkPos(1))) /= 'c' ) then                            ! line finished, read last value
        IO_countContinuousIntValues = IO_countContinuousIntValues+1_pInt
        line = IO_read(fileUnit, .true.)                                                             ! reset IO_read 
        exit                                                                                         ! data ended
@@ -1378,10 +1334,10 @@ integer(pInt) function IO_countContinuousIntValues(fileUnit)
  do while (trim(line) /= IO_EOF .and. l <= c)                                                       ! ToDo: is this correct
    l = l + 1_pInt
    line = IO_read(fileUnit)
-   myPos = IO_stringPos(line,MAXNCHUNKS)
+   chunkPos = IO_stringPos(line)
    IO_countContinuousIntValues = IO_countContinuousIntValues + 1_pInt + &                           ! assuming range generation
-                                (IO_intValue(line,myPos,2_pInt)-IO_intValue(line,myPos,1_pInt))/&
-                                                     max(1_pInt,IO_intValue(line,myPos,3_pInt))
+                            (IO_intValue(line,chunkPos,2_pInt)-IO_intValue(line,chunkPos,1_pInt))/&
+                                                     max(1_pInt,IO_intValue(line,chunkPos,3_pInt))
  enddo
 #endif
 
@@ -1405,13 +1361,12 @@ function IO_continuousIntValues(fileUnit,maxN,lookupName,lookupMap,lookupMaxN)
                                                   lookupMaxN
  integer(pInt),     dimension(:,:), intent(in) :: lookupMap
  character(len=64), dimension(:),   intent(in) :: lookupName
- integer(pInt), parameter :: MAXNCHUNKS = 8192_pInt
  integer(pInt) :: i
 #ifdef Abaqus
  integer(pInt) :: j,l,c,first,last
 #endif
 
- integer(pInt), dimension(1+2*MAXNCHUNKS) :: myPos
+ integer(pInt), allocatable, dimension(:) :: chunkPos
  character(len=65536) line
  logical rangeGeneration
 
@@ -1421,35 +1376,35 @@ function IO_continuousIntValues(fileUnit,maxN,lookupName,lookupMap,lookupMaxN)
 #ifndef Abaqus
  do
    read(fileUnit,'(A65536)',end=100) line
-   myPos = IO_stringPos(line,MAXNCHUNKS)
-   if (myPos(1) < 1_pInt) then                                                                      ! empty line
+   chunkPos = IO_stringPos(line)
+   if (chunkPos(1) < 1_pInt) then                                                                   ! empty line
      exit
-   elseif (verify(IO_stringValue(line,myPos,1_pInt),'0123456789') > 0) then                         ! a non-int, i.e. set name
+   elseif (verify(IO_stringValue(line,chunkPos,1_pInt),'0123456789') > 0) then                      ! a non-int, i.e. set name
      do i = 1_pInt, lookupMaxN                                                                      ! loop over known set names
-       if (IO_stringValue(line,myPos,1_pInt) == lookupName(i)) then                                 ! found matching name
+       if (IO_stringValue(line,chunkPos,1_pInt) == lookupName(i)) then                              ! found matching name
          IO_continuousIntValues = lookupMap(:,i)                                                    ! return resp. entity list
          exit
        endif
      enddo
      exit
-   else if (myPos(1) > 2_pInt .and. IO_lc(IO_stringValue(line,myPos,2_pInt)) == 'to' ) then         ! found range indicator
-     do i = IO_intValue(line,myPos,1_pInt),IO_intValue(line,myPos,3_pInt)
+   else if (chunkPos(1) > 2_pInt .and. IO_lc(IO_stringValue(line,chunkPos,2_pInt)) == 'to' ) then   ! found range indicator
+     do i = IO_intValue(line,chunkPos,1_pInt),IO_intValue(line,chunkPos,3_pInt)
        IO_continuousIntValues(1) = IO_continuousIntValues(1) + 1_pInt
        IO_continuousIntValues(1+IO_continuousIntValues(1)) = i
      enddo
      exit
-   else if (myPos(1) > 2_pInt .and. IO_lc(IO_stringValue(line,myPos,2_pInt)) == 'of' ) then         ! found multiple entries indicator
-     IO_continuousIntValues(1) = IO_intValue(line,myPos,1_pInt)
-     IO_continuousIntValues(2:IO_continuousIntValues(1)+1) = IO_intValue(line,myPos,3_pInt)
+   else if (chunkPos(1) > 2_pInt .and. IO_lc(IO_stringValue(line,chunkPos,2_pInt)) == 'of' ) then   ! found multiple entries indicator
+     IO_continuousIntValues(1) = IO_intValue(line,chunkPos,1_pInt)
+     IO_continuousIntValues(2:IO_continuousIntValues(1)+1) = IO_intValue(line,chunkPos,3_pInt)
      exit
    else
-     do i = 1_pInt,myPos(1)-1_pInt                                                                  ! interpret up to second to last value
+     do i = 1_pInt,chunkPos(1)-1_pInt                                                               ! interpret up to second to last value
        IO_continuousIntValues(1) = IO_continuousIntValues(1) + 1_pInt
-       IO_continuousIntValues(1+IO_continuousIntValues(1)) = IO_intValue(line,myPos,i)
+       IO_continuousIntValues(1+IO_continuousIntValues(1)) = IO_intValue(line,chunkPos,i)
      enddo
-     if ( IO_lc(IO_stringValue(line,myPos,myPos(1))) /= 'c' ) then                                  ! line finished, read last value
+     if ( IO_lc(IO_stringValue(line,chunkPos,chunkPos(1))) /= 'c' ) then                            ! line finished, read last value
        IO_continuousIntValues(1) = IO_continuousIntValues(1) + 1_pInt
-       IO_continuousIntValues(1+IO_continuousIntValues(1)) = IO_intValue(line,myPos,myPos(1))
+       IO_continuousIntValues(1+IO_continuousIntValues(1)) = IO_intValue(line,chunkPos,chunkPos(1))
        exit
      endif
    endif
@@ -1464,18 +1419,18 @@ function IO_continuousIntValues(fileUnit,maxN,lookupName,lookupMap,lookupMaxN)
 ! check if the element values in the elset are auto generated
  backspace(fileUnit)
  read(fileUnit,'(A65536)',end=100) line
- myPos = IO_stringPos(line,MAXNCHUNKS)
- do i = 1_pInt,myPos(1)
-   if (IO_lc(IO_stringValue(line,myPos,i)) == 'generate') rangeGeneration = .true.
+ chunkPos = IO_stringPos(line)
+ do i = 1_pInt,chunkPos(1)
+   if (IO_lc(IO_stringValue(line,chunkPos,i)) == 'generate') rangeGeneration = .true.
  enddo
  
  do l = 1_pInt,c
    read(fileUnit,'(A65536)',end=100) line
-   myPos = IO_stringPos(line,MAXNCHUNKS)
-   if (verify(IO_stringValue(line,myPos,1_pInt),'0123456789') > 0) then                             ! a non-int, i.e. set names follow on this line
-     do i = 1_pInt,myPos(1)                                                                         ! loop over set names in line
+   chunkPos = IO_stringPos(line)
+   if (verify(IO_stringValue(line,chunkPos,1_pInt),'0123456789') > 0) then                          ! a non-int, i.e. set names follow on this line
+     do i = 1_pInt,myChunk(1)                                                                         ! loop over set names in line
        do j = 1_pInt,lookupMaxN                                                                     ! look through known set names
-         if (IO_stringValue(line,myPos,i) == lookupName(j)) then                                    ! found matching name
+         if (IO_stringValue(line,chunkPos,i) == lookupName(j)) then                                 ! found matching name
            first = 2_pInt + IO_continuousIntValues(1)                                               ! where to start appending data
            last  = first + lookupMap(1,j) - 1_pInt                                                  ! up to where to append data
            IO_continuousIntValues(first:last) = lookupMap(2:1+lookupMap(1,j),j)                     ! add resp. entity list
@@ -1484,14 +1439,16 @@ function IO_continuousIntValues(fileUnit,maxN,lookupName,lookupMap,lookupMaxN)
        enddo
      enddo
    else if (rangeGeneration) then                                                                   ! range generation
-     do i = IO_intValue(line,myPos,1_pInt),IO_intValue(line,myPos,2_pInt),max(1_pInt,IO_intValue(line,myPos,3_pInt))
+     do i = IO_intValue(line,chunkPos,1_pInt),&
+            IO_intValue(line,chunkPos,2_pInt),&
+            max(1_pInt,IO_intValue(line,chunkPos,3_pInt))
        IO_continuousIntValues(1) = IO_continuousIntValues(1) + 1_pInt
        IO_continuousIntValues(1+IO_continuousIntValues(1)) = i
      enddo
    else                                                                                             ! read individual elem nums
-     do i = 1_pInt,myPos(1)
+     do i = 1_pInt,myChunk(1)
        IO_continuousIntValues(1) = IO_continuousIntValues(1) + 1_pInt
-       IO_continuousIntValues(1+IO_continuousIntValues(1)) = IO_intValue(line,myPos,i)
+       IO_continuousIntValues(1+IO_continuousIntValues(1)) = IO_intValue(line,chunkPos,i)
      enddo
    endif
  enddo
@@ -1646,15 +1603,11 @@ subroutine IO_error(error_ID,el,ip,g,ext_msg)
  case (406_pInt)
    msg = 'Prime-error: N must be between 0 and PRIME_MAX'
  case (407_pInt)
-   msg = 'Dimension in nearest neighbor search wrong'
- case (408_pInt)
    msg = 'Polar decomposition error'
  case (409_pInt)
    msg = 'math_check: R*v == q*v failed'
  case (450_pInt)
    msg = 'unknown symmetry type specified'
- case (460_pInt)
-   msg = 'kdtree2 error'
 
 !-------------------------------------------------------------------------------------------------
 ! homogenization errors
@@ -1948,18 +1901,17 @@ recursive function abaqus_assembleInputFile(unit1,unit2) result(createSuccess)
  integer(pInt), intent(in)                :: unit1, &
                                              unit2
  
- integer(pInt), parameter                 :: MAXNCHUNKS = 6_pInt
 
- integer(pInt), dimension(1+2*MAXNCHUNKS) :: positions
+ integer(pInt), allocatable, dimension(:) :: chunkPos
  character(len=65536)                     :: line,fname
  logical                                  :: createSuccess,fexist
 
 
  do
    read(unit2,'(A65536)',END=220) line
-   positions = IO_stringPos(line,MAXNCHUNKS)
+   chunkPos = IO_stringPos(line)
 
-   if (IO_lc(IO_StringValue(line,positions,1_pInt))=='*include') then
+   if (IO_lc(IO_StringValue(line,chunkPos,1_pInt))=='*include') then
      fname = trim(getSolverWorkingDirectoryName())//trim(line(9+scan(line(9:),'='):))
      inquire(file=fname, exist=fexist)
      if (.not.(fexist)) then

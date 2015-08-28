@@ -35,11 +35,9 @@ try:
   core.numerics.init                 = core.numerics.numerics_init
   core.debug.init                    = core.debug.debug_init
   core.math.init                     = core.math.math_init
-  core.math.periodicNearestNeighborDistances  = core.math.math_periodicNearestNeighborDistances
   core.math.tensorAvg                = core.math.math_tensorAvg
   core.FEsolving.init                = core.FEsolving.FE_init
   core.mesh.init                     = core.mesh.mesh_init
-  core.mesh.regrid                   = core.mesh.mesh_regrid
   core.mesh.nodesAroundCentres       = core.mesh.mesh_nodesAroundCentres
   core.mesh.deformedCoordsFFT        = core.mesh.mesh_deformedCoordsFFT
   core.mesh.volumeMismatch           = core.mesh.mesh_volumeMismatch

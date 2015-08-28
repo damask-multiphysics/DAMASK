@@ -88,8 +88,7 @@ subroutine hydrogenflux_cahnhilliard_init(fileUnit)
  implicit none
  integer(pInt), intent(in) :: fileUnit
 
- integer(pInt), parameter :: MAXNCHUNKS = 7_pInt
- integer(pInt), dimension(1+2*MAXNCHUNKS) :: positions
+ integer(pInt), allocatable, dimension(:) :: chunkPos
  integer(pInt) :: maxNinstance,mySize=0_pInt,section,instance,o
  integer(pInt) :: sizeState
  integer(pInt) :: NofMyHomog   
@@ -135,16 +134,16 @@ subroutine hydrogenflux_cahnhilliard_init(fileUnit)
    if (section > 0_pInt ) then; if (hydrogenflux_type(section) == HYDROGENFLUX_cahnhilliard_ID) then  ! do not short-circuit here (.and. with next if statemen). It's not safe in Fortran
 
      instance = hydrogenflux_typeInstance(section)                                                   ! which instance of my hydrogenflux is present homog
-     positions = IO_stringPos(line,MAXNCHUNKS)
-     tag = IO_lc(IO_stringValue(line,positions,1_pInt))                                             ! extract key
+     chunkPos = IO_stringPos(line)
+     tag = IO_lc(IO_stringValue(line,chunkPos,1_pInt))                                             ! extract key
      select case(tag)
        case ('(output)')
-         select case(IO_lc(IO_stringValue(line,positions,2_pInt)))
+         select case(IO_lc(IO_stringValue(line,chunkPos,2_pInt)))
            case ('hydrogenconc')
              hydrogenflux_cahnhilliard_Noutput(instance) = hydrogenflux_cahnhilliard_Noutput(instance) + 1_pInt
              hydrogenflux_cahnhilliard_outputID(hydrogenflux_cahnhilliard_Noutput(instance),instance) = hydrogenConc_ID
              hydrogenflux_cahnhilliard_output(hydrogenflux_cahnhilliard_Noutput(instance),instance) = &
-                                                       IO_lc(IO_stringValue(line,positions,2_pInt))
+                                                       IO_lc(IO_stringValue(line,chunkPos,2_pInt))
           end select
 
      end select

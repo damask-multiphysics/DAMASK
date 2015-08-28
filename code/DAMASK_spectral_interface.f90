@@ -66,10 +66,8 @@ subroutine DAMASK_interface_init(loadCaseParameterIn,geometryParameterIn)
  integer :: &
    i, &
    worldrank = 0
- integer, parameter :: &
-   MAXNCHUNKS = 128                                                                                 !< DAMASK_spectral + (l,g,w,r)*2 + h
- integer, dimension(1+ 2* MAXNCHUNKS) :: &
-   positions
+ integer, allocatable, dimension(:) :: &
+   chunkPos
  integer, dimension(8) :: &
    dateAndTime                                                                                      ! type default integer
 #ifdef PETSc
@@ -102,9 +100,9 @@ subroutine DAMASK_interface_init(loadCaseParameterIn,geometryParameterIn)
    commandLine = 'n/a'
  else if ( .not.( present(loadcaseParameterIn) .and. present(geometryParameterIn))) then            ! none parameters given in function call, trying to get them from command line
    call get_command(commandLine)
-   positions = IIO_stringPos(commandLine,MAXNCHUNKS)
-   do i = 1, positions(1)
-     tag = IIO_lc(IIO_stringValue(commandLine,positions,i))                                         ! extract key
+   chunkPos = IIO_stringPos(commandLine)
+   do i = 1, chunkPos(1)
+     tag = IIO_lc(IIO_stringValue(commandLine,chunkPos,i))                                         ! extract key
      select case(tag)
        case ('-h','--help')
          mainProcess2: if (worldrank == 0) then
@@ -164,16 +162,16 @@ subroutine DAMASK_interface_init(loadCaseParameterIn,geometryParameterIn)
            call quit(0_pInt)                                                                        ! normal Termination
          endif mainProcess2
        case ('-l', '--load', '--loadcase')
-         loadcaseArg = IIO_stringValue(commandLine,positions,i+1_pInt)
+         loadcaseArg = IIO_stringValue(commandLine,chunkPos,i+1_pInt)
        case ('-g', '--geom', '--geometry')
-         geometryArg = IIO_stringValue(commandLine,positions,i+1_pInt)
+         geometryArg = IIO_stringValue(commandLine,chunkPos,i+1_pInt)
        case ('-w', '-d', '--wd', '--directory', '--workingdir', '--workingdirectory')
-         workingDirArg = IIO_stringValue(commandLine,positions,i+1_pInt)
+         workingDirArg = IIO_stringValue(commandLine,chunkPos,i+1_pInt)
        case ('-r', '--rs', '--restart')
-         spectralRestartInc = IIO_IntValue(commandLine,positions,i+1_pInt)
+         spectralRestartInc = IIO_IntValue(commandLine,chunkPos,i+1_pInt)
          appendToOutFile = .true.
        case ('--rg', '--regrid')
-         spectralRestartInc = IIO_IntValue(commandLine,positions,i+1_pInt)
+         spectralRestartInc = IIO_IntValue(commandLine,chunkPos,i+1_pInt)
          appendToOutFile = .false.
      end select
    enddo
@@ -477,38 +475,40 @@ end function getPathSep
 !--------------------------------------------------------------------------------------------------
 !> @brief taken from IO, check IO_stringValue for documentation 
 !--------------------------------------------------------------------------------------------------
-pure function IIO_stringValue(line,positions,myPos)
+pure function IIO_stringValue(string,chunkPos,myChunk)
  
  implicit none
- integer(pInt),                                intent(in) :: positions(*), &
-                                                             myPos
- character(len=1+positions(myPos*2+1)-positions(myPos*2)) :: IIO_stringValue
- character(len=*),                             intent(in) :: line
+ integer(pInt),   dimension(:),                intent(in) :: chunkPos                               !< positions of start and end of each tag/chunk in given string
+ integer(pInt),                                intent(in) :: myChunk                                !< position number of desired chunk
+ character(len=1+chunkPos(myChunk*2+1)-chunkPos(myChunk*2))   :: IIO_stringValue
+ character(len=*),                             intent(in) :: string                                 !< raw input with known start and end of each chunk
 
- if (positions(1) < myPos) then
+ 
+ valuePresent: if (myChunk > chunkPos(1) .or. myChunk < 1_pInt) then
    IIO_stringValue = ''
- else
-   IIO_stringValue = line(positions(myPos*2):positions(myPos*2+1))
- endif
+ else valuePresent
+   IIO_stringValue = string(chunkPos(myChunk*2):chunkPos(myChunk*2+1))
+ endif valuePresent
 
 end function IIO_stringValue
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief taken from IO, check IO_stringValue for documentation 
+!> @brief taken from IO, check IO_intValue for documentation 
 !--------------------------------------------------------------------------------------------------
-integer(pInt) pure function IIO_intValue(line,positions,myPos)
+integer(pInt) pure function IIO_intValue(string,chunkPos,myChunk)                                           
+                                                                                                    
+ implicit none                                                                                      
+ character(len=*),               intent(in) :: string                                               !< raw input with known start and end of each chunk
+ integer(pInt),                  intent(in) :: myChunk                                              !< position number of desired sub string
+ integer(pInt),   dimension(:),  intent(in) :: chunkPos                                             !< positions of start and end of each tag/chunk in given string
 
- implicit none
- character(len=*), intent(in) :: line
- integer(pInt),    intent(in) :: positions(*), &
-                                 myPos
 
- if (positions(1) < myPos) then
+ valuePresent: if (myChunk > chunkPos(1) .or. myChunk < 1_pInt) then
    IIO_intValue = 0_pInt
- else
-   read(UNIT=line(positions(myPos*2):positions(myPos*2+1)),ERR=100,FMT=*) IIO_intValue
- endif
+ else valuePresent
+   read(UNIT=string(chunkPos(myChunk*2):chunkPos(myChunk*2+1)),ERR=100,FMT=*) IIO_intValue
+ endif valuePresent
  return
 100 IIO_intValue = huge(1_pInt)
 
@@ -518,20 +518,21 @@ end function IIO_intValue
 !--------------------------------------------------------------------------------------------------
 !> @brief taken from IO, check IO_lc for documentation 
 !--------------------------------------------------------------------------------------------------
-pure function IIO_lc(line)
+pure function IIO_lc(string)
 
  implicit none
- character(26), parameter :: lower = 'abcdefghijklmnopqrstuvwxyz'
- character(26), parameter :: upper = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ' 
- character(len=*), intent(in) :: line
- character(len=len(line))     :: IIO_lc
+ character(len=*), intent(in) :: string                                                             !< string to convert
+ character(len=len(string))   :: IIO_lc
+
+ character(26), parameter :: LOWER = 'abcdefghijklmnopqrstuvwxyz'
+ character(26), parameter :: UPPER = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ' 
  
  integer                      :: i,n                                                                ! no pInt (len returns default integer)
 
- IIO_lc = line
- do i=1,len(line)
-   n = index(upper,IIO_lc(i:i))
-   if (n/=0) IIO_lc(i:i) = lower(n:n)
+ IIO_lc = string
+ do i=1,len(string)
+   n = index(UPPER,IIO_lc(i:i))
+   if (n/=0) IIO_lc(i:i) = LOWER(n:n)
  enddo
 
 end function IIO_lc
@@ -540,29 +541,23 @@ end function IIO_lc
 !--------------------------------------------------------------------------------------------------
 !> @brief taken from IO, check IO_stringPos for documentation 
 !--------------------------------------------------------------------------------------------------
-pure function IIO_stringPos(string,N)
+pure function IIO_stringPos(string)
 
  implicit none
- integer(pInt),                           intent(in) :: N                                           !< maximum number of parts
- integer(pInt), dimension(1_pInt+N*2_pInt)           :: IIO_stringPos
- character(len=*),                        intent(in) :: string                                      !< string in which parts are searched for
+ integer(pInt), dimension(:), allocatable            :: IIO_stringPos
+ character(len=*),                        intent(in) :: string                                      !< string in which chunks are searched for
  
  character(len=*), parameter  :: SEP=achar(44)//achar(32)//achar(9)//achar(10)//achar(13)           ! comma and whitespaces
  integer                      :: left, right                                                        ! no pInt (verify and scan return default integer)
 
-
- IIO_stringPos = -1_pInt
- IIO_stringPos(1) = 0_pInt
+ allocate(IIO_stringPos(1), source=0_pInt)
  right = 0
  
  do while (verify(string(right+1:),SEP)>0)
    left  = right + verify(string(right+1:),SEP)
    right = left + scan(string(left:),SEP) - 2
    if ( string(left:left) == '#' ) exit
-   if ( IIO_stringPos(1)<N ) then
-     IIO_stringPos(1_pInt+IIO_stringPos(1)*2_pInt+1_pInt) = int(left, pInt)
-     IIO_stringPos(1_pInt+IIO_stringPos(1)*2_pInt+2_pInt) = int(right, pInt)
-   endif
+   IIO_stringPos = [IIO_stringPos,int(left, pInt), int(right, pInt)]
    IIO_stringPos(1) = IIO_stringPos(1)+1_pInt
  enddo
 

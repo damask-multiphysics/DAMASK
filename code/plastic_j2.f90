@@ -131,9 +131,8 @@ subroutine plastic_j2_init(fileUnit)
  implicit none
  integer(pInt), intent(in) :: fileUnit
  
- integer(pInt), parameter :: MAXNCHUNKS = 7_pInt
  
- integer(pInt), dimension(1_pInt+2_pInt*MAXNCHUNKS) :: positions
+ integer(pInt), allocatable, dimension(:) :: chunkPos
  integer(pInt) :: &
    o, &
    phase, & 
@@ -218,17 +217,17 @@ subroutine plastic_j2_init(fileUnit)
    endif
    if (phase > 0_pInt ) then; if (phase_plasticity(phase) == PLASTICITY_J2_ID) then                 ! one of my phases. Do not short-circuit here (.and. between if-statements), it's not safe in Fortran
      instance = phase_plasticityInstance(phase)                                                     ! which instance of my plasticity is present phase
-     positions = IO_stringPos(line,MAXNCHUNKS) 
-     tag = IO_lc(IO_stringValue(line,positions,1_pInt))                                             ! extract key
+     chunkPos = IO_stringPos(line) 
+     tag = IO_lc(IO_stringValue(line,chunkPos,1_pInt))                                             ! extract key
 
      select case(tag)
        case ('(output)')
-         select case(IO_lc(IO_stringValue(line,positions,2_pInt)))
+         select case(IO_lc(IO_stringValue(line,chunkPos,2_pInt)))
            case ('flowstress')
              plastic_j2_Noutput(instance) = plastic_j2_Noutput(instance) + 1_pInt
              plastic_j2_outputID(plastic_j2_Noutput(instance),instance) = flowstress_ID
              plastic_j2_output(plastic_j2_Noutput(instance),instance) = &
-                                                IO_lc(IO_stringValue(line,positions,2_pInt))
+                                                IO_lc(IO_stringValue(line,chunkPos,2_pInt))
 #ifdef HDF 
              call HDF5_addScalarDataset(outID(instance),myConstituents,'flowstress','MPa')
              allocate(plastic_j2_Output2(instance)%flowstress(myConstituents))
@@ -238,7 +237,7 @@ subroutine plastic_j2_init(fileUnit)
              plastic_j2_Noutput(instance) = plastic_j2_Noutput(instance) + 1_pInt
              plastic_j2_outputID(plastic_j2_Noutput(instance),instance) = strainrate_ID
              plastic_j2_output(plastic_j2_Noutput(instance),instance) = &
-                                                IO_lc(IO_stringValue(line,positions,2_pInt))
+                                                IO_lc(IO_stringValue(line,chunkPos,2_pInt))
 #ifdef HDF 
              call HDF5_addScalarDataset(outID(instance),myConstituents,'strainrate','1/s')
              allocate(plastic_j2_Output2(instance)%strainrate(myConstituents))
@@ -248,47 +247,47 @@ subroutine plastic_j2_init(fileUnit)
 
          end select
        case ('tau0')
-         plastic_j2_tau0(instance)         = IO_floatValue(line,positions,2_pInt)
+         plastic_j2_tau0(instance)         = IO_floatValue(line,chunkPos,2_pInt)
          if (plastic_j2_tau0(instance) < 0.0_pReal) &
            call IO_error(211_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_J2_label//')')
        case ('gdot0')
-         plastic_j2_gdot0(instance)        = IO_floatValue(line,positions,2_pInt)
+         plastic_j2_gdot0(instance)        = IO_floatValue(line,chunkPos,2_pInt)
          if (plastic_j2_gdot0(instance) <= 0.0_pReal) &
            call IO_error(211_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_J2_label//')')
        case ('n')
-         plastic_j2_n(instance)            = IO_floatValue(line,positions,2_pInt)
+         plastic_j2_n(instance)            = IO_floatValue(line,chunkPos,2_pInt)
          if (plastic_j2_n(instance) <= 0.0_pReal) &
            call IO_error(211_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_J2_label//')')
        case ('h0')
-         plastic_j2_h0(instance)           = IO_floatValue(line,positions,2_pInt)
+         plastic_j2_h0(instance)           = IO_floatValue(line,chunkPos,2_pInt)
        case ('h0_slope','slopelnrate')
-         plastic_j2_h0_slopeLnRate(instance)  = IO_floatValue(line,positions,2_pInt)
+         plastic_j2_h0_slopeLnRate(instance)  = IO_floatValue(line,chunkPos,2_pInt)
        case ('tausat')
-         plastic_j2_tausat(instance)          = IO_floatValue(line,positions,2_pInt)
+         plastic_j2_tausat(instance)          = IO_floatValue(line,chunkPos,2_pInt)
          if (plastic_j2_tausat(instance) <= 0.0_pReal) &
            call IO_error(211_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_J2_label//')')
        case ('tausat_sinhfita')
-         plastic_j2_tausat_SinhFitA(instance) = IO_floatValue(line,positions,2_pInt)
+         plastic_j2_tausat_SinhFitA(instance) = IO_floatValue(line,chunkPos,2_pInt)
        case ('tausat_sinhfitb')
-         plastic_j2_tausat_SinhFitB(instance) = IO_floatValue(line,positions,2_pInt)
+         plastic_j2_tausat_SinhFitB(instance) = IO_floatValue(line,chunkPos,2_pInt)
        case ('tausat_sinhfitc')
-         plastic_j2_tausat_SinhFitC(instance) = IO_floatValue(line,positions,2_pInt)
+         plastic_j2_tausat_SinhFitC(instance) = IO_floatValue(line,chunkPos,2_pInt)
        case ('tausat_sinhfitd')
-         plastic_j2_tausat_SinhFitD(instance) = IO_floatValue(line,positions,2_pInt)
+         plastic_j2_tausat_SinhFitD(instance) = IO_floatValue(line,chunkPos,2_pInt)
        case ('a', 'w0')
-         plastic_j2_a(instance)               = IO_floatValue(line,positions,2_pInt)
+         plastic_j2_a(instance)               = IO_floatValue(line,chunkPos,2_pInt)
          if (plastic_j2_a(instance) <= 0.0_pReal) &
            call IO_error(211_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_J2_label//')')
        case ('taylorfactor')
-         plastic_j2_fTaylor(instance)         = IO_floatValue(line,positions,2_pInt)
+         plastic_j2_fTaylor(instance)         = IO_floatValue(line,chunkPos,2_pInt)
          if (plastic_j2_fTaylor(instance) <= 0.0_pReal) &
            call IO_error(211_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_J2_label//')')
        case ('atol_resistance')
-         plastic_j2_aTolResistance(instance)  = IO_floatValue(line,positions,2_pInt)
+         plastic_j2_aTolResistance(instance)  = IO_floatValue(line,chunkPos,2_pInt)
          if (plastic_j2_aTolResistance(instance) <= 0.0_pReal) &
            call IO_error(211_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_J2_label//')')
        case ('atol_shear')
-         plastic_j2_aTolShear(instance)  = IO_floatValue(line,positions,2_pInt)
+         plastic_j2_aTolShear(instance)  = IO_floatValue(line,chunkPos,2_pInt)
 
        case default
 

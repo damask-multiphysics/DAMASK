@@ -224,8 +224,7 @@ subroutine plastic_titanmod_init(fileUnit)
  implicit none
  integer(pInt), intent(in) :: fileUnit
 
- integer(pInt), parameter :: MAXNCHUNKS = LATTICE_maxNinteraction + 1_pInt
- integer(pInt), dimension(1_pInt+2_pInt*MAXNCHUNKS) :: positions
+ integer(pInt), allocatable, dimension(:) :: chunkPos
  integer(pInt) :: &
    phase, &
    instance, j, k, l, m, n, p, q, r, &
@@ -347,322 +346,322 @@ subroutine plastic_titanmod_init(fileUnit)
    endif
    if (phase > 0_pInt ) then; if (phase_plasticity(phase) == PLASTICITY_TITANMOD_ID) then           ! one of my sections. Do not short-circuit here (.and. between if-statements), it's not safe in Fortran
      instance = phase_plasticityInstance(phase)                                                     ! which instance of my plasticity is present phase
-     positions = IO_stringPos(line,MAXNCHUNKS)
-     tag = IO_lc(IO_stringValue(line,positions,1_pInt))                                             ! extract key
+     chunkPos = IO_stringPos(line)
+     tag = IO_lc(IO_stringValue(line,chunkPos,1_pInt))                                             ! extract key
      select case(tag)
        case ('(output)')
-         select case(IO_lc(IO_stringValue(line,positions,2_pInt)))
+         select case(IO_lc(IO_stringValue(line,chunkPos,2_pInt)))
            case ('rhoedge')
              plastic_titanmod_Noutput(instance) = plastic_titanmod_Noutput(instance) + 1_pInt
              plastic_titanmod_outputID(plastic_titanmod_Noutput(instance),instance) = rhoedge_ID
              plastic_titanmod_output(plastic_titanmod_Noutput(instance),instance) = &
-                                                           IO_lc(IO_stringValue(line,positions,2_pInt))
+                                                           IO_lc(IO_stringValue(line,chunkPos,2_pInt))
            case ('rhoscrew')
              plastic_titanmod_Noutput(instance) = plastic_titanmod_Noutput(instance) + 1_pInt
              plastic_titanmod_outputID(plastic_titanmod_Noutput(instance),instance) = rhoscrew_ID
              plastic_titanmod_output(plastic_titanmod_Noutput(instance),instance) = &
-                                                           IO_lc(IO_stringValue(line,positions,2_pInt))
+                                                           IO_lc(IO_stringValue(line,chunkPos,2_pInt))
            case ('segment_edge')
              plastic_titanmod_Noutput(instance) = plastic_titanmod_Noutput(instance) + 1_pInt
              plastic_titanmod_outputID(plastic_titanmod_Noutput(instance),instance) = segment_edge_ID
              plastic_titanmod_output(plastic_titanmod_Noutput(instance),instance) = &
-                                                           IO_lc(IO_stringValue(line,positions,2_pInt))
+                                                           IO_lc(IO_stringValue(line,chunkPos,2_pInt))
            case ('segment_screw')
              plastic_titanmod_Noutput(instance) = plastic_titanmod_Noutput(instance) + 1_pInt
              plastic_titanmod_outputID(plastic_titanmod_Noutput(instance),instance) = segment_screw_ID
              plastic_titanmod_output(plastic_titanmod_Noutput(instance),instance) = &
-                                                           IO_lc(IO_stringValue(line,positions,2_pInt))
+                                                           IO_lc(IO_stringValue(line,chunkPos,2_pInt))
            case ('resistance_edge')
              plastic_titanmod_Noutput(instance) = plastic_titanmod_Noutput(instance) + 1_pInt
              plastic_titanmod_outputID(plastic_titanmod_Noutput(instance),instance) = resistance_edge_ID
              plastic_titanmod_output(plastic_titanmod_Noutput(instance),instance) = &
-                                                           IO_lc(IO_stringValue(line,positions,2_pInt))
+                                                           IO_lc(IO_stringValue(line,chunkPos,2_pInt))
            case ('resistance_screw')
              plastic_titanmod_Noutput(instance) = plastic_titanmod_Noutput(instance) + 1_pInt
              plastic_titanmod_outputID(plastic_titanmod_Noutput(instance),instance) = resistance_screw_ID
              plastic_titanmod_output(plastic_titanmod_Noutput(instance),instance) = &
-                                                           IO_lc(IO_stringValue(line,positions,2_pInt))
+                                                           IO_lc(IO_stringValue(line,chunkPos,2_pInt))
            case ('velocity_edge')
              plastic_titanmod_Noutput(instance) = plastic_titanmod_Noutput(instance) + 1_pInt
              plastic_titanmod_outputID(plastic_titanmod_Noutput(instance),instance) = velocity_edge_ID
              plastic_titanmod_output(plastic_titanmod_Noutput(instance),instance) = &
-                                                           IO_lc(IO_stringValue(line,positions,2_pInt))
+                                                           IO_lc(IO_stringValue(line,chunkPos,2_pInt))
            case ('velocity_screw')
              plastic_titanmod_Noutput(instance) = plastic_titanmod_Noutput(instance) + 1_pInt
              plastic_titanmod_outputID(plastic_titanmod_Noutput(instance),instance) = velocity_screw_ID
              plastic_titanmod_output(plastic_titanmod_Noutput(instance),instance) = &
-                                                           IO_lc(IO_stringValue(line,positions,2_pInt))
+                                                           IO_lc(IO_stringValue(line,chunkPos,2_pInt))
            case ('tau_slip')
              plastic_titanmod_Noutput(instance) = plastic_titanmod_Noutput(instance) + 1_pInt
              plastic_titanmod_outputID(plastic_titanmod_Noutput(instance),instance) = tau_slip_ID
              plastic_titanmod_output(plastic_titanmod_Noutput(instance),instance) = &
-                                                           IO_lc(IO_stringValue(line,positions,2_pInt))
+                                                           IO_lc(IO_stringValue(line,chunkPos,2_pInt))
            case ('gdot_slip_edge')
              plastic_titanmod_Noutput(instance) = plastic_titanmod_Noutput(instance) + 1_pInt
              plastic_titanmod_outputID(plastic_titanmod_Noutput(instance),instance) = gdot_slip_edge_ID
              plastic_titanmod_output(plastic_titanmod_Noutput(instance),instance) = &
-                                                           IO_lc(IO_stringValue(line,positions,2_pInt))
+                                                           IO_lc(IO_stringValue(line,chunkPos,2_pInt))
            case ('gdot_slip_screw')
              plastic_titanmod_Noutput(instance) = plastic_titanmod_Noutput(instance) + 1_pInt
              plastic_titanmod_outputID(plastic_titanmod_Noutput(instance),instance) = gdot_slip_screw_ID
              plastic_titanmod_output(plastic_titanmod_Noutput(instance),instance) = &
-                                                           IO_lc(IO_stringValue(line,positions,2_pInt))
+                                                           IO_lc(IO_stringValue(line,chunkPos,2_pInt))
            case ('gdot_slip')
              plastic_titanmod_Noutput(instance) = plastic_titanmod_Noutput(instance) + 1_pInt
              plastic_titanmod_outputID(plastic_titanmod_Noutput(instance),instance) = gdot_slip_ID
              plastic_titanmod_output(plastic_titanmod_Noutput(instance),instance) = &
-                                                           IO_lc(IO_stringValue(line,positions,2_pInt))
+                                                           IO_lc(IO_stringValue(line,chunkPos,2_pInt))
            case ('stressratio_edge_p')
              plastic_titanmod_Noutput(instance) = plastic_titanmod_Noutput(instance) + 1_pInt
              plastic_titanmod_outputID(plastic_titanmod_Noutput(instance),instance) = stressratio_edge_p_ID
              plastic_titanmod_output(plastic_titanmod_Noutput(instance),instance) = &
-                                                           IO_lc(IO_stringValue(line,positions,2_pInt))
+                                                           IO_lc(IO_stringValue(line,chunkPos,2_pInt))
            case ('stressratio_screw_p')
              plastic_titanmod_Noutput(instance) = plastic_titanmod_Noutput(instance) + 1_pInt
              plastic_titanmod_outputID(plastic_titanmod_Noutput(instance),instance) = stressratio_screw_p_ID
              plastic_titanmod_output(plastic_titanmod_Noutput(instance),instance) = &
-                                                           IO_lc(IO_stringValue(line,positions,2_pInt))
+                                                           IO_lc(IO_stringValue(line,chunkPos,2_pInt))
            case ('shear_system')
              plastic_titanmod_Noutput(instance) = plastic_titanmod_Noutput(instance) + 1_pInt
              plastic_titanmod_outputID(plastic_titanmod_Noutput(instance),instance) = shear_system_ID
              plastic_titanmod_output(plastic_titanmod_Noutput(instance),instance) = &
-                                                           IO_lc(IO_stringValue(line,positions,2_pInt))
+                                                           IO_lc(IO_stringValue(line,chunkPos,2_pInt))
            case ('twin_fraction')
              plastic_titanmod_Noutput(instance) = plastic_titanmod_Noutput(instance) + 1_pInt
              plastic_titanmod_outputID(plastic_titanmod_Noutput(instance),instance) = twin_fraction_ID
              plastic_titanmod_output(plastic_titanmod_Noutput(instance),instance) = &
-                                                           IO_lc(IO_stringValue(line,positions,2_pInt))
+                                                           IO_lc(IO_stringValue(line,chunkPos,2_pInt))
            case ('shear_basal')
              plastic_titanmod_Noutput(instance) = plastic_titanmod_Noutput(instance) + 1_pInt
              plastic_titanmod_outputID(plastic_titanmod_Noutput(instance),instance) = shear_basal_ID
              plastic_titanmod_output(plastic_titanmod_Noutput(instance),instance) = &
-                                                           IO_lc(IO_stringValue(line,positions,2_pInt))
+                                                           IO_lc(IO_stringValue(line,chunkPos,2_pInt))
            case ('shear_prism')
              plastic_titanmod_Noutput(instance) = plastic_titanmod_Noutput(instance) + 1_pInt
              plastic_titanmod_outputID(plastic_titanmod_Noutput(instance),instance) = shear_prism_ID
              plastic_titanmod_output(plastic_titanmod_Noutput(instance),instance) = &
-                                                           IO_lc(IO_stringValue(line,positions,2_pInt))
+                                                           IO_lc(IO_stringValue(line,chunkPos,2_pInt))
            case ('shear_pyra')
              plastic_titanmod_Noutput(instance) = plastic_titanmod_Noutput(instance) + 1_pInt
              plastic_titanmod_outputID(plastic_titanmod_Noutput(instance),instance) = shear_pyra_ID
              plastic_titanmod_output(plastic_titanmod_Noutput(instance),instance) = &
-                                                           IO_lc(IO_stringValue(line,positions,2_pInt))
+                                                           IO_lc(IO_stringValue(line,chunkPos,2_pInt))
            case ('shear_pyrca')
              plastic_titanmod_Noutput(instance) = plastic_titanmod_Noutput(instance) + 1_pInt
              plastic_titanmod_outputID(plastic_titanmod_Noutput(instance),instance) = shear_pyrca_ID
              plastic_titanmod_output(plastic_titanmod_Noutput(instance),instance) = &
-                                                           IO_lc(IO_stringValue(line,positions,2_pInt))
+                                                           IO_lc(IO_stringValue(line,chunkPos,2_pInt))
            case ('rhoedge_basal')
              plastic_titanmod_Noutput(instance) = plastic_titanmod_Noutput(instance) + 1_pInt
              plastic_titanmod_outputID(plastic_titanmod_Noutput(instance),instance) = rhoedge_basal_ID
              plastic_titanmod_output(plastic_titanmod_Noutput(instance),instance) = &
-                                                           IO_lc(IO_stringValue(line,positions,2_pInt))
+                                                           IO_lc(IO_stringValue(line,chunkPos,2_pInt))
            case ('rhoedge_prism')
              plastic_titanmod_Noutput(instance) = plastic_titanmod_Noutput(instance) + 1_pInt
              plastic_titanmod_outputID(plastic_titanmod_Noutput(instance),instance) = rhoedge_prism_ID
              plastic_titanmod_output(plastic_titanmod_Noutput(instance),instance) = &
-                                                           IO_lc(IO_stringValue(line,positions,2_pInt))
+                                                           IO_lc(IO_stringValue(line,chunkPos,2_pInt))
            case ('rhoedge_pyra')
              plastic_titanmod_Noutput(instance) = plastic_titanmod_Noutput(instance) + 1_pInt
              plastic_titanmod_outputID(plastic_titanmod_Noutput(instance),instance) = rhoedge_pyra_ID
              plastic_titanmod_output(plastic_titanmod_Noutput(instance),instance) = &
-                                                           IO_lc(IO_stringValue(line,positions,2_pInt))
+                                                           IO_lc(IO_stringValue(line,chunkPos,2_pInt))
            case ('rhoedge_pyrca')
              plastic_titanmod_Noutput(instance) = plastic_titanmod_Noutput(instance) + 1_pInt
              plastic_titanmod_outputID(plastic_titanmod_Noutput(instance),instance) = rhoedge_pyrca_ID
              plastic_titanmod_output(plastic_titanmod_Noutput(instance),instance) = &
-                                                           IO_lc(IO_stringValue(line,positions,2_pInt))
+                                                           IO_lc(IO_stringValue(line,chunkPos,2_pInt))
            case ('rhoscrew_basal')
              plastic_titanmod_Noutput(instance) = plastic_titanmod_Noutput(instance) + 1_pInt
              plastic_titanmod_outputID(plastic_titanmod_Noutput(instance),instance) = rhoscrew_basal_ID
              plastic_titanmod_output(plastic_titanmod_Noutput(instance),instance) = &
-                                                           IO_lc(IO_stringValue(line,positions,2_pInt))
+                                                           IO_lc(IO_stringValue(line,chunkPos,2_pInt))
            case ('rhoscrew_prism')
              plastic_titanmod_Noutput(instance) = plastic_titanmod_Noutput(instance) + 1_pInt
              plastic_titanmod_outputID(plastic_titanmod_Noutput(instance),instance) = rhoscrew_prism_ID
              plastic_titanmod_output(plastic_titanmod_Noutput(instance),instance) = &
-                                                           IO_lc(IO_stringValue(line,positions,2_pInt))
+                                                           IO_lc(IO_stringValue(line,chunkPos,2_pInt))
            case ('rhoscrew_pyra')
              plastic_titanmod_Noutput(instance) = plastic_titanmod_Noutput(instance) + 1_pInt
              plastic_titanmod_outputID(plastic_titanmod_Noutput(instance),instance) = rhoscrew_pyra_ID
              plastic_titanmod_output(plastic_titanmod_Noutput(instance),instance) = &
-                                                           IO_lc(IO_stringValue(line,positions,2_pInt))
+                                                           IO_lc(IO_stringValue(line,chunkPos,2_pInt))
            case ('rhoscrew_pyrca')
              plastic_titanmod_Noutput(instance) = plastic_titanmod_Noutput(instance) + 1_pInt
              plastic_titanmod_outputID(plastic_titanmod_Noutput(instance),instance) = rhoscrew_pyrca_ID
              plastic_titanmod_output(plastic_titanmod_Noutput(instance),instance) = &
-                                                           IO_lc(IO_stringValue(line,positions,2_pInt))
+                                                           IO_lc(IO_stringValue(line,chunkPos,2_pInt))
            case ('shear_total')
              plastic_titanmod_Noutput(instance) = plastic_titanmod_Noutput(instance) + 1_pInt
              plastic_titanmod_outputID(plastic_titanmod_Noutput(instance),instance) = shear_total_ID
              plastic_titanmod_output(plastic_titanmod_Noutput(instance),instance) = &
-                                                           IO_lc(IO_stringValue(line,positions,2_pInt))
+                                                           IO_lc(IO_stringValue(line,chunkPos,2_pInt))
          end select
        case ('debyefrequency')
-         plastic_titanmod_debyefrequency(instance) = IO_floatValue(line,positions,2_pInt)
+         plastic_titanmod_debyefrequency(instance) = IO_floatValue(line,chunkPos,2_pInt)
        case ('kinkf0')
-         plastic_titanmod_kinkf0(instance) = IO_floatValue(line,positions,2_pInt)
+         plastic_titanmod_kinkf0(instance) = IO_floatValue(line,chunkPos,2_pInt)
        case ('nslip')
-         if (positions(1) < 1_pInt + Nchunks_SlipFamilies) &
+         if (chunkPos(1) < 1_pInt + Nchunks_SlipFamilies) &
            call IO_warning(50_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_TITANMOD_label//')')
          do j = 1_pInt, Nchunks_SlipFamilies
-           plastic_titanmod_Nslip(j,instance) = IO_intValue(line,positions,1_pInt+j)
+           plastic_titanmod_Nslip(j,instance) = IO_intValue(line,chunkPos,1_pInt+j)
          enddo
        case ('ntwin')
-         if (positions(1) < 1_pInt + Nchunks_TwinFamilies) &
+         if (chunkPos(1) < 1_pInt + Nchunks_TwinFamilies) &
            call IO_warning(51_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_TITANMOD_label//')')
          do j = 1_pInt, Nchunks_TwinFamilies
-           plastic_titanmod_Ntwin(j,instance) = IO_intValue(line,positions,1_pInt+j)
+           plastic_titanmod_Ntwin(j,instance) = IO_intValue(line,chunkPos,1_pInt+j)
          enddo
        case ('rho_edge0')
          do j = 1_pInt, Nchunks_SlipFamilies
-           plastic_titanmod_rho_edge0(j,instance) = IO_floatValue(line,positions,1_pInt+j)
+           plastic_titanmod_rho_edge0(j,instance) = IO_floatValue(line,chunkPos,1_pInt+j)
          enddo
        case ('rho_screw0')
          do j = 1_pInt, Nchunks_SlipFamilies 
-           plastic_titanmod_rho_screw0(j,instance) = IO_floatValue(line,positions,1_pInt+j)
+           plastic_titanmod_rho_screw0(j,instance) = IO_floatValue(line,chunkPos,1_pInt+j)
          enddo
        case ('slipburgers')
          do j = 1_pInt, Nchunks_SlipFamilies
-           plastic_titanmod_burgersPerSlipFam(j,instance) = IO_floatValue(line,positions,1_pInt+j)
+           plastic_titanmod_burgersPerSlipFam(j,instance) = IO_floatValue(line,chunkPos,1_pInt+j)
          enddo
        case ('twinburgers')
          do j = 1_pInt, Nchunks_TwinFamilies
-           plastic_titanmod_burgersPerTwinFam(j,instance) = IO_floatValue(line,positions,1_pInt+j)
+           plastic_titanmod_burgersPerTwinFam(j,instance) = IO_floatValue(line,chunkPos,1_pInt+j)
          enddo
        case ('f0')
          do j = 1_pInt, Nchunks_SlipFamilies
-           plastic_titanmod_f0_PerSlipFam(j,instance) = IO_floatValue(line,positions,1_pInt+j)
+           plastic_titanmod_f0_PerSlipFam(j,instance) = IO_floatValue(line,chunkPos,1_pInt+j)
          enddo
        case ('twinf0')
          do j = 1_pInt, Nchunks_TwinFamilies
-           plastic_titanmod_twinf0_PerTwinFam(j,instance) = IO_floatValue(line,positions,1_pInt+j)
+           plastic_titanmod_twinf0_PerTwinFam(j,instance) = IO_floatValue(line,chunkPos,1_pInt+j)
          enddo
        case ('tau0e')
          do j = 1_pInt, Nchunks_SlipFamilies
-           plastic_titanmod_tau0e_PerSlipFam(j,instance) = IO_floatValue(line,positions,1_pInt+j)
+           plastic_titanmod_tau0e_PerSlipFam(j,instance) = IO_floatValue(line,chunkPos,1_pInt+j)
          enddo
        case ('twintau0')
          do j = 1_pInt, Nchunks_TwinFamilies
-           plastic_titanmod_twintau0_PerTwinFam(j,instance) = IO_floatValue(line,positions,1_pInt+j)
+           plastic_titanmod_twintau0_PerTwinFam(j,instance) = IO_floatValue(line,chunkPos,1_pInt+j)
          enddo
        case ('tau0s')
          do j = 1_pInt, Nchunks_SlipFamilies
-           plastic_titanmod_tau0s_PerSlipFam(j,instance) = IO_floatValue(line,positions,1_pInt+j)
+           plastic_titanmod_tau0s_PerSlipFam(j,instance) = IO_floatValue(line,chunkPos,1_pInt+j)
          enddo
        case ('capre')
          do j = 1_pInt, Nchunks_SlipFamilies
-           plastic_titanmod_capre_PerSlipFam(j,instance) = IO_floatValue(line,positions,1_pInt+j)
+           plastic_titanmod_capre_PerSlipFam(j,instance) = IO_floatValue(line,chunkPos,1_pInt+j)
          enddo
        case ('caprs')
          do j = 1_pInt, Nchunks_SlipFamilies
-           plastic_titanmod_caprs_PerSlipFam(j,instance) = IO_floatValue(line,positions,1_pInt+j)
+           plastic_titanmod_caprs_PerSlipFam(j,instance) = IO_floatValue(line,chunkPos,1_pInt+j)
          enddo
        case ('v0e')
          do j = 1_pInt, Nchunks_SlipFamilies
-           plastic_titanmod_v0e_PerSlipFam(j,instance) = IO_floatValue(line,positions,1_pInt+j)
+           plastic_titanmod_v0e_PerSlipFam(j,instance) = IO_floatValue(line,chunkPos,1_pInt+j)
          enddo
        case ('twingamma0')
          do j = 1_pInt, Nchunks_TwinFamilies
-           plastic_titanmod_twingamma0_PerTwinFam(j,instance) = IO_floatValue(line,positions,1_pInt+j)
+           plastic_titanmod_twingamma0_PerTwinFam(j,instance) = IO_floatValue(line,chunkPos,1_pInt+j)
          enddo
        case ('v0s')
          do j = 1_pInt, Nchunks_SlipFamilies
-           plastic_titanmod_v0s_PerSlipFam(j,instance) = IO_floatValue(line,positions,1_pInt+j)
+           plastic_titanmod_v0s_PerSlipFam(j,instance) = IO_floatValue(line,chunkPos,1_pInt+j)
          enddo
        case ('kinkcriticallength')
          do j = 1_pInt, Nchunks_SlipFamilies
-           plastic_titanmod_kinkcriticallength_PerSlipFam(j,instance) = IO_floatValue(line,positions,1_pInt+j)
+           plastic_titanmod_kinkcriticallength_PerSlipFam(j,instance) = IO_floatValue(line,chunkPos,1_pInt+j)
          enddo
        case ('twinsize')
          do j = 1_pInt, Nchunks_TwinFamilies
-           plastic_titanmod_twinsizePerTwinFam(j,instance) = IO_floatValue(line,positions,1_pInt+j)
+           plastic_titanmod_twinsizePerTwinFam(j,instance) = IO_floatValue(line,chunkPos,1_pInt+j)
          enddo
        case ('celambdaslip')
          do j = 1_pInt, Nchunks_SlipFamilies
-           plastic_titanmod_CeLambdaSlipPerSlipFam(j,instance) = IO_floatValue(line,positions,1_pInt+j)
+           plastic_titanmod_CeLambdaSlipPerSlipFam(j,instance) = IO_floatValue(line,chunkPos,1_pInt+j)
          enddo
        case ('twinlambdaslip')
          do j = 1_pInt, Nchunks_TwinFamilies
-           plastic_titanmod_twinlambdaslipPerTwinFam(j,instance) = IO_floatValue(line,positions,1_pInt+j)
+           plastic_titanmod_twinlambdaslipPerTwinFam(j,instance) = IO_floatValue(line,chunkPos,1_pInt+j)
          enddo
        case ('cslambdaslip')
          do j = 1_pInt, Nchunks_SlipFamilies
-           plastic_titanmod_CsLambdaSlipPerSlipFam(j,instance) = IO_floatValue(line,positions,1_pInt+j)
+           plastic_titanmod_CsLambdaSlipPerSlipFam(j,instance) = IO_floatValue(line,chunkPos,1_pInt+j)
          enddo
        case ('grainsize')
-         plastic_titanmod_GrainSize(instance) = IO_floatValue(line,positions,2_pInt)
+         plastic_titanmod_GrainSize(instance) = IO_floatValue(line,chunkPos,2_pInt)
        case ('maxtwinfraction')
-         plastic_titanmod_MaxTwinFraction(instance) = IO_floatValue(line,positions,2_pInt)
+         plastic_titanmod_MaxTwinFraction(instance) = IO_floatValue(line,chunkPos,2_pInt)
        case ('pe')
          do j = 1_pInt, Nchunks_SlipFamilies
-           plastic_titanmod_pe_PerSlipFam(j,instance) = IO_floatValue(line,positions,1_pInt+j)
+           plastic_titanmod_pe_PerSlipFam(j,instance) = IO_floatValue(line,chunkPos,1_pInt+j)
          enddo
        case ('twinp')
          do j = 1_pInt, Nchunks_TwinFamilies
-           plastic_titanmod_twinp_PerTwinFam(j,instance) = IO_floatValue(line,positions,1_pInt+j)
+           plastic_titanmod_twinp_PerTwinFam(j,instance) = IO_floatValue(line,chunkPos,1_pInt+j)
          enddo
        case ('ps')
          do j = 1_pInt, Nchunks_SlipFamilies
-           plastic_titanmod_ps_PerSlipFam(j,instance) = IO_floatValue(line,positions,1_pInt+j)
+           plastic_titanmod_ps_PerSlipFam(j,instance) = IO_floatValue(line,chunkPos,1_pInt+j)
          enddo
        case ('qe')
          do j = 1_pInt, Nchunks_SlipFamilies 
-           plastic_titanmod_qe_PerSlipFam(j,instance) = IO_floatValue(line,positions,1_pInt+j)
+           plastic_titanmod_qe_PerSlipFam(j,instance) = IO_floatValue(line,chunkPos,1_pInt+j)
          enddo
        case ('twinq')
          do j = 1_pInt, Nchunks_TwinFamilies
-           plastic_titanmod_twinq_PerTwinFam(j,instance) = IO_floatValue(line,positions,1_pInt+j)
+           plastic_titanmod_twinq_PerTwinFam(j,instance) = IO_floatValue(line,chunkPos,1_pInt+j)
          enddo
        case ('qs')
          do j = 1_pInt, Nchunks_SlipFamilies
-           plastic_titanmod_qs_PerSlipFam(j,instance) = IO_floatValue(line,positions,1_pInt+j)
+           plastic_titanmod_qs_PerSlipFam(j,instance) = IO_floatValue(line,chunkPos,1_pInt+j)
          enddo
        case ('twinshearconstant')
          do j = 1_pInt, Nchunks_TwinFamilies
-           plastic_titanmod_twinshearconstant_PerTwinFam(j,instance) = IO_floatValue(line,positions,1_pInt+j)
+           plastic_titanmod_twinshearconstant_PerTwinFam(j,instance) = IO_floatValue(line,chunkPos,1_pInt+j)
          enddo
        case ('dc')
-         plastic_titanmod_dc(instance) = IO_floatValue(line,positions,2_pInt)
+         plastic_titanmod_dc(instance) = IO_floatValue(line,chunkPos,2_pInt)
        case ('twinhpconstant')
-         plastic_titanmod_twinhpconstant(instance) = IO_floatValue(line,positions,2_pInt)
+         plastic_titanmod_twinhpconstant(instance) = IO_floatValue(line,chunkPos,2_pInt)
        case ('atol_rho')
-         plastic_titanmod_aTolRho(instance) = IO_floatValue(line,positions,2_pInt)
+         plastic_titanmod_aTolRho(instance) = IO_floatValue(line,chunkPos,2_pInt)
        case ('interactionee')
          do j = 1_pInt, lattice_maxNinteraction
-           plastic_titanmod_interaction_ee(j,instance) = IO_floatValue(line,positions,1_pInt+j)
+           plastic_titanmod_interaction_ee(j,instance) = IO_floatValue(line,chunkPos,1_pInt+j)
          enddo
        case ('interactionss')
          do j = 1_pInt, lattice_maxNinteraction
-           plastic_titanmod_interaction_ss(j,instance) = IO_floatValue(line,positions,1_pInt+j)
+           plastic_titanmod_interaction_ss(j,instance) = IO_floatValue(line,chunkPos,1_pInt+j)
          enddo
        case ('interactiones')
          do j = 1_pInt, lattice_maxNinteraction
-           plastic_titanmod_interaction_es(j,instance) = IO_floatValue(line,positions,1_pInt+j)
+           plastic_titanmod_interaction_es(j,instance) = IO_floatValue(line,chunkPos,1_pInt+j)
          enddo
        case ('interaction_slipslip','interactionslipslip')
-         if (positions(1) < 1_pInt + Nchunks_SlipSlip) &
+         if (chunkPos(1) < 1_pInt + Nchunks_SlipSlip) &
            call IO_warning(52_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_TITANMOD_label//')')
          do j = 1_pInt, Nchunks_SlipSlip
-           plastic_titanmod_interactionSlipSlip(j,instance) = IO_floatValue(line,positions,1_pInt+j)
+           plastic_titanmod_interactionSlipSlip(j,instance) = IO_floatValue(line,chunkPos,1_pInt+j)
          enddo
        case ('interaction_sliptwin','interactionsliptwin')
-         if (positions(1) < 1_pInt + Nchunks_SlipTwin) &
+         if (chunkPos(1) < 1_pInt + Nchunks_SlipTwin) &
            call IO_warning(52_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_TITANMOD_label//')')
          do j = 1_pInt, Nchunks_SlipTwin
-           plastic_titanmod_interactionSlipTwin(j,instance) = IO_floatValue(line,positions,1_pInt+j)
+           plastic_titanmod_interactionSlipTwin(j,instance) = IO_floatValue(line,chunkPos,1_pInt+j)
          enddo
        case ('interaction_twinslip','interactiontwinslip')
-         if (positions(1) < 1_pInt + Nchunks_TwinSlip) &
+         if (chunkPos(1) < 1_pInt + Nchunks_TwinSlip) &
            call IO_warning(52_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_TITANMOD_label//')')
          do j = 1_pInt, Nchunks_TwinSlip
-           plastic_titanmod_interactionTwinSlip(j,instance) = IO_floatValue(line,positions,1_pInt+j)
+           plastic_titanmod_interactionTwinSlip(j,instance) = IO_floatValue(line,chunkPos,1_pInt+j)
          enddo
        case ('interaction_twintwin','interactiontwintwin')
-         if (positions(1) < 1_pInt + Nchunks_TwinTwin) &
+         if (chunkPos(1) < 1_pInt + Nchunks_TwinTwin) &
            call IO_warning(52_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_TITANMOD_label//')')
          do j = 1_pInt, Nchunks_TwinTwin
-           plastic_titanmod_interactionTwinTwin(j,instance) = IO_floatValue(line,positions,1_pInt+j)
+           plastic_titanmod_interactionTwinTwin(j,instance) = IO_floatValue(line,chunkPos,1_pInt+j)
          enddo
      end select
    endif; endif

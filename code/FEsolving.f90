@@ -79,12 +79,10 @@ subroutine FE_init
  implicit none
 #if defined(Marc4DAMASK) || defined(Abaqus)
  integer(pInt), parameter :: &
-   FILEUNIT = 222_pInt, &
-   MAXNCHUNKS = 6_pInt
+   FILEUNIT = 222_pInt
  integer(pInt) :: j
- character(len=64)   :: tag
- character(len=1024) :: line
- integer(pInt), dimension(1_pInt+2_pInt*MAXNCHUNKS) :: positions
+ character(len=65536) :: tag, line
+ integer(pInt), allocatable, dimension(:) :: chunkPos
 #endif
 
  mainProcess: if (worldrank == 0) then 
@@ -114,26 +112,26 @@ subroutine FE_init
  rewind(FILEUNIT)
  do
    read (FILEUNIT,'(a1024)',END=100) line
-   positions = IO_stringPos(line,MAXNCHUNKS)
-   tag = IO_lc(IO_stringValue(line,positions,1_pInt))                                               ! extract key
+   chunkPos = IO_stringPos(line)
+   tag = IO_lc(IO_stringValue(line,chunkPos,1_pInt))                                               ! extract key
    select case(tag)
      case ('solver')
        read (FILEUNIT,'(a1024)',END=100) line                                                       ! next line
-       positions = IO_stringPos(line,MAXNCHUNKS)
-       symmetricSolver = (IO_intValue(line,positions,2_pInt) /= 1_pInt)
+       chunkPos = IO_stringPos(line)
+       symmetricSolver = (IO_intValue(line,chunkPos,2_pInt) /= 1_pInt)
      case ('restart')
        read (FILEUNIT,'(a1024)',END=100) line                                                       ! next line
-       positions = IO_stringPos(line,MAXNCHUNKS)
-       restartWrite = iand(IO_intValue(line,positions,1_pInt),1_pInt) > 0_pInt
-       restartRead  = iand(IO_intValue(line,positions,1_pInt),2_pInt) > 0_pInt
+       chunkPos = IO_stringPos(line)
+       restartWrite = iand(IO_intValue(line,chunkPos,1_pInt),1_pInt) > 0_pInt
+       restartRead  = iand(IO_intValue(line,chunkPos,1_pInt),2_pInt) > 0_pInt
      case ('*restart')
-       do j=2_pInt,positions(1)
-         restartWrite = (IO_lc(IO_StringValue(line,positions,j)) == 'write') .or. restartWrite
-         restartRead  = (IO_lc(IO_StringValue(line,positions,j)) == 'read')  .or. restartRead
+       do j=2_pInt,chunkPos(1)
+         restartWrite = (IO_lc(IO_StringValue(line,chunkPos,j)) == 'write') .or. restartWrite
+         restartRead  = (IO_lc(IO_StringValue(line,chunkPos,j)) == 'read')  .or. restartRead
        enddo
        if(restartWrite) then
-         do j=2_pInt,positions(1)
-           restartWrite = (IO_lc(IO_StringValue(line,positions,j)) /= 'frequency=0') .and. restartWrite
+         do j=2_pInt,chunkPos(1)
+           restartWrite = (IO_lc(IO_StringValue(line,chunkPos,j)) /= 'frequency=0') .and. restartWrite
          enddo
        endif
    end select
@@ -146,23 +144,23 @@ subroutine FE_init
    rewind(FILEUNIT)
    do
      read (FILEUNIT,'(a1024)',END=200) line
-     positions = IO_stringPos(line,MAXNCHUNKS)
-     if ( IO_lc(IO_stringValue(line,positions,1_pInt)) == 'restart' .and. &
-          IO_lc(IO_stringValue(line,positions,2_pInt)) == 'file' .and. &
-          IO_lc(IO_stringValue(line,positions,3_pInt)) == 'job' .and. &
-          IO_lc(IO_stringValue(line,positions,4_pInt)) == 'id' ) &
-        modelName = IO_StringValue(line,positions,6_pInt)
+     chunkPos = IO_stringPos(line)
+     if ( IO_lc(IO_stringValue(line,chunkPos,1_pInt)) == 'restart' .and. &
+          IO_lc(IO_stringValue(line,chunkPos,2_pInt)) == 'file' .and. &
+          IO_lc(IO_stringValue(line,chunkPos,3_pInt)) == 'job' .and. &
+          IO_lc(IO_stringValue(line,chunkPos,4_pInt)) == 'id' ) &
+        modelName = IO_StringValue(line,chunkPos,6_pInt)
    enddo
 #else
    call IO_open_inputFile(FILEUNIT,modelName)
    rewind(FILEUNIT)
    do
      read (FILEUNIT,'(a1024)',END=200) line
-     positions = IO_stringPos(line,MAXNCHUNKS)
-     if ( IO_lc(IO_stringValue(line,positions,1_pInt))=='*heading') then
+     chunkPos = IO_stringPos(line)
+     if ( IO_lc(IO_stringValue(line,chunkPos,1_pInt))=='*heading') then
        read (FILEUNIT,'(a1024)',END=200) line
-       positions = IO_stringPos(line,MAXNCHUNKS)
-       modelName = IO_StringValue(line,positions,1_pInt)
+       chunkPos = IO_stringPos(line)
+       modelName = IO_StringValue(line,chunkPos,1_pInt)
      endif
    enddo
 #endif
