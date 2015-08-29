@@ -5,7 +5,7 @@ import os,re,sys,string,fnmatch,math,random,numpy as np
 from optparse import OptionParser
 import damask
 
-scriptID   = string.replace('$Id: fillTable.py$','\n','\\n')
+scriptID = '$Id$'
 scriptName = os.path.splitext(scriptID.split()[1])[0]
 
 def unravel(item):
@@ -60,7 +60,7 @@ for name in filenames:
   except: continue
   table.croak('\033[1m'+scriptName+'\033[0m'+(': '+name if name else ''))
 
-# ------------------------------------------ assemble info ---------------------------------------  
+# ------------------------------------------ assemble info -----------------------------------------
 
   table.head_read()
 # ------------------------------------------ Evaluate condition ---------------------------------------  
@@ -115,8 +115,8 @@ for name in filenames:
     if label not in brokenFormula:
       evaluator[label] = formula
 # ------------------------------------------ assemble header ---------------------------------------
-  table.info_append(scriptID + '\t' + ' '.join(sys.argv[1:]))                      # read ASCII header info
-  table.labels                                                                    # update with label set
+  table.info_append(scriptID + '\t' + ' '.join(sys.argv[1:]))                                        # read ASCII header info
+  table.labels                                                                                       # update with label set
   table.head_write()
 
 # ------------------------------------------ process data ------------------------------------------
