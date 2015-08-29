@@ -802,7 +802,7 @@ class Orientation:
   quaternion = property(asQuaternion)
 
   def asEulers(self,type='bunge',degrees=False,standardRange=False):
-    return self.quaternion.asEulers(type)
+    return self.quaternion.asEulers(type, degrees, standardRange)
   eulers = property(asEulers)
 
   def asRodrigues(self):
