@@ -57,6 +57,8 @@ use ifport                                                                      
  integer,     parameter, public :: pLongInt  = 8                                                    !< integer representation 64 bit (was selected_int_kind(12), number with at least up to +- 1e12)
  real(pReal), parameter, public :: tol_math_check = 1.0e-8_pReal                                    !< tolerance for internal math self-checks (rotation)
 
+ integer(pInt), allocatable, dimension(:) :: realloc_lhs_test
+ 
  type, public :: p_vec                                                                              !< variable length datatype used for storage of state
    real(pReal), dimension(:), pointer :: p
  end type p_vec
@@ -166,6 +168,9 @@ subroutine prec_init
  endif mainProcess
 
  if ((.not. prec_isNaN(DAMASK_NaN)) .or. (DAMASK_NaN == DAMASK_NaN)) call quit(9000)
+ realloc_lhs_test = [1_pInt,2_pInt]
+ if (realloc_lhs_test(2)/=2_pInt) call quit(9000)
+ 
 
 end subroutine prec_init
 

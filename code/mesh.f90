@@ -2131,7 +2131,7 @@ subroutine mesh_marc_map_elements(fileUnit)
  integer(pInt), intent(in) :: fileUnit
 
  integer(pInt), allocatable, dimension(:) :: chunkPos
- character(len=300) line
+ character(len=300) :: line
 
  integer(pInt), dimension (1_pInt+mesh_NcpElems) :: contInts
  integer(pInt) :: i,cpElem = 0_pInt
@@ -2146,7 +2146,7 @@ subroutine mesh_marc_map_elements(fileUnit)
    chunkPos = IO_stringPos(line)
    if( IO_lc(IO_stringValue(line,chunkPos,1_pInt)) == 'hypoelastic' ) then
      do i=1_pInt,3_pInt+hypoelasticTableStyle                                                       ! skip three (or four if new table style!) lines
-       read (fileUnit,610,END=660) line 
+       read (fileUnit,610,END=660) line
      enddo
      contInts = IO_continuousIntValues(fileUnit,mesh_NcpElems,mesh_nameElemSet,&
                                               mesh_mapElemSet,mesh_NelemSets)
@@ -2342,7 +2342,7 @@ subroutine mesh_marc_build_elements(fileUnit)
  rewind(fileUnit)
  do
    read (fileUnit,610,END=620) line
-   chunkPos(1:1+2*1) = IO_stringPos(line)
+   chunkPos = IO_stringPos(line)
    if( IO_lc(IO_stringValue(line,chunkPos,1_pInt)) == 'connectivity' ) then
      read (fileUnit,610,END=620) line                                                               ! garbage line
      do i = 1_pInt,mesh_Nelems
@@ -2376,16 +2376,16 @@ subroutine mesh_marc_build_elements(fileUnit)
 620 rewind(fileUnit)                                                                                ! just in case "initial state" appears before "connectivity"
  read (fileUnit,610,END=620) line
  do
-   chunkPos(1:1+2*2) = IO_stringPos(line)
+   chunkPos = IO_stringPos(line)
    if( (IO_lc(IO_stringValue(line,chunkPos,1_pInt)) == 'initial') .and. &
        (IO_lc(IO_stringValue(line,chunkPos,2_pInt)) == 'state') ) then
      if (initialcondTableStyle == 2_pInt) read (fileUnit,610,END=620) line                          ! read extra line for new style
      read (fileUnit,610,END=630) line                                                               ! read line with index of state var
-     chunkPos(1:1+2*1) = IO_stringPos(line)
+     chunkPos = IO_stringPos(line)
      sv = IO_IntValue(line,chunkPos,1_pInt)                                                            ! figure state variable index
      if( (sv == 2_pInt).or.(sv == 3_pInt) ) then                                                    ! only state vars 2 and 3 of interest
        read (fileUnit,610,END=620) line                                                             ! read line with value of state var
-       chunkPos(1:1+2*1) = IO_stringPos(line)
+       chunkPos = IO_stringPos(line)
        do while (scan(IO_stringValue(line,chunkPos,1_pInt),'+-',back=.true.)>1)                        ! is noEfloat value?
          myVal = nint(IO_fixedNoEFloatValue(line,[0_pInt,20_pInt],1_pInt),pInt)                     ! state var's value
          mesh_maxValStateVar(sv-1_pInt) = max(myVal,mesh_maxValStateVar(sv-1_pInt))                 ! remember max val of homogenization and microstructure index
@@ -2401,7 +2401,7 @@ subroutine mesh_marc_build_elements(fileUnit)
          enddo
          if (initialcondTableStyle == 0_pInt) read (fileUnit,610,END=620) line                      ! ignore IP range for old table style
          read (fileUnit,610,END=630) line
-         chunkPos(1:1+2*1) = IO_stringPos(line)
+         chunkPos = IO_stringPos(line)
        enddo
      endif
    else   
@@ -3010,7 +3010,7 @@ subroutine mesh_abaqus_build_elements(fileUnit)
  rewind(fileUnit)
  do
    read (fileUnit,610,END=620) line
-   chunkPos(1:1+2*2) = IO_stringPos(line)
+   chunkPos = IO_stringPos(line)
    if ( IO_lc(IO_stringValue(line,chunkPos,1_pInt)) == '*part' ) inPart = .true.
    if ( IO_lc(IO_stringValue(line,chunkPos,1_pInt)) == '*end' .and. &
         IO_lc(IO_stringValue(line,chunkPos,2_pInt)) == 'part' ) inPart = .false.
@@ -3067,7 +3067,7 @@ subroutine mesh_abaqus_build_elements(fileUnit)
        if ( IO_lc(IO_StringValue(line,chunkPos,2_pInt)) == 'material' .and. &
             materialFound ) then
          read (fileUnit,610,END=630) line                                                           ! read homogenization and microstructure
-         chunkPos(1:1+2*2) = IO_stringPos(line)
+         chunkPos = IO_stringPos(line)
          homog = nint(IO_floatValue(line,chunkPos,1_pInt),pInt)
          micro = nint(IO_floatValue(line,chunkPos,2_pInt),pInt)
          do i = 1_pInt,mesh_Nmaterials                                                              ! look thru material names
