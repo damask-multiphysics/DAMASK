@@ -129,7 +129,7 @@ for name in filenames:
     table = damask.ASCIItable(name = name, buffered = False)
   except:
     continue
-  table.croak('\033[1m'+scriptName+'\033[0m'+(': '+name if name else ''))
+  table.croak(damask.util.emph(scriptName)+(': '+name if name else ''))
 
 # ------------------------------------------ read header ------------------------------------------
 
@@ -208,7 +208,7 @@ for name in filenames:
     distance[i,:,:,:] = np.where(uniques >= features[feature_id]['aliens'],0.0,1.0)                 # seed with 0.0 when enough unique neighbor IDs are present
     distance[i,:,:,:] = ndimage.morphology.distance_transform_edt(distance[i,:,:,:])*[options.scale]*3
 
-  distance.shape = (len(feature_list),grid.prod())
+  distance.shape = ([len(feature_list),grid.prod(),1])
   for i in xrange(len(feature_list)):
     stack.append(distance[i,:])
 

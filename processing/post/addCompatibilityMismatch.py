@@ -53,7 +53,7 @@ for name in filenames:
     table = damask.ASCIItable(name = name,
                               buffered = False)
   except: continue
-  table.croak('\033[1m'+scriptName+'\033[0m'+(': '+name if name else ''))
+  table.croak(damask.util.emph(scriptName)+(': '+name if name else ''))
 
 # ------------------------------------------ read header ------------------------------------------
 
@@ -98,14 +98,17 @@ for name in filenames:
   
 # ------------------------------------------ process deformation gradient --------------------------
 
-  F = table.data[:,colF:colF+9].transpose().reshape([3,3]+list(options.dimension),order='F')
+  F = table.data[:,colF:colF+9].transpose().reshape([3,3]+grid.tolist(),order='F')
   Favg    = damask.core.math.tensorAvg(F)
   centres = damask.core.mesh.deformedCoordsFFT(size,F,Favg,[1.0,1.0,1.0])
   nodes   = damask.core.mesh.nodesAroundCentres(size,Favg,centres)
 
-  stack = [table.data]
-  if options.shape:  stack.append(damask.core.mesh.shapeMismatch( size,F,nodes,centres))
-  if options.volume: stack.append(damask.core.mesh.volumeMismatch(size,F,nodes))
+  stack =[table.data]
+  if options.shape:  stack.append(damask.core.mesh.shapeMismatch( size,F,nodes,centres).reshape([grid.prod(),1]))
+  if options.volume: stack.append(damask.core.mesh.volumeMismatch(size,F,nodes).reshape([grid.prod(),1]))
+  
+  for i in stack:
+    print i.shape
 
 # ------------------------------------------ output result -----------------------------------------
 

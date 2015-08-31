@@ -230,14 +230,6 @@ def normalize(x):
   
   return [x[i]/norm for i in range(len(x))]
 
-def crossproduct(x,y):
-  
-  return [
-           x[1]*y[2]-y[1]*x[2],
-           x[2]*y[0]-y[2]*x[0],
-           x[0]*y[1]-y[0]*x[1],
-         ]
-
 # --------------------------------------------------------------------
 #                                MAIN
 # --------------------------------------------------------------------
@@ -307,21 +299,17 @@ if options.lattice=='hex':                                                      
     slipnormal[options.lattice][i]=normalize(slipnormal[options.lattice][i])
     slipdirection[options.lattice][i]=normalize(slipdirection[options.lattice][i])
 
-# ------------------------------------------ setup file handles ------------------------------------
-files = []
-if filenames == []:
-  files.append({'name':'STDIN', 'input':sys.stdin, 'output':sys.stdout, 'croak':sys.stderr})
-else:
-  for name in filenames:
-    if os.path.exists(name):
-      files.append({'name':name, 'input':open(name), 'output':open(name+'_tmp','w'), 'croak':sys.stderr})
+# --- loop over input files -------------------------------------------------------------------------
 
-# ------------------------------------------ loop over input files ---------------------------------
-for file in files:
-  if file['name'] != 'STDIN': file['croak'].write('\033[1m'+scriptName+'\033[0m: '+file['name']+'\n')
-  else: file['croak'].write('\033[1m'+scriptName+'\033[0m\n')
+if filenames == []: filenames = [None]
 
-  table = damask.ASCIItable(file['input'],file['output'],False)                                     # make unbuffered ASCII_table
+for name in filenames:
+  try:
+    table = damask.ASCIItable(name = name,buffered = False)
+  except:
+    continue
+  table.croak(damask.util.emph(scriptName)+(': '+name if name else ''))
+
   table.head_read()                                                                                 # read ASCII header info
   table.info_append(scriptID + '\t' + ' '.join(sys.argv[1:]))
 
@@ -362,7 +350,7 @@ for file in files:
           for slipsystem in range(Nslipsystems[options.lattice]) ]
     table.data_append(S)
     if options.traceplane:
-      trace = [crossproduct(options.traceplane,applyEulers(phi1,Phi,phi2,normalize(slipnormal[options.lattice][slipsystem]))) \
+      trace = [np.cross(options.traceplane,applyEulers(phi1,Phi,phi2,normalize(slipnormal[options.lattice][slipsystem]))) \
                  for slipsystem in range(Nslipsystems[options.lattice]) ]
       if options.rank == 0:
         table.data_append('\t'.join(map(lambda x:'%f\t%f\t%f'%(x[0],x[1],x[2]),trace)))
@@ -371,10 +359,6 @@ for file in files:
         table.data_append('\t'.join(map(str,trace[SabsSorted[-options.rank][1]])) + '\t%i'%(1+SabsSorted[-options.rank][1]))
     outputAlive = table.data_write()                                                                # output processed line
 
-# ------------------------------------------ output result -----------------------------------------
-  outputAlive and table.output_flush()                                                              # just in case of buffered ASCII table
+# ------------------------------------------ output finalization -----------------------------------
 
-  table.input_close()                                                                               # close input ASCII table (works for stdin)
-  table.output_close()                                                                              # close output ASCII table (works for stdout)
-  if file['name'] != 'STDIN':
-    os.rename(file['name']+'_tmp',file['name'])                                                     # overwrite old one with tmp new
+  table.close()                                                                                     # close input ASCII table (works for stdin)
