@@ -118,7 +118,7 @@ for name in filenames:
                               labeled = options.label != None,
                               readonly = True)
   except: continue
-  table.croak('\033[1m'+scriptName+'\033[0m'+(': '+name if name else ''))
+  table.croak(damask.util.emph(scriptName)+(': '+name if name else ''))
 
 # ------------------------------------------ read header ------------------------------------------
 
@@ -139,7 +139,7 @@ for name in filenames:
   if options.flipLR:          table.data = np.fliplr(table.data)
   if options.flipUD:          table.data = np.flipud(table.data)
 
-  mask = np.where(table.data != options.gap,True,False) if options.gap != None else np.ones_like(table.data,dtype = 'bool')
+  mask = np.logical_or(table.data == options.gap, np.isnan(table.data)) if options.gap else np.logical_not(np.isnan(table.data))  # mask gap and NaN (if gap present)
   if np.all(np.array(options.range) == 0.0):
     options.range = [table.data[mask].min(),
                      table.data[mask].max()]
