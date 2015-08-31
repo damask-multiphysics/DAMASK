@@ -81,7 +81,7 @@ for name in filenames:
   table.info_append(scriptID + '\t' + ' '.join(sys.argv[1:]))
   if options.shape:  table.labels_append('shapeMismatch({})'.format(options.defgrad))
   if options.volume: table.labels_append('volMismatch({})'.format(options.defgrad))
-  table.head_write()
+  #table.head_write()
 
 # --------------- figure out size and grid ---------------------------------------------------------
 
@@ -96,24 +96,45 @@ for name in filenames:
 
   N = grid.prod()
   
-# ------------------------------------------ process deformation gradient --------------------------
+# --------------- figure out columns to process  ---------------------------------------------------
+  key = '1_%s'%options.defgrad
+  if key not in table.labels:
+    file['croak'].write('column %s not found...\n'%key)
+    continue
+  else:
+    column = table.labels.index(key)                                                                # remember columns of requested data
 
-  F = table.data[:,colF:colF+9].transpose().reshape([3,3]+grid.tolist(),order='F')
-  Favg    = damask.core.math.tensorAvg(F)
+# ------------------------------------------ assemble header ---------------------------------------
+  if options.shape:  table.labels_append(['shapeMismatch(%s)' %options.defgrad])
+  if options.volume: table.labels_append(['volMismatch(%s)'%options.defgrad])
+  table.head_write()
+
+# ------------------------------------------ read deformation gradient field -----------------------
+  table.data_rewind()
+  F = np.zeros(N*9,'d').reshape([3,3]+list(grid))
+  idx = 0
+  while table.data_read():    
+    (x,y,z) = damask.util.gridLocation(idx,grid)                                                     # figure out (x,y,z) position from line count
+    idx += 1
+    F[0:3,0:3,x,y,z] = np.array(map(float,table.data[column:column+9]),'d').reshape(3,3)                                               
+  print 'hm'
+  Favg = damask.core.math.tensorAvg(F)
   centres = damask.core.mesh.deformedCoordsFFT(size,F,Favg,[1.0,1.0,1.0])
-  nodes   = damask.core.mesh.nodesAroundCentres(size,Favg,centres)
-
-  stack =[table.data]
-  if options.shape:  stack.append(damask.core.mesh.shapeMismatch( size,F,nodes,centres).reshape([grid.prod(),1]))
-  if options.volume: stack.append(damask.core.mesh.volumeMismatch(size,F,nodes).reshape([grid.prod(),1]))
   
-  for i in stack:
-    print i.shape
+  nodes   = damask.core.mesh.nodesAroundCentres(size,Favg,centres)
+  if options.shape:   shapeMismatch = damask.core.mesh.shapeMismatch( size,F,nodes,centres)
+  if options.volume: volumeMismatch = damask.core.mesh.volumeMismatch(size,F,nodes)
 
-# ------------------------------------------ output result -----------------------------------------
-
-  if len(stack) > 1: table.data = np.hstack(tuple(stack))
-  table.data_writeArray()
+# ------------------------------------------ process data ------------------------------------------
+  table.data_rewind()
+  idx = 0
+  outputAlive = True
+  while outputAlive and table.data_read():                                                          # read next data line of ASCII table
+    (x,y,z) = damask.util.gridLocation(idx,grid)                                                    # figure out (x,y,z) position from line count
+    idx += 1
+    if options.shape:  table.data_append( shapeMismatch[x,y,z])
+    if options.volume: table.data_append(volumeMismatch[x,y,z])
+    outputAlive = table.data_write()
 
 # ------------------------------------------ output finalization -----------------------------------  
 

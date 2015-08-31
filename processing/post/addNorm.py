@@ -56,7 +56,7 @@ for name in filenames:
     table = damask.ASCIItable(name = name,
                               buffered = False)
   except: continue
-  table.croak('\033[1m'+scriptName+'\033[0m'+(': '+name if name else ''))
+  table.croak(damask.util.emph(scriptName)+(': '+name if name else ''))
 
 # ------------------------------------------ read header ------------------------------------------
 

@@ -94,21 +94,33 @@ for name in filenames:
 # ------------------------------------------ assemble header ---------------------------------------
 
   table.info_append(scriptID + '\t' + ' '.join(sys.argv[1:]))
-  table.labels_append(['{}_{}.{}'%(coord+1,options.defgrad,options.coords) for coord in xrange(3)])  # extend ASCII header with new labels
+  for coord in xrange(3):
+    table.labels_append(['{}_{}.{}'.format(coord+1,options.defgrad,options.coords) ])               # extend ASCII header with new labels
   table.head_write()
 
-# ------------------------------------------ process deformation gradient --------------------------
+# ------------------------------------------ read deformation gradient field -----------------------
+  table.data_rewind()
+  F = np.array([0.0 for i in xrange(N*9)]).reshape([3,3]+grid.tolist())
+  idx = 0
+  while table.data_read():    
+    (x,y,z) = damask.util.gridLocation(idx,grid)                                                    # figure out (x,y,z) position from line count
+    idx += 1
+    F[0:3,0:3,x,y,z] = np.array(map(float,table.data[table.label_index(options.defgrad):\
+                                            table.label_index(options.defgrad)+9]),'d').reshape(3,3)
 
-  F = table.data[:,colF:colF+9].transpose().reshape([3,3]+list(options.dimension),order='F')
-  Favg    = damask.core.math.tensorAvg(F)
-  centres = damask.core.mesh.deformedCoordsFFT(size,F,Favg,[1.0,1.0,1.0])
-
-  stack = [table.data,centres]
-
-# ------------------------------------------ output result -----------------------------------------
-
-  if len(stack) > 1: table.data = np.hstack(tuple(stack))
-  table.data_writeArray()
+# ------------------------------------------ calculate coordinates ---------------------------------
+  Favg = damask.core.math.tensorAvg(F)
+  centroids = damask.core.mesh.deformedCoordsFFT(size,F,Favg)
+  
+# ------------------------------------------ process data ------------------------------------------
+  table.data_rewind()
+  idx = 0
+  outputAlive = True
+  while outputAlive and table.data_read():                                                          # read next data line of ASCII table
+    (x,y,z) = damask.util.gridLocation(idx,grid)                                                    # figure out (x,y,z) position from line count
+    idx += 1
+    table.data_append(list(centroids[:,x,y,z]))
+    outputAlive = table.data_write()                       
 
 # ------------------------------------------ output finalization -----------------------------------  
 
