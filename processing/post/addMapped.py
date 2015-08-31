@@ -68,7 +68,7 @@ for name in filenames:
     table = damask.ASCIItable(name = name,
                               buffered = False)
   except: continue
-  table.croak('\033[1m'+scriptName+'\033[0m'+(': '+name if name else ''))
+  table.croak(damask.util.emph(scriptName)+(': '+name if name else ''))
 
 # ------------------------------------------ read header ------------------------------------------
 
@@ -96,7 +96,7 @@ for name in filenames:
 
   outputAlive = True
   while outputAlive and table.data_read():                                                          # read next data line of ASCII table
-    table.data_append(mappedTable.data[int(table.data[mappedColumn])+options.offset-1])             # add all mapped data types
+    table.data_append(mappedTable.data[int(round(float(table.data[mappedColumn])))+options.offset-1])             # add all mapped data types
     outputAlive = table.data_write()                                                                # output processed line
 
 # ------------------------------------------ output finalization -----------------------------------  
