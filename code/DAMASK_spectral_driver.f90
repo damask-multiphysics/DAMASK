@@ -437,6 +437,8 @@ program DAMASK_spectral_Driver
                          (outputIndex(2)-outputIndex(1)+1)*materialpoint_sizeResults,&
                          MPI_DOUBLE, MPI_STATUS_IGNORE, ierr)
    enddo
+   if (worldrank == 0) &
+     write(6,'(1/,a)') ' ... writing initial configuration to file ........................'
  endif
 !--------------------------------------------------------------------------------------------------
 ! loopping over loadcases
