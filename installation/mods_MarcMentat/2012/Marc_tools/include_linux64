@@ -382,68 +382,68 @@ CCTHIGH_CASI="$CCHIGH -c99 $I8CASIDEFS"
 #PROFILE="-Mprof=func,mpi"
 PROFILE=
 
-FORTLOW="$FCOMP -c -assume byterecl,realloc-lhs -safe_cray_ptr $PROFILE -save -zero -mp1 -WB  -O0 $I8FFLAGS -I$MARC_SOURCE/common \
+FORTLOW="$FCOMP -c -assume byterecl -stand f08 -standard-semantics -safe_cray_ptr $PROFILE -save -zero -mp1 -WB  -O0 $I8FFLAGS -I$MARC_SOURCE/common \
  -I$MARC_SOURCE/${BCS_DIR}/common -I$MARC_SOURCE/mumpssolver/include $I8DEFINES -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM $SOLVERFLAGS"
-FORTRAN="$FCOMP -c -assume byterecl,realloc-lhs -safe_cray_ptr $PROFILE -save -zero -mp1 -WB  -O1 $I8FFLAGS -I$MARC_SOURCE/common \
+FORTRAN="$FCOMP -c -assume byterecl -stand f08 -standard-semantics -safe_cray_ptr $PROFILE -save -zero -mp1 -WB  -O1 $I8FFLAGS -I$MARC_SOURCE/common \
  -I$MARC_SOURCE/${BCS_DIR}/common -I$MARC_SOURCE/mumpssolver/include $I8DEFINES -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM $SOLVERFLAGS"
-FORTHIGH="$FCOMP -c -assume byterecl,realloc-lhs -safe_cray_ptr $PROFILE -save -zero -mp1 -WB  -fno-alias -O3 $I8FFLAGS -I$MARC_SOURCE/common \
+FORTHIGH="$FCOMP -c -assume byterecl -stand f08 -standard-semantics -safe_cray_ptr $PROFILE -save -zero -mp1 -WB  -fno-alias -O3 $I8FFLAGS -I$MARC_SOURCE/common \
  -I$MARC_SOURCE/${BCS_DIR}/common -I$MARC_SOURCE/mumpssolver/include $I8DEFINES -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM $SOLVERFLAGS"
-FORTNA="$FCOMP -c -assume byterecl,realloc-lhs -safe_cray_ptr -save -zero -mp1 -WB  -fno-alias -O3 $I8FFLAGS -I$MARC_SOURCE/common \
+FORTNA="$FCOMP -c -assume byterecl -stand f08 -standard-semantics -safe_cray_ptr -save -zero -mp1 -WB  -fno-alias -O3 $I8FFLAGS -I$MARC_SOURCE/common \
  -I$MARC_SOURCE/${BCS_DIR}/common -I$MARC_SOURCE/mumpssolver/include $I8DEFINES -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM"
 
 # DAMASK compiler calls: additional flags are in line 2 OpenMP flags in line 3; removed -save for calls with openMP
-DFORTLOW="$FCOMP -c -assume byterecl,realloc-lhs -safe_cray_ptr $PROFILE -save -zero -mp1 -WB  -O0 $I8FFLAGS -I$MARC_SOURCE/common \
+DFORTLOW="$FCOMP -c -assume byterecl -stand f08 -standard-semantics -safe_cray_ptr $PROFILE -save -zero -mp1 -WB  -O0 $I8FFLAGS -I$MARC_SOURCE/common \
  -fpp -ftz -diag-enable sc3 -diag-disable 5268 -warn declarations -warn general -warn usage -warn interfaces -warn ignore_loc -warn alignments -DMarc4DAMASK=2012 \
  -I$MARC_SOURCE/${BCS_DIR}/common -I$MARC_SOURCE/mumpssolver/include $I8DEFINES -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM $SOLVERFLAGS"
-DFORTLOWMP="$FCOMP -c -assume byterecl,realloc-lhs -safe_cray_ptr $PROFILE -zero -mp1 -WB  -O0 $I8FFLAGS -I$MARC_SOURCE/common \
+DFORTLOWMP="$FCOMP -c -assume byterecl -stand f08 -standard-semantics -safe_cray_ptr $PROFILE -zero -mp1 -WB  -O0 $I8FFLAGS -I$MARC_SOURCE/common \
  -fpp -ftz -diag-disable 5268 -warn declarations -warn general -warn usage -warn interfaces -warn ignore_loc -warn alignments -DMarc4DAMASK=2012 \
  -openmp -openmp_report2 \
  -I$MARC_SOURCE/${BCS_DIR}/common -I$MARC_SOURCE/mumpssolver/include $I8DEFINES -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM $SOLVERFLAGS"
-DFORTRAN="$FCOMP -c -assume byterecl,realloc-lhs -safe_cray_ptr $PROFILE -save -zero -mp1 -WB  -O1 $I8FFLAGS -I$MARC_SOURCE/common \
+DFORTRAN="$FCOMP -c -assume byterecl -stand f08 -standard-semantics -safe_cray_ptr $PROFILE -save -zero -mp1 -WB  -O1 $I8FFLAGS -I$MARC_SOURCE/common \
  -fpp -ftz -diag-enable sc3 -diag-disable 5268 -warn declarations -warn general -warn usage -warn interfaces -warn ignore_loc -warn alignments -DMarc4DAMASK=2012 \
  -I$MARC_SOURCE/${BCS_DIR}/common -I$MARC_SOURCE/mumpssolver/include $I8DEFINES -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM $SOLVERFLAGS"
-DFORTRANMP="$FCOMP -c -assume byterecl,realloc-lhs -safe_cray_ptr $PROFILE -zero -mp1 -WB  -O1 $I8FFLAGS -I$MARC_SOURCE/common \
+DFORTRANMP="$FCOMP -c -assume byterecl -stand f08 -standard-semantics -safe_cray_ptr $PROFILE -zero -mp1 -WB  -O1 $I8FFLAGS -I$MARC_SOURCE/common \
  -fpp -ftz -diag-disable 5268 -warn declarations -warn general -warn usage -warn interfaces -warn ignore_loc -warn alignments -DMarc4DAMASK=2012 \
  -openmp -openmp_report2 \
  -I$MARC_SOURCE/${BCS_DIR}/common -I$MARC_SOURCE/mumpssolver/include $I8DEFINES -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM $SOLVERFLAGS"
-DFORTHIGH="$FCOMP -c -assume byterecl,realloc-lhs -safe_cray_ptr $PROFILE -save -zero -mp1 -WB  -fno-alias -O3 $I8FFLAGS -I$MARC_SOURCE/common \
+DFORTHIGH="$FCOMP -c -assume byterecl -stand f08 -standard-semantics -safe_cray_ptr $PROFILE -save -zero -mp1 -WB  -fno-alias -O3 $I8FFLAGS -I$MARC_SOURCE/common \
  -fpp -ftz -diag-enable sc3 -diag-disable 5268 -warn declarations -warn general -warn usage -warn interfaces -warn ignore_loc -warn alignments -DMarc4DAMASK=2012 \
  -I$MARC_SOURCE/${BCS_DIR}/common -I$MARC_SOURCE/mumpssolver/include $I8DEFINES -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM $SOLVERFLAGS"
-DFORTHIGHMP="$FCOMP -c -assume byterecl,realloc-lhs -safe_cray_ptr $PROFILE -zero -mp1 -WB  -fno-alias -O3 $I8FFLAGS -I$MARC_SOURCE/common \
+DFORTHIGHMP="$FCOMP -c -assume byterecl -stand f08 -standard-semantics -safe_cray_ptr $PROFILE -zero -mp1 -WB  -fno-alias -O3 $I8FFLAGS -I$MARC_SOURCE/common \
  -fpp -ftz -diag-disable 5268 -warn declarations -warn general -warn usage -warn interfaces -warn ignore_loc -warn alignments -DMarc4DAMASK=2012 \
  -openmp -openmp_report2 \
  -I$MARC_SOURCE/${BCS_DIR}/common -I$MARC_SOURCE/mumpssolver/include $I8DEFINES -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM $SOLVERFLAGS"
 
 if test "$MARCDEBUG" = "ON"
 then
-  FORTLOW="$FCOMP -c -assume byterecl,realloc-lhs -safe_cray_ptr $PROFILE -save -zero -mp1 -WB  $I8FFLAGS -I$MARC_SOURCE/common \
+  FORTLOW="$FCOMP -c -assume byterecl -stand f08 -standard-semantics -safe_cray_ptr $PROFILE -save -zero -mp1 -WB  $I8FFLAGS -I$MARC_SOURCE/common \
    -I$MARC_SOURCE/${BCS_DIR}/common -I$MARC_SOURCE/mumpssolver/include $I8DEFINES -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM $SOLVERFLAGS"
-  FORTRAN="$FCOMP -c -assume byterecl,realloc-lhs -safe_cray_ptr $PROFILE -save -zero -mp1 -WB  $I8FFLAGS -I$MARC_SOURCE/common \
+  FORTRAN="$FCOMP -c -assume byterecl -stand f08 -standard-semantics -safe_cray_ptr $PROFILE -save -zero -mp1 -WB  $I8FFLAGS -I$MARC_SOURCE/common \
    -I$MARC_SOURCE/${BCS_DIR}/common -I$MARC_SOURCE/mumpssolver/include $I8DEFINES -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM $SOLVERFLAGS"
-  FORTHIGH="$FCOMP -c -assume byterecl,realloc-lhs -safe_cray_ptr $PROFILE -save -zero -mp1 -WB  -fno-alias $I8FFLAGS -I$MARC_SOURCE/common \
+  FORTHIGH="$FCOMP -c -assume byterecl -stand f08 -standard-semantics -safe_cray_ptr $PROFILE -save -zero -mp1 -WB  -fno-alias $I8FFLAGS -I$MARC_SOURCE/common \
    -I$MARC_SOURCE/${BCS_DIR}/common -I$MARC_SOURCE/mumpssolver/include $I8DEFINES -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM $SOLVERFLAGS"
-  FORTNA="$FCOMP -c -assume byterecl,realloc-lhs -safe_cray_ptr -save -zero -mp1 -WB  -fno-alias $I8FFLAGS -I$MARC_SOURCE/common \
+  FORTNA="$FCOMP -c -assume byterecl -stand f08 -standard-semantics -safe_cray_ptr -save -zero -mp1 -WB  -fno-alias $I8FFLAGS -I$MARC_SOURCE/common \
    -I$MARC_SOURCE/${BCS_DIR}/common -I$MARC_SOURCE/mumpssolver/include $I8DEFINES -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM"
 
 # DAMASK compiler calls: additional flags are in line 2 OpenMP flags in line 3; removed -save for calls with openMP
-  DFORTLOW="$FCOMP -c -assume byterecl,realloc-lhs -safe_cray_ptr $PROFILE -save -zero -mp1 -WB  $I8FFLAGS -I$MARC_SOURCE/common \
+  DFORTLOW="$FCOMP -c -assume byterecl -stand f08 -standard-semantics -safe_cray_ptr $PROFILE -save -zero -mp1 -WB  $I8FFLAGS -I$MARC_SOURCE/common \
    -fpp -ftz -diag-enable sc3 -diag-disable 5268 -warn declarations -warn general -warn usage -warn interfaces -warn ignore_loc -warn alignments -DMarc4DAMASK=2012 \
    -I$MARC_SOURCE/${BCS_DIR}/common -I$MARC_SOURCE/mumpssolver/include $I8DEFINES -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM $SOLVERFLAGS"
-  DFORTLOWMP="$FCOMP -c -assume byterecl,realloc-lhs -safe_cray_ptr $PROFILE -zero -mp1 -WB  $I8FFLAGS -I$MARC_SOURCE/common \
+  DFORTLOWMP="$FCOMP -c -assume byterecl -stand f08 -standard-semantics -safe_cray_ptr $PROFILE -zero -mp1 -WB  $I8FFLAGS -I$MARC_SOURCE/common \
    -fpp -ftz -diag-disable 5268 -warn declarations -warn general -warn usage -warn interfaces -warn ignore_loc -warn alignments -DMarc4DAMASK=2012 \
    -openmp -openmp_report2 \
    -I$MARC_SOURCE/${BCS_DIR}/common -I$MARC_SOURCE/mumpssolver/include $I8DEFINES -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM $SOLVERFLAGS"
-  DFORTRAN="$FCOMP -c -assume byterecl,realloc-lhs -safe_cray_ptr $PROFILE -save -zero -mp1 -WB  $I8FFLAGS -I$MARC_SOURCE/common \
+  DFORTRAN="$FCOMP -c -assume byterecl -stand f08 -standard-semantics -safe_cray_ptr $PROFILE -save -zero -mp1 -WB  $I8FFLAGS -I$MARC_SOURCE/common \
    -fpp -ftz -diag-enable sc3 -diag-disable 5268 -warn declarations -warn general -warn usage -warn interfaces -warn ignore_loc -warn alignments -DMarc4DAMASK=2012 \
    -I$MARC_SOURCE/${BCS_DIR}/common -I$MARC_SOURCE/mumpssolver/include $I8DEFINES -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM $SOLVERFLAGS"
-  DFORTRANMP="$FCOMP -c -assume byterecl,realloc-lhs -safe_cray_ptr $PROFILE -zero -mp1 -WB  $I8FFLAGS -I$MARC_SOURCE/common \
+  DFORTRANMP="$FCOMP -c -assume byterecl -stand f08 -standard-semantics -safe_cray_ptr $PROFILE -zero -mp1 -WB  $I8FFLAGS -I$MARC_SOURCE/common \
    -fpp -ftz -diag-disable 5268 -warn declarations -warn general -warn usage -warn interfaces -warn ignore_loc -warn alignments -DMarc4DAMASK=2012 \
    -openmp -openmp_report2 \
    -I$MARC_SOURCE/${BCS_DIR}/common -I$MARC_SOURCE/mumpssolver/include $I8DEFINES -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM $SOLVERFLAGS"
-  DFORTHIGH="$FCOMP -c -assume byterecl,realloc-lhs -safe_cray_ptr $PROFILE -save -zero -mp1 -WB  -fno-alias $I8FFLAGS -I$MARC_SOURCE/common \
+  DFORTHIGH="$FCOMP -c -assume byterecl -stand f08 -standard-semantics -safe_cray_ptr $PROFILE -save -zero -mp1 -WB  -fno-alias $I8FFLAGS -I$MARC_SOURCE/common \
    -fpp -ftz -diag-enable sc3 -diag-disable 5268 -warn declarations -warn general -warn usage -warn interfaces -warn ignore_loc -warn alignments -DMarc4DAMASK=2012 \
    -I$MARC_SOURCE/${BCS_DIR}/common -I$MARC_SOURCE/mumpssolver/include $I8DEFINES -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM $SOLVERFLAGS"
-  DFORTHIGHMP="$FCOMP -c -assume byterecl,realloc-lhs -safe_cray_ptr $PROFILE -save -zero -mp1 -WB  -fno-alias $I8FFLAGS -I$MARC_SOURCE/common \
+  DFORTHIGHMP="$FCOMP -c -assume byterecl -stand f08 -standard-semantics -safe_cray_ptr $PROFILE -save -zero -mp1 -WB  -fno-alias $I8FFLAGS -I$MARC_SOURCE/common \
    -fpp -ftz -diag-disable 5268 -warn declarations -warn general -warn usage -warn interfaces -warn ignore_loc -warn alignments -DMarc4DAMASK=2012 \
    -openmp -openmp_report2 \
    -I$MARC_SOURCE/${BCS_DIR}/common -I$MARC_SOURCE/mumpssolver/include $I8DEFINES -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM $SOLVERFLAGS"
