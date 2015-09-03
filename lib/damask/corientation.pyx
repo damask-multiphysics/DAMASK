@@ -316,18 +316,6 @@ cdef class Quaternion:
         self.z = 0.0
         return self
 
-    def rotateBy_angleaxis(self, angle, axis):
-        self *= Quaternion.fromAngleAxis(angle, axis)
-        return self
-
-    def rotateBy_Eulers(self, eulers):
-        self *= Quaternion.fromEulers(eulers, type)
-        return self
-
-    def rotateBy_matrix(self, m):
-        self *= Quaternion.fromMatrix(m)
-        return self
-
     def normalize(self):
         cdef double d
 
@@ -386,6 +374,7 @@ cdef class Quaternion:
                          [    2.0*(self.x*self.z-self.y*self.w),     2.0*(self.x*self.w+self.y*self.z), 1.0-2.0*(self.x*self.x+self.y*self.y)]])
 
     def asAngleAxis(self):
+        # keep the return as radians for simplicity
         cdef double s,x,y
 
         if self.w > 1:
@@ -396,8 +385,12 @@ cdef class Quaternion:
         y = 2*self.w * s
 
         angle = math.atan2(y,x)
+        if angle < 0.0:
+            angle *= -1.0
+            s     *= -1.0
 
-        return angle, np.array([1.0, 0.0, 0.0] if angle < 1e-3 else [self.x/s, self.y/s, self.z/s])
+        return (angle,
+                np.array([1.0, 0.0, 0.0] if np.abs(angle) < 1e-3 else [self.x/s, self.y/s, self.z/s]) )
 
     def asRodrigues(self):
         if self.w != 0.0:
@@ -405,8 +398,12 @@ cdef class Quaternion:
         else:
             return np.array([float('inf')]*3)
 
-    def asEulers(self,type='bunge',degrees=False):
-        """conversion taken from:
+    def asEulers(self,
+                 type='bunge',
+                 degrees=False,
+                 standardRange=False):
+        """
+        CONVERSION TAKEN FROM:
             Melcher, A.; Unser, A.; Reichhardt, M.; Nestler, B.; Pötschke, M.; Selzer, M.
             Conversion of EBSD data by a quaternion based algorithm to be used for grain structure simulations
             Technische Mechanik 30 (2010) pp 401--413
@@ -416,11 +413,11 @@ cdef class Quaternion:
         angles = [0.0,0.0,0.0]
 
         if type.lower() == 'bunge' or type.lower() == 'zxz':
-            if abs(self.x - self.y) < 1e-8:
+            if abs(self.x) < 1e-4 and abs(self.y) < 1e-4:
                 x = self.w**2 - self.z**2
                 y = 2.*self.w*self.z
                 angles[0] = math.atan2(y,x)
-            elif abs(self.w - self.z) < 1e-8:
+            elif abs(self.w) < 1e-4 and abs(self.z) < 1e-4:
                 x = self.x**2 - self.y**2
                 y = 2.*self.x*self.y
                 angles[0] = math.atan2(y,x)
@@ -439,6 +436,12 @@ cdef class Quaternion:
                 x = (self.w * self.x + self.y * self.z)/2./chi
                 y = (self.z * self.x - self.y * self.w)/2./chi
                 angles[2] = math.atan2(y,x)
+        if standardRange:
+            angles[0] %= 2*math.pi
+            if angles[1] < 0.0:
+                angles[1] += math.pi
+                angles[2] *= -1.0
+            angles[2] %= 2*math.pi
 
         return np.degrees(angles) if degrees else angles
 
@@ -524,7 +527,7 @@ cdef class Quaternion:
         if m.shape != (3,3) and np.prod(m.shape) == 9:
             m = m.reshape(3,3)
 
-        tr=m[0,0]+m[1,1]+m[2,2]
+        tr=np.trace(m)
         if tr > 0.00000001:
             s = math.sqrt(tr + 1.0)*2.0
 
@@ -663,77 +666,82 @@ cdef class Symmetry:
     def __cmp__(self,other):
         return cmp(self.lattice,other.lattice)
 
+    def symmetryQuats(self):
+        '''
+        List of symmetry operations as quaternions.
+        '''
+        if self.lattice == 'cubic':
+            symQuats =  [
+                        [ 1.0,              0.0,              0.0,              0.0              ],
+                        [ 0.0,              1.0,              0.0,              0.0              ],
+                        [ 0.0,              0.0,              1.0,              0.0              ],
+                        [ 0.0,              0.0,              0.0,              1.0              ],
+                        [ 0.0,              0.0,              0.5*math.sqrt(2), 0.5*math.sqrt(2) ],
+                        [ 0.0,              0.0,              0.5*math.sqrt(2),-0.5*math.sqrt(2) ],
+                        [ 0.0,              0.5*math.sqrt(2), 0.0,              0.5*math.sqrt(2) ],
+                        [ 0.0,              0.5*math.sqrt(2), 0.0,             -0.5*math.sqrt(2) ],
+                        [ 0.0,              0.5*math.sqrt(2),-0.5*math.sqrt(2), 0.0              ],
+                        [ 0.0,             -0.5*math.sqrt(2),-0.5*math.sqrt(2), 0.0              ],
+                        [ 0.5,              0.5,              0.5,              0.5              ],
+                        [-0.5,              0.5,              0.5,              0.5              ],
+                        [-0.5,              0.5,              0.5,             -0.5              ],
+                        [-0.5,              0.5,             -0.5,              0.5              ],
+                        [-0.5,             -0.5,              0.5,              0.5              ],
+                        [-0.5,             -0.5,              0.5,             -0.5              ],
+                        [-0.5,             -0.5,             -0.5,              0.5              ],
+                        [-0.5,              0.5,             -0.5,             -0.5              ],
+                        [-0.5*math.sqrt(2), 0.0,              0.0,              0.5*math.sqrt(2) ],
+                        [ 0.5*math.sqrt(2), 0.0,              0.0,              0.5*math.sqrt(2) ],
+                        [-0.5*math.sqrt(2), 0.0,              0.5*math.sqrt(2), 0.0              ],
+                        [-0.5*math.sqrt(2), 0.0,             -0.5*math.sqrt(2), 0.0              ],
+                        [-0.5*math.sqrt(2), 0.5*math.sqrt(2), 0.0,              0.0              ],
+                        [-0.5*math.sqrt(2),-0.5*math.sqrt(2), 0.0,              0.0              ],
+                        ]
+        elif self.lattice == 'hexagonal':
+            symQuats =  [
+                        [ 1.0,0.0,0.0,0.0 ],
+                        [-0.5*math.sqrt(3), 0.0, 0.0,-0.5 ],
+                        [ 0.5, 0.0, 0.0, 0.5*math.sqrt(3) ],
+                        [ 0.0,0.0,0.0,1.0 ],
+                        [-0.5, 0.0, 0.0, 0.5*math.sqrt(3) ],
+                        [-0.5*math.sqrt(3), 0.0, 0.0, 0.5 ],
+                        [ 0.0,1.0,0.0,0.0 ],
+                        [ 0.0,-0.5*math.sqrt(3), 0.5, 0.0 ],
+                        [ 0.0, 0.5,-0.5*math.sqrt(3), 0.0 ],
+                        [ 0.0,0.0,1.0,0.0 ],
+                        [ 0.0,-0.5,-0.5*math.sqrt(3), 0.0 ],
+                        [ 0.0, 0.5*math.sqrt(3), 0.5, 0.0 ],
+                        ]
+        elif self.lattice == 'tetragonal':
+            symQuats =  [
+                        [ 1.0,0.0,0.0,0.0 ],
+                        [ 0.0,1.0,0.0,0.0 ],
+                        [ 0.0,0.0,1.0,0.0 ],
+                        [ 0.0,0.0,0.0,1.0 ],
+                        [ 0.0, 0.5*math.sqrt(2), 0.5*math.sqrt(2), 0.0 ],
+                        [ 0.0,-0.5*math.sqrt(2), 0.5*math.sqrt(2), 0.0 ],
+                        [ 0.5*math.sqrt(2), 0.0, 0.0, 0.5*math.sqrt(2) ],
+                        [-0.5*math.sqrt(2), 0.0, 0.0, 0.5*math.sqrt(2) ],
+                        ]
+        elif self.lattice == 'orthorhombic':
+            symQuats =  [
+                        [ 1.0,0.0,0.0,0.0 ],
+                        [ 0.0,1.0,0.0,0.0 ],
+                        [ 0.0,0.0,1.0,0.0 ],
+                        [ 0.0,0.0,0.0,1.0 ],
+                        ]
+        else:
+            symQuats =  [
+                        [ 1.0,0.0,0.0,0.0 ],
+                        ]
+
+        return map(Quaternion,symQuats)
+
     def equivalentQuaternions(self,quaternion):
         '''
         List of symmetrically equivalent quaternions based on own symmetry.
         '''
-        if self.lattice == CUBIC:
-            symQuats =  [
-                          [ 1.0,0.0,0.0,0.0 ],
-                          [ 0.0,1.0,0.0,0.0 ],
-                          [ 0.0,0.0,1.0,0.0 ],
-                          [ 0.0,0.0,0.0,1.0 ],
-                          [ 0.0, 0.0, 0.5*math.sqrt(2), 0.5*math.sqrt(2) ],
-                          [ 0.0, 0.0, 0.5*math.sqrt(2),-0.5*math.sqrt(2) ],
-                          [ 0.0, 0.5*math.sqrt(2), 0.0, 0.5*math.sqrt(2) ],
-                          [ 0.0, 0.5*math.sqrt(2), 0.0,-0.5*math.sqrt(2) ],
-                          [ 0.0, 0.5*math.sqrt(2),-0.5*math.sqrt(2), 0.0 ],
-                          [ 0.0,-0.5*math.sqrt(2),-0.5*math.sqrt(2), 0.0 ],
-                          [ 0.5, 0.5, 0.5, 0.5 ],
-                          [-0.5, 0.5, 0.5, 0.5 ],
-                          [-0.5, 0.5, 0.5,-0.5 ],
-                          [-0.5, 0.5,-0.5, 0.5 ],
-                          [-0.5,-0.5, 0.5, 0.5 ],
-                          [-0.5,-0.5, 0.5,-0.5 ],
-                          [-0.5,-0.5,-0.5, 0.5 ],
-                          [-0.5, 0.5,-0.5,-0.5 ],
-                          [-0.5*math.sqrt(2), 0.0, 0.0, 0.5*math.sqrt(2) ],
-                          [ 0.5*math.sqrt(2), 0.0, 0.0, 0.5*math.sqrt(2) ],
-                          [-0.5*math.sqrt(2), 0.0, 0.5*math.sqrt(2), 0.0 ],
-                          [-0.5*math.sqrt(2), 0.0,-0.5*math.sqrt(2), 0.0 ],
-                          [-0.5*math.sqrt(2), 0.5*math.sqrt(2), 0.0, 0.0 ],
-                          [-0.5*math.sqrt(2),-0.5*math.sqrt(2), 0.0, 0.0 ],
-                        ]
-        elif self.lattice == HEXAGONAL:
-            symQuats =  [
-                          [ 1.0,0.0,0.0,0.0 ],
-                          [ 0.0,1.0,0.0,0.0 ],
-                          [ 0.0,0.0,1.0,0.0 ],
-                          [ 0.0,0.0,0.0,1.0 ],
-                          [-0.5*math.sqrt(3), 0.0, 0.0, 0.5 ],
-                          [-0.5*math.sqrt(3), 0.0, 0.0,-0.5 ],
-                          [ 0.0, 0.5*math.sqrt(3), 0.5, 0.0 ],
-                          [ 0.0,-0.5*math.sqrt(3), 0.5, 0.0 ],
-                          [ 0.0, 0.5,-0.5*math.sqrt(3), 0.0 ],
-                          [ 0.0,-0.5,-0.5*math.sqrt(3), 0.0 ],
-                          [ 0.5, 0.0, 0.0, 0.5*math.sqrt(3) ],
-                          [-0.5, 0.0, 0.0, 0.5*math.sqrt(3) ],
-                        ]
-        elif self.lattice == TETRAGONAL:
-            symQuats =  [
-                          [ 1.0,0.0,0.0,0.0 ],
-                          [ 0.0,1.0,0.0,0.0 ],
-                          [ 0.0,0.0,1.0,0.0 ],
-                          [ 0.0,0.0,0.0,1.0 ],
-                          [ 0.0, 0.5*math.sqrt(2), 0.5*math.sqrt(2), 0.0 ],
-                          [ 0.0,-0.5*math.sqrt(2), 0.5*math.sqrt(2), 0.0 ],
-                          [ 0.5*math.sqrt(2), 0.0, 0.0, 0.5*math.sqrt(2) ],
-                          [-0.5*math.sqrt(2), 0.0, 0.0, 0.5*math.sqrt(2) ],
-                        ]
-        elif self.lattice == ORTHORHOMBIC:
-            symQuats =  [
-                         [ 1.0,0.0,0.0,0.0 ],
-                         [ 0.0,1.0,0.0,0.0 ],
-                         [ 0.0,0.0,1.0,0.0 ],
-                         [ 0.0,0.0,0.0,1.0 ],
-                        ]
-        else:
-            symQuats =  [
-                         [ 1.0,0.0,0.0,0.0 ],
-                        ]
-        # due to the use of list comprehension, the speed grain is quite
-        # limited
-        return [quaternion*Quaternion(q) for q in symQuats]
+        return [quaternion*Quaternion(q) for q in self.symmetryQuats()]
 
     def inFZ(self,R):
         '''
@@ -772,21 +780,23 @@ cdef class Symmetry:
         cdef double epsilon = 0.0
 
         if self.lattice == CUBIC:
-            return R[0] >= R[1]+epsilon                and R[1] >= R[2]+epsilon    and R[2] >= epsilon and self.inFZ(R)
+            return R[0] >= R[1]+epsilon                and R[1] >= R[2]+epsilon    and R[2] >= epsilon
 
         elif self.lattice == HEXAGONAL:
-            return R[0] >= math.sqrt(3)*(R[1]+epsilon) and R[1] >= epsilon         and R[2] >= epsilon and self.inFZ(R)
+            return R[0] >= math.sqrt(3)*(R[1]+epsilon) and R[1] >= epsilon         and R[2] >= epsilon
 
         elif self.lattice == TETRAGONAL:
-            return R[0] >= R[1]+epsilon                and R[1] >= epsilon         and R[2] >= epsilon and self.inFZ(R)
+            return R[0] >= R[1]+epsilon                and R[1] >= epsilon         and R[2] >= epsilon
 
         elif self.lattice == ORTHORHOMBIC:
-            return R[0] >= epsilon                     and R[1] >= epsilon         and R[2] >= epsilon and self.inFZ(R)
+            return R[0] >= epsilon                     and R[1] >= epsilon         and R[2] >= epsilon
 
         else:
             return True
 
-    def inSST(self,vector,color = False):
+    def inSST(self,
+              vector,
+              color = False):
         '''
         Check whether given vector falls into standard stereographic triangle of own symmetry.
         Return inverse pole figure color if requested.
@@ -826,7 +836,9 @@ cdef class Symmetry:
         if np.all(basis == 0.0):
             theComponents = -np.ones(3,'d')
         else:
-            theComponents = np.dot(basis,np.array([vector[0],vector[1],abs(vector[2])]))
+            v = np.array(vector,dtype = float)
+            v[2] = abs(v[2])                                                                              # z component projects identical for positive and negative values
+            theComponents = np.dot(basis,v)
 
         inSST = np.all(theComponents >= 0.0)
 
@@ -924,7 +936,7 @@ cdef class Orientation:
 
         return Orientation(quaternion=me,symmetry=self.symmetry.lattice)
 
-    def disorientation(self,other):
+    def disorientation_old(self,other):
         '''
         Disorientation between myself and given other orientation
         (either reduced according to my own symmetry or given one)
@@ -943,6 +955,30 @@ cdef class Orientation:
             if breaker: break
 
         return Orientation(quaternion=theQ,symmetry=self.symmetry.lattice) #, me.conjugated(), they
+
+    def disorientation(self,other):
+        '''
+        Disorientation between myself and given other orientation
+        (currently needs to be of same symmetry.
+        look into A. Heinz and P. Neumann 1991 for cases with differing sym.)
+        '''
+        if self.symmetry != other.symmetry:
+            raise TypeError('disorientation between different symmetry classes not supported yet.')
+
+        misQ = self.quaternion.conjugated()*other.quaternion
+
+        for i,sA in enumerate(self.symmetry.symmetryQuats()):
+            for j,sB in enumerate(other.symmetry.symmetryQuats()):
+                theQ = sA.conjugated()*misQ*sB
+                for k in xrange(2):
+                    theQ.conjugate()
+                    hitSST = other.symmetry.inDisorientationSST(theQ)
+                    hitFZ =  self.symmetry.inFZ(theQ)
+                    breaker = hitSST and hitFZ
+                    if breaker: break
+                if breaker: break
+            if breaker: break
+        return Orientation(quaternion=theQ,symmetry=self.symmetry.lattice)                                                                            # disorientation, own sym, other sym, self-->other: True, self<--other: False
 
     def inversePole(self,axis,SST = True):
         '''
