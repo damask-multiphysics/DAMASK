@@ -29,13 +29,23 @@ def curlFFT(geomdim,field):
  TWOPIIMG = (0.0+2.0j*math.pi)
  for i in xrange(grid[0]):
    k_s[0] = i
-   if(i > grid[0]/2 ): k_s[0] = k_s[0] - grid[0]
+   if(grid[0]%2==0 and i == grid[0]//2):                                                            # for even grid, set Nyquist freq to 0 (Johnson, MIT, 2011)
+     k_s[0]=0
+   elif (i > grid[0]//2): 
+     k_s[0] = k_s[0] - grid[0]
+
    for j in xrange(grid[1]):
      k_s[1] = j
-     if(j > grid[1]/2 ): k_s[1] = k_s[1] - grid[1]
-     for k in xrange(grid[2]/2+1):
+     if(grid[1]%2==0 and j == grid[1]//2):                                                          # for even grid, set Nyquist freq to 0 (Johnson, MIT, 2011)
+       k_s[1]=0
+     elif (j > grid[1]//2): 
+       k_s[1] = k_s[1] - grid[1]
+
+     for k in xrange(grid[2]//2+1):
        k_s[2] = k
-       if(k > grid[2]/2 ): k_s[2] = k_s[2] - grid[2]
+       if(grid[2]%2==0 and k == grid[2]//2):                                                        # for even grid, set Nyquist freq to 0 (Johnson, MIT, 2011)
+         k_s[2]=0
+
        xi = np.array([k_s[2]/geomdim[2]+0.0j,k_s[1]/geomdim[1]+0.j,k_s[0]/geomdim[0]+0.j],'c16')
        if dataType == 'tensor': 
          for l in xrange(3):
