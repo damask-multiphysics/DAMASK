@@ -2,6 +2,7 @@
 # -*- coding: UTF-8 no BOM -*-
 
 import os, sys, string
+import numpy as np
 from optparse import OptionParser
 import damask
 
@@ -242,7 +243,7 @@ for name in filenames:
 
 # --- read data ------------------------------------------------------------------------------------
 
-  microstructure = table.microstructure_read(info['grid']).reshape(info['grid'],order='F')          # read microstructure
+  microstructure = table.microstructure_read(info['grid']).reshape(info['grid'].prod(),order='F')          # read microstructure
 
   cmds = [\
     init(),
