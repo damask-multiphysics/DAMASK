@@ -1428,7 +1428,7 @@ function IO_continuousIntValues(fileUnit,maxN,lookupName,lookupMap,lookupMaxN)
    read(fileUnit,'(A65536)',end=100) line
    chunkPos = IO_stringPos(line)
    if (verify(IO_stringValue(line,chunkPos,1_pInt),'0123456789') > 0) then                          ! a non-int, i.e. set names follow on this line
-     do i = 1_pInt,myChunk(1)                                                                         ! loop over set names in line
+     do i = 1_pInt,chunkPos(1)                                                                      ! loop over set names in line
        do j = 1_pInt,lookupMaxN                                                                     ! look through known set names
          if (IO_stringValue(line,chunkPos,i) == lookupName(j)) then                                 ! found matching name
            first = 2_pInt + IO_continuousIntValues(1)                                               ! where to start appending data
@@ -1446,7 +1446,7 @@ function IO_continuousIntValues(fileUnit,maxN,lookupName,lookupMap,lookupMaxN)
        IO_continuousIntValues(1+IO_continuousIntValues(1)) = i
      enddo
    else                                                                                             ! read individual elem nums
-     do i = 1_pInt,myChunk(1)
+     do i = 1_pInt,chunkPos(1)
        IO_continuousIntValues(1) = IO_continuousIntValues(1) + 1_pInt
        IO_continuousIntValues(1+IO_continuousIntValues(1)) = IO_intValue(line,chunkPos,i)
      enddo
