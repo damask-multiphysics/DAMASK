@@ -8,6 +8,22 @@ import damask
 scriptID = '$Id$'
 scriptName = os.path.splitext(scriptID.split()[1])[0]
 
+def sortingList(labels,whitelistitems):
+
+  indices = []
+  names   = []
+
+  for label in labels:
+    if re.match('^\d+_',label):
+      indices.append(int(label.split('_',1)[0]))
+      names.append(label.split('_',1)[1])
+    else:
+      indices.append(0)
+      names.append(label)
+      
+  return [indices,names,whitelistitems]
+
+
 # --------------------------------------------------------------------
 #                                MAIN
 # --------------------------------------------------------------------
@@ -47,7 +63,7 @@ for name in filenames:
     table = damask.ASCIItable(name = name,
                               buffered = False)
   except: continue
-  table.croak('\033[1m'+scriptName+'\033[0m'+(': '+name if name else ''))
+  table.croak(damask.util.emph(scriptName)+(': '+name if name else ''))
 
 # ------------------------------------------ assemble info ---------------------------------------  
 
@@ -70,13 +86,13 @@ for name in filenames:
       positions.append(position)                                                                    # ...and position
 
   if len(labels) > 0 and options.whitelist != None and options.blacklist == None:                   # check whether reordering is possible
-    position = np.zeros(len(labels))
+    whitelistitem = np.zeros(len(labels),dtype=int)
     for i,label in enumerate(labels):                                                               # check each selected label
       match = [   positions[i] in table.label_indexrange(needle) \
-               or fnmatch.fnmatch(label,needle) for needle in options.whitelist]                       # which whitelist items do match it
-      position[i] = match.index(True) if np.sum(match) == 1 else -1                                 # unique match --> store which
+               or fnmatch.fnmatch(label,needle) for needle in options.whitelist]                    # which whitelist items do match it
+      whitelistitem[i] = match.index(True) if np.sum(match) == 1 else -1                            # unique match to a whitelist item --> store which
 
-    sorted = np.lexsort((labels,position))
+    sorted = np.lexsort(sortingList(labels,whitelistitem))
     order = range(len(labels)) if sorted[0] < 0 else sorted                                         # skip reordering if non-unique, i.e. first sorted is "-1"
   else:
     order = range(len(labels))                                                                      # maintain original order of labels
