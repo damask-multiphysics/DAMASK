@@ -2,7 +2,7 @@
 grid  a 16    b 16    c 16
 microstructures       20
 random seed        0
-1_coords   2_coords   3_coords phi1        Phi       phi2
+1_pos      2_pos      3_pos    1_eulerangels 2_eulerangels 3_eulerangels
 0.375488   0.161813   0.891040 197.572861  16.816409 129.422844
 0.187988   0.849313   0.953540 257.468172  53.250534 157.331503
 0.750488   0.349313   0.953540 216.994815  94.418518 251.147231
