@@ -369,6 +369,12 @@ subroutine plastic_phenopowerlaw_init(fileUnit)
          enddo
 !--------------------------------------------------------------------------------------------------
 ! parameters depending on number of interactions
+       case ('interaction_slipslip')
+         if (chunkPos(1) < 1_pInt + Nchunks_SlipSlip) &
+           call IO_warning(52_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_PHENOPOWERLAW_label//')')
+         do j = 1_pInt, Nchunks_SlipSlip
+           plastic_phenopowerlaw_interaction_SlipSlip(j,instance) = IO_floatValue(line,chunkPos,1_pInt+j)
+         enddo
        case ('interaction_sliptwin')
          if (chunkPos(1) < 1_pInt + Nchunks_SlipTwin) &
            call IO_warning(52_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_PHENOPOWERLAW_label//')')
@@ -437,12 +443,6 @@ subroutine plastic_phenopowerlaw_init(fileUnit)
          plastic_phenopowerlaw_Cgro(instance) = IO_floatValue(line,chunkPos,2_pInt)
        case ('deltag')
          plastic_phenopowerlaw_deltaG(instance) = IO_floatValue(line,chunkPos,2_pInt)
-       case ('interaction_slipslip')
-         if (chunkPos(1) < 1_pInt + Nchunks_SlipSlip) &
-           call IO_warning(52_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_PHENOPOWERLAW_label//')')
-         do j = 1_pInt, Nchunks_SlipSlip
-           plastic_phenopowerlaw_interaction_SlipSlip(j,instance) = IO_floatValue(line,chunkPos,1_pInt+j)
-         enddo
        case default
 
      end select
@@ -973,8 +973,8 @@ subroutine plastic_phenopowerlaw_dotState(Tstar_v,ipc,ip,el)
    index_myFamily = sum(lattice_NtwinSystem(1:f-1_pInt,ph))                                         ! at which index starts my family
    twinSystems1: do i = 1_pInt,plastic_phenopowerlaw_Ntwin(f,instance)
      j = j+1_pInt
-     left_TwinSlip(j)  = 1.0_pReal                                                                  ! no system-dependent right part
-     left_TwinTwin(j)  = 1.0_pReal                                                                  ! no system-dependent right part
+     left_TwinSlip(j)  = 1.0_pReal                                                                  ! no system-dependent left part
+     left_TwinTwin(j)  = 1.0_pReal                                                                  ! no system-dependent left part
      right_SlipTwin(j) = 1.0_pReal                                                                  ! no system-dependent right part
      right_TwinTwin(j) = 1.0_pReal                                                                  ! no system-dependent right part
 
