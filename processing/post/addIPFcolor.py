@@ -108,7 +108,7 @@ for name in filenames:
 # ------------------------------------------ assemble header ---------------------------------------
 
   table.info_append(scriptID + '\t' + ' '.join(sys.argv[1:]))
-  table.labels_append(['{}_IPF_{}{}{}_{sym}'.format(i+1,*options.pole,sym = options.symmetry.lower()) for i in xrange(3)])
+  table.labels_append(['{}_IPF_{:g}{:g}{:g}_{sym}'.format(i+1,*options.pole,sym = options.symmetry.lower()) for i in xrange(3)])
   table.head_write()
 
 # ------------------------------------------ process data ------------------------------------------
