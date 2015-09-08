@@ -297,8 +297,8 @@ class ASCIItable():
           try:                                                                                      # column given as number?
             idx = int(label)
             myDim = 1                                                                               # if found has at least dimension 1
-            if self.labels[idx][:2] == '1_':                                                        # column has multidim indicator?
-              while idx+myDim < len(self.labels) and self.labels[idx+myDim][:2] == "%i_"%(myDim+1):
+            if self.labels[idx].startswith('1_'):                                                   # column has multidim indicator?
+              while idx+myDim < len(self.labels) and self.labels[idx+myDim].startswith("%i_"%(myDim+1)):
                 myDim += 1                                                                          # add while found
           except ValueError:                                                                        # column has string label
             if label in self.labels:                                                                # can be directly found?
@@ -306,7 +306,7 @@ class ASCIItable():
             elif '1_'+label in self.labels:                                                         # look for first entry of possible multidim object
               idx = self.labels.index('1_'+label)                                                   # get starting column
               myDim = 1                                                                             # (at least) one-dimensional
-              while idx+myDim < len(self.labels) and self.labels[idx+myDim][:2] == "%i_"%(myDim+1):
+              while idx+myDim < len(self.labels) and self.labels[idx+myDim].startswith("%i_"%(myDim+1)):
                 myDim += 1                                                                          # keep adding while going through object
 
           dim.append(myDim)
@@ -316,8 +316,8 @@ class ASCIItable():
       try:                                                                                          # column given as number?
         idx = int(labels)
         dim = 1                                                                                     # if found has at least dimension 1
-        if self.labels[idx][:2] == '1_':                                                            # column has multidim indicator?
-          while idx+dim < len(self.labels) and self.labels[idx+dim][:2] == "%i_"%(dim+1):
+        if self.labels[idx].startswith('1_'):                                                       # column has multidim indicator?
+          while idx+dim < len(self.labels) and self.labels[idx+dim].startswith("%i_"%(dim+1)):
             dim += 1                                                                                # add as long as found
       except ValueError:                                                                            # column has string label
         if labels in self.labels:                                                                   # can be directly found?
@@ -325,7 +325,7 @@ class ASCIItable():
         elif '1_'+labels in self.labels:                                                            # look for first entry of possible multidim object
           idx = self.labels.index('1_'+labels)                                                      # get starting column
           dim = 1                                                                                   # is (at least) one-dimensional
-          while idx+dim < len(self.labels) and self.labels[idx+dim][:2] == "%i_"%(dim+1):
+          while idx+dim < len(self.labels) and self.labels[idx+dim].startswith("%i_"%(dim+1)):
             dim += 1                                                                                # keep adding while going through object
 
     return np.array(dim) if isinstance(dim,list) else dim
