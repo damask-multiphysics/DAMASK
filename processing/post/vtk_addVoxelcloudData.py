@@ -3,6 +3,7 @@
 
 import os,sys,string,re,vtk
 import damask
+from collections import defaultdict
 from optparse import OptionParser
 
 scriptID   = string.replace('$Id$','\n','\\n')
@@ -24,17 +25,12 @@ parser.add_option('-s', '--scalar',   dest='scalar', action='extend', \
 parser.add_option('-c', '--color',   dest='color', action='extend', \
                   help = 'RGB color tuples')
 
-parser.set_defaults(scalar = [])
-parser.set_defaults(color = [])
+parser.set_defaults(scalar = [],
+                    color = [],
+                    render = False,
+)
 
 (options, filenames) = parser.parse_args()
-
-datainfo = {                                                               # list of requested labels per datatype
-             'scalar':     {'len':1,
-                            'label':[]},
-             'color':      {'len':3,
-                            'label':[]},
-           }
 
 if options.vtk == None or not os.path.exists(options.vtk):
   parser.error('VTK file does not exist')
@@ -52,86 +48,75 @@ elif os.path.splitext(options.vtk)[1] == '.vtk':
 else:
   parser.error('unsupported VTK file type extension')
 
-
 Npoints = uGrid.GetNumberOfPoints()
 Ncells  = uGrid.GetNumberOfCells()
 
-#if Npoints != Ncells or Npoints != Nvertices:
-#  parser.error('Number of points, cells, and vertices in VTK differ from each other'); sys.exit()
-if options.scalar != None:  datainfo['scalar']['label'] += options.scalar
-if options.color  != None:  datainfo['color']['label']  += options.color
+sys.stderr.write('{}: {} points and {} cells...\n'.format(damask.util.emph(options.vtk),Npoints,Ncells))
 
-# ------------------------------------------ setup file handles ---------------------------------------  
+# --- loop over input files -------------------------------------------------------------------------
 
-files = []
-if filenames == []:
-  files.append({'name':'STDIN', 'input':sys.stdin, 'output':sys.stdout, 'croak':sys.stderr})
-else:
-  for name in filenames:
-    if os.path.exists(name):
-      files.append({'name':name, 'input':open(name), 'output':sys.stderr, 'croak':sys.stderr})
+if filenames == []: filenames = [None]
 
-#--- loop over input files ------------------------------------------------------------------------
-for file in files:
-  if file['name'] != 'STDIN': file['croak'].write('\033[1m'+scriptName+'\033[0m: '+file['name']+'\n')
-  else: file['croak'].write('\033[1m'+scriptName+'\033[0m\n')
+for name in filenames:
+  try:
+    table = damask.ASCIItable(name = name,
+                              buffered = False, readonly = True)
+  except: continue
+  table.croak(damask.util.emph(scriptName)+(': '+name if name else ''))
 
-  table = damask.ASCIItable(file['input'],file['output'],False)             # make unbuffered ASCII_table
-  table.head_read()                                                         # read ASCII header info
+# --- interpret header ----------------------------------------------------------------------------
 
-# --------------- figure out columns to process
-  active = {}
-  column = {}
+  table.head_read()
 
-  array = {}
+  remarks = []
+  errors  = []
+  VTKarray = {}
+  active = defaultdict(list)
   
-  for datatype,info in datainfo.items():
-    for label in info['label']:
-      foundIt = False
-      for key in ['1_'+label,label]:
-        if key in table.labels:
-          foundIt = True
-          if datatype not in active: active[datatype] = []
-          if datatype not in column: column[datatype] = {}
-          if datatype not in array:   array[datatype] = {}
-          active[datatype].append(label)
-          column[datatype][label] = table.labels.index(key)                   # remember columns of requested data
-          if datatype == 'scalar':
-            array[datatype][label] = vtk.vtkDoubleArray()
-            array[datatype][label].SetNumberOfComponents(1)
-            array[datatype][label].SetName(label)
-          elif datatype == 'color':
-            array[datatype][label] = vtk.vtkUnsignedCharArray()
-            array[datatype][label].SetNumberOfComponents(3)
-            array[datatype][label].SetName(label)
-      if not foundIt:
-        file['croak'].write('column %s not found...\n'%label)
+  for datatype,dimension,label in [['scalar',1,options.scalar],
+                                   ['color',3,options.color],
+                                   ]:
+    for i,dim in enumerate(table.label_dimension(label)):
+      me = label[i]
+      if dim == -1: remarks.append('{} "{}" not found...'.format(datatype,me))
+      elif dim > dimension: remarks.append('"{}" not of dimension{}...'.format(me,dimension))
+      else:
+        table.croak('adding {} {}'.format(datatype,me))
+        active[datatype].append(me)
+
+        if datatype in ['scalar']:
+          VTKarray[me] = vtk.vtkDoubleArray()
+        elif datatype == 'color':
+          VTKarray[me] = vtk.vtkUnsignedCharArray()
+
+        VTKarray[me].SetNumberOfComponents(dimension)
+        VTKarray[me].SetName(label[i])
+
+  if remarks != []: table.croak(remarks)
+  if errors  != []:
+    table.croak(errors)
+    table.close(dismiss=True)
+    continue
        
 # ------------------------------------------ process data ---------------------------------------  
 
-  while table.data_read():                                                  # read next data line of ASCII table
+  while table.data_read():                                                                          # read next data line of ASCII table
     
-    for datatype,labels in active.items():                                  # loop over scalar,color
-      for label in labels:                                                  # loop over all requested items
-        theData = table.data[column[datatype][label]:\
-                             column[datatype][label]+datainfo[datatype]['len']]  # read strings
+    for datatype,labels in active.items():                                                          # loop over scalar,color
+      for me in labels:                                                                             # loop over all requested items
+        theData = [table.data[i] for i in table.label_indexrange(me)]                               # read strings
         if datatype == 'color':
-          theData = map(lambda x: int(255.*float(x)),theData)
-          array[datatype][label].InsertNextTuple3(theData[0],theData[1],theData[2],)
+          VTKarray[me].InsertNextTuple3(*map(lambda x: int(255.*float(x)),theData))
         elif datatype == 'scalar':
-          array[datatype][label].InsertNextValue(float(theData[0]))
-
-  table.input_close()                                                     # close input ASCII table
+          VTKarray[me].InsertNextValue(float(theData[0]))
 
 # ------------------------------------------ add data ---------------------------------------  
 
   for datatype,labels in active.items():                                   # loop over scalar,color
     if datatype == 'color':
-#      Polydata.GetPointData().SetScalars(array[datatype][labels[0]])
-      uGrid.GetCellData().SetScalars(array[datatype][labels[0]])
+      uGrid.GetCellData().SetScalars(VTKarray[active['color'][0]])
     for label in labels:                                                   # loop over all requested items
-#      Polydata.GetPointData().AddArray(array[datatype][label])
-      uGrid.GetCellData().AddArray(array[datatype][label])
+      uGrid.GetCellData().AddArray(VTKarray[me])
 
   uGrid.Modified()
   if vtk.VTK_MAJOR_VERSION <= 5:
