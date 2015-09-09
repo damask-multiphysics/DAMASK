@@ -1582,7 +1582,7 @@ subroutine crystallite_integrateStateRK4()
  integer(pInt), dimension(2) ::                eIter                                                 ! bounds for element iteration
  integer(pInt), dimension(2,mesh_NcpElems) ::  iIter, &                                              ! bounds for ip iteration
                                                gIter                                                 ! bounds for grain iteration
- logical   ::                                  isNaN, &
+ logical   ::                                  NaN, &
                                                singleRun                                             ! flag indicating computation for single (g,i,e) triple
 
  eIter = FEsolving_execElem(1:2)
@@ -1626,17 +1626,17 @@ subroutine crystallite_integrateStateRK4()
    enddo; enddo; enddo
  !$OMP ENDDO
 
- !$OMP DO PRIVATE(p,c,isNaN)
+ !$OMP DO PRIVATE(p,c,NaN)
    do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                 ! iterate over elements, ips and grains
      !$OMP FLUSH(crystallite_todo)
      if (crystallite_todo(g,i,e)) then
        c = mappingConstitutive(1,g,i,e) 
        p = mappingConstitutive(2,g,i,e) 
-       isNaN = any(prec_isNaN(plasticState(p)%dotState(:,c)))
+       NaN = any(prec_isNaN(plasticState(p)%dotState(:,c)))
        do mySource = 1_pInt, phase_Nsources(p)
-         isNaN = isNaN .or. any(prec_isNaN(sourceState(p)%p(mySource)%dotState(:,c)))
+         NaN = NaN .or. any(prec_isNaN(sourceState(p)%p(mySource)%dotState(:,c)))
        enddo  
-       if (isNaN) then                                                                                  ! NaN occured in any dotState
+       if (NaN) then                                                                                    ! NaN occured in any dotState
          if (.not. crystallite_localPlasticity(g,i,e)) then                                             ! if broken non-local...
            !$OMP CRITICAL (checkTodo)
              crystallite_todo = crystallite_todo .and. crystallite_localPlasticity                      ! ...all non-locals skipped
@@ -1768,18 +1768,18 @@ subroutine crystallite_integrateStateRK4()
        enddo; enddo; enddo
      !$OMP ENDDO
 
-     !$OMP DO PRIVATE(p,c,isNaN)
+     !$OMP DO PRIVATE(p,c,NaN)
        do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                ! iterate over elements, ips and grains
          !$OMP FLUSH(crystallite_todo)
          if (crystallite_todo(g,i,e)) then
 
            p = mappingConstitutive(2,g,i,e) 
            c = mappingConstitutive(1,g,i,e)  
-           isNaN = any(prec_isNaN(plasticState(p)%dotState(:,c)))
+           NaN = any(prec_isNaN(plasticState(p)%dotState(:,c)))
            do mySource = 1_pInt, phase_Nsources(p)
-             isNaN = isNaN .or. any(prec_isNaN(sourceState(p)%p(mySource)%dotState(:,c)))
+             NaN = NaN .or. any(prec_isNaN(sourceState(p)%p(mySource)%dotState(:,c)))
            enddo             
-           if (isNaN) then                                                                                 ! NaN occured in any dotState
+           if (NaN) then                                                                                   ! NaN occured in any dotState
              if (.not. crystallite_localPlasticity(g,i,e)) then                                            ! if broken non-local...
                !$OMP CRITICAL (checkTodo)
                  crystallite_todo = crystallite_todo .and. crystallite_localPlasticity                     ! ...all non-locals skipped
@@ -1799,9 +1799,9 @@ subroutine crystallite_integrateStateRK4()
 
  ! --- SET CONVERGENCE FLAG ---
 
- do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                    ! iterate over elements, ips and grains
+ do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                     ! iterate over elements, ips and grains
    if (crystallite_todo(g,i,e)) then
-     crystallite_converged(g,i,e) = .true.                                                               ! if still "to do" then converged per definitionem
+     crystallite_converged(g,i,e) = .true.                                                                ! if still "to do" then converged per definitionem
      if (iand(debug_level(debug_crystallite), debug_levelBasic) /= 0_pInt) then
        !$OMP CRITICAL (distributionState)
          debug_StateLoopDistribution(4,numerics_integrationMode) = &
@@ -1913,7 +1913,7 @@ subroutine crystallite_integrateStateRKCK45()
    sourceStateResiduum, &                                                                           ! residuum from evolution in microstructure
    relSourceStateResiduum                                                                           ! relative residuum from evolution in microstructure
  logical :: &
-   isNaN, &
+   NaN, &
    singleRun                                                                                        ! flag indicating computation for single (g,i,e) triple
 
  eIter = FEsolving_execElem(1:2)
@@ -1942,17 +1942,17 @@ subroutine crystallite_integrateStateRKCK45()
                                          crystallite_subdt(g,i,e), crystallite_subFrac, g,i,e)
    enddo; enddo; enddo
  !$OMP ENDDO
- !$OMP DO PRIVATE(p,cc,isNaN)
+ !$OMP DO PRIVATE(p,cc,NaN)
    do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                    ! iterate over elements, ips and grains
      !$OMP FLUSH(crystallite_todo)
      if (crystallite_todo(g,i,e)) then
        cc = mappingConstitutive(1,g,i,e) 
        p = mappingConstitutive(2,g,i,e) 
-       isNaN = any(prec_isNaN(plasticState(p)%dotState(:,cc)))
+       NaN = any(prec_isNaN(plasticState(p)%dotState(:,cc)))
        do mySource = 1_pInt, phase_Nsources(p)
-         isNaN = isNaN .or. any(prec_isNaN(sourceState(p)%p(mySource)%dotState(:,cc)))
+         NaN = NaN .or. any(prec_isNaN(sourceState(p)%p(mySource)%dotState(:,cc)))
        enddo             
-       if (isNaN) then                                                                                     ! NaN occured in any dotState
+       if (NaN) then                                                                                       ! NaN occured in any dotState
          if (.not. crystallite_localPlasticity(g,i,e)) then                                                ! if broken non-local...
            !$OMP CRITICAL (checkTodo)
              crystallite_todo = crystallite_todo .and. crystallite_localPlasticity                         ! ...all non-locals skipped
@@ -2034,14 +2034,14 @@ subroutine crystallite_integrateStateRKCK45()
    ! --- state jump ---
 
    !$OMP DO
-     do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                    ! iterate over elements, ips and grains
+     do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                   ! iterate over elements, ips and grains
        !$OMP FLUSH(crystallite_todo)
        if (crystallite_todo(g,i,e)) then
          crystallite_todo(g,i,e) = crystallite_stateJump(g,i,e)
          !$OMP FLUSH(crystallite_todo)
-         if (.not. crystallite_todo(g,i,e) .and. .not. crystallite_localPlasticity(g,i,e)) then              ! if broken non-local...
+         if (.not. crystallite_todo(g,i,e) .and. .not. crystallite_localPlasticity(g,i,e)) then             ! if broken non-local...
            !$OMP CRITICAL (checkTodo)
-             crystallite_todo = crystallite_todo .and. crystallite_localPlasticity                           ! ...all non-locals skipped
+             crystallite_todo = crystallite_todo .and. crystallite_localPlasticity                          ! ...all non-locals skipped
            !$OMP END CRITICAL (checkTodo)
          endif
        endif
@@ -2094,18 +2094,18 @@ subroutine crystallite_integrateStateRKCK45()
                                            crystallite_subFrac, g,i,e)
      enddo; enddo; enddo
    !$OMP ENDDO
-   !$OMP DO PRIVATE(p,cc,isNaN)
+   !$OMP DO PRIVATE(p,cc,NaN)
      do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                  ! iterate over elements, ips and grains
        !$OMP FLUSH(crystallite_todo)
        if (crystallite_todo(g,i,e)) then
 
          p = mappingConstitutive(2,g,i,e) 
          cc = mappingConstitutive(1,g,i,e)  
-         isNaN = any(prec_isNaN(plasticState(p)%dotState(:,cc)))
+         NaN = any(prec_isNaN(plasticState(p)%dotState(:,cc)))
          do mySource = 1_pInt, phase_Nsources(p)
-           isNaN = isNaN .or. any(prec_isNaN(sourceState(p)%p(mySource)%dotState(:,cc)))
+           NaN = NaN .or. any(prec_isNaN(sourceState(p)%p(mySource)%dotState(:,cc)))
          enddo             
-         if (isNaN) then                                                                                   ! NaN occured in any dotState
+         if (NaN) then                                                                                   ! NaN occured in any dotState
            if (.not. crystallite_localPlasticity(g,i,e)) then                                              ! if broken non-local...
              !$OMP CRITICAL (checkTodo)
                crystallite_todo = crystallite_todo .and. crystallite_localPlasticity                       ! ...all non-locals skipped
@@ -2393,7 +2393,7 @@ subroutine crystallite_integrateStateAdaptiveEuler()
 
  logical :: &
    converged, &
-   isNaN, &
+   NaN, &
    singleRun                                                                                        ! flag indicating computation for single (g,i,e) triple
 
 
@@ -2426,17 +2426,17 @@ subroutine crystallite_integrateStateAdaptiveEuler()
                                            crystallite_subdt(g,i,e), crystallite_subFrac, g,i,e)
     enddo; enddo; enddo
    !$OMP ENDDO
-   !$OMP DO PRIVATE(p,c,isNaN)
+   !$OMP DO PRIVATE(p,c,NaN)
      do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                    ! iterate over elements, ips and grains
        !$OMP FLUSH(crystallite_todo)
        if (crystallite_todo(g,i,e)) then
          p = mappingConstitutive(2,g,i,e) 
          c = mappingConstitutive(1,g,i,e)  
-         isNaN = any(prec_isNaN(plasticState(p)%dotState(:,c)))
+         NaN = any(prec_isNaN(plasticState(p)%dotState(:,c)))
          do mySource = 1_pInt, phase_Nsources(p)
-           isNaN = isNaN .or. any(prec_isNaN(sourceState(p)%p(mySource)%dotState(:,c)))
+           NaN = NaN .or. any(prec_isNaN(sourceState(p)%p(mySource)%dotState(:,c)))
          enddo             
-         if (isNaN) then                                                                                   ! NaN occured in any dotState
+         if (NaN) then                                                                                       ! NaN occured in any dotState
            if (.not. crystallite_localPlasticity(g,i,e)) then                                                ! if broken non-local...
              !$OMP CRITICAL (checkTodo)
                crystallite_todo = crystallite_todo .and. crystallite_localPlasticity                         ! ...all non-locals skipped
@@ -2507,7 +2507,7 @@ subroutine crystallite_integrateStateAdaptiveEuler()
        if (crystallite_todo(g,i,e)) &
          call constitutive_microstructure(crystallite_Fe(1:3,1:3,g,i,e), &
                                           crystallite_Fp(1:3,1:3,g,i,e), &
-                                          g, i, e)                                                        ! update dependent state variables to be consistent with basic states
+                                          g, i, e)                                                         ! update dependent state variables to be consistent with basic states
      enddo; enddo; enddo
    !$OMP ENDDO
  !$OMP END PARALLEL
@@ -2517,14 +2517,14 @@ subroutine crystallite_integrateStateAdaptiveEuler()
  ! --- STRESS INTEGRATION (EULER INTEGRATION) ---
 
  !$OMP PARALLEL DO
-   do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                  ! iterate over elements, ips and grains
+   do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                    ! iterate over elements, ips and grains
      !$OMP FLUSH(crystallite_todo)
      if (crystallite_todo(g,i,e)) then
        crystallite_todo(g,i,e) = crystallite_integrateStress(g,i,e)
        !$OMP FLUSH(crystallite_todo)
-       if (.not. crystallite_todo(g,i,e) .and. .not. crystallite_localPlasticity(g,i,e)) then            ! if broken non-local...
+       if (.not. crystallite_todo(g,i,e) .and. .not. crystallite_localPlasticity(g,i,e)) then              ! if broken non-local...
          !$OMP CRITICAL (checkTodo)
-           crystallite_todo = crystallite_todo .and. crystallite_localPlasticity                         ! ...all non-locals skipped
+           crystallite_todo = crystallite_todo .and. crystallite_localPlasticity                           ! ...all non-locals skipped
          !$OMP END CRITICAL (checkTodo)
        endif
      endif
@@ -2546,17 +2546,17 @@ subroutine crystallite_integrateStateAdaptiveEuler()
                                            crystallite_subdt(g,i,e), crystallite_subFrac, g,i,e)
      enddo; enddo; enddo
    !$OMP ENDDO
-   !$OMP DO PRIVATE(p,c,isNaN)
+   !$OMP DO PRIVATE(p,c,NaN)
      do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                  ! iterate over elements, ips and grains
        !$OMP FLUSH(crystallite_todo)
        if (crystallite_todo(g,i,e)) then
          p = mappingConstitutive(2,g,i,e)
          c = mappingConstitutive(1,g,i,e)
-         isNaN = any(prec_isNaN(plasticState(p)%dotState(:,c)))
+         NaN = any(prec_isNaN(plasticState(p)%dotState(:,c)))
          do mySource = 1_pInt, phase_Nsources(p)
-           isNaN = isNaN .or. any(prec_isNaN(sourceState(p)%p(mySource)%dotState(:,c)))
+           NaN = NaN .or. any(prec_isNaN(sourceState(p)%p(mySource)%dotState(:,c)))
          enddo             
-         if (isNaN) then                                                                                   ! NaN occured in any dotState
+         if (NaN) then                                                                                     ! NaN occured in any dotState
            if (.not. crystallite_localPlasticity(g,i,e)) then                                              ! if broken non-local...
              !$OMP CRITICAL (checkTodo)
                crystallite_todo = crystallite_todo .and. crystallite_localPlasticity                       ! ...all non-locals skipped
@@ -2737,7 +2737,7 @@ subroutine crystallite_integrateStateEuler()
    iIter, &                                                                                         ! bounds for ip iteration
    gIter                                                                                            ! bounds for grain iteration
  logical :: &
-   isNaN, &
+   NaN, &
    singleRun                                                                                        ! flag indicating computation for single (g,i,e) triple
 
 
@@ -2763,17 +2763,17 @@ eIter = FEsolving_execElem(1:2)
                                            crystallite_subdt(g,i,e), crystallite_subFrac, g,i,e)
      enddo; enddo; enddo
    !$OMP ENDDO
-   !$OMP DO PRIVATE(p,c,isNaN)
+   !$OMP DO PRIVATE(p,c,NaN)
      do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                    ! iterate over elements, ips and grains
        !$OMP FLUSH(crystallite_todo)
        if (crystallite_todo(g,i,e) .and. .not. crystallite_converged(g,i,e)) then
          c = mappingConstitutive(1,g,i,e) 
          p = mappingConstitutive(2,g,i,e) 
-         isNaN = any(prec_isNaN(plasticState(p)%dotState(:,c)))
+         NaN = any(prec_isNaN(plasticState(p)%dotState(:,c)))
          do mySource = 1_pInt, phase_Nsources(p)
-           isNaN = isNaN .or. any(prec_isNaN(sourceState(p)%p(mySource)%dotState(:,c)))
+           NaN = NaN .or. any(prec_isNaN(sourceState(p)%p(mySource)%dotState(:,c)))
          enddo             
-         if (isNaN) then                                                                                   ! NaN occured in any dotState
+         if (NaN) then                                                                                       ! NaN occured in any dotState
            if (.not. crystallite_localPlasticity(g,i,e) .and. .not. numerics_timeSyncing) then               ! if broken non-local...
              !$OMP CRITICAL (checkTodo)
                crystallite_todo = crystallite_todo .and. crystallite_localPlasticity                         ! ...all non-locals skipped
@@ -2826,15 +2826,15 @@ eIter = FEsolving_execElem(1:2)
    ! --- STATE JUMP ---
 
    !$OMP DO
-     do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                  ! iterate over elements, ips and grains
+     do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                   ! iterate over elements, ips and grains
        !$OMP FLUSH(crystallite_todo)
        if (crystallite_todo(g,i,e) .and. .not. crystallite_converged(g,i,e)) then
          crystallite_todo(g,i,e) = crystallite_stateJump(g,i,e)
          !$OMP FLUSH(crystallite_todo)
-         if (.not. crystallite_todo(g,i,e) .and. .not. crystallite_localPlasticity(g,i,e) &                ! if broken non-local...
+         if (.not. crystallite_todo(g,i,e) .and. .not. crystallite_localPlasticity(g,i,e) &                 ! if broken non-local...
              .and. .not. numerics_timeSyncing) then
            !$OMP CRITICAL (checkTodo)
-             crystallite_todo = crystallite_todo .and. crystallite_localPlasticity                         ! ...all non-locals skipped
+             crystallite_todo = crystallite_todo .and. crystallite_localPlasticity                          ! ...all non-locals skipped
            !$OMP END CRITICAL (checkTodo)
          endif
        endif
@@ -2975,7 +2975,7 @@ subroutine crystallite_integrateStateFPI()
    tempSourceState
  logical :: &
    converged, &
-   isNaN, &
+   NaN, &
    singleRun, &                                                                                     ! flag indicating computation for single (g,i,e) triple
    doneWithIntegration
 
@@ -3028,17 +3028,17 @@ subroutine crystallite_integrateStateFPI()
    enddo; enddo; enddo
 
  !$OMP ENDDO
- !$OMP DO PRIVATE(p,c,isNaN)
+ !$OMP DO PRIVATE(p,c,NaN)
    do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                    ! iterate over elements, ips and grains
      !$OMP FLUSH(crystallite_todo)
      if (crystallite_todo(g,i,e)) then
        p = mappingConstitutive(2,g,i,e) 
        c = mappingConstitutive(1,g,i,e)  
-       isNaN = any(prec_isNaN(plasticState(p)%dotState(:,c)))
+       NaN = any(prec_isNaN(plasticState(p)%dotState(:,c)))
        do mySource = 1_pInt, phase_Nsources(p)
-         isNaN = isNaN .or. any(prec_isNaN(sourceState(p)%p(mySource)%dotState(:,c)))
+         NaN = NaN .or. any(prec_isNaN(sourceState(p)%p(mySource)%dotState(:,c)))
        enddo             
-       if (isNaN) then                                                                                   ! NaN occured in any dotState
+       if (NaN) then                                                                                       ! NaN occured in any dotState
          if (.not. crystallite_localPlasticity(g,i,e)) then                                                ! if broken is a non-local...
            !$OMP CRITICAL (checkTodo)
              crystallite_todo = crystallite_todo .and. crystallite_localPlasticity                         ! ...all non-locals done (and broken)
@@ -3147,11 +3147,11 @@ subroutine crystallite_integrateStateFPI()
        if (crystallite_todo(g,i,e) .and. .not. crystallite_converged(g,i,e)) then
          p = mappingConstitutive(2,g,i,e) 
          c = mappingConstitutive(1,g,i,e)  
-         isNaN = any(prec_isNaN(plasticState(p)%dotState(:,c)))
+         NaN = any(prec_isNaN(plasticState(p)%dotState(:,c)))
          do mySource = 1_pInt, phase_Nsources(p)
-           isNaN = isNaN .or. any(prec_isNaN(sourceState(p)%p(mySource)%dotState(:,c)))
+           NaN = NaN .or. any(prec_isNaN(sourceState(p)%p(mySource)%dotState(:,c)))
          enddo             
-         if (isNaN) then                                                                                     ! NaN occured in any dotState
+         if (NaN) then                                                                                       ! NaN occured in any dotState
            crystallite_todo(g,i,e) = .false.                                                                 ! ... skip me next time
            if (.not. crystallite_localPlasticity(g,i,e)) then                                                ! if me is non-local...
              !$OMP CRITICAL (checkTodo)
