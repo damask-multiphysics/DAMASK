@@ -58,7 +58,7 @@ for name in filenames:
     table = damask.ASCIItable(name = name,
                               buffered = False)
   except: continue
-  table.croak('\033[1m'+scriptName+'\033[0m'+(': '+name if name else ''))
+  table.croak(damask.util.emph(scriptName)+(': '+name if name else ''))
 
 # ------------------------------------------ read header ------------------------------------------
 
@@ -101,15 +101,15 @@ for name in filenames:
 
     for column in items[datatype]['column']:                                                        # loop over all requested labels
       table.data[column:column+items[datatype]['dim']] = \
-        r * np.array(map(float,table.data[column:column+items[datatype]['dim']]))
+        q * np.array(map(float,table.data[column:column+items[datatype]['dim']]))
 
     datatype = 'tensor'
 
     for column in items[datatype]['column']:                                                        # loop over all requested labels
       table.data[column:column+items[datatype]['dim']] = \
         np.dot(R,np.dot(np.array(map(float,table.data[column:column+items[datatype]['dim']])).\
-                        reshape(items[datatype]['shape']),R.transpose()
-              ).reshape(items[datatype]['dim'])
+                        reshape(items[datatype]['shape']),R.transpose())).\
+                  reshape(items[datatype]['dim'])
 
     outputAlive = table.data_write()                                                                # output processed line
 
