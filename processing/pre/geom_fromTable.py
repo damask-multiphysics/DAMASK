@@ -111,7 +111,6 @@ if options.axes != None and not set(options.axes).issubset(set(['x','+x','-x','y
                          (options.microstructure,1,'microstructure'),
                         ][np.where(input)[0][0]]                                                    # select input label that was requested
 toRadians = math.pi/180.0 if options.degrees else 1.0                                               # rescale degrees to radians
-options.tolerance *= toRadians                                                                      # ensure angular tolerance in radians
 
 # --- loop over input files -------------------------------------------------------------------------
 
@@ -218,14 +217,13 @@ for name in filenames:
             o = damask.Orientation(quaternion = myData[colOri:colOri+4],
                                    symmetry = mySym).reduced()
 
-          oInv = o.quaternion.conjugated()
           neighbors = KDTree.query_ball_point([x,y,z], 3)                                             # search points within radius
           breaker = False
 
           for n in neighbors:                                                                         # check each neighbor
             if myRank <= rank[n] or table.data[n,colPhase] != myData[colPhase]: continue              # skip myself, anyone further ahead (cannot yet have a grain ID), and other phases
-            for q in symQuats[microstructure[rank[n]]-1]:
-              if abs((q*oInv).asAngleAxis()[0]) <= options.tolerance:                                 # found existing orientation resembling me
+            for symQ in symQuats[microstructure[rank[n]]-1]:
+              if (symQ*o.quaternion).asAngleAxis(degrees = options.degrees)[0] <= options.tolerance:                # found existing orientation resembling me
                 microstructure[myRank] = microstructure[rank[n]]
                 breaker = True; break
             if breaker: break
@@ -233,7 +231,7 @@ for name in filenames:
           if microstructure[myRank] == 0:                                                             # no other orientation resembled me
             nGrains += 1                                                                              # make new grain ...
             microstructure[myRank] = nGrains                                                          # ... and assign to me
-            symQuats.append(o.equivalentQuaternions())                                                # store all symmetrically equivalent orientations for future comparison
+            symQuats.append(o.symmetry.equivalentQuaternions(o.quaternion.conjugated()))              # store all symmetrically equivalent orientations for future comparison
             phases.append(myData[colPhase])                                                           # store phase info for future reporting
 
           myRank += 1
