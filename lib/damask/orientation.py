@@ -799,9 +799,11 @@ class Orientation:
 
   def asQuaternion(self):
     return self.quaternion.asList()
-  quaternion = property(asQuaternion)
 
-  def asEulers(self,type='bunge',degrees=False,standardRange=False):
+  def asEulers(self,
+               type = 'bunge',
+               degrees = False,
+               standardRange = False):
     return self.quaternion.asEulers(type, degrees, standardRange)
   eulers = property(asEulers)
 
