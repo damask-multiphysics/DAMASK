@@ -816,7 +816,7 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
          endif
        else
          subFracIntermediate = maxval(crystallite_subFrac, mask=.not.crystallite_localPlasticity)
-         if (subFracIntermediate == 0.0_pReal) then
+         if (abs(subFracIntermediate) > tiny(0.0_pReal)) then
            crystallite_neighborEnforcedCutback = .false.  ! look for ips that require a cutback because of a nonconverged neighbor
            !$OMP PARALLEL
            !$OMP DO PRIVATE(neighboring_e,neighboring_i)
@@ -858,7 +858,7 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
            !$OMP DO PRIVATE(neighboring_e,neighboring_i)
            do e = FEsolving_execElem(1),FEsolving_execElem(2)
              do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
-               if (.not. crystallite_localPlasticity(1,i,e) .and. crystallite_subFrac(1,i,e) == 0.0_pReal) then
+               if (.not. crystallite_localPlasticity(1,i,e) .and. abs(crystallite_subFrac(1,i,e)) > tiny(0.0_pReal)) then
                  do n = 1_pInt,FE_NipNeighbors(FE_celltype(FE_geomtype(mesh_element(2,e))))
                    neighboring_e = mesh_ipNeighborhood(1,n,i,e)
                    neighboring_i = mesh_ipNeighborhood(2,n,i,e)
@@ -3358,6 +3358,8 @@ end subroutine crystallite_integrateStateFPI
 !> returns true, if state jump was successfull or not needed. false indicates NaN in delta state
 !--------------------------------------------------------------------------------------------------
 logical function crystallite_stateJump(g,i,e)
+ use prec, only: &
+   prec_isNaN
  use debug, only: &
    debug_level, &
    debug_crystallite, &
@@ -3391,7 +3393,7 @@ logical function crystallite_stateJump(g,i,e)
  p = mappingConstitutive(2,g,i,e)
  call constitutive_collectDeltaState(crystallite_Tstar_v(1:6,g,i,e), crystallite_Fe(1:3,1:3,g,i,e), g,i,e)
  mySizePlasticDeltaState = plasticState(p)%sizeDeltaState
- if( any(plasticState(p)%deltaState(:,c) /= plasticState(p)%deltaState(:,c))) then    ! NaN occured in deltaState
+ if( any(prec_isNaN(plasticState(p)%deltaState(:,c)))) then                                         ! NaN occured in deltaState
    crystallite_stateJump = .false.
    return
  endif
@@ -3399,7 +3401,7 @@ logical function crystallite_stateJump(g,i,e)
                                                       plasticState(p)%deltaState(1:mySizePlasticDeltaState,c)
  do mySource = 1_pInt, phase_Nsources(p)
    mySizeSourceDeltaState = sourceState(p)%p(mySource)%sizeDeltaState
-   if( any(sourceState(p)%p(mySource)%deltaState(:,c) /= sourceState(p)%p(mySource)%deltaState(:,c))) then    ! NaN occured in deltaState
+   if( any(prec_isNaN(sourceState(p)%p(mySource)%deltaState(:,c)))) then                            ! NaN occured in deltaState
      crystallite_stateJump = .false.
      return
    endif
@@ -3463,7 +3465,8 @@ logical function crystallite_integrateStress(&
       timeFraction &
       )
  use prec, only:         pLongInt, &
-                         tol_math_check
+                         tol_math_check, &
+                         prec_isNaN
  use numerics, only:     nStress, &
                          aTol_crystalliteStress, &
                          rTol_crystalliteStress, &
@@ -3728,7 +3731,7 @@ logical function crystallite_integrateStress(&
                   aTol_crystalliteStress)                                                            ! minimum lower cutoff
      residuumLp = Lpguess - Lp_constitutive
 
-     if (any(residuumLp /= residuumLp)) then                                                         ! NaN in residuum...
+     if (any(prec_isNaN(residuumLp))) then                                                           ! NaN in residuum...
 #ifndef _OPENMP
        if (iand(debug_level(debug_crystallite), debug_levelBasic) /= 0_pInt) &
          write(6,'(a,i8,1x,a,i8,a,1x,i2,1x,i3,a,i3,a)') '<< CRYST >> integrateStress encountered NaN at el (elFE) ip g ', &
@@ -3822,7 +3825,7 @@ logical function crystallite_integrateStress(&
    aTolLi = max(rTol_crystalliteStress * max(math_norm33(Liguess),math_norm33(Li_constitutive)), &  ! absolute tolerance from largest acceptable relative error
                 aTol_crystalliteStress)                                                             ! minimum lower cutoff
    residuumLi = Liguess - Li_constitutive
-   if (any(residuumLi /= residuumLi)) then                                                          ! NaN in residuum...
+   if (any(prec_isNaN(residuumLi))) then                                                            ! NaN in residuum...
      return                                                                                         ! ...me = .false. to inform integrator about problem
    elseif (math_norm33(residuumLi) < aTolLi) then                                                   ! converged if below absolute tolerance
      exit LiLoop                                                                                    ! ...leave iteration loop
