@@ -436,6 +436,7 @@ program DAMASK_spectral_Driver
                                    [(outputIndex(2)-outputIndex(1)+1)*materialpoint_sizeResults]), &
                          (outputIndex(2)-outputIndex(1)+1)*materialpoint_sizeResults,&
                          MPI_DOUBLE, MPI_STATUS_IGNORE, ierr)
+     fileOffset = fileOffset + sum(outputSize)                                                      ! forward to current file position
    enddo
    if (worldrank == 0) &
      write(6,'(1/,a)') ' ... writing initial configuration to file ........................'
@@ -633,7 +634,6 @@ program DAMASK_spectral_Driver
        if (mod(inc,loadCases(currentLoadCase)%outputFrequency) == 0_pInt) then                      ! at output frequency
          if (worldrank == 0) &
            write(6,'(1/,a)') ' ... writing results to file ......................................'
-         fileOffset = fileOffset + sum(outputSize)                                                  ! forward to current file position
          call MPI_file_seek (resUnit,fileOffset,MPI_SEEK_SET,ierr)
          do i=1, size(materialpoint_results,3)/(maxByteOut/(materialpoint_sizeResults*pReal))+1     ! slice the output of my process in chunks not exceeding the limit for one output
            outputIndex=[(i-1)*maxByteOut/pReal/materialpoint_sizeResults+1, &
@@ -642,6 +642,7 @@ program DAMASK_spectral_Driver
                                          [(outputIndex(2)-outputIndex(1)+1)*materialpoint_sizeResults]), &
                                (outputIndex(2)-outputIndex(1)+1)*materialpoint_sizeResults,&
                                MPI_DOUBLE, MPI_STATUS_IGNORE, ierr)
+         fileOffset = fileOffset + sum(outputSize)                                                  ! forward to current file position
          enddo
        endif
        if( loadCases(currentLoadCase)%restartFrequency > 0_pInt .and. &                             ! at frequency of writing restart information set restart parameter for FEsolving 
