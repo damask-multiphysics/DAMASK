@@ -1848,12 +1848,12 @@ integer(pInt) function IO_verifyIntValue (string,validChars,myName)
  if (invalidWhere == 0_pInt) then
    read(UNIT=string,iostat=readStatus,FMT=*) IO_verifyIntValue                                        ! no offending chars found
    if (readStatus /= 0_pInt) &                                                                        ! error during string to float conversion
-     call IO_warning(203,ext_msg=myName//'"'//string//'"')
+     call IO_warning(203_pInt,ext_msg=myName//'"'//string//'"')
  else
-   call IO_warning(202,ext_msg=myName//'"'//string//'"')                                              ! complain about offending characters
+   call IO_warning(202_pInt,ext_msg=myName//'"'//string//'"')                                         ! complain about offending characters
    read(UNIT=string(1_pInt:invalidWhere-1_pInt),iostat=readStatus,FMT=*) IO_verifyIntValue            ! interpret remaining string
    if (readStatus /= 0_pInt) &                                                                        ! error during string to float conversion
-     call IO_warning(203,ext_msg=myName//'"'//string(1_pInt:invalidWhere-1_pInt)//'"')
+     call IO_warning(203_pInt,ext_msg=myName//'"'//string(1_pInt:invalidWhere-1_pInt)//'"')
  endif
   
 end function IO_verifyIntValue
@@ -1878,12 +1878,12 @@ real(pReal) function IO_verifyFloatValue (string,validChars,myName)
  if (invalidWhere == 0_pInt) then
    read(UNIT=string,iostat=readStatus,FMT=*) IO_verifyFloatValue                                      ! no offending chars found
    if (readStatus /= 0_pInt) &                                                                        ! error during string to float conversion
-     call IO_warning(203,ext_msg=myName//'"'//string//'"')
+     call IO_warning(203_pInt,ext_msg=myName//'"'//string//'"')
  else
-   call IO_warning(202,ext_msg=myName//'"'//string//'"')                                              ! complain about offending characters
+   call IO_warning(202_pInt,ext_msg=myName//'"'//string//'"')                                         ! complain about offending characters
    read(UNIT=string(1_pInt:invalidWhere-1_pInt),iostat=readStatus,FMT=*) IO_verifyFloatValue          ! interpret remaining string
    if (readStatus /= 0_pInt) &                                                                        ! error during string to float conversion
-     call IO_warning(203,ext_msg=myName//'"'//string(1_pInt:invalidWhere-1_pInt)//'"')
+     call IO_warning(203_pInt,ext_msg=myName//'"'//string(1_pInt:invalidWhere-1_pInt)//'"')
  endif
   
 end function IO_verifyFloatValue
