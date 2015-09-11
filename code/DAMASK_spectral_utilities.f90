@@ -730,42 +730,43 @@ real(pReal) function utilities_curlRMS()
  utilities_curlRMS = 0.0_pReal
  
  do k = 1_pInt, grid3; do j = 1_pInt, grid(2); 
- do i = 2_pInt, grid1Red - 1_pInt
-   do l = 1_pInt, 3_pInt
-     curl_fourier(l,1) = (+tensorField_fourier(l,3,i,j,k)*xi(2,i,j,k)&
-                          -tensorField_fourier(l,2,i,j,k)*xi(3,i,j,k))*TWOPIIMG
-     curl_fourier(l,2) = (+tensorField_fourier(l,1,i,j,k)*xi(3,i,j,k)&
-                          -tensorField_fourier(l,3,i,j,k)*xi(1,i,j,k))*TWOPIIMG
-     curl_fourier(l,3) = (+tensorField_fourier(l,2,i,j,k)*xi(1,i,j,k)&
-                          -tensorField_fourier(l,1,i,j,k)*xi(2,i,j,k))*TWOPIIMG
+   do i = 2_pInt, grid1Red - 1_pInt                                                                  
+     do l = 1_pInt, 3_pInt
+       curl_fourier(l,1) = (+tensorField_fourier(l,3,i,j,k)*xi(2,i,j,k)&
+                            -tensorField_fourier(l,2,i,j,k)*xi(3,i,j,k))*TWOPIIMG
+       curl_fourier(l,2) = (+tensorField_fourier(l,1,i,j,k)*xi(3,i,j,k)&
+                            -tensorField_fourier(l,3,i,j,k)*xi(1,i,j,k))*TWOPIIMG
+       curl_fourier(l,3) = (+tensorField_fourier(l,2,i,j,k)*xi(1,i,j,k)&
+                            -tensorField_fourier(l,1,i,j,k)*xi(2,i,j,k))*TWOPIIMG
+     enddo
+     utilities_curlRMS = utilities_curlRMS + &
+                        2.0_pReal*sum(real(curl_fourier)**2.0_pReal + aimag(curl_fourier)**2.0_pReal)! Has somewhere a conj. complex counterpart. Therefore count it twice.
+   enddo 
+   do l = 1_pInt, 3_pInt                                            
+      curl_fourier = (+tensorField_fourier(l,3,1,j,k)*xi(2,1,j,k)&
+                      -tensorField_fourier(l,2,1,j,k)*xi(3,1,j,k))*TWOPIIMG
+      curl_fourier = (+tensorField_fourier(l,1,1,j,k)*xi(3,1,j,k)&
+                      -tensorField_fourier(l,3,1,j,k)*xi(1,1,j,k))*TWOPIIMG
+      curl_fourier = (+tensorField_fourier(l,2,1,j,k)*xi(1,1,j,k)&
+                      -tensorField_fourier(l,1,1,j,k)*xi(2,1,j,k))*TWOPIIMG
    enddo
    utilities_curlRMS = utilities_curlRMS + &
-                      2.0_pReal*sum(real(curl_fourier)**2.0_pReal + aimag(curl_fourier)**2.0_pReal)
- enddo 
- do l = 1_pInt, 3_pInt
-   curl_fourier = (+tensorField_fourier(l,3,1,j,k)*xi(2,1,j,k)&
-                   -tensorField_fourier(l,2,1,j,k)*xi(3,1,j,k))*TWOPIIMG
-   curl_fourier = (+tensorField_fourier(l,1,1,j,k)*xi(3,1,j,k)&
-                   -tensorField_fourier(l,3,1,j,k)*xi(1,1,j,k))*TWOPIIMG
-   curl_fourier = (+tensorField_fourier(l,2,1,j,k)*xi(1,1,j,k)&
-                   -tensorField_fourier(l,1,1,j,k)*xi(2,1,j,k))*TWOPIIMG
- enddo
- utilities_curlRMS = utilities_curlRMS + &
-                     2.0_pReal*sum(real(curl_fourier)**2.0_pReal + aimag(curl_fourier)**2.0_pReal)   
- do l = 1_pInt, 3_pInt  
-   curl_fourier = (+tensorField_fourier(l,3,grid1Red,j,k)*xi(2,grid1Red,j,k)&
-                   -tensorField_fourier(l,2,grid1Red,j,k)*xi(3,grid1Red,j,k))*TWOPIIMG
-   curl_fourier = (+tensorField_fourier(l,1,grid1Red,j,k)*xi(3,grid1Red,j,k)&
-                   -tensorField_fourier(l,3,grid1Red,j,k)*xi(1,grid1Red,j,k))*TWOPIIMG
-   curl_fourier = (+tensorField_fourier(l,2,grid1Red,j,k)*xi(1,grid1Red,j,k)&
-                   -tensorField_fourier(l,1,grid1Red,j,k)*xi(2,grid1Red,j,k))*TWOPIIMG
- enddo
- utilities_curlRMS = utilities_curlRMS + &
-                     2.0_pReal*sum(real(curl_fourier)**2.0_pReal + aimag(curl_fourier)**2.0_pReal) 
+                                  sum(real(curl_fourier)**2.0_pReal + aimag(curl_fourier)**2.0_pReal)! this layer (DC) does not have a conjugate complex counterpart (if grid(1) /= 1)
+   do l = 1_pInt, 3_pInt  
+     curl_fourier = (+tensorField_fourier(l,3,grid1Red,j,k)*xi(2,grid1Red,j,k)&
+                     -tensorField_fourier(l,2,grid1Red,j,k)*xi(3,grid1Red,j,k))*TWOPIIMG
+     curl_fourier = (+tensorField_fourier(l,1,grid1Red,j,k)*xi(3,grid1Red,j,k)&
+                     -tensorField_fourier(l,3,grid1Red,j,k)*xi(1,grid1Red,j,k))*TWOPIIMG
+     curl_fourier = (+tensorField_fourier(l,2,grid1Red,j,k)*xi(1,grid1Red,j,k)&
+                     -tensorField_fourier(l,1,grid1Red,j,k)*xi(2,grid1Red,j,k))*TWOPIIMG
+   enddo
+   utilities_curlRMS = utilities_curlRMS + &
+                                  sum(real(curl_fourier)**2.0_pReal + aimag(curl_fourier)**2.0_pReal)! this layer (Nyquist) does not have a conjugate complex counterpart (if grid(1) /= 1) 
  enddo; enddo
+
  call MPI_Allreduce(MPI_IN_PLACE,utilities_curlRMS,1,MPI_DOUBLE,MPI_SUM,PETSC_COMM_WORLD,ierr)
  utilities_curlRMS = sqrt(utilities_curlRMS) * wgt
- if(grid(1) == 1_pInt) utilities_curlRMS = utilities_curlRMS * 0.5_pReal                      ! counted twice in case of grid(1) == 1
+ if(grid(1) == 1_pInt) utilities_curlRMS = utilities_curlRMS * 0.5_pReal                             ! counted twice in case of grid(1) == 1
 
 end function utilities_curlRMS
 
