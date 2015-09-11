@@ -1852,7 +1852,7 @@ subroutine plastic_dislotwin_dotState(Tstar_v,Temperature,ipc,ip,el)
         DotRhoDipFormation(j)-DotRhoEdgeDipAnnihilation(j)-DotRhoEdgeDipClimb(j)
  
       !* Dotstate for accumulated shear due to slip
-      plasticState(ph)%dotState(2_pInt*ns+j, of) = gdot_slip(j)
+      plasticState(ph)%dotState(2_pInt*ns+j, of) = abs(gdot_slip(j))
  
    enddo
  enddo
