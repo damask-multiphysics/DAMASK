@@ -118,7 +118,7 @@ for name in filenames:
                               labeled = options.label != None,
                               readonly = True)
   except: continue
-  table.croak(damask.util.emph(scriptName)+(': '+name if name else ''))
+  table.report_name(scriptName,name)
 
 # ------------------------------------------ read header ------------------------------------------
 

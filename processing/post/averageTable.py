@@ -42,7 +42,7 @@ for name in filenames:
                               outname = options.label+'_averaged_'+name if name else name,
                               buffered = False)
   except: continue
-  table.croak('\033[1m'+scriptName+'\033[0m'+(': '+name if name else ''))
+  table.report_name(scriptName,name)
 
 # ------------------------------------------ sanity checks ---------------------------------------  
 

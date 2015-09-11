@@ -34,7 +34,7 @@ for name in filenames:
                               buffered = False)
   except: continue
 
-  table.croak(damask.util.emph(scriptName)+(': '+name if name else ''))
+  table.report_name(scriptName,name)
   tables = []
   for addTable in options.table:
     try:

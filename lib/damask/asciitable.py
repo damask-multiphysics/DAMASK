@@ -4,6 +4,7 @@
 
 import os,sys
 import numpy as np
+import util
 
 class ASCIItable():
   '''
@@ -66,6 +67,10 @@ class ASCIItable():
                                                   and hasattr(what, "__getitem__")
                                                   or  hasattr(what, "__iter__") else str(what))
                     +('\n' if newline else '')),
+
+# ------------------------------------------------------------------
+  def report_name(self, scriptName, fileName):
+    self.croak(util.emph(scriptName)+(': '+fileName if fileName else ''))
 
 # ------------------------------------------------------------------
   def close(self,

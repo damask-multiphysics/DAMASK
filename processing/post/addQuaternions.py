@@ -63,7 +63,7 @@ for name in filenames:
     table = damask.ASCIItable(name = name,
                               buffered = False)
   except: continue
-  table.croak('\033[1m'+scriptName+'\033[0m'+(': '+name if name else ''))
+  table.report_name(scriptName,name)
 
   table.head_read()                                                                                 # read ASCII header info
 
