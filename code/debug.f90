@@ -23,10 +23,8 @@ module debug
    debug_MAXGENERAL         = debug_LEVELEXTENSIVE                                                  ! must be set to the last bitcode used by (potentially) all debug types
  integer(pInt), parameter, public :: &
    debug_SPECTRALRESTART    = debug_MAXGENERAL*2_pInt**1_pInt, &
-   debug_SPECTRALFFTW       = debug_MAXGENERAL*2_pInt**2_pInt, &
-   debug_SPECTRALDIVERGENCE = debug_MAXGENERAL*2_pInt**3_pInt, &
-   debug_SPECTRALROTATION   = debug_MAXGENERAL*2_pInt**4_pInt, &
-   debug_SPECTRALPETSC      = debug_MAXGENERAL*2_pInt**5_pInt
+   debug_SPECTRALROTATION   = debug_MAXGENERAL*2_pInt**2_pInt, &
+   debug_SPECTRALPETSC      = debug_MAXGENERAL*2_pInt**3_pInt
 
  integer(pInt), parameter, public :: &
    debug_DEBUG                   =  1_pInt, &
