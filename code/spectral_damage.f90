@@ -85,8 +85,8 @@ subroutine spectral_damage_init()
  use DAMASK_spectral_Utilities, only: &
    wgt
  use mesh, only: &
-   gridLocal, &
-   gridGlobal
+   grid, &
+   grid3
  use damage_nonlocal, only: &
    damage_nonlocal_getDiffusion33, &
    damage_nonlocal_getMobility
@@ -112,17 +112,17 @@ subroutine spectral_damage_init()
 ! initialize solver specific parts of PETSc
  call SNESCreate(PETSC_COMM_WORLD,damage_snes,ierr); CHKERRQ(ierr)
  call SNESSetOptionsPrefix(damage_snes,'damage_',ierr);CHKERRQ(ierr) 
- allocate(localK(worldsize), source = 0); localK(worldrank+1) = gridLocal(3)
+ allocate(localK(worldsize), source = 0); localK(worldrank+1) = grid3
  do proc = 1, worldsize
    call MPI_Bcast(localK(proc),1,MPI_INTEGER,proc-1,PETSC_COMM_WORLD,ierr)
  enddo  
  call DMDACreate3d(PETSC_COMM_WORLD, &
         DM_BOUNDARY_NONE, DM_BOUNDARY_NONE, DM_BOUNDARY_NONE, &                                     !< cut off stencil at boundary
         DMDA_STENCIL_BOX, &                                                                         !< Moore (26) neighborhood around central point
-        gridGlobal(1),gridGlobal(2),gridGlobal(3), &                                                !< global grid
+        grid(1),grid(2),grid(3), &                                                                  !< global grid
         1, 1, worldsize, &
         1, 0, &                                                                                     !< #dof (damage phase field), ghost boundary width (domain overlap)
-        gridLocal (1),gridLocal (2),localK, &                                                       !< local grid
+        grid(1),grid(2),localK, &                                                                   !< local grid
         damage_grid,ierr)                                                                           !< handle, error
  CHKERRQ(ierr)
  call SNESSetDM(damage_snes,damage_grid,ierr); CHKERRQ(ierr)                                        !< connect snes to da
@@ -150,16 +150,16 @@ subroutine spectral_damage_init()
  yend = ystart + yend - 1
  zend = zstart + zend - 1 
  call VecSet(solution,1.0,ierr); CHKERRQ(ierr)
- allocate(damage_current(gridLocal(1),gridLocal(2),gridLocal(3)), source=1.0_pReal)
- allocate(damage_lastInc(gridLocal(1),gridLocal(2),gridLocal(3)), source=1.0_pReal)
- allocate(damage_stagInc(gridLocal(1),gridLocal(2),gridLocal(3)), source=1.0_pReal)
+ allocate(damage_current(grid(1),grid(2),grid3), source=1.0_pReal)
+ allocate(damage_lastInc(grid(1),grid(2),grid3), source=1.0_pReal)
+ allocate(damage_stagInc(grid(1),grid(2),grid3), source=1.0_pReal)
 
 !--------------------------------------------------------------------------------------------------
 ! damage reference diffusion update
  cell = 0_pInt
  D_ref = 0.0_pReal
  mobility_ref = 0.0_pReal
- do k = 1_pInt, gridLocal(3);  do j = 1_pInt, gridLocal(2);  do i = 1_pInt,gridLocal(1)
+ do k = 1_pInt, grid3;  do j = 1_pInt, grid(2);  do i = 1_pInt,grid(1)
    cell = cell + 1_pInt
    D_ref = D_ref + damage_nonlocal_getDiffusion33(1,cell)
    mobility_ref = mobility_ref + damage_nonlocal_getMobility(1,cell)
@@ -184,7 +184,8 @@ type(tSolutionState) function spectral_damage_solution(guess,timeinc,timeinc_old
    Utilities_maskedCompliance, &
    Utilities_updateGamma
  use mesh, only: &
-   gridLocal
+   grid, &
+   grid3
  use damage_nonlocal, only: &
    damage_nonlocal_putNonLocalDamage
 
@@ -234,7 +235,7 @@ type(tSolutionState) function spectral_damage_solution(guess,timeinc,timeinc_old
 !--------------------------------------------------------------------------------------------------
 ! updating damage state 
  cell = 0_pInt                                                                                      !< material point = 0
- do k = 1_pInt, gridLocal(3);  do j = 1_pInt, gridLocal(2);  do i = 1_pInt,gridLocal(1)
+ do k = 1_pInt, grid3;  do j = 1_pInt, grid(2);  do i = 1_pInt,grid(1)
    cell = cell + 1_pInt                                                                             !< material point increase
    call damage_nonlocal_putNonLocalDamage(damage_current(i,j,k),1,cell)
  enddo; enddo; enddo
@@ -260,12 +261,13 @@ subroutine spectral_damage_formResidual(in,x_scal,f_scal,dummy,ierr)
  use numerics, only: &
    residualStiffness
  use mesh, only: &
-   gridLocal
+   grid, &
+   grid3
  use math, only: &
    math_mul33x3
  use DAMASK_spectral_Utilities, only: &
-   scalarField_realMPI, &
-   vectorField_realMPI, &
+   scalarField_real, &
+   vectorField_real, &
    utilities_FFTvectorForward, &
    utilities_FFTvectorBackward, &
    utilities_FFTscalarForward, &
@@ -295,30 +297,30 @@ subroutine spectral_damage_formResidual(in,x_scal,f_scal,dummy,ierr)
  damage_current = x_scal 
 !--------------------------------------------------------------------------------------------------
 ! evaluate polarization field
- scalarField_realMPI = 0.0_pReal
- scalarField_realMPI(1:gridLocal(1),1:gridLocal(2),1:gridLocal(3)) = damage_current 
+ scalarField_real = 0.0_pReal
+ scalarField_real(1:grid(1),1:grid(2),1:grid3) = damage_current 
  call utilities_FFTscalarForward()
  call utilities_fourierScalarGradient()                                                             !< calculate gradient of damage field
  call utilities_FFTvectorBackward()
  cell = 0_pInt
- do k = 1_pInt, gridLocal(3);  do j = 1_pInt, gridLocal(2);  do i = 1_pInt,gridLocal(1)
+ do k = 1_pInt, grid3;  do j = 1_pInt, grid(2);  do i = 1_pInt,grid(1)
    cell = cell + 1_pInt
-   vectorField_realMPI(1:3,i,j,k) = math_mul33x3(damage_nonlocal_getDiffusion33(1,cell) - D_ref, &
-                                                 vectorField_realMPI(1:3,i,j,k))
+   vectorField_real(1:3,i,j,k) = math_mul33x3(damage_nonlocal_getDiffusion33(1,cell) - D_ref, &
+                                              vectorField_real(1:3,i,j,k))
  enddo; enddo; enddo
  call utilities_FFTvectorForward()
  call utilities_fourierVectorDivergence()                                                           !< calculate damage divergence in fourier field
  call utilities_FFTscalarBackward()
  cell = 0_pInt
- do k = 1_pInt, gridLocal(3);  do j = 1_pInt, gridLocal(2);  do i = 1_pInt,gridLocal(1)
+ do k = 1_pInt, grid3;  do j = 1_pInt, grid(2);  do i = 1_pInt,grid(1)
    cell = cell + 1_pInt
    call damage_nonlocal_getSourceAndItsTangent(phiDot, dPhiDot_dPhi, damage_current(i,j,k), 1, cell)
    mobility = damage_nonlocal_getMobility(1,cell)
-   scalarField_realMPI(i,j,k) = params%timeinc*scalarField_realMPI(i,j,k) + &
-                                params%timeinc*phiDot + &
-                                mobility*damage_lastInc(i,j,k) - &
-                                mobility*damage_current(i,j,k) + &
-                                mobility_ref*damage_current(i,j,k)
+   scalarField_real(i,j,k) = params%timeinc*scalarField_real(i,j,k) + &
+                             params%timeinc*phiDot + &
+                             mobility*damage_lastInc(i,j,k) - &
+                             mobility*damage_current(i,j,k) + &
+                             mobility_ref*damage_current(i,j,k)
  enddo; enddo; enddo
 
 !--------------------------------------------------------------------------------------------------
@@ -326,13 +328,12 @@ subroutine spectral_damage_formResidual(in,x_scal,f_scal,dummy,ierr)
  call utilities_FFTscalarForward()
  call utilities_fourierGreenConvolution(D_ref, mobility_ref, params%timeinc)
  call utilities_FFTscalarBackward()
- where(scalarField_realMPI > damage_lastInc) scalarField_realMPI = damage_lastInc
- where(scalarField_realMPI < residualStiffness) scalarField_realMPI = residualStiffness
+ where(scalarField_real > damage_lastInc)    scalarField_real = damage_lastInc
+ where(scalarField_real < residualStiffness) scalarField_real = residualStiffness
  
 !--------------------------------------------------------------------------------------------------
 ! constructing residual
- f_scal = scalarField_realMPI(1:gridLocal(1),1:gridLocal(2),1:gridLocal(3)) - &
-          damage_current
+ f_scal = scalarField_real(1:grid(1),1:grid(2),1:grid3) - damage_current
 
 end subroutine spectral_damage_formResidual
 
@@ -341,7 +342,8 @@ end subroutine spectral_damage_formResidual
 !--------------------------------------------------------------------------------------------------
 subroutine spectral_damage_forward(guess,timeinc,timeinc_old,loadCaseTime)
  use mesh, only: &
-   gridLocal
+   grid, &
+   grid3
  use DAMASK_spectral_Utilities, only: &
    cutBack, &
    wgt
@@ -371,7 +373,7 @@ subroutine spectral_damage_forward(guess,timeinc,timeinc_old,loadCaseTime)
    call DMDAVecGetArrayF90(dm_local,solution,x_scal,ierr); CHKERRQ(ierr)                            !< get the data out of PETSc to work with
    x_scal(xstart:xend,ystart:yend,zstart:zend) = damage_current
    call DMDAVecRestoreArrayF90(dm_local,solution,x_scal,ierr); CHKERRQ(ierr)
-   do k = 1_pInt, gridLocal(3);  do j = 1_pInt, gridLocal(2);  do i = 1_pInt,gridLocal(1)
+   do k = 1_pInt, grid3;  do j = 1_pInt, grid(2);  do i = 1_pInt,grid(1)
      cell = cell + 1_pInt                                                                           
      call damage_nonlocal_putNonLocalDamage(damage_current(i,j,k),1,cell)
    enddo; enddo; enddo
@@ -382,7 +384,7 @@ subroutine spectral_damage_forward(guess,timeinc,timeinc_old,loadCaseTime)
    cell = 0_pInt
    D_ref = 0.0_pReal
    mobility_ref = 0.0_pReal
-   do k = 1_pInt, gridLocal(3);  do j = 1_pInt, gridLocal(2);  do i = 1_pInt,gridLocal(1)
+   do k = 1_pInt, grid3;  do j = 1_pInt, grid(2);  do i = 1_pInt,grid(1)
      cell = cell + 1_pInt
      D_ref = D_ref + damage_nonlocal_getDiffusion33(1,cell)
      mobility_ref = mobility_ref + damage_nonlocal_getMobility(1,cell)

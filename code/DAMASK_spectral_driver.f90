@@ -43,8 +43,8 @@ program DAMASK_spectral_Driver
    debug_levelBasic
  use math                                                                                           ! need to include the whole module for FFTW
  use mesh, only: &
-   gridGlobal, &
-   geomSizeGlobal
+   grid, &
+   geomSize
  use CPFEM, only: &
    CPFEM_initAll
  use FEsolving, only: &
@@ -390,8 +390,8 @@ program DAMASK_spectral_Driver
      write(resUnit) 'load:',       trim(loadCaseFile)                                                 ! ... and write header
      write(resUnit) 'workingdir:', trim(getSolverWorkingDirectoryName())
      write(resUnit) 'geometry:',   trim(geometryFile)
-     write(resUnit) 'grid:',       gridGlobal
-     write(resUnit) 'size:',       geomSizeGlobal
+     write(resUnit) 'grid:',       grid
+     write(resUnit) 'size:',       geomSize
      write(resUnit) 'materialpoint_sizeResults:', materialpoint_sizeResults
      write(resUnit) 'loadcases:',  size(loadCases)
      write(resUnit) 'frequencies:', loadCases%outputfrequency                                         ! one entry per LoadCase

@@ -85,8 +85,8 @@ subroutine spectral_thermal_init
  use DAMASK_spectral_Utilities, only: &
    wgt
  use mesh, only: &
-   gridLocal, &
-   gridGlobal
+   grid, &
+   grid3
  use thermal_conduction, only: &
    thermal_conduction_getConductivity33, &
    thermal_conduction_getMassDensity, &
@@ -116,17 +116,17 @@ subroutine spectral_thermal_init
 ! initialize solver specific parts of PETSc
  call SNESCreate(PETSC_COMM_WORLD,thermal_snes,ierr); CHKERRQ(ierr)
  call SNESSetOptionsPrefix(thermal_snes,'thermal_',ierr);CHKERRQ(ierr) 
- allocate(localK(worldsize), source = 0); localK(worldrank+1) = gridLocal(3)
+ allocate(localK(worldsize), source = 0); localK(worldrank+1) = grid3
  do proc = 1, worldsize
    call MPI_Bcast(localK(proc),1,MPI_INTEGER,proc-1,PETSC_COMM_WORLD,ierr)
  enddo  
  call DMDACreate3d(PETSC_COMM_WORLD, &
         DM_BOUNDARY_NONE, DM_BOUNDARY_NONE, DM_BOUNDARY_NONE, &                                     ! cut off stencil at boundary
         DMDA_STENCIL_BOX, &                                                                         ! Moore (26) neighborhood around central point
-        gridGlobal(1),gridGlobal(2),gridGlobal(3), &                                                ! global grid
+        grid(1),grid(2),grid(3), &                                                                  ! global grid
         1, 1, worldsize, &
         1, 0, &                                                                                     ! #dof (temperature field), ghost boundary width (domain overlap)
-        gridLocal (1),gridLocal (2),localK, &                                                       ! local grid
+        grid (1),grid(2),localK, &                                                                  ! local grid
         thermal_grid,ierr)                                                                          ! handle, error
  CHKERRQ(ierr)
  call SNESSetDM(thermal_snes,thermal_grid,ierr); CHKERRQ(ierr)                                      ! connect snes to da
@@ -142,11 +142,11 @@ subroutine spectral_thermal_init
  xend = xstart + xend - 1
  yend = ystart + yend - 1
  zend = zstart + zend - 1 
- allocate(temperature_current(gridLocal(1),gridLocal(2),gridLocal(3)), source=0.0_pReal)
- allocate(temperature_lastInc(gridLocal(1),gridLocal(2),gridLocal(3)), source=0.0_pReal)
- allocate(temperature_stagInc(gridLocal(1),gridLocal(2),gridLocal(3)), source=0.0_pReal)
+ allocate(temperature_current(grid(1),grid(2),grid3), source=0.0_pReal)
+ allocate(temperature_lastInc(grid(1),grid(2),grid3), source=0.0_pReal)
+ allocate(temperature_stagInc(grid(1),grid(2),grid3), source=0.0_pReal)
  cell = 0_pInt
- do k = 1_pInt, gridLocal(3);  do j = 1_pInt, gridLocal(2);  do i = 1_pInt,gridLocal(1)
+ do k = 1_pInt, grid3;  do j = 1_pInt, grid(2);  do i = 1_pInt,grid(1)
    cell = cell + 1_pInt
    temperature_current(i,j,k) = temperature(mappingHomogenization(2,1,cell))% &
                                   p(thermalMapping(mappingHomogenization(2,1,cell))%p(1,cell))
@@ -160,7 +160,7 @@ subroutine spectral_thermal_init
  cell = 0_pInt
  D_ref = 0.0_pReal
  mobility_ref = 0.0_pReal
- do k = 1_pInt, gridLocal(3);  do j = 1_pInt, gridLocal(2);  do i = 1_pInt,gridLocal(1)
+ do k = 1_pInt, grid3;  do j = 1_pInt, grid(2);  do i = 1_pInt,grid(1)
    cell = cell + 1_pInt
    D_ref = D_ref + thermal_conduction_getConductivity33(1,cell)
    mobility_ref = mobility_ref + thermal_conduction_getMassDensity(1,cell)* &
@@ -186,7 +186,8 @@ type(tSolutionState) function spectral_thermal_solution(guess,timeinc,timeinc_ol
    Utilities_maskedCompliance, &
    Utilities_updateGamma
  use mesh, only: &
-   gridLocal
+   grid, &
+   grid3
  use thermal_conduction, only: &
    thermal_conduction_putTemperatureAndItsRate
 
@@ -236,7 +237,7 @@ type(tSolutionState) function spectral_thermal_solution(guess,timeinc,timeinc_ol
 !--------------------------------------------------------------------------------------------------
 ! updating thermal state 
  cell = 0_pInt                                                                                      !< material point = 0
- do k = 1_pInt, gridLocal(3);  do j = 1_pInt, gridLocal(2);  do i = 1_pInt,gridLocal(1)
+ do k = 1_pInt, grid3;  do j = 1_pInt, grid(2);  do i = 1_pInt,grid(1)
    cell = cell + 1_pInt                                                                             !< material point increase
    call thermal_conduction_putTemperatureAndItsRate(temperature_current(i,j,k), &
                                                     (temperature_current(i,j,k)-temperature_lastInc(i,j,k))/params%timeinc, &
@@ -262,12 +263,13 @@ end function spectral_thermal_solution
 !--------------------------------------------------------------------------------------------------
 subroutine spectral_thermal_formResidual(in,x_scal,f_scal,dummy,ierr)
  use mesh, only: &
-   gridLocal
+   grid, &
+   grid3
  use math, only: &
    math_mul33x3
  use DAMASK_spectral_Utilities, only: &
-   scalarField_realMPI, &
-   vectorField_realMPI, &
+   scalarField_real, &
+   vectorField_real, &
    utilities_FFTvectorForward, &
    utilities_FFTvectorBackward, &
    utilities_FFTscalarForward, &
@@ -298,30 +300,30 @@ subroutine spectral_thermal_formResidual(in,x_scal,f_scal,dummy,ierr)
  temperature_current = x_scal 
 !--------------------------------------------------------------------------------------------------
 ! evaluate polarization field
- scalarField_realMPI = 0.0_pReal
- scalarField_realMPI(1:gridLocal(1),1:gridLocal(2),1:gridLocal(3)) = temperature_current 
+ scalarField_real = 0.0_pReal
+ scalarField_real(1:grid(1),1:grid(2),1:grid3) = temperature_current 
  call utilities_FFTscalarForward()
  call utilities_fourierScalarGradient()                                                             !< calculate gradient of damage field
  call utilities_FFTvectorBackward()
  cell = 0_pInt
- do k = 1_pInt, gridLocal(3);  do j = 1_pInt, gridLocal(2);  do i = 1_pInt,gridLocal(1)
+ do k = 1_pInt, grid3;  do j = 1_pInt, grid(2);  do i = 1_pInt,grid(1)
    cell = cell + 1_pInt
-   vectorField_realMPI(1:3,i,j,k) = math_mul33x3(thermal_conduction_getConductivity33(1,cell) - D_ref, &
-                                                 vectorField_realMPI(1:3,i,j,k))
+   vectorField_real(1:3,i,j,k) = math_mul33x3(thermal_conduction_getConductivity33(1,cell) - D_ref, &
+                                              vectorField_real(1:3,i,j,k))
  enddo; enddo; enddo
  call utilities_FFTvectorForward()
  call utilities_fourierVectorDivergence()                                                           !< calculate damage divergence in fourier field
  call utilities_FFTscalarBackward()
  cell = 0_pInt
- do k = 1_pInt, gridLocal(3);  do j = 1_pInt, gridLocal(2);  do i = 1_pInt,gridLocal(1)
+ do k = 1_pInt, grid3;  do j = 1_pInt, grid(2);  do i = 1_pInt,grid(1)
    cell = cell + 1_pInt
    call thermal_conduction_getSourceAndItsTangent(Tdot, dTdot_dT, temperature_current(i,j,k), 1, cell)
-   scalarField_realMPI(i,j,k) = params%timeinc*scalarField_realMPI(i,j,k) + &
-                                params%timeinc*Tdot + &
-                                thermal_conduction_getMassDensity (1,cell)* &
-                                thermal_conduction_getSpecificHeat(1,cell)*(temperature_lastInc(i,j,k)  - &
-                                                                            temperature_current(i,j,k)) + &
-                                mobility_ref*temperature_current(i,j,k)
+   scalarField_real(i,j,k) = params%timeinc*scalarField_real(i,j,k) + &
+                             params%timeinc*Tdot + &
+                             thermal_conduction_getMassDensity (1,cell)* &
+                             thermal_conduction_getSpecificHeat(1,cell)*(temperature_lastInc(i,j,k)  - &
+                                                                         temperature_current(i,j,k)) + &
+                             mobility_ref*temperature_current(i,j,k)
  enddo; enddo; enddo
 
 !--------------------------------------------------------------------------------------------------
@@ -332,7 +334,7 @@ subroutine spectral_thermal_formResidual(in,x_scal,f_scal,dummy,ierr)
  
 !--------------------------------------------------------------------------------------------------
 ! constructing residual
- f_scal = temperature_current - scalarField_realMPI(1:gridLocal(1),1:gridLocal(2),1:gridLocal(3))
+ f_scal = temperature_current - scalarField_real(1:grid(1),1:grid(2),1:grid3)
 
 end subroutine spectral_thermal_formResidual
 
@@ -341,7 +343,8 @@ end subroutine spectral_thermal_formResidual
 !--------------------------------------------------------------------------------------------------
 subroutine spectral_thermal_forward(guess,timeinc,timeinc_old,loadCaseTime)
  use mesh, only: &
-   gridLocal
+   grid, &
+   grid3
  use DAMASK_spectral_Utilities, only: &
    cutBack, &
    wgt
@@ -373,7 +376,7 @@ subroutine spectral_thermal_forward(guess,timeinc,timeinc_old,loadCaseTime)
    call DMDAVecGetArrayF90(dm_local,solution,x_scal,ierr); CHKERRQ(ierr)                              !< get the data out of PETSc to work with
    x_scal(xstart:xend,ystart:yend,zstart:zend) = temperature_current
    call DMDAVecRestoreArrayF90(dm_local,solution,x_scal,ierr); CHKERRQ(ierr)
-   do k = 1_pInt, gridLocal(3);  do j = 1_pInt, gridLocal(2);  do i = 1_pInt,gridLocal(1)
+   do k = 1_pInt, grid3;  do j = 1_pInt, grid(2);  do i = 1_pInt,grid(1)
      cell = cell + 1_pInt                                                                             !< material point increase
      call thermal_conduction_putTemperatureAndItsRate(temperature_current(i,j,k), &
                                                       (temperature_current(i,j,k) - &
@@ -387,7 +390,7 @@ subroutine spectral_thermal_forward(guess,timeinc,timeinc_old,loadCaseTime)
    cell = 0_pInt
    D_ref = 0.0_pReal
    mobility_ref = 0.0_pReal
-   do k = 1_pInt, gridLocal(3);  do j = 1_pInt, gridLocal(2);  do i = 1_pInt,gridLocal(1)
+   do k = 1_pInt, grid3;  do j = 1_pInt, grid(2);  do i = 1_pInt,grid(1)
      cell = cell + 1_pInt
      D_ref = D_ref + thermal_conduction_getConductivity33(1,cell)
      mobility_ref = mobility_ref + thermal_conduction_getMassDensity(1,cell)* &

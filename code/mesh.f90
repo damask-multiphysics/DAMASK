@@ -30,15 +30,17 @@ module mesh
    mesh_Nelems                                                                                      !< total number of elements in mesh
 
 #ifdef Spectral
+ integer(pInt), dimension(3), public, protected :: &
+   grid                                                                                             !< (global) grid
  integer(pInt), public, protected :: &
    mesh_NcpElemsGlobal, &                                                                           !< total number of CP elements in global mesh
-   gridGlobal(3), &
-   gridLocal (3), &
-   gridOffset
+   grid3, &                                                                                         !< (local) grid in 3rd direction
+   grid3Offset                                                                                      !< (local) grid offset in 3rd direction
+ real(pReal), dimension(3), public, protected :: &
+   geomSize
  real(pReal), public, protected :: &
-   geomSizeGlobal(3), &
-   geomSizeLocal (3), &
-   geomSizeOffset
+   size3, &                                                                                         !< (local) size in 3rd direction
+   size3offset                                                                                      !< (local) size offset in 3rd direction
 #endif
 
  integer(pInt), dimension(:,:), allocatable, public, protected :: &
@@ -565,31 +567,21 @@ subroutine mesh_init(ip,el)
 #ifdef Spectral
 #ifdef PETSc
  call fftw_mpi_init()
+#endif
  call IO_open_file(FILEUNIT,geometryFile)                                                           ! parse info from geometry file...
  if (myDebug) write(6,'(a)') ' Opened geometry file'; flush(6)
- 
- gridGlobal = mesh_spectral_getGrid(fileUnit)
- gridMPI = int(gridGlobal,C_INTPTR_T)
+ grid     = mesh_spectral_getGrid(fileUnit)
+ geomSize = mesh_spectral_getSize(fileUnit)
+
+#ifdef PETSc
+ gridMPI = int(grid,C_INTPTR_T)
  alloc_local = fftw_mpi_local_size_3d(gridMPI(3), gridMPI(2), gridMPI(1)/2 +1, &
                                       MPI_COMM_WORLD, local_K, local_K_offset)
- gridLocal   = [gridGlobal(1:2),int(local_K,pInt)]
- gridOffset  = int(local_K_offset,pInt)
+ grid3       = int(local_K,pInt)
+ grid3Offset = int(local_K_offset,pInt)
  
- geomSizeGlobal = mesh_spectral_getSize(fileUnit)
- geomSizeLocal  = [geomSizeGlobal(1:2), &
-                   geomSizeGlobal(3)*real(gridLocal(3),pReal)/real(gridGlobal(3),pReal)]
- geomSizeOffset  = geomSizeGlobal(3)*real(gridOffset,pReal)  /real(gridGlobal(3),pReal)
-#else
- call IO_open_file(FILEUNIT,geometryFile)                                                           ! parse info from geometry file...
- if (myDebug) write(6,'(a)') ' Opened geometry file'; flush(6)
- 
- gridGlobal = mesh_spectral_getGrid(fileUnit)
- gridLocal  = gridGlobal
- gridOffset = 0_pInt
- 
- geomSizeGlobal = mesh_spectral_getSize(fileUnit)
- geomSizeLocal  = geomSizeGlobal
- geomSizeOffset = 0.0_pReal
+ size3       = geomSize(3)*real(grid3,pReal)      /real(grid(3),pReal)
+ size3Offset = geomSize(3)*real(grid3Offset,pReal)/real(grid(3),pReal)
 #endif
  if (myDebug) write(6,'(a)') ' Grid partitioned'; flush(6)
  call mesh_spectral_count()
@@ -1256,11 +1248,11 @@ subroutine mesh_spectral_count()
 
  implicit none
 
- mesh_Nelems  = product(gridLocal)
+ mesh_Nelems  = product(grid(1:2))*grid3
  mesh_NcpElems= mesh_Nelems
- mesh_Nnodes  = product(gridLocal + 1_pInt)
+ mesh_Nnodes  = product(grid(1:2) + 1_pInt)*(grid3 + 1_pInt)
  
- mesh_NcpElemsGlobal = product(gridGlobal)
+ mesh_NcpElemsGlobal = product(grid)
 
 end subroutine mesh_spectral_count
 
@@ -1319,15 +1311,15 @@ subroutine mesh_spectral_build_nodes()
  
  forall (n = 0_pInt:mesh_Nnodes-1_pInt)
    mesh_node0(1,n+1_pInt) = mesh_unitlength * &
-           geomSizeLocal(1)*real(mod(n,(gridLocal(1)+1_pInt) ),pReal) &
-                                                  / real(gridLocal(1),pReal)
+           geomSize(1)*real(mod(n,(grid(1)+1_pInt) ),pReal) &
+                                                  / real(grid(1),pReal)
    mesh_node0(2,n+1_pInt) = mesh_unitlength * &
-           geomSizeLocal(2)*real(mod(n/(gridLocal(1)+1_pInt),(gridLocal(2)+1_pInt)),pReal) &
-                                                  / real(gridLocal(2),pReal)
+           geomSize(2)*real(mod(n/(grid(1)+1_pInt),(grid(2)+1_pInt)),pReal) &
+                                                  / real(grid(2),pReal)
    mesh_node0(3,n+1_pInt) = mesh_unitlength * &
-           geomSizeLocal(3)*real(mod(n/(gridLocal(1)+1_pInt)/(gridLocal(2)+1_pInt),(gridLocal(3)+1_pInt)),pReal) &
-                                                  / real(gridLocal(3),pReal) + &
-           geomSizeOffset                                       
+           size3*real(mod(n/(grid(1)+1_pInt)/(grid(2)+1_pInt),(grid3+1_pInt)),pReal) &
+                                                  / real(grid3,pReal) + &
+           size3offset                                       
  end forall 
 
  mesh_node = mesh_node0
@@ -1422,7 +1414,7 @@ subroutine mesh_spectral_build_elements(fileUnit)
  enddo
 
  elemType = FE_mapElemtype('C3D8R') 
- elemOffset = gridLocal(1)*gridLocal(2)*gridOffset
+ elemOffset = product(grid(1:2))*grid3Offset
  e = 0_pInt
  do while (e < mesh_NcpElems)                                                                       ! fill expected number of elements, stop at end of data (or blank line!)
    e = e+1_pInt                                                                                     ! valid element entry
@@ -1430,15 +1422,15 @@ subroutine mesh_spectral_build_elements(fileUnit)
    mesh_element( 2,e) = elemType                                                                    ! elem type
    mesh_element( 3,e) = homog                                                                       ! homogenization
    mesh_element( 4,e) = mesh_microGlobal(e+elemOffset)                                              ! microstructure
-   mesh_element( 5,e) = e + (e-1_pInt)/gridLocal(1) + &
-                                     ((e-1_pInt)/(gridLocal(1)*gridLocal(2)))*(gridLocal(1)+1_pInt) ! base node
+   mesh_element( 5,e) = e + (e-1_pInt)/grid(1) + &
+                                     ((e-1_pInt)/(grid(1)*grid(2)))*(grid(1)+1_pInt)                ! base node
    mesh_element( 6,e) = mesh_element(5,e) + 1_pInt
-   mesh_element( 7,e) = mesh_element(5,e) + gridLocal(1) + 2_pInt
-   mesh_element( 8,e) = mesh_element(5,e) + gridLocal(1) + 1_pInt
-   mesh_element( 9,e) = mesh_element(5,e) +(gridLocal(1) + 1_pInt) * (gridLocal(2) + 1_pInt)        ! second floor base node
+   mesh_element( 7,e) = mesh_element(5,e) + grid(1) + 2_pInt
+   mesh_element( 8,e) = mesh_element(5,e) + grid(1) + 1_pInt
+   mesh_element( 9,e) = mesh_element(5,e) +(grid(1) + 1_pInt) * (grid(2) + 1_pInt)                  ! second floor base node
    mesh_element(10,e) = mesh_element(9,e) + 1_pInt
-   mesh_element(11,e) = mesh_element(9,e) + gridLocal(1) + 2_pInt
-   mesh_element(12,e) = mesh_element(9,e) + gridLocal(1) + 1_pInt
+   mesh_element(11,e) = mesh_element(9,e) + grid(1) + 2_pInt
+   mesh_element(12,e) = mesh_element(9,e) + grid(1) + 1_pInt
    mesh_maxValStateVar(1) = max(mesh_maxValStateVar(1),mesh_element(3,e))                           ! needed for statistics
    mesh_maxValStateVar(2) = max(mesh_maxValStateVar(2),mesh_element(4,e))              
  enddo
@@ -1465,32 +1457,32 @@ subroutine mesh_spectral_build_ipNeighborhood(fileUnit)
  allocate(mesh_ipNeighborhood(3,mesh_maxNipNeighbors,mesh_maxNips,mesh_NcpElems),source=0_pInt)
  
  e = 0_pInt
- do z = 0_pInt,gridLocal(3)-1_pInt
-   do y = 0_pInt,gridLocal(2)-1_pInt
-     do x = 0_pInt,gridLocal(1)-1_pInt
+ do z = 0_pInt,grid3-1_pInt
+   do y = 0_pInt,grid(2)-1_pInt
+     do x = 0_pInt,grid(1)-1_pInt
        e = e + 1_pInt
-         mesh_ipNeighborhood(1,1,1,e) = z * gridLocal(1) * gridLocal(2) &
-                                      + y * gridLocal(1) &
-                                      + modulo(x+1_pInt,gridLocal(1)) &
+         mesh_ipNeighborhood(1,1,1,e) = z * grid(1) * grid(2) &
+                                      + y * grid(1) &
+                                      + modulo(x+1_pInt,grid(1)) &
                                       + 1_pInt
-         mesh_ipNeighborhood(1,2,1,e) = z * gridLocal(1) * gridLocal(2) &
-                                      + y * gridLocal(1) &
-                                      + modulo(x-1_pInt,gridLocal(1)) &
+         mesh_ipNeighborhood(1,2,1,e) = z * grid(1) * grid(2) &
+                                      + y * grid(1) &
+                                      + modulo(x-1_pInt,grid(1)) &
                                       + 1_pInt
-         mesh_ipNeighborhood(1,3,1,e) = z * gridLocal(1) * gridLocal(2) &
-                                      + modulo(y+1_pInt,gridLocal(2)) * gridLocal(1) &
+         mesh_ipNeighborhood(1,3,1,e) = z * grid(1) * grid(2) &
+                                      + modulo(y+1_pInt,grid(2)) * grid(1) &
                                       + x &
                                       + 1_pInt
-         mesh_ipNeighborhood(1,4,1,e) = z * gridLocal(1) * gridLocal(2) &
-                                      + modulo(y-1_pInt,gridLocal(2)) * gridLocal(1) &
+         mesh_ipNeighborhood(1,4,1,e) = z * grid(1) * grid(2) &
+                                      + modulo(y-1_pInt,grid(2)) * grid(1) &
                                       + x &
                                       + 1_pInt
-         mesh_ipNeighborhood(1,5,1,e) = modulo(z+1_pInt,gridLocal(3)) * gridLocal(1) * gridLocal(2) &
-                                      + y * gridLocal(1) &
+         mesh_ipNeighborhood(1,5,1,e) = modulo(z+1_pInt,grid3) * grid(1) * grid(2) &
+                                      + y * grid(1) &
                                       + x &
                                       + 1_pInt
-         mesh_ipNeighborhood(1,6,1,e) = modulo(z-1_pInt,gridLocal(3)) * gridLocal(1) * gridLocal(2) &
-                                      + y * gridLocal(1) &
+         mesh_ipNeighborhood(1,6,1,e) = modulo(z-1_pInt,grid3) * grid(1) * grid(2) &
+                                      + y * grid(1) &
                                       + x &
                                       + 1_pInt
          mesh_ipNeighborhood(2,1:6,1,e) = 1_pInt

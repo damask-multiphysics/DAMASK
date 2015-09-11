@@ -94,9 +94,9 @@ subroutine basicPETSc_init
    IO_read_realFile, &
    IO_timeStamp
  use debug, only: &
-   debug_level, &
-   debug_spectral, &
-   debug_spectralRestart
+  debug_level, &
+  debug_spectral, &
+  debug_spectralRestart
  use FEsolving, only: &
    restartInc
  use numerics, only: &
@@ -110,8 +110,8 @@ subroutine basicPETSc_init
    utilities_updateIPcoords, &
    wgt
  use mesh, only: &
-   gridLocal, &
-   gridGlobal
+   grid, &
+   grid3
  use math, only: &
    math_invSym3333
    
@@ -133,27 +133,27 @@ subroutine basicPETSc_init
 #include "compilation_info.f90"
  endif mainProcess
 
- allocate (P         (3,3,gridLocal(1),gridLocal(2),gridLocal(3)),source = 0.0_pReal)
+ allocate (P         (3,3,grid(1),grid(2),grid3),source = 0.0_pReal)
 !--------------------------------------------------------------------------------------------------
 ! allocate global fields
- allocate (F_lastInc (3,3,gridLocal(1),gridLocal(2),gridLocal(3)),source = 0.0_pReal)
- allocate (Fdot      (3,3,gridLocal(1),gridLocal(2),gridLocal(3)),source = 0.0_pReal)
+ allocate (F_lastInc (3,3,grid(1),grid(2),grid3),source = 0.0_pReal)
+ allocate (Fdot      (3,3,grid(1),grid(2),grid3),source = 0.0_pReal)
     
 !--------------------------------------------------------------------------------------------------
 ! initialize solver specific parts of PETSc
  call SNESCreate(PETSC_COMM_WORLD,snes,ierr); CHKERRQ(ierr)
  call SNESSetOptionsPrefix(snes,'mech_',ierr);CHKERRQ(ierr) 
- allocate(localK(worldsize), source = 0); localK(worldrank+1) = gridLocal(3)
+ allocate(localK(worldsize), source = 0); localK(worldrank+1) = grid3
  do proc = 1, worldsize
    call MPI_Bcast(localK(proc),1,MPI_INTEGER,proc-1,PETSC_COMM_WORLD,ierr)
  enddo  
  call DMDACreate3d(PETSC_COMM_WORLD, &
         DM_BOUNDARY_NONE, DM_BOUNDARY_NONE, DM_BOUNDARY_NONE, &                                     ! cut off stencil at boundary
         DMDA_STENCIL_BOX, &                                                                         ! Moore (26) neighborhood around central point
-        gridGlobal(1),gridGlobal(2),gridGlobal(3), &                                                ! global grid
+        grid(1),grid(2),grid(3), &                                                ! global grid
         1, 1, worldsize, &
         9, 0, &                                                                                     ! #dof (F tensor), ghost boundary width (domain overlap)
-        gridLocal (1),gridLocal (2),localK, &                                                       ! local grid
+        grid (1),grid (2),localK, &                                                       ! local grid
         da,ierr)                                                                                    ! handle, error
  CHKERRQ(ierr)
  call SNESSetDM(snes,da,ierr); CHKERRQ(ierr)
@@ -169,10 +169,7 @@ subroutine basicPETSc_init
 ! init fields                 
  call DMDAVecGetArrayF90(da,solution_vec,F,ierr); CHKERRQ(ierr)                                     ! get the data out of PETSc to work with
 
- if (restartInc == 1_pInt) then                                                                     ! no deformation (no restart)
-   F_lastInc = spread(spread(spread(math_I3,3,gridLocal(1)),4,gridLocal(2)),5,gridLocal(3))         ! initialize to identity
-   F = reshape(F_lastInc,[9,gridLocal(1),gridLocal(2),gridLocal(3)])
- elseif (restartInc > 1_pInt) then                                                                  ! using old values from file                                                      
+ restart: if (restartInc > 1_pInt) then                                                     
    if (iand(debug_level(debug_spectral),debug_spectralRestart)/= 0 .and. worldrank == 0_pInt) &
      write(6,'(/,a,'//IO_intOut(restartInc-1_pInt)//',a)') &
      'reading values of increment ', restartInc - 1_pInt, ' from file'
@@ -189,7 +186,10 @@ subroutine basicPETSc_init
    close (777)
    F_aim         = reshape(sum(sum(sum(F,dim=4),dim=3),dim=2) * wgt, [3,3])                         ! average of F
    F_aim_lastInc = sum(sum(sum(F_lastInc,dim=5),dim=4),dim=3) * wgt                                 ! average of F_lastInc 
- endif
+ elseif (restartInc == 1_pInt) then restart 
+   F_lastInc = spread(spread(spread(math_I3,3,grid(1)),4,grid(2)),5,grid3)                          ! initialize to identity
+   F = reshape(F_lastInc,[9,grid(1),grid(2),grid3])
+ endif restart
 
  call Utilities_updateIPcoords(F)
  call Utilities_constitutiveResponse(F_lastInc, F, &
@@ -202,7 +202,7 @@ subroutine basicPETSc_init
 
  call DMDAVecRestoreArrayF90(da,solution_vec,F,ierr); CHKERRQ(ierr)                                 ! write data back to PETSc
 
- if (restartInc > 1_pInt) then                                                                      ! using old values from files                                                    
+ restartRead: if (restartInc > 1_pInt) then                                                    
    if (iand(debug_level(debug_spectral),debug_spectralRestart)/= 0 .and. worldrank == 0_pInt) &
      write(6,'(/,a,'//IO_intOut(restartInc-1_pInt)//',a)') &
      'reading more values of increment', restartInc - 1_pInt, 'from file'
@@ -216,7 +216,7 @@ subroutine basicPETSc_init
    call IO_read_realFile(777,'C_ref',trim(getSolverJobName()),size(C_minMaxAvg))
    read (777,rec=1) C_minMaxAvg
    close (777)
- endif 
+ endif restartRead
    
  call Utilities_updateGamma(C_minmaxAvg,.True.)
 
@@ -302,7 +302,8 @@ subroutine BasicPETSC_formResidual(in,x_scal,f_scal,dummy,ierr)
  use numerics, only: &
    worldrank
  use mesh, only: &
-   gridLocal
+   grid, &
+   grid3
  use math, only: &
    math_rotate_backward33, &
    math_transpose33, &
@@ -312,9 +313,7 @@ subroutine BasicPETSC_formResidual(in,x_scal,f_scal,dummy,ierr)
    debug_spectral, &
    debug_spectralRotation
  use DAMASK_spectral_Utilities, only: &
-   wgt, &
-   tensorField_realMPI, &
-   tensorField_fourierMPI, &
+   tensorField_real, &
    utilities_FFTtensorForward, &
    utilities_FFTtensorBackward, &
    utilities_fourierGammaConvolution, &
@@ -345,7 +344,7 @@ subroutine BasicPETSC_formResidual(in,x_scal,f_scal,dummy,ierr)
  call SNESGetIterationNumber(snes,PETScIter,ierr); CHKERRQ(ierr)
 
  if(nfuncs== 0 .and. PETScIter == 0) totalIter = -1_pInt                                            ! new increment
- if (totalIter <= PETScIter) then                                                                   ! new iteration
+ newIteration: if (totalIter <= PETScIter) then
 !--------------------------------------------------------------------------------------------------
 ! report begin of new iteration
    totalIter = totalIter + 1_pInt
@@ -353,13 +352,13 @@ subroutine BasicPETSC_formResidual(in,x_scal,f_scal,dummy,ierr)
      write(6,'(1x,a,3(a,'//IO_intOut(itmax)//'))') trim(incInfo), &
                     ' @ Iteration ', itmin, '≤',totalIter, '≤', itmax
      if (iand(debug_level(debug_spectral),debug_spectralRotation) /= 0) &
-     write(6,'(/,a,/,3(3(f12.7,1x)/))',advance='no') ' deformation gradient aim (lab) =', &
-                                 math_transpose33(math_rotate_backward33(F_aim,params%rotation_BC))
+       write(6,'(/,a,/,3(3(f12.7,1x)/))',advance='no') ' deformation gradient aim (lab) =', &
+                                   math_transpose33(math_rotate_backward33(F_aim,params%rotation_BC))
      write(6,'(/,a,/,3(3(f12.7,1x)/))',advance='no') ' deformation gradient aim =', &
                                  math_transpose33(F_aim)
-   endif
    flush(6)
- endif 
+   endif
+ endif newIteration
 
 !--------------------------------------------------------------------------------------------------
 ! evaluate constitutive response
@@ -376,8 +375,8 @@ subroutine BasicPETSC_formResidual(in,x_scal,f_scal,dummy,ierr)
  
 !--------------------------------------------------------------------------------------------------
 ! updated deformation gradient using fix point algorithm of basic scheme
- tensorField_realMPI = 0.0_pReal
- tensorField_realMPI(1:3,1:3,1:gridLocal(1),1:gridLocal(2),1:gridLocal(3)) = f_scal
+ tensorField_real = 0.0_pReal
+ tensorField_real(1:3,1:3,1:grid(1),1:grid(2),1:grid3) = f_scal
  call utilities_FFTtensorForward()
  err_div = Utilities_divergenceRMS()
  call utilities_fourierGammaConvolution(math_rotate_backward33(F_aim_lastIter-F_aim,params%rotation_BC))
@@ -385,7 +384,7 @@ subroutine BasicPETSC_formResidual(in,x_scal,f_scal,dummy,ierr)
  
 !--------------------------------------------------------------------------------------------------
 ! constructing residual
- f_scal = tensorField_realMPI(1:3,1:3,1:gridLocal(1),1:gridLocal(2),1:gridLocal(3))
+ f_scal = tensorField_real(1:3,1:3,1:grid(1),1:grid(2),1:grid3)
 
 end subroutine BasicPETSc_formResidual
 
@@ -455,7 +454,8 @@ subroutine BasicPETSc_forward(guess,timeinc,timeinc_old,loadCaseTime,F_BC,P_BC,r
    math_mul33x33 ,&
    math_rotate_backward33
  use mesh, only: &
-   gridLocal
+   grid, &
+   grid3
  use DAMASK_spectral_Utilities, only: &
    Utilities_calculateRate, &
    Utilities_forwardField, &
@@ -513,9 +513,10 @@ subroutine BasicPETSc_forward(guess,timeinc,timeinc_old,loadCaseTime,F_BC,P_BC,r
  endif 
 
  call utilities_updateIPcoords(F)
+
  if (cutBack) then 
    F_aim = F_aim_lastInc
-   F    = reshape(F_lastInc,    [9,gridLocal(1),gridLocal(2),gridLocal(3)]) 
+   F    = reshape(F_lastInc,    [9,grid(1),grid(2),grid3]) 
    C_volAvg = C_volAvgLastInc
  else
    ForwardData = .True.
@@ -536,15 +537,15 @@ subroutine BasicPETSc_forward(guess,timeinc,timeinc_old,loadCaseTime,F_BC,P_BC,r
 ! update coordinates and rate and forward last inc
    call utilities_updateIPcoords(F)
    Fdot =  Utilities_calculateRate(math_rotate_backward33(f_aimDot,rotation_BC), &
-                  timeinc_old,guess,F_lastInc,reshape(F,[3,3,gridLocal(1),gridLocal(2),gridLocal(3)]))
-   F_lastInc     = reshape(F,       [3,3,gridLocal(1),gridLocal(2),gridLocal(3)])
+                  timeinc_old,guess,F_lastInc,reshape(F,[3,3,grid(1),grid(2),grid3]))
+   F_lastInc     = reshape(F,       [3,3,grid(1),grid(2),grid3])
  endif
  F_aim = F_aim + f_aimDot * timeinc
 
 !--------------------------------------------------------------------------------------------------
 ! update local deformation gradient
  F     = reshape(Utilities_forwardField(timeinc,F_lastInc,Fdot, &                                   ! ensure that it matches rotated F_aim
-           math_rotate_backward33(F_aim,rotation_BC)),[9,gridLocal(1),gridLocal(2),gridLocal(3)])
+           math_rotate_backward33(F_aim,rotation_BC)),[9,grid(1),grid(2),grid3])
  call DMDAVecRestoreArrayF90(da,solution_vec,F,ierr); CHKERRQ(ierr)
 
 end subroutine BasicPETSc_forward

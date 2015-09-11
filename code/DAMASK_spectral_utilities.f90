@@ -42,12 +42,12 @@ module DAMASK_spectral_utilities
 !--------------------------------------------------------------------------------------------------
 ! variables storing information for spectral method and FFTW
  integer(pInt), public                                                    :: grid1Red               !< grid(1)/2
- real   (C_DOUBLE),        public,  dimension(:,:,:,:,:),     pointer     :: tensorField_realMPI    !< real representation (some stress or deformation) of field_fourier
- complex(C_DOUBLE_COMPLEX),public,  dimension(:,:,:,:,:),     pointer     :: tensorField_fourierMPI !< field on which the Fourier transform operates
- real(C_DOUBLE),           public,  dimension(:,:,:,:),       pointer     :: vectorField_realMPI    !< vector field real representation for fftw
- complex(C_DOUBLE_COMPLEX),public,  dimension(:,:,:,:),       pointer     :: vectorField_fourierMPI !< vector field fourier representation for fftw
- real(C_DOUBLE),           public,  dimension(:,:,:),         pointer     :: scalarField_realMPI    !< scalar field real representation for fftw
- complex(C_DOUBLE_COMPLEX),public,  dimension(:,:,:),         pointer     :: scalarField_fourierMPI !< scalar field fourier representation for fftw
+ real   (C_DOUBLE),        public,  dimension(:,:,:,:,:),     pointer     :: tensorField_real       !< real representation (some stress or deformation) of field_fourier
+ complex(C_DOUBLE_COMPLEX),public,  dimension(:,:,:,:,:),     pointer     :: tensorField_fourier    !< field on which the Fourier transform operates
+ real(C_DOUBLE),           public,  dimension(:,:,:,:),       pointer     :: vectorField_real       !< vector field real representation for fftw
+ complex(C_DOUBLE_COMPLEX),public,  dimension(:,:,:,:),       pointer     :: vectorField_fourier    !< vector field fourier representation for fftw
+ real(C_DOUBLE),           public,  dimension(:,:,:),         pointer     :: scalarField_real       !< scalar field real representation for fftw
+ complex(C_DOUBLE_COMPLEX),public,  dimension(:,:,:),         pointer     :: scalarField_fourier    !< scalar field fourier representation for fftw
  real(pReal),              private, dimension(:,:,:,:,:,:,:), allocatable :: gamma_hat              !< gamma operator (field) for spectral method
  real(pReal),              private, dimension(:,:,:,:),       allocatable :: xi                     !< wave vector field for divergence and for gamma operator
  real(pReal),              private, dimension(3,3,3,3)                    :: C_ref                  !< mechanic reference stiffness
@@ -56,22 +56,17 @@ module DAMASK_spectral_utilities
 !--------------------------------------------------------------------------------------------------
 ! plans for FFTW
  type(C_PTR),   private :: &
-   planTensorForth, &                                                                            !< FFTW MPI plan P(x) to P(k)
-   planTensorBack, &                                                                             !< FFTW MPI plan F(k) to F(x)
-   planVectorForth, &                                                                            !< FFTW MPI plan P(x) to P(k)
-   planVectorBack, &                                                                             !< FFTW MPI plan F(k) to F(x)
-   planScalarForth, &                                                                            !< FFTW MPI plan P(x) to P(k)
-   planScalarBack, &                                                                             !< FFTW MPI plan F(k) to F(x)
-   planDebugForth, &                                                                             !< FFTW MPI plan for scalar field
-   planDebugBack, &                                                                              !< FFTW MPI plan for scalar field inverse
-   planDiv                                                                                       !< FFTW MPI plan for FFTW in case of debugging divergence calculation
+   planTensorForth, &                                                                               !< FFTW MPI plan P(x) to P(k)
+   planTensorBack, &                                                                                !< FFTW MPI plan F(k) to F(x)
+   planVectorForth, &                                                                               !< FFTW MPI plan v(x) to v(k)
+   planVectorBack, &                                                                                !< FFTW MPI plan v(k) to v(x)
+   planScalarForth, &                                                                               !< FFTW MPI plan s(x) to s(k)
+   planScalarBack                                                                                   !< FFTW MPI plan s(k) to s(x)
 
 !--------------------------------------------------------------------------------------------------
 ! variables controlling debugging
  logical, private :: &
    debugGeneral, &                                                                                  !< general debugging of spectral solver
-   debugDivergence, &                                                                               !< debugging of divergence calculation (comparison to function used for post processing)
-   debugFFTW, &                                                                                     !< doing additional FFT on scalar field and compare to results of strided 3D FFT
    debugRotation, &                                                                                 !< also printing out results in lab frame
    debugPETSc                                                                                       !< use some in debug defined options for more verbose PETSc solution
 
@@ -190,10 +185,10 @@ subroutine utilities_init()
 #endif
  use math                                                                                    
  use mesh, only: &
-   gridGlobal, &
-   gridLocal, &
-   gridOffset, &
-   geomSizeGlobal
+   grid, &
+   grid3, &
+   grid3Offset, &
+   geomSize
 
  implicit none
 #ifdef PETSc
@@ -206,9 +201,9 @@ subroutine utilities_init()
  integer(pInt)               :: i, j, k
  integer(pInt), dimension(3) :: k_s
  type(C_PTR) :: &
-   tensorFieldMPI, &                                                                                !< field cotaining data for FFTW in real and fourier space (in place)
-   vectorFieldMPI, &                                                                                !< field cotaining data for FFTW in real space when debugging FFTW (no in place)
-   scalarFieldMPI                                                                                   !< field cotaining data for FFTW in real space when debugging FFTW (no in place)
+   tensorField, &                                                                                   !< field cotaining data for FFTW in real and fourier space (in place)
+   vectorField, &                                                                                   !< field cotaining data for FFTW in real space when debugging FFTW (no in place)
+   scalarField                                                                                      !< field cotaining data for FFTW in real space when debugging FFTW (no in place)
  integer(C_INTPTR_T) :: gridFFTW(3), alloc_local, local_K, local_K_offset
  integer(C_INTPTR_T), parameter :: &
    scalarSize = 1_C_INTPTR_T, &
@@ -225,8 +220,6 @@ subroutine utilities_init()
 !--------------------------------------------------------------------------------------------------
 ! set debugging parameters
  debugGeneral    = iand(debug_level(debug_SPECTRAL),debug_LEVELBASIC)         /= 0
- debugDivergence = iand(debug_level(debug_SPECTRAL),debug_SPECTRALDIVERGENCE) /= 0
- debugFFTW       = iand(debug_level(debug_SPECTRAL),debug_SPECTRALFFTW)       /= 0
  debugRotation   = iand(debug_level(debug_SPECTRAL),debug_SPECTRALROTATION)   /= 0
  debugPETSc      = iand(debug_level(debug_SPECTRAL),debug_SPECTRALPETSC)      /= 0
 
@@ -240,117 +233,96 @@ subroutine utilities_init()
  call PetscOptionsInsertString(trim(petsc_defaultOptions),ierr); CHKERRQ(ierr)
  call PetscOptionsInsertString(trim(petsc_options),ierr); CHKERRQ(ierr)
 
- grid1Red = gridLocal(1)/2_pInt + 1_pInt
- wgt = 1.0/real(product(gridGlobal),pReal)
+ grid1Red = grid(1)/2_pInt + 1_pInt
+ wgt = 1.0/real(product(grid),pReal)
 
  if (worldrank == 0) then
-   write(6,'(a,3(i12  ))')  ' grid     a b c: ', gridGlobal
-   write(6,'(a,3(es12.5))') ' size     x y z: ', geomSizeGlobal
+   write(6,'(a,3(i12  ))')  ' grid     a b c: ', grid
+   write(6,'(a,3(es12.5))') ' size     x y z: ', geomSize
  endif
  
 !--------------------------------------------------------------------------------------------------
-! scale dimension to calculate either uncorrected, dimension-independent, or dimension- and reso-
-! lution-independent divergence
+! scale dimension to calculate either uncorrected, dimension-independent, or dimension- and
+! resolution-independent divergence
  if (divergence_correction == 1_pInt) then
    do j = 1_pInt, 3_pInt
-    if (j /= minloc(geomSizeGlobal,1) .and. j /= maxloc(geomSizeGlobal,1)) &
-      scaledGeomSize = geomSizeGlobal/geomSizeGlobal(j)
+    if (j /= minloc(geomSize,1) .and. j /= maxloc(geomSize,1)) &
+      scaledGeomSize = geomSize/geomSize(j)
    enddo
  elseif (divergence_correction == 2_pInt) then
    do j = 1_pInt, 3_pInt
-    if (j /= minloc(geomSizeGlobal/gridGlobal,1) .and. j /= maxloc(geomSizeGlobal/gridGlobal,1)) &
-      scaledGeomSize = geomSizeGlobal/geomSizeGlobal(j)*gridGlobal(j)
+    if (j /= minloc(geomSize/grid,1) .and. j /= maxloc(geomSize/grid,1)) &
+      scaledGeomSize = geomSize/geomSize(j)*grid(j)
    enddo
  else
-   scaledGeomSize = geomSizeGlobal
+   scaledGeomSize = geomSize
  endif
 
 
 !--------------------------------------------------------------------------------------------------
 ! MPI allocation
- gridFFTW = int(gridGlobal,C_INTPTR_T)
+ gridFFTW = int(grid,C_INTPTR_T)
  alloc_local = fftw_mpi_local_size_3d(gridFFTW(3), gridFFTW(2), gridFFTW(1)/2 +1, &
                                       MPI_COMM_WORLD, local_K, local_K_offset)
+ allocate (xi(3,grid1Red,grid(2),grid3),source = 0.0_pReal)                                         ! frequencies, only half the size for first dimension
  
- tensorFieldMPI = fftw_alloc_complex(tensorSize*alloc_local)
- call c_f_pointer(tensorFieldMPI, tensorField_realMPI,    [3_C_INTPTR_T,3_C_INTPTR_T, &
+ tensorField = fftw_alloc_complex(tensorSize*alloc_local)
+ call c_f_pointer(tensorField, tensorField_real,    [3_C_INTPTR_T,3_C_INTPTR_T, &
                   2_C_INTPTR_T*(gridFFTW(1)/2_C_INTPTR_T + 1_C_INTPTR_T),gridFFTW(2),local_K])      ! place a pointer for a real tensor representation
- call c_f_pointer(tensorFieldMPI, tensorField_fourierMPI, [3_C_INTPTR_T,3_C_INTPTR_T, &
+ call c_f_pointer(tensorField, tensorField_fourier, [3_C_INTPTR_T,3_C_INTPTR_T, &
                   gridFFTW(1)/2_C_INTPTR_T + 1_C_INTPTR_T ,              gridFFTW(2),local_K])      ! place a pointer for a fourier tensor representation
 
- vectorFieldMPI = fftw_alloc_complex(vecSize*alloc_local)
- call c_f_pointer(vectorFieldMPI, vectorField_realMPI,   [3_C_INTPTR_T,&
+ vectorField = fftw_alloc_complex(vecSize*alloc_local)
+ call c_f_pointer(vectorField, vectorField_real,   [3_C_INTPTR_T,&
                   2_C_INTPTR_T*(gridFFTW(1)/2_C_INTPTR_T + 1_C_INTPTR_T),gridFFTW(2),local_K])      ! place a pointer for a real vector representation
- call c_f_pointer(vectorFieldMPI, vectorField_fourierMPI,[3_C_INTPTR_T,&
+ call c_f_pointer(vectorField, vectorField_fourier,[3_C_INTPTR_T,&
                   gridFFTW(1)/2_C_INTPTR_T + 1_C_INTPTR_T,               gridFFTW(2),local_K])      ! place a pointer for a fourier vector representation
 
- scalarFieldMPI = fftw_alloc_complex(scalarSize*alloc_local)                                        ! allocate data for real representation (no in place transform)
- call c_f_pointer(scalarFieldMPI,    scalarField_realMPI, &
+ scalarField = fftw_alloc_complex(scalarSize*alloc_local)                                           ! allocate data for real representation (no in place transform)
+ call c_f_pointer(scalarField,    scalarField_real, &
                   [2_C_INTPTR_T*(gridFFTW(1)/2_C_INTPTR_T + 1),gridFFTW(2),local_K])                ! place a pointer for a real scalar representation
- call c_f_pointer(scalarFieldMPI, scalarField_fourierMPI, &
+ call c_f_pointer(scalarField, scalarField_fourier, &
                    [             gridFFTW(1)/2_C_INTPTR_T + 1 ,gridFFTW(2),local_K])                ! place a pointer for a fourier scarlar representation
- allocate (xi(3,grid1Red,gridLocal(2),gridLocal(3)),source = 0.0_pReal)                             ! frequencies, only half the size for first dimension
  
 !--------------------------------------------------------------------------------------------------
 ! tensor MPI fftw plans
- planTensorForth = fftw_mpi_plan_many_dft_r2c(3, [gridFFTW(3),gridFFTW(2),gridFFTW(1)], &        ! dimension, logical length in each dimension in reversed order
+ planTensorForth = fftw_mpi_plan_many_dft_r2c(3, [gridFFTW(3),gridFFTW(2),gridFFTW(1)], &           ! dimension, logical length in each dimension in reversed order
                                        tensorSize, FFTW_MPI_DEFAULT_BLOCK, FFTW_MPI_DEFAULT_BLOCK, &! no. of transforms, default iblock and oblock
-                                                      tensorField_realMPI, tensorField_fourierMPI, &! input data, output data
+                                                      tensorField_real, tensorField_fourier, &      ! input data, output data
                                                                 MPI_COMM_WORLD, fftw_planner_flag)  ! use all processors, planer precision
  if (.not. C_ASSOCIATED(planTensorForth)) call IO_error(810, ext_msg='planTensorForth')
- planTensorBack  = fftw_mpi_plan_many_dft_c2r(3, [gridFFTW(3),gridFFTW(2),gridFFTW(1)], &        ! dimension, logical length in each dimension in reversed order
+ planTensorBack  = fftw_mpi_plan_many_dft_c2r(3, [gridFFTW(3),gridFFTW(2),gridFFTW(1)], &           ! dimension, logical length in each dimension in reversed order
                                       tensorSize,  FFTW_MPI_DEFAULT_BLOCK, FFTW_MPI_DEFAULT_BLOCK, &! no. of transforms, default iblock and oblock
-                                                       tensorField_fourierMPI,tensorField_realMPI, &! input data, output data
+                                                       tensorField_fourier,tensorField_real, &      ! input data, output data
                                                                 MPI_COMM_WORLD, fftw_planner_flag)  ! all processors, planer precision
  if (.not. C_ASSOCIATED(planTensorBack)) call IO_error(810, ext_msg='planTensorBack')
    
 !--------------------------------------------------------------------------------------------------
 ! vector MPI fftw plans
- planVectorForth = fftw_mpi_plan_many_dft_r2c(3, [gridFFTW(3),gridFFTW(2),gridFFTW(1)], &        ! dimension, logical length in each dimension in reversed order
+ planVectorForth = fftw_mpi_plan_many_dft_r2c(3, [gridFFTW(3),gridFFTW(2),gridFFTW(1)], &           ! dimension, logical length in each dimension in reversed order
                                           vecSize, FFTW_MPI_DEFAULT_BLOCK, FFTW_MPI_DEFAULT_BLOCK, &! no. of transforms, default iblock and oblock
-                                                      vectorField_realMPI, vectorField_fourierMPI, &! input data, output data
+                                                      vectorField_real, vectorField_fourier, &      ! input data, output data
                                                                 MPI_COMM_WORLD, fftw_planner_flag)  ! use all processors, planer precision
  if (.not. C_ASSOCIATED(planVectorForth)) call IO_error(810, ext_msg='planVectorForth')
- planVectorBack  = fftw_mpi_plan_many_dft_c2r(3, [gridFFTW(3),gridFFTW(2),gridFFTW(1)],  &       ! dimension, logical length in each dimension in reversed order
+ planVectorBack  = fftw_mpi_plan_many_dft_c2r(3, [gridFFTW(3),gridFFTW(2),gridFFTW(1)],  &          ! dimension, logical length in each dimension in reversed order
                                         vecSize, FFTW_MPI_DEFAULT_BLOCK, FFTW_MPI_DEFAULT_BLOCK, &  ! no. of transforms, default iblock and oblock
-                                                     vectorField_fourierMPI,vectorField_realMPI, &  ! input data, output data
+                                                     vectorField_fourier,vectorField_real, &        ! input data, output data
                                                                 MPI_COMM_WORLD, fftw_planner_flag)  ! all processors, planer precision
  if (.not. C_ASSOCIATED(planVectorBack)) call IO_error(810, ext_msg='planVectorBack')
    
 !--------------------------------------------------------------------------------------------------
 ! scalar MPI fftw plans                            
- planScalarForth = fftw_mpi_plan_many_dft_r2c(3, [gridFFTW(3),gridFFTW(2),gridFFTW(1)], &        ! dimension, logical length in each dimension in reversed order 
+ planScalarForth = fftw_mpi_plan_many_dft_r2c(3, [gridFFTW(3),gridFFTW(2),gridFFTW(1)], &           ! dimension, logical length in each dimension in reversed order 
                                       scalarSize, FFTW_MPI_DEFAULT_BLOCK, FFTW_MPI_DEFAULT_BLOCK, & ! no. of transforms, default iblock and oblock
-                                                      scalarField_realMPI, scalarField_fourierMPI, & ! input data, output data
+                                                      scalarField_real, scalarField_fourier, &      ! input data, output data
                                                                MPI_COMM_WORLD, fftw_planner_flag)   ! use all processors, planer precision
  if (.not. C_ASSOCIATED(planScalarForth)) call IO_error(810, ext_msg='planScalarForth')
  planScalarBack  = fftw_mpi_plan_many_dft_c2r(3, [gridFFTW(3),gridFFTW(2),gridFFTW(1)], &        ! dimension, logical length in each dimension in reversed order, no. of transforms
                                       scalarSize, FFTW_MPI_DEFAULT_BLOCK, FFTW_MPI_DEFAULT_BLOCK, & ! no. of transforms, default iblock and oblock
-                                                      scalarField_fourierMPI,scalarField_realMPI, & ! input data, output data
+                                                      scalarField_fourier,scalarField_real, &        ! input data, output data
                                                                MPI_COMM_WORLD, fftw_planner_flag)   ! use all processors, planer precision
  if (.not. C_ASSOCIATED(planScalarBack)) call IO_error(810, ext_msg='planScalarBack')
-!--------------------------------------------------------------------------------------------------
-! depending on debug options, allocate more memory and create additional plans 
- if (debugDivergence) then
-   planDiv  = fftw_mpi_plan_many_dft_c2r(3, [gridFFTW(3),gridFFTW(2) ,gridFFTW(1)],vecSize, &
-                                            FFTW_MPI_DEFAULT_BLOCK, FFTW_MPI_DEFAULT_BLOCK, &
-                                               vectorField_fourierMPI, vectorField_realMPI, &
-                                                         MPI_COMM_WORLD, fftw_planner_flag)
-   if (.not. C_ASSOCIATED(planDiv)) call IO_error(810, ext_msg='planDiv')
- endif
 
- if (debugFFTW) then
-   planDebugForth = fftw_mpi_plan_many_dft_r2c(3, [gridFFTW(3),gridFFTW(2),gridFFTW(1)], &
-                                scalarSize, FFTW_MPI_DEFAULT_BLOCK, FFTW_MPI_DEFAULT_BLOCK, &
-                                               scalarField_realMPI, scalarField_fourierMPI, &
-                                                         MPI_COMM_WORLD, fftw_planner_flag)
-   if (.not. C_ASSOCIATED(planDebugForth)) call IO_error(810, ext_msg='planDebugForth')
-   planDebugBack  = fftw_mpi_plan_many_dft_c2r(3, [gridFFTW(3),gridFFTW(2),gridFFTW(1)], &
-                                scalarSize, FFTW_MPI_DEFAULT_BLOCK, FFTW_MPI_DEFAULT_BLOCK, &
-                                                scalarField_fourierMPI,scalarField_realMPI, &
-                                                         MPI_COMM_WORLD, fftw_planner_flag)
-   if (.not. C_ASSOCIATED(planDebugBack)) call IO_error(810, ext_msg='planDebugBack')
- endif 
 !--------------------------------------------------------------------------------------------------
 ! general initialization of FFTW (see manual on fftw.org for more details)
  if (pReal /= C_DOUBLE .or. pInt /= C_INT) call IO_error(0_pInt,ext_msg='Fortran to C')             ! check for correct precision in C
@@ -361,21 +333,21 @@ subroutine utilities_init()
  
 !--------------------------------------------------------------------------------------------------
 ! calculation of discrete angular frequencies, ordered as in FFTW (wrap around)
- do k = gridOffset+1_pInt, gridOffset+gridLocal(3)
+ do k = grid3Offset+1_pInt, grid3Offset+grid3
    k_s(3) = k - 1_pInt
-   if(k > gridGlobal(3)/2_pInt + 1_pInt) k_s(3) = k_s(3) - gridGlobal(3)                            ! running from 0,1,...,N/2,N/2+1,-N/2,-N/2+1,...,-1
-     do j = 1_pInt, gridLocal(2)
+   if(k > grid(3)/2_pInt + 1_pInt) k_s(3) = k_s(3) - grid(3)                                        ! running from 0,1,...,N/2,N/2+1,-N/2,-N/2+1,...,-1
+     do j = 1_pInt, grid(2)
        k_s(2) = j - 1_pInt
-       if(j > gridGlobal(2)/2_pInt + 1_pInt) k_s(2) = k_s(2) - gridGlobal(2)                        ! running from 0,1,...,N/2,N/2+1,-N/2,-N/2+1,...,-1
+       if(j > grid(2)/2_pInt + 1_pInt) k_s(2) = k_s(2) - grid(2)                                    ! running from 0,1,...,N/2,N/2+1,-N/2,-N/2+1,...,-1
          do i = 1_pInt, grid1Red
            k_s(1) = i - 1_pInt                                                                      ! symmetry, junst running from 0,1,...,N/2,N/2+1
-           xi(1:3,i,j,k-gridOffset) = real(k_s, pReal)/scaledGeomSize                               ! if divergence_correction is set, frequencies are calculated on unit length
+           xi(1:3,i,j,k-grid3Offset) = real(k_s, pReal)/scaledGeomSize                              ! if divergence_correction is set, frequencies are calculated on unit length
  enddo; enddo; enddo
  
  if(memory_efficient) then                                                                          ! allocate just single fourth order tensor
    allocate (gamma_hat(3,3,3,3,1,1,1), source = 0.0_pReal)
  else                                                                                               ! precalculation of gamma_hat field
-   allocate (gamma_hat(3,3,3,3,grid1Red,gridLocal(2),gridLocal(3)), source = 0.0_pReal)
+   allocate (gamma_hat(3,3,3,3,grid1Red,grid(2),grid3), source = 0.0_pReal)
  endif
 
 end subroutine utilities_init
@@ -396,8 +368,9 @@ subroutine utilities_updateGamma(C,saveReference)
    memory_efficient, &
    worldrank
  use mesh, only: &
-   gridOffset, &
-   gridLocal
+   grid3Offset, &
+   grid3,&
+   grid
  use math, only: &
    math_inv33
 
@@ -421,15 +394,15 @@ subroutine utilities_updateGamma(C,saveReference)
  endif
  
  if(.not. memory_efficient) then                                                   
-   do k = gridOffset+1_pInt, gridOffset+gridLocal(3); do j = 1_pInt, gridLocal(2); do i = 1_pInt, grid1Red
+   do k = grid3Offset+1_pInt, grid3Offset+grid3; do j = 1_pInt, grid(2); do i = 1_pInt, grid1Red
      if (any([i,j,k] /= 1_pInt)) then                                                                ! singular point at xi=(0.0,0.0,0.0) i.e. i=j=k=1
        forall(l = 1_pInt:3_pInt, m = 1_pInt:3_pInt) &
-         xiDyad(l,m) = xi(l, i,j,k-gridOffset)*xi(m, i,j,k-gridOffset)
+         xiDyad(l,m) = xi(l, i,j,k-grid3Offset)*xi(m, i,j,k-grid3Offset)
        forall(l = 1_pInt:3_pInt, m = 1_pInt:3_pInt) &
          temp33_Real(l,m) = sum(C_ref(l,1:3,m,1:3)*xiDyad)
        temp33_Real = math_inv33(temp33_Real)
        forall(l=1_pInt:3_pInt, m=1_pInt:3_pInt, n=1_pInt:3_pInt, o=1_pInt:3_pInt)&
-         gamma_hat(l,m,n,o,i,j,k-gridOffset) =  temp33_Real(l,n)*xiDyad(m,o)
+         gamma_hat(l,m,n,o,i,j,k-grid3Offset) =  temp33_Real(l,n)*xiDyad(m,o)
      endif  
    enddo; enddo; enddo
  endif  
@@ -438,72 +411,25 @@ end subroutine utilities_updateGamma
 
 !--------------------------------------------------------------------------------------------------
 !> @brief forward FFT of data in field_real to field_fourier with highest freqs. removed
-!> @details Does an unweighted FFT transform from real to complex.
-!> In case of debugging the FFT, also one component of the tensor (specified by row and column)
-!> is independetly transformed complex to complex and compared to the whole tensor transform
+!> @details Does an unweighted filtered FFT transform from real to complex.
 !--------------------------------------------------------------------------------------------------
 subroutine utilities_FFTtensorForward()
- use math
- use numerics, only: &
-   worldrank
  use mesh, only: &
-   gridLocal
+   grid3, &
+   grid
 
  implicit none
- integer(pInt)  :: row, column                                                                      ! if debug FFTW, compare 3D array field of row and column
- real(pReal), dimension(2) :: myRand, maxScalarField                                                ! random numbers
  integer(pInt) ::  i, j, k
- PetscErrorCode :: ierr
-
-!--------------------------------------------------------------------------------------------------
-! copy one component of the stress field to to a single FT and check for mismatch
- if (debugFFTW) then
-   if (worldrank == 0_pInt) then
-     call random_number(myRand)                                                                     ! two numbers: 0 <= x < 1
-     row    = nint(myRand(1)*2_pReal + 1_pReal,pInt)
-     column = nint(myRand(2)*2_pReal + 1_pReal,pInt)
-   endif
-   call MPI_Bcast(row   ,1,MPI_INTEGER,0,PETSC_COMM_WORLD,ierr)
-   call MPI_Bcast(column,1,MPI_INTEGER,0,PETSC_COMM_WORLD,ierr)
-   scalarField_realMPI = 0.0_pReal
-   scalarField_realMPI(1:gridLocal(1),1:gridLocal(2),1:gridLocal(3)) = &
-     tensorField_realMPI(row,column,1:gridLocal(1),1:gridLocal(2),1:gridLocal(3))                   ! store the selected component 
- endif
 
 !--------------------------------------------------------------------------------------------------
 ! doing the FFT
- call fftw_mpi_execute_dft_r2c(planTensorForth,tensorField_realMPI,tensorField_fourierMPI)
+ call fftw_mpi_execute_dft_r2c(planTensorForth,tensorField_real,tensorField_fourier)
   
 !--------------------------------------------------------------------------------------------------
-! comparing 1 and 3x3 FT results
- if (debugFFTW) then
-   call fftw_mpi_execute_dft_r2c(planDebugForth,scalarField_realMPI,scalarField_fourierMPI)
-   where(abs(scalarField_fourierMPI(1:grid1Red,1:gridLocal(2),1:gridLocal(3))) > tiny(1.0_pReal))   ! avoid division by zero
-     scalarField_fourierMPI(1:grid1Red,1:gridLocal(2),1:gridLocal(3)) = &  
-                   (scalarField_fourierMPI(1:grid1Red,1:gridLocal(2),1:gridLocal(3))-&
-                    tensorField_fourierMPI(row,column,1:grid1Red,1:gridLocal(2),1:gridLocal(3)))/&
-                    scalarField_fourierMPI(1:grid1Red,1:gridLocal(2),1:gridLocal(3))
-   else where
-     scalarField_realMPI = cmplx(0.0,0.0,pReal)
-   end where
-   maxScalarField(1) = maxval(real (scalarField_fourierMPI(1:grid1Red,1:gridLocal(2), &
-                                                                     1:gridLocal(3))))
-   maxScalarField(2) = maxval(aimag(scalarField_fourierMPI(1:grid1Red,1:gridLocal(2), &
-                                                                     1:gridLocal(3))))
-   call MPI_reduce(MPI_IN_PLACE,maxScalarField,2,MPI_DOUBLE,MPI_MAX,0,PETSC_COMM_WORLD,ierr)
-   if (worldrank == 0_pInt) then
-     write(6,'(/,a,i1,1x,i1,a)') ' .. checking FT results of compontent ', row, column, ' ..'
-     write(6,'(/,a,2(es11.4,1x))')  ' max FT relative error = ',&                                   ! print real and imaginary part seperately
-       maxScalarField(1),maxScalarField(2)
-     flush(6)
-   endif
- endif
-
-!--------------------------------------------------------------------------------------------------
 ! applying filter
- do k = 1_pInt, gridLocal(3);  do j = 1_pInt, gridLocal(2);  do i = 1_pInt,grid1Red
-   tensorField_fourierMPI(1:3,1:3,i,j,k) = utilities_getFilter(xi(1:3,i,j,k))* &
-                                           tensorField_fourierMPI(1:3,1:3,i,j,k)
+ do k = 1_pInt, grid3;  do j = 1_pInt, grid(2);  do i = 1_pInt,grid1Red
+   tensorField_fourier(1:3,1:3,i,j,k) = utilities_getFilter(xi(1:3,i,j,k))* &
+                                        tensorField_fourier(1:3,1:3,i,j,k)
  enddo; enddo; enddo
  
 end subroutine utilities_FFTtensorForward
@@ -511,146 +437,87 @@ end subroutine utilities_FFTtensorForward
 
 !--------------------------------------------------------------------------------------------------
 !> @brief backward FFT of data in field_fourier to field_real
-!> @details Does an inverse FFT transform from complex to real
-!> In case of debugging the FFT, also one component of the tensor (specified by row and column)
-!> is independetly transformed complex to complex and compared to the whole tensor transform
-!> results is weighted by number of points stored in wgt
+!> @details Does an weighted inverse FFT transform from complex to real
 !--------------------------------------------------------------------------------------------------
 subroutine utilities_FFTtensorBackward()
- use math
- use numerics, only: &
-   worldrank          
- use mesh, only: &
-   gridLocal
-
  implicit none
- integer(pInt) :: row, column                                                                       !< if debug FFTW, compare 3D array field of row and column
- real(pReal), dimension(2) :: myRand 
- real(pReal) :: maxScalarField
- PetscErrorCode :: ierr
 
-!--------------------------------------------------------------------------------------------------
-! unpack FFT data for conj complex symmetric part. This data is not transformed when using c2r
- if (debugFFTW) then
-  if (worldrank == 0_pInt) then
-     call random_number(myRand)                                                                     ! two numbers: 0 <= x < 1
-     row    = nint(myRand(1)*2_pReal + 1_pReal,pInt)
-     column = nint(myRand(2)*2_pReal + 1_pReal,pInt)
-   endif
-   call MPI_Bcast(row   ,1,MPI_INTEGER,0,PETSC_COMM_WORLD,ierr)
-   call MPI_Bcast(column,1,MPI_INTEGER,0,PETSC_COMM_WORLD,ierr)
-   scalarField_fourierMPI(1:grid1Red,1:gridLocal(2),1:gridLocal(3)) = &
-     tensorField_fourierMPI(row,column,1:grid1Red,1:gridLocal(2),1:gridLocal(3))
- endif 
- 
-!--------------------------------------------------------------------------------------------------
-! doing the iFFT
- call fftw_mpi_execute_dft_c2r(planTensorBack,tensorField_fourierMPI,tensorField_realMPI)        ! back transform of fluct deformation gradient
-
-!--------------------------------------------------------------------------------------------------
-! comparing 1 and 3x3 inverse FT results
- if (debugFFTW) then
-   call fftw_mpi_execute_dft_c2r(planDebugBack,scalarField_fourierMPI,scalarField_realMPI)
-   where(abs(real(scalarField_realMPI,pReal)) > tiny(1.0_pReal))                                    ! avoid division by zero
-     scalarField_realMPI(1:gridLocal(1),1:gridLocal(2),1:gridLocal(3)) = &
-   (scalarField_realMPI(1:gridLocal(1),1:gridLocal(2),1:gridLocal(3)) &
-     -  tensorField_realMPI      (row,column,1:gridLocal(1),1:gridLocal(2),1:gridLocal(3)))/ &
-       scalarField_realMPI(1:gridLocal(1),1:gridLocal(2),1:gridLocal(3))
-   else where
-     scalarField_realMPI = cmplx(0.0,0.0,pReal)
-   end where
-   maxScalarField = maxval(real (scalarField_realMPI(1:gridLocal(1),1:gridLocal(2),1:gridLocal(3))))
-   call MPI_reduce(MPI_IN_PLACE,maxScalarField,1,MPI_DOUBLE,MPI_MAX,0,PETSC_COMM_WORLD,ierr)
-   if (worldrank == 0_pInt) then
-     write(6,'(/,a,i1,1x,i1,a)') ' ... checking iFT results of compontent ', row, column, ' ..'
-     write(6,'(/,a,es11.4)')     ' max iFT relative error = ', maxScalarField
-     flush(6)
-   endif
- endif
- 
- tensorField_realMPI = tensorField_realMPI * wgt                                                    ! normalize the result by number of elements
+ call fftw_mpi_execute_dft_c2r(planTensorBack,tensorField_fourier,tensorField_real)                 ! back transform of fluct deformation gradient
+ tensorField_real = tensorField_real * wgt                                                          ! normalize the result by number of elements
 
 end subroutine utilities_FFTtensorBackward
 
 !--------------------------------------------------------------------------------------------------
-!> @brief forward FFT of data in field_real to field_fourier with highest freqs. removed
-!> @details Does an unweighted FFT transform from real to complex.
-!> In case of debugging the FFT, also one component of the scalar
-!> is independetly transformed complex to complex and compared to the whole scalar transform
+!> @brief forward FFT of data in scalarField_real to scalarField_fourier
+!> @details Does an unweighted filtered FFT transform from real to complex.
 !--------------------------------------------------------------------------------------------------
 subroutine utilities_FFTscalarForward()
- use math
  use mesh, only: &
-   gridLocal
-   
+   grid3, &
+   grid
+ 
+ implicit none
  integer(pInt) ::  i, j, k
    
+!--------------------------------------------------------------------------------------------------
 ! doing the scalar FFT
- call fftw_mpi_execute_dft_r2c(planScalarForth,scalarField_realMPI,scalarField_fourierMPI)
+ call fftw_mpi_execute_dft_r2c(planScalarForth,scalarField_real,scalarField_fourier)
 
+!--------------------------------------------------------------------------------------------------
 ! applying filter
- do k = 1_pInt, gridLocal(3);  do j = 1_pInt, gridLocal(2);  do i = 1_pInt,grid1Red
-   scalarField_fourierMPI(i,j,k) = utilities_getFilter(xi(1:3,i,j,k))* &
-                                   scalarField_fourierMPI(i,j,k)
+ do k = 1_pInt, grid3;  do j = 1_pInt, grid(2);  do i = 1_pInt,grid1Red
+   scalarField_fourier(i,j,k) = utilities_getFilter(xi(1:3,i,j,k))* &
+                                   scalarField_fourier(i,j,k)
  enddo; enddo; enddo
  
 end subroutine utilities_FFTscalarForward
 
 !--------------------------------------------------------------------------------------------------
-!> @brief backward FFT of data in field_fourier to field_real
-!> @details Does an inverse FFT transform from complex to real
-!> In case of debugging the FFT, also one component of the scalar
-!> is independetly transformed complex to complex and compared to the whole scalar transform
-!> results is weighted by number of points stored in wgt
+!> @brief backward FFT of data in scalarField_fourier to scalarField_real
+!> @details Does an weighted inverse FFT transform from complex to real
 !--------------------------------------------------------------------------------------------------
 subroutine utilities_FFTscalarBackward()
- use math
- 
-! doing the scalar iFFT
- call fftw_mpi_execute_dft_c2r(planScalarBack,scalarField_fourierMPI,scalarField_realMPI)
+ implicit none
 
- scalarField_realMPI = scalarField_realMPI * wgt                                                    ! normalize the result by number of elements
+ call fftw_mpi_execute_dft_c2r(planScalarBack,scalarField_fourier,scalarField_real)
+
+ scalarField_real = scalarField_real * wgt                                                    ! normalize the result by number of elements
 
 end subroutine utilities_FFTscalarBackward
 
 !--------------------------------------------------------------------------------------------------
 !> @brief forward FFT of data in field_real to field_fourier with highest freqs. removed
-!> @details Does an unweighted FFT transform from real to complex.
-!> In case of debugging the FFT, also one component of the vector
-!> is independetly transformed complex to complex and compared to the whole vector transform
+!> @details Does an unweighted filtered FFT transform from real to complex.
 !--------------------------------------------------------------------------------------------------
 subroutine utilities_FFTvectorForward()
- use math
  use mesh, only: &
-   gridLocal
-   
+   grid3, &
+   grid
+ 
+ implicit none
  integer(pInt) ::  i, j, k
    
-! doing the vecotr FFT
- call fftw_mpi_execute_dft_r2c(planVectorForth,vectorField_realMPI,vectorField_fourierMPI)
+! doing the vector FFT
+ call fftw_mpi_execute_dft_r2c(planVectorForth,vectorField_real,vectorField_fourier)
 
 ! applying filter
- do k = 1_pInt, gridLocal(3);  do j = 1_pInt, gridLocal(2);  do i = 1_pInt,grid1Red
-   vectorField_fourierMPI(1:3,i,j,k) = utilities_getFilter(xi(1:3,i,j,k))* &
-                                       vectorField_fourierMPI(1:3,i,j,k)
+ do k = 1_pInt, grid3;  do j = 1_pInt, grid(2);  do i = 1_pInt,grid1Red
+   vectorField_fourier(1:3,i,j,k) = utilities_getFilter(xi(1:3,i,j,k))* &
+                                       vectorField_fourier(1:3,i,j,k)
  enddo; enddo; enddo
  
 end subroutine utilities_FFTvectorForward
 
 !--------------------------------------------------------------------------------------------------
 !> @brief backward FFT of data in field_fourier to field_real
-!> @details Does an inverse FFT transform from complex to real
-!> In case of debugging the FFT, also one component of the vector
-!> is independetly transformed complex to complex and compared to the whole vector transform
-!> results is weighted by number of points stored in wgt
+!> @details Does an weighted inverse FFT transform from complex to real
 !--------------------------------------------------------------------------------------------------
 subroutine utilities_FFTvectorBackward()
- use math
- 
-! doing the vector iFFT
- call fftw_mpi_execute_dft_c2r(planVectorBack,vectorField_fourierMPI,vectorField_realMPI)
+ implicit none
 
- vectorField_realMPI = vectorField_realMPI * wgt                                                    ! normalize the result by number of elements
+ call fftw_mpi_execute_dft_c2r(planVectorBack,vectorField_fourier,vectorField_real)
+
+ vectorField_real = vectorField_real * wgt                                                    ! normalize the result by number of elements
 
 end subroutine utilities_FFTvectorBackward
 
@@ -664,9 +531,10 @@ subroutine utilities_inverseLaplace()
  use numerics, only: &
    worldrank 
  use mesh, only: &
-   gridLocal, &
-   gridOffset, &
-   geomSizeGlobal
+   grid, &
+   grid3, &
+   grid3Offset, &
+   geomSize
 
  implicit none  
  integer(pInt) :: i, j, k
@@ -677,16 +545,16 @@ subroutine utilities_inverseLaplace()
    flush(6)
  endif
  
- do k = 1_pInt, gridLocal(3); do j = 1_pInt, gridLocal(2); do i = 1_pInt, grid1Red
+ do k = 1_pInt, grid3; do j = 1_pInt, grid(2); do i = 1_pInt, grid1Red
    k_s = xi(1:3,i,j,k)*scaledGeomSize
-   if (any(k_s /= 0_pInt)) tensorField_fourierMPI(1:3,1:3,i,j,k-gridOffset) =  &
-                             tensorField_fourierMPI(1:3,1:3,i,j,k-gridOffset)/ &
-                           cmplx(-sum((2.0_pReal*PI*k_s/geomSizeGlobal)* &
-                    (2.0_pReal*PI*k_s/geomSizeGlobal)),0.0_pReal,pReal)
+   if (any(k_s /= 0_pInt)) tensorField_fourier(1:3,1:3,i,j,k-grid3Offset) =  &
+                             tensorField_fourier(1:3,1:3,i,j,k-grid3Offset)/ &
+                           cmplx(-sum((2.0_pReal*PI*k_s/geomSize)* &
+                    (2.0_pReal*PI*k_s/geomSize)),0.0_pReal,pReal)
  enddo; enddo; enddo
  
- if (gridOffset == 0_pInt) &
-  tensorField_fourierMPI(1:3,1:3,1,1,1) = cmplx(0.0_pReal,0.0_pReal,pReal)
+ if (grid3Offset == 0_pInt) &
+  tensorField_fourier(1:3,1:3,1,1,1) = cmplx(0.0_pReal,0.0_pReal,pReal)
 
 end subroutine utilities_inverseLaplace
  
@@ -702,8 +570,9 @@ subroutine utilities_fourierGammaConvolution(fieldAim)
  use numerics, only: &
    worldrank 
  use mesh, only: &
-   gridLocal, &
-   gridOffset
+   grid3, &
+   grid, &
+   grid3Offset
 
  implicit none  
  real(pReal), intent(in), dimension(3,3) :: fieldAim                                                !< desired average value of the field after convolution
@@ -721,9 +590,9 @@ subroutine utilities_fourierGammaConvolution(fieldAim)
  
 !--------------------------------------------------------------------------------------------------
 ! do the actual spectral method calculation (mechanical equilibrium)
- if(memory_efficient) then                                                                          ! memory saving version, on-the-fly calculation of gamma_hat
-   do k = 1_pInt, gridLocal(3); do j = 1_pInt, gridLocal(2) ;do i = 1_pInt, grid1Red
-     if(any([i,j,k+gridOffset] /= 1_pInt)) then                                                     ! singular point at xi=(0.0,0.0,0.0) i.e. i=j=k=1       
+ memoryEfficient: if(memory_efficient) then
+   do k = 1_pInt, grid3; do j = 1_pInt, grid(2) ;do i = 1_pInt, grid1Red
+     if(any([i,j,k+grid3Offset] /= 1_pInt)) then                                                     ! singular point at xi=(0.0,0.0,0.0) i.e. i=j=k=1       
        forall(l = 1_pInt:3_pInt, m = 1_pInt:3_pInt) &
          xiDyad(l,m) = xi(l, i,j,k)*xi(m, i,j,k)
        forall(l = 1_pInt:3_pInt, m = 1_pInt:3_pInt) &
@@ -733,21 +602,21 @@ subroutine utilities_fourierGammaConvolution(fieldAim)
          gamma_hat(l,m,n,o, 1,1,1) =  temp33_Real(l,n)*xiDyad(m,o)
        forall(l = 1_pInt:3_pInt, m = 1_pInt:3_pInt) &
          temp33_Complex(l,m) = sum(gamma_hat(l,m,1:3,1:3, 1,1,1) * &
-                               tensorField_fourierMPI(1:3,1:3,i,j,k))
-       tensorField_fourierMPI(1:3,1:3,i,j,k) = temp33_Complex 
+                               tensorField_fourier(1:3,1:3,i,j,k))
+       tensorField_fourier(1:3,1:3,i,j,k) = temp33_Complex 
      endif             
    enddo; enddo; enddo
- else                                                                                               ! use precalculated gamma-operator
-   do k = 1_pInt, gridLocal(3);  do j = 1_pInt, gridLocal(2);  do i = 1_pInt,grid1Red
+ else memoryEfficient
+   do k = 1_pInt, grid3;  do j = 1_pInt, grid(2);  do i = 1_pInt,grid1Red
      forall(l = 1_pInt:3_pInt, m = 1_pInt:3_pInt) &
        temp33_Complex(l,m) = sum(gamma_hat(l,m,1:3,1:3,i,j,k) * &
-                             tensorField_fourierMPI(1:3,1:3,i,j,k))
-     tensorField_fourierMPI(1:3,1:3,i,j,k) = temp33_Complex
+                             tensorField_fourier(1:3,1:3,i,j,k))
+     tensorField_fourier(1:3,1:3,i,j,k) = temp33_Complex
    enddo; enddo; enddo
- endif
+ endif memoryEfficient
  
- if (gridOffset == 0_pInt) &
-   tensorField_fourierMPI(1:3,1:3,1,1,1) = cmplx(fieldAim/wgt,0.0_pReal,pReal)                      ! singular point at xi=(0.0,0.0,0.0) i.e. i=j=k=1  
+ if (grid3Offset == 0_pInt) &
+   tensorField_fourier(1:3,1:3,1,1,1) = cmplx(fieldAim/wgt,0.0_pReal,pReal)                      ! singular point at xi=(0.0,0.0,0.0) i.e. i=j=k=1  
 
 end subroutine utilities_fourierGammaConvolution
  
@@ -756,16 +625,13 @@ end subroutine utilities_fourierGammaConvolution
 !--------------------------------------------------------------------------------------------------
 subroutine utilities_fourierGreenConvolution(D_ref, mobility_ref, deltaT)
 
- use numerics, only: &
-   memory_efficient
  use math, only: &
    math_mul33x3, &
    PI
- use numerics, only: &
-   worldrank 
  use mesh, only: &
-   gridLocal, &
-   geomSizeGlobal
+   grid, &
+   grid3, &
+   geomSize
 
  implicit none  
  real(pReal), dimension(3,3), intent(in) :: D_ref                                                   !< desired average value of the field after convolution
@@ -776,12 +642,12 @@ subroutine utilities_fourierGreenConvolution(D_ref, mobility_ref, deltaT)
  
 !--------------------------------------------------------------------------------------------------
 ! do the actual spectral method calculation
- do k = 1_pInt, gridLocal(3); do j = 1_pInt, gridLocal(2) ;do i = 1_pInt, grid1Red
+ do k = 1_pInt, grid3; do j = 1_pInt, grid(2) ;do i = 1_pInt, grid1Red
    k_s = xi(1:3,i,j,k)*scaledGeomSize
    GreenOp_hat =  1.0_pReal/ &
-                  (mobility_ref + deltaT*sum((2.0_pReal*PI*k_s/geomSizeGlobal)* &
-                                             math_mul33x3(D_ref,(2.0_pReal*PI*k_s/geomSizeGlobal))))!< GreenOp_hat = iK^{T} * D_ref * iK, K is frequency
-   scalarField_fourierMPI(i,j,k) = scalarField_fourierMPI(i,j,k)*GreenOp_hat                 
+                  (mobility_ref + deltaT*sum((2.0_pReal*PI*k_s/geomSize)* &
+                                             math_mul33x3(D_ref,(2.0_pReal*PI*k_s/geomSize))))      !< GreenOp_hat = iK^{T} * D_ref * iK, K is frequency
+   scalarField_fourier(i,j,k) = scalarField_fourier(i,j,k)*GreenOp_hat                 
  enddo; enddo; enddo
 
 end subroutine utilities_fourierGreenConvolution
@@ -789,21 +655,18 @@ end subroutine utilities_fourierGreenConvolution
 !--------------------------------------------------------------------------------------------------
 !> @brief calculate root mean square of divergence of field_fourier
 !--------------------------------------------------------------------------------------------------
-real(pReal) function utilities_divergenceRMS()
- use math    
+real(pReal) function utilities_divergenceRMS()   
+ use math, only: &
+   TWOPIIMG, &
+   math_mul33x3_complex
  use numerics, only: &
    worldrank                                   
  use mesh, only: &
-   gridLocal, &
-   gridGlobal
+   grid, &
+   grid3
 
  implicit none
  integer(pInt) :: i, j, k 
- real(pReal) :: &
-   err_real_div_RMS, &                                                                              !< RMS of divergence in real space
-   err_div_max, &                                                                                   !< maximum value of divergence in Fourier space
-   err_real_div_max                                                                                 !< maximum value of divergence in real space
- complex(pReal), dimension(3) ::  temp3_complex
  PetscErrorCode :: ierr
 
  
@@ -815,60 +678,28 @@ real(pReal) function utilities_divergenceRMS()
 !--------------------------------------------------------------------------------------------------
 ! calculating RMS divergence criterion in Fourier space
  utilities_divergenceRMS = 0.0_pReal
- do k = 1_pInt, gridLocal(3); do j = 1_pInt, gridLocal(2)
+ do k = 1_pInt, grid3; do j = 1_pInt, grid(2)
    do i = 2_pInt, grid1Red -1_pInt                                                                  ! Has somewhere a conj. complex counterpart. Therefore count it twice.
      utilities_divergenceRMS = utilities_divergenceRMS &
-           + 2.0_pReal*(sum (real(math_mul33x3_complex(tensorField_fourierMPI(1:3,1:3,i,j,k),&      ! (sqrt(real(a)**2 + aimag(a)**2))**2 = real(a)**2 + aimag(a)**2. do not take square root and square again
+           + 2.0_pReal*(sum (real(math_mul33x3_complex(tensorField_fourier(1:3,1:3,i,j,k),&         ! (sqrt(real(a)**2 + aimag(a)**2))**2 = real(a)**2 + aimag(a)**2. do not take square root and square again
                                                        xi(1:3,i,j,k))*TWOPIIMG)**2.0_pReal)&        ! --> sum squared L_2 norm of vector 
-                       +sum(aimag(math_mul33x3_complex(tensorField_fourierMPI(1:3,1:3,i,j,k),& 
+                       +sum(aimag(math_mul33x3_complex(tensorField_fourier(1:3,1:3,i,j,k),& 
                                                        xi(1:3,i,j,k))*TWOPIIMG)**2.0_pReal))
    enddo
    utilities_divergenceRMS = utilities_divergenceRMS &                                              ! these two layers (DC and Nyquist) do not have a conjugate complex counterpart (if grid(1) /= 1)
-              + sum( real(math_mul33x3_complex(tensorField_fourierMPI(1:3,1:3,1       ,j,k), &
+              + sum( real(math_mul33x3_complex(tensorField_fourier(1:3,1:3,1       ,j,k), &
                                                xi(1:3,1       ,j,k))*TWOPIIMG)**2.0_pReal) &
-              + sum(aimag(math_mul33x3_complex(tensorField_fourierMPI(1:3,1:3,1       ,j,k), &
+              + sum(aimag(math_mul33x3_complex(tensorField_fourier(1:3,1:3,1       ,j,k), &
                                                xi(1:3,1       ,j,k))*TWOPIIMG)**2.0_pReal) &
-              + sum( real(math_mul33x3_complex(tensorField_fourierMPI(1:3,1:3,grid1Red,j,k), &
+              + sum( real(math_mul33x3_complex(tensorField_fourier(1:3,1:3,grid1Red,j,k), &
                                                xi(1:3,grid1Red,j,k))*TWOPIIMG)**2.0_pReal) &
-              + sum(aimag(math_mul33x3_complex(tensorField_fourierMPI(1:3,1:3,grid1Red,j,k), &
+              + sum(aimag(math_mul33x3_complex(tensorField_fourier(1:3,1:3,grid1Red,j,k), &
                                                xi(1:3,grid1Red,j,k))*TWOPIIMG)**2.0_pReal)
  enddo; enddo
- if(gridGlobal(1) == 1_pInt) utilities_divergenceRMS = utilities_divergenceRMS * 0.5_pReal          ! counted twice in case of grid(1) == 1
+ if(grid(1) == 1_pInt) utilities_divergenceRMS = utilities_divergenceRMS * 0.5_pReal                ! counted twice in case of grid(1) == 1
  call MPI_Allreduce(MPI_IN_PLACE,utilities_divergenceRMS,1,MPI_DOUBLE,MPI_SUM,PETSC_COMM_WORLD,ierr)
  utilities_divergenceRMS = sqrt(utilities_divergenceRMS) * wgt                                      ! RMS in real space calculated with Parsevals theorem from Fourier space
 
-!--------------------------------------------------------------------------------------------------
-! calculate additional divergence criteria and report
- if (debugDivergence) then                                                                          ! calculate divergence again
-   err_div_max = 0.0_pReal
-   do k = 1_pInt, gridLocal(3); do j = 1_pInt, gridLocal(2); do i = 1_pInt, grid1Red
-     temp3_Complex = math_mul33x3_complex(tensorField_fourierMPI(1:3,1:3,i,j,k)*wgt,&               ! weighting P_fourier
-                                             xi(1:3,i,j,k))*TWOPIIMG
-     err_div_max = max(err_div_max,sum(abs(temp3_Complex)**2.0_pReal))
-     vectorField_fourierMPI(1:3,i,j,k) = temp3_Complex                                              ! need divergence NOT squared
-   enddo; enddo; enddo
-   
-   call fftw_mpi_execute_dft_c2r(planDiv,vectorField_fourierMPI,vectorField_realMPI)             ! already weighted
-
-   err_real_div_RMS = sum(vectorField_realMPI**2.0_pReal)
-   call MPI_reduce(MPI_IN_PLACE,err_real_div_RMS,1,MPI_DOUBLE,MPI_SUM,0,PETSC_COMM_WORLD,ierr)
-   err_real_div_RMS = sqrt(wgt*err_real_div_RMS)                                                    ! RMS in real space
-   
-   err_real_div_max = maxval(sum(vectorField_realMPI**2.0_pReal,dim=4))                             ! max in real space
-   call MPI_reduce(MPI_IN_PLACE,err_real_div_max,1,MPI_DOUBLE,MPI_MAX,0,PETSC_COMM_WORLD,ierr)
-   err_real_div_max = sqrt(err_real_div_max)
-
-   call MPI_reduce(MPI_IN_PLACE,err_div_max,1,MPI_DOUBLE,MPI_MAX,0,PETSC_COMM_WORLD,ierr)
-   err_div_max      = sqrt(    err_div_max)                                                         ! max in Fourier space
-   
-   if (worldrank == 0_pInt) then 
-     write(6,'(/,1x,a,es11.4)')      'error divergence  FT  RMS = ',utilities_divergenceRMS
-     write(6,'(1x,a,es11.4)')        'error divergence Real RMS = ',err_real_div_RMS
-     write(6,'(1x,a,es11.4)')        'error divergence  FT  max = ',err_div_max
-     write(6,'(1x,a,es11.4)')        'error divergence Real max = ',err_real_div_max
-     flush(6)
-   endif
- endif
 
 end function utilities_divergenceRMS
  
@@ -881,8 +712,8 @@ real(pReal) function utilities_curlRMS()
  use numerics, only: &
    worldrank                                            
  use mesh, only: &
-   gridLocal, &
-   gridGlobal
+   grid, &
+   grid3
 
  implicit none
  integer(pInt)  ::  i, j, k, l 
@@ -898,43 +729,43 @@ real(pReal) function utilities_curlRMS()
 ! calculating max curl criterion in Fourier space
  utilities_curlRMS = 0.0_pReal
  
- do k = 1_pInt, gridLocal(3); do j = 1_pInt, gridLocal(2); 
+ do k = 1_pInt, grid3; do j = 1_pInt, grid(2); 
  do i = 2_pInt, grid1Red - 1_pInt
    do l = 1_pInt, 3_pInt
-     curl_fourier(l,1) = (+tensorField_fourierMPI(l,3,i,j,k)*xi(2,i,j,k)&
-                          -tensorField_fourierMPI(l,2,i,j,k)*xi(3,i,j,k))*TWOPIIMG
-     curl_fourier(l,2) = (+tensorField_fourierMPI(l,1,i,j,k)*xi(3,i,j,k)&
-                          -tensorField_fourierMPI(l,3,i,j,k)*xi(1,i,j,k))*TWOPIIMG
-     curl_fourier(l,3) = (+tensorField_fourierMPI(l,2,i,j,k)*xi(1,i,j,k)&
-                          -tensorField_fourierMPI(l,1,i,j,k)*xi(2,i,j,k))*TWOPIIMG
+     curl_fourier(l,1) = (+tensorField_fourier(l,3,i,j,k)*xi(2,i,j,k)&
+                          -tensorField_fourier(l,2,i,j,k)*xi(3,i,j,k))*TWOPIIMG
+     curl_fourier(l,2) = (+tensorField_fourier(l,1,i,j,k)*xi(3,i,j,k)&
+                          -tensorField_fourier(l,3,i,j,k)*xi(1,i,j,k))*TWOPIIMG
+     curl_fourier(l,3) = (+tensorField_fourier(l,2,i,j,k)*xi(1,i,j,k)&
+                          -tensorField_fourier(l,1,i,j,k)*xi(2,i,j,k))*TWOPIIMG
    enddo
    utilities_curlRMS = utilities_curlRMS + &
                       2.0_pReal*sum(real(curl_fourier)**2.0_pReal + aimag(curl_fourier)**2.0_pReal)
  enddo 
  do l = 1_pInt, 3_pInt
-   curl_fourier = (+tensorField_fourierMPI(l,3,1,j,k)*xi(2,1,j,k)&
-                   -tensorField_fourierMPI(l,2,1,j,k)*xi(3,1,j,k))*TWOPIIMG
-   curl_fourier = (+tensorField_fourierMPI(l,1,1,j,k)*xi(3,1,j,k)&
-                   -tensorField_fourierMPI(l,3,1,j,k)*xi(1,1,j,k))*TWOPIIMG
-   curl_fourier = (+tensorField_fourierMPI(l,2,1,j,k)*xi(1,1,j,k)&
-                   -tensorField_fourierMPI(l,1,1,j,k)*xi(2,1,j,k))*TWOPIIMG
+   curl_fourier = (+tensorField_fourier(l,3,1,j,k)*xi(2,1,j,k)&
+                   -tensorField_fourier(l,2,1,j,k)*xi(3,1,j,k))*TWOPIIMG
+   curl_fourier = (+tensorField_fourier(l,1,1,j,k)*xi(3,1,j,k)&
+                   -tensorField_fourier(l,3,1,j,k)*xi(1,1,j,k))*TWOPIIMG
+   curl_fourier = (+tensorField_fourier(l,2,1,j,k)*xi(1,1,j,k)&
+                   -tensorField_fourier(l,1,1,j,k)*xi(2,1,j,k))*TWOPIIMG
  enddo
  utilities_curlRMS = utilities_curlRMS + &
                      2.0_pReal*sum(real(curl_fourier)**2.0_pReal + aimag(curl_fourier)**2.0_pReal)   
  do l = 1_pInt, 3_pInt  
-   curl_fourier = (+tensorField_fourierMPI(l,3,grid1Red,j,k)*xi(2,grid1Red,j,k)&
-                   -tensorField_fourierMPI(l,2,grid1Red,j,k)*xi(3,grid1Red,j,k))*TWOPIIMG
-   curl_fourier = (+tensorField_fourierMPI(l,1,grid1Red,j,k)*xi(3,grid1Red,j,k)&
-                   -tensorField_fourierMPI(l,3,grid1Red,j,k)*xi(1,grid1Red,j,k))*TWOPIIMG
-   curl_fourier = (+tensorField_fourierMPI(l,2,grid1Red,j,k)*xi(1,grid1Red,j,k)&
-                   -tensorField_fourierMPI(l,1,grid1Red,j,k)*xi(2,grid1Red,j,k))*TWOPIIMG
+   curl_fourier = (+tensorField_fourier(l,3,grid1Red,j,k)*xi(2,grid1Red,j,k)&
+                   -tensorField_fourier(l,2,grid1Red,j,k)*xi(3,grid1Red,j,k))*TWOPIIMG
+   curl_fourier = (+tensorField_fourier(l,1,grid1Red,j,k)*xi(3,grid1Red,j,k)&
+                   -tensorField_fourier(l,3,grid1Red,j,k)*xi(1,grid1Red,j,k))*TWOPIIMG
+   curl_fourier = (+tensorField_fourier(l,2,grid1Red,j,k)*xi(1,grid1Red,j,k)&
+                   -tensorField_fourier(l,1,grid1Red,j,k)*xi(2,grid1Red,j,k))*TWOPIIMG
  enddo
  utilities_curlRMS = utilities_curlRMS + &
                      2.0_pReal*sum(real(curl_fourier)**2.0_pReal + aimag(curl_fourier)**2.0_pReal) 
  enddo; enddo
  call MPI_Allreduce(MPI_IN_PLACE,utilities_curlRMS,1,MPI_DOUBLE,MPI_SUM,PETSC_COMM_WORLD,ierr)
  utilities_curlRMS = sqrt(utilities_curlRMS) * wgt
- if(gridGlobal(1) == 1_pInt) utilities_curlRMS = utilities_curlRMS * 0.5_pReal                      ! counted twice in case of grid(1) == 1
+ if(grid(1) == 1_pInt) utilities_curlRMS = utilities_curlRMS * 0.5_pReal                      ! counted twice in case of grid(1) == 1
 
 end function utilities_curlRMS
 
@@ -1048,15 +879,18 @@ subroutine utilities_fourierScalarGradient()
  use math, only: &
    PI
  use mesh, only: &
-   gridLocal, &
-   geomSizeGlobal
+   grid3, &
+   grid, &
+   geomSize
+
+ implicit none
  integer(pInt)                :: i, j, k
 
- vectorField_fourierMPI = cmplx(0.0_pReal,0.0_pReal,pReal)
- do k = 1_pInt, gridLocal(3);  do j = 1_pInt, gridLocal(2);  do i = 1_pInt,grid1Red
-   vectorField_fourierMPI(1:3,i,j,k) = scalarField_fourierMPI(i,j,k)* &
+ vectorField_fourier = cmplx(0.0_pReal,0.0_pReal,pReal)
+ do k = 1_pInt, grid3;  do j = 1_pInt, grid(2);  do i = 1_pInt,grid1Red
+   vectorField_fourier(1:3,i,j,k) = scalarField_fourier(i,j,k)* &
                                        cmplx(0.0_pReal,2.0_pReal*PI*xi(1:3,i,j,k)* &
-                                       scaledGeomSize/geomSizeGlobal,pReal)
+                                       scaledGeomSize/geomSize,pReal)
  enddo; enddo; enddo
 end subroutine utilities_fourierScalarGradient
 
@@ -1068,17 +902,20 @@ subroutine utilities_fourierVectorDivergence()
  use math, only: &
    PI
  use mesh, only: &
-   gridLocal, &
-   geomSizeGlobal
+   grid3, &
+   grid, &
+   geomSize
+
+ implicit none
  integer(pInt)                :: i, j, k, m
 
- scalarField_fourierMPI = cmplx(0.0_pReal,0.0_pReal,pReal)
- do k = 1_pInt, gridLocal(3);  do j = 1_pInt, gridLocal(2);  do i = 1_pInt,grid1Red
+ scalarField_fourier = cmplx(0.0_pReal,0.0_pReal,pReal)
+ do k = 1_pInt, grid3;  do j = 1_pInt, grid(2);  do i = 1_pInt,grid1Red
    do m = 1_pInt, 3_pInt
-     scalarField_fourierMPI(i,j,k) = &
-       scalarField_fourierMPI(i,j,k) + &
-       vectorField_fourierMPI(m,i,j,k)* &
-       cmplx(0.0_pReal,2.0_pReal*PI*xi(m,i,j,k)*scaledGeomSize(m)/geomSizeGlobal(m),pReal)
+     scalarField_fourier(i,j,k) = &
+       scalarField_fourier(i,j,k) + &
+       vectorField_fourier(m,i,j,k)* &
+       cmplx(0.0_pReal,2.0_pReal*PI*xi(m,i,j,k)*scaledGeomSize(m)/geomSize(m),pReal)
    enddo
  enddo; enddo; enddo
 end subroutine utilities_fourierVectorDivergence
@@ -1098,7 +935,8 @@ subroutine utilities_constitutiveResponse(F_lastInc,F,timeinc,&
    math_rotate_forward33, &
    math_det33
  use mesh, only: &
-   gridLocal
+   grid,&
+   grid3
  use FEsolving, only: &
    restartWrite
  use CPFEM, only: &
@@ -1113,7 +951,7 @@ subroutine utilities_constitutiveResponse(F_lastInc,F,timeinc,&
    materialpoint_dPdF
  
  implicit none
- real(pReal), intent(in), dimension(3,3,gridLocal(1),gridLocal(2),gridLocal(3)) :: &
+ real(pReal), intent(in), dimension(3,3,grid(1),grid(2),grid3) :: &
    F_lastInc, &                                                                                     !< target deformation gradient
    F                                                                                                !< previous deformation gradient
  real(pReal), intent(in)                                         :: timeinc                         !< loading time
@@ -1122,7 +960,7 @@ subroutine utilities_constitutiveResponse(F_lastInc,F,timeinc,&
  
  real(pReal),intent(out), dimension(3,3,3,3)                     :: C_volAvg, C_minmaxAvg           !< average stiffness
  real(pReal),intent(out), dimension(3,3)                         :: P_av                            !< average PK stress
- real(pReal),intent(out), dimension(3,3,gridLocal(1),gridLocal(2),gridLocal(3)) :: P                !< PK stress
+ real(pReal),intent(out), dimension(3,3,grid(1),grid(2),grid3) :: P                !< PK stress
  
  integer(pInt) :: &
    calcMode, &                                                                                      !< CPFEM mode for calculation
@@ -1130,8 +968,11 @@ subroutine utilities_constitutiveResponse(F_lastInc,F,timeinc,&
  real(pReal), dimension(3,3,3,3) :: max_dPdF, min_dPdF
  real(pReal)   :: max_dPdF_norm, min_dPdF_norm, defgradDetMin, defgradDetMax, defgradDet
  PetscErrorCode :: ierr
+ 
+ external :: &
+   MPI_Allreduce
 
-  if (worldrank == 0_pInt) then 
+ if (worldrank == 0_pInt) then 
    write(6,'(/,a)') ' ... evaluating constitutive response ......................................'
    flush(6)
  endif
@@ -1139,7 +980,7 @@ subroutine utilities_constitutiveResponse(F_lastInc,F,timeinc,&
 
  if (forwardData) then                                                                              ! aging results
    calcMode    = ior(calcMode,    CPFEM_AGERESULTS)             
-   materialpoint_F0 = reshape(F_lastInc, [3,3,1,product(gridLocal)])
+   materialpoint_F0 = reshape(F_lastInc, [3,3,1,product(grid(1:2))*grid3])
  endif
  if (cutBack) then                                                                                  ! restore saved variables
   calcMode    = iand(calcMode,    not(CPFEM_AGERESULTS)) 
@@ -1148,7 +989,7 @@ subroutine utilities_constitutiveResponse(F_lastInc,F,timeinc,&
  call CPFEM_general(CPFEM_COLLECT,F_lastInc(1:3,1:3,1,1,1),F(1:3,1:3,1,1,1), &
                    timeinc,1_pInt,1_pInt)
 
- materialpoint_F  = reshape(F,[3,3,1,product(gridLocal)])
+ materialpoint_F  = reshape(F,[3,3,1,product(grid(1:2))*grid3])
  call debug_reset()
 
 !--------------------------------------------------------------------------------------------------
@@ -1156,7 +997,7 @@ subroutine utilities_constitutiveResponse(F_lastInc,F,timeinc,&
  if(debugGeneral) then
    defgradDetMax = -huge(1.0_pReal)
    defgradDetMin = +huge(1.0_pReal)
-   do j = 1_pInt, product(gridLocal)
+   do j = 1_pInt, product(grid(1:2))*grid3
      defgradDet = math_det33(materialpoint_F(1:3,1:3,1,j))
      defgradDetMax = max(defgradDetMax,defgradDet)
      defgradDetMin = min(defgradDetMin,defgradDet) 
@@ -1177,7 +1018,7 @@ subroutine utilities_constitutiveResponse(F_lastInc,F,timeinc,&
  max_dPdF_norm = 0.0_pReal
  min_dPdF = huge(1.0_pReal)
  min_dPdF_norm = huge(1.0_pReal)
- do k = 1_pInt, product(gridLocal)
+ do k = 1_pInt, product(grid(1:2))*grid3
    if (max_dPdF_norm < sum(materialpoint_dPdF(1:3,1:3,1:3,1:3,1,k)**2.0_pReal)) then
      max_dPdF = materialpoint_dPdF(1:3,1:3,1:3,1:3,1,k)
      max_dPdF_norm = sum(materialpoint_dPdF(1:3,1:3,1:3,1:3,1,k)**2.0_pReal)
@@ -1199,7 +1040,7 @@ subroutine utilities_constitutiveResponse(F_lastInc,F,timeinc,&
  restartWrite = .false.                                                                             ! reset restartWrite status
  cutBack = .false.                                                                                  ! reset cutBack status
  
- P = reshape(materialpoint_P, [3,3,gridLocal(1),gridLocal(2),gridLocal(3)])
+ P = reshape(materialpoint_P, [3,3,grid(1),grid(2),grid3])
  P_av = sum(sum(sum(P,dim=5),dim=4),dim=3) * wgt                                                    ! average of P 
  call MPI_Allreduce(MPI_IN_PLACE,P_av,9,MPI_DOUBLE,MPI_SUM,PETSC_COMM_WORLD,ierr)
  if (debugRotation .and. worldrank == 0_pInt) &
@@ -1220,7 +1061,8 @@ end subroutine utilities_constitutiveResponse
 !--------------------------------------------------------------------------------------------------
 pure function utilities_calculateRate(avRate,timeinc_old,guess,field_lastInc,field)
  use mesh, only: &
-   gridLocal
+   grid3, &
+   grid
    
  implicit none
  real(pReal), intent(in), dimension(3,3)                      :: avRate                             !< homogeneous addon
@@ -1228,17 +1070,16 @@ pure function utilities_calculateRate(avRate,timeinc_old,guess,field_lastInc,fie
    timeinc_old                                                                                      !< timeinc of last step
  logical, intent(in) :: &
    guess                                                                                            !< guess along former trajectory
- real(pReal), intent(in), dimension(3,3,gridLocal(1),gridLocal(2),gridLocal(3)) :: &
+ real(pReal), intent(in), dimension(3,3,grid(1),grid(2),grid3) :: &
    field_lastInc, &                                                                                 !< data of previous step
    field                                                                                            !< data of current step
- real(pReal),             dimension(3,3,gridLocal(1),gridLocal(2),gridLocal(3)) :: &
+ real(pReal),             dimension(3,3,grid(1),grid(2),grid3) :: &
    utilities_calculateRate
  
  if (guess) then
    utilities_calculateRate = (field-field_lastInc) / timeinc_old
  else
-   utilities_calculateRate = spread(spread(spread(avRate,3,gridLocal(1)),4,gridLocal(2)), &
-                                                                           5,gridLocal(3))
+   utilities_calculateRate = spread(spread(spread(avRate,3,grid(1)),4,grid(2)),5,grid3)
  endif
 
 end function utilities_calculateRate
@@ -1250,20 +1091,24 @@ end function utilities_calculateRate
 !--------------------------------------------------------------------------------------------------
 function utilities_forwardField(timeinc,field_lastInc,rate,aim)
  use mesh, only: &
-   gridLocal
-
+   grid3, &
+   grid
+  
  implicit none
  real(pReal), intent(in) :: & 
    timeinc                                                                                          !< timeinc of current step
- real(pReal), intent(in),           dimension(3,3,gridLocal(1),gridLocal(2),gridLocal(3)) :: &
+ real(pReal), intent(in),           dimension(3,3,grid(1),grid(2),grid3) :: &
    field_lastInc, &                                                                                 !< initial field
    rate                                                                                             !< rate by which to forward
  real(pReal), intent(in), optional, dimension(3,3) :: &
    aim                                                                                              !< average field value aim
- real(pReal),                       dimension(3,3,gridLocal(1),gridLocal(2),gridLocal(3)) :: &
+ real(pReal),                       dimension(3,3,grid(1),grid(2),grid3) :: &
    utilities_forwardField
  real(pReal),                       dimension(3,3)                      :: fieldDiff                !< <a + adot*t> - aim
  PetscErrorCode :: ierr
+ 
+ external :: &
+  MPI_Allreduce
  
  utilities_forwardField = field_lastInc + rate*timeinc
  if (present(aim)) then                                                                             !< correct to match average
@@ -1271,7 +1116,7 @@ function utilities_forwardField(timeinc,field_lastInc,rate,aim)
    call MPI_Allreduce(MPI_IN_PLACE,fieldDiff,9,MPI_DOUBLE,MPI_SUM,PETSC_COMM_WORLD,ierr)
    fieldDiff = fieldDiff - aim
    utilities_forwardField = utilities_forwardField - &
-                    spread(spread(spread(fieldDiff,3,gridLocal(1)),4,gridLocal(2)),5,gridLocal(3))
+                    spread(spread(spread(fieldDiff,3,grid(1)),4,grid(2)),5,grid3)
  endif
 
 end function utilities_forwardField
@@ -1280,44 +1125,41 @@ end function utilities_forwardField
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates filter for fourier convolution depending on type given in numerics.config
 !--------------------------------------------------------------------------------------------------
-real(pReal) function utilities_getFilter(k)
- use IO, only: &
-   IO_error
+complex(pReal) pure function utilities_getFilter(k)
  use numerics, only: &                        
    spectral_filter
  use math, only: &
    PI
  use mesh, only: &
-   gridGlobal
-  
+   grid
+
  implicit none
  real(pReal),intent(in), dimension(3) :: k                                                          !< indices of frequency
   
- utilities_getFilter = 1.0_pReal
+ utilities_getFilter = (1.0_pReal,0.0_pReal)
 
  select case (spectral_filter)
    case ('none')                                                                                    ! default, no weighting
    case ('cosine')                                                                                  ! cosine curve with 1 for avg and zero for highest freq
-     utilities_getFilter = product(1.0_pReal + cos(PI*k*scaledGeomSize/gridGlobal))/8.0_pReal
+     utilities_getFilter = cmplx(product(1.0_pReal + cos(PI*k*scaledGeomSize/grid))/8.0_pReal,&
+                                                                                        0.0_pReal)
    case ('gradient')                                                                                ! gradient, might need grid scaling as for cosine filter
-     utilities_getFilter = 1.0_pReal/(1.0_pReal + &
-                                      (k(1)*k(1) + k(2)*k(2) + k(3)*k(3)))
-   case default
-     call IO_error(error_ID = 892_pInt, ext_msg = trim(spectral_filter))
+     utilities_getFilter = cmplx(1.0_pReal/(1.0_pReal + (k(1)*k(1) + k(2)*k(2) + k(3)*k(3))),&
+                                                                                        0.0_pReal)
  end select 
 
- if (gridGlobal(1) /= 1_pInt .and. k(1) == real(grid1Red - 1_pInt,    pReal)/scaledGeomSize(1)) &
-   utilities_getFilter = 0.0_pReal
- if (gridGlobal(2) /= 1_pInt .and. k(2) == real(gridGlobal(2)/2_pInt, pReal)/scaledGeomSize(2)) &
-   utilities_getFilter = 0.0_pReal                                                                  ! do not delete the whole slice in case of 2D calculation
- if (gridGlobal(2) /= 1_pInt .and. &
-       k(2) == real(gridGlobal(2)/2_pInt + mod(gridGlobal(2),2_pInt), pReal)/scaledGeomSize(2)) &
-   utilities_getFilter = 0.0_pReal                                                                  ! do not delete the whole slice in case of 2D calculation
- if (gridGlobal(3) /= 1_pInt .and. k(3) == real(gridGlobal(3)/2_pInt, pReal)/scaledGeomSize(3)) &
-   utilities_getFilter = 0.0_pReal                                                                  ! do not delete the whole slice in case of 2D calculation
- if (gridGlobal(3) /= 1_pInt .and. &
-       k(3) == real(gridGlobal(3)/2_pInt + mod(gridGlobal(3),2_pInt), pReal)/scaledGeomSize(3)) &
-   utilities_getFilter = 0.0_pReal                                                                  ! do not delete the whole slice in case of 2D calculation
+ if (grid(1) /= 1_pInt .and. k(1) == real(grid1Red - 1_pInt,    pReal)/scaledGeomSize(1)) &
+   utilities_getFilter = (0.0_pReal,0.0_pReal)                                                      ! do not delete the whole slice in case of 2D calculation
+ if (grid(2) /= 1_pInt .and. k(2) == real(grid(2)/2_pInt, pReal)/scaledGeomSize(2)) &
+   utilities_getFilter = (0.0_pReal,0.0_pReal)                                                      ! do not delete the whole slice in case of 2D calculation
+ if (grid(2) /= 1_pInt .and. &
+       k(2) == real(grid(2)/2_pInt + mod(grid(2),2_pInt), pReal)/scaledGeomSize(2)) &
+   utilities_getFilter = (0.0_pReal,0.0_pReal)                                                      ! do not delete the whole slice in case of 2D calculation
+ if (grid(3) /= 1_pInt .and. k(3) == real(grid(3)/2_pInt, pReal)/scaledGeomSize(3)) &
+   utilities_getFilter = (0.0_pReal,0.0_pReal)                                                      ! do not delete the whole slice in case of 2D calculation
+ if (grid(3) /= 1_pInt .and. &
+       k(3) == real(grid(3)/2_pInt + mod(grid(3),2_pInt), pReal)/scaledGeomSize(3)) &
+   utilities_getFilter = (0.0_pReal,0.0_pReal)                                                      ! do not delete the whole slice in case of 2D calculation
 
 end function utilities_getFilter
 
@@ -1330,9 +1172,6 @@ subroutine utilities_destroy()
 
  implicit none
 
- if (debugDivergence) call fftw_destroy_plan(planDiv)
- if (debugFFTW) call fftw_destroy_plan(planDebugForth)
- if (debugFFTW) call fftw_destroy_plan(planDebugBack)
  call fftw_destroy_plan(planTensorForth)
  call fftw_destroy_plan(planTensorBack)
  call fftw_destroy_plan(planVectorForth)
@@ -1349,58 +1188,62 @@ end subroutine utilities_destroy
 ! convolution
 !--------------------------------------------------------------------------------------------------
 subroutine utilities_updateIPcoords(F)
- use math
+ use math, only: &
+   PI, &
+   math_mul33x3
  use mesh, only: &
-   gridGlobal, &
-   gridLocal, &
-   gridOffset, &
-   geomSizeGlobal, &
+   grid, &
+   grid3, &
+   grid3Offset, &
+   geomSize, &
    mesh_ipCoordinates 
  implicit none
 
- real(pReal),   dimension(3,3,gridLocal(1),gridLocal(2),gridLocal(3)), intent(in) :: F
+ real(pReal),   dimension(3,3,grid(1),grid(2),grid3), intent(in) :: F
  integer(pInt) :: i, j, k, m
  real(pReal),   dimension(3) :: step, offset_coords, integrator
  real(pReal),   dimension(3,3) :: Favg
  PetscErrorCode :: ierr
+ external &
+   MPI_Bcast
 
- tensorField_realMPI = 0.0_pReal
- tensorField_realMPI(1:3,1:3,1:gridLocal(1),1:gridLocal(2),1:gridLocal(3)) = F
+ tensorField_real = 0.0_pReal
+ tensorField_real(1:3,1:3,1:grid(1),1:grid(2),1:grid3) = F
  call utilities_FFTtensorForward()
 
- integrator = geomSizeGlobal * 0.5_pReal / PI
- step = geomSizeGlobal/real(gridGlobal, pReal)
+ integrator = geomSize * 0.5_pReal / PI
+ step = geomSize/real(grid, pReal)
  
 !--------------------------------------------------------------------------------------------------
 ! average F
- if (gridOffset == 0_pInt) Favg = real(tensorField_fourierMPI(1:3,1:3,1,1,1),pReal)*wgt
+ if (grid3Offset == 0_pInt) Favg = real(tensorField_fourier(1:3,1:3,1,1,1),pReal)*wgt
  call MPI_Bcast(Favg,9,MPI_DOUBLE,0,PETSC_COMM_WORLD,ierr)
 
 !--------------------------------------------------------------------------------------------------
 ! integration in Fourier space
- vectorField_fourierMPI = cmplx(0.0_pReal, 0.0_pReal, pReal)
- do k = 1_pInt, gridLocal(3);  do j = 1_pInt, gridLocal(2);  do i = 1_pInt,grid1Red
+ vectorField_fourier = cmplx(0.0_pReal, 0.0_pReal, pReal)
+ do k = 1_pInt, grid3;  do j = 1_pInt, grid(2);  do i = 1_pInt,grid1Red
    do m = 1_pInt,3_pInt
-     vectorField_fourierMPI(m,i,j,k) = sum(tensorField_fourierMPI(m,1:3,i,j,k)*&
+     vectorField_fourier(m,i,j,k) = sum(tensorField_fourier(m,1:3,i,j,k)*&
                                            cmplx(0.0_pReal,xi(1:3,i,j,k)*scaledGeomSize*integrator,pReal))
    enddo
-   if (any(xi(1:3,i,j,k) /= 0.0_pReal)) &
-     vectorField_fourierMPI(1:3,i,j,k) = &
-     vectorField_fourierMPI(1:3,i,j,k)/cmplx(-sum(xi(1:3,i,j,k)*scaledGeomSize*xi(1:3,i,j,k)* &
+   if (any(abs(xi(1:3,i,j,k)) > tiny(0.0_pReal))) &
+     vectorField_fourier(1:3,i,j,k) = &
+     vectorField_fourier(1:3,i,j,k)/cmplx(-sum(xi(1:3,i,j,k)*scaledGeomSize*xi(1:3,i,j,k)* &
                                                      scaledGeomSize),0.0_pReal,pReal)
  enddo; enddo; enddo
- call fftw_mpi_execute_dft_c2r(planVectorBack,vectorField_fourierMPI,vectorField_realMPI)
+ call fftw_mpi_execute_dft_c2r(planVectorBack,vectorField_fourier,vectorField_real)
 
 !--------------------------------------------------------------------------------------------------
 ! add average to fluctuation and put (0,0,0) on (0,0,0)
- if (gridOffset == 0_pInt) offset_coords = vectorField_realMPI(1:3,1,1,1)
+ if (grid3Offset == 0_pInt) offset_coords = vectorField_real(1:3,1,1,1)
  call MPI_Bcast(offset_coords,3,MPI_DOUBLE,0,PETSC_COMM_WORLD,ierr)
  offset_coords = math_mul33x3(Favg,step/2.0_pReal) - offset_coords
  m = 1_pInt
- do k = 1_pInt,gridLocal(3); do j = 1_pInt,gridLocal(2); do i = 1_pInt,gridLocal(1)
-   mesh_ipCoordinates(1:3,1,m) = vectorField_realMPI(1:3,i,j,k) &
+ do k = 1_pInt,grid3; do j = 1_pInt,grid(2); do i = 1_pInt,grid(1)
+   mesh_ipCoordinates(1:3,1,m) = vectorField_real(1:3,i,j,k) &
                                + offset_coords &
-                               + math_mul33x3(Favg,step*real([i,j,k+gridOffset]-1_pInt,pReal))
+                               + math_mul33x3(Favg,step*real([i,j,k+grid3Offset]-1_pInt,pReal))
    m = m+1_pInt
  enddo; enddo; enddo
 

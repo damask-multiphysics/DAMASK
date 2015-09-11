@@ -12,10 +12,10 @@ module DAMASK_spectral_solverAL
    pReal
  use math, only: &
    math_I3
- use DAMASK_spectral_utilities, only: &
+ use DAMASK_spectral_Utilities, only: &
    tSolutionState, &
    tSolutionParams
- 
+
  implicit none
  private
 #include <petsc/finclude/petsc.h90>
@@ -121,8 +121,8 @@ subroutine AL_init
    Utilities_updateGamma, &
    Utilities_updateIPcoords
  use mesh, only: &
-   gridLocal, &
-   gridGlobal
+   grid, &
+   grid3
  use math, only: &
    math_invSym3333
    
@@ -145,36 +145,35 @@ subroutine AL_init
 #include "compilation_info.f90"
  endif
 
- allocate (P               (3,3,gridLocal(1),gridLocal(2),gridLocal(3)),source = 0.0_pReal)
+ allocate (P               (3,3,grid(1),grid(2),grid3),source = 0.0_pReal)
 !--------------------------------------------------------------------------------------------------
 ! allocate global fields
- allocate (F_lastInc       (3,3,gridLocal(1),gridLocal(2),gridLocal(3)),source = 0.0_pReal)
- allocate (Fdot            (3,3,gridLocal(1),gridLocal(2),gridLocal(3)),source = 0.0_pReal)
- allocate (F_lambda_lastInc(3,3,gridLocal(1),gridLocal(2),gridLocal(3)),source = 0.0_pReal)
- allocate (F_lambdaDot     (3,3,gridLocal(1),gridLocal(2),gridLocal(3)),source = 0.0_pReal)
+ allocate (F_lastInc       (3,3,grid(1),grid(2),grid3),source = 0.0_pReal)
+ allocate (Fdot            (3,3,grid(1),grid(2),grid3),source = 0.0_pReal)
+ allocate (F_lambda_lastInc(3,3,grid(1),grid(2),grid3),source = 0.0_pReal)
+ allocate (F_lambdaDot     (3,3,grid(1),grid(2),grid3),source = 0.0_pReal)
     
 !--------------------------------------------------------------------------------------------------
 ! PETSc Init
  call SNESCreate(PETSC_COMM_WORLD,snes,ierr); CHKERRQ(ierr)
  call SNESSetOptionsPrefix(snes,'mech_',ierr);CHKERRQ(ierr) 
- allocate(localK(worldsize), source = 0); localK(worldrank+1) = gridLocal(3)
+ allocate(localK(worldsize), source = 0); localK(worldrank+1) = grid3
  do proc = 1, worldsize
    call MPI_Bcast(localK(proc),1,MPI_INTEGER,proc-1,PETSC_COMM_WORLD,ierr)
  enddo  
  call DMDACreate3d(PETSC_COMM_WORLD, &
         DM_BOUNDARY_NONE, DM_BOUNDARY_NONE, DM_BOUNDARY_NONE, &                                     ! cut off stencil at boundary
         DMDA_STENCIL_BOX, &                                                                         ! Moore (26) neighborhood around central point
-        gridGlobal(1),gridGlobal(2),gridGlobal(3), &                                                ! global grid
+        grid(1),grid(2),grid(3), &                                                                  ! global grid
         1 , 1, worldsize, &
         18, 0, &                                                                                    ! #dof (F tensor), ghost boundary width (domain overlap)
-        gridLocal (1),gridLocal (2),localK, &                                                       ! local grid
+        grid(1),grid(2),localK, &                                                                   ! local grid
         da,ierr)                                                                                    ! handle, error
  CHKERRQ(ierr)
  call SNESSetDM(snes,da,ierr); CHKERRQ(ierr)
  call DMCreateGlobalVector(da,solution_vec,ierr); CHKERRQ(ierr)
  call DMDASNESSetFunctionLocal(da,INSERT_VALUES,AL_formResidual,dummy,ierr)
  CHKERRQ(ierr)
- call SNESSetDM(snes,da,ierr); CHKERRQ(ierr)
  call SNESSetConvergenceTest(snes,AL_converged,dummy,PETSC_NULL_FUNCTION,ierr)
  CHKERRQ(ierr)
  call SNESSetFromOptions(snes,ierr); CHKERRQ(ierr)
@@ -184,13 +183,7 @@ subroutine AL_init
  call DMDAVecGetArrayF90(da,solution_vec,xx_psc,ierr); CHKERRQ(ierr)                                ! places pointer xx_psc on PETSc data
  F => xx_psc(0:8,:,:,:)
  F_lambda => xx_psc(9:17,:,:,:)
- if (restartInc == 1_pInt) then                                                                     ! no deformation (no restart)
-   F_lastInc     = spread(spread(spread(math_I3,3,gridLocal(1)),4,gridLocal(2)),5,gridLocal(3))     ! initialize to identity
-   F = reshape(F_lastInc,[9,gridLocal(1),gridLocal(2),gridLocal(3)])
-   F_lambda = F
-   F_lambda_lastInc = F_lastInc
-
- elseif (restartInc > 1_pInt) then                                                                  ! read in F to calculate coordinates and initialize CPFEM general
+ restart: if (restartInc > 1_pInt) then
    if (iand(debug_level(debug_spectral),debug_spectralRestart)/= 0 .and. worldrank == 0_pInt) &
      write(6,'(/,a,'//IO_intOut(restartInc-1_pInt)//',a)') &
      'reading values of increment ', restartInc - 1_pInt, ' from file'
@@ -218,16 +211,22 @@ subroutine AL_init
    call IO_read_realFile(777,'F_aimDot',trim(getSolverJobName()),size(f_aimDot))
    read (777,rec=1) f_aimDot
    close (777)
- endif
+ elseif (restartInc == 1_pInt) then restart
+   F_lastInc = spread(spread(spread(math_I3,3,grid(1)),4,grid(2)),5,grid3)                          ! initialize to identity
+   F = reshape(F_lastInc,[9,grid(1),grid(2),grid3])
+   F_lambda = F
+   F_lambda_lastInc = F_lastInc
+ endif restart
+
  
- call utilities_updateIPcoords(F)
+ call Utilities_updateIPcoords(F)
  call Utilities_constitutiveResponse(F_lastInc,F,&
                    0.0_pReal,P,C_volAvg,C_minMaxAvg,temp33_Real,.false.,math_I3)
  nullify(F)
  nullify(F_lambda)
  call DMDAVecRestoreArrayF90(da,solution_vec,xx_psc,ierr); CHKERRQ(ierr)                            ! write data back to PETSc
                              
- if (restartInc > 1_pInt) then                                                                      ! using old values from files
+ readRestart: if (restartInc > 1_pInt) then
    if (iand(debug_level(debug_spectral),debug_spectralRestart)/= 0 .and. worldrank == 0_pInt) &
      write(6,'(/,a,'//IO_intOut(restartInc-1_pInt)//',a)') &
      'reading more values of increment', restartInc - 1_pInt, 'from file'
@@ -241,7 +240,7 @@ subroutine AL_init
    call IO_read_realFile(777,'C_ref',trim(getSolverJobName()),size(C_minMaxAvg))
    read (777,rec=1) C_minMaxAvg
    close (777)
- endif
+ endif readRestart
 
  call Utilities_updateGamma(C_minMaxAvg,.True.)
  C_scale = C_minMaxAvg
@@ -299,7 +298,7 @@ type(tSolutionState) function &
    C_scale = C_minMaxAvg
    S_scale = math_invSym3333(C_minMaxAvg)
  endif  
- 
+
  AL_solution%converged =.false.
   
 !--------------------------------------------------------------------------------------------------
@@ -339,7 +338,8 @@ subroutine AL_formResidual(in,x_scal,f_scal,dummy,ierr)
    polarBeta, &
    worldrank
  use mesh, only: &
-   gridLocal
+   grid3, &
+   grid
  use IO, only: &
    IO_intOut
  use math, only: &
@@ -350,7 +350,7 @@ subroutine AL_formResidual(in,x_scal,f_scal,dummy,ierr)
    math_mul33x33
  use DAMASK_spectral_Utilities, only: &
    wgt, &
-   tensorField_realMPI, &
+   tensorField_real, &
    utilities_FFTtensorForward, &
    utilities_fourierGammaConvolution, &
    Utilities_inverseLaplace, &
@@ -408,7 +408,7 @@ subroutine AL_formResidual(in,x_scal,f_scal,dummy,ierr)
  call MPI_Allreduce(MPI_IN_PLACE,F_av,9,MPI_DOUBLE,MPI_SUM,PETSC_COMM_WORLD,ierr)
  
  if(nfuncs== 0 .and. PETScIter == 0) totalIter = -1_pInt                                            ! new increment
- if(totalIter <= PETScIter) then                                                                    ! new iteration
+ newIteration: if(totalIter <= PETScIter) then
 !--------------------------------------------------------------------------------------------------
 ! report begin of new iteration
    totalIter = totalIter + 1_pInt
@@ -420,15 +420,15 @@ subroutine AL_formResidual(in,x_scal,f_scal,dummy,ierr)
                              math_transpose33(math_rotate_backward33(F_aim,params%rotation_BC))
    write(6,'(/,a,/,3(3(f12.7,1x)/))',advance='no') ' deformation gradient aim =', &
                                  math_transpose33(F_aim)
+     flush(6)
    endif
-   flush(6)
- endif
+ endif newIteration
 
 !--------------------------------------------------------------------------------------------------
 ! 
- tensorField_realMPI = 0.0_pReal
- do k = 1_pInt, gridLocal(3); do j = 1_pInt, gridLocal(2); do i = 1_pInt, gridLocal(1)
-   tensorField_realMPI(1:3,1:3,i,j,k) = &
+ tensorField_real = 0.0_pReal
+ do k = 1_pInt, grid3; do j = 1_pInt, grid(2); do i = 1_pInt, grid(1)
+   tensorField_real(1:3,1:3,i,j,k) = &
      polarBeta*math_mul3333xx33(C_scale,F(1:3,1:3,i,j,k) - math_I3) -&
      polarAlpha*math_mul33x33(F(1:3,1:3,i,j,k), &
                               math_mul3333xx33(C_scale,F_lambda(1:3,1:3,i,j,k) - math_I3))
@@ -443,7 +443,7 @@ subroutine AL_formResidual(in,x_scal,f_scal,dummy,ierr)
 
 !--------------------------------------------------------------------------------------------------
 ! constructing residual                         
- residual_F_lambda = polarBeta*F - tensorField_realMPI(1:3,1:3,1:gridLocal(1),1:gridLocal(2),1:gridLocal(3))
+ residual_F_lambda = polarBeta*F - tensorField_real(1:3,1:3,1:grid(1),1:grid(2),1:grid3)
 
 !--------------------------------------------------------------------------------------------------
 ! evaluate constitutive response
@@ -455,8 +455,8 @@ subroutine AL_formResidual(in,x_scal,f_scal,dummy,ierr)
 
 !--------------------------------------------------------------------------------------------------
 ! calculate divergence
- tensorField_realMPI = 0.0_pReal
- tensorField_realMPI(1:3,1:3,1:gridLocal(1),1:gridLocal(2),1:gridLocal(3)) = residual_F
+ tensorField_real = 0.0_pReal
+ tensorField_real(1:3,1:3,1:grid(1),1:grid(2),1:grid3) = residual_F
  call utilities_FFTtensorForward()
  err_div = Utilities_divergenceRMS()
  call utilities_FFTtensorBackward()
@@ -464,7 +464,7 @@ subroutine AL_formResidual(in,x_scal,f_scal,dummy,ierr)
 !--------------------------------------------------------------------------------------------------
 ! constructing residual
  e = 0_pInt
- do k = 1_pInt, gridLocal(3); do j = 1_pInt, gridLocal(2); do i = 1_pInt, gridLocal(1)
+ do k = 1_pInt, grid3; do j = 1_pInt, grid(2); do i = 1_pInt, grid(1)
    e = e + 1_pInt
    residual_F(1:3,1:3,i,j,k) = math_mul3333xx33(math_invSym3333(materialpoint_dPdF(1:3,1:3,1:3,1:3,1,e) + C_scale), &
                                                 residual_F(1:3,1:3,i,j,k) - &
@@ -475,8 +475,8 @@ subroutine AL_formResidual(in,x_scal,f_scal,dummy,ierr)
  
 !--------------------------------------------------------------------------------------------------
 ! calculating curl 
- tensorField_realMPI = 0.0_pReal
- tensorField_realMPI(1:3,1:3,1:gridLocal(1),1:gridLocal(2),1:gridLocal(3)) = F
+ tensorField_real = 0.0_pReal
+ tensorField_real(1:3,1:3,1:grid(1),1:grid(2),1:grid3) = F
  call utilities_FFTtensorForward()
  err_curl = Utilities_curlRMS()
  call utilities_FFTtensorBackward()
@@ -570,7 +570,8 @@ subroutine AL_forward(guess,timeinc,timeinc_old,loadCaseTime,F_BC,P_BC,rotation_
  use numerics, only: &
    worldrank 
  use mesh, only: &
-   gridLocal
+   grid3, &
+   grid
  use DAMASK_spectral_Utilities, only: &
    Utilities_calculateRate, &
    Utilities_forwardField, &
@@ -639,14 +640,14 @@ subroutine AL_forward(guess,timeinc,timeinc_old,loadCaseTime,F_BC,P_BC,rotation_
      write (777,rec=1) C_volAvgLastInc
      close(777)
    endif
+ endif
 
- endif 
  call utilities_updateIPcoords(F)
 
  if (cutBack) then 
    F_aim    = F_aim_lastInc
-   F_lambda = reshape(F_lambda_lastInc,[9,gridLocal(1),gridLocal(2),gridLocal(3)]) 
-   F        = reshape(F_lastInc,       [9,gridLocal(1),gridLocal(2),gridLocal(3)]) 
+   F_lambda = reshape(F_lambda_lastInc,[9,grid(1),grid(2),grid3]) 
+   F        = reshape(F_lastInc,       [9,grid(1),grid(2),grid3]) 
    C_volAvg = C_volAvgLastInc
  else
    ForwardData = .True.
@@ -667,22 +668,25 @@ subroutine AL_forward(guess,timeinc,timeinc_old,loadCaseTime,F_BC,P_BC,rotation_
 ! update coordinates and rate and forward last inc
    call utilities_updateIPcoords(F)
    Fdot =  Utilities_calculateRate(math_rotate_backward33(f_aimDot,rotation_BC), &
-                  timeinc_old,guess,F_lastInc,reshape(F,[3,3,gridLocal(1),gridLocal(2),gridLocal(3)]))
+                  timeinc_old,guess,F_lastInc,reshape(F,[3,3,grid(1),grid(2),grid3]))
    F_lambdaDot =  Utilities_calculateRate(math_rotate_backward33(f_aimDot,rotation_BC), &
-                  timeinc_old,guess,F_lambda_lastInc,reshape(F_lambda,[3,3,gridLocal(1), &
-                                                          gridLocal(2),gridLocal(3)]))  
-   F_lastInc        = reshape(F,       [3,3,gridLocal(1),gridLocal(2),gridLocal(3)])
-   F_lambda_lastInc = reshape(F_lambda,[3,3,gridLocal(1),gridLocal(2),gridLocal(3)])
+                  timeinc_old,guess,F_lambda_lastInc,reshape(F_lambda,[3,3,grid(1), &
+                                                          grid(2),grid3]))  
+   F_lastInc        = reshape(F,       [3,3,grid(1),grid(2),grid3])
+   F_lambda_lastInc = reshape(F_lambda,[3,3,grid(1),grid(2),grid3])
  endif
 
  F_aim = F_aim + f_aimDot * timeinc
+
+!--------------------------------------------------------------------------------------------------
+! update local deformation gradient
  F = reshape(Utilities_forwardField(timeinc,F_lastInc,Fdot, &                                       ! ensure that it matches rotated F_aim
                                     math_rotate_backward33(F_aim,rotation_BC)), &
-             [9,gridLocal(1),gridLocal(2),gridLocal(3)])
+             [9,grid(1),grid(2),grid3])
  F_lambda = reshape(Utilities_forwardField(timeinc,F_lambda_lastInc,F_lambdadot), &
-                    [9,gridLocal(1),gridLocal(2),gridLocal(3)])                                     ! does not have any average value as boundary condition
+                    [9,grid(1),grid(2),grid3])                                                      ! does not have any average value as boundary condition
  if (.not. guess) then                                                                              ! large strain forwarding
-   do k = 1_pInt, gridLocal(3); do j = 1_pInt, gridLocal(2); do i = 1_pInt, gridLocal(1)
+   do k = 1_pInt, grid3; do j = 1_pInt, grid(2); do i = 1_pInt, grid(1)
       F_lambda33 = reshape(F_lambda(1:9,i,j,k),[3,3])
       F_lambda33 = math_mul3333xx33(S_scale,math_mul33x33(F_lambda33, &
                                   math_mul3333xx33(C_scale,&
