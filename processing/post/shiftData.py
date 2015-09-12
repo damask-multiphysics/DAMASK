@@ -33,7 +33,7 @@ parser.set_defaults(label  = [],
 
 (options,filenames) = parser.parse_args()
 
-if len(options.label) != len(options.delta):
+if len(options.label) != len(options.offset):
   parser.error('number of column labels and offsets do not match.')
 
 # --- loop over input files -------------------------------------------------------------------------
@@ -57,7 +57,7 @@ for name in filenames:
   dims     = []
   offsets  = []
 
-  for what,factor in zip(options.label,options.offset):
+  for what,offset in zip(options.label,options.offset):
     col = table.label_index(what)
     if col < 0: remarks.append('column {} not found...'.format(what,type))
     else:
@@ -80,7 +80,7 @@ for name in filenames:
 
   outputAlive = True
   while outputAlive and table.data_read():                                                          # read next data line of ASCII table
-    for col,dim,factor in zip(columns,dims,factors):                                                # loop over items
+    for col,dim,offset in zip(columns,dims,offsets):                                                # loop over items
       table.data[col:col+dim] = offset + np.array(table.data[col:col+dim],'d')
     outputAlive = table.data_write()                                                                # output processed line
 
