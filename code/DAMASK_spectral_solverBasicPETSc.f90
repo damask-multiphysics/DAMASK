@@ -116,7 +116,7 @@ subroutine basicPETSc_init
    math_invSym3333
    
  implicit none
- real(pReal), dimension(:,:,:,:,:), allocatable :: P
+ real(pReal), dimension(3,3,grid(1),grid(2),grid3) :: P
  PetscScalar,  dimension(:,:,:,:), pointer     ::  F
  PetscErrorCode :: ierr
  PetscObject    :: dummy
@@ -133,7 +133,6 @@ subroutine basicPETSc_init
 #include "compilation_info.f90"
  endif mainProcess
 
- allocate (P         (3,3,grid(1),grid(2),grid3),source = 0.0_pReal)
 !--------------------------------------------------------------------------------------------------
 ! allocate global fields
  allocate (F_lastInc (3,3,grid(1),grid(2),grid3),source = 0.0_pReal)

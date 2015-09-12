@@ -127,7 +127,7 @@ subroutine Polarisation_init
    math_invSym3333
    
  implicit none
- real(pReal), dimension(:,:,:,:,:), allocatable :: P
+ real(pReal), dimension(3,3,grid(1),grid(2),grid3) :: P
  real(pReal), dimension(3,3) :: &
    temp33_Real = 0.0_pReal
 
@@ -145,7 +145,6 @@ subroutine Polarisation_init
 #include "compilation_info.f90"
  endif
 
- allocate (P            (3,3,grid(1),grid(2),grid3),source = 0.0_pReal)
 !--------------------------------------------------------------------------------------------------
 ! allocate global fields
  allocate (F_lastInc    (3,3,grid(1),grid(2),grid3),source = 0.0_pReal)
