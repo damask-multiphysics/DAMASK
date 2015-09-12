@@ -36,7 +36,7 @@ if filenames == []: filenames = [None]
 
 for name in filenames:
   try:
-  table = damask.ASCIItable(name = name,
+    table = damask.ASCIItable(name = name,
                             buffered = False)
   except: continue
   table.report_name(scriptName,name)
