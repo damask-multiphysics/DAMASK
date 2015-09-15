@@ -72,7 +72,7 @@ class backgroundMessage(threading.Thread):
             }    
 
   def __init__(self,
-               symbol,
+               symbol = None,
                wait = 0.1):
     threading.Thread.__init__(self)
     self.message = ''
