@@ -7,7 +7,7 @@ from scipy import spatial
 from collections import defaultdict
 from optparse import OptionParser, OptionGroup, Option, SUPPRESS_HELP
 
-scriptID   = string.replace('$Id: addGrainID.py 2549 2013-07-10 09:13:21Z MPIE\p.eisenlohr $','\n','\\n')
+scriptID   = string.replace('$Id$','\n','\\n')
 scriptName = os.path.splitext(scriptID.split()[1])[0]
 
 
@@ -86,7 +86,8 @@ if np.sum(input) != 1: parser.error('needs exactly one input format.')
                          (options.matrix,9,'matrix'),
                          (options.quaternion,4,'quaternion'),
                         ][np.where(input)[0][0]]                                                    # select input label that was requested
-toRadians = math.pi/180.0 if options.degrees else 1.0                                               # rescale degrees to radians
+toRadians = np.pi/180.0 if options.degrees else 1.0                                               # rescale degrees to radians
+cos_disorientation = np.cos(options.disorientation/2.*toRadians)
 
 # --- loop over input files -------------------------------------------------------------------------
 
@@ -121,7 +122,8 @@ for name in filenames:
 # ------------------------------------------ assemble header ---------------------------------------
 
   table.info_append(scriptID + '\t' + ' '.join(sys.argv[1:]))
-  table.labels_append('grainID_{}@{}'.format(','.join(labels),options.disorientation/toRadians))    # report orientation source and disorientation in degrees
+  table.labels_append('grainID_{}@{}'.format(label,
+                                             options.disorientation if options.degrees else np.degrees(options.disorientation)))    # report orientation source and disorientation in degrees
   table.head_write()
 
 # ------------------------------------------ process data ------------------------------------------
@@ -192,11 +194,11 @@ for name in filenames:
         if gID != -1 and gID not in alreadyChecked:                                                 # an already indexed point belonging to a grain not yet tested?
           alreadyChecked[gID] = True                                                                # remember not to check again
           disorientation = o.disorientation(orientations[gID])[0]                                   # compare against that grain's orientation
-          if disorientation.w >  cos_disorientation and \
-             disorientation.w >= bestDisorientation.w:                                              # within disorientation threshold and better than current best?
+          if disorientation.quaternion.w >  cos_disorientation and \
+             disorientation.quaternion.w >= bestDisorientation.w:                                   # within disorientation threshold and better than current best?
             matched = True
             matchedID = gID                                                                         # remember that grain
-            bestDisorientation = disorientation
+            bestDisorientation = disorientation.quaternion
 
     if not matched:                                                                                 # no match -> new grain found
       memberCounts += [1]                                                                           # start new membership counter
@@ -217,7 +219,7 @@ for name in filenames:
 
   for i,orientation in enumerate(orientations[:-1]):                                                # compare each identified orientation...
     for j in xrange(i+1,len(orientations)):                                                         # ...against all others that were defined afterwards
-      if orientation.disorientation(orientations[j])[0].w > cos_disorientation:                     # similar orientations in both grainIDs?
+      if orientation.disorientation(orientations[j])[0].quaternion.w > cos_disorientation:          # similar orientations in both grainIDs?
         similarOrientations[i].append(j)                                                            # remember in upper triangle...
         similarOrientations[j].append(i)                                                            # ...and lower triangle of matrix
 
