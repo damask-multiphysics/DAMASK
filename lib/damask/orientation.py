@@ -844,7 +844,9 @@ class Orientation:
     return Orientation(quaternion=me,symmetry=self.symmetry.lattice)
 
 
-  def disorientation(self,other):
+  def disorientation(self,
+                     other,
+                     strict = True):
     '''
     Disorientation between myself and given other orientation
     (currently needs to be of same symmetry.
@@ -854,13 +856,15 @@ class Orientation:
     if self.symmetry != other.symmetry: raise TypeError('disorientation between different symmetry classes not supported yet.')
 
     misQ = self.quaternion.conjugated()*other.quaternion
-
-    for i,sA in enumerate(self.symmetry.symmetryQuats()):
-      for j,sB in enumerate(other.symmetry.symmetryQuats()):
+    mySymQs    = self.symmetry.symmetryQuats() if strict else self.symmetry.symmetryQuats()[:1]   # take all or first sym equivalent
+    otherSymQs = other.symmetry.symmetryQuats()
+    
+    for i,sA in enumerate(mySymQs):
+      for j,sB in enumerate(otherSymQs):
         theQ = sA.conjugated()*misQ*sB
         for k in xrange(2):
           theQ.conjugate()
-          hitSST = other.symmetry.inDisorientationSST(theQ)
+          hitSST = other.symmetry.inDisorientationSST(theQ) or not strict
           hitFZ =  self.symmetry.inFZ(theQ)
           breaker = hitSST and hitFZ
           if breaker: break
