@@ -92,7 +92,7 @@ class myThread (threading.Thread):
       perturbedSeedsVFile = StringIO()
       myBestSeedsVFile.reset()
 
-      perturbedSeedsTable = damask.ASCIItable(myBestSeedsVFile,perturbedSeedsVFile,labels=True)     # read current best fitting seed file and to perturbed seed file
+      perturbedSeedsTable = damask.ASCIItable(myBestSeedsVFile,perturbedSeedsVFile,labeled=True)    # read current best fitting seed file and to perturbed seed file
       perturbedSeedsTable.head_read()
       perturbedSeedsTable.head_write()
       outputAlive=True
@@ -115,7 +115,7 @@ class myThread (threading.Thread):
                      ' -g '+' '.join(map(str, options.grid)),streamIn=perturbedSeedsVFile)[0])
       perturbedGeomVFile.reset()
 #--- evaluate current seeds file ----------------------------------------------------------------------
-      perturbedGeomTable = damask.ASCIItable(perturbedGeomVFile,labels=False)
+      perturbedGeomTable = damask.ASCIItable(perturbedGeomVFile,labeled=False,readonly=True)
       perturbedGeomTable.head_read()
       for i in perturbedGeomTable.info:
         if i.startswith('microstructures'): myNmicrostructures = int(i.split('\t')[1])
@@ -232,19 +232,21 @@ points = float(reduce(mul,options.grid))
 
 
 # ----------- calculate target distribution and bin edges
-with open(os.path.splitext(os.path.basename(options.target))[0]+'.geom') as targetGeomFile:
-  targetGeomTable = damask.ASCIItable(targetGeomFile,labels=False)
-  targetGeomTable.head_read()
-  for i in targetGeomTable.info:
-    if i.startswith('microstructures'): nMicrostructures = int(i.split()[1])
-    if i.startswith('grid'):            targetPoints     = np.array(map(float,i.split()[2:7:2])).prod()
+targetGeomFile = os.path.splitext(os.path.basename(options.target))[0]+'.geom'
+targetGeomTable = damask.ASCIItable(targetGeomFile,labeled=False,readonly=True)
+targetGeomTable.head_read()
 
-  targetGeomTable.data_readArray()
-  targetVolFrac = np.bincount(targetGeomTable.data.astype(int).ravel())[1:nMicrostructures+1]/targetPoints
-  target=[]
-  for i in xrange(1,nMicrostructures+1):
-    targetHist,targetBins = np.histogram(targetVolFrac,bins=i) #bin boundaries
-    target.append({'histogram':targetHist,'bins':targetBins})
+for i in targetGeomTable.info:
+  if i.startswith('microstructures'): nMicrostructures = int(i.split()[1])
+  if i.startswith('grid'):            targetPoints     = int(np.array(map(float,i.split()[2:7:2])).prod())
+
+targetGeomTable.data_readArray()
+
+targetVolFrac = np.bincount(targetGeomTable.data.astype(int).ravel())[1:nMicrostructures+1]/targetPoints
+target=[]
+for i in xrange(1,nMicrostructures+1):
+  targetHist,targetBins = np.histogram(targetVolFrac,bins=i) #bin boundaries
+  target.append({'histogram':targetHist,'bins':targetBins})
 
 # ----------- create initial seed file or open existing one
 bestSeedsVFile = StringIO()
@@ -264,7 +266,7 @@ initialGeomVFile = StringIO()
 initialGeomVFile.write(execute('geom_fromVoronoiTessellation '+
                                ' -g '+' '.join(map(str, options.grid)),bestSeedsVFile)[0])
 initialGeomVFile.reset()
-initialGeomTable = damask.ASCIItable(initialGeomVFile,labels=False)
+initialGeomTable = damask.ASCIItable(initialGeomVFile,labeled=False,readonly=True)
 initialGeomTable.head_read()
 for i in initialGeomTable.info:
   if i.startswith('microstructures'): initialMicrostructures = int(i.split('\t')[1])

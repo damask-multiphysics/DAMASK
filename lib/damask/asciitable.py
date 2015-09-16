@@ -37,11 +37,18 @@ class ASCIItable():
 
     self.__IO__['inPlace'] = not outname and name and not readonly
     if self.__IO__['inPlace']: outname = name + self.tmpext                                         # transparently create tmp file
-    self.__IO__['in']  = (open(   name,'r') if os.access(   name, os.R_OK) else None)     if    name else sys.stdin
-    self.__IO__['out'] = (open(outname,'w') if (not os.path.isfile(outname) \
-                                                or  os.access(outname, os.W_OK)) \
-                                            and (not self.__IO__['inPlace'] \
-                                                 or  os.access(name, os.W_OK)) else None) if outname else sys.stdout
+    try:
+      self.__IO__['in']  = (open(   name,'r') if os.access(   name, os.R_OK) else None)     if    name else sys.stdin
+    except TypeError:
+      self.__IO__['in'] = name
+
+    try:
+      self.__IO__['out'] = (open(outname,'w') if (not os.path.isfile(outname) \
+                                                  or  os.access(outname, os.W_OK)) \
+                                              and (not self.__IO__['inPlace'] \
+                                                   or  os.access(name, os.W_OK)) else None) if outname else sys.stdout
+    except TypeError:
+      self.__IO__['out'] = outname
 
     self.info   = []
     self.labels = []
