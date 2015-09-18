@@ -17,7 +17,7 @@ print ascii_files
 showTable = "showTable -a "
 addCauchy = 'addCauchy '
 addMises = 'addMises -s Cauchy '
-addStrainTensors = "addStrainTensors -l -v "
+addStrainTensors = "addStrainTensors -0 -v "
 visualize3D = "3Dvisualize -s 'Mises(Cauchy)',1_p  Cauchy "
 
 
