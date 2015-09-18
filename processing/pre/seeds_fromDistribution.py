@@ -268,11 +268,11 @@ initialGeomVFile.write(execute('geom_fromVoronoiTessellation '+
 initialGeomVFile.reset()
 initialGeomTable = damask.ASCIItable(initialGeomVFile,labeled=False,readonly=True)
 initialGeomTable.head_read()
-for i in initialGeomTable.info:
-  if i.startswith('microstructures'): initialMicrostructures = int(i.split('\t')[1])
-if initialMicrostructures != nMicrostructures: print 'error. Microstructure count mismatch'
-initialGeomTable.data_readArray()
-initialData = np.bincount(initialGeomTable.data.astype(int).ravel())[1:]/points
+info,devNull =  initialGeomTable.head_getGeom()
+
+if info['microstructures'] != nMicrostructures: print 'error. Microstructure count mismatch'
+
+initialData = np.bincount(initialGeomTable.microstructure_read(info['grid']))/points
 for i in xrange(nMicrostructures):
   initialHist = np.histogram(initialData,bins=target[i]['bins'])[0]
   target[i]['error']=np.sqrt(np.square(np.array(target[i]['histogram']-initialHist)).sum())
@@ -288,7 +288,7 @@ for i in xrange(nMicrostructures):
 
 
 if options.maxseeds < 1: 
-  maxSeeds = initialMicrostructures
+  maxSeeds = info['microstructures']
 else:
   maxSeeds = options.maxseeds
 
