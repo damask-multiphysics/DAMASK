@@ -355,7 +355,7 @@ subroutine BasicPETSC_formResidual(in,x_scal,f_scal,dummy,ierr)
                                    math_transpose33(math_rotate_backward33(F_aim,params%rotation_BC))
      write(6,'(/,a,/,3(3(f12.7,1x)/))',advance='no') ' deformation gradient aim =', &
                                  math_transpose33(F_aim)
-   flush(6)
+     flush(6)
    endif
  endif newIteration
 

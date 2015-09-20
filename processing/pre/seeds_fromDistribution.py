@@ -76,6 +76,7 @@ class myThread (threading.Thread):
       s.release()
       
       if randReset:                                                                                 # new direction because current one led to worse fit
+
         randReset = False
 
         NmoveGrains = random.randrange(1,maxSeeds)
@@ -97,16 +98,17 @@ class myThread (threading.Thread):
       perturbedSeedsTable.head_write()
       outputAlive=True
       ms = 1
+      i = 0
       while outputAlive and perturbedSeedsTable.data_read():                                        # perturbe selected microstructure
         if ms in selectedMs:
-          direction+=direction
           newCoords=np.array(tuple(map(float,perturbedSeedsTable.data[0:3]))+direction[i])
           newCoords=np.where(newCoords>=1.0,newCoords-1.0,newCoords)                                # ensure that the seeds remain in the box (move one side out, other side in)
           newCoords=np.where(newCoords <0.0,newCoords+1.0,newCoords)
           perturbedSeedsTable.data[0:3]=[format(f, '8.6f') for f in newCoords]
+          direction[i]*=2.
+          i+= 1
         ms+=1
         perturbedSeedsTable.data_write()
-
 #--- do tesselation with perturbed seed file ----------------------------------------------------------
       perturbedGeomVFile.close()
       perturbedGeomVFile = StringIO()
@@ -114,8 +116,9 @@ class myThread (threading.Thread):
       perturbedGeomVFile.write(execute('geom_fromVoronoiTessellation '+
                      ' -g '+' '.join(map(str, options.grid)),streamIn=perturbedSeedsVFile)[0])
       perturbedGeomVFile.reset()
+
 #--- evaluate current seeds file ----------------------------------------------------------------------
-      perturbedGeomTable = damask.ASCIItable(perturbedGeomVFile,labeled=False,readonly=True)
+      perturbedGeomTable = damask.ASCIItable(perturbedGeomVFile,None,labeled=False,readonly=True)
       perturbedGeomTable.head_read()
       for i in perturbedGeomTable.info:
         if i.startswith('microstructures'): myNmicrostructures = int(i.split('\t')[1])
@@ -233,16 +236,12 @@ points = float(reduce(mul,options.grid))
 
 # ----------- calculate target distribution and bin edges
 targetGeomFile = os.path.splitext(os.path.basename(options.target))[0]+'.geom'
-targetGeomTable = damask.ASCIItable(targetGeomFile,labeled=False,readonly=True)
+targetGeomTable = damask.ASCIItable(targetGeomFile,None,labeled=False,readonly=True)
 targetGeomTable.head_read()
-
-for i in targetGeomTable.info:
-  if i.startswith('microstructures'): nMicrostructures = int(i.split()[1])
-  if i.startswith('grid'):            targetPoints     = int(np.array(map(float,i.split()[2:7:2])).prod())
-
-targetGeomTable.data_readArray()
-
-targetVolFrac = np.bincount(targetGeomTable.data.astype(int).ravel())[1:nMicrostructures+1]/targetPoints
+info,devNull =  targetGeomTable.head_getGeom()
+nMicrostructures = info['microstructures']
+targetVolFrac = np.bincount(targetGeomTable.microstructure_read(info['grid']))[1:nMicrostructures+1]/\
+                                                                       float(info['grid'].prod())
 target=[]
 for i in xrange(1,nMicrostructures+1):
   targetHist,targetBins = np.histogram(targetVolFrac,bins=i) #bin boundaries
@@ -266,7 +265,7 @@ initialGeomVFile = StringIO()
 initialGeomVFile.write(execute('geom_fromVoronoiTessellation '+
                                ' -g '+' '.join(map(str, options.grid)),bestSeedsVFile)[0])
 initialGeomVFile.reset()
-initialGeomTable = damask.ASCIItable(initialGeomVFile,labeled=False,readonly=True)
+initialGeomTable = damask.ASCIItable(initialGeomVFile,None,labeled=False,readonly=True)
 initialGeomTable.head_read()
 info,devNull =  initialGeomTable.head_getGeom()
 
@@ -295,7 +294,6 @@ else:
 if match >0: print 'Stage %i cleared'%match
 sys.stdout.flush()
 initialGeomVFile.close()
-
 
 # start mulithreaded monte carlo simulation
 threads=[]

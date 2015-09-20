@@ -417,8 +417,8 @@ subroutine AL_formResidual(in,x_scal,f_scal,dummy,ierr)
      if (iand(debug_level(debug_spectral),debug_spectralRotation) /= 0) &
        write(6,'(/,a,/,3(3(f12.7,1x)/))',advance='no') ' deformation gradient aim (lab) =', &
                              math_transpose33(math_rotate_backward33(F_aim,params%rotation_BC))
-   write(6,'(/,a,/,3(3(f12.7,1x)/))',advance='no') ' deformation gradient aim =', &
-                                 math_transpose33(F_aim)
+     write(6,'(/,a,/,3(3(f12.7,1x)/))',advance='no') ' deformation gradient aim =', &
+                                   math_transpose33(F_aim)
      flush(6)
    endif
  endif newIteration
@@ -669,8 +669,7 @@ subroutine AL_forward(guess,timeinc,timeinc_old,loadCaseTime,F_BC,P_BC,rotation_
    Fdot =  Utilities_calculateRate(math_rotate_backward33(f_aimDot,rotation_BC), &
                   timeinc_old,guess,F_lastInc,reshape(F,[3,3,grid(1),grid(2),grid3]))
    F_lambdaDot =  Utilities_calculateRate(math_rotate_backward33(f_aimDot,rotation_BC), &
-                  timeinc_old,guess,F_lambda_lastInc,reshape(F_lambda,[3,3,grid(1), &
-                                                          grid(2),grid3]))  
+                  timeinc_old,guess,F_lambda_lastInc,reshape(F_lambda,[3,3,grid(1),grid(2),grid3]))  
    F_lastInc        = reshape(F,       [3,3,grid(1),grid(2),grid3])
    F_lambda_lastInc = reshape(F_lambda,[3,3,grid(1),grid(2),grid3])
  endif
