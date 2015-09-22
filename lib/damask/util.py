@@ -6,6 +6,21 @@ import numpy as np
 from optparse import OptionParser, Option
 
 # -----------------------------
+def croak(self,
+          what,
+          newline = True):
+# -----------------------------
+  sys.stderr.write(('\n'.join(map(str,what)) if not hasattr(what, "strip")
+                                                and hasattr(what, "__getitem__")
+                                                or  hasattr(what, "__iter__") else str(what))
+                  +('\n' if newline else ''))
+
+# -----------------------------
+def report(who,what):
+# -----------------------------
+  croak( ('\033[1m'+str(who)+'\033[0m' if who else '') + (': '+what if what else '') )
+
+# -----------------------------
 def emph(what):
 # -----------------------------
   return '\033[1m'+str(what)+'\033[0m'
