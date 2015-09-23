@@ -52,7 +52,7 @@ parser.set_defaults(immutable = [])
 
 options.immutable = map(int,options.immutable)
 
-#--- setup file handles --------------------------------------------------------------------------   
+#--- setup file handles --------------------------------------------------------------------------
 files = []
 if filenames == []:
  files.append({'name':'STDIN',
@@ -74,7 +74,7 @@ for file in files:
   if file['name'] != 'STDIN': file['croak'].write('\033[1m'+scriptName+'\033[0m: '+file['name']+'\n')
   else: file['croak'].write('\033[1m'+scriptName+'\033[0m\n')
 
-  theTable = damask.ASCIItable(file['input'],file['output'],labels = False,buffered = False)
+  theTable = damask.ASCIItable(file['input'],file['output'],labeled = False,buffered = False)
   theTable.head_read()
 
 #--- interpret header ----------------------------------------------------------------------------
@@ -137,8 +137,8 @@ for file in files:
   microstructure = np.tile(microstructure.reshape(info['grid'],order='F'),
                               np.where(info['grid'] == 1, 2,1))                                                                     # make one copy along dimensions with grid == 1
   grid = np.array(microstructure.shape)
-  
-#--- initialize support data -----------------------------------------------------------------------  
+
+#--- initialize support data -----------------------------------------------------------------------
 
   periodic_microstructure = np.tile(microstructure,(3,3,3))[grid[0]/2:-grid[0]/2,
                                                                grid[1]/2:-grid[1]/2,
@@ -151,7 +151,7 @@ for file in files:
   gauss[:,grid[1]/2::,:] = gauss[:,round(grid[1]/2.)-1::-1,:]
   gauss[grid[0]/2::,:,:] = gauss[round(grid[0]/2.)-1::-1,:,:]
   gauss = np.fft.rfftn(gauss)
-  
+
   interfacialEnergy = lambda A,B: (A*B != 0)*(A != B)*1.0
   struc = ndimage.generate_binary_structure(3,1)                                                                                    # 3D von Neumann neighborhood
 
@@ -201,7 +201,7 @@ for file in files:
     microstructure = np.where(immutable, microstructure_original,microstructure)                                                    # undo any changes involving immutable microstructures
 
 # --- renumber to sequence 1...Ngrains if requested ------------------------------------------------
-#  http://stackoverflow.com/questions/10741346/np-frequency-counts-for-unique-values-in-an-array  
+#  http://stackoverflow.com/questions/10741346/np-frequency-counts-for-unique-values-in-an-array
 
   if options.renumber:
     newID = 0
@@ -229,14 +229,14 @@ for file in files:
     "microstructures\t%i"%(newInfo['microstructures']),
     ])
   theTable.head_write()
-  
+
 # --- write microstructure information ------------------------------------------------------------
   formatwidth = int(math.floor(math.log10(microstructure.max())+1))
   theTable.data = microstructure[0:info['grid'][0],0:info['grid'][1],0:info['grid'][2]].reshape(np.prod(info['grid']),order='F').transpose() # question PE: this assumes that only the Z dimension can be 1!
   theTable.data_writeArray('%%%ii'%(formatwidth),delimiter=' ')
-    
+
 #--- output finalization --------------------------------------------------------------------------
   if file['name'] != 'STDIN':
-    theTable.input_close() 
-    theTable.output_close() 
+    theTable.input_close()
+    theTable.output_close()
     os.rename(file['name']+'_tmp',file['name'])
