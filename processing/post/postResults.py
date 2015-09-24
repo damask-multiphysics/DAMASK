@@ -150,12 +150,13 @@ class MPIEspectral_result:    # mimic py_post result object
        self.fourByteLimit = 2**31 -1 -8
     else:
        self.tagLen=0
+    self.expectedFileSize = self.dataOffset+self.N_increments*(self.tagLen+self.N_elements*self.N_element_scalars*8)
+    if options.legacy: self.expectedFileSize+=self.expectedFileSize//self.fourByteLimit*8             # add extra 8 bytes for additional headers at 4 GB limits
+    if self.expectedFileSize != self.filesize:
+      print '\n**\n* Unexpected file size. Incomplete simulation or file corrupted!\n**'
 
   def __str__(self):
 
-    expectedFileSize = self.dataOffset+self.N_increments*(self.tagLen+self.N_elements*self.N_element_scalars*8)
-    if options.legacy:
-      expectedFileSize+=expectedFileSize//self.fourByteLimit*8             # add extra 8 bytes for additional headers at 4 GB limits
 
     return '\n'.join([
       'workdir: %s'%self.wd,
@@ -165,7 +166,7 @@ class MPIEspectral_result:    # mimic py_post result object
       'size: %s'%(','.join(map(str,self.size))),
       'header size: %i'%self.dataOffset,
       'actual   file size: %i'%self.filesize,
-      'expected file size: %i'%expectedFileSize,
+      'expected file size: %i'%self.expectedFileSize,
       'positions in file : %i'%self.N_positions,
       'starting increment: %i'%self.startingIncrement,
       ]
