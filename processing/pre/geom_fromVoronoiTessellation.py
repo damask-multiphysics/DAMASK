@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 no BOM -*-
 
-import os,re,sys,math,string
+import os,sys,math,string
 import numpy as np
 import multiprocessing
 from optparse import OptionParser
@@ -75,9 +75,10 @@ def laguerreTessellation(undeformed, coords, weights, grains, nonperiodic = Fals
                ]).astype(float)
       
     squaredweights = np.power(np.tile(weights,len(copies)),2)                                       # Laguerre weights (squared, size N*n)
-    
+   
     for i,vec in enumerate(copies):                                                                 # periodic copies of seed points (size N*n)
-        seeds = np.append(seeds, coords+vec, axis=0) if i > 0 else coords+vec
+      try: seeds = np.append(seeds, coords+vec, axis=0)
+      except NameError: seeds = coords+vec
 
     arguments = [[arg] + [seeds,squaredweights] for arg in list(undeformed)]
 
@@ -196,10 +197,10 @@ if filenames == []: filenames = [None]
 for name in filenames:
   try:
     table = damask.ASCIItable(name = name,
-                              outname = os.path.splitext(name)[0]+'.geom' if name else name,
+                              outname = os.path.splitext(name)[-2]+'.geom' if name else name,
                               buffered = False)
   except: continue
-  table.croak('\033[1m'+scriptName+'\033[0m'+(': '+name if name else ''))
+  damask.util.report(scriptName,name)
 
 # --- read header ----------------------------------------------------------------------------
 
@@ -242,9 +243,9 @@ for name in filenames:
   if options.laguerre and not hasWeights:  remarks.append('missing seed weights...')
   else: labels += [options.weight]
 
-  if remarks != []: table.croak(remarks)
+  if remarks != []: damask.util.croak(remarks)
   if errors != []:
-    table.croak(errors)
+    damask.util.croak(errors)
     table.close(dismiss=True)
     continue
 
@@ -264,10 +265,10 @@ for name in filenames:
   y = (np.arange(info['grid'][1])+0.5)*info['size'][1]/info['grid'][1]
   z = (np.arange(info['grid'][2])+0.5)*info['size'][2]/info['grid'][2]
   
-  table.croak('tessellating...')
+  damask.util.croak('tessellating...')
 
 
-  table.croak('...using {} cpu{}'.format(options.cpus, 's' if options.cpus > 1 else ''))
+  damask.util.croak('...using {} cpu{}'.format(options.cpus, 's' if options.cpus > 1 else ''))
   grid = np.vstack(meshgrid2(x, y, z)).reshape(3,-1).T
   indices = laguerreTessellation(grid, coords, weights, grains, options.nonperiodic, options.cpus)
     
@@ -278,7 +279,7 @@ for name in filenames:
 
   if info['homogenization'] == 0: info['homogenization'] = options.homogenization
   
-  table.croak(['grid     a b c:  %s'%(' x '.join(map(str,info['grid']))),
+  damask.util.croak(['grid     a b c:  %s'%(' x '.join(map(str,info['grid']))),
                'size     x y z:  %s'%(' x '.join(map(str,info['size']))),
                'origin   x y z:  %s'%(' : '.join(map(str,info['origin']))),
                'homogenization:  %i'%info['homogenization'],

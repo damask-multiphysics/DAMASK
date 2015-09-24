@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 no BOM -*-
 
-import os,sys,string,re,math,itertools
+import os,sys,string,math,itertools
 import numpy as np
 from scipy import ndimage
 from optparse import OptionParser
@@ -132,14 +132,14 @@ for name in filenames:
     table = damask.ASCIItable(name = name,
                               buffered = False, labeled = False, readonly = True)
   except: continue
-  table.croak('\033[1m'+scriptName+'\033[0m'+(': '+name if name else ''))
+  damask.util.report(scriptName,name)
 
 # --- interpret header ----------------------------------------------------------------------------
 
   table.head_read()
   info,extra_header = table.head_getGeom()
   
-  table.croak(['grid     a b c:  %s'%(' x '.join(map(str,info['grid']))),
+  damask.util.croak(['grid     a b c:  %s'%(' x '.join(map(str,info['grid']))),
                'size     x y z:  %s'%(' x '.join(map(str,info['size']))),
                'origin   x y z:  %s'%(' : '.join(map(str,info['origin']))),
                'homogenization:  %i'%info['homogenization'],
@@ -150,7 +150,7 @@ for name in filenames:
   if np.any(info['grid'] < 1):    errors.append('invalid grid a b c.')
   if np.any(info['size'] <= 0.0): errors.append('invalid size x y z.')
   if errors != []:
-    table.croak(errors)
+    damask.util.croak(errors)
     table.close(dismiss = True)
     continue
 
@@ -187,7 +187,7 @@ for name in filenames:
                                 buffered = False, labeled = False)
     except: continue
 
-    table.croak(features[feature]['alias'][0])
+    damask.util.croak(features[feature]['alias'][0])
       
     distance = np.where(uniques >= features[feature]['aliens'],0.0,1.0)                             # seed with 0.0 when enough unique neighbor IDs are present
     distance = ndimage.morphology.distance_transform_edt(distance)*[options.scale]*3

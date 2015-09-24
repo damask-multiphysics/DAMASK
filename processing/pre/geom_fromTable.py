@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 no BOM -*-
 
-import os,sys,re,string,math
+import os,sys,string,math
 import scipy.spatial, numpy as np
 from optparse import OptionParser
 import damask
@@ -119,10 +119,10 @@ if filenames == []: filenames = [None]
 for name in filenames:
   try:
     table = damask.ASCIItable(name = name,
-                              outname = os.path.splitext(name)[0]+'.geom' if name else name,
+                              outname = os.path.splitext(name)[-2]+'.geom' if name else name,
                               buffered = False)
   except: continue
-  table.croak(damask.util.emph(scriptName)+(': '+name if name else ''))
+  damask.util.report(scriptName,name)
 
 # ------------------------------------------ read head ---------------------------------------  
 
@@ -141,7 +141,7 @@ for name in filenames:
     errors.append('phase column {} is not scalar.'.format(options.phase))
   
   if errors  != []:
-    table.croak(errors)
+    damask.util.croak(errors)
     table.close(dismiss = True)
     continue
 
@@ -173,7 +173,7 @@ for name in filenames:
     errors.append('regular grid spacing {} violated.'.format(' x '.join(map(repr,delta))))
 
   if errors  != []:
-    table.croak(errors)
+    damask.util.croak(errors)
     table.close(dismiss = True)
     continue
   
@@ -198,7 +198,7 @@ for name in filenames:
     for z in xrange(grid[2]):
       for y in xrange(grid[1]):
         for x in xrange(grid[0]):
-          if (myRank+1)%(N/100.) < 1: table.croak('.',False)
+          if (myRank+1)%(N/100.) < 1: damask.util.croak('.',False)
           myData = table.data[index[myRank]]
           mySym = options.symmetry[min(int(myData[colPhase]),len(options.symmetry))-1]                # select symmetry from option (take last specified option for all with higher index)
           if inputtype == 'eulers':
@@ -236,7 +236,7 @@ for name in filenames:
 
           myRank += 1
 
-    table.croak('')
+    damask.util.croak('')
 
 # --- generate header ----------------------------------------------------------------------------
 
@@ -248,7 +248,7 @@ for name in filenames:
           'homogenization':  options.homogenization,
          }
 
-  table.croak(['grid     a b c:  %s'%(' x '.join(map(str,info['grid']))),
+  damask.util.croak(['grid     a b c:  %s'%(' x '.join(map(str,info['grid']))),
                'size     x y z:  %s'%(' x '.join(map(str,info['size']))),
                'origin   x y z:  %s'%(' : '.join(map(str,info['origin']))),
                'homogenization:  %i'%info['homogenization'],

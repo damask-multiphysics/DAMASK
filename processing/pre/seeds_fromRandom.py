@@ -205,8 +205,8 @@ for name in filenames:
     "randomSeed\t{}".format(options.randomSeed),
     ])
   table.labels_clear()
-  table.labels_append( ['{dim}_{label}'.format(dim = 1+i,label = 'pos')   for i in xrange(3)] +
-                       ['{dim}_{label}'.format(dim = 1+i,label = 'eulerangles') for i in xrange(3)] + 
+  table.labels_append( ['{dim}_{label}'.format(dim = 1+k,label = 'pos')   for k in xrange(3)] +
+                       ['{dim}_{label}'.format(dim = 1+k,label = 'eulerangles') for k in xrange(3)] + 
                        ['microstructure'] +
                       (['weight'] if options.weights else []))
   table.head_write()

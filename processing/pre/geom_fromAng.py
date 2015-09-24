@@ -63,7 +63,7 @@ for name in filenames:
     table = damask.ASCIItable(name = name, outname = os.path.splitext(name)[0] +'%s'%('_material.config' if options.config else '.geom'),
                               buffered = False, labeled = False, readonly=True)
   except: continue
-  table.croak(damask.util.emph(scriptName)+(': '+name if name else ''))
+  damask.util.report(scriptName,name)
 
   info = {
           'grid':   np.ones(3,'i'),
@@ -86,7 +86,7 @@ for name in filenames:
     if words[0] == '#':                                                                               # process initial comments/header block
       if len(words) > 2:
         if words[2].lower() == 'hexgrid': 
-          table.croak('The file has HexGrid format. Please first convert to SquareGrid...\n')
+          damask.util.croak('The file has HexGrid format. Please first convert to SquareGrid...\n')
           break
     else:
       currPos = words[3:5]
@@ -110,10 +110,10 @@ for name in filenames:
 
   limits = [360,180,360]
   if any([np.any(eulerangles[:,i]>=limits[i]) for i in [0,1,2]]):
-    table.croak('Error: euler angles out of bound. Ang file might contain unidexed poins.\n')
+    damask.util.croak('Error: euler angles out of bound. Ang file might contain unidexed poins.\n')
     for i,angle in enumerate(['phi1','PHI','phi2']):
       for n in np.nditer(np.where(eulerangles[:,i]>=limits[i]),['zerosize_ok']):
-        table.croak('%s in line %i (%4.2f %4.2f %4.2f)\n'
+        damask.util.croak('%s in line %i (%4.2f %4.2f %4.2f)\n'
                                      %(angle,n,eulerangles[n,0],eulerangles[n,1],eulerangles[n,2]))
     continue
   eulerangles=np.around(eulerangles,int(options.precision))                                         # round to desired precision
@@ -154,17 +154,17 @@ for name in filenames:
   info['microstructures'] = len(microstructure)
 
 #--- report ---------------------------------------------------------------------------------------
-  table.croak('grid     a b c:  %s\n'%(' x '.join(map(str,info['grid']))) +
+  damask.util.croak('grid     a b c:  %s\n'%(' x '.join(map(str,info['grid']))) +
               'size     x y z:  %s\n'%(' x '.join(map(str,info['size']))) +
               'origin   x y z:  %s\n'%(' : '.join(map(str,info['origin']))) +
               'homogenization:  %i\n'%info['homogenization'] +
               'microstructures: %i\n\n'%info['microstructures'])
 
   if np.any(info['grid'] < 1):
-    table.croak('invalid grid a b c.\n')
+    damask.util.croak('invalid grid a b c.\n')
     continue
   if np.any(info['size'] <= 0.0):
-    table.croak('invalid size x y z.\n')
+    damask.util.croak('invalid size x y z.\n')
     continue
 
 
