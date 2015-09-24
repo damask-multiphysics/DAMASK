@@ -185,6 +185,7 @@ logical elemental function prec_isNaN(a)
  real(pReal), intent(in) :: a
 
 #if defined(__GFORTRAN__) || defined(Abaqus)
+ intrinsic :: isNaN
  prec_isNaN = isNaN(a)
 #else
  prec_isNaN = IEEE_is_NaN(a)
