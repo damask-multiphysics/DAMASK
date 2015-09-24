@@ -150,58 +150,51 @@ subroutine homogenization_init
    call homogenization_isostrain_init(FILEUNIT)
  if (any(homogenization_type == HOMOGENIZATION_RGC_ID)) &
    call homogenization_RGC_init(FILEUNIT)
- close(FILEUNIT)
+
  
 !--------------------------------------------------------------------------------------------------
 ! parse thermal from config file
- if (.not. IO_open_jobFile_stat(FILEUNIT,material_localFileExt)) &                                  ! no local material configuration present...
-   call IO_open_file(FILEUNIT,material_configFile)                                                  ! ... open material.config file
+ call IO_checkAndRewind(FILEUNIT)
  if (any(thermal_type == THERMAL_isothermal_ID)) &
    call thermal_isothermal_init()
  if (any(thermal_type == THERMAL_adiabatic_ID)) &
    call thermal_adiabatic_init(FILEUNIT)
  if (any(thermal_type == THERMAL_conduction_ID)) &
    call thermal_conduction_init(FILEUNIT)
- close(FILEUNIT)
+
  
 !--------------------------------------------------------------------------------------------------
 ! parse damage from config file
- if (.not. IO_open_jobFile_stat(FILEUNIT,material_localFileExt)) &                                  ! no local material configuration present...
-   call IO_open_file(FILEUNIT,material_configFile)                                                  ! ... open material.config file
+ call IO_checkAndRewind(FILEUNIT)
  if (any(damage_type == DAMAGE_none_ID)) &
    call damage_none_init()
  if (any(damage_type == DAMAGE_local_ID)) &
    call damage_local_init(FILEUNIT)
  if (any(damage_type == DAMAGE_nonlocal_ID)) &
    call damage_nonlocal_init(FILEUNIT)
- close(FILEUNIT)
- 
+
+
 !--------------------------------------------------------------------------------------------------
 ! parse vacancy transport from config file
- if (.not. IO_open_jobFile_stat(FILEUNIT,material_localFileExt)) &                                  ! no local material configuration present...
-   call IO_open_file(FILEUNIT,material_configFile)                                                  ! ... open material.config file
+ call IO_checkAndRewind(FILEUNIT)
  if (any(vacancyflux_type == VACANCYFLUX_isoconc_ID)) &
    call vacancyflux_isoconc_init()
  if (any(vacancyflux_type == VACANCYFLUX_isochempot_ID)) &
    call vacancyflux_isochempot_init(FILEUNIT)
  if (any(vacancyflux_type == VACANCYFLUX_cahnhilliard_ID)) &
    call vacancyflux_cahnhilliard_init(FILEUNIT)
- close(FILEUNIT)
- 
+
 !--------------------------------------------------------------------------------------------------
 ! parse porosity from config file
- if (.not. IO_open_jobFile_stat(FILEUNIT,material_localFileExt)) &                                  ! no local material configuration present...
-   call IO_open_file(FILEUNIT,material_configFile)                                                  ! ... open material.config file
+ call IO_checkAndRewind(FILEUNIT)
  if (any(porosity_type == POROSITY_none_ID)) &
    call porosity_none_init()
  if (any(porosity_type == POROSITY_phasefield_ID)) &
    call porosity_phasefield_init(FILEUNIT)
- close(FILEUNIT)
- 
+
 !--------------------------------------------------------------------------------------------------
 ! parse hydrogen transport from config file
- if (.not. IO_open_jobFile_stat(FILEUNIT,material_localFileExt)) &                                  ! no local material configuration present...
-   call IO_open_file(FILEUNIT,material_configFile)                                                  ! ... open material.config file
+ call IO_checkAndRewind(FILEUNIT)
  if (any(hydrogenflux_type == HYDROGENFLUX_isoconc_ID)) &
    call hydrogenflux_isoconc_init()
  if (any(hydrogenflux_type == HYDROGENFLUX_cahnhilliard_ID)) &
