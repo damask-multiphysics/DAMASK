@@ -51,14 +51,14 @@ for name in filenames:
     table = damask.ASCIItable(name = name,
                               buffered = False, labeled = False)
   except: continue
-  table.croak(damask.util.emph(scriptName)+(': '+name if name else ''))
+  damask.util.report(scriptName,name)
 
 # --- interpret header ----------------------------------------------------------------------------
 
   table.head_read()
   info,extra_header = table.head_getGeom()
 
-  table.croak(['grid     a b c:  %s'%(' x '.join(map(str,info['grid']))),
+  damask.util.croak(['grid     a b c:  %s'%(' x '.join(map(str,info['grid']))),
                'size     x y z:  %s'%(' x '.join(map(str,info['size']))),
                'origin   x y z:  %s'%(' : '.join(map(str,info['origin']))),
                'homogenization:  %i'%info['homogenization'],
@@ -69,7 +69,7 @@ for name in filenames:
   if np.any(info['grid'] < 1):    errors.append('invalid grid a b c.')
   if np.any(info['size'] <= 0.0): errors.append('invalid size x y z.')
   if errors != []:
-    table.croak(errors)
+    damask.util.croak(errors)
     table.close(dismiss = True)
     continue
 
@@ -97,19 +97,20 @@ for name in filenames:
   remarks = []
   if (any(newInfo['origin']          != info['origin'])):         remarks.append('--> origin   x y z:  %s'%(' : '.join(map(str,newInfo['origin']))))
   if (    newInfo['microstructures'] != info['microstructures']): remarks.append('--> microstructures: %i'%newInfo['microstructures'])
-  if remarks != []: table.croak(remarks)
+  if remarks != []: damask.util.croak(remarks)
 
 # --- write header ---------------------------------------------------------------------------------
 
   table.labels_clear()
   table.info_clear()
-  table.info_append(extra_header+[
+  table.info_append([
     scriptID + ' ' + ' '.join(sys.argv[1:]),
     "grid\ta {grid[0]}\tb {grid[1]}\tc {grid[2]}".format(grid=info['grid']),
     "size\tx {size[0]}\ty {size[1]}\tz {size[2]}".format(size=info['size']),
     "origin\tx {origin[0]}\ty {origin[1]}\tz {origin[2]}".format(origin=newInfo['origin']),
     "homogenization\t{homog}".format(homog=info['homogenization']),
     "microstructures\t{microstructures}".format(microstructures=newInfo['microstructures']),
+    extra_header
     ])
   table.head_write()
 

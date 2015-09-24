@@ -310,9 +310,9 @@ for name in filenames:
     for ID in grainIDs:
       eulerID = np.nonzero(grains == ID)[0][0]                                                      # find first occurrence of this grain id
       config_header += ['[Grain%s]'%(str(ID).zfill(formatwidth)),
-                        'axes\t%s %s %s'%tuple(options.axes) if options.axes != None else '',
-                        '(gauss)\tphi1 %g\tPhi %g\tphi2 %g\tscatter 0.0\tfraction 1.0'%tuple(eulers[eulerID]),
+                        '(gauss)\tphi1 %g\tPhi %g\tphi2 %g\tscatter 0.0\tfraction 1.0'%tuple(eulers[eulerID])
                        ]
+      if options.axes != None: config_header.append('axes\t%s %s %s'%tuple(options.axes))
   
   table.labels_clear()
   table.info_clear()

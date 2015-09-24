@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 no BOM -*-
 
-import os,re,sys,math,string
+import os,sys,math,string
 import numpy as np
 from optparse import OptionParser
 import damask
@@ -69,32 +69,32 @@ options.center = np.array(options.center)
 invRotation = rotation.conjugated()                                                             # rotation of gridpos into primitive coordinate system
 
 # --- loop over input files -------------------------------------------------------------------------
-
-if filenames == []: filenames = ['STDIN']
+if filenames == []: filenames = [None]
 
 for name in filenames:
-  if not (name == 'STDIN' or os.path.exists(name)): continue
-  table = damask.ASCIItable(name = name, outname = name+'_tmp',
-                            buffered = False, labeled = False)
-  table.croak('\033[1m'+scriptName+'\033[0m'+(': '+name if name != 'STDIN' else ''))
+  try:
+    table = damask.ASCIItable(name = name,
+                              buffered = False, labeled = False)
+  except: continue
+  damask.util.report(scriptName,name)
 
 # --- interpret header ----------------------------------------------------------------------------
 
   table.head_read()
   info,extra_header = table.head_getGeom()
   
-  table.croak(['grid     a b c:  %s'%(' x '.join(map(str,info['grid']))),
-               'size     x y z:  %s'%(' x '.join(map(str,info['size']))),
-               'origin   x y z:  %s'%(' : '.join(map(str,info['origin']))),
-               'homogenization:  %i'%info['homogenization'],
-               'microstructures: %i'%info['microstructures'],
+  damask.util.croak(['grid     a b c:  %s'%(' x '.join(map(str,info['grid']))),
+                     'size     x y z:  %s'%(' x '.join(map(str,info['size']))),
+                     'origin   x y z:  %s'%(' : '.join(map(str,info['origin']))),
+                     'homogenization:  %i'%info['homogenization'],
+                     'microstructures: %i'%info['microstructures'],
               ])
 
   errors = []
   if np.any(info['grid'] < 1):    errors.append('invalid grid a b c.')
   if np.any(info['size'] <= 0.0): errors.append('invalid size x y z.')
   if errors != []:
-    table.croak(errors)
+    damask.util.croak(errors)
     table.close(dismiss = True)
     continue
 
@@ -137,7 +137,7 @@ for name in filenames:
 
   remarks = []
   if (    newInfo['microstructures'] != info['microstructures']): remarks.append('--> microstructures: %i'%newInfo['microstructures'])
-  if remarks != []: table.croak(remarks)
+  if remarks != []: damask.util.croak(remarks)
 
 #--- write header ---------------------------------------------------------------------------------
 
@@ -148,7 +148,8 @@ for name in filenames:
     "size\tx {size[0]}\ty {size[1]}\tz {size[2]}".format(size=info['size']),
     "origin\tx {origin[0]}\ty {origin[1]}\tz {origin[2]}".format(origin=info['origin']),
     "homogenization\t{homog}".format(homog=info['homogenization']),
-    "microstructures\t{microstructures}".format(microstructures=newInfo['microstructures'])
+    "microstructures\t{microstructures}".format(microstructures=newInfo['microstructures']),
+    extra_header
     ])
   table.labels_clear()
   table.head_write()
@@ -160,7 +161,6 @@ for name in filenames:
   table.data = microstructure.reshape((info['grid'][0],info['grid'][1]*info['grid'][2]),order='F').transpose()
   table.data_writeArray('%%%ii'%(formatwidth),delimiter = ' ')
 
-# --- output finalization --------------------------------------------------------------------------
+#--- output finalization --------------------------------------------------------------------------
 
-  table.close()                                                                                     # close ASCII table
-  if name != 'STDIN': os.rename(name+'_tmp',name)                                                   # overwrite old one with tmp new
+  table.close()
