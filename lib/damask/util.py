@@ -6,8 +6,7 @@ import numpy as np
 from optparse import OptionParser, Option
 
 # -----------------------------
-def croak(self,
-          what,
+def croak(what,
           newline = True):
 # -----------------------------
   sys.stderr.write(('\n'.join(map(str,what)) if not hasattr(what, "strip")
