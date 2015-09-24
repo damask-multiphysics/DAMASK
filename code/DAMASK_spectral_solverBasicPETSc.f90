@@ -190,8 +190,8 @@ subroutine basicPETSc_init
    F = reshape(F_lastInc,[9,grid(1),grid(2),grid3])
  endif restart
 
- call Utilities_updateIPcoords(F)
- call Utilities_constitutiveResponse(F_lastInc, F, &
+ call Utilities_updateIPcoords(reshape(F,shape(F_lastInc)))
+ call Utilities_constitutiveResponse(F_lastInc, reshape(F,shape(F_lastInc)), &
     0.0_pReal, &
     P, &
     C_volAvg,C_minMaxAvg, &                                                                         ! global average of stiffness and (min+max)/2
@@ -316,7 +316,6 @@ subroutine BasicPETSC_formResidual(in,x_scal,f_scal,dummy,ierr)
    utilities_FFTtensorForward, &
    utilities_FFTtensorBackward, &
    utilities_fourierGammaConvolution, &
-   Utilities_inverseLaplace, &
    Utilities_constitutiveResponse, &
    Utilities_divergenceRMS
  use IO, only: &

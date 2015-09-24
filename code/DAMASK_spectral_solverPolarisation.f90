@@ -217,8 +217,8 @@ subroutine Polarisation_init
    F_tau_lastInc = 2.0_pReal*F_lastInc
  endif restart
 
- call Utilities_updateIPcoords(F)
- call Utilities_constitutiveResponse(F_lastInc,F,&
+ call Utilities_updateIPcoords(reshape(F,shape(F_lastInc)))
+ call Utilities_constitutiveResponse(F_lastInc, reshape(F,shape(F_lastInc)), &
    0.0_pReal,P,C_volAvg,C_minMaxAvg,temp33_Real,.false.,math_I3)
  nullify(F)
  nullify(F_tau)
@@ -350,7 +350,6 @@ subroutine Polarisation_formResidual(in,x_scal,f_scal,dummy,ierr)
    tensorField_real, &
    utilities_FFTtensorForward, &
    utilities_fourierGammaConvolution, &
-   Utilities_inverseLaplace, &
    utilities_FFTtensorBackward, &
    Utilities_constitutiveResponse, &
    Utilities_divergenceRMS, &

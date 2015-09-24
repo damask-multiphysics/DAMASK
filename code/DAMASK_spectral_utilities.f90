@@ -139,7 +139,6 @@ module DAMASK_spectral_utilities
    utilities_FFTscalarBackward, &
    utilities_fourierGammaConvolution, &
    utilities_fourierGreenConvolution, &
-   utilities_inverseLaplace, &
    utilities_divergenceRMS, &
    utilities_curlRMS, &
    utilities_fourierScalarGradient, &
@@ -215,7 +214,8 @@ subroutine utilities_init()
    tensorField, &                                                                                   !< field containing data for FFTW in real and fourier space (in place)
    vectorField, &                                                                                   !< field containing data for FFTW in real space when debugging FFTW (no in place)
    scalarField                                                                                      !< field containing data for FFTW in real space when debugging FFTW (no in place)
- integer(C_INTPTR_T) :: gridFFTW(3), alloc_local, local_K, local_K_offset
+ integer(C_INTPTR_T), dimension(3) :: gridFFTW
+ integer(C_INTPTR_T) :: alloc_local, local_K, local_K_offset
  integer(C_INTPTR_T), parameter :: &
    scalarSize = 1_C_INTPTR_T, &
    vecSize = 3_C_INTPTR_T, &
@@ -500,6 +500,7 @@ subroutine utilities_FFTscalarForward()
  
 end subroutine utilities_FFTscalarForward
 
+
 !--------------------------------------------------------------------------------------------------
 !> @brief backward FFT of data in scalarField_fourier to scalarField_real
 !> @details Does an weighted inverse FFT transform from complex to real
@@ -511,6 +512,7 @@ subroutine utilities_FFTscalarBackward()
  scalarField_real = scalarField_real * wgt                                                    ! normalize the result by number of elements
 
 end subroutine utilities_FFTscalarBackward
+
 
 !--------------------------------------------------------------------------------------------------
 !> @brief forward FFT of data in field_real to field_fourier with highest freqs. removed
@@ -537,6 +539,7 @@ subroutine utilities_FFTvectorForward()
  
 end subroutine utilities_FFTvectorForward
 
+
 !--------------------------------------------------------------------------------------------------
 !> @brief backward FFT of data in field_fourier to field_real
 !> @details Does an weighted inverse FFT transform from complex to real
@@ -549,42 +552,6 @@ subroutine utilities_FFTvectorBackward()
 
 end subroutine utilities_FFTvectorBackward
 
-!--------------------------------------------------------------------------------------------------
-!> @brief doing convolution with inverse laplace kernel
-!--------------------------------------------------------------------------------------------------
-subroutine utilities_inverseLaplace()
- use math, only: &
-   math_inv33, &
-   PI
- use numerics, only: &
-   worldrank 
- use mesh, only: &
-   grid, &
-   grid3, &
-   grid3Offset, &
-   geomSize
-
- implicit none  
- integer(pInt) :: i, j, k
- real(pReal), dimension(3) :: k_s
-
- if (worldrank == 0_pInt) then 
-   write(6,'(/,a)') ' ... doing inverse laplace .................................................'
-   flush(6)
- endif
- 
- do k = 1_pInt, grid3; do j = 1_pInt, grid(2); do i = 1_pInt, grid1Red
-   k_s = xi2nd(1:3,i,j,k)*scaledGeomSize
-   if (any(int(k_s,pInt) /= 0_pInt)) tensorField_fourier(1:3,1:3,i,j,k-grid3Offset) =  & 
-                                     tensorField_fourier(1:3,1:3,i,j,k-grid3Offset)/ &
-                                     cmplx(-sum((2.0_pReal*PI*k_s/geomSize)**2.0_pReal),0.0_pReal,pReal)
- enddo; enddo; enddo
- 
- if (grid3Offset == 0_pInt) &
-  tensorField_fourier(1:3,1:3,1,1,1) = cmplx(0.0_pReal,0.0_pReal,pReal)
-
-end subroutine utilities_inverseLaplace
- 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief doing convolution gamma_hat * field_real, ensuring that average value = fieldAim
@@ -611,7 +578,7 @@ subroutine utilities_fourierGammaConvolution(fieldAim)
    l, m, n, o
 
  if (worldrank == 0_pInt) then 
-   write(6,'(/,a)') ' ... doing gamma convolution ................................................'
+   write(6,'(/,a)') ' ... doing gamma convolution ...............................................'
    flush(6)
  endif
  
@@ -647,6 +614,7 @@ subroutine utilities_fourierGammaConvolution(fieldAim)
 
 end subroutine utilities_fourierGammaConvolution
  
+
 !--------------------------------------------------------------------------------------------------
 !> @brief doing convolution DamageGreenOp_hat * field_real
 !--------------------------------------------------------------------------------------------------
@@ -678,6 +646,7 @@ subroutine utilities_fourierGreenConvolution(D_ref, mobility_ref, deltaT)
  enddo; enddo; enddo
 
 end subroutine utilities_fourierGreenConvolution
+
 
 !--------------------------------------------------------------------------------------------------
 !> @brief calculate root mean square of divergence of field_fourier
