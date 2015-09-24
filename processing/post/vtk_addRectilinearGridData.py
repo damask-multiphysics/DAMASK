@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 no BOM -*-
 
-import os,sys,string,re,vtk
+import os,sys,string,vtk
 import damask
 from collections import defaultdict
 from optparse import OptionParser
@@ -83,7 +83,7 @@ for name in filenames:
     table = damask.ASCIItable(name = name,
                               buffered = False, readonly = True)
   except: continue
-  table.croak(damask.util.emph(scriptName)+(': '+name if name else ''))
+  damask.util.croak(damask.util.emph(scriptName)+(': '+name if name else ''))
 
 # --- interpret header ----------------------------------------------------------------------------
 
@@ -103,7 +103,7 @@ for name in filenames:
       if dim == -1: remarks.append('{} "{}" not found...'.format(datatype,me))
       elif dim > dimension: remarks.append('"{}" not of dimension{}...'.format(me,dimension))
       else:
-        table.croak('adding {} {}'.format(datatype,me))
+        damask.util.croak('adding {} {}'.format(datatype,me))
         active[datatype].append(me)
 
         if datatype in ['scalar','vector']:
@@ -114,9 +114,9 @@ for name in filenames:
         VTKarray[me].SetNumberOfComponents(dimension)
         VTKarray[me].SetName(label[i])
 
-  if remarks != []: table.croak(remarks)
+  if remarks != []: damask.util.croak(remarks)
   if errors  != []:
-    table.croak(errors)
+    damask.util.croak(errors)
     table.close(dismiss=True)
     continue
 

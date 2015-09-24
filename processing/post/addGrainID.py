@@ -1,11 +1,11 @@
 #!/usr/bin/env python
 
-import os,sys,string,itertools,re,time,copy,operator
+import os,sys,string,time,copy
 import numpy as np
 import damask
+from optparse import OptionParser
 from scipy import spatial
 from collections import defaultdict
-from optparse import OptionParser, OptionGroup, Option, SUPPRESS_HELP
 
 scriptID   = string.replace('$Id$','\n','\\n')
 scriptName = os.path.splitext(scriptID.split()[1])[0]
@@ -13,8 +13,8 @@ scriptName = os.path.splitext(scriptID.split()[1])[0]
 
 parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
 Add grain index based on similiarity of crystal lattice orientation.
-""" + string.replace(scriptID,'\n','\\n')
-)
+
+""", version = scriptID)
 
 parser.add_option('-r', '--radius',
                   dest = 'radius',
@@ -98,7 +98,7 @@ for name in filenames:
     table = damask.ASCIItable(name = name,
                               buffered = False)
   except: continue
-  table.report_name(scriptName,name)
+  damask.util.report(scriptName,name)
 
 # ------------------------------------------ read header -------------------------------------------  
 
@@ -113,9 +113,9 @@ for name in filenames:
   if not np.all(table.label_dimension(label) == dim):  errors.append('input {} has wrong dimension {}.'.format(label,dim))
   else:  column = table.label_index(label)
 
-  if remarks != []: table.croak(remarks)
+  if remarks != []: damask.util.croak(remarks)
   if errors  != []:
-    table.croak(errors)
+    damask.util.croak(errors)
     table.close(dismiss = True)
     continue
 

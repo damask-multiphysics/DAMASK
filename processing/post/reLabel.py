@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 no BOM -*-
 
-import os,re,sys,math,string
+import os,sys,string
 import damask
 from optparse import OptionParser
 
@@ -41,7 +41,7 @@ for name in filenames:
     table = damask.ASCIItable(name = name,
                               buffered = False)
   except: continue
-  table.report_name(scriptName,name)
+  damask.util.report(scriptName,name)
 
 # ------------------------------------------ read header ------------------------------------------  
 
@@ -66,9 +66,9 @@ for name in filenames:
         for j in xrange(dimensions[i]):
           table.labels[index+j] = table.labels[index+j].replace(options.label[i],options.substitute[i])
 
-  if remarks != []: table.croak(remarks)
+  if remarks != []: damask.util.croak(remarks)
   if errors  != []:
-    table.croak(errors)
+    damask.util.croak(errors)
     table.close(dismiss = True)
     continue
 

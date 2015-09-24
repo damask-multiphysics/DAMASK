@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 no BOM -*-
 
-import os,re,sys,string,fnmatch,math,random,numpy as np
+import os,re,sys
 from optparse import OptionParser
 import damask
 
@@ -58,7 +58,7 @@ for name in filenames:
     table = damask.ASCIItable(name = name,
                               buffered = False)
   except: continue
-  table.report_name(scriptName,name)
+  damask.util.report(scriptName,name)
 
 # ------------------------------------------ assemble info -----------------------------------------
 
@@ -108,7 +108,7 @@ for name in filenames:
       elif dim > 1:                                                                                 # multidimensional input (vector, tensor, etc.)
         replacement = 'np.array(table.data[{}:{}],dtype=float)'.format(idx,idx+dim)                 # use (flat) array representation
       else:
-        table.croak('column {} not found...'.format(column))
+        damask.util.croak('column {} not found...'.format(column))
         brokenFormula[label] = True
         break
       formula = formula.replace('#'+column+'#',replacement)

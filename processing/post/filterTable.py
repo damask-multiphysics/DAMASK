@@ -1,7 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 no BOM -*-
 
-import os,re,sys,string,fnmatch,math,random,numpy as np
+import os,re,sys,fnmatch
+import numpy as np
 from optparse import OptionParser
 import damask
 
@@ -63,7 +64,7 @@ for name in filenames:
     table = damask.ASCIItable(name = name,
                               buffered = False)
   except: continue
-  table.report_name(scriptName,name)
+  damask.util.report(scriptName,name)
 
 # ------------------------------------------ assemble info ---------------------------------------  
 

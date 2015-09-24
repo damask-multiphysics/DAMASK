@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 no BOM -*-
 
-import os,re,sys,string
+import os,sys,string
 import numpy as np
 from optparse import OptionParser
 import damask
@@ -39,7 +39,7 @@ for name in filenames:
     table = damask.ASCIItable(name = name,
                             buffered = False)
   except: continue
-  table.report_name(scriptName,name)
+  damask.util.report(scriptName,name)
 
 # ------------------------------------------ read header ------------------------------------------  
 
@@ -61,9 +61,9 @@ for name in filenames:
       table.labels_append('cum({})'.format(what) if dim == 1 else
                          ['{}_cum({})'.format(i+1,what) for i in xrange(dim)]  )                    # extend ASCII header with new labels
 
-  if remarks != []: table.croak(remarks)
+  if remarks != []: damask.util.croak(remarks)
   if errors  != []:
-    table.croak(errors)
+    damask.util.croak(errors)
     table.close(dismiss = True)
     continue
 

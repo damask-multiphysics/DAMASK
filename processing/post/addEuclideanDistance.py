@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 no BOM -*-
 
-import os,sys,string,re,math,itertools
+import os,sys,string,itertools
 import numpy as np
 from scipy import ndimage
 from optparse import OptionParser
@@ -129,7 +129,7 @@ for name in filenames:
     table = damask.ASCIItable(name = name, buffered = False)
   except:
     continue
-  table.report_name(scriptName,name)
+  damask.util.report(scriptName,name)
 
 # ------------------------------------------ read header ------------------------------------------
 
@@ -147,9 +147,9 @@ for name in filenames:
   if table.label_dimension(options.id) != 1: errors.append('grain identifier {} not found.'.format(options.id))
   else: idCol = table.label_index(options.id)
 
-  if remarks != []: table.croak(remarks)
+  if remarks != []: damask.util.croak(remarks)
   if errors  != []:
-    table.croak(errors)
+    damask.util.croak(errors)
     table.close(dismiss = True)
     continue
 

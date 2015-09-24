@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 no BOM -*-
 
-import os,sys,string,re,vtk
+import os,sys,vtk
 import numpy as np
 from optparse import OptionParser
 import damask
@@ -42,7 +42,7 @@ for name in filenames:
     table = damask.ASCIItable(name = name,
                               buffered = False, readonly = True)
   except: continue
-  table.croak(damask.util.emph(scriptName)+(': '+name if name else ''))
+  damask.util.croak(damask.util.emph(scriptName)+(': '+name if name else ''))
 
 # --- interpret header ----------------------------------------------------------------------------
 
@@ -55,9 +55,9 @@ for name in filenames:
   
   if table.label_dimension(options.position) != 3:  errors.append('coordinates {} are not a vector.'.format(options.position))
 
-  if remarks != []: table.croak(remarks)
+  if remarks != []: damask.util.croak(remarks)
   if errors  != []:
-    table.croak(errors)
+    damask.util.croak(errors)
     table.close(dismiss = True)
     continue
 
@@ -75,7 +75,7 @@ for name in filenames:
   
   if N != len(table.data): errors.append('data count {} does not match grid {}x{}x{}.'.format(N,*(grid - options.mode == 'cell') ))
   if errors  != []:
-    table.croak(errors)
+    damask.util.croak(errors)
     table.close(dismiss = True)
     continue
 
@@ -96,7 +96,7 @@ for name in filenames:
   rGrid.SetYCoordinates(coordArray[1])
   rGrid.SetZCoordinates(coordArray[2])
 
-  table.croak('{} points and {} cells...'.format(rGrid.GetNumberOfPoints(),rGrid.GetNumberOfCells(),))
+  damask.util.croak('{} points and {} cells...'.format(rGrid.GetNumberOfPoints(),rGrid.GetNumberOfCells(),))
  
 # ------------------------------------------ output result ---------------------------------------  
 

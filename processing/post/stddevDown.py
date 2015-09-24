@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 no BOM -*-
 
-import os,re,sys,math,string,time
+import os,sys,string
 import numpy as np
 import damask
 from optparse import OptionParser
@@ -15,7 +15,7 @@ scriptName = os.path.splitext(scriptID.split()[1])[0]
 
 parser = OptionParser(option_class=damask.extendableOption, usage='%prog [options] datafile[s]', description = """
 Calculates the standard deviation of data in blocks of size 'packing' thus reducing the former resolution
-to resolution/packing. (Requires np.)
+to resolution/packing.
 
 """, version = scriptID)
 

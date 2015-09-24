@@ -3,7 +3,6 @@
 
 import os,sys,string
 import numpy as np
-from collections import defaultdict
 from optparse import OptionParser
 import damask
 
@@ -49,7 +48,7 @@ for name in filenames:
     table = damask.ASCIItable(name = name,
                               buffered = False)
   except: continue
-  table.report_name(scriptName,name)
+  damask.util.report(scriptName,name)
 
 # ------------------------------------------ read header ------------------------------------------
 
@@ -66,9 +65,9 @@ for name in filenames:
   if table.label_dimension(options.defgrad) != 9: errors.append('deformation gradient {} is not a tensor.'.format(options.defgrad))
   else: colF = table.label_index(options.defgrad)
 
-  if remarks != []: table.croak(remarks)
+  if remarks != []: damask.util.croak(remarks)
   if errors  != []:
-    table.croak(errors)
+    damask.util.croak(errors)
     table.close(dismiss = True)
     continue
 
@@ -87,7 +86,7 @@ for name in filenames:
   
   if N != len(table.data): errors.append('data count {} does not match grid {}x{}x{}.'.format(N,*grid))
   if errors  != []:
-    table.croak(errors)
+    damask.util.croak(errors)
     table.close(dismiss = True)
     continue
   

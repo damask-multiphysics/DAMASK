@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 no BOM -*-
 
-import os,sys,string,re,vtk
+import os,sys,vtk
 import numpy as np
 from optparse import OptionParser
 import damask
@@ -53,7 +53,7 @@ for name in filenames:
     table = damask.ASCIItable(name = name,
                               buffered = False, readonly = True)
   except: continue
-  table.croak(damask.util.emph(scriptName)+(': '+name if name else ''))
+  damask.util.croak(damask.util.emph(scriptName)+(': '+name if name else ''))
 
 # --- interpret header ----------------------------------------------------------------------------
 
@@ -62,7 +62,7 @@ for name in filenames:
   if options.geom:
     info,extra_header = table.head_getGeom()
   
-    table.croak(['grid     a b c:  %s'%(' x '.join(map(str,info['grid']))),
+    damask.util.croak(['grid     a b c:  %s'%(' x '.join(map(str,info['grid']))),
                  'size     x y z:  %s'%(' x '.join(map(str,info['size']))),
                  'origin   x y z:  %s'%(' : '.join(map(str,info['origin']))),
                  'homogenization:  %i'%info['homogenization'],
@@ -80,7 +80,7 @@ for name in filenames:
   if np.any(info['grid'] < 1):    errors.append('invalid grid a b c.')
   if np.any(info['size'] <= 0.0): errors.append('invalid size x y z.')
   if errors != []:
-    table.croak(errors)
+    damask.util.croak(errors)
     table.close(dismiss = True)
     continue
 

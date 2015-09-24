@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 no BOM -*-
 
-import os,sys,string,re,vtk
+import os,sys,string,vtk
 import damask
 from optparse import OptionParser
 
@@ -36,7 +36,7 @@ for name in filenames:
     table = damask.ASCIItable(name = name,
                               buffered = False, readonly = True)
   except: continue
-  table.croak(damask.util.emph(scriptName)+(': '+name if name else ''))
+  damask.util.croak(damask.util.emph(scriptName)+(': '+name if name else ''))
 
 # --- interpret header ----------------------------------------------------------------------------
 
@@ -46,9 +46,9 @@ for name in filenames:
   remarks = []
   if table.label_dimension(options.position) != 3: errors.append('columns "{}" have dimension {}'.format(options.position,
                                                                                                          table.label_dimension(options.position)))
-  if remarks != []: table.croak(remarks)
+  if remarks != []: damask.util.croak(remarks)
   if errors  != []:
-    table.croak(errors)
+    damask.util.croak(errors)
     table.close(dismiss=True)
     continue
 

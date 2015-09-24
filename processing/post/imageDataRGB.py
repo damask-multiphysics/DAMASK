@@ -4,7 +4,7 @@
 import os,sys,string
 import numpy as np
 from optparse import OptionParser
-from PIL import Image, ImageDraw
+from PIL import Image
 import damask
 
 scriptID   = string.replace('$Id$','\n','\\n')
@@ -83,7 +83,7 @@ for name in filenames:
                               labeled = options.label != None,
                               readonly = True)
   except: continue
-  table.report_name(scriptName,name)
+  damask.util.report(scriptName,name)
 
 # ------------------------------------------ read header ------------------------------------------
 
@@ -101,7 +101,7 @@ for name in filenames:
     errors.append('column {} has wrong dimension'.format(options.label))
 
   if errors != []:
-    table.croak(errors)
+    damask.util.croak(errors)
     table.close(dismiss = True)                                                                     # close ASCII table file handles and delete output file
     continue
 
@@ -116,7 +116,7 @@ for name in filenames:
   table.data *= 1. if np.any(table.data > 1.0) else 255.0                                          # ensure 8 bit data range
 
   (height,width,bands) = table.data.shape
-  table.croak('image dimension: {0} x {1}'.format(width,height))
+  damask.util.croak('image dimension: {0} x {1}'.format(width,height))
 
   im = Image.fromarray(table.data.astype('uint8'), 'RGB').\
              crop((       options.crop[0],

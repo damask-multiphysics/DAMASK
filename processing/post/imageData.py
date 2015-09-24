@@ -4,7 +4,7 @@
 import os,sys,string
 import numpy as np
 from optparse import OptionParser
-from PIL import Image, ImageDraw, ImageOps
+from PIL import Image
 import damask
 
 scriptID   = string.replace('$Id$','\n','\\n')
@@ -118,7 +118,7 @@ for name in filenames:
                               labeled = options.label != None,
                               readonly = True)
   except: continue
-  table.report_name(scriptName,name)
+  damask.util.report(scriptName,name)
 
 # ------------------------------------------ read header ------------------------------------------
 
@@ -128,7 +128,7 @@ for name in filenames:
 
   missing_labels = table.data_readArray(options.label)
   if len(missing_labels) > 0:
-    table.croak('column {} not found.'.format(options.label))
+    damask.util.croak('column {} not found.'.format(options.label))
     table.close(dismiss = True)                                                                     # close ASCIItable and remove empty file
     continue
 
@@ -143,7 +143,7 @@ for name in filenames:
   if np.all(np.array(options.range) == 0.0):
     options.range = [table.data[mask].min(),
                      table.data[mask].max()]
-    table.croak('data range: {0} – {1}'.format(*options.range))
+    damask.util.croak('data range: {0} – {1}'.format(*options.range))
 
   delta =      max(options.range) - min(options.range)
   avg   = 0.5*(max(options.range) + min(options.range))
@@ -163,7 +163,7 @@ for name in filenames:
                   repeat(options.pixelsizey,axis = 0)
 
   (height,width) = table.data.shape
-  table.croak('image dimension: {0} x {1}'.format(width,height))
+  damask.util.croak('image dimension: {0} x {1}'.format(width,height))
 
   im = Image.fromarray(np.dstack((theColors[np.array(255*table.data,dtype = np.uint8)],
                                   255*mask.astype(np.uint8))), 'RGBA').\

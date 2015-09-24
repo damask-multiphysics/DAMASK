@@ -3,7 +3,6 @@
 
 import os,sys,string
 import numpy as np
-from collections import defaultdict
 from optparse import OptionParser
 import damask
 
@@ -43,7 +42,7 @@ for name in filenames:
     table = damask.ASCIItable(name = name,
                               buffered = False)
   except: continue
-  table.report_name(scriptName,name)
+  damask.util.report(scriptName,name)
 
 # ------------------------------------------ read header ------------------------------------------
 
@@ -62,7 +61,7 @@ for name in filenames:
       column[tensor] = table.label_index(tensor)
 
   if errors != []:
-    table.croak(errors)
+    damask.util.croak(errors)
     table.close(dismiss = True)
     continue
 

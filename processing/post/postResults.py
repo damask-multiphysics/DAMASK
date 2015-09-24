@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 no BOM -*-
 
-import pdb, os, sys, gc, math, re, threading, time, struct, string
+import os,sys,math,re,threading,time,struct,string
 import damask
 from optparse import OptionParser, OptionGroup
 
@@ -260,7 +260,6 @@ class MPIEspectral_result:    # mimic py_post result object
   def element(self,e):
     a = self.grid[0]+1
     b = self.grid[1]+1
-    c = self.grid[2]+1
     basenode = 1 + e+e/self.grid[0] + e/self.grid[0]/self.grid[1]*a
     basenode2 = basenode+a*b
     return (element([basenode ,basenode +1,basenode +a+1,basenode +a,

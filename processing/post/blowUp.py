@@ -50,7 +50,7 @@ for name in filenames:
                                                      os.path.basename(name)) if name else name,
                               buffered = False)
   except: continue
-  table.report_name(scriptName,name)
+  damask.util.report(scriptName,name)
 
 # ------------------------------------------ read header ------------------------------------------
 

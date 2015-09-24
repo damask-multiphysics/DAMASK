@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 no BOM -*-
 
-import os, sys, string, re, shutil
+import os,sys,string,shutil
 import damask
 from optparse import OptionParser
 from vtk import *

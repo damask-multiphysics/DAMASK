@@ -1,10 +1,9 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 no BOM -*-
 
-import os,sys,threading,re,time,string,fnmatch,vtk
+import os,sys,re,string,fnmatch,vtk
 import numpy as np
 from optparse import OptionParser
-from vtk.util import numpy_support
 import damask
 
 scriptID   = string.replace('$Id$','\n','\\n')

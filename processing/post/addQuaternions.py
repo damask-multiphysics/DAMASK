@@ -1,30 +1,11 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 no BOM -*-
-# Copyright 2011-14 Max-Planck-Institut für Eisenforschung GmbH
-#
-# This file is part of DAMASK,
-# the Düsseldorf Advanced Material Simulation Kit.
-#
-# DAMASK is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# DAMASK is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with DAMASK. If not, see <http://www.gnu.org/licenses/>.
-#
 
-import os,sys,math,string,numpy as np
-from collections import defaultdict
+import os,sys,string,numpy as np
 from optparse import OptionParser
 import damask
 
-scriptID   = string.replace('$Id: addQuaternions.py 3828M 2015-05-15 07:28:21Z (local) $','\n','\\n')
+scriptID   = string.replace('$Id$','\n','\\n')
 scriptName = os.path.splitext(scriptID.split()[1])[0]
 
 
@@ -63,7 +44,7 @@ for name in filenames:
     table = damask.ASCIItable(name = name,
                               buffered = False)
   except: continue
-  table.report_name(scriptName,name)
+  damask.util.report(scriptName,name)
 
   table.head_read()                                                                                 # read ASCII header info
 
@@ -77,7 +58,7 @@ for name in filenames:
         active.append(label)
         column[label] = table.labels.index(key)                                                     # remember columns of requested data
     else:
-      table.croak('column %s not found...'%label)
+      damask.util.croak('column %s not found...'%label)
 
 # ------------------------------------------ assemble header ---------------------------------------
   

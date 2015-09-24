@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 no BOM -*-
 
-import os,re,sys,string
+import os,sys,string
 import numpy as np
 from optparse import OptionParser
 import damask
@@ -50,7 +50,7 @@ for name in filenames:
     table = damask.ASCIItable(name = name,
                               buffered = False)
   except: continue
-  table.report_name(scriptName,name)
+  damask.util.report(scriptName,name)
 
 # ------------------------------------------ assemble header ---------------------------------------  
 
@@ -68,7 +68,7 @@ for name in filenames:
       remarks.append("label {0} not present.".format(options.keys[i]))
     else:
       cols += [table.data[:,column]]
-  if remarks != []: table.croak(remarks)
+  if remarks != []: damask.util.croak(remarks)
     
   ind = np.lexsort(cols) if cols != [] else np.arange(table.data.shape[0])
   if options.reverse: ind = ind[::-1]

@@ -1,7 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 no BOM -*-
 
-import os, sys, math, string, numpy, shutil
+import os,sys,shutil
+import numpy as np
 import damask
 from optparse import OptionParser
 
@@ -119,7 +120,7 @@ for incCount,position in enumerate(locations):     # walk through locations
   for n in range(Nnodes):
     if p.node_displacements():
       node_displacement[n] = map(lambda x:x*unitlength,list(p.node_displacement(n)))
-  c = damask.core.mesh.mesh_build_cellnodes(numpy.array(node_displacement).T,Ncellnodes)
+  c = damask.core.mesh.mesh_build_cellnodes(np.array(node_displacement).T,Ncellnodes)
   cellnode_displacement = [[c[i][n] for i in range(3)] for n in range(Ncellnodes)]
 
 

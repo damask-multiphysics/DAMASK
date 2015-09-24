@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 no BOM -*-
 
-import os,re,sys,string
+import os,sys,string
 import numpy as np
 from optparse import OptionParser
 import damask
@@ -42,13 +42,13 @@ for name in filenames:
                               outname = options.label+'_averaged_'+name if name else name,
                               buffered = False)
   except: continue
-  table.report_name(scriptName,name)
+  damask.util.report(scriptName,name)
 
 # ------------------------------------------ sanity checks ---------------------------------------  
 
   table.head_read()
   if table.label_dimension(options.label) != 1:
-    table.croak('column {} is not of scalar dimension.'.format(options.label))
+    damask.util.croak('column {} is not of scalar dimension.'.format(options.label))
     table.close(dismiss = True)                                                                     # close ASCIItable and remove empty file
     continue
 

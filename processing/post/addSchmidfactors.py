@@ -308,7 +308,7 @@ for name in filenames:
     table = damask.ASCIItable(name = name,buffered = False)
   except:
     continue
-  table.report_name(scriptName,name)
+  damask.util.report(scriptName,name)
 
   table.head_read()                                                                                 # read ASCII header info
   table.info_append(scriptID + '\t' + ' '.join(sys.argv[1:]))

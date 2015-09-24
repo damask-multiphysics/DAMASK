@@ -3,7 +3,6 @@
 
 import os,sys,math,string
 import numpy as np
-from collections import defaultdict
 from optparse import OptionParser
 import damask
 
@@ -56,7 +55,7 @@ for name in filenames:
     table = damask.ASCIItable(name = name,
                               buffered = False)
   except: continue
-  table.report_name(scriptName,name)
+  damask.util.report(scriptName,name)
 
 # ------------------------------------------ read header ------------------------------------------
 
@@ -80,9 +79,9 @@ for name in filenames:
         items[type]['column'].append(table.label_index(what))
         table.labels_append('Mises({})'.format(what))                                               # extend ASCII header with new labels
 
-  if remarks != []: table.croak(remarks)
+  if remarks != []: damask.util.croak(remarks)
   if errors  != []:
-    table.croak(errors)
+    damask.util.croak(errors)
     table.close(dismiss = True)
     continue
 

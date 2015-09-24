@@ -34,7 +34,7 @@ for name in filenames:
                               buffered = False)
   except: continue
 
-  table.report_name(scriptName,name)
+  damask.util.report(scriptName,name)
   tables = []
   for addTable in options.table:
     try:

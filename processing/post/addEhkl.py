@@ -3,7 +3,6 @@
 
 import os,sys,string
 import numpy as np
-from collections import defaultdict
 from optparse import OptionParser
 import damask
 
@@ -61,7 +60,7 @@ for name in filenames:
     table = damask.ASCIItable(name = name, buffered = False)
   except:
     continue
-  table.report_name(scriptName,name)
+  damask.util.report(scriptName,name)
 
 # ------------------------------------------ read header ------------------------------------------
 
@@ -78,7 +77,7 @@ for name in filenames:
       columns.append(column)
       table.labels_append(['E{}{}{}({arg2})'.format(*options.hkl,arg2=options.stiffness[i])])       # extend ASCII header with new labels
 
-  if remarks != []: table.croak(remarks)
+  if remarks != []: damask.util.croak(remarks)
 
 # ------------------------------------------ assemble header --------------------------------------
 

@@ -97,7 +97,7 @@ for name in filenames:
                               buffered = False)
   except:
     continue
-  table.report_name(scriptName,name)
+  damask.util.report(scriptName,name)
 
 # ------------------------------------------ read header ------------------------------------------
 
@@ -108,7 +108,7 @@ for name in filenames:
   missing_labels = table.data_readArray(labels)
  
   if len(missing_labels) > 0:
-    table.croak('column{} {} not found.'.format('s' if len(missing_labels) > 1 else '',', '.join(missing_labels)))
+    damask.util.croak('column{} {} not found.'.format('s' if len(missing_labels) > 1 else '',', '.join(missing_labels)))
     table.close(dismiss = True)
     continue
 
@@ -142,7 +142,7 @@ for name in filenames:
     minmax[2,0] -= 1.
     minmax[2,1] += 1.
   if (minmax[2] == 0.0).all():                                                                       # no data in grid?
-    table.croak('no data found on grid...')
+    damask.util.croak('no data found on grid...')
     minmax[2,:] = np.array([0.0,1.0])                                                                # making up arbitrary z minmax
   if options.type[2].lower() == 'log':
     grid = np.log(grid)
