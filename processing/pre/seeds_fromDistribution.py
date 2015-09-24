@@ -149,9 +149,10 @@ class myThread (threading.Thread):
             break
           elif currentError[i] < target[i]['error']:                                                # better fit
             bestSeedsUpdate = time.time()                                                           # save time of better fit
-            print 'Thread %i: Better match (%i bins, %6.4f --> %6.4f)'%(self.threadID,i+1,target[i]['error'],currentError[i])
-            print '          target: ',target[i]['histogram']
-            print '          best:   ',currentHist[i]
+            damask.util.croak('Thread %i: Better match (%i bins, %6.4f --> %6.4f)'
+                                           %(self.threadID,i+1,target[i]['error'],currentError[i]))
+            damask.util.croak('          target: ',target[i]['histogram'])
+            damask.util.croak('          best:   ',currentHist[i])
             currentSeedsName = baseFile+'_'+str(bestSeedsUpdate).replace('.','-')                   # name of new seed file (use time as unique identifier)
             perturbedSeedsVFile.reset()
             bestSeedsVFile.close()
@@ -164,7 +165,7 @@ class myThread (threading.Thread):
             for j in xrange(nMicrostructures):                                                      # save new errors for all bins
               target[j]['error'] = currentError[j]
             if myMatch > match:                                                                     # one or more new bins have no deviation
-              print 'Stage %i cleared'%(myMatch)
+              damask.util.croak( 'Stage %i cleared'%(myMatch))
               match=myMatch
               sys.stdout.flush()
             break
@@ -179,7 +180,8 @@ class myThread (threading.Thread):
               target[j]['error'] = currentError[j]
             randReset = True
       else:                                                                                         #--- not all grains are tessellated
-        print 'Thread %i: Microstructure mismatch (%i microstructures mapped)'%(self.threadID,myNmicrostructures)
+        damask.util.croak('Thread %i: Microstructure mismatch (%i microstructures mapped)'
+                                                               %(self.threadID,myNmicrostructures))
         randReset = True
 
       
@@ -226,9 +228,11 @@ parser.set_defaults(maxseeds    = 0)
 
 options = parser.parse_args()[0]
 
+damask.util.report(scriptName,options.seedFile)
+
 if options.randomSeed == None:
   options.randomSeed = int(os.urandom(4).encode('hex'), 16)
-print 'random seed', options.randomSeed
+damask.util.croak(options.randomSeed)
 delta = (options.scale/options.grid[0],options.scale/options.grid[1],options.scale/options.grid[2])
 baseFile=os.path.splitext(os.path.basename(options.seedFile))[0]
 points = float(reduce(mul,options.grid))
@@ -269,7 +273,7 @@ initialGeomTable = damask.ASCIItable(initialGeomVFile,None,labeled=False,readonl
 initialGeomTable.head_read()
 info,devNull =  initialGeomTable.head_getGeom()
 
-if info['microstructures'] != nMicrostructures: print 'error. Microstructure count mismatch'
+if info['microstructures'] != nMicrostructures: damask.util.croak('error. Microstructure count mismatch')
 
 initialData = np.bincount(initialGeomTable.microstructure_read(info['grid']))/points
 for i in xrange(nMicrostructures):
@@ -291,7 +295,7 @@ if options.maxseeds < 1:
 else:
   maxSeeds = options.maxseeds
 
-if match >0: print 'Stage %i cleared'%match
+if match >0: damask.util.croak('Stage %i cleared'%match)
 sys.stdout.flush()
 initialGeomVFile.close()
 

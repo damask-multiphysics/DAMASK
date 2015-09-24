@@ -1,10 +1,9 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 no BOM -*-
 
-import os,sys,string,itertools
+import os,string,itertools
 import numpy as np
 from optparse import OptionParser
-from collections import defaultdict
 import damask
 
 scriptID   = string.replace('$Id$','\n','\\n')
@@ -64,7 +63,7 @@ for name in filenames:
                               outname = os.path.splitext(name)[0]+'.seeds' if name else name,
                               buffered = False)
   except: continue
-  table.croak('\033[1m'+scriptName+'\033[0m'+(': '+name if name else ''))
+  damask.util.report(scriptName,name)
 
   table.head_read()                                                                                 # read ASCII header info
 
@@ -82,7 +81,7 @@ for name in filenames:
       errors.append('column {} has wrong dimension'.format(label))
   
   if errors != []:
-    table.croak(errors)
+    damask.util.croak(errors)
     table.close(dismiss = True)                                                                     # close ASCII table file handles and delete output file
     continue
 

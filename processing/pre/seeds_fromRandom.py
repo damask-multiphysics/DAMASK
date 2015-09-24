@@ -127,7 +127,7 @@ for name in filenames:
                               buffered = False)
   except:
     continue
-  table.croak('\033[1m'+scriptName+'\033[0m'+(': '+name if name else ''))
+  damask.util.report(scriptName,name)
 
 # --- sanity checks -------------------------------------------------------------------------
 
@@ -138,9 +138,9 @@ for name in filenames:
   if options.selective and 4./3.*math.pi*(options.distance/2.)**3*options.N > 0.5:
     (remarks if options.force else errors).append('maximum recommended seed point count for given distance is {}.{}'.format(int(3./8./math.pi/(options.distance/2.)**3),'..'*options.force))
 
-  if remarks != []: table.croak(remarks)
+  if remarks != []: damask.util.croak(remarks)
   if errors  != []:
-    table.croak(errors)
+    damask.util.croak(errors)
     sys.exit()
 
 # --- do work ------------------------------------------------------------------------------------
@@ -167,7 +167,7 @@ for name in filenames:
     seeds = np.zeros((options.N,3),dtype=float)                                                     # seed positions array
     seeds[0] = np.random.random(3)*options.grid/max(options.grid)
     i = 1                                                                                           # start out with one given point
-    if i%(options.N/100.) < 1: table.croak('.',False)
+    if i%(options.N/100.) < 1: damask.util.croak('.',False)
 
     while i < options.N:
       candidates = np.random.random(options.numCandidates*3).reshape(options.numCandidates,3)
@@ -176,9 +176,9 @@ for name in filenames:
       if distances[best] > options.distance:                                                        # require minimum separation
         seeds[i] = candidates[best]                                                                 # take candidate with maximum separation to existing point cloud
         i += 1
-        if i%(options.N/100.) < 1: table.croak('.',False)
+        if i%(options.N/100.) < 1: damask.util.croak('.',False)
 
-    table.croak('')
+    damask.util.croak('')
     seeds = seeds.T                                                                                 # prepare shape for stacking
 
   if options.weights:
@@ -206,7 +206,7 @@ for name in filenames:
     ])
   table.labels_clear()
   table.labels_append( ['{dim}_{label}'.format(dim = 1+i,label = 'pos')   for i in xrange(3)] +
-                       ['{dim}_{label}'.format(dim = 1+i,label = 'Euler') for i in xrange(3)] + 
+                       ['{dim}_{label}'.format(dim = 1+i,label = 'eulerangles') for i in xrange(3)] + 
                        ['microstructure'] +
                       (['weight'] if options.weights else []))
   table.head_write()

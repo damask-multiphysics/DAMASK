@@ -1,9 +1,10 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 no BOM -*-
 
-import os,sys,string,re,random,math,numpy as np
+import os,math,sys
+import numpy as np
 import damask
-from optparse import OptionParser, OptionGroup, Option, SUPPRESS_HELP
+from optparse import OptionParser
 
 scriptID = '$Id$'
 scriptName = scriptID.split()[1]
@@ -47,6 +48,7 @@ parser.set_defaults(x = False,
 
 (options,filenames) = parser.parse_args()
 
+if options.z == None: parser.error('please specify top and bottom z plane...')
 # --- loop over output files -------------------------------------------------------------------------
 
 if filenames == []: filenames = [None]
@@ -54,17 +56,18 @@ if filenames == []: filenames = [None]
 for name in filenames:
   try:
     table = damask.ASCIItable(name = name,
-                              outname = os.path.splitext(name])[0]+'_poked_{}.seeds'.format(options.N) if name else name,
+                              outname = os.path.splitext(name)[-2]+'_poked_{}.seeds'.format(options.N) if name else name,
                               buffered = False, labeled = False)
   except: continue
-  table.croak('\033[1m'+scriptName+'\033[0m'+(': '+name if name else ''))
+  damask.util.report(scriptName,name)
 
+  print os.path.splitext(name)[-1]+'_poked_{}.seeds'.format(options.N)
 # --- interpret header ----------------------------------------------------------------------------
 
   table.head_read()
   info,extra_header = table.head_getGeom()
   
-  table.croak(['grid     a b c:  %s'%(' x '.join(map(str,info['grid']))),
+  damask.util.croak(['grid     a b c:  %s'%(' x '.join(map(str,info['grid']))),
                'size     x y z:  %s'%(' x '.join(map(str,info['size']))),
                'origin   x y z:  %s'%(' : '.join(map(str,info['origin']))),
                'homogenization:  %i'%info['homogenization'],
@@ -75,7 +78,7 @@ for name in filenames:
   if np.any(info['grid'] < 1):    errors.append('invalid grid a b c.')
   if np.any(info['size'] <= 0.0): errors.append('invalid size x y z.')
   if errors != []:
-    table.croak(errors)
+    damask.util.croak(errors)
     table.close(dismiss = True)
     continue
 
@@ -93,7 +96,7 @@ for name in filenames:
   Ny = int(options.N/math.sqrt(options.N*info['size'][0]/info['size'][1]))
   Nz = int((max(options.z)-min(options.z))/info['size'][2]*info['grid'][2])
 
-  table.croak('poking {} x {} x {}...'.format(Nx,Ny,Nz))
+  damask.util.croak('poking {} x {} x {}...'.format(Nx,Ny,Nz))
 
   seeds = np.zeros((Nx*Ny*Nz,4),'d')
   grid = np.zeros(3,'i')
@@ -120,17 +123,16 @@ for name in filenames:
 
   remarks = []
   if (    newInfo['microstructures'] != info['microstructures']): remarks.append('--> microstructures: %i'%newInfo['microstructures'])
-  if remarks != []: table.croak(remarks)
+  if remarks != []: damask.util.croak(remarks)
 
 # ------------------------------------------ assemble header ---------------------------------------
-
   table.info_clear()
   table.info_append(extra_header+[
     scriptID + ' ' + ' '.join(sys.argv[1:]),
     "poking\ta {}\tb {}\tc {}".format(Nx,Ny,Nz),
-    "grid\ta {}\tb {}\tc {}".format(newInfo['grid']),
-    "size\tx {}\ty {}\tz {}".format(newInfo['size']),
-    "origin\tx {}\ty {}\tz {}".format(info['origin']),
+    "grid\ta {grid[0]}\tb {grid[1]}\tc {grid[2]}".format(grid=info['grid']),
+    "size\tx {size[0]}\ty {size[1]}\tz {size[2]}".format(size=info['size']),
+    "origin\tx {origin[0]}\ty {origin[1]}\tz {origin[2]}".format(origin=info['origin']),
     "homogenization\t{}".format(info['homogenization']),
     "microstructures\t{}".format(newInfo['microstructures']),
     ])
@@ -141,8 +143,8 @@ for name in filenames:
   
 # --- write seeds information ------------------------------------------------------------
 
-  theTable.data = seeds
-  theTable.data_writeArray()
+  table.data = seeds
+  table.data_writeArray()
     
 # --- output finalization --------------------------------------------------------------------------
 
