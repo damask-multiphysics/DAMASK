@@ -386,7 +386,6 @@ end subroutine utilities_init
 !> @details Sets the current reference stiffness to the stiffness given as an argument.
 !> If the gamma operator is precalculated, it is calculated with this stiffness.
 !> In case of a on-the-fly calculation, only the reference stiffness is updated.
-!> The gamma operator is filtered depening on the filter selected in numerics.
 !> Also writes out the current reference stiffness for restart.
 !--------------------------------------------------------------------------------------------------
 subroutine utilities_updateGamma(C,saveReference)
@@ -455,10 +454,9 @@ subroutine utilities_FFTtensorForward()
   
 !--------------------------------------------------------------------------------------------------
 ! applying filter
- do k = 1_pInt, grid3;  do j = 1_pInt, grid(2);  do i = 1_pInt,grid1Red
+ forall(k = 1_pInt:grid3, j = 1_pInt:grid(2), i = 1_pInt:grid1Red) &
    tensorField_fourier(1:3,1:3,i,j,k) = utilities_getFilter(xi2nd(1:3,i,j,k))* &
                                         tensorField_fourier(1:3,1:3,i,j,k)
- enddo; enddo; enddo
  
 end subroutine utilities_FFTtensorForward
 
@@ -493,10 +491,9 @@ subroutine utilities_FFTscalarForward()
 
 !--------------------------------------------------------------------------------------------------
 ! applying filter
- do k = 1_pInt, grid3;  do j = 1_pInt, grid(2);  do i = 1_pInt,grid1Red
+ forall(k = 1_pInt:grid3, j = 1_pInt:grid(2), i = 1_pInt:grid1Red) &
    scalarField_fourier(i,j,k) = utilities_getFilter(xi2nd(1:3,i,j,k))* &
                                    scalarField_fourier(i,j,k)
- enddo; enddo; enddo
  
 end subroutine utilities_FFTscalarForward
 
@@ -532,10 +529,9 @@ subroutine utilities_FFTvectorForward()
 
 !--------------------------------------------------------------------------------------------------
 ! applying filter
- do k = 1_pInt, grid3;  do j = 1_pInt, grid(2);  do i = 1_pInt,grid1Red
+ forall(k = 1_pInt:grid3, j = 1_pInt:grid(2), i = 1_pInt:grid1Red) &
    vectorField_fourier(1:3,i,j,k) = utilities_getFilter(xi2nd(1:3,i,j,k))* &
                                        vectorField_fourier(1:3,i,j,k)
- enddo; enddo; enddo
  
 end subroutine utilities_FFTvectorForward
 
@@ -1123,14 +1119,15 @@ end function utilities_forwardField
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates filter for fourier convolution depending on type given in numerics.config
 !--------------------------------------------------------------------------------------------------
-complex(pReal) pure function utilities_getFilter(k)
+pure function utilities_getFilter(k)
  use math, only: &
    PI
  use mesh, only: &
    grid
 
  implicit none
- real(pReal),intent(in), dimension(3) :: k                                                          !< indices of frequency
+ real(pReal),   intent(in), dimension(3) :: k                                                          !< indices of frequency
+ complex(pReal)                          :: utilities_getFilter
 
  select case (spectral_filter_ID)
    case (FILTER_NONE_ID)                                                                            ! default, no weighting
