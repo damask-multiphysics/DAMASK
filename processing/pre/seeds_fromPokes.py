@@ -42,13 +42,13 @@ parser.add_option('-p','--position',
 
 parser.set_defaults(x = False,
                     y = False,
+                    z = [0.0,1.0],
                     N = 16,
                     position = 'pos',
                    )
 
 (options,filenames) = parser.parse_args()
 
-if options.z == None: parser.error('please specify top and bottom z plane...')
 # --- loop over output files -------------------------------------------------------------------------
 
 if filenames == []: filenames = [None]
@@ -61,18 +61,17 @@ for name in filenames:
   except: continue
   damask.util.report(scriptName,name)
 
-  print os.path.splitext(name)[-1]+'_poked_{}.seeds'.format(options.N)
 # --- interpret header ----------------------------------------------------------------------------
 
   table.head_read()
   info,extra_header = table.head_getGeom()
   
   damask.util.croak(['grid     a b c:  %s'%(' x '.join(map(str,info['grid']))),
-               'size     x y z:  %s'%(' x '.join(map(str,info['size']))),
-               'origin   x y z:  %s'%(' : '.join(map(str,info['origin']))),
-               'homogenization:  %i'%info['homogenization'],
-               'microstructures: %i'%info['microstructures'],
-              ])
+                     'size     x y z:  %s'%(' x '.join(map(str,info['size']))),
+                     'origin   x y z:  %s'%(' : '.join(map(str,info['origin']))),
+                     'homogenization:  %i'%info['homogenization'],
+                     'microstructures: %i'%info['microstructures'],
+                    ])
 
   errors = []
   if np.any(info['grid'] < 1):    errors.append('invalid grid a b c.')
@@ -95,13 +94,13 @@ for name in filenames:
   Nx = int(options.N/math.sqrt(options.N*info['size'][1]/info['size'][0]))
   Ny = int(options.N/math.sqrt(options.N*info['size'][0]/info['size'][1]))
   Nz = int((max(options.z)-min(options.z))/info['size'][2]*info['grid'][2])
+  offset = int(min(options.z)/info['size'][2]*info['grid'][2])                                      # offset due to lower z-plane
 
   damask.util.croak('poking {} x {} x {}...'.format(Nx,Ny,Nz))
 
   seeds = np.zeros((Nx*Ny*Nz,4),'d')
   grid = np.zeros(3,'i')
 
-  offset = min(options.z)/info['size'][2]*info['grid'][2]                                           # offset due to lower z-plane
   n = 0
   for i in xrange(Nx):
     grid[0] = round((i+0.5)*info['grid'][0]/Nx-0.5)
@@ -110,8 +109,7 @@ for name in filenames:
       for k in xrange(Nz):
         grid[2] = offset + k
         grid %= info['grid']
-        coordinates = (0.5+grid)*info['size']/info['grid']
-        seeds[n,0:3] = coordinates/info['size']                                                     # normalize coordinates to box
+        seeds[n,0:3] = (0.5+grid)/info['grid']                                                     # normalize coordinates to box
         seeds[n,  3] = microstructure[grid[0],grid[1],grid[2]]
         if options.x: grid[0] += 1
         if options.y: grid[1] += 1
