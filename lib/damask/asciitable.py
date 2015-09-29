@@ -68,12 +68,13 @@ class ASCIItable():
 
 # ------------------------------------------------------------------
   def croak(self,
-            what, newline = True):
+            what,
+            newline = True):
             
     sys.stderr.write(('\n'.join(map(str,what)) if not hasattr(what, "strip")
                                                   and hasattr(what, "__getitem__")
                                                   or  hasattr(what, "__iter__") else str(what))
-                    +('\n' if newline else '')),
+                    +('\n' if newline else ''))
 
 # ------------------------------------------------------------------
   def report_name(self, scriptName, fileName):
