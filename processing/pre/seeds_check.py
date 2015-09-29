@@ -80,9 +80,8 @@ for name in filenames:
 
   table.data_readArray(labels)                                                                      # read ASCIItable columns
 
-  coords = table.data[:,:3]                                                                         # assign coordinates
+  coords = table.data[:,:3]*info['size']                                                            # assign coordinates (rescaled to box size)
   grain = table.data[:,3].astype('i') if hasGrains else 1+np.arange(len(coords),dtype='i')          # assign grains
-#  grainIDs = np.unique(grain).astype('i')                                                          # find all grainIDs present
  
 # --- generate grid --------------------------------------------------------------------------------
 
