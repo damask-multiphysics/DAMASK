@@ -475,12 +475,19 @@ class ASCIItable():
       return self.output_write(delimiter.join(map(str,self.data)))
 
 # ------------------------------------------------------------------
-  def data_writeArray(self, fmt = None, delimiter = '\t'):
+  def data_writeArray(self,
+                      fmt = None,
+                      delimiter = '\t'):
     '''
        write whole numpy array data
     '''
     for row in self.data:
-      self.__IO__['out'].write(delimiter.join([fmt % value for value in row] if fmt else map(repr,row)) + '\n')
+      try:
+        output = [fmt % value for value in row] if fmt else map(repr,row)
+      except:
+        output = [fmt % row] if fmt else [repr(row)]
+      
+      self.__IO__['out'].write(delimiter.join(output) + '\n')
 
 # ------------------------------------------------------------------
   def data_append(self,
