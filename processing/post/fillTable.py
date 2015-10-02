@@ -127,7 +127,7 @@ for name in filenames:
     if condition == '' or eval(eval(evaluator_condition)):                                          # location of change
       for label in [x for x in options.labels if x not in set(brokenFormula)]:
         for i in xrange(len(positions)):
-          table.data[positions[i]] = unravel(eval(evaluator[label]))
+          table.data[positions[i]] = unravel(eval(evaluator[labels[i]]))
 
     outputAlive = table.data_write()                                                                # output processed line
 
