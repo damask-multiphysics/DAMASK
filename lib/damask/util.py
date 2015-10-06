@@ -13,6 +13,7 @@ def croak(what,
                                                 and hasattr(what, "__getitem__")
                                                 or  hasattr(what, "__iter__") else str(what))
                   +('\n' if newline else ''))
+  sys.stderr.flush()
 
 # -----------------------------
 def report(who,what):
