@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 no BOM -*-
 
-import os,sys,string,re
+import os,string,re
 from optparse import OptionParser
 import damask
 
