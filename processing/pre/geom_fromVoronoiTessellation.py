@@ -5,6 +5,7 @@ import os,sys,math,string
 import numpy as np
 import multiprocessing
 from optparse import OptionParser
+from scipy    import spatial
 import damask
 
 scriptID   = string.replace('$Id$','\n','\\n')
@@ -75,25 +76,30 @@ def laguerreTessellation(undeformed, coords, weights, grains, nonperiodic = Fals
                ]).astype(float)
       
     squaredweights = np.power(np.tile(weights,len(copies)),2)                                       # Laguerre weights (squared, size N*n)
-   
+
     for i,vec in enumerate(copies):                                                                 # periodic copies of seed points (size N*n)
       try: seeds = np.append(seeds, coords+vec, axis=0)
-      except NameError: seeds = coords+vec
+      except NameError: seeds = coords+vec   
 
-    arguments = [[arg] + [seeds,squaredweights] for arg in list(undeformed)]
-
-    if cpus > 1:                                                                                    # use multithreading
-      pool = multiprocessing.Pool(processes = cpus)                                                 # initialize workers
-      result = pool.map_async(findClosestSeed, arguments)                                           # evaluate function in parallel
-      pool.close()
-      pool.join()
-      closestSeeds = np.array(result.get()).flatten()
+    if all(squaredweights == 0.0):                                                                  # standard Voronoi (no weights, KD tree)
+      myKDTree = spatial.cKDTree(seeds)
+      devNull,closestSeeds = myKDTree.query(undeformed)
     else:
-      closestSeeds = np.zeros(len(arguments),dtype='i')
-      for i,arg in enumerate(arguments):
-        closestSeeds[i] = findClosestSeed(arg)
+      damask.util.croak('...using {} cpu{}'.format(options.cpus, 's' if options.cpus > 1 else ''))
+      arguments = [[arg] + [seeds,squaredweights] for arg in list(undeformed)]
 
-    return grains[closestSeeds%coords.shape[0]]                                                     # closestSeed is modulo number of original seed points (i.e. excluding periodic copies)
+      if cpus > 1:                                                                                  # use multithreading
+        pool = multiprocessing.Pool(processes = cpus)                                               # initialize workers
+        result = pool.map_async(findClosestSeed, arguments)                                         # evaluate function in parallel
+        pool.close()
+        pool.join()
+        closestSeeds = np.array(result.get()).flatten()
+      else:
+        closestSeeds = np.zeros(len(arguments),dtype='i')
+        for i,arg in enumerate(arguments):
+          closestSeeds[i] = findClosestSeed(arg)
+
+    return grains[closestSeeds%coords.shape[0]]                                                   # closestSeed is modulo number of original seed points (i.e. excluding periodic copies)
 
 # --------------------------------------------------------------------
 #                                MAIN
@@ -267,8 +273,6 @@ for name in filenames:
   
   damask.util.croak('tessellating...')
 
-
-  damask.util.croak('...using {} cpu{}'.format(options.cpus, 's' if options.cpus > 1 else ''))
   grid = np.vstack(meshgrid2(x, y, z)).reshape(3,-1).T
   indices = laguerreTessellation(grid, coords, weights, grains, options.nonperiodic, options.cpus)
     
