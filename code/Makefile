@@ -347,6 +347,12 @@ DAMASK_spectral.exe: COMPILE_MAXOPTI += -DSpectral
 DAMASK_spectral.exe: MESHNAME        := mesh.f90
 DAMASK_spectral.exe: INTERFACENAME   := DAMASK_spectral_interface.f90
 
+DAMASK_spectral_driver.o: IGNORE          := \#
+DAMASK_spectral_driver.o: COMPILE         += -DSpectral
+DAMASK_spectral_driver.o: COMPILE_MAXOPTI += -DSpectral
+DAMASK_spectral_driver.o: MESHNAME        := mesh.f90
+DAMASK_spectral_driver.o: INTERFACENAME   := DAMASK_spectral_interface.f90
+
 
 SPECTRAL_SOLVER_FILES = DAMASK_spectral_solverAL.o DAMASK_spectral_solverBasicPETSc.o DAMASK_spectral_solverPolarisation.o \
                         spectral_thermal.o spectral_damage.o
