@@ -115,7 +115,7 @@ class ASCIItable():
                    clear = True):
     try:
       self.__IO__['output'] == [] or self.__IO__['out'].write('\n'.join(self.__IO__['output']) + '\n')
-    except(IOError) as e:
+    except IOError as e:
       return False
     if clear: self.output_clear()
     return True
@@ -170,7 +170,7 @@ class ASCIItable():
           self.__IO__['readBuffer'] = firstline                                                     # or at least save data in buffer
     try:
       self.__IO__['dataStart'] = self.__IO__['in'].tell()                                           # current file position is at start of data
-    except(IOError):
+    except IOError:
       pass
 
 # ------------------------------------------------------------------
@@ -405,10 +405,13 @@ class ASCIItable():
     '''
        read next line (possibly buffered) and parse it into data array
     '''
-    if len(self.__IO__['readBuffer']) > 0:
-      self.line = self.__IO__['readBuffer'].pop(0)                                                  # take buffered content
+    if not isinstance(self.__IO__['readBuffer'], (str, unicode)):
+      if len(self.__IO__['readBuffer']) > 0:
+        self.line = self.__IO__['readBuffer'].pop(0)                                                  # take buffered content
+      else:
+        self.line = self.__IO__['in'].readline()                                                      # get next data row from file
     else:
-      self.line = self.__IO__['in'].readline()                                                      # get next data row from file
+      self.line=self.__IO__['readBuffer']
 
     if not advance:
       self.__IO__['readBuffer'].append(self.line)                                                   # keep line just read in buffer
