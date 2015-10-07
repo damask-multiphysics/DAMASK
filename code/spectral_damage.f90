@@ -328,8 +328,10 @@ subroutine spectral_damage_formResidual(in,x_scal,f_scal,dummy,ierr)
  call utilities_FFTscalarForward()
  call utilities_fourierGreenConvolution(D_ref, mobility_ref, params%timeinc)
  call utilities_FFTscalarBackward()
- where(scalarField_real > damage_lastInc)    scalarField_real = damage_lastInc
- where(scalarField_real < residualStiffness) scalarField_real = residualStiffness
+ where(scalarField_real(1:grid(1),1:grid(2),1:grid3) > damage_lastInc) &
+   scalarField_real(1:grid(1),1:grid(2),1:grid3) = damage_lastInc
+ where(scalarField_real(1:grid(1),1:grid(2),1:grid3) < residualStiffness) &
+   scalarField_real(1:grid(1),1:grid(2),1:grid3) = residualStiffness
  
 !--------------------------------------------------------------------------------------------------
 ! constructing residual
