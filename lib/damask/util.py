@@ -18,7 +18,7 @@ def croak(what,
 # -----------------------------
 def report(who,what):
 # -----------------------------
-  croak( ('\033[1m'+str(who)+'\033[0m' if who else '') + (': '+what if what else '') )
+  croak( (emph(who) if who else '') + (': '+what if what else '') )
 
 # -----------------------------
 def emph(what):
