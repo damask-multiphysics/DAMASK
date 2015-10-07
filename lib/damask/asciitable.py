@@ -167,7 +167,7 @@ class ASCIItable():
         try:
           self.__IO__['in'].seek(0)                                                                 # try to rewind
         except:
-          self.__IO__['readBuffer'] = firstline                                                     # or at least save data in buffer
+          self.__IO__['readBuffer'] = [firstline]                                                   # or at least save data in buffer
     try:
       self.__IO__['dataStart'] = self.__IO__['in'].tell()                                           # current file position is at start of data
     except IOError:
@@ -405,13 +405,8 @@ class ASCIItable():
     '''
        read next line (possibly buffered) and parse it into data array
     '''
-    if not isinstance(self.__IO__['readBuffer'], (str, unicode)):
-      if len(self.__IO__['readBuffer']) > 0:
-        self.line = self.__IO__['readBuffer'].pop(0)                                                  # take buffered content
-      else:
-        self.line = self.__IO__['in'].readline()                                                      # get next data row from file
-    else:
-      self.line=self.__IO__['readBuffer']
+    self.line = self.__IO__['readBuffer'].pop(0) if len(self.__IO__['readBuffer']) > 0 \
+           else self.__IO__['in'].readline()                                                        # take buffered content or get next data row from file
 
     if not advance:
       self.__IO__['readBuffer'].append(self.line)                                                   # keep line just read in buffer
