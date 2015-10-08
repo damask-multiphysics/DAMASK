@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 no BOM -*-
 
-import os,sys,string,re,vtk
+import os,sys,string,vtk
 import numpy as np
 from optparse import OptionParser
 import damask
@@ -37,14 +37,14 @@ for name in filenames:
     table = damask.ASCIItable(name = name,
                               buffered = False, labeled = False, readonly = True)
   except: continue
-  table.croak('\033[1m'+scriptName+'\033[0m'+(': '+name if name else ''))
+  damask.util.report(scriptName,name)
 
 # --- interpret header ----------------------------------------------------------------------------
 
   table.head_read()
   info,extra_header = table.head_getGeom()
   
-  table.croak(['grid     a b c:  %s'%(' x '.join(map(str,info['grid']))),
+  damask.util.croak(['grid     a b c:  %s'%(' x '.join(map(str,info['grid']))),
                'size     x y z:  %s'%(' x '.join(map(str,info['size']))),
                'origin   x y z:  %s'%(' : '.join(map(str,info['origin']))),
                'homogenization:  %i'%info['homogenization'],
@@ -55,7 +55,7 @@ for name in filenames:
   if np.any(info['grid'] < 1):    errors.append('invalid grid a b c.')
   if np.any(info['size'] <= 0.0): errors.append('invalid size x y z.')
   if errors != []:
-    table.croak(errors)
+    damask.util.croak(errors)
     table.close(dismiss = True)
     continue
 
@@ -86,25 +86,21 @@ for name in filenames:
     grid.GetCellData().AddArray(structure)
 
 # --- write data -----------------------------------------------------------------------------------
-
   if name:
-    (dir,filename) = os.path.split(name)
     writer = vtk.vtkXMLRectilinearGridWriter()
+    (head,tail) = os.path.split(name)
     writer.SetDataModeToBinary()
     writer.SetCompressorTypeToZLib()
-    writer.SetFileName(os.path.join(dir,'mesh_'+os.path.splitext(filename)[0]
+    writer.SetFileName(os.path.join(head,'mesh_'+os.path.splitext(tail)[0]
                                                    +'.'+writer.GetDefaultFileExtension()))
-    if vtk.VTK_MAJOR_VERSION <= 5: writer.SetInput(grid)
-    else:                          writer.SetInputData(grid)
-    writer.Write()
   else:
-    writer = vtk.vtkRectilinearGridWriter()
+    writer = vtk.vtkDataSetWriter()
     writer.WriteToOutputStringOn()
-    writer.SetFileTypeToASCII()
     writer.SetHeader('# powered by '+scriptID)
-    if vtk.VTK_MAJOR_VERSION <= 5: writer.SetInput(grid)
-    else:                          writer.SetInputData(grid)
-    writer.Write()
-    sys.stdout.write(writer.GetOutputString()[0:writer.GetOutputStringLength()])
+  
+  if vtk.VTK_MAJOR_VERSION <= 5: writer.SetInput(grid)
+  else:                          writer.SetInputData(grid)
+  writer.Write()
+  if name == None:  sys.stdout.write(writer.GetOutputString()[0:writer.GetOutputStringLength()])
 
   table.close()
