@@ -1,7 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 no BOM -*-
 
-import os,re,sys
+import os,re,sys,string,fnmatch,math,random
+import numpy as np
 from optparse import OptionParser
 import damask
 
@@ -68,29 +69,28 @@ for name in filenames:
   specials = { \
                '_row_': 0,
              }
-  labels = []
-  positions = []
   
-  for position,label in enumerate(table.labels):
-    checker = [position in table.label_indexrange(needle) for needle in options.labels]
-    if any(checker) == True:
-        labels.append(label)
-        positions.append(position)
   interpolator = []
-  condition = options.condition                                                                     # copy per file, might be altered
+  condition = options.condition                                                                     # copy per file, since might be altered inline
+  breaker = False
+  
   for position,operand in enumerate(set(re.findall(r'#(([s]#)?(.+?))#',condition))):                # find three groups
     condition = condition.replace('#'+operand[0]+'#',
-                                          {  '': '{%i}'%position,
-                                           's#':'"{%i}"'%position}[operand[1]])
+                                  {  '': '{%i}'%position,
+                                   's#':'"{%i}"'%position}[operand[1]])
     if operand[2] in specials:                                                                      # special label 
       interpolator += ['specials["%s"]'%operand[2]]
     else:
       try:
         interpolator += ['%s(table.data[%i])'%({  '':'float',
                                                 's#':'str'}[operand[1]],
-                                               table.labels.index(operand[2]))]
+                                               table.labels.index(operand[2]))]                     # ccould be generalized to indexrange as array lookup
       except:
-        parser.error('column %s not found...\n'%operand[2])
+        damask.util.croak('column %s not found.'%operand[2])
+        breaker = True
+        
+  if breaker: continue                                                                              # found mistake in condition evaluation --> next file
+  
   evaluator_condition = "'" + condition + "'.format(" + ','.join(interpolator) + ")"
 
 #----------------------------------- Formula -------------------------------------------------------
@@ -114,7 +114,9 @@ for name in filenames:
       formula = formula.replace('#'+column+'#',replacement)
     if label not in brokenFormula:
       evaluator[label] = formula
+
 # ------------------------------------------ assemble header ---------------------------------------
+
   table.info_append(scriptID + '\t' + ' '.join(sys.argv[1:]))                                        # read ASCII header info
   table.labels                                                                                       # update with label set
   table.head_write()
@@ -124,10 +126,13 @@ for name in filenames:
   outputAlive = True
   while outputAlive and table.data_read():                                                          # read next data line of ASCII table
     specials['_row_'] += 1
-    if condition == '' or eval(eval(evaluator_condition)):                                          # location of change
+    if condition == '' or eval(eval(evaluator_condition)):                                          # test row for condition
       for label in [x for x in options.labels if x not in set(brokenFormula)]:
-        for i in xrange(len(positions)):
-          table.data[positions[i]] = unravel(eval(evaluator[labels[i]]))
+        indices = table.label_indexrange(label)                                                     # affected columns
+        probe = np.array(eval(evaluator[label]))                                                    # get formula result (scalar, array, etc.)
+        container = np.tile(probe,np.ceil(float(len(indices))/probe.size))[:len(indices)]           # spread formula result into given number of columns
+        for i,ind in enumerate(indices):                                                            # copy one by one as table.data is NOT a numpy array
+          table.data[ind] = container[i]
 
     outputAlive = table.data_write()                                                                # output processed line
 
