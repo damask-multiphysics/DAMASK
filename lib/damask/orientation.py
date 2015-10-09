@@ -846,17 +846,18 @@ class Orientation:
 
   def disorientation(self,
                      other,
-                     strict = True):
+                     SST = True):
     '''
-    Disorientation between myself and given other orientation
-    (currently needs to be of same symmetry.
-     look into A. Heinz and P. Neumann 1991 for cases with differing sym.)
+    Disorientation between myself and given other orientation.
+    Rotation axis falls into SST if SST == True.
+    (Currently requires same symmetry for both orientations.
+     Look into A. Heinz and P. Neumann 1991 for cases with differing sym.)
     '''
 
     if self.symmetry != other.symmetry: raise TypeError('disorientation between different symmetry classes not supported yet.')
 
     misQ = self.quaternion.conjugated()*other.quaternion
-    mySymQs    = self.symmetry.symmetryQuats() if strict else self.symmetry.symmetryQuats()[:1]   # take all or first sym equivalent
+    mySymQs    =  self.symmetry.symmetryQuats() if SST else self.symmetry.symmetryQuats()[:1]       # take all or only first sym operation
     otherSymQs = other.symmetry.symmetryQuats()
     
     for i,sA in enumerate(mySymQs):
@@ -864,18 +865,20 @@ class Orientation:
         theQ = sA.conjugated()*misQ*sB
         for k in xrange(2):
           theQ.conjugate()
-          hitSST = other.symmetry.inDisorientationSST(theQ) or not strict
-          hitFZ =  self.symmetry.inFZ(theQ)
-          breaker = hitSST and hitFZ
+          hitFZ  =  self.symmetry.inFZ(theQ)
+          hitSST = other.symmetry.inDisorientationSST(theQ)
+          breaker = hitFZ and (hitSST or not SST)
           if breaker: break
         if breaker: break
       if breaker: break
 
-    return (Orientation(quaternion=theQ,symmetry=self.symmetry.lattice),
+    return (Orientation(quaternion = theQ,symmetry = self.symmetry.lattice),
             i,j,k == 1)                                                                             # disorientation, own sym, other sym, self-->other: True, self<--other: False
 
 
-  def inversePole(self,axis,SST = True):
+  def inversePole(self,
+                  axis,
+                  SST = True):
     '''
     axis rotated according to orientation (using crystal symmetry to ensure location falls into SST)
     '''
@@ -928,7 +931,10 @@ class Orientation:
     return Orientation(quaternion = Quaternion(quatArray = vec.T[eig.argmax()]))
 
 
-  def related(self, relationModel, direction, targetSymmetry = None):
+  def related(self,
+              relationModel,
+              direction,
+              targetSymmetry = None):
 
     if relationModel not in ['KS','GT','GTdash','NW','Pitsch','Bain']:  return None
     if int(direction) == 0:  return None
