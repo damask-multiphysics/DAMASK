@@ -451,7 +451,7 @@ class ASCIItable():
         columns += range(c,c + \
                           (d if str(c) != str(labels[present[i]]) else \
                            1))                                                                      # ... transparently add all components unless column referenced by number or with explicit dimension
-      use = np.unique(np.array(columns))
+      use = np.array(columns)
 
       self.labels = list(np.array(self.labels)[use])                                                # update labels with valid subset
 
