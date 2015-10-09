@@ -88,11 +88,11 @@ for name in filenames:
 # --- write data -----------------------------------------------------------------------------------
   if name:
     writer = vtk.vtkXMLRectilinearGridWriter()
-    (head,tail) = os.path.split(name)
+    (directory,filename) = os.path.split(name)
     writer.SetDataModeToBinary()
     writer.SetCompressorTypeToZLib()
-    writer.SetFileName(os.path.join(head,'mesh_'+os.path.splitext(tail)[0]
-                                                   +'.'+writer.GetDefaultFileExtension()))
+    writer.SetFileName(os.path.join(directory,os.path.splitext(filename)[0]
+                                              +'.'+writer.GetDefaultFileExtension()))
   else:
     writer = vtk.vtkDataSetWriter()
     writer.WriteToOutputStringOn()
