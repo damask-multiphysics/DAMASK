@@ -17,12 +17,12 @@ Produce a VTK point cloud dataset based on coordinates given in an ASCIItable.
 
 """, version = scriptID)
 
-parser.add_option('-p','--position',
-                  dest = 'position',
+parser.add_option('-d', '--deformed',
+                  dest = 'deformed',
                   type = 'string', metavar = 'string',
-                  help = 'column label for coordinates [%default]')
+                  help = 'deformed coordinate label [%default]')
 
-parser.set_defaults(position = 'pos',
+parser.set_defaults(deformed = 'ipdeformedcoord'
                    )
 
 (options, filenames) = parser.parse_args()
@@ -36,7 +36,7 @@ for name in filenames:
     table = damask.ASCIItable(name = name,
                               buffered = False, readonly = True)
   except: continue
-  damask.util.croak(damask.util.emph(scriptName)+(': '+name if name else ''))
+  damask.util.report(scriptName,name)
 
 # --- interpret header ----------------------------------------------------------------------------
 
@@ -44,8 +44,10 @@ for name in filenames:
 
   errors =  []
   remarks = []
-  if table.label_dimension(options.position) != 3: errors.append('columns "{}" have dimension {}'.format(options.position,
-                                                                                                         table.label_dimension(options.position)))
+  if table.label_dimension(options.deformed) != 3: 
+     errors.append('columns "{}" have dimension {}'.format(options.deformed,
+                                                          table.label_dimension(options.deformed)))
+
   if remarks != []: damask.util.croak(remarks)
   if errors  != []:
     damask.util.croak(errors)
@@ -54,16 +56,16 @@ for name in filenames:
 
 # ------------------------------------------ process data ---------------------------------------  
 
-  table.data_readArray(options.position)
+  table.data_readArray(options.deformed)
 
   Polydata = vtk.vtkPolyData()
   Points = vtk.vtkPoints()
   Vertices = vtk.vtkCellArray()
 
   for p in table.data:
-    id = Points.InsertNextPoint(p)
+    pointID = Points.InsertNextPoint(p)
     Vertices.InsertNextCell(1)
-    Vertices.InsertCellPoint(id)
+    Vertices.InsertCellPoint(pointID)
 
   Polydata.SetPoints(Points)
   Polydata.SetVerts(Vertices)
@@ -73,24 +75,20 @@ for name in filenames:
 # ------------------------------------------ output result ---------------------------------------  
 
   if name:
-    (dir,filename) = os.path.split(name)
     writer = vtk.vtkXMLPolyDataWriter()
+    (directory,filename) = os.path.split(name)
     writer.SetDataModeToBinary()
     writer.SetCompressorTypeToZLib()
-    writer.SetFileName(os.path.join(dir,os.path.splitext(filename)[0]+'_{}'.format(options.position) \
-                                        +'.'+writer.GetDefaultFileExtension()))
-    if vtk.VTK_MAJOR_VERSION <= 5: writer.SetInput(Polydata)
-    else:                          writer.SetInputData(Polydata)
-    writer.Write()
-
+    writer.SetFileName(os.path.join(directory,os.path.splitext(filename)[0]
+                                              +'.'+writer.GetDefaultFileExtension()))
   else:
-    writer = vtk.vtkPolyDataWriter()
+    writer = vtk.vtkDataSetWriter()
     writer.WriteToOutputStringOn()
-    writer.SetFileTypeToASCII()
     writer.SetHeader('# powered by '+scriptID)
-    if vtk.VTK_MAJOR_VERSION <= 5: writer.SetInput(Polydata)
-    else:                          writer.SetInputData(Polydata)
-    writer.Write()
-    sys.stdout.write(writer.GetOutputString()[0:writer.GetOutputStringLength()])
+  
+  if vtk.VTK_MAJOR_VERSION <= 5: writer.SetInput(Polydata)
+  else:                          writer.SetInputData(Polydata)
+  writer.Write()
+  if name == None:  sys.stdout.write(writer.GetOutputString()[0:writer.GetOutputStringLength()])
 
-  table.close()                                                     # close input ASCII table
+  table.close()
