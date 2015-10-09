@@ -1,9 +1,9 @@
 # -*- coding: UTF-8 no BOM -*-
 
 # damask utility functions
-import sys,time,random,threading
+import sys,time,random,threading,os,subprocess,shlex
 import numpy as np
-from optparse import OptionParser, Option
+from optparse import Option
 
 # -----------------------------
 def croak(what,
@@ -398,3 +398,20 @@ def curve_fit_bound(f, xdata, ydata, p0=None, sigma=None, bounds=None, **kw):
         return popt, pcov, infodict, errmsg, ier
     else:
         return popt, pcov
+
+        
+def execute(cmd,streamIn=None,wd='./'):
+  '''
+    executes a command in given directory and returns stdout and stderr for optional stdin
+  '''
+  initialPath=os.getcwd()
+  os.chdir(wd)
+  process = subprocess.Popen(shlex.split(cmd),stdout=subprocess.PIPE,stderr = subprocess.PIPE,stdin=subprocess.PIPE)
+  if streamIn != None:
+    out,error = process.communicate(streamIn.read())
+  else:
+    out,error = process.communicate()
+  os.chdir(initialPath)
+
+  return out,error
+

@@ -227,15 +227,8 @@ class Test():
 
   def execute_inCurrentDir(self,cmd,streamIn=None):
 
-    initialPath=os.getcwd()
-    os.chdir(self.dirCurrent())
     logging.info(cmd)
-    process = subprocess.Popen(shlex.split(cmd),stdout=subprocess.PIPE,stderr = subprocess.PIPE,stdin=subprocess.PIPE)
-    if streamIn != None:
-      out,error = process.communicate(streamIn.read())
-    else:
-      out,error = process.communicate()
-    os.chdir(initialPath)
+    out,error = damask.util.execute(cmd,streamIn,self.dirCurrent())
 
     logging.info(error)
     logging.debug(out)

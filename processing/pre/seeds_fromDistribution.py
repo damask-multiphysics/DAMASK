@@ -14,21 +14,6 @@ scriptName = os.path.splitext(scriptID.split()[1])[0]
 mismatch = None
 currentSeedsName = None
 
-def execute(cmd,streamIn=None,dir='./'):
-  '''
-    executes a command in given directory and returns stdout and stderr for optional stdin
-  ''' 
-  initialPath=os.getcwd()
-  os.chdir(dir)
-  process = subprocess.Popen(shlex.split(cmd),stdout=subprocess.PIPE,stderr = subprocess.PIPE,stdin=subprocess.PIPE)
-  if streamIn != None:
-    out,error = process.communicate(streamIn.read())
-  else:
-    out,error = process.communicate()
-  os.chdir(initialPath)
-
-  return out,error
-
 #---------------------------------------------------------------------------------------------------
 class myThread (threading.Thread):
 #---------------------------------------------------------------------------------------------------
@@ -113,7 +98,7 @@ class myThread (threading.Thread):
       perturbedGeomVFile.close()
       perturbedGeomVFile = StringIO()
       perturbedSeedsVFile.reset()
-      perturbedGeomVFile.write(execute('geom_fromVoronoiTessellation '+
+      perturbedGeomVFile.write(damask.util.execute('geom_fromVoronoiTessellation '+
                      ' -g '+' '.join(map(str, options.grid)),streamIn=perturbedSeedsVFile)[0])
       perturbedGeomVFile.reset()
 
@@ -257,7 +242,7 @@ if os.path.isfile(os.path.splitext(options.seedFile)[0]+'.seeds'):
   with open(os.path.splitext(options.seedFile)[0]+'.seeds') as initialSeedFile:
     for line in initialSeedFile: bestSeedsVFile.write(line)
 else:
-  bestSeedsVFile.write(execute('seeds_fromRandom'+\
+  bestSeedsVFile.write(damask.util.execute('seeds_fromRandom'+\
                                 ' -g '+' '.join(map(str, options.grid))+\
                                 ' -r %i'%options.randomSeed+\
                                 ' -N '+str(nMicrostructures))[0])
@@ -266,7 +251,7 @@ bestSeedsUpdate = time.time()
 # ----------- tessellate initial seed file to get and evaluate geom file
 bestSeedsVFile.reset()
 initialGeomVFile = StringIO()
-initialGeomVFile.write(execute('geom_fromVoronoiTessellation '+
+initialGeomVFile.write(damask.util.execute('geom_fromVoronoiTessellation '+
                                ' -g '+' '.join(map(str, options.grid)),bestSeedsVFile)[0])
 initialGeomVFile.reset()
 initialGeomTable = damask.ASCIItable(initialGeomVFile,None,labeled=False,readonly=True)

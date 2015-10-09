@@ -9,7 +9,7 @@ import damask
 from damask.util import leastsqBound
 
 scriptID   = string.replace('$Id$','\n','\\n')
-scriptName = scriptID.split()[1][:-3]
+scriptName = os.path.splitext(scriptID.split()[1])[0]
 
 def runFit(exponent, eqStress, dimension, criterion):
   global s, threads, myFit
@@ -47,21 +47,6 @@ def runFit(exponent, eqStress, dimension, criterion):
   for i in range(options.threads):
     threads[i].join()
   print fitResidual
-
-def execute(cmd,streamIn=None,wd='./'):
-  '''
-    executes a command in given directory and returns stdout and stderr for optional stdin
-  '''
-  initialPath=os.getcwd()
-  os.chdir(wd)
-  process = subprocess.Popen(shlex.split(cmd),stdout=subprocess.PIPE,stderr = subprocess.PIPE,stdin=subprocess.PIPE)
-  if streamIn != None:
-    out,error = process.communicate(streamIn.read())
-  else:
-    out,error = process.communicate()
-  os.chdir(initialPath)
-
-  return out,error
 
 def principalStresses(sigmas):
   '''
@@ -162,16 +147,6 @@ def sym6to33(sigma6):
   sigma33[1,2] = sigma6[4]; sigma33[2,1] = sigma6[4]
   sigma33[2,0] = sigma6[5]; sigma33[0,2] = sigma6[5]
   return sigma33
-
-def array2tuple(array):
-  '''transform numpy.array into tuple'''
-  try:
-    return tuple(array2tuple(i) for i in array)
-  except TypeError:
-    return array
-def get_weight(ndim):
-#more to do
-  return np.ones(ndim)
 
 
 class Criteria(object):
@@ -1243,7 +1218,7 @@ def doSim(delay,thread):
   if not os.path.isfile('%s_%i.spectralOut'%(options.geometry,loadNo)):
     print('starting simulation %s from %s'%(loadNo,thread))
     s.release()
-    execute('DAMASK_spectral -g %s -l %i'%(options.geometry,loadNo))
+    damask.util.execute('DAMASK_spectral -g %s -l %i'%(options.geometry,loadNo))
   else: s.release()
    
   s.acquire()
@@ -1251,12 +1226,12 @@ def doSim(delay,thread):
     print('starting post processing for sim %i from %s'%(loadNo,thread))
     s.release()
     try:
-      execute('postResults --cr f,p --co totalshear %s_%i.spectralOut'%(options.geometry,loadNo))
+      damask.util.execute('postResults --cr f,p --co totalshear %s_%i.spectralOut'%(options.geometry,loadNo))
     except:
-      execute('postResults --cr f,p %s_%i.spectralOut'%(options.geometry,loadNo))
-    execute('addCauchy ./postProc/%s_%i.txt'%(options.geometry,loadNo))
-    execute('addStrainTensors -l -v ./postProc/%s_%i.txt'%(options.geometry,loadNo))
-    execute('addMises -s Cauchy -e ln(V) ./postProc/%s_%i.txt'%(options.geometry,loadNo))
+      damask.util.execute('postResults --cr f,p %s_%i.spectralOut'%(options.geometry,loadNo))
+    damask.util.execute('addCauchy ./postProc/%s_%i.txt'%(options.geometry,loadNo))
+    damask.util.execute('addStrainTensors -l -v ./postProc/%s_%i.txt'%(options.geometry,loadNo))
+    damask.util.execute('addMises -s Cauchy -e ln(V) ./postProc/%s_%i.txt'%(options.geometry,loadNo))
   else: s.release()
 
   s.acquire()
@@ -1264,7 +1239,7 @@ def doSim(delay,thread):
   print('reading values for sim %i from %s'%(loadNo,thread))
   s.release()
 
-  refFile = open('./postProc/%s_%i.txt'%(options.geometry,loadNo))
+  refFile = './postProc/%s_%i.txt'%(options.geometry,loadNo)
   table = damask.ASCIItable(refFile)
   table.head_read()
   if options.fitting =='equivalentStrain':
