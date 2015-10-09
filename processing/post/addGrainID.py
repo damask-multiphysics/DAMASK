@@ -193,7 +193,7 @@ for name in filenames:
         gID = grainID[i]
         if gID != -1 and gID not in alreadyChecked:                                                 # an already indexed point belonging to a grain not yet tested?
           alreadyChecked[gID] = True                                                                # remember not to check again
-          disorientation = o.disorientation(orientations[gID],strict = False)[0]                    # compare against that grain's orientation [Don't search for axes falling into SST!]
+          disorientation = o.disorientation(orientations[gID],SST = False)[0]                       # compare against that grain's orientation (and skip requirement of axis within SST)
           if disorientation.quaternion.w >  cos_disorientation and \
              disorientation.quaternion.w >= bestDisorientation.w:                                   # within disorientation threshold and better than current best?
             matched = True
@@ -219,7 +219,7 @@ for name in filenames:
 
   for i,orientation in enumerate(orientations[:-1]):                                                       # compare each identified orientation...
     for j in xrange(i+1,len(orientations)):                                                                # ...against all others that were defined afterwards
-      if orientation.disorientation(orientations[j],strict=False)[0].quaternion.w > cos_disorientation:    # similar orientations in both grainIDs?
+      if orientation.disorientation(orientations[j],SST = False)[0].quaternion.w > cos_disorientation:     # similar orientations in both grainIDs?
         similarOrientations[i].append(j)                                                                   # remember in upper triangle...
         similarOrientations[j].append(i)                                                                   # ...and lower triangle of matrix
 
