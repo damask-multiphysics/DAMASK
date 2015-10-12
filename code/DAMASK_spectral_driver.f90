@@ -185,10 +185,10 @@ program DAMASK_spectral_Driver
        case('n','incs','increments','steps','logincs','logincrements','logsteps')
          N_n = N_n + 1_pInt
      end select
-   enddo                                                                                             ! count all identifiers to allocate memory and do sanity check
+   enddo                                                                                            ! count all identifiers to allocate memory and do sanity check
  enddo
 
- if ((N_def /= N_n) .or. (N_n /= N_t)) &                                                            ! sanity check
+ if ((N_def /= N_n) .or. (N_n /= N_t) .or. N_n < 1_pInt) &                                          ! sanity check
    call IO_error(error_ID=837_pInt,ext_msg = trim(loadCaseFile))                                    ! error message for incomplete loadcase
  allocate (loadCases(N_n))                                                                          ! array of load cases
  loadCases%P%myType='p'
