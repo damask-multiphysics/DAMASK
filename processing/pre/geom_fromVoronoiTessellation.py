@@ -73,8 +73,8 @@ def laguerreTessellation(undeformed, coords, weights, grains, nonperiodic = Fals
                 [ -1, 1, 1 ],
                 [  0, 1, 1 ],
                 [  1, 1, 1 ],
-               ]).astype(float)
-      
+               ]).astype(float)*info['size']
+
     squaredweights = np.power(np.tile(weights,len(copies)),2)                                       # Laguerre weights (squared, size N*n)
 
     for i,vec in enumerate(copies):                                                                 # periodic copies of seed points (size N*n)
@@ -258,10 +258,14 @@ for name in filenames:
 # ------------------------------------------ read seeds ---------------------------------------  
       
   table.data_readArray(labels)
-  coords = table.data[:,table.label_index(options.position):table.label_index(options.position)+3] * info['size']
-  eulers = table.data[:,table.label_index(options.eulers  ):table.label_index(options.eulers  )+3] if hasEulers  else np.zeros(3*len(coords))
-  grains = table.data[:,table.label_index(options.microstructure)].astype('i')                     if hasGrains  else 1+np.arange(len(coords))
-  weights = table.data[:,table.label_index(options.weight)]                                        if hasWeights else np.zeros(len(coords))
+  coords = table.data[:,table.label_index(options.position):table.label_index(options.position)+3]\
+           * info['size']
+  eulers = table.data[:,table.label_index(options.eulers  ):table.label_index(options.eulers  )+3]\
+           if hasEulers  else np.zeros(3*len(coords))
+  grains = table.data[:,table.label_index(options.microstructure)].astype('i')\
+           if hasGrains  else 1+np.arange(len(coords))
+  weights = table.data[:,table.label_index(options.weight)]\
+           if hasWeights else np.zeros(len(coords))
   grainIDs = np.unique(grains).astype('i')
   NgrainIDs = len(grainIDs)
 
