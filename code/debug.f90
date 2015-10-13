@@ -44,7 +44,7 @@ module debug
    debug_ABAQUS                  = 13_pInt
  integer(pInt), parameter, private :: &
    debug_MAXNTYPE                = debug_ABAQUS                                                     !< must be set to the maximum defined debug type
-   
+
  integer(pInt),protected, dimension(debug_maxNtype+2_pInt),  public :: &                            ! specific ones, and 2 for "all" and "other"
    debug_level                    = 0_pInt
 
@@ -60,7 +60,7 @@ module debug
    debug_cumLpTicks              = 0_pLongInt, &                                                    !< total cpu ticks spent in LpAndItsTangent
    debug_cumDeltaStateTicks      = 0_pLongInt, &                                                    !< total cpu ticks spent in deltaState
    debug_cumDotStateTicks        = 0_pLongInt                                                       !< total cpu ticks spent in dotState
- 
+
  integer(pInt), dimension(2), public :: &
    debug_stressMaxLocation       = 0_pInt, &
    debug_stressMinLocation       = 0_pInt, &
@@ -76,19 +76,19 @@ module debug
    debug_StressLoopLiDistribution, &                                                                !< distribution of stress iterations until convergence
    debug_StressLoopLpDistribution, &                                                                !< distribution of stress iterations until convergence
    debug_StateLoopDistribution                                                                      !< distribution of state iterations until convergence
- 
+
  real(pReal), public :: &
    debug_stressMax               = -huge(1.0_pReal), &
    debug_stressMin               =  huge(1.0_pReal), &
    debug_jacobianMax             = -huge(1.0_pReal), &
    debug_jacobianMin             =  huge(1.0_pReal)
- 
+
  character(len=64), parameter, private ::  &
    debug_CONFIGFILE         = 'debug.config'                                                        !< name of configuration file
 
-#ifdef PETSc 
+#ifdef PETSc
  character(len=1024), parameter, public :: &
-   PETSCDEBUG = ' -snes_view -snes_monitor ' 
+   PETSCDEBUG = ' -snes_view -snes_monitor '
 #endif
  public :: debug_init, &
            debug_reset, &
@@ -123,19 +123,19 @@ subroutine debug_init
    IO_EOF
 
  implicit none
- integer(pInt), parameter                 :: FILEUNIT    = 300_pInt  
- 
+ integer(pInt), parameter                 :: FILEUNIT    = 300_pInt
+
  integer(pInt)                            :: i, what
  integer(pInt), allocatable, dimension(:) :: chunkPos
  character(len=65536)                     :: tag, line
 
- mainProcess: if (worldrank == 0) then 
+ mainProcess: if (worldrank == 0) then
    write(6,'(/,a)')   ' <<<+-  debug init  -+>>>'
    write(6,'(a)')     ' $Id$'
    write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
  endif mainProcess
- 
+
  if (allocated(debug_StressLoopLpDistribution)) &
     deallocate(debug_StressLoopLpDistribution)
       allocate(debug_StressLoopLpDistribution(nStress+1,2))
@@ -160,7 +160,7 @@ subroutine debug_init
     deallocate(debug_MaterialpointLoopDistribution)
       allocate(debug_MaterialpointLoopDistribution(nHomog+1))
                debug_MaterialpointLoopDistribution = 0_pInt
- 
+
 !--------------------------------------------------------------------------------------------------
 ! try to open the config file
 
@@ -179,7 +179,7 @@ subroutine debug_init
        case ('grain','g','gr')
          debug_g = IO_intValue(line,chunkPos,2_pInt)
      end select
-     
+
      what = 0_pInt
      select case(tag)
        case ('debug')
@@ -237,14 +237,14 @@ subroutine debug_init
       endif
    enddo
    close(FILEUNIT)
- 
+
    do i = 1_pInt, debug_maxNtype
      if (debug_level(i) == 0) &
-       debug_level(i) = ior(debug_level(i), debug_level(debug_MAXNTYPE + 2_pInt))                   ! fill undefined debug types with levels specified by "other" 
+       debug_level(i) = ior(debug_level(i), debug_level(debug_MAXNTYPE + 2_pInt))                   ! fill undefined debug types with levels specified by "other"
 
-     debug_level(i) = ior(debug_level(i), debug_level(debug_MAXNTYPE + 1_pInt))                     ! fill all debug types with levels specified by "all" 
+     debug_level(i) = ior(debug_level(i), debug_level(debug_MAXNTYPE + 1_pInt))                     ! fill all debug types with levels specified by "all"
    enddo
-  
+
    if (iand(debug_level(debug_debug),debug_LEVELBASIC) /= 0) &
      write(6,'(a,/)') ' using values from config file'
  else fileExists
@@ -284,7 +284,7 @@ subroutine debug_init
          case (debug_ABAQUS)
            tag = ' ABAQUS FEM solver'
        end select
-           
+
        if(debug_level(i) /= 0) then
          write(6,'(3a)') ' debug level for ', trim(tag), ':'
          if(iand(debug_level(i),debug_LEVELBASIC)        /= 0) write(6,'(a)') '  basic'
@@ -305,7 +305,7 @@ subroutine debug_init
  endif
 
 end subroutine debug_init
- 
+
 
 !--------------------------------------------------------------------------------------------------
 !> @brief resets all debug values
@@ -380,7 +380,7 @@ subroutine debug_info
        write(6,'(a33,1x,f12.6)')  'avg CPU time/microsecs per call :',&
          real(debug_cumDeltaStateTicks,pReal)*1.0e6_pReal/real(tickrate*debug_cumDeltaStateCalls,pReal)
      endif
-   
+
      integral = 0_pInt
      write(6,'(3/,a)') 'distribution_StressLoopLp :    stress  stiffness'
      do j=1_pInt,nStress+1_pInt
@@ -394,7 +394,7 @@ subroutine debug_info
      enddo
      write(6,'(a15,i10,2(1x,i10))') '          total',integral,sum(debug_StressLoopLpDistribution(:,1)), &
                                                                sum(debug_StressLoopLpDistribution(:,2))
-     
+
      integral = 0_pInt
      write(6,'(3/,a)') 'distribution_StressLoopLi :    stress  stiffness'
      do j=1_pInt,nStress+1_pInt
@@ -408,7 +408,7 @@ subroutine debug_info
      enddo
      write(6,'(a15,i10,2(1x,i10))') '          total',integral,sum(debug_StressLoopLiDistribution(:,1)), &
                                                                sum(debug_StressLoopLiDistribution(:,2))
-     
+
      integral = 0_pInt
      write(6,'(2/,a)') 'distribution_CrystalliteStateLoop :'
      do j=1_pInt,nState+1_pInt
@@ -422,7 +422,7 @@ subroutine debug_info
      enddo
      write(6,'(a15,i10,2(1x,i10))') '          total',integral,sum(debug_StateLoopDistribution(:,1)), &
                                                                sum(debug_StateLoopDistribution(:,2))
-    
+
      integral = 0_pInt
      write(6,'(2/,a)') 'distribution_CrystalliteCutbackLoop :'
      do j=1_pInt,nCryst+1_pInt
@@ -435,7 +435,7 @@ subroutine debug_info
      enddo
      write(6,'(a15,i10,1x,i10)') '          total',integral,sum(debug_CrystalliteLoopDistribution)
    endif debugOutputCryst
-     
+
    debugOutputHomog: if (iand(debug_level(debug_HOMOGENIZATION),debug_LEVELBASIC) /= 0) then
      integral = 0_pInt
      write(6,'(2/,a)') 'distribution_MaterialpointStateLoop :'
@@ -445,8 +445,8 @@ subroutine debug_info
          write(6,'(i25,1x,i10)') j,debug_MaterialpointStateLoopDistribution(j)
        endif
      enddo
-     write(6,'(a15,i10,1x,i10)') '          total',integral,sum(debug_MaterialpointStateLoopDistribution) 
-    
+     write(6,'(a15,i10,1x,i10)') '          total',integral,sum(debug_MaterialpointStateLoopDistribution)
+
      integral = 0_pInt
      write(6,'(2/,a)') 'distribution_MaterialpointCutbackLoop :'
      do j=1_pInt,nHomog+1_pInt
@@ -457,19 +457,19 @@ subroutine debug_info
          write(6,'(i25,a1,i10)') min(nHomog,j),exceed,debug_MaterialpointLoopDistribution(j)
        endif
      enddo
-     write(6,'(a15,i10,1x,i10)') '          total',integral,sum(debug_MaterialpointLoopDistribution)    
+     write(6,'(a15,i10,1x,i10)') '          total',integral,sum(debug_MaterialpointLoopDistribution)
    endif debugOutputHomog
-     
+
    debugOutputCPFEM: if (iand(debug_level(debug_CPFEM),debug_LEVELBASIC) /= 0) then
      write(6,'(2/,a,/)') ' Extreme values of returned stress and jacobian'
      write(6,'(a39)')                      '                      value     el   ip'
      write(6,'(a14,1x,e12.3,1x,i6,1x,i4)')   ' stress   min :', debug_stressMin, debug_stressMinLocation
      write(6,'(a14,1x,e12.3,1x,i6,1x,i4)')   '          max :', debug_stressMax, debug_stressMaxLocation
      write(6,'(a14,1x,e12.3,1x,i6,1x,i4)')   ' jacobian min :', debug_jacobianMin, debug_jacobianMinLocation
-     write(6,'(a14,1x,e12.3,1x,i6,1x,i4,/)') '          max :', debug_jacobianMax, debug_jacobianMaxLocation  
+     write(6,'(a14,1x,e12.3,1x,i6,1x,i4,/)') '          max :', debug_jacobianMax, debug_jacobianMaxLocation
    endif debugOutputCPFEM
  !$OMP END CRITICAL (write2out)
- 
+
 end subroutine debug_info
- 
+
 end module debug

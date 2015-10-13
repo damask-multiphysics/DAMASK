@@ -93,7 +93,7 @@ OPTIMIZATION_OFF_gfortran        :=-O0
 OPTIMIZATION_DEFENSIVE_ifort     :=-O2
 OPTIMIZATION_DEFENSIVE_gfortran  :=-O2
 OPTIMIZATION_AGGRESSIVE_ifort    :=-O3 $(PORTABLE_SWITCH) -no-prec-div -fp-model fast=2 -ipo
-OPTIMIZATION_AGGRESSIVE_gfortran :=-O3 $(PORTABLE_SWITCH) -ffast-math -funroll-loops -ftree-vectorize 
+OPTIMIZATION_AGGRESSIVE_gfortran :=-O3 $(PORTABLE_SWITCH) -ffast-math -funroll-loops -ftree-vectorize
 
 
 LINK_OPTIONS_ifort       :=-shared-intel
@@ -119,7 +119,7 @@ endif
 #-ftz:                     flush unterflow to zero, automatically set if O<0,1,2,3> >0
 #-assume byterecl          record length is given in bytes (also set by -standard-semantics)
 #-fimplicit-none:          assume "implicit-none" even if not present in source
-#-diag-disable:            disables warnings, where                           
+#-diag-disable:            disables warnings, where
 #   warning ID 5268:       the text exceeds right hand column allowed on the line (we have only comments there)
 #-warn:                    enables warnings, where
 #   declarations:            any undeclared names (alternative name: -implicitnone)
@@ -154,10 +154,10 @@ DEBUG_OPTIONS_ifort      :=-g\
 #COMPILE SWITCHES FOR RUNTIME DEBUGGING
 #-g:                       Generate symbolic debugging information in the object file
 #-traceback:               Generate extra information in the object file to provide source file traceback information when a severe error occurs at run time.
-#-gen-interfaces:          Generate an interface block for each routine. http://software.intel.com/en-us/blogs/2012/01/05/doctor-fortran-gets-explicit-again/  
+#-gen-interfaces:          Generate an interface block for each routine. http://software.intel.com/en-us/blogs/2012/01/05/doctor-fortran-gets-explicit-again/
 #-fp-stack-check:          Generate extra code after every function call to ensure that the floating-point (FP) stack is in the expected state.
 #-ftrapuv                  Trap uninitalized variables
-#-check:                   checks at runtime, where  
+#-check:                   checks at runtime, where
 #   bounds:                  check if an array index is too small (<1) or too large!
 #   format:                  Checking for the data type of an item being formatted for output.
 #   output_conversion:       Checking for the fit of data items within a designated format descriptor field.
@@ -171,7 +171,7 @@ DEBUG_OPTIONS_ifort      :=-g\
 ###################################################################################################
 #MORE OPTIONS FOR RUNTIME DEBUGGING
 #-heap-arrays:            should not be done for OpenMP, but set "ulimit -s unlimited" on shell. Probably it helps also to unlimit other limits
-#-check:                   checks at runtime, where  
+#-check:                   checks at runtime, where
 #   arg_temp_created:        will cause a lot of warnings because we create a bunch of temporary arrays (performance?)
 #   stack:
 LINK_OPTIONS_gfortran    :=-Wl,-undefined,dynamic_lookup
@@ -220,48 +220,48 @@ endif
 #  -Wreal-q-constant:            warn about real-literal-constants with 'q'  exponent-letter
 #  -Wunused:                     a number of unused-xxx warnings
 # these are general (non -Fortran options) implied by -Wall
-#  -Waddress   
-#  -Warray-bounds (only with -O2)  
-#  -Wc++11-compat  
-#  -Wchar-subscripts  
-#  -Wcomment  
-#  -Wformat    
-#  -Wmaybe-uninitialized 
-#  -Wnonnull  
-#  -Wparentheses  
-#  -Wpointer-sign  
-#  -Wreorder   
-#  -Wreturn-type  
-#  -Wsequence-point   
-#  -Wstrict-aliasing  
-#  -Wstrict-overflow=1  
-#  -Wswitch  
-#  -Wtrigraphs  
-#  -Wuninitialized  
-#  -Wunknown-pragmas  
-#  -Wunused-function  
-#  -Wunused-label     
-#  -Wunused-value     
-#  -Wunused-variable  
-#  -Wvolatile-register-var 
+#  -Waddress
+#  -Warray-bounds (only with -O2)
+#  -Wc++11-compat
+#  -Wchar-subscripts
+#  -Wcomment
+#  -Wformat
+#  -Wmaybe-uninitialized
+#  -Wnonnull
+#  -Wparentheses
+#  -Wpointer-sign
+#  -Wreorder
+#  -Wreturn-type
+#  -Wsequence-point
+#  -Wstrict-aliasing
+#  -Wstrict-overflow=1
+#  -Wswitch
+#  -Wtrigraphs
+#  -Wuninitialized
+#  -Wunknown-pragmas
+#  -Wunused-function
+#  -Wunused-label
+#  -Wunused-value
+#  -Wunused-variable
+#  -Wvolatile-register-var
 #-Wextra:                      sets the following Fortran options:
 #  -Wunuses-parameter:
 #  -Wcompare-reals:
 # these are general (non -Fortran options) implied by -Wextra
-#  -Wclobbered  
-#  -Wempty-body  
-#  -Wignored-qualifiers 
-#  -Wmissing-field-initializers  
-#  -Woverride-init  
-#  -Wsign-compare  
-#  -Wtype-limits  
-#  -Wuninitialized  
+#  -Wclobbered
+#  -Wempty-body
+#  -Wignored-qualifiers
+#  -Wmissing-field-initializers
+#  -Woverride-init
+#  -Wsign-compare
+#  -Wtype-limits
+#  -Wuninitialized
 #  -Wunused-but-set-parameter (only with -Wunused or -Wall)
 #  -Wno-globals
 
 ###################################################################################################
 #MORE OPTIONS FOR DEBUGGING DURING COMPILATION
-#-Warray-temporarieswarnings:   because we have many temporary arrays (performance issue?):                     
+#-Warray-temporarieswarnings:   because we have many temporary arrays (performance issue?):
 #-Wimplicit-interface:          no interfaces for lapack routines
 #-Wunsafe-loop-optimizations:   warn if the loop cannot be optimized due to nontrivial assumptions.
 #-Wstrict-overflow:
@@ -310,16 +310,16 @@ SOURCE_FILES = \
    source_thermal_dissipation.o source_thermal_externalheat.o \
    source_damage_isoBrittle.o source_damage_isoDuctile.o source_damage_anisoBrittle.o source_damage_anisoDuctile.o \
    source_vacancy_phenoplasticity.o source_vacancy_irradiation.o source_vacancy_thermalfluc.o
-   
+
 KINEMATICS_FILES = \
    kinematics_cleavage_opening.o kinematics_slipplane_opening.o \
    kinematics_thermal_expansion.o \
-   kinematics_vacancy_strain.o kinematics_hydrogen_strain.o 
-   
+   kinematics_vacancy_strain.o kinematics_hydrogen_strain.o
+
 PLASTIC_FILES = \
    plastic_dislotwin.o plastic_disloUCLA.o plastic_disloKMC.o plastic_j2.o plastic_phenopowerlaw.o \
-   plastic_titanmod.o plastic_nonlocal.o plastic_none.o 
-   
+   plastic_titanmod.o plastic_nonlocal.o plastic_none.o plastic_phenoplus.o
+
 THERMAL_FILES = \
    thermal_isothermal.o thermal_adiabatic.o thermal_conduction.o
 
@@ -336,7 +336,7 @@ HYDROGENFLUX_FILES = \
    hydrogenflux_isoconc.o hydrogenflux_cahnhilliard.o
 
 HOMOGENIZATION_FILES = \
-   homogenization_RGC.o homogenization_isostrain.o homogenization_none.o 
+   homogenization_RGC.o homogenization_isostrain.o homogenization_none.o
 
 #####################
 # Spectral Solver
@@ -367,31 +367,31 @@ SPECTRAL_FILES = prec.o DAMASK_interface.o IO.o libs.o numerics.o debug.o math.o
                  DAMASK_spectral_utilities.o \
                  $(SPECTRAL_SOLVER_FILES)
 
-DAMASK_spectral.exe: DAMASK_spectral_driver.o 
+DAMASK_spectral.exe: DAMASK_spectral_driver.o
 	$(PREFIX) $(LINKERNAME) $(OPENMP_FLAG_$(F90)) $(LINK_OPTIONS_$(F90)) $(STANDARD_CHECK_$(F90))  $(OPTIMIZATION_$(MAXOPTI)_$(F90)) \
     -o DAMASK_spectral.exe DAMASK_spectral_driver.o \
     $(SPECTRAL_FILES) $(LIBRARIES) $(SUFFIX)
-    
-    
+
+
 DAMASK_spectral_driver.o: DAMASK_spectral_driver.f90 \
                            $(SPECTRAL_SOLVER_FILES)
 	$(PREFIX) $(COMPILERNAME) $(COMPILE_MAXOPTI) -c DAMASK_spectral_driver.f90 $(SUFFIX)
 
 DAMASK_spectral_solverAL.o:    DAMASK_spectral_solverAL.f90 \
                                DAMASK_spectral_utilities.o
-  
+
 DAMASK_spectral_solverPolarisation.o:    DAMASK_spectral_solverPolarisation.f90 \
                                DAMASK_spectral_utilities.o
-  
+
 DAMASK_spectral_solverBasicPETSc.o: DAMASK_spectral_solverBasicPETSc.f90 \
                                DAMASK_spectral_utilities.o
 
 spectral_thermal.o:            spectral_thermal.f90 \
                                DAMASK_spectral_utilities.o
-  
+
 spectral_damage.o:             spectral_damage.f90 \
                                DAMASK_spectral_utilities.o
-  
+
 DAMASK_spectral_utilities.o:   DAMASK_spectral_utilities.f90 \
                                CPFEM.o
 
@@ -443,7 +443,7 @@ FEM_hydrogenflux.o:            FEM_hydrogenflux.f90 \
                                FEM_utilities.o
 
 FEM_utilities.o:               FEM_utilities.f90 \
-                               CPFEM.o 
+                               CPFEM.o
 
 FEZoo.o:                       $(wildcard FEZoo.f90) \
                                IO.o
@@ -513,8 +513,8 @@ homogenization_none.o:         homogenization_none.f90 \
                                crystallite.o
 
 crystallite.o:                 crystallite.f90 \
-                               constitutive.o 
-                            
+                               constitutive.o
+
 constitutive.o:                constitutive.f90 \
                                $(SOURCE_FILES) \
                                $(KINEMATICS_FILES) \
@@ -531,13 +531,13 @@ source_damage_isoBrittle.o:    source_damage_isoBrittle.f90 \
 
 source_damage_isoDuctile.o:    source_damage_isoDuctile.f90 \
                                lattice.o
-                               
+
 source_damage_anisoBrittle.o:  source_damage_anisoBrittle.f90 \
                                lattice.o
-                               
+
 source_damage_anisoDuctile.o:  source_damage_anisoDuctile.f90 \
                                lattice.o
-                               
+
 source_vacancy_phenoplasticity.o: source_vacancy_phenoplasticity.f90 \
                                lattice.o
 
@@ -546,22 +546,22 @@ source_vacancy_irradiation.o:  source_vacancy_irradiation.f90 \
 
 source_vacancy_thermalfluc.o:  source_vacancy_thermalfluc.f90 \
                                lattice.o
-                               
+
 kinematics_cleavage_opening.o: kinematics_cleavage_opening.f90 \
                                lattice.o
-                               
+
 kinematics_slipplane_opening.o: kinematics_slipplane_opening.f90 \
                                lattice.o
-                               
+
 kinematics_thermal_expansion.o: kinematics_thermal_expansion.f90 \
                                lattice.o
-                               
+
 kinematics_vacancy_strain.o:   kinematics_vacancy_strain.f90 \
                                lattice.o
-                               
+
 kinematics_hydrogen_strain.o:  kinematics_hydrogen_strain.f90 \
                                lattice.o
-                               
+
 plastic_nonlocal.o:            plastic_nonlocal.f90 \
                                lattice.o
 
@@ -578,6 +578,9 @@ plastic_dislotwin.o:           plastic_dislotwin.f90 \
                                lattice.o
 
 plastic_phenopowerlaw.o:       plastic_phenopowerlaw.f90 \
+                               lattice.o
+
+plastic_phenoplus.o:           plastic_phenoplus.f90 \
                                lattice.o
 
 plastic_j2.o:                  plastic_j2.f90 \
@@ -616,7 +619,7 @@ debug.o:                       debug.f90 \
 
 numerics.o:                    numerics.f90 \
                                libs.o
-                               
+
 libs.o:                        libs.f90 \
                                IO.o
 
@@ -628,17 +631,17 @@ DAMASK_interface.o:            DAMASK_spectral_interface.f90 \
                                $(wildcard DAMASK_FEM_interface.f90) \
                                prec.o
 	$(PREFIX) $(COMPILERNAME) $(COMPILE) -c $(INTERFACENAME) -fall-intrinsics -o DAMASK_interface.o $(SUFFIX)
-#-fall-intrinsics:  all intrinsic procedures (including the GNU-specific extensions) are accepted. -Wintrinsics-std will be ignored 
+#-fall-intrinsics:  all intrinsic procedures (including the GNU-specific extensions) are accepted. -Wintrinsics-std will be ignored
 #                   and no user-defined procedure with the same name as any intrinsic will be called except when it is explicitly declared external
 #      -->   allows the use of 'getcwd'
 prec.o:                        prec.f90
 	$(PREFIX) $(COMPILERNAME) $(COMPILE) -c prec.f90 -fno-range-check -fall-intrinsics -fno-fast-math $(SUFFIX)
 # fno-range-check:  Disable range checking on results of simplification of constant expressions during compilation
 #      -->   allows the definition of DAMASK_NaN
-#-fall-intrinsics:  all intrinsic procedures (including the GNU-specific extensions) are accepted. -Wintrinsics-std will be ignored 
+#-fall-intrinsics:  all intrinsic procedures (including the GNU-specific extensions) are accepted. -Wintrinsics-std will be ignored
 #                   and no user-defined procedure with the same name as any intrinsic will be called except when it is explicitly declared external
 #      -->   allows the use of 'isnan'
-#-fno-fast-math:    
+#-fno-fast-math:
 #      -->   otherwise, when setting -ffast-math, isnan always evaluates to false (I would call it a bug)
 else
 DAMASK_interface.o:            DAMASK_spectral_interface.f90 \
