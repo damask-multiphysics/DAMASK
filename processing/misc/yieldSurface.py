@@ -1,9 +1,8 @@
 #!/usr/bin/python
 # -*- coding: UTF-8 no BOM -*-
 
-import threading,time,os,subprocess,shlex,string
+import threading,time,os,subprocess,string,sys
 import numpy as np
-from scipy.linalg import svd
 from optparse import OptionParser
 import damask
 from damask.util import leastsqBound
@@ -12,21 +11,23 @@ scriptID   = string.replace('$Id$','\n','\\n')
 scriptName = os.path.splitext(scriptID.split()[1])[0]
 
 def runFit(exponent, eqStress, dimension, criterion):
-  global s, threads, myFit
+  global s, threads, myFit, myLoad
   global fitResults, fitErrors, fitResidual, stressAll, strainAll
-  global N_simulations, Guess, dDim, numParas
+  global N_simulations, Guess, dDim
   
   fitResults = []; fitErrors = []; fitResidual = []; Guess = []; threads=[]
   dDim = dimension - 3
-  numParas = len(fitCriteria[criterion]['bound'][dDim])
+  Nparas = len(fitCriteria[criterion]['bound'][dDim])
   nExpo = fitCriteria[criterion]['nExpo']
 
-  if exponent > 0.0: 
-    numParas = numParas-nExpo # User defines the exponents
-    fitCriteria[criterion]['bound'][dDim] = fitCriteria[criterion]['bound'][dDim][:numParas]
-  for i in xrange(numParas):
+  if exponent > 0.0:                                                                                # User defined exponents
+    Nparas = Nparas-nExpo
+    fitCriteria[criterion]['bound'][dDim] = fitCriteria[criterion]['bound'][dDim][:Nparas]
+
+  for i in xrange(Nparas):
     temp = fitCriteria[criterion]['bound'][dDim][i]
-    if fitCriteria[criterion]['bound'][dDim][i] == (None,None): Guess.append(1.0)
+    if fitCriteria[criterion]['bound'][dDim][i] == (None,None):
+      Guess.append(1.0)
     else: 
       g = (temp[0]+temp[1])/2.0
       if g == 0: g = temp[1]*0.5
@@ -36,17 +37,19 @@ def runFit(exponent, eqStress, dimension, criterion):
   s=threading.Semaphore(1)
   myLoad = Loadcase(options.load[0],options.load[1],options.load[2],
                     nSet = 10, dimension = dimension, vegter = options.vegter)
+
   stressAll= [np.zeros(0,'d').reshape(0,0) for i in xrange(int(options.yieldValue[2]))]
   strainAll= [np.zeros(0,'d').reshape(0,0) for i in xrange(int(options.yieldValue[2]))]
 
   myFit = Criterion(exponent,eqStress, dimension, criterion)
-  for i in range(options.threads):
-    threads.append(myThread(i))
-    threads[i].start()
+  for t in range(options.threads):
+    threads.append(myThread(t))
+    threads[t].start()
 
-  for i in range(options.threads):
-    threads[i].join()
-  print fitResidual
+  for t in range(options.threads):
+    threads[t].join()
+  damask.util.croak('Residuals')
+  damask.util.croak(fitResidual)
 
 def principalStresses(sigmas):
   '''
@@ -61,31 +64,32 @@ def principalStresses(sigmas):
   return lambdas
 
 def principalStress(p):
-  sin = np.sin;    cos = np.cos
-  I1,I2,I3 = invariant(p)
+  I = invariant(p)
 
-  I1s3I2= (I1**2 - 3.0*I2)**0.5
-  numer = 2.0*I1**3 - 9.0*I1*I2 + 27.0*I3
+  I1s3I2= (I[0]**2 - 3.0*I[1])**0.5
+  numer = 2.0*I[0]**3 - 9.0*I[0]*I[1] + 27.0*I[2]
   denom = 2.0*I1s3I2**3
   cs    = numer/denom
 
   phi   = np.arccos(cs)/3.0
-  t1    = I1/3.0; t2 = 2.0/3.0*I1s3I2
-  return np.array( [t1 + t2*cos(phi), t1+t2*cos(phi+np.pi*2.0/3.0), t1+t2*cos(phi+np.pi*4.0/3.0)])
+  t1    = I[0]/3.0; t2 = 2.0/3.0*I1s3I2
+  return np.array( [t1 + t2*np.cos(phi), 
+                    t1 + t2*np.cos(phi+np.pi*2.0/3.0),
+                    t1 + t2*np.cos(phi+np.pi*4.0/3.0)])
 
 def principalStrs_Der(p, (s1, s2, s3, s4, s5, s6), dim, Karafillis=False):
   '''
-    The derivative of principal stress with respect to stress
+    Derivative of principal stress with respect to stress
   '''
-  sin = np.sin;    cos = np.cos
-  I1,I2,I3 = invariant(p)
+  third  = 1.0/3.0
+  third2 = 2.0*third
 
-  third = 1.0/3.0
-  I1s3I2= np.sqrt(I1**2 - 3.0*I2)
-  numer, denom = 2.0*I1**3 - 9.0*I1*I2 + 27.0*I3,  2.0*I1s3I2**3
+  I = invariant(p)
+  I1s3I2= np.sqrt(I[0]**2 - 3.0*I[1])
+  numer = 2.0*I1**3 - 9.0*I[0]*I[1] + 27.0*I[2]
+  denom = 2.0*I1s3I2**3
   cs    = numer/denom
   phi   = np.arccos(cs)/3.0
-
 
   dphidcs   = -third/np.sqrt(1.0 - cs**2)
   dcsddenom = 0.5*numer*(-1.5)*I1s3I2**(-5.0)
@@ -94,12 +98,13 @@ def principalStrs_Der(p, (s1, s2, s3, s4, s5, s6), dim, Karafillis=False):
   dcsdI3    = 27.0*denom
   dphidI1, dphidI2, dphidI3 = dphidcs*dcsdI1, dphidcs*dcsdI2, dphidcs*dcsdI3
 
-  dI1s3I2dI1= I1/I1s3I2;  dI1s3I2dI2 = -1.5/I1s3I2
-  third2    = 2.0*third;     tcoeff  = third2*I1s3I2
+  dI1s3I2dI1 =   I1/I1s3I2
+  dI1s3I2dI2 = -1.5/I1s3I2
+  tcoeff  = third2*I1s3I2
   
-  dSidIj = lambda theta : ( tcoeff*(-sin(theta))*dphidI1 + third2*dI1s3I2dI1*cos(theta) + third, 
-                            tcoeff*(-sin(theta))*dphidI2 + third2*dI1s3I2dI2*cos(theta), 
-                            tcoeff*(-sin(theta))*dphidI3)
+  dSidIj = lambda theta : ( tcoeff*(-np.sin(theta))*dphidI1 + third2*dI1s3I2dI1*np.cos(theta) + third, 
+                            tcoeff*(-np.sin(theta))*dphidI2 + third2*dI1s3I2dI2*np.cos(theta), 
+                            tcoeff*(-np.sin(theta))*dphidI3)
   dSdI = np.array([dSidIj(phi),dSidIj(phi+np.pi*2.0/3.0),dSidIj(phi+np.pi*4.0/3.0)]) # i=1,2,3; j=1,2,3
   
 # calculate the derivation of principal stress with regards to the anisotropic coefficients  
@@ -111,8 +116,11 @@ def principalStrs_Der(p, (s1, s2, s3, s4, s5, s6), dim, Karafillis=False):
   if Karafillis:
     dpdc = np.array([[zero,s1-s3,s1-s2], [s2-s3,zero,s2-s1], [s3-s2,s3-s1,zero]])/3.0
     dSdp = np.array([np.dot(dSdI[:,:,i],dIdp[:,:,i]).T for i in xrange(num)]).T
-    if dim == 2: temp = np.vstack([dSdp[:,3]*s4]).T.reshape(num,1,3).T
-    else:        temp = np.vstack([dSdp[:,3]*s4,dSdp[:,4]*s5,dSdp[:,5]*s6]).T.reshape(num,3,3).T
+    if dim == 2:
+      temp = np.vstack([dSdp[:,3]*s4]).T.reshape(num,1,3).T
+    else: 
+      temp = np.vstack([dSdp[:,3]*s4,dSdp[:,4]*s5,dSdp[:,5]*s6]).T.reshape(num,3,3).T
+
     return np.concatenate((np.array([np.dot(dSdp[:,0:3,i], dpdc[:,:,i]).T for i in xrange(num)]).T,
                            temp), axis=1)
   else:
@@ -127,14 +135,12 @@ def principalStrs_Der(p, (s1, s2, s3, s4, s5, s6), dim, Karafillis=False):
     return np.array([np.dot(dSdI[:,:,i],dIdc[:,:,i]).T for i in xrange(num)]).T
 
 def invariant(sigmas):
+    I=np.zeros(3)
     s11,s22,s33,s12,s23,s31 = sigmas
-    I1  = s11 + s22 + s33
-    I2  = s11*s22 + s22*s33 + s33*s11 - s12**2 - s23**2 - s31**2
-    I3  = s11*s22*s33 + 2.0*s12*s23*s31 - s12**2*s33 - s23**2*s11 - s31**2*s22
-    return (I1,I2,I3)
-
-def formatOutput(n, type='%-14.6f'):
-  return ''.join([type for i in xrange(n)])
+    I[0] = s11 + s22 + s33
+    I[1] = s11*s22 + s22*s33 + s33*s11 - s12**2 - s23**2 - s31**2
+    I[2]  = s11*s22*s33 + 2.0*s12*s23*s31 - s12**2*s33 - s23**2*s11 - s31**2*s22
+    return I
 
 def math_ln(x):
   return np.log(x + 1.0e-32)
@@ -155,9 +161,9 @@ class Criteria(object):
   '''
   def __init__(self, criterion, uniaxialStress,exponent, dimension):
     self.stress0 = uniaxialStress
-    if exponent < 0.0:        # The exponent m is undetermined
+    if exponent < 0.0:                                                                              # Fitting exponent m
       self.mFix = [False, exponent]
-    else:                     # The exponent m is fixed
+    else:                                                                                           # fixed exponent m
       self.mFix = [True, exponent]
     self.func     = fitCriteria[criterion]['func']
     self.criteria = criterion
@@ -234,7 +240,7 @@ def VetgerCriterion(stress,lankford, rhoBi0, theta=0.0):
 
   nps = len(stress)
   if nps%4 != 0:
-    print ('Warning: the number of stress points is uncorrect, stress points of %s are missing in set %i'%(
+    damask.util.croak('Warning: the number of stress points is uncorrect, stress points of %s are missing in set %i'%(
       ['eq-biaxial, plane strain & uniaxial', 'eq-biaxial & plane strain','eq-biaxial'][nps%4-1],nps/4+1))
   else:
     nset = nps/4
@@ -338,15 +344,12 @@ def Drucker(eqStress, paras, sigmas, mFix, criteria, dim, Jac = False):
     sigma0, C_D = paras[0:2]
     if mFix[0]: p = mFix[1]
     else:       p = paras[-1]
-  I1,I2,I3 = invariant(sigmas)
-  #I = invariant(sigmas)
-  #J = np.zeros([3]) 
-  J2  = I1**2/3.0 - I2
-  #J[1]  = I[0]**2/3.0 - I[1]
-  J3  = I1**3/13.5 - I1*I2/3.0 + I3
-  #J[2]  = I[0]**3/13.5 - I[0]*I[1]/3.0 + I[2] etc.
-  J2_3p = J2**(3.0*p)      
-  J3_2p = J3**(2.0*p)
+  I = invariant(sigmas)
+  J = np.zeros([3]) 
+  J[1]  = I[0]**2/3.0  - I[1]
+  J[2]  = I[0]**3/13.5 - I[0]*I[1]/3.0 + I[2]
+  J2_3p = J[1]**(3.0*p)      
+  J3_2p = J[2]**(2.0*p)
   left  = J2_3p - C_D*J3_2p
   r     = left**(1.0/(6.0*p))*3.0**0.5/sigma0
 
@@ -501,7 +504,6 @@ def Barlat1991(eqStress, paras, sigmas, mFix, criteria, dim, Jac=False):
   if mFix[0]:  m = mFix[1]
   else:        m = paras[-1]
 
-  cos = np.cos; sin = np.sin; pi = np.pi; abs = np.abs
   s11,s22,s33,s12,s23,s31 = sigmas
   if dim == 2:
     dXdx = np.array([s22,-s11,s11-s22,s12])
@@ -512,9 +514,9 @@ def Barlat1991(eqStress, paras, sigmas, mFix, criteria, dim, Jac=False):
 
   I2 = (F*F + G*G + H*H)/3.0+ ((A-C)**2+(C-B)**2+(B-A)**2)/54.0
   I3 = (C-B)*(A-C)*(B-A)/54.0 + F*G*H - ((C-B)*F*F + (A-C)*G*G + (B-A)*H*H)/6.0
-  phi1 = np.arccos(I3/I2**1.5)/3.0 + pi/6.0; absc1 = 2.0*abs(cos(phi1))
-  phi2 = phi1                      + pi/3.0; absc2 = 2.0*abs(cos(phi2))
-  phi3 = phi2                      + pi/3.0; absc3 = 2.0*abs(cos(phi3))
+  phi1 = np.arccos(I3/I2**1.5)/3.0 + np.pi/6.0; absc1 = 2.0*np.abs(np.cos(phi1))
+  phi2 = phi1                      + np.pi/3.0; absc2 = 2.0*np.abs(np.cos(phi2))
+  phi3 = phi2                      + np.pi/3.0; absc3 = 2.0*np.abs(np.cos(phi3))
   left = ( absc1**m + absc2**m + absc3**m )
   r    = (0.5*left)**(1.0/m)*np.sqrt(3.0*I2)/eqStress
 
@@ -542,7 +544,7 @@ def Barlat1991(eqStress, paras, sigmas, mFix, criteria, dim, Jac=False):
                         (G*F*3.0 + (A-B))*H ])/3.0*dXdx
     darccos = -1.0/np.sqrt(1.0 - I3**2/I2**3)
 
-    dfdcos = lambda phi : dfdl*m*(2.0*abs(cos(phi)))**(m-1.0)*np.sign(cos(phi))*(-sin(phi)/1.5)
+    dfdcos = lambda phi : dfdl*m*(2.0*abs(np.cos(phi)))**(m-1.0)*np.sign(np.cos(phi))*(-np.sin(phi)/1.5)
 
     dfdthe= (dfdcos(phi1) + dfdcos(phi2) + dfdcos(phi3)) 
     dfdI2, dfdI3 = dfdthe*darccos*I3*(-1.5)*I2**(-2.5)+r/2.0/I2, dfdthe*darccos*I2**(-1.5)
@@ -842,149 +844,131 @@ def KarafillisBoyce(eqStress, paras, sigmas, mFix, criteria, dim, Jac=False):
 
 
 fitCriteria = {
-  'tresca'         :{'func' : Tresca,
-                     'nExpo': 0,'err':np.inf,
-                     'dimen': 3,
-                     'bound': [ [(None,None)] ],
-                     'paras': [ 'sigma0' ],
-                     'text' : '\nCoefficient of Tresca criterion: ',
-                     'error': 'The standard deviation error is: '
+  'tresca'         :{'name':  'Tresca',
+                     'func':   Tresca,
+                     'nExpo':  0,'err':np.inf,
+                     'dimen':  3,
+                     'bound':  [[(None,None)]],
+                     'labels': [['sigma0']],
                     },
-  'vonmises'       :{'func' : Hosford,
-                     'nExpo': 0,'err':np.inf,
-                     'dimen': 3,
-                     'bound': [ [(None,None)] ],
-                     'paras': [ 'sigma0' ],
-                     'text' : '\nCoefficient of Huber-Mises-Hencky criterion: ',
-                     'error': 'The standard deviation error is: '
+  'vonmises'       :{'name':  'Huber-Mises-Hencky',
+                     'func' :  Hosford,
+                     'nExpo':  0,'err':np.inf,
+                     'dimen':  3,
+                     'bound':  [[(None,None)]],
+                     'labels': [['sigma0']],
                     },
-  'hershey'        :{'func' : Hosford,
-                     'nExpo': 1,'err':np.inf,
-                     'dimen': 3, 
-                     'bound': [ [(None,None)]+[(1.0,8.0)] ],
-                     'paras': [ 'sigma0, a' ],
-                     'text' : '\nCoefficients of Hershey criterion: ',
-                     'error': 'The standard deviation errors are: '
+  'hershey'        :{'name':   'Hershey',
+                     'func':   Hosford,
+                     'nExpo':  1,'err':np.inf,
+                     'dimen':  3, 
+                     'bound':  [[(None,None)]+[(1.0,8.0)]],
+                     'labels': [['sigma0','a']],
                     },
-  'ghosford'       :{'func' : Hosford,
-                     'nExpo': 1,'err':np.inf,
-                     'dimen': 3,
-                     'bound': [ [(0.0,2.0)]*3+[(1.0,8.0)] ],
-                     'paras': [ 'F, G, H, a' ],
-                     'text' : '\nCoefficients of Hosford criterion: ',
-                     'error': 'The standard deviation errors are: '
+  'hosford'        :{'name':   'General Hosford',
+                     'func':   Hosford,
+                     'nExpo':  1,'err':np.inf,
+                     'dimen':  3,
+                     'bound':  [[(0.0,2.0)]*3+[(1.0,8.0)] ],
+                     'labels': [['F','G','H','a']],
                     },
-  'hill1948'       :{'func' : Hill1948,
-                     'nExpo': 0,'err':np.inf,
-                     'dimen': 3,
-                     'bound': [ [(None,None)]*6, [(None,None)]*4 ],
-                     'paras': [ 'F, G, H, L, M, N',  'F, G, H, N'],
-                     'text' : '\nCoefficients of Hill1948 criterion: ',
-                     'error': 'The standard deviation errors are: '
+  'hill1948'       :{'name':   'Hill 1948',
+                     'func':   Hill1948,
+                     'nExpo':  0,'err':np.inf,
+                     'dimen':  3,
+                     'bound':  [[(None,None)]*6, [(None,None)]*4 ],
+                     'labels': [['F','G','H','L','M','N'],['F','G','H','N']],
                     },
-  'hill1979'       :{'func' : Hill1979,
-                     'nExpo': 1,'err':np.inf,
-                     'dimen': 3,
-                     'bound': [ [(-2.0,2.0)]*6+[(1.0,8.0)] ],
-                     'paras': [ 'f,g,h,a,b,c,m' ],
-                     'text' : '\nCoefficients of Hill1979 criterion: ' ,
-                     'error': 'The standard deviation errors are: '
+  'hill1979'       :{'name':   'Hill 1979',
+                     'func':   Hill1979,
+                     'nExpo':  1,'err':np.inf,
+                     'dimen':  3,
+                     'bound':  [[(-2.0,2.0)]*6+[(1.0,8.0)] ],
+                     'labels': [['f','g','h','a','b','c','m']],
                     },
-  'drucker'        :{'func' : Drucker,
-                     'nExpo': 0,'err':np.inf,
-                     'dimen': 3,
-                     'bound': [ [(None,None)]+[(-3.375, 2.25)] ],
-                     'paras': [ 'sigma0, C_D' ],
-                     'text' : '\nCoefficients of Drucker criterion: ',
-                     'error': 'The standard deviation errors are: '
+  'drucker'        :{'name':   'Drucker',
+                     'func':   Drucker,
+                     'nExpo':  0,'err':np.inf,
+                     'dimen':  3,
+                     'bound':  [[(None,None)]+[(-3.375, 2.25)]],
+                     'labels': [['sigma0','C_D']],
                     },
-  'gdrucker'       :{'func' : Drucker,
-                     'nExpo': 1,'err':np.inf,
-                     'dimen': 3,
-                     'bound': [ [(None,None)]+[(-3.375, 2.25)]+[(1.0,8.0)] ],
-                     'paras': [ 'sigma0, C_D, p' ],
-                     'text' : '\nCoefficients of general Drucker criterion: ',
-                     'error': 'The standard deviation errors are: '
+  'gdrucker'       :{'name':   'General Drucker',
+                     'func':   Drucker,
+                     'nExpo':  1,'err':np.inf,
+                     'dimen':  3,
+                     'bound':  [[(None,None)]+[(-3.375, 2.25)]+[(1.0,8.0)] ],
+                     'labels': [['sigma0','C_D', 'p']],
                     },
-  'barlat1989'     :{'func' : Barlat1989,
-                     'nExpo': 1,'err':np.inf,
-                     'dimen': 2,
-                     'bound': [ [(-3.0,3.0)]*4+[(1.0,8.0)] ],
-                     'paras': [ 'a,c,h,f, m' ],
-                     'text' : '\nCoefficients of isotropic Barlat 1989 criterion: ',
-                     'error': 'The standard deviation errors are: '
+  'barlat1989'     :{'name':   'Barlat 1989',
+                     'func':   Barlat1989,
+                     'nExpo':  1,'err':np.inf,
+                     'dimen':  2,
+                     'bound':  [[(-3.0,3.0)]*4+[(1.0,8.0)] ],
+                     'labels': [['a','c','h','f', 'm']],
                     },
-  'barlat1991'     :{'func' : Barlat1991,
-                     'nExpo': 1,'err':np.inf,
-                     'dimen': 3,
-                     'bound': [ [(-2,2)]*6+[(1.0,8.0)], [(-2,2)]*4+[(1.0,8.0)] ],
-                     'paras': ['a, b, c, f, g, h, m', 'a, b, c, f, m'],
-                     'text' : '\nCoefficients of anisotropic Barlat 1991 criterion: ',
-                     'error': 'The standard deviation errors are: '
+  'barlat1991'     :{'name':   'Barlat 1991',
+                     'func':   Barlat1991,
+                     'nExpo':  1,'err':np.inf,
+                     'dimen':  3,
+                     'bound':  [[(-2,2)]*6+[(1.0,8.0)], [(-2,2)]*4+[(1.0,8.0)]],
+                     'labels': [['a','b','c','f','g','h','m'],['a','b','c','f','m']],
                     },
-  'bbc2000'        :{'func' : BBC2000,
-                     'nExpo': 1,'err':np.inf,
-                     'dimen': 2,
-                     'bound': [ [(None,None)]*7+[(1.0,8.0)] ], #[(None,None)]*6+[(0.0,1.0)]+[(1.0,9.0)],
-                     'paras': [ 'd,e,f,g, b,c,a, k' ],
-                     'text' : '\nCoefficients of Banabic-Balan-Comsa 2000 criterion: ',
-                     'error': 'The standard deviation errors are: '
+  'bbc2000'        :{'name':   'Banabic-Balan-Comsa 2000',
+                     'func':   BBC2000,
+                     'nExpo':  1,'err':np.inf,
+                     'dimen':  2,
+                     'bound':  [[(None,None)]*7+[(1.0,8.0)]], #[(None,None)]*6+[(0.0,1.0)]+[(1.0,9.0)],
+                     'labels': [['d','e','f','g','b','c','a','k']],
                     },
-  'bbc2003'        :{'func' : BBC2003,
-                     'nExpo': 1,'err':np.inf,
-                     'dimen': 2,
-                     'bound': [ [(None,None)]*8+[(1.0,8.0)] ], #[(None,None)]*7+[(0.0,1.0)]+[(1.0,9.0)],
-                     'paras': [ 'M, N, P, Q, R, S, T, a, k' ],
-                     'text' : '\nCoefficients of Banabic-Balan-Comsa 2003 criterion: ',
-                     'error': 'The standard deviation errors are: '
+  'bbc2003'        :{'name':   'Banabic-Balan-Comsa 2003',
+                     'func' :  BBC2003,
+                     'nExpo':  1,'err':np.inf,
+                     'dimen':  2,
+                     'bound':  [[(None,None)]*8+[(1.0,8.0)]], #[(None,None)]*7+[(0.0,1.0)]+[(1.0,9.0)],
+                     'labels': [['M','N','P','Q','R','S','T','a','k']],
                     },
-  'bbc2005'        :{'func' : BBC2005,
-                     'nExpo': 1,'err':np.inf,
-                     'dimen': 2,
-                     'bound': [ [(None,None)]*8+[(1.0,8.0)] ], #[(None,None)]*6+[(0.0,1.0)]*2+[(1.0,9.0)],
-                     'paras': [ 'L ,M, N, P, Q, R, a, b, k' ],
-                     'text' : '\nCoefficients of Banabic-Balan-Comsa 2005 criterion: ',
-                     'error': 'The standard deviation errors are: '
+  'bbc2005'        :{'name':   'Banabic-Balan-Comsa 2005',
+                     'func' :  BBC2005,
+                     'nExpo':  1,'err':np.inf,
+                     'dimen':  2,
+                     'bound':  [[(None,None)]*8+[(1.0,8.0)] ], #[(None,None)]*6+[(0.0,1.0)]*2+[(1.0,9.0)],
+                     'labels': [['L','M','N','P','Q','R','a','b','k']],
                     },
-  'cazacu'          :{'func' : Cazacu_Barlat,
-                     'nExpo': 0,'err':np.inf,
-                     'dimen': 3,
-                     'bound': [ [(None,None)]*16+[(-2.5,2.5)]+[(None,None)] ],
-                     'paras': [ 'a1,a2,a3,a4,a5,a6; b1,b2,b3,b4,b5,b6,b7,b8,b9,b10,b11; c','a1,a2,a3,a6; b1,b2,b3,b4,b5,b10; c'],
-                     'text' : '\nCoefficients of Cazacu Barlat yield criterion: ',
-                     'error': 'The standard deviation errors are: '
+  'cazacu'         :{'name':   'Cazacu Barlat',
+                     'func':   Cazacu_Barlat,
+                     'nExpo':  0,'err':np.inf,
+                     'dimen':  3,
+                     'bound':  [[(None,None)]*16+[(-2.5,2.5)]+[(None,None)]],
+                     'labels': [['a1','a2','a3','a4','a5','a6', 'b1','b2','b3','b4','b5','b6','b7','b8','b9','b10','b11', 'c'],
+                                ['a1','a2','a3','a6', 'b1','b2','b3','b4','b5','b10', 'c']],
                     },
-  'yld2000'        :{'func' : Yld2000,
-                     'nExpo': 1,'err':np.inf,
-                     'dimen': 2,
-                     'bound': [ [(None,None)]*8+[(1.0,8.0)] ],
-                     'paras': [ 'a1,a2,a7,a3,a4,a5,a6,a8,m' ],
-                     'text' : '\nCoefficients of Yld2000-2D yield criterion: ',
-                     'error': 'The standard deviation errors are: '
+  'yld2000'        :{'name':   'Yld2000-2D',
+                     'func':   Yld2000,
+                     'nExpo':  1,'err':np.inf,
+                     'dimen':  2,
+                     'bound':  [[(None,None)]*8+[(1.0,8.0)]],
+                     'labels': [['a1','a2','a7','a3','a4','a5','a6','a8','m']],
                     },
-  'yld200418p'     :{'func' : Yld200418p,
-                     'nExpo': 1,'err':np.inf,
-                     'dimen': 3,
-                     'bound': [ [(None,None)]*18+[(1.0,8.0)], [(None,None)]*14+[(1.0,8.0)] ],
-                     'paras': [ 'c12,c21,c23,c32,c31,c13,c44,c55,c66,d12,d21,d23,d32,d31,d13,d44,d55,d66,m', \
-                                'c12,c21,c23,c32,c31,c13,c44,d12,d21,d23,d32,d31,d13,d44,m' ],
-                     'text' : '\nCoefficients of Yld2004-18p yield criterion: ',
-                     'error': 'The standard deviation errors are: '
+  'yld200418p'     :{'name':   'Yld2004-18p',
+                     'func' :  Yld200418p,
+                     'nExpo':  1,'err':np.inf,
+                     'dimen':  3,
+                     'bound':  [[(None,None)]*18+[(1.0,8.0)], [(None,None)]*14+[(1.0,8.0)]],
+                     'labels': [['c12','c21','c23','c32','c31','c13','c44','c55','c66','d12','d21','d23','d32','d31','d13','d44','d55','d66','m'],
+                                ['c12','c21','c23','c32','c31','c13','c44','d12','d21','d23','d32','d31','d13','d44','m']],
                     },
-  'karafillis'     :{'func' : KarafillisBoyce,
-                     'nExpo': 1,'err':np.inf,
-                     'dimen': 3,
-                     'bound': [ [(None,None)]*6+[(0.0,1.0)]+[(1.0,8.0)], [(None,None)]*4+[(0.0,1.0)]+[(1.0,8.0)]],
-                     'paras': [ 'c11,c12,c13,c14,c15,c16,c,m', \
-                                'c11,c12,c13,c14,c15,c16,c,m' ],
-                     'text' : '\nCoefficients of Karafillis-Boyce yield criterion: ',
-                     'error': 'The standard deviation errors are: '
+  'karafillis'     :{'name':   'Karafillis-Boyce',
+                     'func' :  KarafillisBoyce,
+                     'nExpo':  1,'err':np.inf,
+                     'dimen':  3,
+                     'bound':  [[(None,None)]*6+[(0.0,1.0)]+[(1.0,8.0)], [(None,None)]*4+[(0.0,1.0)]+[(1.0,8.0)]],
+                     'labels': [['c11','c12','c13','c14','c15','c16','c','m'],
+                                ['c11','c12','c13','c14','c15','c16','c','m']],
                     },
-  'all'            : 'fit all the criteria'
                   }
 
 thresholdParameter = ['totalshear','equivalentStrain']
-
 
 #---------------------------------------------------------------------------------------------------
 class Loadcase():
@@ -995,7 +979,7 @@ class Loadcase():
 
 # ------------------------------------------------------------------
   def __init__(self,finalStrain,incs,time,ND=3,RD=1,nSet=1,dimension=3,vegter=False):
-    print('using the random load case generator')
+    damask.util.croak('Using the random load case generator')
     self.finalStrain = finalStrain
     self.incs = incs
     self.time = time
@@ -1010,14 +994,14 @@ class Loadcase():
 
   def getLoadcase(self,number):
     if self.dimension == 3:
-      print 'generate random 3D load case'
+      damask.util.croak('Generate random 3D load case')
       return self._getLoadcase3D()
     else:
       if self.vegter is True:
-        print 'generate load case for Vegter'
+        damask.util.croak('Generate load case for Vegter')
         return self._getLoadcase2dVegter(number)
       else:
-        print 'generate random 2D load case'
+        damask.util.croak('Generate random 2D load case')
         return self._getLoadcase2dRandom()
 
   def _getLoadcase3D(self):
@@ -1127,17 +1111,26 @@ class Criterion(object):
   '''
      Fitting to certain criterion
   '''
-  def __init__(self, exponent, uniaxial, dimension, name='vonmises'):
-    self.name = name
+  def __init__(self, exponent, uniaxial, dimension, label='vonmises'):
+    self.name = label
     self.expo = exponent
     self.uniaxial= uniaxial
     self.dimen   = dimension
     self.results = fitCriteria
 
     if self.name.lower() not in map(str.lower, self.results.keys()):
-      raise Exception('no suitable fitting criterion selected')
+      raise Exception('No suitable fitting criterion selected')
     else:
-      print('fitting to the %s criterion'%name)
+      damask.util.croak('Fitting to the %s criterion'%fitCriteria[self.name]['name'])
+  
+  def report_labels(self):
+    if len(fitCriteria[self.name]['labels']) > 1 and self.dimen == 2:
+      return fitCriteria[self.name]['labels'][1]
+    else:
+      return fitCriteria[self.name]['labels'][0]
+
+  def report_name(self):
+    return fitCriteria[self.name]['name']
 
   def fit(self,stress):
     global fitResults; fitErrors; fitResidual
@@ -1145,23 +1138,19 @@ class Criterion(object):
     else:                      nExponent = 0
     nameCriterion = self.name.lower()
     criteria      = Criteria(nameCriterion,self.uniaxial,self.expo, self.dimen)
-    textParas     = fitCriteria[nameCriterion]['text']+fitCriteria[nameCriterion]['paras'][dDim]+':\n' + \
-                    formatOutput(numParas+nExponent)
-    textError     = fitCriteria[nameCriterion]['error']+ formatOutput(numParas+nExponent,'%-14.8f')
-    bounds        = fitCriteria[nameCriterion]['bound'][dDim]  # Default bounds, no bound
-    guess0        = Guess                                # Default initial guess, depends on bounds
+    bounds        = fitCriteria[nameCriterion]['bound'][dDim]                                       # Default bounds, no bound
+    guess0        = Guess                                                                           # Default initial guess, depends on bounds
 
     if fitResults == [] : initialguess = guess0
     else                : initialguess = np.array(fitResults[-1])
 
-    weight = get_weight(np.shape(stress)[1])
     ydata  = np.zeros(np.shape(stress)[1])
     try:
       popt, pcov, infodict, errmsg, ierr = \
          leastsqBound (criteria.fun,  initialguess,        args=(ydata,stress),
                        bounds=bounds, Dfun=criteria.jac,   full_output=True)
       if ierr not in [1, 2, 3, 4]:
-        raise RuntimeError("Optimal parameters not found: " + errmsg)
+        raise RuntimeError("Optimal parameters not found: "+errmsg)
       else:
         residual = criteria.fun(popt, ydata, stress)
         fitResidual.append(np.linalg.norm(residual)/np.sqrt(len(residual)))
@@ -1175,12 +1164,11 @@ class Criterion(object):
       popt = np.concatenate((np.array(popt), np.repeat(options.exponent,nExponent)))
       perr = np.concatenate((np.array(perr), np.repeat(0.0,nExponent)))
 
-      print (textParas%array2tuple(popt))
-      print (textError%array2tuple(perr))
-      print('Number of function calls =', infodict['nfev'])
+      damask.util.croak('Needed {} function calls for fitting'.format(infodict['nfev']))
     except Exception as detail:
-      print detail
+      damask.util.croak(detail)
       pass
+    return popt
 
 
 #---------------------------------------------------------------------------------------------------
@@ -1205,9 +1193,10 @@ class myThread (threading.Thread):
 def doSim(delay,thread):
   
   s.acquire()
+  global myLoad
   loadNo=loadcaseNo()
   if not os.path.isfile('%s.load'%loadNo):
-    print('generating loadcase for sim %s from %s'%(loadNo,thread))
+    damask.util.croak('Generating load case for simulation %s (%s)'%(loadNo,thread))
     f=open('%s.load'%loadNo,'w')
     f.write(myLoad.getLoadcase(loadNo))
     f.close()
@@ -1216,27 +1205,26 @@ def doSim(delay,thread):
 
   s.acquire()
   if not os.path.isfile('%s_%i.spectralOut'%(options.geometry,loadNo)):
-    print('starting simulation %s from %s'%(loadNo,thread))
+    damask.util.croak('Starting simulation %i (%s)'%(loadNo,thread))
     s.release()
     damask.util.execute('DAMASK_spectral -g %s -l %i'%(options.geometry,loadNo))
   else: s.release()
    
   s.acquire()
   if not os.path.isfile('./postProc/%s_%i.txt'%(options.geometry,loadNo)):
-    print('starting post processing for sim %i from %s'%(loadNo,thread))
+    damask.util.croak('Starting post processing for simulation %i (%s)'%(loadNo,thread))
     s.release()
     try:
       damask.util.execute('postResults --cr f,p --co totalshear %s_%i.spectralOut'%(options.geometry,loadNo))
     except:
       damask.util.execute('postResults --cr f,p %s_%i.spectralOut'%(options.geometry,loadNo))
     damask.util.execute('addCauchy ./postProc/%s_%i.txt'%(options.geometry,loadNo))
-    damask.util.execute('addStrainTensors -l -v ./postProc/%s_%i.txt'%(options.geometry,loadNo))
+    damask.util.execute('addStrainTensors -0 -v ./postProc/%s_%i.txt'%(options.geometry,loadNo))
     damask.util.execute('addMises -s Cauchy -e ln(V) ./postProc/%s_%i.txt'%(options.geometry,loadNo))
   else: s.release()
 
   s.acquire()
-  print('-'*10)
-  print('reading values for sim %i from %s'%(loadNo,thread))
+  damask.util.croak('Reading values from simulation %i (%s)'%(loadNo,thread))
   s.release()
 
   refFile = './postProc/%s_%i.txt'%(options.geometry,loadNo)
@@ -1248,7 +1236,7 @@ def doSim(delay,thread):
     thresholdKey = 'totalshear'
   s.acquire()
   for l in [thresholdKey,'1_Cauchy']:
-    if l not in table.labels: print '%s not found'%l
+    if l not in table.labels: damask.util.croak('%s not found'%l)
   s.release()
   table.data_readArray(['%i_Cauchy'%(i+1) for i in xrange(9)]+[thresholdKey]+['%i_ln(V)'%(i+1) for i in xrange(9)])
 
@@ -1282,23 +1270,25 @@ def doSim(delay,thread):
       else:
         line+=1
     if not validity[i]:
-      print ('The data of sim %i at the threshold %f is invalid, the fitting at this point is skipped'%(loadNo,threshold))
+      damask.util.croak('The data of result %i at the threshold %f is invalid,'\
+                        +'the fitting at this point is skipped'%(loadNo,threshold))
   s.acquire()
   global stressAll, strainAll
-  print('number of yield points of sim %i: %i'%(loadNo,len(yieldStress)))
-  print('starting fitting for sim %i from %s'%(loadNo,thread))
+  f=open(options.geometry+'_'+options.criterion+'.txt','w')
+  f.write(' '.join([options.fitting]+myFit.report_labels())+'\n')
   try:
-    for i in xrange(int(options.yieldValue[2])):
+    for i,threshold in enumerate(np.linspace(options.yieldValue[0],options.yieldValue[1],options.yieldValue[2])):
       if validity[i]:
         a = (yieldStress[0][2]/stressUnit)**2 + (yieldStress[0][4]/stressUnit)**2 + (yieldStress[0][5]/stressUnit)**2
         stressAll[i]=np.append(stressAll[i], yieldStress[i]/stressUnit)
         strainAll[i]=np.append(strainAll[i], deformationRate[i])
-        myFit.fit(stressAll[i].reshape(len(stressAll[i])//6,6).transpose())
+        f.write( str(threshold)+' '+
+                 ' '.join(map(str,myFit.fit(stressAll[i].reshape(len(stressAll[i])//6,6).transpose())))+'\n')
   except Exception as detail:
-    print('could not fit for sim %i from %s'%(loadNo,thread))
-    print detail
+    damask.util.croak('Could not fit results of simulation (%s)'%thread)
     s.release()
     return
+  damask.util.croak('\n')
   s.release()
 
 def loadcaseNo():
@@ -1312,7 +1302,8 @@ def converged():
   if N_simulations < options.max:
     if len(fitResidual) > 5:
       residualList = np.array(fitResidual[len(fitResidual)-5:])
-      if np.std(residualList)/np.max(residualList) < 0.05: return True
+      if np.std(residualList)/np.max(residualList) < 0.05: 
+        return True
     return False
   else:
     return True
@@ -1324,8 +1315,8 @@ def converged():
 parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
 Performs calculations with various loads on given geometry file and fits yield surface.
 
-""", version=string.replace(scriptID,'\n','\\n')
-)
+""", version = scriptID)
+
 # maybe make an option to specifiy if 2D/3D fitting should be done?
 
 parser.add_option('-l','--load' ,      dest='load', type='float', nargs=3,
@@ -1387,14 +1378,11 @@ if options.yieldValue[2] != int(options.yieldValue[2]):
   parser.error('count must be an integer')
 if options.dimension not in [2,3]:
   parser.error('Dimension is wrong, should be 2(plane stress state) or 3(general stress state)')
-#if options.criterion not in ['tresca', 'vonmises', 'hershey','drucker', 'gdrucker', 'hill1948']:
-  # if options.eqStress == None:
-   # parser.error("The equivalent stress is indispensable for the yield criterion '"+ options.criterion+"'")
 if not os.path.isfile('numerics.config'):
-  print('numerics.config file not found')
+  damask.util.croak('numerics.config file not found')
 
 if not os.path.isfile('material.config'):
-  print('material.config file not found')
+  damask.util.croak('material.config file not found')
 
 
 if options.vegter is True: 
@@ -1426,4 +1414,4 @@ else:
     run = runFit(options.exponent, eqStress, fitCriteria[criter]['dimen'], criter)
   fit_allResults[criter] = {'results': fitResults, 'errors': fitErrors, 'residual': fitResidual}
 
-print 'Finished fitting to yield criteria'
+damask.util.croak('Finished fitting to yield criteria')
