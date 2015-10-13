@@ -1,4 +1,5 @@
-#!/usr/bin/env python
+#!/usr/bin/python
+# -*- coding: UTF-8 no BOM -*-
 
 from optparse import OptionParser
 import damask
@@ -6,7 +7,8 @@ import os,sys,math,re,random,string
 import numpy as np
 
 scriptID   = string.replace('$Id$','\n','\\n')
-scriptName = scriptID.split()[1]
+scriptName = os.path.splitext(scriptID.split()[1])[0]
+
 
 # --- helper functions ---
 def integerFactorization(i):
@@ -15,44 +17,6 @@ def integerFactorization(i):
   while j>1 and int(i)%j != 0:
     j -= 1
   return j
-
-
-def TSLheader(sizeX,sizeY,step):
-  
-  return [
-  '# TEM_PIXperUM          1.000000',
-  '# x-star                0.509548',
-  '# y-star                0.795272',
-  '# z-star                0.611799',
-  '# WorkingDistance       18.000000',
-  '#',
-  '# Phase                 1',
-  '# MaterialName          Al',
-  '# Formula               Fe',
-  '# Info',
-  '# Symmetry              43',
-  '# LatticeConstants      2.870 2.870 2.870  90.000  90.000  90.000',
-  '# NumberFamilies        4',
-  '# hklFamilies           1  1  0 1 0.000000 1',
-  '# hklFamilies           2  0  0 1 0.000000 1',
-  '# hklFamilies           2  1  1 1 0.000000 1',
-  '# hklFamilies           3  1  0 1 0.000000 1',
-  '# Categories            0 0 0 0 0 ',
-  '#',
-  '# GRID: SquareGrid',
-  '# XSTEP: ' + str(step),
-  '# YSTEP: ' + str(step),
-  '# NCOLS_ODD: ' + str(sizeX),
-  '# NCOLS_EVEN: ' + str(sizeX),
-  '# NROWS: ' + str(sizeY),
-  '#',
-  '# OPERATOR: ODFsammpling',
-  '#',
-  '# SAMPLEID: ',
-  '#',
-  '# SCANID: ',
-  '#',
-  ]
 
 def binAsBins(bin,intervals):
   """ explode compound bin into 3D bins list """
@@ -120,11 +84,11 @@ def directInversion (ODF,nSamples):
       incFactor = 1.0
       nInvSamplesUpper = directInvRepetitions(ODF['dV_V'],scaleUpper)
     nIter += 1
-    table.croak('%i:(%12.11f,%12.11f) %i <= %i <= %i'%(nIter,scaleLower,scaleUpper,
+    damask.util.croak('%i:(%12.11f,%12.11f) %i <= %i <= %i'%(nIter,scaleLower,scaleUpper,
                                                          nInvSamplesLower,nOptSamples,nInvSamplesUpper))
   nInvSamples = nInvSamplesUpper
   scale = scaleUpper
-  table.croak('created set of %i samples (%12.11f) with scaling %12.11f delivering %i'%(nInvSamples,
+  damask.util.croak('created set of %i samples (%12.11f) with scaling %12.11f delivering %i'%(nInvSamples,
                                                                                         float(nInvSamples)/nOptSamples-1.0,
                                                                                         scale,nSamples))
   repetition = [None]*ODF['nBins']                                                                  # preallocate and clear
@@ -227,7 +191,7 @@ def TothVanHoutteSTAT (ODF,nSamples):
       countSamples += 1
       indexSelector += 1
 
-  table.croak('created set of %i when asked to deliver %i'%(countSamples,nSamples))
+  damask.util.croak('created set of %i when asked to deliver %i'%(countSamples,nSamples))
   
   return orientations, reconstructedODF
 
@@ -260,10 +224,6 @@ parser.add_option('-r', '--rnd',
                   dest = 'randomSeed',
                   type = 'int', metavar = 'int', \
                   help = 'seed of random number generator [%default]')
-parser.add_option('--ang',
-                  dest = 'ang',
-                  action = 'store_true',
-                  help = 'write TSL/EDAX .ang file [%default]')
 parser.set_defaults(randomSeed = None,
                     number      = 500,
                     algorithm   = 'IA',
@@ -284,37 +244,34 @@ if filenames == []: filenames = [None]
 
 for name in filenames:
   try:
-    table = damask.ASCIItable(name = name,
-                              buffered = False, readonly = True)
-  except: continue
-  table.croak('\033[1m'+scriptName+'\033[0m'+(': '+name if name else ''))
+    table = damask.ASCIItable(name = name, buffered = False, readonly=True)
+  except:
+    continue
+  damask.util.report(scriptName,name)
 
   randomSeed = int(os.urandom(4).encode('hex'), 16)  if options.randomSeed == None else options.randomSeed         # random seed per file for second phase
   random.seed(randomSeed)
 
-# ------------------------------------------ read header ------------------------------------------
-
+# ------------------------------------------ read header and data ---------------------------------
   table.head_read()
 
   errors = []
   labels = ['phi1','Phi','phi2','intensity']
   for i,index in enumerate(table.label_index(labels)):
-    if index < 0: errors.append('label {} not present.'.format(labels[i])
+    if index < 0: errors.append('label {} not present.'.format(labels[i]))
   
   if errors != []:
-    table.croak(errors)
+    damask.util.croak(errors)
     table.close(dismiss = True)
     continue
 
-# ------------------------------------------ read data --------------------------------------------  
+  table.data_readArray(labels)
 
-  binnedODF = table.data_readArray(labels)
-  
 # --------------- figure out limits (left/right), delta, and interval -----------------------------
 
   ODF = {}
-  limits = np.array([np.min(table.data,axis=0),
-                     np.max(table.data,axis=0)])
+  limits = np.array([np.min(table.data[:,0:3],axis=0),
+                     np.max(table.data[:,0:3],axis=0)])
   ODF['limit'] = np.radians(limits[1,:])
   ODF['center'] = 0.0 if all(limits[0,:]<1e-8) else 0.5                                             # vertex or cell centered
 
@@ -322,8 +279,8 @@ for name in filenames:
   ODF['nBins'] = ODF['interval'].prod()
   ODF['delta'] = np.radians(np.array(limits[1,0:3]-limits[0,0:3])/(ODF['interval']-1))
 
-  if binnedODF[0] != ODF['nBins']:
-    table.croak('expecting %i values but got %i'%(ODF['nBins'],len(linesBinnedODF)))
+  if table.data.shape[0] != ODF['nBins']:
+    damask.util.croak('expecting %i values but got %i'%(ODF['nBins'],table.data.shape[0]))
     continue
   
   # build binnedODF array
@@ -333,15 +290,16 @@ for name in filenames:
   dg = ODF['delta'][0]*2.0*math.sin(ODF['delta'][1]/2.0)*ODF['delta'][2]
   for b in range(ODF['nBins']):
     ODF['dV_V'][b] = \
-      max(0.0,table.data[b,column['intensity']]) * dg * \
+      max(0.0,table.data[b,table.label_index('intensity')]) * dg * \
       math.sin(((b//ODF['interval'][2])%ODF['interval'][1]+ODF['center'])*ODF['delta'][1])
     if ODF['dV_V'][b] > 0.0:
       sumdV_V += ODF['dV_V'][b]
       ODF['nNonZero'] += 1
   
-  for b in range(ODF['nBins']): ODF['dV_V'][b] /= sumdV_V                                           # normalize dV/V
+  for b in range(ODF['nBins']):
+    ODF['dV_V'][b] /= sumdV_V                                                            # normalize dV/V
 
-  table.croak(['non-zero fraction: %12.11f (%i/%i)'%(float(ODF['nNonZero'])/ODF['nBins'],
+  damask.util.croak(['non-zero fraction: %12.11f (%i/%i)'%(float(ODF['nNonZero'])/ODF['nBins'],
                                                      ODF['nNonZero'],
                                                      ODF['nBins']),
                'Volume integral of ODF: %12.11f\n'%sumdV_V,
@@ -371,7 +329,7 @@ for name in filenames:
   indivSum['orig'] += ODF['dV_V'][bin]
   indivSquaredSum['orig'] += ODF['dV_V'][bin]**2
   
-  table.croak(['sqrt(N*)RMSD of ODFs:\t %12.11f'% math.sqrt(nSamples*squaredDiff[method]),
+  damask.util.croak(['sqrt(N*)RMSD of ODFs:\t %12.11f'% math.sqrt(nSamples*squaredDiff[method]),
                'RMSrD of ODFs:\t %12.11f'%math.sqrt(squaredRelDiff[method]),
                'rMSD of ODFs:\t %12.11f'%(squaredDiff[method]/indivSquaredSum['orig']),
                'nNonZero correlation slope:\t %12.11f'\
@@ -390,7 +348,7 @@ for name in filenames:
 
   materialConfig = [
       '#' + scriptID + ' ' + ' '.join(sys.argv[1:]),
-      '# random seed %i'%randomSeed
+      '# random seed %i'%randomSeed,
       '#-------------------#',
       '<microstructure>',
       '#-------------------#',
@@ -412,31 +370,12 @@ for name in filenames:
     eulers = Orientations[ID]
   
     materialConfig += ['[Grain%s]'%(str(ID+1).zfill(formatwidth)),
-                     '(gauss)   phi1 %10.5f   Phi %10.5f   phi2 %10.6f   scatter 0.0   fraction 1.0'%(*eulers),
+                     '(gauss)   phi1 {}   Phi {}   phi2 {}   scatter 0.0   fraction 1.0'.format(*eulers),
                      ]
 
   #--- output finalization -------------------------------------------------------------------------- 
 
-  with (open(os.path.splitext(name)[0]+'_'+method+'_'+str(nSamples)+'_material.config','w') as outfile:
+  with (open(os.path.splitext(name)[0]+'_'+method+'_'+str(nSamples)+'_material.config','w')) as outfile:
     outfile.write('\n'.join(materialConfig)+'\n')
-
-  # write ang file
-  if options.ang:
-    with open(os.path.splitext(name)[0]+'_'+method+'_'+str(nSamples)+'.ang','w') as outfile:
-      sizeY = integerFactorization(nSamples)
-      sizeX = nSamples / sizeY
-      table.croak('Writing .ang file: %i * %i = %i (== %i)'%(sizeX,sizeY,sizeX*sizeY,nSamples))
-      # write header
-      outfile.write('\n'.join(TSLheader(sizeX,sizeY,1.0))+'\n')
-    
-      # write data
-      counter = 0
-      for eulers in Orientations:
-        outfile.write('%10.5f %10.5f %10.5f '%(*np.radians(eulers)) +
-                      '%10.5f %10.5f '%(counter%sizeX,counter//sizeX) +
-                      '100.0 1.0 0 1 1.0\n')
-        counter += 1
-
-    #--- output finalization -------------------------------------------------------------------------- 
 
   table.close()

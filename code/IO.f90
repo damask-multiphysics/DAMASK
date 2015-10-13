@@ -588,7 +588,7 @@ function IO_hybridIA(Nast,ODFfileName)
  integer(pInt),               parameter       :: FILEUNIT = 999_pInt
 
  IO_hybridIA = 0.0_pReal                                                                           ! initialize return value for case of error
- write(6,'(/,a,/)',advance='no') ' Using linear ODF file:'//trim(ODFfileName)
+ write(6,'(/,a,/)',advance='no') ' Using linear ODF file: '//trim(ODFfileName)
 
 !--------------------------------------------------------------------------------------------------
 ! parse header of ODF file 
@@ -627,8 +627,8 @@ function IO_hybridIA(Nast,ODFfileName)
 
 !--------------------------------------------------------------------------------------------------
 ! determine limits, number of steps and step size
- limits(1,1:3) = 720.0_pReal
- limits(2,1:3) = 0.0_pReal
+ limits(1,1:3) = 721.0_pReal
+ limits(2,1:3) =  -1.0_pReal
  steps  = 0_pInt
 
  line=IO_read(FILEUNIT)
@@ -649,9 +649,6 @@ function IO_hybridIA(Nast,ODFfileName)
  write(6,'(/,a,/,3(2x,f12.4,1x))',advance='no') ' Ending angles / ° =   ',limits(2,1:3)
  write(6,'(/,a,/,3(2x,f12.4,1x))',advance='no') ' Angular steps / ° =   ',deltas
 
- limits = limits*INRAD
- deltas = deltas*INRAD
- 
  if (all(abs(limits(1,1:3)) < tol_math_check)) then
    write(6,'(/,a,/)',advance='no') ' assuming vertex centered data'
    center = 0.0_pReal                                                                               ! no need to shift
@@ -661,7 +658,9 @@ function IO_hybridIA(Nast,ODFfileName)
    write(6,'(/,a,/)',advance='no') ' assuming cell centered data'
    center = 0.5_pReal                                                                               ! shift data by half of a bin
  endif
- 
+
+ limits = limits*INRAD
+ deltas = deltas*INRAD
 
 !--------------------------------------------------------------------------------------------------
 ! read in data
@@ -678,10 +677,10 @@ function IO_hybridIA(Nast,ODFfileName)
  do phi1=1_pInt,steps(1); do Phi=1_pInt,steps(2); do phi2=1_pInt,steps(3)
    line=IO_read(FILEUNIT)
    chunkPos = IO_stringPos(line)             
-   eulers=[IO_floatValue(line,chunkPos,columns(1)),&                                               ! read in again for consistency check only
+   eulers=[IO_floatValue(line,chunkPos,columns(1)),&                                                ! read in again for consistency check only
            IO_floatValue(line,chunkPos,columns(2)),&
            IO_floatValue(line,chunkPos,columns(3))]*INRAD
-   if (any(abs((real([phi1,phi,phi2],pReal)-1.0_pReal + center)*deltas-eulers)>tol_math_check)) &   ! check if data is in expected order (phi2 fast)
+   if (any(abs((real([phi1,phi,phi2],pReal) -1.0_pReal + center)*deltas-eulers)>tol_math_check)) &  ! check if data is in expected order (phi2 fast) and correct for Fortran starting at 1
      call IO_error(error_ID = 156_pInt, ext_msg='linear ODF data not in expected order')
 
    prob = IO_floatValue(line,chunkPos,columns(4))
@@ -756,7 +755,7 @@ function IO_hybridIA(Nast,ODFfileName)
  integer(pInt) pure function hybridIA_reps(dV_V,steps,C)
  
   implicit none
-  integer(pInt), intent(in), dimension(3)                          :: steps                          !< needs description
+  integer(pInt), intent(in), dimension(3)                          :: steps                          !< number of bins in Euler space
   real(pReal),   intent(in), dimension(steps(3),steps(2),steps(1)) :: dV_V                           !< needs description
   real(pReal),   intent(in)                                        :: C                              !< needs description
   
