@@ -15,16 +15,20 @@ def runFit(exponent, eqStress, dimension, criterion):
   global fitResults, fitErrors, fitResidual, stressAll, strainAll
   global N_simulations, Guess, dDim
   
-  fitResults = []; fitErrors = []; fitResidual = []; Guess = []; threads=[]
+  fitResults = []
+  fitErrors = []
+  fitResidual = []
+  Guess = []
+  threads=[]
   dDim = dimension - 3
-  Nparas = len(fitCriteria[criterion]['bound'][dDim])
+  nParas = len(fitCriteria[criterion]['bound'][dDim])
   nExpo = fitCriteria[criterion]['nExpo']
 
   if exponent > 0.0:                                                                                # User defined exponents
-    Nparas = Nparas-nExpo
-    fitCriteria[criterion]['bound'][dDim] = fitCriteria[criterion]['bound'][dDim][:Nparas]
+    nParas = nParas-nExpo
+    fitCriteria[criterion]['bound'][dDim] = fitCriteria[criterion]['bound'][dDim][:nParas]
 
-  for i in xrange(Nparas):
+  for i in xrange(nParas):
     temp = fitCriteria[criterion]['bound'][dDim][i]
     if fitCriteria[criterion]['bound'][dDim][i] == (None,None):
       Guess.append(1.0)
@@ -58,7 +62,7 @@ def principalStresses(sigmas):
   '''
   lambdas=np.zeros(0,'d')
   for i in xrange(np.shape(sigmas)[1]):
-    eigenvalues = np.linalg.eigvalsh(sym6to33(sigmas[:,i]))
+    eigenvalues = np.linalg.eigvalsh(sym6toT33(sigmas[:,i]))
     lambdas = np.append(lambdas,np.sort(eigenvalues)[::-1]) #append eigenvalues in descending order
   lambdas = np.transpose(lambdas.reshape(np.shape(sigmas)[1],3))
   return lambdas
@@ -145,19 +149,24 @@ def invariant(sigmas):
 def math_ln(x):
   return np.log(x + 1.0e-32)
 
-def sym6to33(sigma6):
-  ''' Shape the symmetric stress tensor(6,1) into (3,3) '''
-  sigma33 = np.empty((3,3))
-  sigma33[0,0] = sigma6[0]; sigma33[1,1] = sigma6[1]; sigma33[2,2] = sigma6[2];
-  sigma33[0,1] = sigma6[3]; sigma33[1,0] = sigma6[3]
-  sigma33[1,2] = sigma6[4]; sigma33[2,1] = sigma6[4]
-  sigma33[2,0] = sigma6[5]; sigma33[0,2] = sigma6[5]
-  return sigma33
+def sym6toT33(sym6):
+  ''' Shape the symmetric stress tensor(6) into (3,3) '''
+  return np.array([[sym6[0],sym6[3],sym6[5]],
+                   [sym6[3],sym6[1],sym6[4]],
+                   [sym6[5],sym6[4],sym6[2]]])
 
+def t33toSym6(t33):
+  ''' Shape the stress tensor(3,3) into symmetric (6) '''
+  return np.array([ t33[0,0],
+                    t33[1,1],
+                    t33[2,2],
+                   (t33[0,1] + t33[1,0])/2.0,     #   0  3  5
+                   (t33[1,2] + t33[2,1])/2.0,     #   *  1  4
+                   (t33[2,0] + t33[0,2])/2.0,])   #   *  *  2
 
 class Criteria(object):
   '''
-    residuum of anisotropic Barlat 1991 yield criterion (eq. 2.37)
+    needs doc string
   '''
   def __init__(self, criterion, uniaxialStress,exponent, dimension):
     self.stress0 = uniaxialStress
@@ -978,13 +987,10 @@ class Loadcase():
   '''
 
 # ------------------------------------------------------------------
-  def __init__(self,finalStrain,incs,time,ND=3,RD=1,nSet=1,dimension=3,vegter=False):
-    damask.util.croak('Using the random load case generator')
+  def __init__(self,finalStrain,incs,time,nSet=1,dimension=3,vegter=False):
     self.finalStrain = finalStrain
     self.incs = incs
     self.time = time
-    self.ND = ND
-    self.RD = RD
     self.nSet = nSet
     self.dimension = dimension
     self.vegter = vegter
@@ -1141,8 +1147,10 @@ class Criterion(object):
     bounds        = fitCriteria[nameCriterion]['bound'][dDim]                                       # Default bounds, no bound
     guess0        = Guess                                                                           # Default initial guess, depends on bounds
 
-    if fitResults == [] : initialguess = guess0
-    else                : initialguess = np.array(fitResults[-1])
+    if fitResults == []:
+      initialguess = guess0
+    else:
+      initialguess = np.array(fitResults[-1])
 
     ydata  = np.zeros(np.shape(stress)[1])
     try:
@@ -1185,13 +1193,14 @@ class myThread (threading.Thread):
     conv=converged()
     s.release()
     while not conv:
-      doSim(4.,self.name)
+      doSim(self.name)
       s.acquire()
       conv=converged()
       s.release()
 
-def doSim(delay,thread):
-  
+def doSim(thread):
+
+# if load case do not exist, create new one
   s.acquire()
   global myLoad
   loadNo=loadcaseNo()
@@ -1203,13 +1212,15 @@ def doSim(delay,thread):
     s.release()
   else: s.release()
 
+# if spectralOut does not exist, run simulation
   s.acquire()
   if not os.path.isfile('%s_%i.spectralOut'%(options.geometry,loadNo)):
     damask.util.croak('Starting simulation %i (%s)'%(loadNo,thread))
     s.release()
     damask.util.execute('DAMASK_spectral -g %s -l %i'%(options.geometry,loadNo))
   else: s.release()
-   
+
+# if ASCII tables do not exist, run postprocessing
   s.acquire()
   if not os.path.isfile('./postProc/%s_%i.txt'%(options.geometry,loadNo)):
     damask.util.croak('Starting post processing for simulation %i (%s)'%(loadNo,thread))
@@ -1223,63 +1234,59 @@ def doSim(delay,thread):
     damask.util.execute('addMises -s Cauchy -e ln(V) ./postProc/%s_%i.txt'%(options.geometry,loadNo))
   else: s.release()
 
+# reading values from ASCII table (including linear interpolation between points)
   s.acquire()
   damask.util.croak('Reading values from simulation %i (%s)'%(loadNo,thread))
-  s.release()
-
   refFile = './postProc/%s_%i.txt'%(options.geometry,loadNo)
   table = damask.ASCIItable(refFile)
   table.head_read()
+
   if options.fitting =='equivalentStrain':
     thresholdKey = 'Mises(ln(V))'
   elif options.fitting =='totalshear':
     thresholdKey = 'totalshear'
-  s.acquire()
+
   for l in [thresholdKey,'1_Cauchy']:
     if l not in table.labels: damask.util.croak('%s not found'%l)
   s.release()
+
   table.data_readArray(['%i_Cauchy'%(i+1) for i in xrange(9)]+[thresholdKey]+['%i_ln(V)'%(i+1) for i in xrange(9)])
 
-  line = 0
-  lines = np.shape(table.data)[0]
-  validity = np.zeros((int(options.yieldValue[2])), dtype=bool)
+  validity = np.zeros((int(options.yieldValue[2])), dtype=bool)                                    # found data for desired threshold
   yieldStress     = np.empty((int(options.yieldValue[2]),6),'d')
   deformationRate = np.empty((int(options.yieldValue[2]),6),'d')
+
+  line = 0
   for i,threshold in enumerate(np.linspace(options.yieldValue[0],options.yieldValue[1],options.yieldValue[2])):
-    while line < lines:
+    while line < np.shape(table.data)[0]:
       if abs(table.data[line,9])>= threshold:
         upper,lower = abs(table.data[line,9]),abs(table.data[line-1,9])                             # values for linear interpolation
         stress = np.array(table.data[line-1,0:9] * (upper-threshold)/(upper-lower) + \
                           table.data[line  ,0:9] * (threshold-lower)/(upper-lower)).reshape(3,3)    # linear interpolation of stress values
-        #stress = 0.5*(stress+stress.T)                                                             # symmetrise
-        #for the mapping, a fuction from DAMASK (33to6) simplifies
-        dstrain= np.array(table.data[line,10:] - table.data[line-1,10:]).reshape(3,3)
-#
-        yieldStress[i,0]= stress[0,0]; yieldStress[i,1]=stress[1,1]; yieldStress[i,2]=stress[2,2]
-        yieldStress[i,3]=(stress[0,1] + stress[1,0])/2.0     #   0  3  5
-        yieldStress[i,4]=(stress[1,2] + stress[2,1])/2.0     #   *  1  4  yieldStress
-        yieldStress[i,5]=(stress[2,0] + stress[0,2])/2.0     #   *  *  2
+        yieldStress[i,:] = t33toSym6(stress)
 
-#       D*dt = 0.5(L+L^T)*dt = 0.5*d(lnF + lnF^T) = dlnV
-        deformationRate[i,0]= dstrain[0,0]; deformationRate[i,1]=dstrain[1,1]; deformationRate[i,2]=dstrain[2,2]
-        deformationRate[i,3]=(dstrain[0,1] + dstrain[1,0])/2.0     #   0  3  5
-        deformationRate[i,4]=(dstrain[1,2] + dstrain[2,1])/2.0     #   *  1  4
-        deformationRate[i,5]=(dstrain[2,0] + dstrain[0,2])/2.0     #   *  *  2
+        dstrain= np.array(table.data[line,10:] - table.data[line-1,10:]).reshape(3,3)
+        deformationRate[i,:] = t33toSym6(dstrain)
+
         validity[i] = True
         break
       else:
         line+=1
     if not validity[i]:
-      damask.util.croak('The data of result %i at the threshold %f is invalid,'\
-                        +'the fitting at this point is skipped'%(loadNo,threshold))
+      s.acquire()
+      #damask.util.croak('The data of result %i at the threshold %f is invalid,'\
+      #                  +'the fitting at this point is skipped'%(loadNo,threshold))
+      s.release()
+
+# do the actual fitting procedure and write results to file
   s.acquire()
   global stressAll, strainAll
-  f=open(options.geometry+'_'+options.criterion+'.txt','w')
+  f=open(options.geometry+'_'+options.criterion+'_'+str(time.time())+'.txt','w')
+  print myFit.report_labels()
   f.write(' '.join([options.fitting]+myFit.report_labels())+'\n')
   try:
     for i,threshold in enumerate(np.linspace(options.yieldValue[0],options.yieldValue[1],options.yieldValue[2])):
       if validity[i]:
-        a = (yieldStress[0][2]/stressUnit)**2 + (yieldStress[0][4]/stressUnit)**2 + (yieldStress[0][5]/stressUnit)**2
         stressAll[i]=np.append(stressAll[i], yieldStress[i]/stressUnit)
         strainAll[i]=np.append(strainAll[i], deformationRate[i])
         f.write( str(threshold)+' '+
@@ -1338,7 +1345,7 @@ parser.add_option('-t','--threads',    dest='threads', type='int',
                                        help='number of parallel executions [%default]',  metavar='int')
 parser.add_option('-b','--bound',      dest='bounds', type='float', nargs=2,
                                        help='yield points: start; end; count %default', metavar='float float')
-parser.add_option('-d','--dimension',  dest='dimension', type='int',
+parser.add_option('-d','--dimension',  dest='dimension', type='choice', choices=['2','3'],
                                        help='dimension of the virtual test [%default]',  metavar='int')
 parser.add_option('-v', '--vegter',    dest='vegter', action='store_true',
                                        help='Vegter criteria [%default]',  metavar='float') 
@@ -1356,7 +1363,7 @@ parser.set_defaults(criterion  = 'vonmises')
 parser.set_defaults(fitting    = 'totalshear')
 parser.set_defaults(geometry   = '20grains16x16x16')
 parser.set_defaults(bounds     = None)
-parser.set_defaults(dimension  = 3)
+parser.set_defaults(dimension  = '3')
 parser.set_defaults(vegter     = 'False')
 parser.set_defaults(exponent   = -1.0)
 
@@ -1376,20 +1383,21 @@ if options.yieldValue[0]>options.yieldValue[1]:
   parser.error('invalid yield start (below yield end)')
 if options.yieldValue[2] != int(options.yieldValue[2]):
   parser.error('count must be an integer')
-if options.dimension not in [2,3]:
-  parser.error('Dimension is wrong, should be 2(plane stress state) or 3(general stress state)')
+
 if not os.path.isfile('numerics.config'):
   damask.util.croak('numerics.config file not found')
-
 if not os.path.isfile('material.config'):
   damask.util.croak('material.config file not found')
 
 
 if options.vegter is True: 
   options.dimension = 2
+else:
+  options.dimension = int(options.dimension)
 
 if options.criterion == 'hill1948': stressUnit = 1.0e9
 else                              : stressUnit = 1.0e6
+
 fit_allResults = {}
 if options.criterion == 'all':
   noExpoList = ['tresca', 'vonmises', 'hill1948', 'drucker']
@@ -1397,8 +1405,7 @@ if options.criterion == 'all':
     run = runFit(options.exponent, 0.0, fitCriteria[criter]['dimen'], criter)
     fit_allResults[criter] = {'results': fitResults, 'errors': fitErrors, 'residual': fitResidual}
   for criter in [x for x in fitCriteria.keys() if x not in noExpoList+['vegter','all'] ]:
-    if options.eqStress == None:  
-      # the user do not provide the equivalent stress, the equivalent stress will be fitted by von Mises
+    if options.eqStress == None:                                                               # the user does not provide the equivalent stress, the equivalent stress will be fitted by von Mises
       eqStress = fit_allResults['vonmises']['results'][-1]
     run = runFit(options.exponent, eqStress, fitCriteria[criter]['dimen'], criter)
     fit_allResults[criter] = {'results': fitResults, 'errors': fitErrors, 'residual': fitResidual}
@@ -1407,8 +1414,7 @@ else:
   if fitCriteria[criter]['nExpo'] == 0:
     run = runFit(options.exponent, 0.0, fitCriteria[criter]['dimen'], criter)
   else:
-    if options.eqStress == None: 
-      # the user do not provide the equivalent stress, the equivalent stress will be fitted by von Mises
+    if options.eqStress == None:                                                                # the user does not provide the equivalent stress, the equivalent stress will be fitted by von Mises
       run = runFit(options.exponent, 0.0, fitCriteria[criter]['dimen'], 'vonmises')
       eqStress = fitResults[-1]
     run = runFit(options.exponent, eqStress, fitCriteria[criter]['dimen'], criter)
