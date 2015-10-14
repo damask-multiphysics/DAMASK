@@ -438,20 +438,16 @@ subroutine crystallite_init
  call crystallite_orientations()
  crystallite_orientation0 = crystallite_orientation                                                 ! store initial orientations for calculation of grain rotations
 
- !***some debugging statement here
- !write(6,*)    'CZ: before crystallite initialization'
-
  !$OMP PARALLEL DO PRIVATE(myNgrains)
    do e = FEsolving_execElem(1),FEsolving_execElem(2)
      myNgrains = homogenization_Ngrains(mesh_element(3,e))
      do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
        do g = 1_pInt,myNgrains
          !***dirty way to pass orientation to constitutive module
-         call constitutive_microstructure( &
-                          crystallite_orientation, &
-                          crystallite_Fe(1:3,1:3,g,i,e), &
-                          crystallite_Fp(1:3,1:3,g,i,e), &
-                          g,i,e)                                                                    ! update dependent state variables to be consistent with basic states
+         call constitutive_microstructure(crystallite_orientation, &
+                                          crystallite_Fe(1:3,1:3,g,i,e), &
+                                          crystallite_Fp(1:3,1:3,g,i,e), &
+                                          g,i,e)                                ! update dependent state variables to be consistent with basic states
       enddo
      enddo
    enddo
@@ -654,8 +650,10 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
  if (iand(debug_level(debug_crystallite),debug_levelSelective) /= 0_pInt &
      .and. FEsolving_execElem(1) <= debug_e &
      .and.                          debug_e <= FEsolving_execElem(2)) then
-     write(6,'(/,a,i8,1x,a,i8,a,1x,i2,1x,i3)')      '<< CRYST >> values at el (elFE) ip g ', &
+     write(6,'(/,a,i8,1x,a,i8,a,1x,i2,1x,i3)')      '<< CRYST >> boundary values at el (elFE) ip g ', &
        debug_e,'(',mesh_element(1,debug_e), ')',debug_i, debug_g
+   write(6,'(a,/,3(12x,3(f14.9,1x)/))') '<< CRYST >> F  ', &
+                                         math_transpose33(crystallite_partionedF(1:3,1:3,debug_g,debug_i,debug_e))
    write(6,'(a,/,3(12x,3(f14.9,1x)/))') '<< CRYST >> F0 ', &
                                          math_transpose33(crystallite_partionedF0(1:3,1:3,debug_g,debug_i,debug_e))
    write(6,'(a,/,3(12x,3(f14.9,1x)/))') '<< CRYST >> Fp0', &
@@ -666,8 +664,6 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
                                          math_transpose33(crystallite_partionedLp0(1:3,1:3,debug_g,debug_i,debug_e))
    write(6,'(a,/,3(12x,3(f14.9,1x)/))') '<< CRYST >> Li0', &
                                          math_transpose33(crystallite_partionedLi0(1:3,1:3,debug_g,debug_i,debug_e))
-   write(6,'(a,/,3(12x,3(f14.9,1x)/))') '<< CRYST >> F  ', &
-                                         math_transpose33(crystallite_partionedF(1:3,1:3,debug_g,debug_i,debug_e))
  endif
 
 !--------------------------------------------------------------------------------------------------

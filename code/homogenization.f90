@@ -4,7 +4,7 @@
 !> @author Franz Roters, Max-Planck-Institut für Eisenforschung GmbH
 !> @author Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
 !> @author Denny Tjahjanto, Max-Planck-Institut für Eisenforschung GmbH
-!> @brief homogenization manager, organizing deformation partitioning and stress homogenization 
+!> @brief homogenization manager, organizing deformation partitioning and stress homogenization
 !--------------------------------------------------------------------------------------------------
 module homogenization
  use prec, only: &
@@ -91,7 +91,7 @@ subroutine homogenization_init
  use mesh, only: &
    mesh_maxNips, &
    mesh_NcpElems, &
-   mesh_element, & 
+   mesh_element, &
    FE_Nips, &
    FE_geomtype
 #ifdef FEM
@@ -151,7 +151,7 @@ subroutine homogenization_init
  if (any(homogenization_type == HOMOGENIZATION_RGC_ID)) &
    call homogenization_RGC_init(FILEUNIT)
 
- 
+
 !--------------------------------------------------------------------------------------------------
 ! parse thermal from config file
  call IO_checkAndRewind(FILEUNIT)
@@ -162,7 +162,7 @@ subroutine homogenization_init
  if (any(thermal_type == THERMAL_conduction_ID)) &
    call thermal_conduction_init(FILEUNIT)
 
- 
+
 !--------------------------------------------------------------------------------------------------
 ! parse damage from config file
  call IO_checkAndRewind(FILEUNIT)
@@ -227,7 +227,7 @@ subroutine homogenization_init
            thisSize   => homogenization_RGC_sizePostResult
          case default
            knownHomogenization = .false.
-       end select   
+       end select
        write(FILEUNIT,'(/,a,/)')  '['//trim(homogenization_name(p))//']'
        if (knownHomogenization) then
          write(FILEUNIT,'(a)') '(type)'//char(9)//trim(outputName)
@@ -236,8 +236,8 @@ subroutine homogenization_init
            do e = 1,thisNoutput(i)
              write(FILEUNIT,'(a,i4)') trim(thisOutput(e,i))//char(9),thisSize(e,i)
            enddo
-         endif  
-       endif  
+         endif
+       endif
        i = thermal_typeInstance(p)                                                                      ! which instance of this thermal type
        knownThermal = .true.                                                                            ! assume valid
        select case(thermal_type(p))                                                                     ! split per thermal type
@@ -258,15 +258,15 @@ subroutine homogenization_init
            thisSize   => thermal_conduction_sizePostResult
          case default
            knownThermal = .false.
-       end select   
+       end select
        if (knownThermal) then
          write(FILEUNIT,'(a)') '(thermal)'//char(9)//trim(outputName)
          if (thermal_type(p) /= THERMAL_isothermal_ID) then
            do e = 1,thisNoutput(i)
              write(FILEUNIT,'(a,i4)') trim(thisOutput(e,i))//char(9),thisSize(e,i)
            enddo
-         endif  
-       endif  
+         endif
+       endif
        i = damage_typeInstance(p)                                                                       ! which instance of this damage type
        knownDamage = .true.                                                                             ! assume valid
        select case(damage_type(p))                                                                      ! split per damage type
@@ -287,15 +287,15 @@ subroutine homogenization_init
            thisSize   => damage_nonlocal_sizePostResult
          case default
            knownDamage = .false.
-       end select   
+       end select
        if (knownDamage) then
          write(FILEUNIT,'(a)') '(damage)'//char(9)//trim(outputName)
          if (damage_type(p) /= DAMAGE_none_ID) then
            do e = 1,thisNoutput(i)
              write(FILEUNIT,'(a,i4)') trim(thisOutput(e,i))//char(9),thisSize(e,i)
            enddo
-         endif  
-       endif  
+         endif
+       endif
        i = vacancyflux_typeInstance(p)                                                                  ! which instance of this vacancy flux type
        knownVacancyflux = .true.                                                                        ! assume valid
        select case(vacancyflux_type(p))                                                                 ! split per vacancy flux type
@@ -316,15 +316,15 @@ subroutine homogenization_init
            thisSize   => vacancyflux_cahnhilliard_sizePostResult
          case default
            knownVacancyflux = .false.
-       end select   
+       end select
        if (knownVacancyflux) then
          write(FILEUNIT,'(a)') '(vacancyflux)'//char(9)//trim(outputName)
          if (vacancyflux_type(p) /= VACANCYFLUX_isoconc_ID) then
            do e = 1,thisNoutput(i)
              write(FILEUNIT,'(a,i4)') trim(thisOutput(e,i))//char(9),thisSize(e,i)
            enddo
-         endif  
-       endif  
+         endif
+       endif
        i = porosity_typeInstance(p)                                                                     ! which instance of this porosity type
        knownPorosity = .true.                                                                           ! assume valid
        select case(porosity_type(p))                                                                    ! split per porosity type
@@ -340,15 +340,15 @@ subroutine homogenization_init
            thisSize   => porosity_phasefield_sizePostResult
          case default
            knownPorosity = .false.
-       end select   
+       end select
        if (knownPorosity) then
          write(FILEUNIT,'(a)') '(porosity)'//char(9)//trim(outputName)
          if (porosity_type(p) /= POROSITY_none_ID) then
            do e = 1,thisNoutput(i)
              write(FILEUNIT,'(a,i4)') trim(thisOutput(e,i))//char(9),thisSize(e,i)
            enddo
-         endif  
-       endif  
+         endif
+       endif
        i = hydrogenflux_typeInstance(p)                                                                 ! which instance of this hydrogen flux type
        knownHydrogenflux = .true.                                                                       ! assume valid
        select case(hydrogenflux_type(p))                                                                ! split per hydrogen flux type
@@ -364,15 +364,15 @@ subroutine homogenization_init
            thisSize   => hydrogenflux_cahnhilliard_sizePostResult
          case default
            knownHydrogenflux = .false.
-       end select   
+       end select
        if (knownHydrogenflux) then
          write(FILEUNIT,'(a)') '(hydrogenflux)'//char(9)//trim(outputName)
          if (hydrogenflux_type(p) /= HYDROGENFLUX_isoconc_ID) then
            do e = 1,thisNoutput(i)
              write(FILEUNIT,'(a,i4)') trim(thisOutput(e,i))//char(9),thisSize(e,i)
            enddo
-         endif  
-       endif  
+         endif
+       endif
      endif
    enddo
    close(FILEUNIT)
@@ -421,13 +421,13 @@ subroutine homogenization_init
    vacancyflux_maxSizePostResults    = max(vacancyflux_maxSizePostResults   ,vacancyfluxState (p)%sizePostResults)
    porosity_maxSizePostResults       = max(porosity_maxSizePostResults      ,porosityState    (p)%sizePostResults)
    hydrogenflux_maxSizePostResults   = max(hydrogenflux_maxSizePostResults  ,hydrogenfluxState(p)%sizePostResults)
- enddo  
+ enddo
 
 #ifdef FEM
  allocate(homogOutput      (material_Nhomogenization                         ))
  allocate(crystalliteOutput(material_Ncrystallite,  homogenization_maxNgrains))
  allocate(phaseOutput      (material_Nphase,        homogenization_maxNgrains))
- do p = 1, material_Nhomogenization 
+ do p = 1, material_Nhomogenization
    homogOutput(p)%sizeResults = homogState       (p)%sizePostResults + &
                                 thermalState     (p)%sizePostResults + &
                                 damageState      (p)%sizePostResults + &
@@ -436,19 +436,19 @@ subroutine homogenization_init
                                 hydrogenfluxState(p)%sizePostResults
    homogOutput(p)%sizeIpCells = count(material_homog==p)
    allocate(homogOutput(p)%output(homogOutput(p)%sizeResults,homogOutput(p)%sizeIpCells))
- enddo                                                        
+ enddo
  do p = 1, material_Ncrystallite; do e = 1, homogenization_maxNgrains
    crystalliteOutput(p,e)%sizeResults = crystallite_sizePostResults(p)
    crystalliteOutput(p,e)%sizeIpCells = count(microstructure_crystallite(mesh_element(4,:)) == p .and. &
                                               homogenization_Ngrains    (mesh_element(3,:)) >= e)*mesh_maxNips
    allocate(crystalliteOutput(p,e)%output(crystalliteOutput(p,e)%sizeResults,crystalliteOutput(p,e)%sizeIpCells))
- enddo; enddo                                                        
+ enddo; enddo
  do p = 1, material_Nphase; do e = 1, homogenization_maxNgrains
    phaseOutput(p,e)%sizeResults = plasticState    (p)%sizePostResults + &
                                   sum(sourceState (p)%p(:)%sizePostResults)
    phaseOutput(p,e)%sizeIpCells = count(material_phase(e,:,:) == p)
    allocate(phaseOutput(p,e)%output(phaseOutput(p,e)%sizeResults,phaseOutput(p,e)%sizeIpCells))
- enddo; enddo                                                        
+ enddo; enddo
 #else
  materialpoint_sizeResults = 1 &                                                                    ! grain count
                            + 1 + homogenization_maxSizePostResults &                                ! homogSize & homogResult
@@ -459,11 +459,11 @@ subroutine homogenization_init
                                + hydrogenflux_maxSizePostResults   &
                            + homogenization_maxNgrains * (1 + crystallite_maxSizePostResults &      ! crystallite size & crystallite results
                                                         + 1 + constitutive_plasticity_maxSizePostResults &     ! constitutive size & constitutive results
-                                                            + constitutive_source_maxSizePostResults)   
+                                                            + constitutive_source_maxSizePostResults)
  allocate(materialpoint_results(materialpoint_sizeResults,mesh_maxNips,mesh_NcpElems))
 #endif
- 
- mainProcess: if (worldrank == 0) then 
+
+ mainProcess: if (worldrank == 0) then
    write(6,'(/,a)')   ' <<<+-  homogenization init  -+>>>'
    write(6,'(a)')     ' $Id$'
    write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
@@ -494,10 +494,10 @@ subroutine homogenization_init
    write(6,'(a32,1x,7(i8,1x))')   'maxSizePostResults: ', homogenization_maxSizePostResults
  endif
  flush(6)
- 
+
  if (debug_g < 1 .or. debug_g > homogenization_Ngrains(mesh_element(3,debug_e))) &
    call IO_error(602_pInt,ext_msg='component (grain)')
- 
+
 end subroutine homogenization_init
 
 
@@ -511,7 +511,7 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
    stepIncreaseHomog, &
    nHomog, &
    nMPstate
- use math, only: & 
+ use math, only: &
    math_transpose33
  use FEsolving, only: &
    FEsolving_execElem, &
@@ -529,11 +529,11 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
    porosityState, &
    hydrogenfluxState, &
    phase_Nsources, &
-   mappingHomogenization, &  
+   mappingHomogenization, &
    mappingConstitutive, &
    homogenization_Ngrains
-  
-   
+
+
  use crystallite, only: &
    crystallite_F0, &
    crystallite_Fp0, &
@@ -572,7 +572,7 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
    debug_MaterialpointStateLoopDistribution
  use math, only: &
    math_pDecomposition
-                          
+
  implicit none
  real(pReal), intent(in) :: dt                                                                      !< time increment
  logical,     intent(in) :: updateJaco                                                              !< initiating Jacobian update
@@ -609,7 +609,7 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
      do mySource = 1_pInt, phase_Nsources(mappingConstitutive(2,g,i,e))
        sourceState(mappingConstitutive(2,g,i,e))%p(mySource)%partionedState0(:,mappingConstitutive(1,g,i,e)) = &
        sourceState(mappingConstitutive(2,g,i,e))%p(mySource)%state0(         :,mappingConstitutive(1,g,i,e))
-     enddo  
+     enddo
 
      crystallite_partionedFp0(1:3,1:3,g,i,e) = crystallite_Fp0(1:3,1:3,g,i,e)                       ! ...plastic def grads
      crystallite_partionedLp0(1:3,1:3,g,i,e) = crystallite_Lp0(1:3,1:3,g,i,e)                       ! ...plastic velocity grads
@@ -653,7 +653,7 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
        hydrogenfluxState(mappingHomogenization(2,i,e))%State0(   :,mappingHomogenization(1,i,e))    ! ...internal hydrogen transport state
  enddo
  NiterationHomog = 0_pInt
- 
+
  cutBackLooping: do while (.not. terminallyIll .and. &
       any(materialpoint_subStep(:,FEsolving_execELem(1):FEsolving_execElem(2)) > subStepMinHomog))
 
@@ -661,43 +661,50 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
    elementLooping1: do e = FEsolving_execElem(1),FEsolving_execElem(2)
      myNgrains = homogenization_Ngrains(mesh_element(3,e))
      IpLooping1: do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
-              
+
        converged: if ( materialpoint_converged(i,e) ) then
 #ifndef _OPENMP
          if (iand(debug_level(debug_homogenization), debug_levelBasic) /= 0_pInt &
-            .and. ((e == debug_e .and. i == debug_i) & 
+            .and. ((e == debug_e .and. i == debug_i) &
                    .or. .not. iand(debug_level(debug_homogenization),debug_levelSelective) /= 0_pInt)) then
            write(6,'(a,1x,f12.8,1x,a,1x,f12.8,1x,a,i8,1x,i2/)') '<< HOMOG >> winding forward from', &
              materialpoint_subFrac(i,e), 'to current materialpoint_subFrac', &
              materialpoint_subFrac(i,e)+materialpoint_subStep(i,e),'in materialpoint_stressAndItsTangent at el ip',e,i
          endif
 #endif
-         
-!--------------------------------------------------------------------------------------------------
+
+!---------------------------------------------------------------------------------------------------
 ! calculate new subStep and new subFrac
          materialpoint_subFrac(i,e) = materialpoint_subFrac(i,e) + materialpoint_subStep(i,e)
          !$OMP FLUSH(materialpoint_subFrac)
          materialpoint_subStep(i,e) = min(1.0_pReal-materialpoint_subFrac(i,e), &
                                           stepIncreaseHomog*materialpoint_subStep(i,e))             ! introduce flexibility for step increase/acceleration
          !$OMP FLUSH(materialpoint_subStep)
-                  
+
          steppingNeeded: if (materialpoint_subStep(i,e) > subStepMinHomog) then
-         
+
            ! wind forward grain starting point of...
            crystallite_partionedF0(1:3,1:3,1:myNgrains,i,e) =  &
               crystallite_partionedF(1:3,1:3,1:myNgrains,i,e)                                       ! ...def grads
+
            crystallite_partionedFp0(1:3,1:3,1:myNgrains,i,e) = &
              crystallite_Fp(1:3,1:3,1:myNgrains,i,e)                                                ! ...plastic def grads
+
            crystallite_partionedLp0(1:3,1:3,1:myNgrains,i,e) = &
              crystallite_Lp(1:3,1:3,1:myNgrains,i,e)                                                ! ...plastic velocity grads
+
            crystallite_partionedFi0(1:3,1:3,1:myNgrains,i,e) = &
              crystallite_Fi(1:3,1:3,1:myNgrains,i,e)                                                ! ...intermediate def grads
+
            crystallite_partionedLi0(1:3,1:3,1:myNgrains,i,e) = &
              crystallite_Li(1:3,1:3,1:myNgrains,i,e)                                                ! ...intermediate velocity grads
+
            crystallite_partioneddPdF0(1:3,1:3,1:3,1:3,1:myNgrains,i,e) = &
              crystallite_dPdF(1:3,1:3,1:3,1:3,1:myNgrains,i,e)                                      ! ...stiffness
+
            crystallite_partionedTstar0_v(1:6,1:myNgrains,i,e) = &
              crystallite_Tstar_v(1:6,1:myNgrains,i,e)                                               ! ...2nd PK stress
+
            do g = 1,myNgrains
              plasticState    (mappingConstitutive(2,g,i,e))%partionedState0(:,mappingConstitutive(1,g,i,e)) = &
              plasticState    (mappingConstitutive(2,g,i,e))%state(          :,mappingConstitutive(1,g,i,e))
@@ -705,7 +712,8 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
                sourceState(mappingConstitutive(2,g,i,e))%p(mySource)%partionedState0(:,mappingConstitutive(1,g,i,e)) = &
                sourceState(mappingConstitutive(2,g,i,e))%p(mySource)%state(          :,mappingConstitutive(1,g,i,e))
              enddo
-           enddo    
+           enddo
+
            forall(i = FEsolving_execIP(1,e):FEsolving_execIP(2,e), &
              homogState(mappingHomogenization(2,i,e))%sizeState > 0_pInt) &
                homogState(mappingHomogenization(2,i,e))%subState0(:,mappingHomogenization(1,i,e)) = &
@@ -757,17 +765,17 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
          else                                                                                       ! cutback makes sense
            materialpoint_subStep(i,e) = subStepSizeHomog * materialpoint_subStep(i,e)               ! crystallite had severe trouble, so do a significant cutback
            !$OMP FLUSH(materialpoint_subStep)
-           
+
 #ifndef _OPENMP
            if (iand(debug_level(debug_homogenization), debug_levelBasic) /= 0_pInt &
               .and. ((e == debug_e .and. i == debug_i) &
                     .or. .not. iand(debug_level(debug_homogenization), debug_levelSelective) /= 0_pInt)) then
              write(6,'(a,1x,f12.8,a,i8,1x,i2/)') &
                '<< HOMOG >> cutback step in materialpoint_stressAndItsTangent with new materialpoint_subStep:',&
-               materialpoint_subStep(i,e),' at el ip',e,i 
+               materialpoint_subStep(i,e),' at el ip',e,i
            endif
 #endif
-  
+
 !--------------------------------------------------------------------------------------------------
 ! restore...
            crystallite_Fp(1:3,1:3,1:myNgrains,i,e) = &
@@ -789,7 +797,7 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
                sourceState(mappingConstitutive(2,g,i,e))%p(mySource)%state(          :,mappingConstitutive(1,g,i,e)) = &
                sourceState(mappingConstitutive(2,g,i,e))%p(mySource)%partionedState0(:,mappingConstitutive(1,g,i,e))
              enddo
-           enddo    
+           enddo
            forall(i = FEsolving_execIP(1,e):FEsolving_execIP(2,e), &
              homogState(mappingHomogenization(2,i,e))%sizeState > 0_pInt) &
                homogState(mappingHomogenization(2,i,e))%State(    :,mappingHomogenization(1,i,e)) = &
@@ -814,9 +822,9 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
              hydrogenfluxState(mappingHomogenization(2,i,e))%sizeState > 0_pInt) &
                hydrogenfluxState(mappingHomogenization(2,i,e))%State(    :,mappingHomogenization(1,i,e)) = &
                hydrogenfluxState(mappingHomogenization(2,i,e))%subState0(:,mappingHomogenization(1,i,e))! ...internal hydrogen transport state
-         endif       
+         endif
        endif converged
-     
+
        if (materialpoint_subStep(i,e) > subStepMinHomog) then
          materialpoint_requested(i,e) = .true.
          materialpoint_subF(1:3,1:3,i,e) = materialpoint_subF0(1:3,1:3,i,e) + &
@@ -829,7 +837,7 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
    !$OMP END PARALLEL DO
 
    NiterationMPstate = 0_pInt
-   
+
    convergenceLooping: do while (.not. terminallyIll .and. &
              any(            materialpoint_requested(:,FEsolving_execELem(1):FEsolving_execElem(2)) &
                  .and. .not. materialpoint_doneAndHappy(1,:,FEsolving_execELem(1):FEsolving_execElem(2)) &
@@ -839,7 +847,7 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
 
 !--------------------------------------------------------------------------------------------------
 ! deformation partitioning
-! based on materialpoint_subF0,.._subF,crystallite_partionedF0, and homogenization_state, 
+! based on materialpoint_subF0,.._subF,crystallite_partionedF0, and homogenization_state,
 ! results in crystallite_partionedF
      !$OMP PARALLEL DO PRIVATE(myNgrains)
      elementLooping2: do e = FEsolving_execElem(1),FEsolving_execElem(2)
@@ -856,7 +864,7 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
        enddo IpLooping2
      enddo elementLooping2
      !$OMP END PARALLEL DO
- 
+
 !--------------------------------------------------------------------------------------------------
 ! crystallite integration
 ! based on crystallite_partionedF0,.._partionedF
@@ -897,7 +905,7 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
 
  enddo cutBackLooping
 
- if (.not. terminallyIll ) then   
+ if (.not. terminallyIll ) then
    call crystallite_orientations()                                                                  ! calculate crystal orientations
    !$OMP PARALLEL DO
    elementLooping4: do e = FEsolving_execElem(1),FEsolving_execElem(2)
@@ -911,7 +919,7 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
    write(6,'(/,a,/)') '<< HOMOG >> Material Point terminally ill'
    !$OMP END CRITICAL (write2out)
  endif
- 
+
 end subroutine materialpoint_stressAndItsTangent
 
 
@@ -927,10 +935,10 @@ subroutine materialpoint_postResults
  use material, only: &
    mappingHomogenization, &
 #ifdef FEM
-   mappingConstitutive, &  
+   mappingConstitutive, &
    homogenization_maxNgrains, &
    material_Ncrystallite, &
-   material_Nphase, & 
+   material_Nphase, &
 #else
    homogState, &
    thermalState, &
@@ -971,10 +979,10 @@ subroutine materialpoint_postResults
    myHomog, &
    myPhase, &
    crystalliteCtr(material_Ncrystallite,  homogenization_maxNgrains), &
-   phaseCtr      (material_Nphase,        homogenization_maxNgrains)   
+   phaseCtr      (material_Nphase,        homogenization_maxNgrains)
  real(pReal), dimension(1+crystallite_maxSizePostResults + &
                         1+constitutive_plasticity_maxSizePostResults + &
-                          constitutive_source_maxSizePostResults) :: & 
+                          constitutive_source_maxSizePostResults) :: &
    crystalliteResults
 
 
@@ -989,7 +997,7 @@ subroutine materialpoint_postResults
      homogOutput(myHomog)%output(1: &
                                  homogOutput(myHomog)%sizeResults, &
                                  thePos) = homogenization_postResults(i,e)
-     
+
      grainLooping :do g = 1,myNgrains
        myPhase = mappingConstitutive(2,g,i,e)
        crystalliteResults(1:1+crystallite_sizePostResults(myCrystallite) + &
@@ -999,16 +1007,16 @@ subroutine materialpoint_postResults
            homogenization_Ngrains    (mesh_element(3,e)) >= g) then
          crystalliteCtr(myCrystallite,g) = crystalliteCtr(myCrystallite,g) + 1_pInt
          crystalliteOutput(myCrystallite,g)% &
-           output(1:crystalliteOutput(myCrystallite,g)%sizeResults,crystalliteCtr(myCrystallite,g)) = &  
+           output(1:crystalliteOutput(myCrystallite,g)%sizeResults,crystalliteCtr(myCrystallite,g)) = &
              crystalliteResults(2:1+crystalliteOutput(myCrystallite,g)%sizeResults)
        endif
        if (material_phase(g,i,e) == myPhase) then
          phaseCtr(myPhase,g) = phaseCtr(myPhase,g) + 1_pInt
          phaseOutput(myPhase,g)% &
-           output(1:phaseOutput(myPhase,g)%sizeResults,phaseCtr(myPhase,g)) = &  
+           output(1:phaseOutput(myPhase,g)%sizeResults,phaseCtr(myPhase,g)) = &
              crystalliteResults(3 + crystalliteOutput(myCrystallite,g)%sizeResults: &
-                                1 + crystalliteOutput(myCrystallite,g)%sizeResults + & 
-                                1 + plasticState    (myphase)%sizePostResults + &                    
+                                1 + crystalliteOutput(myCrystallite,g)%sizeResults + &
+                                1 + plasticState    (myphase)%sizePostResults + &
                                     sum(sourceState(myphase)%p(:)%sizePostResults))
        endif
      enddo grainLooping
@@ -1022,7 +1030,7 @@ subroutine materialpoint_postResults
      myCrystallite = microstructure_crystallite(mesh_element(4,e))
      IpLooping: do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
        thePos = 0_pInt
-       
+
        theSize = homogState       (mappingHomogenization(2,i,e))%sizePostResults &
                + thermalState     (mappingHomogenization(2,i,e))%sizePostResults &
                + damageState      (mappingHomogenization(2,i,e))%sizePostResults &
@@ -1053,8 +1061,8 @@ subroutine materialpoint_postResults
 #endif
 
 end subroutine materialpoint_postResults
- 
- 
+
+
 !--------------------------------------------------------------------------------------------------
 !> @brief  partition material point def grad onto constituents
 !--------------------------------------------------------------------------------------------------
@@ -1103,7 +1111,7 @@ end subroutine homogenization_partitionDeformation
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief update the internal state of the homogenization scheme and tell whether "done" and 
+!> @brief update the internal state of the homogenization scheme and tell whether "done" and
 !> "happy" with result
 !--------------------------------------------------------------------------------------------------
 function homogenization_updateState(ip,el)
@@ -1138,7 +1146,7 @@ function homogenization_updateState(ip,el)
    ip, &                                                                                            !< integration point
    el                                                                                               !< element number
  logical, dimension(2) :: homogenization_updateState
- 
+
  homogenization_updateState = .true.
  chosenHomogenization: select case(homogenization_type(mesh_element(3,el)))
    case (HOMOGENIZATION_RGC_ID) chosenHomogenization
@@ -1219,12 +1227,13 @@ subroutine homogenization_averageStressAndItsTangent(ip,el)
  integer(pInt), intent(in) :: &
    ip, &                                                                                            !< integration point
    el                                                                                               !< element number
- 
+
  chosenHomogenization: select case(homogenization_type(mesh_element(3,el)))
    case (HOMOGENIZATION_NONE_ID) chosenHomogenization
        materialpoint_P(1:3,1:3,ip,el) = sum(crystallite_P(1:3,1:3,1:1,ip,el),3)
        materialpoint_dPdF(1:3,1:3,1:3,1:3,ip,el) &
         = sum(crystallite_dPdF(1:3,1:3,1:3,1:3,1:1,ip,el),5)
+
    case (HOMOGENIZATION_ISOSTRAIN_ID) chosenHomogenization
      call homogenization_isostrain_averageStressAndItsTangent(&
        materialpoint_P(1:3,1:3,ip,el), &
@@ -1244,7 +1253,7 @@ subroutine homogenization_averageStressAndItsTangent(ip,el)
 end subroutine homogenization_averageStressAndItsTangent
 
 !--------------------------------------------------------------------------------------------------
-!> @brief return array of homogenization results for post file inclusion. call only, 
+!> @brief return array of homogenization results for post file inclusion. call only,
 !> if homogenization_sizePostResults(i,e) > 0 !!
 !--------------------------------------------------------------------------------------------------
 function homogenization_postResults(ip,el)
@@ -1300,7 +1309,7 @@ function homogenization_postResults(ip,el)
    porosity_phasefield_postResults
  use hydrogenflux_cahnhilliard, only: &
    hydrogenflux_cahnhilliard_postResults
- 
+
  implicit none
  integer(pInt), intent(in) :: &
    ip, &                                                                                            !< integration point
@@ -1314,7 +1323,7 @@ function homogenization_postResults(ip,el)
    homogenization_postResults
  integer(pInt) :: &
    startPos, endPos
- 
+
  homogenization_postResults = 0.0_pReal
 
  startPos = 1_pInt

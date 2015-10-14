@@ -5,7 +5,7 @@
 !> @author Philip Eisenlohr,  Max-Planck-Institut für Eisenforschung GmbH
 !> @author Chen Zhang,        Michigan State University
 !> @brief  material subroutine for phenomenological crystal plasticity formulation using a powerlaw
-!!         fitting
+!...       fitting
 !--------------------------------------------------------------------------------------------------
 module plastic_phenoplus
  use prec, only: &
@@ -830,7 +830,7 @@ subroutine plastic_phenoplus_microstructure(orientation,ipc,ip,el)
  ns                  = plastic_phenoplus_totalNslip(instance)
  nt                  = plastic_phenoplus_totalNtwin(instance)
  offset_acshear_slip = ns + nt + 2_pInt
- kappa_max           = ns + nt + 2_pInt + ns + nt                                         !location of kappa in plasticState
+ index_kappa         = ns + nt + 2_pInt + ns + nt                                         !location of kappa in plasticState
 
  !***gather my accumulative shear from palsticState
  findMyShear: do j = 1_pInt,ns
@@ -876,6 +876,7 @@ subroutine plastic_phenoplus_microstructure(orientation,ipc,ip,el)
                                                     2.0_pReal * &
                                                               (kappa_max - 1.0_pReal) * &
                                                               (1.0_pReal - mprimeavg)
+
  enddo loopMySlip
 
 end subroutine plastic_phenoplus_microstructure
@@ -980,6 +981,14 @@ subroutine plastic_phenoplus_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,ipc,ip,el)
                     ((abs(tau_slip_neg)/(plasticState(ph)%state(j,             of)*  &
                                          plasticState(ph)%state(j+index_kappa, of))) &           !?should we make it direction aware
                     **plastic_phenoplus_n_slip(instance))*sign(1.0_pReal,tau_slip_neg)
+     !***in case for future use
+     ! gdot_slip_pos = 0.5_pReal*plastic_phenoplus_gdot0_slip(instance)* &
+     !                ((abs(tau_slip_pos)/(plasticState(ph)%state(j,             of))) &           !in-place modification of gdot
+     !                **plastic_phenoplus_n_slip(instance))*sign(1.0_pReal,tau_slip_pos)
+
+     ! gdot_slip_neg = 0.5_pReal*plastic_phenoplus_gdot0_slip(instance)* &
+     !                ((abs(tau_slip_neg)/(plasticState(ph)%state(j,             of))) &           !?should we make it direction aware
+     !                **plastic_phenoplus_n_slip(instance))*sign(1.0_pReal,tau_slip_neg)
 
      Lp = Lp + (1.0_pReal-plasticState(ph)%state(index_F,of))*&                                  ! 1-F
                (gdot_slip_pos+gdot_slip_neg)*lattice_Sslip(1:3,1:3,1,index_myFamily+i,ph)
