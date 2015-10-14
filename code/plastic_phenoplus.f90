@@ -785,6 +785,7 @@ subroutine plastic_phenoplus_microstructure(orientation,ipc,ip,el)
                       of, &                         !my spatial position in memory (offset)
                       textureID, &                  !my texture
                       Nneighbors, &                 !number of neighbors (<= 6)
+                      vld_Nneighbors, &             !number of my valid neighbors
                       n, &                          !neighbor index (for iterating through all neighbors)
                       ns, &                         !number of slip system
                       nns, &                        !number of slip in my neighbors
@@ -845,6 +846,8 @@ subroutine plastic_phenoplus_microstructure(orientation,ipc,ip,el)
 
  !***calculate kappa between me and all my neighbors
  loopMySlip: do me_slip=1_pInt,ns
+  vld_Nneighbors = Nneighbors
+  !***go through my neighbors to find highest m'
   loopNeighbors: do n=1_pInt,Nneighbors
    neighbor_el          = mesh_ipNeighborhood(1,n,ip,el)
    neighbor_ip          = mesh_ipNeighborhood(2,n,ip,el)
@@ -855,7 +858,8 @@ subroutine plastic_phenoplus_microstructure(orientation,ipc,ip,el)
    absMisorientation    = lattice_qDisorientation(my_orientation, &
                                                   neighbor_orientation, &
                                                   0_pInt)                                 !no need for explicit calculation of symmetry
-   if (ph==neighbor_ph) then                                                              !ignore voxel with different phase than phenoplus
+   !***only perform m' calculation for neighbor with the same phase
+   if (ph==neighbor_ph) then
     loopNeighborSlip: do ne_slip=1_pInt,ns                                                !assuming all have the same slip systems here
      m_primes(ne_slip) = abs(math_mul3x3(slipNormal(1:3,me_slip), &
                              math_qRot(absMisorientation, slipNormal(1:3,ne_slip)))) &
@@ -865,13 +869,13 @@ subroutine plastic_phenoplus_microstructure(orientation,ipc,ip,el)
     enddo loopNeighborSlip
     ne_mprimes(n) = maxval(m_primes)                                                      !pick the highest m' out of all slip combinations
    else
-    ne_mprimes(n) = 0.0_pReal                                                             !0 for other phase
-    Nneighbors    = Nneighbors - 1_pInt                                                   !kick neighbor with different phase out
+    ne_mprimes(n)  = 0.0_pReal                                                            !0 for other phase
+    vld_Nneighbors = vld_Nneighbors - 1_pInt                                              !kick neighbor with different phase out
    endif
 
   enddo loopNeighbors
 
-  mprimeavg = sum(ne_mprimes)/Nneighbors                                                  !average the m' from all "good" neighbors
+  mprimeavg = sum(ne_mprimes)/vld_Nneighbors                                              !average the m' from all "good" neighbors
   plasticState(ph)%state(index_kappa+me_slip, of) = 1.0_pReal + &                         !calculate kappa
                                                     2.0_pReal * &
                                                               (kappa_max - 1.0_pReal) * &
