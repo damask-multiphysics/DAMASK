@@ -40,7 +40,7 @@ def runFit(exponent, eqStress, dimension, criterion):
   N_simulations=0
   s=threading.Semaphore(1)
   myLoad = Loadcase(options.load[0],options.load[1],options.load[2],
-                    nSet = 10, dimension = dimension, vegter = options.vegter)
+                    nSet = 10, dimension = dimension, vegter = options.criterion=='vegter')
 
   stressAll= [np.zeros(0,'d').reshape(0,0) for i in xrange(int(options.yieldValue[2]))]
   strainAll= [np.zeros(0,'d').reshape(0,0) for i in xrange(int(options.yieldValue[2]))]
@@ -269,11 +269,16 @@ def VetgerCriterion(stress,lankford, rhoBi0, theta=0.0):
 
   vegter = Vegter(refPts, refNormals)
 
-def Tresca(eqStress, paras, sigmas, mFix, criteria, dim, Jac = False):
+def Tresca(eqStress=None, #not needed/supported
+           paras=None,
+           sigmas=None,
+           mFix=None,     #not needed/supported 
+           criteria=None, #not needed/supported
+           dim=3,
+           Jac=False):
   '''
     Tresca yield criterion
     the fitted parameters is: paras(sigma0)
-    eqStress, mFix, criteria, dim are invalid input
   '''
   if not Jac:
     lambdas = principalStresses(sigmas)
@@ -284,7 +289,13 @@ def Tresca(eqStress, paras, sigmas, mFix, criteria, dim, Jac = False):
   else:
     return -np.ones(len(sigmas))
 
-def Cazacu_Barlat(eqStress, paras, sigmas, mFix, criteria, dim, Jac = False):
+def Cazacu_Barlat(eqStress=None,
+                  paras=None,
+                  sigmas=None,
+                  mFix=None,#not needed/supported
+                  criteria=None,
+                  dim=3,    #2D also possible
+                  Jac=False):
   '''
     Cazacu-Barlat (CB) yield criterion
     the fitted parameters are:
@@ -338,7 +349,13 @@ def Cazacu_Barlat(eqStress, paras, sigmas, mFix, criteria, dim, Jac = False):
     else:
       return np.vstack((ja1,ja2,ja3,ja4,ja5,ja6,jb1,jb2,jb3,jb4,jb5,jb6,jb7,jb8,jb9,jb10,jb11,jc)).T
 
-def Drucker(eqStress, paras, sigmas, mFix, criteria, dim, Jac = False):
+def Drucker(eqStress=None,#not needed/supported
+            paras=None,
+            sigmas=None,
+            mFix=None,    #not needed/supported
+            criteria=None,
+            dim=3, 
+            Jac=False):
   '''
     Drucker yield criterion
     the fitted parameters are 
@@ -375,38 +392,52 @@ def Drucker(eqStress, paras, sigmas, mFix, criteria, dim, Jac = False):
       if mFix[0]: return np.vstack((-r/sigma0, -drdl*J3_2p)).T
       else:       return np.vstack((-r/sigma0, -drdl*J3_2p, jp)).T
 
-def Hill1948(eqStress, paras, sigmas, mFix, criteria, dim, Jac = False):
+def Hill1948(eqStress=None,#not needed/supported
+             paras=None,
+             sigmas=None,
+             mFix=None,    #not needed/supported
+             criteria=None,#not needed/supported
+             dim=3, 
+             Jac=False):
   '''
     Hill 1948 yield criterion
     the fitted parameters are:
       F, G, H, L, M, N for 3D
       F, G, H, N       for 2D
-    eqStress, mFix, criteria are invalid input
   '''
   s11,s22,s33,s12,s23,s31 = sigmas
   if dim == 2:      # plane stress
     jac = np.array([ s22**2, s11**2, (s11-s22)**2, 2.0*s12**2])
   else:             # general case
     jac = np.array([(s22-s33)**2,(s33-s11)**2,(s11-s22)**2, 2.0*s23**2,2.0*s31**2,2.0*s12**2])
+
   if not Jac:
     return (np.dot(paras,jac)/2.0-0.5).ravel()
   else:
     return jac.T
 
-def Hill1979(eqStress,paras, sigmas, mFix, criteria, dim, Jac = False):
+def Hill1979(eqStress=None,#not needed/supported
+             paras=None,
+             sigmas=None,
+             mFix=None,
+             criteria=None,#not needed/supported
+             dim=3, 
+             Jac=False):
   '''
     Hill 1979 yield criterion
     the fitted parameters are: f,g,h,a,b,c,m
-    criteria are invalid input
   '''
-  if mFix[0]: m = mFix[1]
-  else:       m = paras[-1]
+
+  if mFix[0]:
+    m = mFix[1]
+  else:
+    m = paras[-1]
 
   coeff  = paras[0:6]
-  s1,s2,s3 = principalStresses(sigmas)
-  # s= principalStresses(sigmas)
-  diffs  = np.array([s2-s3, s3-s1, s1-s2, 2.0*s1-s2-s3, 2.0*s2-s3-s1, 2.0*s3-s1-s2])**2 
-  #diffs  = np.array([s[1]-s[2], s[2]-s[0], etc ...  s1-s2, 2.0*s1-s2-s3, 2.0*s2-s3-s1, 2.0*s3-s1-s2])**2 
+  s = principalStresses(sigmas)
+  diffs  = np.array([s[1]-s[2],          s[2]-s[0],          s[0]-s[1],\
+                     2.0*s[0]-s[1]-s[2], 2.0*s[1]-s[2]-s[0], 2.0*s[2]-s[0]-s[1]])**2 
+
   diffsm = diffs**(m/2.0)
   left   = np.dot(coeff,diffsm)
   r = (0.5*left)**(1.0/m)/eqStress #left = base**mi
@@ -420,7 +451,13 @@ def Hill1979(eqStress,paras, sigmas, mFix, criteria, dim, Jac = False):
     if mFix[0]: return np.vstack((drdl*diffsm)).T
     else:       return np.vstack((drdl*diffsm, jm)).T
 
-def Hosford(eqStress, paras, sigmas, mFix, criteria, dim, Jac = False):
+def Hosford(eqStress=None,
+             paras=None,
+             sigmas=None,
+             mFix=None,
+             criteria=None,
+             dim=3, 
+             Jac=False):
   '''
     Hosford family criteria
     the fitted parameters are:
@@ -444,8 +481,8 @@ def Hosford(eqStress, paras, sigmas, mFix, criteria, dim, Jac = False):
     if mFix[0]: a = mFix[1]
     else:       a = paras[3]
 
-  s1,s2,s3 = principalStresses(sigmas)
-  diffs  = np.array([s2-s3, s3-s1, s1-s2])**2
+  s = principalStresses(sigmas)
+  diffs  = np.array([s[1]-s[2], s[2]-s[0], s[0]-s[1]])**2
   diffsm = diffs**(a/2.0)
   left   = np.dot(coeff,diffsm)
   r      = (0.5*left)**(1.0/a)/sigma0
@@ -465,7 +502,13 @@ def Hosford(eqStress, paras, sigmas, mFix, criteria, dim, Jac = False):
         if mFix[0]: return np.vstack((drdl*diffsm)).T
         else:       return np.vstack((drdl*diffsm, ja)).T
 
-def Barlat1989(eqStress, paras, sigmas, mFix, criteria, dim, Jac=False):
+def Barlat1989(eqStress=None,
+               paras=None,
+               sigmas=None,
+               mFix=None,
+               criteria=None,
+               dim=3, 
+               Jac=False):
   '''
     Barlat-Lian 1989 yield criteria
     the fitted parameters are:
@@ -856,98 +899,98 @@ fitCriteria = {
   'tresca'         :{'name':  'Tresca',
                      'func':   Tresca,
                      'nExpo':  0,'err':np.inf,
-                     'dimen':  3,
+                     'dimen':  [3],
                      'bound':  [[(None,None)]],
                      'labels': [['sigma0']],
                     },
   'vonmises'       :{'name':  'Huber-Mises-Hencky',
                      'func' :  Hosford,
                      'nExpo':  0,'err':np.inf,
-                     'dimen':  3,
+                     'dimen':  [3],
                      'bound':  [[(None,None)]],
                      'labels': [['sigma0']],
                     },
   'hershey'        :{'name':   'Hershey',
                      'func':   Hosford,
                      'nExpo':  1,'err':np.inf,
-                     'dimen':  3, 
+                     'dimen':  [3], 
                      'bound':  [[(None,None)]+[(1.0,8.0)]],
                      'labels': [['sigma0','a']],
                     },
   'hosford'        :{'name':   'General Hosford',
                      'func':   Hosford,
                      'nExpo':  1,'err':np.inf,
-                     'dimen':  3,
+                     'dimen':  [3], 
                      'bound':  [[(0.0,2.0)]*3+[(1.0,8.0)] ],
                      'labels': [['F','G','H','a']],
                     },
   'hill1948'       :{'name':   'Hill 1948',
                      'func':   Hill1948,
                      'nExpo':  0,'err':np.inf,
-                     'dimen':  3,
+                     'dimen':  [2,3],
                      'bound':  [[(None,None)]*6, [(None,None)]*4 ],
                      'labels': [['F','G','H','L','M','N'],['F','G','H','N']],
                     },
   'hill1979'       :{'name':   'Hill 1979',
                      'func':   Hill1979,
                      'nExpo':  1,'err':np.inf,
-                     'dimen':  3,
+                     'dimen':  [3], 
                      'bound':  [[(-2.0,2.0)]*6+[(1.0,8.0)] ],
                      'labels': [['f','g','h','a','b','c','m']],
                     },
   'drucker'        :{'name':   'Drucker',
                      'func':   Drucker,
                      'nExpo':  0,'err':np.inf,
-                     'dimen':  3,
+                     'dimen':  [3], 
                      'bound':  [[(None,None)]+[(-3.375, 2.25)]],
                      'labels': [['sigma0','C_D']],
                     },
   'gdrucker'       :{'name':   'General Drucker',
                      'func':   Drucker,
                      'nExpo':  1,'err':np.inf,
-                     'dimen':  3,
+                     'dimen':  [3], 
                      'bound':  [[(None,None)]+[(-3.375, 2.25)]+[(1.0,8.0)] ],
                      'labels': [['sigma0','C_D', 'p']],
                     },
   'barlat1989'     :{'name':   'Barlat 1989',
                      'func':   Barlat1989,
                      'nExpo':  1,'err':np.inf,
-                     'dimen':  2,
+                     'dimen':  [2],
                      'bound':  [[(-3.0,3.0)]*4+[(1.0,8.0)] ],
                      'labels': [['a','c','h','f', 'm']],
                     },
   'barlat1991'     :{'name':   'Barlat 1991',
                      'func':   Barlat1991,
                      'nExpo':  1,'err':np.inf,
-                     'dimen':  3,
+                     'dimen':  [2,3], 
                      'bound':  [[(-2,2)]*6+[(1.0,8.0)], [(-2,2)]*4+[(1.0,8.0)]],
                      'labels': [['a','b','c','f','g','h','m'],['a','b','c','f','m']],
                     },
   'bbc2000'        :{'name':   'Banabic-Balan-Comsa 2000',
                      'func':   BBC2000,
                      'nExpo':  1,'err':np.inf,
-                     'dimen':  2,
-                     'bound':  [[(None,None)]*7+[(1.0,8.0)]], #[(None,None)]*6+[(0.0,1.0)]+[(1.0,9.0)],
+                     'dimen':  [2],
+                     'bound':  [[(None,None)]*7+[(1.0,8.0)]],
                      'labels': [['d','e','f','g','b','c','a','k']],
                     },
   'bbc2003'        :{'name':   'Banabic-Balan-Comsa 2003',
                      'func' :  BBC2003,
                      'nExpo':  1,'err':np.inf,
-                     'dimen':  2,
-                     'bound':  [[(None,None)]*8+[(1.0,8.0)]], #[(None,None)]*7+[(0.0,1.0)]+[(1.0,9.0)],
+                     'dimen':  [2],
+                     'bound':  [[(None,None)]*8+[(1.0,8.0)]],
                      'labels': [['M','N','P','Q','R','S','T','a','k']],
                     },
   'bbc2005'        :{'name':   'Banabic-Balan-Comsa 2005',
                      'func' :  BBC2005,
                      'nExpo':  1,'err':np.inf,
-                     'dimen':  2,
-                     'bound':  [[(None,None)]*8+[(1.0,8.0)] ], #[(None,None)]*6+[(0.0,1.0)]*2+[(1.0,9.0)],
+                     'dimen':  [2],
+                     'bound':  [[(None,None)]*8+[(1.0,8.0)] ],
                      'labels': [['L','M','N','P','Q','R','a','b','k']],
                     },
   'cazacu'         :{'name':   'Cazacu Barlat',
                      'func':   Cazacu_Barlat,
                      'nExpo':  0,'err':np.inf,
-                     'dimen':  3,
+                     'dimen':  [2,3],
                      'bound':  [[(None,None)]*16+[(-2.5,2.5)]+[(None,None)]],
                      'labels': [['a1','a2','a3','a4','a5','a6', 'b1','b2','b3','b4','b5','b6','b7','b8','b9','b10','b11', 'c'],
                                 ['a1','a2','a3','a6', 'b1','b2','b3','b4','b5','b10', 'c']],
@@ -955,14 +998,14 @@ fitCriteria = {
   'yld2000'        :{'name':   'Yld2000-2D',
                      'func':   Yld2000,
                      'nExpo':  1,'err':np.inf,
-                     'dimen':  2,
+                     'dimen':  [2],
                      'bound':  [[(None,None)]*8+[(1.0,8.0)]],
                      'labels': [['a1','a2','a7','a3','a4','a5','a6','a8','m']],
                     },
   'yld200418p'     :{'name':   'Yld2004-18p',
                      'func' :  Yld200418p,
                      'nExpo':  1,'err':np.inf,
-                     'dimen':  3,
+                     'dimen':  [3],
                      'bound':  [[(None,None)]*18+[(1.0,8.0)], [(None,None)]*14+[(1.0,8.0)]],
                      'labels': [['c12','c21','c23','c32','c31','c13','c44','c55','c66','d12','d21','d23','d32','d31','d13','d44','d55','d66','m'],
                                 ['c12','c21','c23','c32','c31','c13','c44','d12','d21','d23','d32','d31','d13','d44','m']],
@@ -970,11 +1013,15 @@ fitCriteria = {
   'karafillis'     :{'name':   'Karafillis-Boyce',
                      'func' :  KarafillisBoyce,
                      'nExpo':  1,'err':np.inf,
-                     'dimen':  3,
+                     'dimen':  [2,3],
                      'bound':  [[(None,None)]*6+[(0.0,1.0)]+[(1.0,8.0)], [(None,None)]*4+[(0.0,1.0)]+[(1.0,8.0)]],
                      'labels': [['c11','c12','c13','c14','c15','c16','c','m'],
-                                ['c11','c12','c13','c14','c15','c16','c','m']],
+                                ['c11','c12','c13','c14','c','m']],
                     },
+  'vegter'         :{'name':   'Vegter',
+                     'labels': 'a,b,c,d,e,f,g,h',
+                     'dimen':  [2],
+                    },      
                   }
 
 thresholdParameter = ['totalshear','equivalentStrain']
@@ -1282,7 +1329,6 @@ def doSim(thread):
   s.acquire()
   global stressAll, strainAll
   f=open(options.geometry+'_'+options.criterion+'_'+str(time.time())+'.txt','w')
-  print myFit.report_labels()
   f.write(' '.join([options.fitting]+myFit.report_labels())+'\n')
   try:
     for i,threshold in enumerate(np.linspace(options.yieldValue[0],options.yieldValue[1],options.yieldValue[2])):
@@ -1332,7 +1378,6 @@ parser.add_option('-g','--geometry',   dest='geometry', type='string',
                                        help='name of the geometry file [%default]', metavar='string')
 parser.add_option('-c','--criterion',  dest='criterion', choices=fitCriteria.keys(),
                                        help='criterion for stopping simulations [%default]', metavar='string')
-# best/worse fitting? Stopping?
 parser.add_option('-f','--fitting',    dest='fitting', choices=thresholdParameter,
                                        help='yield criterion [%default]', metavar='string')
 parser.add_option('-y','--yieldvalue', dest='yieldValue', type='float', nargs=3,
@@ -1346,9 +1391,7 @@ parser.add_option('-t','--threads',    dest='threads', type='int',
 parser.add_option('-b','--bound',      dest='bounds', type='float', nargs=2,
                                        help='yield points: start; end; count %default', metavar='float float')
 parser.add_option('-d','--dimension',  dest='dimension', type='choice', choices=['2','3'],
-                                       help='dimension of the virtual test [%default]',  metavar='int')
-parser.add_option('-v', '--vegter',    dest='vegter', action='store_true',
-                                       help='Vegter criteria [%default]',  metavar='float') 
+                                       help='dimension of the virtual test [%default]',  metavar='int') 
 parser.add_option('-e', '--exponent',  dest='exponent', type='float',
                                        help='exponent of non-quadratic criteria',  metavar='int') 
 parser.add_option('-u', '--uniaxial',  dest='eqStress', type='float',
@@ -1364,7 +1407,6 @@ parser.set_defaults(fitting    = 'totalshear')
 parser.set_defaults(geometry   = '20grains16x16x16')
 parser.set_defaults(bounds     = None)
 parser.set_defaults(dimension  = '3')
-parser.set_defaults(vegter     = 'False')
 parser.set_defaults(exponent   = -1.0)
 
 options = parser.parse_args()[0]
@@ -1389,35 +1431,19 @@ if not os.path.isfile('numerics.config'):
 if not os.path.isfile('material.config'):
   damask.util.croak('material.config file not found')
 
-
-if options.vegter is True: 
-  options.dimension = 2
-else:
-  options.dimension = int(options.dimension)
+options.dimension = int(options.dimension)
 
 if options.criterion == 'hill1948': stressUnit = 1.0e9
 else                              : stressUnit = 1.0e6
 
-fit_allResults = {}
-if options.criterion == 'all':
-  noExpoList = ['tresca', 'vonmises', 'hill1948', 'drucker']
-  for criter in noExpoList:
-    run = runFit(options.exponent, 0.0, fitCriteria[criter]['dimen'], criter)
-    fit_allResults[criter] = {'results': fitResults, 'errors': fitErrors, 'residual': fitResidual}
-  for criter in [x for x in fitCriteria.keys() if x not in noExpoList+['vegter','all'] ]:
-    if options.eqStress == None:                                                               # the user does not provide the equivalent stress, the equivalent stress will be fitted by von Mises
-      eqStress = fit_allResults['vonmises']['results'][-1]
-    run = runFit(options.exponent, eqStress, fitCriteria[criter]['dimen'], criter)
-    fit_allResults[criter] = {'results': fitResults, 'errors': fitErrors, 'residual': fitResidual}
-else:
-  criter = options.criterion
-  if fitCriteria[criter]['nExpo'] == 0:
-    run = runFit(options.exponent, 0.0, fitCriteria[criter]['dimen'], criter)
-  else:
-    if options.eqStress == None:                                                                # the user does not provide the equivalent stress, the equivalent stress will be fitted by von Mises
-      run = runFit(options.exponent, 0.0, fitCriteria[criter]['dimen'], 'vonmises')
-      eqStress = fitResults[-1]
-    run = runFit(options.exponent, eqStress, fitCriteria[criter]['dimen'], criter)
-  fit_allResults[criter] = {'results': fitResults, 'errors': fitErrors, 'residual': fitResidual}
+
+if options.dimension not in fitCriteria[options.criterion]['dimen']:
+  parser.error('invalid dimension for selected criterion')
+
+if options.criterion not in ['vonmises','tresca','drucker','hill1984'] and options.eqStress == None:
+   parser.error('please specifie an equivalent stress (e.g. fitting to von Mises)') 
+
+
+run = runFit(options.exponent, options.eqStress, options.dimension, options.criterion)
 
 damask.util.croak('Finished fitting to yield criteria')
