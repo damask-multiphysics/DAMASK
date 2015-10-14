@@ -1321,8 +1321,8 @@ def doSim(thread):
         line+=1
     if not validity[i]:
       s.acquire()
-      #damask.util.croak('The data of result %i at the threshold %f is invalid,'\
-      #                  +'the fitting at this point is skipped'%(loadNo,threshold))
+      damask.util.croak('The data of result %i at the threshold %f is invalid,'%(loadNo,threshold)\
+                        +'the fitting at this point is skipped')
       s.release()
 
 # do the actual fitting procedure and write results to file
@@ -1353,7 +1353,7 @@ def converged():
   global N_simulations; fitResidual
 
   if N_simulations < options.max:
-    if len(fitResidual) > 5:
+    if len(fitResidual) > 5 and N_simulations >= options.min:
       residualList = np.array(fitResidual[len(fitResidual)-5:])
       if np.std(residualList)/np.max(residualList) < 0.05: 
         return True
@@ -1442,7 +1442,6 @@ if options.dimension not in fitCriteria[options.criterion]['dimen']:
 
 if options.criterion not in ['vonmises','tresca','drucker','hill1984'] and options.eqStress == None:
    parser.error('please specifie an equivalent stress (e.g. fitting to von Mises)') 
-
 
 run = runFit(options.exponent, options.eqStress, options.dimension, options.criterion)
 
