@@ -95,6 +95,10 @@ for name in filenames:
   translate_x = [i - options.offset[0] for i in xindex]
   translate_y = [i - options.offset[1] for i in yindex]
   translate_z = [i - options.offset[2] for i in zindex]
+  if 0 in map(len,[xindex,yindex,zindex,translate_x,translate_y,translate_z]):
+    damask.util.croak('Invaldid grid-offset comination')
+    table.close(dismiss = True)
+    continue
   microstructure_cropped[min(translate_x):(max(translate_x)+1),\
                          min(translate_y):(max(translate_y)+1),\
                          min(translate_z):(max(translate_z)+1)] \
@@ -111,10 +115,14 @@ for name in filenames:
   remarks = []
   errors = []
 
-  if (any(newInfo['grid']            != info['grid'])):           remarks.append('--> grid     a b c:  %s'%(' x '.join(map(str,newInfo['grid']))))
-  if (any(newInfo['size']            != info['size'])):           remarks.append('--> size     x y z:  %s'%(' x '.join(map(str,newInfo['size']))))
-  if (any(newInfo['origin']          != info['origin'])):         remarks.append('--> origin   x y z:  %s'%(' : '.join(map(str,newInfo['origin']))))
-  if (    newInfo['microstructures'] != info['microstructures']): remarks.append('--> microstructures: %i'%newInfo['microstructures'])
+  if (any(newInfo['grid']            != info['grid'])):
+    remarks.append('--> grid     a b c:  %s'%(' x '.join(map(str,newInfo['grid']))))
+  if (any(newInfo['size']            != info['size'])):
+    remarks.append('--> size     x y z:  %s'%(' x '.join(map(str,newInfo['size']))))
+  if (any(newInfo['origin']          != info['origin'])):
+    remarks.append('--> origin   x y z:  %s'%(' : '.join(map(str,newInfo['origin']))))
+  if (    newInfo['microstructures'] != info['microstructures']):
+    remarks.append('--> microstructures: %i'%newInfo['microstructures'])
 
   if np.any(newInfo['grid'] < 1):    errors.append('invalid new grid a b c.')
   if np.any(newInfo['size'] <= 0.0): errors.append('invalid new size x y z.')

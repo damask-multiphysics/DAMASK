@@ -131,8 +131,10 @@ class ASCIItable():
       if self.__IO__['out'] != sys.stdout: self.__IO__['out'].close()
     except:
       pass
-    if dismiss and os.path.isfile(self.__IO__['out'].name): os.remove(self.__IO__['out'].name)
-    if self.__IO__['inPlace']: os.rename(self.__IO__['out'].name, self.__IO__['out'].name[:-len(self.tmpext)])
+    if dismiss and os.path.isfile(self.__IO__['out'].name):
+      os.remove(self.__IO__['out'].name)
+    elif self.__IO__['inPlace']:
+      os.rename(self.__IO__['out'].name, self.__IO__['out'].name[:-len(self.tmpext)])
 
 # ------------------------------------------------------------------
   def head_read(self):
