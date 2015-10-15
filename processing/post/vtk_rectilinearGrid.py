@@ -3,12 +3,12 @@
 
 import os,sys,vtk
 import numpy as np
-from optparse import OptionParser
 import damask
+from optparse import OptionParser
+
 
 scriptID = '$Id$'
 scriptName = os.path.splitext(scriptID.split()[1])[0]
-
 
 # --------------------------------------------------------------------
 #                                MAIN
@@ -23,16 +23,16 @@ parser.add_option('-m', '--mode',
                   dest = 'mode',
                   type = 'choice', choices = ['cell','point'],
                   help = 'cell-centered or point-centered coordinates ')
-parser.add_option('-p', '--positions',
+parser.add_option('-c', '--coordinates',
                   dest = 'position',
                   type = 'string', metavar = 'string',
                   help = 'coordinate label [%default]')
-parser.set_defaults(position = 'pos',
+parser.set_defaults(position ='ipinitialcoord',
+                    mode     ='cell'
                    )
 
 (options, filenames) = parser.parse_args()
 
-if not options.mode: parser.error("No coordinate type specified.")
 # --- loop over input files -------------------------------------------------------------------------
 
 if filenames == []: filenames = [None]
@@ -42,23 +42,19 @@ for name in filenames:
     table = damask.ASCIItable(name = name,
                               buffered = False, readonly = True)
   except: continue
-  damask.util.croak(damask.util.emph(scriptName)+(': '+name if name else ''))
+  damask.util.report(scriptName,name)
 
 # --- interpret header ----------------------------------------------------------------------------
 
   table.head_read()
-  
-# ------------------------------------------ sanity checks ----------------------------------------
 
-  errors  = []
-  remarks = []
-  
-  if table.label_dimension(options.position) != 3:  errors.append('coordinates {} are not a vector.'.format(options.position))
+  errors =  []
+  if table.label_dimension(options.position) != 3:  
+    errors.append('coordinates {} are not a vector.'.format(options.position))
 
-  if remarks != []: damask.util.croak(remarks)
   if errors  != []:
     damask.util.croak(errors)
-    table.close(dismiss = True)
+    table.close(dismiss=True)
     continue
 
 # --------------- figure out size and grid ---------------------------------------------------------
@@ -96,30 +92,24 @@ for name in filenames:
   rGrid.SetYCoordinates(coordArray[1])
   rGrid.SetZCoordinates(coordArray[2])
 
-  damask.util.croak('{} points and {} cells...'.format(rGrid.GetNumberOfPoints(),rGrid.GetNumberOfCells(),))
  
 # ------------------------------------------ output result ---------------------------------------  
 
   if name:
-    (dir,filename) = os.path.split(name)
     writer = vtk.vtkXMLRectilinearGridWriter()
+    (directory,filename) = os.path.split(name)
     writer.SetDataModeToBinary()
     writer.SetCompressorTypeToZLib()
-    writer.SetFileName(os.path.join(dir,os.path.splitext(filename)[0]+'_{}'.format(options.position) \
+    writer.SetFileName(os.path.join(directory,os.path.splitext(filename)[0]+'_{}'.format(options.mode) \
                                         +'.'+writer.GetDefaultFileExtension()))
-    if vtk.VTK_MAJOR_VERSION <= 5: writer.SetInput(rGrid)
-    else:                          writer.SetInputData(rGrid)
-    writer.Write()
-
   else:
-    writer = vtk.vtkRectilinearGridWriter()
+    writer = vtk.vtkDataSetWriter()
     writer.WriteToOutputStringOn()
-    writer.SetFileTypeToASCII()
     writer.SetHeader('# powered by '+scriptID)
-    if vtk.VTK_MAJOR_VERSION <= 5: writer.SetInput(rGrid)
-    else:                          writer.SetInputData(rGrid)
-    writer.Write()
-    sys.stdout.write(writer.GetOutputString()[0:writer.GetOutputStringLength()])
 
-  table.close()                                                                                     # close input ASCII table
+  if vtk.VTK_MAJOR_VERSION <= 5: writer.SetInput(rGrid)
+  else:                          writer.SetInputData(rGrid)
+  writer.Write()
+  if name == None:  sys.stdout.write(writer.GetOutputString()[0:writer.GetOutputStringLength()])
 
+  table.close()

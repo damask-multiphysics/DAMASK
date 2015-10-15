@@ -1285,7 +1285,7 @@ def doSim(thread):
   s.acquire()
   damask.util.croak('Reading values from simulation %i (%s)'%(loadNo,thread))
   refFile = './postProc/%s_%i.txt'%(options.geometry,loadNo)
-  table = damask.ASCIItable(refFile)
+  table = damask.ASCIItable(refFile,readonly=True)
   table.head_read()
 
   if options.fitting =='equivalentStrain':

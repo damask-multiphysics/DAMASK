@@ -81,12 +81,13 @@ for name in filenames:
   eulerangles = []
 
 # --------------- read data -----------------------------------------------------------------------
+  errors  = []
   while table.data_read():
     words = table.data
     if words[0] == '#':                                                                               # process initial comments/header block
       if len(words) > 2:
         if words[2].lower() == 'hexgrid': 
-          damask.util.croak('The file has HexGrid format. Please first convert to SquareGrid...\n')
+          errors.append('The file has HexGrid format. Please first convert to SquareGrid...')
           break
     else:
       currPos = words[3:5]
@@ -98,7 +99,11 @@ for name in filenames:
         pos['max'][i] = max(pos['max'][i],currPos[i])
       eulerangles.append(map(math.degrees,map(float,words[:3])))
       phase.append(options.phase[int(float(words[options.column-1]) > options.threshold)])
-        
+
+  if errors  != []:
+    damask.util.croak(errors)
+    continue
+
 # --------------- determine size and grid ---------------------------------------------------------
   info['grid'] = np.array(map(len,coords),'i')
   info['size'][0:2] = info['grid'][0:2]/(info['grid'][0:2]-1.0)* \
@@ -110,12 +115,15 @@ for name in filenames:
 
   limits = [360,180,360]
   if any([np.any(eulerangles[:,i]>=limits[i]) for i in [0,1,2]]):
-    damask.util.croak('Error: euler angles out of bound. Ang file might contain unidexed poins.\n')
+    errors.append('Error: euler angles out of bound. Ang file might contain unidexed poins.')
     for i,angle in enumerate(['phi1','PHI','phi2']):
       for n in np.nditer(np.where(eulerangles[:,i]>=limits[i]),['zerosize_ok']):
-        damask.util.croak('%s in line %i (%4.2f %4.2f %4.2f)\n'
+        errors.append('%s in line %i (%4.2f %4.2f %4.2f)\n'
                                      %(angle,n,eulerangles[n,0],eulerangles[n,1],eulerangles[n,2]))
+  if errors  != []:
+    damask.util.croak(errors)
     continue
+
   eulerangles=np.around(eulerangles,int(options.precision))                                         # round to desired precision
   for i,angle in enumerate(['phi1','PHI','phi2']):
     eulerangles[:,i]%=limits[i]                                                                     # ensure, that rounded euler angles are not out of bounds (modulo by limits)
