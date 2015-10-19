@@ -340,7 +340,7 @@ subroutine crystallite_init
              crystallite_outputID(output,section) = e_ID
            case ('ee')
              crystallite_outputID(output,section) = ee_ID
-           case ('p','firstpiola','1piola')
+           case ('p','firstpiola','1stpiola')
              crystallite_outputID(output,section) = p_ID
            case ('s','tstar','secondpiola','2ndpiola')
              crystallite_outputID(output,section) = s_ID
