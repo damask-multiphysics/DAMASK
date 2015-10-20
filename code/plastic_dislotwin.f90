@@ -71,7 +71,9 @@ module plastic_dislotwin
    plastic_dislotwin_Cthresholdtwin, &                                                         !<
    plastic_dislotwin_SolidSolutionStrength, &                                                  !< Strength due to elements in solid solution
    plastic_dislotwin_L0_twin, &                                                                !< Length of twin nuclei in Burgers vectors
+   plastic_dislotwin_L0_trans, &                                                               !< Length of trans nuclei in Burgers vectors
    plastic_dislotwin_xc_twin, &                                                                !< critical distance for formation of twin nucleus
+   plastic_dislotwin_xc_trans, &                                                               !< critical distance for formation of trans nucleus
    plastic_dislotwin_VcrossSlip, &                                                             !< cross slip volume
    plastic_dislotwin_sbResistance, &                                                           !< value for shearband resistance (might become an internal state variable at some point)
    plastic_dislotwin_sbVelocity, &                                                             !< value for shearband velocity_0
@@ -283,7 +285,9 @@ subroutine plastic_dislotwin_init(fileUnit)
  allocate(plastic_dislotwin_Cthresholdtwin(maxNinstance),                      source=0.0_pReal)
  allocate(plastic_dislotwin_SolidSolutionStrength(maxNinstance),               source=0.0_pReal)
  allocate(plastic_dislotwin_L0_twin(maxNinstance),                             source=0.0_pReal)
+ allocate(plastic_dislotwin_L0_trans(maxNinstance),                            source=0.0_pReal)
  allocate(plastic_dislotwin_xc_twin(maxNinstance),                             source=0.0_pReal)
+ allocate(plastic_dislotwin_xc_trans(maxNinstance),                            source=0.0_pReal)
  allocate(plastic_dislotwin_VcrossSlip(maxNinstance),                          source=0.0_pReal)
  allocate(plastic_dislotwin_aTolRho(maxNinstance),                             source=0.0_pReal)
  allocate(plastic_dislotwin_aTolTwinFrac(maxNinstance),                        source=0.0_pReal)
@@ -631,8 +635,12 @@ subroutine plastic_dislotwin_init(fileUnit)
          plastic_dislotwin_SolidSolutionStrength(instance) = IO_floatValue(line,chunkPos,2_pInt)
        case ('l0_twin')
          plastic_dislotwin_L0_twin(instance) = IO_floatValue(line,chunkPos,2_pInt)
+       case ('l0_trans')
+         plastic_dislotwin_L0_trans(instance) = IO_floatValue(line,chunkPos,2_pInt)
        case ('xc_twin')
               plastic_dislotwin_xc_twin(instance) = IO_floatValue(line,chunkPos,2_pInt)
+       case ('xc_trans')
+              plastic_dislotwin_xc_trans(instance) = IO_floatValue(line,chunkPos,2_pInt)
        case ('vcrossslip')
               plastic_dislotwin_VcrossSlip(instance) = IO_floatValue(line,chunkPos,2_pInt)
        case ('cedgedipmindistance')
@@ -1383,7 +1391,7 @@ subroutine plastic_dislotwin_microstructure(temperature,ipc,ip,el)
      (pi/4.0_pReal)*plastic_dislotwin_twinsizePerTwinSystem(t,instance)*&
      plasticState(ph)%state(7_pInt*ns+3_pInt*nt+2_pInt*nr+t, of)**(2.0_pReal)
 
- !* equilibrium seperation of partial dislocations
+ !* equilibrium separation of partial dislocations
  do t = 1_pInt,nt
    x0 = lattice_mu(ph)*plastic_dislotwin_burgersPerTwinSystem(t,instance)**(2.0_pReal)/&
      (sfe*8.0_pReal*pi)*(2.0_pReal+lattice_nu(ph))/(1.0_pReal-lattice_nu(ph))
