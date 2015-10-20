@@ -70,8 +70,8 @@ module plastic_dislotwin
    plastic_dislotwin_Cmfptwin, &                                                               !<
    plastic_dislotwin_Cthresholdtwin, &                                                         !<
    plastic_dislotwin_SolidSolutionStrength, &                                                  !< Strength due to elements in solid solution
-   plastic_dislotwin_L0, &                                                                     !< Length of twin nuclei in Burgers vectors
-   plastic_dislotwin_xc, &                                                                     !< critical distance for formation of twin nucleus
+   plastic_dislotwin_L0_twin, &                                                                !< Length of twin nuclei in Burgers vectors
+   plastic_dislotwin_xc_twin, &                                                                !< critical distance for formation of twin nucleus
    plastic_dislotwin_VcrossSlip, &                                                             !< cross slip volume
    plastic_dislotwin_sbResistance, &                                                           !< value for shearband resistance (might become an internal state variable at some point)
    plastic_dislotwin_sbVelocity, &                                                             !< value for shearband velocity_0
@@ -282,8 +282,8 @@ subroutine plastic_dislotwin_init(fileUnit)
  allocate(plastic_dislotwin_Cmfptwin(maxNinstance),                            source=0.0_pReal)
  allocate(plastic_dislotwin_Cthresholdtwin(maxNinstance),                      source=0.0_pReal)
  allocate(plastic_dislotwin_SolidSolutionStrength(maxNinstance),               source=0.0_pReal)
- allocate(plastic_dislotwin_L0(maxNinstance),                                  source=0.0_pReal)
- allocate(plastic_dislotwin_xc(maxNinstance),                                  source=0.0_pReal)
+ allocate(plastic_dislotwin_L0_twin(maxNinstance),                             source=0.0_pReal)
+ allocate(plastic_dislotwin_xc_twin(maxNinstance),                             source=0.0_pReal)
  allocate(plastic_dislotwin_VcrossSlip(maxNinstance),                          source=0.0_pReal)
  allocate(plastic_dislotwin_aTolRho(maxNinstance),                             source=0.0_pReal)
  allocate(plastic_dislotwin_aTolTwinFrac(maxNinstance),                        source=0.0_pReal)
@@ -629,10 +629,10 @@ subroutine plastic_dislotwin_init(fileUnit)
          plastic_dislotwin_Cthresholdtwin(instance) = IO_floatValue(line,chunkPos,2_pInt)
        case ('solidsolutionstrength')
          plastic_dislotwin_SolidSolutionStrength(instance) = IO_floatValue(line,chunkPos,2_pInt)
-       case ('l0')
-         plastic_dislotwin_L0(instance) = IO_floatValue(line,chunkPos,2_pInt)
-       case ('xc')
-              plastic_dislotwin_xc(instance) = IO_floatValue(line,chunkPos,2_pInt)
+       case ('l0_twin')
+         plastic_dislotwin_L0_twin(instance) = IO_floatValue(line,chunkPos,2_pInt)
+       case ('xc_twin')
+              plastic_dislotwin_xc_twin(instance) = IO_floatValue(line,chunkPos,2_pInt)
        case ('vcrossslip')
               plastic_dislotwin_VcrossSlip(instance) = IO_floatValue(line,chunkPos,2_pInt)
        case ('cedgedipmindistance')
@@ -1375,7 +1375,7 @@ subroutine plastic_dislotwin_microstructure(temperature,ipc,ip,el)
      plastic_dislotwin_Cthresholdtwin(instance)*&
      (sfe/(3.0_pReal*plastic_dislotwin_burgersPerTwinSystem(t,instance))+&
      3.0_pReal*plastic_dislotwin_burgersPerTwinSystem(t,instance)*lattice_mu(ph)/&
-     (plastic_dislotwin_L0(instance)*plastic_dislotwin_burgersPerSlipSystem(t,instance)))
+     (plastic_dislotwin_L0_twin(instance)*plastic_dislotwin_burgersPerSlipSystem(t,instance)))
  
  !* final twin volume after growth
  forall (t = 1_pInt:nt) &
@@ -1389,7 +1389,7 @@ subroutine plastic_dislotwin_microstructure(temperature,ipc,ip,el)
      (sfe*8.0_pReal*pi)*(2.0_pReal+lattice_nu(ph))/(1.0_pReal-lattice_nu(ph))
    plastic_dislotwin_tau_r(t,instance)= &
         lattice_mu(ph)*plastic_dislotwin_burgersPerTwinSystem(t,instance)/(2.0_pReal*pi)*&     
-        (1/(x0+plastic_dislotwin_xc(instance))+cos(pi/3.0_pReal)/x0)                              !!! used where??
+        (1/(x0+plastic_dislotwin_xc_twin(instance))+cos(pi/3.0_pReal)/x0)                              !!! used where??
  enddo
 
 end subroutine plastic_dislotwin_microstructure
@@ -1628,7 +1628,7 @@ subroutine plastic_dislotwin_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,Temperature
             if (tau_twin(j) < plastic_dislotwin_tau_r(j,instance)) then
               Ndot0=(abs(gdot_slip(s1))*(plasticState(ph)%state(s2,of)+plasticState(ph)%state(ns+s2, of))+&
                      abs(gdot_slip(s2))*(plasticState(ph)%state(s1, of)+plasticState(ph)%state(ns+s1, of)))/&
-                    (plastic_dislotwin_L0(instance)*plastic_dislotwin_burgersPerSlipSystem(j,instance))*&
+                    (plastic_dislotwin_L0_twin(instance)*plastic_dislotwin_burgersPerSlipSystem(j,instance))*&
                     (1.0_pReal-exp(-plastic_dislotwin_VcrossSlip(instance)/(kB*Temperature)*&
                     (plastic_dislotwin_tau_r(j,instance)-tau_twin(j))))
             else
@@ -1879,7 +1879,7 @@ subroutine plastic_dislotwin_dotState(Tstar_v,Temperature,ipc,ip,el)
             if (tau_twin(j) < plastic_dislotwin_tau_r(j,instance)) then
               Ndot0=(abs(gdot_slip(s1))*(plasticState(ph)%state(s2, of)+plasticState(ph)%state(ns+s2, of))+&
                      abs(gdot_slip(s2))*(plasticState(ph)%state(s1, of)+plasticState(ph)%state(ns+s1, of)))/&
-                    (plastic_dislotwin_L0(instance)*plastic_dislotwin_burgersPerSlipSystem(j,instance))*&
+                    (plastic_dislotwin_L0_twin(instance)*plastic_dislotwin_burgersPerSlipSystem(j,instance))*&
                     (1.0_pReal-exp(-plastic_dislotwin_VcrossSlip(instance)/(kB*Temperature)*&
                     (plastic_dislotwin_tau_r(j,instance)-tau_twin(j))))
             else
@@ -2211,7 +2211,7 @@ function plastic_dislotwin_postResults(Tstar_v,Temperature,ipc,ip,el)
                   if (tau < plastic_dislotwin_tau_r(j,instance)) then
                     Ndot0=(abs(gdot_slip(s1))*(plasticState(ph)%state(s2, of)+plasticState(ph)%state(ns+s2, of))+&
                            abs(gdot_slip(s2))*(plasticState(ph)%state(s1, of)+plasticState(ph)%state(ns+s1, of)))/&
-                          (plastic_dislotwin_L0(instance)*&
+                          (plastic_dislotwin_L0_twin(instance)*&
                            plastic_dislotwin_burgersPerSlipSystem(j,instance))*&
                           (1.0_pReal-exp(-plastic_dislotwin_VcrossSlip(instance)/(kB*Temperature)*&
                           (plastic_dislotwin_tau_r(j,instance)-tau)))
