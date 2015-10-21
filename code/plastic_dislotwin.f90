@@ -42,6 +42,10 @@ module plastic_dislotwin
    plastic_dislotwin_listDependentTwinStates = & 
    ['invLambdaTwin   ',  'meanFreePathTwin',  'tauTwinThreshold',  'twinVolume      ']
 
+ character(len=17),                   dimension(4),           parameter,           private :: &
+   plastic_dislotwin_listDependentTransStates = & 
+   ['invLambdaTrans   ', 'meanFreePathTrans', 'tauTransThreshold', 'martensiteVolume ']
+
  real(pReal),                                                 parameter,           private :: &
    kB = 1.38e-23_pReal                                                                         !< Boltzmann constant in J/Kelvin
 
@@ -865,7 +869,8 @@ subroutine plastic_dislotwin_init(fileUnit)
      sizeDeltaState            =   0_pInt
      sizeState                 =   sizeDotState &
                                  + int(size(plastic_dislotwin_listDependentSlipStates),pInt) * ns &
-                                 + int(size(plastic_dislotwin_listDependentTwinStates),pInt) * nt
+                                 + int(size(plastic_dislotwin_listDependentTwinStates),pInt) * nt &
+                                 + int(size(plastic_dislotwin_listDependentTransStates),pInt) * nr
                 
      plasticState(phase)%sizeState = sizeState
      plasticState(phase)%sizeDotState = sizeDotState
@@ -1288,19 +1293,23 @@ subroutine plastic_dislotwin_microstructure(temperature,ipc,ip,el)
  !* State: 2*ns+1           :  3*ns            accumulated shear due to slip
  !* State: 3*ns+1           :  3*ns+nt         f
  !* State: 3*ns+nt+1        :  3*ns+2*nt       accumulated shear due to twin
- !* State: 3*ns+2*nt+1      :  3*ns+2*nt+nr    stress-assisted martensite volume fraction
- !* State: 3*ns+2*nt+nr+1   :  3*ns+2*nt+2*nr  strain-induced martensite volume fraction
+ !* State: 3*ns+2*nt+1      :  3*ns+2*nt+nr    stress-assisted martensite volume fraction (not used for fcc to hex transformation)
+ !* State: 3*ns+2*nt+nr+1   :  3*ns+2*nt+2*nr  strain-induced martensite volume fraction  (epsilon martensite)
 !DEPENDENT STATES
  !* State: 3*ns+2*nt+2*nr+1 :  4*ns+2*nt+2*nr  1/lambda_slip
  !* State: 4*ns+2*nt+2*nr+1 :  5*ns+2*nt+2*nr  1/lambda_sliptwin
  !* State: 5*ns+2*nt+2*nr+1 :  5*ns+3*nt+2*nr  1/lambda_twin
  !* State: 5*ns+3*nt+2*nr+1 :  6*ns+3*nt+2*nr  1/lambda_sliptrans
- !* State: 6*ns+3*nt+2*nr+1 :  7*ns+3*nt+2*nr  mfp_slip
- !* State: 7*ns+3*nt+2*nr+1 :  7*ns+4*nt+2*nr  mfp_twin
- !* State: 7*ns+4*nt+2*nr+1 :  8*ns+4*nt+2*nr  threshold_stress_slip
- !* State: 8*ns+4*nt+2*nr+1 :  8*ns+5*nt+2*nr  threshold_stress_twin
- !* State: 8*ns+5*nt+2*nr+1 :  8*ns+6*nt+2*nr  twin volume
- 
+ !* State: 6*ns+3*nt+2*nr+1 :  6*ns+3*nt+3*nr  1/lambda_trans
+ !* State: 6*ns+3*nt+3*nr+1 :  7*ns+3*nt+3*nr  mfp_slip
+ !* State: 7*ns+3*nt+3*nr+1 :  7*ns+4*nt+3*nr  mfp_twin
+ !* State: 7*ns+4*nt+3*nr+1 :  7*ns+4*nt+4*nr  mfp_trans
+ !* State: 7*ns+4*nt+4*nr+1 :  8*ns+4*nt+4*nr  threshold_stress_slip
+ !* State: 8*ns+4*nt+4*nr+1 :  8*ns+5*nt+4*nr  threshold_stress_twin
+ !* State: 8*ns+5*nt+4*nr+1 :  8*ns+5*nt+5*nr  threshold_stress_trans
+ !* State: 8*ns+5*nt+5*nr+1 :  8*ns+6*nt+5*nr  twin volume
+ !* State: 8*ns+6*nt+5*nr+1 :  8*ns+6*nt+6*nr  martensite volume
+
  !* Total twin volume fraction
  sumf = sum(plasticState(ph)%state((3*ns+1):(3*ns+nt), of)) ! safe for nt == 0
  
