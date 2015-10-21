@@ -116,7 +116,8 @@ module plastic_dislotwin
    plastic_dislotwin_tau_peierlsPerSlipFamily, &                                               !< Peierls stress [Pa] for each family and instance
    plastic_dislotwin_Ndot0PerTwinFamily, &                                                     !< twin nucleation rate [1/m³s] for each twin family and instance
    plastic_dislotwin_Ndot0PerTwinSystem, &                                                     !< twin nucleation rate [1/m³s] for each twin system and instance
-   plastic_dislotwin_tau_r, &                                                                  !< stress to bring partial close together for each twin system and instance
+   plastic_dislotwin_tau_r_twin, &                                                             !< stress to bring partial close together for each twin system and instance
+   plastic_dislotwin_tau_r_trans, &                                                            !< stress to bring partial close together for each trans system and instance
    plastic_dislotwin_twinsizePerTwinFamily, &                                                  !< twin thickness [m] for each twin family and instance
    plastic_dislotwin_twinsizePerTwinSystem, &                                                  !< twin thickness [m] for each twin system and instance
    plastic_dislotwin_CLambdaSlipPerSlipFamily, &                                               !< Adj. parameter for distance between 2 forest dislocations for each slip family and instance
@@ -776,7 +777,8 @@ subroutine plastic_dislotwin_init(fileUnit)
  allocate(plastic_dislotwin_QedgePerSlipSystem(maxTotalNslip, maxNinstance),      source=0.0_pReal)
  allocate(plastic_dislotwin_v0PerSlipSystem(maxTotalNslip, maxNinstance),         source=0.0_pReal)
  allocate(plastic_dislotwin_Ndot0PerTwinSystem(maxTotalNtwin, maxNinstance),      source=0.0_pReal)
- allocate(plastic_dislotwin_tau_r(maxTotalNtwin, maxNinstance),                   source=0.0_pReal)
+ allocate(plastic_dislotwin_tau_r_twin(maxTotalNtwin, maxNinstance),              source=0.0_pReal)
+ allocate(plastic_dislotwin_tau_r_trans(maxTotalNtrans, maxNinstance),            source=0.0_pReal)
  allocate(plastic_dislotwin_twinsizePerTwinSystem(maxTotalNtwin, maxNinstance),   source=0.0_pReal)
  allocate(plastic_dislotwin_CLambdaSlipPerSlipSystem(maxTotalNslip, maxNinstance),source=0.0_pReal)
  allocate(plastic_dislotwin_lamellarsizePerTransSystem(maxTotalNtrans, maxNinstance),source=0.0_pReal)
@@ -1391,13 +1393,22 @@ subroutine plastic_dislotwin_microstructure(temperature,ipc,ip,el)
      (pi/4.0_pReal)*plastic_dislotwin_twinsizePerTwinSystem(t,instance)*&
      plasticState(ph)%state(7_pInt*ns+3_pInt*nt+2_pInt*nr+t, of)**(2.0_pReal)
 
- !* equilibrium separation of partial dislocations
+ !* equilibrium separation of partial dislocations (twin)
  do t = 1_pInt,nt
    x0 = lattice_mu(ph)*plastic_dislotwin_burgersPerTwinSystem(t,instance)**(2.0_pReal)/&
      (sfe*8.0_pReal*pi)*(2.0_pReal+lattice_nu(ph))/(1.0_pReal-lattice_nu(ph))
-   plastic_dislotwin_tau_r(t,instance)= &
+   plastic_dislotwin_tau_r_twin(t,instance)= &
         lattice_mu(ph)*plastic_dislotwin_burgersPerTwinSystem(t,instance)/(2.0_pReal*pi)*&     
         (1/(x0+plastic_dislotwin_xc_twin(instance))+cos(pi/3.0_pReal)/x0)                              !!! used where??
+ enddo
+
+ !* equilibrium separation of partial dislocations (trans)
+ do r = 1_pInt,nr
+   x0 = lattice_mu(ph)*plastic_dislotwin_burgersPerTransSystem(r,instance)**(2.0_pReal)/&
+     (sfe*8.0_pReal*pi)*(2.0_pReal+lattice_nu(ph))/(1.0_pReal-lattice_nu(ph))
+   plastic_dislotwin_tau_r_trans(r,instance)= &
+        lattice_mu(ph)*plastic_dislotwin_burgersPerTransSystem(r,instance)/(2.0_pReal*pi)*&     
+        (1/(x0+plastic_dislotwin_xc_trans(instance))+cos(pi/3.0_pReal)/x0)
  enddo
 
 end subroutine plastic_dislotwin_microstructure
@@ -1633,12 +1644,12 @@ subroutine plastic_dislotwin_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,Temperature
           case (LATTICE_fcc_ID)
             s1=lattice_fcc_twinNucleationSlipPair(1,index_myFamily+i)
             s2=lattice_fcc_twinNucleationSlipPair(2,index_myFamily+i)
-            if (tau_twin(j) < plastic_dislotwin_tau_r(j,instance)) then
+            if (tau_twin(j) < plastic_dislotwin_tau_r_twin(j,instance)) then
               Ndot0=(abs(gdot_slip(s1))*(plasticState(ph)%state(s2,of)+plasticState(ph)%state(ns+s2, of))+&
                      abs(gdot_slip(s2))*(plasticState(ph)%state(s1, of)+plasticState(ph)%state(ns+s1, of)))/&
                     (plastic_dislotwin_L0_twin(instance)*plastic_dislotwin_burgersPerSlipSystem(j,instance))*&
                     (1.0_pReal-exp(-plastic_dislotwin_VcrossSlip(instance)/(kB*Temperature)*&
-                    (plastic_dislotwin_tau_r(j,instance)-tau_twin(j))))
+                    (plastic_dislotwin_tau_r_twin(j,instance)-tau_twin(j))))
             else
               Ndot0=0.0_pReal
             end if
@@ -1884,12 +1895,12 @@ subroutine plastic_dislotwin_dotState(Tstar_v,Temperature,ipc,ip,el)
           case (LATTICE_fcc_ID)
             s1=lattice_fcc_twinNucleationSlipPair(1,index_myFamily+i)
             s2=lattice_fcc_twinNucleationSlipPair(2,index_myFamily+i)
-            if (tau_twin(j) < plastic_dislotwin_tau_r(j,instance)) then
+            if (tau_twin(j) < plastic_dislotwin_tau_r_twin(j,instance)) then
               Ndot0=(abs(gdot_slip(s1))*(plasticState(ph)%state(s2, of)+plasticState(ph)%state(ns+s2, of))+&
                      abs(gdot_slip(s2))*(plasticState(ph)%state(s1, of)+plasticState(ph)%state(ns+s1, of)))/&
                     (plastic_dislotwin_L0_twin(instance)*plastic_dislotwin_burgersPerSlipSystem(j,instance))*&
                     (1.0_pReal-exp(-plastic_dislotwin_VcrossSlip(instance)/(kB*Temperature)*&
-                    (plastic_dislotwin_tau_r(j,instance)-tau_twin(j))))
+                    (plastic_dislotwin_tau_r_twin(j,instance)-tau_twin(j))))
             else
               Ndot0=0.0_pReal
             end if
@@ -2216,13 +2227,13 @@ function plastic_dislotwin_postResults(Tstar_v,Temperature,ipc,ip,el)
                   case (LATTICE_fcc_ID)
                   s1=lattice_fcc_twinNucleationSlipPair(1,index_myFamily+i)
                   s2=lattice_fcc_twinNucleationSlipPair(2,index_myFamily+i)
-                  if (tau < plastic_dislotwin_tau_r(j,instance)) then
+                  if (tau < plastic_dislotwin_tau_r_twin(j,instance)) then
                     Ndot0=(abs(gdot_slip(s1))*(plasticState(ph)%state(s2, of)+plasticState(ph)%state(ns+s2, of))+&
                            abs(gdot_slip(s2))*(plasticState(ph)%state(s1, of)+plasticState(ph)%state(ns+s1, of)))/&
                           (plastic_dislotwin_L0_twin(instance)*&
                            plastic_dislotwin_burgersPerSlipSystem(j,instance))*&
                           (1.0_pReal-exp(-plastic_dislotwin_VcrossSlip(instance)/(kB*Temperature)*&
-                          (plastic_dislotwin_tau_r(j,instance)-tau)))
+                          (plastic_dislotwin_tau_r_twin(j,instance)-tau)))
                   else
                     Ndot0=0.0_pReal
                   end if
