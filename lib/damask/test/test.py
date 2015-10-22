@@ -382,6 +382,24 @@ class Test():
     logging.info(' ********')
     return maxError
 
+
+  def compare_Table2(self,file0,file1,headings0=None,headings1=None,rtol=1e-5,atol=1e-8):
+    
+    import numpy as np
+    logging.info('comparing ASCII Tables\n %s \n %s'%(file0,file1))
+
+    if headings1 == None: headings1=headings0
+
+    table0 = damask.ASCIItable(file0,readonly=True)
+    table0.head_read()
+    table0.data_readArray(headings0)
+    table1 = damask.ASCIItable(file1,readonly=True)
+    table1.head_read()   
+    table1.data_readArray(headings1)
+
+    return np.allclose(table0.data,table1.data,rtol,atol)
+
+
     
   def compare_TableRefCur(self,headingsRef,ref,headingsCur='',cur='',normHeadings='',normType=None,\
                                                  absoluteTolerance=False,perLine=False,skipLines=[]):
