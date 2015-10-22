@@ -688,9 +688,11 @@ class Symmetry:
 
   def inSST(self,
             vector,
+            improper = False,
             color = False):
     '''
     Check whether given vector falls into standard stereographic triangle of own symmetry.
+    Improper considers only vectors with z >= 0, hence uses two neighboring SSTs.
     Return inverse pole figure color if requested.
     '''
 #     basis = {'cubic' :        np.linalg.inv(np.array([[0.,0.,1.],                                 # direction of red
@@ -706,33 +708,59 @@ class Symmetry:
 #                                                       [1.,0.,0.],                                 # direction of green
 #                                                       [0.,1.,0.]]).transpose()),                  # direction of blue
 #             }
+
     if self.lattice == 'cubic':
-      basis = np.array([ [-1.            ,  0.            ,  1. ],
-                         [ np.sqrt(2.), -np.sqrt(2.),        0. ],
-                         [ 0.            ,  np.sqrt(3.),     0. ] ])
+      basis = {'proper':np.array([ [-1.            ,  0.            ,  1. ],
+                                   [ np.sqrt(2.)   , -np.sqrt(2.)   ,  0. ],
+                                   [ 0.            ,  np.sqrt(3.)   ,  0. ] ]),
+             'improper':np.array([ [ 0.            , -1.            ,  1. ],
+                                   [-np.sqrt(2.)   , np.sqrt(2.)    ,  0. ],
+                                   [ np.sqrt(3.)   ,  0.            ,  0. ] ]),
+              }
     elif self.lattice == 'hexagonal':
-      basis = np.array([ [ 0.            ,  0.            ,  1. ],
-                         [ 1.            , -np.sqrt(3.),     0. ],
-                         [ 0.            ,  2.            ,  0. ] ])
+      basis = {'proper':np.array([ [ 0.            ,  0.            ,  1. ],
+                                   [ 1.            , -np.sqrt(3.),     0. ],
+                                   [ 0.            ,  2.            ,  0. ] ]),
+             'improper':np.array([ [ 0.            ,  0.            ,  1. ],
+                                   [-1.            ,  np.sqrt(3.)   ,  0. ],
+                                   [ np.sqrt(3)    , -1.            ,  0. ] ]),
+              }
     elif self.lattice == 'tetragonal':
-      basis = np.array([ [ 0.            ,  0.            ,  1. ],
-                         [ 1.            , -1.            ,  0. ],
-                         [ 0.            ,  np.sqrt(2.),     0. ] ])
+      basis = {'proper':np.array([ [ 0.            ,  0.            ,  1. ],
+                                   [ 1.            , -1.            ,  0. ],
+                                   [ 0.            ,  np.sqrt(2.),     0. ] ]),
+             'improper':np.array([ [ 0.            ,  0.            ,  1. ],
+                                   [-1.            ,  1.            ,  0. ],
+                                   [ np.sqrt(2.)   ,  0.            ,  0. ] ]),
+              }
     elif self.lattice == 'orthorhombic':
-      basis = np.array([ [ 0., 0., 1.],
-                         [ 1., 0., 0.],
-                         [ 0., 1., 0.] ])
+      basis = {'proper':np.array([ [ 0., 0., 1.],
+                                   [ 1., 0., 0.],
+                                   [ 0., 1., 0.] ]),
+             'improper':np.array([ [ 0., 0., 1.],
+                                   [-1., 0., 0.],
+                                   [ 0., 1., 0.] ]),
+              }
     else:
-      basis = np.zeros((3,3),dtype=float)
+      basis = {'proper':np.zeros((3,3),dtype=float),
+             'improper':np.zeros((3,3),dtype=float),
+              }
 
     if np.all(basis == 0.0):
       theComponents = -np.ones(3,'d')
+      inSST = np.all(theComponents >= 0.0)
     else:
       v = np.array(vector,dtype = float)
-      v[2] = abs(v[2])                                                                              # z component projects identical for positive and negative values
-      theComponents = np.dot(basis,v)
-
-    inSST = np.all(theComponents >= 0.0)
+      if improper:                                                                                  # check both proper ...
+        theComponents = np.dot(basis['proper'],v)
+        inSST = np.all(theComponents >= 0.0)
+        if not inSST:                                                                               # ... and improper SST
+          theComponents = np.dot(basis['improper'],v)
+          inSST = np.all(theComponents >= 0.0)
+      else:      
+        v[2] = abs(v[2])                                                                            # z component projects identical for positive and negative values
+        theComponents = np.dot(basis['proper'],v)
+        inSST = np.all(theComponents >= 0.0)
 
     if color:                                                                                       # have to return color array
       if inSST:
@@ -878,6 +906,7 @@ class Orientation:
 
   def inversePole(self,
                   axis,
+                  improper = False,
                   SST = True):
     '''
     axis rotated according to orientation (using crystal symmetry to ensure location falls into SST)
@@ -886,11 +915,11 @@ class Orientation:
     if SST:                                                                                         # pole requested to be within SST
       for i,q in enumerate(self.symmetry.equivalentQuaternions(self.quaternion)):                   # test all symmetric equivalent quaternions
         pole = q.conjugated()*axis                                                                  # align crystal direction to axis
-        if self.symmetry.inSST(pole): break                                                         # found SST version
+        if self.symmetry.inSST(pole,improper): break                                                # found SST version
     else:
       pole = self.quaternion.conjugated()*axis                                                      # align crystal direction to axis
 
-    return pole
+    return (pole,i if SST else 0)
 
   def IPFcolor(self,axis):
     '''
