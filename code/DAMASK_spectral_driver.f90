@@ -313,20 +313,29 @@ program DAMASK_spectral_Driver
      else
        write(6,'(2x,a)') 'deformation gradient rate:'
      endif
-     write(6,'(3(3(3x,f12.7,1x)/))',advance='no') &
-                merge(math_transpose33(loadCases(currentLoadCase)%deformation%values), &
-                reshape(spread(huge(1.0_pReal),1,9),[ 3,3]), &                                      ! print *** (huge) for undefined
-                transpose(loadCases(currentLoadCase)%deformation%maskLogical))
+     do i = 1_pInt, 3_pInt; do j = 1_pInt, 3_pInt
+       if(loadCases(currentLoadCase)%deformation%maskLogical(i,j)) then
+         write(6,'(2x,f12.7)',advance='no') loadCases(currentLoadCase)%deformation%values(i,j)
+       else
+         write(6,'(2x,12a)',advance='no') '    *       '
+         endif
+       enddo; write(6,'(/)',advance='no')
+     enddo
      if (any(loadCases(currentLoadCase)%P%maskLogical .eqv. &
               loadCases(currentLoadCase)%deformation%maskLogical)) errorID = 831_pInt               ! exclusive or masking only
      if (any(loadCases(currentLoadCase)%P%maskLogical .and. &                                   
              transpose(loadCases(currentLoadCase)%P%maskLogical) .and. &
              reshape([ .false.,.true.,.true.,.true.,.false.,.true.,.true.,.true.,.false.],[ 3,3]))) &
              errorID = 838_pInt                                                                     ! no rotation is allowed by stress BC
-     write(6,'(2x,a,/,3(3(3x,f12.7,1x)/))',advance='no') 'stress / GPa:',&
-                1e-9_pReal*merge(math_transpose33(loadCases(currentLoadCase)%P%values),&
-                reshape(spread(huge(1.0_pReal),1,9),[ 3,3]),&
-                transpose(loadCases(currentLoadCase)%P%maskLogical))
+     write(6,'(2x,a)') 'stress / GPa:'
+     do i = 1_pInt, 3_pInt; do j = 1_pInt, 3_pInt
+       if(loadCases(currentLoadCase)%deformation%maskLogical(i,j)) then
+         write(6,'(2x,f12.7)',advance='no') loadCases(currentLoadCase)%P%values(i,j)*1e-9_pReal
+       else
+         write(6,'(2x,12a)',advance='no') '    *       '
+       endif
+       enddo; write(6,'(/)',advance='no')
+     enddo
     if (any(abs(math_mul33x33(loadCases(currentLoadCase)%rotation, &
                 math_transpose33(loadCases(currentLoadCase)%rotation))-math_I3) >&
                 reshape(spread(tol_math_check,1,9),[ 3,3]))&
@@ -657,7 +666,7 @@ program DAMASK_spectral_Driver
 
     enddo incLooping
  enddo loadCaseLooping
- 
+
 !--------------------------------------------------------------------------------------------------
 ! report summary of whole calculation
  if (worldrank == 0) then
@@ -689,9 +698,9 @@ program DAMASK_spectral_Driver
    end select
  enddo
  call utilities_destroy()
- 
+
  call PetscFinalize(ierr); CHKERRQ(ierr)
- 
+
  if (notConvergedCounter > 0_pInt) call quit(3_pInt)                                                ! error if some are not converged
  call quit(0_pInt)                                                                                  ! no complains ;)
 
@@ -711,7 +720,7 @@ subroutine quit(stop_id)
    pInt
  use numerics, only: &
    worldrank  
-   
+
  implicit none
  integer(pInt), intent(in) :: stop_id
  integer, dimension(8) :: dateAndTime                                                               ! type default integer
@@ -721,10 +730,10 @@ subroutine quit(stop_id)
    write(6,'(/,a)') 'DAMASK terminated on:'
    write(6,'(a,2(i2.2,a),i4.4)') 'Date:               ',dateAndTime(3),'/',&
                                                         dateAndTime(2),'/',&
-                                                        dateAndTime(1) 
+                                                        dateAndTime(1)
    write(6,'(a,2(i2.2,a),i2.2)') 'Time:               ',dateAndTime(5),':',&
                                                         dateAndTime(6),':',&
-                                                        dateAndTime(7)  
+                                                        dateAndTime(7)
  endif
  
  if (stop_id == 0_pInt) stop 0                                                                      ! normal termination
