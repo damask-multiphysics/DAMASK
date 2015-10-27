@@ -1033,7 +1033,7 @@ subroutine plastic_dislotwin_init(fileUnit)
            do p = 1_pInt,3_pInt; do q = 1_pInt,3_pInt; do r = 1_pInt,3_pInt; do s = 1_pInt,3_pInt
              plastic_dislotwin_Ctrans3333(l,m,n,o,index_myFamily+j,instance) = &
              plastic_dislotwin_Ctrans3333(l,m,n,o,index_myFamily+j,instance) + &
-               lattice_trans_C3333(p,q,r,s,instance) * &
+               lattice_C3333(p,q,r,s,instance) * &
                lattice_Qtrans(l,p,index_otherFamily+j,phase) * &
                lattice_Qtrans(m,q,index_otherFamily+j,phase) * &
                lattice_Qtrans(n,r,index_otherFamily+j,phase) * &
