@@ -383,8 +383,14 @@ class Test():
     return maxError
 
 
-  def compare_Table2(self,file0,file1,headings0=None,headings1=None,rtol=1e-5,atol=1e-8):
+  def compare_Table2(self,file0,file1,headings0=None,headings1=None,rtol=1e-5,atol=1e-8,threshold = -1.0,debug=False):
     
+    '''
+      compare two tables with np.allclose
+      threshold can be used to ignore small values (put any negative number to disable)
+      table will be row-wise normalized
+    '''
+    #http://stackoverflow.com/questions/8904694/how-to-normalize-a-2-dimensional-numpy-array-in-python-less-verbose
     import numpy as np
     logging.info('comparing ASCII Tables\n %s \n %s'%(file0,file1))
 
@@ -393,11 +399,24 @@ class Test():
     table0 = damask.ASCIItable(file0,readonly=True)
     table0.head_read()
     table0.data_readArray(headings0)
+    row_sums0 = table0.data.sum(axis=1)*table0.data.shape[0]
+    table0.data /= row_sums0[:,np.newaxis]
+
     table1 = damask.ASCIItable(file1,readonly=True)
     table1.head_read()   
     table1.data_readArray(headings1)
+    row_sums1 = table1.data.sum(axis=1)*table1.data.shape[0]
+    table1.data /= row_sums1[:,np.newaxis]
+    
+    if debug:
+      t0 = np.where(np.abs(table0.data)<threshold,0.0,table0.data)
+      t1 = np.where(np.abs(table1.data)<threshold,0.0,table1.data)
+      print np.amin(np.abs(t1)*rtol+atol-np.abs(t0-t1))
+      i = np.argmin(np.abs(t1)*rtol+atol-np.abs(t0-t1))
+      print t0.flatten()[i],t1.flatten()[i]
 
-    return np.allclose(table0.data,table1.data,rtol,atol)
+    return np.allclose(np.where(np.abs(table0.data)<threshold,0.0,table0.data),
+                       np.where(np.abs(table1.data)<threshold,0.0,table1.data),rtol,atol)
 
 
     
