@@ -79,7 +79,8 @@ use ifport                                                                      
    real(pReal), pointer,     dimension(:,:), contiguous :: &                                        ! a pointer is needed here because we might point to state/doState. However, they will never point to something, but are rather allocated and, hence, contiguous 
      state, &                                                                                       !< state
      dotState, &                                                                                    !< state rate
-     state0, &
+     state0
+   real(pReal), allocatable, dimension(:,:) :: &
      partionedState0, &
      subState0, &
      state_backup, &
