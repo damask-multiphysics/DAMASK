@@ -49,7 +49,7 @@ for name in filenames:
   table.head_read()
 
   errors =  []
-  if table.label_dimension(options.position) != 3:  
+  if table.label_dimension(options.position) != 3:
     errors.append('coordinates {} are not a vector.'.format(options.position))
 
   if errors  != []:
@@ -68,39 +68,40 @@ for name in filenames:
                              [3.0 * coords[i][-1] - coords[i][-1 - (len(coords[i]) > 1)]]) for i in xrange(3)]
   grid   = np.array(map(len,coords),'i')
   N = grid.prod() if options.mode == 'point' else (grid-1).prod()
-  
+
   if N != len(table.data): errors.append('data count {} does not match grid {}x{}x{}.'.format(N,*(grid - options.mode == 'cell') ))
   if errors  != []:
     damask.util.croak(errors)
     table.close(dismiss = True)
     continue
 
-# ------------------------------------------ process data ---------------------------------------  
+# ------------------------------------------ process data ---------------------------------------
 
   rGrid = vtk.vtkRectilinearGrid()
   coordArray = [vtk.vtkDoubleArray(),
                 vtk.vtkDoubleArray(),
                 vtk.vtkDoubleArray(),
                ]
-  
+
   rGrid.SetDimensions(*grid)
   for i,points in enumerate(coords):
     for point in points:
       coordArray[i].InsertNextValue(point)
- 
+
   rGrid.SetXCoordinates(coordArray[0])
   rGrid.SetYCoordinates(coordArray[1])
   rGrid.SetZCoordinates(coordArray[2])
 
- 
-# ------------------------------------------ output result ---------------------------------------  
+
+# ------------------------------------------ output result ---------------------------------------
 
   if name:
     writer = vtk.vtkXMLRectilinearGridWriter()
     (directory,filename) = os.path.split(name)
     writer.SetDataModeToBinary()
     writer.SetCompressorTypeToZLib()
-    writer.SetFileName(os.path.join(directory,os.path.splitext(filename)[0]+'_{}'.format(options.mode) \
+    writer.SetFileName(os.path.join(directory,os.path.splitext(filename)[0] \
+                                        +'_{}({})'.format(options.position, options.mode) \
                                         +'.'+writer.GetDefaultFileExtension()))
   else:
     writer = vtk.vtkDataSetWriter()
