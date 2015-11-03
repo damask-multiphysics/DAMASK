@@ -152,24 +152,37 @@ class ASCIItable():
 
     firstline = self.__IO__['in'].readline()
     m = re.search('(\d+)\s+head', firstline.lower())                                                # search for "head" keyword
-    if self.__IO__['labeled']:                                                                      # table features labels
-      if m:                                                                                         # found header info
+    
+    if m:                                                                                           # proper ASCIItable format
+
+      if self.__IO__['labeled']:                                                                    # table features labels
+
         self.info   = [self.__IO__['in'].readline().strip() for i in xrange(1,int(m.group(1)))]
         self.labels = self.__IO__['in'].readline().split()                                          # store labels found in last line
-      else:                                                                                         # no header info (but labels)
-        self.labels = firstline.split()                                                             # store labels from first line
 
+      else:
+
+        self.info    = [self.__IO__['in'].readline().strip() for i in xrange(0,int(m.group(1)))]    # all header is info ...
+
+    else:                                                                                           # other table format
+      try:
+        self.__IO__['in'].seek(0)                                                                   # try to rewind
+      except:
+        self.__IO__['readBuffer'] = [firstline]                                                     # or at least save data in buffer
+
+      while self.data_read(advance = False, respectLabels = False):
+        if self.line[0] in ['#','!','%','/','|','*','$']:                                           # "typical" comment indicators
+          self.info_append(self.line)                                                               # store comment as info
+          self.data_read()                                                                          # wind forward one line
+        else: break                                                                                 # last line of comments
+
+      if self.__IO__['labeled']:                                                                    # table features labels
+        self.labels = self.data                                                                     # get labels from last line in "header"...
+        self.data_read()                                                                            # ...and remove from buffer
+        
+    if self.__IO__['labeled']:                                                                      # table features labels
       self.__IO__['labels'] = list(self.labels)                                                     # backup labels (make COPY, not link)
 
-    else:                                                                                           # no labels present in table
-      if m:                                                                                         # found header info
-        self.info    = [self.__IO__['in'].readline().strip() for i in xrange(0,int(m.group(1)))]    # all header is info ...
-                                                                                                    # ... without any labels
-      else:                                                                                         # otherwise file starts with data right away
-        try:
-          self.__IO__['in'].seek(0)                                                                 # try to rewind
-        except:
-          self.__IO__['readBuffer'] = [firstline]                                                   # or at least save data in buffer
     try:
       self.__IO__['dataStart'] = self.__IO__['in'].tell()                                           # current file position is at start of data
     except IOError:
@@ -403,7 +416,8 @@ class ASCIItable():
 
 # ------------------------------------------------------------------
   def data_read(self,
-                advance = True):
+                advance = True,
+                respectLabels = True):
     '''
        read next line (possibly buffered) and parse it into data array
     '''
@@ -415,7 +429,7 @@ class ASCIItable():
 
     self.line = self.line.rstrip('\n')
 
-    if self.__IO__['labeled']:                                                                      # if table has labels
+    if self.__IO__['labeled'] and respectLabels:                                                    # if table has labels
       items = self.line.split()[:len(self.__IO__['labels'])]                                        # use up to label count (from original file info)
       self.data = items if len(items) == len(self.__IO__['labels']) else []                         # take entries if correct number, i.e. not too few compared to label count
     else:
