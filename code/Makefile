@@ -67,14 +67,10 @@ ifeq  "$(PORTABLE)" "FALSE"
 PORTABLE_SWITCH =-msse3
 endif
 
-# settings for multicore support
+# settings for shared memory multicore support
 ifeq "$(OPENMP)" "ON"
 OPENMP_FLAG_ifort =-openmp -openmp-report0 -parallel
 OPENMP_FLAG_gfortran =-fopenmp
-LIBRARIES +=-lpthread
-ifeq "$(F90)" "ifort"
-LIBRARIES +=-liomp5
-endif
 endif
 
 ifdef STANDARD_CHECK
