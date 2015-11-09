@@ -37,7 +37,10 @@ module lattice
    lattice_interactionSlipSlip, &                                                                   !< Slip--slip interaction type 
    lattice_interactionSlipTwin, &                                                                   !< Slip--twin interaction type 
    lattice_interactionTwinSlip, &                                                                   !< Twin--slip interaction type 
-   lattice_interactionTwinTwin                                                                      !< Twin--twin interaction type 
+   lattice_interactionTwinTwin, &                                                                   !< Twin--twin interaction type 
+   lattice_interactionSlipTrans, &                                                                  !< Slip--trans interaction type 
+   lattice_interactionTransSlip, &                                                                  !< Trans--slip interaction type 
+   lattice_interactionTransTrans                                                                    !< Trans--trans interaction type
 
  real(pReal), allocatable, dimension(:,:,:,:,:), protected, public :: &
    lattice_Sslip, &                                                                                 !< Schmid and non-Schmid matrices
@@ -131,6 +134,22 @@ module lattice
      -1, 1, 2,    -1, 1,-1  &
      ],pReal),[ 3_pInt + 3_pInt,LATTICE_fcc_Ntwin])                                                 !< Twin system <112>{111} directions. Sorted according to Eisenlohr & Hantcherli
 
+ real(pReal), dimension(3+3,LATTICE_fcc_Ntrans), parameter, private :: &
+   LATTICE_fccTohex_systemTrans = reshape(real( [&
+     -2, 1, 1,     1, 1, 1, &
+      1,-2, 1,     1, 1, 1, &
+      1, 1,-2,     1, 1, 1, &
+      2,-1, 1,    -1,-1, 1, &
+     -1, 2, 1,    -1,-1, 1, &
+     -1,-1,-2,    -1,-1, 1, &
+     -2,-1,-1,     1,-1,-1, &
+      1, 2,-1,     1,-1,-1, &
+      1,-1, 2,     1,-1,-1, &
+      2, 1,-1,    -1, 1,-1, &
+     -1,-2,-1,    -1, 1,-1, &
+     -1, 1, 2,    -1, 1,-1  &
+     ],pReal),[ 3_pInt + 3_pInt,LATTICE_fcc_Ntrans])
+
  real(pReal), dimension(LATTICE_fcc_Ntwin), parameter, private :: &
    LATTICE_fcc_shearTwin = 0.5_pReal*sqrt(2.0_pReal)                                                !< Twin system <112>{111} ??? Sorted according to Eisenlohr & Hantcherli
 
@@ -207,6 +226,41 @@ module lattice
      2,2,2,2,2,2,2,2,2,1,1,1, &
      2,2,2,2,2,2,2,2,2,1,1,1  &
      ],pInt),[lattice_fcc_Ntwin,lattice_fcc_Ntwin],order=[2,1])                                     !< Twin--twin interaction types for fcc
+
+ integer(pInt), dimension(LATTICE_fcc_Nslip,LATTICE_fcc_Ntrans), parameter, public :: &
+   LATTICE_fccTohex_interactionSlipTrans = reshape(int( [&
+     1,1,1,3,3,3,2,2,2,3,3,3, & ! ---> trans
+     1,1,1,3,3,3,3,3,3,2,2,2, & ! |
+     1,1,1,2,2,2,3,3,3,3,3,3, & ! |
+     3,3,3,1,1,1,3,3,3,2,2,2, & ! v slip
+     3,3,3,1,1,1,2,2,2,3,3,3, &
+     2,2,2,1,1,1,3,3,3,3,3,3, &
+     2,2,2,3,3,3,1,1,1,3,3,3, &
+     3,3,3,2,2,2,1,1,1,3,3,3, &
+     3,3,3,3,3,3,1,1,1,2,2,2, &
+     3,3,3,2,2,2,3,3,3,1,1,1, &
+     2,2,2,3,3,3,3,3,3,1,1,1, &
+     3,3,3,3,3,3,2,2,2,1,1,1  &
+     ],pInt),[LATTICE_fcc_Nslip,LATTICE_fcc_Ntrans],order=[2,1])                                    !< Slip--trans interaction types for fcc
+
+ integer(pInt), dimension(LATTICE_fcc_Ntrans,LATTICE_fcc_Nslip), parameter, public :: &
+   LATTICE_fccTohex_interactionTransSlip = 1_pInt                                                   !< Trans--Slip interaction types for fcc
+
+ integer(pInt), dimension(LATTICE_fcc_Ntrans,LATTICE_fcc_Ntrans), parameter,public :: &
+   LATTICE_fccTohex_interactionTransTrans = reshape(int( [&
+     1,1,1,2,2,2,2,2,2,2,2,2, &  ! ---> trans
+     1,1,1,2,2,2,2,2,2,2,2,2, &  ! |
+     1,1,1,2,2,2,2,2,2,2,2,2, &  ! |
+     2,2,2,1,1,1,2,2,2,2,2,2, &  ! v trans
+     2,2,2,1,1,1,2,2,2,2,2,2, &
+     2,2,2,1,1,1,2,2,2,2,2,2, &
+     2,2,2,2,2,2,1,1,1,2,2,2, &
+     2,2,2,2,2,2,1,1,1,2,2,2, &
+     2,2,2,2,2,2,1,1,1,2,2,2, &
+     2,2,2,2,2,2,2,2,2,1,1,1, &
+     2,2,2,2,2,2,2,2,2,1,1,1, &
+     2,2,2,2,2,2,2,2,2,1,1,1  &
+     ],pInt),[LATTICE_fcc_Ntrans,LATTICE_fcc_Ntrans],order=[2,1])                                   !< Trans--trans interaction types for fcc
      
  real(pReal), dimension(4,LATTICE_fcc_Ntrans), parameter, private :: &
    LATTICE_fccTobcc_systemTrans = reshape([&
@@ -293,22 +347,6 @@ module lattice
      3, 12, &
      6,  9  &
      ],pInt),[2_pInt,LATTICE_fcc_Ntrans])
- 
- real(pReal), dimension(3+3,LATTICE_fcc_Ntrans), parameter, private :: &
-   LATTICE_fccTohex_systemTrans = reshape(real( [&
-     -2, 1, 1,     1, 1, 1, &
-      1,-2, 1,     1, 1, 1, &
-      1, 1,-2,     1, 1, 1, &
-      2,-1, 1,    -1,-1, 1, &
-     -1, 2, 1,    -1,-1, 1, &
-     -1,-1,-2,    -1,-1, 1, &
-     -2,-1,-1,     1,-1,-1, &
-      1, 2,-1,     1,-1,-1, &
-      1,-1, 2,     1,-1,-1, &
-      2, 1,-1,    -1, 1,-1, &
-     -1,-2,-1,    -1, 1,-1, &
-     -1, 1, 2,    -1, 1,-1  &
-     ],pReal),[ 3_pInt + 3_pInt,LATTICE_fcc_Ntrans])
 
  real(pReal), dimension(3+3,LATTICE_fcc_Ncleavage), parameter, private :: &
    LATTICE_fcc_systemCleavage = reshape(real([&
@@ -1367,6 +1405,9 @@ subroutine lattice_init
  allocate(lattice_interactionSlipTwin(lattice_maxNslip,lattice_maxNtwin,Nphases),source=0_pInt)     ! other:me
  allocate(lattice_interactionTwinSlip(lattice_maxNtwin,lattice_maxNslip,Nphases),source=0_pInt)     ! other:me
  allocate(lattice_interactionTwinTwin(lattice_maxNtwin,lattice_maxNtwin,Nphases),source=0_pInt)     ! other:me
+ allocate(lattice_interactionSlipTrans(lattice_maxNslip,lattice_maxNtrans,Nphases),source=0_pInt)   ! other:me
+ allocate(lattice_interactionTransSlip(lattice_maxNtrans,lattice_maxNslip,Nphases),source=0_pInt)   ! other:me
+ allocate(lattice_interactionTransTrans(lattice_maxNtrans,lattice_maxNtrans,Nphases),source=0_pInt) ! other:me
 
  allocate(CoverA(Nphases),source=0.0_pReal)
  allocate(CoverA_trans(Nphases),source=0.0_pReal)
@@ -1721,6 +1762,9 @@ subroutine lattice_initializeStructure(myPhase,CoverA,CoverA_trans,a_fcc,a_bcc)
      lattice_interactionSlipTwin(1:myNslip,1:myNtwin,myPhase)       = lattice_fcc_interactionSlipTwin
      lattice_interactionTwinSlip(1:myNtwin,1:myNslip,myPhase)       = lattice_fcc_interactionTwinSlip
      lattice_interactionTwinTwin(1:myNtwin,1:myNtwin,myPhase)       = lattice_fcc_interactionTwinTwin
+     lattice_interactionSlipTrans(1:myNslip,1:myNtrans,myPhase)     = lattice_fccTohex_interactionSlipTrans
+     lattice_interactionTransSlip(1:myNtrans,1:myNslip,myPhase)     = lattice_fccTohex_interactionTransSlip
+     lattice_interactionTransTrans(1:myNtrans,1:myNtrans,myPhase)   = lattice_fccTohex_interactionTransTrans
      lattice_projectionTrans(1:myNtrans,1:myNtrans,myPhase)         = LATTICE_fccTobcc_projectionTrans*&
        LATTICE_fccTobcc_projectionTransFactor
 
