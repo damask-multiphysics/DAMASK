@@ -193,11 +193,15 @@ module plastic_dislotwin
      invLambdaSlipTwin, &
      invLambdaTwin, &
      invLambdaSlipTrans, &
+     invLambdaTrans, &
      mfp_slip, &
      mfp_twin, &
+     mfp_trans, &
      threshold_stress_slip, &
      threshold_stress_twin, &
-     twinVolume
+     threshold_stress_trans, &
+     twinVolume, &
+     martensiteVolume
  end type
  type(tDislotwinState), allocatable, dimension(:), private :: &
    state, &
@@ -1219,7 +1223,12 @@ subroutine plastic_dislotwin_init(fileUnit)
      endIndex=endIndex+ns
      state(instance)%invLambdaSlipTrans=>plasticState(phase)%state(startIndex:endIndex,:)
      state0(instance)%invLambdaSlipTrans=>plasticState(phase)%state0(startIndex:endIndex,:)
-     
+
+     startIndex=endIndex+1
+     endIndex=endIndex+nr
+     state(instance)%invLambdaTrans=>plasticState(phase)%state(startIndex:endIndex,:)
+     state0(instance)%invLambdaTrans=>plasticState(phase)%state0(startIndex:endIndex,:)
+
      startIndex=endIndex+1
      endIndex=endIndex+ns
      state(instance)%mfp_slip=>plasticState(phase)%state(startIndex:endIndex,:)
@@ -1229,22 +1238,36 @@ subroutine plastic_dislotwin_init(fileUnit)
      endIndex=endIndex+nt
      state(instance)%mfp_twin=>plasticState(phase)%state(startIndex:endIndex,:)
      state0(instance)%mfp_twin=>plasticState(phase)%state0(startIndex:endIndex,:)
-            
+
+     startIndex=endIndex+1
+     endIndex=endIndex+nr
+     state(instance)%mfp_trans=>plasticState(phase)%state(startIndex:endIndex,:)
+     state0(instance)%mfp_trans=>plasticState(phase)%state0(startIndex:endIndex,:)
+
      startIndex=endIndex+1
      endIndex=endIndex+ns
      state(instance)%threshold_stress_slip=>plasticState(phase)%state(startIndex:endIndex,:)
      state0(instance)%threshold_stress_slip=>plasticState(phase)%state0(startIndex:endIndex,:)
-     
+
      startIndex=endIndex+1
      endIndex=endIndex+nt
      state(instance)%threshold_stress_twin=>plasticState(phase)%state(startIndex:endIndex,:)
      state0(instance)%threshold_stress_twin=>plasticState(phase)%state0(startIndex:endIndex,:)
-                 
+
+     startIndex=endIndex+1
+     endIndex=endIndex+nr
+     state(instance)%threshold_stress_trans=>plasticState(phase)%state(startIndex:endIndex,:)
+     state0(instance)%threshold_stress_trans=>plasticState(phase)%state0(startIndex:endIndex,:)
+
      startIndex=endIndex+1
      endIndex=endIndex+nt
      state(instance)%twinVolume=>plasticState(phase)%state(startIndex:endIndex,:)
      state0(instance)%twinVolume=>plasticState(phase)%state0(startIndex:endIndex,:)
-     
+
+     startIndex=endIndex+1
+     endIndex=endIndex+nr
+     state(instance)%martensiteVolume=>plasticState(phase)%state(startIndex:endIndex,:)
+     state0(instance)%martensiteVolume=>plasticState(phase)%state0(startIndex:endIndex,:)
      
      call plastic_dislotwin_stateInit(phase,instance)
      call plastic_dislotwin_aTolState(phase,instance)
@@ -1281,6 +1304,8 @@ subroutine plastic_dislotwin_stateInit(ph,instance)
    tauSlipThreshold0
  real(pReal), dimension(plastic_dislotwin_totalNtwin(instance)) :: &
    MeanFreePathTwin0,TwinVolume0
+ real(pReal), dimension(plastic_dislotwin_totalNtrans(instance)) :: &
+   MeanFreePathTrans0,MartensiteVolume0
  tempState = 0.0_pReal
  ns = plastic_dislotwin_totalNslip(instance)
  nt = plastic_dislotwin_totalNtwin(instance)
@@ -1311,26 +1336,37 @@ subroutine plastic_dislotwin_stateInit(ph,instance)
  forall (i = 1_pInt:ns) &
    MeanFreePathSlip0(i) = &
      plastic_dislotwin_GrainSize(instance)/(1.0_pReal+invLambdaSlip0(i)*plastic_dislotwin_GrainSize(instance))
- tempState(6_pInt*ns+3_pInt*nt+2_pInt*nr+1:7_pInt*ns+3_pInt*nt+2_pInt*nr) = MeanFreePathSlip0
+ tempState(6_pInt*ns+3_pInt*nt+3_pInt*nr+1:7_pInt*ns+3_pInt*nt+3_pInt*nr) = MeanFreePathSlip0
  
  forall (i = 1_pInt:ns) &
    tauSlipThreshold0(i) = &
      lattice_mu(ph)*plastic_dislotwin_burgersPerSlipSystem(i,instance) * &
      sqrt(dot_product((rhoEdge0+rhoEdgeDip0),plastic_dislotwin_interactionMatrix_SlipSlip(i,1:ns,instance)))
 
- tempState(7_pInt*ns+4_pInt*nt+2_pInt*nr+1:8_pInt*ns+4_pInt*nt+2_pInt*nr) = tauSlipThreshold0
+ tempState(7_pInt*ns+4_pInt*nt+4_pInt*nr+1:8_pInt*ns+4_pInt*nt+4_pInt*nr) = tauSlipThreshold0
 
 !--------------------------------------------------------------------------------------------------
 ! initialize dependent twin microstructural variables
  forall (j = 1_pInt:nt) &
    MeanFreePathTwin0(j) = plastic_dislotwin_GrainSize(instance)
- tempState(7_pInt*ns+3_pInt*nt+2_pInt*nr+1_pInt:7_pInt*ns+4_pInt*nt+2_pInt*nr) = MeanFreePathTwin0
+ tempState(7_pInt*ns+3_pInt*nt+3_pInt*nr+1_pInt:7_pInt*ns+4_pInt*nt+3_pInt*nr) = MeanFreePathTwin0
  
  forall (j = 1_pInt:nt) &
    TwinVolume0(j) = &
      (pi/4.0_pReal)*plastic_dislotwin_twinsizePerTwinSystem(j,instance)*MeanFreePathTwin0(j)**(2.0_pReal)
- tempState(8_pInt*ns+5_pInt*nt+2_pInt*nr+1_pInt:8_pInt*ns+6_pInt*nt+2_pInt*nr) = TwinVolume0
+ tempState(8_pInt*ns+5_pInt*nt+5_pInt*nr+1_pInt:8_pInt*ns+6_pInt*nt+5_pInt*nr) = TwinVolume0
  
+!--------------------------------------------------------------------------------------------------
+! initialize dependent trans microstructural variables
+ forall (j = 1_pInt:nr) &
+   MeanFreePathTrans0(j) = plastic_dislotwin_GrainSize(instance)
+ tempState(7_pInt*ns+4_pInt*nt+3_pInt*nr+1_pInt:7_pInt*ns+4_pInt*nt+4_pInt*nr) = MeanFreePathTrans0
+ 
+ forall (j = 1_pInt:nr) &
+   MartensiteVolume0(j) = &
+     (pi/4.0_pReal)*plastic_dislotwin_lamellarsizePerTransSystem(j,instance)*MeanFreePathTrans0(j)**(2.0_pReal)
+ tempState(8_pInt*ns+6_pInt*nt+5_pInt*nr+1_pInt:8_pInt*ns+6_pInt*nt+6_pInt*nr) = MartensiteVolume0
+
 plasticState(ph)%state0 = spread(tempState,2,size(plasticState(ph)%state(1,:)))
 
 end subroutine plastic_dislotwin_stateInit
@@ -1546,7 +1582,12 @@ subroutine plastic_dislotwin_microstructure(temperature,ipc,ip,el)
  if (nr > 0_pInt .and. ns > 0_pInt) &
    state(ph)%invLambdaSlipTrans(1_pInt:ns,of) = &
      ftransOverLamellarSize(1:nr)/(1.0_pReal-sumftr)
- 
+
+ !* 1/mean free distance between 2 martensite stacks from different systems seen by a growing martensite (1/lambda_trans)
+ if (nr > 0_pInt) &
+   state(ph)%invLambdaTrans(1_pInt:nr,of) = &
+     matmul(plastic_dislotwin_interactionMatrix_TransTrans(1:nr,1:nr,instance),ftransOverLamellarSize(1:nr))/(1.0_pReal-sumftr)
+
  !* mean free path between 2 obstacles seen by a moving dislocation
  do s = 1_pInt,ns
     if ((nt > 0_pInt) .or. (nr > 0_pInt)) then
@@ -1568,13 +1609,19 @@ subroutine plastic_dislotwin_microstructure(temperature,ipc,ip,el)
      (plastic_dislotwin_Cmfptwin(instance)*plastic_dislotwin_GrainSize(instance))/&
      (1.0_pReal+plastic_dislotwin_GrainSize(instance)*state(ph)%invLambdaTwin(t,of))
  
+ !* mean free path between 2 obstacles seen by a growing martensite
+ forall (r = 1_pInt:nr) &
+   state(ph)%mfp_trans(r,of) = &
+     (plastic_dislotwin_Cmfptrans(instance)*plastic_dislotwin_GrainSize(instance))/&
+     (1.0_pReal+plastic_dislotwin_GrainSize(instance)*state(ph)%invLambdaTrans(r,of))
+
  !* threshold stress for dislocation motion
  forall (s = 1_pInt:ns) &
    state(ph)%threshold_stress_slip(s,of) = &
      lattice_mu(ph)*plastic_dislotwin_burgersPerSlipSystem(s,instance)*&
      sqrt(dot_product((state(ph)%rhoEdge(1_pInt:ns,of)+state(ph)%rhoEdgeDip(1_pInt:ns,of)),&
                       plastic_dislotwin_interactionMatrix_SlipSlip(s,1:ns,instance)))
- 
+
  !* threshold stress for growing twin
  forall (t = 1_pInt:nt) &
    state(ph)%threshold_stress_twin(t,of) = &
@@ -1582,12 +1629,28 @@ subroutine plastic_dislotwin_microstructure(temperature,ipc,ip,el)
      (sfe/(3.0_pReal*plastic_dislotwin_burgersPerTwinSystem(t,instance))+&
      3.0_pReal*plastic_dislotwin_burgersPerTwinSystem(t,instance)*lattice_mu(ph)/&
      (plastic_dislotwin_L0_twin(instance)*plastic_dislotwin_burgersPerSlipSystem(t,instance)))
- 
+
+ !* threshold stress for growing martensite
+ forall (r = 1_pInt:nr) &
+   state(ph)%threshold_stress_trans(r,of) = &
+     plastic_dislotwin_Cthresholdtrans(instance)*&
+     (sfe/(3.0_pReal*plastic_dislotwin_burgersPerTransSystem(r,instance)) + &
+     3.0_pReal*plastic_dislotwin_burgersPerTransSystem(r,instance)*lattice_mu(ph)/&
+     (plastic_dislotwin_L0_trans(instance)*plastic_dislotwin_burgersPerSlipSystem(r,instance)) + &
+     (plastic_dislotwin_transStackHeight(instance)*plastic_dislotwin_deltaG(instance))/ &
+     (3.0_pReal*plastic_dislotwin_burgersPerTransSystem(r,instance)))    
+
  !* final twin volume after growth
  forall (t = 1_pInt:nt) &
    state(ph)%twinVolume(t,of) = &
      (pi/4.0_pReal)*plastic_dislotwin_twinsizePerTwinSystem(t,instance)*&
      state(ph)%mfp_twin(t,of)**(2.0_pReal)
+
+ !* final martensite volume after growth
+ forall (r = 1_pInt:nr) &
+   state(ph)%martensiteVolume(r,of) = &
+     (pi/4.0_pReal)*plastic_dislotwin_lamellarsizePerTransSystem(r,instance)*&
+     state(ph)%mfp_trans(r,of)**(2.0_pReal)
 
  !* equilibrium separation of partial dislocations (twin)
  do t = 1_pInt,nt
@@ -1595,7 +1658,7 @@ subroutine plastic_dislotwin_microstructure(temperature,ipc,ip,el)
      (sfe*8.0_pReal*pi)*(2.0_pReal+lattice_nu(ph))/(1.0_pReal-lattice_nu(ph))
    plastic_dislotwin_tau_r_twin(t,instance)= &
         lattice_mu(ph)*plastic_dislotwin_burgersPerTwinSystem(t,instance)/(2.0_pReal*pi)*&     
-        (1/(x0+plastic_dislotwin_xc_twin(instance))+cos(pi/3.0_pReal)/x0)                              !!! used where??
+        (1/(x0+plastic_dislotwin_xc_twin(instance))+cos(pi/3.0_pReal)/x0)
  enddo
 
  !* equilibrium separation of partial dislocations (trans)
