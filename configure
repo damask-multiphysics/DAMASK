@@ -52,7 +52,7 @@ if compiler == None:
              else 'gfortran'
 
 #--- default option values  --------------------------------------------------------------------------
-BLAS_order = ['IMKL','ACML','LAPACK']
+BLAS_order = ['IMKL','ACML','LAPACK','OPENBLAS']
 
 defaults={'DAMASK_BIN':'depending on access rights',
           'F90':compiler,
@@ -60,11 +60,13 @@ defaults={'DAMASK_BIN':'depending on access rights',
           'MSC_ROOT' :'/msc',
           'DAMASK_NUM_THREADS':4,
           'blasType':'LAPACK',
-          'blasRoot':{'LAPACK':'/usr',
-                      'ACML'  :'/opt/acml5.3.1',
-                      'IMKL'  :{True:os.getenv('MKLROOT'), False:'/opt/intel/composerxe/mkl'}\
-                                    [os.getenv('MKLROOT') != None]},
-          'spectralOptions':{}}
+          'blasRoot':{'LAPACK'   :'/usr',
+                      'ACML'     :'/opt/acml6.1.0',
+                      'IMKL'     : os.getenv('MKLROOT') if os.getenv('MKLROOT') else '/opt/intel/composerxe/mkl',
+                      'OPENBLAS' :'/usr',
+                     },
+          'spectralOptions':{},
+         }
 
 
 
@@ -113,7 +115,7 @@ parser.add_option('--with-OMP-threads','--with-omp-threads',
                                              help='number of openMP threads [%default]')
 parser.add_option('--with-BLAS-type','--with-blas-type',         
                                              dest='blasType', type='string', metavar='string',
-                                             help='type of BLAS/LAPACK library [%default]')
+                                             help='type of BLAS/LAPACK library [%default] {{{}}}'.format(','.join(BLAS_order)))
 parser.add_option('--with-BLAS-dir','--with-blas-dir',        
                                              dest='blasRoot', type='string', metavar='string',
                                              help='root directory of BLAS/LAPACK library [%default]')
@@ -153,6 +155,7 @@ options.blasRoot = os.path.normpath(options.blasRoot)
 locations = {
               'FFTW' :    [os.path.join(options.fftwRoot,'lib64'),os.path.join(options.fftwRoot,'lib')],
               'LAPACK' :  [os.path.join(options.blasRoot,'lib64'),os.path.join(options.blasRoot,'lib')],
+              'OPENBLAS': [os.path.join(options.blasRoot,'lib64'),os.path.join(options.blasRoot,'lib')],
               'ACML' :    [os.path.join(options.blasRoot,'%s64/lib'%options.compiler)],
               'ACML_mp' : [os.path.join(options.blasRoot,'%s64_mp/lib'%options.compiler)],
               'IMKL' :    [os.path.join(options.blasRoot,'lib/intel64')],
@@ -165,6 +168,9 @@ libraries = {
                        ],
               'LAPACK' : [
                         'liblapack.so','liblapack.a','liblapack.dylib',
+                       ],
+              'OPENBLAS' : [
+                        'libopenblas.so','libopenblas.a','libopenblas.dylib',
                        ],
               'ACML' : [
                         'libacml.so','libacml.a',
@@ -194,13 +200,11 @@ if not os.path.isdir(options.mscRoot):
 
 filePresent(locations['FFTW'],libraries['FFTW'],warning=True)
 
-if options.blasType == 'LAPACK':
+if options.blasType in ['LAPACK','OPENBLAS','IMKL']:
   filePresent(locations[options.blasType],libraries[options.blasType],warning=True)
 elif options.blasType == 'ACML':
   filePresent(locations[options.blasType],libraries[options.blasType],warning=True)
   filePresent(locations[options.blasType+'_mp'],libraries[options.blasType+'_mp'],warning=True)
-elif options.blasType == 'IMKL':
-  filePresent(locations[options.blasType],libraries[options.blasType],warning=True)
 else:
   print('Error: Unknown BLAS/LAPACK library: %s'%options.blasType)
   sys.exit(1)
