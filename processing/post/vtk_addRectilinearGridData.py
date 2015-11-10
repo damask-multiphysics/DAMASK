@@ -83,7 +83,7 @@ for name in filenames:
     table = damask.ASCIItable(name = name,
                               buffered = False, readonly = True)
   except: continue
-  damask.util.croak(damask.util.emph(scriptName)+(': '+name if name else ''))
+  damask.util.report(scriptName, name)
 
 # --- interpret header ----------------------------------------------------------------------------
 
@@ -101,15 +101,13 @@ for name in filenames:
     for i,dim in enumerate(table.label_dimension(label)):
       me = label[i]
       if dim == -1: remarks.append('{} "{}" not found...'.format(datatype,me))
-      elif dim > dimension: remarks.append('"{}" not of dimension{}...'.format(me,dimension))
+      elif dim > dimension: remarks.append('"{}" not of dimension {}...'.format(me,dimension))
       else:
-        damask.util.croak('adding {} {}'.format(datatype,me))
+        remarks.append('adding {} "{}"...'.format(datatype,me))
         active[datatype].append(me)
 
-        if datatype in ['scalar','vector']:
-          VTKarray[me] = vtk.vtkDoubleArray()
-        elif datatype == 'color':
-          VTKarray[me] = vtk.vtkUnsignedCharArray()
+        if   datatype in ['scalar','vector']: VTKarray[me] = vtk.vtkDoubleArray()
+        elif datatype == 'color':             VTKarray[me] = vtk.vtkUnsignedCharArray()
 
         VTKarray[me].SetNumberOfComponents(dimension)
         VTKarray[me].SetName(label[i])
@@ -117,7 +115,7 @@ for name in filenames:
   if remarks != []: damask.util.croak(remarks)
   if errors  != []:
     damask.util.croak(errors)
-    table.close(dismiss=True)
+    table.close(dismiss = True)
     continue
 
 # ------------------------------------------ process data ---------------------------------------  
@@ -127,12 +125,9 @@ for name in filenames:
     for datatype,labels in active.items():                                                          # loop over scalar,color
       for me in labels:                                                                             # loop over all requested items
         theData = [table.data[i] for i in table.label_indexrange(me)]                               # read strings
-        if datatype == 'color':
-          VTKarray[me].InsertNextTuple3(*map(lambda x: int(255.*float(x)),theData))
-        elif datatype == 'vector':
-          VTKarray[me].InsertNextTuple3(*map(float,theData))
-        elif datatype == 'scalar':
-          VTKarray[me].InsertNextValue(float(theData[0]))
+        if datatype == 'color':    VTKarray[me].InsertNextTuple3(*map(lambda x: int(255.*float(x)),theData))
+        elif datatype == 'vector': VTKarray[me].InsertNextTuple3(*map(float,theData))
+        elif datatype == 'scalar': VTKarray[me].InsertNextValue(float(theData[0]))
 
 # ------------------------------------------ add data ---------------------------------------  
 
