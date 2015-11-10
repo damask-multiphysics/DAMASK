@@ -179,10 +179,10 @@ module plastic_dislotwin
      rhoEdge, &
      rhoEdgeDip, &
      accshear_slip, &
-     F, &
+     twinFraction, &
      accshear_twin, &
-     mf_stress, &
-     mf_strain , &
+     stressTransFraction, &
+     strainTransFraction , &
      invLambdaSlip, &
      invLambdaSlipTwin, &
      invLambdaTwin, &
@@ -1105,9 +1105,9 @@ subroutine plastic_dislotwin_init(fileUnit)
 
      startIndex=endIndex+1
      endIndex=endIndex+nt
-     state(instance)%F=>plasticState(phase)%state(startIndex:endIndex,:)
-     state0(instance)%F=>plasticState(phase)%state0(startIndex:endIndex,:)
-     dotState(instance)%F=>plasticState(phase)%dotState(startIndex:endIndex,:)
+     state(instance)%twinFraction=>plasticState(phase)%state(startIndex:endIndex,:)
+     state0(instance)%twinFraction=>plasticState(phase)%state0(startIndex:endIndex,:)
+     dotState(instance)%twinFraction=>plasticState(phase)%dotState(startIndex:endIndex,:)
      
      startIndex=endIndex+1
      endIndex=endIndex+nt
@@ -1117,15 +1117,15 @@ subroutine plastic_dislotwin_init(fileUnit)
      
      startIndex=endIndex+1
      endIndex=endIndex+nr
-     state(instance)%mf_stress=>plasticState(phase)%state(startIndex:endIndex,:)
-     state0(instance)%mf_stress=>plasticState(phase)%state0(startIndex:endIndex,:)
-     dotState(instance)%mf_stress=>plasticState(phase)%dotState(startIndex:endIndex,:)
+     state(instance)%stressTransFraction=>plasticState(phase)%state(startIndex:endIndex,:)
+     state0(instance)%stressTransFraction=>plasticState(phase)%state0(startIndex:endIndex,:)
+     dotState(instance)%stressTransFraction=>plasticState(phase)%dotState(startIndex:endIndex,:)
      
      startIndex=endIndex+1
      endIndex=endIndex+nr
-     state(instance)%mf_strain=>plasticState(phase)%state(startIndex:endIndex,:)
-     state0(instance)%mf_strain=>plasticState(phase)%state0(startIndex:endIndex,:)
-     dotState(instance)%mf_strain=>plasticState(phase)%dotState(startIndex:endIndex,:)
+     state(instance)%strainTransFraction=>plasticState(phase)%state(startIndex:endIndex,:)
+     state0(instance)%strainTransFraction=>plasticState(phase)%state0(startIndex:endIndex,:)
+     dotState(instance)%strainTransFraction=>plasticState(phase)%dotState(startIndex:endIndex,:)
      
      startIndex=endIndex+1
      endIndex=endIndex+ns
@@ -1339,21 +1339,21 @@ function plastic_dislotwin_homogenizedC(ipc,ip,el)
  nr = plastic_dislotwin_totalNtrans(instance)
 
  !* Total twin volume fraction
- sumf = sum(state(ph)%F(1_pInt:nt,of))           ! safe for nt == 0
+ sumf = sum(state(ph)%twinFraction(1_pInt:nt,of))           ! safe for nt == 0
 
  !* Total transformed volume fraction
- sumftr = sum(state(ph)%mf_stress(1_pInt:nr,of)) + &
-          sum(state(ph)%mf_strain(1_pInt:nr,of))
+ sumftr = sum(state(ph)%stressTransFraction(1_pInt:nr,of)) + &
+          sum(state(ph)%strainTransFraction(1_pInt:nr,of))
 
  !* Homogenized elasticity matrix
  plastic_dislotwin_homogenizedC = (1.0_pReal-sumf-sumftr)*lattice_C66(1:6,1:6,ph)
  do i=1_pInt,nt
     plastic_dislotwin_homogenizedC = plastic_dislotwin_homogenizedC &
-                   + state(ph)%F(i,of)*plastic_dislotwin_Ctwin66(1:6,1:6,i,instance)
+                   + state(ph)%twinFraction(i,of)*plastic_dislotwin_Ctwin66(1:6,1:6,i,instance)
  enddo
  do i=1_pInt,nr
     plastic_dislotwin_homogenizedC = plastic_dislotwin_homogenizedC &
-                   + (state(ph)%mf_stress(i,of) + state(ph)%mf_strain(i,of))*&
+                   + (state(ph)%stressTransFraction(i,of) + state(ph)%strainTransFraction(i,of))*&
                      plastic_dislotwin_Ctrans66(1:6,1:6,i,instance)
  enddo
 
@@ -1425,11 +1425,11 @@ subroutine plastic_dislotwin_microstructure(temperature,ipc,ip,el)
  !* State: 8*ns+6*nt+5*nr+1 :  8*ns+6*nt+6*nr  martensite volume
 
  !* Total twin volume fraction
- sumf = sum(state(ph)%F(1_pInt:nt,of)) ! safe for nt == 0
+ sumf = sum(state(ph)%twinFraction(1_pInt:nt,of)) ! safe for nt == 0
  
  !* Total transformed volume fraction
- sumftr = sum(state(ph)%mf_stress(1_pInt:nr,of)) + &
-          sum(state(ph)%mf_strain(1_pInt:nr,of))
+ sumftr = sum(state(ph)%stressTransFraction(1_pInt:nr,of)) + &
+          sum(state(ph)%strainTransFraction(1_pInt:nr,of))
 
  !* Stacking fault energy
  sfe = plastic_dislotwin_SFE_0K(instance) + & 
@@ -1438,12 +1438,12 @@ subroutine plastic_dislotwin_microstructure(temperature,ipc,ip,el)
  !* rescaled twin volume fraction for topology
  forall (t = 1_pInt:nt) &
    fOverStacksize(t) = &
-     state(ph)%F(t,of)/plastic_dislotwin_twinsizePerTwinSystem(t,instance)
+     state(ph)%twinFraction(t,of)/plastic_dislotwin_twinsizePerTwinSystem(t,instance)
 
  !* rescaled trans volume fraction for topology
  forall (r = 1_pInt:nr) &
    ftransOverLamellarSize(r) = &
-     (state(ph)%mf_stress(r,of)+state(ph)%mf_strain(r,of))/&
+     (state(ph)%stressTransFraction(r,of)+state(ph)%strainTransFraction(r,of))/&
       plastic_dislotwin_lamellarsizePerTransSystem(r,instance)
  
  !* 1/mean free distance between 2 forest dislocations seen by a moving dislocation
@@ -1680,11 +1680,11 @@ subroutine plastic_dislotwin_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,Temperature
 !--------------------------------------------------------------------------------------------------
 ! correct Lp and dLp_dTstar3333 for twinned and transformed fraction 
  !* Total twin volume fraction
- sumf = sum(state(ph)%F(1_pInt:nt,of)) ! safe for nt == 0
+ sumf = sum(state(ph)%twinFraction(1_pInt:nt,of)) ! safe for nt == 0
 
  !* Total transformed volume fraction
- sumftr = sum(state(ph)%mf_stress(1_pInt:nr,of)) + &
-          sum(state(ph)%mf_strain(1_pInt:nr,of))
+ sumftr = sum(state(ph)%stressTransFraction(1_pInt:nr,of)) + &
+          sum(state(ph)%strainTransFraction(1_pInt:nr,of))
  Lp = Lp * (1.0_pReal - sumf - sumftr)
  dLp_dTstar3333 = dLp_dTstar3333 * (1.0_pReal - sumf - sumftr)
  
@@ -1809,7 +1809,7 @@ subroutine plastic_dislotwin_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,Temperature
       tau_trans(j) = dot_product(Tstar_v,lattice_Strans_v(:,index_myFamily+i,ph))
 
       !* Total martensite volume fraction for transformation system
-      V_trans(j) = state(ph)%mf_stress(j,of) + state(ph)%mf_strain(j,of)
+      V_trans(j) = state(ph)%stressTransFraction(j,of) + state(ph)%strainTransFraction(j,of)
 
       !* Driving force for stress-assisted martensite growth on transformation system
       fstress_trans(j) = tau_trans(j) - &
@@ -1903,12 +1903,12 @@ subroutine plastic_dislotwin_dotState(Tstar_v,Temperature,ipc,ip,el)
  nr = plastic_dislotwin_totalNtrans(instance)
 
  !* Total twin volume fraction
- sumf = sum(state(ph)%F(1_pInt:nt,of)) ! safe for nt == 0
+ sumf = sum(state(ph)%twinFraction(1_pInt:nt,of)) ! safe for nt == 0
  plasticState(ph)%dotState(:,of) = 0.0_pReal
  
  !* Total transformed volume fraction
- sumftr = sum(state(ph)%mf_stress(1_pInt:nr,of)) + &
-          sum(state(ph)%mf_strain(1_pInt:nr,of))
+ sumftr = sum(state(ph)%stressTransFraction(1_pInt:nr,of)) + &
+          sum(state(ph)%strainTransFraction(1_pInt:nr,of))
  
  !* Dislocation density evolution
  gdot_slip = 0.0_pReal
@@ -2029,11 +2029,11 @@ subroutine plastic_dislotwin_dotState(Tstar_v,Temperature,ipc,ip,el)
           case default
             Ndot0=plastic_dislotwin_Ndot0PerTwinSystem(j,instance)
         end select
-        dotState(ph)%F(j,of) = &
+        dotState(ph)%twinFraction(j,of) = &
           (1.0_pReal-sumf-sumftr)*&
           state(ph)%twinVolume(j,of)*Ndot0*exp(-StressRatio_r)
         !* Dotstate for accumulated shear due to twin
-        dotState(ph)%accshear_twin(j,of) = dotState(ph)%F(j,of) * &
+        dotState(ph)%accshear_twin(j,of) = dotState(ph)%twinFraction(j,of) * &
                                                           lattice_sheartwin(index_myfamily+i,ph)
       endif
    enddo
@@ -2062,7 +2062,7 @@ subroutine plastic_dislotwin_dotState(Tstar_v,Temperature,ipc,ip,el)
       tau_trans(j) = dot_product(Tstar_v,lattice_Strans_v(:,index_myFamily+i,ph))
 
       !* Total martensite volume fraction for transformation system
-      V_trans(j) = state(ph)%mf_stress(j,of) + state(ph)%mf_strain(j,of)
+      V_trans(j) = state(ph)%stressTransFraction(j,of) + state(ph)%strainTransFraction(j,of)
 
       !* Driving force for stress-assisted martensite growth
       fstress_trans(j) = tau_trans(j) - &
@@ -2071,10 +2071,10 @@ subroutine plastic_dislotwin_dotState(Tstar_v,Temperature,ipc,ip,el)
 
       !* Dotstate for stress-assisted martensite volume fraction
       if (fstress_trans(j) > tol_math_check) then
-        dotState(ph)%mf_stress(j,of) = plastic_dislotwin_Cgro(instance)*&
+        dotState(ph)%stressTransFraction(j,of) = plastic_dislotwin_Cgro(instance)*&
                                                                  (1.0_pReal - sumf - sumftr)*fstress_trans(j)
       else
-        dotState(ph)%mf_stress(j,of) = 0.0_pReal
+        dotState(ph)%stressTransFraction(j,of) = 0.0_pReal
       endif
 
       !* Probability rate of fault band intersection for strain-induced martensite nucleation
@@ -2095,10 +2095,10 @@ subroutine plastic_dislotwin_dotState(Tstar_v,Temperature,ipc,ip,el)
           probrate_trans(j) = probrate_trans(j)/lattice_fccTobcc_shearCritTrans**2
 
           !* Dotstate for strain-induced martensite volume fraction
-          dotState(ph)%mf_strain(j,of) = plastic_dislotwin_Cnuc(instance)*&
+          dotState(ph)%strainTransFraction(j,of) = plastic_dislotwin_Cnuc(instance)*&
           (1.0_pReal - sumf - sumftr)*probrate_trans(j)
         case default
-          dotState(ph)%mf_strain(j,of) = 0.0_pReal
+          dotState(ph)%strainTransFraction(j,of) = 0.0_pReal
       end select
 
    enddo
@@ -2171,7 +2171,7 @@ function plastic_dislotwin_postResults(Tstar_v,Temperature,ipc,ip,el)
  nr = plastic_dislotwin_totalNtrans(instance)
 
  !* Total twin volume fraction
- sumf = sum(state(ph)%F(1_pInt:nt,of))                          ! safe for nt == 0
+ sumf = sum(state(ph)%twinFraction(1_pInt:nt,of))                          ! safe for nt == 0
  
  !* Required output
  c = 0_pInt
@@ -2291,7 +2291,7 @@ function plastic_dislotwin_postResults(Tstar_v,Temperature,ipc,ip,el)
          enddo 
         c = c + 6_pInt
       case (twin_fraction_ID)
-        plastic_dislotwin_postResults(c+1_pInt:c+nt) = state(ph)%F(1_pInt:nt,of)
+        plastic_dislotwin_postResults(c+1_pInt:c+nt) = state(ph)%twinFraction(1_pInt:nt,of)
         c = c + nt
       case (shear_rate_twin_ID)
         if (nt > 0_pInt) then
@@ -2449,16 +2449,16 @@ function plastic_dislotwin_postResults(Tstar_v,Temperature,ipc,ip,el)
         c = c + 9_pInt
       case (stress_trans_fraction_ID)
         plastic_dislotwin_postResults(c+1_pInt:c+nr) = &
-          state(ph)%mf_stress(1_pInt:nr,of)
+          state(ph)%stressTransFraction(1_pInt:nr,of)
         c = c + nr
       case (strain_trans_fraction_ID)
         plastic_dislotwin_postResults(c+1_pInt:c+nr) = &
-          state(ph)%mf_strain(1_pInt:nr,of)
+          state(ph)%strainTransFraction(1_pInt:nr,of)
         c = c + nr
       case (trans_fraction_ID)
         plastic_dislotwin_postResults(c+1_pInt:c+nr) = &
-          state(ph)%mf_stress(1_pInt:nr,of) + &
-          state(ph)%mf_strain(1_pInt:nr,of)
+          state(ph)%stressTransFraction(1_pInt:nr,of) + &
+          state(ph)%strainTransFraction(1_pInt:nr,of)
         c = c + nr
     end select
  enddo
