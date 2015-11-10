@@ -132,6 +132,9 @@ module plastic_dislotwin
    plastic_dislotwin_interaction_SlipTwin, &                                                   !< coefficients for slip-twin interaction for each interaction type and instance
    plastic_dislotwin_interaction_TwinSlip, &                                                   !< coefficients for twin-slip interaction for each interaction type and instance
    plastic_dislotwin_interaction_TwinTwin, &                                                   !< coefficients for twin-twin interaction for each interaction type and instance
+   plastic_dislotwin_interaction_SlipTrans, &                                                  !< coefficients for slip-trans interaction for each interaction type and instance
+   plastic_dislotwin_interaction_TransSlip, &                                                  !< coefficients for trans-slip interaction for each interaction type and instance
+   plastic_dislotwin_interaction_TransTrans, &                                                 !< coefficients for trans-trans interaction for each interaction type and instance
    plastic_dislotwin_pPerSlipFamily, &                                                         !< p-exponent in glide velocity
    plastic_dislotwin_qPerSlipFamily, &                                                         !< q-exponent in glide velocity
    plastic_dislotwin_rPerTwinFamily, &                                                         !< r-exponent in twin nucleation rate
@@ -141,6 +144,9 @@ module plastic_dislotwin
    plastic_dislotwin_interactionMatrix_SlipTwin, &                                             !< interaction matrix of slip systems with twin systems for each instance
    plastic_dislotwin_interactionMatrix_TwinSlip, &                                             !< interaction matrix of twin systems with slip systems for each instance
    plastic_dislotwin_interactionMatrix_TwinTwin, &                                             !< interaction matrix of the different twin systems for each instance
+   plastic_dislotwin_interactionMatrix_SlipTrans, &                                            !< interaction matrix of slip systems with trans systems for each instance
+   plastic_dislotwin_interactionMatrix_TransSlip, &                                            !< interaction matrix of trans systems with slip systems for each instance
+   plastic_dislotwin_interactionMatrix_TransTrans, &                                           !< interaction matrix of the different trans systems for each instance
    plastic_dislotwin_forestProjectionEdge, &                                                   !< matrix of forest projections of edge dislocations for each instance
    plastic_dislotwin_projectionMatrix_Trans                                                    !< matrix for projection of slip system shear on fault band (twin) systems for each instance
 
@@ -266,6 +272,7 @@ subroutine plastic_dislotwin_init(fileUnit)
                   f,instance,j,k,l,m,n,o,p,q,r,s,ns,nt,nr, &
                   Nchunks_SlipSlip = 0_pInt, Nchunks_SlipTwin = 0_pInt, &
                   Nchunks_TwinSlip = 0_pInt, Nchunks_TwinTwin = 0_pInt, &
+                  Nchunks_SlipTrans = 0_pInt, Nchunks_TransSlip = 0_pInt, Nchunks_TransTrans, &
                   Nchunks_SlipFamilies = 0_pInt, Nchunks_TwinFamilies = 0_pInt, Nchunks_TransFamilies = 0_pInt, &
                   offset_slip, index_myFamily, index_otherFamily, &
                   startIndex, endIndex
@@ -364,6 +371,12 @@ subroutine plastic_dislotwin_init(fileUnit)
                                                                                     source=0.0_pReal)
  allocate(plastic_dislotwin_interaction_TwinTwin(lattice_maxNinteraction,maxNinstance), &
                                                                                     source=0.0_pReal)
+ allocate(plastic_dislotwin_interaction_SlipTrans(lattice_maxNinteraction,maxNinstance), &
+                                                                                    source=0.0_pReal)
+ allocate(plastic_dislotwin_interaction_TransSlip(lattice_maxNinteraction,maxNinstance), &
+                                                                                    source=0.0_pReal)
+ allocate(plastic_dislotwin_interaction_TransTrans(lattice_maxNinteraction,maxNinstance), &
+                                                                                    source=0.0_pReal)
  allocate(plastic_dislotwin_sbSv(6,6,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), &
                                                                                     source=0.0_pReal)
  allocate(plastic_dislotwin_lamellarsizePerTransFamily(lattice_maxNtransFamily,maxNinstance), &
@@ -387,13 +400,16 @@ subroutine plastic_dislotwin_init(fileUnit)
    if (IO_getTag(line,'[',']') /= '') then                                                          ! next phase section
      phase = phase + 1_pInt                                                                         ! advance phase section counter
      if (phase_plasticity(phase) == PLASTICITY_DISLOTWIN_ID) then
-       Nchunks_SlipFamilies = count(lattice_NslipSystem(:,phase) > 0_pInt)
-       Nchunks_TwinFamilies = count(lattice_NtwinSystem(:,phase) > 0_pInt)
-       Nchunks_TransFamilies =count(lattice_NtransSystem(:,phase)> 0_pInt)
-       Nchunks_SlipSlip =     maxval(lattice_interactionSlipSlip(:,:,phase))
-       Nchunks_SlipTwin =     maxval(lattice_interactionSlipTwin(:,:,phase))
-       Nchunks_TwinSlip =     maxval(lattice_interactionTwinSlip(:,:,phase))
-       Nchunks_TwinTwin =     maxval(lattice_interactionTwinTwin(:,:,phase))
+       Nchunks_SlipFamilies  = count(lattice_NslipSystem(:,phase) > 0_pInt)
+       Nchunks_TwinFamilies  = count(lattice_NtwinSystem(:,phase) > 0_pInt)
+       Nchunks_TransFamilies = count(lattice_NtransSystem(:,phase)> 0_pInt)
+       Nchunks_SlipSlip   = maxval(lattice_interactionSlipSlip(:,:,phase))
+       Nchunks_SlipTwin   = maxval(lattice_interactionSlipTwin(:,:,phase))
+       Nchunks_TwinSlip   = maxval(lattice_interactionTwinSlip(:,:,phase))
+       Nchunks_TwinTwin   = maxval(lattice_interactionTwinTwin(:,:,phase))
+       Nchunks_SlipTrans  = maxval(lattice_interactionSlipTrans(:,:,phase))
+       Nchunks_TransSlip  = maxval(lattice_interactionTransSlip(:,:,phase))
+       Nchunks_TransTrans = maxval(lattice_interactionTransTrans(:,:,phase))
        if(allocated(tempPerSlip)) deallocate(tempPerSlip)
        if(allocated(tempPerTwin)) deallocate(tempPerTwin)
        if(allocated(tempPerTrans)) deallocate(tempPerTrans)
@@ -635,6 +651,24 @@ subroutine plastic_dislotwin_init(fileUnit)
          do j = 1_pInt, Nchunks_TwinTwin
            plastic_dislotwin_interaction_TwinTwin(j,instance) = IO_floatValue(line,chunkPos,1_pInt+j)
          enddo
+       case ('interaction_sliptrans','interactionsliptrans')
+         if (chunkPos(1) < 1_pInt + Nchunks_SlipTrans) &
+           call IO_warning(52_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_DISLOTWIN_label//')')
+         do j = 1_pInt, Nchunks_SlipTrans
+           plastic_dislotwin_interaction_SlipTrans(j,instance) = IO_floatValue(line,chunkPos,1_pInt+j)
+         enddo
+       case ('interaction_transslip','interactiontransslip')
+         if (chunkPos(1) < 1_pInt + Nchunks_TransSlip) &
+           call IO_warning(52_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_DISLOTWIN_label//')')
+         do j = 1_pInt, Nchunks_TransSlip
+           plastic_dislotwin_interaction_TransSlip(j,instance) = IO_floatValue(line,chunkPos,1_pInt+j)
+         enddo
+       case ('interaction_transtrans','interactiontranstrans')
+         if (chunkPos(1) < 1_pInt + Nchunks_TransTrans) &
+           call IO_warning(52_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_DISLOTWIN_label//')')
+         do j = 1_pInt, Nchunks_TransTrans
+           plastic_dislotwin_interaction_TransTrans(j,instance) = IO_floatValue(line,chunkPos,1_pInt+j)
+         enddo
 !--------------------------------------------------------------------------------------------------
 ! parameters independent of number of slip/twin/trans systems
        case ('grainsize')
@@ -822,6 +856,15 @@ subroutine plastic_dislotwin_init(fileUnit)
  allocate(plastic_dislotwin_interactionMatrix_TwinTwin(maxval(plastic_dislotwin_totalNtwin),&  ! twin resistance from twin activity
                                                             maxval(plastic_dislotwin_totalNtwin),&
                                                             maxNinstance), source=0.0_pReal)
+ allocate(plastic_dislotwin_interactionMatrix_SlipTrans(maxval(plastic_dislotwin_totalNslip),&  ! slip resistance from trans activity
+                                                            maxval(plastic_dislotwin_totalNtrans),&
+                                                            maxNinstance), source=0.0_pReal)
+ allocate(plastic_dislotwin_interactionMatrix_TransSlip(maxval(plastic_dislotwin_totalNtrans),&  ! trans resistance from slip activity
+                                                            maxval(plastic_dislotwin_totalNslip),&
+                                                            maxNinstance), source=0.0_pReal)
+ allocate(plastic_dislotwin_interactionMatrix_TransTrans(maxval(plastic_dislotwin_totalNtrans),&  ! trans resistance from trans activity
+                                                            maxval(plastic_dislotwin_totalNtrans),&
+                                                            maxNinstance), source=0.0_pReal)
  allocate(plastic_dislotwin_forestProjectionEdge(maxTotalNslip,maxTotalNslip,maxNinstance), &
                                                                                        source=0.0_pReal)
  allocate(plastic_dislotwin_projectionMatrix_Trans(maxTotalNtrans,maxTotalNslip,maxNinstance), &
@@ -931,15 +974,16 @@ subroutine plastic_dislotwin_init(fileUnit)
          plasticState(phase)%dotState(offset_slip+1:offset_slip+plasticState(phase)%nslip,1:NofMyPhase)
      plasticState(phase)%accumulatedSlip => &
          plasticState(phase)%state   (offset_slip+1:offset_slip+plasticState(phase)%nslip,1:NofMyPhase)
+
     !* Process slip related parameters ------------------------------------------------ 
      slipFamiliesLoop: do f = 1_pInt,lattice_maxNslipFamily
        index_myFamily = sum(plastic_dislotwin_Nslip(1:f-1_pInt,instance))                      ! index in truncated slip system list
        slipSystemsLoop: do j = 1_pInt,plastic_dislotwin_Nslip(f,instance)
 
-      !* Burgers vector, 
-      !  dislocation velocity prefactor,
-      !  mean free path prefactor,
-      !  and minimum dipole distance
+       !* Burgers vector, 
+       !  dislocation velocity prefactor,
+       !  mean free path prefactor,
+       !  and minimum dipole distance
  
          plastic_dislotwin_burgersPerSlipSystem(index_myFamily+j,instance) = &
          plastic_dislotwin_burgersPerSlipFamily(f,instance)
@@ -977,12 +1021,21 @@ subroutine plastic_dislotwin_init(fileUnit)
                                                                  sum(lattice_NtwinSystem(1:o-1_pInt,phase))+k, &
                                                                  phase), instance )
          enddo; enddo
+
+         do o = 1_pInt,lattice_maxNtransFamily
+           index_otherFamily = sum(plastic_dislotwin_Ntrans(1:o-1_pInt,instance))
+           do k = 1_pInt,plastic_dislotwin_Ntrans(o,instance)                                  ! loop over (active) systems in other family (trans)
+             plastic_dislotwin_interactionMatrix_SlipTrans(index_myFamily+j,index_otherFamily+k,instance) = &
+                   plastic_dislotwin_interaction_SlipTrans(lattice_interactionSlipTrans( &
+                                                                 sum(lattice_NslipSystem(1:f-1_pInt,phase))+j, &
+                                                                 sum(lattice_NtransSystem(1:o-1_pInt,phase))+k, &
+                                                                 phase), instance )
+         enddo; enddo
   
        enddo slipSystemsLoop
      enddo slipFamiliesLoop
   
     !* Process twin related parameters ------------------------------------------------
-    
      twinFamiliesLoop: do f = 1_pInt,lattice_maxNtwinFamily
        index_myFamily = sum(plastic_dislotwin_Ntwin(1:f-1_pInt,instance))                      ! index in truncated twin system list
        twinSystemsLoop: do j = 1_pInt,plastic_dislotwin_Ntwin(f,instance)
@@ -1041,7 +1094,6 @@ subroutine plastic_dislotwin_init(fileUnit)
      enddo twinFamiliesLoop
 
     !* Process transformation related parameters ------------------------------------------------
-
      transFamiliesLoop: do f = 1_pInt,lattice_maxNtransFamily
        index_myFamily = sum(plastic_dislotwin_Ntrans(1:f-1_pInt,instance))                      ! index in truncated trans system list
        transSystemsLoop: do j = 1_pInt,plastic_dislotwin_Ntrans(f,instance)
@@ -1070,7 +1122,28 @@ subroutine plastic_dislotwin_init(fileUnit)
          plastic_dislotwin_Ctrans66(1:6,1:6,index_myFamily+j,instance) = &
            math_Mandel3333to66(plastic_dislotwin_Ctrans3333(1:3,1:3,1:3,1:3,index_myFamily+j,instance))
 
-         !* Projection matrices for shear from slip systems to fault-band (twin) systems for strain-induced martensite nucleation
+       !* Interaction matrices
+         do o = 1_pInt,lattice_maxNslipFamily
+           index_otherFamily = sum(plastic_dislotwin_Nslip(1:o-1_pInt,instance))
+           do k = 1_pInt,plastic_dislotwin_Nslip(o,instance)                                   ! loop over (active) systems in other family (slip)
+             plastic_dislotwin_interactionMatrix_TransSlip(index_myFamily+j,index_otherFamily+k,instance) = &
+                   plastic_dislotwin_interaction_TransSlip(lattice_interactionTransSlip( &
+                                                                 sum(lattice_NtransSystem(1:f-1_pInt,phase))+j, &
+                                                                 sum(lattice_NslipSystem(1:o-1_pInt,phase))+k, &
+                                                                 phase), instance )
+         enddo; enddo
+
+         do o = 1_pInt,lattice_maxNtransFamily
+           index_otherFamily = sum(plastic_dislotwin_Ntrans(1:o-1_pInt,instance))
+           do k = 1_pInt,plastic_dislotwin_Ntrans(o,instance)                                  ! loop over (active) systems in other family (trans)
+             plastic_dislotwin_interactionMatrix_TransTrans(index_myFamily+j,index_otherFamily+k,instance) = &
+                   plastic_dislotwin_interaction_TransTrans(lattice_interactionTransTrans( &
+                                                                 sum(lattice_NtransSystem(1:f-1_pInt,phase))+j, &
+                                                                 sum(lattice_NtransSystem(1:o-1_pInt,phase))+k, &
+                                                                 phase), instance )
+         enddo; enddo
+
+       !* Projection matrices for shear from slip systems to fault-band (twin) systems for strain-induced martensite nucleation
          select case(trans_lattice_structure(phase))
            case (LATTICE_bcc_ID)
              do o = 1_pInt,lattice_maxNtransFamily
