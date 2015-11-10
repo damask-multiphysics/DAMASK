@@ -76,8 +76,8 @@ for name in filenames:
 
   microstructure = table.microstructure_read(info['grid'])                                          # read microstructure
   formatwidth = int(math.floor(math.log10(microstructure.max())+1))                                 # efficient number printing format
-  if options.oneD: table.data = microstructure
-  else:            table.data = microstructure.reshape((info['grid'][0],info['grid'][1]*info['grid'][2]),order='F').transpose()
+  table.data = microstructure if options.oneD else \
+               microstructure.reshape((info['grid'][0],info['grid'][1]*info['grid'][2]),order='F').transpose()
   table.data_writeArray('%%%ii'%(formatwidth),delimiter = ' ')
     
 #--- output finalization --------------------------------------------------------------------------
