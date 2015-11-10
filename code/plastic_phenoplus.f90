@@ -747,7 +747,6 @@ subroutine plastic_phenoplus_microstructure(orientation,ipc,ip,el)
                         math_mul33x33, &
                         math_mul3x3, &
                         math_transpose33, &
-                        math_qDot, &
                         math_qRot, &
                         indeg
 
