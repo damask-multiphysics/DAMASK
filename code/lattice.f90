@@ -858,7 +858,7 @@ module lattice
    
  integer(pInt), parameter , private :: &
    LATTICE_bct_Nslip = 52_pInt, & ! sum(lattice_bct_NslipSystem),                                   !< total # of slip systems for bct 
-   LATTICE_bct_Ntwin = 0_pInt, & ! sum(lattice_bcc_NtwinSystem)                                    !< total # of twin systems for bcc
+   LATTICE_bct_Ntwin = 0_pInt, &  ! sum(lattice_bcc_NtwinSystem)                                    !< total # of twin systems for bcc
    LATTICE_bct_NnonSchmid = 0_pInt, &                                                               !< # of non-Schmid contributions for bcc
    LATTICE_bct_Ntrans  = 0_pInt, &                                                                  !< total # of transformations for bcc
    LATTICE_bct_Ncleavage  = 0_pInt                                                                  !< total # of transformations for bcc
@@ -1109,6 +1109,7 @@ real(pReal), dimension(4,36), parameter, private :: &
      0.7071067811865476_pReal,  0.0_pReal,                 0.0_pReal,                 0.7071067811865476_pReal, &
      0.0_pReal,                 0.0_pReal,                 0.0_pReal,                 1.0_pReal, &
     -0.7071067811865476_pReal,  0.0_pReal,                 0.0_pReal,                 0.7071067811865476_pReal, &
+!
      1.0_pReal,                 0.0_pReal,                 0.0_pReal,                 0.0_pReal, &                      ! hexagonal symmetry operations
      0.0_pReal,                 1.0_pReal,                 0.0_pReal,                 0.0_pReal, &                      !     2-fold symmetry
      0.0_pReal,                 0.0_pReal,                 1.0_pReal,                 0.0_pReal, &
