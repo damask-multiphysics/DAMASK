@@ -271,19 +271,19 @@ for name in filenames:
 
   ODF = {}
   limits = np.array([np.min(table.data[:,0:3],axis=0),
-                     np.max(table.data[:,0:3],axis=0)])
-  ODF['limit'] = np.radians(limits[1,:])
+                     np.max(table.data[:,0:3],axis=0)])                                             # min/max euler angles in degrees
+  ODF['limit'] = np.radians(limits[1,:])                                                            # right hand limits in radians
   ODF['center'] = 0.0 if all(limits[0,:]<1e-8) else 0.5                                             # vertex or cell centered
 
   ODF['interval'] = np.array(map(len,[np.unique(table.data[:,i]) for i in xrange(3)]),'i')          # steps are number of distict values
   ODF['nBins'] = ODF['interval'].prod()
-  ODF['delta'] = np.radians(np.array(limits[1,0:3]-limits[0,0:3])/(ODF['interval']-1))
+  ODF['delta'] = np.radians(np.array(limits[1,0:3]-limits[0,0:3])/(ODF['interval']-1))              # step size
 
   if table.data.shape[0] != ODF['nBins']:
     damask.util.croak('expecting %i values but got %i'%(ODF['nBins'],table.data.shape[0]))
     continue
   
-  # build binnedODF array
+# ----- build binnedODF array and normalize ------------------------------------------------------
   sumdV_V = 0.0
   ODF['dV_V'] = [None]*ODF['nBins']
   ODF['nNonZero'] = 0
