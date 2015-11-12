@@ -1,8 +1,4 @@
-
-include ${PETSC_DIR}/${PETSC_ARCH}/lib/petsc/conf/variables
-include ${PETSC_DIR}/${PETSC_ARCH}/lib/petsc/conf/rules
-
-
+SHELL = /bin/sh
 run16x16x16:
 	-@${MPIEXEC} -n 2 DAMASK_spectral -l tensionX.load -g 20grains16x16x16.geom
 
