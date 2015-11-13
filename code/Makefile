@@ -16,8 +16,10 @@ SHELL = /bin/sh
 # SUFFIX         = arbitrary suffix (after file to compile)
 # STANDARD_CHECK = checking for Fortran 2008, compiler dependend
 ########################################################################################
+# including PETSc files. PETSC_ARCH is loaded from these files. 
+include ${PETSC_DIR}/lib/petsc/conf/variables
+include ${PETSC_DIR}/lib/petsc/conf/rules
 
-include $(PETSC_DIR)/$(PETSC_ARCH)/lib/petsc/conf/petscvariables
 INCLUDE_DIRS := $(PETSC_FC_INCLUDES) -DPETSc -I../lib
 LIBRARIES    := $(PETSC_WITH_EXTERNAL_LIB)
 COMPILERNAME ?= $(FC)
@@ -663,6 +665,11 @@ clean:
 	@rm -rf *.mod
 	@rm -rf *.exe
 	@rm -rf *.marc
+	@rm -rf *.inst.f90  # for instrumentation
+	@rm -rf *.pomp.f90  # for instrumentation
+	@rm -rf *.pp.f90    # for instrumentation
+	@rm -rf *.pdb       # for instrumnentation
+	@rm -rf *.opari.inc # for instrumnentation
 
 .PHONY: help
 help:
