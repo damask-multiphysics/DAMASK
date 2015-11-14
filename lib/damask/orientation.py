@@ -555,7 +555,7 @@ class Symmetry:
   def __cmp__(self,other):
     return cmp(Symmetry.lattices.index(self.lattice),Symmetry.lattices.index(other.lattice))
 
-  def symmetryQuats(self):
+  def symmetryQuats(self,who = []):
     '''
     List of symmetry operations as quaternions.
     '''
@@ -623,15 +623,18 @@ class Symmetry:
       symQuats =  [
                     [ 1.0,0.0,0.0,0.0 ],
                   ]
-                  
-    return map(Quaternion,symQuats)
+
+    return map(Quaternion,
+               np.array(symQuats)[np.atleast_1d(np.array(who)) if who != [] else xrange(len(symQuats))])
     
     
-  def equivalentQuaternions(self,quaternion):
+  def equivalentQuaternions(self,
+                            quaternion,
+                            who = []):
     '''
     List of symmetrically equivalent quaternions based on own symmetry.
     '''
-    return [quaternion*Quaternion(q) for q in self.symmetryQuats()]
+    return [quaternion*q for q in self.symmetryQuats(who)]
 
 
   def inFZ(self,R):
@@ -852,14 +855,14 @@ class Orientation:
     return self.symmetry.inFZ(self.quaternion.asRodrigues())
   infz = property(inFZ)
 
-  def equivalentQuaternions(self):
-    return self.symmetry.equivalentQuaternions(self.quaternion)
-  equiQuaternions = property(equivalentQuaternions)
+  def equivalentQuaternions(self,
+                            who = []):
+    return self.symmetry.equivalentQuaternions(self.quaternion,who)
 
-  def equivalentOrientations(self):
+  def equivalentOrientations(self,
+                             who = []):
     return map(lambda q: Orientation(quaternion = q, symmetry = self.symmetry.lattice),
-               self.equivalentQuaternions())
-  equiOrientations = property(equivalentQuaternions)
+               self.equivalentQuaternions(who))
 
   def reduced(self):
     '''
@@ -893,9 +896,8 @@ class Orientation:
         theQ = sA.conjugated()*misQ*sB
         for k in xrange(2):
           theQ.conjugate()
-          hitFZ  =  self.symmetry.inFZ(theQ)
-          hitSST = other.symmetry.inDisorientationSST(theQ)
-          breaker = hitFZ and (hitSST or not SST)
+          breaker = self.symmetry.inFZ(theQ) \
+                    and (not SST or other.symmetry.inDisorientationSST(theQ))
           if breaker: break
         if breaker: break
       if breaker: break
@@ -936,7 +938,9 @@ class Orientation:
     return color
 
   @classmethod
-  def getAverageOrientation(cls, orientationList):
+  def average(cls,
+              orientations,
+              multiplicity = []):
     """RETURN THE AVERAGE ORIENTATION
     ref: F. Landis Markley, Yang Cheng, John Lucas Crassidis, and Yaakov Oshman.
          Averaging Quaternions,
@@ -945,19 +949,24 @@ class Orientation:
     usage:
          a = Orientation(Eulers=np.radians([10, 10, 0]), symmetry='hexagonal')
          b = Orientation(Eulers=np.radians([20, 0, 0]),  symmetry='hexagonal')
-         avg = Orientation.getAverageOrientation([a,b])
+         avg = Orientation.average([a,b])
     """
 
-    if not all(isinstance(item, Orientation) for item in orientationList):
+    if not all(isinstance(item, Orientation) for item in orientations):
       raise TypeError("Only instances of Orientation can be averaged.")
 
-    N = len(orientationList)
-    M = orientationList.pop(0).quaternion.asM()
-    for o in orientationList:
-      M += o.quaternion.asM()
+    N = len(orientations)
+    if multiplicity == [] or not multiplicity:
+      multiplicity = np.ones(N,dtype='i')
+
+    reference = orientations[0]                                                                     # take first as reference
+    for i,(o,n) in enumerate(zip(orientations,multiplicity)):
+      closest = o.equivalentOrientations(reference.disorientation(o,SST = False)[2])[0]             # select sym orientation with lowest misorientation
+      M = closest.quaternion.asM() * n if i == 0 else M + closest.quaternion.asM() * n              # add (multiples) of this orientation to average
+
     eig, vec = np.linalg.eig(M/N)
 
-    return Orientation(quaternion = Quaternion(quatArray = vec.T[eig.argmax()]))
+    return Orientation(quaternion = Quaternion(quatArray = np.real(vec.T[eig.argmax()])))
 
 
   def related(self,
