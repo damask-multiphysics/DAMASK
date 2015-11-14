@@ -44,9 +44,12 @@ class ASCIItable():
 
     try:
       self.__IO__['out'] = (open(outname,'w') if (not os.path.isfile(outname) \
-                                                  or  os.access(outname, os.W_OK)) \
+                                                   or os.access(     outname, os.W_OK) \
+                                                 ) \
                                               and (not self.__IO__['inPlace'] \
-                                                   or  os.access(name, os.W_OK)) else None) if outname else sys.stdout
+                                                   or not os.path.isfile(name) \
+                                                   or     os.access(     name, os.W_OK) \
+                                                  ) else None) if outname else sys.stdout
     except TypeError:
       self.__IO__['out'] = outname
 
@@ -241,6 +244,20 @@ class ASCIItable():
         extra_header.append(header)
 
     return info,extra_header
+
+
+# ------------------------------------------------------------------
+  def head_putGeom(self,info):
+    '''
+       translate geometry description to header
+    '''
+    self.info_append([
+      "grid\ta {}\tb {}\tc {}".format(*info['grid']),
+      "size\tx {}\ty {}\tz {}".format(*info['size']),
+      "origin\tx {}\ty {}\tz {}".format(*info['origin']),
+      "homogenization\t{}".format(info['homogenization']),
+      "microstructures\t{}".format(info['microstructures']),
+      ])
     
 # ------------------------------------------------------------------
   def labels_append(self,
@@ -471,7 +488,7 @@ class ASCIItable():
 
       self.labels = list(np.array(self.labels)[use])                                                # update labels with valid subset
 
-    self.data = np.loadtxt(self.__IO__['in'], usecols=use,ndmin=2)
+    self.data = np.loadtxt(self.__IO__['in'],usecols=use,ndmin=2)
 
     return labels_missing
 
