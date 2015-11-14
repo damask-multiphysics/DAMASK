@@ -2,6 +2,7 @@
 # -*- coding: UTF-8 no BOM -*-
 
 import os,sys,string,vtk
+import numpy as np
 import damask
 from optparse import OptionParser
 
@@ -17,12 +18,12 @@ Produce a VTK point cloud dataset based on coordinates given in an ASCIItable.
 
 """, version = scriptID)
 
-parser.add_option('-d', '--deformed',
-                  dest = 'deformed',
+parser.add_option('-c', '--coordinates',
+                  dest = 'coords',
                   type = 'string', metavar = 'string',
-                  help = 'deformed coordinate label [%default]')
+                  help = 'coordinate label [%default]')
 
-parser.set_defaults(deformed = 'ipdeformedcoord'
+parser.set_defaults(coords = 'pos'
                    )
 
 (options, filenames) = parser.parse_args()
@@ -34,7 +35,8 @@ if filenames == []: filenames = [None]
 for name in filenames:
   try:
     table = damask.ASCIItable(name = name,
-                              buffered = False, readonly = True)
+                              buffered = False,
+                              readonly = True)
   except: continue
   damask.util.report(scriptName,name)
 
@@ -44,9 +46,9 @@ for name in filenames:
 
   errors =  []
   remarks = []
-  if table.label_dimension(options.deformed) != 3: 
-     errors.append('columns "{}" have dimension {}'.format(options.deformed,
-                                                          table.label_dimension(options.deformed)))
+  coordDim = table.label_dimension(options.coords)
+  if not 3 >= coordDim >= 1: errors.append('coordinates "{}" need to have one, two, or three dimensions.'.format(options.coords))
+  elif coordDim < 3:         remarks.append('appending {} dimensions to coordinates "{}"...'.format(3-coordDim,options.coords))
 
   if remarks != []: damask.util.croak(remarks)
   if errors  != []:
@@ -56,10 +58,15 @@ for name in filenames:
 
 # ------------------------------------------ process data ---------------------------------------  
 
-  table.data_readArray(options.deformed)
+  table.data_readArray(options.coords)
+  if len(table.data.shape) < 2: table.data.shape += (1,)                                            # expand to 2D shape
+  if table.data.shape[1] < 3:
+    table.data = np.hstack((table.data,
+                            np.zeros((table.data.shape[0],
+                                      3-table.data.shape[1]),dtype='f')))                           # fill coords up to 3D with zeros
 
   Polydata = vtk.vtkPolyData()
-  Points = vtk.vtkPoints()
+  Points   = vtk.vtkPoints()
   Vertices = vtk.vtkCellArray()
 
   for p in table.data:
