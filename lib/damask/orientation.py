@@ -966,7 +966,8 @@ class Orientation:
 
     eig, vec = np.linalg.eig(M/N)
 
-    return Orientation(quaternion = Quaternion(quatArray = np.real(vec.T[eig.argmax()])))
+    return Orientation(quaternion = Quaternion(quatArray = np.real(vec.T[eig.argmax()])),
+                       symmetry = reference.symmetry.lattice)
 
 
   def related(self,
