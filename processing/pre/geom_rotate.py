@@ -96,9 +96,9 @@ for name in filenames:
   microstructure = table.microstructure_read(info['grid']).reshape(info['grid'],order='F')                    # read microstructure
 
   newGrainID = options.fill if options.fill > 0 else microstructure.max()+1
-  microstructure = ndimage.rotate(microstructure,eulers[2],(0,1),order=0,output=np.dtype(int),cval=newGrainID) # rotation around Z
-  microstructure = ndimage.rotate(microstructure,eulers[1],(1,2),order=0,output=np.dtype(int),cval=newGrainID) # rotation around X
-  microstructure = ndimage.rotate(microstructure,eulers[0],(0,1),order=0,output=np.dtype(int),cval=newGrainID) # rotation around Z
+  microstructure = ndimage.rotate(microstructure,eulers[2],(0,1),order=0,output=int,cval=newGrainID) # rotation around Z
+  microstructure = ndimage.rotate(microstructure,eulers[1],(1,2),order=0,output=int,cval=newGrainID) # rotation around X
+  microstructure = ndimage.rotate(microstructure,eulers[0],(0,1),order=0,output=int,cval=newGrainID) # rotation around Z
 
 # --- do work ------------------------------------------------------------------------------------
 

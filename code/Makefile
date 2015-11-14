@@ -658,18 +658,23 @@ endif
 tidy:
 	@rm -rf *.o
 	@rm -rf *.mod
-
-.PHONY: clean
-clean:
-	@rm -rf *.o
-	@rm -rf *.mod
-	@rm -rf *.exe
-	@rm -rf *.marc
 	@rm -rf *.inst.f90  # for instrumentation
 	@rm -rf *.pomp.f90  # for instrumentation
 	@rm -rf *.pp.f90    # for instrumentation
 	@rm -rf *.pdb       # for instrumnentation
 	@rm -rf *.opari.inc # for instrumnentation
+
+.PHONY: cleanDAMASK
+cleanDAMASK:
+	@rm -rf *.exe
+	@rm -rf *.marc
+	@rm -rf *.o
+	@rm -rf *.mod
+	@rm -rf *.inst.f90  # for instrumentation
+	@rm -rf *.pomp.f90  # for instrumentation
+	@rm -rf *.pp.f90    # for instrumentation
+	@rm -rf *.pdb       # for instrumentation
+	@rm -rf *.opari.inc # for instrumentation
 
 .PHONY: help
 help:

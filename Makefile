@@ -33,7 +33,7 @@ tidy:
 
 .PHONY: clean
 clean:
-	@$(MAKE) clean -C code >/dev/null
+	@$(MAKE) cleanDAMASK -C code >/dev/null
 
 .PHONY: install
 install:
