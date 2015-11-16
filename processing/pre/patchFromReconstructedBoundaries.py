@@ -787,78 +787,63 @@ reconstructed boundary file
 
 """, version = scriptID)
 
-parser.add_option("-o", "--output", action='extend', dest='output', \
-        help="types of output [image, mentat, procedure, spectral]")
-parser.add_option("-p", "--port", type="int",\
-        dest="port",\
-        help="Mentat connection port [%default]")
-parser.add_option("-2", "--twodimensional", action="store_true",\
-        dest="twoD",\
-        help="twodimensional model [%default]")
-parser.add_option("-s","--patchsize", type="float",\
-        dest="size",\
-        help="height of patch [%default]")
-parser.add_option("-e", "--strain", type="float",\
-        dest="strain",\
-        help="final strain to reach in simulation [%default]")
-parser.add_option("--rate", type="float",\
-        dest="strainrate",\
-        help="(engineering) strain rate to simulate [%default]")
-parser.add_option("-N", "--increments", type="int",\
-        dest="increments",\
-        help="number of increments to take [%default]")
-parser.add_option("-t", "--tolerance", type="float",\
-        dest="tolerance",\
-        help="relative tolerance of pixel positions to be swept [%default]")
-parser.add_option("-m", "--mesh", choices=['dt_planar_trimesh','af_planar_trimesh','af_planar_quadmesh'],\
-        dest="mesh",\
-        help="algorithm and element type for automeshing (dt_planar_trimesh, af_planar_trimesh, af_planar_quadmesh) [%default]")
-parser.add_option("-x", "--xmargin", type="float",\
-        dest="xmargin",\
-        help="margin in x in units of patch size [%default]")
-parser.add_option("-y", "--ymargin", type="float",\
-        dest="ymargin",\
-        help="margin in y in units of patch size [%default]")
-parser.add_option("-r", "--resolution", type="int",\
-        dest="resolution",\
-        help="number of Fourier points/Finite Elements across patch size + x_margin [%default]")
-parser.add_option("-z", "--extrusion", type="int",\
-        dest="extrusion",\
-        help="number of repetitions in z-direction [%default]")
-parser.add_option("-i", "--imagesize", type="int",\
-        dest="imgsize",\
-        help="size of PNG image [%default]")
-parser.add_option("-M", "--coordtransformation", type="float", nargs=4, \
-        dest="M",\
-        help="2x2 transformation from rcb to Euler coords [%default]")
-parser.add_option("--scatter", type="float",\
-        dest="scatter",\
-        help="orientation scatter %default")
-parser.add_option("--segment", type="int",\
-        dest="segmentcolumn",\
-        help="column holding the first entry for the segment end points in the rcb file [%default]")
-parser.add_option("--id", type="int",\
-        dest="idcolumn",\
-        help="column holding the right hand grain ID in the rcb file [%default]")
+meshes=['dt_planar_trimesh','af_planar_trimesh','af_planar_quadmesh']
+parser.add_option('-o', '--output', action='extend', dest='output', metavar = '<string LIST>',
+        help='types of output {image, mentat, procedure, spectral}')
+parser.add_option('-p', '--port', type='int', metavar = 'int',
+        dest='port', help='Mentat connection port [%default]')
+parser.add_option('-2', '--twodimensional', action='store_true',
+        dest='twoD',help='use 2D model')
+parser.add_option('-s','--patchsize', type='float', metavar = 'float',
+        dest='size', help='height of patch [%default]')
+parser.add_option('-e', '--strain', type='float', metavar = 'float',
+        dest='strain', help='final strain to reach in simulation [%default]')
+parser.add_option('--rate', type='float', metavar = 'float',
+        dest='strainrate', help='engineering strain rate to simulate [%default]')
+parser.add_option('-N', '--increments', type='int', metavar = 'int',
+        dest='increments', help='number of increments to take [%default]')
+parser.add_option('-t', '--tolerance', type='float', metavar = 'float',
+        dest='tolerance', help='relative tolerance of pixel positions to be swept [%default]')
+parser.add_option('-m', '--mesh', choices = meshes,
+        metavar = '<string LIST>', dest='mesh', 
+        help='algorithm and element type for automeshing {%s} [dt_planar_trimesh]'%(', '.join(meshes)))
+parser.add_option('-x', '--xmargin', type='float', metavar = 'float',
+        dest='xmargin',help='margin in x in units of patch size [%default]')
+parser.add_option('-y', '--ymargin', type='float', metavar = 'float',
+        dest='ymargin', help='margin in y in units of patch size [%default]')
+parser.add_option('-r', '--resolution', type='int', metavar = 'int',
+        dest='resolution',help='number of Fourier points/Finite Elements across patch size + x_margin [%default]')
+parser.add_option('-z', '--extrusion', type='int', metavar = 'int',
+        dest='extrusion', help='number of repetitions in z-direction [%default]')
+parser.add_option('-i', '--imagesize', type='int', metavar = 'int',
+        dest='imgsize', help='size of PNG image [%default]')
+parser.add_option('-M', '--coordtransformation', type='float', nargs=4, metavar = ' '.join(['float']*4),
+        dest='M', help='2x2 transformation from rcb to Euler coords [%default]')
+parser.add_option('--scatter', type='float', metavar = 'float',
+        dest='scatter',help='orientation scatter [%default]')
+parser.add_option('--segment', type='int', metavar = 'int', dest='segmentcolumn',
+        help='column holding the first entry for the segment end points in the rcb file [%default]')
+parser.add_option('--id', type='int', dest='idcolumn', metavar = 'int',
+        help='column holding the right hand grain ID in the rcb file [%default]')
 
-parser.set_defaults(output = [])
-parser.set_defaults(size = 1.0)
-parser.set_defaults(port = 40007)
-parser.set_defaults(xmargin = 0.0)
-parser.set_defaults(ymargin = 0.0)
-parser.set_defaults(resolution = 64)
-parser.set_defaults(extrusion = 2)
-parser.set_defaults(imgsize = 512)
-parser.set_defaults(M = [0.0,1.0,1.0,0.0])  # M_11, M_12, M_21, M_22.  x,y in RCB is y,x of Eulers!!
-parser.set_defaults(tolerance = 1.0e-3)
-parser.set_defaults(scatter = 0.0)
-parser.set_defaults(strain = 0.2)
-parser.set_defaults(strainrate = 1.0e-3)
-parser.set_defaults(increments = 200)
-parser.set_defaults(mesh = 'dt_planar_trimesh')
-parser.set_defaults(twoD = False)
-parser.set_defaults(segmentcolumn = 9)
-parser.set_defaults(idcolumn = 13)
+parser.set_defaults(output = [],
+                    size = 1.0,
+                    port = 40007,
+                    xmargin = 0.0,
+                    ymargin = 0.0,
+                    resolution = 64,
+                    extrusion = 2,
+                    imgsize = 512,
+                    M = (0.0,1.0,1.0,0.0),  # M_11, M_12, M_21, M_22.  x,y in RCB is y,x of Eulers!!
+                    tolerance = 1.0e-3,
+                    scatter = 0.0,
+                    strain = 0.2,
+                    strainrate = 1.0e-3,
+                    increments = 200,
+                    mesh = 'dt_planar_trimesh',
+                    twoD = False,
+                    segmentcolumn = 9,
+                    idcolumn = 13)
 
 (options, args) = parser.parse_args()
 

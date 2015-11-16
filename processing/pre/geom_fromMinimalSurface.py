@@ -55,10 +55,6 @@ parser.add_option('--m',
                   dest = 'microstructure',
                   type = 'int', nargs = 2, metavar = 'int int',
                   help = 'two microstructure indices to be used [%default]')
-parser.add_option('-1', '--onedimensional',
-                  dest = 'oneD',
-                  action = 'store_true',
-                  help = 'output geom file with two-dimensional data arrangement [%default]')
 parser.set_defaults(type = minimal_surfaces[0],
                     threshold = 0.0,
                     periods = 1,
@@ -66,7 +62,6 @@ parser.set_defaults(type = minimal_surfaces[0],
                     size = (1.0,1.0,1.0),
                     homogenization = 1,
                     microstructure = (1,2),
-                    oneD  = False,
                    )
 
 (options,filenames) = parser.parse_args()
@@ -135,9 +130,6 @@ for name in filenames:
       table.data_clear()
       for x in xrange(options.grid[0]):
         table.data_append(options.microstructure[options.threshold < surface[options.type](X[x],Y[y],Z[z])])
-        if options.oneD:
-          table.data_write()
-          table.data_clear()
       table.data_write()
 
   table.close()

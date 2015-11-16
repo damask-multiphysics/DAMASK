@@ -30,7 +30,7 @@ parser.add_option('--crystallite', dest='crystallite', type='int', metavar = 'in
 parser.add_option('--compress',            dest='compress', action='store_true',
                   help='lump identical microstructure and texture information [%default]')
 parser.add_option('-p', '--precision',    dest='precision', choices=['0','1','2','3'], metavar = 'int',
-                  help = 'euler angles decimal places for output format and compressing (0,1,2,3) [2]')
+                  help = 'euler angles decimal places for output format and compressing {0,1,2,3} [2]')
 
 parser.set_defaults(column         = 7)
 parser.set_defaults(threshold      = 1.0)

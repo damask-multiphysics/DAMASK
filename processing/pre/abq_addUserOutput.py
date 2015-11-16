@@ -72,32 +72,28 @@ Or have an existing set of user variables copied over from another *.inp file.
 
 """, version= scriptID)
 
-parser.add_option('-n','--number', dest='number', type='int', \
-          help='maximum requested User Defined Variable [%default]')
-parser.add_option('--homogenization', dest='homog', \
-          help='homogenization identifier (as string or integer [%default])')
-parser.add_option('--crystallite', dest='cryst', \
-          help='crystallite identifier (as string or integer [%default])')
-parser.add_option('--phase', dest='phase', \
-          help='phase identifier (as string or integer [%default])')
-parser.add_option('--use', dest='useFile', \
-          help='Optionally parse output descriptors from '+
-               'different <model_job>.outputZZZ file. Saves the effort '+
-               'to start a calculation for each job [%default])')
-parser.add_option('--option', dest='damaskOption', \
-          help='Add damask option to input file '+
-               'for example: "periodic x z" [%default]')
-parser.set_defaults(number = 0)
-parser.set_defaults(homog = '1')
-parser.set_defaults(cryst = '1')
-parser.set_defaults(phase = '1')
-parser.set_defaults(useFile = '')
-parser.set_defaults(damaskOption = '')
+parser.add_option('-m', dest='number', type='int', metavar = 'int',
+                  help='maximum requested User Defined Variable [%default]')
+parser.add_option('--homogenization', dest='homog', metavar = 'string',
+                  help='homogenization name or index [%default]')
+parser.add_option('--crystallite', dest='cryst', metavar = 'string',
+                  help='crystallite identifier name or index [%default]')
+parser.add_option('--phase', dest='phase', metavar = 'string',
+                  help='phase identifier name or index [%default]')
+parser.add_option('--use', dest='useFile', metavar = 'string',
+                  help='optionally parse output descriptors from '+
+                       'outputXXX files of given name')
+parser.add_option('--option', dest='damaskOption', metavar = 'string',
+                  help='Add DAMASK option to input file, e.g. "periodic x z"')
+ 
+parser.set_defaults(number = 0,
+                    homog = '1',
+                    cryst = '1',
+                    phase = '1')
 
 (options, files) = parser.parse_args()
 
 if not files:
-  parser.print_help()
   parser.error('no file(s) specified...')
 
 me = {  'Homogenization':   options.homog,
@@ -108,7 +104,7 @@ me = {  'Homogenization':   options.homog,
 
 for file in files:
   print '\033[1m'+scriptName+'\033[0m: '+file+'\n'
-  if options.useFile != '':
+  if options.useFile:
     formatFile = os.path.splitext(options.useFile)[0]
   else:
     formatFile = os.path.splitext(file)[0]

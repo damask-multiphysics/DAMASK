@@ -201,17 +201,19 @@ def TothVanHoutteSTAT (ODF,nSamples):
 # --------------------------------------------------------------------
 parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
 Transform linear binned ODF data into given number of orientations.
+IA: integral approximation, STAT: Van Houtte, MC: Monte Carlo
 
 """, version = scriptID)
 
+algorithms = ['IA', 'STAT','MC']
 parser.add_option('-n', '--nsamples',
                   dest = 'number',
                   type = 'int', metavar = 'int',
                   help = 'number of orientations to be generated [%default]')
 parser.add_option('-a','--algorithm',
                   dest = 'algorithm',
-                  type = 'string', metavar = 'string',
-                  help = 'sampling algorithm. IA: integral approximation, STAT: Van Houtte, MC: Monte Carlo. [%default].') #make choice
+                  choices = algorithms, metavar = 'string',
+                  help = 'sampling algorithm {%s} [IA]'%(', '.join(algorithms)))
 parser.add_option('-p','--phase',
                   dest = 'phase',
                   type = 'int', metavar = 'int',

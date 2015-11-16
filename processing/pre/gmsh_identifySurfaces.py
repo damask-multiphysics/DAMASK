@@ -23,28 +23,22 @@ def func(seq):
 #--------------------------------------------------------------------------------------------------
 
 parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
-        Recognize bounding surfaces and append them as physical sufaces in the geo file. """, version = scriptID)
-parser.add_option('-n','--numvol', dest = 'N', \
-                                   type='int',\
-                                   metavar='int',\
+Recognize bounding surfaces and append them as physical sufaces in the geo file. 
+
+""", version = scriptID)
+
+parser.add_option('-n','--numvol', dest = 'N', type='int', metavar='int',
                                    help='number of physical volumes' )
-parser.add_option('-f','--faces',  dest = 'surfaces', \
-                                   action = 'extend', \
-                                   type = 'string', \
-                                   metavar = '<string LIST>', \
-                                   help = 'surfaces to tag (x, y, and/or z)')
-parser.add_option('-s','--size',   dest = 'size', \
-                                   type='float',\
-                                   metavar='float',\
-                                   help='mesh size' )
-parser.add_option('-d','--dim',    dest = 'dimension', \
-                                   type='int',\
-                                   metavar='float',\
-                                   help='dimension of geometry' )
+parser.add_option('-f','--faces',  dest = 'surfaces', action = 'extend', type = 'string', metavar = '<string LIST>',
+                                   help = 'surfaces to tag {x, y, z}')
+parser.add_option('-s','--size',   dest = 'size', type='float', metavar='float',
+                                   help='mesh size [%default]' )
+parser.add_option('-d','--dim',    dest = 'dimension', type='int', metavar='int',
+                                   help='dimension of geometry [%default]' )
 
 (options, filename) = parser.parse_args()
-parser.set_defaults(size = 0.1)
-parser.set_defaults(dimension = 3)
+parser.set_defaults(size = 0.1,
+                    dimension = 3)
 
 my_geofile   = filename[0]
 numVol       = options.N
@@ -200,5 +194,3 @@ elif (options.dimension == 2):
     f.write('Background Field = 1;\n')     
  
   f.close()
-
-

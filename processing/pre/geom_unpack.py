@@ -15,15 +15,8 @@ scriptName = os.path.splitext(scriptID.split()[1])[0]
 
 parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
 Unpack geometry files containing ranges "a to b" and/or "n of x" multiples (exclusively in one line).
+
 """, version = scriptID)
-
-parser.add_option('-1', '--onedimensional',
-                  dest = 'oneD',
-                  action = 'store_true',
-                  help = 'output geom file with one-dimensional data arrangement [%default]')
-
-parser.set_defaults(oneD = False,
-                   )
 
 (options, filenames) = parser.parse_args()
 
@@ -76,8 +69,7 @@ for name in filenames:
 
   microstructure = table.microstructure_read(info['grid'])                                          # read microstructure
   formatwidth = int(math.floor(math.log10(microstructure.max())+1))                                 # efficient number printing format
-  table.data = microstructure if options.oneD else \
-               microstructure.reshape((info['grid'][0],info['grid'][1]*info['grid'][2]),order='F').transpose()
+  table.data = microstructure.reshape((info['grid'][0],info['grid'][1]*info['grid'][2]),order='F').transpose()
   table.data_writeArray('%%%ii'%(formatwidth),delimiter = ' ')
     
 #--- output finalization --------------------------------------------------------------------------

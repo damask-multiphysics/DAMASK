@@ -113,11 +113,11 @@ Generate geometry description and material configuration by standard Voronoi tes
 parser.add_option('-g', '--grid',
                   dest = 'grid',
                   type = 'int', nargs = 3, metavar = ' '.join(['int']*3),
-                  help = 'a,b,c grid of hexahedral box [from seeds file]')
+                  help = 'a,b,c grid of hexahedral box [auto]')
 parser.add_option('-s', '--size',
                   dest = 'size',
                   type = 'float', nargs = 3, metavar=' '.join(['float']*3),
-                  help = 'x,y,z size of hexahedral box [from seeds file or 1.0 along largest grid point number]')
+                  help = 'x,y,z size of hexahedral box [auto]')
 parser.add_option('-o', '--origin',
                   dest = 'origin',
                   type = 'float', nargs = 3, metavar=' '.join(['float']*3),
@@ -141,7 +141,7 @@ parser.add_option('-e', '--eulers',
 parser.add_option('--axes',
                   dest = 'axes',
                   type = 'string', nargs = 3, metavar = ' '.join(['string']*3),
-                  help = 'orientation coordinate frame in terms of position coordinate frame [same]')
+                  help = 'orientation coordinate frame in terms of position coordinate frame')
 parser.add_option('--homogenization',
                   dest = 'homogenization',
                   type = 'int', metavar = 'int',
@@ -165,7 +165,7 @@ parser.add_option('--secondphase',
 parser.add_option('-l', '--laguerre',
                   dest = 'laguerre',
                   action = 'store_true',
-                  help = 'use Laguerre (weighted Voronoi) tessellation [%default]')
+                  help = 'use Laguerre (weighted Voronoi) tessellation')
 parser.add_option('--cpus',
                   dest = 'cpus',
                   type = 'int', metavar = 'int',
@@ -173,12 +173,9 @@ parser.add_option('--cpus',
 parser.add_option('--nonperiodic',
                   dest = 'nonperiodic',
                   action = 'store_true',
-                  help = 'use nonperiodic tessellation [%default]')
+                  help = 'use nonperiodic tessellation')
 
-parser.set_defaults(grid   = None,
-                    size   = None,
-                    origin = None,
-                    position       = 'pos',
+parser.set_defaults(position       = 'pos',
                     weight         = 'weight',
                     microstructure = 'microstructure',
                     eulers         = 'eulerangles',

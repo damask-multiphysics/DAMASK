@@ -21,11 +21,11 @@ Changes the (three-dimensional) canvas of a spectral geometry description.
 parser.add_option('-g', '--grid',
                   dest = 'grid',
                   type = 'string', nargs = 3, metavar = ' '.join(['string']*3),
-                  help = 'a,b,c grid of hexahedral box [unchanged]')
+                  help = 'a,b,c grid of hexahedral box [auto]')
 parser.add_option('-o', '--offset',
                   dest = 'offset',
                   type = 'int', nargs = 3, metavar = ' '.join(['int']*3),
-                  help = 'a,b,c offset from old to new origin of grid %default')
+                  help = 'a,b,c offset from old to new origin of grid [%default]')
 parser.add_option('-f', '--fill',
                   dest = 'fill',
                   type = 'int', metavar = 'int',
