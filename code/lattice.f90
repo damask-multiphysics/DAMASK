@@ -67,7 +67,7 @@ module lattice
    lattice_tt
 
  real(pReal), allocatable, dimension(:,:,:), protected, public :: &
-   lattice_Strans_v, &                                                                             !< Eigendeformation tensor in vector form
+   lattice_Strans_v, &                                                                              !< Eigendeformation tensor in vector form
    lattice_projectionTrans                                                                          !< Matrix for projection of slip to fault-band (twin) systems for strain-induced martensite nucleation
 
  real(pReal), allocatable, dimension(:,:,:,:), protected, public :: &
@@ -75,15 +75,16 @@ module lattice
    lattice_Strans                                                                                   !< Eigendeformation tensor for phase transformation
 
  real(pReal), allocatable, dimension(:,:), protected, public :: &
-   lattice_shearTwin                                                                                !< characteristic twin shear
-   
+   lattice_shearTwin, &                                                                             !< characteristic twin shear
+   lattice_shearTrans                                                                               !< characteristic transformation shear
+
  integer(pInt), allocatable, dimension(:), protected, public :: &
    lattice_NnonSchmid                                                                               !< total # of non-Schmid contributions for each structure
 
 !--------------------------------------------------------------------------------------------------
 ! fcc
  integer(pInt), dimension(LATTICE_maxNslipFamily), parameter, public :: & 
-   LATTICE_fcc_NslipSystem = int([12, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],pInt)                        !< total # of slip systems per family for fcc
+   LATTICE_fcc_NslipSystem = int([12, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],pInt)                     !< total # of slip systems per family for fcc
    
  integer(pInt), dimension(LATTICE_maxNtwinFamily), parameter, public :: &
    LATTICE_fcc_NtwinSystem = int([12, 0, 0, 0],pInt)                                                !< total # of twin systems per family for fcc
@@ -261,7 +262,10 @@ module lattice
      2,2,2,2,2,2,2,2,2,1,1,1, &
      2,2,2,2,2,2,2,2,2,1,1,1  &
      ],pInt),[LATTICE_fcc_Ntrans,LATTICE_fcc_Ntrans],order=[2,1])                                   !< Trans--trans interaction types for fcc
-     
+ 
+ real(pReal), dimension(LATTICE_fcc_Ntrans), parameter, private :: &
+   LATTICE_fccTohex_shearTrans = sqrt(2.0_pReal)/4.0_pReal
+    
  real(pReal), dimension(4,LATTICE_fcc_Ntrans), parameter, private :: &
    LATTICE_fccTobcc_systemTrans = reshape([&
      0.0, 1.0, 0.0,     10.26, &                                                                    ! Pitsch OR (Ma & Hartmaier 2014, Table 3)
@@ -1391,6 +1395,7 @@ subroutine lattice_init
  allocate(lattice_tn(3,lattice_maxNtwin,Nphases),source=0.0_pReal)
 
  allocate(lattice_shearTwin(lattice_maxNtwin,Nphases),source=0.0_pReal)
+ allocate(lattice_shearTrans(lattice_maxNtrans,Nphases),source=0.0_pReal)
 
  allocate(lattice_Qtrans(3,3,lattice_maxNtrans,Nphases),source=0.0_pReal)
  allocate(lattice_Strans(3,3,lattice_maxNtrans,Nphases),source=0.0_pReal)
@@ -1641,6 +1646,8 @@ subroutine lattice_initializeStructure(myPhase,CoverA,CoverA_trans,a_fcc,a_bcc)
    td, tn
  real(pReal), dimension(lattice_maxNtwin) :: &
    ts
+ real(pReal), dimension(lattice_maxNtrans) :: &
+   trs
  real(pReal), dimension(3,lattice_maxNtrans) :: &
    xtr, ytr, ztr
  real(pReal), dimension(3,3,lattice_maxNtrans) :: &
@@ -1748,6 +1755,7 @@ subroutine lattice_initializeStructure(myPhase,CoverA,CoverA_trans,a_fcc,a_bcc)
            Qtr(1:3,1:3,i) = Rtr(1:3,1:3,i)
            Str(1:3,1:3,i) = math_mul33x33(Rtr(1:3,1:3,i), math_mul33x33(sttr, math_transpose33(Rtr(1:3,1:3,i))))
            Str(1:3,1:3,i) = Str(1:3,1:3,i) - MATH_I3
+           trs(i)     = lattice_fccTohex_shearTrans(i)
          enddo
        case default
          Qtr = 0.0_pReal
@@ -1966,6 +1974,7 @@ subroutine lattice_initializeStructure(myPhase,CoverA,CoverA_trans,a_fcc,a_bcc)
    lattice_Qtrans(1:3,1:3,i,myPhase) = Qtr(1:3,1:3,i)
    lattice_Strans(1:3,1:3,i,myPhase) = Str(1:3,1:3,i)
    lattice_Strans_v(1:6,i,myPhase)   = math_Mandel33to6(math_symmetric33(lattice_Strans(1:3,1:3,i,myPhase)))
+   lattice_shearTrans(i,myPhase)     = trs(i)
  enddo
  do i = 1_pInt,myNcleavage                                                                              ! store slip system vectors and Schmid matrix for my structure
    lattice_Scleavage(1:3,1:3,1,i,myPhase) = math_tensorproduct(cd(1:3,i),cn(1:3,i))
