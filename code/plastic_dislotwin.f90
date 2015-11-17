@@ -88,9 +88,6 @@ module plastic_dislotwin
    plastic_dislotwin_aTolRho, &                                                                !< absolute tolerance for integration of dislocation density
    plastic_dislotwin_aTolTwinFrac, &                                                           !< absolute tolerance for integration of twin volume fraction
    plastic_dislotwin_aTolTransFrac, &                                                          !< absolute tolerance for integration of trans volume fraction
-   plastic_dislotwin_Cdwp, &                                                                   !< Coefficient for double well potential (fcc to bcc transformation)
-   plastic_dislotwin_Cnuc, &                                                                   !< Coefficient for strain-induced martensite nucleation (fcc to bcc transformation) 
-   plastic_dislotwin_Cgro, &                                                                   !< Coefficient for stress-assisted martensite growth (fcc to bcc transformation) 
    plastic_dislotwin_deltaG, &                                                                 !< Free energy difference between austensite and martensite
    plastic_dislotwin_Cmfptrans, &                                                              !<
    plastic_dislotwin_Cthresholdtrans, &                                                        !<
@@ -339,9 +336,6 @@ subroutine plastic_dislotwin_init(fileUnit)
  allocate(plastic_dislotwin_SFE_0K(maxNinstance),                              source=0.0_pReal)
  allocate(plastic_dislotwin_dSFE_dT(maxNinstance),                             source=0.0_pReal)
  allocate(plastic_dislotwin_dipoleFormationFactor(maxNinstance),               source=1.0_pReal) !should be on by default
- allocate(plastic_dislotwin_Cdwp(maxNinstance),                                source=0.0_pReal)
- allocate(plastic_dislotwin_Cnuc(maxNinstance),                                source=0.0_pReal)
- allocate(plastic_dislotwin_Cgro(maxNinstance),                                source=0.0_pReal)
  allocate(plastic_dislotwin_deltaG(maxNinstance),                              source=0.0_pReal)
  allocate(plastic_dislotwin_Cmfptrans(maxNinstance),                           source=0.0_pReal)
  allocate(plastic_dislotwin_Cthresholdtrans(maxNinstance),                     source=0.0_pReal)
@@ -733,12 +727,6 @@ subroutine plastic_dislotwin_init(fileUnit)
          plastic_dislotwin_sbVelocity(instance) = IO_floatValue(line,chunkPos,2_pInt)
        case ('qedgepersbsystem')
          plastic_dislotwin_sbQedge(instance) = IO_floatValue(line,chunkPos,2_pInt)
-       case ('cdwp')
-         plastic_dislotwin_Cdwp(instance) = IO_floatValue(line,chunkPos,2_pInt)
-       case ('cnuc')
-         plastic_dislotwin_Cnuc(instance) = IO_floatValue(line,chunkPos,2_pInt)
-       case ('cgro')
-         plastic_dislotwin_Cgro(instance) = IO_floatValue(line,chunkPos,2_pInt)
        case ('deltag')
          plastic_dislotwin_deltaG(instance) = IO_floatValue(line,chunkPos,2_pInt)
        case ('cmfptrans')
@@ -806,12 +794,6 @@ subroutine plastic_dislotwin_init(fileUnit)
           call IO_error(211_pInt,el=instance,ext_msg='SFE0K ('//PLASTICITY_DISLOTWIN_label//')')
         if (plastic_dislotwin_aTolTransFrac(instance) <= 0.0_pReal) &
           call IO_error(211_pInt,el=instance,ext_msg='aTolTransFrac ('//PLASTICITY_DISLOTWIN_label//')')
-        if (plastic_dislotwin_Cdwp(instance) < 0.0_pReal) &
-          call IO_error(211_pInt,el=instance,ext_msg='Cdwp ('//PLASTICITY_DISLOTWIN_label//')')
-        if (plastic_dislotwin_Cnuc(instance) < 0.0_pReal) &
-          call IO_error(211_pInt,el=instance,ext_msg='Cnuc ('//PLASTICITY_DISLOTWIN_label//')')
-        if (plastic_dislotwin_Cgro(instance) < 0.0_pReal) &
-          call IO_error(211_pInt,el=instance,ext_msg='Cgro ('//PLASTICITY_DISLOTWIN_label//')')
       endif
       if (plastic_dislotwin_sbResistance(instance) < 0.0_pReal) &
         call IO_error(211_pInt,el=instance,ext_msg='sbResistance ('//PLASTICITY_DISLOTWIN_label//')')
