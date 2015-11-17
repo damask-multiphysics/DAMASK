@@ -278,7 +278,7 @@ subroutine plastic_dislotwin_init(fileUnit)
                   f,instance,j,k,l,m,n,o,p,q,r,s,ns,nt,nr, &
                   Nchunks_SlipSlip = 0_pInt, Nchunks_SlipTwin = 0_pInt, &
                   Nchunks_TwinSlip = 0_pInt, Nchunks_TwinTwin = 0_pInt, &
-                  Nchunks_SlipTrans = 0_pInt, Nchunks_TransSlip = 0_pInt, Nchunks_TransTrans, &
+                  Nchunks_SlipTrans = 0_pInt, Nchunks_TransSlip = 0_pInt, Nchunks_TransTrans = 0_pInt, &
                   Nchunks_SlipFamilies = 0_pInt, Nchunks_TwinFamilies = 0_pInt, Nchunks_TransFamilies = 0_pInt, &
                   offset_slip, index_myFamily, index_otherFamily, &
                   startIndex, endIndex
