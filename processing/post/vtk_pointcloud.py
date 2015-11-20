@@ -18,12 +18,12 @@ Produce a VTK point cloud dataset based on coordinates given in an ASCIItable.
 
 """, version = scriptID)
 
-parser.add_option('-c', '--coordinates',
-                  dest = 'coords',
+parser.add_option('-d', '--deformed',
+                  dest = 'deformed',
                   type = 'string', metavar = 'string',
-                  help = 'coordinate label [%default]')
+                  help = 'deformed coordinate label [%default]')
 
-parser.set_defaults(coords = 'pos'
+parser.set_defaults(deformed = 'ipdeformedcoord'
                    )
 
 (options, filenames) = parser.parse_args()
@@ -46,9 +46,9 @@ for name in filenames:
 
   errors =  []
   remarks = []
-  coordDim = table.label_dimension(options.coords)
-  if not 3 >= coordDim >= 1: errors.append('coordinates "{}" need to have one, two, or three dimensions.'.format(options.coords))
-  elif coordDim < 3:         remarks.append('appending {} dimensions to coordinates "{}"...'.format(3-coordDim,options.coords))
+  coordDim = table.label_dimension(options.deformed)
+  if not 3 >= coordDim >= 1: errors.append('coordinates "{}" need to have one, two, or three dimensions.'.format(options.deformed))
+  elif coordDim < 3:         remarks.append('appending {} dimensions to coordinates "{}"...'.format(3-coordDim,options.deformed))
 
   if remarks != []: damask.util.croak(remarks)
   if errors  != []:
@@ -58,7 +58,7 @@ for name in filenames:
 
 # ------------------------------------------ process data ---------------------------------------  
 
-  table.data_readArray(options.coords)
+  table.data_readArray(options.deformed)
   if len(table.data.shape) < 2: table.data.shape += (1,)                                            # expand to 2D shape
   if table.data.shape[1] < 3:
     table.data = np.hstack((table.data,
