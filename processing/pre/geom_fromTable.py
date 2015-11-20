@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 no BOM -*-
 
-import os,sys,string,math
+import os,sys,string,math,types,time
 import scipy.spatial, numpy as np
 from optparse import OptionParser
 import damask
@@ -80,12 +80,16 @@ parser.add_option('--crystallite',
                   dest = 'crystallite',
                   type = 'int', metavar = 'int',
                   help = 'crystallite index to be used [%default]')
+parser.add_option('--debug',
+                  dest = 'debug', action = 'store_true',
+                  help = 'output debug info')
 
 parser.set_defaults(symmetry       = [damask.Symmetry.lattices[-1]],
                     tolerance      = 0.0,
                     degrees        = False,
                     homogenization = 1,
                     crystallite    = 1,
+                    debug          = False,
                    )
 
 (options,filenames) = parser.parse_args()
@@ -110,7 +114,8 @@ if options.axes != None and not set(options.axes).issubset(set(['x','+x','-x','y
                          (options.quaternion,4,'quaternion'),
                          (options.microstructure,1,'microstructure'),
                         ][np.where(input)[0][0]]                                                    # select input label that was requested
-toRadians = math.pi/180.0 if options.degrees else 1.0                                               # rescale degrees to radians
+toRadians = math.pi/180.0 if options.degrees else 1.0                                               # rescale all angles to radians
+threshold = np.cos(options.tolerance/2.*toRadians)                                                  # cosine of (half of) tolerance angle
 
 # --- loop over input files -------------------------------------------------------------------------
 
@@ -134,23 +139,27 @@ for name in filenames:
 
   errors = []
   if not 3 >= coordDim >= 2:
-    errors.append('coordinates {} need to have two or three dimensions.'.format(options.coordinates))
+    errors.append('coordinates "{}" need to have two or three dimensions.'.format(options.coordinates))
   if not np.all(table.label_dimension(label) == dim):
-    errors.append('input {} needs to have dimension {}.'.format(label,dim))
-  if options.phase != None and table.label_dimension(options.phase) != 1:
-    errors.append('phase column {} is not scalar.'.format(options.phase))
+    errors.append('input "{}" needs to have dimension {}.'.format(label,dim))
+  if options.phase and table.label_dimension(options.phase) != 1:
+    errors.append('phase column "{}" is not scalar.'.format(options.phase))
   
   if errors  != []:
     damask.util.croak(errors)
     table.close(dismiss = True)
     continue
 
-  table.data_readArray([options.coordinates,label]+([] if options.phase == None else [options.phase]))
+  table.data_readArray([options.coordinates] \
+                       + ([label] if isinstance(label, types.StringTypes) else label) \
+                       + ([options.phase] if options.phase else []))
   
   if coordDim == 2:
     table.data = np.insert(table.data,2,np.zeros(len(table.data)),axis=1)                           # add zero z coordinate for two-dimensional input
+    if options.debug: damask.util.croak('extending to 3D...')
   if options.phase == None:
     table.data = np.column_stack((table.data,np.ones(len(table.data))))                             # add single phase if no phase column given
+    if options.debug: damask.util.croak('adding dummy phase info...')
 
 # --------------- figure out size and grid ---------------------------------------------------------
 
@@ -179,65 +188,111 @@ for name in filenames:
   
 # ------------------------------------------ process data ------------------------------------------
 
-  colOri = table.label_index(label)+(3-coordDim)                                                      # column(s) of orientation data (following 3 or 2 coordinates that were expanded to 3!)
+  colOri = table.label_index(label)+(3-coordDim)                                                    # column(s) of orientation data (following 3 or 2 coordinates that were expanded to 3!)
 
   if inputtype == 'microstructure':
     microstructure = table.data[:,colOri]
     nGrains = len(np.unique(microstructure))
   else:
-    colPhase = colOri + np.sum(dim)                                                                   # column of phase data comes after orientation
-    index = np.lexsort((table.data[:,0],table.data[:,1],table.data[:,2]))                             # index of rank when sorting x fast, z slow
-    rank  = np.argsort(index)                                                                         # rank of index
-    KDTree = scipy.spatial.KDTree((table.data[:,:3]-mincorner) / delta)                               # build KDTree with dX = dY = dZ = 1 and origin 0,0,0
+
+# --- start background messaging
+
+    bg = damask.util.backgroundMessage()
+    bg.start()
+
+    colPhase = -1                                                                                   # column of phase data comes last
+    bg.set_message('sorting positions...')
+    index  = np.lexsort((table.data[:,0],table.data[:,1],table.data[:,2]))                          # index of position when sorting x fast, z slow
+    bg.set_message('building KD tree...')
+    KDTree = scipy.spatial.KDTree((table.data[index,:3]-mincorner) / delta)                         # build KDTree with dX = dY = dZ = 1 and origin 0,0,0
   
-    microstructure = np.zeros(N,dtype = 'uint32')                                                     # initialize empty microstructure
-    symQuats = []                                                                                     # empty list of sym equiv orientations
-    phases   = []                                                                                     # empty list of phase info
-    nGrains = 0                                                                                       # counter for detected grains
-    myRank  = 0                                                                                       # rank of current grid point
+    statistics = {'global': 0, 'local': 0}
+    grain = -np.ones(N,dtype = 'int32')                                                             # initialize empty microstructure
+    orientations = []                                                                               # empty list of orientations
+    multiplicity = []                                                                               # empty list of orientation multiplicity (number of group members)
+    phases       = []                                                                               # empty list of phase info
+    nGrains = 0                                                                                     # counter for detected grains
+    existingGrains = np.arange(nGrains)
+    myPos   = 0                                                                                     # position (in list) of current grid point
+
+    tick = time.clock()
+    bg.set_message('assigning grain IDs...')
+
     for z in xrange(grid[2]):
       for y in xrange(grid[1]):
         for x in xrange(grid[0]):
-          if (myRank+1)%(N/100.) < 1: damask.util.croak('.',False)
-          myData = table.data[index[myRank]]
-          mySym = options.symmetry[min(int(myData[colPhase]),len(options.symmetry))-1]                # select symmetry from option (take last specified option for all with higher index)
+          if (myPos+1)%(N/500.) < 1:
+            time_delta = (time.clock()-tick) * (N - myPos) / myPos
+            bg.set_message('(%02i:%02i:%02i) processing point %i of %i (grain count %i)...'%(time_delta//3600,time_delta%3600//60,time_delta%60,myPos,N,nGrains))
+
+          myData = table.data[index[myPos]]                                                         # read data for current grid point
+          myPhase = int(myData[colPhase])
+          mySym = options.symmetry[min(myPhase,len(options.symmetry))-1]                            # select symmetry from option (take last specified option for all with higher index)
+
           if inputtype == 'eulers':
             o = damask.Orientation(Eulers = myData[colOri:colOri+3]*toRadians,
-                                   symmetry = mySym).reduced()
+                                   symmetry = mySym)
           elif inputtype == 'matrix':
             o = damask.Orientation(matrix = myData[colOri:colOri+9].reshape(3,3).transpose(),
-                                   symmetry = mySym).reduced()
+                                   symmetry = mySym)
           elif inputtype == 'frame':
             o = damask.Orientation(matrix = np.hstack((myData[colOri[0]:colOri[0]+3],
                                                        myData[colOri[1]:colOri[1]+3],
                                                        myData[colOri[2]:colOri[2]+3],
                                                       )).reshape(3,3),
-                                   symmetry = mySym).reduced()
+                                   symmetry = mySym)
           elif inputtype == 'quaternion':
             o = damask.Orientation(quaternion = myData[colOri:colOri+4],
-                                   symmetry = mySym).reduced()
+                                   symmetry = mySym)
           
-          neighbors = KDTree.query_ball_point([x,y,z], 3)                                             # search points within radius
-          breaker = False
+          cos_disorientations = -np.ones(1,dtype='f')                                               # largest possible disorientation
+          closest_grain = -1                                                                        # invalid neighbor
 
-          for n in neighbors:                                                                         # check each neighbor
-            if myRank <= rank[n] or table.data[n,colPhase] != myData[colPhase]: continue              # skip myself, anyone further ahead (cannot yet have a grain ID), and other phases
-            for symQ in symQuats[microstructure[rank[n]]-1]:
-              if (symQ*o.quaternion).asAngleAxis(degrees = options.degrees)[0] <= options.tolerance:                # found existing orientation resembling me
-                microstructure[myRank] = microstructure[rank[n]]
-                breaker = True; break
-            if breaker: break
+          neighbors = np.array(KDTree.query_ball_point([x,y,z], 3))                                 # point indices within radius
+          neighbors = neighbors[(neighbors < myPos) & \
+                                (table.data[index[neighbors],colPhase] == myPhase)]                 # filter neighbors: skip myself, anyone further ahead (cannot yet have a grain ID), and other phases
+          grains = np.unique(grain[neighbors])                                                      # unique grain IDs among valid neighbors
 
-          if microstructure[myRank] == 0:                                                             # no other orientation resembled me
-            nGrains += 1                                                                              # make new grain ...
-            microstructure[myRank] = nGrains                                                          # ... and assign to me
-            symQuats.append(o.symmetry.equivalentQuaternions(o.quaternion.conjugated()))              # store all symmetrically equivalent orientations for future comparison
-            phases.append(myData[colPhase])                                                           # store phase info for future reporting
+          if len(grains) > 0:                                                                       # check immediate neighborhood first
+            cos_disorientations = np.array([o.disorientation(orientations[grainID],
+                                                             SST = False)[0].quaternion.w \
+                                            for grainID in grains])                                 # store disorientation per grainID
+            closest_grain = np.argmax(cos_disorientations)                                          # find grain among grains that has closest orientation to myself
+            match = 'local'
 
-          myRank += 1
+          if cos_disorientations[closest_grain] < threshold:                                        # orientation not close enough?
+            grains = existingGrains[np.atleast_1d( ( np.array(phases) == myPhase ) & \
+                                                   ( np.in1d(existingGrains,grains,invert=True) ) )] # check every other already identified grain (of my phase)
 
-    damask.util.croak('')
+            if len(grains) > 0:
+              cos_disorientations = np.array([o.disorientation(orientations[grainID],
+                                                               SST = False)[0].quaternion.w \
+                                              for grainID in grains])                               # store disorientation per grainID
+              closest_grain = np.argmax(cos_disorientations)                                        # find grain among grains that has closest orientation to myself
+              match = 'global'
 
+          if cos_disorientations[closest_grain] >= threshold:                                       # orientation now close enough?
+            grainID = grains[closest_grain]
+            grain[myPos] = grainID                                                                  # assign myself to that grain ...
+            orientations[grainID] = damask.Orientation.average([orientations[grainID],o],
+                                                               [multiplicity[grainID],1])           # update average orientation of best matching grain
+            multiplicity[grainID] += 1
+            statistics[match] += 1
+          else:
+            grain[myPos] = nGrains                                                                  # ... and assign to me
+            orientations.append(o)                                                                  # store new orientation for future comparison
+            multiplicity.append(1)                                                                  # having single occurrence so far
+            phases.append(myPhase)                                                                  # store phase info for future reporting
+            nGrains += 1                                                                            # update counter ...
+            existingGrains = np.arange(nGrains)
+
+          myPos += 1
+
+    bg.stop()
+    bg.join()
+
+    if options.debug: damask.util.croak("{} seconds total.\n{} local and {} global matches.".format(time.clock()-tick,statistics['local'],statistics['global']))
+    
 # --- generate header ----------------------------------------------------------------------------
 
   info = {
@@ -248,12 +303,12 @@ for name in filenames:
           'homogenization':  options.homogenization,
          }
 
-  damask.util.croak(['grid     a b c:  %s'%(' x '.join(map(str,info['grid']))),
-               'size     x y z:  %s'%(' x '.join(map(str,info['size']))),
-               'origin   x y z:  %s'%(' : '.join(map(str,info['origin']))),
-               'homogenization:  %i'%info['homogenization'],
-               'microstructures: %i'%info['microstructures'],
-              ])
+  damask.util.croak(['grid     a b c:  {}'.format(' x '.join(map(str,info['grid']))),
+                     'size     x y z:  {}'.format(' x '.join(map(str,info['size']))),
+                     'origin   x y z:  {}'.format(' : '.join(map(str,info['origin']))),
+                     'homogenization:  {}'.format(info['homogenization']),
+                     'microstructures: {}'.format(info['microstructures']),
+                    ])
     
 # --- write header ---------------------------------------------------------------------------------
 
@@ -270,28 +325,22 @@ for name in filenames:
                        ]
   
     config_header += ['<texture>']
-    for i,quats in enumerate(symQuats):
+    for i,orientation in enumerate(orientations):
       config_header += ['[Grain%s]'%(str(i+1).zfill(formatwidth)),
                         'axes\t%s %s %s'%tuple(options.axes) if options.axes != None else '',
-                        '(gauss)\tphi1 %g\tPhi %g\tphi2 %g\tscatter 0.0\tfraction 1.0'%tuple(np.degrees(quats[0].asEulers())),
+                        '(gauss)\tphi1 %g\tPhi %g\tphi2 %g\tscatter 0.0\tfraction 1.0'%tuple(orientation.asEulers(degrees = True)),
                        ]
   
   table.labels_clear()
   table.info_clear()
-  table.info_append([
-    scriptID + ' ' + ' '.join(sys.argv[1:]),
-    "grid\ta {}\tb {}\tc {}".format(*info['grid']),
-    "size\tx {}\ty {}\tz {}".format(*info['size']),
-    "origin\tx {}\ty {}\tz {}".format(*info['origin']),
-    "homogenization\t{}".format(info['homogenization']),
-    "microstructures\t{}".format(info['microstructures']),
-    config_header,
-    ])
+  table.info_append([scriptID + ' ' + ' '.join(sys.argv[1:])])
+  table.head_putGeom(info)
+  table.info_append(config_header)
   table.head_write()
   
 # --- write microstructure information ------------------------------------------------------------
 
-  table.data = microstructure.reshape(info['grid'][1]*info['grid'][2],info['grid'][0])
+  table.data = grain.reshape(info['grid'][1]*info['grid'][2],info['grid'][0]) + 1                   # offset from starting index 0 to 1
   table.data_writeArray('%%%ii'%(formatwidth),delimiter=' ')
   
 #--- output finalization --------------------------------------------------------------------------
