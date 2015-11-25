@@ -43,7 +43,7 @@ module FEsolving
    modelName                                                                                        !< needs description
    
  logical, dimension(:,:), allocatable, public :: &
-   calcMode                                                                                         !< needs description
+   calcMode                                                                                         !< do calculation or simply collect when using ping pong scheme
 
  public :: FE_init
 

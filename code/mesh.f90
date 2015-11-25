@@ -583,6 +583,7 @@ subroutine mesh_init(ip,el)
  size3       = geomSize(3)*real(grid3,pReal)      /real(grid(3),pReal)
  size3Offset = geomSize(3)*real(grid3Offset,pReal)/real(grid(3),pReal)
 #endif
+
  if (myDebug) write(6,'(a)') ' Grid partitioned'; flush(6)
  call mesh_spectral_count()
  if (myDebug) write(6,'(a)') ' Counted nodes/elements'; flush(6)
@@ -594,20 +595,6 @@ subroutine mesh_init(ip,el)
  if (myDebug) write(6,'(a)') ' Built nodes'; flush(6)
  call mesh_spectral_build_elements(FILEUNIT)
  if (myDebug) write(6,'(a)') ' Built elements'; flush(6)
- call mesh_get_damaskOptions(FILEUNIT)
- if (myDebug) write(6,'(a)') ' Got DAMASK options'; flush(6)
- call mesh_build_cellconnectivity
- if (myDebug) write(6,'(a)') ' Built cell connectivity'; flush(6)
- mesh_cellnode = mesh_build_cellnodes(mesh_node,mesh_Ncellnodes)
- if (myDebug) write(6,'(a)') ' Built cell nodes'; flush(6)
- call mesh_build_ipCoordinates
- if (myDebug) write(6,'(a)') ' Built IP coordinates'; flush(6)
- call mesh_build_ipVolumes
- if (myDebug) write(6,'(a)') ' Built IP volumes'; flush(6)
- call mesh_build_ipAreas
- if (myDebug) write(6,'(a)') ' Built IP areas'; flush(6)
- call mesh_spectral_build_ipNeighborhood(FILEUNIT)
- if (myDebug) write(6,'(a)') ' Built IP neighborhood'; flush(6)
 #endif
 #ifdef Marc4DAMASK
  call IO_open_inputFile(FILEUNIT,modelName)                                                         ! parse info from input file...
@@ -632,24 +619,6 @@ subroutine mesh_init(ip,el)
  if (myDebug) write(6,'(a)') ' Counted CP sizes'; flush(6)
  call mesh_marc_build_elements(FILEUNIT)
  if (myDebug) write(6,'(a)') ' Built elements'; flush(6)
- call mesh_get_damaskOptions(FILEUNIT)
- if (myDebug) write(6,'(a)') ' Got DAMASK options'; flush(6)
- call mesh_build_cellconnectivity
- if (myDebug) write(6,'(a)') ' Built cell connectivity'; flush(6)
- mesh_cellnode = mesh_build_cellnodes(mesh_node,mesh_Ncellnodes)
- if (myDebug) write(6,'(a)') ' Built cell nodes'; flush(6)
- call mesh_build_ipCoordinates
- if (myDebug) write(6,'(a)') ' Built IP coordinates'; flush(6)
- call mesh_build_ipVolumes
- if (myDebug) write(6,'(a)') ' Built IP volumes'; flush(6)
- call mesh_build_ipAreas
- if (myDebug) write(6,'(a)') ' Built IP areas'; flush(6)
- call mesh_build_nodeTwins
- if (myDebug) write(6,'(a)') ' Built node twins'; flush(6)
- call mesh_build_sharedElems
- if (myDebug) write(6,'(a)') ' Built shared elements'; flush(6)
- call mesh_build_ipNeighborhood
- if (myDebug) write(6,'(a)') ' Built IP neighborhood'; flush(6)
 #endif
 #ifdef Abaqus
  call IO_open_inputFile(FILEUNIT,modelName)                                                         ! parse info from input file...
@@ -677,6 +646,8 @@ subroutine mesh_init(ip,el)
  if (myDebug) write(6,'(a)') ' Counted CP sizes'; flush(6)
  call mesh_abaqus_build_elements(FILEUNIT)
  if (myDebug) write(6,'(a)') ' Built elements'; flush(6)
+#endif
+
  call mesh_get_damaskOptions(FILEUNIT)
  if (myDebug) write(6,'(a)') ' Got DAMASK options'; flush(6)
  call mesh_build_cellconnectivity
@@ -689,15 +660,19 @@ subroutine mesh_init(ip,el)
  if (myDebug) write(6,'(a)') ' Built IP volumes'; flush(6)
  call mesh_build_ipAreas
  if (myDebug) write(6,'(a)') ' Built IP areas'; flush(6)
+ close (FILEUNIT)
+
+#if defined(Marc4DAMASK) || defined(Abaqus)
  call mesh_build_nodeTwins
  if (myDebug) write(6,'(a)') ' Built node twins'; flush(6)
  call mesh_build_sharedElems
  if (myDebug) write(6,'(a)') ' Built shared elements'; flush(6)
  call mesh_build_ipNeighborhood
- if (myDebug) write(6,'(a)') ' Built IP neighborhood'; flush(6)
+#else
+ call mesh_spectral_build_ipNeighborhood(FILEUNIT)
 #endif
+ if (myDebug) write(6,'(a)') ' Built IP neighborhood'; flush(6)
 
- close (FILEUNIT)
  if (worldrank == 0_pInt) then
    call mesh_tell_statistics
    call mesh_write_meshfile
@@ -798,7 +773,6 @@ subroutine mesh_build_cellconnectivity
    matchingNodeID, &
    localCellnodeID
  
-
  allocate(mesh_cell(FE_maxNcellnodesPerCell,mesh_maxNips,mesh_NcpElems), source=0_pInt)
  allocate(matchingNode2cellnode(mesh_Nnodes),                            source=0_pInt)
  allocate(cellnodeParent(2_pInt,mesh_maxNcellnodes*mesh_NcpElems),       source=0_pInt)
@@ -3587,9 +3561,7 @@ enddo
   endif
 
   if (iand(myDebug,debug_levelExtensive) /= 0_pInt) then
-    write(6,*)
-    write(6,*) 'Input Parser: ELEMENT TYPE'
-    write(6,*)
+    write(6,'(/,a,/)') 'Input Parser: ELEMENT TYPE'
     write(6,'(a8,3(1x,a8))') 'elem','elemtype','geomtype','celltype'
     do e = 1_pInt,mesh_NcpElems
       if (iand(myDebug,debug_levelSelective)   /= 0_pInt .and. debug_e /= e) cycle
@@ -3598,12 +3570,9 @@ enddo
       c = FE_celltype(g)                         ! get cellType
       write(6,'(i8,3(1x,i8))') e,t,g,c
     enddo
-    write(6,*)
-    write(6,*) 'Input Parser: ELEMENT VOLUME'
-    write(6,*)
-    write(6,'(a13,1x,e15.8)') 'total volume', sum(mesh_ipVolume)
-    write(6,*)
-    write(6,'(a8,1x,a5,1x,a15,1x,a5,1x,a15,1x,a16)') 'elem','IP','volume','face','area','-- normal --'
+    write(6,'(/,a)') 'Input Parser: ELEMENT VOLUME'
+    write(6,'(/,a13,1x,e15.8)') 'total volume', sum(mesh_ipVolume)
+    write(6,'(/,a8,1x,a5,1x,a15,1x,a5,1x,a15,1x,a16)') 'elem','IP','volume','face','area','-- normal --'
     do e = 1_pInt,mesh_NcpElems
       if (iand(myDebug,debug_levelSelective)   /= 0_pInt .and. debug_e /= e) cycle
       t = mesh_element(2,e)                                                              ! get element type
@@ -3617,9 +3586,7 @@ enddo
         enddo
       enddo
     enddo
-    write(6,*)
-    write(6,*) 'Input Parser: CELLNODE COORDINATES'
-    write(6,*)
+    write(6,'(/,a,/)') 'Input Parser: CELLNODE COORDINATES'
     write(6,'(a8,1x,a2,1x,a8,3(1x,a12))') 'elem','IP','cellnode','x','y','z'
     do e = 1_pInt,mesh_NcpElems                                                          ! loop over cpElems
       if (iand(myDebug,debug_levelSelective)   /= 0_pInt .and. debug_e /= e) cycle
@@ -3635,8 +3602,7 @@ enddo
         enddo
       enddo
     enddo
-    write(6,*)
-    write(6,*) 'Input Parser: IP COORDINATES'
+    write(6,'(/,a)') 'Input Parser: IP COORDINATES'
     write(6,'(a8,1x,a5,3(1x,a12))') 'elem','IP','x','y','z'
     do e = 1_pInt,mesh_NcpElems
       if (iand(myDebug,debug_levelSelective)   /= 0_pInt .and. debug_e /= e) cycle
@@ -3645,19 +3611,15 @@ enddo
         write(6,'(i8,1x,i5,3(1x,f12.8))') e, i, mesh_ipCoordinates(:,i,e)
       enddo
     enddo 
-    write(6,*)
 #ifndef Spectral
-    write(6,*) 'Input Parser: NODE TWINS'
-    write(6,*)
+    write(6,'(/,a,/)') 'Input Parser: NODE TWINS'
     write(6,'(a6,3(3x,a6))') '  node','twin_x','twin_y','twin_z'
     do n = 1_pInt,mesh_Nnodes                    ! loop over cpNodes
       if (iand(myDebug,debug_levelSelective) /= 0_pInt .and. .not. any(mesh_element(5:,debug_e) == n)) cycle
       write(6,'(i6,3(3x,i6))') n, mesh_nodeTwins(1:3,n)
     enddo
-    write(6,*)
 #endif
-    write(6,*) 'Input Parser: IP NEIGHBORHOOD'
-    write(6,*)
+    write(6,'(/,a,/)') 'Input Parser: IP NEIGHBORHOOD'
     write(6,'(a8,1x,a10,1x,a10,1x,a3,1x,a13,1x,a13)') 'elem','IP','neighbor','','elemNeighbor','ipNeighbor'
     do e = 1_pInt,mesh_NcpElems                                                          ! loop over cpElems
       if (iand(myDebug,debug_levelSelective)   /= 0_pInt .and. debug_e /= e) cycle
