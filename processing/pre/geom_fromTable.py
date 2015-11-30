@@ -80,16 +80,16 @@ parser.add_option('--crystallite',
                   dest = 'crystallite',
                   type = 'int', metavar = 'int',
                   help = 'crystallite index to be used [%default]')
-parser.add_option('--debug',
-                  dest = 'debug', action = 'store_true',
-                  help = 'output debug info')
+parser.add_option('--verbose',
+                  dest = 'verbose', action = 'store_true',
+                  help = 'output extra info')
 
 parser.set_defaults(symmetry       = [damask.Symmetry.lattices[-1]],
                     tolerance      = 0.0,
                     degrees        = False,
                     homogenization = 1,
                     crystallite    = 1,
-                    debug          = False,
+                    verbose          = False,
                    )
 
 (options,filenames) = parser.parse_args()
@@ -156,10 +156,10 @@ for name in filenames:
   
   if coordDim == 2:
     table.data = np.insert(table.data,2,np.zeros(len(table.data)),axis=1)                           # add zero z coordinate for two-dimensional input
-    if options.debug: damask.util.croak('extending to 3D...')
+    if options.verbose: damask.util.croak('extending to 3D...')
   if options.phase == None:
     table.data = np.column_stack((table.data,np.ones(len(table.data))))                             # add single phase if no phase column given
-    if options.debug: damask.util.croak('adding dummy phase info...')
+    if options.verbose: damask.util.croak('adding dummy phase info...')
 
 # --------------- figure out size and grid ---------------------------------------------------------
 
@@ -197,13 +197,14 @@ for name in filenames:
 
 # --- start background messaging
 
-    bg = damask.util.backgroundMessage()
-    bg.start()
+    if options.verbose:
+      bg = damask.util.backgroundMessage()
+      bg.start()
 
     colPhase = -1                                                                                   # column of phase data comes last
-    bg.set_message('sorting positions...')
+    if options.verbose: bg.set_message('sorting positions...')
     index  = np.lexsort((table.data[:,0],table.data[:,1],table.data[:,2]))                          # index of position when sorting x fast, z slow
-    bg.set_message('building KD tree...')
+    if options.verbose: bg.set_message('building KD tree...')
     KDTree = scipy.spatial.KDTree((table.data[index,:3]-mincorner) / delta)                         # build KDTree with dX = dY = dZ = 1 and origin 0,0,0
   
     statistics = {'global': 0, 'local': 0}
@@ -216,14 +217,15 @@ for name in filenames:
     myPos   = 0                                                                                     # position (in list) of current grid point
 
     tick = time.clock()
-    bg.set_message('assigning grain IDs...')
+    if options.verbose: bg.set_message('assigning grain IDs...')
 
     for z in xrange(grid[2]):
       for y in xrange(grid[1]):
         for x in xrange(grid[0]):
           if (myPos+1)%(N/500.) < 1:
             time_delta = (time.clock()-tick) * (N - myPos) / myPos
-            bg.set_message('(%02i:%02i:%02i) processing point %i of %i (grain count %i)...'%(time_delta//3600,time_delta%3600//60,time_delta%60,myPos,N,nGrains))
+            if options.verbose: bg.set_message('(%02i:%02i:%02i) processing point %i of %i (grain count %i)...'
+                                            %(time_delta//3600,time_delta%3600//60,time_delta%60,myPos,N,nGrains))
 
           myData = table.data[index[myPos]]                                                         # read data for current grid point
           myPhase = int(myData[colPhase])
@@ -288,10 +290,12 @@ for name in filenames:
 
           myPos += 1
 
-    bg.stop()
-    bg.join()
+    if options.verbose:
+      bg.stop()
+      bg.join()
 
-    if options.debug: damask.util.croak("{} seconds total.\n{} local and {} global matches.".format(time.clock()-tick,statistics['local'],statistics['global']))
+    if options.verbose: damask.util.croak("{} seconds total.\n{} local and {} global matches.".\
+                                        format(time.clock()-tick,statistics['local'],statistics['global']))
     
 # --- generate header ----------------------------------------------------------------------------
 
