@@ -298,8 +298,6 @@ type(tSolutionState) function &
    S_scale = math_invSym3333(C_minMaxAvg)
  endif  
 
- AL_solution%converged =.false.
-  
 !--------------------------------------------------------------------------------------------------
 ! set module wide availabe data 
  mask_stress = P_BC%maskFloat
@@ -320,7 +318,8 @@ type(tSolutionState) function &
  AL_solution%termIll = terminallyIll
  terminallyIll = .false.
  AL_solution%converged = .true.
- if (reason < 1 ) AL_solution%converged = .false.
+
+ if (reason < 1 .and. reason /= -4) AL_solution%converged = .false.                                 ! reason -4 (SNES_DIVERGED_FNORM_NAN) happens in case of homogeneous solution
  AL_solution%iterationsNeeded = totalIter
 
 end function AL_solution

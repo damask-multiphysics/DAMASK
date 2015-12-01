@@ -296,7 +296,6 @@ type(tSolutionState) function &
    C_scale = C_minMaxAvg
    S_scale = math_invSym3333(C_minMaxAvg)
  endif  
- Polarisation_solution%converged =.false.
 
 !--------------------------------------------------------------------------------------------------
 ! set module wide availabe data
@@ -318,7 +317,8 @@ type(tSolutionState) function &
  Polarisation_solution%termIll = terminallyIll
  terminallyIll = .false.
  Polarisation_solution%converged = .true.
- if (reason < 1 ) Polarisation_solution%converged = .false.
+
+ if (reason < 1 .and. reason /= -4) Polarisation_solution%converged = .false.                       ! reason -4 (SNES_DIVERGED_FNORM_NAN) happens in case of homogeneous solution
  Polarisation_solution%iterationsNeeded = totalIter
 
 end function Polarisation_solution

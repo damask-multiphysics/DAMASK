@@ -265,7 +265,6 @@ type(tSolutionState) function basicPETSc_solution( &
  S = Utilities_maskedCompliance(rotation_BC,P_BC%maskLogical,C_volAvg)
  if (update_gamma) call Utilities_updateGamma(C_minmaxAvg,restartWrite)
  
- BasicPETSc_solution%converged =.false.
  
 !--------------------------------------------------------------------------------------------------
 ! set module wide availabe data 
@@ -275,18 +274,21 @@ type(tSolutionState) function basicPETSc_solution( &
  params%timeinc = timeinc
  params%timeincOld = timeinc_old
 
- call SNESSolve(snes,PETSC_NULL_OBJECT,solution_vec,ierr); CHKERRQ(ierr)
- call SNESGetConvergedReason(snes,reason,ierr); CHKERRQ(ierr)
+!--------------------------------------------------------------------------------------------------
+! solve BVP 
+ call SNESSolve(snes,PETSC_NULL_OBJECT,solution_vec,ierr)
+ CHKERRQ(ierr)
+
+!--------------------------------------------------------------------------------------------------
+! check convergence
+ call SNESGetConvergedReason(snes,reason,ierr)
+ CHKERRQ(ierr)
  basicPETSc_solution%termIll = terminallyIll
  terminallyIll = .false.
+ BasicPETSc_solution%converged =.true.
 
- if (reason < 1) then
-   basicPETSC_solution%converged = .false.
-   basicPETSC_solution%iterationsNeeded = itmax
- else
-   basicPETSC_solution%converged = .true.
-   basicPETSC_solution%iterationsNeeded = totalIter
- endif
+ if (reason < 1 .and. reason /= -4) basicPETSC_solution%converged = .false.                         ! reason -4 (SNES_DIVERGED_FNORM_NAN) happens in case of homogeneous solution
+ basicPETSC_solution%iterationsNeeded = totalIter
 
 end function BasicPETSc_solution
 
