@@ -35,13 +35,8 @@ ifeq ($(strip $(F90)),)
 	F90 :=$(findstring ifort,$(FC) $(COMPILEROUT))
 endif
 
-ifeq "$(FASTBUILD)" "YES"
-OPENMP := OFF
-OPTIMIZATION := OFF
-else
 OPENMP ?= ON
 OPTIMIZATION ?= DEFENSIVE
-endif
 
 ifeq "$(OPTIMIZATION)" "OFF"
 OPTI    := OFF
@@ -80,10 +75,10 @@ STANDARD_CHECK_ifort =$(STANDARD_CHECK)
 STANDARD_CHECK_gfortran =$(STANDARD_CHECK)
 endif
 
-ifneq "$(FASTBUILD)" "YES"
+
 STANDARD_CHECK_ifort ?=-stand f08 -standard-semantics
 STANDARD_CHECK_gfortran ?=-std=f2008ts -pedantic-errors
-endif
+
 #-pedantic:                    more strict on standard, enables some warnings
 #   -pedantic-errors:          like pedantic, but errors instead of warnings
 OPTIMIZATION_OFF_ifort           :=-O0 -no-ip
@@ -99,7 +94,7 @@ COMPILE_OPTIONS_ifort    :=-fpp\
                            -ftz\
                            -assume byterecl
 
-ifneq "$(FASTBUILD)" "YES"
+
 COMPILE_OPTIONS_ifort    +=-diag-enable sc3\
                            -diag-disable 5268\
                            -warn declarations\
@@ -109,7 +104,7 @@ COMPILE_OPTIONS_ifort    +=-diag-enable sc3\
                            -warn ignore_loc\
                            -warn alignments\
                            -warn unused
-endif
+
 ###################################################################################################
 #COMPILE SWITCHES
 #-shared-intel:            Link against shared Intel libraries instead of static ones
@@ -174,7 +169,7 @@ DEBUG_OPTIONS_ifort      :=-g\
 #   stack:
 LINK_OPTIONS_gfortran    :=-Wl,-undefined,dynamic_lookup
 COMPILE_OPTIONS_gfortran :=-xf95-cpp-input
-ifneq "$(FASTBUILD)" "YES"
+
 COMPILE_OPTIONS_gfortran +=-ffree-line-length-132\
                            -fimplicit-none\
                            -fmodule-private\
@@ -187,7 +182,7 @@ COMPILE_OPTIONS_gfortran +=-ffree-line-length-132\
                            -Wconversion-extra\
                            -Wimplicit-procedure\
                            -Wno-unused-parameter
-endif
+
 ###################################################################################################
 #COMPILE SWITCHES
 #-shared
