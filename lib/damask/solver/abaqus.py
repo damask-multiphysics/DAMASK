@@ -10,7 +10,6 @@ class Abaqus(Solver):
   def __init__(self,version='',solver=''):                                                          # example of version string: 6.12-2, solver: either std or exp
     self.solver='Abaqus'
     if version =='':
-      print 'hallo'
       import subprocess
       process = subprocess.Popen(['abaqus', 'information=release'],stdout = subprocess.PIPE,stderr = subprocess.PIPE)
       self.version = process.stdout.readlines()[1].split()[1]
