@@ -80,7 +80,7 @@ OPTIMIZATION_OFF_ifort           :=-O0 -no-ip
 OPTIMIZATION_OFF_gfortran        :=-O0
 OPTIMIZATION_DEFENSIVE_ifort     :=-O2
 OPTIMIZATION_DEFENSIVE_gfortran  :=-O2
-OPTIMIZATION_AGGRESSIVE_ifort    :=-fast                                                            #-ipo, -O3, -no-prec-div, -static, -fp-model fast=2, and -xHost
+OPTIMIZATION_AGGRESSIVE_ifort    :=-ipo -O3 -no-prec-div -fp-model fast=2 -xHost                    #-fast = -ipo, -O3, -no-prec-div, -static, -fp-model fast=2, and -xHost
 OPTIMIZATION_AGGRESSIVE_gfortran :=-O3 -ffast-math -funroll-loops -ftree-vectorize
 
 
