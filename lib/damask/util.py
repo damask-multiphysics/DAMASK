@@ -89,6 +89,9 @@ class backgroundMessage(threading.Thread):
              'pulse':    [u'·',u'•',u'\u25cf',u'\u25cf',u'•',],
              'ant':      [u'\u2801',u'\u2802',u'\u2810',u'\u2820',u'\u2804',u'\u2840',u'\u2880',u'\u2820',u'\u2804',u'\u2802',u'\u2810',u'\u2808'],
              'juggle':   [u'\ua708',u'\ua709',u'\ua70a',u'\ua70b',u'\ua70c',u'\ua711',u'\ua710',u'\ua70f',u'\ua70d',],
+#             'wobbler':  [u'\u2581',u'\u25e3',u'\u258f',u'\u25e4',u'\u2594',u'\u25e5',u'\u2595',u'\u25e2',],
+             'grout':  [u'\u2581',u'\u258f',u'\u2594',u'\u2595',],
+             'partner':  [u'\u26ac',u'\u26ad',u'\u26ae',u'\u26af',u'\u26ae',u'\u26ad',],
              'classic':  ['-', '\\', '|', '/',],
             }    
 
