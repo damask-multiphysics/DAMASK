@@ -89,7 +89,7 @@ parser.set_defaults(symmetry       = [damask.Symmetry.lattices[-1]],
                     degrees        = False,
                     homogenization = 1,
                     crystallite    = 1,
-                    verbose          = False,
+                    verbose        = False,
                    )
 
 (options,filenames) = parser.parse_args()
@@ -293,9 +293,8 @@ for name in filenames:
     if options.verbose:
       bg.stop()
       bg.join()
-
-    if options.verbose: damask.util.croak("{} seconds total.\n{} local and {} global matches.".\
-                                        format(time.clock()-tick,statistics['local'],statistics['global']))
+      damask.util.croak("{} seconds total.\n{} local and {} global matches.".\
+                        format(time.clock()-tick,statistics['local'],statistics['global']))
     
 # --- generate header ----------------------------------------------------------------------------
 
