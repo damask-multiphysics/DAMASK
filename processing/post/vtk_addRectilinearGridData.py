@@ -38,6 +38,10 @@ parser.add_option('-c', '--color',
                   dest = 'color',
                   action = 'extend', metavar = '<string LIST>',
                   help = 'RGB color tuple label')
+parser.add_option('-r', '--inplace',
+                  dest = 'inplace',
+                  action = 'store_true',
+                  help = 'modify VTK file in place')
 parser.add_option('-r', '--render',
                   dest = 'render',
                   action = 'store_true',
@@ -46,6 +50,7 @@ parser.add_option('-r', '--render',
 parser.set_defaults(scalar = [],
                     vector = [],
                     color = [],
+                    inplace = False,
                     render = False,
 )
 
@@ -147,7 +152,7 @@ for name in filenames:
   writer = vtk.vtkXMLRectilinearGridWriter()
   writer.SetDataModeToBinary()
   writer.SetCompressorTypeToZLib()
-  writer.SetFileName(os.path.splitext(options.vtk)[0]+'_added.vtr')
+  writer.SetFileName(os.path.splitext(options.vtk)[0]+('' if options.inplace else '_added.vtr'))
   if vtk.VTK_MAJOR_VERSION <= 5: writer.SetInput(rGrid)
   else:                          writer.SetInputData(rGrid)
   writer.Write()
