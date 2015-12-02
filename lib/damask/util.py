@@ -431,6 +431,6 @@ def execute(cmd,streamIn=None,wd='./'):
   else:
     out,error = process.communicate()
   os.chdir(initialPath)
-
+  if process.returncode !=0: raise RuntimeError(cmd+' failed with returncode '+str(process.returncode))
   return out,error
 

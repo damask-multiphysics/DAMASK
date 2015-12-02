@@ -60,10 +60,6 @@ OPTI    := DEFENSIVE
 MAXOPTI := DEFENSIVE
 endif
 
-ifeq  "$(PORTABLE)" "FALSE"
-PORTABLE_SWITCH =-msse3
-endif
-
 # settings for shared memory multicore support
 ifeq "$(OPENMP)" "ON"
 OPENMP_FLAG_ifort =-openmp -openmp-report0 -parallel
@@ -75,7 +71,6 @@ STANDARD_CHECK_ifort =$(STANDARD_CHECK)
 STANDARD_CHECK_gfortran =$(STANDARD_CHECK)
 endif
 
-
 STANDARD_CHECK_ifort ?=-stand f08 -standard-semantics
 STANDARD_CHECK_gfortran ?=-std=f2008ts -pedantic-errors
 
@@ -85,17 +80,14 @@ OPTIMIZATION_OFF_ifort           :=-O0 -no-ip
 OPTIMIZATION_OFF_gfortran        :=-O0
 OPTIMIZATION_DEFENSIVE_ifort     :=-O2
 OPTIMIZATION_DEFENSIVE_gfortran  :=-O2
-OPTIMIZATION_AGGRESSIVE_ifort    :=-O3 $(PORTABLE_SWITCH) -no-prec-div -fp-model fast=2 -ipo
-OPTIMIZATION_AGGRESSIVE_gfortran :=-O3 $(PORTABLE_SWITCH) -ffast-math -funroll-loops -ftree-vectorize
+OPTIMIZATION_AGGRESSIVE_ifort    :=-fast                                                            #-ipo, -O3, -no-prec-div, -static, -fp-model fast=2, and -xHost
+OPTIMIZATION_AGGRESSIVE_gfortran :=-O3 -ffast-math -funroll-loops -ftree-vectorize
 
 
 LINK_OPTIONS_ifort       :=-shared-intel
 COMPILE_OPTIONS_ifort    :=-fpp\
                            -ftz\
-                           -assume byterecl
-
-
-COMPILE_OPTIONS_ifort    +=-diag-enable sc3\
+                           -assume byterecl,fpe_summary\
                            -diag-disable 5268\
                            -warn declarations\
                            -warn general\
@@ -136,6 +128,7 @@ DEBUG_OPTIONS_ifort      :=-g\
                            -traceback\
                            -gen-interfaces\
                            -fp-stack-check\
+                           -fp-model strict\
                            -check bounds,format,output_conversion,pointers,uninit\
                            -ftrapuv\
                            -fpe-all0\
@@ -168,9 +161,8 @@ DEBUG_OPTIONS_ifort      :=-g\
 #   arg_temp_created:        will cause a lot of warnings because we create a bunch of temporary arrays (performance?)
 #   stack:
 LINK_OPTIONS_gfortran    :=-Wl,-undefined,dynamic_lookup
-COMPILE_OPTIONS_gfortran :=-xf95-cpp-input
-
-COMPILE_OPTIONS_gfortran +=-ffree-line-length-132\
+COMPILE_OPTIONS_gfortran :=-xf95-cpp-input\
+                           -ffree-line-length-132\
                            -fimplicit-none\
                            -fmodule-private\
                            -Wall\
@@ -286,7 +278,7 @@ DEBUG_OPTIONS_gfortran    :=-g\
 ifeq "$(DEBUG)" "ON"
 COMPILE_OPTIONS_$(F90) +=$(DEBUG_OPTIONS_$(F90))
 endif
-COMPILE_OPTIONS_$(F90) +=$(OPTIONS)
+
 PRECISION_ifort :=-real-size 64 -integer-size 32 -DFLOAT=8 -DINT=4
 #-real-size 32:               set precision to one of those 32/64/128 (= 4/8/16 bytes) for standard real (=8 for pReal)
 #-integer-size 16:            set precision to one of those 16/32/64 (= 2/4/8 bytes) for standard integer (=4 for pInt)
@@ -296,8 +288,8 @@ PRECISION_gfortran :=-fdefault-real-8 -fdefault-double-8 -DFLOAT=8 -DINT=4
 #-fdefault-integer-8:         Use it to set precision to 8 bytes for integer, don't use it for the standard case of pInt=4 (there is no -fdefault-integer-4)
 
 ###################################################################################################
-COMPILE         =$(OPENMP_FLAG_$(F90)) $(COMPILE_OPTIONS_$(F90)) $(STANDARD_CHECK_$(F90)) $(OPTIMIZATION_$(OPTI)_$(F90)) $(INCLUDE_DIRS) $(PRECISION_$(F90))
-COMPILE_MAXOPTI =$(OPENMP_FLAG_$(F90)) $(COMPILE_OPTIONS_$(F90)) $(STANDARD_CHECK_$(F90)) $(OPTIMIZATION_$(MAXOPTI)_$(F90)) $(INCLUDE_DIRS) $(PRECISION_$(F90))
+COMPILE         =$(OPENMP_FLAG_$(F90)) $(STANDARD_CHECK_$(F90)) $(OPTIMIZATION_$(OPTI)_$(F90))    $(COMPILE_OPTIONS_$(F90)) $(INCLUDE_DIRS) $(PRECISION_$(F90))
+COMPILE_MAXOPTI =$(OPENMP_FLAG_$(F90)) $(STANDARD_CHECK_$(F90)) $(OPTIMIZATION_$(MAXOPTI)_$(F90)) $(COMPILE_OPTIONS_$(F90)) $(INCLUDE_DIRS) $(PRECISION_$(F90))
 ###################################################################################################
 SOURCE_FILES = \
    source_thermal_dissipation.o source_thermal_externalheat.o \
