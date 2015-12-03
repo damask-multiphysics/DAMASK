@@ -8,7 +8,7 @@ from scipy import ndimage
 from optparse import OptionParser
 from collections import defaultdict
 
-scriptID   = string.replace('$Id: geom_rotate.py 4627 2015-11-14 09:47:18Z MPIE\m.diehl $','\n','\\n')
+scriptID   = string.replace('$Id$','\n','\\n')
 scriptName = os.path.splitext(scriptID.split()[1])[0]
 
 def mostFrequent(arr):
