@@ -39,7 +39,7 @@ class Test():
          +'----------------------------------------------------------------')
     self.dirBase = os.path.dirname(os.path.realpath(sys.modules[self.__class__.__module__].__file__))
     self.parser = OptionParser(
-    description = test_description+' (using class: $Id run_test.py 1285 2012-02-09 08:54:09Z MPIE\m.diehl $)',
+    description = test_description+' (using class: $Id$)',
     usage='./test.py [options]')
     self.updateRequested = False
 
@@ -153,6 +153,13 @@ class Test():
     return os.path.normpath(os.path.join(self.dirBase,'proof/'))
 
     
+  def fileInRoot(self,dir,file):
+    '''
+    Path to a file in the root directory of DAMASK.
+    '''
+    return os.path.join(damask.Environment().rootDir(),dir,file)
+
+    
   def fileInReference(self,file):
     '''
     Path to a file in the refrence directory for the test.
@@ -174,6 +181,22 @@ class Test():
     return os.path.join(self.dirProof(),file)
 
     
+  def copy(self, mapA, mapB,
+                 A = [], B = []):
+    '''
+    copy list of files from (mapped) source to target.
+    mapA/B is one of self.fileInX.
+    '''
+    
+    if not B or len(B) == 0: B = A
+
+    for source,target in zip(map(mapA,A),map(mapB,B)):
+      try:
+        shutil.copy2(source,target)  
+      except:
+        logging.critical('error copying {} to {}'.format(source,target))
+
+
   def copy_Reference2Current(self,sourcefiles=[],targetfiles=[]):
     
     if len(targetfiles) == 0: targetfiles = sourcefiles
@@ -241,10 +264,10 @@ class Test():
 
     import numpy as np
     logging.info('comparing\n '+File1+'\n '+File2)
-    table1 = damask.ASCIItable(File1,readonly=True)
+    table1 = damask.ASCIItable(name=File1,readonly=True)
     table1.head_read()
     len1=len(table1.info)+2
-    table2 = damask.ASCIItable(File2,readonly=True)
+    table2 = damask.ASCIItable(name=File2,readonly=True)
     table2.head_read()
     len2=len(table2.info)+2
 
@@ -279,7 +302,7 @@ class Test():
     cur1Name = self.fileInCurrent(cur1)
     return self.compare_Array(cur0Name,cur1Name)
 
-  def compare_Table(self,headings0,file0,headings1,file1,normHeadings='',normType=None,\
+  def compare_Table(self,headings0,file0,headings1,file1,normHeadings='',normType=None,
                                      absoluteTolerance=False,perLine=False,skipLines=[]):
     
     import numpy as np
@@ -312,9 +335,9 @@ class Test():
     else:
       raise Exception('trying to compare %i with %i normed by %i data sets'%(len(headings0),len(headings1),len(normHeadings)))
 
-    table0 = damask.ASCIItable(file0,readonly=True)
+    table0 = damask.ASCIItable(name=file0,readonly=True)
     table0.head_read()
-    table1 = damask.ASCIItable(file1,readonly=True)
+    table1 = damask.ASCIItable(name=file1,readonly=True)
     table1.head_read()   
 
     for i in xrange(dataLength):
@@ -383,41 +406,66 @@ class Test():
     return maxError
 
 
-  def compare_Table2(self,file0,file1,headings0=None,headings1=None,rtol=1e-5,atol=1e-8,threshold = -1.0,debug=False):
+  def compare_Tables(self,
+                     files = [None,None],                                                           # list of file names
+                     columns = [None],                                                              # list of list of column labels (per file)
+                     rtol = 1e-5,
+                     atol = 1e-8,
+                     threshold = -1.0,
+                     debug = False):
     
     '''
-      compare two tables with np.allclose
-      threshold can be used to ignore small values (put any negative number to disable)
-      table will be row-wise normalized
+      compare tables with np.allclose
+      threshold can be used to ignore small values (a negative number disables this feature)
     '''
     #http://stackoverflow.com/questions/8904694/how-to-normalize-a-2-dimensional-numpy-array-in-python-less-verbose
     import numpy as np
-    logging.info('comparing ASCII Tables\n %s \n %s'%(file0,file1))
+    from collections import Iterable
 
-    if headings1 == None: headings1=headings0
+    if not (isinstance(files, Iterable) and not isinstance(files, str)):                            # check whether list of files is requested
+      files = [str(files)]
 
-    table0 = damask.ASCIItable(file0,readonly=True)
-    table0.head_read()
-    table0.data_readArray(headings0)
-    row_sums0 = table0.data.sum(axis=1)*table0.data.shape[0]
-    table0.data /= row_sums0[:,np.newaxis]
+    if isinstance(columns, (str,int,float)):                                                        # single item --> one copy per file
+      columns = [str(columns)]*len(files)
 
-    table1 = damask.ASCIItable(file1,readonly=True)
-    table1.head_read()   
-    table1.data_readArray(headings1)
-    row_sums1 = table1.data.sum(axis=1)*table1.data.shape[0]
-    table1.data /= row_sums1[:,np.newaxis]
+    columns += [None]*(len(files)-len(columns))                                                     # extend   to same length as files
+    columns = columns[:len(files)]                                                                  # truncate to same length as files
+
+    logging.info('comparing ASCIItables')
+    for i in xrange(len(columns)):
+      columns[i] = columns[0]  if not columns[i] else \
+                 ([columns[i]] if not (isinstance(columns[i], Iterable) and not isinstance(columns[i], str)) else \
+                   columns[i]
+                 )
+      logging.info(files[i]+':'+','.join(columns[i]))
+
+    if len(files) < 2: return True                                                    # single table is always close to itself...
+
+    tables = [damask.ASCIItable(name = filename,readonly = True) for filename in files]
     
-    if debug:
-      t0 = np.where(np.abs(table0.data)<threshold,0.0,table0.data)
-      t1 = np.where(np.abs(table1.data)<threshold,0.0,table1.data)
-      print np.amin(np.abs(t1)*rtol+atol-np.abs(t0-t1))
-      i = np.argmin(np.abs(t1)*rtol+atol-np.abs(t0-t1))
-      print t0.flatten()[i],t1.flatten()[i]
+    maximum = np.zeros(len(columns[0]),dtype='f')
+    data = []
+    for table,labels in zip(tables,columns):
+      table.head_read()
+      table.data_readArray(labels)
+      data.append(table.data)
+      maximum += np.abs(table.data).max(axis=0)
+      table.close()
+      
+    maximum /= len(tables)
+    for i in xrange(len(data)):
+      data[i] /= maximum
+    
+    mask = np.zeros_like(table.data,dtype='bool')
+    for table in data:
+      mask |= np.where(np.abs(table)<threshold)                                # mask out (all) tiny values
 
-    return np.allclose(np.where(np.abs(table0.data)<threshold,0.0,table0.data),
-                       np.where(np.abs(table1.data)<threshold,0.0,table1.data),rtol,atol)
+    allclose = True                                                            # start optimistic
+    for i in xrange(1,len(data)):
+      allclose &= np.allclose(np.where(mask,0.0,data[i-1]),
+                              np.where(mask,0.0,data[i  ]),rtol,atol)          # accumulate "pessimism"
 
+    return allclose
 
     
   def compare_TableRefCur(self,headingsRef,ref,headingsCur='',cur='',normHeadings='',normType=None,\
