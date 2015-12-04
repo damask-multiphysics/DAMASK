@@ -418,18 +418,22 @@ class Test():
       compare tables with np.allclose
       threshold can be used to ignore small values (a negative number disables this feature)
     '''
-    #http://stackoverflow.com/questions/8904694/how-to-normalize-a-2-dimensional-numpy-array-in-python-less-verbose
+
     import numpy as np
     from collections import Iterable
 
     if not (isinstance(files, Iterable) and not isinstance(files, str)):                            # check whether list of files is requested
       files = [str(files)]
 
-    if isinstance(columns, (str,int,float)):                                                        # single item --> one copy per file
-      columns = [str(columns)]*len(files)
+    tables = [damask.ASCIItable(name = filename,readonly = True) for filename in files]
+    for table in tables:
+      table.head_read()
 
-    columns += [None]*(len(files)-len(columns))                                                     # extend   to same length as files
+    columns += [columns[0]]*(len(files)-len(columns))                                               # extend to same length as files
     columns = columns[:len(files)]                                                                  # truncate to same length as files
+
+    for i,column in enumerate(columns):
+      if column is None: columns[i] = tables[i].labels                                              # if no column is given, read all
 
     logging.info('comparing ASCIItables')
     for i in xrange(len(columns)):
@@ -439,31 +443,30 @@ class Test():
                  )
       logging.info(files[i]+':'+','.join(columns[i]))
 
-    if len(files) < 2: return True                                                    # single table is always close to itself...
-
-    tables = [damask.ASCIItable(name = filename,readonly = True) for filename in files]
+    if len(files) < 2: return True                                                                  # single table is always close to itself...
     
     maximum = np.zeros(len(columns[0]),dtype='f')
     data = []
     for table,labels in zip(tables,columns):
-      table.head_read()
       table.data_readArray(labels)
       data.append(table.data)
       maximum += np.abs(table.data).max(axis=0)
       table.close()
-      
+    
     maximum /= len(tables)
+    maximum = np.where(maximum >0.0, maximum, 1)
     for i in xrange(len(data)):
       data[i] /= maximum
     
     mask = np.zeros_like(table.data,dtype='bool')
-    for table in data:
-      mask |= np.where(np.abs(table)<threshold)                                # mask out (all) tiny values
 
-    allclose = True                                                            # start optimistic
+    for table in data:
+      mask |= np.where(np.abs(table)<threshold,True,False)                                        # mask out (all) tiny values
+
+    allclose = True                                                                               # start optimistic
     for i in xrange(1,len(data)):
       allclose &= np.allclose(np.where(mask,0.0,data[i-1]),
-                              np.where(mask,0.0,data[i  ]),rtol,atol)          # accumulate "pessimism"
+                              np.where(mask,0.0,data[i  ]),rtol,atol)                             # accumulate "pessimism"
 
     return allclose
 
