@@ -14,7 +14,7 @@ scriptName = os.path.splitext(scriptID.split()[1])[0]
 # --------------------------------------------------------------------
 
 parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
-Add column(s) containing eigenvalues and eigenvectors of requested tensor column(s).
+Add column(s) containing eigenvalues and eigenvectors of requested symmetric tensor column(s).
 
 """, version = scriptID)
 
@@ -77,7 +77,7 @@ for name in filenames:
   while outputAlive and table.data_read():                                                          # read next data line of ASCII table
     for type, data in items.iteritems():
       for column in data['column']:
-        (u,v) = np.linalg.eig(np.array(map(float,table.data[column:column+data['dim']])).reshape(data['shape']))
+        (u,v) = np.linalg.eigh(np.array(map(float,table.data[column:column+data['dim']])).reshape(data['shape']))
         table.data_append(list(u))
         table.data_append(list(v.transpose().reshape(data['dim'])))
     outputAlive = table.data_write()                                                                # output processed line
