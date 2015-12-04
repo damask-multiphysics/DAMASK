@@ -76,7 +76,7 @@ for name in filenames:
 
 # --- do work ------------------------------------------------------------------------------------
 
-  microstructure = ndimage.filters.generic_filter(microstructure,mostFrequent,size=(options.stencil,options.stencil,options.stencil))
+  microstructure = ndimage.filters.generic_filter(microstructure,mostFrequent,size=(options.stencil,)*3)
 
 # --- write header ---------------------------------------------------------------------------------
 
