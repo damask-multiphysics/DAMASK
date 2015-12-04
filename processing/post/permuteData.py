@@ -22,12 +22,17 @@ parser.add_option('-l','--label',
                   dest = 'label',
                   action = 'extend', metavar = '<string LIST>',
                   help  ='column(s) to permute')
+parser.add_option('-u', '--unique',
+                  dest = 'unique',
+                  action = 'store_true',
+                  help = 'shuffle unique values as group')
 parser.add_option('-r', '--rnd',
                   dest = 'randomSeed',
                   type = 'int', metavar = 'int',
                   help = 'seed of random number generator [%default]')
 
 parser.set_defaults(label = [],
+                    unnique = False,
                     randomSeed = None,
                    )
 
@@ -61,7 +66,7 @@ for name in filenames:
   indices    = table.label_index    (options.label)
   dimensions = table.label_dimension(options.label)
   for i,index in enumerate(indices):
-    if index == -1: remarks.append('label {} not present...'.format(options.label[i]))
+    if index == -1: remarks.append('label "{}" not present...'.format(options.label[i]))
     else:
       columns.append(index)
       dims.append(dimensions[i])
@@ -86,7 +91,14 @@ for name in filenames:
 
   table.data_readArray()                                                                            # read all data at once
   for col,dim in zip(columns,dims):
-    table.data[:,col:col+dim] = np.random.permutation(table.data[:,col:col+dim])
+    if options.unique:
+      s = set(map(tuple,table.data[:,col:col+dim]))                                                 # generate set of (unique) values
+      uniques = np.array(map(np.array,s))                                                           # translate set to np.array
+      shuffler = dict(zip(s,np.random.permutation(len(s))))                                         # random permutation
+      table.data[:,col:col+dim] = uniques[np.array(map(lambda x: shuffler[tuple(x)],
+                                                       table.data[:,col:col+dim]))]                 # fill table with mapped uniques
+    else:
+      np.random.shuffle(table.data[:,col:col+dim])                                                  # independently shuffle every row
 
 # ------------------------------------------ output result -----------------------------------------  
 
