@@ -18,14 +18,22 @@ Add scalars, vectors, and/or an RGB tuple from an ASCIItable to existing VTK rec
 
 """, version = scriptID)
 
-parser.add_option('-m', '--mode',
-                  dest = 'mode',
-                  type = 'choice', metavar = 'string', choices = ['cell', 'point'],
-                  help = 'cell-centered or point-centered data')
 parser.add_option(      '--vtk',
                   dest = 'vtk',
                   type = 'string', metavar = 'string',
                   help = 'VTK file name')
+parser.add_option(      '--inplace',
+                  dest = 'inplace',
+                  action = 'store_true',
+                  help = 'modify VTK file in-place')
+parser.add_option('-r', '--render',
+                  dest = 'render',
+                  action = 'store_true',
+                  help = 'open output in VTK render window')
+parser.add_option('-m', '--mode',
+                  dest = 'mode',
+                  type = 'choice', metavar = 'string', choices = ['cell', 'point'],
+                  help = 'cell-centered or point-centered data')
 parser.add_option('-s', '--scalar',
                   dest = 'scalar',
                   action = 'extend', metavar = '<string LIST>',
@@ -38,14 +46,6 @@ parser.add_option('-c', '--color',
                   dest = 'color',
                   action = 'extend', metavar = '<string LIST>',
                   help = 'RGB color tuple label')
-parser.add_option('-r', '--inplace',
-                  dest = 'inplace',
-                  action = 'store_true',
-                  help = 'modify VTK file in place')
-parser.add_option('-r', '--render',
-                  dest = 'render',
-                  action = 'store_true',
-                  help = 'open output in VTK render window')
 
 parser.set_defaults(scalar = [],
                     vector = [],
@@ -56,10 +56,9 @@ parser.set_defaults(scalar = [],
 
 (options, filenames) = parser.parse_args()
 
-if not options.mode: parser.error('No data mode specified.')
-
-if not options.vtk or not os.path.exists(options.vtk):
-  parser.error('VTK file does not exist')
+if not options.mode:                parser.error('No data mode specified.')
+if not options.vtk:                 parser.error('No VTK file specified.')
+if not os.path.exists(options.vtk): parser.error('VTK file does not exist.')
 
 if os.path.splitext(options.vtk)[1] == '.vtr':
   reader = vtk.vtkXMLRectilinearGridReader()
@@ -72,12 +71,12 @@ elif os.path.splitext(options.vtk)[1] == '.vtk':
   reader.Update()
   rGrid = reader.GetRectilinearGridOutput()
 else:
-  parser.error('unsupported VTK file type extension')
+  parser.error('Unsupported VTK file type extension.')
 
 Npoints = rGrid.GetNumberOfPoints()
 Ncells  = rGrid.GetNumberOfCells()
 
-sys.stderr.write('{}: {} points and {} cells...\n'.format(damask.util.emph(options.vtk),Npoints,Ncells))
+damask.util.croak('{}: {} points and {} cells...'.format(options.vtk,Npoints,Ncells))
 
 # --- loop over input files -------------------------------------------------------------------------
 
@@ -130,7 +129,7 @@ for name in filenames:
     for datatype,labels in active.items():                                                          # loop over scalar,color
       for me in labels:                                                                             # loop over all requested items
         theData = [table.data[i] for i in table.label_indexrange(me)]                               # read strings
-        if datatype == 'color':    VTKarray[me].InsertNextTuple3(*map(lambda x: int(255.*float(x)),theData))
+        if   datatype == 'color':  VTKarray[me].InsertNextTuple3(*map(lambda x: int(255.*float(x)),theData))
         elif datatype == 'vector': VTKarray[me].InsertNextTuple3(*map(float,theData))
         elif datatype == 'scalar': VTKarray[me].InsertNextValue(float(theData[0]))
 
