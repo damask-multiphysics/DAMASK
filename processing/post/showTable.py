@@ -18,14 +18,10 @@ Show components of given ASCIItable(s).
 """, version = scriptID)
 
 
-parser.add_option('-d','--data',
-                  dest   = 'data',
-                  action = 'store_true',
-                  help   = 'output data')
 parser.add_option('-a','--head',
                   dest   = 'head',
                   action = 'store_true',
-                  help   = 'output all heading (info + labels)')
+                  help   = 'output complete header (info + labels)')
 parser.add_option('-i','--info',
                   dest   = 'info',
                   action = 'store_true',
@@ -34,25 +30,24 @@ parser.add_option('-l','--labels',
                   dest   = 'labels',
                   action = 'store_true',
                   help   = 'output labels')
-parser.add_option('-c','--column',
-                  dest   = 'col',
+parser.add_option('-d','--data',
+                  dest   = 'data',
                   action = 'store_true',
-                  help   = 'print labels as one column')
-parser.add_option('--nolabels',
-                  dest   = 'labeled',
-                  action = 'store_false',
-                  help   = 'table has no labels')
+                  help   = 'output data')
 parser.add_option('-t','--table',
                   dest   = 'table',
                   action = 'store_true',
                   help   = 'output heading line for proper ASCIItable format')
-parser.set_defaults(head   = False,
+parser.add_option('--nolabels',
+                  dest   = 'labeled',
+                  action = 'store_false',
+                  help   = 'table has no labels')
+parser.set_defaults(table  = False,
+                    head   = False,
                     info   = False,
                     labels = False,
                     data   = False,
-                    col    = False,
                     labeled = True,
-                    table  = False,
                    )
 
 (options,filenames) = parser.parse_args()
