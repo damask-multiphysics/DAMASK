@@ -13,43 +13,44 @@ scriptName = os.path.splitext(scriptID.split()[1])[0]
 def deformedCoordsFFT(F,undeformed=False):
 #--------------------------------------------------------------------------------------------------
  wgt = 1.0/grid.prod()
- integrator = grid[::-1] / 2.0 / math.pi
- step = size[::-1]/grid[::-1]
+ integrator = np.array([0.+1.j,0.+1.j,0.+1.j],'c16') * size/ 2.0 / math.pi
+ step = size/grid
+ 
+ F_fourier = np.fft.rfftn(F,axes=(0,1,2))
+ coords_fourier  = np.zeros(F_fourier.shape[0:4],'c16')
 
- F_fourier = np.fft.fftpack.rfftn(F,axes=(0,1,2))
  if undeformed:
    Favg=np.eye(3)
  else:
    Favg=np.real(F_fourier[0,0,0,:,:])*wgt
- coords_fourier  = np.zeros(F_fourier.shape[:-1],'c16')
-
 #--------------------------------------------------------------------------------------------------
 # integration in Fourier space
  k_s = np.zeros([3],'i')
-
- for k in xrange(grid[2]):
-   k_s[2] = k
-   if(k > grid[0]/2 ): k_s[2] = k_s[2] - grid[2]
+ for i in xrange(grid[2]):
+   k_s[2] = i
+   if(i > grid[2]//2 ): k_s[2] = k_s[2] - grid[2]
    for j in xrange(grid[1]):
      k_s[1] = j
-     if(j > grid[1]/2 ): k_s[1] = k_s[1] - grid[1]
-     for i in xrange(grid[0]/2+1):
-       k_s[0] = i
+     if(j > grid[1]//2 ): k_s[1] = k_s[1] - grid[1]
+     for k in xrange(grid[0]//2+1):
+       k_s[0] = k
        for m in xrange(3):
-         coords_fourier[k,j,i,m] = sum(F_fourier[k,j,i,0:3,m]*k_s*\
-                                                 np.array([0.+1.j,0.+1.j,0.+1.j],'c16')*integrator)
+         coords_fourier[i,j,k,m] = sum(F_fourier[i,j,k,m,0:3]*k_s*integrator)
        if (any(k_s != 0)): 
-         coords_fourier[k,j,i,0:3] /= -sum(k_s*k_s)
+         coords_fourier[i,j,k,0:3] /= -sum(k_s*k_s)
+
 #--------------------------------------------------------------------------------------------------
 # add average to scaled fluctuation and put (0,0,0) on (0,0,0)
- coords = np.fft.fftpack.irfftn(coords_fourier,axes=(0,1,2))
- offset_coords = np.dot(F[0,0,0,0:3,0:3],step/2.0) - scaling*coords[0,0,0,0:3]
- for k in xrange(grid[2]):
-   for j in xrange(grid[1]):
-     for i in xrange(grid[0]):
-       coords[k,j,i,0:3] = scaling*coords[k,j,i,0:3] \
+ coords = np.fft.irfftn(coords_fourier,F.shape[0:3],axes=(0,1,2))
+ 
+ offset_coords = np.dot(F[0,0,0,:,:],step/2.0) - scaling*coords[0,0,0,0:3]
+ for z in xrange(grid[2]):
+   for y in xrange(grid[1]):
+     for x in xrange(grid[0]):
+       coords[z,y,x,0:3] = scaling*coords[z,y,x,0:3] \
                          + offset_coords \
-                         + np.dot(Favg,step*np.array([i,j,k]))
+                         + np.dot(Favg,step*np.array([x,y,z]))
+
  return coords
 
 # --------------------------------------------------------------------
@@ -147,18 +148,16 @@ for name in filenames:
   table.head_write()
 
 # ------------------------------------------ read deformation gradient field -----------------------
-  centroids = deformedCoordsFFT(table.data[:,colF:colF+9].reshape(grid[0],grid[1],grid[2],3,3),
+  centroids = deformedCoordsFFT(table.data[:,colF:colF+9].reshape(grid[2],grid[1],grid[0],3,3),
                                                                                   options.undeformed)
-
 # ------------------------------------------ process data ------------------------------------------
   table.data_rewind()
-  idx = 0
-  outputAlive = True
-  while outputAlive and table.data_read():                                                          # read next data line of ASCII table
-    (x,y,z) = damask.util.gridLocation(idx,grid)                                                    # figure out (x,y,z) position from line count
-    idx += 1
-    table.data_append(list(centroids[z,y,x,:]))
-    outputAlive = table.data_write()                       
+  for z in xrange(grid[2]):
+    for y in xrange(grid[1]):
+      for x in xrange(grid[0]):
+        table.data_read()
+        table.data_append(list(centroids[z,y,x,:]))
+        table.data_write()                       
 
 # ------------------------------------------ output finalization -----------------------------------  
 
