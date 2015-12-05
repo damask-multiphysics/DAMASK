@@ -34,7 +34,6 @@
 #include "plastic_phenoplus.f90"
 #include "plastic_titanmod.f90"
 #include "plastic_dislotwin.f90"
-#include "plastic_disloKMC.f90"
 #include "plastic_disloUCLA.f90"
 #include "plastic_nonlocal.f90"
 #include "constitutive.f90"

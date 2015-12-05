@@ -302,7 +302,7 @@ KINEMATICS_FILES = \
    kinematics_vacancy_strain.o kinematics_hydrogen_strain.o
 
 PLASTIC_FILES = \
-   plastic_dislotwin.o plastic_disloUCLA.o plastic_disloKMC.o plastic_j2.o plastic_phenopowerlaw.o \
+   plastic_dislotwin.o plastic_disloUCLA.o plastic_j2.o plastic_phenopowerlaw.o \
    plastic_titanmod.o plastic_nonlocal.o plastic_none.o plastic_phenoplus.o
 
 THERMAL_FILES = \
@@ -551,9 +551,6 @@ plastic_nonlocal.o:            plastic_nonlocal.f90 \
                                lattice.o
 
 plastic_titanmod.o:            plastic_titanmod.f90 \
-                               lattice.o
-
-plastic_disloKMC.o:            plastic_disloKMC.f90 \
                                lattice.o
 
 plastic_disloUCLA.o:           plastic_disloUCLA.f90 \
