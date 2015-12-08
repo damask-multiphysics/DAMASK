@@ -848,24 +848,24 @@ module lattice
 !--------------------------------------------------------------------------------------------------
 ! bct
  integer(pInt), dimension(LATTICE_maxNslipFamily), parameter, public :: &
-   LATTICE_bct_NslipSystem = int([2, 2, 2, 4, 2, 4, 2, 2, 4, 8, 4, 8, 8 ],pInt)                         !< # of slip systems per family for bct (Sn) Bieler J. Electr Mater 2009
+   LATTICE_bct_NslipSystem = int([2, 2, 2, 4, 2, 4, 2, 2, 4, 8, 4, 8, 8 ],pInt)                     !< # of slip systems per family for bct (Sn) Bieler J. Electr Mater 2009
 
  integer(pInt), dimension(LATTICE_maxNtwinFamily), parameter, public :: &
-   LATTICE_bct_NtwinSystem = int([0, 0, 0, 0], pInt)                                              !< total # of twin systems per family for bct-example
+   LATTICE_bct_NtwinSystem = int([0, 0, 0, 0], pInt)                                                !< total # of twin systems per family for bct-example
 
  integer(pInt), dimension(LATTICE_maxNtransFamily), parameter, public :: &
-   LATTICE_bct_NtransSystem = int([0,0],pInt)                                                       !< total # of transformation systems per family for bcc
+   LATTICE_bct_NtransSystem = int([0,0],pInt)                                                       !< total # of transformation systems per family for bct
 
  integer(pInt), dimension(LATTICE_maxNcleavageFamily), parameter, public :: &
-   LATTICE_bct_NcleavageSystem = int([0,0,0],pInt)                                                    !< total # of cleavage systems per family for bcc
+   LATTICE_bct_NcleavageSystem = int([0,0,0],pInt)                                                  !< total # of cleavage systems per family for bct
  
    
  integer(pInt), parameter , private :: &
    LATTICE_bct_Nslip = 52_pInt, & ! sum(lattice_bct_NslipSystem),                                   !< total # of slip systems for bct 
-   LATTICE_bct_Ntwin = 0_pInt, &  ! sum(lattice_bcc_NtwinSystem)                                    !< total # of twin systems for bcc
-   LATTICE_bct_NnonSchmid = 0_pInt, &                                                               !< # of non-Schmid contributions for bcc
-   LATTICE_bct_Ntrans  = 0_pInt, &                                                                  !< total # of transformations for bcc
-   LATTICE_bct_Ncleavage  = 0_pInt                                                                  !< total # of transformations for bcc
+   LATTICE_bct_Ntwin = 0_pInt, &  ! sum(lattice_bcc_NtwinSystem)                                    !< total # of twin systems for bct
+   LATTICE_bct_NnonSchmid = 0_pInt, &                                                               !< # of non-Schmid contributions for bct
+   LATTICE_bct_Ntrans  = 0_pInt, &                                                                  !< total # of transformations for bct
+   LATTICE_bct_Ncleavage  = 0_pInt                                                                  !< total # of transformations for bct
  
  real(pReal), dimension(3+3,LATTICE_bct_Nslip), parameter, private :: &
    LATTICE_bct_systemSlip = reshape(real([&
@@ -2140,7 +2140,7 @@ pure function lattice_qDisorientation(Q1, Q2, struct)
  real(pReal), dimension(4) ::                  lattice_qDisorientation
  real(pReal), dimension(4), intent(in) :: &
    Q1, &                                                                                          ! 1st orientation
-                                               Q2                                                   ! 2nd orientation
+                                               Q2                                                 ! 2nd orientation
  integer(kind(LATTICE_undefined_ID)), optional, intent(in) :: &                                   ! if given, symmetries between the two orientation will be considered
    struct
 

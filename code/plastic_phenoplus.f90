@@ -769,6 +769,7 @@ subroutine plastic_phenoplus_microstructure(orientation,ipc,ip,el)
                         lattice_sd, &
                         lattice_qDisorientation
 
+
  !***input variables
  implicit none
  integer(pInt), intent(in) :: &
@@ -855,8 +856,7 @@ subroutine plastic_phenoplus_microstructure(orientation,ipc,ip,el)
    neighbor_ph          = mappingConstitutive(2, neighbor_n, neighbor_ip, neighbor_el)
    neighbor_orientation = orientation(1:4, neighbor_n, neighbor_ip, neighbor_el)          !ipc is always 1.
    absMisorientation    = lattice_qDisorientation(my_orientation, &
-                                                  neighbor_orientation, &
-                                                  0_pInt)                                 !no need for explicit calculation of symmetry
+                                                  neighbor_orientation)                   !no need for explicit calculation of symmetry
    !***only perform m' calculation for neighbor with the same phase
    if (ph==neighbor_ph) then
     loopNeighborSlip: do ne_slip=1_pInt,ns                                                !assuming all have the same slip systems here

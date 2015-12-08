@@ -3143,8 +3143,7 @@ do n = 1_pInt,Nneighbors
   !* All values below the threshold are set to zero.
   else
     absoluteMisorientation = lattice_qDisorientation(orientation(1:4,1,i,e), &
-                                                  orientation(1:4,1,neighbor_i,neighbor_e), &
-                                                  0_pInt)      ! no symmetry
+                                                     orientation(1:4,1,neighbor_i,neighbor_e))      ! no symmetry
     do s1 = 1_pInt,ns    ! my slip systems
       do s2 = 1_pInt,ns  ! my neighbor's slip systems
         my_compatibility(1,s2,s1,n) =  math_mul3x3(slipNormal(1:3,s1), math_qRot(absoluteMisorientation, slipNormal(1:3,s2))) &
