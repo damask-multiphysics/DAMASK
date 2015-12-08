@@ -11,7 +11,7 @@ bin_link = { \
                   ],
            }
 
-MarcReleases =[2011,2012,2013,2013.1,2014,2014.2]
+MarcReleases =[2011,2012,2013,2013.1,2014,2014.2,2015]
 
 baseDir = damask.Environment('../../').relPath('code/')
 
