@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-DEFAULT_VERSION='2014'
+DEFAULT_VERSION='2015'
 
 WORKINGDIR="$( cd "$( dirname "$0" )" && pwd )"
 

@@ -1,11 +1,6 @@
 #ifndef AUTOFORGE
 popmenu job_title_pm                file jobs.ms
 popdown job_title_ok                file jobs.ms
-#ifndef QT_MENTAT
-popmenu marc_input_style_pm         file job_common.ms
-popmenu marc_input_style_run_adv_pm file job_common.ms
-popmenu marc_version_run_pm         file job_common.ms
-#endif
 
 group job_solver_gr                 file job_common.ms
 group user_domains_gr               file domain_decomposition.ms
@@ -14,22 +9,11 @@ group user_domains_tail_gr          file domain_decomposition.ms
 group job_solver_opts_gr            file job_common.ms
 popmenu ddm_options                 file job_common.ms
 
-#ifdef QT_MENTAT
 browser edit_browser                file file.ms
 browser directory_browser           file file.ms
 screen domains                      file domain_decomposition.ms
-#else
-popmenu edit_browser_popmenu        file file.ms
-popmenu directory_browser_popmenu   file file.ms
-#endif
 
 
-#ifndef QT_MENTAT
-#--------------------------------------------------------------------------------------------------
-popmenu usersub_file_browser_pm {
-
- group {
-#endif
 
   browser usersub_file_browser {
    position 0 0
@@ -42,27 +26,8 @@ popmenu usersub_file_browser_pm {
    ok_action popdown
    command "$usersub_file_browser_command" ($usersub_file_browser_command)
   }
-#ifndef QT_MENTAT
- }
-
- window {
-  title " Select MARC User Subroutine File"
-  origin 30 30
-  size 82 72
- }
-
- mode dialog
- disable_right_mouse_button
-}
-#endif
 
 
-#ifndef QT_MENTAT
-#--------------------------------------------------------------------------------------------------
-popmenu host_file_browser_pm {
-
- group {
-#endif
 
   browser host_file_browser {
    position 0 0
@@ -75,39 +40,16 @@ popmenu host_file_browser_pm {
    ok_action popdown
    command "$host_file_browser_command" ($host_file_browser_command)
   }
-#ifndef QT_MENTAT
- }
-
- window {
-  title " Select MARC Host File"
-  origin 30 30
-  size 82 72
- }
-
- mode dialog
- disable_right_mouse_button
-}
-#endif
 
 
 #--------------------------------------------------------------------------------------------------
 popmenu job_run_popmenu {
 
-#ifdef QT_MENTAT
  text "RUN JOB"
-#endif
 
  group {
 
-#ifndef QT_MENTAT
-  label {
-   position 0 0
-   size 52 4
-   text "RUN JOB"
-  }
-#endif
 
-#ifdef QT_MENTAT
    label {
     position 0 0
     size 6 4
@@ -131,21 +73,12 @@ popmenu job_run_popmenu {
     size 26 4
     display job_class_label
    }
-#endif
 
   button {
-#ifdef QT_MENTAT
    position 1 9
-#else
-   position 1 5
-#endif
    size 24 4
    text "USER SUBROUTINE FILE"
-#ifdef QT_MENTAT
    browser usersub_file_browser
-#else
-   popmenu usersub_file_browser_pm
-#endif
    settext $usersub_file_browser_label "SELECT USER SUBROUTINE FILE"
    set $usersub_file_browser_command "*job_usersub_file"
    help job_usersub_file
@@ -193,13 +126,9 @@ popmenu job_run_popmenu {
    help job_run_compile
    roller "job_option user_source"
    visible job_usersub_file
-#ifdef QT_MENTAT
    commands "*job_option user_source:compile_nosave"
             "*job_option user_source:compile_save"
             "*job_option user_source:run_saved"
-#else
-   popmenu job_user_source_pm
-#endif
   }
 
   toggle {
@@ -292,16 +221,12 @@ popmenu job_run_popmenu {
    rollers "job_input_style_table_driven"
            "job_input_style_multi_physics"
            "job_input_style_old"
-#ifdef QT_MENTAT
    commands "*job_option input_style:new *job_option input_physics_style:old"
             "*job_option input_physics_style:new *job_option input_style:new"
             "*job_option input_style:old *job_option input_physics_style:old"
    visibles "job_allows_input_style_table_driven"
             "job_allows_input_style_multi_physics"
             "job_allows_input_style_old"
-#else
-   popmenu marc_input_style_pm
-#endif
    help job_option_input_style
   }
 
@@ -321,16 +246,9 @@ popmenu job_run_popmenu {
 
   button {
    position +16 =
-   size 16 6
-   text "ADV. JOB SUBM."
+   size 34 6
+   text "ADVANCED JOB SUBMISSION"
    popmenu job_submit_adv_pm
-  }
-
-  button {
-   position +16 =
-   size 18 6
-   text "DAMASK"
-   popmenu damask
   }
 
   button {
@@ -577,25 +495,15 @@ popmenu job_run_popmenu {
    text "ANY FILE"
    settext $edit_browser_label "EDIT FILE"
    set $edit_browser_command "*edit_file"
-#ifdef QT_MENTAT
    browser edit_browser
-#else
-   popmenu edit_browser_popmenu
-#endif
    help edit_file
   }
 
   popdown {
    position 1 +6
    size 32 4
-#ifdef QT_MENTAT
    text "OPEN POST FILE (MODEL PLOT RESULTS MENU)"
    command "@popdown(job_properties_pm) @main(results) @popup(modelplot_pm) *post_open_default"
-#else
-   text "OPEN POST FILE (RESULTS MENU)"
-   screen results
-   command "*post_open_default"
-#endif
   }
 
   button {
@@ -622,30 +530,17 @@ popmenu job_run_popmenu {
   buffering single
  }
 
-#ifdef QT_MENTAT
  mode permanent
-#else
- mode dialog
-#endif
 }
 
 
 #--------------------------------------------------------------------------------------------------
 popmenu job_usersub_pm {
 
-#ifdef QT_MENTAT
    text "CURRENTLY SELECTED USER SUBROUTINES"
-#endif
 
  group {
 
-#ifndef QT_MENTAT
-  label {
-   position 0 0
-   size 66 4
-   text "CURRENTLY SELECTED USER SUBROUTINES"
-  }
-#endif
 
   display {
    position 1 +5
@@ -677,21 +572,11 @@ popmenu job_usersub_pm {
 #--------------------------------------------------------------------------------------------------
 popmenu job_submit_adv_pm {
 
-#ifdef QT_MENTAT
  text "ADVANCED JOB SUBMISSION"
-#endif
 
  group {
 
-#ifndef QT_MENTAT
-  label {
-   position 0 0
-   size 50 4
-   text "ADVANCED JOB SUBMISSION"
-  }
-#endif
 
-#ifdef QT_MENTAT
    label {
     position 0 0
     size 6 4
@@ -715,35 +600,20 @@ popmenu job_submit_adv_pm {
     size 26 4
     display job_class_label
    }
-#endif
 
   label {
-#ifdef QT_MENTAT
    position 1 9
-#else
-   position 1 5
-#endif
    size 19 4
    text "INITIAL ALLOCATION"
    border_width 1
    border_color black
   }
-#ifdef QT_MENTAT   
   label {
    position +19 =
    size 15 4
    text "GENERAL MEMORY"
    help job_param_general_init_allocation
   }
-#else
-  button {
-   position +19 =
-   size 15 4
-   text "GENERAL MEMORY"
-   help job_param_general_init_allocation
-   command "*job_param general_init_allocation"
-  }
-#endif
   text {
    position +15 =
    size 10 4
@@ -805,13 +675,9 @@ popmenu job_submit_adv_pm {
    texts "DEFAULT"
          "4-BYTE INTEGERS"
          "8-BYTE INTEGERS"
-#ifdef QT_MENTAT
    commands "*job_option marc_integer_size:default"
             "*job_option marc_integer_size:i4"
             "*job_option marc_integer_size:i8"
-#else
-   popmenu marc_integer_size_pm
-#endif
    help job_run_intsize
    roller "job_option marc_integer_size"
   }
@@ -836,12 +702,13 @@ popmenu job_submit_adv_pm {
     roller {
      position +9 =
      size 14 4
-     nvalues 20
-     nvisible 20
+     nvalues 21
+     nvisible 21
      texts "DEFAULT"
 #if 0
-           "2014.2"
+           "2015"
 #endif
+           "2014.2"
            "2014.1"
            "2014"
            "2013.1"
@@ -867,8 +734,9 @@ popmenu job_submit_adv_pm {
      help job_param_version
      rollers "job_input_version_default"
 #if 0
-             "job_input_version_2014.2"
+             "job_input_version_2015"
 #endif
+             "job_input_version_2014.2"
              "job_input_version_2014.1"
              "job_input_version_2014"
              "job_input_version_2013.1"
@@ -891,11 +759,11 @@ popmenu job_submit_adv_pm {
              "job_input_version_k6"
              "job_input_version_k5"
              "job_input_version_k4"
-#ifdef QT_MENTAT
   commands "*job_option version:default"
 #if 0
-           "*job_option version:2014.2"
+           "*job_option version:2015"
 #endif
+           "*job_option version:2014.2"
            "*job_option version:2014.1"
            "*job_option version:2014"
            "*job_option version:2013.1"
@@ -920,8 +788,9 @@ popmenu job_submit_adv_pm {
            "*job_option version:k4"
   visibles "job_allows_input_version_default"
 #if 0
-          "job_allows_input_version_2014.2"
+          "job_allows_input_version_2015"
 #endif
+          "job_allows_input_version_2014.2"
           "job_allows_input_version_2014.1"
           "job_allows_input_version_2014"
           "job_allows_input_version_2013.1"
@@ -944,9 +813,6 @@ popmenu job_submit_adv_pm {
           "job_allows_input_version_k6"
           "job_allows_input_version_k5"
           "job_allows_input_version_k4"
-#else
-     popmenu marc_version_run_pm
-#endif
     }
 
 # see also job_common.ms
@@ -970,16 +836,12 @@ popmenu job_submit_adv_pm {
      rollers "job_input_style_table_driven"
              "job_input_style_multi_physics"
              "job_input_style_old"
-#ifdef QT_MENTAT
      commands "*job_option input_style:new *job_option input_physics_style:old"
               "*job_option input_physics_style:new *job_option input_style:new"
               "*job_option input_style:old *job_option input_physics_style:old"
      visibles "job_allows_input_style_table_driven"
               "job_allows_input_style_multi_physics"
               "job_allows_input_style_old"
-#else
-     popmenu marc_input_style_run_adv_pm
-#endif
      help job_option_input_style
     }
 
@@ -1001,11 +863,7 @@ popmenu job_submit_adv_pm {
    text "SCRATCH DIRECTORY"
    settext $directory_browser_label "JOB SCRATCH DIRECTORY"
    set $directory_browser_command "*job_scratch_directory"
-#ifdef QT_MENTAT
    browser directory_browser
-#else
-   popmenu directory_browser_popmenu
-#endif
    help job_scratch_directory
   }
 
@@ -1145,172 +1003,18 @@ popmenu job_submit_adv_pm {
   buffering single
  }
 
-#ifdef QT_MENTAT
  mode permanent
-#else
- mode dialog
-#endif
 }
 
-#--------------------------------------------------------------------------------------------------
-popmenu damask {
-
-#ifdef QT_MENTAT
- text "DAMASK.MPIE.DE"
-#endif
-
- group {
-#ifndef QT_MENTAT
-  label {
-   position 0 0
-   size 50 4
-   text "DAMASK.MPIE.DE"
-  }
-#endif
-
-  label {
-   position 1 6
-   size 13   6
-   text "Optimzation"
-   border_width 1
-   border_color black
-  }
-
-  label {
-   position +13 =
-   size 20 6
-   text "write Input"
-   border_width 1
-   border_color black
-  }
-
-  label {
-   position +18 =
-   size 30 6
-   text "do not write Inp."
-   border_width 1
-   border_color black
-  }
-
-  label {
-   position -32 +6
-   size 12 6
-   text "O2 / OpenMP"
-   border_width 1
-   border_color black
-  }
-
-  popdown {
-   position +12 =
-   size 20 6
-   text "Submit"
-   command "*submit_job 4 *monitor_job"
-  }
-
-  popdown {
-   position +20 =
-   size 20 6
-   text "Execute"
-   command "*execute_job 4 *monitor_job"
-  }
-
-  label {
-   position -32 +6
-   size 12 6
-   text "O1 / OpenMP"
-   border_width 1
-   border_color black
-  }
-
-  popdown {
-   position +12 =
-   size 20 6
-   text "Submit"
-   command "*submit_job 5 *monitor_job"
-  }
-
-  popdown {
-   position +20 =
-   size 20 6
-   text "Execute"
-   command "*execute_job 5 *monitor_job"
-  }
-
-  label {
-   position -32 +6
-   size 12 6
-   text "O0 / OpenMP"
-   border_width 1
-   border_color black
-  }
-
-  popdown {
-   position +12 =
-   size 20 6
-   text "Submit"
-   command "*submit_job 6 *monitor_job"
-  }
-
-  popdown {
-   position +20 =
-   size 20 6
-   text "Execute"
-   command "*execute_job 6 *monitor_job"
-  }
-
-  popdown {
-   position 19 +8
-   size 12 8
-   text "CANCEL"
-  }
-}
-
-
-
- window {
-  parent mentat
-  origin 38 8
-#ifdef DCOM
-  size 50 100
-#else
-  size 50 94
-#endif
-  background_color body
-  border_width 1
-  border_color border
-  buffering single
- }
-#ifdef QT_MENTAT
- mode permanent
-#else
- mode dialog
-#endif
-}
 
 #--------------------------------------------------------------------------------------------------
 popmenu job_exit_msg_pm {
 
-#ifdef QT_MENTAT
  text "EXIT MESSAGE"
-#endif
 
  group {
 
-#ifndef QT_MENTAT
-  label {
-   position 0 0
-   size 86 4
-   text "EXIT MESSAGE"
-  }
 
-  display {
-   position 1 5
-   size 84 74
-   display "job_exit_msg"
-  }
-#endif
-
-#ifdef QT_MENTAT
 
   text {
    position 1 5
@@ -1320,7 +1024,6 @@ popmenu job_exit_msg_pm {
    display "job_exit_msg"
   }
 
-#endif
   popdown {
    position 37 +76
    size 12 8
@@ -1342,74 +1045,16 @@ popmenu job_exit_msg_pm {
 }
 
 
-#ifndef QT_MENTAT
-#--------------------------------------------------------------------------------------------------
-popmenu job_user_source_pm {
-
- window {
-  parent job_run_wi
-  origin 25 17
-  size 26 17
-  border_width 1
-  border_color border
-  background_color body
- }
- mode dialog
-
- group job_user_source_gr
-}
-
-
-#--------------------------------------------------------------------------------------------------
-group job_user_source_gr {
- popdown {
-  position 0 0
-  size 26 4
-  text "COMPILE / NO SAVE"
-  command "*job_option user_source:compile_nosave"
- }
-
- popdown {
-  position = +4
-  size 26 4
-  text "COMPILE AND SAVE"
-  command "*job_option user_source:compile_save"
- }
-
- popdown {
-  position = +4
-  size 26 4
-  text "RUN SAVED EXECUTABLE"
-  command "*job_option user_source:run_saved"
- }
-
- popdown {
-  position = +5
-  size 26 4
-  text "CANCEL"
- }
-}
-#endif
 
 
 #--------------------------------------------------------------------------------------------------
 popmenu job_run_parallelization_pm {
 
-#ifdef QT_MENTAT
  text "PARALLELIZATION/\{GPU}"
-#endif
 
  group {
 
-#ifndef QT_MENTAT
-  label {
-   position 0 0
-   size 60 4
-   text "PARALLELIZATION/GPU"
-  }
-#endif
 
-#ifdef QT_MENTAT
    label {
     position 0 0
     size 6 4
@@ -1433,14 +1078,9 @@ popmenu job_run_parallelization_pm {
     size 26 4
     display job_class_label
    }
-#endif
 
   frame {
-#ifdef QT_MENTAT
    position 1 9
-#else
-   position 1 5
-#endif
    size 48 28
    group job_ddm_gr
    text "DOMAIN DECOMPOSITION"
@@ -1493,11 +1133,7 @@ popmenu job_run_parallelization_pm {
   border_color border
   buffering single
  }
-#ifdef QT_MENTAT
  mode permanent
-#else
- mode dialog
-#endif
 }
 
 
@@ -1531,12 +1167,8 @@ group job_ddm_use_gr {
   texts "DECOMPOSITION IN MARC"
         "DECOMPOSITION IN MENTAT"
   roller "job_option ddm_generator"
-#ifdef QT_MENTAT
   commands "*job_option ddm_generator:fea_solver"
            "*job_option ddm_generator:preprocessor"
-#else
-  popmenu job_ddm_generator_pm
-#endif
   help job_run_ddm_generator
  }
 
@@ -1557,11 +1189,7 @@ group job_ddm_use_gr {
  text {
   position 0 +9
   size 22 4
-#ifdef QT_MENTAT
   text "Single Input File"
-#else
-  text "SINGLE INPUT FILE"
-#endif
   readonly
   visible "*job_option ddm_generator:fea_solver"
  }
@@ -1593,72 +1221,17 @@ group job_ddm_use_gr {
 }
 
 
-#ifndef QT_MENTAT
-#--------------------------------------------------------------------------------------------------
-popmenu job_ddm_generator_pm {
-
- window {
-  parent mentat
-  origin 42 19
-  size 30 13
-  border_width 1
-  border_color border
-  background_color body
- }
-
- mode dialog
-
- group job_ddm_generator_gr
-}
-
-
-#--------------------------------------------------------------------------------------------------
-group job_ddm_generator_gr {
-
- popdown {
-  position 0 0
-  size 30 4
-  text "DECOMPOSITION IN MARC"
-  command "*job_option ddm_generator:fea_solver"
-  help job_run_ddm_generator
- }
-
- popdown {
-  position = +4
-  size 30 4
-  text "DECOMPOSITION IN MENTAT"
-  command "*job_option ddm_generator:preprocessor"
-  help job_run_ddm_generator
- }
-
- popdown {
-  position = +5
-  size 30 4
-  text "CANCEL"
-  help job_run_ddm_generator
- }
-}
-#endif
 
 
 #--------------------------------------------------------------------------------------------------
 group job_ddm_fea_solver_gr {
 
-#ifdef QT_MENTAT
  label {
   position 0 0
   size 10 4
   text "# DOMAINS"  
   help job_param
  }
-#else
- button {
-  position 0 0
-  size 10 4
-  text "# DOMAINS"
-  command "*job_param ndomains"
- }
-#endif
 
  text {
   position +10 =
@@ -1694,7 +1267,6 @@ group job_ddm_fea_solver_gr {
           "*job_option ddm_method:vector"
           "*job_option ddm_method:radial"
           "*job_option ddm_method:angular"
-#ifdef QT_MENTAT
   commands "*job_option ddm_method:metis_best"
            "*job_option ddm_method:metis_element_based"
            "*job_option ddm_method:metis_node_based"
@@ -1702,126 +1274,27 @@ group job_ddm_fea_solver_gr {
            "*job_option ddm_method:vector"
            "*job_option ddm_method:radial"
            "*job_option ddm_method:angular"
-#else
-  popmenu job_ddm_method_pm
-#endif
  }
 
  button {
   position +4 +4
   size 19 4
   text "ADVANCED SETTINGS"
-#ifdef QT_MENTAT
   popmenu job_ddm_fea_solver_pm
-#else
-  screen job_ddm_fea_solver_sc
-  command "@popdown($popname2) @popdown($popname1)" ($popname2, $popname1)
-#endif
  }
 }
 
 
-#ifndef QT_MENTAT
-#--------------------------------------------------------------------------------------------------
-popmenu job_ddm_method_pm {
-
- window {
-  parent mentat
-  origin 56 24
-  size 30 33
-  border_width 1
-  border_color border
-  background_color body
- }
-
- mode dialog
-
- group job_ddm_method_gr
-}
 
 
-#--------------------------------------------------------------------------------------------------
-group job_ddm_method_gr {
-
- popdown {
-  position 0 0
-  size 30 4
-  text "METIS BEST"
-  command "*job_option ddm_method:metis_best"
- }
-
- popdown {
-  position = +4
-  size 30 4
-  text "METIS ELEMENT BASED"
-  command "*job_option ddm_method:metis_element_based"
- }
-
- popdown {
-  position = +4
-  size 30 4
-  text "METIS NODE BASED"
-  command "*job_option ddm_method:metis_node_based"
- }
-
- popdown {
-  position = +4
-  size 30 4
-  text "RECURSIVE COORDINATE BISECTION"
-  command "*job_option ddm_method:recur_coord_bisect"
- }
-
- popdown {
-  position = +4
-  size 30 4
-  text "VECTOR"
-  command "*job_option ddm_method:vector"
- }
-
- popdown {
-  position = +4
-  size 30 4
-  text "RADIAL"
-  command "*job_option ddm_method:radial"
- }
-
- popdown {
-  position = +4
-  size 30 4
-  text "ANGULAR"
-  command "*job_option ddm_method:angular"
- }
-
- popdown {
-  position = +5
-  size 30 4
-  text "CANCEL"
- }
-}
-#endif
-
-
-#ifdef QT_MENTAT
 #--------------------------------------------------------------------------------------------------
 popmenu job_ddm_fea_solver_pm {
 
  text "JOB PARALLELIZATION"
-#else
-screen job_ddm_fea_solver_sc {
-
- menu {
-#endif
 
   group {
    units 32 120
 
-#ifndef QT_MENTAT
-   label {
-    position 0 0
-    size 32 4
-    text "JOB PARALLELIZATION"
-   }
-#endif
 
    label {
     position 0 5
@@ -1835,7 +1308,6 @@ screen job_ddm_fea_solver_sc {
     display "job_name"
    }
 
-#ifdef QT_MENTAT
    label {
     position 0 +4
     size 6 4
@@ -1847,15 +1319,10 @@ screen job_ddm_fea_solver_sc {
     size 26 4
     display job_class_label
    }
-#endif
 
    frame {
 
-#ifdef QT_MENTAT
     position 0 +9
-#else
-    position 0 +5
-#endif
     size 32 76
     text "ADVANCED DECOMPOSITION IN MARC"
     border_width 1
@@ -1863,21 +1330,12 @@ screen job_ddm_fea_solver_sc {
 
     group {
 
-#ifdef QT_MENTAT
      label {
       position 1 4
       size 16 4
       text "# DOMAINS"      
       help job_param
      }
-#else
-     button {
-      position 1 4
-      size 16 4
-      text "# DOMAINS"
-      command "*job_param ndomains"
-     }
-#endif
 
      text {
       position +16 =
@@ -1913,7 +1371,6 @@ screen job_ddm_fea_solver_sc {
               "*job_option ddm_method:vector"
               "*job_option ddm_method:radial"
               "*job_option ddm_method:angular"
-#ifdef QT_MENTAT
       commands "*job_option ddm_method:metis_best"
                "*job_option ddm_method:metis_element_based"
                "*job_option ddm_method:metis_node_based"
@@ -1921,9 +1378,6 @@ screen job_ddm_fea_solver_sc {
                "*job_option ddm_method:vector"
                "*job_option ddm_method:radial"
                "*job_option ddm_method:angular"
-#else
-      popmenu job_ddm_method2_pm
-#endif
      }
 
      frame {
@@ -1989,22 +1443,12 @@ screen job_ddm_fea_solver_sc {
                "*job_option ddm_quadr_elems:linearized"
      }
 
-#ifdef QT_MENTAT
      label {
       position 1 +5
       size 15 4
       text "ELEMENT WEIGHT FACTOR"      
       help job_param
      }
-#else
-     button {
-      position 1 +5
-      size 15 4
-      text "ELEMENT WEIGHT FACTOR"      
-      command "*job_param ddm_elem_weight_factor"
-      help job_run_ddm_decomp_element_weight_factor
-     }
-#endif
      
      text {
       position +15 =
@@ -2027,23 +1471,12 @@ screen job_ddm_fea_solver_sc {
       help job_run_ddm_decomp_detect_contact
      }
       
-#ifdef QT_MENTAT
      label {
       position = +5
       size 15 4
       text "CONTACT TOLERANCE"
       visible "*job_option ddm_detect_contact:on"
      }
-#else
-     button {
-      position = +5
-      size 15 4
-      text "CONTACT TOLERANCE"
-      command "*job_param ddm_contact_tolerance"
-      visible "*job_option ddm_detect_contact:on"
-      help job_run_ddm_decomp_contact_tolerance
-     }
-#endif
      
      text {
       position +15 =
@@ -2055,23 +1488,12 @@ screen job_ddm_fea_solver_sc {
       help job_run_ddm_decomp_contact_tolerance
      }
 
-#ifdef QT_MENTAT
      label {
       position -15 +4
       size 15 4
       text "CONTACT CONSTR FACTOR"
       visible "*job_option ddm_detect_contact:on"
      }
-#else
-     button {
-      position -15 +4
-      size 15 4
-      text "CONTACT CONSTR FACTOR"
-      command "*job_param ddm_contact_constr_factor"
-      visible "*job_option ddm_detect_contact:on"
-      help job_run_ddm_decomp_contact_constraint_factor
-     }
-#endif
      
      text {
       position +15 =
@@ -2084,54 +1506,16 @@ screen job_ddm_fea_solver_sc {
     }
    }
 
-#ifdef QT_MENTAT
    popdown {
     position 0 +77
     size 32 8
     text "OK"
    }
-#else
-   frame {
-    position 0 +77
-    size 32 8
-    group ok2_gr
-   }
-
-   frame select_frame
-   frame inactive_return
-#endif
   }
-#ifndef QT_MENTAT
-  window main_window
-  disable_right_mouse_button
- }
-
- menu transform
-} # job_ddm_fea_solver_sc
-#else
  mode permanent
 } # job_ddm_fea_solver_pm
-#endif
 
 
-#ifndef QT_MENTAT
-#--------------------------------------------------------------------------------------------------
-popmenu job_ddm_method2_pm {
-
- window {
-  parent mentat
-  origin 1 22
-  size 30 33
-  border_width 1
-  border_color border
-  background_color body
- }
-
- mode dialog
-
- group job_ddm_method_gr
-}
-#endif
 
 
 #--------------------------------------------------------------------------------------------------
@@ -2209,12 +1593,8 @@ group job_ddm_sort_point_gr {
   texts "DEFAULT"
         "USER"
   roller "job_option ddm_sort_point"
-#ifdef QT_MENTAT
   commands "*job_option ddm_sort_point:default"
            "*job_option ddm_sort_point:user"
-#else
-  popmenu job_ddm_sort_point_meth_pm
-#endif
  }
 
  button {
@@ -2251,49 +1631,6 @@ group job_ddm_sort_point_gr {
 }
 
 
-#ifndef QT_MENTAT
-#--------------------------------------------------------------------------------------------------
-popmenu job_ddm_sort_point_meth_pm {
-
- window {
-  parent mentat
-  origin 15 35
-  size 14 13
-  border_width 1
-  border_color border
-  background_color body
- }
-
- mode dialog
-
- group job_ddm_sort_point_meth_gr
-}
-
-
-#--------------------------------------------------------------------------------------------------
-group job_ddm_sort_point_meth_gr {
-
- popdown {
-  position 0 0
-  size 14 4
-  text "DEFAULT"
-  command "*job_option ddm_sort_point:default"
- }
-
- popdown {
-  position = +4
-  size 14 4
-  text "USER DEFINED"
-  command "*job_option ddm_sort_point:user"
- }
-
- popdown {
-  position = +5
-  size 14 4
-  text "CANCEL"
- }
-}
-#endif
 
 
 #--------------------------------------------------------------------------------------------------
@@ -2317,68 +1654,12 @@ group job_ddm_preprocessor_gr {
   position +4 =
   size 30 4
   text "USER DOMAINS"
-#ifdef QT_MENTAT
   popmenu domains_pm
-#else
-  screen job_ddm_user_domains_sc
-  command "@popdown($popname2) @popdown($popname1)" ($popname2, $popname1)
-#endif
   help job_run_ddm_user_domains
  }
 }
 
 
-#ifndef QT_MENTAT
-#--------------------------------------------------------------------------------------------------
-screen job_ddm_user_domains_sc {
-
- menu {
-
-  group {
-   units 32 120
-
-   label {
-    position 0 0
-    size 32 4
-    text "USER DOMAINS"
-   }
-
-   frame {
-    position 0 5
-    size 32 28
-    group user_domains_gr
-   }
-
-   frame {
-    position 0 +29
-    size 32 49
-    group user_domains_generate_gr
-   }
-
-   frame {
-    position 0 +50
-    size 32 8
-    group user_domains_tail_gr
-   }
-
-   frame {
-    position 0 92
-    size 32 8
-    group ok2_gr
-   }
-
-   frame select_frame
-   frame inactive_return
-  }
-  window main_window
-  disable_right_mouse_button
-
- }
-
- menu transform
-
-} # job_ddm_user_domains_sc
-#endif
 
 
 #--------------------------------------------------------------------------------------------------
@@ -2393,22 +1674,12 @@ group job_assem_recov_gr {
   toggle "*job_option assem_recov_multi_threading:on"
  }
 
-#ifdef QT_MENTAT
  label {
   position +2 +4
   size 12 4
   text "# THREADS"  
   visible "*job_option assem_recov_multi_threading:on"
  }
-#else
- button {
-  position +2 +4
-  size 12 4
-  text "# THREADS"
-  command "*job_param assem_recov_nthreads"
-  visible "*job_option assem_recov_multi_threading:on"
- }
-#endif
 
  text {
   position +12 =
@@ -2493,7 +1764,6 @@ group job_parallel_matrix_solver_gr {
           job_solver_it_sparse
           job_solver_dir_profile
           job_solver_dir_sparse
-#ifdef QT_MENTAT
   commands "*job_option solver:mfront_sparse"
            "*job_option solver:mixed_direct_iterative"
            "*job_option solver:it_ext"
@@ -2513,9 +1783,6 @@ group job_parallel_matrix_solver_gr {
            job_allows_solver_dir_profile
            job_allows_solver_dir_sparse
   help job_param_solver_method
-#else
-  popmenu job_set_parallel_matrix_solver_pm
-#endif
  }
 
  button {
@@ -2555,40 +1822,15 @@ group job_parallel_matrix_solver_gr {
 }
 
 
-#ifndef QT_MENTAT
-#--------------------------------------------------------------------------------------------------
-popmenu job_set_parallel_matrix_solver_pm {
- window {
-  parent mentat
-  origin 48 61
-  size 24 42
-  border_width 1
-  border_color border
-  background_color body
- }
- mode dialog
-
- group job_solver_gr
-}
-#endif
 
 
 #--------------------------------------------------------------------------------------------------
 popmenu job_parallel_matrix_solver_opt_pm {
 
-#ifdef QT_MENTAT
  text "MATRIX SOLVER OPTIONS"
-#endif
 
  group {
 
-#ifndef QT_MENTAT
-  label {
-   position 0 0
-   size 38 4
-   text "MATRIX SOLVER OPTIONS"
-  }
-#endif
 
   frame {
    position 1 5
@@ -2664,7 +1906,6 @@ group job_solver_multi_procs_parallel_off_gr {
   help job_run_multithreading
  }
 
-#ifdef QT_MENTAT
  label {
   position +2 +4
   size 14 4
@@ -2672,15 +1913,6 @@ group job_solver_multi_procs_parallel_off_gr {
   visible "*job_option nsolver_procs_serial:on"
   help job_param
  }
-#else
- button {
-  position +2 +4
-  size 14 4
-  text "# PROCESSES"
-  command "*job_param nsolver_procs"
-  visible "*job_option nsolver_procs_serial:on"
- }
-#endif
 
  text {
   position +14 =
@@ -2701,9 +1933,7 @@ group job_solver_multi_procs_parallel_on_gr {
   text "MULTIPLE SOLVER PROCESSES"
   help job_run_multithreading
   toggle true
-#ifdef QT_MENTAT
   set $dummy dummy
-#endif
  }
 
  label {
@@ -2773,21 +2003,12 @@ group job_nsolver_procs_ddm_automatic_gr {
 #--------------------------------------------------------------------------------------------------
 group job_nsolver_procs_ddm_user_gr {
 
-#ifdef QT_MENTAT
  label {
   position 0 0
   size 8 4
   text "VALUE"  
   help job_param
  }
-#else
- button {
-  position 0 0
-  size 8 4
-  text "VALUE"
-  command "*job_param nsolver_procs"
- }
-#endif
 
  text {
   position +8 =
@@ -2848,7 +2069,6 @@ group job_solver_multi_threads_mfront_sparse_parallel_off_gr {
   help job_run_multithreading
  } 
 
-#ifdef QT_MENTAT
  label { 
   position +2 +4
   size 14 4
@@ -2856,15 +2076,6 @@ group job_solver_multi_threads_mfront_sparse_parallel_off_gr {
   visible "*job_option mfront_sparse_multi_threading:on"
   help job_param
  }
-#else
- button {
-  position +2 +4
-  size 14 4
-  text "# THREADS"
-  command "*job_param nthreads"
-  visible "*job_option mfront_sparse_multi_threading:on"
- }
-#endif
 
  text {
   position +14 =
@@ -2884,9 +2095,7 @@ group job_solver_multi_threads_mfront_sparse_parallel_on_gr {
   text "MULTIPLE THREADS"
   help job_run_multithreading
   toggle true
-#ifdef QT_MENTAT
   set $dummy dummy
-#endif
  }
 
  label {
@@ -2972,20 +2181,11 @@ group job_mfront_sparse_multi_threads_ddm_automatic_gr {
 #--------------------------------------------------------------------------------------------------
 group job_mfront_sparse_multi_threads_ddm_user_gr {
 
-#ifdef QT_MENTAT
  label {
   position 0 0
   size 8 4
   text "VALUE"  
  }
-#else
- button {
-  position 0 0
-  size 8 4
-  text "VALUE"
-  command "*job_param nthreads"
- }
-#endif
 
  text {
   position +8 =
@@ -3056,7 +2256,6 @@ group job_solver_multi_threads_pardiso_parallel_off_gr {
   help job_run_multithreading
  }
 
-#ifdef QT_MENTAT
  label {
   position +2 +4
   size 14 4
@@ -3064,15 +2263,6 @@ group job_solver_multi_threads_pardiso_parallel_off_gr {
   visible "*job_option pardiso_multi_threading:on"
   help job_param
  }
-#else
- button {
-  position +2 +4
-  size 14 4
-  text "# THREADS"
-  command "*job_param nthreads"
-  visible "*job_option pardiso_multi_threading:on"
- }
-#endif
 
  text {
   position +14 =
@@ -3093,9 +2283,7 @@ group job_solver_multi_threads_pardiso_parallel_on_gr {
   text "MULTIPLE THREADS"
   help job_run_multithreading
   toggle true
-#ifdef QT_MENTAT
   set $dummy dummy
-#endif
  }
 
  label {
@@ -3165,21 +2353,12 @@ group job_pardiso_multi_threads_ddm_automatic_gr {
 #--------------------------------------------------------------------------------------------------
 group job_pardiso_multi_threads_ddm_user_gr {
 
-#ifdef QT_MENTAT
  label {
   position 0 0
   size 8 4
   text "VALUE"  
   help job_param
  }
-#else
- button {
-  position 0 0
-  size 8 4
-  text "VALUE"
-  command "*job_param nthreads"
- }
-#endif
 
  text {
   position +8 =
@@ -3250,11 +2429,7 @@ group job_parallel_env_network_gr {
   position 0 0
   size 28 4
   text "HOST FILE"
-#ifdef QT_MENTAT
   browser host_file_browser
-#else
-  popmenu host_file_browser_pm
-#endif
   settext $host_file_browser_label "SELECT HOST FILE"
   set $host_file_browser_command "*job_host_file"
   help job_host_file
@@ -3340,57 +2515,4 @@ group job_parallel_env_network_ddm_gr {
 }
 
 
-#ifndef QT_MENTAT
-#--------------------------------------------------------------------------------------------------
-popmenu marc_integer_size_pm {
-
- window {
-  parent mentat
-  origin 55 32
-  size 32 17
-  border_width 1
-  border_color border
-  background_color body
- }
- mode dialog
-
- group marc_integer_size_gr
-}
-
-
-#--------------------------------------------------------------------------------------------------
-group marc_integer_size_gr {
-
- popdown {
-  position 0 0
-  size 32 4
-  text "DEFAULT"
-  command "*job_option marc_integer_size:default"
-  help job_run_intsize
- }
-
- popdown {
-  position = +4
-  size 32 4
-  text "4-BYTE INTEGERS"
-  command "*job_option marc_integer_size:i4"
-  help job_run_intsize
- }
-
- popdown {
-  position = +4
-  size 32 4
-  text "8-BYTE INTEGERS"
-  command "*job_option marc_integer_size:i8"
-  help job_run_intsize
- }
-
- popdown {
-  position = +5
-  size 32 4
-  text "CANCEL"
-  help job_run_intsize
- }
-}
-#endif
 #endif
