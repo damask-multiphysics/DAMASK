@@ -191,15 +191,13 @@ for name in filenames:
   colOri = table.label_index(label)+(3-coordDim)                                                    # column(s) of orientation data (following 3 or 2 coordinates that were expanded to 3!)
 
   if inputtype == 'microstructure':
-    microstructure = table.data[:,colOri]
-    nGrains = len(np.unique(microstructure))
+
+    grain = table.data[:,colOri]
+    nGrains = len(np.unique(grain))
+
   else:
 
-# --- start background messaging
-
-    if options.verbose:
-      bg = damask.util.backgroundMessage()
-      bg.start()
+    if options.verbose: bg = damask.util.backgroundMessage(); bg.start()                            # start background messaging
 
     colPhase = -1                                                                                   # column of phase data comes last
     if options.verbose: bg.set_message('sorting positions...')
@@ -250,28 +248,29 @@ for name in filenames:
           cos_disorientations = -np.ones(1,dtype='f')                                               # largest possible disorientation
           closest_grain = -1                                                                        # invalid neighbor
 
-          neighbors = np.array(KDTree.query_ball_point([x,y,z], 3))                                 # point indices within radius
-          neighbors = neighbors[(neighbors < myPos) & \
-                                (table.data[index[neighbors],colPhase] == myPhase)]                 # filter neighbors: skip myself, anyone further ahead (cannot yet have a grain ID), and other phases
-          grains = np.unique(grain[neighbors])                                                      # unique grain IDs among valid neighbors
+          if options.tolerance > 0.0:                                                               # only try to compress orientations if asked to
+            neighbors = np.array(KDTree.query_ball_point([x,y,z], 3))                               # point indices within radius
+            neighbors = neighbors[(neighbors < myPos) & \
+                                  (table.data[index[neighbors],colPhase] == myPhase)]               # filter neighbors: skip myself, anyone further ahead (cannot yet have a grain ID), and other phases
+            grains = np.unique(grain[neighbors])                                                    # unique grain IDs among valid neighbors
 
-          if len(grains) > 0:                                                                       # check immediate neighborhood first
-            cos_disorientations = np.array([o.disorientation(orientations[grainID],
-                                                             SST = False)[0].quaternion.w \
-                                            for grainID in grains])                                 # store disorientation per grainID
-            closest_grain = np.argmax(cos_disorientations)                                          # find grain among grains that has closest orientation to myself
-            match = 'local'
-
-          if cos_disorientations[closest_grain] < threshold:                                        # orientation not close enough?
-            grains = existingGrains[np.atleast_1d( ( np.array(phases) == myPhase ) & \
-                                                   ( np.in1d(existingGrains,grains,invert=True) ) )] # check every other already identified grain (of my phase)
-
-            if len(grains) > 0:
+            if len(grains) > 0:                                                                     # check immediate neighborhood first
               cos_disorientations = np.array([o.disorientation(orientations[grainID],
                                                                SST = False)[0].quaternion.w \
                                               for grainID in grains])                               # store disorientation per grainID
               closest_grain = np.argmax(cos_disorientations)                                        # find grain among grains that has closest orientation to myself
-              match = 'global'
+              match = 'local'
+
+            if cos_disorientations[closest_grain] < threshold:                                      # orientation not close enough?
+              grains = existingGrains[np.atleast_1d( ( np.array(phases) == myPhase ) & \
+                                                     ( np.in1d(existingGrains,grains,invert=True) ) )] # check every other already identified grain (of my phase)
+
+              if len(grains) > 0:
+                cos_disorientations = np.array([o.disorientation(orientations[grainID],
+                                                                 SST = False)[0].quaternion.w \
+                                                for grainID in grains])                             # store disorientation per grainID
+                closest_grain = np.argmax(cos_disorientations)                                      # find grain among grains that has closest orientation to myself
+                match = 'global'
 
           if cos_disorientations[closest_grain] >= threshold:                                       # orientation now close enough?
             grainID = grains[closest_grain]
@@ -281,12 +280,12 @@ for name in filenames:
             multiplicity[grainID] += 1
             statistics[match] += 1
           else:
-            grain[myPos] = nGrains                                                                  # ... and assign to me
+            grain[myPos] = nGrains                                                                  # assign new grain to me ...
+            nGrains += 1                                                                            # ... and update counter
             orientations.append(o)                                                                  # store new orientation for future comparison
             multiplicity.append(1)                                                                  # having single occurrence so far
             phases.append(myPhase)                                                                  # store phase info for future reporting
-            nGrains += 1                                                                            # update counter ...
-            existingGrains = np.arange(nGrains)
+            existingGrains = np.arange(nGrains)                                                     # update list of existing grains
 
           myPos += 1
 
@@ -296,6 +295,8 @@ for name in filenames:
       damask.util.croak("{} seconds total.\n{} local and {} global matches.".\
                         format(time.clock()-tick,statistics['local'],statistics['global']))
     
+    grain += 1                                                                                      # offset from starting index 0 to 1
+     
 # --- generate header ----------------------------------------------------------------------------
 
   info = {
@@ -343,7 +344,7 @@ for name in filenames:
   
 # --- write microstructure information ------------------------------------------------------------
 
-  table.data = grain.reshape(info['grid'][1]*info['grid'][2],info['grid'][0]) + 1                   # offset from starting index 0 to 1
+  table.data = grain.reshape(info['grid'][1]*info['grid'][2],info['grid'][0])
   table.data_writeArray('%%%ii'%(formatwidth),delimiter=' ')
   
 #--- output finalization --------------------------------------------------------------------------
