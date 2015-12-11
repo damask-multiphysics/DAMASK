@@ -2031,10 +2031,11 @@ subroutine plastic_dislotwin_dotState(Tstar_v,Temperature,ipc,ip,el)
                   of
  real(pReal) :: sumf,sumftr,StressRatio_p,StressRatio_pminus1,BoltzmannRatio,DotGamma0,&
              EdgeDipMinDistance,AtomicVolume,VacancyDiffusion,StressRatio_r,Ndot0_twin,stressRatio,&
-             Ndot0_trans,StressRatio_s
+             Ndot0_trans,StressRatio_s,EdgeDipDistance, ClimbVelocity,DotRhoEdgeDipClimb,DotRhoEdgeDipAnnihilation, &
+             DotRhoDipFormation,DotRhoMultiplication,DotRhoEdgeEdgeAnnihilation
  real(pReal), dimension(plastic_dislotwin_totalNslip(phase_plasticityInstance(material_phase(ipc,ip,el)))) :: &
- gdot_slip,tau_slip,DotRhoMultiplication,EdgeDipDistance,DotRhoEdgeEdgeAnnihilation,DotRhoEdgeDipAnnihilation,&
- ClimbVelocity,DotRhoEdgeDipClimb,DotRhoDipFormation
+ gdot_slip,tau_slip
+
  real(pReal), dimension(plastic_dislotwin_totalNtwin(phase_plasticityInstance(material_phase(ipc,ip,el)))) :: &
               tau_twin
  real(pReal), dimension(plastic_dislotwin_totalNtrans(phase_plasticityInstance(material_phase(ipc,ip,el)))) :: &
@@ -2085,33 +2086,31 @@ subroutine plastic_dislotwin_dotState(Tstar_v,Temperature,ipc,ip,el)
                      plastic_dislotwin_qPerSlipFamily(f,instance))*sign(1.0_pReal,tau_slip(j))
       endif
       !* Multiplication
-      DotRhoMultiplication(j) = abs(gdot_slip(j))/&
-                                (plastic_dislotwin_burgersPerSlipSystem(j,instance)* &
-                                                            state(ph)%mfp_slip(j,of))
+      DotRhoMultiplication = abs(gdot_slip(j))/&
+                                (plastic_dislotwin_burgersPerSlipSystem(j,instance)*state(ph)%mfp_slip(j,of))
       !* Dipole formation
       EdgeDipMinDistance = &
         plastic_dislotwin_CEdgeDipMinDistance(instance)*plastic_dislotwin_burgersPerSlipSystem(j,instance)
       if (abs(tau_slip(j)) <= tiny(0.0_pReal)) then
-        DotRhoDipFormation(j) = 0.0_pReal
+        DotRhoDipFormation = 0.0_pReal
       else
-        EdgeDipDistance(j) = &
+        EdgeDipDistance = &
           (3.0_pReal*lattice_mu(ph)*plastic_dislotwin_burgersPerSlipSystem(j,instance))/&
           (16.0_pReal*pi*abs(tau_slip(j)))
-        if (EdgeDipDistance(j)>state(ph)%mfp_slip(j,of)) &
-            EdgeDipDistance(j)=state(ph)%mfp_slip(j,of)
-        if (EdgeDipDistance(j)<EdgeDipMinDistance) EdgeDipDistance(j)=EdgeDipMinDistance
-        DotRhoDipFormation(j) = &
-          ((2.0_pReal*EdgeDipDistance(j))/plastic_dislotwin_burgersPerSlipSystem(j,instance))*&
+        if (EdgeDipDistance>state(ph)%mfp_slip(j,of)) EdgeDipDistance=state(ph)%mfp_slip(j,of)
+        if (EdgeDipDistance<EdgeDipMinDistance)       EdgeDipDistance=EdgeDipMinDistance
+        DotRhoDipFormation = &
+          ((2.0_pReal*(EdgeDipDistance-EdgeDipMinDistance))/plastic_dislotwin_burgersPerSlipSystem(j,instance))*&
           state(ph)%rhoEdge(j,of)*abs(gdot_slip(j))*plastic_dislotwin_dipoleFormationFactor(instance)
       endif
  
       !* Spontaneous annihilation of 2 single edge dislocations
-      DotRhoEdgeEdgeAnnihilation(j) = &
+      DotRhoEdgeEdgeAnnihilation = &
         ((2.0_pReal*EdgeDipMinDistance)/plastic_dislotwin_burgersPerSlipSystem(j,instance))*&
         state(ph)%rhoEdge(j,of)*abs(gdot_slip(j))
  
       !* Spontaneous annihilation of a single edge dislocation with a dipole constituent
-      DotRhoEdgeDipAnnihilation(j) = &
+      DotRhoEdgeDipAnnihilation = &
         ((2.0_pReal*EdgeDipMinDistance)/plastic_dislotwin_burgersPerSlipSystem(j,instance))*&
         state(ph)%rhoEdgeDip(j,of)*abs(gdot_slip(j))
  
@@ -2120,23 +2119,27 @@ subroutine plastic_dislotwin_dotState(Tstar_v,Temperature,ipc,ip,el)
         plastic_dislotwin_CAtomicVolume(instance)*plastic_dislotwin_burgersPerSlipSystem(j,instance)**(3.0_pReal)
       VacancyDiffusion = &
         plastic_dislotwin_D0(instance)*exp(-plastic_dislotwin_Qsd(instance)/(kB*Temperature))
-      if (abs(tau_slip(j)) <= tiny(0.0_pReal)) then                                                                      ! why no annihilation if tau == 0???
-        DotRhoEdgeDipClimb(j) = 0.0_pReal
+      if (abs(tau_slip(j)) <= tiny(0.0_pReal)) then
+        DotRhoEdgeDipClimb = 0.0_pReal
       else
-        ClimbVelocity(j) = &
-          ((3.0_pReal*lattice_mu(ph)*VacancyDiffusion*AtomicVolume)/(2.0_pReal*pi*kB*Temperature))*&
-          (1/(EdgeDipDistance(j)+EdgeDipMinDistance))
-        DotRhoEdgeDipClimb(j) = &
-          (4.0_pReal*ClimbVelocity(j)*state(ph)%rhoEdgeDip(j,of))/(EdgeDipDistance(j)-EdgeDipMinDistance)
+        if (EdgeDipDistance-EdgeDipMinDistance <= tiny(0.0_pReal)) then
+          DotRhoEdgeDipClimb = 0.0_pReal
+        else
+          ClimbVelocity = &
+            ((3.0_pReal*lattice_mu(ph)*VacancyDiffusion*AtomicVolume)/(2.0_pReal*pi*kB*Temperature))*&
+            (1/(EdgeDipDistance+EdgeDipMinDistance))
+          DotRhoEdgeDipClimb = &
+            (4.0_pReal*ClimbVelocity*state(ph)%rhoEdgeDip(j,of))/(EdgeDipDistance-EdgeDipMinDistance)
+        endif
       endif
  
       !* Edge dislocation density rate of change
       dotState(ph)%rhoEdge(j,of) = &
-        DotRhoMultiplication(j)-DotRhoDipFormation(j)-DotRhoEdgeEdgeAnnihilation(j)
+        DotRhoMultiplication-DotRhoDipFormation-DotRhoEdgeEdgeAnnihilation
  
       !* Edge dislocation dipole density rate of change
       dotState(ph)%rhoEdgeDip(j,of) = &
-        DotRhoDipFormation(j)-DotRhoEdgeDipAnnihilation(j)-DotRhoEdgeDipClimb(j)
+        DotRhoDipFormation-DotRhoEdgeDipAnnihilation-DotRhoEdgeDipClimb
  
       !* Dotstate for accumulated shear due to slip
       dotState(ph)%accshear_slip(j,of) = abs(gdot_slip(j))
