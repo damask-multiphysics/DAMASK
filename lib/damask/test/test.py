@@ -411,7 +411,8 @@ class Test():
                      columns = [None],                                                              # list of list of column labels (per file)
                      rtol = 1e-5,
                      atol = 1e-8,
-                     threshold = -1.0,
+                     preFilter = -1.0,
+                     postFilter = -1.0,
                      debug = False):
     
     '''
@@ -449,22 +450,29 @@ class Test():
     data = []
     for table,labels in zip(tables,columns):
       table.data_readArray(labels)
-      data.append(table.data)
+      data.append(np.where(np.abs(table.data)<preFilter,np.zeros_like(table.data),table.data))
       maximum += np.abs(table.data).max(axis=0)
       table.close()
     
     maximum /= len(tables)
-    maximum = np.where(maximum >0.0, maximum, 1)
+    maximum = np.where(maximum >0.0, maximum, 1)                                                 # do not devide by zero for empty columns
     for i in xrange(len(data)):
       data[i] /= maximum
     
     mask = np.zeros_like(table.data,dtype='bool')
 
     for table in data:
-      mask |= np.where(np.abs(table)<threshold,True,False)                                        # mask out (all) tiny values
-
+      mask |= np.where(np.abs(table)<postFilter,True,False)                                       # mask out (all) tiny values
+     
+    
     allclose = True                                                                               # start optimistic
     for i in xrange(1,len(data)):
+      if debug:
+        t0 = np.where(mask,0.0,data[i-1])
+        t1 = np.where(mask,0.0,data[i  ])
+        j = np.argmin(np.abs(t1)*rtol+atol-np.abs(t0-t1))
+        print np.amin(np.abs(t1)*rtol+atol-np.abs(t0-t1))
+        logging.info('%f %f'%((t0*maximum).flatten()[j],(t1*maximum).flatten()[j]))
       allclose &= np.allclose(np.where(mask,0.0,data[i-1]),
                               np.where(mask,0.0,data[i  ]),rtol,atol)                             # accumulate "pessimism"
 
