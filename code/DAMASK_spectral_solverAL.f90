@@ -253,6 +253,8 @@ end subroutine AL_init
 !--------------------------------------------------------------------------------------------------
 type(tSolutionState) function &
   AL_solution(incInfoIn,guess,timeinc,timeinc_old,loadCaseTime,P_BC,F_BC,rotation_BC)
+ use IO, only: &
+   IO_error
  use numerics, only: &
    update_gamma
  use math, only: &
@@ -317,9 +319,8 @@ type(tSolutionState) function &
  CHKERRQ(ierr)
  AL_solution%termIll = terminallyIll
  terminallyIll = .false.
- AL_solution%converged = .true.
-
- if (reason < 1 .and. reason /= -4) AL_solution%converged = .false.                                 ! reason -4 (SNES_DIVERGED_FNORM_NAN) happens in case of homogeneous solution
+ if (reason == -4) call IO_error(893_pInt)
+ if (reason < 1) AL_solution%converged = .false.
  AL_solution%iterationsNeeded = totalIter
 
 end function AL_solution

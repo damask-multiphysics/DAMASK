@@ -1605,6 +1605,8 @@ subroutine IO_error(error_ID,el,ip,g,ext_msg)
    msg = 'Polar decomposition error'
  case (409_pInt)
    msg = 'math_check: R*v == q*v failed'
+ case (410_pInt)
+   msg = 'eigenvalues computation error'
  case (450_pInt)
    msg = 'unknown symmetry type specified'
 
@@ -1669,6 +1671,8 @@ subroutine IO_error(error_ID,el,ip,g,ext_msg)
    msg = 'unknown solver type selected'
  case (892_pInt)
    msg = 'unknown filter type selected'
+ case (893_pInt)
+   msg = 'PETSc: SNES_DIVERGED_FNORM_NAN'
    
 !-------------------------------------------------------------------------------------------------
 ! error messages related to parsing of Abaqus input file

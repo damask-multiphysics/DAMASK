@@ -224,11 +224,12 @@ end subroutine basicPETSc_init
 !--------------------------------------------------------------------------------------------------
 !> @brief solution for the Basic PETSC scheme with internal iterations
 !--------------------------------------------------------------------------------------------------
-type(tSolutionState) function basicPETSc_solution( &
-     incInfoIn,guess,timeinc,timeinc_old,loadCaseTime,P_BC,F_BC,rotation_BC)
+type(tSolutionState) function &
+  basicPETSc_solution(incInfoIn,guess,timeinc,timeinc_old,loadCaseTime,P_BC,F_BC,rotation_BC)
+ use IO, only: &
+   IO_error
  use numerics, only: &
-   update_gamma, &
-   itmax
+   update_gamma
  use DAMASK_spectral_Utilities, only: &
    tBoundaryCondition, &
    Utilities_maskedCompliance, &
@@ -286,8 +287,8 @@ type(tSolutionState) function basicPETSc_solution( &
  basicPETSc_solution%termIll = terminallyIll
  terminallyIll = .false.
  BasicPETSc_solution%converged =.true.
-
- if (reason < 1 .and. reason /= -4) basicPETSC_solution%converged = .false.                         ! reason -4 (SNES_DIVERGED_FNORM_NAN) happens in case of homogeneous solution
+ if (reason == -4) call IO_error(893_pInt)
+ if (reason < 1) basicPETSC_solution%converged = .false.
  basicPETSC_solution%iterationsNeeded = totalIter
 
 end function BasicPETSc_solution
@@ -372,7 +373,7 @@ subroutine BasicPETSC_formResidual(in,x_scal,f_scal,dummy,ierr)
  F_aim_lastIter = F_aim
  F_aim = F_aim - math_mul3333xx33(S, ((P_av - params%P_BC)))                                        ! S = 0.0 for no bc
  err_stress = maxval(abs(mask_stress * (P_av - params%P_BC)))                                       ! mask = 0.0 for no bc
- 
+
 !--------------------------------------------------------------------------------------------------
 ! updated deformation gradient using fix point algorithm of basic scheme
  tensorField_real = 0.0_pReal

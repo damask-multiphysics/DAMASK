@@ -252,6 +252,8 @@ end subroutine Polarisation_init
 !--------------------------------------------------------------------------------------------------
 type(tSolutionState) function &
   Polarisation_solution(incInfoIn,guess,timeinc,timeinc_old,loadCaseTime,P_BC,F_BC,rotation_BC)
+ use IO, only: &
+   IO_error
  use numerics, only: &
    update_gamma
  use math, only: &
@@ -316,9 +318,8 @@ type(tSolutionState) function &
  CHKERRQ(ierr)
  Polarisation_solution%termIll = terminallyIll
  terminallyIll = .false.
- Polarisation_solution%converged = .true.
-
- if (reason < 1 .and. reason /= -4) Polarisation_solution%converged = .false.                       ! reason -4 (SNES_DIVERGED_FNORM_NAN) happens in case of homogeneous solution
+ if (reason == -4) call IO_error(893_pInt)
+ if (reason < 1) Polarisation_solution%converged = .false.
  Polarisation_solution%iterationsNeeded = totalIter
 
 end function Polarisation_solution
