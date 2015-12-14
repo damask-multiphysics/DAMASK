@@ -788,7 +788,6 @@ subroutine plastic_phenoplus_microstructure(orientation,ipc,ip,el)
                       vld_Nneighbors, &             !number of my valid neighbors
                       n, &                          !neighbor index (for iterating through all neighbors)
                       ns, &                         !number of slip system
-                      nns, &                        !number of slip in my neighbors
                       nt, &                         !number of twin system
                       me_slip, &                    !my slip system index
                       neighbor_el, &                !element number of neighboring material point
@@ -802,14 +801,12 @@ subroutine plastic_phenoplus_microstructure(orientation,ipc,ip,el)
                       j                             !quickly loop through slip families
 
  real(pReal)          kappa_max, &                  !
-                      weight_sum, &                 !temp storage for the denominator in weighting function
                       mprimeavg
 
 
  real(pReal), dimension(plastic_phenoplus_totalNslip(phase_plasticityInstance(material_phase(1,ip,el)))) :: &
                       m_primes, &                   !m' between me_alpha(one) and neighbor beta(all)
-                      me_acshear, &                 !temp storage for ac_shear of one particular system for me
-                      ne_acshear                    !temp storage for ac_shear of one particular system for one of my neighbor
+                      me_acshear                    !temp storage for ac_shear of one particular system for me
 
  real(pReal), dimension(3,plastic_phenoplus_totalNslip(phase_plasticityInstance(material_phase(1,ip,el)))) :: &
                                                 slipNormal, &

@@ -2026,7 +2026,7 @@ subroutine plastic_dislotwin_dotState(Tstar_v,Temperature,ipc,ip,el)
    ip, &                                                                                            !< integration point
    el                                                                                               !< element
 
- integer(pInt) :: instance,ns,nt,nr,f,i,j,index_myFamily,s1,s2,a,b,sa,sb,ssa,ssb, &
+ integer(pInt) :: instance,ns,nt,nr,f,i,j,index_myFamily,s1,s2, &
                   ph, &
                   of
  real(pReal) :: sumf,sumftr,StressRatio_p,StressRatio_pminus1,BoltzmannRatio,DotGamma0,&
