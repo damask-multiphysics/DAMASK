@@ -149,10 +149,10 @@ subroutine basicPETSc_init
  call DMDACreate3d(PETSC_COMM_WORLD, &
         DM_BOUNDARY_NONE, DM_BOUNDARY_NONE, DM_BOUNDARY_NONE, &                                     ! cut off stencil at boundary
         DMDA_STENCIL_BOX, &                                                                         ! Moore (26) neighborhood around central point
-        grid(1),grid(2),grid(3), &                                                ! global grid
+        grid(1),grid(2),grid(3), &                                                                  ! global grid
         1, 1, worldsize, &
         9, 0, &                                                                                     ! #dof (F tensor), ghost boundary width (domain overlap)
-        grid (1),grid (2),localK, &                                                       ! local grid
+        grid (1),grid (2),localK, &                                                                 ! local grid
         da,ierr)                                                                                    ! handle, error
  CHKERRQ(ierr)
  call SNESSetDM(snes,da,ierr); CHKERRQ(ierr)

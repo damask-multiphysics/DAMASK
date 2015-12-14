@@ -13,8 +13,6 @@ module DAMASK_spectral_utilities
    pInt
  use math, only: &
   math_I3
- use numerics, only: &
-   spectral_filter
 
  implicit none
  private
@@ -50,9 +48,9 @@ module DAMASK_spectral_utilities
  complex(C_DOUBLE_COMPLEX),public,  dimension(:,:,:,:),       pointer     :: vectorField_fourier    !< vector field fourier representation for fftw
  real(C_DOUBLE),           public,  dimension(:,:,:),         pointer     :: scalarField_real       !< scalar field real representation for fftw
  complex(C_DOUBLE_COMPLEX),public,  dimension(:,:,:),         pointer     :: scalarField_fourier    !< scalar field fourier representation for fftw
- real(pReal),              private, dimension(:,:,:,:,:,:,:), allocatable :: gamma_hat              !< gamma operator (field) for spectral method
- real(pReal),              private, dimension(:,:,:,:),       allocatable :: xi1st                  !< wave vector field for first derivatives
- real(pReal),              private, dimension(:,:,:,:),       allocatable :: xi2nd                  !< wave vector field for second derivatives
+ complex(pReal),           private, dimension(:,:,:,:,:,:,:), allocatable :: gamma_hat              !< gamma operator (field) for spectral method
+ complex(pReal),           private, dimension(:,:,:,:),       allocatable :: xi1st                  !< wave vector field for first derivatives
+ complex(pReal),           private, dimension(:,:,:,:),       allocatable :: xi2nd                  !< wave vector field for second derivatives
  real(pReal),              private, dimension(3,3,3,3)                    :: C_ref                  !< mechanic reference stiffness
  real(pReal), protected,   public,  dimension(3)                          :: scaledGeomSize         !< scaled geometry size for calculation of divergence (Basic, Basic PETSc)
 
@@ -121,12 +119,12 @@ module DAMASK_spectral_utilities
  end type phaseFieldDataBin
 
  enum, bind(c)
-   enumerator :: FILTER_NONE_ID, &
-                 FILTER_GRADIENT_ID, &
-                 FILTER_COSINE_ID
+   enumerator :: DERIVATIVE_CONTINUOUS_ID, &
+                 DERIVATIVE_CENTRAL_DIFF_ID, &
+                 DERIVATIVE_FWBW_DIFF_ID
  end enum
- integer(kind(FILTER_NONE_ID)) :: &
-   spectral_filter_ID
+ integer(kind(DERIVATIVE_CONTINUOUS_ID)) :: &
+   spectral_derivative_ID
 
  public :: &
    utilities_init, &
@@ -143,6 +141,8 @@ module DAMASK_spectral_utilities
    utilities_curlRMS, &
    utilities_fourierScalarGradient, &
    utilities_fourierVectorDivergence, &
+   utilities_fourierVectorGradient, &
+   utilities_fourierTensorDivergence, &
    utilities_maskedCompliance, &
    utilities_constitutiveResponse, &
    utilities_calculateRate, &
@@ -154,7 +154,7 @@ module DAMASK_spectral_utilities
    FIELD_THERMAL_ID, &
    FIELD_DAMAGE_ID
  private :: &
-   utilities_getFilter
+   utilities_getFreqDerivative
 
 contains
 
@@ -174,6 +174,7 @@ subroutine utilities_init()
    IO_timeStamp, &
    IO_open_file
  use numerics, only: &
+   spectral_derivative, &
    fftw_planner_flag, &
    fftw_timelimit, &
    memory_efficient, &
@@ -252,6 +253,17 @@ subroutine utilities_init()
    write(6,'(a,3(es12.5))') ' size     x y z: ', geomSize
  endif
 
+ select case (spectral_derivative)
+   case ('continuous')                                                                                     ! default, no weighting
+     spectral_derivative_ID = DERIVATIVE_CONTINUOUS_ID
+   case ('central_difference')                                                                                   ! cosine curve with 1 for avg and zero for highest freq
+     spectral_derivative_ID = DERIVATIVE_CENTRAL_DIFF_ID
+   case ('fwbw_difference')                                                                                 ! gradient, might need grid scaling as for cosine filter
+     spectral_derivative_ID = DERIVATIVE_FWBW_DIFF_ID
+   case default
+     call IO_error(892_pInt,ext_msg=trim(spectral_derivative))
+ end select
+
 !--------------------------------------------------------------------------------------------------
 ! scale dimension to calculate either uncorrected, dimension-independent, or dimension- and
 ! resolution-independent divergence
@@ -275,9 +287,9 @@ subroutine utilities_init()
  gridFFTW = int(grid,C_INTPTR_T)
  alloc_local = fftw_mpi_local_size_3d(gridFFTW(3), gridFFTW(2), gridFFTW(1)/2 +1, &
                                       MPI_COMM_WORLD, local_K, local_K_offset)
- allocate (xi1st(3,grid1Red,grid(2),grid3),source = 0.0_pReal)                                      ! frequencies, only half the size for first dimension
- allocate (xi2nd(3,grid1Red,grid(2),grid3),source = 0.0_pReal)                                      ! frequencies, only half the size for first dimension
-
+ allocate (xi1st (3,grid1Red,grid(2),grid3),source = cmplx(0.0_pReal,0.0_pReal,pReal))                                       ! frequencies, only half the size for first dimension
+ allocate (xi2nd (3,grid1Red,grid(2),grid3),source = cmplx(0.0_pReal,0.0_pReal,pReal))                                       ! frequencies, only half the size for first dimension
+ 
  tensorField = fftw_alloc_complex(tensorSize*alloc_local)
  call c_f_pointer(tensorField, tensorField_real,    [3_C_INTPTR_T,3_C_INTPTR_T, &
                   2_C_INTPTR_T*(gridFFTW(1)/2_C_INTPTR_T + 1_C_INTPTR_T),gridFFTW(2),local_K])      ! place a pointer for a real tensor representation
@@ -353,30 +365,20 @@ subroutine utilities_init()
        if(j > grid(2)/2_pInt + 1_pInt) k_s(2) = k_s(2) - grid(2)                                    ! running from 0,1,...,N/2,N/2+1,-N/2,-N/2+1,...,-1
          do i = 1_pInt, grid1Red
            k_s(1) = i - 1_pInt                                                                      ! symmetry, junst running from 0,1,...,N/2,N/2+1
-           xi2nd(1:3,i,j,k-grid3Offset) = real(k_s, pReal)/scaledGeomSize                           ! if divergence_correction is set, frequencies are calculated on unit length
-           where(mod(grid,2)==0 .and. [i,j,k] == grid/2+1)                                          ! for even grids, set the Nyquist Freq component to 0.0
-             xi1st(1:3,i,j,k-grid3Offset) = 0.0_pReal
+           xi2nd(1:3,i,j,k-grid3Offset) = utilities_getFreqDerivative(k_s)                          ! if divergence_correction is set, frequencies are calculated on unit length
+           where(mod(grid,2)==0 .and. [i,j,k] == grid/2+1 .and. &
+                 spectral_derivative_ID == DERIVATIVE_CONTINUOUS_ID)                                ! for even grids, set the Nyquist Freq component to 0.0
+             xi1st(1:3,i,j,k-grid3Offset) = cmplx(0.0_pReal,0.0_pReal,pReal)
            elsewhere
              xi1st(1:3,i,j,k-grid3Offset) = xi2nd(1:3,i,j,k-grid3Offset)
            endwhere
  enddo; enddo; enddo
 
  if(memory_efficient) then                                                                          ! allocate just single fourth order tensor
-   allocate (gamma_hat(3,3,3,3,1,1,1), source = 0.0_pReal)
+   allocate (gamma_hat(3,3,3,3,1,1,1), source = cmplx(0.0_pReal,0.0_pReal,pReal))
  else                                                                                               ! precalculation of gamma_hat field
-   allocate (gamma_hat(3,3,3,3,grid1Red,grid(2),grid3), source = 0.0_pReal)
+   allocate (gamma_hat(3,3,3,3,grid1Red,grid(2),grid3), source = cmplx(0.0_pReal,0.0_pReal,pReal))
  endif
-
- select case (spectral_filter)
-   case ('none')                                                                                     ! default, no weighting
-     spectral_filter_ID = FILTER_NONE_ID
-   case ('cosine')                                                                                   ! cosine curve with 1 for avg and zero for highest freq
-     spectral_filter_ID = FILTER_COSINE_ID
-   case ('gradient')                                                                                 ! gradient, might need grid scaling as for cosine filter
-     spectral_filter_ID = FILTER_GRADIENT_ID
-   case default
-     call IO_error(892_pInt,ext_msg=trim(spectral_filter))
- end select
 
 end subroutine utilities_init
 
@@ -399,15 +401,18 @@ subroutine utilities_updateGamma(C,saveReference)
    grid3,&
    grid
  use math, only: &
-   math_inv33
+   math_det33, &
+   math_invert
 
  implicit none
  real(pReal), intent(in), dimension(3,3,3,3) :: C                                                   !< input stiffness to store as reference stiffness
  logical    , intent(in)                     :: saveReference                                       !< save reference stiffness to file for restart
- real(pReal),                 dimension(3,3) :: temp33_Real, xiDyad
+ complex(pReal),              dimension(3,3) :: temp33_complex, xiDyad_cmplx
+ real(pReal),                 dimension(6,6) :: matA, matInvA
  integer(pInt) :: &
    i, j, k, &
    l, m, n, o
+ logical :: ierr
 
  C_ref = C
  if (saveReference) then
@@ -424,12 +429,21 @@ subroutine utilities_updateGamma(C,saveReference)
    do k = grid3Offset+1_pInt, grid3Offset+grid3; do j = 1_pInt, grid(2); do i = 1_pInt, grid1Red
      if (any([i,j,k] /= 1_pInt)) then                                                                ! singular point at xi=(0.0,0.0,0.0) i.e. i=j=k=1
        forall(l = 1_pInt:3_pInt, m = 1_pInt:3_pInt) &
-         xiDyad(l,m) = xi1st(l, i,j,k-grid3Offset)*xi1st(m, i,j,k-grid3Offset)
+         xiDyad_cmplx(l,m) = conjg(-xi1st(l,i,j,k-grid3Offset))*xi1st(m,i,j,k-grid3Offset)
        forall(l = 1_pInt:3_pInt, m = 1_pInt:3_pInt) &
-         temp33_Real(l,m) = sum(C_ref(l,1:3,m,1:3)*xiDyad)
-       temp33_Real = math_inv33(temp33_Real)
-       forall(l=1_pInt:3_pInt, m=1_pInt:3_pInt, n=1_pInt:3_pInt, o=1_pInt:3_pInt)&
-         gamma_hat(l,m,n,o,i,j,k-grid3Offset) =  temp33_Real(l,n)*xiDyad(m,o)
+         temp33_complex(l,m) = sum(C_ref(l,1:3,m,1:3)*xiDyad_cmplx)
+       matA(1:3,1:3) = real(temp33_complex); matA(4:6,4:6) = real(temp33_complex)
+       matA(1:3,4:6) = aimag(temp33_complex); matA(4:6,1:3) = -aimag(temp33_complex)
+       if (abs(math_det33(matA(1:3,1:3))) > 1e-16) then
+         call math_invert(6_pInt, matA, matInvA, ierr)
+         temp33_complex = cmplx(matInvA(1:3,1:3),matInvA(1:3,4:6),pReal)
+         forall(l=1_pInt:3_pInt, m=1_pInt:3_pInt, n=1_pInt:3_pInt, o=1_pInt:3_pInt) &
+           gamma_hat(l,m,n,o,i,j,k-grid3Offset) =  temp33_complex(l,n)* &
+                                                   conjg(-xi1st(o,i,j,k-grid3Offset))*xi1st(m,i,j,k-grid3Offset)
+       else  
+         forall(l=1_pInt:3_pInt, m=1_pInt:3_pInt, n=1_pInt:3_pInt, o=1_pInt:3_pInt) &
+           gamma_hat(l,m,n,o,1,1,1) = cmplx(0.0_pReal,0.0_pReal,pReal)
+       endif
      endif
    enddo; enddo; enddo
  endif
@@ -446,17 +460,10 @@ subroutine utilities_FFTtensorForward()
    grid
 
  implicit none
- integer(pInt) ::  i, j, k
 
 !--------------------------------------------------------------------------------------------------
 ! doing the tensor FFT
  call fftw_mpi_execute_dft_r2c(planTensorForth,tensorField_real,tensorField_fourier)
-
-!--------------------------------------------------------------------------------------------------
-! applying filter
- forall(k = 1_pInt:grid3, j = 1_pInt:grid(2), i = 1_pInt:grid1Red) &
-   tensorField_fourier(1:3,1:3,i,j,k) = utilities_getFilter(xi2nd(1:3,i,j,k))* &
-                                        tensorField_fourier(1:3,1:3,i,j,k)
 
 end subroutine utilities_FFTtensorForward
 
@@ -483,17 +490,10 @@ subroutine utilities_FFTscalarForward()
    grid
 
  implicit none
- integer(pInt) ::  i, j, k
 
 !--------------------------------------------------------------------------------------------------
 ! doing the scalar FFT
  call fftw_mpi_execute_dft_r2c(planScalarForth,scalarField_real,scalarField_fourier)
-
-!--------------------------------------------------------------------------------------------------
-! applying filter
- forall(k = 1_pInt:grid3, j = 1_pInt:grid(2), i = 1_pInt:grid1Red) &
-   scalarField_fourier(i,j,k) = utilities_getFilter(xi2nd(1:3,i,j,k))* &
-                                   scalarField_fourier(i,j,k)
 
 end subroutine utilities_FFTscalarForward
 
@@ -521,17 +521,10 @@ subroutine utilities_FFTvectorForward()
    grid
 
  implicit none
- integer(pInt) ::  i, j, k
 
 !--------------------------------------------------------------------------------------------------
 ! doing the vector FFT
  call fftw_mpi_execute_dft_r2c(planVectorForth,vectorField_real,vectorField_fourier)
-
-!--------------------------------------------------------------------------------------------------
-! applying filter
- forall(k = 1_pInt:grid3, j = 1_pInt:grid(2), i = 1_pInt:grid1Red) &
-   vectorField_fourier(1:3,i,j,k) = utilities_getFilter(xi2nd(1:3,i,j,k))* &
-                                       vectorField_fourier(1:3,i,j,k)
 
 end subroutine utilities_FFTvectorForward
 
@@ -556,7 +549,8 @@ subroutine utilities_fourierGammaConvolution(fieldAim)
  use numerics, only: &
    memory_efficient
  use math, only: &
-   math_inv33
+   math_det33, &
+   math_invert
  use numerics, only: &
    worldrank
  use mesh, only: &
@@ -566,12 +560,14 @@ subroutine utilities_fourierGammaConvolution(fieldAim)
 
  implicit none
  real(pReal), intent(in), dimension(3,3) :: fieldAim                                                !< desired average value of the field after convolution
- real(pReal),             dimension(3,3) :: xiDyad, temp33_Real
- complex(pReal),          dimension(3,3) :: temp33_complex
+ complex(pReal),          dimension(3,3) :: temp33_complex, xiDyad_cmplx
+ real(pReal)                             :: matA(6,6), matInvA(6,6) 
 
  integer(pInt) :: &
    i, j, k, &
    l, m, n, o
+ logical :: ierr
+
 
  if (worldrank == 0_pInt) then
    write(6,'(/,a)') ' ... doing gamma convolution ...............................................'
@@ -581,18 +577,25 @@ subroutine utilities_fourierGammaConvolution(fieldAim)
 !--------------------------------------------------------------------------------------------------
 ! do the actual spectral method calculation (mechanical equilibrium)
  memoryEfficient: if(memory_efficient) then
-   do k = 1_pInt, grid3; do j = 1_pInt, grid(2) ;do i = 1_pInt, grid1Red
-     if(any([i,j,k+grid3Offset] /= 1_pInt)) then                                                     ! singular point at xi=(0.0,0.0,0.0) i.e. i=j=k=1
+   do k = 1_pInt, grid3; do j = 1_pInt, grid(2); do i = 1_pInt, grid1Red
+     if (any([i,j,k+grid3Offset] /= 1_pInt)) then                                                                ! singular point at xi=(0.0,0.0,0.0) i.e. i=j=k=1
        forall(l = 1_pInt:3_pInt, m = 1_pInt:3_pInt) &
-         xiDyad(l,m) = xi1st(l, i,j,k)*xi1st(m, i,j,k)
+         xiDyad_cmplx(l,m) = conjg(-xi1st(l,i,j,k))*xi1st(m,i,j,k)
        forall(l = 1_pInt:3_pInt, m = 1_pInt:3_pInt) &
-         temp33_Real(l,m) = sum(C_ref(l,1:3,m,1:3)*xiDyad)
-       temp33_Real = math_inv33(temp33_Real)
-       forall(l=1_pInt:3_pInt, m=1_pInt:3_pInt, n=1_pInt:3_pInt, o=1_pInt:3_pInt)&
-         gamma_hat(l,m,n,o, 1,1,1) =  temp33_Real(l,n)*xiDyad(m,o)
+         temp33_complex(l,m) = sum(C_ref(l,1:3,m,1:3)*xiDyad_cmplx)
+       matA(1:3,1:3) = real(temp33_complex); matA(4:6,4:6) = real(temp33_complex)
+       matA(1:3,4:6) = aimag(temp33_complex); matA(4:6,1:3) = -aimag(temp33_complex)
+       if (abs(math_det33(matA(1:3,1:3))) > 1e-16) then
+         call math_invert(6_pInt, matA, matInvA, ierr)
+         temp33_complex = cmplx(matInvA(1:3,1:3),matInvA(1:3,4:6),pReal)
+         forall(l=1_pInt:3_pInt, m=1_pInt:3_pInt, n=1_pInt:3_pInt, o=1_pInt:3_pInt) &
+           gamma_hat(l,m,n,o,1,1,1) =  temp33_complex(l,n)*conjg(-xi1st(o,i,j,k))*xi1st(m,i,j,k)
+       else  
+         forall(l=1_pInt:3_pInt, m=1_pInt:3_pInt, n=1_pInt:3_pInt, o=1_pInt:3_pInt) &
+           gamma_hat(l,m,n,o,1,1,1) = cmplx(0.0_pReal,0.0_pReal,pReal)
+       endif
        forall(l = 1_pInt:3_pInt, m = 1_pInt:3_pInt) &
-         temp33_Complex(l,m) = sum(gamma_hat(l,m,1:3,1:3, 1,1,1) * &
-                               tensorField_fourier(1:3,1:3,i,j,k))
+         temp33_Complex(l,m) = sum(gamma_hat(l,m,1:3,1:3,1,1,1)*tensorField_fourier(1:3,1:3,i,j,k))
        tensorField_fourier(1:3,1:3,i,j,k) = temp33_Complex
      endif
    enddo; enddo; enddo
@@ -600,13 +603,13 @@ subroutine utilities_fourierGammaConvolution(fieldAim)
    do k = 1_pInt, grid3;  do j = 1_pInt, grid(2);  do i = 1_pInt,grid1Red
      forall(l = 1_pInt:3_pInt, m = 1_pInt:3_pInt) &
        temp33_Complex(l,m) = sum(gamma_hat(l,m,1:3,1:3,i,j,k) * &
-                             tensorField_fourier(1:3,1:3,i,j,k))
+                                 tensorField_fourier(1:3,1:3,i,j,k))
      tensorField_fourier(1:3,1:3,i,j,k) = temp33_Complex
    enddo; enddo; enddo
  endif memoryEfficient
 
  if (grid3Offset == 0_pInt) &
-   tensorField_fourier(1:3,1:3,1,1,1) = cmplx(fieldAim/wgt,0.0_pReal,pReal)                        ! singular point at xi=(0.0,0.0,0.0) i.e. i=j=k=1
+   tensorField_fourier(1:3,1:3,1,1,1) = cmplx(fieldAim/wgt,0.0_pReal,pReal)
 
 end subroutine utilities_fourierGammaConvolution
 
@@ -627,17 +630,15 @@ subroutine utilities_fourierGreenConvolution(D_ref, mobility_ref, deltaT)
  implicit none
  real(pReal), dimension(3,3), intent(in) :: D_ref                                                   !< desired average value of the field after convolution
  real(pReal),                 intent(in) :: mobility_ref, deltaT                                    !< desired average value of the field after convolution
- real(pReal), dimension(3)               :: k_s
- real(pReal)                             :: GreenOp_hat
+ complex(pReal)                          :: GreenOp_hat
  integer(pInt)                           :: i, j, k
 
 !--------------------------------------------------------------------------------------------------
 ! do the actual spectral method calculation
  do k = 1_pInt, grid3; do j = 1_pInt, grid(2) ;do i = 1_pInt, grid1Red
-   k_s = xi2nd(1:3,i,j,k)*scaledGeomSize
-   GreenOp_hat =  1.0_pReal/ &
-                  (mobility_ref + deltaT*sum((2.0_pReal*PI*k_s/geomSize)* &
-                                             math_mul33x3(D_ref,(2.0_pReal*PI*k_s/geomSize))))      !< GreenOp_hat = iK^{T} * D_ref * iK, K is frequency
+   GreenOp_hat =  cmplx(1.0_pReal,0.0_pReal,pReal)/ &
+                  (cmplx(mobility_ref,0.0_pReal,pReal) + &
+                   deltaT*sum(conjg(-xi1st(1:3,i,j,k))*matmul(D_ref,xi1st(1:3,i,j,k))))
    scalarField_fourier(i,j,k) = scalarField_fourier(i,j,k)*GreenOp_hat
  enddo; enddo; enddo
 
@@ -648,12 +649,10 @@ end subroutine utilities_fourierGreenConvolution
 !> @brief calculate root mean square of divergence of field_fourier
 !--------------------------------------------------------------------------------------------------
 real(pReal) function utilities_divergenceRMS()
- use math, only: &
-   TWOPIIMG, &
-   math_mul33x3_complex
  use numerics, only: &
    worldrank
  use mesh, only: &
+   geomSize, &
    grid, &
    grid3
 
@@ -673,20 +672,20 @@ real(pReal) function utilities_divergenceRMS()
  do k = 1_pInt, grid3; do j = 1_pInt, grid(2)
    do i = 2_pInt, grid1Red -1_pInt                                                                  ! Has somewhere a conj. complex counterpart. Therefore count it twice.
      utilities_divergenceRMS = utilities_divergenceRMS &
-           + 2.0_pReal*(sum (real(math_mul33x3_complex(tensorField_fourier(1:3,1:3,i,j,k),&         ! (sqrt(real(a)**2 + aimag(a)**2))**2 = real(a)**2 + aimag(a)**2. do not take square root and square again
-                                                       xi1st(1:3,i,j,k))*TWOPIIMG)**2.0_pReal)&     ! --> sum squared L_2 norm of vector
-                       +sum(aimag(math_mul33x3_complex(tensorField_fourier(1:3,1:3,i,j,k),&
-                                                       xi1st(1:3,i,j,k))*TWOPIIMG)**2.0_pReal))
+           + 2.0_pReal*(sum (real(matmul(tensorField_fourier(1:3,1:3,i,j,k),&         ! (sqrt(real(a)**2 + aimag(a)**2))**2 = real(a)**2 + aimag(a)**2. do not take square root and square again
+                                         conjg(-xi1st(1:3,i,j,k))*geomSize/scaledGeomSize))**2.0_pReal)&     ! --> sum squared L_2 norm of vector
+                       +sum(aimag(matmul(tensorField_fourier(1:3,1:3,i,j,k),&
+                                         conjg(-xi1st(1:3,i,j,k))*geomSize/scaledGeomSize))**2.0_pReal))
    enddo
    utilities_divergenceRMS = utilities_divergenceRMS &                                              ! these two layers (DC and Nyquist) do not have a conjugate complex counterpart (if grid(1) /= 1)
-              + sum( real(math_mul33x3_complex(tensorField_fourier(1:3,1:3,1       ,j,k), &
-                                               xi1st(1:3,1       ,j,k))*TWOPIIMG)**2.0_pReal) &
-              + sum(aimag(math_mul33x3_complex(tensorField_fourier(1:3,1:3,1       ,j,k), &
-                                               xi1st(1:3,1       ,j,k))*TWOPIIMG)**2.0_pReal) &
-              + sum( real(math_mul33x3_complex(tensorField_fourier(1:3,1:3,grid1Red,j,k), &
-                                               xi1st(1:3,grid1Red,j,k))*TWOPIIMG)**2.0_pReal) &
-              + sum(aimag(math_mul33x3_complex(tensorField_fourier(1:3,1:3,grid1Red,j,k), &
-                                               xi1st(1:3,grid1Red,j,k))*TWOPIIMG)**2.0_pReal)
+              + sum( real(matmul(tensorField_fourier(1:3,1:3,1       ,j,k), &
+                                 conjg(-xi1st(1:3,1,j,k))*geomSize/scaledGeomSize))**2.0_pReal) &
+              + sum(aimag(matmul(tensorField_fourier(1:3,1:3,1       ,j,k), &
+                                 conjg(-xi1st(1:3,1,j,k))*geomSize/scaledGeomSize))**2.0_pReal) &
+              + sum( real(matmul(tensorField_fourier(1:3,1:3,grid1Red,j,k), &
+                                 conjg(-xi1st(1:3,grid1Red,j,k))*geomSize/scaledGeomSize))**2.0_pReal) &
+              + sum(aimag(matmul(tensorField_fourier(1:3,1:3,grid1Red,j,k), &
+                                 conjg(-xi1st(1:3,grid1Red,j,k))*geomSize/scaledGeomSize))**2.0_pReal)
  enddo; enddo
  if(grid(1) == 1_pInt) utilities_divergenceRMS = utilities_divergenceRMS * 0.5_pReal                ! counted twice in case of grid(1) == 1
  call MPI_Allreduce(MPI_IN_PLACE,utilities_divergenceRMS,1,MPI_DOUBLE,MPI_SUM,PETSC_COMM_WORLD,ierr)
@@ -700,10 +699,10 @@ end function utilities_divergenceRMS
 !> @brief calculate max of curl of field_fourier
 !--------------------------------------------------------------------------------------------------
 real(pReal) function utilities_curlRMS()
- use math
  use numerics, only: &
    worldrank
  use mesh, only: &
+   geomSize, &
    grid, &
    grid3
 
@@ -724,33 +723,33 @@ real(pReal) function utilities_curlRMS()
  do k = 1_pInt, grid3; do j = 1_pInt, grid(2);
    do i = 2_pInt, grid1Red - 1_pInt
      do l = 1_pInt, 3_pInt
-       curl_fourier(l,1) = (+tensorField_fourier(l,3,i,j,k)*xi1st(2,i,j,k)&
-                            -tensorField_fourier(l,2,i,j,k)*xi1st(3,i,j,k))*TWOPIIMG
-       curl_fourier(l,2) = (+tensorField_fourier(l,1,i,j,k)*xi1st(3,i,j,k)&
-                            -tensorField_fourier(l,3,i,j,k)*xi1st(1,i,j,k))*TWOPIIMG
-       curl_fourier(l,3) = (+tensorField_fourier(l,2,i,j,k)*xi1st(1,i,j,k)&
-                            -tensorField_fourier(l,1,i,j,k)*xi1st(2,i,j,k))*TWOPIIMG
+       curl_fourier(l,1) = (+tensorField_fourier(l,3,i,j,k)*xi1st(2,i,j,k)*geomSize(2)/scaledGeomSize(2) &
+                            -tensorField_fourier(l,2,i,j,k)*xi1st(3,i,j,k)*geomSize(3)/scaledGeomSize(3))
+       curl_fourier(l,2) = (+tensorField_fourier(l,1,i,j,k)*xi1st(3,i,j,k)*geomSize(3)/scaledGeomSize(3) &
+                            -tensorField_fourier(l,3,i,j,k)*xi1st(1,i,j,k)*geomSize(1)/scaledGeomSize(1))
+       curl_fourier(l,3) = (+tensorField_fourier(l,2,i,j,k)*xi1st(1,i,j,k)*geomSize(1)/scaledGeomSize(1) &
+                            -tensorField_fourier(l,1,i,j,k)*xi1st(2,i,j,k)*geomSize(2)/scaledGeomSize(2))
      enddo
      utilities_curlRMS = utilities_curlRMS + &
                         2.0_pReal*sum(real(curl_fourier)**2.0_pReal + aimag(curl_fourier)**2.0_pReal)! Has somewhere a conj. complex counterpart. Therefore count it twice.
    enddo
    do l = 1_pInt, 3_pInt
-      curl_fourier = (+tensorField_fourier(l,3,1,j,k)*xi1st(2,1,j,k)&
-                      -tensorField_fourier(l,2,1,j,k)*xi1st(3,1,j,k))*TWOPIIMG
-      curl_fourier = (+tensorField_fourier(l,1,1,j,k)*xi1st(3,1,j,k)&
-                      -tensorField_fourier(l,3,1,j,k)*xi1st(1,1,j,k))*TWOPIIMG
-      curl_fourier = (+tensorField_fourier(l,2,1,j,k)*xi1st(1,1,j,k)&
-                      -tensorField_fourier(l,1,1,j,k)*xi1st(2,1,j,k))*TWOPIIMG
+      curl_fourier = (+tensorField_fourier(l,3,1,j,k)*xi1st(2,1,j,k)*geomSize(2)/scaledGeomSize(2) &
+                      -tensorField_fourier(l,2,1,j,k)*xi1st(3,1,j,k)*geomSize(3)/scaledGeomSize(3))
+      curl_fourier = (+tensorField_fourier(l,1,1,j,k)*xi1st(3,1,j,k)*geomSize(3)/scaledGeomSize(3) &
+                      -tensorField_fourier(l,3,1,j,k)*xi1st(1,1,j,k)*geomSize(1)/scaledGeomSize(1))
+      curl_fourier = (+tensorField_fourier(l,2,1,j,k)*xi1st(1,1,j,k)*geomSize(1)/scaledGeomSize(1) &
+                      -tensorField_fourier(l,1,1,j,k)*xi1st(2,1,j,k)*geomSize(2)/scaledGeomSize(2))
    enddo
    utilities_curlRMS = utilities_curlRMS + &
                                   sum(real(curl_fourier)**2.0_pReal + aimag(curl_fourier)**2.0_pReal)! this layer (DC) does not have a conjugate complex counterpart (if grid(1) /= 1)
    do l = 1_pInt, 3_pInt
-     curl_fourier = (+tensorField_fourier(l,3,grid1Red,j,k)*xi1st(2,grid1Red,j,k)&
-                     -tensorField_fourier(l,2,grid1Red,j,k)*xi1st(3,grid1Red,j,k))*TWOPIIMG
-     curl_fourier = (+tensorField_fourier(l,1,grid1Red,j,k)*xi1st(3,grid1Red,j,k)&
-                     -tensorField_fourier(l,3,grid1Red,j,k)*xi1st(1,grid1Red,j,k))*TWOPIIMG
-     curl_fourier = (+tensorField_fourier(l,2,grid1Red,j,k)*xi1st(1,grid1Red,j,k)&
-                     -tensorField_fourier(l,1,grid1Red,j,k)*xi1st(2,grid1Red,j,k))*TWOPIIMG
+     curl_fourier = (+tensorField_fourier(l,3,grid1Red,j,k)*xi1st(2,grid1Red,j,k)*geomSize(2)/scaledGeomSize(2) &
+                     -tensorField_fourier(l,2,grid1Red,j,k)*xi1st(3,grid1Red,j,k)*geomSize(3)/scaledGeomSize(3))
+     curl_fourier = (+tensorField_fourier(l,1,grid1Red,j,k)*xi1st(3,grid1Red,j,k)*geomSize(3)/scaledGeomSize(3) &
+                     -tensorField_fourier(l,3,grid1Red,j,k)*xi1st(1,grid1Red,j,k)*geomSize(1)/scaledGeomSize(1))
+     curl_fourier = (+tensorField_fourier(l,2,grid1Red,j,k)*xi1st(1,grid1Red,j,k)*geomSize(1)/scaledGeomSize(1) &
+                     -tensorField_fourier(l,1,grid1Red,j,k)*xi1st(2,grid1Red,j,k)*geomSize(2)/scaledGeomSize(2))
    enddo
    utilities_curlRMS = utilities_curlRMS + &
                                   sum(real(curl_fourier)**2.0_pReal + aimag(curl_fourier)**2.0_pReal)! this layer (Nyquist) does not have a conjugate complex counterpart (if grid(1) /= 1)
@@ -882,9 +881,7 @@ subroutine utilities_fourierScalarGradient()
 
  vectorField_fourier = cmplx(0.0_pReal,0.0_pReal,pReal)
  do k = 1_pInt, grid3;  do j = 1_pInt, grid(2);  do i = 1_pInt,grid1Red
-   vectorField_fourier(1:3,i,j,k) = scalarField_fourier(i,j,k)* &
-                                       cmplx(0.0_pReal,2.0_pReal*PI*xi1st(1:3,i,j,k)* &
-                                       scaledGeomSize/geomSize,pReal)
+   vectorField_fourier(1:3,i,j,k) = scalarField_fourier(i,j,k)*xi1st(1:3,i,j,k)
  enddo; enddo; enddo
 end subroutine utilities_fourierScalarGradient
 
@@ -908,11 +905,54 @@ subroutine utilities_fourierVectorDivergence()
    do m = 1_pInt, 3_pInt
      scalarField_fourier(i,j,k) = &
        scalarField_fourier(i,j,k) + &
-       vectorField_fourier(m,i,j,k)* &
-       cmplx(0.0_pReal,2.0_pReal*PI*xi1st(m,i,j,k)*scaledGeomSize(m)/geomSize(m),pReal)
+       vectorField_fourier(m,i,j,k)*conjg(-xi1st(m,i,j,k))
    enddo
  enddo; enddo; enddo
 end subroutine utilities_fourierVectorDivergence
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief calculate vector gradient in fourier field
+!--------------------------------------------------------------------------------------------------
+subroutine utilities_fourierVectorGradient()
+ use mesh, only: &
+   grid3, &
+   grid, &
+   geomSize
+
+ implicit none
+ integer(pInt) :: i, j, k, m, n
+
+ tensorField_fourier = cmplx(0.0_pReal,0.0_pReal,pReal)
+ do k = 1_pInt, grid3;  do j = 1_pInt, grid(2);  do i = 1_pInt,grid1Red
+   do m = 1_pInt, 3_pInt; do n = 1_pInt, 3_pInt
+     tensorField_fourier(m,n,i,j,k) = vectorField_fourier(m,i,j,k)*xi1st(n,i,j,k)
+   enddo; enddo
+ enddo; enddo; enddo
+end subroutine utilities_fourierVectorGradient
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief calculate tensor divergence in fourier field
+!--------------------------------------------------------------------------------------------------
+subroutine utilities_fourierTensorDivergence()
+ use mesh, only: &
+   grid3, &
+   grid, &
+   geomSize
+
+ implicit none
+ integer(pInt) :: i, j, k, m, n
+
+ vectorField_fourier = cmplx(0.0_pReal,0.0_pReal,pReal)
+ do k = 1_pInt, grid3;  do j = 1_pInt, grid(2);  do i = 1_pInt,grid1Red
+   do m = 1_pInt, 3_pInt; do n = 1_pInt, 3_pInt
+     vectorField_fourier(m,i,j,k) = &
+       vectorField_fourier(m,i,j,k) + &
+       tensorField_fourier(m,n,i,j,k)*conjg(-xi1st(n,i,j,k))
+   enddo; enddo
+ enddo; enddo; enddo
+end subroutine utilities_fourierTensorDivergence
 
 
 !--------------------------------------------------------------------------------------------------
@@ -1122,29 +1162,54 @@ end function utilities_forwardField
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates filter for fourier convolution depending on type given in numerics.config
 !--------------------------------------------------------------------------------------------------
-pure function utilities_getFilter(k)
+pure function utilities_getFreqDerivative(k_s)
  use math, only: &
    PI
  use mesh, only: &
+   geomSize, &
    grid
 
  implicit none
- real(pReal),   intent(in), dimension(3) :: k                                                          !< indices of frequency
- complex(pReal)                          :: utilities_getFilter
+ integer(pInt), intent(in),  dimension(3) :: k_s                                                        !< indices of frequency
+ complex(pReal),             dimension(3) :: utilities_getFreqDerivative
 
- select case (spectral_filter_ID)
-   case (FILTER_NONE_ID)                                                                            ! default, no weighting
-     utilities_getFilter = (1.0_pReal,0.0_pReal)
-   case (FILTER_COSINE_ID)                                                                          ! cosine curve with 1 for avg and zero for highest freq
-     utilities_getFilter = cmplx(product(1.0_pReal + cos(PI*k*scaledGeomSize/grid))/8.0_pReal,&
-                                                                                         0.0_pReal)
-   case (FILTER_GRADIENT_ID)                                                                        ! gradient, might need grid scaling as for cosine filter
-     utilities_getFilter = cmplx(1.0_pReal/(1.0_pReal + sum(k**2)),0.0_pReal)
-   case default
-     utilities_getFilter = (0.0_pReal,0.0_pReal)
+ select case (spectral_derivative_ID)
+   case (DERIVATIVE_CONTINUOUS_ID)                                                                    
+     utilities_getFreqDerivative = cmplx(0.0_pReal, 2.0_pReal*PI*real(k_s,pReal)/geomSize,pReal)
+
+   case (DERIVATIVE_CENTRAL_DIFF_ID)                                                                    
+     utilities_getFreqDerivative = cmplx(0.0_pReal, sin(2.0_pReal*PI*real(k_s,pReal)/real(grid,pReal)), pReal)/ &
+                                   cmplx(2.0_pReal*geomSize/real(grid,pReal), 0.0_pReal, pReal) 
+   
+   case (DERIVATIVE_FWBW_DIFF_ID)                                                                     
+     utilities_getFreqDerivative(1) = &
+                              cmplx(cos(2.0_pReal*PI*real(k_s(1),pReal)/real(grid(1),pReal)) - 1.0_pReal, &
+                                    sin(2.0_pReal*PI*real(k_s(1),pReal)/real(grid(1),pReal)), pReal)* &
+                              cmplx(cos(2.0_pReal*PI*real(k_s(2),pReal)/real(grid(2),pReal)) + 1.0_pReal, &
+                                    sin(2.0_pReal*PI*real(k_s(2),pReal)/real(grid(2),pReal)), pReal)* &
+                              cmplx(cos(2.0_pReal*PI*real(k_s(3),pReal)/real(grid(3),pReal)) + 1.0_pReal, &
+                                    sin(2.0_pReal*PI*real(k_s(3),pReal)/real(grid(3),pReal)), pReal)/ &
+                              cmplx(4.0_pReal*geomSize(1)/real(grid(1),pReal), 0.0_pReal, pReal)      
+     utilities_getFreqDerivative(2) = &
+                              cmplx(cos(2.0_pReal*PI*real(k_s(1),pReal)/real(grid(1),pReal)) + 1.0_pReal, &
+                                    sin(2.0_pReal*PI*real(k_s(1),pReal)/real(grid(1),pReal)), pReal)* &
+                              cmplx(cos(2.0_pReal*PI*real(k_s(2),pReal)/real(grid(2),pReal)) - 1.0_pReal, &
+                                    sin(2.0_pReal*PI*real(k_s(2),pReal)/real(grid(2),pReal)), pReal)* &
+                              cmplx(cos(2.0_pReal*PI*real(k_s(3),pReal)/real(grid(3),pReal)) + 1.0_pReal, &
+                                    sin(2.0_pReal*PI*real(k_s(3),pReal)/real(grid(3),pReal)), pReal)/ &
+                              cmplx(4.0_pReal*geomSize(2)/real(grid(2),pReal), 0.0_pReal, pReal)      
+     utilities_getFreqDerivative(3) = &
+                              cmplx(cos(2.0_pReal*PI*real(k_s(1),pReal)/real(grid(1),pReal)) + 1.0_pReal, &
+                                    sin(2.0_pReal*PI*real(k_s(1),pReal)/real(grid(1),pReal)), pReal)* &
+                              cmplx(cos(2.0_pReal*PI*real(k_s(2),pReal)/real(grid(2),pReal)) + 1.0_pReal, &
+                                    sin(2.0_pReal*PI*real(k_s(2),pReal)/real(grid(2),pReal)), pReal)* &
+                              cmplx(cos(2.0_pReal*PI*real(k_s(3),pReal)/real(grid(3),pReal)) - 1.0_pReal, &
+                                    sin(2.0_pReal*PI*real(k_s(3),pReal)/real(grid(3),pReal)), pReal)/ &
+                              cmplx(4.0_pReal*geomSize(3)/real(grid(3),pReal), 0.0_pReal, pReal)      
+
  end select
 
-end function
+end function utilities_getFreqDerivative
 
 
 !--------------------------------------------------------------------------------------------------
@@ -1154,7 +1219,6 @@ end function
 !--------------------------------------------------------------------------------------------------
 subroutine utilities_updateIPcoords(F)
  use math, only: &
-   PI, &
    math_mul33x3
  use mesh, only: &
    grid, &
@@ -1166,18 +1230,25 @@ subroutine utilities_updateIPcoords(F)
 
  real(pReal),   dimension(3,3,grid(1),grid(2),grid3), intent(in) :: F
  integer(pInt) :: i, j, k, m
- real(pReal),   dimension(3) :: step, offset_coords, integrator
+ real(pReal),   dimension(3) :: step, offset_coords
  real(pReal),   dimension(3,3) :: Favg
  PetscErrorCode :: ierr
  external &
    MPI_Bcast
 
+!--------------------------------------------------------------------------------------------------
+! integration in Fourier space
  tensorField_real = 0.0_pReal
  tensorField_real(1:3,1:3,1:grid(1),1:grid(2),1:grid3) = F
  call utilities_FFTtensorForward()
+ call utilities_fourierTensorDivergence()
 
- integrator = geomSize * 0.5_pReal / PI
- step = geomSize/real(grid, pReal)
+ do k = 1_pInt, grid3; do j = 1_pInt, grid(2) ;do i = 1_pInt, grid1Red
+   if (any(abs(xi1st(1:3,i,j,k)) > tiny(0.0_pReal))) &
+     vectorField_fourier(1:3,i,j,k) = vectorField_fourier(1:3,i,j,k)/ &
+                                      sum(conjg(-xi1st(1:3,i,j,k))*xi1st(1:3,i,j,k))
+ enddo; enddo; enddo
+ call fftw_mpi_execute_dft_c2r(planVectorBack,vectorField_fourier,vectorField_real)
 
 !--------------------------------------------------------------------------------------------------
 ! average F
@@ -1185,22 +1256,8 @@ subroutine utilities_updateIPcoords(F)
  call MPI_Bcast(Favg,9,MPI_DOUBLE,0,PETSC_COMM_WORLD,ierr)
 
 !--------------------------------------------------------------------------------------------------
-! integration in Fourier space
- vectorField_fourier = cmplx(0.0_pReal, 0.0_pReal, pReal)
- do k = 1_pInt, grid3;  do j = 1_pInt, grid(2);  do i = 1_pInt,grid1Red
-   do m = 1_pInt,3_pInt
-     vectorField_fourier(m,i,j,k) = sum(tensorField_fourier(m,1:3,i,j,k)*&
-                                           cmplx(0.0_pReal,xi2nd(1:3,i,j,k)*scaledGeomSize*integrator,pReal))
-   enddo
-   if (any(abs(xi2nd(1:3,i,j,k)) > tiny(0.0_pReal))) &
-     vectorField_fourier(1:3,i,j,k) = &
-     vectorField_fourier(1:3,i,j,k)/cmplx(-sum(xi2nd(1:3,i,j,k)*scaledGeomSize*xi2nd(1:3,i,j,k)* &
-                                                     scaledGeomSize),0.0_pReal,pReal)
- enddo; enddo; enddo
- call fftw_mpi_execute_dft_c2r(planVectorBack,vectorField_fourier,vectorField_real)
-
-!--------------------------------------------------------------------------------------------------
 ! add average to fluctuation and put (0,0,0) on (0,0,0)
+ step = geomSize/real(grid, pReal)
  if (grid3Offset == 0_pInt) offset_coords = vectorField_real(1:3,1,1,1)
  call MPI_Bcast(offset_coords,3,MPI_DOUBLE,0,PETSC_COMM_WORLD,ierr)
  offset_coords = math_mul33x3(Favg,step/2.0_pReal) - offset_coords

@@ -113,7 +113,7 @@ module numerics
    fftw_plan_mode             = 'FFTW_PATIENT'                                                      !< reads the planing-rigor flag, see manual on www.fftw.org, Default FFTW_PATIENT: use patient planner flag
  character(len=64), protected, public :: & 
    spectral_solver            = 'basicpetsc'  , &                                                   !< spectral solution method 
-   spectral_filter            = 'none'                                                              !< spectral filtering method
+   spectral_derivative        = 'continuous'                                                        !< spectral filtering method
  character(len=1024), protected, public :: &
    petsc_defaultOptions       = '-mech_snes_type ngmres &
                                 &-damage_snes_type ngmres &
@@ -432,8 +432,8 @@ subroutine numerics_init
          fftw_timelimit = IO_floatValue(line,chunkPos,2_pInt)
        case ('fftw_plan_mode')
          fftw_plan_mode = IO_lc(IO_stringValue(line,chunkPos,2_pInt))
-       case ('spectralfilter','myfilter')
-         spectral_filter = IO_lc(IO_stringValue(line,chunkPos,2_pInt))
+       case ('spectralderivative')
+         spectral_derivative = IO_lc(IO_stringValue(line,chunkPos,2_pInt))
        case ('divergence_correction')
          divergence_correction = IO_intValue(line,chunkPos,2_pInt)
        case ('update_gamma')
@@ -609,7 +609,7 @@ subroutine numerics_init
    write(6,'(a24,1x,i8)')      ' continueCalculation:    ',continueCalculation
    write(6,'(a24,1x,L8)')      ' memory_efficient:       ',memory_efficient
    write(6,'(a24,1x,i8)')      ' divergence_correction:  ',divergence_correction
-   write(6,'(a24,1x,a)')       ' spectral filter:        ',trim(spectral_filter)
+   write(6,'(a24,1x,a)')       ' spectral derivative:    ',trim(spectral_derivative)
    if(fftw_timelimit<0.0_pReal) then
      write(6,'(a24,1x,L8)')    ' fftw_timelimit:         ',.false.
    else    
