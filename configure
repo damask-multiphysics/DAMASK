@@ -59,6 +59,7 @@ defaults={'DAMASK_BIN':'depending on access rights',
           'FFTW_ROOT':'/usr',
           'MSC_ROOT' :'/msc',
           'DAMASK_NUM_THREADS':4,
+          'MARC_VERSION':'2015',
           'blasType':'LAPACK',
           'blasRoot':{'LAPACK'   :'/usr',
                       'ACML'     :'/opt/acml6.1.0',
@@ -90,7 +91,7 @@ try:
         defaults['DAMASK_NUM_THREADS'] = int(value)
       if key == 'DAMASK_BIN':
         defaults['DAMASK_BIN'] = value
-      if key in ['F90','FFTW_ROOT','MSC_ROOT','spectralOptions']:
+      if key in ['F90','FFTW_ROOT','MSC_ROOT','spectralOptions','MARC_VERSION']:
         defaults[key] = value
       for theKey in reversed(BLAS_order):
         if key == theKey+'_ROOT' and value != None and value != '':
@@ -99,35 +100,39 @@ try:
 except IOError:
   pass
 
-parser.add_option('--prefix',                dest='prefix', type='string', metavar='string',
+parser.add_option('--prefix',                dest='prefix', metavar='string',
                                              help='location of (links to) DAMASK executables [%default]')
 parser.add_option('--with-FC','--with-fc',               
-                                             dest='compiler', type='string', metavar='string',
+                                             dest='compiler', metavar='string',
                                              help='F90 compiler [%default]')
 parser.add_option('--with-FFTW-dir','--with-fftw-dir',         
-                                             dest='fftwRoot', type='string', metavar='string',
+                                             dest='fftwRoot', metavar='string',
                                              help='root directory of FFTW [%default]')
 parser.add_option('--with-MSC-dir','--with-msc-dir',          
-                                             dest='mscRoot', type='string', metavar='string',
+                                             dest='mscRoot', metavar='string',
                                              help='root directory of MSC.Marc/Mentat [%default]')
+parser.add_option('--with-MARC-version','--with-marc-version',          
+                                             dest='marcVersion',  metavar='string',
+                                             help='version of MSC.Marc/Mentat [%default]')
 parser.add_option('--with-OMP-threads','--with-omp-threads',      
                                              dest='threads', type='int', metavar='int',
                                              help='number of openMP threads [%default]')
 parser.add_option('--with-BLAS-type','--with-blas-type',         
-                                             dest='blasType', type='string', metavar='string',
+                                             dest='blasType', metavar='string',
                                              help='type of BLAS/LAPACK library [%default] {{{}}}'.format(','.join(BLAS_order)))
 parser.add_option('--with-BLAS-dir','--with-blas-dir',        
-                                             dest='blasRoot', type='string', metavar='string',
+                                             dest='blasRoot',metavar='string',
                                              help='root directory of BLAS/LAPACK library [%default]')
-parser.add_option('--with-spectral-options', dest='spectraloptions', type='string', action='extend', metavar='<string LIST>',
+parser.add_option('--with-spectral-options', dest='spectraloptions', action='extend', metavar='<string LIST>',
                                              help='options for compilation of spectral solver')
 
-parser.set_defaults(prefix   = defaults['DAMASK_BIN'])
-parser.set_defaults(compiler = defaults['F90'])
-parser.set_defaults(fftwRoot = defaults['FFTW_ROOT'])
-parser.set_defaults(mscRoot  = defaults['MSC_ROOT'])
-parser.set_defaults(threads  = defaults['DAMASK_NUM_THREADS'])
-parser.set_defaults(blasType = defaults['blasType'])
+parser.set_defaults(prefix      = defaults['DAMASK_BIN'])
+parser.set_defaults(compiler    = defaults['F90'])
+parser.set_defaults(fftwRoot    = defaults['FFTW_ROOT'])
+parser.set_defaults(mscRoot     = defaults['MSC_ROOT'])
+parser.set_defaults(marcVersion = defaults['MARC_VERSION'])
+parser.set_defaults(threads     = defaults['DAMASK_NUM_THREADS'])
+parser.set_defaults(blasType    = defaults['blasType'])
 
 #--- set default for blasRoot depending on current option (or default) for blasType  --------------------
 blasType = defaults['blasType'].upper()
@@ -198,6 +203,7 @@ if not subprocess.call(['which', options.compiler], stdout=subprocess.PIPE, stde
 if not os.path.isdir(options.mscRoot):
   print('Warning: MSC root directory %s not found!'%options.mscRoot)
 
+
 filePresent(locations['FFTW'],libraries['FFTW'],warning=True)
 
 if options.blasType in ['LAPACK','OPENBLAS','IMKL']:
@@ -231,6 +237,9 @@ try:
       if items[0] == 'MSC_ROOT':
         line = '%s=%s'%(items[0],options.mscRoot)
         options.mscRoot =''
+      if items[0] == 'MARC_VERSION':
+        line = '%s=%s'%(items[0],options.marcVersion)
+        options.marcVersion =''
       if items[0] == 'DAMASK_NUM_THREADS':
         line = '%s=%s'%(items[0],options.threads)
         options.threads =''
@@ -261,6 +270,8 @@ for opt, value in options.__dict__.items():
     output.append('FFTW_ROOT=%s'%value)
   if opt == 'mscRoot' and value != '':
     output.append('MSC_ROOT=%s'%value)
+  if opt == 'marcVersion' and value != '':
+    output.append('MARC_VERSION=%s'%value)
   if opt == 'threads' and value != '':
     output.append('DAMASK_NUM_THREADS=%s'%value)
   if opt == 'blasType' and value != '':
