@@ -10,7 +10,6 @@ scriptID   = string.replace('$Id$','\n','\\n')
 scriptName = os.path.splitext(scriptID.split()[1])[0]
 
 def curlFFT(geomdim,field):
- grid = np.array(np.shape(field)[0:3])
  N = grid.prod()                                                                                    # field size
  n = np.array(np.shape(field)[3:]).prod()                                                           # data size
 
@@ -25,12 +24,12 @@ def curlFFT(geomdim,field):
 # differentiation in Fourier space
  k_s = np.zeros([3],'i')
  TWOPIIMG = (0.0+2.0j*math.pi)
- for i in xrange(grid[0]):
+ for i in xrange(grid[2]):
    k_s[0] = i
-   if(grid[0]%2==0 and i == grid[0]//2):                                                            # for even grid, set Nyquist freq to 0 (Johnson, MIT, 2011)
+   if(grid[2]%2==0 and i == grid[2]//2):                                                            # for even grid, set Nyquist freq to 0 (Johnson, MIT, 2011)
      k_s[0]=0
-   elif (i > grid[0]//2): 
-     k_s[0] = k_s[0] - grid[0]
+   elif (i > grid[2]//2): 
+     k_s[0] = k_s[0] - grid[2]
 
    for j in xrange(grid[1]):
      k_s[1] = j
@@ -39,9 +38,9 @@ def curlFFT(geomdim,field):
      elif (j > grid[1]//2): 
        k_s[1] = k_s[1] - grid[1]
 
-     for k in xrange(grid[2]//2+1):
+     for k in xrange(grid[0]//2+1):
        k_s[2] = k
-       if(grid[2]%2==0 and k == grid[2]//2):                                                        # for even grid, set Nyquist freq to 0 (Johnson, MIT, 2011)
+       if(grid[0]%2==0 and k == grid[0]//2):                                                        # for even grid, set Nyquist freq to 0 (Johnson, MIT, 2011)
          k_s[2]=0
 
        xi = np.array([k_s[2]/geomdim[2]+0.0j,k_s[1]/geomdim[1]+0.j,k_s[0]/geomdim[0]+0.j],'c16')
@@ -122,7 +121,7 @@ for name in filenames:
   column = {}
   
   if table.label_dimension(options.coords) != 3: errors.append('coordinates {} are not a vector.'.format(options.coords))
-  else: coordCol = table.label_index(options.coords)
+  else: colCoord = table.label_index(options.coords)
 
   for type, data in items.iteritems():
     for what in (data['labels'] if data['labels'] is not None else []):
@@ -150,18 +149,12 @@ for name in filenames:
 
   table.data_readArray()
 
-  coords = [{},{},{}]
-  for i in xrange(len(table.data)):  
-    for j in xrange(3):
-      coords[j][str(table.data[i,coordCol+j])] = True
-  grid = np.array(map(len,coords),'i')
-  size = grid/np.maximum(np.ones(3,'d'),grid-1.0)* \
-            np.array([max(map(float,coords[0].keys()))-min(map(float,coords[0].keys())),\
-                      max(map(float,coords[1].keys()))-min(map(float,coords[1].keys())),\
-                      max(map(float,coords[2].keys()))-min(map(float,coords[2].keys())),\
-                      ],'d')                                                                        # size from bounding box, corrected for cell-centeredness
-
-  size = np.where(grid > 1, size, min(size[grid > 1]/grid[grid > 1]))                               # spacing for grid==1 equal to smallest among other spacings
+  coords = [np.unique(table.data[:,colCoord+i]) for i in xrange(3)]
+  mincorner = np.array(map(min,coords))
+  maxcorner = np.array(map(max,coords))
+  grid   = np.array(map(len,coords),'i')
+  size   = grid/np.maximum(np.ones(3,'d'), grid-1.0) * (maxcorner-mincorner)                        # size from edge to edge = dim * n/(n-1) 
+  size   = np.where(grid > 1, size, min(size[grid > 1]/grid[grid > 1]))     
 
 # ------------------------------------------ process value field -----------------------------------
 
