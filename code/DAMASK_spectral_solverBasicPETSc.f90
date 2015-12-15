@@ -12,7 +12,7 @@ module DAMASK_spectral_SolverBasicPETSc
    pReal
  use math, only: &
    math_I3
- use DAMASK_spectral_Utilities, only: &
+ use spectral_utilities, only: &
    tSolutionState, &
    tSolutionParams
 
@@ -104,7 +104,7 @@ subroutine basicPETSc_init
    worldsize
  use DAMASK_interface, only: &
    getSolverJobName
- use DAMASK_spectral_Utilities, only: &
+ use spectral_utilities, only: &
    Utilities_constitutiveResponse, &
    Utilities_updateGamma, &
    utilities_updateIPcoords, &
@@ -230,7 +230,7 @@ type(tSolutionState) function &
    IO_error
  use numerics, only: &
    update_gamma
- use DAMASK_spectral_Utilities, only: &
+ use spectral_utilities, only: &
    tBoundaryCondition, &
    Utilities_maskedCompliance, &
    Utilities_updateGamma
@@ -314,7 +314,7 @@ subroutine BasicPETSC_formResidual(in,x_scal,f_scal,dummy,ierr)
    debug_level, &
    debug_spectral, &
    debug_spectralRotation
- use DAMASK_spectral_Utilities, only: &
+ use spectral_utilities, only: &
    tensorField_real, &
    utilities_FFTtensorForward, &
    utilities_FFTtensorBackward, &
@@ -457,7 +457,7 @@ subroutine BasicPETSc_forward(guess,timeinc,timeinc_old,loadCaseTime,F_BC,P_BC,r
  use mesh, only: &
    grid, &
    grid3
- use DAMASK_spectral_Utilities, only: &
+ use spectral_utilities, only: &
    Utilities_calculateRate, &
    Utilities_forwardField, &
    utilities_updateIPcoords, &
@@ -555,7 +555,7 @@ end subroutine BasicPETSc_forward
 !> @brief destroy routine
 !--------------------------------------------------------------------------------------------------
 subroutine BasicPETSc_destroy()
- use DAMASK_spectral_Utilities, only: &
+ use spectral_utilities, only: &
    Utilities_destroy
 
  implicit none

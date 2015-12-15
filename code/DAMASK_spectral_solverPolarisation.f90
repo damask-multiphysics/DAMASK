@@ -12,7 +12,7 @@ module DAMASK_spectral_solverPolarisation
    pReal
  use math, only: &
    math_I3
- use DAMASK_spectral_Utilities, only: &
+ use spectral_utilities, only: &
    tSolutionState, &
    tSolutionParams
 
@@ -116,7 +116,7 @@ subroutine Polarisation_init
    worldsize
  use DAMASK_interface, only: &
    getSolverJobName
- use DAMASK_spectral_Utilities, only: &
+ use spectral_utilities, only: &
    Utilities_constitutiveResponse, &
    Utilities_updateGamma, &
    Utilities_updateIPcoords
@@ -258,7 +258,7 @@ type(tSolutionState) function &
    update_gamma
  use math, only: &
    math_invSym3333
- use DAMASK_spectral_Utilities, only: &
+ use spectral_utilities, only: &
    tBoundaryCondition, &
    Utilities_maskedCompliance, &
    Utilities_updateGamma
@@ -346,7 +346,7 @@ subroutine Polarisation_formResidual(in,x_scal,f_scal,dummy,ierr)
    math_mul3333xx33, &
    math_invSym3333, &
    math_mul33x33
- use DAMASK_spectral_Utilities, only: &
+ use spectral_utilities, only: &
    wgt, &
    tensorField_real, &
    utilities_FFTtensorForward, &
@@ -568,7 +568,7 @@ subroutine Polarisation_forward(guess,timeinc,timeinc_old,loadCaseTime,F_BC,P_BC
  use mesh, only: &
    grid3, &
    grid
- use DAMASK_spectral_Utilities, only: &
+ use spectral_utilities, only: &
    Utilities_calculateRate, &
    Utilities_forwardField, &
    Utilities_updateIPcoords, &
@@ -698,7 +698,7 @@ end subroutine Polarisation_forward
 !> @brief destroy routine
 !--------------------------------------------------------------------------------------------------
 subroutine Polarisation_destroy()
- use DAMASK_spectral_Utilities, only: &
+ use spectral_utilities, only: &
    Utilities_destroy
 
  implicit none

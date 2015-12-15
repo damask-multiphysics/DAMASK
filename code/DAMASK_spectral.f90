@@ -65,7 +65,7 @@ program DAMASK_spectral_Driver
    damage_type, &
    THERMAL_conduction_ID, &
    DAMAGE_nonlocal_ID
- use DAMASK_spectral_Utilities, only: &
+ use spectral_utilities, only: &
    utilities_init, &
    utilities_destroy, &
    tSolutionState, &

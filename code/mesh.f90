@@ -736,7 +736,7 @@ integer(pInt) function mesh_FEasCP(what,myID)
    mesh_FEasCP = lookupMap(2_pInt,upper)
    return
  endif
- 
+ ! this might be the reason for the heap problems
  binarySearch: do while (upper-lower > 1_pInt)
    center = (lower+upper)/2_pInt
    if (lookupMap(1_pInt,center) < myID) then

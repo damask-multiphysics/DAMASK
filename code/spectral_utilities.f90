@@ -6,7 +6,7 @@
 !> @author Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
 !> @brief Utilities used by the different spectral solver variants
 !--------------------------------------------------------------------------------------------------
-module DAMASK_spectral_utilities
+module spectral_utilities
  use, intrinsic :: iso_c_binding
  use prec, only: &
    pReal, &
@@ -223,7 +223,7 @@ subroutine utilities_init()
    tensorSize = 9_C_INTPTR_T
 
  mainProcess: if (worldrank == 0) then
-   write(6,'(/,a)')   ' <<<+-  DAMASK_spectral_utilities init  -+>>>'
+   write(6,'(/,a)')   ' <<<+-  spectral_utilities init  -+>>>'
    write(6,'(a)')     ' $Id$'
    write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
@@ -1290,4 +1290,4 @@ subroutine utilities_destroy()
 end subroutine utilities_destroy
 
 
-end module DAMASK_spectral_utilities
+end module spectral_utilities

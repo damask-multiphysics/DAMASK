@@ -11,7 +11,7 @@ module spectral_damage
    pReal
  use math, only: &
    math_I3
- use DAMASK_spectral_Utilities, only: &
+ use spectral_utilities, only: &
    tSolutionState, &
    tSolutionParams
  use numerics, only: &
@@ -82,7 +82,7 @@ subroutine spectral_damage_init()
    IO_intOut, &
    IO_read_realFile, &
    IO_timeStamp
- use DAMASK_spectral_Utilities, only: &
+ use spectral_utilities, only: &
    wgt
  use mesh, only: &
    grid, &
@@ -179,7 +179,7 @@ type(tSolutionState) function spectral_damage_solution(guess,timeinc,timeinc_old
    itmax, &
    err_damage_tolAbs, &
    err_damage_tolRel
- use DAMASK_spectral_Utilities, only: &
+ use spectral_utilities, only: &
    tBoundaryCondition, &
    Utilities_maskedCompliance, &
    Utilities_updateGamma
@@ -265,7 +265,7 @@ subroutine spectral_damage_formResidual(in,x_scal,f_scal,dummy,ierr)
    grid3
  use math, only: &
    math_mul33x3
- use DAMASK_spectral_Utilities, only: &
+ use spectral_utilities, only: &
    scalarField_real, &
    vectorField_real, &
    utilities_FFTvectorForward, &
@@ -346,7 +346,7 @@ subroutine spectral_damage_forward(guess,timeinc,timeinc_old,loadCaseTime)
  use mesh, only: &
    grid, &
    grid3
- use DAMASK_spectral_Utilities, only: &
+ use spectral_utilities, only: &
    cutBack, &
    wgt
  use damage_nonlocal, only: &

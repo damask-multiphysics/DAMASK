@@ -332,11 +332,11 @@ DAMASK_spectral.exe: COMPILE_MAXOPTI += -DSpectral
 DAMASK_spectral.exe: MESHNAME        := mesh.f90
 DAMASK_spectral.exe: INTERFACENAME   := DAMASK_spectral_interface.f90
 
-DAMASK_spectral_driver.o: IGNORE          := \#
-DAMASK_spectral_driver.o: COMPILE         += -DSpectral
-DAMASK_spectral_driver.o: COMPILE_MAXOPTI += -DSpectral
-DAMASK_spectral_driver.o: MESHNAME        := mesh.f90
-DAMASK_spectral_driver.o: INTERFACENAME   := DAMASK_spectral_interface.f90
+DAMASK_spectral.o: IGNORE          := \#
+DAMASK_spectral.o: COMPILE         += -DSpectral
+DAMASK_spectral.o: COMPILE_MAXOPTI += -DSpectral
+DAMASK_spectral.o: MESHNAME        := mesh.f90
+DAMASK_spectral.o: INTERFACENAME   := DAMASK_spectral_interface.f90
 
 
 SPECTRAL_SOLVER_FILES = DAMASK_spectral_solverAL.o DAMASK_spectral_solverBasicPETSc.o DAMASK_spectral_solverPolarisation.o \
@@ -349,35 +349,35 @@ SPECTRAL_FILES = prec.o DAMASK_interface.o IO.o libs.o numerics.o debug.o math.o
                  $(THERMAL_FILES) $(DAMAGE_FILES) $(VACANCYFLUX_FILES) $(HYDROGENFLUX_FILES) $(POROSITY_FILES) \
                  $(HOMOGENIZATION_FILES) homogenization.o \
                  CPFEM.o \
-                 DAMASK_spectral_utilities.o \
+                 spectral_utilities.o \
                  $(SPECTRAL_SOLVER_FILES)
 
-DAMASK_spectral.exe: DAMASK_spectral_driver.o
+DAMASK_spectral.exe: DAMASK_spectral.o
 	$(PREFIX) $(LINKERNAME) $(OPENMP_FLAG_$(F90)) $(LINK_OPTIONS_$(F90)) $(STANDARD_CHECK_$(F90))  $(OPTIMIZATION_$(MAXOPTI)_$(F90)) \
-    -o DAMASK_spectral.exe DAMASK_spectral_driver.o \
+    -o DAMASK_spectral.exe DAMASK_spectral.o \
     $(SPECTRAL_FILES) $(LIBRARIES) $(SUFFIX)
 
 
-DAMASK_spectral_driver.o: DAMASK_spectral_driver.f90 \
+DAMASK_spectral.o: DAMASK_spectral.f90 \
                            $(SPECTRAL_SOLVER_FILES)
-	$(PREFIX) $(COMPILERNAME) $(COMPILE_MAXOPTI) -c DAMASK_spectral_driver.f90 $(SUFFIX)
+	$(PREFIX) $(COMPILERNAME) $(COMPILE_MAXOPTI) -c DAMASK_spectral.f90 $(SUFFIX)
 
 DAMASK_spectral_solverAL.o:    DAMASK_spectral_solverAL.f90 \
-                               DAMASK_spectral_utilities.o
+                               spectral_utilities.o
 
 DAMASK_spectral_solverPolarisation.o:    DAMASK_spectral_solverPolarisation.f90 \
-                               DAMASK_spectral_utilities.o
+                               spectral_utilities.o
 
 DAMASK_spectral_solverBasicPETSc.o: DAMASK_spectral_solverBasicPETSc.f90 \
-                               DAMASK_spectral_utilities.o
+                               spectral_utilities.o
 
 spectral_thermal.o:            spectral_thermal.f90 \
-                               DAMASK_spectral_utilities.o
+                               spectral_utilities.o
 
 spectral_damage.o:             spectral_damage.f90 \
-                               DAMASK_spectral_utilities.o
+                               spectral_utilities.o
 
-DAMASK_spectral_utilities.o:   DAMASK_spectral_utilities.f90 \
+spectral_utilities.o:   spectral_utilities.f90 \
                                CPFEM.o
 
 #####################
