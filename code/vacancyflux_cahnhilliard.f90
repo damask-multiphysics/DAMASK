@@ -347,7 +347,7 @@ end function vacancyflux_cahnhilliard_getDiffusion33
 !--------------------------------------------------------------------------------------------------
 !> @brief returns homogenized vacancy formation energy
 !--------------------------------------------------------------------------------------------------
-function vacancyflux_cahnhilliard_getFormationEnergy(ip,el)
+real(pReal) function vacancyflux_cahnhilliard_getFormationEnergy(ip,el)
  use lattice, only: &
    lattice_vacancyFormationEnergy, &
    lattice_vacancyVol, &
@@ -362,8 +362,6 @@ function vacancyflux_cahnhilliard_getFormationEnergy(ip,el)
  integer(pInt), intent(in) :: &
    ip, &                                                                                            !< integration point number
    el                                                                                               !< element number
- real(pReal) :: &
-   vacancyflux_cahnhilliard_getFormationEnergy
  integer(pInt) :: &
    grain
   
@@ -384,7 +382,7 @@ end function vacancyflux_cahnhilliard_getFormationEnergy
 !--------------------------------------------------------------------------------------------------
 !> @brief returns homogenized vacancy entropy coefficient
 !--------------------------------------------------------------------------------------------------
-function vacancyflux_cahnhilliard_getEntropicCoeff(ip,el)
+real(pReal) function vacancyflux_cahnhilliard_getEntropicCoeff(ip,el)
  use lattice, only: &
    lattice_vacancyVol, &
    lattice_vacancySurfaceEnergy
@@ -399,8 +397,6 @@ function vacancyflux_cahnhilliard_getEntropicCoeff(ip,el)
  integer(pInt), intent(in) :: &
    ip, &                                                                                            !< integration point number
    el                                                                                               !< element number
- real(pReal) :: &
-   vacancyflux_cahnhilliard_getEntropicCoeff
  integer(pInt) :: &
    grain
   

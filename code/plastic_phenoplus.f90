@@ -1,5 +1,5 @@
 !--------------------------------------------------------------------------------------------------
-! $Id: plastic_phenopowerlaw.f90 4457 2015-09-08 19:44:32Z MPIE\m.diehl $
+! $Id$
 !--------------------------------------------------------------------------------------------------
 !> @author Franz Roters,      Max-Planck-Institut für Eisenforschung GmbH
 !> @author Philip Eisenlohr,  Max-Planck-Institut für Eisenforschung GmbH
@@ -170,7 +170,7 @@ subroutine plastic_phenoplus_init(fileUnit)
 
  mainProcess: if (worldrank == 0) then
    write(6,'(/,a)')   ' <<<+-  constitutive_'//PLASTICITY_PHENOPLUS_label//' init  -+>>>'
-   write(6,'(a)')     ' $Id: plastic_phenoplus.f90 4457 2015-09-08 19:44:32Z MPIE\m.diehl $'
+   write(6,'(a)')     ' $Id$'
    write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
  endif mainProcess

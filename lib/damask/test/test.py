@@ -42,27 +42,46 @@ class Test():
     description = test_description+' (using class: $Id$)',
     usage='./test.py [options]')
     self.updateRequested = False
+    self.parser.add_option("-d", "--debug", action="store_true",\
+                                    dest="debug",\
+                                    help="debug run, don't calculate but use existing results")
+    self.parser.add_option("-p", "--pass", action="store_true",\
+                                    dest="accept",\
+                                    help="calculate results but always consider test as successfull")
+    self.parser.set_defaults(debug=False,
+                             accept=False)
 
   def execute(self):
     '''
     Run all variants and report first failure.
     '''
-    if not self.testPossible(): return -1
-    self.clean()
-    self.prepareAll()
-    for variant in xrange(len(self.variants)):
-      try:
-        self.prepare(variant)
-        self.run(variant)
-        self.postprocess(variant)
-        if self.updateRequested:                                                                         # update requested
-          self.update(variant)
-        elif not self.compare(variant):                                                                  # no update, do comparison
-          return variant+1                                                                               # return culprit
-      except Exception as e :
-        logging.critical('\nWARNING:\n %s\n'%e)
-        return variant+1                                                                                 # return culprit
-    return 0
+    if self.options.debug:
+      for variant in xrange(len(self.variants)):
+        try:
+          self.postprocess(variant)
+          if not self.compare(variant):
+            return variant+1                                                                               # return culprit
+        except Exception as e :
+          logging.critical('\nWARNING:\n %s\n'%e)
+          return variant+1                                                                                 # return culprit
+      return 0
+    else:
+      if not self.testPossible(): return -1
+      self.clean()
+      self.prepareAll()
+      for variant in xrange(len(self.variants)):
+        try:
+          self.prepare(variant)
+          self.run(variant)
+          self.postprocess(variant)
+          if self.updateRequested:                                                                         # update requested
+            self.update(variant)
+          elif not (self.options.accept or self.compare(variant)):                                                                  # no update, do comparison
+            return variant+1                                                                               # return culprit
+        except Exception as e :
+          logging.critical('\nWARNING:\n %s\n'%e)
+          return variant+1                                                                                 # return culprit
+      return 0
   
   def testPossible(self):
     '''
@@ -406,6 +425,64 @@ class Test():
     return maxError
 
 
+  def compare_TablesStatistically(self,
+                     files = [None,None],                                                           # list of file names
+                     columns = [None],                                                              # list of list of column labels (per file)
+                     meanTol = 1.0e-4,
+                     stdTol = 1.0e-6,
+                     preFilter = 1.0e-9):
+    
+    '''
+      calculate statistics of tables
+      threshold can be used to ignore small values (a negative number disables this feature)
+    '''
+
+    import numpy as np
+    from collections import Iterable
+
+    if not (isinstance(files, Iterable) and not isinstance(files, str)):                            # check whether list of files is requested
+      files = [str(files)]
+
+    tables = [damask.ASCIItable(name = filename,readonly = True) for filename in files]
+    for table in tables:
+      table.head_read()
+
+    columns += [columns[0]]*(len(files)-len(columns))                                               # extend to same length as files
+    columns = columns[:len(files)]                                                                  # truncate to same length as files
+
+    for i,column in enumerate(columns):
+      if column is None: columns[i] = tables[i].labels                                              # if no column is given, read all
+
+    logging.info('comparing ASCIItables statistically')
+    for i in xrange(len(columns)):
+      columns[i] = columns[0]  if not columns[i] else \
+                 ([columns[i]] if not (isinstance(columns[i], Iterable) and not isinstance(columns[i], str)) else \
+                   columns[i]
+                 )
+      logging.info(files[i]+':'+','.join(columns[i]))
+
+    if len(files) < 2: return True                                                                  # single table is always close to itself...
+    
+    data = []
+    for table,labels in zip(tables,columns):
+      table.data_readArray(labels)
+      data.append(table.data)
+      table.close()
+        
+    
+    for i in xrange(1,len(data)):
+      delta = data[i]-data[i-1]
+      normBy = (np.abs(data[i]) + np.abs(data[i-1]))*0.5
+      normedDelta = np.where(normBy>preFilter,delta/normBy,0.0)
+      mean = np.amax(np.abs(np.mean(normedDelta,0)))
+      std = np.amax(np.std(normedDelta,0))
+      logging.info('mean: %f'%mean)
+      logging.info('std: %f'%std)
+    
+    return (mean<meanTol) & (std < stdTol)
+
+
+
   def compare_Tables(self,
                      files = [None,None],                                                           # list of file names
                      columns = [None],                                                              # list of list of column labels (per file)
@@ -471,7 +548,7 @@ class Test():
         t0 = np.where(mask,0.0,data[i-1])
         t1 = np.where(mask,0.0,data[i  ])
         j = np.argmin(np.abs(t1)*rtol+atol-np.abs(t0-t1))
-        print np.amin(np.abs(t1)*rtol+atol-np.abs(t0-t1))
+        logging.info('%f'%np.amax(np.abs(t0-t1)/(np.abs(t1)*rtol+atol)))
         logging.info('%f %f'%((t0*maximum).flatten()[j],(t1*maximum).flatten()[j]))
       allclose &= np.allclose(np.where(mask,0.0,data[i-1]),
                               np.where(mask,0.0,data[i  ]),rtol,atol)                             # accumulate "pessimism"

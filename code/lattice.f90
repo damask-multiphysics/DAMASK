@@ -1276,9 +1276,6 @@ subroutine lattice_init
  if (LATTICE_bct_Nslip /= sum(lattice_bct_NslipSystem)) &
    call IO_error(0_pInt,ext_msg = 'LATTICE_bct_Nslip')
 
-
-
-
  if (LATTICE_fcc_Ntwin /= sum(lattice_fcc_NtwinSystem)) &
    call IO_error(0_pInt,ext_msg = 'LATTICE_fcc_Ntwin')
  if (LATTICE_bcc_Ntwin /= sum(lattice_bcc_NtwinSystem)) &
@@ -1287,8 +1284,6 @@ subroutine lattice_init
    call IO_error(0_pInt,ext_msg = 'LATTICE_hex_Ntwin')
  if (LATTICE_bct_Ntwin /= sum(lattice_bct_NtwinSystem)) &
    call IO_error(0_pInt,ext_msg = 'LATTICE_bct_Ntwin')
-
-
 
  if (LATTICE_fcc_Ntrans /= sum(lattice_fcc_NtransSystem)) &
    call IO_error(0_pInt,ext_msg = 'LATTICE_fcc_Ntrans')
@@ -1319,17 +1314,17 @@ subroutine lattice_init
    maxval(lattice_fcc_interactionSlipTwin), &
    maxval(lattice_bcc_interactionSlipTwin), &
    maxval(lattice_hex_interactionSlipTwin), &
- !  maxval(lattice_bct_interactionSlipTwin), &
+!  maxval(lattice_bct_interactionSlipTwin), &
    !
    maxval(lattice_fcc_interactionTwinSlip), &
    maxval(lattice_bcc_interactionTwinSlip), &
    maxval(lattice_hex_interactionTwinSlip), &
- !  maxval(lattice_bct_interactionTwinSlip), &
+!  maxval(lattice_bct_interactionTwinSlip), &
    !
    maxval(lattice_fcc_interactionTwinTwin), &
    maxval(lattice_bcc_interactionTwinTwin), &
    maxval(lattice_hex_interactionTwinTwin))) &
- !  maxval(lattice_bct_interactionTwinTwin))) &
+!  maxval(lattice_bct_interactionTwinTwin))) &
    call IO_error(0_pInt,ext_msg = 'LATTICE_maxNinteraction')
 
 !--------------------------------------------------------------------------------------------------
