@@ -706,7 +706,7 @@ of already processed data points for evaluation.
 parser.add_option('-i','--info', action='store_true', dest='info', \
                   help='list contents of resultfile [%default]')
 parser.add_option('-l','--legacy', action='store_true', dest='legacy', \
-                  help='legacy data format for spectral solver (no MPI out) [%default]')
+                  help='data format of spectral solver is in legacy format (no MPI out)')
 parser.add_option('-n','--nodal', action='store_true', dest='nodal', \
                   help='data is extrapolated to nodal value [%default]')
 parser.add_option(    '--prefix', dest='prefix', \
@@ -722,7 +722,7 @@ parser.add_option('-r','--range', dest='range', type='int', nargs=3, \
 parser.add_option('--increments', action='store_true', dest='getIncrements', \
                   help='switch to increment range [%default]')
 parser.add_option('-m','--map', dest='func', \
-                  help='data reduction mapping ["%default"] out of min, max, avg, avgabs, sum, sumabs or user-lambda')
+                  help='data reduction mapping [%default] out of min, max, avg, avgabs, sum, sumabs or user-lambda')
 parser.add_option('-p','--type', dest='filetype', \
                   help = 'type of result file [auto]')
 
