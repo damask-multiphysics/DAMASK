@@ -16,9 +16,7 @@ module spectral_utilities
 
  implicit none
  private
-#ifdef PETSc
 #include <petsc/finclude/petscsys.h>
-#endif
  include 'fftw3-mpi.f03'
 
  logical,       public             :: cutBack =.false.                                              !< cut back of BVP solver in case convergence is not achieved or a material point is terminally ill
@@ -190,10 +188,8 @@ subroutine utilities_init()
    debug_SPECTRALFFTW, &
    debug_SPECTRALPETSC, &
    debug_SPECTRALROTATION
-#ifdef PETSc
  use debug, only: &
    PETSCDEBUG
-#endif
  use math
  use mesh, only: &
    grid, &
@@ -202,13 +198,13 @@ subroutine utilities_init()
    geomSize
 
  implicit none
-#ifdef PETSc
+
  external :: &
    PETScOptionsClear, &
    PETScOptionsInsertString, &
    MPI_Abort
+
  PetscErrorCode :: ierr
-#endif
  integer(pInt)               :: i, j, k
  integer(pInt), dimension(3) :: k_s
  type(C_PTR) :: &
@@ -455,10 +451,6 @@ end subroutine utilities_updateGamma
 !> @details Does an unweighted filtered FFT transform from real to complex
 !--------------------------------------------------------------------------------------------------
 subroutine utilities_FFTtensorForward()
- use mesh, only: &
-   grid3, &
-   grid
-
  implicit none
 
 !--------------------------------------------------------------------------------------------------
@@ -485,10 +477,6 @@ end subroutine utilities_FFTtensorBackward
 !> @details Does an unweighted filtered FFT transform from real to complex
 !--------------------------------------------------------------------------------------------------
 subroutine utilities_FFTscalarForward()
- use mesh, only: &
-   grid3, &
-   grid
-
  implicit none
 
 !--------------------------------------------------------------------------------------------------
@@ -516,10 +504,6 @@ end subroutine utilities_FFTscalarBackward
 !> @details Does an unweighted filtered FFT transform from real to complex.
 !--------------------------------------------------------------------------------------------------
 subroutine utilities_FFTvectorForward()
- use mesh, only: &
-   grid3, &
-   grid
-
  implicit none
 
 !--------------------------------------------------------------------------------------------------
@@ -624,8 +608,7 @@ subroutine utilities_fourierGreenConvolution(D_ref, mobility_ref, deltaT)
    PI
  use mesh, only: &
    grid, &
-   grid3, &
-   geomSize
+   grid3
 
  implicit none
  real(pReal), dimension(3,3), intent(in) :: D_ref                                                   !< desired average value of the field after convolution
@@ -660,6 +643,8 @@ real(pReal) function utilities_divergenceRMS()
  integer(pInt) :: i, j, k
  PetscErrorCode :: ierr
 
+ external :: &
+   MPI_Allreduce
 
  if (worldrank == 0_pInt) then
    write(6,'(/,a)') ' ... calculating divergence ................................................'
@@ -710,6 +695,10 @@ real(pReal) function utilities_curlRMS()
  integer(pInt)  ::  i, j, k, l
  complex(pReal), dimension(3,3) ::  curl_fourier
  PetscErrorCode :: ierr
+
+ external :: &
+   MPI_Reduce, &
+   MPI_Allreduce
 
  if (worldrank == 0_pInt) then
    write(6,'(/,a)') ' ... calculating curl ......................................................'
@@ -871,20 +860,17 @@ end function utilities_maskedCompliance
 !> @brief calculate scalar gradient in fourier field
 !--------------------------------------------------------------------------------------------------
 subroutine utilities_fourierScalarGradient()
- use math, only: &
-   PI
  use mesh, only: &
    grid3, &
-   grid, &
-   geomSize
+   grid
 
  implicit none
  integer(pInt)                :: i, j, k
 
  vectorField_fourier = cmplx(0.0_pReal,0.0_pReal,pReal)
- do k = 1_pInt, grid3;  do j = 1_pInt, grid(2);  do i = 1_pInt,grid1Red
+ forall(k = 1_pInt:grid3, j = 1_pInt:grid(2), i = 1_pInt:grid1Red) &
    vectorField_fourier(1:3,i,j,k) = scalarField_fourier(i,j,k)*xi1st(1:3,i,j,k)
- enddo; enddo; enddo
+
 end subroutine utilities_fourierScalarGradient
 
 
@@ -892,24 +878,18 @@ end subroutine utilities_fourierScalarGradient
 !> @brief calculate vector divergence in fourier field
 !--------------------------------------------------------------------------------------------------
 subroutine utilities_fourierVectorDivergence()
- use math, only: &
-   PI
  use mesh, only: &
    grid3, &
-   grid, &
-   geomSize
+   grid
 
  implicit none
- integer(pInt)                :: i, j, k, m
+ integer(pInt)                :: i, j, k
 
  scalarField_fourier = cmplx(0.0_pReal,0.0_pReal,pReal)
- do k = 1_pInt, grid3;  do j = 1_pInt, grid(2);  do i = 1_pInt,grid1Red
-   do m = 1_pInt, 3_pInt
-     scalarField_fourier(i,j,k) = &
-       scalarField_fourier(i,j,k) + &
-       vectorField_fourier(m,i,j,k)*conjg(-xi1st(m,i,j,k))
-   enddo
- enddo; enddo; enddo
+ forall(k = 1_pInt:grid3, j = 1_pInt:grid(2), i = 1_pInt:grid1Red) &
+     scalarField_fourier(i,j,k) = scalarField_fourier(i,j,k) + &
+       sum(vectorField_fourier(1:3,i,j,k)*conjg(-xi1st(1:3,i,j,k)))
+
 end subroutine utilities_fourierVectorDivergence
 
 
@@ -919,8 +899,7 @@ end subroutine utilities_fourierVectorDivergence
 subroutine utilities_fourierVectorGradient()
  use mesh, only: &
    grid3, &
-   grid, &
-   geomSize
+   grid
 
  implicit none
  integer(pInt) :: i, j, k, m, n
@@ -940,8 +919,7 @@ end subroutine utilities_fourierVectorGradient
 subroutine utilities_fourierTensorDivergence()
  use mesh, only: &
    grid3, &
-   grid, &
-   geomSize
+   grid
 
  implicit none
  integer(pInt) :: i, j, k, m, n
@@ -1007,6 +985,7 @@ subroutine utilities_constitutiveResponse(F_lastInc,F,timeinc, &
  PetscErrorCode :: ierr
 
  external :: &
+   MPI_Reduce, &
    MPI_Allreduce
 
  if (worldrank == 0_pInt) then
