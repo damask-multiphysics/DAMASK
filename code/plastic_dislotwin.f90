@@ -14,7 +14,7 @@ module plastic_dislotwin
  implicit none
  private
  integer(pInt),                       dimension(:),           allocatable,         public, protected :: &
-    plastic_dislotwin_sizePostResults                                                           !< cumulative size of post results
+    plastic_dislotwin_sizePostResults                                                          !< cumulative size of post results
 
  integer(pInt),                       dimension(:,:),         allocatable, target, public :: &
    plastic_dislotwin_sizePostResult                                                            !< size of each post result output
@@ -22,30 +22,6 @@ module plastic_dislotwin
  character(len=64),                   dimension(:,:),         allocatable, target, public :: &
    plastic_dislotwin_output                                                                    !< name of each post result output
    
- character(len=12),                   dimension(3),           parameter,           private :: &
-   plastic_dislotwin_listBasicSlipStates = &
-   ['rhoEdge     ',      'rhoEdgeDip  ',      'accshearslip']
-
- character(len=12),                   dimension(2),           parameter,           private :: &
-   plastic_dislotwin_listBasicTwinStates = & 
-   ['twinFraction',      'accsheartwin']
-
- character(len=19),                   dimension(2),           parameter,           private :: &
-   plastic_dislotwin_listBasicTransStates = & 
-   ['stressTransFraction', 'strainTransFraction']
-
- character(len=18),                   dimension(5),           parameter,           private :: &
-   plastic_dislotwin_listDependentSlipStates = &
-   ['invLambdaSlip     ', 'invLambdaSlipTwin ', 'invLambdaSlipTrans','meanFreePathSlip  ', 'tauSlipThreshold  ']
-
- character(len=16),                   dimension(4),           parameter,           private :: &
-   plastic_dislotwin_listDependentTwinStates = & 
-   ['invLambdaTwin   ',  'meanFreePathTwin',  'tauTwinThreshold',  'twinVolume      ']
-
- character(len=17),                   dimension(4),           parameter,           private :: &
-   plastic_dislotwin_listDependentTransStates = & 
-   ['invLambdaTrans   ', 'meanFreePathTrans', 'tauTransThreshold', 'martensiteVolume ']
-
  real(pReal),                                                 parameter,           private :: &
    kB = 1.38e-23_pReal                                                                         !< Boltzmann constant in J/Kelvin
 
@@ -928,14 +904,18 @@ subroutine plastic_dislotwin_init(fileUnit)
 
 !--------------------------------------------------------------------------------------------------
 ! allocate state arrays
-     sizeDotState              =   int(size(plastic_dislotwin_listBasicSlipStates),pInt) * ns &
-                                 + int(size(plastic_dislotwin_listBasicTwinStates),pInt) * nt &
-                                 + int(size(plastic_dislotwin_listBasicTransStates),pInt) * nr
-     sizeDeltaState            =   0_pInt
-     sizeState                 =   sizeDotState &
-                                 + int(size(plastic_dislotwin_listDependentSlipStates),pInt) * ns &
-                                 + int(size(plastic_dislotwin_listDependentTwinStates),pInt) * nt &
-                                 + int(size(plastic_dislotwin_listDependentTransStates),pInt) * nr
+
+     sizeDotState     = int(size(['rhoEdge     ','rhoEdgeDip  ','accshearslip']),pInt) * ns &
+                      + int(size(['twinFraction','accsheartwin']),pInt) * nt &
+                      + int(size(['stressTransFraction','strainTransFraction']),pInt) * nr
+     sizeDeltaState   =  0_pInt
+     sizeState        = sizeDotState &
+                      + int(size(['invLambdaSlip     ','invLambdaSlipTwin ','invLambdaSlipTrans',&
+                                  'meanFreePathSlip  ','tauSlipThreshold  ']),pInt) * ns &
+                      + int(size(['invLambdaTwin   ','meanFreePathTwin','tauTwinThreshold',&
+                                  'twinVolume      ']),pInt) * nt &
+                      + int(size(['invLambdaTrans   ','meanFreePathTrans','tauTransThreshold', &
+                                  'martensiteVolume ']),pInt) * nr
                 
      plasticState(phase)%sizeState = sizeState
      plasticState(phase)%sizeDotState = sizeDotState
@@ -1505,29 +1485,6 @@ subroutine plastic_dislotwin_microstructure(temperature,ipc,ip,el)
  ns = plastic_dislotwin_totalNslip(instance)
  nt = plastic_dislotwin_totalNtwin(instance)
  nr = plastic_dislotwin_totalNtrans(instance)
-
-!BASIC STATES
- !* State: 1                :  ns              rho_edge
- !* State: ns+1             :  2*ns            rho_dipole
- !* State: 2*ns+1           :  3*ns            accumulated shear due to slip
- !* State: 3*ns+1           :  3*ns+nt         f
- !* State: 3*ns+nt+1        :  3*ns+2*nt       accumulated shear due to twin
- !* State: 3*ns+2*nt+1      :  3*ns+2*nt+nr    stress-assisted martensite volume fraction (not used for fcc to hex transformation)
- !* State: 3*ns+2*nt+nr+1   :  3*ns+2*nt+2*nr  strain-induced martensite volume fraction  (epsilon martensite)
-!DEPENDENT STATES
- !* State: 3*ns+2*nt+2*nr+1 :  4*ns+2*nt+2*nr  1/lambda_slip
- !* State: 4*ns+2*nt+2*nr+1 :  5*ns+2*nt+2*nr  1/lambda_sliptwin
- !* State: 5*ns+2*nt+2*nr+1 :  5*ns+3*nt+2*nr  1/lambda_twin
- !* State: 5*ns+3*nt+2*nr+1 :  6*ns+3*nt+2*nr  1/lambda_sliptrans
- !* State: 6*ns+3*nt+2*nr+1 :  6*ns+3*nt+3*nr  1/lambda_trans
- !* State: 6*ns+3*nt+3*nr+1 :  7*ns+3*nt+3*nr  mfp_slip
- !* State: 7*ns+3*nt+3*nr+1 :  7*ns+4*nt+3*nr  mfp_twin
- !* State: 7*ns+4*nt+3*nr+1 :  7*ns+4*nt+4*nr  mfp_trans
- !* State: 7*ns+4*nt+4*nr+1 :  8*ns+4*nt+4*nr  threshold_stress_slip
- !* State: 8*ns+4*nt+4*nr+1 :  8*ns+5*nt+4*nr  threshold_stress_twin
- !* State: 8*ns+5*nt+4*nr+1 :  8*ns+5*nt+5*nr  threshold_stress_trans
- !* State: 8*ns+5*nt+5*nr+1 :  8*ns+6*nt+5*nr  twin volume
- !* State: 8*ns+6*nt+5*nr+1 :  8*ns+6*nt+6*nr  martensite volume
 
  !* Total twin volume fraction
  sumf = sum(state(ph)%twinFraction(1_pInt:nt,of)) ! safe for nt == 0
