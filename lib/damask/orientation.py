@@ -4,7 +4,7 @@
 # NOTE: everything here needs to be a np array #
 ###################################################
 
-import math,random,os
+import math,os
 import numpy as np
 
 # ******************************************************************************************
@@ -371,14 +371,12 @@ class Quaternion:
     def fromRandom(cls,randomSeed = None):
       if randomSeed == None:
         randomSeed = int(os.urandom(4).encode('hex'), 16)
-      random.seed(randomSeed)
-      r1 = random.random()
-      r2 = random.random()
-      r3 = random.random()
-      w = math.cos(2.0*math.pi*r1)*math.sqrt(r3)
-      x = math.sin(2.0*math.pi*r2)*math.sqrt(1.0-r3)
-      y = math.cos(2.0*math.pi*r2)*math.sqrt(1.0-r3)
-      z = math.sin(2.0*math.pi*r1)*math.sqrt(r3)
+      np.random.seed(randomSeed)
+      r = np.random.random(3)
+      w = math.cos(2.0*math.pi*r[0])*math.sqrt(r[2])
+      x = math.sin(2.0*math.pi*r[1])*math.sqrt(1.0-r[2])
+      y = math.cos(2.0*math.pi*r[1])*math.sqrt(1.0-r[2])
+      z = math.sin(2.0*math.pi*r[0])*math.sqrt(r[2])
       return cls([w,x,y,z])
 
 
