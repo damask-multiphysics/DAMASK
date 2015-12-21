@@ -609,7 +609,7 @@ subroutine numerics_init
    write(6,'(a24,1x,i8)')      ' continueCalculation:    ',continueCalculation
    write(6,'(a24,1x,L8)')      ' memory_efficient:       ',memory_efficient
    write(6,'(a24,1x,i8)')      ' divergence_correction:  ',divergence_correction
-   write(6,'(a24,1x,a)')       ' spectral derivative:    ',trim(spectral_derivative)
+   write(6,'(a24,1x,a)')       ' spectral_derivative:    ',trim(spectral_derivative)
    if(fftw_timelimit<0.0_pReal) then
      write(6,'(a24,1x,L8)')    ' fftw_timelimit:         ',.false.
    else    
