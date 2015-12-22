@@ -1216,11 +1216,11 @@ subroutine plastic_disloUCLA_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,Temperature
      nonSchmid_tensor(1:3,1:3,2) = nonSchmid_tensor(1:3,1:3,1)
      nonSchmidSystems: do k = 1,lattice_NnonSchmid(ph) 
        tau_slip_pos = tau_slip_pos + plastic_disloUCLA_nonSchmidCoeff(k,instance)* &
-                                   dot_product(Tstar_v,lattice_Sslip_v(1:6,2*k,index_myFamily+i,ph))
+                                   dot_product(Tstar_v,lattice_Sslip_v(1:6,2*k,  index_myFamily+i,ph))
        tau_slip_neg = tau_slip_neg + plastic_disloUCLA_nonSchmidCoeff(k,instance)* &
                                    dot_product(Tstar_v,lattice_Sslip_v(1:6,2*k+1,index_myFamily+i,ph))
        nonSchmid_tensor(1:3,1:3,1) = nonSchmid_tensor(1:3,1:3,1) + plastic_disloUCLA_nonSchmidCoeff(k,instance)*&
-                                           lattice_Sslip(1:3,1:3,2*k,index_myFamily+i,ph)
+                                           lattice_Sslip(1:3,1:3,2*k,  index_myFamily+i,ph)
        nonSchmid_tensor(1:3,1:3,2) = nonSchmid_tensor(1:3,1:3,2) + plastic_disloUCLA_nonSchmidCoeff(k,instance)*&
                                            lattice_Sslip(1:3,1:3,2*k+1,index_myFamily+i,ph)
      enddo nonSchmidSystems
