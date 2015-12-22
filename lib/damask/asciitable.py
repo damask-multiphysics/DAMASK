@@ -139,7 +139,7 @@ class ASCIItable():
     except:
       pass
 
-    firstline = self.__IO__['in'].readline()
+    firstline = self.__IO__['in'].readline().strip()
     m = re.search('(\d+)\s+head', firstline.lower())                                                # search for "head" keyword
     
     if m:                                                                                           # proper ASCIItable format
@@ -425,7 +425,7 @@ class ASCIItable():
        read next line (possibly buffered) and parse it into data array
     '''
     self.line = self.__IO__['readBuffer'].pop(0) if len(self.__IO__['readBuffer']) > 0 \
-           else self.__IO__['in'].readline()                                                        # take buffered content or get next data row from file
+           else self.__IO__['in'].readline().strip                                                  # take buffered content or get next data row from file
 
     if not advance:
       self.__IO__['readBuffer'].append(self.line)                                                   # keep line just read in buffer
