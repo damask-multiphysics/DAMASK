@@ -12,12 +12,9 @@
 !!           for details on NaN see https://software.intel.com/en-us/forums/topic/294680
 !--------------------------------------------------------------------------------------------------
 module prec
-#if defined(Abaqus)
-use ifport                                                                                          ! needed as a hack for Abaqus because version 6.12-2 is linked partly against Intel Fortran Compiler 10.1. allows to use non IEEE is NaN
-#endif
 
-#ifdef __INTEL_COMPILER
- use, intrinsic :: &                                                                                ! unfortunately not avialable in commonly used gfortran versions
+#if !(defined(__GFORTRAN__) && __GNUC__ < 5)
+ use, intrinsic :: &                                                                                ! unfortunately not avialable in gfortran <= 5
   IEEE_arithmetic
 #endif
 
@@ -185,7 +182,7 @@ logical elemental function prec_isNaN(a)
  implicit none
  real(pReal), intent(in) :: a
 
-#if defined(__GFORTRAN__) || defined(Abaqus)
+#if (defined(__GFORTRAN__) && __GNUC__ < 5)
  intrinsic :: isNaN
  prec_isNaN = isNaN(a)
 #else
