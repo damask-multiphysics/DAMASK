@@ -422,6 +422,7 @@ subroutine utilities_updateGamma(C,saveReference)
  endif
 
  if(.not. memory_efficient) then
+   gamma_hat =  cmplx(0.0_pReal,0.0_pReal,pReal)                                                     ! for the singular point and any non invertible A
    do k = grid3Offset+1_pInt, grid3Offset+grid3; do j = 1_pInt, grid(2); do i = 1_pInt, grid1Red
      if (any([i,j,k] /= 1_pInt)) then                                                                ! singular point at xi=(0.0,0.0,0.0) i.e. i=j=k=1
        forall(l = 1_pInt:3_pInt, m = 1_pInt:3_pInt) &
@@ -436,9 +437,6 @@ subroutine utilities_updateGamma(C,saveReference)
          forall(l=1_pInt:3_pInt, m=1_pInt:3_pInt, n=1_pInt:3_pInt, o=1_pInt:3_pInt) &
            gamma_hat(l,m,n,o,i,j,k-grid3Offset) =  temp33_complex(l,n)* &
                                                    conjg(-xi1st(o,i,j,k-grid3Offset))*xi1st(m,i,j,k-grid3Offset)
-       else  
-         forall(l=1_pInt:3_pInt, m=1_pInt:3_pInt, n=1_pInt:3_pInt, o=1_pInt:3_pInt) &
-           gamma_hat(l,m,n,o,1,1,1) = cmplx(0.0_pReal,0.0_pReal,pReal)
        endif
      endif
    enddo; enddo; enddo
@@ -575,8 +573,7 @@ subroutine utilities_fourierGammaConvolution(fieldAim)
          forall(l=1_pInt:3_pInt, m=1_pInt:3_pInt, n=1_pInt:3_pInt, o=1_pInt:3_pInt) &
            gamma_hat(l,m,n,o,1,1,1) =  temp33_complex(l,n)*conjg(-xi1st(o,i,j,k))*xi1st(m,i,j,k)
        else  
-         forall(l=1_pInt:3_pInt, m=1_pInt:3_pInt, n=1_pInt:3_pInt, o=1_pInt:3_pInt) &
-           gamma_hat(l,m,n,o,1,1,1) = cmplx(0.0_pReal,0.0_pReal,pReal)
+         gamma_hat(1:3,1:3,1:3,1:3,1,1,1) = cmplx(0.0_pReal,0.0_pReal,pReal)
        endif
        forall(l = 1_pInt:3_pInt, m = 1_pInt:3_pInt) &
          temp33_Complex(l,m) = sum(gamma_hat(l,m,1:3,1:3,1,1,1)*tensorField_fourier(1:3,1:3,i,j,k))
@@ -586,8 +583,7 @@ subroutine utilities_fourierGammaConvolution(fieldAim)
  else memoryEfficient
    do k = 1_pInt, grid3;  do j = 1_pInt, grid(2);  do i = 1_pInt,grid1Red
      forall(l = 1_pInt:3_pInt, m = 1_pInt:3_pInt) &
-       temp33_Complex(l,m) = sum(gamma_hat(l,m,1:3,1:3,i,j,k) * &
-                                 tensorField_fourier(1:3,1:3,i,j,k))
+       temp33_Complex(l,m) = sum(gamma_hat(l,m,1:3,1:3,i,j,k) * tensorField_fourier(1:3,1:3,i,j,k))
      tensorField_fourier(1:3,1:3,i,j,k) = temp33_Complex
    enddo; enddo; enddo
  endif memoryEfficient
