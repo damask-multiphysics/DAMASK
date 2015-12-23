@@ -1373,7 +1373,7 @@ function plastic_phenoplus_postResults(Tstar_v,ipc,ip,el)
 
      case (resistance_twin_ID)
        plastic_phenoplus_postResults(c+1_pInt:c+nTwin) = &
-                             plasticState(ph)%state(1_pInt+nSlip:nTwin+nSlip-1_pInt,of)
+                             plasticState(ph)%state(1_pInt+nSlip:1_pInt+nSlip+nTwin-1_pInt,of)
        c = c + nTwin
 
      case (accumulatedshear_twin_ID)
