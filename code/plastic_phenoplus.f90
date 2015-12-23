@@ -788,7 +788,6 @@ subroutine plastic_phenoplus_microstructure(orientation,ipc,ip,el)
                       vld_Nneighbors, &             !number of my valid neighbors
                       n, &                          !neighbor index (for iterating through all neighbors)
                       ns, &                         !number of slip system
-                      nns, &                        !number of slip in my neighbors
                       nt, &                         !number of twin system
                       me_slip, &                    !my slip system index
                       neighbor_el, &                !element number of neighboring material point
@@ -804,11 +803,8 @@ subroutine plastic_phenoplus_microstructure(orientation,ipc,ip,el)
                       j                             !quickly loop through slip families
 
  real(pReal)          kappa_max, &                  !
-                      weight_sum, &                 !temp storage for the denominator in weighting function
                       tmp_myshear_slip, &           !temp storage for accumulative shear for me
-                      mprimeavg, &                  !m' value for given slip system
                       mprime_cut, &                 !m' cutoff to consider neighboring effect
-                      ratio_acshear, &              !ratio between two slip system in two voxels
                       avg_acshear_ne, &             !the average accumulative shear from my neighbor
                       tmp_mprime, &                 !temp holder for m' value
                       tmp_acshear                   !temp holder for accumulative shear for m'
