@@ -29,24 +29,22 @@ parser.add_option('--phase',               dest='phase', type='int', nargs = 2, 
                   help='phase indices for <microstructure> configuration %default')
 parser.add_option('--crystallite',         dest='crystallite', type='int', metavar = 'int',
                   help='crystallite index for <microstructure> configuration [%default]')
-parser.add_option('-c', '--configuration', dest='config', action='store_true',
-                  help='output material configuration [%default]')
-parser.add_option('--compress',            dest='compress', action='store_true',
+parser.add_option('-c','--compress',            dest='compress', action='store_true',
                   help='lump identical microstructure and texture information [%default]')
 parser.add_option('-a', '--axes',         dest='axes', nargs = 3, metavar = 'string string string',
                   help='Euler angle coordinate system for <texture> configuration x,y,z = %default')
 parser.add_option('-p', '--precision',    dest='precision', choices=['0','1','2','3'], metavar = 'int',
                   help = 'euler angles decimal places for output format and compressing (0,1,2,3) [2]')
                   
-parser.set_defaults(column         = 11)
-parser.set_defaults(threshold      = 0.5)
-parser.set_defaults(homogenization = 1)
-parser.set_defaults(phase          = [1,2])
-parser.set_defaults(crystallite    = 1)
-parser.set_defaults(config         = False)
-parser.set_defaults(compress       = False)
-parser.set_defaults(axes           = ['y','x','-z'])
-parser.set_defaults(precision      = '2')
+parser.set_defaults(column         = 11,
+                    threshold      = 0.5,
+                    homogenization = 1,
+                    phase          = [1,2],
+                    crystallite    = 1,
+                    compress       = False,
+                    axes           = ['y','x','-z'],
+                    precision      = '2',
+                 )
 (options,filenames) = parser.parse_args()
 
 
@@ -60,8 +58,9 @@ if filenames == []: filenames = [None]
 
 for name in filenames:
   try:
-    table = damask.ASCIItable(name = name, outname = os.path.splitext(name)[0] +'%s'%('_material.config' if options.config else '.geom'),
-                              buffered = False, labeled = False, readonly=True)
+    table = damask.ASCIItable(name = name,
+                              outname = os.path.splitext(name)[-2]+'.geom' if name else name,
+                              buffered = False, labeled = False)
   except: continue
   damask.util.report(scriptName,name)
 
@@ -142,21 +141,21 @@ for name in filenames:
     texture = np.arange(info['grid'].prod())
     microstructure = np.hstack( zip(texture,phase) ).reshape(info['grid'].prod(),2)                 # create texture/phase pairs
   formatOut = 1+int(math.log10(len(texture)))
-  textureOut =['\n\n<texture>']
+  textureOut =['<texture>']
 
   eulerFormatOut='%%%i.%if'%(int(options.precision)+4,int(options.precision))
-  outStringAngles='(gauss) phi1 '+eulerFormatOut+' Phi '+eulerFormatOut+' phi2 '+eulerFormatOut+' scatter 0.0 fraction 1.0\n'
+  outStringAngles='(gauss) phi1 '+eulerFormatOut+' Phi '+eulerFormatOut+' phi2 '+eulerFormatOut+' scatter 0.0 fraction 1.0'
   for i in xrange(len(texture)):
-    textureOut +=       ['[Texture%s]\n'%str(i+1).zfill(formatOut) +
-                          'axes %s %s %s\n'%(options.axes[0],options.axes[1],options.axes[2]) +
+    textureOut +=       ['[Texture%s]'%str(i+1).zfill(formatOut),
+                          'axes %s %s %s'%(options.axes[0],options.axes[1],options.axes[2]),
                           outStringAngles%tuple(eulerangles[texture[i],...])
                          ]
   formatOut = 1+int(math.log10(len(microstructure)))
   microstructureOut =['<microstructure>']
   for i in xrange(len(microstructure)):
-    microstructureOut += ['[Grain%s]\n'%str(i+1).zfill(formatOut) +
-                         'crystallite\t%i\n'%options.crystallite +
-                         '(constituent)\tphase %i\ttexture %i\tfraction 1.0\n'%(microstructure[i,1],microstructure[i,0]+1)
+    microstructureOut += ['[Grain%s]'%str(i+1).zfill(formatOut),
+                         'crystallite\t%i'%options.crystallite,
+                         '(constituent)\tphase %i\ttexture %i\tfraction 1.0'%(microstructure[i,1],microstructure[i,0]+1)
                          ]
 
   info['microstructures'] = len(microstructure)
@@ -178,23 +177,22 @@ for name in filenames:
 
 #--- write data/header --------------------------------------------------------------------------------
   table.info_clear()
-  if options.config:
-    table.output_write(line for line in microstructureOut+ textureOut)
+  table.info_append([' '.join([scriptID] + sys.argv[1:]),
+                     "grid\ta %i\tb %i\tc %i"%(info['grid'][0],info['grid'][1],info['grid'][2],),
+                     "size\tx %f\ty %f\tz %f"%(info['size'][0],info['size'][1],info['size'][2],),
+                     "origin\tx %f\ty %f\tz %f"%(info['origin'][0],info['origin'][1],info['origin'][2],),
+                     "microstructures\t%i"%info['microstructures'],
+                     "homogenization\t%i"%info['homogenization'],
+                     ] +
+                     [line for line in microstructureOut + textureOut]
+                    )
+  table.head_write()
+  if options.compress:
+    matPoints = matPoints.reshape((info['grid'][1],info['grid'][0]))
+    table.data = matPoints
+    table.data_writeArray('%%%ii'%(1+int(math.log10(np.amax(matPoints)))),delimiter=' ')
   else:
-    table.info_append([' '.join([scriptID] + sys.argv[1:]),
-                       "grid\ta %i\tb %i\tc %i"%(info['grid'][0],info['grid'][1],info['grid'][2],),
-                       "size\tx %f\ty %f\tz %f"%(info['size'][0],info['size'][1],info['size'][2],),
-                       "origin\tx %f\ty %f\tz %f"%(info['origin'][0],info['origin'][1],info['origin'][2],),
-                       "microstructures\t%i"%info['microstructures'],
-                       "homogenization\t%i"%info['homogenization'],
-                       ])
-    table.head_write()
-    if options.compress:
-      matPoints = matPoints.reshape((info['grid'][1],info['grid'][0]))
-      table.data = matPoints
-      table.data_writeArray('%%%ii'%(1+int(math.log10(np.amax(matPoints)))),delimiter=' ')
-    else:
-      table.output_write("1 to %i\n"%(info['microstructures']))
+    table.output_write("1 to %i\n"%(info['microstructures']))
   table.output_flush()
 
 # --- output finalization --------------------------------------------------------------------------
