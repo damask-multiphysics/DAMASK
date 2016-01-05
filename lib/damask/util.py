@@ -5,6 +5,32 @@ import sys,time,random,threading,os,subprocess,shlex
 import numpy as np
 from optparse import Option
 
+class bcolors:
+    '''
+      ASCII Colors (Blender code)
+      https://svn.blender.org/svnroot/bf-blender/trunk/blender/build_files/scons/tools/bcolors.py
+      http://stackoverflow.com/questions/287871/print-in-terminal-with-colors-using-python
+    '''
+    HEADER = '\033[95m'
+    OKBLUE = '\033[94m'
+    OKGREEN = '\033[92m'
+    WARNING = '\033[93m'
+    FAIL = '\033[91m'
+    ENDC = '\033[0m'
+    BOLD = '\033[1m'
+    UNDERLINE = '\033[4m'
+
+    def disable(self):
+        self.HEADER = ''
+        self.OKBLUE = ''
+        self.OKGREEN = ''
+        self.WARNING = ''
+        self.FAIL = ''
+        self.ENDC = ''
+        self.BOLD = ''
+        self.UNDERLINE = ''
+    
+
 # -----------------------------
 def srepr(arg,
           glue = '\n'):
@@ -30,7 +56,7 @@ def report(who,what):
 # -----------------------------
 def emph(what):
 # -----------------------------
-  return '\033[1m'+srepr(what)+'\033[0m'
+  return bcolors.BOLD+srepr(what)+bcolors.ENDC
 
 # -----------------------------
 # Matlab like trigonometric functions that take and return angles in degrees.
@@ -143,10 +169,10 @@ class backgroundMessage(threading.Thread):
 
   def animation(self,which = None):
     return ''.join(self.choices[which]) if which in self.choices else ''
-    
+
 '''
 Non-linear least square fitting (Levenberg-Marquardt method) with 
-the bounded parameters.
+bounded parameters.
 the codes of transformation between int <-> ext refers to the work of
 Jonathan J. Helmus: https://github.com/jjhelmus/leastsqbound-scipy
 other codes refers to the source code of minpack.py:
