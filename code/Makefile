@@ -103,6 +103,7 @@ COMPILE_OPTIONS_ifort    :=-fpp\
 #-fpp:                     preprocessor
 #-ftz:                     flush unterflow to zero, automatically set if O<0,1,2,3> >0
 #-assume byterecl          record length is given in bytes (also set by -standard-semantics)
+#        fpe_summary       print list of floating point exceptions occured during execution
 #-fimplicit-none:          assume "implicit-none" even if not present in source
 #-diag-disable:            disables warnings, where
 #   warning ID 5268:       the text exceeds right hand column allowed on the line (we have only comments there)
@@ -163,6 +164,7 @@ DEBUG_OPTIONS_ifort      :=-g\
 LINK_OPTIONS_gfortran    :=-Wl,-undefined,dynamic_lookup
 COMPILE_OPTIONS_gfortran :=-xf95-cpp-input\
                            -ffree-line-length-132\
+                           -ffpe-summary=all\
                            -fimplicit-none\
                            -fmodule-private\
                            -Wall\
@@ -181,7 +183,7 @@ COMPILE_OPTIONS_gfortran :=-xf95-cpp-input\
 #-Wl,-undefined,dynamic_lookup:ensure to link against dynamic libraries
 #-xf95-cpp-input:              preprocessor
 #-ffree-line-length-132:       restrict line length to the standard 132 characters
-#-fno-range-check:             disables checking if result can be represented by variable. Needs to be set to enable DAMASK_NaN
+#-ffpe-summary:                print summary of floating point exeptions (‘invalid’, ‘zero’, ‘overflow’, ‘underflow’, ‘inexact’ and ‘denormal’)
 #-fimplicit-none:              assume "implicit-none" even if not present in source
 #-fmodule-private:             assume "private" even if not present in source
 #-Wcharacter-truncation:       warn if character expressions (strings) are truncated
@@ -277,7 +279,9 @@ DEBUG_OPTIONS_gfortran    :=-g\
 
 ifeq "$(DEBUG)" "ON"
 COMPILE_OPTIONS_$(F90) +=$(DEBUG_OPTIONS_$(F90))
+LINK_OPTIONS_$(F90) +=$(DEBUG_OPTIONS_$(F90))
 endif
+LINK_OPTIONS_$(F90) += $(OPTIMIZATION_$(MAXOPTI)_$(F90))
 
 PRECISION_ifort :=-real-size 64 -integer-size 32 -DFLOAT=8 -DINT=4
 #-real-size 32:               set precision to one of those 32/64/128 (= 4/8/16 bytes) for standard real (=8 for pReal)
