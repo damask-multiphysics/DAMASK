@@ -107,6 +107,7 @@ module math
    math_symmetric33, &
    math_symmetric66, &
    math_skew33, &
+   math_spherical33, &
    math_deviatoric33, &
    math_equivStrain33, &
    math_equivStress33, &
@@ -893,6 +894,21 @@ pure function math_skew33(m)
  forall (i=1_pInt:3_pInt,j=1_pInt:3_pInt) math_skew33(i,j) = m(i,j) - 0.5_pReal * (m(i,j) + m(j,i))
 
 end function math_skew33
+
+!--------------------------------------------------------------------------------------------------
+!> @brief hydrostatic part of a 33 matrix
+!--------------------------------------------------------------------------------------------------
+pure function math_spherical33(m)
+
+ implicit none
+ real(pReal), dimension(3,3) :: math_spherical33
+ real(pReal), dimension(3,3), intent(in) :: m
+ real(pReal) :: hydrostatic
+
+ hydrostatic = (m(1,1) + m(2,2) + m(3,3)) / 3.0_pReal
+ math_spherical33 = math_I3 * hydrostatic
+
+end function math_spherical33
 
 
 !--------------------------------------------------------------------------------------------------
