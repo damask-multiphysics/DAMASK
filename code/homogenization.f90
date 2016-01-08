@@ -612,7 +612,7 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
      enddo
 
      crystallite_partionedFp0(1:3,1:3,g,i,e) = crystallite_Fp0(1:3,1:3,g,i,e)                       ! ...plastic def grads
-     crystallite_partionedLp0(1:3,1:3,g,i,e) = crystallite_Lp0(1:3,1:3,g,i,e)                       ! ...plastic velocity grads
+     crystallite_partionedLp0(1:3,1:3,g,i,e) = crystallite_Lp(1:3,1:3,g,i,e)                       ! ...plastic velocity grads
      crystallite_partionedFi0(1:3,1:3,g,i,e) = crystallite_Fi0(1:3,1:3,g,i,e)                       ! ...intermediate def grads
      crystallite_partionedLi0(1:3,1:3,g,i,e) = crystallite_Li0(1:3,1:3,g,i,e)                       ! ...intermediate velocity grads
      crystallite_partioneddPdF0(1:3,1:3,1:3,1:3,g,i,e) = crystallite_dPdF0(1:3,1:3,1:3,1:3,g,i,e)   ! ...stiffness
