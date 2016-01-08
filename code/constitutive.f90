@@ -76,6 +76,7 @@ subroutine constitutive_init()
    phase_kinematics, &
    ELASTICITY_hooke_ID, &
    PLASTICITY_none_ID, &
+   PLASTICITY_isotropic_ID, &
    PLASTICITY_j2_ID, &
    PLASTICITY_phenopowerlaw_ID, &
    PLASTICITY_phenoplus_ID, &
@@ -99,6 +100,7 @@ subroutine constitutive_init()
    KINEMATICS_hydrogen_strain_ID, &
    ELASTICITY_HOOKE_label, &
    PLASTICITY_NONE_label, &
+   PLASTICITY_ISOTROPIC_label, &
    PLASTICITY_J2_label, &
    PLASTICITY_PHENOPOWERLAW_label, &
    PLASTICITY_PHENOPLUS_label, &
@@ -119,6 +121,7 @@ subroutine constitutive_init()
    sourceState
 
  use plastic_none
+ use plastic_isotropic
  use plastic_j2
  use plastic_phenopowerlaw
  use plastic_phenoplus
@@ -161,6 +164,7 @@ subroutine constitutive_init()
  if (.not. IO_open_jobFile_stat(FILEUNIT,material_localFileExt)) &                                  ! no local material configuration present...
    call IO_open_file(FILEUNIT,material_configFile)                                                  ! ... open material.config file
  if (any(phase_plasticity == PLASTICITY_NONE_ID))          call plastic_none_init
+ if (any(phase_plasticity == PLASTICITY_ISOTROPIC_ID))     call plastic_isotropic_init(FILEUNIT)
  if (any(phase_plasticity == PLASTICITY_J2_ID))            call plastic_j2_init(FILEUNIT)
  if (any(phase_plasticity == PLASTICITY_PHENOPOWERLAW_ID)) call plastic_phenopowerlaw_init(FILEUNIT)
  if (any(phase_plasticity == PLASTICITY_PHENOPLUS_ID))     call plastic_phenoplus_init(FILEUNIT)
@@ -220,6 +224,11 @@ subroutine constitutive_init()
            thisNoutput => null()
            thisOutput => null()                                                                         ! plastic_none_output
            thisSize   => null()                                                                         ! plastic_none_sizePostResult
+         case (PLASTICITY_ISOTROPIC_ID)
+           outputName = PLASTICITY_ISOTROPIC_label
+           thisNoutput => plastic_isotropic_Noutput
+           thisOutput => plastic_isotropic_output
+           thisSize   => plastic_isotropic_sizePostResult
          case (PLASTICITY_J2_ID)
            outputName = PLASTICITY_J2_label
            thisNoutput => plastic_j2_Noutput
@@ -368,6 +377,7 @@ subroutine constitutive_init()
    instance = phase_plasticityInstance(phase)                                                       ! which instance of a plasticity is present phase
    select case(phase_plasticity(phase))                                                             ! split per constititution
      case (PLASTICITY_NONE_ID)
+     case (PLASTICITY_ISOTROPIC_ID)
      case (PLASTICITY_J2_ID)
    end select
  enddo
@@ -525,6 +535,7 @@ subroutine constitutive_LpAndItsTangent(Lp, dLp_dTstar3333, dLp_dFi3333, Tstar_v
    temperature, &
    thermalMapping, &
    PLASTICITY_NONE_ID, &
+   PLASTICITY_ISOTROPIC_ID, &
    PLASTICITY_J2_ID, &
    PLASTICITY_PHENOPOWERLAW_ID, &
    PLASTICITY_PHENOPLUS_ID, &
@@ -532,6 +543,8 @@ subroutine constitutive_LpAndItsTangent(Lp, dLp_dTstar3333, dLp_dFi3333, Tstar_v
    PLASTICITY_DISLOUCLA_ID, &
    PLASTICITY_TITANMOD_ID, &
    PLASTICITY_NONLOCAL_ID
+ use plastic_isotropic, only: &
+   plastic_isotropic_LpAndItsTangent
  use plastic_j2, only: &
    plastic_j2_LpAndItsTangent
  use plastic_phenopowerlaw, only: &
@@ -580,6 +593,8 @@ subroutine constitutive_LpAndItsTangent(Lp, dLp_dTstar3333, dLp_dFi3333, Tstar_v
    case (PLASTICITY_NONE_ID)
      Lp = 0.0_pReal
      dLp_dMstar = 0.0_pReal
+   case (PLASTICITY_ISOTROPIC_ID)
+     call plastic_isotropic_LpAndItsTangent(Lp,dLp_dMstar,Mstar_v,ipc,ip,el)
    case (PLASTICITY_J2_ID)
      call plastic_j2_LpAndItsTangent(Lp,dLp_dMstar,Mstar_v,ipc,ip,el)
    case (PLASTICITY_PHENOPOWERLAW_ID)
@@ -632,14 +647,20 @@ subroutine constitutive_LiAndItsTangent(Li, dLi_dTstar3333, dLi_dFi3333, Tstar_v
    math_transpose33, &
    math_mul33x33
  use material, only: &
+   phase_plasticity, &
+   material_phase, &
+   material_homog, &
+   mappingConstitutive, &
    phase_kinematics, &
    phase_Nkinematics, &
-   material_phase, &
+   PLASTICITY_isotropic_ID, &
    KINEMATICS_cleavage_opening_ID, &
    KINEMATICS_slipplane_opening_ID, &
    KINEMATICS_thermal_expansion_ID, &
    KINEMATICS_vacancy_strain_ID, &
    KINEMATICS_hydrogen_strain_ID
+ use plastic_isotropic, only: &
+   plastic_isotropic_LiAndItsTangent
  use kinematics_cleavage_opening, only: &
    kinematics_cleavage_opening_LiAndItsTangent
  use kinematics_slipplane_opening, only: &
@@ -675,11 +696,26 @@ subroutine constitutive_LiAndItsTangent(Li, dLi_dTstar3333, dLi_dFi3333, Tstar_v
  real(pReal) :: &
    detFi
  integer(pInt) :: &
-   i, j, kinematics
+   i, j, kinematics, phase, homog
+
+ phase = material_phase(ipc,ip,el)
+ homog = material_homog(    ip,el)
 
  Li = 0.0_pReal
  dLi_dTstar3333  = 0.0_pReal
  dLi_dFi3333     = 0.0_pReal
+
+ select case (phase_plasticity(phase))
+
+   case (PLASTICITY_isotropic_ID)
+     call plastic_isotropic_LiAndItsTangent(my_Li, my_dLi_dTstar, Tstar_v, ipc, ip, el)
+   
+   case default
+     my_Li = 0.0_pReal
+     my_dLi_dTstar = 0.0_pReal
+ end select
+ Li = Li + my_Li
+ dLi_dTstar3333 = dLi_dTstar3333 + my_dLi_dTstar
 
  do kinematics = 1_pInt, phase_Nkinematics(material_phase(ipc,ip,el))
    select case (phase_kinematics(kinematics,material_phase(ipc,ip,el)))
@@ -905,6 +941,7 @@ subroutine constitutive_collectDotState(Tstar_v, FeArray, FpArray, subdt, subfra
    thermalMapping, &
    homogenization_maxNgrains, &
    PLASTICITY_none_ID, &
+   PLASTICITY_isotropic_ID, &
    PLASTICITY_j2_ID, &
    PLASTICITY_phenopowerlaw_ID, &
    PLASTICITY_phenoplus_ID, &
@@ -916,6 +953,8 @@ subroutine constitutive_collectDotState(Tstar_v, FeArray, FpArray, subdt, subfra
    SOURCE_damage_anisoBrittle_ID, &
    SOURCE_damage_anisoDuctile_ID, &
    SOURCE_thermal_externalheat_ID
+ use plastic_isotropic, only:  &
+   plastic_isotropic_dotState
  use plastic_j2, only:  &
    plastic_j2_dotState
  use plastic_phenopowerlaw, only: &
@@ -967,6 +1006,8 @@ subroutine constitutive_collectDotState(Tstar_v, FeArray, FpArray, subdt, subfra
  homog = material_homog(    ip,el)
  offset = thermalMapping(homog)%p(ip,el)
  select case (phase_plasticity(phase))
+   case (PLASTICITY_ISOTROPIC_ID)
+     call plastic_isotropic_dotState           (Tstar_v,ipc,ip,el)
    case (PLASTICITY_J2_ID)
      call plastic_j2_dotState           (Tstar_v,ipc,ip,el)
    case (PLASTICITY_PHENOPOWERLAW_ID)
@@ -1116,6 +1157,7 @@ function constitutive_postResults(Tstar_v, FeArray, ipc, ip, el)
    thermalMapping, &
    homogenization_maxNgrains, &
    PLASTICITY_NONE_ID, &
+   PLASTICITY_ISOTROPIC_ID, &
    PLASTICITY_J2_ID, &
    PLASTICITY_PHENOPOWERLAW_ID, &
    PLASTICITY_PHENOPLUS_ID, &
@@ -1127,10 +1169,9 @@ function constitutive_postResults(Tstar_v, FeArray, ipc, ip, el)
    SOURCE_damage_isoDuctile_ID, &
    SOURCE_damage_anisoBrittle_ID, &
    SOURCE_damage_anisoDuctile_ID
+ use plastic_isotropic, only: &
+   plastic_isotropic_postResults
  use plastic_j2, only: &
-#ifdef HDF
-   plastic_j2_postResults2,&
-#endif
    plastic_j2_postResults
  use plastic_phenopowerlaw, only: &
    plastic_phenopowerlaw_postResults
@@ -1179,6 +1220,8 @@ function constitutive_postResults(Tstar_v, FeArray, ipc, ip, el)
  select case (phase_plasticity(material_phase(ipc,ip,el)))
    case (PLASTICITY_TITANMOD_ID)
      constitutive_postResults(startPos:endPos) = plastic_titanmod_postResults(ipc,ip,el)
+   case (PLASTICITY_ISOTROPIC_ID)
+     constitutive_postResults(startPos:endPos) = plastic_isotropic_postResults(Tstar_v,ipc,ip,el)
    case (PLASTICITY_J2_ID)
      constitutive_postResults(startPos:endPos) = plastic_j2_postResults(Tstar_v,ipc,ip,el)
    case (PLASTICITY_PHENOPOWERLAW_ID)

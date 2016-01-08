@@ -25,6 +25,7 @@ module material
  character(len=*),                         parameter,            public :: &
    ELASTICITY_hooke_label               = 'hooke', &
    PLASTICITY_none_label                = 'none', &
+   PLASTICITY_isotropic_label           = 'isotropic', &
    PLASTICITY_j2_label                  = 'j2', &
    PLASTICITY_phenopowerlaw_label       = 'phenopowerlaw', &
    PLASTICITY_phenoplus_label           = 'phenoplus', &
@@ -74,6 +75,7 @@ module material
  enum, bind(c)
    enumerator :: PLASTICITY_undefined_ID, &
                  PLASTICITY_none_ID, &
+                 PLASTICITY_isotropic_ID, &
                  PLASTICITY_j2_ID, &
                  PLASTICITY_phenopowerlaw_ID, &
                  PLASTICITY_phenoplus_ID, &
@@ -311,6 +313,7 @@ module material
    material_init, &
    ELASTICITY_hooke_ID ,&
    PLASTICITY_none_ID, &
+   PLASTICITY_isotropic_ID, &
    PLASTICITY_J2_ID, &
    PLASTICITY_phenopowerlaw_ID, &
    PLASTICITY_phenoplus_ID, &
@@ -977,6 +980,8 @@ subroutine material_parsePhase(fileUnit,myPart)
          select case (IO_lc(IO_stringValue(line,chunkPos,2_pInt)))
            case (PLASTICITY_NONE_label)
              phase_plasticity(section) = PLASTICITY_NONE_ID
+           case (PLASTICITY_ISOTROPIC_label)
+             phase_plasticity(section) = PLASTICITY_ISOTROPIC_ID
            case (PLASTICITY_J2_label)
              phase_plasticity(section) = PLASTICITY_J2_ID
            case (PLASTICITY_PHENOPOWERLAW_label)
