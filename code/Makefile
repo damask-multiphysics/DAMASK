@@ -164,7 +164,6 @@ DEBUG_OPTIONS_ifort      :=-g\
 LINK_OPTIONS_gfortran    :=-Wl,-undefined,dynamic_lookup
 COMPILE_OPTIONS_gfortran :=-xf95-cpp-input\
                            -ffree-line-length-132\
-                           -ffpe-summary=all\
                            -fimplicit-none\
                            -fmodule-private\
                            -Wall\
@@ -176,7 +175,7 @@ COMPILE_OPTIONS_gfortran :=-xf95-cpp-input\
                            -Wconversion-extra\
                            -Wimplicit-procedure\
                            -Wno-unused-parameter
-
+#-ffpe-summary=all            only for newer gfortran
 ###################################################################################################
 #COMPILE SWITCHES
 #-shared
