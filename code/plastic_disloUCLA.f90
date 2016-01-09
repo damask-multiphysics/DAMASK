@@ -1140,7 +1140,6 @@ subroutine plastic_disloUCLA_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,Temperature
    math_Mandel6to33, &
    math_Mandel33to6, &
    math_spectralDecompositionSym33, &
-   math_tensorproduct, &
    math_symmetric33, &
    math_mul33x3
  use material, only: &

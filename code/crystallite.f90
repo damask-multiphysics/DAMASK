@@ -3512,7 +3512,6 @@ logical function crystallite_integrateStress(&
                          math_inv33, &
                          math_invert, &
                          math_det33, &
-                         math_norm33, &
                          math_I3, &
                          math_identity2nd, &
                          math_Mandel66to3333, &
@@ -3743,7 +3742,7 @@ logical function crystallite_integrateStress(&
 
      !* update current residuum and check for convergence of loop
 
-     aTolLp = max(rTol_crystalliteStress * max(math_norm33(Lpguess),math_norm33(Lp_constitutive)), & ! absolute tolerance from largest acceptable relative error
+     aTolLp = max(rTol_crystalliteStress * max(norm2(Lpguess),norm2(Lp_constitutive)), &             ! absolute tolerance from largest acceptable relative error
                   aTol_crystalliteStress)                                                            ! minimum lower cutoff
      residuumLp = Lpguess - Lp_constitutive
 
@@ -3756,10 +3755,10 @@ logical function crystallite_integrateStress(&
                                                         ' >> returning..!'
 #endif
        return                                                                                         ! ...me = .false. to inform integrator about problem
-     elseif (math_norm33(residuumLp) < aTolLp) then                                                   ! converged if below absolute tolerance
+     elseif (norm2(residuumLp) < aTolLp) then                                                         ! converged if below absolute tolerance
        exit LpLoop                                                                                    ! ...leave iteration loop
      elseif (     NiterationStressLp == 1_pInt &
-             .or. math_norm33(residuumLp) < math_norm33(residuumLp_old)) then                         ! not converged, but improved norm of residuum (always proceed in first iteration)...
+             .or. norm2(residuumLp) < norm2(residuumLp_old)) then                                     ! not converged, but improved norm of residuum (always proceed in first iteration)...
        residuumLp_old = residuumLp                                                                    ! ...remember old values and...
        Lpguess_old    = Lpguess
        steplengthLp   = steplengthLp0                                                                 ! ...proceed with normal step length (calculate new search direction)
@@ -3838,15 +3837,15 @@ logical function crystallite_integrateStress(&
 #endif
    !* update current residuum and check for convergence of loop
 
-   aTolLi = max(rTol_crystalliteStress * max(math_norm33(Liguess),math_norm33(Li_constitutive)), &  ! absolute tolerance from largest acceptable relative error
+   aTolLi = max(rTol_crystalliteStress * max(norm2(Liguess),norm2(Li_constitutive)), &              ! absolute tolerance from largest acceptable relative error
                 aTol_crystalliteStress)                                                             ! minimum lower cutoff
    residuumLi = Liguess - Li_constitutive
    if (any(prec_isNaN(residuumLi))) then                                                            ! NaN in residuum...
      return                                                                                         ! ...me = .false. to inform integrator about problem
-   elseif (math_norm33(residuumLi) < aTolLi) then                                                   ! converged if below absolute tolerance
+   elseif (norm2(residuumLi) < aTolLi) then                                                         ! converged if below absolute tolerance
      exit LiLoop                                                                                    ! ...leave iteration loop
    elseif (     NiterationStressLi == 1_pInt &
-           .or. math_norm33(residuumLi) < math_norm33(residuumLi_old)) then                         ! not converged, but improved norm of residuum (always proceed in first iteration)...
+           .or. norm2(residuumLi) < norm2(residuumLi_old)) then                                     ! not converged, but improved norm of residuum (always proceed in first iteration)...
      residuumLi_old = residuumLi                                                                    ! ...remember old values and...
      Liguess_old    = Liguess
      steplengthLi   = steplengthLi0                                                                 ! ...proceed with normal step length (calculate new search direction)

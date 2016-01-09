@@ -1558,7 +1558,6 @@ use math, only: &
   pi, &
   math_mul33x3, &
   math_mul3x3, &
-  math_norm3, &
   math_inv33, &
   math_transpose33
 use debug, only: &
@@ -2398,8 +2397,7 @@ use debug,    only: debug_level, &
                     debug_g, &
                     debug_i, &
                     debug_e
-use math,     only: math_norm3, &
-                    math_mul6x6, &
+use math,     only: math_mul6x6, &
                     math_mul3x3, &
                     math_mul33x3, &
                     math_mul33x33, &
@@ -2788,8 +2786,8 @@ if (.not. phase_localPlasticity(material_phase(1_pInt,ip,el))) then             
                                    mesh_ipAreaNormal(1:3,neighbor_n,neighbor_ip,neighbor_el))       ! calculate the normal of the interface in (average) deformed configuration (now pointing from my neighbor to me!!!)
       normal_neighbor2me = math_mul33x3(transpose(neighbor_Fe), normal_neighbor2me_defConf) &
                          / math_det33(neighbor_Fe)                                                  ! interface normal in the lattice configuration of my neighbor
-      area = mesh_ipArea(neighbor_n,neighbor_ip,neighbor_el) * math_norm3(normal_neighbor2me)
-      normal_neighbor2me = normal_neighbor2me / math_norm3(normal_neighbor2me)                      ! normalize the surface normal to unit length
+      area = mesh_ipArea(neighbor_n,neighbor_ip,neighbor_el) * norm2(normal_neighbor2me)
+      normal_neighbor2me = normal_neighbor2me / norm2(normal_neighbor2me)                           ! normalize the surface normal to unit length
       do s = 1_pInt,ns
         do t = 1_pInt,4_pInt
           c = (t + 1_pInt) / 2
@@ -2851,8 +2849,8 @@ if (.not. phase_localPlasticity(material_phase(1_pInt,ip,el))) then             
                                                            mesh_ipAreaNormal(1:3,n,ip,el))          ! calculate the normal of the interface in (average) deformed configuration (pointing from me to my neighbor!!!)
       normal_me2neighbor = math_mul33x3(math_transpose33(my_Fe), normal_me2neighbor_defConf) &
                          / math_det33(my_Fe)                                                        ! interface normal in my lattice configuration
-      area = mesh_ipArea(n,ip,el) * math_norm3(normal_me2neighbor)
-      normal_me2neighbor = normal_me2neighbor / math_norm3(normal_me2neighbor)                      ! normalize the surface normal to unit length    
+      area = mesh_ipArea(n,ip,el) * norm2(normal_me2neighbor)
+      normal_me2neighbor = normal_me2neighbor / norm2(normal_me2neighbor)                           ! normalize the surface normal to unit length    
       do s = 1_pInt,ns
         do t = 1_pInt,4_pInt
           c = (t + 1_pInt) / 2_pInt
