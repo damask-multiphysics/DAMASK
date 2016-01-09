@@ -1641,12 +1641,10 @@ subroutine plastic_dislotwin_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,Temperature
    math_spectralDecompositionSym33, &
    math_tensorproduct, &
    math_symmetric33, &
-   math_mul33x3, &
-   math_norm33
+   math_mul33x3
  use material, only: &
    material_phase, &
    phase_plasticityInstance, &
-   !plasticState, &
    mappingConstitutive
  use lattice, only: &
    lattice_Sslip, &
