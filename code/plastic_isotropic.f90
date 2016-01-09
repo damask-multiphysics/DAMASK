@@ -1,5 +1,5 @@
 !--------------------------------------------------------------------------------------------------
-! $Id: plastic_isotropic.f90 4434 2015-08-28 10:55:38Z MPIE\p.shanthraj $
+! $Id$
 !--------------------------------------------------------------------------------------------------
 !> @author Franz Roters, Max-Planck-Institut für Eisenforschung GmbH
 !> @author Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
@@ -161,7 +161,7 @@ subroutine plastic_isotropic_init(fileUnit)
 
  mainProcess: if (worldrank == 0) then 
    write(6,'(/,a)')   ' <<<+-  constitutive_'//PLASTICITY_ISOTROPIC_label//' init  -+>>>'
-   write(6,'(a)')     ' $Id: plastic_isotropic.f90 4434 2015-08-28 10:55:38Z MPIE\p.shanthraj $'
+   write(6,'(a)')     ' $Id$'
    write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
  endif mainProcess
@@ -481,8 +481,6 @@ subroutine plastic_isotropic_LiAndItsTangent(Li,dLi_dTstar_3333,Tstar_v,ipc,ip,e
  implicit none
  real(pReal), dimension(3,3), intent(out) :: &
    Li                                                                                               !< plastic velocity gradient
- real(pReal), dimension(9,9)              :: &
-   dLi_dTstar99                                                                                     !< derivative of Lp with respect to 2nd Piola Kirchhoff stress
 
  real(pReal), dimension(6),   intent(in) :: &
    Tstar_v                                                                                          !< 2nd Piola Kirchhoff stress tensor in Mandel notation
@@ -494,7 +492,7 @@ subroutine plastic_isotropic_LiAndItsTangent(Li,dLi_dTstar_3333,Tstar_v,ipc,ip,e
  real(pReal), dimension(3,3) :: &
    Tstar_sph_33                                                                                     !< sphiatoric part of the 2nd Piola Kirchhoff stress tensor as 2nd order tensor
  real(pReal), dimension(3,3,3,3), intent(out)  :: &
-   dLi_dTstar_3333                                                                                  !< derivative of Lp with respect to Tstar as 4th order tensor
+   dLi_dTstar_3333                                                                                  !< derivative of Li with respect to Tstar as 4th order tensor
  real(pReal) :: &
    gamma_dot, &                                                                                     !< strainrate
    norm_Tstar_sph, &                                                                                !< euclidean norm of Tstar_sph
@@ -505,32 +503,34 @@ subroutine plastic_isotropic_LiAndItsTangent(Li,dLi_dTstar_3333,Tstar_v,ipc,ip,e
 
  instance = phase_plasticityInstance(material_phase(ipc,ip,el))
 
- Li = 0.0_pReal
- dLi_dTstar_3333 = 0.0_pReal
-
  Tstar_sph_33 = math_spherical33(math_Mandel6to33(Tstar_v))                                         ! spherical part of 2nd Piola-Kirchhoff stress
  squarenorm_Tstar_sph = math_mul33xx33(Tstar_sph_33,Tstar_sph_33)
  norm_Tstar_sph = sqrt(squarenorm_Tstar_sph) 
 
  if (plastic_isotropic_dilatation(instance)) then
-     gamma_dot = plastic_isotropic_gdot0(instance) &
-               * (sqrt(1.5_pReal) * norm_Tstar_sph / (plastic_isotropic_fTaylor(instance) * &
-                 plasticState(mappingConstitutive(2,ipc,ip,el))%state(1,mappingConstitutive(1,ipc,ip,el)))) &
-                                                    **plastic_isotropic_n(instance)
+     if (norm_Tstar_sph <= 0.0_pReal) then                                                          ! Tstar == 0 --> both Li and dLi_dTstar are zero
+       Li = 0.0_pReal
+       dLi_dTstar_3333 = 0.0_pReal
+     else
+       gamma_dot = plastic_isotropic_gdot0(instance) &
+                   * (sqrt(1.5_pReal) * norm_Tstar_sph / (plastic_isotropic_fTaylor(instance) * &
+                   plasticState(mappingConstitutive(2,ipc,ip,el))%state(1,mappingConstitutive(1,ipc,ip,el)))) &
+                                                           **plastic_isotropic_n(instance)
 
-     Li = Tstar_sph_33/norm_Tstar_sph * gamma_dot/plastic_isotropic_fTaylor(instance)
+       Li = Tstar_sph_33/norm_Tstar_sph * gamma_dot/plastic_isotropic_fTaylor(instance)
 
-  !--------------------------------------------------------------------------------------------------
-  ! Calculation of the tangent of Li
-     forall (k=1_pInt:3_pInt,l=1_pInt:3_pInt,m=1_pInt:3_pInt,n=1_pInt:3_pInt) &
-       dLi_dTstar_3333(k,l,m,n) = (plastic_isotropic_n(instance)-1.0_pReal) * &
-                                        Tstar_sph_33(k,l)*Tstar_sph_33(m,n) / squarenorm_Tstar_sph
-     forall (k=1_pInt:3_pInt,l=1_pInt:3_pInt) &
-       dLi_dTstar_3333(k,l,k,l) = dLi_dTstar_3333(k,l,k,l) + 1.0_pReal
+       !--------------------------------------------------------------------------------------------------
+       ! Calculation of the tangent of Li
+       forall (k=1_pInt:3_pInt,l=1_pInt:3_pInt,m=1_pInt:3_pInt,n=1_pInt:3_pInt) &
+         dLi_dTstar_3333(k,l,m,n) = (plastic_isotropic_n(instance)-1.0_pReal) * &
+                                          Tstar_sph_33(k,l)*Tstar_sph_33(m,n) / squarenorm_Tstar_sph
+       forall (k=1_pInt:3_pInt,l=1_pInt:3_pInt) &
+         dLi_dTstar_3333(k,l,k,l) = dLi_dTstar_3333(k,l,k,l) + 1.0_pReal
 
-     dLi_dTstar_3333 = gamma_dot / plastic_isotropic_fTaylor(instance) * &
-                                        dLi_dTstar_3333 / norm_Tstar_sph
- end if
+       dLi_dTstar_3333 = gamma_dot / plastic_isotropic_fTaylor(instance) * &
+                                          dLi_dTstar_3333 / norm_Tstar_sph
+     endif
+ endif
  
 end subroutine plastic_isotropic_LiAndItsTangent
 
