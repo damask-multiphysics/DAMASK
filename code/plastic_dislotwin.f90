@@ -1639,7 +1639,7 @@ subroutine plastic_dislotwin_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,Temperature
    math_Mandel6to33, &
    math_Mandel33to6, &
    math_spectralDecompositionSym33, &
-   math_tensorproduct, &
+   math_tensorproduct33, &
    math_symmetric33, &
    math_mul33x3
  use material, only: &
@@ -1788,7 +1788,7 @@ subroutine plastic_dislotwin_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,Temperature
    do j = 1_pInt,6_pInt
      sb_s = 0.5_pReal*sqrt(2.0_pReal)*math_mul33x3(eigVectors,sb_sComposition(1:3,j))
      sb_m = 0.5_pReal*sqrt(2.0_pReal)*math_mul33x3(eigVectors,sb_mComposition(1:3,j))
-     sb_Smatrix = math_tensorproduct(sb_s,sb_m)
+     sb_Smatrix = math_tensorproduct33(sb_s,sb_m)
      plastic_dislotwin_sbSv(1:6,j,ipc,ip,el) = math_Mandel33to6(math_symmetric33(sb_Smatrix))
    
      !* Calculation of Lp

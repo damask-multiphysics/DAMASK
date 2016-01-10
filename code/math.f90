@@ -85,8 +85,8 @@ module math
    math_identity4th, &
    math_civita, &
    math_delta, &
-   math_vectorproduct, &
-   math_tensorproduct, &
+   math_crossproduct, &
+   math_tensorproduct33, &
    math_mul3x3, &
    math_mul6x6, &
    math_mul33xx33, &
@@ -114,8 +114,6 @@ module math
    math_trace33, &
    math_j3_33, &
    math_det33, &
-   math_norm33, &
-   math_norm3, &
    math_Plain33to9, &
    math_Plain9to33, &
    math_Mandel33to6, &
@@ -131,7 +129,6 @@ module math
    math_qMul, &
    math_qDot, &
    math_qConj, &
-   math_qNorm, &
    math_qInv, &
    math_qRot, &
    math_RtoEuler, &
@@ -154,9 +151,8 @@ module math
    math_sampleGaussVar, &
    math_symmetricEulers, &
    math_spectralDecompositionSym33, &
-   math_spectralDecomposition, &
    math_pDecomposition, &
-   math_hi, &
+   math_invariants33, &
    math_eigenvalues33, &
    math_factorial, &
    math_binomial, &
@@ -427,7 +423,7 @@ end function math_identity4th
 ! e_ijk = -1 if odd permutation of ijk
 ! e_ijk =  0 otherwise
 !--------------------------------------------------------------------------------------------------
- real(pReal) pure function math_civita(i,j,k)
+real(pReal) pure function math_civita(i,j,k)
 
  implicit none
  integer(pInt), intent(in) :: i,j,k
@@ -460,34 +456,34 @@ end function math_delta
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief vector product a x b
+!> @brief cross product a x b
 !--------------------------------------------------------------------------------------------------
-pure function math_vectorproduct(A,B)
+pure function math_crossproduct(A,B)
 
  implicit none
  real(pReal), dimension(3), intent(in) ::  A,B
- real(pReal), dimension(3) ::  math_vectorproduct
+ real(pReal), dimension(3) ::  math_crossproduct
 
- math_vectorproduct(1) = A(2)*B(3)-A(3)*B(2)
- math_vectorproduct(2) = A(3)*B(1)-A(1)*B(3)
- math_vectorproduct(3) = A(1)*B(2)-A(2)*B(1)
+ math_crossproduct = [ A(2)*B(3) -A(3)*B(2), &
+                       A(3)*B(1) -A(1)*B(3), &
+                       A(1)*B(2) -A(2)*B(1) ]
 
-end function math_vectorproduct
+end function math_crossproduct
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief tensor product a \otimes b
 !--------------------------------------------------------------------------------------------------
-pure function math_tensorproduct(A,B)
+pure function math_tensorproduct33(A,B)
 
  implicit none
- real(pReal), dimension(3,3) ::  math_tensorproduct
+ real(pReal), dimension(3,3) ::  math_tensorproduct33
  real(pReal), dimension(3), intent(in) ::  A,B
  integer(pInt) :: i,j
 
- forall (i=1_pInt:3_pInt,j=1_pInt:3_pInt) math_tensorproduct(i,j) = A(i)*B(j)
+ forall (i=1_pInt:3_pInt,j=1_pInt:3_pInt) math_tensorproduct33(i,j) = A(i)*B(j)
 
-end function math_tensorproduct
+end function math_tensorproduct33
 
 
 !--------------------------------------------------------------------------------------------------
@@ -560,12 +556,8 @@ pure function math_mul3333xx3333(A,B)
  real(pReal), dimension(3,3,3,3), intent(in) ::  B
  real(pReal), dimension(3,3,3,3) :: math_mul3333xx3333
 
- do i = 1_pInt,3_pInt
-   do j = 1_pInt,3_pInt
-     do k = 1_pInt,3_pInt
-       do l = 1_pInt,3_pInt
-         math_mul3333xx3333(i,j,k,l) = sum(A(i,j,1:3,1:3)*B(1:3,1:3,k,l))
- enddo; enddo; enddo; enddo
+ forall(i = 1_pInt:3_pInt,j = 1_pInt:3_pInt, k = 1_pInt:3_pInt, l= 1_pInt:3_pInt) &
+   math_mul3333xx3333(i,j,k,l) = sum(A(i,j,1:3,1:3)*B(1:3,1:3,k,l))
 
 end function math_mul3333xx3333
 
@@ -580,8 +572,8 @@ pure function math_mul33x33(A,B)
  real(pReal), dimension(3,3), intent(in) ::  A,B
  integer(pInt) :: i,j
 
- forall (i=1_pInt:3_pInt,j=1_pInt:3_pInt) math_mul33x33(i,j) = &
-   A(i,1)*B(1,j) + A(i,2)*B(2,j) + A(i,3)*B(3,j)
+ forall (i=1_pInt:3_pInt,j=1_pInt:3_pInt) &
+   math_mul33x33(i,j) = A(i,1)*B(1,j) + A(i,2)*B(2,j) + A(i,3)*B(3,j)
 
 end function math_mul33x33
 
@@ -683,10 +675,9 @@ pure function math_exp33(A,n)
  real(pReal), dimension(3,3) ::  B,math_exp33
  real(pReal) :: invfac
 
- order = 5
- if (present(n)) order = n
+ order = merge(n,5_pInt,present(n))
 
- B = math_identity2nd(3)                                                                            ! init
+ B = math_I3                                                                                        ! init
  invfac = 1.0_pReal                                                                                 ! 0!
  math_exp33 = B                                                                                     ! A^0 = eye2
 
@@ -854,14 +845,13 @@ end subroutine math_invert
 !--------------------------------------------------------------------------------------------------
 !> @brief symmetrize a 33 matrix
 !--------------------------------------------------------------------------------------------------
-function math_symmetric33(m)
+pure function math_symmetric33(m)
 
  implicit none
  real(pReal), dimension(3,3) :: math_symmetric33
  real(pReal), dimension(3,3), intent(in) :: m
- integer(pInt) :: i,j
  
- forall (i=1_pInt:3_pInt,j=1_pInt:3_pInt) math_symmetric33(i,j) = 0.5_pReal * (m(i,j) + m(j,i))
+ math_symmetric33 = 0.5_pReal * (m + transpose(m))
 
 end function math_symmetric33
 
@@ -872,11 +862,10 @@ end function math_symmetric33
 pure function math_symmetric66(m)
 
  implicit none
- integer(pInt) :: i,j
- real(pReal), dimension(6,6), intent(in) :: m
  real(pReal), dimension(6,6) :: math_symmetric66
+ real(pReal), dimension(6,6), intent(in) :: m
 
- forall (i=1_pInt:6_pInt,j=1_pInt:6_pInt) math_symmetric66(i,j) = 0.5_pReal * (m(i,j) + m(j,i))
+ math_symmetric66 = 0.5_pReal * (m + transpose(m))
 
 end function math_symmetric66
 
@@ -889,9 +878,8 @@ pure function math_skew33(m)
  implicit none
  real(pReal), dimension(3,3) :: math_skew33
  real(pReal), dimension(3,3), intent(in) :: m
- integer(pInt) :: i,j
 
- forall (i=1_pInt:3_pInt,j=1_pInt:3_pInt) math_skew33(i,j) = m(i,j) - 0.5_pReal * (m(i,j) + m(j,i))
+ math_skew33 = m - math_symmetric33(m)
 
 end function math_skew33
 
@@ -903,10 +891,8 @@ pure function math_spherical33(m)
  implicit none
  real(pReal), dimension(3,3) :: math_spherical33
  real(pReal), dimension(3,3), intent(in) :: m
- real(pReal) :: hydrostatic
 
- hydrostatic = (m(1,1) + m(2,2) + m(3,3)) / 3.0_pReal
- math_spherical33 = math_I3 * hydrostatic
+ math_spherical33 = math_I3 * math_trace33(m)/3.0_pReal
 
 end function math_spherical33
 
@@ -919,12 +905,8 @@ pure function math_deviatoric33(m)
  implicit none
  real(pReal), dimension(3,3) :: math_deviatoric33
  real(pReal), dimension(3,3), intent(in) :: m
- integer(pInt) :: i
- real(pReal) :: hydrostatic
 
- math_deviatoric33 = m
- hydrostatic = (m(1,1) + m(2,2) + m(3,3)) / 3.0_pReal
- forall (i=1_pInt:3_pInt) math_deviatoric33(i,i) = m(i,i) - hydrostatic
+ math_deviatoric33 = m - math_spherical33(m)
 
 end function math_deviatoric33
 
@@ -1007,37 +989,11 @@ real(pReal) pure function math_det33(m)
  implicit none
  real(pReal), dimension(3,3), intent(in) :: m
  
- math_det33 = m(1,1)*(m(2,2)*m(3,3)-m(2,3)*m(3,2)) &
-             -m(1,2)*(m(2,1)*m(3,3)-m(2,3)*m(3,1)) &
-             +m(1,3)*(m(2,1)*m(3,2)-m(2,2)*m(3,1))
+ math_det33 = m(1,1)* (m(2,2)*m(3,3)-m(2,3)*m(3,2)) &
+            - m(1,2)* (m(2,1)*m(3,3)-m(2,3)*m(3,1)) &
+            + m(1,3)* (m(2,1)*m(3,2)-m(2,2)*m(3,1))
 
 end function math_det33
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief norm of a 33 matrix
-!--------------------------------------------------------------------------------------------------
-real(pReal) pure function math_norm33(m)
-
- implicit none
- real(pReal), dimension(3,3), intent(in) :: m
-
- math_norm33 = sqrt(sum(m**2.0_pReal))
-
-end function
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief euclidian norm of a 3 vector
-!--------------------------------------------------------------------------------------------------
-real(pReal) pure function math_norm3(v)
-
- implicit none
- real(pReal), dimension(3), intent(in) :: v
-
- math_norm3 = sqrt(sum(v**2.0_pReal))
-
-end function math_norm3
 
 
 !--------------------------------------------------------------------------------------------------
@@ -1259,10 +1215,10 @@ pure function math_qMul(A,B)
  real(pReal), dimension(4) ::  math_qMul
  real(pReal), dimension(4), intent(in) ::  A, B
 
- math_qMul(1) = A(1)*B(1) - A(2)*B(2) - A(3)*B(3) - A(4)*B(4)
- math_qMul(2) = A(1)*B(2) + A(2)*B(1) + A(3)*B(4) - A(4)*B(3)
- math_qMul(3) = A(1)*B(3) - A(2)*B(4) + A(3)*B(1) + A(4)*B(2)
- math_qMul(4) = A(1)*B(4) + A(2)*B(3) - A(3)*B(2) + A(4)*B(1)
+ math_qMul = [ A(1)*B(1) - A(2)*B(2) - A(3)*B(3) - A(4)*B(4), &
+               A(1)*B(2) + A(2)*B(1) + A(3)*B(4) - A(4)*B(3), &
+               A(1)*B(3) - A(2)*B(4) + A(3)*B(1) + A(4)*B(2), &
+               A(1)*B(4) + A(2)*B(3) - A(3)*B(2) + A(4)*B(1) ]
 
 end function math_qMul
 
@@ -1289,8 +1245,7 @@ pure function math_qConj(Q)
  real(pReal), dimension(4) ::  math_qConj
  real(pReal), dimension(4), intent(in) ::  Q
 
- math_qConj(1) = Q(1)
- math_qConj(2:4) = -Q(2:4)
+ math_qConj = [Q(1), -Q(2:4)]
 
 end function math_qConj
 
@@ -1303,7 +1258,7 @@ real(pReal) pure function math_qNorm(Q)
  implicit none
  real(pReal), dimension(4), intent(in) ::  Q
 
- math_qNorm = sqrt(max(0.0_pReal, sum(Q*Q)))
+ math_qNorm = norm2(Q)
 
 end function math_qNorm
 
@@ -1366,44 +1321,24 @@ pure function math_RtoEuler(R)
  implicit none
  real(pReal), dimension (3,3), intent(in) :: R
  real(pReal), dimension(3) :: math_RtoEuler
- real(pReal) :: sqhkl, squvw, sqhk, myVal
+ real(pReal) :: sqhkl, squvw, sqhk
 
  sqhkl=sqrt(R(1,3)*R(1,3)+R(2,3)*R(2,3)+R(3,3)*R(3,3))
  squvw=sqrt(R(1,1)*R(1,1)+R(2,1)*R(2,1)+R(3,1)*R(3,1))
- sqhk=sqrt(R(1,3)*R(1,3)+R(2,3)*R(2,3))
+ sqhk =sqrt(R(1,3)*R(1,3)+R(2,3)*R(2,3))
+
 ! calculate PHI
- myVal=R(3,3)/sqhkl
-
- myVal = min(myVal, 1.0_pReal)
- myVal = max(myVal,-1.0_pReal)
-
- math_RtoEuler(2) = acos(myVal)
+ math_RtoEuler(2) = acos(math_limit(R(3,3)/sqhkl,-1.0_pReal, 1.0_pReal))
 
  if((math_RtoEuler(2) < 1.0e-8_pReal) .or. (pi-math_RtoEuler(2) < 1.0e-8_pReal)) then
-! calculate phi2
-     math_RtoEuler(3) = 0.0_pReal
-! calculate phi1
-     myVal=R(1,1)/squvw
-     myVal = min(myVal, 1.0_pReal)
-     myVal = max(myVal,-1.0_pReal)
-
-     math_RtoEuler(1) = acos(myVal)
-     if(R(2,1) > 0.0_pReal) math_RtoEuler(1) = 2.0_pReal*pi-math_RtoEuler(1)
+   math_RtoEuler(3) = 0.0_pReal
+   math_RtoEuler(1) = acos(math_limit(R(1,1)/squvw, -1.0_pReal, 1.0_pReal))
+   if(R(2,1) > 0.0_pReal) math_RtoEuler(1) = 2.0_pReal*pi-math_RtoEuler(1)
  else
-! calculate phi2
-     myVal=R(2,3)/sqhk
-     myVal = min(myVal, 1.0_pReal)
-     myVal = max(myVal,-1.0_pReal)
-
-     math_RtoEuler(3) = acos(myVal)
-     if(R(1,3) < 0.0) math_RtoEuler(3) = 2.0_pReal*pi-math_RtoEuler(3)
-! calculate phi1
-     myVal=-R(3,2)/sin(math_RtoEuler(2))
-     myVal = min(myVal, 1.0_pReal)
-     myVal = max(myVal,-1.0_pReal)
-
-     math_RtoEuler(1) = acos(myVal)
-     if(R(3,1) < 0.0) math_RtoEuler(1) = 2.0_pReal*pi-math_RtoEuler(1)
+   math_RtoEuler(3) = acos(math_limit(R(2,3)/sqhk, -1.0_pReal, 1.0_pReal))
+   if(R(1,3) < 0.0) math_RtoEuler(3) = 2.0_pReal*pi-math_RtoEuler(3)
+   math_RtoEuler(1) = acos(math_limit(-R(3,2)/sin(math_RtoEuler(2)), -1.0_pReal, 1.0_pReal))
+   if(R(3,1) < 0.0) math_RtoEuler(1) = 2.0_pReal*pi-math_RtoEuler(1)
  end if
 
 end function math_RtoEuler
@@ -1423,38 +1358,38 @@ pure function math_RtoQ(R)
 
  math_RtoQ = 0.0_pReal
 
- absQ(1) = 1.0_pReal + R(1,1) + R(2,2) + R(3,3)
- absQ(2) = 1.0_pReal + R(1,1) - R(2,2) - R(3,3)
- absQ(3) = 1.0_pReal - R(1,1) + R(2,2) - R(3,3)
- absQ(4) = 1.0_pReal - R(1,1) - R(2,2) + R(3,3)
+ absQ  = [+ R(1,1) + R(2,2) + R(3,3), &
+          + R(1,1) - R(2,2) - R(3,3), &
+          - R(1,1) + R(2,2) - R(3,3), &
+          - R(1,1) - R(2,2) + R(3,3)] + 1.0_pReal
 
  largest = maxloc(absQ)
 
- select case(largest(1))
-   case (1)
+ largestComponent: select case(largest(1))
+   case (1) largestComponent
       !1----------------------------------
       math_RtoQ(2) = R(3,2) - R(2,3)
       math_RtoQ(3) = R(1,3) - R(3,1)
       math_RtoQ(4) = R(2,1) - R(1,2)
                                  
-   case (2)                 
+   case (2) largestComponent
       math_RtoQ(1) = R(3,2) - R(2,3)
       !2----------------------------------
       math_RtoQ(3) = R(2,1) + R(1,2)
       math_RtoQ(4) = R(1,3) + R(3,1)
                                  
-   case (3)                 
+   case (3) largestComponent
       math_RtoQ(1) = R(1,3) - R(3,1)
       math_RtoQ(2) = R(2,1) + R(1,2)
       !3----------------------------------
       math_RtoQ(4) = R(3,2) + R(2,3)
                                  
-   case (4)                 
+   case (4) largestComponent
       math_RtoQ(1) = R(2,1) - R(1,2)
       math_RtoQ(2) = R(1,3) + R(3,1)
       math_RtoQ(3) = R(2,3) + R(3,2)
       !4----------------------------------
- end select
+ end select  largestComponent
 
  max_absQ = 0.5_pReal * sqrt(absQ(largest(1)))
  math_RtoQ = math_RtoQ * 0.25_pReal / max_absQ
@@ -1519,10 +1454,10 @@ pure function math_EulerToQ(eulerangles)
  c = cos(halfangles(2))
  s = sin(halfangles(2))
 
- math_EulerToQ(1) = cos(halfangles(1)+halfangles(3)) * c
- math_EulerToQ(2) = cos(halfangles(1)-halfangles(3)) * s
- math_EulerToQ(3) = sin(halfangles(1)-halfangles(3)) * s
- math_EulerToQ(4) = sin(halfangles(1)+halfangles(3)) * c
+ math_EulerToQ= [cos(halfangles(1)+halfangles(3)) * c, &
+                 cos(halfangles(1)-halfangles(3)) * s, &
+                 sin(halfangles(1)-halfangles(3)) * s, &
+                 sin(halfangles(1)+halfangles(3)) * c ]
  math_EulerToQ = math_qConj(math_EulerToQ)                 ! convert to passive rotation
 
 end function math_EulerToQ
@@ -1600,7 +1535,7 @@ pure function math_EulerAxisAngleToQ(axis,omega)
  real(pReal), dimension(3), intent(in) :: axis
  real(pReal), intent(in) :: omega
 
- math_EulerAxisAngleToQ = math_qConj(math_axisAngleToQ(axis,omega))            ! convert to passive rotation
+ math_EulerAxisAngleToQ = math_qConj(math_axisAngleToQ(axis,omega))                                   ! convert to passive rotation
 
 end function math_EulerAxisAngleToQ
 
@@ -1619,18 +1554,15 @@ pure function math_axisAngleToQ(axis,omega)
  real(pReal), dimension(3), intent(in) :: axis
  real(pReal), intent(in) :: omega
  real(pReal), dimension(3) :: axisNrm
- real(pReal) :: s,c,norm
+ real(pReal) :: norm
 
  norm = sqrt(math_mul3x3(axis,axis))
- if (norm > 1.0e-8_pReal) then                       ! non-zero rotation
-   axisNrm = axis/norm                               ! normalize axis to be sure
-   s = sin(0.5_pReal*omega)
-   c = cos(0.5_pReal*omega)
-   math_axisAngleToQ(1) = c
-   math_axisAngleToQ(2:4) = s * axisNrm(1:3)
- else
-   math_axisAngleToQ = [1.0_pReal,0.0_pReal,0.0_pReal,0.0_pReal]   ! no rotation
- endif
+ rotation: if (norm > 1.0e-8_pReal) then
+   axisNrm = axis/norm                                                                                ! normalize axis to be sure
+   math_axisAngleToQ = [cos(0.5_pReal*omega), sin(0.5_pReal*omega) * axisNrm(1:3)]
+ else rotation
+   math_axisAngleToQ = [1.0_pReal,0.0_pReal,0.0_pReal,0.0_pReal]
+ endif rotation
 
 end function math_axisAngleToQ
 
@@ -1649,6 +1581,7 @@ pure function math_qToR(q)
 
  forall (i = 1_pInt:3_pInt, j = 1_pInt:3_pInt) &
    T(i,j) = q(i+1_pInt) * q(j+1_pInt)
+
  S = reshape( [0.0_pReal,     -q(4),      q(3), &
                     q(4), 0.0_pReal,     -q(2), &
                    -q(3),      q(2), 0.0_pReal],[3,3])                                             ! notation is transposed
@@ -1672,29 +1605,21 @@ pure function math_qToEuler(qPassive)
  real(pReal), dimension(4), intent(in) :: qPassive
  real(pReal), dimension(4) :: q
  real(pReal), dimension(3) :: math_qToEuler
- real(pReal) :: acos_arg
 
  q = math_qConj(qPassive)    ! convert to active rotation, since formulas are defined for active rotations
 
  math_qToEuler(2) = acos(1.0_pReal-2.0_pReal*(q(2)*q(2)+q(3)*q(3)))
 
  if (abs(math_qToEuler(2)) < 1.0e-6_pReal) then
-   acos_arg = q(1)
-   if(acos_arg > 1.0_pReal) acos_arg = 1.0_pReal
-   if(acos_arg < -1.0_pReal) acos_arg = -1.0_pReal
-   math_qToEuler(1) = sign(2.0_pReal * acos(acos_arg),q(4))
+   math_qToEuler(1) = sign(2.0_pReal*acos(math_limit(q(1),-1.0_pReal, 1.0_pReal)),q(4))
    math_qToEuler(3) = 0.0_pReal
  else
    math_qToEuler(1) = atan2(q(1)*q(3)+q(2)*q(4), q(1)*q(2)-q(3)*q(4))
    math_qToEuler(3) = atan2(-q(1)*q(3)+q(2)*q(4), q(1)*q(2)+q(3)*q(4))
  endif
 
- if (math_qToEuler(1) < 0.0_pReal) &
-   math_qToEuler(1) = math_qToEuler(1) + 2.0_pReal * pi
- if (math_qToEuler(2) < 0.0_pReal) &
-   math_qToEuler(2) = math_qToEuler(2) + pi
- if (math_qToEuler(3) < 0.0_pReal) &
-   math_qToEuler(3) = math_qToEuler(3) + 2.0_pReal * pi
+ math_qToEuler = merge(math_qToEuler + [2.0_pReal*PI, PI, 2.0_pReal*PI], &                           ! ensure correct range
+                       math_qToEuler,                                    math_qToEuler<0.0_pReal)
 
 end function math_qToEuler
 
@@ -1719,8 +1644,7 @@ pure function math_qToAxisAngle(Q)
  if (sinHalfAngle <= 1.0e-4_pReal) then                              ! very small rotation angle?
    math_qToAxisAngle = 0.0_pReal
  else
-   math_qToAxisAngle(1:3) = Q(2:4)/sinHalfAngle
-   math_qToAxisAngle(4) = halfAngle*2.0_pReal
+   math_qToAxisAngle= [ Q(2:4)/sinHalfAngle, halfAngle*2.0_pReal] 
  endif
 
 end function math_qToAxisAngle
@@ -1773,8 +1697,8 @@ real(pReal) pure function math_EulerMisorientation(EulerA,EulerB)
 
  r = math_mul33x33(math_EulerToR(EulerB),transpose(math_EulerToR(EulerA)))
 
- tr = (r(1,1)+r(2,2)+r(3,3)-1.0_pReal)*0.4999999_pReal
- math_EulerMisorientation = abs(0.5_pReal*pi-asin(tr))
+ tr = (math_trace33(r)-1.0_pReal)*0.4999999_pReal
+ math_EulerMisorientation = abs(0.5_pReal*PI-asin(tr))
 
 end function math_EulerMisorientation
 
@@ -1788,9 +1712,9 @@ function math_sampleRandomOri()
  real(pReal), dimension(3) :: math_sampleRandomOri, rnd
 
  call halton(3_pInt,rnd)
- math_sampleRandomOri(1) = rnd(1)*2.0_pReal*pi
- math_sampleRandomOri(2) = acos(2.0_pReal*rnd(2)-1.0_pReal)
- math_sampleRandomOri(3) = rnd(3)*2.0_pReal*pi
+ math_sampleRandomOri  = [rnd(1)*2.0_pReal*PI, &
+                          acos(2.0_pReal*rnd(2)-1.0_pReal), &
+                          rnd(3)*2.0_pReal*PI]
 
 end function math_sampleRandomOri
 
@@ -1824,9 +1748,9 @@ function math_sampleGaussOri(center,noise)
  do
    call halton(5_pInt,rnd)
    forall (i=1_pInt:3_pInt) rnd(i) = 2.0_pReal*rnd(i)-1.0_pReal  ! expand 1:3 to range [-1,+1]
-   disturb(1) = scatter * rnd(1)                                                      ! phi1
-   disturb(2) = sign(1.0_pReal,rnd(2))*acos(cosScatter+(1.0_pReal-cosScatter)*rnd(4)) ! Phi
-   disturb(3) = scatter * rnd(2)                                                      ! phi2
+   disturb  = [ scatter * rnd(1), &                                                       ! phi1
+                sign(1.0_pReal,rnd(2))*acos(cosScatter+(1.0_pReal-cosScatter)*rnd(4)), &  ! Phi
+                scatter * rnd(2)]                                                         ! phi2
    if (rnd(5) <= exp(-1.0_pReal*(math_EulerMisorientation(ORIGIN,disturb)/scatter)**2_pReal)) exit
  enddo
 
@@ -1859,20 +1783,20 @@ function math_sampleFiberOri(alpha,beta,noise)
  cos2Scatter = cos(2.0_pReal*scatter)
 
 ! fiber axis in crystal coordinate system
- fiberInC(1)=sin(alpha(1))*cos(alpha(2))
- fiberInC(2)=sin(alpha(1))*sin(alpha(2))
- fiberInC(3)=cos(alpha(1))
+ fiberInC = [ sin(alpha(1))*cos(alpha(2)) , &
+              sin(alpha(1))*sin(alpha(2)), &
+              cos(alpha(1))]
 ! fiber axis in sample coordinate system
- fiberInS(1)=sin(beta(1))*cos(beta(2))
- fiberInS(2)=sin(beta(1))*sin(beta(2))
- fiberInS(3)=cos(beta(1))
+ fiberInS = [ sin(beta(1))*cos(beta(2)), &
+              sin(beta(1))*sin(beta(2)), &
+              cos(beta(1))]
 
 ! ---# rotation matrix from sample to crystal system #---
  angle = -acos(dot_product(fiberInC,fiberInS))
  if(abs(angle) > tol_math_check) then
 !   rotation axis between sample and crystal system (cross product)
    forall(i=1_pInt:3_pInt) axis(i) = fiberInC(ROTMAP(1,i))*fiberInS(ROTMAP(2,i))-fiberInC(ROTMAP(2,i))*fiberInS(ROTMAP(1,i))
-   oRot = math_EulerAxisAngleToR(math_vectorproduct(fiberInC,fiberInS),angle)
+   oRot = math_EulerAxisAngleToR(math_crossproduct(fiberInC,fiberInS),angle)
  else
    oRot = math_I3
  end if
@@ -1939,8 +1863,7 @@ real(pReal) function math_sampleGaussVar(meanvalue, stddev, width)
  do
    call halton(2_pInt, rnd)
    scatter = myWidth * (2.0_pReal * rnd(1) - 1.0_pReal)
-   if (rnd(2) <= exp(-0.5_pReal * scatter ** 2.0_pReal)) &     ! test if scattered value is drawn
-     exit
+   if (rnd(2) <= exp(-0.5_pReal * scatter ** 2.0_pReal)) exit                                       ! test if scattered value is drawn
  enddo
 
  math_sampleGaussVar = scatter * stddev
@@ -1959,17 +1882,17 @@ pure function math_symmetricEulers(sym,Euler)
  real(pReal), dimension(3,3) :: math_symmetricEulers
  integer(pInt) :: i,j
 
- math_symmetricEulers(1,1) = pi+Euler(1)
+ math_symmetricEulers(1,1) = PI+Euler(1)
  math_symmetricEulers(2,1) = Euler(2)
  math_symmetricEulers(3,1) = Euler(3)
 
- math_symmetricEulers(1,2) = pi-Euler(1)
- math_symmetricEulers(2,2) = pi-Euler(2)
- math_symmetricEulers(3,2) = pi+Euler(3)
+ math_symmetricEulers(1,2) = PI-Euler(1)
+ math_symmetricEulers(2,2) = PI-Euler(2)
+ math_symmetricEulers(3,2) = PI+Euler(3)
 
- math_symmetricEulers(1,3) = 2.0_pReal*pi-Euler(1)
- math_symmetricEulers(2,3) = pi-Euler(2)
- math_symmetricEulers(3,3) = pi+Euler(3)
+ math_symmetricEulers(1,3) = 2.0_pReal*PI-Euler(1)
+ math_symmetricEulers(2,3) = PI-Euler(2)
+ math_symmetricEulers(3,3) = PI+Euler(3)
 
  forall (i=1_pInt:3_pInt,j=1_pInt:3_pInt) math_symmetricEulers(j,i) = modulo(math_symmetricEulers(j,i),2.0_pReal*pi)
 
@@ -1987,7 +1910,7 @@ end function math_symmetricEulers
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief not yet done
+!> @brief eigenvalues and eigenvectors of symmetric 3x3 matrix 
 !--------------------------------------------------------------------------------------------------
 subroutine math_spectralDecompositionSym33(M,values,vectors,error)
 
@@ -2008,194 +1931,85 @@ subroutine math_spectralDecompositionSym33(M,values,vectors,error)
 #endif
  error = (info == 0_pInt)
 
-end subroutine
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief EIGENWERTE UND EIGENWERTBASIS DER SYMMETRISCHEN 3X3 MATRIX M
-!--------------------------------------------------------------------------------------------------
-pure subroutine math_spectralDecomposition(M,EW1,EW2,EW3,EB1,EB2,EB3)
-
- implicit none
- real(pReal), dimension(3,3), intent(in) :: M
- real(pReal), dimension(3,3), intent(out) :: EB1, EB2, EB3
- real(pReal), intent(out) :: EW1,EW2,EW3
- real(pReal) HI1M, HI2M, HI3M, R, S, T, P, Q, RHO, PHI, Y1, Y2, Y3, D1, D2, D3
- real(pReal), parameter :: TOL=1.e-14_pReal
- real(pReal), dimension(3,3) :: M1, M2, M3
- real(pReal) C1,C2,C3,arg
-
- call math_hi(M,HI1M,HI2M,HI3M)
- R=-HI1M
- S= HI2M
- T=-HI3M
- P=S-R**2.0_pReal/3.0_pReal
- Q=2.0_pReal/27.0_pReal*R**3.0_pReal-R*S/3.0_pReal+T
- EB1=0.0_pReal
- EB2=0.0_pReal
- EB3=0.0_pReal
- if((ABS(P) < TOL).AND.(ABS(Q) < TOL)) then
-!   DREI GLEICHE EIGENWERTE
-   EW1=HI1M/3.0_pReal
-   EW2=EW1
-   EW3=EW1
-!   this is not really correct, but this way U is calculated
-!   correctly in PDECOMPOSITION (correct is EB?=I)
-   EB1(1,1)=1.0_pReal
-   EB2(2,2)=1.0_pReal
-   EB3(3,3)=1.0_pReal
- else
-   RHO=sqrt(-3.0_pReal*P**3.0_pReal)/9.0_pReal
-   arg=-Q/RHO/2.0_pReal
-   if(arg >  1.0_pReal) arg=1.0_pReal
-   if(arg < -1.0_pReal) arg=-1.0_pReal
-   PHI=acos(arg)
-   Y1=2.0_pReal*RHO**(1.0_pReal/3.0_pReal)*cos(PHI/3.0_pReal)
-   Y2=2.0_pReal*RHO**(1.0_pReal/3.0_pReal)*cos(PHI/3.0_pReal+2.0_pReal/3.0_pReal*PI)
-   Y3=2.0_pReal*RHO**(1.0_pReal/3.0_pReal)*cos(PHI/3.0_pReal+4.0_pReal/3.0_pReal*PI)
-   EW1=Y1-R/3.0_pReal
-   EW2=Y2-R/3.0_pReal
-   EW3=Y3-R/3.0_pReal
-   C1=ABS(EW1-EW2)
-   C2=ABS(EW2-EW3)
-   C3=ABS(EW3-EW1)
-
-   if (C1 < TOL) then
-!  EW1 is equal to EW2
-     D3=1.0_pReal/(EW3-EW1)/(EW3-EW2)
-     M1=M-EW1*math_I3
-     M2=M-EW2*math_I3
-     EB3=math_mul33x33(M1,M2)*D3
-
-     EB1=math_I3-EB3
-!  both EB2 and EW2 are set to zero so that they do not
-!  contribute to U in PDECOMPOSITION
-     EW2=0.0_pReal
-   elseif (C2 < TOL) then
-!  EW2 is equal to EW3
-     D1=1.0_pReal/(EW1-EW2)/(EW1-EW3)
-     M2=M-math_I3*EW2
-     M3=M-math_I3*EW3
-     EB1=math_mul33x33(M2,M3)*D1
-     EB2=math_I3-EB1
-!  both EB3 and EW3 are set to zero so that they do not
-!  contribute to U in PDECOMPOSITION
-     EW3=0.0_pReal
-   elseif(C3 < TOL) then
-!  EW1 is equal to EW3
-     D2=1.0_pReal/(EW2-EW1)/(EW2-EW3)
-     M1=M-math_I3*EW1
-     M3=M-math_I3*EW3
-     EB2=math_mul33x33(M1,M3)*D2
-     EB1=math_I3-EB2
-!  both EB3 and EW3 are set to zero so that they do not
-!  contribute to U in PDECOMPOSITION
-     EW3=0.0_pReal
-   else
-!  all three eigenvectors are different
-     D1=1.0_pReal/(EW1-EW2)/(EW1-EW3)
-     D2=1.0_pReal/(EW2-EW1)/(EW2-EW3)
-     D3=1.0_pReal/(EW3-EW1)/(EW3-EW2)
-     M1=M-EW1*math_I3
-     M2=M-EW2*math_I3
-     M3=M-EW3*math_I3
-     EB1=math_mul33x33(M2,M3)*D1
-     EB2=math_mul33x33(M1,M3)*D2
-     EB3=math_mul33x33(M1,M2)*D3
-   endif
- endif
-
-end subroutine math_spectralDecomposition
+end subroutine math_spectralDecompositionSym33
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief FE = R.U
 !--------------------------------------------------------------------------------------------------
-pure subroutine math_pDecomposition(FE,U,R,error)
+subroutine math_pDecomposition(FE,U,R,error)
 
  implicit none
  real(pReal), intent(in), dimension(3,3) :: FE
  real(pReal), intent(out), dimension(3,3) :: R, U
  logical, intent(out) :: error
- real(pReal), dimension(3,3) :: CE, EB1, EB2, EB3, UI
- real(pReal) :: EW1, EW2, EW3
+ real(pReal), dimension(3) :: EV
+ real(pReal), dimension(3,3) :: ce, Uinv, EB
 
  ce = math_mul33x33(math_transpose33(FE),FE)
 
- call math_spectralDecomposition(CE,EW1,EW2,EW3,EB1,EB2,EB3)
- U=sqrt(EW1)*EB1+sqrt(EW2)*EB2+sqrt(EW3)*EB3
- UI = math_inv33(U)
- if (all(abs(UI) <= tiny(UI))) then                                                                      ! math_inv33 returns zero when faile, avoid floating point equality comparison
+ call math_spectralDecompositionSym33(ce,EV,EB,error)
+
+ U = sqrt(EV(1)) * math_tensorproduct33(EB(1:3,1),EB(1:3,1)) &
+   + sqrt(EV(2)) * math_tensorproduct33(EB(1:3,2),EB(1:3,2)) &
+   + sqrt(EV(3)) * math_tensorproduct33(EB(1:3,3),EB(1:3,3))
+
+
+ Uinv = math_inv33(U)
+ if (all(abs(Uinv) <= tiny(Uinv))) then                                                             ! math_inv33 returns zero when failed, avoid floating point equality comparison
    R = 0.0_pReal
-   error =.True.
+   error = .True.
  else
-   R = math_mul33x33(FE,UI)
-   error = .False.
+   R = math_mul33x33(FE,Uinv)
+   error = .False. .and. error
  endif
 
 end subroutine math_pDecomposition
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Eigenvalues of symmetric 3X3 matrix M
+!> @brief Eigenvalues of symmetric 3X3 matrix m
+! will return NaN  on error
 !--------------------------------------------------------------------------------------------------
-function math_eigenvalues33(M)
+function math_eigenvalues33(m)
+ use prec, only: &
+   DAMASK_NaN
+ 
+ implicit none
+ real(pReal), dimension(3,3), intent(in) :: m
+ real(pReal), dimension(3)               :: math_eigenvalues33
+ real(pReal), dimension(3,3)             :: vectors
+
+ integer(pInt) :: info
+ real(pReal), dimension((64+2)*3) :: work                          ! block size of 64 taken from http://www.netlib.org/lapack/double/dsyev.f
+
+ vectors = m                                                       ! copy matrix to input (doubles as output) array
+#if(FLOAT==8)
+ call dsyev('N','U',3,vectors,3,math_eigenvalues33,work,(64+2)*3,info)
+#elif(FLOAT==4)
+ call ssyev('N','U',3,vectors,3,math_eigenvalues33,work,(64+2)*3,info)
+#endif
+ if (info /= 0_pInt) math_eigenvalues33 = DAMASK_NaN
+
+end function math_eigenvalues33
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief invariants of matrix m
+!--------------------------------------------------------------------------------------------------
+pure function math_invariants33(m)
 
  implicit none
- real(pReal), intent(in), dimension(3,3) :: M
- real(pReal), dimension(3,3) :: EB1 = 0.0_pReal, EB2 = 0.0_pReal, EB3 = 0.0_pReal
- real(pReal), dimension(3) :: math_eigenvalues33
- real(pReal) :: HI1M, HI2M, HI3M, R, S, T, P, Q, RHO, PHI, Y1, Y2, Y3, arg
- real(pReal), parameter :: TOL=1.e-14_pReal
+ real(pReal), dimension(3,3) , intent(in) :: m
+ real(pReal), dimension(3) :: math_invariants33
 
- CALL math_hi(M,HI1M,HI2M,HI3M)
- R=-HI1M
- S= HI2M
- T=-HI3M
- P=S-R**2.0_pReal/3.0_pReal
- Q=2.0_pReal/27.0_pReal*R**3.0_pReal-R*S/3.0_pReal+T
+ math_invariants33(1) = math_trace33(m)
+ math_invariants33(2) = math_invariants33(1)**2.0_pReal/2.0_pReal &
+                      -(m(1,1)**2.0_pReal+m(2,2)**2.0_pReal+m(3,3)**2.0_pReal)* 0.5_pReal &
+                      - m(1,2)*m(2,1) -m(1,3)*m(3,1) -m(2,3)*m(3,2)
+ math_invariants33(3) = math_det33(m)
 
- if((abs(P) < TOL) .and. (abs(Q) < TOL)) THEN
-! three equivalent eigenvalues
-   math_eigenvalues33(1) = HI1M/3.0_pReal
-   math_eigenvalues33(2)=math_eigenvalues33(1)
-   math_eigenvalues33(3)=math_eigenvalues33(1)
-!   this is not really correct, but this way U is calculated
-!   correctly in PDECOMPOSITION (correct is EB?=I)
-   EB1(1,1)=1.0_pReal
-   EB2(2,2)=1.0_pReal
-   EB3(3,3)=1.0_pReal
- else
-   RHO=sqrt(-3.0_pReal*P**3.0_pReal)/9.0_pReal
-   arg=-Q/RHO/2.0_pReal
-   if(arg.GT.1.0_pReal) arg=1.0_pReal
-   if(arg.LT.-1.0_pReal) arg=-1.0_pReal
-   PHI=acos(arg)
-   Y1=2*RHO**(1.0_pReal/3.0_pReal)*cos(PHI/3.0_pReal)
-   Y2=2*RHO**(1.0_pReal/3.0_pReal)*cos(PHI/3.0_pReal+2.0_pReal/3.0_pReal*PI)
-   Y3=2*RHO**(1.0_pReal/3.0_pReal)*cos(PHI/3.0_pReal+4.0_pReal/3.0_pReal*PI)
-   math_eigenvalues33(1) = Y1-R/3.0_pReal
-   math_eigenvalues33(2) = Y2-R/3.0_pReal
-   math_eigenvalues33(3) = Y3-R/3.0_pReal
- endif
-end function  math_eigenvalues33
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief HAUPTINVARIANTEN HI1M, HI2M, HI3M DER 3X3 MATRIX M
-!--------------------------------------------------------------------------------------------------
-pure subroutine math_hi(M,HI1M,HI2M,HI3M)
-
- implicit none
- real(pReal), intent(in) :: M(3,3)
- real(pReal), intent(out) :: HI1M, HI2M, HI3M
-
- HI1M=M(1,1)+M(2,2)+M(3,3)
- HI2M=HI1M**2.0_pReal/2.0_pReal-  (M(1,1)**2.0_pReal+M(2,2)**2.0_pReal+M(3,3)**2.0_pReal)&
-                                     /2.0_pReal-M(1,2)*M(2,1)-M(1,3)*M(3,1)-M(2,3)*M(3,2)
- HI3M=math_det33(M)
-
-end subroutine math_hi
+end function math_invariants33
 
 
 !--------------------------------------------------------------------------------------------------
@@ -2675,7 +2489,7 @@ real(pReal) pure function math_areaTriangle(v1,v2,v3)
  implicit none
  real(pReal), dimension (3), intent(in) :: v1,v2,v3
 
- math_areaTriangle = 0.5_pReal * math_norm3(math_vectorproduct(v1-v2,v1-v3))
+ math_areaTriangle = 0.5_pReal * norm2(math_crossproduct(v1-v2,v1-v3))
 
 end function math_areaTriangle
 
@@ -2748,6 +2562,28 @@ function math_tensorAvg(field)
  math_tensorAvg = sum(sum(sum(field,dim=5),dim=4),dim=3)*wgt
 
 end function math_tensorAvg
- 
 
+
+!--------------------------------------------------------------------------------------------------
+!> @brief limits a scalar value to a certain range (either one or two sided)
+! Will return NaN if left > right
+!--------------------------------------------------------------------------------------------------
+real(pReal) pure function math_limit(a, left, right)
+ use prec, only: &
+   DAMASK_NaN
+
+ implicit none
+ real(pReal), intent(in) :: a
+ real(pReal), intent(in), optional :: left, right
+
+   
+ math_limit = min ( &
+                   max (merge(left, -huge(a), present(left)), a), &
+                        merge(right, huge(a), present(right)) &
+                  )
+
+ if (present(left) .and. present(right)) math_limit = merge (DAMASK_NaN,math_limit, left>right)
+
+end function math_limit
+ 
 end module math

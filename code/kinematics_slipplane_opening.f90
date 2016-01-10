@@ -14,18 +14,18 @@ module kinematics_slipplane_opening
  implicit none
  private
  integer(pInt),                       dimension(:),           allocatable,         public, protected :: &
-   kinematics_slipplane_opening_sizePostResults, &                                                                !< cumulative size of post results
-   kinematics_slipplane_opening_offset, &                                                                         !< which kinematics is my current damage mechanism?
-   kinematics_slipplane_opening_instance                                                                          !< instance of damage kinematics mechanism
+   kinematics_slipplane_opening_sizePostResults, &                                                            !< cumulative size of post results
+   kinematics_slipplane_opening_offset, &                                                                     !< which kinematics is my current damage mechanism?
+   kinematics_slipplane_opening_instance                                                                      !< instance of damage kinematics mechanism
 
  integer(pInt),                       dimension(:,:),         allocatable, target, public  :: &
-   kinematics_slipplane_opening_sizePostResult                                                                    !< size of each post result output
+   kinematics_slipplane_opening_sizePostResult                                                                !< size of each post result output
 
  character(len=64),                   dimension(:,:),         allocatable, target, public  :: &
-   kinematics_slipplane_opening_output                                                                            !< name of each post result output
+   kinematics_slipplane_opening_output                                                                        !< name of each post result output
    
  integer(pInt),                       dimension(:),           allocatable, target, public  :: &
-   kinematics_slipplane_opening_Noutput                                                                           !< number of outputs per instance of this damage 
+   kinematics_slipplane_opening_Noutput                                                                       !< number of outputs per instance of this damage 
    
  integer(pInt),                       dimension(:),           allocatable,         private :: &
    kinematics_slipplane_opening_totalNslip                                                                    !< total number of slip systems
@@ -147,10 +147,10 @@ subroutine kinematics_slipplane_opening_init(fileUnit)
      phase = phase + 1_pInt                                                                         ! advance phase section counter
      cycle                                                                                          ! skip to next line
    endif
-   if (phase > 0_pInt ) then; if (any(phase_kinematics(:,phase) == KINEMATICS_slipplane_opening_ID)) then         ! do not short-circuit here (.and. with next if statemen). It's not safe in Fortran
-     instance = kinematics_slipplane_opening_instance(phase)                                                         ! which instance of my damage is present phase
+   if (phase > 0_pInt ) then; if (any(phase_kinematics(:,phase) == KINEMATICS_slipplane_opening_ID)) then ! do not short-circuit here (.and. with next if statemen). It's not safe in Fortran
+     instance = kinematics_slipplane_opening_instance(phase)                                        ! which instance of my damage is present phase
      chunkPos = IO_stringPos(line)
-     tag = IO_lc(IO_stringValue(line,chunkPos,1_pInt))                                             ! extract key
+     tag = IO_lc(IO_stringValue(line,chunkPos,1_pInt))                                              ! extract key
      select case(tag)
        case ('nslip')  !
          Nchunks_SlipFamilies = chunkPos(1) - 1_pInt
@@ -222,7 +222,7 @@ subroutine kinematics_slipplane_opening_LiAndItsTangent(Ld, dLd_dTstar3333, Tsta
    math_identity4th, &
    math_symmetric33, &
    math_Mandel33to6, &
-   math_tensorproduct, &
+   math_tensorproduct33, &
    math_det33, &
    math_mul33x33
  
@@ -262,11 +262,11 @@ subroutine kinematics_slipplane_opening_LiAndItsTangent(Ld, dLd_dTstar3333, Tsta
  do f = 1_pInt,lattice_maxNslipFamily
    index_myFamily = sum(lattice_NslipSystem(1:f-1_pInt,phase))                                      ! at which index starts my family
    do i = 1_pInt,kinematics_slipplane_opening_Nslip(f,instance)                                              ! process each (active) slip system in family
-     projection_d = math_tensorproduct(lattice_sd(1:3,index_myFamily+i,phase),&
+     projection_d = math_tensorproduct33(lattice_sd(1:3,index_myFamily+i,phase),&
                                        lattice_sn(1:3,index_myFamily+i,phase))
-     projection_t = math_tensorproduct(lattice_st(1:3,index_myFamily+i,phase),&
+     projection_t = math_tensorproduct33(lattice_st(1:3,index_myFamily+i,phase),&
                                        lattice_sn(1:3,index_myFamily+i,phase))
-     projection_n = math_tensorproduct(lattice_sn(1:3,index_myFamily+i,phase),&
+     projection_n = math_tensorproduct33(lattice_sn(1:3,index_myFamily+i,phase),&
                                        lattice_sn(1:3,index_myFamily+i,phase))
 
      projection_d_v(1:6) = math_Mandel33to6(math_symmetric33(projection_d(1:3,1:3)))

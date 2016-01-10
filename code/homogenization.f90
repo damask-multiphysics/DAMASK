@@ -532,8 +532,6 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
    mappingHomogenization, &
    mappingConstitutive, &
    homogenization_Ngrains
-
-
  use crystallite, only: &
    crystallite_F0, &
    crystallite_Fp0, &
@@ -570,8 +568,6 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
    debug_i, &
    debug_MaterialpointLoopDistribution, &
    debug_MaterialpointStateLoopDistribution
- use math, only: &
-   math_pDecomposition
 
  implicit none
  real(pReal), intent(in) :: dt                                                                      !< time increment

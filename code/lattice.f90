@@ -1602,9 +1602,8 @@ subroutine lattice_initializeStructure(myPhase,CoverA,CoverA_trans,a_fcc,a_bcc)
  use prec, only: &
   tol_math_check
  use math, only: &
-   math_vectorproduct, &
-   math_tensorproduct, &
-   math_norm3, &
+   math_crossproduct, &
+   math_tensorproduct33, &
    math_mul33x33, &
    math_mul33x3, &
    math_transpose33, &
@@ -1707,9 +1706,9 @@ subroutine lattice_initializeStructure(myPhase,CoverA,CoverA_trans,a_fcc,a_bcc)
        ts(i)     = lattice_fcc_shearTwin(i)
      enddo
      do i = 1_pInt, myNcleavage                                                                      ! assign cleavage system vectors
-       cd(1:3,i) = lattice_fcc_systemCleavage(1:3,i)/math_norm3(lattice_fcc_systemCleavage(1:3,i))
-       cn(1:3,i) = lattice_fcc_systemCleavage(4:6,i)/math_norm3(lattice_fcc_systemCleavage(4:6,i))
-       ct(1:3,i) = math_vectorproduct(cd(1:3,i),cn(1:3,i))
+       cd(1:3,i) = lattice_fcc_systemCleavage(1:3,i)/norm2(lattice_fcc_systemCleavage(1:3,i))
+       cn(1:3,i) = lattice_fcc_systemCleavage(4:6,i)/norm2(lattice_fcc_systemCleavage(4:6,i))
+       ct(1:3,i) = math_crossproduct(cd(1:3,i),cn(1:3,i))
      enddo  
 
      ! Phase transformation
@@ -1725,9 +1724,9 @@ subroutine lattice_initializeStructure(myPhase,CoverA,CoverA_trans,a_fcc,a_bcc)
            ztr(1:3,i) = real(LATTICE_fccTobcc_bainVariant(7:9,i),pReal)
            Utr(1:3,1:3,i) = 0.0_pReal                                                                ! Bain deformation
            if ((a_fcc > 0.0_pReal) .and. (a_bcc > 0.0_pReal)) then
-             Utr(1:3,1:3,i) = (a_bcc/a_fcc)*math_tensorproduct(xtr(1:3,i), xtr(1:3,i)) + &
-              sqrt(2.0_pReal)*(a_bcc/a_fcc)*math_tensorproduct(ytr(1:3,i), ytr(1:3,i)) + &
-              sqrt(2.0_pReal)*(a_bcc/a_fcc)*math_tensorproduct(ztr(1:3,i), ztr(1:3,i))
+             Utr(1:3,1:3,i) = (a_bcc/a_fcc)*math_tensorproduct33(xtr(1:3,i), xtr(1:3,i)) + &
+              sqrt(2.0_pReal)*(a_bcc/a_fcc)*math_tensorproduct33(ytr(1:3,i), ytr(1:3,i)) + &
+              sqrt(2.0_pReal)*(a_bcc/a_fcc)*math_tensorproduct33(ztr(1:3,i), ztr(1:3,i))
            endif
            Qtr(1:3,1:3,i) = math_mul33x33(Rtr(1:3,1:3,i), Btr(1:3,1:3,i))
            Str(1:3,1:3,i) = math_mul33x33(Rtr(1:3,1:3,i), Utr(1:3,1:3,i)) - MATH_I3
@@ -1741,9 +1740,9 @@ subroutine lattice_initializeStructure(myPhase,CoverA,CoverA_trans,a_fcc,a_bcc)
          endif
          sttr = math_mul33x33(sdtr, sstr)
          do i = 1_pInt,myNtrans
-           xtr(1:3,i) = lattice_fccTohex_systemTrans(1:3,i)/math_norm3(lattice_fccTohex_systemTrans(1:3,i))
-           ztr(1:3,i) = lattice_fccTohex_systemTrans(4:6,i)/math_norm3(lattice_fccTohex_systemTrans(4:6,i))
-           ytr(1:3,i) = -math_vectorproduct(xtr(1:3,i), ztr(1:3,i))
+           xtr(1:3,i) = lattice_fccTohex_systemTrans(1:3,i)/norm2(lattice_fccTohex_systemTrans(1:3,i))
+           ztr(1:3,i) = lattice_fccTohex_systemTrans(4:6,i)/norm2(lattice_fccTohex_systemTrans(4:6,i))
+           ytr(1:3,i) = -math_crossproduct(xtr(1:3,i), ztr(1:3,i))
            Rtr(1:3,1,i) = xtr(1:3,i)
            Rtr(1:3,2,i) = ytr(1:3,i)
            Rtr(1:3,3,i) = ztr(1:3,i)
@@ -1782,24 +1781,24 @@ subroutine lattice_initializeStructure(myPhase,CoverA,CoverA_trans,a_fcc,a_bcc)
      do i = 1_pInt,myNslip                                                                          ! assign slip system vectors
        sd(1:3,i) = lattice_bcc_systemSlip(1:3,i)
        sn(1:3,i) = lattice_bcc_systemSlip(4:6,i)
-       sdU = sd(1:3,i) / math_norm3(sd(1:3,i))
-       snU = sn(1:3,i) / math_norm3(sn(1:3,i))
+       sdU = sd(1:3,i) / norm2(sd(1:3,i))
+       snU = sn(1:3,i) / norm2(sn(1:3,i))
        ! "np" and "nn" according to Gröger_etal2008, Acta Materialia 56 (2008) 5412–5425, table 1 (corresponds to their "n1" for positive and negative slip direction respectively)
        np = math_mul33x3(math_axisAngleToR(sdU,60.0_pReal*INRAD), snU)
        nn = math_mul33x3(math_axisAngleToR(-sdU,60.0_pReal*INRAD), snU)
          ! Schmid matrices with non-Schmid contributions according to Koester_etal2012, Acta Materialia 60 (2012) 3894–3901, eq. (17) ("n1" is replaced by either "np" or "nn" according to either positive or negative slip direction)
-       sns(1:3,1:3,1,1,i) = math_tensorproduct(sdU, np)
-       sns(1:3,1:3,2,1,i) = math_tensorproduct(-sdU, nn)
-       sns(1:3,1:3,1,2,i) = math_tensorproduct(math_vectorproduct(snU, sdU), snU)
-       sns(1:3,1:3,2,2,i) = math_tensorproduct(math_vectorproduct(snU, -sdU), snU)
-       sns(1:3,1:3,1,3,i) = math_tensorproduct(math_vectorproduct(np, sdU), np)
-       sns(1:3,1:3,2,3,i) = math_tensorproduct(math_vectorproduct(nn, -sdU), nn)
-       sns(1:3,1:3,1,4,i) = math_tensorproduct(snU, snU)
-       sns(1:3,1:3,2,4,i) = math_tensorproduct(snU, snU)
-       sns(1:3,1:3,1,5,i) = math_tensorproduct(math_vectorproduct(snU, sdU), math_vectorproduct(snU, sdU))
-       sns(1:3,1:3,2,5,i) = math_tensorproduct(math_vectorproduct(snU, -sdU), math_vectorproduct(snU, -sdU))
-       sns(1:3,1:3,1,6,i) = math_tensorproduct(sdU, sdU)
-       sns(1:3,1:3,2,6,i) = math_tensorproduct(-sdU, -sdU)
+       sns(1:3,1:3,1,1,i) = math_tensorproduct33(sdU, np)
+       sns(1:3,1:3,2,1,i) = math_tensorproduct33(-sdU, nn)
+       sns(1:3,1:3,1,2,i) = math_tensorproduct33(math_crossproduct(snU, sdU), snU)
+       sns(1:3,1:3,2,2,i) = math_tensorproduct33(math_crossproduct(snU, -sdU), snU)
+       sns(1:3,1:3,1,3,i) = math_tensorproduct33(math_crossproduct(np, sdU), np)
+       sns(1:3,1:3,2,3,i) = math_tensorproduct33(math_crossproduct(nn, -sdU), nn)
+       sns(1:3,1:3,1,4,i) = math_tensorproduct33(snU, snU)
+       sns(1:3,1:3,2,4,i) = math_tensorproduct33(snU, snU)
+       sns(1:3,1:3,1,5,i) = math_tensorproduct33(math_crossproduct(snU, sdU), math_crossproduct(snU, sdU))
+       sns(1:3,1:3,2,5,i) = math_tensorproduct33(math_crossproduct(snU, -sdU), math_crossproduct(snU, -sdU))
+       sns(1:3,1:3,1,6,i) = math_tensorproduct33(sdU, sdU)
+       sns(1:3,1:3,2,6,i) = math_tensorproduct33(-sdU, -sdU)
      enddo
      do i = 1_pInt,myNtwin                                                                          ! assign twin system vectors and shears
        td(1:3,i) = lattice_bcc_systemTwin(1:3,i)
@@ -1807,9 +1806,9 @@ subroutine lattice_initializeStructure(myPhase,CoverA,CoverA_trans,a_fcc,a_bcc)
        ts(i)     = lattice_bcc_shearTwin(i)
      enddo
      do i = 1_pInt, myNcleavage                                                                      ! assign cleavage system vectors
-       cd(1:3,i) = lattice_bcc_systemCleavage(1:3,i)/math_norm3(lattice_bcc_systemCleavage(1:3,i))
-       cn(1:3,i) = lattice_bcc_systemCleavage(4:6,i)/math_norm3(lattice_bcc_systemCleavage(4:6,i))
-       ct(1:3,i) = math_vectorproduct(cd(1:3,i),cn(1:3,i))
+       cd(1:3,i) = lattice_bcc_systemCleavage(1:3,i)/norm2(lattice_bcc_systemCleavage(1:3,i))
+       cn(1:3,i) = lattice_bcc_systemCleavage(4:6,i)/norm2(lattice_bcc_systemCleavage(4:6,i))
+       ct(1:3,i) = math_crossproduct(cd(1:3,i),cn(1:3,i))
      enddo  
      lattice_NslipSystem(1:lattice_maxNslipFamily,myPhase)          = lattice_bcc_NslipSystem
      lattice_NtwinSystem(1:lattice_maxNtwinFamily,myPhase)          = lattice_bcc_NtwinSystem
@@ -1857,16 +1856,16 @@ subroutine lattice_initializeStructure(myPhase,CoverA,CoverA_trans,a_fcc,a_bcc)
        end select
      enddo
      do i = 1_pInt, myNcleavage                                                                     ! cleavage system vectors                                                         
-       cd(1,i) =  lattice_hex_systemCleavage(1,i)*1.5_pReal                                             ! direction [uvtw]->[3u/2 (u+2v)*sqrt(3)/2 w*(c/a)]
+       cd(1,i) =  lattice_hex_systemCleavage(1,i)*1.5_pReal                                         ! direction [uvtw]->[3u/2 (u+2v)*sqrt(3)/2 w*(c/a)]
        cd(2,i) = (lattice_hex_systemCleavage(1,i)+2.0_pReal*lattice_hex_systemCleavage(2,i))*&
                                                                       0.5_pReal*sqrt(3.0_pReal)
        cd(3,i) =  lattice_hex_systemCleavage(4,i)*CoverA
-       cd(1:3,1) = cd(1:3,i)/math_norm3(cd(1:3,i))
-       cn(1,i) =  lattice_hex_systemCleavage(5,i)                                                       ! plane (hkil)->(h (h+2k)/sqrt(3) l/(c/a))
+       cd(1:3,1) = cd(1:3,i)/norm2(cd(1:3,i))
+       cn(1,i) =  lattice_hex_systemCleavage(5,i)                                                   ! plane (hkil)->(h (h+2k)/sqrt(3) l/(c/a))
        cn(2,i) = (lattice_hex_systemCleavage(5,i)+2.0_pReal*lattice_hex_systemCleavage(6,i))/sqrt(3.0_pReal)
        cn(3,i) =  lattice_hex_systemCleavage(8,i)/CoverA
-       cn(1:3,1) = cn(1:3,i)/math_norm3(cn(1:3,i))
-       ct(1:3,i) = math_vectorproduct(cd(1:3,i),cn(1:3,i))
+       cn(1:3,1) = cn(1:3,i)/norm2(cn(1:3,i))
+       ct(1:3,i) = math_crossproduct(cd(1:3,i),cn(1:3,i))
      enddo  
      lattice_NslipSystem(1:lattice_maxNslipFamily,myPhase)          = lattice_hex_NslipSystem
      lattice_NtwinSystem(1:lattice_maxNtwinFamily,myPhase)          = lattice_hex_NtwinSystem
@@ -1889,8 +1888,8 @@ subroutine lattice_initializeStructure(myPhase,CoverA,CoverA_trans,a_fcc,a_bcc)
        sd(3,i) = lattice_bct_systemSlip(3,i)*CoverA
        sn(1:2,i) = lattice_bct_systemSlip(4:5,i)
        sn(3,i) =  lattice_bct_systemSlip(6,i)/CoverA
-       sdU = sd(1:3,i) / math_norm3(sd(1:3,i))
-       snU = sn(1:3,i) / math_norm3(sn(1:3,i))
+       sdU = sd(1:3,i) / norm2(sd(1:3,i))
+       snU = sn(1:3,i) / norm2(sn(1:3,i))
      enddo
      lattice_NslipSystem(1:lattice_maxNslipFamily,myPhase)          = lattice_bct_NslipSystem
      lattice_NtwinSystem(1:lattice_maxNtwinFamily,myPhase)          = lattice_bct_NtwinSystem
@@ -1907,9 +1906,9 @@ subroutine lattice_initializeStructure(myPhase,CoverA,CoverA_trans,a_fcc,a_bcc)
      myNtrans      = 0_pInt
      myNcleavage   = lattice_ortho_Ncleavage
      do i = 1_pInt, myNcleavage                                                                      ! assign cleavage system vectors
-       cd(1:3,i) = lattice_iso_systemCleavage(1:3,i)/math_norm3(LATTICE_ortho_systemCleavage(1:3,i))
-       cn(1:3,i) = lattice_iso_systemCleavage(4:6,i)/math_norm3(LATTICE_ortho_systemCleavage(4:6,i))
-       ct(1:3,i) = math_vectorproduct(cd(1:3,i),cn(1:3,i))
+       cd(1:3,i) = lattice_iso_systemCleavage(1:3,i)/norm2(LATTICE_ortho_systemCleavage(1:3,i))
+       cn(1:3,i) = lattice_iso_systemCleavage(4:6,i)/norm2(LATTICE_ortho_systemCleavage(4:6,i))
+       ct(1:3,i) = math_crossproduct(cd(1:3,i),cn(1:3,i))
      enddo  
      lattice_NcleavageSystem(1:lattice_maxNcleavageFamily,myPhase)  = lattice_iso_NcleavageSystem
 
@@ -1921,9 +1920,9 @@ subroutine lattice_initializeStructure(myPhase,CoverA,CoverA_trans,a_fcc,a_bcc)
      myNtrans      = 0_pInt
      myNcleavage   = lattice_iso_Ncleavage
      do i = 1_pInt, myNcleavage                                                                      ! assign cleavage system vectors
-       cd(1:3,i) = lattice_iso_systemCleavage(1:3,i)/math_norm3(lattice_iso_systemCleavage(1:3,i))
-       cn(1:3,i) = lattice_iso_systemCleavage(4:6,i)/math_norm3(lattice_iso_systemCleavage(4:6,i))
-       ct(1:3,i) = math_vectorproduct(cd(1:3,i),cn(1:3,i))
+       cd(1:3,i) = lattice_iso_systemCleavage(1:3,i)/norm2(lattice_iso_systemCleavage(1:3,i))
+       cn(1:3,i) = lattice_iso_systemCleavage(4:6,i)/norm2(lattice_iso_systemCleavage(4:6,i))
+       ct(1:3,i) = math_crossproduct(cd(1:3,i),cn(1:3,i))
      enddo  
      lattice_NcleavageSystem(1:lattice_maxNcleavageFamily,myPhase)  = lattice_iso_NcleavageSystem
 
@@ -1935,11 +1934,11 @@ subroutine lattice_initializeStructure(myPhase,CoverA,CoverA_trans,a_fcc,a_bcc)
 
 
  do i = 1_pInt,myNslip                                                                              ! store slip system vectors and Schmid matrix for my structure
-   lattice_sd(1:3,i,myPhase) = sd(1:3,i)/math_norm3(sd(1:3,i))                                      ! make unit vector
-   lattice_sn(1:3,i,myPhase) = sn(1:3,i)/math_norm3(sn(1:3,i))                                      ! make unit vector
-   lattice_st(1:3,i,myPhase) = math_vectorproduct(lattice_sd(1:3,i,myPhase), &
+   lattice_sd(1:3,i,myPhase) = sd(1:3,i)/norm2(sd(1:3,i))                                           ! make unit vector
+   lattice_sn(1:3,i,myPhase) = sn(1:3,i)/norm2(sn(1:3,i))                                           ! make unit vector
+   lattice_st(1:3,i,myPhase) = math_crossproduct(lattice_sd(1:3,i,myPhase), &
                                                   lattice_sn(1:3,i,myPhase))
-   lattice_Sslip(1:3,1:3,1,i,myPhase) = math_tensorproduct(lattice_sd(1:3,i,myPhase), &
+   lattice_Sslip(1:3,1:3,1,i,myPhase) = math_tensorproduct33(lattice_sd(1:3,i,myPhase), &
                                                            lattice_sn(1:3,i,myPhase))               ! calculate Schmid matrix d \otimes n
    do j = 1_pInt,lattice_NnonSchmid(myPhase)
      lattice_Sslip(1:3,1:3,2*j  ,i,myPhase) = sns(1:3,1:3,1,j,i)
@@ -1953,11 +1952,11 @@ subroutine lattice_initializeStructure(myPhase,CoverA,CoverA_trans,a_fcc,a_bcc)
      call IO_error(0_pInt,myPhase,i,0_pInt,ext_msg = 'dilatational slip Schmid matrix')
  enddo
  do i = 1_pInt,myNtwin                                                                              ! store twin system vectors and Schmid plus rotation matrix for my structure
-   lattice_td(1:3,i,myPhase) = td(1:3,i)/math_norm3(td(1:3,i))                                      ! make unit vector
-   lattice_tn(1:3,i,myPhase) = tn(1:3,i)/math_norm3(tn(1:3,i))                                      ! make unit vector
-   lattice_tt(1:3,i,myPhase) = math_vectorproduct(lattice_td(1:3,i,myPhase), &
+   lattice_td(1:3,i,myPhase) = td(1:3,i)/norm2(td(1:3,i))                                           ! make unit vector
+   lattice_tn(1:3,i,myPhase) = tn(1:3,i)/norm2(tn(1:3,i))                                           ! make unit vector
+   lattice_tt(1:3,i,myPhase) = math_crossproduct(lattice_td(1:3,i,myPhase), &
                                                   lattice_tn(1:3,i,myPhase))
-   lattice_Stwin(1:3,1:3,i,myPhase) = math_tensorproduct(lattice_td(1:3,i,myPhase), &
+   lattice_Stwin(1:3,1:3,i,myPhase) = math_tensorproduct33(lattice_td(1:3,i,myPhase), &
                                                          lattice_tn(1:3,i,myPhase))
    lattice_Stwin_v(1:6,i,myPhase)   = math_Mandel33to6(math_symmetric33(lattice_Stwin(1:3,1:3,i,myPhase)))
    lattice_Qtwin(1:3,1:3,i,myPhase) = math_axisAngleToR(tn(1:3,i),180.0_pReal*INRAD)
@@ -1971,10 +1970,10 @@ subroutine lattice_initializeStructure(myPhase,CoverA,CoverA_trans,a_fcc,a_bcc)
    lattice_Strans_v(1:6,i,myPhase)   = math_Mandel33to6(math_symmetric33(lattice_Strans(1:3,1:3,i,myPhase)))
    lattice_shearTrans(i,myPhase)     = trs(i)
  enddo
- do i = 1_pInt,myNcleavage                                                                              ! store slip system vectors and Schmid matrix for my structure
-   lattice_Scleavage(1:3,1:3,1,i,myPhase) = math_tensorproduct(cd(1:3,i),cn(1:3,i))
-   lattice_Scleavage(1:3,1:3,2,i,myPhase) = math_tensorproduct(ct(1:3,i),cn(1:3,i))
-   lattice_Scleavage(1:3,1:3,3,i,myPhase) = math_tensorproduct(cn(1:3,i),cn(1:3,i))
+ do i = 1_pInt,myNcleavage                                                                         ! store slip system vectors and Schmid matrix for my structure
+   lattice_Scleavage(1:3,1:3,1,i,myPhase) = math_tensorproduct33(cd(1:3,i),cn(1:3,i))
+   lattice_Scleavage(1:3,1:3,2,i,myPhase) = math_tensorproduct33(ct(1:3,i),cn(1:3,i))
+   lattice_Scleavage(1:3,1:3,3,i,myPhase) = math_tensorproduct33(cn(1:3,i),cn(1:3,i))
    do j = 1_pInt,3_pInt
      lattice_Scleavage_v(1:6,j,i,myPhase) = &
        math_Mandel33to6(math_symmetric33(lattice_Scleavage(1:3,1:3,j,i,myPhase)))
@@ -2134,9 +2133,9 @@ pure function lattice_qDisorientation(Q1, Q2, struct)
  implicit none
  real(pReal), dimension(4) ::                  lattice_qDisorientation
  real(pReal), dimension(4), intent(in) :: &
-   Q1, &                                                                                          ! 1st orientation
-                                               Q2                                                 ! 2nd orientation
- integer(kind(LATTICE_undefined_ID)), optional, intent(in) :: &                                   ! if given, symmetries between the two orientation will be considered
+   Q1, &                                                                                            ! 1st orientation
+                                               Q2                                                   ! 2nd orientation
+ integer(kind(LATTICE_undefined_ID)), optional, intent(in) :: &                                     ! if given, symmetries between the two orientation will be considered
    struct
 
  real(pReal), dimension(4) ::                  dQ,dQsymA,mis
@@ -2178,8 +2177,8 @@ pure function lattice_qDisorientation(Q1, Q2, struct)
             mis = math_qMul(dQsymA,lattice_symOperations(1:4,s+k))                                  ! apply sym
             if (mis(1) < 0.0_pReal) &                                                               ! want positive angle
               mis = -mis
-           if (mis(1)-lattice_qDisorientation(1) > -tol_math_check &
-             .and. lattice_qInSST(mis,LATTICE_undefined_ID)) lattice_qDisorientation = mis                      ! found better one
+            if (mis(1)-lattice_qDisorientation(1) > -tol_math_check &
+             .and. lattice_qInSST(mis,LATTICE_undefined_ID)) lattice_qDisorientation = mis          ! found better one
       enddo; enddo; enddo
    case (0_pInt)
      if (lattice_qDisorientation(1) < 0.0_pReal) lattice_qDisorientation = -lattice_qDisorientation ! keep omega within 0 to 180 deg

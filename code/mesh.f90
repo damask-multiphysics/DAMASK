@@ -3122,8 +3122,7 @@ use IO, only: &
 !--------------------------------------------------------------------------------------------------
 subroutine mesh_build_ipAreas
  use math, only: &
-   math_norm3, &
-   math_vectorproduct
+   math_crossproduct
                  
  implicit none
  integer(pInt) :: e,t,g,c,i,f,n,m
@@ -3148,8 +3147,8 @@ subroutine mesh_build_ipAreas
              normal(1) =   nodePos(2,2) - nodePos(2,1)                                              ! x_normal =  y_connectingVector
              normal(2) = -(nodePos(1,2) - nodePos(1,1))                                             ! y_normal = -x_connectingVector
              normal(3) = 0.0_pReal
-             mesh_ipArea(f,i,e) = math_norm3(normal)
-             mesh_ipAreaNormal(1:3,f,i,e) = normal / math_norm3(normal)                             ! ensure unit length of area normal
+             mesh_ipArea(f,i,e) = norm2(normal)
+             mesh_ipAreaNormal(1:3,f,i,e) = normal / norm2(normal)                             ! ensure unit length of area normal
            enddo
          enddo
 
@@ -3158,10 +3157,10 @@ subroutine mesh_build_ipAreas
            do f = 1_pInt,FE_NipNeighbors(c)                                                         ! loop over cell faces
              forall(n = 1_pInt:FE_NcellnodesPerCellface(c)) &
                nodePos(1:3,n) = mesh_cellnode(1:3,mesh_cell(FE_cellface(n,f,c),i,e))
-             normal = math_vectorproduct(nodePos(1:3,2) - nodePos(1:3,1), &
+             normal = math_crossproduct(nodePos(1:3,2) - nodePos(1:3,1), &
                                          nodePos(1:3,3) - nodePos(1:3,1))
-             mesh_ipArea(f,i,e) = math_norm3(normal)
-             mesh_ipAreaNormal(1:3,f,i,e) = normal / math_norm3(normal)                             ! ensure unit length of area normal
+             mesh_ipArea(f,i,e) = norm2(normal)
+             mesh_ipAreaNormal(1:3,f,i,e) = normal / norm2(normal)                             ! ensure unit length of area normal
            enddo
          enddo
 
@@ -3177,11 +3176,11 @@ subroutine mesh_build_ipAreas
                nodePos(1:3,n) = mesh_cellnode(1:3,mesh_cell(FE_cellface(n,f,c),i,e))
              forall(n = 1_pInt:FE_NcellnodesPerCellface(c)) &
                normals(1:3,n) = 0.5_pReal &
-                              * math_vectorproduct(nodePos(1:3,1+mod(n  ,m)) - nodePos(1:3,n), &
+                              * math_crossproduct(nodePos(1:3,1+mod(n  ,m)) - nodePos(1:3,n), &
                                                    nodePos(1:3,1+mod(n+1,m)) - nodePos(1:3,n))
              normal = 0.5_pReal * sum(normals,2)
-             mesh_ipArea(f,i,e) = math_norm3(normal)
-             mesh_ipAreaNormal(1:3,f,i,e) = normal / math_norm3(normal)
+             mesh_ipArea(f,i,e) = norm2(normal)
+             mesh_ipAreaNormal(1:3,f,i,e) = normal / norm2(normal)
            enddo
          enddo
 
