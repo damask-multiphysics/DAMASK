@@ -4,6 +4,7 @@
 !> @author Franz Roters, Max-Planck-Institut für Eisenforschung GmbH
 !> @author Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
 !> @author Christoph Kords, Max-Planck-Institut für Eisenforschung GmbH
+!> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
 !> @brief Mathematical library, including random number generation and tensor represenations
 !--------------------------------------------------------------------------------------------------
 module math
@@ -153,7 +154,7 @@ module math
    math_spectralDecompositionSym33, &
    math_pDecomposition, &
    math_invariants33, &
-   math_eigenvalues33, &
+   math_eigenvaluesSym33, &
    math_factorial, &
    math_binomial, &
    math_multinomial, &
@@ -734,7 +735,7 @@ pure function math_inv33(A)
    
    math_inv33 = math_inv33/DetA
  else
-   DetA = 0.0_pReal
+   math_inv33 = 0.0_pReal
  endif
 
 end function math_inv33
@@ -1915,19 +1916,19 @@ end function math_symmetricEulers
 subroutine math_spectralDecompositionSym33(M,values,vectors,error)
 
  implicit none
- real(pReal), dimension(3,3), intent(in) :: M
- real(pReal), dimension(3),   intent(out) :: values
- real(pReal), dimension(3,3), intent(out) :: vectors
+ real(pReal), dimension(:,:),                  intent(in)  :: m
+ real(pReal), dimension(size(m,1)),            intent(out) :: values
+ real(pReal), dimension(size(m,1),size(m,1)),  intent(out) :: vectors
  logical, intent(out) :: error
 
  integer(pInt) :: info
- real(pReal), dimension((64+2)*3) :: work                          ! block size of 64 taken from http://www.netlib.org/lapack/double/dsyev.f
+ real(pReal), dimension((64+2)*size(m,1)) :: work                                                    ! block size of 64 taken from http://www.netlib.org/lapack/double/dsyev.f
 
- vectors = M                                                       ! copy matrix to input (doubles as output) array
+ vectors = M                                                                                         ! copy matrix to input (doubles as output) array
 #if(FLOAT==8)
- call dsyev('V','U',3,vectors,3,values,work,(64+2)*3,info)
+ call dsyev('V','U',size(m,1),vectors,size(m,1),values,work,(64+2)*size(m,1),info)
 #elif(FLOAT==4)
- call ssyev('V','U',3,vectors,3,values,work,(64+2)*3,info)
+ call ssyev('V','U',size(m,1),vectors,size(m,1),values,work,(64+2)*size(m,1),info)
 #endif
  error = (info == 0_pInt)
 
@@ -1954,7 +1955,6 @@ subroutine math_pDecomposition(FE,U,R,error)
    + sqrt(EV(2)) * math_tensorproduct33(EB(1:3,2),EB(1:3,2)) &
    + sqrt(EV(3)) * math_tensorproduct33(EB(1:3,3),EB(1:3,3))
 
-
  Uinv = math_inv33(U)
  if (all(abs(Uinv) <= tiny(Uinv))) then                                                             ! math_inv33 returns zero when failed, avoid floating point equality comparison
    R = 0.0_pReal
@@ -1971,27 +1971,27 @@ end subroutine math_pDecomposition
 !> @brief Eigenvalues of symmetric 3X3 matrix m
 ! will return NaN  on error
 !--------------------------------------------------------------------------------------------------
-function math_eigenvalues33(m)
+function math_eigenvaluesSym33(m)
  use prec, only: &
    DAMASK_NaN
  
  implicit none
- real(pReal), dimension(3,3), intent(in) :: m
- real(pReal), dimension(3)               :: math_eigenvalues33
- real(pReal), dimension(3,3)             :: vectors
+ real(pReal), dimension(:,:),                  intent(in)  :: m
+ real(pReal), dimension(size(m,1))                         :: math_eigenvaluesSym33
+ real(pReal), dimension(size(m,1),size(m,1))               :: vectors
 
  integer(pInt) :: info
- real(pReal), dimension((64+2)*3) :: work                          ! block size of 64 taken from http://www.netlib.org/lapack/double/dsyev.f
+ real(pReal), dimension((64+2)*size(m,1)) :: work                                                    ! block size of 64 taken from http://www.netlib.org/lapack/double/dsyev.f
 
- vectors = m                                                       ! copy matrix to input (doubles as output) array
+ vectors = m                                                                                         ! copy matrix to input (doubles as output) array
 #if(FLOAT==8)
- call dsyev('N','U',3,vectors,3,math_eigenvalues33,work,(64+2)*3,info)
+ call dsyev('N','U',size(m,1),vectors,size(m,1),math_eigenvaluesSym33,work,(64+2)*size(m,1),info)
 #elif(FLOAT==4)
- call ssyev('N','U',3,vectors,3,math_eigenvalues33,work,(64+2)*3,info)
+ call ssyev('N','U',size(m,1),vectors,size(m,1),math_eigenvaluesSym33,work,(64+2)*size(m,1),info)
 #endif
- if (info /= 0_pInt) math_eigenvalues33 = DAMASK_NaN
+ if (info /= 0_pInt) math_eigenvaluesSym33 = DAMASK_NaN
 
-end function math_eigenvalues33
+end function math_eigenvaluesSym33
 
 
 !--------------------------------------------------------------------------------------------------
