@@ -152,7 +152,7 @@ module math
    math_sampleGaussVar, &
    math_symmetricEulers, &
    math_spectralDecompositionSym33, &
-   math_pDecomposition, &
+   math_rotationalPart33, &
    math_invariants33, &
    math_eigenvaluesSym33, &
    math_factorial, &
@@ -1936,20 +1936,22 @@ end subroutine math_spectralDecompositionSym33
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief FE = R.U
+!> @brief rotational part from polar decomposition of tensor m
 !--------------------------------------------------------------------------------------------------
-subroutine math_pDecomposition(FE,U,R,error)
+function math_rotationalPart33(m)
+ use IO, only: &
+   IO_warning
 
  implicit none
- real(pReal), intent(in), dimension(3,3) :: FE
- real(pReal), intent(out), dimension(3,3) :: R, U
- logical, intent(out) :: error
+ real(pReal), intent(in), dimension(3,3) :: m
+ real(pReal), dimension(3,3) :: math_rotationalPart33
+ real(pReal), dimension(3,3) :: U, mSquared , Uinv, EB
  real(pReal), dimension(3) :: EV
- real(pReal), dimension(3,3) :: ce, Uinv, EB
+ logical :: error
 
- ce = math_mul33x33(math_transpose33(FE),FE)
 
- call math_spectralDecompositionSym33(ce,EV,EB,error)
+ mSquared = math_mul33x33(math_transpose33(m),m)
+ call math_spectralDecompositionSym33(mSquared,EV,EB,error)
 
  U = sqrt(EV(1)) * math_tensorproduct33(EB(1:3,1),EB(1:3,1)) &
    + sqrt(EV(2)) * math_tensorproduct33(EB(1:3,2),EB(1:3,2)) &
@@ -1957,14 +1959,13 @@ subroutine math_pDecomposition(FE,U,R,error)
 
  Uinv = math_inv33(U)
  if (all(abs(Uinv) <= tiny(Uinv))) then                                                             ! math_inv33 returns zero when failed, avoid floating point equality comparison
-   R = 0.0_pReal
-   error = .True.
+   math_rotationalPart33 = math_I3
+   call IO_warning(650_pInt)
  else
-   R = math_mul33x33(FE,Uinv)
-   error = .False. .and. error
+   math_rotationalPart33 = math_mul33x33(m,Uinv)
  endif
 
-end subroutine math_pDecomposition
+end function math_rotationalPart33
 
 
 !--------------------------------------------------------------------------------------------------

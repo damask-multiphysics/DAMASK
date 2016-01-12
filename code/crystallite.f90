@@ -3975,14 +3975,12 @@ end function crystallite_integrateStress
 !--------------------------------------------------------------------------------------------------
 subroutine crystallite_orientations
  use math, only: &
-   math_pDecomposition, &
+   math_rotationalPart33, &
    math_RtoQ, &
    math_qConj
  use FEsolving, only: &
    FEsolving_execElem, &
    FEsolving_execIP
- use IO, only: &
-   IO_warning
  use material, only: &
    material_phase, &
    homogenization_Ngrains, &
@@ -4010,36 +4008,23 @@ subroutine crystallite_orientations
    neighboring_i, &              ! integration point index of my neighbor
    myPhase, &                    ! phase
    neighboringPhase
- real(pReal), dimension(3,3) :: &
-   U, &
-   R
  real(pReal), dimension(4) :: &
    orientation
- logical &
-   error
 
  ! --- CALCULATE ORIENTATION AND LATTICE ROTATION ---
 
- !$OMP PARALLEL DO PRIVATE(error,U,R,orientation)
+ !$OMP PARALLEL DO PRIVATE(orientation)
    do e = FEsolving_execElem(1),FEsolving_execElem(2)
      do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
        do g = 1_pInt,homogenization_Ngrains(mesh_element(3,e))
 ! somehow this subroutine is not threadsafe, so need critical statement here; not clear, what exactly the problem is
          !$OMP CRITICAL (polarDecomp)
-         call math_pDecomposition(crystallite_Fe(1:3,1:3,g,i,e), U, R, error)                       ! polar decomposition of Fe
+         orientation = math_RtoQ(transpose(math_rotationalPart33(crystallite_Fe(1:3,1:3,g,i,e))))          ! rotational part from polar decomposition as quaternion
          !$OMP END CRITICAL (polarDecomp)
-         if (error) then
-           call IO_warning(650_pInt, e, i, g)
-           orientation = [1.0_pReal, 0.0_pReal, 0.0_pReal, 0.0_pReal]                               ! fake orientation
-         else
-           orientation = math_RtoQ(transpose(R))
-         endif
          crystallite_rotation(1:4,g,i,e) = lattice_qDisorientation(crystallite_orientation0(1:4,g,i,e), &  ! active rotation from ori0
                                                                 orientation)                               ! to current orientation (with no symmetry)
          crystallite_orientation(1:4,g,i,e) = orientation
-       enddo
-     enddo
-   enddo
+  enddo; enddo; enddo
  !$OMP END PARALLEL DO
 
 
@@ -4063,7 +4048,7 @@ subroutine crystallite_orientations
                  crystallite_disorientation(:,n,1,i,e) = &
                    lattice_qDisorientation( crystallite_orientation(1:4,1,i,e), &
                                             crystallite_orientation(1:4,1,neighboring_i,neighboring_e), &
-                                            lattice_structure(myPhase))                              ! calculate disorientation for given symmetry
+                                            lattice_structure(myPhase))                                    ! calculate disorientation for given symmetry
                else                                                                                        ! for neighbor with different phase
                  crystallite_disorientation(:,n,1,i,e) = [0.0_pReal, 1.0_pReal, 0.0_pReal, 0.0_pReal]      ! 180 degree rotation about 100 axis
                endif
@@ -4081,8 +4066,7 @@ subroutine crystallite_orientations
          call plastic_nonlocal_updateCompatibility(crystallite_orientation,i,e)
 
        endif
-     enddo
-   enddo
+   enddo; enddo
  !$OMP END PARALLEL DO
 
 end subroutine crystallite_orientations
