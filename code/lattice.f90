@@ -2161,7 +2161,7 @@ pure function lattice_qDisorientation(Q1, Q2, struct)
 
 
 !--------------------------------------------------------------------------------------------------
-! calculate misorientation, for cubic(1) and hexagonal(2) structure find symmetries
+! calculate misorientation, for cubic and hexagonal structure find symmetries
  dQ = math_qMul(math_qConj(Q1),Q2)
  lattice_qDisorientation = dQ
 
