@@ -579,7 +579,7 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
    plasticState, &
    sourceState, &
    phase_Nsources, &
-   mappingConstitutive, &
+   phaseAt, phasememberAt, &
    homogenization_maxNgrains
  use constitutive, only:  &
    constitutive_TandItsTangent, &
@@ -675,11 +675,11 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
      myNgrains = homogenization_Ngrains(mesh_element(3,e))
      do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e); do g = 1_pInt,myNgrains
        if (crystallite_requested(g,i,e)) then
-         plasticState    (mappingConstitutive(2,g,i,e))%subState0(      :,mappingConstitutive(1,g,i,e)) = &
-         plasticState    (mappingConstitutive(2,g,i,e))%partionedState0(:,mappingConstitutive(1,g,i,e))
-         do mySource = 1_pInt, phase_Nsources(mappingConstitutive(2,g,i,e))
-           sourceState(mappingConstitutive(2,g,i,e))%p(mySource)%subState0(      :,mappingConstitutive(1,g,i,e)) = &
-           sourceState(mappingConstitutive(2,g,i,e))%p(mySource)%partionedState0(:,mappingConstitutive(1,g,i,e))
+         plasticState    (phaseAt(g,i,e))%subState0(      :,phasememberAt(g,i,e)) = &
+         plasticState    (phaseAt(g,i,e))%partionedState0(:,phasememberAt(g,i,e))
+         do mySource = 1_pInt, phase_Nsources(phaseAt(g,i,e))
+           sourceState(phaseAt(g,i,e))%p(mySource)%subState0(      :,phasememberAt(g,i,e)) = &
+           sourceState(phaseAt(g,i,e))%p(mySource)%partionedState0(:,phasememberAt(g,i,e))
          enddo
          crystallite_subFp0(1:3,1:3,g,i,e) = crystallite_partionedFp0(1:3,1:3,g,i,e)                  ! ...plastic def grad
          crystallite_subLp0(1:3,1:3,g,i,e) = crystallite_partionedLp0(1:3,1:3,g,i,e)                  ! ...plastic velocity grad
@@ -967,11 +967,11 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
                                                                                crystallite_invFp(1:3,1:3,g,i,e)), &
                                                                  crystallite_invFi(1:3,1:3,g,i,e))  ! only needed later on for stiffness calculation
                !if abbrevation, make c and p private in omp
-               plasticState    (mappingConstitutive(2,g,i,e))%subState0(:,mappingConstitutive(1,g,i,e)) = &
-               plasticState    (mappingConstitutive(2,g,i,e))%state(    :,mappingConstitutive(1,g,i,e))
-               do mySource = 1_pInt, phase_Nsources(mappingConstitutive(2,g,i,e))
-                 sourceState(mappingConstitutive(2,g,i,e))%p(mySource)%subState0(:,mappingConstitutive(1,g,i,e)) = &
-                 sourceState(mappingConstitutive(2,g,i,e))%p(mySource)%state(    :,mappingConstitutive(1,g,i,e))
+               plasticState    (phaseAt(g,i,e))%subState0(:,phasememberAt(g,i,e)) = &
+               plasticState    (phaseAt(g,i,e))%state(    :,phasememberAt(g,i,e))
+               do mySource = 1_pInt, phase_Nsources(phaseAt(g,i,e))
+                 sourceState(phaseAt(g,i,e))%p(mySource)%subState0(:,phasememberAt(g,i,e)) = &
+                 sourceState(phaseAt(g,i,e))%p(mySource)%state(    :,phasememberAt(g,i,e))
                enddo
                crystallite_subTstar0_v(1:6,g,i,e) = crystallite_Tstar_v(1:6,g,i,e)                   ! ...2nd PK stress
                if (crystallite_syncSubFrac(i,e)) then                                                ! if we just did a synchronization of states, then we wind forward without any further time integration
@@ -1021,11 +1021,11 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
              !$OMP FLUSH(crystallite_invFi)
              crystallite_Lp(1:3,1:3,g,i,e)    = crystallite_subLp0(1:3,1:3,g,i,e)                    ! ...plastic velocity grad
              crystallite_Li(1:3,1:3,g,i,e)    = crystallite_subLi0(1:3,1:3,g,i,e)                    ! ...intermediate velocity grad
-             plasticState    (mappingConstitutive(2,g,i,e))%state(    :,mappingConstitutive(1,g,i,e)) = &
-             plasticState    (mappingConstitutive(2,g,i,e))%subState0(:,mappingConstitutive(1,g,i,e))
-             do mySource = 1_pInt, phase_Nsources(mappingConstitutive(2,g,i,e))
-               sourceState(mappingConstitutive(2,g,i,e))%p(mySource)%state(    :,mappingConstitutive(1,g,i,e)) = &
-               sourceState(mappingConstitutive(2,g,i,e))%p(mySource)%subState0(:,mappingConstitutive(1,g,i,e))
+             plasticState    (phaseAt(g,i,e))%state(    :,phasememberAt(g,i,e)) = &
+             plasticState    (phaseAt(g,i,e))%subState0(:,phasememberAt(g,i,e))
+             do mySource = 1_pInt, phase_Nsources(phaseAt(g,i,e))
+               sourceState(phaseAt(g,i,e))%p(mySource)%state(    :,phasememberAt(g,i,e)) = &
+               sourceState(phaseAt(g,i,e))%p(mySource)%subState0(:,phasememberAt(g,i,e))
              enddo
              crystallite_Tstar_v(1:6,g,i,e)   = crystallite_subTstar0_v(1:6,g,i,e)                   ! ...2nd PK stress
 
@@ -1302,18 +1302,18 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
          myNgrains = homogenization_Ngrains(mesh_element(3,e))
          do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e); do g = 1,myNgrains
 
-           plasticState    (mappingConstitutive(2,g,i,e))%state_backup(:,mappingConstitutive(1,g,i,e)) = &
-           plasticState    (mappingConstitutive(2,g,i,e))%state(       :,mappingConstitutive(1,g,i,e))
-           do mySource = 1_pInt, phase_Nsources(mappingConstitutive(2,g,i,e))
-             sourceState(mappingConstitutive(2,g,i,e))%p(mySource)%state_backup(:,mappingConstitutive(1,g,i,e)) = &
-             sourceState(mappingConstitutive(2,g,i,e))%p(mySource)%state(       :,mappingConstitutive(1,g,i,e))
+           plasticState    (phaseAt(g,i,e))%state_backup(:,phasememberAt(g,i,e)) = &
+           plasticState    (phaseAt(g,i,e))%state(       :,phasememberAt(g,i,e))
+           do mySource = 1_pInt, phase_Nsources(phaseAt(g,i,e))
+             sourceState(phaseAt(g,i,e))%p(mySource)%state_backup(:,phasememberAt(g,i,e)) = &
+             sourceState(phaseAt(g,i,e))%p(mySource)%state(       :,phasememberAt(g,i,e))
            enddo
 
-           plasticState    (mappingConstitutive(2,g,i,e))%dotState_backup(:,mappingConstitutive(1,g,i,e)) = &
-           plasticState    (mappingConstitutive(2,g,i,e))%dotState(       :,mappingConstitutive(1,g,i,e))
-           do mySource = 1_pInt, phase_Nsources(mappingConstitutive(2,g,i,e))
-             sourceState(mappingConstitutive(2,g,i,e))%p(mySource)%dotState_backup(:,mappingConstitutive(1,g,i,e)) = &
-             sourceState(mappingConstitutive(2,g,i,e))%p(mySource)%dotState(       :,mappingConstitutive(1,g,i,e))
+           plasticState    (phaseAt(g,i,e))%dotState_backup(:,phasememberAt(g,i,e)) = &
+           plasticState    (phaseAt(g,i,e))%dotState(       :,phasememberAt(g,i,e))
+           do mySource = 1_pInt, phase_Nsources(phaseAt(g,i,e))
+             sourceState(phaseAt(g,i,e))%p(mySource)%dotState_backup(:,phasememberAt(g,i,e)) = &
+             sourceState(phaseAt(g,i,e))%p(mySource)%dotState(       :,phasememberAt(g,i,e))
            enddo
 
            F_backup(1:3,1:3,g,i,e)       = crystallite_subF(1:3,1:3,g,i,e)                            ! ... and kinematics
@@ -1351,18 +1351,18 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
                  myNgrains = homogenization_Ngrains(mesh_element(3,e))
                  do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e); do g = 1,myNgrains
 
-                   plasticState    (mappingConstitutive(2,g,i,e))%state(       :,mappingConstitutive(1,g,i,e)) = &
-                   plasticState    (mappingConstitutive(2,g,i,e))%state_backup(:,mappingConstitutive(1,g,i,e))
-                   do mySource = 1_pInt, phase_Nsources(mappingConstitutive(2,g,i,e))
-                     sourceState(mappingConstitutive(2,g,i,e))%p(mySource)%state(       :,mappingConstitutive(1,g,i,e)) = &
-                     sourceState(mappingConstitutive(2,g,i,e))%p(mySource)%state_backup(:,mappingConstitutive(1,g,i,e))
+                   plasticState    (phaseAt(g,i,e))%state(       :,phasememberAt(g,i,e)) = &
+                   plasticState    (phaseAt(g,i,e))%state_backup(:,phasememberAt(g,i,e))
+                   do mySource = 1_pInt, phase_Nsources(phaseAt(g,i,e))
+                     sourceState(phaseAt(g,i,e))%p(mySource)%state(       :,phasememberAt(g,i,e)) = &
+                     sourceState(phaseAt(g,i,e))%p(mySource)%state_backup(:,phasememberAt(g,i,e))
                    enddo
 
-                   plasticState    (mappingConstitutive(2,g,i,e))%dotState(       :,mappingConstitutive(1,g,i,e)) = &
-                   plasticState    (mappingConstitutive(2,g,i,e))%dotState_backup(:,mappingConstitutive(1,g,i,e))
-                   do mySource = 1_pInt, phase_Nsources(mappingConstitutive(2,g,i,e))
-                     sourceState(mappingConstitutive(2,g,i,e))%p(mySource)%dotState(       :,mappingConstitutive(1,g,i,e)) = &
-                     sourceState(mappingConstitutive(2,g,i,e))%p(mySource)%dotState_backup(:,mappingConstitutive(1,g,i,e))
+                   plasticState    (phaseAt(g,i,e))%dotState(       :,phasememberAt(g,i,e)) = &
+                   plasticState    (phaseAt(g,i,e))%dotState_backup(:,phasememberAt(g,i,e))
+                   do mySource = 1_pInt, phase_Nsources(phaseAt(g,i,e))
+                     sourceState(phaseAt(g,i,e))%p(mySource)%dotState(       :,phasememberAt(g,i,e)) = &
+                     sourceState(phaseAt(g,i,e))%p(mySource)%dotState_backup(:,phasememberAt(g,i,e))
                    enddo
 
                    crystallite_Fp(1:3,1:3,g,i,e)    = Fp_backup(1:3,1:3,g,i,e)
@@ -1382,18 +1382,18 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
                  myNgrains = homogenization_Ngrains(mesh_element(3,e))
                  do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e); do g = 1,myNgrains
 
-                   plasticState    (mappingConstitutive(2,g,i,e))%state(    :,mappingConstitutive(1,g,i,e)) = &
-                   plasticState    (mappingConstitutive(2,g,i,e))%subState0(:,mappingConstitutive(1,g,i,e))
-                   do mySource = 1_pInt, phase_Nsources(mappingConstitutive(2,g,i,e))
-                     sourceState(mappingConstitutive(2,g,i,e))%p(mySource)%state(    :,mappingConstitutive(1,g,i,e)) = &
-                     sourceState(mappingConstitutive(2,g,i,e))%p(mySource)%subState0(:,mappingConstitutive(1,g,i,e))
+                   plasticState    (phaseAt(g,i,e))%state(    :,phasememberAt(g,i,e)) = &
+                   plasticState    (phaseAt(g,i,e))%subState0(:,phasememberAt(g,i,e))
+                   do mySource = 1_pInt, phase_Nsources(phaseAt(g,i,e))
+                     sourceState(phaseAt(g,i,e))%p(mySource)%state(    :,phasememberAt(g,i,e)) = &
+                     sourceState(phaseAt(g,i,e))%p(mySource)%subState0(:,phasememberAt(g,i,e))
                    enddo
 
-                   plasticState    (mappingConstitutive(2,g,i,e))%dotState(       :,mappingConstitutive(1,g,i,e)) = &
-                   plasticState    (mappingConstitutive(2,g,i,e))%dotState_backup(:,mappingConstitutive(1,g,i,e))
-                   do mySource = 1_pInt, phase_Nsources(mappingConstitutive(2,g,i,e))
-                     sourceState(mappingConstitutive(2,g,i,e))%p(mySource)%dotState(       :,mappingConstitutive(1,g,i,e)) = &
-                     sourceState(mappingConstitutive(2,g,i,e))%p(mySource)%dotState_backup(:,mappingConstitutive(1,g,i,e))
+                   plasticState    (phaseAt(g,i,e))%dotState(       :,phasememberAt(g,i,e)) = &
+                   plasticState    (phaseAt(g,i,e))%dotState_backup(:,phasememberAt(g,i,e))
+                   do mySource = 1_pInt, phase_Nsources(phaseAt(g,i,e))
+                     sourceState(phaseAt(g,i,e))%p(mySource)%dotState(       :,phasememberAt(g,i,e)) = &
+                     sourceState(phaseAt(g,i,e))%p(mySource)%dotState_backup(:,phasememberAt(g,i,e))
                    enddo
 
                    crystallite_Fp(1:3,1:3,g,i,e)    = crystallite_subFp0(1:3,1:3,g,i,e)
@@ -1484,18 +1484,18 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
        myNgrains = homogenization_Ngrains(mesh_element(3,e))
        do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e); do g = 1,myNgrains
 
-         plasticState    (mappingConstitutive(2,g,i,e))%state(       :,mappingConstitutive(1,g,i,e)) = &
-         plasticState    (mappingConstitutive(2,g,i,e))%state_backup(:,mappingConstitutive(1,g,i,e))
-         do mySource = 1_pInt, phase_Nsources(mappingConstitutive(2,g,i,e))
-           sourceState(mappingConstitutive(2,g,i,e))%p(mySource)%state(       :,mappingConstitutive(1,g,i,e)) = &
-           sourceState(mappingConstitutive(2,g,i,e))%p(mySource)%state_backup(:,mappingConstitutive(1,g,i,e))
+         plasticState    (phaseAt(g,i,e))%state(       :,phasememberAt(g,i,e)) = &
+         plasticState    (phaseAt(g,i,e))%state_backup(:,phasememberAt(g,i,e))
+         do mySource = 1_pInt, phase_Nsources(phaseAt(g,i,e))
+           sourceState(phaseAt(g,i,e))%p(mySource)%state(       :,phasememberAt(g,i,e)) = &
+           sourceState(phaseAt(g,i,e))%p(mySource)%state_backup(:,phasememberAt(g,i,e))
          enddo
 
-         plasticState    (mappingConstitutive(2,g,i,e))%dotState(       :,mappingConstitutive(1,g,i,e)) = &
-         plasticState    (mappingConstitutive(2,g,i,e))%dotState_backup(:,mappingConstitutive(1,g,i,e))
-         do mySource = 1_pInt, phase_Nsources(mappingConstitutive(2,g,i,e))
-           sourceState(mappingConstitutive(2,g,i,e))%p(mySource)%dotState(       :,mappingConstitutive(1,g,i,e)) = &
-           sourceState(mappingConstitutive(2,g,i,e))%p(mySource)%dotState_backup(:,mappingConstitutive(1,g,i,e))
+         plasticState    (phaseAt(g,i,e))%dotState(       :,phasememberAt(g,i,e)) = &
+         plasticState    (phaseAt(g,i,e))%dotState_backup(:,phasememberAt(g,i,e))
+         do mySource = 1_pInt, phase_Nsources(phaseAt(g,i,e))
+           sourceState(phaseAt(g,i,e))%p(mySource)%dotState(       :,phasememberAt(g,i,e)) = &
+           sourceState(phaseAt(g,i,e))%p(mySource)%dotState_backup(:,phasememberAt(g,i,e))
          enddo
 
          crystallite_subF(1:3,1:3,g,i,e)  = F_backup(1:3,1:3,g,i,e)
@@ -1563,7 +1563,7 @@ subroutine crystallite_integrateStateRK4()
    sourceState, &
    phase_Nsources, &
    material_Nphase, &
-   mappingConstitutive
+   phaseAt, phasememberAt
  use constitutive, only: &
    constitutive_collectDotState, &
    constitutive_microstructure
@@ -1610,9 +1610,9 @@ subroutine crystallite_integrateStateRK4()
    e = eIter(1)
    i = iIter(1,e)
    do g = iIter(1,e), iIter(2,e)
-     plasticState    (mappingConstitutive(2,g,i,e))%RK4dotState(:,mappingConstitutive(1,g,i,e)) = 0.0_pReal
-     do mySource = 1_pInt, phase_Nsources(mappingConstitutive(2,g,i,e))
-       sourceState(mappingConstitutive(2,g,i,e))%p(mySource)%RK4dotState(:,mappingConstitutive(1,g,i,e)) = 0.0_pReal
+     plasticState    (phaseAt(g,i,e))%RK4dotState(:,phasememberAt(g,i,e)) = 0.0_pReal
+     do mySource = 1_pInt, phase_Nsources(phaseAt(g,i,e))
+       sourceState(phaseAt(g,i,e))%p(mySource)%RK4dotState(:,phasememberAt(g,i,e)) = 0.0_pReal
      enddo
    enddo
  endif
@@ -1634,8 +1634,8 @@ subroutine crystallite_integrateStateRK4()
    do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                 ! iterate over elements, ips and grains
      !$OMP FLUSH(crystallite_todo)
      if (crystallite_todo(g,i,e)) then
-       c = mappingConstitutive(1,g,i,e)
-       p = mappingConstitutive(2,g,i,e)
+       c = phasememberAt(g,i,e)
+       p = phaseAt(g,i,e)
        NaN = any(prec_isNaN(plasticState(p)%dotState(:,c)))
        do mySource = 1_pInt, phase_Nsources(p)
          NaN = NaN .or. any(prec_isNaN(sourceState(p)%p(mySource)%dotState(:,c)))
@@ -1663,8 +1663,8 @@ subroutine crystallite_integrateStateRK4()
    !$OMP DO PRIVATE(p,c)
      do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                  ! iterate over elements, ips and grains
        if (crystallite_todo(g,i,e)) then
-         p = mappingConstitutive(2,g,i,e)
-         c = mappingConstitutive(1,g,i,e)
+         p = phaseAt(g,i,e)
+         c = phasememberAt(g,i,e)
          plasticState(p)%RK4dotState(:,c) = plasticState(p)%RK4dotState(:,c) &
                                           + weight(n)*plasticState(p)%dotState(:,c)
          do mySource = 1_pInt, phase_Nsources(p)
@@ -1679,8 +1679,8 @@ subroutine crystallite_integrateStateRK4()
      do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                  ! iterate over elements, ips and grains
        if (crystallite_todo(g,i,e)) then
 
-         p = mappingConstitutive(2,g,i,e)
-         c = mappingConstitutive(1,g,i,e)
+         p = phaseAt(g,i,e)
+         c = phasememberAt(g,i,e)
          mySizePlasticDotState = plasticState(p)%sizeDotState
          plasticState(p)%state    (1:mySizePlasticDotState,c) = &
          plasticState(p)%subState0(1:mySizePlasticDotState,c) &
@@ -1779,8 +1779,8 @@ subroutine crystallite_integrateStateRK4()
          !$OMP FLUSH(crystallite_todo)
          if (crystallite_todo(g,i,e)) then
 
-           p = mappingConstitutive(2,g,i,e)
-           c = mappingConstitutive(1,g,i,e)
+           p = phaseAt(g,i,e)
+           c = phasememberAt(g,i,e)
            NaN = any(prec_isNaN(plasticState(p)%dotState(:,c)))
            do mySource = 1_pInt, phase_Nsources(p)
              NaN = NaN .or. any(prec_isNaN(sourceState(p)%p(mySource)%dotState(:,c)))
@@ -1861,7 +1861,7 @@ subroutine crystallite_integrateStateRKCK45()
    plasticState, &
    sourceState, &
    phase_Nsources, &
-   mappingConstitutive, &
+   phaseAt, phasememberAt, &
    homogenization_maxNgrains
  use constitutive, only: &
    constitutive_collectDotState, &
@@ -1952,8 +1952,8 @@ subroutine crystallite_integrateStateRKCK45()
    do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                    ! iterate over elements, ips and grains
      !$OMP FLUSH(crystallite_todo)
      if (crystallite_todo(g,i,e)) then
-       cc = mappingConstitutive(1,g,i,e)
-       p = mappingConstitutive(2,g,i,e)
+       cc = phasememberAt(g,i,e)
+       p = phaseAt(g,i,e)
        NaN = any(prec_isNaN(plasticState(p)%dotState(:,cc)))
        do mySource = 1_pInt, phase_Nsources(p)
          NaN = NaN .or. any(prec_isNaN(sourceState(p)%p(mySource)%dotState(:,cc)))
@@ -1983,8 +1983,8 @@ subroutine crystallite_integrateStateRKCK45()
    !$OMP DO PRIVATE(p,cc)
      do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                  ! iterate over elements, ips and grains
        if (crystallite_todo(g,i,e)) then
-         p = mappingConstitutive(2,g,i,e)
-         cc = mappingConstitutive(1,g,i,e)
+         p = phaseAt(g,i,e)
+         cc = phasememberAt(g,i,e)
          plasticState(p)%RKCK45dotState(stage,:,cc) = plasticState(p)%dotState(:,cc)                       ! store Runge-Kutta dotState
          do mySource = 1_pInt, phase_Nsources(p)
            sourceState(p)%p(mySource)%RKCK45dotState(stage,:,cc) = sourceState(p)%p(mySource)%dotState(:,cc)
@@ -1996,8 +1996,8 @@ subroutine crystallite_integrateStateRKCK45()
    !$OMP DO PRIVATE(p,cc,n)
      do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                  ! iterate over elements, ips and grains
        if (crystallite_todo(g,i,e)) then
-         p = mappingConstitutive(2,g,i,e)
-         cc = mappingConstitutive(1,g,i,e)
+         p = phaseAt(g,i,e)
+         cc = phasememberAt(g,i,e)
 
          plasticState(p)%dotState(:,cc) = A(1,stage) * plasticState(p)%RKCK45dotState(1,:,cc)
          do mySource = 1_pInt, phase_Nsources(p)
@@ -2018,8 +2018,8 @@ subroutine crystallite_integrateStateRKCK45()
    !$OMP DO PRIVATE(mySizePlasticDotState,mySizeSourceDotState,p,cc)
      do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                  ! iterate over elements, ips and grains
        if (crystallite_todo(g,i,e)) then
-         p = mappingConstitutive(2,g,i,e)
-         cc = mappingConstitutive(1,g,i,e)
+         p = phaseAt(g,i,e)
+         cc = phasememberAt(g,i,e)
          mySizePlasticDotState = plasticState(p)%sizeDotState
          plasticState    (p)%state    (1:mySizePlasticDotState,    cc) = &
          plasticState    (p)%subState0(1:mySizePlasticDotState,    cc) &
@@ -2107,8 +2107,8 @@ subroutine crystallite_integrateStateRKCK45()
        !$OMP FLUSH(crystallite_todo)
        if (crystallite_todo(g,i,e)) then
 
-         p = mappingConstitutive(2,g,i,e)
-         cc = mappingConstitutive(1,g,i,e)
+         p = phaseAt(g,i,e)
+         cc = phasememberAt(g,i,e)
          NaN = any(prec_isNaN(plasticState(p)%dotState(:,cc)))
          do mySource = 1_pInt, phase_Nsources(p)
            NaN = NaN .or. any(prec_isNaN(sourceState(p)%p(mySource)%dotState(:,cc)))
@@ -2139,8 +2139,8 @@ subroutine crystallite_integrateStateRKCK45()
  !$OMP DO PRIVATE(p,cc)
    do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                    ! iterate over elements, ips and grains
      if (crystallite_todo(g,i,e)) then
-       p = mappingConstitutive(2,g,i,e)
-       cc = mappingConstitutive(1,g,i,e)
+       p = phaseAt(g,i,e)
+       cc = phasememberAt(g,i,e)
        plasticState(p)%RKCK45dotState(6,:,cc) = plasticState (p)%dotState(:,cc)                            ! store Runge-Kutta dotState
        do mySource = 1_pInt, phase_Nsources(p)
          sourceState(p)%p(mySource)%RKCK45dotState(6,:,cc) = sourceState(p)%p(mySource)%dotState(:,cc)     ! store Runge-Kutta dotState
@@ -2152,8 +2152,8 @@ subroutine crystallite_integrateStateRKCK45()
  !$OMP DO PRIVATE(mySizePlasticDotState,mySizeSourceDotState,p,cc)
    do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                    ! iterate over elements, ips and grains
      if (crystallite_todo(g,i,e)) then
-       p = mappingConstitutive(2,g,i,e)
-       cc = mappingConstitutive(1,g,i,e)
+       p = phaseAt(g,i,e)
+       cc = phasememberAt(g,i,e)
 
        ! --- absolute residuum in state  ---
        mySizePlasticDotState = plasticState(p)%sizeDotState
@@ -2185,8 +2185,8 @@ subroutine crystallite_integrateStateRKCK45()
    do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                    ! iterate over elements, ips and grains
      if (crystallite_todo(g,i,e)) then
 
-         p = mappingConstitutive(2,g,i,e)
-         cc = mappingConstitutive(1,g,i,e)
+         p = phaseAt(g,i,e)
+         cc = phasememberAt(g,i,e)
          mySizePlasticDotState = plasticState(p)%sizeDotState
          plasticState(p)%state    (1:mySizePlasticDotState,cc) = &
          plasticState(p)%subState0(1:mySizePlasticDotState,cc) &
@@ -2208,8 +2208,8 @@ subroutine crystallite_integrateStateRKCK45()
  !$OMP DO PRIVATE(mySizePlasticDotState,mySizeSourceDotState,p,cc,s)
    do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                    ! iterate over elements, ips and grains
      if (crystallite_todo(g,i,e)) then
-       p  = mappingConstitutive(2,g,i,e)
-       cc = mappingConstitutive(1,g,i,e)
+       p  = phaseAt(g,i,e)
+       cc = phasememberAt(g,i,e)
        mySizePlasticDotState = plasticState(p)%sizeDotState
        forall (s = 1_pInt:mySizePlasticDotState,    abs(plasticState(p)%state(s,cc)) > 0.0_pReal) &
          relPlasticStateResiduum(s,g,i,e) = &
@@ -2366,7 +2366,7 @@ subroutine crystallite_integrateStateAdaptiveEuler()
    homogenization_Ngrains, &
    plasticState, &
    sourceState, &
-   mappingConstitutive, &
+   phaseAt, phasememberAt, &
    phase_Nsources, &
    homogenization_maxNgrains
  use constitutive, only: &
@@ -2440,8 +2440,8 @@ subroutine crystallite_integrateStateAdaptiveEuler()
      do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                    ! iterate over elements, ips and grains
        !$OMP FLUSH(crystallite_todo)
        if (crystallite_todo(g,i,e)) then
-         p = mappingConstitutive(2,g,i,e)
-         c = mappingConstitutive(1,g,i,e)
+         p = phaseAt(g,i,e)
+         c = phasememberAt(g,i,e)
          NaN = any(prec_isNaN(plasticState(p)%dotState(:,c)))
          do mySource = 1_pInt, phase_Nsources(p)
            NaN = NaN .or. any(prec_isNaN(sourceState(p)%p(mySource)%dotState(:,c)))
@@ -2465,8 +2465,8 @@ subroutine crystallite_integrateStateAdaptiveEuler()
    !$OMP DO PRIVATE(mySizePlasticDotState,mySizeSourceDotState,p,c)
      do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                    ! iterate over elements, ips and grains
        if (crystallite_todo(g,i,e)) then
-         p = mappingConstitutive(2,g,i,e)
-         c = mappingConstitutive(1,g,i,e)
+         p = phaseAt(g,i,e)
+         c = phasememberAt(g,i,e)
          mySizePlasticDotState = plasticState(p)%sizeDotState
          plasticStateResiduum(1:mySizePlasticDotState,g,i,e) = &
        - 0.5_pReal &
@@ -2562,8 +2562,8 @@ subroutine crystallite_integrateStateAdaptiveEuler()
      do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                  ! iterate over elements, ips and grains
        !$OMP FLUSH(crystallite_todo)
        if (crystallite_todo(g,i,e)) then
-         p = mappingConstitutive(2,g,i,e)
-         c = mappingConstitutive(1,g,i,e)
+         p = phaseAt(g,i,e)
+         c = phasememberAt(g,i,e)
          NaN = any(prec_isNaN(plasticState(p)%dotState(:,c)))
          do mySource = 1_pInt, phase_Nsources(p)
            NaN = NaN .or. any(prec_isNaN(sourceState(p)%p(mySource)%dotState(:,c)))
@@ -2592,8 +2592,8 @@ subroutine crystallite_integrateStateAdaptiveEuler()
    !$OMP DO PRIVATE(mySizePlasticDotState,mySizeSourceDotState,converged,p,c,s)
      do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                   ! iterate over elements, ips and grains
        if (crystallite_todo(g,i,e)) then
-         p = mappingConstitutive(2,g,i,e)
-         c = mappingConstitutive(1,g,i,e)
+         p = phaseAt(g,i,e)
+         c = phasememberAt(g,i,e)
          ! --- contribution of heun step to absolute residui ---
          mySizePlasticDotState = plasticState(p)%sizeDotState
          plasticStateResiduum(1:mySizePlasticDotState,g,i,e) = &
@@ -2725,7 +2725,7 @@ subroutine crystallite_integrateStateEuler()
  use material, only: &
    plasticState, &
    sourceState, &
-   mappingConstitutive, &
+   phaseAt, phasememberAt, &
    phase_Nsources, &
    homogenization_Ngrains
  use constitutive, only: &
@@ -2779,8 +2779,8 @@ eIter = FEsolving_execElem(1:2)
      do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                    ! iterate over elements, ips and grains
        !$OMP FLUSH(crystallite_todo)
        if (crystallite_todo(g,i,e) .and. .not. crystallite_converged(g,i,e)) then
-         c = mappingConstitutive(1,g,i,e)
-         p = mappingConstitutive(2,g,i,e)
+         c = phasememberAt(g,i,e)
+         p = phaseAt(g,i,e)
          NaN = any(prec_isNaN(plasticState(p)%dotState(:,c)))
          do mySource = 1_pInt, phase_Nsources(p)
            NaN = NaN .or. any(prec_isNaN(sourceState(p)%p(mySource)%dotState(:,c)))
@@ -2804,8 +2804,8 @@ eIter = FEsolving_execElem(1:2)
    !$OMP DO PRIVATE(mySizePlasticDotState,mySizeSourceDotState,p,c)
      do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                    ! iterate over elements, ips and grains
        if (crystallite_todo(g,i,e) .and. .not. crystallite_converged(g,i,e)) then
-         p = mappingConstitutive(2,g,i,e)
-         c = mappingConstitutive(1,g,i,e)
+         p = phaseAt(g,i,e)
+         c = phasememberAt(g,i,e)
          mySizePlasticDotState = plasticState(p)%sizeDotState
          plasticState(p)%state(   1:mySizePlasticDotState,c) = &
          plasticState(p)%state(   1:mySizePlasticDotState,c) &
@@ -2823,8 +2823,8 @@ eIter = FEsolving_execElem(1:2)
          if (iand(debug_level(debug_crystallite), debug_levelExtensive) /= 0_pInt &
              .and. ((e == debug_e .and. i == debug_i .and. g == debug_g) &
                      .or. .not. iand(debug_level(debug_crystallite), debug_levelSelective) /= 0_pInt)) then
-           p = mappingConstitutive(2,g,i,e)
-           c = mappingConstitutive(1,g,i,e)
+           p = phaseAt(g,i,e)
+           c = phasememberAt(g,i,e)
            write(6,'(a,i8,1x,i2,1x,i3,/)')       '<< CRYST >> update state at el ip g ',e,i,g
            write(6,'(a,/,(12x,12(e12.5,1x)),/)') '<< CRYST >> dotState',  plasticState(p)%dotState(1:mySizePlasticDotState,c)
            write(6,'(a,/,(12x,12(e12.5,1x)),/)') '<< CRYST >> new state', plasticState(p)%state   (1:mySizePlasticDotState,c)
@@ -2950,7 +2950,7 @@ subroutine crystallite_integrateStateFPI()
  use material, only: &
    plasticState, &
    sourceState, &
-   mappingConstitutive, &
+   phaseAt, phasememberAt, &
    phase_Nsources, &
    homogenization_Ngrains
  use constitutive, only: &
@@ -3016,8 +3016,8 @@ subroutine crystallite_integrateStateFPI()
    e = eIter(1)
    i = iIter(1,e)
    do g = gIter(1,e), gIter(2,e)
-     p = mappingConstitutive(2,g,i,e)
-     c = mappingConstitutive(1,g,i,e)
+     p = phaseAt(g,i,e)
+     c = phasememberAt(g,i,e)
      plasticState(p)%previousDotState (:,c) = 0.0_pReal
      plasticState(p)%previousDotState2(:,c) = 0.0_pReal
      do mySource = 1_pInt, phase_Nsources(p)
@@ -3046,8 +3046,8 @@ subroutine crystallite_integrateStateFPI()
    do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                    ! iterate over elements, ips and grains
      !$OMP FLUSH(crystallite_todo)
      if (crystallite_todo(g,i,e)) then
-       p = mappingConstitutive(2,g,i,e)
-       c = mappingConstitutive(1,g,i,e)
+       p = phaseAt(g,i,e)
+       c = phasememberAt(g,i,e)
        NaN = any(prec_isNaN(plasticState(p)%dotState(:,c)))
        do mySource = 1_pInt, phase_Nsources(p)
          NaN = NaN .or. any(prec_isNaN(sourceState(p)%p(mySource)%dotState(:,c)))
@@ -3070,8 +3070,8 @@ subroutine crystallite_integrateStateFPI()
  !$OMP DO PRIVATE(mySizePlasticDotState,mySizeSourceDotState,p,c)
    do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                    ! iterate over elements, ips and grains
      if (crystallite_todo(g,i,e)) then
-       p = mappingConstitutive(2,g,i,e)
-       c = mappingConstitutive(1,g,i,e)
+       p = phaseAt(g,i,e)
+       c = phasememberAt(g,i,e)
        mySizePlasticDotState = plasticState(p)%sizeDotState
        plasticState(p)%state(1:mySizePlasticDotState,c) = &
          plasticState(p)%subState0(1:mySizePlasticDotState,c) &
@@ -3109,8 +3109,8 @@ subroutine crystallite_integrateStateFPI()
                                           crystallite_Fe(1:3,1:3,g,i,e), &
                                           crystallite_Fp(1:3,1:3,g,i,e), &
                                           g, i, e)                                                           ! update dependent state variables to be consistent with basic states
-       p = mappingConstitutive(2,g,i,e)
-       c = mappingConstitutive(1,g,i,e)
+       p = phaseAt(g,i,e)
+       c = phasememberAt(g,i,e)
        plasticState(p)%previousDotState2(:,c) = plasticState(p)%previousDotState(:,c)
        plasticState(p)%previousDotState (:,c) = plasticState(p)%dotState(:,c)
        do mySource = 1_pInt, phase_Nsources(p)
@@ -3161,8 +3161,8 @@ subroutine crystallite_integrateStateFPI()
      do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                    ! iterate over elements, ips and grains
        !$OMP FLUSH(crystallite_todo)
        if (crystallite_todo(g,i,e) .and. .not. crystallite_converged(g,i,e)) then
-         p = mappingConstitutive(2,g,i,e)
-         c = mappingConstitutive(1,g,i,e)
+         p = phaseAt(g,i,e)
+         c = phasememberAt(g,i,e)
          NaN = any(prec_isNaN(plasticState(p)%dotState(:,c)))
          do mySource = 1_pInt, phase_Nsources(p)
            NaN = NaN .or. any(prec_isNaN(sourceState(p)%p(mySource)%dotState(:,c)))
@@ -3191,8 +3191,8 @@ subroutine crystallite_integrateStateFPI()
      do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)           ! iterate over elements, ips and grains
        if (crystallite_todo(g,i,e) .and. .not. crystallite_converged(g,i,e)) then
 
-         p = mappingConstitutive(2,g,i,e)
-         c = mappingConstitutive(1,g,i,e)
+         p = phaseAt(g,i,e)
+         c = phasememberAt(g,i,e)
          dot_prod12 = dot_product(  plasticState(p)%dotState         (:,c) &
                                   - plasticState(p)%previousDotState (:,c), &
                                     plasticState(p)%previousDotState (:,c) &
@@ -3388,7 +3388,7 @@ logical function crystallite_stateJump(g,i,e)
    plasticState, &
    sourceState, &
    phase_Nsources, &
-   mappingConstitutive
+   phaseAt, phasememberAt
  use constitutive, only: &
    constitutive_collectDeltaState
 
@@ -3405,8 +3405,8 @@ logical function crystallite_stateJump(g,i,e)
    mySizePlasticDeltaState, &
    mySizeSourceDeltaState
 
- c = mappingConstitutive(1,g,i,e)
- p = mappingConstitutive(2,g,i,e)
+ c = phasememberAt(g,i,e)
+ p = phaseAt(g,i,e)
  call constitutive_collectDeltaState(crystallite_Tstar_v(1:6,g,i,e), crystallite_Fe(1:3,1:3,g,i,e), g,i,e)
  mySizePlasticDeltaState = plasticState(p)%sizeDeltaState
  if( any(prec_isNaN(plasticState(p)%deltaState(:,c)))) then                                         ! NaN occured in deltaState

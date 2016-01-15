@@ -191,7 +191,7 @@ subroutine source_thermal_dissipation_getRateAndItsTangent(TDot, dTDOT_dT, Tstar
  use math, only: &
    math_Mandel6to33
  use material, only: &
-   mappingConstitutive
+   phaseAt, phasememberAt
 
  implicit none
  integer(pInt), intent(in) :: &
@@ -208,8 +208,8 @@ subroutine source_thermal_dissipation_getRateAndItsTangent(TDot, dTDOT_dT, Tstar
  integer(pInt) :: &
    instance, phase, constituent 
 
- phase = mappingConstitutive(2,ipc,ip,el)
- constituent = mappingConstitutive(1,ipc,ip,el)
+ phase = phaseAt(ipc,ip,el)
+ constituent = phasememberAt(ipc,ip,el)
  instance = source_thermal_dissipation_instance(phase)
  
  TDot = source_thermal_dissipation_coldworkCoeff(instance)* &

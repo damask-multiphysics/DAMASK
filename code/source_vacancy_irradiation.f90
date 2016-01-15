@@ -195,7 +195,7 @@ end subroutine source_vacancy_irradiation_init
 !--------------------------------------------------------------------------------------------------
 subroutine source_vacancy_irradiation_deltaState(ipc, ip, el)
  use material, only: &
-   mappingConstitutive, &
+   phaseAt, phasememberAt, &
    sourceState
 
  implicit none
@@ -208,8 +208,8 @@ subroutine source_vacancy_irradiation_deltaState(ipc, ip, el)
  real(pReal) :: &
    randNo   
 
- phase       = mappingConstitutive(2,ipc,ip,el)
- constituent = mappingConstitutive(1,ipc,ip,el)
+ phase       = phaseAt(ipc,ip,el)
+ constituent = phasememberAt(ipc,ip,el)
  sourceOffset = source_vacancy_irradiation_offset(phase)
 
  call random_number(randNo)
@@ -226,7 +226,7 @@ end subroutine source_vacancy_irradiation_deltaState
 !--------------------------------------------------------------------------------------------------
 subroutine source_vacancy_irradiation_getRateAndItsTangent(CvDot, dCvDot_dCv, ipc, ip, el)
  use material, only: &
-   mappingConstitutive, &
+   phaseAt, phasememberAt, &
    sourceState
 
  implicit none
@@ -239,8 +239,8 @@ subroutine source_vacancy_irradiation_getRateAndItsTangent(CvDot, dCvDot_dCv, ip
  integer(pInt) :: &
    instance, phase, constituent, sourceOffset 
 
- phase = mappingConstitutive(2,ipc,ip,el)
- constituent = mappingConstitutive(1,ipc,ip,el)
+ phase = phaseAt(ipc,ip,el)
+ constituent = phasememberAt(ipc,ip,el)
  instance = source_vacancy_irradiation_instance(phase)
  sourceOffset = source_vacancy_irradiation_offset(phase)
  

@@ -1173,7 +1173,7 @@ function plastic_titanmod_homogenizedC(ipc,ip,el)
    material_phase, &
    phase_plasticityInstance, &
    plasticState, &
-   mappingConstitutive
+   phaseAt, phasememberAt
  use lattice, only: &
    lattice_C66
 
@@ -1198,8 +1198,8 @@ real(pReal), dimension(plastic_titanmod_totalNtwin(phase_plasticityInstance(mate
 !--------------------------------------------------------------------------------------------------
 ! shortened notation
 ! ph = material_phase(ipc,ip,el)
- of = mappingConstitutive(1,ipc,ip,el)
- ph = mappingConstitutive(2,ipc,ip,el)
+ of = phasememberAt(ipc,ip,el)
+ ph = phaseAt(ipc,ip,el)
  instance = phase_plasticityInstance(ph)
  ns = plastic_titanmod_totalNslip(instance)
  nt = plastic_titanmod_totalNtwin(instance)
@@ -1233,7 +1233,7 @@ subroutine plastic_titanmod_microstructure(temperature,ipc,ip,el)
    material_phase,&
    phase_plasticityInstance, &
    plasticState, &
-   mappingConstitutive
+   phaseAt, phasememberAt
  use lattice, only: &
    lattice_mu
 
@@ -1260,8 +1260,8 @@ subroutine plastic_titanmod_microstructure(temperature,ipc,ip,el)
 
 !Shortened notation
 
- of = mappingConstitutive(1,ipc,ip,el)
- ph = mappingConstitutive(2,ipc,ip,el)
+ of = phasememberAt(ipc,ip,el)
+ ph = phaseAt(ipc,ip,el)
  instance = phase_plasticityInstance(ph)
  ns = plastic_titanmod_totalNslip(instance)
  nt = plastic_titanmod_totalNtwin(instance)
@@ -1345,7 +1345,7 @@ subroutine plastic_titanmod_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,temperature,
    material_phase, &
    phase_plasticityInstance, &
    plasticState, &
-   mappingConstitutive
+   phaseAt, phasememberAt
 
  implicit none
  real(pReal), dimension(3,3), intent(out) :: &
@@ -1386,8 +1386,8 @@ subroutine plastic_titanmod_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,temperature,
  
 !--------------------------------------------------------------------------------------------------
 ! shortened notation
- of = mappingConstitutive(1,ipc,ip,el)
- ph = mappingConstitutive(2,ipc,ip,el)
+ of = phasememberAt(ipc,ip,el)
+ ph = phaseAt(ipc,ip,el)
  instance  = phase_plasticityInstance(ph) 
  ns = plastic_titanmod_totalNslip(instance)
  nt = plastic_titanmod_totalNtwin(instance)
@@ -1656,7 +1656,7 @@ subroutine plastic_titanmod_dotState(Tstar_v,temperature,ipc,ip,el)
    material_phase, &
    phase_plasticityInstance, &
    plasticState, &
-   mappingConstitutive 
+   phaseAt, phasememberAt 
 
 implicit none
  real(pReal), dimension(6), intent(in):: &
@@ -1690,8 +1690,8 @@ implicit none
 !--------------------------------------------------------------------------------------------------
 ! shortened notation
 
- of = mappingConstitutive(1,ipc,ip,el)
- ph = mappingConstitutive(2,ipc,ip,el)
+ of = phasememberAt(ipc,ip,el)
+ ph = phaseAt(ipc,ip,el)
  instance  = phase_plasticityInstance(ph)
  ns = plastic_titanmod_totalNslip(instance)
  nt = plastic_titanmod_totalNtwin(instance)
@@ -1772,7 +1772,7 @@ function plastic_titanmod_postResults(ipc,ip,el)
    material_phase, &
    phase_plasticityInstance, &
    plasticState, &
-   mappingConstitutive
+   phaseAt, phasememberAt
  
  implicit none
  integer(pInt), intent(in) :: &
@@ -1795,8 +1795,8 @@ function plastic_titanmod_postResults(ipc,ip,el)
 
 !--------------------------------------------------------------------------------------------------
 ! shortened notation
- of = mappingConstitutive(1,ipc,ip,el)
- ph = mappingConstitutive(2,ipc,ip,el)
+ of = phasememberAt(ipc,ip,el)
+ ph = phaseAt(ipc,ip,el)
  instance  = phase_plasticityInstance(ph)
  ns = plastic_titanmod_totalNslip(instance)
  nt = plastic_titanmod_totalNtwin(instance)

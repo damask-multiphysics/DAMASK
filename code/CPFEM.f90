@@ -321,7 +321,7 @@ subroutine CPFEM_general(mode, ffn, ffn1, dt, elFE, ip)
    damageState, &
    vacancyfluxState, &
    hydrogenfluxState, &
-   mappingConstitutive, &
+   phaseAt, phasememberAt, &
    material_phase, &
    phase_plasticity, &
    temperature, &
@@ -441,7 +441,7 @@ subroutine CPFEM_general(mode, ffn, ffn1, dt, elFE, ip)
      if (debug_e <= mesh_NcpElems .and. debug_i <= mesh_maxNips) then
        write(6,'(a,1x,i8,1x,i2,1x,i4,/,(12x,6(e20.8,1x)),/)') &
              '<< CPFEM >> aged state of elFE ip grain',debug_e, debug_i, 1, &
-              plasticState(mappingConstitutive(2,1,debug_i,debug_e))%state(:,mappingConstitutive(1,1,debug_i,debug_e))
+              plasticState(phaseAt(1,debug_i,debug_e))%state(:,phasememberAt(1,debug_i,debug_e))
        endif
    endif
 

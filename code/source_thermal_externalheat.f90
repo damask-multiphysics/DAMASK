@@ -215,7 +215,7 @@ end subroutine source_thermal_externalheat_init
 !--------------------------------------------------------------------------------------------------
 subroutine source_thermal_externalheat_dotState(ipc, ip, el)
  use material, only: &
-   mappingConstitutive, &
+   phaseAt, phasememberAt, &
    sourceState
 
  implicit none
@@ -228,8 +228,8 @@ subroutine source_thermal_externalheat_dotState(ipc, ip, el)
    constituent, &
    sourceOffset
 
- phase = mappingConstitutive(2,ipc,ip,el)
- constituent = mappingConstitutive(1,ipc,ip,el)
+ phase = phaseAt(ipc,ip,el)
+ constituent = phasememberAt(ipc,ip,el)
  sourceOffset = source_thermal_externalheat_offset(phase)
  
  sourceState(phase)%p(sourceOffset)%dotState(1,constituent) = 1.0_pReal
@@ -241,7 +241,7 @@ end subroutine source_thermal_externalheat_dotState
 !--------------------------------------------------------------------------------------------------
 subroutine source_thermal_externalheat_getRateAndItsTangent(TDot, dTDot_dT, ipc, ip, el)
  use material, only: &
-   mappingConstitutive, &
+   phaseAt, phasememberAt, &
    sourceState
 
  implicit none
@@ -257,8 +257,8 @@ subroutine source_thermal_externalheat_getRateAndItsTangent(TDot, dTDot_dT, ipc,
  real(pReal) :: &
    norm_time   
 
- phase = mappingConstitutive(2,ipc,ip,el)
- constituent = mappingConstitutive(1,ipc,ip,el)
+ phase = phaseAt(ipc,ip,el)
+ constituent = phasememberAt(ipc,ip,el)
  instance = source_thermal_externalheat_instance(phase)
  sourceOffset = source_thermal_externalheat_offset(phase)
 

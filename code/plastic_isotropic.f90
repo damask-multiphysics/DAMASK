@@ -393,7 +393,7 @@ subroutine plastic_isotropic_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,ipc,ip,el)
    math_mul33xx33, &
    math_transpose33
  use material, only: &
-   mappingConstitutive, &
+   phaseAt, phasememberAt, &
    plasticState, &
    material_phase, &
    phase_plasticityInstance
@@ -434,7 +434,7 @@ subroutine plastic_isotropic_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,ipc,ip,el)
  else
    gamma_dot = plastic_isotropic_gdot0(instance) &
              * (sqrt(1.5_pReal) * norm_Tstar_dev / (plastic_isotropic_fTaylor(instance) * &
-               plasticState(mappingConstitutive(2,ipc,ip,el))%state(1,mappingConstitutive(1,ipc,ip,el)))) &
+               plasticState(phaseAt(ipc,ip,el))%state(1,phasememberAt(ipc,ip,el)))) &
                                                   **plastic_isotropic_n(instance)
 
    Lp = Tstar_dev_33/norm_Tstar_dev * gamma_dot/plastic_isotropic_fTaylor(instance)
@@ -473,7 +473,7 @@ subroutine plastic_isotropic_LiAndItsTangent(Li,dLi_dTstar_3333,Tstar_v,ipc,ip,e
    math_spherical33, &
    math_mul33xx33
  use material, only: &
-   mappingConstitutive, &
+   phaseAt, phasememberAt, &
    plasticState, &
    material_phase, &
    phase_plasticityInstance
@@ -514,7 +514,7 @@ subroutine plastic_isotropic_LiAndItsTangent(Li,dLi_dTstar_3333,Tstar_v,ipc,ip,e
      else
        gamma_dot = plastic_isotropic_gdot0(instance) &
                    * (sqrt(1.5_pReal) * norm_Tstar_sph / (plastic_isotropic_fTaylor(instance) * &
-                   plasticState(mappingConstitutive(2,ipc,ip,el))%state(1,mappingConstitutive(1,ipc,ip,el)))) &
+                   plasticState(phaseAt(ipc,ip,el))%state(1,phasememberAt(ipc,ip,el)))) &
                                                            **plastic_isotropic_n(instance)
 
        Li = Tstar_sph_33/norm_Tstar_sph * gamma_dot/plastic_isotropic_fTaylor(instance)
@@ -542,7 +542,7 @@ subroutine plastic_isotropic_dotState(Tstar_v,ipc,ip,el)
  use math, only: &
    math_mul6x6
  use material, only: &
-   mappingConstitutive, &
+   phaseAt, phasememberAt, &
    plasticState, &
    material_phase, &
    phase_plasticityInstance
@@ -566,8 +566,8 @@ subroutine plastic_isotropic_dotState(Tstar_v,ipc,ip,el)
    of, &                                                                                            !< shortcut notation for offset position in state array
    ph                                                                                               !< shortcut notation for phase ID (unique number of all phases, regardless of constitutive model)
 
- of = mappingConstitutive(1,ipc,ip,el)
- ph = mappingConstitutive(2,ipc,ip,el)
+ of = phasememberAt(ipc,ip,el)
+ ph = phaseAt(ipc,ip,el)
  instance = phase_plasticityInstance(material_phase(ipc,ip,el))
 
 !--------------------------------------------------------------------------------------------------
@@ -625,7 +625,7 @@ function plastic_isotropic_postResults(Tstar_v,ipc,ip,el)
  use material, only: &
    material_phase, &
    plasticState, &
-   mappingConstitutive, &
+   phaseAt, phasememberAt, &
    phase_plasticityInstance
 
  implicit none
@@ -649,8 +649,8 @@ function plastic_isotropic_postResults(Tstar_v,ipc,ip,el)
    c, &
    o
 
- of = mappingConstitutive(1,ipc,ip,el)
- ph = mappingConstitutive(2,ipc,ip,el)
+ of = phasememberAt(ipc,ip,el)
+ ph = phaseAt(ipc,ip,el)
  instance = phase_plasticityInstance(material_phase(ipc,ip,el))
  
 !--------------------------------------------------------------------------------------------------

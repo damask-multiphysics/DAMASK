@@ -1422,7 +1422,7 @@ use mesh,     only: mesh_ipVolume, &
 use material, only: material_phase, &
                     phase_plasticityInstance, &
                     plasticState, &
-                    mappingConstitutive, &
+                    phaseAt, phasememberAt, &
                     phase_plasticity ,&
                     PLASTICITY_NONLOCAL_ID
 implicit none
@@ -1480,8 +1480,8 @@ do instance = 1_pInt,maxNinstances
         s = nint(rnd(3)*real(ns,pReal)+0.5_pReal,pInt)
         t = nint(rnd(4)*4.0_pReal+0.5_pReal,pInt)
         meanDensity = meanDensity + densityBinning * mesh_ipVolume(i,e) / totalVolume
-        plasticState(mappingConstitutive(2,1,i,e))%state0(iRhoU(s,t,instance),mappingConstitutive(2,1,i,e)) = &
-        plasticState(mappingConstitutive(2,1,i,e))%state0(iRhoU(s,t,instance),mappingConstitutive(2,1,i,e)) &
+        plasticState(phaseAt(1,i,e))%state0(iRhoU(s,t,instance),phaseAt(1,i,e)) = &
+        plasticState(phaseAt(1,i,e))%state0(iRhoU(s,t,instance),phaseAt(1,i,e)) &
         + densityBinning
       endif
     enddo
@@ -1498,18 +1498,18 @@ do instance = 1_pInt,maxNinstances
               do j = 1_pInt,2_pInt
                 noise(j) = math_sampleGaussVar(0.0_pReal, rhoSglScatter(instance))
               enddo
-              plasticState(mappingConstitutive(2,1,i,e))%state0(iRhoU(s,1,instance),mappingConstitutive(1,1,i,e)) = &
+              plasticState(phaseAt(1,i,e))%state0(iRhoU(s,1,instance),phasememberAt(1,i,e)) = &
                        rhoSglEdgePos0(f,instance) + noise(1)
-              plasticState(mappingConstitutive(2,1,i,e))%state0(iRhoU(s,2,instance),mappingConstitutive(1,1,i,e)) = &
+              plasticState(phaseAt(1,i,e))%state0(iRhoU(s,2,instance),phasememberAt(1,i,e)) = &
                        rhoSglEdgeNeg0(f,instance) + noise(1)
-              plasticState(mappingConstitutive(2,1,i,e))%state0(iRhoU(s,3,instance),mappingConstitutive(1,1,i,e)) = &
+              plasticState(phaseAt(1,i,e))%state0(iRhoU(s,3,instance),phasememberAt(1,i,e)) = &
                        rhoSglScrewPos0(f,instance) + noise(2)
-              plasticState(mappingConstitutive(2,1,i,e))%state0(iRhoU(s,4,instance),mappingConstitutive(1,1,i,e)) = &
+              plasticState(phaseAt(1,i,e))%state0(iRhoU(s,4,instance),phasememberAt(1,i,e)) = &
                        rhoSglScrewNeg0(f,instance) + noise(2)
             enddo
-            plasticState(mappingConstitutive(2,1,i,e))%state0(iRhoD(from:upto,1,instance),mappingConstitutive(1,1,i,e)) = &
+            plasticState(phaseAt(1,i,e))%state0(iRhoD(from:upto,1,instance),phasememberAt(1,i,e)) = &
               rhoDipEdge0(f,instance)
-            plasticState(mappingConstitutive(2,1,i,e))%state0(iRhoD(from:upto,2,instance),mappingConstitutive(1,1,i,e)) = &
+            plasticState(phaseAt(1,i,e))%state0(iRhoD(from:upto,2,instance),phasememberAt(1,i,e)) = &
               rhoDipScrew0(f,instance)
           enddo
         endif
@@ -1582,7 +1582,7 @@ use material, only: &
   material_phase, &
   phase_localPlasticity, &
   plasticState, &
-  mappingConstitutive, &
+  phaseAt, phasememberAt, &
   phase_plasticityInstance
 use lattice, only: &
   lattice_sd, &
@@ -1654,8 +1654,8 @@ real(pReal), dimension(2,maxval(totalNslip),mesh_maxNipNeighbors) :: &
 real(pReal), dimension(3,totalNslip(phase_plasticityInstance(material_phase(1_pInt,ip,el))),2) :: &
                                 m                             ! direction of dislocation motion
 
-ph = mappingConstitutive(2,1,ip,el)
-of = mappingConstitutive(1,1,ip,el)
+ph = phaseAt(1,ip,el)
+of = phasememberAt(1,ip,el)
 instance = phase_plasticityInstance(ph)
 ns = totalNslip(instance)
 
@@ -1726,8 +1726,8 @@ if (.not. phase_localPlasticity(ph) .and. shortRangeStressCorrection(instance)) 
   do n = 1_pInt,FE_NipNeighbors(FE_celltype(FE_geomtype(mesh_element(2,el))))
     neighbor_el = mesh_ipNeighborhood(1,n,ip,el)
     neighbor_ip = mesh_ipNeighborhood(2,n,ip,el)
-    np = mappingConstitutive(2,1,neighbor_ip,neighbor_el)
-    no = mappingConstitutive(1,1,neighbor_ip,neighbor_el)
+    np = phaseAt(1,neighbor_ip,neighbor_el)
+    no = phasememberAt(1,neighbor_ip,neighbor_el)
     if (neighbor_el > 0 .and. neighbor_ip > 0) then
       neighbor_phase = material_phase(1,neighbor_ip,neighbor_el)
       neighbor_instance = phase_plasticityInstance(neighbor_phase)
@@ -2020,7 +2020,7 @@ use debug,    only: debug_level, &
                     debug_e
 use material, only: material_phase, &
                     plasticState, &
-                    mappingConstitutive,&
+                    phaseAt, phasememberAt,&
                     phase_plasticityInstance
 use lattice,  only: lattice_Sslip, &
                     lattice_Sslip_v, &
@@ -2066,8 +2066,8 @@ real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phase(1_pInt
                                             tauBack, &                                              !< back stress from dislocation gradients on same slip system
                                             tauThreshold                                            !< threshold shear stress
 !*** shortcut for mapping
-ph = mappingConstitutive(2,1_pInt,ip,el)
-of = mappingConstitutive(1,1_pInt,ip,el)
+ph = phaseAt(1_pInt,ip,el)
+of = phasememberAt(1_pInt,ip,el)
 
 !*** initialize local variables
 
@@ -2218,7 +2218,7 @@ use lattice,  only: lattice_Sslip_v ,&
 use mesh,     only: mesh_ipVolume
 use material, only: material_phase, &
                     plasticState, &
-                    mappingConstitutive, &
+                    phaseAt, phasememberAt, &
                     phase_plasticityInstance
 
 implicit none
@@ -2262,8 +2262,8 @@ real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phase(1,ip,e
     write(6,'(/,a,i8,1x,i2,1x,i1,/)') '<< CONST >> nonlocal_deltaState at el ip ',el,ip
 #endif
 
- ph = mappingConstitutive(2,1,ip,el)
- of = mappingConstitutive(1,1,ip,el)
+ ph = phaseAt(1,ip,el)
+ of = phasememberAt(1,ip,el)
  instance = phase_plasticityInstance(ph)
  ns = totalNslip(instance)
 
@@ -2420,7 +2420,7 @@ use material, only: homogenization_maxNgrains, &
                     phase_plasticityInstance, &
                     phase_localPlasticity, &
                     plasticState, &
-                    mappingConstitutive, &
+                    phaseAt, phasememberAt, &
                     phase_plasticity ,&
                     PLASTICITY_NONLOCAL_ID
 use lattice,  only: lattice_Sslip_v, &
@@ -2521,8 +2521,8 @@ logical                                     considerEnteringFlux, &
                                             considerLeavingFlux
                                             
 
- p = mappingConstitutive(2,1,ip,el)
- o = mappingConstitutive(1,1,ip,el)
+ p = phaseAt(1,ip,el)
+ o = phasememberAt(1,ip,el)
 
 
 
@@ -2726,8 +2726,8 @@ if (.not. phase_localPlasticity(material_phase(1_pInt,ip,el))) then             
     neighbor_el = mesh_ipNeighborhood(1,n,ip,el)
     neighbor_ip = mesh_ipNeighborhood(2,n,ip,el)
     neighbor_n  = mesh_ipNeighborhood(3,n,ip,el)
-    np = mappingConstitutive(2,1,neighbor_ip,neighbor_el)
-    no = mappingConstitutive(1,1,neighbor_ip,neighbor_el)
+    np = phaseAt(1,neighbor_ip,neighbor_el)
+    no = phasememberAt(1,neighbor_ip,neighbor_el)
 
     opposite_neighbor = n + mod(n,2_pInt) - mod(n+1_pInt,2_pInt)
     opposite_el = mesh_ipNeighborhood(1,opposite_neighbor,ip,el)
@@ -3197,7 +3197,7 @@ use mesh,     only: mesh_NcpElems, &
 use material, only: homogenization_maxNgrains, &
                     material_phase, &
                     plasticState, &
-                    mappingConstitutive,&
+                    phaseAt, phasememberAt,&
                     phase_localPlasticity, &
                     phase_plasticityInstance
 use lattice, only:  lattice_mu, &
@@ -3266,8 +3266,8 @@ real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phase(1_pInt
 ph = material_phase(1_pInt,ip,el)
 instance = phase_plasticityInstance(ph)
 ns = totalNslip(instance)
-p = mappingConstitutive(2,1,ip,el)
-o = mappingConstitutive(1,1,ip,el)
+p = phaseAt(1,ip,el)
+o = phasememberAt(1,ip,el)
 
 !*** get basic states
 
@@ -3309,8 +3309,8 @@ if (.not. phase_localPlasticity(ph)) then
   do neighbor_el = 1_pInt,mesh_NcpElems
     ipLoop: do neighbor_ip = 1_pInt,FE_Nips(FE_geomtype(mesh_element(2,neighbor_el)))
       neighbor_phase = material_phase(1_pInt,neighbor_ip,neighbor_el)
-      np = mappingConstitutive(2,1,neighbor_ip,neighbor_el)
-      no = mappingConstitutive(1,1,neighbor_ip,neighbor_el)
+      np = phaseAt(1,neighbor_ip,neighbor_el)
+      no = phasememberAt(1,neighbor_ip,neighbor_el)
 
       if (phase_localPlasticity(neighbor_phase)) cycle
       neighbor_instance = phase_plasticityInstance(neighbor_phase)
@@ -3537,7 +3537,7 @@ function plastic_nonlocal_postResults(Tstar_v,Fe,ip,el)
  use material, only: &
    homogenization_maxNgrains, &
    material_phase, &
-   mappingConstitutive, &
+   phaseAt, phasememberAt, &
    plasticState, &
    phase_plasticityInstance
  use lattice, only: &
@@ -3596,8 +3596,8 @@ function plastic_nonlocal_postResults(Tstar_v,Fe,ip,el)
  real(pReal), dimension(3,3) :: &
    sigma
 
-ph  = mappingConstitutive(2,1,ip,el)
-of = mappingConstitutive(1,1,ip,el)
+ph  = phaseAt(1,ip,el)
+of = phasememberAt(1,ip,el)
 instance = phase_plasticityInstance(ph)
 ns = totalNslip(instance)
 

@@ -287,10 +287,11 @@ module material
  logical, dimension(:), allocatable, private :: &
    homogenization_active
 
- integer(pInt), dimension(:,:,:,:), allocatable, public, target :: mappingConstitutive
- integer(pInt), dimension(:,:,:),   allocatable, public, target :: mappingCrystallite
- integer(pInt), dimension(:,:,:),   allocatable, public, target :: mappingHomogenization            !< mapping from material points to offset in heterogenous state/field
- integer(pInt), dimension(:,:),     allocatable, public, target :: mappingHomogenizationConst       !< mapping from material points to offset in constant state/field
+ integer(pInt), dimension(:,:,:), allocatable, public :: phaseAt                                    !< phase ID of every material point (ipc,ip,el)
+ integer(pInt), dimension(:,:,:), allocatable, public :: phasememberAt                              !< memberID of given phase at every material point (ipc,ip,el)
+ integer(pInt), dimension(:,:,:), allocatable, public, target :: mappingCrystallite
+ integer(pInt), dimension(:,:,:), allocatable, public, target :: mappingHomogenization              !< mapping from material points to offset in heterogenous state/field
+ integer(pInt), dimension(:,:),   allocatable, public, target :: mappingHomogenizationConst         !< mapping from material points to offset in constant state/field
 
  type(tHomogMapping), allocatable, dimension(:), public :: &
    thermalMapping, &                                                                                !< mapping for thermal state/fields
@@ -497,7 +498,8 @@ subroutine material_init()
 
  call material_populateGrains
 
- allocate(mappingConstitutive       (2,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems),source=0_pInt)
+ allocate(phaseAt                   (  homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems),source=0_pInt)
+ allocate(phasememberAt             (  homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems),source=0_pInt)
  allocate(mappingHomogenization     (2,                          mesh_maxNips,mesh_NcpElems),source=0_pInt)
  allocate(mappingCrystallite        (2,homogenization_maxNgrains,             mesh_NcpElems),source=0_pInt)
  allocate(mappingHomogenizationConst(                            mesh_maxNips,mesh_NcpElems),source=1_pInt)
@@ -514,7 +516,8 @@ subroutine material_init()
      GrainLoop:do g = 1_pInt,homogenization_Ngrains(mesh_element(3,e))                              ! loop over grains
        phase = material_phase(g,i,e)
        ConstitutivePosition(phase) = ConstitutivePosition(phase)+1_pInt                             ! not distinguishing between instances of same phase
-       mappingConstitutive(1:2,g,i,e)   = [ConstitutivePosition(phase),phase]
+       phaseAt(g,i,e)              = phase
+       phasememberAt(g,i,e)        = ConstitutivePosition(phase)
      enddo GrainLoop
    enddo IPloop
  enddo ElemLoop

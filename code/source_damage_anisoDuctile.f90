@@ -296,7 +296,7 @@ end subroutine source_damage_anisoDuctile_init
 !--------------------------------------------------------------------------------------------------
 subroutine source_damage_anisoDuctile_dotState(ipc, ip, el)
  use material, only: &
-   mappingConstitutive, &
+   phaseAt, phasememberAt, &
    plasticState, &
    sourceState, &
    material_homog, &
@@ -318,8 +318,8 @@ subroutine source_damage_anisoDuctile_dotState(ipc, ip, el)
    instance, &
    index, f, i
 
- phase = mappingConstitutive(2,ipc,ip,el)
- constituent = mappingConstitutive(1,ipc,ip,el)
+ phase = phaseAt(ipc,ip,el)
+ constituent = phasememberAt(ipc,ip,el)
  instance = source_damage_anisoDuctile_instance(phase)
  sourceOffset = source_damage_anisoDuctile_offset(phase)
  homog = material_homog(ip,el)
@@ -346,7 +346,7 @@ end subroutine source_damage_anisoDuctile_dotState
 !--------------------------------------------------------------------------------------------------
 subroutine source_damage_anisoDuctile_getRateAndItsTangent(localphiDot, dLocalphiDot_dPhi, phi, ipc, ip,  el)
  use material, only: &
-   mappingConstitutive, &
+   phaseAt, phasememberAt, &
    sourceState
 
  implicit none
@@ -362,8 +362,8 @@ subroutine source_damage_anisoDuctile_getRateAndItsTangent(localphiDot, dLocalph
  integer(pInt) :: &
    phase, constituent, sourceOffset
 
- phase = mappingConstitutive(2,ipc,ip,el)
- constituent = mappingConstitutive(1,ipc,ip,el)
+ phase = phaseAt(ipc,ip,el)
+ constituent = phasememberAt(ipc,ip,el)
  sourceOffset = source_damage_anisoDuctile_offset(phase)
  
  localphiDot = 1.0_pReal - &
@@ -379,7 +379,7 @@ end subroutine source_damage_anisoDuctile_getRateAndItsTangent
 !--------------------------------------------------------------------------------------------------
 function source_damage_anisoDuctile_postResults(ipc,ip,el)
  use material, only: &
-   mappingConstitutive, &
+   phaseAt, phasememberAt, &
    sourceState
 
  implicit none
@@ -388,14 +388,14 @@ function source_damage_anisoDuctile_postResults(ipc,ip,el)
    ip, &                                                                                            !< integration point
    el                                                                                               !< element
  real(pReal), dimension(source_damage_anisoDuctile_sizePostResults( &
-                          source_damage_anisoDuctile_instance(mappingConstitutive(2,ipc,ip,el)))) :: &
+                          source_damage_anisoDuctile_instance(phaseAt(ipc,ip,el)))) :: &
    source_damage_anisoDuctile_postResults
 
  integer(pInt) :: &
    instance, phase, constituent, sourceOffset, o, c
    
- phase = mappingConstitutive(2,ipc,ip,el)
- constituent = mappingConstitutive(1,ipc,ip,el)
+ phase = phaseAt(ipc,ip,el)
+ constituent = phasememberAt(ipc,ip,el)
  instance = source_damage_anisoDuctile_instance(phase)
  sourceOffset = source_damage_anisoDuctile_offset(phase)
 

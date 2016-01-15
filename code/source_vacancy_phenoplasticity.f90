@@ -189,7 +189,7 @@ end subroutine source_vacancy_phenoplasticity_init
 !--------------------------------------------------------------------------------------------------
 subroutine source_vacancy_phenoplasticity_getRateAndItsTangent(CvDot, dCvDot_dCv, ipc, ip, el)
  use material, only: &
-   mappingConstitutive, &
+   phaseAt, phasememberAt, &
    plasticState
 
  implicit none
@@ -202,8 +202,8 @@ subroutine source_vacancy_phenoplasticity_getRateAndItsTangent(CvDot, dCvDot_dCv
  integer(pInt) :: &
    instance, phase, constituent 
 
- phase = mappingConstitutive(2,ipc,ip,el)
- constituent = mappingConstitutive(1,ipc,ip,el)
+ phase = phaseAt(ipc,ip,el)
+ constituent = phasememberAt(ipc,ip,el)
  instance = source_vacancy_phenoplasticity_instance(phase)
  
  CvDot = &

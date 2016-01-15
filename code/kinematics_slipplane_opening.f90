@@ -212,7 +212,7 @@ subroutine kinematics_slipplane_opening_LiAndItsTangent(Ld, dLd_dTstar3333, Tsta
    lattice_st, &
    lattice_sn
  use material, only: &
-   mappingConstitutive, &
+   phaseAt, phasememberAt, &
    material_homog, &
    damage, &
    damageMapping
@@ -251,8 +251,8 @@ subroutine kinematics_slipplane_opening_LiAndItsTangent(Ld, dLd_dTstar3333, Tsta
    traction_d, traction_t, traction_n, traction_crit, &
    udotd, dudotd_dt, udott, dudott_dt, udotn, dudotn_dt
    
- phase = mappingConstitutive(2,ipc,ip,el)
- constituent = mappingConstitutive(1,ipc,ip,el)
+ phase = phaseAt(ipc,ip,el)
+ constituent = phasememberAt(ipc,ip,el)
  instance = kinematics_slipplane_opening_instance(phase)
  homog = material_homog(ip,el)
  damageOffset = damageMapping(homog)%p(ip,el)

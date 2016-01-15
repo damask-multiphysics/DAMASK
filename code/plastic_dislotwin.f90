@@ -1398,7 +1398,7 @@ end subroutine plastic_dislotwin_aTolState
 function plastic_dislotwin_homogenizedC(ipc,ip,el)
  use material, only: &
   phase_plasticityInstance, &
-  mappingConstitutive
+  phaseAt, phasememberAt
  use lattice, only: &
   lattice_C66
  
@@ -1416,8 +1416,8 @@ function plastic_dislotwin_homogenizedC(ipc,ip,el)
  real(pReal) :: sumf, sumftr
 
  !* Shortened notation
- of = mappingConstitutive(1,ipc,ip,el)
- ph = mappingConstitutive(2,ipc,ip,el)
+ of = phasememberAt(ipc,ip,el)
+ ph = phaseAt(ipc,ip,el)
  instance = phase_plasticityInstance(ph)
  ns = plastic_dislotwin_totalNslip(instance)
  nt = plastic_dislotwin_totalNtwin(instance)
@@ -1454,7 +1454,7 @@ subroutine plastic_dislotwin_microstructure(temperature,ipc,ip,el)
    material_phase, &
    phase_plasticityInstance, &
    !plasticState, &   !!!!delete
-   mappingConstitutive
+   phaseAt, phasememberAt
  use lattice, only: &
    lattice_mu, &
    lattice_nu
@@ -1479,8 +1479,8 @@ subroutine plastic_dislotwin_microstructure(temperature,ipc,ip,el)
    ftransOverLamellarSize
 
  !* Shortened notation
- of = mappingConstitutive(1,ipc,ip,el)
- ph = mappingConstitutive(2,ipc,ip,el)
+ of = phasememberAt(ipc,ip,el)
+ ph = phaseAt(ipc,ip,el)
  instance = phase_plasticityInstance(ph)
  ns = plastic_dislotwin_totalNslip(instance)
  nt = plastic_dislotwin_totalNtwin(instance)
@@ -1645,7 +1645,7 @@ subroutine plastic_dislotwin_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,Temperature
  use material, only: &
    material_phase, &
    phase_plasticityInstance, &
-   mappingConstitutive
+   phaseAt, phasememberAt
  use lattice, only: &
    lattice_Sslip, &
    lattice_Sslip_v, &
@@ -1705,8 +1705,8 @@ subroutine plastic_dislotwin_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,Temperature
         ],pReal),[ 3,6])
  logical error 
  !* Shortened notation
- of = mappingConstitutive(1,ipc,ip,el)
- ph = mappingConstitutive(2,ipc,ip,el)
+ of = phasememberAt(ipc,ip,el)
+ ph = phaseAt(ipc,ip,el)
  instance  = phase_plasticityInstance(ph)
  ns = plastic_dislotwin_totalNslip(instance)
  nt = plastic_dislotwin_totalNtwin(instance)
@@ -1954,7 +1954,7 @@ subroutine plastic_dislotwin_dotState(Tstar_v,Temperature,ipc,ip,el)
    material_phase, &
    phase_plasticityInstance, &
    plasticState, &
-   mappingConstitutive
+   phaseAt, phasememberAt
  use lattice,  only: &
    lattice_Sslip_v, &
    lattice_Stwin_v, &
@@ -1999,8 +1999,8 @@ subroutine plastic_dislotwin_dotState(Tstar_v,Temperature,ipc,ip,el)
               tau_trans
 
  !* Shortened notation
- of = mappingConstitutive(1,ipc,ip,el)
- ph = mappingConstitutive(2,ipc,ip,el)
+ of = phasememberAt(ipc,ip,el)
+ ph = phaseAt(ipc,ip,el)
  instance  = phase_plasticityInstance(ph)
  ns = plastic_dislotwin_totalNslip(instance)
  nt = plastic_dislotwin_totalNtwin(instance)
@@ -2202,7 +2202,7 @@ function plastic_dislotwin_postResults(Tstar_v,Temperature,ipc,ip,el)
  use material, only: &
    material_phase, &
    phase_plasticityInstance,& 
-   mappingConstitutive
+   phaseAt, phasememberAt
  use lattice, only: &
    lattice_Sslip_v, &
    lattice_Stwin_v, &
@@ -2245,8 +2245,8 @@ function plastic_dislotwin_postResults(Tstar_v,Temperature,ipc,ip,el)
 
  
  !* Shortened notation
- of = mappingConstitutive(1,ipc,ip,el)
- ph = mappingConstitutive(2,ipc,ip,el)
+ of = phasememberAt(ipc,ip,el)
+ ph = phaseAt(ipc,ip,el)
  instance  = phase_plasticityInstance(ph)
  ns = plastic_dislotwin_totalNslip(instance)
  nt = plastic_dislotwin_totalNtwin(instance)

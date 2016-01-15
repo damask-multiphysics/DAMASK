@@ -294,7 +294,7 @@ end subroutine source_damage_anisoBrittle_init
 !--------------------------------------------------------------------------------------------------
 subroutine source_damage_anisoBrittle_dotState(Tstar_v, ipc, ip, el)
  use material, only: &
-   mappingConstitutive, &
+   phaseAt, phasememberAt, &
    sourceState, &
    material_homog, &
    damage, &
@@ -322,8 +322,8 @@ subroutine source_damage_anisoBrittle_dotState(Tstar_v, ipc, ip, el)
  real(pReal) :: &
    traction_d, traction_t, traction_n, traction_crit
 
- phase = mappingConstitutive(2,ipc,ip,el)
- constituent = mappingConstitutive(1,ipc,ip,el)
+ phase = phaseAt(ipc,ip,el)
+ constituent = phasememberAt(ipc,ip,el)
  instance = source_damage_anisoBrittle_instance(phase)
  sourceOffset = source_damage_anisoBrittle_offset(phase)
  homog = material_homog(ip,el)
@@ -357,7 +357,7 @@ end subroutine source_damage_anisoBrittle_dotState
 !--------------------------------------------------------------------------------------------------
 subroutine source_damage_anisobrittle_getRateAndItsTangent(localphiDot, dLocalphiDot_dPhi, phi, ipc, ip,  el)
  use material, only: &
-   mappingConstitutive, &
+   phaseAt, phasememberAt, &
    sourceState
 
  implicit none
@@ -373,8 +373,8 @@ subroutine source_damage_anisobrittle_getRateAndItsTangent(localphiDot, dLocalph
  integer(pInt) :: &
    phase, constituent, sourceOffset
 
- phase = mappingConstitutive(2,ipc,ip,el)
- constituent = mappingConstitutive(1,ipc,ip,el)
+ phase = phaseAt(ipc,ip,el)
+ constituent = phasememberAt(ipc,ip,el)
  sourceOffset = source_damage_anisoBrittle_offset(phase)
  
  localphiDot = 1.0_pReal - &
@@ -389,7 +389,7 @@ end subroutine source_damage_anisobrittle_getRateAndItsTangent
 !--------------------------------------------------------------------------------------------------
 function source_damage_anisoBrittle_postResults(ipc,ip,el)
  use material, only: &
-   mappingConstitutive, &
+   phaseAt, phasememberAt, &
    sourceState
 
  implicit none
@@ -398,14 +398,14 @@ function source_damage_anisoBrittle_postResults(ipc,ip,el)
    ip, &                                                                                            !< integration point
    el                                                                                               !< element
  real(pReal), dimension(source_damage_anisoBrittle_sizePostResults( &
-                          source_damage_anisoBrittle_instance(mappingConstitutive(2,ipc,ip,el)))) :: &
+                          source_damage_anisoBrittle_instance(phaseAt(ipc,ip,el)))) :: &
    source_damage_anisoBrittle_postResults
 
  integer(pInt) :: &
    instance, phase, constituent, sourceOffset, o, c
    
- phase = mappingConstitutive(2,ipc,ip,el)
- constituent = mappingConstitutive(1,ipc,ip,el)
+ phase = phaseAt(ipc,ip,el)
+ constituent = phasememberAt(ipc,ip,el)
  instance = source_damage_anisoBrittle_instance(phase)
  sourceOffset = source_damage_anisoBrittle_offset(phase)
 

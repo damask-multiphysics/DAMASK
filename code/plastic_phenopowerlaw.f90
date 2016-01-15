@@ -788,7 +788,7 @@ subroutine plastic_phenopowerlaw_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,ipc,ip,
    lattice_NtwinSystem, &
    lattice_NnonSchmid
  use material, only: &
-   mappingConstitutive, &
+   phaseAt, phasememberAt, &
    phase_plasticityInstance
 
  implicit none
@@ -820,8 +820,8 @@ subroutine plastic_phenopowerlaw_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,ipc,ip,
  real(pReal), dimension(3,3,2) :: &
    nonSchmid_tensor
 
- of = mappingConstitutive(1,ipc,ip,el)
- ph = mappingConstitutive(2,ipc,ip,el)
+ of = phasememberAt(ipc,ip,el)
+ ph = phaseAt(ipc,ip,el)
  instance = phase_plasticityInstance(ph)
 
  Lp = 0.0_pReal
@@ -928,7 +928,7 @@ subroutine plastic_phenopowerlaw_dotState(Tstar_v,ipc,ip,el)
    lattice_NnonSchmid
  use material, only: &
    material_phase, &
-   mappingConstitutive, &
+   phaseAt, phasememberAt, &
    plasticState, &
    phase_plasticityInstance
 
@@ -957,8 +957,8 @@ subroutine plastic_phenopowerlaw_dotState(Tstar_v,ipc,ip,el)
  real(pReal), dimension(plastic_phenopowerlaw_totalNtwin(phase_plasticityInstance(material_phase(ipc,ip,el)))) :: &
    gdot_twin,left_TwinSlip,left_TwinTwin,right_SlipTwin,right_TwinTwin
 
- of = mappingConstitutive(1,ipc,ip,el)
- ph = mappingConstitutive(2,ipc,ip,el)
+ of = phasememberAt(ipc,ip,el)
+ ph = phaseAt(ipc,ip,el)
  instance = phase_plasticityInstance(ph)
 
  nSlip = plastic_phenopowerlaw_totalNslip(instance)
@@ -1083,7 +1083,7 @@ function plastic_phenopowerlaw_postResults(Tstar_v,ipc,ip,el)
  use material, only: &
    material_phase, &
    plasticState, &
-   mappingConstitutive, &
+   phaseAt, phasememberAt, &
    phase_plasticityInstance
  use lattice, only: &
    lattice_Sslip_v, &
@@ -1113,8 +1113,8 @@ function plastic_phenopowerlaw_postResults(Tstar_v,ipc,ip,el)
  real(pReal) :: &
    tau_slip_pos,tau_slip_neg,tau
 
- of = mappingConstitutive(1,ipc,ip,el)
- ph = mappingConstitutive(2,ipc,ip,el)
+ of = phasememberAt(ipc,ip,el)
+ ph = phaseAt(ipc,ip,el)
  instance = phase_plasticityInstance(ph)
 
  nSlip = plastic_phenopowerlaw_totalNslip(instance)

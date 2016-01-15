@@ -187,7 +187,7 @@ subroutine damage_nonlocal_getSourceAndItsTangent(phiDot, dPhiDot_dPhi, phi, ip,
  use material, only: &
    homogenization_Ngrains, &
    mappingHomogenization, &
-   mappingConstitutive, &
+   phaseAt, phasememberAt, &
    phase_source, &
    phase_Nsources, &
    SOURCE_damage_isoBrittle_ID, &
@@ -219,7 +219,7 @@ subroutine damage_nonlocal_getSourceAndItsTangent(phiDot, dPhiDot_dPhi, phi, ip,
  phiDot = 0.0_pReal
  dPhiDot_dPhi = 0.0_pReal
  do grain = 1, homogenization_Ngrains(mappingHomogenization(2,ip,el))
-   phase = mappingConstitutive(2,grain,ip,el)
+   phase = phaseAt(grain,ip,el)
    do source = 1_pInt, phase_Nsources(phase)
      select case(phase_source(source,phase))                                                   
        case (SOURCE_damage_isoBrittle_ID)

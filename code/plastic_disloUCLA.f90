@@ -958,7 +958,7 @@ function plastic_disloUCLA_homogenizedC(ipc,ip,el)
  use material, only: &
   phase_plasticityInstance, &
   plasticState, &
-  mappingConstitutive
+  phaseAt, phasememberAt
  use lattice, only: &
   lattice_C66
  
@@ -976,8 +976,8 @@ function plastic_disloUCLA_homogenizedC(ipc,ip,el)
  real(pReal) :: sumf
 
  !* Shortened notation
- of = mappingConstitutive(1,ipc,ip,el)
- ph = mappingConstitutive(2,ipc,ip,el)
+ of = phasememberAt(ipc,ip,el)
+ ph = phaseAt(ipc,ip,el)
  instance = phase_plasticityInstance(ph)
  ns = plastic_disloUCLA_totalNslip(instance)
  nt = plastic_disloUCLA_totalNtwin(instance)
@@ -1003,7 +1003,7 @@ subroutine plastic_disloUCLA_microstructure(temperature,ipc,ip,el)
    material_phase, &
    phase_plasticityInstance, &
    plasticState, &
-   mappingConstitutive
+   phaseAt, phasememberAt
  use lattice, only: &
    lattice_mu, &
    lattice_nu
@@ -1026,8 +1026,8 @@ subroutine plastic_disloUCLA_microstructure(temperature,ipc,ip,el)
  real(pReal), dimension(plastic_disloUCLA_totalNtwin(phase_plasticityInstance(material_phase(ipc,ip,el)))) :: fOverStacksize
 
  !* Shortened notation
- of = mappingConstitutive(1,ipc,ip,el)
- ph = mappingConstitutive(2,ipc,ip,el)
+ of = phasememberAt(ipc,ip,el)
+ ph = phaseAt(ipc,ip,el)
  instance = phase_plasticityInstance(ph)
  ns = plastic_disloUCLA_totalNslip(instance)
  nt = plastic_disloUCLA_totalNtwin(instance)
@@ -1146,7 +1146,7 @@ subroutine plastic_disloUCLA_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,Temperature
    material_phase, &
    phase_plasticityInstance, &
    plasticState, &
-   mappingConstitutive
+   phaseAt, phasememberAt
  use lattice, only: &
    lattice_Sslip, &
    lattice_Sslip_v, &
@@ -1181,8 +1181,8 @@ subroutine plastic_disloUCLA_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,Temperature
    gdot_slip_pos,gdot_slip_neg
    
  !* Shortened notation
- of = mappingConstitutive(1,ipc,ip,el)
- ph = mappingConstitutive(2,ipc,ip,el)
+ of = phasememberAt(ipc,ip,el)
+ ph = phaseAt(ipc,ip,el)
  instance  = phase_plasticityInstance(ph)
  ns = plastic_disloUCLA_totalNslip(instance)
  nt = plastic_disloUCLA_totalNtwin(instance)
@@ -1442,7 +1442,7 @@ subroutine plastic_disloUCLA_dotState(Tstar_v,Temperature,ipc,ip,el)
    material_phase, &
    phase_plasticityInstance, &
    plasticState, &
-   mappingConstitutive
+   phaseAt, phasememberAt
  use lattice,  only: &
    lattice_Sslip_v, &
    lattice_Stwin_v, &
@@ -1497,8 +1497,8 @@ subroutine plastic_disloUCLA_dotState(Tstar_v,Temperature,ipc,ip,el)
    gdot_slip_pos, gdot_slip_neg
 
  !* Shortened notation
- of = mappingConstitutive(1,ipc,ip,el)
- ph = mappingConstitutive(2,ipc,ip,el)
+ of = phasememberAt(ipc,ip,el)
+ ph = phaseAt(ipc,ip,el)
  instance  = phase_plasticityInstance(ph)
  ns = plastic_disloUCLA_totalNslip(instance)
  nt = plastic_disloUCLA_totalNtwin(instance)
@@ -1694,7 +1694,7 @@ function plastic_disloUCLA_postResults(Tstar_v,Temperature,ipc,ip,el)
    material_phase, &
    phase_plasticityInstance,& 
    plasticState, &
-   mappingConstitutive
+   phaseAt, phasememberAt
  use lattice, only: &
    lattice_Sslip_v, &
    lattice_Stwin_v, &
@@ -1736,8 +1736,8 @@ function plastic_disloUCLA_postResults(Tstar_v,Temperature,ipc,ip,el)
    gdot_slip_pos,dgdot_dtauslip_pos,tau_slip_pos,gdot_slip_neg,dgdot_dtauslip_neg,tau_slip_neg
  
  !* Shortened notation
- of = mappingConstitutive(1,ipc,ip,el)
- ph = mappingConstitutive(2,ipc,ip,el)
+ of = phasememberAt(ipc,ip,el)
+ ph = phaseAt(ipc,ip,el)
  instance  = phase_plasticityInstance(ph)
  ns = plastic_disloUCLA_totalNslip(instance)
  nt = plastic_disloUCLA_totalNtwin(instance)

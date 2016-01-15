@@ -762,7 +762,7 @@ subroutine plastic_phenoplus_microstructure(orientation,ipc,ip,el)
  use material, only:    material_phase, &
                         material_texture, &
                         phase_plasticityInstance, &
-                        mappingConstitutive, &
+                        phaseAt, phasememberAt, &
                         homogenization_maxNgrains, &
                         plasticState
 
@@ -828,8 +828,8 @@ subroutine plastic_phenoplus_microstructure(orientation,ipc,ip,el)
 
  !***Get my properties
  Nneighbors          = FE_NipNeighbors(FE_celltype(FE_geomtype(mesh_element(2,el))))
- ph                  = mappingConstitutive(2,ipc,ip,el)                                   !get my phase
- of                  = mappingConstitutive(1,ipc,ip,el)                                   !get my spatial location offset in memory
+ ph                  = phaseAt(ipc,ip,el)                                   !get my phase
+ of                  = phasememberAt(ipc,ip,el)                                   !get my spatial location offset in memory
  textureID           = material_texture(1,ip,el)                                          !get my texture ID
  instance            = phase_plasticityInstance(ph)                                       !get my instance based on phase ID
  ns                  = plastic_phenoplus_totalNslip(instance)
@@ -861,8 +861,8 @@ subroutine plastic_phenoplus_microstructure(orientation,ipc,ip,el)
    neighbor_el          = mesh_ipNeighborhood(1,n,ip,el)
    neighbor_ip          = mesh_ipNeighborhood(2,n,ip,el)
    neighbor_n           = 1                                                               !It is ipc
-   neighbor_of          = mappingConstitutive(1, neighbor_n, neighbor_ip, neighbor_el)
-   neighbor_ph          = mappingConstitutive(2, neighbor_n, neighbor_ip, neighbor_el)
+   neighbor_of          = phasememberAt( neighbor_n, neighbor_ip, neighbor_el)
+   neighbor_ph          = phaseAt( neighbor_n, neighbor_ip, neighbor_el)
    neighbor_tex         = material_texture(1,neighbor_ip,neighbor_el)
    neighbor_orientation = orientation(1:4, neighbor_n, neighbor_ip, neighbor_el)          !ipc is always 1.
    absMisorientation    = lattice_qDisorientation(my_orientation, &
@@ -941,7 +941,7 @@ subroutine plastic_phenoplus_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,ipc,ip,el)
    lattice_NnonSchmid
  use material, only: &
    plasticState, &
-   mappingConstitutive, &
+   phaseAt, phasememberAt, &
    phase_plasticityInstance
 
  implicit none
@@ -974,8 +974,8 @@ subroutine plastic_phenoplus_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,ipc,ip,el)
  real(pReal), dimension(3,3,2) :: &
    nonSchmid_tensor
 
- of          = mappingConstitutive(1,ipc,ip,el)
- ph          = mappingConstitutive(2,ipc,ip,el)
+ of          = phasememberAt(ipc,ip,el)
+ ph          = phaseAt(ipc,ip,el)
  instance    = phase_plasticityInstance(ph)
  nSlip       = plastic_phenoplus_totalNslip(instance)
  nTwin       = plastic_phenoplus_totalNtwin(instance)
@@ -1106,7 +1106,7 @@ subroutine plastic_phenoplus_dotState(Tstar_v,ipc,ip,el)
    lattice_NnonSchmid
  use material, only: &
    material_phase, &
-   mappingConstitutive, &
+   phaseAt, phasememberAt, &
    plasticState, &
    phase_plasticityInstance
 
@@ -1135,8 +1135,8 @@ subroutine plastic_phenoplus_dotState(Tstar_v,ipc,ip,el)
  real(pReal), dimension(plastic_phenoplus_totalNtwin(phase_plasticityInstance(material_phase(ipc,ip,el)))) :: &
    gdot_twin,left_TwinSlip,left_TwinTwin,right_SlipTwin,right_TwinTwin
 
- of       = mappingConstitutive(1,ipc,ip,el)
- ph       = mappingConstitutive(2,ipc,ip,el)
+ of       = phasememberAt(ipc,ip,el)
+ ph       = phaseAt(ipc,ip,el)
  instance = phase_plasticityInstance(ph)
 
  nSlip = plastic_phenoplus_totalNslip(instance)
@@ -1269,7 +1269,7 @@ function plastic_phenoplus_postResults(Tstar_v,ipc,ip,el)
  use material, only: &
    material_phase, &
    plasticState, &
-   mappingConstitutive, &
+   phaseAt, phasememberAt, &
    phase_plasticityInstance
  use lattice, only: &
    lattice_Sslip_v, &
@@ -1299,8 +1299,8 @@ function plastic_phenoplus_postResults(Tstar_v,ipc,ip,el)
  real(pReal) :: &
    tau_slip_pos,tau_slip_neg,tau
 
- of = mappingConstitutive(1,ipc,ip,el)
- ph = mappingConstitutive(2,ipc,ip,el)
+ of = phasememberAt(ipc,ip,el)
+ ph = phaseAt(ipc,ip,el)
  instance = phase_plasticityInstance(ph)
 
  nSlip = plastic_phenoplus_totalNslip(instance)

@@ -530,7 +530,7 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
    hydrogenfluxState, &
    phase_Nsources, &
    mappingHomogenization, &
-   mappingConstitutive, &
+   phaseAt, phasememberAt, &
    homogenization_Ngrains
  use crystallite, only: &
    crystallite_F0, &
@@ -600,11 +600,11 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
    myNgrains = homogenization_Ngrains(mesh_element(3,e))
    do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e); do g = 1,myNgrains
 
-     plasticState    (mappingConstitutive(2,g,i,e))%partionedState0(:,mappingConstitutive(1,g,i,e)) = &
-     plasticState    (mappingConstitutive(2,g,i,e))%state0(         :,mappingConstitutive(1,g,i,e))
-     do mySource = 1_pInt, phase_Nsources(mappingConstitutive(2,g,i,e))
-       sourceState(mappingConstitutive(2,g,i,e))%p(mySource)%partionedState0(:,mappingConstitutive(1,g,i,e)) = &
-       sourceState(mappingConstitutive(2,g,i,e))%p(mySource)%state0(         :,mappingConstitutive(1,g,i,e))
+     plasticState    (phaseAt(g,i,e))%partionedState0(:,phasememberAt(g,i,e)) = &
+     plasticState    (phaseAt(g,i,e))%state0(         :,phasememberAt(g,i,e))
+     do mySource = 1_pInt, phase_Nsources(phaseAt(g,i,e))
+       sourceState(phaseAt(g,i,e))%p(mySource)%partionedState0(:,phasememberAt(g,i,e)) = &
+       sourceState(phaseAt(g,i,e))%p(mySource)%state0(         :,phasememberAt(g,i,e))
      enddo
 
      crystallite_partionedFp0(1:3,1:3,g,i,e) = crystallite_Fp0(1:3,1:3,g,i,e)                       ! ...plastic def grads
@@ -702,11 +702,11 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
              crystallite_Tstar_v(1:6,1:myNgrains,i,e)                                               ! ...2nd PK stress
 
            do g = 1,myNgrains
-             plasticState    (mappingConstitutive(2,g,i,e))%partionedState0(:,mappingConstitutive(1,g,i,e)) = &
-             plasticState    (mappingConstitutive(2,g,i,e))%state(          :,mappingConstitutive(1,g,i,e))
-             do mySource = 1_pInt, phase_Nsources(mappingConstitutive(2,g,i,e))
-               sourceState(mappingConstitutive(2,g,i,e))%p(mySource)%partionedState0(:,mappingConstitutive(1,g,i,e)) = &
-               sourceState(mappingConstitutive(2,g,i,e))%p(mySource)%state(          :,mappingConstitutive(1,g,i,e))
+             plasticState    (phaseAt(g,i,e))%partionedState0(:,phasememberAt(g,i,e)) = &
+             plasticState    (phaseAt(g,i,e))%state(          :,phasememberAt(g,i,e))
+             do mySource = 1_pInt, phase_Nsources(phaseAt(g,i,e))
+               sourceState(phaseAt(g,i,e))%p(mySource)%partionedState0(:,phasememberAt(g,i,e)) = &
+               sourceState(phaseAt(g,i,e))%p(mySource)%state(          :,phasememberAt(g,i,e))
              enddo
            enddo
 
@@ -787,11 +787,11 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
            crystallite_Tstar_v(1:6,1:myNgrains,i,e) = &
               crystallite_partionedTstar0_v(1:6,1:myNgrains,i,e)                                    ! ...2nd PK stress
            do g = 1, myNgrains
-             plasticState    (mappingConstitutive(2,g,i,e))%state(          :,mappingConstitutive(1,g,i,e)) = &
-             plasticState    (mappingConstitutive(2,g,i,e))%partionedState0(:,mappingConstitutive(1,g,i,e))
-             do mySource = 1_pInt, phase_Nsources(mappingConstitutive(2,g,i,e))
-               sourceState(mappingConstitutive(2,g,i,e))%p(mySource)%state(          :,mappingConstitutive(1,g,i,e)) = &
-               sourceState(mappingConstitutive(2,g,i,e))%p(mySource)%partionedState0(:,mappingConstitutive(1,g,i,e))
+             plasticState    (phaseAt(g,i,e))%state(          :,phasememberAt(g,i,e)) = &
+             plasticState    (phaseAt(g,i,e))%partionedState0(:,phasememberAt(g,i,e))
+             do mySource = 1_pInt, phase_Nsources(phaseAt(g,i,e))
+               sourceState(phaseAt(g,i,e))%p(mySource)%state(          :,phasememberAt(g,i,e)) = &
+               sourceState(phaseAt(g,i,e))%p(mySource)%partionedState0(:,phasememberAt(g,i,e))
              enddo
            enddo
            forall(i = FEsolving_execIP(1,e):FEsolving_execIP(2,e), &
@@ -931,7 +931,7 @@ subroutine materialpoint_postResults
  use material, only: &
    mappingHomogenization, &
 #ifdef FEM
-   mappingConstitutive, &
+   phaseAt, phasememberAt, &
    homogenization_maxNgrains, &
    material_Ncrystallite, &
    material_Nphase, &
@@ -995,7 +995,7 @@ subroutine materialpoint_postResults
                                  thePos) = homogenization_postResults(i,e)
 
      grainLooping :do g = 1,myNgrains
-       myPhase = mappingConstitutive(2,g,i,e)
+       myPhase = phaseAt(g,i,e)
        crystalliteResults(1:1+crystallite_sizePostResults(myCrystallite) + &
                             1+plasticState(myPhase)%sizePostResults + &
                               sum(sourceState(myPhase)%p(:)%sizePostResults)) = crystallite_postResults(g,i,e)
