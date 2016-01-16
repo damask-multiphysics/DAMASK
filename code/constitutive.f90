@@ -39,13 +39,6 @@ contains
 !> @brief allocates arrays pointing to array of the various constitutive modules
 !--------------------------------------------------------------------------------------------------
 subroutine constitutive_init()
-#ifdef HDF
- use hdf5, only: &
-   HID_T
- use IO, only : &
-   HDF5_mappingConstitutive
-#endif
-
  use, intrinsic :: iso_fortran_env                                                                  ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
  use prec, only: &
    pReal
@@ -57,6 +50,7 @@ subroutine constitutive_init()
  use IO, only: &
    IO_error, &
    IO_open_file, &
+   IO_checkAndRewind, &
    IO_open_jobFile_stat, &
    IO_write_jobFile, &
    IO_write_jobIntFile, &
@@ -147,10 +141,10 @@ subroutine constitutive_init()
  implicit none
  integer(pInt), parameter :: FILEUNIT = 200_pInt
  integer(pInt) :: &
-  e, &                                                                                              !< maximum number of elements
-  phase, &
-  mySource, &
-  instance
+   o, &                                                                                             !< counter in output loop
+   p, &                                                                                             !< counter in phase loop
+   s, &                                                                                             !< counter in source loop
+   ins                                                                                              !< instance of plasticity/source
 
  integer(pInt), dimension(:,:), pointer :: thisSize
  integer(pInt), dimension(:)  , pointer :: thisNoutput
@@ -160,9 +154,12 @@ subroutine constitutive_init()
  nonlocalConstitutionPresent = .false.
 
 !--------------------------------------------------------------------------------------------------
-! parse plasticities from config file
+! open material.config
  if (.not. IO_open_jobFile_stat(FILEUNIT,material_localFileExt)) &                                  ! no local material configuration present...
    call IO_open_file(FILEUNIT,material_configFile)                                                  ! ... open material.config file
+
+!--------------------------------------------------------------------------------------------------
+! parse plasticities from config file
  if (any(phase_plasticity == PLASTICITY_NONE_ID))          call plastic_none_init
  if (any(phase_plasticity == PLASTICITY_ISOTROPIC_ID))     call plastic_isotropic_init(FILEUNIT)
  if (any(phase_plasticity == PLASTICITY_J2_ID))            call plastic_j2_init(FILEUNIT)
@@ -175,12 +172,10 @@ subroutine constitutive_init()
   call plastic_nonlocal_init(FILEUNIT)
   call plastic_nonlocal_stateInit()
  endif
- close(FILEUNIT)
 
 !--------------------------------------------------------------------------------------------------
 ! parse source mechanisms from config file
- if (.not. IO_open_jobFile_stat(FILEUNIT,material_localFileExt)) &                                  ! no local material configuration present...
-   call IO_open_file(FILEUNIT,material_configFile)                                                  ! ... open material.config file
+ call IO_checkAndRewind(FILEUNIT)
  if (any(phase_source == SOURCE_thermal_dissipation_ID))     call source_thermal_dissipation_init(FILEUNIT)
  if (any(phase_source == SOURCE_thermal_externalheat_ID))    call source_thermal_externalheat_init(FILEUNIT)
  if (any(phase_source == SOURCE_damage_isoBrittle_ID))       call source_damage_isoBrittle_init(FILEUNIT)
@@ -190,12 +185,10 @@ subroutine constitutive_init()
  if (any(phase_source == SOURCE_vacancy_phenoplasticity_ID)) call source_vacancy_phenoplasticity_init(FILEUNIT)
  if (any(phase_source == SOURCE_vacancy_irradiation_ID))     call source_vacancy_irradiation_init(FILEUNIT)
  if (any(phase_source == SOURCE_vacancy_thermalfluc_ID))     call source_vacancy_thermalfluc_init(FILEUNIT)
- close(FILEUNIT)
 
 !--------------------------------------------------------------------------------------------------
 ! parse kinematic mechanisms from config file
- if (.not. IO_open_jobFile_stat(FILEUNIT,material_localFileExt)) &                                  ! no local material configuration present...
-   call IO_open_file(FILEUNIT,material_configFile)                                                  ! ... open material.config file
+ call IO_checkAndRewind(FILEUNIT)
  if (any(phase_kinematics == KINEMATICS_cleavage_opening_ID))  call kinematics_cleavage_opening_init(FILEUNIT)
  if (any(phase_kinematics == KINEMATICS_slipplane_opening_ID)) call kinematics_slipplane_opening_init(FILEUNIT)
  if (any(phase_kinematics == KINEMATICS_thermal_expansion_ID)) call kinematics_thermal_expansion_init(FILEUNIT)
@@ -208,180 +201,171 @@ subroutine constitutive_init()
    write(6,'(a)')     ' $Id$'
    write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
- endif mainProcess
 
 !--------------------------------------------------------------------------------------------------
-! write description file for constitutive phase output
- if (worldrank == 0_pInt) then
+! write description file for constitutive output
    call IO_write_jobFile(FILEUNIT,'outputConstitutive')
-   do phase = 1_pInt,material_Nphase
-     if (any(material_phase == phase)) then                                                             ! is this phase active?
-       instance = phase_plasticityInstance(phase)                                                       ! which instance of a plasticity is present phase
-       knownPlasticity = .true.                                                                         ! assume valid
-       select case(phase_plasticity(phase))                                                             ! split per constititution
-         case (PLASTICITY_NONE_ID)
+   PhaseLoop: do p = 1_pInt,material_Nphase
+     activePhase: if (any(material_phase == p)) then
+       ins = phase_plasticityInstance(p)
+       knownPlasticity = .true.                                                                     ! assume valid
+       plasticityType: select case(phase_plasticity(p))
+         case (PLASTICITY_NONE_ID) plasticityType
            outputName = PLASTICITY_NONE_label
            thisNoutput => null()
-           thisOutput => null()                                                                         ! plastic_none_output
-           thisSize   => null()                                                                         ! plastic_none_sizePostResult
-         case (PLASTICITY_ISOTROPIC_ID)
+           thisOutput => null()
+           thisSize   => null() 
+         case (PLASTICITY_ISOTROPIC_ID) plasticityType
            outputName = PLASTICITY_ISOTROPIC_label
            thisNoutput => plastic_isotropic_Noutput
            thisOutput => plastic_isotropic_output
            thisSize   => plastic_isotropic_sizePostResult
-         case (PLASTICITY_J2_ID)
+         case (PLASTICITY_J2_ID) plasticityType
            outputName = PLASTICITY_J2_label
            thisNoutput => plastic_j2_Noutput
            thisOutput => plastic_j2_output
            thisSize   => plastic_j2_sizePostResult
-         case (PLASTICITY_PHENOPOWERLAW_ID)
+         case (PLASTICITY_PHENOPOWERLAW_ID) plasticityType
            outputName = PLASTICITY_PHENOPOWERLAW_label
            thisNoutput => plastic_phenopowerlaw_Noutput
            thisOutput => plastic_phenopowerlaw_output
            thisSize   => plastic_phenopowerlaw_sizePostResult
-         case (PLASTICITY_PHENOPLUS_ID)
+         case (PLASTICITY_PHENOPLUS_ID) plasticityType
            outputName = PLASTICITY_PHENOPLUS_label
            thisNoutput => plastic_phenoplus_Noutput
            thisOutput => plastic_phenoplus_output
            thisSize   => plastic_phenoplus_sizePostResult
-         case (PLASTICITY_DISLOTWIN_ID)
+         case (PLASTICITY_DISLOTWIN_ID) plasticityType
            outputName = PLASTICITY_DISLOTWIN_label
            thisNoutput => plastic_dislotwin_Noutput
            thisOutput => plastic_dislotwin_output
            thisSize   => plastic_dislotwin_sizePostResult
-         case (PLASTICITY_DISLOUCLA_ID)
+         case (PLASTICITY_DISLOUCLA_ID) plasticityType
            outputName = PLASTICITY_DISLOUCLA_label
            thisNoutput => plastic_disloucla_Noutput
            thisOutput => plastic_disloucla_output
            thisSize   => plastic_disloucla_sizePostResult
-         case (PLASTICITY_TITANMOD_ID)
+         case (PLASTICITY_TITANMOD_ID) plasticityType
            outputName = PLASTICITY_TITANMOD_label
            thisNoutput => plastic_titanmod_Noutput
            thisOutput => plastic_titanmod_output
            thisSize   => plastic_titanmod_sizePostResult
-         case (PLASTICITY_NONLOCAL_ID)
+         case (PLASTICITY_NONLOCAL_ID) plasticityType
            outputName = PLASTICITY_NONLOCAL_label
            thisNoutput => plastic_nonlocal_Noutput
            thisOutput => plastic_nonlocal_output
            thisSize   => plastic_nonlocal_sizePostResult
-         case default
+         case default plasticityType
            knownPlasticity = .false.
-       end select
-       write(FILEUNIT,'(/,a,/)') '['//trim(phase_name(phase))//']'
+       end select plasticityType
+       write(FILEUNIT,'(/,a,/)') '['//trim(phase_name(p))//']'
        if (knownPlasticity) then
+
          write(FILEUNIT,'(a)') '(plasticity)'//char(9)//trim(outputName)
-         if (phase_plasticity(phase) /= PLASTICITY_NONE_ID) then
-           do e = 1_pInt,thisNoutput(instance)
-             write(FILEUNIT,'(a,i4)') trim(thisOutput(e,instance))//char(9),thisSize(e,instance)
-           enddo
+         if (phase_plasticity(p) /= PLASTICITY_NONE_ID) then
+           OutputPlasticityLoop: do o = 1_pInt,thisNoutput(ins)
+             write(FILEUNIT,'(a,i4)') trim(thisOutput(o,ins))//char(9),thisSize(o,ins)
+           enddo OutputPlasticityLoop
          endif
        endif
-       do mySource = 1_pInt, phase_Nsources(phase)
-         knownSource = .true.
-         select case (phase_source(mySource,phase))
-           case (SOURCE_thermal_dissipation_ID)
-             instance = source_thermal_dissipation_instance(phase)
+       SourceLoop: do s = 1_pInt, phase_Nsources(p)
+         knownSource = .true.                                                                       ! assume valid
+         sourceType: select case (phase_source(s,p))
+           case (SOURCE_thermal_dissipation_ID) sourceType
+             ins = source_thermal_dissipation_instance(p)
              outputName = SOURCE_thermal_dissipation_label
              thisNoutput => source_thermal_dissipation_Noutput
              thisOutput => source_thermal_dissipation_output
              thisSize   => source_thermal_dissipation_sizePostResult
-           case (SOURCE_thermal_externalheat_ID)
-             instance = source_thermal_externalheat_instance(phase)
+           case (SOURCE_thermal_externalheat_ID) sourceType
+             ins = source_thermal_externalheat_instance(p)
              outputName = SOURCE_thermal_externalheat_label
              thisNoutput => source_thermal_externalheat_Noutput
              thisOutput => source_thermal_externalheat_output
              thisSize   => source_thermal_externalheat_sizePostResult
-           case (SOURCE_damage_isoBrittle_ID)
-             instance = source_damage_isoBrittle_instance(phase)
+           case (SOURCE_damage_isoBrittle_ID) sourceType
+             ins = source_damage_isoBrittle_instance(p)
              outputName = SOURCE_damage_isoBrittle_label
              thisNoutput => source_damage_isoBrittle_Noutput
              thisOutput => source_damage_isoBrittle_output
              thisSize   => source_damage_isoBrittle_sizePostResult
-           case (SOURCE_damage_isoDuctile_ID)
-             instance = source_damage_isoDuctile_instance(phase)
+           case (SOURCE_damage_isoDuctile_ID) sourceType
+             ins = source_damage_isoDuctile_instance(p)
              outputName = SOURCE_damage_isoDuctile_label
              thisNoutput => source_damage_isoDuctile_Noutput
              thisOutput => source_damage_isoDuctile_output
              thisSize   => source_damage_isoDuctile_sizePostResult
-           case (SOURCE_damage_anisoBrittle_ID)
-             instance = source_damage_anisoBrittle_instance(phase)
+           case (SOURCE_damage_anisoBrittle_ID) sourceType
+             ins = source_damage_anisoBrittle_instance(p)
              outputName = SOURCE_damage_anisoBrittle_label
              thisNoutput => source_damage_anisoBrittle_Noutput
              thisOutput => source_damage_anisoBrittle_output
              thisSize   => source_damage_anisoBrittle_sizePostResult
-           case (SOURCE_damage_anisoDuctile_ID)
-             instance = source_damage_anisoDuctile_instance(phase)
+           case (SOURCE_damage_anisoDuctile_ID) sourceType
+             ins = source_damage_anisoDuctile_instance(p)
              outputName = SOURCE_damage_anisoDuctile_label
              thisNoutput => source_damage_anisoDuctile_Noutput
              thisOutput => source_damage_anisoDuctile_output
              thisSize   => source_damage_anisoDuctile_sizePostResult
-           case (SOURCE_vacancy_phenoplasticity_ID)
-             instance = source_vacancy_phenoplasticity_instance(phase)
+           case (SOURCE_vacancy_phenoplasticity_ID) sourceType
+             ins = source_vacancy_phenoplasticity_instance(p)
              outputName = SOURCE_vacancy_phenoplasticity_label
              thisNoutput => source_vacancy_phenoplasticity_Noutput
              thisOutput => source_vacancy_phenoplasticity_output
              thisSize   => source_vacancy_phenoplasticity_sizePostResult
-           case (SOURCE_vacancy_irradiation_ID)
-             instance = source_vacancy_irradiation_instance(phase)
+           case (SOURCE_vacancy_irradiation_ID) sourceType
+             ins = source_vacancy_irradiation_instance(p)
              outputName = SOURCE_vacancy_irradiation_label
              thisNoutput => source_vacancy_irradiation_Noutput
              thisOutput => source_vacancy_irradiation_output
              thisSize   => source_vacancy_irradiation_sizePostResult
-           case (SOURCE_vacancy_thermalfluc_ID)
-             instance = source_vacancy_thermalfluc_instance(phase)
+           case (SOURCE_vacancy_thermalfluc_ID) sourceType
+             ins = source_vacancy_thermalfluc_instance(p)
              outputName = SOURCE_vacancy_thermalfluc_label
              thisNoutput => source_vacancy_thermalfluc_Noutput
              thisOutput => source_vacancy_thermalfluc_output
              thisSize   => source_vacancy_thermalfluc_sizePostResult
-           case default
+           case default sourceType
              knownSource = .false.
-         end select
+         end select sourceType
          if (knownSource) then
            write(FILEUNIT,'(a)') '(source)'//char(9)//trim(outputName)
-           do e = 1_pInt,thisNoutput(instance)
-             write(FILEUNIT,'(a,i4)') trim(thisOutput(e,instance))//char(9),thisSize(e,instance)
-           enddo
+           OutputSourceLoop: do o = 1_pInt,thisNoutput(ins)
+             write(FILEUNIT,'(a,i4)') trim(thisOutput(o,ins))//char(9),thisSize(o,ins)
+           enddo OutputSourceLoop
          endif
-       enddo
-     endif
-   enddo
+       enddo SourceLoop
+     endif activePhase
+   enddo PhaseLoop
    close(FILEUNIT)
- endif
+ endif mainProcess
 
  constitutive_plasticity_maxSizeDotState = 0_pInt
  constitutive_plasticity_maxSizePostResults = 0_pInt
  constitutive_source_maxSizeDotState = 0_pInt
  constitutive_source_maxSizePostResults = 0_pInt
 
- PhaseLoop2:do phase = 1_pInt,material_Nphase
-   plasticState    (phase)%partionedState0 = plasticState    (phase)%State0
-   plasticState    (phase)%State           = plasticState    (phase)%State0
-   forall(mySource = 1_pInt:phase_Nsources(phase)) &
-     sourceState(phase)%p(mySource)%partionedState0 = sourceState(phase)%p(mySource)%State0
-   forall(mySource = 1_pInt:phase_Nsources(phase)) &
-     sourceState(phase)%p(mySource)%State           = sourceState(phase)%p(mySource)%State0
-
+ PhaseLoop2:do p = 1_pInt,material_Nphase
+!--------------------------------------------------------------------------------------------------
+! partition and inititalize state
+   plasticState(p)%partionedState0 = plasticState(p)%State0
+   plasticState(p)%State           = plasticState(p)%State0
+   forall(s = 1_pInt:phase_Nsources(p))
+     sourceState(p)%p(s)%partionedState0 = sourceState(p)%p(s)%State0
+     sourceState(p)%p(s)%State           = sourceState(p)%p(s)%State0
+   end forall
+!--------------------------------------------------------------------------------------------------
+! determine max size of state and output
    constitutive_plasticity_maxSizeDotState    = max(constitutive_plasticity_maxSizeDotState,    &
-                                                    plasticState(phase)%sizeDotState)
+                                                    plasticState(p)%sizeDotState)
    constitutive_plasticity_maxSizePostResults = max(constitutive_plasticity_maxSizePostResults, &
-                                                    plasticState(phase)%sizePostResults)
+                                                    plasticState(p)%sizePostResults)
    constitutive_source_maxSizeDotState        = max(constitutive_source_maxSizeDotState, &
-                                                    maxval(sourceState(phase)%p(:)%sizeDotState))
+                                                    maxval(sourceState(p)%p(:)%sizeDotState))
    constitutive_source_maxSizePostResults     = max(constitutive_source_maxSizePostResults, &
-                                                    maxval(sourceState(phase)%p(:)%sizePostResults))
+                                                    maxval(sourceState(p)%p(:)%sizePostResults))
  enddo PhaseLoop2
 
-#ifdef HDF
- call  HDF5_mappingConstitutive(mappingConstitutive)
- do phase = 1_pInt,material_Nphase
-   instance = phase_plasticityInstance(phase)                                                       ! which instance of a plasticity is present phase
-   select case(phase_plasticity(phase))                                                             ! split per constititution
-     case (PLASTICITY_NONE_ID)
-     case (PLASTICITY_ISOTROPIC_ID)
-     case (PLASTICITY_J2_ID)
-   end select
- enddo
-#endif
 
 #ifdef TODO
 !--------------------------------------------------------------------------------------------------
@@ -435,22 +419,20 @@ function constitutive_homogenizedC(ipc,ip,el)
  implicit none
  real(pReal), dimension(6,6) :: constitutive_homogenizedC
  integer(pInt), intent(in) :: &
-   ipc, &                                                                                            !< grain number
-   ip, &                                                                                             !< integration point number
-   el                                                                                                !< element number
+   ipc, &                                                                                            !< component-ID of integration point
+   ip, &                                                                                             !< integration point
+   el                                                                                                !< element
 
- select case (phase_plasticity(material_phase(ipc,ip,el)))
-
-   case (PLASTICITY_DISLOTWIN_ID)
+ plasticityType: select case (phase_plasticity(material_phase(ipc,ip,el)))
+   case (PLASTICITY_DISLOTWIN_ID) plasticityType
      constitutive_homogenizedC = plastic_dislotwin_homogenizedC(ipc,ip,el)
-   case (PLASTICITY_DISLOUCLA_ID)
+   case (PLASTICITY_DISLOUCLA_ID) plasticityType
      constitutive_homogenizedC = plastic_disloucla_homogenizedC(ipc,ip,el)
-   case (PLASTICITY_TITANMOD_ID)
+   case (PLASTICITY_TITANMOD_ID) plasticityType
      constitutive_homogenizedC = plastic_titanmod_homogenizedC (ipc,ip,el)
-   case default
+   case default plasticityType
      constitutive_homogenizedC = lattice_C66(1:6,1:6,material_phase (ipc,ip,el))
-
- end select
+ end select plasticityType
 
 end function constitutive_homogenizedC
 
@@ -484,34 +466,33 @@ subroutine constitutive_microstructure(orientations, Fe, Fp, ipc, ip, el)
 
  implicit none
  integer(pInt), intent(in) :: &
-   ipc, &                                                                                           !< grain number
-   ip, &                                                                                            !< integration point number
-   el                                                                                               !< element number
+   ipc, &                                                                                           !< component-ID of integration point
+   ip, &                                                                                            !< integration point
+   el                                                                                               !< element
  real(pReal),   intent(in), dimension(3,3) :: &
    Fe, &                                                                                            !< elastic deformation gradient
    Fp                                                                                               !< plastic deformation gradient
  integer(pInt) :: &
-   phase, homog, offset
+   ho, &                                                                                            !< homogenization
+   tme                                                                                              !< thermal member position
  real(pReal),   intent(in), dimension(:,:,:,:) :: &
-   orientations                                                                                     !< crystal orientation in quaternions
+   orientations                                                                                     !< crystal orientations as quaternions
 
- phase = material_phase(ipc,ip,el)
- homog = material_homog(    ip,el)
- offset = thermalMapping(homog)%p(ip,el)
- select case (phase_plasticity(phase))
+ ho = material_homog(ip,el)
+ tme = thermalMapping(ho)%p(ip,el)
 
-   case (PLASTICITY_DISLOTWIN_ID)
-     call plastic_dislotwin_microstructure(temperature(homog)%p(offset),ipc,ip,el)
-   case (PLASTICITY_DISLOUCLA_ID)
-     call plastic_disloucla_microstructure(temperature(homog)%p(offset),ipc,ip,el)
-   case (PLASTICITY_TITANMOD_ID)
-     call plastic_titanmod_microstructure (temperature(homog)%p(offset),ipc,ip,el)
-   case (PLASTICITY_NONLOCAL_ID)
+ plasticityType: select case (phase_plasticity(material_phase(ipc,ip,el)))
+   case (PLASTICITY_DISLOTWIN_ID) plasticityType
+     call plastic_dislotwin_microstructure(temperature(ho)%p(tme),ipc,ip,el)
+   case (PLASTICITY_DISLOUCLA_ID) plasticityType
+     call plastic_disloucla_microstructure(temperature(ho)%p(tme),ipc,ip,el)
+   case (PLASTICITY_TITANMOD_ID) plasticityType
+     call plastic_titanmod_microstructure (temperature(ho)%p(tme),ipc,ip,el)
+   case (PLASTICITY_NONLOCAL_ID) plasticityType
      call plastic_nonlocal_microstructure (Fe,Fp,ip,el)
-   case (PLASTICITY_PHENOPLUS_ID)
+   case (PLASTICITY_PHENOPLUS_ID) plasticityType
      call plastic_phenoplus_microstructure(orientations,ipc,ip,el)
-
- end select
+ end select plasticityType
 
 end subroutine constitutive_microstructure
 
@@ -523,7 +504,6 @@ subroutine constitutive_LpAndItsTangent(Lp, dLp_dTstar3333, dLp_dFi3333, Tstar_v
  use prec, only: &
    pReal
  use math, only: &
-   math_transpose33, &
    math_mul33x33, &
    math_Mandel6to33, &
    math_Mandel33to6, &
@@ -562,9 +542,9 @@ subroutine constitutive_LpAndItsTangent(Lp, dLp_dTstar3333, dLp_dFi3333, Tstar_v
 
  implicit none
  integer(pInt), intent(in) :: &
-   ipc, &                                                                                           !< grain number
-   ip, &                                                                                            !< integration point number
-   el                                                                                               !< element number
+   ipc, &                                                                                           !< component-ID of integration point
+   ip, &                                                                                            !< integration point
+   el                                                                                               !< element
  real(pReal),   intent(in),  dimension(6) :: &
    Tstar_v                                                                                          !< 2nd Piola-Kirchhoff stress
  real(pReal),   intent(in),  dimension(3,3) :: &
@@ -581,55 +561,52 @@ subroutine constitutive_LpAndItsTangent(Lp, dLp_dTstar3333, dLp_dFi3333, Tstar_v
  real(pReal), dimension(3,3) :: &
    temp_33
  integer(pInt) :: &
-   i, j, phase, homog, offset
+   ho, &                                                                                            !< homogenization
+   tme                                                                                              !< thermal member position
+ integer(pInt) :: &
+   i, j
 
- phase = material_phase(ipc,ip,el)
- homog = material_homog(    ip,el)
- offset = thermalMapping(homog)%p(ip,el)
- Mstar_v = math_Mandel33to6(math_mul33x33(math_mul33x33(math_transpose33(Fi),Fi), &
-                            math_Mandel6to33(Tstar_v)))
- select case (phase_plasticity(phase))
+ ho = material_homog(ip,el)
+ tme = thermalMapping(ho)%p(ip,el)
 
-   case (PLASTICITY_NONE_ID)
+ Mstar_v = math_Mandel33to6(math_mul33x33(math_mul33x33(transpose(Fi),Fi),math_Mandel6to33(Tstar_v)))
+
+ plasticityType: select case (phase_plasticity(material_phase(ipc,ip,el)))
+   case (PLASTICITY_NONE_ID) plasticityType
      Lp = 0.0_pReal
      dLp_dMstar = 0.0_pReal
-   case (PLASTICITY_ISOTROPIC_ID)
+   case (PLASTICITY_ISOTROPIC_ID) plasticityType
      call plastic_isotropic_LpAndItsTangent(Lp,dLp_dMstar,Mstar_v,ipc,ip,el)
-   case (PLASTICITY_J2_ID)
+   case (PLASTICITY_J2_ID) plasticityType
      call plastic_j2_LpAndItsTangent(Lp,dLp_dMstar,Mstar_v,ipc,ip,el)
-   case (PLASTICITY_PHENOPOWERLAW_ID)
+   case (PLASTICITY_PHENOPOWERLAW_ID) plasticityType
      call plastic_phenopowerlaw_LpAndItsTangent(Lp,dLp_dMstar,Mstar_v,ipc,ip,el)
-   case (PLASTICITY_PHENOPLUS_ID)
+   case (PLASTICITY_PHENOPLUS_ID) plasticityType
      call plastic_phenoplus_LpAndItsTangent(Lp,dLp_dMstar,Mstar_v,ipc,ip,el)
-   case (PLASTICITY_NONLOCAL_ID)
+   case (PLASTICITY_NONLOCAL_ID) plasticityType
      call plastic_nonlocal_LpAndItsTangent(Lp,dLp_dMstar,Mstar_v, &
-                                           temperature(homog)%p(offset), &
-                                           ip,el)
-   case (PLASTICITY_DISLOTWIN_ID)
+                                           temperature(ho)%p(tme),ip,el)
+   case (PLASTICITY_DISLOTWIN_ID) plasticityType
      call plastic_dislotwin_LpAndItsTangent(Lp,dLp_dMstar,Mstar_v, &
-                                            temperature(homog)%p(offset), &
-                                            ipc,ip,el)
-   case (PLASTICITY_DISLOUCLA_ID)
+                                            temperature(ho)%p(tme),ipc,ip,el)
+   case (PLASTICITY_DISLOUCLA_ID) plasticityType
      call plastic_disloucla_LpAndItsTangent(Lp,dLp_dMstar,Mstar_v, &
-                                            temperature(homog)%p(offset), &
-                                            ipc,ip,el)
-   case (PLASTICITY_TITANMOD_ID)
+                                            temperature(ho)%p(tme), ipc,ip,el)
+   case (PLASTICITY_TITANMOD_ID) plasticityType
      call plastic_titanmod_LpAndItsTangent(Lp,dLp_dMstar,Mstar_v, &
-                                           temperature(homog)%p(offset), &
-                                           ipc,ip,el)
-
- end select
+                                           temperature(ho)%p(tme), ipc,ip,el)
+ end select plasticityType
 
  dLp_dTstar3333 = math_Plain99to3333(dLp_dMstar)
  temp_33 = math_mul33x33(Fi,math_Mandel6to33(Tstar_v))
- do i = 1_pInt, 3_pInt; do j = 1_pInt, 3_pInt
-   dLp_dFi3333(i,j,1:3,1:3) = math_mul33x33(temp_33,math_transpose33(dLp_dTstar3333(i,j,1:3,1:3))) + &
+ forall(i = 1_pInt:3_pInt, j = 1_pInt:3_pInt) &
+   dLp_dFi3333(i,j,1:3,1:3) = math_mul33x33(temp_33,transpose(dLp_dTstar3333(i,j,1:3,1:3))) + &
                               math_mul33x33(math_mul33x33(Fi,dLp_dTstar3333(i,j,1:3,1:3)),math_Mandel6to33(Tstar_v))
- enddo; enddo
- temp_33 = math_mul33x33(math_transpose33(Fi),Fi)
- do i = 1_pInt, 3_pInt; do j = 1_pInt, 3_pInt
+
+ temp_33 = math_mul33x33(transpose(Fi),Fi)
+
+ forall(i = 1_pInt:3_pInt, j = 1_pInt:3_pInt) &
    dLp_dTstar3333(i,j,1:3,1:3) = math_mul33x33(temp_33,dLp_dTstar3333(i,j,1:3,1:3))
- enddo; enddo
 
 end subroutine constitutive_LpAndItsTangent
 
@@ -644,7 +621,6 @@ subroutine constitutive_LiAndItsTangent(Li, dLi_dTstar3333, dLi_dFi3333, Tstar_v
    math_I3, &
    math_inv33, &
    math_det33, &
-   math_transpose33, &
    math_mul33x33
  use material, only: &
    phase_plasticity, &
@@ -674,9 +650,9 @@ subroutine constitutive_LiAndItsTangent(Li, dLi_dTstar3333, dLi_dFi3333, Tstar_v
 
  implicit none
  integer(pInt), intent(in) :: &
-   ipc, &                                                                                           !< grain number
-   ip, &                                                                                            !< integration point number
-   el                                                                                               !< element number
+   ipc, &                                                                                           !< component-ID of integration point
+   ip, &                                                                                            !< integration point
+   el                                                                                               !< element
  real(pReal),   intent(in),  dimension(6) :: &
    Tstar_v                                                                                          !< 2nd Piola-Kirchhoff stress
  real(pReal),   intent(in),  dimension(3,3) :: &
@@ -696,61 +672,54 @@ subroutine constitutive_LiAndItsTangent(Li, dLi_dTstar3333, dLi_dFi3333, Tstar_v
  real(pReal) :: &
    detFi
  integer(pInt) :: &
-   i, j, kinematics, phase, homog
-
- phase = material_phase(ipc,ip,el)
- homog = material_homog(    ip,el)
+   k                                                                                                !< counter in kinematics loop
+ integer(pInt) :: &
+   i, j
 
  Li = 0.0_pReal
  dLi_dTstar3333  = 0.0_pReal
  dLi_dFi3333     = 0.0_pReal
 
- select case (phase_plasticity(phase))
-
-   case (PLASTICITY_isotropic_ID)
+ plasticityType: select case (phase_plasticity(material_phase(ipc,ip,el)))
+   case (PLASTICITY_isotropic_ID) plasticityType
      call plastic_isotropic_LiAndItsTangent(my_Li, my_dLi_dTstar, Tstar_v, ipc, ip, el)
-   
-   case default
+   case default plasticityType
      my_Li = 0.0_pReal
      my_dLi_dTstar = 0.0_pReal
- end select
+ end select plasticityType
+
  Li = Li + my_Li
  dLi_dTstar3333 = dLi_dTstar3333 + my_dLi_dTstar
 
- do kinematics = 1_pInt, phase_Nkinematics(material_phase(ipc,ip,el))
-   select case (phase_kinematics(kinematics,material_phase(ipc,ip,el)))
-     case (KINEMATICS_cleavage_opening_ID)
+ KinematicsLoop: do k = 1_pInt, phase_Nkinematics(material_phase(ipc,ip,el))
+   kinematicsType: select case (phase_kinematics(k,material_phase(ipc,ip,el)))
+     case (KINEMATICS_cleavage_opening_ID) kinematicsType
        call kinematics_cleavage_opening_LiAndItsTangent(my_Li, my_dLi_dTstar, Tstar_v, ipc, ip, el)
-
-     case (KINEMATICS_slipplane_opening_ID)
+     case (KINEMATICS_slipplane_opening_ID) kinematicsType
        call kinematics_slipplane_opening_LiAndItsTangent(my_Li, my_dLi_dTstar, Tstar_v, ipc, ip, el)
-
-     case (KINEMATICS_thermal_expansion_ID)
+     case (KINEMATICS_thermal_expansion_ID) kinematicsType
        call kinematics_thermal_expansion_LiAndItsTangent(my_Li, my_dLi_dTstar, ipc, ip, el)
-
-     case (KINEMATICS_vacancy_strain_ID)
+     case (KINEMATICS_vacancy_strain_ID) kinematicsType
        call kinematics_vacancy_strain_LiAndItsTangent(my_Li, my_dLi_dTstar, ipc, ip, el)
-
-     case (KINEMATICS_hydrogen_strain_ID)
+     case (KINEMATICS_hydrogen_strain_ID) kinematicsType
        call kinematics_hydrogen_strain_LiAndItsTangent(my_Li, my_dLi_dTstar, ipc, ip, el)
-
-     case default
+     case default kinematicsType
        my_Li = 0.0_pReal
        my_dLi_dTstar = 0.0_pReal
-   end select
+   end select kinematicsType
    Li = Li + my_Li
    dLi_dTstar3333 = dLi_dTstar3333 + my_dLi_dTstar
- enddo
+ enddo KinematicsLoop
 
  FiInv = math_inv33(Fi)
  detFi = math_det33(Fi)
  Li = math_mul33x33(math_mul33x33(Fi,Li),FiInv)*detFi                                               !< push forward to intermediate configuration
  temp_33 = math_mul33x33(FiInv,Li)
- do i = 1_pInt, 3_pInt; do j = 1_pInt, 3_pInt
+ forall(i = 1_pInt:3_pInt, j = 1_pInt:3_pInt)
    dLi_dTstar3333(1:3,1:3,i,j) = math_mul33x33(math_mul33x33(Fi,dLi_dTstar3333(1:3,1:3,i,j)),FiInv)*detFi
    dLi_dFi3333   (1:3,1:3,i,j) = dLi_dFi3333(1:3,1:3,i,j) + Li*FiInv(j,i)
    dLi_dFi3333   (1:3,i,1:3,j) = dLi_dFi3333(1:3,i,1:3,j) + math_I3*temp_33(j,i) + Li*FiInv(j,i)
- enddo; enddo
+ end forall
 
 end subroutine constitutive_LiAndItsTangent
 
@@ -781,32 +750,29 @@ pure function constitutive_initialFi(ipc, ip, el)
 
  implicit none
  integer(pInt), intent(in) :: &
-   ipc, &                                                                                           !< grain number
-   ip, &                                                                                            !< integration point number
-   el                                                                                               !< element number
+   ipc, &                                                                                           !< component-ID of integration point
+   ip, &                                                                                            !< integration point
+   el                                                                                               !< element
  real(pReal), dimension(3,3) :: &
    constitutive_initialFi                                                                           !< composite initial intermediate deformation gradient
  integer(pInt) :: &
-   kinematics
+   k                                                                                                !< counter in kinematics loop
 
  constitutive_initialFi = math_I3
 
- do kinematics = 1_pInt, phase_Nkinematics(material_phase(ipc,ip,el))                               !< Warning: small initial strain assumption
-   select case (phase_kinematics(kinematics,material_phase(ipc,ip,el)))
-     case (KINEMATICS_thermal_expansion_ID)
+ KinematicsLoop: do k = 1_pInt, phase_Nkinematics(material_phase(ipc,ip,el))                        !< Warning: small initial strain assumption
+   kinematicsType: select case (phase_kinematics(k,material_phase(ipc,ip,el)))
+     case (KINEMATICS_thermal_expansion_ID) kinematicsType
        constitutive_initialFi = &
          constitutive_initialFi + kinematics_thermal_expansion_initialStrain(ipc, ip, el)
-
-     case (KINEMATICS_vacancy_strain_ID)
+     case (KINEMATICS_vacancy_strain_ID) kinematicsType
        constitutive_initialFi = &
          constitutive_initialFi + kinematics_vacancy_strain_initialStrain(ipc, ip, el)
-
-     case (KINEMATICS_hydrogen_strain_ID)
+     case (KINEMATICS_hydrogen_strain_ID) kinematicsType
        constitutive_initialFi = &
          constitutive_initialFi + kinematics_hydrogen_strain_initialStrain(ipc, ip, el)
-
-   end select
-enddo
+   end select kinematicsType
+ enddo KinematicsLoop
 
 end function constitutive_initialFi
 
@@ -822,9 +788,9 @@ subroutine constitutive_TandItsTangent(T, dT_dFe, dT_dFi, Fe, Fi, ipc, ip, el)
 
  implicit none
  integer(pInt), intent(in) :: &
-   ipc, &                                                                                           !< grain number
-   ip, &                                                                                            !< integration point number
-   el                                                                                               !< element number
+   ipc, &                                                                                           !< component-ID of integration point
+   ip, &                                                                                            !< integration point
+   el                                                                                               !< element
  real(pReal),   intent(in),  dimension(3,3) :: &
    Fe, &                                                                                            !< elastic deformation gradient
    Fi                                                                                               !< intermediate deformation gradient
@@ -852,7 +818,6 @@ subroutine constitutive_hooke_TandItsTangent(T, dT_dFe, dT_dFi, Fe, Fi, ipc, ip,
    math_mul33x33, &
    math_mul3333xx33, &
    math_Mandel66to3333, &
-   math_transpose33, &
    math_trace33, &
    math_I3
  use material, only: &
@@ -869,9 +834,9 @@ subroutine constitutive_hooke_TandItsTangent(T, dT_dFe, dT_dFi, Fe, Fi, ipc, ip,
 
  implicit none
  integer(pInt), intent(in) :: &
-   ipc, &                                                                                           !< grain number
-   ip, &                                                                                            !< integration point number
-   el                                                                                               !< element number
+   ipc, &                                                                                           !< component-ID of integration point
+   ip, &                                                                                            !< integration point
+   el                                                                                               !< element
  real(pReal),   intent(in),  dimension(3,3) :: &
    Fe, &                                                                                            !< elastic deformation gradient
    Fi                                                                                               !< intermediate deformation gradient
@@ -880,35 +845,34 @@ subroutine constitutive_hooke_TandItsTangent(T, dT_dFe, dT_dFi, Fe, Fi, ipc, ip,
  real(pReal),   intent(out), dimension(3,3,3,3) :: &
    dT_dFe, &                                                                                        !< derivative of 2nd P-K stress with respect to elastic deformation gradient
    dT_dFi                                                                                           !< derivative of 2nd P-K stress with respect to intermediate deformation gradient
-
- integer(pInt) :: i, j, phase, homog
  real(pReal), dimension(3,3) :: E
  real(pReal), dimension(3,3,3,3) :: C
+ integer(pInt) :: &
+   ho, &                                                                                            !< homogenization
+   d                                                                                                !< counter in degradation loop
+ integer(pInt) :: &
+   i, j
 
- phase = material_phase(ipc,ip,el)
- homog = material_homog(ip,el)
+ ho = material_homog(ip,el)
+
  C = math_Mandel66to3333(constitutive_homogenizedC(ipc,ip,el))
- do i = 1_pInt, phase_NstiffnessDegradations(phase)
-   select case(phase_stiffnessDegradation(i,phase))
-     case (STIFFNESS_DEGRADATION_damage_ID)
-       C = damage(homog)%p(damageMapping(homog)%p(ip,el))* &
-           damage(homog)%p(damageMapping(homog)%p(ip,el))* &
-           C
 
-     case (STIFFNESS_DEGRADATION_porosity_ID)
-       C = porosity(homog)%p(porosityMapping(homog)%p(ip,el))* &
-           porosity(homog)%p(porosityMapping(homog)%p(ip,el))* &
-           C
-   end select
- enddo
+ DegradationLoop: do d = 1_pInt, phase_NstiffnessDegradations(material_phase(ipc,ip,el))
+   degradationType: select case(phase_stiffnessDegradation(d,material_phase(ipc,ip,el)))
+     case (STIFFNESS_DEGRADATION_damage_ID) degradationType
+       C = C * damage(ho)%p(damageMapping(ho)%p(ip,el))**2_pInt
+     case (STIFFNESS_DEGRADATION_porosity_ID) degradationType
+       C = C * porosity(ho)%p(porosityMapping(ho)%p(ip,el))**2_pInt
+   end select degradationType
+ enddo DegradationLoop
 
- E = 0.5_pReal*(math_mul33x33(math_transpose33(Fe),Fe)-math_I3)                                     !< Green-Lagrange strain in unloaded configuration
- T = math_mul3333xx33(C,math_mul33x33(math_mul33x33(math_transpose33(Fi),E),Fi))                    !< 2PK stress in lattice configuration in work conjugate with GL strain pulled back to lattice configuration
+ E = 0.5_pReal*(math_mul33x33(transpose(Fe),Fe)-math_I3)                                            !< Green-Lagrange strain in unloaded configuration
+ T = math_mul3333xx33(C,math_mul33x33(math_mul33x33(transpose(Fi),E),Fi))                           !< 2PK stress in lattice configuration in work conjugate with GL strain pulled back to lattice configuration
 
  dT_dFe = 0.0_pReal
  forall (i=1_pInt:3_pInt, j=1_pInt:3_pInt)
    dT_dFe(i,j,1:3,1:3) = &
-     math_mul33x33(Fe,math_mul33x33(math_mul33x33(Fi,C(i,j,1:3,1:3)),math_transpose33(Fi)))         !< dT_ij/dFe_kl = C_ijmn * Fi_lm * Fi_on * Fe_ko
+     math_mul33x33(Fe,math_mul33x33(math_mul33x33(Fi,C(i,j,1:3,1:3)),transpose(Fi)))                !< dT_ij/dFe_kl = C_ijmn * Fi_lm * Fi_on * Fe_ko
    dT_dFi(i,j,1:3,1:3) = 2.0_pReal*math_mul33x33(math_mul33x33(E,Fi),C(i,j,1:3,1:3))                !< dT_ij/dFi_kl = C_ijln * E_km * Fe_mn
  end forall
 
@@ -980,9 +944,9 @@ subroutine constitutive_collectDotState(Tstar_v, FeArray, FpArray, subdt, subfra
 
  implicit none
  integer(pInt), intent(in) :: &
-   ipc, &                                                                                           !< grain number
-   ip, &                                                                                            !< integration point number
-   el                                                                                               !< element number
+   ipc, &                                                                                           !< component-ID of integration point
+   ip, &                                                                                            !< integration point
+   el                                                                                               !< element
  real(pReal),  intent(in) :: &
    subdt                                                                                            !< timestep
  real(pReal),  intent(in), dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems) :: &
@@ -997,64 +961,65 @@ subroutine constitutive_collectDotState(Tstar_v, FeArray, FpArray, subdt, subfra
    tickrate, &
    maxticks
  integer(pInt) :: &
-   phase, homog, offset, mySource
+   ho, &                                                                                            !< homogenization
+   tme, &                                                                                           !< thermal member position
+   s                                                                                                !< counter in source loop
 
  if (iand(debug_level(debug_constitutive), debug_levelBasic) /= 0_pInt) &
    call system_clock(count=tick,count_rate=tickrate,count_max=maxticks)
 
- phase = material_phase(ipc,ip,el)
- homog = material_homog(    ip,el)
- offset = thermalMapping(homog)%p(ip,el)
- select case (phase_plasticity(phase))
-   case (PLASTICITY_ISOTROPIC_ID)
-     call plastic_isotropic_dotState           (Tstar_v,ipc,ip,el)
-   case (PLASTICITY_J2_ID)
+ ho  = material_homog(    ip,el)
+ tme = thermalMapping(ho)%p(ip,el)
+
+ plasticityType: select case (phase_plasticity(material_phase(ipc,ip,el)))
+   case (PLASTICITY_ISOTROPIC_ID) plasticityType
+     call plastic_isotropic_dotState    (Tstar_v,ipc,ip,el)
+   case (PLASTICITY_J2_ID) plasticityType
      call plastic_j2_dotState           (Tstar_v,ipc,ip,el)
-   case (PLASTICITY_PHENOPOWERLAW_ID)
+   case (PLASTICITY_PHENOPOWERLAW_ID) plasticityType
      call plastic_phenopowerlaw_dotState(Tstar_v,ipc,ip,el)
-   case (PLASTICITY_PHENOPLUS_ID)
-     call plastic_phenoplus_dotState(Tstar_v,ipc,ip,el)
-   case (PLASTICITY_DISLOTWIN_ID)
-     call plastic_dislotwin_dotState    (Tstar_v,temperature(homog)%p(offset), &
+   case (PLASTICITY_PHENOPLUS_ID) plasticityType
+     call plastic_phenoplus_dotState    (Tstar_v,ipc,ip,el)
+   case (PLASTICITY_DISLOTWIN_ID) plasticityType
+     call plastic_dislotwin_dotState    (Tstar_v,temperature(ho)%p(tme), &
                                          ipc,ip,el)
-   case (PLASTICITY_DISLOUCLA_ID)
-     call plastic_disloucla_dotState    (Tstar_v,temperature(homog)%p(offset), &
+   case (PLASTICITY_DISLOUCLA_ID) plasticityType
+     call plastic_disloucla_dotState    (Tstar_v,temperature(ho)%p(tme), &
                                          ipc,ip,el)
-   case (PLASTICITY_TITANMOD_ID)
-     call plastic_titanmod_dotState     (Tstar_v,temperature(homog)%p(offset), &
+   case (PLASTICITY_TITANMOD_ID) plasticityType
+     call plastic_titanmod_dotState     (Tstar_v,temperature(ho)%p(tme), &
                                          ipc,ip,el)
-   case (PLASTICITY_NONLOCAL_ID)
-     call plastic_nonlocal_dotState     (Tstar_v,FeArray,FpArray,temperature(homog)%p(offset), &
+   case (PLASTICITY_NONLOCAL_ID) plasticityType
+     call plastic_nonlocal_dotState     (Tstar_v,FeArray,FpArray,temperature(ho)%p(tme), &
                                          subdt,subfracArray,ip,el)
- end select
+ end select plasticityType
 
- do mySource = 1_pInt, phase_Nsources(phase)
-   select case (phase_source(mySource,phase))
-     case (SOURCE_damage_anisoBrittle_ID)
+ SourceLoop: do s = 1_pInt, phase_Nsources(material_phase(ipc,ip,el))
+    sourceType: select case (phase_source(s,material_phase(ipc,ip,el)))
+     case (SOURCE_damage_anisoBrittle_ID) sourceType
        call source_damage_anisoBrittle_dotState (Tstar_v, ipc, ip, el)
-     case (SOURCE_damage_isoDuctile_ID)
+     case (SOURCE_damage_isoDuctile_ID) sourceType
        call source_damage_isoDuctile_dotState   (         ipc, ip, el)
-     case (SOURCE_damage_anisoDuctile_ID)
+     case (SOURCE_damage_anisoDuctile_ID) sourceType
        call source_damage_anisoDuctile_dotState (         ipc, ip, el)
-     case (SOURCE_thermal_externalheat_ID)
+     case (SOURCE_thermal_externalheat_ID) sourceType
        call source_thermal_externalheat_dotState(         ipc, ip, el)
-
-   end select
- enddo
+   end select sourceType
+ enddo SourceLoop
 
  if (iand(debug_level(debug_constitutive), debug_levelBasic) /= 0_pInt) then
    call system_clock(count=tock,count_rate=tickrate,count_max=maxticks)
    !$OMP CRITICAL (debugTimingDotState)
-     debug_cumDotStateCalls = debug_cumDotStateCalls + 1_pInt
-     debug_cumDotStateTicks = debug_cumDotStateTicks + tock-tick
-     !$OMP FLUSH (debug_cumDotStateTicks)
-     if (tock < tick) debug_cumDotStateTicks  = debug_cumDotStateTicks + maxticks
+   debug_cumDotStateCalls = debug_cumDotStateCalls + 1_pInt
+   debug_cumDotStateTicks = debug_cumDotStateTicks + tock-tick
+   !$OMP FLUSH (debug_cumDotStateTicks)
+   if (tock < tick) debug_cumDotStateTicks  = debug_cumDotStateTicks + maxticks
    !$OMP END CRITICAL (debugTimingDotState)
  endif
 end subroutine constitutive_collectDotState
 
 !--------------------------------------------------------------------------------------------------
-!> @brief for constitutive models having an instantaneous change of state (so far, only nonlocal)
+!> @brief for constitutive models having an instantaneous change of state
 !> will return false if delta state is not needed/supported by the constitutive model
 !--------------------------------------------------------------------------------------------------
 subroutine constitutive_collectDeltaState(Tstar_v, Fe, ipc, ip, el)
@@ -1087,15 +1052,15 @@ subroutine constitutive_collectDeltaState(Tstar_v, Fe, ipc, ip, el)
 
  implicit none
  integer(pInt), intent(in) :: &
-   ipc, &                                                                                           !< grain number
-   ip, &                                                                                            !< integration point number
-   el                                                                                               !< element number
+   ipc, &                                                                                           !< component-ID of integration point
+   ip, &                                                                                            !< integration point
+   el                                                                                               !< element
  real(pReal),   intent(in),  dimension(6) :: &
    Tstar_v                                                                                          !< 2nd Piola-Kirchhoff stress
  real(pReal),   intent(in), dimension(3,3) :: &
    Fe                                                                                               !< elastic deformation gradient
  integer(pInt) :: &
-   mySource
+   s                                                                                                !< counter in source loop
  integer(pLongInt) :: &
    tick, tock, &
    tickrate, &
@@ -1104,24 +1069,21 @@ subroutine constitutive_collectDeltaState(Tstar_v, Fe, ipc, ip, el)
  if (iand(debug_level(debug_constitutive), debug_levelBasic) /= 0_pInt) &
    call system_clock(count=tick,count_rate=tickrate,count_max=maxticks)
 
- select case (phase_plasticity(material_phase(ipc,ip,el)))
-   case (PLASTICITY_NONLOCAL_ID)
-     call plastic_nonlocal_deltaState(Tstar_v,ip,el)
+ if(phase_plasticity(material_phase(ipc,ip,el)) == PLASTICITY_NONLOCAL_ID) &
+   call plastic_nonlocal_deltaState(Tstar_v,ip,el)
 
- end select
 
- do mySource = 1_pInt, phase_Nsources(material_phase(ipc,ip,el))
-   select case (phase_source(mySource,material_phase(ipc,ip,el)))
-     case (SOURCE_damage_isoBrittle_ID)
+ SourceLoop: do s = 1_pInt, phase_Nsources(material_phase(ipc,ip,el))
+    sourceType: select case (phase_source(s,material_phase(ipc,ip,el)))
+     case (SOURCE_damage_isoBrittle_ID) sourceType
        call source_damage_isoBrittle_deltaState  (constitutive_homogenizedC(ipc,ip,el), Fe, &
                                                   ipc, ip, el)
-     case (SOURCE_vacancy_irradiation_ID)
+     case (SOURCE_vacancy_irradiation_ID) sourceType
        call source_vacancy_irradiation_deltaState(ipc, ip, el)
-     case (SOURCE_vacancy_thermalfluc_ID)
+     case (SOURCE_vacancy_thermalfluc_ID) sourceType
        call source_vacancy_thermalfluc_deltaState(ipc, ip, el)
-
-   end select
- enddo
+   end select sourceType
+ enddo SourceLoop
 
  if (iand(debug_level(debug_constitutive), debug_levelBasic) /= 0_pInt) then
    call system_clock(count=tock,count_rate=tickrate,count_max=maxticks)
@@ -1196,9 +1158,9 @@ function constitutive_postResults(Tstar_v, FeArray, ipc, ip, el)
 
  implicit none
  integer(pInt), intent(in) :: &
-   ipc, &                                                                                           !< grain number
-   ip, &                                                                                            !< integration point number
-   el                                                                                               !< element number
+   ipc, &                                                                                           !< component-ID of integration point
+   ip, &                                                                                            !< integration point
+   el                                                                                               !< element
  real(pReal), dimension(plasticState(material_phase(ipc,ip,el))%sizePostResults + &
                         sum(sourceState(material_phase(ipc,ip,el))%p(:)%sizePostResults)) :: &
    constitutive_postResults
@@ -1207,54 +1169,58 @@ function constitutive_postResults(Tstar_v, FeArray, ipc, ip, el)
  real(pReal),  intent(in), dimension(6) :: &
    Tstar_v                                                                                          !< 2nd Piola Kirchhoff stress tensor (Mandel)
  integer(pInt) :: &
-   startPos, endPos, phase, homog, offset, mySource
+   startPos, endPos
+ integer(pInt) :: &
+   ho, &                                                                                            !< homogenization
+   tme, &                                                                                           !< thermal member position
+   s                                                                                                !< counter in source loop
 
  constitutive_postResults = 0.0_pReal
 
- phase = material_phase(ipc,ip,el)
- homog = material_homog(    ip,el)
- offset = thermalMapping(homog)%p(ip,el)
+ ho = material_homog(    ip,el)
+ tme = thermalMapping(ho)%p(ip,el)
 
  startPos = 1_pInt
  endPos = plasticState(material_phase(ipc,ip,el))%sizePostResults
- select case (phase_plasticity(material_phase(ipc,ip,el)))
-   case (PLASTICITY_TITANMOD_ID)
+
+ plasticityType: select case (phase_plasticity(material_phase(ipc,ip,el)))
+   case (PLASTICITY_TITANMOD_ID) plasticityType
      constitutive_postResults(startPos:endPos) = plastic_titanmod_postResults(ipc,ip,el)
-   case (PLASTICITY_ISOTROPIC_ID)
+   case (PLASTICITY_ISOTROPIC_ID) plasticityType
      constitutive_postResults(startPos:endPos) = plastic_isotropic_postResults(Tstar_v,ipc,ip,el)
-   case (PLASTICITY_J2_ID)
+   case (PLASTICITY_J2_ID) plasticityType
      constitutive_postResults(startPos:endPos) = plastic_j2_postResults(Tstar_v,ipc,ip,el)
-   case (PLASTICITY_PHENOPOWERLAW_ID)
+   case (PLASTICITY_PHENOPOWERLAW_ID) plasticityType
      constitutive_postResults(startPos:endPos) = &
        plastic_phenopowerlaw_postResults(Tstar_v,ipc,ip,el)
-   case (PLASTICITY_PHENOPLUS_ID)
+   case (PLASTICITY_PHENOPLUS_ID) plasticityType
      constitutive_postResults(startPos:endPos) = &
        plastic_phenoplus_postResults(Tstar_v,ipc,ip,el)
-   case (PLASTICITY_DISLOTWIN_ID)
+   case (PLASTICITY_DISLOTWIN_ID) plasticityType
      constitutive_postResults(startPos:endPos) = &
-       plastic_dislotwin_postResults(Tstar_v,temperature(homog)%p(offset),ipc,ip,el)
-   case (PLASTICITY_DISLOUCLA_ID)
+       plastic_dislotwin_postResults(Tstar_v,temperature(ho)%p(tme),ipc,ip,el)
+   case (PLASTICITY_DISLOUCLA_ID) plasticityType
      constitutive_postResults(startPos:endPos) = &
-       plastic_disloucla_postResults(Tstar_v,temperature(homog)%p(offset),ipc,ip,el)
-   case (PLASTICITY_NONLOCAL_ID)
+       plastic_disloucla_postResults(Tstar_v,temperature(ho)%p(tme),ipc,ip,el)
+   case (PLASTICITY_NONLOCAL_ID) plasticityType
      constitutive_postResults(startPos:endPos) = &
        plastic_nonlocal_postResults (Tstar_v,FeArray,ip,el)
- end select
+ end select plasticityType
 
- do mySource = 1_pInt, phase_Nsources(phase)
+ SourceLoop: do s = 1_pInt, phase_Nsources(material_phase(ipc,ip,el))
    startPos = endPos + 1_pInt
-   endPos = endPos + sourceState(material_phase(ipc,ip,el))%p(mySource)%sizePostResults
-   select case (phase_source(mySource,material_phase(ipc,ip,el)))
-     case (SOURCE_damage_isoBrittle_ID)
+   endPos = endPos + sourceState(material_phase(ipc,ip,el))%p(s)%sizePostResults
+   sourceType: select case (phase_source(s,material_phase(ipc,ip,el)))
+     case (SOURCE_damage_isoBrittle_ID) sourceType
        constitutive_postResults(startPos:endPos) = source_damage_isoBrittle_postResults(ipc, ip, el)
-     case (SOURCE_damage_isoDuctile_ID)
+     case (SOURCE_damage_isoDuctile_ID) sourceType
        constitutive_postResults(startPos:endPos) = source_damage_isoDuctile_postResults(ipc, ip, el)
-     case (SOURCE_damage_anisoBrittle_ID)
+     case (SOURCE_damage_anisoBrittle_ID) sourceType
        constitutive_postResults(startPos:endPos) = source_damage_anisoBrittle_postResults(ipc, ip, el)
-     case (SOURCE_damage_anisoDuctile_ID)
+     case (SOURCE_damage_anisoDuctile_ID) sourceType
        constitutive_postResults(startPos:endPos) = source_damage_anisoDuctile_postResults(ipc, ip, el)
-   end select
- enddo
+   end select sourceType
+ enddo SourceLoop
 
 end function constitutive_postResults
 
