@@ -45,7 +45,7 @@ program DAMASK_spectral_Driver
  use mesh, only: &
    grid, &
    geomSize
- use CPFEM, only: &
+ use CPFEM2, only: &
    CPFEM_initAll
  use FEsolving, only: &
    restartWrite, &
@@ -59,7 +59,10 @@ program DAMASK_spectral_Driver
    continueCalculation
  use homogenization, only: &
    materialpoint_sizeResults, &
-   materialpoint_results
+   materialpoint_results, &
+   materialpoint_postResults
+
+
  use material, only: &
    thermal_type, &
    damage_type, &
@@ -643,6 +646,7 @@ program DAMASK_spectral_Driver
        if (mod(inc,loadCases(currentLoadCase)%outputFrequency) == 0_pInt) then                      ! at output frequency
          if (worldrank == 0) &
            write(6,'(1/,a)') ' ... writing results to file ......................................'
+         call materialpoint_postResults()
          call MPI_file_seek (resUnit,fileOffset,MPI_SEEK_SET,ierr)
          do i=1, size(materialpoint_results,3)/(maxByteOut/(materialpoint_sizeResults*pReal))+1     ! slice the output of my process in chunks not exceeding the limit for one output
            outputIndex=[(i-1)*maxByteOut/pReal/materialpoint_sizeResults+1, &

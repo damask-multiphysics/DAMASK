@@ -950,11 +950,8 @@ subroutine utilities_constitutiveResponse(F_lastInc,F,timeinc, &
    grid3
  use FEsolving, only: &
    restartWrite
- use CPFEM, only: &
-   CPFEM_general, &
-   CPFEM_COLLECT, &
-   CPFEM_CALCRESULTS, &
-   CPFEM_AGERESULTS
+ use CPFEM2, only: &
+   CPFEM_general
  use homogenization, only: &
    materialpoint_F0, &
    materialpoint_F, &
@@ -973,8 +970,10 @@ subroutine utilities_constitutiveResponse(F_lastInc,F,timeinc, &
  real(pReal),intent(out), dimension(3,3)                         :: P_av                            !< average PK stress
  real(pReal),intent(out), dimension(3,3,grid(1),grid(2),grid3) :: P                !< PK stress
 
+ logical :: &
+   age
+
  integer(pInt) :: &
-   calcMode, &                                                                                      !< CPFEM mode for calculation
    j,k
  real(pReal), dimension(3,3,3,3) :: max_dPdF, min_dPdF
  real(pReal)   :: max_dPdF_norm, min_dPdF_norm, defgradDetMin, defgradDetMax, defgradDet
@@ -988,18 +987,15 @@ subroutine utilities_constitutiveResponse(F_lastInc,F,timeinc, &
    write(6,'(/,a)') ' ... evaluating constitutive response ......................................'
    flush(6)
  endif
- calcMode    = CPFEM_CALCRESULTS
+ age = .False.
 
  if (forwardData) then                                                                              ! aging results
-   calcMode    = ior(calcMode,    CPFEM_AGERESULTS)
+   age = .True.
    materialpoint_F0 = reshape(F_lastInc, [3,3,1,product(grid(1:2))*grid3])
  endif
  if (cutBack) then                                                                                  ! restore saved variables
-  calcMode    = iand(calcMode,    not(CPFEM_AGERESULTS))
+   age = .False.
  endif
-
- call CPFEM_general(CPFEM_COLLECT,F_lastInc(1:3,1:3,1,1,1),F(1:3,1:3,1,1,1), &
-                   timeinc,1_pInt,1_pInt)
 
  materialpoint_F  = reshape(F,[3,3,1,product(grid(1:2))*grid3])
  call debug_reset()
@@ -1023,8 +1019,7 @@ subroutine utilities_constitutiveResponse(F_lastInc,F,timeinc, &
    endif
  endif
 
- call CPFEM_general(calcMode,F_lastInc(1:3,1:3,1,1,1), F(1:3,1:3,1,1,1), &                          ! first call calculates everything
-                    timeinc,1_pInt,1_pInt)
+ call CPFEM_general(age,timeinc)
 
  max_dPdF = 0.0_pReal
  max_dPdF_norm = 0.0_pReal

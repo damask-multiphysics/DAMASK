@@ -352,7 +352,7 @@ SPECTRAL_FILES = prec.o DAMASK_interface.o IO.o libs.o numerics.o debug.o math.o
                  crystallite.o \
                  $(THERMAL_FILES) $(DAMAGE_FILES) $(VACANCYFLUX_FILES) $(HYDROGENFLUX_FILES) $(POROSITY_FILES) \
                  $(HOMOGENIZATION_FILES) homogenization.o \
-                 CPFEM.o \
+                 CPFEM2.o \
                  spectral_utilities.o \
                  $(SPECTRAL_SOLVER_FILES)
 
@@ -382,7 +382,7 @@ spectral_damage.o:             spectral_damage.f90 \
                                spectral_utilities.o
 
 spectral_utilities.o:   spectral_utilities.f90 \
-                               CPFEM.o
+                               CPFEM2.o
 
 #####################
 # FEM Solver
@@ -440,6 +440,9 @@ FEZoo.o:                       $(wildcard FEZoo.f90) \
 	touch FEZoo.o
 
 CPFEM.o:                       CPFEM.f90\
+                               homogenization.o
+
+CPFEM2.o:                      CPFEM2.f90\
                                homogenization.o
 
 homogenization.o:              homogenization.f90\
