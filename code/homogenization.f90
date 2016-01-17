@@ -140,17 +140,20 @@ subroutine homogenization_init
  allocate(InstancePosition(material_Nhomogenization),source=0_pInt)
 #endif
 
+
 !--------------------------------------------------------------------------------------------------
-! parse homogenization from config file
+! open material.config
  if (.not. IO_open_jobFile_stat(FILEUNIT,material_localFileExt)) &                                  ! no local material configuration present...
    call IO_open_file(FILEUNIT,material_configFile)                                                  ! ... open material.config file
+
+!--------------------------------------------------------------------------------------------------
+! parse homogenization from config file 
  if (any(homogenization_type == HOMOGENIZATION_NONE_ID)) &
    call homogenization_none_init()
  if (any(homogenization_type == HOMOGENIZATION_ISOSTRAIN_ID)) &
    call homogenization_isostrain_init(FILEUNIT)
  if (any(homogenization_type == HOMOGENIZATION_RGC_ID)) &
    call homogenization_RGC_init(FILEUNIT)
-
 
 !--------------------------------------------------------------------------------------------------
 ! parse thermal from config file
@@ -162,7 +165,6 @@ subroutine homogenization_init
  if (any(thermal_type == THERMAL_conduction_ID)) &
    call thermal_conduction_init(FILEUNIT)
 
-
 !--------------------------------------------------------------------------------------------------
 ! parse damage from config file
  call IO_checkAndRewind(FILEUNIT)
@@ -172,7 +174,6 @@ subroutine homogenization_init
    call damage_local_init(FILEUNIT)
  if (any(damage_type == DAMAGE_nonlocal_ID)) &
    call damage_nonlocal_init(FILEUNIT)
-
 
 !--------------------------------------------------------------------------------------------------
 ! parse vacancy transport from config file
@@ -1156,9 +1157,6 @@ function homogenization_updateState(ip,el)
                                        crystallite_dPdF(1:3,1:3,1:3,1:3,1:homogenization_maxNgrains,ip,el), &
                                        ip, &
                                        el)
-   case default chosenHomogenization
-     homogenization_updateState = &
-       homogenization_updateState .and. [.true., .true.]
  end select chosenHomogenization
 
  chosenThermal: select case (thermal_type(mesh_element(3,el)))
@@ -1168,9 +1166,6 @@ function homogenization_updateState(ip,el)
        thermal_adiabatic_updateState(materialpoint_subdt(ip,el), &
                                      ip, &
                                      el)
-   case default chosenThermal
-     homogenization_updateState = &
-       homogenization_updateState .and. [.true., .true.]
  end select chosenThermal
 
  chosenDamage: select case (damage_type(mesh_element(3,el)))
@@ -1180,9 +1175,6 @@ function homogenization_updateState(ip,el)
        damage_local_updateState(materialpoint_subdt(ip,el), &
                                 ip, &
                                 el)
-   case default chosenDamage
-     homogenization_updateState = &
-       homogenization_updateState .and. [.true., .true.]
  end select chosenDamage
 
  chosenVacancyflux: select case (vacancyflux_type(mesh_element(3,el)))
@@ -1192,9 +1184,6 @@ function homogenization_updateState(ip,el)
        vacancyflux_isochempot_updateState(materialpoint_subdt(ip,el), &
                                           ip, &
                                           el)
-   case default chosenVacancyflux
-     homogenization_updateState = &
-       homogenization_updateState .and. [.true., .true.]
  end select chosenVacancyflux
 
 end function homogenization_updateState
