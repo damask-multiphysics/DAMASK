@@ -135,17 +135,7 @@ subroutine hypela2(d,g,e,de,s,t,dt,ngens,m,nn,kcus,matus,ndi,nshear,disp, &
    numerics_unitlength, &
    usePingPong
  use FEsolving, only: &
-   cycleCounter, &
-   theInc, &
-   calcMode, &
-   theTime, &
-   theDelta, &
-   lastIncConverged, &
-   outdatedByNewInc, &
-   outdatedFFN1, &
-   terminallyIll, &
-   symmetricSolver, &
-   lastLovl
+   symmetricSolver
  use math, only: &
    math_transpose33,&
    invnrmMandel
@@ -173,7 +163,17 @@ subroutine hypela2(d,g,e,de,s,t,dt,ngens,m,nn,kcus,matus,ndi,nshear,disp, &
    CPFEM_AGERESULTS, &
    CPFEM_COLLECT, &
    CPFEM_RESTOREJACOBIAN, &
-   CPFEM_BACKUPJACOBIAN
+   CPFEM_BACKUPJACOBIAN, &
+   cycleCounter, &
+   theInc, &
+   calcMode, &
+   theTime, &
+   theDelta, &
+   lastIncConverged, &
+   outdatedByNewInc, &
+   outdatedFFN1, &
+   terminallyIll, &
+   lastLovl
 
  implicit none
 !$ include "omp_lib.h"                                                                              ! the openMP function library

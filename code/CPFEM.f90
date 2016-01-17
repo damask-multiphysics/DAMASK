@@ -14,18 +14,31 @@ module CPFEM
  private
 #if defined(Marc4DAMASK) || defined(Abaqus)
  real(pReal),                      parameter,   private :: &
-   CPFEM_odd_stress    = 1e15_pReal, &                                                               !< return value for stress in case of ping pong dummy cycle
-   CPFEM_odd_jacobian  = 1e50_pReal                                                                  !< return value for jacobian in case of ping pong dummy cycle
+   CPFEM_odd_stress    = 1e15_pReal, &                                                              !< return value for stress in case of ping pong dummy cycle
+   CPFEM_odd_jacobian  = 1e50_pReal                                                                 !< return value for jacobian in case of ping pong dummy cycle
  real(pReal), dimension (:,:,:),   allocatable, private :: &
-   CPFEM_cs                                                                                          !< Cauchy stress
+   CPFEM_cs                                                                                         !< Cauchy stress
  real(pReal), dimension (:,:,:,:), allocatable, private :: &
-   CPFEM_dcsdE                                                                                       !< Cauchy stress tangent
+   CPFEM_dcsdE                                                                                      !< Cauchy stress tangent
  real(pReal), dimension (:,:,:,:), allocatable, private :: &
-   CPFEM_dcsdE_knownGood                                                                             !< known good tangent
+   CPFEM_dcsdE_knownGood                                                                            !< known good tangent
 #endif
+ integer(pInt),                                 public :: &
+   cycleCounter =  0_pInt, &                                                                        !< needs description
+   theInc       = -1_pInt, &                                                                        !< needs description
+   lastLovl     =  0_pInt, &                                                                        !< lovl in previous call to marc hypela2
+   lastStep     =  0_pInt                                                                           !< kstep in previous call to abaqus umat
+ real(pReal),                                   public :: &
+   theTime      = 0.0_pReal, &                                                                      !< needs description
+   theDelta     = 0.0_pReal    
+ logical,                                       public :: & 
+   outdatedFFN1      = .false., &                                                                   !< needs description
+   lastIncConverged  = .false., &                                                                   !< needs description
+   outdatedByNewInc  = .false.                                                                      !< needs description
+
  logical,                                       public, protected :: &
-   CPFEM_init_done       = .false., &                                                                !< remember whether init has been done already
-   CPFEM_calc_done       = .false.                                                                   !< remember whether first ip has already calced the results
+   CPFEM_init_done       = .false., &                                                               !< remember whether init has been done already
+   CPFEM_calc_done       = .false.                                                                  !< remember whether first ip has already calced the results
 
  integer(pInt), parameter,                      public :: &
    CPFEM_COLLECT         = 2_pInt**0_pInt, &
@@ -288,12 +301,7 @@ subroutine CPFEM_general(mode, ffn, ffn1, dt, elFE, ip)
    debug_e, &
    debug_i
  use FEsolving, only: &
-   outdatedFFN1, &
    terminallyIll, &
-   cycleCounter, &
-   theInc, &
-   theTime, &
-   theDelta, &
    FEsolving_execElem, &
    FEsolving_execIP, &
    restartWrite

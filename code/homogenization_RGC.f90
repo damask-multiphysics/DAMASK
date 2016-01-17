@@ -336,9 +336,6 @@ subroutine homogenization_RGC_partitionDeformation(F,avgF,ip,el)
    homogenization_maxNgrains, &
    homogenization_Ngrains,&
    homogenization_typeInstance
- use FEsolving, only: &
-   theInc,&
-   cycleCounter
 
  implicit none
  real(pReal),   dimension (3,3,homogenization_maxNgrains), intent(out) :: F                         !< partioned F  per grain
@@ -351,20 +348,6 @@ subroutine homogenization_RGC_partitionDeformation(F,avgF,ip,el)
  integer(pInt), dimension (3) :: iGrain3
  integer(pInt) :: homID, iGrain,iFace,i,j
  integer(pInt),                                            parameter  :: nFace = 6_pInt
- 
-!--------------------------------------------------------------------------------------------------
-! debugging the overall deformation gradient
- if (iand(debug_level(debug_homogenization),debug_levelExtensive) /= 0_pInt) then
-   !$OMP CRITICAL (write2out)
-   write(6,'(1x,a,i3,a,i3,a)')'========== Increment: ',theInc,' Cycle: ',cycleCounter,' =========='
-   write(6,'(1x,a32)')'Overall deformation gradient: '
-   do i = 1_pInt,3_pInt
-     write(6,'(1x,3(e15.8,1x))')(avgF(i,j), j = 1_pInt,3_pInt)
-   enddo
-   write(6,*)' '
-   flush(6)
-   !$OMP END CRITICAL (write2out)
- endif
 
 !--------------------------------------------------------------------------------------------------
 ! compute the deformation gradient of individual grains due to relaxations

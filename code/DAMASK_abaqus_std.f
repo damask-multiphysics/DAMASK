@@ -87,17 +87,7 @@ subroutine UMAT(STRESS,STATEV,DDSDDE,SSE,SPD,SCD,&
 !$ DAMASK_NumThreadsInt, &
    usePingPong
  use FEsolving, only: &
-   cycleCounter, &
-   theInc, &
-   calcMode, &
-   theTime, &
-   theDelta, &
-   lastIncConverged, &
-   outdatedByNewInc, &
-   outdatedFFN1, &
-   terminallyIll, &
-   symmetricSolver, &
-   lastStep
+   symmetricSolver
  use math, only: &
    invnrmMandel
  use debug, only: &
@@ -118,7 +108,17 @@ subroutine UMAT(STRESS,STATEV,DDSDDE,SSE,SPD,SCD,&
    CPFEM_AGERESULTS, &
    CPFEM_COLLECT, &
    CPFEM_RESTOREJACOBIAN, &
-   CPFEM_BACKUPJACOBIAN
+   CPFEM_BACKUPJACOBIAN, &
+   cycleCounter, &
+   theInc, &
+   calcMode, &
+   theTime, &
+   theDelta, &
+   lastIncConverged, &
+   outdatedByNewInc, &
+   outdatedFFN1, &
+   terminallyIll, &
+   lastStep
  use homogenization, only: &
    materialpoint_sizeResults, &
    materialpoint_results

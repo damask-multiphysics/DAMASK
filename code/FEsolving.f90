@@ -13,25 +13,14 @@ module FEsolving
  
  implicit none
  private
- integer(pInt), public :: &                                                                         !< needs description
-   cycleCounter =  0_pInt, &                                                                        !< needs description
-   theInc       = -1_pInt, &                                                                        !< needs description
-   restartInc   =  1_pInt, &                                                                        !< needs description
-   lastLovl     =  0_pInt, &                                                                        !< lovl in previous call to marc hypela2
-   lastStep     =  0_pInt                                                                           !< kstep in previous call to abaqus umat
-   
- real(pReal), public :: &
-   theTime      = 0.0_pReal, &                                                                      !< needs description
-   theDelta     = 0.0_pReal                                                                         !< needs description
+ integer(pInt), public :: &
+   restartInc   =  1_pInt                                                                           !< needs description
 
  logical, public :: & 
-   outdatedFFN1      = .false., &                                                                   !< needs description
-   symmetricSolver   = .false., &                                                                   !< use a symmetric solver (FEM)
+   symmetricSolver   = .false., &                                                                   !< use a symmetric FEM solver
    restartWrite      = .false., &                                                                   !< write current state to enable restart
    restartRead       = .false., &                                                                   !< restart information to continue calculation from saved state
-   terminallyIll     = .false., &                                                                   !< at least one material point is terminally ill
-   lastIncConverged  = .false., &                                                                   !< needs description
-   outdatedByNewInc  = .false.                                                                      !< needs description
+   terminallyIll     = .false.                                                                      !< at least one material point is terminally ill
 
  integer(pInt), dimension(:,:), allocatable, public :: &
    FEsolving_execIP                                                                                 !< for ping-pong scheme always range to max IP, otherwise one specific IP
