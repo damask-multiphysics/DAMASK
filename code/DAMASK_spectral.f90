@@ -603,7 +603,7 @@ program DAMASK_spectral_Driver
 !--------------------------------------------------------------------------------------------------
 ! check solution 
          cutBack = .False.                                                                   
-         if(solres(1)%termIll .or. .not. all(solres(:)%converged .and. solres(:)%stagConverged)) then                      ! no solution found
+         if(solres(1)%termIll .or. .not. all(solres(:)%converged .and. solres(:)%stagConverged)) then ! no solution found
            if (cutBackLevel < maxCutBack) then                                                      ! do cut back
              if (worldrank == 0) write(6,'(/,a)') ' cut back detected'
              cutBack = .True.
@@ -618,7 +618,7 @@ program DAMASK_spectral_Driver
              guess = .true.                                                                         ! accept non converged BVP solution   
            else                                                                                     ! default behavior, exit if spectral solver does not converge                                
              call IO_warning(850_pInt)
-             call quit(-1_pInt*(lastRestartWritten+1_pInt))                                         ! quit and provide information about last restart inc written (e.g. for regridding)                                                                                       ! continue from non-converged solution and start guessing after accepted (sub)inc
+             call quit(-1_pInt*(lastRestartWritten+1_pInt))                                         ! quit and provide information about last restart inc written (e.g. for regridding)
            endif
          else
            guess = .true.                                                                           ! start guessing after first converged (sub)inc
