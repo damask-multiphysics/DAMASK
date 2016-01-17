@@ -37,7 +37,8 @@ module CPFEM
    outdatedByNewInc  = .false.                                                                      !< needs description
 
  logical,                                       public, protected :: &
-   CPFEM_init_done       = .false., &                                                               !< remember whether init has been done already
+   CPFEM_init_done       = .false.                                                                  !< remember whether init has been done already
+ logical,                                       private :: &
    CPFEM_calc_done       = .false.                                                                  !< remember whether first ip has already calced the results
 
  integer(pInt), parameter,                      public :: &
