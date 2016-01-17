@@ -192,7 +192,7 @@ subroutine crystallite_init
    g, &                                                                                             !< grain number
    i, &                                                                                             !< integration point number
    e, &                                                                                             !< element number
-   gMax, &                                                                                          !< maximum number of grains
+   cMax, &                                                                                          !< maximum number of integration point components
    iMax, &                                                                                          !< maximum number of integration points
    eMax, &                                                                                          !< maximum number of elements
    nMax, &                                                                                          !< maximum number of ip neighbors
@@ -214,58 +214,58 @@ subroutine crystallite_init
 #include "compilation_info.f90"
  endif mainProcess
 
- gMax = homogenization_maxNgrains
+ cMax = homogenization_maxNgrains
  iMax = mesh_maxNips
  eMax = mesh_NcpElems
  nMax = mesh_maxNipNeighbors
 
 
- allocate(crystallite_Tstar0_v(6,gMax,iMax,eMax),            source=0.0_pReal)
- allocate(crystallite_partionedTstar0_v(6,gMax,iMax,eMax),   source=0.0_pReal)
- allocate(crystallite_subTstar0_v(6,gMax,iMax,eMax),         source=0.0_pReal)
- allocate(crystallite_Tstar_v(6,gMax,iMax,eMax),             source=0.0_pReal)
- allocate(crystallite_P(3,3,gMax,iMax,eMax),                 source=0.0_pReal)
- allocate(crystallite_F0(3,3,gMax,iMax,eMax),                source=0.0_pReal)
- allocate(crystallite_partionedF0(3,3,gMax,iMax,eMax),       source=0.0_pReal)
- allocate(crystallite_partionedF(3,3,gMax,iMax,eMax),        source=0.0_pReal)
- allocate(crystallite_subF0(3,3,gMax,iMax,eMax),             source=0.0_pReal)
- allocate(crystallite_subF(3,3,gMax,iMax,eMax),              source=0.0_pReal)
- allocate(crystallite_Fp0(3,3,gMax,iMax,eMax),               source=0.0_pReal)
- allocate(crystallite_partionedFp0(3,3,gMax,iMax,eMax),      source=0.0_pReal)
- allocate(crystallite_subFp0(3,3,gMax,iMax,eMax),            source=0.0_pReal)
- allocate(crystallite_Fp(3,3,gMax,iMax,eMax),                source=0.0_pReal)
- allocate(crystallite_invFp(3,3,gMax,iMax,eMax),             source=0.0_pReal)
- allocate(crystallite_Fi0(3,3,gMax,iMax,eMax),               source=0.0_pReal)
- allocate(crystallite_partionedFi0(3,3,gMax,iMax,eMax),      source=0.0_pReal)
- allocate(crystallite_subFi0(3,3,gMax,iMax,eMax),            source=0.0_pReal)
- allocate(crystallite_Fi(3,3,gMax,iMax,eMax),                source=0.0_pReal)
- allocate(crystallite_invFi(3,3,gMax,iMax,eMax),             source=0.0_pReal)
- allocate(crystallite_Fe(3,3,gMax,iMax,eMax),                source=0.0_pReal)
- allocate(crystallite_subFe0(3,3,gMax,iMax,eMax),            source=0.0_pReal)
- allocate(crystallite_Lp0(3,3,gMax,iMax,eMax),               source=0.0_pReal)
- allocate(crystallite_partionedLp0(3,3,gMax,iMax,eMax),      source=0.0_pReal)
- allocate(crystallite_subLp0(3,3,gMax,iMax,eMax),            source=0.0_pReal)
- allocate(crystallite_Lp(3,3,gMax,iMax,eMax),                source=0.0_pReal)
- allocate(crystallite_Li0(3,3,gMax,iMax,eMax),               source=0.0_pReal)
- allocate(crystallite_partionedLi0(3,3,gMax,iMax,eMax),      source=0.0_pReal)
- allocate(crystallite_subLi0(3,3,gMax,iMax,eMax),            source=0.0_pReal)
- allocate(crystallite_Li(3,3,gMax,iMax,eMax),                source=0.0_pReal)
- allocate(crystallite_dPdF(3,3,3,3,gMax,iMax,eMax),          source=0.0_pReal)
- allocate(crystallite_dPdF0(3,3,3,3,gMax,iMax,eMax),         source=0.0_pReal)
- allocate(crystallite_partioneddPdF0(3,3,3,3,gMax,iMax,eMax),source=0.0_pReal)
- allocate(crystallite_fallbackdPdF(3,3,3,3,gMax,iMax,eMax),  source=0.0_pReal)
- allocate(crystallite_dt(gMax,iMax,eMax),                    source=0.0_pReal)
- allocate(crystallite_subdt(gMax,iMax,eMax),                 source=0.0_pReal)
- allocate(crystallite_subFrac(gMax,iMax,eMax),               source=0.0_pReal)
- allocate(crystallite_subStep(gMax,iMax,eMax),               source=0.0_pReal)
- allocate(crystallite_orientation(4,gMax,iMax,eMax),         source=0.0_pReal)
- allocate(crystallite_orientation0(4,gMax,iMax,eMax),        source=0.0_pReal)
- allocate(crystallite_rotation(4,gMax,iMax,eMax),            source=0.0_pReal)
- allocate(crystallite_disorientation(4,nMax,gMax,iMax,eMax), source=0.0_pReal)
- allocate(crystallite_localPlasticity(gMax,iMax,eMax),       source=.true.)
- allocate(crystallite_requested(gMax,iMax,eMax),             source=.false.)
- allocate(crystallite_todo(gMax,iMax,eMax),                  source=.false.)
- allocate(crystallite_converged(gMax,iMax,eMax),             source=.true.)
+ allocate(crystallite_Tstar0_v(6,cMax,iMax,eMax),            source=0.0_pReal)
+ allocate(crystallite_partionedTstar0_v(6,cMax,iMax,eMax),   source=0.0_pReal)
+ allocate(crystallite_subTstar0_v(6,cMax,iMax,eMax),         source=0.0_pReal)
+ allocate(crystallite_Tstar_v(6,cMax,iMax,eMax),             source=0.0_pReal)
+ allocate(crystallite_P(3,3,cMax,iMax,eMax),                 source=0.0_pReal)
+ allocate(crystallite_F0(3,3,cMax,iMax,eMax),                source=0.0_pReal)
+ allocate(crystallite_partionedF0(3,3,cMax,iMax,eMax),       source=0.0_pReal)
+ allocate(crystallite_partionedF(3,3,cMax,iMax,eMax),        source=0.0_pReal)
+ allocate(crystallite_subF0(3,3,cMax,iMax,eMax),             source=0.0_pReal)
+ allocate(crystallite_subF(3,3,cMax,iMax,eMax),              source=0.0_pReal)
+ allocate(crystallite_Fp0(3,3,cMax,iMax,eMax),               source=0.0_pReal)
+ allocate(crystallite_partionedFp0(3,3,cMax,iMax,eMax),      source=0.0_pReal)
+ allocate(crystallite_subFp0(3,3,cMax,iMax,eMax),            source=0.0_pReal)
+ allocate(crystallite_Fp(3,3,cMax,iMax,eMax),                source=0.0_pReal)
+ allocate(crystallite_invFp(3,3,cMax,iMax,eMax),             source=0.0_pReal)
+ allocate(crystallite_Fi0(3,3,cMax,iMax,eMax),               source=0.0_pReal)
+ allocate(crystallite_partionedFi0(3,3,cMax,iMax,eMax),      source=0.0_pReal)
+ allocate(crystallite_subFi0(3,3,cMax,iMax,eMax),            source=0.0_pReal)
+ allocate(crystallite_Fi(3,3,cMax,iMax,eMax),                source=0.0_pReal)
+ allocate(crystallite_invFi(3,3,cMax,iMax,eMax),             source=0.0_pReal)
+ allocate(crystallite_Fe(3,3,cMax,iMax,eMax),                source=0.0_pReal)
+ allocate(crystallite_subFe0(3,3,cMax,iMax,eMax),            source=0.0_pReal)
+ allocate(crystallite_Lp0(3,3,cMax,iMax,eMax),               source=0.0_pReal)
+ allocate(crystallite_partionedLp0(3,3,cMax,iMax,eMax),      source=0.0_pReal)
+ allocate(crystallite_subLp0(3,3,cMax,iMax,eMax),            source=0.0_pReal)
+ allocate(crystallite_Lp(3,3,cMax,iMax,eMax),                source=0.0_pReal)
+ allocate(crystallite_Li0(3,3,cMax,iMax,eMax),               source=0.0_pReal)
+ allocate(crystallite_partionedLi0(3,3,cMax,iMax,eMax),      source=0.0_pReal)
+ allocate(crystallite_subLi0(3,3,cMax,iMax,eMax),            source=0.0_pReal)
+ allocate(crystallite_Li(3,3,cMax,iMax,eMax),                source=0.0_pReal)
+ allocate(crystallite_dPdF(3,3,3,3,cMax,iMax,eMax),          source=0.0_pReal)
+ allocate(crystallite_dPdF0(3,3,3,3,cMax,iMax,eMax),         source=0.0_pReal)
+ allocate(crystallite_partioneddPdF0(3,3,3,3,cMax,iMax,eMax),source=0.0_pReal)
+ allocate(crystallite_fallbackdPdF(3,3,3,3,cMax,iMax,eMax),  source=0.0_pReal)
+ allocate(crystallite_dt(cMax,iMax,eMax),                    source=0.0_pReal)
+ allocate(crystallite_subdt(cMax,iMax,eMax),                 source=0.0_pReal)
+ allocate(crystallite_subFrac(cMax,iMax,eMax),               source=0.0_pReal)
+ allocate(crystallite_subStep(cMax,iMax,eMax),               source=0.0_pReal)
+ allocate(crystallite_orientation(4,cMax,iMax,eMax),         source=0.0_pReal)
+ allocate(crystallite_orientation0(4,cMax,iMax,eMax),        source=0.0_pReal)
+ allocate(crystallite_rotation(4,cMax,iMax,eMax),            source=0.0_pReal)
+ allocate(crystallite_disorientation(4,nMax,cMax,iMax,eMax), source=0.0_pReal)
+ allocate(crystallite_localPlasticity(cMax,iMax,eMax),       source=.true.)
+ allocate(crystallite_requested(cMax,iMax,eMax),             source=.false.)
+ allocate(crystallite_todo(cMax,iMax,eMax),                  source=.false.)
+ allocate(crystallite_converged(cMax,iMax,eMax),             source=.true.)
  allocate(crystallite_clearToWindForward(iMax,eMax),         source=.true.)
  allocate(crystallite_syncSubFrac(iMax,eMax),                source=.false.)
  allocate(crystallite_syncSubFracCompleted(iMax,eMax),       source=.false.)
@@ -452,9 +452,6 @@ subroutine crystallite_init
      enddo
    enddo
  !$OMP END PARALLEL DO
-
- !***some debugging statement here
- !write(6,*)    'CZ: after crystallite initialization'
 
  call crystallite_stressAndItsTangent(.true.)                                                       ! request elastic answers
  crystallite_fallbackdPdF = crystallite_dPdF                                                        ! use initial elastic stiffness as fallback
@@ -3373,7 +3370,7 @@ end subroutine crystallite_integrateStateFPI
 !> @brief calculates a jump in the state according to the current state and the current stress
 !> returns true, if state jump was successfull or not needed. false indicates NaN in delta state
 !--------------------------------------------------------------------------------------------------
-logical function crystallite_stateJump(g,i,e)
+logical function crystallite_stateJump(ipc,ip,el)
  use prec, only: &
    prec_isNaN
  use debug, only: &
@@ -3394,9 +3391,9 @@ logical function crystallite_stateJump(g,i,e)
 
  implicit none
  integer(pInt), intent(in):: &
-   e, &                      ! element index
-   i, &                      ! integration point index
-   g                         ! grain index
+   el, &                      ! element index
+   ip, &                      ! integration point index
+   ipc                         ! grain index
 
  integer(pInt) :: &
    c, &
@@ -3405,9 +3402,9 @@ logical function crystallite_stateJump(g,i,e)
    mySizePlasticDeltaState, &
    mySizeSourceDeltaState
 
- c = phasememberAt(g,i,e)
- p = phaseAt(g,i,e)
- call constitutive_collectDeltaState(crystallite_Tstar_v(1:6,g,i,e), crystallite_Fe(1:3,1:3,g,i,e), g,i,e)
+ c= phasememberAt(ipc,ip,el)
+ p = phaseAt(ipc,ip,el)
+ call constitutive_collectDeltaState(crystallite_Tstar_v(1:6,ipc,ip,el), crystallite_Fe(1:3,1:3,ipc,ip,el), ipc,ip,el)
  mySizePlasticDeltaState = plasticState(p)%sizeDeltaState
  if( any(prec_isNaN(plasticState(p)%deltaState(:,c)))) then                                         ! NaN occured in deltaState
    crystallite_stateJump = .false.
@@ -3429,9 +3426,9 @@ logical function crystallite_stateJump(g,i,e)
 #ifndef _OPENMP
  if (any(plasticState(p)%deltaState(1:mySizePlasticDeltaState,c) /= 0.0_pReal) &
      .and. iand(debug_level(debug_crystallite), debug_levelExtensive) /= 0_pInt &
-     .and. ((e == debug_e .and. i == debug_i .and. g == debug_g) &
+     .and. ((el == debug_e .and. ip == debug_i .and. ipc == debug_g) &
              .or. .not. iand(debug_level(debug_crystallite), debug_levelSelective) /= 0_pInt)) then
-   write(6,'(a,i8,1x,i2,1x,i3, /)') '<< CRYST >> update state at el ip g ',e,i,g
+   write(6,'(a,i8,1x,i2,1x,i3, /)') '<< CRYST >> update state at el ip ipc ',el,ip,ipc
    write(6,'(a,/,(12x,12(e12.5,1x)),/)') '<< CRYST >> deltaState', plasticState(p)%deltaState(1:mySizePlasticDeltaState,c)
    write(6,'(a,/,(12x,12(e12.5,1x)),/)') '<< CRYST >> new state',  plasticState(p)%state     (1:mySizePlasticDeltaState,c)
  endif
@@ -3445,7 +3442,7 @@ end function crystallite_stateJump
 !--------------------------------------------------------------------------------------------------
 !> @brief Map 2nd order tensor to reference config
 !--------------------------------------------------------------------------------------------------
-function crystallite_push33ToRef(g,i,e, tensor33)
+function crystallite_push33ToRef(ipc,ip,el, tensor33)
  use math, only: &
   math_mul33x33, &
   math_inv33, &
@@ -3459,12 +3456,12 @@ function crystallite_push33ToRef(g,i,e, tensor33)
  real(pReal), dimension(3,3), intent(in) :: tensor33
  real(pReal), dimension(3,3)             :: T
  integer(pInt), intent(in):: &
-   e, &                      ! element index
-   i, &                      ! integration point index
-   g                         ! grain index
+   el, &                      ! element index
+   ip, &                      ! integration point index
+   ipc                         ! grain index
 
- T = math_mul33x33(math_EulerToR(material_EulerAngles(1:3,g,i,e)), &
-                   math_transpose33(math_inv33(crystallite_subF(1:3,1:3,g,i,e))))
+ T = math_mul33x33(math_EulerToR(material_EulerAngles(1:3,ipc,ip,el)), &
+                   math_transpose33(math_inv33(crystallite_subF(1:3,1:3,ipc,ip,el))))
  crystallite_push33ToRef = math_mul33x33(math_transpose33(T),math_mul33x33(tensor33,T))
 
 end function crystallite_push33ToRef
@@ -3475,9 +3472,9 @@ end function crystallite_push33ToRef
 !> intermediate acceleration of the Newton-Raphson correction
 !--------------------------------------------------------------------------------------------------
 logical function crystallite_integrateStress(&
-      g,&          ! grain number
-      i,&          ! integration point number
-      e,&          ! element number
+      ipc,&          ! grain number
+      ip,&          ! integration point number
+      el,&          ! element number
       timeFraction &
       )
  use prec, only:         pLongInt, &
@@ -3524,9 +3521,9 @@ logical function crystallite_integrateStress(&
  use mesh, only:         mesh_element
 
  implicit none
- integer(pInt), intent(in)::         e, &                          ! element index
-                                     i, &                          ! integration point index
-                                     g                             ! grain index
+ integer(pInt), intent(in)::         el, &                          ! element index
+                                     ip, &                          ! integration point index
+                                     ipc                             ! grain index
  real(pReal), optional, intent(in) :: timeFraction                 ! fraction of timestep
 
  !*** local variables ***!
@@ -3603,9 +3600,9 @@ logical function crystallite_integrateStress(&
  crystallite_integrateStress = .false.
 #ifndef _OPENMP
  if (iand(debug_level(debug_crystallite), debug_levelExtensive) /= 0_pInt &
-     .and. ((e == debug_e .and. i == debug_i .and. g == debug_g) &
+     .and. ((el == debug_e .and. ip == debug_i .and. ipc == debug_g) &
             .or. .not. iand(debug_level(debug_crystallite), debug_levelSelective) /= 0_pInt)) then
-   write(6,'(a,i8,1x,i2,1x,i3)') '<< CRYST >> integrateStress at el ip g ',e,i,g
+   write(6,'(a,i8,1x,i2,1x,i3)') '<< CRYST >> integrateStress at el ip ipc ',el,ip,ipc
  endif
 #endif
 
@@ -3613,21 +3610,21 @@ logical function crystallite_integrateStress(&
  !* only integrate over fraction of timestep?
 
  if (present(timeFraction)) then
-   dt = crystallite_subdt(g,i,e) * timeFraction
-   Fg_new = crystallite_subF0(1:3,1:3,g,i,e) &
-          + (crystallite_subF(1:3,1:3,g,i,e) - crystallite_subF0(1:3,1:3,g,i,e)) * timeFraction
+   dt = crystallite_subdt(ipc,ip,el) * timeFraction
+   Fg_new = crystallite_subF0(1:3,1:3,ipc,ip,el) &
+          + (crystallite_subF(1:3,1:3,ipc,ip,el) - crystallite_subF0(1:3,1:3,ipc,ip,el)) * timeFraction
  else
-   dt = crystallite_subdt(g,i,e)
-   Fg_new = crystallite_subF(1:3,1:3,g,i,e)
+   dt = crystallite_subdt(ipc,ip,el)
+   Fg_new = crystallite_subF(1:3,1:3,ipc,ip,el)
  endif
 
 
  !* feed local variables
 
- Fp_current  =   crystallite_subFp0(1:3,1:3,g,i,e)                                                  ! "Fp_current" is only used as temp var here...
- Lpguess     =   crystallite_Lp    (1:3,1:3,g,i,e)                                                  ! ... and take it as first guess
- Fi_current  =   crystallite_subFi0(1:3,1:3,g,i,e)                                                  ! intermediate configuration, assume decomposition as F = Fe Fi Fp
- Liguess     =   crystallite_Li    (1:3,1:3,g,i,e)                                                  ! ... and take it as first guess
+ Fp_current  =   crystallite_subFp0(1:3,1:3,ipc,ip,el)                                                  ! "Fp_current" is only used as temp var here...
+ Lpguess     =   crystallite_Lp    (1:3,1:3,ipc,ip,el)                                                  ! ... and take it as first guess
+ Fi_current  =   crystallite_subFi0(1:3,1:3,ipc,ip,el)                                                  ! intermediate configuration, assume decomposition as F = Fe Fi Fp
+ Liguess     =   crystallite_Li    (1:3,1:3,ipc,ip,el)                                                  ! ... and take it as first guess
  Liguess_old =   Liguess
 
 
@@ -3653,8 +3650,8 @@ logical function crystallite_integrateStress(&
  if (all(abs(invFi_current) <= tiny(0.0_pReal))) then                                               ! math_inv33 returns zero when failed, avoid floating point comparison
 #ifndef _OPENMP
    if (iand(debug_level(debug_crystallite), debug_levelBasic) /= 0_pInt) then
-     write(6,'(a,i8,1x,a,i8,a,1x,i2,1x,i3)') '<< CRYST >> integrateStress failed on inversion of Fi_current at el (elFE) ip g ',&
-       e,'(',mesh_element(1,e),')',i,g
+     write(6,'(a,i8,1x,a,i8,a,1x,i2,1x,i3)') '<< CRYST >> integrateStress failed on inversion of Fi_current at el (elFE) ip ipc ',&
+       el,'(',mesh_element(1,el),')',ip,ipc
      if (iand(debug_level(debug_crystallite), debug_levelExtensive) > 0_pInt) &
        write(6,'(/,a,/,3(12x,3(f12.7,1x)/))') '<< CRYST >> Fp_current',math_transpose33(Fi_current(1:3,1:3))
    endif
@@ -3676,7 +3673,7 @@ logical function crystallite_integrateStress(&
 #ifndef _OPENMP
      if (iand(debug_level(debug_crystallite), debug_levelBasic) /= 0_pInt) &
        write(6,'(a,i3,a,i8,1x,a,i8,a,1x,i2,1x,i3,/)') '<< CRYST >> integrateStress reached inelastic loop limit',nStress, &
-       ' at el (elFE) ip g ', e,mesh_element(1,e),i,g
+       ' at el (elFE) ip ipc ', el,mesh_element(1,el),ip,ipc
 #endif
      return
    endif IloopsExeced
@@ -3698,7 +3695,7 @@ logical function crystallite_integrateStress(&
 #ifndef _OPENMP
      if (iand(debug_level(debug_crystallite), debug_levelBasic) /= 0_pInt) &
          write(6,'(a,i3,a,i8,1x,a,i8,a,1x,i2,1x,i3,/)') '<< CRYST >> integrateStress reached loop limit',nStress, &
-         ' at el (elFE) ip g ', e,mesh_element(1,e),i,g
+         ' at el (elFE) ip ipc ', el,mesh_element(1,el),ip,ipc
 #endif
        return
      endif loopsExeced
@@ -3707,7 +3704,7 @@ logical function crystallite_integrateStress(&
 
      B  = math_I3 - dt*Lpguess
      Fe = math_mul33x33(math_mul33x33(A,B), invFi_new)                                                  ! current elastic deformation tensor
-     call constitutive_TandItsTangent(Tstar, dT_dFe3333, dT_dFi3333, Fe, Fi_new, g, i, e)               ! call constitutive law to calculate 2nd Piola-Kirchhoff stress and its derivative in unloaded configuration
+     call constitutive_TandItsTangent(Tstar, dT_dFe3333, dT_dFi3333, Fe, Fi_new, ipc, ip, el)               ! call constitutive law to calculate 2nd Piola-Kirchhoff stress and its derivative in unloaded configuration
      Tstar_v = math_Mandel33to6(Tstar)
 
      !* calculate plastic velocity gradient and its tangent from constitutive law
@@ -3717,7 +3714,7 @@ logical function crystallite_integrateStress(&
      endif
 
      call constitutive_LpAndItsTangent(Lp_constitutive, dLp_dT3333, dLp_dFi3333, &
-                                       Tstar_v, Fi_new, g, i, e)
+                                       Tstar_v, Fi_new, ipc, ip, el)
 
      if (iand(debug_level(debug_crystallite), debug_levelBasic) /= 0_pInt) then
        call system_clock(count=tock,count_rate=tickrate,count_max=maxticks)
@@ -3731,7 +3728,7 @@ logical function crystallite_integrateStress(&
 
 #ifndef _OPENMP
      if (iand(debug_level(debug_crystallite), debug_levelExtensive) /= 0_pInt &
-         .and. ((e == debug_e .and. i == debug_i .and. g == debug_g) &
+         .and. ((el == debug_e .and. ip == debug_i .and. ipc == debug_g) &
                 .or. .not. iand(debug_level(debug_crystallite), debug_levelSelective) /= 0_pInt)) then
        write(6,'(a,i3,/)') '<< CRYST >> stress iteration ', NiterationStressLp
        write(6,'(a,/,3(12x,3(e20.7,1x)/))') '<< CRYST >> Lp_constitutive', math_transpose33(Lp_constitutive)
@@ -3749,8 +3746,8 @@ logical function crystallite_integrateStress(&
      if (any(prec_isNaN(residuumLp))) then                                                           ! NaN in residuum...
 #ifndef _OPENMP
        if (iand(debug_level(debug_crystallite), debug_levelBasic) /= 0_pInt) &
-         write(6,'(a,i8,1x,a,i8,a,1x,i2,1x,i3,a,i3,a)') '<< CRYST >> integrateStress encountered NaN at el (elFE) ip g ', &
-           e,mesh_element(1,e),i,g, &
+         write(6,'(a,i8,1x,a,i8,a,1x,i2,1x,i3,a,i3,a)') '<< CRYST >> integrateStress encountered NaN at el (elFE) ip ipc ', &
+           el,mesh_element(1,el),ip,ipc, &
                                                         ' ; iteration ', NiterationStressLp,&
                                                         ' >> returning..!'
 #endif
@@ -3788,10 +3785,10 @@ logical function crystallite_integrateStress(&
        if (ierr /= 0_pInt) then
 #ifndef _OPENMP
          if (iand(debug_level(debug_crystallite), debug_levelBasic) /= 0_pInt) then
-           write(6,'(a,i8,1x,a,i8,a,1x,i2,1x,i3,a,i3)') '<< CRYST >> integrateStress failed on dR/dLp inversion at el ip g ', &
-             e,mesh_element(1,e),i,g
+           write(6,'(a,i8,1x,a,i8,a,1x,i2,1x,i3,a,i3)') '<< CRYST >> integrateStress failed on dR/dLp inversion at el ip ipc ', &
+             el,mesh_element(1,el),ip,ipc
            if (iand(debug_level(debug_crystallite), debug_levelExtensive) /= 0_pInt &
-               .and. ((e == debug_e .and. i == debug_i .and. g == debug_g)&
+               .and. ((el == debug_e .and. ip == debug_i .and. ipc == debug_g)&
                       .or. .not. iand(debug_level(debug_crystallite), debug_levelSelective) /= 0_pInt)) then
              write(6,*)
              write(6,'(a,/,9(12x,9(e15.3,1x)/))') '<< CRYST >> dR_dLp',transpose(dRLp_dLp)
@@ -3825,11 +3822,11 @@ logical function crystallite_integrateStress(&
    !* calculate intermediate velocity gradient and its tangent from constitutive law
 
    call constitutive_LiAndItsTangent(Li_constitutive, dLi_dT3333, dLi_dFi3333, &
-                                     Tstar_v, Fi_new, g, i, e)
+                                     Tstar_v, Fi_new, ipc, ip, el)
 
 #ifndef _OPENMP
      if (iand(debug_level(debug_crystallite), debug_levelExtensive) /= 0_pInt &
-         .and. ((e == debug_e .and. i == debug_i .and. g == debug_g) &
+         .and. ((el == debug_e .and. ip == debug_i .and. ipc == debug_g) &
                 .or. .not. iand(debug_level(debug_crystallite), debug_levelSelective) /= 0_pInt)) then
        write(6,'(a,/,3(12x,3(e20.7,1x)/))') '<< CRYST >> Li_constitutive', math_transpose33(Li_constitutive)
        write(6,'(a,/,3(12x,3(e20.7,1x)/))') '<< CRYST >> Liguess', math_transpose33(Liguess)
@@ -3881,10 +3878,10 @@ logical function crystallite_integrateStress(&
        if (ierr /= 0_pInt) then
 #ifndef _OPENMP
          if (iand(debug_level(debug_crystallite), debug_levelBasic) /= 0_pInt) then
-           write(6,'(a,i8,1x,a,i8,a,1x,i2,1x,i3,a,i3)') '<< CRYST >> integrateStress failed on dR/dLi inversion at el ip g ', &
-             e,mesh_element(1,e),i,g
+           write(6,'(a,i8,1x,a,i8,a,1x,i2,1x,i3,a,i3)') '<< CRYST >> integrateStress failed on dR/dLi inversion at el ip ipc ', &
+             el,mesh_element(1,el),ip,ipc
            if (iand(debug_level(debug_crystallite), debug_levelExtensive) /= 0_pInt &
-               .and. ((e == debug_e .and. i == debug_i .and. g == debug_g)&
+               .and. ((el == debug_e .and. ip == debug_i .and. ipc == debug_g)&
                       .or. .not. iand(debug_level(debug_crystallite), debug_levelSelective) /= 0_pInt)) then
              write(6,*)
              write(6,'(a,/,9(12x,9(e15.3,1x)/))') '<< CRYST >> dR_dLi',transpose(dRLi_dLi)
@@ -3921,10 +3918,10 @@ logical function crystallite_integrateStress(&
  if (all(abs(Fp_new)<= tiny(0.0_pReal))) then                                                       ! math_inv33 returns zero when failed, avoid floating point comparison
 #ifndef _OPENMP
    if (iand(debug_level(debug_crystallite), debug_levelBasic) /= 0_pInt) then
-     write(6,'(a,i8,1x,a,i8,a,1x,i2,1x,i3,a,i3)') '<< CRYST >> integrateStress failed on invFp_new inversion at el ip g ',&
-       e,mesh_element(1,e),i,g, ' ; iteration ', NiterationStressLp
+     write(6,'(a,i8,1x,a,i8,a,1x,i2,1x,i3,a,i3)') '<< CRYST >> integrateStress failed on invFp_new inversion at el ip ipc ',&
+       el,mesh_element(1,el),ip,ipc, ' ; iteration ', NiterationStressLp
      if (iand(debug_level(debug_crystallite), debug_levelExtensive) /= 0_pInt &
-         .and. ((e == debug_e .and. i == debug_i .and. g == debug_g) &
+         .and. ((el == debug_e .and. ip == debug_i .and. ipc == debug_g) &
                 .or. .not. iand(debug_level(debug_crystallite), debug_levelSelective) /= 0_pInt)) &
        write(6,'(/,a,/,3(12x,3(f12.7,1x)/))') '<< CRYST >> invFp_new',math_transpose33(invFp_new)
    endif
@@ -3935,27 +3932,27 @@ logical function crystallite_integrateStress(&
 
  !* calculate 1st Piola-Kirchhoff stress
 
- crystallite_P(1:3,1:3,g,i,e) = math_mul33x33(math_mul33x33(Fg_new,invFp_new), &
+ crystallite_P(1:3,1:3,ipc,ip,el) = math_mul33x33(math_mul33x33(Fg_new,invFp_new), &
                                               math_mul33x33(math_Mandel6to33(Tstar_v), &
                                                             math_transpose33(invFp_new)))
 
  !* store local values in global variables
 
- crystallite_Lp(1:3,1:3,g,i,e)    = Lpguess
- crystallite_Li(1:3,1:3,g,i,e)    = Liguess
- crystallite_Tstar_v(1:6,g,i,e)   = Tstar_v
- crystallite_Fp(1:3,1:3,g,i,e)    = Fp_new
- crystallite_Fi(1:3,1:3,g,i,e)    = Fi_new
- crystallite_Fe(1:3,1:3,g,i,e)    = Fe_new
- crystallite_invFp(1:3,1:3,g,i,e) = invFp_new
- crystallite_invFi(1:3,1:3,g,i,e) = invFi_new
+ crystallite_Lp(1:3,1:3,ipc,ip,el)    = Lpguess
+ crystallite_Li(1:3,1:3,ipc,ip,el)    = Liguess
+ crystallite_Tstar_v(1:6,ipc,ip,el)   = Tstar_v
+ crystallite_Fp(1:3,1:3,ipc,ip,el)    = Fp_new
+ crystallite_Fi(1:3,1:3,ipc,ip,el)    = Fi_new
+ crystallite_Fe(1:3,1:3,ipc,ip,el)    = Fe_new
+ crystallite_invFp(1:3,1:3,ipc,ip,el) = invFp_new
+ crystallite_invFi(1:3,1:3,ipc,ip,el) = invFi_new
 
  !* set return flag to true
 
  crystallite_integrateStress = .true.
 #ifndef _OPENMP
  if (iand(debug_level(debug_crystallite),debug_levelExtensive) /= 0_pInt &
-     .and. ((e == debug_e .and. i == debug_i .and. g == debug_g) &
+     .and. ((el == debug_e .and. ip == debug_i .and. ipc == debug_g) &
              .or. .not. iand(debug_level(debug_crystallite), debug_levelSelective) /= 0_pInt)) then
    write(6,'(a,/,3(12x,3(f12.7,1x)/))') '<< CRYST >> P / MPa',math_transpose33(crystallite_P(1:3,1:3,g,i,e))*1.0e-6_pReal
    write(6,'(a,/,3(12x,3(f12.7,1x)/))') '<< CRYST >> Cauchy / MPa', &
