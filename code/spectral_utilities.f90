@@ -617,7 +617,7 @@ subroutine utilities_fourierGreenConvolution(D_ref, mobility_ref, deltaT)
  do k = 1_pInt, grid3; do j = 1_pInt, grid(2) ;do i = 1_pInt, grid1Red
    GreenOp_hat =  cmplx(1.0_pReal,0.0_pReal,pReal)/ &
                   (cmplx(mobility_ref,0.0_pReal,pReal) + &
-                   deltaT*sum(conjg(-xi1st(1:3,i,j,k))*matmul(D_ref,xi1st(1:3,i,j,k))))
+                   deltaT*sum(conjg(xi1st(1:3,i,j,k))*matmul(D_ref,xi1st(1:3,i,j,k)))) ! why not use dot_product 
    scalarField_fourier(i,j,k) = scalarField_fourier(i,j,k)*GreenOp_hat
  enddo; enddo; enddo
 
