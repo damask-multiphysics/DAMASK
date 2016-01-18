@@ -3617,7 +3617,7 @@ logical function crystallite_integrateStress(&
 #ifndef _OPENMP
    if (iand(debug_level(debug_crystallite), debug_levelBasic) /= 0_pInt) then
      write(6,'(a,i8,1x,a,i8,a,1x,i2,1x,i3)') '<< CRYST >> integrateStress failed on inversion of Fp_current at el (elFE) ip g ',&
-       e,'(',mesh_element(1,e),')',i,g
+       el,'(',mesh_element(1,el),')',ip,ipc
      if (iand(debug_level(debug_crystallite), debug_levelExtensive) > 0_pInt) &
        write(6,'(/,a,/,3(12x,3(f12.7,1x)/))') '<< CRYST >> Fp_current',math_transpose33(Fp_current(1:3,1:3))
    endif
@@ -3936,13 +3936,13 @@ logical function crystallite_integrateStress(&
  if (iand(debug_level(debug_crystallite),debug_levelExtensive) /= 0_pInt &
      .and. ((el == debug_e .and. ip == debug_i .and. ipc == debug_g) &
              .or. .not. iand(debug_level(debug_crystallite), debug_levelSelective) /= 0_pInt)) then
-   write(6,'(a,/,3(12x,3(f12.7,1x)/))') '<< CRYST >> P / MPa',math_transpose33(crystallite_P(1:3,1:3,g,i,e))*1.0e-6_pReal
+   write(6,'(a,/,3(12x,3(f12.7,1x)/))') '<< CRYST >> P / MPa',math_transpose33(crystallite_P(1:3,1:3,ipc,ip,el))*1.0e-6_pReal
    write(6,'(a,/,3(12x,3(f12.7,1x)/))') '<< CRYST >> Cauchy / MPa', &
-              math_mul33x33(crystallite_P(1:3,1:3,g,i,e), math_transpose33(Fg_new)) * 1.0e-6_pReal / math_det33(Fg_new)
+              math_mul33x33(crystallite_P(1:3,1:3,ipc,ip,el), math_transpose33(Fg_new)) * 1.0e-6_pReal / math_det33(Fg_new)
    write(6,'(a,/,3(12x,3(f12.7,1x)/))') '<< CRYST >> Fe Lp Fe^-1', &
-              math_transpose33(math_mul33x33(Fe_new, math_mul33x33(crystallite_Lp(1:3,1:3,g,i,e), math_inv33(Fe_new))))    ! transpose to get correct print out order
-   write(6,'(a,/,3(12x,3(f12.7,1x)/))') '<< CRYST >> Fp',math_transpose33(crystallite_Fp(1:3,1:3,g,i,e))
-   write(6,'(a,/,3(12x,3(f12.7,1x)/))') '<< CRYST >> Fi',math_transpose33(crystallite_Fi(1:3,1:3,g,i,e))
+              math_transpose33(math_mul33x33(Fe_new, math_mul33x33(crystallite_Lp(1:3,1:3,ipc,ip,el), math_inv33(Fe_new))))    ! transpose to get correct print out order
+   write(6,'(a,/,3(12x,3(f12.7,1x)/))') '<< CRYST >> Fp',math_transpose33(crystallite_Fp(1:3,1:3,ipc,ip,el))
+   write(6,'(a,/,3(12x,3(f12.7,1x)/))') '<< CRYST >> Fi',math_transpose33(crystallite_Fi(1:3,1:3,ipc,ip,el))
  endif
 #endif
 

@@ -51,7 +51,9 @@ module debug
  integer(pInt), public :: &
    debug_cumLpCalls              = 0_pInt, &                                                        !< total number of calls to LpAndItsTangent
    debug_cumDeltaStateCalls      = 0_pInt, &                                                        !< total number of calls to deltaState
-   debug_cumDotStateCalls        = 0_pInt, &                                                        !< total number of calls to dotState
+   debug_cumDotStateCalls        = 0_pInt                                                           !< total number of calls to dotState
+
+ integer(pInt), protected, public :: &
    debug_e                       = 1_pInt, &
    debug_i                       = 1_pInt, &
    debug_g                       = 1_pInt
