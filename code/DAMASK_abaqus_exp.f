@@ -88,7 +88,8 @@ subroutine vumat(nBlock, nDir, nshr, nStateV, nFieldV, nProps, lAnneal, &
 !$ use numerics, only: &
 !$ DAMASK_NumThreadsInt
  use FEsolving, only: &
-   symmetricSolver
+   symmetricSolver, &
+   terminallyIll
  use math, only: &
    invnrmMandel
  use debug, only: &
@@ -110,8 +111,7 @@ subroutine vumat(nBlock, nDir, nshr, nStateV, nFieldV, nProps, lAnneal, &
    cycleCounter, &
    theTime, &
    outdatedByNewInc, &
-   outdatedFFN1, &
-   terminallyIll
+   outdatedFFN1
  use homogenization, only: &
    materialpoint_sizeResults, &
    materialpoint_results

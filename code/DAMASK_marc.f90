@@ -135,6 +135,8 @@ subroutine hypela2(d,g,e,de,s,t,dt,ngens,m,nn,kcus,matus,ndi,nshear,disp, &
    numerics_unitlength, &
    usePingPong
  use FEsolving, only: &
+   calcMode, &
+   terminallyIll, &
    symmetricSolver
  use math, only: &
    math_transpose33,&
@@ -166,13 +168,11 @@ subroutine hypela2(d,g,e,de,s,t,dt,ngens,m,nn,kcus,matus,ndi,nshear,disp, &
    CPFEM_BACKUPJACOBIAN, &
    cycleCounter, &
    theInc, &
-   calcMode, &
    theTime, &
    theDelta, &
    lastIncConverged, &
    outdatedByNewInc, &
    outdatedFFN1, &
-   terminallyIll, &
    lastLovl
 
  implicit none
