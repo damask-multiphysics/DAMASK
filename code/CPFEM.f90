@@ -421,11 +421,8 @@ subroutine CPFEM_general(mode, ffn, ffn1, dt, elFE, ip)
 
 
 #if defined(Marc4DAMASK) || defined(Abaqus)
- !*** backup jacobian
  if (iand(mode, CPFEM_BACKUPJACOBIAN) /= 0_pInt) &
    CPFEM_dcsde_knownGood = CPFEM_dcsde
-
- !*** restore jacobian
  if (iand(mode, CPFEM_RESTOREJACOBIAN) /= 0_pInt) &
    CPFEM_dcsde = CPFEM_dcsde_knownGood
 #endif
@@ -553,8 +550,6 @@ subroutine CPFEM_general(mode, ffn, ffn1, dt, elFE, ip)
    if (rnd < 0.5_pReal) rnd = rnd - 1.0_pReal
    CPFEM_cs(1:6,ip,elCP) = rnd * CPFEM_odd_stress
    CPFEM_dcsde(1:6,1:6,ip,elCP) = CPFEM_odd_jacobian * math_identity2nd(6)
-#endif
-#if defined(Marc4DAMASK) || defined(Abaqus) 
    temperature(material_homog(ip,elCP))%p(thermalMapping(material_homog(ip,elCP))%p(ip,elCP)) = &
      temperature_inp
 #endif

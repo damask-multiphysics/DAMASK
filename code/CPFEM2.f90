@@ -6,15 +6,9 @@
 !> @brief needs a good name and description
 !--------------------------------------------------------------------------------------------------
 module CPFEM2
- use prec, only: &
-   pReal, &
-   pInt
 
  implicit none
  private
-
- logical,                                       public, protected :: &
-   CPFEM_init_done       = .false.                                                                  !< remember whether init has been done already
 
  public :: &
    CPFEM_general, &
@@ -27,6 +21,8 @@ contains
 !> @brief call (thread safe) all module initializations
 !--------------------------------------------------------------------------------------------------
 subroutine CPFEM_initAll(el,ip)
+ use prec, only: &
+   pInt
  use prec, only: &
    prec_init
  use numerics, only: &
@@ -48,7 +44,8 @@ subroutine CPFEM_initAll(el,ip)
  use crystallite, only: &
    crystallite_init
  use homogenization, only: &
-   homogenization_init
+   homogenization_init, &
+materialpoint_postResults
  use IO, only: &
    IO_init
  use DAMASK_interface
@@ -61,28 +58,23 @@ subroutine CPFEM_initAll(el,ip)
  integer(pInt), intent(in) ::                        el, &                                          !< FE el number
                                                      ip                                             !< FE integration point number
 
- !$OMP CRITICAL (init)
-   if (.not. CPFEM_init_done) then
-     call DAMASK_interface_init                                                                    ! Spectral and FEM interface to commandline
-     call prec_init
-     call IO_init
+ call DAMASK_interface_init                                                                    ! Spectral and FEM interface to commandline
+ call prec_init
+ call IO_init
 #ifdef FEM
-     call FEZoo_init
+ call FEZoo_init
 #endif
-     call numerics_init
-     call debug_init
-     call math_init
-     call FE_init
-     call mesh_init(ip, el)                                                                        ! pass on coordinates to alter calcMode of first ip
-     call lattice_init
-     call material_init
-     call constitutive_init
-     call crystallite_init
-     call homogenization_init
-     call CPFEM_init
-     CPFEM_init_done = .true.
-   endif
- !$OMP END CRITICAL (init)
+ call numerics_init
+ call debug_init
+ call math_init
+ call FE_init
+ call mesh_init(ip, el)                                                                        ! pass on coordinates to alter calcMode of first ip
+ call lattice_init
+ call material_init
+ call constitutive_init
+ call crystallite_init
+ call homogenization_init
+ call materialpoint_postResults
 
 end subroutine CPFEM_initAll
 
@@ -209,6 +201,9 @@ end subroutine CPFEM_init
 !> @brief perform initialization at first call, update variables and call the actual material model
 !--------------------------------------------------------------------------------------------------
 subroutine CPFEM_general(age, dt)
+ use prec, only: &
+   pReal, &
+   pInt
  use numerics, only: &
    worldrank
  use debug, only: &
