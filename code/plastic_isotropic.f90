@@ -20,6 +20,17 @@ module plastic_isotropic
  
  implicit none
  private
+ integer(pInt),                       dimension(:),     allocatable,         public, protected :: &
+   plastic_isotropic_sizePostResults                                                                  !< cumulative size of post results
+   
+ integer(pInt),                       dimension(:,:),   allocatable, target, public :: &
+   plastic_isotropic_sizePostResult                                                                   !< size of each post result output
+   
+ character(len=64),                   dimension(:,:),   allocatable, target, public :: &
+   plastic_isotropic_output                                                                           !< name of each post result output
+ 
+ integer(pInt),                       dimension(:),     allocatable, target, public :: &
+   plastic_isotropic_Noutput                                                                          !< number of outputs per instance
  
  enum, bind(c) 
    enumerator :: undefined_ID, &
@@ -28,10 +39,6 @@ module plastic_isotropic
  end enum
 
  type, private :: tParameters                                                                         !< container type for internal constitutive parameters
-   character(len=64), allocatable, dimension(:) :: &
-     output                                                                                           !< name of each post result output
-   integer(pInt) :: &
-     Noutput
    integer(kind(undefined_ID)), allocatable, dimension(:) :: & 
      outputID
   real(pReal) :: &
@@ -72,12 +79,6 @@ module plastic_isotropic
  type(tIsotropicAbsTol), allocatable, dimension(:), private :: &                                       !< state aliases per instance
    stateAbsTol
 
- integer(pInt),                       dimension(:),     allocatable,         public, protected :: &
-   plastic_isotropic_sizePostResults                                                                  !< cumulative size of post results
-   
- integer(pInt),                       dimension(:,:),   allocatable, target, public :: &
-   plastic_isotropic_sizePostResult                                                                   !< size of each post result output
-   
  public  :: &
    plastic_isotropic_init, &
    plastic_isotropic_LpAndItsTangent, &
@@ -161,7 +162,13 @@ subroutine plastic_isotropic_init(fileUnit)
 
  if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0_pInt) &
    write(6,'(a16,1x,i5,/)') '# instances:',maxNinstance
- 
+
+ allocate(plastic_isotropic_sizePostResults(maxNinstance),                      source=0_pInt)
+ allocate(plastic_isotropic_sizePostResult(maxval(phase_Noutput), maxNinstance),source=0_pInt)
+ allocate(plastic_isotropic_output(maxval(phase_Noutput), maxNinstance))
+          plastic_isotropic_output = ''
+ allocate(plastic_isotropic_Noutput(maxNinstance),                              source=0_pInt)
+
  allocate(param(maxNinstance))                                                                      ! one container of parameters per instance
  
  rewind(fileUnit)
@@ -187,7 +194,6 @@ subroutine plastic_isotropic_init(fileUnit)
    endif
    if (phase > 0_pInt) then; if (phase_plasticity(phase) == PLASTICITY_ISOTROPIC_ID) then           ! one of my phases. Do not short-circuit here (.and. between if-statements), it's not safe in Fortran
      instance = phase_plasticityInstance(phase)                                                     ! which instance of my plasticity is present phase
-     allocate(param(instance)%output(phase_Noutput(phase)))                                         ! allocate space for strings of every requested output
      allocate(param(instance)%outputID(phase_Noutput(phase)))                                       ! allocate space for IDs of every requested output
      chunkPos = IO_stringPos(line) 
      tag = IO_lc(IO_stringValue(line,chunkPos,1_pInt))                                              ! extract key
@@ -198,14 +204,13 @@ subroutine plastic_isotropic_init(fileUnit)
          outputtag = IO_lc(IO_stringValue(line,chunkPos,2_pInt))
          select case(outputtag)
            case ('flowstress')
-             param(instance)%Noutput = param(instance)%Noutput + 1
-             param(instance)%outputID (param(instance)%Noutput) = flowstress_ID
-             param(instance)%output   (param(instance)%Noutput) = outputtag
+             plastic_isotropic_Noutput(instance) = plastic_isotropic_Noutput(instance) + 1_pInt
+             param(instance)%outputID (plastic_isotropic_Noutput(instance)) = flowstress_ID
+             plastic_isotropic_output(plastic_isotropic_Noutput(instance),instance) = outputtag
            case ('strainrate')
-             param(instance)%Noutput = param(instance)%Noutput + 1
-             param(instance)%outputID (param(instance)%Noutput) = strainrate_ID
-             param(instance)%output   (param(instance)%Noutput) = outputtag
-           case default
+             plastic_isotropic_Noutput(instance) = plastic_isotropic_Noutput(instance) + 1_pInt
+             param(instance)%outputID (plastic_isotropic_Noutput(instance)) = strainrate_ID
+             plastic_isotropic_output(plastic_isotropic_Noutput(instance),instance) = outputtag
 
          end select
 
@@ -283,7 +288,7 @@ subroutine plastic_isotropic_init(fileUnit)
 
 !--------------------------------------------------------------------------------------------------
 !  Determine size of postResults array
-     outputsLoop: do o = 1_pInt,param(instance)%Noutput
+     outputsLoop: do o = 1_pInt,plastic_isotropic_Noutput(instance)
        select case(param(instance)%outputID(o))
          case(flowstress_ID,strainrate_ID)
            mySize = 1_pInt
@@ -654,7 +659,7 @@ function plastic_isotropic_postResults(Tstar_v,ipc,ip,el)
  c = 0_pInt
  plastic_isotropic_postResults = 0.0_pReal
 
- outputsLoop: do o = 1_pInt,param(instance)%Noutput
+ outputsLoop: do o = 1_pInt,plastic_isotropic_Noutput(instance)
    select case(param(instance)%outputID(o))
      case (flowstress_ID)
        plastic_isotropic_postResults(c+1_pInt) = state(instance)%flowstress(of)
