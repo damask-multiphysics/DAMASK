@@ -71,7 +71,7 @@ module prec
      sizeDotState = 0_pInt, &                                                                       !< size of dot state, i.e. parts of the state that are integrated
      sizeDeltaState = 0_pInt, &                                                                     !< size of delta state, i.e. parts of the state that have discontinuous rates
      sizePostResults = 0_pInt                                                                       !< size of output data
-   real(pReal), allocatable, dimension(:) :: &
+   real(pReal), pointer,     dimension(:), contiguous :: &
      atolState
    real(pReal), pointer,     dimension(:,:), contiguous :: &                                        ! a pointer is needed here because we might point to state/doState. However, they will never point to something, but are rather allocated and, hence, contiguous 
      state, &                                                                                       !< state
