@@ -334,16 +334,16 @@ DAMASK_spectral.exe: IGNORE          := \#
 DAMASK_spectral.exe: COMPILE         += -DSpectral
 DAMASK_spectral.exe: COMPILE_MAXOPTI += -DSpectral
 DAMASK_spectral.exe: MESHNAME        := mesh.f90
-DAMASK_spectral.exe: INTERFACENAME   := DAMASK_spectral_interface.f90
+DAMASK_spectral.exe: INTERFACENAME   := spectral_interface.f90
 
 DAMASK_spectral.o: IGNORE          := \#
 DAMASK_spectral.o: COMPILE         += -DSpectral
 DAMASK_spectral.o: COMPILE_MAXOPTI += -DSpectral
 DAMASK_spectral.o: MESHNAME        := mesh.f90
-DAMASK_spectral.o: INTERFACENAME   := DAMASK_spectral_interface.f90
+DAMASK_spectral.o: INTERFACENAME   := spectral_interface.f90
 
 
-SPECTRAL_SOLVER_FILES = DAMASK_spectral_solverAL.o DAMASK_spectral_solverBasicPETSc.o DAMASK_spectral_solverPolarisation.o \
+SPECTRAL_SOLVER_FILES = spectral_mech_AL.o spectral_mech_Basic.o spectral_mech_Polarisation.o \
                         spectral_thermal.o spectral_damage.o
 
 SPECTRAL_FILES = prec.o DAMASK_interface.o IO.o libs.o numerics.o debug.o math.o \
@@ -366,13 +366,13 @@ DAMASK_spectral.o: DAMASK_spectral.f90 \
                            $(SPECTRAL_SOLVER_FILES)
 	$(PREFIX) $(COMPILERNAME) $(COMPILE_MAXOPTI) -c DAMASK_spectral.f90 $(SUFFIX)
 
-DAMASK_spectral_solverAL.o:    DAMASK_spectral_solverAL.f90 \
+spectral_mech_AL.o:            spectral_mech_AL.f90 \
                                spectral_utilities.o
 
-DAMASK_spectral_solverPolarisation.o:    DAMASK_spectral_solverPolarisation.f90 \
+spectral_mech_Polarisation.o:  spectral_mech_Polarisation.f90 \
                                spectral_utilities.o
 
-DAMASK_spectral_solverBasicPETSc.o: DAMASK_spectral_solverBasicPETSc.f90 \
+spectral_mech_Basic.o:         spectral_mech_Basic.f90 \
                                spectral_utilities.o
 
 spectral_thermal.o:            spectral_thermal.f90 \
@@ -381,7 +381,7 @@ spectral_thermal.o:            spectral_thermal.f90 \
 spectral_damage.o:             spectral_damage.f90 \
                                spectral_utilities.o
 
-spectral_utilities.o:   spectral_utilities.f90 \
+spectral_utilities.o:          spectral_utilities.f90 \
                                CPFEM2.o
 
 #####################
@@ -439,13 +439,13 @@ FEZoo.o:                       $(wildcard FEZoo.f90) \
 	$(IGNORE) $(PREFIX) $(COMPILERNAME) $(COMPILE) -c ../private/FEM/code/FEZoo.f90 $(SUFFIX)
 	touch FEZoo.o
 
-CPFEM.o:                       CPFEM.f90\
+CPFEM.o:                       CPFEM.f90 \
                                homogenization.o
 
-CPFEM2.o:                      CPFEM2.f90\
+CPFEM2.o:                      CPFEM2.f90 \
                                homogenization.o
 
-homogenization.o:              homogenization.f90\
+homogenization.o:              homogenization.f90 \
                                $(THERMAL_FILES) \
                                $(DAMAGE_FILES) \
                                $(VACANCYFLUX_FILES) \
@@ -619,7 +619,7 @@ IO.o:                          IO.f90 \
                                DAMASK_interface.o
 
 ifeq "$(F90)" "gfortran"
-DAMASK_interface.o:            DAMASK_spectral_interface.f90 \
+DAMASK_interface.o:            spectral_interface.f90 \
                                $(wildcard DAMASK_FEM_interface.f90) \
                                prec.o
 	$(PREFIX) $(COMPILERNAME) $(COMPILE) -c $(INTERFACENAME) -fall-intrinsics -o DAMASK_interface.o $(SUFFIX)
@@ -636,7 +636,7 @@ prec.o:                        prec.f90
 #-fno-fast-math:
 #      -->   otherwise, when setting -ffast-math, isnan always evaluates to false (I would call it a bug)
 else
-DAMASK_interface.o:            DAMASK_spectral_interface.f90 \
+DAMASK_interface.o:            spectral_interface.f90 \
                                $(wildcard DAMASK_FEM_interface.f90) \
                                prec.o
 	$(PREFIX) $(COMPILERNAME) $(COMPILE) -c $(INTERFACENAME) -diag-remark 7410 -stand none -warn nostderrors -o DAMASK_interface.o $(SUFFIX)

@@ -6,7 +6,7 @@
 !> @author Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
 !> @brief Basic scheme PETSc solver
 !--------------------------------------------------------------------------------------------------
-module DAMASK_spectral_SolverBasicPETSc
+module spectral_mech_basic
  use prec, only: & 
    pInt, &
    pReal
@@ -567,4 +567,4 @@ subroutine BasicPETSc_destroy()
 
 end subroutine BasicPETSc_destroy
 
-end module DAMASK_spectral_SolverBasicPETSc
+end module spectral_mech_basic

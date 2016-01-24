@@ -79,9 +79,9 @@ program DAMASK_spectral_Driver
    FIELD_MECH_ID, &
    FIELD_THERMAL_ID, &
    FIELD_DAMAGE_ID
- use DAMASK_spectral_SolverBasicPETSC
- use DAMASK_spectral_SolverAL
- use DAMASK_spectral_SolverPolarisation
+ use spectral_mech_Basic
+ use spectral_mech_AL
+ use spectral_mech_Polarisation
  use spectral_damage
  use spectral_thermal
  
