@@ -96,7 +96,7 @@ cmd = 'f2py damask.core.pyf' +\
       ' -c --no-lower %s'%(compiler) +\
       compileOptions+\
       ' prec.f90'+\
-      ' DAMASK_spectral_interface.f90'+\
+      ' spectral_interface.f90'+\
       ' IO.f90'+\
       ' libs.f90'+\
       ' numerics.f90'+\
