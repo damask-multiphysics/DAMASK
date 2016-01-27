@@ -96,9 +96,7 @@ subroutine CPFEM_initAll(el,ip)
 
  !$OMP CRITICAL (init)
    if (.not. CPFEM_init_done) then
-#if defined(Spectral) || defined(FEM)
      call DAMASK_interface_init                                                                    ! Spectral and FEM interface to commandline
-#endif
      call prec_init
      call IO_init
 #ifdef FEM
@@ -115,9 +113,6 @@ subroutine CPFEM_initAll(el,ip)
      call crystallite_init
      call homogenization_init
      call CPFEM_init
-#if defined(Marc4DAMASK) || defined(Abaqus)
-     call DAMASK_interface_init                                                                    ! Spectral solver and FEM init is already done
-#endif
      CPFEM_init_done = .true.
    endif
  !$OMP END CRITICAL (init)

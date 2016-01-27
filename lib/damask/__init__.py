@@ -3,6 +3,9 @@
 # $Id$
 import sys, os
 
+with open(os.path.join(os.path.dirname(__file__),'../../VERSION')) as f:
+  version = f.readline()[:-1]
+
 from .environment import Environment      # only one class
 from .asciitable  import ASCIItable       # only one class
 from .config      import Material         # will be extended to debug and numerics

@@ -89,7 +89,16 @@ subroutine DAMASK_interface_init(loadCaseParameterIn,geometryParameterIn)
  call MPI_Comm_rank(PETSC_COMM_WORLD,worldrank,ierr);CHKERRQ(ierr)
 #endif
  mainProcess: if (worldrank == 0) then
-   write(6,'(/,a)') ' <<<+-  DAMASK_spectral_interface init  -+>>>'
+   call date_and_time(values = dateAndTime)
+   write(6,'(/,a)') ' <<<+-  DAMASK_spectral  -+>>>'
+   write(6,'(/,a)')              ' Version: '//DAMASKVERSION
+   write(6,'(a,2(i2.2,a),i4.4)') ' Date:    ',dateAndTime(3),'/',&
+                                              dateAndTime(2),'/',&
+                                              dateAndTime(1) 
+   write(6,'(a,2(i2.2,a),i2.2)') ' Time:    ',dateAndTime(5),':',&
+                                              dateAndTime(6),':',&
+                                              dateAndTime(7)  
+   write(6,'(/,a)') ' <<<+-  DAMASK_interface init  -+>>>'
 #include "compilation_info.f90"
  endif mainProcess
 
@@ -187,14 +196,7 @@ subroutine DAMASK_interface_init(loadCaseParameterIn,geometryParameterIn)
 
  call get_environment_variable('HOSTNAME',hostName)
  call get_environment_variable('USER',userName)
- call date_and_time(values = dateAndTime)
  mainProcess3: if (worldrank == 0) then
-   write(6,'(a,2(i2.2,a),i4.4)') ' Date:                  ',dateAndTime(3),'/',&
-                                                            dateAndTime(2),'/',&
-                                                            dateAndTime(1) 
-   write(6,'(a,2(i2.2,a),i2.2)') ' Time:                  ',dateAndTime(5),':',&
-                                                            dateAndTime(6),':',&
-                                                            dateAndTime(7)  
    write(6,'(a,a)')      ' Host name:             ', trim(hostName)
    write(6,'(a,a)')      ' User name:             ', trim(userName)
    write(6,'(a,a)')      ' Path separator:        ', getPathSep()

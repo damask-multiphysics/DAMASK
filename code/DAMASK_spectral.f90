@@ -8,7 +8,7 @@
 !> @details doing cutbacking, forwarding in case of restart, reporting statistics, writing
 !> results
 !--------------------------------------------------------------------------------------------------
-program DAMASK_spectral_Driver
+program DAMASK_spectral
  use, intrinsic :: &
    iso_fortran_env                                                                                  ! to get compiler_version and compiler_options (at least for gfortran >4.6 at the moment)
  use prec, only: &
@@ -157,7 +157,7 @@ program DAMASK_spectral_Driver
 ! init DAMASK (all modules)
  call CPFEM_initAll(el = 1_pInt, ip = 1_pInt)
  mainProcess: if (worldrank == 0) then
-   write(6,'(/,a)')   ' <<<+-  DAMASK_spectral_driver init  -+>>>'
+   write(6,'(/,a)')   ' <<<+-  DAMASK_spectral init  -+>>>'
    write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
  endif mainProcess
@@ -707,7 +707,7 @@ program DAMASK_spectral_Driver
  if (notConvergedCounter > 0_pInt) call quit(3_pInt)                                                ! error if some are not converged
  call quit(0_pInt)                                                                                  ! no complains ;)
 
-end program DAMASK_spectral_Driver
+end program DAMASK_spectral
 
 
 !--------------------------------------------------------------------------------------------------

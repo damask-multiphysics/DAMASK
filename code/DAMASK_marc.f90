@@ -51,11 +51,9 @@ contains
 subroutine DAMASK_interface_init
 
  implicit none
-
- !$OMP CRITICAL (write2out)
-   write(6,'(/,a)') ' <<<+-  DAMASK_marc init  -+>>>'
-#include "compilation_info.f90"
- !$OMP END CRITICAL (write2out)
+ write(6,'(/,a)') ' <<<+-  DAMASK_Marc  -+>>>'
+ write(6,'(/,a)') ' <<<+-  DAMASK_interface init  -+>>>'
+#include "compilation_info.f90"  
 
 end subroutine DAMASK_interface_init
 

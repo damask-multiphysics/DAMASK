@@ -34,9 +34,10 @@ contains
 !--------------------------------------------------------------------------------------------------
 !> @brief just reporting 
 !--------------------------------------------------------------------------------------------------
-subroutine DAMASK_interface_init()
+subroutine DAMASK_interface_init
 
- write(6,'(/,a)') ' <<<+-  DAMASK_abaqus init  -+>>>'
+ write(6,'(/,a)') ' <<<+-  DAMASK_abaqus_std  -+>>>'
+ write(6,'(/,a)') ' <<<+-  DAMASK_interface init  -+>>>'
 #include "compilation_info.f90"  
 
 end subroutine DAMASK_interface_init

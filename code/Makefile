@@ -17,6 +17,8 @@ SHELL = /bin/sh
 # STANDARD_CHECK = checking for Fortran 2008, compiler dependend
 ########################################################################################
 # including PETSc files. PETSC_ARCH is loaded from these files. 
+DAMASKVERSION :="$(shell cat ../VERSION)"
+
 include ${PETSC_DIR}/lib/petsc/conf/variables
 include ${PETSC_DIR}/lib/petsc/conf/rules
 
@@ -85,7 +87,8 @@ OPTIMIZATION_AGGRESSIVE_gfortran :=-O3 -ffast-math -funroll-loops -ftree-vectori
 
 
 LINK_OPTIONS_ifort       :=-shared-intel
-COMPILE_OPTIONS_ifort    :=-fpp\
+COMPILE_OPTIONS_ifort    :=-DDAMASKVERSION=\"${DAMASKVERSION}\"\
+                           -fpp\
                            -ftz\
                            -assume byterecl,fpe_summary\
                            -diag-disable 5268\
@@ -162,7 +165,8 @@ DEBUG_OPTIONS_ifort      :=-g\
 #   arg_temp_created:        will cause a lot of warnings because we create a bunch of temporary arrays (performance?)
 #   stack:
 LINK_OPTIONS_gfortran    :=-Wl,-undefined,dynamic_lookup
-COMPILE_OPTIONS_gfortran :=-xf95-cpp-input\
+COMPILE_OPTIONS_gfortran :=-DDAMASKVERSION=\"${DAMASKVERSION}\"\
+                           -xf95-cpp-input\
                            -ffree-line-length-132\
                            -fimplicit-none\
                            -fmodule-private\
