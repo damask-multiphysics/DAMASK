@@ -8,8 +8,8 @@ from shutil import copy2
 from re import split
 import damask
 
-scriptID   = string.replace('$Id: yieldSurface.py 3942 2015-02-25 17:24:33Z MPIE\hm.zhang $','\n','\\n')
-scriptName = scriptID.split()[1][:-3]
+scriptName = os.path.splitext(os.path.basename(__file__))[0]
+scriptID   = ' '.join([scriptName,damask.version])
 
 def list_split(option, opt, value, parser):
   setattr(parser.values, option.dest, value.split(','))

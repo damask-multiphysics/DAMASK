@@ -7,8 +7,8 @@ from optparse import OptionParser
 import damask
 from damask.util import leastsqBound
 
-scriptID   = string.replace('$Id$','\n','\\n')
-scriptName = os.path.splitext(scriptID.split()[1])[0]
+scriptName = os.path.splitext(os.path.basename(__file__))[0]
+scriptID   = ' '.join([scriptName,damask.version])
 
 def runFit(exponent, eqStress, dimension, criterion):
   global s, threads, myFit, myLoad

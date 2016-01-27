@@ -15,8 +15,8 @@ import numpy as np
 import argparse
 from scipy.spatial import Delaunay
 
-scriptID   = string.replace('$Id$','\n','\\n')
-scriptName = os.path.splitext(scriptID.split()[1])[0]
+scriptName = os.path.splitext(os.path.basename(__file__))[0]
+scriptID   = ' '.join([scriptName,damask.version])
 
 
 OFFSET = 0.1  #resize the seeded volume to give space for rim/pan

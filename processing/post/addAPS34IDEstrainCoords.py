@@ -6,8 +6,8 @@ import numpy as np
 from optparse import OptionParser
 import damask
 
-scriptID   = string.replace('$Id: addAPS34IDEstrainCoord.py 3828M 2015-05-16 07:28:21Z (local) $','\n','\\n')
-scriptName = os.path.splitext(scriptID.split()[1])[0]
+scriptName = os.path.splitext(os.path.basename(__file__))[0]
+scriptID   = ' '.join([scriptName,damask.version])
 
 
 # --------------------------------------------------------------------

@@ -14,8 +14,8 @@ import sys,os,re,string
 from optparse import OptionParser
 import damask 
 
-scriptID   = string.replace('$Id$','\n','\\n')
-scriptName = os.path.splitext(scriptID.split()[1])[0]
+scriptName = os.path.splitext(os.path.basename(__file__))[0]
+scriptID   = ' '.join([scriptName,damask.version])
 
 # -----------------------------
 def ParseOutputFormat(filename,what,me):

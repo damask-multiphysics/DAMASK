@@ -6,8 +6,8 @@ from optparse import OptionParser
 import numpy as np
 import damask
 
-scriptID   = string.replace('$Id$','\n','\\n')
-scriptName = scriptID.split()[1]
+scriptName = os.path.splitext(os.path.basename(__file__))[0]
+scriptID   = ' '.join([scriptName,damask.version])
 
 sampleSym = {  'Orthotropic'  : (90,90,90),
                'Triclinic'    : (360,180,360)

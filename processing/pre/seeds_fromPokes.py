@@ -6,8 +6,8 @@ import numpy as np
 import damask
 from optparse import OptionParser
 
-scriptID = '$Id$'
-scriptName = scriptID.split()[1]
+scriptName = os.path.splitext(os.path.basename(__file__))[0]
+scriptID   = ' '.join([scriptName,damask.version])
 
 # --------------------------------------------------------------------
 #                                MAIN

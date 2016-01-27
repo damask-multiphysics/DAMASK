@@ -6,8 +6,8 @@ import numpy as np
 from optparse import OptionParser
 import damask
 
-scriptID   = string.replace('$Id$','\n','\\n')
-scriptName = os.path.splitext(scriptID.split()[1])[0]
+scriptName = os.path.splitext(os.path.basename(__file__))[0]
+scriptID   = ' '.join([scriptName,damask.version])
 
 def operator(stretch,strain,eigenvalues):
   ''' Albrecht Bertram: Elasticity and Plasticity of Large Deformations An Introduction (3rd Edition, 2012), p. 102 '''

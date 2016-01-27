@@ -7,8 +7,8 @@ from optparse import OptionParser
 from PIL import Image
 import damask
 
-scriptID   = string.replace('$Id$','\n','\\n')
-scriptName = os.path.splitext(scriptID.split()[1])[0]
+scriptName = os.path.splitext(os.path.basename(__file__))[0]
+scriptID   = ' '.join([scriptName,damask.version])
 
 # --------------------------------------------------------------------
 #                                MAIN

@@ -7,8 +7,8 @@ from optparse import OptionParser
 from scipy import spatial
 from collections import defaultdict
 
-scriptID   = string.replace('$Id$','\n','\\n')
-scriptName = os.path.splitext(scriptID.split()[1])[0]
+scriptName = os.path.splitext(os.path.basename(__file__))[0]
+scriptID   = ' '.join([scriptName,damask.version])
 
 
 parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """

@@ -5,8 +5,8 @@ import os,sys,math,re,threading,time,struct,string
 import damask
 from optparse import OptionParser, OptionGroup
 
-scriptID   = string.replace('$Id$','\n','\\n')
-scriptName = os.path.splitext(scriptID.split()[1])[0]
+scriptName = os.path.splitext(os.path.basename(__file__))[0]
+scriptID   = ' '.join([scriptName,damask.version])
 
 
 fileExtensions = { \

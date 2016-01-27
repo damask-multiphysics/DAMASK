@@ -5,8 +5,8 @@ import os,sys,string,re,numpy,scipy.ndimage,scipy.signal,vtk
 import damask
 from optparse import OptionParser, OptionGroup, Option, SUPPRESS_HELP
 
-scriptID = '$Id$'
-scriptName = scriptID.split()[1]
+scriptName = os.path.splitext(os.path.basename(__file__))[0]
+scriptID   = ' '.join([scriptName,damask.version])
 
 #--------------------------------------------------------------------------------------------------
 class extendedOption(Option):
