@@ -209,7 +209,6 @@ subroutine crystallite_init
 
  mainProcess: if (worldrank == 0) then
    write(6,'(/,a)')   ' <<<+-  crystallite init  -+>>>'
-   write(6,'(a)')     ' $Id$'
    write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
  endif mainProcess

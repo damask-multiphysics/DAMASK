@@ -155,7 +155,6 @@ subroutine prec_init
 
  mainProcess: if (worldrank == 0) then
    write(6,'(/,a)') ' <<<+-  prec init  -+>>>'
-   write(6,'(a)') ' $Id$'
 #include "compilation_info.f90"
    write(6,'(a,i3)')    ' Bytes for pReal:    ',pReal
    write(6,'(a,i3)')    ' Bytes for pInt:     ',pInt

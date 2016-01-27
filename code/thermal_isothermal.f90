@@ -36,7 +36,6 @@ subroutine thermal_isothermal_init()
 
  mainProcess: if (worldrank == 0) then 
    write(6,'(/,a)')   ' <<<+-  thermal_'//THERMAL_isothermal_label//' init  -+>>>'
-   write(6,'(a)')     ' $Id$'
    write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
  endif mainProcess

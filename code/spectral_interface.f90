@@ -90,7 +90,6 @@ subroutine DAMASK_interface_init(loadCaseParameterIn,geometryParameterIn)
 #endif
  mainProcess: if (worldrank == 0) then
    write(6,'(/,a)') ' <<<+-  DAMASK_spectral_interface init  -+>>>'
-   write(6,'(a)')   ' $Id$'
 #include "compilation_info.f90"
  endif mainProcess
 

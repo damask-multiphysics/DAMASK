@@ -123,7 +123,6 @@ subroutine CPFEM_init
 
  mainProcess: if (worldrank == 0) then 
    write(6,'(/,a)')   ' <<<+-  CPFEM init  -+>>>'
-   write(6,'(a)')     ' $Id: CPFEM.f90 4761 2016-01-17 13:29:42Z MPIE\m.diehl $'
    write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
  endif mainProcess

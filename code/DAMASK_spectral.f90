@@ -158,7 +158,6 @@ program DAMASK_spectral_Driver
  call CPFEM_initAll(el = 1_pInt, ip = 1_pInt)
  mainProcess: if (worldrank == 0) then
    write(6,'(/,a)')   ' <<<+-  DAMASK_spectral_driver init  -+>>>'
-   write(6,'(a)')     ' $Id$'
    write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
  endif mainProcess

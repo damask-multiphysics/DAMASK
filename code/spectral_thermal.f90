@@ -107,7 +107,6 @@ subroutine spectral_thermal_init
 
  mainProcess: if (worldrank == 0_pInt) then
    write(6,'(/,a)') ' <<<+-  spectral_thermal init  -+>>>'
-   write(6,'(a)') ' $Id: spectral_thermal.f90 4082 2015-04-11 20:28:07Z MPIE\m.diehl $'
    write(6,'(a15,a)')   ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
  endif mainProcess

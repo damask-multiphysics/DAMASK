@@ -37,7 +37,6 @@ contains
 subroutine DAMASK_interface_init()
 
  write(6,'(/,a)') ' <<<+-  DAMASK_abaqus init  -+>>>'
- write(6,'(a)')   ' $Id$'
 #include "compilation_info.f90"  
 
 end subroutine DAMASK_interface_init

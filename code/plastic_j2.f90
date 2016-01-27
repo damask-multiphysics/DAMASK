@@ -156,7 +156,6 @@ subroutine plastic_j2_init(fileUnit)
 
  mainProcess: if (worldrank == 0) then 
    write(6,'(/,a)')   ' <<<+-  constitutive_'//PLASTICITY_J2_label//' init  -+>>>'
-   write(6,'(a)')     ' $Id$'
    write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
  endif mainProcess

@@ -54,7 +54,6 @@ subroutine DAMASK_interface_init
 
  !$OMP CRITICAL (write2out)
    write(6,'(/,a)') ' <<<+-  DAMASK_marc init  -+>>>'
-   write(6,'(a)')   ' $Id$'
 #include "compilation_info.f90"
  !$OMP END CRITICAL (write2out)
 
