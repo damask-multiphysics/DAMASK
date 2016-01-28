@@ -3,6 +3,7 @@
 
 import os,sys,glob,string,subprocess,shlex
 from damask import Environment
+from damask import version as DAMASKVERSION
 
 # compiles fortran code for Python
 scriptID = '$Id$'
@@ -42,7 +43,7 @@ compiler = {
             }[options['F90']]
 
 #--- option not depending on compiler -------------------------------------------------------------
-compileOptions = ' -DSpectral -DFLOAT=8 -DINT=4 -I%s/lib'%damaskEnv.rootDir()
+compileOptions = ' -DSpectral -DFLOAT=8 -DINT=4 -I%s/lib -DDAMASKVERSION=\\\\\"\\\"%s\\\\\"\\\"'%(damaskEnv.rootDir(),DAMASKVERSION)
 
 #--- this saves the path of libraries to core.so, hence it is known during runtime ----------------
 if options['F90'] == 'gfortran':

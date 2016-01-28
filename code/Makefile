@@ -17,7 +17,7 @@ SHELL = /bin/sh
 # STANDARD_CHECK = checking for Fortran 2008, compiler dependend
 ########################################################################################
 # including PETSc files. PETSC_ARCH is loaded from these files. 
-DAMASKVERSION :="$(shell cat ../VERSION)"
+DAMASKVERSION :=$(shell cat ../VERSION)
 
 include ${PETSC_DIR}/lib/petsc/conf/variables
 include ${PETSC_DIR}/lib/petsc/conf/rules
