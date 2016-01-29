@@ -228,7 +228,7 @@ class Test():
  
   def copy_Base2Current(self,sourceDir,sourcefiles=[],targetfiles=[]):
     
-    source=os.path.normpath(os.path.join(self.dirBase,'../../'+sourceDir))
+    source=os.path.normpath(os.path.join(self.dirBase,'../../../'+sourceDir))
     if len(targetfiles) == 0: targetfiles = sourcefiles
     for i,file in enumerate(sourcefiles):
       try:
