@@ -1637,7 +1637,7 @@ subroutine plastic_dislotwin_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,Temperature
    math_Plain3333to99, &
    math_Mandel6to33, &
    math_Mandel33to6, &
-   math_spectralDecompositionSym33, &
+   math_spectralDecompositionSym, &
    math_tensorproduct33, &
    math_symmetric33, &
    math_mul33x3
@@ -1683,6 +1683,7 @@ subroutine plastic_dislotwin_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,Temperature
  real(pReal), dimension(6) :: gdot_sb,dgdot_dtausb,tau_sb
  real(pReal), dimension(3,3) :: eigVectors, sb_Smatrix
  real(pReal), dimension(3)   :: eigValues, sb_s, sb_m
+ logical :: error
  real(pReal), dimension(3,6), parameter :: &
    sb_sComposition = &
      reshape(real([&
@@ -1782,7 +1783,7 @@ subroutine plastic_dislotwin_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,Temperature
     abs(plastic_dislotwin_sbResistance(instance)) > tiny(0.0_pReal)) then
    gdot_sb = 0.0_pReal
    dgdot_dtausb = 0.0_pReal
-   call math_spectralDecompositionSym33(math_Mandel6to33(Tstar_v),eigValues,eigVectors)
+   call math_spectralDecompositionSym(math_Mandel6to33(Tstar_v),eigValues,eigVectors,error)
    do j = 1_pInt,6_pInt
      sb_s = 0.5_pReal*sqrt(2.0_pReal)*math_mul33x3(eigVectors,sb_sComposition(1:3,j))
      sb_m = 0.5_pReal*sqrt(2.0_pReal)*math_mul33x3(eigVectors,sb_mComposition(1:3,j))
