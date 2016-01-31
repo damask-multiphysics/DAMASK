@@ -1,1 +1,7 @@
 *.pyc
+*.mod
+*.o
+*.exe
+*.bak
+*~
+PRIVATE
