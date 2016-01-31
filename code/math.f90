@@ -152,6 +152,7 @@ module math
    math_sampleGaussVar, &
    math_symmetricEulers, &
    math_spectralDecompositionSym33, &
+   math_spectralDecompositionSym, &
    math_rotationalPart33, &
    math_invariants33, &
    math_eigenvaluesSym33, &
@@ -1910,9 +1911,9 @@ end function math_symmetricEulers
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief eigenvalues and eigenvectors of symmetric 3x3 matrix 
+!> @brief eigenvalues and eigenvectors of symmetric matrix m
 !--------------------------------------------------------------------------------------------------
-subroutine math_spectralDecompositionSym33(M,values,vectors,error)
+subroutine math_spectralDecompositionSym(m,values,vectors,error)
 
  implicit none
  real(pReal), dimension(:,:),                  intent(in)  :: m
@@ -1930,6 +1931,63 @@ subroutine math_spectralDecompositionSym33(M,values,vectors,error)
  call ssyev('V','U',size(m,1),vectors,size(m,1),values,work,(64+2)*size(m,1),info)
 #endif
  error = (info == 0_pInt)
+
+end subroutine math_spectralDecompositionSym
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief eigenvalues and eigenvectors of symmetric 3x3 matrix m using an analytical expression
+!> and the general LAPACK powered version as fallback
+!> @author Joachim Kopp, Max–Planck–Institut für Kernphysik, Heidelberg (Copyright (C) 2006)
+!> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
+!> @details See http://arxiv.org/abs/physics/0610206 (DSYEVH3)
+!--------------------------------------------------------------------------------------------------
+subroutine math_spectralDecompositionSym33(m,values,vectors)
+ 
+ implicit none
+ real(pReal), dimension(3,3),intent(in)  :: m
+ real(pReal), dimension(3),  intent(out) :: values
+ real(pReal), dimension(3,3),intent(out) :: vectors
+ real(pReal) :: T, U, norm, threshold
+ logical :: error
+
+ values = math_eigenvaluesSym33(m)
+
+ vectors(1:3,2) = [ m(1, 2) * m(2, 3) - m(1, 3) * m(2, 2), &
+                    m(1, 3) * m(1, 2) - m(2, 3) * m(1, 1), &
+                    m(1, 2)**2_pInt]
+
+ T = maxval(abs(values))
+ U = MAX(T, T**2_pInt)
+ threshold = sqrt(5.0e-14_pReal * U**2_pInt)
+
+! Calculate first eigenvector by the formula v[0] = (m - lambda[0]).e1 x (m - lambda[0]).e2
+ vectors(1:3,1) = [ vectors(1,2) + m(1, 3) * values(1), &
+                    vectors(2,2) + m(2, 3) * values(1), &
+                    (m(1,1) - values(1)) * (m(2,2) - values(1)) - vectors(3,2)]
+ norm = norm2(vectors(1:3, 1))
+
+ fallback1: if(norm < threshold) then
+   call math_spectralDecompositionSym(m,values,vectors,error)
+   return
+ endif fallback1
+
+ vectors(1:3,1) = vectors(1:3, 1) / norm 
+ 
+! Calculate second eigenvector by the formula v[1] = (m - lambda[1]).e1 x (m - lambda[1]).e2
+ vectors(1:3,2) = [ vectors(1,2) + m(1, 3) * values(2), &
+                    vectors(2,2) + m(2, 3) * values(2), &
+                    (m(1,1) - values(2)) * (m(2,2) - values(2)) - vectors(3,2)]
+ norm = norm2(vectors(1:3, 2))
+
+ fallback2: if(norm < threshold) then
+   call math_spectralDecompositionSym(m,values,vectors,error)
+   return
+ endif fallback2
+ vectors(1:3,2) = vectors(1:3, 2) / norm
+
+! Calculate third eigenvector according to  v[2] = v[0] x v[1]
+ vectors(1:3,3) = math_crossproduct(vectors(1:3,1),vectors(1:3,2))
 
 end subroutine math_spectralDecompositionSym33
 
@@ -1950,7 +2008,7 @@ function math_rotationalPart33(m)
 
 
  mSquared = math_mul33x33(math_transpose33(m),m)
- call math_spectralDecompositionSym33(mSquared,EV,EB,error)
+ call math_spectralDecompositionSym33(mSquared,EV,EB)
 
  U = sqrt(EV(1)) * math_tensorproduct33(EB(1:3,1),EB(1:3,1)) &
    + sqrt(EV(2)) * math_tensorproduct33(EB(1:3,2),EB(1:3,2)) &

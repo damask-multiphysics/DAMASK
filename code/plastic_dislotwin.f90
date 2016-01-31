@@ -1702,7 +1702,6 @@ subroutine plastic_dislotwin_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,Temperature
         0, 1,-1, &
         0, 1, 1  &
         ],pReal),[ 3,6])
- logical error 
  !* Shortened notation
  of = phasememberAt(ipc,ip,el)
  ph = phaseAt(ipc,ip,el)
@@ -1783,7 +1782,7 @@ subroutine plastic_dislotwin_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,Temperature
     abs(plastic_dislotwin_sbResistance(instance)) > tiny(0.0_pReal)) then
    gdot_sb = 0.0_pReal
    dgdot_dtausb = 0.0_pReal
-   call math_spectralDecompositionSym33(math_Mandel6to33(Tstar_v),eigValues,eigVectors, error)
+   call math_spectralDecompositionSym33(math_Mandel6to33(Tstar_v),eigValues,eigVectors)
    do j = 1_pInt,6_pInt
      sb_s = 0.5_pReal*sqrt(2.0_pReal)*math_mul33x3(eigVectors,sb_sComposition(1:3,j))
      sb_m = 0.5_pReal*sqrt(2.0_pReal)*math_mul33x3(eigVectors,sb_mComposition(1:3,j))
@@ -2197,6 +2196,7 @@ function plastic_dislotwin_postResults(Tstar_v,Temperature,ipc,ip,el)
  use math, only: &
    pi, &
    math_Mandel6to33, &
+   math_eigenvaluesSym33, &
    math_spectralDecompositionSym33
  use material, only: &
    material_phase, &
@@ -2240,8 +2240,6 @@ function plastic_dislotwin_postResults(Tstar_v,Temperature,ipc,ip,el)
    gdot_slip
  real(pReal), dimension(3,3) :: eigVectors
  real(pReal), dimension (3) :: eigValues
- logical :: error
-
  
  !* Shortened notation
  of = phasememberAt(ipc,ip,el)
@@ -2517,11 +2515,10 @@ function plastic_dislotwin_postResults(Tstar_v,Temperature,ipc,ip,el)
          enddo ; enddo
          c = c + ns
       case (sb_eigenvalues_ID)
-        call math_spectralDecompositionSym33(math_Mandel6to33(Tstar_v),eigValues,eigVectors, error)
-        plastic_dislotwin_postResults(c+1_pInt:c+3_pInt) = eigValues
+        plastic_dislotwin_postResults(c+1_pInt:c+3_pInt) = math_eigenvaluesSym33(math_Mandel6to33(Tstar_v))
         c = c + 3_pInt
       case (sb_eigenvectors_ID)
-        call math_spectralDecompositionSym33(math_Mandel6to33(Tstar_v),eigValues,eigVectors, error)
+        call math_spectralDecompositionSym33(math_Mandel6to33(Tstar_v),eigValues,eigVectors)
         plastic_dislotwin_postResults(c+1_pInt:c+9_pInt) = reshape(eigVectors,[9])
         c = c + 9_pInt
       case (stress_trans_fraction_ID)
