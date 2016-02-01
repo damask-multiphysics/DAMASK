@@ -2004,8 +2004,6 @@ function math_rotationalPart33(m)
  real(pReal), dimension(3,3) :: math_rotationalPart33
  real(pReal), dimension(3,3) :: U, mSquared , Uinv, EB
  real(pReal), dimension(3) :: EV
- logical :: error
-
 
  mSquared = math_mul33x33(math_transpose33(m),m)
  call math_spectralDecompositionSym33(mSquared,EV,EB)
@@ -2026,16 +2024,16 @@ end function math_rotationalPart33
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Eigenvalues of symmetric 3X3 matrix m
+!> @brief Eigenvalues of symmetric matrix m
 ! will return NaN  on error
 !--------------------------------------------------------------------------------------------------
-function math_eigenvaluesSym33(m)
+function math_eigenvaluesSym(m)
  use prec, only: &
    DAMASK_NaN
  
  implicit none
  real(pReal), dimension(:,:),                  intent(in)  :: m
- real(pReal), dimension(size(m,1))                         :: math_eigenvaluesSym33
+ real(pReal), dimension(size(m,1))                         :: math_eigenvaluesSym
  real(pReal), dimension(size(m,1),size(m,1))               :: vectors
 
  integer(pInt) :: info
@@ -2043,48 +2041,46 @@ function math_eigenvaluesSym33(m)
 
  vectors = m                                                                                         ! copy matrix to input (doubles as output) array
 #if(FLOAT==8)
- call dsyev('N','U',size(m,1),vectors,size(m,1),math_eigenvaluesSym33,work,(64+2)*size(m,1),info)
+ call dsyev('N','U',size(m,1),vectors,size(m,1),math_eigenvaluesSym,work,(64+2)*size(m,1),info)
 #elif(FLOAT==4)
- call ssyev('N','U',size(m,1),vectors,size(m,1),math_eigenvaluesSym33,work,(64+2)*size(m,1),info)
+ call ssyev('N','U',size(m,1),vectors,size(m,1),math_eigenvaluesSym,work,(64+2)*size(m,1),info)
 #endif
- if (info /= 0_pInt) math_eigenvaluesSym33 = DAMASK_NaN
+ if (info /= 0_pInt) math_eigenvaluesSym = DAMASK_NaN
+
+end function math_eigenvaluesSym
+
+!--------------------------------------------------------------------------------------------------
+!> @brief eigenvalues of symmetric 3x3 matrix m using an analytical expression
+!> @author Joachim Kopp, Max–Planck–Institut für Kernphysik, Heidelberg (Copyright (C) 2006)
+!> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
+!> @details See http://arxiv.org/abs/physics/0610206 (DSYEVC3)
+!--------------------------------------------------------------------------------------------------
+function math_eigenvaluesSym33(m)
+
+ implicit none
+ real(pReal), dimension(3,3), intent(in)  :: m
+ real(pReal), dimension(3)                :: math_eigenvaluesSym33
+
+ real(pReal) :: C1, C0
+ real(pReal) :: P, Q, C, S, PHI
+
+ C1 = m(1,1)*m(2,2)    + m(1,1)*m(3,3)    + m(2,2)*m(3,3) &
+    -(m(1,2)**2 + m(2,3)**2 +m(1,3)**2)
+ C0 = m(3,3)*m(1,2)**2 + m(1,1)*m(2,3)**2 + m(2,2)*m(2,3)**2 &
+    -(m(1,1)*m(2,2)*m(3,3)  + 2.0_pReal * m(1,3)*m(1,2)*m(2,3))
+
+ P = math_trace33(m)**2 - 3.0_pReal * C1
+ Q = math_trace33(m)*(P - (3.0_pReal/2.0_pReal)*C1) - (27.0_pReal/2.0_pReal)*C0
+
+ PHI = atan2(sqrt(abs(27.0_pReal * (0.25_pReal*C1**2 *(P-C1) +C0 *(Q + (27.0_pReal/4.0_pReal)*C0) ))), Q)&
+       *(1.0_pReal/3.0_pReal)
+
+ C = sqrt(abs(P)) * cos(PHI)
+ S = (1.0_pReal/sqrt(3.0_pReal)) * sqrt(abs(P)) * sin(PHI)
+
+ math_eigenvaluesSym33 = [C,-S,C] + (1.0_pReal/3.0_pReal) * (math_trace33(m) - C)
 
 end function math_eigenvaluesSym33
-
-!--------------------------------------------------------------------------------------------------
-!> @brief Eigenvalues of symmetric 3X3 matrix m
-! will return NaN  on error
-!--------------------------------------------------------------------------------------------------
-!function math_eigenvaluesSym33(m)
-! use prec, only: &
-!   DAMASK_NaN
-! 
-! implicit none
-! real(pReal), dimension(3,3),                  intent(in)  :: m
-! real(pReal), dimension(3)                                 :: math_eigenvaluesSym33
-!
-! real(pReal) ::  C1, C0
-! real(pReal) :: P, Q, C, S, PHI
-!  
-!!     Determine coefficients of characteristic poynomial. We write
-!
-!      C1    = m(1,1)*m(2,2) + m(1,1)*m(3,3) + m(2,2)*m(3,3) &
-!            -(m(1,2)**2 + m(2,3)**2 +m(1,3)**2)
-!      C0    = m(3,3)*m(1,2)**2 + m(1,1)*m(2,3)**2 + m(2,2)*m(2,3)**2 &
-!            - m(1,1)*m(2,2)*m(3,3)     - 2.0_pReal * m(1,3)*m(1,2)*m(2,3)
-!
-!      P     = math_trace33(m)**2 - 3.0_pReal * C1
-!      Q     = math_trace33(m)*(P - (3.0_pReal/2.0_pReal)*C1) - (27.0_pReal/2.0_pReal)*C0
-!
-!      PHI   = 27.0_pReal * ( 0.25_pReal * C1**2 * (P - C1)        + C0 * (Q + (27.0_pReal/4.0_pReal)*C0) )
-!      PHI   = (1.0_pReal/3.0_pReal) * ATAN2(SQRT(ABS(PHI)), Q)
-!
-!      C     = sqrt(abs(P)) * COS(PHI)
-!      S     = (1.0_pReal/sqrt(3.0_pReal)) * sqrt(abs(P)) * SIN(PHI)
-!
-!    math_eigenvaluesSym33 = [C,-S,C] + (1.0_pReal/3.0_pReal) * (math_trace33(m) - C)
-!
-!end function math_eigenvaluesSym33
 
 !--------------------------------------------------------------------------------------------------
 !> @brief invariants of matrix m
