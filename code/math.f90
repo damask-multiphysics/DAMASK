@@ -2051,6 +2051,40 @@ function math_eigenvaluesSym33(m)
 
 end function math_eigenvaluesSym33
 
+!--------------------------------------------------------------------------------------------------
+!> @brief Eigenvalues of symmetric 3X3 matrix m
+! will return NaN  on error
+!--------------------------------------------------------------------------------------------------
+!function math_eigenvaluesSym33(m)
+! use prec, only: &
+!   DAMASK_NaN
+! 
+! implicit none
+! real(pReal), dimension(3,3),                  intent(in)  :: m
+! real(pReal), dimension(3)                                 :: math_eigenvaluesSym33
+!
+! real(pReal) ::  C1, C0
+! real(pReal) :: P, Q, C, S, PHI
+!  
+!!     Determine coefficients of characteristic poynomial. We write
+!
+!      C1    = m(1,1)*m(2,2) + m(1,1)*m(3,3) + m(2,2)*m(3,3) &
+!            -(m(1,2)**2 + m(2,3)**2 +m(1,3)**2)
+!      C0    = m(3,3)*m(1,2)**2 + m(1,1)*m(2,3)**2 + m(2,2)*m(2,3)**2 &
+!            - m(1,1)*m(2,2)*m(3,3)     - 2.0_pReal * m(1,3)*m(1,2)*m(2,3)
+!
+!      P     = math_trace33(m)**2 - 3.0_pReal * C1
+!      Q     = math_trace33(m)*(P - (3.0_pReal/2.0_pReal)*C1) - (27.0_pReal/2.0_pReal)*C0
+!
+!      PHI   = 27.0_pReal * ( 0.25_pReal * C1**2 * (P - C1)        + C0 * (Q + (27.0_pReal/4.0_pReal)*C0) )
+!      PHI   = (1.0_pReal/3.0_pReal) * ATAN2(SQRT(ABS(PHI)), Q)
+!
+!      C     = sqrt(abs(P)) * COS(PHI)
+!      S     = (1.0_pReal/sqrt(3.0_pReal)) * sqrt(abs(P)) * SIN(PHI)
+!
+!    math_eigenvaluesSym33 = [C,-S,C] + (1.0_pReal/3.0_pReal) * (math_trace33(m) - C)
+!
+!end function math_eigenvaluesSym33
 
 !--------------------------------------------------------------------------------------------------
 !> @brief invariants of matrix m
