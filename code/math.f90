@@ -2002,11 +2002,11 @@ function math_rotationalPart33(m)
  implicit none
  real(pReal), intent(in), dimension(3,3) :: m
  real(pReal), dimension(3,3) :: math_rotationalPart33
- real(pReal), dimension(3,3) :: U, mSquared , Uinv, EB
+ real(pReal), dimension(3,3) :: U, mTm , Uinv, EB
  real(pReal), dimension(3) :: EV
 
- mSquared = math_mul33x33(math_transpose33(m),m)
- call math_spectralDecompositionSym33(mSquared,EV,EB)
+ mTm = math_mul33x33(math_transpose33(m),m)
+ call math_spectralDecompositionSym33(mTm,EV,EB)
 
  U = sqrt(EV(1)) * math_tensorproduct33(EB(1:3,1),EB(1:3,1)) &
    + sqrt(EV(2)) * math_tensorproduct33(EB(1:3,2),EB(1:3,2)) &
@@ -2061,24 +2061,27 @@ function math_eigenvaluesSym33(m)
  real(pReal), dimension(3,3), intent(in)  :: m
  real(pReal), dimension(3)                :: math_eigenvaluesSym33
 
- real(pReal) :: C1, C0
- real(pReal) :: P, Q, C, S, PHI
+ real(pReal), dimension(0:2) :: c
+ real(pReal) :: p, q, phi
 
- C1 = m(1,1)*m(2,2)    + m(1,1)*m(3,3)    + m(2,2)*m(3,3) &
-    -(m(1,2)**2 + m(2,3)**2 +m(1,3)**2)
- C0 = m(3,3)*m(1,2)**2 + m(1,1)*m(2,3)**2 + m(2,2)*m(2,3)**2 &
-    -(m(1,1)*m(2,2)*m(3,3)  + 2.0_pReal * m(1,3)*m(1,2)*m(2,3))
+ c(2) = - math_trace33(m)
+ c(1) = m(1,1)*m(2,2)    + m(1,1)*m(3,3)    + m(2,2)*m(3,3) &
+      -(m(1,2)**2 + m(2,3)**2 + m(1,3)**2)
+ c(0) = m(1,1)*m(2,3)**2 + m(2,2)*m(1,3)**2 + m(3,3)*m(1,2)**2 &
+      -(m(1,1)*m(2,2)*m(3,3)  + 2.0_pReal * m(1,3)*m(1,2)*m(2,3))
 
- P = math_trace33(m)**2 - 3.0_pReal * C1
- Q = math_trace33(m)*(P - (3.0_pReal/2.0_pReal)*C1) - (27.0_pReal/2.0_pReal)*C0
+ p = c(2)**2 -3.0_pReal*c(1)
+ q = -13.5_pReal*c(0) -c(2)**3 + 4.5_pReal*c(2)*c(1)
 
- PHI = atan2(sqrt(abs(27.0_pReal * (0.25_pReal*C1**2 *(P-C1) +C0 *(Q + (27.0_pReal/4.0_pReal)*C0) ))), Q)&
+ phi = atan2(  sqrt(abs(27.0_pReal * (0.25_pReal*c(1)**2 *(p-c(1)) +c(0)*(q + 6.75_pReal*c(0)))  )), q)&
        *(1.0_pReal/3.0_pReal)
 
- C = sqrt(abs(P)) * cos(PHI)
- S = (1.0_pReal/sqrt(3.0_pReal)) * sqrt(abs(P)) * sin(PHI)
+ math_eigenvaluesSym33 = ([ cos(phi)*2.0_pReal, &
+                           -cos(phi)-sqrt(1.0_pReal/3.0_pReal)*sin(phi), &
+                           -cos(phi)+sqrt(1.0_pReal/3.0_pReal)*sin(phi) &
+                          ] *  sqrt(p) -c(2))/3.0_pReal
 
- math_eigenvaluesSym33 = [C,-S,C] + (1.0_pReal/3.0_pReal) * (math_trace33(m) - C)
+                         
 
 end function math_eigenvaluesSym33
 
