@@ -2066,7 +2066,7 @@ function math_eigenvaluesSym33(m)
 
  c(2) = - math_trace33(m)
  c(1) = m(1,1)*m(2,2)    + m(1,1)*m(3,3)    + m(2,2)*m(3,3) &
-      -(m(1,2)**2 + m(2,3)**2 + m(1,3)**2)
+      -(m(1,2)**2 + m(1,3)**2 + m(2,3)**2)
  c(0) = m(1,1)*m(2,3)**2 + m(2,2)*m(1,3)**2 + m(3,3)*m(1,2)**2 &
       -(m(1,1)*m(2,2)*m(3,3)  + 2.0_pReal * m(1,3)*m(1,2)*m(2,3))
 
@@ -2080,8 +2080,6 @@ function math_eigenvaluesSym33(m)
                            -cos(phi)-sqrt(1.0_pReal/3.0_pReal)*sin(phi), &
                            -cos(phi)+sqrt(1.0_pReal/3.0_pReal)*sin(phi) &
                           ] *  sqrt(p) -c(2))/3.0_pReal
-
-                         
 
 end function math_eigenvaluesSym33
 
