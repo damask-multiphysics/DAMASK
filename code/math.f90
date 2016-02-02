@@ -992,7 +992,7 @@ real(pReal) pure function math_detSym33(m)
  real(pReal), dimension(3,3), intent(in) :: m
  
   math_detSym33 = -(m(1,1)*m(2,3)**2_pInt + m(2,2)*m(1,3)**2_pInt + m(3,3)*m(1,2)**2_pInt) &
-                  + m(1,1)*m(2,2)*m(3,3)  - 2.0_pReal * m(1,2)*m(1,3)*m(1,2)
+                  + m(1,1)*m(2,2)*m(3,3)  - 2.0_pReal * m(1,2)*m(1,3)*m(2,3)
 
 end function  math_detSym33
 
@@ -1936,8 +1936,8 @@ end subroutine math_spectralDecompositionSym
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief eigenvalues and eigenvectors of symmetric 3x3 matrix m using an analytical expression
-!> and the general LAPACK powered version as fallback
+!> @brief eigenvalues and eigenvectors of symmetric 33 matrix m using an analytical expression
+!> and the general LAPACK powered version for arbritrary sized matrices as fallback
 !> @author Joachim Kopp, Max–Planck–Institut für Kernphysik, Heidelberg (Copyright (C) 2006)
 !> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
 !> @details See http://arxiv.org/abs/physics/0610206 (DSYEVH3)
@@ -1958,7 +1958,7 @@ subroutine math_spectralDecompositionSym33(m,values,vectors)
                     m(1, 2)**2_pInt]
 
  T = maxval(abs(values))
- U = MAX(T, T**2_pInt)
+ U = max(T, T**2_pInt)
  threshold = sqrt(5.0e-14_pReal * U**2_pInt)
 
 ! Calculate first eigenvector by the formula v[0] = (m - lambda[0]).e1 x (m - lambda[0]).e2
@@ -2051,35 +2051,35 @@ end function math_eigenvaluesSym
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Eigenvalues of symmetric 33 matrix m
+!> @brief eigenvalues of symmetric 33 matrix m using an analytical expression
+!> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
+!> @details similar to http://arxiv.org/abs/physics/0610206 (DSYEVC3)
+!> but apparently more stable solution and has general LAPACK powered version for arbritrary sized
+!> matrices as fallback
 !--------------------------------------------------------------------------------------------------
 function math_eigenvaluesSym33(m)
 
  implicit none
  real(pReal), intent(in), dimension(3,3) :: m
- real(pReal), dimension(3) :: math_eigenvaluesSym33, invariants
- real(pReal) :: R, S, T,  P, Q, rho, phi
+ real(pReal), dimension(3) :: math_eigenvaluesSym33,invariants
+ real(pReal) :: P, Q, rho, phi
  real(pReal), parameter :: TOL=1.e-14_pReal
 
- invariants = math_invariantsSym33(m)
+ invariants = math_invariantsSym33(m)                                                               ! invariants are coefficients in characteristic polynomial apart for the sign of c0 and c2 in http://arxiv.org/abs/physics/0610206
 
- R=-invariants(1)
- S= invariants(2)
- T=-invariants(3)
+ P = invariants(2)-invariants(1)**2.0_pReal/3.0_pReal                                               ! different from http://arxiv.org/abs/physics/0610206 (this formulation was in DAMASK)
+ Q = -2.0_pReal/27.0_pReal*invariants(1)**3.0_pReal+product(invariants(1:2))/3.0_pReal-invariants(3)! different from http://arxiv.org/abs/physics/0610206 (this formulation was in DAMASK)
 
- P=S-R**2.0_pReal/3.0_pReal
- Q=2.0_pReal/27.0_pReal*R**3.0_pReal-R*S/3.0_pReal+T
-
- if((abs(P) < TOL) .and. (abs(Q) < TOL)) then
-   math_eigenvaluesSym33 = invariants(1)/3.0_pReal
+ if(any(abs([p,q]) < TOL)) then
+   math_eigenvaluesSym33 = math_eigenvaluesSym(m)
  else
    rho=sqrt(-3.0_pReal*P**3.0_pReal)/9.0_pReal
-   phi=acos(math_limit(-Q/rho/2.0_pReal,-1.0_pReal,1.0_pReal))
+   phi=acos(math_limit(-Q/rho*0.5_pReal,-1.0_pReal,1.0_pReal))
    math_eigenvaluesSym33 = 2.0_pReal*rho**(1.0_pReal/3.0_pReal)* &
                          [cos(phi/3.0_pReal), &
-                          cos(phi/3.0_pReal+2.0_pReal/3.0_pReal*PI), &
-                          cos(phi/3.0_pReal+4.0_pReal/3.0_pReal*PI) &
-                         ] -R/3.0_pReal
+                          cos((phi+2.0_pReal*PI)/3.0_pReal), &
+                          cos((phi+4.0_pReal*PI)/3.0_pReal) &
+                         ] + invariants(1)/3.0_pReal
  endif
 end function math_eigenvaluesSym33
 
@@ -2094,9 +2094,10 @@ pure function math_invariantsSym33(m)
  real(pReal), dimension(3) :: math_invariantsSym33
 
  math_invariantsSym33(1) = math_trace33(m)
- math_invariantsSym33(2) = m(1,1)*m(2,2) + m(1,1)*m(3,3) + m(2,2)*m(3,3) &
-                         -(m(1,2)**2     + m(1,3)**2     + m(2,3)**2)
- math_invariantsSym33(3) = math_detSym33(m)
+
+ math_invariantsSym33(2) = math_invariantsSym33(1)**2.0_pReal/2.0_pReal-  (M(1,1)**2.0_pReal+M(2,2)**2.0_pReal+M(3,3)**2.0_pReal)&
+                                     /2.0_pReal-M(1,2)*M(2,1)-M(1,3)*M(3,1)-M(2,3)*M(3,2)
+ math_invariantsSym33(3) = math_det33(m)
 
 end function math_invariantsSym33
 
