@@ -113,7 +113,6 @@ module math
    math_equivStrain33, &
    math_equivStress33, &
    math_trace33, &
-   math_j3_33, &
    math_det33, &
    math_Plain33to9, &
    math_Plain9to33, &
@@ -967,19 +966,6 @@ real(pReal) pure function math_trace33(m)
  math_trace33 = m(1,1) + m(2,2) + m(3,3)
 
 end function math_trace33
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief invariant 3 of a 33 matrix
-!--------------------------------------------------------------------------------------------------
-real(pReal) pure function math_j3_33(m)
-
- implicit none
- real(pReal), dimension(3,3), intent(in) :: m
-
- math_j3_33 = sum(m**3.0_pReal)/3.0_pReal
-
-end function math_j3_33
 
 
 !--------------------------------------------------------------------------------------------------
@@ -2083,7 +2069,25 @@ function math_eigenvaluesSym33(m)
 end function math_eigenvaluesSym33
 
 !--------------------------------------------------------------------------------------------------
-!> @brief invariants of matrix m
+!> @brief invariants of symmetrix 3x3 matrix m
+!--------------------------------------------------------------------------------------------------
+pure function math_invariantsSym33(m)
+
+ implicit none
+ real(pReal), dimension(3,3) , intent(in) :: m
+ real(pReal), dimension(3) :: math_invariantsSym33
+
+ math_invariantsSym33(1) = math_trace33(m)
+ math_invariantsSym33(2) = m(1,1)*m(2,2)    + m(1,1)*m(3,3)    + m(2,2)*m(3,3) &
+                          -(m(1,2)**2 + m(1,3)**2 + m(2,3)**2)
+ math_invariantsSym33(3) = m(1,1)*m(2,3)**2 + m(2,2)*m(1,3)**2 + m(3,3)*m(1,2)**2 &
+                          -(m(1,1)*m(2,2)*m(3,3)  + 2.0_pReal * m(1,3)*m(1,2)*m(2,3))
+
+end function math_invariantsSym33
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief invariants of 3x3 matrix m
 !--------------------------------------------------------------------------------------------------
 pure function math_invariants33(m)
 
