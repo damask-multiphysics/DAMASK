@@ -2049,38 +2049,37 @@ function math_eigenvaluesSym(m)
 
 end function math_eigenvaluesSym
 
+
 !--------------------------------------------------------------------------------------------------
-!> @brief eigenvalues of symmetric 3x3 matrix m using an analytical expression
-!> @author Joachim Kopp, Max–Planck–Institut für Kernphysik, Heidelberg (Copyright (C) 2006)
-!> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
-!> @details See http://arxiv.org/abs/physics/0610206 (DSYEVC3)
+!> @brief Eigenvalues of symmetric 3X3 matrix m
 !--------------------------------------------------------------------------------------------------
 function math_eigenvaluesSym33(m)
 
  implicit none
- real(pReal), dimension(3,3), intent(in)  :: m
- real(pReal), dimension(3)                :: math_eigenvaluesSym33
+ real(pReal), intent(in), dimension(3,3) :: m
+ real(pReal), dimension(3) :: math_eigenvaluesSym33, invariants
+ real(pReal) :: R, S, T,  P, Q, rho, phi
+ real(pReal), parameter :: TOL=1.e-14_pReal
 
- real(pReal), dimension(0:2) :: c
- real(pReal) :: p, q, phi
+ invariants = math_invariants33(m)
+ R=-invariants(1)
+ S= invariants(2)
+ T=-invariants(3)
 
- c(2) = - math_trace33(m)
- c(1) = m(1,1)*m(2,2)    + m(1,1)*m(3,3)    + m(2,2)*m(3,3) &
-      -(m(1,2)**2 + m(1,3)**2 + m(2,3)**2)
- c(0) = m(1,1)*m(2,3)**2 + m(2,2)*m(1,3)**2 + m(3,3)*m(1,2)**2 &
-      -(m(1,1)*m(2,2)*m(3,3)  + 2.0_pReal * m(1,3)*m(1,2)*m(2,3))
+ P=S-R**2.0_pReal/3.0_pReal
+ Q=2.0_pReal/27.0_pReal*R**3.0_pReal-R*S/3.0_pReal+T
 
- p = c(2)**2 -3.0_pReal*c(1)
- q = -13.5_pReal*c(0) -c(2)**3 + 4.5_pReal*c(2)*c(1)
-
- phi = atan2(  sqrt(abs(27.0_pReal * (0.25_pReal*c(1)**2 *(p-c(1)) +c(0)*(q + 6.75_pReal*c(0)))  )), q)&
-       *(1.0_pReal/3.0_pReal)
-
- math_eigenvaluesSym33 = ([ cos(phi)*2.0_pReal, &
-                           -cos(phi)-sqrt(1.0_pReal/3.0_pReal)*sin(phi), &
-                           -cos(phi)+sqrt(1.0_pReal/3.0_pReal)*sin(phi) &
-                          ] *  sqrt(p) -c(2))/3.0_pReal
-
+ if((abs(P) < TOL) .and. (abs(Q) < TOL)) then
+   math_eigenvaluesSym33 = invariants(1)/3.0_pReal
+ else
+   rho=sqrt(-3.0_pReal*P**3.0_pReal)/9.0_pReal
+   phi=acos(math_limit(-Q/rho/2.0_pReal,-1.0_pReal,1.0_pReal))
+   math_eigenvaluesSym33 = 2.0_pReal*rho**(1.0_pReal/3.0_pReal)* &
+                         [cos(phi/3.0_pReal), &
+                          cos(phi/3.0_pReal+2.0_pReal/3.0_pReal*PI), &
+                          cos(phi/3.0_pReal+4.0_pReal/3.0_pReal*PI) &
+                         ] -R/3.0_pReal
+ endif
 end function math_eigenvaluesSym33
 
 !--------------------------------------------------------------------------------------------------
