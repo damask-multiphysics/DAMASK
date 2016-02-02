@@ -153,7 +153,7 @@ module math
    math_spectralDecompositionSym33, &
    math_spectralDecompositionSym, &
    math_rotationalPart33, &
-   math_invariants33, &
+   math_invariantsSym33, &
    math_eigenvaluesSym33, &
    math_factorial, &
    math_binomial, &
@@ -981,6 +981,20 @@ real(pReal) pure function math_det33(m)
             + m(1,3)* (m(2,1)*m(3,2)-m(2,2)*m(3,1))
 
 end function math_det33
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief determinant of a symmetric 33 matrix
+!--------------------------------------------------------------------------------------------------
+real(pReal) pure function math_detSym33(m)
+
+ implicit none
+ real(pReal), dimension(3,3), intent(in) :: m
+ 
+  math_detSym33 = -(m(1,1)*m(2,3)**2_pInt + m(2,2)*m(1,3)**2_pInt + m(3,3)*m(1,2)**2_pInt) &
+                  + m(1,1)*m(2,2)*m(3,3)  - 2.0_pReal * m(1,2)*m(1,3)*m(1,2)
+
+end function  math_detSym33
 
 
 !--------------------------------------------------------------------------------------------------
@@ -2037,7 +2051,7 @@ end function math_eigenvaluesSym
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Eigenvalues of symmetric 3X3 matrix m
+!> @brief Eigenvalues of symmetric 33 matrix m
 !--------------------------------------------------------------------------------------------------
 function math_eigenvaluesSym33(m)
 
@@ -2047,7 +2061,8 @@ function math_eigenvaluesSym33(m)
  real(pReal) :: R, S, T,  P, Q, rho, phi
  real(pReal), parameter :: TOL=1.e-14_pReal
 
- invariants = math_invariants33(m)
+ invariants = math_invariantsSym33(m)
+
  R=-invariants(1)
  S= invariants(2)
  T=-invariants(3)
@@ -2068,40 +2083,22 @@ function math_eigenvaluesSym33(m)
  endif
 end function math_eigenvaluesSym33
 
+
 !--------------------------------------------------------------------------------------------------
-!> @brief invariants of symmetrix 3x3 matrix m
+!> @brief invariants of symmetrix 33 matrix m
 !--------------------------------------------------------------------------------------------------
 pure function math_invariantsSym33(m)
 
  implicit none
- real(pReal), dimension(3,3) , intent(in) :: m
+ real(pReal), dimension(3,3), intent(in) :: m
  real(pReal), dimension(3) :: math_invariantsSym33
 
  math_invariantsSym33(1) = math_trace33(m)
- math_invariantsSym33(2) = m(1,1)*m(2,2)    + m(1,1)*m(3,3)    + m(2,2)*m(3,3) &
-                          -(m(1,2)**2 + m(1,3)**2 + m(2,3)**2)
- math_invariantsSym33(3) = m(1,1)*m(2,3)**2 + m(2,2)*m(1,3)**2 + m(3,3)*m(1,2)**2 &
-                          -(m(1,1)*m(2,2)*m(3,3)  + 2.0_pReal * m(1,3)*m(1,2)*m(2,3))
+ math_invariantsSym33(2) = m(1,1)*m(2,2) + m(1,1)*m(3,3) + m(2,2)*m(3,3) &
+                         -(m(1,2)**2     + m(1,3)**2     + m(2,3)**2)
+ math_invariantsSym33(3) = math_detSym33(m)
 
 end function math_invariantsSym33
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief invariants of 3x3 matrix m
-!--------------------------------------------------------------------------------------------------
-pure function math_invariants33(m)
-
- implicit none
- real(pReal), dimension(3,3) , intent(in) :: m
- real(pReal), dimension(3) :: math_invariants33
-
- math_invariants33(1) = math_trace33(m)
- math_invariants33(2) = math_invariants33(1)**2.0_pReal/2.0_pReal &
-                      -(m(1,1)**2.0_pReal+m(2,2)**2.0_pReal+m(3,3)**2.0_pReal)* 0.5_pReal &
-                      - m(1,2)*m(2,1) -m(1,3)*m(3,1) -m(2,3)*m(3,2)
- math_invariants33(3) = math_det33(m)
-
-end function math_invariants33
 
 
 !--------------------------------------------------------------------------------------------------
