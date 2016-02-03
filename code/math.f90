@@ -2094,10 +2094,9 @@ pure function math_invariantsSym33(m)
  real(pReal), dimension(3) :: math_invariantsSym33
 
  math_invariantsSym33(1) = math_trace33(m)
-
- math_invariantsSym33(2) = math_invariantsSym33(1)**2.0_pReal/2.0_pReal-  (M(1,1)**2.0_pReal+M(2,2)**2.0_pReal+M(3,3)**2.0_pReal)&
-                                     /2.0_pReal-M(1,2)*M(2,1)-M(1,3)*M(3,1)-M(2,3)*M(3,2)
- math_invariantsSym33(3) = math_det33(m)
+ math_invariantsSym33(2) = m(1,1)*m(2,2) + m(1,1)*m(3,3) + m(2,2)*m(3,3) &
+                         -(m(1,2)**2     + m(1,3)**2     + m(2,3)**2)
+ math_invariantsSym33(3) = math_detSym33(m)
 
 end function math_invariantsSym33
 
