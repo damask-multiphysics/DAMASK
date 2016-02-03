@@ -51,7 +51,18 @@ contains
 subroutine DAMASK_interface_init
 
  implicit none
+ integer, dimension(8) :: &
+   dateAndTime                                                                                      ! type default integer
+
+ call date_and_time(values = dateAndTime)
  write(6,'(/,a)') ' <<<+-  DAMASK_Marc  -+>>>'
+ write(6,'(/,a)')              ' Version: '//DAMASKVERSION
+ write(6,'(a,2(i2.2,a),i4.4)') ' Date:    ',dateAndTime(3),'/',&
+                                            dateAndTime(2),'/',&
+                                            dateAndTime(1) 
+ write(6,'(a,2(i2.2,a),i2.2)') ' Time:    ',dateAndTime(5),':',&
+                                            dateAndTime(6),':',&
+                                            dateAndTime(7)  
  write(6,'(/,a)') ' <<<+-  DAMASK_interface init  -+>>>'
 #include "compilation_info.f90"  
 
