@@ -180,7 +180,6 @@ other codes refers to the source code of minpack.py:
 '''
 from numpy import (array, arcsin, asarray, cos, dot, eye, empty_like,
                    isscalar,finfo, take, triu, transpose, sqrt, sin)
-from scipy.optimize import _minpack
 
 def _check_func(checker, argname, thefunc, x0, args, numinputs,
                 output_shape=None):
@@ -279,6 +278,7 @@ def _ext2intLocal(bound):
 def leastsqBound(func, x0, args=(), bounds=None, Dfun=None, full_output=0,
                  col_deriv=0, ftol=1.49012e-8, xtol=1.49012e-8,
                  gtol=0.0, maxfev=0, epsfcn=None, factor=100, diag=None):
+    from scipy.optimize import _minpack
     '''
     An internal parameter list is used to enforce contraints on the fitting 
     parameters. The transfomation is based on that of MINUIT package. 
