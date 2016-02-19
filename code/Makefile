@@ -16,7 +16,7 @@ SHELL = /bin/sh
 # SUFFIX         = arbitrary suffix (after file to compile)
 # STANDARD_CHECK = checking for Fortran 2008, compiler dependend
 ########################################################################################
-# including PETSc files. PETSC_ARCH is loaded from these files. 
+# including PETSc files. PETSC_ARCH is loaded from these files.
 DAMASKVERSION :=$(shell cat ../VERSION)
 
 include ${PETSC_DIR}/lib/petsc/conf/variables
@@ -26,6 +26,17 @@ INCLUDE_DIRS := $(PETSC_FC_INCLUDES) -DPETSc -I../lib
 LIBRARIES    := $(PETSC_WITH_EXTERNAL_LIB)
 COMPILERNAME ?= $(FC)
 LINKERNAME   ?= $(FLINKER)
+
+#
+# setting up for HDF5 support (hard link for now)
+# 1. Location of HDF5 binaries (with include/ and lib/ underneath)
+HDF5    = /mnt/research/CMM/opt/hdf5-1.8.16
+# 2. Location of External Libraries (missing in the 1.8.12 version)
+LIBZ    = $(HDF5)/lib/libz.a
+LIBSZ   = $(HDF5)/lib/libsz.a
+# 3. Set libraries for HDF5 (LIBS: shared lib, LIBZ: external lib)
+HDFLIBS = -I$(HDF5)/include $(HDF5)/lib/libhdf5_fortran.a $(HDF5)/lib/libhdf5.a
+HDFLIBZ = $(LIBZ) $(LIBSZ) -lm
 
 # MPI compiler wrappers will tell if they are pointing to ifort or gfortran
 COMPILEROUT :=$(shell $(FC) -show)
@@ -331,6 +342,9 @@ HYDROGENFLUX_FILES = \
 HOMOGENIZATION_FILES = \
    homogenization_RGC.o homogenization_isostrain.o homogenization_none.o
 
+HDF5_FILES = \
+   damask_hdf5.o
+
 #####################
 # Spectral Solver
 #####################
@@ -358,12 +372,13 @@ SPECTRAL_FILES = prec.o DAMASK_interface.o IO.o libs.o numerics.o debug.o math.o
                  $(HOMOGENIZATION_FILES) homogenization.o \
                  CPFEM2.o \
                  spectral_utilities.o \
+                 $(HDF5_FILES) \
                  $(SPECTRAL_SOLVER_FILES)
 
 DAMASK_spectral.exe: DAMASK_spectral.o
 	$(PREFIX) $(LINKERNAME) $(OPENMP_FLAG_$(F90)) $(LINK_OPTIONS_$(F90)) $(STANDARD_CHECK_$(F90))  $(OPTIMIZATION_$(MAXOPTI)_$(F90)) \
     -o DAMASK_spectral.exe DAMASK_spectral.o \
-    $(SPECTRAL_FILES) $(LIBRARIES) $(SUFFIX)
+    $(SPECTRAL_FILES) $(LIBRARIES) $(HDFLIBS) $(HDFLIBZ) $(SUFFIX)
 
 
 DAMASK_spectral.o: DAMASK_spectral.f90 \
@@ -412,7 +427,7 @@ FEM_FILES      = prec.o DAMASK_interface.o FEZoo.o IO.o libs.o numerics.o debug.
 DAMASK_FEM.exe:                DAMASK_FEM_driver.o
 	$(PREFIX) $(LINKERNAME) $(OPENMP_FLAG_$(F90)) $(LINK_OPTIONS_$(F90)) $(STANDARD_CHECK_$(F90))  $(OPTIMIZATION_$(MAXOPTI)_$(F90)) \
   -o DAMASK_FEM.exe DAMASK_FEM_driver.o \
-  $(FEM_FILES) $(LIBRARIES) $(SUFFIX)
+  $(FEM_FILES) $(LIBRARIES) $(HDFLIBS) $(HDFLIBZ) $(SUFFIX)
 
 DAMASK_FEM_driver.o:           DAMASK_FEM_driver.f90 $(FEM_SOLVER_FILES)
 	$(PREFIX) $(COMPILERNAME) $(COMPILE_MAXOPTI) -c ../private/FEM/code/DAMASK_FEM_driver.f90 $(SUFFIX)
@@ -648,6 +663,9 @@ DAMASK_interface.o:            spectral_interface.f90 \
 prec.o:                        prec.f90
 	$(PREFIX) $(COMPILERNAME) $(COMPILE) -c prec.f90 $(SUFFIX)
 endif
+
+damask_hdf5.o:                 damask_hdf5.f90
+	$(PREFIX) $(COMPILERNAME) $(COMPILE) -c damask_hdf5.f90 $(HDFLIBS) $(HDFLIBZ)
 
 %.o : %.f90
 	$(PREFIX) $(COMPILERNAME) $(COMPILE) -c $< $(SUFFIX)
