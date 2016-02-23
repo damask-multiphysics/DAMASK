@@ -2007,7 +2007,7 @@ subroutine plastic_dislotwin_dotState(Tstar_v,Temperature,ipc,ip,el)
 
  !* Total twin volume fraction
  sumf = sum(state(instance)%twinFraction(1_pInt:nt,of)) ! safe for nt == 0
- plasticState(instance)%dotState(:,of) = 0.0_pReal
+ plasticState(ph)%dotState(:,of) = 0.0_pReal
  
  !* Total transformed volume fraction
  sumftr = sum(state(instance)%stressTransFraction(1_pInt:nr,of)) + &
