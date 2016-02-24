@@ -8,3 +8,8 @@ set (DAMAGE   "damage_none"
 foreach (p ${DAMAGE})
     add_library (${p} MODULE "${p}.f90")
 endforeach (p)
+
+# set libraries for linking
+foreach (p ${DAMAGE})
+    set (AUX_LIB ${AUX_LIB} ${P})
+endforeach (p)

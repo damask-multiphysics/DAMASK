@@ -1,4 +1,4 @@
-# group source 
+# group source
 set (SOURCE "source_thermal_dissipation"
             "source_thermal_externalheat"
             "source_damage_isoBrittle"
@@ -13,4 +13,9 @@ set (SOURCE "source_thermal_dissipation"
 # compile modules for source
 foreach (p ${SOURCE})
     add_library (${p} MODULE "${p}.f90")
+endforeach (p)
+
+# set libraries/modules for linking
+foreach (p ${SOURCE})
+    set (AUX_LIB ${AUX_LIB} ${p})
 endforeach (p)

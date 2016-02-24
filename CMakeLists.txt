@@ -1,5 +1,5 @@
-# Initial attempt of using CMake to build the spectral solver
-# --> CMake should be able to take care of the dependence by itself.
+# INITIAL ATTEMPT OF USING CMAKE TO BUILD THE SPECTRAL SOLVER
+#   CMAKE SHOULD BE ABLE TO TAKE CARE OF THE DEPENDENCE BY ITSELF.
 #
 cmake_minimum_required (VERSION 3.1.0)
 project (DAMASKSpectral Fortran)
@@ -52,5 +52,15 @@ else (Fortran_COMPILER_NAME MATCHES "gfortran.*")
 endif (Fortran_COMPILER_NAME MATCHES "gfortran.*")
 
 
-# add code(source) directory
+# ADD CODE(SOURCE) DIRECTORY
 add_subdirectory(code)
+
+
+# ADD TESTING CASES
+add_test (SmokeTestRun
+          DAMASK_spectral.exe -g test/test1.geom -l test/test.load)
+
+
+# Enable Dashboard scripting
+# include (CTest)
+# set (CTEST_PROJECT_NAME "DAMASK")

@@ -10,3 +10,8 @@ set (KINEMATICS   "kinematics_cleavage_opening"
 foreach (p ${KINEMATICS})
     add_library (${p} MODULE "${p}.f90")
 endforeach (p)
+
+# set libraries/modules for linking
+foreach (p ${KINEMATICS})
+    set (AUX_LIB ${AUX_LIB} ${p})
+endforeach (p)

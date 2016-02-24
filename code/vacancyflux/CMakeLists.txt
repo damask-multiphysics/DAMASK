@@ -8,3 +8,8 @@ set (VACANCYFLUX    "vacancyflux_isoconc"
 foreach (p ${VACANCYFLUX})
     add_library (${p} MODULE "${p}.f90")
 endforeach (p)
+
+# set libraries/modules for linking
+foreach (p ${VACANCYFLUX})
+    set (AUX_LIB ${AUX_LIB} ${p})
+endforeach (p)

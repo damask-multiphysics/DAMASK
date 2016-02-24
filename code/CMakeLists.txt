@@ -25,6 +25,11 @@ foreach (p ${SRC})
       add_library (${p} MODULE "${p}.f90")
 endforeach (p)
 
+# set libraries/modules for linking
+foreach (p ${SRC})
+    set (AUX_LIB ${AUX_LIB} ${p})
+endforeach (p)
+
 # compile each sub moudel
 add_subdirectory(damage)
 add_subdirectory(homogenization)
@@ -37,5 +42,6 @@ add_subdirectory(spectral)
 add_subdirectory(thermal)
 add_subdirectory(vacancyflux)
 
-# compile spectral solver 
+# compile spectral solver
 add_executable(DAMASKSpectral.exe DAMASK_spectral.f90)
+target_link_libraries (DAMASKSpectral.exe ${AUX_LIB})
