@@ -12,10 +12,10 @@ set (PLASTIC  "plastic_dislotwin"
 
 # compile module
 foreach (p ${PLASTIC})
-    add_library (${p} MODULE "${p}.f90")
+    add_library (${p} "${p}.f90")
 endforeach (p)
 
 # set libraries/modules for linking
 foreach (p ${PLASTIC})
-    set (AUX_LIB ${AUX_LIB} ${p})
+    set (DAMASK_LIB ${DAMASK_LIB} ${p})
 endforeach (p)

@@ -20,58 +20,68 @@ project (DAMASK Fortran)
 set (DAMASK_VERSION_MAJOR 1)
 set (DAMASK_VERSION_MINOR ${DAMASK_V})
 
-##
-# find_package() might not work on customized system.
-# it is recommended for the user to specify the location
-# of PETSc and HDF5 library
-if (defined PETSC_DIR)
-    set (PETSC ${PETSC_DIR})
-else (defined PETSC_DIR)
-    find_package(PETSC)
-endif (defined PETSC_DIR)
+# PETSC and HDF5 is required
+if (NOT DEFINED PETSC_DIR)
+    message (FATAL_ERROR "PETSC_DIR is not found!")
+endif (NOT DEFINED PETSC_DIR)
+if (NOT DEFINED HDF5_DIR)
+    message (FATAL_ERROR "HDF5_DIR is not found!" )
+endif (NOT DEFINED HDF5_DIR)
 
-if (defined HDF5_DIR)
-    set (HDF5 ${HDF5_DIR})
-else (defined HDF5_DIR)
-    find_package(HDF5)
-endif (defined HDF5_DIR)
+# OUTPUT TYPE
+set (SPECTRAL OFF)
+set (FEM      OFF)
+set (MARC     OFF)
+set (ABAQUS   OFF)
+if (DAMASK_DRIVER STREQUAL "SPECTRAL")
+    set (SPECTRAL ON )
+elseif (DAMASK_DRIVER STREQUAL "FEM")
+    set (FEM      ON )
+elseif (DAMASK_DRIVER STREQUAL "MARC")
+    set (MARC     ON )
+elseif (DAMASK_DRIVER STREQUAL "ABAQUS")
+    set (ABAQUS   ON )
+else (DAMASK_DRIVER STREQUAL "SPECTRAL")
+    message (FATAL_ERROR "Unknown output, check build script!")
+endif (DAMASK_DRIVER STREQUAL "SPECTRAL")
 
-##
+
 # set system include directories
 include_directories(
-                    ${PETSC}/lib/petsc/conf/variables
-                    ${PETSC}/lib/petsc/conf/rules
+                    ${PETSC_DIR}/lib/petsc/conf/variables
+                    ${PETSC_DIR}/lib/petsc/conf/rules
                     ../lib
-                    ${HDF5}/include
+                    ${HDF5_DIR}/include
                     )
+link_directories(${HDF5_DIR}/lib)
 
 ##
 # set compile and debug flags
-if (OPENMP MATCHES 'ON')
+if (OPENMP)
     set (OPENMP_FLAG_ifort    "-openmp -openmp-report0 -parallel")
     set (OPENMP_FLAG_gfortran "-fopenmp")
-else (OPENMP MATCHES 'ON')
+else (OPENMP)
     message("No openmp support specified")
     set (OPENMP_FLAG_ifort    "")
     set (OPENMP_FLAG_gfortran "")
-endif (OPENMP MATCHES 'ON')
+endif (OPENMP)
 
-if (OPTIMIZATION MATCHES "OFF")
+if (OPTIMIZATION STREQUAL "OFF")
     set (OPTIMIZATION_ifort    "-O0 -no-ip")
-    set (OPTIMIZATION_gfortran "-O0")
-elseif (OPTIMIZATION MATCHES "DEFENSIVE")
+    set (OPTIMIZATION_gfortran "-O0"       )
+elseif (OPTIMIZATION STREQUAL "DEFENSIVE")
     set (OPTIMIZATION_ifort    "-O2")
     set (OPTIMIZATION_gfortran "-O2")
-elseif (OPTIMIZATION MATCHES "AGGRESSIVE")
-    set (OPTIMIZATION_ifort    "-ipo -O3 -no-prec-div -fp-model fast=2 -xHost")  #-fast = -ipo, -O3, -no-prec-div, -static, -fp-model fast=2, and -xHost"
+elseif (OPTIMIZATION STREQUAL "AGGRESSIVE")
+    set (OPTIMIZATION_ifort    "-ipo -O3 -no-prec-div -fp-model fast=2 -xHost"  )  #-fast = -ipo, -O3, -no-prec-div, -static, -fp-model fast=2, and -xHost"
     set (OPTIMIZATION_gfortran "-O3 -ffast-math -funroll-loops -ftree-vectorize")
-elseif (OPTIMIZATION MATCHES "ULTRA")
-    set (OPTIMIZATION_ifort    "-ipo -O3 -no-prec-div -fp-model fast=2 -xHost")  #-fast = -ipo, -O3, -no-prec-div, -static, -fp-model fast=2, and -xHost"
+elseif (OPTIMIZATION STREQUAL "ULTRA")
+    set (OPTIMIZATION_ifort    "-ipo -O3 -no-prec-div -fp-model fast=2 -xHost"  )  #-fast = -ipo, -O3, -no-prec-div, -static, -fp-model fast=2, and -xHost"
     set (OPTIMIZATION_gfortran "-O3 -ffast-math -funroll-loops -ftree-vectorize")
-else (OPTIMIZATION MATCHES "OFF")
+else (OPTIMIZATION STREQUAL "OFF")
     set (OPTIMIZATION_ifort    "-O2")
     set (OPTIMIZATION_gfortran "-O2")
-endif (OPTIMIZATION MATCHES "OFF")
+endif (OPTIMIZATION STREQUAL "OFF")
 
 set (STANDARD_CHECK_ifort    "-stand f08 -standard-semantics")
 set (STANDARD_CHECK_gfortran "-std=f2008ts -pedantic-errors" )
@@ -104,19 +114,18 @@ set (STANDARD_CHECK_gfortran "-std=f2008ts -pedantic-errors" )
 #     all:
 #  -name as_is: case sensitive Fortran!
 ###################################################################################################
-set (COMPILE_OPTIONS_ifort   "-DDAMASKVERSION=${DAMASK_V}"
-                             "-fpp"
-                             "-ftz"
-                             "-assume byterecl,fpe_summary"
-                             "-diag-disable 5268"
-                             "-warn declarations"
-                             "-warn general"
-                             "-warn usage"
-                             "-warn interfaces"
-                             "-warn ignore_loc"
-                             "-warn alignments"
-                             "-warn unused"
-    )
+set (COMPILE_OPTIONS_ifort   "${COMPILE_OPTIONS_ifort} -DDAMASKVERSION=${DAMASK_V}"  )
+set (COMPILE_OPTIONS_ifort   "${COMPILE_OPTIONS_ifort} -fpp"                         )
+set (COMPILE_OPTIONS_ifort   "${COMPILE_OPTIONS_ifort} -ftz"                         )
+set (COMPILE_OPTIONS_ifort   "${COMPILE_OPTIONS_ifort} -assume byterecl,fpe_summary" )
+set (COMPILE_OPTIONS_ifort   "${COMPILE_OPTIONS_ifort} -diag-disable 5268"           )
+set (COMPILE_OPTIONS_ifort   "${COMPILE_OPTIONS_ifort} -warn declarations"           )
+set (COMPILE_OPTIONS_ifort   "${COMPILE_OPTIONS_ifort} -warn general"                )
+set (COMPILE_OPTIONS_ifort   "${COMPILE_OPTIONS_ifort} -warn usage"                  )
+set (COMPILE_OPTIONS_ifort   "${COMPILE_OPTIONS_ifort} -warn interfaces"             )
+set (COMPILE_OPTIONS_ifort   "${COMPILE_OPTIONS_ifort} -warn ignore_loc"             )
+set (COMPILE_OPTIONS_ifort   "${COMPILE_OPTIONS_ifort} -warn alignments"             )
+set (COMPILE_OPTIONS_ifort   "${COMPILE_OPTIONS_ifort} -warn unused"                 )
 
 ###################################################################################################
 # COMPILE SWITCHES FOR RUNTIME DEBUGGING
@@ -143,18 +152,17 @@ set (COMPILE_OPTIONS_ifort   "-DDAMASKVERSION=${DAMASK_V}"
 #    arg_temp_created:        will cause a lot of warnings because we create a bunch of temporary arrays (performance?)
 #    stack:
 ###################################################################################################
-set (DEBUG_OPTIONS_ifort     "-g"
-                             "-traceback"
-                             "-gen-interfaces"
-                             "-fp-stack-check"
-                             "-fp-model strict"
-                             "-check bounds,format,output_conversion,pointers,uninit"
-                             "-ftrapuv"
-                             "-fpe-all0"
-                             "-warn errors"
-                             "-warn stderrors"
-                             "-debug-parameters all"
-    )
+set (DEBUG_OPTIONS_ifort     "${DEBUG_OPTIONS_ifort} -g"                                                       )
+set (DEBUG_OPTIONS_ifort     "${DEBUG_OPTIONS_ifort} -traceback"                                               )
+set (DEBUG_OPTIONS_ifort     "${DEBUG_OPTIONS_ifort} -gen-interfaces"                                          )
+set (DEBUG_OPTIONS_ifort     "${DEBUG_OPTIONS_ifort} -fp-stack-check"                                          )
+set (DEBUG_OPTIONS_ifort     "${DEBUG_OPTIONS_ifort} -fp-model strict"                                         )
+set (DEBUG_OPTIONS_ifort     "${DEBUG_OPTIONS_ifort} -check bounds,format,output_conversion,pointers,uninit"   )
+set (DEBUG_OPTIONS_ifort     "${DEBUG_OPTIONS_ifort} -ftrapuv"                                                 )
+set (DEBUG_OPTIONS_ifort     "${DEBUG_OPTIONS_ifort} -fpe-all0"                                                )
+set (DEBUG_OPTIONS_ifort     "${DEBUG_OPTIONS_ifort} -warn errors"                                             )
+set (DEBUG_OPTIONS_ifort     "${DEBUG_OPTIONS_ifort} -warn stderrors"                                          )
+set (DEBUG_OPTIONS_ifort     "${DEBUG_OPTIONS_ifort} -debug-parameters all"                                    )
 
 set (LINK_OPTIONS_ifort      "-shared-intel")
 
@@ -163,7 +171,7 @@ set (LINK_OPTIONS_ifort      "-shared-intel")
 # -shared
 # -Wl,-undefined,dynamic_lookup:ensure to link against dynamic libraries
 # -xf95-cpp-input:              preprocessor
-# -ffree-line-length-132:       restrict line length to the standard 132 characters
+# -ffree-line-length-132:       restrict line length to the standard 240 characters (lattice.f90 require larger)
 # -ffpe-summary:                print summary of floating point exeptions (‘invalid’, ‘zero’, ‘overflow’, ‘underflow’, ‘inexact’ and ‘denormal’)
 # -fimplicit-none:              assume "implicit-none" even if not present in source
 # -fmodule-private:             assume "private" even if not present in source
@@ -234,21 +242,20 @@ set (LINK_OPTIONS_ifort      "-shared-intel")
 # -Wunsafe-loop-optimizations:   warn if the loop cannot be optimized due to nontrivial assumptions.
 # -Wstrict-overflow:
 ###################################################################################################
-set (COMPILE_OPTIONS_gfortran "-DDAMASKVERSION=${DAMASKVERSION}"
-                              "-xf95-cpp-input"
-                              "-ffree-line-length-132"
-                              "-fimplicit-none"
-                              "-fmodule-private"
-                              "-Wall"
-                              "-Wextra"
-                              "-Wcharacter-truncation"
-                              "-Wunderflow"
-                              "-Wsuggest-attribute=pure"
-                              "-Wsuggest-attribute=noreturn"
-                              "-Wconversion-extra"
-                              "-Wimplicit-procedure"
-                              "-Wno-unused-parameter"
-    )
+set (COMPILE_OPTIONS_gfortran "${COMPILE_OPTIONS_gfortran} -DDAMASKVERSION=${DAMASKVERSION}")
+set (COMPILE_OPTIONS_gfortran "${COMPILE_OPTIONS_gfortran} -xf95-cpp-input"                 )
+set (COMPILE_OPTIONS_gfortran "${COMPILE_OPTIONS_gfortran} -ffree-line-length-240"          )
+set (COMPILE_OPTIONS_gfortran "${COMPILE_OPTIONS_gfortran} -fimplicit-none"                 )
+set (COMPILE_OPTIONS_gfortran "${COMPILE_OPTIONS_gfortran} -fmodule-private"                )
+set (COMPILE_OPTIONS_gfortran "${COMPILE_OPTIONS_gfortran} -Wall"                           )
+set (COMPILE_OPTIONS_gfortran "${COMPILE_OPTIONS_gfortran} -Wextra"                         )
+set (COMPILE_OPTIONS_gfortran "${COMPILE_OPTIONS_gfortran} -Wcharacter-truncation"          )
+set (COMPILE_OPTIONS_gfortran "${COMPILE_OPTIONS_gfortran} -Wunderflow"                     )
+set (COMPILE_OPTIONS_gfortran "${COMPILE_OPTIONS_gfortran} -Wsuggest-attribute=pure"        )
+set (COMPILE_OPTIONS_gfortran "${COMPILE_OPTIONS_gfortran} -Wsuggest-attribute=noreturn"    )
+set (COMPILE_OPTIONS_gfortran "${COMPILE_OPTIONS_gfortran} -Wconversion-extra"              )
+set (COMPILE_OPTIONS_gfortran "${COMPILE_OPTIONS_gfortran} -Wimplicit-procedure"            )
+set (COMPILE_OPTIONS_gfortran "${COMPILE_OPTIONS_gfortran} -Wno-unused-parameter"           )
 
 ###################################################################################################
 # COMPILE SWITCHES FOR RUNTIME DEBUGGING
@@ -268,39 +275,48 @@ set (COMPILE_OPTIONS_gfortran "-DDAMASKVERSION=${DAMASKVERSION}"
 #            denormal, \
 #            underflow
 ###################################################################################################
-set (DEBUG_OPTIONS_gfortran "-g"
-                            "-fbacktrace"
-                            "-fdump-core"
-                            "-fcheck=all"
-                            "-ffpe-trap=invalid,zero,overflow"
-    )
+set (DEBUG_OPTIONS_gfortran "${DEBUG_OPTIONS_gfortran} -g"                              )
+set (DEBUG_OPTIONS_gfortran "${DEBUG_OPTIONS_gfortran} -fbacktrace"                     )
+set (DEBUG_OPTIONS_gfortran "${DEBUG_OPTIONS_gfortran} -fdump-core"                     )
+set (DEBUG_OPTIONS_gfortran "${DEBUG_OPTIONS_gfortran} -fcheck=all"                     )
+set (DEBUG_OPTIONS_gfortran "${DEBUG_OPTIONS_gfortran} -ffpe-trap=invalid,zero,overflow")
 
 set (LINK_OPTIONS_gfortran "-Wl,-undefined,dynamic_lookup")
+
+###################################################################################################
+#-real-size 32:               set precision to one of those 32/64/128 (= 4/8/16 bytes) for standard real (=8 for pReal)
+#-integer-size 16:            set precision to one of those 16/32/64 (= 2/4/8 bytes) for standard integer (=4 for pInt)
+###################################################################################################
+set (PRECISION_ifort "-real-size 64 -integer-size 32 -DFLOAT=8 -DINT=4")
+
+###################################################################################################
+#-fdefault-real-8:            set precision to 8 bytes for standard real (=8 for pReal). Will set size of double to 16 bytes as long as -fdefault-double-8 is not set
+#-fdefault-double-8:          set precision to 8 bytes for double real, would be 16 bytes because -fdefault-real-8 is used
+#-fdefault-integer-8:         Use it to set precision to 8 bytes for integer, don't use it for the standard case of pInt=4 (there is no -fdefault-integer-4)
+###################################################################################################
+set (PRECISION_gfortran "-fdefault-real-8 -fdefault-double-8 -DFLOAT=8 -DINT=4")
 
 # set FLAGS
 get_filename_component (Fortran_COMPILER_NAME ${CMAKE_Fortran_COMPILER} NAME)
 
 if (Fortran_COMPILER_NAME MATCHES "ifort.*")
+    # need the PETSC wrapped version of ifort
+    set (CMAKE_Fortran_COMPILER "${PETSC_DIR}/bin/mpifort")
     # for RELEASE
-    set (CMAKE_Fortran_FLAGS_RELEASE     ${COMPILE_OPTIONS_ifort})
-    set (CMAKE_EXE_LINKER_FLAGS_RELEASE  ${LINK_OPTIONS_ifort}
-                                         ${OPTIMIZATION_ifort}   )
+    set (CMAKE_Fortran_FLAGS_RELEASE     "${COMPILE_OPTIONS_ifort}")
+    set (CMAKE_EXE_LINKER_FLAGS_RELEASE  "${CMAKE_EXE_LINKER_FLAGS_RELEASE} ${LINK_OPTIONS_ifort}")
+    set (CMAKE_EXE_LINKER_FLAGS_RELEASE  "${CMAKE_EXE_LINKER_FLAGS_RELEASE} ${OPTIMIZATION_ifort}")
     # for DEBUG
-    set (CMAKE_Fortran_FLAGS_DEBUG       ${COMPILE_OPTIONS_ifort}
-                                         ${DEBUG_OPTIONS_ifort}  )
-    set (CMAKE_EXE_LINKER_FLAGS_DEBUG    ${LINK_OPTIONS_ifort}
-                                         ${DEBUG_OPTIONS_ifort}  )
-    #
+    set (CMAKE_Fortran_FLAGS_DEBUG       "${COMPILE_OPTIONS_ifort} ${DEBUG_OPTIONS_ifort}")
+    set (CMAKE_EXE_LINKER_FLAGS_DEBUG    "${LINK_OPTIONS_ifort}    ${DEBUG_OPTIONS_ifort}")
 elseif (Fortran_COMPILER_NAME MATCHES "gfortran.*")
+    set (CMAKE_Fortran_COMPILER "${PETSC_DIR}/bin/mpif90")
     # for RELEASE
-    set (CMAKE_Fortran_FLAGS_RELEASE     ${COMPILE_OPTIONS_gfortran})
-    set (CMAKE_EXE_LINKER_FLAGS_RELEASE  ${LINK_OPTIONS_gfortran}
-                                         ${OPTIMIZATION_gfortran}   )
+    set (CMAKE_Fortran_FLAGS_RELEASE     "${COMPILE_OPTIONS_gfortran}")
+    set (CMAKE_EXE_LINKER_FLAGS_RELEASE  "${LINK_OPTIONS_gfortran} ${OPTIMIZATION_gfortran}")
     # for DEBUG
-    set (CMAKE_Fortran_FLAGS_DEBUG       ${COMPILE_OPTIONS_gfortran}
-                                         ${DEBUG_OPTIONS_gfortran}  )
-    set (CMAKE_EXE_LINKER_FLAGS_DEBUG    ${LINK_OPTIONS_gfortran}
-                                         ${DEBUG_OPTIONS_gfortran}  )
+    set (CMAKE_Fortran_FLAGS_DEBUG       "${COMPILE_OPTIONS_gfortran} ${DEBUG_OPTIONS_gfortran}")
+    set (CMAKE_EXE_LINKER_FLAGS_DEBUG    "${LINK_OPTIONS_gfortran}    ${DEBUG_OPTIONS_gfortran}")
     #
 elseif (Fortran_COMPILER_NAME MATCHES "g77")
     message (FATAL_ERROR "Fortran 77 is not supported.")
@@ -308,14 +324,27 @@ else (Fortran_COMPILER_NAME MATCHES "ifort.*")
     message (FATAL_ERROR "Require Fortran90 from GNU or Intel.")
 endif (Fortran_COMPILER_NAME MATCHES "ifort.*")
 
+# additional flag for SPECTRAL solver
+if (SPECTRAL)
+    set (CMAKE_Fortran_FLAGS_RELEASE     "${CMAKE_Fortran_FLAGS_RELEASE}    -DSpectral")
+    set (CMAKE_EXE_LINKER_FLAGS_RELEASE  "${CMAKE_EXE_LINKER_FLAGS_RELEASE} -DSpectral")
+    set (CMAKE_EXE_LINKER_FLAGS_DEBUG    "${LINK_OPTIONS_ifort}             -DSpectral")
+endif (SPECTRAL)
+# additional flags for FEM solver
+if (FEM)
+    set (CMAKE_Fortran_FLAGS_RELEASE     "${CMAKE_Fortran_FLAGS_RELEASE}    -DFEM")
+    set (CMAKE_EXE_LINKER_FLAGS_RELEASE  "${CMAKE_EXE_LINKER_FLAGS_RELEASE} -DFEM")
+    set (CMAKE_EXE_LINKER_FLAGS_DEBUG    "${LINK_OPTIONS_ifort}             -DFEM")
+endif (FEM)
+
 ##
-# ADD CODE(SOURCE) DIRECTORY
+# ADD CODE DIRECTORY
 add_subdirectory(code)
 
 ##
 # ADD TESTING CASES
-add_test (SmokeTestRun
-          DAMASK_spectral.exe -g test/test1.geom -l test/test.load)
+# add_test (SmokeTestRun
+#           DAMASK_spectral.exe -g test/test1.geom -l test/test.load)
 
 # Enable Dashboard scripting
 # include (CTest)

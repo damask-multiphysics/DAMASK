@@ -5,10 +5,10 @@ set (POROSITY "porosity_none"
 
 # compile porosity modules
 foreach (p ${POROSITY})
-    add_library (${p} MODULE "${p}.f90")
+    add_library (${p} "${p}.f90")
 endforeach (p)
 
 # set libraries/modules for linking
 foreach (p ${POROSITY})
-    set (AUX_LIB ${AUX_LIB} ${p})
+    set (DAMASK_LIB ${DAMASK_LIB} ${p})
 endforeach (p)
