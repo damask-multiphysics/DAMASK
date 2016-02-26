@@ -1011,7 +1011,7 @@ real(pReal) pure function math_detSym33(m)
  real(pReal), dimension(3,3), intent(in) :: m
  
   math_detSym33 = -(m(1,1)*m(2,3)**2_pInt + m(2,2)*m(1,3)**2_pInt + m(3,3)*m(1,2)**2_pInt) &
-                  + m(1,1)*m(2,2)*m(3,3)  - 2.0_pReal * m(1,2)*m(1,3)*m(1,2)
+                  + m(1,1)*m(2,2)*m(3,3)  - 2.0_pReal * m(1,2)*m(1,3)*m(2,3)
 
 end function  math_detSym33
 
@@ -2167,10 +2167,10 @@ function math_eigenvaluesSym33(m)
  real(pReal) :: P, Q, rho, phi
  real(pReal), parameter :: TOL=1.e-14_pReal
 
- invariants = math_invariantsSym33(m)
+ invariants = math_invariantsSym33(m)                                                               ! invariants are coefficients in characteristic polynomial apart for the sign of c0 and c2 in http://arxiv.org/abs/physics/0610206
 
- P = invariants(2)-invariants(1)**2.0_pReal/3.0_pReal
- Q = -2.0_pReal/27.0_pReal*invariants(1)**3.0_pReal+product(invariants(1:2))/3.0_pReal-invariants(3)
+ P = invariants(2)-invariants(1)**2.0_pReal/3.0_pReal                                               ! different from http://arxiv.org/abs/physics/0610206 (this formulation was in DAMASK)
+ Q = -2.0_pReal/27.0_pReal*invariants(1)**3.0_pReal+product(invariants(1:2))/3.0_pReal-invariants(3)! different from http://arxiv.org/abs/physics/0610206 (this formulation was in DAMASK)
 
  if(all(abs([P,Q]) < TOL)) then
    math_eigenvaluesSym33 = math_eigenvaluesSym(m)
