@@ -337,6 +337,13 @@ if (FEM)
     set (CMAKE_EXE_LINKER_FLAGS_DEBUG    "${LINK_OPTIONS_ifort}             -DFEM")
 endif (FEM)
 
+# set default project compiler flags
+# NOTE: some file requires different flags for compiling, DAMASK_$FLAGS
+#       are essentially the swap for this purpose
+set (DAMASK_Fortran_FLAGS_RELEASE    "${CMAKE_Fortran_FLAGS_RELEASE}"   )
+set (DAMASK_EXE_LINKER_FLAGS_RELEASE "${CMAKE_EXE_LINKER_FLAGS_RELEASE}")
+set (DAMASK_EXE_LINKER_FLAGS_DEBUG   "${CMAKE_EXE_LINKER_FLAGS_DEBUG}"  )
+
 ##
 # ADD CODE DIRECTORY
 add_subdirectory(code)

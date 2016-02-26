@@ -1,6 +1,5 @@
 # group source for sepctral solver driver
 set (SPECTRAL "spectral_damage"
-              "spectral_interface"
               "spectral_mech_AL"
               "spectral_mech_Basic"
               "spectral_mech_Polarisation"

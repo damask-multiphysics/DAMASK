@@ -1,15 +1,28 @@
+# The dependency detection for Fortran is not working in CMake
+# Have to define them explicitly
+add_library(DAMASK_prec "prec.f90")
 
-include_directories(${PROJECT_SRC_DIR}/code)
-include_directories(${PROJECT_SRC_DIR}/code/damage)
-include_directories(${PROJECT_SRC_DIR}/code/homogenization)
-include_directories(${PROJECT_SRC_DIR}/code/hydrogenflux)
-include_directories(${PROJECT_SRC_DIR}/code/kinematics)
-include_directories(${PROJECT_SRC_DIR}/code/plastic)
-include_directories(${PROJECT_SRC_DIR}/code/porosity)
-include_directories(${PROJECT_SRC_DIR}/code/source)
-include_directories(${PROJECT_SRC_DIR}/code/spectral)
-include_directories(${PROJECT_SRC_DIR}/code/thermal)
-include_directories(${PROJECT_SRC_DIR}/code/vacancyflux)
+###################################################################################################
+
+###################################################################################################
+if (SPECTRAL)
+      add_library(DAMASK_interface "spectral_interface.f90")
+      target_link_libraries(DAMASK_interface DAMASK_prec)
+endif(SPECTRAL)
+
+add_library(DAMASK_IO "IO.f90")
+target_link_libraries(DAMASK_IO DAMASK_interface)
+
+add_library(DAMASK_LIBS "libs.f90")
+target_link_libraries(DAMASK_LIBS DAMASK_IO)
+
+add_library(DAMASK_NUMERICS "numerics.f90")
+target_link_libraries(DAMASK_NUMERICS DAMASK_LIBS)
+
+add_library(DAMASK_DEBUG "debug.f90")
+target_link_libraries(DAMASK_DEBUG DAMASK_NUMERICS)
+
+add_library(DAMASK_BASICS ALIAS DAMASK_DEBUG)
 
 # group sources for base modules
 # the FEM modules would require special attention
@@ -22,22 +35,17 @@ set (SRC    "CPFEM"
             "constitutive"
             "crystallite"
             "damask_hdf5"
-            "debug"
-            "FEsolving"
-            "IO"
             "lattice"
-            "libs"
             "material"
             "math"
             "mesh"
-            "numerics"
-            "prec"
             "quit__genmod"
     )
 
 # compiler base modules
 foreach (p ${SRC})
       add_library (${p} "${p}.f90")
+      target_link_libraries(${p} DAMASK_BASICS)
 endforeach (p)
 
 # set libraries/modules for linking
