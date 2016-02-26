@@ -2009,21 +2009,90 @@ end function math_spectralDecompositionSym
 function math_spectralDecompositionSym33(m)
 
  implicit none
- real(pReal), dimension(3,3), intent(in)  :: m
  real(pReal), dimension(3,3)              :: math_spectralDecompositionSym33
- real(pReal), dimension(3)                :: values
- real(pReal), dimension(3,3)              :: vectors
- logical :: error
- integer(pInt) :: i
+ real(pReal), dimension(3)                :: invariants, values
+ real(pReal), dimension(3,3), intent(in) :: m
+ real(pReal) :: EW1,EW2,EW3
+ real(pReal) :: P, Q, RHO, PHI, Y1, Y2, Y3, D1, D2, D3
+ real(pReal), parameter :: TOL=1.e-14_pReal
+ real(pReal), dimension(3,3) :: M1, M2, M3,EB1, EB2, EB3
+ real(pReal) C1,C2,C3
 
- math_spectralDecompositionSym33 = 0.0_pReal
- call math_eigenValuesVectorsSym33(m,values,vectors)
- if(error) return
- 
- do i=1_pInt, 3_pInt
-   math_spectralDecompositionSym33 = math_spectralDecompositionSym33 &
-                                   +  sqrt(values(i)) * math_tensorproduct(vectors(:,i),vectors(:,i))
- enddo
+ invariants = math_invariantsSym33(m)
+
+ P=invariants(2)-invariants(1)**2.0_pReal/3.0_pReal
+ Q=-2.0_pReal/27.0_pReal*invariants(1)**3.0_pReal+invariants(1)*invariants(2)/3.0_pReal-invariants(3)
+
+ EB1=0.0_pReal
+ EB2=0.0_pReal
+ EB3=0.0_pReal
+ if((ABS(P) < TOL).AND.(ABS(Q) < TOL)) then
+!   DREI GLEICHE EIGENWERTE
+   values = invariants(1)/3.0_pReal
+!   this is not really correct, but this way U is calculated
+!   correctly in PDECOMPOSITION (correct is EB?=I)
+   EB1(1,1)=1.0_pReal
+   EB2(2,2)=1.0_pReal
+   EB3(3,3)=1.0_pReal
+ else
+   rho=sqrt(-3.0_pReal*P**3.0_pReal)/9.0_pReal
+   phi=acos(math_limit(-Q/rho*0.5_pReal,-1.0_pReal,1.0_pReal))
+   Y1=2.0_pReal*RHO**(1.0_pReal/3.0_pReal)*cos(PHI/3.0_pReal)
+   Y2=2.0_pReal*RHO**(1.0_pReal/3.0_pReal)*cos(PHI/3.0_pReal+2.0_pReal/3.0_pReal*PI)
+   Y3=2.0_pReal*RHO**(1.0_pReal/3.0_pReal)*cos(PHI/3.0_pReal+4.0_pReal/3.0_pReal*PI)
+   EW1=Y1+invariants(1)/3.0_pReal
+   EW2=Y2+invariants(1)/3.0_pReal
+   EW3=Y3+invariants(1)/3.0_pReal
+   C1=ABS(EW1-EW2)
+   C2=ABS(EW2-EW3)
+   C3=ABS(EW3-EW1)
+
+   if (C1 < TOL) then
+!  EW1 is equal to EW2
+     D3=1.0_pReal/(EW3-EW1)/(EW3-EW2)
+     M1=M-EW1*math_I3
+     M2=M-EW2*math_I3
+     EB3=math_mul33x33(M1,M2)*D3
+
+     EB1=math_I3-EB3
+!  both EB2 and EW2 are set to zero so that they do not
+!  contribute to U in PDECOMPOSITION
+     EW2=0.0_pReal
+   elseif (C2 < TOL) then
+!  EW2 is equal to EW3
+     D1=1.0_pReal/(EW1-EW2)/(EW1-EW3)
+     M2=M-math_I3*EW2
+     M3=M-math_I3*EW3
+     EB1=math_mul33x33(M2,M3)*D1
+     EB2=math_I3-EB1
+!  both EB3 and EW3 are set to zero so that they do not
+!  contribute to U in PDECOMPOSITION
+     EW3=0.0_pReal
+   elseif(C3 < TOL) then
+!  EW1 is equal to EW3
+     D2=1.0_pReal/(EW2-EW1)/(EW2-EW3)
+     M1=M-math_I3*EW1
+     M3=M-math_I3*EW3
+     EB2=math_mul33x33(M1,M3)*D2
+     EB1=math_I3-EB2
+!  both EB3 and EW3 are set to zero so that they do not
+!  contribute to U in PDECOMPOSITION
+     EW3=0.0_pReal
+   else
+!  all three eigenvectors are different
+     D1=1.0_pReal/(EW1-EW2)/(EW1-EW3)
+     D2=1.0_pReal/(EW2-EW1)/(EW2-EW3)
+     D3=1.0_pReal/(EW3-EW1)/(EW3-EW2)
+     M1=M-EW1*math_I3
+     M2=M-EW2*math_I3
+     M3=M-EW3*math_I3
+     EB1=math_mul33x33(M2,M3)*D1
+     EB2=math_mul33x33(M1,M3)*D2
+     EB3=math_mul33x33(M1,M2)*D3
+   endif
+ endif
+
+ math_spectralDecompositionSym33 = sqrt(EW1) * EB1 + sqrt(EW2) * EB2 + sqrt(EW3) * EB3
 
 end function math_spectralDecompositionSym33
 
