@@ -78,6 +78,68 @@ target_link_libraries(DAMASK_SOURCE DAMASK_DRIVERS)
 add_library(DAMASK_CONSTITUTIVE "constitutive.f90")
 target_link_libraries(DAMASK_CONSTITUTIVE DAMASK_PLASTIC DAMASK_KINEMATICS DAMASK_SOURCE)
 
-# compile spectral solver
-add_executable(DAMASKSpectral.exe DAMASK_spectral.f90)
-target_link_libraries (DAMASKSpectral.exe DAMASK_CONSTITUTIVE)
+add_library(DAMASK_CRYSTALLITE "crystallite.f90")
+target_link_libraries(DAMASK_CRYSTALLITE DAMASK_CONSTITUTIVE)
+
+add_library(DAMASK_HOMOGENIZATION "homogenization.f90"
+                                  "homogenization_RGC.f90"
+                                  "homogenization_isostrain.f90"
+                                  "homogenization_none.f90")
+target_link_libraries(DAMASK_HOMOGENIZATION DAMASK_CRYSTALLITE)
+
+add_library(DAMASK_HYDROGENFLUX "hydrogenflux_isoconc.f90"
+                                "hydrogenflux_cahnhilliard.f90")
+target_link_libraries(DAMASK_HYDROGENFLUX DAMASK_CRYSTALLITE)
+
+add_library(DAMASK_POROSITY "porosity_none.f90"
+                            "porosity_phasefield.f90")
+target_link_libraries(DAMASK_POROSITY DAMASK_CRYSTALLITE)
+
+add_library(DAMASK_VACANCYFLUX "vacancyflux_isoconc.f90"
+                               "vacancyflux_isochempot.f90"
+                               "vacancyflux_cahnhilliard.f90")
+target_link_libraries(DAMASK_VACANCYFLUX DAMASK_CRYSTALLITE)
+
+add_library(DAMASK_DAMAGE "damage_none.f90"
+                          "damage_local.f90"
+                          "damage_nonlocal.f90")
+target_link_libraries(DAMASK_DAMAGE DAMASK_CRYSTALLITE)
+
+add_library(DAMASK_THERMAL "thermal_isothermal.f90"
+                           "thermal_adiabatic.f90"
+                           "thermal_conduction.f90")
+target_link_libraries(DAMASK_THERMAL DAMASK_CRYSTALLITE)
+
+add_library(DAMASK_ENGINE "homogenization.f90")
+target_link_libraries(DAMASK_ENGINE DAMASK_THERMAL
+                                    DAMASK_DAMAGE
+                                    DAMASK_VACANCYFLUX
+                                    DAMASK_POROSITY
+                                    DAMASK_HYDROGENFLUX
+                                    DAMASK_HOMOGENIZATION)
+
+add_library(DAMASK_CPFE "CPFEM.f90"
+                        "CPFEM2.f90")
+target_link_libraries(DAMASK_CPFE DAMASK_ENGINE)
+
+if (FEM)
+      message("special treatment for FEM code")
+endif(FEM)
+
+if (SPECTRAL)
+      add_library(DAMASK_SPECTRAL_UTILITY spectral_utilities.f90)
+      target_link_libraries(DAMASK_SPECTRAL_UTILITY DAMASK_CPFE2)
+
+      add_library(DAMASK_SPECTRAL_BASE "spectral_thermal.f90"
+                                       "spectral_damage.f90")
+      target_link_libraries(DAMASK_SPECTRAL_BASE DAMASK_SPECTRAL_UTILITY)
+
+      add_library(DAMASK_SPECTRAL_MECH "spectral_mech_AL.f90"
+                                       "spectral_mech_Polarisation.f90"
+                                       "spectral_mech_Basic.f90")
+      target_link_libraries(DAMASK_SPECTRAL_MECH DAMASK_SPECTRAL_UTILITY)
+
+      add_executable(DAMASKSpectral.exe DAMASK_spectral.f90)
+      target_link_libraries(DAMASKSpectral.exe DAMASK_SPECTRAL_BASE
+                                               DAMASK_SPECTRAL_MECH)
+endif(SPECTRAL)
