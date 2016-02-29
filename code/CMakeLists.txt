@@ -76,7 +76,9 @@ add_library (DAMASK_SOURCE   "source_thermal_dissipation.f90"
 target_link_libraries(DAMASK_SOURCE DAMASK_DRIVERS)
 
 add_library(DAMASK_CONSTITUTIVE "constitutive.f90")
-target_link_libraries(DAMASK_CONSTITUTIVE DAMASK_PLASTIC DAMASK_KINEMATICS DAMASK_SOURCE)
+target_link_libraries(DAMASK_CONSTITUTIVE DAMASK_PLASTIC   )
+target_link_libraries(DAMASK_CONSTITUTIVE DAMASK_KINEMATICS)
+target_link_libraries(DAMASK_CONSTITUTIVE DAMASK_SOURCE    )
 
 add_library(DAMASK_CRYSTALLITE "crystallite.f90")
 target_link_libraries(DAMASK_CRYSTALLITE DAMASK_CONSTITUTIVE)
@@ -111,12 +113,18 @@ add_library(DAMASK_THERMAL "thermal_isothermal.f90"
 target_link_libraries(DAMASK_THERMAL DAMASK_CRYSTALLITE)
 
 add_library(DAMASK_ENGINE "homogenization.f90")
-target_link_libraries(DAMASK_ENGINE DAMASK_THERMAL
-                                    DAMASK_DAMAGE
-                                    DAMASK_VACANCYFLUX
-                                    DAMASK_POROSITY
-                                    DAMASK_HYDROGENFLUX
-                                    DAMASK_HOMOGENIZATION)
+add_dependencies(DAMASK_ENGINE DAMASK_THERMAL
+                               DAMASK_DAMAGE
+                               DAMASK_VACANCYFLUX
+                               DAMASK_POROSITY
+                               DAMASK_HYDROGENFLUX
+                               DAMASK_HOMOGENIZATION)
+target_link_libraries(DAMASK_ENGINE DAMASK_THERMAL       )
+target_link_libraries(DAMASK_ENGINE DAMASK_DAMAGE        )
+target_link_libraries(DAMASK_ENGINE DAMASK_VACANCYFLUX   )
+target_link_libraries(DAMASK_ENGINE DAMASK_POROSITY      )
+target_link_libraries(DAMASK_ENGINE DAMASK_HYDROGENFLUX  )
+target_link_libraries(DAMASK_ENGINE DAMASK_HOMOGENIZATION)
 
 add_library(DAMASK_CPFE "CPFEM.f90"
                         "CPFEM2.f90")
@@ -140,6 +148,7 @@ if (SPECTRAL)
       target_link_libraries(DAMASK_SPECTRAL_MECH DAMASK_SPECTRAL_UTILITY)
 
       add_executable(DAMASKSpectral.exe DAMASK_spectral.f90)
-      target_link_libraries(DAMASKSpectral.exe DAMASK_SPECTRAL_BASE
+      target_link_libraries(DAMASKSpectral.exe DAMASK_CPFE
+                                               DAMASK_SPECTRAL_BASE
                                                DAMASK_SPECTRAL_MECH)
 endif(SPECTRAL)
