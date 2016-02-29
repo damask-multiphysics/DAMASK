@@ -10,12 +10,10 @@ set (SOURCE "source_thermal_dissipation"
             "source_vacancy_thermalfluc"
     )
 
-# compile modules for source
-foreach (p ${SOURCE})
+# compile module and cumulatively link the
+# compiled libraries
+foreach (p ${KINEMATICS})
     add_library (${p} "${p}.f90")
-endforeach (p)
-
-# set libraries/modules for linking
-foreach (p ${SOURCE})
-    set (DAMASK_LIB ${DAMASK_LIB} ${p})
+    target_link_libraries(${p} DAMASK_DRIVERS)
+    add_library (DAMASK_DRIVERS ALIAS ${p})
 endforeach (p)

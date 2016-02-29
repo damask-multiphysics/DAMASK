@@ -79,7 +79,8 @@ endif (DAMASK_DRIVER STREQUAL "SPECTRAL")
 
 
 # set system include directories
-include_directories(${PETSC_DIR}/include
+include_directories(${CMAKE_SOURCE_DIR}
+                    ${PETSC_DIR}/include
                     lib
                     ${HDF5_DIR}/include
                     )
@@ -113,7 +114,7 @@ else (OPTIMIZATION STREQUAL "OFF")
     set (OPTIMIZATION_gfortran "-O2")
 endif (OPTIMIZATION STREQUAL "OFF")
 
-set (STANDARD_CHECK_ifort    "-stand f08 -standard-semantics")
+set (STANDARD_CHECK_ifort    "-stand none -standard-semantics")
 set (STANDARD_CHECK_gfortran "-std=f2008ts -pedantic-errors" )
 
 ###################################################################################################
@@ -144,7 +145,10 @@ set (STANDARD_CHECK_gfortran "-std=f2008ts -pedantic-errors" )
 #     all:
 #  -name as_is: case sensitive Fortran!
 ###################################################################################################
-set (COMPILE_OPTIONS_ifort   "${COMPILE_OPTIONS_ifort} -DDAMASKVERSION=${DAMASK_V}" )
+# -diag-disable 7410 should disable warning about directory statement in inquire function,
+#  but does not work. hence the other 2 statements
+###################################################################################################
+set (COMPILE_OPTIONS_ifort   "${COMPILE_OPTIONS_ifort} -DDAMASKVERSION=\\\"${DAMASK_V}\\\"" )
 set (COMPILE_OPTIONS_ifort   "${COMPILE_OPTIONS_ifort} -fpp"                        )
 set (COMPILE_OPTIONS_ifort   "${COMPILE_OPTIONS_ifort} -ftz"                        )
 set (COMPILE_OPTIONS_ifort   "${COMPILE_OPTIONS_ifort} -assume byterecl,fpe_summary")
@@ -156,7 +160,9 @@ set (COMPILE_OPTIONS_ifort   "${COMPILE_OPTIONS_ifort} -warn interfaces"        
 set (COMPILE_OPTIONS_ifort   "${COMPILE_OPTIONS_ifort} -warn ignore_loc"            )
 set (COMPILE_OPTIONS_ifort   "${COMPILE_OPTIONS_ifort} -warn alignments"            )
 set (COMPILE_OPTIONS_ifort   "${COMPILE_OPTIONS_ifort} -warn unused"                )
-
+set (COMPILE_OPTIONS_ifort   "${COMPILE_OPTIONS_ifort} -diag-remark 7410"           )
+set (COMPILE_OPTIONS_ifort   "${COMPILE_OPTIONS_ifort} -stand none"                 )
+set (COMPILE_OPTIONS_ifort   "${COMPILE_OPTIONS_ifort} -warn nostderrors"           )
 ###################################################################################################
 # COMPILE SWITCHES FOR RUNTIME DEBUGGING
 # -g:                       Generate symbolic debugging information in the object file
@@ -272,6 +278,14 @@ set (LINK_OPTIONS_ifort      "-shared-intel")
 # -Wunsafe-loop-optimizations:   warn if the loop cannot be optimized due to nontrivial assumptions.
 # -Wstrict-overflow:
 ###################################################################################################
+# fno-range-check:  Disable range checking on results of simplification of constant expressions during compilation
+#      -->   allows the definition of DAMASK_NaN
+#-fall-intrinsics:  all intrinsic procedures (including the GNU-specific extensions) are accepted. -Wintrinsics-std will be ignored
+#                   and no user-defined procedure with the same name as any intrinsic will be called except when it is explicitly declared external
+#      -->   allows the use of 'isnan'
+#-fno-fast-math:
+#      -->   otherwise, when setting -ffast-math, isnan always evaluates to false (I would call it a bug)
+###################################################################################################
 set (COMPILE_OPTIONS_gfortran "${COMPILE_OPTIONS_gfortran} -DDAMASKVERSION=${DAMASKVERSION}")
 set (COMPILE_OPTIONS_gfortran "${COMPILE_OPTIONS_gfortran} -xf95-cpp-input"                 )
 set (COMPILE_OPTIONS_gfortran "${COMPILE_OPTIONS_gfortran} -ffree-line-length-240"          )
@@ -286,7 +300,10 @@ set (COMPILE_OPTIONS_gfortran "${COMPILE_OPTIONS_gfortran} -Wsuggest-attribute=n
 set (COMPILE_OPTIONS_gfortran "${COMPILE_OPTIONS_gfortran} -Wconversion-extra"              )
 set (COMPILE_OPTIONS_gfortran "${COMPILE_OPTIONS_gfortran} -Wimplicit-procedure"            )
 set (COMPILE_OPTIONS_gfortran "${COMPILE_OPTIONS_gfortran} -Wno-unused-parameter"           )
-
+set (COMPILE_OPTIONS_gfortran "${COMPILE_OPTIONS_gfortran} -fno-range-check"                )
+set (COMPILE_OPTIONS_gfortran "${COMPILE_OPTIONS_gfortran} -fall-intrinsics"                )
+set (COMPILE_OPTIONS_gfortran "${COMPILE_OPTIONS_gfortran} -fno-fast-math"                  )
+set (COMPILE_OPTIONS_gfortran "${COMPILE_OPTIONS_gfortran} -fall-intrinsics"                )
 ###################################################################################################
 # COMPILE SWITCHES FOR RUNTIME DEBUGGING
 # -ffpe-trap=invalid,\         stop execution if floating point exception is detected (NaN is silent)
@@ -348,6 +365,7 @@ if (Fortran_COMPILER_NAME MATCHES "ifort.*")
 
     set (CMAKE_EXE_LINKER_FLAGS_DEBUG    "${CMAKE_EXE_LINKER_FLAGS_DEBUG} ${LINK_OPTIONS_ifort}" )
     set (CMAKE_EXE_LINKER_FLAGS_DEBUG    "${CMAKE_EXE_LINKER_FLAGS_DEBUG} ${DEBUG_OPTIONS_ifort}")
+    #
 elseif (Fortran_COMPILER_NAME MATCHES "gfortran.*")
     set (CMAKE_Fortran_COMPILER "${PETSC_DIR}/bin/mpif90")
     # for RELEASE
@@ -398,6 +416,7 @@ set (CMAKE_EXE_LINKER_FLAGS_DEBUG    "${CMAKE_EXE_LINKER_FLAGS_DEBUG}   -DPETSc"
 # NOTE: some file might need different flags for compiling, DAMASK_$FLAGS
 #       are essentially the swap for this purpose
 set (DAMASK_Fortran_FLAGS_RELEASE    "${CMAKE_Fortran_FLAGS_RELEASE}"   )
+set (DAMASK_Fortran_FLAGS_DEBUG      "${CMAKE_Fortran_FLAGS_DEBUG}"     )
 set (DAMASK_EXE_LINKER_FLAGS_RELEASE "${CMAKE_EXE_LINKER_FLAGS_RELEASE}")
 set (DAMASK_EXE_LINKER_FLAGS_DEBUG   "${CMAKE_EXE_LINKER_FLAGS_DEBUG}"  )
 

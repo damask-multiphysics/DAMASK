@@ -10,12 +10,20 @@ set (PLASTIC  "plastic_dislotwin"
               "plastic_phenoplus"
     )
 
-# compile module
-foreach (p ${PLASTIC})
-    add_library (${p} "${p}.f90")
-endforeach (p)
-
-# set libraries/modules for linking
-foreach (p ${PLASTIC})
-    set (DAMASK_LIB ${DAMASK_LIB} ${p})
-endforeach (p)
+# compile module and cumulatively link the
+# compiled libraries
+add_library (DAMASK_PLASTIC "plastic_dislotwin.f90"
+                            "plastic_disloUCLA.f90"
+                            "plastic_isotropic.f90"
+                            "plastic_j2.f90"
+                            "plastic_phenopowerlaw.f90"
+                            "plastic_titanmod.f90"
+                            "plastic_nonlocal.f90"
+                            "plastic_none.f90"
+                            "plastic_phenoplus.f90")
+target_link_libraries(DAMASK_PLASTIC DAMASK_DRIVERS)
+# foreach (p ${PLASTIC})
+#     add_library (${p} "${p}.f90")
+#     target_link_libraries(${p} DAMASK_DRIVERS)
+#     add_library (DAMASK_DRIVERS ALIAS ${p})
+# endforeach (p)

@@ -98,7 +98,7 @@ OPTIMIZATION_AGGRESSIVE_gfortran :=-O3 -ffast-math -funroll-loops -ftree-vectori
 
 
 LINK_OPTIONS_ifort       :=-shared-intel
-COMPILE_OPTIONS_ifort    :=-DDAMASKVERSION=\"${DAMASKVERSION}\"\
+COMPILE_OPTIONS_ifort    :=-DDAMASKVERSION='${DAMASKVERSION}'\
                            -fpp\
                            -ftz\
                            -assume byterecl,fpe_summary\
