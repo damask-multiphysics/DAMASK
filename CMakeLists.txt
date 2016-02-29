@@ -79,7 +79,7 @@ endif (DAMASK_DRIVER STREQUAL "SPECTRAL")
 
 
 # set system include directories
-include_directories(${CMAKE_SOURCE_DIR}
+include_directories(${CMAKE_SOURCE_DIR}/code
                     ${PETSC_DIR}/include
                     lib
                     ${HDF5_DIR}/include
