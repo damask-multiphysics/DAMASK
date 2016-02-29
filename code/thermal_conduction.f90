@@ -1,6 +1,4 @@
 !--------------------------------------------------------------------------------------------------
-! $Id$
-!--------------------------------------------------------------------------------------------------
 !> @author Pratheek Shanthraj, Max-Planck-Institut für Eisenforschung GmbH
 !> @brief material subroutine for temperature evolution from heat conduction
 !> @details to be done

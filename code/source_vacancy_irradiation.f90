@@ -1,6 +1,4 @@
 !--------------------------------------------------------------------------------------------------
-! $Id$
-!--------------------------------------------------------------------------------------------------
 !> @author Pratheek Shanthraj, Max-Planck-Institut für Eisenforschung GmbH
 !> @brief material subroutine for vacancy generation due to irradiation
 !> @details to be done

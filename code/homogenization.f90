@@ -1,6 +1,4 @@
 !--------------------------------------------------------------------------------------------------
-! $Id$
-!--------------------------------------------------------------------------------------------------
 !> @author Franz Roters, Max-Planck-Institut für Eisenforschung GmbH
 !> @author Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
 !> @author Denny Tjahjanto, Max-Planck-Institut für Eisenforschung GmbH

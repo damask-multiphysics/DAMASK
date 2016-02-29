@@ -1,6 +1,4 @@
 !--------------------------------------------------------------------------------------------------
-! $Id$
-!--------------------------------------------------------------------------------------------------
 !> @author Pratheek Shanthraj, Max-Planck-Institut für Eisenforschung GmbH
 !> @brief material subroutine for locally evolving vacancy concentration
 !> @details to be done

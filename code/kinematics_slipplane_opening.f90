@@ -1,6 +1,4 @@
 !--------------------------------------------------------------------------------------------------
-! $Id$
-!--------------------------------------------------------------------------------------------------
 !> @author Luv Sharma, Max-Planck-Institut für Eisenforschung GmbH
 !> @author Pratheek Shanthraj, Max-Planck-Institut für Eisenforschung GmbH
 !> @brief material subroutine incorporating kinematics resulting from opening of slip planes

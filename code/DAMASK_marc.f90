@@ -1,5 +1,3 @@
-#define QUOTE(x) #x                                                                                 
-#define PASTE(x,y) x ## y  
 
 #ifndef INT
 #define INT 4

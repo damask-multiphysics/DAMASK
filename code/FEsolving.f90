@@ -1,6 +1,4 @@
 !--------------------------------------------------------------------------------------------------
-! $Id$
-!--------------------------------------------------------------------------------------------------
 !> @author Franz Roters, Max-Planck-Institut für Eisenforschung GmbH
 !> Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
 !> @brief triggering reading in of restart information when doing a restart

@@ -1,9 +1,7 @@
 !--------------------------------------------------------------------------------------------------
-! $Id$
-!--------------------------------------------------------------------------------------------------
-!> @author Franz Roters,      Max-Planck-Institut für Eisenforschung GmbH
-!> @author Philip Eisenlohr,  Max-Planck-Institut für Eisenforschung GmbH
-!> @author Chen Zhang,        Michigan State University
+!> @author Franz Roters, Max-Planck-Institut für Eisenforschung GmbH
+!> @author Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
+!> @author Chen Zhang, Michigan State University
 !> @brief  material subroutine for phenomenological crystal plasticity formulation using a powerlaw
 !...       fitting
 !--------------------------------------------------------------------------------------------------

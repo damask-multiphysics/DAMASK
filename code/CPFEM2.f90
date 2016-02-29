@@ -1,6 +1,4 @@
 !--------------------------------------------------------------------------------------------------
-! $Id: CPFEM.f90 4761 2016-01-17 13:29:42Z MPIE\m.diehl $
-!--------------------------------------------------------------------------------------------------
 !> @author Franz Roters, Max-Planck-Institut für Eisenforschung GmbH
 !> @author Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
 !> @brief needs a good name and description
