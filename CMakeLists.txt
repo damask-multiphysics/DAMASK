@@ -144,18 +144,18 @@ set (STANDARD_CHECK_gfortran "-std=f2008ts -pedantic-errors" )
 #     all:
 #  -name as_is: case sensitive Fortran!
 ###################################################################################################
-set (COMPILE_OPTIONS_ifort   "${COMPILE_OPTIONS_ifort} -DDAMASKVERSION=\"${DAMASK_V}\""  )
-set (COMPILE_OPTIONS_ifort   "${COMPILE_OPTIONS_ifort} -fpp"                             )
-set (COMPILE_OPTIONS_ifort   "${COMPILE_OPTIONS_ifort} -ftz"                             )
-set (COMPILE_OPTIONS_ifort   "${COMPILE_OPTIONS_ifort} -assume byterecl,fpe_summary"     )
-set (COMPILE_OPTIONS_ifort   "${COMPILE_OPTIONS_ifort} -diag-disable 5268"               )
-set (COMPILE_OPTIONS_ifort   "${COMPILE_OPTIONS_ifort} -warn declarations"               )
-set (COMPILE_OPTIONS_ifort   "${COMPILE_OPTIONS_ifort} -warn general"                    )
-set (COMPILE_OPTIONS_ifort   "${COMPILE_OPTIONS_ifort} -warn usage"                      )
-set (COMPILE_OPTIONS_ifort   "${COMPILE_OPTIONS_ifort} -warn interfaces"                 )
-set (COMPILE_OPTIONS_ifort   "${COMPILE_OPTIONS_ifort} -warn ignore_loc"                 )
-set (COMPILE_OPTIONS_ifort   "${COMPILE_OPTIONS_ifort} -warn alignments"                 )
-set (COMPILE_OPTIONS_ifort   "${COMPILE_OPTIONS_ifort} -warn unused"                     )
+set (COMPILE_OPTIONS_ifort   "${COMPILE_OPTIONS_ifort} -DDAMASKVERSION=${DAMASK_V}" )
+set (COMPILE_OPTIONS_ifort   "${COMPILE_OPTIONS_ifort} -fpp"                        )
+set (COMPILE_OPTIONS_ifort   "${COMPILE_OPTIONS_ifort} -ftz"                        )
+set (COMPILE_OPTIONS_ifort   "${COMPILE_OPTIONS_ifort} -assume byterecl,fpe_summary")
+set (COMPILE_OPTIONS_ifort   "${COMPILE_OPTIONS_ifort} -diag-disable 5268"          )
+set (COMPILE_OPTIONS_ifort   "${COMPILE_OPTIONS_ifort} -warn declarations"          )
+set (COMPILE_OPTIONS_ifort   "${COMPILE_OPTIONS_ifort} -warn general"               )
+set (COMPILE_OPTIONS_ifort   "${COMPILE_OPTIONS_ifort} -warn usage"                 )
+set (COMPILE_OPTIONS_ifort   "${COMPILE_OPTIONS_ifort} -warn interfaces"            )
+set (COMPILE_OPTIONS_ifort   "${COMPILE_OPTIONS_ifort} -warn ignore_loc"            )
+set (COMPILE_OPTIONS_ifort   "${COMPILE_OPTIONS_ifort} -warn alignments"            )
+set (COMPILE_OPTIONS_ifort   "${COMPILE_OPTIONS_ifort} -warn unused"                )
 
 ###################################################################################################
 # COMPILE SWITCHES FOR RUNTIME DEBUGGING

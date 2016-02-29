@@ -1,13 +1,47 @@
-# The dependency detection for Fortran is not working in CMake
-# Have to define them explicitly
+# The dependency detection in CMake is not functioning for Fortran
+# !!! EXPLICIT DEPENDENCY DECLARATION !!!
+###################################################################################################
+# fno-range-check:  Disable range checking on results of simplification of constant expressions during compilation
+#      -->   allows the definition of DAMASK_NaN
+#-fall-intrinsics:  all intrinsic procedures (including the GNU-specific extensions) are accepted. -Wintrinsics-std will be ignored
+#                   and no user-defined procedure with the same name as any intrinsic will be called except when it is explicitly declared external
+#      -->   allows the use of 'isnan'
+#-fno-fast-math:
+#      -->   otherwise, when setting -ffast-math, isnan always evaluates to false (I would call it a bug)
+###################################################################################################
+if (Fortran_COMPILER_NAME MATCHES "ifort.*")
+      set (SPEICAL_FLAGS "")
+elseif (Fortran_COMPILER_NAME MATCHES "gfortran.*")
+      set (SPEICAL_FLAGS "-fno-range-check -fall-intrinsics -fno-fast-math")
+else (Fortran_COMPILER_NAME MATCHES "ifort.*")
+      message (FATAL_ERROR "Unknown Fortrna compiler.")
+endif (Fortran_COMPILER_NAME MATCHES "ifort.*")
+
+set (CMAKE_Fortran_FLAGS_RELEASE "${DAMASK_Fortran_FLAGS_RELEASE} ${SPEICAL_FLAGS}")
+
 add_library(DAMASK_prec "prec.f90")
 
-###################################################################################################
+set (CMAKE_Fortran_FLAGS_RELEASE "${DAMASK_Fortran_FLAGS_RELEASE}")
 
 ###################################################################################################
+# -diag-disable 7410 should disable warning about directory statement in inquire function,
+#  but does not work. hence the other 2 statements
+###################################################################################################
 if (SPECTRAL)
+      if (Fortran_COMPILER_NAME MATCHES "ifort.*")
+            set (SPEICAL_FLAGS "-diag-remark 7410 -stand none -warn nostderrors")
+      elseif (Fortran_COMPILER_NAME MATCHES "gfortran.*")
+            set (SPEICAL_FLAGS "-fall-intrinsics")
+      else (Fortran_COMPILER_NAME MATCHES "ifort.*")
+            message (FATAL_ERROR "Unknown Fortrna compiler.")
+      endif (Fortran_COMPILER_NAME MATCHES "ifort.*")
+
+      set (CMAKE_Fortran_FLAGS_RELEASE "${DAMASK_Fortran_FLAGS_RELEASE} ${SPEICAL_FLAGS}")
+
       add_library(DAMASK_interface "spectral_interface.f90")
       target_link_libraries(DAMASK_interface DAMASK_prec)
+
+      set (CMAKE_Fortran_FLAGS_RELEASE "${DAMASK_Fortran_FLAGS_RELEASE}")
 endif(SPECTRAL)
 
 add_library(DAMASK_IO "IO.f90")
