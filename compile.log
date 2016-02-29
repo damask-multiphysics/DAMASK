@@ -1,0 +1,3 @@
+make DAMASK_spectral.exe -C code
+make[1]: Entering directory `/mnt/research/CMM/DAMASK/zhangc43_git/code'
+make[1]: Leaving directory `/mnt/research/CMM/DAMASK/zhangc43_git/code'
