@@ -161,7 +161,8 @@ for name in filenames:
                 ])                                                                                  # find x-y bounding box for given z layer
   
   nodes -= boundingBox[0].repeat(np.prod(options.dimension+1)).reshape([3]+list(options.dimension+1))
-  nodes *= (options.pixelsize*options.dimension/options.size).repeat(np.prod(options.dimension+1)).reshape([3]+list(options.dimension+1))
+  nodes *= (options.pixelsize*options.dimension/options.size).repeat(np.prod(options.dimension+1)).\
+                                                                reshape([3]+list(options.dimension+1))
   imagesize = (options.pixelsize*(boundingBox[1]-boundingBox[0])*                                   # determine image size from number of 
                                            options.dimension/options.size)[:2].astype('i')          # cells in overall bounding box
   im = Image.new('RGBA',imagesize)
