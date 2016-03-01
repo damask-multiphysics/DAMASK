@@ -10,7 +10,7 @@ scriptName = os.path.splitext(os.path.basename(__file__))[0]
 scriptID   = ' '.join([scriptName,damask.version])
 
 def operator(stretch,strain,eigenvalues):
-  ''' Albrecht Bertram: Elasticity and Plasticity of Large Deformations An Introduction (3rd Edition, 2012), p. 102 '''
+  """Albrecht Bertram: Elasticity and Plasticity of Large Deformations An Introduction (3rd Edition, 2012), p. 102"""
   return {
     'V#ln':    np.log(eigenvalues)                                 ,
     'U#ln':    np.log(eigenvalues)                                 ,
@@ -75,7 +75,7 @@ if options.logarithmic: strains.append('ln')
 if options.biot:        strains.append('Biot')
 if options.green:       strains.append('Green')
 
-if options.defgrad == None:
+if options.defgrad is None:
   parser.error('no data column specified.')
 
 # --- loop over input files -------------------------------------------------------------------------

@@ -62,12 +62,12 @@ parser.set_defaults(pole = (0.0,0.0,1.0),
 
 (options, filenames) = parser.parse_args()
 
-input = [options.eulers     != None,
-         options.a          != None and \
-         options.b          != None and \
-         options.c          != None,
-         options.matrix     != None,
-         options.quaternion != None,
+input = [options.eulers     is not None,
+         options.a          is not None and \
+         options.b          is not None and \
+         options.c          is not None,
+         options.matrix     is not None,
+         options.quaternion is not None,
         ]
 
 if np.sum(input) != 1: parser.error('needs exactly one input format.')

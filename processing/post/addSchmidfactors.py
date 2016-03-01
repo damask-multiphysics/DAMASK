@@ -203,7 +203,7 @@ slipdirection = { \
    }
 
 def applyEulers(phi1,Phi,phi2,x):
-  """ transform x given in crystal coordinates to xbar returned in lab coordinates for Euler angles phi1,Phi,phi2 """
+  """transform x given in crystal coordinates to xbar returned in lab coordinates for Euler angles phi1,Phi,phi2"""
   
   eulerRot = [[ math.cos(phi1)*math.cos(phi2) - math.cos(Phi)*math.sin(phi1)*math.sin(phi2),
                -math.cos(phi1)*math.sin(phi2) - math.cos(Phi)*math.cos(phi2)*math.sin(phi1),
@@ -285,8 +285,8 @@ datainfo = {                                                                    
 datainfo['vector']['label'] += [options.eulers]
 
 toRadians = math.pi/180.0 if options.degrees else 1.0                                               # rescale degrees to radians
-
-if options.lattice=='hex':                                                                          # Convert 4 Miller indices notation of hex to orthogonal 3 Miller indices notation
+# Convert 4 Miller indices notation of hex to orthogonal 3 Miller indices notation
+if options.lattice=='hex':                                                                          
   for i in range(Nslipsystems[options.lattice]):
     slipnormal[options.lattice][i][0]=slipnormal_temp[i][0]
     slipnormal[options.lattice][i][1]=(slipnormal_temp[i][0]+2.0*slipnormal_temp[i][1])/math.sqrt(3.0)

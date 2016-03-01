@@ -62,12 +62,12 @@ parser.set_defaults(pole = (1.0,0.0,0.0),
 
 (options, filenames) = parser.parse_args()
 
-input = [options.eulers     != None,
-         options.a          != None and \
-         options.b          != None and \
-         options.c          != None,
-         options.matrix     != None,
-         options.quaternion != None,
+input = [options.eulers     is not None,
+         options.a          is not None and \
+         options.b          is not None and \
+         options.c          is not None,
+         options.matrix     is not None,
+         options.quaternion is not None,
         ]
 
 if np.sum(input) != 1: parser.error('needs exactly one input format.')
@@ -133,7 +133,7 @@ for name in filenames:
     rotatedPole = o.quaternion*pole                                                                 # rotate pole according to crystal orientation
     (x,y) = rotatedPole[0:2]/(1.+abs(pole[2]))                                                      # stereographic projection
 
-    table.data_append([np.sqrt(x*x+y*y),np.arctan2(y,x)] if options.polar else [x,y])                                                                      # cartesian coordinates
+    table.data_append([np.sqrt(x*x+y*y),np.arctan2(y,x)] if options.polar else [x,y])               # cartesian coordinates
 
     outputAlive = table.data_write()                                                                # output processed line
 

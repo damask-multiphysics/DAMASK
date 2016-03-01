@@ -39,14 +39,14 @@ parser.set_defaults(offset = 0,
 
 (options,filenames) = parser.parse_args()
 
-if options.label == None:
+if options.label is None:
   parser.error('no data columns specified.')
-if options.map == None:
+if options.map is None:
   parser.error('no mapping column given.')
 
 # ------------------------------------------ process mapping ASCIItable ---------------------------
 
-if options.asciitable != None and os.path.isfile(options.asciitable):
+if options.asciitable is not None and os.path.isfile(options.asciitable):
 
   mappedTable = damask.ASCIItable(name = options.asciitable,
                                   buffered = False, readonly = True) 

@@ -43,7 +43,7 @@ parser.set_defaults(norm = 'frobenius',
 
 (options,filenames) = parser.parse_args()
 
-if options.label == None:
+if options.label is None:
   parser.error('no data column specified.')
 
 # --- loop over input files -------------------------------------------------------------------------

@@ -25,7 +25,7 @@ parser.add_option('-t','--tensor',
 
 (options,filenames) = parser.parse_args()
 
-if options.tensor == None:
+if options.tensor is None:
   parser.error('no data column specified.')
 
 # --- loop over input files -------------------------------------------------------------------------

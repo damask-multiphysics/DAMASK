@@ -26,14 +26,14 @@ parser.set_defaults(frame = None)
 
 (options,filenames) = parser.parse_args()
 
-if options.frame == None:
+if options.frame is None:
   parser.error('no data column specified...')
 
 datainfo = {'len':4,
             'label':[]
            }
 
-if options.frame  != None:    datainfo['label']  += options.frame
+if options.frame  is not None:    datainfo['label']  += options.frame
 
 # --- loop over input files -------------------------------------------------------------------------
 
