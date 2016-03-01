@@ -39,7 +39,7 @@ parser.add_option('-f','--formula',
 
 (options,filenames) = parser.parse_args()
 
-if options.labels == None or options.formulas == None:
+if options.labels is None or options.formulas is None:
   parser.error('no formulas and/or labels specified.')
 if len(options.labels) != len(options.formulas):
   parser.error('number of labels ({}) and formulas ({}) do not match.'.format(len(options.labels),len(options.formulas)))

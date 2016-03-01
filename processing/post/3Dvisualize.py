@@ -56,8 +56,7 @@ def unravel(item):
 
 # ++++++++++++++++++++++++++++++++++++++++++++++++++++
 def vtk_writeASCII_mesh(mesh,data,res,sep):
-# ++++++++++++++++++++++++++++++++++++++++++++++++++++
-  """ function writes data array defined on a hexahedral mesh (geometry) """
+  """function writes data array defined on a hexahedral mesh (geometry)"""
   info =  {\
              'tensor': {'name':'tensor','len':9},\
              'vector': {'name':'vector','len':3},\
@@ -110,11 +109,10 @@ def vtk_writeASCII_mesh(mesh,data,res,sep):
               ]
 
   return cmds
- 
-# +++++++++++++++++++++++++++++++++++++++++++++++++++
+
+#+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 def vtk_writeASCII_points(coordinates,data,res,sep):
-# +++++++++++++++++++++++++++++++++++++++++++++++++++
-  """ function writes data array defined on a point field """
+  """function writes data array defined on a point field"""
   N  = res[0]*res[1]*res[2]
   
   cmds = [\
@@ -216,7 +214,7 @@ for filename in args:
   content = file.readlines()
   file.close()
   m = re.search('(\d+)\s*head', content[0].lower())
-  if m == None:
+  if m is None:
     continue
   print filename,'\n'
   sys.stdout.flush()

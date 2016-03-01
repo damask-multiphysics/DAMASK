@@ -10,7 +10,7 @@ scriptID   = ' '.join([scriptName,damask.version])
 
 oneThird = 1.0/3.0
 
-def deviator(m,spherical = False):                                                                                    # Carefull, do not change the value of m (its intent(inout)!)
+def deviator(m,spherical = False):                                                                  # Careful, do not change the value of m, its intent(inout)!
   sph = oneThird*(m[0]+m[4]+m[8])
   dev = [
            m[0]-sph,  m[1],     m[2],
@@ -39,7 +39,7 @@ parser.add_option('-s','--spherical',
 
 (options,filenames) = parser.parse_args()
 
-if options.tensor == None:
+if options.tensor is None:
   parser.error('no data column specified...')
 
 # --- loop over input files -------------------------------------------------------------------------

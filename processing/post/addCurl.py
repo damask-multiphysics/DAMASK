@@ -92,7 +92,7 @@ parser.set_defaults(coords = 'ipinitialcoord',
 
 (options,filenames) = parser.parse_args()
 
-if options.vector == None and options.tensor == None:
+if options.vector is None and options.tensor is None:
   parser.error('no data column specified.')
 
 # --- loop over input files -------------------------------------------------------------------------
@@ -161,9 +161,9 @@ for name in filenames:
   stack = [table.data]
   for type, data in items.iteritems():
     for i,label in enumerate(data['active']):
-      stack.append(curlFFT(size[::-1],                                                              # we need to reverse order here, because x is fastest,ie rightmost, but leftmost in our x,y,z notation
-                           table.data[:,data['column'][i]:data['column'][i]+data['dim']].\
-                           reshape([grid[2],grid[1],grid[0]]+data['shape'])))
+      stack.append(curlFFT(size[::-1],                                                              # we need to reverse order here, because x 
+                           table.data[:,data['column'][i]:data['column'][i]+data['dim']].           # is fastest,ie rightmost, but leftmost in 
+                           reshape([grid[2],grid[1],grid[0]]+data['shape'])))                       # our x,y,z notation
 
 # ------------------------------------------ output result -----------------------------------------
 

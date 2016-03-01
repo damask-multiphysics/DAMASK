@@ -19,13 +19,13 @@ Transform X,Y,Z,F APS BeamLine 34 coordinates to x,y,z APS strain coordinates.
 
 """, version = scriptID)
 
-parser.add_option('-f','--frame',       dest='frame', nargs=4, type='string', metavar='<string string string string>',
+parser.add_option('-f','--frame',       dest='frame', nargs=4, type='string', metavar='string string string string',
                                         help='APS X,Y,Z coords, and depth F')
 parser.set_defaults(frame = None)
 
 (options,filenames) = parser.parse_args()
 
-if options.frame == None:
+if options.frame is None:
   parser.error('no data column specified...')
 
 
@@ -33,7 +33,7 @@ datainfo = {'len':3,
             'label':[]
            }
 
-if options.frame  != None:    datainfo['label']  += options.frame
+datainfo['label']  += options.frame
 
 # --- loop over input files -------------------------------------------------------------------------
 if filenames == []:
@@ -75,8 +75,8 @@ for name in filenames:
 # ------------------------------------------ process data ------------------------------------------
   theta=-0.75*np.pi
   RotMat2TSL=np.array([[1., 0., 0.],
-                       [0.,  np.cos(theta), np.sin(theta)],
-                       [0., -np.sin(theta), np.cos(theta)]])                                        # Orientation Matrix to account for -135 degree rotation for TSL Convention[Adapted from Chen Zhang's code]
+                       [0.,  np.cos(theta), np.sin(theta)],                                         # Orientation to account for -135 deg
+                       [0., -np.sin(theta), np.cos(theta)]])                                        # rotation for TSL convention
   vec         = np.zeros(4)
   
   outputAlive = True

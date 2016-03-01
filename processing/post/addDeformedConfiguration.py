@@ -11,7 +11,7 @@ scriptID   = ' '.join([scriptName,damask.version])
 
 #--------------------------------------------------------------------------------------------------
 def deformedCoordsFFT(F,undeformed=False):
-#--------------------------------------------------------------------------------------------------
+
  wgt = 1.0/grid.prod()
  integrator = np.array([0.+1.j,0.+1.j,0.+1.j],'c16') * size/ 2.0 / math.pi
  step = size/grid
@@ -127,7 +127,7 @@ for name in filenames:
   maxcorner = np.array(map(max,coords))
   grid   = np.array(map(len,coords),'i')
   size   = grid/np.maximum(np.ones(3,'d'), grid-1.0) * (maxcorner-mincorner)                        # size from edge to edge = dim * n/(n-1) 
-  size   = np.where(grid > 1, size, min(size[grid > 1]/grid[grid > 1]))                             # spacing for grid==1 equal to smallest among other spacings
+  size   = np.where(grid > 1, size, min(size[grid > 1]/grid[grid > 1]))                             # spacing for grid==1 set to smallest among other spacings
 
   N = grid.prod()
 

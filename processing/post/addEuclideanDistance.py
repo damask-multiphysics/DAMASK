@@ -105,7 +105,7 @@ parser.set_defaults(scale = 1.0)
 
 (options,filenames) = parser.parse_args()
 
-if options.type == None:
+if options.type is None:
   parser.error('no feature type selected.')
 if not set(options.type).issubset(set(list(itertools.chain(*map(lambda x: x['names'],features))))):
   parser.error('type must be chosen from (%s).'%(', '.join(map(lambda x:'|'.join(x['names']),features))) )
@@ -175,7 +175,7 @@ for name in filenames:
                       max(map(float,coords[2].keys()))-min(map(float,coords[2].keys())),\
                       ],'d')                                                                        # size from bounding box, corrected for cell-centeredness
 
-  size = np.where(grid > 1, size, min(size[grid > 1]/grid[grid > 1]))                               # spacing for grid==1 equal to smallest among other spacings
+  size = np.where(grid > 1, size, min(size[grid > 1]/grid[grid > 1]))                               # spacing for grid==1 set to smallest among other spacings
 
 # ------------------------------------------ process value field -----------------------------------
 

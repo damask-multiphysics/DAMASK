@@ -81,7 +81,6 @@ for name in filenames:
   table.info_append(scriptID + '\t' + ' '.join(sys.argv[1:]))
   if options.shape:  table.labels_append('shapeMismatch({})'.format(options.defgrad))
   if options.volume: table.labels_append('volMismatch({})'.format(options.defgrad))
-  #table.head_write()
 
 # --------------- figure out size and grid ---------------------------------------------------------
 
@@ -92,7 +91,7 @@ for name in filenames:
   maxcorner = np.array(map(max,coords))
   grid   = np.array(map(len,coords),'i')
   size   = grid/np.maximum(np.ones(3,'d'), grid-1.0) * (maxcorner-mincorner)                        # size from edge to edge = dim * n/(n-1) 
-  size   = np.where(grid > 1, size, min(size[grid > 1]/grid[grid > 1]))                             # spacing for grid==1 equal to smallest among other spacings
+  size   = np.where(grid > 1, size, min(size[grid > 1]/grid[grid > 1]))                             # spacing for grid==1 set to smallest among other spacings
 
   N = grid.prod()
   
