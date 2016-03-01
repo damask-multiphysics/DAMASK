@@ -5,10 +5,11 @@
 import damask.solver
 
 class Solver():
-  '''
-     General class for solver specific functionality.
-     Sub-classed by the individual solvers.
-  '''
+  """
+  General class for solver specific functionality.
+
+  Sub-classed by the individual solvers.
+  """
   
   def __init__(self,solver=''):
     solverClass = {

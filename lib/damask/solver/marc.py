@@ -7,9 +7,7 @@ from .solver import Solver
 
 class Marc(Solver):
 
-#--------------------------
   def __init__(self):
-#--------------------------
     self.solver = 'Marc'
     self.releases = { \
               '2015':  ['linux64',''],
@@ -24,7 +22,6 @@ class Marc(Solver):
 
 #--------------------------
   def version(self,rootRelation = ''):
-#--------------------------
     import os,damask.environment
 
     MSCpath = damask.environment.Environment(rootRelation).options['MSC_ROOT']
@@ -40,7 +37,6 @@ class Marc(Solver):
     
 #--------------------------
   def libraryPath(self,rootRelation = '',releases = []):
-#--------------------------
     import os,damask.environment
 
     MSCpath = damask.environment.Environment(rootRelation).options['MSC_ROOT']
@@ -59,7 +55,6 @@ class Marc(Solver):
 
 #--------------------------
   def toolsPath(self,rootRelation = '',release = ''):
-#--------------------------
     import os,damask.environment
 
     MSCpath = damask.environment.Environment(rootRelation).options['MSC_ROOT']
@@ -72,7 +67,6 @@ class Marc(Solver):
 
 #--------------------------
   def submit_job(self,
-#--------------------------
                  rootRelation = '',
                  release      = '',
                  model        = 'model',
@@ -84,7 +78,7 @@ class Marc(Solver):
                 ):
 
     import os,damask.environment
-    import subprocess,shlex,shutil
+    import subprocess,shlex
     
     if len(release) == 0: release = self.version(rootRelation)
 
@@ -94,7 +88,7 @@ class Marc(Solver):
 
     damaskEnv = damask.environment.Environment(rootRelation)
     
-    user = os.path.join(damaskEnv.relPath('code/'),'DAMASK_marc')                                   # might be updated if special version is found (usually symlink)
+    user = os.path.join(damaskEnv.relPath('code/'),'DAMASK_marc')                                   # might be updated if special version (symlink) is found
     if compile:
       if os.path.isfile(os.path.join(damaskEnv.relPath('code/'),'DAMASK_marc%s.f90'%release)):
         user = os.path.join(damaskEnv.relPath('code/'),'DAMASK_marc%s'%release)
@@ -123,7 +117,6 @@ class Marc(Solver):
       
 #--------------------------
   def exit_number_from_outFile(self,outFile=None):
-#--------------------------
     import string
     exitnumber = -1
     fid_out = open(outFile,'r')

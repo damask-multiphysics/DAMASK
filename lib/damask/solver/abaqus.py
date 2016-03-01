@@ -7,7 +7,8 @@ from .solver import Solver
 
 class Abaqus(Solver):
 
-  def __init__(self,version='',solver=''):                                                          # example of version string: 6.12-2, solver: either std or exp
+
+  def __init__(self,version='',solver=''):                                                          # example version string: 6.12-2, solver: std or exp
     self.solver='Abaqus'
     if version =='':
       import subprocess

@@ -1,8 +1,7 @@
 # -*- coding: UTF-8 no BOM -*-
+"""Tools to control the various BVP solvers"""
 
-# $Id$
-
-from .solver   import Solver     # only one class
-from .spectral import Spectral   # only one class
-from .marc     import Marc       # only one class
-from .abaqus   import Abaqus     # only one class
+from .solver   import Solver     # noqa
+from .spectral import Spectral   # noqa
+from .marc     import Marc       # noqa
+from .abaqus   import Abaqus     # noqa
