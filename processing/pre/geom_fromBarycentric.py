@@ -10,10 +10,11 @@
 # maintain meaningful microstructure(reduce artifacts).
 
 
-import sys, os, string
+import os
 import numpy as np
 import argparse
 from scipy.spatial import Delaunay
+import damask
 
 scriptName = os.path.splitext(os.path.basename(__file__))[0]
 scriptID   = ' '.join([scriptName,damask.version])
@@ -23,16 +24,14 @@ OFFSET = 0.1  #resize the seeded volume to give space for rim/pan
 PHANTOM_ID = -1  #grain ID for phantom seeds
 
 def d_print(info, data, separator=False):
-    '''quickly print debug information'''
-    if(separator): print "*"*80
-    print info
-    print data
+  """quickly print debug information"""
+  if(separator): print "*"*80
+  print info
+  print data
 
 
 def meshgrid2(*arrs):
-  '''
-  code inspired by http://stackoverflow.com/questions/1827489/numpy-meshgrid-in-3d
-  '''
+  """code inspired by http://stackoverflow.com/questions/1827489/numpy-meshgrid-in-3d"""
   arrs = tuple(reversed(arrs))
   arrs = tuple(arrs)
   lens = np.array(map(len, arrs))
@@ -121,9 +120,9 @@ args = parser.parse_args()  # get all the arguments right after
 #quick help to user
 print "*"*80
 parser.print_help()
-print '''Sample usage:
+print """Sample usage:
 ./geoFromBarycentic.py 20grains.seeds -g 128 128 128 -S -r; geom_check seeds.geom; seeds_check new_seed.seeds.
-'''
+"""
 print "*"*80
 if (args.debug):
     d_print("args are:", parser.parse_args(),separator=True)

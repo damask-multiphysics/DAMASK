@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 no BOM -*-
 
-import os,sys,string
+import os,sys
 import numpy as np
 from optparse import OptionParser
 import damask
@@ -88,8 +88,10 @@ for name in filenames:
   yy = np.tile(np.repeat(y,info['grid'][0]                ),info['grid'][2])
   zz =         np.repeat(z,info['grid'][0]*info['grid'][1])
 
-  mask = np.logical_and(np.in1d(microstructure,options.whitelist,invert=False) if options.whitelist != [] else np.full_like(microstructure,True,dtype=bool), 
-                        np.in1d(microstructure,options.blacklist,invert=True ) if options.blacklist != [] else np.full_like(microstructure,True,dtype=bool))
+  mask = np.logical_and(np.in1d(microstructure,options.whitelist,invert=False) if options.whitelist != []
+                                                                               else np.full_like(microstructure,True,dtype=bool), 
+                        np.in1d(microstructure,options.blacklist,invert=True ) if options.blacklist != []
+                                                                               else np.full_like(microstructure,True,dtype=bool))
 
 # ------------------------------------------ assemble header ---------------------------------------
 

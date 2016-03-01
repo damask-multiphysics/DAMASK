@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 no BOM -*-
 
-import os,sys,string,math
+import os,sys,math
 import numpy as np
 import damask
 from optparse import OptionParser
@@ -95,8 +95,10 @@ for name in filenames:
 # --- report ---------------------------------------------------------------------------------------
 
   remarks = []
-  if (any(newInfo['origin']          != info['origin'])):         remarks.append('--> origin   x y z:  %s'%(' : '.join(map(str,newInfo['origin']))))
-  if (    newInfo['microstructures'] != info['microstructures']): remarks.append('--> microstructures: %i'%newInfo['microstructures'])
+  if (any(newInfo['origin']          != info['origin'])):
+    remarks.append('--> origin   x y z:  %s'%(' : '.join(map(str,newInfo['origin']))))
+  if (    newInfo['microstructures'] != info['microstructures']):
+    remarks.append('--> microstructures: %i'%newInfo['microstructures'])
   if remarks != []: damask.util.croak(remarks)
 
 # --- write header ---------------------------------------------------------------------------------

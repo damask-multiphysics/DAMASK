@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # -*- coding: UTF-8 no BOM -*-
 
-import os,string,sys,re
+import os,sys
 from optparse import OptionParser
 import numpy as np
 import damask
@@ -73,7 +73,7 @@ for file in files:
   for iPhi1 in range(nPhi1):
     for iPHI in range(nPHI):
       for iPhi2 in range(nPhi2):
-        ODF[iPhi1,iPHI,iPhi2] = float(line.split()[3])*0.125                                      # extract intensity (in column 4) and weight by 1/8 (since we convert from the 8 corners to the center later on)
+        ODF[iPhi1,iPHI,iPhi2] = float(line.split()[3])*0.125                                      # extract intensity (in column 4) and weight by 1/8
         line = file['input'].readline()
 
   for iPhi1 in range(nPhi1-1):
