@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 no BOM -*-
 
-import os,sys,math,string
+import os,sys,math
 import numpy as np
 from optparse import OptionParser
 import damask
@@ -114,7 +114,7 @@ for name in filenames:
 
   microstructure = microstructure.reshape(info['grid'],order='F')
 
-  if options.dimension != None:
+  if options.dimension is not None:
     mask = (np.array(options.dimension) < 0).astype(float)                                       # zero where positive dimension, otherwise one
     dim = abs(np.array(options.dimension))                                                       # dimensions of primitive body
     pos = np.zeros(3,dtype='float')
@@ -134,10 +134,9 @@ for name in filenames:
 
 
 # --- report ---------------------------------------------------------------------------------------
+  if (    newInfo['microstructures'] != info['microstructures']):
+    damask.util.croak('--> microstructures: %i'%newInfo['microstructures'])
 
-  remarks = []
-  if (    newInfo['microstructures'] != info['microstructures']): remarks.append('--> microstructures: %i'%newInfo['microstructures'])
-  if remarks != []: damask.util.croak(remarks)
 
 #--- write header ---------------------------------------------------------------------------------
 

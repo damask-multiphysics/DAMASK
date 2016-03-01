@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 no BOM -*-
 
-import os,sys,string,vtk
+import os,sys,vtk
 import numpy as np
 from optparse import OptionParser
 import damask
@@ -91,8 +91,7 @@ for name in filenames:
     (directory,filename) = os.path.split(name)
     writer.SetDataModeToBinary()
     writer.SetCompressorTypeToZLib()
-    writer.SetFileName(os.path.join(directory,os.path.splitext(filename)[0]
-                                              +'.'+writer.GetDefaultFileExtension()))
+    writer.SetFileName(os.path.join(directory,os.path.splitext(filename)[0]+'.'+writer.GetDefaultFileExtension()))
   else:
     writer = vtk.vtkDataSetWriter()
     writer.WriteToOutputStringOn()
@@ -101,6 +100,6 @@ for name in filenames:
   if vtk.VTK_MAJOR_VERSION <= 5: writer.SetInput(grid)
   else:                          writer.SetInputData(grid)
   writer.Write()
-  if name == None:  sys.stdout.write(writer.GetOutputString()[0:writer.GetOutputStringLength()])
+  if name is None:  sys.stdout.write(writer.GetOutputString()[0:writer.GetOutputStringLength()])
 
   table.close()

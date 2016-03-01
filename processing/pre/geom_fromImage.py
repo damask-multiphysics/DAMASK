@@ -1,10 +1,10 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 no BOM -*-
 
-import os,sys,math,string
+import os,sys,math
 import numpy as np
 from optparse import OptionParser
-from PIL import Image,ImageOps
+from PIL import Image
 import damask
 
 scriptName = os.path.splitext(os.path.basename(__file__))[0]
@@ -51,7 +51,7 @@ for name in filenames:
     try:
       img.seek(slice)                                                                               # advance to slice
       layer = np.expand_dims(1+np.array(img,dtype = 'uint16'),axis = 0)                             # read image layer
-      microstructure = layer if slice == 0 else np.vstack((microstructure,layer))                   # add to microstructure data
+      microstructure = layer if slice == 0 else np.vstack((microstructure,layer))                   # noqa
       slice += 1                                                                                    # advance to next slice
     except EOFError:
       break

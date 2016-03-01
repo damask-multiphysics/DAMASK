@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 no BOM -*-
 
-import os,sys,math,string
+import os,sys,math
 import numpy as np
 from optparse import OptionParser
 import damask
@@ -81,7 +81,8 @@ for name in filenames:
              'microstructures': 0,
             }
 
-  newInfo['grid'] = np.array([int(o*float(n.translate(None,'xX'))) if n[-1].lower() == 'x' else int(n) for o,n in zip(info['grid'],options.grid)],'i')
+  newInfo['grid'] = np.array([int(o*float(n.translate(None,'xX'))) if n[-1].lower() == 'x'\
+                                                                   else int(n) for o,n in zip(info['grid'],options.grid)],'i')
   newInfo['grid'] = np.where(newInfo['grid'] > 0, newInfo['grid'],info['grid'])
 
   microstructure_cropped = np.zeros(newInfo['grid'],'i')
@@ -143,7 +144,7 @@ for name in filenames:
     "origin\tx {origin[0]}\ty {origin[1]}\tz {origin[2]}".format(origin=newInfo['origin']),
     "homogenization\t{homog}".format(homog=info['homogenization']),
     "microstructures\t{microstructures}".format(microstructures=newInfo['microstructures']),
-     extra_header
+    extra_header
     ])
   table.labels_clear()
   table.head_write()
