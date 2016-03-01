@@ -2,7 +2,7 @@
 # -*- coding: UTF-8 no BOM -*-
 
 import os,re,sys
-import math # noqa
+import math                                                                                         # noqa
 import numpy as np
 from optparse import OptionParser
 import damask
