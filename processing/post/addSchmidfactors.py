@@ -204,7 +204,6 @@ slipdirection = { \
 
 def applyEulers(phi1,Phi,phi2,x):
   """transform x given in crystal coordinates to xbar returned in lab coordinates for Euler angles phi1,Phi,phi2"""
-  
   eulerRot = [[ math.cos(phi1)*math.cos(phi2) - math.cos(Phi)*math.sin(phi1)*math.sin(phi2),
                -math.cos(phi1)*math.sin(phi2) - math.cos(Phi)*math.cos(phi2)*math.sin(phi1),
                 math.sin(Phi)*math.sin(phi1)
@@ -239,22 +238,30 @@ Add columns listing Schmid factors (and optional trace vector of selected system
 
 """, version = scriptID)
 
-parser.add_option('-l','--lattice',   dest='lattice', type='choice', choices=('fcc','bcc','hex'), metavar='string',
+parser.add_option('-l','--lattice',
+                  dest='lattice', type='choice', choices=('fcc','bcc','hex'), metavar='string',
                   help="type of lattice structure [%default] {fcc,bcc',hex}")
-parser.add_option('--direction',      dest='forcedirection', type='int', nargs=3, metavar='int int int',
-                                      help='force direction in lab coordinates %default')
-parser.add_option('-n','--normal',    dest='stressnormal', type='int', nargs=3, metavar='int int int',
-                                      help='stress plane normal in lab coordinates ')
-parser.add_option('--trace',          dest='traceplane', type='int', nargs=3, metavar='int int int',
-                                      help='normal (in lab coordinates) of plane on which the plane trace of the Schmid factor(s) is reported')
-parser.add_option('--covera',         dest='CoverA', type='float', metavar='float',
-                                      help='C over A ratio for hexagonal systems')
-parser.add_option('-r','--rank',      dest='rank', type='int', nargs=3, metavar='int int int',
-                                      help="report trace of r'th highest Schmid factor [%default]")
-parser.add_option('-e', '--eulers',   dest='eulers', metavar='string',
-                                      help='Euler angles label')
-parser.add_option('-d', '--degrees',  dest='degrees', action='store_true',
-                                      help='Euler angles are given in degrees [%default]')
+parser.add_option('--direction',
+                  dest='forcedirection', type='int', nargs=3, metavar='int int int',
+                  help='force direction in lab coordinates %default')
+parser.add_option('-n','--normal',
+                  dest='stressnormal', type='int', nargs=3, metavar='int int int',
+                  help='stress plane normal in lab coordinates ')
+parser.add_option('--trace',
+                  dest='traceplane', type='int', nargs=3, metavar='int int int',
+                  help='normal (in lab coordinates) of plane on which the plane trace of the Schmid factor(s) is reported')
+parser.add_option('--covera',
+                  dest='CoverA', type='float', metavar='float',
+                  help='C over A ratio for hexagonal systems')
+parser.add_option('-r','--rank',
+                  dest='rank', type='int', nargs=3, metavar='int int int',
+                  help="report trace of r'th highest Schmid factor [%default]")
+parser.add_option('-e', '--eulers',
+                  dest='eulers', metavar='string',
+                  help='Euler angles label')
+parser.add_option('-d', '--degrees',
+                  dest='degrees', action='store_true',
+                  help='Euler angles are given in degrees [%default]')
 parser.set_defaults(lattice = 'fcc')
 parser.set_defaults(forcedirection = [0, 0, 1])
 parser.set_defaults(stressnormal = None)

@@ -18,10 +18,12 @@ Add Quaternions based on Crystal Frame Coordinates.
 
 """, version = scriptID)
 
-parser.add_option('-f','--frame',       dest='frame', nargs=4, type='string', metavar='<string string string string>',
-                                        help='heading of columns containing b* vector components and three frame vectors in that order')
-parser.add_option('-s','--symmetry', dest='crysym', nargs=1,type='string',metavar='<string>',
-                                     help='crystal symmetry definition')                                        
+parser.add_option('-f','--frame',
+                  dest='frame', nargs=4, type='string', metavar='<string string string string>',
+                  help='heading of columns containing b* vector components and three frame vectors in that order')
+parser.add_option('-s','--symmetry',
+                  dest='crysym', nargs=1,type='string',metavar='<string>',
+                  help='crystal symmetry definition')                                        
 parser.set_defaults(frame = None)
 
 (options,filenames) = parser.parse_args()
