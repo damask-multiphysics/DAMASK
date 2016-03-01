@@ -77,11 +77,11 @@ minmax = np.array([np.array(options.xrange),
 grid   = np.zeros(options.bins,'f')
 result = np.zeros((options.bins[0],options.bins[1],3),'f')
 
-if options.data   == None: parser.error('no data columns specified.')
+if options.data is None: parser.error('no data columns specified.')
 
 labels = options.data
 
-if options.weight != None: labels += [options.weight]                                               # prevent character splitting of single string value
+if options.weight is not None: labels += [options.weight]                                               # prevent character splitting of single string value
 
 # --- loop over input files -------------------------------------------------------------------------
 
@@ -124,7 +124,7 @@ for name in filenames:
     x = int(options.bins[0]*(table.data[i,0]-minmax[0,0])/delta[0])
     y = int(options.bins[1]*(table.data[i,1]-minmax[1,0])/delta[1])
     if x >= 0 and x < options.bins[0] and y >= 0 and y < options.bins[1]:
-      grid[x,y] += 1. if options.weight == None else table.data[i,2]                                # count (weighted) occurrences
+      grid[x,y] += 1. if options.weight is None else table.data[i,2]                                # count (weighted) occurrences
 
   if options.normCol:
     for x in xrange(options.bins[0]):

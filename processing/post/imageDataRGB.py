@@ -80,7 +80,7 @@ for name in filenames:
   try:
     table = damask.ASCIItable(name = name,
                               buffered = False,
-                              labeled = options.label != None,
+                              labeled = options.label is not None,
                               readonly = True)
   except: continue
   damask.util.report(scriptName,name)
@@ -104,8 +104,7 @@ for name in filenames:
     damask.util.croak(errors)
     table.close(dismiss = True)                                                                     # close ASCII table file handles and delete output file
     continue
-
-  # convert data to shape and arrange according to given options
+# convert data to shape and arrange according to given options
   if options.dimension != []: table.data = table.data.reshape(options.dimension[1],options.dimension[0],3)
   if options.flipLR:          table.data = np.fliplr(table.data)
   if options.flipUD:          table.data = np.flipud(table.data)

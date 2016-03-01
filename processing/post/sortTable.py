@@ -36,7 +36,7 @@ parser.set_defaults(key = [],
 
 (options,filenames) = parser.parse_args()
 
-if options.keys == None:
+if options.keys is None:
   parser.error('No sorting column(s) specified.')
 
 options.keys.reverse()                                                                              # numpy sorts with most significant column as last

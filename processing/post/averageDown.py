@@ -101,10 +101,10 @@ for name in filenames:
     mincorner = np.array(map(min,coords))
     maxcorner = np.array(map(max,coords))
     grid   = np.array(map(len,coords),'i')
-    size   = grid/np.maximum(np.ones(3,'d'), grid-1.0) * (maxcorner-mincorner)                        # size from edge to edge = dim * n/(n-1) 
-    size   = np.where(grid > 1, size, min(size[grid > 1]/grid[grid > 1]))                             # spacing for grid==1 equal to smallest among other spacings
+    size   = grid/np.maximum(np.ones(3,'d'), grid-1.0) * (maxcorner-mincorner)                      # size from edge to edge = dim * n/(n-1) 
+    size   = np.where(grid > 1, size, min(size[grid > 1]/grid[grid > 1]))                           # spacing for grid==1 set to smallest among other spacings
     delta  = size/np.maximum(np.ones(3,'d'), grid)
-    origin = mincorner - 0.5*delta                                                                    # shift from cell center to corner
+    origin = mincorner - 0.5*delta                                                                  # shift from cell center to corner
 
   else:
     grid   = np.array(options.grid,'i')

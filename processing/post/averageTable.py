@@ -28,7 +28,7 @@ parser.add_option('-l','--label',
 
 (options,filenames) = parser.parse_args()
 
-if options.label == None:
+if options.label is None:
   parser.error('no grouping column specified.')
 
 

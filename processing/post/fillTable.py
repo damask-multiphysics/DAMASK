@@ -43,7 +43,7 @@ parser.set_defaults(condition = '',
 
 (options,filenames) = parser.parse_args()
 
-if options.labels == None or options.formulae == None:
+if options.labels is None or options.formulae is None:
   parser.error('no formulae specified.')
 if len(options.labels) != len(options.formulae):
   parser.error('number of labels ({}) and formulae ({}) do not match.'.format(len(options.labels),len(options.formulae)))
