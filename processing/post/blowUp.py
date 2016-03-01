@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 no BOM -*-
 
-import os,sys,string
+import os,sys
 import numpy as np
 from optparse import OptionParser
 import damask
@@ -55,11 +55,16 @@ for name in filenames:
 # ------------------------------------------ read header ------------------------------------------
 
   table.head_read()
+  errors  = []
 
 # ------------------------------------------ sanity checks ----------------------------------------
   
-  if table.label_dimension(options.coords) != 3: errors.append('coordinates {} are not a vector.'.format(options.coords))
-  else: coordCol = table.label_index(options.coords)
+  if table.label_dimension(options.coords) != 3: 
+    damask.util.croak('coordinates {} are not a vector.'.format(options.coords))
+    table.close(dismiss = True)
+    continue
+  else: 
+    coordCol = table.label_index(options.coords)
 
 
 # ------------------------------------------ assemble header --------------------------------------

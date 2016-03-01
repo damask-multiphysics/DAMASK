@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import os,sys,string,time,copy
+import os,sys,time,copy
 import numpy as np
 import damask
 from optparse import OptionParser
