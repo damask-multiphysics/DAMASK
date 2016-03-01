@@ -83,8 +83,7 @@ target_link_libraries(DAMASK_CONSTITUTIVE DAMASK_SOURCE    )
 add_library(DAMASK_CRYSTALLITE "crystallite.f90")
 target_link_libraries(DAMASK_CRYSTALLITE DAMASK_CONSTITUTIVE)
 
-add_library(DAMASK_HOMOGENIZATION "homogenization.f90"
-                                  "homogenization_RGC.f90"
+add_library(DAMASK_HOMOGENIZATION "homogenization_RGC.f90"
                                   "homogenization_isostrain.f90"
                                   "homogenization_none.f90")
 target_link_libraries(DAMASK_HOMOGENIZATION DAMASK_CRYSTALLITE)
@@ -113,12 +112,6 @@ add_library(DAMASK_THERMAL "thermal_isothermal.f90"
 target_link_libraries(DAMASK_THERMAL DAMASK_CRYSTALLITE)
 
 add_library(DAMASK_ENGINE "homogenization.f90")
-add_dependencies(DAMASK_ENGINE DAMASK_THERMAL
-                               DAMASK_DAMAGE
-                               DAMASK_VACANCYFLUX
-                               DAMASK_POROSITY
-                               DAMASK_HYDROGENFLUX
-                               DAMASK_HOMOGENIZATION)
 target_link_libraries(DAMASK_ENGINE DAMASK_THERMAL       )
 target_link_libraries(DAMASK_ENGINE DAMASK_DAMAGE        )
 target_link_libraries(DAMASK_ENGINE DAMASK_VACANCYFLUX   )
@@ -126,17 +119,21 @@ target_link_libraries(DAMASK_ENGINE DAMASK_POROSITY      )
 target_link_libraries(DAMASK_ENGINE DAMASK_HYDROGENFLUX  )
 target_link_libraries(DAMASK_ENGINE DAMASK_HOMOGENIZATION)
 
-add_library(DAMASK_CPFE "CPFEM.f90"
-                        "CPFEM2.f90")
-target_link_libraries(DAMASK_CPFE DAMASK_ENGINE)
+
+
 
 if (FEM)
+      add_library(DAMASK_CPFE "CPFEM.f90")
+      target_link_libraries(DAMASK_CPFE DAMASK_ENGINE)
       message("special treatment for FEM code")
 endif(FEM)
 
 if (SPECTRAL)
+      add_library(DAMASK_CPFE "CPFEM2.f90")
+      target_link_libraries(DAMASK_CPFE DAMASK_ENGINE)
+
       add_library(DAMASK_SPECTRAL_UTILITY spectral_utilities.f90)
-      target_link_libraries(DAMASK_SPECTRAL_UTILITY DAMASK_CPFE2)
+      target_link_libraries(DAMASK_SPECTRAL_UTILITY DAMASK_CPFE)
 
       add_library(DAMASK_SPECTRAL_BASE "spectral_thermal.f90"
                                        "spectral_damage.f90")
