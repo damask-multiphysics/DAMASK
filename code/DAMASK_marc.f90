@@ -1,3 +1,5 @@
+#define QUOTE(x) #x                                                                                 
+#define PASTE(x,y) x ## y  
 
 #ifndef INT
 #define INT 4
@@ -8,8 +10,6 @@
 #endif
 
 #include "prec.f90"
-!--------------------------------------------------------------------------------------------------
-! $Id$
 !--------------------------------------------------------------------------------------------------
 !> @author Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
 !> @author Franz Roters, Max-Planck-Institut für Eisenforschung GmbH
