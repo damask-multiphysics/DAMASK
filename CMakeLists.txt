@@ -420,22 +420,6 @@ set (CMAKE_Fortran_FLAGS_DEBUG       "${CMAKE_Fortran_FLAGS_DEBUG}      ${DAMASK
 set (CMAKE_EXE_LINKER_FLAGS_RELEASE  "${CMAKE_EXE_LINKER_FLAGS_RELEASE} ${DAMASK_LINK_FLAGS}"   )
 set (CMAKE_EXE_LINKER_FLAGS_DEBUG    "${CMAKE_EXE_LINKER_FLAGS_DEBUG}   ${DAMASK_LINK_FLAGS}"   )
 
-# if (SPECTRAL)
-#     # add_definitions(-DSpectral)
-#     set (CMAKE_Fortran_FLAGS_RELEASE     "${CMAKE_Fortran_FLAGS_RELEASE}    -DSpectral")
-#     set (CMAKE_Fortran_FLAGS_DEBUG       "${CMAKE_Fortran_FLAGS_DEBUG}      -DSpectral")
-#     set (CMAKE_EXE_LINKER_FLAGS_RELEASE  "${CMAKE_EXE_LINKER_FLAGS_RELEASE} -DSpectral")
-#     set (CMAKE_EXE_LINKER_FLAGS_DEBUG    "${CMAKE_EXE_LINKER_FLAGS_DEBUG}   -DSpectral")
-# endif (SPECTRAL)
-# # additional flags for FEM solver
-# if (FEM)
-#     # add_definitions(-DFEM)
-#     set (CMAKE_Fortran_FLAGS_RELEASE     "${CMAKE_Fortran_FLAGS_RELEASE}    -DFEM")
-#     set (CMAKE_Fortran_FLAGS_DEBUG       "${CMAKE_Fortran_FLAGS_DEBUG}      -DFEM")
-#     set (CMAKE_EXE_LINKER_FLAGS_RELEASE  "${CMAKE_EXE_LINKER_FLAGS_RELEASE} -DFEM")
-#     set (CMAKE_EXE_LINKER_FLAGS_DEBUG    "${CMAKE_EXE_LINKER_FLAGS_DEBUG}   -DFEM")
-# endif (FEM)
-
 message("***COMPILE FLAGS:\n${CMAKE_Fortran_FLAGS_RELEASE}\n")
 message("***LINK FLAGS:\n${CMAKE_EXE_LINKER_FLAGS_RELEASE}\n")
 
