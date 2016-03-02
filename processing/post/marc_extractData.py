@@ -209,9 +209,12 @@ def SummarizePostfile(stat,where=sys.stdout):
   where.write('increments:\t%i'%(stat['NumberOfIncrements']) + '\n\n')
   where.write('nodes:\t%i'%stat['NumberOfNodes'] + '\n\n')
   where.write('elements:\t%i'%stat['NumberOfElements'] + '\n\n')
-  where.write('nodal scalars:\t%i'%stat['NumberOfNodalScalars'] + '\n\n  ' + '\n  '.join(stat['LabelOfNodalScalar']) + '\n\n')
-  where.write('elemental scalars:\t%i'%stat['NumberOfElementalScalars'] + '\n\n  ' + '\n  '.join(stat['LabelOfElementalScalar']) + '\n\n')
-  where.write('elemental tensors:\t%i'%stat['NumberOfElementalTensors'] + '\n\n  ' + '\n  '.join(stat['LabelOfElementalTensor']) + '\n\n')
+  where.write('nodal scalars:\t%i'%stat['NumberOfNodalScalars'] + '\n\n  '\
+                             +'\n  '.join(stat['LabelOfNodalScalar']) + '\n\n')
+  where.write('elemental scalars:\t%i'%stat['NumberOfElementalScalars'] + '\n\n  '\
+                             + '\n  '.join(stat['LabelOfElementalScalar']) + '\n\n')
+  where.write('elemental tensors:\t%i'%stat['NumberOfElementalTensors'] + '\n\n  '\
+                             + '\n  '.join(stat['LabelOfElementalTensor']) + '\n\n')
 
   return True
 

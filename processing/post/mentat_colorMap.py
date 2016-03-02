@@ -59,7 +59,8 @@ def colorMap(colors,baseIdx=32):
 # MAIN FUNCTION STARTS HERE
 # -----------------------------
 
-parser = OptionParser(option_class=damask.extendableOption, usage="%prog [options] predefinedScheme | (lower_h,s,l upper_h,s,l)", description = """
+parser = OptionParser(option_class=damask.extendableOption,
+usage="%prog [options] predefinedScheme | (lower_h,s,l upper_h,s,l)", description = """
 Changes the color map in MSC.Mentat. 
 
 Interpolates colors between "lower_hsl" and "upper_hsl". 
