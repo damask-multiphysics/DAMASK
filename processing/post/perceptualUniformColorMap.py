@@ -9,7 +9,7 @@ scriptName = os.path.splitext(os.path.basename(__file__))[0]
 scriptID   = ' '.join([scriptName,damask.version])
 
 # --------------------------------------------------------------------
-                               # MAIN
+#  MAIN
 # --------------------------------------------------------------------
 #Borland, D., & Taylor, R. M. (2007). Rainbow Color Map (Still) Considered Harmful. Computer Graphics and Applications, IEEE, 27(2), 14--17.
 #Moreland, K. (2009). Diverging Color Maps for Scientific Visualization. In Proc. 5th Int. Symp. Visual Computing (pp. 92--103).
@@ -62,8 +62,8 @@ if options.trim[0] < -1.0 or \
   parser.error('invalid trim range (-1 +1).')
 
 
-name   = options.format if options.basename == None else options.basename
-output = sys.stdout     if options.basename == None else open(os.path.basename(options.basename)+extensions[outtypes.index(options.format)],'w')
+name   = options.format if options.basename is None else options.basename
+output = sys.stdout     if options.basename is None else open(os.path.basename(options.basename)+extensions[outtypes.index(options.format)],'w')
 
 colorLeft = damask.Color(options.colormodel.upper(), list(options.left))
 colorRight = damask.Color(options.colormodel.upper(), list(options.right))

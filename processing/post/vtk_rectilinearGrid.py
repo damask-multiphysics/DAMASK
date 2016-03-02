@@ -111,6 +111,6 @@ for name in filenames:
   if vtk.VTK_MAJOR_VERSION <= 5: writer.SetInput(rGrid)
   else:                          writer.SetInputData(rGrid)
   writer.Write()
-  if name == None:  sys.stdout.write(writer.GetOutputString()[0:writer.GetOutputStringLength()])
+  if name is None:  sys.stdout.write(writer.GetOutputString()[0:writer.GetOutputStringLength()])
 
   table.close()

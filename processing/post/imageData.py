@@ -115,7 +115,7 @@ for name in filenames:
   try:
     table = damask.ASCIItable(name = name,
                               buffered = False,
-                              labeled = options.label != None,
+                              labeled = options.label is not None,
                               readonly = True)
   except: continue
   damask.util.report(scriptName,name)
@@ -131,15 +131,15 @@ for name in filenames:
     damask.util.croak('column {} not found.'.format(options.label))
     table.close(dismiss = True)                                                                     # close ASCIItable and remove empty file
     continue
-
-  # convert data to values between 0 and 1 and arrange according to given options
+# convert data to values between 0 and 1 and arrange according to given options
   if options.dimension != []: table.data = table.data.reshape(options.dimension[1],options.dimension[0])
   if options.abs:             table.data = np.abs(table.data)
   if options.log:             table.data = np.log10(table.data);options.range = np.log10(options.range)
   if options.flipLR:          table.data = np.fliplr(table.data)
   if options.flipUD:          table.data = np.flipud(table.data)
 
-  mask = np.logical_or(table.data == options.gap, np.isnan(table.data)) if options.gap else np.logical_not(np.isnan(table.data))  # mask gap and NaN (if gap present)
+  mask = np.logical_or(table.data == options.gap, np.isnan(table.data))\
+                                          if options.gap else np.logical_not(np.isnan(table.data))  # mask gap and NaN (if gap present)
   if np.all(np.array(options.range) == 0.0):
     options.range = [table.data[mask].min(),
                      table.data[mask].max()]
@@ -176,7 +176,7 @@ for name in filenames:
 
   im.save(sys.stdout if not name else
           os.path.splitext(name)[0]+ \
-          ('' if options.label == None else '_'+options.label)+ \
+          ('' if options.label is None else '_'+options.label)+ \
           '.png',
           format = "PNG")
 

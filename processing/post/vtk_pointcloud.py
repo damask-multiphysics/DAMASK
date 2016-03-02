@@ -86,8 +86,8 @@ for name in filenames:
     (directory,filename) = os.path.split(name)
     writer.SetDataModeToBinary()
     writer.SetCompressorTypeToZLib()
-    writer.SetFileName(os.path.join(directory,os.path.splitext(filename)[0]
-                                              +'.'+writer.GetDefaultFileExtension()))
+    writer.SetFileName(os.path.join(directory,os.path.splitext(filename)[0]\
+                                                            +'.'+writer.GetDefaultFileExtension()))
   else:
     writer = vtk.vtkDataSetWriter()
     writer.WriteToOutputStringOn()
@@ -96,6 +96,6 @@ for name in filenames:
   if vtk.VTK_MAJOR_VERSION <= 5: writer.SetInput(Polydata)
   else:                          writer.SetInputData(Polydata)
   writer.Write()
-  if name == None:  sys.stdout.write(writer.GetOutputString()[0:writer.GetOutputStringLength()])
+  if name is None:  sys.stdout.write(writer.GetOutputString()[0:writer.GetOutputStringLength()])
 
   table.close()
