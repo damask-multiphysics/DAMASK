@@ -41,7 +41,7 @@ parser.set_defaults(rotation = (0.,1.,1.,1.),                                   
                     
 (options,filenames) = parser.parse_args()
 
-if options.vector == None and options.tensor == None:
+if options.vector is None and options.tensor is None:
   parser.error('no data column specified.')
 
 toRadians = math.pi/180.0 if options.degrees else 1.0                                               # rescale degrees to radians
@@ -107,8 +107,7 @@ for name in filenames:
     for column in items[datatype]['column']:                                                        # loop over all requested labels
       table.data[column:column+items[datatype]['dim']] = \
         np.dot(R,np.dot(np.array(map(float,table.data[column:column+items[datatype]['dim']])).\
-                        reshape(items[datatype]['shape']),R.transpose())).\
-                  reshape(items[datatype]['dim'])
+                        reshape(items[datatype]['shape']),R.transpose())).reshape(items[datatype]['dim'])
 
     outputAlive = table.data_write()                                                                # output processed line
 

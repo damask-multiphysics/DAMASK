@@ -164,10 +164,10 @@ if options.render:
   actor = vtk.vtkActor()
   actor.SetMapper(mapper)
 
-  # Create the graphics structure. The renderer renders into the
-  # render window. The render window interactor captures mouse events
-  # and will perform appropriate camera or actor manipulation
-  # depending on the nature of the events.
+# Create the graphics structure. The renderer renders into the
+# render window. The render window interactor captures mouse events
+# and will perform appropriate camera or actor manipulation
+# depending on the nature of the events.
 
   ren = vtk.vtkRenderer()
 
@@ -180,9 +180,6 @@ if options.render:
 
   iren = vtk.vtkRenderWindowInteractor()
   iren.SetRenderWindow(renWin)
- 
-  #ren.ResetCamera()
-  #ren.GetActiveCamera().Zoom(1.5)
  
   iren.Initialize()
   renWin.Render()

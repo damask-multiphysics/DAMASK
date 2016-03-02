@@ -10,12 +10,8 @@ scriptID   = ' '.join([scriptName,damask.version])
 
 # -----------------------------
 def ParseOutputFormat(filename,homogID,crystID,phaseID):
-#
-# parse .output* files in order to get a list of outputs 
-# -----------------------------
-  
-  myID = {  
-          'Homogenization': homogID,
+  """parse .output* files in order to get a list of outputs"""
+  myID = {'Homogenization': homogID,
           'Crystallite':    crystID,
           'Constitutive':   phaseID,
          }
@@ -61,24 +57,24 @@ def ParseOutputFormat(filename,homogID,crystID,phaseID):
           elif length > 0:
             format[what]['outputs'].append([output,length])
     
-    if not '_id' in format[what]['specials']:
+    if '_id' not in format[what]['specials']:
       print "\nsection '%s' not found in <%s>"%(myID[what], what)
       print '\n'.join(map(lambda x:'  [%s]'%x, format[what]['specials']['brothers']))
-  
+
   return format
 
 
 # -----------------------------
 def ParsePostfile(p,filename, outputFormat, legacyFormat):
-#
-# parse postfile in order to get position and labels of outputs
-# needs "outputFormat" for mapping of output names to postfile output indices
-# -----------------------------
+  """
+  parse postfile in order to get position and labels of outputs
 
+  needs "outputFormat" for mapping of output names to postfile output indices
+  """
   startVar = {True: 'GrainCount',
               False:'HomogenizationCount'}
 
-  # --- build statistics
+# --- build statistics
 
   stat = { \
   'IndexOfLabel': {}, \
@@ -95,7 +91,7 @@ def ParsePostfile(p,filename, outputFormat, legacyFormat):
   'LabelOfElementalTensor': [None]*p.element_tensors(), \
   }
 
-  # --- find labels 
+# --- find labels 
 
   for labelIndex in range(stat['NumberOfNodalScalars']):
     label =  p.node_scalar_label(labelIndex)
@@ -119,9 +115,9 @@ def ParsePostfile(p,filename, outputFormat, legacyFormat):
     startIndex = stat['IndexOfLabel'][startVar[legacyFormat]]
     stat['LabelOfElementalScalar'][startIndex] = startVar[legacyFormat]
     
-    # We now have to find a mapping for each output label as defined in the .output* files to the output position in the post file
-    # Since we know where the user defined outputs start ("startIndex"), we can simply assign increasing indices to the labels
-    # given in the .output* file  
+# We now have to find a mapping for each output label as defined in the .output* files to the output position in the post file
+# Since we know where the user defined outputs start ("startIndex"), we can simply assign increasing indices to the labels
+# given in the .output* file  
 
     offset = 1
     if legacyFormat:
@@ -177,10 +173,7 @@ def ParsePostfile(p,filename, outputFormat, legacyFormat):
 
 # -----------------------------
 def GetIncrementLocations(p,Nincrements,options):
-#
-# get mapping between positions in postfile and increment number
-# -----------------------------
-  
+  """get mapping between positions in postfile and increment number"""
   incAtPosition = {}
   positionOfInc = {}
   
@@ -209,7 +202,6 @@ def GetIncrementLocations(p,Nincrements,options):
 
 # -----------------------------
 def SummarizePostfile(stat,where=sys.stdout):
-# -----------------------------
 
   where.write('\n\n')
   where.write('title:\t%s'%stat['Title'] + '\n\n')
@@ -220,13 +212,12 @@ def SummarizePostfile(stat,where=sys.stdout):
   where.write('nodal scalars:\t%i'%stat['NumberOfNodalScalars'] + '\n\n  ' + '\n  '.join(stat['LabelOfNodalScalar']) + '\n\n')
   where.write('elemental scalars:\t%i'%stat['NumberOfElementalScalars'] + '\n\n  ' + '\n  '.join(stat['LabelOfElementalScalar']) + '\n\n')
   where.write('elemental tensors:\t%i'%stat['NumberOfElementalTensors'] + '\n\n  ' + '\n  '.join(stat['LabelOfElementalTensor']) + '\n\n')
-  
+
   return True
 
 
 # -----------------------------
 def SummarizeOutputfile(format,where=sys.stdout):
-# -----------------------------
 
   where.write('\nUser Defined Outputs')
   for what in format.keys():
@@ -239,7 +230,6 @@ def SummarizeOutputfile(format,where=sys.stdout):
 
 # -----------------------------
 def writeHeader(myfile,stat,geomtype):
-# -----------------------------
     
   myfile.write('2\theader\n')
   myfile.write(string.replace('$Id$','\n','\\n')+
@@ -316,7 +306,7 @@ if not os.path.exists(filename+'.t16'):
 
 sys.path.append(damask.solver.Marc().libraryPath('../../'))
 try:
-  from py_post import *
+  import py_post
 except:
   print('error: no valid Mentat release found')
   sys.exit(-1)
@@ -336,14 +326,14 @@ if damask.core.mesh.mesh_init_postprocessing(filename+'.mesh'):
 
 # --- check if ip data available for all elements; if not, then .t19 file is required
 
-p = post_open(filename+'.t16')
+p = py_post.post_open(filename+'.t16')
 asciiFile = False
 p.moveto(1)
 for e in range(p.elements()):
   if not damask.core.mesh.mesh_get_nodeAtIP(str(p.element(e).type),1):
     if os.path.exists(filename+'.t19'):
       p.close()
-      p = post_open(filename+'.t19')
+      p = py_post.post_open(filename+'.t19')
       asciiFile = True
       break
 
@@ -383,18 +373,20 @@ time_start = time.time()
 for incCount,position in enumerate(locations):     # walk through locations
   p.moveto(position+1)                             # wind to correct position
   time_delta = (float(len(locations)) / float(incCount+1) - 1.0) * (time.time() - time_start)
-  sys.stdout.write("\r(%02i:%02i:%02i) processing increment %i of %i..."%(time_delta//3600,time_delta%3600//60,time_delta%60,incCount+1,len(locations)))
+  sys.stdout.write("\r(%02i:%02i:%02i) processing increment %i of %i..."\
+                   %(time_delta//3600,time_delta%3600//60,time_delta%60,incCount+1,len(locations)))
   sys.stdout.flush()
   
-  # --- write header 
+# --- write header 
   
   outFilename = {}
   for geomtype in options.type:
-    outFilename[geomtype] = eval('"'+eval("'%%s_%%s_inc%%0%ii.txt'%(math.log10(max(increments+[1]))+1)")+'"%(dirname + os.sep + os.path.split(filename)[1],geomtype,increments[incCount])')
+    outFilename[geomtype] = eval('"'+eval("'%%s_%%s_inc%%0%ii.txt'%(math.log10(max(increments+[1]))+1)")\
+                +'"%(dirname + os.sep + os.path.split(filename)[1],geomtype,increments[incCount])')
     with open(outFilename[geomtype],'w') as myfile:
       writeHeader(myfile,stat,geomtype)
       
-      # --- write node based data
+    # --- write node based data
       
       if geomtype == 'nodebased':
         for n in range(stat['NumberOfNodes']):
@@ -403,7 +395,7 @@ for incCount,position in enumerate(locations):     # walk through locations
             myfile.write('\t'+str(p.node_scalar(n,l)))
           myfile.write('\n')
     
-      # --- write ip based data
+    # --- write ip based data
     
       elif geomtype == 'ipbased':
         for e in range(stat['NumberOfElements']):
@@ -424,5 +416,3 @@ for incCount,position in enumerate(locations):     # walk through locations
             
 p.close()
 sys.stdout.write("\n")
-
-# ---------------------------       DONE     --------------------------------

@@ -123,7 +123,7 @@ for name in filenames:
 
   table.info_append(scriptID + '\t' + ' '.join(sys.argv[1:]))
   table.labels_append('grainID_{}@{}'.format(label,
-                                             options.disorientation if options.degrees else np.degrees(options.disorientation)))    # report orientation source and disorientation in degrees
+             options.disorientation if options.degrees else np.degrees(options.disorientation)))    # report orientation source and disorientation in degrees
   table.head_write()
 
 # ------------------------------------------ process data ------------------------------------------
@@ -161,7 +161,8 @@ for name in filenames:
     if p > 0 and p % 1000 == 0:
 
       time_delta = (time.clock()-tick) * (len(grainID) - p) / p
-      bg.set_message('(%02i:%02i:%02i) processing point %i of %i (grain count %i)...'%(time_delta//3600,time_delta%3600//60,time_delta%60,p,len(grainID),len(orientations)))
+      bg.set_message('(%02i:%02i:%02i) processing point %i of %i (grain count %i)...'\
+            %(time_delta//3600,time_delta%3600//60,time_delta%60,p,len(grainID),len(orientations)))
 
     if inputtype == 'eulers':
       o = damask.Orientation(Eulers   = np.array(map(float,table.data[column:column+3]))*toRadians,
@@ -191,11 +192,11 @@ for name in filenames:
       bestDisorientation = damask.Quaternion([0,0,0,1])                                             # initialize to 180 deg rotation as worst case
       for i in kdtree.query_ball_point(kdtree.data[p],options.radius):                              # check all neighboring points
         gID = grainID[i]
-        if gID != -1 and gID not in alreadyChecked:                                                 # an already indexed point belonging to a grain not yet tested?
+        if gID != -1 and gID not in alreadyChecked:                                                 # indexed point belonging to a grain not yet tested?
           alreadyChecked[gID] = True                                                                # remember not to check again
-          disorientation = o.disorientation(orientations[gID],SST = False)[0]                       # compare against that grain's orientation (and skip requirement of axis within SST)
+          disorientation = o.disorientation(orientations[gID],SST = False)[0]                       # compare against other orientation
           if disorientation.quaternion.w >  cos_disorientation and \
-             disorientation.quaternion.w >= bestDisorientation.w:                                   # within disorientation threshold and better than current best?
+             disorientation.quaternion.w >= bestDisorientation.w:                                   # within threshold and betterthan current best? 
             matched = True
             matchedID = gID                                                                         # remember that grain
             bestDisorientation = disorientation.quaternion
@@ -217,11 +218,11 @@ for name in filenames:
   memberCounts = np.array(memberCounts)
   similarOrientations = [[] for i in xrange(len(orientations))]
 
-  for i,orientation in enumerate(orientations[:-1]):                                                       # compare each identified orientation...
-    for j in xrange(i+1,len(orientations)):                                                                # ...against all others that were defined afterwards
-      if orientation.disorientation(orientations[j],SST = False)[0].quaternion.w > cos_disorientation:     # similar orientations in both grainIDs?
-        similarOrientations[i].append(j)                                                                   # remember in upper triangle...
-        similarOrientations[j].append(i)                                                                   # ...and lower triangle of matrix
+  for i,orientation in enumerate(orientations[:-1]):                                                   # compare each identified orientation...
+    for j in xrange(i+1,len(orientations)):                                                            # ...against all others that were defined afterwards
+      if orientation.disorientation(orientations[j],SST = False)[0].quaternion.w > cos_disorientation: # similar orientations in both grainIDs?
+        similarOrientations[i].append(j)                                                               # remember in upper triangle...
+        similarOrientations[j].append(i)                                                               # ...and lower triangle of matrix
 
     if similarOrientations[i] != []:
       bg.set_message('grainID {} is as: {}'.format(i,' '.join(map(str,similarOrientations[i]))))
@@ -235,10 +236,11 @@ for name in filenames:
       if p > 0 and p % 1000 == 0:
 
         time_delta = (time.clock()-tick) * (len(grainID) - p) / p
-        bg.set_message('(%02i:%02i:%02i) shifting ID of point %i out of %i (grain count %i)...'%(time_delta//3600,time_delta%3600//60,time_delta%60,p,len(grainID),len(orientations)))
+        bg.set_message('(%02i:%02i:%02i) shifting ID of point %i out of %i (grain count %i)...'
+            %(time_delta//3600,time_delta%3600//60,time_delta%60,p,len(grainID),len(orientations)))
       if similarOrientations[gID] != []:                                                            # orientation of my grainID is similar to someone else?
-        similarNeighbors = defaultdict(int)                                                         # dict holding frequency of neighboring grainIDs that share my orientation (freq info not used...)
-        for i in kdtree.query_ball_point(kdtree.data[p],options.radius):                            # check all neighboring points
+        similarNeighbors = defaultdict(int)                                                         # frequency of neighboring grainIDs sharing my orientation
+        for i in kdtree.query_ball_point(kdtree.data[p],options.radius):                            # check all neighboring point
           if grainID[i] in similarOrientations[gID]:                                                # neighboring point shares my orientation?
             similarNeighbors[grainID[i]] += 1                                                       # remember its grainID
         if similarNeighbors != {}:                                                                  # found similar orientation(s) in neighborhood

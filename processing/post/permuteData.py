@@ -79,7 +79,7 @@ for name in filenames:
        
 # ------------------------------------------ assemble header ---------------------------------------
 
-  randomSeed = int(os.urandom(4).encode('hex'), 16) if options.randomSeed == None else options.randomSeed         # random seed per file
+  randomSeed = int(os.urandom(4).encode('hex'), 16) if options.randomSeed is None else options.randomSeed         # random seed per file
   np.random.seed(randomSeed)
 
   table.info_append([scriptID + '\t' + ' '.join(sys.argv[1:]),
