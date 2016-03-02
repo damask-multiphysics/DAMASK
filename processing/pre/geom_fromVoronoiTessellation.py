@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 no BOM -*-
 
-import os,sys,math,string
+import os,sys,math
 import numpy as np
 import multiprocessing
 from optparse import OptionParser
@@ -13,9 +13,7 @@ scriptID   = ' '.join([scriptName,damask.version])
 
 
 def meshgrid2(*arrs):
-  '''
-  code inspired by http://stackoverflow.com/questions/1827489/numpy-meshgrid-in-3d
-  '''
+  """code inspired by http://stackoverflow.com/questions/1827489/numpy-meshgrid-in-3d"""
   arrs = tuple(reversed(arrs))
   arrs = tuple(arrs)
   lens = np.array(map(len, arrs))
@@ -45,7 +43,7 @@ def laguerreTessellation(undeformed, coords, weights, grains, nonperiodic = Fals
       np.array([
                 [  0, 0, 0 ],
                ]).astype(float) if nonperiodic else \
-     np.array([
+      np.array([
                 [ -1,-1,-1 ],
                 [  0,-1,-1 ],
                 [  1,-1,-1 ],
@@ -99,7 +97,8 @@ def laguerreTessellation(undeformed, coords, weights, grains, nonperiodic = Fals
         for i,arg in enumerate(arguments):
           closestSeeds[i] = findClosestSeed(arg)
 
-    return grains[closestSeeds%coords.shape[0]]                                                   # closestSeed is modulo number of original seed points (i.e. excluding periodic copies)
+# closestSeed is modulo number of original seed points (i.e. excluding periodic copies)
+    return grains[closestSeeds%coords.shape[0]]                                                   
 
 # --------------------------------------------------------------------
 #                                MAIN
@@ -210,9 +209,9 @@ for name in filenames:
   table.head_read()
   info,extra_header = table.head_getGeom()
   
-  if options.grid   != None: info['grid']   = options.grid
-  if options.size   != None: info['size']   = options.size
-  if options.origin != None: info['origin'] = options.origin
+  if options.grid   is not None: info['grid']   = options.grid
+  if options.size   is not None: info['size']   = options.size
+  if options.origin is not None: info['origin'] = options.origin
   
 # ------------------------------------------ sanity checks ---------------------------------------  
 
@@ -298,7 +297,7 @@ for name in filenames:
   phase = options.phase * np.ones(info['microstructures'],'i')
   if int(options.secondphase*info['microstructures']) > 0:
     phase[0:int(options.secondphase*info['microstructures'])] += 1
-    randomSeed = int(os.urandom(4).encode('hex'), 16)  if options.randomSeed == None \
+    randomSeed = int(os.urandom(4).encode('hex'), 16)  if options.randomSeed is None \
                                                        else options.randomSeed                      # random seed for second phase
     np.random.seed(randomSeed)
     np.random.shuffle(phase)
@@ -317,7 +316,7 @@ for name in filenames:
       config_header += ['[Grain%s]'%(str(ID).zfill(formatwidth)),
                         '(gauss)\tphi1 %g\tPhi %g\tphi2 %g\tscatter 0.0\tfraction 1.0'%tuple(eulers[eulerID])
                        ]
-      if options.axes != None: config_header.append('axes\t%s %s %s'%tuple(options.axes))
+      if options.axes is not None: config_header.append('axes\t%s %s %s'%tuple(options.axes))
   
   table.labels_clear()
   table.info_clear()

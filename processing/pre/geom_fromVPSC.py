@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 no BOM -*-
 
-import os,sys,math,string
+import os,sys,math
 import numpy as np
 from optparse import OptionParser
 import damask
@@ -101,16 +101,22 @@ for name in filenames:
                                      %(angle,n,eulerangles[n,0],eulerangles[n,1],eulerangles[n,2]))
     continue
   eulerangles=np.around(eulerangles,int(options.precision))                                         # round to desired precision
+# ensure, that rounded euler angles are not out of bounds (modulo by limits)
   for i,angle in enumerate(['phi1','PHI','phi2']):
-    eulerangles[:,i]%=limits[i]                                                                     # ensure, that rounded euler angles are not out of bounds (modulo by limits)
+    eulerangles[:,i]%=limits[i]                                                                     
 
+# scale angles by desired precision and convert to int. create unique integer key from three euler angles by
+# concatenating the string representation with leading zeros and store as integer and search unique euler angle keys.
+# Texture IDs are the indices of the first occurrence, the inverse is used to construct the microstructure
+# create a microstructure (texture/phase pair) for each point using unique texture IDs.
+# Use longInt (64bit, i8) because the keys might be long
   if options.compress:
     formatString='{0:0>'+str(int(options.precision)+3)+'}'
-    euleranglesRadInt = (eulerangles*10**int(options.precision)).astype('int')                      # scale by desired precision and convert to int
+    euleranglesRadInt = (eulerangles*10**int(options.precision)).astype('int')
     eulerKeys = np.array([int(''.join(map(formatString.format,euleranglesRadInt[i,:]))) \
-                                                             for i in xrange(info['grid'].prod())]) # create unique integer key from three euler angles by concatenating the string representation with leading zeros and store as integer
-    devNull, texture, eulerKeys_idx = np.unique(eulerKeys, return_index = True, return_inverse=True)# search unique euler angle keys. Texture IDs are the indices of the first occurence, the inverse is used to construct the microstructure
-    msFull = np.array([[eulerKeys_idx[i],phase[i]] for i in xrange(info['grid'].prod())],'i8')      # create a microstructure (texture/phase pair) for each point using unique texture IDs. Use longInt (64bit, i8) because the keys might be long
+                                                             for i in xrange(info['grid'].prod())])
+    devNull, texture, eulerKeys_idx = np.unique(eulerKeys, return_index = True, return_inverse=True)
+    msFull = np.array([[eulerKeys_idx[i],phase[i]] for i in xrange(info['grid'].prod())],'i8')
     devNull,msUnique,matPoints = np.unique(msFull.view('c16'),True,True)
     matPoints+=1
     microstructure = np.array([msFull[i] for i in msUnique])                                        # pick only unique microstructures
