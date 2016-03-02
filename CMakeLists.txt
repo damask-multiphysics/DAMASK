@@ -28,6 +28,29 @@ if (NOT DEFINED HDF5_DIR)
     message (FATAL_ERROR "HDF5_DIR is not found!" )
 endif (NOT DEFINED HDF5_DIR)
 
+# OUTPUT TYPE
+set (SPECTRAL OFF)
+set (FEM      OFF)
+if (DAMASK_DRIVER STREQUAL "SPECTRAL")
+    set (SPECTRAL ON )
+elseif (DAMASK_DRIVER STREQUAL "FEM")
+    set (FEM      ON )
+else (DAMASK_DRIVER STREQUAL "SPECTRAL")
+    message (FATAL_ERROR "Unknown output, check build script!")
+endif (DAMASK_DRIVER STREQUAL "SPECTRAL")
+
+# COMPILE VARIABLES
+add_definitions(-DDAMASKVERSION="${DAMASK_V}")
+add_definitions(-DPETSc)
+add_definitions(-DFLOAT=8)
+add_definitions(-DINT=4)
+if (SPECTRAL)
+    add_definitions(-DSpectral)
+endif(SPECTRAL)
+if (FEM)
+    add_definitions(-DFEM)
+endif(FEM)
+
 # brutal force to find the variables defined in PETSC
 # ref:
 # https://github.com/jedbrown/cmake-modules/blob/master/FindPETSc.cmake
@@ -42,15 +65,17 @@ file (WRITE "${petsc_config_makefile}"
 SHELL = /bin/sh
 include ${petsc_conf_rules}
 include ${petsc_conf_variables}
-INCLUDE_DIRS := \${PETSC_FC_INCLUDES} -DPETSc
+INCLUDE_DIRS := \${PETSC_FC_INCLUDES}
 LIBRARIES    := \${PETSC_WITH_EXTERNAL_LIB}
 COMPILERNAME ?= \${FC}
 LINKERNAME   ?= \${FLINKER}
 
 includes:
 \t@echo \${INCLUDE_DIRS}
+
 extlibs:
 \t@echo \${LIBRARIES}
+
 compiler:
 \t@echo \${COMPILERNAME}
 
@@ -61,45 +86,31 @@ linker:
 find_program (MAKE_EXECUTABLE NAMES make gmake)
 execute_process(COMMAND ${MAKE_EXECUTABLE} -f ${petsc_config_makefile} "includes"
                 RESULT_VARIABLE PETSC_INCLUDES_RETURN
-                OUTPUT_VARIABLE PETSC_INCLUDES)
+                OUTPUT_VARIABLE PETSC_INCLUDES
+                OUTPUT_STRIP_TRAILING_WHITESPACE)
 execute_process(COMMAND ${MAKE_EXECUTABLE} -f ${petsc_config_makefile} "extlibs"
                 RESULT_VARIABLE PETSC_EXTERNAL_LIB_RETURN
-                OUTPUT_VARIABLE PETSC_EXTERNAL_LIB)
+                OUTPUT_VARIABLE PETSC_EXTERNAL_LIB
+                OUTPUT_STRIP_TRAILING_WHITESPACE)
 execute_process(COMMAND ${MAKE_EXECUTABLE} -f ${petsc_config_makefile} "linker"
                 RESULT_VARIABLE PETSC_LINK_LIB_RETURN
-                OUTPUT_VARIABLE PETSC_LINK_LIB)
+                OUTPUT_VARIABLE PETSC_LINK_LIB
+                OUTPUT_STRIP_TRAILING_WHITESPACE)
 execute_process(COMMAND ${MAKE_EXECUTABLE} -f ${petsc_config_makefile} "compiler"
                 RESULT_VARIABLE MPIEXEC_RETURN
-                OUTPUT_VARIABLE MPIEXEC)
+                OUTPUT_VARIABLE MPIEXEC
+                OUTPUT_STRIP_TRAILING_WHITESPACE)
 file (REMOVE ${petsc_config_makefile})
 
-message("\nFound PETSC_DIR:\n${PETSC_DIR}")
-message("Set PETSC_INCLUDES to:\n${PETSC_INCLUDES}")
-message("Set PETSC_EXTERNAL_LIB to:\n${PETSC_EXTERNAL_LIB}")
-message("Set PETSC_LINK_LIB to:\n${PETSC_LINK_LIB}")
-message("Use PETSC wrapped compiler @: ${MPIEXEC}")
-
-# OUTPUT TYPE
-set (SPECTRAL OFF)
-set (FEM      OFF)
-if (DAMASK_DRIVER STREQUAL "SPECTRAL")
-    set (SPECTRAL ON )
-elseif (DAMASK_DRIVER STREQUAL "FEM")
-    set (FEM      ON )
-else (DAMASK_DRIVER STREQUAL "SPECTRAL")
-    message (FATAL_ERROR "Unknown output, check build script!")
-endif (DAMASK_DRIVER STREQUAL "SPECTRAL")
-
+message("***Found PETSC_DIR:\n${PETSC_DIR}\n")
+message("***Set PETSC_INCLUDES to:\n${PETSC_INCLUDES}\n")
+message("***Set PETSC_EXTERNAL_LIB to:\n${PETSC_EXTERNAL_LIB}\n")
+message("***Set PETSC_LINK_LIB to:\n${PETSC_LINK_LIB}\n")
+message("***Use PETSC wrapped compiler @: ${MPIEXEC}\n")
 
 # set system include directories
-include_directories(${PETSC_INCLUDES}
-                    lib
-                    ${HDF5_DIR}/include
-                    )
-link_directories(${HDF5_DIR}/lib
-                 ${PETSC_LINK_LIB}
-                 ${PETSC_EXTERNAL_LIB}
-                )
+set (DAMASK_INCLUDE_FLAGS "${DAMASK_INCLUDE_FLAGS} ${PETSC_INCLUDES} -I${PROJECT_SOURCE_DIR}/lib -I${HDF5_DIR}/include")
+set (DAMASK_LINK_FLAGS    "${PETSC_LINK_LIB} ${PETSC_EXTERNAL_LIB} -L${HDF5_DIR}/lib")
 
 ##
 # set compile and debug flags
@@ -129,7 +140,7 @@ else (OPTIMIZATION STREQUAL "OFF")
     set (OPTIMIZATION_gfortran "-O2")
 endif (OPTIMIZATION STREQUAL "OFF")
 
-set (STANDARD_CHECK_ifort    "-stand none -standard-semantics")
+set (STANDARD_CHECK_ifort    "-stand f08 -standard-semantics")
 set (STANDARD_CHECK_gfortran "-std=f2008ts -pedantic-errors" )
 
 ###################################################################################################
@@ -163,7 +174,6 @@ set (STANDARD_CHECK_gfortran "-std=f2008ts -pedantic-errors" )
 # -diag-disable 7410 should disable warning about directory statement in inquire function,
 #  but does not work. hence the other 2 statements
 ###################################################################################################
-set (COMPILE_OPTIONS_ifort   "${COMPILE_OPTIONS_ifort} -DDAMASKVERSION=\\\"${DAMASK_V}\\\"" )
 set (COMPILE_OPTIONS_ifort   "${COMPILE_OPTIONS_ifort} -fpp"                        )
 set (COMPILE_OPTIONS_ifort   "${COMPILE_OPTIONS_ifort} -ftz"                        )
 set (COMPILE_OPTIONS_ifort   "${COMPILE_OPTIONS_ifort} -assume byterecl,fpe_summary")
@@ -301,7 +311,6 @@ set (LINK_OPTIONS_ifort      "-shared-intel")
 #-fno-fast-math:
 #      -->   otherwise, when setting -ffast-math, isnan always evaluates to false (I would call it a bug)
 ###################################################################################################
-set (COMPILE_OPTIONS_gfortran "${COMPILE_OPTIONS_gfortran} -DDAMASKVERSION=\\\"${DAMASKVERSION}\\\"")
 set (COMPILE_OPTIONS_gfortran "${COMPILE_OPTIONS_gfortran} -xf95-cpp-input"                         )
 set (COMPILE_OPTIONS_gfortran "${COMPILE_OPTIONS_gfortran} -ffree-line-length-240"                  )
 set (COMPILE_OPTIONS_gfortran "${COMPILE_OPTIONS_gfortran} -fimplicit-none"                         )
@@ -349,14 +358,14 @@ set (LINK_OPTIONS_gfortran "-Wl,-undefined,dynamic_lookup")
 #-real-size 32:               set precision to one of those 32/64/128 (= 4/8/16 bytes) for standard real (=8 for pReal)
 #-integer-size 16:            set precision to one of those 16/32/64 (= 2/4/8 bytes) for standard integer (=4 for pInt)
 ###################################################################################################
-set (PRECISION_ifort "-real-size 64 -integer-size 32 -DFLOAT=8 -DINT=4")
+set (PRECISION_ifort "-real-size 64 -integer-size 32")
 
 ###################################################################################################
 #-fdefault-real-8:            set precision to 8 bytes for standard real (=8 for pReal). Will set size of double to 16 bytes as long as -fdefault-double-8 is not set
 #-fdefault-double-8:          set precision to 8 bytes for double real, would be 16 bytes because -fdefault-real-8 is used
 #-fdefault-integer-8:         Use it to set precision to 8 bytes for integer, don't use it for the standard case of pInt=4 (there is no -fdefault-integer-4)
 ###################################################################################################
-set (PRECISION_gfortran "-fdefault-real-8 -fdefault-double-8 -DFLOAT=8 -DINT=4")
+set (PRECISION_gfortran "-fdefault-real-8 -fdefault-double-8")
 
 # set FLAGS
 get_filename_component (Fortran_COMPILER_NAME ${CMAKE_Fortran_COMPILER} NAME)
@@ -406,28 +415,29 @@ else (Fortran_COMPILER_NAME MATCHES "ifort.*")
     message (FATAL_ERROR "Require Fortran90 from GNU or Intel.")
 endif (Fortran_COMPILER_NAME MATCHES "ifort.*")
 
-# additional flag for SPECTRAL solver
-if (SPECTRAL)
-    set (CMAKE_Fortran_FLAGS_RELEASE     "${CMAKE_Fortran_FLAGS_RELEASE}    -DSpectral")
-    set (CMAKE_Fortran_FLAGS_DEBUG       "${CMAKE_Fortran_FLAGS_DEBUG}      -DSpectral")
-    set (CMAKE_EXE_LINKER_FLAGS_RELEASE  "${CMAKE_EXE_LINKER_FLAGS_RELEASE} -DSpectral")
-    set (CMAKE_EXE_LINKER_FLAGS_DEBUG    "${CMAKE_EXE_LINKER_FLAGS_DEBUG}   -DSpectral")
-endif (SPECTRAL)
-# additional flags for FEM solver
-if (FEM)
-    set (CMAKE_Fortran_FLAGS_RELEASE     "${CMAKE_Fortran_FLAGS_RELEASE}    -DFEM")
-    set (CMAKE_Fortran_FLAGS_DEBUG       "${CMAKE_Fortran_FLAGS_DEBUG}      -DFEM")
-    set (CMAKE_EXE_LINKER_FLAGS_RELEASE  "${CMAKE_EXE_LINKER_FLAGS_RELEASE} -DFEM")
-    set (CMAKE_EXE_LINKER_FLAGS_DEBUG    "${CMAKE_EXE_LINKER_FLAGS_DEBUG}   -DFEM")
-endif (FEM)
+set (CMAKE_Fortran_FLAGS_RELEASE     "${CMAKE_Fortran_FLAGS_RELEASE}    ${DAMASK_INCLUDE_FLAGS}")
+set (CMAKE_Fortran_FLAGS_DEBUG       "${CMAKE_Fortran_FLAGS_DEBUG}      ${DAMASK_INCLUDE_FLAGS}")
+set (CMAKE_EXE_LINKER_FLAGS_RELEASE  "${CMAKE_EXE_LINKER_FLAGS_RELEASE} ${DAMASK_LINK_FLAGS}"   )
+set (CMAKE_EXE_LINKER_FLAGS_DEBUG    "${CMAKE_EXE_LINKER_FLAGS_DEBUG}   ${DAMASK_LINK_FLAGS}"   )
 
-# set default project compiler flags
-# NOTE: some file might need different flags for compiling, DAMASK_$FLAGS
-#       are essentially the swap for this purpose
-set (DAMASK_Fortran_FLAGS_RELEASE    "${CMAKE_Fortran_FLAGS_RELEASE}"   )
-set (DAMASK_Fortran_FLAGS_DEBUG      "${CMAKE_Fortran_FLAGS_DEBUG}"     )
-set (DAMASK_EXE_LINKER_FLAGS_RELEASE "${CMAKE_EXE_LINKER_FLAGS_RELEASE}")
-set (DAMASK_EXE_LINKER_FLAGS_DEBUG   "${CMAKE_EXE_LINKER_FLAGS_DEBUG}"  )
+# if (SPECTRAL)
+#     # add_definitions(-DSpectral)
+#     set (CMAKE_Fortran_FLAGS_RELEASE     "${CMAKE_Fortran_FLAGS_RELEASE}    -DSpectral")
+#     set (CMAKE_Fortran_FLAGS_DEBUG       "${CMAKE_Fortran_FLAGS_DEBUG}      -DSpectral")
+#     set (CMAKE_EXE_LINKER_FLAGS_RELEASE  "${CMAKE_EXE_LINKER_FLAGS_RELEASE} -DSpectral")
+#     set (CMAKE_EXE_LINKER_FLAGS_DEBUG    "${CMAKE_EXE_LINKER_FLAGS_DEBUG}   -DSpectral")
+# endif (SPECTRAL)
+# # additional flags for FEM solver
+# if (FEM)
+#     # add_definitions(-DFEM)
+#     set (CMAKE_Fortran_FLAGS_RELEASE     "${CMAKE_Fortran_FLAGS_RELEASE}    -DFEM")
+#     set (CMAKE_Fortran_FLAGS_DEBUG       "${CMAKE_Fortran_FLAGS_DEBUG}      -DFEM")
+#     set (CMAKE_EXE_LINKER_FLAGS_RELEASE  "${CMAKE_EXE_LINKER_FLAGS_RELEASE} -DFEM")
+#     set (CMAKE_EXE_LINKER_FLAGS_DEBUG    "${CMAKE_EXE_LINKER_FLAGS_DEBUG}   -DFEM")
+# endif (FEM)
+
+message("***COMPILE FLAGS:\n${CMAKE_Fortran_FLAGS_RELEASE}\n")
+message("***LINK FLAGS:\n${CMAKE_EXE_LINKER_FLAGS_RELEASE}\n")
 
 ##
 # ADD CODE DIRECTORY

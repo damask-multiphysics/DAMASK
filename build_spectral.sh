@@ -29,7 +29,7 @@ cd build_spectral
 # CMAKE_BUILD_TYPE  |  Default set to release (no debugging output)
 # OPENMP            |  [ON/OFF]
 # OPTIMIZATION      |  [OFF,DEFENSIVE,AGGRESSIVE,ULTRA]
-# DAMASK_DRIVER     |  [SPECTRAL, FEM, MARC]
+# DAMASK_DRIVER     |  [SPECTRAL, FEM]
 cmake -D PETSC_DIR=${PETSC_DIR}    \
       -D HDF5_DIR=${HDF5_DIR}      \
       -D DAMASK_V=${DAMASKVERSION} \
