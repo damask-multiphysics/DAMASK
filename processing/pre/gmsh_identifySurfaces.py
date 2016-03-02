@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 no BOM -*-
 
-import os,string,re
+import os,re
 from optparse import OptionParser
 import damask
 
@@ -142,7 +142,7 @@ if (options.dimension == 3):
 
 elif (options.dimension == 2):
   for i,l in enumerate(line):
-  #  for pts in line[int(abs(lines)-1)]:
+    #  for pts in line[int(abs(lines)-1)]:
     for pts in l:
       x_coord.append(point[int(pts)-1][0])
       y_coord.append(point[int(pts)-1][1])

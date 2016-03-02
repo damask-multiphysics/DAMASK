@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 no BOM -*-
 
-import os,sys,string,math
+import os,sys,math
 import numpy as np
 from optparse import OptionParser
 from scipy import ndimage
@@ -73,15 +73,16 @@ for name in filenames:
 
 # --- read data ------------------------------------------------------------------------------------
   microstructure = np.tile(np.array(table.microstructure_read(info['grid']),'i').reshape(info['grid'],order='F'),
-                              np.where(info['grid'] == 1, 2,1))                                                                # make one copy along dimensions with grid == 1
+                              np.where(info['grid'] == 1, 2,1))                                     # make one copy along dimensions with grid == 1
   grid = np.array(microstructure.shape)
 
 #--- initialize support data -----------------------------------------------------------------------
 
   periodic_microstructure = np.tile(microstructure,(3,3,3))[grid[0]/2:-grid[0]/2,
                                                             grid[1]/2:-grid[1]/2,
-                                                            grid[2]/2:-grid[2]/2]                                              # periodically extend the microstructure
-  microstructure_original = np.copy(microstructure)                                                                            # store a copy the initial microstructure to find locations of immutable indices
+                                                            grid[2]/2:-grid[2]/2]                   # periodically extend the microstructure
+# store a copy the initial microstructure to find locations of immutable indices
+  microstructure_original = np.copy(microstructure)                                                 
 
   X,Y,Z = np.mgrid[0:grid[0],0:grid[1],0:grid[2]]
   gauss = np.exp(-(X*X + Y*Y + Z*Z)/(2.0*options.d*options.d))/math.pow(2.0*np.pi*options.d*options.d,1.5)
@@ -99,44 +100,50 @@ for name in filenames:
     for i in (-1,0,1):
       for j in (-1,0,1):
         for k in (-1,0,1):
+            # assign interfacial energy to all voxels that have a differing neighbor (in Moore neighborhood)
           interfaceEnergy = np.maximum(boundary,
                                           interfacialEnergy(microstructure,np.roll(np.roll(np.roll(
-                                                            microstructure,i,axis=0), j,axis=1), k,axis=2)))                     # assign interfacial energy to all voxels that have a differing neighbor (in Moore neighborhood)
+                                                            microstructure,i,axis=0), j,axis=1), k,axis=2)))
+    # periodically extend interfacial energy array by half a grid size in positive and negative directions
     periodic_interfaceEnergy = np.tile(interfaceEnergy,(3,3,3))[grid[0]/2:-grid[0]/2,
                                                                    grid[1]/2:-grid[1]/2,
-                                                                   grid[2]/2:-grid[2]/2]                                         # periodically extend interfacial energy array by half a grid size in positive and negative directions
-    index = ndimage.morphology.distance_transform_edt(periodic_interfaceEnergy == 0.,                                            # transform bulk volume (i.e. where interfacial energy is zero)
+                                                                   grid[2]/2:-grid[2]/2]
+    # transform bulk volume (i.e. where interfacial energy is zero)
+    index = ndimage.morphology.distance_transform_edt(periodic_interfaceEnergy == 0.,                                            
                                                       return_distances = False,
-                                                      return_indices = True)                                                     # want array index of nearest voxel on periodically extended boundary
-#    boundaryExt = boundaryExt[index[0].flatten(),index[1].flatten(),index[2].flatten()].reshape(boundaryExt.shape)              # fill bulk with energy of nearest interface | question PE: what "flatten" for?
+                                                      return_indices = True)
+    # want array index of nearest voxel on periodically extended boundary
     periodic_bulkEnergy = periodic_interfaceEnergy[index[0],
                                                    index[1],
-                                                   index[2]].reshape(2*grid)                                                     # fill bulk with energy of nearest interface
-    diffusedEnergy = np.fft.irfftn(np.fft.rfftn(np.where(ndimage.morphology.binary_dilation(interfaceEnergy > 0.,
-                                                                                                     structure = struc,
-                                                                                                     iterations = options.d/2 + 1), # fat boundary | question PE: why 2d - 1? I would argue for d/2 + 1 !!
-                                                            periodic_bulkEnergy[grid[0]/2:-grid[0]/2,                            # retain filled energy on fat boundary...
-                                                                                grid[1]/2:-grid[1]/2,
-                                                                                grid[2]/2:-grid[2]/2],                           # ...and zero everywhere else
-                                                            0.)\
-                                                )*gauss)
+                                                   index[2]].reshape(2*grid)                        # fill bulk with energy of nearest interface
+    diffusedEnergy = np.fft.irfftn(np.fft.rfftn(
+                     np.where(
+                       ndimage.morphology.binary_dilation(interfaceEnergy > 0.,
+                                                          structure = struc,
+                                                          terations = options.d/2 + 1),             # fat boundary | PE: why 2d-1? I would argue for d/2 + 1
+                       periodic_bulkEnergy[grid[0]/2:-grid[0]/2,                                    # retain filled energy on fat boundary...
+                                           grid[1]/2:-grid[1]/2,
+                                           grid[2]/2:-grid[2]/2],                                   # ...and zero everywhere else
+                       0.))*gauss)
     periodic_diffusedEnergy = np.tile(diffusedEnergy,(3,3,3))[grid[0]/2:-grid[0]/2,
                                                                  grid[1]/2:-grid[1]/2,
-                                                                 grid[2]/2:-grid[2]/2]                                           # periodically extend the smoothed bulk energy
-    index = ndimage.morphology.distance_transform_edt(periodic_diffusedEnergy >= 0.5,                                            # transform voxels close to interface region | question PE: what motivates 1/2 (could be any small number, or)?
+                                                                 grid[2]/2:-grid[2]/2]              # periodically extend the smoothed bulk energy
+    # transform voxels close to interface region | question PE: what motivates 1/2 (could be any small number, or)?
+    index = ndimage.morphology.distance_transform_edt(periodic_diffusedEnergy >= 0.5,                                            
                                                       return_distances = False,
-                                                      return_indices = True)                                                     # want index of closest bulk grain
+                                                      return_indices = True)                        # want index of closest bulk grain
     microstructure = periodic_microstructure[index[0],
                                              index[1],
                                              index[2]].reshape(2*grid)[grid[0]/2:-grid[0]/2,
                                                                        grid[1]/2:-grid[1]/2,
-                                                                       grid[2]/2:-grid[2]/2]                                     # extent grains into interface region
+                                                                       grid[2]/2:-grid[2]/2]        # extent grains into interface region
 
     immutable = np.zeros(microstructure.shape, dtype=bool)
+    # find locations where immutable microstructures have been or are now
     for micro in options.immutable:
-      immutable += np.logical_or(microstructure == micro, microstructure_original == micro)                                      # find locations where immutable microstructures have been or are now
-
-    microstructure = np.where(immutable, microstructure_original,microstructure)                                                 # undo any changes involving immutable microstructures
+      immutable += np.logical_or(microstructure == micro, microstructure_original == micro)         
+    # undo any changes involving immutable microstructures
+    microstructure = np.where(immutable, microstructure_original,microstructure)                    
 
 # --- renumber to sequence 1...Ngrains if requested ------------------------------------------------
 #  http://stackoverflow.com/questions/10741346/np-frequency-counts-for-unique-values-in-an-array

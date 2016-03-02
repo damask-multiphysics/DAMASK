@@ -1,13 +1,14 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 no BOM -*-
 
-'''
+"""
 Writes meaningful labels to the marc input file (*.dat) 
-based on the files 
+
+output is based on the files 
 <modelname_jobname>.output<Homogenization/Crystallite/Constitutive>
 that are written during the first run of the model.
-'''
-import sys,os,re,string
+"""
+import sys,os,re
 from optparse import OptionParser
 import damask
 
@@ -16,7 +17,6 @@ scriptID   = ' '.join([scriptName,damask.version])
 
 # -----------------------------
 def ParseOutputFormat(filename,what,me):
-# -----------------------------
   format = {'outputs':{},'specials':{'brothers':[]}}
 
   outputmetafile = filename+'.output'+what
@@ -121,7 +121,7 @@ for file in files:
 
     for what in me:
       outputFormat[what] = ParseOutputFormat(formatFile,what,me[what])
-      if not '_id' in outputFormat[what]['specials']:
+      if '_id' not in outputFormat[what]['specials']:
         print "'%s' not found in <%s>"%(me[what],what)
         print '\n'.join(map(lambda x:'  '+x,outputFormat[what]['specials']['brothers']))
         sys.exit(1)

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 no BOM -*-
 
-import sys,os,math,re,string
+import sys,os,math,re
 from optparse import OptionParser
 import damask
 
@@ -18,7 +18,7 @@ except:
 sys.path.append(damask.solver.Marc().libraryPath('../../'))
 
 try:                                        # check for MSC.Mentat Python interface
-  from py_mentat import *
+  import py_mentat
   MentatCapability = True
 except:
   MentatCapability = False
@@ -29,10 +29,10 @@ def outMentat(cmd,locals):
     exec(cmd[3:])
   elif cmd[0:3] == '(?)':
     cmd = eval(cmd[3:])
-    py_send(cmd)
+    py_mentat.py_send(cmd)
     if 'log' in locals: locals['log'].append(cmd)
   else:
-    py_send(cmd)
+    py_mentat.py_send(cmd)
     if 'log' in locals: locals['log'].append(cmd)
   return
 
@@ -83,10 +83,9 @@ def rcbOrientationParser(content,idcolumn):
 
   return grains
 
-def rcbParser(content,M,size,tolerance,idcolumn,segmentcolumn):   # parser for TSL-OIM reconstructed boundary files
-
+def rcbParser(content,M,size,tolerance,idcolumn,segmentcolumn):
+  """parser for TSL-OIM reconstructed boundary files"""
 # find bounding box
-
   boxX = [1.*sys.maxint,-1.*sys.maxint]
   boxY = [1.*sys.maxint,-1.*sys.maxint]
   x = [0.,0.]
@@ -145,8 +144,8 @@ def rcbParser(content,M,size,tolerance,idcolumn,segmentcolumn):   # parser for T
               match = True
               break
           break
+# force to boundary if inside tolerance to it
       if (not match):
-      # force to boundary if inside tolerance to it
         if (abs(x[i])<dX*tolerance):
           x[i] = 0
         if (abs(dX-x[i])<dX*tolerance):
@@ -226,7 +225,7 @@ def rcbParser(content,M,size,tolerance,idcolumn,segmentcolumn):   # parser for T
     for keyY in allkeysY:
       points.append({'coords': [float(keyX)*scalePatch,float(keyY)*scalePatch], 'segments': connectivityXY[keyX][keyY]})
       for segment in connectivityXY[keyX][keyY]:
-        if (segments[segment] == None):
+        if (segments[segment] is None):
           segments[segment] = pointId
         else:
           segments[segment].append(pointId)
@@ -259,7 +258,7 @@ def rcbParser(content,M,size,tolerance,idcolumn,segmentcolumn):   # parser for T
             points[myEnd]['coords'][1]-points[myStart]['coords'][1]]
           myLen = math.sqrt(myV[0]**2+myV[1]**2)
           best = {'product': -2.0, 'peek': -1, 'len': -1, 'point': -1}
-          for peek in points[myEnd]['segments']:                                                    # trying in turn all segments emanating from current endPoint
+          for peek in points[myEnd]['segments']:                                                    # trying in turn all segments emanating from current end
             if peek == myWalk:
               continue
             peekEnd = segments[peek][1] if segments[peek][0] == myEnd else segments[peek][0]
@@ -652,7 +651,6 @@ def cleanUp(a):
 
 # -------------------------
 def image(name,imgsize,marginX,marginY,rcData):
-# -------------------------
 
   dX = max([coords[0] for coords in rcData['point']])
   dY = max([coords[1] for coords in rcData['point']])
@@ -697,87 +695,87 @@ def image(name,imgsize,marginX,marginY,rcData):
   img.save(name+'.png',"PNG")
 
 # -------------------------
-def inside(x,y,points):                                                     # tests whether point(x,y) is within polygon described by points
-# -------------------------
- inside = False
- npoints=len(points)
- (x1,y1) = points[npoints-1]                                                # start with last point of points
- startover = (y1 >= y)                                                      # am I above testpoint?
- for i in range(npoints):                                                   # loop through all points
-   (x2,y2) = points[i]                                                      # next point
-   endover = (y2 >= y)                                                      # am I above testpoint?
-   if (startover != endover):                                               # one above one below testpoint?
-     if((y2 - y)*(x2 - x1) <= (y2 - y1)*(x2 - x)):                          # check for intersection
-       if (endover):
-         inside = not inside                                                # found intersection
-     else:
-       if (not endover):
-         inside = not inside                                                # found intersection
-   startover = endover                                                      # make second point first point
-   (x1,y1) = (x2,y2)
-   
- return inside
+def inside(x,y,points):
+  """tests whether point(x,y) is within polygon described by points"""
+  inside = False
+  npoints=len(points)
+  (x1,y1) = points[npoints-1]                                                # start with last point of points
+  startover = (y1 >= y)                                                      # am I above testpoint?
+  for i in range(npoints):                                                   # loop through all points
+    (x2,y2) = points[i]                                                      # next point
+    endover = (y2 >= y)                                                      # am I above testpoint?
+    if (startover != endover):                                               # one above one below testpoint?
+      if((y2 - y)*(x2 - x1) <= (y2 - y1)*(x2 - x)):                          # check for intersection
+        if (endover):
+          inside = not inside                                                # found intersection
+      else:
+        if (not endover):
+          inside = not inside                                                # found intersection
+    startover = endover                                                      # make second point first point
+    (x1,y1) = (x2,y2)
+    
+  return inside
   
 # -------------------------
-def fftbuild(rcData,height,xframe,yframe,resolution,extrusion):            # build array of grain numbers
-# -------------------------
- maxX = -1.*sys.maxint
- maxY = -1.*sys.maxint
- for line in rcData['point']:                                               # find data range
-   (x,y) = line
-   maxX = max(maxX, x)
-   maxY = max(maxY, y)
- xsize = maxX+2*xframe                                                      # add framsize
- ysize = maxY+2*yframe
- xres = int(round(resolution/2.0)*2)                                        # use only even resolution
- yres = int(round(xres/xsize*ysize/2.0)*2)                                  # calculate other resolutions
- zres = extrusion
- zsize = extrusion*min([xsize/xres,ysize/yres])
+def fftbuild(rcData,height,xframe,yframe,resolution,extrusion):
+  """build array of grain numbers"""
+  maxX = -1.*sys.maxint
+  maxY = -1.*sys.maxint
+  for line in rcData['point']:                                               # find data range
+    (x,y) = line
+    maxX = max(maxX, x)
+    maxY = max(maxY, y)
+  xsize = maxX+2*xframe                                                      # add framsize
+  ysize = maxY+2*yframe
+  xres = int(round(resolution/2.0)*2)                                        # use only even resolution
+  yres = int(round(xres/xsize*ysize/2.0)*2)                                  # calculate other resolutions
+  zres = extrusion
+  zsize = extrusion*min([xsize/xres,ysize/yres])
+  
+  fftdata = {'fftpoints':[], \
+             'resolution':(xres,yres,zres), \
+             'dimension':(xsize,ysize,zsize)}
+  
+  frameindex=len(rcData['grain'])+1                                          # calculate frame index as largest grain index plus one 
+  dx = xsize/(xres+1)                                                        # calculate step sizes
+  dy = ysize/(yres+1)
  
- fftdata = {'fftpoints':[], \
-            'resolution':(xres,yres,zres), \
-            'dimension':(xsize,ysize,zsize)}
+  grainpoints = []
+  for segments in rcData['grain']:                                           # get segments of each grain
+    points = {}
+    for i,segment in enumerate(segments[:-1]):                               # loop thru segments except last (s=[start,end])
+      points[rcData['segment'][segment][0]] = i                              # assign segment index to start point
+      points[rcData['segment'][segment][1]] = i                              # assigne segment index to endpoint
+    for i in range(2):                                                       # check points of last segment
+      if points[rcData['segment'][segments[-1]][i]] != 0:                    # not on first segment
+        points[rcData['segment'][segments[-1]][i]] = len(segments)-1         # assign segment index to last point
+    
+    grainpoints.append([])                                                   # start out blank for current grain
+    for p in sorted(points, key=points.get):                                 # loop thru set of sorted points
+      grainpoints[-1].append([rcData['point'][p][0],rcData['point'][p][1]])  # append x,y of point
  
- frameindex=len(rcData['grain'])+1                                          # calculate frame index as largest grain index plus one 
- dx = xsize/(xres+1)                                                        # calculate step sizes
- dy = ysize/(yres+1)
-
- grainpoints = []
- for segments in rcData['grain']:                                           # get segments of each grain
-   points = {}
-   for i,segment in enumerate(segments[:-1]):                               # loop thru segments except last (s=[start,end])
-     points[rcData['segment'][segment][0]] = i                              # assign segment index to start point
-     points[rcData['segment'][segment][1]] = i                              # assigne segment index to endpoint
-   for i in range(2):                                                       # check points of last segment
-     if points[rcData['segment'][segments[-1]][i]] != 0:                    # not on first segment
-       points[rcData['segment'][segments[-1]][i]] = len(segments)-1         # assign segment index to last point
-   
-   grainpoints.append([])                                                   # start out blank for current grain
-   for p in sorted(points, key=points.get):                                 # loop thru set of sorted points
-     grainpoints[-1].append([rcData['point'][p][0],rcData['point'][p][1]])  # append x,y of point
-
- bestGuess = 0                                                              # assume grain 0 as best guess
- for i in range(int(xres*yres)):                                            # walk through all points in xy plane
-   xtest = -xframe+((i%xres)+0.5)*dx                                        # calculate coordinates
-   ytest = -yframe+(int(i/xres)+0.5)*dy
-   if(xtest < 0 or xtest > maxX):                                           # check wether part of frame
-     if( ytest < 0 or ytest > maxY):                                        # part of edges
-       fftdata['fftpoints'].append(frameindex+2)                            # append frameindex to result array
-     else:                                                                  # part of xframe
-       fftdata['fftpoints'].append(frameindex)                              # append frameindex to result array
-   elif( ytest < 0 or ytest > maxY):                                        # part of yframe
-       fftdata['fftpoints'].append(frameindex+1)                            # append frameindex to result array
-   else:
-      if inside(xtest,ytest,grainpoints[bestGuess]):                        # check best guess first
-        fftdata['fftpoints'].append(bestGuess+1)
-      else:                                                                 # no success
-        for g in range(len(grainpoints)):                                   # test all
-          if inside(xtest,ytest,grainpoints[g]):
-            fftdata['fftpoints'].append(g+1)
-            bestGuess = g
-            break
-        
- return fftdata  
+  bestGuess = 0                                                              # assume grain 0 as best guess
+  for i in range(int(xres*yres)):                                            # walk through all points in xy plane
+    xtest = -xframe+((i%xres)+0.5)*dx                                        # calculate coordinates
+    ytest = -yframe+(int(i/xres)+0.5)*dy
+    if(xtest < 0 or xtest > maxX):                                           # check wether part of frame
+      if( ytest < 0 or ytest > maxY):                                        # part of edges
+        fftdata['fftpoints'].append(frameindex+2)                            # append frameindex to result array
+      else:                                                                  # part of xframe
+        fftdata['fftpoints'].append(frameindex)                              # append frameindex to result array
+    elif( ytest < 0 or ytest > maxY):                                        # part of yframe
+        fftdata['fftpoints'].append(frameindex+1)                            # append frameindex to result array
+    else:
+       if inside(xtest,ytest,grainpoints[bestGuess]):                        # check best guess first
+         fftdata['fftpoints'].append(bestGuess+1)
+       else:                                                                 # no success
+         for g in range(len(grainpoints)):                                   # test all
+           if inside(xtest,ytest,grainpoints[g]):
+             fftdata['fftpoints'].append(g+1)
+             bestGuess = g
+             break
+         
+  return fftdata  
 
 
 # ----------------------- MAIN -------------------------------
@@ -926,12 +924,12 @@ if 'mentat' in options.output:
     ]
     
     outputLocals = {'log':[]}
-    if (options.port != None):
-      py_connect('',options.port)
+    if (options.port is not None):
+      py_mentat.py_connect('',options.port)
       try: 
         output(cmds,outputLocals,'Mentat')
       finally:
-        py_disconnect()
+        py_mentat.py_disconnect()
       if 'procedure' in options.output:
         output(outputLocals['log'],outputLocals,'Stdout')
   else:

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 no BOM -*-
 
-import sys,os,string
+import sys,os
 import numpy as np
 from optparse import OptionParser
 import damask
@@ -17,14 +17,13 @@ def outMentat(cmd,locals):
     exec(cmd[3:])
   elif cmd[0:3] == '(?)':
     cmd = eval(cmd[3:])
-    py_send(cmd)
+    py_mentat.py_send(cmd)
   else:
-    py_send(cmd)
+    py_mentat.py_send(cmd)
   return
 
 #-------------------------------------------------------------------------------------------------
 def outFile(cmd,locals,dest):
-#-------------------------------------------------------------------------------------------------
   if cmd[0:3] == '(!)':
     exec(cmd[3:])
   elif cmd[0:3] == '(?)':
@@ -37,7 +36,6 @@ def outFile(cmd,locals,dest):
 
 #-------------------------------------------------------------------------------------------------
 def output(cmds,locals,dest):
-#-------------------------------------------------------------------------------------------------
   for cmd in cmds:
     if isinstance(cmd,list):
       output(cmd,locals,dest)
@@ -58,12 +56,12 @@ def servoLink():
          'max': np.zeros(3,dtype='d'),
        'delta': np.zeros(3,dtype='d'),
       }
-  Nnodes = py_get_int("nnodes()")
+  Nnodes = py_mentat.py_get_int("nnodes()")
   NodeCoords = np.zeros((Nnodes,3),dtype='d')
   for node in xrange(Nnodes):
-    NodeCoords[node,0] = py_get_float("node_x(%i)"%(node+1))
-    NodeCoords[node,1] = py_get_float("node_y(%i)"%(node+1))
-    NodeCoords[node,2] = py_get_float("node_z(%i)"%(node+1))
+    NodeCoords[node,0] = py_mentat.py_get_float("node_x(%i)"%(node+1))
+    NodeCoords[node,1] = py_mentat.py_get_float("node_y(%i)"%(node+1))
+    NodeCoords[node,2] = py_mentat.py_get_float("node_z(%i)"%(node+1))
   box['min'] = NodeCoords.min(axis=0)                   # find the bounding box
   box['max'] = NodeCoords.max(axis=0)
   box['delta'] = box['max']-box['min']
@@ -79,7 +77,6 @@ def servoLink():
 #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!  
 # loop over all nodes
   for node in xrange(Nnodes):
-    pos = {}
     key = {}
     maxFlag = [False, False, False]
     Nmax = 0
@@ -97,7 +94,7 @@ def servoLink():
         maxFlag[coord] = True                                                                       # remember face membership (for linked nodes)
   
     if Nmin > 0:                                                                                    # node is on a back face
-      # prepare for any non-existing entries in the data structure
+        # prepare for any non-existing entries in the data structure
       if key['x'] not in baseNode.keys():
         baseNode[key['x']] = {}
       if key['y'] not in baseNode[key['x']].keys():
@@ -166,7 +163,7 @@ else:
   file={'croak':sys.stdout}
 
 try:
-  from py_mentat import *
+  import py_mentat
 except:
   file['croak'].write('error: no valid Mentat release found')
   sys.exit(-1)
@@ -176,8 +173,9 @@ outputLocals = {}
 file['croak'].write('\033[1m'+scriptName+'\033[0m\n\n')
 file['croak'].write( 'waiting to connect...\n')
 try:
-  py_connect('',options.port)
-  output(['*draw_manual'],outputLocals,'Mentat')          # prevent redrawing in Mentat, should be much faster. Since py_connect has no return value, try this to determine if failed or not
+  py_mentat.py_connect('',options.port)
+# prevent redrawing in Mentat, should be much faster. Since py_connect has no return value, try this to determine if failed or not
+  output(['*draw_manual'],outputLocals,'Mentat')
 except:
   file['croak'].write('Could not connect. Set Tools/Python/"Run as Separate Process" & "Initiate"...\n')
   sys.exit()
@@ -191,7 +189,7 @@ output(['*remove_all_servos',
 
 cmds = servoLink()
 output(cmds,outputLocals,'Mentat')
-py_disconnect()
+py_mentat.py_disconnect()
 
 if options.verbose:
   output(cmds,outputLocals,sys.stdout)

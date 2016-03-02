@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 no BOM -*-
 
-import os,string,itertools
+import os,itertools
 import numpy as np
 from optparse import OptionParser
 import damask
@@ -50,8 +50,8 @@ parser.set_defaults(pos = 'pos',
 
 (options,filenames) = parser.parse_args()
 
-if options.whitelist != None: options.whitelist = map(int,options.whitelist)
-if options.blacklist != None: options.blacklist = map(int,options.blacklist)
+if options.whitelist is not None: options.whitelist = map(int,options.whitelist)
+if options.blacklist is not None: options.blacklist = map(int,options.blacklist)
 
 # --- loop over input files -------------------------------------------------------------------------
 
@@ -101,13 +101,11 @@ for name in filenames:
 
 # --- filtering of grain voxels --------------------------------------------------------------------
 
-  mask = np.logical_and(\
-         np.ones_like(table.data[:,3],bool) \
-          if options.whitelist == None \
-          else              np.in1d(table.data[:,3].ravel(), options.whitelist).reshape(table.data[:,3].shape),
-         np.ones_like(table.data[:,3],bool) \
-          if options.blacklist == None \
-          else    np.invert(np.in1d(table.data[:,3].ravel(), options.blacklist).reshape(table.data[:,3].shape))
+  mask = np.logical_and(
+           np.ones_like(table.data[:,3],bool) if options.whitelist is None \
+           else np.in1d(table.data[:,3].ravel(), options.whitelist).reshape(table.data[:,3].shape),
+           np.ones_like(table.data[:,3],bool) if options.blacklist is None \
+           else    np.invert(np.in1d(table.data[:,3].ravel(), options.blacklist).reshape(table.data[:,3].shape))
           )
   table.data = table.data[mask]
 
