@@ -4,7 +4,7 @@
 import os,sys,shutil
 import damask
 from optparse import OptionParser
-from vtk import *
+import vtk
 
 scriptName = os.path.splitext(os.path.basename(__file__))[0]
 scriptID   = ' '.join([scriptName,damask.version])
@@ -44,18 +44,16 @@ for filename in filenames:
 
 for filename in filenames:
 
-  # Read the source file
-  
   sys.stdout.write('read file "%s" ...'%filename)
   sys.stdout.flush()
   suffix = os.path.splitext(filename)[1]
   if suffix == '.vtk':
-    reader = vtkUnstructuredGridReader()
+    reader = vtk.vtkUnstructuredGridReader()
     reader.ReadAllScalarsOn()
     reader.ReadAllVectorsOn()
     reader.ReadAllTensorsOn()
   elif suffix == '.vtu':
-    reader = vtkXMLUnstructuredGridReader()
+    reader = vtk.vtkXMLUnstructuredGridReader()
   else:
     parser.error('filetype "%s" not supported'%suffix)
   reader.SetFileName(filename)
@@ -65,7 +63,7 @@ for filename in filenames:
   sys.stdout.flush()
 
  
-  # Read the scalar data 
+# Read the scalar data 
 
   scalarData = {}
   scalarsToBeRemoved = []
@@ -83,19 +81,18 @@ for filename in filenames:
       scalarsToBeRemoved.append(scalarName)
   for scalarName in scalarsToBeRemoved:
     uGrid.GetCellData().RemoveArray(scalarName)
-  # uGrid.UpdateData()
   sys.stdout.write('\rread scalar data done\n')
   sys.stdout.flush()
 
 
-  # Convert the scalar data to vector data
+# Convert the scalar data to vector data
 
   NscalarData = len(scalarData)
   for n,label in enumerate(scalarData):
     sys.stdout.write("\rconvert to vector data %d%%" %(100*n/NscalarData))
     sys.stdout.flush()
     Nvalues = scalarData[label][0].GetNumberOfTuples()
-    vectorData = vtkDoubleArray()
+    vectorData = vtk.vtkDoubleArray()
     vectorData.SetName(label)
     vectorData.SetNumberOfComponents(3) # set this before NumberOfTuples !!!
     vectorData.SetNumberOfTuples(Nvalues)
@@ -103,16 +100,15 @@ for filename in filenames:
       for j in range(3):
         vectorData.SetComponent(i,j,scalarData[label][j].GetValue(i))
     uGrid.GetCellData().AddArray(vectorData)
-    # uGrid.GetCellData().SetActiveVectors(label)
   sys.stdout.write('\rconvert to vector data done\n')
   
   
-  # Write to new vtk file
+# Write to new vtk file
 
   outfilename = os.path.splitext(filename)[0]+'.vtu'
   sys.stdout.write('write to file "%s" ...'%outfilename)
   sys.stdout.flush()
-  writer = vtkXMLUnstructuredGridWriter()
+  writer = vtk.vtkXMLUnstructuredGridWriter()
   writer.SetFileName(outfilename+'_tmp')
   writer.SetDataModeToAscii()
   writer.SetInput(uGrid)

@@ -4,17 +4,15 @@
 import os,string,math,sys
 import numpy as np
 from optparse import OptionParser
-from vtk import *
+import vtk
+import damask
  
 scriptName = os.path.splitext(os.path.basename(__file__))[0]
 scriptID   = ' '.join([scriptName,damask.version])
 
 # -----------------------------
 def getHeader(filename,sizeFastIndex,sizeSlowIndex,stepsize):
-# -----------------------------
-# returns header for ang file
-# step size in micrometer
-  
+  """returns header for ang file step size in micrometer"""
   return '\n'.join([ \
     '# TEM_PIXperUM          1.000000', \
     '# x-star                1.000000', \
@@ -50,10 +48,7 @@ def getHeader(filename,sizeFastIndex,sizeSlowIndex,stepsize):
 
 # -----------------------------
 def positiveRadians(angle):
-# -----------------------------
-# returns positive angle in radians
-# gets angle in degrees
-
+  """returns positive angle in radians from angle in degrees"""
   angle = math.radians(float(angle))
   while angle < 0.0:
     angle += 2.0 * math.pi
@@ -63,11 +58,12 @@ def positiveRadians(angle):
 
 # -----------------------------
 def getDataLine(angles,x,y,validData=True):
-# -----------------------------
-# returns string of one line in ang file
-# convention in ang file: y coordinate comes first and is fastest index
-# positions in micrometer
-  
+  """
+  returns string of one line in ang file
+
+  convention in ang file: y coordinate comes first and is fastest index
+  positions in micrometer
+  """
   info = {True:  (9999.9, 1.0, 0,99999,0.0),
           False: (  -1.0,-1.0,-1,   -1,1.0)}
   return '%9.5f %9.5f %9.5f %12.5f %12.5f %6.1f %6.3f %2i %6i %6.3f \n'%(tuple(map(positiveRadians,angles))+(y*1e6,x*1e6)+info[validData])
@@ -155,10 +151,9 @@ if options.hexagonal:
 
 for filename in filenames:
   
-  # Read the source file
-  
   if options.verbose: sys.stdout.write("\nREADING VTK FILE\n")
-  reader = vtkUnstructuredGridReader()
+# Read the source file
+  reader = vtk.vtkUnstructuredGridReader()
   reader.SetFileName(filename)
   reader.ReadAllScalarsOn()
   reader.ReadAllVectorsOn()
@@ -166,7 +161,7 @@ for filename in filenames:
   undeformedMesh = reader.GetOutput()
 
   
-  # Get euler angles from cell data
+# Get euler angles from cell data
   
   if options.verbose: sys.stdout.write("\nGETTING EULER ANGLES\n")
   angles = {}
@@ -177,14 +172,14 @@ for filename in filenames:
       if options.verbose: sys.stdout.write("  found scalar with name %s\n"%scalarName)
   if len(angles) < 3:    # found data for all three euler angles?
     for label in options.eulerLabel:
-      if not label in angles.keys():
+      if label not in angles.keys():
         parser.error('Could not find scalar data with name %s'%label)
   
   
-  # Get deformed mesh
+# Get deformed mesh
   
   if options.verbose: sys.stdout.write("\nDEFORM MESH\n")
-  warpVector = vtkWarpVector()
+  warpVector = vtk.vtkWarpVector()
   undeformedMesh.GetPointData().SetActiveVectors(options.dispLabel)
   warpVector.SetInput(undeformedMesh)
   warpVector.Update()
@@ -197,29 +192,29 @@ for filename in filenames:
     sys.stdout.write("    z (% .8f % .8f)\n"%(box[4],box[5]))
 
 
-  # Get cell centers of deformed mesh (position of ips)
+# Get cell centers of deformed mesh (position of ips)
   
   if options.verbose: sys.stdout.write("\nGETTING CELL CENTERS OF DEFORMED MESH\n")
-  cellCenter = vtkCellCenters()
+  cellCenter = vtk.vtkCellCenters()
   cellCenter.SetVertexCells(0)   # do not generate vertex cells, just points
   cellCenter.SetInput(deformedMesh)
   cellCenter.Update()
   meshIPs = cellCenter.GetOutput()
 
 
-  # Get outer surface of deformed mesh
+# Get outer surface of deformed mesh
   
   if options.verbose: sys.stdout.write("\nGETTING OUTER SURFACE OF DEFORMED MESH\n")
-  surfaceFilter = vtkDataSetSurfaceFilter()
+  surfaceFilter = vtk.vtkDataSetSurfaceFilter()
   surfaceFilter.SetInput(deformedMesh)
   surfaceFilter.Update()
   surface = surfaceFilter.GetOutput()
   
   
-  # Get coordinate system for ang files
-  # z-vector is normal to slices
-  # x-vector corresponds to the up-direction
-  # "R" rotates coordinates from the mesh system into the TSL system
+# Get coordinate system for ang files
+# z-vector is normal to slices
+# x-vector corresponds to the up-direction
+# "R" rotates coordinates from the mesh system into the TSL system
 
   if options.verbose: sys.stdout.write("\nGETTING COORDINATE SYSTEM FOR ANG FILES\n")
   z = np.array(options.normal,dtype='float')
@@ -235,7 +230,7 @@ for filename in filenames:
     sys.stdout.write("    z (% .8f % .8f % .8f)\n"%tuple(z))
 
 
-  # Get bounding box in rotated system (x,y,z)
+# Get bounding box in rotated system (x,y,z)
 
   if options.verbose: sys.stdout.write("\nGETTING BOUNDING BOX IN ROTATED SYSTEM\n")
   rotatedbox = [[np.inf,-np.inf] for i in range(3)]     # bounding box in rotated TSL system
@@ -254,8 +249,8 @@ for filename in filenames:
     sys.stdout.write("    z (% .8f % .8f)\n"%tuple(rotatedbox[2]))
 
 
-  # Correct bounding box so that a multiplicity of the resolution fits into it
-  # and get number of points and extent in each (rotated) axis direction
+# Correct bounding box so that a multiplicity of the resolution fits into it
+# and get number of points and extent in each (rotated) axis direction
 
   if options.verbose: sys.stdout.write("\nCORRECTING EXTENT OF BOUNDING BOX IN ROTATED SYSTEM\n")
   correction = []
@@ -284,12 +279,12 @@ for filename in filenames:
     sys.stdout.write("    z (% .8f % .8f)\n"%tuple(rotatedbox[2]))
 
 
-  # Generate new regular point grid for ang files
-  # Use "polydata" object with points as single vertices
-  # beware of TSL convention: y direction is fastest index
+# Generate new regular point grid for ang files
+# Use "polydata" object with points as single vertices
+# beware of TSL convention: y direction is fastest index
 
   if options.verbose: sys.stdout.write("\nGENERATING POINTS FOR POINT GRID")
-  points = vtkPoints()
+  points = vtk.vtkPoints()
   for k in xrange(Npoints[2]):
     for j in xrange(Npoints[0]):  
       for i in xrange(Npoints[1]):   # y is fastest index
@@ -309,9 +304,9 @@ for filename in filenames:
     sys.stdout.write("  grid resolution: %.8f\n"%options.resolution)
 
   if options.verbose: sys.stdout.write("\nGENERATING VERTICES FOR POINT GRID")
-  vertices = vtkCellArray()
+  vertices = vtk.vtkCellArray()
   for i in xrange(totalNpoints):
-    vertex = vtkVertex()
+    vertex = vtk.vtkVertex()
     vertex.GetPointIds().SetId(0,i)  # each vertex consists of exactly one (index 0) point with ID "i"
     vertices.InsertNextCell(vertex)
     if options.verbose: 
@@ -319,34 +314,35 @@ for filename in filenames:
       sys.stdout.flush()
 
   if options.verbose: sys.stdout.write("\n\nGENERATING POINT GRID\n")
-  pointgrid = vtkPolyData()
+  pointgrid = vtk.vtkPolyData()
   pointgrid.SetPoints(points)
   pointgrid.SetVerts(vertices)
   pointgrid.Update()
 
 
-  # Find out which points reside inside mesh geometry
+# Find out which points reside inside mesh geometry
 
   if options.verbose: sys.stdout.write("\nIDENTIFYING POINTS INSIDE MESH GEOMETRY\n")
-  enclosedPoints = vtkSelectEnclosedPoints()
+  enclosedPoints = vtk.vtkSelectEnclosedPoints()
   enclosedPoints.SetSurface(surface)
   enclosedPoints.SetInput(pointgrid)
   enclosedPoints.Update()
 
 
-  # Build kdtree from mesh IPs and match mesh IPs to point grid
+# Build kdtree from mesh IPs and match mesh IPs to point grid
 
   if options.verbose: sys.stdout.write("\nBUILDING MAPPING OF GRID POINTS")
-  kdTree = vtkKdTree()
+  kdTree = vtk.vtkKdTree()
   kdTree.BuildLocatorFromPoints(meshIPs.GetPoints())
   gridToMesh = []
-  ids = vtkIdList()
+  ids = vtk.vtkIdList()
   NenclosedPoints = 0
   for i in range(pointgrid.GetNumberOfPoints()):
     gridToMesh.append([])
     if enclosedPoints.IsInside(i):
       NenclosedPoints += 1
-      kdTree.FindClosestNPoints(options.interpolation,pointgrid.GetPoint(i),ids) # here one could use faster(?) "FindClosestPoint" if only first nearest neighbor required
+# here one could use faster(?) "FindClosestPoint" if only first nearest neighbor required
+      kdTree.FindClosestNPoints(options.interpolation,pointgrid.GetPoint(i),ids) 
       for j in range(ids.GetNumberOfIds()): 
         gridToMesh[-1].extend([ids.GetId(j)])
     if options.verbose: 
@@ -358,7 +354,7 @@ for filename in filenames:
   
 
 
-  # ITERATE OVER SLICES AND CREATE ANG FILE
+# ITERATE OVER SLICES AND CREATE ANG FILE
   
   if options.verbose: 
     sys.stdout.write("\nWRITING OUT ANG FILES\n")
@@ -404,13 +400,13 @@ for filename in filenames:
         angfile.write(getDataLine(interpolatedPhi,x,y,enclosedPoints.IsInside(i)))
       
 
-  # Visualize slices
+# Visualize slices
   
   if options.visualize:
-    meshMapper = vtkDataSetMapper()
+    meshMapper = vtk.vtkDataSetMapper()
     meshMapper.SetInput(surface)
     meshMapper.ScalarVisibilityOff()          # do not use scalar data for coloring
-    meshActor = vtkActor()
+    meshActor = vtk.vtkActor()
     meshActor.SetMapper(meshMapper)
     meshActor.GetProperty().SetOpacity(0.2)
     meshActor.GetProperty().SetColor(1.0,1.0,0)
@@ -418,43 +414,43 @@ for filename in filenames:
     # meshActor.GetProperty().SetEdgeColor(1,1,0.5)
     # meshActor.GetProperty().EdgeVisibilityOn()
     
-    boxpoints = vtkPoints()
+    boxpoints = vtk.vtkPoints()
     for n in range(8):
       P = [rotatedbox[0][(n/1)%2],
            rotatedbox[1][(n/2)%2], 
            rotatedbox[2][(n/4)%2]]
       boxpoints.InsertNextPoint(list(np.dot(R.T,np.array(P))))
-    box = vtkHexahedron()
+    box = vtk.vtkHexahedron()
     for n,i in enumerate([0,1,3,2,4,5,7,6]):
       box.GetPointIds().SetId(n,i)
-    boxgrid = vtkUnstructuredGrid()
+    boxgrid = vtk.vtkUnstructuredGrid()
     boxgrid.SetPoints(boxpoints)
     boxgrid.InsertNextCell(box.GetCellType(), box.GetPointIds())
-    boxsurfaceFilter = vtkDataSetSurfaceFilter()
+    boxsurfaceFilter = vtk.vtkDataSetSurfaceFilter()
     boxsurfaceFilter.SetInput(boxgrid)
     boxsurfaceFilter.Update()
     boxsurface = boxsurfaceFilter.GetOutput()
 
-    boxMapper = vtkDataSetMapper()
+    boxMapper = vtk.vtkDataSetMapper()
     boxMapper.SetInput(boxsurface)
-    boxActor = vtkActor()
+    boxActor = vtk.vtkActor()
     boxActor.SetMapper(boxMapper)
     boxActor.GetProperty().SetLineWidth(2.0)
     boxActor.GetProperty().SetRepresentationToWireframe()
 
-    gridMapper = vtkDataSetMapper()
+    gridMapper = vtk.vtkDataSetMapper()
     gridMapper.SetInput(pointgrid)
-    gridActor = vtkActor()
+    gridActor = vtk.vtkActor()
     gridActor.SetMapper(gridMapper)
     gridActor.GetProperty().SetColor(0,0,0)
     gridActor.GetProperty().SetPointSize(3)
 
 
-    renderer = vtkRenderer()
-    renderWindow = vtkRenderWindow()
+    renderer = vtk.vtkRenderer()
+    renderWindow = vtk.vtkRenderWindow()
     renderWindow.FullScreenOn()
     renderWindow.AddRenderer(renderer)
-    renderWindowInteractor = vtkRenderWindowInteractor()
+    renderWindowInteractor = vtk.vtkRenderWindowInteractor()
     renderWindowInteractor.SetRenderWindow(renderWindow)
     renderer.AddActor(meshActor)
     renderer.AddActor(boxActor)
@@ -462,6 +458,6 @@ for filename in filenames:
     renderer.SetBackground(1,1,1)
      
     renderWindow.Render()
-    renderWindowInteractor.SetInteractorStyle(vtkInteractorStyleTrackballCamera())
+    renderWindowInteractor.SetInteractorStyle(vtk.vtkInteractorStyleTrackballCamera())
     renderWindowInteractor.Start()
 

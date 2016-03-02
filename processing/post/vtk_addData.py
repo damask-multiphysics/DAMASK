@@ -10,7 +10,6 @@ scriptID   = ' '.join([scriptName,damask.version])
 
 # -----------------------------
 def findTag(filename,tag):
-# -----------------------------
   
   with open(filename,'r') as myfile: 
     mypattern = re.compile(str(tag))
