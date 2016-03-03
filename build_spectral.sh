@@ -38,6 +38,3 @@ cmake -D PETSC_DIR=${PETSC_DIR}    \
       -D OPTIMIZATION=DEFENSIVE    \
       -D DAMASK_DRIVER=SPECTRAL    \
       ../..
-
-# instruction for compiling
-echo "Please go into the directory above and use make to build DAMASK_spectal.exe"
