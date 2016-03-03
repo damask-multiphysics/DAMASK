@@ -142,11 +142,11 @@ if (SPECTRAL)
                                        "spectral_mech_Basic.f90")
       target_link_libraries(DAMASK_SPECTRAL_MECH DAMASK_SPECTRAL_UTILITY)
 
-      add_library(DAMASK_SPECTRAL_SOLVER "DAMASK_spectral.f90")
-      target_link_libraries(DAMASK_SPECTRAL_SOLVER DAMASK_CPFE         )
-      target_link_libraries(DAMASK_SPECTRAL_SOLVER DAMASK_SPECTRAL_BASE)
-      target_link_libraries(DAMASK_SPECTRAL_SOLVER DAMASK_SPECTRAL_MECH)
-      
-      add_executable(DAMASKSpectral.exe DAMASK_spectral.f90)
-      target_link_libraries(DAMASKSpectral.exe DAMASK_SPECTRAL_SOLVER)
+      add_library(DAMASK_EXE "DAMASK_spectral.f90")
+      target_link_libraries(DAMASK_EXE DAMASK_CPFE         )
+      target_link_libraries(DAMASK_EXE DAMASK_SPECTRAL_BASE)
+      target_link_libraries(DAMASK_EXE DAMASK_SPECTRAL_MECH)
+
+      add_executable(DAMASKSpectral.exe "DAMASK_spectral.f90")
+      target_link_libraries(DAMASKSpectral.exe DAMASK_EXE)
 endif(SPECTRAL)
