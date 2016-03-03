@@ -123,7 +123,7 @@ for name in filenames:
 
 # --- report ---------------------------------------------------------------------------------------
   if (newInfo['microstructures'] != info['microstructures']): 
-    damask.util.croak(remarks.append('--> microstructures: %i'%newInfo['microstructures']))
+    damask.util.croak('--> microstructures: %i'%newInfo['microstructures'])
 
 
 # ------------------------------------------ assemble header ---------------------------------------
