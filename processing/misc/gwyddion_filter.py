@@ -1,33 +1,15 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 no BOM -*-
 
-import os,sys,string,re,numpy,scipy.ndimage,scipy.signal,vtk
+import os,string,scipy
+import numpy as np
 import damask
-from optparse import OptionParser, OptionGroup, Option, SUPPRESS_HELP
+from optparse import OptionParser
 
 scriptName = os.path.splitext(os.path.basename(__file__))[0]
 scriptID   = ' '.join([scriptName,damask.version])
 
-#--------------------------------------------------------------------------------------------------
-class extendedOption(Option):
-#--------------------------------------------------------------------------------------------------
-# used for definition of new option parser action 'extend', which enables to take multiple option arguments
-# taken from online tutorial http://docs.python.org/library/optparse.html
-    
-    ACTIONS = Option.ACTIONS + ("extend",)
-    STORE_ACTIONS = Option.STORE_ACTIONS + ("extend",)
-    TYPED_ACTIONS = Option.TYPED_ACTIONS + ("extend",)
-    ALWAYS_TYPED_ACTIONS = Option.ALWAYS_TYPED_ACTIONS + ("extend",)
-
-    def take_action(self, action, dest, opt, value, values, parser):
-        if action == "extend":
-            lvalue = value.split(",")
-            values.ensure_value(dest, []).extend(lvalue)
-        else:
-            Option.take_action(self, action, dest, opt, value, values, parser)
-
-
-parser = OptionParser(option_class=extendedOption, usage='%prog options [file[s]]', description = """
+parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
 Apply filter(s) to Gwyddion data.
 """ + string.replace(scriptID,'\n','\\n')
 )
@@ -59,7 +41,7 @@ for file in filenames:
       if pieces[1] == 'Height:': height = float(pieces[2])
       header.append(line.lstrip('#').strip())
       
-    elevation = numpy.loadtxt(file)#*1e6
+    elevation = np.loadtxt(file)#*1e6
 
     if options.opening > 0:
       elevation = scipy.ndimage.morphology.grey_opening(elevation,options.opening)
@@ -80,5 +62,5 @@ for file in filenames:
       elevation = scipy.ndimage.filters.median_filter(elevation,options.median)
       filters += '_median%i'%options.median
 
-    numpy.savetxt(os.path.splitext(file)[0]+filters+os.path.splitext(file)[1],elevation,header='\n'.join(header))
+    np.savetxt(os.path.splitext(file)[0]+filters+os.path.splitext(file)[1],elevation,header='\n'.join(header))
 
