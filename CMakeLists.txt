@@ -109,9 +109,14 @@ message("***Set PETSC_EXTERNAL_LIB to:\n${PETSC_EXTERNAL_LIB}\n")
 message("***Set PETSC_LINK_LIB to:\n${PETSC_LINK_LIB}\n")
 message("***Use PETSC wrapped compiler:\n${MPIEXEC}\n")
 
-# set system include directories
-set (DAMASK_INCLUDE_FLAGS "${PETSC_INCLUDES} -I${PROJECT_SOURCE_DIR}/lib -I${HDF5_DIR}/include -lm")
-set (DAMASK_LINK_FLAGS    "${PETSC_LINK_LIB} ${PETSC_EXTERNAL_LIB} -L${HDF5_DIR}/lib")
+# set include directories
+set (DAAMSK_INCLDUE_FLAGS "${DAAMSK_INCLDUE_FLAGS} ${PETSC_INCLUDES}"          )
+set (DAAMSK_INCLDUE_FLAGS "${DAAMSK_INCLDUE_FLAGS} -I${PROJECT_SOURCE_DIR}/lib")
+#set (DAAMSK_INCLDUE_FLAGS "${DAAMSK_INCLDUE_FLAGS} -I${HDF5_DIR}/include -lm"  )
+# set link libraries from PETSc
+set (DAMASK_LINK_FLAGS "${DAMASK_LINK_FLAGS} ${PETSC_LINK_LIB}"    )
+set (DAMASK_LINK_FLAGS "${DAMASK_LINK_FLAGS} ${PETSC_EXTERNAL_LIB}")
+#set (DAMASK_LINK_FLAGS "${DAMASK_LINK_FLAGS} -L${HDF5_DIR}/lib"    )
 
 ##
 # set compile and debug flags
@@ -226,7 +231,7 @@ set (DEBUG_OPTIONS_ifort     "${DEBUG_OPTIONS_ifort} -warn stderrors"           
 set (DEBUG_OPTIONS_ifort     "${DEBUG_OPTIONS_ifort} -debug-parameters all"                                    )
 
 set (LINK_OPTIONS_ifort      "-shared-intel")
-
+# set (LINK_OPTIONS_ifort      "-static-intel")
 ###################################################################################################
 # COMPILE SWITCHES
 # -shared
@@ -370,6 +375,10 @@ set (PRECISION_gfortran "-fdefault-real-8 -fdefault-double-8")
 # set FLAGS
 get_filename_component (Fortran_COMPILER_NAME ${CMAKE_Fortran_COMPILER} NAME)
 
+# linker from PETSc goes first
+set (CMAKE_EXE_LINKER_FLAGS_RELEASE  "${CMAKE_EXE_LINKER_FLAGS_RELEASE} ${DAMASK_LINK_FLAGS}"   )
+set (CMAKE_EXE_LINKER_FLAGS_DEBUG    "${CMAKE_EXE_LINKER_FLAGS_DEBUG}   ${DAMASK_LINK_FLAGS}"   )
+
 if (Fortran_COMPILER_NAME MATCHES "ifort.*")
     # need the PETSC wrapped version of ifort
     set (CMAKE_Fortran_COMPILER "${MPIEXEC}")
@@ -380,15 +389,20 @@ if (Fortran_COMPILER_NAME MATCHES "ifort.*")
     set (CMAKE_Fortran_FLAGS_RELEASE     "${CMAKE_Fortran_FLAGS_RELEASE} ${COMPILE_OPTIONS_ifort}")
     set (CMAKE_Fortran_FLAGS_RELEASE     "${CMAKE_Fortran_FLAGS_RELEASE} ${PRECISION_ifort}"      )
 
-    set (CMAKE_EXE_LINKER_FLAGS_RELEASE  "${CMAKE_EXE_LINKER_FLAGS_RELEASE} ${LINK_OPTIONS_ifort}")
-    set (CMAKE_EXE_LINKER_FLAGS_RELEASE  "${CMAKE_EXE_LINKER_FLAGS_RELEASE} ${OPTIMIZATION_ifort}")
+    set (CMAKE_EXE_LINKER_FLAGS_RELEASE  "${CMAKE_EXE_LINKER_FLAGS_RELEASE} ${OPENMP_FLAG_ifort}"   )
+    set (CMAKE_EXE_LINKER_FLAGS_RELEASE  "${CMAKE_EXE_LINKER_FLAGS_RELEASE} ${LINK_OPTIONS_ifort}"  )
+    set (CMAKE_EXE_LINKER_FLAGS_RELEASE  "${CMAKE_EXE_LINKER_FLAGS_RELEASE} ${STANDARD_CHECK_ifort}")
+    set (CMAKE_EXE_LINKER_FLAGS_RELEASE  "${CMAKE_EXE_LINKER_FLAGS_RELEASE} ${OPTIMIZATION_ifort}"  )
     # for DEBUG
     set (CMAKE_Fortran_FLAGS_DEBUG       "${CMAKE_Fortran_FLAGS_DEBUG} ${COMPILE_OPTIONS_ifort}")
     set (CMAKE_Fortran_FLAGS_DEBUG       "${CMAKE_Fortran_FLAGS_DEBUG} ${PRECISION_ifort}"      )
     set (CMAKE_Fortran_FLAGS_DEBUG       "${CMAKE_Fortran_FLAGS_DEBUG} ${DEBUG_OPTIONS_ifort}"  )
 
-    set (CMAKE_EXE_LINKER_FLAGS_DEBUG    "${CMAKE_EXE_LINKER_FLAGS_DEBUG} ${LINK_OPTIONS_ifort}" )
-    set (CMAKE_EXE_LINKER_FLAGS_DEBUG    "${CMAKE_EXE_LINKER_FLAGS_DEBUG} ${DEBUG_OPTIONS_ifort}")
+    set (CMAKE_EXE_LINKER_FLAGS_DEBUG  "${CMAKE_EXE_LINKER_FLAGS_DEBUG} ${OPENMP_FLAG_ifort}"   )
+    set (CMAKE_EXE_LINKER_FLAGS_DEBUG  "${CMAKE_EXE_LINKER_FLAGS_DEBUG} ${LINK_OPTIONS_ifort}"  )
+    set (CMAKE_EXE_LINKER_FLAGS_DEBUG  "${CMAKE_EXE_LINKER_FLAGS_DEBUG} ${STANDARD_CHECK_ifort}")
+    set (CMAKE_EXE_LINKER_FLAGS_DEBUG  "${CMAKE_EXE_LINKER_FLAGS_DEBUG} ${OPTIMIZATION_ifort}"  )
+    set (CMAKE_EXE_LINKER_FLAGS_DEBUG  "${CMAKE_EXE_LINKER_FLAGS_DEBUG} ${DEBUG_OPTIONS_ifort}" )
     #
 elseif (Fortran_COMPILER_NAME MATCHES "gfortran.*")
     set (CMAKE_Fortran_COMPILER "${MPIEXEC}")
@@ -399,15 +413,20 @@ elseif (Fortran_COMPILER_NAME MATCHES "gfortran.*")
     set (CMAKE_Fortran_FLAGS_RELEASE     "${CMAKE_Fortran_FLAGS_RELEASE} ${COMPILE_OPTIONS_gfortran}")
     set (CMAKE_Fortran_FLAGS_RELEASE     "${CMAKE_Fortran_FLAGS_RELEASE} ${PRECISION_gfortran}"      )
 
-    set (CMAKE_EXE_LINKER_FLAGS_RELEASE  "${CMAKE_EXE_LINKER_FLAGS_RELEASE} ${LINK_OPTIONS_gfortran}"   )
-    set (CMAKE_EXE_LINKER_FLAGS_RELEASE  "${CMAKE_EXE_LINKER_FLAGS_RELEASE} ${OPTIMIZATION_ifort}"      )
+    set (CMAKE_EXE_LINKER_FLAGS_RELEASE  "${CMAKE_EXE_LINKER_FLAGS_RELEASE} ${OPENMP_FLAG_gfortran}"   )
+    set (CMAKE_EXE_LINKER_FLAGS_RELEASE  "${CMAKE_EXE_LINKER_FLAGS_RELEASE} ${LINK_OPTIONS_gfortran}"  )
+    set (CMAKE_EXE_LINKER_FLAGS_RELEASE  "${CMAKE_EXE_LINKER_FLAGS_RELEASE} ${STANDARD_CHECK_gfortran}")
+    set (CMAKE_EXE_LINKER_FLAGS_RELEASE  "${CMAKE_EXE_LINKER_FLAGS_RELEASE} ${OPTIMIZATION_gfortran}"  )
     # for DEBUG
     set (CMAKE_Fortran_FLAGS_DEBUG       "${CMAKE_Fortran_FLAGS_DEBUG} ${COMPILE_OPTIONS_gfortran}")
     set (CMAKE_Fortran_FLAGS_DEBUG       "${CMAKE_Fortran_FLAGS_DEBUG} ${PRECISION_gfortran}"      )
     set (CMAKE_Fortran_FLAGS_DEBUG       "${CMAKE_Fortran_FLAGS_DEBUG} ${DEBUG_OPTIONS_gfortran}"  )
 
-    set (CMAKE_EXE_LINKER_FLAGS_DEBUG    "${CMAKE_EXE_LINKER_FLAGS_DEBUG} ${LINK_OPTIONS_gfortran}" )
-    set (CMAKE_EXE_LINKER_FLAGS_DEBUG    "${CMAKE_EXE_LINKER_FLAGS_DEBUG} ${DEBUG_OPTIONS_gfortran}")
+    set (CMAKE_EXE_LINKER_FLAGS_DEBUG  "${CMAKE_EXE_LINKER_FLAGS_DEBUG} ${OPENMP_FLAG_gfortran}"   )
+    set (CMAKE_EXE_LINKER_FLAGS_DEBUG  "${CMAKE_EXE_LINKER_FLAGS_DEBUG} ${LINK_OPTIONS_gfortran}"  )
+    set (CMAKE_EXE_LINKER_FLAGS_DEBUG  "${CMAKE_EXE_LINKER_FLAGS_DEBUG} ${STANDARD_CHECK_gfortran}")
+    set (CMAKE_EXE_LINKER_FLAGS_DEBUG  "${CMAKE_EXE_LINKER_FLAGS_DEBUG} ${OPTIMIZATION_gfortran}"  )
+    set (CMAKE_EXE_LINKER_FLAGS_DEBUG  "${CMAKE_EXE_LINKER_FLAGS_DEBUG} ${DEBUG_OPTIONS_gfortran}" )
     #
 elseif (Fortran_COMPILER_NAME MATCHES "g77")
     message (FATAL_ERROR "Fortran 77 is not supported.")
@@ -415,10 +434,9 @@ else (Fortran_COMPILER_NAME MATCHES "ifort.*")
     message (FATAL_ERROR "Require Fortran90 from GNU or Intel.")
 endif (Fortran_COMPILER_NAME MATCHES "ifort.*")
 
+# append includes from PETSC at the end
 set (CMAKE_Fortran_FLAGS_RELEASE     "${CMAKE_Fortran_FLAGS_RELEASE}    ${DAMASK_INCLUDE_FLAGS}")
 set (CMAKE_Fortran_FLAGS_DEBUG       "${CMAKE_Fortran_FLAGS_DEBUG}      ${DAMASK_INCLUDE_FLAGS}")
-set (CMAKE_EXE_LINKER_FLAGS_RELEASE  "${CMAKE_EXE_LINKER_FLAGS_RELEASE} ${DAMASK_LINK_FLAGS}"   )
-set (CMAKE_EXE_LINKER_FLAGS_DEBUG    "${CMAKE_EXE_LINKER_FLAGS_DEBUG}   ${DAMASK_LINK_FLAGS}"   )
 
 message("***COMPILE FLAGS:\n${CMAKE_Fortran_FLAGS_RELEASE}\n")
 message("***LINK FLAGS:\n${CMAKE_EXE_LINKER_FLAGS_RELEASE}\n")
