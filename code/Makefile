@@ -33,7 +33,7 @@ LINKERNAME   ?= $(FLINKER)
 HDF5    = /mnt/research/CMM/opt/hdf5
 # 2. Location of External Libraries (missing in the 1.8.12 version)
 LIBZ    = /mnt/research/CMM/opt/hdf5/lib/libz.a
-LIBSZ   = /mnt/research/CMM/opt/hdf5/lib/libsz.a
+LIBSZ   = /mnt/research/CMM/opt/hdf5/lib/libszip.a
 # 3. Set libraries for HDF5 (LIBS: shared lib, LIBZ: external lib)
 HDFLIBS = -I$(HDF5)/include -L$(HDF5)/lib
 HDFLIBZ = -L$(LIBZ) -L$(LIBSZ)
@@ -631,6 +631,12 @@ numerics.o:                    numerics.f90 \
 libs.o:                        libs.f90 \
                                IO.o
 
+damask_hdf5.o:                 damask_hdf5.f90 \
+    			       prec.o \
+			       IO.o
+
+	$(PREFIX) $(COMPILERNAME) $(HDFLIBS) $(HDFLIBZ) -c damask_hdf5.f90 $(SUFFIX) -lm
+
 IO.o:                          IO.f90 \
                                DAMASK_interface.o
 
@@ -660,10 +666,6 @@ DAMASK_interface.o:            spectral_interface.f90 \
 prec.o:                        prec.f90
 	$(PREFIX) $(COMPILERNAME) $(COMPILE) -c prec.f90 $(SUFFIX)
 
-damask_hdf5.o:                 damask_hdf5.f90 \
-                               prec.o \
-                               IO.o
-	$(PREFIX) $(COMPILERNAME) $(HDFLIBS) $(HDFLIBZ) -c damask_hdf5.f90 $(SUFFIX) -lm
 endif
 
 %.o : %.f90

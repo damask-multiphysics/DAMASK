@@ -120,8 +120,6 @@ target_link_libraries(DAMASK_ENGINE DAMASK_HYDROGENFLUX  )
 target_link_libraries(DAMASK_ENGINE DAMASK_HOMOGENIZATION)
 
 
-
-
 if (FEM)
       add_library(DAMASK_CPFE "CPFEM.f90")
       target_link_libraries(DAMASK_CPFE DAMASK_ENGINE)
@@ -144,8 +142,11 @@ if (SPECTRAL)
                                        "spectral_mech_Basic.f90")
       target_link_libraries(DAMASK_SPECTRAL_MECH DAMASK_SPECTRAL_UTILITY)
 
+      add_library(DAMASK_SPECTRAL_SOLVER "DAMASK_spectral.f90")
+      target_link_libraries(DAMASK_SPECTRAL_SOLVER DAMASK_CPFE         )
+      target_link_libraries(DAMASK_SPECTRAL_SOLVER DAMASK_SPECTRAL_BASE)
+      target_link_libraries(DAMASK_SPECTRAL_SOLVER DAMASK_SPECTRAL_MECH)
+      
       add_executable(DAMASKSpectral.exe DAMASK_spectral.f90)
-      target_link_libraries(DAMASKSpectral.exe DAMASK_CPFE
-                                               DAMASK_SPECTRAL_BASE
-                                               DAMASK_SPECTRAL_MECH)
+      target_link_libraries(DAMASKSpectral.exe DAMASK_SPECTRAL_SOLVER)
 endif(SPECTRAL)
