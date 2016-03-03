@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # -*- coding: UTF-8 no BOM -*-
 
-import threading,time,os,subprocess,shlex,string,sys,random
+import threading,time,os,sys,random
 import numpy as np
 from optparse import OptionParser
 from operator import mul
@@ -16,10 +16,8 @@ currentSeedsName = None
 
 #---------------------------------------------------------------------------------------------------
 class myThread (threading.Thread):
-#---------------------------------------------------------------------------------------------------
-  '''
-     perturbes seed in seed file, performes Voronoi tessellation, evaluates, and updates best match
-  '''
+  """perturbes seed in seed file, performes Voronoi tessellation, evaluates, and updates best match"""
+
   def __init__(self, threadID):
     threading.Thread.__init__(self)
     self.threadID = threadID
@@ -40,17 +38,17 @@ class myThread (threading.Thread):
     s.release()
     
     random.seed(options.randomSeed+self.threadID)                                                   # initializes to given seeds
-    knownSeedsUpdate = bestSeedsUpdate -1.0                                                         # trigger update of local best seeds (time when the best seed file was found known to thread)
+    knownSeedsUpdate = bestSeedsUpdate -1.0                                                         # trigger update of local best seeds
     randReset = True                                                                                # aquire new direction
     
-    myBestSeedsVFile    = StringIO()                                                                # in-memory file to store local copy of best seeds file
-    perturbedSeedsVFile = StringIO()                                                                # in-memory file for perturbed best seeds file
-    perturbedGeomVFile  = StringIO()                                                                # in-memory file for tessellated geom file
+    myBestSeedsVFile    = StringIO()                                                                # store local copy of best seeds file
+    perturbedSeedsVFile = StringIO()                                                                # perturbed best seeds file
+    perturbedGeomVFile  = StringIO()                                                                # tessellated geom file
 
 #--- still not matching desired bin class ----------------------------------------------------------
     while bestMatch < options.threshold:
-      s.acquire()                                                                                   # accessing global data, ensure only one thread does it per time
-      if bestSeedsUpdate > knownSeedsUpdate:                                                        # if a newer best seed file exist, read it into a virtual file
+      s.acquire()                                                                                   # ensure only one thread acces global data
+      if bestSeedsUpdate > knownSeedsUpdate:                                                        # write best fit to virtual file
         knownSeedsUpdate = bestSeedsUpdate
         bestSeedsVFile.reset()
         myBestSeedsVFile.close()
@@ -78,7 +76,7 @@ class myThread (threading.Thread):
       perturbedSeedsVFile = StringIO()
       myBestSeedsVFile.reset()
 
-      perturbedSeedsTable = damask.ASCIItable(myBestSeedsVFile,perturbedSeedsVFile,labeled=True)    # read current best fitting seed file and to perturbed seed file
+      perturbedSeedsTable = damask.ASCIItable(myBestSeedsVFile,perturbedSeedsVFile,labeled=True)    # write best fit to perturbed seed file
       perturbedSeedsTable.head_read()
       perturbedSeedsTable.head_write()
       outputAlive=True
@@ -87,7 +85,7 @@ class myThread (threading.Thread):
       while outputAlive and perturbedSeedsTable.data_read():                                        # perturbe selected microstructure
         if ms in selectedMs:
           newCoords=np.array(tuple(map(float,perturbedSeedsTable.data[0:3]))+direction[i])
-          newCoords=np.where(newCoords>=1.0,newCoords-1.0,newCoords)                                # ensure that the seeds remain in the box (move one side out, other side in)
+          newCoords=np.where(newCoords>=1.0,newCoords-1.0,newCoords)                                # ensure that the seeds remain in the box
           newCoords=np.where(newCoords <0.0,newCoords+1.0,newCoords)
           perturbedSeedsTable.data[0:3]=[format(f, '8.6f') for f in newCoords]
           direction[i]*=2.
@@ -115,8 +113,9 @@ class myThread (threading.Thread):
       for i in xrange(nMicrostructures):                                                            # calculate the deviation in all bins per histogram
         currentHist.append(np.histogram(currentData,bins=target[i]['bins'])[0])
         currentError.append(np.sqrt(np.square(np.array(target[i]['histogram']-currentHist[i])).sum()))
-      
-      if currentError[0]>0.0:                                                                       # as long as not all grains are within the range of the target, use the deviation to left and right as error
+
+# as long as not all grains are within the range of the target, use the deviation to left and right as error
+      if currentError[0]>0.0:                                                                       
         currentError[0] *=((target[0]['bins'][0]-np.min(currentData))**2.0+                        
                            (target[0]['bins'][1]-np.max(currentData))**2.0)**0.5                    # norm of deviations by number of usual bin deviation
       s.acquire()                                                                                   # do the evaluation serially
@@ -154,7 +153,7 @@ class myThread (threading.Thread):
               match=myMatch
               sys.stdout.flush()
             break
-          if i == min(nMicrostructures,myMatch+options.bins)-1:                                     # same quality as before (for the considered bins): take it to keep on moving
+          if i == min(nMicrostructures,myMatch+options.bins)-1:                                     # same quality as before: take it to keep on moving
             bestSeedsUpdate = time.time()
             perturbedSeedsVFile.reset()
             bestSeedsVFile.close()
@@ -215,7 +214,7 @@ options = parser.parse_args()[0]
 
 damask.util.report(scriptName,options.seedFile)
 
-if options.randomSeed == None:
+if options.randomSeed is None:
   options.randomSeed = int(os.urandom(4).encode('hex'), 16)
 damask.util.croak(options.randomSeed)
 delta = (options.scale/options.grid[0],options.scale/options.grid[1],options.scale/options.grid[2])

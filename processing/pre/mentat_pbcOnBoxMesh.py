@@ -129,7 +129,8 @@ def servoLink():
         ])
       for i in range(nLinks):
         cmds.append([
-        "*link_class servo *servo_ret_node %i %i"%(i+1,baseNode["%.8e"%linkCoord[i][0]]["%.8e"%linkCoord[i][1]]["%.8e"%linkCoord[i][2]]),
+        "*link_class servo *servo_ret_node %i %i"\
+          %(i+1,baseNode["%.8e"%linkCoord[i][0]]["%.8e"%linkCoord[i][1]]["%.8e"%linkCoord[i][2]]),
         "*link_class servo *servo_ret_dof %i %i"%(i+1,dof),
         "*link_class servo *servo_ret_coef %i 1"%(i+1),
         ])

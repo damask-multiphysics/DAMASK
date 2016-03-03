@@ -122,10 +122,9 @@ for name in filenames:
   newInfo['microstructures'] = len(np.unique(seeds[:,3]))
 
 # --- report ---------------------------------------------------------------------------------------
+  if (newInfo['microstructures'] != info['microstructures']): 
+    damask.util.croak(remarks.append('--> microstructures: %i'%newInfo['microstructures']))
 
-  remarks = []
-  if (    newInfo['microstructures'] != info['microstructures']): remarks.append('--> microstructures: %i'%newInfo['microstructures'])
-  if remarks != []: damask.util.croak(remarks)
 
 # ------------------------------------------ assemble header ---------------------------------------
   table.info_clear()

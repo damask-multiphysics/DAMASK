@@ -234,7 +234,8 @@ def rcbParser(content,M,size,tolerance,idcolumn,segmentcolumn):
   crappyData = False
   for pointId,point in enumerate(points):
     if len(point['segments']) < 2:                            # point marks a dead end!
-      print "Dead end at segment %i (%f,%f)"%(1+point['segments'][0],boxX[0]+point['coords'][0]/scalePatch,boxY[0]+point['coords'][1]/scalePatch,)
+      print "Dead end at segment %i (%f,%f)"\
+        %(1+point['segments'][0],boxX[0]+point['coords'][0]/scalePatch,boxY[0]+point['coords'][1]/scalePatch,)
       crappyData = True
 
   grains = {'draw': [], 'legs': []}
@@ -367,7 +368,8 @@ def sample(size,aspect,n,xmargin,ymargin):
 def patch(a,n,mesh,rcData):
   cmds = []
   for l in range(len(rcData['point'])):           # generate all points
-    cmds.append("*add_points %f %f %f"%(rcData['point'][l][0]-a/2.0,rcData['point'][l][1]-a/rcData['dimension'][0]*rcData['dimension'][1]/2.0,0))
+    cmds.append("*add_points %f %f %f"\
+      %(rcData['point'][l][0]-a/2.0,rcData['point'][l][1]-a/rcData['dimension'][0]*rcData['dimension'][1]/2.0,0))
 
   cmds.append(["*set_curve_type line",
          "*set_curve_div_type_fix_ndiv",
@@ -891,7 +893,8 @@ if 'spectral' in options.output:
                                                             (y+1)*fftdata['resolution'][0]]))+'\n')  # grain indexes, x-row per line
   geomFile.close()                                                            # close geom file
   
-  print('assigned %i out of %i (2D) Fourier points.'%(len(fftdata['fftpoints']), int(fftdata['resolution'][0])*int(fftdata['resolution'][1])))
+  print('assigned %i out of %i (2D) Fourier points.'\
+    %(len(fftdata['fftpoints']), int(fftdata['resolution'][0])*int(fftdata['resolution'][1])))
   
 
 # ----- write Mentat procedure -----
@@ -974,7 +977,8 @@ if 'mentat' in options.output or 'spectral' in options.output:
   for grain in rcData['grainMapping']:
     output += '\n[grain %i]\n'%grain + \
               '(gauss)\tphi1\t%f\tphi\t%f\tphi2\t%f\tscatter\t%f\tfraction\t1.0\n'\
-              %(math.degrees(orientationData[grain-1][0]),math.degrees(orientationData[grain-1][1]),math.degrees(orientationData[grain-1][2]),options.scatter)
+              %(math.degrees(orientationData[grain-1][0]),math.degrees(orientationData[grain-1][1]),\
+              math.degrees(orientationData[grain-1][2]),options.scatter)
   if (options.xmargin > 0.0 or options.ymargin > 0.0):
     output += '\n[margin]\n' + \
               '(random)\t\tscatter\t0.0\tfraction\t1.0\n'
