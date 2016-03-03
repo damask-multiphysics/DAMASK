@@ -115,8 +115,8 @@ for name in filenames:
   while table.data_read():    
     (x,y,z) = damask.util.gridLocation(idx,grid)                                                     # figure out (x,y,z) position from line count
     idx += 1
-    F[0:3,0:3,x,y,z] = np.array(map(float,table.data[column:column+9]),'d').reshape(3,3)                                               
-  print 'hm'
+    F[0:3,0:3,x,y,z] = np.array(map(float,table.data[column:column+9]),'d').reshape(3,3)
+
   Favg = damask.core.math.tensorAvg(F)
   centres = damask.core.mesh.deformedCoordsFFT(size,F,Favg,[1.0,1.0,1.0])
   

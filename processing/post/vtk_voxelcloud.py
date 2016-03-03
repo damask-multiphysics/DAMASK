@@ -48,9 +48,10 @@ for name in filenames:
 # --------------- interprete header -----------------------------------------------------------------
   table.head_read()
   errors=[]
-  if table.label_dimension(options.deformed) != 3: errors.append('columns "{}" have dimension {}'.format(options.deformed,
-                                                                                                   table.label_dimension(options.deformed)))
-  if table.label_dimension(options.coords)   != 3: errors.append('coordinates {} are not a vector.'.format(options.coords))
+  if table.label_dimension(options.deformed) != 3:
+    errors.append('columns "{}" have dimension {}'.format(options.deformed,table.label_dimension(options.deformed)))
+  if table.label_dimension(options.coords)   != 3:
+    errors.append('coordinates {} are not a vector.'.format(options.coords))
 
   table.data_readArray([options.coords,options.deformed])
 

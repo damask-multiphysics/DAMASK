@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 no BOM -*-
 
-import os,sys,math,re,threading,time,struct,string
+import os,sys,math,re,time,struct,string
 import damask
 from optparse import OptionParser, OptionGroup
 
@@ -17,7 +17,6 @@ fileExtensions = { \
 
 # -----------------------------
 class vector:   # mimic py_post node object
-# -----------------------------
   x,y,z = [None,None,None]
   
   def __init__(self,coords):
@@ -27,7 +26,6 @@ class vector:   # mimic py_post node object
 
 # -----------------------------
 class element:     # mimic py_post element object
-# -----------------------------
   items = []
   type = None
 
@@ -37,7 +35,6 @@ class element:     # mimic py_post element object
 
 # -----------------------------
 class elemental_scalar:   # mimic py_post element_scalar object
-# -----------------------------
   id = None
   value = None
 
@@ -48,7 +45,6 @@ class elemental_scalar:   # mimic py_post element_scalar object
 
 # -----------------------------
 class MPIEspectral_result:    # mimic py_post result object
-# -----------------------------
 
   file = None
   dataOffset = 0
@@ -68,7 +64,8 @@ class MPIEspectral_result:    # mimic py_post result object
   increment = 0
   startingIncrement = 0
   position = 0
-  time = 0.0                              # this is a dummy at the moment, we need to parse the load file and figure out what time a particular increment corresponds to
+# this is a dummy at the moment, we need to parse the load file and figure out what time a particular increment corresponds to
+  time = 0.0
   N_nodes = 0
   N_node_scalars = 0
   N_elements = 0
@@ -87,40 +84,40 @@ class MPIEspectral_result:    # mimic py_post result object
     self.dataOffset   += 7
 #search first for the new keywords with ':', if not found try to find the old ones
     self.theTitle     = self._keyedString('load:')
-    if self.theTitle == None:
+    if self.theTitle is None:
       self.theTitle     = self._keyedString('load')
 
     self.wd           = self._keyedString('workingdir:')
-    if self.wd == None:
+    if self.wd is None:
       self.wd           = self._keyedString('workingdir')
 
     self.geometry     = self._keyedString('geometry:')
-    if self.geometry == None:
+    if self.geometry is None:
       self.geometry     = self._keyedString('geometry')
 
     self.N_loadcases  = self._keyedPackedArray('loadcases:',count=1,type='i')[0]
-    if self.N_loadcases == None:
+    if self.N_loadcases is None:
       self.N_loadcases  = self._keyedPackedArray('loadcases',count=1,type='i')[0]
 
     self._frequencies = self._keyedPackedArray('frequencies:',count=self.N_loadcases,type='i')
-    if all ( i == None for i in self._frequencies):
+    if all ( i is None for i in self._frequencies):
       self._frequencies = self._keyedPackedArray('frequencies',count=self.N_loadcases,type='i')
     
     self._increments  = self._keyedPackedArray('increments:',count=self.N_loadcases,type='i')
-    if all (i == None for i in self._increments):
+    if all (i is None for i in self._increments):
       self._increments  = self._keyedPackedArray('increments',count=self.N_loadcases,type='i')
 
     self.startingIncrement = self._keyedPackedArray('startingIncrement:',count=1,type='i')[0]
-    if self.startingIncrement == None:
+    if self.startingIncrement is None:
       self.startingIncrement = self._keyedPackedArray('startingIncrement',count=1,type='i')[0]
 
    
     self._times       = self._keyedPackedArray('times:',count=self.N_loadcases,type='d')
-    if all (i == None for i in self._times):
+    if all (i is None for i in self._times):
       self._times       = self._keyedPackedArray('times',count=self.N_loadcases,type='d')
 
     self._logscales   = self._keyedPackedArray('logscales:',count=self.N_loadcases,type='i')
-    if all (i == None for i in self._logscales):
+    if all (i is None for i in self._logscales):
       self._logscales   = self._keyedPackedArray('logscales',count=self.N_loadcases,type='i')
     
     self.size         = self._keyedPackedArray('size:',count=3,type='d')
@@ -135,7 +132,7 @@ class MPIEspectral_result:    # mimic py_post result object
     self.N_elements   =  self.grid[0]   * self.grid[1]   * self.grid[2]
 
     self.N_element_scalars = self._keyedPackedArray('materialpoint_sizeResults:',count=1,type='i')[0]
-    if self.N_element_scalars == None:
+    if self.N_element_scalars is None:
       self.N_element_scalars = self._keyedPackedArray('materialpoint_sizeResults',count=1,type='i')[0]
 
     self.N_positions  = (self.filesize-self.dataOffset)/(self.N_elements*self.N_element_scalars*8)
@@ -156,8 +153,7 @@ class MPIEspectral_result:    # mimic py_post result object
       print '\n**\n* Unexpected file size. Incomplete simulation or file corrupted!\n**'
 
   def __str__(self):
-
-
+    """Summary of results file"""
     return '\n'.join([
       'workdir: %s'%self.wd,
       'geometry: %s'%self.geometry,
@@ -181,13 +177,14 @@ class MPIEspectral_result:    # mimic py_post result object
     filepos=0                                                           # start at the beginning
     while name != identifier and filepos < self.dataOffset:             # stop searching when found or when reached end of header
       self.file.seek(filepos)                     
-      dataLen=struct.unpack('i',self.file.read(4))[0]                   # read the starting tag in front of the keyword (Fortran indicates start and end of writing by a 4 byte tag indicating the length of the following data)
-      name = self.file.read(len(identifier))                            # anticipate identifier
-      start=filepos+(4+len(identifier))                                 # this is the position where the values for the found key are stored   
-      filepos=filepos+(4+dataLen+4)                                     # forward to next keyword
+# read the starting tag in front of the keyword (Fortran indicates start and end of writing by a 4 byte tag indicating the length of the following data)
+      dataLen=struct.unpack('i',self.file.read(4))[0]
+      name = self.file.read(len(identifier))                                                        # anticipate identifier
+      start=filepos+(4+len(identifier))                                                             # position of the values for the found key  
+      filepos=filepos+(4+dataLen+4)                                                                 # forward to next keyword
  
-    if name==identifier:                                                # found the correct name
-      key['pos']  = start                                               # save position
+    if name==identifier:                                                                            # found the correct name
+      key['pos']  = start                                                                           # save position
       key['name'] = name
     return key    
 
@@ -195,7 +192,7 @@ class MPIEspectral_result:    # mimic py_post result object
     bytecount = {'d': 8,'i': 4}
     values = [default]*count
     key = self.locateKeyValue(identifier)
-    if key['name'] == identifier and key['pos'] != None:
+    if key['name'] == identifier and key['pos'] is not None:
       self.file.seek(key['pos'])
       for i in range(count):
         values[i] = struct.unpack(type,self.file.read(bytecount[type]))[0]
@@ -286,8 +283,6 @@ class MPIEspectral_result:    # mimic py_post result object
     if not options.legacy:
       incStart =  self.dataOffset \
                +  self.position*8*self.N_elements*self.N_element_scalars
-                                  # header & footer + extra header and footer for 4 byte int range (Fortran)
-                                  # values
       where = (e*self.N_element_scalars + idx)*8
       try:
         self.file.seek(incStart+where)
@@ -299,15 +294,15 @@ class MPIEspectral_result:    # mimic py_post result object
     
     else:
       self.fourByteLimit = 2**31 -1 -8
+# header & footer + extra header and footer for 4 byte int range (Fortran)
+# values
       incStart =  self.dataOffset \
                +  self.position*8*( 1 + self.N_elements*self.N_element_scalars*8//self.fourByteLimit \
                                     + self.N_elements*self.N_element_scalars)
-                                  # header & footer + extra header and footer for 4 byte int range (Fortran)
-                                  # values
 
       where = (e*self.N_element_scalars + idx)*8
       try:
-        if where%self.fourByteLimit + 8 >= self.fourByteLimit:                                        # danger of reading into fortran record footer at 4 byte limit
+        if where%self.fourByteLimit + 8 >= self.fourByteLimit:                       # danger of reading into fortran record footer at 4 byte limit
           data=''
           for i in xrange(8):
             self.file.seek(incStart+where+(where//self.fourByteLimit)*8+4)
@@ -329,51 +324,10 @@ class MPIEspectral_result:    # mimic py_post result object
 
   def element_tensors(self):
     return self.N_element_tensors
-      
-# -----------------------------
-class backgroundMessage(threading.Thread):
-# -----------------------------
-  
-  def __init__(self):
-    threading.Thread.__init__(self)
-    self.message = ''
-    self.new_message = ''
-    self.counter = 0
-    self.symbols = ['- ', '\ ', '| ', '/ ',]
-    self.waittime = 0.5
-  
-  def __quit__(self):
-    length = len(self.message) + len(self.symbols[self.counter])
-    sys.stderr.write(chr(8)*length + ' '*length + chr(8)*length)
-    sys.stderr.write('')
-  
-  def run(self):
-    while not threading.enumerate()[0]._Thread__stopped:
-      time.sleep(self.waittime)
-      self.update_message()
-    self.__quit__()
-
-  def set_message(self, new_message):
-    self.new_message = new_message
-    self.print_message()
-  
-  def print_message(self):
-    length = len(self.message) + len(self.symbols[self.counter])
-    sys.stderr.write(chr(8)*length + ' '*length + chr(8)*length)                  # delete former message
-    sys.stderr.write(self.symbols[self.counter] + self.new_message)               # print new message
-    self.message = self.new_message
-    
-  def update_message(self):
-    self.counter = (self.counter + 1)%len(self.symbols)
-    self.print_message()
-
 
 # -----------------------------
 def ipCoords(elemType, nodalCoordinates):
-# 
-# returns IP coordinates for a given element
-# -----------------------------
-
+  """returns IP coordinates for a given element"""
   nodeWeightsPerNode =  { 
               7:    [ [27.0,  9.0,  3.0,  9.0,  9.0,  3.0,  1.0,  3.0], 
                       [ 9.0, 27.0,  9.0,  3.0,  3.0,  9.0,  3.0,  1.0], 
@@ -422,10 +376,7 @@ def ipCoords(elemType, nodalCoordinates):
 
 # -----------------------------
 def ipIDs(elemType):
-# 
-# returns IP numbers for given element type
-# -----------------------------
-
+  """returns IP numbers for given element type"""
   ipPerNode =  { 
               7:    [ 1, 2, 4, 3, 5, 6, 8, 7 ], 
               57:   [ 1, 2, 4, 3, 5, 6, 8, 7 ], 
@@ -441,9 +392,7 @@ def ipIDs(elemType):
 
 # -----------------------------
 def substituteLocation(string, mesh, coords):
-# 
-# do variable interpolation in group and filter strings
-# -----------------------------
+  """do variable interpolation in group and filter strings"""
   substitute = string
   substitute = substitute.replace('elem', str(mesh[0]))
   substitute = substitute.replace('node', str(mesh[1]))
@@ -458,10 +407,7 @@ def substituteLocation(string, mesh, coords):
 
 # -----------------------------
 def heading(glue,parts):
-# 
-# joins pieces from parts by glue. second to last entry in pieces tells multiplicity
-# -----------------------------
-
+  """joins pieces from parts by glue. second to last entry in pieces tells multiplicity"""
   header = []
   for pieces in parts:
     if pieces[-2] == 0:
@@ -473,12 +419,12 @@ def heading(glue,parts):
 
 # -----------------------------
 def mapIncremental(label, mapping, N, base, new):
-# 
-# applies the function defined by "mapping"
-# (can be either 'min','max','avg', 'sum', or user specified)
-# to a list of data
-# -----------------------------
+  """
+  applies the function defined by "mapping"
 
+  (can be either 'min','max','avg', 'sum', or user specified)
+  to a list of data
+  """
   theMap =  { 'min': lambda n,b,a: a if n==0 else min(b,a),
               'max': lambda n,b,a: a if n==0 else max(b,a),
               'avg': lambda n,b,a: (n*b+a)/(n+1),
@@ -504,10 +450,7 @@ def mapIncremental(label, mapping, N, base, new):
 
 # -----------------------------
 def OpenPostfile(name,type,nodal = False):
-# 
-# open postfile with extrapolation mode "translate"
-# -----------------------------
-
+  """open postfile with extrapolation mode 'translate'"""
   p = {\
          'spectral': MPIEspectral_result,\
          'marc':     post_open,\
@@ -520,10 +463,7 @@ def OpenPostfile(name,type,nodal = False):
 
 # -----------------------------
 def ParseOutputFormat(filename,what,me):
-#
-# parse .output* files in order to get a list of outputs 
-# -----------------------------
-
+  """parse .output* files in order to get a list of outputs"""
   content = []
   format = {'outputs':{},'specials':{'brothers':[]}}
   for prefix in ['']+map(str,range(1,17)):
@@ -567,13 +507,11 @@ def ParseOutputFormat(filename,what,me):
 
 # -----------------------------
 def ParsePostfile(p,filename, outputFormat):
-#
-# parse postfile in order to get position and labels of outputs
-# needs "outputFormat" for mapping of output names to postfile output indices
-# -----------------------------
+  """
+  parse postfile in order to get position and labels of outputs
 
-  # --- build statistics
-
+  needs "outputFormat" for mapping of output names to postfile output indices
+  """
   stat = { \
   'IndexOfLabel': {}, \
   'Title': p.title(), \
@@ -589,7 +527,7 @@ def ParsePostfile(p,filename, outputFormat):
   'LabelOfElementalTensor': [None]*p.element_tensors(), \
   }
 
-  # --- find labels 
+# --- find labels 
 
   for labelIndex in range(stat['NumberOfNodalScalars']):
     label =  p.node_scalar_label(labelIndex)
@@ -613,9 +551,9 @@ def ParsePostfile(p,filename, outputFormat):
     startIndex = stat['IndexOfLabel']['HomogenizationCount']
     stat['LabelOfElementalScalar'][startIndex] = 'HomogenizationCount'
     
-    # We now have to find a mapping for each output label as defined in the .output* files to the output position in the post file
-    # Since we know where the user defined outputs start ("startIndex"), we can simply assign increasing indices to the labels
-    # given in the .output* file  
+# We now have to find a mapping for each output label as defined in the .output* files to the output position in the post file
+# Since we know where the user defined outputs start ("startIndex"), we can simply assign increasing indices to the labels
+# given in the .output* file  
 
     offset = 1
     for (name,N) in outputFormat['Homogenization']['outputs']:
@@ -663,7 +601,6 @@ def ParsePostfile(p,filename, outputFormat):
 
 # -----------------------------
 def SummarizePostfile(stat,where=sys.stdout,format='marc'):
-# -----------------------------
 
   where.write('\n\n')
   where.write('title:\t%s'%stat['Title'] + '\n\n')
@@ -671,9 +608,12 @@ def SummarizePostfile(stat,where=sys.stdout,format='marc'):
   where.write('increments:\t%i'%(stat['NumberOfIncrements']) + '\n\n')
   where.write('nodes:\t%i'%stat['NumberOfNodes'] + '\n\n')
   where.write('elements:\t%i'%stat['NumberOfElements'] + '\n\n')
-  where.write('nodal scalars:\t%i'%stat['NumberOfNodalScalars'] + '\n\n  ' + '\n  '.join(stat['LabelOfNodalScalar']) + '\n\n')
-  where.write('elemental scalars:\t%i'%stat['NumberOfElementalScalars'] + '\n\n  ' + '\n  '.join(stat['LabelOfElementalScalar']) + '\n\n')
-  where.write('elemental tensors:\t%i'%stat['NumberOfElementalTensors'] + '\n\n  ' + '\n  '.join(stat['LabelOfElementalTensor']) + '\n\n')
+  where.write('nodal scalars:\t%i'%stat['NumberOfNodalScalars'] + '\n\n  '\
+              +'\n  '.join(stat['LabelOfNodalScalar']) + '\n\n')
+  where.write('elemental scalars:\t%i'%stat['NumberOfElementalScalars'] + '\n\n  '\
+              + '\n  '.join(stat['LabelOfElementalScalar']) + '\n\n')
+  where.write('elemental tensors:\t%i'%stat['NumberOfElementalTensors'] + '\n\n  '\
+              + '\n  '.join(stat['LabelOfElementalTensor']) + '\n\n')
   
   return True
 
@@ -799,14 +739,14 @@ if not os.path.exists(files[0]):
 
 # --- figure out filetype
 
-if options.filetype == None:
+if options.filetype is None:
   ext = os.path.splitext(files[0])[1]
   for theType in fileExtensions.keys():
     if ext in fileExtensions[theType]:
       options.filetype = theType
       break
       
-if options.filetype != None: options.filetype = options.filetype.lower()
+if options.filetype is not None: options.filetype = options.filetype.lower()
 
 if options.filetype == 'marc':  offset_pos = 1
 else:                           offset_pos = 0
@@ -822,7 +762,7 @@ if options.filetype == 'marc':
   sys.path.append(damask.solver.Marc().libraryPath('../../'))
   
   try:
-    from py_post import *
+    from py_post import post_open
   except:
     print('error: no valid Mentat release found')
     sys.exit(-1)
@@ -834,7 +774,7 @@ if options.constitutiveResult and not options.phase:
   parser.print_help()
   parser.error('constitutive results require phase...')
 
-if options.nodalScalar and (   options.elemScalar or options.elemTensor 
+if options.nodalScalar and (   options.elemScalar or options.elemTensor\
                             or options.homogenizationResult or options.crystalliteResult or options.constitutiveResult ):
   parser.print_help()
   parser.error('not allowed to mix nodal with elemental results...')
@@ -851,7 +791,7 @@ options.sep.reverse()
 
 # --- start background messaging
 
-bg = backgroundMessage()
+bg = damask.util.backgroundMessage()
 bg.start()
 
 # --- parse .output and .t16 files
@@ -874,7 +814,7 @@ bg.set_message('parsing .output files...')
 
 for what in me:
   outputFormat[what] = ParseOutputFormat(filename, what, me[what])
-  if not '_id' in outputFormat[what]['specials']:
+  if '_id' not in outputFormat[what]['specials']:
     print "\nsection '%s' not found in <%s>"%(me[what], what)
     print '\n'.join(map(lambda x:'  [%s]'%x, outputFormat[what]['specials']['brothers']))
     
@@ -886,15 +826,18 @@ if options.filetype == 'marc':
   stat['NumberOfIncrements'] -= 1             # t16 contains one "virtual" increment (at 0)
 
 # --- sanity check for output variables
-# for mentat variables (nodalScalar,elemScalar,elemTensor) we simply have to check whether the label is found in the stat[indexOfLabel] dictionary
-# for user defined variables (homogenizationResult,crystalliteResult,constitutiveResult) we have to check the corresponding outputFormat, since the namescheme in stat['IndexOfLabel'] is different
+# for mentat variables (nodalScalar,elemScalar,elemTensor) we simply have to check whether the label
+# is found in the stat[indexOfLabel] dictionary for user defined variables (homogenizationResult,
+# crystalliteResult,constitutiveResult) we have to check the corresponding outputFormat, since the 
+# namescheme in stat['IndexOfLabel'] is different
 
 for opt in ['nodalScalar','elemScalar','elemTensor','homogenizationResult','crystalliteResult','constitutiveResult']:
   if eval('options.%s'%opt):
     for label in eval('options.%s'%opt):
       if (opt in ['nodalScalar','elemScalar','elemTensor'] and label not in stat['IndexOfLabel'] and label not in ['elements',]) \
            or (opt in ['homogenizationResult','crystalliteResult','constitutiveResult'] \
-               and (not outputFormat[opt[:-6].capitalize()]['outputs'] or not label in zip(*outputFormat[opt[:-6].capitalize()]['outputs'])[0])):
+               and (not outputFormat[opt[:-6].capitalize()]['outputs'] \
+                  or label not in zip(*outputFormat[opt[:-6].capitalize()]['outputs'])[0])):
         parser.error('%s "%s" unknown...'%(opt,label))
 
 
@@ -952,15 +895,14 @@ if options.nodalScalar:
     myIpID = 0
     myGrainID = 0
     
-    # --- filter valid locations
-    
-    filter = substituteLocation(options.filter, [myElemID,myNodeID,myIpID,myGrainID], myNodeCoordinates)    # generates an expression that is only true for the locations specified by options.filter
+    # generate an expression that is only true for the locations specified by options.filter
+    filter = substituteLocation(options.filter, [myElemID,myNodeID,myIpID,myGrainID], myNodeCoordinates)
     if filter != '' and not eval(filter):                                                              # for all filter expressions that are not true:...
       continue                                                                                         # ... ignore this data point and continue with next
     
     # --- group data locations
-    
-    grp = substituteLocation('#'.join(options.sep), [myElemID,myNodeID,myIpID,myGrainID], myNodeCoordinates)    # generates a unique key for a group of separated data based on the separation criterium for the location
+    # generate a unique key for a group of separated data based on the separation criterium for the location
+    grp = substituteLocation('#'.join(options.sep), [myElemID,myNodeID,myIpID,myGrainID], myNodeCoordinates)
 
     if grp not in index:                                                                               # create a new group if not yet present
       index[grp] = groupCount
@@ -983,26 +925,28 @@ else:
     if e%1000 == 0:
       bg.set_message('scan elem %i...'%e)
     myElemID = p.element_id(e)
-    myIpCoordinates = ipCoords(p.element(e).type, map(lambda node: [node.x, node.y, node.z], map(p.node, map(p.node_sequence, p.element(e).items))))
+    myIpCoordinates = ipCoords(p.element(e).type, map(lambda node: [node.x, node.y, node.z],
+                                                         map(p.node, map(p.node_sequence, p.element(e).items))))
     myIpIDs = ipIDs(p.element(e).type)
     Nips = len(myIpIDs)
     myNodeIDs = p.element(e).items[:Nips]
     for n in range(Nips):
       myIpID = myIpIDs[n]
       myNodeID = myNodeIDs[n]
-      for g in range(('GrainCount' in stat['IndexOfLabel'] and int(p.element_scalar(e, stat['IndexOfLabel']['GrainCount'])[0].value))
-                                  or 1):
+      for g in range(('GrainCount' in stat['IndexOfLabel']\
+                       and int(p.element_scalar(e, stat['IndexOfLabel']['GrainCount'])[0].value))\
+                       or 1):
         myGrainID = g + 1
         
         # --- filter valid locations
-        
-        filter = substituteLocation(options.filter, [myElemID,myNodeID,myIpID,myGrainID], myIpCoordinates[n]) # generates an expression that is only true for the locations specified by options.filter
+        # generates an expression that is only true for the locations specified by options.filter
+        filter = substituteLocation(options.filter, [myElemID,myNodeID,myIpID,myGrainID], myIpCoordinates[n]) 
         if filter != '' and not eval(filter):                                                               # for all filter expressions that are not true:...
           continue                                                                                          # ... ignore this data point and continue with next
         
         # --- group data locations
-        
-        grp = substituteLocation('#'.join(options.sep), [myElemID,myNodeID,myIpID,myGrainID], myIpCoordinates[n]) # generates a unique key for a group of separated data based on the separation criterium for the location
+        # generates a unique key for a group of separated data based on the separation criterium for the location
+        grp = substituteLocation('#'.join(options.sep), [myElemID,myNodeID,myIpID,myGrainID], myIpCoordinates[n]) 
   
         if grp not in index:                                                                                # create a new group if not yet present
           index[grp] = groupCount
@@ -1104,7 +1048,8 @@ for incCount,position in enumerate(locations):     # walk through locations
     if fileOpen:
       file.close()
       fileOpen = False
-    outFilename = eval('"'+eval("'%%s_inc%%0%ii%%s.txt'%(math.log10(max(increments+[1]))+1)")+'"%(dirname + os.sep + options.prefix + os.path.split(filename)[1],increments[incCount],options.suffix)')
+    outFilename = eval('"'+eval("'%%s_inc%%0%ii%%s.txt'%(math.log10(max(increments+[1]))+1)")\
+                      +'"%(dirname + os.sep + options.prefix + os.path.split(filename)[1],increments[incCount],options.suffix)')
   else:
     outFilename = '%s.txt'%(dirname + os.sep + options.prefix + os.path.split(filename)[1] + options.suffix)
   
@@ -1128,7 +1073,8 @@ for incCount,position in enumerate(locations):     # walk through locations
       member += 1
       if member%1000 == 0:
         time_delta = ((len(locations)*memberCount)/float(member+incCount*memberCount)-1.0)*(time.time()-time_start)
-        bg.set_message('(%02i:%02i:%02i) processing point %i of %i from increment %i (position %i)...'%(time_delta//3600,time_delta%3600//60,time_delta%60,member,memberCount,increments[incCount],position))
+        bg.set_message('(%02i:%02i:%02i) processing point %i of %i from increment %i (position %i)...'
+          %(time_delta//3600,time_delta%3600//60,time_delta%60,member,memberCount,increments[incCount],position))
 
       newby = []                                                                   # current member's data
 
@@ -1140,7 +1086,9 @@ for incCount,position in enumerate(locations):     # walk through locations
           else:
             length = 1
             content = [ p.node_scalar(p.node_sequence(n),stat['IndexOfLabel'][label]) ]
-          if assembleHeader: header += heading('_',[[component,''.join( label.split() )] for component in range(int(length>1),length+int(length>1))])
+          if assembleHeader:
+            header += heading('_',[[component,''.join( label.split() )]
+                      for component in range(int(length>1),length+int(length>1))])
           newby.append({'label':label,
                         'len':length,
                         'content':content })
@@ -1156,7 +1104,8 @@ for incCount,position in enumerate(locations):     # walk through locations
       if options.elemTensor:
         for label in options.elemTensor:
           if assembleHeader: 
-            header += heading('.',[[''.join( label.split() ),component] for component in ['intensity','t11','t22','t33','t12','t23','t13']])
+            header += heading('.',[[''.join( label.split() ),component]
+                      for component in ['intensity','t11','t22','t33','t12','t23','t13']])
           myTensor = p.element_tensor(p.element_sequence(e),stat['IndexOfLabel'][label])[n_local]
           newby.append({'label':label,
                         'len':7,

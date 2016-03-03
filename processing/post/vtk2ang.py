@@ -66,7 +66,8 @@ def getDataLine(angles,x,y,validData=True):
   """
   info = {True:  (9999.9, 1.0, 0,99999,0.0),
           False: (  -1.0,-1.0,-1,   -1,1.0)}
-  return '%9.5f %9.5f %9.5f %12.5f %12.5f %6.1f %6.3f %2i %6i %6.3f \n'%(tuple(map(positiveRadians,angles))+(y*1e6,x*1e6)+info[validData])
+  return '%9.5f %9.5f %9.5f %12.5f %12.5f %6.1f %6.3f %2i %6i %6.3f \n'\
+                %(tuple(map(positiveRadians,angles))+(y*1e6,x*1e6)+info[validData])
 
 
 
