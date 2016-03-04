@@ -317,7 +317,7 @@ set (LINK_OPTIONS_ifort      "-shared-intel")
 #      -->   otherwise, when setting -ffast-math, isnan always evaluates to false (I would call it a bug)
 ###################################################################################################
 set (COMPILE_OPTIONS_gfortran "${COMPILE_OPTIONS_gfortran} -xf95-cpp-input"                         )
-set (COMPILE_OPTIONS_gfortran "${COMPILE_OPTIONS_gfortran} -ffree-line-length-240"                  )
+set (COMPILE_OPTIONS_gfortran "${COMPILE_OPTIONS_gfortran} -ffree-line-length-132"                  )
 set (COMPILE_OPTIONS_gfortran "${COMPILE_OPTIONS_gfortran} -fimplicit-none"                         )
 set (COMPILE_OPTIONS_gfortran "${COMPILE_OPTIONS_gfortran} -fmodule-private"                        )
 set (COMPILE_OPTIONS_gfortran "${COMPILE_OPTIONS_gfortran} -Wall"                                   )
