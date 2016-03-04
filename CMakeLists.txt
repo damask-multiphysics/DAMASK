@@ -1,7 +1,7 @@
 ########################################################################################
 # CMAKE for build the Material subroutine for BVP solution
 ########################################################################################
-cmake_minimum_required (VERSION 3.1.0 FATAL_ERROR)
+cmake_minimum_required (VERSION 2.8.0 FATAL_ERROR)
 project (DAMASK Fortran)
 
 # THE VERSION NUMBER.
@@ -24,13 +24,22 @@ message("\n***The binary will be installed at\n${CMAKE_INSTALL_PREFIX}\n")
 # DAMASK DRIVER SELECTION
 set (SPECTRAL OFF)
 set (FEM      OFF)
-if (DAMASK_DRIVER STREQUAL "SPECTRAL")
+if ("${DAMASK_DRIVER}" STREQUAL "SPECTRAL")
     set (SPECTRAL ON )
-elseif (DAMASK_DRIVER STREQUAL "FEM")
+endif("${DAMASK_DRIVER}" STREQUAL "SPECTRAL")
+#
+if ("${DAMASK_DRIVER}" STREQUAL "FEM")
     set (FEM      ON )
-else (DAMASK_DRIVER STREQUAL "SPECTRAL")
-    message (FATAL_ERROR "!?driver?!, check build script!")
-endif (DAMASK_DRIVER STREQUAL "SPECTRAL")
+endif("${DAMASK_DRIVER}" STREQUAL "FEM")
+
+# if (DAMASK_DRIVER STREQUAL "SPECTRAL")
+#     set (SPECTRAL ON )
+#     message('set to spectral solver')
+# endif()
+# if (DAMASK_DRIVER STREQUAL "FEM")
+#     set (FEM      ON )
+#     message('set to FEM solver')
+# endif()
 
 # COMPILE VARIABLES
 add_definitions(-DDAMASKVERSION="${DAMASK_V}")
@@ -129,22 +138,22 @@ else (OPENMP)
     set (OPENMP_FLAG_gfortran "")
 endif (OPENMP)
 
-if (OPTIMIZATION STREQUAL "OFF")
+if ("${OPTIMIZATION}" STREQUAL "OFF")
     set (OPTIMIZATION_ifort    "-O0 -no-ip")
     set (OPTIMIZATION_gfortran "-O0"       )
-elseif (OPTIMIZATION STREQUAL "DEFENSIVE")
+elseif ("${OPTIMIZATION}" STREQUAL "DEFENSIVE")
     set (OPTIMIZATION_ifort    "-O2")
     set (OPTIMIZATION_gfortran "-O2")
-elseif (OPTIMIZATION STREQUAL "AGGRESSIVE")
+elseif ("${OPTIMIZATION}" STREQUAL "AGGRESSIVE")
     set (OPTIMIZATION_ifort    "-ipo -O3 -no-prec-div -fp-model fast=2 -xHost"  )  #-fast = -ipo, -O3, -no-prec-div, -static, -fp-model fast=2, and -xHost"
     set (OPTIMIZATION_gfortran "-O3 -ffast-math -funroll-loops -ftree-vectorize")
-elseif (OPTIMIZATION STREQUAL "ULTRA")
+elseif ("${OPTIMIZATION}" STREQUAL "ULTRA")
     set (OPTIMIZATION_ifort    "-ipo -O3 -no-prec-div -fp-model fast=2 -xHost"  )  #-fast = -ipo, -O3, -no-prec-div, -static, -fp-model fast=2, and -xHost"
     set (OPTIMIZATION_gfortran "-O3 -ffast-math -funroll-loops -ftree-vectorize")
-else (OPTIMIZATION STREQUAL "OFF")
+else ("${OPTIMIZATION}" STREQUAL "OFF")
     set (OPTIMIZATION_ifort    "-O2")
     set (OPTIMIZATION_gfortran "-O2")
-endif (OPTIMIZATION STREQUAL "OFF")
+endif ("${OPTIMIZATION}" STREQUAL "OFF")
 
 set (STANDARD_CHECK_ifort    "-stand f08 -standard-semantics")
 set (STANDARD_CHECK_gfortran "-std=f2008ts -pedantic-errors" )
@@ -425,13 +434,13 @@ set (CMAKE_Fortran_COMPILER        "${MPIEXEC}")
 set (CMAKE_Fortran_FLAGS_RELEASE   "${CMAKE_Fortran_FLAGS_RELEASE}    ${DAMASK_INCLUDE_FLAGS}")
 set (CMAKE_Fortran_FLAGS_DEBUG     "${CMAKE_Fortran_FLAGS_DEBUG}      ${DAMASK_INCLUDE_FLAGS}")
 set (CMAKE_LINKER                  "${PETSC_LINKER}")
-if (CMAKE_BUILD_TYPE STREQUAL "RELEASE")
+if ("${CMAKE_BUILD_TYPE}" STREQUAL "RELEASE")
     set (CMAKE_Fortran_LINK_EXECUTABLE
       "${CMAKE_LINKER} ${CMAKE_EXE_LINKER_FLAGS_RELEASE} <OBJECTS> -o <TARGET> <LINK_LIBRARIES> ${PETSC_EXTERNAL_LIB}")
-else(CMAKE_BUILD_TYPE STREQUAL "RELEASE")
+else("${CMAKE_BUILD_TYPE}" STREQUAL "RELEASE")
     set (CMAKE_Fortran_LINK_EXECUTABLE
       "${CMAKE_LINKER} ${CMAKE_EXE_LINKER_FLAGS_DEBUG} <OBJECTS> -o <TARGET> <LINK_LIBRARIES> ${PETSC_EXTERNAL_LIB}")
-endif(CMAKE_BUILD_TYPE STREQUAL "RELEASE")
+endif("${CMAKE_BUILD_TYPE}" STREQUAL "RELEASE")
 
 message("***COMPILE FLAGS:\n${CMAKE_Fortran_FLAGS_RELEASE}\n")
 message("***LINK FLAGS:\n${CMAKE_EXE_LINKER_FLAGS_RELEASE}\n")
