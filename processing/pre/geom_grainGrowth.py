@@ -120,7 +120,7 @@ for name in filenames:
                      np.where(
                        ndimage.morphology.binary_dilation(interfaceEnergy > 0.,
                                                           structure = struc,
-                                                          terations = options.d/2 + 1),             # fat boundary | PE: why 2d-1? I would argue for d/2 + 1
+                                                          iterations = options.d/2 + 1),            # fat boundary | PE: why 2d-1? I would argue for d/2 + 1
                        periodic_bulkEnergy[grid[0]/2:-grid[0]/2,                                    # retain filled energy on fat boundary...
                                            grid[1]/2:-grid[1]/2,
                                            grid[2]/2:-grid[2]/2],                                   # ...and zero everywhere else
