@@ -12,12 +12,6 @@ set (DAMASK_VERSION_MINOR ${DAMASK_V})
 if (NOT DEFINED PETSC_DIR)
     message (FATAL_ERROR "PETSC_DIR is not found!")
 endif (NOT DEFINED PETSC_DIR)
-# RECOMMEND USING HDF5 FROM PETSC
-if (DEFINED HDF5_DIR)
-    message ("\n***Using HDF5 library found at ${HDF5_DIR}\n")
-else(DEFINED HDF5_DIR)
-    message ("\n***Using HDF5 library from PETSc\n" )
-endif (DEFINED HDF5_DIR)
 
 # Setting installation prefix
 if (NOT DEFINED DAMASK_INSTALL)
@@ -101,7 +95,7 @@ execute_process(COMMAND ${MAKE_EXECUTABLE} -f ${petsc_config_makefile} "compiler
                 OUTPUT_STRIP_TRAILING_WHITESPACE)
 file (REMOVE ${petsc_config_makefile})
 
-# remove duplicate flags for compiler and linking
+# REMOVE DUPLICATE FLAGS FOR COMPILER AND LINKING
 string( REGEX MATCHALL "-I([^\" ]+)" TMP_LIST "${petsc_includes}")
 list(REMOVE_DUPLICATES TMP_LIST)
 foreach (dir ${TMP_LIST})
@@ -120,11 +114,6 @@ message("***Found PETSC_EXTERNAL_LIB:\n${PETSC_EXTERNAL_LIB}\n")
 message("***Found PETSC_LINKER:\n${PETSC_LINKER}\n")
 message("***Found PETSC_MPIEXEC:\n${MPIEXEC}\n")
 
-# SET INCLUDE DIRECTORIES (SNEAK IT IN WITH PETSC)
-if (DEFINED HDF5_DIR)
-    set (DAMASK_INCLUDE_FLAGS "${PETSC_INCLUDES} -I${HDF5_DIR}/include"  )
-    set (PETSC_EXTERNAL_LIB   "${PETSC_EXTERNAL_LIB} -L${HDF5_DIR}/lib")
-endif (DEFINED HDF5_DIR)
 
 set (DAMASK_INCLUDE_FLAGS "${DAMASK_INCLUDE_FLAGS} ${PETSC_INCLUDES}"          )
 set (DAMASK_INCLUDE_FLAGS "${DAMASK_INCLUDE_FLAGS} -I${PROJECT_SOURCE_DIR}/lib")
@@ -387,6 +376,7 @@ set (PRECISION_gfortran "-fdefault-real-8 -fdefault-double-8")
 get_filename_component (Fortran_COMPILER_NAME ${CMAKE_Fortran_COMPILER} NAME)
 
 if (Fortran_COMPILER_NAME MATCHES "ifort.*")
+    set (INTEL_FORTRAN ON)
     # for RELEASE
     set (CMAKE_Fortran_FLAGS_RELEASE     "${CMAKE_Fortran_FLAGS_RELEASE} ${OPENMP_FLAG_ifort}"    )
     set (CMAKE_Fortran_FLAGS_RELEASE     "${CMAKE_Fortran_FLAGS_RELEASE} ${STANDARD_CHECK_ifort}" )
@@ -398,7 +388,6 @@ if (Fortran_COMPILER_NAME MATCHES "ifort.*")
     set (CMAKE_EXE_LINKER_FLAGS_RELEASE  "${CMAKE_EXE_LINKER_FLAGS_RELEASE} ${LINK_OPTIONS_ifort}"  )
     set (CMAKE_EXE_LINKER_FLAGS_RELEASE  "${CMAKE_EXE_LINKER_FLAGS_RELEASE} ${OPTIMIZATION_ifort}"  )
     set (CMAKE_EXE_LINKER_FLAGS_RELEASE  "${CMAKE_EXE_LINKER_FLAGS_RELEASE} ${STANDARD_CHECK_ifort}")
-    set (CMAKE_EXE_LINKER_FLAGS_RELEASE  "${CMAKE_EXE_LINKER_FLAGS_RELEASE} ${PETSC_EXTERNAL_LIB}"  )
 
     # for DEBUG
     set (CMAKE_Fortran_FLAGS_DEBUG       "${CMAKE_Fortran_FLAGS_DEBUG} ${CMAKE_Fortran_FLAGS_RELEASE}")
@@ -407,7 +396,7 @@ if (Fortran_COMPILER_NAME MATCHES "ifort.*")
     set (CMAKE_EXE_LINKER_FLAGS_DEBUG    "${CMAKE_EXE_LINKER_FLAGS_RELEASE} ${DEBUG_OPTIONS_ifort}"   )
     #
 elseif (Fortran_COMPILER_NAME MATCHES "gfortran.*")
-    set (CMAKE_Fortran_COMPILER "${MPIEXEC}")
+    set (GNU_FORTRAN ON)
     # for RELEASE
     set (CMAKE_Fortran_FLAGS_RELEASE     "${CMAKE_Fortran_FLAGS_RELEASE} ${OPENMP_FLAG_gfortran}"    )
     set (CMAKE_Fortran_FLAGS_RELEASE     "${CMAKE_Fortran_FLAGS_RELEASE} ${STANDARD_CHECK_gfortran}" )
@@ -417,8 +406,8 @@ elseif (Fortran_COMPILER_NAME MATCHES "gfortran.*")
 
     set (CMAKE_EXE_LINKER_FLAGS_RELEASE  "${CMAKE_EXE_LINKER_FLAGS_RELEASE} ${OPENMP_FLAG_gfortran}"   )
     set (CMAKE_EXE_LINKER_FLAGS_RELEASE  "${CMAKE_EXE_LINKER_FLAGS_RELEASE} ${LINK_OPTIONS_gfortran}"  )
-    set (CMAKE_EXE_LINKER_FLAGS_RELEASE  "${CMAKE_EXE_LINKER_FLAGS_RELEASE} ${STANDARD_CHECK_gfortran}")
     set (CMAKE_EXE_LINKER_FLAGS_RELEASE  "${CMAKE_EXE_LINKER_FLAGS_RELEASE} ${OPTIMIZATION_gfortran}"  )
+    set (CMAKE_EXE_LINKER_FLAGS_RELEASE  "${CMAKE_EXE_LINKER_FLAGS_RELEASE} ${STANDARD_CHECK_gfortran}")
     # for DEBUG
     set (CMAKE_Fortran_FLAGS_DEBUG       "${CMAKE_Fortran_FLAGS_DEBUG} ${CMAKE_Fortran_FLAGS_RELEASE}")
     set (CMAKE_Fortran_FLAGS_DEBUG       "${CMAKE_Fortran_FLAGS_DEBUG} ${DEBUG_OPTIONS_gfortran}"     )
@@ -447,12 +436,17 @@ endif(CMAKE_BUILD_TYPE STREQUAL "RELEASE")
 message("***COMPILE FLAGS:\n${CMAKE_Fortran_FLAGS_RELEASE}\n")
 message("***LINK FLAGS:\n${CMAKE_EXE_LINKER_FLAGS_RELEASE}\n")
 
+# MOVE to SOURCE DIRECTORY for BUILDING
+add_subdirectory(src)
 
-##
-# ADD CODE DIRECTORY
-add_subdirectory(code)
-INSTALL(PROGRAMS    ${PROJECT_BINARY_DIR}/code/DAMASKSpectral.exe
-        DESTINATION ${CMAKE_INSTALL_PREFIX})
+# INSTALL BUILT BINARIES
+if (SPECTRAL)
+    INSTALL(PROGRAMS    ${PROJECT_BINARY_DIR}/src/DAMASKSpectral.exe
+            DESTINATION ${CMAKE_INSTALL_PREFIX})
+elseif (FEM)
+    INSTALL(PROGRAMS    ${PROJECT_BINARY_DIR}/src/DAMASK_FEM.exe
+            DESTINATION ${CMAKE_INSTALL_PREFIX})
+endif(SPECTRAL)
 
 ##
 # ADD TESTING CASES

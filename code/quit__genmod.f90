@@ -1,8 +1,0 @@
-        !COMPILER-GENERATED INTERFACE MODULE: Thu Mar  3 12:28:23 2016
-        MODULE QUIT__genmod
-          INTERFACE 
-            SUBROUTINE QUIT(STOP_ID)
-              INTEGER(KIND=4), INTENT(IN) :: STOP_ID
-            END SUBROUTINE QUIT
-          END INTERFACE 
-        END MODULE QUIT__genmod

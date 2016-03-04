@@ -24,7 +24,6 @@ cd build_FEM
 ##
 # CMake call
 # PETSC_DIR          |  PETSC directory
-# HDF5_DIR           |  HDF5 library (same compiler for DAMASK)
 # DAMASK_V           |  DAMASK current revision
 # CMAKE_BUILD_TYPE   |  Default set to release (no debugging output)
 # OPENMP             |  [ON/OFF]
@@ -37,7 +36,6 @@ cmake -D PETSC_DIR=${PETSC_DIR}             \
       -D OPENMP=ON                          \
       -D OPTIMIZATION=DEFENSIVE             \
       -D DAMASK_DRIVER=FEM                  \
-      -D DAMASK_FEM_DIR=PRIVATE/FEM/code    \
       -D DAMASK_INSTALL=${HOME}/bin         \
       ../..
 

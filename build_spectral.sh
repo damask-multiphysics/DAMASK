@@ -24,7 +24,6 @@ cd build_spectral
 ##
 # CMake call
 # PETSC_DIR          |  PETSC directory
-# HDF5_DIR           |  HDF5 library (same compiler for DAMASK)
 # DAMASK_V           |  DAMASK current revision
 # CMAKE_BUILD_TYPE   |  Default set to release (no debugging output)
 # OPENMP             |  [ON/OFF]
