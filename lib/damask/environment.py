@@ -2,7 +2,7 @@
 
 # $Id$
 
-import os,sys,string,re,subprocess,shlex
+import os,subprocess,shlex
 
 class Environment():
   __slots__ = [ \
