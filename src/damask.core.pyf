@@ -1,0 +1,126 @@
+! $Id$
+!    -*- f90 -*-
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+! Note: the syntax of this file is case sensitive.
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+! This file was auto-generated with f2py (version:2_5972).
+! See http://cens.ioc.ee/projects/f2py2e/
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+! The auto-generated file is quite heavily corrected
+! For modifying, notice the following hints:
+!   - if the dimension of an array depend on a array that is itself an input, use the C-Syntax: (1) becomes [0] etc.
+!   - be sure that the precision defined is integer, real*8, and complex*16
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+python module core ! in 
+   interface  ! in :core
+
+     module prec
+        subroutine prec_init
+        end subroutine prec_init
+     end module prec
+
+     module damask_interface ! in :damask_interface:DAMASK_spectral_interface.f90
+        subroutine DAMASK_interface_init(loadcaseParameterIn,geometryParameterIn) ! in :damask_interface:DAMASK_spectral_interface.f90
+            character(len=1024), intent(in)   :: loadcaseParameterIn                                      
+            character(len=1024), intent(in)   :: geometryParameterIn
+        end subroutine DAMASK_interface_init            
+     end module damask_interface
+
+     module io
+        subroutine IO_init
+        end subroutine IO_init
+     end module io
+     
+     module numerics
+        subroutine numerics_init
+        end subroutine numerics_init
+     end module numerics
+
+     module debug
+        subroutine debug_init
+        end subroutine debug_init
+     end module debug
+
+     module math ! in :math:math.f90
+        subroutine math_init
+        end subroutine math_init
+        
+        function math_tensorAvg(field) ! in :math:math.f90
+            ! input variables
+            real*8  dimension(:,:,:,:,:),                    intent(in),                                     :: field
+            ! function definition
+            real*8 dimension(3,3),                                                                           :: math_tensorAvg
+        end function math_tensorAvg
+        
+     end module math
+
+     module fesolving
+        subroutine FE_init
+        end subroutine FE_init 
+     end module fesolving
+
+     module mesh ! in :mesh:mesh.f90
+        subroutine mesh_init(ip,element)
+             integer, parameter                   ::      ip = 1
+             integer, parameter                   :: element = 1
+        end subroutine mesh_init
+        
+        function mesh_nodesAroundCentres(gDim,Favg,centres) ! in :mesh:mesh.f90
+            real*8,  dimension(:,:,:,:),                       intent(in)                  :: centres
+            real*8,  dimension(3),                             intent(in)                  :: gDim
+            real*8,  dimension(3,3),                           intent(in)                  :: Favg
+            real*8,  dimension(3,size(centres,2)+1,size(centres,3)+1,size(centres,4)+1), depend(centres)  :: mesh_nodesAroundCentres
+            real*8,  dimension(3,size(centres,2)+1,size(centres,3)+1,size(centres,4)+1), depend(centres)  :: wrappedCentres
+        end function mesh_nodesAroundCentres
+
+        function mesh_deformedCoordsFFT(gDim,F,FavgIn,scalingIn) ! in :mesh:mesh.f90
+            real*8,  dimension(:,:,:,:,:),                     intent(in)                  :: F
+            real*8,  dimension(3),                             intent(in)                  :: gDim
+            real*8,  dimension(3,3),                           intent(in), optional        :: FavgIn = -1.0
+            real*8,  dimension(3),                             intent(in), optional        :: scalingIn = -1.0
+            real*8,  dimension(3,size(F,3),size(F,4),size(F,5)),           depend(F)       :: mesh_deformedCoordsFFT  
+        end function mesh_deformedCoordsFFT
+        
+        function mesh_volumeMismatch(gDim,F,nodes) ! in :mesh:mesh.f90
+            real*8,  dimension(:,:,:,:,:),                     intent(in)                  :: F
+            real*8,  dimension(:,:,:,:),                       intent(in)                  :: nodes
+            real*8,  dimension(3),                             intent(in)                  :: gDim
+            real*8,  dimension(size(F,3),size(F,4),size(F,5)), depend(F)                   :: mesh_volumeMismatch
+        end function mesh_volumeMismatch
+
+        function mesh_shapeMismatch(gDim,F,nodes,centres) ! in :mesh:mesh.f90
+            real*8,  dimension(:,:,:,:,:),                     intent(in)                  :: F
+            real*8,  dimension(:,:,:,:),                       intent(in)                  :: nodes
+            real*8,  dimension(:,:,:,:),                       intent(in)                  :: centres
+            real*8,  dimension(3),                             intent(in)                  :: gDim
+            real*8,  dimension(size(F,3),size(F,4),size(F,5)), depend(F)                   :: mesh_shapeMismatch
+        end function mesh_shapeMismatch
+        
+        function mesh_init_postprocessing(filepath) ! in :mesh:mesh.f90
+            character(len=*), intent(in) :: filepath
+        end function mesh_init_postprocessing
+        
+        function mesh_build_cellnodes(nodes,Ncellnodes) ! in :mesh:mesh.f90
+            integer,                         intent(in)         :: Ncellnodes
+            real*8, dimension(3,:),          intent(in)         :: nodes
+            real*8, dimension(3,Ncellnodes), depend(Ncellnodes) :: mesh_build_cellnodes
+        end function mesh_build_cellnodes
+        
+        function mesh_get_Ncellnodes() ! in :mesh:mesh.f90
+            integer :: mesh_get_Ncellnodes
+        end function mesh_get_Ncellnodes
+        
+        function mesh_get_unitlength() ! in :mesh:mesh.f90
+            real*8 :: mesh_get_unitlength
+        end function mesh_get_unitlength
+        
+        function mesh_get_nodeAtIP(elemtypeFE,ip) ! in :mesh:mesh.f90
+            character(len=*), intent(in) :: elemtypeFE
+            integer,          intent(in) :: ip
+            integer                      :: mesh_get_nodeAtIP
+        end function mesh_get_nodeAtIP
+        
+     end module mesh
+   end interface 
+end python module core
+
