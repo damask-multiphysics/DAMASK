@@ -4,17 +4,28 @@
 cmake_minimum_required (VERSION 3.1.0 FATAL_ERROR)
 project (DAMASK Fortran)
 
-# The version number.
+# THE VERSION NUMBER.
 set (DAMASK_VERSION_MAJOR 1)
 set (DAMASK_VERSION_MINOR ${DAMASK_V})
 
-# PETSC and HDF5 is required
+# PETSC IS REQUIRED
 if (NOT DEFINED PETSC_DIR)
     message (FATAL_ERROR "PETSC_DIR is not found!")
 endif (NOT DEFINED PETSC_DIR)
-if (NOT DEFINED HDF5_DIR)
-    message (FATAL_ERROR "HDF5_DIR is not found!" )
-endif (NOT DEFINED HDF5_DIR)
+# RECOMMEND USING HDF5 FROM PETSC
+if (DEFINED HDF5_DIR)
+    message ("\n***Using HDF5 library found at ${HDF5_DIR}\n")
+else(DEFINED HDF5_DIR)
+    message ("\n***Using HDF5 library from PETSc\n" )
+endif (DEFINED HDF5_DIR)
+
+# Setting installation prefix
+if (NOT DEFINED DAMASK_INSTALL)
+    set (CMAKE_INSTALL_PREFIX "${PROJECT_SOURCE_DIR}/bin")
+elseif(DEFINED DAMASK_INSTALL)
+    set (CMAKE_INSTALL_PREFIX "${DAMASK_INSTALL}")
+endif(NOT DEFINED DAMASK_INSTALL)
+message("\n***The binary will be installed at\n${CMAKE_INSTALL_PREFIX}\n")
 
 # DAMASK DRIVER SELECTION
 set (SPECTRAL OFF)
@@ -109,14 +120,14 @@ message("***Found PETSC_EXTERNAL_LIB:\n${PETSC_EXTERNAL_LIB}\n")
 message("***Found PETSC_LINKER:\n${PETSC_LINKER}\n")
 message("***Found PETSC_MPIEXEC:\n${MPIEXEC}\n")
 
-# set include directories
+# SET INCLUDE DIRECTORIES (SNEAK IT IN WITH PETSC)
+if (DEFINED HDF5_DIR)
+    set (DAMASK_INCLUDE_FLAGS "${PETSC_INCLUDES} -I${HDF5_DIR}/include"  )
+    set (PETSC_EXTERNAL_LIB   "${PETSC_EXTERNAL_LIB} -L${HDF5_DIR}/lib")
+endif (DEFINED HDF5_DIR)
+
 set (DAMASK_INCLUDE_FLAGS "${DAMASK_INCLUDE_FLAGS} ${PETSC_INCLUDES}"          )
 set (DAMASK_INCLUDE_FLAGS "${DAMASK_INCLUDE_FLAGS} -I${PROJECT_SOURCE_DIR}/lib")
-#set (DAMASK_INCLUDE_FLAGS "${DAMASK_INCLUDE_FLAGS} -I${HDF5_DIR}/include -lm"  )
-# set link libraries from PETSc
-set (DAMASK_LINK_FLAGS "${DAMASK_LINK_FLAGS} ${PETSC_LINKER}"    )
-set (DAMASK_LINK_FLAGS "${DAMASK_LINK_FLAGS} ${PETSC_EXTERNAL_LIB}")
-#set (DAMASK_LINK_FLAGS "${DAMASK_LINK_FLAGS} -L${HDF5_DIR}/lib"    )
 
 ##
 # set compile and debug flags
@@ -440,6 +451,8 @@ message("***LINK FLAGS:\n${CMAKE_EXE_LINKER_FLAGS_RELEASE}\n")
 ##
 # ADD CODE DIRECTORY
 add_subdirectory(code)
+INSTALL(PROGRAMS    ${PROJECT_BINARY_DIR}/code/DAMASKSpectral.exe
+        DESTINATION ${CMAKE_INSTALL_PREFIX})
 
 ##
 # ADD TESTING CASES
