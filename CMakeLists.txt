@@ -32,15 +32,6 @@ if ("${DAMASK_DRIVER}" STREQUAL "FEM")
     set (FEM      ON )
 endif("${DAMASK_DRIVER}" STREQUAL "FEM")
 
-# if (DAMASK_DRIVER STREQUAL "SPECTRAL")
-#     set (SPECTRAL ON )
-#     message('set to spectral solver')
-# endif()
-# if (DAMASK_DRIVER STREQUAL "FEM")
-#     set (FEM      ON )
-#     message('set to FEM solver')
-# endif()
-
 # COMPILE VARIABLES
 add_definitions(-DDAMASKVERSION="${DAMASK_V}")
 add_definitions(-DPETSc)
@@ -186,9 +177,6 @@ set (STANDARD_CHECK_gfortran "-std=f2008ts -pedantic-errors" )
 #     all:
 #  -name as_is: case sensitive Fortran!
 ###################################################################################################
-# -diag-disable 7410 should disable warning about directory statement in inquire function,
-#  but does not work. hence the other 2 statements
-###################################################################################################
 set (COMPILE_OPTIONS_ifort   "${COMPILE_OPTIONS_ifort} -fpp"                        )
 set (COMPILE_OPTIONS_ifort   "${COMPILE_OPTIONS_ifort} -ftz"                        )
 set (COMPILE_OPTIONS_ifort   "${COMPILE_OPTIONS_ifort} -assume byterecl,fpe_summary")
@@ -200,8 +188,6 @@ set (COMPILE_OPTIONS_ifort   "${COMPILE_OPTIONS_ifort} -warn interfaces"        
 set (COMPILE_OPTIONS_ifort   "${COMPILE_OPTIONS_ifort} -warn ignore_loc"            )
 set (COMPILE_OPTIONS_ifort   "${COMPILE_OPTIONS_ifort} -warn alignments"            )
 set (COMPILE_OPTIONS_ifort   "${COMPILE_OPTIONS_ifort} -warn unused"                )
-set (COMPILE_OPTIONS_ifort   "${COMPILE_OPTIONS_ifort} -diag-remark 7410"           )
-set (COMPILE_OPTIONS_ifort   "${COMPILE_OPTIONS_ifort} -warn nostderrors"           )
 ###################################################################################################
 # COMPILE SWITCHES FOR RUNTIME DEBUGGING
 # -g:                       Generate symbolic debugging information in the object file
@@ -240,7 +226,6 @@ set (DEBUG_OPTIONS_ifort     "${DEBUG_OPTIONS_ifort} -warn stderrors"           
 set (DEBUG_OPTIONS_ifort     "${DEBUG_OPTIONS_ifort} -debug-parameters all"                                    )
 
 set (LINK_OPTIONS_ifort      "-shared-intel")
-# set (LINK_OPTIONS_ifort      "-static-intel")
 ###################################################################################################
 # COMPILE SWITCHES
 # -shared
@@ -317,14 +302,6 @@ set (LINK_OPTIONS_ifort      "-shared-intel")
 # -Wunsafe-loop-optimizations:   warn if the loop cannot be optimized due to nontrivial assumptions.
 # -Wstrict-overflow:
 ###################################################################################################
-# fno-range-check:  Disable range checking on results of simplification of constant expressions during compilation
-#      -->   allows the definition of DAMASK_NaN
-#-fall-intrinsics:  all intrinsic procedures (including the GNU-specific extensions) are accepted. -Wintrinsics-std will be ignored
-#                   and no user-defined procedure with the same name as any intrinsic will be called except when it is explicitly declared external
-#      -->   allows the use of 'isnan'
-#-fno-fast-math:
-#      -->   otherwise, when setting -ffast-math, isnan always evaluates to false (I would call it a bug)
-###################################################################################################
 set (COMPILE_OPTIONS_gfortran "${COMPILE_OPTIONS_gfortran} -xf95-cpp-input"                         )
 set (COMPILE_OPTIONS_gfortran "${COMPILE_OPTIONS_gfortran} -ffree-line-length-132"                  )
 set (COMPILE_OPTIONS_gfortran "${COMPILE_OPTIONS_gfortran} -fimplicit-none"                         )
@@ -339,9 +316,6 @@ set (COMPILE_OPTIONS_gfortran "${COMPILE_OPTIONS_gfortran} -Wconversion-extra"  
 set (COMPILE_OPTIONS_gfortran "${COMPILE_OPTIONS_gfortran} -Wimplicit-procedure"                    )
 set (COMPILE_OPTIONS_gfortran "${COMPILE_OPTIONS_gfortran} -Wno-unused-parameter"                   )
 set (COMPILE_OPTIONS_gfortran "${COMPILE_OPTIONS_gfortran} -fno-range-check"                        )
-set (COMPILE_OPTIONS_gfortran "${COMPILE_OPTIONS_gfortran} -fall-intrinsics"                        )
-set (COMPILE_OPTIONS_gfortran "${COMPILE_OPTIONS_gfortran} -fno-fast-math"                          )
-set (COMPILE_OPTIONS_gfortran "${COMPILE_OPTIONS_gfortran} -fall-intrinsics"                        )
 ###################################################################################################
 # COMPILE SWITCHES FOR RUNTIME DEBUGGING
 # -ffpe-trap=invalid,\         stop execution if floating point exception is detected (NaN is silent)
