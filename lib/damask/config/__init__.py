@@ -1,5 +1,5 @@
 # -*- coding: UTF-8 no BOM -*-
 
-# $Id$
+"""Aggregator for configuration file handling"""
 
-from .material import Material
+from .material import Material    #noqa

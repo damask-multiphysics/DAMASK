@@ -5,10 +5,11 @@
 import damask.geometry
 
 class Geometry():
-  '''
-     General class for geometry parsing.
-     Sub-classed by the individual solvers.
-  '''
+  """
+  General class for geometry parsing.
+
+  Sub-classed by the individual solvers.
+  """
   
   def __init__(self,solver=''):
     solverClass = {
