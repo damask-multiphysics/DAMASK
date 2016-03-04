@@ -4,12 +4,9 @@
 
 import os,sys
 import numpy as np
-import util
 
 class ASCIItable():
-  '''
-     There should be a doc string here  :)
-  '''
+  """Read and write to ASCII tables"""
 
   __slots__ = ['__IO__',
                'info',
@@ -58,8 +55,8 @@ class ASCIItable():
     self.data   = []
     self.line   = ''
 
-    if   self.__IO__['in']  == None \
-      or self.__IO__['out'] == None: raise IOError                                                 # complain if any required file access not possible
+    if   self.__IO__['in']  is None \
+      or self.__IO__['out'] is None: raise IOError                                                 # complain if any required file access not possible
      
 # ------------------------------------------------------------------
   def _transliterateToFloat(self,
@@ -86,9 +83,7 @@ class ASCIItable():
 # ------------------------------------------------------------------
   def output_write(self,
                    what):
-    '''
-       aggregate a single row (string) or list of (possibly containing further lists of) rows into output
-    '''
+    """aggregate a single row (string) or list of (possibly containing further lists of) rows into output"""
     if not isinstance(what, (str, unicode)):
       try:
         for item in what: self.output_write(item)
@@ -104,7 +99,7 @@ class ASCIItable():
                    clear = True):
     try:
       self.__IO__['output'] == [] or self.__IO__['out'].write('\n'.join(self.__IO__['output']) + '\n')
-    except IOError as e:
+    except IOError:
       return False
     if clear: self.output_clear()
     return True
@@ -127,11 +122,12 @@ class ASCIItable():
 
 # ------------------------------------------------------------------
   def head_read(self):
-    '''
-       get column labels by either reading
-       the first row or, if keyword "head[*]" is present,
-       the last line of the header
-    '''
+    """
+    get column labels by either reading
+
+    the first row or, if keyword "head[*]" is present,
+    the last line of the header
+    """
     import re
 
     try:
@@ -180,10 +176,7 @@ class ASCIItable():
 # ------------------------------------------------------------------
   def head_write(self,
                  header = True):
-    '''
-       write current header information (info + labels)
-    '''
-    
+    """write current header information (info + labels)"""
     head = ['{}\theader'.format(len(self.info)+self.__IO__['labeled'])] if header else []
     head.append(self.info)
     if self.__IO__['labeled']: head.append('\t'.join(self.labels))
@@ -192,9 +185,7 @@ class ASCIItable():
 
 # ------------------------------------------------------------------
   def head_getGeom(self):
-    '''
-       interpret geom header
-    '''
+    """interpret geom header"""
     identifiers = {
             'grid':    ['a','b','c'],
             'size':    ['x','y','z'],
@@ -234,9 +225,7 @@ class ASCIItable():
 
 # ------------------------------------------------------------------
   def head_putGeom(self,info):
-    '''
-       translate geometry description to header
-    '''
+    """translate geometry description to header"""
     self.info_append([
       "grid\ta {}\tb {}\tc {}".format(*info['grid']),
       "size\tx {}\ty {}\tz {}".format(*info['size']),
@@ -249,9 +238,7 @@ class ASCIItable():
   def labels_append(self,
                     what,
                     reset = False):
-    '''
-       add item or list to existing set of labels (and switch on labeling)
-    '''
+    """add item or list to existing set of labels (and switch on labeling)"""
     if not isinstance(what, (str, unicode)):
       try:
         for item in what: self.labels_append(item)
@@ -265,26 +252,25 @@ class ASCIItable():
 
 # ------------------------------------------------------------------
   def labels_clear(self):
-    '''
-       delete existing labels and switch to no labeling
-    '''
+    """delete existing labels and switch to no labeling"""
     self.labels = []
     self.__IO__['labeled'] = False
 
 # ------------------------------------------------------------------
   def label_index(self,
                   labels):
-    '''
-       tell index of column label(s).
-       return numpy array if asked for list of labels.
-       transparently deals with label positions implicitly given as numbers or their headings given as strings.
-    '''
+    """
+    tell index of column label(s).
+
+    return numpy array if asked for list of labels.
+    transparently deals with label positions implicitly given as numbers or their headings given as strings.
+    """
     from collections import Iterable
 
     if isinstance(labels, Iterable) and not isinstance(labels, str):                                # check whether list of labels is requested
       idx = []
       for label in labels:
-        if label != None:
+        if label is not None:
           try:
             idx.append(int(label))                                                                  # column given as integer number?
           except ValueError:
@@ -305,25 +291,25 @@ class ASCIItable():
           try:
             idx = self.labels.index('1_'+labels)                                                    # locate '1_'+string in label list
           except ValueError:
-            idx = None if labels == None else -1
+            idx = None if labels is None else -1
 
     return np.array(idx) if isinstance(idx,list) else idx
 
 # ------------------------------------------------------------------
   def label_dimension(self,
                       labels):
-    '''
-       tell dimension (length) of column label(s).
-       return numpy array if asked for list of labels.
-       transparently deals with label positions implicitly given as numbers or their headings given as strings.
-    '''
+    """
+    tell dimension (length) of column label(s).
 
+    return numpy array if asked for list of labels.
+    transparently deals with label positions implicitly given as numbers or their headings given as strings.
+    """
     from collections import Iterable
 
     if isinstance(labels, Iterable) and not isinstance(labels, str):                                # check whether list of labels is requested
       dim = []
       for label in labels:
-        if label != None:
+        if label is not None:
           myDim = -1
           try:                                                                                      # column given as number?
             idx = int(label)
@@ -364,12 +350,12 @@ class ASCIItable():
 # ------------------------------------------------------------------
   def label_indexrange(self,
                        labels):
-    '''
-       tell index range for given label(s).
-       return numpy array if asked for list of labels.
-       transparently deals with label positions implicitly given as numbers or their headings given as strings.
-    '''
+    """
+    tell index range for given label(s).
 
+    return numpy array if asked for list of labels.
+    transparently deals with label positions implicitly given as numbers or their headings given as strings.
+    """
     from collections import Iterable
 
     start = self.label_index(labels)
@@ -381,9 +367,7 @@ class ASCIItable():
 # ------------------------------------------------------------------
   def info_append(self,
                   what):
-    '''
-       add item or list to existing set of infos
-    '''
+    """add item or list to existing set of infos"""
     if not isinstance(what, (str, unicode)):
       try:
         for item in what: self.info_append(item)
@@ -394,9 +378,7 @@ class ASCIItable():
 
 # ------------------------------------------------------------------
   def info_clear(self):
-    '''
-       delete any info block
-    '''
+    """delete any info block"""
     self.info = []
 
 # ------------------------------------------------------------------
@@ -409,9 +391,7 @@ class ASCIItable():
 # ------------------------------------------------------------------
   def data_skipLines(self,
                      count):
-    '''
-       wind forward by count number of lines
-    '''
+    """wind forward by count number of lines"""
     for i in xrange(count):
       alive = self.data_read()
 
@@ -421,9 +401,7 @@ class ASCIItable():
   def data_read(self,
                 advance = True,
                 respectLabels = True):
-    '''
-       read next line (possibly buffered) and parse it into data array
-    '''
+    """read next line (possibly buffered) and parse it into data array"""
     self.line = self.__IO__['readBuffer'].pop(0) if len(self.__IO__['readBuffer']) > 0 \
            else self.__IO__['in'].readline().strip()                                                # take buffered content or get next data row from file
 
@@ -434,7 +412,7 @@ class ASCIItable():
 
     if self.__IO__['labeled'] and respectLabels:                                                    # if table has labels
       items = self.line.split()[:len(self.__IO__['labels'])]                                        # use up to label count (from original file info)
-      self.data = items if len(items) == len(self.__IO__['labels']) else []                         # take entries if correct number, i.e. not too few compared to label count
+      self.data = items if len(items) == len(self.__IO__['labels']) else []                         # take entries if label count matches
     else:
       self.data = self.line.split()                                                                 # otherwise take all
 
@@ -443,9 +421,7 @@ class ASCIItable():
 # ------------------------------------------------------------------
   def data_readArray(self,
                      labels = []):
-    '''
-       read whole data of all (given) labels as numpy array
-    '''
+    """read whole data of all (given) labels as numpy array"""
     from collections import Iterable
 
     try:
@@ -453,7 +429,7 @@ class ASCIItable():
     except:
       pass                                                                                          # assume/hope we are at data start already...
 
-    if labels == None or labels == []:
+    if labels is None or labels == []:
       use = None                                                                                    # use all columns (and keep labels intact)
       labels_missing = []
     else:
@@ -467,9 +443,10 @@ class ASCIItable():
 
       columns = []
       for i,(c,d) in enumerate(zip(indices[present],dimensions[present])):                          # for all valid labels ...
+        # ... transparently add all components unless column referenced by number or with explicit dimension
         columns += range(c,c + \
                           (d if str(c) != str(labels[present[i]]) else \
-                           1))                                                                      # ... transparently add all components unless column referenced by number or with explicit dimension
+                           1))                                                                      
       use = np.array(columns)
 
       self.labels = list(np.array(self.labels)[use])                                                # update labels with valid subset
@@ -481,9 +458,7 @@ class ASCIItable():
 # ------------------------------------------------------------------
   def data_write(self,
                  delimiter = '\t'):
-    '''
-       write current data array and report alive output back
-    '''
+    """write current data array and report alive output back"""
     if len(self.data) == 0: return True
 
     if isinstance(self.data[0],list):
@@ -495,9 +470,7 @@ class ASCIItable():
   def data_writeArray(self,
                       fmt = None,
                       delimiter = '\t'):
-    '''
-       write whole numpy array data
-    '''
+    """write whole numpy array data"""
     for row in self.data:
       try:
         output = [fmt % value for value in row] if fmt else map(repr,row)
@@ -520,9 +493,7 @@ class ASCIItable():
 # ------------------------------------------------------------------
   def data_set(self,
                what, where):
-    '''
-       update data entry in column "where". grows data array if needed.
-    '''
+    """update data entry in column "where". grows data array if needed."""
     idx = -1
     try:
       idx = self.label_index(where)
@@ -547,10 +518,7 @@ class ASCIItable():
 # ------------------------------------------------------------------
   def microstructure_read(self,
                           grid):
-    '''
-       read microstructure data (from .geom format)
-    '''
-
+    """read microstructure data (from .geom format)"""
     N = grid.prod()                                                                 # expected number of microstructure indices in data
     microstructure = np.zeros(N,'i')                                                # initialize as flat array
 

@@ -2,4 +2,4 @@
 
 """Test functionality"""
 
-from .test import Test      "noqa
+from .test import Test      #noqa

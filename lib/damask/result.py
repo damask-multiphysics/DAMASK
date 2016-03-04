@@ -11,10 +11,11 @@ except (ImportError) as e:
   sys.stderr.write('\nREMARK: h5py module not available \n\n')
 
 class Result():
-  '''
-     General class for result parsing.
-     Needs h5py to be installed
-  '''
+  """
+  General class for result parsing.
+
+  Needs h5py to be installed
+  """
   
   def __init__(self,resultsFile):
     self.data=h5py.File(resultsFile,"r")

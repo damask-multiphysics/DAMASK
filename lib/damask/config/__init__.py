@@ -2,4 +2,4 @@
 
 """Aggregator for configuration file handling"""
 
-from .material import Material    #noqa
+from .material import Material    # noqa

@@ -9,7 +9,6 @@ import numpy as np
 
 # ******************************************************************************************
 class Rodrigues:
-# ******************************************************************************************
 
     def __init__(self, vector = np.zeros(3)):
       self.vector = vector
@@ -28,20 +27,22 @@ class Rodrigues:
 
 # ******************************************************************************************
 class Quaternion:
-# ******************************************************************************************
-    # All methods and naming conventions based off
-    # http://www.euclideanspace.com/maths/algebra/realNormedAlgebra/quaternions
+    """
+    Orientation represented as unit quaternion
+    
+    All methods and naming conventions based on http://www.euclideanspace.com/maths/algebra/realNormedAlgebra/quaternions
 
-    # w is the real part, (x, y, z) are the imaginary parts
-
-    # Representation of rotation is in ACTIVE form!
-    # (derived directly or through angleAxis, Euler angles, or active matrix)
-    # vector "a" (defined in coordinate system "A") is actively rotated to new coordinates "b"
-    # b = Q * a
-    # b = np.dot(Q.asMatrix(),a)
+    w is the real part, (x, y, z) are the imaginary parts
+    Representation of rotation is in ACTIVE form!
+    (derived directly or through angleAxis, Euler angles, or active matrix)
+    vector "a" (defined in coordinate system "A") is actively rotated to new coordinates "b"
+    b = Q * a
+    b = np.dot(Q.asMatrix(),a)
+    """
 
     def __init__(self,
                  quatArray = [1.0,0.0,0.0,0.0]):
+      """initializes to identity if not given"""
       self.w, \
       self.x, \
       self.y, \
@@ -49,19 +50,23 @@ class Quaternion:
       self.homomorph()
 
     def __iter__(self):
+      """components"""
       return iter([self.w,self.x,self.y,self.z])
 
     def __copy__(self):
+      """create copy"""
       Q = Quaternion([self.w,self.x,self.y,self.z])
       return Q
 
     copy = __copy__
 
     def __repr__(self):
+      """readbable string"""
       return 'Quaternion(real=%+.6f, imag=<%+.6f, %+.6f, %+.6f>)' % \
           (self.w, self.x, self.y, self.z)
 
     def __pow__(self, exponent):
+      """power"""
       omega = math.acos(self.w)
       vRescale = math.sin(exponent*omega)/math.sin(omega)
       Q = Quaternion()
@@ -72,6 +77,7 @@ class Quaternion:
       return Q
 
     def __ipow__(self, exponent):
+      """in place power"""
       omega    = math.acos(self.w)
       vRescale = math.sin(exponent*omega)/math.sin(omega)
       self.w  = np.cos(exponent*omega)
@@ -81,6 +87,7 @@ class Quaternion:
       return self
 
     def __mul__(self, other):
+      """multiplication"""
       try:                                                          # quaternion
           Aw = self.w
           Ax = self.x
@@ -128,6 +135,7 @@ class Quaternion:
           return self.copy()
 
     def __imul__(self, other):
+      """in place multiplication"""
       try:                                                        # Quaternion
           Ax = self.x
           Ay = self.y
@@ -145,6 +153,7 @@ class Quaternion:
       return self
 
     def __div__(self, other):
+      """division"""
       if isinstance(other, (int,float,long)):
         w = self.w / other
         x = self.x / other
@@ -155,6 +164,7 @@ class Quaternion:
           return NotImplemented
 
     def __idiv__(self, other):
+      """in place division"""
       if isinstance(other, (int,float,long)):
           self.w /= other
           self.x /= other
@@ -163,6 +173,7 @@ class Quaternion:
       return self
 
     def __add__(self, other):
+      """addition"""
       if isinstance(other, Quaternion):
         w = self.w + other.w
         x = self.x + other.x
@@ -173,6 +184,7 @@ class Quaternion:
           return NotImplemented
 
     def __iadd__(self, other):
+      """in place division"""
       if isinstance(other, Quaternion):
           self.w += other.w
           self.x += other.x
@@ -181,6 +193,7 @@ class Quaternion:
       return self
 
     def __sub__(self, other):
+      """subtraction"""
       if isinstance(other, Quaternion):
           Q = self.copy()
           Q.w -= other.w
@@ -192,6 +205,7 @@ class Quaternion:
           return self.copy()
 
     def __isub__(self, other):
+      """in place subtraction"""
       if isinstance(other, Quaternion):
           self.w -= other.w
           self.x -= other.x
@@ -200,6 +214,7 @@ class Quaternion:
       return self
 
     def __neg__(self):
+      """additive inverse"""
       self.w = -self.w
       self.x = -self.x
       self.y = -self.y
@@ -207,6 +222,7 @@ class Quaternion:
       return self
 
     def __abs__(self):
+      """norm"""
       return math.sqrt(self.w ** 2 + \
                        self.x ** 2 + \
                        self.y ** 2 + \
@@ -215,6 +231,7 @@ class Quaternion:
     magnitude = __abs__
 
     def __eq__(self,other):
+      """equal at e-8 precision"""
       return (abs(self.w-other.w) < 1e-8 and \
               abs(self.x-other.x) < 1e-8 and \
               abs(self.y-other.y) < 1e-8 and \
@@ -226,9 +243,11 @@ class Quaternion:
               abs(-self.z-other.z) < 1e-8)
 
     def __ne__(self,other):
+      """not equal at e-8 precision"""
       return not self.__eq__(self,other)
 
     def __cmp__(self,other):
+      """linear ordering"""
       return cmp(self.Rodrigues(),other.Rodrigues())
 
     def magnitude_squared(self):
@@ -290,9 +309,10 @@ class Quaternion:
       return np.outer([i for i in self],[i for i in self])
 
     def asMatrix(self):
-      return np.array([[1.0-2.0*(self.y*self.y+self.z*self.z),     2.0*(self.x*self.y-self.z*self.w),     2.0*(self.x*self.z+self.y*self.w)],
-                       [    2.0*(self.x*self.y+self.z*self.w), 1.0-2.0*(self.x*self.x+self.z*self.z),     2.0*(self.y*self.z-self.x*self.w)],
-                       [    2.0*(self.x*self.z-self.y*self.w),     2.0*(self.x*self.w+self.y*self.z), 1.0-2.0*(self.x*self.x+self.y*self.y)]])
+      return np.array(
+        [[1.0-2.0*(self.y*self.y+self.z*self.z),     2.0*(self.x*self.y-self.z*self.w),     2.0*(self.x*self.z+self.y*self.w)],
+         [    2.0*(self.x*self.y+self.z*self.w), 1.0-2.0*(self.x*self.x+self.z*self.z),     2.0*(self.y*self.z-self.x*self.w)],
+         [    2.0*(self.x*self.z-self.y*self.w),     2.0*(self.x*self.w+self.y*self.z), 1.0-2.0*(self.x*self.x+self.y*self.y)]])
 
     def asAngleAxis(self,
                     degrees = False):
@@ -315,15 +335,17 @@ class Quaternion:
       return np.inf*np.ones(3) if self.w == 0.0 else np.array([self.x, self.y, self.z])/self.w
 
     def asEulers(self,
-                 type = 'bunge',
+                 type = "bunge",
                  degrees = False,
                  standardRange = False):
-      '''
+      u"""
+      Orientation as Bunge-Euler angles
+
       conversion of ACTIVE rotation to Euler angles taken from:
       Melcher, A.; Unser, A.; Reichhardt, M.; Nestler, B.; Pötschke, M.; Selzer, M.
       Conversion of EBSD data by a quaternion based algorithm to be used for grain structure simulations
       Technische Mechanik 30 (2010) pp 401--413
-      '''
+      """
       angles = [0.0,0.0,0.0]
 
       if type.lower() == 'bunge' or type.lower() == 'zxz':
@@ -369,7 +391,7 @@ class Quaternion:
 
     @classmethod
     def fromRandom(cls,randomSeed = None):
-      if randomSeed == None:
+      if randomSeed is None:
         randomSeed = int(os.urandom(4).encode('hex'), 16)
       np.random.seed(randomSeed)
       r = np.random.random(3)
@@ -420,7 +442,6 @@ class Quaternion:
         y = - c1 * s2 * s3 + s1 * s2 * c3
         z =   c1 * c2 * s3 + s1 * c2 * c3
       else:
-#          print 'unknown Euler convention'
         w = c1 * c2 * c3 - s1 * s2 * s3
         x = s1 * s2 * c3 + c1 * c2 * s3
         y = s1 * c2 * c3 + c1 * s2 * s3
@@ -428,7 +449,8 @@ class Quaternion:
       return cls([w,x,y,z])
 
 
-## Modified Method to calculate Quaternion from Orientation Matrix, Source: http://www.euclideanspace.com/maths/geometry/rotations/conversions/matrixToQuaternion/
+# Modified Method to calculate Quaternion from Orientation Matrix,
+# Source: http://www.euclideanspace.com/maths/geometry/rotations/conversions/matrixToQuaternion/
 
     @classmethod
     def fromMatrix(cls, m):
@@ -482,8 +504,12 @@ class Quaternion:
 
     @classmethod
     def new_interpolate(cls, q1, q2, t):
-# see http://ntrs.nasa.gov/archive/nasa/casi.ntrs.nasa.gov/20070017872_2007014421.pdf for (another?) way to interpolate quaternions
-
+        """
+        interpolation
+ 
+        see http://ntrs.nasa.gov/archive/nasa/casi.ntrs.nasa.gov/20070017872_2007014421.pdf
+        for (another?) way to interpolate quaternions
+        """
         assert isinstance(q1, Quaternion) and isinstance(q2, Quaternion)
         Q = cls()
 
@@ -522,11 +548,11 @@ class Quaternion:
 
 # ******************************************************************************************
 class Symmetry:
-# ******************************************************************************************
 
   lattices = [None,'orthorhombic','tetragonal','hexagonal','cubic',]
 
   def __init__(self, symmetry = None):
+    """lattice with given symmetry, defaults to None"""
     if isinstance(symmetry, basestring) and symmetry.lower() in Symmetry.lattices:
       self.lattice = symmetry.lower()
     else:
@@ -534,29 +560,31 @@ class Symmetry:
 
 
   def __copy__(self):
+    """copy"""
     return self.__class__(self.lattice)
 
   copy = __copy__
 
 
   def __repr__(self):
+    """readbable string"""
     return '%s' % (self.lattice)
 
 
   def __eq__(self, other):
+    """equal"""
     return self.lattice == other.lattice
 
-
   def __neq__(self, other):
+    """not equal"""
     return not self.__eq__(other)
 
   def __cmp__(self,other):
+    """linear ordering"""
     return cmp(Symmetry.lattices.index(self.lattice),Symmetry.lattices.index(other.lattice))
 
   def symmetryQuats(self,who = []):
-    '''
-    List of symmetry operations as quaternions.
-    '''
+    """List of symmetry operations as quaternions."""
     if self.lattice == 'cubic':
       symQuats =  [
                     [ 1.0,              0.0,              0.0,              0.0              ],
@@ -629,18 +657,15 @@ class Symmetry:
   def equivalentQuaternions(self,
                             quaternion,
                             who = []):
-    '''
-    List of symmetrically equivalent quaternions based on own symmetry.
-    '''
+    """List of symmetrically equivalent quaternions based on own symmetry."""
     return [quaternion*q for q in self.symmetryQuats(who)]
 
 
   def inFZ(self,R):
-    '''
-    Check whether given Rodrigues vector falls into fundamental zone of own symmetry.
-    '''
+    """Check whether given Rodrigues vector falls into fundamental zone of own symmetry."""
     if isinstance(R, Quaternion): R = R.asRodrigues()                                               # translate accidentially passed quaternion
-    R = abs(R)                                                                                      # fundamental zone in Rodrigues space is point symmetric around origin
+# fundamental zone in Rodrigues space is point symmetric around origin
+    R = abs(R)                                                                                      
     if self.lattice == 'cubic':
       return     math.sqrt(2.0)-1.0 >= R[0] \
              and math.sqrt(2.0)-1.0 >= R[1] \
@@ -662,12 +687,13 @@ class Symmetry:
 
 
   def inDisorientationSST(self,R):
-    '''
+    """
     Check whether given Rodrigues vector (of misorientation) falls into standard stereographic triangle of own symmetry.
+
     Determination of disorientations follow the work of A. Heinz and P. Neumann:
     Representation of Orientation and Disorientation Data for Cubic, Hexagonal, Tetragonal and Orthorhombic Crystals
     Acta Cryst. (1991). A47, 780-789
-    '''
+    """
     if isinstance(R, Quaternion): R = R.asRodrigues()       # translate accidentially passed quaternion
 
     epsilon = 0.0
@@ -691,11 +717,12 @@ class Symmetry:
             vector,
             proper = False,
             color = False):
-    '''
+    """
     Check whether given vector falls into standard stereographic triangle of own symmetry.
+
     proper considers only vectors with z >= 0, hence uses two neighboring SSTs.
     Return inverse pole figure color if requested.
-    '''
+    """
 #     basis = {'cubic' :        np.linalg.inv(np.array([[0.,0.,1.],                                 # direction of red
 #                                                       [1.,0.,1.]/np.sqrt(2.),                     # direction of green
 #                                                       [1.,1.,1.]/np.sqrt(3.)]).transpose()),      # direction of blue
@@ -752,15 +779,15 @@ class Symmetry:
       inSST = np.all(theComponents >= 0.0)
     else:
       v = np.array(vector,dtype = float)
-      if proper:                                                                                  # check both improper ...
+      if proper:                                                                                    # check both improper ...
         theComponents = np.dot(basis['improper'],v)
         inSST = np.all(theComponents >= 0.0)
         if not inSST:                                                                               # ... and proper SST
           theComponents = np.dot(basis['proper'],v)
           inSST = np.all(theComponents >= 0.0)
       else:      
-        v[2] = abs(v[2])                                                                            # z component projects identical for positive and negative values
-        theComponents = np.dot(basis['improper'],v)
+        v[2] = abs(v[2])                                                                            # z component projects identical 
+        theComponents = np.dot(basis['improper'],v)                                                 # for positive and negative values
         inSST = np.all(theComponents >= 0.0)
 
     if color:                                                                                       # have to return color array
@@ -781,7 +808,6 @@ class Symmetry:
 
 # ******************************************************************************************
 class Orientation:
-# ******************************************************************************************
 
   __slots__ = ['quaternion','symmetry']
 
@@ -791,7 +817,7 @@ class Orientation:
                angleAxis  = None,
                matrix     = None,
                Eulers     = None,
-               random     = False,                                                                  # put any integer to have a fixed seed or True for real random
+               random     = False,                                                                  # integer to have a fixed seed or True for real random
                symmetry   = None,
               ):
     if random:                                                                                      # produce random orientation
@@ -815,12 +841,14 @@ class Orientation:
     self.symmetry = Symmetry(symmetry)
 
   def __copy__(self):
+    """copy"""
     return self.__class__(quaternion=self.quaternion,symmetry=self.symmetry.lattice)
 
   copy = __copy__
 
 
   def __repr__(self):
+    """value as all implemented representations"""
     return 'Symmetry: %s\n' % (self.symmetry) + \
            'Quaternion: %s\n' % (self.quaternion) + \
            'Matrix:\n%s\n' % ( '\n'.join(['\t'.join(map(str,self.asMatrix()[i,:])) for i in range(3)]) ) + \
@@ -863,10 +891,7 @@ class Orientation:
                self.equivalentQuaternions(who))
 
   def reduced(self):
-    '''
-    Transform orientation to fall into fundamental zone according to symmetry
-    '''
-
+    """Transform orientation to fall into fundamental zone according to symmetry"""
     for me in self.symmetry.equivalentQuaternions(self.quaternion):
       if self.symmetry.inFZ(me.asRodrigues()): break
 
@@ -876,13 +901,13 @@ class Orientation:
   def disorientation(self,
                      other,
                      SST = True):
-    '''
+    """
     Disorientation between myself and given other orientation.
+
     Rotation axis falls into SST if SST == True.
     (Currently requires same symmetry for both orientations.
      Look into A. Heinz and P. Neumann 1991 for cases with differing sym.)
-    '''
-
+    """
     if self.symmetry != other.symmetry: raise TypeError('disorientation between different symmetry classes not supported yet.')
 
     misQ = self.quaternion.conjugated()*other.quaternion
@@ -900,32 +925,27 @@ class Orientation:
         if breaker: break
       if breaker: break
 
+# disorientation, own sym, other sym, self-->other: True, self<--other: False
     return (Orientation(quaternion = theQ,symmetry = self.symmetry.lattice),
-            i,j,k == 1)                                                                             # disorientation, own sym, other sym, self-->other: True, self<--other: False
+            i,j,k == 1)                                                                             
 
 
   def inversePole(self,
                   axis,
                   proper = False,
                   SST = True):
-    '''
-    axis rotated according to orientation (using crystal symmetry to ensure location falls into SST)
-    '''
-
+    """axis rotated according to orientation (using crystal symmetry to ensure location falls into SST)"""
     if SST:                                                                                         # pole requested to be within SST
       for i,q in enumerate(self.symmetry.equivalentQuaternions(self.quaternion)):                   # test all symmetric equivalent quaternions
         pole = q.conjugated()*axis                                                                  # align crystal direction to axis
-        if self.symmetry.inSST(pole,proper): break                                                # found SST version
+        if self.symmetry.inSST(pole,proper): break                                                  # found SST version
     else:
       pole = self.quaternion.conjugated()*axis                                                      # align crystal direction to axis
 
     return (pole,i if SST else 0)
 
   def IPFcolor(self,axis):
-    '''
-    TSL color of inverse pole figure for given axis
-    '''
-
+    """TSL color of inverse pole figure for given axis"""
     color = np.zeros(3,'d')
 
     for q in self.symmetry.equivalentQuaternions(self.quaternion):
@@ -939,7 +959,9 @@ class Orientation:
   def average(cls,
               orientations,
               multiplicity = []):
-    """RETURN THE AVERAGE ORIENTATION
+    """
+    average orientation
+
     ref: F. Landis Markley, Yang Cheng, John Lucas Crassidis, and Yaakov Oshman.
          Averaging Quaternions,
          Journal of Guidance, Control, and Dynamics, Vol. 30, No. 4 (2007), pp. 1193-1197.
@@ -949,7 +971,6 @@ class Orientation:
          b = Orientation(Eulers=np.radians([20, 0, 0]),  symmetry='hexagonal')
          avg = Orientation.average([a,b])
     """
-
     if not all(isinstance(item, Orientation) for item in orientations):
       raise TypeError("Only instances of Orientation can be averaged.")
 
@@ -960,8 +981,7 @@ class Orientation:
     reference = orientations[0]                                                                     # take first as reference
     for i,(o,n) in enumerate(zip(orientations,multiplicity)):
       closest = o.equivalentOrientations(reference.disorientation(o,SST = False)[2])[0]             # select sym orientation with lowest misorientation
-      M = closest.quaternion.asM() * n if i == 0 else M + closest.quaternion.asM() * n              # add (multiples) of this orientation to average
-
+      M = closest.quaternion.asM() * n if i == 0 else M + closest.quaternion.asM() * n              # noqa add (multiples) of this orientation to average noqa
     eig, vec = np.linalg.eig(M/N)
 
     return Orientation(quaternion = Quaternion(quatArray = np.real(vec.T[eig.argmax()])),

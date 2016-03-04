@@ -243,7 +243,8 @@ class Material():
           except AttributeError:
             pass
             
-    for (phase,texture,fraction,crystallite) in zip(components['phase'],components['texture'],components['fraction'],components['crystallite']):
+    for (phase,texture,fraction,crystallite) in zip(components['phase'],components['texture'],
+                                                    components['fraction'],components['crystallite']):
       microstructure.add_multiKey('constituent','phase %i\ttexture %i\tfraction %g\ncrystallite %i'%(
                                     self.data['phase']['__order__'].index(phase)+1,
                                     self.data['texture']['__order__'].index(texture)+1,
