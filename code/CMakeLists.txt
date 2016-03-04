@@ -5,10 +5,10 @@ add_library(DAMASK_PREC "prec.f90")
 
 if (SPECTRAL)
       add_library(DAMASK_INTERFACE "spectral_interface.f90")
-      target_link_libraries(DAMASK_INTERFACE DAMASK_PREC)
-elseif(SPECTRAL)
-      message(FATAL_ERROR "NOT IMPLEMENTED YET")
+elseif(FEM)
+      add_library(DAMASK_INTERFACE "DAMASK_FEM_interface.f90")
 endif(SPECTRAL)
+target_link_libraries(DAMASK_INTERFACE DAMASK_PREC)
 
 add_library(DAMASK_IO "IO.f90")
 target_link_libraries(DAMASK_IO DAMASK_INTERFACE)
@@ -32,11 +32,15 @@ target_link_libraries(DAMASK_MATH DAMASK_FEsolving)
 # source files
 if (SPECTRAL)
       add_library(DAMASK_MESH "mesh.f90")
+      target_link_libraries(DAMASK_MESH DAMASK_MATH)
 endif(SPECTRAL)
 if (FEM)
-      add_library(DAMASK_MESH "${FEM_DIR}/meshFEM.f90")
+      add_library(DAMASK_FEZoo "FEZoo.f90")
+      target_link_libraries(DAMASK_FEZoo DAMASK_MATH)
+      add_library(DAMASK_MESH  "meshFEM.f90")
+      target_link_libraries(DAMASK_MESH  DAMASK_FEZoo)
 endif(FEM)
-target_link_libraries(DAMASK_MESH DAMASK_MATH)
+
 
 add_library(DAMASK_MATERIAL "material.f90")
 target_link_libraries(DAMASK_MATERIAL DAMASK_MESH)
@@ -123,7 +127,23 @@ target_link_libraries(DAMASK_ENGINE DAMASK_HOMOGENIZATION)
 if (FEM)
       add_library(DAMASK_CPFE "CPFEM.f90")
       target_link_libraries(DAMASK_CPFE DAMASK_ENGINE)
-      message("special treatment for FEM code")
+
+      add_library(DAMASK_FEM_UTILITY "FEM_utilities.f90")
+      target_link_libraries(DAMASK_FEM_UTILITY DAMASK_CPFE)
+
+      add_library(DAMASK_FEM_BASE "FEM_hydrogenflux.f90"
+                                  "FEM_porosity.f90"
+                                  "FEM_vacancyflux.f90"
+                                  "FEM_damage.f90"
+                                  "FEM_thermal.f90"
+                                  "FEM_mech.f90")
+      target_link_libraries(DAMASK_FEM_BASE DAMASK_FEM_UTILITY)
+
+      add_library(DAMASK_FEM_DRIVER "DAMASK_FEM_driver.f90")
+      target_link_libraries(DAMASK_FEM_DRIVER DAMASK_FEM_BASE)
+
+      add_executable(DAMASK_FEM.exe "DAMASK_FEM_driver.f90")
+      target_link_libraries(DAMASK_FEM.exe DAMASK_FEM_DRIVER)
 endif(FEM)
 
 if (SPECTRAL)
