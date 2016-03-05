@@ -7,11 +7,11 @@ all: spectral marc processing
 
 .PHONY: spectral
 spectral:
-	$(MAKE) DAMASK_spectral.exe -C code
+	$(MAKE) DAMASK_spectral.exe -C src
 
 .PHONY: FEM
 FEM:
-	$(MAKE) DAMASK_FEM.exe -C code
+	$(MAKE) DAMASK_FEM.exe -C src
 
 .PHONY: marc
 marc:
@@ -29,11 +29,11 @@ processing:
 
 .PHONY: tidy
 tidy:
-	@$(MAKE) tidy -C code >/dev/null
+	@$(MAKE) tidy -C src >/dev/null
 
 .PHONY: clean
 clean:
-	@$(MAKE) cleanDAMASK -C code >/dev/null
+	@$(MAKE) cleanDAMASK -C src >/dev/null
 
 .PHONY: install
 install:
