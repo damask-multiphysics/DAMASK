@@ -15,11 +15,11 @@ if [ ! -d build ]; then
     mkdir build
 fi
 cd build
-if [ -d build ] ; then
-    rm -rf build
+if [ -d spectral ] ; then
+    rm -rf spectral
 fi
-mkdir build
-cd build
+mkdir spectral
+cd spectral
 
 ##
 # CMake call

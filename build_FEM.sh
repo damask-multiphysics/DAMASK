@@ -15,7 +15,7 @@ if [ ! -d build ]; then
     mkdir build
 fi
 cd build
-if [ -d build_FEM ] ; then
+if [ -d FEM ] ; then
     rm -rf FEM
 fi
 mkdir FEM
@@ -41,6 +41,6 @@ cmake -D PETSC_DIR=${PETSC_DIR}             \
 
 echo
 echo "Please move to the build directory using"
-echo "    cd build/build_spectral"
+echo "    cd build/FEM"
 echo "Using the following command to build DAMASK spectral solver"
 echo "    make clean all install"
