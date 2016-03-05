@@ -16,10 +16,10 @@ if [ ! -d build ]; then
 fi
 cd build
 if [ -d build_FEM ] ; then
-    rm -rf build_FEM
+    rm -rf FEM
 fi
-mkdir build_FEM
-cd build_FEM
+mkdir FEM
+cd FEM
 
 ##
 # CMake call
