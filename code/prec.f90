@@ -172,9 +172,9 @@ end subroutine prec_init
 
 !--------------------------------------------------------------------------------------------------
 !> @brief figures out if a floating point number is NaN
-! basically just a small wrapper, because gfortran < 4.9 does not have the IEEE module
+! basically just a small wrapper, because gfortran < 5.0 does not have the IEEE module
 !--------------------------------------------------------------------------------------------------
-logical elemental function prec_isNaN(a)
+logical elemental pure function prec_isNaN(a)
 
  implicit none
  real(pReal), intent(in) :: a
@@ -186,5 +186,31 @@ logical elemental function prec_isNaN(a)
  prec_isNaN = IEEE_is_NaN(a)
 #endif
 end function prec_isNaN
+
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief equality comparison for double precision
+! replaces "==" but for certain (absolute) tolerance. Counterpart to dNeq
+!--------------------------------------------------------------------------------------------------
+logical elemental pure function dEq(a,b,tol)
+  real(pReal), intent(in) :: a,b
+  real(pReal), intent(in), optional :: tol
+  real(pReal), parameter  :: eps = 1.0e-15_pReal 
+  dEq = merge(.True., .False.,abs(a-b) < merge(tol,eps,present(tol)))
+end function dEq
+
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief inequality comparison for double precision
+! replaces "!=" but for certain (absolute) tolerance. Counterpart to dEq
+!--------------------------------------------------------------------------------------------------
+logical elemental pure function dNeq(a,b,tol)
+  real(pReal), intent(in)           :: a,b
+  real(pReal), intent(in), optional :: tol
+  real(pReal), parameter  :: eps = 1.0e-15_pReal 
+  dNeq = merge(.True., .False.,abs(a-b) < merge(tol,eps,present(tol)))
+end function dNeq
 
 end module prec
