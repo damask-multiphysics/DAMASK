@@ -2,8 +2,18 @@
 
 cat  README
 echo
-echo "Building spectral solver with ${FC}"
+
+if [ "$OSTYPE" == "linux-gnu" ] || [ "$OSTYPE" == 'linux' ]; then
+  DAMASK_ROOT=$(readlink -f "`dirname $BASH_SOURCE`")
+else
+  [[ "${BASH_SOURCE::1}" == "/" ]] && BASE="" || BASE="`pwd`/"
+  STAT=$(stat "`dirname $BASE$BASH_SOURCE`")
+  DAMASK_ROOT=${STAT##* }
+fi
+
 DAMASKVERSION=$(cat VERSION)
+BUILDROOT=$DAMASK_ROOT/build
+BUILDDIR=spectral
 
 # prepare building directory
 # structure:
@@ -11,15 +21,15 @@ DAMASKVERSION=$(cat VERSION)
 #   |-BUILD_SPECTRAL
 #   |-BUILD_FEM
 #   |-BUILD_MARC
-if [ ! -d build ]; then
-    mkdir build
+if [ ! -d $BUILDROOT ]; then
+    mkdir $BUILDROOT
 fi
-cd build
-if [ -d spectral ] ; then
-    rm -rf spectral
+cd $BUILDROOT
+if [ -d $BUILDDIR ] ; then
+    rm -rf $BUILDDIR
 fi
-mkdir spectral
-cd spectral
+mkdir $BUILDDIR
+cd $BUILDDIR
 
 ##
 # CMake call
