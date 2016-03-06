@@ -23,20 +23,20 @@ cd spectral
 
 ##
 # CMake call
-# PETSC_DIR          |  PETSC directory
-# DAMASK_V           |  DAMASK current revision
-# CMAKE_BUILD_TYPE   |  Default set to release (no debugging output)
-# OPENMP             |  [ON/OFF]
-# OPTIMIZATION       |  [OFF,DEFENSIVE,AGGRESSIVE,ULTRA]
-# DAMASK_DRIVER      |  [SPECTRAL, FEM]
-# DAMASK_INSTALL     |  Directory to install binary output
-cmake -D PETSC_DIR=${PETSC_DIR}     \
-      -D DAMASK_V=${DAMASKVERSION}  \
-      -D CMAKE_BUILD_TYPE=RELEASE   \
-      -D OPENMP=ON                  \
-      -D OPTIMIZATION=DEFENSIVE     \
-      -D DAMASK_DRIVER=SPECTRAL     \
-      -D DAMASK_INSTALL=${HOME}/bin \
+# PETSC_DIR                |  PETSC directory
+# DAMASK_V                 |  DAMASK current revision
+# CMAKE_BUILD_TYPE         |  Default set to release (no debugging output)
+# OPENMP                   |  [ON/OFF]
+# OPTIMIZATION             |  [OFF,DEFENSIVE,AGGRESSIVE,ULTRA]
+# DAMASK_DRIVER            |  [SPECTRAL, FEM]
+# DAMASK_INSTALL           |  Directory to install binary output
+cmake -D PETSC_DIR=${PETSC_DIR}           \
+      -D DAMASK_V=${DAMASKVERSION}        \
+      -D CMAKE_BUILD_TYPE=RELEASE         \
+      -D OPENMP=ON                        \
+      -D OPTIMIZATION=DEFENSIVE           \
+      -D DAMASK_DRIVER=SPECTRAL           \
+      -D DAMASK_INSTALL=${HOME}/bin       \
       ../..
 
 echo

@@ -74,6 +74,7 @@ compiler:
 
 linker:
 \t@echo \${LINKERNAME}
+
 ")
 
 find_program (MAKE_EXECUTABLE NAMES make gmake)
@@ -92,6 +93,10 @@ execute_process(COMMAND ${MAKE_EXECUTABLE} -f ${petsc_config_makefile} "linker"
 execute_process(COMMAND ${MAKE_EXECUTABLE} -f ${petsc_config_makefile} "compiler"
                 RESULT_VARIABLE MPIEXEC_RETURN
                 OUTPUT_VARIABLE MPIEXEC
+                OUTPUT_STRIP_TRAILING_WHITESPACE)
+execute_process(COMMAND ${MPIEXEC} -v OUTPUT_QUIET
+                RESULT_VARIABLE MPINAME_RETURN
+                OUTPUT_VARIABLE MPINAME
                 OUTPUT_STRIP_TRAILING_WHITESPACE)
 file (REMOVE ${petsc_config_makefile})
 
@@ -355,10 +360,9 @@ set (PRECISION_ifort "-real-size 64 -integer-size 32")
 ###################################################################################################
 set (PRECISION_gfortran "-fdefault-real-8 -fdefault-double-8")
 
-# set FLAGS
-get_filename_component (Fortran_COMPILER_NAME ${CMAKE_Fortran_COMPILER} NAME)
 
-if (Fortran_COMPILER_NAME MATCHES "ifort.*")
+if (MPINAME MATCHES "(^ifort)*")
+    message("Intel fortran used for MPIF90\n")
     set (INTEL_FORTRAN ON)
     # for RELEASE
     set (CMAKE_Fortran_FLAGS_RELEASE     "${CMAKE_Fortran_FLAGS_RELEASE} ${OPENMP_FLAG_ifort}"    )
@@ -378,7 +382,8 @@ if (Fortran_COMPILER_NAME MATCHES "ifort.*")
 
     set (CMAKE_EXE_LINKER_FLAGS_DEBUG    "${CMAKE_EXE_LINKER_FLAGS_RELEASE} ${DEBUG_OPTIONS_ifort}"   )
     #
-elseif (Fortran_COMPILER_NAME MATCHES "gfortran.*")
+elseif (MPINAME MATCHES "(^gfortran)*")
+    message("GNU fortran used for MPIF90\n")
     set (GNU_FORTRAN ON)
     # for RELEASE
     set (CMAKE_Fortran_FLAGS_RELEASE     "${CMAKE_Fortran_FLAGS_RELEASE} ${OPENMP_FLAG_gfortran}"    )
@@ -397,11 +402,11 @@ elseif (Fortran_COMPILER_NAME MATCHES "gfortran.*")
 
     set (CMAKE_EXE_LINKER_FLAGS_DEBUG    "${CMAKE_EXE_LINKER_FLAGS_RELEASE} ${DEBUG_OPTIONS_gfortran}")
     #
-elseif (Fortran_COMPILER_NAME MATCHES "g77")
+elseif (MPINAME MATCHES "(^g77)*")
     message (FATAL_ERROR "Fortran 77 is not supported.")
-else (Fortran_COMPILER_NAME MATCHES "ifort.*")
+else (MPINAME MATCHES "(^ifort)*")
     message (FATAL_ERROR "Require Fortran90 from GNU or Intel.")
-endif (Fortran_COMPILER_NAME MATCHES "ifort.*")
+endif (MPINAME MATCHES "(^ifort)*")
 
 # Finalizing
 set (CMAKE_Fortran_COMPILER        "${MPIEXEC}")
