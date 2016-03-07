@@ -75,12 +75,6 @@ execute_process(COMMAND ${MAKE_EXECUTABLE} -f ${petsc_config_makefile} "compiler
                 RESULT_VARIABLE MPIEXEC_RETURN
                 OUTPUT_VARIABLE MPIEXEC
                 OUTPUT_STRIP_TRAILING_WHITESPACE)
-# The option OUTPUT_QUIET sometimes fails to suppress the output from
-# ${MPIEXEC} -v, thus the MPIF90 version information may show up in the terminal.
-execute_process(COMMAND ${MPIEXEC} --version OUTPUT_QUIET
-                RESULT_VARIABLE MPINAME_RETURN
-                OUTPUT_VARIABLE MPINAME
-                OUTPUT_STRIP_TRAILING_WHITESPACE)
 # PETSc specified linker (MPIF90 + PETSc linking flags)
 execute_process(COMMAND ${MAKE_EXECUTABLE} -f ${petsc_config_makefile} "linker"
                 RESULT_VARIABLE PETSC_LINKER_RETURN
@@ -115,6 +109,8 @@ message("***Found C MPI COMPILER:\n${CMPIEXEC}\n"               )
 
 set (CMAKE_Fortran_COMPILER "${MPIEXEC}" )
 set (CMAKE_C_COMPILER       "${CMPIEXEC}")
+
+
 # # https://cmake.org/Wiki/CMake_FAQ#How_do_I_use_a_different_compiler.3F
 # set(CMAKE_Fortran_COMPILER "/opt/petsc/gfortran/bin/mpif90")                #MD: https://github.com/jedbrown/cmake-modules/blob/master/FindPETSc.cmake might help
 # set(CMAKE_C_COMPILER "/opt/petsc/gfortran/bin/mpicc")                       #MD: https://github.com/jedbrown/cmake-modules/blob/master/FindPETSc.cmake might help
@@ -392,10 +388,23 @@ set (PRECISION_ifort "-real-size 64 -integer-size 32")
 ###################################################################################################
 set (PRECISION_gfortran "-fdefault-real-8 -fdefault-double-8")
 
-
-if (MPINAME MATCHES "(^ifort)*")
-    message("Intel fortran used for MPIF90\n")
+# DETECT MPI COMPILER TYPE
+message("\n***DETECTING MPI COMPILER TYPE")
+execute_process(COMMAND ${MPIEXEC} --version
+                RESULT_VARIABLE MPINAME_RETURN
+                OUTPUT_VARIABLE MPINAME
+                OUTPUT_STRIP_TRAILING_WHITESPACE)
+if (MPINAME MATCHES "(ifort)")
+    message(" [OK]INTEL FORTRAN DETECTED FOR MPI\n")
     set (INTEL_FORTRAN ON)
+elseif(MPINAME MATCHES "(GNU)")
+    message(" [OK]GNU fortran used for MPIF90\n")
+    set (GNU_FORTRAN ON)
+else(MPINAME MATCHES "(ifort)")
+    message(FATAL_ERROR "[ERROR]Unknown compiler type!!!")
+endif(MPINAME MATCHES "(ifort)")
+
+if (INTEL_FORTRAN)
     # for RELEASE
     set (CMAKE_Fortran_FLAGS_RELEASE     "${CMAKE_Fortran_FLAGS_RELEASE} ${OPENMP_FLAG_ifort}"    )
     set (CMAKE_Fortran_FLAGS_RELEASE     "${CMAKE_Fortran_FLAGS_RELEASE} ${STANDARD_CHECK_ifort}" )
@@ -414,9 +423,7 @@ if (MPINAME MATCHES "(^ifort)*")
 
     set (CMAKE_EXE_LINKER_FLAGS_DEBUG    "${CMAKE_EXE_LINKER_FLAGS_RELEASE} ${DEBUG_OPTIONS_ifort}"   )
     #
-elseif (MPINAME MATCHES "(^GNU)*")
-    message("GNU fortran used for MPIF90\n")
-    set (GNU_FORTRAN ON)
+elseif (GNU_FORTRAN)
     # for RELEASE
     set (CMAKE_Fortran_FLAGS_RELEASE     "${CMAKE_Fortran_FLAGS_RELEASE} ${OPENMP_FLAG_gfortran}"    )
     set (CMAKE_Fortran_FLAGS_RELEASE     "${CMAKE_Fortran_FLAGS_RELEASE} ${STANDARD_CHECK_gfortran}" )
@@ -434,11 +441,9 @@ elseif (MPINAME MATCHES "(^GNU)*")
 
     set (CMAKE_EXE_LINKER_FLAGS_DEBUG    "${CMAKE_EXE_LINKER_FLAGS_RELEASE} ${DEBUG_OPTIONS_gfortran}")
     #
-elseif (MPINAME MATCHES "(^g77)*")
-    message (FATAL_ERROR "Fortran 77 is not supported.")
-else (MPINAME MATCHES "(^ifort)*")
+else (INTEL_FORTRAN)
     message (FATAL_ERROR "Require Fortran90 from GNU or Intel.")
-endif (MPINAME MATCHES "(^ifort)*")
+endif (INTEL_FORTRAN)
 
 # Finalizing
 set (CMAKE_Fortran_FLAGS_RELEASE   "${CMAKE_Fortran_FLAGS_RELEASE}    ${DAMASK_INCLUDE_FLAGS}")
