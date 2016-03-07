@@ -167,7 +167,7 @@ subroutine plastic_isotropic_init(fileUnit)
  allocate(plastic_isotropic_Noutput(maxNinstance),                              source=0_pInt)
 
  allocate(param(maxNinstance))                                                                      ! one container of parameters per instance
- 
+
  rewind(fileUnit)
  phase = 0_pInt
  do while (trim(line) /= IO_EOF .and. IO_lc(IO_getTag(line,'<','>')) /= material_partPhase)         ! wind forward to <phase>
@@ -184,14 +184,13 @@ subroutine plastic_isotropic_init(fileUnit)
    if (IO_getTag(line,'[',']') /= '') then                                                          ! next section
      phase = phase + 1_pInt                                                                         ! advance section counter
      if (phase_plasticity(phase) == PLASTICITY_ISOTROPIC_ID) then
-       instance = phase_plasticityInstance(phase)
-
+       instance = phase_plasticityInstance(phase)                                                   ! count instances of my constitutive law
+       allocate(param(instance)%outputID(phase_Noutput(phase)))                                     ! allocate space for IDs of every requested output
      endif
      cycle                                                                                          ! skip to next line
    endif
    if (phase > 0_pInt) then; if (phase_plasticity(phase) == PLASTICITY_ISOTROPIC_ID) then           ! one of my phases. Do not short-circuit here (.and. between if-statements), it's not safe in Fortran
      instance = phase_plasticityInstance(phase)                                                     ! which instance of my plasticity is present phase
-     allocate(param(instance)%outputID(phase_Noutput(phase)))                                       ! allocate space for IDs of every requested output
      chunkPos = IO_stringPos(line) 
      tag = IO_lc(IO_stringValue(line,chunkPos,1_pInt))                                              ! extract key
      extmsg = trim(tag)//' ('//PLASTICITY_ISOTROPIC_label//')'                                      ! prepare error message identifier
