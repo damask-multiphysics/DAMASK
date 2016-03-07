@@ -33,7 +33,6 @@ INCLUDE_DIRS   := \${PETSC_FC_INCLUDES}
 LIBRARIES      := \${PETSC_WITH_EXTERNAL_LIB}
 COMPILERF      ?= \${FC}
 LINKERNAME     ?= \${FLINKER}
-COMPILERC      ?= \${CC}
 
 includes:
 \t@echo \${INCLUDE_DIRS}
@@ -82,11 +81,6 @@ execute_process(COMMAND ${MAKE_EXECUTABLE} -f ${petsc_config_makefile} "linker"
                 RESULT_VARIABLE PETSC_LINKER_RETURN
                 OUTPUT_VARIABLE PETSC_LINKER
                 OUTPUT_STRIP_TRAILING_WHITESPACE)
-# Get MPI C compiler name from PETSc
-execute_process(COMMAND ${MAKE_EXECUTABLE} -f ${petsc_config_makefile} "compilerc"
-                RESULT_VARIABLE CMPIEXEC_RETURN
-                OUTPUT_VARIABLE CMPIEXEC
-                OUTPUT_STRIP_TRAILING_WHITESPACE)
 # Remove temporary makefile, no need to keep it anymore.
 file (REMOVE ${petsc_config_makefile})
 
@@ -103,23 +97,16 @@ foreach (exlib ${TMP_LIST})
 endforeach(exlib)
 
 set(CMAKE_Fortran_COMPILER "${MPIEXEC}")
-set(CMAKE_C_COMPILER "${COMPILERC}") 
-project (DAMASK Fortran C)
+project (DAMASK Fortran)
 
 message("***Found PETSC_DIR:\n${PETSC_DIR}\n"                  )
 message("***Found PETSC_INCLUDES:\n${PETSC_INCLUDES}\n"        )
 message("***Found PETSC_EXTERNAL_LIB:\n${PETSC_EXTERNAL_LIB}\n")
 message("***Found PETSC_LINKER:\n${PETSC_LINKER}\n"            )
 message("***Found FORTRAN MPI COMPILER:\n${MPIEXEC}\n"         )
-message("***Found C MPI COMPILER:\n${CMPIEXEC}\n"               )
-
-set (CMAKE_Fortran_COMPILER "${MPIEXEC}" )
-set (CMAKE_C_COMPILER       "${CMPIEXEC}")
 
 
 # # https://cmake.org/Wiki/CMake_FAQ#How_do_I_use_a_different_compiler.3F
-# set(CMAKE_Fortran_COMPILER "/opt/petsc/gfortran/bin/mpif90")                #MD: https://github.com/jedbrown/cmake-modules/blob/master/FindPETSc.cmake might help
-# set(CMAKE_C_COMPILER "/opt/petsc/gfortran/bin/mpicc")                       #MD: https://github.com/jedbrown/cmake-modules/blob/master/FindPETSc.cmake might help
 #---------------------------------------------------------------------------------------
 # Now start to care about DAMASK
 
@@ -134,39 +121,26 @@ add_definitions(-DFLOAT=8)
 add_definitions(-DINT=4)
 
 # Setting installation prefix
-if (NOT DEFINED DAMASK_INSTALL)
-    set (CMAKE_INSTALL_PREFIX "${PROJECT_SOURCE_DIR}/bin")
-elseif(DEFINED DAMASK_INSTALL)
+if (DEFINED DAMASK_INSTALL)
     set (CMAKE_INSTALL_PREFIX "${DAMASK_INSTALL}")
-endif(NOT DEFINED DAMASK_INSTALL)
+else(DEFINED DAMASK_INSTALL)
+    set (CMAKE_INSTALL_PREFIX "${PROJECT_SOURCE_DIR}/bin")
+endif(DEFINED DAMASK_INSTALL)
 message("\n***The binary will be installed at\n${CMAKE_INSTALL_PREFIX}\n")
 
 # DAMASK DRIVER SELECTION
-set (SPECTRAL OFF)
-set (FEM      OFF)
 if ("${DAMASK_DRIVER}" STREQUAL "SPECTRAL")
     set (SPECTRAL ON )
     add_definitions(-DSpectral)
-endif("${DAMASK_DRIVER}" STREQUAL "SPECTRAL")
-#
-if ("${DAMASK_DRIVER}" STREQUAL "FEM")
+    set (FEM      OFF)
+elseif ("${DAMASK_DRIVER}" STREQUAL "FEM")
     set (FEM      ON )
     add_definitions(-DFEM)
-endif("${DAMASK_DRIVER}" STREQUAL "FEM")
+    set (SPECTRAL OFF)
+endif()
 
 set (DAMASK_INCLUDE_FLAGS "${DAMASK_INCLUDE_FLAGS} ${PETSC_INCLUDES}"          )
 set (DAMASK_INCLUDE_FLAGS "${DAMASK_INCLUDE_FLAGS} -I${PROJECT_SOURCE_DIR}/lib")
-
-##
-# set compile and debug flags
-if (OPENMP)
-    set (OPENMP_FLAG_ifort    "-openmp -openmp-report0 -parallel")
-    set (OPENMP_FLAG_gfortran "-fopenmp")
-else (OPENMP)
-    message("No openmp support specified")
-    set (OPENMP_FLAG_ifort    "")
-    set (OPENMP_FLAG_gfortran "")
-endif (OPENMP)
 
 if ("${OPTIMIZATION}" STREQUAL "OFF")
     set (OPTIMIZATION_ifort    "-O0 -no-ip")
@@ -174,19 +148,17 @@ if ("${OPTIMIZATION}" STREQUAL "OFF")
 elseif ("${OPTIMIZATION}" STREQUAL "DEFENSIVE")
     set (OPTIMIZATION_ifort    "-O2")
     set (OPTIMIZATION_gfortran "-O2")
-elseif ("${OPTIMIZATION}" STREQUAL "AGGRESSIVE")
+elseif ("${OPTIMIZATION}" STREQUAL "AGGRESSIVE")           #ToDo: this is not fully correct here, check old makefile
     set (OPTIMIZATION_ifort    "-ipo -O3 -no-prec-div -fp-model fast=2 -xHost"  )  #-fast = -ipo, -O3, -no-prec-div, -static, -fp-model fast=2, and -xHost"
     set (OPTIMIZATION_gfortran "-O3 -ffast-math -funroll-loops -ftree-vectorize")
 elseif ("${OPTIMIZATION}" STREQUAL "ULTRA")
     set (OPTIMIZATION_ifort    "-ipo -O3 -no-prec-div -fp-model fast=2 -xHost"  )  #-fast = -ipo, -O3, -no-prec-div, -static, -fp-model fast=2, and -xHost"
     set (OPTIMIZATION_gfortran "-O3 -ffast-math -funroll-loops -ftree-vectorize")
-else ("${OPTIMIZATION}" STREQUAL "OFF")
+else()
     set (OPTIMIZATION_ifort    "-O2")
     set (OPTIMIZATION_gfortran "-O2")
-endif ("${OPTIMIZATION}" STREQUAL "OFF")
+endif()
 
-set (STANDARD_CHECK_ifort    "-stand f08 -standard-semantics")
-set (STANDARD_CHECK_gfortran "-std=f2008ts -pedantic-errors" )
 
 ###################################################################################################
 # COMPILE SWITCHES
@@ -216,17 +188,35 @@ set (STANDARD_CHECK_gfortran "-std=f2008ts -pedantic-errors" )
 #     all:
 #  -name as_is: case sensitive Fortran!
 ###################################################################################################
-set (COMPILE_OPTIONS_ifort   "${COMPILE_OPTIONS_ifort} -fpp"                        )
-set (COMPILE_OPTIONS_ifort   "${COMPILE_OPTIONS_ifort} -ftz"                        )
-set (COMPILE_OPTIONS_ifort   "${COMPILE_OPTIONS_ifort} -assume byterecl,fpe_summary")
-set (COMPILE_OPTIONS_ifort   "${COMPILE_OPTIONS_ifort} -diag-disable 5268"          )
-set (COMPILE_OPTIONS_ifort   "${COMPILE_OPTIONS_ifort} -warn declarations"          )
-set (COMPILE_OPTIONS_ifort   "${COMPILE_OPTIONS_ifort} -warn general"               )
-set (COMPILE_OPTIONS_ifort   "${COMPILE_OPTIONS_ifort} -warn usage"                 )
-set (COMPILE_OPTIONS_ifort   "${COMPILE_OPTIONS_ifort} -warn interfaces"            )
-set (COMPILE_OPTIONS_ifort   "${COMPILE_OPTIONS_ifort} -warn ignore_loc"            )
-set (COMPILE_OPTIONS_ifort   "${COMPILE_OPTIONS_ifort} -warn alignments"            )
-set (COMPILE_OPTIONS_ifort   "${COMPILE_OPTIONS_ifort} -warn unused"                )
+if(${CMAKE_Fortran_COMPILER_ID} STREQUAL "Intel")
+
+  if (OPENMP)
+    set (OPENMP_FLAG "-openmp -openmp-report0 -parallel")
+  endif()
+
+  if ("${OPTIMIZATION}" STREQUAL "OFF")
+      set (OPTIMIZATION_FLAG    "-O0 -no-ip")
+  elseif ("${OPTIMIZATION}" STREQUAL "AGGRESSIVE")           #ToDo: this is not fully correct here, check old makefile
+      set (OPTIMIZATION_FLAG    "-ipo -O3 -no-prec-div -fp-model fast=2 -xHost"  )  #-fast = -ipo, -O3, -no-prec-div, -static, -fp-model fast=2, and -xHost"
+  elseif ("${OPTIMIZATION}" STREQUAL "ULTRA")
+      set (OPTIMIZATION_FLAG    "-ipo -O3 -no-prec-div -fp-model fast=2 -xHost"  )  #-fast = -ipo, -O3, -no-prec-div, -static, -fp-model fast=2, and -xHost"
+  else()                                                        # this is the default
+      set (OPTIMIZATION_FLAG    "-O2")
+  endif()
+
+  set (STANDARD_CHECK "-stand f08 -standard-semantics")
+
+  set (COMPILE_FLAGS "${COMPILE_FLAGS} -fpp"                        )
+  set (COMPILE_FLAGS "${COMPILE_FLAGS} -ftz"                        )
+  set (COMPILE_FLAGS "${COMPILE_FLAGS} -assume byterecl,fpe_summary")
+  set (COMPILE_FLAGS "${COMPILE_FLAGS} -diag-disable 5268"          )
+  set (COMPILE_FLAGS "${COMPILE_FLAGS} -warn declarations"          )
+  set (COMPILE_FLAGS "${COMPILE_FLAGS} -warn general"               )
+  set (COMPILE_FLAGS "${COMPILE_FLAGS} -warn usage"                 )
+  set (COMPILE_FLAGS "${COMPILE_FLAGS} -warn interfaces"            )
+  set (COMPILE_FLAGS "${COMPILE_FLAGS} -warn ignore_loc"            )
+  set (COMPILE_FLAGS "${COMPILE_FLAGS} -warn alignments"            )
+  set (COMPILE_FLAGS "${COMPILE_FLAGS} -warn unused"                )
 ###################################################################################################
 # COMPILE SWITCHES FOR RUNTIME DEBUGGING
 # -g:                       Generate symbolic debugging information in the object file
@@ -252,19 +242,25 @@ set (COMPILE_OPTIONS_ifort   "${COMPILE_OPTIONS_ifort} -warn unused"            
 #    arg_temp_created:        will cause a lot of warnings because we create a bunch of temporary arrays (performance?)
 #    stack:
 ###################################################################################################
-set (DEBUG_OPTIONS_ifort     "${DEBUG_OPTIONS_ifort} -g"                                                       )
-set (DEBUG_OPTIONS_ifort     "${DEBUG_OPTIONS_ifort} -traceback"                                               )
-set (DEBUG_OPTIONS_ifort     "${DEBUG_OPTIONS_ifort} -gen-interfaces"                                          )
-set (DEBUG_OPTIONS_ifort     "${DEBUG_OPTIONS_ifort} -fp-stack-check"                                          )
-set (DEBUG_OPTIONS_ifort     "${DEBUG_OPTIONS_ifort} -fp-model strict"                                         )
-set (DEBUG_OPTIONS_ifort     "${DEBUG_OPTIONS_ifort} -check bounds,format,output_conversion,pointers,uninit"   )
-set (DEBUG_OPTIONS_ifort     "${DEBUG_OPTIONS_ifort} -ftrapuv"                                                 )
-set (DEBUG_OPTIONS_ifort     "${DEBUG_OPTIONS_ifort} -fpe-all0"                                                )
-set (DEBUG_OPTIONS_ifort     "${DEBUG_OPTIONS_ifort} -warn errors"                                             )
-set (DEBUG_OPTIONS_ifort     "${DEBUG_OPTIONS_ifort} -warn stderrors"                                          )
-set (DEBUG_OPTIONS_ifort     "${DEBUG_OPTIONS_ifort} -debug-parameters all"                                    )
+  set (DEBUG_FLAGS "${DEBUG_FLAGS} -g"                                                     )
+  set (DEBUG_FLAGS "${DEBUG_FLAGS} -traceback"                                             )
+  set (DEBUG_FLAGS "${DEBUG_FLAGS} -gen-interfaces"                                        )
+  set (DEBUG_FLAGS "${DEBUG_FLAGS} -fp-stack-check"                                        )
+  set (DEBUG_FLAGS "${DEBUG_FLAGS} -fp-model strict"                                       )
+  set (DEBUG_FLAGS "${DEBUG_FLAGS} -check bounds,format,output_conversion,pointers,uninit" )
+  set (DEBUG_FLAGS "${DEBUG_FLAGS} -ftrapuv"                                               )
+  set (DEBUG_FLAGS "${DEBUG_FLAGS} -fpe-all0"                                              )
+  set (DEBUG_FLAGS "${DEBUG_FLAGS} -warn errors"                                           )
+  set (DEBUG_FLAGS "${DEBUG_FLAGS} -warn stderrors"                                        )
+  set (DEBUG_FLAGS "${DEBUG_FLAGS} -debug-parameters all"                                  )
 
-set (LINK_OPTIONS_ifort      "-shared-intel")
+  set (LINKER_FLAG " -shared-intel")
+
+###################################################################################################
+#-real-size 32:               set precision to one of those 32/64/128 (= 4/8/16 bytes) for standard real (=8 for pReal)
+#-integer-size 16:            set precision to one of those 16/32/64 (= 2/4/8 bytes) for standard integer (=4 for pInt)
+###################################################################################################
+  set (PRECISION "-real-size 64 -integer-size 32")
 ###################################################################################################
 # COMPILE SWITCHES
 # -shared
@@ -341,20 +337,41 @@ set (LINK_OPTIONS_ifort      "-shared-intel")
 # -Wunsafe-loop-optimizations:   warn if the loop cannot be optimized due to nontrivial assumptions.
 # -Wstrict-overflow:
 ###################################################################################################
-set (COMPILE_OPTIONS_gfortran "${COMPILE_OPTIONS_gfortran} -xf95-cpp-input"                         )
-set (COMPILE_OPTIONS_gfortran "${COMPILE_OPTIONS_gfortran} -ffree-line-length-132"                  )
-set (COMPILE_OPTIONS_gfortran "${COMPILE_OPTIONS_gfortran} -fimplicit-none"                         )
-set (COMPILE_OPTIONS_gfortran "${COMPILE_OPTIONS_gfortran} -fmodule-private"                        )
-set (COMPILE_OPTIONS_gfortran "${COMPILE_OPTIONS_gfortran} -Wall"                                   )
-set (COMPILE_OPTIONS_gfortran "${COMPILE_OPTIONS_gfortran} -Wextra"                                 )
-set (COMPILE_OPTIONS_gfortran "${COMPILE_OPTIONS_gfortran} -Wcharacter-truncation"                  )
-set (COMPILE_OPTIONS_gfortran "${COMPILE_OPTIONS_gfortran} -Wunderflow"                             )
-set (COMPILE_OPTIONS_gfortran "${COMPILE_OPTIONS_gfortran} -Wsuggest-attribute=pure"                )
-set (COMPILE_OPTIONS_gfortran "${COMPILE_OPTIONS_gfortran} -Wsuggest-attribute=noreturn"            )
-set (COMPILE_OPTIONS_gfortran "${COMPILE_OPTIONS_gfortran} -Wconversion-extra"                      )
-set (COMPILE_OPTIONS_gfortran "${COMPILE_OPTIONS_gfortran} -Wimplicit-procedure"                    )
-set (COMPILE_OPTIONS_gfortran "${COMPILE_OPTIONS_gfortran} -Wno-unused-parameter"                   )
-set (COMPILE_OPTIONS_gfortran "${COMPILE_OPTIONS_gfortran} -fno-range-check"                        )
+elseif(${CMAKE_Fortran_COMPILER_ID} STREQUAL "GNU")
+
+  if (OPENMP)
+    set (OPENMP_FLAG "-fopenmp")
+  endif()
+
+  if ("${OPTIMIZATION}" STREQUAL "OFF")
+      set (OPTIMIZATION_FLAG "-O0"       )
+  elseif ("${OPTIMIZATION}" STREQUAL "AGGRESSIVE")           #ToDo: this is not fully correct here, check old makefile
+      set (OPTIMIZATION_FLAG "-O3 -ffast-math -funroll-loops -ftree-vectorize")
+  elseif ("${OPTIMIZATION}" STREQUAL "ULTRA")
+      set (OPTIMIZATION_FLAG "-O3 -ffast-math -funroll-loops -ftree-vectorize")
+  else()                                                      # this is the default
+      set (OPTIMIZATION_FLAG "-O2")
+  endif()
+
+  set (STANDARD_CHECK "-std=f2008ts -pedantic-errors" )
+
+  set (COMPILE_FLAGS "${COMPILE_FLAGS} -xf95-cpp-input"             )
+  set (COMPILE_FLAGS "${COMPILE_FLAGS} -ffree-line-length-132"      )
+  set (COMPILE_FLAGS "${COMPILE_FLAGS} -fimplicit-none"             )
+  set (COMPILE_FLAGS "${COMPILE_FLAGS} -fmodule-private"            )
+  set (COMPILE_FLAGS "${COMPILE_FLAGS} -Wall"                       )
+  set (COMPILE_FLAGS "${COMPILE_FLAGS} -Wextra"                     )
+  set (COMPILE_FLAGS "${COMPILE_FLAGS} -Wcharacter-truncation"      )
+  set (COMPILE_FLAGS "${COMPILE_FLAGS} -Wunderflow"                 )
+  set (COMPILE_FLAGS "${COMPILE_FLAGS} -Wsuggest-attribute=pure"    )
+  set (COMPILE_FLAGS "${COMPILE_FLAGS} -Wsuggest-attribute=noreturn")
+  set (COMPILE_FLAGS "${COMPILE_FLAGS} -Wconversion-extra"          )
+  set (COMPILE_FLAGS "${COMPILE_FLAGS} -Wimplicit-procedure"        )
+  set (COMPILE_FLAGS "${COMPILE_FLAGS} -Wno-unused-parameter"       )
+  set (COMPILE_FLAGS "${COMPILE_FLAGS} -fno-range-check"            )
+
+  set (LINKER_FLAG " -Wl,-undefined,dynamic_lookup")
+
 ###################################################################################################
 # COMPILE SWITCHES FOR RUNTIME DEBUGGING
 # -ffpe-trap=invalid,\         stop execution if floating point exception is detected (NaN is silent)
@@ -373,83 +390,33 @@ set (COMPILE_OPTIONS_gfortran "${COMPILE_OPTIONS_gfortran} -fno-range-check"    
 #            denormal, \
 #            underflow
 ###################################################################################################
-set (DEBUG_OPTIONS_gfortran "${DEBUG_OPTIONS_gfortran} -g"                              )
-set (DEBUG_OPTIONS_gfortran "${DEBUG_OPTIONS_gfortran} -fbacktrace"                     )
-set (DEBUG_OPTIONS_gfortran "${DEBUG_OPTIONS_gfortran} -fdump-core"                     )
-set (DEBUG_OPTIONS_gfortran "${DEBUG_OPTIONS_gfortran} -fcheck=all"                     )
-set (DEBUG_OPTIONS_gfortran "${DEBUG_OPTIONS_gfortran} -ffpe-trap=invalid,zero,overflow")
-
-set (LINK_OPTIONS_gfortran "-Wl,-undefined,dynamic_lookup")
-
-###################################################################################################
-#-real-size 32:               set precision to one of those 32/64/128 (= 4/8/16 bytes) for standard real (=8 for pReal)
-#-integer-size 16:            set precision to one of those 16/32/64 (= 2/4/8 bytes) for standard integer (=4 for pInt)
-###################################################################################################
-set (PRECISION_ifort "-real-size 64 -integer-size 32")
+  set (DEBUG_FLAGS "${DEBUG_FLAGS} -g"                              )
+  set (DEBUG_FLAGS "${DEBUG_FLAGS} -fbacktrace"                     )
+  set (DEBUG_FLAGS "${DEBUG_FLAGS} -fdump-core"                     )
+  set (DEBUG_FLAGS "${DEBUG_FLAGS} -fcheck=all"                     )
+  set (DEBUG_FLAGS "${DEBUG_FLAGS} -ffpe-trap=invalid,zero,overflow")
 
 ###################################################################################################
 #-fdefault-real-8:            set precision to 8 bytes for standard real (=8 for pReal). Will set size of double to 16 bytes as long as -fdefault-double-8 is not set
 #-fdefault-double-8:          set precision to 8 bytes for double real, would be 16 bytes because -fdefault-real-8 is used
 #-fdefault-integer-8:         Use it to set precision to 8 bytes for integer, don't use it for the standard case of pInt=4 (there is no -fdefault-integer-4)
 ###################################################################################################
-set (PRECISION_gfortran "-fdefault-real-8 -fdefault-double-8")
+  set (PRECISION "-fdefault-real-8 -fdefault-double-8")
+endif()
 
-# DETECT MPI COMPILER TYPE
-message("\n***DETECTING MPI COMPILER TYPE")
-execute_process(COMMAND ${MPIEXEC} --version
-                RESULT_VARIABLE MPINAME_RETURN
-                OUTPUT_VARIABLE MPINAME
-                OUTPUT_STRIP_TRAILING_WHITESPACE)
-if (MPINAME MATCHES "(ifort)")
-    message(" [OK]INTEL FORTRAN DETECTED FOR MPI\n")
-    set (INTEL_FORTRAN ON)
-elseif(MPINAME MATCHES "(GNU)")
-    message(" [OK]GNU fortran used for MPIF90\n")
-    set (GNU_FORTRAN ON)
-else(MPINAME MATCHES "(ifort)")
-    message(FATAL_ERROR "[ERROR]Unknown compiler type!!!")
-endif(MPINAME MATCHES "(ifort)")
+set (CMAKE_Fortran_FLAGS_RELEASE     "${CMAKE_Fortran_FLAGS_RELEASE} ${OPENMP_FLAG}"    )
+set (CMAKE_Fortran_FLAGS_RELEASE     "${CMAKE_Fortran_FLAGS_RELEASE} ${STANDARD_CHECK}" )
+set (CMAKE_Fortran_FLAGS_RELEASE     "${CMAKE_Fortran_FLAGS_RELEASE} ${OPTIMIZATION_FLAG}"   )
+set (CMAKE_Fortran_FLAGS_RELEASE     "${CMAKE_Fortran_FLAGS_RELEASE} ${COMPILE_FLAGS}")
+set (CMAKE_Fortran_FLAGS_RELEASE     "${CMAKE_Fortran_FLAGS_RELEASE} ${PRECISION}"      )
 
-if (INTEL_FORTRAN)
-    # for RELEASE
-    set (CMAKE_Fortran_FLAGS_RELEASE     "${CMAKE_Fortran_FLAGS_RELEASE} ${OPENMP_FLAG_ifort}"    )
-    set (CMAKE_Fortran_FLAGS_RELEASE     "${CMAKE_Fortran_FLAGS_RELEASE} ${STANDARD_CHECK_ifort}" )
-    set (CMAKE_Fortran_FLAGS_RELEASE     "${CMAKE_Fortran_FLAGS_RELEASE} ${OPTIMIZATION_ifort}"   )
-    set (CMAKE_Fortran_FLAGS_RELEASE     "${CMAKE_Fortran_FLAGS_RELEASE} ${COMPILE_OPTIONS_ifort}")
-    set (CMAKE_Fortran_FLAGS_RELEASE     "${CMAKE_Fortran_FLAGS_RELEASE} ${PRECISION_ifort}"      )
+set (CMAKE_EXE_LINKER_FLAGS_RELEASE  "${CMAKE_EXE_LINKER_FLAGS_RELEASE} ${OPENMP_FLAG}"   )
+set (CMAKE_EXE_LINKER_FLAGS_RELEASE  "${CMAKE_EXE_LINKER_FLAGS_RELEASE} ${STANDARD_CHECK}")
+set (CMAKE_EXE_LINKER_FLAGS_RELEASE  "${CMAKE_EXE_LINKER_FLAGS_RELEASE} ${OPTIMIZATION_FLAG}"  )
+set (CMAKE_EXE_LINKER_FLAGS_RELEASE  "${CMAKE_EXE_LINKER_FLAGS_RELEASE} ${LINK_FLAG}"  )
 
-    set (CMAKE_EXE_LINKER_FLAGS_RELEASE  "${CMAKE_EXE_LINKER_FLAGS_RELEASE} ${OPENMP_FLAG_ifort}"   )
-    set (CMAKE_EXE_LINKER_FLAGS_RELEASE  "${CMAKE_EXE_LINKER_FLAGS_RELEASE} ${LINK_OPTIONS_ifort}"  )
-    set (CMAKE_EXE_LINKER_FLAGS_RELEASE  "${CMAKE_EXE_LINKER_FLAGS_RELEASE} ${OPTIMIZATION_ifort}"  )
-    set (CMAKE_EXE_LINKER_FLAGS_RELEASE  "${CMAKE_EXE_LINKER_FLAGS_RELEASE} ${STANDARD_CHECK_ifort}")
-
-    # for DEBUG
-    set (CMAKE_Fortran_FLAGS_DEBUG       "${CMAKE_Fortran_FLAGS_DEBUG} ${CMAKE_Fortran_FLAGS_RELEASE}")
-    set (CMAKE_Fortran_FLAGS_DEBUG       "${CMAKE_Fortran_FLAGS_DEBUG} ${DEBUG_OPTIONS_ifort}"        )
-
-    set (CMAKE_EXE_LINKER_FLAGS_DEBUG    "${CMAKE_EXE_LINKER_FLAGS_RELEASE} ${DEBUG_OPTIONS_ifort}"   )
-    #
-elseif (GNU_FORTRAN)
-    # for RELEASE
-    set (CMAKE_Fortran_FLAGS_RELEASE     "${CMAKE_Fortran_FLAGS_RELEASE} ${OPENMP_FLAG_gfortran}"    )
-    set (CMAKE_Fortran_FLAGS_RELEASE     "${CMAKE_Fortran_FLAGS_RELEASE} ${STANDARD_CHECK_gfortran}" )
-    set (CMAKE_Fortran_FLAGS_RELEASE     "${CMAKE_Fortran_FLAGS_RELEASE} ${OPTIMIZATION_gfortran}"   )
-    set (CMAKE_Fortran_FLAGS_RELEASE     "${CMAKE_Fortran_FLAGS_RELEASE} ${COMPILE_OPTIONS_gfortran}")
-    set (CMAKE_Fortran_FLAGS_RELEASE     "${CMAKE_Fortran_FLAGS_RELEASE} ${PRECISION_gfortran}"      )
-
-    set (CMAKE_EXE_LINKER_FLAGS_RELEASE  "${CMAKE_EXE_LINKER_FLAGS_RELEASE} ${OPENMP_FLAG_gfortran}"   )
-    set (CMAKE_EXE_LINKER_FLAGS_RELEASE  "${CMAKE_EXE_LINKER_FLAGS_RELEASE} ${LINK_OPTIONS_gfortran}"  )
-    set (CMAKE_EXE_LINKER_FLAGS_RELEASE  "${CMAKE_EXE_LINKER_FLAGS_RELEASE} ${OPTIMIZATION_gfortran}"  )
-    set (CMAKE_EXE_LINKER_FLAGS_RELEASE  "${CMAKE_EXE_LINKER_FLAGS_RELEASE} ${STANDARD_CHECK_gfortran}")
-    # for DEBUG
-    set (CMAKE_Fortran_FLAGS_DEBUG       "${CMAKE_Fortran_FLAGS_DEBUG} ${CMAKE_Fortran_FLAGS_RELEASE}")
-    set (CMAKE_Fortran_FLAGS_DEBUG       "${CMAKE_Fortran_FLAGS_DEBUG} ${DEBUG_OPTIONS_gfortran}"     )
-
-    set (CMAKE_EXE_LINKER_FLAGS_DEBUG    "${CMAKE_EXE_LINKER_FLAGS_RELEASE} ${DEBUG_OPTIONS_gfortran}")
-    #
-else (INTEL_FORTRAN)
-    message (FATAL_ERROR "Require Fortran90 from GNU or Intel.")
-endif (INTEL_FORTRAN)
+set (CMAKE_Fortran_FLAGS_DEBUG       "${CMAKE_Fortran_FLAGS_DEBUG} ${CMAKE_Fortran_FLAGS_RELEASE}")
+set (CMAKE_Fortran_FLAGS_DEBUG       "${CMAKE_Fortran_FLAGS_DEBUG} ${DEBUG_FLAGS}"        )
 
 # Finalizing
 set (CMAKE_Fortran_FLAGS_RELEASE   "${CMAKE_Fortran_FLAGS_RELEASE}    ${DAMASK_INCLUDE_FLAGS}")

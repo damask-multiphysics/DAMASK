@@ -2,12 +2,12 @@
 # !!! EXPLICIT DEPENDENCY DECLARATION !!!
 
 # SOME FILES REQUIRE SPECIAL FLAGS
-if (INTEL_FORTRAN)
+if (${CMAKE_Fortran_COMPILER_ID} STREQUAL "Intel")
     # -diag-disable 7410 should disable warning about directory statement
     # in inquire function, but does not work. hence the other 2 statements
     SET_SOURCE_FILES_PROPERTIES( "spectral_interface.f90" PROPERTIES
                                     COMPILE_FLAGS "-diag-remark 7410 -stand none -warn nostderrors" )
-elseif (GNU_FORTRAN)
+elseif (${CMAKE_Fortran_COMPILER_ID} STREQUAL "GNU")
     # fno-range-check:  Disable range checking on results of simplification of constant expressions during compilation
     #      -->   allows the definition of DAMASK_NaN
     #-fall-intrinsics:  all intrinsic procedures (including the GNU-specific extensions) are accepted. -Wintrinsics-std will be ignored
@@ -25,7 +25,7 @@ elseif (GNU_FORTRAN)
     # long lines for interaction matrix
     SET_SOURCE_FILES_PROPERTIES( "lattice.f90" PROPERTIES
                                 COMPILE_FLAGS "-ffree-line-length-240")
-endif(INTEL_FORTRAN)
+endif()
 
 add_library(DAMASK_PREC "prec.f90")
 
