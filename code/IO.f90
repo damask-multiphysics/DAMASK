@@ -1237,8 +1237,7 @@ character(len=300) pure function IO_extractValue(pair,key)
  IO_extractValue = ''
 
  myChunk = scan(pair,SEP)
- if (myChunk > 0 .and. pair(:myChunk-1) == key(:myChunk-1)) &                                         
-   IO_extractValue = pair(myChunk+1:)                                                               ! extract value if key matches
+ if (myChunk > 0 .and. pair(:myChunk-1) == key) IO_extractValue = pair(myChunk+1:)                  ! extract value if key matches
 
 end function IO_extractValue
 
