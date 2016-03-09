@@ -329,7 +329,7 @@ program DAMASK_spectral
              errorID = 838_pInt                                                                     ! no rotation is allowed by stress BC
      write(6,'(2x,a)') 'stress / GPa:'
      do i = 1_pInt, 3_pInt; do j = 1_pInt, 3_pInt
-       if(loadCases(currentLoadCase)%deformation%maskLogical(i,j)) then
+       if(loadCases(currentLoadCase)%P%maskLogical(i,j)) then
          write(6,'(2x,f12.7)',advance='no') loadCases(currentLoadCase)%P%values(i,j)*1e-9_pReal
        else
          write(6,'(2x,12a)',advance='no') '    *       '
