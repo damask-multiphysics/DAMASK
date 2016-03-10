@@ -98,7 +98,7 @@ for name in filenames:
     errors.append('column{} {} not found'.format('s' if len(missing_labels) > 1 else '',
                                                  ', '.join(missing_labels)))
   if table.label_dimension(options.label) != 3:
-    errors.append('column {} has wrong dimension'.format(options.label))
+    errors.append('column {} does not have dimension'.format(options.label))
 
   if errors != []:
     damask.util.croak(errors)
