@@ -99,7 +99,7 @@ for name in filenames:
 # ------------------------------------------ sanity checks ----------------------------------------
 
   if not np.all(table.label_dimension(label) == dim):
-    damask.util.croak('input {} has wrong dimension {}.'.format(label,dim))
+    damask.util.croak('input {} does not have dimension {}.'.format(label,dim))
     table.close(dismiss = True)                                                                     # close ASCIItable and remove empty file
     continue
 

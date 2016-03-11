@@ -110,7 +110,7 @@ for name in filenames:
   remarks = []
   
   if table.label_dimension(options.coords) != 3:       errors.append('coordinates {} are not a vector.'.format(options.coords))
-  if not np.all(table.label_dimension(label) == dim):  errors.append('input {} has wrong dimension {}.'.format(label,dim))
+  if not np.all(table.label_dimension(label) == dim):  errors.append('input {} does not have dimension {}.'.format(label,dim))
   else:  column = table.label_index(label)
 
   if remarks != []: damask.util.croak(remarks)

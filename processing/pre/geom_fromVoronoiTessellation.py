@@ -276,29 +276,29 @@ for name in filenames:
   grid = np.vstack(meshgrid2(x, y, z)).reshape(3,-1).T
   indices = laguerreTessellation(grid, coords, weights, grains, options.nonperiodic, options.cpus)
     
-# --- write header ---------------------------------------------------------------------------------
+# --- write header ------------------------------------------------------------------------
 
-  grainIDs = np.intersect1d(grainIDs,indices)
-  info['microstructures'] = len(grainIDs)
+  usedGrainIDs = np.intersect1d(grainIDs,indices)
+  info['microstructures'] = len(usedGrainIDs)
 
   if info['homogenization'] == 0: info['homogenization'] = options.homogenization
   
   damask.util.croak(['grid     a b c:  %s'%(' x '.join(map(str,info['grid']))),
-               'size     x y z:  %s'%(' x '.join(map(str,info['size']))),
-               'origin   x y z:  %s'%(' : '.join(map(str,info['origin']))),
-               'homogenization:  %i'%info['homogenization'],
-               'microstructures: %i%s'%(info['microstructures'],
+                     'size     x y z:  %s'%(' x '.join(map(str,info['size']))),
+                     'origin   x y z:  %s'%(' : '.join(map(str,info['origin']))),
+                     'homogenization:  %i'%info['homogenization'],
+                     'microstructures: %i%s'%(info['microstructures'],
                                         (' out of %i'%NgrainIDs if NgrainIDs != info['microstructures'] else '')),
-              ])
+                   ])
 
   config_header = []
-  formatwidth = 1+int(math.log10(info['microstructures']))
+  formatwidth = 1+int(math.log10(NgrainIDs))
 
-  phase = options.phase * np.ones(info['microstructures'],'i')
+  phase = options.phase * np.ones(NgrainIDs,'i')
   if int(options.secondphase*info['microstructures']) > 0:
-    phase[0:int(options.secondphase*info['microstructures'])] += 1
-    randomSeed = int(os.urandom(4).encode('hex'), 16)  if options.randomSeed is None \
-                                                       else options.randomSeed                      # random seed for second phase
+    phase[0:int(options.secondphase*info['microstructures'])] += 1                                # alter fraction 'options.secondphase' of used grainIDs
+    randomSeed = options.randomSeed if options.randomSeed \
+                 else int(os.urandom(4).encode('hex'), 16)                                        # random seed for second phase
     np.random.seed(randomSeed)
     np.random.shuffle(phase)
     config_header += ['# random seed (phase shuffling): {}'.format(randomSeed)]
@@ -312,7 +312,7 @@ for name in filenames:
   if hasEulers:
     config_header += ['<texture>']
     for ID in grainIDs:
-      eulerID = np.nonzero(grains == ID)[0][0]                                                      # find first occurrence of this grain id
+      eulerID = np.nonzero(grains == ID)[0][0]                                                    # find first occurrence of this grain id
       config_header += ['[Grain%s]'%(str(ID).zfill(formatwidth)),
                         '(gauss)\tphi1 %g\tPhi %g\tphi2 %g\tscatter 0.0\tfraction 1.0'%tuple(eulers[eulerID])
                        ]
