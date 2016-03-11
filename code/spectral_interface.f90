@@ -11,7 +11,6 @@
 module DAMASK_interface
  use prec, only: &
    pInt
-
  implicit none
  private
 #ifdef PETSc
@@ -39,7 +38,6 @@ module DAMASK_interface
    IIO_intValue, &
    IIO_lc, &
    IIO_stringPos
-
 contains
 
 !--------------------------------------------------------------------------------------------------
@@ -99,7 +97,6 @@ subroutine DAMASK_interface_init(loadCaseParameterIn,geometryParameterIn)
    write(6,'(/,a)') ' <<<+-  DAMASK_interface init  -+>>>'
 #include "compilation_info.f90"
  endif mainProcess
-
  if ( present(loadcaseParameterIn) .and. present(geometryParameterIn)) then                         ! both mandatory parameters given in function call 
    geometryArg = geometryParameterIn
    loadcaseArg = loadcaseParameterIn
@@ -221,35 +218,31 @@ end subroutine DAMASK_interface_init
 !> @todo  change working directory with call chdir(storeWorkingDirectory)?
 !--------------------------------------------------------------------------------------------------
 character(len=1024) function storeWorkingDirectory(workingDirectoryArg,geometryArg)
-#ifdef __INTEL_COMPILER
- use IFPORT
-#endif
+ use system_routines, only: &
+   isDirectory, &
+   getCWD2
 
  implicit none
  character(len=*),  intent(in) :: workingDirectoryArg                                               !< working directory argument
  character(len=*),  intent(in) :: geometryArg                                                       !< geometry argument
  character(len=1024)           :: cwd
  character                     :: pathSep
- logical                       :: dirExists
+ logical                       :: error
  external                      :: quit
- integer                       :: error
+
+
 
  pathSep = getPathSep()
  if (len(workingDirectoryArg)>0) then                                                               ! got working directory as input
    if (workingDirectoryArg(1:1) == pathSep) then                                                    ! absolute path given as command line argument
      storeWorkingDirectory = workingDirectoryArg
    else
-     error = getcwd(cwd)                                                                            ! relative path given as command line argument
+     error = getCWD2(cwd)                                                                           ! relative path given as command line argument
      storeWorkingDirectory = trim(cwd)//pathSep//workingDirectoryArg
    endif
    if (storeWorkingDirectory(len(trim(storeWorkingDirectory)):len(trim(storeWorkingDirectory))) &   ! if path seperator is not given, append it
       /= pathSep) storeWorkingDirectory = trim(storeWorkingDirectory)//pathSep
-#ifdef __INTEL_COMPILER
-   inquire(directory = trim(storeWorkingDirectory)//'.', exist=dirExists)
-#else
-   inquire(file = trim(storeWorkingDirectory), exist=dirExists)
-#endif
-   if(.not. dirExists) then                                                                         ! check if the directory exists
+   if(.not. isDirectory(trim(storeWorkingDirectory))) then                                          ! check if the directory exists
      write(6,'(a20,a,a16)') ' working directory "',trim(storeWorkingDirectory),'" does not exist'
      call quit(1_pInt)
    endif
@@ -257,13 +250,13 @@ character(len=1024) function storeWorkingDirectory(workingDirectoryArg,geometryA
    if (geometryArg(1:1) == pathSep) then                                                            ! absolute path given as command line argument
      storeWorkingDirectory = geometryArg(1:scan(geometryArg,pathSep,back=.true.))
    else
-     error = getcwd(cwd)                                                                            ! relative path given as command line argument
+     error = getCWD2(cwd)                                                                            ! relative path given as command line argument
      storeWorkingDirectory = trim(cwd)//pathSep//&
                               geometryArg(1:scan(geometryArg,pathSep,back=.true.))
    endif
  endif
  storeWorkingDirectory = rectifyPath(storeWorkingDirectory)
- 
+
 end function storeWorkingDirectory
 
 
@@ -309,9 +302,6 @@ end function getSolverJobName
 !> @brief basename of geometry file with extension from command line arguments
 !--------------------------------------------------------------------------------------------------
 character(len=1024) function getGeometryFile(geometryParameter)
-#ifdef __INTEL_COMPILER
- use IFPORT
-#endif
 
  implicit none
  character(len=1024), intent(in) :: &
@@ -320,7 +310,7 @@ character(len=1024) function getGeometryFile(geometryParameter)
    cwd
  integer :: posExt, posSep
  character :: pathSep
- integer :: error
+ logical :: error
 
  getGeometryFile = geometryParameter
  pathSep = getPathSep()
@@ -329,7 +319,7 @@ character(len=1024) function getGeometryFile(geometryParameter)
 
  if (posExt <= posSep) getGeometryFile = trim(getGeometryFile)//('.geom')                           ! no extension present
  if (scan(getGeometryFile,pathSep) /= 1) then                                                       ! relative path given as command line argument
-   error = getcwd(cwd)
+   error = getCWD2(cwd)
    getGeometryFile = rectifyPath(trim(cwd)//pathSep//getGeometryFile)
  else
    getGeometryFile = rectifyPath(getGeometryFile)
@@ -344,16 +334,14 @@ end function getGeometryFile
 !> @brief relative path of loadcase from command line arguments
 !--------------------------------------------------------------------------------------------------
 character(len=1024) function getLoadCaseFile(loadCaseParameter)
-#ifdef __INTEL_COMPILER
- use IFPORT
-#endif
 
  implicit none
  character(len=1024), intent(in) :: &
    loadCaseParameter
  character(len=1024) :: &
    cwd
- integer :: posExt, posSep, error
+ integer :: posExt, posSep
+ logical :: error
  character :: pathSep
 
  getLoadCaseFile = loadcaseParameter
@@ -363,7 +351,7 @@ character(len=1024) function getLoadCaseFile(loadCaseParameter)
 
  if (posExt <= posSep) getLoadCaseFile = trim(getLoadCaseFile)//('.load')                           ! no extension present
  if (scan(getLoadCaseFile,pathSep) /= 1) then                                                       ! relative path given as command line argument
-   error = getcwd(cwd)
+   error = getCWD2(cwd)
    getLoadCaseFile = rectifyPath(trim(cwd)//pathSep//getLoadCaseFile)
  else
    getLoadCaseFile = rectifyPath(getLoadCaseFile)

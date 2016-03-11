@@ -25,6 +25,7 @@ include ${PETSC_DIR}/lib/petsc/conf/rules
 INCLUDE_DIRS := $(PETSC_FC_INCLUDES) -DPETSc -I../lib
 LIBRARIES    := $(PETSC_WITH_EXTERNAL_LIB)
 COMPILERNAME ?= $(FC)
+CCOMPILERNAME ?= $(CC)
 LINKERNAME   ?= $(FLINKER)
 
 # MPI compiler wrappers will tell if they are pointing to ifort or gfortran
@@ -350,7 +351,7 @@ DAMASK_spectral.o: INTERFACENAME   := spectral_interface.f90
 SPECTRAL_SOLVER_FILES = spectral_mech_AL.o spectral_mech_Basic.o spectral_mech_Polarisation.o \
                         spectral_thermal.o spectral_damage.o
 
-SPECTRAL_FILES = prec.o DAMASK_interface.o IO.o libs.o numerics.o debug.o math.o \
+SPECTRAL_FILES = C_routines.o system_routines.o prec.o DAMASK_interface.o IO.o libs.o numerics.o debug.o math.o \
                  FEsolving.o mesh.o material.o lattice.o \
                  $(SOURCE_FILES) $(KINEMATICS_FILES) $(PLASTIC_FILES) constitutive.o \
                  crystallite.o \
@@ -622,35 +623,24 @@ libs.o:                        libs.f90 \
 IO.o:                          IO.f90 \
                                DAMASK_interface.o
 
-ifeq "$(F90)" "gfortran"
 DAMASK_interface.o:            spectral_interface.f90 \
                                $(wildcard DAMASK_FEM_interface.f90) \
                                prec.o
-	$(PREFIX) $(COMPILERNAME) $(COMPILE) -c $(INTERFACENAME) -fall-intrinsics -o DAMASK_interface.o $(SUFFIX)
-#-fall-intrinsics:  all intrinsic procedures (including the GNU-specific extensions) are accepted. -Wintrinsics-std will be ignored
-#                   and no user-defined procedure with the same name as any intrinsic will be called except when it is explicitly declared external
-#      -->   allows the use of 'getcwd'
-prec.o:                        prec.f90
-	$(PREFIX) $(COMPILERNAME) $(COMPILE) -c prec.f90 -fno-range-check -fall-intrinsics -fno-fast-math $(SUFFIX)
-# fno-range-check:  Disable range checking on results of simplification of constant expressions during compilation
-#      -->   allows the definition of DAMASK_NaN
-#-fall-intrinsics:  all intrinsic procedures (including the GNU-specific extensions) are accepted. -Wintrinsics-std will be ignored
-#                   and no user-defined procedure with the same name as any intrinsic will be called except when it is explicitly declared external
-#      -->   allows the use of 'isnan'
-#-fno-fast-math:
-#      -->   otherwise, when setting -ffast-math, isnan always evaluates to false (I would call it a bug)
-else
-DAMASK_interface.o:            spectral_interface.f90 \
-                               $(wildcard DAMASK_FEM_interface.f90) \
-                               prec.o
-	$(PREFIX) $(COMPILERNAME) $(COMPILE) -c $(INTERFACENAME) -diag-remark 7410 -stand none -warn nostderrors -o DAMASK_interface.o $(SUFFIX)
-# -diag-disable 7410 should disable warning about directory statement in inquire function, but does not work. hence the other 2 statements
-prec.o:                        prec.f90
-	$(PREFIX) $(COMPILERNAME) $(COMPILE) -c prec.f90 $(SUFFIX)
-endif
+
+prec.o:                        prec.f90 \
+                               system_routines.o
+
+C_routines.o:               C_routines.c
+
+system_routines.o:          system_routines.f90 \
+                            C_routines.o
+
 
 %.o : %.f90
 	$(PREFIX) $(COMPILERNAME) $(COMPILE) -c $< $(SUFFIX)
+
+%.o : %.c
+	$(CCOMPILERNAME) -c $<
 
 .PHONY: tidy
 tidy:
