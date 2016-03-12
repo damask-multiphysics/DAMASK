@@ -2,17 +2,19 @@
 
 # $Id$
 
-import os, sys, shlex, inspect
-import subprocess,shutil,string
-import logging, logging.config
+import os,sys,shutil
+import logging,logging.config
 import damask
+import numpy as np
+from collections import Iterable
 from optparse import OptionParser
 
 class Test():
-  '''
-     General class for testing.
-     Is sub-classed by the individual tests.
-  '''
+  """
+  General class for testing.
+
+  Is sub-classed by the individual tests.
+  """
 
   variants = []
   
@@ -24,7 +26,7 @@ class Test():
     fh.setLevel(logging.DEBUG)
     full = logging.Formatter('%(asctime)s - %(levelname)s: \n%(message)s')
     fh.setFormatter(full)
-    ch = logging.StreamHandler(stream=sys.stdout)                                                   # create console handler with a higher log level
+    ch = logging.StreamHandler(stream=sys.stdout)                                                  # create console handler with a higher log level
     ch.setLevel(logging.INFO)
 # create formatter and add it to the handlers
     plain = logging.Formatter('%(message)s')
@@ -52,9 +54,7 @@ class Test():
                              accept=False)
 
   def execute(self):
-    '''
-    Run all variants and report first failure.
-    '''
+    """Run all variants and report first failure."""
     if self.options.debug:
       for variant in xrange(len(self.variants)):
         try:
@@ -84,15 +84,11 @@ class Test():
       return 0
   
   def testPossible(self):
-    '''
-    Check if test is possible or not (e.g. no license available).
-    '''
+    """Check if test is possible or not (e.g. no license available)."""
     return True
     
   def clean(self):
-    '''
-    Delete directory tree containing current results.
-    '''
+    """Delete directory tree containing current results."""
     status = True
 
     try:
@@ -110,103 +106,77 @@ class Test():
     return status
     
   def prepareAll(self):
-    '''
-    Do all necessary preparations for the whole test
-    '''
+    """Do all necessary preparations for the whole test"""
     return True
 
   def prepare(self,variant):
-    '''
-    Do all necessary preparations for the run of each test variant
-    '''
+    """Do all necessary preparations for the run of each test variant"""
     return True
   
 
   def run(self,variant):
-    '''
-    Execute the requested test variant.
-    '''
+    """Execute the requested test variant."""
     return True
 
 
   def postprocess(self,variant):
-    '''
-    Perform post-processing of generated results for this test variant.
-    '''
+    """Perform post-processing of generated results for this test variant."""
     return True
 
 
   def compare(self,variant):
-    '''
-    Compare reference to current results.
-    '''
+    """Compare reference to current results."""
     return True
 
 
   def update(self,variant):
-    '''
-    Update reference with current results.
-    '''
+    """Update reference with current results."""
     logging.debug('Update not necessary')
     return True
 
 
   def dirReference(self):
-    '''
-    Directory containing reference results of the test.
-    '''
+    """Directory containing reference results of the test."""
     return os.path.normpath(os.path.join(self.dirBase,'reference/'))
 
 
   def dirCurrent(self):
-    '''
-    Directory containing current results of the test.
-    '''
+    """Directory containing current results of the test."""
     return os.path.normpath(os.path.join(self.dirBase,'current/'))
 
   
   def dirProof(self):
-    '''
-    Directory containing human readable proof of correctness for the test.
-    '''
+    """Directory containing human readable proof of correctness for the test."""
     return os.path.normpath(os.path.join(self.dirBase,'proof/'))
 
     
   def fileInRoot(self,dir,file):
-    '''
-    Path to a file in the root directory of DAMASK.
-    '''
+    """Path to a file in the root directory of DAMASK."""
     return os.path.join(damask.Environment().rootDir(),dir,file)
 
     
   def fileInReference(self,file):
-    '''
-    Path to a file in the refrence directory for the test.
-    '''
+    """Path to a file in the refrence directory for the test."""
     return os.path.join(self.dirReference(),file)
 
 
   def fileInCurrent(self,file):
-    '''
-    Path to a file in the current results directory for the test.
-    '''
+    """Path to a file in the current results directory for the test."""
     return os.path.join(self.dirCurrent(),file)
 
   
   def fileInProof(self,file):
-    '''
-    Path to a file in the proof directory for the test.
-    '''
+    """Path to a file in the proof directory for the test."""
     return os.path.join(self.dirProof(),file)
 
-    
+
   def copy(self, mapA, mapB,
                  A = [], B = []):
-    '''
+    """
     copy list of files from (mapped) source to target.
+
     mapA/B is one of self.fileInX.
-    '''
-    
+    """
     if not B or len(B) == 0: B = A
 
     for source,target in zip(map(mapA,A),map(mapB,B)):
@@ -328,7 +298,8 @@ class Test():
     logging.info('comparing ASCII Tables\n %s \n %s'%(file0,file1))
     if normHeadings == '': normHeadings = headings0
 
-    if len(headings0) == len(headings1) == len(normHeadings):                                         #check if comparison is possible and determine lenght of columns
+# check if comparison is possible and determine lenght of columns
+    if len(headings0) == len(headings1) == len(normHeadings):                                         
       dataLength = len(headings0)
       length       = [1   for i in xrange(dataLength)]
       shape        = [[]  for i in xrange(dataLength)]
@@ -431,15 +402,11 @@ class Test():
                      meanTol = 1.0e-4,
                      stdTol = 1.0e-6,
                      preFilter = 1.0e-9):
-    
-    '''
-      calculate statistics of tables
-      threshold can be used to ignore small values (a negative number disables this feature)
-    '''
+    """
+    calculate statistics of tables
 
-    import numpy as np
-    from collections import Iterable
-
+    threshold can be used to ignore small values (a negative number disables this feature)
+    """
     if not (isinstance(files, Iterable) and not isinstance(files, str)):                            # check whether list of files is requested
       files = [str(files)]
 
@@ -491,15 +458,11 @@ class Test():
                      preFilter = -1.0,
                      postFilter = -1.0,
                      debug = False):
-    
-    '''
-      compare tables with np.allclose
-      threshold can be used to ignore small values (a negative number disables this feature)
-    '''
+    """
+    compare tables with np.allclose
 
-    import numpy as np
-    from collections import Iterable
-
+    threshold can be used to ignore small values (a negative number disables this feature)
+    """
     if not (isinstance(files, Iterable) and not isinstance(files, str)):                            # check whether list of files is requested
       files = [str(files)]
 

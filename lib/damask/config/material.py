@@ -100,20 +100,19 @@ class Texture(Section):
  
  
 class Material():
-  
-  '''
-     Reads, manipulates and writes material.config files
-  '''
+  """Reads, manipulates and writes material.config files"""
+
   __slots__ = ['data']
 
   def __init__(self,verbose=True):
+    """generates ordered list of parts"""
     self.parts = [
              'homogenization',
              'microstructure',
              'crystallite',
              'phase',
              'texture',
-            ]                                       # ordered (!) list of parts
+            ]
     self.data = {\
               'homogenization': {'__order__': []},
               'microstructure': {'__order__': []},
@@ -124,6 +123,7 @@ class Material():
     self.verbose = verbose
            
   def __repr__(self):
+    """returns current configuration to be used as material.config"""
     me = []
     for part in self.parts:
       if self.verbose: print('doing '+part)
@@ -144,7 +144,6 @@ class Material():
     re_sec  = re.compile(r'^\[(.+)\]$')                   # pattern for section
 
     name_section = ''
-    idx_section = 0
     active = False
 
     for line in content:
@@ -197,8 +196,7 @@ class Material():
     return saveFile
 
   def add_section(self, part=None, section=None, initialData=None, merge = False):
-    '''adding/updating'''
-    
+    """adding/updating"""
     part    = part.lower()
     section = section.lower()
     if part not in self.parts: raise Exception('invalid part %s'%part)
@@ -227,10 +225,10 @@ class Material():
   def add_microstructure(self, section='',
                                components={},      # dict of phase,texture, and fraction lists
                         ):
-    ''' Experimental! Needs expansion to multi-constituent microstructures...''' 
-    
+    """Experimental! Needs expansion to multi-constituent microstructures..."""   
     microstructure = Microstructure()
-    components=dict((k.lower(), v) for k,v in components.iteritems())                               # make keys lower case (http://stackoverflow.com/questions/764235/dictionary-to-lowercase-in-python)
+    # make keys lower case (http://stackoverflow.com/questions/764235/dictionary-to-lowercase-in-python)
+    components=dict((k.lower(), v) for k,v in components.iteritems())                               
    
     for key in ['phase','texture','fraction','crystallite']:
       if type(components[key]) is not list:
@@ -245,7 +243,8 @@ class Material():
           except AttributeError:
             pass
             
-    for (phase,texture,fraction,crystallite) in zip(components['phase'],components['texture'],components['fraction'],components['crystallite']):
+    for (phase,texture,fraction,crystallite) in zip(components['phase'],components['texture'],
+                                                    components['fraction'],components['crystallite']):
       microstructure.add_multiKey('constituent','phase %i\ttexture %i\tfraction %g\ncrystallite %i'%(
                                     self.data['phase']['__order__'].index(phase)+1,
                                     self.data['texture']['__order__'].index(texture)+1,
@@ -259,8 +258,8 @@ class Material():
                          section=None, 
                          key=None, 
                          value=None):
-    if type(value) is not type([]): 
-      if type(value) is not type('s'):
+    if not isinstance(value,list): 
+      if not isinstance(value,str):
         value = '%s'%value
       value = [value]
     newlen = len(value)  
@@ -270,18 +269,4 @@ class Material():
     self.data[part.lower()][section.lower()][key.lower()] = value
     if newlen is not oldlen:
       print('Length of value was changed from %i to %i!'%(oldlen,newlen))
-    
-
-    
-def ex1():
-    mat=Material()
-    p=Phase({'constitution':'lump'})   
-    t=Texture()    
-    t.add_component('gauss',{'eulers':[1,2,3]})
-    mat.add_section('phase','phase1',p)
-    mat.add_section('texture','tex1',t)
-    mat.add_microstructure('mustruct1',{'phase':['phase1']*2,'texture':['tex1']*2,'fraction':[0.2]*2})
-    print(mat)
-    mat.write(file='poop')
-    mat.write(file='poop',overwrite=True)
     

@@ -113,7 +113,7 @@ for name in filenames:
   errors  = []
   remarks = []
   
-  if not np.all(table.label_dimension(label) == dim):  errors.append('input {} has wrong dimension {}.'.format(label,dim))
+  if not np.all(table.label_dimension(label) == dim):  errors.append('input {} does not have dimension {}.'.format(label,dim))
   else:  column = table.label_index(label)
 
   if remarks != []: damask.util.croak(remarks)

@@ -1,7 +1,7 @@
 # -*- coding: UTF-8 no BOM -*-
 
-# $Id$
+"""Aggregator for geometry handling"""
 
-from .geometry import Geometry   # only one class
-from .spectral import Spectral   # only one class
-from .marc     import Marc       # only one class
+from .geometry import Geometry   # noqa
+from .spectral import Spectral   # noqa
+from .marc     import Marc       # noqa

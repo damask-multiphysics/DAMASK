@@ -1,6 +1,5 @@
 # -*- coding: UTF-8 no BOM -*-
 
-# $Id$
 # This tool converts a msc.marc result file into the vtk format that 
 # can be viewed by Paraview software (Kitware), or MayaVi (needs xml-vtk, or ...
 # 
@@ -8,13 +7,8 @@
 # Some example vtk files: http://people.sc.fsu.edu/~jburkardt/data/vtk/vtk.html
 # www.paraview.org
 
-import os,sys,math,time,re
-# python external
-try:
-  import numpy as N
-  import numpy
-except:
-  print('Could not import numpy.')  
+import os,sys,re
+import numpy as np
 
 import py_post  # MSC closed source module to access marc result files
 
@@ -27,7 +21,7 @@ class MARC_POST():
       self.fpath=os.path.join(self.projdir,self.postname)
       print('Trying to open ',self.fpath,' ...')
       self.p=py_post.post_open(self.fpath)
-      if self.p==None:
+      if self.p is None:
         print('Could not open %s.'%self.postname); #return 'err'#; sys.exit(1)
         raise Exception('Could not open t16')
       print('Postfile %s%s is open ...'%(self.projdir,self.postname))
@@ -105,7 +99,6 @@ class MARC_POST():
   def writeNodes2VTK(self, fobj):
       self.points=[]
       self.VTKcnt=200 # number of values per line in vtk file
-      ndCnt=1
       fobj.write('POINTS %i'%self.p.nodes()+' float\n')
       self.nodes_dict={} # store the node IDs in case of holes in the numbering
       for iNd in self.nodes:
@@ -126,8 +119,6 @@ class MARC_POST():
         el=self.p.element(iEl)
         cell_nodes=[] # for pyvtk
         ndlist=el.items
-        #for k in [0, 1, 3, 2, 4, 5, 7, 6]: # FOR CELL TPYE VTK_VOXEL
-        #for k in [0, 4, 3, 1, 5, 7, 6, 2]:
         for k in [0, 1, 2, 3, 4, 5, 6, 7]: # FOR CELL TYPE VTK_HEXAHEDRON
          node=ndlist[k]-1
          cell_nodes.append(self.nodes_dict[node])
@@ -147,7 +138,6 @@ class MARC_POST():
           fobj.write('\n');cnt=0
       fobj.write('\n')    
       print('Elements written to VTK: %i'%self.p.elements())
-      #print('Nr of nodes: ',self.nodes)
         
   def writeElScalars2NodesVTK(self,fobj):
       fobj.write('\nPOINT_DATA %i\n'%self.p.nodes())
@@ -157,7 +147,6 @@ class MARC_POST():
       fobj.write('LOOKUP_TABLE default\n')  
       idxScal=self.nscal_list.index('Displacement Z')    
       for iNd in self.nodes:
-        #fobj.write('%f %f '%(self.p.node_scalar(iNd,idxScal), N.random.rand()))
         fobj.write('%f '%(self.p.node_scalar(iNd,idxScal)))
         for iEl in range(0,self.nel):
           el=self.p.element(iEl)
@@ -173,8 +162,6 @@ class MARC_POST():
         
   def writeNodeScalars2VTK(self,fobj):
       fobj.write('\nPOINT_DATA %i\n'%self.p.nodes())
-      nNdDat=self.nscals
-      nComponents=1+nNdDat
       self.pointDataScalars=[]
       for idxNdScal in range(-3,self.nscals): #now include node x,y,z
         if idxNdScal>=0:
@@ -209,8 +196,6 @@ class MARC_POST():
       idx_sig_vMises=self.getLabelNr('Equivalent Von Mises Stress')
       idx_sig33=self.getLabelNr('Comp 33 of Cauchy Stress')
       fobj.write('\nCELL_DATA %i\n'%self.p.elements())
-      nElDat=self.elscals
-      nComponents=1+nElDat
       for idxElScal in range(0,self.elscals):
         datalabel=self.elscal_list[idxElScal]
         datalabel=re.sub("\s",'_',datalabel)
@@ -250,19 +235,16 @@ class MARC_POST():
         result.append(avgScal)
       return result
       
-  def writeUniaxiality2VTK(self,fobj):
-      #fobj.write('\nCELL_DATA %i\n'%self.p.elements())      
+  def writeUniaxiality2VTK(self,fobj):     
       datalabel='uniaxiality_sig_vMises_durch_sig33'
       fobj.write('SCALARS %s float %i\n'%(datalabel,1))
       fobj.write('LOOKUP_TABLE default\n')  
       cnt=0
       for iEl in range(0,self.nel):
         cnt=cnt+1                  
-        #if abs(self.sig33[iEl])<1e-5:
         if abs(self.sig_vMises[iEl])<1e-5:
           datum=0.
         else:  
-          #datum=self.sig_vMises[iEl]/self.sig33[iEl]
           datum=self.sig33[iEl]/self.sig_vMises[iEl]
         fobj.write('%E '%(datum))
         if cnt>self.VTKcnt:
@@ -283,8 +265,8 @@ class MARC_POST():
         self.mean_stress.append(self.meanStress(sig))
 
   def triaxiality_per_element(self):
-      # classical triaxiality 
-      # 1/3 : uniax tension
+    # classical triaxiality 
+    # 1/3 : uniax tension
       self.triaxiality=[]
       for iEl in range(0,self.nel):
         t=self.mean_stress[iEl]/self.sig_vMises[iEl]
@@ -303,10 +285,6 @@ class MARC_POST():
       fobj.write('\n')             
       
   def calc_lode_parameter(self):
-     # [-1 ... +1] see e.g. Wippler & Boehlke triaxiality measures doi:10.1002/pamm.201010061
-     # +1 : uniax tensile?
-     #  0 : shear
-     # -1 : uniax compr ?
      self.lode=[]
      try:
        self.stress
@@ -328,10 +306,11 @@ class MARC_POST():
   def princStress(self, stress):
     """
     Function to compute 3D principal stresses and sort them.
+    
     from: http://geodynamics.org/svn/cig/short/3D/PyLith/trunk/playpen/postproc/vtkcff.py
     """
-    stressMat=N.array(stress)
-    (princStress, princAxes) = numpy.linalg.eigh(stressMat)
+    stressMat=np.array(stress)
+    (princStress, princAxes) = np.linalg.eigh(stressMat)
     idx = princStress.argsort()
     princStressOrdered = princStress[idx]
     princAxesOrdered = princAxes[:,idx]
@@ -339,36 +318,28 @@ class MARC_POST():
 
   def avg_elten(self,
      idxElTen, mat=0, elID=None):
-     tensum=N.zeros((3,3));
-     T=N.zeros((3,3));
+     tensum=np.zeros((3,3));
+     T=np.zeros((3,3));
      pts=0;
-     avg=N.zeros((3,3));
-     #print 'Element Scalars'
-     #print self.p.element_scalar_label(elscal2)
-     if elID==None:
+     avg=np.zeros((3,3));
+
+     if elID is None:
        averaged_elements=range(0,self.nel)
      else:
        averaged_elements=[elID]
-     #for i in range (0,self.nel):
      for i in averaged_elements:
         if mat==0 or int(self.p.element_scalar(i,4)[0].value)==mat:
-          eldata=self.p.element(i)
           T=self.p.element_tensor(i,idxElTen)
           for k in range (0,8):
              tensum[0][0] = tensum[0][0] + T[k].t11
              tensum[0][1] = tensum[0][1] + T[k].t12
              tensum[0][2] = tensum[0][2] + T[k].t13
-             #tensum1[1][0] = tensum1[1][0] + T1[k].t21
              tensum[1][1] = tensum[1][1] + T[k].t22
              tensum[1][2] = tensum[1][2] + T[k].t23
-             #tensum1[2][0] = tensum1[2][0] + T1[k].t31
-             #tensum1[2][1] = tensum1[2][1] + T1[k].t32
              tensum[2][2] = tensum[2][2] + T[k].t33
              pts=pts+1
      avg=tensum/pts
-     #print avg
      avg=self.fillComponents(avg)
-     #print avg
      del [T]
      return (avg,tensum,pts)
 
@@ -384,7 +355,7 @@ class MARC_POST():
      t=tensor33
      s=(t[0,0]-t[1,1])**2+(t[1,1]-t[2,2])**2+(t[0,0]-t[2,2])**2+\
        6*(t[0,1]**2+t[1,2]**2+t[2,0]**2)
-     vM=N.sqrt(s/2.)
+     vM=np.sqrt(s/2.)
      return vM
      
   def meanStress(self,tensor33):
@@ -397,8 +368,7 @@ class MARC_POST():
      t=tensor33
      I1=t[0,0]+t[1,1]+t[2,2]
      I2=t[0,0]*t[1,1]+t[1,1]*t[2,2]+t[0,0]*t[2,2]-\
-        t[0,1]**2-t[1,2]**2-t[0,2]**2
-     # I3 = det(t)   
+        t[0,1]**2-t[1,2]**2-t[0,2]**2 
      I3=t[0,0]*t[1,1]*t[2,2]+\
         2*t[0,1]*t[1,2]*t[2,0]-\
         t[2,2]*t[0,1]**2-t[0,0]*t[1,2]**2-t[1,1]*t[0,2]**2
@@ -406,17 +376,18 @@ class MARC_POST():
 
       
 class VTK_WRITER():
-  '''
-     The resulting vtk-file can be imported in Paraview 3.12
-     Then use Filters: Cell Data to Point Data + Contour 
-       to plot semi-transparent iso-surfaces.
-  '''
+  """
+  The resulting vtk-file can be imported in Paraview 3.12
+ 
+  Then use Filters: Cell Data to Point Data + Contour 
+  to plot semi-transparent iso-surfaces.
+  """
+
   import re
   def __init__(self):
     self.p=MARC_POST() # self.p
     
   def openFile(self, filename='test.vtp'):
-    #if not self.f:#==None:
       self.f=open(filename,'w+')
       self.fname=filename
       
@@ -427,7 +398,7 @@ class VTK_WRITER():
       dformat='ASCII', # BINARY | [ASCII]
       dtype='UNSTRUCTURED_GRID' # UNSTRUCTURED GRID
       ):
-    if vtkFile==None:
+    if vtkFile is None:
       vtkFile=self.f    
     # First Line contains Data format version
     self.versionVTK=version
@@ -440,7 +411,6 @@ class VTK_WRITER():
 
   def marc2vtkBatch(self):
     for iori in range(1,63):
-      #self.p=msc_post.MSC_POST()
       self.p.postname='indent_fric0.3_R2.70_cA146.0_h0.320_ori%03i_OST_h19d.t16'%(iori)
       if os.path.exists(self.p.postname):
         self.marc2vtk(mode='fast', batchMode=1)
@@ -496,14 +466,14 @@ class VTK_WRITER():
   def scaleBar(self, length=1.0, posXYZ=[0., 0., 0.]):
       self.fsb=open('micronbar_l%.1f.vtp'%length,'w+')
       self.writeFirstLines(self.fsb, comment='micronbar')
-      pts=N.array([])
+      pts=np.array([])
       width=length*1.
       height=length*1.
-      wVec=N.array([0., width, 0.])
-      lVec=N.array([length,0.,0.])
-      hVec=N.array([0.,0.,height])
+      wVec=np.array([0., width, 0.])
+      lVec=np.array([length,0.,0.])
+      hVec=np.array([0.,0.,height])
       posXYZ=posXYZ-0.5*wVec-0.5*lVec#-0.5*hVec # CENTERING Y/N
-      posXYZ=N.array(posXYZ)
+      posXYZ=np.array(posXYZ)
       pts=[posXYZ, posXYZ+lVec,
       posXYZ+wVec,
       posXYZ+wVec+lVec]
@@ -514,34 +484,22 @@ class VTK_WRITER():
         self.fsb.write('%f %f %f\n'%(pts[npts][0], pts[npts][1], pts[npts][2]))
       if 1: #Triad
         nCells=3
-        #nCells=1 #One Line
         ptsPerCell=2 # Lines (Type=3)
-        #ptsPerCell=4 # Quads (Type=9)
-        #ptsPerCell=8 # Hexahedron (Type=12)
         cellSize=(ptsPerCell+1)*nCells    
         self.fsb.write('CELLS %i %i\n'%(nCells,cellSize))
         self.fsb.write('2 0 1\n')     #X-Line
         self.fsb.write('2 0 2\n')     #Y-Line
         self.fsb.write('2 0 4\n')     #Z-Line
-        #self.fsb.write('4 0 1 3 2\n') #Quad
-        #self.fsb.write('%i 0 1 3 2 4 5 7 6\n'%ptsPerCell) #Hexahedron
         self.fsb.write('CELL_TYPES %i\n'%(nCells))
         self.fsb.write('3\n3\n3\n')#Line
-        #self.fsb.write('12\n')#Hexahedron
       else: # Cube, change posXYZ      
         nCells=1
         ptsPerCell=2 # Lines (Type=3)
-        #ptsPerCell=4 # Quads (Type=9)
-        #ptsPerCell=8 # Hexahedron (Type=12)
         cellSize=(ptsPerCell+1)*nCells    
         self.fsb.write('CELLS %i %i\n'%(nCells,cellSize))
         self.fsb.write('2 0 1\n')     #Line
-        #self.fsb.write('4 0 1 3 2\n') #Quad
-        #self.fsb.write('%i 0 1 3 2 4 5 7 6\n'%ptsPerCell) #Hexahedron
         self.fsb.write('CELL_TYPES %i\n'%(nCells))
         self.fsb.write('3\n')#Line
-        #self.fsb.write('12\n')#Hexahedron
-
       
       self.fsb.write('\n')
       self.fsb.close()
@@ -549,8 +507,7 @@ class VTK_WRITER():
 
   def example_unstructured(self):
     self.openFile(filename='example_unstructured_grid.vtk')
-    #self.writeFirstLines()
-    self.f.write('''
+    self.f.write("""
 # vtk DataFile Version 2.0
 example_unstruct_grid
 ASCII
@@ -590,61 +547,40 @@ LOOKUP_TABLE default
 1.02
 1.50
 0.00
-3 5 6 23423423423423423423.23423423''')
+3 5 6 23423423423423423423.23423423""")
     self.f.close()
 
 
 
   def writeNodes2VTK(self, fobj):
       self.VTKcnt=200 # how many numbers per line in vtk file
-      #self.VTKcnt=6
-      ndCnt=1
-      #self.nodes=range(0,10)
       fobj.write('POINTS %i'%self.p.nodes()+' float\n')
       for iNd in self.nodes:
         nd=self.p.node(iNd)
         disp=self.p.node_displacement(iNd)
-        #contact=self.p.node_scalar(iNd,contactNr)
-        #ndCnt=ndCnt+1
         fobj.write('%f %f %f \n'%
-        #(nd.x, nd.y, nd.z))
         (nd.x+disp[0], nd.y+disp[1], nd.z+disp[2]))
-        
-        #if ndCnt>6:
-        #  fobj.write('\n')
-        #  ndCnt=1
       fobj.write('\n')  
       print('Nodes written to VTK: %i'%self.p.nodes())
-      #print('Nr of nodes: ',self.nodes)
       
   def writeElements2VTK(self, fobj):
       fobj.write('\nCELLS %i %i'%(self.p.elements(),self.p.elements()*9)+'\n')
       for iEl in range(0,self.nel):
         el=self.p.element(iEl)
-        #disp=self.p.node_displacement(iNd)
-        #contact=self.p.node_scalar(iNd,contactNr)
-        #ndCnt=ndCnt+1
         fobj.write('8 ')
         ndlist=el.items
-        #for k in [0, 1, 3, 2, 4, 5, 7, 6]: # FOR CELL TPYE VTK_VOXEL
-        #for k in [0, 4, 3, 1, 5, 7, 6, 2]:
         for k in [0, 1, 2, 3, 4, 5, 6, 7]: # FOR CELL TYPE VTK_HEXAHEDRON
          fobj.write('%6i '%(ndlist[k]-1))
         fobj.write('\n')
-        #if ndCnt>6:
-        #  fobj.write('\n')
-        #  ndCnt=1
       fobj.write('\nCELL_TYPES %i'%self.p.elements()+'\n')
       cnt=0
       for iEl in range(0,self.nel):
         cnt=cnt+1
-        #fobj.write('11\n') #VTK_VOXEL
         fobj.write('12 ') #VTK_HEXAHEDRON
         if cnt>self.VTKcnt:
           fobj.write('\n');cnt=0
       fobj.write('\n')    
       print('Elements written to VTK: %i'%self.p.elements())
-      #print('Nr of nodes: ',self.nodes)
       
   def writeElScalars2NodesVTK(self,fobj):
       fobj.write('\nPOINT_DATA %i\n'%self.p.nodes())
@@ -668,10 +604,7 @@ LOOKUP_TABLE default
       fobj.write('\n')  
 
   def writeNodeScalars2VTK(self,fobj):
-      #print('writeElementData2VTK')
       fobj.write('\nPOINT_DATA %i\n'%self.p.nodes())
-      nNdDat=self.nscals
-      nComponents=1+nNdDat
       for idxNdScal in range(-3,self.nscals): # include node x,y,z
         if idxNdScal>=0:
           datalabel=self.nscal_list[idxNdScal]
@@ -700,10 +633,7 @@ LOOKUP_TABLE default
       fobj.write('\n')
         
   def writeElementData2VTK(self,fobj):
-      #print('writeElementData2VTK')
       fobj.write('\nCELL_DATA %i\n'%self.p.elements())
-      nElDat=self.elscals
-      nComponents=1+nElDat
       for idxElScal in range(0,self.elscals):
         datalabel=self.elscal_list[idxElScal]
         datalabel=re.sub("\s",'_',datalabel)
@@ -730,7 +660,7 @@ LOOKUP_TABLE default
   def example1(self):
     self.openFile()
     self.writeFirstLines()
-    self.f.write('''DATASET POLYDATA
+    self.f.write("""DATASET POLYDATA
 POINTS 8 float
 0.0 0.0 0.0
 1.0 0.0 0.0
@@ -789,18 +719,20 @@ LOOKUP_TABLE my_table 8
 0.0 0.0 1.0 1.0
 1.0 0.0 1.0 1.0
 0.0 1.0 1.0 1.0
-1.0 1.0 1.0 1.0''')
+1.0 1.0 1.0 1.0""")
     self.f.close()
 
     
 import pyvtk
 class marc_to_vtk():
-    ''' 
-       Anybody wants to implement it with pyvtk?
-       The advantage would be that pyvtk can also wirte the 
-       <xml>-VTK format and binary. 
-       These can be plotted with mayavi.
-    '''   
+    """
+    Anybody wants to implement it with pyvtk?
+    
+    The advantage would be that pyvtk can also wirte the 
+    <xml>-VTK format and binary. 
+    These can be plotted with mayavi.
+    """   
+
     def __init__(self):
       self.p=[]#MARC_POST() # self.p
 
@@ -810,5 +742,4 @@ class marc_to_vtk():
                          hexahedron=self.p.cells),
           'm2v output')               
       vtk.tofile('m2v_file')
-      #vtk.tofile('example3b','binary')
-      #VtkData('example3')
+

@@ -1,5 +1,5 @@
 # -*- coding: UTF-8 no BOM -*-
 
-# $Id$
+"""Test functionality"""
 
-from .test import Test      
+from .test import Test      # noqa

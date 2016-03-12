@@ -147,10 +147,10 @@ class backgroundMessage(threading.Thread):
     sys.stderr.flush()
   
   def stop(self):
-      self._stop.set()
+    self._stop.set()
 
   def stopped(self):
-      return self._stop.is_set()
+    return self._stop.is_set()
 
   def run(self):
     while not threading.enumerate()[0]._Thread__stopped:
@@ -165,7 +165,7 @@ class backgroundMessage(threading.Thread):
   def print_message(self):
     length = len(self.symbols[self.counter] + self.gap + self.message)
     sys.stderr.write(chr(8)*length + ' '*length + chr(8)*length + \
-                     self.symbols[self.counter] + self.gap + self.new_message)                  # delete former and print new message
+                     self.symbols[self.counter].encode('utf-8') + self.gap + self.new_message)      # delete former and print new message
     sys.stderr.flush()
     self.message = self.new_message
       
@@ -442,9 +442,9 @@ def execute(cmd,streamIn=None,wd='./'):
   os.chdir(wd)
   process = subprocess.Popen(shlex.split(cmd),stdout=subprocess.PIPE,stderr = subprocess.PIPE,stdin=subprocess.PIPE)
   if streamIn is not None:
-    out,error = process.communicate(streamIn.read())
+    out,error = [i.replace("\x08","") for i in process.communicate(streamIn.read())]
   else:
-    out,error = process.communicate()
+    out,error =[i.replace("\x08","") for i in process.communicate()]
   os.chdir(initialPath)
   if process.returncode !=0: raise RuntimeError(cmd+' failed with returncode '+str(process.returncode))
   return out,error

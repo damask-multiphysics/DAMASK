@@ -5,10 +5,10 @@ set LOCATION=%~dp0
 set DAMASK_ROOT=%LOCATION%\DAMASK
 set DAMASK_NUM_THREADS=2
 chcp 1252
-Title Düsseldorf Advanced Materials Simulation Kit - DAMASK, MPIE Düsseldorf
+Title DÃ¼sseldorf Advanced Materials Simulation Kit - DAMASK, MPIE DÃ¼sseldorf
 echo.
-echo Düsseldorf Advanced Materials Simulation Kit - DAMASK
-echo Max-Planck-Institut für Eisenforschung, Düsseldorf
+echo DÃ¼sseldorf Advanced Materials Simulation Kit - DAMASK
+echo Max-Planck-Institut fÃ¼r Eisenforschung, DÃ¼sseldorf
 echo http://damask.mpie.de
 echo.
 echo Preparing environment ...
