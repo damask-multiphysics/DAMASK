@@ -250,7 +250,7 @@ character(len=1024) function storeWorkingDirectory(workingDirectoryArg,geometryA
    if (geometryArg(1:1) == pathSep) then                                                            ! absolute path given as command line argument
      storeWorkingDirectory = geometryArg(1:scan(geometryArg,pathSep,back=.true.))
    else
-     error = getCWD2(cwd)                                                                            ! relative path given as command line argument
+     error = getCWD2(cwd)                                                                           ! relative path given as command line argument
      storeWorkingDirectory = trim(cwd)//pathSep//&
                               geometryArg(1:scan(geometryArg,pathSep,back=.true.))
    endif
@@ -264,6 +264,8 @@ end function storeWorkingDirectory
 !> @brief simply returns the private string workingDir 
 !--------------------------------------------------------------------------------------------------
 character(len=1024) function getSolverWorkingDirectoryName()
+ use system_routines, only: &
+   getCWD2
 
  implicit none
  getSolverWorkingDirectoryName = workingDirectory
@@ -302,6 +304,8 @@ end function getSolverJobName
 !> @brief basename of geometry file with extension from command line arguments
 !--------------------------------------------------------------------------------------------------
 character(len=1024) function getGeometryFile(geometryParameter)
+ use system_routines, only: &
+   getCWD2
 
  implicit none
  character(len=1024), intent(in) :: &
@@ -334,6 +338,8 @@ end function getGeometryFile
 !> @brief relative path of loadcase from command line arguments
 !--------------------------------------------------------------------------------------------------
 character(len=1024) function getLoadCaseFile(loadCaseParameter)
+ use system_routines, only: &
+   getCWD2
 
  implicit none
  character(len=1024), intent(in) :: &

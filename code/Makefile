@@ -626,6 +626,7 @@ IO.o:                          IO.f90 \
 DAMASK_interface.o:            spectral_interface.f90 \
                                $(wildcard DAMASK_FEM_interface.f90) \
                                prec.o
+	$(PREFIX) $(COMPILERNAME) $(COMPILE) -c $(INTERFACENAME) -o DAMASK_interface.o $(SUFFIX)
 
 prec.o:                        prec.f90 \
                                system_routines.o
