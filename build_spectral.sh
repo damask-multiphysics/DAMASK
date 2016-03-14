@@ -44,7 +44,6 @@ cmake -D PETSC_DIR=${PETSC_DIR}          \
       -D DAMASK_V=${DAMASKVERSION}       \
       -D CMAKE_BUILD_TYPE=RELEASE        \
       -D OPENMP=ON                       \
-      -D DAMASK_PROCESSING=ON            \
       -D OPTIMIZATION=DEFENSIVE          \
       -D DAMASK_DRIVER=SPECTRAL          \
       -D DAMASK_INSTALL=${HOME}/bin      \

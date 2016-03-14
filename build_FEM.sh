@@ -38,7 +38,6 @@ cmake -D PETSC_DIR=${PETSC_DIR}             \
       -D OPTIMIZATION=DEFENSIVE             \
       -D DAMASK_DRIVER=FEM                  \
       -D DAMASK_INSTALL=${HOME}/bin         \
-      -D INSTALL_PROCESSING=YES             \
       ../..
 
 echo

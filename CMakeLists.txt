@@ -98,21 +98,11 @@ endforeach(exlib)
 set(CMAKE_Fortran_COMPILER "${MPIEXEC}")
 project (DAMASK Fortran)
 
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
-
-find_package(FFTW REQUIRED)
-find_package(PythonInterp REQUIRED)
-find_program(F2PY_EXECUTABLE NAMES "f2py${PYTHON_VERSION_MAJOR}.${PYTHON_VERSION_MINOR}"
-                                   "f2py-${PYTHON_VERSION_MAJOR}.${PYTHON_VERSION_MINOR}"
-                                   "f2py${PYTHON_VERSION_MAJOR}"
-                                   "f2py")
-
 message("***Found PETSC_DIR:\n${PETSC_DIR}\n"                  )
 message("***Found PETSC_INCLUDES:\n${PETSC_INCLUDES}\n"        )
 message("***Found PETSC_EXTERNAL_LIB:\n${PETSC_EXTERNAL_LIB}\n")
 message("***Found PETSC_LINKER:\n${PETSC_LINKER}\n"            )
 message("***Found FORTRAN MPI COMPILER:\n${MPIEXEC}\n"         )
-message("***Found FFTW_LIB:\n${FFTW_LIBRARIES}")
 
 
 # # https://cmake.org/Wiki/CMake_FAQ#How_do_I_use_a_different_compiler.3F
@@ -125,11 +115,10 @@ set (DAMASK_VERSION_MINOR ${DAMASK_V})
 
 # Built-in options for DAMASK build system
 #   -> can be overwritten from commandline/install_script
-option(OPENMP             "Use OpenMP libaries for DAMASK"                              ON  )
-option(DAMASK_PROCESSING  "Build pre/post processing modules for DAMASK"                OFF )
-option(OPTIMIZATION       "DAMASK optimization level [OFF,DEFENSIVE,AGGRESSIVE,ULTRA]"  NONE)
-option(SPECTRAL           "Build spectral sovler for DAMASAK"                           OFF )
-option(FEM                "Builb FEM solver for DAMASK"                                 OFF )
+option(OPENMP             "Use OpenMP libaries for DAMASK"                              ON   )
+option(OPTIMIZATION       "DAMASK optimization level[NONE,DEFENSIVE,AGGRESSIVE,ULTRA]" "NONE")
+option(SPECTRAL           "Build spectral sovler for DAMASAK"                           OFF  )
+option(FEM                "Builb FEM solver for DAMASK"                                 OFF  )
 
 # COMPILE VARIABLES
 add_definitions(-DDAMASKVERSION="${DAMASK_V}")
@@ -461,11 +450,6 @@ elseif (FEM)
     INSTALL(PROGRAMS    ${PROJECT_BINARY_DIR}/src/DAMASK_FEM.exe
             DESTINATION ${CMAKE_INSTALL_PREFIX})
 endif(SPECTRAL)
-
-if (DAMASK_PROCESSING)
-    INSTALL(PROGRAMS    ${PROJECT_BINARY_DIR}/src/core.so
-            DESTINATION ${PROJECT_SOURCE_DIR}/lib/damask)
-endif(DAMASK_PROCESSING)
 
 ##
 # ADD TESTING CASES
