@@ -104,7 +104,8 @@ class extendableOption(Option):
 class backgroundMessage(threading.Thread):
   """reporting with animation to indicate progress"""
 
-  choices = {'bounce':   ['_','o','O','°','¯','¯','°','O','o',],
+  choices = {'bounce':   ['_',      'o',      'O',      u'\u00B0',
+                          u'\u203e',u'\u203e',u'\u00B0','O','o','_'],
              'circle':   [u'\u25f4',u'\u25f5',u'\u25f6',u'\u25f7'],
              'hexagon':  [u'\u2b22',u'\u2b23'],
              'square':   [u'\u2596',u'\u2598',u'\u259d',u'\u2597'],
