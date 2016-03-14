@@ -23,13 +23,14 @@ cd FEM
 
 ##
 # CMake call
-# PETSC_DIR          |  PETSC directory
-# DAMASK_V           |  DAMASK current revision
-# CMAKE_BUILD_TYPE   |  Default set to release (no debugging output)
-# OPENMP             |  [ON/OFF]
-# OPTIMIZATION       |  [OFF,DEFENSIVE,AGGRESSIVE,ULTRA]
-# DAMASK_DRIVER      |  [SPECTRAL, FEM]
-# DAMASK_INSTALL     |  Directory to install binary output
+# PETSC_DIR                |  PETSC directory
+# DAMASK_V                 |  DAMASK current revision
+# CMAKE_BUILD_TYPE         |  Default set to release (no debugging output)
+# OPENMP                   |  [ON/OFF]
+# OPTIMIZATION             |  [OFF,DEFENSIVE,AGGRESSIVE,ULTRA]
+# DAMASK_DRIVER            |  [SPECTRAL, FEM]
+# DAMASK_INSTALL           |  Directory to install binary output
+# INSTALL_PROCESSING       |  Build supporting pre/post processing scripts
 cmake -D PETSC_DIR=${PETSC_DIR}             \
       -D DAMASK_V=${DAMASKVERSION}          \
       -D CMAKE_BUILD_TYPE=RELEASE           \
@@ -37,6 +38,7 @@ cmake -D PETSC_DIR=${PETSC_DIR}             \
       -D OPTIMIZATION=DEFENSIVE             \
       -D DAMASK_DRIVER=FEM                  \
       -D DAMASK_INSTALL=${HOME}/bin         \
+      -D INSTALL_PROCESSING=YES             \
       ../..
 
 echo
