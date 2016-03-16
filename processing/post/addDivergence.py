@@ -11,34 +11,34 @@ scriptID   = ' '.join([scriptName,damask.version])
 
 def divFFT(geomdim,field):
  grid = np.array(np.shape(field)[2::-1])
- N = grid.prod()                                                                                    # field size
- n = np.array(np.shape(field)[3:]).prod()                                                           # data size
+ N = grid.prod()                                                                          # field size
+ n = np.array(np.shape(field)[3:]).prod()                                                 # data size
 
  field_fourier = np.fft.fftpack.rfftn(field,axes=(0,1,2))
- div_fourier   = np.zeros(field_fourier.shape[0:len(np.shape(field))-1],'c16')                      # size depents on whether tensor or vector
+ div_fourier   = np.zeros(field_fourier.shape[0:len(np.shape(field))-1],'c16')            # size depents on whether tensor or vector
 
 # differentiation in Fourier space
  k_s=np.zeros([3],'i')
  TWOPIIMG = 2.0j*math.pi
  for i in xrange(grid[2]):
    k_s[0] = i
-   if grid[2]%2 == 0 and i == grid[2]//2:  k_s[0] = 0                                                            # for even grid, set Nyquist freq to 0 (Johnson, MIT, 2011)
+   if grid[2]%2 == 0 and i == grid[2]//2:  k_s[0] = 0                                     # for even grid, set Nyquist freq to 0 (Johnson, MIT, 2011)
    elif i > grid[2]//2:                    k_s[0] -= grid[2]
 
    for j in xrange(grid[1]):
      k_s[1] = j
-     if grid[1]%2 == 0 and j == grid[1]//2: k_s[1] = 0                                                          # for even grid, set Nyquist freq to 0 (Johnson, MIT, 2011)
+     if grid[1]%2 == 0 and j == grid[1]//2: k_s[1] = 0                                    # for even grid, set Nyquist freq to 0 (Johnson, MIT, 2011)
      elif j > grid[1]//2:                   k_s[1] -= grid[1]
 
      for k in xrange(grid[0]//2+1):
        k_s[2] = k
-       if grid[0]%2 == 0 and k == grid[0]//2: k_s[2] = 0                                                       # for even grid, set Nyquist freq to 0 (Johnson, MIT, 2011)
+       if grid[0]%2 == 0 and k == grid[0]//2: k_s[2] = 0                                  # for even grid, set Nyquist freq to 0 (Johnson, MIT, 2011)
 
-       xi = (k_s/geomdim)[2::-1].astype('c16')                                                      # reversing the field input order
-       if n == 9:                                                                                   # tensor, 3x3 -> 3
+       xi = (k_s/geomdim)[2::-1].astype('c16')                                            # reversing the field input order
+       if n == 9:                                                                         # tensor, 3x3 -> 3
          for l in xrange(3):
            div_fourier[i,j,k,l] = sum(field_fourier[i,j,k,l,0:3]*xi) *TWOPIIMG
-       elif n == 3:                                                                                 # vector, 3 -> 1
+       elif n == 3:                                                                       # vector, 3 -> 1
          div_fourier[i,j,k] = sum(field_fourier[i,j,k,0:3]*xi) *TWOPIIMG
 
  return np.fft.fftpack.irfftn(div_fourier,axes=(0,1,2)).reshape([N,n/3])
@@ -76,7 +76,7 @@ parser.set_defaults(coords = 'ipinitialcoord',
 if options.vector is None and options.tensor is None:
   parser.error('no data column specified.')
 
-# --- loop over input files -------------------------------------------------------------------------
+# --- loop over input files ------------------------------------------------------------------------
 
 if filenames == []: filenames = [None]
 
@@ -134,14 +134,15 @@ for name in filenames:
   maxcorner = np.array(map(max,coords))
   grid   = np.array(map(len,coords),'i')
   size   = grid/np.maximum(np.ones(3,'d'), grid-1.0) * (maxcorner-mincorner)                        # size from edge to edge = dim * n/(n-1) 
-  size   = np.where(grid > 1, size, min(size[grid > 1]/grid[grid > 1]))                             # spacing for grid==1 equal to smallest among other spacings
+  size   = np.where(grid > 1, size, min(size[grid > 1]/grid[grid > 1]))                             # spacing for grid==1 equal to smallest among other ones
 
 # ------------------------------------------ process value field -----------------------------------
 
   stack = [table.data]
   for type, data in items.iteritems():
     for i,label in enumerate(data['active']):
-      stack.append(divFFT(size[::-1],                                                              # we need to reverse order here, because x is fastest,ie rightmost, but leftmost in our x,y,z notation
+      # we need to reverse order here, because x is fastest,ie rightmost, but leftmost in our x,y,z notation
+      stack.append(divFFT(size[::-1],
                           table.data[:,data['column'][i]:data['column'][i]+data['dim']].
                           reshape([grid[2],grid[1],grid[0]]+data['shape'])))
 

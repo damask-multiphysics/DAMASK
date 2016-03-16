@@ -11,8 +11,8 @@ scriptID   = ' '.join([scriptName,damask.version])
 
 def curlFFT(geomdim,field):
  grid = np.array(np.shape(field)[2::-1])
- N = grid.prod()                                                                                    # field size
- n = np.array(np.shape(field)[3:]).prod()                                                           # data size
+ N = grid.prod()                                                                          # field size
+ n = np.array(np.shape(field)[3:]).prod()                                                 # data size
 
  if   n == 3:   dataType = 'vector'
  elif n == 9:   dataType = 'tensor'
@@ -25,19 +25,19 @@ def curlFFT(geomdim,field):
  TWOPIIMG = 2.0j*math.pi
  for i in xrange(grid[2]):
    k_s[0] = i
-   if grid[2]%2 == 0 and i == grid[2]//2:  k_s[0] = 0                                                            # for even grid, set Nyquist freq to 0 (Johnson, MIT, 2011)
+   if grid[2]%2 == 0 and i == grid[2]//2:  k_s[0] = 0                                     # for even grid, set Nyquist freq to 0 (Johnson, MIT, 2011)
    elif i > grid[2]//2:                    k_s[0] -= grid[2]
 
    for j in xrange(grid[1]):
      k_s[1] = j
-     if grid[1]%2 == 0 and j == grid[1]//2: k_s[1] = 0                                                          # for even grid, set Nyquist freq to 0 (Johnson, MIT, 2011)
+     if grid[1]%2 == 0 and j == grid[1]//2: k_s[1] = 0                                    # for even grid, set Nyquist freq to 0 (Johnson, MIT, 2011)
      elif j > grid[1]//2:                   k_s[1] -= grid[1]
 
      for k in xrange(grid[0]//2+1):
        k_s[2] = k
-       if grid[0]%2 == 0 and k == grid[0]//2: k_s[2] = 0                                                       # for even grid, set Nyquist freq to 0 (Johnson, MIT, 2011)
+       if grid[0]%2 == 0 and k == grid[0]//2: k_s[2] = 0                                  # for even grid, set Nyquist freq to 0 (Johnson, MIT, 2011)
 
-       xi = (k_s/geomdim)[2::-1].astype('c16')                                                      # reversing the field input order
+       xi = (k_s/geomdim)[2::-1].astype('c16')                                            # reversing the field input order
 
        if dataType == 'tensor': 
          for l in xrange(3):
@@ -154,7 +154,8 @@ for name in filenames:
   stack = [table.data]
   for type, data in items.iteritems():
     for i,label in enumerate(data['active']):
-      stack.append(curlFFT(size[::-1],                                                              # we need to reverse order here, because x is fastest,ie rightmost, but leftmost in our x,y,z notation
+      # we need to reverse order here, because x is fastest,ie rightmost, but leftmost in our x,y,z notation
+      stack.append(curlFFT(size[::-1],
                            table.data[:,data['column'][i]:data['column'][i]+data['dim']].
                            reshape([grid[2],grid[1],grid[0]]+data['shape'])))
 
