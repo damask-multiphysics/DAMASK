@@ -518,7 +518,8 @@ class ASCIItable():
 # ------------------------------------------------------------------
   def microstructure_read(self,
                           grid,
-                          type = 'i'):
+                          type = 'i',
+                          strict = False):
     """read microstructure data (from .geom format)"""
     def datatype(item):
       return int(item) if type.lower() == 'i' else float(item)
@@ -537,6 +538,7 @@ class ASCIItable():
 
       s = min(len(items), N-i)                                                            # prevent overflow of microstructure array
       microstructure[i:i+s] = items[:s]
-      i += s
+      i += len(items)
 
-    return microstructure
+    return (microstructure, i == N and not self.data_read() if strict                      # check for proper point count and end of file
+      else  microstructure) 

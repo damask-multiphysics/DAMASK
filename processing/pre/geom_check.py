@@ -54,12 +54,25 @@ for name in filenames:
   errors = []
   if np.any(info['grid'] < 1):    errors.append('invalid grid a b c.')
   if np.any(info['size'] <= 0.0): errors.append('invalid size x y z.')
+
+#--- read microstructure information --------------------------------------------------------------
+
+  if options.data:
+    microstructure,ok = table.microstructure_read(info['grid'],strict = True)                                 # read microstructure
+
+    if ok:
+      structure = vtk.vtkIntArray()
+      structure.SetName('Microstructures')
+      for idx in microstructure: structure.InsertNextValue(idx)
+
+    else:                           errors.append('mismatch between data and grid dimension.')
+
   if errors != []:
     damask.util.croak(errors)
     table.close(dismiss = True)
     continue
 
-# --- generate VTK rectilinear grid --------------------------------------------------------------------------------
+# --- generate VTK rectilinear grid ---------------------------------------------------------------
 
   grid = vtk.vtkRectilinearGrid()
   grid.SetDimensions([x+1 for x in info['grid']])
@@ -72,18 +85,8 @@ for name in filenames:
     elif i == 1: grid.SetYCoordinates(temp)
     elif i == 2: grid.SetZCoordinates(temp)
 
-#--- read microstructure information --------------------------------------------------------------
 
-  if options.data:
-    microstructure = table.microstructure_read(info['grid'])                                        # read microstructure
-
-    structure = vtk.vtkIntArray()
-    structure.SetName('Microstructures')
-
-    for idx in microstructure:
-      structure.InsertNextValue(idx)
-
-    grid.GetCellData().AddArray(structure)
+  if options.data: grid.GetCellData().AddArray(structure)
 
 # --- write data -----------------------------------------------------------------------------------
   if name:
