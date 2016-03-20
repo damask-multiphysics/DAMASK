@@ -186,10 +186,6 @@ module math
    halton_seed_set, &
    i_to_halton, &
    prime
- external :: &
-   dsyev, &
-   dgetrf, &
-   dgetri
 
 contains
 
@@ -811,15 +807,13 @@ function math_invSym3333(A)
  integer(pInt), dimension(6)   :: ipiv6
  real(pReal),   dimension(6,6) :: temp66_Real
  real(pReal),   dimension(6)   :: work6
+ external :: &
+  dgetrf, &
+  dgetri
 
  temp66_real = math_Mandel3333to66(A)
-#if(FLOAT==8)
  call dgetrf(6,6,temp66_real,6,ipiv6,ierr)
  call dgetri(6,temp66_real,6,ipiv6,work6,6,ierr)
-#elif(FLOAT==4)
- call sgetrf(6,6,temp66_real,6,ipiv6,ierr)
- call sgetri(6,temp66_real,6,ipiv6,work6,6,ierr)
-#endif
  if (ierr == 0_pInt) then
    math_invSym3333 = math_Mandel66to3333(temp66_real)
  else
@@ -847,13 +841,8 @@ subroutine math_invert(myDim,A, InvA, error)
  logical, intent(out) :: error
  
  invA = A 
-#if(FLOAT==8)
  call dgetrf(myDim,myDim,invA,myDim,ipiv,ierr)
  call dgetri(myDim,InvA,myDim,ipiv,work,myDim,ierr)
-#elif(FLOAT==4)
- call sgetrf(myDim,myDim,invA,myDim,ipiv,ierr)
- call sgetri(myDim,InvA,myDim,ipiv,work,myDim,ierr)
-#endif
  error = merge(.true.,.false., ierr /= 0_pInt)                                                      ! http://fortraninacworld.blogspot.de/2012/12/ternary-operator.html
  
 end subroutine math_invert
@@ -1937,16 +1926,13 @@ subroutine math_eigenValuesVectorsSym(m,values,vectors,error)
  real(pReal), dimension(size(m,1)),            intent(out) :: values
  real(pReal), dimension(size(m,1),size(m,1)),  intent(out) :: vectors
  logical, intent(out) :: error
-
  integer(pInt) :: info
  real(pReal), dimension((64+2)*size(m,1)) :: work                                                    ! block size of 64 taken from http://www.netlib.org/lapack/double/dsyev.f
+ external :: &
+  dsyev
 
  vectors = m                                                                                         ! copy matrix to input (doubles as output) array
-#if(FLOAT==8)
  call dsyev('V','U',size(m,1),vectors,size(m,1),values,work,(64+2)*size(m,1),info)
-#elif(FLOAT==4)
- call ssyev('V','U',size(m,1),vectors,size(m,1),values,work,(64+2)*size(m,1),info)
-#endif
  error = (info == 0_pInt)
 
 end subroutine math_eigenValuesVectorsSym
@@ -2135,16 +2121,13 @@ function math_eigenvaluesSym(m)
  real(pReal), dimension(:,:),                  intent(in)  :: m
  real(pReal), dimension(size(m,1))                         :: math_eigenvaluesSym
  real(pReal), dimension(size(m,1),size(m,1))               :: vectors
-
  integer(pInt) :: info
  real(pReal), dimension((64+2)*size(m,1)) :: work                                                    ! block size of 64 taken from http://www.netlib.org/lapack/double/dsyev.f
+ external :: &
+  dsyev
 
  vectors = m                                                                                         ! copy matrix to input (doubles as output) array
-#if(FLOAT==8)
  call dsyev('N','U',size(m,1),vectors,size(m,1),math_eigenvaluesSym,work,(64+2)*size(m,1),info)
-#elif(FLOAT==4)
- call ssyev('N','U',size(m,1),vectors,size(m,1),math_eigenvaluesSym,work,(64+2)*size(m,1),info)
-#endif
  if (info /= 0_pInt) math_eigenvaluesSym = DAMASK_NaN
 
 end function math_eigenvaluesSym
