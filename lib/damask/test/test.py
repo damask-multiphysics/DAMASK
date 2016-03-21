@@ -22,11 +22,11 @@ class Test():
 
     logger = logging.getLogger()
     logger.setLevel(0)
-    fh = logging.FileHandler('test.log')                                                            # create file handler which logs even debug messages
+    fh = logging.FileHandler('test.log')                                       # create file handler which logs even debug messages
     fh.setLevel(logging.DEBUG)
     full = logging.Formatter('%(asctime)s - %(levelname)s: \n%(message)s')
     fh.setFormatter(full)
-    ch = logging.StreamHandler(stream=sys.stdout)                                                  # create console handler with a higher log level
+    ch = logging.StreamHandler(stream=sys.stdout)                              # create console handler with a higher log level
     ch.setLevel(logging.INFO)
 # create formatter and add it to the handlers
     plain = logging.Formatter('%(message)s')
@@ -60,10 +60,10 @@ class Test():
         try:
           self.postprocess(variant)
           if not self.compare(variant):
-            return variant+1                                                                               # return culprit
+            return variant+1                                                   # return culprit
         except Exception as e :
-          logging.critical('\nWARNING:\n %s\n'%e)
-          return variant+1                                                                                 # return culprit
+          logging.critical('\nWARNING:\n {}\n'.format(e))
+          return variant+1                                                     # return culprit
       return 0
     else:
       if not self.testPossible(): return -1
@@ -74,13 +74,13 @@ class Test():
           self.prepare(variant)
           self.run(variant)
           self.postprocess(variant)
-          if self.updateRequested:                                                                         # update requested
+          if self.updateRequested:                                             # update requested
             self.update(variant)
-          elif not (self.options.accept or self.compare(variant)):                                                                  # no update, do comparison
-            return variant+1                                                                               # return culprit
+          elif not (self.options.accept or self.compare(variant)):             # no update, do comparison
+            return variant+1                                                   # return culprit
         except Exception as e :
-          logging.critical('\nWARNING:\n %s\n'%e)
-          return variant+1                                                                                 # return culprit
+          logging.critical('\nWARNING:\n {}\n'.format(e))
+          return variant+1                                                     # return culprit
       return 0
   
   def testPossible(self):
@@ -94,13 +94,13 @@ class Test():
     try:
       shutil.rmtree(self.dirCurrent())
     except:
-      logging.warning('removal of directory "%s" not possible...'%(self.dirCurrent()))
+      logging.warning('removal of directory "{}" not possible...'.format(self.dirCurrent()))
       status = status and False
 
     try:
       os.mkdir(self.dirCurrent())
     except:
-      logging.critical('creation of directory "%s" failed...'%(self.dirCurrent()))
+      logging.critical('creation of directory "{}" failed...'.format(self.dirCurrent()))
       status = status and False
 
     return status
@@ -193,19 +193,19 @@ class Test():
       try:
         shutil.copy2(self.fileInReference(file),self.fileInCurrent(targetfiles[i]))  
       except:
-        logging.critical('Reference2Current: Unable to copy file %s'%file)
+        logging.critical('Reference2Current: Unable to copy file "{}"'.format(file))
 
  
   def copy_Base2Current(self,sourceDir,sourcefiles=[],targetfiles=[]):
     
-    source=os.path.normpath(os.path.join(self.dirBase,'../../../'+sourceDir))
+    source=os.path.normpath(os.path.join(self.dirBase,'../../..',sourceDir))
     if len(targetfiles) == 0: targetfiles = sourcefiles
     for i,file in enumerate(sourcefiles):
       try:
         shutil.copy2(os.path.join(source,file),self.fileInCurrent(targetfiles[i]))  
       except:
         logging.error(os.path.join(source,file))
-        logging.critical('Base2Current: Unable to copy file %s'%file)
+        logging.critical('Base2Current: Unable to copy file "{}"'.format(file))
 
 
   def copy_Current2Reference(self,sourcefiles=[],targetfiles=[]):
@@ -215,7 +215,7 @@ class Test():
       try:
         shutil.copy2(self.fileInCurrent(file),self.fileInReference(targetfiles[i]))  
       except:
-        logging.critical('Current2Reference: Unable to copy file %s'%file)
+        logging.critical('Current2Reference: Unable to copy file "{}"'.format(file))
 
         
   def copy_Proof2Current(self,sourcefiles=[],targetfiles=[]):
@@ -225,7 +225,7 @@ class Test():
       try:
         shutil.copy2(self.fileInProof(file),self.fileInCurrent(targetfiles[i]))  
       except:
-        logging.critical('Proof2Current: Unable to copy file %s'%file)
+        logging.critical('Proof2Current: Unable to copy file "{}"'.format(file))
 
         
   def copy_Current2Current(self,sourcefiles=[],targetfiles=[]):
@@ -234,7 +234,7 @@ class Test():
       try:
         shutil.copy2(self.fileInReference(file),self.fileInCurrent(targetfiles[i]))  
       except:
-        logging.critical('Current2Current: Unable to copy file %s'%file)
+        logging.critical('Current2Current: Unable to copy file "{}"'.format(file))
 
 
   def execute_inCurrentDir(self,cmd,streamIn=None):
@@ -252,7 +252,7 @@ class Test():
   def compare_Array(self,File1,File2):
 
     import numpy as np
-    logging.info('comparing\n '+File1+'\n '+File2)
+    logging.info('\n '.join(['comparing',File1,File2]))
     table1 = damask.ASCIItable(name=File1,readonly=True)
     table1.head_read()
     len1=len(table1.info)+2
@@ -270,8 +270,9 @@ class Test():
       max_loc=np.argmax(abs(refArrayNonZero[curArray.nonzero()]/curArray[curArray.nonzero()]-1.))
       refArrayNonZero = refArrayNonZero[curArray.nonzero()]
       curArray = curArray[curArray.nonzero()]
-      print(' ********\n * maximum relative error %e for %e and %e\n ********'
-                  %(max_err, refArrayNonZero[max_loc],curArray[max_loc]))
+      print(' ********\n * maximum relative error {} between {} and {}\n ********'.format(max_err,
+                                                                                          refArrayNonZero[max_loc],
+                                                                                          curArray[max_loc]))
       return max_err
     else:
        raise Exception('mismatch in array size to compare')
@@ -295,7 +296,7 @@ class Test():
                                      absoluteTolerance=False,perLine=False,skipLines=[]):
     
     import numpy as np
-    logging.info('comparing ASCII Tables\n %s \n %s'%(file0,file1))
+    logging.info('\n '.join(['comparing ASCII Tables',file0,file1]))
     if normHeadings == '': normHeadings = headings0
 
 # check if comparison is possible and determine lenght of columns
@@ -315,7 +316,7 @@ class Test():
 
       for i in xrange(dataLength):
         if headings0[i]['shape'] != headings1[i]['shape']: 
-          raise Exception('shape mismatch when comparing %s with %s '%(headings0[i]['label'],headings1[i]['label']))
+          raise Exception('shape mismatch between {} and {} '.format(headings0[i]['label'],headings1[i]['label']))
         shape[i] = headings0[i]['shape']
         for j in xrange(np.shape(shape[i])[0]):
           length[i] *= shape[i][j]
@@ -323,7 +324,9 @@ class Test():
         for j in xrange(np.shape(normShape[i])[0]):
           normLength[i] *= normShape[i][j]
     else:
-      raise Exception('trying to compare %i with %i normed by %i data sets'%(len(headings0),len(headings1),len(normHeadings)))
+      raise Exception('trying to compare {} with {} normed by {} data sets'.format(len(headings0),
+                                                                                   len(headings1),
+                                                                                   len(normHeadings)))
 
     table0 = damask.ASCIItable(name=file0,readonly=True)
     table0.head_read()
@@ -331,37 +334,34 @@ class Test():
     table1.head_read()   
 
     for i in xrange(dataLength):
-      key0 =    {True :'1_%s',
-                 False:'%s'   }[length[i]>1]%headings0[i]['label']
-      key1 =    {True :'1_%s',
-                 False:'%s'   }[length[i]>1]%headings1[i]['label']
-      normKey = {True :'1_%s',
-                 False:'%s'   }[normLength[i]>1]%normHeadings[i]['label']
+      key0    = ('1_' if     length[i]>1 else '') +    headings0[i]['label']
+      key1    = ('1_' if     length[i]>1 else '') +    headings1[i]['label']
+      normKey = ('1_' if normLength[i]>1 else '') + normHeadings[i]['label']
       if key0 not in table0.labels:
-        raise Exception('column %s not found in 1. table...\n'%key0)
+        raise Exception('column {} not found in 1. table...\n'.format(key0))
       elif key1 not in table1.labels:
-        raise Exception('column %s not found in 2. table...\n'%key1)
+        raise Exception('column {} not found in 2. table...\n'.format(key1))
       elif normKey not in table0.labels:
-        raise Exception('column %s not found in 1. table...\n'%normKey)
+        raise Exception('column {} not found in 1. table...\n'.format(normKey))
       else:
-        column[0][i]  = table0.labels.index(key0)                                  # remember columns of requested data
-        column[1][i]  = table1.labels.index(key1)                                  # remember columns of requested data in second column
-        normColumn[i] = table0.labels.index(normKey)                               # remember columns of requested data in second column
+        column[0][i]  = table0.labels.index(key0)
+        column[1][i]  = table1.labels.index(key1)
+        normColumn[i] = table0.labels.index(normKey)
     
     line0 = 0
-    while table0.data_read():                                                     # read next data line of ASCII table
+    while table0.data_read():                                                  # read next data line of ASCII table
       if line0 not in skipLines:
         for i in xrange(dataLength):
           myData = np.array(map(float,table0.data[column[0][i]:\
-                                                     column[0][i]+length[i]]),'d')
+                                                  column[0][i]+length[i]]),'d')
           normData = np.array(map(float,table0.data[normColumn[i]:\
-                                                       normColumn[i]+normLength[i]]),'d')
+                                                    normColumn[i]+normLength[i]]),'d')
           data[i] = np.append(data[i],np.reshape(myData,shape[i]))
           if normType == 'pInf':
             norm[i] = np.append(norm[i],np.max(np.abs(normData)))
           else:
             norm[i] = np.append(norm[i],np.linalg.norm(np.reshape(normData,normShape[i]),normType))
-      line0 +=1
+      line0 += 1
     
     for i in xrange(dataLength):
       if not perLine: norm[i] = [np.max(norm[i]) for j in xrange(line0-len(skipLines))]
@@ -370,12 +370,12 @@ class Test():
         norm[i] = [1.0 for j in xrange(line0-len(skipLines))]
         absTol[i] = True
         if perLine:
-          logging.warning('At least one norm of %s in 1. table is 0.0, using absolute tolerance'%headings0[i]['label'])
+          logging.warning('At least one norm of {} in 1. table is 0.0, using absolute tolerance'.format(headings0[i]['label']))
         else:
-          logging.warning('Maximum norm of %s in 1. table is 0.0, using absolute tolerance'%headings0[i]['label'])
+          logging.warning('Maximum norm of {} in 1. table is 0.0, using absolute tolerance'.format(headings0[i]['label']))
 
     line1 = 0
-    while table1.data_read():                                                     # read next data line of ASCII table
+    while table1.data_read():                                                  # read next data line of ASCII table
       if line1 not in skipLines:
         for i in xrange(dataLength):
           myData = np.array(map(float,table1.data[column[1][i]:\
@@ -384,21 +384,25 @@ class Test():
                                                                                    norm[i][line1-len(skipLines)])
       line1 +=1
 
-    if (line0 != line1): raise Exception('found %s lines in 1. table and %s in 2. table'%(line0,line1))
+    if (line0 != line1): raise Exception('found {} lines in 1. table but {} in 2. table'.format(line0,line1))
 
     logging.info(' ********')
     for i in xrange(dataLength):
       if absTol[i]:
-        logging.info(' * maximum absolute error %e for %s and %s'%(maxError[i],headings0[i]['label'],headings1[i]['label']))
+        logging.info(' * maximum absolute error {} between {} and {}'.format(maxError[i],
+                                                                             headings0[i]['label'],
+                                                                             headings1[i]['label']))
       else:
-        logging.info(' * maximum relative error %e for %s and %s'%(maxError[i],headings0[i]['label'],headings1[i]['label']))
+        logging.info(' * maximum relative error {} between {} and {}'.format(maxError[i],
+                                                                             headings0[i]['label'],
+                                                                             headings1[i]['label']))
     logging.info(' ********')
     return maxError
 
 
   def compare_TablesStatistically(self,
-                     files = [None,None],                                                           # list of file names
-                     columns = [None],                                                              # list of list of column labels (per file)
+                     files = [None,None],                                      # list of file names
+                     columns = [None],                                         # list of list of column labels (per file)
                      meanTol = 1.0e-4,
                      stdTol = 1.0e-6,
                      preFilter = 1.0e-9):
@@ -407,18 +411,18 @@ class Test():
 
     threshold can be used to ignore small values (a negative number disables this feature)
     """
-    if not (isinstance(files, Iterable) and not isinstance(files, str)):                            # check whether list of files is requested
+    if not (isinstance(files, Iterable) and not isinstance(files, str)):       # check whether list of files is requested
       files = [str(files)]
 
     tables = [damask.ASCIItable(name = filename,readonly = True) for filename in files]
     for table in tables:
       table.head_read()
 
-    columns += [columns[0]]*(len(files)-len(columns))                                               # extend to same length as files
-    columns = columns[:len(files)]                                                                  # truncate to same length as files
+    columns += [columns[0]]*(len(files)-len(columns))                          # extend to same length as files
+    columns = columns[:len(files)]                                             # truncate to same length as files
 
     for i,column in enumerate(columns):
-      if column is None: columns[i] = tables[i].labels                                              # if no column is given, read all
+      if column is None: columns[i] = tables[i].labels                         # if no column is given, read all
 
     logging.info('comparing ASCIItables statistically')
     for i in xrange(len(columns)):
@@ -428,7 +432,7 @@ class Test():
                  )
       logging.info(files[i]+':'+','.join(columns[i]))
 
-    if len(files) < 2: return True                                                                  # single table is always close to itself...
+    if len(files) < 2: return True                                             # single table is always close to itself...
     
     data = []
     for table,labels in zip(tables,columns):
@@ -443,16 +447,16 @@ class Test():
       normedDelta = np.where(normBy>preFilter,delta/normBy,0.0)
       mean = np.amax(np.abs(np.mean(normedDelta,0)))
       std = np.amax(np.std(normedDelta,0))
-      logging.info('mean: %f'%mean)
-      logging.info('std: %f'%std)
+      logging.info('mean: {:f}'.format(mean))
+      logging.info('std: {:f}'.format(std))
     
     return (mean<meanTol) & (std < stdTol)
 
 
 
   def compare_Tables(self,
-                     files = [None,None],                                                           # list of file names
-                     columns = [None],                                                              # list of list of column labels (per file)
+                     files = [None,None],                                      # list of file names
+                     columns = [None],                                         # list of list of column labels (per file)
                      rtol = 1e-5,
                      atol = 1e-8,
                      preFilter = -1.0,
@@ -463,18 +467,18 @@ class Test():
 
     threshold can be used to ignore small values (a negative number disables this feature)
     """
-    if not (isinstance(files, Iterable) and not isinstance(files, str)):                            # check whether list of files is requested
+    if not (isinstance(files, Iterable) and not isinstance(files, str)):       # check whether list of files is requested
       files = [str(files)]
 
     tables = [damask.ASCIItable(name = filename,readonly = True) for filename in files]
     for table in tables:
       table.head_read()
 
-    columns += [columns[0]]*(len(files)-len(columns))                                               # extend to same length as files
-    columns = columns[:len(files)]                                                                  # truncate to same length as files
+    columns += [columns[0]]*(len(files)-len(columns))                          # extend to same length as files
+    columns = columns[:len(files)]                                             # truncate to same length as files
 
     for i,column in enumerate(columns):
-      if column is None: columns[i] = tables[i].labels                                              # if no column is given, read all
+      if column is None: columns[i] = tables[i].labels                         # if no column is given, read all
 
     logging.info('comparing ASCIItables')
     for i in xrange(len(columns)):
@@ -484,7 +488,7 @@ class Test():
                  )
       logging.info(files[i]+':'+','.join(columns[i]))
 
-    if len(files) < 2: return True                                                                  # single table is always close to itself...
+    if len(files) < 2: return True                                             # single table is always close to itself...
     
     maximum = np.zeros(len(columns[0]),dtype='f')
     data = []
@@ -495,26 +499,26 @@ class Test():
       table.close()
     
     maximum /= len(tables)
-    maximum = np.where(maximum >0.0, maximum, 1)                                                 # do not devide by zero for empty columns
+    maximum = np.where(maximum >0.0, maximum, 1)                               # avoid div by zero for empty columns
     for i in xrange(len(data)):
       data[i] /= maximum
     
     mask = np.zeros_like(table.data,dtype='bool')
 
     for table in data:
-      mask |= np.where(np.abs(table)<postFilter,True,False)                                       # mask out (all) tiny values
+      mask |= np.where(np.abs(table)<postFilter,True,False)                    # mask out (all) tiny values
      
     
-    allclose = True                                                                               # start optimistic
+    allclose = True                                                            # start optimistic
     for i in xrange(1,len(data)):
       if debug:
         t0 = np.where(mask,0.0,data[i-1])
         t1 = np.where(mask,0.0,data[i  ])
         j = np.argmin(np.abs(t1)*rtol+atol-np.abs(t0-t1))
-        logging.info('%f'%np.amax(np.abs(t0-t1)/(np.abs(t1)*rtol+atol)))
-        logging.info('%f %f'%((t0*maximum).flatten()[j],(t1*maximum).flatten()[j]))
+        logging.info('{:f}'.format(np.amax(np.abs(t0-t1)/(np.abs(t1)*rtol+atol))))
+        logging.info('{:f} {:f}'.format((t0*maximum).flatten()[j],(t1*maximum).flatten()[j]))
       allclose &= np.allclose(np.where(mask,0.0,data[i-1]),
-                              np.where(mask,0.0,data[i  ]),rtol,atol)                             # accumulate "pessimism"
+                              np.where(mask,0.0,data[i  ]),rtol,atol)          # accumulate "pessimism"
 
     return allclose
 
@@ -543,14 +547,13 @@ class Test():
   def report_Success(self,culprit):
     
     if culprit == 0:
-      logging.critical('%s passed.'%({False: 'The test',
-                         True: 'All %i tests'%(len(self.variants))}[len(self.variants) > 1]))
+      logging.critical(('The test' if len(self.variants) == 1 else 'All {} tests'.format(len(self.variants))) + ' passed')
       logging.critical('\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n')
       return 0
     if culprit == -1:
       logging.warning('Warning: Could not start test')
       return 0
     else:
-      logging.critical(' ********\n * Test %i failed...\n ********'%(culprit))
+      logging.critical(' ********\n * Test {} failed...\n ********'.format(culprit))
       logging.critical('\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n')
       return culprit
