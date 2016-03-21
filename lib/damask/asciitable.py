@@ -517,22 +517,27 @@ class ASCIItable():
 
 # ------------------------------------------------------------------
   def microstructure_read(self,
-                          grid):
+                          grid,
+                          type = 'i',
+                          strict = False):
     """read microstructure data (from .geom format)"""
-    N = grid.prod()                                                                 # expected number of microstructure indices in data
-    microstructure = np.zeros(N,'i')                                                # initialize as flat array
+    def datatype(item):
+      return int(item) if type.lower() == 'i' else float(item)
+      
+    N = grid.prod()                                                                       # expected number of microstructure indices in data
+    microstructure = np.zeros(N,type)                                                     # initialize as flat array
 
     i = 0
     while i < N and self.data_read():
       items = self.data
       if len(items) > 2:
-        if   items[1].lower() == 'of': items = [int(items[2])]*int(items[0])
-        elif items[1].lower() == 'to': items = range(int(items[0]),1+int(items[2]))
-        else:                          items = map(int,items)
-      else:                            items = map(int,items)
+        if   items[1].lower() == 'of': items = np.ones(datatype(items[0]))*datatype(items[2])
+        elif items[1].lower() == 'to': items = np.arange(datatype(items[0]),1+datatype(items[2]))
+        else:                          items = map(datatype,items)
+      else:                            items = map(datatype,items)
 
-      s = min(len(items), N-i)                                                      # prevent overflow of microstructure array
+      s = min(len(items), N-i)                                                            # prevent overflow of microstructure array
       microstructure[i:i+s] = items[:s]
-      i += s
+      i += len(items)
 
-    return microstructure
+    return (microstructure, i == N and not self.data_read()) if strict else microstructure  # check for proper point count and end of file

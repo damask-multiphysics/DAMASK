@@ -3569,11 +3569,7 @@ logical function crystallite_integrateStress(&
                                      maxticks
 
  external :: &
-#if(FLOAT==8)
    dgesv
-#elif(FLOAT==4)
-   sgesv
-#endif
 
  !* be pessimistic
  crystallite_integrateStress = .false.
@@ -3756,11 +3752,7 @@ logical function crystallite_integrateStress(&
                      - math_Plain3333to99(math_mul3333xx3333(math_mul3333xx3333(dLp_dT3333,dT_dFe3333),dFe_dLp3333))
        dRLp_dLp2   = dRLp_dLp                                                                         ! will be overwritten in first call to LAPACK routine
        work = math_plain33to9(residuumLp)
-#if(FLOAT==8)
        call dgesv(9,1,dRLp_dLp2,9,ipiv,work,9,ierr)                                                   ! solve dRLp/dLp * delta Lp = -res for delta Lp
-#elif(FLOAT==4)
-       call sgesv(9,1,dRLp_dLp2,9,ipiv,work,9,ierr)                                                   ! solve dRLp/dLp * delta Lp = -res for delta Lp
-#endif
        if (ierr /= 0_pInt) then
 #ifndef _OPENMP
          if (iand(debug_level(debug_crystallite), debug_levelBasic) /= 0_pInt) then
@@ -3849,31 +3841,27 @@ logical function crystallite_integrateStress(&
                                                                    math_mul3333xx3333(dT_dFi3333, dFi_dLi3333)))  &
                - math_Plain3333to99(math_mul3333xx3333(dLi_dFi3333, dFi_dLi3333))
      work = math_plain33to9(residuumLi)
-#if(FLOAT==8)
      call dgesv(9,1,dRLi_dLi,9,ipiv,work,9,ierr)                                                    ! solve dRLi/dLp * delta Li = -res for delta Li
-#elif(FLOAT==4)
-     call sgesv(9,1,dRLi_dLi,9,ipiv,work,9,ierr)                                                    ! solve dRLi/dLp * delta Li = -res for delta Li
-#endif
-       if (ierr /= 0_pInt) then
+     if (ierr /= 0_pInt) then
 #ifndef _OPENMP
-         if (iand(debug_level(debug_crystallite), debug_levelBasic) /= 0_pInt) then
-           write(6,'(a,i8,1x,a,i8,a,1x,i2,1x,i3,a,i3)') '<< CRYST >> integrateStress failed on dR/dLi inversion at el ip ipc ', &
-             el,mesh_element(1,el),ip,ipc
-           if (iand(debug_level(debug_crystallite), debug_levelExtensive) /= 0_pInt &
-               .and. ((el == debug_e .and. ip == debug_i .and. ipc == debug_g)&
-                      .or. .not. iand(debug_level(debug_crystallite), debug_levelSelective) /= 0_pInt)) then
-             write(6,*)
-             write(6,'(a,/,9(12x,9(e15.3,1x)/))') '<< CRYST >> dR_dLi',transpose(dRLi_dLi)
-             write(6,'(a,/,9(12x,9(e15.3,1x)/))') '<< CRYST >> dFe_dLi',transpose(math_Plain3333to99(dFe_dLi3333))
-             write(6,'(a,/,9(12x,9(e15.3,1x)/))') '<< CRYST >> dT_dFi_constitutive',transpose(math_Plain3333to99(dT_dFi3333))
-             write(6,'(a,/,9(12x,9(e15.3,1x)/))') '<< CRYST >> dLi_dT_constitutive',transpose(math_Plain3333to99(dLi_dT3333))
-             write(6,'(a,/,3(12x,3(e20.7,1x)/))') '<< CRYST >> Li_constitutive',math_transpose33(Li_constitutive)
-             write(6,'(a,/,3(12x,3(e20.7,1x)/))') '<< CRYST >> Liguess',math_transpose33(Liguess)
-           endif
+       if (iand(debug_level(debug_crystallite), debug_levelBasic) /= 0_pInt) then
+         write(6,'(a,i8,1x,a,i8,a,1x,i2,1x,i3,a,i3)') '<< CRYST >> integrateStress failed on dR/dLi inversion at el ip ipc ', &
+               el,mesh_element(1,el),ip,ipc
+         if (iand(debug_level(debug_crystallite), debug_levelExtensive) /= 0_pInt &
+             .and. ((el == debug_e .and. ip == debug_i .and. ipc == debug_g)&
+                    .or. .not. iand(debug_level(debug_crystallite), debug_levelSelective) /= 0_pInt)) then
+           write(6,*)
+           write(6,'(a,/,9(12x,9(e15.3,1x)/))') '<< CRYST >> dR_dLi',transpose(dRLi_dLi)
+           write(6,'(a,/,9(12x,9(e15.3,1x)/))') '<< CRYST >> dFe_dLi',transpose(math_Plain3333to99(dFe_dLi3333))
+           write(6,'(a,/,9(12x,9(e15.3,1x)/))') '<< CRYST >> dT_dFi_constitutive',transpose(math_Plain3333to99(dT_dFi3333))
+           write(6,'(a,/,9(12x,9(e15.3,1x)/))') '<< CRYST >> dLi_dT_constitutive',transpose(math_Plain3333to99(dLi_dT3333))
+           write(6,'(a,/,3(12x,3(e20.7,1x)/))') '<< CRYST >> Li_constitutive',math_transpose33(Li_constitutive)
+           write(6,'(a,/,3(12x,3(e20.7,1x)/))') '<< CRYST >> Liguess',math_transpose33(Liguess)
          endif
-#endif
-         return
        endif
+#endif
+       return
+     endif
 
      deltaLi = - math_plain9to33(work)
    endif
