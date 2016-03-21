@@ -151,7 +151,7 @@ for name in filenames:
   writer = vtk.vtkXMLRectilinearGridWriter()
   writer.SetDataModeToBinary()
   writer.SetCompressorTypeToZLib()
-  writer.SetFileName(os.path.splitext(options.vtk)[0]+('' if options.inplace else '_added.vtr'))
+  writer.SetFileName(os.path.splitext(options.vtk)[0]+('.vtr' if options.inplace else '_added.vtr'))
   if vtk.VTK_MAJOR_VERSION <= 5: writer.SetInput(rGrid)
   else:                          writer.SetInputData(rGrid)
   writer.Write()

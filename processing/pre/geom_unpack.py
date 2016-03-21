@@ -18,6 +18,14 @@ Unpack geometry files containing ranges "a to b" and/or "n of x" multiples (excl
 
 """, version = scriptID)
 
+parser.add_option('-1', '--onedimensional',
+                  dest   = 'oneD',
+                  action = 'store_true',
+                  help   = 'output geom file with one-dimensional data arrangement')
+
+parser.set_defaults(oneD = False,
+                   )
+
 (options, filenames) = parser.parse_args()
 
 # --- loop over input files -------------------------------------------------------------------------
@@ -69,7 +77,8 @@ for name in filenames:
 
   microstructure = table.microstructure_read(info['grid'])                                          # read microstructure
   formatwidth = int(math.floor(math.log10(microstructure.max())+1))                                 # efficient number printing format
-  table.data = microstructure.reshape((info['grid'][0],info['grid'][1]*info['grid'][2]),order='F').transpose()
+  table.data = microstructure if options.oneD else \
+               microstructure.reshape((info['grid'][0],info['grid'][1]*info['grid'][2]),order='F').transpose()
   table.data_writeArray('%%%ii'%(formatwidth),delimiter = ' ')
     
 #--- output finalization --------------------------------------------------------------------------

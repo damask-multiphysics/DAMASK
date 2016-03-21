@@ -28,24 +28,32 @@ parser.add_option('-o', '--offset',
                   help = 'a,b,c offset from old to new origin of grid [%default]')
 parser.add_option('-f', '--fill',
                   dest = 'fill',
-                  type = 'int', metavar = 'int',
+                  type = 'float', metavar = 'float',
                   help = '(background) canvas grain index. "0" selects maximum microstructure index + 1 [%default]')
+parser.add_option('--float',
+                  dest = 'real',
+                  action = 'store_true',
+                  help = 'input data is float [%default]')
 
 parser.set_defaults(grid = ['0','0','0'],
                     offset = (0,0,0),
                     fill = 0,
+                    real = False,
                    )
 
 (options, filenames) = parser.parse_args()
+
+datatype = 'f' if options.real else 'i'
+
 
 # --- loop over input files -------------------------------------------------------------------------
 
 if filenames == []: filenames = [None]
 
 for name in filenames:
-  try:
-    table = damask.ASCIItable(name = name,
-                              buffered = False, labeled = False)
+  try: table = damask.ASCIItable(name = name,
+                                 buffered = False,
+                                 labeled = False)
   except: continue
   damask.util.report(scriptName,name)
 
@@ -71,7 +79,7 @@ for name in filenames:
 
 # --- read data ------------------------------------------------------------------------------------
 
-  microstructure = table.microstructure_read(info['grid']).reshape(info['grid'],order='F')          # read microstructure
+  microstructure = table.microstructure_read(info['grid'],datatype).reshape(info['grid'],order='F')          # read microstructure
 
 # --- do work ------------------------------------------------------------------------------------
  
@@ -85,8 +93,8 @@ for name in filenames:
                                                                    else int(n) for o,n in zip(info['grid'],options.grid)],'i')
   newInfo['grid'] = np.where(newInfo['grid'] > 0, newInfo['grid'],info['grid'])
 
-  microstructure_cropped = np.zeros(newInfo['grid'],'i')
-  microstructure_cropped.fill(options.fill if options.fill > 0 else microstructure.max()+1)
+  microstructure_cropped = np.zeros(newInfo['grid'],datatype)
+  microstructure_cropped.fill(options.fill if options.real or options.fill > 0 else microstructure.max()+1)
   xindex = list(set(xrange(options.offset[0],options.offset[0]+newInfo['grid'][0])) & \
                                                                set(xrange(info['grid'][0])))
   yindex = list(set(xrange(options.offset[1],options.offset[1]+newInfo['grid'][1])) & \
@@ -152,9 +160,9 @@ for name in filenames:
 
 # --- write microstructure information ------------------------------------------------------------
 
-  formatwidth = int(math.floor(math.log10(microstructure_cropped.max())+1))
+  format = '%g' if options.real else '%{}i'.format(int(math.floor(math.log10(microstructure_cropped.max())+1)))
   table.data = microstructure_cropped.reshape((newInfo['grid'][0],newInfo['grid'][1]*newInfo['grid'][2]),order='F').transpose()
-  table.data_writeArray('%%%ii'%(formatwidth),delimiter=' ')
+  table.data_writeArray(format,delimiter=' ')
     
 # --- output finalization --------------------------------------------------------------------------
 

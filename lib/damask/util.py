@@ -59,6 +59,24 @@ def emph(what):
   return bcolors.BOLD+srepr(what)+bcolors.ENDC
 
 # -----------------------------
+def execute(cmd,
+            streamIn = None,
+            wd = './'):
+  """executes a command in given directory and returns stdout and stderr for optional stdin"""
+  initialPath = os.getcwd()
+  os.chdir(wd)
+  process = subprocess.Popen(shlex.split(cmd),
+                             stdout = subprocess.PIPE,
+                             stderr = subprocess.PIPE,
+                             stdin  = subprocess.PIPE)
+  out,error = [i.replace("\x08","") for i in (process.communicate() if streamIn is None 
+                                         else process.communicate(streamIn.read()))]
+  os.chdir(initialPath)
+  if process.returncode != 0: raise RuntimeError('{} failed with returncode {}'.format(cmd,process.returncode))
+  return out,error
+
+
+# -----------------------------
 # Matlab like trigonometric functions that take and return angles in degrees.
 # -----------------------------
 for f in ['cos', 'sin', 'tan']:
@@ -75,7 +93,7 @@ def gridLocation(idx,res):
 
 # -----------------------------
 def gridIndex(location,res):
-  return ( location[0] % res[0]                   + \
+  return ( location[0] % res[0]                    + \
          ( location[1] % res[1]) * res[0]          + \
          ( location[2] % res[2]) * res[1] * res[0]   )
 
@@ -104,7 +122,9 @@ class extendableOption(Option):
 class backgroundMessage(threading.Thread):
   """reporting with animation to indicate progress"""
 
-  choices = {'bounce':   ['_','o','O','°','¯','¯','°','O','o',],
+  choices = {'bounce':   ['_',      'o',      'O',      u'\u00B0',
+                          u'\u203e',u'\u203e',u'\u00B0','O','o','_'],
+             'spin':     [u'\u25dc',u'\u25dd',u'\u25de',u'\u25df'],
              'circle':   [u'\u25f4',u'\u25f5',u'\u25f6',u'\u25f7'],
              'hexagon':  [u'\u2b22',u'\u2b23'],
              'square':   [u'\u2596',u'\u2598',u'\u259d',u'\u2597'],
@@ -228,7 +248,7 @@ def leastsqBound(func, x0, args=(), bounds=None, Dfun=None, full_output=0,
     return shape(res), dt
   
   def _int2extGrad(p_int, bounds):
-    """Calculate the gradients of transforming the internal (unconstrained) to external (constained) parameter."""
+    """Calculate the gradients of transforming the internal (unconstrained) to external (constrained) parameter."""
     grad = np.empty_like(p_int)
     for i, (x, bound) in enumerate(zip(p_int, bounds)):
         lower, upper = bound
@@ -430,22 +450,4 @@ def curve_fit_bound(f, xdata, ydata, p0=None, sigma=None, bounds=None, **kw):
     else:
         pcov = np.inf
 
-    if return_full:
-        return popt, pcov, infodict, errmsg, ier
-    else:
-        return popt, pcov
-
-        
-def execute(cmd,streamIn=None,wd='./'):
-  """executes a command in given directory and returns stdout and stderr for optional stdin"""
-  initialPath=os.getcwd()
-  os.chdir(wd)
-  process = subprocess.Popen(shlex.split(cmd),stdout=subprocess.PIPE,stderr = subprocess.PIPE,stdin=subprocess.PIPE)
-  if streamIn is not None:
-    out,error = [i.replace("\x08","") for i in process.communicate(streamIn.read())]
-  else:
-    out,error =[i.replace("\x08","") for i in process.communicate()]
-  os.chdir(initialPath)
-  if process.returncode !=0: raise RuntimeError(cmd+' failed with returncode '+str(process.returncode))
-  return out,error
-
+    return (popt, pcov, infodict, errmsg, ier) if return_full else (popt, pcov)

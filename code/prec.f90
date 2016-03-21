@@ -4,9 +4,9 @@
 !> @author   Christoph Kords, Max-Planck-Institut für Eisenforschung GmbH
 !> @author   Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
 !> @author   Luv Sharma, Max-Planck-Institut für Eisenforschung GmbH
-!> @brief    setting precision for real and int type depending on makros "FLOAT" and "INT"
+!> @brief    setting precision for real and int type
 !> @details  setting precision for real and int type and for DAMASK_NaN. Definition is made 
-!!           depending on makros "FLOAT" and "INT" defined during compilation
+!!           depending on makro "INT" defined during compilation
 !!           for details on NaN see https://software.intel.com/en-us/forums/topic/294680
 !--------------------------------------------------------------------------------------------------
 module prec
@@ -18,18 +18,7 @@ module prec
 
  implicit none
  private 
-#if (FLOAT==4)
-#if defined(Spectral) || defined(FEM)
- SPECTRAL SOLVER AND OWN FEM DO NOT SUPPORT SINGLE PRECISION, STOPPING COMPILATION
-#endif
- integer,     parameter, public :: pReal = 4                                                        !< floating point single precition (was selected_real_kind(6,37), number with 6 significant digits, up to 1e+-37)
-#ifdef __INTEL_COMPILER
- real(pReal), parameter, public :: DAMASK_NaN = Z'7F800001'                                         !< quiet NaN for single precision (from http://www.hpc.unimelb.edu.au/doc/f90lrm/dfum_035.html, copy can be found in documentation/Code/Fortran)
-#endif
-#ifdef __GFORTRAN__
- real(pReal), parameter, public :: DAMASK_NaN = real(Z'7F800001', pReal)                            !< quiet NaN for single precision (from http://www.hpc.unimelb.edu.au/doc/f90lrm/dfum_035.html, copy can be found in documentation/Code/Fortran)
-#endif
-#elif (FLOAT==8)
+#if (FLOAT==8)
  integer,     parameter, public :: pReal = 8                                                        !< floating point double precision (was selected_real_kind(15,300), number with 15 significant digits, up to 1e+-300)
 #ifdef __INTEL_COMPILER
  real(pReal), parameter, public :: DAMASK_NaN = Z'7FF8000000000000'                                 !< quiet NaN for double precision (from http://www.hpc.unimelb.edu.au/doc/f90lrm/dfum_035.html, copy can be found in documentation/Code/Fortran)
@@ -172,9 +161,9 @@ end subroutine prec_init
 
 !--------------------------------------------------------------------------------------------------
 !> @brief figures out if a floating point number is NaN
-! basically just a small wrapper, because gfortran < 4.9 does not have the IEEE module
+! basically just a small wrapper, because gfortran < 5.0 does not have the IEEE module
 !--------------------------------------------------------------------------------------------------
-logical elemental function prec_isNaN(a)
+logical elemental pure function prec_isNaN(a)
 
  implicit none
  real(pReal), intent(in) :: a
@@ -186,5 +175,31 @@ logical elemental function prec_isNaN(a)
  prec_isNaN = IEEE_is_NaN(a)
 #endif
 end function prec_isNaN
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief equality comparison for double precision
+! replaces "==" but for certain (relative) tolerance. Counterpart to dNeq
+! http://www.cygnus-software.com/papers/comparingfloats/comparingfloats.htm
+!--------------------------------------------------------------------------------------------------
+logical elemental pure function dEq(a,b,tol)
+  real(pReal), intent(in) :: a,b
+  real(pReal), intent(in), optional :: tol
+  real(pReal), parameter  :: eps = 2.2204460492503131E-16                                           ! DBL_EPSILON in C
+  dEq = merge(.True., .False.,abs(a-b) <= merge(tol,eps,present(tol))*maxval(abs([a,b])))
+end function dEq
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief inequality comparison for double precision
+! replaces "!=" but for certain (relative) tolerance. Counterpart to dEq
+! http://www.cygnus-software.com/papers/comparingfloats/comparingfloats.htm
+!--------------------------------------------------------------------------------------------------
+logical elemental pure function dNeq(a,b,tol)
+  real(pReal), intent(in)           :: a,b
+  real(pReal), intent(in), optional :: tol
+  real(pReal), parameter  :: eps = 2.2204460492503131E-16                                           ! DBL_EPSILON in C
+  dNeq = merge(.False., .True.,abs(a-b) <= merge(tol,eps,present(tol))*maxval(abs([a,b])))
+end function dNeq
 
 end module prec

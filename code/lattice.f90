@@ -2182,7 +2182,7 @@ pure function lattice_qDisorientation(Q1, Q2, struct)
  real(pReal), dimension(4) ::                  lattice_qDisorientation
  real(pReal), dimension(4), intent(in) :: &
    Q1, &                                                                                            ! 1st orientation
-                                               Q2                                                   ! 2nd orientation
+   Q2                                                                                               ! 2nd orientation
  integer(kind(LATTICE_undefined_ID)), optional, intent(in) :: &                                     ! if given, symmetries between the two orientation will be considered
    struct
 
