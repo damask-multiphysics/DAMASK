@@ -628,13 +628,27 @@ DAMASK_interface.o:            spectral_interface.f90 \
                                prec.o
 	$(PREFIX) $(COMPILERNAME) $(COMPILE) -c $(INTERFACENAME) -o DAMASK_interface.o $(SUFFIX)
 
+ifeq "$(F90)" "gfortran"
 prec.o:                        prec.f90 \
                                system_routines.o
+	$(PREFIX) $(COMPILERNAME) $(COMPILE) -c prec.f90 -fno-range-check -fall-intrinsics -fno-fast-math $(SUFFIX)
+# fno-range-check:  Disable range checking on results of simplification of constant expressions during compilation
+#      -->   allows the definition of DAMASK_NaN
+#-fall-intrinsics:  all intrinsic procedures (including the GNU-specific extensions) are accepted. -Wintrinsics-std will be ignored
+#                   and no user-defined procedure with the same name as any intrinsic will be called except when it is explicitly declared external
+#      -->   allows the use of 'isnan'
+#-fno-fast-math:
+#      -->   otherwise, when setting -ffast-math, isnan always evaluates to false (I would call it a bug)
+else
 
-C_routines.o:               C_routines.c
+prec.o:                        prec.f90 \
+                               system_routines.o
+endif
 
-system_routines.o:          system_routines.f90 \
-                            C_routines.o
+system_routines.o:             system_routines.f90 \
+                               C_routines.o
+
+C_routines.o:                  C_routines.c
 
 
 %.o : %.f90

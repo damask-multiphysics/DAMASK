@@ -233,20 +233,20 @@ character(len=1024) function storeWorkingDirectory(workingDirectoryArg,geometryA
 
 
  pathSep = getPathSep()
- if (len(workingDirectoryArg)>0) then                                                               ! got working directory as input
+ wdGiven: if (len(workingDirectoryArg)>0) then
    if (workingDirectoryArg(1:1) == pathSep) then                                                    ! absolute path given as command line argument
      storeWorkingDirectory = workingDirectoryArg
    else
      error = getCWD2(cwd)                                                                           ! relative path given as command line argument
      storeWorkingDirectory = trim(cwd)//pathSep//workingDirectoryArg
    endif
-   if (storeWorkingDirectory(len(trim(storeWorkingDirectory)):len(trim(storeWorkingDirectory))) &   ! if path seperator is not given, append it
-      /= pathSep) storeWorkingDirectory = trim(storeWorkingDirectory)//pathSep
+   if (storeWorkingDirectory(len(trim(storeWorkingDirectory)):len(trim(storeWorkingDirectory)))/= pathSep) &   
+                                       storeWorkingDirectory = trim(storeWorkingDirectory)//pathSep ! if path seperator is not given, append it
    if(.not. isDirectory(trim(storeWorkingDirectory))) then                                          ! check if the directory exists
      write(6,'(a20,a,a16)') ' working directory "',trim(storeWorkingDirectory),'" does not exist'
      call quit(1_pInt)
    endif
- else                                                                                               ! using path to geometry file as working dir
+ else wdGiven
    if (geometryArg(1:1) == pathSep) then                                                            ! absolute path given as command line argument
      storeWorkingDirectory = geometryArg(1:scan(geometryArg,pathSep,back=.true.))
    else
@@ -254,7 +254,7 @@ character(len=1024) function storeWorkingDirectory(workingDirectoryArg,geometryA
      storeWorkingDirectory = trim(cwd)//pathSep//&
                               geometryArg(1:scan(geometryArg,pathSep,back=.true.))
    endif
- endif
+ endif wdGiven
  storeWorkingDirectory = rectifyPath(storeWorkingDirectory)
 
 end function storeWorkingDirectory
@@ -264,8 +264,6 @@ end function storeWorkingDirectory
 !> @brief simply returns the private string workingDir 
 !--------------------------------------------------------------------------------------------------
 character(len=1024) function getSolverWorkingDirectoryName()
- use system_routines, only: &
-   getCWD2
 
  implicit none
  getSolverWorkingDirectoryName = workingDirectory

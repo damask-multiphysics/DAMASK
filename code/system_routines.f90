@@ -50,11 +50,13 @@ contains
      C_NULL_CHAR
 
    implicit none
-   character(len=1024), intent(out) :: str
+   character(len=*), intent(out) :: str
+   character(len=1024) :: strFixedLength
    integer(C_INT) :: stat
  
    str = repeat(C_NULL_CHAR,1024)
-   call getCurrentWorkDir_C(str,stat)
+   call getCurrentWorkDir_C(strFixedLength,stat)
+   str = strFixedLength(1:scan(strFixedLength,C_NULL_CHAR,.True.)-1)
    getCWD2=merge(.True.,.False.,stat /= 0_C_INT)
 
  end function getCWD2
