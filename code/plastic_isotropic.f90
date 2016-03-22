@@ -55,7 +55,7 @@ module plastic_isotropic
      tausat_SinhFitC, &
      tausat_SinhFitD
   logical :: &
-     dilatation
+     dilatation = .false.
  end type
 
  type(tParameters), dimension(:), allocatable, private :: param                                       !< containers of constitutive parameters (len Ninstance)
