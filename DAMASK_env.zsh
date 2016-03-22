@@ -51,8 +51,10 @@ if [ ! -z "$PS1" ]; then
   [[ "x$SOLVER"       != "x" ]] && echo "Spectral Solver    $SOLVER" 
   [[ "x$PROCESSING"   != "x" ]] && echo "Post Processing    $PROCESSING"
   echo "Multithreading     DAMASK_NUM_THREADS=$DAMASK_NUM_THREADS"
-  [[ "x$PETSC_DIR"   != "x" ]] && echo "PETSc location     $PETSC_DIR" && \
-  [[ `readlink -f $PETSC_DIR` == $PETSC_DIR ]] || echo "               ~~> "`readlink -f $PETSC_DIR`
+  if [ "x$PETSC_DIR"   != "x" ]; then
+    echo "PETSc location     $PETSC_DIR"
+    [[ `readlink -f $PETSC_DIR` == $PETSC_DIR ]] || echo "               ~~> "`readlink -f $PETSC_DIR`
+  fi
   [[ "x$PETSC_ARCH"  != "x" ]] && echo "PETSc architecture $PETSC_ARCH"
   echo "MSC.Marc/Mentat    $MSC_ROOT"
   echo
