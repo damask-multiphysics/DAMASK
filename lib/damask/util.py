@@ -59,6 +59,24 @@ def emph(what):
   return bcolors.BOLD+srepr(what)+bcolors.ENDC
 
 # -----------------------------
+def execute(cmd,
+            streamIn = None,
+            wd = './'):
+  """executes a command in given directory and returns stdout and stderr for optional stdin"""
+  initialPath = os.getcwd()
+  os.chdir(wd)
+  process = subprocess.Popen(shlex.split(cmd),
+                             stdout = subprocess.PIPE,
+                             stderr = subprocess.PIPE,
+                             stdin  = subprocess.PIPE)
+  out,error = [i.replace("\x08","") for i in (process.communicate() if streamIn is None 
+                                         else process.communicate(streamIn.read()))]
+  os.chdir(initialPath)
+  if process.returncode != 0: raise RuntimeError('{} failed with returncode {}'.format(cmd,process.returncode))
+  return out,error
+
+
+# -----------------------------
 # Matlab like trigonometric functions that take and return angles in degrees.
 # -----------------------------
 for f in ['cos', 'sin', 'tan']:
@@ -75,7 +93,7 @@ def gridLocation(idx,res):
 
 # -----------------------------
 def gridIndex(location,res):
-  return ( location[0] % res[0]                   + \
+  return ( location[0] % res[0]                    + \
          ( location[1] % res[1]) * res[0]          + \
          ( location[2] % res[2]) * res[1] * res[0]   )
 
@@ -432,20 +450,4 @@ def curve_fit_bound(f, xdata, ydata, p0=None, sigma=None, bounds=None, **kw):
     else:
         pcov = np.inf
 
-    return popt, pcov, infodict, errmsg, ier if return_full else popt, pcov
-
-        
-def execute(cmd,streamIn = None,wd = './'):
-  """executes a command in given directory and returns stdout and stderr for optional stdin"""
-  initialPath = os.getcwd()
-  os.chdir(wd)
-  process = subprocess.Popen(shlex.split(cmd),
-                             stdout = subprocess.PIPE,
-                             stderr = subprocess.PIPE,
-                             stdin  = subprocess.PIPE)
-  out,error = [i.replace("\x08","") for i in (process.communicate if streamIn is None 
-                                         else process.communicate(streamIn.read()))]
-  os.chdir(initialPath)
-  if process.returncode != 0: raise RuntimeError('{} failed with returncode {}'.format(cmd,process.returncode))
-  return out,error
-
+    return (popt, pcov, infodict, errmsg, ier) if return_full else (popt, pcov)

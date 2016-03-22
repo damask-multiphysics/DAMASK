@@ -540,5 +540,4 @@ class ASCIItable():
       microstructure[i:i+s] = items[:s]
       i += len(items)
 
-    return (microstructure, i == N and not self.data_read() if strict                      # check for proper point count and end of file
-      else  microstructure) 
+    return (microstructure, i == N and not self.data_read()) if strict else microstructure  # check for proper point count and end of file
