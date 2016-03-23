@@ -104,7 +104,7 @@ slipSystems = {
 # --------------------------------------------------------------------
 
 parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
-Add RGB color value corresponding to TSL-OIM scheme for inverse pole figures.
+Add columns listing Schmid factors (and optional trace vector of selected system) for given Euler angles.
 
 """, version = scriptID)
 
@@ -152,7 +152,7 @@ parser.add_option('-q', '--quaternion',
                   type = 'string', metavar = 'string',
                   help = 'quaternion label')
 
-parser.set_defaults(force = [0.0,0.0,1.0],
+parser.set_defaults(force = (0.0,0.0,1.0),
                     normal = None,
                     lattice = latticeChoices[0],
                     CoverA = math.sqrt(8./3.),
