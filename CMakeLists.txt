@@ -210,7 +210,7 @@ if(${CMAKE_Fortran_COMPILER_ID} STREQUAL "Intel")
       set (OPTIMIZATION_FLAG    "-O2")
   endif()
 
-  set (STANDARD_CHECK "-stand f08 -standard-semantics")
+  set (STANDARD_CHECK "-stand f08")
 
   set (COMPILE_FLAGS "${COMPILE_FLAGS} -fpp"                        )
   set (COMPILE_FLAGS "${COMPILE_FLAGS} -ftz"                        )
