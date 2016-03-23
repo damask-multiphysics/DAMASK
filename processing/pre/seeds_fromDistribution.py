@@ -135,8 +135,8 @@ class myThread (threading.Thread):
             bestSeedsUpdate = time.time()                                                           # save time of better fit
             damask.util.croak('Thread %i: Better match (%i bins, %6.4f --> %6.4f)'
                                            %(self.threadID,i+1,target[i]['error'],currentError[i]))
-            damask.util.croak('          target: ',target[i]['histogram'])
-            damask.util.croak('          best:   ',currentHist[i])
+            damask.util.croak('          target: %s'%np.array_str(target[i]['histogram']))
+            damask.util.croak('          best:   %s'%np.array_str(currentHist[i]))
             currentSeedsName = baseFile+'_'+str(bestSeedsUpdate).replace('.','-')                   # name of new seed file (use time as unique identifier)
             perturbedSeedsVFile.reset()
             bestSeedsVFile.close()
