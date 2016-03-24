@@ -116,12 +116,8 @@ module mesh
 #endif
 
 #ifdef Spectral
-#ifdef PETSc
 #include <petsc/finclude/petscsys.h>
  include 'fftw3-mpi.f03'
-#else
- include 'fftw3.f03'
-#endif
 #endif
 
 ! These definitions should actually reside in the FE-solver specific part (different for MARC/ABAQUS)
@@ -413,18 +409,13 @@ module mesh
    mesh_build_ipVolumes, &
    mesh_build_ipCoordinates, &
    mesh_cellCenterCoordinates, &
-   mesh_init_postprocessing, &
    mesh_get_Ncellnodes, &
    mesh_get_unitlength, &
    mesh_get_nodeAtIP
 #ifdef Spectral
  public :: &
    mesh_spectral_getGrid, &
-   mesh_spectral_getSize, &
-   mesh_nodesAroundCentres, &
-   mesh_deformedCoordsFFT, &
-   mesh_volumeMismatch, &
-   mesh_shapeMismatch
+   mesh_spectral_getSize
 #endif
 
  private :: &
@@ -436,8 +427,7 @@ module mesh
    mesh_spectral_build_nodes, &
    mesh_spectral_build_elements, &
    mesh_spectral_build_ipNeighborhood, &
-#endif 
-#ifdef Marc4DAMASK
+#elif defined Marc4DAMASK
    mesh_marc_get_tableStyles, &
    mesh_marc_count_nodesAndElements, &
    mesh_marc_count_elementSets, &
@@ -448,8 +438,7 @@ module mesh
    mesh_marc_build_nodes, &
    mesh_marc_count_cpSizes, &
    mesh_marc_build_elements, &
-#endif 
-#ifdef Abaqus
+#elif defined Abaqus
    mesh_abaqus_count_nodesAndElements, &
    mesh_abaqus_count_elementSets, &
    mesh_abaqus_count_materials, &
@@ -473,11 +462,7 @@ module mesh
    mesh_tell_statistics, &
    FE_mapElemtype, &
    mesh_faceMatch, &
-   mesh_build_FEdata, &
-   mesh_write_cellGeom, &
-   mesh_write_elemGeom, &
-   mesh_write_meshfile, &
-   mesh_read_meshfile
+   mesh_build_FEdata
 
 contains
 
@@ -487,9 +472,7 @@ contains
 !! Order and routines strongly depend on type of solver
 !--------------------------------------------------------------------------------------------------
 subroutine mesh_init(ip,el)
-#ifdef Spectral
  use, intrinsic :: iso_c_binding
-#endif
  use DAMASK_interface
  use, intrinsic :: iso_fortran_env                                                                  ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
  use IO, only: &
@@ -562,25 +545,18 @@ subroutine mesh_init(ip,el)
  myDebug = (iand(debug_level(debug_mesh),debug_levelBasic) /= 0_pInt)
 
 #ifdef Spectral
-#ifdef PETSc
  call fftw_mpi_init()
-#endif
  call IO_open_file(FILEUNIT,geometryFile)                                                           ! parse info from geometry file...
  if (myDebug) write(6,'(a)') ' Opened geometry file'; flush(6)
  grid     = mesh_spectral_getGrid(fileUnit)
  geomSize = mesh_spectral_getSize(fileUnit)
-
-#ifdef PETSc
  gridMPI = int(grid,C_INTPTR_T)
  alloc_local = fftw_mpi_local_size_3d(gridMPI(3), gridMPI(2), gridMPI(1)/2 +1, &
                                       MPI_COMM_WORLD, local_K, local_K_offset)
  grid3       = int(local_K,pInt)
  grid3Offset = int(local_K_offset,pInt)
- 
  size3       = geomSize(3)*real(grid3,pReal)      /real(grid(3),pReal)
  size3Offset = geomSize(3)*real(grid3Offset,pReal)/real(grid(3),pReal)
-#endif
-
  if (myDebug) write(6,'(a)') ' Grid partitioned'; flush(6)
  call mesh_spectral_count()
  if (myDebug) write(6,'(a)') ' Counted nodes/elements'; flush(6)
@@ -592,8 +568,7 @@ subroutine mesh_init(ip,el)
  if (myDebug) write(6,'(a)') ' Built nodes'; flush(6)
  call mesh_spectral_build_elements(FILEUNIT)
  if (myDebug) write(6,'(a)') ' Built elements'; flush(6)
-#endif
-#ifdef Marc4DAMASK
+#elif defined Marc4DAMASK
  call IO_open_inputFile(FILEUNIT,modelName)                                                         ! parse info from input file...
  if (myDebug) write(6,'(a)') ' Opened input file'; flush(6)
  call mesh_marc_get_tableStyles(FILEUNIT)
@@ -616,8 +591,7 @@ subroutine mesh_init(ip,el)
  if (myDebug) write(6,'(a)') ' Counted CP sizes'; flush(6)
  call mesh_marc_build_elements(FILEUNIT)
  if (myDebug) write(6,'(a)') ' Built elements'; flush(6)
-#endif
-#ifdef Abaqus
+#elif defined Abaqus
  call IO_open_inputFile(FILEUNIT,modelName)                                                         ! parse info from input file...
  if (myDebug) write(6,'(a)') ' Opened input file'; flush(6)
  noPart = IO_abaqus_hasNoPart(FILEUNIT)
@@ -672,9 +646,6 @@ subroutine mesh_init(ip,el)
 
  if (worldrank == 0_pInt) then
    call mesh_tell_statistics
-   call mesh_write_meshfile
-   call mesh_write_cellGeom
-   call mesh_write_elemGeom
  endif
 
  if (usePingPong .and. (mesh_Nelems /= mesh_NcpElems)) &
@@ -4509,228 +4480,6 @@ subroutine mesh_build_FEdata
 
 
 end subroutine mesh_build_FEdata
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief writes out initial cell geometry
-!--------------------------------------------------------------------------------------------------
-subroutine mesh_write_cellGeom
- use DAMASK_interface, only: &
-   getSolverJobName, &
-   getSolverWorkingDirectoryName
- use IR_Precision, only: &
-   I4P
- use Lib_VTK_IO, only: &
-   VTK_ini, &
-   VTK_geo, &
-   VTK_con, &
-   VTK_end 
-#ifdef HDF
- use IO, only: &
-   HDF5_mappingCells 
-#endif
- implicit none
- integer(I4P), dimension(1:mesh_Ncells)                                :: celltype
- integer(I4P), dimension(mesh_Ncells*(1_pInt+FE_maxNcellnodesPerCell)) :: cellconnection
-#ifdef HDF
- integer(pInt), dimension(mesh_Ncells*FE_maxNcellnodesPerCell) :: cellconnectionHDF5
- integer(pInt) :: j2=0_pInt
-#endif
- integer(I4P):: error
- integer(I4P):: g, c, e, CellID, i, j
-
- cellID = 0_pInt
- j = 0_pInt
- do e = 1_pInt, mesh_NcpElems                                                                      ! loop over cpElems
-   g = FE_geomtype(mesh_element(2_pInt,e))                                                         ! get geometry type
-   c = FE_celltype(g)                                                                              ! get cell type
-   do i = 1_pInt,FE_Nips(g)                                                                        ! loop over ips=cells in this element
-     cellID = cellID + 1_pInt
-     celltype(cellID) = MESH_VTKCELLTYPE(c)
-     cellconnection(j+1_pInt:j+FE_NcellnodesPerCell(c)+1_pInt) &
-       = [FE_NcellnodesPerCell(c),mesh_cell(1:FE_NcellnodesPerCell(c),i,e)-1_pInt]                 ! number of cellnodes per cell & list of global cellnode IDs belnging to this cell (cellnode counting starts at 0)
-     j = j + FE_NcellnodesPerCell(c) + 1_pInt
-#ifdef HDF
-     cellconnectionHDF5(j2+1_pInt:j2+FE_NcellnodesPerCell(c)) &
-       = mesh_cell(1:FE_NcellnodesPerCell(c),i,e)-1_pInt
-  j2=j2 + FE_ncellnodesPerCell(c)
-#endif
-   enddo
- enddo
-#ifdef HDF
- call HDF5_mappingCells(cellconnectionHDF5(1:j2))
-#endif
-
- error=VTK_ini(output_format = 'ASCII', &
-       title=trim(getSolverJobName())//' cell mesh', &
-       filename = trim(getSolverWorkingDirectoryName())//trim(getSolverJobName())//'_ipbased.vtk', &
-       mesh_topology = 'UNSTRUCTURED_GRID')
- !ToDo: check error here
- error=VTK_geo(NN = int(mesh_Ncellnodes,I4P), &
-       X = mesh_cellnode(1,1:mesh_Ncellnodes), &
-       Y = mesh_cellnode(2,1:mesh_Ncellnodes), &
-       Z = mesh_cellnode(3,1:mesh_Ncellnodes))
- !ToDo: check error here
- error=VTK_con(NC = int(mesh_Ncells,I4P), &
-       connect = cellconnection(1:j), &
- !ToDo: check error here
-       cell_type = celltype)
- error=VTK_end()
- !ToDo: check error here
-
-end subroutine mesh_write_cellGeom
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief writes out initial element geometry
-!--------------------------------------------------------------------------------------------------
-subroutine mesh_write_elemGeom
- use DAMASK_interface, only: &
-   getSolverJobName, &
-   getSolverWorkingDirectoryName
- use IR_Precision, only: &
-   I4P
- use Lib_VTK_IO, only: &
-   VTK_ini, &
-   VTK_geo, &
-   VTK_con, &
-   VTK_end 
- 
- implicit none
- integer(I4P), dimension(1:mesh_NcpElems)                     :: elemtype 
- integer(I4P), dimension(mesh_NcpElems*(1_pInt+FE_maxNnodes)) :: elementconnection
- integer(I4P):: error
- integer(pInt):: e, t, n, i
-
- i = 0_pInt
- do e = 1_pInt, mesh_NcpElems                                                                      ! loop over cpElems
-   t = mesh_element(2,e)                                                                           ! get element type
-   elemtype(e) = MESH_VTKELEMTYPE(t)
-   elementconnection(i+1_pInt) = FE_Nnodes(t)                                                      ! number of nodes per element 
-   do n = 1_pInt,FE_Nnodes(t)
-     elementconnection(i+1_pInt+n) = mesh_element(4_pInt+n,e) - 1_pInt                             ! global node ID of node that belongs to this element (node counting starts at 0)
-   enddo
-   i = i + 1_pInt + FE_Nnodes(t)
- enddo
-
- error=VTK_ini(output_format = 'ASCII', &
-       title=trim(getSolverJobName())//' element mesh', &
-       filename = trim(getSolverWorkingDirectoryName())//trim(getSolverJobName())//'_nodebased.vtk', &
-       mesh_topology = 'UNSTRUCTURED_GRID')
- !ToDo: check error here
- error=VTK_geo(NN = int(mesh_Nnodes,I4P), &
-       X = mesh_node0(1,1:mesh_Nnodes), &
-       Y = mesh_node0(2,1:mesh_Nnodes), &
-       Z = mesh_node0(3,1:mesh_Nnodes))
- !ToDo: check error here
- error=VTK_con(NC = int(mesh_Nelems,I4P), &
-       connect = elementconnection(1:i), &
-       cell_type = elemtype)
- !ToDo: check error here
- error =VTK_end()
- !ToDo: check error here
-
-end subroutine mesh_write_elemGeom
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief writes description file for mesh
-!--------------------------------------------------------------------------------------------------
-subroutine mesh_write_meshfile
- use IO, only: &
-   IO_write_jobFile
-
- implicit none
- integer(pInt), parameter :: fileUnit = 223_pInt
- integer(pInt) :: e,i,t,g,c,n
-
- call IO_write_jobFile(fileUnit,'mesh') 
- write(fileUnit,'(A16,E10.3)') 'unitlength', mesh_unitlength
- write(fileUnit,'(A16,I10)') 'maxNcellnodes', mesh_maxNcellnodes
- write(fileUnit,'(A16,I10)') 'maxNips', mesh_maxNips
- write(fileUnit,'(A16,I10)') 'maxNnodes', mesh_maxNnodes
- write(fileUnit,'(A16,I10)') 'Nnodes', mesh_Nnodes
- write(fileUnit,'(A16,I10)') 'NcpElems', mesh_NcpElems
- do e = 1_pInt,mesh_NcpElems
-   t = mesh_element(2,e)
-   write(fileUnit,'(20(I10))') mesh_element(1_pInt:4_pInt+FE_Nnodes(t),e)
- enddo
- write(fileUnit,'(A16,I10)') 'Ncellnodes', mesh_Ncellnodes
- do n = 1_pInt,mesh_Ncellnodes
-   write(fileUnit,'(2(I10))') mesh_cellnodeParent(1:2,n)
- enddo
- write(fileUnit,'(A16,I10)') 'Ncells', mesh_Ncells
- do e = 1_pInt,mesh_NcpElems
-   t = mesh_element(2,e)
-   g = FE_geomtype(t)
-   c = FE_celltype(g)
-   do i = 1_pInt,FE_Nips(g)
-     write(fileUnit,'(8(I10))') &
-       mesh_cell(1_pInt:FE_NcellnodesPerCell(c),i,e)
-   enddo
- enddo
- close(fileUnit)
-
-end subroutine mesh_write_meshfile
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief reads mesh description file
-!--------------------------------------------------------------------------------------------------
-integer function mesh_read_meshfile(filepath)
-
- implicit none
- character(len=*), intent(in) :: filepath
- integer(pInt), parameter :: fileUnit = 223_pInt
- integer(pInt) :: e,i,t,g,n
-
- open(fileUnit,status='old',err=100,iostat=mesh_read_meshfile,action='read',file=filepath)
- read(fileUnit,'(TR16,E10.3)',err=100,iostat=mesh_read_meshfile) mesh_unitlength
- read(fileUnit,'(TR16,I10)',err=100,iostat=mesh_read_meshfile) mesh_maxNcellnodes
- read(fileUnit,'(TR16,I10)',err=100,iostat=mesh_read_meshfile) mesh_maxNips
- read(fileUnit,'(TR16,I10)',err=100,iostat=mesh_read_meshfile) mesh_maxNnodes
- read(fileUnit,'(TR16,I10)',err=100,iostat=mesh_read_meshfile) mesh_Nnodes
- read(fileUnit,'(TR16,I10)',err=100,iostat=mesh_read_meshfile) mesh_NcpElems
- if (.not. allocated(mesh_element)) allocate(mesh_element(4_pInt+mesh_maxNnodes,mesh_NcpElems))
- mesh_element = 0_pInt
- do e = 1_pInt,mesh_NcpElems
-   read(fileUnit,'(20(I10))',err=100,iostat=mesh_read_meshfile) &
-     mesh_element(:,e)
- enddo
- read(fileUnit,'(TR16,I10)',err=100,iostat=mesh_read_meshfile) mesh_Ncellnodes
- if (.not. allocated(mesh_cellnodeParent)) allocate(mesh_cellnodeParent(2_pInt,mesh_Ncellnodes))
- do n = 1_pInt,mesh_Ncellnodes
-   read(fileUnit,'(2(I10))',err=100,iostat=mesh_read_meshfile) mesh_cellnodeParent(1:2,n)
- enddo
- read(fileUnit,'(TR16,I10)',err=100,iostat=mesh_read_meshfile) mesh_Ncells
- if (.not. allocated(mesh_cell)) allocate(mesh_cell(FE_maxNcellnodesPerCell,mesh_maxNips,mesh_NcpElems))
- do e = 1_pInt,mesh_NcpElems
-   t = mesh_element(2,e)
-   g = FE_geomtype(t)
-   do i = 1_pInt,FE_Nips(g)
-     read(fileUnit,'(8(I10))',err=100,iostat=mesh_read_meshfile) mesh_cell(:,i,e)
-   enddo
- enddo
- close(fileUnit)
-
- mesh_read_meshfile = 0                                                                             ! successfully read data
-
-100 continue 
-end function mesh_read_meshfile
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief initializes mesh data for use in post processing
-!--------------------------------------------------------------------------------------------------
-integer function mesh_init_postprocessing(filepath)
-
- implicit none
- character(len=*), intent(in) :: filepath
-
- call mesh_build_FEdata
- mesh_init_postprocessing = mesh_read_meshfile(filepath)
-
-end function mesh_init_postprocessing
 
 
 !--------------------------------------------------------------------------------------------------

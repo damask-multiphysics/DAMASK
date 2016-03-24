@@ -350,7 +350,7 @@ DAMASK_spectral.o: INTERFACENAME   := spectral_interface.f90
 SPECTRAL_SOLVER_FILES = spectral_mech_AL.o spectral_mech_Basic.o spectral_mech_Polarisation.o \
                         spectral_thermal.o spectral_damage.o
 
-SPECTRAL_FILES = prec.o DAMASK_interface.o IO.o libs.o numerics.o debug.o math.o \
+SPECTRAL_FILES = prec.o DAMASK_interface.o IO.o numerics.o debug.o math.o \
                  FEsolving.o mesh.o material.o lattice.o \
                  $(SOURCE_FILES) $(KINEMATICS_FILES) $(PLASTIC_FILES) constitutive.o \
                  crystallite.o \
@@ -400,7 +400,7 @@ DAMASK_FEM.exe: INCLUDE_DIRS    += -I./
 
 FEM_SOLVER_FILES = FEM_mech.o FEM_thermal.o FEM_damage.o FEM_vacancyflux.o FEM_porosity.o FEM_hydrogenflux.o
 
-FEM_FILES      = prec.o DAMASK_interface.o FEZoo.o IO.o libs.o numerics.o debug.o math.o \
+FEM_FILES      = prec.o DAMASK_interface.o FEZoo.o IO.o numerics.o debug.o math.o \
                  FEsolving.o mesh.o material.o lattice.o \
                  $(SOURCE_FILES) $(KINEMATICS_FILES) $(PLASTIC_FILES) constitutive.o \
                  crystallite.o \
@@ -614,9 +614,6 @@ debug.o:                       debug.f90 \
                                numerics.o
 
 numerics.o:                    numerics.f90 \
-                               libs.o
-
-libs.o:                        libs.f90 \
                                IO.o
 
 IO.o:                          IO.f90 \
