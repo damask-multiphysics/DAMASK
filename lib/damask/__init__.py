@@ -10,12 +10,11 @@ from .environment import Environment      # noqa
 from .asciitable  import ASCIItable       # noqa
 from .config      import Material         # noqa
 from .colormaps   import Colormap, Color  # noqa
-from .orientation import Quaternion, Rodrigues, Symmetry, Orientation # noqa
-# try:
-#     from .corientation import Quaternion, Rodrigues, Symmetry, Orientation
-#     print "Import Cython version of Orientation module"
-# except:
-#     from .orientation import Quaternion, Rodrigues, Symmetry, Orientation
+try:
+  from .corientation import Quaternion, Rodrigues, Symmetry, Orientation
+  print "Import Cython version of Orientation module"
+except:
+  from .orientation import Quaternion, Rodrigues, Symmetry, Orientation
 #from .block       import Block           # only one class
 from .result      import Result           # noqa
 from .geometry    import Geometry         # noqa
