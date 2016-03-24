@@ -451,3 +451,93 @@ def curve_fit_bound(f, xdata, ydata, p0=None, sigma=None, bounds=None, **kw):
         pcov = np.inf
 
     return (popt, pcov, infodict, errmsg, ier) if return_full else (popt, pcov)
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief builds mesh of (distorted) cubes for given coordinates (= center of the cubes)
+!--------------------------------------------------------------------------------------------------
+function mesh_nodesAroundCentres(gDim,Favg,centres) result(nodes)
+ use debug, only: &
+   debug_mesh, &
+   debug_level, &
+   debug_levelBasic
+ use math, only: &
+   math_mul33x3
+ 
+ implicit none
+ real(pReal), intent(in), dimension(:,:,:,:) :: &
+   centres
+ real(pReal),             dimension(3,size(centres,2)+1,size(centres,3)+1,size(centres,4)+1) :: &
+   nodes
+ real(pReal), intent(in), dimension(3) :: &
+   gDim
+ real(pReal), intent(in), dimension(3,3) :: &
+   Favg
+ real(pReal),             dimension(3,size(centres,2)+2,size(centres,3)+2,size(centres,4)+2) :: &
+   wrappedCentres
+
+ integer(pInt) :: &
+   i,j,k,n
+ integer(pInt),           dimension(3), parameter :: &
+   diag = 1_pInt
+ integer(pInt),           dimension(3) :: &
+   shift = 0_pInt, &
+   lookup = 0_pInt, &
+   me = 0_pInt, &
+   iRes = 0_pInt
+ integer(pInt),           dimension(3,8) :: &
+   neighbor = reshape([ &
+                       0_pInt, 0_pInt, 0_pInt, &
+                       1_pInt, 0_pInt, 0_pInt, &
+                       1_pInt, 1_pInt, 0_pInt, &
+                       0_pInt, 1_pInt, 0_pInt, &
+                       0_pInt, 0_pInt, 1_pInt, &
+                       1_pInt, 0_pInt, 1_pInt, &
+                       1_pInt, 1_pInt, 1_pInt, &
+                       0_pInt, 1_pInt, 1_pInt  ], [3,8])
+
+!--------------------------------------------------------------------------------------------------
+! initializing variables
+ iRes =  [size(centres,2),size(centres,3),size(centres,4)]
+ nodes = 0.0_pReal
+ wrappedCentres = 0.0_pReal
+ 
+!--------------------------------------------------------------------------------------------------
+! report
+ if (iand(debug_level(debug_mesh),debug_levelBasic) /= 0_pInt) then
+   write(6,'(a)')          ' Meshing cubes around centroids'
+   write(6,'(a,3(e12.5))') ' Dimension: ', gDim
+   write(6,'(a,3(i5))')    ' Resolution:', iRes
+ endif
+
+!--------------------------------------------------------------------------------------------------
+! building wrappedCentres = centroids + ghosts
+ wrappedCentres(1:3,2_pInt:iRes(1)+1_pInt,2_pInt:iRes(2)+1_pInt,2_pInt:iRes(3)+1_pInt) = centres
+ do k = 0_pInt,iRes(3)+1_pInt
+   do j = 0_pInt,iRes(2)+1_pInt
+     do i = 0_pInt,iRes(1)+1_pInt
+       if (k==0_pInt .or. k==iRes(3)+1_pInt .or. &                                                  ! z skin
+           j==0_pInt .or. j==iRes(2)+1_pInt .or. &                                                  ! y skin
+           i==0_pInt .or. i==iRes(1)+1_pInt      ) then                                             ! x skin
+         me = [i,j,k]                                                                               ! me on skin
+         shift = sign(abs(iRes+diag-2_pInt*me)/(iRes+diag),iRes+diag-2_pInt*me)
+         lookup = me-diag+shift*iRes
+         wrappedCentres(1:3,i+1_pInt,        j+1_pInt,        k+1_pInt) = &
+                centres(1:3,lookup(1)+1_pInt,lookup(2)+1_pInt,lookup(3)+1_pInt) - &
+                                                           math_mul33x3(Favg, shift*gDim)
+       endif
+ enddo; enddo; enddo
+ 
+!--------------------------------------------------------------------------------------------------
+! averaging
+ do k = 0_pInt,iRes(3); do j = 0_pInt,iRes(2); do i = 0_pInt,iRes(1)
+   do n = 1_pInt,8_pInt
+    nodes(1:3,i+1_pInt,j+1_pInt,k+1_pInt) = &
+    nodes(1:3,i+1_pInt,j+1_pInt,k+1_pInt) + wrappedCentres(1:3,i+1_pInt+neighbor(1,n), &
+                                                               j+1_pInt+neighbor(2,n), &
+                                                               k+1_pInt+neighbor(3,n) )
+   enddo
+ enddo; enddo; enddo
+ nodes = nodes/8.0_pReal
+
+end function mesh_nodesAroundCentres
