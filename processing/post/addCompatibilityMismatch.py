@@ -10,7 +10,7 @@ scriptName = os.path.splitext(os.path.basename(__file__))[0]
 scriptID   = ' '.join([scriptName,damask.version])
 
 
-def volTetrahedron(vertices=None, sides=None):
+def volTetrahedron(coords):
   """
   Return the volume of the tetrahedron with given vertices or sides. If
   vertices are given they must be in a NumPy array with shape (4,3): the
@@ -38,6 +38,7 @@ def volTetrahedron(vertices=None, sides=None):
 
   # Get all the squares of all side lengths from the differences between
   # the 6 different pairs of vertex positions
+  vertices =  np.concatenate((coords[0],coords[1],coords[2],coords[3])).reshape([4,3])
   vertex1, vertex2 = vertex_pair_indexes[:,0], vertex_pair_indexes[:,1]
   sides_squared = np.sum((vertices[vertex1] - vertices[vertex2])**2,axis=-1)
 
@@ -53,105 +54,83 @@ def volTetrahedron(vertices=None, sides=None):
   # The matrix is symmetric, so we can fill in the lower triangle by
   # adding the transpose
   M = M + M.T
-  return np.sqrt(det / 288)
+  return np.sqrt(np.linalg.det(M) / 288)
 
 
-def mesh_volumeMismatch(size,F,nodes):
+def volumeMismatch(size,F,nodes):
   """
   calculates the mismatch between volume of reconstructed (compatible) cube and 
   determinant of defgrad at the FP
   """
- real(pReal),   intent(in), dimension(:,:,:,:,:) :: &
-   F
- real(pReal),               dimension(size(F,3),size(F,4),size(F,5)) :: &
-   vMismatch
- real(pReal),   intent(in), dimension(:,:,:,:)   :: &
-   nodes
- real(pReal),   dimension(3,8) ::  coords
 
- volInitial = size.prod()/grid.prod()
+  coords = np.empty([8,3])
+  vMismatch = np.empty(grid)
+  volInitial = size.prod()/grid.prod()
  
 #--------------------------------------------------------------------------------------------------
 # calculate actual volume and volume resulting from deformation gradient
- for k in xrange(grid[2]):
-   for j in xrange(grid[1]):
-     for i in xrange(grid[0]):
-       coords(0:3,0) = nodes[0:3,i,  j,  k  ]
-       coords(0:3,1) = nodes[0:3,i+1,j,  k  ]
-       coords(0:3,2) = nodes[0:3,i+1,j+1,k  ]
-       coords(0:3,3) = nodes[0:3,i,  j+1,k  ]
-       coords(0:3,4) = nodes[0:3,i,  j,  k+1]
-       coords(0:3,5) = nodes[0:3,i+1,j,  k+1]
-       coords(0:3,6) = nodes[0:3,i+1,j+1,k+1]
-       coords(0:3,7) = nodes[0:3,i,  j+1,k+1]
-       vMismatch[i,j,k] = &
-           abs(volTetrahedron(coords[0:3,6],coords[0:3,0],coords[0:3,7],coords[0:3,3])) &
-         + abs(volTetrahedron(coords[0:3,6],coords[0:3,0],coords[0:3,7],coords[0:3,4])) &
-         + abs(volTetrahedron(coords[0:3,6],coords[0:3,0],coords[0:3,2],coords[0:3,3])) &
-         + abs(volTetrahedron(coords[0:3,6],coords[0:3,0],coords[0:3,2],coords[0:3,1])) &
-         + abs(volTetrahedron(coords[0:3,6],coords[0:3,4],coords[0:3,1],coords[0:3,5])) &
-         + abs(volTetrahedron(coords[0:3,6],coords[0:3,4],coords[0:3,1],coords[0:3,0]))
-       vMismatch[i,j,k] = vMismatch[i,j,k]/math_det33(F(1:3,1:3,i,j,k))
- enddo; enddo; enddo
+  for k in xrange(grid[2]):
+    for j in xrange(grid[1]):
+      for i in xrange(grid[0]):
+        coords[0,0:3] = nodes[0:3,i,  j,  k  ]
+        coords[1,0:3] = nodes[0:3,i+1,j,  k  ]
+        coords[2,0:3] = nodes[0:3,i+1,j+1,k  ]
+        coords[3,0:3] = nodes[0:3,i,  j+1,k  ]
+        coords[4,0:3] = nodes[0:3,i,  j,  k+1]
+        coords[5,0:3] = nodes[0:3,i+1,j,  k+1]
+        coords[6,0:3] = nodes[0:3,i+1,j+1,k+1]
+        coords[7,0:3] = nodes[0:3,i,  j+1,k+1]
+        vMismatch[i,j,k] = \
+           abs(volTetrahedron([coords[6,0:3],coords[0,0:3],coords[7,0:3],coords[3,0:3]])) \
+         + abs(volTetrahedron([coords[6,0:3],coords[0,0:3],coords[7,0:3],coords[4,0:3]])) \
+         + abs(volTetrahedron([coords[6,0:3],coords[0,0:3],coords[2,0:3],coords[3,0:3]])) \
+         + abs(volTetrahedron([coords[6,0:3],coords[0,0:3],coords[2,0:3],coords[1,0:3]])) \
+         + abs(volTetrahedron([coords[6,0:3],coords[4,0:3],coords[1,0:3],coords[5,0:3]])) \
+         + abs(volTetrahedron([coords[6,0:3],coords[4,0:3],coords[1,0:3],coords[0,0:3]]))
+        vMismatch[i,j,k] = vMismatch[i,j,k]/np.linalg.det(F[0:3,0:3,i,j,k])
 
- return vMismatch/volInitial
-
+  return vMismatch/volInitial
 
 
-def mesh_shapeMismatch(gDim,F,nodes,centres):
+
+def shapeMismatch(size,F,nodes,centres):
   """
   Routine to calculate the mismatch between the vectors from the central point to
   the corners of reconstructed (combatible) volume element and the vectors calculated by deforming
   the initial volume element with the  current deformation gradient
   """
 
- implicit none
- real(pReal),   intent(in), dimension(:,:,:,:,:) :: &
-   F
- real(pReal),               dimension(size(F,3),size(F,4),size(F,5)) :: &
-   sMismatch
- real(pReal),   intent(in), dimension(:,:,:,:)   :: &
-   nodes, &
-   centres
- real(pReal), dimension(3,8) :: coordsInitial
- integer(pInt) i,j,k
+  coordsInitial = np.empty([8,3])
+  sMismatch    = np.empty(grid)
    
-!--------------------------------------------------------------------------------------------------
-! initial positions
- coordsInitial(1:3,1) = [-gDim(1)/fRes(1),-gDim(2)/fRes(2),-gDim(3)/fRes(3)]
- coordsInitial(1:3,2) = [+gDim(1)/fRes(1),-gDim(2)/fRes(2),-gDim(3)/fRes(3)]
- coordsInitial(1:3,3) = [+gDim(1)/fRes(1),+gDim(2)/fRes(2),-gDim(3)/fRes(3)]
- coordsInitial(1:3,4) = [-gDim(1)/fRes(1),+gDim(2)/fRes(2),-gDim(3)/fRes(3)]
- coordsInitial(1:3,5) = [-gDim(1)/fRes(1),-gDim(2)/fRes(2),+gDim(3)/fRes(3)]
- coordsInitial(1:3,6) = [+gDim(1)/fRes(1),-gDim(2)/fRes(2),+gDim(3)/fRes(3)]
- coordsInitial(1:3,7) = [+gDim(1)/fRes(1),+gDim(2)/fRes(2),+gDim(3)/fRes(3)]
- coordsInitial(1:3,8) = [-gDim(1)/fRes(1),+gDim(2)/fRes(2),+gDim(3)/fRes(3)]
- coordsInitial = coordsInitial/2.0_pReal
+#--------------------------------------------------------------------------------------------------
+# initial positions
+  coordsInitial[0,0:3] = [-size[0]/grid[0],-size[1]/grid[1],-size[2]/grid[2]]
+  coordsInitial[1,0:3] = [+size[0]/grid[0],-size[1]/grid[1],-size[2]/grid[2]]
+  coordsInitial[2,0:3] = [+size[0]/grid[0],+size[1]/grid[1],-size[2]/grid[2]]
+  coordsInitial[3,0:3] = [-size[0]/grid[0],+size[1]/grid[1],-size[2]/grid[2]]
+  coordsInitial[4,0:3] = [-size[0]/grid[0],-size[1]/grid[1],+size[2]/grid[2]]
+  coordsInitial[5,0:3] = [+size[0]/grid[0],-size[1]/grid[1],+size[2]/grid[2]]
+  coordsInitial[6,0:3] = [+size[0]/grid[0],+size[1]/grid[1],+size[2]/grid[2]]
+  coordsInitial[7,0:3] = [-size[0]/grid[0],+size[1]/grid[1],+size[2]/grid[2]]
+  coordsInitial = coordsInitial/2.0
  
-!--------------------------------------------------------------------------------------------------
-! compare deformed original and deformed positions to actual positions
- do k = 1_pInt,iRes(3)
-   do j = 1_pInt,iRes(2)
-     do i = 1_pInt,iRes(1)
-       sMismatch(i,j,k) = &
-           sqrt(sum((nodes(1:3,i,       j,       k        ) - centres(1:3,i,j,k)&
-                    - math_mul33x3(F(1:3,1:3,i,j,k), coordsInitial(1:3,1)))**2.0_pReal))&
-         + sqrt(sum((nodes(1:3,i+1_pInt,j,       k        ) - centres(1:3,i,j,k)&
-                    - math_mul33x3(F(1:3,1:3,i,j,k), coordsInitial(1:3,2)))**2.0_pReal))&
-         + sqrt(sum((nodes(1:3,i+1_pInt,j+1_pInt,k        ) - centres(1:3,i,j,k)&
-                    - math_mul33x3(F(1:3,1:3,i,j,k), coordsInitial(1:3,3)))**2.0_pReal))&
-         + sqrt(sum((nodes(1:3,i,       j+1_pInt,k        ) - centres(1:3,i,j,k)&
-                    - math_mul33x3(F(1:3,1:3,i,j,k), coordsInitial(1:3,4)))**2.0_pReal))&
-         + sqrt(sum((nodes(1:3,i,       j,       k+1_pInt) - centres(1:3,i,j,k)&
-                    - math_mul33x3(F(1:3,1:3,i,j,k), coordsInitial(1:3,5)))**2.0_pReal))&
-         + sqrt(sum((nodes(1:3,i+1_pInt,j,       k+1_pInt) - centres(1:3,i,j,k)&
-                    - math_mul33x3(F(1:3,1:3,i,j,k), coordsInitial(1:3,6)))**2.0_pReal))&
-         + sqrt(sum((nodes(1:3,i+1_pInt,j+1_pInt,k+1_pInt) - centres(1:3,i,j,k)&
-                    - math_mul33x3(F(1:3,1:3,i,j,k), coordsInitial(1:3,7)))**2.0_pReal))&
-         + sqrt(sum((nodes(1:3,i,       j+1_pInt,k+1_pInt) - centres(1:3,i,j,k)&
-                    - math_mul33x3(F(1:3,1:3,i,j,k), coordsInitial(1:3,8)))**2.0_pReal))
- enddo; enddo; enddo
- return sMismatch
+#--------------------------------------------------------------------------------------------------
+# compare deformed original and deformed positions to actual positions
+  for k in xrange(grid[2]):
+    for j in xrange(grid[1]):
+      for i in xrange(grid[0]):
+       sMismatch[i,j,k] = \
+           np.linalg.norm(nodes[0:3,i,  j,    k] - centres[0:3,i,j,k] - np.dot(F[:,:,i,j,k], coordsInitial[0,0:3]))\
+         + np.linalg.norm(nodes[0:3,i+1,j,    k] - centres[0:3,i,j,k] - np.dot(F[:,:,i,j,k], coordsInitial[1,0:3]))\
+         + np.linalg.norm(nodes[0:3,i+1,j+1,k  ] - centres[0:3,i,j,k] - np.dot(F[:,:,i,j,k], coordsInitial[2,0:3]))\
+         + np.linalg.norm(nodes[0:3,i,  j+1,k  ] - centres[0:3,i,j,k] - np.dot(F[:,:,i,j,k], coordsInitial[3,0:3]))\
+         + np.linalg.norm(nodes[0:3,i,  j,  k+1] - centres[0:3,i,j,k] - np.dot(F[:,:,i,j,k], coordsInitial[4,0:3]))\
+         + np.linalg.norm(nodes[0:3,i+1,j,  k+1] - centres[0:3,i,j,k] - np.dot(F[:,:,i,j,k], coordsInitial[5,0:3]))\
+         + np.linalg.norm(nodes[0:3,i+1,j+1,k+1] - centres[0:3,i,j,k] - np.dot(F[:,:,i,j,k], coordsInitial[6,0:3]))\
+         + np.linalg.norm(nodes[0:3,i,  j+1,k+1] - centres[0:3,i,j,k] - np.dot(F[:,:,i,j,k], coordsInitial[7,0:3]))
+  return sMismatch
+
 
 # --------------------------------------------------------------------
 #                                MAIN
@@ -260,12 +239,12 @@ for name in filenames:
     (x,y,z) = damask.util.gridLocation(idx,grid)                                                     # figure out (x,y,z) position from line count
     idx += 1
     F[0:3,0:3,x,y,z] = np.array(map(float,table.data[column:column+9]),'d').reshape(3,3)
-
+  Favg = damask.core.math.tensorAvg(F)
   centres = damask.core.mesh.deformedCoordsFFT(size,F,Favg,[1.0,1.0,1.0])
   
   nodes   = damask.core.mesh.nodesAroundCentres(size,Favg,centres)
-  if options.shape:   shapeMismatch = damask.core.mesh.shapeMismatch( size,F,nodes,centres)
-  if options.volume: volumeMismatch = damask.core.mesh.volumeMismatch(size,F,nodes)
+  if options.shape:   shapeMismatch = shapeMismatch( size,F,nodes,centres)
+  if options.volume: volumeMismatch = volumeMismatch(size,F,nodes)
 
 # ------------------------------------------ process data ------------------------------------------
   table.data_rewind()
