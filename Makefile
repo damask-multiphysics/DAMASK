@@ -25,7 +25,6 @@ processing:
 		rm -rv build; \
 		rm *.c; \
 	fi
-	@./installation/compile_CoreModule.py ${MAKEFLAGS}
 
 .PHONY: tidy
 tidy:
