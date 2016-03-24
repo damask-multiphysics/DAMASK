@@ -59,8 +59,6 @@ program DAMASK_spectral
    materialpoint_sizeResults, &
    materialpoint_results, &
    materialpoint_postResults
-
-
  use material, only: &
    thermal_type, &
    damage_type, &
@@ -439,14 +437,14 @@ program DAMASK_spectral
 
  if (.not. appendToOutFile) then                                                                    ! if not restarting, write 0th increment
    do i=1, size(materialpoint_results,3)/(maxByteOut/(materialpoint_sizeResults*pReal))+1           ! slice the output of my process in chunks not exceeding the limit for one output
-     outputIndex=[(i-1)*((maxByteOut/pReal)/materialpoint_sizeResults)+1, &
-                  min(i*((maxByteOut/pReal)/materialpoint_sizeResults),size(materialpoint_results,3))]
+     outputIndex=int([(i-1_pInt)*((maxByteOut/pReal)/materialpoint_sizeResults)+1_pInt, &
+                      min(i*((maxByteOut/pReal)/materialpoint_sizeResults),size(materialpoint_results,3))],pLongInt)
      call MPI_file_write(resUnit,reshape(materialpoint_results(:,:,outputIndex(1):outputIndex(2)),&
                                    [(outputIndex(2)-outputIndex(1)+1)*materialpoint_sizeResults]), &
                          (outputIndex(2)-outputIndex(1)+1)*materialpoint_sizeResults,&
                          MPI_DOUBLE, MPI_STATUS_IGNORE, ierr)
-     fileOffset = fileOffset + sum(outputSize)                                                      ! forward to current file position
    enddo
+   fileOffset = fileOffset + sum(outputSize)                                                        ! forward to current file position
    if (worldrank == 0) &
      write(6,'(1/,a)') ' ... writing initial configuration to file ........................'
  endif
@@ -646,14 +644,14 @@ program DAMASK_spectral
          call materialpoint_postResults()
          call MPI_file_seek (resUnit,fileOffset,MPI_SEEK_SET,ierr)
          do i=1, size(materialpoint_results,3)/(maxByteOut/(materialpoint_sizeResults*pReal))+1     ! slice the output of my process in chunks not exceeding the limit for one output
-           outputIndex=[(i-1)*maxByteOut/pReal/materialpoint_sizeResults+1, &
-                        min(i*maxByteOut/pReal/materialpoint_sizeResults,size(materialpoint_results,3))]
+     outputIndex=int([(i-1_pInt)*((maxByteOut/pReal)/materialpoint_sizeResults)+1_pInt, &
+                      min(i*((maxByteOut/pReal)/materialpoint_sizeResults),size(materialpoint_results,3))],pLongInt)
            call MPI_file_write(resUnit,reshape(materialpoint_results(:,:,outputIndex(1):outputIndex(2)),&
                                          [(outputIndex(2)-outputIndex(1)+1)*materialpoint_sizeResults]), &
                                (outputIndex(2)-outputIndex(1)+1)*materialpoint_sizeResults,&
                                MPI_DOUBLE, MPI_STATUS_IGNORE, ierr)
-         fileOffset = fileOffset + sum(outputSize)                                                  ! forward to current file position
          enddo
+         fileOffset = fileOffset + sum(outputSize)                                                  ! forward to current file position
        endif
        if( loadCases(currentLoadCase)%restartFrequency > 0_pInt .and. &                             ! at frequency of writing restart information set restart parameter for FEsolving 
                       mod(inc,loadCases(currentLoadCase)%restartFrequency) == 0_pInt) then          ! first call to CPFEM_general will write? 

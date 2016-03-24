@@ -133,10 +133,10 @@ class myThread (threading.Thread):
             break
           elif currentError[i] < target[i]['error']:                                                # better fit
             bestSeedsUpdate = time.time()                                                           # save time of better fit
-            damask.util.croak('Thread %i: Better match (%i bins, %6.4f --> %6.4f)'
-                                           %(self.threadID,i+1,target[i]['error'],currentError[i]))
-            damask.util.croak('          target: ',target[i]['histogram'])
-            damask.util.croak('          best:   ',currentHist[i])
+            damask.util.croak('Thread {:d}: Better match ({:d} bins, {:6.4f} --> {:6.4f})'\
+                                          .format(self.threadID,i+1,target[i]['error'],currentError[i]))
+            damask.util.croak('          target: '+np.array_str(target[i]['histogram']))
+            damask.util.croak('          best:   '+np.array_str(currentHist[i]))
             currentSeedsName = baseFile+'_'+str(bestSeedsUpdate).replace('.','-')                   # name of new seed file (use time as unique identifier)
             perturbedSeedsVFile.reset()
             bestSeedsVFile.close()
@@ -149,7 +149,7 @@ class myThread (threading.Thread):
             for j in xrange(nMicrostructures):                                                      # save new errors for all bins
               target[j]['error'] = currentError[j]
             if myMatch > match:                                                                     # one or more new bins have no deviation
-              damask.util.croak( 'Stage %i cleared'%(myMatch))
+              damask.util.croak( 'Stage {:d}  cleared'.format(myMatch))
               match=myMatch
               sys.stdout.flush()
             break
@@ -164,8 +164,8 @@ class myThread (threading.Thread):
               target[j]['error'] = currentError[j]
             randReset = True
       else:                                                                                         #--- not all grains are tessellated
-        damask.util.croak('Thread %i: Microstructure mismatch (%i microstructures mapped)'
-                                                               %(self.threadID,myNmicrostructures))
+        damask.util.croak('Thread {:d}: Microstructure mismatch ({:d} microstructures mapped)'\
+                                                         .format(self.threadID,myNmicrostructures))
         randReset = True
 
       
@@ -243,7 +243,7 @@ if os.path.isfile(os.path.splitext(options.seedFile)[0]+'.seeds'):
 else:
   bestSeedsVFile.write(damask.util.execute('seeds_fromRandom'+\
                                 ' -g '+' '.join(map(str, options.grid))+\
-                                ' -r %i'%options.randomSeed+\
+                                ' -r {:d}'.format(options.randomSeed)+\
                                 ' -N '+str(nMicrostructures))[0])
 bestSeedsUpdate = time.time()
 
@@ -279,7 +279,7 @@ if options.maxseeds < 1:
 else:
   maxSeeds = options.maxseeds
 
-if match >0: damask.util.croak('Stage %i cleared'%match)
+if match >0: damask.util.croak('Stage {:d} cleared'.format(match))
 sys.stdout.flush()
 initialGeomVFile.close()
 

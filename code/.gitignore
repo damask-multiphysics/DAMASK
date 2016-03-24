@@ -1,2 +1,3 @@
 DAMASK_marc*.f90
 quit__genmod.f90
+*.marc

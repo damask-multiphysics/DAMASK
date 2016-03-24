@@ -50,12 +50,12 @@ module plastic_isotropic
      a, &
      aTolFlowstress, &
      aTolShear     , &
-     tausat_SinhFitA, &
-     tausat_SinhFitB, &
-     tausat_SinhFitC, &
-     tausat_SinhFitD
+     tausat_SinhFitA=0.0_pReal, &
+     tausat_SinhFitB=0.0_pReal, &
+     tausat_SinhFitC=0.0_pReal, &
+     tausat_SinhFitD=0.0_pReal
   logical :: &
-     dilatation
+     dilatation = .false.
  end type
 
  type(tParameters), dimension(:), allocatable, private :: param                                       !< containers of constitutive parameters (len Ninstance)
