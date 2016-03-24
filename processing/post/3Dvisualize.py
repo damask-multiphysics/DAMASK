@@ -9,6 +9,46 @@ import damask
 scriptName = os.path.splitext(os.path.basename(__file__))[0]
 scriptID   = ' '.join([scriptName,damask.version])
 
+def deformedCoordsFFT(size,F,scaling,Favg=None):
+ grid = np.array(np.shape(F)[:-2])
+ N = grid.prod()
+ step = size/grid
+ k_s = np.zeros([3],'i')
+
+ F_fourier = np.fft.fftpack.rfftn(F,s=grid,axes=(0,1,2))
+ coords_fourier  = np.zeros(F_fourier.shape[:-1],'c16')
+ if Favg is None:
+   Favg = np.real(F_fourier[0,0,0,:,:]/N)
+
+ for i in xrange(grid[2]//2+1):
+   k_s[2] = i
+   if grid[2]%2 == 0 and i == grid[2]//2: k_s[2] = 0                                      # for even grid, set Nyquist freq to 0 (Johnson, MIT, 2011)
+
+   for j in xrange(grid[1]):
+     k_s[1] = j
+     if grid[1]%2 == 0 and j == grid[1]//2: k_s[1] = 0                                    # for even grid, set Nyquist freq to 0 (Johnson, MIT, 2011)
+     elif j > grid[1]//2:                   k_s[1] -= grid[1]
+
+     for k in xrange(grid[0]):
+       k_s[0] = k
+       if grid[0]%2 == 0 and k == grid[0]//2:  k_s[0] = 0                                 # for even grid, set Nyquist freq to 0 (Johnson, MIT, 2011)
+       elif k > grid[0]//2:                    k_s[0] -= grid[0]
+       
+       xi = 0.0+(k_s*0.5j*size/math.pi)
+       for m in xrange(3):
+         coords_fourier[k,j,i,m] = np.sum(F_fourier[k,j,i,m,:]*xi)
+         
+       if (any(k_s != 0)):
+         coords_fourier[k,j,i,:]/=-np.linalg.norm(k_s)**2.0
+
+ coords = np.fft.fftpack.irfftn(coords_fourier,s=grid,axes=(0,1,2))
+ offset_coords =np.dot(F[0,0,0,:,:],step/2.0) - scaling*coords[0,0,0,:]
+
+ for z in xrange(grid[2]):
+   for y in xrange(grid[1]):
+     for x in xrange(grid[0]):
+       coords[x,y,z,:] += offset_coords + np.dot(Favg,[x,y,z]*step)
+
 def outStdout(cmd,locals):
   if cmd[0:3] == '(!)':
     exec(cmd[3:])
@@ -314,7 +354,16 @@ for filename in args:
   F = np.reshape(np.transpose(values[:,column['tensor'][options.defgrad]:
                                        column['tensor'][options.defgrad]+9]),
                                                            (3,3,grid[0],grid[1],grid[2]))
+  F2 = np.reshape(values[:,column['tensor'][options.defgrad]:
+                           column['tensor'][options.defgrad]+9],
+                                                          (grid[0],grid[1],grid[2],3,3))
+  for z in xrange(grid[2]):
+    for y in xrange(grid[1]):
+      for x in xrange(grid[0]):
+        F2[x,y,z,:,:] = F2[x,y,z,:,:].T
+  centroids2 = deformedCoordsFFT(dim,F2,options.scaling,None)  
   centroids = damask.core.mesh.deformedCoordsFFT(dim,F,Favg,options.scaling)
+
   nodes = damask.core.mesh.nodesAroundCentres(dim,Favg,centroids)
 
   fields =  {\
