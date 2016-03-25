@@ -1,0 +1,8 @@
+# from https://help.github.com/articles/dealing-with-line-endings/
+#
+# always use LF, even if the files are edited on windows, they need to be compiled/used on unix
+* text eol=lf
+
+# Denote all files that are truly binary and should not be modified.
+*.png binary
+*.jpg binary
