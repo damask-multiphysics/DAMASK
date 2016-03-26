@@ -13,7 +13,8 @@ program DAMASK_spectral
    pInt, &
    pLongInt, &
    pReal, &
-   tol_math_check
+   tol_math_check, &
+   dNeq
  use DAMASK_interface, only: &
    DAMASK_interface_init, &
    loadCaseFile, &
@@ -339,7 +340,7 @@ program DAMASK_spectral
                 reshape(spread(tol_math_check,1,9),[ 3,3]))&
                 .or. abs(math_det33(loadCases(currentLoadCase)%rotation)) > &
                 1.0_pReal + tol_math_check) errorID = 846_pInt                                      ! given rotation matrix contains strain
-     if (any(loadCases(currentLoadCase)%rotation /= math_I3)) &
+     if (any(dNeq(loadCases(currentLoadCase)%rotation, math_I3))) &
        write(6,'(2x,a,/,3(3(3x,f12.7,1x)/))',advance='no') 'rotation of loadframe:',&
                 math_transpose33(loadCases(currentLoadCase)%rotation)
      if (loadCases(currentLoadCase)%time < 0.0_pReal)          errorID = 834_pInt                   ! negative time increment
@@ -431,9 +432,13 @@ program DAMASK_spectral
                     MPI_INFO_NULL, &
                     resUnit, &
                     ierr)
+ if(ierr /=0_pInt) call IO_error(894_pInt, ext_msg='MPI_file_open')
  call MPI_file_get_position(resUnit,fileOffset,ierr)                                                ! get offset from header
+ if(ierr /=0_pInt) call IO_error(894_pInt, ext_msg='MPI_file_get_position')
  fileOffset = fileOffset + sum(outputSize(1:worldrank))                                             ! offset of my process in file (header + processes before me)
+ write(6,*) fileOffset
  call MPI_file_seek (resUnit,fileOffset,MPI_SEEK_SET,ierr)
+ if(ierr /=0_pInt) call IO_error(894_pInt, ext_msg='MPI_file_seek')
 
  if (.not. appendToOutFile) then                                                                    ! if not restarting, write 0th increment
    do i=1, size(materialpoint_results,3)/(maxByteOut/(materialpoint_sizeResults*pReal))+1           ! slice the output of my process in chunks not exceeding the limit for one output
@@ -443,8 +448,10 @@ program DAMASK_spectral
                                    [(outputIndex(2)-outputIndex(1)+1)*materialpoint_sizeResults]), &
                          (outputIndex(2)-outputIndex(1)+1)*materialpoint_sizeResults,&
                          MPI_DOUBLE, MPI_STATUS_IGNORE, ierr)
+     if(ierr /=0_pInt) call IO_error(894_pInt, ext_msg='MPI_file_write')
    enddo
    fileOffset = fileOffset + sum(outputSize)                                                        ! forward to current file position
+   write(6,*) fileOffset
    if (worldrank == 0) &
      write(6,'(1/,a)') ' ... writing initial configuration to file ........................'
  endif
@@ -643,15 +650,18 @@ program DAMASK_spectral
            write(6,'(1/,a)') ' ... writing results to file ......................................'
          call materialpoint_postResults()
          call MPI_file_seek (resUnit,fileOffset,MPI_SEEK_SET,ierr)
+         if(ierr /=0_pInt) call IO_error(894_pInt, ext_msg='MPI_file_seek')
          do i=1, size(materialpoint_results,3)/(maxByteOut/(materialpoint_sizeResults*pReal))+1     ! slice the output of my process in chunks not exceeding the limit for one output
-     outputIndex=int([(i-1_pInt)*((maxByteOut/pReal)/materialpoint_sizeResults)+1_pInt, &
+           outputIndex=int([(i-1_pInt)*((maxByteOut/pReal)/materialpoint_sizeResults)+1_pInt, &
                       min(i*((maxByteOut/pReal)/materialpoint_sizeResults),size(materialpoint_results,3))],pLongInt)
            call MPI_file_write(resUnit,reshape(materialpoint_results(:,:,outputIndex(1):outputIndex(2)),&
                                          [(outputIndex(2)-outputIndex(1)+1)*materialpoint_sizeResults]), &
                                (outputIndex(2)-outputIndex(1)+1)*materialpoint_sizeResults,&
                                MPI_DOUBLE, MPI_STATUS_IGNORE, ierr)
+           if(ierr /=0_pInt) call IO_error(894_pInt, ext_msg='MPI_file_write')
          enddo
          fileOffset = fileOffset + sum(outputSize)                                                  ! forward to current file position
+         write(6,*) fileOffset
        endif
        if( loadCases(currentLoadCase)%restartFrequency > 0_pInt .and. &                             ! at frequency of writing restart information set restart parameter for FEsolving 
                       mod(inc,loadCases(currentLoadCase)%restartFrequency) == 0_pInt) then          ! first call to CPFEM_general will write? 
