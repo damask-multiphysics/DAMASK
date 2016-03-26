@@ -13,15 +13,15 @@ scriptID   = ' '.join([scriptName,damask.version])
 #--------------------------------------------------------------------------------------------------
 
 parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
-Unpack geometry files containing ranges "a to b" and/or "n of x" multiples (exclusively in one line).
+Adds header to OIM grain file to make it accesible as ASCII table
 
 """, version = scriptID)
 
 parser.add_option('-l', '--labels',
                   dest   = 'labels',
-                  help   = 'output geom file with one-dimensional data arrangement')
+                  help   = 'lables for requested columns')
 
-parser.set_defaults(labels = ['1_eulerangles','1_eulerangles','1_eulerangles',
+parser.set_defaults(labels = ['1_eulerangles','2_eulerangles','3_eulerangles',
                               '1_pos','2_pos', 'IQ', 'CI', 'Fit', 'GrainID',],
                    )
 
@@ -49,3 +49,7 @@ for name in filenames:
   for i in data:
     table.data = i
     table.data_write()
+
+# --- output finalization --------------------------------------------------------------------------
+
+  table.close()                                                                                     # close ASCII table
