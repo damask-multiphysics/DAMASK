@@ -148,7 +148,9 @@ program DAMASK_spectral
    MPI_file_seek, &
    MPI_file_get_position, &
    MPI_file_write, &
-   MPI_allreduce
+   MPI_abort, &
+   MPI_allreduce, &
+   PETScFinalize
 
 !--------------------------------------------------------------------------------------------------
 ! init DAMASK (all modules)
@@ -424,8 +426,9 @@ program DAMASK_spectral
 !--------------------------------------------------------------------------------------------------
 ! prepare MPI parallel out (including opening of file)
  allocate(outputSize(worldsize), source = 0_MPI_OFFSET_KIND)
- outputSize(worldrank+1) = int(size(materialpoint_results)*pReal,MPI_OFFSET_KIND)
+ outputSize(worldrank+1) = size(materialpoint_results,kind=MPI_OFFSET_KIND)*int(pReal,MPI_OFFSET_KIND)
  call MPI_allreduce(MPI_IN_PLACE,outputSize,worldsize,MPI_INT,MPI_SUM,PETSC_COMM_WORLD,ierr)        ! get total output size over each process
+ if(ierr /=0_pInt) call IO_error(894_pInt, ext_msg='MPI_allreduce')
  call MPI_file_open(PETSC_COMM_WORLD, &
                     trim(getSolverWorkingDirectoryName())//trim(getSolverJobName())//'.spectralOut', &
                     MPI_MODE_WRONLY + MPI_MODE_APPEND, &
@@ -436,7 +439,6 @@ program DAMASK_spectral
  call MPI_file_get_position(resUnit,fileOffset,ierr)                                                ! get offset from header
  if(ierr /=0_pInt) call IO_error(894_pInt, ext_msg='MPI_file_get_position')
  fileOffset = fileOffset + sum(outputSize(1:worldrank))                                             ! offset of my process in file (header + processes before me)
- write(6,*) fileOffset
  call MPI_file_seek (resUnit,fileOffset,MPI_SEEK_SET,ierr)
  if(ierr /=0_pInt) call IO_error(894_pInt, ext_msg='MPI_file_seek')
 
@@ -451,7 +453,6 @@ program DAMASK_spectral
      if(ierr /=0_pInt) call IO_error(894_pInt, ext_msg='MPI_file_write')
    enddo
    fileOffset = fileOffset + sum(outputSize)                                                        ! forward to current file position
-   write(6,*) fileOffset
    if (worldrank == 0) &
      write(6,'(1/,a)') ' ... writing initial configuration to file ........................'
  endif
@@ -661,7 +662,6 @@ program DAMASK_spectral
            if(ierr /=0_pInt) call IO_error(894_pInt, ext_msg='MPI_file_write')
          enddo
          fileOffset = fileOffset + sum(outputSize)                                                  ! forward to current file position
-         write(6,*) fileOffset
        endif
        if( loadCases(currentLoadCase)%restartFrequency > 0_pInt .and. &                             ! at frequency of writing restart information set restart parameter for FEsolving 
                       mod(inc,loadCases(currentLoadCase)%restartFrequency) == 0_pInt) then          ! first call to CPFEM_general will write? 
@@ -708,7 +708,7 @@ program DAMASK_spectral
  enddo
  call utilities_destroy()
 
- call PetscFinalize(ierr); CHKERRQ(ierr)
+ call PETScFinalize(ierr); CHKERRQ(ierr)
 
  if (notConvergedCounter > 0_pInt) call quit(3_pInt)                                                ! error if some are not converged
  call quit(0_pInt)                                                                                  ! no complains ;)
