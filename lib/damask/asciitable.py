@@ -272,7 +272,7 @@ class ASCIItable():
       for label in labels:
         if label is not None:
           try:
-            idx.append(int(label))                                                                  # column given as integer number?
+            idx.append(int(label)-1)                                                                # column given as integer number?
           except ValueError:
             try:
               idx.append(self.labels.index(label))                                                  # locate string in label list
@@ -283,7 +283,7 @@ class ASCIItable():
                idx.append(-1)                                                                       # not found...
     else:
       try:
-        idx = int(labels)
+        idx = int(labels)-1                                                                         # offset for python array indexing
       except ValueError:
         try:
           idx = self.labels.index(labels)
@@ -293,7 +293,7 @@ class ASCIItable():
           except ValueError:
             idx = None if labels is None else -1
 
-    return np.array(idx) if isinstance(idx,list) else idx
+    return np.array(idx) if isinstance(idx,Iterable) else idx
 
 # ------------------------------------------------------------------
   def label_dimension(self,
@@ -312,7 +312,7 @@ class ASCIItable():
         if label is not None:
           myDim = -1
           try:                                                                                      # column given as number?
-            idx = int(label)
+            idx = int(label)-1
             myDim = 1                                                                               # if found has at least dimension 1
             if self.labels[idx].startswith('1_'):                                                   # column has multidim indicator?
               while idx+myDim < len(self.labels) and self.labels[idx+myDim].startswith("%i_"%(myDim+1)):
@@ -331,7 +331,7 @@ class ASCIItable():
       dim = -1                                                                                      # assume invalid label
       idx = -1
       try:                                                                                          # column given as number?
-        idx = int(labels)
+        idx = int(labels)-1
         dim = 1                                                                                     # if found has at least dimension 1
         if self.labels[idx].startswith('1_'):                                                       # column has multidim indicator?
           while idx+dim < len(self.labels) and self.labels[idx+dim].startswith("%i_"%(dim+1)):
@@ -345,7 +345,7 @@ class ASCIItable():
           while idx+dim < len(self.labels) and self.labels[idx+dim].startswith("%i_"%(dim+1)):
             dim += 1                                                                                # keep adding while going through object
 
-    return np.array(dim) if isinstance(dim,list) else dim
+    return np.array(dim) if isinstance(dim,Iterable) else dim
 
 # ------------------------------------------------------------------
   def label_indexrange(self,
@@ -363,7 +363,7 @@ class ASCIItable():
   
     return map(lambda a,b: xrange(a,a+b), zip(start,dim)) if isinstance(labels, Iterable) and not isinstance(labels, str) \
     else   xrange(start,start+dim)
-  
+
 # ------------------------------------------------------------------
   def info_append(self,
                   what):
