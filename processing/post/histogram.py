@@ -22,6 +22,10 @@ parser.add_option('-d','--data',
                   dest = 'data',
                   type = 'string', metavar = 'string',
                   help = 'column heading for data')
+parser.add_option('-w','--weights',
+                  dest = 'weights',
+                  type = 'string', metavar = 'string',
+                  help = 'column heading for weights')
 parser.add_option('--range',
                   dest = 'range',
                   type = 'float', nargs = 2, metavar = 'float float',
@@ -34,10 +38,11 @@ parser.add_option('-l', '--logarithmic',
                   dest = 'log',
                   action = 'store_true',
                   help = 'logarithmically spaced bins')
-parser.set_defaults(data  = None,
-                    range = None,
-                    N     = None,
-                    log   = False,
+parser.set_defaults(data    = None,
+                    weights = None,
+                    range   = None,
+                    N       = None,
+                    log     = False,
                    )
 
 (options,filenames) = parser.parse_args()
@@ -77,7 +82,9 @@ for name in filenames:
   errors  = []
   remarks = []
   
-  if table.label_dimension(options.data) != 1:  errors.append('data {} is not a scalar.'.format(options.data))
+  if table.label_dimension(options.data) != 1:  errors.append('data {} are not scalar.'.format(options.data))
+  if options.weights and \
+     table.label_dimension(options.data) != 1:  errors.append('weights {} are not scalar.'.format(options.weights))
 
   if remarks != []: damask.util.croak(remarks)
   if errors  != []:
@@ -87,8 +94,7 @@ for name in filenames:
 
 # --------------- read data ----------------------------------------------------------------
 
-  table.data_readArray(options.data)
-  bincenter = np.zeros(options.N,'f')
+  table.data_readArray([options.data,options.weights])
 
 # --------------- auto range ---------------------------------------------------------------
 
@@ -102,7 +108,9 @@ for name in filenames:
   count,edges = np.histogram(table.data[:,0],
                              bins = reverse(forward(rangeMin) + np.arange(options.N+1) *
                                            (forward(rangeMax)-forward(rangeMin))/options.N),
-                             range = (rangeMin,rangeMax))
+                             range = (rangeMin,rangeMax),
+                             weights = None if options.weights is None else table.data[:,1],
+                            )
   bincenter = reverse(forward(rangeMin) + (0.5+np.arange(options.N)) *
                      (forward(rangeMax)-forward(rangeMin))/options.N)                             # determine center of bins
   
