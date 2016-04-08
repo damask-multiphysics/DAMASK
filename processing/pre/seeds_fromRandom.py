@@ -48,8 +48,11 @@ parser.add_option('-m', '--microstructure',
 parser.add_option('-r', '--rnd',
                   dest = 'randomSeed', type = 'int', metavar = 'int',
                   help = 'seed of random number generator [%default]')
+parser.add_option('--format',
+                  dest = 'format', type = 'string', metavar = 'string',
+                  help = 'number format of output [auto]')
 
-group = OptionGroup(parser, "Laguerre Tessellation Options",
+group = OptionGroup(parser, "Laguerre Tessellation",
                    "Parameters determining shape of weight distribution of seed points"
                    )
 group.add_option('-w', '--weights',
@@ -70,8 +73,8 @@ group.add_option('--sigma',
                  help='standard deviation of normal distribution for weights [%default]')
 parser.add_option_group(group)
 
-group = OptionGroup(parser, "Selective Seeding Options",
-                    "More uniform distribution of seed points using Mitchell\'s Best Candidate Algorithm"
+group = OptionGroup(parser, "Selective Seeding",
+                    "More uniform distribution of seed points using Mitchell's Best Candidate Algorithm"
                    )
 group.add_option('-s','--selective',
                   action = 'store_true',
@@ -103,6 +106,7 @@ parser.set_defaults(randomSeed = None,
                     force = False,
                     distance = 0.2,
                     numCandidates = 10,
+                    format = None,
                    )
 
 (options,filenames) = parser.parse_args()
@@ -215,7 +219,7 @@ for name in filenames:
 # --- write seeds information ------------------------------------------------------------
 
   table.data = seeds
-  table.data_writeArray()
+  table.data_writeArray(fmt = options.format)
     
 # --- output finalization --------------------------------------------------------------------------
 
