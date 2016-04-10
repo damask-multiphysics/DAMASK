@@ -34,7 +34,11 @@ parser.add_option('-N',
                   dest = 'N',
                   type = 'int', metavar = 'int',
                   help = 'number of bins')
-parser.add_option('-l', '--logarithmic',
+parser.add_option('--density',
+                  dest = 'density',
+                  action = 'store_true',
+                  help = 'report probability density')
+parser.add_option('--logarithmic',
                   dest = 'log',
                   action = 'store_true',
                   help = 'logarithmically spaced bins')
@@ -42,6 +46,7 @@ parser.set_defaults(data    = None,
                     weights = None,
                     range   = None,
                     N       = None,
+                    density = False,
                     log     = False,
                    )
 
@@ -110,6 +115,7 @@ for name in filenames:
                                            (forward(rangeMax)-forward(rangeMin))/options.N),
                              range = (rangeMin,rangeMax),
                              weights = None if options.weights is None else table.data[:,1],
+                             density = options.density,
                             )
   bincenter = reverse(forward(rangeMin) + (0.5+np.arange(options.N)) *
                      (forward(rangeMax)-forward(rangeMin))/options.N)                             # determine center of bins

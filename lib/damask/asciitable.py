@@ -25,7 +25,7 @@ class ASCIItable():
                readonly  = False,                                                                   # no reading from file
               ):
     self.__IO__ = {'output': [],
-                   'buffered':  buffered,
+                   'buffered': buffered,
                    'labeled':  labeled,                                                             # header contains labels
                    'labels': [],                                                                    # labels according to file info
                    'readBuffer': [],                                                                # buffer to hold non-advancing reads
@@ -35,18 +35,18 @@ class ASCIItable():
     self.__IO__['inPlace'] = not outname and name and not readonly
     if self.__IO__['inPlace']: outname = name + self.tmpext                                         # transparently create tmp file
     try:
-      self.__IO__['in']  = (open(   name,'r') if os.access(   name, os.R_OK) else None)     if    name else sys.stdin
+      self.__IO__['in'] = (open(   name,'r') if os.access(   name, os.R_OK) else None) if name else sys.stdin
     except TypeError:
       self.__IO__['in'] = name
 
     try:
-      self.__IO__['out'] = (open(outname,'w') if (not os.path.isfile(outname) \
-                                                   or os.access(     outname, os.W_OK) \
-                                                 ) \
-                                              and (not self.__IO__['inPlace'] \
-                                                   or not os.path.isfile(name) \
-                                                   or     os.access(     name, os.W_OK) \
-                                                  ) else None) if outname else sys.stdout
+      self.__IO__['out'] = (open(outname,'w') if (not os.path.isfile(outname) or
+                                                      os.access(     outname, os.W_OK)
+                                                 ) and
+                                                 (not self.__IO__['inPlace'] or
+                                                  not os.path.isfile(name)   or
+                                                      os.access(     name, os.W_OK)
+                                                 ) else None) if outname else sys.stdout
     except TypeError:
       self.__IO__['out'] = outname
 

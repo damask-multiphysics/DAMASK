@@ -113,7 +113,9 @@ module prec
 
  public :: &
    prec_init, &
-   prec_isNaN
+   prec_isNaN, &
+   dEq, &
+   dNeq
  
 contains
 

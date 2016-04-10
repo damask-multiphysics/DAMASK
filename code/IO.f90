@@ -1669,7 +1669,9 @@ subroutine IO_error(error_ID,el,ip,g,ext_msg)
    msg = 'unknown filter type selected'
  case (893_pInt)
    msg = 'PETSc: SNES_DIVERGED_FNORM_NAN'
-   
+ case (894_pInt)
+   msg = 'MPI error'
+ 
 !-------------------------------------------------------------------------------------------------
 ! error messages related to parsing of Abaqus input file
  case (900_pInt)

@@ -4,7 +4,7 @@
 import os,sys,math
 import numpy as np
 import multiprocessing
-from optparse import OptionParser
+from optparse import OptionParser,OptionGroup
 from scipy    import spatial
 import damask
 
@@ -109,70 +109,82 @@ Generate geometry description and material configuration by standard Voronoi tes
 
 """, version = scriptID)
 
-parser.add_option('-g', '--grid',
-                  dest = 'grid',
-                  type = 'int', nargs = 3, metavar = ' '.join(['int']*3),
-                  help = 'a,b,c grid of hexahedral box [auto]')
-parser.add_option('-s', '--size',
-                  dest = 'size',
-                  type = 'float', nargs = 3, metavar=' '.join(['float']*3),
-                  help = 'x,y,z size of hexahedral box [auto]')
-parser.add_option('-o', '--origin',
-                  dest = 'origin',
-                  type = 'float', nargs = 3, metavar=' '.join(['float']*3),
-                  help = 'offset from old to new origin of grid')
-parser.add_option('-p', '--position',
-                  dest = 'position',
-                  type = 'string', metavar = 'string',
-                  help = 'column label for seed positions [%default]')
-parser.add_option('-w', '--weight',
-                  dest = 'weight',
-                  type = 'string', metavar = 'string',
-                  help = 'column label for seed weights [%default]')
-parser.add_option('-m', '--microstructure',
-                  dest = 'microstructure',
-                  type = 'string', metavar = 'string',
-                  help = 'column label for seed microstructures [%default]')
-parser.add_option('-e', '--eulers',
-                  dest = 'eulers',
-                  type = 'string', metavar = 'string',
-                  help = 'column label for seed Euler angles [%default]')
-parser.add_option('--axes',
-                  dest = 'axes',
-                  type = 'string', nargs = 3, metavar = ' '.join(['string']*3),
-                  help = 'orientation coordinate frame in terms of position coordinate frame')
-parser.add_option('--homogenization',
-                  dest = 'homogenization',
-                  type = 'int', metavar = 'int',
-                  help = 'homogenization index to be used [%default]')
-parser.add_option('--crystallite',
-                  dest = 'crystallite',
-                  type = 'int', metavar = 'int',
-                  help = 'crystallite index to be used [%default]')
-parser.add_option('--phase',
-                  dest = 'phase',
-                  type = 'int', metavar = 'int',
-                  help = 'phase index to be used [%default]')
-parser.add_option('-r', '--rnd',
-                  dest = 'randomSeed',
-                  type = 'int', metavar='int',
-                  help = 'seed of random number generator for second phase distribution [%default]')
-parser.add_option('--secondphase',
-                  dest = 'secondphase',
-                  type = 'float', metavar= 'float',
-                  help = 'volume fraction of randomly distribute second phase [%default]')
-parser.add_option('-l', '--laguerre',
+
+group = OptionGroup(parser, "Tessellation","")
+
+group.add_option('-l', '--laguerre',
                   dest = 'laguerre',
                   action = 'store_true',
                   help = 'use Laguerre (weighted Voronoi) tessellation')
-parser.add_option('--cpus',
+group.add_option('--cpus',
                   dest = 'cpus',
                   type = 'int', metavar = 'int',
                   help = 'number of parallel processes to use for Laguerre tessellation [%default]')
-parser.add_option('--nonperiodic',
+group.add_option('--nonperiodic',
                   dest = 'nonperiodic',
                   action = 'store_true',
                   help = 'use nonperiodic tessellation')
+
+parser.add_option_group(group)
+
+group = OptionGroup(parser, "Geometry","")
+
+group.add_option('-g', '--grid',
+                  dest = 'grid',
+                  type = 'int', nargs = 3, metavar = ' '.join(['int']*3),
+                  help = 'a,b,c grid of hexahedral box [auto]')
+group.add_option('-s', '--size',
+                  dest = 'size',
+                  type = 'float', nargs = 3, metavar=' '.join(['float']*3),
+                  help = 'x,y,z size of hexahedral box [auto]')
+group.add_option('-o', '--origin',
+                  dest = 'origin',
+                  type = 'float', nargs = 3, metavar=' '.join(['float']*3),
+                  help = 'origin of grid')
+
+parser.add_option_group(group)
+
+group = OptionGroup(parser, "Seeds","")
+
+group.add_option('-p', '--position',
+                  dest = 'position',
+                  type = 'string', metavar = 'string',
+                  help = 'column label for seed positions [%default]')
+group.add_option('-w', '--weight',
+                  dest = 'weight',
+                  type = 'string', metavar = 'string',
+                  help = 'column label for seed weights [%default]')
+group.add_option('-m', '--microstructure',
+                  dest = 'microstructure',
+                  type = 'string', metavar = 'string',
+                  help = 'column label for seed microstructures [%default]')
+group.add_option('-e', '--eulers',
+                  dest = 'eulers',
+                  type = 'string', metavar = 'string',
+                  help = 'column label for seed Euler angles [%default]')
+group.add_option('--axes',
+                  dest = 'axes',
+                  type = 'string', nargs = 3, metavar = ' '.join(['string']*3),
+                  help = 'orientation coordinate frame in terms of position coordinate frame')
+
+parser.add_option_group(group)
+
+group = OptionGroup(parser, "Configuration","")
+
+group.add_option('--homogenization',
+                  dest = 'homogenization',
+                  type = 'int', metavar = 'int',
+                  help = 'homogenization index to be used [%default]')
+group.add_option('--crystallite',
+                  dest = 'crystallite',
+                  type = 'int', metavar = 'int',
+                  help = 'crystallite index to be used [%default]')
+group.add_option('--phase',
+                  dest = 'phase',
+                  type = 'int', metavar = 'int',
+                  help = 'phase index to be used [%default]')
+
+parser.add_option_group(group)
 
 parser.set_defaults(position       = 'pos',
                     weight         = 'weight',
@@ -181,26 +193,20 @@ parser.set_defaults(position       = 'pos',
                     homogenization = 1,
                     crystallite    = 1,
                     phase          = 1,
-                    secondphase    = 0.0,
                     cpus           = 2,
                     laguerre       = False,
                     nonperiodic    = False,
-                    randomSeed     = None,
                   )
 (options,filenames) = parser.parse_args()
-
-if options.secondphase > 1.0 or options.secondphase < 0.0:
- parser.error('volume fraction of second phase ({}) out of bounds.'.format(options.secondphase))
 
 # --- loop over input files -------------------------------------------------------------------------
 
 if filenames == []: filenames = [None]
 
 for name in filenames:
-  try:
-    table = damask.ASCIItable(name = name,
-                              outname = os.path.splitext(name)[-2]+'.geom' if name else name,
-                              buffered = False)
+  try:    table = damask.ASCIItable(name = name,
+                                    outname = os.path.splitext(name)[-2]+'.geom' if name else name,
+                                    buffered = False)
   except: continue
   damask.util.report(scriptName,name)
 
@@ -294,20 +300,11 @@ for name in filenames:
   config_header = []
   formatwidth = 1+int(math.log10(NgrainIDs))
 
-  phase = options.phase * np.ones(NgrainIDs,'i')
-  if int(options.secondphase*info['microstructures']) > 0:
-    phase[0:int(options.secondphase*info['microstructures'])] += 1                                # alter fraction 'options.secondphase' of used grainIDs
-    randomSeed = options.randomSeed if options.randomSeed \
-                 else int(os.urandom(4).encode('hex'), 16)                                        # random seed for second phase
-    np.random.seed(randomSeed)
-    np.random.shuffle(phase)
-    config_header += ['# random seed (phase shuffling): {}'.format(randomSeed)]
-
   config_header += ['<microstructure>']
   for i,ID in enumerate(grainIDs):
     config_header += ['[Grain%s]'%(str(ID).zfill(formatwidth)),
                       'crystallite %i'%options.crystallite,
-                      '(constituent)\tphase %i\ttexture %s\tfraction 1.0'%(phase[i],str(ID).rjust(formatwidth)),
+                      '(constituent)\tphase %i\ttexture %s\tfraction 1.0'%(options.phase,str(ID).rjust(formatwidth)),
                      ]
   if hasEulers:
     config_header += ['<texture>']
