@@ -239,7 +239,9 @@ for name in filenames:
 # ------------------------------------------ assemble header ---------------------------------------
 
   table.info_append(scriptID + '\t' + ' '.join(sys.argv[1:]))
-  table.labels_append(['{id}_S[{direction[0]:.1g}_{direction[1]:.1g}_{direction[2]:.1g}]({normal[0]:.1g}_{normal[1]:.1g}_{normal[2]:.1g})'\
+  table.labels_append(['{id}_'
+                       'S[{direction[0]:.1g}_{direction[1]:.1g}_{direction[2]:.1g}]'
+                       '({normal[0]:.1g}_{normal[1]:.1g}_{normal[2]:.1g})'\
                        .format(       id = i+1,
                                   normal = theNormal,
                                direction = theDirection,
