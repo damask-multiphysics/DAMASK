@@ -576,7 +576,7 @@ module lattice
  integer(pInt), parameter, private  :: &
    LATTICE_hex_Nslip      = sum(lattice_hex_NslipSystem), &                                         !< total # of slip systems for hex
    LATTICE_hex_Ntwin      = sum(lattice_hex_NtwinSystem), &                                         !< total # of twin systems for hex
-   LATTICE_hex_NnonSchmid = 0_pInt, &                                                               !< total # of non-Schmid contributions for hex 
+   LATTICE_hex_NnonSchmid = 0_pInt, &                                                               !< total # of non-Schmid contributions for hex
    LATTICE_hex_Ntrans     = sum(lattice_hex_NtransSystem), &                                        !< total # of transformation systems for hex
    LATTICE_hex_Ncleavage  = sum(lattice_hex_NcleavageSystem)                                        !< total # of cleavage systems for hex
 
@@ -858,7 +858,7 @@ module lattice
  integer(pInt), parameter, private  :: &
    LATTICE_bct_Nslip      = sum(lattice_bct_NslipSystem), &                                         !< total # of slip systems for bct
    LATTICE_bct_Ntwin      = sum(lattice_bct_NtwinSystem), &                                         !< total # of twin systems for bct
-   LATTICE_bct_NnonSchmid = 0_pInt, &                                                               !< total # of non-Schmid contributions for bct 
+   LATTICE_bct_NnonSchmid = 0_pInt, &                                                               !< total # of non-Schmid contributions for bct
    LATTICE_bct_Ntrans     = sum(lattice_bct_NtransSystem), &                                        !< total # of transformation systems for bct
    LATTICE_bct_Ncleavage  = sum(lattice_bct_NcleavageSystem)                                        !< total # of cleavage systems for bct
  

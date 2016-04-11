@@ -42,7 +42,7 @@ for name in filenames:
   data = []
   while  table.data_read():
     data.append(table.data[0:len(options.labels)])
-  
+
   table.info_append(scriptID + '\t' + ' '.join(sys.argv[1:]))
   table.labels_append(options.labels)
   table.head_write()
