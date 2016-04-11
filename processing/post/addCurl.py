@@ -10,6 +10,7 @@ scriptName = os.path.splitext(os.path.basename(__file__))[0]
 scriptID   = ' '.join([scriptName,damask.version])
 
 def curlFFT(geomdim,field):
+ shapeFFT    = np.array(np.shape(field))[0:3]
  grid = np.array(np.shape(field)[2::-1])
  N = grid.prod()                                                                          # field size
  n = np.array(np.shape(field)[3:]).prod()                                                 # data size
@@ -17,8 +18,8 @@ def curlFFT(geomdim,field):
  if   n == 3:   dataType = 'vector'
  elif n == 9:   dataType = 'tensor'
 
- field_fourier = np.fft.fftpack.rfftn(field,axes=(0,1,2))
- curl_fourier  = np.zeros(field_fourier.shape,'c16')
+ field_fourier = np.fft.fftpack.rfftn(field,axes=(0,1,2),s=shapeFFT)
+ curl_fourier  = np.empty(field_fourier.shape,'c16')
 
 # differentiation in Fourier space
  k_s = np.zeros([3],'i')
@@ -55,7 +56,7 @@ def curlFFT(geomdim,field):
          curl_fourier[i,j,k,2] = ( field_fourier[i,j,k,1]*xi[0]\
                                   -field_fourier[i,j,k,0]*xi[1]) *TWOPIIMG
 
- return np.fft.fftpack.irfftn(curl_fourier,axes=(0,1,2)).reshape([N,n])
+ return np.fft.fftpack.irfftn(curl_fourier,axes=(0,1,2),s=shapeFFT).reshape([N,n])
 
 
 # --------------------------------------------------------------------
