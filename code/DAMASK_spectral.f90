@@ -427,7 +427,7 @@ program DAMASK_spectral
 ! prepare MPI parallel out (including opening of file)
  allocate(outputSize(worldsize), source = 0_MPI_OFFSET_KIND)
  outputSize(worldrank+1) = size(materialpoint_results,kind=MPI_OFFSET_KIND)*int(pReal,MPI_OFFSET_KIND)
- call MPI_allreduce(MPI_IN_PLACE,outputSize,worldsize,MPI_INT,MPI_SUM,PETSC_COMM_WORLD,ierr)        ! get total output size over each process
+ call MPI_allreduce(MPI_IN_PLACE,outputSize,worldsize,MPI_LONG,MPI_SUM,PETSC_COMM_WORLD,ierr)! get total output size over each process
  if(ierr /=0_pInt) call IO_error(894_pInt, ext_msg='MPI_allreduce')
  call MPI_file_open(PETSC_COMM_WORLD, &
                     trim(getSolverWorkingDirectoryName())//trim(getSolverJobName())//'.spectralOut', &
