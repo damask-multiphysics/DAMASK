@@ -123,19 +123,13 @@ for name in filenames:
 
 # ------------------------------------------ add data ---------------------------------------  
 
-  damask.util.croak('adding now...')
   for datatype,labels in active.items():                                                            # loop over scalar,color
-    damask.util.croak('type {}'.format(datatype))
-
     if datatype == 'color':
       Polydata.GetPointData().SetScalars(VTKarray[active['color'][0]])
       Polydata.GetCellData().SetScalars(VTKarray[active['color'][0]])
     for me in labels:                                                                               # loop over all requested items
-      damask.util.croak('label {}'.format(me))
       Polydata.GetPointData().AddArray(VTKarray[me])
       Polydata.GetCellData().AddArray(VTKarray[me])
-
-  damask.util.croak('...done.')
 
   Polydata.Modified()
   if vtk.VTK_MAJOR_VERSION <= 5: Polydata.Update()
