@@ -436,7 +436,7 @@ end function constitutive_homogenizedC
 !--------------------------------------------------------------------------------------------------
 !> @brief calls microstructure function of the different constitutive models
 !--------------------------------------------------------------------------------------------------
-subroutine constitutive_microstructure(orientations, Fe, Fp, ipc, ip, el)
+subroutine constitutive_microstructure(orientations, Fe, Fp, ipc, ip, el, F0s,Fes,Fps)
  use prec, only: &
    pReal
  use material, only: &
@@ -473,7 +473,10 @@ subroutine constitutive_microstructure(orientations, Fe, Fp, ipc, ip, el)
    ho, &                                                                                            !< homogenization
    tme                                                                                              !< thermal member position
  real(pReal),   intent(in), dimension(:,:,:,:) :: &
-   orientations                                                                                     !< crystal orientations as quaternions
+   orientations, &
+   F0s, &
+   Fes, &
+   Fps                                                                                      !< crystal orientations as quaternions
 
  ho = material_homog(ip,el)
  tme = thermalMapping(ho)%p(ip,el)
@@ -488,7 +491,7 @@ subroutine constitutive_microstructure(orientations, Fe, Fp, ipc, ip, el)
    case (PLASTICITY_NONLOCAL_ID) plasticityType
      call plastic_nonlocal_microstructure (Fe,Fp,ip,el)
    case (PLASTICITY_PHENOPLUS_ID) plasticityType
-     call plastic_phenoplus_microstructure(orientations,ipc,ip,el,Fe,Fp)
+     call plastic_phenoplus_microstructure(orientations,ipc,ip,el,F0s,Fes,Fps)
  end select plasticityType
 
 end subroutine constitutive_microstructure

@@ -739,9 +739,11 @@ end subroutine plastic_phenoplus_aTolState
 !--------------------------------------------------------------------------------------------------
 !> @brief calculate push-up factors (kappa) for each voxel based on its neighbors
 !--------------------------------------------------------------------------------------------------
-subroutine plastic_phenoplus_microstructure(orientation,ipc,ip,el,Fe,Fp)
+subroutine plastic_phenoplus_microstructure(orientation,ipc,ip,el,F0,Fe,Fp)
  use math, only:  pi, &
+                  math_identity2nd, &
                   math_mul33x33, &
+                  math_mul33xx33, &
                   math_mul3x3, &
                   math_transpose33, &
                   math_qDot, &
@@ -773,7 +775,8 @@ subroutine plastic_phenoplus_microstructure(orientation,ipc,ip,el,Fe,Fp)
    ipc, &                                                     !< component-ID of integration point
    ip, &                                                      !< integration point
    el
- real(pReal), dimension(3,3), intent(in) :: &
+ real(pReal), dimension(3,3,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), intent(in) :: &
+                                F0, &                         ! deformation gradient from last increment
                                 Fe, &                         ! elastic deformation gradient
                                 Fp                            ! elastic deformation gradient                                                                                     !< element
  real(pReal), dimension(4,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), intent(in) :: &
@@ -813,10 +816,15 @@ subroutine plastic_phenoplus_microstructure(orientation,ipc,ip,el,Fe,Fp)
                 tmp_acshear                   !temp holder for accumulative shear for m'
 
  real(pReal), dimension(3,3) :: &
+                F0_me, &                      !my deformation gradient from last converged increment
                 Fe_me, &                      !my elastic deformation gradient
                 Fp_me, &                      !my plastic deformation gradient
+                dF_me,  &                     !my deformation gradient change (delta)
+                dE_me,  &                     !my Green Lagrangian strain tensor (delta)
                 Fe_ne, &                      !elastic deformation gradient of my current neighbor
-                Fp_ne                         !plastic deformation gradient of my current neighbor
+                Fp_ne, &                      !plastic deformation gradient of my current neighbor
+                dF_ne, &                      !deformation gradient of my current neighbor
+                dE_ne                         !delta Green Lagrangian strain tensor
 
  real(pReal), dimension(plastic_phenoplus_totalNslip(phase_plasticityInstance(material_phase(1,ip,el)))) :: &
                       m_primes, &                   !m' between me_alpha(one) and neighbor beta(all)
@@ -835,10 +843,6 @@ subroutine plastic_phenoplus_microstructure(orientation,ipc,ip,el,Fe,Fp)
                                                 ne_mprimes                                !m' between each neighbor
 
  !***Get my properties
- !@TODO
- ! still need to know how to access the total strain for current material point
- ! also, need to figure out an efficient way to calculate gamma_dot for the material
- ! point and its neighbors
  Nneighbors          = FE_NipNeighbors(FE_celltype(FE_geomtype(mesh_element(2,el))))
  ph                  = phaseAt(ipc,ip,el)                                   !get my phase
  of                  = phasememberAt(ipc,ip,el)                             !get my spatial location offset in memory
@@ -853,13 +857,18 @@ subroutine plastic_phenoplus_microstructure(orientation,ipc,ip,el,Fe,Fp)
  mprime_cut          = 0.7_pReal                                            !set by Dr.Bieler
  dtaylor_cut         = 1.0_pReal                                            !set by Chen, quick test only
 
- !***calculate my Taylor factor
- !***gather my orientation and slip systems
+ !***gather my orientation, F and slip systems
  my_orientation      = orientation(1:4, ipc, ip, el)
- Fe_me               = Fe(ipc,ip,el)
- Fp_me               = Fp(ipc,ip,el)
+ F0_me               = F0(1:3, 1:3, ipc, ip, el)
+ Fe_me               = Fe(1:3, 1:3, ipc, ip, el)
+ Fp_me               = Fp(1:3, 1:3, ipc, ip, el)
  slipNormal(1:3, 1:ns) = lattice_sn(1:3, 1:ns, ph)
  slipDirect(1:3, 1:ns) = lattice_sd(1:3, 1:ns, ph)
+ !******calculate Taylor factor for me
+ !@note: we need teh
+ F_me = math_mul33x33(Fe_me,Fp_me)
+ E_me = 0.5*(math_mul33x33(math_transpose33(F_me), F_me) - math_identity2nd) !E = 0.5(F^tF-I)
+ vonStrain
 
  !***loop into the geometry to figure out who is my closest neighbor
  LOOPNEIGHBORS: DO n=1_pInt, Nneighbors

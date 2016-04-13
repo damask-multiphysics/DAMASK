@@ -424,7 +424,7 @@ subroutine crystallite_init
  crystallite_partionedFp0 = crystallite_Fp0
  crystallite_partionedFi0 = crystallite_Fi0
  crystallite_partionedF0  = crystallite_F0
- crystallite_partionedF   = crystallite_F0                                                          
+ crystallite_partionedF   = crystallite_F0
 
  call crystallite_orientations()
  crystallite_orientation0 = crystallite_orientation                                                 ! store initial orientations for calculation of grain rotations
@@ -437,7 +437,10 @@ subroutine crystallite_init
          call constitutive_microstructure(crystallite_orientation, &                                ! pass orientation to constitutive module
                                           crystallite_Fe(1:3,1:3,c,i,e), &
                                           crystallite_Fp(1:3,1:3,c,i,e), &
-                                          c,i,e)                                                    ! update dependent state variables to be consistent with basic states
+                                          c,i,e,
+                                          crystallite_F0,
+                                          crystallite_Fe,
+                                          crystallite_Fp)                                           ! update dependent state variables to be consistent with basic states
       enddo
      enddo
    enddo
@@ -1714,7 +1717,10 @@ subroutine crystallite_integrateStateRK4()
          call constitutive_microstructure(crystallite_orientation,       &
                                           crystallite_Fe(1:3,1:3,g,i,e), &
                                           crystallite_Fp(1:3,1:3,g,i,e), &
-                                          g, i, e)                                                         ! update dependent state variables to be consistent with basic states
+                                          g, i, e,
+                                          crystallite_F0,
+                                          crystallite_Fe,
+                                          crystallite_Fp)                                                         ! update dependent state variables to be consistent with basic states
      enddo; enddo; enddo
    !$OMP ENDDO
 
@@ -2040,7 +2046,10 @@ subroutine crystallite_integrateStateRKCK45()
          call constitutive_microstructure(crystallite_orientation,       &
                                           crystallite_Fe(1:3,1:3,g,i,e), &
                                           crystallite_Fp(1:3,1:3,g,i,e), &
-                                          g, i, e)                                                         ! update dependent state variables to be consistent with basic states
+                                          g, i, e,
+                                          crystallite_F0,
+                                          crystallite_Fe,
+                                          crystallite_Fp)                                                         ! update dependent state variables to be consistent with basic states
      enddo; enddo; enddo
    !$OMP ENDDO
 
@@ -2260,7 +2269,10 @@ subroutine crystallite_integrateStateRKCK45()
        call constitutive_microstructure(crystallite_orientation,       &
                                         crystallite_Fe(1:3,1:3,g,i,e), &
                                         crystallite_Fp(1:3,1:3,g,i,e), &
-                                        g, i, e)                                                           ! update dependent state variables to be consistent with basic states
+                                        g, i, e,
+                                        crystallite_F0,
+                                        crystallite_Fe,
+                                        crystallite_Fp)                                                           ! update dependent state variables to be consistent with basic states
   enddo; enddo; enddo
  !$OMP ENDDO
 
@@ -2495,7 +2507,10 @@ subroutine crystallite_integrateStateAdaptiveEuler()
          call constitutive_microstructure(crystallite_orientation,       &
                                           crystallite_Fe(1:3,1:3,g,i,e), &
                                           crystallite_Fp(1:3,1:3,g,i,e), &
-                                          g, i, e)                                                         ! update dependent state variables to be consistent with basic states
+                                          g, i, e,
+                                          crystallite_F0,
+                                          crystallite_Fe,
+                                          crystallite_Fp)                                                         ! update dependent state variables to be consistent with basic states
      enddo; enddo; enddo
    !$OMP ENDDO
  !$OMP END PARALLEL
@@ -2839,7 +2854,10 @@ eIter = FEsolving_execElem(1:2)
          call constitutive_microstructure(crystallite_orientation,       &
                                           crystallite_Fe(1:3,1:3,g,i,e), &
                                           crystallite_Fp(1:3,1:3,g,i,e), &
-                                          g, i, e)                                                           ! update dependent state variables to be consistent with basic states
+                                          g, i, e,
+                                          crystallite_F0,
+                                          crystallite_Fe,
+                                          crystallite_Fp)                                                           ! update dependent state variables to be consistent with basic states
    enddo; enddo; enddo
    !$OMP ENDDO
   !$OMP END PARALLEL
@@ -3084,7 +3102,10 @@ subroutine crystallite_integrateStateFPI()
          call constitutive_microstructure(crystallite_orientation,       &
                                           crystallite_Fe(1:3,1:3,g,i,e), &
                                           crystallite_Fp(1:3,1:3,g,i,e), &
-                                          g, i, e)                                                           ! update dependent state variables to be consistent with basic states
+                                          g, i, e,
+                                          crystallite_F0,
+                                          crystallite_Fe,
+                                          crystallite_Fp)                                                           ! update dependent state variables to be consistent with basic states
        p = phaseAt(g,i,e)
        c = phasememberAt(g,i,e)
        plasticState(p)%previousDotState2(:,c) = plasticState(p)%previousDotState(:,c)
