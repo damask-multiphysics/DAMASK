@@ -557,7 +557,7 @@ subroutine plastic_phenoplus_init(fileUnit)
 ! allocate state arrays
      sizeState = plastic_phenoplus_totalNslip(instance) &                         ! s_slip
                + plastic_phenoplus_totalNtwin(instance) &                         ! s_twin
-               + 2_pInt &                                                         ! sum(gamma) + sum(f)
+               + 2_pInt &                                                         ! sum(gamma) + sum(twinVolFrac)
                + plastic_phenoplus_totalNslip(instance) &                         ! accshear_slip
                + plastic_phenoplus_totalNtwin(instance) &                         ! accshear_twin
                + plastic_phenoplus_totalNslip(instance)                           ! kappa
@@ -568,7 +568,7 @@ subroutine plastic_phenoplus_init(fileUnit)
      !           memory leak issue.
      sizeDotState = plastic_phenoplus_totalNslip(instance) &                      ! s_slip
                   + plastic_phenoplus_totalNtwin(instance) &                      ! s_twin
-                  + 2_pInt &                                                      ! sum(gamma) + sum(f)
+                  + 2_pInt &                                                      ! sum(gamma) + sum(twinVolFrac)
                   + plastic_phenoplus_totalNslip(instance) &                      ! accshear_slip
                   + plastic_phenoplus_totalNtwin(instance)                        ! accshear_twin
 
@@ -739,73 +739,84 @@ end subroutine plastic_phenoplus_aTolState
 !--------------------------------------------------------------------------------------------------
 !> @brief calculate push-up factors (kappa) for each voxel based on its neighbors
 !--------------------------------------------------------------------------------------------------
-subroutine plastic_phenoplus_microstructure(orientation,ipc,ip,el)
- use math, only:        pi, &
-                        math_mul33x33, &
-                        math_mul3x3, &
-                        math_transpose33, &
-                        math_qDot, &
-                        math_qRot, &
-                        indeg
+subroutine plastic_phenoplus_microstructure(orientation,ipc,ip,el,Fe,Fp)
+ use math, only:  pi, &
+                  math_mul33x33, &
+                  math_mul3x3, &
+                  math_transpose33, &
+                  math_qDot, &
+                  math_qRot, &
+                  indeg
 
- use mesh, only:        mesh_element, &
-                        FE_NipNeighbors, &
-                        FE_geomtype, &
-                        FE_celltype, &
-                        mesh_maxNips, &
-                        mesh_NcpElems, &
-                        mesh_ipNeighborhood
+ use mesh, only:  mesh_element, &
+                  FE_NipNeighbors, &
+                  FE_geomtype, &
+                  FE_celltype, &
+                  mesh_maxNips, &
+                  mesh_NcpElems, &
+                  mesh_ipNeighborhood
 
- use material, only:    material_phase, &
-                        material_texture, &
-                        phase_plasticityInstance, &
-                        phaseAt, phasememberAt, &
-                        homogenization_maxNgrains, &
-                        plasticState
+ use material, only:  material_phase, &
+                      material_texture, &
+                      phase_plasticityInstance, &
+                      phaseAt, phasememberAt, &
+                      homogenization_maxNgrains, &
+                      plasticState
 
- use lattice, only:     lattice_sn, &
-                        lattice_sd, &
-                        lattice_qDisorientation
+ use lattice, only:  lattice_sn, &
+                     lattice_sd, &
+                     lattice_qDisorientation
 
  !***input variables
  implicit none
  integer(pInt), intent(in) :: &
-   ipc, &                                                                                 !< component-ID of integration point
-   ip, &                                                                                  !< integration point
-   el                                                                                     !< element
+   ipc, &                                                     !< component-ID of integration point
+   ip, &                                                      !< integration point
+   el
+ real(pReal), dimension(3,3), intent(in) :: &
+                                Fe, &                         ! elastic deformation gradient
+                                Fp                            ! elastic deformation gradient                                                                                     !< element
  real(pReal), dimension(4,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), intent(in) :: &
-                                                orientation                               ! crystal orientation in quaternions
+                                                orientation   ! crystal orientation in quaternions
 
  !***local variables
- integer(pInt)        instance, &                   !my instance of this plasticity
-                      ph, &                         !my phase
-                      of, &                         !my spatial position in memory (offset)
-                      textureID, &                  !my texture
-                      Nneighbors, &                 !number of neighbors (<= 6)
-                      vld_Nneighbors, &             !number of my valid neighbors
-                      n, &                          !neighbor index (for iterating through all neighbors)
-                      ns, &                         !number of slip system
-                      nt, &                         !number of twin system
-                      me_slip, &                    !my slip system index
-                      neighbor_el, &                !element number of neighboring material point
-                      neighbor_ip, &                !integration point of neighboring material point
-                      neighbor_n, &                 !I have no idea what is this
-                      neighbor_of, &                !spatial position in memory for this neighbor (offset)
-                      neighbor_ph, &                !neighbor's phase
-                      neighbor_tex, &               !neighbor's texture ID
-                      ne_slip_ac, &                 !loop to find neighbor shear
-                      ne_slip, &                    !slip system index for neighbor
-                      index_kappa, &                !index of pushup factors in plasticState
-                      offset_acshear_slip, &        !offset in PlasticState for the accumulative shear
-                      j                             !quickly loop through slip families
+ integer(pInt)  instance, &                   !my instance of this plasticity
+                ph, &                         !my phase
+                of, &                         !my spatial position in memory (offset)
+                textureID, &                  !my texture
+                Nneighbors, &                 !number of neighbors (<= 6)
+                vld_Nneighbors, &             !number of my valid neighbors
+                n, &                          !neighbor index (for iterating through all neighbors)
+                ns, &                         !number of slip system
+                nt, &                         !number of twin system
+                me_slip, &                    !my slip system index
+                neighbor_el, &                !element number of neighboring material point
+                neighbor_ip, &                !integration point of neighboring material point
+                neighbor_n, &                 !I have no idea what is this
+                neighbor_of, &                !spatial position in memory for this neighbor (offset)
+                neighbor_ph, &                !neighbor's phase
+                neighbor_tex, &               !neighbor's texture ID
+                ne_slip_ac, &                 !loop to find neighbor shear
+                ne_slip, &                    !slip system index for neighbor
+                index_kappa, &                !index of pushup factors in plasticState
+                offset_acshear_slip, &        !offset in PlasticState for the accumulative shear
+                j                             !quickly loop through slip families
 
- real(pReal)          kappa_max, &                  !
-                      tmp_myshear_slip, &           !temp storage for accumulative shear for me
-                      mprime_cut, &                 !m' cutoff to consider neighboring effect
-                      avg_acshear_ne, &             !the average accumulative shear from my neighbor
-                      tmp_mprime, &                 !temp holder for m' value
-                      tmp_acshear                   !temp holder for accumulative shear for m'
+ real(pReal)    kappa_max, &                  !
+                tmp_myshear_slip, &           !temp storage for accumulative shear for me
+                mprime_cut, &                 !m' cutoff to consider neighboring effect
+                dtaylor_cut, &                !threshold for determine high contrast interface using Taylor factor
+                avg_acshear_ne, &             !the average accumulative shear from my neighbor
+                taylor_me, &                  !Taylor factor for me
+                taylor_ne, &                  !Taylor factor for my current neighbor
+                tmp_mprime, &                 !temp holder for m' value
+                tmp_acshear                   !temp holder for accumulative shear for m'
 
+ real(pReal), dimension(3,3) :: &
+                Fe_me, &                      !my elastic deformation gradient
+                Fp_me, &                      !my plastic deformation gradient
+                Fe_ne, &                      !elastic deformation gradient of my current neighbor
+                Fp_ne                         !plastic deformation gradient of my current neighbor
 
  real(pReal), dimension(plastic_phenoplus_totalNslip(phase_plasticityInstance(material_phase(1,ip,el)))) :: &
                       m_primes, &                   !m' between me_alpha(one) and neighbor beta(all)
@@ -824,97 +835,127 @@ subroutine plastic_phenoplus_microstructure(orientation,ipc,ip,el)
                                                 ne_mprimes                                !m' between each neighbor
 
  !***Get my properties
+ !@TODO
+ ! still need to know how to access the total strain for current material point
+ ! also, need to figure out an efficient way to calculate gamma_dot for the material
+ ! point and its neighbors
  Nneighbors          = FE_NipNeighbors(FE_celltype(FE_geomtype(mesh_element(2,el))))
  ph                  = phaseAt(ipc,ip,el)                                   !get my phase
- of                  = phasememberAt(ipc,ip,el)                                   !get my spatial location offset in memory
- textureID           = material_texture(1,ip,el)                                          !get my texture ID
- instance            = phase_plasticityInstance(ph)                                       !get my instance based on phase ID
+ of                  = phasememberAt(ipc,ip,el)                             !get my spatial location offset in memory
+ textureID           = material_texture(1,ip,el)                            !get my texture ID
+ instance            = phase_plasticityInstance(ph)                         !get my instance based on phase ID
  ns                  = plastic_phenoplus_totalNslip(instance)
  nt                  = plastic_phenoplus_totalNtwin(instance)
  offset_acshear_slip = ns + nt + 2_pInt
- index_kappa         = ns + nt + 2_pInt + ns + nt                                         !location of kappa in plasticState
- mprime_cut          = 0.7_pReal                                                          !set by Dr.Bieler
+ index_kappa         = ns + nt + 2_pInt + ns + nt                           !location of kappa in plasticState
 
- !***gather my accumulative shear from palsticState
- FINDMYSHEAR: do j = 1_pInt,ns
-  me_acshear(j) = plasticState(ph)%state(offset_acshear_slip+j, of)
- enddo FINDMYSHEAR
+ !***init calculation for given voxel
+ mprime_cut          = 0.7_pReal                                            !set by Dr.Bieler
+ dtaylor_cut         = 1.0_pReal                                            !set by Chen, quick test only
 
+ !***calculate my Taylor factor
  !***gather my orientation and slip systems
- my_orientation        = orientation(1:4, ipc, ip, el)
+ my_orientation      = orientation(1:4, ipc, ip, el)
+ Fe_me               = Fe(ipc,ip,el)
+ Fp_me               = Fp(ipc,ip,el)
  slipNormal(1:3, 1:ns) = lattice_sn(1:3, 1:ns, ph)
  slipDirect(1:3, 1:ns) = lattice_sd(1:3, 1:ns, ph)
- kappa_max             = plastic_phenoplus_kappa_max(instance)                            !maximum pushups allowed (READIN)
 
- !***calculate kappa between me and all my neighbors
- LOOPMYSLIP: DO me_slip=1_pInt,ns
-  vld_Nneighbors   = Nneighbors
-  tmp_myshear_slip = me_acshear(me_slip)
-  tmp_mprime       = 0.0_pReal                                                            !highest m' from all neighbors
-  tmp_acshear      = 0.0_pReal                                                            !accumulative shear from highest m'
-
-  !***go through my neighbors to find highest m'
-  LOOPNEIGHBORS: DO n=1_pInt,Nneighbors
-   neighbor_el          = mesh_ipNeighborhood(1,n,ip,el)
-   neighbor_ip          = mesh_ipNeighborhood(2,n,ip,el)
-   neighbor_n           = 1                                                               !It is ipc
-   neighbor_of          = phasememberAt( neighbor_n, neighbor_ip, neighbor_el)
-   neighbor_ph          = phaseAt( neighbor_n, neighbor_ip, neighbor_el)
-   neighbor_tex         = material_texture(1,neighbor_ip,neighbor_el)
-   neighbor_orientation = orientation(1:4, neighbor_n, neighbor_ip, neighbor_el)          !ipc is always 1.
-   absMisorientation    = lattice_qDisorientation(my_orientation, &
-                                                  neighbor_orientation, &
-                                                  0_pInt)                                 !no need for explicit calculation of symmetry
-
-   !***find the accumulative shear for this neighbor
-   LOOPFINDNEISHEAR: DO ne_slip_ac=1_pInt, ns
-    ne_acshear(ne_slip_ac) = plasticState(ph)%state(offset_acshear_slip+ne_slip_ac, &
-                                                    neighbor_of)
-   ENDDO LOOPFINDNEISHEAR
-
-   !***calculate the average accumulative shear and use it as cutoff
-   avg_acshear_ne = SUM(ne_acshear)/ns
-
-   !***
-   IF (ph==neighbor_ph) THEN
-    !***walk through all the
-    LOOPNEIGHBORSLIP: DO ne_slip=1_pInt,ns
-      !***only consider slip system that is active (above average accumulative shear)
-      IF (ne_acshear(ne_slip) > avg_acshear_ne) THEN
-        m_primes(ne_slip) = abs(math_mul3x3(slipNormal(1:3,me_slip), &
-                                math_qRot(absMisorientation, slipNormal(1:3,ne_slip)))) &
-                           *abs(math_mul3x3(slipDirect(1:3,me_slip), &
-                                math_qRot(absMisorientation, slipDirect(1:3,ne_slip))))
-        !***find the highest m' and corresponding accumulative shear
-        IF (m_primes(ne_slip) > tmp_mprime) THEN
-          tmp_mprime  = m_primes(ne_slip)
-          tmp_acshear = ne_acshear(ne_slip)
-        ENDIF
-      ENDIF
-    ENDDO LOOPNEIGHBORSLIP
-
-   ELSE
-    ne_mprimes(n)  = 0.0_pReal
-    vld_Nneighbors = vld_Nneighbors - 1_pInt
-   ENDIF
-
-  ENDDO LOOPNEIGHBORS
-
-  !***check if this element close to rim
-  IF (vld_Nneighbors < Nneighbors) THEN
-   !***rim voxel, no modification allowed
-   plasticState(ph)%state(index_kappa+me_slip, of) = 1.0_pReal
+ !***loop into the geometry to figure out who is my closest neighbor
+ LOOPNEIGHBORS: DO n=1_pInt, Nneighbors
+ !******for each of my neighbor, calculate the Taylor factor
+  ne_taylor = 1.0
+ !*********for the high contrast interface
+  IF (abs(taylor_ne - taylor_me) > dtaylor_cut) THEN
+ !*********  gather neighbor orientation and slip systems
+ !*********  calculate m' (need to loop through all my slip systems as well)
+ !*********  if m'>mprime_cut kappa=1.5 else 1.0
+ !******
   ELSE
-   !***patch voxel, started to calculate push up factor for gamma_dot
-   IF ((tmp_mprime > mprime_cut) .AND. (tmp_acshear > tmp_myshear_slip)) THEN
-    plasticState(ph)%state(index_kappa+me_slip, of) = 1.0_pReal / tmp_mprime
-   ELSE
-    !***minimum damping factor is 0.5
-    plasticState(ph)%state(index_kappa+me_slip, of) = 0.5_pReal + tmp_mprime * 0.5_pReal
-   ENDIF
   ENDIF
+ !***end of search
+ ENDDO LOOPNEIGHBORS
 
- ENDDO LOOPMYSLIP
+ ! !***gather my accumulative shear from palsticState
+ ! FINDMYSHEAR: do j = 1_pInt,ns
+ !  me_acshear(j) = plasticState(ph)%state(offset_acshear_slip+j, of)
+ ! enddo FINDMYSHEAR
+
+ ! !***gather my orientation and slip systems
+ ! my_orientation        = orientation(1:4, ipc, ip, el)
+ ! slipNormal(1:3, 1:ns) = lattice_sn(1:3, 1:ns, ph)
+ ! slipDirect(1:3, 1:ns) = lattice_sd(1:3, 1:ns, ph)
+ ! kappa_max             = plastic_phenoplus_kappa_max(instance)                            !maximum pushups allowed (READIN)
+
+ ! !***calculate kappa between me and all my neighbors
+ ! LOOPMYSLIP: DO me_slip=1_pInt,ns
+ !  vld_Nneighbors   = Nneighbors
+ !  tmp_myshear_slip = me_acshear(me_slip)
+ !  tmp_mprime       = 0.0_pReal                                                            !highest m' from all neighbors
+ !  tmp_acshear      = 0.0_pReal                                                            !accumulative shear from highest m'
+
+ !  !***go through my neighbors to find highest m'
+ !  LOOPNEIGHBORS: DO n=1_pInt,Nneighbors
+ !   neighbor_el          = mesh_ipNeighborhood(1,n,ip,el)
+ !   neighbor_ip          = mesh_ipNeighborhood(2,n,ip,el)
+ !   neighbor_n           = 1                                                               !It is ipc
+ !   neighbor_of          = phasememberAt( neighbor_n, neighbor_ip, neighbor_el)
+ !   neighbor_ph          = phaseAt( neighbor_n, neighbor_ip, neighbor_el)
+ !   neighbor_tex         = material_texture(1,neighbor_ip,neighbor_el)
+ !   neighbor_orientation = orientation(1:4, neighbor_n, neighbor_ip, neighbor_el)          !ipc is always 1.
+ !   absMisorientation    = lattice_qDisorientation(my_orientation, &
+ !                                                  neighbor_orientation, &
+ !                                                  0_pInt)                                 !no need for explicit calculation of symmetry
+
+ !   !***find the accumulative shear for this neighbor
+ !   LOOPFINDNEISHEAR: DO ne_slip_ac=1_pInt, ns
+ !    ne_acshear(ne_slip_ac) = plasticState(ph)%state(offset_acshear_slip+ne_slip_ac, &
+ !                                                    neighbor_of)
+ !   ENDDO LOOPFINDNEISHEAR
+
+ !   !***calculate the average accumulative shear and use it as cutoff
+ !   avg_acshear_ne = SUM(ne_acshear)/ns
+
+ !   !***
+ !   IF (ph==neighbor_ph) THEN
+ !    !***walk through all the
+ !    LOOPNEIGHBORSLIP: DO ne_slip=1_pInt,ns
+ !      !***only consider slip system that is active (above average accumulative shear)
+ !      IF (ne_acshear(ne_slip) > avg_acshear_ne) THEN
+ !        m_primes(ne_slip) = abs(math_mul3x3(slipNormal(1:3,me_slip), &
+ !                                math_qRot(absMisorientation, slipNormal(1:3,ne_slip)))) &
+ !                           *abs(math_mul3x3(slipDirect(1:3,me_slip), &
+ !                                math_qRot(absMisorientation, slipDirect(1:3,ne_slip))))
+ !        !***find the highest m' and corresponding accumulative shear
+ !        IF (m_primes(ne_slip) > tmp_mprime) THEN
+ !          tmp_mprime  = m_primes(ne_slip)
+ !          tmp_acshear = ne_acshear(ne_slip)
+ !        ENDIF
+ !      ENDIF
+ !    ENDDO LOOPNEIGHBORSLIP
+
+ !   ELSE
+ !    ne_mprimes(n)  = 0.0_pReal
+ !    vld_Nneighbors = vld_Nneighbors - 1_pInt
+ !   ENDIF
+
+ !  ENDDO LOOPNEIGHBORS
+
+ !  !***check if this element close to rim
+ !  IF (vld_Nneighbors < Nneighbors) THEN
+ !   !***rim voxel, no modification allowed
+ !   plasticState(ph)%state(index_kappa+me_slip, of) = 1.0_pReal
+ !  ELSE
+ !   !***patch voxel, started to calculate push up factor for gamma_dot
+ !   IF ((tmp_mprime > mprime_cut) .AND. (tmp_acshear > tmp_myshear_slip)) THEN
+ !    plasticState(ph)%state(index_kappa+me_slip, of) = 1.5_pReal
+ !   ELSE
+ !    !***minimum damping factor is 0.5
+ !    plasticState(ph)%state(index_kappa+me_slip, of) = 1.0_pReal
+ !   ENDIF
+ !  ENDIF
+
+ ! ENDDO LOOPMYSLIP
 
 end subroutine plastic_phenoplus_microstructure
 

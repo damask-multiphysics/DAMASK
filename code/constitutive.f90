@@ -211,7 +211,7 @@ subroutine constitutive_init()
            outputName = PLASTICITY_NONE_label
            thisNoutput => null()
            thisOutput => null()
-           thisSize   => null() 
+           thisSize   => null()
          case (PLASTICITY_ISOTROPIC_ID) plasticityType
            outputName = PLASTICITY_ISOTROPIC_label
            thisNoutput => plastic_isotropic_Noutput
@@ -488,7 +488,7 @@ subroutine constitutive_microstructure(orientations, Fe, Fp, ipc, ip, el)
    case (PLASTICITY_NONLOCAL_ID) plasticityType
      call plastic_nonlocal_microstructure (Fe,Fp,ip,el)
    case (PLASTICITY_PHENOPLUS_ID) plasticityType
-     call plastic_phenoplus_microstructure(orientations,ipc,ip,el)
+     call plastic_phenoplus_microstructure(orientations,ipc,ip,el,Fe,Fp)
  end select plasticityType
 
 end subroutine constitutive_microstructure
