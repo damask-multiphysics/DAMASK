@@ -440,7 +440,8 @@ subroutine crystallite_init
                                           c,i,e,
                                           crystallite_F0,
                                           crystallite_Fe,
-                                          crystallite_Fp)                                           ! update dependent state variables to be consistent with basic states
+                                          crystallite_Fp,
+                                          crystallite_Tstar_v)                                           ! update dependent state variables to be consistent with basic states
       enddo
      enddo
    enddo
@@ -1720,7 +1721,8 @@ subroutine crystallite_integrateStateRK4()
                                           g, i, e,
                                           crystallite_F0,
                                           crystallite_Fe,
-                                          crystallite_Fp)                                                         ! update dependent state variables to be consistent with basic states
+                                          crystallite_Fp,
+                                          crystallite_Tstar_v)                                                         ! update dependent state variables to be consistent with basic states
      enddo; enddo; enddo
    !$OMP ENDDO
 
@@ -2049,7 +2051,8 @@ subroutine crystallite_integrateStateRKCK45()
                                           g, i, e,
                                           crystallite_F0,
                                           crystallite_Fe,
-                                          crystallite_Fp)                                                         ! update dependent state variables to be consistent with basic states
+                                          crystallite_Fp,
+                                          crystallite_Tstar_v)                                                         ! update dependent state variables to be consistent with basic states
      enddo; enddo; enddo
    !$OMP ENDDO
 
@@ -2272,7 +2275,8 @@ subroutine crystallite_integrateStateRKCK45()
                                         g, i, e,
                                         crystallite_F0,
                                         crystallite_Fe,
-                                        crystallite_Fp)                                                           ! update dependent state variables to be consistent with basic states
+                                        crystallite_Fp,
+                                        crystallite_Tstar_v)                                                           ! update dependent state variables to be consistent with basic states
   enddo; enddo; enddo
  !$OMP ENDDO
 
@@ -2510,7 +2514,8 @@ subroutine crystallite_integrateStateAdaptiveEuler()
                                           g, i, e,
                                           crystallite_F0,
                                           crystallite_Fe,
-                                          crystallite_Fp)                                                         ! update dependent state variables to be consistent with basic states
+                                          crystallite_Fp,
+                                          crystallite_Tstar_v)                                                         ! update dependent state variables to be consistent with basic states
      enddo; enddo; enddo
    !$OMP ENDDO
  !$OMP END PARALLEL
@@ -2857,7 +2862,8 @@ eIter = FEsolving_execElem(1:2)
                                           g, i, e,
                                           crystallite_F0,
                                           crystallite_Fe,
-                                          crystallite_Fp)                                                           ! update dependent state variables to be consistent with basic states
+                                          crystallite_Fp,
+                                          crystallite_Tstar_v)                                                           ! update dependent state variables to be consistent with basic states
    enddo; enddo; enddo
    !$OMP ENDDO
   !$OMP END PARALLEL
@@ -3105,7 +3111,8 @@ subroutine crystallite_integrateStateFPI()
                                           g, i, e,
                                           crystallite_F0,
                                           crystallite_Fe,
-                                          crystallite_Fp)                                                           ! update dependent state variables to be consistent with basic states
+                                          crystallite_Fp,
+                                          crystallite_Tstar_v)                                                           ! update dependent state variables to be consistent with basic states
        p = phaseAt(g,i,e)
        c = phasememberAt(g,i,e)
        plasticState(p)%previousDotState2(:,c) = plasticState(p)%previousDotState(:,c)
