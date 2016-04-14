@@ -12,8 +12,9 @@ scriptID   = ' '.join([scriptName,damask.version])
 
 def volTetrahedron(coords):
   """
-  Return the volume of the tetrahedron with given vertices or sides. If
-  vertices are given they must be in a NumPy array with shape (4,3): the
+  Return the volume of the tetrahedron with given vertices or sides.
+  
+  Ifvertices are given they must be in a NumPy array with shape (4,3): the
   position vectors of the 4 vertices in 3 dimensions; if the six sides are
   given, they must be an array of length 6. If both are given, the sides
   will be used in the calculation.
@@ -28,9 +29,7 @@ def volTetrahedron(coords):
   where s1, s2, ..., s6 are the tetrahedron side lengths.
 
   from http://codereview.stackexchange.com/questions/77593/calculating-the-volume-of-a-tetrahedron
-
   """
-
   # The indexes of rows in the vertices array corresponding to all
   # possible pairs of vertices
   vertex_pair_indexes = np.array(((0, 1), (0, 2), (0, 3),
@@ -59,10 +58,11 @@ def volTetrahedron(coords):
 
 def volumeMismatch(size,F,nodes):
   """
-  calculates the mismatch between volume of reconstructed (compatible) cube and 
-  determinant of defgrad at the FP
+  calculates the volume mismatch
+  
+  volume mismatch is defined as the difference between volume of reconstructed 
+  (compatible) cube and determinant of defgrad at the FP
   """
-
   coords = np.empty([8,3])
   vMismatch = np.empty(grid)
   volInitial = size.prod()/grid.prod()
@@ -95,11 +95,12 @@ def volumeMismatch(size,F,nodes):
 
 def shapeMismatch(size,F,nodes,centres):
   """
-  Routine to calculate the mismatch between the vectors from the central point to
+  Routine to calculate the shape mismatch
+  
+  shape mismatch is defined as difference between the vectors from the central point to
   the corners of reconstructed (combatible) volume element and the vectors calculated by deforming
   the initial volume element with the  current deformation gradient
   """
-
   coordsInitial = np.empty([8,3])
   sMismatch    = np.empty(grid)
    
@@ -121,7 +122,7 @@ def shapeMismatch(size,F,nodes,centres):
     for j in xrange(grid[1]):
       for i in xrange(grid[0]):
        sMismatch[i,j,k] = \
-           np.linalg.norm(nodes[0:3,i,  j,    k] - centres[0:3,i,j,k] - np.dot(F[:,:,i,j,k], coordsInitial[0,0:3]))\
+         + np.linalg.norm(nodes[0:3,i,  j,    k] - centres[0:3,i,j,k] - np.dot(F[:,:,i,j,k], coordsInitial[0,0:3]))\
          + np.linalg.norm(nodes[0:3,i+1,j,    k] - centres[0:3,i,j,k] - np.dot(F[:,:,i,j,k], coordsInitial[1,0:3]))\
          + np.linalg.norm(nodes[0:3,i+1,j+1,k  ] - centres[0:3,i,j,k] - np.dot(F[:,:,i,j,k], coordsInitial[2,0:3]))\
          + np.linalg.norm(nodes[0:3,i,  j+1,k  ] - centres[0:3,i,j,k] - np.dot(F[:,:,i,j,k], coordsInitial[3,0:3]))\
