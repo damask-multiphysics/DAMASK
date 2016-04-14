@@ -83,9 +83,9 @@ damask.util.croak('{}: {} points and {} cells...'.format(options.vtk,Npoints,Nce
 if filenames == []: filenames = [None]
 
 for name in filenames:
-  try:
-    table = damask.ASCIItable(name = name,
-                              buffered = False, readonly = True)
+  try:    table = damask.ASCIItable(name = name,
+                                    buffered = False,
+                                    readonly = True)
   except: continue
   damask.util.report(scriptName, name)
 
@@ -132,6 +132,8 @@ for name in filenames:
         if   datatype == 'color':  VTKarray[me].InsertNextTuple3(*map(lambda x: int(255.*float(x)),theData))
         elif datatype == 'vector': VTKarray[me].InsertNextTuple3(*map(float,theData))
         elif datatype == 'scalar': VTKarray[me].InsertNextValue(float(theData[0]))
+
+  table.input_close()                                                                               # close input ASCII table
 
 # ------------------------------------------ add data ---------------------------------------  
 

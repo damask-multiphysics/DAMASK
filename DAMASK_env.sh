@@ -2,7 +2,7 @@
 # usage:  source DAMASK_env.sh
 
 if [ "$OSTYPE" == "linux-gnu" ] || [ "$OSTYPE" == 'linux' ]; then
-  DAMASK_ROOT=$(readlink -f "`dirname $BASH_SOURCE`")
+  DAMASK_ROOT=$(python -c "import os,sys; print(os.path.realpath(os.path.expanduser(sys.argv[1])))" "`dirname $BASH_SOURCE`")
 else
   [[ "${BASH_SOURCE::1}" == "/" ]] && BASE="" || BASE="`pwd`/"
   STAT=$(stat "`dirname $BASE$BASH_SOURCE`")
@@ -18,11 +18,11 @@ fi
 
 SOLVER=`which DAMASK_spectral 2>/dev/null`
 if [ "x$SOLVER" == "x" ]; then
-  export SOLVER='Not found!'
+  SOLVER='Not found!'
 fi
 PROCESSING=`which postResults 2>/dev/null`
 if [ "x$PROCESSING" == "x" ]; then
-  export PROCESSING='Not found!'
+  PROCESSING='Not found!'
 fi
 
 # according to http://software.intel.com/en-us/forums/topic/501500
@@ -55,7 +55,8 @@ if [ ! -z "$PS1" ]; then
   echo "Multithreading     DAMASK_NUM_THREADS=$DAMASK_NUM_THREADS"
   if [ "x$PETSC_DIR"   != "x" ]; then
     echo "PETSc location     $PETSC_DIR"
-    [[ `readlink -f $PETSC_DIR` == $PETSC_DIR ]] || echo "               ~~> "`readlink -f $PETSC_DIR`
+    [[ `python -c "import os,sys; print(os.path.realpath(os.path.expanduser(sys.argv[1])))" "$PETSC_DIR"` == $PETSC_DIR ]] \
+    || echo "               ~~> "`python -c "import os,sys; print(os.path.realpath(os.path.expanduser(sys.argv[1])))" "$PETSC_DIR"`
   fi
   [[ "x$PETSC_ARCH"  != "x" ]] && echo "PETSc architecture $PETSC_ARCH"
   echo "MSC.Marc/Mentat    $MSC_ROOT"

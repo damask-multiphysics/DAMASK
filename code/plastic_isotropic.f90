@@ -7,14 +7,11 @@
 !! untextured polycrystal
 !--------------------------------------------------------------------------------------------------
 module plastic_isotropic
-#ifdef HDF
- use hdf5, only: &
-   HID_T
-#endif
 
  use prec, only: &
    pReal,&
-   pInt
+   pInt, &
+   DAMASK_NaN
  
  implicit none
  private
@@ -40,20 +37,20 @@ module plastic_isotropic
    integer(kind(undefined_ID)), allocatable, dimension(:) :: & 
      outputID
   real(pReal) :: &
-     fTaylor, &
-     tau0, &
-     gdot0, &
-     n, &
-     h0, &
-     h0_slopeLnRate, &
-     tausat, &
-     a, &
-     aTolFlowstress, &
-     aTolShear     , &
-     tausat_SinhFitA=0.0_pReal, &
-     tausat_SinhFitB=0.0_pReal, &
-     tausat_SinhFitC=0.0_pReal, &
-     tausat_SinhFitD=0.0_pReal
+     fTaylor        = DAMASK_NaN, &
+     tau0           = DAMASK_NaN, &
+     gdot0          = DAMASK_NaN, &
+     n              = DAMASK_NaN, &
+     h0             = DAMASK_NaN, &
+     h0_slopeLnRate = 0.0_pReal, &
+     tausat         = DAMASK_NaN, &
+     a              = DAMASK_NaN, &
+     aTolFlowstress = 1.0_pReal, &
+     aTolShear      = 1.0e-6_pReal, &
+     tausat_SinhFitA= 0.0_pReal, &
+     tausat_SinhFitB= 0.0_pReal, &
+     tausat_SinhFitC= 0.0_pReal, &
+     tausat_SinhFitD= 0.0_pReal
   logical :: &
      dilatation = .false.
  end type
@@ -474,7 +471,8 @@ subroutine plastic_isotropic_LiAndItsTangent(Li,dLi_dTstar_3333,Tstar_v,ipc,ip,e
  implicit none
  real(pReal), dimension(3,3), intent(out) :: &
    Li                                                                                               !< plastic velocity gradient
-
+ real(pReal), dimension(3,3,3,3), intent(out)  :: &
+   dLi_dTstar_3333                                                                                  !< derivative of Li with respect to Tstar as 4th order tensor
  real(pReal), dimension(6),   intent(in) :: &
    Tstar_v                                                                                          !< 2nd Piola Kirchhoff stress tensor in Mandel notation
  integer(pInt),               intent(in) :: &
@@ -484,9 +482,7 @@ subroutine plastic_isotropic_LiAndItsTangent(Li,dLi_dTstar_3333,Tstar_v,ipc,ip,e
 
  real(pReal), dimension(3,3) :: &
    Tstar_sph_33                                                                                     !< sphiatoric part of the 2nd Piola Kirchhoff stress tensor as 2nd order tensor
- real(pReal), dimension(3,3,3,3), intent(out)  :: &
-   dLi_dTstar_3333                                                                                  !< derivative of Li with respect to Tstar as 4th order tensor
- real(pReal) :: &
+real(pReal) :: &
    gamma_dot, &                                                                                     !< strainrate
    norm_Tstar_sph, &                                                                                !< euclidean norm of Tstar_sph
    squarenorm_Tstar_sph                                                                             !< square of the euclidean norm of Tstar_sph
@@ -523,6 +519,9 @@ subroutine plastic_isotropic_LiAndItsTangent(Li,dLi_dTstar_3333,Tstar_v,ipc,ip,e
        dLi_dTstar_3333 = gamma_dot / param(instance)%fTaylor * &
                                           dLi_dTstar_3333 / norm_Tstar_sph
      endif
+ else
+  Li = 0.0_pReal
+  dLi_dTstar_3333 = 0.0_pReal
  endif
  
 end subroutine plastic_isotropic_LiAndItsTangent

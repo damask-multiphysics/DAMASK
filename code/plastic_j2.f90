@@ -207,9 +207,6 @@ subroutine plastic_j2_init(fileUnit)
      phase = phase + 1_pInt                                                                         ! advance section counter
      if (phase_plasticity(phase) == PLASTICITY_J2_ID) then
        instance = phase_plasticityInstance(phase)
-#ifdef HDF
-       outID(instance)=HDF5_addGroup(str1,tempResults)
-#endif
      endif
      cycle                                                                                          ! skip to next line
    endif
@@ -226,21 +223,11 @@ subroutine plastic_j2_init(fileUnit)
              plastic_j2_outputID(plastic_j2_Noutput(instance),instance) = flowstress_ID
              plastic_j2_output(plastic_j2_Noutput(instance),instance) = &
                                                 IO_lc(IO_stringValue(line,chunkPos,2_pInt))
-#ifdef HDF 
-             call HDF5_addScalarDataset(outID(instance),myConstituents,'flowstress','MPa')
-             allocate(plastic_j2_Output2(instance)%flowstress(myConstituents))
-             plastic_j2_Output2(instance)%flowstressActive = .true.
-#endif
            case ('strainrate')
              plastic_j2_Noutput(instance) = plastic_j2_Noutput(instance) + 1_pInt
              plastic_j2_outputID(plastic_j2_Noutput(instance),instance) = strainrate_ID
              plastic_j2_output(plastic_j2_Noutput(instance),instance) = &
                                                 IO_lc(IO_stringValue(line,chunkPos,2_pInt))
-#ifdef HDF 
-             call HDF5_addScalarDataset(outID(instance),myConstituents,'strainrate','1/s')
-             allocate(plastic_j2_Output2(instance)%strainrate(myConstituents))
-             plastic_j2_Output2(instance)%strainrateActive = .true.
-#endif
            case default
 
          end select
