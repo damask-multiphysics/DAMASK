@@ -24,11 +24,11 @@ parser.add_option('-m', '--mode',
                   type = 'choice', choices = ['cell','point'],
                   help = 'cell-centered or point-centered coordinates ')
 parser.add_option('-c', '--coordinates',
-                  dest = 'position',
+                  dest = 'coords',
                   type = 'string', metavar = 'string',
                   help = 'coordinate label [%default]')
-parser.set_defaults(position ='ipinitialcoord',
-                    mode     ='cell'
+parser.set_defaults(coords = 'pos',
+                    mode   = 'cell'
                    )
 
 (options, filenames) = parser.parse_args()
@@ -50,9 +50,9 @@ for name in filenames:
 
   remarks = []
   errors  = []
-  coordDim = table.label_dimension(options.position)
-  if not 3 >= coordDim >= 1: errors.append('coordinates "{}" need to have one, two, or three dimensions.'.format(options.position))
-  elif coordDim < 3:         remarks.append('appending {} dimensions to coordinates "{}"...'.format(3-coordDim,options.position))
+  coordDim = table.label_dimension(options.coords)
+  if not 3 >= coordDim >= 1: errors.append('coordinates "{}" need to have one, two, or three dimensions.'.format(options.coords))
+  elif coordDim < 3:         remarks.append('appending {} dimensions to coordinates "{}"...'.format(3-coordDim,options.coords))
 
   if remarks != []: damask.util.croak(remarks)
   if errors  != []:
@@ -62,7 +62,7 @@ for name in filenames:
 
 # --------------- figure out size and grid ---------------------------------------------------------
 
-  table.data_readArray(options.position)
+  table.data_readArray(options.coords)
   if len(table.data.shape) < 2: table.data.shape += (1,)                                            # expand to 2D shape
   if table.data.shape[1] < 3:
     table.data = np.hstack((table.data,
@@ -109,7 +109,7 @@ for name in filenames:
     writer.SetDataModeToBinary()
     writer.SetCompressorTypeToZLib()
     writer.SetFileName(os.path.join(directory,os.path.splitext(filename)[0] \
-                                        +'_{}({})'.format(options.position, options.mode) \
+                                        +'_{}({})'.format(options.coords, options.mode) \
                                         +'.'+writer.GetDefaultFileExtension()))
   else:
     writer = vtk.vtkDataSetWriter()
