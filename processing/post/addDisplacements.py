@@ -139,8 +139,12 @@ for name in filenames:
     errors.append('deformation gradient "{}" is not a 3x3 tensor.'.format(options.defgrad))
 
   coordDim = table.label_dimension(options.coords)
-  if not 3 >= coordDim >= 1: errors.append('coordinates "{}" need to have one, two, or three dimensions.'.format(options.coords))
-  elif coordDim < 3:         remarks.append('appending {} dimensions to coordinates "{}"...'.format(3-coordDim,options.coords))
+  if not 3 >= coordDim >= 1:
+    errors.append('coordinates "{}" need to have one, two, or three dimensions.'.format(options.coords))
+  elif coordDim < 3:
+    remarks.append('appending {} dimension{} to coordinates "{}"...'.format(3-coordDim,
+                                                                            's' if coordDim < 2 else '',
+                                                                            options.coords))
 
   if remarks != []: damask.util.croak(remarks)
   if errors  != []:
