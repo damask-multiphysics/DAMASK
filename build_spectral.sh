@@ -36,17 +36,24 @@ cd $BUILDDIR
 # PETSC_DIR                |  PETSC directory
 # DAMASK_V                 |  DAMASK current revision
 # CMAKE_BUILD_TYPE         |  Default set to release (no debugging output)
+# CMAKE_VERBOSE_MAKEFILE   |  [ON/OFF] toggle makefile verbose output
 # OPENMP                   |  [ON/OFF]
 # OPTIMIZATION             |  [OFF,DEFENSIVE,AGGRESSIVE,ULTRA]
 # DAMASK_DRIVER            |  [SPECTRAL, FEM]
 # DAMASK_INSTALL           |  Directory to install binary output
+# DAMASK_PREFIX            |  Compiler prefix
+# DAMASK_SUFFIX            |  Compiler suffix,
+#                          |    e.g. DAMASK_SUFFIX="-Wl,--verbose"
 cmake -D PETSC_DIR=${PETSC_DIR}          \
       -D DAMASK_V=${DAMASKVERSION}       \
       -D CMAKE_BUILD_TYPE=RELEASE        \
+      -D CMAKE_VERBOSE_MAKEFILE=OFF      \
       -D OPENMP=ON                       \
       -D OPTIMIZATION=DEFENSIVE          \
       -D DAMASK_DRIVER=SPECTRAL          \
       -D DAMASK_INSTALL=${HOME}/bin      \
+      -D DAMASK_PREFIX=""                \
+      -D DAMASK_SUFFIX="-Wl,--verbose"   \
       ../..
 
 echo

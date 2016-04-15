@@ -26,6 +26,7 @@ cd FEM
 # PETSC_DIR                |  PETSC directory
 # DAMASK_V                 |  DAMASK current revision
 # CMAKE_BUILD_TYPE         |  Default set to release (no debugging output)
+# CMAKE_VERBOSE_MAKEFILE   |  [ON/OFF] toggle makefile verbose output
 # OPENMP                   |  [ON/OFF]
 # OPTIMIZATION             |  [OFF,DEFENSIVE,AGGRESSIVE,ULTRA]
 # DAMASK_DRIVER            |  [SPECTRAL, FEM]
@@ -34,10 +35,13 @@ cd FEM
 cmake -D PETSC_DIR=${PETSC_DIR}             \
       -D DAMASK_V=${DAMASKVERSION}          \
       -D CMAKE_BUILD_TYPE=RELEASE           \
+      -D CMAKE_VERBOSE_MAKEFILE=OFF         \
       -D OPENMP=ON                          \
       -D OPTIMIZATION=DEFENSIVE             \
       -D DAMASK_DRIVER=FEM                  \
       -D DAMASK_INSTALL=${HOME}/bin         \
+      -D DAMASK_PREFIX=""                   \
+      -D DAMASK_SUFFIX="-Wl,--verbose"      \
       ../..
 
 echo
