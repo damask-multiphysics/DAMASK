@@ -89,19 +89,20 @@ Add column(s) containing Euclidean distance to grain structural features: bounda
 """, version = scriptID)
 
 parser.add_option('-c','--coordinates', dest='coords', metavar='string',
-                  help='column heading for coordinates [%default]')
+                  help='column label of coordinates [%default]')
 parser.add_option('-i','--identifier',  dest='id', metavar = 'string',
-                  help='heading of column containing grain identifier [%default]')
+                  help='column label of grain identifier [%default]')
 parser.add_option('-t','--type',        dest = 'type', action = 'extend', metavar = '<string LIST>',
                   help = 'feature type {%s} '%(', '.join(map(lambda x:'/'.join(x['names']),features))) )
 parser.add_option('-n','--neighborhood',dest='neighborhood', choices = neighborhoods.keys(), metavar = 'string',
                   help = 'type of neighborhood [neumann] {%s}'%(', '.join(neighborhoods.keys())))
-parser.add_option('-s', '--scale',      dest = 'scale', type = 'float', metavar='float',
+parser.add_option('-s', '--scale',      dest = 'scale', type = 'float', metavar = 'float',
                   help = 'voxel size [%default]')
-parser.set_defaults(coords = 'ipinitialcoord')
-parser.set_defaults(id = 'texture')
-parser.set_defaults(neighborhood = 'neumann')
-parser.set_defaults(scale = 1.0)
+parser.set_defaults(coords = 'pos',
+                    id = 'texture',
+                    neighborhood = 'neumann',
+                    scale = 1.0,
+                   )
 
 (options,filenames) = parser.parse_args()
 
@@ -125,10 +126,8 @@ for i,feature in enumerate(features):
 if filenames == []: filenames = [None]
 
 for name in filenames:
-  try:
-    table = damask.ASCIItable(name = name, buffered = False)
-  except:
-    continue
+  try:    table = damask.ASCIItable(name = name, buffered = False)
+  except: continue
   damask.util.report(scriptName,name)
 
 # ------------------------------------------ read header ------------------------------------------
@@ -141,9 +140,11 @@ for name in filenames:
   remarks = []
   column = {}
   
-  if table.label_dimension(options.coords) != 3: errors.append('coordinates {} are not a vector.'.format(options.coords))
+  coordDim = table.label_dimension(options.coords)
+  if not 3 >= coordDim >= 1:
+    errors.append('coordinates "{}" need to have one, two, or three dimensions.'.format(options.coords))
   else: coordCol = table.label_index(options.coords)
-
+  
   if table.label_dimension(options.id) != 1: errors.append('grain identifier {} not found.'.format(options.id))
   else: idCol = table.label_index(options.id)
 
@@ -164,18 +165,20 @@ for name in filenames:
 
   table.data_readArray()
 
-  coords = [{},{},{}]
-  for i in xrange(len(table.data)):  
-    for j in xrange(3):
-      coords[j][str(table.data[i,coordCol+j])] = True
-  grid = np.array(map(len,coords),'i')
-  size = grid/np.maximum(np.ones(3,'d'),grid-1.0)* \
-            np.array([max(map(float,coords[0].keys()))-min(map(float,coords[0].keys())),\
-                      max(map(float,coords[1].keys()))-min(map(float,coords[1].keys())),\
-                      max(map(float,coords[2].keys()))-min(map(float,coords[2].keys())),\
-                      ],'d')                                                                        # size from bounding box, corrected for cell-centeredness
+  coords = [np.unique(table.data[:,coordCol+i]) for i in xrange(coordDim)]
+  mincorner = np.array(map(min,coords))
+  maxcorner = np.array(map(max,coords))
+  grid   = np.array(map(len,coords)+[1]*(3-len(coords)),'i')
 
-  size = np.where(grid > 1, size, min(size[grid > 1]/grid[grid > 1]))                               # spacing for grid==1 set to smallest among other spacings
+  N = grid.prod()
+
+  if N != len(table.data): errors.append('data count {} does not match grid '.format(N) + 
+                                          'x'.join(map(str,grid)) + 
+                                          '.')
+  if errors  != []:
+    damask.util.croak(errors)
+    table.close(dismiss = True)
+    continue
 
 # ------------------------------------------ process value field -----------------------------------
 
