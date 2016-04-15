@@ -88,8 +88,9 @@ def displacementFluctFFT(F,grid,size,nodal=False,transformed=False):
 # --------------------------------------------------------------------
 
 parser = OptionParser(option_class=damask.extendableOption, usage='%prog options file[s]', description = """
-Add deformed configuration of given initial coordinates.
+Add displacments resulting from deformation gradient field.
 Operates on periodic three-dimensional x,y,z-ordered data sets.
+Outputs at cell centers or cell nodes (into separate file).
 
 """, version = scriptID)
 
@@ -107,7 +108,7 @@ parser.add_option('--nodal',
                   help    = 'output nodal (not cell-centered) displacements')
 
 parser.set_defaults(defgrad = 'f',
-                    coords  = 'ipinitialcoord',
+                    coords  = 'pos',
                     nodal   = False,
                    )
 

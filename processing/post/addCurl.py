@@ -71,18 +71,18 @@ Deals with both vector- and tensor-valued fields.
 
 parser.add_option('-c','--coordinates',
                   dest = 'coords',
-                  type = 'string', metavar='string',
-                  help = 'column heading for coordinates [%default]')
+                  type = 'string', metavar = 'string',
+                  help = 'column label of coordinates [%default]')
 parser.add_option('-v','--vector',
                   dest = 'vector',
                   action = 'extend', metavar = '<string LIST>',
-                  help = 'heading of columns containing vector field values')
+                  help = 'column label(s) of vector field values')
 parser.add_option('-t','--tensor',
                   dest = 'tensor',
                   action = 'extend', metavar = '<string LIST>',
-                  help = 'heading of columns containing tensor field values')
+                  help = 'column label(s) of tensor field values')
 
-parser.set_defaults(coords = 'ipinitialcoord',
+parser.set_defaults(coords = 'pos',
                    )
 
 (options,filenames) = parser.parse_args()
