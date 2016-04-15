@@ -793,6 +793,7 @@ subroutine plastic_phenoplus_microstructure(orientation,ipc,ip,el,F0,Fe,Fp,Tstar
                   ph, &                         !my phase
                   of, &                         !my spatial position in memory (offset)
                   textureID, &                  !my texture
+                  index_myFamily, &
                   Nneighbors, &                 !number of neighbors (<= 6)
                   vld_Nneighbors, &             !number of my valid neighbors
                   n, &                          !neighbor index (for iterating through all neighbors)
@@ -814,21 +815,21 @@ subroutine plastic_phenoplus_microstructure(orientation,ipc,ip,el,F0,Fe,Fp,Tstar
                   f,i,&                         !loop counter for me
                   f_ne, i_ne                    !loop counter for neighbor
 
-  real(pReal)     kappa_max, &                  !
-                  tmp_myshear_slip, &           !temp storage for accumulative shear for me
-                  mprime_cut, &                 !m' cutoff to consider neighboring effect
+  real(pReal)     mprime_cut, &                 !m' cutoff to consider neighboring effect
                   dtaylor_cut, &                !threshold for determine high contrast interface using Taylor factor
-                  avg_acshear_ne, &             !the average accumulative shear from my neighbor
+                  tau_slip, &                   !the average accumulative shear from my neighbor
                   taylor_me, &                  !Taylor factor for me
                   taylor_ne, &                  !Taylor factor for my current neighbor
-                  d_vonstrain                   !von Mises delta strain (temp container)
+                  d_vonstrain, &                !von Mises delta strain (temp container)
+                  sum_gdot                      !total shear rate for given material point
 
   real(pReal), dimension(3,3) :: &
                   F0_me, &                      !my deformation gradient from last converged increment
                   Fe_me, &                      !my elastic deformation gradient
                   Fp_me, &                      !my plastic deformation gradient
-                  dF_me,  &                     !my deformation gradient change (delta)
-                  dE_me,  &                     !my Green Lagrangian strain tensor (delta)
+                  dF_me, &                      !my deformation gradient change (delta)
+                  dE_me, &                      !my Green Lagrangian strain tensor (delta)
+                  F0_ne, &                      !
                   Fe_ne, &                      !elastic deformation gradient of my current neighbor
                   Fp_ne, &                      !plastic deformation gradient of my current neighbor
                   dF_ne, &                      !deformation gradient of my current neighbor
@@ -874,7 +875,7 @@ subroutine plastic_phenoplus_microstructure(orientation,ipc,ip,el,F0,Fe,Fp,Tstar
 
   !***check if all my neighbors have the same phase as me
   vld_Nneighbors = 0
-  PHASECHECK DO n_phasecheck = 1_pInt, Nneighbors
+  PHASECHECK: DO n_phasecheck = 1_pInt, Nneighbors
     !******for each of my neighbor
     neighbor_el          = mesh_ipNeighborhood( 1, n_phasecheck, ip, el )
     neighbor_ip          = mesh_ipNeighborhood( 2, n_phasecheck, ip, el )
@@ -905,7 +906,7 @@ subroutine plastic_phenoplus_microstructure(orientation,ipc,ip,el,F0,Fe,Fp,Tstar
         tau_slip  = dot_product(Tstar_v(1:6, ipc, ip, el),lattice_Sslip_v(1:6,1,index_myFamily+i,ph))
         sum_gdot  = sum_gdot + &
                     plastic_phenoplus_gdot0_slip(instance)* &
-                    ((abs(tau_slip)/(state(instance)%s_slip(j,of))) &
+                    ((abs(tau_slip)/(plasticState(ph)%state(j,of))) &
                        **plastic_phenoplus_n_slip(instance))*sign(1.0_pReal,tau_slip)
       ENDDO slipSystems
     ENDDO slipFamilies
@@ -934,14 +935,14 @@ subroutine plastic_phenoplus_microstructure(orientation,ipc,ip,el,F0,Fe,Fp,Tstar
       j = 0_pInt
       slipFamiliesNeighbor: DO f_ne = 1_pInt,lattice_maxNslipFamily
         index_myFamily = sum(lattice_NslipSystem(1:f_ne-1_pInt,neighbor_ph))                    ! at which index starts my family
-        slipSystemsNeighbor: DO i_ne = 1_pInt,plastic_phenopowerlaw_Nslip(f_ne,neighbor_instance)
+        slipSystemsNeighbor: DO i_ne = 1_pInt,plastic_phenoplus_Nslip(f_ne,neighbor_instance)
           j = j+1_pInt
-          tau_slip  = dot_product(Tstar_v(1:6, neighbor_ipc, neighbor_ip, neighbor_el),
+          tau_slip  = dot_product(Tstar_v(1:6, neighbor_ipc, neighbor_ip, neighbor_el), &
                                   lattice_Sslip_v(1:6,1,index_myFamily+i_ne,neighbor_ph))
           sum_gdot  = sum_gdot &
-                      +plastic_phenopowerlaw_gdot0_slip(neighbor_instance) &
-                       *((abs(tau_slip)/(state(neighbor_instance)%s_slip(j,neighbor_of))) &
-                        **plastic_phenopowerlaw_n_slip(neighbor_instance))*sign(1.0_pReal,tau_slip)
+                      +plastic_phenoplus_gdot0_slip(neighbor_instance) &
+                       *((abs(tau_slip)/(plasticState(neighbor_ph)%state(j,neighbor_of))) &
+                        **plastic_phenoplus_n_slip(neighbor_instance))*sign(1.0_pReal,tau_slip)
         ENDDO slipSystemsNeighbor
       ENDDO slipFamiliesNeighbor
       taylor_ne = d_vonstrain / sum_gdot
@@ -950,11 +951,11 @@ subroutine plastic_phenoplus_microstructure(orientation,ipc,ip,el,F0,Fe,Fp,Tstar
     ENDDO LOOPCALCTAYLOR
 
     !***Only perform necessary calculation if high contrast interface is detected
-    IF (max(d_taylors) > dtaylor_cut) THEN
+    IF (maxval(d_taylors) > dtaylor_cut) THEN
       !*****calculate kappa per slip system base
-      LOOPMYSLIP DO me_slip = 1_pInt, ns
+      LOOPMYSLIP: DO me_slip = 1_pInt, ns
         ne_mprimes = 0.0_pReal                                                                     !initialize max m' to 0 for all neighbors
-        LOOPMYNEIGHBORS DO n=1_pInt, Nneighbors
+        LOOPMYNEIGHBORS: DO n=1_pInt, Nneighbors
           !*******only consider neighbor at the high contrast interface
           IF (d_taylors(n) > dtaylor_cut) THEN
             neighbor_el          = mesh_ipNeighborhood( 1, n_calcTaylor, ip, el )
@@ -975,14 +976,15 @@ subroutine plastic_phenoplus_microstructure(orientation,ipc,ip,el,F0,Fe,Fp,Tstar
                                  *abs(math_mul3x3(slipDirect(1:3,me_slip), &
                                                   math_qRot(absMisorientation, slipDirect(1:3,ne_slip))))
             ENDDO LOOPNEIGHBORSLIP
-            ne_mprimes(n) = max(m_primes)
-          ENDIF
-          !*******check if one of the neighbor already can provide a kick for this slip system
-          IF ( max(ne_mprimes) > mprime_cut ) THEN
-            plasticState(ph)%state(index_kappa+me_slip, of) = 1.5_pReal
-            EXIT
+            ne_mprimes(n) = maxval(m_primes)
           ENDIF
         ENDDO LOOPMYNEIGHBORS
+      !*******check if one of the neighbor already can provide a kick for this slip system
+      IF ( maxval(ne_mprimes) > mprime_cut ) THEN
+        plasticState(ph)%state(index_kappa+me_slip, of) = 1.0_pReal + 0.2_pReal*maxval(ne_mprimes)
+      ELSE
+        plasticState(ph)%state(index_kappa+me_slip, of) = 1.0_pReal - 0.1_pReal*maxval(ne_mprimes)
+      ENDIF
       ENDDO LOOPMYSLIP
     ENDIF
 

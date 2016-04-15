@@ -480,7 +480,7 @@ subroutine constitutive_microstructure(orientations, Fe, Fp, ipc, ip, el, F0s,Fe
    Fes, &
    Fps
 
- real(pReal),   intent(in), dimension(6,:,:,:) :: &
+ real(pReal),   intent(in), dimension(:,:,:,:) :: &
    Tstar_vs                                                                                     !< crystal orientations as quaternions
 
  ho = material_homog(ip,el)
