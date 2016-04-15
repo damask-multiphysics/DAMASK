@@ -30,10 +30,6 @@ parser.add_option('-r', '--render',
                   dest = 'render',
                   action = 'store_true',
                   help = 'open output in VTK render window')
-parser.add_option('-m', '--mode',
-                  dest = 'mode',
-                  type = 'choice', metavar = 'string', choices = ['cell', 'point'],
-                  help = 'cell-centered or point-centered data')
 parser.add_option('-s', '--scalar',
                   dest = 'scalar',
                   action = 'extend', metavar = '<string LIST>',
@@ -56,7 +52,6 @@ parser.set_defaults(scalar = [],
 
 (options, filenames) = parser.parse_args()
 
-if not options.mode:                parser.error('No data mode specified.')
 if not options.vtk:                 parser.error('No VTK file specified.')
 if not os.path.exists(options.vtk): parser.error('VTK file does not exist.')
 
@@ -124,8 +119,11 @@ for name in filenames:
 
 # ------------------------------------------ process data ---------------------------------------  
 
+  datacount = 0
+
   while table.data_read():                                                                          # read next data line of ASCII table
-    
+
+    datacount += 1                                                                                  # count data lines
     for datatype,labels in active.items():                                                          # loop over scalar,color
       for me in labels:                                                                             # loop over all requested items
         theData = [table.data[i] for i in table.label_indexrange(me)]                               # read strings
@@ -133,17 +131,25 @@ for name in filenames:
         elif datatype == 'vector': VTKarray[me].InsertNextTuple3(*map(float,theData))
         elif datatype == 'scalar': VTKarray[me].InsertNextValue(float(theData[0]))
 
-  table.input_close()                                                                               # close input ASCII table
+  table.close()                                                                                     # close input ASCII table
 
 # ------------------------------------------ add data ---------------------------------------  
 
+  if   datacount == Npoints:  mode = 'point'
+  elif datacount == Ncells:   mode = 'cell'
+  else:
+    damask.util.croak('Data count is incompatible with grid...')
+    continue
+
+  damask.util.croak('{} mode...'.format(mode))
+
   for datatype,labels in active.items():                                                            # loop over scalar,color
     if datatype == 'color':
-      if   options.mode == 'cell':  rGrid.GetCellData().SetScalars(VTKarray[active['color'][0]])
-      elif options.mode == 'point': rGrid.GetPointData().SetScalars(VTKarray[active['color'][0]])
+      if   mode == 'cell':  rGrid.GetCellData().SetScalars(VTKarray[active['color'][0]])
+      elif mode == 'point': rGrid.GetPointData().SetScalars(VTKarray[active['color'][0]])
     for me in labels:                                                                               # loop over all requested items
-      if   options.mode == 'cell':  rGrid.GetCellData().AddArray(VTKarray[me])
-      elif options.mode == 'point': rGrid.GetPointData().AddArray(VTKarray[me])
+      if   mode == 'cell':  rGrid.GetCellData().AddArray(VTKarray[me])
+      elif mode == 'point': rGrid.GetPointData().AddArray(VTKarray[me])
 
   rGrid.Modified()
   if vtk.VTK_MAJOR_VERSION <= 5: rGrid.Update()
