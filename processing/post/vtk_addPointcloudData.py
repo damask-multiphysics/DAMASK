@@ -51,13 +51,22 @@ parser.set_defaults(scalar = [],
 if not options.vtk:                 parser.error('No VTK file specified.')
 if not os.path.exists(options.vtk): parser.error('VTK file does not exist.')
 
-reader = vtk.vtkXMLPolyDataReader()
-reader.SetFileName(options.vtk)
-reader.Update()
-Npoints   = reader.GetNumberOfPoints()
-Ncells    = reader.GetNumberOfCells()
-Nvertices = reader.GetNumberOfVerts()
-Polydata  = reader.GetOutput()
+if os.path.splitext(options.vtk)[1] == '.vtp':
+  reader = vtk.vtkXMLPolyDataReader()
+  reader.SetFileName(options.vtk)
+  reader.Update()
+  Polydata = reader.GetOutput()
+elif os.path.splitext(options.vtk)[1] == '.vtk':
+  reader = vtk.vtkGenericDataObjectReader()
+  reader.SetFileName(options.vtk)
+  reader.Update()
+  Polydata = reader.GetPolyDataOutput()
+else:
+  parser.error('Unsupported VTK file type extension.')
+
+Npoints   = Polydata.GetNumberOfPoints()
+Ncells    = Polydata.GetNumberOfCells()
+Nvertices = Polydata.GetNumberOfVerts()
 
 if Npoints != Ncells or Npoints != Nvertices:
   parser.error('Number of points, cells, and vertices in VTK differ from each other.')
