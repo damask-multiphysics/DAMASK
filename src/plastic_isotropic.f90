@@ -1,6 +1,4 @@
 !--------------------------------------------------------------------------------------------------
-! $Id$
-!--------------------------------------------------------------------------------------------------
 !> @author Franz Roters, Max-Planck-Institut für Eisenforschung GmbH
 !> @author Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
 !> @brief material subroutine for isotropic (ISOTROPIC) plasticity
@@ -9,14 +7,11 @@
 !! untextured polycrystal
 !--------------------------------------------------------------------------------------------------
 module plastic_isotropic
-#ifdef HDF
- use hdf5, only: &
-   HID_T
-#endif
 
  use prec, only: &
    pReal,&
-   pInt
+   pInt, &
+   DAMASK_NaN
  
  implicit none
  private
@@ -42,22 +37,22 @@ module plastic_isotropic
    integer(kind(undefined_ID)), allocatable, dimension(:) :: & 
      outputID
   real(pReal) :: &
-     fTaylor, &
-     tau0, &
-     gdot0, &
-     n, &
-     h0, &
-     h0_slopeLnRate, &
-     tausat, &
-     a, &
-     aTolFlowstress, &
-     aTolShear     , &
-     tausat_SinhFitA, &
-     tausat_SinhFitB, &
-     tausat_SinhFitC, &
-     tausat_SinhFitD
+     fTaylor        = DAMASK_NaN, &
+     tau0           = DAMASK_NaN, &
+     gdot0          = DAMASK_NaN, &
+     n              = DAMASK_NaN, &
+     h0             = DAMASK_NaN, &
+     h0_slopeLnRate = 0.0_pReal, &
+     tausat         = DAMASK_NaN, &
+     a              = DAMASK_NaN, &
+     aTolFlowstress = 1.0_pReal, &
+     aTolShear      = 1.0e-6_pReal, &
+     tausat_SinhFitA= 0.0_pReal, &
+     tausat_SinhFitB= 0.0_pReal, &
+     tausat_SinhFitC= 0.0_pReal, &
+     tausat_SinhFitD= 0.0_pReal
   logical :: &
-     dilatation
+     dilatation = .false.
  end type
 
  type(tParameters), dimension(:), allocatable, private :: param                                       !< containers of constitutive parameters (len Ninstance)
@@ -169,7 +164,7 @@ subroutine plastic_isotropic_init(fileUnit)
  allocate(plastic_isotropic_Noutput(maxNinstance),                              source=0_pInt)
 
  allocate(param(maxNinstance))                                                                      ! one container of parameters per instance
- 
+
  rewind(fileUnit)
  phase = 0_pInt
  do while (trim(line) /= IO_EOF .and. IO_lc(IO_getTag(line,'<','>')) /= material_partPhase)         ! wind forward to <phase>
@@ -186,14 +181,13 @@ subroutine plastic_isotropic_init(fileUnit)
    if (IO_getTag(line,'[',']') /= '') then                                                          ! next section
      phase = phase + 1_pInt                                                                         ! advance section counter
      if (phase_plasticity(phase) == PLASTICITY_ISOTROPIC_ID) then
-       instance = phase_plasticityInstance(phase)
-
+       instance = phase_plasticityInstance(phase)                                                   ! count instances of my constitutive law
+       allocate(param(instance)%outputID(phase_Noutput(phase)))                                     ! allocate space for IDs of every requested output
      endif
      cycle                                                                                          ! skip to next line
    endif
    if (phase > 0_pInt) then; if (phase_plasticity(phase) == PLASTICITY_ISOTROPIC_ID) then           ! one of my phases. Do not short-circuit here (.and. between if-statements), it's not safe in Fortran
      instance = phase_plasticityInstance(phase)                                                     ! which instance of my plasticity is present phase
-     allocate(param(instance)%outputID(phase_Noutput(phase)))                                       ! allocate space for IDs of every requested output
      chunkPos = IO_stringPos(line) 
      tag = IO_lc(IO_stringValue(line,chunkPos,1_pInt))                                              ! extract key
      extmsg = trim(tag)//' ('//PLASTICITY_ISOTROPIC_label//')'                                      ! prepare error message identifier
@@ -477,7 +471,8 @@ subroutine plastic_isotropic_LiAndItsTangent(Li,dLi_dTstar_3333,Tstar_v,ipc,ip,e
  implicit none
  real(pReal), dimension(3,3), intent(out) :: &
    Li                                                                                               !< plastic velocity gradient
-
+ real(pReal), dimension(3,3,3,3), intent(out)  :: &
+   dLi_dTstar_3333                                                                                  !< derivative of Li with respect to Tstar as 4th order tensor
  real(pReal), dimension(6),   intent(in) :: &
    Tstar_v                                                                                          !< 2nd Piola Kirchhoff stress tensor in Mandel notation
  integer(pInt),               intent(in) :: &
@@ -487,9 +482,7 @@ subroutine plastic_isotropic_LiAndItsTangent(Li,dLi_dTstar_3333,Tstar_v,ipc,ip,e
 
  real(pReal), dimension(3,3) :: &
    Tstar_sph_33                                                                                     !< sphiatoric part of the 2nd Piola Kirchhoff stress tensor as 2nd order tensor
- real(pReal), dimension(3,3,3,3), intent(out)  :: &
-   dLi_dTstar_3333                                                                                  !< derivative of Li with respect to Tstar as 4th order tensor
- real(pReal) :: &
+real(pReal) :: &
    gamma_dot, &                                                                                     !< strainrate
    norm_Tstar_sph, &                                                                                !< euclidean norm of Tstar_sph
    squarenorm_Tstar_sph                                                                             !< square of the euclidean norm of Tstar_sph
@@ -526,6 +519,9 @@ subroutine plastic_isotropic_LiAndItsTangent(Li,dLi_dTstar_3333,Tstar_v,ipc,ip,e
        dLi_dTstar_3333 = gamma_dot / param(instance)%fTaylor * &
                                           dLi_dTstar_3333 / norm_Tstar_sph
      endif
+ else
+  Li = 0.0_pReal
+  dLi_dTstar_3333 = 0.0_pReal
  endif
  
 end subroutine plastic_isotropic_LiAndItsTangent

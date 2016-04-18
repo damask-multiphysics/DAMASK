@@ -1,6 +1,4 @@
 !--------------------------------------------------------------------------------------------------
-! $Id$
-!--------------------------------------------------------------------------------------------------
 !> @author Pratheek Shanthraj, Max-Planck-Institut für Eisenforschung GmbH
 !> @author Luv Sharma, Max-Planck-Institut für Eisenforschung GmbH
 !> @brief material subroutine incoprorating isotropic brittle damage source mechanism

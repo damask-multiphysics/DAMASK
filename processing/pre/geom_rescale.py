@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 no BOM -*-
 
-import os,sys,string,math
+import os,sys,math
 import numpy as np
 from optparse import OptionParser
 import damask
@@ -82,8 +82,12 @@ for name in filenames:
              'microstructures': 0,
             }
 
-  newInfo['grid'] = np.array([{True:round(o*float(n.translate(None,'xX'))), False: round(float(n.translate(None,'xX')))}[n[-1].lower() == 'x'] for o,n in zip(info['grid'],options.grid)],'i')
-  newInfo['size'] = np.array([{True:      o*float(n.translate(None,'xX')) , False:       float(n.translate(None,'xX')) }[n[-1].lower() == 'x'] for o,n in zip(info['size'],options.size)],'d')
+  newInfo['grid'] = np.array([{True:round(o*float(n.translate(None,'xX'))), 
+                               False: round(float(n.translate(None,'xX')))}[n[-1].lower() == 'x']
+                                                  for o,n in zip(info['grid'],options.grid)],'i')
+  newInfo['size'] = np.array([{True:      o*float(n.translate(None,'xX')) ,
+                               False:       float(n.translate(None,'xX')) }[n[-1].lower() == 'x']
+                                                  for o,n in zip(info['size'],options.size)],'d')
   newInfo['grid'] = np.where(newInfo['grid'] <= 0  , info['grid'],newInfo['grid'])
   newInfo['size'] = np.where(newInfo['size'] <= 0.0, info['size'],newInfo['size'])
 
@@ -97,11 +101,8 @@ for name in filenames:
       last = this
 
   microstructure = microstructure.reshape(info['grid'],order='F')
-  microstructure = np.repeat(
-                   np.repeat(
-                   np.repeat(microstructure,multiplicity[0], axis=0),
-                                            multiplicity[1], axis=1),
-                                            multiplicity[2], axis=2)
+  microstructure = np.repeat(np.repeat(np.repeat(microstructure,
+                   multiplicity[0], axis=0),multiplicity[1], axis=1),multiplicity[2], axis=2)
 # --- renumber to sequence 1...Ngrains if requested ------------------------------------------------
 #  http://stackoverflow.com/questions/10741346/np-frequency-counts-for-unique-values-in-an-array  
 
@@ -119,9 +120,12 @@ for name in filenames:
   remarks = []
   errors  = []
 
-  if (any(newInfo['grid']            != info['grid'])):           remarks.append('--> grid     a b c:  %s'%(' x '.join(map(str,newInfo['grid']))))
-  if (any(newInfo['size']            != info['size'])):           remarks.append('--> size     x y z:  %s'%(' x '.join(map(str,newInfo['size']))))
-  if (    newInfo['microstructures'] != info['microstructures']): remarks.append('--> microstructures: %i'%newInfo['microstructures'])
+  if (any(newInfo['grid']            != info['grid'])):
+    remarks.append('--> grid     a b c:  %s'%(' x '.join(map(str,newInfo['grid']))))
+  if (any(newInfo['size']            != info['size'])):
+    remarks.append('--> size     x y z:  %s'%(' x '.join(map(str,newInfo['size']))))
+  if (    newInfo['microstructures'] != info['microstructures']):
+    remarks.append('--> microstructures: %i'%newInfo['microstructures'])
 
   if np.any(newInfo['grid'] < 1):    errors.append('invalid new grid a b c.')
   if np.any(newInfo['size'] <= 0.0): errors.append('invalid new size x y z.')

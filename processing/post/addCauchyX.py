@@ -1,36 +1,16 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 no BOM -*-
 
-import os,re,sys,math,string,h5py
+import os,string,h5py
 import numpy as np
+from optparse import OptionParser
 import damask
-from optparse import OptionParser, Option
-
-# -----------------------------
-class extendableOption(Option):
-# -----------------------------
-# used for definition of new option parser action 'extend', which enables to take multiple option arguments
-# taken from online tutorial http://docs.python.org/library/optparse.html
-  
-  ACTIONS = Option.ACTIONS + ("extend",)
-  STORE_ACTIONS = Option.STORE_ACTIONS + ("extend",)
-  TYPED_ACTIONS = Option.TYPED_ACTIONS + ("extend",)
-  ALWAYS_TYPED_ACTIONS = Option.ALWAYS_TYPED_ACTIONS + ("extend",)
-
-  def take_action(self, action, dest, opt, value, values, parser):
-    if action == "extend":
-      lvalue = value.split(",")
-      values.ensure_value(dest, []).extend(lvalue)
-    else:
-      Option.take_action(self, action, dest, opt, value, values, parser)
-
-
 
 # --------------------------------------------------------------------
 #                                MAIN
 # --------------------------------------------------------------------
 
-parser = OptionParser(option_class=extendableOption, usage='%prog options [file[s]]', description = """
+parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
 Add column(s) containing Cauchy stress based on given column(s) of
 deformation gradient and first Piola--Kirchhoff stress.
 
@@ -50,7 +30,7 @@ parser.set_defaults(output  = 'crystallite')
 
 (options,filenames) = parser.parse_args()
 
-if options.defgrad == None or options.stress == None or options.output == None:
+if options.defgrad is None or options.stress is None or options.output is None:
   parser.error('missing data column...')
 
 
@@ -79,6 +59,3 @@ for myFile in files:
           cauchy[p,...] = 1.0/np.linalg.det(defgrad[p,...])*np.dot(stress[p,...],defgrad[p,...].T)  # [Cauchy] = (1/det(F)) * [P].[F_transpose]
         cauchyFile = myFile['file']['increments/'+inc+'/'+options.output+'/'+instance].create_dataset('cauchy', data=cauchy)
         cauchyFile.attrs['units'] = 'Pa'
-
-  
-

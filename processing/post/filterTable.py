@@ -1,7 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 no BOM -*-
 
-import os,re,sys,fnmatch,math,random
+import os,re,sys,fnmatch
+import math                                                                                         # noqa
 import numpy as np
 from optparse import OptionParser
 import damask
@@ -34,7 +35,7 @@ Filter rows according to condition and columns by either white or black listing.
 
 Examples:
 Every odd row if x coordinate is positive -- " #ip.x# >= 0.0 and #_row_#%2 == 1 ).
-All rows where label 'foo' equals 'bar' -- " #foo# == \"bar\" "
+All rows where label 'foo' equals 'bar' -- " #s#foo# == 'bar' "
 
 """, version = scriptID)
 
@@ -79,14 +80,14 @@ for name in filenames:
   positions = []
 
   for position,label in enumerate(table.labels):
-    if    (options.whitelist == None or     any([   position in table.label_indexrange(needle) \
+    if    (options.whitelist is None or     any([   position in table.label_indexrange(needle) \
                                                  or fnmatch.fnmatch(label,needle) for needle in options.whitelist])) \
-      and (options.blacklist == None or not any([   position in table.label_indexrange(needle) \
+      and (options.blacklist is None or not any([   position in table.label_indexrange(needle) \
                                                  or fnmatch.fnmatch(label,needle) for needle in options.blacklist])):  # a label to keep?
       labels.append(label)                                                                          # remember name...
       positions.append(position)                                                                    # ...and position
 
-  if len(labels) > 0 and options.whitelist != None and options.blacklist == None:                   # check whether reordering is possible
+  if len(labels) > 0 and options.whitelist is not None and options.blacklist is None:               # check whether reordering is possible
     whitelistitem = np.zeros(len(labels),dtype=int)
     for i,label in enumerate(labels):                                                               # check each selected label
       match = [   positions[i] in table.label_indexrange(needle) \
@@ -118,7 +119,7 @@ for name in filenames:
   
 # ------------------------------------------ assemble header ---------------------------------------
 
-  table.info_append(scriptID + '\t' + ' '.join(sys.argv[1:]))                                                                                # read ASCII header info
+  table.info_append(scriptID + '\t' + ' '.join(sys.argv[1:]))
   table.labels_clear()
   table.labels_append(np.array(labels)[order])                                                      # update with new label set
   table.head_write()

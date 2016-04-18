@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 no BOM -*-
 
-import os,sys,string,math
+import os,sys,math
 import numpy as np
 from optparse import OptionParser
 import damask
@@ -15,7 +15,8 @@ scriptID   = ' '.join([scriptName,damask.version])
 
 parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
 Add quaternion and/or Bunge Euler angle representation of crystal lattice orientation.
-Orientation is given by quaternion, Euler angles, rotation matrix, or crystal frame coordinates (i.e. component vectors of rotation matrix).
+Orientation is given by quaternion, Euler angles, rotation matrix, or crystal frame coordinates
+(i.e. component vectors of rotation matrix).
 
 """, version = scriptID)
 
@@ -74,12 +75,12 @@ options.output = map(lambda x: x.lower(), options.output)
 if options.output == [] or (not set(options.output).issubset(set(outputChoices))):
   parser.error('output must be chosen from {}.'.format(', '.join(outputChoices)))
 
-input = [options.eulers     != None,
-         options.a          != None and \
-         options.b          != None and \
-         options.c          != None,
-         options.matrix     != None,
-         options.quaternion != None,
+input = [options.eulers     is not None,
+         options.a          is not None and \
+         options.b          is not None and \
+         options.c          is not None,
+         options.matrix     is not None,
+         options.quaternion is not None,
         ]
 
 if np.sum(input) != 1: parser.error('needs exactly one input format.')
@@ -112,7 +113,7 @@ for name in filenames:
   errors  = []
   remarks = []
   
-  if not np.all(table.label_dimension(label) == dim):  errors.append('input {} has wrong dimension {}.'.format(label,dim))
+  if not np.all(table.label_dimension(label) == dim):  errors.append('input {} does not have dimension {}.'.format(label,dim))
   else:  column = table.label_index(label)
 
   if remarks != []: damask.util.croak(remarks)

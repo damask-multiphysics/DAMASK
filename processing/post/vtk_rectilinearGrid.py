@@ -24,11 +24,11 @@ parser.add_option('-m', '--mode',
                   type = 'choice', choices = ['cell','point'],
                   help = 'cell-centered or point-centered coordinates ')
 parser.add_option('-c', '--coordinates',
-                  dest = 'position',
+                  dest = 'coords',
                   type = 'string', metavar = 'string',
                   help = 'coordinate label [%default]')
-parser.set_defaults(position ='ipinitialcoord',
-                    mode     ='cell'
+parser.set_defaults(coords = 'pos',
+                    mode   = 'cell'
                    )
 
 (options, filenames) = parser.parse_args()
@@ -38,9 +38,9 @@ parser.set_defaults(position ='ipinitialcoord',
 if filenames == []: filenames = [None]
 
 for name in filenames:
-  try:
-    table = damask.ASCIItable(name = name,
-                              buffered = False, readonly = True)
+  try:    table = damask.ASCIItable(name = name,
+                                    buffered = False,
+                                    readonly = True)
   except: continue
   damask.util.report(scriptName,name)
 
@@ -48,10 +48,13 @@ for name in filenames:
 
   table.head_read()
 
-  errors =  []
-  if table.label_dimension(options.position) != 3:
-    errors.append('coordinates {} are not a vector.'.format(options.position))
+  remarks = []
+  errors  = []
+  coordDim = table.label_dimension(options.coords)
+  if not 3 >= coordDim >= 1: errors.append('coordinates "{}" need to have one, two, or three dimensions.'.format(options.coords))
+  elif coordDim < 3:         remarks.append('appending {} dimensions to coordinates "{}"...'.format(3-coordDim,options.coords))
 
+  if remarks != []: damask.util.croak(remarks)
   if errors  != []:
     damask.util.croak(errors)
     table.close(dismiss=True)
@@ -59,7 +62,12 @@ for name in filenames:
 
 # --------------- figure out size and grid ---------------------------------------------------------
 
-  table.data_readArray(options.position)
+  table.data_readArray(options.coords)
+  if len(table.data.shape) < 2: table.data.shape += (1,)                                            # expand to 2D shape
+  if table.data.shape[1] < 3:
+    table.data = np.hstack((table.data,
+                            np.zeros((table.data.shape[0],
+                                      3-table.data.shape[1]),dtype='f')))                           # fill coords up to 3D with zeros
 
   coords = [np.unique(table.data[:,i]) for i in xrange(3)]
   if options.mode == 'cell':
@@ -101,7 +109,7 @@ for name in filenames:
     writer.SetDataModeToBinary()
     writer.SetCompressorTypeToZLib()
     writer.SetFileName(os.path.join(directory,os.path.splitext(filename)[0] \
-                                        +'_{}({})'.format(options.position, options.mode) \
+                                        +'_{}({})'.format(options.coords, options.mode) \
                                         +'.'+writer.GetDefaultFileExtension()))
   else:
     writer = vtk.vtkDataSetWriter()
@@ -111,6 +119,6 @@ for name in filenames:
   if vtk.VTK_MAJOR_VERSION <= 5: writer.SetInput(rGrid)
   else:                          writer.SetInputData(rGrid)
   writer.Write()
-  if name == None:  sys.stdout.write(writer.GetOutputString()[0:writer.GetOutputStringLength()])
+  if name is None:  sys.stdout.write(writer.GetOutputString()[0:writer.GetOutputStringLength()])
 
   table.close()

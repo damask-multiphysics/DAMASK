@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 no BOM -*-
 
-import os,sys,string,vtk
+import os,sys,vtk
 import numpy as np
 import damask
 from optparse import OptionParser
@@ -66,8 +66,8 @@ for name in filenames:
       if info['size'][i] <= 0.0:                                                                    # any invalid size?
         info['size'][i] = float(info['grid'][i])/max(info['grid'])                                  # normalize to grid
         remarks.append('rescaling size {} to {}...'.format({0:'x',1:'y',2:'z'}[i],info['size'][i]))
-  if table.label_dimension(options.position) != 3: errors.append('columns "{}" have dimension {}'.format(options.position,
-                                                                                                         table.label_dimension(options.position)))
+  if table.label_dimension(options.position) != 3:
+    errors.append('columns "{}" have dimension {}'.format(options.position,table.label_dimension(options.position)))
   if remarks != []: damask.util.croak(remarks)
   if errors  != []:
     damask.util.croak(errors)
@@ -110,8 +110,7 @@ for name in filenames:
     (directory,filename) = os.path.split(name)
     writer.SetDataModeToBinary()
     writer.SetCompressorTypeToZLib()
-    writer.SetFileName(os.path.join(directory,os.path.splitext(filename)[0]
-                                              +'.'+writer.GetDefaultFileExtension()))
+    writer.SetFileName(os.path.join(directory,os.path.splitext(filename)[0]+'.'+writer.GetDefaultFileExtension()))
   else:
     writer = vtk.vtkDataSetWriter()
     writer.WriteToOutputStringOn()
@@ -120,7 +119,7 @@ for name in filenames:
   if vtk.VTK_MAJOR_VERSION <= 5: writer.SetInput(grid)
   else:                          writer.SetInputData(grid)
   writer.Write()
-  if name == None:  sys.stdout.write(writer.GetOutputString()[0:writer.GetOutputStringLength()])
+  if name is None:  sys.stdout.write(writer.GetOutputString()[0:writer.GetOutputStringLength()])
 
   table.close()
 

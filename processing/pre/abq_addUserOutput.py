@@ -1,16 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 no BOM -*-
 
-'''
-Writes meaningful labels to the Abaqus input file (*.inp) 
-based on the files 
-<modelname_jobname>.output<Homogenization/Crystallite/Constitutive>
-that are written during the first run of the model.
-See Abaqus Keyword Reference Manual (AKRM) *DEPVAR for details.
-Original script: marc_addUserOutput.py modified by Benjamin Bode
-'''
-
-import sys,os,re,string
+import sys,os,re
 from optparse import OptionParser
 import damask 
 
@@ -19,7 +10,6 @@ scriptID   = ' '.join([scriptName,damask.version])
 
 # -----------------------------
 def ParseOutputFormat(filename,what,me):
-# -----------------------------
   format = {'outputs':{},'specials':{'brothers':[]}}
 
   outputmetafile = filename+'.output'+what
@@ -120,7 +110,7 @@ for file in files:
 
     for what in me:
       outputFormat[what] = ParseOutputFormat(formatFile,what,me[what])
-      if not '_id' in outputFormat[what]['specials']:
+      if '_id' not in outputFormat[what]['specials']:
         print "'%s' not found in <%s>"%(me[what],what)
         print '\n'.join(map(lambda x:'  '+x,outputFormat[what]['specials']['brothers']))
         sys.exit(1)
@@ -164,19 +154,14 @@ for file in files:
     if m:
       lastSection = thisSection
       thisSection = m.group(1)
-      #Abaqus keyword can be upper or lower case
-      if (lastSection.upper() == '*DEPVAR' and thisSection.upper() == '*USER'):
-        #Abaqus SDVs are named SDV1...SDVn if no specific name is given
-        #Abaqus needs total number of SDVs in the line after *Depvar keyword
+      if (lastSection.upper() == '*DEPVAR' and thisSection.upper() == '*USER'):       #Abaqus keyword can be upper or lower case
         if options.number > 0:
-          #number of SDVs
-          output.write('%i\n'%options.number)
+          output.write('%i\n'%options.number)                                         #Abaqus needs total number of SDVs in the line after *Depvar keyword
         else:
-          #number of SDVs
           output.write('%i\n'%len(UserVars))
-          #index,output variable key,output variable description
+          
           for i in range(len(UserVars)): 
-             output.write('%i,"%i%s","%i%s"\n'%(i+1,0,UserVars[i],0,UserVars[i]))
+             output.write('%i,"%i%s","%i%s"\n'%(i+1,0,UserVars[i],0,UserVars[i]))    #index,output variable key,output variable description
     if (thisSection.upper() != '*DEPVAR' or not re.match('\s*\d',line)):
       output.write(line)
   output.close()

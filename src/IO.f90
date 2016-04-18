@@ -1,6 +1,4 @@
 !--------------------------------------------------------------------------------------------------
-! $Id$
-!--------------------------------------------------------------------------------------------------
 !> @author Franz Roters, Max-Planck-Institut für Eisenforschung GmbH
 !> @author Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
 !> @author Christoph Kords, Max-Planck-Institut für Eisenforschung GmbH
@@ -1239,8 +1237,7 @@ character(len=300) pure function IO_extractValue(pair,key)
  IO_extractValue = ''
 
  myChunk = scan(pair,SEP)
- if (myChunk > 0 .and. pair(:myChunk-1) == key(:myChunk-1)) &                                         
-   IO_extractValue = pair(myChunk+1:)                                                               ! extract value if key matches
+ if (myChunk > 0 .and. pair(:myChunk-1) == key) IO_extractValue = pair(myChunk+1:)                  ! extract value if key matches
 
 end function IO_extractValue
 
@@ -1672,7 +1669,9 @@ subroutine IO_error(error_ID,el,ip,g,ext_msg)
    msg = 'unknown filter type selected'
  case (893_pInt)
    msg = 'PETSc: SNES_DIVERGED_FNORM_NAN'
-   
+ case (894_pInt)
+   msg = 'MPI error'
+ 
 !-------------------------------------------------------------------------------------------------
 ! error messages related to parsing of Abaqus input file
  case (900_pInt)

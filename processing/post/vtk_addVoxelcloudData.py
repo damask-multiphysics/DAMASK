@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 no BOM -*-
 
-import os,sys,string,vtk
+import os,sys,vtk
 import damask
 from collections import defaultdict
 from optparse import OptionParser
@@ -32,7 +32,7 @@ parser.set_defaults(scalar = [],
 
 (options, filenames) = parser.parse_args()
 
-if options.vtk == None or not os.path.exists(options.vtk):
+if options.vtk is None or not os.path.exists(options.vtk):
   parser.error('VTK file does not exist')
 
 if os.path.splitext(options.vtk)[1] == '.vtu':

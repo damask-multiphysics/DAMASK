@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 no BOM -*-
 
-import os,sys,string,math
+import os,sys,math
 import numpy as np
 from optparse import OptionParser
 import damask
@@ -10,40 +10,35 @@ scriptName = os.path.splitext(os.path.basename(__file__))[0]
 scriptID   = ' '.join([scriptName,damask.version])
 
 def curlFFT(geomdim,field):
- N = grid.prod()                                                                                    # field size
- n = np.array(np.shape(field)[3:]).prod()                                                           # data size
+ grid = np.array(np.shape(field)[2::-1])
+ N = grid.prod()                                                                          # field size
+ n = np.array(np.shape(field)[3:]).prod()                                                 # data size
 
- if   n == 3:
-   dataType = 'vector'
- elif n == 9:
-   dataType = 'tensor'
+ if   n == 3:   dataType = 'vector'
+ elif n == 9:   dataType = 'tensor'
 
  field_fourier = np.fft.fftpack.rfftn(field,axes=(0,1,2))
  curl_fourier  = np.zeros(field_fourier.shape,'c16')
 
 # differentiation in Fourier space
  k_s = np.zeros([3],'i')
- TWOPIIMG = (0.0+2.0j*math.pi)
+ TWOPIIMG = 2.0j*math.pi
  for i in xrange(grid[2]):
    k_s[0] = i
-   if(grid[2]%2==0 and i == grid[2]//2):                                                            # for even grid, set Nyquist freq to 0 (Johnson, MIT, 2011)
-     k_s[0]=0
-   elif (i > grid[2]//2): 
-     k_s[0] = k_s[0] - grid[2]
+   if grid[2]%2 == 0 and i == grid[2]//2:  k_s[0] = 0                                     # for even grid, set Nyquist freq to 0 (Johnson, MIT, 2011)
+   elif i > grid[2]//2:                    k_s[0] -= grid[2]
 
    for j in xrange(grid[1]):
      k_s[1] = j
-     if(grid[1]%2==0 and j == grid[1]//2):                                                          # for even grid, set Nyquist freq to 0 (Johnson, MIT, 2011)
-       k_s[1]=0
-     elif (j > grid[1]//2): 
-       k_s[1] = k_s[1] - grid[1]
+     if grid[1]%2 == 0 and j == grid[1]//2: k_s[1] = 0                                    # for even grid, set Nyquist freq to 0 (Johnson, MIT, 2011)
+     elif j > grid[1]//2:                   k_s[1] -= grid[1]
 
      for k in xrange(grid[0]//2+1):
        k_s[2] = k
-       if(grid[0]%2==0 and k == grid[0]//2):                                                        # for even grid, set Nyquist freq to 0 (Johnson, MIT, 2011)
-         k_s[2]=0
+       if grid[0]%2 == 0 and k == grid[0]//2: k_s[2] = 0                                  # for even grid, set Nyquist freq to 0 (Johnson, MIT, 2011)
 
-       xi = np.array([k_s[2]/geomdim[2]+0.0j,k_s[1]/geomdim[1]+0.j,k_s[0]/geomdim[0]+0.j],'c16')
+       xi = (k_s/geomdim)[2::-1].astype('c16')                                            # reversing the field input order
+
        if dataType == 'tensor': 
          for l in xrange(3):
            curl_fourier[i,j,k,0,l] = ( field_fourier[i,j,k,l,2]*xi[1]\
@@ -76,23 +71,23 @@ Deals with both vector- and tensor-valued fields.
 
 parser.add_option('-c','--coordinates',
                   dest = 'coords',
-                  type = 'string', metavar='string',
-                  help = 'column heading for coordinates [%default]')
+                  type = 'string', metavar = 'string',
+                  help = 'column label of coordinates [%default]')
 parser.add_option('-v','--vector',
                   dest = 'vector',
                   action = 'extend', metavar = '<string LIST>',
-                  help = 'heading of columns containing vector field values')
+                  help = 'column label(s) of vector field values')
 parser.add_option('-t','--tensor',
                   dest = 'tensor',
                   action = 'extend', metavar = '<string LIST>',
-                  help = 'heading of columns containing tensor field values')
+                  help = 'column label(s) of tensor field values')
 
-parser.set_defaults(coords = 'ipinitialcoord',
+parser.set_defaults(coords = 'pos',
                    )
 
 (options,filenames) = parser.parse_args()
 
-if options.vector == None and options.tensor == None:
+if options.vector is None and options.tensor is None:
   parser.error('no data column specified.')
 
 # --- loop over input files -------------------------------------------------------------------------
@@ -100,10 +95,8 @@ if options.vector == None and options.tensor == None:
 if filenames == []: filenames = [None]
 
 for name in filenames:
-  try:
-    table = damask.ASCIItable(name = name,buffered = False)
-  except:
-    continue
+  try:    table = damask.ASCIItable(name = name,buffered = False)
+  except: continue
   damask.util.report(scriptName,name)
 
 # ------------------------------------------ read header ------------------------------------------
@@ -161,8 +154,9 @@ for name in filenames:
   stack = [table.data]
   for type, data in items.iteritems():
     for i,label in enumerate(data['active']):
-      stack.append(curlFFT(size[::-1],                                                              # we need to reverse order here, because x is fastest,ie rightmost, but leftmost in our x,y,z notation
-                           table.data[:,data['column'][i]:data['column'][i]+data['dim']].\
+      # we need to reverse order here, because x is fastest,ie rightmost, but leftmost in our x,y,z notation
+      stack.append(curlFFT(size[::-1],
+                           table.data[:,data['column'][i]:data['column'][i]+data['dim']].
                            reshape([grid[2],grid[1],grid[0]]+data['shape'])))
 
 # ------------------------------------------ output result -----------------------------------------

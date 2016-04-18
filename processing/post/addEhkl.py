@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 no BOM -*-
 
-import os,sys,string
+import os,sys
 import numpy as np
 from optparse import OptionParser
 import damask
@@ -48,7 +48,7 @@ parser.set_defaults(hkl = (1,1,1),
 
 (options,filenames) = parser.parse_args()
 
-if options.stiffness == None:
+if options.stiffness is None:
   parser.error('no data column specified...')
 
 # --- loop over input files -------------------------------------------------------------------------

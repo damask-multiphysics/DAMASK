@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 no BOM -*-
 
-import os,sys,string,math
+import os,sys,math
 import numpy as np
 from scipy import ndimage
 from optparse import OptionParser
@@ -87,9 +87,8 @@ for name in filenames:
 
 # --- report ---------------------------------------------------------------------------------------
 
-  remarks = []
-  if (    newInfo['microstructures'] != info['microstructures']): remarks.append('--> microstructures: %i'%newInfo['microstructures'])
-  if remarks != []: damask.util.croak(remarks)
+  if (newInfo['microstructures'] != info['microstructures']):
+    damask.util.croak('--> microstructures: %i'%newInfo['microstructures'])
 
 # --- write header ---------------------------------------------------------------------------------
 

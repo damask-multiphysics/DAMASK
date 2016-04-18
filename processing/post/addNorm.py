@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 no BOM -*-
 
-import os,sys,math,string
+import os,sys,math
 from optparse import OptionParser
 import damask
 
@@ -43,7 +43,7 @@ parser.set_defaults(norm = 'frobenius',
 
 (options,filenames) = parser.parse_args()
 
-if options.label == None:
+if options.label is None:
   parser.error('no data column specified.')
 
 # --- loop over input files -------------------------------------------------------------------------

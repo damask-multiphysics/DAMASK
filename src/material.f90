@@ -1,6 +1,4 @@
 !--------------------------------------------------------------------------------------------------
-! $Id$
-!--------------------------------------------------------------------------------------------------
 !> @author Franz Roters, Max-Planck-Institut für Eisenforschung GmbH
 !> @author Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
 !> @brief Parses material config file, either solverJobName.materialConfig or material.config
@@ -1282,7 +1280,7 @@ subroutine material_populateGrains
  integer(pInt) :: t,e,i,g,j,m,c,r,homog,micro,sgn,hme, myDebug, &
                   phaseID,textureID,dGrains,myNgrains,myNorientations,myNconstituents, &
                   grain,constituentGrain,ipGrain,symExtension, ip
- real(pReal) :: extreme,rnd
+ real(pReal) :: deviation,extreme,rnd
  integer(pInt),  dimension (:,:),   allocatable :: Nelems                                           ! counts number of elements in homog, micro array
  type(p_intvec), dimension (:,:), allocatable :: elemsOfHomogMicro                                  ! lists element number in homog, micro array
 
@@ -1409,8 +1407,11 @@ subroutine material_populateGrains
          extreme = 0.0_pReal
          t = 0_pInt
          do i = 1_pInt,myNconstituents                                                              ! find largest deviator
-           if (real(sgn,pReal)*log(NgrainsOfConstituent(i)/myNgrains/microstructure_fraction(i,micro)) > extreme) then
-             extreme = real(sgn,pReal)*log(NgrainsOfConstituent(i)/myNgrains/microstructure_fraction(i,micro))
+           deviation = real(sgn,pReal)*log( microstructure_fraction(i,micro) / &
+                                           !-------------------------------- &
+                                           (real(NgrainsOfConstituent(i),pReal)/real(myNgrains,pReal) ) )
+           if (deviation > extreme) then
+             extreme = deviation
              t = i
            endif
          enddo

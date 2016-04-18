@@ -48,9 +48,10 @@ for name in filenames:
 # --------------- interprete header -----------------------------------------------------------------
   table.head_read()
   errors=[]
-  if table.label_dimension(options.deformed) != 3: errors.append('columns "{}" have dimension {}'.format(options.deformed,
-                                                                                                   table.label_dimension(options.deformed)))
-  if table.label_dimension(options.coords)   != 3: errors.append('coordinates {} are not a vector.'.format(options.coords))
+  if table.label_dimension(options.deformed) != 3:
+    errors.append('columns "{}" have dimension {}'.format(options.deformed,table.label_dimension(options.deformed)))
+  if table.label_dimension(options.coords)   != 3:
+    errors.append('coordinates {} are not a vector.'.format(options.coords))
 
   table.data_readArray([options.coords,options.deformed])
 
@@ -66,7 +67,7 @@ for name in filenames:
                       max(map(float,coords[2].keys()))-min(map(float,coords[2].keys())),\
                       ],'d')                                                                        # size from bounding box, corrected for cell-centeredness
 
-  size = np.where(grid > 1, size, min(size[grid > 1]/grid[grid > 1]))                               # spacing for grid==1 equal to smallest among other spacings
+  size = np.where(grid > 1, size, min(size[grid > 1]/grid[grid > 1]))                               # spacing for grid==1 set to smallest among other spacings
 
 # ------------------------------------------ process data ---------------------------------------  
   hexPoints = np.array([[-1,-1,-1],
@@ -101,8 +102,8 @@ for name in filenames:
     (directory,filename) = os.path.split(name)
     writer.SetDataModeToBinary()
     writer.SetCompressorTypeToZLib()
-    writer.SetFileName(os.path.join(directory,os.path.splitext(filename)[0]
-                                              +'.'+writer.GetDefaultFileExtension()))
+    writer.SetFileName(os.path.join(directory,os.path.splitext(filename)[0]\
+                                                            +'.'+writer.GetDefaultFileExtension()))
   else:
     writer = vtk.vtkDataSetWriter()
     writer.WriteToOutputStringOn()
@@ -111,7 +112,7 @@ for name in filenames:
   if vtk.VTK_MAJOR_VERSION <= 5: writer.SetInput(uGrid)
   else:                          writer.SetInputData(uGrid)
   writer.Write()
-  if name == None:  sys.stdout.write(writer.GetOutputString()[0:writer.GetOutputStringLength()])
+  if name is None:  sys.stdout.write(writer.GetOutputString()[0:writer.GetOutputStringLength()])
 
   table.close()                                                                             # close input ASCII table
 

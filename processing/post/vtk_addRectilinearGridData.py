@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 no BOM -*-
 
-import os,sys,string,vtk
+import os,vtk
 import damask
 from collections import defaultdict
 from optparse import OptionParser
@@ -30,10 +30,6 @@ parser.add_option('-r', '--render',
                   dest = 'render',
                   action = 'store_true',
                   help = 'open output in VTK render window')
-parser.add_option('-m', '--mode',
-                  dest = 'mode',
-                  type = 'choice', metavar = 'string', choices = ['cell', 'point'],
-                  help = 'cell-centered or point-centered data')
 parser.add_option('-s', '--scalar',
                   dest = 'scalar',
                   action = 'extend', metavar = '<string LIST>',
@@ -56,7 +52,6 @@ parser.set_defaults(scalar = [],
 
 (options, filenames) = parser.parse_args()
 
-if not options.mode:                parser.error('No data mode specified.')
 if not options.vtk:                 parser.error('No VTK file specified.')
 if not os.path.exists(options.vtk): parser.error('VTK file does not exist.')
 
@@ -83,9 +78,9 @@ damask.util.croak('{}: {} points and {} cells...'.format(options.vtk,Npoints,Nce
 if filenames == []: filenames = [None]
 
 for name in filenames:
-  try:
-    table = damask.ASCIItable(name = name,
-                              buffered = False, readonly = True)
+  try:    table = damask.ASCIItable(name = name,
+                                    buffered = False,
+                                    readonly = True)
   except: continue
   damask.util.report(scriptName, name)
 
@@ -124,8 +119,11 @@ for name in filenames:
 
 # ------------------------------------------ process data ---------------------------------------  
 
+  datacount = 0
+
   while table.data_read():                                                                          # read next data line of ASCII table
-    
+
+    datacount += 1                                                                                  # count data lines
     for datatype,labels in active.items():                                                          # loop over scalar,color
       for me in labels:                                                                             # loop over all requested items
         theData = [table.data[i] for i in table.label_indexrange(me)]                               # read strings
@@ -133,15 +131,25 @@ for name in filenames:
         elif datatype == 'vector': VTKarray[me].InsertNextTuple3(*map(float,theData))
         elif datatype == 'scalar': VTKarray[me].InsertNextValue(float(theData[0]))
 
+  table.close()                                                                                     # close input ASCII table
+
 # ------------------------------------------ add data ---------------------------------------  
+
+  if   datacount == Npoints:  mode = 'point'
+  elif datacount == Ncells:   mode = 'cell'
+  else:
+    damask.util.croak('Data count is incompatible with grid...')
+    continue
+
+  damask.util.croak('{} mode...'.format(mode))
 
   for datatype,labels in active.items():                                                            # loop over scalar,color
     if datatype == 'color':
-      if   options.mode == 'cell':  rGrid.GetCellData().SetScalars(VTKarray[active['color'][0]])
-      elif options.mode == 'point': rGrid.GetPointData().SetScalars(VTKarray[active['color'][0]])
+      if   mode == 'cell':  rGrid.GetCellData().SetScalars(VTKarray[active['color'][0]])
+      elif mode == 'point': rGrid.GetPointData().SetScalars(VTKarray[active['color'][0]])
     for me in labels:                                                                               # loop over all requested items
-      if   options.mode == 'cell':  rGrid.GetCellData().AddArray(VTKarray[me])
-      elif options.mode == 'point': rGrid.GetPointData().AddArray(VTKarray[me])
+      if   mode == 'cell':  rGrid.GetCellData().AddArray(VTKarray[me])
+      elif mode == 'point': rGrid.GetPointData().AddArray(VTKarray[me])
 
   rGrid.Modified()
   if vtk.VTK_MAJOR_VERSION <= 5: rGrid.Update()
@@ -151,7 +159,7 @@ for name in filenames:
   writer = vtk.vtkXMLRectilinearGridWriter()
   writer.SetDataModeToBinary()
   writer.SetCompressorTypeToZLib()
-  writer.SetFileName(os.path.splitext(options.vtk)[0]+('' if options.inplace else '_added.vtr'))
+  writer.SetFileName(os.path.splitext(options.vtk)[0]+('.vtr' if options.inplace else '_added.vtr'))
   if vtk.VTK_MAJOR_VERSION <= 5: writer.SetInput(rGrid)
   else:                          writer.SetInputData(rGrid)
   writer.Write()
@@ -164,10 +172,10 @@ if options.render:
   actor = vtk.vtkActor()
   actor.SetMapper(mapper)
 
-  # Create the graphics structure. The renderer renders into the
-  # render window. The render window interactor captures mouse events
-  # and will perform appropriate camera or actor manipulation
-  # depending on the nature of the events.
+# Create the graphics structure. The renderer renders into the
+# render window. The render window interactor captures mouse events
+# and will perform appropriate camera or actor manipulation
+# depending on the nature of the events.
 
   ren = vtk.vtkRenderer()
 
@@ -180,9 +188,6 @@ if options.render:
 
   iren = vtk.vtkRenderWindowInteractor()
   iren.SetRenderWindow(renWin)
- 
-  #ren.ResetCamera()
-  #ren.GetActiveCamera().Zoom(1.5)
  
   iren.Initialize()
   renWin.Render()

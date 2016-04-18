@@ -55,7 +55,7 @@ else:
 
 sys.path.append(damask.solver.Marc().libraryPath('../../'))
 try:
-  from py_post import *
+  import py_post
 except:
   print('error: no valid Mentat release found')
   sys.exit(-1)
@@ -63,7 +63,7 @@ except:
 
 # ---------------------------   open results file and initialize mesh    ----------
     
-p = post_open(filename+'.t16')
+p = py_post.post_open(filename+'.t16')
 p.moveto(0)
 Nnodes = p.nodes()
 Nincrements = p.increments() - 1                   # t16 contains one "virtual" increment (at 0)
@@ -114,7 +114,7 @@ for incCount,position in enumerate(locations):     # walk through locations
 
   p.moveto(position+1)                             # wind to correct position
 
-  # --- get displacements 
+# --- get displacements 
 
   node_displacement = [[0,0,0] for i in range(Nnodes)]
   for n in range(Nnodes):
@@ -124,10 +124,11 @@ for incCount,position in enumerate(locations):     # walk through locations
   cellnode_displacement = [[c[i][n] for i in range(3)] for n in range(Ncellnodes)]
 
 
-  # --- append displacements to corresponding files
+# --- append displacements to corresponding files
   
   for geomtype in options.type:
-    outFilename = eval('"'+eval("'%%s_%%s_inc%%0%ii.vtk'%(math.log10(max(increments+[1]))+1)")+'"%(dirname + os.sep + os.path.split(filename)[1],geomtype,increments[incCount])')
+    outFilename = eval('"'+eval("'%%s_%%s_inc%%0%ii.vtk'%(math.log10(max(increments+[1]))+1)")\
+                +'"%(dirname + os.sep + os.path.split(filename)[1],geomtype,increments[incCount])')
     print outFilename
     shutil.copyfile('%s_%s.vtk'%(filename,geomtype),outFilename)
   

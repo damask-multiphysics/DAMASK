@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 no BOM -*-
 
-import os,sys,string,math
+import os,sys,math
 import numpy as np
 import damask
 from scipy import ndimage
@@ -49,7 +49,7 @@ parser.set_defaults(degrees = False,
 
 (options, filenames) = parser.parse_args()
 
-if sum(x != None for x in [options.rotation,options.eulers,options.matrix,options.quaternion]) !=1:
+if sum(x is not None for x in [options.rotation,options.eulers,options.matrix,options.quaternion]) !=1:
   parser.error('not exactly one rotation specified...')
 
 toRadian = math.pi/180. if options.degrees else 1.0

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 no BOM -*-
 
-import os,sys,string,math,types,time
+import os,sys,math,types,time
 import scipy.spatial, numpy as np
 from optparse import OptionParser
 import damask
@@ -94,18 +94,18 @@ parser.set_defaults(symmetry       = [damask.Symmetry.lattices[-1]],
 
 (options,filenames) = parser.parse_args()
 
-input = [options.eulers     != None,
-         options.a          != None and \
-         options.b          != None and \
-         options.c          != None,
-         options.matrix     != None,
-         options.quaternion != None,
-         options.microstructure != None,
+input = [options.eulers     is not None,
+         options.a          is not None and \
+         options.b          is not None and \
+         options.c          is not None,
+         options.matrix     is not None,
+         options.quaternion is not None,
+         options.microstructure is not None,
         ]
 
 if np.sum(input) != 1:
   parser.error('need either microstructure label or exactly one orientation input format.')
-if options.axes != None and not set(options.axes).issubset(set(['x','+x','-x','y','+y','-y','z','+z','-z'])):
+if options.axes is not None and not set(options.axes).issubset(set(['x','+x','-x','y','+y','-y','z','+z','-z'])):
   parser.error('invalid axes {} {} {}.'.format(*options.axes))
 
 (label,dim,inputtype) = [(options.eulers,3,'eulers'),
@@ -157,7 +157,7 @@ for name in filenames:
   if coordDim == 2:
     table.data = np.insert(table.data,2,np.zeros(len(table.data)),axis=1)                           # add zero z coordinate for two-dimensional input
     if options.verbose: damask.util.croak('extending to 3D...')
-  if options.phase == None:
+  if options.phase is None:
     table.data = np.column_stack((table.data,np.ones(len(table.data))))                             # add single phase if no phase column given
     if options.verbose: damask.util.croak('adding dummy phase info...')
 
@@ -168,7 +168,7 @@ for name in filenames:
   maxcorner = np.array(map(max,coords))
   grid   = np.array(map(len,coords),'i')
   size   = grid/np.maximum(np.ones(3,'d'), grid-1.0) * (maxcorner-mincorner)                        # size from edge to edge = dim * n/(n-1) 
-  size   = np.where(grid > 1, size, min(size[grid > 1]/grid[grid > 1]))                             # spacing for grid==1 equal to smallest among other spacings
+  size   = np.where(grid > 1, size, min(size[grid > 1]/grid[grid > 1]))                             # spacing for grid==1 set to smallest among other spacings
   delta  = size/np.maximum(np.ones(3,'d'), grid)
   origin = mincorner - 0.5*delta                                                                    # shift from cell center to corner
 
@@ -188,7 +188,7 @@ for name in filenames:
   
 # ------------------------------------------ process data ------------------------------------------
 
-  colOri = table.label_index(label)+(3-coordDim)                                                    # column(s) of orientation data (following 3 or 2 coordinates that were expanded to 3!)
+  colOri = table.label_index(label)+(3-coordDim)                                                    # column(s) of orientation data followed by 3 coordinates
 
   if inputtype == 'microstructure':
 
@@ -207,9 +207,9 @@ for name in filenames:
   
     statistics = {'global': 0, 'local': 0}
     grain = -np.ones(N,dtype = 'int32')                                                             # initialize empty microstructure
-    orientations = []                                                                               # empty list of orientations
-    multiplicity = []                                                                               # empty list of orientation multiplicity (number of group members)
-    phases       = []                                                                               # empty list of phase info
+    orientations = []                                                                               # orientations
+    multiplicity = []                                                                               # orientation multiplicity (number of group members)
+    phases       = []                                                                               # phase info
     nGrains = 0                                                                                     # counter for detected grains
     existingGrains = np.arange(nGrains)
     myPos   = 0                                                                                     # position (in list) of current grid point
@@ -227,7 +227,7 @@ for name in filenames:
 
           myData = table.data[index[myPos]]                                                         # read data for current grid point
           myPhase = int(myData[colPhase])
-          mySym = options.symmetry[min(myPhase,len(options.symmetry))-1]                            # select symmetry from option (take last specified option for all with higher index)
+          mySym = options.symmetry[min(myPhase,len(options.symmetry))-1]                            # take last specified option for all with higher index
 
           if inputtype == 'eulers':
             o = damask.Orientation(Eulers = myData[colOri:colOri+3]*toRadians,
@@ -250,26 +250,27 @@ for name in filenames:
 
           if options.tolerance > 0.0:                                                               # only try to compress orientations if asked to
             neighbors = np.array(KDTree.query_ball_point([x,y,z], 3))                               # point indices within radius
+# filter neighbors: skip myself, anyone further ahead (cannot yet have a grain ID), and other phases
             neighbors = neighbors[(neighbors < myPos) & \
-                                  (table.data[index[neighbors],colPhase] == myPhase)]               # filter neighbors: skip myself, anyone further ahead (cannot yet have a grain ID), and other phases
+                                  (table.data[index[neighbors],colPhase] == myPhase)]               
             grains = np.unique(grain[neighbors])                                                    # unique grain IDs among valid neighbors
 
             if len(grains) > 0:                                                                     # check immediate neighborhood first
               cos_disorientations = np.array([o.disorientation(orientations[grainID],
                                                                SST = False)[0].quaternion.w \
                                               for grainID in grains])                               # store disorientation per grainID
-              closest_grain = np.argmax(cos_disorientations)                                        # find grain among grains that has closest orientation to myself
+              closest_grain = np.argmax(cos_disorientations)                                        # grain among grains with closest orientation to myself
               match = 'local'
 
             if cos_disorientations[closest_grain] < threshold:                                      # orientation not close enough?
-              grains = existingGrains[np.atleast_1d( ( np.array(phases) == myPhase ) & \
-                                                     ( np.in1d(existingGrains,grains,invert=True) ) )] # check every other already identified grain (of my phase)
+              grains = existingGrains[np.atleast_1d( (np.array(phases) == myPhase ) & \
+                                                     (np.in1d(existingGrains,grains,invert=True)))] # other already identified grains (of my phase)
 
               if len(grains) > 0:
                 cos_disorientations = np.array([o.disorientation(orientations[grainID],
                                                                  SST = False)[0].quaternion.w \
                                                 for grainID in grains])                             # store disorientation per grainID
-                closest_grain = np.argmax(cos_disorientations)                                      # find grain among grains that has closest orientation to myself
+                closest_grain = np.argmax(cos_disorientations)                                      # grain among grains with closest orientation to myself
                 match = 'global'
 
           if cos_disorientations[closest_grain] >= threshold:                                       # orientation now close enough?
@@ -331,7 +332,7 @@ for name in filenames:
     config_header += ['<texture>']
     for i,orientation in enumerate(orientations):
       config_header += ['[Grain%s]'%(str(i+1).zfill(formatwidth)),
-                        'axes\t%s %s %s'%tuple(options.axes) if options.axes != None else '',
+                        'axes\t%s %s %s'%tuple(options.axes) if options.axes is not None else '',
                         '(gauss)\tphi1 %g\tPhi %g\tphi2 %g\tscatter 0.0\tfraction 1.0'%tuple(orientation.asEulers(degrees = True)),
                        ]
   

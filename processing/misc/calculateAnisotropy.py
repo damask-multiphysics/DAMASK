@@ -1,9 +1,9 @@
 #!/usr/bin/python
 # -*- coding: UTF-8 no BOM -*-
 
-import threading,time,os,subprocess,shlex,string
+import threading,os,string
 import numpy as np
-from optparse import OptionParser, OptionGroup
+from optparse import OptionParser
 from shutil import copy2
 from re import split
 import damask
@@ -14,26 +14,10 @@ scriptID   = ' '.join([scriptName,damask.version])
 def list_split(option, opt, value, parser):
   setattr(parser.values, option.dest, value.split(','))
 
-def execute(cmd,streamIn=None,wd='./'):
-  '''
-    executes a command in given directory and returns stdout and stderr for optional stdin
-  '''
-  initialPath=os.getcwd()
-  os.chdir(wd)
-  process = subprocess.Popen(shlex.split(cmd),stdout=subprocess.PIPE,stderr = subprocess.PIPE,stdin=subprocess.PIPE)
-  if streamIn != None:
-    out,error = process.communicate(streamIn.read())
-  else:
-    out,error = process.communicate()
-  os.chdir(initialPath)
-  return out,error
-
 #---------------------------------------------------------------------------------------------------
 class myThread (threading.Thread):
-#---------------------------------------------------------------------------------------------------
-  '''
-     Runner class
-  '''
+  """Runner"""
+
   def __init__(self, threadID):
     threading.Thread.__init__(self)
     self.threadID = threadID
@@ -48,8 +32,6 @@ class myThread (threading.Thread):
       s.release()
 
 def doSim(delay,thread):
-# s.acquire() and s.release() are couple
-# 
   global dirCurrent
   s.acquire()
   delta_angle = offsetPhi()
@@ -63,22 +45,22 @@ def doSim(delay,thread):
     os.mkdir(dire,0755)
   for file in [options.geometry+'.geom',options.load+'.load','numerics.config']:
     copy2(dirCurrent+'/'+file, dire)
-  newMatConfig = newMaterialConfig(dirCurrent,delta_angle)
+  newMaterialConfig(dirCurrent,delta_angle)
 
   os.chdir(dire)
   if not os.path.isfile('%s_%s.spectralOut'%(options.geometry,options.load)):
     print('starting uniaxial tension in direction of angle %s from %s'%(file_angle,thread))
     s.release()
-    execute('DAMASK_spectral -g %s -l %s'%(options.geometry,options.load))
+    damask.util.execute('DAMASK_spectral -g %s -l %s'%(options.geometry,options.load))
   else: s.release()
 
   s.acquire()
   if not os.path.isfile('./%s/%s_%s.txt'%('Rvalues',options.geometry,options.load)):
     print('starting post processing for angle %s from %s'%(file_angle,thread))
     s.release()
-    execute('postResults --cr f,p -d %s %s_%s.spectralOut'%('Rvalues',options.geometry,options.load))
-    execute('addCauchy ./%s/%s_%s.txt'%('Rvalues',options.geometry,options.load))
-    execute('addStrainTensors -l -v ./%s/%s_%s.txt'%('Rvalues',options.geometry,options.load))
+    damask.util.execute('postResults --cr f,p -d %s %s_%s.spectralOut'%('Rvalues',options.geometry,options.load))
+    damask.util.execute('addCauchy ./%s/%s_%s.txt'%('Rvalues',options.geometry,options.load))
+    damask.util.execute('addStrainTensors -l -v ./%s/%s_%s.txt'%('Rvalues',options.geometry,options.load))
     print('post processing for angle %s from %s is finished'%(file_angle,thread))
 
   else:
@@ -122,7 +104,6 @@ def newMaterialConfig(dire,angle):
       line2 = line
     f.write(line2)
   f.close()
-  return True
 
 # --------------------------------------------------------------------
 #                                MAIN
@@ -135,16 +116,21 @@ strength anisotropic coefficients (normalized yield stress)
 """, version=string.replace(scriptID,'\n','\\n')
 )
 
-parser.add_option('-l','--load' ,      dest='load', type='string', 
-                                       help='name of the load file [%default]', metavar='string')
-parser.add_option('-g','--geometry',   dest='geometry', type='string',
-                                       help='name of the geometry file [%default]', metavar='string')
-parser.add_option('-s', '--strain',    dest='strain', type='string', action='callback', callback=list_split,
-                                       help='the threshold strains, using comma to seperate multiple strains [%default]', metavar='string')
-parser.add_option('-t','--threads',    dest='threads', type='int',
-                                       help='number of parallel executions [%default]',  metavar='int')
-parser.add_option('-n','--number',     dest='number', type='int',
-                                       help='Number of uni-axial tensile tests [%default]',  metavar='int')
+parser.add_option('-l','--load' ,
+                  dest='load', type='string', 
+                  help='name of the load file [%default]', metavar='string')
+parser.add_option('-g','--geometry',
+                  dest='geometry', type='string',
+                  help='name of the geometry file [%default]', metavar='string')
+parser.add_option('-s', '--strain',
+                  dest='strain', type='string', action='callback', callback=list_split,
+                  help='threshold strains, using comma to seperate multiple strains [%default]', metavar='string')
+parser.add_option('-t','--threads',
+                  dest='threads', type='int',
+                  help='number of parallel executions [%default]',  metavar='int')
+parser.add_option('-n','--number',
+                  dest='number', type='int',
+                  help='Number of uni-axial tensile tests [%default]',  metavar='int')
 
 parser.set_defaults(geometry = '20grains16x16x16')
 parser.set_defaults(load     = 'tensionX')

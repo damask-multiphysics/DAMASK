@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 no BOM -*-
 
-import os, sys, string
+import os,sys
 import numpy as np
 from optparse import OptionParser
 import damask
@@ -12,19 +12,17 @@ sys.path.append(damask.solver.Marc().libraryPath('../../'))
 
 #-------------------------------------------------------------------------------------------------
 def outMentat(cmd,locals):
-#-------------------------------------------------------------------------------------------------
   if cmd[0:3] == '(!)':
     exec(cmd[3:])
   elif cmd[0:3] == '(?)':
     cmd = eval(cmd[3:])
-    py_send(cmd)
+    py_mentat.py_send(cmd)
   else:
-    py_send(cmd)
+    py_mentat.py_send(cmd)
   return
 
 #-------------------------------------------------------------------------------------------------
 def outFile(cmd,locals,dest):
-#-------------------------------------------------------------------------------------------------
   if cmd[0:3] == '(!)':
     exec(cmd[3:])
   elif cmd[0:3] == '(?)':
@@ -36,7 +34,6 @@ def outFile(cmd,locals,dest):
 
 #-------------------------------------------------------------------------------------------------
 def output(cmds,locals,dest):
-#-------------------------------------------------------------------------------------------------
   for cmd in cmds:
     if isinstance(cmd,list):
       output(cmd,locals,dest)
@@ -51,26 +48,24 @@ def output(cmds,locals,dest):
   
 #-------------------------------------------------------------------------------------------------
 def init():
-#-------------------------------------------------------------------------------------------------
-    return [
-      "#"+' '.join([scriptID] + sys.argv[1:]),
-      "*draw_manual",              # prevent redrawing in Mentat, should be much faster
-      "*new_model yes",
-      "*reset",
-      "*select_clear",
-      "*set_element_class hex8",
-      "*set_nodes off",
-      "*elements_solid",
-      "*show_view 4",
-      "*reset_view",
-      "*view_perspective",
-      "*redraw",
-      ]
+  return [
+    "#"+' '.join([scriptID] + sys.argv[1:]),
+    "*draw_manual",              # prevent redrawing in Mentat, should be much faster
+    "*new_model yes",
+    "*reset",
+    "*select_clear",
+    "*set_element_class hex8",
+    "*set_nodes off",
+    "*elements_solid",
+    "*show_view 4",
+    "*reset_view",
+    "*view_perspective",
+    "*redraw",
+    ]
 
 
 #-------------------------------------------------------------------------------------------------
 def mesh(r,d):
-#-------------------------------------------------------------------------------------------------
     return [
   "*add_nodes",
   "%f %f %f"%(0.0,0.0,0.0),
@@ -102,7 +97,6 @@ def mesh(r,d):
 
 #-------------------------------------------------------------------------------------------------
 def material():
-#-------------------------------------------------------------------------------------------------
   cmds = [\
   "*new_mater standard",
   "*mater_option general:state:solid",
@@ -112,7 +106,7 @@ def material():
   "*add_mater_elements",
   "all_existing",
   "*geometry_type mech_three_solid",
-#  "*geometry_option red_integ_capacity:on",                                                        # see below: reduced integration with one IP gave trouble being always OUTDATED...
+#  "*geometry_option red_integ_capacity:on", reduced integration with one IP gave trouble being always OUTDATED...
   "*add_geometry_elements",
   "all_existing",
   ]
@@ -122,13 +116,13 @@ def material():
 
 #-------------------------------------------------------------------------------------------------
 def geometry():
-#-------------------------------------------------------------------------------------------------
   cmds = [\
   "*geometry_type mech_three_solid",
 #  "*geometry_option red_integ_capacity:on",
   "*add_geometry_elements",
   "all_existing",
-  "*element_type 7",                                                                                # we are NOT using reduced integration (type 117) but opt for /elementhomogeneous/ in the respective phase description (material.config)
+# we are NOT using reduced integration (type 117) but opt for /elementhomogeneous/ in the respective phase description (material.config)
+  "*element_type 7",
   "all_existing",
   ]
   
@@ -137,7 +131,6 @@ def geometry():
 
 #-------------------------------------------------------------------------------------------------
 def initial_conditions(homogenization,microstructures):
-#-------------------------------------------------------------------------------------------------
   elements = []
   element = 0
   for id in microstructures:
@@ -204,7 +197,7 @@ parser.set_defaults(port           = None,
 
 if options.port:
   try:
-    from py_mentat import *
+    import py_mentat
   except:
     parser.error('no valid Mentat release found.')
 
@@ -258,9 +251,9 @@ for name in filenames:
   
   outputLocals = {}
   if options.port:
-    py_connect('',options.port)
+    py_mentat.py_connect('',options.port)
     output(cmds,outputLocals,'Mentat')
-    py_disconnect()
+    py_mentat.py_disconnect()
   else:
     output(cmds,outputLocals,table.__IO__['out'])                                                   # bad hack into internals of table class...
 

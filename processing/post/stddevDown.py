@@ -144,16 +144,12 @@ for file in files:
   
   posOffset = (shift+[0.5,0.5,0.5])*dimension/resolution
   elementSize = dimension/resolution*packing
-  elem = 1
   for c in xrange(downSized[2]):
     for b in xrange(downSized[1]):
       for a in xrange(downSized[0]):
         datavar[a,b,c,locationCol:locationCol+3] = posOffset + [a,b,c]*elementSize
-        datavar[a,b,c,elemCol] = elem
         table.data = datavar[a,b,c,:].tolist()
         table.data_write()                                                  # output processed line
-        elem += 1
-
   
 # ------------------------------------------ output result ---------------------------------------  
 

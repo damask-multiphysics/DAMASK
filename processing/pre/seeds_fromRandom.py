@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 no BOM -*-
 
-import os,sys,string,math,random
+import os,sys,math,random
 import numpy as np
 import damask
 from optparse import OptionParser,OptionGroup
@@ -14,9 +14,7 @@ scriptID   = ' '.join([scriptName,damask.version])
 # ------------------------------------------ aux functions ---------------------------------
 
 def kdtree_search(cloud, queryPoints):
-  '''
-  find distances to nearest neighbor among cloud (N,d) for each of the queryPoints (n,d)
-  '''
+  """find distances to nearest neighbor among cloud (N,d) for each of the queryPoints (n,d)"""
   n = queryPoints.shape[0]
   distances = np.zeros(n,dtype=float)
   tree = spatial.cKDTree(cloud)
@@ -50,8 +48,11 @@ parser.add_option('-m', '--microstructure',
 parser.add_option('-r', '--rnd',
                   dest = 'randomSeed', type = 'int', metavar = 'int',
                   help = 'seed of random number generator [%default]')
+parser.add_option('--format',
+                  dest = 'format', type = 'string', metavar = 'string',
+                  help = 'number format of output [auto]')
 
-group = OptionGroup(parser, "Laguerre Tessellation Options",
+group = OptionGroup(parser, "Laguerre Tessellation",
                    "Parameters determining shape of weight distribution of seed points"
                    )
 group.add_option('-w', '--weights',
@@ -72,8 +73,8 @@ group.add_option('--sigma',
                  help='standard deviation of normal distribution for weights [%default]')
 parser.add_option_group(group)
 
-group = OptionGroup(parser, "Selective Seeding Options",
-                    "More uniform distribution of seed points using Mitchell\'s Best Candidate Algorithm"
+group = OptionGroup(parser, "Selective Seeding",
+                    "More uniform distribution of seed points using Mitchell's Best Candidate Algorithm"
                    )
 group.add_option('-s','--selective',
                   action = 'store_true',
@@ -105,6 +106,7 @@ parser.set_defaults(randomSeed = None,
                     force = False,
                     distance = 0.2,
                     numCandidates = 10,
+                    format = None,
                    )
 
 (options,filenames) = parser.parse_args()
@@ -112,7 +114,7 @@ parser.set_defaults(randomSeed = None,
 options.grid = np.array(options.grid)
 gridSize = options.grid.prod()
 
-if options.randomSeed == None: options.randomSeed = int(os.urandom(4).encode('hex'), 16)
+if options.randomSeed is None: options.randomSeed = int(os.urandom(4).encode('hex'), 16)
 np.random.seed(options.randomSeed)                                                                  # init random generators
 random.seed(options.randomSeed)
 
@@ -133,10 +135,12 @@ for name in filenames:
 
   remarks = []
   errors  = []
-  if gridSize == 0:            errors.append('zero grid dimension for %s.'%(', '.join([['a','b','c'][x] for x in np.where(options.grid == 0)[0]])))
+  if gridSize == 0:
+    errors.append('zero grid dimension for %s.'%(', '.join([['a','b','c'][x] for x in np.where(options.grid == 0)[0]])))
   if options.N > gridSize/10.: errors.append('seed count exceeds 0.1 of grid points.')
   if options.selective and 4./3.*math.pi*(options.distance/2.)**3*options.N > 0.5:
-    (remarks if options.force else errors).append('maximum recommended seed point count for given distance is {}.{}'.format(int(3./8./math.pi/(options.distance/2.)**3),'..'*options.force))
+    (remarks if options.force else errors).append('maximum recommended seed point count for given distance is {}.{}'.
+                             format(int(3./8./math.pi/(options.distance/2.)**3),'..'*options.force))
 
   if remarks != []: damask.util.croak(remarks)
   if errors  != []:
@@ -153,7 +157,7 @@ for name in filenames:
   if not options.selective:
 
     seeds = np.zeros((3,options.N),dtype='d')                                                       # seed positions array
-    gridpoints = random.sample(range(gridSize),options.N)                                           # create random permutation of all grid positions and choose first N
+    gridpoints = random.sample(range(gridSize),options.N)                                           # choose first N from random permutation of grid positions
 
     seeds[0,:] = (np.mod(gridpoints                                   ,options.grid[0])\
                  +np.random.random(options.N))                        /options.grid[0]
@@ -174,7 +178,7 @@ for name in filenames:
       distances  = kdtree_search(seeds[:i],candidates)
       best = distances.argmax()
       if distances[best] > options.distance:                                                        # require minimum separation
-        seeds[i] = candidates[best]                                                                 # take candidate with maximum separation to existing point cloud
+        seeds[i] = candidates[best]                                                                 # maximum separation to existing point cloud
         i += 1
         if i%(options.N/100.) < 1: damask.util.croak('.',False)
 
@@ -215,7 +219,7 @@ for name in filenames:
 # --- write seeds information ------------------------------------------------------------
 
   table.data = seeds
-  table.data_writeArray()
+  table.data_writeArray(fmt = options.format)
     
 # --- output finalization --------------------------------------------------------------------------
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 no BOM -*-
 
-import os,sys,string
+import os,sys
 import numpy as np
 from optparse import OptionParser
 import damask
@@ -81,7 +81,6 @@ for name in filenames:
   table.info_append(scriptID + '\t' + ' '.join(sys.argv[1:]))
   if options.shape:  table.labels_append('shapeMismatch({})'.format(options.defgrad))
   if options.volume: table.labels_append('volMismatch({})'.format(options.defgrad))
-  #table.head_write()
 
 # --------------- figure out size and grid ---------------------------------------------------------
 
@@ -92,7 +91,7 @@ for name in filenames:
   maxcorner = np.array(map(max,coords))
   grid   = np.array(map(len,coords),'i')
   size   = grid/np.maximum(np.ones(3,'d'), grid-1.0) * (maxcorner-mincorner)                        # size from edge to edge = dim * n/(n-1) 
-  size   = np.where(grid > 1, size, min(size[grid > 1]/grid[grid > 1]))                             # spacing for grid==1 equal to smallest among other spacings
+  size   = np.where(grid > 1, size, min(size[grid > 1]/grid[grid > 1]))                             # spacing for grid==1 set to smallest among other spacings
 
   N = grid.prod()
   
@@ -116,8 +115,8 @@ for name in filenames:
   while table.data_read():    
     (x,y,z) = damask.util.gridLocation(idx,grid)                                                     # figure out (x,y,z) position from line count
     idx += 1
-    F[0:3,0:3,x,y,z] = np.array(map(float,table.data[column:column+9]),'d').reshape(3,3)                                               
-  print 'hm'
+    F[0:3,0:3,x,y,z] = np.array(map(float,table.data[column:column+9]),'d').reshape(3,3)
+
   Favg = damask.core.math.tensorAvg(F)
   centres = damask.core.mesh.deformedCoordsFFT(size,F,Favg,[1.0,1.0,1.0])
   

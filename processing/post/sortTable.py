@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 no BOM -*-
 
-import os,sys,string
+import os,sys
 import numpy as np
 from optparse import OptionParser
 import damask
@@ -36,7 +36,7 @@ parser.set_defaults(key = [],
 
 (options,filenames) = parser.parse_args()
 
-if options.keys == None:
+if options.keys is None:
   parser.error('No sorting column(s) specified.')
 
 options.keys.reverse()                                                                              # numpy sorts with most significant column as last

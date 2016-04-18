@@ -1,6 +1,4 @@
 !--------------------------------------------------------------------------------------------------
-! $Id$
-!--------------------------------------------------------------------------------------------------
 !> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
 !> @brief all DAMASK files without solver
 !> @details List of files needed by MSC.Marc, Abaqus/Explicit, and Abaqus/Standard

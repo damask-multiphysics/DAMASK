@@ -1,8 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 no BOM -*-
 
-import os,sys,string,vtk
-import numpy as np
+import os
 from optparse import OptionParser
 import damask
 
@@ -48,7 +47,7 @@ for name in filenames:
   table.labels_append(['1_Euler','2_Euler','3_Euler',
                        '1_pos','2_pos',
                        'IQ','CI','PhaseID','Intensity','Fit',
-                      ],                                                                            # labels according to OIM Analysis 7.2 Manual, p 403 (of 517)
+                      ],                                                                            # OIM Analysis 7.2 Manual, p 403 (of 517)
                       reset = True)
 
 # ------------------------------------------ assemble header ---------------------------------------

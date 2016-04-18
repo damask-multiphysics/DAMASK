@@ -3,7 +3,7 @@
 
 from optparse import OptionParser
 import damask
-import os,sys,math,re,random,string
+import os,sys,math,random
 import numpy as np
 
 scriptName = os.path.splitext(os.path.basename(__file__))[0]
@@ -19,7 +19,7 @@ def integerFactorization(i):
   return j
 
 def binAsBins(bin,intervals):
-  """ explode compound bin into 3D bins list """
+  """explode compound bin into 3D bins list"""
   bins = [0]*3
   bins[0] = (bin//(intervals[1] * intervals[2])) % intervals[0]
   bins[1] = (bin//intervals[2]) % intervals[1]
@@ -27,17 +27,17 @@ def binAsBins(bin,intervals):
   return bins
   
 def binsAsBin(bins,intervals):
-  """ implode 3D bins into compound bin """
+  """implode 3D bins into compound bin"""
   return (bins[0]*intervals[1] + bins[1])*intervals[2] + bins[2]
 
 def EulersAsBins(Eulers,intervals,deltas,center):
-  """ return list of Eulers translated into 3D bins list """
+  """return list of Eulers translated into 3D bins list"""
   return [int((euler+(0.5-center)*delta)//delta)%interval \
                   for euler,delta,interval in zip(Eulers,deltas,intervals) \
          ]
 
 def binAsEulers(bin,intervals,deltas,center):
-  """ compound bin number translated into list of Eulers """
+  """compound bin number translated into list of Eulers"""
   Eulers = [0.0]*3
   Eulers[2] = (bin%intervals[2] + center)*deltas[2]
   Eulers[1] = (bin//intervals[2]%intervals[1] + center)*deltas[1]
@@ -45,7 +45,7 @@ def binAsEulers(bin,intervals,deltas,center):
   return Eulers
 
 def directInvRepetitions(probability,scale):
-  """ calculate number of samples drawn by direct inversion """
+  """calculate number of samples drawn by direct inversion"""
   nDirectInv = 0
   for bin in range(len(probability)):                                                               # loop over bins
     nDirectInv += int(round(probability[bin]*scale))                                                # calc repetition
@@ -55,15 +55,12 @@ def directInvRepetitions(probability,scale):
 # ---------------------- sampling methods -----------------------------------------------------------------------
 
 # ----- efficient algorithm ---------
-
 def directInversion (ODF,nSamples):
-  """ ODF contains 'dV_V' (normalized to 1), 'center', 'intervals', 'limits' (in radians) """
-  
+  """ODF contains 'dV_V' (normalized to 1), 'center', 'intervals', 'limits' (in radians)"""
   nOptSamples = max(ODF['nNonZero'],nSamples)                                                       # random subsampling if too little samples requested
 
   nInvSamples = 0
   repetition = [None]*ODF['nBins']
-  probabilityScale = nOptSamples                                                                    # guess
 
   scaleLower = 0.0
   nInvSamplesLower = 0
@@ -96,7 +93,7 @@ def directInversion (ODF,nSamples):
   for bin in range(ODF['nBins']):                                                                   # loop over bins
     repetition[bin] = int(round(ODF['dV_V'][bin]*scale))                                            # calc repetition
 
-  # build set
+# build set
   set = [None]*nInvSamples
   i = 0
   for bin in range(ODF['nBins']):
@@ -110,7 +107,6 @@ def directInversion (ODF,nSamples):
     if (j == nInvSamples-1): ex = j
     else: ex = int(round(random.uniform(j+0.5,nInvSamples-0.5)))
     bin = set[ex]
-    bins = binAsBins(bin,ODF['interval'])                                                           # PE: why are we doing this??
     Eulers = binAsEulers(bin,ODF['interval'],ODF['delta'],ODF['center'])
     orientations[j] = np.degrees(Eulers)
     reconstructedODF[bin] += unitInc
@@ -122,8 +118,7 @@ def directInversion (ODF,nSamples):
 # ----- trial and error algorithms ---------
 
 def MonteCarloEulers (ODF,nSamples):
-  """ ODF contains 'dV_V' (normalized to 1), 'center', 'intervals', 'limits' (in radians) """
-  
+  """ODF contains 'dV_V' (normalized to 1), 'center', 'intervals', 'limits' (in radians)"""
   countMC = 0
   maxdV_V = max(ODF['dV_V'])
   orientations     = np.zeros((nSamples,3),'f')
@@ -146,8 +141,7 @@ def MonteCarloEulers (ODF,nSamples):
 
 
 def MonteCarloBins (ODF,nSamples):
-  """ ODF contains 'dV_V' (normalized to 1), 'center', 'intervals', 'limits' (in radians) """
-  
+  """ODF contains 'dV_V' (normalized to 1), 'center', 'intervals', 'limits' (in radians)"""
   countMC = 0
   maxdV_V = max(ODF['dV_V'])
   orientations     = np.zeros((nSamples,3),'f')
@@ -169,8 +163,7 @@ def MonteCarloBins (ODF,nSamples):
 
 
 def TothVanHoutteSTAT (ODF,nSamples):
-  """ ODF contains 'dV_V' (normalized to 1), 'center', 'intervals', 'limits' (in radians) """
-
+  """ODF contains 'dV_V' (normalized to 1), 'center', 'intervals', 'limits' (in radians)"""
   orientations     = np.zeros((nSamples,3),'f')
   reconstructedODF = np.zeros(ODF['nBins'],'f')
   unitInc = 1.0/nSamples
@@ -199,7 +192,7 @@ def TothVanHoutteSTAT (ODF,nSamples):
 # --------------------------------------------------------------------
 #                                MAIN
 # --------------------------------------------------------------------
-parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
+parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description ="""
 Transform linear binned ODF data into given number of orientations.
 IA: integral approximation, STAT: Van Houtte, MC: Monte Carlo
 
@@ -251,7 +244,7 @@ for name in filenames:
     continue
   damask.util.report(scriptName,name)
 
-  randomSeed = int(os.urandom(4).encode('hex'), 16)  if options.randomSeed == None else options.randomSeed         # random seed per file for second phase
+  randomSeed = int(os.urandom(4).encode('hex'), 16)  if options.randomSeed is None else options.randomSeed         # random seed per file for second phase
   random.seed(randomSeed)
 
 # ------------------------------------------ read header and data ---------------------------------
@@ -308,13 +301,13 @@ for name in filenames:
                'Reference Integral: %12.11f\n'%(ODF['limit'][0]*ODF['limit'][2]*(1-math.cos(ODF['limit'][1]))),
                ])
                                                      
-  # call methods
+# call methods
   Functions = {'IA': 'directInversion', 'STAT': 'TothVanHoutteSTAT', 'MC': 'MonteCarloBins'}
   method = Functions[options.algorithm]
 
   Orientations, ReconstructedODF = (globals()[method])(ODF,nSamples)
   
-  # calculate accuracy of sample
+# calculate accuracy of sample
   squaredDiff     = {'orig':0.0,method:0.0}
   squaredRelDiff  = {'orig':0.0,method:0.0}
   mutualProd      = {'orig':0.0,method:0.0}
@@ -375,7 +368,7 @@ for name in filenames:
                      '(gauss)   phi1 {}   Phi {}   phi2 {}   scatter 0.0   fraction 1.0'.format(*eulers),
                      ]
 
-  #--- output finalization -------------------------------------------------------------------------- 
+#--- output finalization -------------------------------------------------------------------------- 
 
   with (open(os.path.splitext(name)[0]+'_'+method+'_'+str(nSamples)+'_material.config','w')) as outfile:
     outfile.write('\n'.join(materialConfig)+'\n')

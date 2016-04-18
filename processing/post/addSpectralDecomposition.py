@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 no BOM -*-
 
-import os,sys,string
+import os,sys
 import numpy as np
 from optparse import OptionParser
 import damask
@@ -25,7 +25,7 @@ parser.add_option('-t','--tensor',
 
 (options,filenames) = parser.parse_args()
 
-if options.tensor == None:
+if options.tensor is None:
   parser.error('no data column specified.')
 
 # --- loop over input files -------------------------------------------------------------------------

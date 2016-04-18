@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 no BOM -*-
 
-import os, sys, string
+import os,sys
 import damask
 from optparse import OptionParser
 
@@ -14,9 +14,9 @@ def outMentat(cmd,locals):
         exec(cmd[3:])
     elif cmd[0:3] == '(?)':
         cmd = eval(cmd[3:])
-        py_send(cmd)
+        py_mentat.py_send(cmd)
     else:
-        py_send(cmd)
+        py_mentat.py_send(cmd)
     return
 
 
@@ -59,7 +59,8 @@ def colorMap(colors,baseIdx=32):
 # MAIN FUNCTION STARTS HERE
 # -----------------------------
 
-parser = OptionParser(option_class=damask.extendableOption, usage="%prog [options] predefinedScheme | (lower_h,s,l upper_h,s,l)", description = """
+parser = OptionParser(option_class=damask.extendableOption,
+usage="%prog [options] predefinedScheme | (lower_h,s,l upper_h,s,l)", description = """
 Changes the color map in MSC.Mentat. 
 
 Interpolates colors between "lower_hsl" and "upper_hsl". 
@@ -121,13 +122,12 @@ if options.palettef:
 elif options.palette:
   for theColor in theMap.export(format='list',steps=options.colorcount):
     print '\t'.join(map(lambda x: str(int(255*x)),theColor))
-else:  
-### connect to Mentat and change colorMap
+else:                                                                                               # connect to Mentat and change colorMap
   sys.path.append(damask.solver.Marc().libraryPath('../../'))
   try:
-    from py_mentat import *
+    import py_mentat
     print 'waiting to connect...'
-    py_connect('',options.port)
+    py_mentat.py_connect('',options.port)
     print 'connected...'
     mentat = True
   except:
@@ -138,7 +138,7 @@ else:
   cmds = colorMap(theMap.export(format='list',steps=options.colorcount),options.baseIdx)
   if mentat:
     output(['*show_table']+cmds+['*show_model *redraw'],outputLocals,'Mentat')
-    py_disconnect()
+    py_mentat.py_disconnect()
   
   if options.verbose:
     output(cmds,outputLocals,'Stdout')

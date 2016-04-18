@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 no BOM -*-
 
-import os,sys,string,math,itertools
+import os,sys,math,itertools
 import numpy as np
 from scipy import ndimage
 from optparse import OptionParser

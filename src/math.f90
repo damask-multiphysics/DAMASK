@@ -1,6 +1,4 @@
 !--------------------------------------------------------------------------------------------------
-! $Id$
-!--------------------------------------------------------------------------------------------------
 !> @author Franz Roters, Max-Planck-Institut für Eisenforschung GmbH
 !> @author Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
 !> @author Christoph Kords, Max-Planck-Institut für Eisenforschung GmbH
@@ -150,8 +148,10 @@ module math
    math_sampleFiberOri, &
    math_sampleGaussVar, &
    math_symmetricEulers, &
-   math_spectralDecompositionSym33, &
-   math_spectralDecompositionSym, &
+   math_eigenvectorBasisSym33, &
+   math_eigenvectorBasisSym, &
+   math_eigenValuesVectorsSym33, &
+   math_eigenValuesVectorsSym, &
    math_rotationalPart33, &
    math_invariantsSym33, &
    math_eigenvaluesSym33, &
@@ -186,10 +186,6 @@ module math
    halton_seed_set, &
    i_to_halton, &
    prime
- external :: &
-   dsyev, &
-   dgetrf, &
-   dgetri
 
 contains
 
@@ -472,7 +468,23 @@ end function math_crossproduct
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief tensor product a \otimes b
+!> @brief tensor product A \otimes B of arbitrary sized vectors A and B
+!--------------------------------------------------------------------------------------------------
+pure function math_tensorproduct(A,B)
+
+ implicit none
+ real(pReal), dimension(:), intent(in) ::  A,B
+ real(pReal), dimension(size(A,1),size(B,1)) ::  math_tensorproduct
+
+ integer(pInt) :: i,j
+
+ forall (i=1_pInt:size(A,1),j=1_pInt:size(B,1)) math_tensorproduct(i,j) = A(i)*B(j)
+
+end function math_tensorproduct
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief tensor product A \otimes B of leght-3 vectors A and B
 !--------------------------------------------------------------------------------------------------
 pure function math_tensorproduct33(A,B)
 
@@ -682,7 +694,7 @@ pure function math_exp33(A,n)
  math_exp33 = B                                                                                     ! A^0 = eye2
 
  do i = 1_pInt,n
-   invfac = invfac/real(i)                                                                          ! invfac = 1/i!
+   invfac = invfac/real(i,pReal)                                                                    ! invfac = 1/i!
    B = math_mul33x33(B,A)
    math_exp33 = math_exp33 + invfac*B                                                               ! exp = SUM (A^i)/i!
  enddo
@@ -761,6 +773,7 @@ pure subroutine math_invert33(A, InvA, DetA, error)
  DetA = A(1,1) * InvA(1,1) + A(1,2) * InvA(2,1) + A(1,3) * InvA(3,1)
 
  if (abs(DetA) <= tiny(DetA)) then
+   InvA = 0.0_pReal
    error = .true.
  else
    InvA(1,2) = -A(1,2) * A(3,3) + A(1,3) * A(3,2)
@@ -794,15 +807,13 @@ function math_invSym3333(A)
  integer(pInt), dimension(6)   :: ipiv6
  real(pReal),   dimension(6,6) :: temp66_Real
  real(pReal),   dimension(6)   :: work6
+ external :: &
+  dgetrf, &
+  dgetri
 
  temp66_real = math_Mandel3333to66(A)
-#if(FLOAT==8)
  call dgetrf(6,6,temp66_real,6,ipiv6,ierr)
  call dgetri(6,temp66_real,6,ipiv6,work6,6,ierr)
-#elif(FLOAT==4)
- call sgetrf(6,6,temp66_real,6,ipiv6,ierr)
- call sgetri(6,temp66_real,6,ipiv6,work6,6,ierr)
-#endif
  if (ierr == 0_pInt) then
    math_invSym3333 = math_Mandel66to3333(temp66_real)
  else
@@ -830,13 +841,8 @@ subroutine math_invert(myDim,A, InvA, error)
  logical, intent(out) :: error
  
  invA = A 
-#if(FLOAT==8)
  call dgetrf(myDim,myDim,invA,myDim,ipiv,ierr)
  call dgetri(myDim,InvA,myDim,ipiv,work,myDim,ierr)
-#elif(FLOAT==4)
- call sgetrf(myDim,myDim,invA,myDim,ipiv,ierr)
- call sgetri(myDim,InvA,myDim,ipiv,work,myDim,ierr)
-#endif
  error = merge(.true.,.false., ierr /= 0_pInt)                                                      ! http://fortraninacworld.blogspot.de/2012/12/ternary-operator.html
  
 end subroutine math_invert
@@ -1913,26 +1919,23 @@ end function math_symmetricEulers
 !--------------------------------------------------------------------------------------------------
 !> @brief eigenvalues and eigenvectors of symmetric matrix m
 !--------------------------------------------------------------------------------------------------
-subroutine math_spectralDecompositionSym(m,values,vectors,error)
+subroutine math_eigenValuesVectorsSym(m,values,vectors,error)
 
  implicit none
  real(pReal), dimension(:,:),                  intent(in)  :: m
  real(pReal), dimension(size(m,1)),            intent(out) :: values
  real(pReal), dimension(size(m,1),size(m,1)),  intent(out) :: vectors
  logical, intent(out) :: error
-
  integer(pInt) :: info
  real(pReal), dimension((64+2)*size(m,1)) :: work                                                    ! block size of 64 taken from http://www.netlib.org/lapack/double/dsyev.f
+ external :: &
+  dsyev
 
- vectors = M                                                                                         ! copy matrix to input (doubles as output) array
-#if(FLOAT==8)
+ vectors = m                                                                                         ! copy matrix to input (doubles as output) array
  call dsyev('V','U',size(m,1),vectors,size(m,1),values,work,(64+2)*size(m,1),info)
-#elif(FLOAT==4)
- call ssyev('V','U',size(m,1),vectors,size(m,1),values,work,(64+2)*size(m,1),info)
-#endif
  error = (info == 0_pInt)
 
-end subroutine math_spectralDecompositionSym
+end subroutine math_eigenValuesVectorsSym
 
 
 !--------------------------------------------------------------------------------------------------
@@ -1942,7 +1945,7 @@ end subroutine math_spectralDecompositionSym
 !> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
 !> @details See http://arxiv.org/abs/physics/0610206 (DSYEVH3)
 !--------------------------------------------------------------------------------------------------
-subroutine math_spectralDecompositionSym33(m,values,vectors)
+subroutine math_eigenValuesVectorsSym33(m,values,vectors)
  
  implicit none
  real(pReal), dimension(3,3),intent(in)  :: m
@@ -1959,7 +1962,7 @@ subroutine math_spectralDecompositionSym33(m,values,vectors)
 
  T = maxval(abs(values))
  U = max(T, T**2_pInt)
- threshold = sqrt(5.0e-14_pReal * U**2_pInt)
+ threshold = sqrt(5.68e-14_pReal * U**2_pInt)
 
 ! Calculate first eigenvector by the formula v[0] = (m - lambda[0]).e1 x (m - lambda[0]).e2
  vectors(1:3,1) = [ vectors(1,2) + m(1, 3) * values(1), &
@@ -1968,7 +1971,7 @@ subroutine math_spectralDecompositionSym33(m,values,vectors)
  norm = norm2(vectors(1:3, 1))
 
  fallback1: if(norm < threshold) then
-   call math_spectralDecompositionSym(m,values,vectors,error)
+   call math_eigenValuesVectorsSym(m,values,vectors,error)
    return
  endif fallback1
 
@@ -1981,19 +1984,108 @@ subroutine math_spectralDecompositionSym33(m,values,vectors)
  norm = norm2(vectors(1:3, 2))
 
  fallback2: if(norm < threshold) then
-   call math_spectralDecompositionSym(m,values,vectors,error)
+   call math_eigenValuesVectorsSym(m,values,vectors,error)
    return
  endif fallback2
  vectors(1:3,2) = vectors(1:3, 2) / norm
 
 ! Calculate third eigenvector according to  v[2] = v[0] x v[1]
  vectors(1:3,3) = math_crossproduct(vectors(1:3,1),vectors(1:3,2))
-
-end subroutine math_spectralDecompositionSym33
+end subroutine math_eigenValuesVectorsSym33
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief rotational part from polar decomposition of tensor m
+!> @brief eigenvector basis of symmetric matrix m
+!--------------------------------------------------------------------------------------------------
+function math_eigenvectorBasisSym(m)
+
+ implicit none
+ real(pReal), dimension(:,:),      intent(in)  :: m
+ real(pReal), dimension(size(m,1))             :: values
+ real(pReal), dimension(size(m,1),size(m,1))   :: vectors
+ real(pReal), dimension(size(m,1),size(m,1))   :: math_eigenvectorBasisSym
+ logical :: error
+ integer(pInt) :: i
+
+ math_eigenvectorBasisSym = 0.0_pReal
+ call math_eigenValuesVectorsSym(m,values,vectors,error)
+ if(error) return
+ 
+ do i=1_pInt, size(m,1)
+   math_eigenvectorBasisSym = math_eigenvectorBasisSym &
+                            +  sqrt(values(i)) * math_tensorproduct(vectors(:,i),vectors(:,i))
+ enddo
+
+end function math_eigenvectorBasisSym
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief eigenvector basis of symmetric 33 matrix m
+!--------------------------------------------------------------------------------------------------
+function math_eigenvectorBasisSym33(m)
+
+ implicit none
+ real(pReal), dimension(3,3)              :: math_eigenvectorBasisSym33
+ real(pReal), dimension(3)                :: invariants, values
+ real(pReal), dimension(3,3), intent(in) :: m
+ real(pReal) :: P, Q, rho, phi
+ real(pReal), parameter :: TOL=1.e-14_pReal
+ real(pReal), dimension(3,3,3) :: N, EB
+
+ invariants = math_invariantsSym33(m)
+ EB = 0.0_pReal
+
+ P = invariants(2)-invariants(1)**2.0_pReal/3.0_pReal
+ Q = -2.0_pReal/27.0_pReal*invariants(1)**3.0_pReal+product(invariants(1:2))/3.0_pReal-invariants(3)
+
+ threeSimilarEigenvalues: if(all(abs([P,Q]) < TOL)) then
+   values = invariants(1)/3.0_pReal
+!   this is not really correct, but at least the basis is correct
+   EB(1,1,1)=1.0_pReal
+   EB(2,2,2)=1.0_pReal
+   EB(3,3,3)=1.0_pReal
+ else threeSimilarEigenvalues
+   rho=sqrt(-3.0_pReal*P**3.0_pReal)/9.0_pReal
+   phi=acos(math_limit(-Q/rho*0.5_pReal,-1.0_pReal,1.0_pReal))
+   values = 2.0_pReal*rho**(1.0_pReal/3.0_pReal)* &
+                             [cos(phi/3.0_pReal), &
+                              cos((phi+2.0_pReal*PI)/3.0_pReal), &
+                              cos((phi+4.0_pReal*PI)/3.0_pReal) &
+                             ] + invariants(1)/3.0_pReal
+   N(1:3,1:3,1) = m-values(1)*math_I3
+   N(1:3,1:3,2) = m-values(2)*math_I3
+   N(1:3,1:3,3) = m-values(3)*math_I3
+   twoSimilarEigenvalues: if(abs(values(1)-values(2)) < TOL) then 
+     EB(1:3,1:3,3)=math_mul33x33(N(1:3,1:3,1),N(1:3,1:3,2))/ &
+                                               ((values(3)-values(1))*(values(3)-values(2)))
+     EB(1:3,1:3,1)=math_I3-EB(1:3,1:3,3)
+   elseif(abs(values(2)-values(3)) < TOL) then twoSimilarEigenvalues
+     EB(1:3,1:3,1)=math_mul33x33(N(1:3,1:3,2),N(1:3,1:3,3))/ &
+                                               ((values(1)-values(2))*(values(1)-values(3)))
+     EB(1:3,1:3,2)=math_I3-EB(1:3,1:3,1)
+   elseif(abs(values(3)-values(1)) < TOL) then twoSimilarEigenvalues 
+     EB(1:3,1:3,2)=math_mul33x33(N(1:3,1:3,1),N(1:3,1:3,3))/ &
+                                               ((values(2)-values(1))*(values(2)-values(3)))
+     EB(1:3,1:3,1)=math_I3-EB(1:3,1:3,2)
+   else twoSimilarEigenvalues
+     EB(1:3,1:3,1)=math_mul33x33(N(1:3,1:3,2),N(1:3,1:3,3))/ &
+                                               ((values(1)-values(2))*(values(1)-values(3)))
+     EB(1:3,1:3,2)=math_mul33x33(N(1:3,1:3,1),N(1:3,1:3,3))/ &
+                                               ((values(2)-values(1))*(values(2)-values(3)))
+     EB(1:3,1:3,3)=math_mul33x33(N(1:3,1:3,1),N(1:3,1:3,2))/ &
+                                               ((values(3)-values(1))*(values(3)-values(2)))
+   endif twoSimilarEigenvalues
+ endif threeSimilarEigenvalues
+
+ math_eigenvectorBasisSym33 = sqrt(values(1)) * EB(1:3,1:3,1) &
+                            + sqrt(values(2)) * EB(1:3,1:3,2) &
+                            + sqrt(values(3)) * EB(1:3,1:3,3)
+
+end function math_eigenvectorBasisSym33
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief rotational part from polar decomposition of 33 tensor m
 !--------------------------------------------------------------------------------------------------
 function math_rotationalPart33(m)
  use IO, only: &
@@ -2002,17 +2094,11 @@ function math_rotationalPart33(m)
  implicit none
  real(pReal), intent(in), dimension(3,3) :: m
  real(pReal), dimension(3,3) :: math_rotationalPart33
- real(pReal), dimension(3,3) :: U, mTm , Uinv, EB
- real(pReal), dimension(3) :: EV
+ real(pReal), dimension(3,3) :: U , Uinv
 
- mTm = math_mul33x33(math_transpose33(m),m)
- call math_spectralDecompositionSym33(mTm,EV,EB)
-
- U = sqrt(EV(1)) * math_tensorproduct33(EB(1:3,1),EB(1:3,1)) &
-   + sqrt(EV(2)) * math_tensorproduct33(EB(1:3,2),EB(1:3,2)) &
-   + sqrt(EV(3)) * math_tensorproduct33(EB(1:3,3),EB(1:3,3))
-
+ U = math_eigenvectorBasisSym33(math_mul33x33(transpose(m),m))
  Uinv = math_inv33(U)
+
  if (all(abs(Uinv) <= tiny(Uinv))) then                                                             ! math_inv33 returns zero when failed, avoid floating point equality comparison
    math_rotationalPart33 = math_I3
    call IO_warning(650_pInt)
@@ -2035,16 +2121,13 @@ function math_eigenvaluesSym(m)
  real(pReal), dimension(:,:),                  intent(in)  :: m
  real(pReal), dimension(size(m,1))                         :: math_eigenvaluesSym
  real(pReal), dimension(size(m,1),size(m,1))               :: vectors
-
  integer(pInt) :: info
  real(pReal), dimension((64+2)*size(m,1)) :: work                                                    ! block size of 64 taken from http://www.netlib.org/lapack/double/dsyev.f
+ external :: &
+  dsyev
 
  vectors = m                                                                                         ! copy matrix to input (doubles as output) array
-#if(FLOAT==8)
  call dsyev('N','U',size(m,1),vectors,size(m,1),math_eigenvaluesSym,work,(64+2)*size(m,1),info)
-#elif(FLOAT==4)
- call ssyev('N','U',size(m,1),vectors,size(m,1),math_eigenvaluesSym,work,(64+2)*size(m,1),info)
-#endif
  if (info /= 0_pInt) math_eigenvaluesSym = DAMASK_NaN
 
 end function math_eigenvaluesSym
@@ -2070,7 +2153,7 @@ function math_eigenvaluesSym33(m)
  P = invariants(2)-invariants(1)**2.0_pReal/3.0_pReal                                               ! different from http://arxiv.org/abs/physics/0610206 (this formulation was in DAMASK)
  Q = -2.0_pReal/27.0_pReal*invariants(1)**3.0_pReal+product(invariants(1:2))/3.0_pReal-invariants(3)! different from http://arxiv.org/abs/physics/0610206 (this formulation was in DAMASK)
 
- if(any(abs([p,q]) < TOL)) then
+ if(all(abs([P,Q]) < TOL)) then
    math_eigenvaluesSym33 = math_eigenvaluesSym(m)
  else
    rho=sqrt(-3.0_pReal*P**3.0_pReal)/9.0_pReal

@@ -1,6 +1,4 @@
 !--------------------------------------------------------------------------------------------------
-! $Id: spectral_damage.f90 4082 2015-04-11 20:28:07Z MPIE\m.diehl $
-!--------------------------------------------------------------------------------------------------
 !> @author Pratheek Shanthraj, Max-Planck-Institut für Eisenforschung GmbH
 !> @author Shaokang Zhang, Max-Planck-Institut für Eisenforschung GmbH
 !> @brief Spectral solver for nonlocal damage

@@ -1,8 +1,6 @@
 !--------------------------------------------------------------------------------------------------
-! $Id$
-!--------------------------------------------------------------------------------------------------
-!> @author Luv Sharma, Max-Planck-Institut fŸr Eisenforschung GmbH
-!> @author Pratheek Shanthraj, Max-Planck-Institut fŸr Eisenforschung GmbH
+!> @author Luv Sharma, Max-Planck-Institut fÃ¼r Eisenforschung GmbH
+!> @author Pratheek Shanthraj, Max-Planck-Institut fÃ¼r Eisenforschung GmbH
 !> @brief material subroutine incorporating kinematics resulting from opening of cleavage planes
 !> @details to be done
 !--------------------------------------------------------------------------------------------------

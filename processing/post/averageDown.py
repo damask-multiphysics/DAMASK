@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 no BOM -*-
 
-import os,sys,string
+import os,sys
 import numpy as np
 import scipy.ndimage
 from optparse import OptionParser
@@ -22,7 +22,7 @@ Average each data block of size 'packing' into single values thus reducing the f
 parser.add_option('-c','--coordinates',
                   dest = 'coords',
                   type = 'string', metavar = 'string',
-                  help = 'column heading for coordinates [%default]')
+                  help = 'column label of coordinates [%default]')
 parser.add_option('-p','--packing',
                   dest = 'packing',
                   type = 'int', nargs = 3, metavar = 'int int int',
@@ -39,7 +39,7 @@ parser.add_option('-s', '--size',
                   dest = 'size',
                   type = 'float', nargs = 3, metavar = 'float float float',
                   help = 'size in x,y,z [autodetect]')
-parser.set_defaults(coords  = 'ipinitialcoord',
+parser.set_defaults(coords  = 'pos',
                     packing = (2,2,2),
                     shift   = (0,0,0),
                     grid    = (0,0,0),
@@ -59,11 +59,10 @@ if any(shift != 0): prefix += 'shift{:+}{:+}{:+}_'.format(*shift)
 if filenames == []: filenames = [None]
 
 for name in filenames:
-  try:
-    table = damask.ASCIItable(name    = name,
-                              outname = os.path.join(os.path.dirname(name),
-                                                     prefix+os.path.basename(name)) if name else name,
-                              buffered = False)
+  try:    table = damask.ASCIItable(name    = name,
+                                    outname = os.path.join(os.path.dirname(name),
+                                                           prefix+os.path.basename(name)) if name else name,
+                                    buffered = False)
   except: continue
   damask.util.report(scriptName,name)
 
@@ -75,7 +74,6 @@ for name in filenames:
 
   errors  = []
   remarks = []
-  colCoord = None
   
   if table.label_dimension(options.coords) != 3:  errors.append('coordinates {} are not a vector.'.format(options.coords))
   else: colCoord = table.label_index(options.coords)
@@ -85,7 +83,6 @@ for name in filenames:
     damask.util.croak(errors)
     table.close(dismiss = True)
     continue
-
 
 # ------------------------------------------ assemble header ---------------------------------------
 
@@ -101,10 +98,10 @@ for name in filenames:
     mincorner = np.array(map(min,coords))
     maxcorner = np.array(map(max,coords))
     grid   = np.array(map(len,coords),'i')
-    size   = grid/np.maximum(np.ones(3,'d'), grid-1.0) * (maxcorner-mincorner)                        # size from edge to edge = dim * n/(n-1) 
-    size   = np.where(grid > 1, size, min(size[grid > 1]/grid[grid > 1]))                             # spacing for grid==1 equal to smallest among other spacings
+    size   = grid/np.maximum(np.ones(3,'d'), grid-1.0) * (maxcorner-mincorner)                      # size from edge to edge = dim * n/(n-1) 
+    size   = np.where(grid > 1, size, min(size[grid > 1]/grid[grid > 1]))                           # spacing for grid==1 set to smallest among other spacings
     delta  = size/np.maximum(np.ones(3,'d'), grid)
-    origin = mincorner - 0.5*delta                                                                    # shift from cell center to corner
+    origin = mincorner - 0.5*delta                                                                  # shift from cell center to corner
 
   else:
     grid   = np.array(options.grid,'i')

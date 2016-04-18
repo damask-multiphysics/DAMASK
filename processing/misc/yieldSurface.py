@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # -*- coding: UTF-8 no BOM -*-
 
-import threading,time,os,subprocess,string,sys
+import threading,time,os
 import numpy as np
 from optparse import OptionParser
 import damask
@@ -56,10 +56,11 @@ def runFit(exponent, eqStress, dimension, criterion):
   damask.util.croak(fitResidual)
 
 def principalStresses(sigmas):
-  '''
-    computes principal stresses (i.e. eigenvalues) for a set of Cauchy stresses.
-    sorted in descending order.
-  '''
+  """
+  computes principal stresses (i.e. eigenvalues) for a set of Cauchy stresses.
+
+  sorted in descending order.
+  """
   lambdas=np.zeros(0,'d')
   for i in xrange(np.shape(sigmas)[1]):
     eigenvalues = np.linalg.eigvalsh(sym6toT33(sigmas[:,i]))
@@ -82,27 +83,25 @@ def principalStress(p):
                     t1 + t2*np.cos(phi+np.pi*4.0/3.0)])
 
 def principalStrs_Der(p, (s1, s2, s3, s4, s5, s6), dim, Karafillis=False):
-  '''
-    Derivative of principal stress with respect to stress
-  '''
+  """Derivative of principal stress with respect to stress"""
   third  = 1.0/3.0
   third2 = 2.0*third
 
   I = invariant(p)
   I1s3I2= np.sqrt(I[0]**2 - 3.0*I[1])
-  numer = 2.0*I1**3 - 9.0*I[0]*I[1] + 27.0*I[2]
+  numer = 2.0*I[0]**3 - 9.0*I[0]*I[1] + 27.0*I[2]
   denom = 2.0*I1s3I2**3
   cs    = numer/denom
   phi   = np.arccos(cs)/3.0
 
   dphidcs   = -third/np.sqrt(1.0 - cs**2)
   dcsddenom = 0.5*numer*(-1.5)*I1s3I2**(-5.0)
-  dcsdI1    = (6.0*I1**2 - 9.0*I2)*denom + dcsddenom*(2.0*I1)
-  dcsdI2    = (          - 9.0*I1)*denom + dcsddenom*(-3.0)
+  dcsdI1    = (6.0*I[0]**2 - 9.0*I[1])*denom + dcsddenom*(2.0*I[0])
+  dcsdI2    = (            - 9.0*I[0])*denom + dcsddenom*(-3.0)
   dcsdI3    = 27.0*denom
   dphidI1, dphidI2, dphidI3 = dphidcs*dcsdI1, dphidcs*dcsdI2, dphidcs*dcsdI3
 
-  dI1s3I2dI1 =   I1/I1s3I2
+  dI1s3I2dI1 =   I[0]/I1s3I2
   dI1s3I2dI2 = -1.5/I1s3I2
   tcoeff  = third2*I1s3I2
   
@@ -150,13 +149,13 @@ def math_ln(x):
   return np.log(x + 1.0e-32)
 
 def sym6toT33(sym6):
-  ''' Shape the symmetric stress tensor(6) into (3,3) '''
+  """Shape the symmetric stress tensor(6) into (3,3)"""
   return np.array([[sym6[0],sym6[3],sym6[5]],
                    [sym6[3],sym6[1],sym6[4]],
                    [sym6[5],sym6[4],sym6[2]]])
 
 def t33toSym6(t33):
-  ''' Shape the stress tensor(3,3) into symmetric (6) '''
+  """Shape the stress tensor(3,3) into symmetric (6)"""
   return np.array([ t33[0,0],
                     t33[1,1],
                     t33[2,2],
@@ -165,9 +164,6 @@ def t33toSym6(t33):
                    (t33[2,0] + t33[0,2])/2.0,])   #   *  *  2
 
 class Criteria(object):
-  '''
-    needs doc string
-  '''
   def __init__(self, criterion, uniaxialStress,exponent, dimension):
     self.stress0 = uniaxialStress
     if exponent < 0.0:                                                                              # Fitting exponent m
@@ -183,9 +179,8 @@ class Criteria(object):
     return self.func(self.stress0, paras, sigmas,self.mFix,self.criteria,self.dim,Jac=True)
 
 class Vegter(object):
-  '''
-    Vegter yield criterion
-  '''
+  """Vegter yield criterion"""
+
   def __init__(self, refPts, refNormals,nspace=11):
     self.refPts, self.refNormals = self._getRefPointsNormals(refPts, refNormals)
     self.hingePts = self._getHingePoints()
@@ -211,11 +206,12 @@ class Vegter(object):
     return refPts,refNormals
 
   def _getHingePoints(self):
-    '''
-      calculate the hinge point B according to the reference points A,C and the normals n,m
-      refPoints  = np.array([[p1_x, p1_y], [p2_x, p2_y]]);
-      refNormals = np.array([[n1_x, n1_y], [n2_x, n2_y]])
-    '''
+    """
+    calculate the hinge point B according to the reference points A,C and the normals n,m
+    
+    refPoints  = np.array([[p1_x, p1_y], [p2_x, p2_y]]);
+    refNormals = np.array([[n1_x, n1_y], [n2_x, n2_y]])
+    """
     def hingPoint(points, normals):
       A1 = points[0][0];   A2 = points[0][1]
       C1 = points[1][0];   C2 = points[1][1]
@@ -235,9 +231,7 @@ class Vegter(object):
     return np.array([bezier(self.refPts[i:i+2],self.hingePts[i]) for i in xrange(len(self.refPts)-1)])
 
 def VetgerCriterion(stress,lankford, rhoBi0, theta=0.0):
-  '''
-    0-pure shear; 1-uniaxial; 2-plane strain; 3-equi-biaxial
-  '''
+  """0-pure shear; 1-uniaxial; 2-plane strain; 3-equi-biaxial"""
   def getFourierParas(r):
     # get the value after Fourier transformation
     nset = len(r)
@@ -262,12 +256,6 @@ def VetgerCriterion(stress,lankford, rhoBi0, theta=0.0):
     for j in xrange(3):
       refPts[j,i] = np.dot(getFourierParas(strsSet[:,j,i]), fouriercoeffs)
 
-  rhoUn = np.dot(getFourierParas(-lankford/(lankford+1)), fouriercoeffs)
-  rhoBi = (rhoBi0+1 + (rhoBi0-1)*np.cos(2.0*theta))/(rhoBi0+1 - (rhoBi0-1)*np.cos(2.0*theta))
-  nVec = lambda rho : np.array([1.0,rho]/np.sqrt(1.0+rho**2))
-  refNormals = np.array([nVec(-1.0),nVec(rhoUn),nVec(0.0),nVec(rhoBi)])
-
-  vegter = Vegter(refPts, refNormals)
 
 def Tresca(eqStress=None, #not needed/supported
            paras=None,
@@ -276,10 +264,11 @@ def Tresca(eqStress=None, #not needed/supported
            criteria=None, #not needed/supported
            dim=3,
            Jac=False):
-  '''
-    Tresca yield criterion
-    the fitted parameters is: paras(sigma0)
-  '''
+  """
+  Tresca yield criterion
+
+  the fitted parameter is paras(sigma0)
+  """
   if not Jac:
     lambdas = principalStresses(sigmas)
     r = np.amax(np.array([abs(lambdas[2,:]-lambdas[1,:]),\
@@ -296,13 +285,14 @@ def Cazacu_Barlat(eqStress=None,
                   criteria=None,
                   dim=3,    #2D also possible
                   Jac=False):
-  '''
-    Cazacu-Barlat (CB) yield criterion
-    the fitted parameters are:
-      a1,a2,a3,a6; b1,b2,b3,b4,b5,b10; c for plane stress
-      a1,a2,a3,a4,a5,a6; b1,b2,b3,b4,b5,b6,b7,b8,b9,b10,b11; c: for general case
-    mFix are invalid input
-  '''
+  """
+  Cazacu-Barlat (CB) yield criterion
+    
+  the fitted parameters are:
+  a1,a2,a3,a6; b1,b2,b3,b4,b5,b10; c for plane stress
+  a1,a2,a3,a4,a5,a6; b1,b2,b3,b4,b5,b6,b7,b8,b9,b10,b11; c: for general case
+  mFix is ignored
+  """
   s11,s22,s33,s12,s23,s31 = sigmas
   if dim == 2:
     (a1,a2,a3,a4), (b1,b2,b3,b4,b5,b10), c = paras[0:4],paras[4:10],paras[10]
@@ -356,13 +346,14 @@ def Drucker(eqStress=None,#not needed/supported
             criteria=None,
             dim=3, 
             Jac=False):
-  '''
-    Drucker yield criterion
-    the fitted parameters are 
-      sigma0, C_D for Drucker(p=1);
-      sigma0, C_D, p for general Drucker
-    eqStress, mFix are invalid inputs
-  '''
+  """
+  Drucker yield criterion
+  
+  the fitted parameters are 
+  sigma0, C_D for Drucker(p=1);
+  sigma0, C_D, p for general Drucker
+  eqStress, mFix are invalid inputs
+  """
   if criteria == 'drucker':
     sigma0, C_D= paras
     p = 1.0
@@ -386,7 +377,7 @@ def Drucker(eqStress=None,#not needed/supported
     if criteria == 'drucker':
       return np.vstack((-r/sigma0, -drdl*J3_2p)).T
     else:
-      dldp = 3.0*J2_3p*math_ln(J2) - 2.0*C_D*J3_2p*math_ln(J3)
+      dldp = 3.0*J2_3p*math_ln(J[1]) - 2.0*C_D*J3_2p*math_ln(J[2])
       jp   = drdl*dldp + r*math_ln(left)/(-6.0*p*p)
       
       if mFix[0]: return np.vstack((-r/sigma0, -drdl*J3_2p)).T
@@ -399,12 +390,13 @@ def Hill1948(eqStress=None,#not needed/supported
              criteria=None,#not needed/supported
              dim=3, 
              Jac=False):
-  '''
-    Hill 1948 yield criterion
-    the fitted parameters are:
-      F, G, H, L, M, N for 3D
-      F, G, H, N       for 2D
-  '''
+  """
+  Hill 1948 yield criterion
+    
+  the fitted parameters are:
+  F, G, H, L, M, N for 3D
+  F, G, H, N       for 2D
+  """
   s11,s22,s33,s12,s23,s31 = sigmas
   if dim == 2:      # plane stress
     jac = np.array([ s22**2, s11**2, (s11-s22)**2, 2.0*s12**2])
@@ -423,11 +415,11 @@ def Hill1979(eqStress=None,#not needed/supported
              criteria=None,#not needed/supported
              dim=3, 
              Jac=False):
-  '''
-    Hill 1979 yield criterion
-    the fitted parameters are: f,g,h,a,b,c,m
-  '''
-
+  """
+  Hill 1979 yield criterion
+  
+  the fitted parameters are: f,g,h,a,b,c,m
+  """
   if mFix[0]:
     m = mFix[1]
   else:
@@ -458,14 +450,14 @@ def Hosford(eqStress=None,
              criteria=None,
              dim=3, 
              Jac=False):
-  '''
-    Hosford family criteria
-    the fitted parameters are:
-      von Mises: sigma0
-      Hershey: (1) sigma0, a, when a is not fixed; (2) sigma0, when a is fixed
-      general Hosford: (1) F,G,H, a, when a is not fixed; (2) F,G,H, when a is fixed
-  '''
+  """
+  Hosford family criteria
 
+  the fitted parameters are:
+  von Mises: sigma0
+  Hershey: (1) sigma0, a, when a is not fixed; (2) sigma0, when a is fixed
+  general Hosford: (1) F,G,H, a, when a is not fixed; (2) F,G,H, when a is fixed
+  """
   if criteria == 'vonmises':
     sigma0 = paras
     coeff  = np.ones(3)
@@ -509,11 +501,12 @@ def Barlat1989(eqStress=None,
                criteria=None,
                dim=3, 
                Jac=False):
-  '''
-    Barlat-Lian 1989 yield criteria
-    the fitted parameters are:
-      Anisotropic: a, h, p, m; m is optional
-  ''' 
+  """
+  Barlat-Lian 1989 yield criteria
+
+  the fitted parameters are:
+  Anisotropic: a, h, p, m; m is optional
+  """ 
   a, h, p = paras[0:3]
   if mFix[0]: m = mFix[1]
   else:       m = paras[-1]
@@ -536,7 +529,7 @@ def Barlat1989(eqStress=None,
     drdl,  drdm  = r/m/left, r*math_ln(0.5*left)*(-1.0/m/m) 
     dldm = np.dot(np.array([a,a,c]),fm*math_ln(fs))*0.5
 
-    ja = drdl*dlda 
+    ja,jc = drdl*dlda, drdl*dldc 
     jh,jp = drdl*(dldk1*dk1dh + dldk2*dk2dh), drdl*dldk2*dk2dp
     jm    = drdl*dldm + drdm
 
@@ -544,13 +537,14 @@ def Barlat1989(eqStress=None,
     else:       return np.vstack((ja,jc,jh,jp,jm)).T
 
 def Barlat1991(eqStress, paras, sigmas, mFix, criteria, dim, Jac=False):
-  '''
-    Barlat 1991 criteria
-    the fitted parameters are:
-      Anisotropic: a, b, c, f, g, h, m for 3D
-                   a, b, c, h, m for plane stress
-    m is optional
-  '''
+  """
+  Barlat 1991 criteria
+  
+  the fitted parameters are:
+  Anisotropic: a, b, c, f, g, h, m for 3D
+  a, b, c, h, m for plane stress
+  m is optional
+  """
   if dim == 2: coeff = paras[0:4]    # plane stress  
   else:        coeff = paras[0:6]    # general case
   if mFix[0]:  m = mFix[1]
@@ -605,12 +599,13 @@ def Barlat1991(eqStress, paras, sigmas, mFix, criteria, dim, Jac=False):
     else:       return np.vstack((dfdI2*dI2dx + dfdI3*dI3dx, jm)).T
 
 def BBC2000(eqStress, paras, sigmas, mFix, criteria, dim, Jac=False):
-  '''
-    BBC2000 yield criterion
-    the fitted parameters are 
-    d,e,f,g, b,c,a, k;  k is optional
-    criteria are invalid input
-  '''
+  """
+  BBC2000 yield criterion
+  
+  the fitted parameters are 
+  d,e,f,g, b,c,a, k;  k is optional
+  criteria are invalid input
+  """
   d,e,f,g, b,c,a= paras[0:7]
   if mFix[0]: k = mFix[1]
   else:       k = paras[-1]
@@ -647,12 +642,13 @@ def BBC2000(eqStress, paras, sigmas, mFix, criteria, dim, Jac=False):
 
 
 def BBC2003(eqStress, paras, sigmas, mFix, criteria, dim, Jac=False):
-  '''
-    BBC2003 yield criterion
-    the fitted parameters are 
-    M,N,P,Q,R,S,T,a, k;  k is optional
-    criteria are invalid input
-  '''
+  """
+  BBC2003 yield criterion
+    
+  the fitted parameters are 
+  M,N,P,Q,R,S,T,a, k;  k is optional
+  criteria are invalid input
+  """
   M,N,P,Q,R,S,T,a = paras[0:8]
   if mFix[0]: k = mFix[1]
   else:       k = paras[-1]
@@ -689,12 +685,13 @@ def BBC2003(eqStress, paras, sigmas, mFix, criteria, dim, Jac=False):
     else :      return np.vstack((J, drdl*dldk+drdk)).T
 
 def BBC2005(eqStress, paras, sigmas, mFix, criteria, dim, Jac=False):
-  '''
-    BBC2005 yield criterion
-    the fitted parameters are 
-    a, b, L ,M, N, P, Q, R, k;  k is optional
-    criteria are invalid input
-  '''
+  """
+  BBC2005 yield criterion
+  
+  the fitted parameters are 
+  a, b, L ,M, N, P, Q, R, k  k are optional
+  criteria is invalid input
+  """
   a,b,L, M, N, P, Q, R = paras[0:8]
   if mFix[0]: k = mFix[1]
   else:       k = paras[-1]
@@ -739,10 +736,12 @@ def BBC2005(eqStress, paras, sigmas, mFix, criteria, dim, Jac=False):
     else :      return np.vstack(J, dldk+dsBarde*dedk).T
 
 def Yld2000(eqStress, paras, sigmas, mFix, criteria, dim, Jac=False):
-  '''
-    C: c11,c22,c66  c12=c21=1.0 JAC NOT PASS
-    D: d11,d12,d21,d22,d66 
-  '''
+  """
+  Yld2000 yield criterion
+
+  C: c11,c22,c66  c12=c21=1.0 JAC NOT PASS
+  D: d11,d12,d21,d22,d66 
+  """
   C,D = paras[0:3], paras[3:8]
   if mFix[0]: m = mFix[1]
   else:       m = paras[-1]
@@ -769,8 +768,7 @@ def Yld2000(eqStress, paras, sigmas, mFix, criteria, dim, Jac=False):
     drdl,  drdm  = r/m/left, r*math_ln(0.5*left)*(-1.0/m/m) #/(-m*m) 
     dldm = ( phi1*math_ln(phi1s) + phi21*math_ln(phi21s) + phi22*math_ln(phi22s) )*0.5
     zero = np.zeros_like(s11); num  = len(s11)
-    def dPrincipalds((X1,X2,X12)): 
-      # the derivative of principla with regards to stress
+    def dPrincipalds((X1,X2,X12)):                                                                  # derivative of principla with respect to stress
       temp   = 1.0/np.sqrt( (X1-X2)**2 + 4.0*X12**2 )
       dP1dsi = 0.5*np.array([ 1.0+temp*(X1-X2), 1.0-temp*(X1-X2),  temp*4.0*X12])
       dP2dsi = 0.5*np.array([ 1.0-temp*(X1-X2), 1.0+temp*(X1-X2), -temp*4.0*X12])
@@ -798,14 +796,15 @@ def Yld2000(eqStress, paras, sigmas, mFix, criteria, dim, Jac=False):
     else:       return np.vstack((jC,jD,jm)).T
 
 def Yld200418p(eqStress, paras, sigmas, mFix, criteria, dim, Jac=False):
-  '''
-    Yld2004-18p yield criterion
-    the fitted parameters are 
-      C: c12,c21,c23,c32,c31,c13,c44,c55,c66; D: d12,d21,d23,d32,d31,d13,d44,d55,d66 for 3D
-      C: c12,c21,c23,c32,c31,c13,c44; D: d12,d21,d23,d32,d31,d13,d44 for 2D
-    and m, m is optional
-    criteria are invalid input
-  '''
+  """
+  Yld2004-18p yield criterion
+
+  the fitted parameters are 
+  C: c12,c21,c23,c32,c31,c13,c44,c55,c66; D: d12,d21,d23,d32,d31,d13,d44,d55,d66 for 3D
+  C: c12,c21,c23,c32,c31,c13,c44; D: d12,d21,d23,d32,d31,d13,d44 for 2D
+  and m, m are optional
+  criteria is ignored
+  """
   if dim == 2: C,D = np.append(paras[0:7],[0.0,0.0]), np.append(paras[7:14],[0.0,0.0])
   else:        C,D = paras[0:9], paras[9:18]
   if mFix[0]: m = mFix[1]
@@ -843,14 +842,15 @@ def Yld200418p(eqStress, paras, sigmas, mFix, criteria, dim, Jac=False):
     else:       return np.vstack((jc,jd,jm)).T
 
 def KarafillisBoyce(eqStress, paras, sigmas, mFix, criteria, dim, Jac=False):
-  '''
-    Karafillis-Boyce
-    the fitted parameters are 
-      c11,c12,c13,c14,c15,c16,c,m for 3D
-      c11,c12,c13,c14,c,m for plane stress
-    0<c<1, m are optional
-    criteria are invalid input
-  '''
+  """
+  Karafillis-Boyce
+
+  the fitted parameters are 
+  c11,c12,c13,c14,c15,c16,c,m for 3D
+  c11,c12,c13,c14,c,m for plane stress
+  0<c<1, m are optional
+  criteria are invalid input
+  """
   ks = lambda (s1,s2,s3,s4,s5,s6),(c1,c2,c3,c4,c5,c6): np.array( [
          ((c2+c3)*s1-c3*s2-c2*s3)/3.0,  ((c3+c1)*s2-c3*s1-c1*s3)/3.0,
          ((c1+c2)*s3-c2*s1-c1*s2)/3.0,  c4*s4, c5*s5, c6*s6 ])
@@ -1007,7 +1007,8 @@ fitCriteria = {
                      'nExpo':  1,'err':np.inf,
                      'dimen':  [3],
                      'bound':  [[(None,None)]*18+[(1.0,8.0)], [(None,None)]*14+[(1.0,8.0)]],
-                     'labels': [['c12','c21','c23','c32','c31','c13','c44','c55','c66','d12','d21','d23','d32','d31','d13','d44','d55','d66','m'],
+                     'labels': [['c12','c21','c23','c32','c31','c13','c44','c55','c66',
+                                 'd12','d21','d23','d32','d31','d13','d44','d55','d66','m'],
                                 ['c12','c21','c23','c32','c31','c13','c44','d12','d21','d23','d32','d31','d13','d44','m']],
                     },
   'karafillis'     :{'name':   'Karafillis-Boyce',
@@ -1028,12 +1029,8 @@ thresholdParameter = ['totalshear','equivalentStrain']
 
 #---------------------------------------------------------------------------------------------------
 class Loadcase():
-#---------------------------------------------------------------------------------------------------
-  '''
-     Class for generating load cases for the spectral solver
-  '''
+  """generating load cases for the spectral solver"""
 
-# ------------------------------------------------------------------
   def __init__(self,finalStrain,incs,time,nSet=1,dimension=3,vegter=False):
     self.finalStrain = finalStrain
     self.incs = incs
@@ -1087,7 +1084,6 @@ class Loadcase():
           ' time %s'%self.time
 
   def _getLoadcase2dVegter(self,number): #for a 2D simulation, I would use this generator before switching to a random 2D generator
-    NDzero=[[1,2,3,6],[1,3,5,7],[2,5,6,7]] # no deformation / * for stress
     # biaxial f1 = f2
     # shear   f1 = -f2
     # unixaial f1 , f2 =0
@@ -1102,9 +1098,7 @@ class Loadcase():
           ' time %s'%self.time
 
   def _vegterLoadcase(self):
-    '''
-      generate the stress points for Vegter criteria
-    '''
+    """generate the stress points for Vegter criteria (incomplete/untested)"""
     theta = np.linspace(0.0,np.pi/2.0,self.nSet)
     f = [0.0, 0.0, '*']*3;  loadcase = []
     for i in xrange(self.nSet*4): loadcase.append(f)
@@ -1115,16 +1109,14 @@ class Loadcase():
                     [[1.1, 0.1], [0.1, 1.1]],              # eq-biaxial
                     [[1.1, 0.1], [0.1, 1.1]],              # eq-biaxial
                  ])
-    # for i,t in enumerate(theta):
-      # R = np.array([np.cos(t), np.sin(t), -np.sin(t), np.cos(t)]).reshape(2,2)
-      # for j in xrange(4): 
-        # loadcase[i*4+j][0],loadcase[i*4+j][1],loadcase[i*4+j][3],loadcase[i*4+j][4] = np.dot(R.T,np.dot(F[j],R)).reshape(4)
-    # return loadcase
+    for i,t in enumerate(theta):
+      R = np.array([np.cos(t), np.sin(t), -np.sin(t), np.cos(t)]).reshape(2,2)
+      for j in xrange(4): 
+        loadcase[i*4+j][0],loadcase[i*4+j][1],loadcase[i*4+j][3],loadcase[i*4+j][4] = np.dot(R.T,np.dot(F[j],R)).reshape(4)
+    return loadcase
 
   def _getLoadcase2dRandom(self):
-    '''
-      generate random stress points for 2D tests
-    '''
+    """generate random stress points for 2D tests"""
     self.NgeneratedLoadCases+=1
     defgrad=['0', '0', '*']*3
     stress =['*', '*', '0']*3
@@ -1135,8 +1127,6 @@ class Loadcase():
           ' incs %s'%self.incs+\
           ' time %s'%self.time
   def _defgradScale(self, defgrad):
-    '''
-    '''
     def fill_star(a,b):
       if   a != '*' and b != '*': return a,b
       elif a == '*' and b != '*': return b,b
@@ -1160,10 +1150,8 @@ class Loadcase():
 
 #---------------------------------------------------------------------------------------------------
 class Criterion(object):
-#---------------------------------------------------------------------------------------------------
-  '''
-     Fitting to certain criterion
-  '''
+  """Fitting to certain criterion"""
+
   def __init__(self, exponent, uniaxial, dimension, label='vonmises'):
     self.name = label
     self.expo = exponent
@@ -1187,7 +1175,7 @@ class Criterion(object):
 
   def fit(self,stress):
     global fitResults; fitErrors; fitResidual
-    if options.exponent > 0.0: nExponent = nExpo
+    if options.exponent > 0.0: nExponent = options.exponent
     else:                      nExponent = 0
     nameCriterion = self.name.lower()
     criteria      = Criteria(nameCriterion,self.uniaxial,self.expo, self.dimen)
@@ -1225,13 +1213,10 @@ class Criterion(object):
       pass
     return popt
 
-
 #---------------------------------------------------------------------------------------------------
 class myThread (threading.Thread):
-#---------------------------------------------------------------------------------------------------
-  '''
-     Runner class
-  '''
+  """Runner"""
+
   def __init__(self, threadID):
     threading.Thread.__init__(self)
     self.threadID = threadID
@@ -1246,8 +1231,6 @@ class myThread (threading.Thread):
       s.release()
 
 def doSim(thread):
-
-# if load case do not exist, create new one
   s.acquire()
   global myLoad
   loadNo=loadcaseNo()
@@ -1337,7 +1320,7 @@ def doSim(thread):
         strainAll[i]=np.append(strainAll[i], deformationRate[i])
         f.write( str(threshold)+' '+
                  ' '.join(map(str,myFit.fit(stressAll[i].reshape(len(stressAll[i])//6,6).transpose())))+'\n')
-  except Exception as detail:
+  except Exception:
     damask.util.croak('Could not fit results of simulation (%s)'%thread)
     s.release()
     return
@@ -1440,7 +1423,7 @@ else                              : stressUnit = 1.0e6
 if options.dimension not in fitCriteria[options.criterion]['dimen']:
   parser.error('invalid dimension for selected criterion')
 
-if options.criterion not in ['vonmises','tresca','drucker','hill1984'] and options.eqStress == None:
+if options.criterion not in ['vonmises','tresca','drucker','hill1984'] and options.eqStress is None:
    parser.error('please specifie an equivalent stress (e.g. fitting to von Mises)') 
 
 run = runFit(options.exponent, options.eqStress, options.dimension, options.criterion)

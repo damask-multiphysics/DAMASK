@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 no BOM -*-
 
-import os,sys,string
+import os,sys
 import numpy as np
 from optparse import OptionParser
 import damask
@@ -14,7 +14,8 @@ scriptID   = ' '.join([scriptName,damask.version])
 # --------------------------------------------------------------------
 
 parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
-Add column(s) containing Second Piola--Kirchhoff stress based on given column(s) of deformation gradient and first Piola--Kirchhoff stress.
+Add column(s) containing Second Piola--Kirchhoff stress based on given column(s) of deformation
+gradient and first Piola--Kirchhoff stress.
 
 """, version = scriptID)
 

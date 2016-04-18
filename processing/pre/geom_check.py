@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 no BOM -*-
 
-import os,sys,string,vtk
+import os,sys,vtk
 import numpy as np
 from optparse import OptionParser
 import damask
@@ -54,12 +54,25 @@ for name in filenames:
   errors = []
   if np.any(info['grid'] < 1):    errors.append('invalid grid a b c.')
   if np.any(info['size'] <= 0.0): errors.append('invalid size x y z.')
+
+#--- read microstructure information --------------------------------------------------------------
+
+  if options.data:
+    microstructure,ok = table.microstructure_read(info['grid'],strict = True)                                 # read microstructure
+
+    if ok:
+      structure = vtk.vtkIntArray()
+      structure.SetName('Microstructures')
+      for idx in microstructure: structure.InsertNextValue(idx)
+
+    else:                           errors.append('mismatch between data and grid dimension.')
+
   if errors != []:
     damask.util.croak(errors)
     table.close(dismiss = True)
     continue
 
-# --- generate VTK rectilinear grid --------------------------------------------------------------------------------
+# --- generate VTK rectilinear grid ---------------------------------------------------------------
 
   grid = vtk.vtkRectilinearGrid()
   grid.SetDimensions([x+1 for x in info['grid']])
@@ -72,18 +85,8 @@ for name in filenames:
     elif i == 1: grid.SetYCoordinates(temp)
     elif i == 2: grid.SetZCoordinates(temp)
 
-#--- read microstructure information --------------------------------------------------------------
 
-  if options.data:
-    microstructure = table.microstructure_read(info['grid'])                                        # read microstructure
-
-    structure = vtk.vtkIntArray()
-    structure.SetName('Microstructures')
-
-    for idx in microstructure:
-      structure.InsertNextValue(idx)
-
-    grid.GetCellData().AddArray(structure)
+  if options.data: grid.GetCellData().AddArray(structure)
 
 # --- write data -----------------------------------------------------------------------------------
   if name:
@@ -91,8 +94,7 @@ for name in filenames:
     (directory,filename) = os.path.split(name)
     writer.SetDataModeToBinary()
     writer.SetCompressorTypeToZLib()
-    writer.SetFileName(os.path.join(directory,os.path.splitext(filename)[0]
-                                              +'.'+writer.GetDefaultFileExtension()))
+    writer.SetFileName(os.path.join(directory,os.path.splitext(filename)[0]+'.'+writer.GetDefaultFileExtension()))
   else:
     writer = vtk.vtkDataSetWriter()
     writer.WriteToOutputStringOn()
@@ -101,6 +103,6 @@ for name in filenames:
   if vtk.VTK_MAJOR_VERSION <= 5: writer.SetInput(grid)
   else:                          writer.SetInputData(grid)
   writer.Write()
-  if name == None:  sys.stdout.write(writer.GetOutputString()[0:writer.GetOutputStringLength()])
+  if name is None:  sys.stdout.write(writer.GetOutputString()[0:writer.GetOutputStringLength()])
 
   table.close()

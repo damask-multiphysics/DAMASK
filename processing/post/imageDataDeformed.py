@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 no BOM -*-
 
-import os,sys,string
+import os,sys
 import numpy as np
 from optparse import OptionParser
 from PIL import Image, ImageDraw
@@ -112,7 +112,7 @@ for name in filenames:
   try:
     table = damask.ASCIItable(name = name,
                               buffered = False,
-                              labeled = options.label != None,
+                              labeled = options.label is not None,
                               readonly = True)
   except: continue
   table.report_name(scriptName,name)
@@ -161,9 +161,10 @@ for name in filenames:
                 ])                                                                                  # find x-y bounding box for given z layer
   
   nodes -= boundingBox[0].repeat(np.prod(options.dimension+1)).reshape([3]+list(options.dimension+1))
-  nodes *= (options.pixelsize*options.dimension/options.size).repeat(np.prod(options.dimension+1)).reshape([3]+list(options.dimension+1))
-  imagesize = (options.pixelsize*(boundingBox[1]-boundingBox[0])*options.dimension\
-                                                                /options.size)[:2].astype('i')      # determine image size from number of cells in overall bounding box
+  nodes *= (options.pixelsize*options.dimension/options.size).repeat(np.prod(options.dimension+1)).\
+                                                                reshape([3]+list(options.dimension+1))
+  imagesize = (options.pixelsize*(boundingBox[1]-boundingBox[0])*                                   # determine image size from number of 
+                                           options.dimension/options.size)[:2].astype('i')          # cells in overall bounding box
   im = Image.new('RGBA',imagesize)
   draw = ImageDraw.Draw(im)
   

@@ -1,7 +1,3 @@
-!--------------------------------------------------------------------------------------------------
-! $Id$
-!--------------------------------------------------------------------------------------------------
-!> @author Pratheek Shanthraj, Max-Planck-Institut für Eisenforschung GmbH
 !> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
 !> @author Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
 !> @brief Utilities used by the different spectral solver variants
@@ -1132,6 +1128,8 @@ end function utilities_forwardField
 
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates filter for fourier convolution depending on type given in numerics.config
+!> @details this is the full operator to calculate derivatives, i.e. 2 \pi i k for the
+! standard approach
 !--------------------------------------------------------------------------------------------------
 pure function utilities_getFreqDerivative(k_s)
  use math, only: &
@@ -1141,7 +1139,7 @@ pure function utilities_getFreqDerivative(k_s)
    grid
 
  implicit none
- integer(pInt), intent(in),  dimension(3) :: k_s                                                        !< indices of frequency
+ integer(pInt), intent(in),  dimension(3) :: k_s                                                    !< indices of frequency
  complex(pReal),             dimension(3) :: utilities_getFreqDerivative
 
  select case (spectral_derivative_ID)

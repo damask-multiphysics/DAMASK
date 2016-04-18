@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 no BOM -*-
 
-import os,sys,string
+import os,sys
 import numpy as np
 from optparse import OptionParser
 from PIL import Image
@@ -80,7 +80,7 @@ for name in filenames:
   try:
     table = damask.ASCIItable(name = name,
                               buffered = False,
-                              labeled = options.label != None,
+                              labeled = options.label is not None,
                               readonly = True)
   except: continue
   damask.util.report(scriptName,name)
@@ -98,14 +98,13 @@ for name in filenames:
     errors.append('column{} {} not found'.format('s' if len(missing_labels) > 1 else '',
                                                  ', '.join(missing_labels)))
   if table.label_dimension(options.label) != 3:
-    errors.append('column {} has wrong dimension'.format(options.label))
+    errors.append('column {} does not have dimension'.format(options.label))
 
   if errors != []:
     damask.util.croak(errors)
     table.close(dismiss = True)                                                                     # close ASCII table file handles and delete output file
     continue
-
-  # convert data to shape and arrange according to given options
+# convert data to shape and arrange according to given options
   if options.dimension != []: table.data = table.data.reshape(options.dimension[1],options.dimension[0],3)
   if options.flipLR:          table.data = np.fliplr(table.data)
   if options.flipUD:          table.data = np.flipud(table.data)

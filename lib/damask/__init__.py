@@ -1,27 +1,27 @@
 # -*- coding: UTF-8 no BOM -*-
 
-# $Id$
+"""Main aggregator"""
 import sys, os
 
 with open(os.path.join(os.path.dirname(__file__),'../../VERSION')) as f:
   version = f.readline()[:-1]
 
-from .environment import Environment      # only one class
-from .asciitable  import ASCIItable       # only one class
-from .config      import Material         # will be extended to debug and numerics
-from .colormaps   import Colormap, Color
-from .orientation import Quaternion, Rodrigues, Symmetry, Orientation
+from .environment import Environment      # noqa
+from .asciitable  import ASCIItable       # noqa
+from .config      import Material         # noqa
+from .colormaps   import Colormap, Color  # noqa
+from .orientation import Quaternion, Rodrigues, Symmetry, Orientation # noqa
 # try:
 #     from .corientation import Quaternion, Rodrigues, Symmetry, Orientation
 #     print "Import Cython version of Orientation module"
 # except:
 #     from .orientation import Quaternion, Rodrigues, Symmetry, Orientation
 #from .block       import Block           # only one class
-from .result      import Result           # only one class
-from .geometry    import Geometry         # one class with subclasses
-from .solver      import Solver           # one class with subclasses
-from .test        import Test
-from .util        import extendableOption
+from .result      import Result           # noqa
+from .geometry    import Geometry         # noqa
+from .solver      import Solver           # noqa
+from .test        import Test             # noqa
+from .util        import extendableOption # noqa
 
 try:
   from .          import core

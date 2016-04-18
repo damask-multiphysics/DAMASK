@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 no BOM -*-
 
-import os,sys,string,math
+import os,sys,math
 import numpy as np
 from optparse import OptionParser
 import damask
@@ -62,12 +62,12 @@ parser.set_defaults(pole = (0.0,0.0,1.0),
 
 (options, filenames) = parser.parse_args()
 
-input = [options.eulers     != None,
-         options.a          != None and \
-         options.b          != None and \
-         options.c          != None,
-         options.matrix     != None,
-         options.quaternion != None,
+input = [options.eulers     is not None,
+         options.a          is not None and \
+         options.b          is not None and \
+         options.c          is not None,
+         options.matrix     is not None,
+         options.quaternion is not None,
         ]
 
 if np.sum(input) != 1: parser.error('needs exactly one input format.')
@@ -99,7 +99,7 @@ for name in filenames:
 # ------------------------------------------ sanity checks ----------------------------------------
 
   if not np.all(table.label_dimension(label) == dim):
-    damask.util.croak('input {} has wrong dimension {}.'.format(label,dim))
+    damask.util.croak('input {} does not have dimension {}.'.format(label,dim))
     table.close(dismiss = True)                                                                     # close ASCIItable and remove empty file
     continue
 

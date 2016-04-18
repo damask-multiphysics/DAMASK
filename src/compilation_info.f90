@@ -1,5 +1,3 @@
-!##############################################################
-!$Id$
 #ifdef __GFORTRAN__
   write(6,*) 'Compiled with ', compiler_version() !not supported by and ifort <= 15 (and old gfortran)
   write(6,*) 'With options  ', compiler_options()
