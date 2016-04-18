@@ -41,8 +41,8 @@ cd $BUILDDIR
 # OPTIMIZATION             |  [OFF,DEFENSIVE,AGGRESSIVE,ULTRA]
 # DAMASK_DRIVER            |  [SPECTRAL, FEM]
 # DAMASK_INSTALL           |  Directory to install binary output
-# DAMASK_PREFIX            |  Compiler prefix
-# DAMASK_SUFFIX            |  Compiler suffix,
+# BUILDCMD_PRE             |  Compiler prefix
+# BUILDCMD_POST            |  Compiler suffix,
 #                          |    e.g. DAMASK_SUFFIX="-Wl,--verbose"
 cmake -D PETSC_DIR=${PETSC_DIR}          \
       -D DAMASK_V=${DAMASKVERSION}       \
@@ -52,8 +52,8 @@ cmake -D PETSC_DIR=${PETSC_DIR}          \
       -D OPTIMIZATION=DEFENSIVE          \
       -D DAMASK_DRIVER=SPECTRAL          \
       -D DAMASK_INSTALL=${HOME}/bin      \
-      -D DAMASK_PREFIX=""                \
-      -D DAMASK_SUFFIX="-Wl,--verbose"   \
+      -D BUILDCMD_PRE=""                 \
+      -D BUILDCMD_POST="-Wl,--verbose"   \
       ../..
 
 echo

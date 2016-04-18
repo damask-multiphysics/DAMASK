@@ -48,6 +48,12 @@ compilerc:
 linker:
 \t@echo \${LINKERNAME}")
 
+# Find DAMASK version (DAMASK_V) in DAMASK_ROOT
+find_program (CAT_EXECUTABLE NAMES cat)
+execute_process(COMMAND ${CAT_EXECUTABLE} ../../VERSION
+                RESULT_VARIABLE DAMASK_VERSION_RETURN
+                OUTPUT_VARIABLE DAMASK_V
+                OUTPUT_STRIP_TRAILING_WHITESPACE)
 
 # CMake will execute each target in the ${petsc_config_makefile}
 # to acquire corresponding PETSc Variables.
@@ -69,11 +75,11 @@ execute_process(COMMAND ${MAKE_EXECUTABLE} -f ${petsc_config_makefile} "extlibs"
 # //its version information is used to identify whether it is INTEL FORTRAN
 # //or GNU FORTRAN,
 # //e.g. for PETSc configured with INTEL FORTRAN compiler
-# //   >>${MPIEXEC} -v
+# //   >>${MPIFC} -v
 # //     ifort version 14.0.3  --> This line is captured and parsed by CMake
 execute_process(COMMAND ${MAKE_EXECUTABLE} -f ${petsc_config_makefile} "compilerf"
-                RESULT_VARIABLE MPIEXEC_RETURN
-                OUTPUT_VARIABLE MPIEXEC
+                RESULT_VARIABLE MPIFC_RETURN
+                OUTPUT_VARIABLE MPIFC
                 OUTPUT_STRIP_TRAILING_WHITESPACE)
 # PETSc specified linker (MPIF90 + PETSc linking flags)
 execute_process(COMMAND ${MAKE_EXECUTABLE} -f ${petsc_config_makefile} "linker"
@@ -95,14 +101,14 @@ foreach (exlib ${TMP_LIST})
     set(PETSC_EXTERNAL_LIB "${PETSC_EXTERNAL_LIB} ${exlib}")
 endforeach(exlib)
 
-set(CMAKE_Fortran_COMPILER "${MPIEXEC}")
+set(CMAKE_Fortran_COMPILER "${MPIFC}")
 project (DAMASK Fortran)
 
 message("***Found PETSC_DIR:\n${PETSC_DIR}\n"                  )
 message("***Found PETSC_INCLUDES:\n${PETSC_INCLUDES}\n"        )
 message("***Found PETSC_EXTERNAL_LIB:\n${PETSC_EXTERNAL_LIB}\n")
 message("***Found PETSC_LINKER:\n${PETSC_LINKER}\n"            )
-message("***Found FORTRAN MPI COMPILER:\n${MPIEXEC}\n"         )
+message("***Found FORTRAN MPI COMPILER:\n${MPIFC}\n"         )
 
 
 # # https://cmake.org/Wiki/CMake_FAQ#How_do_I_use_a_different_compiler.3F
@@ -116,9 +122,9 @@ set (DAMASK_VERSION_MINOR ${DAMASK_V})
 # Built-in options for DAMASK build system
 #   -> can be overwritten from commandline/install_script
 option(OPENMP             "Use OpenMP libaries for DAMASK"                              ON   )
-option(OPTIMIZATION       "DAMASK optimization level[NONE,DEFENSIVE,AGGRESSIVE,ULTRA]" "NONE")
+option(OPTIMIZATION       "DAMASK optimization level [OFF,DEFENSIVE,AGGRESSIVE]" "DEFENSIVE" )
 option(SPECTRAL           "Build spectral sovler for DAMASAK"                           OFF  )
-option(FEM                "Builb FEM solver for DAMASK"                                 OFF  )
+option(FEM                "Build FEM solver for DAMASK"                                 OFF  )
 
 # COMPILE VARIABLES
 add_definitions(-DDAMASKVERSION="${DAMASK_V}")
@@ -148,16 +154,13 @@ endif()
 set (DAMASK_INCLUDE_FLAGS "${DAMASK_INCLUDE_FLAGS} ${PETSC_INCLUDES}"          )
 set (DAMASK_INCLUDE_FLAGS "${DAMASK_INCLUDE_FLAGS} -I${PROJECT_SOURCE_DIR}/lib")
 
-if ("${OPTIMIZATION}" STREQUAL "NONE")
+if ("${OPTIMIZATION}" STREQUAL "OFF")
     set (OPTIMIZATION_ifort    "-O0 -no-ip")
     set (OPTIMIZATION_gfortran "-O0"       )
 elseif ("${OPTIMIZATION}" STREQUAL "DEFENSIVE")
     set (OPTIMIZATION_ifort    "-O2")
     set (OPTIMIZATION_gfortran "-O2")
 elseif ("${OPTIMIZATION}" STREQUAL "AGGRESSIVE")           #ToDo: this is not fully correct here, check old makefile
-    set (OPTIMIZATION_ifort    "-ipo -O3 -no-prec-div -fp-model fast=2 -xHost"  )  #-fast = -ipo, -O3, -no-prec-div, -static, -fp-model fast=2, and -xHost"
-    set (OPTIMIZATION_gfortran "-O3 -ffast-math -funroll-loops -ftree-vectorize")
-elseif ("${OPTIMIZATION}" STREQUAL "ULTRA")
     set (OPTIMIZATION_ifort    "-ipo -O3 -no-prec-div -fp-model fast=2 -xHost"  )  #-fast = -ipo, -O3, -no-prec-div, -static, -fp-model fast=2, and -xHost"
     set (OPTIMIZATION_gfortran "-O3 -ffast-math -funroll-loops -ftree-vectorize")
 else()
@@ -445,10 +448,10 @@ add_subdirectory(src)
 
 # INSTALL BUILT BINARIES
 if (SPECTRAL)
-    INSTALL(PROGRAMS    ${PROJECT_BINARY_DIR}/src/DAMASKSpectral.exe
+    INSTALL(PROGRAMS    ${PROJECT_BINARY_DIR}/src/DAMASK_spectral
             DESTINATION ${CMAKE_INSTALL_PREFIX})
 elseif (FEM)
-    INSTALL(PROGRAMS    ${PROJECT_BINARY_DIR}/src/DAMASK_FEM.exe
+    INSTALL(PROGRAMS    ${PROJECT_BINARY_DIR}/src/DAMASK_FEM
             DESTINATION ${CMAKE_INSTALL_PREFIX})
 endif(SPECTRAL)
 
