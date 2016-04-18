@@ -3,11 +3,15 @@ SHELL = /bin/sh
 # Makefile for the installation of DAMASK
 ########################################################################################
 .PHONY: all
-all: spectral marc processing
+all: spectral FEM
 
-.PHONY: spectral
-spectral:
-	$(MAKE) DAMASK_spectral.exe -C src
+
+spectral: build
+	@if [ ! -d build/spectral ]; then mkdir build/spectral; fi
+	(cd build/spectral; cmake ../../ ;)
+
+build:
+	mkdir build
 
 .PHONY: FEM
 FEM:
@@ -32,11 +36,7 @@ tidy:
 	@$(MAKE) tidy -C src >/dev/null
 
 .PHONY: clean
+
+
 clean:
-	@$(MAKE) cleanDAMASK -C src >/dev/null
-
-.PHONY: install
-install:
-	@./installation/symlink_Code.py ${MAKEFLAGS}
-	@./installation/symlink_Processing.py ${MAKEFLAGS}
-
+	rm -rvf build

@@ -6,10 +6,12 @@ cmake_minimum_required (VERSION 2.8.0 FATAL_ERROR)
 # //The rest of the script relies on it to figure out relative position
 
 #---------------------------------------------------------------------------------------
-# Find PETSc because the entire build will rely on it
-if (NOT DEFINED PETSC_DIR)
-    message (FATAL_ERROR "PETSC_DIR is not found!")
-endif (NOT DEFINED PETSC_DIR)
+# Find PETSc from environment
+set(PETSC_DIR $ENV{PETSC_DIR})
+
+# if (NOT DEFINED PETSC_DIR)
+#     message (FATAL_ERROR "PETSC_DIR is not found!")
+# endif (NOT DEFINED PETSC_DIR)
 
 exec_program(mktemp ARGS -d OUTPUT_VARIABLE PETSC_TEMP)
 
@@ -428,16 +430,16 @@ set (CMAKE_Fortran_FLAGS_DEBUG       "${CMAKE_Fortran_FLAGS_DEBUG} ${CMAKE_Fortr
 set (CMAKE_Fortran_FLAGS_DEBUG       "${CMAKE_Fortran_FLAGS_DEBUG} ${DEBUG_FLAGS}"        )
 
 # Finalizing, adding PREFIX and SUFFIX to compiler chain
-set (CMAKE_Fortran_FLAGS_RELEASE   "${DAMASK_PREFIX} ${CMAKE_Fortran_FLAGS_RELEASE} ${DAMASK_INCLUDE_FLAGS} ${DAMASK_SUFFIX}")
-set (CMAKE_Fortran_FLAGS_DEBUG     "${DAMASK_PREFIX} ${CMAKE_Fortran_FLAGS_DEBUG}   ${DAMASK_INCLUDE_FLAGS} ${DAMASK_SUFFIX}")
+set (CMAKE_Fortran_FLAGS_RELEASE   "${BUILDCMD_PRE} ${CMAKE_Fortran_FLAGS_RELEASE} ${DAMASK_INCLUDE_FLAGS} ${BUILDCMD_POST}")
+set (CMAKE_Fortran_FLAGS_DEBUG     "${BUILDCMD_PRE} ${CMAKE_Fortran_FLAGS_DEBUG}   ${DAMASK_INCLUDE_FLAGS} ${BUILDCMD_POST}")
 set (CMAKE_LINKER                  "${PETSC_LINKER}")
 
 if ("${CMAKE_BUILD_TYPE}" STREQUAL "RELEASE")
     set (CMAKE_Fortran_LINK_EXECUTABLE
-      "${DAMASK_PREFIX} ${CMAKE_LINKER} ${CMAKE_EXE_LINKER_FLAGS_RELEASE} <OBJECTS> -o <TARGET> <LINK_LIBRARIES> ${PETSC_EXTERNAL_LIB}  ${DAMASK_SUFFIX}")
+      "${BUILDCMD_PRE} ${CMAKE_LINKER} ${CMAKE_EXE_LINKER_FLAGS_RELEASE} <OBJECTS> -o <TARGET> <LINK_LIBRARIES> ${PETSC_EXTERNAL_LIB}  ${BUILDCMD_POST}")
 else("${CMAKE_BUILD_TYPE}" STREQUAL "RELEASE")
     set (CMAKE_Fortran_LINK_EXECUTABLE
-      "${DAMASK_PREFIX} ${CMAKE_LINKER} ${CMAKE_EXE_LINKER_FLAGS_DEBUG} <OBJECTS> -o <TARGET> <LINK_LIBRARIES> ${PETSC_EXTERNAL_LIB}  ${DAMASK_SUFFIX}")
+      "${BUILDCMD_PRE} ${CMAKE_LINKER} ${CMAKE_EXE_LINKER_FLAGS_DEBUG} <OBJECTS> -o <TARGET> <LINK_LIBRARIES> ${PETSC_EXTERNAL_LIB}  ${BUILDCMD_POST}")
 endif("${CMAKE_BUILD_TYPE}" STREQUAL "RELEASE")
 
 message("***COMPILE FLAGS:\n${CMAKE_Fortran_FLAGS_RELEASE}\n")

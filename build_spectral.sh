@@ -11,7 +11,6 @@ else
   DAMASK_ROOT=${STAT##* }
 fi
 
-DAMASKVERSION=$(cat VERSION)
 BUILDROOT=$DAMASK_ROOT/build
 BUILDDIR=spectral
 
@@ -34,7 +33,6 @@ cd $BUILDDIR
 ##
 # CMake call
 # PETSC_DIR                |  PETSC directory
-# DAMASK_V                 |  DAMASK current revision
 # CMAKE_BUILD_TYPE         |  Default set to release (no debugging output)
 # CMAKE_VERBOSE_MAKEFILE   |  [ON/OFF] toggle makefile verbose output
 # OPENMP                   |  [ON/OFF]
@@ -45,7 +43,6 @@ cd $BUILDDIR
 # BUILDCMD_POST            |  Compiler suffix,
 #                          |    e.g. DAMASK_SUFFIX="-Wl,--verbose"
 cmake -D PETSC_DIR=${PETSC_DIR}          \
-      -D DAMASK_V=${DAMASKVERSION}       \
       -D CMAKE_BUILD_TYPE=RELEASE        \
       -D CMAKE_VERBOSE_MAKEFILE=OFF      \
       -D OPENMP=ON                       \
@@ -56,8 +53,6 @@ cmake -D PETSC_DIR=${PETSC_DIR}          \
       -D BUILDCMD_POST="-Wl,--verbose"   \
       ../..
 
-echo
-echo "Please move to the build directory using"
-echo "    cd build/spectral"
-echo "Using the following command to build DAMASK spectral solver"
-echo "    make clean all install"
+echo "Start compiling DAMASK_spectral"
+make
+make install
