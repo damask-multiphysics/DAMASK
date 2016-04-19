@@ -9,7 +9,9 @@ import damask
 scriptName = os.path.splitext(os.path.basename(__file__))[0]
 scriptID   = ' '.join([scriptName,damask.version])
 
+#--------------------------------------------------------------------------------------------------
 def gradFFT(geomdim,field):
+
  grid = np.array(np.shape(field)[2::-1])
  N = grid.prod()                                                                          # field size
  n = np.array(np.shape(field)[3:]).prod()                                                 # data size
@@ -17,7 +19,7 @@ def gradFFT(geomdim,field):
  elif n == 1:   dataType = 'scalar'
 
  field_fourier = np.fft.fftpack.rfftn(field,axes=(0,1,2))
- grad_fourier   = np.zeros(field_fourier.shape+(3,),'c16')
+ grad_fourier  = np.zeros(field_fourier.shape+(3,),'c16')
 
 # differentiation in Fourier space
  k_s = np.zeros([3],'i')
@@ -61,17 +63,17 @@ Deals with both vector- and scalar fields.
 parser.add_option('-c','--coordinates',
                   dest = 'coords',
                   type = 'string', metavar='string',
-                  help = 'column heading for coordinates [%default]')
+                  help = 'column label of coordinates [%default]')
 parser.add_option('-v','--vector',
                   dest = 'vector',
                   action = 'extend', metavar = '<string LIST>',
-                  help = 'heading of columns containing vector field values')
+                  help = 'column label(s) of vector field values')
 parser.add_option('-s','--scalar',
                   dest = 'scalar',
                   action = 'extend', metavar = '<string LIST>',
-                  help = 'heading of columns containing scalar field values')
+                  help = 'column label(s) of scalar field values')
 
-parser.set_defaults(coords = 'ipinitialcoord',
+parser.set_defaults(coords = 'pos',
                    )
 
 (options,filenames) = parser.parse_args()
@@ -96,7 +98,7 @@ for name in filenames:
 
   items = {
             'scalar': {'dim': 1, 'shape': [1], 'labels':options.scalar, 'active':[], 'column': []},
-            'vector': {'dim': 3, 'shape': [3],   'labels':options.vector, 'active':[], 'column': []},
+            'vector': {'dim': 3, 'shape': [3], 'labels':options.vector, 'active':[], 'column': []},
           }
   errors  = []
   remarks = []
