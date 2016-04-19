@@ -1,23 +1,28 @@
 ########################################################################################
 # CMAKE for build the Material subroutine for BVP solution
 ########################################################################################
+project (DAMASK Fortran)
 cmake_minimum_required (VERSION 2.8.0 FATAL_ERROR)
-# PROJECT DEFINITION HAS TO BE ON TOP
-# //The rest of the script relies on it to figure out relative position
 
 #---------------------------------------------------------------------------------------
-# Find PETSc from environment
+# Find PETSc from system environment
 set(PETSC_DIR $ENV{PETSC_DIR})
+if ("${PETSC_DIR}" STREQUAL "")
+  message (FATAL_ERROR "PETSC_DIR is not defined in system!")
+endif ("${PETSC_DIR}" STREQUAL "")
 
-# if (NOT DEFINED PETSC_DIR)
-#     message (FATAL_ERROR "PETSC_DIR is not found!")
-# endif (NOT DEFINED PETSC_DIR)
-
-exec_program(mktemp ARGS -d OUTPUT_VARIABLE PETSC_TEMP)
+# Find DAMASK version (DAMASK_V) in DAMASK_ROOT
+find_program (CAT_EXECUTABLE NAMES cat)
+execute_process(COMMAND ${CAT_EXECUTABLE} ../../VERSION
+                RESULT_VARIABLE DAMASK_VERSION_RETURN
+                OUTPUT_VARIABLE DAMASK_V
+                OUTPUT_STRIP_TRAILING_WHITESPACE)
 
 # BRUTAL FORCE TO FIND THE VARIABLES DEFINED IN PETSC
 # ref:
 # https://github.com/jedbrown/cmake-modules/blob/master/FindPETSc.cmake
+exec_program(mktemp ARGS -d OUTPUT_VARIABLE PETSC_TEMP)
+
 set(petsc_conf_variables "${PETSC_DIR}/lib/petsc/conf/variables")
 set(petsc_conf_rules     "${PETSC_DIR}/lib/petsc/conf/rules"    )
 # Generate a temporary makerfile to probe the PETSc configuration
@@ -34,28 +39,16 @@ INCLUDE_DIRS   := \${PETSC_FC_INCLUDES}
 LIBRARIES      := \${PETSC_WITH_EXTERNAL_LIB}
 COMPILERF      ?= \${FC}
 LINKERNAME     ?= \${FLINKER}
-
 includes:
 \t@echo \${INCLUDE_DIRS}
-
 extlibs:
 \t@echo \${LIBRARIES}
-
 compilerf:
 \t@echo \${COMPILERF}
-
 compilerc:
 \t@echo \${COMPILERC}
-
 linker:
 \t@echo \${LINKERNAME}")
-
-# Find DAMASK version (DAMASK_V) in DAMASK_ROOT
-find_program (CAT_EXECUTABLE NAMES cat)
-execute_process(COMMAND ${CAT_EXECUTABLE} ../../VERSION
-                RESULT_VARIABLE DAMASK_VERSION_RETURN
-                OUTPUT_VARIABLE DAMASK_V
-                OUTPUT_STRIP_TRAILING_WHITESPACE)
 
 # CMake will execute each target in the ${petsc_config_makefile}
 # to acquire corresponding PETSc Variables.
@@ -63,13 +56,13 @@ execute_process(COMMAND ${CAT_EXECUTABLE} ../../VERSION
 # duplicated entries, which is cleaned up later using CMake list.
 find_program (MAKE_EXECUTABLE NAMES make gmake)
 # Find the PETSc includes directory settings
-execute_process(COMMAND ${MAKE_EXECUTABLE} -f ${petsc_config_makefile} "includes"
+execute_process(COMMAND ${MAKE_EXECUTABLE} -f --no-print-directory ${petsc_config_makefile} "includes"
                 RESULT_VARIABLE PETSC_INCLUDES_RETURN
                 OUTPUT_VARIABLE petsc_includes
                 OUTPUT_STRIP_TRAILING_WHITESPACE)
 # Find the PETSc external linking directory settings
 # //required for final linking, must be appended after the executable
-execute_process(COMMAND ${MAKE_EXECUTABLE} -f ${petsc_config_makefile} "extlibs"
+execute_process(COMMAND ${MAKE_EXECUTABLE} -f --no-print-directory ${petsc_config_makefile} "extlibs"
                 RESULT_VARIABLE PETSC_EXTERNAL_LIB_RETURN
                 OUTPUT_VARIABLE petsc_external_lib
                 OUTPUT_STRIP_TRAILING_WHITESPACE)
@@ -79,12 +72,12 @@ execute_process(COMMAND ${MAKE_EXECUTABLE} -f ${petsc_config_makefile} "extlibs"
 # //e.g. for PETSc configured with INTEL FORTRAN compiler
 # //   >>${MPIFC} -v
 # //     ifort version 14.0.3  --> This line is captured and parsed by CMake
-execute_process(COMMAND ${MAKE_EXECUTABLE} -f ${petsc_config_makefile} "compilerf"
+execute_process(COMMAND ${MAKE_EXECUTABLE} -f --no-print-directory ${petsc_config_makefile} "compilerf"
                 RESULT_VARIABLE MPIFC_RETURN
                 OUTPUT_VARIABLE MPIFC
                 OUTPUT_STRIP_TRAILING_WHITESPACE)
 # PETSc specified linker (MPIF90 + PETSc linking flags)
-execute_process(COMMAND ${MAKE_EXECUTABLE} -f ${petsc_config_makefile} "linker"
+execute_process(COMMAND ${MAKE_EXECUTABLE} -f --no-print-directory ${petsc_config_makefile} "linker"
                 RESULT_VARIABLE PETSC_LINKER_RETURN
                 OUTPUT_VARIABLE PETSC_LINKER
                 OUTPUT_STRIP_TRAILING_WHITESPACE)
@@ -104,7 +97,7 @@ foreach (exlib ${TMP_LIST})
 endforeach(exlib)
 
 set(CMAKE_Fortran_COMPILER "${MPIFC}")
-project (DAMASK Fortran)
+
 
 message("***Found PETSC_DIR:\n${PETSC_DIR}\n"                  )
 message("***Found PETSC_INCLUDES:\n${PETSC_INCLUDES}\n"        )
@@ -127,6 +120,9 @@ option(OPENMP             "Use OpenMP libaries for DAMASK"                      
 option(OPTIMIZATION       "DAMASK optimization level [OFF,DEFENSIVE,AGGRESSIVE]" "DEFENSIVE" )
 option(SPECTRAL           "Build spectral sovler for DAMASAK"                           OFF  )
 option(FEM                "Build FEM solver for DAMASK"                                 OFF  )
+option(BUILDCMD_PRE       "Prefix for build CMD"                                 ""          )
+option(BUILDCMD_POST      "Postfix for build CMD"                                ""          )
+
 
 # COMPILE VARIABLES
 add_definitions(-DDAMASKVERSION="${DAMASK_V}")

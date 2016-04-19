@@ -6,12 +6,18 @@ SHELL = /bin/sh
 all: spectral FEM
 
 
-spectral: build
-	@if [ ! -d build/spectral ]; then mkdir build/spectral; fi
-	(cd build/spectral; cmake ../../ ;)
+spectral: build/spectral
+	@(cd build/spectral; make )
+
+
+build/spectral: build
+	@mkdir build/spectral
+	@(cd build/spectral; cmake -DDAMASK_DRIVER=SPECTRAL ../..;)
+
 
 build:
-	mkdir build
+	@mkdir build
+
 
 .PHONY: FEM
 FEM:
