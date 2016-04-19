@@ -120,6 +120,10 @@ option(OPTIMIZATION       "DAMASK optimization level [OFF,DEFENSIVE,AGGRESSIVE]"
 option(SPECTRAL           "Build spectral sovler for DAMASAK"                           OFF  )
 option(FEM                "Build FEM solver for DAMASK"                                 OFF  )
 
+if (NOT DEFINED CMAKE_BUILD_TYPE)
+  set(CMAKE_BUILD_TYPE Release)
+endif(NOT DEFINED CMAKE_BUILD_TYPE)
+
 # COMPILE VARIABLES
 add_definitions(-DDAMASKVERSION="${DAMASK_V}")
 add_definitions(-DPETSc)
@@ -139,10 +143,12 @@ if ("${DAMASK_DRIVER}" STREQUAL "SPECTRAL")
     set (SPECTRAL ON )
     add_definitions(-DSpectral)
     set (FEM      OFF)
+    message("***Confiugring Spectral Solver")
 elseif ("${DAMASK_DRIVER}" STREQUAL "FEM")
     set (FEM      ON )
     add_definitions(-DFEM)
     set (SPECTRAL OFF)
+    message("***Confiugring FEM Solver")
 endif("${DAMASK_DRIVER}" STREQUAL "SPECTRAL")
 
 set (DAMASK_INCLUDE_FLAGS "${DAMASK_INCLUDE_FLAGS} ${PETSC_INCLUDES}"          )
@@ -473,7 +479,7 @@ else(DEFINED BUILDCMD_PRE AND DEFINED BUILDCMD_POST)
 endif(DEFINED BUILDCMD_PRE AND DEFINED BUILDCMD_POST)
 
 message("***COMPILE FLAGS:\n${CMAKE_Fortran_FLAGS_RELEASE}\n")
-message("***LINK FLAGS:\n${CMAKE_EXE_LINKER_FLAGS_RELEASE}\n")
+message("***LINKER:\n${CMAKE_Fortran_LINK_EXECUTABLE}\n")
 
 # MOVE to SOURCE DIRECTORY for BUILDING
 add_subdirectory(src)

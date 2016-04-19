@@ -5,44 +5,25 @@ SHELL = /bin/sh
 .PHONY: all
 all: spectral FEM
 
-
 spectral: build/spectral
-	@(cd build/spectral; )
-
+	@(cd build/spectral; make; make install;)
 
 build/spectral: build
 	@mkdir build/spectral
-	@(cd build/spectral; cmake -Wno-dev -DCMAKE_VERBOSE_MAKEFILE=OFF -DOPENMP=ON -DOPTIMIZATION=DEFENSIVE -DDAMASK_DRIVER=SPECTRAL ../..;)
+	@(cd build/spectral; cmake -Wno-dev -DCMAKE_BUILD_TYPE=RELEASE -DDAMASK_DRIVER=SPECTRAL ../..;)
 
-
-build:
+build: bin
 	@mkdir build
 
+bin:
+	@mkdir bin
 
-.PHONY: FEM
-FEM:
-	$(MAKE) DAMASK_FEM.exe -C src
+FEM: build/FEM
+	@(cd build/FEM; cmake -Wno-dev -DCMAKE_BUILD_TYPE=RELEASE -DDAMASK_DRIVER=FEM ../..;)
 
-.PHONY: marc
-marc:
-	@./installation/mods_MarcMentat/apply_DAMASK_modifications.sh ${MAKEFLAGS}
-
-.PHONY: processing
-processing:
-	@if hash cython 2>/dev/null; then \
-		cd ./lib/damask; \
-	    CC=gcc python setup_corientation.py build_ext --inplace; \
-		rm -rv build; \
-		rm *.c; \
-	fi
-	@./installation/compile_CoreModule.py ${MAKEFLAGS}
-
-.PHONY: tidy
-tidy:
-	@$(MAKE) tidy -C src >/dev/null
+build/FEM: build
+	@mkdir build
 
 .PHONY: clean
-
-
 clean:
 	rm -rvf build
