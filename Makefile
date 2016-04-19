@@ -7,12 +7,12 @@ all: spectral FEM
 
 
 spectral: build/spectral
-	@(cd build/spectral; make )
+	@(cd build/spectral; )
 
 
 build/spectral: build
 	@mkdir build/spectral
-	@(cd build/spectral; cmake -DDAMASK_DRIVER=SPECTRAL ../..;)
+	@(cd build/spectral; cmake -Wno-dev -DCMAKE_VERBOSE_MAKEFILE=OFF -DOPENMP=ON -DOPTIMIZATION=DEFENSIVE -DDAMASK_DRIVER=SPECTRAL ../..;)
 
 
 build:

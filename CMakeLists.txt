@@ -119,9 +119,6 @@ option(OPENMP             "Use OpenMP libaries for DAMASK"                      
 option(OPTIMIZATION       "DAMASK optimization level [OFF,DEFENSIVE,AGGRESSIVE]" "DEFENSIVE" )
 option(SPECTRAL           "Build spectral sovler for DAMASAK"                           OFF  )
 option(FEM                "Build FEM solver for DAMASK"                                 OFF  )
-option(BUILDCMD_PRE       "Prefix for build CMD"                                 ""          )
-option(BUILDCMD_POST      "Postfix for build CMD"                                ""          )
-
 
 # COMPILE VARIABLES
 add_definitions(-DDAMASKVERSION="${DAMASK_V}")
@@ -146,7 +143,7 @@ elseif ("${DAMASK_DRIVER}" STREQUAL "FEM")
     set (FEM      ON )
     add_definitions(-DFEM)
     set (SPECTRAL OFF)
-endif()
+endif("${DAMASK_DRIVER}" STREQUAL "SPECTRAL")
 
 set (DAMASK_INCLUDE_FLAGS "${DAMASK_INCLUDE_FLAGS} ${PETSC_INCLUDES}"          )
 set (DAMASK_INCLUDE_FLAGS "${DAMASK_INCLUDE_FLAGS} -I${PROJECT_SOURCE_DIR}/lib")
@@ -160,10 +157,10 @@ elseif ("${OPTIMIZATION}" STREQUAL "DEFENSIVE")
 elseif ("${OPTIMIZATION}" STREQUAL "AGGRESSIVE")           #ToDo: this is not fully correct here, check old makefile
     set (OPTIMIZATION_ifort    "-ipo -O3 -no-prec-div -fp-model fast=2 -xHost"  )  #-fast = -ipo, -O3, -no-prec-div, -static, -fp-model fast=2, and -xHost"
     set (OPTIMIZATION_gfortran "-O3 -ffast-math -funroll-loops -ftree-vectorize")
-else()
+else("${OPTIMIZATION}" STREQUAL "OFF")
     set (OPTIMIZATION_ifort    "-O2")
     set (OPTIMIZATION_gfortran "-O2")
-endif()
+endif("${OPTIMIZATION}" STREQUAL "OFF")
 
 
 ###################################################################################################
@@ -198,7 +195,7 @@ if(${CMAKE_Fortran_COMPILER_ID} STREQUAL "Intel")
 
   if (OPENMP)
     set (OPENMP_FLAG "-openmp -openmp-report0 -parallel")
-  endif()
+  endif(OPENMP)
 
   if ("${OPTIMIZATION}" STREQUAL "OFF")
       set (OPTIMIZATION_FLAG    "-O0 -no-ip")
@@ -424,18 +421,56 @@ set (CMAKE_EXE_LINKER_FLAGS_RELEASE  "${CMAKE_EXE_LINKER_FLAGS_RELEASE} ${LINKER
 set (CMAKE_Fortran_FLAGS_DEBUG       "${CMAKE_Fortran_FLAGS_DEBUG} ${CMAKE_Fortran_FLAGS_RELEASE}")
 set (CMAKE_Fortran_FLAGS_DEBUG       "${CMAKE_Fortran_FLAGS_DEBUG} ${DEBUG_FLAGS}"        )
 
-# Finalizing, adding PREFIX and SUFFIX to compiler chain
-set (CMAKE_Fortran_FLAGS_RELEASE   "${CMAKE_Fortran_FLAGS_RELEASE} ${DAMASK_INCLUDE_FLAGS}")
-set (CMAKE_Fortran_FLAGS_DEBUG     "${CMAKE_Fortran_FLAGS_DEBUG}   ${DAMASK_INCLUDE_FLAGS}")
-set (CMAKE_LINKER                  "${PETSC_LINKER}")
+# Try to add PREFIX and SUFFIX to compiler chain
+if (DEFINED BUILDCMD_PRE AND DEFINED BUILDCMD_POST)
+  set (CMAKE_Fortran_FLAGS_RELEASE   "${BUILDCMD_PRE} ${CMAKE_Fortran_FLAGS_RELEASE} ${DAMASK_INCLUDE_FLAGS} ${BUILDCMD_POST}")
+  set (CMAKE_Fortran_FLAGS_DEBUG     "${BUILDCMD_PRE} ${CMAKE_Fortran_FLAGS_DEBUG}   ${DAMASK_INCLUDE_FLAGS} ${BUILDCMD_POST}")
+  set (CMAKE_LINKER                  "${PETSC_LINKER}")
 
-if ("${CMAKE_BUILD_TYPE}" STREQUAL "RELEASE")
-    set (CMAKE_Fortran_LINK_EXECUTABLE
-      "${CMAKE_LINKER} ${CMAKE_EXE_LINKER_FLAGS_RELEASE} <OBJECTS> -o <TARGET> <LINK_LIBRARIES> ${PETSC_EXTERNAL_LIB}")
-else("${CMAKE_BUILD_TYPE}" STREQUAL "RELEASE")
-    set (CMAKE_Fortran_LINK_EXECUTABLE
-      "${CMAKE_LINKER} ${CMAKE_EXE_LINKER_FLAGS_DEBUG} <OBJECTS> -o <TARGET> <LINK_LIBRARIES> ${PETSC_EXTERNAL_LIB}")
-endif("${CMAKE_BUILD_TYPE}" STREQUAL "RELEASE")
+  if ("${CMAKE_BUILD_TYPE}" STREQUAL "RELEASE")
+      set (CMAKE_Fortran_LINK_EXECUTABLE
+        "${BUILDCMD_PRE} ${CMAKE_LINKER} ${CMAKE_EXE_LINKER_FLAGS_RELEASE} <OBJECTS> -o <TARGET> <LINK_LIBRARIES> ${PETSC_EXTERNAL_LIB} ${BUILDCMD_POST}")
+  else("${CMAKE_BUILD_TYPE}" STREQUAL "RELEASE")
+      set (CMAKE_Fortran_LINK_EXECUTABLE
+        "${BUILDCMD_PRE} ${CMAKE_LINKER} ${CMAKE_EXE_LINKER_FLAGS_DEBUG}   <OBJECTS> -o <TARGET> <LINK_LIBRARIES> ${PETSC_EXTERNAL_LIB} ${BUILDCMD_POST}")
+  endif("${CMAKE_BUILD_TYPE}" STREQUAL "RELEASE")
+elseif(NOT DEFINED BUILDCMD_PRE AND DEFINED BUILDCMD_POST)
+  set (CMAKE_Fortran_FLAGS_RELEASE   "${CMAKE_Fortran_FLAGS_RELEASE} ${DAMASK_INCLUDE_FLAGS} ${BUILDCMD_POST}")
+  set (CMAKE_Fortran_FLAGS_DEBUG     "${CMAKE_Fortran_FLAGS_DEBUG}   ${DAMASK_INCLUDE_FLAGS} ${BUILDCMD_POST}")
+  set (CMAKE_LINKER                  "${PETSC_LINKER}")
+
+  if ("${CMAKE_BUILD_TYPE}" STREQUAL "RELEASE")
+      set (CMAKE_Fortran_LINK_EXECUTABLE
+        "${CMAKE_LINKER} ${CMAKE_EXE_LINKER_FLAGS_RELEASE} <OBJECTS> -o <TARGET> <LINK_LIBRARIES> ${PETSC_EXTERNAL_LIB} ${BUILDCMD_POST}")
+  else("${CMAKE_BUILD_TYPE}" STREQUAL "RELEASE")
+      set (CMAKE_Fortran_LINK_EXECUTABLE
+        "${CMAKE_LINKER} ${CMAKE_EXE_LINKER_FLAGS_DEBUG}   <OBJECTS> -o <TARGET> <LINK_LIBRARIES> ${PETSC_EXTERNAL_LIB} ${BUILDCMD_POST}")
+  endif("${CMAKE_BUILD_TYPE}" STREQUAL "RELEASE")
+elseif(DEFINED BUILDCMD_PRE AND NOT DEFINED BUILDCMD_POST)
+  set (CMAKE_Fortran_FLAGS_RELEASE   "${BUILDCMD_PRE} ${CMAKE_Fortran_FLAGS_RELEASE} ${DAMASK_INCLUDE_FLAGS}")
+  set (CMAKE_Fortran_FLAGS_DEBUG     "${BUILDCMD_PRE} ${CMAKE_Fortran_FLAGS_DEBUG}   ${DAMASK_INCLUDE_FLAGS}")
+  set (CMAKE_LINKER                  "${PETSC_LINKER}")
+
+  if ("${CMAKE_BUILD_TYPE}" STREQUAL "RELEASE")
+      set (CMAKE_Fortran_LINK_EXECUTABLE
+        "${BUILDCMD_PRE} ${CMAKE_LINKER} ${CMAKE_EXE_LINKER_FLAGS_RELEASE} <OBJECTS> -o <TARGET> <LINK_LIBRARIES> ${PETSC_EXTERNAL_LIB}")
+  else("${CMAKE_BUILD_TYPE}" STREQUAL "RELEASE")
+      set (CMAKE_Fortran_LINK_EXECUTABLE
+        "${BUILDCMD_PRE} ${CMAKE_LINKER} ${CMAKE_EXE_LINKER_FLAGS_DEBUG}   <OBJECTS> -o <TARGET> <LINK_LIBRARIES> ${PETSC_EXTERNAL_LIB}")
+  endif("${CMAKE_BUILD_TYPE}" STREQUAL "RELEASE")
+else(DEFINED BUILDCMD_PRE AND DEFINED BUILDCMD_POST)
+  set (CMAKE_Fortran_FLAGS_RELEASE   "${CMAKE_Fortran_FLAGS_RELEASE} ${DAMASK_INCLUDE_FLAGS}")
+  set (CMAKE_Fortran_FLAGS_DEBUG     "${CMAKE_Fortran_FLAGS_DEBUG}   ${DAMASK_INCLUDE_FLAGS}")
+  set (CMAKE_LINKER                  "${PETSC_LINKER}")
+
+  if ("${CMAKE_BUILD_TYPE}" STREQUAL "RELEASE")
+      set (CMAKE_Fortran_LINK_EXECUTABLE
+        "${CMAKE_LINKER} ${CMAKE_EXE_LINKER_FLAGS_RELEASE} <OBJECTS> -o <TARGET> <LINK_LIBRARIES> ${PETSC_EXTERNAL_LIB}")
+  else("${CMAKE_BUILD_TYPE}" STREQUAL "RELEASE")
+      set (CMAKE_Fortran_LINK_EXECUTABLE
+        "${CMAKE_LINKER} ${CMAKE_EXE_LINKER_FLAGS_DEBUG}   <OBJECTS> -o <TARGET> <LINK_LIBRARIES> ${PETSC_EXTERNAL_LIB}")
+  endif("${CMAKE_BUILD_TYPE}" STREQUAL "RELEASE")
+endif(DEFINED BUILDCMD_PRE AND DEFINED BUILDCMD_POST)
 
 message("***COMPILE FLAGS:\n${CMAKE_Fortran_FLAGS_RELEASE}\n")
 message("***LINK FLAGS:\n${CMAKE_EXE_LINKER_FLAGS_RELEASE}\n")
