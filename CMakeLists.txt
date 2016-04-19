@@ -1,7 +1,6 @@
 ########################################################################################
 # CMAKE for build the Material subroutine for BVP solution
 ########################################################################################
-project (DAMASK Fortran)
 cmake_minimum_required (VERSION 2.8.0 FATAL_ERROR)
 
 #---------------------------------------------------------------------------------------
@@ -56,13 +55,13 @@ linker:
 # duplicated entries, which is cleaned up later using CMake list.
 find_program (MAKE_EXECUTABLE NAMES make gmake)
 # Find the PETSc includes directory settings
-execute_process(COMMAND ${MAKE_EXECUTABLE} -f --no-print-directory ${petsc_config_makefile} "includes"
+execute_process(COMMAND ${MAKE_EXECUTABLE} --no-print-directory -f ${petsc_config_makefile} "includes"
                 RESULT_VARIABLE PETSC_INCLUDES_RETURN
                 OUTPUT_VARIABLE petsc_includes
                 OUTPUT_STRIP_TRAILING_WHITESPACE)
 # Find the PETSc external linking directory settings
 # //required for final linking, must be appended after the executable
-execute_process(COMMAND ${MAKE_EXECUTABLE} -f --no-print-directory ${petsc_config_makefile} "extlibs"
+execute_process(COMMAND ${MAKE_EXECUTABLE} --no-print-directory -f ${petsc_config_makefile} "extlibs"
                 RESULT_VARIABLE PETSC_EXTERNAL_LIB_RETURN
                 OUTPUT_VARIABLE petsc_external_lib
                 OUTPUT_STRIP_TRAILING_WHITESPACE)
@@ -72,12 +71,12 @@ execute_process(COMMAND ${MAKE_EXECUTABLE} -f --no-print-directory ${petsc_confi
 # //e.g. for PETSc configured with INTEL FORTRAN compiler
 # //   >>${MPIFC} -v
 # //     ifort version 14.0.3  --> This line is captured and parsed by CMake
-execute_process(COMMAND ${MAKE_EXECUTABLE} -f --no-print-directory ${petsc_config_makefile} "compilerf"
+execute_process(COMMAND ${MAKE_EXECUTABLE} --no-print-directory -f ${petsc_config_makefile} "compilerf"
                 RESULT_VARIABLE MPIFC_RETURN
                 OUTPUT_VARIABLE MPIFC
                 OUTPUT_STRIP_TRAILING_WHITESPACE)
 # PETSc specified linker (MPIF90 + PETSc linking flags)
-execute_process(COMMAND ${MAKE_EXECUTABLE} -f --no-print-directory ${petsc_config_makefile} "linker"
+execute_process(COMMAND ${MAKE_EXECUTABLE} --no-print-directory -f ${petsc_config_makefile} "linker"
                 RESULT_VARIABLE PETSC_LINKER_RETURN
                 OUTPUT_VARIABLE PETSC_LINKER
                 OUTPUT_STRIP_TRAILING_WHITESPACE)
@@ -97,7 +96,7 @@ foreach (exlib ${TMP_LIST})
 endforeach(exlib)
 
 set(CMAKE_Fortran_COMPILER "${MPIFC}")
-
+project (DAMASK Fortran)
 
 message("***Found PETSC_DIR:\n${PETSC_DIR}\n"                  )
 message("***Found PETSC_INCLUDES:\n${PETSC_INCLUDES}\n"        )
@@ -426,16 +425,16 @@ set (CMAKE_Fortran_FLAGS_DEBUG       "${CMAKE_Fortran_FLAGS_DEBUG} ${CMAKE_Fortr
 set (CMAKE_Fortran_FLAGS_DEBUG       "${CMAKE_Fortran_FLAGS_DEBUG} ${DEBUG_FLAGS}"        )
 
 # Finalizing, adding PREFIX and SUFFIX to compiler chain
-set (CMAKE_Fortran_FLAGS_RELEASE   "${BUILDCMD_PRE} ${CMAKE_Fortran_FLAGS_RELEASE} ${DAMASK_INCLUDE_FLAGS} ${BUILDCMD_POST}")
-set (CMAKE_Fortran_FLAGS_DEBUG     "${BUILDCMD_PRE} ${CMAKE_Fortran_FLAGS_DEBUG}   ${DAMASK_INCLUDE_FLAGS} ${BUILDCMD_POST}")
+set (CMAKE_Fortran_FLAGS_RELEASE   "${CMAKE_Fortran_FLAGS_RELEASE} ${DAMASK_INCLUDE_FLAGS}")
+set (CMAKE_Fortran_FLAGS_DEBUG     "${CMAKE_Fortran_FLAGS_DEBUG}   ${DAMASK_INCLUDE_FLAGS}")
 set (CMAKE_LINKER                  "${PETSC_LINKER}")
 
 if ("${CMAKE_BUILD_TYPE}" STREQUAL "RELEASE")
     set (CMAKE_Fortran_LINK_EXECUTABLE
-      "${BUILDCMD_PRE} ${CMAKE_LINKER} ${CMAKE_EXE_LINKER_FLAGS_RELEASE} <OBJECTS> -o <TARGET> <LINK_LIBRARIES> ${PETSC_EXTERNAL_LIB}  ${BUILDCMD_POST}")
+      "${CMAKE_LINKER} ${CMAKE_EXE_LINKER_FLAGS_RELEASE} <OBJECTS> -o <TARGET> <LINK_LIBRARIES> ${PETSC_EXTERNAL_LIB}")
 else("${CMAKE_BUILD_TYPE}" STREQUAL "RELEASE")
     set (CMAKE_Fortran_LINK_EXECUTABLE
-      "${BUILDCMD_PRE} ${CMAKE_LINKER} ${CMAKE_EXE_LINKER_FLAGS_DEBUG} <OBJECTS> -o <TARGET> <LINK_LIBRARIES> ${PETSC_EXTERNAL_LIB}  ${BUILDCMD_POST}")
+      "${CMAKE_LINKER} ${CMAKE_EXE_LINKER_FLAGS_DEBUG} <OBJECTS> -o <TARGET> <LINK_LIBRARIES> ${PETSC_EXTERNAL_LIB}")
 endif("${CMAKE_BUILD_TYPE}" STREQUAL "RELEASE")
 
 message("***COMPILE FLAGS:\n${CMAKE_Fortran_FLAGS_RELEASE}\n")
