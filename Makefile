@@ -27,6 +27,6 @@ build/FEM: build
 
 .PHONY: clean
 clean:
-	rm -rvf build
-	rm -rvf testing
-	rm -rvf bin
+	rm -rvf build     # standard build directory
+	rm -rvf testing   # for testing build (testing script in PRIVATE)
+	rm -rvf bin       # default binary store location
