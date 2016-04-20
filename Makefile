@@ -28,3 +28,5 @@ build/FEM: build
 .PHONY: clean
 clean:
 	rm -rvf build
+	rm -rvf testing
+	rm -rvf bin

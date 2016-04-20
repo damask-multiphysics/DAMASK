@@ -10,13 +10,6 @@ if ("${PETSC_DIR}" STREQUAL "")
   message (FATAL_ERROR "PETSC_DIR is not defined in system!")
 endif ("${PETSC_DIR}" STREQUAL "")
 
-# Find DAMASK version (DAMASK_V) in DAMASK_ROOT
-find_program (CAT_EXECUTABLE NAMES cat)
-execute_process(COMMAND ${CAT_EXECUTABLE} ../../VERSION
-                RESULT_VARIABLE DAMASK_VERSION_RETURN
-                OUTPUT_VARIABLE DAMASK_V
-                OUTPUT_STRIP_TRAILING_WHITESPACE)
-
 # BRUTAL FORCE TO FIND THE VARIABLES DEFINED IN PETSC
 # ref:
 # https://github.com/jedbrown/cmake-modules/blob/master/FindPETSc.cmake
@@ -98,6 +91,13 @@ endforeach(exlib)
 set(CMAKE_Fortran_COMPILER "${MPIFC}")
 project (DAMASK Fortran)
 
+# Find DAMASK version (DAMASK_V) in DAMASK_ROOT
+find_program (CAT_EXECUTABLE NAMES cat)
+execute_process(COMMAND ${CAT_EXECUTABLE} ${PROJECT_SOURCE_DIR}/VERSION
+                RESULT_VARIABLE DAMASK_VERSION_RETURN
+                OUTPUT_VARIABLE DAMASK_V
+                OUTPUT_STRIP_TRAILING_WHITESPACE)
+
 message("***Found PETSC_DIR:\n${PETSC_DIR}\n"                  )
 message("***Found PETSC_INCLUDES:\n${PETSC_INCLUDES}\n"        )
 message("***Found PETSC_EXTERNAL_LIB:\n${PETSC_EXTERNAL_LIB}\n")
@@ -143,12 +143,12 @@ if ("${DAMASK_DRIVER}" STREQUAL "SPECTRAL")
     set (SPECTRAL ON )
     add_definitions(-DSpectral)
     set (FEM      OFF)
-    message("***Confiugring Spectral Solver")
+    message("***Confiugring Spectral Solver\n")
 elseif ("${DAMASK_DRIVER}" STREQUAL "FEM")
     set (FEM      ON )
     add_definitions(-DFEM)
     set (SPECTRAL OFF)
-    message("***Confiugring FEM Solver")
+    message("***Confiugring FEM Solver\n")
 endif("${DAMASK_DRIVER}" STREQUAL "SPECTRAL")
 
 set (DAMASK_INCLUDE_FLAGS "${DAMASK_INCLUDE_FLAGS} ${PETSC_INCLUDES}"          )
