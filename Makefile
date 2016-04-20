@@ -3,40 +3,30 @@ SHELL = /bin/sh
 # Makefile for the installation of DAMASK
 ########################################################################################
 .PHONY: all
-all: spectral marc processing
+all: spectral FEM
 
-.PHONY: spectral
-spectral:
-	$(MAKE) DAMASK_spectral.exe -C code
+spectral: build/spectral
+	@(cd build/spectral; make --no-print-directory -ws all install;)
 
-.PHONY: FEM
-FEM:
-	$(MAKE) DAMASK_FEM.exe -C code
+build/spectral: build
+	@mkdir build/spectral
+	@(cd build/spectral; cmake -Wno-dev -DCMAKE_BUILD_TYPE=RELEASE -DDAMASK_DRIVER=SPECTRAL ../..;)
 
-.PHONY: marc
-marc:
-	@./installation/mods_MarcMentat/apply_DAMASK_modifications.sh ${MAKEFLAGS}
+build: bin
+	@mkdir build
 
-.PHONY: processing
-processing:
-	@if hash cython 2>/dev/null; then \
-		cd ./lib/damask; \
-	    CC=gcc python setup_corientation.py build_ext --inplace; \
-		rm -rv build; \
-		rm *.c; \
-	fi
-	@./installation/compile_CoreModule.py ${MAKEFLAGS}
+bin:
+	@mkdir bin
 
-.PHONY: tidy
-tidy:
-	@$(MAKE) tidy -C code >/dev/null
+FEM: build/FEM
+	@(cd build/FEM; make --no-print-directory -ws all install;)
+
+build/FEM: build
+	@mkdir build
+	@(cd build/FEM; cmake -Wno-dev -DCMAKE_BUILD_TYPE=RELEASE -DDAMASK_DRIVER=FEM ../..;)
 
 .PHONY: clean
 clean:
-	@$(MAKE) cleanDAMASK -C code >/dev/null
-
-.PHONY: install
-install:
-	@./installation/symlink_Code.py ${MAKEFLAGS}
-	@./installation/symlink_Processing.py ${MAKEFLAGS}
-
+	rm -rvf build     # standard build directory
+	rm -rvf testing   # for testing build (testing script in PRIVATE)
+	rm -rvf bin       # default binary store location

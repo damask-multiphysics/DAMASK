@@ -16,7 +16,7 @@ SHELL = /bin/sh
 # SUFFIX         = arbitrary suffix (after file to compile)
 # STANDARD_CHECK = checking for Fortran 2008, compiler dependend
 ########################################################################################
-# including PETSc files. PETSC_ARCH is loaded from these files. 
+# including PETSc files. PETSC_ARCH is loaded from these files.
 DAMASKVERSION :=$(shell cat ../VERSION)
 
 include ${PETSC_DIR}/lib/petsc/conf/variables
@@ -26,6 +26,17 @@ INCLUDE_DIRS := $(PETSC_FC_INCLUDES) -DPETSc -I../lib
 LIBRARIES    := $(PETSC_WITH_EXTERNAL_LIB)
 COMPILERNAME ?= $(FC)
 LINKERNAME   ?= $(FLINKER)
+
+#
+# setting up for HDF5 support (hard link for now)
+# 1. Location of HDF5 binaries (with include/ and lib/ underneath)
+HDF5    = /mnt/research/CMM/opt/hdf5
+# 2. Location of External Libraries (missing in the 1.8.12 version)
+LIBZ    = /mnt/research/CMM/opt/hdf5/lib/libz.a
+LIBSZ   = /mnt/research/CMM/opt/hdf5/lib/libszip.a
+# 3. Set libraries for HDF5 (LIBS: shared lib, LIBZ: external lib)
+HDFLIBS = -I$(HDF5)/include -L$(HDF5)/lib
+HDFLIBZ = -L$(LIBZ) -L$(LIBSZ)
 
 # MPI compiler wrappers will tell if they are pointing to ifort or gfortran
 COMPILEROUT :=$(shell $(FC) -show)
@@ -295,8 +306,8 @@ PRECISION_gfortran :=-fdefault-real-8 -fdefault-double-8 -DFLOAT=8 -DINT=4
 #-fdefault-integer-8:         Use it to set precision to 8 bytes for integer, don't use it for the standard case of pInt=4 (there is no -fdefault-integer-4)
 
 ###################################################################################################
-COMPILE         =$(OPENMP_FLAG_$(F90)) $(STANDARD_CHECK_$(F90)) $(OPTIMIZATION_$(OPTI)_$(F90))    $(COMPILE_OPTIONS_$(F90)) $(INCLUDE_DIRS) $(PRECISION_$(F90))
-COMPILE_MAXOPTI =$(OPENMP_FLAG_$(F90)) $(STANDARD_CHECK_$(F90)) $(OPTIMIZATION_$(MAXOPTI)_$(F90)) $(COMPILE_OPTIONS_$(F90)) $(INCLUDE_DIRS) $(PRECISION_$(F90))
+COMPILE         =$(OPENMP_FLAG_$(F90)) $(STANDARD_CHECK_$(F90)) $(OPTIMIZATION_$(OPTI)_$(F90))    $(COMPILE_OPTIONS_$(F90)) $(INCLUDE_DIRS)  $(PRECISION_$(F90))
+COMPILE_MAXOPTI =$(OPENMP_FLAG_$(F90)) $(STANDARD_CHECK_$(F90)) $(OPTIMIZATION_$(MAXOPTI)_$(F90)) $(COMPILE_OPTIONS_$(F90)) $(INCLUDE_DIRS)  $(PRECISION_$(F90))
 ###################################################################################################
 SOURCE_FILES = \
    source_thermal_dissipation.o source_thermal_externalheat.o \
@@ -350,7 +361,7 @@ DAMASK_spectral.o: INTERFACENAME   := spectral_interface.f90
 SPECTRAL_SOLVER_FILES = spectral_mech_AL.o spectral_mech_Basic.o spectral_mech_Polarisation.o \
                         spectral_thermal.o spectral_damage.o
 
-SPECTRAL_FILES = prec.o DAMASK_interface.o IO.o libs.o numerics.o debug.o math.o \
+SPECTRAL_FILES = prec.o DAMASK_interface.o IO.o libs.o numerics.o debug.o math.o damask_hdf5.o \
                  FEsolving.o mesh.o material.o lattice.o \
                  $(SOURCE_FILES) $(KINEMATICS_FILES) $(PLASTIC_FILES) constitutive.o \
                  crystallite.o \
@@ -360,10 +371,11 @@ SPECTRAL_FILES = prec.o DAMASK_interface.o IO.o libs.o numerics.o debug.o math.o
                  spectral_utilities.o \
                  $(SPECTRAL_SOLVER_FILES)
 
-DAMASK_spectral.exe: DAMASK_spectral.o
+DAMASK_spectral.exe: DAMASK_spectral.o \
+                           $(SPECTRAL_FILES)
 	$(PREFIX) $(LINKERNAME) $(OPENMP_FLAG_$(F90)) $(LINK_OPTIONS_$(F90)) $(STANDARD_CHECK_$(F90))  $(OPTIMIZATION_$(MAXOPTI)_$(F90)) \
     -o DAMASK_spectral.exe DAMASK_spectral.o \
-    $(SPECTRAL_FILES) $(LIBRARIES) $(SUFFIX)
+    $(SPECTRAL_FILES) $(LIBRARIES) $(HDFLIBS) $(HDFLIBZ) $(SUFFIX)
 
 
 DAMASK_spectral.o: DAMASK_spectral.f90 \
@@ -412,7 +424,7 @@ FEM_FILES      = prec.o DAMASK_interface.o FEZoo.o IO.o libs.o numerics.o debug.
 DAMASK_FEM.exe:                DAMASK_FEM_driver.o
 	$(PREFIX) $(LINKERNAME) $(OPENMP_FLAG_$(F90)) $(LINK_OPTIONS_$(F90)) $(STANDARD_CHECK_$(F90))  $(OPTIMIZATION_$(MAXOPTI)_$(F90)) \
   -o DAMASK_FEM.exe DAMASK_FEM_driver.o \
-  $(FEM_FILES) $(LIBRARIES) $(SUFFIX)
+  $(FEM_FILES) $(LIBRARIES) $(HDFLIBS) $(HDFLIBZ) $(SUFFIX)
 
 DAMASK_FEM_driver.o:           DAMASK_FEM_driver.f90 $(FEM_SOLVER_FILES)
 	$(PREFIX) $(COMPILERNAME) $(COMPILE_MAXOPTI) -c ../private/FEM/code/DAMASK_FEM_driver.f90 $(SUFFIX)
@@ -619,6 +631,12 @@ numerics.o:                    numerics.f90 \
 libs.o:                        libs.f90 \
                                IO.o
 
+damask_hdf5.o:                 damask_hdf5.f90 \
+    			       prec.o \
+			       IO.o
+
+	$(PREFIX) $(COMPILERNAME) $(HDFLIBS) $(HDFLIBZ) -c damask_hdf5.f90 $(SUFFIX) -lm
+
 IO.o:                          IO.f90 \
                                DAMASK_interface.o
 
@@ -647,6 +665,7 @@ DAMASK_interface.o:            spectral_interface.f90 \
 # -diag-disable 7410 should disable warning about directory statement in inquire function, but does not work. hence the other 2 statements
 prec.o:                        prec.f90
 	$(PREFIX) $(COMPILERNAME) $(COMPILE) -c prec.f90 $(SUFFIX)
+
 endif
 
 %.o : %.f90
