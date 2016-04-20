@@ -6,7 +6,7 @@ SHELL = /bin/sh
 all: spectral FEM
 
 spectral: build/spectral
-	@(cd build/spectral; make -s all install;)
+	@(cd build/spectral; make --no-print-directory -ws all install;)
 
 build/spectral: build
 	@mkdir build/spectral
@@ -19,7 +19,7 @@ bin:
 	@mkdir bin
 
 FEM: build/FEM
-	@(cd build/FEM; make -s all install;)
+	@(cd build/FEM; make --no-print-directory -ws all install;)
 
 build/FEM: build
 	@mkdir build
