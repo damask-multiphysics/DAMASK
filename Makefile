@@ -6,7 +6,7 @@ SHELL = /bin/sh
 all: spectral FEM
 
 spectral: build/spectral
-	@(cd build/spectral; make; make install;)
+	@(cd build/spectral; make -s all install;)
 
 build/spectral: build
 	@mkdir build/spectral
@@ -19,10 +19,11 @@ bin:
 	@mkdir bin
 
 FEM: build/FEM
-	@(cd build/FEM; cmake -Wno-dev -DCMAKE_BUILD_TYPE=RELEASE -DDAMASK_DRIVER=FEM ../..;)
+	@(cd build/FEM; make -s all install;)
 
 build/FEM: build
 	@mkdir build
+	@(cd build/FEM; cmake -Wno-dev -DCMAKE_BUILD_TYPE=RELEASE -DDAMASK_DRIVER=FEM ../..;)
 
 .PHONY: clean
 clean:
