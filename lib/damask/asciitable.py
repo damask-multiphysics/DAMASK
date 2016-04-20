@@ -67,6 +67,14 @@ class ASCIItable():
       return 0.0
 
 # ------------------------------------------------------------------
+  def _noCRLF(self,
+              string):
+    try:
+      return string.replace('\n','').replace('\r','')
+    except:
+      return string
+
+# ------------------------------------------------------------------
   def close(self,
             dismiss = False):
     self.input_close()
@@ -243,9 +251,9 @@ class ASCIItable():
       try:
         for item in what: self.labels_append(item)
       except:
-        self.labels += [str(what)]
+        self.labels += [self._noCRLF(str(what))]
     else:
-      self.labels += [what]
+      self.labels += [self._noCRLF(what)]
 
     self.__IO__['labeled'] = True                                                                  # switch on processing (in particular writing) of labels
     if reset: self.__IO__['labels'] = list(self.labels)                                            # subsequent data_read uses current labels as data size
@@ -372,9 +380,9 @@ class ASCIItable():
       try:
         for item in what: self.info_append(item)
       except:
-        self.info += [str(what)]
+        self.info += [self._noCRLF(str(what))]
     else:
-      self.info += [what]
+      self.info += [self._noCRLF(what)]
 
 # ------------------------------------------------------------------
   def info_clear(self):
