@@ -36,7 +36,7 @@ parser.add_option('--no-volume','-v',
                   dest = 'volume',
                   action = 'store_false',
                   help = 'omit volume mismatch')
-parser.set_defaults(coords   = 'ipinitialcoord',
+parser.set_defaults(coords   = 'pos',
                     defgrad  = 'f',
                     shape = True,
                     volume = True,
