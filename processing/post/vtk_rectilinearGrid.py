@@ -38,7 +38,7 @@ parser.set_defaults(coords = 'pos',
 if filenames == []: filenames = [None]
 
 for name in filenames:
-  isGeom = name.endswith('.geom')
+  isGeom = name is not None and name.endswith('.geom')
   try:    table = damask.ASCIItable(name = name,
                                     buffered = False,
                                     labeled  = not isGeom,
