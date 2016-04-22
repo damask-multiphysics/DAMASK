@@ -18,12 +18,19 @@ Produce a VTK point cloud dataset based on coordinates given in an ASCIItable.
 
 """, version = scriptID)
 
-parser.add_option('-c', '--coordinates',
+parser.add_option('-p',
+                  '--pos', '--position',
                   dest = 'pos',
                   type = 'string', metavar = 'string',
                   help = 'coordinate label [%default]')
+parser.add_option('-l',
+                  '--legacy',
+                  dest = 'legacy',
+                  action = 'store_true',
+                  help = 'force legacy VTK output')
 
-parser.set_defaults(pos = 'pos'
+parser.set_defaults(pos = 'pos',
+                    legacy = False,
                    )
 
 (options, filenames) = parser.parse_args()
@@ -81,21 +88,26 @@ for name in filenames:
  
 # ------------------------------------------ output result ---------------------------------------  
 
-  if name:
+  if options.legacy:
+    writer = vtk.vtkDataSetWriter()
+    writer.SetHeader('# powered by '+scriptID)
+  else:
     writer = vtk.vtkXMLPolyDataWriter()
-    (directory,filename) = os.path.split(name)
     writer.SetDataModeToBinary()
     writer.SetCompressorTypeToZLib()
-    writer.SetFileName(os.path.join(directory,os.path.splitext(filename)[0]\
-                                                            +'.'+writer.GetDefaultFileExtension()))
+
+  if name:
+    writer.SetFileName(os.path.join(os.path.split(name)[0],
+                                    os.path.splitext(os.path.split(name)[1])[0] +
+                                    '.' + ('vtk' if options.legacy else writer.GetDefaultFileExtension())))
   else:
-    writer = vtk.vtkDataSetWriter()
     writer.WriteToOutputStringOn()
-    writer.SetHeader('# powered by '+scriptID)
   
   if vtk.VTK_MAJOR_VERSION <= 5: writer.SetInput(Polydata)
   else:                          writer.SetInputData(Polydata)
+
   writer.Write()
-  if name is None:  sys.stdout.write(writer.GetOutputString()[0:writer.GetOutputStringLength()])
+
+  if name is None:  sys.stdout.write(writer.GetOutputString())  #[0:writer.GetOutputStringLength()]
 
   table.close()
