@@ -497,28 +497,23 @@ real(pReal) :: &
  squarenorm_Tstar_sph = math_mul33xx33(Tstar_sph_33,Tstar_sph_33)
  norm_Tstar_sph = sqrt(squarenorm_Tstar_sph) 
 
- if (param(instance)%dilatation) then
-     if (norm_Tstar_sph <= 0.0_pReal) then                                                          ! Tstar == 0 --> both Li and dLi_dTstar are zero
-       Li = 0.0_pReal
-       dLi_dTstar_3333 = 0.0_pReal
-     else
-       gamma_dot = param(instance)%gdot0 &
-                   * (sqrt(1.5_pReal) * norm_Tstar_sph / param(instance)%fTaylor / state(instance)%flowstress(of) ) &
-                   **param(instance)%n
+ if (param(instance)%dilatation .and. norm_Tstar_sph > 0.0_pReal) then                              ! Tstar == 0 or J2 plascitiy --> both Li and dLi_dTstar are zero
+   gamma_dot = param(instance)%gdot0 &
+               * (sqrt(1.5_pReal) * norm_Tstar_sph / param(instance)%fTaylor / state(instance)%flowstress(of) ) &
+               **param(instance)%n
 
-       Li = Tstar_sph_33/norm_Tstar_sph * gamma_dot/param(instance)%fTaylor
+   Li = Tstar_sph_33/norm_Tstar_sph * gamma_dot/param(instance)%fTaylor
 
-       !--------------------------------------------------------------------------------------------------
-       ! Calculation of the tangent of Li
-       forall (k=1_pInt:3_pInt,l=1_pInt:3_pInt,m=1_pInt:3_pInt,n=1_pInt:3_pInt) &
-         dLi_dTstar_3333(k,l,m,n) = (param(instance)%n-1.0_pReal) * &
-                                          Tstar_sph_33(k,l)*Tstar_sph_33(m,n) / squarenorm_Tstar_sph
-       forall (k=1_pInt:3_pInt,l=1_pInt:3_pInt) &
-         dLi_dTstar_3333(k,l,k,l) = dLi_dTstar_3333(k,l,k,l) + 1.0_pReal
+   !--------------------------------------------------------------------------------------------------
+   ! Calculation of the tangent of Li
+   forall (k=1_pInt:3_pInt,l=1_pInt:3_pInt,m=1_pInt:3_pInt,n=1_pInt:3_pInt) &
+     dLi_dTstar_3333(k,l,m,n) = (param(instance)%n-1.0_pReal) * &
+                                      Tstar_sph_33(k,l)*Tstar_sph_33(m,n) / squarenorm_Tstar_sph
+   forall (k=1_pInt:3_pInt,l=1_pInt:3_pInt) &
+     dLi_dTstar_3333(k,l,k,l) = dLi_dTstar_3333(k,l,k,l) + 1.0_pReal
 
-       dLi_dTstar_3333 = gamma_dot / param(instance)%fTaylor * &
-                                          dLi_dTstar_3333 / norm_Tstar_sph
-     endif
+   dLi_dTstar_3333 = gamma_dot / param(instance)%fTaylor * &
+                                      dLi_dTstar_3333 / norm_Tstar_sph
  else
   Li = 0.0_pReal
   dLi_dTstar_3333 = 0.0_pReal

@@ -76,9 +76,9 @@ for name in filenames:
 
 # --------------- figure out size and grid ---------------------------------------------------------
 
-  table.data_readArray(options.coords)
+  table.data_readArray()
 
-  coords = [np.unique(table.data[:,i]) for i in xrange(3)]
+  coords = [np.unique(table.data[:,colCoord+i]) for i in xrange(3)]
   mincorner = np.array(map(min,coords))
   maxcorner = np.array(map(max,coords))
   grid   = np.array(map(len,coords),'i')
