@@ -22,12 +22,12 @@ parser.add_option('-p',
                   '--pos', '--position',
                   dest = 'pos',
                   type = 'string', metavar = 'string',
-                  help = 'coordinate label [%default]')
+                  help = 'label of coordinates [%default]')
 parser.add_option('-l',
                   '--legacy',
                   dest = 'legacy',
                   action = 'store_true',
-                  help = 'force legacy VTK output')
+                  help = 'legacy VTK output')
 
 parser.set_defaults(pos = 'pos',
                     legacy = False,

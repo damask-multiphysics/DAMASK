@@ -23,12 +23,12 @@ parser.add_option('-m',
                   '--mode',
                   dest = 'mode',
                   type = 'choice', choices = ['cell','point'],
-                  help = 'cell-centered or point-centered coordinates ')
+                  help = 'cell-centered or point-centered coordinates')
 parser.add_option('-p',
                   '--pos', '--position',
                   dest = 'pos',
                   type = 'string', metavar = 'string',
-                  help = 'coordinate label [%default]')
+                  help = 'label of coordinates [%default]')
 parser.add_option('-g',
                   '--geom',
                   dest = 'geom',
@@ -38,7 +38,7 @@ parser.add_option('-l',
                   '--legacy',
                   dest = 'legacy',
                   action = 'store_true',
-                  help = 'force legacy VTK output')
+                  help = 'legacy VTK output')
 
 parser.set_defaults(mode   = 'cell',
                     pos    = 'pos',
