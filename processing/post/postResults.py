@@ -1003,8 +1003,7 @@ fileOpen = False
 assembleHeader = True
 header = []
 standard = ['inc'] + \
-           {True: ['time'],
-            False:[]}[options.time] + \
+           (['time'] if options.time else []) + \
            ['elem','node','ip','grain','1_pos','2_pos','3_pos']
 
 # ---------------------------   loop over positions   --------------------------------
