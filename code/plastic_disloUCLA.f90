@@ -144,7 +144,6 @@ module plastic_disloUCLA
  
  public :: &
    plastic_disloUCLA_init, &
-   plastic_disloUCLA_homogenizedC, &
    plastic_disloUCLA_microstructure, &
    plastic_disloUCLA_LpAndItsTangent, &
    plastic_disloUCLA_dotState, &
@@ -364,36 +363,6 @@ subroutine plastic_disloUCLA_init(fileUnit)
              plastic_disloUCLA_outputID(plastic_disloUCLA_Noutput(instance),instance) = stress_exponent_ID
              plastic_disloUCLA_output(plastic_disloUCLA_Noutput(instance),instance) = &
                                                        IO_lc(IO_stringValue(line,chunkPos,2_pInt))
-           case ('twin_fraction')
-             plastic_disloUCLA_Noutput(instance) = plastic_disloUCLA_Noutput(instance) + 1_pInt
-             plastic_disloUCLA_outputID(plastic_disloUCLA_Noutput(instance),instance) = twin_fraction_ID
-             plastic_disloUCLA_output(plastic_disloUCLA_Noutput(instance),instance) = &
-                                                       IO_lc(IO_stringValue(line,chunkPos,2_pInt))
-           case ('shear_rate_twin','shearrate_twin')
-             plastic_disloUCLA_Noutput(instance) = plastic_disloUCLA_Noutput(instance) + 1_pInt
-             plastic_disloUCLA_outputID(plastic_disloUCLA_Noutput(instance),instance) = shear_rate_twin_ID
-             plastic_disloUCLA_output(plastic_disloUCLA_Noutput(instance),instance) = &
-                                                       IO_lc(IO_stringValue(line,chunkPos,2_pInt))
-           case ('accumulated_shear_twin')
-             plastic_disloUCLA_Noutput(instance) = plastic_disloUCLA_Noutput(instance) + 1_pInt
-             plastic_disloUCLA_outputID(plastic_disloUCLA_Noutput(instance),instance) = accumulated_shear_twin_ID
-             plastic_disloUCLA_output(plastic_disloUCLA_Noutput(instance),instance) = &
-                                                       IO_lc(IO_stringValue(line,chunkPos,2_pInt))
-           case ('mfp_twin')
-             plastic_disloUCLA_Noutput(instance) = plastic_disloUCLA_Noutput(instance) + 1_pInt
-             plastic_disloUCLA_outputID(plastic_disloUCLA_Noutput(instance),instance) = mfp_twin_ID
-             plastic_disloUCLA_output(plastic_disloUCLA_Noutput(instance),instance) = &
-                                                       IO_lc(IO_stringValue(line,chunkPos,2_pInt))
-           case ('resolved_stress_twin')
-             plastic_disloUCLA_Noutput(instance) = plastic_disloUCLA_Noutput(instance) + 1_pInt
-             plastic_disloUCLA_outputID(plastic_disloUCLA_Noutput(instance),instance) = resolved_stress_twin_ID
-             plastic_disloUCLA_output(plastic_disloUCLA_Noutput(instance),instance) = &
-                                                       IO_lc(IO_stringValue(line,chunkPos,2_pInt))
-           case ('threshold_stress_twin')
-             plastic_disloUCLA_Noutput(instance) = plastic_disloUCLA_Noutput(instance) + 1_pInt
-             plastic_disloUCLA_outputID(plastic_disloUCLA_Noutput(instance),instance) = threshold_stress_twin_ID
-             plastic_disloUCLA_output(plastic_disloUCLA_Noutput(instance),instance) = &
-                                                       IO_lc(IO_stringValue(line,chunkPos,2_pInt))
           end select
 !--------------------------------------------------------------------------------------------------
 ! parameters depending on number of slip system families
@@ -448,33 +417,7 @@ subroutine plastic_disloUCLA_init(fileUnit)
              plastic_disloUCLA_friction(1:Nchunks_SlipFamilies,instance) = &
                   tempPerSlip(1:Nchunks_SlipFamilies)  
          end select
-!--------------------------------------------------------------------------------------------------
-! parameters depending on slip number of twin families
-       case ('ntwin')
-         if (chunkPos(1) < Nchunks_TwinFamilies + 1_pInt) &
-           call IO_warning(51_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_DISLOUCLA_label//')')
-         if (chunkPos(1) > Nchunks_TwinFamilies + 1_pInt) &
-           call IO_error(150_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_DISLOUCLA_label//')')
-         Nchunks_TwinFamilies = chunkPos(1) - 1_pInt
-         do j = 1_pInt, Nchunks_TwinFamilies
-             plastic_disloUCLA_Ntwin(j,instance) = IO_intValue(line,chunkPos,1_pInt+j)
-         enddo
-       case ('ndot0','twinsize','twinburgers','r_twin')
-         do j = 1_pInt, Nchunks_TwinFamilies
-           tempPerTwin(j) = IO_floatValue(line,chunkPos,1_pInt+j)
-         enddo
-         select case(tag)
-           case ('ndot0')
-             if (lattice_structure(phase) == LATTICE_fcc_ID) &
-               call IO_warning(42_pInt,ext_msg=trim(tag)//' for fcc ('//PLASTICITY_DISLOUCLA_label//')')
-             plastic_disloUCLA_Ndot0PerTwinFamily(1:Nchunks_TwinFamilies,instance) = tempPerTwin(1:Nchunks_TwinFamilies)
-           case ('twinsize')
-             plastic_disloUCLA_twinsizePerTwinFamily(1:Nchunks_TwinFamilies,instance) = tempPerTwin(1:Nchunks_TwinFamilies)
-           case ('twinburgers')
-             plastic_disloUCLA_burgersPerTwinFamily(1:Nchunks_TwinFamilies,instance) = tempPerTwin(1:Nchunks_TwinFamilies)
-           case ('r_twin')
-             plastic_disloUCLA_rPerTwinFamily(1:Nchunks_TwinFamilies,instance) = tempPerTwin(1:Nchunks_TwinFamilies)
-         end select
+
 !--------------------------------------------------------------------------------------------------
 ! parameters depending on number of interactions
        case ('interaction_slipslip','interactionslipslip')
@@ -482,24 +425,6 @@ subroutine plastic_disloUCLA_init(fileUnit)
            call IO_warning(52_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_DISLOUCLA_label//')')
          do j = 1_pInt, Nchunks_SlipSlip
            plastic_disloUCLA_interaction_SlipSlip(j,instance) = IO_floatValue(line,chunkPos,1_pInt+j)
-         enddo
-       case ('interaction_sliptwin','interactionsliptwin')
-         if (chunkPos(1) < 1_pInt + Nchunks_SlipTwin) &
-           call IO_warning(52_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_DISLOUCLA_label//')')
-         do j = 1_pInt, Nchunks_SlipTwin
-           plastic_disloUCLA_interaction_SlipTwin(j,instance) = IO_floatValue(line,chunkPos,1_pInt+j)
-         enddo
-       case ('interaction_twinslip','interactiontwinslip')
-         if (chunkPos(1) < 1_pInt + Nchunks_TwinSlip) &
-           call IO_warning(52_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_DISLOUCLA_label//')')
-         do j = 1_pInt, Nchunks_TwinSlip
-           plastic_disloUCLA_interaction_TwinSlip(j,instance) = IO_floatValue(line,chunkPos,1_pInt+j)
-         enddo
-       case ('interaction_twintwin','interactiontwintwin')
-         if (chunkPos(1) < 1_pInt + Nchunks_TwinTwin) &
-           call IO_warning(52_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_DISLOUCLA_label//')')
-         do j = 1_pInt, Nchunks_TwinTwin
-           plastic_disloUCLA_interaction_TwinTwin(j,instance) = IO_floatValue(line,chunkPos,1_pInt+j)
          enddo
        case ('nonschmid_coefficients')
          if (chunkPos(1) < 1_pInt + Nchunks_nonSchmid) &
@@ -511,20 +436,12 @@ subroutine plastic_disloUCLA_init(fileUnit)
 ! parameters independent of number of slip/twin systems
        case ('grainsize')
          plastic_disloUCLA_GrainSize(instance) = IO_floatValue(line,chunkPos,2_pInt)
-       case ('maxtwinfraction')
-         plastic_disloUCLA_MaxTwinFraction(instance) = IO_floatValue(line,chunkPos,2_pInt)
        case ('d0')
          plastic_disloUCLA_D0(instance) = IO_floatValue(line,chunkPos,2_pInt)
        case ('qsd')
          plastic_disloUCLA_Qsd(instance) = IO_floatValue(line,chunkPos,2_pInt)
        case ('atol_rho')
          plastic_disloUCLA_aTolRho(instance) = IO_floatValue(line,chunkPos,2_pInt)
-       case ('atol_twinfrac')
-         plastic_disloUCLA_aTolTwinFrac(instance) = IO_floatValue(line,chunkPos,2_pInt)
-       case ('cmfptwin')
-         plastic_disloUCLA_Cmfptwin(instance) = IO_floatValue(line,chunkPos,2_pInt)
-       case ('cthresholdtwin')
-         plastic_disloUCLA_Cthresholdtwin(instance) = IO_floatValue(line,chunkPos,2_pInt)
        case ('solidsolutionstrength')
          plastic_disloUCLA_SolidSolutionStrength(instance) = IO_floatValue(line,chunkPos,2_pInt)
        case ('l0')
@@ -537,10 +454,6 @@ subroutine plastic_disloUCLA_init(fileUnit)
          plastic_disloUCLA_CEdgeDipMinDistance(instance) = IO_floatValue(line,chunkPos,2_pInt)
        case ('catomicvolume')
          plastic_disloUCLA_CAtomicVolume(instance) = IO_floatValue(line,chunkPos,2_pInt)
-       case ('sfe_0k')
-         plastic_disloUCLA_SFE_0K(instance) = IO_floatValue(line,chunkPos,2_pInt)
-       case ('dsfe_dt')
-         plastic_disloUCLA_dSFE_dT(instance) = IO_floatValue(line,chunkPos,2_pInt)
        case ('dipoleformationfactor')
          plastic_disloUCLA_dipoleFormationFactor(instance) = IO_floatValue(line,chunkPos,2_pInt)
      end select
@@ -568,33 +481,14 @@ subroutine plastic_disloUCLA_init(fileUnit)
             call IO_error(211_pInt,el=instance,ext_msg='tau_peierls ('//PLASTICITY_DISLOUCLA_label//')')
         endif
       enddo
-      do f = 1_pInt,lattice_maxNtwinFamily
-        if (plastic_disloUCLA_Ntwin(f,instance) > 0_pInt) then
-          if (plastic_disloUCLA_burgersPerTwinFamily(f,instance) <= 0.0_pReal) &
-            call IO_error(211_pInt,el=instance,ext_msg='twinburgers ('//PLASTICITY_DISLOUCLA_label//')')
-          if (plastic_disloUCLA_Ndot0PerTwinFamily(f,instance) < 0.0_pReal) &
-            call IO_error(211_pInt,el=instance,ext_msg='ndot0 ('//PLASTICITY_DISLOUCLA_label//')')
-        endif
-      enddo
       if (plastic_disloUCLA_CAtomicVolume(instance) <= 0.0_pReal) &
         call IO_error(211_pInt,el=instance,ext_msg='cAtomicVolume ('//PLASTICITY_DISLOUCLA_label//')')
       if (plastic_disloUCLA_D0(instance) <= 0.0_pReal) &
         call IO_error(211_pInt,el=instance,ext_msg='D0 ('//PLASTICITY_DISLOUCLA_label//')')
       if (plastic_disloUCLA_Qsd(instance) <= 0.0_pReal) &
         call IO_error(211_pInt,el=instance,ext_msg='Qsd ('//PLASTICITY_DISLOUCLA_label//')')
-      if (sum(plastic_disloUCLA_Ntwin(:,instance)) > 0_pInt) then
-        if (abs(plastic_disloUCLA_SFE_0K(instance))  <= tiny(0.0_pReal) .and. &
-            abs(plastic_disloUCLA_dSFE_dT(instance)) <= tiny(0.0_pReal) .and. &
-                            lattice_structure(phase) == LATTICE_fcc_ID) &
-          call IO_error(211_pInt,el=instance,ext_msg='SFE0K ('//PLASTICITY_DISLOUCLA_label//')')
-        if (plastic_disloUCLA_aTolRho(instance) <= 0.0_pReal) &
-          call IO_error(211_pInt,el=instance,ext_msg='aTolRho ('//PLASTICITY_DISLOUCLA_label//')')   
-        if (plastic_disloUCLA_aTolTwinFrac(instance) <= 0.0_pReal) &
-          call IO_error(211_pInt,el=instance,ext_msg='aTolTwinFrac ('//PLASTICITY_DISLOUCLA_label//')')
-      endif
-      if (abs(plastic_disloUCLA_dipoleFormationFactor(instance)) >  tiny(0.0_pReal) .and. &
-               plastic_disloUCLA_dipoleFormationFactor(instance) /= 1.0_pReal) &
-        call IO_error(211_pInt,el=instance,ext_msg='dipoleFormationFactor ('//PLASTICITY_DISLOUCLA_label//')')
+      if (plastic_disloUCLA_aTolRho(instance) <= 0.0_pReal) &
+        call IO_error(211_pInt,el=instance,ext_msg='aTolRho ('//PLASTICITY_DISLOUCLA_label//')')   
 
 !--------------------------------------------------------------------------------------------------
 ! Determine total number of active slip or twin systems
@@ -663,14 +557,6 @@ subroutine plastic_disloUCLA_init(fileUnit)
               stress_exponent_ID &
               )
            mySize = ns
-         case(twin_fraction_ID, &
-              shear_rate_twin_ID, &
-              accumulated_shear_twin_ID, &
-              mfp_twin_ID, &
-              resolved_stress_twin_ID, &
-              threshold_stress_twin_ID &
-              )
-           mySize = nt
        end select
  
        if (mySize > 0_pInt) then  ! any meaningful output found
@@ -1031,48 +917,6 @@ subroutine plastic_disloUCLA_aTolState(ph,instance)
 end subroutine plastic_disloUCLA_aTolState
 
 
-!--------------------------------------------------------------------------------------------------
-!> @brief returns the homogenized elasticity matrix
-!--------------------------------------------------------------------------------------------------
-function plastic_disloUCLA_homogenizedC(ipc,ip,el)
- use material, only: &
-  phase_plasticityInstance, &
-  plasticState, &
-  phaseAt, phasememberAt
- use lattice, only: &
-  lattice_C66
- 
-  implicit none
-  real(pReal), dimension(6,6) :: &
-    plastic_disloUCLA_homogenizedC
-  integer(pInt), intent(in) :: &
-    ipc, &                                                                                          !< component-ID of integration point
-    ip, &                                                                                           !< integration point
-    el                                                                                              !< element
-
- integer(pInt) :: instance,ns,nt,i, &
-                  ph, &
-                  of
- real(pReal) :: sumf
-
- !* Shortened notation
- of = phasememberAt(ipc,ip,el)
- ph = phaseAt(ipc,ip,el)
- instance = phase_plasticityInstance(ph)
- ns = plastic_disloUCLA_totalNslip(instance)
- nt = plastic_disloUCLA_totalNtwin(instance)
- 
- !* Total twin volume fraction
- sumf = sum(state(instance)%twinFraction(1_pInt:nt,of))           ! safe for nt == 0
- !* Homogenized elasticity matrix
- plastic_disloUCLA_homogenizedC = (1.0_pReal-sumf)*lattice_C66(1:6,1:6,ph)
- do i=1_pInt,nt
-    plastic_disloUCLA_homogenizedC = plastic_disloUCLA_homogenizedC &
-                   + state(instance)%twinFraction(i,of)*plastic_disloUCLA_Ctwin66(1:6,1:6,i,instance)
- enddo 
-
-end function plastic_disloUCLA_homogenizedC
- 
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates derived quantities from state
 !--------------------------------------------------------------------------------------------------
