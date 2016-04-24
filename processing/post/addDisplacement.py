@@ -166,14 +166,6 @@ for name in filenames:
                             np.zeros((table.data.shape[0],
                                       3-table.data[:,9:].shape[1]),dtype='f')))                     # fill coords up to 3D with zeros
 
-  if remarks != []: damask.util.croak(remarks)
-  if errors  != []:
-    damask.util.croak(errors)
-    table.close(dismiss = True)
-    continue
-
-# --------------- figure out size and grid ---------------------------------------------------------
-
   coords = [np.unique(table.data[:,9+i]) for i in xrange(3)]
   mincorner = np.array(map(min,coords))
   maxcorner = np.array(map(max,coords))
