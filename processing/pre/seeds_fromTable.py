@@ -23,29 +23,38 @@ Examples:
 
 """, version = scriptID)
 
-parser.add_option('-p', '--positions',
-                  dest = 'pos',
-                  type = 'string', metavar = 'string',
-                  help = 'coordinate label [%default]')
+parser.add_option('-p',
+                  '--pos', '--seedposition',
+                   dest = 'pos',
+                   type = 'string', metavar = 'string',
+                   help = 'label of coordinates [%default]')
 parser.add_option('--boundingbox',
                   dest = 'box',
                   type = 'float', nargs = 6, metavar = ' '.join(['float']*6),
                   help = 'min (x,y,z) and max (x,y,z) coordinates of bounding box [tight]')
-parser.add_option('-i', '--index',
-                  dest = 'index',
+parser.add_option('-m',
+                  '--microstructure',
+                  dest = 'microstructure',
                   type = 'string', metavar = 'string',
-                  help = 'microstructure index label [%default]')
-parser.add_option('-w','--white',
+                  help = 'label of microstructures [%default]')
+parser.add_option('--weight',
+                  dest = 'weight',
+                  type = 'string', metavar = 'string',
+                  help = 'label of weights [%default]')
+parser.add_option('-w',
+                  '--white',
                   dest = 'whitelist',
                   action = 'extend', metavar = '<int LIST>',
                   help = 'whitelist of microstructure indices')
-parser.add_option('-b','--black',
+parser.add_option('-b',
+                  '--black',
                   dest = 'blacklist',
                   action = 'extend', metavar = '<int LIST>',
                   help = 'blacklist of microstructure indices')
 
-parser.set_defaults(pos = 'pos',
-                    index ='microstructure',
+parser.set_defaults(pos            = 'pos',
+                    microstructure = 'microstructure',
+                    weight         = None,
                    )
 
 (options,filenames) = parser.parse_args()
@@ -58,10 +67,9 @@ if options.blacklist is not None: options.blacklist = map(int,options.blacklist)
 if filenames == []: filenames = [None]
 
 for name in filenames:
-  try:
-    table = damask.ASCIItable(name = name,
-                              outname = os.path.splitext(name)[0]+'.seeds' if name else name,
-                              buffered = False)
+  try:    table = damask.ASCIItable(name = name,
+                                    outname = os.path.splitext(name)[0]+'.seeds' if name else name,
+                                    buffered = False)
   except: continue
   damask.util.report(scriptName,name)
 
@@ -69,14 +77,17 @@ for name in filenames:
 
 # ------------------------------------------ sanity checks ---------------------------------------  
 
-  missing_labels = table.data_readArray([options.pos,options.index])
+  missing_labels = table.data_readArray([options.pos,options.microstructure] +
+                                        ([options.weight] if options.weight else []))
 
   errors = []
   if len(missing_labels) > 0:
     errors.append('column{} {} not found'.format('s' if len(missing_labels) > 1 else '',
                                                 ', '.join(missing_labels)))
-  for label, dim in {options.pos: 3,
-                     options.index: 1}.iteritems():
+  input = {options.pos: 3,
+           options.microstructure: 1,}
+  if options.weight: input.update({options.weight: 1})
+  for label, dim in input.iteritems():
     if table.label_dimension(label) != dim:
       errors.append('column {} has wrong dimension'.format(label))
   
@@ -113,11 +124,12 @@ for name in filenames:
 
   table.info = [
                 scriptID,
-                'size %s'%(' '.join(list(itertools.chain.from_iterable(zip(['x','y','z'],
+                'size {}'.format(' '.join(list(itertools.chain.from_iterable(zip(['x','y','z'],
                                                                        map(str,boundingBox[1,:]-boundingBox[0,:])))))),
                ]
   table.labels_clear()
-  table.labels_append(['1_pos','2_pos','3_pos','microstructure'])                                   # implicitly switching label processing/writing on
+  table.labels_append(['1_pos','2_pos','3_pos','microstructure'] +
+                      ['weight'] if options.weight else [])                                        # implicitly switching label processing/writing on
   table.head_write()
   
 # ------------------------------------------ output result ---------------------------------------  

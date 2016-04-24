@@ -296,13 +296,10 @@ for name in filenames:
 
   if info['homogenization'] == 0: info['homogenization'] = options.homogenization
   
-  damask.util.croak(['grid     a b c:  {}'.format(' x '.join(map(str,info['grid']))),
-                     'size     x y z:  {}'.format(' x '.join(map(str,info['size']))),
-                     'origin   x y z:  {}'.format(' : '.join(map(str,info['origin']))),
-                     'homogenization:  {}'.format(info['homogenization']),
-                     'microstructures: {}{}'.format(info['microstructures'],
+  damask.util.report_geom(info,['grid','size','origin','homogenization',])
+  damask.util.croak(['microstructures: {}{}'.format(info['microstructures'],
                     (' out of {}'.format(NgrainIDs) if NgrainIDs != info['microstructures'] else '')),
-                   ])
+                    ])
 
   config_header = []
   formatwidth = 1+int(math.log10(NgrainIDs))
