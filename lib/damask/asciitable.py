@@ -67,7 +67,7 @@ class ASCIItable():
       return 0.0
 
 # ------------------------------------------------------------------
-  def _noCRLF(self,
+  def _removeCRLF(self,
               string):
     try:
       return string.replace('\n','').replace('\r','')
@@ -251,9 +251,9 @@ class ASCIItable():
       try:
         for item in what: self.labels_append(item)
       except:
-        self.labels += [self._noCRLF(str(what))]
+        self.labels += [self._removeCRLF(str(what))]
     else:
-      self.labels += [self._noCRLF(what)]
+      self.labels += [self._removeCRLF(what)]
 
     self.__IO__['labeled'] = True                                                                  # switch on processing (in particular writing) of labels
     if reset: self.__IO__['labels'] = list(self.labels)                                            # subsequent data_read uses current labels as data size
@@ -369,8 +369,9 @@ class ASCIItable():
     start = self.label_index(labels)
     dim   = self.label_dimension(labels)
   
-    return map(lambda a,b: xrange(a,a+b), zip(start,dim)) if isinstance(labels, Iterable) and not isinstance(labels, str) \
-    else   xrange(start,start+dim)
+    return np.hstack(map(lambda c: xrange(c[0],c[0]+c[1]), zip(start,dim))) \
+        if isinstance(labels, Iterable) and not isinstance(labels, str) \
+      else xrange(start,start+dim)
 
 # ------------------------------------------------------------------
   def info_append(self,
@@ -380,9 +381,9 @@ class ASCIItable():
       try:
         for item in what: self.info_append(item)
       except:
-        self.info += [self._noCRLF(str(what))]
+        self.info += [self._removeCRLF(str(what))]
     else:
-      self.info += [self._noCRLF(what)]
+      self.info += [self._removeCRLF(what)]
 
 # ------------------------------------------------------------------
   def info_clear(self):
