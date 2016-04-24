@@ -34,16 +34,10 @@ parser.add_option('-g',
                   dest = 'geom',
                   action = 'store_true',
                   help = 'geom input format')
-parser.add_option('-l',
-                  '--legacy',
-                  dest = 'legacy',
-                  action = 'store_true',
-                  help = 'legacy VTK output')
 
 parser.set_defaults(mode   = 'cell',
                     pos    = 'pos',
                     geom   = False,
-                    legacy = False,
                    )
 
 (options, filenames) = parser.parse_args()
@@ -132,20 +126,17 @@ for name in filenames:
 
 # ------------------------------------------ output result ---------------------------------------  
 
-  if options.legacy:
-    writer = vtk.vtkDataSetWriter()
-    writer.SetHeader('# powered by '+scriptID)
-  else:
-    writer = vtk.vtkXMLRectilinearGridWriter()
-    writer.SetDataModeToBinary()
-    writer.SetCompressorTypeToZLib()
-
   if name:
+    writer = vtk.vtkXMLPolyDataWriter()
+    writer.SetCompressorTypeToZLib()
+    writer.SetDataModeToBinary()
     writer.SetFileName(os.path.join(os.path.split(name)[0],
                                     os.path.splitext(os.path.split(name)[1])[0] +
                                     ('' if isGeom else '_{}({})'.format(options.pos, options.mode)) +
-                                    '.' + ('vtk' if options.legacy else writer.GetDefaultFileExtension())))
+                                    '.' + writer.GetDefaultFileExtension()))
   else:
+    writer = vtk.vtkDataSetWriter()
+    writer.SetHeader('# powered by '+scriptID)
     writer.WriteToOutputStringOn()
   
   if vtk.VTK_MAJOR_VERSION <= 5: writer.SetInput(rGrid)
@@ -153,6 +144,7 @@ for name in filenames:
 
   writer.Write()
 
-  if name is None:  sys.stdout.write(writer.GetOutputString())
+  if name is None:  sys.stdout.write(writer.GetOutputString() if name else
+                                     writer.GetOutputString()[0:writer.GetOutputStringLength()])
 
   table.close()

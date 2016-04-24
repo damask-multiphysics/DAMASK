@@ -23,14 +23,8 @@ parser.add_option('-p',
                   dest = 'pos',
                   type = 'string', metavar = 'string',
                   help = 'label of coordinates [%default]')
-parser.add_option('-l',
-                  '--legacy',
-                  dest = 'legacy',
-                  action = 'store_true',
-                  help = 'legacy VTK output')
 
 parser.set_defaults(pos = 'pos',
-                    legacy = False,
                    )
 
 (options, filenames) = parser.parse_args()
@@ -88,19 +82,16 @@ for name in filenames:
  
 # ------------------------------------------ output result ---------------------------------------  
 
-  if options.legacy:
-    writer = vtk.vtkDataSetWriter()
-    writer.SetHeader('# powered by '+scriptID)
-  else:
-    writer = vtk.vtkXMLPolyDataWriter()
-    writer.SetDataModeToBinary()
-    writer.SetCompressorTypeToZLib()
+  writer = vtk.vtkXMLPolyDataWriter()
+  writer.SetCompressorTypeToZLib()
 
   if name:
+    writer.SetDataModeToBinary()
     writer.SetFileName(os.path.join(os.path.split(name)[0],
                                     os.path.splitext(os.path.split(name)[1])[0] +
-                                    '.' + ('vtk' if options.legacy else writer.GetDefaultFileExtension())))
+                                    '.' + writer.GetDefaultFileExtension()))
   else:
+    writer.SetDataModeToAscii()
     writer.WriteToOutputStringOn()
   
   if vtk.VTK_MAJOR_VERSION <= 5: writer.SetInput(Polydata)
@@ -108,6 +99,6 @@ for name in filenames:
 
   writer.Write()
 
-  if name is None:  sys.stdout.write(writer.GetOutputString())  #[0:writer.GetOutputStringLength()]
+  if name is None:  sys.stdout.write(writer.GetOutputString())
 
   table.close()
