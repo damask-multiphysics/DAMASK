@@ -14,26 +14,30 @@ scriptID   = ' '.join([scriptName,damask.version])
 #--------------------------------------------------------------------------------------------------
 
 parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
-Create seed file taking microstructure indices from given geom file but excluding black-listed grains.
+Create seed file taking microstructure indices from given geom file.
+Indices can be black-listed or white-listed.
 
 """, version = scriptID)
 
-parser.add_option('-w','--white',
-                  action = 'extend', metavar='<int LIST>',
+parser.add_option('-w',
+                  '--white',
+                  action = 'extend', metavar = '<int LIST>',
                   dest   = 'whitelist',
                   help   = 'whitelist of grain IDs')
-parser.add_option('-b','--black',
-                  action = 'extend', metavar='<int LIST>',
+parser.add_option('-b',
+                  '--black',
+                  action = 'extend', metavar = '<int LIST>',
                   dest   = 'blacklist',
                   help   = 'blacklist of grain IDs')
-parser.add_option('-p','--position',
+parser.add_option('-p',
+                  '--pos', '--seedposition',
                   dest = 'position',
                   type = 'string', metavar = 'string',
-                  help = 'column label for coordinates [%default]')
+                  help = 'label of coordinates [%default]')
 
 parser.set_defaults(whitelist = [],
                     blacklist = [],
-                    position = 'pos',
+                    pos       = 'pos',
                    )
 
 (options,filenames) = parser.parse_args()
@@ -46,25 +50,18 @@ options.blacklist = map(int,options.blacklist)
 if filenames == []: filenames = [None]
 
 for name in filenames:
-  try:
-    table = damask.ASCIItable(name = name,
-                              outname = os.path.splitext(name)[0]+'.seeds' if name else name,
-                              buffered = False, labeled = False)
-  except:
-    continue
+  try:    table = damask.ASCIItable(name = name,
+                                    outname = os.path.splitext(name)[0]+'.seeds' if name else name,
+                                    buffered = False,
+                                    labeled = False)
+  except: continue
   damask.util.report(scriptName,name)
 
 # --- interpret header ----------------------------------------------------------------------------
 
   table.head_read()
   info,extra_header = table.head_getGeom()
-  
-  damask.util.croak(['grid     a b c:  %s'%(' x '.join(map(str,info['grid']))),
-               'size     x y z:  %s'%(' x '.join(map(str,info['size']))),
-               'origin   x y z:  %s'%(' : '.join(map(str,info['origin']))),
-               'homogenization:  %i'%info['homogenization'],
-               'microstructures: %i'%info['microstructures'],
-              ])
+  damask.util.report_geom(info)
 
   errors = []
   if np.any(info['grid'] < 1):    errors.append('invalid grid a b c.')
@@ -98,14 +95,14 @@ for name in filenames:
   table.info_clear()
   table.info_append(extra_header+[
     scriptID + ' ' + ' '.join(sys.argv[1:]),
-    "grid\ta {grid[0]}\tb {grid[1]}\tc {grid[2]}".format(grid=info['grid']),
-    "size\tx {size[0]}\ty {size[1]}\tz {size[2]}".format(size=info['size']),
-    "origin\tx {origin[0]}\ty {origin[1]}\tz {origin[2]}".format(origin=info['origin']),
-    "homogenization\t{homog}".format(homog=info['homogenization']),
-    "microstructures\t{microstructures}".format(microstructures=info['microstructures']),
+    "grid\ta {}\tb {}\tc {}".format(*info['grid']),
+    "size\tx {}\ty {}\tz {}".format(*info['size']),
+    "origin\tx {}\ty {}\tz {}".format(*info['origin']),
+    "homogenization\t{}".format(info['homogenization']),
+    "microstructures\t{}".format(info['microstructures']),
     ])
   table.labels_clear()
-  table.labels_append(['{dim}_{label}'.format(dim = 1+i,label = options.position) for i in range(3)]+['microstructure'])
+  table.labels_append(['{dim}_{label}'.format(dim = 1+i,label = options.pos) for i in range(3)]+['microstructure'])
   table.head_write()
   table.output_flush()
   
