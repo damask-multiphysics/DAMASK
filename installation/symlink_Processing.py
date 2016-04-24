@@ -21,7 +21,7 @@ if not os.path.isdir(binDir):
 
 #define ToDo list
 processing_subDirs = ['pre','post','misc',]
-processing_extensions = ['.py',]
+processing_extensions = ['.py','.sh',]
             
 for subDir in processing_subDirs:
   theDir = os.path.abspath(os.path.join(baseDir,subDir))
