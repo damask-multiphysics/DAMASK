@@ -27,7 +27,7 @@ for subDir in processing_subDirs:
   theDir = os.path.abspath(os.path.join(baseDir,subDir))
 
   for theFile in os.listdir(theDir):
-    if os.path.splitext(theFile)[1] in processing_extensions:                           # omit anything not fitting our script extensions (skip .py.bak, .py~, and the like)
+    if os.path.splitext(theFile)[1] in processing_extensions:                           # only consider files with proper extensions
 
       src      = os.path.abspath(os.path.join(theDir,theFile))
       sym_link = os.path.abspath(os.path.join(binDir,os.path.splitext(theFile)[0]))
