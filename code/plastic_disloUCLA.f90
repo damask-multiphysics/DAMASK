@@ -23,81 +23,53 @@ module plastic_disloUCLA
    plastic_disloUCLA_output                                                                         !< name of each post result output
 
  real(pReal),                                                 parameter,           private :: &
-   kB = 1.38e-23_pReal                                                                                  !< Boltzmann constant in J/Kelvin
+   kB = 1.38e-23_pReal                                                                              !< Boltzmann constant in J/Kelvin
 
  integer(pInt),                       dimension(:),           allocatable, target, public :: &
    plastic_disloUCLA_Noutput                                                                        !< number of outputs per instance of this plasticity 
 
  integer(pInt),                       dimension(:),           allocatable,         private :: &
-   plastic_disloUCLA_totalNslip, &                                                                  !< total number of active slip systems for each instance
-   plastic_disloUCLA_totalNtwin                                                                     !< total number of active twin systems for each instance
+   plastic_disloUCLA_totalNslip                                                                     !< total number of active slip systems for each instance
 
  integer(pInt),                       dimension(:,:),         allocatable,         private :: &
-   plastic_disloUCLA_Nslip, &                                                                       !< number of active slip systems for each family and instance
-   plastic_disloUCLA_Ntwin                                                                          !< number of active twin systems for each family and instance
+   plastic_disloUCLA_Nslip                                                                          !< number of active slip systems for each family and instance
+
 
  real(pReal),                         dimension(:),           allocatable,         private :: &
    plastic_disloUCLA_CAtomicVolume, &                                                               !< atomic volume in Bugers vector unit
    plastic_disloUCLA_D0, &                                                                          !< prefactor for self-diffusion coefficient
    plastic_disloUCLA_Qsd, &                                                                         !< activation energy for dislocation climb
    plastic_disloUCLA_GrainSize, &                                                                   !< grain size
-   plastic_disloUCLA_MaxTwinFraction, &                                                             !< maximum allowed total twin volume fraction
    plastic_disloUCLA_CEdgeDipMinDistance, &                                                         !<
-   plastic_disloUCLA_Cmfptwin, &                                                                    !<
-   plastic_disloUCLA_Cthresholdtwin, &                                                              !<
    plastic_disloUCLA_SolidSolutionStrength, &                                                       !< Strength due to elements in solid solution
-   plastic_disloUCLA_L0, &                                                                          !< Length of twin nuclei in Burgers vectors
-   plastic_disloUCLA_xc, &                                                                          !< critical distance for formation of twin nucleus
-   plastic_disloUCLA_VcrossSlip, &                                                                  !< cross slip volume
-   plastic_disloUCLA_SFE_0K, &                                                                      !< stacking fault energy at zero K
-   plastic_disloUCLA_dSFE_dT, &                                                                     !< temperature dependance of stacking fault energy
    plastic_disloUCLA_dipoleFormationFactor, &                                                       !< scaling factor for dipole formation: 0: off, 1: on. other values not useful
-   plastic_disloUCLA_aTolRho, &                                                                     !< absolute tolerance for integration of dislocation density
-   plastic_disloUCLA_aTolTwinFrac                                                                   !< absolute tolerance for integration of twin volume fraction
+   plastic_disloUCLA_aTolRho                                                                        !< absolute tolerance for integration of dislocation density
 
- real(pReal),                         dimension(:,:,:,:),     allocatable,         private :: &
-   plastic_disloUCLA_Ctwin66                                                                        !< twin elasticity matrix in Mandel notation for each instance
- real(pReal),                         dimension(:,:,:,:,:,:), allocatable,         private :: &
-   plastic_disloUCLA_Ctwin3333                                                                      !< twin elasticity matrix for each instance
  real(pReal),                         dimension(:,:),         allocatable,         private :: &
    plastic_disloUCLA_rhoEdge0, &                                                                    !< initial edge dislocation density per slip system for each family and instance
    plastic_disloUCLA_rhoEdgeDip0, &                                                                 !< initial edge dipole density per slip system for each family and instance
    plastic_disloUCLA_burgersPerSlipFamily, &                                                        !< absolute length of burgers vector [m] for each slip family and instance
    plastic_disloUCLA_burgersPerSlipSystem, &                                                        !< absolute length of burgers vector [m] for each slip system and instance
-   plastic_disloUCLA_burgersPerTwinFamily, &                                                        !< absolute length of burgers vector [m] for each twin family and instance
-   plastic_disloUCLA_burgersPerTwinSystem, &                                                        !< absolute length of burgers vector [m] for each twin system and instance
    plastic_disloUCLA_QedgePerSlipFamily, &                                                          !< activation energy for glide [J] for each slip family and instance
    plastic_disloUCLA_QedgePerSlipSystem, &                                                          !< activation energy for glide [J] for each slip system and instance
    plastic_disloUCLA_v0PerSlipFamily, &                                                             !< dislocation velocity prefactor [m/s] for each family and instance
    plastic_disloUCLA_v0PerSlipSystem, &                                                             !< dislocation velocity prefactor [m/s] for each slip system and instance
    plastic_disloUCLA_tau_peierlsPerSlipFamily, &                                                    !< Peierls stress [Pa] for each family and instance
-   plastic_disloUCLA_Ndot0PerTwinFamily, &                                                          !< twin nucleation rate [1/m³s] for each twin family and instance
-   plastic_disloUCLA_Ndot0PerTwinSystem, &                                                          !< twin nucleation rate [1/m³s] for each twin system and instance
-   plastic_disloUCLA_tau_r, &                                                                       !< stress to bring partial close together for each twin system and instance
-   plastic_disloUCLA_twinsizePerTwinFamily, &                                                       !< twin thickness [m] for each twin family and instance
-   plastic_disloUCLA_twinsizePerTwinSystem, &                                                       !< twin thickness [m] for each twin system and instance
    plastic_disloUCLA_CLambdaSlipPerSlipFamily, &                                                    !< Adj. parameter for distance between 2 forest dislocations for each slip family and instance
    plastic_disloUCLA_CLambdaSlipPerSlipSystem, &                                                    !< Adj. parameter for distance between 2 forest dislocations for each slip system and instance
    plastic_disloUCLA_interaction_SlipSlip, &                                                        !< coefficients for slip-slip interaction for each interaction type and instance
-   plastic_disloUCLA_interaction_SlipTwin, &                                                        !< coefficients for slip-twin interaction for each interaction type and instance
-   plastic_disloUCLA_interaction_TwinSlip, &                                                        !< coefficients for twin-slip interaction for each interaction type and instance
-   plastic_disloUCLA_interaction_TwinTwin, &                                                        !< coefficients for twin-twin interaction for each interaction type and instance
    plastic_disloUCLA_pPerSlipFamily, &                                                              !< p-exponent in glide velocity
    plastic_disloUCLA_qPerSlipFamily, &                                                              !< q-exponent in glide velocity       
    !* mobility law parameters                                                                                                                                                      
-   plastic_disloUCLA_kinkheight, &                                                                 !< height of the kink pair                                                      
-   plastic_disloUCLA_omega, &                                                                      !< attempt frequency for kink pair nucleation                                   
-   plastic_disloUCLA_kinkwidth, &                                                                  !< width of the kink pair                                                       
-   plastic_disloUCLA_dislolength, &                                                                !< dislocation length (lamda)                                                   
-   plastic_disloUCLA_friction, &                                                                   !< friction coeff. B (kMC)
+   plastic_disloUCLA_kinkheight, &                                                                  !< height of the kink pair                                                      
+   plastic_disloUCLA_omega, &                                                                       !< attempt frequency for kink pair nucleation                                   
+   plastic_disloUCLA_kinkwidth, &                                                                   !< width of the kink pair                                                       
+   plastic_disloUCLA_dislolength, &                                                                 !< dislocation length (lamda)                                                   
+   plastic_disloUCLA_friction, &                                                                    !< friction coeff. B (kMC)
    !*    
-   plastic_disloUCLA_rPerTwinFamily, &                                                              !< r-exponent in twin nucleation rate
    plastic_disloUCLA_nonSchmidCoeff                                                                 !< non-Schmid coefficients (bcc)
  real(pReal),                         dimension(:,:,:),       allocatable,         private :: &
    plastic_disloUCLA_interactionMatrix_SlipSlip, &                                                  !< interaction matrix of the different slip systems for each instance
-   plastic_disloUCLA_interactionMatrix_SlipTwin, &                                                  !< interaction matrix of slip systems with twin systems for each instance
-   plastic_disloUCLA_interactionMatrix_TwinSlip, &                                                  !< interaction matrix of twin systems with slip systems for each instance
-   plastic_disloUCLA_interactionMatrix_TwinTwin, &                                                  !< interaction matrix of the different twin systems for each instance
    plastic_disloUCLA_forestProjectionEdge                                                           !< matrix of forest projections of edge dislocations for each instance
 
  enum, bind(c) 
@@ -110,13 +82,7 @@ module plastic_disloUCLA
                  resolved_stress_slip_ID, &
                  threshold_stress_slip_ID, &
                  edge_dipole_distance_ID, &
-                 stress_exponent_ID, &
-                 twin_fraction_ID, &
-                 shear_rate_twin_ID, &
-                 accumulated_shear_twin_ID, &
-                 mfp_twin_ID, &
-                 resolved_stress_twin_ID, &
-                 threshold_stress_twin_ID
+                 stress_exponent_ID
  end enum
  integer(kind(undefined_ID)),         dimension(:,:),         allocatable,          private :: & 
    plastic_disloUCLA_outputID                                                                       !< ID of each post result output
@@ -126,16 +92,9 @@ module plastic_disloUCLA
        rhoEdge, &
        rhoEdgeDip, &
        accshear_slip, &
-       twinFraction, &
-       accshear_twin, &
        invLambdaSlip, &
-       invLambdaSlipTwin, &
-       invLambdaTwin, &
        mfp_slip, &
-       mfp_twin, &
-       threshold_stress_slip, &
-       threshold_stress_twin, &
-       twinVolume
+       threshold_stress_slip
  end type 
  type(tDisloUCLAState ), allocatable, dimension(:), private :: &
    state, &
@@ -201,11 +160,10 @@ subroutine plastic_disloUCLA_init(fileUnit)
  integer(pInt), intent(in) :: fileUnit
 
  integer(pInt), allocatable, dimension(:) :: chunkPos
- integer(pInt) :: maxNinstance,mySize=0_pInt,phase,maxTotalNslip,maxTotalNtwin,&
-                  f,instance,j,k,l,m,n,o,p,q,r,s,ns,nt, &
-                  Nchunks_SlipSlip = 0_pInt, Nchunks_SlipTwin = 0_pInt, &
-                  Nchunks_TwinSlip = 0_pInt, Nchunks_TwinTwin = 0_pInt, &
-                  Nchunks_SlipFamilies = 0_pInt, Nchunks_TwinFamilies = 0_pInt, Nchunks_nonSchmid = 0_pInt, &
+ integer(pInt) :: maxNinstance,mySize=0_pInt,phase,maxTotalNslip,&
+                  f,instance,j,k,o,ns, &
+                  Nchunks_SlipSlip = 0_pInt, &
+                  Nchunks_SlipFamilies = 0_pInt,Nchunks_nonSchmid = 0_pInt, &
                   offset_slip, index_myFamily, index_otherFamily, &
                   startIndex, endIndex
  integer(pInt) :: sizeState, sizeDotState, sizeDeltaState
@@ -213,7 +171,7 @@ subroutine plastic_disloUCLA_init(fileUnit)
  character(len=65536) :: &
    tag  = '', &
    line = ''
- real(pReal), dimension(:), allocatable :: tempPerSlip, tempPerTwin
+ real(pReal), dimension(:), allocatable :: tempPerSlip
   
  mainProcess: if (worldrank == 0) then 
    write(6,'(/,a)')   ' <<<+-  constitutive_'//PLASTICITY_DISLOUCLA_label//' init  -+>>>'
@@ -234,25 +192,14 @@ subroutine plastic_disloUCLA_init(fileUnit)
  allocate(plastic_disloUCLA_outputID(maxval(phase_Noutput),maxNinstance),      source=undefined_ID)
  allocate(plastic_disloUCLA_Noutput(maxNinstance),                             source=0_pInt)
  allocate(plastic_disloUCLA_Nslip(lattice_maxNslipFamily,maxNinstance),        source=0_pInt)
- allocate(plastic_disloUCLA_Ntwin(lattice_maxNtwinFamily,maxNinstance),        source=0_pInt)
  allocate(plastic_disloUCLA_totalNslip(maxNinstance),                          source=0_pInt)
- allocate(plastic_disloUCLA_totalNtwin(maxNinstance),                          source=0_pInt)
  allocate(plastic_disloUCLA_CAtomicVolume(maxNinstance),                       source=0.0_pReal)
  allocate(plastic_disloUCLA_D0(maxNinstance),                                  source=0.0_pReal)
  allocate(plastic_disloUCLA_Qsd(maxNinstance),                                 source=0.0_pReal)
  allocate(plastic_disloUCLA_GrainSize(maxNinstance),                           source=0.0_pReal)
- allocate(plastic_disloUCLA_MaxTwinFraction(maxNinstance),                     source=0.0_pReal)
  allocate(plastic_disloUCLA_CEdgeDipMinDistance(maxNinstance),                 source=0.0_pReal)
- allocate(plastic_disloUCLA_Cmfptwin(maxNinstance),                            source=0.0_pReal)
- allocate(plastic_disloUCLA_Cthresholdtwin(maxNinstance),                      source=0.0_pReal)
  allocate(plastic_disloUCLA_SolidSolutionStrength(maxNinstance),               source=0.0_pReal)
- allocate(plastic_disloUCLA_L0(maxNinstance),                                  source=0.0_pReal)
- allocate(plastic_disloUCLA_xc(maxNinstance),                                  source=0.0_pReal)
- allocate(plastic_disloUCLA_VcrossSlip(maxNinstance),                          source=0.0_pReal)
  allocate(plastic_disloUCLA_aTolRho(maxNinstance),                             source=0.0_pReal)
- allocate(plastic_disloUCLA_aTolTwinFrac(maxNinstance),                        source=0.0_pReal)
- allocate(plastic_disloUCLA_SFE_0K(maxNinstance),                              source=0.0_pReal)
- allocate(plastic_disloUCLA_dSFE_dT(maxNinstance),                             source=0.0_pReal)
  allocate(plastic_disloUCLA_dipoleFormationFactor(maxNinstance),               source=1.0_pReal) !should be on by default
  allocate(plastic_disloUCLA_rhoEdge0(lattice_maxNslipFamily,maxNinstance),     source=0.0_pReal)
  allocate(plastic_disloUCLA_rhoEdgeDip0(lattice_maxNslipFamily,maxNinstance),  source=0.0_pReal)
@@ -262,22 +209,18 @@ subroutine plastic_disloUCLA_init(fileUnit)
  allocate(plastic_disloUCLA_kinkwidth(lattice_maxNslipFamily,maxNinstance),    source=0.0_pReal)
  allocate(plastic_disloUCLA_dislolength(lattice_maxNslipFamily,maxNinstance),  source=0.0_pReal)
  allocate(plastic_disloUCLA_friction(lattice_maxNslipFamily,maxNinstance),     source=0.0_pReal)
- allocate(plastic_disloUCLA_burgersPerTwinFamily(lattice_maxNtwinFamily,maxNinstance),source=0.0_pReal)
  allocate(plastic_disloUCLA_QedgePerSlipFamily(lattice_maxNslipFamily,maxNinstance),  source=0.0_pReal)
  allocate(plastic_disloUCLA_v0PerSlipFamily(lattice_maxNslipFamily,maxNinstance),     source=0.0_pReal)
  allocate(plastic_disloUCLA_tau_peierlsPerSlipFamily(lattice_maxNslipFamily,maxNinstance), &
                                                                                       source=0.0_pReal)
  allocate(plastic_disloUCLA_pPerSlipFamily(lattice_maxNslipFamily,maxNinstance),       source=0.0_pReal)
  allocate(plastic_disloUCLA_qPerSlipFamily(lattice_maxNslipFamily,maxNinstance),       source=0.0_pReal)
- allocate(plastic_disloUCLA_Ndot0PerTwinFamily(lattice_maxNtwinFamily,maxNinstance),   source=0.0_pReal)
- allocate(plastic_disloUCLA_twinsizePerTwinFamily(lattice_maxNtwinFamily,maxNinstance),source=0.0_pReal)
+
  allocate(plastic_disloUCLA_CLambdaSlipPerSlipFamily(lattice_maxNslipFamily,maxNinstance), &
                                                                                       source=0.0_pReal)
- allocate(plastic_disloUCLA_rPerTwinFamily(lattice_maxNtwinFamily,maxNinstance),source=0.0_pReal)
+
  allocate(plastic_disloUCLA_interaction_SlipSlip(lattice_maxNinteraction,maxNinstance),source=0.0_pReal)
- allocate(plastic_disloUCLA_interaction_SlipTwin(lattice_maxNinteraction,maxNinstance),source=0.0_pReal)
- allocate(plastic_disloUCLA_interaction_TwinSlip(lattice_maxNinteraction,maxNinstance),source=0.0_pReal)
- allocate(plastic_disloUCLA_interaction_TwinTwin(lattice_maxNinteraction,maxNinstance),source=0.0_pReal)
+
  allocate(plastic_disloUCLA_nonSchmidCoeff(lattice_maxNnonSchmid,maxNinstance),        source=0.0_pReal)
  
 
@@ -298,16 +241,10 @@ subroutine plastic_disloUCLA_init(fileUnit)
      phase = phase + 1_pInt                                                                         ! advance phase section counter
      if (phase_plasticity(phase) == PLASTICITY_DISLOUCLA_ID) then
        Nchunks_SlipFamilies = count(lattice_NslipSystem(:,phase) > 0_pInt)
-       Nchunks_TwinFamilies = count(lattice_NtwinSystem(:,phase) > 0_pInt)
        Nchunks_SlipSlip =     maxval(lattice_interactionSlipSlip(:,:,phase))
-       Nchunks_SlipTwin =     maxval(lattice_interactionSlipTwin(:,:,phase))
-       Nchunks_TwinSlip =     maxval(lattice_interactionTwinSlip(:,:,phase))
-       Nchunks_TwinTwin =     maxval(lattice_interactionTwinTwin(:,:,phase))
        Nchunks_nonSchmid =    lattice_NnonSchmid(phase)
        if(allocated(tempPerSlip)) deallocate(tempPerSlip)
-       if(allocated(tempPerTwin)) deallocate(tempPerTwin)
        allocate(tempPerSlip(Nchunks_SlipFamilies))
-       allocate(tempPerTwin(Nchunks_TwinFamilies))
      endif
      cycle                                                                                          ! skip to next line
    endif
@@ -433,7 +370,7 @@ subroutine plastic_disloUCLA_init(fileUnit)
            plastic_disloUCLA_nonSchmidCoeff(j,instance) = IO_floatValue(line,chunkPos,1_pInt+j)
          enddo
 !--------------------------------------------------------------------------------------------------
-! parameters independent of number of slip/twin systems
+! parameters independent of number of slip systems
        case ('grainsize')
          plastic_disloUCLA_GrainSize(instance) = IO_floatValue(line,chunkPos,2_pInt)
        case ('d0')
@@ -444,12 +381,6 @@ subroutine plastic_disloUCLA_init(fileUnit)
          plastic_disloUCLA_aTolRho(instance) = IO_floatValue(line,chunkPos,2_pInt)
        case ('solidsolutionstrength')
          plastic_disloUCLA_SolidSolutionStrength(instance) = IO_floatValue(line,chunkPos,2_pInt)
-       case ('l0')
-         plastic_disloUCLA_L0(instance) = IO_floatValue(line,chunkPos,2_pInt)
-       case ('xc')
-         plastic_disloUCLA_xc(instance) = IO_floatValue(line,chunkPos,2_pInt)
-       case ('vcrossslip')
-         plastic_disloUCLA_VcrossSlip(instance) = IO_floatValue(line,chunkPos,2_pInt)
        case ('cedgedipmindistance')
          plastic_disloUCLA_CEdgeDipMinDistance(instance) = IO_floatValue(line,chunkPos,2_pInt)
        case ('catomicvolume')
@@ -465,8 +396,6 @@ subroutine plastic_disloUCLA_init(fileUnit)
       instance = phase_plasticityInstance(phase)
       if (sum(plastic_disloUCLA_Nslip(:,instance)) < 0_pInt) &
         call IO_error(211_pInt,el=instance,ext_msg='Nslip ('//PLASTICITY_DISLOUCLA_label//')')
-      if (sum(plastic_disloUCLA_Ntwin(:,instance)) < 0_pInt) &
-        call IO_error(211_pInt,el=instance,ext_msg='Ntwin ('//PLASTICITY_DISLOUCLA_label//')')
       do f = 1_pInt,lattice_maxNslipFamily
         if (plastic_disloUCLA_Nslip(f,instance) > 0_pInt) then
           if (plastic_disloUCLA_rhoEdge0(f,instance) < 0.0_pReal) &
@@ -487,60 +416,40 @@ subroutine plastic_disloUCLA_init(fileUnit)
         call IO_error(211_pInt,el=instance,ext_msg='D0 ('//PLASTICITY_DISLOUCLA_label//')')
       if (plastic_disloUCLA_Qsd(instance) <= 0.0_pReal) &
         call IO_error(211_pInt,el=instance,ext_msg='Qsd ('//PLASTICITY_DISLOUCLA_label//')')
-      if (plastic_disloUCLA_aTolRho(instance) <= 0.0_pReal) &
-        call IO_error(211_pInt,el=instance,ext_msg='aTolRho ('//PLASTICITY_DISLOUCLA_label//')')   
+     ! if (plastic_disloUCLA_aTolRho(instance) <= 0.0_pReal) &
+     !   call IO_error(211_pInt,el=instance,ext_msg='aTolRho ('//PLASTICITY_DISLOUCLA_label//')')   
 
 !--------------------------------------------------------------------------------------------------
-! Determine total number of active slip or twin systems
+! Determine total number of active slip systems
       plastic_disloUCLA_Nslip(:,instance) = min(lattice_NslipSystem(:,phase),plastic_disloUCLA_Nslip(:,instance))
-      plastic_disloUCLA_Ntwin(:,instance) = min(lattice_NtwinSystem(:,phase),plastic_disloUCLA_Ntwin(:,instance))
       plastic_disloUCLA_totalNslip(instance) = sum(plastic_disloUCLA_Nslip(:,instance))
-      plastic_disloUCLA_totalNtwin(instance) = sum(plastic_disloUCLA_Ntwin(:,instance))
    endif myPhase
  enddo sanityChecks
  
 !--------------------------------------------------------------------------------------------------
 ! allocation of variables whose size depends on the total number of active slip systems
  maxTotalNslip = maxval(plastic_disloUCLA_totalNslip)
- maxTotalNtwin = maxval(plastic_disloUCLA_totalNtwin)
  
  allocate(plastic_disloUCLA_burgersPerSlipSystem(maxTotalNslip, maxNinstance),    source=0.0_pReal)
- allocate(plastic_disloUCLA_burgersPerTwinSystem(maxTotalNtwin, maxNinstance),    source=0.0_pReal)
  allocate(plastic_disloUCLA_QedgePerSlipSystem(maxTotalNslip, maxNinstance),      source=0.0_pReal)
  allocate(plastic_disloUCLA_v0PerSlipSystem(maxTotalNslip, maxNinstance),         source=0.0_pReal)
- allocate(plastic_disloUCLA_Ndot0PerTwinSystem(maxTotalNtwin, maxNinstance),      source=0.0_pReal)
- allocate(plastic_disloUCLA_tau_r(maxTotalNtwin, maxNinstance),                   source=0.0_pReal)
- allocate(plastic_disloUCLA_twinsizePerTwinSystem(maxTotalNtwin, maxNinstance),   source=0.0_pReal)
  allocate(plastic_disloUCLA_CLambdaSlipPerSlipSystem(maxTotalNslip, maxNinstance),source=0.0_pReal)
  
  allocate(plastic_disloUCLA_interactionMatrix_SlipSlip(maxval(plastic_disloUCLA_totalNslip),&  ! slip resistance from slip activity
                                                             maxval(plastic_disloUCLA_totalNslip),&
                                                             maxNinstance), source=0.0_pReal)
- allocate(plastic_disloUCLA_interactionMatrix_SlipTwin(maxval(plastic_disloUCLA_totalNslip),&  ! slip resistance from twin activity
-                                                            maxval(plastic_disloUCLA_totalNtwin),&
-                                                            maxNinstance), source=0.0_pReal)
- allocate(plastic_disloUCLA_interactionMatrix_TwinSlip(maxval(plastic_disloUCLA_totalNtwin),&  ! twin resistance from slip activity
-                                                            maxval(plastic_disloUCLA_totalNslip),&
-                                                            maxNinstance), source=0.0_pReal)
- allocate(plastic_disloUCLA_interactionMatrix_TwinTwin(maxval(plastic_disloUCLA_totalNtwin),&  ! twin resistance from twin activity
-                                                            maxval(plastic_disloUCLA_totalNtwin),&
-                                                            maxNinstance), source=0.0_pReal)
  allocate(plastic_disloUCLA_forestProjectionEdge(maxTotalNslip,maxTotalNslip,maxNinstance), &
                                                                                        source=0.0_pReal)
- allocate(plastic_disloUCLA_Ctwin66(6,6,maxTotalNtwin,maxNinstance),              source=0.0_pReal)
- allocate(plastic_disloUCLA_Ctwin3333(3,3,3,3,maxTotalNtwin,maxNinstance),        source=0.0_pReal)
  
  allocate(state(maxNinstance))
  allocate(state0(maxNinstance))
  allocate(dotState(maxNinstance))
 
  initializeInstances: do phase = 1_pInt, size(phase_plasticity)
-    myPhase2: if (phase_plasticity(phase) == PLASTICITY_disloUCLA_ID) then
+   myPhase2: if (phase_plasticity(phase) == PLASTICITY_disloUCLA_ID) then
      NofMyPhase=count(material_phase==phase)
      instance = phase_plasticityInstance(phase)
- 
      ns = plastic_disloUCLA_totalNslip(instance)
-     nt = plastic_disloUCLA_totalNtwin(instance)
 
 !--------------------------------------------------------------------------------------------------
 !  Determine size of postResults array
@@ -568,21 +477,18 @@ subroutine plastic_disloUCLA_init(fileUnit)
 !--------------------------------------------------------------------------------------------------
 ! allocate state arrays
 
-     sizeDotState     = int(size(['rhoEdge     ','rhoEdgeDip  ','accshearslip']),pInt) * ns &
-                      + int(size(['twinFraction','accsheartwin']),pInt) * nt
+     sizeDotState     = int(size(['rhoEdge     ','rhoEdgeDip  ','accshearslip']),pInt) * ns
      sizeDeltaState   =  0_pInt
      sizeState        = sizeDotState &
-                      + int(size(['invLambdaSlip     ','invLambdaSlipTwin ',&
-                                  'meanFreePathSlip  ','tauSlipThreshold  ']),pInt) * ns &
-                      + int(size(['invLambdaTwin   ','meanFreePathTwin','tauTwinThreshold',&
-                                  'twinVolume      ']),pInt) * nt
+                      + int(size(['invLambdaSlip     ',&
+                                  'meanFreePathSlip  ','tauSlipThreshold  ']),pInt) * ns
 
      plasticState(phase)%sizeState = sizeState
      plasticState(phase)%sizeDotState = sizeDotState
      plasticState(phase)%sizeDeltaState = sizeDeltaState
      plasticState(phase)%sizePostResults = plastic_disloUCLA_sizePostResults(instance)
      plasticState(phase)%nSlip = plastic_disloucla_totalNslip(instance)
-     plasticState(phase)%nTwin = plastic_disloucla_totalNtwin(instance)
+     plasticState(phase)%nTwin = 0_pInt
      plasticState(phase)%nTrans= 0_pInt
      allocate(plasticState(phase)%aTolState           (sizeState),                source=0.0_pReal)
      allocate(plasticState(phase)%state0              (sizeState,NofMyPhase),     source=0.0_pReal)
@@ -634,7 +540,6 @@ subroutine plastic_disloUCLA_init(fileUnit)
   
        !* Calculation of forest projections for edge dislocations
        !* Interaction matrices
-  
          otherSlipFamilies: do o = 1_pInt,lattice_maxNslipFamily
            index_otherFamily = sum(plastic_disloUCLA_Nslip(1:o-1_pInt,instance))
            otherSlipSystems: do k = 1_pInt,plastic_disloUCLA_Nslip(o,instance)
@@ -647,149 +552,43 @@ subroutine plastic_disloUCLA_init(fileUnit)
                                                                  sum(lattice_NslipSystem(1:o-1,phase))+k, &
                                                                  phase), instance )
          enddo otherSlipSystems; enddo otherSlipFamilies
-  
-         otherTwinFamilies: do o = 1_pInt,lattice_maxNtwinFamily
-           index_otherFamily = sum(plastic_disloUCLA_Ntwin(1:o-1_pInt,instance))
-           otherTwinSystems: do k = 1_pInt,plastic_disloUCLA_Ntwin(o,instance)
-             plastic_disloUCLA_interactionMatrix_SlipTwin(index_myFamily+j,index_otherFamily+k,instance) = &
-                   plastic_disloUCLA_interaction_SlipTwin(lattice_interactionSlipTwin( &
-                                                                 sum(lattice_NslipSystem(1:f-1_pInt,phase))+j, &
-                                                                 sum(lattice_NtwinSystem(1:o-1_pInt,phase))+k, &
-                                                                 phase), instance )
-         enddo otherTwinSystems; enddo otherTwinFamilies
-  
+ 
        enddo mySlipSystems
      enddo mySlipFamilies
   
-    !* Process twin related parameters ------------------------------------------------
-    
-     myTwinFamilies: do f = 1_pInt,lattice_maxNtwinFamily
-       index_myFamily = sum(plastic_disloUCLA_Ntwin(1:f-1_pInt,instance))                      ! index in truncated twin system list
-       myTwinSystems: do j = 1_pInt,plastic_disloUCLA_Ntwin(f,instance)
- 
-       !* Burgers vector,
-       !  nucleation rate prefactor,
-       !  and twin size
- 
-         plastic_disloUCLA_burgersPerTwinSystem(index_myFamily+j,instance)  = &
-         plastic_disloUCLA_burgersPerTwinFamily(f,instance)
+     startIndex=1_pInt
+     endIndex=ns
+     state(instance)%rhoEdge=>plasticState(phase)%state(startIndex:endIndex,:)
+     state0(instance)%rhoEdge=>plasticState(phase)%state0(startIndex:endIndex,:)
+     dotState(instance)%rhoEdge=>plasticState(phase)%dotState(startIndex:endIndex,:) 
 
-         plastic_disloUCLA_Ndot0PerTwinSystem(index_myFamily+j,instance)  = &
-         plastic_disloUCLA_Ndot0PerTwinFamily(f,instance)
+     startIndex=endIndex+1_pInt
+     endIndex=endIndex+ns
+     state(instance)%rhoEdgeDip=>plasticState(phase)%state(startIndex:endIndex,:)
+     state0(instance)%rhoEdgeDip=>plasticState(phase)%state0(startIndex:endIndex,:)
+     dotState(instance)%rhoEdgeDip=>plasticState(phase)%dotState(startIndex:endIndex,:)
 
-         plastic_disloUCLA_twinsizePerTwinSystem(index_myFamily+j,instance) = &
-         plastic_disloUCLA_twinsizePerTwinFamily(f,instance)
- 
-       !* Rotate twin elasticity matrices
-         index_otherFamily = sum(lattice_NtwinSystem(1:f-1_pInt,phase))                             ! index in full lattice twin list
-         do l = 1_pInt,3_pInt; do m = 1_pInt,3_pInt; do n = 1_pInt,3_pInt; do o = 1_pInt,3_pInt
-           do p = 1_pInt,3_pInt; do q = 1_pInt,3_pInt; do r = 1_pInt,3_pInt; do s = 1_pInt,3_pInt
-             plastic_disloUCLA_Ctwin3333(l,m,n,o,index_myFamily+j,instance) = &
-             plastic_disloUCLA_Ctwin3333(l,m,n,o,index_myFamily+j,instance) + &
-               lattice_C3333(p,q,r,s,instance) * &
-               lattice_Qtwin(l,p,index_otherFamily+j,phase) * &
-               lattice_Qtwin(m,q,index_otherFamily+j,phase) * &
-               lattice_Qtwin(n,r,index_otherFamily+j,phase) * &
-               lattice_Qtwin(o,s,index_otherFamily+j,phase)
-           enddo; enddo; enddo; enddo
-         enddo; enddo; enddo; enddo
-         plastic_disloUCLA_Ctwin66(1:6,1:6,index_myFamily+j,instance) = &
-           math_Mandel3333to66(plastic_disloUCLA_Ctwin3333(1:3,1:3,1:3,1:3,index_myFamily+j,instance))
- 
-      !* Interaction matrices
-         otherSlipFamilies2: do o = 1_pInt,lattice_maxNslipFamily
-           index_otherFamily = sum(plastic_disloUCLA_Nslip(1:o-1_pInt,instance))
-           otherSlipSystems2: do k = 1_pInt,plastic_disloUCLA_Nslip(o,instance)
-             plastic_disloUCLA_interactionMatrix_TwinSlip(index_myFamily+j,index_otherFamily+k,instance) = &
-                   plastic_disloUCLA_interaction_TwinSlip(lattice_interactionTwinSlip( &
-                                                                 sum(lattice_NtwinSystem(1:f-1_pInt,phase))+j, &
-                                                                 sum(lattice_NslipSystem(1:o-1_pInt,phase))+k, &
-                                                                 phase), instance )
-         enddo otherSlipSystems2; enddo otherSlipFamilies2
- 
-         otherTwinFamilies2: do o = 1_pInt,lattice_maxNtwinFamily
-           index_otherFamily = sum(plastic_disloUCLA_Ntwin(1:o-1_pInt,instance))
-           otherTwinSystems2:  do k = 1_pInt,plastic_disloUCLA_Ntwin(o,instance)
-             plastic_disloUCLA_interactionMatrix_TwinTwin(index_myFamily+j,index_otherFamily+k,instance) = &
-                   plastic_disloUCLA_interaction_TwinTwin(lattice_interactionTwinTwin( &
-                                                                 sum(lattice_NtwinSystem(1:f-1_pInt,phase))+j, &
-                                                                 sum(lattice_NtwinSystem(1:o-1_pInt,phase))+k, &
-                                                                 phase), instance )
-         enddo otherTwinSystems2; enddo otherTwinFamilies2
- 
-       enddo myTwinSystems
-    enddo myTwinFamilies
-    
-    startIndex=1_pInt
-    endIndex=ns
-    state(instance)%rhoEdge=>plasticState(phase)%state(startIndex:endIndex,:)
-    state0(instance)%rhoEdge=>plasticState(phase)%state0(startIndex:endIndex,:)
-    dotState(instance)%rhoEdge=>plasticState(phase)%dotState(startIndex:endIndex,:) 
-    
-    startIndex=endIndex+1_pInt
-    endIndex=endIndex+ns
-    state(instance)%rhoEdgeDip=>plasticState(phase)%state(startIndex:endIndex,:)
-    state0(instance)%rhoEdgeDip=>plasticState(phase)%state0(startIndex:endIndex,:)
-    dotState(instance)%rhoEdgeDip=>plasticState(phase)%dotState(startIndex:endIndex,:)
-    
-    startIndex=endIndex+1_pInt
-    endIndex=endIndex+ns
-    state(instance)%accshear_slip=>plasticState(phase)%state(startIndex:endIndex,:)
-    state0(instance)%accshear_slip=>plasticState(phase)%state0(startIndex:endIndex,:)
-    dotState(instance)%accshear_slip=>plasticState(phase)%dotState(startIndex:endIndex,:)
-    
-    startIndex=endIndex+1_pInt
-    endIndex=endIndex+nt
-    state(instance)%twinFraction=>plasticState(phase)%state(startIndex:endIndex,:)
-    state0(instance)%twinFraction=>plasticState(phase)%state0(startIndex:endIndex,:)
-    dotState(instance)%twinFraction=>plasticState(phase)%dotState(startIndex:endIndex,:)
-    
-    startIndex=endIndex+1_pInt
-    endIndex=endIndex+nt
-    state(instance)%accshear_twin=>plasticState(phase)%state(startIndex:endIndex,:)
-    state0(instance)%accshear_twin=>plasticState(phase)%state0(startIndex:endIndex,:)
-    dotState(instance)%accshear_twin=>plasticState(phase)%dotState(startIndex:endIndex,:)
-    
-    startIndex=endIndex+1_pInt
-    endIndex=endIndex+ns
-    state(instance)%invLambdaSlip=>plasticState(phase)%state(startIndex:endIndex,:)
-    state0(instance)%invLambdaSlip=>plasticState(phase)%state0(startIndex:endIndex,:)
-    
-    startIndex=endIndex+1
-    endIndex=endIndex+ns
-    state(instance)%invLambdaSlipTwin=>plasticState(phase)%state(startIndex:endIndex,:)
-    state0(instance)%invLambdaSlipTwin=>plasticState(phase)%state0(startIndex:endIndex,:)
-    
-    startIndex=endIndex+1
-    endIndex=endIndex+nt
-    state(instance)%invLambdaTwin=>plasticState(phase)%state(startIndex:endIndex,:)
-    state0(instance)%invLambdaTwin=>plasticState(phase)%state0(startIndex:endIndex,:)
-    
-    startIndex=endIndex+1
-    endIndex=endIndex+ns
-    state(instance)%mfp_slip=>plasticState(phase)%state(startIndex:endIndex,:)
-    state0(instance)%mfp_slip=>plasticState(phase)%state0(startIndex:endIndex,:)
-    
-    startIndex=endIndex+1
-    endIndex=endIndex+nt
-    state(instance)%mfp_twin=>plasticState(phase)%state(startIndex:endIndex,:)
-    state0(instance)%mfp_twin=>plasticState(phase)%state0(startIndex:endIndex,:)
-    
-    startIndex=endIndex+1
-    endIndex=endIndex+ns
-    state(instance)%threshold_stress_slip=>plasticState(phase)%state(startIndex:endIndex,:)
-    state0(instance)%threshold_stress_slip=>plasticState(phase)%state0(startIndex:endIndex,:)
+     startIndex=endIndex+1_pInt
+     endIndex=endIndex+ns
+     state(instance)%accshear_slip=>plasticState(phase)%state(startIndex:endIndex,:)
+     state0(instance)%accshear_slip=>plasticState(phase)%state0(startIndex:endIndex,:)
+     dotState(instance)%accshear_slip=>plasticState(phase)%dotState(startIndex:endIndex,:)
 
-    startIndex=endIndex+1
-    endIndex=endIndex+nt
-    state(instance)%threshold_stress_twin=>plasticState(phase)%state(startIndex:endIndex,:)
-    state0(instance)%threshold_stress_twin=>plasticState(phase)%state0(startIndex:endIndex,:)
-    
-    startIndex=endIndex+1
-    endIndex=endIndex+nt
-    state(instance)%twinVolume=>plasticState(phase)%state(startIndex:endIndex,:)
-    state0(instance)%twinVolume=>plasticState(phase)%state0(startIndex:endIndex,:)
-    
+     startIndex=endIndex+1_pInt
+     endIndex=endIndex+ns
+     state(instance)%invLambdaSlip=>plasticState(phase)%state(startIndex:endIndex,:)
+     state0(instance)%invLambdaSlip=>plasticState(phase)%state0(startIndex:endIndex,:)
+
+     startIndex=endIndex+1_pInt
+     endIndex=endIndex+ns
+     state(instance)%mfp_slip=>plasticState(phase)%state(startIndex:endIndex,:)
+     state0(instance)%mfp_slip=>plasticState(phase)%state0(startIndex:endIndex,:)
+
+     startIndex=endIndex+1_pInt
+     endIndex=endIndex+ns
+     state(instance)%threshold_stress_slip=>plasticState(phase)%state(startIndex:endIndex,:)
+     state0(instance)%threshold_stress_slip=>plasticState(phase)%state0(startIndex:endIndex,:)
+
      call plastic_disloUCLA_stateInit(phase,instance)
      call plastic_disloUCLA_aTolState(phase,instance)
    endif myPhase2
@@ -817,18 +616,15 @@ subroutine plastic_disloUCLA_stateInit(ph,instance)
 
   real(pReal), dimension(plasticState(ph)%sizeState) :: tempState
 
- integer(pInt) :: i,j,f,ns,nt, index_myFamily
+ integer(pInt) :: i,f,ns, index_myFamily
  real(pReal), dimension(plastic_disloUCLA_totalNslip(instance)) :: &
    rhoEdge0, &
    rhoEdgeDip0, &
    invLambdaSlip0, &
    MeanFreePathSlip0, &
    tauSlipThreshold0
- real(pReal), dimension(plastic_disloUCLA_totalNtwin(instance)) :: &
-   MeanFreePathTwin0,TwinVolume0
  tempState = 0.0_pReal
  ns = plastic_disloUCLA_totalNslip(instance)
- nt = plastic_disloUCLA_totalNtwin(instance)
 
 !--------------------------------------------------------------------------------------------------
 ! initialize basic slip state variables
@@ -850,32 +646,19 @@ subroutine plastic_disloUCLA_stateInit(ph,instance)
  forall (i = 1_pInt:ns) &
    invLambdaSlip0(i) = sqrt(dot_product((rhoEdge0+rhoEdgeDip0),plastic_disloUCLA_forestProjectionEdge(1:ns,i,instance)))/ &
                        plastic_disloUCLA_CLambdaSlipPerSlipSystem(i,instance)
- tempState(3_pInt*ns+2_pInt*nt+1:4_pInt*ns+2_pInt*nt) = invLambdaSlip0
+ tempState(3_pInt*ns+1:4_pInt*ns) = invLambdaSlip0
  
  forall (i = 1_pInt:ns) &
    MeanFreePathSlip0(i) = &
      plastic_disloUCLA_GrainSize(instance)/(1.0_pReal+invLambdaSlip0(i)*plastic_disloUCLA_GrainSize(instance))
- tempState(5_pInt*ns+3_pInt*nt+1:6_pInt*ns+3_pInt*nt) = MeanFreePathSlip0
+ tempState(4_pInt*ns+1:5_pInt*ns) = MeanFreePathSlip0
  
  forall (i = 1_pInt:ns) &
    tauSlipThreshold0(i) = &
      lattice_mu(ph)*plastic_disloUCLA_burgersPerSlipSystem(i,instance) * &
      sqrt(dot_product((rhoEdge0+rhoEdgeDip0),plastic_disloUCLA_interactionMatrix_SlipSlip(i,1:ns,instance)))
 
- tempState(6_pInt*ns+4_pInt*nt+1:7_pInt*ns+4_pInt*nt) = tauSlipThreshold0
-
-
- 
-!--------------------------------------------------------------------------------------------------
-! initialize dependent twin microstructural variables
- forall (j = 1_pInt:nt) &
-   MeanFreePathTwin0(j) = plastic_disloUCLA_GrainSize(instance)
- tempState(6_pInt*ns+3_pInt*nt+1_pInt:6_pInt*ns+4_pInt*nt) = MeanFreePathTwin0
- 
- forall (j = 1_pInt:nt) &
-   TwinVolume0(j) = &
-     (pi/4.0_pReal)*plastic_disloUCLA_twinsizePerTwinSystem(j,instance)*MeanFreePathTwin0(j)**(2.0_pReal)
- tempState(7_pInt*ns+5_pInt*nt+1_pInt:7_pInt*ns+6_pInt*nt) = TwinVolume0
+ tempState(5_pInt*ns+1:6_pInt*ns) = tauSlipThreshold0
  
 plasticState(ph)%state0 = spread(tempState,2,size(plasticState(ph)%state(1,:)))
 
@@ -892,7 +675,7 @@ subroutine plastic_disloUCLA_aTolState(ph,instance)
  integer(pInt), intent(in) ::  &
    ph, &
    instance                                                                                         ! number specifying the current instance of the plasticity
- 
+
  ! Tolerance state for dislocation densities
  plasticState(ph)%aTolState(1_pInt:2_pInt*plastic_disloUCLA_totalNslip(instance)) = &
    plastic_disloUCLA_aTolRho(instance)
@@ -900,19 +683,6 @@ subroutine plastic_disloUCLA_aTolState(ph,instance)
  ! Tolerance state for accumulated shear due to slip 
  plasticState(ph)%aTolState(2_pInt*plastic_disloUCLA_totalNslip(instance)+1_pInt: &
                             3_pInt*plastic_disloUCLA_totalNslip(instance))=1e6_pReal
-   
- 
- ! Tolerance state for twin volume fraction
- plasticState(ph)%aTolState(3_pInt*plastic_disloUCLA_totalNslip(instance)+1_pInt: &
-                            3_pInt*plastic_disloUCLA_totalNslip(instance)+&
-                            plastic_disloUCLA_totalNtwin(instance)) = &
-   plastic_disloUCLA_aTolTwinFrac(instance)
-
-! Tolerance state for accumulated shear due to twin
- plasticState(ph)%aTolState(3_pInt*plastic_disloUCLA_totalNslip(instance)+ &
-                            plastic_disloUCLA_totalNtwin(instance)+1_pInt: &
-                            3_pInt*plastic_disloUCLA_totalNslip(instance)+ &
-                            2_pInt*plastic_disloUCLA_totalNtwin(instance)) = 1e6_pReal
 
 end subroutine plastic_disloUCLA_aTolState
 
@@ -924,12 +694,10 @@ subroutine plastic_disloUCLA_microstructure(temperature,ipc,ip,el)
  use math, only: &
    pi
  use material, only: &
-   material_phase, &
    phase_plasticityInstance, &
    phaseAt, phasememberAt
  use lattice, only: &
-   lattice_mu, &
-   lattice_nu
+   lattice_mu
 
  implicit none
  integer(pInt), intent(in) :: &
@@ -941,71 +709,29 @@ subroutine plastic_disloUCLA_microstructure(temperature,ipc,ip,el)
 
  integer(pInt) :: &
    instance, &
-   ns,nt,s,t, &
+   ns,s, &
    ph, &
    of
- real(pReal) :: &
-   sumf,sfe,x0
- real(pReal), dimension(plastic_disloUCLA_totalNtwin(phase_plasticityInstance(material_phase(ipc,ip,el)))) :: fOverStacksize
 
  !* Shortened notation
  of = phasememberAt(ipc,ip,el)
  ph = phaseAt(ipc,ip,el)
  instance = phase_plasticityInstance(ph)
  ns = plastic_disloUCLA_totalNslip(instance)
- nt = plastic_disloUCLA_totalNtwin(instance)
- 
- !* Total twin volume fraction
- sumf = sum(state(instance)%twinFraction(1_pInt:nt,of)) ! safe for nt == 0
- 
- !* Stacking fault energy
- sfe = plastic_disloUCLA_SFE_0K(instance) + & 
-       plastic_disloUCLA_dSFE_dT(instance) * Temperature
- 
- !* rescaled twin volume fraction for topology
- forall (t = 1_pInt:nt) &
-   fOverStacksize(t) = &
-     state(instance)%twinFraction(t,of)/plastic_disloUCLA_twinsizePerTwinSystem(t,instance)
- 
+
  !* 1/mean free distance between 2 forest dislocations seen by a moving dislocation
  forall (s = 1_pInt:ns) &
    state(instance)%invLambdaSlip(s,of) = &
      sqrt(dot_product((state(instance)%rhoEdge(1_pInt:ns,of)+state(instance)%rhoEdgeDip(1_pInt:ns,of)),&
                       plastic_disloUCLA_forestProjectionEdge(1:ns,s,instance)))/ &
      plastic_disloUCLA_CLambdaSlipPerSlipSystem(s,instance)
- !* 1/mean free distance between 2 twin stacks from different systems seen by a moving dislocation
- !$OMP CRITICAL (evilmatmul)
- state(instance)%invLambdaSlipTwin(1_pInt:ns,of) = 0.0_pReal
- if (nt > 0_pInt .and. ns > 0_pInt) &
-   state(instance)%invLambdaSlipTwin(1_pInt:ns,of) = &
-     matmul(plastic_disloUCLA_interactionMatrix_SlipTwin(1:ns,1:nt,instance),fOverStacksize(1:nt))/(1.0_pReal-sumf)
- !$OMP END CRITICAL (evilmatmul)
- 
- !* 1/mean free distance between 2 twin stacks from different systems seen by a growing twin
- !$OMP CRITICAL (evilmatmul)
- if (nt > 0_pInt) &
-   state(instance)%invLambdaTwin(1_pInt:nt,of) = &
-     matmul(plastic_disloUCLA_interactionMatrix_TwinTwin(1:nt,1:nt,instance),fOverStacksize(1:nt))/(1.0_pReal-sumf)
- !$OMP END CRITICAL (evilmatmul)
  
  !* mean free path between 2 obstacles seen by a moving dislocation
  do s = 1_pInt,ns
-    if (nt > 0_pInt) then
-       state(instance)%mfp_slip(s,of) = &
-         plastic_disloUCLA_GrainSize(instance)/(1.0_pReal+plastic_disloUCLA_GrainSize(instance)*&
-         (state(instance)%invLambdaSlip(s,of)+state(instance)%invLambdaSlipTwin(s,of)))
-    else
-       state(instance)%mfp_slip(s,of) = &
-         plastic_disloUCLA_GrainSize(instance)/&
-         (1.0_pReal+plastic_disloUCLA_GrainSize(instance)*(state(instance)%invLambdaSlip(s,of)))
-    endif
+   state(instance)%mfp_slip(s,of) = &
+      plastic_disloUCLA_GrainSize(instance)/&
+       (1.0_pReal+plastic_disloUCLA_GrainSize(instance)*(state(instance)%invLambdaSlip(s,of)))
  enddo
-
- !* mean free path between 2 obstacles seen by a growing twin
- forall (t = 1_pInt:nt) &
-   state(instance)%mfp_twin(t,of) = &
-     (plastic_disloUCLA_Cmfptwin(instance)*plastic_disloUCLA_GrainSize(instance))/&
-     (1.0_pReal+plastic_disloUCLA_GrainSize(instance)*state(instance)%invLambdaTwin(t,of))
  
  !* threshold stress for dislocation motion
  forall (s = 1_pInt:ns) &
@@ -1014,28 +740,6 @@ subroutine plastic_disloUCLA_microstructure(temperature,ipc,ip,el)
      sqrt(dot_product((state(instance)%rhoEdge(1_pInt:ns,of)+state(instance)%rhoEdgeDip(1_pInt:ns,of)),&
                       plastic_disloUCLA_interactionMatrix_SlipSlip(s,1:ns,instance)))
  
- !* threshold stress for growing twin
- forall (t = 1_pInt:nt) &
-   state(instance)%threshold_stress_twin(t,of) = &
-     plastic_disloUCLA_Cthresholdtwin(instance)*&
-     (sfe/(3.0_pReal*plastic_disloUCLA_burgersPerTwinSystem(t,instance))+&
-     3.0_pReal*plastic_disloUCLA_burgersPerTwinSystem(t,instance)*lattice_mu(ph)/&
-     (plastic_disloUCLA_L0(instance)*plastic_disloUCLA_burgersPerSlipSystem(t,instance)))
- 
- !* final twin volume after growth
- forall (t = 1_pInt:nt) &
-   state(instance)%twinVolume(t,of) = &
-     (pi/4.0_pReal)*plastic_disloUCLA_twinsizePerTwinSystem(t,instance)*state(instance)%mfp_twin(t,of)**(2.0_pReal)
-
- !* equilibrium seperation of partial dislocations
- do t = 1_pInt,nt
-   x0 = lattice_mu(ph)*plastic_disloUCLA_burgersPerTwinSystem(t,instance)**(2.0_pReal)/&
-     (sfe*8.0_pReal*pi)*(2.0_pReal+lattice_nu(ph))/(1.0_pReal-lattice_nu(ph))
-   plastic_disloUCLA_tau_r(t,instance)= &
-        lattice_mu(ph)*plastic_disloUCLA_burgersPerTwinSystem(t,instance)/(2.0_pReal*pi)*&     
-        (1/(x0+plastic_disloUCLA_xc(instance))+cos(pi/3.0_pReal)/x0)                              !!! used where??
- enddo
-
 end subroutine plastic_disloUCLA_microstructure
 
 
@@ -1058,17 +762,9 @@ subroutine plastic_disloUCLA_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,Temperature
  use lattice, only: &
    lattice_Sslip, &
    lattice_Sslip_v, &
-   lattice_Stwin, &
-   lattice_Stwin_v, &
    lattice_maxNslipFamily,&
-   lattice_maxNtwinFamily, &
    lattice_NslipSystem, &
-   lattice_NtwinSystem, &
-   lattice_NnonSchmid, &
-   lattice_shearTwin, &
-   lattice_structure, &
-   lattice_fcc_twinNucleationSlipPair, &
-   LATTICE_fcc_ID
+   lattice_NnonSchmid
  
  implicit none
  integer(pInt), intent(in)                  :: ipc,ip,el
@@ -1077,10 +773,10 @@ subroutine plastic_disloUCLA_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,Temperature
  real(pReal), dimension(3,3), intent(out)   :: Lp
  real(pReal), dimension(9,9), intent(out)   :: dLp_dTstar99
 
- integer(pInt) :: instance,ph,of,ns,nt,f,i,j,k,l,m,n,index_myFamily,s1,s2
- real(pReal) :: sumf,StressRatio_p,StressRatio_pminus1,StressRatio_r,BoltzmannRatio,DotGamma0,Ndot0, &
+ integer(pInt) :: instance,ph,of,ns,f,i,j,k,l,m,n,index_myFamily
+ real(pReal) :: StressRatio_p,StressRatio_pminus1,BoltzmannRatio,DotGamma0, &
                 tau_slip_pos,tau_slip_neg,vel_slip,dvel_slip,&
-                dgdot_dtauslip_pos,dgdot_dtauslip_neg,dgdot_dtautwin,tau_twin,gdot_twin,stressRatio
+                dgdot_dtauslip_pos,dgdot_dtauslip_neg,stressRatio
  real(pReal), dimension(3,3,2) :: &
    nonSchmid_tensor
  real(pReal), dimension(3,3,3,3) :: &
@@ -1093,7 +789,6 @@ subroutine plastic_disloUCLA_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,Temperature
  ph = phaseAt(ipc,ip,el)
  instance  = phase_plasticityInstance(ph)
  ns = plastic_disloUCLA_totalNslip(instance)
- nt = plastic_disloUCLA_totalNtwin(instance)
  
  Lp = 0.0_pReal
  dLp_dTstar3333 = 0.0_pReal
@@ -1276,63 +971,6 @@ subroutine plastic_disloUCLA_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,Temperature
    enddo slipSystems
  enddo slipFamilies
 
-!--------------------------------------------------------------------------------------------------
-! correct Lp and dLp_dTstar3333 for twinned fraction 
- !* Total twin volume fraction
- sumf = sum(state(instance)%twinFraction(1_pInt:nt,of)) ! safe for nt == 0
- Lp = Lp * (1.0_pReal - sumf)
- dLp_dTstar3333 = dLp_dTstar3333 * (1.0_pReal - sumf)
- 
-!--------------------------------------------------------------------------------------------------
-! Mechanical twinning part
- gdot_twin = 0.0_pReal
- dgdot_dtautwin = 0.0_pReal
- j = 0_pInt
- twinFamilies: do f = 1_pInt,lattice_maxNtwinFamily
-   index_myFamily = sum(lattice_NtwinSystem(1:f-1_pInt,ph)) ! at which index starts my family
-   twinSystems: do i = 1_pInt,plastic_disloUCLA_Ntwin(f,instance)
-      j = j+1_pInt
-      !* Resolved shear stress on twin system
-      tau_twin = dot_product(Tstar_v,lattice_Stwin_v(:,index_myFamily+i,ph))
-
-      !* Stress ratios
-      if (tau_twin > tol_math_check) then
-        StressRatio_r = (state(instance)%threshold_stress_twin(j,of)/tau_twin)**plastic_disloUCLA_rPerTwinFamily(f,instance) 
-      !* Shear rates and their derivatives due to twin
-        select case(lattice_structure(ph))
-          case (LATTICE_fcc_ID)
-            s1=lattice_fcc_twinNucleationSlipPair(1,index_myFamily+i)
-            s2=lattice_fcc_twinNucleationSlipPair(2,index_myFamily+i)
-            if (tau_twin < plastic_disloUCLA_tau_r(j,instance)) then
-              Ndot0=(abs(gdot_slip_pos(s1))*(state(instance)%rhoEdge(s2,of)+state(instance)%rhoEdgeDip(s2,of))+& !no non-Schmid behavior for fcc, just take the not influenced positive gdot_slip_pos (= gdot_slip_neg)
-                     abs(gdot_slip_pos(s2))*(state(instance)%rhoEdge(s1,of)+state(instance)%rhoEdgeDip(s1,of)))/&
-                    (plastic_disloUCLA_L0(instance)*plastic_disloUCLA_burgersPerSlipSystem(j,instance))*&
-                    (1.0_pReal-exp(-plastic_disloUCLA_VcrossSlip(instance)/(kB*Temperature)*&
-                    (plastic_disloUCLA_tau_r(j,instance)-tau_twin)))
-            else
-              Ndot0=0.0_pReal
-            end if
-          case default
-            Ndot0=plastic_disloUCLA_Ndot0PerTwinSystem(j,instance)
-        end select
-        gdot_twin = &
-          (plastic_disloUCLA_MaxTwinFraction(instance)-sumf)*lattice_shearTwin(index_myFamily+i,ph)*&
-          state(instance)%twinVolume(j,of)*Ndot0*exp(-StressRatio_r)
-        dgdot_dtautwin = ((gdot_twin*plastic_disloUCLA_rPerTwinFamily(f,instance))/tau_twin)*StressRatio_r
-      endif
- 
-      !* Plastic velocity gradient for mechanical twinning
-      Lp = Lp + gdot_twin*lattice_Stwin(1:3,1:3,index_myFamily+i,ph)
- 
-      !* Calculation of the tangent of Lp
-      forall (k=1_pInt:3_pInt,l=1_pInt:3_pInt,m=1_pInt:3_pInt,n=1_pInt:3_pInt) &
-        dLp_dTstar3333(k,l,m,n) = &
-        dLp_dTstar3333(k,l,m,n) + dgdot_dtautwin*&
-                                  lattice_Stwin(k,l,index_myFamily+i,ph)*&
-                                  lattice_Stwin(m,n,index_myFamily+i,ph)
-   enddo twinSystems
- enddo twinFamilies
- 
  dLp_dTstar99 = math_Plain3333to99(dLp_dTstar3333)
  
 end subroutine plastic_disloUCLA_LpAndItsTangent
@@ -1353,17 +991,10 @@ subroutine plastic_disloUCLA_dotState(Tstar_v,Temperature,ipc,ip,el)
    phaseAt, phasememberAt
  use lattice,  only: &
    lattice_Sslip_v, &
-   lattice_Stwin_v, &
    lattice_maxNslipFamily, &
-   lattice_maxNtwinFamily, &
    lattice_NslipSystem, &
-   lattice_NtwinSystem, &
    lattice_NnonSchmid, &
-   lattice_sheartwin, &
-   lattice_mu, &
-   lattice_structure, &
-   lattice_fcc_twinNucleationSlipPair, &
-   LATTICE_fcc_ID
+   lattice_mu
 
  implicit none
  real(pReal), dimension(6),  intent(in):: &
@@ -1375,11 +1006,10 @@ subroutine plastic_disloUCLA_dotState(Tstar_v,Temperature,ipc,ip,el)
    ip, &                                                                                            !< integration point
    el                                                                                               !< element
 
- integer(pInt) :: instance,ns,nt,f,i,j,k,index_myFamily,s1,s2, &
+ integer(pInt) :: instance,ns,f,i,j,k,index_myFamily, &
                   ph, &
                   of
  real(pReal) :: &
-   sumf, &
    stressRatio_p,&
    BoltzmannRatio,&
    DotGamma0,&
@@ -1387,8 +1017,6 @@ subroutine plastic_disloUCLA_dotState(Tstar_v,Temperature,ipc,ip,el)
    EdgeDipMinDistance,&
    AtomicVolume,&
    VacancyDiffusion,&
-   StressRatio_r,&
-   Ndot0,&
    tau_slip_pos,&
    tau_slip_neg,&
    DotRhoMultiplication,&
@@ -1398,7 +1026,6 @@ subroutine plastic_disloUCLA_dotState(Tstar_v,Temperature,ipc,ip,el)
    ClimbVelocity, &
    DotRhoEdgeDipClimb, &
    DotRhoDipFormation, &
-   tau_twin, &
    vel_slip, &
    gdot_slip
  real(pReal), dimension(plastic_disloUCLA_totalNslip(phase_plasticityInstance(material_phase(ipc,ip,el)))) :: &
@@ -1408,11 +1035,8 @@ subroutine plastic_disloUCLA_dotState(Tstar_v,Temperature,ipc,ip,el)
  of = phasememberAt(ipc,ip,el)
  ph = phaseAt(ipc,ip,el)
  instance  = phase_plasticityInstance(ph)
- ns = plastic_disloUCLA_totalNslip(instance)
- nt = plastic_disloUCLA_totalNtwin(instance)
- 
- !* Total twin volume fraction
- sumf = sum(state(instance)%twinFraction(1_pInt:nt,of)) ! safe for nt == 0
+ ns = plastic_disloUCLA_totalNslip(instance) 
+
  plasticState(ph)%dotState(:,of) = 0.0_pReal
  
  !* Dislocation density evolution
@@ -1546,46 +1170,7 @@ subroutine plastic_disloUCLA_dotState(Tstar_v,Temperature,ipc,ip,el)
  
    enddo slipSystems
  enddo slipFamilies
- 
- !* Twin volume fraction evolution
- j = 0_pInt
- twinFamilies: do f = 1_pInt,lattice_maxNtwinFamily
-   index_myFamily = sum(lattice_NtwinSystem(1:f-1_pInt,ph)) ! at which index starts my family
-   twinSystems: do i = 1_pInt,plastic_disloUCLA_Ntwin(f,instance)
-      j = j+1_pInt
-      !* Resolved shear stress on twin system
-      tau_twin = dot_product(Tstar_v,lattice_Stwin_v(:,index_myFamily+i,ph))
-      !* Stress ratios
-      if (tau_twin > tol_math_check) then
-        StressRatio_r = (state(instance)%threshold_stress_twin(j,of)/tau_twin)**plastic_disloUCLA_rPerTwinFamily(f,instance)
-      !* Shear rates and their derivatives due to twin
 
-        select case(lattice_structure(ph))
-          case (LATTICE_fcc_ID)
-            s1=lattice_fcc_twinNucleationSlipPair(1,index_myFamily+i)
-            s2=lattice_fcc_twinNucleationSlipPair(2,index_myFamily+i)
-            if (tau_twin < plastic_disloUCLA_tau_r(j,instance)) then
-              Ndot0=(abs(gdot_slip_pos(s1))*(state(instance)%rhoEdge(s2,of)+state(instance)%rhoEdgeDip(s2,of))+&  !no non-Schmid behavior for fcc, just take the not influenced positive slip (gdot_slip_pos = gdot_slip_neg)
-                     abs(gdot_slip_pos(s2))*(state(instance)%rhoEdge(s1,of)+state(instance)%rhoEdgeDip(s1,of)))/&
-                    (plastic_disloUCLA_L0(instance)*plastic_disloUCLA_burgersPerSlipSystem(j,instance))*&
-                    (1.0_pReal-exp(-plastic_disloUCLA_VcrossSlip(instance)/(kB*Temperature)*&
-                    (plastic_disloUCLA_tau_r(j,instance)-tau_twin)))
-            else
-              Ndot0=0.0_pReal
-            end if
-          case default
-            Ndot0=plastic_disloUCLA_Ndot0PerTwinSystem(j,instance)
-        end select
-
-        dotState(instance)%twinFraction(j, of) = &
-          (plastic_disloUCLA_MaxTwinFraction(instance)-sumf)*&
-          state(instance)%twinVolume(j, of)*Ndot0*exp(-StressRatio_r)
-        !* Dotstate for accumulated shear due to twin
-        dotState(instance)%accshear_twin(j,of) = dotState(ph)%twinFraction(j,of) * &
-                                                          lattice_sheartwin(index_myfamily+i,ph)
-      endif
-   enddo twinSystems
- enddo twinFamilies
  
 end subroutine plastic_disloUCLA_dotState
 
@@ -1605,17 +1190,10 @@ function plastic_disloUCLA_postResults(Tstar_v,Temperature,ipc,ip,el)
    phaseAt, phasememberAt
  use lattice, only: &
    lattice_Sslip_v, &
-   lattice_Stwin_v, &
    lattice_maxNslipFamily, &
-   lattice_maxNtwinFamily, &
    lattice_NslipSystem, &
-   lattice_NtwinSystem, &
    lattice_NnonSchmid, &
-   lattice_shearTwin, &
-   lattice_mu, &
-   lattice_structure, &
-   lattice_fcc_twinNucleationSlipPair, &
-   LATTICE_fcc_ID
+   lattice_mu
 
  implicit none
  real(pReal), dimension(6),  intent(in) :: &
@@ -1632,14 +1210,13 @@ function plastic_disloUCLA_postResults(Tstar_v,Temperature,ipc,ip,el)
 
  integer(pInt) :: &
    instance,&
-   ns,nt,&
+   ns,&
    f,o,i,c,j,k,index_myFamily,&
-   s1,s2, &
    ph, &
    of
- real(pReal) :: sumf,tau_twin,StressRatio_p,StressRatio_pminus1,&
-                BoltzmannRatio,DotGamma0,StressRatio_r,Ndot0,stressRatio
- real(pReal) :: dvel_slip, vel_slip
+ real(pReal) :: StressRatio_p,StressRatio_pminus1,&
+                BoltzmannRatio,DotGamma0,stressRatio,&
+                dvel_slip, vel_slip
  real(pReal), dimension(plastic_disloUCLA_totalNslip(phase_plasticityInstance(material_phase(ipc,ip,el)))) :: &
    gdot_slip_pos,dgdot_dtauslip_pos,tau_slip_pos,gdot_slip_neg,dgdot_dtauslip_neg,tau_slip_neg
  
@@ -1648,10 +1225,6 @@ function plastic_disloUCLA_postResults(Tstar_v,Temperature,ipc,ip,el)
  ph = phaseAt(ipc,ip,el)
  instance  = phase_plasticityInstance(ph)
  ns = plastic_disloUCLA_totalNslip(instance)
- nt = plastic_disloUCLA_totalNtwin(instance)
- 
- !* Total twin volume fraction
- sumf = sum(state(ph)%twinFraction(1_pInt:nt,of))                          ! safe for nt == 0
  
  !* Required output
  c = 0_pInt
@@ -1666,7 +1239,7 @@ function plastic_disloUCLA_postResults(Tstar_v,Temperature,ipc,ip,el)
       case (dipole_density_ID)
         plastic_disloUCLA_postResults(c+1_pInt:c+ns) = state(instance)%rhoEdgeDip(1_pInt:ns,of)
         c = c + ns
-      case (shear_rate_slip_ID,shear_rate_twin_ID,stress_exponent_ID)
+      case (shear_rate_slip_ID,stress_exponent_ID)
         gdot_slip_pos = 0.0_pReal
         gdot_slip_neg = 0.0_pReal
         dgdot_dtauslip_pos = 0.0_pReal
@@ -1833,48 +1406,6 @@ function plastic_disloUCLA_postResults(Tstar_v,Temperature,ipc,ip,el)
         if     (plastic_disloUCLA_outputID(o,instance) == shear_rate_slip_ID) then
           plastic_disloUCLA_postResults(c+1:c+ns) = (gdot_slip_pos + gdot_slip_neg)*0.5_pReal
           c = c + ns
-        elseif (plastic_disloUCLA_outputID(o,instance) == shear_rate_twin_ID) then
-          if (nt > 0_pInt) then
-            j = 0_pInt
-            twinFamilies1: do f = 1_pInt,lattice_maxNtwinFamily
-              index_myFamily = sum(lattice_NtwinSystem(1:f-1_pInt,ph))                                ! at which index starts my family
-              twinSystems1: do i = 1,plastic_disloUCLA_Ntwin(f,instance)
-                j = j + 1_pInt
- 
-                !* Resolved shear stress on twin system
-                tau_twin = dot_product(Tstar_v,lattice_Stwin_v(:,index_myFamily+i,ph))
-                !* Stress ratios
-                StressRatio_r = (state(instance)%threshold_stress_twin(j, of)/ &
-                                            tau_twin)**plastic_disloUCLA_rPerTwinFamily(f,instance)
- 
-                !* Shear rates due to twin
-                if ( tau_twin > 0.0_pReal ) then
-                  select case(lattice_structure(ph))
-                    case (LATTICE_fcc_ID)
-                      s1=lattice_fcc_twinNucleationSlipPair(1,index_myFamily+i)
-                      s2=lattice_fcc_twinNucleationSlipPair(2,index_myFamily+i)
-                      if (tau_twin < plastic_disloUCLA_tau_r(j,instance)) then
-                        Ndot0=(abs(gdot_slip_pos(s1))*(state(instance)%rhoEdge(s2,of)+state(instance)%rhoEdgeDip(s2,of))+& !no non-Schmid behavior for fcc, just take the not influenced positive slip (gdot_slip_pos = gdot_slip_neg)
-                               abs(gdot_slip_pos(s2))*(state(instance)%rhoEdge(s1,of)+state(instance)%rhoEdgeDip(s1,of)))/&
-                              (plastic_disloUCLA_L0(instance)*&
-                               plastic_disloUCLA_burgersPerSlipSystem(j,instance))*&
-                              (1.0_pReal-exp(-plastic_disloUCLA_VcrossSlip(instance)/(kB*Temperature)*&
-                              (plastic_disloUCLA_tau_r(j,instance)-tau_twin)))
-                      else
-                        Ndot0=0.0_pReal
-                      end if
-
-                    case default
-                      Ndot0=plastic_disloUCLA_Ndot0PerTwinSystem(j,instance)
-                  end select
-                  plastic_disloUCLA_postResults(c+j) = &
-                    (plastic_disloUCLA_MaxTwinFraction(instance)-sumf)*lattice_shearTwin(index_myFamily+i,ph)*&
-                    state(instance)%twinVolume(j,of)*Ndot0*exp(-StressRatio_r)
-                endif
-              enddo twinSystems1
-            enddo twinFamilies1
-          endif
-          c = c + nt
         elseif(plastic_disloUCLA_outputID(o,instance) == stress_exponent_ID) then
           do j = 1_pInt, ns
             if (abs(gdot_slip_pos(j)+gdot_slip_neg(j))<=tiny(0.0_pReal)) then
@@ -1923,32 +1454,6 @@ function plastic_disloUCLA_postResults(Tstar_v,Temperature,ipc,ip,el)
                                                             state(instance)%mfp_slip(j,of))
         enddo slipSystems2; enddo slipFamilies2
         c = c + ns
-      case (twin_fraction_ID)
-        plastic_disloUCLA_postResults(c+1_pInt:c+nt) = state(instance)%twinFraction(1_pInt:nt, of)
-        c = c + nt
-
-      case (accumulated_shear_twin_ID)
-       plastic_disloUCLA_postResults(c+1_pInt:c+nt) = state(instance)%accshear_twin(1_pInt:nt, of)
-        c = c + nt     
-        
-      case (mfp_twin_ID)
-        plastic_disloUCLA_postResults(c+1_pInt:c+nt) = state(instance)%mfp_twin(1_pInt:nt, of)
-        c = c + nt
-        
-      case (resolved_stress_twin_ID)
-        if (nt > 0_pInt) then
-          j = 0_pInt
-          twinFamilies2: do f = 1_pInt,lattice_maxNtwinFamily
-            index_myFamily = sum(lattice_NtwinSystem(1:f-1_pInt,ph))                                ! at which index starts my family
-            twinSystems2: do i = 1_pInt,plastic_disloUCLA_Ntwin(f,instance)
-              j = j + 1_pInt
-              plastic_disloUCLA_postResults(c+j) = dot_product(Tstar_v,lattice_Stwin_v(:,index_myFamily+i,ph))
-          enddo twinSystems2; enddo twinFamilies2
-        endif
-        c = c + nt
-      case (threshold_stress_twin_ID)
-        plastic_disloUCLA_postResults(c+1_pInt:c+nt) = state(instance)%threshold_stress_twin(1_pInt:nt, of)
-        c = c + nt
     end select
  enddo
 end function plastic_disloUCLA_postResults
