@@ -127,7 +127,7 @@ for name in filenames:
 # ------------------------------------------ output result ---------------------------------------  
 
   if name:
-    writer = vtk.vtkXMLPolyDataWriter()
+    writer = vtk.vtkXMLRectilinearGridWriter()
     writer.SetCompressorTypeToZLib()
     writer.SetDataModeToBinary()
     writer.SetFileName(os.path.join(os.path.split(name)[0],
