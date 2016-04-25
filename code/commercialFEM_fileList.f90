@@ -28,7 +28,6 @@
 #include "kinematics_hydrogen_strain.f90"
 #include "plastic_none.f90"
 #include "plastic_isotropic.f90"
-#include "plastic_j2.f90"
 #include "plastic_phenopowerlaw.f90"
 #include "plastic_phenoplus.f90"
 #include "plastic_titanmod.f90"

@@ -6,7 +6,6 @@ import numpy as np
 import damask
 from optparse import OptionParser
 
-
 scriptName = os.path.splitext(os.path.basename(__file__))[0]
 scriptID   = ' '.join([scriptName,damask.version])
 
@@ -19,16 +18,25 @@ Create regular voxel grid from points in an ASCIItable (or geom file).
 
 """, version = scriptID)
 
-parser.add_option('-m', '--mode',
+parser.add_option('-m',
+                  '--mode',
                   dest = 'mode',
                   type = 'choice', choices = ['cell','point'],
-                  help = 'cell-centered or point-centered coordinates ')
-parser.add_option('-c', '--coordinates',
-                  dest = 'coords',
+                  help = 'cell-centered or point-centered coordinates')
+parser.add_option('-p',
+                  '--pos', '--position',
+                  dest = 'pos',
                   type = 'string', metavar = 'string',
-                  help = 'coordinate label [%default]')
-parser.set_defaults(coords = 'pos',
-                    mode   = 'cell'
+                  help = 'label of coordinates [%default]')
+parser.add_option('-g',
+                  '--geom',
+                  dest = 'geom',
+                  action = 'store_true',
+                  help = 'geom input format')
+
+parser.set_defaults(mode   = 'cell',
+                    pos    = 'pos',
+                    geom   = False,
                    )
 
 (options, filenames) = parser.parse_args()
@@ -38,7 +46,7 @@ parser.set_defaults(coords = 'pos',
 if filenames == []: filenames = [None]
 
 for name in filenames:
-  isGeom = name.endswith('.geom')
+  isGeom = options.geom or (name is not None and name.endswith('.geom'))
   try:    table = damask.ASCIItable(name = name,
                                     buffered = False,
                                     labeled  = not isGeom,
@@ -53,9 +61,9 @@ for name in filenames:
 
   remarks = []
   errors  = []
-  coordDim = 3 if isGeom else table.label_dimension(options.coords)
-  if not 3 >= coordDim >= 1: errors.append('coordinates "{}" need to have one, two, or three dimensions.'.format(options.coords))
-  elif coordDim < 3:         remarks.append('appending {} dimensions to coordinates "{}"...'.format(3-coordDim,options.coords))
+  coordDim = 3 if isGeom else table.label_dimension(options.pos)
+  if not 3 >= coordDim >= 1: errors.append('coordinates "{}" need to have one, two, or three dimensions.'.format(options.pos))
+  elif coordDim < 3:         remarks.append('appending {} dimensions to coordinates "{}"...'.format(3-coordDim,options.pos))
 
   if remarks != []: damask.util.croak(remarks)
   if errors  != []:
@@ -73,7 +81,7 @@ for name in filenames:
                           endpoint = True,
                          ) for i in xrange(3)]
   else:
-    table.data_readArray(options.coords)
+    table.data_readArray(options.pos)
     if len(table.data.shape) < 2: table.data.shape += (1,)                                            # expand to 2D shape
     if table.data.shape[1] < 3:
       table.data = np.hstack((table.data,
@@ -115,24 +123,26 @@ for name in filenames:
   rGrid.SetZCoordinates(coordArray[2])
 
 
-# ------------------------------------------ output result ---------------------------------------
+# ------------------------------------------ output result ---------------------------------------  
 
   if name:
     writer = vtk.vtkXMLRectilinearGridWriter()
-    (directory,filename) = os.path.split(name)
-    writer.SetDataModeToBinary()
     writer.SetCompressorTypeToZLib()
-    writer.SetFileName(os.path.join(directory,os.path.splitext(filename)[0] +
-                                              ('' if isGeom else '_{}({})'.format(options.coords, options.mode)) +
-                                              '.' + writer.GetDefaultFileExtension()))
+    writer.SetDataModeToBinary()
+    writer.SetFileName(os.path.join(os.path.split(name)[0],
+                                    os.path.splitext(os.path.split(name)[1])[0] +
+                                    ('' if isGeom else '_{}({})'.format(options.pos, options.mode)) +
+                                    '.' + writer.GetDefaultFileExtension()))
   else:
     writer = vtk.vtkDataSetWriter()
-    writer.WriteToOutputStringOn()
     writer.SetHeader('# powered by '+scriptID)
-
+    writer.WriteToOutputStringOn()
+  
   if vtk.VTK_MAJOR_VERSION <= 5: writer.SetInput(rGrid)
   else:                          writer.SetInputData(rGrid)
+
   writer.Write()
-  if name is None:  sys.stdout.write(writer.GetOutputString()[0:writer.GetOutputStringLength()])
+
+  if name is None: sys.stdout.write(writer.GetOutputString()[:writer.GetOutputStringLength()])      # limiting of outputString is fix for vtk <7.0
 
   table.close()

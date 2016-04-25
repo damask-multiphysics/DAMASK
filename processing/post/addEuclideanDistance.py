@@ -88,16 +88,27 @@ Add column(s) containing Euclidean distance to grain structural features: bounda
 
 """, version = scriptID)
 
-parser.add_option('-c','--coordinates', dest='coords', metavar='string',
-                  help='column label of coordinates [%default]')
-parser.add_option('-i','--identifier',  dest='id', metavar = 'string',
-                  help='column label of grain identifier [%default]')
-parser.add_option('-t','--type',        dest = 'type', action = 'extend', metavar = '<string LIST>',
-                  help = 'feature type {%s} '%(', '.join(map(lambda x:'/'.join(x['names']),features))) )
-parser.add_option('-n','--neighborhood',dest='neighborhood', choices = neighborhoods.keys(), metavar = 'string',
-                  help = 'type of neighborhood [neumann] {%s}'%(', '.join(neighborhoods.keys())))
-parser.add_option('-s', '--scale',      dest = 'scale', type = 'float', metavar = 'float',
+parser.add_option('-p',
+                  '--pos', '--position',
+                  dest = 'coords', metavar = 'string',
+                  help = 'label of coordinates [%default]')
+parser.add_option('-i',
+                  '--id', '--identifier',
+                  dest = 'id', metavar = 'string',
+                  help='label of grain identifier [%default]')
+parser.add_option('-t',
+                  '--type',
+                  dest = 'type', action = 'extend', metavar = '<string LIST>',
+                  help = 'feature type {{{}}} '.format(', '.join(map(lambda x:'/'.join(x['names']),features))) )
+parser.add_option('-n',
+                  '--neighborhood',
+                  dest = 'neighborhood', choices = neighborhoods.keys(), metavar = 'string',
+                  help = 'neighborhood type [neumann] {{{}}}'.format(', '.join(neighborhoods.keys())))
+parser.add_option('-s',
+                  '--scale',
+                  dest = 'scale', type = 'float', metavar = 'float',
                   help = 'voxel size [%default]')
+
 parser.set_defaults(coords = 'pos',
                     id = 'texture',
                     neighborhood = 'neumann',
@@ -111,7 +122,7 @@ if options.type is None:
 if not set(options.type).issubset(set(list(itertools.chain(*map(lambda x: x['names'],features))))):
   parser.error('type must be chosen from (%s).'%(', '.join(map(lambda x:'|'.join(x['names']),features))) )
 if 'biplane' in options.type and 'boundary' in options.type:
-  parser.error("only one from aliases 'biplane' and 'boundary' possible.")
+  parser.error('only one from aliases "biplane" and "boundary" possible.')
 
 feature_list = []
 for i,feature in enumerate(features):
@@ -172,9 +183,7 @@ for name in filenames:
 
   N = grid.prod()
 
-  if N != len(table.data): errors.append('data count {} does not match grid '.format(N) + 
-                                          'x'.join(map(str,grid)) + 
-                                          '.')
+  if N != len(table.data): errors.append('data count {} does not match grid {}.'.format(N,'x'.join(map(str,grid))))
   if errors  != []:
     damask.util.croak(errors)
     table.close(dismiss = True)
