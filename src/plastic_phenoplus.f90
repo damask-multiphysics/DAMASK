@@ -979,13 +979,11 @@ subroutine plastic_phenoplus_microstructure(orientation,ipc,ip,el,F0,Fe,Fp,Tstar
             ne_mprimes(n) = maxval(m_primes)
           ENDIF
         ENDDO LOOPMYNEIGHBORS
-      !*******check if one of the neighbor already can provide a kick for this slip system
-      IF ( maxval(ne_mprimes) > mprime_cut ) THEN
-        plasticState(ph)%state(index_kappa+me_slip, of) = 1.0_pReal + 0.5_pReal*maxval(ne_mprimes)
-      ELSE
-        plasticState(ph)%state(index_kappa+me_slip, of) = 1.0_pReal - 0.1_pReal*maxval(ne_mprimes)
-      ENDIF
+
+      plasticState(ph)%state(index_kappa+me_slip, of) = 1.0_pReal &
+                                                        + 0.15_pReal*(1.0_pReal + ERF(10.0_pReal*(maxval(ne_mprimes)-0.8_pReal)))
       ENDDO LOOPMYSLIP
+
     ENDIF
 
   ENDIF
