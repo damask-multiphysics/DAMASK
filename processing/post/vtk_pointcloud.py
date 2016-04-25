@@ -18,12 +18,13 @@ Produce a VTK point cloud dataset based on coordinates given in an ASCIItable.
 
 """, version = scriptID)
 
-parser.add_option('-d', '--deformed',
-                  dest = 'deformed',
+parser.add_option('-p',
+                  '--pos', '--position',
+                  dest = 'pos',
                   type = 'string', metavar = 'string',
-                  help = 'deformed coordinate label [%default]')
+                  help = 'label of coordinates [%default]')
 
-parser.set_defaults(deformed = 'ipdeformedcoord'
+parser.set_defaults(pos = 'pos',
                    )
 
 (options, filenames) = parser.parse_args()
@@ -46,9 +47,9 @@ for name in filenames:
 
   errors =  []
   remarks = []
-  coordDim = table.label_dimension(options.deformed)
-  if not 3 >= coordDim >= 1: errors.append('coordinates "{}" need to have one, two, or three dimensions.'.format(options.deformed))
-  elif coordDim < 3:         remarks.append('appending {} dimensions to coordinates "{}"...'.format(3-coordDim,options.deformed))
+  coordDim = table.label_dimension(options.pos)
+  if not 3 >= coordDim >= 1: errors.append('coordinates "{}" need to have one, two, or three dimensions.'.format(options.pos))
+  elif coordDim < 3:         remarks.append('appending {} dimensions to coordinates "{}"...'.format(3-coordDim,options.pos))
 
   if remarks != []: damask.util.croak(remarks)
   if errors  != []:
@@ -58,7 +59,7 @@ for name in filenames:
 
 # ------------------------------------------ process data ---------------------------------------  
 
-  table.data_readArray(options.deformed)
+  table.data_readArray(options.pos)
   if len(table.data.shape) < 2: table.data.shape += (1,)                                            # expand to 2D shape
   if table.data.shape[1] < 3:
     table.data = np.hstack((table.data,
@@ -83,19 +84,21 @@ for name in filenames:
 
   if name:
     writer = vtk.vtkXMLPolyDataWriter()
-    (directory,filename) = os.path.split(name)
-    writer.SetDataModeToBinary()
     writer.SetCompressorTypeToZLib()
-    writer.SetFileName(os.path.join(directory,os.path.splitext(filename)[0]\
-                                                            +'.'+writer.GetDefaultFileExtension()))
+    writer.SetDataModeToBinary()
+    writer.SetFileName(os.path.join(os.path.split(name)[0],
+                                    os.path.splitext(os.path.split(name)[1])[0] +
+                                    '.' + writer.GetDefaultFileExtension()))
   else:
     writer = vtk.vtkDataSetWriter()
-    writer.WriteToOutputStringOn()
     writer.SetHeader('# powered by '+scriptID)
+    writer.WriteToOutputStringOn()
   
   if vtk.VTK_MAJOR_VERSION <= 5: writer.SetInput(Polydata)
   else:                          writer.SetInputData(Polydata)
+
   writer.Write()
-  if name is None:  sys.stdout.write(writer.GetOutputString()[0:writer.GetOutputStringLength()])
+
+  if name is None: sys.stdout.write(writer.GetOutputString()[:writer.GetOutputStringLength()])      # limiting of outputString is fix for vtk <7.0
 
   table.close()

@@ -4525,17 +4525,9 @@ subroutine mesh_write_cellGeom
    VTK_geo, &
    VTK_con, &
    VTK_end 
-#ifdef HDF
- use IO, only: &
-   HDF5_mappingCells 
-#endif
  implicit none
  integer(I4P), dimension(1:mesh_Ncells)                                :: celltype
  integer(I4P), dimension(mesh_Ncells*(1_pInt+FE_maxNcellnodesPerCell)) :: cellconnection
-#ifdef HDF
- integer(pInt), dimension(mesh_Ncells*FE_maxNcellnodesPerCell) :: cellconnectionHDF5
- integer(pInt) :: j2=0_pInt
-#endif
  integer(I4P):: error
  integer(I4P):: g, c, e, CellID, i, j
 
@@ -4550,16 +4542,8 @@ subroutine mesh_write_cellGeom
      cellconnection(j+1_pInt:j+FE_NcellnodesPerCell(c)+1_pInt) &
        = [FE_NcellnodesPerCell(c),mesh_cell(1:FE_NcellnodesPerCell(c),i,e)-1_pInt]                 ! number of cellnodes per cell & list of global cellnode IDs belnging to this cell (cellnode counting starts at 0)
      j = j + FE_NcellnodesPerCell(c) + 1_pInt
-#ifdef HDF
-     cellconnectionHDF5(j2+1_pInt:j2+FE_NcellnodesPerCell(c)) &
-       = mesh_cell(1:FE_NcellnodesPerCell(c),i,e)-1_pInt
-  j2=j2 + FE_ncellnodesPerCell(c)
-#endif
    enddo
  enddo
-#ifdef HDF
- call HDF5_mappingCells(cellconnectionHDF5(1:j2))
-#endif
 
  error=VTK_ini(output_format = 'ASCII', &
        title=trim(getSolverJobName())//' cell mesh', &

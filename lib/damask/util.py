@@ -53,6 +53,20 @@ def report(who,what):
   """reports script and file name"""
   croak( (emph(who) if who else '') + (': '+what if what else '') )
 
+
+# -----------------------------
+def report_geom(info,
+                what = ['grid','size','origin','homogenization','microstructures']):
+  """reports (selected) geometry information"""
+  output = {
+            'grid'   : 'grid     a b c:  {}'.format(' x '.join(map(str,info['grid'  ]))),
+            'size'   : 'size     x y z:  {}'.format(' x '.join(map(str,info['size'  ]))),
+            'origin' : 'origin   x y z:  {}'.format(' : '.join(map(str,info['origin']))),
+            'homogenization' :  'homogenization:  {}'.format(info['homogenization']),
+            'microstructures' : 'microstructures: {}'.format(info['microstructures']),
+           }
+  for item in what: croak(output[item.lower()])
+
 # -----------------------------
 def emph(what):
   """emphasizes string on screen"""

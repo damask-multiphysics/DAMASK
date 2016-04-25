@@ -13,7 +13,8 @@ program DAMASK_spectral
    pInt, &
    pLongInt, &
    pReal, &
-   tol_math_check
+   tol_math_check, &
+   dNeq
  use DAMASK_interface, only: &
    DAMASK_interface_init, &
    loadCaseFile, &
@@ -147,7 +148,9 @@ program DAMASK_spectral
    MPI_file_seek, &
    MPI_file_get_position, &
    MPI_file_write, &
-   MPI_allreduce
+   MPI_abort, &
+   MPI_allreduce, &
+   PETScFinalize
 
 !--------------------------------------------------------------------------------------------------
 ! init DAMASK (all modules)
@@ -339,7 +342,7 @@ program DAMASK_spectral
                 reshape(spread(tol_math_check,1,9),[ 3,3]))&
                 .or. abs(math_det33(loadCases(currentLoadCase)%rotation)) > &
                 1.0_pReal + tol_math_check) errorID = 846_pInt                                      ! given rotation matrix contains strain
-     if (any(loadCases(currentLoadCase)%rotation /= math_I3)) &
+     if (any(dNeq(loadCases(currentLoadCase)%rotation, math_I3))) &
        write(6,'(2x,a,/,3(3(3x,f12.7,1x)/))',advance='no') 'rotation of loadframe:',&
                 math_transpose33(loadCases(currentLoadCase)%rotation)
      if (loadCases(currentLoadCase)%time < 0.0_pReal)          errorID = 834_pInt                   ! negative time increment
@@ -423,17 +426,21 @@ program DAMASK_spectral
 !--------------------------------------------------------------------------------------------------
 ! prepare MPI parallel out (including opening of file)
  allocate(outputSize(worldsize), source = 0_MPI_OFFSET_KIND)
- outputSize(worldrank+1) = int(size(materialpoint_results)*pReal,MPI_OFFSET_KIND)
- call MPI_allreduce(MPI_IN_PLACE,outputSize,worldsize,MPI_INT,MPI_SUM,PETSC_COMM_WORLD,ierr)        ! get total output size over each process
+ outputSize(worldrank+1) = size(materialpoint_results,kind=MPI_OFFSET_KIND)*int(pReal,MPI_OFFSET_KIND)
+ call MPI_allreduce(MPI_IN_PLACE,outputSize,worldsize,MPI_LONG,MPI_SUM,PETSC_COMM_WORLD,ierr)       ! get total output size over each process
+ if(ierr /=0_pInt) call IO_error(894_pInt, ext_msg='MPI_allreduce')
  call MPI_file_open(PETSC_COMM_WORLD, &
                     trim(getSolverWorkingDirectoryName())//trim(getSolverJobName())//'.spectralOut', &
                     MPI_MODE_WRONLY + MPI_MODE_APPEND, &
                     MPI_INFO_NULL, &
                     resUnit, &
                     ierr)
+ if(ierr /=0_pInt) call IO_error(894_pInt, ext_msg='MPI_file_open')
  call MPI_file_get_position(resUnit,fileOffset,ierr)                                                ! get offset from header
+ if(ierr /=0_pInt) call IO_error(894_pInt, ext_msg='MPI_file_get_position')
  fileOffset = fileOffset + sum(outputSize(1:worldrank))                                             ! offset of my process in file (header + processes before me)
  call MPI_file_seek (resUnit,fileOffset,MPI_SEEK_SET,ierr)
+ if(ierr /=0_pInt) call IO_error(894_pInt, ext_msg='MPI_file_seek')
 
  if (.not. appendToOutFile) then                                                                    ! if not restarting, write 0th increment
    do i=1, size(materialpoint_results,3)/(maxByteOut/(materialpoint_sizeResults*pReal))+1           ! slice the output of my process in chunks not exceeding the limit for one output
@@ -443,6 +450,7 @@ program DAMASK_spectral
                                    [(outputIndex(2)-outputIndex(1)+1)*materialpoint_sizeResults]), &
                          (outputIndex(2)-outputIndex(1)+1)*materialpoint_sizeResults,&
                          MPI_DOUBLE, MPI_STATUS_IGNORE, ierr)
+     if(ierr /=0_pInt) call IO_error(894_pInt, ext_msg='MPI_file_write')
    enddo
    fileOffset = fileOffset + sum(outputSize)                                                        ! forward to current file position
    if (worldrank == 0) &
@@ -643,13 +651,15 @@ program DAMASK_spectral
            write(6,'(1/,a)') ' ... writing results to file ......................................'
          call materialpoint_postResults()
          call MPI_file_seek (resUnit,fileOffset,MPI_SEEK_SET,ierr)
+         if(ierr /=0_pInt) call IO_error(894_pInt, ext_msg='MPI_file_seek')
          do i=1, size(materialpoint_results,3)/(maxByteOut/(materialpoint_sizeResults*pReal))+1     ! slice the output of my process in chunks not exceeding the limit for one output
-     outputIndex=int([(i-1_pInt)*((maxByteOut/pReal)/materialpoint_sizeResults)+1_pInt, &
+           outputIndex=int([(i-1_pInt)*((maxByteOut/pReal)/materialpoint_sizeResults)+1_pInt, &
                       min(i*((maxByteOut/pReal)/materialpoint_sizeResults),size(materialpoint_results,3))],pLongInt)
            call MPI_file_write(resUnit,reshape(materialpoint_results(:,:,outputIndex(1):outputIndex(2)),&
                                          [(outputIndex(2)-outputIndex(1)+1)*materialpoint_sizeResults]), &
                                (outputIndex(2)-outputIndex(1)+1)*materialpoint_sizeResults,&
                                MPI_DOUBLE, MPI_STATUS_IGNORE, ierr)
+           if(ierr /=0_pInt) call IO_error(894_pInt, ext_msg='MPI_file_write')
          enddo
          fileOffset = fileOffset + sum(outputSize)                                                  ! forward to current file position
        endif
@@ -698,7 +708,7 @@ program DAMASK_spectral
  enddo
  call utilities_destroy()
 
- call PetscFinalize(ierr); CHKERRQ(ierr)
+ call PETScFinalize(ierr); CHKERRQ(ierr)
 
  if (notConvergedCounter > 0_pInt) call quit(3_pInt)                                                ! error if some are not converged
  call quit(0_pInt)                                                                                  ! no complains ;)
