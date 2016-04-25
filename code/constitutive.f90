@@ -399,8 +399,6 @@ function constitutive_homogenizedC(ipc,ip,el)
    plastic_titanmod_homogenizedC
  use plastic_dislotwin, only: &
    plastic_dislotwin_homogenizedC
- use plastic_disloucla, only: &
-   plastic_disloucla_homogenizedC
  use lattice, only: &
    lattice_C66
 
@@ -414,8 +412,6 @@ function constitutive_homogenizedC(ipc,ip,el)
  plasticityType: select case (phase_plasticity(material_phase(ipc,ip,el)))
    case (PLASTICITY_DISLOTWIN_ID) plasticityType
      constitutive_homogenizedC = plastic_dislotwin_homogenizedC(ipc,ip,el)
-   case (PLASTICITY_DISLOUCLA_ID) plasticityType
-     constitutive_homogenizedC = plastic_disloucla_homogenizedC(ipc,ip,el)
    case (PLASTICITY_TITANMOD_ID) plasticityType
      constitutive_homogenizedC = plastic_titanmod_homogenizedC (ipc,ip,el)
    case default plasticityType

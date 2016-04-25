@@ -140,9 +140,10 @@ subroutine plastic_isotropic_init(fileUnit)
    sizeDeltaState
  character(len=65536) :: &
    tag       = '', &
-   outputtag = '', &
    line      = '', &
    extmsg    = ''
+ character(len=64) :: &
+   outputtag = ''
   integer(pInt) :: NipcMyPhase
 
  mainProcess: if (worldrank == 0) then 
@@ -382,8 +383,7 @@ subroutine plastic_isotropic_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,ipc,ip,el)
    math_mul33xx33, &
    math_transpose33
  use material, only: &
-   phaseAt, phasememberAt, &
-   plasticState, &
+   phasememberAt, &
    material_phase, &
    phase_plasticityInstance
 
@@ -413,7 +413,7 @@ subroutine plastic_isotropic_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,ipc,ip,el)
    k, l, m, n
 
  of = phasememberAt(ipc,ip,el)                                                                      ! phasememberAt should be tackled by material and be renamed to material_phasemember
- instance = phase_plasticityInstance(phaseAt(ipc,ip,el))                                            ! "phaseAt" equivalent to "material_phase" !!
+ instance = phase_plasticityInstance(material_phase(ipc,ip,el))
 
  Tstar_dev_33 = math_deviatoric33(math_Mandel6to33(Tstar_v))                                        ! deviatoric part of 2nd Piola-Kirchhoff stress
  squarenorm_Tstar_dev = math_mul33xx33(Tstar_dev_33,Tstar_dev_33)
@@ -463,8 +463,7 @@ subroutine plastic_isotropic_LiAndItsTangent(Li,dLi_dTstar_3333,Tstar_v,ipc,ip,e
    math_spherical33, &
    math_mul33xx33
  use material, only: &
-   phaseAt, phasememberAt, &
-   plasticState, &
+   phasememberAt, &
    material_phase, &
    phase_plasticityInstance
 
@@ -491,7 +490,7 @@ real(pReal) :: &
    k, l, m, n
 
  of = phasememberAt(ipc,ip,el)                                                                      ! phasememberAt should be tackled by material and be renamed to material_phasemember
- instance = phase_plasticityInstance(phaseAt(ipc,ip,el))                                            ! "phaseAt" equivalent to "material_phase" !!
+ instance = phase_plasticityInstance(material_phase(ipc,ip,el))
 
  Tstar_sph_33 = math_spherical33(math_Mandel6to33(Tstar_v))                                         ! spherical part of 2nd Piola-Kirchhoff stress
  squarenorm_Tstar_sph = math_mul33xx33(Tstar_sph_33,Tstar_sph_33)
@@ -529,8 +528,7 @@ subroutine plastic_isotropic_dotState(Tstar_v,ipc,ip,el)
  use math, only: &
    math_mul6x6
  use material, only: &
-   phaseAt, phasememberAt, &
-   plasticState, &
+   phasememberAt, &
    material_phase, &
    phase_plasticityInstance
  
@@ -553,7 +551,7 @@ subroutine plastic_isotropic_dotState(Tstar_v,ipc,ip,el)
    of                                                                                               !< shortcut notation for offset position in state array
 
  of = phasememberAt(ipc,ip,el)                                                                      ! phasememberAt should be tackled by material and be renamed to material_phasemember
- instance = phase_plasticityInstance(phaseAt(ipc,ip,el))                                            ! "phaseAt" equivalent to "material_phase" !!
+ instance = phase_plasticityInstance(material_phase(ipc,ip,el))
 
 !--------------------------------------------------------------------------------------------------
 ! norm of (deviatoric) 2nd Piola-Kirchhoff stress
@@ -609,8 +607,7 @@ function plastic_isotropic_postResults(Tstar_v,ipc,ip,el)
    math_mul6x6
  use material, only: &
    material_phase, &
-   plasticState, &
-   phaseAt, phasememberAt, &
+   phasememberAt, &
    phase_plasticityInstance
 
  implicit none
@@ -634,7 +631,7 @@ function plastic_isotropic_postResults(Tstar_v,ipc,ip,el)
    o
 
  of = phasememberAt(ipc,ip,el)                                                                      ! phasememberAt should be tackled by material and be renamed to material_phasemember
- instance = phase_plasticityInstance(phaseAt(ipc,ip,el))                                            ! "phaseAt" equivalent to "material_phase" !!
+ instance = phase_plasticityInstance(material_phase(ipc,ip,el))
  
 !--------------------------------------------------------------------------------------------------
 ! norm of (deviatoric) 2nd Piola-Kirchhoff stress
