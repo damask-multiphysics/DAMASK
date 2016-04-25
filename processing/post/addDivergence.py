@@ -19,7 +19,7 @@ def divFFT(geomdim,field):
  div_fourier   = np.empty(field_fourier.shape[0:len(np.shape(field))-1],'c16')            # size depents on whether tensor or vector
 
 # differentiation in Fourier space
- k_s=np.zeros([3],'i')
+ k_s = np.zeros([3],'i')
  TWOPIIMG = 2.0j*math.pi
  for i in xrange(grid[2]):
    k_s[0] = i
@@ -49,25 +49,25 @@ def divFFT(geomdim,field):
 #                                MAIN
 # --------------------------------------------------------------------
 
-parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
+parser = OptionParser(option_class=damask.extendableOption, usage='%prog option(s) [ASCIItable(s)]', description = """
 Add column(s) containing divergence of requested column(s).
 Operates on periodic ordered three-dimensional data sets.
 Deals with both vector- and tensor-valued fields.
 
 """, version = scriptID)
 
-parser.add_option('-c','--coordinates',
+parser.add_option('-p','--pos','--periodiccellcenter'
                   dest = 'coords',
                   type = 'string', metavar = 'string',
-                  help = 'column label of coordinates [%default]')
+                  help = 'label of coordinates [%default]')
 parser.add_option('-v','--vector',
                   dest = 'vector',
                   action = 'extend', metavar = '<string LIST>',
-                  help = 'column label(s) of vector field values')
+                  help = 'label(s) of vector field values')
 parser.add_option('-t','--tensor',
                   dest = 'tensor',
                   action = 'extend', metavar = '<string LIST>',
-                  help = 'column label(s) of tensor field values')
+                  help = 'label(s) of tensor field values')
 
 parser.set_defaults(coords = 'pos',
                    )
