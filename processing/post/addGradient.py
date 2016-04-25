@@ -18,7 +18,7 @@ def gradFFT(geomdim,field):
  if   n == 3:   dataType = 'vector'
  elif n == 1:   dataType = 'scalar'
 
- field_fourier = nps=shapeFFT).fft.fftpack.rfftn(field,axes=(0,1,2),
+ field_fourier = np.fft.fftpack.rfftn(field,axes=(0,1,2),s=shapeFFT)
  grad_fourier  = np.empty(field_fourier.shape+(3,),'c16')
 
 # differentiation in Fourier space
