@@ -258,7 +258,8 @@ subroutine crystallite_init
  allocate(crystallite_orientation(4,cMax,iMax,eMax),         source=0.0_pReal)
  allocate(crystallite_orientation0(4,cMax,iMax,eMax),        source=0.0_pReal)
  allocate(crystallite_rotation(4,cMax,iMax,eMax),            source=0.0_pReal)
- allocate(crystallite_disorientation(4,nMax,cMax,iMax,eMax), source=0.0_pReal)
+ if (any(plasticState%nonLocal)) &
+   allocate(crystallite_disorientation(4,nMax,cMax,iMax,eMax),source=0.0_pReal)
  allocate(crystallite_localPlasticity(cMax,iMax,eMax),       source=.true.)
  allocate(crystallite_requested(cMax,iMax,eMax),             source=.false.)
  allocate(crystallite_todo(cMax,iMax,eMax),                  source=.false.)
@@ -3977,50 +3978,51 @@ subroutine crystallite_orientations
 
  ! --- CALCULATE ORIENTATION AND LATTICE ROTATION ---
 
- !$OMP PARALLEL DO PRIVATE(orientation)
+ nonlocalPresent: if (any(plasticState%nonLocal)) then
+!$OMP PARALLEL DO PRIVATE(orientation)
    do e = FEsolving_execElem(1),FEsolving_execElem(2)
      do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
        do c = 1_pInt,homogenization_Ngrains(mesh_element(3,e))
 ! somehow this subroutine is not threadsafe, so need critical statement here; not clear, what exactly the problem is
-         !$OMP CRITICAL (polarDecomp)
+!$OMP CRITICAL (polarDecomp)
          orientation = math_RtoQ(transpose(math_rotationalPart33(crystallite_Fe(1:3,1:3,c,i,e))))          ! rotational part from polar decomposition as quaternion
-         !$OMP END CRITICAL (polarDecomp)
+!$OMP END CRITICAL (polarDecomp)
          crystallite_rotation(1:4,c,i,e) = lattice_qDisorientation(crystallite_orientation0(1:4,c,i,e), &  ! active rotation from ori0
-                                                                orientation)                               ! to current orientation (with no symmetry)
+                                                                  orientation)                               ! to current orientation (with no symmetry)
          crystallite_orientation(1:4,c,i,e) = orientation
   enddo; enddo; enddo
- !$OMP END PARALLEL DO
-
-
+!$OMP END PARALLEL DO
+ 
+  
  ! --- UPDATE SOME ADDITIONAL VARIABLES THAT ARE NEEDED FOR NONLOCAL MATERIAL ---
  ! --- we use crystallite_orientation from above, so need a separate loop
-
- !$OMP PARALLEL DO PRIVATE(myPhase,neighboring_e,neighboring_i,neighboringPhase)
+  
+!$OMP PARALLEL DO PRIVATE(myPhase,neighboring_e,neighboring_i,neighboringPhase)
    do e = FEsolving_execElem(1),FEsolving_execElem(2)
      do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
-       myPhase = material_phase(1,i,e)                                                                     ! get my phase (non-local models make no sense with more than one grain per material point)
-       if (plasticState(myPhase)%nonLocal) then                                                            ! if nonlocal model
+       myPhase = material_phase(1,i,e)                                                              ! get my phase (non-local models make no sense with more than one grain per material point)
+       if (plasticState(myPhase)%nonLocal) then                                                     ! if nonlocal model
          ! --- calculate disorientation between me and my neighbor ---
 
-         do n = 1_pInt,FE_NipNeighbors(FE_celltype(FE_geomtype(mesh_element(2,e))))                        ! loop through my neighbors
+         do n = 1_pInt,FE_NipNeighbors(FE_celltype(FE_geomtype(mesh_element(2,e))))                 ! loop through my neighbors
            neighboring_e = mesh_ipNeighborhood(1,n,i,e)
            neighboring_i = mesh_ipNeighborhood(2,n,i,e)
-           if (neighboring_e > 0 .and. neighboring_i > 0) then                                             ! if neighbor exists
-             neighboringPhase = material_phase(1,neighboring_i,neighboring_e)                              ! get my neighbor's phase
-             if (plasticState(neighboringPhase)%nonLocal) then                                             ! neighbor got also nonlocal plasticity
-               if (lattice_structure(myPhase) == lattice_structure(neighboringPhase)) then                 ! if my neighbor has same crystal structure like me
+           if (neighboring_e > 0 .and. neighboring_i > 0) then                                      ! if neighbor exists
+             neighboringPhase = material_phase(1,neighboring_i,neighboring_e)                       ! get my neighbor's phase
+             if (plasticState(neighboringPhase)%nonLocal) then                                      ! neighbor got also nonlocal plasticity
+               if (lattice_structure(myPhase) == lattice_structure(neighboringPhase)) then          ! if my neighbor has same crystal structure like me
                  crystallite_disorientation(:,n,1,i,e) = &
                    lattice_qDisorientation( crystallite_orientation(1:4,1,i,e), &
                                             crystallite_orientation(1:4,1,neighboring_i,neighboring_e), &
-                                            lattice_structure(myPhase))                                    ! calculate disorientation for given symmetry
-               else                                                                                        ! for neighbor with different phase
-                 crystallite_disorientation(:,n,1,i,e) = [0.0_pReal, 1.0_pReal, 0.0_pReal, 0.0_pReal]      ! 180 degree rotation about 100 axis
+                                            lattice_structure(myPhase))                             ! calculate disorientation for given symmetry
+               else                                                                                 ! for neighbor with different phase
+                 crystallite_disorientation(:,n,1,i,e) = [0.0_pReal, 1.0_pReal, 0.0_pReal, 0.0_pReal]! 180 degree rotation about 100 axis
                endif
-             else                                                                                          ! for neighbor with local plasticity
-               crystallite_disorientation(:,n,1,i,e) = [-1.0_pReal, 0.0_pReal, 0.0_pReal, 0.0_pReal]       ! homomorphic identity
+             else                                                                                   ! for neighbor with local plasticity
+               crystallite_disorientation(:,n,1,i,e) = [-1.0_pReal, 0.0_pReal, 0.0_pReal, 0.0_pReal]! homomorphic identity
              endif
-           else                                                                                            ! no existing neighbor
-             crystallite_disorientation(:,n,1,i,e) = [-1.0_pReal, 0.0_pReal, 0.0_pReal, 0.0_pReal]         ! homomorphic identity
+           else                                                                                     ! no existing neighbor
+             crystallite_disorientation(:,n,1,i,e) = [-1.0_pReal, 0.0_pReal, 0.0_pReal, 0.0_pReal]  ! homomorphic identity
            endif
          enddo
 
@@ -4031,7 +4033,8 @@ subroutine crystallite_orientations
 
        endif
    enddo; enddo
- !$OMP END PARALLEL DO
+!$OMP END PARALLEL DO
+ endif nonlocalPresent
 
 end subroutine crystallite_orientations
 
