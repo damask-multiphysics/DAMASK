@@ -49,7 +49,9 @@ for name in filenames:
   remarks = []
   coordDim = table.label_dimension(options.pos)
   if not 3 >= coordDim >= 1: errors.append('coordinates "{}" need to have one, two, or three dimensions.'.format(options.pos))
-  elif coordDim < 3:         remarks.append('appending {} dimensions to coordinates "{}"...'.format(3-coordDim,options.pos))
+  elif coordDim < 3:        remarks.append('appending {} dimension{} to coordinates "{}"...'.format(3-coordDim,
+                                                                                                    's' if coordDim < 2 else '',
+                                                                                                    options.pos))
 
   if remarks != []: damask.util.croak(remarks)
   if errors  != []:

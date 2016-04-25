@@ -3990,7 +3990,6 @@ subroutine crystallite_orientations
  use plastic_nonlocal, only: &
    plastic_nonlocal_updateCompatibility
 
-
  implicit none
  integer(pInt) &
    c, &                                                                                             !< counter in integration point component loop
@@ -4006,25 +4005,25 @@ subroutine crystallite_orientations
 
  ! --- CALCULATE ORIENTATION AND LATTICE ROTATION ---
 
- nonlocalPresent: if (any(plasticState%nonLocal)) then
 !$OMP PARALLEL DO PRIVATE(orientation)
-   do e = FEsolving_execElem(1),FEsolving_execElem(2)
-     do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
-       do c = 1_pInt,homogenization_Ngrains(mesh_element(3,e))
+ do e = FEsolving_execElem(1),FEsolving_execElem(2)
+   do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
+     do c = 1_pInt,homogenization_Ngrains(mesh_element(3,e))
 ! somehow this subroutine is not threadsafe, so need critical statement here; not clear, what exactly the problem is
 !$OMP CRITICAL (polarDecomp)
-         orientation = math_RtoQ(transpose(math_rotationalPart33(crystallite_Fe(1:3,1:3,c,i,e))))          ! rotational part from polar decomposition as quaternion
+       orientation = math_RtoQ(transpose(math_rotationalPart33(crystallite_Fe(1:3,1:3,c,i,e))))
 !$OMP END CRITICAL (polarDecomp)
-         crystallite_rotation(1:4,c,i,e) = lattice_qDisorientation(crystallite_orientation0(1:4,c,i,e), &  ! active rotation from ori0
-                                                                  orientation)                               ! to current orientation (with no symmetry)
-         crystallite_orientation(1:4,c,i,e) = orientation
-  enddo; enddo; enddo
+       crystallite_rotation(1:4,c,i,e) = lattice_qDisorientation(crystallite_orientation0(1:4,c,i,e), &! active rotation from initial
+                                                                  orientation)                         ! to current orientation (with no symmetry)
+       crystallite_orientation(1:4,c,i,e) = orientation
+ enddo; enddo; enddo
 !$OMP END PARALLEL DO
  
   
  ! --- UPDATE SOME ADDITIONAL VARIABLES THAT ARE NEEDED FOR NONLOCAL MATERIAL ---
  ! --- we use crystallite_orientation from above, so need a separate loop
   
+ nonlocalPresent: if (any(plasticState%nonLocal)) then
 !$OMP PARALLEL DO PRIVATE(myPhase,neighboring_e,neighboring_i,neighboringPhase)
    do e = FEsolving_execElem(1),FEsolving_execElem(2)
      do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)

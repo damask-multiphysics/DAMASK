@@ -14,7 +14,7 @@ scriptID   = ' '.join([scriptName,damask.version])
 # --------------------------------------------------------------------
 
 parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
-Create regular voxel grid from points in an ASCIItable (or geom file).
+Create regular voxel grid from points in an ASCIItable.
 
 """, version = scriptID)
 
@@ -28,15 +28,9 @@ parser.add_option('-p',
                   dest = 'pos',
                   type = 'string', metavar = 'string',
                   help = 'label of coordinates [%default]')
-parser.add_option('-g',
-                  '--geom',
-                  dest = 'geom',
-                  action = 'store_true',
-                  help = 'geom input format')
 
 parser.set_defaults(mode   = 'cell',
                     pos    = 'pos',
-                    geom   = False,
                    )
 
 (options, filenames) = parser.parse_args()
@@ -46,10 +40,9 @@ parser.set_defaults(mode   = 'cell',
 if filenames == []: filenames = [None]
 
 for name in filenames:
-  isGeom = options.geom or (name is not None and name.endswith('.geom'))
   try:    table = damask.ASCIItable(name = name,
                                     buffered = False,
-                                    labeled  = not isGeom,
+                                    labeled  = True,
                                     readonly = True,
                                    )
   except: continue
@@ -61,9 +54,11 @@ for name in filenames:
 
   remarks = []
   errors  = []
-  coordDim = 3 if isGeom else table.label_dimension(options.pos)
+  coordDim = table.label_dimension(options.pos)
   if not 3 >= coordDim >= 1: errors.append('coordinates "{}" need to have one, two, or three dimensions.'.format(options.pos))
-  elif coordDim < 3:         remarks.append('appending {} dimensions to coordinates "{}"...'.format(3-coordDim,options.pos))
+  elif coordDim < 3:        remarks.append('appending {} dimension{} to coordinates "{}"...'.format(3-coordDim,
+                                                                                                    's' if coordDim < 2 else '',
+                                                                                                    options.pos))
 
   if remarks != []: damask.util.croak(remarks)
   if errors  != []:
@@ -73,32 +68,24 @@ for name in filenames:
 
 # --------------- figure out size and grid ---------------------------------------------------------
 
-  if isGeom:
-    info,extra_header = table.head_getGeom()
-    coords = [np.linspace(info['origin'][i],
-                          info['origin'][i]+info['size'][i],
-                          num = info['grid'][i]+1,
-                          endpoint = True,
-                         ) for i in xrange(3)]
-  else:
-    table.data_readArray(options.pos)
-    if len(table.data.shape) < 2: table.data.shape += (1,)                                            # expand to 2D shape
-    if table.data.shape[1] < 3:
-      table.data = np.hstack((table.data,
-                              np.zeros((table.data.shape[0],
-                                        3-table.data.shape[1]),dtype='f')))                           # fill coords up to 3D with zeros
+  table.data_readArray(options.pos)
+  if len(table.data.shape) < 2: table.data.shape += (1,)                                            # expand to 2D shape
+  if table.data.shape[1] < 3:
+    table.data = np.hstack((table.data,
+                            np.zeros((table.data.shape[0],
+                                      3-table.data.shape[1]),dtype='f')))                           # fill coords up to 3D with zeros
 
-    coords = [np.unique(table.data[:,i]) for i in xrange(3)]
+  coords = [np.unique(table.data[:,i]) for i in xrange(3)]
 
-    if options.mode == 'cell':
-      coords = [0.5 * np.array([3.0 * coords[i][0] - coords[i][0 + len(coords[i]) > 1]] + \
-                               [coords[i][j-1] + coords[i][j] for j in xrange(1,len(coords[i]))] + \
-                               [3.0 * coords[i][-1] - coords[i][-1 - (len(coords[i]) > 1)]]) for i in xrange(3)]
+  if options.mode == 'cell':
+    coords = [0.5 * np.array([3.0 * coords[i][0] - coords[i][0 + len(coords[i]) > 1]] + \
+                             [coords[i][j-1] + coords[i][j] for j in xrange(1,len(coords[i]))] + \
+                             [3.0 * coords[i][-1] - coords[i][-1 - (len(coords[i]) > 1)]]) for i in xrange(3)]
 
   grid = np.array(map(len,coords),'i')
-  N = grid.prod() if options.mode == 'point' or isGeom else (grid-1).prod()
+  N = grid.prod() if options.mode == 'point' else (grid-1).prod()
 
-  if not isGeom and N != len(table.data):
+  if N != len(table.data):
     errors.append('data count {} does not match grid {}x{}x{}.'.format(N,*(grid - (options.mode == 'cell')) ))
   if errors  != []:
     damask.util.croak(errors)
@@ -131,7 +118,7 @@ for name in filenames:
     writer.SetDataModeToBinary()
     writer.SetFileName(os.path.join(os.path.split(name)[0],
                                     os.path.splitext(os.path.split(name)[1])[0] +
-                                    ('' if isGeom else '_{}({})'.format(options.pos, options.mode)) +
+                                    '_{}({})'.format(options.pos, options.mode) +
                                     '.' + writer.GetDefaultFileExtension()))
   else:
     writer = vtk.vtkDataSetWriter()
