@@ -6,7 +6,6 @@ do
   < $geom \
   | \
   vtk_rectilinearGrid > ${geom%.*}.vtk
-    --geom $geom
 
   geom_toTable \
   < $geom \
