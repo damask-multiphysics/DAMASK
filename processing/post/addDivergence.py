@@ -10,15 +10,16 @@ scriptName = os.path.splitext(os.path.basename(__file__))[0]
 scriptID   = ' '.join([scriptName,damask.version])
 
 def divFFT(geomdim,field):
+ shapeFFT    = np.array(np.shape(field))[0:3]
  grid = np.array(np.shape(field)[2::-1])
  N = grid.prod()                                                                          # field size
  n = np.array(np.shape(field)[3:]).prod()                                                 # data size
 
- field_fourier = np.fft.fftpack.rfftn(field,axes=(0,1,2))
- div_fourier   = np.zeros(field_fourier.shape[0:len(np.shape(field))-1],'c16')            # size depents on whether tensor or vector
+ field_fourier = np.fft.fftpack.rfftn(field,axes=(0,1,2),s=shapeFFT)
+ div_fourier   = np.empty(field_fourier.shape[0:len(np.shape(field))-1],'c16')            # size depents on whether tensor or vector
 
 # differentiation in Fourier space
- k_s=np.zeros([3],'i')
+ k_s = np.zeros([3],'i')
  TWOPIIMG = 2.0j*math.pi
  for i in xrange(grid[2]):
    k_s[0] = i
@@ -41,34 +42,34 @@ def divFFT(geomdim,field):
        elif n == 3:                                                                       # vector, 3 -> 1
          div_fourier[i,j,k] = sum(field_fourier[i,j,k,0:3]*xi) *TWOPIIMG
 
- return np.fft.fftpack.irfftn(div_fourier,axes=(0,1,2)).reshape([N,n/3])
+ return np.fft.fftpack.irfftn(div_fourier,axes=(0,1,2),s=shapeFFT).reshape([N,n/3])
 
 
 # --------------------------------------------------------------------
 #                                MAIN
 # --------------------------------------------------------------------
 
-parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
+parser = OptionParser(option_class=damask.extendableOption, usage='%prog option(s) [ASCIItable(s)]', description = """
 Add column(s) containing divergence of requested column(s).
 Operates on periodic ordered three-dimensional data sets.
 Deals with both vector- and tensor-valued fields.
 
 """, version = scriptID)
 
-parser.add_option('-c','--coordinates',
+parser.add_option('-p','--pos','--periodiccellcenter',
                   dest = 'coords',
                   type = 'string', metavar = 'string',
-                  help = 'column heading for coordinates [%default]')
+                  help = 'label of coordinates [%default]')
 parser.add_option('-v','--vector',
                   dest = 'vector',
                   action = 'extend', metavar = '<string LIST>',
-                  help = 'heading of columns containing vector field values')
+                  help = 'label(s) of vector field values')
 parser.add_option('-t','--tensor',
                   dest = 'tensor',
                   action = 'extend', metavar = '<string LIST>',
-                  help = 'heading of columns containing tensor field values')
+                  help = 'label(s) of tensor field values')
 
-parser.set_defaults(coords = 'ipinitialcoord',
+parser.set_defaults(coords = 'pos',
                    )
 
 (options,filenames) = parser.parse_args()

@@ -19,16 +19,18 @@ Translate geom description into ASCIItable containing 1/2/3_pos and microstructu
 
 """, version = scriptID)
 
-parser.add_option('-p','--position',
-                  dest = 'position',
+parser.add_option('-p',
+                  '--pos', '--position',
+                  dest = 'pos',
                   type = 'string', metavar = 'string',
-                  help = 'column label for position [%default]')
-parser.add_option('-m','--microstructure',
+                  help = 'label of coordinates [%default]')
+parser.add_option('-m',
+                  '--microstructure',
                   dest = 'microstructure',
                   type = 'string', metavar = 'string',
-                  help = 'column label for microstructure index [%default]')
+                  help = 'label of microstructure index [%default]')
 
-parser.set_defaults(position = 'pos',
+parser.set_defaults(pos = 'pos',
                     microstructure = 'microstructure',
                    )
 
@@ -39,10 +41,11 @@ parser.set_defaults(position = 'pos',
 if filenames == []: filenames = [None]
 
 for name in filenames:
-  try:
-    table = damask.ASCIItable(name = name,
-                              outname = os.path.splitext(name)[0]+'.txt' if name else name,
-                              buffered = False, labeled = False)
+  try:    table = damask.ASCIItable(name = name,
+                                    outname = os.path.splitext(name)[0]+'.txt' if name else name,
+                                    buffered = False,
+                                    labeled = False,
+                                   )
   except: continue
   damask.util.report(scriptName,name)
 
@@ -75,7 +78,7 @@ for name in filenames:
   table.info_clear()
   table.info_append(extra_header + [scriptID + '\t' + ' '.join(sys.argv[1:])])
   table.labels_clear()
-  table.labels_append(['{}_{}'.format(1+i,options.position) for i in xrange(3)]+[options.microstructure])
+  table.labels_append(['{}_{}'.format(1+i,options.pos) for i in xrange(3)]+[options.microstructure])
   table.head_write()
   table.output_flush()
 
