@@ -5,7 +5,6 @@ import numpy as np
 import damask
 from optparse import OptionParser
 from scipy import spatial
-from collections import defaultdict
 
 scriptName = os.path.splitext(os.path.basename(__file__))[0]
 scriptID   = ' '.join([scriptName,damask.version])
@@ -23,7 +22,7 @@ parser.add_option('-r', '--radius',
 parser.add_option('-d', '--disorientation',
                   dest = 'disorientation',
                   type = 'float', metavar = 'float',
-                  help = 'disorientation threshold per grain [%default] (degrees)')
+                  help = 'disorientation threshold in degrees [%default]')
 parser.add_option('-s', '--symmetry',
                   dest = 'symmetry',
                   type = 'string', metavar = 'string',
@@ -61,7 +60,8 @@ parser.add_option('-p', '--position',
                   type = 'string', metavar = 'string',
                   help = 'spatial position of voxel [%default]')
 
-parser.set_defaults(symmetry = 'cubic',
+parser.set_defaults(disorientation = 5,
+                    symmetry = 'cubic',
                     coords   = 'pos',
                     degrees  = False,
                    )
@@ -86,17 +86,16 @@ if np.sum(input) != 1: parser.error('needs exactly one input format.')
                          (options.matrix,9,'matrix'),
                          (options.quaternion,4,'quaternion'),
                         ][np.where(input)[0][0]]                                                    # select input label that was requested
-toRadians = np.pi/180.0 if options.degrees else 1.0                                               # rescale degrees to radians
-cos_disorientation = np.cos(options.disorientation/2.*toRadians)
+toRadians = np.pi/180.0 if options.degrees else 1.0                                                 # rescale degrees to radians
+cos_disorientation = np.cos(np.radians(options.disorientation/2.))                                  # cos of half the disorientation angle
 
 # --- loop over input files -------------------------------------------------------------------------
 
 if filenames == []: filenames = [None]
 
 for name in filenames:
-  try:
-    table = damask.ASCIItable(name = name,
-                              buffered = False)
+  try:    table = damask.ASCIItable(name = name,
+                                    buffered = False)
   except: continue
   damask.util.report(scriptName,name)
 
@@ -109,8 +108,10 @@ for name in filenames:
   errors  = []
   remarks = []
   
-  if table.label_dimension(options.coords) != 3:       errors.append('coordinates {} are not a vector.'.format(options.coords))
-  if not np.all(table.label_dimension(label) == dim):  errors.append('input {} does not have dimension {}.'.format(label,dim))
+  if not 3 >= table.label_dimension(options.coords) >= 1:
+    errors.append('coordinates "{}" need to have one, two, or three dimensions.'.format(options.coords))
+  if not np.all(table.label_dimension(label) == dim):
+    errors.append('input {} does not have dimension {}.'.format(label,dim))
   else:  column = table.label_index(label)
 
   if remarks != []: damask.util.croak(remarks)
@@ -122,8 +123,10 @@ for name in filenames:
 # ------------------------------------------ assemble header ---------------------------------------
 
   table.info_append(scriptID + '\t' + ' '.join(sys.argv[1:]))
-  table.labels_append('grainID_{}@{}'.format(label,
-             options.disorientation if options.degrees else np.degrees(options.disorientation)))    # report orientation source and disorientation in degrees
+  table.labels_append('grainID_{}@{:g}'.format('+'.join(label) 
+                                               if isinstance(label, (list,tuple))
+                                               else label,
+                                               options.disorientation))                        # report orientation source and disorientation
   table.head_write()
 
 # ------------------------------------------ process data ------------------------------------------
@@ -162,7 +165,7 @@ for name in filenames:
 
       time_delta = (time.clock()-tick) * (len(grainID) - p) / p
       bg.set_message('(%02i:%02i:%02i) processing point %i of %i (grain count %i)...'\
-            %(time_delta//3600,time_delta%3600//60,time_delta%60,p,len(grainID),len(orientations)))
+            %(time_delta//3600,time_delta%3600//60,time_delta%60,p,len(grainID),np.count_nonzero(memberCounts)))
 
     if inputtype == 'eulers':
       o = damask.Orientation(Eulers   = np.array(map(float,table.data[column:column+3]))*toRadians,
@@ -179,84 +182,51 @@ for name in filenames:
       o = damask.Orientation(quaternion = np.array(map(float,table.data[column:column+4])),
                              symmetry   = options.symmetry).reduced()
 
-    matched = False
+    matched        = False
+    alreadyChecked = {}
+    candidates     = []
+    bestDisorientation = damask.Quaternion([0,0,0,1])                                               # initialize to 180 deg rotation as worst case
 
-# check against last matched needs to be really picky. best would be to exclude jumps across the poke (checking distance between last and me?)
-# when walking through neighborhood first check whether grainID of that point has already been tested, if yes, skip!
-
-    if matchedID != -1:                                                                             # has matched before?
-      matched = (o.quaternion.conjugated() * orientations[matchedID].quaternion).w > cos_disorientation
-
-    if not matched:
-      alreadyChecked = {}
-      bestDisorientation = damask.Quaternion([0,0,0,1])                                             # initialize to 180 deg rotation as worst case
-      for i in kdtree.query_ball_point(kdtree.data[p],options.radius):                              # check all neighboring points
-        gID = grainID[i]
-        if gID != -1 and gID not in alreadyChecked:                                                 # indexed point belonging to a grain not yet tested?
-          alreadyChecked[gID] = True                                                                # remember not to check again
-          disorientation = o.disorientation(orientations[gID],SST = False)[0]                       # compare against other orientation
-          if disorientation.quaternion.w >  cos_disorientation and \
-             disorientation.quaternion.w >= bestDisorientation.w:                                   # within threshold and betterthan current best? 
+    for i in kdtree.query_ball_point(kdtree.data[p],options.radius):                                # check all neighboring points
+      gID = grainID[i]
+      if gID != -1 and gID not in alreadyChecked:                                                   # indexed point belonging to a grain not yet tested?
+        alreadyChecked[gID] = True                                                                  # remember not to check again
+        disorientation = o.disorientation(orientations[gID],SST = False)[0]                         # compare against other orientation
+        if disorientation.quaternion.w >  cos_disorientation:                                       # within threshold ...
+          candidates.append(gID)                                                                    # remember as potential candidate
+          if disorientation.quaternion.w >= bestDisorientation.w:                                   # ... and better than current best? 
             matched = True
             matchedID = gID                                                                         # remember that grain
             bestDisorientation = disorientation.quaternion
 
-    if not matched:                                                                                 # no match -> new grain found
-      memberCounts += [1]                                                                           # start new membership counter
+    if matched:                                                                                     # did match existing grain
+      memberCounts[matchedID] += 1
+      if len(candidates) > 1:                                                                       # ambiguity in grain identification?
+        largestGrain = sorted(candidates,key=lambda x:memberCounts[x])[-1]                          # find largest among potential candidate grains
+        matchedID    = largestGrain
+        for c in [c for c in candidates if c != largestGrain]:                                      # loop over smaller candidates
+          memberCounts[largestGrain] += memberCounts[c]                                             # reassign member count of smaller to largest
+          memberCounts[c] = 0
+        grainID = np.where(np.in1d(grainID,candidates), largestGrain, grainID)                      # relabel grid points of smaller candidates as largest one
+      
+    else:                                                                                           # no match -> new grain found
       orientations += [o]                                                                           # initialize with current orientation
+      memberCounts += [1]                                                                           # start new membership counter
       matchedID = g
       g += 1                                                                                        # increment grain counter
-
-    else:                                                                                           # did match existing grain
-      memberCounts[matchedID] += 1
 
     grainID[p] = matchedID                                                                          # remember grain index assigned to point
     p += 1                                                                                          # increment point
 
-  bg.set_message('identifying similar orientations among {} grains...'.format(len(orientations)))
-
-  memberCounts = np.array(memberCounts)
-  similarOrientations = [[] for i in xrange(len(orientations))]
-
-  for i,orientation in enumerate(orientations[:-1]):                                                   # compare each identified orientation...
-    for j in xrange(i+1,len(orientations)):                                                            # ...against all others that were defined afterwards
-      if orientation.disorientation(orientations[j],SST = False)[0].quaternion.w > cos_disorientation: # similar orientations in both grainIDs?
-        similarOrientations[i].append(j)                                                               # remember in upper triangle...
-        similarOrientations[j].append(i)                                                               # ...and lower triangle of matrix
-
-    if similarOrientations[i] != []:
-      bg.set_message('grainID {} is as: {}'.format(i,' '.join(map(str,similarOrientations[i]))))
-
-  stillShifting = True
-  while stillShifting:
-    stillShifting = False
-    tick = time.clock()
-
-    for p,gID in enumerate(grainID):                                                                # walk through all points
-      if p > 0 and p % 1000 == 0:
-
-        time_delta = (time.clock()-tick) * (len(grainID) - p) / p
-        bg.set_message('(%02i:%02i:%02i) shifting ID of point %i out of %i (grain count %i)...'
-            %(time_delta//3600,time_delta%3600//60,time_delta%60,p,len(grainID),len(orientations)))
-      if similarOrientations[gID] != []:                                                            # orientation of my grainID is similar to someone else?
-        similarNeighbors = defaultdict(int)                                                         # frequency of neighboring grainIDs sharing my orientation
-        for i in kdtree.query_ball_point(kdtree.data[p],options.radius):                            # check all neighboring point
-          if grainID[i] in similarOrientations[gID]:                                                # neighboring point shares my orientation?
-            similarNeighbors[grainID[i]] += 1                                                       # remember its grainID
-        if similarNeighbors != {}:                                                                  # found similar orientation(s) in neighborhood
-          candidates = np.array([gID]+similarNeighbors.keys())                                      # possible replacement grainIDs for me
-          grainID[p] = candidates[np.argsort(memberCounts[candidates])[-1]]                         # adopt ID that is most frequent in overall dataset
-          memberCounts[gID]        -= 1                                                             # my former ID loses one fellow
-          memberCounts[grainID[p]] += 1                                                             # my new ID gains one fellow
-          bg.set_message('{}:{} --> {}'.format(p,gID,grainID[p]))                                   # report switch of grainID
-          stillShifting = True
-
+  grainIDs = np.where(np.array(memberCounts) > 0)[0]                                                # identify "live" grain identifiers
+  packingMap = dict(zip(list(grainIDs),range(len(grainIDs))))                                       # map to condense into consecutive IDs
+  
   table.data_rewind()
 
   outputAlive = True
   p = 0
   while outputAlive and table.data_read():                                                          # read next data line of ASCII table
-    table.data_append(1+grainID[p])                                                                 # add grain ID
+    table.data_append(1+packingMap[grainID[p]])                                                     # add (condensed) grain ID
     outputAlive = table.data_write()                                                                # output processed line
     p += 1
 

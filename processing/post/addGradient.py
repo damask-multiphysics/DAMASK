@@ -14,11 +14,10 @@ def gradFFT(geomdim,field):
  grid = np.array(np.shape(field)[2::-1])
  N = grid.prod()                                                                          # field size
  n = np.array(np.shape(field)[3:]).prod()                                                 # data size
-
  if   n == 3:   dataType = 'vector'
  elif n == 1:   dataType = 'scalar'
 
- field_fourier = np.fft.fftpack.rfftn(field,axes=(0,1,2),s=shapeFFT)
+ field_fourier = nps=shapeFFT).fft.fftpack.rfftn(field,axes=(0,1,2),
  grad_fourier  = np.empty(field_fourier.shape+(3,),'c16')
 
 # differentiation in Fourier space
@@ -98,7 +97,7 @@ for name in filenames:
 
   items = {
             'scalar': {'dim': 1, 'shape': [1], 'labels':options.scalar, 'active':[], 'column': []},
-            'vector': {'dim': 3, 'shape': [3],   'labels':options.vector, 'active':[], 'column': []},
+            'vector': {'dim': 3, 'shape': [3], 'labels':options.vector, 'active':[], 'column': []},
           }
   errors  = []
   remarks = []
