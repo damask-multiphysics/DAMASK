@@ -76,14 +76,15 @@ for name in filenames:
 
 # --------------- figure out size and grid ---------------------------------------------------------
 
-  table.data_readArray()
+  table.data_readArray(options.coords)
+  table.data_rewind()
 
-  coords = [np.unique(table.data[:,colCoord+i]) for i in xrange(3)]
+  coords = [np.unique(table.data[:,i]) for i in xrange(3)]
   mincorner = np.array(map(min,coords))
   maxcorner = np.array(map(max,coords))
   grid   = np.array(map(len,coords),'i')
-  size   = grid/np.maximum(np.ones(3,'d'), grid-1.0) * (maxcorner-mincorner)                      # size from edge to edge = dim * n/(n-1) 
-  size   = np.where(grid > 1, size, min(size[grid > 1]/grid[grid > 1]))                           # spacing for grid==1 set to smallest among other spacings
+  size   = grid/np.maximum(np.ones(3,'d'), grid-1.0) * (maxcorner-mincorner)                        # size from edge to edge = dim * n/(n-1) 
+  size   = np.where(grid > 1, size, min(size[grid > 1]/grid[grid > 1]))                             # spacing for grid==1 set to smallest among other spacings
   
   packing = np.array(options.packing,'i')
   outSize = grid*packing
@@ -95,7 +96,6 @@ for name in filenames:
 
 # ------------------------------------------ process data -------------------------------------------
 
-  table.data_rewind()
   data = np.zeros(outSize.tolist()+[len(table.labels)])
   p = np.zeros(3,'i')
   
