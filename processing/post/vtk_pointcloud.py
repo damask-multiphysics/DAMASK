@@ -82,16 +82,16 @@ for name in filenames:
  
 # ------------------------------------------ output result ---------------------------------------  
 
-  writer = vtk.vtkXMLPolyDataWriter()
-  writer.SetCompressorTypeToZLib()
-
   if name:
+    writer = vtk.vtkXMLPolyDataWriter()
+    writer.SetCompressorTypeToZLib()
     writer.SetDataModeToBinary()
     writer.SetFileName(os.path.join(os.path.split(name)[0],
                                     os.path.splitext(os.path.split(name)[1])[0] +
                                     '.' + writer.GetDefaultFileExtension()))
   else:
-    writer.SetDataModeToAscii()
+    writer = vtk.vtkDataSetWriter()
+    writer.SetHeader('# powered by '+scriptID)
     writer.WriteToOutputStringOn()
   
   if vtk.VTK_MAJOR_VERSION <= 5: writer.SetInput(Polydata)
@@ -99,6 +99,6 @@ for name in filenames:
 
   writer.Write()
 
-  if name is None:  sys.stdout.write(writer.GetOutputString())
+  if name is None: sys.stdout.write(writer.GetOutputString()[:writer.GetOutputStringLength()])      # limiting of outputString is fix for vtk <7.0
 
   table.close()

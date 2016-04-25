@@ -6,7 +6,6 @@ import numpy as np
 import damask
 from optparse import OptionParser
 
-
 scriptName = os.path.splitext(os.path.basename(__file__))[0]
 scriptID   = ' '.join([scriptName,damask.version])
 
@@ -144,7 +143,6 @@ for name in filenames:
 
   writer.Write()
 
-  if name is None:  sys.stdout.write(writer.GetOutputString() if name else
-                                     writer.GetOutputString()[0:writer.GetOutputStringLength()])
+  if name is None: sys.stdout.write(writer.GetOutputString()[:writer.GetOutputStringLength()])      # limiting of outputString is fix for vtk <7.0
 
   table.close()
