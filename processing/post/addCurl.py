@@ -70,7 +70,7 @@ Deals with both vector- and tensor fields.
 
 """, version = scriptID)
 
-parser.add_option('-p','--pos','--periodiccellcenter'
+parser.add_option('-p','--pos','--periodiccellcenter',
                   dest = 'coords',
                   type = 'string', metavar = 'string',
                   help = 'label of coordinates [%default]')
