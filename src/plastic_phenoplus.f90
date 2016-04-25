@@ -980,8 +980,8 @@ subroutine plastic_phenoplus_microstructure(orientation,ipc,ip,el,F0,Fe,Fp,Tstar
           ENDIF
         ENDDO LOOPMYNEIGHBORS
 
-      plasticState(ph)%state(index_kappa+me_slip, of) = 1.0_pReal &
-                                                        + 0.15_pReal*(1.0_pReal + ERF(10.0_pReal*(maxval(ne_mprimes)-0.8_pReal)))
+      plasticState(ph)%state(index_kappa+me_slip, of) = 1.2_pReal &
+                                                        + 0.2_pReal*ERF(4.0_pReal * maxval(ne_mprimes) - 4.0_pReal)
       ENDDO LOOPMYSLIP
 
     ENDIF
