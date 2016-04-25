@@ -2,7 +2,10 @@
 
 for geom in "$@"
 do
-  vtk_rectilinearGrid \
+  geom_toTable \
+  < $geom \
+  | \
+  vtk_rectilinearGrid > ${geom%.*}.vtk
     --geom $geom
 
   geom_toTable \
@@ -11,5 +14,6 @@ do
   vtk_addRectilinearGridData \
     --scalar microstructure \
     --inplace \
-    --vtk ${geom%.*}.vtr
+    --vtk ${geom%.*}.vtk
+  rm ${geom%.*}.vtk
 done
