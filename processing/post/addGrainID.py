@@ -15,54 +15,61 @@ Add grain index based on similiarity of crystal lattice orientation.
 
 """, version = scriptID)
 
-parser.add_option('-r', '--radius',
+parser.add_option('-r',
+                  '--radius',
                   dest = 'radius',
                   type = 'float', metavar = 'float',
                   help = 'search radius')
-parser.add_option('-d', '--disorientation',
+parser.add_option('-d',
+                  '--disorientation',
                   dest = 'disorientation',
                   type = 'float', metavar = 'float',
                   help = 'disorientation threshold in degrees [%default]')
-parser.add_option('-s', '--symmetry',
+parser.add_option('-s',
+                  '--symmetry',
                   dest = 'symmetry',
                   type = 'string', metavar = 'string',
                   help = 'crystal symmetry [%default]')
-parser.add_option('-e', '--eulers',
+parser.add_option('-e',
+                  '--eulers',
                   dest = 'eulers',
                   type = 'string', metavar = 'string',
-                  help = 'Euler angles')
-parser.add_option(     '--degrees',
+                  help = 'label of Euler angles')
+parser.add_option('--degrees',
                   dest = 'degrees',
                   action = 'store_true',
                   help = 'Euler angles are given in degrees [%default]')
-parser.add_option('-m', '--matrix',
+parser.add_option('-m',
+                  '--matrix',
                   dest = 'matrix',
                   type = 'string', metavar = 'string',
-                  help = 'orientation matrix')
+                  help = 'label of orientation matrix')
 parser.add_option('-a',
                   dest = 'a',
                   type = 'string', metavar = 'string',
-                  help = 'crystal frame a vector')
+                  help = 'label of crystal frame a vector')
 parser.add_option('-b',
                   dest = 'b',
                   type = 'string', metavar = 'string',
-                  help = 'crystal frame b vector')
+                  help = 'label of crystal frame b vector')
 parser.add_option('-c',
                   dest = 'c',
                   type = 'string', metavar = 'string',
-                  help = 'crystal frame c vector')
-parser.add_option('-q', '--quaternion',
+                  help = 'label of crystal frame c vector')
+parser.add_option('-q',
+                  '--quaternion',
                   dest = 'quaternion',
                   type = 'string', metavar = 'string',
-                  help = 'quaternion')
-parser.add_option('-p', '--position',
-                  dest = 'coords',
+                  help = 'label of quaternion')
+parser.add_option('-p',
+                  '--pos', '--position',
+                  dest = 'pos',
                   type = 'string', metavar = 'string',
-                  help = 'spatial position of voxel [%default]')
+                  help = 'label of coordinates [%default]')
 
 parser.set_defaults(disorientation = 5,
                     symmetry = 'cubic',
-                    coords   = 'pos',
+                    pos      = 'pos',
                     degrees  = False,
                    )
 
@@ -108,10 +115,10 @@ for name in filenames:
   errors  = []
   remarks = []
   
-  if not 3 >= table.label_dimension(options.coords) >= 1:
-    errors.append('coordinates "{}" need to have one, two, or three dimensions.'.format(options.coords))
+  if not 3 >= table.label_dimension(options.pos) >= 1:
+    errors.append('coordinates "{}" need to have one, two, or three dimensions.'.format(options.pos))
   if not np.all(table.label_dimension(label) == dim):
-    errors.append('input {} does not have dimension {}.'.format(label,dim))
+    errors.append('input "{}" does not have dimension {}.'.format(label,dim))
   else:  column = table.label_index(label)
 
   if remarks != []: damask.util.croak(remarks)
@@ -140,7 +147,7 @@ for name in filenames:
 
   bg.set_message('reading positions...')
 
-  table.data_readArray(options.coords)                                                              # read position vectors
+  table.data_readArray(options.pos)                                                              # read position vectors
   grainID = -np.ones(len(table.data),dtype=int)
 
   start = tick = time.clock()

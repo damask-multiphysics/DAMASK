@@ -71,12 +71,6 @@ contains
 !> @brief module initialization
 !--------------------------------------------------------------------------------------------------
 subroutine homogenization_init
-#ifdef HDF
- use hdf5, only: &
-   HID_T
- use IO, only : &
-   HDF5_mappingHomogenization
-#endif
  use, intrinsic :: iso_fortran_env                                                                  ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
  use math, only: &
    math_I3
@@ -131,12 +125,6 @@ subroutine homogenization_init
  character(len=64), dimension(:,:), pointer :: thisOutput
  character(len=32) :: outputName                                                                    !< name of output, intermediate fix until HDF5 output is ready
  logical :: knownHomogenization, knownThermal, knownDamage, knownVacancyflux, knownPorosity, knownHydrogenflux
-#ifdef HDF
- integer(pInt), dimension(:,:), allocatable :: mapping
- integer(pInt), dimension(:), allocatable :: InstancePosition
- allocate(mapping(mesh_ncpelems,4),source=0_pInt)
- allocate(InstancePosition(material_Nhomogenization),source=0_pInt)
-#endif
 
 
 !--------------------------------------------------------------------------------------------------
@@ -396,17 +384,6 @@ subroutine homogenization_init
 
 !--------------------------------------------------------------------------------------------------
 ! allocate and initialize global state and postresutls variables
-#ifdef HDF
- elementLooping: do e = 1,mesh_NcpElems
-   myInstance = homogenization_typeInstance(mesh_element(3,e))
-   IpLooping: do i = 1,FE_Nips(FE_geomtype(mesh_element(2,e)))
-       InstancePosition(myInstance) = InstancePosition(myInstance)+1_pInt
-       mapping(e,1:4) = [instancePosition(myinstance),myinstance,e,i]
-   enddo IpLooping
- enddo elementLooping
- call  HDF5_mappingHomogenization(mapping)
-#endif
-
  homogenization_maxSizePostResults = 0_pInt
  thermal_maxSizePostResults        = 0_pInt
  damage_maxSizePostResults         = 0_pInt

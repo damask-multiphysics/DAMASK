@@ -10,6 +10,7 @@ scriptName = os.path.splitext(os.path.basename(__file__))[0]
 scriptID   = ' '.join([scriptName,damask.version])
 
 def curlFFT(geomdim,field):
+ shapeFFT    = np.array(np.shape(field))[0:3]
  grid = np.array(np.shape(field)[2::-1])
  N = grid.prod()                                                                          # field size
  n = np.array(np.shape(field)[3:]).prod()                                                 # data size
@@ -17,8 +18,8 @@ def curlFFT(geomdim,field):
  if   n == 3:   dataType = 'vector'
  elif n == 9:   dataType = 'tensor'
 
- field_fourier = np.fft.fftpack.rfftn(field,axes=(0,1,2))
- curl_fourier  = np.zeros(field_fourier.shape,'c16')
+ field_fourier = np.fft.fftpack.rfftn(field,axes=(0,1,2),s=shapeFFT)
+ curl_fourier  = np.empty(field_fourier.shape,'c16')
 
 # differentiation in Fourier space
  k_s = np.zeros([3],'i')
@@ -55,32 +56,32 @@ def curlFFT(geomdim,field):
          curl_fourier[i,j,k,2] = ( field_fourier[i,j,k,1]*xi[0]\
                                   -field_fourier[i,j,k,0]*xi[1]) *TWOPIIMG
 
- return np.fft.fftpack.irfftn(curl_fourier,axes=(0,1,2)).reshape([N,n])
+ return np.fft.fftpack.irfftn(curl_fourier,axes=(0,1,2),s=shapeFFT).reshape([N,n])
 
 
 # --------------------------------------------------------------------
 #                                MAIN
 # --------------------------------------------------------------------
 
-parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
+parser = OptionParser(option_class=damask.extendableOption, usage='%prog option(s) [ASCIItable(s)]', description = """
 Add column(s) containing curl of requested column(s).
 Operates on periodic ordered three-dimensional data sets.
-Deals with both vector- and tensor-valued fields.
+Deals with both vector- and tensor fields.
 
 """, version = scriptID)
 
-parser.add_option('-c','--coordinates',
+parser.add_option('-p','--pos','--periodiccellcenter',
                   dest = 'coords',
                   type = 'string', metavar = 'string',
-                  help = 'column label of coordinates [%default]')
+                  help = 'label of coordinates [%default]')
 parser.add_option('-v','--vector',
                   dest = 'vector',
                   action = 'extend', metavar = '<string LIST>',
-                  help = 'column label(s) of vector field values')
+                  help = 'label(s) of vector field values')
 parser.add_option('-t','--tensor',
                   dest = 'tensor',
                   action = 'extend', metavar = '<string LIST>',
-                  help = 'column label(s) of tensor field values')
+                  help = 'label(s) of tensor field values')
 
 parser.set_defaults(coords = 'pos',
                    )
@@ -90,7 +91,7 @@ parser.set_defaults(coords = 'pos',
 if options.vector is None and options.tensor is None:
   parser.error('no data column specified.')
 
-# --- loop over input files -------------------------------------------------------------------------
+# --- loop over input files ------------------------------------------------------------------------
 
 if filenames == []: filenames = [None]
 
@@ -147,7 +148,7 @@ for name in filenames:
   maxcorner = np.array(map(max,coords))
   grid   = np.array(map(len,coords),'i')
   size   = grid/np.maximum(np.ones(3,'d'), grid-1.0) * (maxcorner-mincorner)                        # size from edge to edge = dim * n/(n-1) 
-  size   = np.where(grid > 1, size, min(size[grid > 1]/grid[grid > 1]))     
+  size   = np.where(grid > 1, size, min(size[grid > 1]/grid[grid > 1]))                             # spacing for grid==1 equal to smallest among other ones
 
 # ------------------------------------------ process value field -----------------------------------
 
