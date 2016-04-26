@@ -94,11 +94,11 @@ module lattice
    LATTICE_fcc_NcleavageSystem = int([3, 4, 0],pInt)                                                !< total # of cleavage systems per family for fcc
    
  integer(pInt), parameter, private  :: &
-   LATTICE_fcc_Nslip      = sum(lattice_fcc_NslipSystem), &                                         !< total # of slip systems for fcc
-   LATTICE_fcc_Ntwin      = sum(lattice_fcc_NtwinSystem), &                                         !< total # of twin systems for fcc
+   LATTICE_fcc_Nslip      = 12_pInt, & !sum(lattice_fcc_NslipSystem), &                             !< total # of slip systems for fcc
+   LATTICE_fcc_Ntwin      = 12_pInt, & !sum(lattice_fcc_NtwinSystem), &                             !< total # of twin systems for fcc
    LATTICE_fcc_NnonSchmid = 0_pInt, &                                                               !< total # of non-Schmid contributions for fcc
-   LATTICE_fcc_Ntrans     = sum(lattice_fcc_NtransSystem), &                                        !< total # of transformation systems for fcc
-   LATTICE_fcc_Ncleavage  = sum(lattice_fcc_NcleavageSystem)                                        !< total # of cleavage systems for fcc
+   LATTICE_fcc_Ntrans     = 12_pInt, & !sum(lattice_fcc_NtransSystem), &                            !< total # of transformation systems for fcc
+   LATTICE_fcc_Ncleavage  = 7_pInt     !sum(lattice_fcc_NcleavageSystem)                            !< total # of cleavage systems for fcc
  
  real(pReal), dimension(3+3,LATTICE_fcc_Nslip), parameter, private :: &
    LATTICE_fcc_systemSlip = reshape(real([&
@@ -377,11 +377,11 @@ module lattice
    LATTICE_bcc_NcleavageSystem = int([3,6,0],pInt)                                                  !< total # of cleavage systems per family for bcc
    
  integer(pInt), parameter, private  :: &
-   LATTICE_bcc_Nslip      = sum(lattice_bcc_NslipSystem), &                                         !< total # of slip systems for bcc
-   LATTICE_bcc_Ntwin      = sum(lattice_bcc_NtwinSystem), &                                         !< total # of twin systems for bcc
+   LATTICE_bcc_Nslip      = 24_pInt, & !sum(lattice_bcc_NslipSystem), &                             !< total # of slip systems for bcc
+   LATTICE_bcc_Ntwin      = 12_pInt, & !sum(lattice_bcc_NtwinSystem), &                             !< total # of twin systems for bcc
    LATTICE_bcc_NnonSchmid = 6_pInt, &                                                               !< total # of non-Schmid contributions for bcc (A. Koester, A. Ma, A. Hartmaier 2012)
-   LATTICE_bcc_Ntrans     = sum(lattice_bcc_NtransSystem), &                                        !< total # of transformation systems for bcc
-   LATTICE_bcc_Ncleavage  = sum(lattice_bcc_NcleavageSystem)                                        !< total # of cleavage systems for bcc
+   LATTICE_bcc_Ntrans     = 0_pInt, &  !sum(lattice_bcc_NtransSystem), &                            !< total # of transformation systems for bcc
+   LATTICE_bcc_Ncleavage  = 9_pInt     !sum(lattice_bcc_NcleavageSystem)                            !< total # of cleavage systems for bcc
 
  real(pReal), dimension(3+3,LATTICE_bcc_Nslip), parameter, private :: &
    LATTICE_bcc_systemSlip = reshape(real([&
@@ -574,11 +574,11 @@ module lattice
    LATTICE_hex_NcleavageSystem = int([3,0,0],pInt)                                                  !< total # of cleavage systems per family for hex
    
  integer(pInt), parameter, private  :: &
-   LATTICE_hex_Nslip      = sum(lattice_hex_NslipSystem), &                                         !< total # of slip systems for hex
-   LATTICE_hex_Ntwin      = sum(lattice_hex_NtwinSystem), &                                         !< total # of twin systems for hex
+   LATTICE_hex_Nslip      = 33_pInt, & !sum(lattice_hex_NslipSystem), &                             !< total # of slip systems for hex
+   LATTICE_hex_Ntwin      = 24_pInt, & !sum(lattice_hex_NtwinSystem), &                             !< total # of twin systems for hex
    LATTICE_hex_NnonSchmid = 0_pInt, &                                                               !< total # of non-Schmid contributions for hex
-   LATTICE_hex_Ntrans     = sum(lattice_hex_NtransSystem), &                                        !< total # of transformation systems for hex
-   LATTICE_hex_Ncleavage  = sum(lattice_hex_NcleavageSystem)                                        !< total # of cleavage systems for hex
+   LATTICE_hex_Ntrans     = 0_pInt, &  !sum(lattice_hex_NtransSystem), &                            !< total # of transformation systems for hex
+   LATTICE_hex_Ncleavage  = 3_pInt     !sum(lattice_hex_NcleavageSystem)                            !< total # of cleavage systems for hex
 
  real(pReal), dimension(4+4,LATTICE_hex_Nslip), parameter, private :: &
    LATTICE_hex_systemSlip = reshape(real([&
@@ -856,11 +856,11 @@ module lattice
    LATTICE_bct_NcleavageSystem = int([0,0,0],pInt)                                                  !< total # of cleavage systems per family for bct
    
  integer(pInt), parameter, private  :: &
-   LATTICE_bct_Nslip      = sum(lattice_bct_NslipSystem), &                                         !< total # of slip systems for bct
-   LATTICE_bct_Ntwin      = sum(lattice_bct_NtwinSystem), &                                         !< total # of twin systems for bct
+   LATTICE_bct_Nslip      = 52_pInt, & !sum(lattice_bct_NslipSystem), &                             !< total # of slip systems for bct
+   LATTICE_bct_Ntwin      = 0_pInt, &  !sum(lattice_bct_NtwinSystem), &                             !< total # of twin systems for bct
    LATTICE_bct_NnonSchmid = 0_pInt, &                                                               !< total # of non-Schmid contributions for bct
-   LATTICE_bct_Ntrans     = sum(lattice_bct_NtransSystem), &                                        !< total # of transformation systems for bct
-   LATTICE_bct_Ncleavage  = sum(lattice_bct_NcleavageSystem)                                        !< total # of cleavage systems for bct
+   LATTICE_bct_Ntrans     = 0_pInt, &  !sum(lattice_bct_NtransSystem), &                            !< total # of transformation systems for bct
+   LATTICE_bct_Ncleavage  = 0_pInt     !sum(lattice_bct_NcleavageSystem)                            !< total # of cleavage systems for bct
  
  real(pReal), dimension(3+3,LATTICE_bct_Nslip), parameter, private :: &
    LATTICE_bct_systemSlip = reshape(real([&
