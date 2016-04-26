@@ -839,6 +839,9 @@ subroutine math_invert(myDim,A, InvA, error)
  
  real(pReal), dimension(myDim,myDim), intent(out) :: invA
  logical, intent(out) :: error
+ external :: &
+  dgetrf, &
+  dgetri
  
  invA = A 
  call dgetrf(myDim,myDim,invA,myDim,ipiv,ierr)
