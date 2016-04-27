@@ -20,7 +20,7 @@ Average each data block of size 'packing' into single values thus reducing the f
 """, version = scriptID)
 
 parser.add_option('-c','--coordinates',
-                  dest = 'coords',
+                  dest = 'pos',
                   type = 'string', metavar = 'string',
                   help = 'column label of coordinates [%default]')
 parser.add_option('-p','--packing',
@@ -39,7 +39,7 @@ parser.add_option('-s', '--size',
                   dest = 'size',
                   type = 'float', nargs = 3, metavar = 'float float float',
                   help = 'size in x,y,z [autodetect]')
-parser.set_defaults(coords  = 'pos',
+parser.set_defaults(pos     = 'pos',
                     packing = (2,2,2),
                     shift   = (0,0,0),
                     grid    = (0,0,0),
@@ -75,8 +75,8 @@ for name in filenames:
   errors  = []
   remarks = []
   
-  if table.label_dimension(options.coords) != 3:  errors.append('coordinates {} are not a vector.'.format(options.coords))
-  else: colCoord = table.label_index(options.coords)
+  if table.label_dimension(options.pos) != 3:  errors.append('coordinates {} are not a vector.'.format(options.pos))
+  else: colCoord = table.label_index(options.pos)
 
   if remarks != []: damask.util.croak(remarks)
   if errors  != []:

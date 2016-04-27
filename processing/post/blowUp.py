@@ -20,7 +20,7 @@ to resolution*packing.
 """, version = scriptID)
 
 parser.add_option('-c','--coordinates',
-                  dest = 'coords', metavar = 'string',
+                  dest = 'pos', metavar = 'string',
                   help = 'column label of coordinates [%default]')
 parser.add_option('-p','--packing',
                   dest = 'packing', type = 'int', nargs = 3, metavar = 'int int int',
@@ -31,7 +31,7 @@ parser.add_option('-g','--grid',
 parser.add_option('-s','--size',
                   dest = 'dimension', type = 'float', nargs = 3, metavar = 'int int int',
                   help = 'dimension in x,y,z [autodetect]')
-parser.set_defaults(coords  = 'pos',
+parser.set_defaults(pos  = 'pos',
                     packing = (2,2,2),
                     grid    = (0,0,0),
                     size    = (0.0,0.0,0.0),
@@ -63,8 +63,8 @@ for name in filenames:
   errors  = []
   remarks = []
   
-  if table.label_dimension(options.coords) != 3:  errors.append('coordinates {} are not a vector.'.format(options.coords))
-  else: colCoord = table.label_index(options.coords)
+  if table.label_dimension(options.pos) != 3:  errors.append('coordinates {} are not a vector.'.format(options.pos))
+  else: colCoord = table.label_index(options.pos)
 
   colElem = table.label_index('elem')
   
@@ -76,7 +76,7 @@ for name in filenames:
 
 # --------------- figure out size and grid ---------------------------------------------------------
 
-  table.data_readArray(options.coords)
+  table.data_readArray(options.pos)
   table.data_rewind()
 
   coords = [np.unique(table.data[:,i]) for i in xrange(3)]
