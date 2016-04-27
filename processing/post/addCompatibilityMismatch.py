@@ -21,7 +21,7 @@ Operates on periodic three-dimensional x,y,z-ordered data sets.
 
 
 parser.add_option('-c','--coordinates',
-                  dest = 'coords',
+                  dest = 'pos',
                   type = 'string', metavar = 'string',
                   help = 'column heading of coordinates [%default]')
 parser.add_option('-f','--defgrad',
@@ -36,10 +36,10 @@ parser.add_option('--no-volume','-v',
                   dest = 'volume',
                   action = 'store_false',
                   help = 'omit volume mismatch')
-parser.set_defaults(coords   = 'pos',
-                    defgrad  = 'f',
-                    shape = True,
-                    volume = True,
+parser.set_defaults(pos     = 'pos',
+                    defgrad = 'f',
+                    shape   = True,
+                    volume  = True,
                    )
 
 (options,filenames) = parser.parse_args()
@@ -64,8 +64,8 @@ for name in filenames:
   errors  = []
   remarks = []
   
-  if table.label_dimension(options.coords) != 3:  errors.append('coordinates {} are not a vector.'.format(options.coords))
-  else: colCoord = table.label_index(options.coords)
+  if table.label_dimension(options.pos) != 3:  errors.append('coordinates {} are not a vector.'.format(options.pos))
+  else: colCoord = table.label_index(options.pos)
 
   if table.label_dimension(options.defgrad) != 9: errors.append('deformation gradient {} is not a tensor.'.format(options.defgrad))
   else: colF = table.label_index(options.defgrad)

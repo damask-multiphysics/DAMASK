@@ -21,7 +21,7 @@ Generate geometry description and material configuration from position, phase, a
 """, version = scriptID)
 
 parser.add_option('--coordinates',
-                  dest = 'coordinates',
+                  dest = 'pos',
                   type = 'string', metavar = 'string',
                   help = 'coordinates label')
 parser.add_option('--phase',
@@ -135,11 +135,11 @@ for name in filenames:
 
 # ------------------------------------------ sanity checks ---------------------------------------  
 
-  coordDim = table.label_dimension(options.coordinates)
+  coordDim = table.label_dimension(options.pos)
 
   errors = []
   if not 3 >= coordDim >= 2:
-    errors.append('coordinates "{}" need to have two or three dimensions.'.format(options.coordinates))
+    errors.append('coordinates "{}" need to have two or three dimensions.'.format(options.pos))
   if not np.all(table.label_dimension(label) == dim):
     errors.append('input "{}" needs to have dimension {}.'.format(label,dim))
   if options.phase and table.label_dimension(options.phase) != 1:
@@ -150,7 +150,7 @@ for name in filenames:
     table.close(dismiss = True)
     continue
 
-  table.data_readArray([options.coordinates] \
+  table.data_readArray([options.pos] \
                        + ([label] if isinstance(label, types.StringTypes) else label) \
                        + ([options.phase] if options.phase else []))
   
