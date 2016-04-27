@@ -19,7 +19,7 @@ to resolution/packing.
 
 """, version = scriptID)
 
-parser.add_option('-c','--coordinates', dest='coords', type='string',\
+parser.add_option('-c','--coordinates', dest='pos', type='string',\
                                         help='column heading for coordinates [%default]')
 parser.add_option('-p','--packing',     dest='packing', type='int', nargs=3, \
                                         help='dimension of packed group %default')
@@ -29,7 +29,7 @@ parser.add_option('-r','--resolution',  dest='resolution', type='int', nargs=3, 
                                         help='resolution in x,y,z [autodetect]')
 parser.add_option('-d','--dimension',   dest='dimension', type='float', nargs=3, \
                                         help='dimension in x,y,z [autodetect]')
-parser.set_defaults(coords     = 'ipinitialcoord')
+parser.set_defaults(coords     = 'pos')
 parser.set_defaults(packing    = [2,2,2])
 parser.set_defaults(shift      = [0,0,0])
 parser.set_defaults(resolution = [0,0,0])
@@ -75,12 +75,12 @@ for file in files:
 
 # --------------- figure out size and grid ---------------------------------------------------------
   try:
-    locationCol = table.labels.index('1_%s'%options.coords)                                         # columns containing location data
+    locationCol = table.labels.index('1_%s'%options.pos)                                         # columns containing location data
   except ValueError:
     try:
-      locationCol = table.labels.index('%s.x'%options.coords)                                       # columns containing location data (legacy naming scheme)
+      locationCol = table.labels.index('%s.x'%options.pos)                                       # columns containing location data (legacy naming scheme)
     except ValueError:
-      file['croak'].write('no coordinate data (1_%s/%s.x) found...\n'%(options.coords,options.coords))
+      file['croak'].write('no coordinate data (1_%s/%s.x) found...\n'%(options.pos,options.pos))
       continue
 
   if (any(options.resolution)==0 or any(options.dimension)==0.0):

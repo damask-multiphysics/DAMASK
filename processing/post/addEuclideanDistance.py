@@ -90,7 +90,7 @@ Add column(s) containing Euclidean distance to grain structural features: bounda
 
 parser.add_option('-p',
                   '--pos', '--position',
-                  dest = 'coords', metavar = 'string',
+                  dest = 'pos', metavar = 'string',
                   help = 'label of coordinates [%default]')
 parser.add_option('-i',
                   '--id', '--identifier',
@@ -109,7 +109,7 @@ parser.add_option('-s',
                   dest = 'scale', type = 'float', metavar = 'float',
                   help = 'voxel size [%default]')
 
-parser.set_defaults(coords = 'pos',
+parser.set_defaults(pos = 'pos',
                     id = 'texture',
                     neighborhood = 'neumann',
                     scale = 1.0,
@@ -151,10 +151,10 @@ for name in filenames:
   remarks = []
   column = {}
   
-  coordDim = table.label_dimension(options.coords)
+  coordDim = table.label_dimension(options.pos)
   if not 3 >= coordDim >= 1:
-    errors.append('coordinates "{}" need to have one, two, or three dimensions.'.format(options.coords))
-  else: coordCol = table.label_index(options.coords)
+    errors.append('coordinates "{}" need to have one, two, or three dimensions.'.format(options.pos))
+  else: coordCol = table.label_index(options.pos)
   
   if table.label_dimension(options.id) != 1: errors.append('grain identifier {} not found.'.format(options.id))
   else: idCol = table.label_index(options.id)

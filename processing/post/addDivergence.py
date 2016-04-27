@@ -57,7 +57,7 @@ Deals with both vector- and tensor-valued fields.
 """, version = scriptID)
 
 parser.add_option('-p','--pos','--periodiccellcenter',
-                  dest = 'coords',
+                  dest = 'pos',
                   type = 'string', metavar = 'string',
                   help = 'label of coordinates [%default]')
 parser.add_option('-v','--vector',
@@ -69,7 +69,7 @@ parser.add_option('-t','--tensor',
                   action = 'extend', metavar = '<string LIST>',
                   help = 'label(s) of tensor field values')
 
-parser.set_defaults(coords = 'pos',
+parser.set_defaults(pos = 'pos',
                    )
 
 (options,filenames) = parser.parse_args()
@@ -100,8 +100,8 @@ for name in filenames:
   remarks = []
   column = {}
   
-  if table.label_dimension(options.coords) != 3: errors.append('coordinates {} are not a vector.'.format(options.coords))
-  else: colCoord = table.label_index(options.coords)
+  if table.label_dimension(options.pos) != 3: errors.append('coordinates {} are not a vector.'.format(options.pos))
+  else: colCoord = table.label_index(options.pos)
 
   for type, data in items.iteritems():
     for what in (data['labels'] if data['labels'] is not None else []):
