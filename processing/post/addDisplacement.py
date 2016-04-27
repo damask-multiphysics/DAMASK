@@ -101,7 +101,7 @@ parser.add_option('-f',
                   help    = 'column label of deformation gradient [%default]')
 parser.add_option('-p',
                   '--pos', '--position',
-                  dest    = 'coords',
+                  dest    = 'pos',
                   metavar = 'string',
                   help    = 'label of coordinates [%default]')
 parser.add_option('--nodal',
@@ -110,7 +110,7 @@ parser.add_option('--nodal',
                   help    = 'output nodal (instad of cell-centered) displacements')
 
 parser.set_defaults(defgrad = 'f',
-                    coords  = 'pos',
+                    pos     = 'pos',
                     nodal   = False,
                    )
 
@@ -121,13 +121,14 @@ parser.set_defaults(defgrad = 'f',
 if filenames == []: filenames = [None]
 
 for name in filenames:
+  outname = (os.path.splitext(name)[0] +
+             '_nodal' +
+             os.path.splitext(name)[1]) if (options.nodal and name) else None
   try:    table = damask.ASCIItable(name = name,
-                                    outname = (os.path.splitext(name)[0] +
-                                               '_nodal' +
-                                               os.path.splitext(name)[1]) if (options.nodal and name) else None,
+                                    outname = outname,
                                     buffered = False)
   except: continue
-  damask.util.report(scriptName,name)
+  damask.util.report(scriptName,'{}{}'.format(name,' --> {}'.format(outname) if outname else ''))
 
 # ------------------------------------------ read header ------------------------------------------
 
@@ -141,13 +142,13 @@ for name in filenames:
   if table.label_dimension(options.defgrad) != 9:
     errors.append('deformation gradient "{}" is not a 3x3 tensor.'.format(options.defgrad))
 
-  coordDim = table.label_dimension(options.coords)
+  coordDim = table.label_dimension(options.pos)
   if not 3 >= coordDim >= 1:
-    errors.append('coordinates "{}" need to have one, two, or three dimensions.'.format(options.coords))
+    errors.append('coordinates "{}" need to have one, two, or three dimensions.'.format(options.pos))
   elif coordDim < 3:
     remarks.append('appending {} dimension{} to coordinates "{}"...'.format(3-coordDim,
                                                                             's' if coordDim < 2 else '',
-                                                                            options.coords))
+                                                                            options.pos))
 
   if remarks != []: damask.util.croak(remarks)
   if errors  != []:
@@ -157,7 +158,7 @@ for name in filenames:
 
 # --------------- figure out size and grid ---------------------------------------------------------
 
-  table.data_readArray([options.defgrad,options.coords])
+  table.data_readArray([options.defgrad,options.pos])
   table.data_rewind()
 
   if len(table.data.shape) < 2: table.data.shape += (1,)                                            # expand to 2D shape
@@ -196,8 +197,8 @@ for name in filenames:
 
   table.info_append(scriptID + '\t' + ' '.join(sys.argv[1:]))
   table.labels_append((['{}_pos'         .format(i+1)   for i in xrange(3)] if options.nodal else []) +
-                       ['{}_avg({}).{}'  .format(i+1,options.defgrad,options.coords) for i in xrange(3)] +
-                       ['{}_fluct({}).{}'.format(i+1,options.defgrad,options.coords) for i in xrange(3)] )
+                       ['{}_avg({}).{}'  .format(i+1,options.defgrad,options.pos) for i in xrange(3)] +
+                       ['{}_fluct({}).{}'.format(i+1,options.defgrad,options.pos) for i in xrange(3)] )
   table.head_write()
 
 # ------------------------------------------ output data -------------------------------------------
