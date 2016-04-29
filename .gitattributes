@@ -7,3 +7,4 @@
 *.png binary
 *.jpg binary
 *.cae binary
+installation/mods_Abaqus/abaqus_v6_windows.env -crlf
