@@ -121,13 +121,14 @@ parser.set_defaults(defgrad = 'f',
 if filenames == []: filenames = [None]
 
 for name in filenames:
+  outname = (os.path.splitext(name)[0] +
+             '_nodal' +
+             os.path.splitext(name)[1]) if (options.nodal and name) else None
   try:    table = damask.ASCIItable(name = name,
-                                    outname = (os.path.splitext(name)[0] +
-                                               '_nodal' +
-                                               os.path.splitext(name)[1]) if (options.nodal and name) else None,
+                                    outname = outname,
                                     buffered = False)
   except: continue
-  damask.util.report(scriptName,name)
+  damask.util.report(scriptName,'{}{}'.format(name,' --> {}'.format(outname) if outname else ''))
 
 # ------------------------------------------ read header ------------------------------------------
 
