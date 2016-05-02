@@ -14,7 +14,7 @@ scriptID   = ' '.join([scriptName,damask.version])
 # --------------------------------------------------------------------
 
 parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
-Sort rows by given column label(s).
+Sort rows by given (or all) column label(s).
 
 Examples:
 With coordinates in columns "x", "y", and "z"; sorting with x slowest and z fastest varying index: --label x,y,z.
@@ -30,25 +30,19 @@ parser.add_option('-r','--reverse',
                   action = 'store_true',
                   help   = 'sort in reverse')
 
-parser.set_defaults(key = [],
-                    reverse = False,
+parser.set_defaults(reverse = False,
                    )
 
 (options,filenames) = parser.parse_args()
 
-if options.keys is None:
-  parser.error('No sorting column(s) specified.')
-
-options.keys.reverse()                                                                              # numpy sorts with most significant column as last
 
 # --- loop over input files -------------------------------------------------------------------------
 
 if filenames == []: filenames = [None]
 
 for name in filenames:
-  try:
-    table = damask.ASCIItable(name = name,
-                              buffered = False)
+  try:    table = damask.ASCIItable(name = name,
+                                    buffered = False)
   except: continue
   damask.util.report(scriptName,name)
 
@@ -61,15 +55,16 @@ for name in filenames:
 # ------------------------------------------ process data ---------------------------------------  
 
   table.data_readArray()
+
+  keys = table.labels[::-1] if options.keys is None else options.keys[::-1]                         # numpy sorts with most significant column as last
+
   cols    = []
   remarks = []
-  for i,column in enumerate(table.label_index(options.keys)):
-    if column < 0:
-      remarks.append("label {0} not present.".format(options.keys[i]))
-    else:
-      cols += [table.data[:,column]]
+  for i,column in enumerate(table.label_index(keys)):
+    if column < 0: remarks.append('label "{}" not present...'.format(keys[i]))
+    else:          cols += [table.data[:,column]]
   if remarks != []: damask.util.croak(remarks)
-    
+  
   ind = np.lexsort(cols) if cols != [] else np.arange(table.data.shape[0])
   if options.reverse: ind = ind[::-1]
 
