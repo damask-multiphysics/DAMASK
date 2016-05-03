@@ -385,6 +385,33 @@ end subroutine hypela2
 
 
 !--------------------------------------------------------------------------------------------------
+!> @brief thermomechanical coupling
+!--------------------------------------------------------------------------------------------------
+subroutine flux(f,ts,n,time)
+ use prec, only: &
+   pReal, &
+   pInt
+ use homogenization, only: &
+   materialpoint_heat
+ use mesh, only: &
+   mesh_FEasCP
+ 
+ implicit none
+ real(pReal),   dimension(6),           intent(in) :: &
+   ts
+ integer(pInt), dimension(10),          intent(in) :: &
+   n
+ real(pReal),                           intent(in) :: &
+   time
+ real(pReal),   dimension(2),           intent(out) :: &
+   f
+ 
+ f(1) = materialpoint_heat(n(3),mesh_FEasCP('elem',n(1)))
+ 
+end subroutine flux
+
+
+!--------------------------------------------------------------------------------------------------
 !> @brief sets user defined output variables for Marc
 !> @details select a variable contour plotting (user subroutine).
 !--------------------------------------------------------------------------------------------------
