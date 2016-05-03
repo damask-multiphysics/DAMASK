@@ -385,7 +385,7 @@ end subroutine hypela2
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief thermomechanical coupling
+!> @brief solve the heat equation
 !--------------------------------------------------------------------------------------------------
 subroutine flux(f,ts,n,time)
  use prec, only: &
@@ -413,7 +413,7 @@ end subroutine flux
 
 !--------------------------------------------------------------------------------------------------
 !> @brief sets user defined output variables for Marc
-!> @details select a variable contour plotting (user subroutine).
+!> @details select a variable contour plotting (user subgiroutine).
 !--------------------------------------------------------------------------------------------------
 subroutine plotv(v,s,sp,etot,eplas,ecreep,t,m,nn,layer,ndi,nshear,jpltcd)
  use prec, only: &
