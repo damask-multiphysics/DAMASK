@@ -74,6 +74,16 @@ class ASCIItable():
     except:
       return string
 
+
+# ------------------------------------------------------------------
+  def _quote(self,
+             what):
+    """quote empty or white space-containing output"""
+    import re
+    
+    return '{quote}{content}{quote}'.format(
+             quote   = ('"' if str(what)=='' or re.search(r"\s",str(what)) else ''),
+             content = what)
 # ------------------------------------------------------------------
   def close(self,
             dismiss = False):
@@ -136,7 +146,7 @@ class ASCIItable():
     the first row or, if keyword "head[*]" is present,
     the last line of the header
     """
-    import re
+    import re,shlex
 
     try:
       self.__IO__['in'].seek(0)
@@ -151,7 +161,7 @@ class ASCIItable():
       if self.__IO__['labeled']:                                                                    # table features labels
 
         self.info   = [self.__IO__['in'].readline().strip() for i in xrange(1,int(m.group(1)))]
-        self.labels = self.__IO__['in'].readline().split()                                          # store labels found in last line
+        self.labels = shlex.split(self.__IO__['in'].readline())                                     # store labels found in last line
 
       else:
 
@@ -187,7 +197,7 @@ class ASCIItable():
     """write current header information (info + labels)"""
     head = ['{}\theader'.format(len(self.info)+self.__IO__['labeled'])] if header else []
     head.append(self.info)
-    if self.__IO__['labeled']: head.append('\t'.join(self.labels))
+    if self.__IO__['labeled']: head.append('\t'.join(map(self._quote,self.labels)))
     
     return self.output_write(head)
 
@@ -411,6 +421,8 @@ class ASCIItable():
                 advance = True,
                 respectLabels = True):
     """read next line (possibly buffered) and parse it into data array"""
+    import shlex
+    
     self.line = self.__IO__['readBuffer'].pop(0) if len(self.__IO__['readBuffer']) > 0 \
            else self.__IO__['in'].readline().strip()                                                # take buffered content or get next data row from file
 
@@ -420,10 +432,10 @@ class ASCIItable():
     self.line = self.line.rstrip('\n')
 
     if self.__IO__['labeled'] and respectLabels:                                                    # if table has labels
-      items = self.line.split()[:len(self.__IO__['labels'])]                                        # use up to label count (from original file info)
+      items = shlex.split(self.line)[:len(self.__IO__['labels'])]                                   # use up to label count (from original file info)
       self.data = items if len(items) == len(self.__IO__['labels']) else []                         # take entries if label count matches
     else:
-      self.data = self.line.split()                                                                 # otherwise take all
+      self.data = shlex.split(self.line)                                                            # otherwise take all
 
     return self.data != []
 
@@ -471,9 +483,9 @@ class ASCIItable():
     if len(self.data) == 0: return True
 
     if isinstance(self.data[0],list):
-      return self.output_write([delimiter.join(map(str,items)) for items in self.data])
+      return self.output_write([delimiter.join(map(self._quote,items)) for items in self.data])
     else:
-      return self.output_write(delimiter.join(map(str,self.data)))
+      return self.output_write( delimiter.join(map(self._quote,self.data)))
 
 # ------------------------------------------------------------------
   def data_writeArray(self,
