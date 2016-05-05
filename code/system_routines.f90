@@ -1,3 +1,7 @@
+!--------------------------------------------------------------------------------------------------
+!> @author   Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
+!> @brief    provides wrappers to C routines
+!--------------------------------------------------------------------------------------------------
 module system_routines
  
  implicit none
@@ -5,7 +9,7 @@ module system_routines
  
  public :: &
    isDirectory, &
-   getCWD2
+   getCWD
 
 interface
 
@@ -31,35 +35,41 @@ end interface
 
 contains
 
- logical function isDirectory(path)
-   use, intrinsic :: ISO_C_Binding, only: &
-     C_INT
+!--------------------------------------------------------------------------------------------------
+!> @brief figures out if a given path is a directory (and not an ordinary file)
+!--------------------------------------------------------------------------------------------------
+logical function isDirectory(path)
+  use, intrinsic :: ISO_C_Binding, only: &
+    C_INT
 
-   implicit none
-   character(len=*), intent(in) :: path
+  implicit none
+  character(len=*), intent(in) :: path
 
-   isDirectory=merge(.True.,.False.,isDirectory_C(trim(path)) /= 0_C_INT)
+  isDirectory=merge(.True.,.False.,isDirectory_C(trim(path)) /= 0_C_INT)
 
- end function isDirectory
+end function isDirectory
 
 
- logical function getCWD2(str)
-   use, intrinsic :: ISO_C_Binding, only: &
-     C_INT, &
-     C_CHAR, &
-     C_NULL_CHAR
+!--------------------------------------------------------------------------------------------------
+!> @brief gets the current working directory
+!--------------------------------------------------------------------------------------------------
+logical function getCWD(str)
+  use, intrinsic :: ISO_C_Binding, only: &
+    C_INT, &
+    C_CHAR, &
+    C_NULL_CHAR
 
-   implicit none
-   character(len=*), intent(out) :: str
-   character(len=1024) :: strFixedLength
-   integer(C_INT) :: stat
- 
-   str = repeat(C_NULL_CHAR,1024)
-   call getCurrentWorkDir_C(strFixedLength,stat)
-   str = strFixedLength(1:scan(strFixedLength,C_NULL_CHAR,.True.)-1)
-   getCWD2=merge(.True.,.False.,stat /= 0_C_INT)
+  implicit none
+  character(len=*), intent(out) :: str
+  character(len=1024) :: strFixedLength
+  integer(C_INT) :: stat
 
- end function getCWD2
+  str = repeat(C_NULL_CHAR,1024)
+  call getCurrentWorkDir_C(strFixedLength,stat)
+  str = strFixedLength(1:scan(strFixedLength,C_NULL_CHAR,.True.)-1)
+  getCWD=merge(.True.,.False.,stat /= 0_C_INT)
+
+end function getCWD
 
 end module system_routines
 

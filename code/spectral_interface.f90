@@ -220,7 +220,7 @@ end subroutine DAMASK_interface_init
 character(len=1024) function storeWorkingDirectory(workingDirectoryArg,geometryArg)
  use system_routines, only: &
    isDirectory, &
-   getCWD2
+   getCWD
 
  implicit none
  character(len=*),  intent(in) :: workingDirectoryArg                                               !< working directory argument
@@ -237,7 +237,7 @@ character(len=1024) function storeWorkingDirectory(workingDirectoryArg,geometryA
    if (workingDirectoryArg(1:1) == pathSep) then                                                    ! absolute path given as command line argument
      storeWorkingDirectory = workingDirectoryArg
    else
-     error = getCWD2(cwd)                                                                           ! relative path given as command line argument
+     error = getCWD(cwd)                                                                           ! relative path given as command line argument
      storeWorkingDirectory = trim(cwd)//pathSep//workingDirectoryArg
    endif
    if (storeWorkingDirectory(len(trim(storeWorkingDirectory)):len(trim(storeWorkingDirectory)))/= pathSep) &   
@@ -250,7 +250,7 @@ character(len=1024) function storeWorkingDirectory(workingDirectoryArg,geometryA
    if (geometryArg(1:1) == pathSep) then                                                            ! absolute path given as command line argument
      storeWorkingDirectory = geometryArg(1:scan(geometryArg,pathSep,back=.true.))
    else
-     error = getCWD2(cwd)                                                                           ! relative path given as command line argument
+     error = getCWD(cwd)                                                                           ! relative path given as command line argument
      storeWorkingDirectory = trim(cwd)//pathSep//&
                               geometryArg(1:scan(geometryArg,pathSep,back=.true.))
    endif
@@ -303,7 +303,7 @@ end function getSolverJobName
 !--------------------------------------------------------------------------------------------------
 character(len=1024) function getGeometryFile(geometryParameter)
  use system_routines, only: &
-   getCWD2
+   getCWD
 
  implicit none
  character(len=1024), intent(in) :: &
@@ -321,7 +321,7 @@ character(len=1024) function getGeometryFile(geometryParameter)
 
  if (posExt <= posSep) getGeometryFile = trim(getGeometryFile)//('.geom')                           ! no extension present
  if (scan(getGeometryFile,pathSep) /= 1) then                                                       ! relative path given as command line argument
-   error = getCWD2(cwd)
+   error = getCWD(cwd)
    getGeometryFile = rectifyPath(trim(cwd)//pathSep//getGeometryFile)
  else
    getGeometryFile = rectifyPath(getGeometryFile)
@@ -337,7 +337,7 @@ end function getGeometryFile
 !--------------------------------------------------------------------------------------------------
 character(len=1024) function getLoadCaseFile(loadCaseParameter)
  use system_routines, only: &
-   getCWD2
+   getCWD
 
  implicit none
  character(len=1024), intent(in) :: &
@@ -355,7 +355,7 @@ character(len=1024) function getLoadCaseFile(loadCaseParameter)
 
  if (posExt <= posSep) getLoadCaseFile = trim(getLoadCaseFile)//('.load')                           ! no extension present
  if (scan(getLoadCaseFile,pathSep) /= 1) then                                                       ! relative path given as command line argument
-   error = getCWD2(cwd)
+   error = getCWD(cwd)
    getLoadCaseFile = rectifyPath(trim(cwd)//pathSep//getLoadCaseFile)
  else
    getLoadCaseFile = rectifyPath(getLoadCaseFile)
