@@ -839,6 +839,9 @@ subroutine math_invert(myDim,A, InvA, error)
  
  real(pReal), dimension(myDim,myDim), intent(out) :: invA
  logical, intent(out) :: error
+ external :: &
+  dgetrf, &
+  dgetri
  
  invA = A 
  call dgetrf(myDim,myDim,invA,myDim,ipiv,ierr)
@@ -1645,14 +1648,14 @@ pure function math_qToAxisAngle(Q)
  real(pReal) :: halfAngle, sinHalfAngle
  real(pReal), dimension(4) :: math_qToAxisAngle
 
- halfAngle = acos(max(-1.0_pReal, min(1.0_pReal, Q(1))))            ! limit to [-1,1] --> 0 to 180 deg
+ halfAngle = acos(math_limit(Q(1),-1.0_pReal,1.0_pReal))
  sinHalfAngle = sin(halfAngle)
 
- if (sinHalfAngle <= 1.0e-4_pReal) then                              ! very small rotation angle?
+ smallRotation: if (sinHalfAngle <= 1.0e-4_pReal) then
    math_qToAxisAngle = 0.0_pReal
- else
+ else smallRotation
    math_qToAxisAngle= [ Q(2:4)/sinHalfAngle, halfAngle*2.0_pReal] 
- endif
+ endif smallRotation
 
 end function math_qToAxisAngle
 

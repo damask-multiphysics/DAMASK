@@ -20,9 +20,9 @@ Average each data block of size 'packing' into single values thus reducing the f
 """, version = scriptID)
 
 parser.add_option('-c','--coordinates',
-                  dest = 'coords',
+                  dest = 'pos',
                   type = 'string', metavar = 'string',
-                  help = 'column heading for coordinates [%default]')
+                  help = 'column label of coordinates [%default]')
 parser.add_option('-p','--packing',
                   dest = 'packing',
                   type = 'int', nargs = 3, metavar = 'int int int',
@@ -39,7 +39,7 @@ parser.add_option('-s', '--size',
                   dest = 'size',
                   type = 'float', nargs = 3, metavar = 'float float float',
                   help = 'size in x,y,z [autodetect]')
-parser.set_defaults(coords  = 'ipinitialcoord',
+parser.set_defaults(pos     = 'pos',
                     packing = (2,2,2),
                     shift   = (0,0,0),
                     grid    = (0,0,0),
@@ -59,11 +59,10 @@ if any(shift != 0): prefix += 'shift{:+}{:+}{:+}_'.format(*shift)
 if filenames == []: filenames = [None]
 
 for name in filenames:
-  try:
-    table = damask.ASCIItable(name    = name,
-                              outname = os.path.join(os.path.dirname(name),
-                                                     prefix+os.path.basename(name)) if name else name,
-                              buffered = False)
+  try:    table = damask.ASCIItable(name    = name,
+                                    outname = os.path.join(os.path.dirname(name),
+                                                           prefix+os.path.basename(name)) if name else name,
+                                    buffered = False)
   except: continue
   damask.util.report(scriptName,name)
 
@@ -75,17 +74,15 @@ for name in filenames:
 
   errors  = []
   remarks = []
-  colCoord = None
   
-  if table.label_dimension(options.coords) != 3:  errors.append('coordinates {} are not a vector.'.format(options.coords))
-  else: colCoord = table.label_index(options.coords)
+  if table.label_dimension(options.pos) != 3:  errors.append('coordinates {} are not a vector.'.format(options.pos))
+  else: colCoord = table.label_index(options.pos)
 
   if remarks != []: damask.util.croak(remarks)
   if errors  != []:
     damask.util.croak(errors)
     table.close(dismiss = True)
     continue
-
 
 # ------------------------------------------ assemble header ---------------------------------------
 

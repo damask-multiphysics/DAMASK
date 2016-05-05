@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 no BOM -*-
 
-import os,sys
+import os,sys,re
 import damask
 from optparse import OptionParser
 
@@ -32,14 +32,17 @@ parser.set_defaults(label = [],
 
 (options,filenames) = parser.parse_args()
 
+pattern = [re.compile('^()(.+)$'),                                                                # label pattern for scalar
+           re.compile('^(\d+_)?(.+)$'),                                                           # label pattern for multidimension
+          ]
+
 # --- loop over input files -------------------------------------------------------------------------
 
 if filenames == []: filenames = [None]
 
 for name in filenames:
-  try:
-    table = damask.ASCIItable(name = name,
-                              buffered = False)
+  try:    table = damask.ASCIItable(name = name,
+                                    buffered = False)
   except: continue
   damask.util.report(scriptName,name)
 
@@ -63,8 +66,9 @@ for name in filenames:
     for i,index in enumerate(indices):
       if index == -1: remarks.append('label {} not present...'.format(options.label[i]))
       else:
+        m = pattern[dimensions[i]>1].match(table.labels[index])                                   # isolate label name
         for j in xrange(dimensions[i]):
-          table.labels[index+j] = table.labels[index+j].replace(options.label[i],options.substitute[i])
+          table.labels[index+j] = table.labels[index+j].replace(m.group(2),options.substitute[i]) # replace name with substitute
 
   if remarks != []: damask.util.croak(remarks)
   if errors  != []:

@@ -17,13 +17,7 @@ module lattice
    LATTICE_maxNslipFamily     =  13_pInt, &                                                         !< max # of slip system families over lattice structures
    LATTICE_maxNtwinFamily     =  4_pInt, &                                                          !< max # of twin system families over lattice structures
    LATTICE_maxNtransFamily    =  2_pInt, &                                                          !< max # of transformation system families over lattice structures
-   LATTICE_maxNcleavageFamily =  3_pInt, &                                                          !< max # of transformation system families over lattice structures
-   LATTICE_maxNslip           = 52_pInt, &                                                          !< max # of slip systems over lattice structures
-   LATTICE_maxNtwin           = 24_pInt, &                                                          !< max # of twin systems over lattice structures
-   LATTICE_maxNinteraction    = 182_pInt, &                                                         !< max # of interaction types (in hardening matrix part)
-   LATTICE_maxNnonSchmid      = 6_pInt, &                                                           !< max # of non schmid contributions over lattice structures
-   LATTICE_maxNtrans          = 12_pInt, &                                                          !< max # of transformations over lattice structures
-   LATTICE_maxNcleavage       = 9_pInt                                                              !< max # of cleavage over lattice structures
+   LATTICE_maxNcleavageFamily =  3_pInt                                                             !< max # of transformation system families over lattice structures
  
  integer(pInt), allocatable, dimension(:,:), protected, public :: &
    lattice_NslipSystem, &                                                                           !< total # of slip systems in each family
@@ -80,25 +74,25 @@ module lattice
    lattice_NnonSchmid                                                                               !< total # of non-Schmid contributions for each structure
 
 !--------------------------------------------------------------------------------------------------
-! fcc
+! face centered cubic
  integer(pInt), dimension(LATTICE_maxNslipFamily), parameter, public :: & 
-   LATTICE_fcc_NslipSystem = int([12, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],pInt)                     !< total # of slip systems per family for fcc
+   LATTICE_fcc_NslipSystem = int([12, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],pInt)                     !< # of slip systems per family for fcc
    
  integer(pInt), dimension(LATTICE_maxNtwinFamily), parameter, public :: &
-   LATTICE_fcc_NtwinSystem = int([12, 0, 0, 0],pInt)                                                !< total # of twin systems per family for fcc
+   LATTICE_fcc_NtwinSystem = int([12, 0, 0, 0],pInt)                                                !< # of twin systems per family for fcc
 
  integer(pInt), dimension(LATTICE_maxNtransFamily), parameter, public :: &
-   LATTICE_fcc_NtransSystem = int([12, 0],pInt)                                                     !< total # of transformation systems per family for fcc
+   LATTICE_fcc_NtransSystem = int([12, 0],pInt)                                                     !< # of transformation systems per family for fcc
    
  integer(pInt), dimension(LATTICE_maxNcleavageFamily), parameter, public :: &
-   LATTICE_fcc_NcleavageSystem = int([3, 4, 0],pInt)                                                !< total # of cleavage systems per family for fcc
+   LATTICE_fcc_NcleavageSystem = int([3, 4, 0],pInt)                                                !< # of cleavage systems per family for fcc
    
  integer(pInt), parameter, private  :: &
-   LATTICE_fcc_Nslip = 12_pInt, & ! sum(lattice_fcc_NslipSystem), &                                 !< total # of slip systems for fcc
-   LATTICE_fcc_Ntwin = 12_pInt, & ! sum(lattice_fcc_NtwinSystem)                                    !< total # of twin systems for fcc
+   LATTICE_fcc_Nslip      = 12_pInt, & !sum(lattice_fcc_NslipSystem), &                             !< total # of slip systems for fcc
+   LATTICE_fcc_Ntwin      = 12_pInt, & !sum(lattice_fcc_NtwinSystem), &                             !< total # of twin systems for fcc
    LATTICE_fcc_NnonSchmid = 0_pInt, &                                                               !< total # of non-Schmid contributions for fcc
-   LATTICE_fcc_Ntrans     = 12_pInt, &                                                              !< total # of transformations for fcc
-   LATTICE_fcc_Ncleavage  = 7_pInt                                                                  !< total # of cleavage systems for fcc
+   LATTICE_fcc_Ntrans     = 12_pInt, & !sum(lattice_fcc_NtransSystem), &                            !< total # of transformation systems for fcc
+   LATTICE_fcc_Ncleavage  = 7_pInt     !sum(lattice_fcc_NcleavageSystem)                            !< total # of cleavage systems for fcc
  
  real(pReal), dimension(3+3,LATTICE_fcc_Nslip), parameter, private :: &
    LATTICE_fcc_systemSlip = reshape(real([&
@@ -312,8 +306,8 @@ module lattice
      0.0, 0.0, 1.0,     45.0  &
      ],[ 4_pInt,LATTICE_fcc_Ntrans])
 
- real(pReal), dimension(LATTICE_fcc_Ntrans,LATTICE_fcc_Ntrans), parameter, private :: &            ! Matrix for projection of shear from slip system to fault-band (twin) systems
-   LATTICE_fccTobcc_projectionTrans = reshape(real([&                                                        ! For ns = nt = nr
+ real(pReal), dimension(LATTICE_fcc_Ntrans,LATTICE_fcc_Ntrans), parameter, private :: &             ! Matrix for projection of shear from slip system to fault-band (twin) systems
+   LATTICE_fccTobcc_projectionTrans = reshape(real([&                                               ! For ns = nt = nr
      0, 1,-1,  0, 0, 0,  0, 0, 0,  0, 0, 0, &                                                                    
     -1, 0, 1,  0, 0, 0,  0, 0, 0,  0, 0, 0, &
      1,-1, 0,  0, 0, 0,  0, 0, 0,  0, 0, 0, &
@@ -363,27 +357,26 @@ module lattice
      ],pReal),[ 3_pInt + 3_pInt,LATTICE_fcc_Ncleavage])
 
 !--------------------------------------------------------------------------------------------------
-! bcc
+! body centered cubic 
  integer(pInt), dimension(LATTICE_maxNslipFamily), parameter, public :: &
-   LATTICE_bcc_NslipSystem = int([ 12, 12, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], pInt)                      !< total # of slip systems per family for bcc
+   LATTICE_bcc_NslipSystem = int([ 12, 12, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], pInt)                  !< # of slip systems per family for bcc
    
  integer(pInt), dimension(LATTICE_maxNtwinFamily), parameter, public :: &
-   LATTICE_bcc_NtwinSystem = int([ 12, 0, 0, 0], pInt)                                              !< total # of twin systems per family for bcc
+   LATTICE_bcc_NtwinSystem = int([ 12, 0, 0, 0], pInt)                                              !< # of twin systems per family for bcc
 
  integer(pInt), dimension(LATTICE_maxNtransFamily), parameter, public :: &
-   LATTICE_bcc_NtransSystem = int([0,0],pInt)                                                       !< total # of transformation systems per family for bcc
+   LATTICE_bcc_NtransSystem = int([0,0],pInt)                                                       !< # of transformation systems per family for bcc
 
  integer(pInt), dimension(LATTICE_maxNcleavageFamily), parameter, public :: &
-   LATTICE_bcc_NcleavageSystem = int([3,6,0],pInt)                                                    !< total # of cleavage systems per family for bcc
+   LATTICE_bcc_NcleavageSystem = int([3,6,0],pInt)                                                  !< # of cleavage systems per family for bcc
    
  integer(pInt), parameter, private  :: &
-   LATTICE_bcc_Nslip = 24_pInt, & ! sum(lattice_bcc_NslipSystem), &                                 !< total # of slip systems for bcc
-   LATTICE_bcc_Ntwin = 12_pInt, & ! sum(lattice_bcc_NtwinSystem)                                    !< total # of twin systems for bcc
-   LATTICE_bcc_NnonSchmid = 6_pInt, &                                                               !< # of non-Schmid contributions for bcc. 6 known non schmid contributions for BCC (A. Koester, A. Ma, A. Hartmaier 2012)
-   LATTICE_bcc_Ntrans  = 0_pInt, &                                                                  !< total # of transformations for bcc
-   LATTICE_bcc_Ncleavage  = 9_pInt                                                                  !< total # of cleavage systems for bcc
+   LATTICE_bcc_Nslip      = 24_pInt, & !sum(lattice_bcc_NslipSystem), &                             !< total # of slip systems for bcc
+   LATTICE_bcc_Ntwin      = 12_pInt, & !sum(lattice_bcc_NtwinSystem), &                             !< total # of twin systems for bcc
+   LATTICE_bcc_NnonSchmid = 6_pInt, &                                                               !< total # of non-Schmid contributions for bcc (A. Koester, A. Ma, A. Hartmaier 2012)
+   LATTICE_bcc_Ntrans     = 0_pInt, &  !sum(lattice_bcc_NtransSystem), &                            !< total # of transformation systems for bcc
+   LATTICE_bcc_Ncleavage  = 9_pInt     !sum(lattice_bcc_NcleavageSystem)                            !< total # of cleavage systems for bcc
 
-   
  real(pReal), dimension(3+3,LATTICE_bcc_Nslip), parameter, private :: &
    LATTICE_bcc_systemSlip = reshape(real([&
     ! Slip direction     Plane normal
@@ -561,25 +554,25 @@ module lattice
      ],pReal),[ 3_pInt + 3_pInt,LATTICE_bcc_Ncleavage])
 
 !--------------------------------------------------------------------------------------------------
-! hex
+! hexagonal
  integer(pInt), dimension(LATTICE_maxNslipFamily), parameter, public :: &
-   lattice_hex_NslipSystem = int([ 3, 3, 3, 6, 12, 6, 0, 0, 0, 0, 0, 0, 0],pInt)                             !< # of slip systems per family for hex
+   lattice_hex_NslipSystem = int([ 3, 3, 3, 6, 12, 6, 0, 0, 0, 0, 0, 0, 0],pInt)                    !< # of slip systems per family for hex
    
  integer(pInt), dimension(LATTICE_maxNtwinFamily), parameter, public :: &
    lattice_hex_NtwinSystem = int([ 6, 6, 6, 6],pInt)                                                !< # of slip systems per family for hex 
 
  integer(pInt), dimension(LATTICE_maxNtransFamily), parameter, public :: &
-   LATTICE_hex_NtransSystem = int([0,0],pInt)                                                       !< total # of transformation systems per family for hex
+   LATTICE_hex_NtransSystem = int([0,0],pInt)                                                       !< # of transformation systems per family for hex
    
  integer(pInt), dimension(LATTICE_maxNcleavageFamily), parameter, public :: &
-   LATTICE_hex_NcleavageSystem = int([3,0,0],pInt)                                                    !< total # of cleavage systems per family for hex
+   LATTICE_hex_NcleavageSystem = int([3,0,0],pInt)                                                  !< # of cleavage systems per family for hex
    
- integer(pInt), parameter , private :: &
-   LATTICE_hex_Nslip = 33_pInt, & ! sum(lattice_hex_NslipSystem),                                   !< total # of slip systems for hex 
-   LATTICE_hex_Ntwin = 24_pInt, & ! sum(lattice_hex_NtwinSystem)                                    !< total # of twin systems for hex
-   LATTICE_hex_NnonSchmid = 0_pInt, &                                                               !< # of non-Schmid contributions for hex
-   LATTICE_hex_Ntrans  = 0_pInt, &                                                                  !< total # of transformations for hex
-   LATTICE_hex_Ncleavage  = 3_pInt                                                                  !< total # of transformations for hex
+ integer(pInt), parameter, private  :: &
+   LATTICE_hex_Nslip      = 33_pInt, & !sum(lattice_hex_NslipSystem), &                             !< total # of slip systems for hex
+   LATTICE_hex_Ntwin      = 24_pInt, & !sum(lattice_hex_NtwinSystem), &                             !< total # of twin systems for hex
+   LATTICE_hex_NnonSchmid = 0_pInt, &                                                               !< total # of non-Schmid contributions for hex
+   LATTICE_hex_Ntrans     = 0_pInt, &  !sum(lattice_hex_NtransSystem), &                            !< total # of transformation systems for hex
+   LATTICE_hex_Ncleavage  = 3_pInt     !sum(lattice_hex_NcleavageSystem)                            !< total # of cleavage systems for hex
 
  real(pReal), dimension(4+4,LATTICE_hex_Nslip), parameter, private :: &
    LATTICE_hex_systemSlip = reshape(real([&
@@ -842,28 +835,26 @@ module lattice
      ],pReal),[ 4_pInt + 4_pInt,LATTICE_hex_Ncleavage])
 
 
-
 !--------------------------------------------------------------------------------------------------
-! bct
+! body centered tetragonal
  integer(pInt), dimension(LATTICE_maxNslipFamily), parameter, public :: &
    LATTICE_bct_NslipSystem = int([2, 2, 2, 4, 2, 4, 2, 2, 4, 8, 4, 8, 8 ],pInt)                     !< # of slip systems per family for bct (Sn) Bieler J. Electr Mater 2009
 
  integer(pInt), dimension(LATTICE_maxNtwinFamily), parameter, public :: &
-   LATTICE_bct_NtwinSystem = int([0, 0, 0, 0], pInt)                                                !< total # of twin systems per family for bct-example
+   LATTICE_bct_NtwinSystem = int([0, 0, 0, 0], pInt)                                                !< # of twin systems per family for bct
 
  integer(pInt), dimension(LATTICE_maxNtransFamily), parameter, public :: &
-   LATTICE_bct_NtransSystem = int([0,0],pInt)                                                       !< total # of transformation systems per family for bct
+   LATTICE_bct_NtransSystem = int([0,0],pInt)                                                       !< # of transformation systems per family for bct
 
  integer(pInt), dimension(LATTICE_maxNcleavageFamily), parameter, public :: &
-   LATTICE_bct_NcleavageSystem = int([0,0,0],pInt)                                                  !< total # of cleavage systems per family for bct
- 
+   LATTICE_bct_NcleavageSystem = int([0,0,0],pInt)                                                  !< # of cleavage systems per family for bct
    
- integer(pInt), parameter , private :: &
-   LATTICE_bct_Nslip = 52_pInt, & ! sum(lattice_bct_NslipSystem),                                   !< total # of slip systems for bct 
-   LATTICE_bct_Ntwin = 0_pInt, &  ! sum(lattice_bcc_NtwinSystem)                                    !< total # of twin systems for bct
-   LATTICE_bct_NnonSchmid = 0_pInt, &                                                               !< # of non-Schmid contributions for bct
-   LATTICE_bct_Ntrans  = 0_pInt, &                                                                  !< total # of transformations for bct
-   LATTICE_bct_Ncleavage  = 0_pInt                                                                  !< total # of transformations for bct
+ integer(pInt), parameter, private  :: &
+   LATTICE_bct_Nslip      = 52_pInt, & !sum(lattice_bct_NslipSystem), &                             !< total # of slip systems for bct
+   LATTICE_bct_Ntwin      = 0_pInt, &  !sum(lattice_bct_NtwinSystem), &                             !< total # of twin systems for bct
+   LATTICE_bct_NnonSchmid = 0_pInt, &                                                               !< total # of non-Schmid contributions for bct
+   LATTICE_bct_Ntrans     = 0_pInt, &  !sum(lattice_bct_NtransSystem), &                            !< total # of transformation systems for bct
+   LATTICE_bct_Ncleavage  = 0_pInt     !sum(lattice_bct_NcleavageSystem)                            !< total # of cleavage systems for bct
  
  real(pReal), dimension(3+3,LATTICE_bct_Nslip), parameter, private :: &
    LATTICE_bct_systemSlip = reshape(real([&
@@ -1006,12 +997,25 @@ module lattice
 
 !--------------------------------------------------------------------------------------------------
 ! isotropic
+ integer(pInt), dimension(LATTICE_maxNslipFamily), parameter, public :: &
+   LATTICE_iso_NslipSystem = int([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ],pInt)                     !< # of slip systems per family for iso
+
+ integer(pInt), dimension(LATTICE_maxNtwinFamily), parameter, public :: &
+   LATTICE_iso_NtwinSystem = int([0, 0, 0, 0], pInt)                                                !< # of twin systems per family for iso
+
+ integer(pInt), dimension(LATTICE_maxNtransFamily), parameter, public :: &
+   LATTICE_iso_NtransSystem = int([0, 0],pInt)                                                      !< # of transformation systems per family for iso
+
  integer(pInt), dimension(LATTICE_maxNcleavageFamily), parameter, public :: &
-   LATTICE_iso_NcleavageSystem = int([3,0,0],pInt)                                                    !< total # of cleavage systems per family for isotropic
+   LATTICE_iso_NcleavageSystem = int([3,0,0],pInt)                                                  !< # of cleavage systems per family for iso
    
  integer(pInt), parameter, private  :: &
-   LATTICE_iso_Ncleavage  = 3_pInt                                                                  !< total # of cleavage systems for bcc
-
+   LATTICE_iso_Nslip      = 0_pInt, & !sum(lattice_iso_NslipSystem), &                              !< total # of slip systems for iso
+   LATTICE_iso_Ntwin      = 0_pInt, & !sum(lattice_iso_NtwinSystem), &                              !< total # of twin systems for iso
+   LATTICE_iso_NnonSchmid = 0_pInt, &                                                               !< total # of non-Schmid contributions for iso
+   LATTICE_iso_Ntrans     = 0_pInt, & !sum(lattice_iso_NtransSystem), &                             !< total # of transformation systems for iso
+   LATTICE_iso_Ncleavage  = 3_pInt    !sum(lattice_iso_NcleavageSystem)                             !< total # of cleavage systems for iso
+ 
  real(pReal), dimension(3+3,LATTICE_iso_Ncleavage), parameter, private :: &
    LATTICE_iso_systemCleavage = reshape(real([&
     ! Cleavage direction     Plane normal
@@ -1022,12 +1026,25 @@ module lattice
 
 !--------------------------------------------------------------------------------------------------
 ! orthorhombic
+ integer(pInt), dimension(LATTICE_maxNslipFamily), parameter, public :: &
+   LATTICE_ortho_NslipSystem = int([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ],pInt)                   !< # of slip systems per family for ortho
+
+ integer(pInt), dimension(LATTICE_maxNtwinFamily), parameter, public :: &
+   LATTICE_ortho_NtwinSystem = int([0, 0, 0, 0], pInt)                                              !< # of twin systems per family for ortho
+
+ integer(pInt), dimension(LATTICE_maxNtransFamily), parameter, public :: &
+   LATTICE_ortho_NtransSystem = int([0, 0],pInt)                                                    !< # of transformation systems per family for ortho
+
  integer(pInt), dimension(LATTICE_maxNcleavageFamily), parameter, public :: &
-   LATTICE_ortho_NcleavageSystem = int([1,1,1],pInt)                                                    !< total # of cleavage systems per family for orthotropic
+   LATTICE_ortho_NcleavageSystem = int([1,1,1],pInt)                                                !< # of cleavage systems per family for ortho
    
  integer(pInt), parameter, private  :: &
-   LATTICE_ortho_Ncleavage  = 3_pInt                                                                  !< total # of cleavage systems for bcc
-
+   LATTICE_ortho_Nslip      = 0_pInt, & !sum(lattice_ortho_NslipSystem), &                          !< total # of slip systems for ortho
+   LATTICE_ortho_Ntwin      = 0_pInt, & !sum(lattice_ortho_NtwinSystem), &                          !< total # of twin systems for ortho
+   LATTICE_ortho_NnonSchmid = 0_pInt, &                                                             !< total # of non-Schmid contributions for ortho
+   LATTICE_ortho_Ntrans     = 0_pInt, & !sum(lattice_ortho_NtransSystem), &                         !< total # of transformation systems for ortho
+   LATTICE_ortho_Ncleavage  = 3_pInt    !sum(lattice_ortho_NcleavageSystem)                         !< total # of cleavage systems for ortho
+ 
  real(pReal), dimension(3+3,LATTICE_ortho_Ncleavage), parameter, private :: &
    LATTICE_ortho_systemCleavage = reshape(real([&
     ! Cleavage direction     Plane normal
@@ -1036,16 +1053,36 @@ module lattice
       1, 0, 0,     0, 0, 1  &
      ],pReal),[ 3_pInt + 3_pInt,LATTICE_ortho_Ncleavage])
 
- real(pReal),                              dimension(:,:,:),   allocatable, public, protected :: &
+ integer(pInt), parameter, public :: &
+   LATTICE_maxNslip        = 52_pInt, &
+   !LATTICE_maxNslip        = maxval([LATTICE_fcc_Nslip,LATTICE_bcc_Nslip,LATTICE_hex_Nslip,\
+   !                                  LATTICE_bct_Nslip,LATTICE_iso_Nslip,LATTICE_ortho_Nslip]), &   !< max # of slip systems over lattice structures
+   LATTICE_maxNtwin        = 24_pInt, &
+   !LATTICE_maxNtwin        = maxval([LATTICE_fcc_Ntwin,LATTICE_bcc_Ntwin,LATTICE_hex_Ntwin,\
+   !                                  LATTICE_bct_Ntwin,LATTICE_iso_Ntwin,LATTICE_ortho_Ntwin]), &   !< max # of twin systems over lattice structures
+   LATTICE_maxNnonSchmid   = 6_pInt, &
+   !LATTICE_maxNtwin        = maxval([LATTICE_fcc_NnonSchmid,LATTICE_bcc_NnonSchmid,\
+   !                                  LATTICE_hex_NnonSchmid,LATTICE_bct_NnonSchmid,\
+   !                                  LATTICE_iso_NnonSchmid,LATTICE_ortho_NnonSchmid]), &           !< max # of non-Schmid contributions over lattice structures
+   LATTICE_maxNtrans       = 12_pInt, &
+   !LATTICE_maxNtrans        = maxval([LATTICE_fcc_Ntrans,LATTICE_bcc_Ntrans,LATTICE_hex_Ntrans,\
+   !                                   LATTICE_bct_Ntrans,LATTICE_iso_Ntrans,LATTICE_ortho_Ntrans]),&!< max # of transformation systems over lattice structures
+   LATTICE_maxNcleavage    = 9_pInt, &
+   !LATTICE_maxNcleavage    = maxval([LATTICE_fcc_Ncleavage,LATTICE_bcc_Ncleavage,\
+   !                                  LATTICE_hex_Ncleavage,LATTICE_bct_Ncleavage,\
+   !                                  LATTICE_iso_Ncleavage,LATTICE_ortho_Ncleavage])               !< max # of cleavage systems over lattice structures
+   LATTICE_maxNinteraction    = 182_pInt                                                            !< max # of interaction types (in hardening matrix part)
+
+ real(pReal),                          dimension(:,:,:),     allocatable, public, protected :: &
    lattice_C66,   lattice_trans_C66
- real(pReal),                              dimension(:,:,:,:,:),   allocatable, public, protected :: &
+ real(pReal),                          dimension(:,:,:,:,:), allocatable, public, protected :: &
    lattice_C3333, lattice_trans_C3333
- real(pReal),                              dimension(:),   allocatable, public, protected :: &
+ real(pReal),                          dimension(:),         allocatable, public, protected :: &
    lattice_mu, &
    lattice_nu, &
    lattice_trans_mu, &
    lattice_trans_nu
- real(pReal),                              dimension(:,:,:),   allocatable, public, protected :: &
+ real(pReal),                          dimension(:,:,:),     allocatable, public, protected :: &
    lattice_thermalConductivity33, &
    lattice_thermalExpansion33, &
    lattice_damageDiffusion33, &
@@ -1054,7 +1091,7 @@ module lattice
    lattice_porosityDiffusion33, &
    lattice_hydrogenfluxDiffusion33, &
    lattice_hydrogenfluxMobility33
- real(pReal),                              dimension(:),       allocatable, public, protected :: &
+ real(pReal),                          dimension(:),         allocatable, public, protected :: &
    lattice_damageMobility, &
    lattice_porosityMobility, &
    lattice_massDensity, &
@@ -1253,7 +1290,7 @@ subroutine lattice_init
  endif mainProcess
 
 !--------------------------------------------------------------------------------------------------
-! consistency checks
+! consistency checks (required since ifort 15.0 does not support sum/maxval in parameter definition)
 
  if (LATTICE_maxNslip /= maxval([LATTICE_fcc_Nslip,LATTICE_bcc_Nslip,LATTICE_hex_Nslip,LATTICE_bct_Nslip])) &
    call IO_error(0_pInt,ext_msg = 'LATTICE_maxNslip')
