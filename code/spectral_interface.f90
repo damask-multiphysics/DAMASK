@@ -236,6 +236,7 @@ character(len=1024) function storeWorkingDirectory(workingDirectoryArg,geometryA
      storeWorkingDirectory = workingDirectoryArg
    else absolutePath
      error = getCWD(cwd)
+     if (error) call quit(1_pInt)
      storeWorkingDirectory = trim(cwd)//pathSep//workingDirectoryArg
    endif absolutePath
    if (storeWorkingDirectory(len(trim(storeWorkingDirectory)):len(trim(storeWorkingDirectory)))/= pathSep) &   
@@ -249,6 +250,7 @@ character(len=1024) function storeWorkingDirectory(workingDirectoryArg,geometryA
      storeWorkingDirectory = geometryArg(1:scan(geometryArg,pathSep,back=.true.))
    else
      error = getCWD(cwd)                                                                           ! relative path given as command line argument
+     if (error) call quit(1_pInt)
      storeWorkingDirectory = trim(cwd)//pathSep//&
                               geometryArg(1:scan(geometryArg,pathSep,back=.true.))
    endif
@@ -306,7 +308,6 @@ character(len=1024) function getGeometryFile(geometryParameter)
    geometryParameter
  integer :: posExt, posSep
  character :: pathSep
- logical :: error
 
  getGeometryFile = geometryParameter
  pathSep = getPathSep()
@@ -334,7 +335,6 @@ character(len=1024) function getLoadCaseFile(loadCaseParameter)
  character(len=1024), intent(in) :: &
    loadCaseParameter
  integer :: posExt, posSep
- logical :: error
  character :: pathSep
 
  getLoadCaseFile = loadcaseParameter

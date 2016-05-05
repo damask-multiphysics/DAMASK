@@ -25,7 +25,7 @@ interface
    use, intrinsic :: ISO_C_Binding, only: &
      C_INT, &
      C_CHAR
-   character(kind=c_char), dimension(*), intent(out)  :: str
+   character(kind=c_char), dimension(1024), intent(out)  :: str                                     ! C string is an array
    integer(C_INT),intent(out)         :: stat
 
   end subroutine getCurrentWorkDir_C
@@ -58,15 +58,21 @@ logical function getCWD(str)
     C_INT, &
     C_CHAR, &
     C_NULL_CHAR
-
   implicit none
   character(len=*), intent(out) :: str
-  character(len=1024) :: strFixedLength
+  character(kind=c_char), dimension(1024) :: strFixedLength                                         ! C string is an array
   integer(C_INT) :: stat
+  integer :: i
 
-  str = repeat(C_NULL_CHAR,len(str))
+  str = repeat('',len(str))
   call getCurrentWorkDir_C(strFixedLength,stat)
-  str = strFixedLength(1:scan(strFixedLength,C_NULL_CHAR,.True.)-1)
+  do i=1,1024                                                                                       ! copy array components until Null string is found
+    if (strFixedLength(i) /= C_NULL_CHAR) then
+      str(i:i)=strFixedLength(i)
+    else
+      exit
+    endif
+  enddo
   getCWD=merge(.True.,.False.,stat /= 0_C_INT)
 
 end function getCWD
