@@ -21,11 +21,11 @@ interface
    character(kind=C_CHAR),intent(in) :: path(*)
   end function isDirectory_C
 
- subroutine getCurrentWorkDir_C(str_out, stat) bind(C)
+ subroutine getCurrentWorkDir_C(str, stat) bind(C)
    use, intrinsic :: ISO_C_Binding, only: &
      C_INT, &
      C_CHAR
-   character( kind=c_char ), dimension(*), intent(inout)  :: str_out
+   character(kind=c_char), dimension(*), intent(out)  :: str
    integer(C_INT),intent(out)         :: stat
 
   end subroutine getCurrentWorkDir_C
