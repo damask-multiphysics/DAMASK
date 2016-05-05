@@ -14,7 +14,7 @@ void getcurrentworkdir_c(char cwd[], int *stat ){
   if(getcwd(cwd_tmp, sizeof(cwd_tmp)) == cwd_tmp){
     *stat = 0;
     strcpy(cwd, cwd_tmp);
-  } 
+  }
   else{
     *stat = 1;
   }

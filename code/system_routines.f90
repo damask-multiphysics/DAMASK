@@ -64,7 +64,7 @@ logical function getCWD(str)
   character(len=1024) :: strFixedLength
   integer(C_INT) :: stat
 
-  str = repeat(C_NULL_CHAR,1024)
+  str = repeat(C_NULL_CHAR,len(str))
   call getCurrentWorkDir_C(strFixedLength,stat)
   str = strFixedLength(1:scan(strFixedLength,C_NULL_CHAR,.True.)-1)
   getCWD=merge(.True.,.False.,stat /= 0_C_INT)

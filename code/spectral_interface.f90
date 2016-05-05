@@ -185,7 +185,7 @@ subroutine DAMASK_interface_init(loadCaseParameterIn,geometryParameterIn)
    call quit(1_pInt)
  endif
 
- workingDirectory = storeWorkingDirectory(trim(workingDirArg),trim(geometryArg))
+ workingDirectory = trim(storeWorkingDirectory(trim(workingDirArg),trim(geometryArg)))
  geometryFile = getGeometryFile(geometryArg)
  loadCaseFile = getLoadCaseFile(loadCaseArg)
 
@@ -230,16 +230,14 @@ character(len=1024) function storeWorkingDirectory(workingDirectoryArg,geometryA
  logical                       :: error
  external                      :: quit
 
-
-
  pathSep = getPathSep()
  wdGiven: if (len(workingDirectoryArg)>0) then
-   if (workingDirectoryArg(1:1) == pathSep) then                                                    ! absolute path given as command line argument
+   absolutePath: if (workingDirectoryArg(1:1) == pathSep) then
      storeWorkingDirectory = workingDirectoryArg
-   else
-     error = getCWD(cwd)                                                                           ! relative path given as command line argument
+   else absolutePath
+     error = getCWD(cwd)
      storeWorkingDirectory = trim(cwd)//pathSep//workingDirectoryArg
-   endif
+   endif absolutePath
    if (storeWorkingDirectory(len(trim(storeWorkingDirectory)):len(trim(storeWorkingDirectory)))/= pathSep) &   
                                        storeWorkingDirectory = trim(storeWorkingDirectory)//pathSep ! if path seperator is not given, append it
    if(.not. isDirectory(trim(storeWorkingDirectory))) then                                          ! check if the directory exists
@@ -255,7 +253,7 @@ character(len=1024) function storeWorkingDirectory(workingDirectoryArg,geometryA
                               geometryArg(1:scan(geometryArg,pathSep,back=.true.))
    endif
  endif wdGiven
- storeWorkingDirectory = rectifyPath(storeWorkingDirectory)
+ storeWorkingDirectory = trim(rectifyPath(storeWorkingDirectory))
 
 end function storeWorkingDirectory
 
@@ -302,14 +300,10 @@ end function getSolverJobName
 !> @brief basename of geometry file with extension from command line arguments
 !--------------------------------------------------------------------------------------------------
 character(len=1024) function getGeometryFile(geometryParameter)
- use system_routines, only: &
-   getCWD
 
  implicit none
  character(len=1024), intent(in) :: &
    geometryParameter
- character(len=1024) :: &
-   cwd
  integer :: posExt, posSep
  character :: pathSep
  logical :: error
@@ -321,8 +315,7 @@ character(len=1024) function getGeometryFile(geometryParameter)
 
  if (posExt <= posSep) getGeometryFile = trim(getGeometryFile)//('.geom')                           ! no extension present
  if (scan(getGeometryFile,pathSep) /= 1) then                                                       ! relative path given as command line argument
-   error = getCWD(cwd)
-   getGeometryFile = rectifyPath(trim(cwd)//pathSep//getGeometryFile)
+   getGeometryFile = rectifyPath(trim(workingDirectory)//pathSep//getGeometryFile)
  else
    getGeometryFile = rectifyPath(getGeometryFile)
  endif
@@ -336,14 +329,10 @@ end function getGeometryFile
 !> @brief relative path of loadcase from command line arguments
 !--------------------------------------------------------------------------------------------------
 character(len=1024) function getLoadCaseFile(loadCaseParameter)
- use system_routines, only: &
-   getCWD
 
  implicit none
  character(len=1024), intent(in) :: &
    loadCaseParameter
- character(len=1024) :: &
-   cwd
  integer :: posExt, posSep
  logical :: error
  character :: pathSep
@@ -355,8 +344,7 @@ character(len=1024) function getLoadCaseFile(loadCaseParameter)
 
  if (posExt <= posSep) getLoadCaseFile = trim(getLoadCaseFile)//('.load')                           ! no extension present
  if (scan(getLoadCaseFile,pathSep) /= 1) then                                                       ! relative path given as command line argument
-   error = getCWD(cwd)
-   getLoadCaseFile = rectifyPath(trim(cwd)//pathSep//getLoadCaseFile)
+   getLoadCaseFile = rectifyPath(trim(workingDirectory)//pathSep//getLoadCaseFile)
  else
    getLoadCaseFile = rectifyPath(getLoadCaseFile)
  endif
