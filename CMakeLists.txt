@@ -116,7 +116,7 @@ set (DAMASK_VERSION_MINOR ${DAMASK_V})
 # Built-in options for DAMASK build system
 #   -> can be overwritten from commandline/install_script
 option(OPENMP             "Use OpenMP libaries for DAMASK"                              ON   )
-option(OPTIMIZATION       "DAMASK optimization level [OFF,DEFENSIVE,AGGRESSIVE]" "DEFENSIVE" )
+option(OPTIMIZATION       "DAMASK optimization level [OFF,DEFENSIVE,AGGRESSIVE]" "AGGRESSIVE" )
 option(SPECTRAL           "Build spectral sovler for DAMASAK"                           OFF  )
 option(FEM                "Build FEM solver for DAMASK"                                 OFF  )
 

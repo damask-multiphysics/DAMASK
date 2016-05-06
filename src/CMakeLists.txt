@@ -79,7 +79,6 @@ add_library(DAMASK_DRIVERS ALIAS DAMASK_LATTICE)
 add_library (DAMASK_PLASTIC "plastic_dislotwin.f90"
                             "plastic_disloUCLA.f90"
                             "plastic_isotropic.f90"
-                            "plastic_j2.f90"
                             "plastic_phenopowerlaw.f90"
                             "plastic_titanmod.f90"
                             "plastic_nonlocal.f90"
