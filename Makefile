@@ -10,7 +10,7 @@ spectral: build/spectral
 
 build/spectral: build
 	@mkdir build/spectral
-	@(cd build/spectral; cmake -Wno-dev -DCMAKE_BUILD_TYPE=RELEASE -DDAMASK_DRIVER=SPECTRAL -D DAMASK_INSTALL=${HOME}/bin ../..;)
+	@(cd build/spectral; cmake -Wno-dev -DCMAKE_BUILD_TYPE=RELEASE -DDAMASK_DRIVER=SPECTRAL -DOPTIMIZATION=AGGRESSIVE -DDAMASK_INSTALL=${HOME}/bin ../..;)
 
 build: bin
 	@mkdir build
