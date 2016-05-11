@@ -1,4 +1,5 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2
+# -*- coding: UTF-8 no BOM -*-
 
 import os,sys,time,copy
 import numpy as np
