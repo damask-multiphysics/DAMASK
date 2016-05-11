@@ -40,7 +40,7 @@ class Test():
          +'----------------------------------------------------------------')
     self.dirBase = os.path.dirname(os.path.realpath(sys.modules[self.__class__.__module__].__file__))
     self.parser = OptionParser(
-    description = test_description+' (using class: $Id$)',
+    description = test_description+' (using class: {})'.format(damask.version),
     usage='./test.py [options]')
     self.updateRequested = False
     self.parser.add_option("-d", "--debug", action="store_true",\
