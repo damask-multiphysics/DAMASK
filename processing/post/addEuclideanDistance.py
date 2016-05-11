@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2
 # -*- coding: UTF-8 no BOM -*-
 
 import os,sys,itertools
@@ -88,20 +88,32 @@ Add column(s) containing Euclidean distance to grain structural features: bounda
 
 """, version = scriptID)
 
-parser.add_option('-c','--coordinates', dest='coords', metavar='string',
-                  help='column heading for coordinates [%default]')
-parser.add_option('-i','--identifier',  dest='id', metavar = 'string',
-                  help='heading of column containing grain identifier [%default]')
-parser.add_option('-t','--type',        dest = 'type', action = 'extend', metavar = '<string LIST>',
-                  help = 'feature type {%s} '%(', '.join(map(lambda x:'/'.join(x['names']),features))) )
-parser.add_option('-n','--neighborhood',dest='neighborhood', choices = neighborhoods.keys(), metavar = 'string',
-                  help = 'type of neighborhood [neumann] {%s}'%(', '.join(neighborhoods.keys())))
-parser.add_option('-s', '--scale',      dest = 'scale', type = 'float', metavar='float',
+parser.add_option('-p',
+                  '--pos', '--position',
+                  dest = 'pos', metavar = 'string',
+                  help = 'label of coordinates [%default]')
+parser.add_option('-i',
+                  '--id', '--identifier',
+                  dest = 'id', metavar = 'string',
+                  help='label of grain identifier [%default]')
+parser.add_option('-t',
+                  '--type',
+                  dest = 'type', action = 'extend', metavar = '<string LIST>',
+                  help = 'feature type {{{}}} '.format(', '.join(map(lambda x:'/'.join(x['names']),features))) )
+parser.add_option('-n',
+                  '--neighborhood',
+                  dest = 'neighborhood', choices = neighborhoods.keys(), metavar = 'string',
+                  help = 'neighborhood type [neumann] {{{}}}'.format(', '.join(neighborhoods.keys())))
+parser.add_option('-s',
+                  '--scale',
+                  dest = 'scale', type = 'float', metavar = 'float',
                   help = 'voxel size [%default]')
-parser.set_defaults(coords = 'ipinitialcoord')
-parser.set_defaults(id = 'texture')
-parser.set_defaults(neighborhood = 'neumann')
-parser.set_defaults(scale = 1.0)
+
+parser.set_defaults(pos = 'pos',
+                    id = 'texture',
+                    neighborhood = 'neumann',
+                    scale = 1.0,
+                   )
 
 (options,filenames) = parser.parse_args()
 
@@ -110,7 +122,7 @@ if options.type is None:
 if not set(options.type).issubset(set(list(itertools.chain(*map(lambda x: x['names'],features))))):
   parser.error('type must be chosen from (%s).'%(', '.join(map(lambda x:'|'.join(x['names']),features))) )
 if 'biplane' in options.type and 'boundary' in options.type:
-  parser.error("only one from aliases 'biplane' and 'boundary' possible.")
+  parser.error('only one from aliases "biplane" and "boundary" possible.')
 
 feature_list = []
 for i,feature in enumerate(features):
@@ -125,10 +137,8 @@ for i,feature in enumerate(features):
 if filenames == []: filenames = [None]
 
 for name in filenames:
-  try:
-    table = damask.ASCIItable(name = name, buffered = False)
-  except:
-    continue
+  try:    table = damask.ASCIItable(name = name, buffered = False)
+  except: continue
   damask.util.report(scriptName,name)
 
 # ------------------------------------------ read header ------------------------------------------
@@ -141,13 +151,17 @@ for name in filenames:
   remarks = []
   column = {}
   
-  if table.label_dimension(options.coords) != 3: errors.append('coordinates {} are not a vector.'.format(options.coords))
-  else: coordCol = table.label_index(options.coords)
-
+  coordDim = table.label_dimension(options.pos)
+  if not 3 >= coordDim >= 1:
+    errors.append('coordinates "{}" need to have one, two, or three dimensions.'.format(options.pos))
+  else: coordCol = table.label_index(options.pos)
+  
   if table.label_dimension(options.id) != 1: errors.append('grain identifier {} not found.'.format(options.id))
   else: idCol = table.label_index(options.id)
 
-  if remarks != []: damask.util.croak(remarks)
+  if remarks != []:
+    damask.util.croak(remarks)
+    remarks = []
   if errors  != []:
     damask.util.croak(errors)
     table.close(dismiss = True)
@@ -164,51 +178,57 @@ for name in filenames:
 
   table.data_readArray()
 
-  coords = [{},{},{}]
-  for i in xrange(len(table.data)):  
-    for j in xrange(3):
-      coords[j][str(table.data[i,coordCol+j])] = True
-  grid = np.array(map(len,coords),'i')
-  size = grid/np.maximum(np.ones(3,'d'),grid-1.0)* \
-            np.array([max(map(float,coords[0].keys()))-min(map(float,coords[0].keys())),\
-                      max(map(float,coords[1].keys()))-min(map(float,coords[1].keys())),\
-                      max(map(float,coords[2].keys()))-min(map(float,coords[2].keys())),\
-                      ],'d')                                                                        # size from bounding box, corrected for cell-centeredness
+  coords = [np.unique(table.data[:,coordCol+i]) for i in xrange(coordDim)]
+  mincorner = np.array(map(min,coords))
+  maxcorner = np.array(map(max,coords))
+  grid   = np.array(map(len,coords)+[1]*(3-len(coords)),'i')
 
-  size = np.where(grid > 1, size, min(size[grid > 1]/grid[grid > 1]))                               # spacing for grid==1 set to smallest among other spacings
+  N = grid.prod()
+
+  if N != len(table.data): errors.append('data count {} does not match grid {}.'.format(N,'x'.join(map(str,grid))))
+  else:                   remarks.append('grid: {}x{}x{}'.format(*grid))
+  if remarks != []: damask.util.croak(remarks)
+  if errors  != []:
+    damask.util.croak(errors)
+    table.close(dismiss = True)
+    continue
 
 # ------------------------------------------ process value field -----------------------------------
 
   stack = [table.data]
 
   neighborhood = neighborhoods[options.neighborhood]
-  convoluted = np.empty([len(neighborhood)]+list(grid+2),'i')
-  microstructure = periodic_3Dpad(np.array(table.data[:,idCol].reshape(grid),'i'))
-  
+  diffToNeighbor = np.empty(list(grid+2)+[len(neighborhood)],'i')
+  microstructure = periodic_3Dpad(table.data[:,idCol].astype('i').reshape(grid,order='F'))
+
   for i,p in enumerate(neighborhood):
     stencil = np.zeros((3,3,3),'i')
     stencil[1,1,1] = -1
     stencil[p[0]+1,
             p[1]+1,
             p[2]+1] = 1
-    convoluted[i,:,:,:] = ndimage.convolve(microstructure,stencil)
+    diffToNeighbor[:,:,:,i] = ndimage.convolve(microstructure,stencil)                              # compare ID at each point...
+                                                                                                    # ...to every one in the specified neighborhood
+                                                                                                    # for same IDs at both locations ==> 0
   
-  distance = np.ones((len(feature_list),grid[0],grid[1],grid[2]),'d')
-  
-  convoluted = np.sort(convoluted,axis = 0)
-  uniques = np.where(convoluted[0,1:-1,1:-1,1:-1] != 0, 1,0)                                        # initialize unique value counter (exclude myself [= 0])
+  diffToNeighbor = np.sort(diffToNeighbor)                                                          # sort diff such that number of changes in diff (steps)...
+                                                                                                    # ...reflects number of unique neighbors
+  uniques = np.where(diffToNeighbor[1:-1,1:-1,1:-1,0] != 0, 1,0)                                    # initialize unique value counter (exclude myself [= 0])
 
   for i in xrange(1,len(neighborhood)):                                                             # check remaining points in neighborhood
     uniques += np.where(np.logical_and(
-                           convoluted[i,1:-1,1:-1,1:-1] != convoluted[i-1,1:-1,1:-1,1:-1],          # flip of ID difference detected?
-                           convoluted[i,1:-1,1:-1,1:-1] != 0),                                      # not myself?
-                           1,0)                                                                     # count flip
+                         diffToNeighbor[1:-1,1:-1,1:-1,i] != 0,                                     # not myself?
+                         diffToNeighbor[1:-1,1:-1,1:-1,i] != diffToNeighbor[1:-1,1:-1,1:-1,i-1],
+                         ),                                                                         # flip of ID difference detected?
+                        1,0)                                                                        # count that flip
+
+  distance = np.ones((len(feature_list),grid[0],grid[1],grid[2]),'d')
 
   for i,feature_id in enumerate(feature_list):
     distance[i,:,:,:] = np.where(uniques >= features[feature_id]['aliens'],0.0,1.0)                 # seed with 0.0 when enough unique neighbor IDs are present
     distance[i,:,:,:] = ndimage.morphology.distance_transform_edt(distance[i,:,:,:])*[options.scale]*3
 
-  distance.shape = ([len(feature_list),grid.prod(),1])
+  distance = distance.reshape([len(feature_list),grid.prod(),1],order='F')
   for i in xrange(len(feature_list)):
     stack.append(distance[i,:])
 

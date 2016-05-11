@@ -24,7 +24,6 @@ module material
    ELASTICITY_hooke_label               = 'hooke', &
    PLASTICITY_none_label                = 'none', &
    PLASTICITY_isotropic_label           = 'isotropic', &
-   PLASTICITY_j2_label                  = 'j2', &
    PLASTICITY_phenopowerlaw_label       = 'phenopowerlaw', &
    PLASTICITY_phenoplus_label           = 'phenoplus', &
    PLASTICITY_dislotwin_label           = 'dislotwin', &
@@ -74,7 +73,6 @@ module material
    enumerator :: PLASTICITY_undefined_ID, &
                  PLASTICITY_none_ID, &
                  PLASTICITY_isotropic_ID, &
-                 PLASTICITY_j2_ID, &
                  PLASTICITY_phenopowerlaw_ID, &
                  PLASTICITY_phenoplus_ID, &
                  PLASTICITY_dislotwin_ID, &
@@ -313,7 +311,6 @@ module material
    ELASTICITY_hooke_ID ,&
    PLASTICITY_none_ID, &
    PLASTICITY_isotropic_ID, &
-   PLASTICITY_J2_ID, &
    PLASTICITY_phenopowerlaw_ID, &
    PLASTICITY_phenoplus_ID, &
    PLASTICITY_dislotwin_ID, &
@@ -351,9 +348,6 @@ module material
    HYDROGENFLUX_cahnhilliard_ID, &
    HOMOGENIZATION_none_ID, &
    HOMOGENIZATION_isostrain_ID, &
-#ifdef HDF
-   material_NconstituentsPhase, &
-#endif
    HOMOGENIZATION_RGC_ID
 
  private :: &
@@ -982,8 +976,6 @@ subroutine material_parsePhase(fileUnit,myPart)
              phase_plasticity(section) = PLASTICITY_NONE_ID
            case (PLASTICITY_ISOTROPIC_label)
              phase_plasticity(section) = PLASTICITY_ISOTROPIC_ID
-           case (PLASTICITY_J2_label)
-             phase_plasticity(section) = PLASTICITY_J2_ID
            case (PLASTICITY_PHENOPOWERLAW_label)
              phase_plasticity(section) = PLASTICITY_PHENOPOWERLAW_ID
            case (PLASTICITY_PHENOPLUS_label)
@@ -1280,7 +1272,7 @@ subroutine material_populateGrains
  integer(pInt) :: t,e,i,g,j,m,c,r,homog,micro,sgn,hme, myDebug, &
                   phaseID,textureID,dGrains,myNgrains,myNorientations,myNconstituents, &
                   grain,constituentGrain,ipGrain,symExtension, ip
- real(pReal) :: extreme,rnd
+ real(pReal) :: deviation,extreme,rnd
  integer(pInt),  dimension (:,:),   allocatable :: Nelems                                           ! counts number of elements in homog, micro array
  type(p_intvec), dimension (:,:), allocatable :: elemsOfHomogMicro                                  ! lists element number in homog, micro array
 
@@ -1407,8 +1399,11 @@ subroutine material_populateGrains
          extreme = 0.0_pReal
          t = 0_pInt
          do i = 1_pInt,myNconstituents                                                              ! find largest deviator
-           if (real(sgn,pReal)*log(NgrainsOfConstituent(i)/myNgrains/microstructure_fraction(i,micro)) > extreme) then
-             extreme = real(sgn,pReal)*log(NgrainsOfConstituent(i)/myNgrains/microstructure_fraction(i,micro))
+           deviation = real(sgn,pReal)*log( microstructure_fraction(i,micro) / &
+                                           !-------------------------------- &
+                                           (real(NgrainsOfConstituent(i),pReal)/real(myNgrains,pReal) ) )
+           if (deviation > extreme) then
+             extreme = deviation
              t = i
            endif
          enddo
@@ -1599,15 +1594,5 @@ subroutine material_populateGrains
  deallocate(elemsOfHomogMicro)
 
 end subroutine material_populateGrains
-
-#ifdef HDF
-integer(pInt) pure function material_NconstituentsPhase(matID)
-
- implicit none
- integer(pInt), intent(in) :: matID
-
- material_NconstituentsPhase = count(microstructure_phase == matID)
-end function
-#endif
 
 end module material

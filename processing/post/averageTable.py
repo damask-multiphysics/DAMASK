@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2
 # -*- coding: UTF-8 no BOM -*-
 
 import os,sys
@@ -37,10 +37,14 @@ if options.label is None:
 if filenames == []: filenames = [None]
 
 for name in filenames:
-  try:
-    table = damask.ASCIItable(name = name,
-                              outname = options.label+'_averaged_'+name if name else name,
-                              buffered = False)
+  damask.util.croak(name)
+
+  try:    table = damask.ASCIItable(name = name,
+                                    outname = os.path.join(
+                                              os.path.split(name)[0],
+                                              options.label+'_averaged_'+os.path.split(name)[1]
+                                              ) if name else name,
+                                    buffered = False)
   except: continue
   damask.util.report(scriptName,name)
 

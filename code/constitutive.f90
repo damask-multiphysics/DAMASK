@@ -69,7 +69,6 @@ subroutine constitutive_init()
    ELASTICITY_hooke_ID, &
    PLASTICITY_none_ID, &
    PLASTICITY_isotropic_ID, &
-   PLASTICITY_j2_ID, &
    PLASTICITY_phenopowerlaw_ID, &
    PLASTICITY_phenoplus_ID, &
    PLASTICITY_dislotwin_ID, &
@@ -93,7 +92,6 @@ subroutine constitutive_init()
    ELASTICITY_HOOKE_label, &
    PLASTICITY_NONE_label, &
    PLASTICITY_ISOTROPIC_label, &
-   PLASTICITY_J2_label, &
    PLASTICITY_PHENOPOWERLAW_label, &
    PLASTICITY_PHENOPLUS_label, &
    PLASTICITY_DISLOTWIN_label, &
@@ -114,7 +112,6 @@ subroutine constitutive_init()
 
  use plastic_none
  use plastic_isotropic
- use plastic_j2
  use plastic_phenopowerlaw
  use plastic_phenoplus
  use plastic_dislotwin
@@ -160,7 +157,6 @@ subroutine constitutive_init()
 ! parse plasticities from config file
  if (any(phase_plasticity == PLASTICITY_NONE_ID))          call plastic_none_init
  if (any(phase_plasticity == PLASTICITY_ISOTROPIC_ID))     call plastic_isotropic_init(FILEUNIT)
- if (any(phase_plasticity == PLASTICITY_J2_ID))            call plastic_j2_init(FILEUNIT)
  if (any(phase_plasticity == PLASTICITY_PHENOPOWERLAW_ID)) call plastic_phenopowerlaw_init(FILEUNIT)
  if (any(phase_plasticity == PLASTICITY_PHENOPLUS_ID))     call plastic_phenoplus_init(FILEUNIT)
  if (any(phase_plasticity == PLASTICITY_DISLOTWIN_ID))     call plastic_dislotwin_init(FILEUNIT)
@@ -217,11 +213,6 @@ subroutine constitutive_init()
            thisNoutput => plastic_isotropic_Noutput
            thisOutput => plastic_isotropic_output
            thisSize   => plastic_isotropic_sizePostResult
-         case (PLASTICITY_J2_ID) plasticityType
-           outputName = PLASTICITY_J2_label
-           thisNoutput => plastic_j2_Noutput
-           thisOutput => plastic_j2_output
-           thisSize   => plastic_j2_sizePostResult
          case (PLASTICITY_PHENOPOWERLAW_ID) plasticityType
            outputName = PLASTICITY_PHENOPOWERLAW_label
            thisNoutput => plastic_phenopowerlaw_Noutput
@@ -408,8 +399,6 @@ function constitutive_homogenizedC(ipc,ip,el)
    plastic_titanmod_homogenizedC
  use plastic_dislotwin, only: &
    plastic_dislotwin_homogenizedC
- use plastic_disloucla, only: &
-   plastic_disloucla_homogenizedC
  use lattice, only: &
    lattice_C66
 
@@ -423,8 +412,6 @@ function constitutive_homogenizedC(ipc,ip,el)
  plasticityType: select case (phase_plasticity(material_phase(ipc,ip,el)))
    case (PLASTICITY_DISLOTWIN_ID) plasticityType
      constitutive_homogenizedC = plastic_dislotwin_homogenizedC(ipc,ip,el)
-   case (PLASTICITY_DISLOUCLA_ID) plasticityType
-     constitutive_homogenizedC = plastic_disloucla_homogenizedC(ipc,ip,el)
    case (PLASTICITY_TITANMOD_ID) plasticityType
      constitutive_homogenizedC = plastic_titanmod_homogenizedC (ipc,ip,el)
    case default plasticityType
@@ -513,7 +500,6 @@ subroutine constitutive_LpAndItsTangent(Lp, dLp_dTstar3333, dLp_dFi3333, Tstar_v
    thermalMapping, &
    PLASTICITY_NONE_ID, &
    PLASTICITY_ISOTROPIC_ID, &
-   PLASTICITY_J2_ID, &
    PLASTICITY_PHENOPOWERLAW_ID, &
    PLASTICITY_PHENOPLUS_ID, &
    PLASTICITY_DISLOTWIN_ID, &
@@ -522,8 +508,6 @@ subroutine constitutive_LpAndItsTangent(Lp, dLp_dTstar3333, dLp_dFi3333, Tstar_v
    PLASTICITY_NONLOCAL_ID
  use plastic_isotropic, only: &
    plastic_isotropic_LpAndItsTangent
- use plastic_j2, only: &
-   plastic_j2_LpAndItsTangent
  use plastic_phenopowerlaw, only: &
    plastic_phenopowerlaw_LpAndItsTangent
  use plastic_phenoplus, only: &
@@ -574,8 +558,6 @@ subroutine constitutive_LpAndItsTangent(Lp, dLp_dTstar3333, dLp_dFi3333, Tstar_v
      dLp_dMstar = 0.0_pReal
    case (PLASTICITY_ISOTROPIC_ID) plasticityType
      call plastic_isotropic_LpAndItsTangent(Lp,dLp_dMstar,Mstar_v,ipc,ip,el)
-   case (PLASTICITY_J2_ID) plasticityType
-     call plastic_j2_LpAndItsTangent(Lp,dLp_dMstar,Mstar_v,ipc,ip,el)
    case (PLASTICITY_PHENOPOWERLAW_ID) plasticityType
      call plastic_phenopowerlaw_LpAndItsTangent(Lp,dLp_dMstar,Mstar_v,ipc,ip,el)
    case (PLASTICITY_PHENOPLUS_ID) plasticityType
@@ -903,7 +885,6 @@ subroutine constitutive_collectDotState(Tstar_v, FeArray, FpArray, subdt, subfra
    homogenization_maxNgrains, &
    PLASTICITY_none_ID, &
    PLASTICITY_isotropic_ID, &
-   PLASTICITY_j2_ID, &
    PLASTICITY_phenopowerlaw_ID, &
    PLASTICITY_phenoplus_ID, &
    PLASTICITY_dislotwin_ID, &
@@ -916,8 +897,6 @@ subroutine constitutive_collectDotState(Tstar_v, FeArray, FpArray, subdt, subfra
    SOURCE_thermal_externalheat_ID
  use plastic_isotropic, only:  &
    plastic_isotropic_dotState
- use plastic_j2, only:  &
-   plastic_j2_dotState
  use plastic_phenopowerlaw, only: &
    plastic_phenopowerlaw_dotState
  use plastic_phenoplus, only: &
@@ -971,8 +950,6 @@ subroutine constitutive_collectDotState(Tstar_v, FeArray, FpArray, subdt, subfra
  plasticityType: select case (phase_plasticity(material_phase(ipc,ip,el)))
    case (PLASTICITY_ISOTROPIC_ID) plasticityType
      call plastic_isotropic_dotState    (Tstar_v,ipc,ip,el)
-   case (PLASTICITY_J2_ID) plasticityType
-     call plastic_j2_dotState           (Tstar_v,ipc,ip,el)
    case (PLASTICITY_PHENOPOWERLAW_ID) plasticityType
      call plastic_phenopowerlaw_dotState(Tstar_v,ipc,ip,el)
    case (PLASTICITY_PHENOPLUS_ID) plasticityType
@@ -1117,7 +1094,6 @@ function constitutive_postResults(Tstar_v, FeArray, ipc, ip, el)
    homogenization_maxNgrains, &
    PLASTICITY_NONE_ID, &
    PLASTICITY_ISOTROPIC_ID, &
-   PLASTICITY_J2_ID, &
    PLASTICITY_PHENOPOWERLAW_ID, &
    PLASTICITY_PHENOPLUS_ID, &
    PLASTICITY_DISLOTWIN_ID, &
@@ -1130,8 +1106,6 @@ function constitutive_postResults(Tstar_v, FeArray, ipc, ip, el)
    SOURCE_damage_anisoDuctile_ID
  use plastic_isotropic, only: &
    plastic_isotropic_postResults
- use plastic_j2, only: &
-   plastic_j2_postResults
  use plastic_phenopowerlaw, only: &
    plastic_phenopowerlaw_postResults
  use plastic_phenoplus, only: &
@@ -1185,8 +1159,6 @@ function constitutive_postResults(Tstar_v, FeArray, ipc, ip, el)
      constitutive_postResults(startPos:endPos) = plastic_titanmod_postResults(ipc,ip,el)
    case (PLASTICITY_ISOTROPIC_ID) plasticityType
      constitutive_postResults(startPos:endPos) = plastic_isotropic_postResults(Tstar_v,ipc,ip,el)
-   case (PLASTICITY_J2_ID) plasticityType
-     constitutive_postResults(startPos:endPos) = plastic_j2_postResults(Tstar_v,ipc,ip,el)
    case (PLASTICITY_PHENOPOWERLAW_ID) plasticityType
      constitutive_postResults(startPos:endPos) = &
        plastic_phenopowerlaw_postResults(Tstar_v,ipc,ip,el)

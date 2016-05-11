@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2
 # -*- coding: UTF-8 no BOM -*-
 
 import os,sys,math
@@ -15,25 +15,29 @@ scriptID   = ' '.join([scriptName,damask.version])
 
 parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
 Changes the (three-dimensional) canvas of a spectral geometry description.
+Grid can be given as absolute or relative values, e.g. 16 16 16 or 2x 0.5x 32.
 
 """, version = scriptID)
 
-parser.add_option('-g', '--grid',
+parser.add_option('-g',
+                  '--grid',
                   dest = 'grid',
                   type = 'string', nargs = 3, metavar = ' '.join(['string']*3),
-                  help = 'a,b,c grid of hexahedral box [auto]')
-parser.add_option('-o', '--offset',
+                  help = 'a,b,c grid of hexahedral box. [auto]')
+parser.add_option('-o',
+                  '--offset',
                   dest = 'offset',
                   type = 'int', nargs = 3, metavar = ' '.join(['int']*3),
                   help = 'a,b,c offset from old to new origin of grid [%default]')
-parser.add_option('-f', '--fill',
+parser.add_option('-f',
+                  '--fill',
                   dest = 'fill',
                   type = 'float', metavar = 'float',
                   help = '(background) canvas grain index. "0" selects maximum microstructure index + 1 [%default]')
 parser.add_option('--float',
                   dest = 'real',
                   action = 'store_true',
-                  help = 'input data is float [%default]')
+                  help = 'use float input')
 
 parser.set_defaults(grid = ['0','0','0'],
                     offset = (0,0,0),
@@ -61,13 +65,7 @@ for name in filenames:
 
   table.head_read()
   info,extra_header = table.head_getGeom()
-  
-  damask.util.croak(['grid     a b c:  %s'%(' x '.join(map(str,info['grid']))),
-               'size     x y z:  %s'%(' x '.join(map(str,info['size']))),
-               'origin   x y z:  %s'%(' : '.join(map(str,info['origin']))),
-               'homogenization:  %i'%info['homogenization'],
-               'microstructures: %i'%info['microstructures'],
-              ])
+  damask.util.report_geom(info)
 
   errors = []
   if np.any(info['grid'] < 1):    errors.append('invalid grid a b c.')
@@ -105,7 +103,7 @@ for name in filenames:
   translate_y = [i - options.offset[1] for i in yindex]
   translate_z = [i - options.offset[2] for i in zindex]
   if 0 in map(len,[xindex,yindex,zindex,translate_x,translate_y,translate_z]):
-    damask.util.croak('Invaldid grid-offset comination')
+    damask.util.croak('invaldid grid-offset combination.')
     table.close(dismiss = True)
     continue
   microstructure_cropped[min(translate_x):(max(translate_x)+1),\
@@ -125,13 +123,13 @@ for name in filenames:
   errors = []
 
   if (any(newInfo['grid']            != info['grid'])):
-    remarks.append('--> grid     a b c:  %s'%(' x '.join(map(str,newInfo['grid']))))
+    remarks.append('--> grid     a b c:  {}'.format(' x '.join(map(str,newInfo['grid']))))
   if (any(newInfo['size']            != info['size'])):
-    remarks.append('--> size     x y z:  %s'%(' x '.join(map(str,newInfo['size']))))
+    remarks.append('--> size     x y z:  {}'.format(' x '.join(map(str,newInfo['size']))))
   if (any(newInfo['origin']          != info['origin'])):
-    remarks.append('--> origin   x y z:  %s'%(' : '.join(map(str,newInfo['origin']))))
+    remarks.append('--> origin   x y z:  {}'.format(' : '.join(map(str,newInfo['origin']))))
   if (    newInfo['microstructures'] != info['microstructures']):
-    remarks.append('--> microstructures: %i'%newInfo['microstructures'])
+    remarks.append('--> microstructures: {}'.format(newInfo['microstructures']))
 
   if np.any(newInfo['grid'] < 1):    errors.append('invalid new grid a b c.')
   if np.any(newInfo['size'] <= 0.0): errors.append('invalid new size x y z.')
@@ -147,11 +145,11 @@ for name in filenames:
   table.info_clear()
   table.info_append([
     scriptID + ' ' + ' '.join(sys.argv[1:]),
-    "grid\ta {grid[0]}\tb {grid[1]}\tc {grid[2]}".format(grid=newInfo['grid']),
-    "size\tx {size[0]}\ty {size[1]}\tz {size[2]}".format(size=newInfo['size']),
-    "origin\tx {origin[0]}\ty {origin[1]}\tz {origin[2]}".format(origin=newInfo['origin']),
-    "homogenization\t{homog}".format(homog=info['homogenization']),
-    "microstructures\t{microstructures}".format(microstructures=newInfo['microstructures']),
+    "grid\ta {}\tb {}\tc {}".format(*newInfo['grid']),
+    "size\tx {}\ty {}\tz {}".format(*newInfo['size']),
+    "origin\tx {}\ty {}\tz {}".format(*newInfo['origin']),
+    "homogenization\t{}".format(info['homogenization']),
+    "microstructures\t{}".format(newInfo['microstructures']),
     extra_header
     ])
   table.labels_clear()

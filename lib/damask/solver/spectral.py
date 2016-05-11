@@ -1,6 +1,5 @@
 # -*- coding: UTF-8 no BOM -*-
 
-# $Id$
 
 from .solver import Solver
 

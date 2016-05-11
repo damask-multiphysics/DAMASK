@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2
 # -*- coding: UTF-8 no BOM -*-
 
 import os,sys,math,re,time,struct,string
@@ -1003,11 +1003,8 @@ fileOpen = False
 assembleHeader = True
 header = []
 standard = ['inc'] + \
-           {True: ['time'],
-            False:[]}[options.time] + \
-           ['elem','node','ip','grain'] + \
-           {True: ['1_nodeinitialcoord','2_nodeinitialcoord','3_nodeinitialcoord'],
-            False:['1_ipinitialcoord','2_ipinitialcoord','3_ipinitialcoord']}[options.nodalScalar != []]
+           (['time'] if options.time else []) + \
+           ['elem','node','ip','grain','1_pos','2_pos','3_pos']
 
 # ---------------------------   loop over positions   --------------------------------
 
