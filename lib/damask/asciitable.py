@@ -1,6 +1,5 @@
 # -*- coding: UTF-8 no BOM -*-
 
-# $Id$
 
 import os,sys
 import numpy as np
