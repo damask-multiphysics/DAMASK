@@ -27,7 +27,7 @@ mappings = {
         'microstructures': lambda x: int(x),
           }
 
-parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
+parser = OptionParser(option_class=damask.extendableOption, usage='%prog option(s) [geomfile(s)]', description = """
 Positions a geometric object within the (three-dimensional) canvas of a spectral geometry description.
 Depending on the sign of the dimension parameters, these objects can be boxes, cylinders, or ellipsoids.
 

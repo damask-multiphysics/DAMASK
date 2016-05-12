@@ -13,7 +13,7 @@ scriptID   = ' '.join([scriptName,damask.version])
 #                                MAIN
 # --------------------------------------------------------------------
 
-parser = OptionParser(option_class=damask.extendableOption, usage='%prog [options]', description = """
+parser = OptionParser(option_class=damask.extendableOption, usage='%prog [option(s)] [geomfile]', description = """
 Generate a geometry file of an osteon enclosing the Harvesian canal and separated by interstitial tissue.
 The osteon phase is lamellar with a twisted plywood structure.
 Its fiber orientation is oscillating by +/- amplitude within one period.

@@ -55,7 +55,7 @@ def ParseOutputFormat(filename,what,me):
           format['outputs'].append([output,length])
   return format
 
-parser = OptionParser(option_class=damask.extendableOption, usage='%prog [options] Marc.inputfile(s)', description="""
+parser = OptionParser(option_class=damask.extendableOption, usage='%prog [option(s)] Marc.Inputfile(s)', description="""
 Transfer the output variables requested in the material.config to
 properly labelled user defined variables within the Marc input file (*.dat).
 

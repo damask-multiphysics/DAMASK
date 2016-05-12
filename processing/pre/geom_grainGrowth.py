@@ -14,7 +14,7 @@ scriptID   = ' '.join([scriptName,damask.version])
 #                                MAIN
 #--------------------------------------------------------------------------------------------------
 
-parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
+parser = OptionParser(option_class=damask.extendableOption, usage='%prog [option(s)] [geomfile(s)]', description = """
 Smoothens out interface roughness by simulated curvature flow.
 This is achieved by the diffusion of each initially sharply bounded grain volume within the periodic domain
 up to a given distance 'd' voxels.

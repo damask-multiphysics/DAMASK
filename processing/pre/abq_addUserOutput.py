@@ -49,7 +49,7 @@ def ParseOutputFormat(filename,what,me):
   return format
 
 
-parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
+parser = OptionParser(option_class=damask.extendableOption, usage='%prog [option(s)] Abaqus.Inputfile(s)', description = """
 Transfer the output variables requested in the material.config to
 properly labelled user defined variables within the Abaqus input file (*.inp).
 

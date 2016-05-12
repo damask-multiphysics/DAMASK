@@ -14,7 +14,7 @@ scriptID   = ' '.join([scriptName,damask.version])
 #                                MAIN
 #--------------------------------------------------------------------------------------------------
 
-parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
+parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [geomfile(s)]', description = """
 Rotates spectral geometry description.
 
 """, version=scriptID)
