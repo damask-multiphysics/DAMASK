@@ -30,13 +30,15 @@ parser.add_option('-r', '--render',
                   dest = 'render',
                   action = 'store_true',
                   help = 'open output in VTK render window')
-parser.add_option('-s', '--scalar',   dest='scalar', action='extend', \
+parser.add_option('-s', '--scalar',   dest='scalar', action='extend',
+                  metavar ='<string LIST>',
                   help = 'scalar values')
 parser.add_option('-v', '--vector',
                   dest = 'vector',
                   action = 'extend', metavar = '<string LIST>',
                   help = 'vector value label(s)')
-parser.add_option('-c', '--color',   dest='color', action='extend', \
+parser.add_option('-c', '--color',   dest='color', action='extend',
+                  metavar ='<string LIST>',
                   help = 'RGB color tuples')
 
 parser.set_defaults(scalar = [],

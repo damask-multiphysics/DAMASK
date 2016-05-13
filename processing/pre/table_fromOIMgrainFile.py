@@ -19,6 +19,7 @@ Adds header to OIM grain file to make it accesible as ASCII table
 
 parser.add_option('-l', '--labels',
                   dest   = 'labels',
+                  action = 'extend', metavar = '<string LIST>',
                   help   = 'lables of requested columns')
 
 parser.set_defaults(labels = ['1_euler','2_euler','3_euler',
