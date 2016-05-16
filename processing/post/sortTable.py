@@ -56,7 +56,7 @@ for name in filenames:
 
   table.data_readArray()
 
-  keys = table.labels[::-1] if options.keys is None else options.keys[::-1]                         # numpy sorts with most significant column as last
+  keys = table.labels(raw = True)[::-1] if options.keys is None else options.keys[::-1]             # numpy sorts with most significant column as last
 
   cols    = []
   remarks = []

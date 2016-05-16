@@ -79,7 +79,7 @@ for name in filenames:
   labels = []
   positions = []
 
-  for position,label in enumerate(table.labels):
+  for position,label in enumerate(table.labels(raw = True)):
     if    (options.whitelist is None or     any([   position in table.label_indexrange(needle) \
                                                  or fnmatch.fnmatch(label,needle) for needle in options.whitelist])) \
       and (options.blacklist is None or not any([   position in table.label_indexrange(needle) \
@@ -103,17 +103,17 @@ for name in filenames:
   condition = options.condition                                                                     # copy per file, might be altered
   for position,operand in enumerate(set(re.findall(r'#(([s]#)?(.+?))#',condition))):                # find three groups
     condition = condition.replace('#'+operand[0]+'#',
-                                          {  '': '{%i}'%position,
-                                           's#':'"{%i}"'%position}[operand[1]])
+                                          {  '': '{{{}}}' .format(position),
+                                           's#':'"{{{}}}"'.format(position)}[operand[1]])
     if operand[2] in specials:                                                                      # special label ?
-      interpolator += ['specials["%s"]'%operand[2]]
+      interpolator += ['specials["{}"]'.format(operand[2])]
     else:
       try:
-        interpolator += ['%s(table.data[%i])'%({  '':'float',
-                                                's#':'str'}[operand[1]],
-                                               table.labels.index(operand[2]))]
+        interpolator += ['{}(table.data[{}])'.format({  '':'float',
+                                                      's#':'str'}[operand[1]],
+                                                     table.label_index(operand[2]))]
       except:
-        parser.error('column %s not found...\n'%operand[2])
+        parser.error('column "{}" not found...\n'.format(operand[2]))
 
   evaluator = "'" + condition + "'.format(" + ','.join(interpolator) + ")"
   

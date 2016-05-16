@@ -165,7 +165,8 @@ for name in filenames:
 
   table.info_clear()
   table.info_append(scriptID + '\t' + ' '.join(sys.argv[1:]))
-  table.labels = ['bin_%s'%options.data[0],'bin_%s'%options.data[1],'z']
+  table.labels_clear()
+  table.labels_append(['bin_%s'%options.data[0],'bin_%s'%options.data[1],'z'])
   table.head_write()
 
 # --- output result ---------------------------------------------------------------------------------

@@ -64,10 +64,10 @@ for name in filenames:
   errors  = []
   remarks = []
   
-  if table.label_dimension(options.pos) != 3:  errors.append('coordinates {} are not a vector.'.format(options.pos))
+  if table.label_dimension(options.pos) != 3:  errors.append('coordinates "{}" are not a vector.'.format(options.pos))
   else: colCoord = table.label_index(options.pos)
 
-  if table.label_dimension(options.defgrad) != 9: errors.append('deformation gradient {} is not a tensor.'.format(options.defgrad))
+  if table.label_dimension(options.defgrad) != 9: errors.append('deformation gradient "{}" is not a tensor.'.format(options.defgrad))
   else: colF = table.label_index(options.defgrad)
 
   if remarks != []: damask.util.croak(remarks)
@@ -96,16 +96,16 @@ for name in filenames:
   N = grid.prod()
   
 # --------------- figure out columns to process  ---------------------------------------------------
-  key = '1_%s'%options.defgrad
-  if key not in table.labels:
-    file['croak'].write('column %s not found...\n'%key)
+  key = '1_'+options.defgrad
+  if table.label_index(key) == -1:
+    damask.util.croak('column "{}" not found...'.format(key))
     continue
   else:
-    column = table.labels.index(key)                                                                # remember columns of requested data
+    column = table.label_index(key)                                                                 # remember columns of requested data
 
 # ------------------------------------------ assemble header ---------------------------------------
-  if options.shape:  table.labels_append(['shapeMismatch(%s)' %options.defgrad])
-  if options.volume: table.labels_append(['volMismatch(%s)'%options.defgrad])
+  if options.shape:  table.labels_append(['shapeMismatch({})'.format(options.defgrad)])
+  if options.volume: table.labels_append(['volMismatch({})'.format(options.defgrad)])
   table.head_write()
 
 # ------------------------------------------ read deformation gradient field -----------------------
