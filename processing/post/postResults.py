@@ -643,63 +643,69 @@ of already processed data points for evaluation.
 
 """, version = scriptID)
 
-parser.add_option('-i','--info', action='store_true', dest='info', \
-                  help='list contents of resultfile [%default]')
-parser.add_option('-l','--legacy', action='store_true', dest='legacy', \
+parser.add_option('-i','--info', action='store_true', dest='info',
+                  help='list contents of resultfile')
+parser.add_option('-l','--legacy', action='store_true', dest='legacy',
                   help='data format of spectral solver is in legacy format (no MPI out)')
-parser.add_option('-n','--nodal', action='store_true', dest='nodal', \
-                  help='data is extrapolated to nodal value [%default]')
-parser.add_option(    '--prefix', dest='prefix', \
-                  help='prefix to result file name [%default]')
-parser.add_option(    '--suffix', dest='suffix', \
-                  help='suffix to result file name [%default]')
-parser.add_option('-d','--dir', dest='dir', \
+parser.add_option('-n','--nodal', action='store_true', dest='nodal',
+                  help='data is extrapolated to nodal value')
+parser.add_option(    '--prefix', dest='prefix',
+                  metavar='string',
+                  help='prefix to result file name')
+parser.add_option(    '--suffix', dest='suffix',
+                  metavar='string',
+                  help='suffix to result file name')
+parser.add_option('-d','--dir', dest='dir',
+                  metavar='string',
                   help='name of subdirectory to hold output [%default]')
-parser.add_option('-s','--split', action='store_true', dest='separateFiles', \
-                  help='split output per increment [%default]')
-parser.add_option('-r','--range', dest='range', type='int', nargs=3, \
+parser.add_option('-s','--split', action='store_true', dest='separateFiles',
+                  help='split output per increment')
+parser.add_option('-r','--range', dest='range', type='int', nargs=3,
+                  metavar='int int int',
                   help='range of positions (or increments) to output (start, end, step) [all]')
-parser.add_option('--increments', action='store_true', dest='getIncrements', \
-                  help='switch to increment range [%default]')
-parser.add_option('-m','--map', dest='func', \
+parser.add_option('--increments', action='store_true', dest='getIncrements',
+                  help='switch to increment range')
+parser.add_option('-m','--map', dest='func',
+                  metavar='string',
                   help='data reduction mapping [%default] out of min, max, avg, avgabs, sum, sumabs or user-lambda')
-parser.add_option('-p','--type', dest='filetype', \
+parser.add_option('-p','--type', dest='filetype',
+                  metavar = 'string',
                   help = 'type of result file [auto]')
 
 group_material = OptionGroup(parser,'Material identifier')
 
-group_material.add_option('--homogenization', dest='homog', \
-                          help='homogenization identifier (as string or integer [%default])', metavar='<ID>')
-group_material.add_option('--crystallite', dest='cryst', \
-                          help='crystallite identifier (as string or integer [%default])', metavar='<ID>')
-group_material.add_option('--phase', dest='phase', \
-                          help='phase identifier (as string or integer [%default])', metavar='<ID>')
+group_material.add_option('--homogenization', dest='homog',
+                          help='homogenization identifier (as string or integer [%default])', metavar='string')
+group_material.add_option('--crystallite', dest='cryst',
+                          help='crystallite identifier (as string or integer [%default])', metavar='string')
+group_material.add_option('--phase', dest='phase',
+                          help='phase identifier (as string or integer [%default])', metavar='string')
 
 group_special  = OptionGroup(parser,'Special outputs')
 
-group_special.add_option('-t','--time', action='store_true', dest='time', \
+group_special.add_option('-t','--time', action='store_true', dest='time',
                          help='output time of increment [%default]')
-group_special.add_option('-f','--filter', dest='filter', \
-                         help='condition(s) to filter results [%default]', metavar='<CODE>')
-group_special.add_option('--separation', action='extend', dest='sep', \
-                         help='properties to separate results [%default]', metavar='<LIST>')
-group_special.add_option('--sort', action='extend', dest='sort', \
-                         help='properties to sort results [%default]', metavar='<LIST>')
+group_special.add_option('-f','--filter', dest='filter',
+                         help='condition(s) to filter results [%default]', metavar='string')
+group_special.add_option('--separation', action='extend', dest='sep',
+                         help='properties to separate results [%default]', metavar='<string LIST>')
+group_special.add_option('--sort', action='extend', dest='sort',
+                         help='properties to sort results [%default]', metavar='<string LIST>')
 
 group_general  = OptionGroup(parser,'General outputs')
 
-group_general.add_option('--ns', action='extend', dest='nodalScalar', \
-                         help='nodal scalars to extract', metavar='<LIST>')
-group_general.add_option('--es', action='extend', dest='elemScalar', \
-                         help='elemental scalars to extract', metavar='<LIST>')
-group_general.add_option('--et', action='extend', dest='elemTensor', \
-                         help='elemental tensors to extract', metavar='<LIST>')
-group_general.add_option('--ho', action='extend', dest='homogenizationResult', \
-                         help='homogenization results to extract', metavar='<LIST>')
-group_general.add_option('--cr', action='extend', dest='crystalliteResult', \
-                         help='crystallite results to extract', metavar='<LIST>')
-group_general.add_option('--co', action='extend', dest='constitutiveResult', \
-                         help='constitutive results to extract', metavar='<LIST>')
+group_general.add_option('--ns', action='extend', dest='nodalScalar',
+                         help='nodal scalars to extract', metavar='<string LIST>')
+group_general.add_option('--es', action='extend', dest='elemScalar',
+                         help='elemental scalars to extract', metavar='<string LIST>')
+group_general.add_option('--et', action='extend', dest='elemTensor',
+                         help='elemental tensors to extract', metavar='<string LIST>')
+group_general.add_option('--ho', action='extend', dest='homogenizationResult',
+                         help='homogenization results to extract', metavar='<string LIST>')
+group_general.add_option('--cr', action='extend', dest='crystalliteResult',
+                         help='crystallite results to extract', metavar='<string LIST>')
+group_general.add_option('--co', action='extend', dest='constitutiveResult',
+                         help='constitutive results to extract', metavar='<string LIST>')
 
 parser.add_option_group(group_material)
 parser.add_option_group(group_general)

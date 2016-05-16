@@ -21,6 +21,7 @@ Create regular voxel grid from points in an ASCIItable.
 parser.add_option('-m',
                   '--mode',
                   dest = 'mode',
+                  metavar='string',
                   type = 'choice', choices = ['cell','point'],
                   help = 'cell-centered or point-centered coordinates')
 parser.add_option('-p',

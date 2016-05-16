@@ -14,7 +14,7 @@ scriptID   = ' '.join([scriptName,damask.version])
 #                                MAIN
 #--------------------------------------------------------------------------------------------------
 
-parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
+parser = OptionParser(option_class=damask.extendableOption, usage='%prog [option(s)] [geomfile(s)]', description = """
 Smoothens out interface roughness by simulated curvature flow.
 This is achieved by the diffusion of each initially sharply bounded grain volume within the periodic domain
 up to a given distance 'd' voxels.
@@ -28,7 +28,7 @@ parser.add_option('-N', '--smooth', dest='N', type='int', metavar='int',
                  help='N for curvature flow [%default]')
 parser.add_option('-r', '--renumber', dest='renumber', action='store_true',
                   help='renumber microstructure indices from 1...N [%default]')
-parser.add_option('-i', '--immutable', action='extend', dest='immutable', metavar = '<LIST>',
+parser.add_option('-i', '--immutable', action='extend', dest='immutable', metavar = '<int LIST>',
                   help='list of immutable microstructures')
 
 parser.set_defaults(d = 1)

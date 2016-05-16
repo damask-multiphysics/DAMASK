@@ -55,7 +55,7 @@ def ParseOutputFormat(filename,what,me):
           format['outputs'].append([output,length])
   return format
 
-parser = OptionParser(option_class=damask.extendableOption, usage='%prog [options] Marc.inputfile(s)', description="""
+parser = OptionParser(option_class=damask.extendableOption, usage='%prog [option(s)] Marc.Inputfile(s)', description="""
 Transfer the output variables requested in the material.config to
 properly labelled user defined variables within the Marc input file (*.dat).
 
@@ -70,20 +70,26 @@ Or have an existing set of user variables copied over from another *.dat file.
 
 
 parser.add_option('-n','--number', dest='number', type='int', \
+          metavar='int',
           help='maximum requested User Defined Variable [%default]')
 parser.add_option('--homogenization', dest='homog', \
+          metavar='string',
           help='homogenization identifier (as string or integer [%default])')
 parser.add_option('--crystallite', dest='cryst', \
+          metavar='string',
           help='crystallite identifier (as string or integer [%default])')
 parser.add_option('--phase', dest='phase', \
+          metavar='string',
           help='phase identifier (as string or integer [%default])')
 parser.add_option('--use', dest='useFile', \
+          metavar='string',
           help='Optionally parse output descriptors from '+
                'different <model_job>.outputZZZ file. Saves the effort '+
-               'to start a calculation for each job [%default])')
+               'to start a calculation for each job)')
 parser.add_option('--option', dest='damaskOption', \
+          metavar='string',
           help='Add damask option to input file '+
-               'for example: "periodic x z" [%default]')
+               'for example: "periodic x z"')
 parser.set_defaults(number = 0)
 parser.set_defaults(homog = '1')
 parser.set_defaults(cryst = '1')

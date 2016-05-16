@@ -18,7 +18,7 @@ def mostFrequent(arr):
 #                                MAIN
 #--------------------------------------------------------------------------------------------------
 
-parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
+parser = OptionParser(option_class=damask.extendableOption, usage='%prog option(s) [geomfile(s)]', description = """
 Smooth geometry by selecting most frequent microstructure index within given stencil at each location.
 
 """, version=scriptID)

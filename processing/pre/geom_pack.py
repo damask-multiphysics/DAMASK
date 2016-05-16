@@ -13,7 +13,7 @@ scriptID   = ' '.join([scriptName,damask.version])
 #                                MAIN
 #--------------------------------------------------------------------------------------------------
 
-parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
+parser = OptionParser(option_class=damask.extendableOption, usage='%prog [geomfile(s)]', description = """
 compress geometry files with ranges "a to b" and/or multiples "n of x".
 
 """, version = scriptID)

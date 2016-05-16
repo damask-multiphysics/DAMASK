@@ -81,30 +81,39 @@ Builds a ang files from a vtk file.
 """, version = scriptID)
 
 
-parser.add_option('--disp','--displacement',dest='dispLabel', \
+parser.add_option('--disp','--displacement',dest='dispLabel', 
+                                            metavar ='string',
                                             help='label of displacements [%default]')
-parser.add_option('--euler',                dest='eulerLabel', nargs=3, \
+parser.add_option('--euler',                dest='eulerLabel', nargs=3,
+                                            metavar ='string string string',
                                             help='labels of euler angles [%default]')
-parser.add_option('-n','--normal',          dest='normal', type='float', nargs=3, \
+parser.add_option('-n','--normal',          dest='normal', type='float', nargs=3,
+                                            metavar ='float float float',
                                             help='normal of slices in direction of increasing slice numbers [%default]')
 parser.add_option('-u','--up',              dest='up', type='float', nargs=3,
+                                            metavar ='float float float',
                                             help='up direction of slices [%default]')
-parser.add_option('-i','--slices',          dest='Nslices', type='int', \
+parser.add_option('-i','--slices',          dest='Nslices', type='int',
+                                            metavar ='int',
                                             help='number of slices [%default]')
-parser.add_option('-d','--distance',        dest='distance', type='float', \
+parser.add_option('-d','--distance',        dest='distance', type='float',
+                                            metavar ='float',
                                             help='slice distance [%default]')
-parser.add_option('-s','--scale',           dest='scale', type='float', \
+parser.add_option('-s','--scale',           dest='scale', type='float',
+                                            metavar ='float',
                                             help='scale length from vtk file [%default]')
 parser.add_option('-r','--resolution',      dest='resolution', type='float',
+                                            metavar ='float',
                                             help='scaling factor for resolution [%default]')
 parser.add_option('--hex','--hexagonal',    dest='hexagonal', action='store_true',
-                                            help='use in plane hexagonal grid [%default]')
-parser.add_option('--interpolation',        dest='interpolation', type='int', \
+                                            help='use in plane hexagonal grid')
+parser.add_option('--interpolation',        dest='interpolation', type='int',
+                                            metavar='float',
                                             help='number of points for linear interpolation [%default]')
 parser.add_option('--verbose',              dest='verbose', action='store_true',
-                                            help='verbose mode [%default]')
+                                            help='verbose mode')
 parser.add_option('--visualize',            dest='visualize', action='store_true',
-                                            help='visualize geometry [%default]')
+                                            help='visualize geometry')
 
 parser.set_defaults(dispLabel = 'displacement')
 parser.set_defaults(eulerLabel = ['1_1_eulerangles','1_2_eulerangles','1_3_eulerangles'])
