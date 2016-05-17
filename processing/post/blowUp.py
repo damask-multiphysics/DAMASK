@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2
 # -*- coding: UTF-8 no BOM -*-
 
 import os,sys
@@ -63,7 +63,7 @@ for name in filenames:
   errors  = []
   remarks = []
   
-  if table.label_dimension(options.pos) != 3:  errors.append('coordinates {} are not a vector.'.format(options.pos))
+  if table.label_dimension(options.pos) != 3:  errors.append('coordinates "{}" are not a vector.'.format(options.pos))
   else: colCoord = table.label_index(options.pos)
 
   colElem = table.label_index('elem')
@@ -96,7 +96,7 @@ for name in filenames:
 
 # ------------------------------------------ process data -------------------------------------------
 
-  data = np.zeros(outSize.tolist()+[len(table.labels)])
+  data = np.zeros(outSize.tolist()+[len(table.labels(raw = True))])
   p = np.zeros(3,'i')
   
   for p[2] in xrange(grid[2]):

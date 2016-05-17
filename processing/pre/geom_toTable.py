@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2
 # -*- coding: UTF-8 no BOM -*-
 
 import os,sys
@@ -14,7 +14,7 @@ scriptID   = ' '.join([scriptName,damask.version])
 #                                MAIN
 #--------------------------------------------------------------------------------------------------
 
-parser = OptionParser(option_class=damask.extendableOption, usage='%prog [geomfile[s]]', description = """
+parser = OptionParser(option_class=damask.extendableOption, usage='%prog [geomfile(s)]', description = """
 Translate geom description into ASCIItable containing 1/2/3_pos and microstructure.
 
 """, version = scriptID)

@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2
 # -*- coding: UTF-8 no BOM -*-
 
 import os,sys,vtk
@@ -21,6 +21,7 @@ Create regular voxel grid from points in an ASCIItable.
 parser.add_option('-m',
                   '--mode',
                   dest = 'mode',
+                  metavar='string',
                   type = 'choice', choices = ['cell','point'],
                   help = 'cell-centered or point-centered coordinates')
 parser.add_option('-p',

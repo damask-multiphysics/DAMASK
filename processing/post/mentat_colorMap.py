@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2
 # -*- coding: UTF-8 no BOM -*-
 
 import os,sys
@@ -68,26 +68,29 @@ Interpolates colors between "lower_hsl" and "upper_hsl".
 """, version = scriptID)
 
 parser.add_option("-i","--inverse", action = "store_true", 
-                  dest = "inverse", \
-                  help = "invert legend [%default]")
+                  dest = "inverse",
+                  help = "invert legend")
 parser.add_option(     "--palette", action = "store_true", 
-                  dest = "palette", \
-                  help = "output plain rgb palette integer values (0-255) [%default]")
+                  dest = "palette",
+                  help = "output plain rgb palette integer values (0-255)")
 parser.add_option(     "--palettef", action = "store_true", 
-                  dest = "palettef", \
-                  help = "output plain rgb palette float values (0.0-1.0) [%default]")
-parser.add_option("-p", "--port", type = "int",\
-                  dest = "port",\
+                  dest = "palettef",
+                  help = "output plain rgb palette float values (0.0-1.0)")
+parser.add_option("-p", "--port", type = "int",
+                  dest = "port",
+                  metavar ='int',
                   help = "Mentat connection port [%default]")
-parser.add_option("-b", "--baseindex", type = "int",\
-                  dest = "baseIdx",\
+parser.add_option("-b", "--baseindex", type = "int",
+                  metavar ='int',
+                  dest = "baseIdx",
                   help = "base index of colormap [%default]")
-parser.add_option("-n", "--colorcount", type = "int",\
-                  dest = "colorcount",\
+parser.add_option("-n", "--colorcount", type = "int",
+                  metavar ='int',
+                  dest = "colorcount",
                   help = "number of colors [%default]")
-parser.add_option("-v", "--verbose", action="store_true",\
-                  dest = "verbose",\
-                  help = "write Mentat command stream also to STDOUT [%default]")
+parser.add_option("-v", "--verbose", action="store_true",
+                  dest = "verbose",
+                  help = "write Mentat command stream also to STDOUT")
 
 parser.set_defaults(port = 40007)
 parser.set_defaults(baseIdx = 32)

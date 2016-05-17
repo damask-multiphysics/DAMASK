@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2
 # -*- coding: UTF-8 no BOM -*-
 
 import sys,os
@@ -74,7 +74,7 @@ def servoLink():
   baseNode = {}
   linkNodes = []
 
-#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!  
+#-------------------------------------------------------------------------------------------------
 # loop over all nodes
   for node in xrange(Nnodes):
     key = {}

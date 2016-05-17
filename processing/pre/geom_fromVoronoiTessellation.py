@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2
 # -*- coding: UTF-8 no BOM -*-
 
 import os,sys,math
@@ -104,8 +104,8 @@ def laguerreTessellation(undeformed, coords, weights, grains, nonperiodic = Fals
 #                                MAIN
 # --------------------------------------------------------------------
 
-parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
-Generate geometry description and material configuration by standard Voronoi tessellation of given seeds file.
+parser = OptionParser(option_class=damask.extendableOption, usage='%prog option(s) [seedfile(s)]', description = """
+Generate geometry description and material configuration by tessellation of given seeds file.
 
 """, version = scriptID)
 
