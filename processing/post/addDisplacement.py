@@ -87,7 +87,7 @@ def displacementFluctFFT(F,grid,size,nodal=False,transformed=False):
 #                                MAIN
 # --------------------------------------------------------------------
 
-parser = OptionParser(option_class=damask.extendableOption, usage='%prog options file[s]', description = """
+parser = OptionParser(option_class=damask.extendableOption, usage='%prog [options] [ASCIItable(s)]', description = """
 Add displacments resulting from deformation gradient field.
 Operates on periodic three-dimensional x,y,z-ordered data sets.
 Outputs at cell centers or cell nodes (into separate file).
@@ -98,7 +98,7 @@ parser.add_option('-f',
                   '--defgrad',
                   dest    = 'defgrad',
                   metavar = 'string',
-                  help    = 'column label of deformation gradient [%default]')
+                  help    = 'label of deformation gradient [%default]')
 parser.add_option('-p',
                   '--pos', '--position',
                   dest    = 'pos',
