@@ -18,16 +18,15 @@ interface
      C_INT, &
      C_CHAR
    integer(C_INT) :: isDirectory_C
-   character(kind=C_CHAR),intent(in) :: path(*)
+   character(kind=C_CHAR), dimension(1024), intent(in) :: path                                      ! C string is an array
   end function isDirectory_C
 
  subroutine getCurrentWorkDir_C(str, stat) bind(C)
    use, intrinsic :: ISO_C_Binding, only: &
      C_INT, &
      C_CHAR
-   character(kind=c_char), dimension(1024), intent(out)  :: str                                     ! C string is an array
+   character(kind=C_CHAR), dimension(1024), intent(out)  :: str                                     ! C string is an array
    integer(C_INT),intent(out)         :: stat
-
   end subroutine getCurrentWorkDir_C
 
 end interface
@@ -40,12 +39,20 @@ contains
 !--------------------------------------------------------------------------------------------------
 logical function isDirectory(path)
   use, intrinsic :: ISO_C_Binding, only: &
-    C_INT
+    C_INT, &
+    C_CHAR, &
+    C_NULL_CHAR
 
   implicit none
   character(len=*), intent(in) :: path
+  character(kind=C_CHAR), dimension(1024) :: strFixedLength
+  integer :: i 
 
-  isDirectory=merge(.True.,.False.,isDirectory_C(trim(path)) /= 0_C_INT)
+  strFixedLength = repeat(C_NULL_CHAR,len(strFixedLength))
+  do i=1,len(path)                                                                                  ! copy array components
+    strFixedLength(i)=path(i:i)
+  enddo
+  isDirectory=merge(.True.,.False.,isDirectory_C(strFixedLength) /= 0_C_INT)
 
 end function isDirectory
 
@@ -58,9 +65,10 @@ logical function getCWD(str)
     C_INT, &
     C_CHAR, &
     C_NULL_CHAR
+
   implicit none
   character(len=*), intent(out) :: str
-  character(kind=c_char), dimension(1024) :: strFixedLength                                         ! C string is an array
+  character(kind=C_CHAR), dimension(1024) :: strFixedLength                                         ! C string is an array
   integer(C_INT) :: stat
   integer :: i
 
