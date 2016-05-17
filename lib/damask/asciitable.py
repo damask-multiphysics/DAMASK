@@ -139,10 +139,10 @@ class ASCIItable():
 # ------------------------------------------------------------------
   def head_read(self):
     """
-    get column labels by either reading
-
-    the first row or, if keyword "head[*]" is present,
-    the last line of the header
+    get column labels
+    
+    by either reading the first row or,
+    if keyword "head[*]" is present, the last line of the header
     """
     import re,shlex
 
@@ -275,14 +275,13 @@ class ASCIItable():
 # ------------------------------------------------------------------
   def labels(self,
              tags = None,
-             raw = False,
-             ):
+             raw = False):
     """
-    returns abstract labels (e.g. "x" for "1_x","2_x",...)
-    unless raw output is requested.
+    tell abstract labels.
+    
+    "x" for "1_x","2_x",... unless raw output is requested.
     operates on object tags or given list.
     """
-    
     from collections import Iterable
     
     if tags is None: tags = self.tags

@@ -167,8 +167,8 @@ for name in filenames:
       oldIndices = table.label_indexrange(label)
       Nold = max(1,len(oldIndices))                                                                  # Nold could be zero for new columns
       Nnew = len(output.label_indexrange(label))
-      output.data_append(eval(evaluator[label]) if label in options.labels
-                                               and (condition == '' or eval(eval(evaluator_condition)))
+      output.data_append(eval(evaluator[label]) if label in options.labels and
+                                                   (condition == '' or eval(eval(evaluator_condition)))
                      else np.tile([table.data[i] for i in oldIndices]
                                   if label in tabLabels
                                   else np.nan,

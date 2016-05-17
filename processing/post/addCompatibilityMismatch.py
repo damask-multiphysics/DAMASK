@@ -64,10 +64,12 @@ for name in filenames:
   errors  = []
   remarks = []
   
-  if table.label_dimension(options.pos) != 3:  errors.append('coordinates "{}" are not a vector.'.format(options.pos))
+  if table.label_dimension(options.pos) != 3:
+    errors.append('coordinates "{}" are not a vector.'.format(options.pos))
   else: colCoord = table.label_index(options.pos)
 
-  if table.label_dimension(options.defgrad) != 9: errors.append('deformation gradient "{}" is not a tensor.'.format(options.defgrad))
+  if table.label_dimension(options.defgrad) != 9:
+    errors.append('deformation gradient "{}" is not a tensor.'.format(options.defgrad))
   else: colF = table.label_index(options.defgrad)
 
   if remarks != []: damask.util.croak(remarks)
@@ -91,7 +93,7 @@ for name in filenames:
   maxcorner = np.array(map(max,coords))
   grid   = np.array(map(len,coords),'i')
   size   = grid/np.maximum(np.ones(3,'d'), grid-1.0) * (maxcorner-mincorner)                        # size from edge to edge = dim * n/(n-1) 
-  size   = np.where(grid > 1, size, min(size[grid > 1]/grid[grid > 1]))                             # spacing for grid==1 set to smallest among other spacings
+  size   = np.where(grid > 1, size, min(size[grid > 1]/grid[grid > 1]))                             # grid==1 spacing set to smallest among other ones
 
   N = grid.prod()
   
