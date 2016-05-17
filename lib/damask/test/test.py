@@ -336,16 +336,16 @@ class Test():
       key0    = ('1_' if     length[i]>1 else '') +    headings0[i]['label']
       key1    = ('1_' if     length[i]>1 else '') +    headings1[i]['label']
       normKey = ('1_' if normLength[i]>1 else '') + normHeadings[i]['label']
-      if key0 not in table0.labels:
+      if key0 not in table0.labels(raw = True):
         raise Exception('column {} not found in 1. table...\n'.format(key0))
-      elif key1 not in table1.labels:
+      elif key1 not in table1.labels(raw = True):
         raise Exception('column {} not found in 2. table...\n'.format(key1))
-      elif normKey not in table0.labels:
+      elif normKey not in table0.labels(raw = True):
         raise Exception('column {} not found in 1. table...\n'.format(normKey))
       else:
-        column[0][i]  = table0.labels.index(key0)
-        column[1][i]  = table1.labels.index(key1)
-        normColumn[i] = table0.labels.index(normKey)
+        column[0][i]  = table0.label_index(key0)
+        column[1][i]  = table1.label_index(key1)
+        normColumn[i] = table0.label_index(normKey)
     
     line0 = 0
     while table0.data_read():                                                  # read next data line of ASCII table
@@ -421,7 +421,7 @@ class Test():
     columns = columns[:len(files)]                                             # truncate to same length as files
 
     for i,column in enumerate(columns):
-      if column is None: columns[i] = tables[i].labels                         # if no column is given, read all
+      if column is None: columns[i] = tables[i].labels(raw = True)             # if no column is given, read all
 
     logging.info('comparing ASCIItables statistically')
     for i in xrange(len(columns)):
@@ -477,7 +477,7 @@ class Test():
     columns = columns[:len(files)]                                             # truncate to same length as files
 
     for i,column in enumerate(columns):
-      if column is None: columns[i] = tables[i].labels                         # if no column is given, read all
+      if column is None: columns[i] = tables[i].labels(raw = True)             # if no column is given, read all
 
     logging.info('comparing ASCIItables')
     for i in xrange(len(columns)):
