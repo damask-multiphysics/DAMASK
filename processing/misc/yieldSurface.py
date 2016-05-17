@@ -138,7 +138,7 @@ def principalStrs_Der(p, (s1, s2, s3, s4, s5, s6), dim, Karafillis=False):
     return np.array([np.dot(dSdI[:,:,i],dIdc[:,:,i]).T for i in xrange(num)]).T
 
 def invariant(sigmas):
-    I=np.zeros(3)
+    I = np.zeros(3)
     s11,s22,s33,s12,s23,s31 = sigmas
     I[0] = s11 + s22 + s33
     I[1] = s11*s22 + s22*s33 + s33*s11 - s12**2 - s23**2 - s31**2
@@ -1271,13 +1271,12 @@ def doSim(thread):
   table = damask.ASCIItable(refFile,readonly=True)
   table.head_read()
 
-  if options.fitting =='equivalentStrain':
-    thresholdKey = 'Mises(ln(V))'
-  elif options.fitting =='totalshear':
-    thresholdKey = 'totalshear'
+  thresholdKey = {'equivalentStrain':'Mises(ln(V))',
+                  'totalshear':       'totalshear',
+                 }[options.fitting]
 
   for l in [thresholdKey,'1_Cauchy']:
-    if l not in table.labels: damask.util.croak('%s not found'%l)
+    if l not in table.labels(raw = True): damask.util.croak('%s not found'%l)
   s.release()
 
   table.data_readArray(['%i_Cauchy'%(i+1) for i in xrange(9)]+[thresholdKey]+['%i_ln(V)'%(i+1) for i in xrange(9)])
