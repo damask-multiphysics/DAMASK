@@ -2,7 +2,7 @@
 
 
 import numpy as np
-import sys
+#import sys
 
 try:
   import h5py
