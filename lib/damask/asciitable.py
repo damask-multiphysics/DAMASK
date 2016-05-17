@@ -300,7 +300,7 @@ class ASCIItable():
           while id < len(tags) and tags[id] == '{}_{}'.format(dim,label):                         # check successors
             id  += 1                                                                              # next label...
             dim += 1                                                                              # ...should be one higher dimension
-          LabelList.append(label)                                                                 # reached end --> store
+          labelList.append(label)                                                                 # reached end --> store
           id -= 1                                                                                 # rewind one to consider again
 
         id += 1
