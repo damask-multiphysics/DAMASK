@@ -1379,51 +1379,46 @@ parser.add_option('-e', '--exponent',  dest='exponent', type='float',
 parser.add_option('-u', '--uniaxial',  dest='eqStress', type='float',
                                        help='Equivalent stress',  metavar='float') 
 
-parser.set_defaults(min        = 12)
-parser.set_defaults(max        = 30)
-parser.set_defaults(threads    = 4)
-parser.set_defaults(yieldValue = (0.002,0.004,2))
-parser.set_defaults(load       = (0.010,100,100.0))
-parser.set_defaults(criterion  = 'vonmises')
-parser.set_defaults(fitting    = 'totalshear')
-parser.set_defaults(geometry   = '20grains16x16x16')
-parser.set_defaults(bounds     = None)
-parser.set_defaults(dimension  = '3')
-parser.set_defaults(exponent   = -1.0)
+parser.set_defaults(min        = 12,
+                    max        = 30,
+                    threads    = 4,
+                    yieldValue = (0.002,0.004,2),
+                    load       = (0.010,100,100.0),
+                    criterion  = 'vonmises',
+                    fitting    = 'totalshear',
+                    geometry   = '20grains16x16x16',
+                    bounds     = None,
+                    dimension  = '3',
+                    exponent   = -1.0,
+                   )
 
 options = parser.parse_args()[0]
 
-if not os.path.isfile(options.geometry+'.geom'):
-  parser.error('geometry file %s.geom not found'%options.geometry)
-if not os.path.isfile('material.config'):
-  parser.error('material.config file not found')
-if options.threads<1:
-  parser.error('invalid number of threads %i'%options.threads)
-if options.min<0:
-  parser.error('invalid minimum number of simulations %i'%options.min)
-if options.max<options.min:
+if options.threads < 1:
+  parser.error('invalid number of threads {}'.format(options.threads))
+if options.min < 0:
+  parser.error('invalid minimum number of simulations {}'.format(options.min))
+if options.max < options.min:
   parser.error('invalid maximum number of simulations (below minimum)')
-if options.yieldValue[0]>options.yieldValue[1]:
+if options.yieldValue[0] > options.yieldValue[1]:
   parser.error('invalid yield start (below yield end)')
 if options.yieldValue[2] != int(options.yieldValue[2]):
   parser.error('count must be an integer')
 
-if not os.path.isfile('numerics.config'):
-  damask.util.croak('numerics.config file not found')
-if not os.path.isfile('material.config'):
-  damask.util.croak('material.config file not found')
+for check in [options.geometry+'.geom','numerics.config','material.config']:
+  if not os.path.isfile(check):
+    damask.util.croak('"{}" file not found'.format(check))
 
 options.dimension = int(options.dimension)
 
-if options.criterion == 'hill1948': stressUnit = 1.0e9
-else                              : stressUnit = 1.0e6
+stressUnit = 1.0e9 if options.criterion == 'hill1948' else 1.0e6
 
 
 if options.dimension not in fitCriteria[options.criterion]['dimen']:
   parser.error('invalid dimension for selected criterion')
 
-if options.criterion not in ['vonmises','tresca','drucker','hill1984'] and options.eqStress is None:
-   parser.error('please specifie an equivalent stress (e.g. fitting to von Mises)') 
+if options.criterion not in ['vonmises','tresca','drucker','hill1948'] and options.eqStress is None:
+   parser.error('please specify an equivalent stress (e.g. fitting to von Mises)') 
 
 run = runFit(options.exponent, options.eqStress, options.dimension, options.criterion)
 
