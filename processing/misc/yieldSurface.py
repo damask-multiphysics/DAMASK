@@ -138,7 +138,7 @@ def principalStrs_Der(p, (s1, s2, s3, s4, s5, s6), dim, Karafillis=False):
     return np.array([np.dot(dSdI[:,:,i],dIdc[:,:,i]).T for i in xrange(num)]).T
 
 def invariant(sigmas):
-    I=np.zeros(3)
+    I = np.zeros(3)
     s11,s22,s33,s12,s23,s31 = sigmas
     I[0] = s11 + s22 + s33
     I[1] = s11*s22 + s22*s33 + s33*s11 - s12**2 - s23**2 - s31**2
@@ -1271,13 +1271,12 @@ def doSim(thread):
   table = damask.ASCIItable(refFile,readonly=True)
   table.head_read()
 
-  if options.fitting =='equivalentStrain':
-    thresholdKey = 'Mises(ln(V))'
-  elif options.fitting =='totalshear':
-    thresholdKey = 'totalshear'
+  thresholdKey = {'equivalentStrain':'Mises(ln(V))',
+                  'totalshear':       'totalshear',
+                 }[options.fitting]
 
   for l in [thresholdKey,'1_Cauchy']:
-    if l not in table.labels: damask.util.croak('%s not found'%l)
+    if l not in table.labels(raw = True): damask.util.croak('%s not found'%l)
   s.release()
 
   table.data_readArray(['%i_Cauchy'%(i+1) for i in xrange(9)]+[thresholdKey]+['%i_ln(V)'%(i+1) for i in xrange(9)])
@@ -1380,51 +1379,46 @@ parser.add_option('-e', '--exponent',  dest='exponent', type='float',
 parser.add_option('-u', '--uniaxial',  dest='eqStress', type='float',
                                        help='Equivalent stress',  metavar='float') 
 
-parser.set_defaults(min        = 12)
-parser.set_defaults(max        = 30)
-parser.set_defaults(threads    = 4)
-parser.set_defaults(yieldValue = (0.002,0.004,2))
-parser.set_defaults(load       = (0.010,100,100.0))
-parser.set_defaults(criterion  = 'vonmises')
-parser.set_defaults(fitting    = 'totalshear')
-parser.set_defaults(geometry   = '20grains16x16x16')
-parser.set_defaults(bounds     = None)
-parser.set_defaults(dimension  = '3')
-parser.set_defaults(exponent   = -1.0)
+parser.set_defaults(min        = 12,
+                    max        = 30,
+                    threads    = 4,
+                    yieldValue = (0.002,0.004,2),
+                    load       = (0.010,100,100.0),
+                    criterion  = 'vonmises',
+                    fitting    = 'totalshear',
+                    geometry   = '20grains16x16x16',
+                    bounds     = None,
+                    dimension  = '3',
+                    exponent   = -1.0,
+                   )
 
 options = parser.parse_args()[0]
 
-if not os.path.isfile(options.geometry+'.geom'):
-  parser.error('geometry file %s.geom not found'%options.geometry)
-if not os.path.isfile('material.config'):
-  parser.error('material.config file not found')
-if options.threads<1:
-  parser.error('invalid number of threads %i'%options.threads)
-if options.min<0:
-  parser.error('invalid minimum number of simulations %i'%options.min)
-if options.max<options.min:
+if options.threads < 1:
+  parser.error('invalid number of threads {}'.format(options.threads))
+if options.min < 0:
+  parser.error('invalid minimum number of simulations {}'.format(options.min))
+if options.max < options.min:
   parser.error('invalid maximum number of simulations (below minimum)')
-if options.yieldValue[0]>options.yieldValue[1]:
+if options.yieldValue[0] > options.yieldValue[1]:
   parser.error('invalid yield start (below yield end)')
 if options.yieldValue[2] != int(options.yieldValue[2]):
   parser.error('count must be an integer')
 
-if not os.path.isfile('numerics.config'):
-  damask.util.croak('numerics.config file not found')
-if not os.path.isfile('material.config'):
-  damask.util.croak('material.config file not found')
+for check in [options.geometry+'.geom','numerics.config','material.config']:
+  if not os.path.isfile(check):
+    damask.util.croak('"{}" file not found'.format(check))
 
 options.dimension = int(options.dimension)
 
-if options.criterion == 'hill1948': stressUnit = 1.0e9
-else                              : stressUnit = 1.0e6
+stressUnit = 1.0e9 if options.criterion == 'hill1948' else 1.0e6
 
 
 if options.dimension not in fitCriteria[options.criterion]['dimen']:
   parser.error('invalid dimension for selected criterion')
 
-if options.criterion not in ['vonmises','tresca','drucker','hill1984'] and options.eqStress is None:
-   parser.error('please specifie an equivalent stress (e.g. fitting to von Mises)') 
+if options.criterion not in ['vonmises','tresca','drucker','hill1948'] and options.eqStress is None:
+   parser.error('please specify an equivalent stress (e.g. fitting to von Mises)') 
 
 run = runFit(options.exponent, options.eqStress, options.dimension, options.criterion)
 

@@ -29,33 +29,30 @@ parser.add_option('-a', '--add','--table',
 if filenames == []: filenames = [None]
 
 for name in filenames:
-  try:
-    table = damask.ASCIItable(name = name,
-                              buffered = False)
+  try:    table = damask.ASCIItable(name = name,
+                                    buffered = False)
   except: continue
 
   damask.util.report(scriptName,name)
+
   tables = []
   for addTable in options.table:
-    try:
-      tables.append(damask.ASCIItable(name = addTable,
-                                      buffered = False,
-                                      readonly = True)
-                   )
+    try:    tables.append(damask.ASCIItable(name = addTable,
+                                            buffered = False,
+                                            readonly = True)
+                         )
     except: continue
 
 # ------------------------------------------ read headers ------------------------------------------
 
   table.head_read()
-  for addTable in tables:
-    addTable.head_read()
+  for addTable in tables: addTable.head_read()
 
 # ------------------------------------------ assemble header --------------------------------------
 
   table.info_append(scriptID + '\t' + ' '.join(sys.argv[1:]))
 
-  for addTable in tables:
-    table.labels_append(addTable.labels)                                                            # extend ASCII header with new labels
+  for addTable in tables: table.labels_append(addTable.labels(raw = True))                          # extend ASCII header with new labels
 
   table.head_write()
 
