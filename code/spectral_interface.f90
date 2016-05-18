@@ -239,23 +239,23 @@ character(len=1024) function storeWorkingDirectory(workingDirectoryArg,geometryA
      if (error) call quit(1_pInt)
      storeWorkingDirectory = trim(cwd)//pathSep//workingDirectoryArg
    endif absolutePath
-   if (storeWorkingDirectory(len(trim(storeWorkingDirectory)):len(trim(storeWorkingDirectory)))/= pathSep) &   
-                                       storeWorkingDirectory = trim(storeWorkingDirectory)//pathSep ! if path seperator is not given, append it
-   if(.not. isDirectory(trim(storeWorkingDirectory))) then                                          ! check if the directory exists
-     write(6,'(a20,a,a16)') ' working directory "',trim(storeWorkingDirectory),'" does not exist'
-     call quit(1_pInt)
-   endif
+   if (storeWorkingDirectory(len(trim(storeWorkingDirectory)):len(trim(storeWorkingDirectory))) /= pathSep) &
+     storeWorkingDirectory = trim(storeWorkingDirectory)//pathSep                                   ! if path seperator is not given, append it
  else wdGiven
    if (geometryArg(1:1) == pathSep) then                                                            ! absolute path given as command line argument
      storeWorkingDirectory = geometryArg(1:scan(geometryArg,pathSep,back=.true.))
    else
-     error = getCWD(cwd)                                                                           ! relative path given as command line argument
+     error = getCWD(cwd)                                                                            ! relative path given as command line argument
      if (error) call quit(1_pInt)
-     storeWorkingDirectory = trim(cwd)//pathSep//&
-                              geometryArg(1:scan(geometryArg,pathSep,back=.true.))
+     storeWorkingDirectory = trim(cwd)//pathSep//geometryArg(1:scan(geometryArg,pathSep,back=.true.))
    endif
  endif wdGiven
+
  storeWorkingDirectory = trim(rectifyPath(storeWorkingDirectory))
+ if(.not. isDirectory(trim(storeWorkingDirectory))) then                                            ! check if the directory exists
+     write(6,'(a20,a,a16)') ' working directory "',trim(storeWorkingDirectory),'" does not exist'
+     call quit(1_pInt)
+ endif
 
 end function storeWorkingDirectory
 
@@ -302,11 +302,16 @@ end function getSolverJobName
 !> @brief basename of geometry file with extension from command line arguments
 !--------------------------------------------------------------------------------------------------
 character(len=1024) function getGeometryFile(geometryParameter)
+ use system_routines, only: &
+   getCWD
 
  implicit none
  character(len=1024), intent(in) :: &
    geometryParameter
+ character(len=1024) :: &
+   cwd
  integer :: posExt, posSep
+ logical :: error
  character :: pathSep
 
  getGeometryFile = geometryParameter
@@ -316,7 +321,8 @@ character(len=1024) function getGeometryFile(geometryParameter)
 
  if (posExt <= posSep) getGeometryFile = trim(getGeometryFile)//('.geom')                           ! no extension present
  if (scan(getGeometryFile,pathSep) /= 1) then                                                       ! relative path given as command line argument
-   getGeometryFile = rectifyPath(trim(workingDirectory)//pathSep//getGeometryFile)
+   error = getcwd(cwd)
+   getGeometryFile = rectifyPath(trim(cwd)//pathSep//getGeometryFile)
  else
    getGeometryFile = rectifyPath(getGeometryFile)
  endif
@@ -330,11 +336,16 @@ end function getGeometryFile
 !> @brief relative path of loadcase from command line arguments
 !--------------------------------------------------------------------------------------------------
 character(len=1024) function getLoadCaseFile(loadCaseParameter)
+ use system_routines, only: &
+   getCWD
 
  implicit none
  character(len=1024), intent(in) :: &
    loadCaseParameter
+ character(len=1024) :: &
+   cwd
  integer :: posExt, posSep
+ logical :: error
  character :: pathSep
 
  getLoadCaseFile = loadcaseParameter
@@ -344,7 +355,8 @@ character(len=1024) function getLoadCaseFile(loadCaseParameter)
 
  if (posExt <= posSep) getLoadCaseFile = trim(getLoadCaseFile)//('.load')                           ! no extension present
  if (scan(getLoadCaseFile,pathSep) /= 1) then                                                       ! relative path given as command line argument
-   getLoadCaseFile = rectifyPath(trim(workingDirectory)//pathSep//getLoadCaseFile)
+   error = getcwd(cwd)
+   getLoadCaseFile = rectifyPath(trim(cwd)//pathSep//getLoadCaseFile)
  else
    getLoadCaseFile = rectifyPath(getLoadCaseFile)
  endif
