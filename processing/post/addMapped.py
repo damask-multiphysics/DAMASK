@@ -89,14 +89,14 @@ for name in filenames:
 # ------------------------------------------ assemble header --------------------------------------
 
   table.info_append(scriptID + '\t' + ' '.join(sys.argv[1:]))
-  table.labels_append(mappedTable.labels)                                                           # extend ASCII header with new labels
+  table.labels_append(mappedTable.labels(raw = True))                                              # extend ASCII header with new labels
   table.head_write()
 
 # ------------------------------------------ process data ------------------------------------------
 
   outputAlive = True
   while outputAlive and table.data_read():                                                          # read next data line of ASCII table
-    table.data_append(mappedTable.data[int(round(float(table.data[mappedColumn])))+options.offset-1])             # add all mapped data types
+    table.data_append(mappedTable.data[int(round(float(table.data[mappedColumn])))+options.offset-1]) # add all mapped data types
     outputAlive = table.data_write()                                                                # output processed line
 
 # ------------------------------------------ output finalization -----------------------------------  

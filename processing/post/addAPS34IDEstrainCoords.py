@@ -59,7 +59,7 @@ for name in filenames:
 
   for label in datainfo['label']:    
     key = label
-    if key in table.labels:
+    if key in table.labels(raw = True):
         active.append(label)
         column[label] = table.labels.index(key)                                                     # remember columns of requested data
     else:
