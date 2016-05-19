@@ -375,7 +375,7 @@ subroutine plastic_phenopowerlaw_init(fileUnit)
 ! parameters depending on number of transformation families
        case ('ntrans')
          if (chunkPos(1) < Nchunks_TransFamilies + 1_pInt) &
-           call IO_warning(51_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_PHENOPOWERLAW_label//')')
+           call IO_warning(53_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_PHENOPOWERLAW_label//')')
          if (chunkPos(1) > Nchunks_TransFamilies + 1_pInt) &
            call IO_error(150_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_PHENOPOWERLAW_label//')')
          Nchunks_TransFamilies = chunkPos(1) - 1_pInt
@@ -686,9 +686,9 @@ subroutine plastic_phenopowerlaw_init(fileUnit)
 
      startIndex = endIndex + 1_pInt
      endIndex   = endIndex +plastic_phenopowerlaw_totalNtwin(instance)
-     state   (instance)%accshear_slip=>plasticState(phase)%state   (startIndex:endIndex,:)
-     state0  (instance)%accshear_slip=>plasticState(phase)%state0  (startIndex:endIndex,:)
-     dotState(instance)%accshear_slip=>plasticState(phase)%dotState(startIndex:endIndex,:)
+     state   (instance)%accshear_twin=>plasticState(phase)%state   (startIndex:endIndex,:)
+     state0  (instance)%accshear_twin=>plasticState(phase)%state0  (startIndex:endIndex,:)
+     dotState(instance)%accshear_twin=>plasticState(phase)%dotState(startIndex:endIndex,:)
 
 
      call plastic_phenopowerlaw_stateInit(phase,instance)
