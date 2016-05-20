@@ -29,11 +29,11 @@ endif()
 
 add_library(DAMASK_PREC "prec.f90")
 
-if (SPECTRAL)
+if ("${PROJECT_NAME}" STREQUAL "DAMASK_spectral")
       add_library(DAMASK_INTERFACE "spectral_interface.f90")
-elseif(FEM)
+elseif ("${PROJECT_NAME}" STREQUAL "DAMASK_FEM")
       add_library(DAMASK_INTERFACE "DAMASK_FEM_interface.f90")
-endif(SPECTRAL)
+endif()
 target_link_libraries(DAMASK_INTERFACE DAMASK_PREC)
 
 add_library(DAMASK_IO "IO.f90")
@@ -56,16 +56,15 @@ target_link_libraries(DAMASK_MATH DAMASK_FEsolving)
 
 # SPECTRAL solver and FEM solver use different mesh
 # source files
-if (SPECTRAL)
+if ("${PROJECT_NAME}" STREQUAL "DAMASK_spectral")
       add_library(DAMASK_MESH "mesh.f90")
       target_link_libraries(DAMASK_MESH DAMASK_MATH)
-endif(SPECTRAL)
-if (FEM)
+elseif ("${PROJECT_NAME}" STREQUAL "DAMASK_FEM")
       add_library(DAMASK_FEZoo "FEZoo.f90")
       target_link_libraries(DAMASK_FEZoo DAMASK_MATH)
       add_library(DAMASK_MESH  "meshFEM.f90")
       target_link_libraries(DAMASK_MESH  DAMASK_FEZoo)
-endif(FEM)
+endif()
 
 
 add_library(DAMASK_MATERIAL "material.f90")
