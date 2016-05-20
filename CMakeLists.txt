@@ -106,10 +106,6 @@ message("***Found FORTRAN MPI COMPILER:\n${MPIFC}\n"         )
 #---------------------------------------------------------------------------------------
 # Now start to care about DAMASK
 
-# THE VERSION NUMBER.
-set (DAMASK_VERSION_MAJOR 1)
-set (DAMASK_VERSION_MINOR ${DAMASK_V})
-
 # Built-in options for DAMASK build system
 #   -> can be overwritten from commandline/install_script
 option(OPENMP             "Use OpenMP libaries for DAMASK"                              ON   )
