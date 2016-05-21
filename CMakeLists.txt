@@ -86,7 +86,16 @@ foreach (exlib ${TMP_LIST})
 endforeach(exlib)
 
 set(CMAKE_Fortran_COMPILER "${MPIFC}")
-project (DAMASK Fortran)
+# DAMASK DRIVER SELECTION
+if ("${DAMASK_DRIVER}" STREQUAL "SPECTRAL")
+    project(DAMASK_spectral Fortran)
+    add_definitions(-DSpectral)
+    message("***Configuring Spectral Solver\n")
+elseif ("${DAMASK_DRIVER}" STREQUAL "FEM")
+    project(DAMASK_FEM Fortran)
+    add_definitions(-DFEM)
+    message("***Configuring FEM Solver\n")
+endif()
 
 # Find DAMASK version (DAMASK_V) in DAMASK_ROOT
 find_program (CAT_EXECUTABLE NAMES cat)
@@ -108,10 +117,8 @@ message("***Found FORTRAN MPI COMPILER:\n${MPIFC}\n"         )
 
 # Built-in options for DAMASK build system
 #   -> can be overwritten from commandline/install_script
-option(OPENMP        "Use OpenMP libaries for DAMASK"                              ON   )
-option(OPTIMIZATION  "DAMASK optimization level [OFF,DEFENSIVE,AGGRESSIVE]" "DEFENSIVE" )
-option(SPECTRAL      "Build spectral sovler for DAMASAK"                           OFF  )
-option(FEM           "Build FEM solver for DAMASK"                                 OFF  )
+option(OPENMP             "Use OpenMP libaries for DAMASK"                              ON   )
+option(OPTIMIZATION       "DAMASK optimization level [OFF,DEFENSIVE,AGGRESSIVE]" "DEFENSIVE" )
 
 if (NOT DEFINED CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Release)
@@ -131,18 +138,6 @@ else(DEFINED DAMASK_INSTALL)
 endif(DEFINED DAMASK_INSTALL)
 message("\n***The binary will be installed at\n${CMAKE_INSTALL_PREFIX}\n")
 
-# DAMASK DRIVER SELECTION
-if ("${DAMASK_DRIVER}" STREQUAL "SPECTRAL")
-    set (SPECTRAL ON )
-    add_definitions(-DSpectral)
-    set (FEM      OFF)
-    message("***Configuring Spectral Solver\n")
-elseif ("${DAMASK_DRIVER}" STREQUAL "FEM")
-    set (FEM      ON )
-    add_definitions(-DFEM)
-    set (SPECTRAL OFF)
-    message("***Configuring FEM Solver\n")
-endif("${DAMASK_DRIVER}" STREQUAL "SPECTRAL")
 
 set (DAMASK_INCLUDE_FLAGS "${DAMASK_INCLUDE_FLAGS} ${PETSC_INCLUDES}"          )
 set (DAMASK_INCLUDE_FLAGS "${DAMASK_INCLUDE_FLAGS} -I${PROJECT_SOURCE_DIR}/lib")
