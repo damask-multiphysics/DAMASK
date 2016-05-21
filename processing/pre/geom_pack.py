@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2
 # -*- coding: UTF-8 no BOM -*-
 
 import os,sys
@@ -13,7 +13,7 @@ scriptID   = ' '.join([scriptName,damask.version])
 #                                MAIN
 #--------------------------------------------------------------------------------------------------
 
-parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
+parser = OptionParser(option_class=damask.extendableOption, usage='%prog [geomfile(s)]', description = """
 compress geometry files with ranges "a to b" and/or multiples "n of x".
 
 """, version = scriptID)
@@ -91,11 +91,11 @@ for name in filenames:
         if   type == '':
           table.data = []
         elif type == '.':
-          table.data = [str(former)]
+          table.data = [former]
         elif type == 'to':
-          table.data = ['{0} to {1}'.format(former-reps+1,former)]
+          table.data = [former-reps+1,'to',former]
         elif type == 'of':
-          table.data = ['{0} of {1}'.format(reps,former)]
+          table.data = [reps,'of',former]
 
         outputAlive = table.data_write(delimiter = ' ')                                             # output processed line
 
@@ -106,9 +106,9 @@ for name in filenames:
       former = current
 
   table.data = {
-                '.' : [str(former)],
-                'to': ['%i to %i'%(former-reps+1,former)],
-                'of': ['%i of %i'%(reps,former)],
+                '.' : [former],
+                'to': [former-reps+1,'to',former],
+                'of': [reps,'of',former],
                }[type]
 
   outputAlive = table.data_write(delimiter = ' ')                                                   # output processed line

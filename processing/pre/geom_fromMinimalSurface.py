@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2
 # -*- coding: UTF-8 no BOM -*-
 
 import os,sys,math
@@ -21,7 +21,7 @@ surface = {
             'diamond':   lambda x,y,z: math.cos(x-y)*math.cos(z)+math.sin(x+y)*math.sin(z),
           }
 
-parser = OptionParser(option_class=damask.extendableOption, usage='%prog', description = """
+parser = OptionParser(option_class=damask.extendableOption, usage='%prog [option(s)] [geomfile]', description = """
 Generate a geometry file of a bicontinuous structure of given type.
 
 """, version = scriptID)
