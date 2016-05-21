@@ -13,7 +13,7 @@ if (${CMAKE_Fortran_COMPILER_ID} STREQUAL "GNU")
     SET_SOURCE_FILES_PROPERTIES( "lattice.f90" PROPERTIES
                                 COMPILE_FLAGS "-ffree-line-length-240")
 endif()
-
+set( CMAKE_VERBOSE_MAKEFILE on )
 # The dependency detection in CMake is not functioning for Fortran,
 # hence we declare the dependencies from top to bottom in the following
 

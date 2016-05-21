@@ -91,11 +91,6 @@ foreach (exlib ${TMP_LIST})
     set(PETSC_EXTERNAL_LIB "${PETSC_EXTERNAL_LIB} ${exlib}")
 endforeach(exlib)
 
-# https://cmake.org/Wiki/CMake_FAQ#How_do_I_use_a_different_compiler.3F
-set(CMAKE_Fortran_COMPILER "${PETSC_MPIFC}")
-set(CMAKE_C_COMPILER       "${PETSC_MPICC}")
-set(CMAKE_LINKER           "${PETSC_LINKER}")
-
 message("***Found PETSC_DIR:\n${PETSC_DIR}\n"                  )
 message("***Found PETSC_INCLUDES:\n${PETSC_INCLUDES}\n"        )
 message("***Found PETSC_EXTERNAL_LIB:\n${PETSC_EXTERNAL_LIB}\n")
@@ -107,15 +102,21 @@ message("***Found MPI C COMPILER:\n${PETSC_MPICC}\n"           )
 # Now start to care about DAMASK
 
 # DAMASK Solver selection
-if ("${DAMASK_DRIVER}" STREQUAL "SPECTRAL")
+if ("${DAMASK_SOLVER}" STREQUAL "SPECTRAL")
     project(DAMASK_spectral Fortran C)
     add_definitions(-DSpectral)
     message("***Configuring Spectral Solver\n")
-elseif ("${DAMASK_DRIVER}" STREQUAL "FEM")
+elseif ("${DAMASK_SOLVER}" STREQUAL "FEM")
     project(DAMASK_FEM Fortran C)
     add_definitions(-DFEM)
     message("***Configuring FEM Solver\n")
 endif()
+
+# set compiler and linker commands (need to be done after defining the project)
+# https://cmake.org/Wiki/CMake_FAQ#How_do_I_use_a_different_compiler.3F
+set(CMAKE_Fortran_COMPILER "${PETSC_MPIFC}")
+set(CMAKE_C_COMPILER       "${PETSC_MPICC}")
+set(CMAKE_LINKER           "${PETSC_LINKER}")
 
 # Built-in options for DAMASK build system
 #   -> can be overwritten from commandline/install_script
@@ -129,11 +130,6 @@ else(DEFINED DAMASK_INSTALL)
     set (CMAKE_INSTALL_PREFIX "${PROJECT_SOURCE_DIR}/bin")
 endif(DEFINED DAMASK_INSTALL)
 message("\n***The binary will be installed at\n${CMAKE_INSTALL_PREFIX}\n")
-
-# Set build options
-if (NOT DEFINED CMAKE_BUILD_TYPE)
-  set(CMAKE_BUILD_TYPE Release)
-endif(NOT DEFINED CMAKE_BUILD_TYPE)
 
 # Find DAMASK version (DAMASK_V) in DAMASK_ROOT
 find_program (CAT_EXECUTABLE NAMES cat)
@@ -257,23 +253,15 @@ elseif(${CMAKE_Fortran_COMPILER_ID} STREQUAL "GNU")
   endif()
 
   set (STANDARD_CHECK "-std=f2008ts -pedantic-errors" )
-  set (LINKER_FLAGS   "-Wl,-undefined,dynamic_lookup")
+  set (LINKER_FLAGS   "-Wl,-undefined,dynamic_lookup" )# ensure to link against dynamic libraries
 
 #------------------------------------------------------------------------------------------------
 # COMPILE SWITCHES
-# -shared
-# -Wl,-undefined,dynamic_lookup:ensure to link against dynamic libraries
-# -xf95-cpp-input:              preprocessor
-# -ffree-line-length-132:       restrict line length to the standard 240 characters (lattice.f90 require larger)
-# -ffpe-summary:                print summary of floating point exeptions (‘invalid’, ‘zero’, ‘overflow’, ‘underflow’, ‘inexact’ and ‘denormal’)
-# -fimplicit-none:              assume "implicit-none" even if not present in source
-# -fmodule-private:             assume "private" even if not present in source
-# -Wcharacter-truncation:       warn if character expressions (strings) are truncated
-# -Wunderflow:                  produce a warning when numerical constant expressions are encountered, which yield an UNDERFLOW during compilation
-# -Wsuggest-attribute=pure:
-# -Wsuggest-attribute=noreturn:
-# -Wconversion-extra
-# -Wimplicit-procedure
+  set (COMPILE_FLAGS "${COMPILE_FLAGS} -xf95-cpp-input"             )# preprocessor
+  set (COMPILE_FLAGS "${COMPILE_FLAGS} -ffree-line-length-132"      )# restrict line length to the standard 132 characters (lattice.f90 require larger)
+  set (COMPILE_FLAGS "${COMPILE_FLAGS} -fimplicit-none"             )# assume "implicit-none" even if not present in source
+  set (COMPILE_FLAGS "${COMPILE_FLAGS} -fmodule-private"            )# assume "private" even if not present in source
+  set (COMPILE_FLAGS "${COMPILE_FLAGS} -Wall"                       )
 # -Wall:                        sets the following Fortran options:
 #   -Waliasing:                   warn about possible aliasing of dummy arguments. Specifically, it warns if the same actual argument is associated with a dummy argument with "INTENT(IN)" and a dummy argument with "INTENT(OUT)" in a call with an explicit interface.
 #   -Wampersand:                  checks if a character expression is continued proberly by an ampersand at the end of the line and at the beginning of the new line
@@ -313,6 +301,7 @@ elseif(${CMAKE_Fortran_COMPILER_ID} STREQUAL "GNU")
 #   -Wunused-value
 #   -Wunused-variable
 #   -Wvolatile-register-var
+  set (COMPILE_FLAGS "${COMPILE_FLAGS} -Wextra"                     )
 # -Wextra:                      sets the following Fortran options:
 #   -Wunuses-parameter:
 #   -Wcompare-reals:
@@ -327,27 +316,20 @@ elseif(${CMAKE_Fortran_COMPILER_ID} STREQUAL "GNU")
 #   -Wuninitialized
 #   -Wunused-but-set-parameter (only with -Wunused or -Wall)
 #   -Wno-globals
-# -ffpe-summary=all            only for newer gfortran
-#
-# MORE OPTIONS FOR DEBUGGING DURING COMPILATION
-# -Warray-temporarieswarnings:   because we have many temporary arrays (performance issue?):
-# -Wimplicit-interface:          no interfaces for lapack routines
-# -Wunsafe-loop-optimizations:   warn if the loop cannot be optimized due to nontrivial assumptions.
-# -Wstrict-overflow:
-  set (COMPILE_FLAGS "${COMPILE_FLAGS} -xf95-cpp-input"             )
-  set (COMPILE_FLAGS "${COMPILE_FLAGS} -ffree-line-length-132"      )
-  set (COMPILE_FLAGS "${COMPILE_FLAGS} -fimplicit-none"             )
-  set (COMPILE_FLAGS "${COMPILE_FLAGS} -fmodule-private"            )
-  set (COMPILE_FLAGS "${COMPILE_FLAGS} -Wall"                       )
-  set (COMPILE_FLAGS "${COMPILE_FLAGS} -Wextra"                     )
-  set (COMPILE_FLAGS "${COMPILE_FLAGS} -Wcharacter-truncation"      )
-  set (COMPILE_FLAGS "${COMPILE_FLAGS} -Wunderflow"                 )
+  set (COMPILE_FLAGS "${COMPILE_FLAGS} -Wcharacter-truncation"      )# warn if character expressions (strings) are truncated
+  set (COMPILE_FLAGS "${COMPILE_FLAGS} -Wunderflow"                 )# produce a warning when numerical constant expressions are encountered, which yield an UNDERFLOW during compilation
   set (COMPILE_FLAGS "${COMPILE_FLAGS} -Wsuggest-attribute=pure"    )
   set (COMPILE_FLAGS "${COMPILE_FLAGS} -Wsuggest-attribute=noreturn")
   set (COMPILE_FLAGS "${COMPILE_FLAGS} -Wconversion-extra"          )
   set (COMPILE_FLAGS "${COMPILE_FLAGS} -Wimplicit-procedure"        )
   set (COMPILE_FLAGS "${COMPILE_FLAGS} -Wno-unused-parameter"       )
-  set (COMPILE_FLAGS "${COMPILE_FLAGS} -fno-range-check"            )
+# MORE OPTIONS FOR DEBUGGING DURING COMPILATION
+# -Warray-temporarieswarnings:   because we have many temporary arrays (performance issue?):
+# -Wimplicit-interface:          no interfaces for lapack routines
+# -Wunsafe-loop-optimizations:   warn if the loop cannot be optimized due to nontrivial assumptions.
+# -ffpe-summary:                 print summary of floating point exeptions (‘invalid’, ‘zero’, ‘overflow’, ‘underflow’, ‘inexact’ and ‘denormal’)
+# -ffpe-summary=all:             only for newer gfortran
+
 
 #------------------------------------------------------------------------------------------------
 # COMPILE SWITCHES FOR RUNTIME DEBUGGING
@@ -378,36 +360,21 @@ elseif(${CMAKE_Fortran_COMPILER_ID} STREQUAL "GNU")
 #-fdefault-double-8:          set precision to 8 bytes for double real, would be 16 bytes because -fdefault-real-8 is used
 #-fdefault-integer-8:         Use it to set precision to 8 bytes for integer, don't use it for the standard case of pInt=4 (there is no -fdefault-integer-4)
   set (PRECISION_FLAGS "-fdefault-real-8 -fdefault-double-8")
+endif()
 
+set (CMAKE_Fortran_FLAGS            "${BUILDCMD_PRE} ${OPENMP_FLAGS} ${STANDARD_CHECK} ${OPTIMIZATION_FLAGS} ${COMPILE_FLAGS} ${PRECISION_FLAGS}")
+set (CMAKE_Fortran_LINK_EXECUTABLE  "${BUILDCMD_PRE} ${CMAKE_LINKER} ${OPENMP_FLAGS}   ${OPTIMIZATION_FLAGS} ${LINKER_FLAGS}")
+
+if (NOT "${CMAKE_BUILD_TYPE}" STREQUAL "RELEASE")
+  set (CMAKE_Fortran_FLAGS            "${CMAKE_Fortran_FLAGS} ${DEBUG_FLAGS}")
+  set (CMAKE_Fortran_LINK_EXECUTABLE  "${CMAKE_Fortran_LINK_EXECUTABLE} ${DEBUG_FLAGS}")
 endif()
 
 
-set (CMAKE_Fortran_FLAGS_RELEASE     "${CMAKE_Fortran_FLAGS_RELEASE} ${OPENMP_FLAGS}")
-set (CMAKE_Fortran_FLAGS_RELEASE     "${CMAKE_Fortran_FLAGS_RELEASE} ${STANDARD_CHECK}")
-set (CMAKE_Fortran_FLAGS_RELEASE     "${CMAKE_Fortran_FLAGS_RELEASE} ${OPTIMIZATION_FLAGS}")
-set (CMAKE_Fortran_FLAGS_RELEASE     "${CMAKE_Fortran_FLAGS_RELEASE} ${COMPILE_FLAGS}")
-set (CMAKE_Fortran_FLAGS_RELEASE     "${CMAKE_Fortran_FLAGS_RELEASE} ${PRECISION_FLAGS}")
-set (CMAKE_EXE_LINKER_FLAGS_RELEASE  "${CMAKE_EXE_LINKER_FLAGS_RELEASE} ${OPENMP_FLAGS}"   )
-set (CMAKE_EXE_LINKER_FLAGS_RELEASE  "${CMAKE_EXE_LINKER_FLAGS_RELEASE} ${STANDARD_CHECK}")
-set (CMAKE_EXE_LINKER_FLAGS_RELEASE  "${CMAKE_EXE_LINKER_FLAGS_RELEASE} ${OPTIMIZATION_FLAGS}"  )
-set (CMAKE_EXE_LINKER_FLAGS_RELEASE  "${CMAKE_EXE_LINKER_FLAGS_RELEASE} ${LINKER_FLAGS}"  )
+set (CMAKE_Fortran_LINK_EXECUTABLE "${CMAKE_Fortran_LINK_EXECUTABLE} <OBJECTS> -o <TARGET> <LINK_LIBRARIES> ${PETSC_EXTERNAL_LIB} ${BUILDCMD_POST}")
+set (CMAKE_Fortran_FLAGS  "${CMAKE_Fortran_FLAGS} ${DAMASK_INCLUDE_FLAGS} ${BUILDCMD_POST}")
 
-set (CMAKE_Fortran_FLAGS_DEBUG       "${CMAKE_Fortran_FLAGS_DEBUG} ${CMAKE_Fortran_FLAGS_RELEASE}")
-set (CMAKE_Fortran_FLAGS_DEBUG       "${CMAKE_Fortran_FLAGS_DEBUG} ${DEBUG_FLAGS}"        )
-
-set (CMAKE_Fortran_FLAGS_RELEASE   "${BUILDCMD_PRE} ${CMAKE_Fortran_FLAGS_RELEASE} ${DAMASK_INCLUDE_FLAGS} ${BUILDCMD_POST}")
-set (CMAKE_Fortran_FLAGS_DEBUG     "${BUILDCMD_PRE} ${CMAKE_Fortran_FLAGS_DEBUG}   ${DAMASK_INCLUDE_FLAGS} ${BUILDCMD_POST}")
-
-
-if ("${CMAKE_BUILD_TYPE}" STREQUAL "RELEASE")
-  set (CMAKE_Fortran_LINK_EXECUTABLE
-      "${BUILDCMD_PRE} ${CMAKE_LINKER} ${CMAKE_EXE_LINKER_FLAGS_RELEASE} <OBJECTS> -o <TARGET> <LINK_LIBRARIES> ${PETSC_EXTERNAL_LIB} ${BUILDCMD_POST}")
-else("${CMAKE_BUILD_TYPE}" STREQUAL "RELEASE")
-  set (CMAKE_Fortran_LINK_EXECUTABLE
-     "${BUILDCMD_PRE} ${CMAKE_LINKER} ${CMAKE_EXE_LINKER_FLAGS_DEBUG}   <OBJECTS> -o <TARGET> <LINK_LIBRARIES> ${PETSC_EXTERNAL_LIB} ${BUILDCMD_POST}")
-endif("${CMAKE_BUILD_TYPE}" STREQUAL "RELEASE")
-
-message("***COMPILE FLAGS:\n${CMAKE_Fortran_FLAGS_RELEASE}\n")
+message("***COMPILE FLAGS:\n${CMAKE_Fortran_FLAGS}\n")
 message("***LINKER:\n${CMAKE_Fortran_LINK_EXECUTABLE}\n")
 
 # MOVE to SOURCE DIRECTORY for BUILDING
