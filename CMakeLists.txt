@@ -30,8 +30,9 @@ include ${petsc_conf_rules}
 include ${petsc_conf_variables}
 INCLUDE_DIRS   := \${PETSC_FC_INCLUDES}
 LIBRARIES      := \${PETSC_WITH_EXTERNAL_LIB}
-COMPILERF      ?= \${FC}
-LINKERNAME     ?= \${FLINKER}
+COMPILERF      := \${FC}
+COMPILERC      := \${CC}
+LINKERNAME     := \${FLINKER}
 includes:
 \t@echo \${INCLUDE_DIRS}
 extlibs:
@@ -60,10 +61,15 @@ execute_process(COMMAND ${MAKE_EXECUTABLE} --no-print-directory -f ${petsc_confi
                 RESULT_VARIABLE PETSC_EXTERNAL_LIB_RETURN
                 OUTPUT_VARIABLE petsc_external_lib
                 OUTPUT_STRIP_TRAILING_WHITESPACE)
-# PETSc specified compiler
+# PETSc specified fortran compiler
 execute_process(COMMAND ${MAKE_EXECUTABLE} --no-print-directory -f ${petsc_config_makefile} "compilerf"
-                RESULT_VARIABLE MPIFC_RETURN
-                OUTPUT_VARIABLE MPIFC
+                RESULT_VARIABLE PETSC_MPIFC_RETURN
+                OUTPUT_VARIABLE PETSC_MPIFC
+                OUTPUT_STRIP_TRAILING_WHITESPACE)
+# PETSc specified C compiler
+execute_process(COMMAND ${MAKE_EXECUTABLE} --no-print-directory -f ${petsc_config_makefile} "compilerc"
+                RESULT_VARIABLE PETSC_MPICC_RETURN
+                OUTPUT_VARIABLE PETSC_MPICC
                 OUTPUT_STRIP_TRAILING_WHITESPACE)
 # PETSc specified linker (MPIF90 + PETSc linking flags)
 execute_process(COMMAND ${MAKE_EXECUTABLE} --no-print-directory -f ${petsc_config_makefile} "linker"
@@ -85,50 +91,36 @@ foreach (exlib ${TMP_LIST})
     set(PETSC_EXTERNAL_LIB "${PETSC_EXTERNAL_LIB} ${exlib}")
 endforeach(exlib)
 
-set(CMAKE_Fortran_COMPILER "${MPIFC}")
-# DAMASK DRIVER SELECTION
-if ("${DAMASK_DRIVER}" STREQUAL "SPECTRAL")
-    project(DAMASK_spectral Fortran)
-    add_definitions(-DSpectral)
-    message("***Configuring Spectral Solver\n")
-elseif ("${DAMASK_DRIVER}" STREQUAL "FEM")
-    project(DAMASK_FEM Fortran)
-    add_definitions(-DFEM)
-    message("***Configuring FEM Solver\n")
-endif()
-
-# Find DAMASK version (DAMASK_V) in DAMASK_ROOT
-find_program (CAT_EXECUTABLE NAMES cat)
-execute_process(COMMAND ${CAT_EXECUTABLE} ${PROJECT_SOURCE_DIR}/VERSION
-                RESULT_VARIABLE DAMASK_VERSION_RETURN
-                OUTPUT_VARIABLE DAMASK_V
-                OUTPUT_STRIP_TRAILING_WHITESPACE)
+# https://cmake.org/Wiki/CMake_FAQ#How_do_I_use_a_different_compiler.3F
+set(CMAKE_Fortran_COMPILER "${PETSC_MPIFC}")
+set(CMAKE_C_COMPILER       "${PETSC_MPICC}")
+set(CMAKE_LINKER           "${PETSC_LINKER}")
 
 message("***Found PETSC_DIR:\n${PETSC_DIR}\n"                  )
 message("***Found PETSC_INCLUDES:\n${PETSC_INCLUDES}\n"        )
 message("***Found PETSC_EXTERNAL_LIB:\n${PETSC_EXTERNAL_LIB}\n")
 message("***Found PETSC_LINKER:\n${PETSC_LINKER}\n"            )
-message("***Found FORTRAN MPI COMPILER:\n${MPIFC}\n"         )
+message("***Found MPI FORTRAN COMPILER:\n${PETSC_MPIFC}\n"     )
+message("***Found MPI C COMPILER:\n${PETSC_MPICC}\n"           )
 
-
-# # https://cmake.org/Wiki/CMake_FAQ#How_do_I_use_a_different_compiler.3F
 #---------------------------------------------------------------------------------------
 # Now start to care about DAMASK
+
+# DAMASK Solver selection
+if ("${DAMASK_DRIVER}" STREQUAL "SPECTRAL")
+    project(DAMASK_spectral Fortran C)
+    add_definitions(-DSpectral)
+    message("***Configuring Spectral Solver\n")
+elseif ("${DAMASK_DRIVER}" STREQUAL "FEM")
+    project(DAMASK_FEM Fortran C)
+    add_definitions(-DFEM)
+    message("***Configuring FEM Solver\n")
+endif()
 
 # Built-in options for DAMASK build system
 #   -> can be overwritten from commandline/install_script
 option(OPENMP             "Use OpenMP libaries for DAMASK"                              ON   )
 option(OPTIMIZATION       "DAMASK optimization level [OFF,DEFENSIVE,AGGRESSIVE]" "DEFENSIVE" )
-
-if (NOT DEFINED CMAKE_BUILD_TYPE)
-  set(CMAKE_BUILD_TYPE Release)
-endif(NOT DEFINED CMAKE_BUILD_TYPE)
-
-# COMPILE VARIABLES
-add_definitions(-DDAMASKVERSION="${DAMASK_V}")
-add_definitions(-DPETSc)
-add_definitions(-DFLOAT=8)
-add_definitions(-DINT=4)
 
 # Setting installation prefix
 if (DEFINED DAMASK_INSTALL)
@@ -138,6 +130,23 @@ else(DEFINED DAMASK_INSTALL)
 endif(DEFINED DAMASK_INSTALL)
 message("\n***The binary will be installed at\n${CMAKE_INSTALL_PREFIX}\n")
 
+# Set build options
+if (NOT DEFINED CMAKE_BUILD_TYPE)
+  set(CMAKE_BUILD_TYPE Release)
+endif(NOT DEFINED CMAKE_BUILD_TYPE)
+
+# Find DAMASK version (DAMASK_V) in DAMASK_ROOT
+find_program (CAT_EXECUTABLE NAMES cat)
+execute_process(COMMAND ${CAT_EXECUTABLE} ${PROJECT_SOURCE_DIR}/VERSION
+                RESULT_VARIABLE DAMASK_VERSION_RETURN
+                OUTPUT_VARIABLE DAMASK_V
+                OUTPUT_STRIP_TRAILING_WHITESPACE)
+add_definitions(-DDAMASKVERSION="${DAMASK_V}")
+
+# definition of other macros
+add_definitions(-DPETSc)
+add_definitions(-DFLOAT=8)
+add_definitions(-DINT=4)
 
 set (DAMASK_INCLUDE_FLAGS "${DAMASK_INCLUDE_FLAGS} ${PETSC_INCLUDES}"          )
 set (DAMASK_INCLUDE_FLAGS "${DAMASK_INCLUDE_FLAGS} -I${PROJECT_SOURCE_DIR}/lib")
@@ -164,8 +173,6 @@ if(${CMAKE_Fortran_COMPILER_ID} STREQUAL "Intel")
 
 #------------------------------------------------------------------------------------------------
 # COMPILE SWITCHES
-#  -fpp:                     preprocessor
-#  -ftz:                     flush unterflow to zero, automatically set if O<0,1,2,3> >0
 #  -assume byterecl          record length is given in bytes (also set by -standard-semantics)
 #          fpe_summary       print list of floating point exceptions occured during execution
 #  -fimplicit-none:          assume "implicit-none" even if not present in source
@@ -181,14 +188,9 @@ if(${CMAKE_Fortran_COMPILER_ID} STREQUAL "Intel")
 #     unused:                  declared variables that are never used
 #     stderrors:               warnings about Fortran standard violations are changed to errors (STANDARD_CHECK)
 #
-# MORE OPTIONS FOR DEBUGGING DURING COMPILATION
-#  -warn:                    enables warnings, where
-#     truncated_source:        Determines whether warnings occur when source exceeds the maximum column width in fixed-format files. (too many warnings because we have comments beyond character 132)
-#     uncalled:                Determines whether warnings occur when a statement function is never called
-#     all:
-#  -name as_is: case sensitive Fortran!
-  set (COMPILE_FLAGS "${COMPILE_FLAGS} -fpp"                        )
-  set (COMPILE_FLAGS "${COMPILE_FLAGS} -ftz"                        )
+
+  set (COMPILE_FLAGS "${COMPILE_FLAGS} -fpp"                        )#  preprocessor
+  set (COMPILE_FLAGS "${COMPILE_FLAGS} -ftz"                        )# flush unterflow to zero, automatically set if O<0,1,2,3> >0
   set (COMPILE_FLAGS "${COMPILE_FLAGS} -assume byterecl,fpe_summary")
   set (COMPILE_FLAGS "${COMPILE_FLAGS} -diag-disable 5268"          )
   set (COMPILE_FLAGS "${COMPILE_FLAGS} -warn declarations"          )
@@ -198,42 +200,37 @@ if(${CMAKE_Fortran_COMPILER_ID} STREQUAL "Intel")
   set (COMPILE_FLAGS "${COMPILE_FLAGS} -warn ignore_loc"            )
   set (COMPILE_FLAGS "${COMPILE_FLAGS} -warn alignments"            )
   set (COMPILE_FLAGS "${COMPILE_FLAGS} -warn unused"                )
+# MORE OPTIONS FOR DEBUGGING DURING COMPILATION
+#  -warn:                    enables warnings, where
+#     truncated_source:        Determines whether warnings occur when source exceeds the maximum column width in fixed-format files. (too many warnings because we have comments beyond character 132)
+#     uncalled:                Determines whether warnings occur when a statement function is never called
+#     all:
+#  -name as_is: case sensitive Fortran!
 
 #------------------------------------------------------------------------------------------------
 # COMPILE SWITCHES FOR RUNTIME DEBUGGING
-# -g:                       Generate symbolic debugging information in the object file
-# -traceback:               Generate extra information in the object file to provide source file traceback information when a severe error occurs at run time.
-# -gen-interfaces:          Generate an interface block for each routine. http://software.intel.com/en-us/blogs/2012/01/05/doctor-fortran-gets-explicit-again/
-# -fp-stack-check:          Generate extra code after every function call to ensure that the floating-point (FP) stack is in the expected state.
-# -ftrapuv                  Trap uninitalized variables
-# -check:                   checks at runtime, where
-#    bounds:                  check if an array index is too small (<1) or too large!
-#    format:                  Checking for the data type of an item being formatted for output.
-#    output_conversion:       Checking for the fit of data items within a designated format descriptor field.
-#    pointers:                Checking for certain disassociated or uninitialized pointers or unallocated allocatable objects.
-#    uninit:                  Checking for uninitialized variables.
-# -fpe-all0                capture all floating-point exceptions, sets -ftz automatically
-# -warn:                    enables warnings, where
-#    errors:                  warnings are changed to errors
-#    stderrors:               warnings about Fortran standard violations are changed to errors
-#  information on http://software.intel.com/en-us/articles/determining-root-cause-of-sigsegv-or-sigbus-errors/
-#
+  set (DEBUG_FLAGS "${DEBUG_FLAGS} -g"                                                     )# Generate symbolic debugging information in the object file
+  set (DEBUG_FLAGS "${DEBUG_FLAGS} -traceback"                                             )# Generate extra information in the object file to provide source file traceback information when a severe error occurs at run time.
+  set (DEBUG_FLAGS "${DEBUG_FLAGS} -gen-interfaces"                                        )# Generate an interface block for each routine. http://software.intel.com/en-us/blogs/2012/01/05/doctor-fortran-gets-explicit-again/
+  set (DEBUG_FLAGS "${DEBUG_FLAGS} -fp-stack-check"                                        )# Generate extra code after every function call to ensure that the floating-point (FP) stack is in the expected state.
+  set (DEBUG_FLAGS "${DEBUG_FLAGS} -fp-model strict"                                       )# Trap uninitalized variables
+  set (DEBUG_FLAGS "${DEBUG_FLAGS} -check bounds,format,output_conversion,pointers,uninit" )# Checks at runtime, where
+                                                                                            #  bounds:            if an array index is too small (<1) or too large!
+                                                                                            #  format:            for the data type of an item being formatted for output.
+                                                                                            #  output_conversion: for the fit of data items within a designated format descriptor field.
+                                                                                            #  pointers:          for certain disassociated or uninitialized pointers or unallocated allocatable objects.
+                                                                                            #  uninit:            for uninitialized variables.
+  set (DEBUG_FLAGS "${DEBUG_FLAGS} -ftrapuv"                                               )
+  set (DEBUG_FLAGS "${DEBUG_FLAGS} -fpe-all0"                                              )# Capture all floating-point exceptions, sets -ftz automatically
+  set (DEBUG_FLAGS "${DEBUG_FLAGS} -warn errors,stderrors"                                 )# Configures warnings, where
+                                                                                            #  errors:            warnings are changed to errors
+                                                                                            #  stderrors:         warnings about Fortran standard violations are changed to errors
+  set (DEBUG_FLAGS "${DEBUG_FLAGS} -debug-parameters all"                                  )
 # MORE OPTIONS FOR RUNTIME DEBUGGING
-# -heap-arrays:            should not be done for OpenMP, but set "ulimit -s unlimited" on shell. Probably it helps also to unlimit other limits
-# -check:                   checks at runtime, where
+# -heap-arrays:            Should not be done for OpenMP, but set "ulimit -s unlimited" on shell. Probably it helps also to unlimit other limits
+# -check:                  Checks at runtime, where
 #    arg_temp_created:        will cause a lot of warnings because we create a bunch of temporary arrays (performance?)
 #    stack:
-  set (DEBUG_FLAGS "${DEBUG_FLAGS} -g"                                                     )
-  set (DEBUG_FLAGS "${DEBUG_FLAGS} -traceback"                                             )
-  set (DEBUG_FLAGS "${DEBUG_FLAGS} -gen-interfaces"                                        )
-  set (DEBUG_FLAGS "${DEBUG_FLAGS} -fp-stack-check"                                        )
-  set (DEBUG_FLAGS "${DEBUG_FLAGS} -fp-model strict"                                       )
-  set (DEBUG_FLAGS "${DEBUG_FLAGS} -check bounds,format,output_conversion,pointers,uninit" )
-  set (DEBUG_FLAGS "${DEBUG_FLAGS} -ftrapuv"                                               )
-  set (DEBUG_FLAGS "${DEBUG_FLAGS} -fpe-all0"                                              )
-  set (DEBUG_FLAGS "${DEBUG_FLAGS} -warn errors"                                           )
-  set (DEBUG_FLAGS "${DEBUG_FLAGS} -warn stderrors"                                        )
-  set (DEBUG_FLAGS "${DEBUG_FLAGS} -debug-parameters all"                                  )
 
 #------------------------------------------------------------------------------------------------
 # PRECISION SETTINGS
@@ -384,12 +381,12 @@ elseif(${CMAKE_Fortran_COMPILER_ID} STREQUAL "GNU")
 
 endif()
 
+
 set (CMAKE_Fortran_FLAGS_RELEASE     "${CMAKE_Fortran_FLAGS_RELEASE} ${OPENMP_FLAGS}")
 set (CMAKE_Fortran_FLAGS_RELEASE     "${CMAKE_Fortran_FLAGS_RELEASE} ${STANDARD_CHECK}")
 set (CMAKE_Fortran_FLAGS_RELEASE     "${CMAKE_Fortran_FLAGS_RELEASE} ${OPTIMIZATION_FLAGS}")
 set (CMAKE_Fortran_FLAGS_RELEASE     "${CMAKE_Fortran_FLAGS_RELEASE} ${COMPILE_FLAGS}")
 set (CMAKE_Fortran_FLAGS_RELEASE     "${CMAKE_Fortran_FLAGS_RELEASE} ${PRECISION_FLAGS}")
-
 set (CMAKE_EXE_LINKER_FLAGS_RELEASE  "${CMAKE_EXE_LINKER_FLAGS_RELEASE} ${OPENMP_FLAGS}"   )
 set (CMAKE_EXE_LINKER_FLAGS_RELEASE  "${CMAKE_EXE_LINKER_FLAGS_RELEASE} ${STANDARD_CHECK}")
 set (CMAKE_EXE_LINKER_FLAGS_RELEASE  "${CMAKE_EXE_LINKER_FLAGS_RELEASE} ${OPTIMIZATION_FLAGS}"  )
@@ -400,7 +397,7 @@ set (CMAKE_Fortran_FLAGS_DEBUG       "${CMAKE_Fortran_FLAGS_DEBUG} ${DEBUG_FLAGS
 
 set (CMAKE_Fortran_FLAGS_RELEASE   "${BUILDCMD_PRE} ${CMAKE_Fortran_FLAGS_RELEASE} ${DAMASK_INCLUDE_FLAGS} ${BUILDCMD_POST}")
 set (CMAKE_Fortran_FLAGS_DEBUG     "${BUILDCMD_PRE} ${CMAKE_Fortran_FLAGS_DEBUG}   ${DAMASK_INCLUDE_FLAGS} ${BUILDCMD_POST}")
-set (CMAKE_LINKER                  "${PETSC_LINKER}")
+
 
 if ("${CMAKE_BUILD_TYPE}" STREQUAL "RELEASE")
   set (CMAKE_Fortran_LINK_EXECUTABLE
@@ -417,11 +414,10 @@ message("***LINKER:\n${CMAKE_Fortran_LINK_EXECUTABLE}\n")
 add_subdirectory(src)
 
 # INSTALL BUILT BINARIES
-if (SPECTRAL)
+if ("${PROJECT_NAME}" STREQUAL "DAMASK_spectral")
     INSTALL(PROGRAMS    ${PROJECT_BINARY_DIR}/src/DAMASK_spectral
             DESTINATION ${CMAKE_INSTALL_PREFIX})
-elseif (FEM)
+elseif ("${PROJECT_NAME}" STREQUAL "DAMASK_FEM")
     INSTALL(PROGRAMS    ${PROJECT_BINARY_DIR}/src/DAMASK_FEM
             DESTINATION ${CMAKE_INSTALL_PREFIX})
-endif(SPECTRAL)
-
+endif("${PROJECT_NAME}" STREQUAL "DAMASK_spectral")
