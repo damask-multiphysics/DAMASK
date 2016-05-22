@@ -100,6 +100,8 @@ os.chdir(codeDir)
 cmd = 'f2py damask.core.pyf' +\
       ' -c --no-lower %s'%(compiler) +\
       compileOptions+\
+      ' C_routines.c'+\
+      ' system_routines.f90'+\
       ' prec.f90'+\
       ' spectral_interface.f90'+\
       ' IO.f90'+\
