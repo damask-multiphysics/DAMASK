@@ -16,61 +16,72 @@ endif()
 set( CMAKE_VERBOSE_MAKEFILE on )
 # The dependency detection in CMake is not functioning for Fortran,
 # hence we declare the dependencies from top to bottom in the following
+add_library(C_ROUTINES OBJECT "C_routines.c")
+set(OBJECTFILES $<TARGET_OBJECTS:C_ROUTINES>)
 
-add_library(C_ROUTINES "C_routines.c")
+add_library(SYSTEM_ROUTINES OBJECT "system_routines.f90")
+add_dependencies(SYSTEM_ROUTINES C_ROUTINES)
+list(APPEND OBJECTFILES $<TARGET_OBJECTS:SYSTEM_ROUTINES>)
 
-add_library(SYSTEM_ROUTINES "system_routines.f90")
-target_link_libraries(SYSTEM_ROUTINES C_ROUTINES)
-
-add_library(PREC "prec.f90")
-target_link_libraries(PREC SYSTEM_ROUTINES)
+add_library(PREC OBJECT "prec.f90")
+add_dependencies(PREC SYSTEM_ROUTINES)
+list(APPEND OBJECTFILES $<TARGET_OBJECTS:PREC>)
 
 if ("${PROJECT_NAME}" STREQUAL "DAMASK_spectral")
-      add_library(DAMASK_INTERFACE "spectral_interface.f90")
+      add_library(DAMASK_INTERFACE OBJECT "spectral_interface.f90")
 elseif ("${PROJECT_NAME}" STREQUAL "DAMASK_FEM")
-      add_library(DAMASK_INTERFACE "DAMASK_FEM_interface.f90")
+      add_library(DAMASK_INTERFACE OBJECT "DAMASK_FEM_interface.f90")
 endif()
-target_link_libraries(DAMASK_INTERFACE PREC)
+add_dependencies(DAMASK_INTERFACE PREC)
+list(APPEND OBJECTFILES $<TARGET_OBJECTS:DAMASK_INTERFACE>)
 
-add_library(IO "IO.f90")
-target_link_libraries(IO DAMASK_INTERFACE)
+add_library(IO OBJECT "IO.f90")
+add_dependencies(IO DAMASK_INTERFACE)
+list(APPEND OBJECTFILES $<TARGET_OBJECTS:IO>)
 
-add_library(EXTERNALLIBS "libs.f90")
-target_link_libraries(EXTERNALLIBS IO)
+add_library(NUMERICS OBJECT "numerics.f90")
+add_dependencies(NUMERICS IO)
+list(APPEND OBJECTFILES $<TARGET_OBJECTS:NUMERICS>)
 
-add_library(NUMERICS "numerics.f90")
-target_link_libraries(NUMERICS EXTERNALLIBS)
+add_library(DEBUG OBJECT "debug.f90")
+add_dependencies(DEBUG NUMERICS)
+list(APPEND OBJECTFILES $<TARGET_OBJECTS:DEBUG>)
 
-add_library(DEBUG "debug.f90")
-target_link_libraries(DEBUG NUMERICS)
+add_library(FEsolving OBJECT "FEsolving.f90")
+add_dependencies(FEsolving DEBUG)
+list(APPEND OBJECTFILES $<TARGET_OBJECTS:FEsolving>)
 
-add_library(FEsolving "FEsolving.f90")
-target_link_libraries(FEsolving DEBUG)
+add_library(EXTERNAL_LIBS OBJECT "libs.f90")
+list(APPEND OBJECTFILES $<TARGET_OBJECTS:EXTERNAL_LIBS>)
 
-add_library(DAMASK_MATH "math.f90")
-target_link_libraries(DAMASK_MATH FEsolving)
+add_library(DAMASK_MATH OBJECT "math.f90")
+add_dependencies(DAMASK_MATH FEsolving EXTERNAL_LIBS)
+list(APPEND OBJECTFILES $<TARGET_OBJECTS:DAMASK_MATH>)
 
-# SPECTRAL solver and FEM solver use different mesh
-# source files
+# SPECTRAL solver and FEM solver use different mesh files
 if ("${PROJECT_NAME}" STREQUAL "DAMASK_spectral")
-      add_library(MESH "mesh.f90")
-      target_link_libraries(MESH DAMASK_MATH)
+      add_library(MESH OBJECT "mesh.f90")
+      add_dependencies(MESH DAMASK_MATH)
+      list(APPEND OBJECTFILES $<TARGET_OBJECTS:MESH>)
 elseif ("${PROJECT_NAME}" STREQUAL "DAMASK_FEM")
-      add_library(FEZoo "FEZoo.f90")
-      target_link_libraries(FEZoo DAMASK_MATH)
-      add_library(MESH  "meshFEM.f90")
-      target_link_libraries(MESH  FEZoo)
+      add_library(FEZoo OBJECT "FEZoo.f90")
+      add_dependencies(FEZoo DAMASK_MATH)
+      list(APPEND OBJECTFILES $<TARGET_OBJECTS:FEZoo>)
+      add_library(MESH  OBJECT "meshFEM.f90")
+      add_dependencies(MESH FEZoo)
+      list(APPEND OBJECTFILES $<TARGET_OBJECTS:MESH>)
 endif()
 
-add_library(MATERIAL "material.f90")
-target_link_libraries(MATERIAL MESH)
+add_library(MATERIAL OBJECT "material.f90")
+add_dependencies(MATERIAL MESH)
+list(APPEND OBJECTFILES $<TARGET_OBJECTS:MATERIAL>)
 
-add_library(LATTICE "lattice.f90")
-target_link_libraries(LATTICE MATERIAL)
-add_library(DAMASK_HELPERS ALIAS LATTICE)
+add_library(DAMASK_HELPERS OBJECT "lattice.f90")
+add_dependencies(DAMASK_HELPERS MATERIAL)
+list(APPEND OBJECTFILES $<TARGET_OBJECTS:DAMASK_HELPERS>)
 
 # For each modular section
-add_library (PLASTIC
+add_library (PLASTIC OBJECT
   "plastic_dislotwin.f90"
   "plastic_disloUCLA.f90"
   "plastic_isotropic.f90"
@@ -79,17 +90,19 @@ add_library (PLASTIC
   "plastic_nonlocal.f90"
   "plastic_none.f90"
   "plastic_phenoplus.f90")
-target_link_libraries(PLASTIC DAMASK_HELPERS)
+add_dependencies(PLASTIC DAMASK_HELPERS)
+list(APPEND OBJECTFILES $<TARGET_OBJECTS:PLASTIC>)
 
-add_library (KINEMATICS
+add_library (KINEMATICS OBJECT
   "kinematics_cleavage_opening.f90"
   "kinematics_slipplane_opening.f90"
   "kinematics_thermal_expansion.f90"
   "kinematics_vacancy_strain.f90"
   "kinematics_hydrogen_strain.f90")
-target_link_libraries(KINEMATICS DAMASK_HELPERS)
+add_dependencies(KINEMATICS DAMASK_HELPERS)
+list(APPEND OBJECTFILES $<TARGET_OBJECTS:KINEMATICS>)
 
-add_library (SOURCE
+add_library (SOURCE OBJECT
   "source_thermal_dissipation.f90"
   "source_thermal_externalheat.f90"
   "source_damage_isoBrittle.f90"
@@ -99,92 +112,94 @@ add_library (SOURCE
   "source_vacancy_phenoplasticity.f90"
   "source_vacancy_irradiation.f90"
   "source_vacancy_thermalfluc.f90")
-target_link_libraries(SOURCE DAMASK_HELPERS)
+add_dependencies(SOURCE DAMASK_HELPERS)
+list(APPEND OBJECTFILES $<TARGET_OBJECTS:SOURCE>)
 
-add_library(CONSTITUTIVE "constitutive.f90")
-target_link_libraries(CONSTITUTIVE PLASTIC)
-target_link_libraries(CONSTITUTIVE KINEMATICS)
-target_link_libraries(CONSTITUTIVE SOURCE)
+add_library(CONSTITUTIVE OBJECT "constitutive.f90")
+add_dependencies(CONSTITUTIVE PLASTIC KINEMATICS SOURCE)
+list(APPEND OBJECTFILES $<TARGET_OBJECTS:CONSTITUTIVE>)
 
-add_library(CRYSTALLITE "crystallite.f90")
-target_link_libraries(CRYSTALLITE CONSTITUTIVE)
+add_library(CRYSTALLITE OBJECT "crystallite.f90")
+add_dependencies(CRYSTALLITE CONSTITUTIVE)
+list(APPEND OBJECTFILES $<TARGET_OBJECTS:CRYSTALLITE>)
 
-add_library(HOMOGENIZATION
+add_library(HOMOGENIZATION OBJECT
   "homogenization_RGC.f90"
   "homogenization_isostrain.f90"
   "homogenization_none.f90")
-target_link_libraries(HOMOGENIZATION CRYSTALLITE)
+add_dependencies(HOMOGENIZATION CRYSTALLITE)
+list(APPEND OBJECTFILES $<TARGET_OBJECTS:HOMOGENIZATION>)
 
-add_library(HYDROGENFLUX
+add_library(HYDROGENFLUX OBJECT
   "hydrogenflux_isoconc.f90"
   "hydrogenflux_cahnhilliard.f90")
-target_link_libraries(HYDROGENFLUX CRYSTALLITE)
+add_dependencies(HYDROGENFLUX CRYSTALLITE)
+list(APPEND OBJECTFILES $<TARGET_OBJECTS:HYDROGENFLUX>)
 
-add_library(POROSITY
+add_library(POROSITY OBJECT
   "porosity_none.f90"
   "porosity_phasefield.f90")
-target_link_libraries(POROSITY CRYSTALLITE)
+add_dependencies(POROSITY CRYSTALLITE)
+list(APPEND OBJECTFILES $<TARGET_OBJECTS:POROSITY>)
 
-add_library(VACANCYFLUX
+add_library(VACANCYFLUX OBJECT
   "vacancyflux_isoconc.f90"
   "vacancyflux_isochempot.f90"
   "vacancyflux_cahnhilliard.f90")
-target_link_libraries(VACANCYFLUX CRYSTALLITE)
+add_dependencies(VACANCYFLUX CRYSTALLITE)
+list(APPEND OBJECTFILES $<TARGET_OBJECTS:VACANCYFLUX>)
 
-add_library(DAMAGE
+add_library(DAMAGE OBJECT
   "damage_none.f90"
   "damage_local.f90"
   "damage_nonlocal.f90")
-target_link_libraries(DAMAGE CRYSTALLITE)
+add_dependencies(DAMAGE CRYSTALLITE)
+list(APPEND OBJECTFILES $<TARGET_OBJECTS:DAMAGE>)
 
-add_library(THERMAL
+add_library(THERMAL OBJECT
   "thermal_isothermal.f90"
   "thermal_adiabatic.f90"
   "thermal_conduction.f90")
-target_link_libraries(THERMAL CRYSTALLITE)
+add_dependencies(THERMAL CRYSTALLITE)
+list(APPEND OBJECTFILES $<TARGET_OBJECTS:THERMAL>)
 
-add_library(DAMASK_ENGINE "homogenization.f90")
-target_link_libraries(DAMASK_ENGINE THERMAL       )
-target_link_libraries(DAMASK_ENGINE DAMAGE        )
-target_link_libraries(DAMASK_ENGINE VACANCYFLUX   )
-target_link_libraries(DAMASK_ENGINE POROSITY      )
-target_link_libraries(DAMASK_ENGINE HYDROGENFLUX  )
-target_link_libraries(DAMASK_ENGINE HOMOGENIZATION)
+add_library(DAMASK_ENGINE OBJECT "homogenization.f90")
+add_dependencies(DAMASK_ENGINE THERMAL DAMAGE VACANCYFLUX POROSITY HYDROGENFLUX HOMOGENIZATION)
+list(APPEND OBJECTFILES $<TARGET_OBJECTS:DAMASK_ENGINE>)
 
+add_library(DAMASK_CPFE OBJECT "CPFEM2.f90")
+add_dependencies(DAMASK_CPFE DAMASK_ENGINE)
+list(APPEND OBJECTFILES $<TARGET_OBJECTS:DAMASK_CPFE>)
 
 if ("${PROJECT_NAME}" STREQUAL "DAMASK_spectral")
-      add_library(DAMASK_CPFE "CPFEM2.f90")
-      target_link_libraries(DAMASK_CPFE DAMASK_ENGINE)
+      add_library(SPECTRAL_UTILITIES OBJECT "spectral_utilities.f90")
+      add_dependencies(SPECTRAL_UTILITIES DAMASK_CPFE)
+      list(APPEND OBJECTFILES $<TARGET_OBJECTS:SPECTRAL_UTILITIES>)
 
-      add_library(SPECTRAL_UTILITIES spectral_utilities.f90)
-      target_link_libraries(SPECTRAL_UTILITIES DAMASK_CPFE)
+      add_library(SPECTRAL_SOLVER OBJECT
+      "spectral_thermal.f90"
+      "spectral_damage.f90"
+      "spectral_mech_AL.f90"
+      "spectral_mech_Polarisation.f90"
+      "spectral_mech_Basic.f90")
+      add_dependencies(SPECTRAL_SOLVER SPECTRAL_UTILITIES)
+      list(APPEND OBJECTFILES $<TARGET_OBJECTS:SPECTRAL_SOLVER>)
 
-      add_library(SPECTRAL_SOLVER "spectral_thermal.f90"
-                                  "spectral_damage.f90"
-                                  "spectral_mech_AL.f90"
-                                  "spectral_mech_Polarisation.f90"
-                                  "spectral_mech_Basic.f90")
-      target_link_libraries(SPECTRAL_SOLVER SPECTRAL_UTILITIES)
-      add_executable(DAMASK_spectral "DAMASK_spectral.f90")
-      target_link_libraries(DAMASK_spectral SPECTRAL_SOLVER)
+      add_executable(DAMASK_spectral "DAMASK_spectral.f90" ${OBJECTFILES})
+      add_dependencies(DAMASK_spectral SPECTRAL_SOLVER)
 elseif ("${PROJECT_NAME}" STREQUAL "DAMASK_FEM")
-      add_library(DAMASK_CPFE "CPFEM.f90")
-      target_link_libraries(DAMASK_CPFE DAMASK_ENGINE)
+      add_library(FEM_UTILITIES OBJECT "FEM_utilities.f90")
+      add_dependencies(FEM_UTILITIES DAMASK_CPFE)
 
-      add_library(DAMASK_FEM_UTILITY "FEM_utilities.f90")
-      target_link_libraries(DAMASK_FEM_UTILITY DAMASK_CPFE)
-
-      add_library(DAMASK_FEM_BASE "FEM_hydrogenflux.f90"
-                                  "FEM_porosity.f90"
-                                  "FEM_vacancyflux.f90"
-                                  "FEM_damage.f90"
-                                  "FEM_thermal.f90"
-                                  "FEM_mech.f90")
-      target_link_libraries(DAMASK_FEM_BASE DAMASK_FEM_UTILITY)
-
-      add_library(DAMASK_FEM_DRIVER "DAMASK_FEM_driver.f90")
-      target_link_libraries(DAMASK_FEM_DRIVER DAMASK_FEM_BASE)
+      add_library(FEM_SOLVER OBJECT
+      "FEM_hydrogenflux.f90"
+      "FEM_porosity.f90"
+      "FEM_vacancyflux.f90"
+      "FEM_damage.f90"
+      "FEM_thermal.f90"
+      "FEM_mech.f90")
+      add_dependencies(FEM_SOLVER FEM_UTILITIES)
 
       add_executable(DAMASK_FEM "DAMASK_FEM_driver.f90")
-      target_link_libraries(DAMASK_FEM DAMASK_FEM_EXE)
+      add_dependencies(DAMASK_FEM FEM_SOLVER)
 endif()

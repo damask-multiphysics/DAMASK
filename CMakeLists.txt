@@ -1,7 +1,7 @@
 ########################################################################################
 # CMAKE for build the Material subroutine for BVP solution
 ########################################################################################
-cmake_minimum_required (VERSION 2.8.0 FATAL_ERROR)
+cmake_minimum_required (VERSION 2.8.8 FATAL_ERROR)
 
 #---------------------------------------------------------------------------------------
 # Find PETSc from system environment
