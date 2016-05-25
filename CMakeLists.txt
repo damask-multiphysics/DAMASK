@@ -169,33 +169,24 @@ if(${CMAKE_Fortran_COMPILER_ID} STREQUAL "Intel")
 
 #------------------------------------------------------------------------------------------------
 # COMPILE SWITCHES
-#  -assume byterecl          record length is given in bytes (also set by -standard-semantics)
-#          fpe_summary       print list of floating point exceptions occured during execution
 #  -fimplicit-none:          assume "implicit-none" even if not present in source
-#  -diag-disable:            disables warnings, where
-#     warning ID 5268:       the text exceeds right hand column allowed on the line (we have only comments there)
-#  -warn:                    enables warnings, where
-#     declarations:            any undeclared names (alternative name: -implicitnone)
-#     general:                 warning messages and informational messages are issued by the compiler
-#     usage:                   questionable programming practices
-#     interfaces:              checks the interfaces of all SUBROUTINEs called and FUNCTIONs invoked in your compilation against an external set of interface blocks
-#     ignore_loc:              %LOC is stripped from an actual argument
-#     alignments:              data that is not naturally aligned
-#     unused:                  declared variables that are never used
 #     stderrors:               warnings about Fortran standard violations are changed to errors (STANDARD_CHECK)
-#
 
-  set (COMPILE_FLAGS "${COMPILE_FLAGS} -fpp"                        )#  preprocessor
-  set (COMPILE_FLAGS "${COMPILE_FLAGS} -ftz"                        )# flush unterflow to zero, automatically set if O<0,1,2,3> >0
-  set (COMPILE_FLAGS "${COMPILE_FLAGS} -assume byterecl,fpe_summary")
-  set (COMPILE_FLAGS "${COMPILE_FLAGS} -diag-disable 5268"          )
-  set (COMPILE_FLAGS "${COMPILE_FLAGS} -warn declarations"          )
-  set (COMPILE_FLAGS "${COMPILE_FLAGS} -warn general"               )
-  set (COMPILE_FLAGS "${COMPILE_FLAGS} -warn usage"                 )
-  set (COMPILE_FLAGS "${COMPILE_FLAGS} -warn interfaces"            )
-  set (COMPILE_FLAGS "${COMPILE_FLAGS} -warn ignore_loc"            )
-  set (COMPILE_FLAGS "${COMPILE_FLAGS} -warn alignments"            )
-  set (COMPILE_FLAGS "${COMPILE_FLAGS} -warn unused"                )
+  set (COMPILE_FLAGS "${COMPILE_FLAGS} -fpp")          #  preprocessor
+  set (COMPILE_FLAGS "${COMPILE_FLAGS} -ftz")          # flush unterflow to zero, automatically set if O<0,1,2,3> >0
+  set (COMPILE_FLAGS "${COMPILE_FLAGS} -assume")       #  assume 
+  set (COMPILE_FLAGS "${COMPILE_FLAGS} byterecl,")     #  record length is given in bytes (also set by -standard-semantics)
+  set (COMPILE_FLAGS "${COMPILE_FLAGS} ,fpe_summary")  #  print list of floating point exceptions occured during execution
+  set (COMPILE_FLAGS "${COMPILE_FLAGS} -diag-disable") #  disables warnings, where
+  set (COMPILE_FLAGS "${COMPILE_FLAGS} 5268")          # the text exceeds right hand column allowed on the line (we have only comments there)
+  set (COMPILE_FLAGS "${COMPILE_FLAGS} -warn")         #  enables warnings, where
+  set (COMPILE_FLAGS "${COMPILE_FLAGS} declarations")  # any undeclared names (alternative name: -implicitnone)
+  set (COMPILE_FLAGS "${COMPILE_FLAGS} ,general")      #  warning messages and informational messages are issued by the compiler
+  set (COMPILE_FLAGS "${COMPILE_FLAGS} ,usage")        #  questionable programming practices
+  set (COMPILE_FLAGS "${COMPILE_FLAGS} ,interfaces")   #  checks the interfaces of all SUBROUTINEs called and FUNCTIONs invoked in your compilation against an external set of interface blocks
+  set (COMPILE_FLAGS "${COMPILE_FLAGS} ,ignore_loc")   # %LOC is stripped from an actual argument
+  set (COMPILE_FLAGS "${COMPILE_FLAGS} ,alignments")   # data that is not naturally aligned
+  set (COMPILE_FLAGS "${COMPILE_FLAGS} ,unused")       #  declared variables that are never used
 # MORE OPTIONS FOR DEBUGGING DURING COMPILATION
 #  -warn:                    enables warnings, where
 #     truncated_source:        Determines whether warnings occur when source exceeds the maximum column width in fixed-format files. (too many warnings because we have comments beyond character 132)
@@ -259,48 +250,47 @@ elseif(${CMAKE_Fortran_COMPILER_ID} STREQUAL "GNU")
 # COMPILE SWITCHES
   set (COMPILE_FLAGS "${COMPILE_FLAGS} -xf95-cpp-input"             )# preprocessor
   set (COMPILE_FLAGS "${COMPILE_FLAGS} -ffree-line-length-132"      )# restrict line length to the standard 132 characters (lattice.f90 require larger)
-  set (COMPILE_FLAGS "${COMPILE_FLAGS} -fimplicit-none"             )# assume "implicit-none" even if not present in source
+  set (COMPILE_FLAGS "${COMPILE_FLAGS} -fimplicit-none"             )# assume "implicit none" even if not present in source
   set (COMPILE_FLAGS "${COMPILE_FLAGS} -fmodule-private"            )# assume "private" even if not present in source
-  set (COMPILE_FLAGS "${COMPILE_FLAGS} -Wall"                       )
-# -Wall:                        sets the following Fortran options:
-#   -Waliasing:                   warn about possible aliasing of dummy arguments. Specifically, it warns if the same actual argument is associated with a dummy argument with "INTENT(IN)" and a dummy argument with "INTENT(OUT)" in a call with an explicit interface.
-#   -Wampersand:                  checks if a character expression is continued proberly by an ampersand at the end of the line and at the beginning of the new line
-#   -Warray-bounds:               checks if array reference is out of bounds at compile time. use -fcheck-bounds to also check during runtime
-#   -Wconversion:                 warn about implicit conversions between different type
-#   -Wsurprising:                 warn when "suspicious" code constructs are encountered. While technically legal these usually indicate that an error has been made.
-#   -Wc-binding-type:
-#   -Wintrinsics-std:             only standard intrisics are available, e.g. "call flush(6)" will cause an error
-#   -Wno-tabs:                    do not allow tabs in source
-#   -Wintrinsic-shadow:           warn if a user-defined procedure or module procedure has the same name as an intrinsic
-#   -Wline-truncation:
-#   -Wtarget-lifetime:
-#   -Wreal-q-constant:            warn about real-literal-constants with 'q'  exponent-letter
-#   -Wunused:                     a number of unused-xxx warnings
-#  these are general (non -Fortran options) implied by -Wall
-#   -Waddress
-#   -Warray-bounds (only with -O2)
-#   -Wc++11-compat
-#   -Wchar-subscripts
-#   -Wcomment
-#   -Wformat
-#   -Wmaybe-uninitialized
-#   -Wnonnull
-#   -Wparentheses
-#   -Wpointer-sign
-#   -Wreorder
-#   -Wreturn-type
-#   -Wsequence-point
-#   -Wstrict-aliasing
-#   -Wstrict-overflow=1
-#   -Wswitch
-#   -Wtrigraphs
-#   -Wuninitialized
-#   -Wunknown-pragmas
-#   -Wunused-function
-#   -Wunused-label
-#   -Wunused-value
-#   -Wunused-variable
-#   -Wvolatile-register-var
+  set (COMPILE_FLAGS "${COMPILE_FLAGS} -Wall"                       )# sets the following Fortran options:
+                                                                  #   -Waliasing:                   warn about possible aliasing of dummy arguments. Specifically, it warns if the same actual argument is associated with a dummy argument with "INTENT(IN)" and a dummy argument with "INTENT(OUT)" in a call with an explicit interface.
+                                                                  #   -Wampersand:                  checks if a character expression is continued proberly by an ampersand at the end of the line and at the beginning of the new line
+                                                                  #   -Warray-bounds:               checks if array reference is out of bounds at compile time. use -fcheck-bounds to also check during runtime
+                                                                  #   -Wconversion:                 warn about implicit conversions between different type
+                                                                  #   -Wsurprising:                 warn when "suspicious" code constructs are encountered. While technically legal these usually indicate that an error has been made.
+                                                                  #   -Wc-binding-type:
+                                                                  #   -Wintrinsics-std:             only standard intrisics are available, e.g. "call flush(6)" will cause an error
+                                                                  #   -Wno-tabs:                    do not allow tabs in source
+                                                                  #   -Wintrinsic-shadow:           warn if a user-defined procedure or module procedure has the same name as an intrinsic
+                                                                  #   -Wline-truncation:
+                                                                  #   -Wtarget-lifetime:
+                                                                  #   -Wreal-q-constant:            warn about real-literal-constants with 'q'  exponent-letter
+                                                                  #   -Wunused:                     a number of unused-xxx warnings
+                                                                  #  these are general (non -Fortran options) implied by -Wall
+                                                                  #   -Waddress
+                                                                  #   -Warray-bounds (only with -O2)
+                                                                  #   -Wc++11-compat
+                                                                  #   -Wchar-subscripts
+                                                                  #   -Wcomment
+                                                                  #   -Wformat
+                                                                  #   -Wmaybe-uninitialized
+                                                                  #   -Wnonnull
+                                                                  #   -Wparentheses
+                                                                  #   -Wpointer-sign
+                                                                  #   -Wreorder
+                                                                  #   -Wreturn-type
+                                                                  #   -Wsequence-point
+                                                                  #   -Wstrict-aliasing
+                                                                  #   -Wstrict-overflow=1
+                                                                  #   -Wswitch
+                                                                  #   -Wtrigraphs
+                                                                  #   -Wuninitialized
+                                                                  #   -Wunknown-pragmas
+                                                                  #   -Wunused-function
+                                                                  #   -Wunused-label
+                                                                  #   -Wunused-value
+                                                                  #   -Wunused-variable
+                                                                  #   -Wvolatile-register-var
   set (COMPILE_FLAGS "${COMPILE_FLAGS} -Wextra"                     )
 # -Wextra:                      sets the following Fortran options:
 #   -Wunuses-parameter:
@@ -325,7 +315,7 @@ elseif(${CMAKE_Fortran_COMPILER_ID} STREQUAL "GNU")
   set (COMPILE_FLAGS "${COMPILE_FLAGS} -Wno-unused-parameter"       )
 # MORE OPTIONS FOR DEBUGGING DURING COMPILATION
 # -Warray-temporarieswarnings:   because we have many temporary arrays (performance issue?):
-# -Wimplicit-interface:          no interfaces for lapack routines
+# -Wimplicit-interface:          no interfaces for lapack/MPI routines
 # -Wunsafe-loop-optimizations:   warn if the loop cannot be optimized due to nontrivial assumptions.
 # -ffpe-summary:                 print summary of floating point exeptions (‘invalid’, ‘zero’, ‘overflow’, ‘underflow’, ‘inexact’ and ‘denormal’)
 # -ffpe-summary=all:             only for newer gfortran
@@ -336,13 +326,6 @@ elseif(${CMAKE_Fortran_COMPILER_ID} STREQUAL "GNU")
 # -ffpe-trap=invalid,\         stop execution if floating point exception is detected (NaN is silent)
 #            zero,\
 #            overflow
-# -fcheck=all:                   sets the following Fortran options:
-# array-temps
-# bounds
-# do
-# mem
-# pointer
-# recursion
 #
 # MORE OPTIONS FOR RUNTIME DEBUGGING
 # -ffpe-trap=precision,
@@ -352,6 +335,13 @@ elseif(${CMAKE_Fortran_COMPILER_ID} STREQUAL "GNU")
   set (DEBUG_FLAGS "${DEBUG_FLAGS} -fbacktrace"                     )
   set (DEBUG_FLAGS "${DEBUG_FLAGS} -fdump-core"                     )
   set (DEBUG_FLAGS "${DEBUG_FLAGS} -fcheck=all"                     )
+# -fcheck=all:                   sets the following Fortran options:
+# array-temps
+# bounds
+# do
+# mem
+# pointer
+# recursion
   set (DEBUG_FLAGS "${DEBUG_FLAGS} -ffpe-trap=invalid,zero,overflow")
 
 #------------------------------------------------------------------------------------------------
