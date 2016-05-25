@@ -185,10 +185,13 @@ end function prec_isNaN
 ! http://www.cygnus-software.com/papers/comparingfloats/comparingfloats.htm
 !--------------------------------------------------------------------------------------------------
 logical elemental pure function dEq(a,b,tol)
-  real(pReal), intent(in) :: a,b
-  real(pReal), intent(in), optional :: tol
-  real(pReal), parameter  :: eps = 2.2204460492503131E-16                                           ! DBL_EPSILON in C
-  dEq = merge(.True., .False.,abs(a-b) <= merge(tol,eps,present(tol))*maxval(abs([a,b])))
+
+ implicit none
+ real(pReal), intent(in) :: a,b
+ real(pReal), intent(in), optional :: tol
+ real(pReal), parameter  :: eps = 2.220446049250313E-16                                           ! DBL_EPSILON in C
+
+ dEq = merge(.True., .False.,abs(a-b) <= merge(tol,eps,present(tol))*maxval(abs([a,b])))
 end function dEq
 
 
@@ -198,10 +201,13 @@ end function dEq
 ! http://www.cygnus-software.com/papers/comparingfloats/comparingfloats.htm
 !--------------------------------------------------------------------------------------------------
 logical elemental pure function dNeq(a,b,tol)
-  real(pReal), intent(in)           :: a,b
-  real(pReal), intent(in), optional :: tol
-  real(pReal), parameter  :: eps = 2.2204460492503131E-16                                           ! DBL_EPSILON in C
-  dNeq = merge(.False., .True.,abs(a-b) <= merge(tol,eps,present(tol))*maxval(abs([a,b])))
+
+ implicit none
+ real(pReal), intent(in)           :: a,b
+ real(pReal), intent(in), optional :: tol
+ real(pReal), parameter  :: eps = 2.220446049250313E-16                                           ! DBL_EPSILON in C
+
+ dNeq = merge(.False., .True.,abs(a-b) <= merge(tol,eps,present(tol))*maxval(abs([a,b])))
 end function dNeq
 
 end module prec

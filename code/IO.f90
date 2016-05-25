@@ -546,7 +546,7 @@ function IO_hybridIA(Nast,ODFfileName)
   
 !--------------------------------------------------------------------------------------------------
 ! math module is not available
- real(pReal),      parameter  :: PI = 3.14159265358979323846264338327950288419716939937510_pReal
+ real(pReal),      parameter  :: PI = 3.141592653589793_pReal
  real(pReal),      parameter  :: INRAD = PI/180.0_pReal
 
  integer(pInt) :: i,j,bin,NnonZero,Nset,Nreps,reps,phi1,Phi,phi2
@@ -666,7 +666,7 @@ function IO_hybridIA(Nast,ODFfileName)
     else
       prob = 0.0_pReal
     endif
-    dV_V(phi2,Phi,phi1) = prob*dg_0*sin((Phi-1.0_pReal+center)*deltas(2))
+    dV_V(phi2,Phi,phi1) = prob*dg_0*sin((real(Phi-1_pInt,pReal)+center)*deltas(2))
  enddo; enddo; enddo  
  close(FILEUNIT)
  dV_V = dV_V/sum_dV_V                                                                               ! normalize to 1
@@ -713,7 +713,7 @@ function IO_hybridIA(Nast,ODFfileName)
  do i=1_pInt,Nast
    if (i < Nast) then
      call random_number(rnd)
-     j = nint(rnd*(Nreps-i)+i+0.5_pReal,pInt)
+     j = nint(rnd*real(Nreps-i,pReal)+real(i,pReal)+0.5_pReal,pInt)
    else
      j = i
    endif

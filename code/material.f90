@@ -1371,7 +1371,7 @@ subroutine material_populateGrains
          else
            forall (i = 1_pInt:FE_Nips(t)) &                                                         ! loop over IPs
              volumeOfGrain(grain+(i-1)*dGrains+1_pInt:grain+i*dGrains) = &
-               mesh_ipVolume(i,e)/dGrains                                                           ! assign IPvolume/Ngrains@IP to all grains of IP
+               mesh_ipVolume(i,e)/real(dGrains,pReal)                                               ! assign IPvolume/Ngrains@IP to all grains of IP
            grain = grain + FE_Nips(t) * dGrains                                                     ! wind forward by Nips*Ngrains@IP
          endif
        enddo
@@ -1393,7 +1393,7 @@ subroutine material_populateGrains
 
        NgrainsOfConstituent = 0_pInt                                                                ! reset counter of grains per constituent
        forall (i = 1_pInt:myNconstituents) &
-         NgrainsOfConstituent(i) = nint(microstructure_fraction(i,micro) * myNgrains, pInt)         ! do rounding integer conversion
+         NgrainsOfConstituent(i) = nint(microstructure_fraction(i,micro)*real(myNgrains,pReal),pInt)! do rounding integer conversion
        do while (sum(NgrainsOfConstituent) /= myNgrains)                                            ! total grain count over constituents wrong?
          sgn = sign(1_pInt, myNgrains - sum(NgrainsOfConstituent))                                  ! direction of required change
          extreme = 0.0_pReal
@@ -1434,17 +1434,17 @@ subroutine material_populateGrains
 ! ...has texture components
          if (texture_ODFfile(textureID) == '') then
            gauss: do t = 1_pInt,texture_Ngauss(textureID)                                           ! loop over Gauss components
-             do g = 1_pInt,int(myNorientations*texture_Gauss(5,t,textureID),pInt)                   ! loop over required grain count
+             do g = 1_pInt,int(real(myNorientations,pReal)*texture_Gauss(5,t,textureID),pInt)       ! loop over required grain count
                orientationOfGrain(:,grain+constituentGrain+g) = &
                  math_sampleGaussOri(texture_Gauss(1:3,t,textureID),&
                                      texture_Gauss(  4,t,textureID))
              enddo
              constituentGrain = &
-             constituentGrain + int(myNorientations*texture_Gauss(5,t,textureID))                   ! advance counter for grains of current constituent
+             constituentGrain + int(real(myNorientations,pReal)*texture_Gauss(5,t,textureID))       ! advance counter for grains of current constituent
            enddo gauss
 
            fiber: do t = 1_pInt,texture_Nfiber(textureID)                                           ! loop over fiber components
-             do g = 1_pInt,int(myNorientations*texture_Fiber(6,t,textureID),pInt)                   ! loop over required grain count
+             do g = 1_pInt,int(real(myNorientations,pReal)*texture_Fiber(6,t,textureID),pInt)       ! loop over required grain count
                orientationOfGrain(:,grain+constituentGrain+g) = &
                  math_sampleFiberOri(texture_Fiber(1:2,t,textureID),&
                                      texture_Fiber(3:4,t,textureID),&
