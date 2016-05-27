@@ -723,6 +723,8 @@ end function math_transpose33
 !   returns all zeroes if not possible, i.e. if det close to zero
 !--------------------------------------------------------------------------------------------------
 pure function math_inv33(A)
+ use prec, only: &
+   dNeq
 
  implicit none
  real(pReal),dimension(3,3),intent(in)  :: A
@@ -735,7 +737,7 @@ pure function math_inv33(A)
 
  DetA = A(1,1) * math_inv33(1,1) + A(1,2) * math_inv33(2,1) + A(1,3) * math_inv33(3,1)
 
- if (abs(DetA) > tiny(DetA)) then                                             ! use a real threshold here
+ if (dNeq(DetA,0.0_pReal)) then
    math_inv33(1,2) = -A(1,2) * A(3,3) + A(1,3) * A(3,2)
    math_inv33(2,2) =  A(1,1) * A(3,3) - A(1,3) * A(3,1)
    math_inv33(3,2) = -A(1,1) * A(3,2) + A(1,2) * A(3,1)

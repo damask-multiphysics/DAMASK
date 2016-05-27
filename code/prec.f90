@@ -21,10 +21,10 @@ module prec
 #if (FLOAT==8)
  integer,     parameter, public :: pReal = 8                                                        !< floating point double precision (was selected_real_kind(15,300), number with 15 significant digits, up to 1e+-300)
 #ifdef __INTEL_COMPILER
- real(pReal), parameter, public :: DAMASK_NaN = Z'7FF8000000000000'                                 !< quiet NaN for double precision (from http://www.hpc.unimelb.edu.au/doc/f90lrm/dfum_035.html, copy can be found in documentation/Code/Fortran)
+ real(pReal), parameter, public :: DAMASK_NaN = Z'7FF8000000000000'                                 !< quiet NaN for double precision (from http://www.hpc.unimelb.edu.au/doc/f90lrm/dfum_035.html)
 #endif
 #ifdef __GFORTRAN__
- real(pReal), parameter, public :: DAMASK_NaN = real(Z'7FF8000000000000',pReal)                     !< quiet NaN for double precision (from http://www.hpc.unimelb.edu.au/doc/f90lrm/dfum_035.html, copy can be found in documentation/Code/Fortran)
+ real(pReal), parameter, public :: DAMASK_NaN = real(Z'7FF8000000000000',pReal)                     !< quiet NaN for double precision (from http://www.hpc.unimelb.edu.au/doc/f90lrm/dfum_035.html)
 #endif
 #else
  NO SUITABLE PRECISION FOR REAL SELECTED, STOPPING COMPILATION
@@ -189,7 +189,7 @@ logical elemental pure function dEq(a,b,tol)
  implicit none
  real(pReal), intent(in) :: a,b
  real(pReal), intent(in), optional :: tol
- real(pReal), parameter  :: eps = 2.220446049250313E-16                                           ! DBL_EPSILON in C
+ real(pReal), parameter  :: eps = 2.220446049250313E-16                                             ! DBL_EPSILON in C
 
  dEq = merge(.True., .False.,abs(a-b) <= merge(tol,eps,present(tol))*maxval(abs([a,b])))
 end function dEq
@@ -205,7 +205,7 @@ logical elemental pure function dNeq(a,b,tol)
  implicit none
  real(pReal), intent(in)           :: a,b
  real(pReal), intent(in), optional :: tol
- real(pReal), parameter  :: eps = 2.220446049250313E-16                                           ! DBL_EPSILON in C
+ real(pReal), parameter  :: eps = 2.220446049250313E-16                                             ! DBL_EPSILON in C
 
  dNeq = merge(.False., .True.,abs(a-b) <= merge(tol,eps,present(tol))*maxval(abs([a,b])))
 end function dNeq

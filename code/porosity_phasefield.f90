@@ -210,8 +210,7 @@ function porosity_phasefield_getFormationEnergy(ip,el)
  enddo
 
  porosity_phasefield_getFormationEnergy = &
-   porosity_phasefield_getFormationEnergy/ &
-   homogenization_Ngrains(mesh_element(3,el))
+   porosity_phasefield_getFormationEnergy/real(homogenization_Ngrains(mesh_element(3,el)),pReal)
  
 end function porosity_phasefield_getFormationEnergy
  
@@ -243,8 +242,7 @@ function porosity_phasefield_getSurfaceEnergy(ip,el)
  enddo
 
  porosity_phasefield_getSurfaceEnergy = &
-   porosity_phasefield_getSurfaceEnergy/ &
-   homogenization_Ngrains(mesh_element(3,el))
+   porosity_phasefield_getSurfaceEnergy/real(homogenization_Ngrains(mesh_element(3,el)),pReal)
  
 end function porosity_phasefield_getSurfaceEnergy
  
@@ -308,7 +306,7 @@ subroutine porosity_phasefield_getSourceAndItsTangent(phiDot, dPhiDot_dPhi, phi,
    enddo                                                 
    W_e = W_e + sum(abs(strain*math_mul66x6(C,strain)))
  enddo
- W_e = W_e/homogenization_Ngrains(homog)
+ W_e = W_e/real(homogenization_Ngrains(homog),pReal)
  
  phiDot = 2.0_pReal*(1.0_pReal - phi)*(1.0_pReal - Cv)*(1.0_pReal - Cv) - &
           2.0_pReal*phi*(W_e + Cv*porosity_phasefield_getFormationEnergy(ip,el))/ &
@@ -350,8 +348,7 @@ function porosity_phasefield_getDiffusion33(ip,el)
  enddo
 
  porosity_phasefield_getDiffusion33 = &
-   porosity_phasefield_getDiffusion33/ &
-   homogenization_Ngrains(homog)
+   porosity_phasefield_getDiffusion33/real(homogenization_Ngrains(homog),pReal)
  
 end function porosity_phasefield_getDiffusion33
  
@@ -377,10 +374,12 @@ real(pReal) function porosity_phasefield_getMobility(ip,el)
  porosity_phasefield_getMobility = 0.0_pReal
                                                 
  do ipc = 1, homogenization_Ngrains(mesh_element(3,el))
-   porosity_phasefield_getMobility = porosity_phasefield_getMobility + lattice_PorosityMobility(material_phase(ipc,ip,el))
+   porosity_phasefield_getMobility = porosity_phasefield_getMobility &
+                                   + lattice_PorosityMobility(material_phase(ipc,ip,el))
  enddo
 
- porosity_phasefield_getMobility = porosity_phasefield_getMobility/homogenization_Ngrains(mesh_element(3,el))
+ porosity_phasefield_getMobility = &
+   porosity_phasefield_getMobility/real(homogenization_Ngrains(mesh_element(3,el)),pReal)
 
 end function porosity_phasefield_getMobility
 

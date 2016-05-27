@@ -46,10 +46,10 @@ module debug
  integer(pInt),protected, dimension(debug_maxNtype+2_pInt),  public :: &                            ! specific ones, and 2 for "all" and "other"
    debug_level                    = 0_pInt
 
- integer(pInt), public :: &
-   debug_cumLpCalls              = 0_pInt, &                                                        !< total number of calls to LpAndItsTangent
-   debug_cumDeltaStateCalls      = 0_pInt, &                                                        !< total number of calls to deltaState
-   debug_cumDotStateCalls        = 0_pInt                                                           !< total number of calls to dotState
+ integer(pLongInt), public :: &
+   debug_cumLpCalls              = 0_pLongInt, &                                                    !< total number of calls to LpAndItsTangent
+   debug_cumDeltaStateCalls      = 0_pLongInt, &                                                    !< total number of calls to deltaState
+   debug_cumDotStateCalls        = 0_pLongInt                                                       !< total number of calls to dotState
 
  integer(pInt), protected, public :: &
    debug_e                       = 1_pInt, &
@@ -66,6 +66,7 @@ module debug
    debug_stressMinLocation       = 0_pInt, &
    debug_jacobianMaxLocation     = 0_pInt, &
    debug_jacobianMinLocation     = 0_pInt
+
 
  integer(pInt), dimension(:), allocatable, public :: &
    debug_CrystalliteLoopDistribution, &                                                             !< distribution of crystallite cutbacks

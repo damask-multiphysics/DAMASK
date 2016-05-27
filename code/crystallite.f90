@@ -197,8 +197,6 @@ subroutine crystallite_init
    nMax, &                                                                                          !< maximum number of ip neighbors
    myNcomponents, &                                                                                 !< number of components at current IP
    section = 0_pInt, &
-   j, &
-   p, &
    mySize
 
  character(len=65536) :: &
@@ -511,7 +509,8 @@ end subroutine crystallite_init
 !--------------------------------------------------------------------------------------------------
 subroutine crystallite_stressAndItsTangent(updateJaco)
  use prec, only: &
-   tol_math_check
+   tol_math_check, &
+   dNeq
  use numerics, only: &
    subStepMinCryst, &
    subStepSizeCryst, &
@@ -803,7 +802,7 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
          endif
        else
          subFracIntermediate = maxval(crystallite_subFrac, mask=.not.crystallite_localPlasticity)
-         if (abs(subFracIntermediate) > tiny(0.0_pReal)) then
+         if (dNeq(subFracIntermediate,0.0_pReal)) then
            crystallite_neighborEnforcedCutback = .false.  ! look for ips that require a cutback because of a nonconverged neighbor
            !$OMP PARALLEL
            !$OMP DO PRIVATE(neighboring_e,neighboring_i)
@@ -3352,7 +3351,8 @@ end subroutine crystallite_integrateStateFPI
 !--------------------------------------------------------------------------------------------------
 logical function crystallite_stateJump(ipc,ip,el)
  use prec, only: &
-   prec_isNaN
+   prec_isNaN, &
+   dNeq
  use debug, only: &
    debug_level, &
    debug_crystallite, &
@@ -3404,7 +3404,7 @@ logical function crystallite_stateJump(ipc,ip,el)
  enddo
 
 #ifndef _OPENMP
- if (any(plasticState(p)%deltaState(1:mySizePlasticDeltaState,c) /= 0.0_pReal) &
+ if (any(dNeq(plasticState(p)%deltaState(1:mySizePlasticDeltaState,c),0.0_pReal)) &
      .and. iand(debug_level(debug_crystallite), debug_levelExtensive) /= 0_pInt &
      .and. ((el == debug_e .and. ip == debug_i .and. ipc == debug_g) &
              .or. .not. iand(debug_level(debug_crystallite), debug_levelSelective) /= 0_pInt)) then
@@ -3459,7 +3459,8 @@ logical function crystallite_integrateStress(&
       )
  use prec, only:         pLongInt, &
                          tol_math_check, &
-                         prec_isNaN
+                         prec_isNaN, &
+                         dEq
  use numerics, only:     nStress, &
                          aTol_crystalliteStress, &
                          rTol_crystalliteStress, &
@@ -3607,7 +3608,7 @@ logical function crystallite_integrateStress(&
  !* inversion of Fp_current...
 
  invFp_current = math_inv33(Fp_current)
- if (all(abs(invFp_current) <= tiny(0.0_pReal))) then                                               ! math_inv33 returns zero when failed, avoid floating point comparison
+ failedInversionFp: if (all(dEq(invFp_current,0.0_pReal))) then
 #ifndef _OPENMP
    if (iand(debug_level(debug_crystallite), debug_levelBasic) /= 0_pInt) then
      write(6,'(a,i8,1x,a,i8,a,1x,i2,1x,i3)') '<< CRYST >> integrateStress failed on inversion of Fp_current at el (elFE) ip g ',&
@@ -3617,13 +3618,12 @@ logical function crystallite_integrateStress(&
    endif
 #endif
    return
- endif
+ endif failedInversionFp
  A = math_mul33x33(Fg_new,invFp_current)                                                            ! intermediate tensor needed later to calculate dFe_dLp
 
  !* inversion of Fi_current...
 
- invFi_current = math_inv33(Fi_current)
- if (all(abs(invFi_current) <= tiny(0.0_pReal))) then                                               ! math_inv33 returns zero when failed, avoid floating point comparison
+ failedInversionFi: if (all(dEq(invFi_current,0.0_pReal))) then
 #ifndef _OPENMP
    if (iand(debug_level(debug_crystallite), debug_levelBasic) /= 0_pInt) then
      write(6,'(a,i8,1x,a,i8,a,1x,i2,1x,i3)') '<< CRYST >> integrateStress failed on inversion of Fi_current at el (elFE) ip ipc ',&
@@ -3633,7 +3633,7 @@ logical function crystallite_integrateStress(&
    endif
 #endif
    return
- endif
+ endif failedInversionFi
 
  !* start LpLoop with normal step length
 
@@ -3883,7 +3883,7 @@ logical function crystallite_integrateStress(&
  invFp_new = math_mul33x33(invFp_current,B)
  invFp_new = invFp_new / math_det33(invFp_new)**(1.0_pReal/3.0_pReal)                               ! regularize by det
  Fp_new = math_inv33(invFp_new)
- if (all(abs(Fp_new)<= tiny(0.0_pReal))) then                                                       ! math_inv33 returns zero when failed, avoid floating point comparison
+ failedInversionFp2: if (all(dEq(invFp_new,0.0_pReal))) then
 #ifndef _OPENMP
    if (iand(debug_level(debug_crystallite), debug_levelBasic) /= 0_pInt) then
      write(6,'(a,i8,1x,a,i8,a,1x,i2,1x,i3,a,i3)') '<< CRYST >> integrateStress failed on invFp_new inversion at el ip ipc ',&
@@ -3895,7 +3895,7 @@ logical function crystallite_integrateStress(&
    endif
 #endif
    return
- endif
+ endif failedInversionFp2
  Fe_new = math_mul33x33(math_mul33x33(Fg_new,invFp_new),invFi_new)    ! calc resulting Fe
 
  !* calculate 1st Piola-Kirchhoff stress
@@ -4116,7 +4116,7 @@ function crystallite_postResults(ipc, ip, el)
        mySize = 1_pInt
        detF = math_det33(crystallite_partionedF(1:3,1:3,ipc,ip,el))                                 ! V_current = det(F) * V_reference
        crystallite_postResults(c+1) = detF * mesh_ipVolume(ip,el) &
-                                           / homogenization_Ngrains(mesh_element(3,el))             ! grain volume (not fraction but absolute)
+                                           / real(homogenization_Ngrains(mesh_element(3,el)),pReal) ! grain volume (not fraction but absolute)
      case (orientation_ID)
        mySize = 4_pInt
        crystallite_postResults(c+1:c+mySize) = crystallite_orientation(1:4,ipc,ip,el)               ! grain orientation as quaternion

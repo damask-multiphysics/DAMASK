@@ -2382,7 +2382,8 @@ end subroutine plastic_nonlocal_deltaState
 subroutine plastic_nonlocal_dotState(Tstar_v, Fe, Fp, Temperature, &
                                      timestep,subfrac, ip,el)
 
-use prec,     only: DAMASK_NaN
+use prec,     only: DAMASK_NaN, &
+                    dNeq
 use numerics, only: numerics_integrationMode, &
                     numerics_timeSyncing
 use IO,       only: IO_error
@@ -2760,8 +2761,7 @@ if (.not. phase_localPlasticity(material_phase(1_pInt,ip,el))) then             
     endif
     
     if (considerEnteringFlux) then
-      if(numerics_timeSyncing .and. (subfrac(1_pInt,neighbor_ip,neighbor_el) /= subfrac(1_pInt,ip,el))) &
-                                                                                              then  ! for timesyncing: in case of a timestep at the interface we have to use "state0" to make sure that fluxes n both sides are equal
+      if(numerics_timeSyncing .and. (dNeq(subfrac(1,neighbor_ip,neighbor_el),subfrac(1,ip,el)))) then  ! for timesyncing: in case of a timestep at the interface we have to use "state0" to make sure that fluxes n both sides are equal
         forall (s = 1:ns, t = 1_pInt:4_pInt)
 
           neighbor_v(s,t)  =         plasticState(np)%state0(iV   (s,t,neighbor_instance),no)
@@ -3078,13 +3078,11 @@ slipDirection(1:3,1:ns) = lattice_sd(1:3, slipSystemLattice(1:ns,instance), ph)
 !*** start out fully compatible
 
 my_compatibility = 0.0_pReal
-forall(s1 = 1_pInt:ns) &
-  my_compatibility(1:2,s1,s1,1:Nneighbors) = 1.0_pReal
-
+forall(s1 = 1_pInt:ns) my_compatibility(1:2,s1,s1,1:Nneighbors) = 1.0_pReal 
 
 !*** Loop thrugh neighbors and check whether there is any my_compatibility.
 
-do n = 1_pInt,Nneighbors
+neighbors: do n = 1_pInt,Nneighbors
   neighbor_e = mesh_ipNeighborhood(1,n,i,e)
   neighbor_i = mesh_ipNeighborhood(2,n,i,e)
   
@@ -3093,8 +3091,7 @@ do n = 1_pInt,Nneighbors
   !* Set surface transmissivity to the value specified in the material.config
   
   if (neighbor_e <= 0_pInt .or. neighbor_i <= 0_pInt) then
-    forall(s1 = 1_pInt:ns) &
-      my_compatibility(1:2,s1,s1,n) = sqrt(surfaceTransmissivity(instance))
+    forall(s1 = 1_pInt:ns) my_compatibility(1:2,s1,s1,n) = sqrt(surfaceTransmissivity(instance))
     cycle
   endif
   
@@ -3107,10 +3104,8 @@ do n = 1_pInt,Nneighbors
   
   neighbor_phase = material_phase(1,neighbor_i,neighbor_e)
   if (neighbor_phase /= ph) then
-    if (.not. phase_localPlasticity(neighbor_phase) .and. .not. phase_localPlasticity(ph)) then
-      forall(s1 = 1_pInt:ns) &
-        my_compatibility(1:2,s1,s1,n) = 0.0_pReal ! = sqrt(0.0)
-    endif
+    if (.not. phase_localPlasticity(neighbor_phase) .and. .not. phase_localPlasticity(ph))&
+      forall(s1 = 1_pInt:ns) my_compatibility(1:2,s1,s1,n) = 0.0_pReal
     cycle
   endif
 
@@ -3141,33 +3136,33 @@ do n = 1_pInt,Nneighbors
   else
     absoluteMisorientation = lattice_qDisorientation(orientation(1:4,1,i,e), &
                                                      orientation(1:4,1,neighbor_i,neighbor_e))      ! no symmetry
-    do s1 = 1_pInt,ns    ! my slip systems
-      do s2 = 1_pInt,ns  ! my neighbor's slip systems
+    mySlipSystems: do s1 = 1_pInt,ns
+      neighborSlipSystems: do s2 = 1_pInt,ns
         my_compatibility(1,s2,s1,n) =  math_mul3x3(slipNormal(1:3,s1), math_qRot(absoluteMisorientation, slipNormal(1:3,s2))) &
                                 * abs(math_mul3x3(slipDirection(1:3,s1), math_qRot(absoluteMisorientation, slipDirection(1:3,s2))))
         my_compatibility(2,s2,s1,n) = abs(math_mul3x3(slipNormal(1:3,s1), math_qRot(absoluteMisorientation, slipNormal(1:3,s2)))) &
                                 * abs(math_mul3x3(slipDirection(1:3,s1), math_qRot(absoluteMisorientation, slipDirection(1:3,s2))))
-      enddo
+      enddo neighborSlipSystems
       
       my_compatibilitySum = 0.0_pReal
       belowThreshold = .true.
       do while (my_compatibilitySum < 1.0_pReal .and. any(belowThreshold(1:ns)))
         thresholdValue = maxval(my_compatibility(2,1:ns,s1,n), belowThreshold(1:ns))              ! screws always positive
-        nThresholdValues = real(count(my_compatibility(2,1:ns,s1,n) == thresholdValue),pReal)
+        nThresholdValues = real(count(my_compatibility(2,1:ns,s1,n) >= thresholdValue),pReal)
         where (my_compatibility(2,1:ns,s1,n) >= thresholdValue) &
           belowThreshold(1:ns) = .false.
         if (my_compatibilitySum + thresholdValue * nThresholdValues > 1.0_pReal) &
-          where (abs(my_compatibility(1:2,1:ns,s1,n)) == thresholdValue) &                          ! MD: rather check below threshold?
+          where (abs(my_compatibility(1:2,1:ns,s1,n)) >= thresholdValue) &                          ! MD: rather check below threshold?
             my_compatibility(1:2,1:ns,s1,n) = sign((1.0_pReal - my_compatibilitySum) &
                                                  / nThresholdValues, my_compatibility(1:2,1:ns,s1,n))
         my_compatibilitySum = my_compatibilitySum + nThresholdValues * thresholdValue
       enddo
       where (belowThreshold(1:ns)) my_compatibility(1,1:ns,s1,n) = 0.0_pReal
       where (belowThreshold(1:ns)) my_compatibility(2,1:ns,s1,n) = 0.0_pReal
-    enddo ! my slip systems cycle
+    enddo mySlipSystems
   endif
 
-enddo   ! neighbor cycle
+enddo neighbors
 
 compatibility(1:2,1:ns,1:ns,1:Nneighbors,i,e) = my_compatibility
 

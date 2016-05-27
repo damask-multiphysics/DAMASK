@@ -873,7 +873,7 @@ subroutine plastic_phenoplus_microstructure(orientation,ipc,ip,el)
    ENDDO LOOPFINDNEISHEAR
 
    !***calculate the average accumulative shear and use it as cutoff
-   avg_acshear_ne = SUM(ne_acshear)/ns
+   avg_acshear_ne = sum(ne_acshear)/real(ns,pReal)
 
    !***
    IF (ph==neighbor_ph) THEN

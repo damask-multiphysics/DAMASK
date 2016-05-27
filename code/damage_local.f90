@@ -223,7 +223,7 @@ subroutine damage_local_getSourceAndItsTangent(phiDot, dPhiDot_dPhi, phi, ip, el
  use material, only: &
    homogenization_Ngrains, &
    mappingHomogenization, &
-   phaseAt, phasememberAt, &
+   phaseAt, &
    phase_source, &
    phase_Nsources, &
    SOURCE_damage_isoBrittle_ID, &
@@ -280,8 +280,8 @@ subroutine damage_local_getSourceAndItsTangent(phiDot, dPhiDot_dPhi, phi, ip, el
    enddo  
  enddo
  
- phiDot = phiDot/homogenization_Ngrains(mappingHomogenization(2,ip,el))
- dPhiDot_dPhi = dPhiDot_dPhi/homogenization_Ngrains(mappingHomogenization(2,ip,el))
+ phiDot = phiDot/real(homogenization_Ngrains(mappingHomogenization(2,ip,el)),pReal)
+ dPhiDot_dPhi = dPhiDot_dPhi/real(homogenization_Ngrains(mappingHomogenization(2,ip,el)),pReal)
  
 end subroutine damage_local_getSourceAndItsTangent
 

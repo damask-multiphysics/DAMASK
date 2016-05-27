@@ -199,6 +199,8 @@ contains
 !--------------------------------------------------------------------------------------------------
 subroutine plastic_dislotwin_init(fileUnit)
  use, intrinsic :: iso_fortran_env                                                                  ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
+ use prec, only: &
+   dNeq
  use debug, only: &
    debug_level,&
    debug_constitutive,&
@@ -773,8 +775,8 @@ subroutine plastic_dislotwin_init(fileUnit)
       if (plastic_dislotwin_sbVelocity(instance) > 0.0_pReal .and. &
           plastic_dislotwin_pShearBand(instance) <= 0.0_pReal) &
         call IO_error(211_pInt,el=instance,ext_msg='pShearBand ('//PLASTICITY_DISLOTWIN_label//')')
-      if (abs(plastic_dislotwin_dipoleFormationFactor(instance)) >  tiny(0.0_pReal) .and. &
-               plastic_dislotwin_dipoleFormationFactor(instance) /= 1.0_pReal) &
+      if (dNeq(plastic_dislotwin_dipoleFormationFactor(instance), 0.0_pReal) .and. &
+          dNeq(plastic_dislotwin_dipoleFormationFactor(instance), 1.0_pReal)) &
         call IO_error(211_pInt,el=instance,ext_msg='dipoleFormationFactor ('//PLASTICITY_DISLOTWIN_label//')')
       if (plastic_dislotwin_sbVelocity(instance) > 0.0_pReal .and. &
           plastic_dislotwin_qShearBand(instance) <= 0.0_pReal) &
