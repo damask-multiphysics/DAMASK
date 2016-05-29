@@ -761,6 +761,8 @@ end function math_inv33
 !   returns error if not possible, i.e. if det close to zero
 !--------------------------------------------------------------------------------------------------
 pure subroutine math_invert33(A, InvA, DetA, error)
+ use prec, only: &
+   dEq
 
  implicit none
  logical, intent(out) :: error
@@ -774,7 +776,7 @@ pure subroutine math_invert33(A, InvA, DetA, error)
 
  DetA = A(1,1) * InvA(1,1) + A(1,2) * InvA(2,1) + A(1,3) * InvA(3,1)
 
- if (abs(DetA) <= tiny(DetA)) then
+ if (dEq(DetA,0.0_pReal)) then
    InvA = 0.0_pReal
    error = .true.
  else
@@ -1279,6 +1281,8 @@ end function math_qNorm
 !> @brief quaternion inversion
 !--------------------------------------------------------------------------------------------------
 pure function math_qInv(Q)
+ use prec, only: &
+   dNeq
 
  implicit none
  real(pReal), dimension(4), intent(in) ::  Q
@@ -1288,8 +1292,7 @@ pure function math_qInv(Q)
  math_qInv = 0.0_pReal
 
  squareNorm = math_qDot(Q,Q)
- if (abs(squareNorm) > tiny(squareNorm)) &
-   math_qInv = math_qConj(Q) / squareNorm
+ if (dNeq(squareNorm,0.0_pReal)) math_qInv = math_qConj(Q) / squareNorm
 
 end function math_qInv
 
@@ -2093,6 +2096,8 @@ end function math_eigenvectorBasisSym33
 !> @brief rotational part from polar decomposition of 33 tensor m
 !--------------------------------------------------------------------------------------------------
 function math_rotationalPart33(m)
+ use prec, only: &
+   dEq
  use IO, only: &
    IO_warning
 
@@ -2104,12 +2109,12 @@ function math_rotationalPart33(m)
  U = math_eigenvectorBasisSym33(math_mul33x33(transpose(m),m))
  Uinv = math_inv33(U)
 
- if (all(abs(Uinv) <= tiny(Uinv))) then                                                             ! math_inv33 returns zero when failed, avoid floating point equality comparison
+ inversionFailed: if (all(dEq(Uinv,0.0_pReal))) then
    math_rotationalPart33 = math_I3
    call IO_warning(650_pInt)
- else
+ else inversionFailed
    math_rotationalPart33 = math_mul33x33(m,Uinv)
- endif
+ endif inversionFailed
 
 end function math_rotationalPart33
 

@@ -402,7 +402,7 @@ subroutine utilities_updateGamma(C,saveReference)
  integer(pInt) :: &
    i, j, k, &
    l, m, n, o
- logical :: ierr
+ logical :: err
 
  C_ref = C
  if (saveReference) then
@@ -426,7 +426,7 @@ subroutine utilities_updateGamma(C,saveReference)
        matA(1:3,1:3) = real(temp33_complex); matA(4:6,4:6) = real(temp33_complex)
        matA(1:3,4:6) = aimag(temp33_complex); matA(4:6,1:3) = -aimag(temp33_complex)
        if (abs(math_det33(matA(1:3,1:3))) > 1e-16) then
-         call math_invert(6_pInt, matA, matInvA, ierr)
+         call math_invert(6_pInt, matA, matInvA, err)
          temp33_complex = cmplx(matInvA(1:3,1:3),matInvA(1:3,4:6),pReal)
          forall(l=1_pInt:3_pInt, m=1_pInt:3_pInt, n=1_pInt:3_pInt, o=1_pInt:3_pInt) &
            gamma_hat(l,m,n,o,i,j,k-grid3Offset) =  temp33_complex(l,n)* &
@@ -938,6 +938,10 @@ end subroutine utilities_fourierTensorDivergence
 !--------------------------------------------------------------------------------------------------
 subroutine utilities_constitutiveResponse(F_lastInc,F,timeinc, &
                                           P,C_volAvg,C_minmaxAvg,P_av,forwardData,rotation_BC)
+ use prec, only: &
+   dNeq
+ use IO, only: &
+   IO_error
  use debug, only: &
    debug_reset, &
    debug_info
@@ -976,10 +980,9 @@ subroutine utilities_constitutiveResponse(F_lastInc,F,timeinc, &
    age
 
  integer(pInt) :: &
-   j,k
+   j,k,ierr
  real(pReal), dimension(3,3,3,3) :: max_dPdF, min_dPdF
  real(pReal)   :: max_dPdF_norm, min_dPdF_norm, defgradDetMin, defgradDetMax, defgradDet
- PetscErrorCode :: ierr
 
  external :: &
    MPI_Reduce, &
@@ -1013,7 +1016,9 @@ subroutine utilities_constitutiveResponse(F_lastInc,F,timeinc, &
      defgradDetMin = min(defgradDetMin,defgradDet)
    end do
    call MPI_reduce(MPI_IN_PLACE,defgradDetMax,1,MPI_DOUBLE,MPI_MAX,0,PETSC_COMM_WORLD,ierr)
+   if(ierr /=0_pInt) call IO_error(894_pInt, ext_msg='MPI_Allreduce max')
    call MPI_reduce(MPI_IN_PLACE,defgradDetMin,1,MPI_DOUBLE,MPI_MIN,0,PETSC_COMM_WORLD,ierr)
+   if(ierr /=0_pInt) call IO_error(894_pInt, ext_msg='MPI_Allreduce min')
    if (worldrank == 0_pInt) then
      write(6,'(a,1x,es11.4)') ' max determinant of deformation =', defgradDetMax
      write(6,'(a,1x,es11.4)') ' min determinant of deformation =', defgradDetMin
@@ -1039,7 +1044,9 @@ subroutine utilities_constitutiveResponse(F_lastInc,F,timeinc, &
  end do
 
  call MPI_Allreduce(MPI_IN_PLACE,max_dPdF,81,MPI_DOUBLE,MPI_MAX,PETSC_COMM_WORLD,ierr)
+ if(ierr /=0_pInt) call IO_error(894_pInt, ext_msg='MPI_Allreduce max')
  call MPI_Allreduce(MPI_IN_PLACE,min_dPdF,81,MPI_DOUBLE,MPI_MIN,PETSC_COMM_WORLD,ierr)
+ if(ierr /=0_pInt) call IO_error(894_pInt, ext_msg='MPI_Allreduce min')
 
  C_minmaxAvg = 0.5_pReal*(max_dPdF + min_dPdF)
  C_volAvg = sum(sum(materialpoint_dPdF,dim=6),dim=5) * wgt
@@ -1194,6 +1201,10 @@ end function utilities_getFreqDerivative
 ! convolution
 !--------------------------------------------------------------------------------------------------
 subroutine utilities_updateIPcoords(F)
+ use prec, only: &
+   cNeq
+ use IO, only: &
+   IO_error
  use math, only: &
    math_mul33x3
  use mesh, only: &
@@ -1205,10 +1216,9 @@ subroutine utilities_updateIPcoords(F)
  implicit none
 
  real(pReal),   dimension(3,3,grid(1),grid(2),grid3), intent(in) :: F
- integer(pInt) :: i, j, k, m
+ integer(pInt) :: i, j, k, m, ierr
  real(pReal),   dimension(3) :: step, offset_coords
  real(pReal),   dimension(3,3) :: Favg
- PetscErrorCode :: ierr
  external &
    MPI_Bcast
 
@@ -1219,8 +1229,8 @@ subroutine utilities_updateIPcoords(F)
  call utilities_FFTtensorForward()
  call utilities_fourierTensorDivergence()
 
- do k = 1_pInt, grid3; do j = 1_pInt, grid(2) ;do i = 1_pInt, grid1Red
-   if (any(abs(xi1st(1:3,i,j,k)) > tiny(0.0_pReal))) &
+ do k = 1_pInt, grid3; do j = 1_pInt, grid(2); do i = 1_pInt, grid1Red
+   if (any(cNeq(xi1st(1:3,i,j,k),cmplx(0.0_pReal,0.0_pReal)))) &
      vectorField_fourier(1:3,i,j,k) = vectorField_fourier(1:3,i,j,k)/ &
                                       sum(conjg(-xi1st(1:3,i,j,k))*xi1st(1:3,i,j,k))
  enddo; enddo; enddo
@@ -1230,12 +1240,14 @@ subroutine utilities_updateIPcoords(F)
 ! average F
  if (grid3Offset == 0_pInt) Favg = real(tensorField_fourier(1:3,1:3,1,1,1),pReal)*wgt
  call MPI_Bcast(Favg,9,MPI_DOUBLE,0,PETSC_COMM_WORLD,ierr)
+ if(ierr /=0_pInt) call IO_error(894_pInt, ext_msg='update_IPcoords')
 
 !--------------------------------------------------------------------------------------------------
 ! add average to fluctuation and put (0,0,0) on (0,0,0)
  step = geomSize/real(grid, pReal)
  if (grid3Offset == 0_pInt) offset_coords = vectorField_real(1:3,1,1,1)
  call MPI_Bcast(offset_coords,3,MPI_DOUBLE,0,PETSC_COMM_WORLD,ierr)
+ if(ierr /=0_pInt) call IO_error(894_pInt, ext_msg='update_IPcoords')
  offset_coords = math_mul33x3(Favg,step/2.0_pReal) - offset_coords
  m = 1_pInt
  do k = 1_pInt,grid3; do j = 1_pInt,grid(2); do i = 1_pInt,grid(1)

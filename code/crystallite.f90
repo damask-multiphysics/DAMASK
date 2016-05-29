@@ -843,7 +843,7 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
            !$OMP DO PRIVATE(neighboring_e,neighboring_i)
            do e = FEsolving_execElem(1),FEsolving_execElem(2)
              do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
-               if (.not. crystallite_localPlasticity(1,i,e) .and. abs(crystallite_subFrac(1,i,e)) > tiny(0.0_pReal)) then
+               if (.not. crystallite_localPlasticity(1,i,e) .and. dNeq(crystallite_subFrac(1,i,e),0.0_pReal)) then
                  do n = 1_pInt,FE_NipNeighbors(FE_celltype(FE_geomtype(mesh_element(2,e))))
                    neighboring_e = mesh_ipNeighborhood(1,n,i,e)
                    neighboring_i = mesh_ipNeighborhood(2,n,i,e)
@@ -3623,6 +3623,7 @@ logical function crystallite_integrateStress(&
 
  !* inversion of Fi_current...
 
+ invFi_current = math_inv33(Fi_current)
  failedInversionFi: if (all(dEq(invFi_current,0.0_pReal))) then
 #ifndef _OPENMP
    if (iand(debug_level(debug_crystallite), debug_levelBasic) /= 0_pInt) then
@@ -3883,7 +3884,7 @@ logical function crystallite_integrateStress(&
  invFp_new = math_mul33x33(invFp_current,B)
  invFp_new = invFp_new / math_det33(invFp_new)**(1.0_pReal/3.0_pReal)                               ! regularize by det
  Fp_new = math_inv33(invFp_new)
- failedInversionFp2: if (all(dEq(invFp_new,0.0_pReal))) then
+ failedInversionInvFp: if (all(dEq(Fp_new,0.0_pReal))) then
 #ifndef _OPENMP
    if (iand(debug_level(debug_crystallite), debug_levelBasic) /= 0_pInt) then
      write(6,'(a,i8,1x,a,i8,a,1x,i2,1x,i3,a,i3)') '<< CRYST >> integrateStress failed on invFp_new inversion at el ip ipc ',&
@@ -3895,7 +3896,7 @@ logical function crystallite_integrateStress(&
    endif
 #endif
    return
- endif failedInversionFp2
+ endif failedInversionInvFp
  Fe_new = math_mul33x33(math_mul33x33(Fg_new,invFp_new),invFi_new)    ! calc resulting Fe
 
  !* calculate 1st Piola-Kirchhoff stress

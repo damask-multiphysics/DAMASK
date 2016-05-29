@@ -524,6 +524,8 @@ end subroutine plastic_isotropic_LiAndItsTangent
 !> @brief calculates the rate of change of microstructure
 !--------------------------------------------------------------------------------------------------
 subroutine plastic_isotropic_dotState(Tstar_v,ipc,ip,el)
+ use prec, only: &
+   dEq
  use math, only: &
    math_mul6x6
  use material, only: &
@@ -570,7 +572,7 @@ subroutine plastic_isotropic_dotState(Tstar_v,ipc,ip,el)
 !--------------------------------------------------------------------------------------------------
 ! hardening coefficient
  if (abs(gamma_dot) > 1e-12_pReal) then
-   if (abs(param(instance)%tausat_SinhFitA) <= tiny(0.0_pReal)) then
+   if (dEq(param(instance)%tausat_SinhFitA,0.0_pReal)) then
      saturation = param(instance)%tausat
    else
      saturation = (  param(instance)%tausat &

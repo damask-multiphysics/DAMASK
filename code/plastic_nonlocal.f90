@@ -1549,6 +1549,8 @@ end subroutine plastic_nonlocal_aTolState
 !> @brief calculates quantities characterizing the microstructure
 !--------------------------------------------------------------------------------------------------
 subroutine plastic_nonlocal_microstructure(Fe, Fp, ip, el)
+use prec, only: &
+  dEq
 use IO, only: &
   IO_error
 use math, only: &
@@ -1792,7 +1794,7 @@ if (.not. phase_localPlasticity(ph) .and. shortRangeStressCorrection(instance)) 
                                   - neighbor_rhoExcess(c,s,neighbors(2))
       enddo
       invConnections = math_inv33(connections)
-      if (all(abs(invConnections) <= tiny(0.0_pReal))) &                                            ! check for failed in version (math_inv33 returns 0) and avoid floating point equality comparison
+      if (all(dEq(invConnections,0.0_pReal))) &
         call IO_error(-1_pInt,ext_msg='back stress calculation: inversion error')
       rhoExcessGradient(c) = math_mul3x3(m(1:3,s,c), &
                                          math_mul33x3(invConnections,rhoExcessDifferences))
@@ -2200,6 +2202,8 @@ end subroutine plastic_nonlocal_LpAndItsTangent
 !> @brief (instantaneous) incremental change of microstructure
 !--------------------------------------------------------------------------------------------------
 subroutine plastic_nonlocal_deltaState(Tstar_v,ip,el)
+use prec, only: &
+  dNeq
 use debug,    only: debug_level, &
                     debug_constitutive, &
                     debug_levelBasic, &
@@ -2322,8 +2326,8 @@ dUpper(1:ns,2) = lattice_mu(ph) * burgers(1:ns,instance) / (4.0_pReal * pi * abs
 
 
 forall (c = 1_pInt:2_pInt)
-  where(sqrt(rhoSgl(1:ns,2*c-1)+rhoSgl(1:ns,2*c)+&
-        abs(rhoSgl(1:ns,2*c+3))+abs(rhoSgl(1:ns,2*c+4))+rhoDip(1:ns,c)) >= tiny(0.0_pReal)) &
+  where(dNeq(sqrt(rhoSgl(1:ns,2*c-1)+rhoSgl(1:ns,2*c)+&
+             abs(rhoSgl(1:ns,2*c+3))+abs(rhoSgl(1:ns,2*c+4))+rhoDip(1:ns,c)),0.0_pReal)) &
     dUpper(1:ns,c) = min(1.0_pReal / sqrt(rhoSgl(1:ns,2*c-1) + rhoSgl(1:ns,2*c) & 
                        + abs(rhoSgl(1:ns,2*c+3)) + abs(rhoSgl(1:ns,2*c+4)) + rhoDip(1:ns,c)), &
                        dUpper(1:ns,c))
@@ -2335,7 +2339,7 @@ deltaDUpper = dUpper - dUpperOld
 !*** dissociation by stress increase
 deltaRhoDipole2SingleStress = 0.0_pReal
 forall (c=1_pInt:2_pInt, s=1_pInt:ns, deltaDUpper(s,c) < 0.0_pReal .and. &
-                                        abs(dUpperOld(s,c) - dLower(s,c)) > tiny(0.0_pReal)) &
+                                        dNeq(dUpperOld(s,c) - dLower(s,c),0.0_pReal)) &
   deltaRhoDipole2SingleStress(s,8_pInt+c) = rhoDip(s,c) * deltaDUpper(s,c) &
                                            / (dUpperOld(s,c) - dLower(s,c))
 
@@ -2383,7 +2387,8 @@ subroutine plastic_nonlocal_dotState(Tstar_v, Fe, Fp, Temperature, &
                                      timestep,subfrac, ip,el)
 
 use prec,     only: DAMASK_NaN, &
-                    dNeq
+                    dNeq, &
+                    dEq
 use numerics, only: numerics_integrationMode, &
                     numerics_timeSyncing
 use IO,       only: IO_error
@@ -2617,8 +2622,8 @@ dUpper(1:ns,1) = lattice_mu(ph) * burgers(1:ns,instance) &
 dUpper(1:ns,2) = lattice_mu(ph) * burgers(1:ns,instance) &
                / (4.0_pReal * pi * abs(tau))
 forall (c = 1_pInt:2_pInt)
-  where(sqrt(rhoSgl(1:ns,2*c-1)+rhoSgl(1:ns,2*c)+&
-        abs(rhoSgl(1:ns,2*c+3))+abs(rhoSgl(1:ns,2*c+4))+rhoDip(1:ns,c)) >= tiny(0.0_pReal)) &
+  where(dNeq(sqrt(rhoSgl(1:ns,2*c-1)+rhoSgl(1:ns,2*c)+&
+             abs(rhoSgl(1:ns,2*c+3))+abs(rhoSgl(1:ns,2*c+4))+rhoDip(1:ns,c)),0.0_pReal)) &
     dUpper(1:ns,c) = min(1.0_pReal / sqrt(rhoSgl(1:ns,2*c-1) + rhoSgl(1:ns,2*c) & 
                        + abs(rhoSgl(1:ns,2*c+3)) + abs(rhoSgl(1:ns,2*c+4)) + rhoDip(1:ns,c)), &
                        dUpper(1:ns,c))
@@ -2830,11 +2835,11 @@ if (.not. phase_localPlasticity(material_phase(1_pInt,ip,el))) then             
       my_rhoSgl = rhoSgl
       my_v = v
       if(numerics_timeSyncing) then
-        if (abs(subfrac(1_pInt,ip,el))<= tiny(0.0_pReal)) then
+        if (dEq(subfrac(1_pInt,ip,el),0.0_pReal)) then
           my_rhoSgl = rhoSgl0
           my_v = v0
         elseif (neighbor_n > 0_pInt) then
-          if (abs(subfrac(1_pInt,neighbor_ip,neighbor_el))<= tiny(0.0_pReal)) then
+          if (dEq(subfrac(1_pInt,neighbor_ip,neighbor_el),0.0_pReal)) then
             my_rhoSgl = rhoSgl0
             my_v = v0
           endif
@@ -3172,6 +3177,8 @@ end subroutine plastic_nonlocal_updateCompatibility
 !* calculates quantities characterizing the microstructure           *
 !*********************************************************************
 function plastic_nonlocal_dislocationstress(Fe, ip, el)
+use prec, only: &
+  dEq
 use math,     only: math_mul33x33, &
                     math_mul33x3, &
                     math_inv33, &
@@ -3384,7 +3391,7 @@ if (.not. phase_localPlasticity(ph)) then
                     Rsquare = R * R
                     Rcube = Rsquare * R 
                     denominator = R * (R + flipSign * lambda)
-                    if (abs(denominator)<= tiny(0.0_pReal)) exit ipLoop
+                    if (dEq(denominator,0.0_pReal)) exit ipLoop
                       
                     sigma(1,1) = sigma(1,1) - real(side,pReal) &
                                             * flipSign * z / denominator &
@@ -3429,7 +3436,7 @@ if (.not. phase_localPlasticity(ph)) then
                     Rsquare = R * R
                     Rcube = Rsquare * R 
                     denominator = R * (R + flipSign * lambda)
-                    if (abs(denominator)<= tiny(0.0_pReal)) exit ipLoop
+                    if (dEq(denominator,0.0_pReal)) exit ipLoop
                     
                     sigma(1,2) = sigma(1,2) - real(side,pReal) * flipSign * z &
                                                                * (1.0_pReal - lattice_nu(ph)) / denominator &
@@ -3518,6 +3525,8 @@ end function plastic_nonlocal_dislocationstress
 !> @brief return array of constitutive results
 !--------------------------------------------------------------------------------------------------
 function plastic_nonlocal_postResults(Tstar_v,Fe,ip,el)
+ use prec, only: &
+   dNeq
  use math, only: &
    math_mul6x6, &
    math_mul33x3, &
@@ -3634,8 +3643,8 @@ dUpper(1:ns,1) = lattice_mu(ph) * burgers(1:ns,instance) &
 dUpper(1:ns,2) = lattice_mu(ph) * burgers(1:ns,instance) &
                / (4.0_pReal * pi * abs(tau))
 forall (c = 1_pInt:2_pInt)
-  where(sqrt(rhoSgl(1:ns,2*c-1)+rhoSgl(1:ns,2*c)+&
-        abs(rhoSgl(1:ns,2*c+3))+abs(rhoSgl(1:ns,2*c+4))+rhoDip(1:ns,c)) >= tiny(0.0_pReal)) &
+  where(dNeq(sqrt(rhoSgl(1:ns,2*c-1)+rhoSgl(1:ns,2*c)+&
+             abs(rhoSgl(1:ns,2*c+3))+abs(rhoSgl(1:ns,2*c+4))+rhoDip(1:ns,c)),0.0_pReal)) &
     dUpper(1:ns,c) = min(1.0_pReal / sqrt(rhoSgl(1:ns,2*c-1) + rhoSgl(1:ns,2*c) & 
                        + abs(rhoSgl(1:ns,2*c+3)) + abs(rhoSgl(1:ns,2*c+4)) + rhoDip(1:ns,c)), &
                        dUpper(1:ns,c))

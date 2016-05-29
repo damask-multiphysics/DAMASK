@@ -981,7 +981,8 @@ end subroutine plastic_disloUCLA_LpAndItsTangent
 !--------------------------------------------------------------------------------------------------
 subroutine plastic_disloUCLA_dotState(Tstar_v,Temperature,ipc,ip,el)
  use prec, only: &
-   tol_math_check
+   tol_math_check, &
+   dEq
  use math, only: &
    pi
  use material, only: &
@@ -1119,7 +1120,7 @@ subroutine plastic_disloUCLA_dotState(Tstar_v,Temperature,ipc,ip,el)
      !* Dipole formation
      EdgeDipMinDistance = &
        plastic_disloUCLA_CEdgeDipMinDistance(instance)*plastic_disloUCLA_burgersPerSlipSystem(j,instance)
-     if (abs(tau_slip_pos) <= tiny(0.0_pReal)) then
+     if (dEq(tau_slip_pos,0.0_pReal)) then
        DotRhoDipFormation = 0.0_pReal
      else
        EdgeDipDistance = &
@@ -1147,7 +1148,7 @@ subroutine plastic_disloUCLA_dotState(Tstar_v,Temperature,ipc,ip,el)
         plastic_disloUCLA_CAtomicVolume(instance)*plastic_disloUCLA_burgersPerSlipSystem(j,instance)**(3.0_pReal)
      VacancyDiffusion = &
         plastic_disloUCLA_D0(instance)*exp(-plastic_disloUCLA_Qsd(instance)/(kB*Temperature))
-     if (abs(tau_slip_pos) <= tiny(0.0_pReal)) then
+     if (dEq(tau_slip_pos,0.0_pReal)) then
        DotRhoEdgeDipClimb = 0.0_pReal
      else
        ClimbVelocity = &
@@ -1180,7 +1181,8 @@ end subroutine plastic_disloUCLA_dotState
 !--------------------------------------------------------------------------------------------------
 function plastic_disloUCLA_postResults(Tstar_v,Temperature,ipc,ip,el)
  use prec, only: &
-   tol_math_check
+   tol_math_check, &
+   dEq
  use math, only: &
    pi
  use material, only: &
@@ -1408,7 +1410,7 @@ function plastic_disloUCLA_postResults(Tstar_v,Temperature,ipc,ip,el)
           c = c + ns
         elseif(plastic_disloUCLA_outputID(o,instance) == stress_exponent_ID) then
           do j = 1_pInt, ns
-            if (abs(gdot_slip_pos(j)+gdot_slip_neg(j))<=tiny(0.0_pReal)) then
+            if (dEq(gdot_slip_pos(j)+gdot_slip_neg(j),0.0_pReal)) then
               plastic_disloUCLA_postResults(c+j) = 0.0_pReal
             else
               plastic_disloUCLA_postResults(c+j) = (tau_slip_pos(j)+tau_slip_neg(j))/&
