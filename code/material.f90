@@ -1232,6 +1232,8 @@ end subroutine material_parseTexture
 !! calculates the volume of the grains and deals with texture components and hybridIA
 !--------------------------------------------------------------------------------------------------
 subroutine material_populateGrains
+ use prec, only: &
+   dEq
  use math, only: &
    math_RtoEuler, &
    math_EulerToR, &
@@ -1371,7 +1373,7 @@ subroutine material_populateGrains
          else
            forall (i = 1_pInt:FE_Nips(t)) &                                                         ! loop over IPs
              volumeOfGrain(grain+(i-1)*dGrains+1_pInt:grain+i*dGrains) = &
-               mesh_ipVolume(i,e)/dGrains                                                           ! assign IPvolume/Ngrains@IP to all grains of IP
+               mesh_ipVolume(i,e)/real(dGrains,pReal)                                               ! assign IPvolume/Ngrains@IP to all grains of IP
            grain = grain + FE_Nips(t) * dGrains                                                     ! wind forward by Nips*Ngrains@IP
          endif
        enddo
@@ -1393,7 +1395,7 @@ subroutine material_populateGrains
 
        NgrainsOfConstituent = 0_pInt                                                                ! reset counter of grains per constituent
        forall (i = 1_pInt:myNconstituents) &
-         NgrainsOfConstituent(i) = nint(microstructure_fraction(i,micro) * myNgrains, pInt)         ! do rounding integer conversion
+         NgrainsOfConstituent(i) = nint(microstructure_fraction(i,micro)*real(myNgrains,pReal),pInt)! do rounding integer conversion
        do while (sum(NgrainsOfConstituent) /= myNgrains)                                            ! total grain count over constituents wrong?
          sgn = sign(1_pInt, myNgrains - sum(NgrainsOfConstituent))                                  ! direction of required change
          extreme = 0.0_pReal
@@ -1434,24 +1436,24 @@ subroutine material_populateGrains
 ! ...has texture components
          if (texture_ODFfile(textureID) == '') then
            gauss: do t = 1_pInt,texture_Ngauss(textureID)                                           ! loop over Gauss components
-             do g = 1_pInt,int(myNorientations*texture_Gauss(5,t,textureID),pInt)                   ! loop over required grain count
+             do g = 1_pInt,int(real(myNorientations,pReal)*texture_Gauss(5,t,textureID),pInt)       ! loop over required grain count
                orientationOfGrain(:,grain+constituentGrain+g) = &
                  math_sampleGaussOri(texture_Gauss(1:3,t,textureID),&
                                      texture_Gauss(  4,t,textureID))
              enddo
              constituentGrain = &
-             constituentGrain + int(myNorientations*texture_Gauss(5,t,textureID))                   ! advance counter for grains of current constituent
+             constituentGrain + int(real(myNorientations,pReal)*texture_Gauss(5,t,textureID))       ! advance counter for grains of current constituent
            enddo gauss
 
            fiber: do t = 1_pInt,texture_Nfiber(textureID)                                           ! loop over fiber components
-             do g = 1_pInt,int(myNorientations*texture_Fiber(6,t,textureID),pInt)                   ! loop over required grain count
+             do g = 1_pInt,int(real(myNorientations,pReal)*texture_Fiber(6,t,textureID),pInt)       ! loop over required grain count
                orientationOfGrain(:,grain+constituentGrain+g) = &
                  math_sampleFiberOri(texture_Fiber(1:2,t,textureID),&
                                      texture_Fiber(3:4,t,textureID),&
                                      texture_Fiber(  5,t,textureID))
              enddo
              constituentGrain = &
-             constituentGrain + int(myNorientations*texture_fiber(6,t,textureID),pInt)              ! advance counter for grains of current constituent
+             constituentGrain + int(real(myNorientations,pReal)*texture_fiber(6,t,textureID),pInt)  ! advance counter for grains of current constituent
            enddo fiber
 
            random: do constituentGrain = constituentGrain+1_pInt,myNorientations                    ! fill remainder with random
@@ -1462,7 +1464,7 @@ subroutine material_populateGrains
          else
            orientationOfGrain(1:3,grain+1_pInt:grain+myNorientations) = &
                                             IO_hybridIA(myNorientations,texture_ODFfile(textureID))
-           if (all(orientationOfGrain(1:3,grain+1_pInt) == -1.0_pReal)) call IO_error(156_pInt)
+           if (all(dEq(orientationOfGrain(1:3,grain+1_pInt),-1.0_pReal))) call IO_error(156_pInt)
          endif
 
 !--------------------------------------------------------------------------------------------------
@@ -1501,7 +1503,7 @@ subroutine material_populateGrains
 
          do j = 1_pInt,NgrainsOfConstituent(i)-1_pInt                                               ! walk thru grains of current constituent
            call random_number(rnd)
-           t = nint(rnd*(NgrainsOfConstituent(i)-j)+j+0.5_pReal,pInt)                               ! select a grain in remaining list
+           t = nint(rnd*real(NgrainsOfConstituent(i)-j,pReal)+real(j,pReal)+0.5_pReal,pInt)       ! select a grain in remaining list
            m                               = phaseOfGrain(grain+t)                                  ! exchange current with random
            phaseOfGrain(grain+t)           = phaseOfGrain(grain+j)
            phaseOfGrain(grain+j)           = m
@@ -1539,7 +1541,7 @@ subroutine material_populateGrains
            randomOrder = math_range(microstructure_maxNconstituents)                                ! start out with ordered sequence of constituents
            call random_number(rndArray)                                                             ! as many rnd numbers as (max) constituents
            do j = 1_pInt, myNconstituents - 1_pInt                                                  ! loop over constituents ...
-             r = nint(rndArray(j)*(myNconstituents-j)+j+0.5_pReal,pInt)                             ! ... select one in remaining list
+             r = nint(rndArray(j)*real(myNconstituents-j,pReal)+real(j,pReal)+0.5_pReal,pInt)       ! ... select one in remaining list
              c = randomOrder(r)                                                                     ! ... call it "c"
              randomOrder(r) = randomOrder(j)                                                        ! ... and exchange with present position in constituent list
              grain = sum(NgrainsOfConstituent(1:c-1_pInt))                                          ! figure out actual starting index in overall/consecutive grain population

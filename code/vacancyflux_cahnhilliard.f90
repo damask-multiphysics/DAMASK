@@ -219,7 +219,7 @@ subroutine vacancyflux_cahnhilliard_getSourceAndItsTangent(CvDot, dCvDot_dCv, Cv
  use material, only: &
    homogenization_Ngrains, &
    mappingHomogenization, &
-   phaseAt, phasememberAt, &
+   phaseAt, &
    phase_source, &
    phase_Nsources, &
    SOURCE_vacancy_phenoplasticity_ID, &
@@ -266,8 +266,8 @@ subroutine vacancyflux_cahnhilliard_getSourceAndItsTangent(CvDot, dCvDot_dCv, Cv
    enddo  
  enddo
  
- CvDot = CvDot/homogenization_Ngrains(mappingHomogenization(2,ip,el))
- dCvDot_dCv = dCvDot_dCv/homogenization_Ngrains(mappingHomogenization(2,ip,el))
+ CvDot = CvDot/real(homogenization_Ngrains(mappingHomogenization(2,ip,el)),pReal)
+ dCvDot_dCv = dCvDot_dCv/real(homogenization_Ngrains(mappingHomogenization(2,ip,el)),pReal)
  
 end subroutine vacancyflux_cahnhilliard_getSourceAndItsTangent
 
@@ -301,8 +301,7 @@ function vacancyflux_cahnhilliard_getMobility33(ip,el)
  enddo
 
  vacancyflux_cahnhilliard_getMobility33 = &
-   vacancyflux_cahnhilliard_getMobility33/ &
-   homogenization_Ngrains(mesh_element(3,el))
+   vacancyflux_cahnhilliard_getMobility33/real(homogenization_Ngrains(mesh_element(3,el)),pReal)
  
 end function vacancyflux_cahnhilliard_getMobility33
  
@@ -336,8 +335,7 @@ function vacancyflux_cahnhilliard_getDiffusion33(ip,el)
  enddo
 
  vacancyflux_cahnhilliard_getDiffusion33 = &
-   vacancyflux_cahnhilliard_getDiffusion33/ &
-   homogenization_Ngrains(mesh_element(3,el))
+   vacancyflux_cahnhilliard_getDiffusion33/real(homogenization_Ngrains(mesh_element(3,el)),pReal)
  
 end function vacancyflux_cahnhilliard_getDiffusion33
  
@@ -371,8 +369,7 @@ real(pReal) function vacancyflux_cahnhilliard_getFormationEnergy(ip,el)
  enddo
 
  vacancyflux_cahnhilliard_getFormationEnergy = &
-   vacancyflux_cahnhilliard_getFormationEnergy/ &
-   homogenization_Ngrains(mesh_element(3,el))
+   vacancyflux_cahnhilliard_getFormationEnergy/real(homogenization_Ngrains(mesh_element(3,el)),pReal)
  
 end function vacancyflux_cahnhilliard_getFormationEnergy
  
@@ -408,7 +405,7 @@ real(pReal) function vacancyflux_cahnhilliard_getEntropicCoeff(ip,el)
  vacancyflux_cahnhilliard_getEntropicCoeff = &
    vacancyflux_cahnhilliard_getEntropicCoeff* &
    temperature(material_homog(ip,el))%p(thermalMapping(material_homog(ip,el))%p(ip,el))/ &
-   homogenization_Ngrains(material_homog(ip,el))
+   real(homogenization_Ngrains(material_homog(ip,el)),pReal)
  
 end function vacancyflux_cahnhilliard_getEntropicCoeff
  
@@ -467,8 +464,8 @@ subroutine vacancyflux_cahnhilliard_KinematicChemPotAndItsTangent(KPot, dKPot_dC
    enddo
  enddo 
  
- KPot = KPot/homogenization_Ngrains(material_homog(ip,el))  
- dKPot_dCv = dKPot_dCv/homogenization_Ngrains(material_homog(ip,el))  
+ KPot = KPot/real(homogenization_Ngrains(material_homog(ip,el)),pReal)
+ dKPot_dCv = dKPot_dCv/real(homogenization_Ngrains(material_homog(ip,el)),pReal)
 
 end subroutine vacancyflux_cahnhilliard_KinematicChemPotAndItsTangent
  

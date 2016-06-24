@@ -13,10 +13,10 @@ module math
 
  implicit none
  private
- real(pReal),    parameter, public :: PI = 3.14159265358979323846264338327950288419716939937510_pReal !< ratio of a circle's circumference to its diameter
+ real(pReal),    parameter, public :: PI = 3.141592653589793_pReal                                  !< ratio of a circle's circumference to its diameter
  real(pReal),    parameter, public :: INDEG = 180.0_pReal/PI                                        !< conversion from radian into degree
  real(pReal),    parameter, public :: INRAD = PI/180.0_pReal                                        !< conversion from degree into radian
- complex(pReal), parameter, public :: TWOPIIMG = (0.0_pReal,2.0_pReal)* PI                          !< Re(0.0), Im(2xPi)
+ complex(pReal), parameter, public :: TWOPIIMG = (0.0_pReal,2.0_pReal)*(PI,0.0_pReal)               !< Re(0.0), Im(2xPi)
 
  real(pReal), dimension(3,3), parameter, public :: &
    MATH_I3 = reshape([&
@@ -723,6 +723,8 @@ end function math_transpose33
 !   returns all zeroes if not possible, i.e. if det close to zero
 !--------------------------------------------------------------------------------------------------
 pure function math_inv33(A)
+ use prec, only: &
+   dNeq
 
  implicit none
  real(pReal),dimension(3,3),intent(in)  :: A
@@ -735,7 +737,7 @@ pure function math_inv33(A)
 
  DetA = A(1,1) * math_inv33(1,1) + A(1,2) * math_inv33(2,1) + A(1,3) * math_inv33(3,1)
 
- if (abs(DetA) > tiny(DetA)) then                                             ! use a real threshold here
+ if (dNeq(DetA,0.0_pReal)) then
    math_inv33(1,2) = -A(1,2) * A(3,3) + A(1,3) * A(3,2)
    math_inv33(2,2) =  A(1,1) * A(3,3) - A(1,3) * A(3,1)
    math_inv33(3,2) = -A(1,1) * A(3,2) + A(1,2) * A(3,1)
@@ -759,6 +761,8 @@ end function math_inv33
 !   returns error if not possible, i.e. if det close to zero
 !--------------------------------------------------------------------------------------------------
 pure subroutine math_invert33(A, InvA, DetA, error)
+ use prec, only: &
+   dEq
 
  implicit none
  logical, intent(out) :: error
@@ -772,7 +776,7 @@ pure subroutine math_invert33(A, InvA, DetA, error)
 
  DetA = A(1,1) * InvA(1,1) + A(1,2) * InvA(2,1) + A(1,3) * InvA(3,1)
 
- if (abs(DetA) <= tiny(DetA)) then
+ if (dEq(DetA,0.0_pReal)) then
    InvA = 0.0_pReal
    error = .true.
  else
@@ -1277,6 +1281,8 @@ end function math_qNorm
 !> @brief quaternion inversion
 !--------------------------------------------------------------------------------------------------
 pure function math_qInv(Q)
+ use prec, only: &
+   dNeq
 
  implicit none
  real(pReal), dimension(4), intent(in) ::  Q
@@ -1286,8 +1292,7 @@ pure function math_qInv(Q)
  math_qInv = 0.0_pReal
 
  squareNorm = math_qDot(Q,Q)
- if (abs(squareNorm) > tiny(squareNorm)) &
-   math_qInv = math_qConj(Q) / squareNorm
+ if (dNeq(squareNorm,0.0_pReal)) math_qInv = math_qConj(Q) / squareNorm
 
 end function math_qInv
 
@@ -2091,6 +2096,8 @@ end function math_eigenvectorBasisSym33
 !> @brief rotational part from polar decomposition of 33 tensor m
 !--------------------------------------------------------------------------------------------------
 function math_rotationalPart33(m)
+ use prec, only: &
+   dEq
  use IO, only: &
    IO_warning
 
@@ -2102,12 +2109,12 @@ function math_rotationalPart33(m)
  U = math_eigenvectorBasisSym33(math_mul33x33(transpose(m),m))
  Uinv = math_inv33(U)
 
- if (all(abs(Uinv) <= tiny(Uinv))) then                                                             ! math_inv33 returns zero when failed, avoid floating point equality comparison
+ inversionFailed: if (all(dEq(Uinv,0.0_pReal))) then
    math_rotationalPart33 = math_I3
    call IO_warning(650_pInt)
- else
+ else inversionFailed
    math_rotationalPart33 = math_mul33x33(m,Uinv)
- endif
+ endif inversionFailed
 
 end function math_rotationalPart33
 

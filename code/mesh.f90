@@ -963,7 +963,7 @@ subroutine mesh_build_ipCoordinates
        do n = 1_pInt,FE_NcellnodesPerCell(c)                                                        ! loop over cell nodes in this cell
          myCoords = myCoords + mesh_cellnode(1:3,mesh_cell(n,i,e))
        enddo
-       mesh_ipCoordinates(1:3,i,e) = myCoords / FE_NcellnodesPerCell(c)
+       mesh_ipCoordinates(1:3,i,e) = myCoords / real(FE_NcellnodesPerCell(c),pReal)
      enddo
    enddo
  !$OMP END PARALLEL DO
@@ -990,7 +990,7 @@ pure function mesh_cellCenterCoordinates(ip,el)
  do n = 1_pInt,FE_NcellnodesPerCell(c)                                                               ! loop over cell nodes in this cell
    mesh_cellCenterCoordinates = mesh_cellCenterCoordinates + mesh_cellnode(1:3,mesh_cell(n,ip,el))
  enddo
- mesh_cellCenterCoordinates = mesh_cellCenterCoordinates / FE_NcellnodesPerCell(c)
+ mesh_cellCenterCoordinates = mesh_cellCenterCoordinates / real(FE_NcellnodesPerCell(c),pReal)
 
  end function mesh_cellCenterCoordinates
 
@@ -3070,7 +3070,6 @@ use IO, only: &
 
  implicit none
  integer(pInt), intent(in) :: fileUnit
-
 #ifndef Spectral
  integer(pInt), allocatable, dimension(:) :: chunkPos
  integer(pInt) chunk, Nchunks
@@ -3082,10 +3081,9 @@ use IO, only: &
  mesh_periodicSurface = .true.
 #else
  mesh_periodicSurface = .false.
-#ifdef Marc4DAMASK 
+#if defined(Marc4DAMASK)
  keyword = '$damask'
-#endif
-#ifdef Abaqus
+#elif defined(Abaqus)
  keyword = '**damask'
 #endif
 
@@ -3693,6 +3691,7 @@ integer(pInt) function FE_mapElemtype(what)
            'c3d20t')
       FE_mapElemtype = 13_pInt           ! Three-dimensional Arbitrarily Distorted quadratic hexahedral
     case default 
+      FE_mapElemtype = -1_pInt           ! error return
       call IO_error(error_ID=190_pInt,ext_msg=IO_lc(what))
  end select
 
@@ -3701,6 +3700,7 @@ end function FE_mapElemtype
 
 !--------------------------------------------------------------------------------------------------
 !> @brief find face-matching element of same type
+!> @details currently not used, check if needed for HDF5 output, otherwise delete
 !--------------------------------------------------------------------------------------------------
 subroutine mesh_faceMatch(elem, face ,matchingElem, matchingFace)
 

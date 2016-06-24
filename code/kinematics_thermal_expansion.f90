@@ -77,7 +77,6 @@ subroutine kinematics_thermal_expansion_init(fileUnit)
  integer(pInt) :: maxNinstance,phase,instance,kinematics
  character(len=65536) :: &
    tag     = '', &
-   output  = '', &
    line    = ''
 
  mainProcess: if (worldrank == 0) then 

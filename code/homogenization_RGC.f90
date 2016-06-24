@@ -386,6 +386,8 @@ end subroutine homogenization_RGC_partitionDeformation
 ! "happy" with result
 !--------------------------------------------------------------------------------------------------
 function homogenization_RGC_updateState(P,F,F0,avgF,dt,dPdF,ip,el)
+ use prec, only: &
+   dEq
  use debug, only: &
    debug_level, &
    debug_homogenization,&
@@ -441,10 +443,10 @@ function homogenization_RGC_updateState(P,F,F0,avgF,dt,dPdF,ip,el)
  real(pReal), dimension(:,:), allocatable :: tract,jmatrix,jnverse,smatrix,pmatrix,rmatrix
  real(pReal), dimension(:), allocatable   :: resid,relax,p_relax,p_resid,drelax
  
- if(abs(dt) < tiny(0.0_pReal)) then                                                                  ! zero time step
-   homogenization_RGC_updateState = .true.                                                           ! pretend everything is fine and return
+ zeroTimeStep: if(dEq(dt,0.0_pReal)) then
+   homogenization_RGC_updateState = .true.                                                          ! pretend everything is fine and return
    return                                                                    
- endif
+ endif zeroTimeStep
 
 !--------------------------------------------------------------------------------------------------
 ! get the dimension of the cluster (grains and interfaces)
