@@ -176,10 +176,6 @@ type(tSolutionState) function spectral_damage_solution(guess,timeinc,timeinc_old
    itmax, &
    err_damage_tolAbs, &
    err_damage_tolRel
- use spectral_utilities, only: &
-   tBoundaryCondition, &
-   Utilities_maskedCompliance, &
-   Utilities_updateGamma
  use mesh, only: &
    grid, &
    grid3
