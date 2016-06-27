@@ -3,11 +3,84 @@
 
 import os,sys
 import numpy as np
+import math
+import scipy.ndimage
 from optparse import OptionParser
 import damask
 
 scriptName = os.path.splitext(os.path.basename(__file__))[0]
 scriptID   = ' '.join([scriptName,damask.version])
+
+#--------------------------------------------------------------------------------------------------
+def cell2node(cellData,grid):
+
+  nodeData = 0.0
+  datalen = np.array(cellData.shape[3:]).prod()
+  
+  for i in xrange(datalen):
+    node = scipy.ndimage.convolve(cellData.reshape(tuple(grid)+(datalen,))[...,i],
+                                  np.ones((2,2,2))/8.,                                              # 2x2x2 neighborhood of cells
+                                  mode = 'wrap',
+                                  origin = -1,                                                      # offset to have cell origin as center
+                                 )                                                                  # now averaged at cell origins
+    node = np.append(node,node[np.newaxis,0,:,:,...],axis=0)                                        # wrap along z
+    node = np.append(node,node[:,0,np.newaxis,:,...],axis=1)                                        # wrap along y
+    node = np.append(node,node[:,:,0,np.newaxis,...],axis=2)                                        # wrap along x
+
+    nodeData = node[...,np.newaxis] if i==0 else np.concatenate((nodeData,node[...,np.newaxis]),axis=-1)
+
+  return nodeData
+
+#--------------------------------------------------------------------------------------------------
+def displacementAvgFFT(F,grid,size,nodal=False,transformed=False):
+  """calculate average cell center (or nodal) displacement for deformation gradient field specified in each grid cell"""
+  if nodal:
+    x, y, z = np.meshgrid(np.linspace(0,size[0],1+grid[0]),
+                          np.linspace(0,size[1],1+grid[1]),
+                          np.linspace(0,size[2],1+grid[2]),
+                          indexing = 'ij')
+  else:
+    x, y, z = np.meshgrid(np.linspace(0,size[0],grid[0],endpoint=False),
+                          np.linspace(0,size[1],grid[1],endpoint=False),
+                          np.linspace(0,size[2],grid[2],endpoint=False),
+                          indexing = 'ij')
+
+  origCoords = np.concatenate((z[:,:,:,None],y[:,:,:,None],x[:,:,:,None]),axis = 3) 
+
+  F_fourier = F if transformed else np.fft.rfftn(F,axes=(0,1,2))                                    # transform or use provided data
+  Favg = np.real(F_fourier[0,0,0,:,:])/grid.prod()                                                  # take zero freq for average
+  avgDisplacement = np.einsum('ml,ijkl->ijkm',Favg-np.eye(3),origCoords)                            # dX = Favg.X
+
+  return avgDisplacement
+
+#--------------------------------------------------------------------------------------------------
+def displacementFluctFFT(F,grid,size,nodal=False,transformed=False):
+  """calculate cell center (or nodal) displacement for deformation gradient field specified in each grid cell"""
+  integrator = 0.5j * size / math.pi
+
+  kk, kj, ki = np.meshgrid(np.where(np.arange(grid[2])>grid[2]//2,np.arange(grid[2])-grid[2],np.arange(grid[2])),
+                           np.where(np.arange(grid[1])>grid[1]//2,np.arange(grid[1])-grid[1],np.arange(grid[1])),
+                                    np.arange(grid[0]//2+1),
+                           indexing = 'ij')
+  k_s = np.concatenate((ki[:,:,:,None],kj[:,:,:,None],kk[:,:,:,None]),axis = 3) 
+  k_sSquared = np.einsum('...l,...l',k_s,k_s)
+  k_sSquared[0,0,0] = 1.0                                                                           # ignore global average frequency
+
+#--------------------------------------------------------------------------------------------------
+# integration in Fourier space
+
+  displacement_fourier = +np.einsum('ijkml,ijkl,l->ijkm',
+                                    F if transformed else np.fft.rfftn(F,axes=(0,1,2)),
+                                    k_s,
+                                    integrator,
+                                   ) / k_sSquared[...,np.newaxis]
+
+#--------------------------------------------------------------------------------------------------
+# backtransformation to real space
+
+  displacement = np.fft.irfftn(displacement_fourier,grid,axes=(0,1,2))
+
+  return cell2node(displacement,grid) if nodal else displacement
 
 
 def volTetrahedron(coords):
@@ -188,66 +261,71 @@ for name in filenames:
   errors  = []
   remarks = []
   
-  if table.label_dimension(options.pos) != 3:
-    errors.append('coordinates "{}" are not a vector.'.format(options.pos))
-  else: colCoord = table.label_index(options.pos)
-
   if table.label_dimension(options.defgrad) != 9:
-    errors.append('deformation gradient "{}" is not a tensor.'.format(options.defgrad))
-  else: colF = table.label_index(options.defgrad)
+    errors.append('deformation gradient "{}" is not a 3x3 tensor.'.format(options.defgrad))
+
+  coordDim = table.label_dimension(options.pos)
+  if not 3 >= coordDim >= 1:
+    errors.append('coordinates "{}" need to have one, two, or three dimensions.'.format(options.pos))
+  elif coordDim < 3:
+    remarks.append('appending {} dimension{} to coordinates "{}"...'.format(3-coordDim,
+                                                                            's' if coordDim < 2 else '',
+                                                                            options.pos))
 
   if remarks != []: damask.util.croak(remarks)
   if errors  != []:
     damask.util.croak(errors)
-    table.close(dismiss = True)
+    table.close(dismiss=True)
     continue
-
-# ------------------------------------------ assemble header --------------------------------------
-
-  table.info_append(scriptID + '\t' + ' '.join(sys.argv[1:]))
-  if options.shape:  table.labels_append('shapeMismatch({})'.format(options.defgrad))
-  if options.volume: table.labels_append('volMismatch({})'.format(options.defgrad))
 
 # --------------- figure out size and grid ---------------------------------------------------------
 
-  table.data_readArray()
+  table.data_readArray([options.defgrad,options.pos])
+  table.data_rewind()
 
-  coords = [np.unique(table.data[:,colCoord+i]) for i in xrange(3)]
+  if len(table.data.shape) < 2: table.data.shape += (1,)                                            # expand to 2D shape
+  if table.data[:,9:].shape[1] < 3:
+    table.data = np.hstack((table.data,
+                            np.zeros((table.data.shape[0],
+                                      3-table.data[:,9:].shape[1]),dtype='f')))                     # fill coords up to 3D with zeros
+
+  coords = [np.unique(table.data[:,9+i]) for i in xrange(3)]
   mincorner = np.array(map(min,coords))
   maxcorner = np.array(map(max,coords))
   grid   = np.array(map(len,coords),'i')
   size   = grid/np.maximum(np.ones(3,'d'), grid-1.0) * (maxcorner-mincorner)                        # size from edge to edge = dim * n/(n-1) 
-  size   = np.where(grid > 1, size, min(size[grid > 1]/grid[grid > 1]))                             # grid==1 spacing set to smallest among other ones
+  size   = np.where(grid > 1, size, min(size[grid > 1]/grid[grid > 1]))                             # spacing for grid==1 set to smallest among other spacings
 
   N = grid.prod()
-  
-# --------------- figure out columns to process  ---------------------------------------------------
-  key = '1_'+options.defgrad
-  if table.label_index(key) == -1:
-    damask.util.croak('column "{}" not found...'.format(key))
+
+  if N != len(table.data): errors.append('data count {} does not match grid {}x{}x{}.'.format(N,*grid))
+  if errors  != []:
+    damask.util.croak(errors)
+    table.close(dismiss = True)
     continue
-  else:
-    column = table.label_index(key)                                                                 # remember columns of requested data
-
-# ------------------------------------------ assemble header ---------------------------------------
-  if options.shape:  table.labels_append(['shapeMismatch({})'.format(options.defgrad)])
-  if options.volume: table.labels_append(['volMismatch({})'.format(options.defgrad)])
-  table.head_write()
-
-# ------------------------------------------ read deformation gradient field -----------------------
-  table.data_rewind()
-  F = np.zeros(N*9,'d').reshape([3,3]+list(grid))
-  idx = 0
-  while table.data_read():    
-    (x,y,z) = damask.util.gridLocation(idx,grid)                                                     # figure out (x,y,z) position from line count
-    idx += 1
-    F[0:3,0:3,x,y,z] = np.array(map(float,table.data[column:column+9]),'d').reshape(3,3)
-  Favg = damask.core.math.tensorAvg(F)
-  centres = damask.core.mesh.deformedCoordsFFT(size,F,Favg,[1.0,1.0,1.0])
   
-  nodes   = damask.core.mesh.nodesAroundCentres(size,Favg,centres)
-  if options.shape:   shapeMismatch = shapeMismatch( size,F,nodes,centres)
-  if options.volume: volumeMismatch = volumeMismatch(size,F,nodes)
+# -----------------------------process data and assemble header -------------------------------------
+
+  F_fourier = np.fft.rfftn(table.data[:,:9].reshape(grid[2],grid[1],grid[0],3,3),axes=(0,1,2))      # perform transform only once...
+  nodes = np.vstack(np.meshgrid(np.linspace(0.0,size[0],grid[0]+1),
+                                np.linspace(0.0,size[1],grid[1]+1),
+                                np.linspace(0.0,size[2],grid[2]+1))).reshape([3,17,17,17]).T\
+        + displacementFluctFFT(F_fourier,grid,size,True,transformed=True)\
+        + displacementAvgFFT  (F_fourier,grid,size,True,transformed=True)
+  if options.shape:
+    table.labels_append(['shapeMismatch({})'.format(options.defgrad)])
+    centres = np.vstack(np.meshgrid(np.linspace(size[0]/grid[0]*.5,size[0]-size[0]/grid[0]*.5,grid[0]),
+                                    np.linspace(size[1]/grid[1]*.5,size[1]-size[1]/grid[1]*.5,grid[1]),
+                                    np.linspace(size[2]/grid[2]*.5,size[2]-size[2]/grid[2]*.5,grid[2]))).reshape([3,16,16,16]).T\
+        + displacementFluctFFT(F_fourier,grid,size,False,transformed=True)\
+        + displacementAvgFFT  (F_fourier,grid,size,False,transformed=True)
+
+  if options.volume:
+    table.labels_append(['volMismatch({})'.format(options.defgrad)])
+
+  table.head_write()
+  if options.shape:   shapeMismatch = shapeMismatch( size,table.data[:,:9].reshape(grid[2],grid[1],grid[0],3,3),nodes,centres)
+  if options.volume: volumeMismatch = volumeMismatch(size,table.data[:,:9].reshape(grid[2],grid[1],grid[0],3,3),nodes)
 
 # ------------------------------------------ process data ------------------------------------------
   table.data_rewind()
@@ -262,4 +340,5 @@ for name in filenames:
 
 # ------------------------------------------ output finalization -----------------------------------  
 
-  table.close()                                                                                     # close ASCII tables
+  table.close()               
+
