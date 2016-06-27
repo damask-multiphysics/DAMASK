@@ -235,7 +235,7 @@ subroutine vacancyflux_isochempot_getSourceAndItsTangent(CvDot, dCvDot_dCv, Cv, 
  use material, only: &
    homogenization_Ngrains, &
    mappingHomogenization, &
-   phaseAt, phasememberAt, &
+   phaseAt, &
    phase_source, &
    phase_Nsources, &
    SOURCE_vacancy_phenoplasticity_ID, &
@@ -282,8 +282,8 @@ subroutine vacancyflux_isochempot_getSourceAndItsTangent(CvDot, dCvDot_dCv, Cv, 
    enddo  
  enddo
  
- CvDot = CvDot/homogenization_Ngrains(mappingHomogenization(2,ip,el))
- dCvDot_dCv = dCvDot_dCv/homogenization_Ngrains(mappingHomogenization(2,ip,el))
+ CvDot = CvDot/real(homogenization_Ngrains(mappingHomogenization(2,ip,el)),pReal)
+ dCvDot_dCv = dCvDot_dCv/real(homogenization_Ngrains(mappingHomogenization(2,ip,el)),pReal)
  
 end subroutine vacancyflux_isochempot_getSourceAndItsTangent
 

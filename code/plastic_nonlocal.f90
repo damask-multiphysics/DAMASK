@@ -1549,6 +1549,8 @@ end subroutine plastic_nonlocal_aTolState
 !> @brief calculates quantities characterizing the microstructure
 !--------------------------------------------------------------------------------------------------
 subroutine plastic_nonlocal_microstructure(Fe, Fp, ip, el)
+use prec, only: &
+  dEq
 use IO, only: &
   IO_error
 use math, only: &
@@ -1792,7 +1794,7 @@ if (.not. phase_localPlasticity(ph) .and. shortRangeStressCorrection(instance)) 
                                   - neighbor_rhoExcess(c,s,neighbors(2))
       enddo
       invConnections = math_inv33(connections)
-      if (all(abs(invConnections) <= tiny(0.0_pReal))) &                                            ! check for failed in version (math_inv33 returns 0) and avoid floating point equality comparison
+      if (all(dEq(invConnections,0.0_pReal))) &
         call IO_error(-1_pInt,ext_msg='back stress calculation: inversion error')
       rhoExcessGradient(c) = math_mul3x3(m(1:3,s,c), &
                                          math_mul33x3(invConnections,rhoExcessDifferences))
@@ -2200,6 +2202,8 @@ end subroutine plastic_nonlocal_LpAndItsTangent
 !> @brief (instantaneous) incremental change of microstructure
 !--------------------------------------------------------------------------------------------------
 subroutine plastic_nonlocal_deltaState(Tstar_v,ip,el)
+use prec, only: &
+  dNeq
 use debug,    only: debug_level, &
                     debug_constitutive, &
                     debug_levelBasic, &
@@ -2322,8 +2326,8 @@ dUpper(1:ns,2) = lattice_mu(ph) * burgers(1:ns,instance) / (4.0_pReal * pi * abs
 
 
 forall (c = 1_pInt:2_pInt)
-  where(sqrt(rhoSgl(1:ns,2*c-1)+rhoSgl(1:ns,2*c)+&
-        abs(rhoSgl(1:ns,2*c+3))+abs(rhoSgl(1:ns,2*c+4))+rhoDip(1:ns,c)) >= tiny(0.0_pReal)) &
+  where(dNeq(sqrt(rhoSgl(1:ns,2*c-1)+rhoSgl(1:ns,2*c)+&
+             abs(rhoSgl(1:ns,2*c+3))+abs(rhoSgl(1:ns,2*c+4))+rhoDip(1:ns,c)),0.0_pReal)) &
     dUpper(1:ns,c) = min(1.0_pReal / sqrt(rhoSgl(1:ns,2*c-1) + rhoSgl(1:ns,2*c) & 
                        + abs(rhoSgl(1:ns,2*c+3)) + abs(rhoSgl(1:ns,2*c+4)) + rhoDip(1:ns,c)), &
                        dUpper(1:ns,c))
@@ -2335,7 +2339,7 @@ deltaDUpper = dUpper - dUpperOld
 !*** dissociation by stress increase
 deltaRhoDipole2SingleStress = 0.0_pReal
 forall (c=1_pInt:2_pInt, s=1_pInt:ns, deltaDUpper(s,c) < 0.0_pReal .and. &
-                                        abs(dUpperOld(s,c) - dLower(s,c)) > tiny(0.0_pReal)) &
+                                        dNeq(dUpperOld(s,c) - dLower(s,c),0.0_pReal)) &
   deltaRhoDipole2SingleStress(s,8_pInt+c) = rhoDip(s,c) * deltaDUpper(s,c) &
                                            / (dUpperOld(s,c) - dLower(s,c))
 
@@ -2382,7 +2386,9 @@ end subroutine plastic_nonlocal_deltaState
 subroutine plastic_nonlocal_dotState(Tstar_v, Fe, Fp, Temperature, &
                                      timestep,subfrac, ip,el)
 
-use prec,     only: DAMASK_NaN
+use prec,     only: DAMASK_NaN, &
+                    dNeq, &
+                    dEq
 use numerics, only: numerics_integrationMode, &
                     numerics_timeSyncing
 use IO,       only: IO_error
@@ -2616,8 +2622,8 @@ dUpper(1:ns,1) = lattice_mu(ph) * burgers(1:ns,instance) &
 dUpper(1:ns,2) = lattice_mu(ph) * burgers(1:ns,instance) &
                / (4.0_pReal * pi * abs(tau))
 forall (c = 1_pInt:2_pInt)
-  where(sqrt(rhoSgl(1:ns,2*c-1)+rhoSgl(1:ns,2*c)+&
-        abs(rhoSgl(1:ns,2*c+3))+abs(rhoSgl(1:ns,2*c+4))+rhoDip(1:ns,c)) >= tiny(0.0_pReal)) &
+  where(dNeq(sqrt(rhoSgl(1:ns,2*c-1)+rhoSgl(1:ns,2*c)+&
+             abs(rhoSgl(1:ns,2*c+3))+abs(rhoSgl(1:ns,2*c+4))+rhoDip(1:ns,c)),0.0_pReal)) &
     dUpper(1:ns,c) = min(1.0_pReal / sqrt(rhoSgl(1:ns,2*c-1) + rhoSgl(1:ns,2*c) & 
                        + abs(rhoSgl(1:ns,2*c+3)) + abs(rhoSgl(1:ns,2*c+4)) + rhoDip(1:ns,c)), &
                        dUpper(1:ns,c))
@@ -2760,8 +2766,7 @@ if (.not. phase_localPlasticity(material_phase(1_pInt,ip,el))) then             
     endif
     
     if (considerEnteringFlux) then
-      if(numerics_timeSyncing .and. (subfrac(1_pInt,neighbor_ip,neighbor_el) /= subfrac(1_pInt,ip,el))) &
-                                                                                              then  ! for timesyncing: in case of a timestep at the interface we have to use "state0" to make sure that fluxes n both sides are equal
+      if(numerics_timeSyncing .and. (dNeq(subfrac(1,neighbor_ip,neighbor_el),subfrac(1,ip,el)))) then  ! for timesyncing: in case of a timestep at the interface we have to use "state0" to make sure that fluxes n both sides are equal
         forall (s = 1:ns, t = 1_pInt:4_pInt)
 
           neighbor_v(s,t)  =         plasticState(np)%state0(iV   (s,t,neighbor_instance),no)
@@ -2830,11 +2835,11 @@ if (.not. phase_localPlasticity(material_phase(1_pInt,ip,el))) then             
       my_rhoSgl = rhoSgl
       my_v = v
       if(numerics_timeSyncing) then
-        if (abs(subfrac(1_pInt,ip,el))<= tiny(0.0_pReal)) then
+        if (dEq(subfrac(1_pInt,ip,el),0.0_pReal)) then
           my_rhoSgl = rhoSgl0
           my_v = v0
         elseif (neighbor_n > 0_pInt) then
-          if (abs(subfrac(1_pInt,neighbor_ip,neighbor_el))<= tiny(0.0_pReal)) then
+          if (dEq(subfrac(1_pInt,neighbor_ip,neighbor_el),0.0_pReal)) then
             my_rhoSgl = rhoSgl0
             my_v = v0
           endif
@@ -3078,13 +3083,11 @@ slipDirection(1:3,1:ns) = lattice_sd(1:3, slipSystemLattice(1:ns,instance), ph)
 !*** start out fully compatible
 
 my_compatibility = 0.0_pReal
-forall(s1 = 1_pInt:ns) &
-  my_compatibility(1:2,s1,s1,1:Nneighbors) = 1.0_pReal
-
+forall(s1 = 1_pInt:ns) my_compatibility(1:2,s1,s1,1:Nneighbors) = 1.0_pReal 
 
 !*** Loop thrugh neighbors and check whether there is any my_compatibility.
 
-do n = 1_pInt,Nneighbors
+neighbors: do n = 1_pInt,Nneighbors
   neighbor_e = mesh_ipNeighborhood(1,n,i,e)
   neighbor_i = mesh_ipNeighborhood(2,n,i,e)
   
@@ -3093,8 +3096,7 @@ do n = 1_pInt,Nneighbors
   !* Set surface transmissivity to the value specified in the material.config
   
   if (neighbor_e <= 0_pInt .or. neighbor_i <= 0_pInt) then
-    forall(s1 = 1_pInt:ns) &
-      my_compatibility(1:2,s1,s1,n) = sqrt(surfaceTransmissivity(instance))
+    forall(s1 = 1_pInt:ns) my_compatibility(1:2,s1,s1,n) = sqrt(surfaceTransmissivity(instance))
     cycle
   endif
   
@@ -3107,10 +3109,8 @@ do n = 1_pInt,Nneighbors
   
   neighbor_phase = material_phase(1,neighbor_i,neighbor_e)
   if (neighbor_phase /= ph) then
-    if (.not. phase_localPlasticity(neighbor_phase) .and. .not. phase_localPlasticity(ph)) then
-      forall(s1 = 1_pInt:ns) &
-        my_compatibility(1:2,s1,s1,n) = 0.0_pReal ! = sqrt(0.0)
-    endif
+    if (.not. phase_localPlasticity(neighbor_phase) .and. .not. phase_localPlasticity(ph))&
+      forall(s1 = 1_pInt:ns) my_compatibility(1:2,s1,s1,n) = 0.0_pReal
     cycle
   endif
 
@@ -3141,33 +3141,33 @@ do n = 1_pInt,Nneighbors
   else
     absoluteMisorientation = lattice_qDisorientation(orientation(1:4,1,i,e), &
                                                      orientation(1:4,1,neighbor_i,neighbor_e))      ! no symmetry
-    do s1 = 1_pInt,ns    ! my slip systems
-      do s2 = 1_pInt,ns  ! my neighbor's slip systems
+    mySlipSystems: do s1 = 1_pInt,ns
+      neighborSlipSystems: do s2 = 1_pInt,ns
         my_compatibility(1,s2,s1,n) =  math_mul3x3(slipNormal(1:3,s1), math_qRot(absoluteMisorientation, slipNormal(1:3,s2))) &
                                 * abs(math_mul3x3(slipDirection(1:3,s1), math_qRot(absoluteMisorientation, slipDirection(1:3,s2))))
         my_compatibility(2,s2,s1,n) = abs(math_mul3x3(slipNormal(1:3,s1), math_qRot(absoluteMisorientation, slipNormal(1:3,s2)))) &
                                 * abs(math_mul3x3(slipDirection(1:3,s1), math_qRot(absoluteMisorientation, slipDirection(1:3,s2))))
-      enddo
+      enddo neighborSlipSystems
       
       my_compatibilitySum = 0.0_pReal
       belowThreshold = .true.
       do while (my_compatibilitySum < 1.0_pReal .and. any(belowThreshold(1:ns)))
         thresholdValue = maxval(my_compatibility(2,1:ns,s1,n), belowThreshold(1:ns))              ! screws always positive
-        nThresholdValues = real(count(my_compatibility(2,1:ns,s1,n) == thresholdValue),pReal)
+        nThresholdValues = real(count(my_compatibility(2,1:ns,s1,n) >= thresholdValue),pReal)
         where (my_compatibility(2,1:ns,s1,n) >= thresholdValue) &
           belowThreshold(1:ns) = .false.
         if (my_compatibilitySum + thresholdValue * nThresholdValues > 1.0_pReal) &
-          where (abs(my_compatibility(1:2,1:ns,s1,n)) == thresholdValue) &                          ! MD: rather check below threshold?
+          where (abs(my_compatibility(1:2,1:ns,s1,n)) >= thresholdValue) &                          ! MD: rather check below threshold?
             my_compatibility(1:2,1:ns,s1,n) = sign((1.0_pReal - my_compatibilitySum) &
                                                  / nThresholdValues, my_compatibility(1:2,1:ns,s1,n))
         my_compatibilitySum = my_compatibilitySum + nThresholdValues * thresholdValue
       enddo
       where (belowThreshold(1:ns)) my_compatibility(1,1:ns,s1,n) = 0.0_pReal
       where (belowThreshold(1:ns)) my_compatibility(2,1:ns,s1,n) = 0.0_pReal
-    enddo ! my slip systems cycle
+    enddo mySlipSystems
   endif
 
-enddo   ! neighbor cycle
+enddo neighbors
 
 compatibility(1:2,1:ns,1:ns,1:Nneighbors,i,e) = my_compatibility
 
@@ -3177,6 +3177,8 @@ end subroutine plastic_nonlocal_updateCompatibility
 !* calculates quantities characterizing the microstructure           *
 !*********************************************************************
 function plastic_nonlocal_dislocationstress(Fe, ip, el)
+use prec, only: &
+  dEq
 use math,     only: math_mul33x33, &
                     math_mul33x3, &
                     math_inv33, &
@@ -3389,7 +3391,7 @@ if (.not. phase_localPlasticity(ph)) then
                     Rsquare = R * R
                     Rcube = Rsquare * R 
                     denominator = R * (R + flipSign * lambda)
-                    if (abs(denominator)<= tiny(0.0_pReal)) exit ipLoop
+                    if (dEq(denominator,0.0_pReal)) exit ipLoop
                       
                     sigma(1,1) = sigma(1,1) - real(side,pReal) &
                                             * flipSign * z / denominator &
@@ -3434,7 +3436,7 @@ if (.not. phase_localPlasticity(ph)) then
                     Rsquare = R * R
                     Rcube = Rsquare * R 
                     denominator = R * (R + flipSign * lambda)
-                    if (abs(denominator)<= tiny(0.0_pReal)) exit ipLoop
+                    if (dEq(denominator,0.0_pReal)) exit ipLoop
                     
                     sigma(1,2) = sigma(1,2) - real(side,pReal) * flipSign * z &
                                                                * (1.0_pReal - lattice_nu(ph)) / denominator &
@@ -3523,6 +3525,8 @@ end function plastic_nonlocal_dislocationstress
 !> @brief return array of constitutive results
 !--------------------------------------------------------------------------------------------------
 function plastic_nonlocal_postResults(Tstar_v,Fe,ip,el)
+ use prec, only: &
+   dNeq
  use math, only: &
    math_mul6x6, &
    math_mul33x3, &
@@ -3639,8 +3643,8 @@ dUpper(1:ns,1) = lattice_mu(ph) * burgers(1:ns,instance) &
 dUpper(1:ns,2) = lattice_mu(ph) * burgers(1:ns,instance) &
                / (4.0_pReal * pi * abs(tau))
 forall (c = 1_pInt:2_pInt)
-  where(sqrt(rhoSgl(1:ns,2*c-1)+rhoSgl(1:ns,2*c)+&
-        abs(rhoSgl(1:ns,2*c+3))+abs(rhoSgl(1:ns,2*c+4))+rhoDip(1:ns,c)) >= tiny(0.0_pReal)) &
+  where(dNeq(sqrt(rhoSgl(1:ns,2*c-1)+rhoSgl(1:ns,2*c)+&
+             abs(rhoSgl(1:ns,2*c+3))+abs(rhoSgl(1:ns,2*c+4))+rhoDip(1:ns,c)),0.0_pReal)) &
     dUpper(1:ns,c) = min(1.0_pReal / sqrt(rhoSgl(1:ns,2*c-1) + rhoSgl(1:ns,2*c) & 
                        + abs(rhoSgl(1:ns,2*c+3)) + abs(rhoSgl(1:ns,2*c+4)) + rhoDip(1:ns,c)), &
                        dUpper(1:ns,c))

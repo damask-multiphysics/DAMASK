@@ -11,7 +11,6 @@
 module DAMASK_interface
  use prec, only: &
    pInt
-
  implicit none
  private
 #ifdef PETSc
@@ -39,7 +38,6 @@ module DAMASK_interface
    IIO_intValue, &
    IIO_lc, &
    IIO_stringPos
-
 contains
 
 !--------------------------------------------------------------------------------------------------
@@ -63,6 +61,7 @@ subroutine DAMASK_interface_init(loadCaseParameterIn,geometryParameterIn)
    tag
  integer :: &
    i, &
+   threadLevel, &
    worldrank = 0
  integer, allocatable, dimension(:) :: &
    chunkPos
@@ -75,15 +74,22 @@ subroutine DAMASK_interface_init(loadCaseParameterIn,geometryParameterIn)
    quit,&
    MPI_Comm_rank,&
    PETScInitialize, &
+   MPI_Init_Thread, &
    MPI_abort
 
 !--------------------------------------------------------------------------------------------------
 ! PETSc Init
 #ifdef PETSc
-  call PetscInitialize(PETSC_NULL_CHARACTER,ierr)                                                   ! according to PETSc manual, that should be the first line in the code
+#ifdef _OPENMP
+ call MPI_Init_Thread(MPI_THREAD_FUNNELED,threadLevel,ierr);CHKERRQ(ierr)                           ! in case of OpenMP, don't rely on PETScInitialize doing MPI init
+ if (threadLevel<MPI_THREAD_FUNNELED) then
+   write(6,'(a)') 'MPI library does not support OpenMP'
+   call quit(1_pInt)
+ endif
+#endif
+ call PetscInitialize(PETSC_NULL_CHARACTER,ierr)                                                    ! according to PETSc manual, that should be the first line in the code
  CHKERRQ(ierr)                                                                                      ! this is a macro definition, it is case sensitive
-
- open(6, encoding='UTF-8')                                                                          ! modern fortran compilers (gfortran >4.4, ifort >11 support it)
+ open(6, encoding='UTF-8')
  call MPI_Comm_rank(PETSC_COMM_WORLD,worldrank,ierr);CHKERRQ(ierr)
 #endif
  mainProcess: if (worldrank == 0) then
@@ -99,7 +105,6 @@ subroutine DAMASK_interface_init(loadCaseParameterIn,geometryParameterIn)
    write(6,'(/,a)') ' <<<+-  DAMASK_interface init  -+>>>'
 #include "compilation_info.f90"
  endif mainProcess
-
  if ( present(loadcaseParameterIn) .and. present(geometryParameterIn)) then                         ! both mandatory parameters given in function call 
    geometryArg = geometryParameterIn
    loadcaseArg = loadcaseParameterIn
@@ -188,7 +193,7 @@ subroutine DAMASK_interface_init(loadCaseParameterIn,geometryParameterIn)
    call quit(1_pInt)
  endif
 
- workingDirectory = storeWorkingDirectory(trim(workingDirArg),trim(geometryArg))
+ workingDirectory = trim(storeWorkingDirectory(trim(workingDirArg),trim(geometryArg)))
  geometryFile = getGeometryFile(geometryArg)
  loadCaseFile = getLoadCaseFile(loadCaseArg)
 
@@ -221,49 +226,45 @@ end subroutine DAMASK_interface_init
 !> @todo  change working directory with call chdir(storeWorkingDirectory)?
 !--------------------------------------------------------------------------------------------------
 character(len=1024) function storeWorkingDirectory(workingDirectoryArg,geometryArg)
-#ifdef __INTEL_COMPILER
- use IFPORT
-#endif
+ use system_routines, only: &
+   isDirectory, &
+   getCWD
 
  implicit none
  character(len=*),  intent(in) :: workingDirectoryArg                                               !< working directory argument
  character(len=*),  intent(in) :: geometryArg                                                       !< geometry argument
  character(len=1024)           :: cwd
  character                     :: pathSep
- logical                       :: dirExists
+ logical                       :: error
  external                      :: quit
- integer                       :: error
 
  pathSep = getPathSep()
- if (len(workingDirectoryArg)>0) then                                                               ! got working directory as input
-   if (workingDirectoryArg(1:1) == pathSep) then                                                    ! absolute path given as command line argument
+ wdGiven: if (len(workingDirectoryArg)>0) then
+   absolutePath: if (workingDirectoryArg(1:1) == pathSep) then
      storeWorkingDirectory = workingDirectoryArg
-   else
-     error = getcwd(cwd)                                                                            ! relative path given as command line argument
+   else absolutePath
+     error = getCWD(cwd)
+     if (error) call quit(1_pInt)
      storeWorkingDirectory = trim(cwd)//pathSep//workingDirectoryArg
-   endif
-   if (storeWorkingDirectory(len(trim(storeWorkingDirectory)):len(trim(storeWorkingDirectory))) &   ! if path seperator is not given, append it
-      /= pathSep) storeWorkingDirectory = trim(storeWorkingDirectory)//pathSep
-#ifdef __INTEL_COMPILER
-   inquire(directory = trim(storeWorkingDirectory)//'.', exist=dirExists)
-#else
-   inquire(file = trim(storeWorkingDirectory), exist=dirExists)
-#endif
-   if(.not. dirExists) then                                                                         ! check if the directory exists
-     write(6,'(a20,a,a16)') ' working directory "',trim(storeWorkingDirectory),'" does not exist'
-     call quit(1_pInt)
-   endif
- else                                                                                               ! using path to geometry file as working dir
+   endif absolutePath
+   if (storeWorkingDirectory(len(trim(storeWorkingDirectory)):len(trim(storeWorkingDirectory))) /= pathSep) &
+     storeWorkingDirectory = trim(storeWorkingDirectory)//pathSep                                   ! if path seperator is not given, append it
+ else wdGiven
    if (geometryArg(1:1) == pathSep) then                                                            ! absolute path given as command line argument
      storeWorkingDirectory = geometryArg(1:scan(geometryArg,pathSep,back=.true.))
    else
-     error = getcwd(cwd)                                                                            ! relative path given as command line argument
-     storeWorkingDirectory = trim(cwd)//pathSep//&
-                              geometryArg(1:scan(geometryArg,pathSep,back=.true.))
+     error = getCWD(cwd)                                                                            ! relative path given as command line argument
+     if (error) call quit(1_pInt)
+     storeWorkingDirectory = trim(cwd)//pathSep//geometryArg(1:scan(geometryArg,pathSep,back=.true.))
    endif
+ endif wdGiven
+
+ storeWorkingDirectory = trim(rectifyPath(storeWorkingDirectory))
+ if(.not. isDirectory(trim(storeWorkingDirectory))) then                                            ! check if the directory exists
+     write(6,'(a20,a,a16)') ' working directory "',trim(storeWorkingDirectory),'" does not exist'
+     call quit(1_pInt)
  endif
- storeWorkingDirectory = rectifyPath(storeWorkingDirectory)
- 
+
 end function storeWorkingDirectory
 
 
@@ -309,9 +310,8 @@ end function getSolverJobName
 !> @brief basename of geometry file with extension from command line arguments
 !--------------------------------------------------------------------------------------------------
 character(len=1024) function getGeometryFile(geometryParameter)
-#ifdef __INTEL_COMPILER
- use IFPORT
-#endif
+ use system_routines, only: &
+   getCWD
 
  implicit none
  character(len=1024), intent(in) :: &
@@ -319,8 +319,9 @@ character(len=1024) function getGeometryFile(geometryParameter)
  character(len=1024) :: &
    cwd
  integer :: posExt, posSep
+ logical :: error
  character :: pathSep
- integer :: error
+ external  :: quit
 
  getGeometryFile = geometryParameter
  pathSep = getPathSep()
@@ -330,6 +331,7 @@ character(len=1024) function getGeometryFile(geometryParameter)
  if (posExt <= posSep) getGeometryFile = trim(getGeometryFile)//('.geom')                           ! no extension present
  if (scan(getGeometryFile,pathSep) /= 1) then                                                       ! relative path given as command line argument
    error = getcwd(cwd)
+   if (error) call quit(1_pInt)
    getGeometryFile = rectifyPath(trim(cwd)//pathSep//getGeometryFile)
  else
    getGeometryFile = rectifyPath(getGeometryFile)
@@ -344,17 +346,18 @@ end function getGeometryFile
 !> @brief relative path of loadcase from command line arguments
 !--------------------------------------------------------------------------------------------------
 character(len=1024) function getLoadCaseFile(loadCaseParameter)
-#ifdef __INTEL_COMPILER
- use IFPORT
-#endif
+ use system_routines, only: &
+   getCWD
 
  implicit none
  character(len=1024), intent(in) :: &
    loadCaseParameter
  character(len=1024) :: &
    cwd
- integer :: posExt, posSep, error
+ integer :: posExt, posSep
+ logical :: error
  character :: pathSep
+ external  :: quit
 
  getLoadCaseFile = loadcaseParameter
  pathSep = getPathSep()
@@ -364,6 +367,7 @@ character(len=1024) function getLoadCaseFile(loadCaseParameter)
  if (posExt <= posSep) getLoadCaseFile = trim(getLoadCaseFile)//('.load')                           ! no extension present
  if (scan(getLoadCaseFile,pathSep) /= 1) then                                                       ! relative path given as command line argument
    error = getcwd(cwd)
+   if (error) call quit(1_pInt)
    getLoadCaseFile = rectifyPath(trim(cwd)//pathSep//getLoadCaseFile)
  else
    getLoadCaseFile = rectifyPath(getLoadCaseFile)

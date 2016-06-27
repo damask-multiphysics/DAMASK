@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2
 # -*- coding: UTF-8 no BOM -*-
 
 import os,vtk
@@ -30,13 +30,15 @@ parser.add_option('-r', '--render',
                   dest = 'render',
                   action = 'store_true',
                   help = 'open output in VTK render window')
-parser.add_option('-s', '--scalar',   dest='scalar', action='extend', \
+parser.add_option('-s', '--scalar',   dest='scalar', action='extend',
+                  metavar ='<string LIST>',
                   help = 'scalar values')
 parser.add_option('-v', '--vector',
                   dest = 'vector',
                   action = 'extend', metavar = '<string LIST>',
                   help = 'vector value label(s)')
-parser.add_option('-c', '--color',   dest='color', action='extend', \
+parser.add_option('-c', '--color',   dest='color', action='extend',
+                  metavar ='<string LIST>',
                   help = 'RGB color tuples')
 
 parser.set_defaults(scalar = [],
@@ -51,13 +53,22 @@ parser.set_defaults(scalar = [],
 if not options.vtk:                 parser.error('No VTK file specified.')
 if not os.path.exists(options.vtk): parser.error('VTK file does not exist.')
 
-reader = vtk.vtkXMLPolyDataReader()
-reader.SetFileName(options.vtk)
-reader.Update()
-Npoints   = reader.GetNumberOfPoints()
-Ncells    = reader.GetNumberOfCells()
-Nvertices = reader.GetNumberOfVerts()
-Polydata  = reader.GetOutput()
+if os.path.splitext(options.vtk)[1] == '.vtp':
+  reader = vtk.vtkXMLPolyDataReader()
+  reader.SetFileName(options.vtk)
+  reader.Update()
+  Polydata = reader.GetOutput()
+elif os.path.splitext(options.vtk)[1] == '.vtk':
+  reader = vtk.vtkGenericDataObjectReader()
+  reader.SetFileName(options.vtk)
+  reader.Update()
+  Polydata = reader.GetPolyDataOutput()
+else:
+  parser.error('Unsupported VTK file type extension.')
+
+Npoints   = Polydata.GetNumberOfPoints()
+Ncells    = Polydata.GetNumberOfCells()
+Nvertices = Polydata.GetNumberOfVerts()
 
 if Npoints != Ncells or Npoints != Nvertices:
   parser.error('Number of points, cells, and vertices in VTK differ from each other.')

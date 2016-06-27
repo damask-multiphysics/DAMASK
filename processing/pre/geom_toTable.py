@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2
 # -*- coding: UTF-8 no BOM -*-
 
 import os,sys
@@ -14,23 +14,10 @@ scriptID   = ' '.join([scriptName,damask.version])
 #                                MAIN
 #--------------------------------------------------------------------------------------------------
 
-parser = OptionParser(option_class=damask.extendableOption, usage='%prog [geomfile[s]]', description = """
-Translate geom description into ASCIItable containing 1/2/3_pos and microstructure.
+parser = OptionParser(option_class=damask.extendableOption, usage='%prog [geomfile(s)]', description = """
+Translate geom description into ASCIItable containing position and microstructure.
 
 """, version = scriptID)
-
-parser.add_option('-p','--position',
-                  dest = 'position',
-                  type = 'string', metavar = 'string',
-                  help = 'column label for position [%default]')
-parser.add_option('-m','--microstructure',
-                  dest = 'microstructure',
-                  type = 'string', metavar = 'string',
-                  help = 'column label for microstructure index [%default]')
-
-parser.set_defaults(position = 'pos',
-                    microstructure = 'microstructure',
-                   )
 
 (options, filenames) = parser.parse_args()
 
@@ -39,10 +26,11 @@ parser.set_defaults(position = 'pos',
 if filenames == []: filenames = [None]
 
 for name in filenames:
-  try:
-    table = damask.ASCIItable(name = name,
-                              outname = os.path.splitext(name)[0]+'.txt' if name else name,
-                              buffered = False, labeled = False)
+  try:    table = damask.ASCIItable(name = name,
+                                    outname = os.path.splitext(name)[0]+'.txt' if name else name,
+                                    buffered = False,
+                                    labeled = False,
+                                   )
   except: continue
   damask.util.report(scriptName,name)
 
@@ -68,14 +56,14 @@ for name in filenames:
 
 # --- read data ------------------------------------------------------------------------------------
 
-  microstructure = table.microstructure_read(info['grid'])                                          # read microstructure
+  microstructure = table.microstructure_read(info['grid'])
 
 # ------------------------------------------ assemble header ---------------------------------------
 
   table.info_clear()
   table.info_append(extra_header + [scriptID + '\t' + ' '.join(sys.argv[1:])])
   table.labels_clear()
-  table.labels_append(['{}_{}'.format(1+i,options.position) for i in xrange(3)]+[options.microstructure])
+  table.labels_append(['{}_{}'.format(1+i,'pos') for i in xrange(3)]+['microstructure'])
   table.head_write()
   table.output_flush()
 

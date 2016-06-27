@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2
 # -*- coding: UTF-8 no BOM -*-
 
 import os,sys,math
@@ -6,22 +6,19 @@ import numpy as np
 import damask
 from scipy import ndimage
 from optparse import OptionParser
-from collections import defaultdict
 
 scriptName = os.path.splitext(os.path.basename(__file__))[0]
 scriptID   = ' '.join([scriptName,damask.version])
 
 def mostFrequent(arr):
-  d = defaultdict(int)
-  for i in arr: d[i] += 1
-  return sorted(d.iteritems(), key=lambda x: x[1], reverse=True)[0][0]                              # return value of most frequent microstructure
+  return np.argmax(np.bincount(arr))
 
 
 #--------------------------------------------------------------------------------------------------
 #                                MAIN
 #--------------------------------------------------------------------------------------------------
 
-parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
+parser = OptionParser(option_class=damask.extendableOption, usage='%prog option(s) [geomfile(s)]', description = """
 Smooth geometry by selecting most frequent microstructure index within given stencil at each location.
 
 """, version=scriptID)
@@ -43,10 +40,9 @@ parser.set_defaults(stencil = 3,
 if filenames == []: filenames = [None]
 
 for name in filenames:
-  try:
-    table = damask.ASCIItable(name = name,
-                              buffered = False,
-                              labeled = False)
+  try:    table = damask.ASCIItable(name     = name,
+                                    buffered = False,
+                                    labeled  = False)
   except: continue
   damask.util.report(scriptName,name)
 
@@ -72,7 +68,7 @@ for name in filenames:
 
 # --- read data ------------------------------------------------------------------------------------
 
-  microstructure = table.microstructure_read(info['grid']).reshape(info['grid'],order='F')                    # read microstructure
+  microstructure = table.microstructure_read(info['grid']).reshape(info['grid'],order='F')          # read microstructure
 
 # --- do work ------------------------------------------------------------------------------------
 

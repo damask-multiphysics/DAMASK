@@ -1,4 +1,3 @@
-!--------------------------------------------------------------------------------------------------
 !> @author Franz Roters, Max-Planck-Institut für Eisenforschung GmbH
 !> @author Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
 !> @brief material subroutine for phenomenological crystal plasticity formulation using a powerlaw
@@ -60,6 +59,7 @@ module plastic_phenopowerlaw
    plastic_phenopowerlaw_tau0_slip, &                                                          !< initial critical shear stress for slip (input parameter, per family)
    plastic_phenopowerlaw_tau0_twin, &                                                          !< initial critical shear stress for twin (input parameter, per family)
    plastic_phenopowerlaw_tausat_slip, &                                                        !< maximum critical shear stress for slip (input parameter, per family)
+   plastic_phenopowerlaw_H_int, &                                                              !< per family hardening activity(input parameter(optional), per family)
    plastic_phenopowerlaw_nonSchmidCoeff, &
 
    plastic_phenopowerlaw_interaction_SlipSlip, &                                               !< interaction factors slip - slip (input parameter)
@@ -124,6 +124,8 @@ contains
 !--------------------------------------------------------------------------------------------------
 subroutine plastic_phenopowerlaw_init(fileUnit)
  use, intrinsic :: iso_fortran_env                                                                  ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
+ use prec, only: &
+   dEq
  use debug, only: &
    debug_level, &
    debug_constitutive,&
@@ -197,29 +199,30 @@ subroutine plastic_phenopowerlaw_init(fileUnit)
                                                                                  source=0_pInt)
  allocate(plastic_phenopowerlaw_output(maxval(phase_Noutput),maxNinstance))
           plastic_phenopowerlaw_output               = ''
- allocate(plastic_phenopowerlaw_outputID(maxval(phase_Noutput),maxNinstance),    source=undefined_ID)
- allocate(plastic_phenopowerlaw_Noutput(maxNinstance),                           source=0_pInt)
- allocate(plastic_phenopowerlaw_Nslip(lattice_maxNslipFamily,maxNinstance),      source=0_pInt)
- allocate(plastic_phenopowerlaw_Ntwin(lattice_maxNtwinFamily,maxNinstance),      source=0_pInt)
- allocate(plastic_phenopowerlaw_Ntrans(lattice_maxNtransFamily,maxNinstance),    source=0_pInt)
- allocate(plastic_phenopowerlaw_totalNslip(maxNinstance),                        source=0_pInt)
- allocate(plastic_phenopowerlaw_totalNtwin(maxNinstance),                        source=0_pInt)
- allocate(plastic_phenopowerlaw_totalNtrans(maxNinstance),                       source=0_pInt)
- allocate(plastic_phenopowerlaw_gdot0_slip(maxNinstance),                        source=0.0_pReal)
- allocate(plastic_phenopowerlaw_n_slip(maxNinstance),                            source=0.0_pReal)
- allocate(plastic_phenopowerlaw_tau0_slip(lattice_maxNslipFamily,maxNinstance),  source=0.0_pReal)
+ allocate(plastic_phenopowerlaw_outputID(maxval(phase_Noutput),maxNinstance),source=undefined_ID)
+ allocate(plastic_phenopowerlaw_Noutput(maxNinstance),                       source=0_pInt)
+ allocate(plastic_phenopowerlaw_Nslip(lattice_maxNslipFamily,maxNinstance),  source=0_pInt)
+ allocate(plastic_phenopowerlaw_Ntwin(lattice_maxNtwinFamily,maxNinstance),  source=0_pInt)
+ allocate(plastic_phenopowerlaw_Ntrans(lattice_maxNtransFamily,maxNinstance),source=0_pInt)
+ allocate(plastic_phenopowerlaw_totalNslip(maxNinstance),                    source=0_pInt)
+ allocate(plastic_phenopowerlaw_totalNtwin(maxNinstance),                    source=0_pInt)
+ allocate(plastic_phenopowerlaw_totalNtrans(maxNinstance),                   source=0_pInt)
+ allocate(plastic_phenopowerlaw_gdot0_slip(maxNinstance),                    source=0.0_pReal)
+ allocate(plastic_phenopowerlaw_n_slip(maxNinstance),                        source=0.0_pReal)
+ allocate(plastic_phenopowerlaw_tau0_slip(lattice_maxNslipFamily,maxNinstance),source=0.0_pReal)
  allocate(plastic_phenopowerlaw_tausat_slip(lattice_maxNslipFamily,maxNinstance),source=0.0_pReal)
- allocate(plastic_phenopowerlaw_gdot0_twin(maxNinstance),                        source=0.0_pReal)
- allocate(plastic_phenopowerlaw_n_twin(maxNinstance),                            source=0.0_pReal)
- allocate(plastic_phenopowerlaw_tau0_twin(lattice_maxNtwinFamily,maxNinstance),  source=0.0_pReal)
- allocate(plastic_phenopowerlaw_spr(maxNinstance),                               source=0.0_pReal)
- allocate(plastic_phenopowerlaw_twinB(maxNinstance),                             source=0.0_pReal)
- allocate(plastic_phenopowerlaw_twinC(maxNinstance),                             source=0.0_pReal)
- allocate(plastic_phenopowerlaw_twinD(maxNinstance),                             source=0.0_pReal)
- allocate(plastic_phenopowerlaw_twinE(maxNinstance),                             source=0.0_pReal)
- allocate(plastic_phenopowerlaw_h0_SlipSlip(maxNinstance),                       source=0.0_pReal)
- allocate(plastic_phenopowerlaw_h0_TwinSlip(maxNinstance),                       source=0.0_pReal)
- allocate(plastic_phenopowerlaw_h0_TwinTwin(maxNinstance),                       source=0.0_pReal)
+ allocate(plastic_phenopowerlaw_H_int(lattice_maxNslipFamily,maxNinstance),source=0.0_pReal)
+ allocate(plastic_phenopowerlaw_gdot0_twin(maxNinstance),                    source=0.0_pReal)
+ allocate(plastic_phenopowerlaw_n_twin(maxNinstance),                        source=0.0_pReal)
+ allocate(plastic_phenopowerlaw_tau0_twin(lattice_maxNtwinFamily,maxNinstance), source=0.0_pReal)
+ allocate(plastic_phenopowerlaw_spr(maxNinstance),                           source=0.0_pReal)
+ allocate(plastic_phenopowerlaw_twinB(maxNinstance),                         source=0.0_pReal)
+ allocate(plastic_phenopowerlaw_twinC(maxNinstance),                         source=0.0_pReal)
+ allocate(plastic_phenopowerlaw_twinD(maxNinstance),                         source=0.0_pReal)
+ allocate(plastic_phenopowerlaw_twinE(maxNinstance),                         source=0.0_pReal)
+ allocate(plastic_phenopowerlaw_h0_SlipSlip(maxNinstance),                   source=0.0_pReal)
+ allocate(plastic_phenopowerlaw_h0_TwinSlip(maxNinstance),                   source=0.0_pReal)
+ allocate(plastic_phenopowerlaw_h0_TwinTwin(maxNinstance),                   source=0.0_pReal)
  allocate(plastic_phenopowerlaw_interaction_SlipSlip(lattice_maxNinteraction,maxNinstance), &
                                                                                  source=0.0_pReal)
  allocate(plastic_phenopowerlaw_interaction_SlipTwin(lattice_maxNinteraction,maxNinstance), &
@@ -340,7 +343,7 @@ subroutine plastic_phenopowerlaw_init(fileUnit)
          do j = 1_pInt, Nchunks_SlipFamilies
            plastic_phenopowerlaw_Nslip(j,instance) = IO_intValue(line,chunkPos,1_pInt+j)
          enddo
-       case ('tausat_slip','tau0_slip')
+       case ('tausat_slip','tau0_slip','H_int')
          tempPerSlip = 0.0_pReal
          do j = 1_pInt, Nchunks_SlipFamilies
            if (plastic_phenopowerlaw_Nslip(j,instance) > 0_pInt) &
@@ -351,6 +354,8 @@ subroutine plastic_phenopowerlaw_init(fileUnit)
              plastic_phenopowerlaw_tausat_slip(1:Nchunks_SlipFamilies,instance) = tempPerSlip(1:Nchunks_SlipFamilies)
            case ('tau0_slip')
              plastic_phenopowerlaw_tau0_slip(1:Nchunks_SlipFamilies,instance) = tempPerSlip(1:Nchunks_SlipFamilies)
+           case ('H_int')
+             plastic_phenopowerlaw_H_int(1:Nchunks_SlipFamilies,instance) = tempPerSlip(1:Nchunks_SlipFamilies)
          end select
 !--------------------------------------------------------------------------------------------------
 ! parameters depending on number of twin families
@@ -372,7 +377,7 @@ subroutine plastic_phenopowerlaw_init(fileUnit)
 ! parameters depending on number of transformation families
        case ('ntrans')
          if (chunkPos(1) < Nchunks_TransFamilies + 1_pInt) &
-           call IO_warning(51_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_PHENOPOWERLAW_label//')')
+           call IO_warning(53_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_PHENOPOWERLAW_label//')')
          if (chunkPos(1) > Nchunks_TransFamilies + 1_pInt) &
            call IO_error(150_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_PHENOPOWERLAW_label//')')
          Nchunks_TransFamilies = chunkPos(1) - 1_pInt
@@ -484,7 +489,7 @@ subroutine plastic_phenopowerlaw_init(fileUnit)
      if (any(plastic_phenopowerlaw_tausat_slip(:,instance) <= 0.0_pReal .and. &
              plastic_phenopowerlaw_Nslip(:,instance) > 0)) &
        call IO_error(211_pInt,el=instance,ext_msg='tausat_slip ('//PLASTICITY_PHENOPOWERLAW_label//')')
-     if (any(abs(plastic_phenopowerlaw_a_slip(instance)) <= tiny(0.0_pReal) .and. &
+     if (any(dEq(plastic_phenopowerlaw_a_slip(instance),0.0_pReal) .and. &
              plastic_phenopowerlaw_Nslip(:,instance) > 0)) &
        call IO_error(211_pInt,el=instance,ext_msg='a_slip ('//PLASTICITY_PHENOPOWERLAW_label//')')
      if (any(plastic_phenopowerlaw_tau0_twin(:,instance) < 0.0_pReal .and. &
@@ -683,9 +688,9 @@ subroutine plastic_phenopowerlaw_init(fileUnit)
 
      startIndex = endIndex + 1_pInt
      endIndex   = endIndex +plastic_phenopowerlaw_totalNtwin(instance)
-     state   (instance)%accshear_slip=>plasticState(phase)%state   (startIndex:endIndex,:)
-     state0  (instance)%accshear_slip=>plasticState(phase)%state0  (startIndex:endIndex,:)
-     dotState(instance)%accshear_slip=>plasticState(phase)%dotState(startIndex:endIndex,:)
+     state   (instance)%accshear_twin=>plasticState(phase)%state   (startIndex:endIndex,:)
+     state0  (instance)%accshear_twin=>plasticState(phase)%state0  (startIndex:endIndex,:)
+     dotState(instance)%accshear_twin=>plasticState(phase)%dotState(startIndex:endIndex,:)
 
 
      call plastic_phenopowerlaw_stateInit(phase,instance)
@@ -771,6 +776,8 @@ end subroutine plastic_phenopowerlaw_aTolState
 !> @brief calculates plastic velocity gradient and its tangent
 !--------------------------------------------------------------------------------------------------
 subroutine plastic_phenopowerlaw_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,ipc,ip,el)
+ use prec, only: &
+   dNeq
  use math, only: &
    math_Plain3333to99, &
    math_Mandel6to33
@@ -860,7 +867,7 @@ subroutine plastic_phenopowerlaw_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,ipc,ip,
                (gdot_slip_pos+gdot_slip_neg)*lattice_Sslip(1:3,1:3,1,index_myFamily+i,ph)
 
      ! Calculation of the tangent of Lp
-     if (abs(gdot_slip_pos) > tiny(0.0_pReal)) then
+     if (dNeq(gdot_slip_pos,0.0_pReal)) then
        dgdot_dtauslip_pos = gdot_slip_pos*plastic_phenopowerlaw_n_slip(instance)/tau_slip_pos
        forall (k=1_pInt:3_pInt,l=1_pInt:3_pInt,m=1_pInt:3_pInt,n=1_pInt:3_pInt) &
          dLp_dTstar3333(k,l,m,n) = dLp_dTstar3333(k,l,m,n) + &
@@ -868,7 +875,7 @@ subroutine plastic_phenopowerlaw_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,ipc,ip,
                                                      nonSchmid_tensor(m,n,1)
      endif
 
-     if (abs(gdot_slip_neg) > tiny(0.0_pReal)) then
+     if (dNeq(gdot_slip_neg,0.0_pReal)) then
        dgdot_dtauslip_neg = gdot_slip_neg*plastic_phenopowerlaw_n_slip(instance)/tau_slip_neg
        forall (k=1_pInt:3_pInt,l=1_pInt:3_pInt,m=1_pInt:3_pInt,n=1_pInt:3_pInt) &
          dLp_dTstar3333(k,l,m,n) = dLp_dTstar3333(k,l,m,n) + &
@@ -895,7 +902,7 @@ subroutine plastic_phenopowerlaw_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,ipc,ip,
      Lp = Lp + gdot_twin*lattice_Stwin(1:3,1:3,index_myFamily+i,ph)
 
      ! Calculation of the tangent of Lp
-     if (abs(gdot_twin) > tiny(0.0_pReal)) then
+     if (dNeq(gdot_twin,0.0_pReal)) then
        dgdot_dtautwin = gdot_twin*plastic_phenopowerlaw_n_twin(instance)/tau_twin
        forall (k=1_pInt:3_pInt,l=1_pInt:3_pInt,m=1_pInt:3_pInt,n=1_pInt:3_pInt) &
          dLp_dTstar3333(k,l,m,n) = dLp_dTstar3333(k,l,m,n) + &
@@ -967,7 +974,6 @@ subroutine plastic_phenopowerlaw_dotState(Tstar_v,ipc,ip,el)
  offset_accshear_twin = nSlip + nTwin + 2_pInt + nSlip
  plasticState(ph)%dotState(:,of) = 0.0_pReal
 
-
 !--------------------------------------------------------------------------------------------------
 ! system-independent (nonlinear) prefactors to M_Xx (X influenced by x) matrices
  c_SlipSlip = plastic_phenopowerlaw_h0_SlipSlip(instance)*&
@@ -986,7 +992,7 @@ subroutine plastic_phenopowerlaw_dotState(Tstar_v,ipc,ip,el)
    index_myFamily = sum(lattice_NslipSystem(1:f-1_pInt,ph))                                         ! at which index starts my family
    slipSystems1: do i = 1_pInt,plastic_phenopowerlaw_Nslip(f,instance)
      j = j+1_pInt
-     left_SlipSlip(j) = 1.0_pReal                                                                   ! no system-dependent left part
+     left_SlipSlip(j) = 1.0_pReal + plastic_phenopowerlaw_H_int(f,instance)                         ! modified no system-dependent left part
      left_SlipTwin(j) = 1.0_pReal                                                                   ! no system-dependent left part
      right_SlipSlip(j) = abs(1.0_pReal-plasticState(ph)%state(j,of) / &
                                     (plastic_phenopowerlaw_tausat_slip(f,instance)+ssat_offset)) &
@@ -1007,10 +1013,12 @@ subroutine plastic_phenopowerlaw_dotState(Tstar_v,ipc,ip,el)
      enddo nonSchmidSystems
      gdot_slip(j) = plastic_phenopowerlaw_gdot0_slip(instance)*0.5_pReal* &
                   ((abs(tau_slip_pos)/(plasticState(ph)%state(j,of)))**plastic_phenopowerlaw_n_slip(instance) &
-                  +(abs(tau_slip_neg)/(plasticState(ph)%state(j,of)))**plastic_phenopowerlaw_n_slip(instance))&
-                  *sign(1.0_pReal,tau_slip_pos)
+                  *sign(1.0_pReal,tau_slip_pos) &
+                  +(abs(tau_slip_neg)/(plasticState(ph)%state(j,of)))**plastic_phenopowerlaw_n_slip(instance) &
+                  *sign(1.0_pReal,tau_slip_neg))
    enddo slipSystems1
  enddo slipFamilies1
+
 
 
  j = 0_pInt

@@ -1,7 +1,7 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2
 # -*- coding: UTF-8 no BOM -*-
 
-import os,sys,glob,string,subprocess,shlex
+import os,sys,glob,subprocess,shlex
 from damask import Environment
 from damask import version as DAMASKVERSION
 
@@ -47,9 +47,13 @@ compileOptions = ' -DSpectral -DFLOAT=8 -DINT=4 -I%s/lib -DDAMASKVERSION=\\\\\"\
 
 #--- this saves the path of libraries to core.so, hence it is known during runtime ----------------
 if options['F90'] == 'gfortran':
-  LDFLAGS = '-shared -Wl,-undefined,dynamic_lookup'                                                 # solved error: Undefined symbols for architecture x86_64: "_PyArg_ParseTupleAndKeywords" as found on https://lists.macosforge.org/pipermail/macports-dev/2013-May/022735.html
+  # solved error: Undefined symbols for architecture x86_64: "_PyArg_ParseTupleAndKeywords"
+  # as found on https://lists.macosforge.org/pipermail/macports-dev/2013-May/022735.html
+  LDFLAGS = '-shared -Wl,-undefined,dynamic_lookup'
 else:
-  LDFLAGS = ' -openmp -Wl'                                                                          # some f2py versions/configurations compile with openMP, so linking against openMP is needed to prevent errors during loading of core module
+  # some f2py versions/configurations compile with openMP, so linking against openMP is needed 
+  # to prevent errors during loading of core module
+  LDFLAGS = ' -openmp -Wl'
 
 #--- run path of for fftw during runtime ----------------------------------------------------------
 LDFLAGS += ',-rpath,%s/lib,-rpath,%s/lib64'%(options['FFTW_ROOT'],options['FFTW_ROOT'])
@@ -96,6 +100,8 @@ os.chdir(codeDir)
 cmd = 'f2py damask.core.pyf' +\
       ' -c --no-lower %s'%(compiler) +\
       compileOptions+\
+      ' C_routines.c'+\
+      ' system_routines.f90'+\
       ' prec.f90'+\
       ' spectral_interface.f90'+\
       ' IO.f90'+\

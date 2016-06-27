@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2
 # -*- coding: UTF-8 no BOM -*-
 
 import os,sys
@@ -37,8 +37,6 @@ if options.label is None:
 if filenames == []: filenames = [None]
 
 for name in filenames:
-  damask.util.croak(name)
-
   try:    table = damask.ASCIItable(name = name,
                                     outname = os.path.join(
                                               os.path.split(name)[0],

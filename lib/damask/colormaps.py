@@ -303,36 +303,45 @@ class Colormap():
                'interpolate',
               ]  
   __predefined__ = {
-                     'gray':          {'left': Color('HSL',[0,1,1]),          
+                     'gray':          {'left':  Color('HSL',[0,1,1]),
                                        'right': Color('HSL',[0,0,0.15]),
                                        'interpolate': 'perceptualuniform'},
-                     'grey':          {'left': Color('HSL',[0,1,1]),
+                     'grey':          {'left':  Color('HSL',[0,1,1]),
                                        'right': Color('HSL',[0,0,0.15]),
                                        'interpolate': 'perceptualuniform'},
-                     'red':           {'left': Color('HSL',[0,1,0.14]),
+                     'red':           {'left':  Color('HSL',[0,1,0.14]),
                                        'right': Color('HSL',[0,0.35,0.91]),
                                        'interpolate': 'perceptualuniform'},
-                     'green':         {'left': Color('HSL',[0.33333,1,0.14]),
+                     'green':         {'left':  Color('HSL',[0.33333,1,0.14]),
                                        'right': Color('HSL',[0.33333,0.35,0.91]),
                                        'interpolate': 'perceptualuniform'},
-                     'blue':          {'left': Color('HSL',[0.66,1,0.14]),
+                     'blue':          {'left':  Color('HSL',[0.66,1,0.14]),
                                        'right': Color('HSL',[0.66,0.35,0.91]),
                                        'interpolate': 'perceptualuniform'},
-                     'seaweed':       {'left': Color('HSL',[0.78,1.0,0.1]),
+                     'seaweed':       {'left':  Color('HSL',[0.78,1.0,0.1]),
                                        'right': Color('HSL',[0.40000,0.1,0.9]),
                                        'interpolate': 'perceptualuniform'},
-                     'bluebrown':     {'left': Color('HSL',[0.65,0.53,0.49]),
+                     'bluebrown':     {'left':  Color('HSL',[0.65,0.53,0.49]),
                                        'right': Color('HSL',[0.11,0.75,0.38]),
                                        'interpolate': 'perceptualuniform'},
-                     'redgreen':      {'left': Color('HSL',[0.97,0.96,0.36]),
+                     'redgreen':      {'left':  Color('HSL',[0.97,0.96,0.36]),
                                        'right': Color('HSL',[0.33333,1.0,0.14]), 
                                        'interpolate': 'perceptualuniform'},
-                     'bluered':       {'left': Color('HSL',[0.65,0.53,0.49]),
+                     'bluered':       {'left':  Color('HSL',[0.65,0.53,0.49]),
                                        'right': Color('HSL',[0.97,0.96,0.36]),
                                        'interpolate': 'perceptualuniform'},
-                     'blueredrainbow':{'left': Color('HSL',[2.0/3.0,1,0.5]),
+                     'blueredrainbow':{'left':  Color('HSL',[2.0/3.0,1,0.5]),
                                        'right': Color('HSL',[0,1,0.5]),
                                        'interpolate': 'linear'           },
+                     'orientation':   {'left':  Color('RGB',[0.933334,0.878432,0.878431]),
+                                       'right': Color('RGB',[0.250980,0.007843,0.000000]),
+                                       'interpolate': 'perceptualuniform'},
+                     'strain':        {'left':  Color('RGB',[0.941177,0.941177,0.870588]),
+                                       'right': Color('RGB',[0.266667,0.266667,0.000000]),
+                                       'interpolate': 'perceptualuniform'},
+                     'stress':        {'left':  Color('RGB',[0.878432,0.874511,0.949019]),
+                                       'right': Color('RGB',[0.000002,0.000000,0.286275]),
+                                       'interpolate': 'perceptualuniform'},
                     }
  
   
@@ -344,7 +353,7 @@ class Colormap():
                predefined = None
                ):
 
-    if str(predefined).lower() in self.__predefined__:
+    if predefined is not None:
       left = self.__predefined__[predefined.lower()]['left']
       right= self.__predefined__[predefined.lower()]['right']
       interpolate = self.__predefined__[predefined.lower()]['interpolate']
@@ -442,11 +451,12 @@ class Colormap():
     format = format.lower()                                                                         # consistent comparison basis
     frac = 0.5*(np.array(crop) + 1.0)                                                               # rescale crop range to fractions
     colors = [self.color(float(i)/(steps-1)*(frac[1]-frac[0])+frac[0]).expressAs(model).color for i in xrange(steps)]
-    
     if   format == 'paraview':
-      colormap = ['<ColorMap name="'+str(name)+'" space="Diverging">'] \
-               + ['<Point x="%i"'%i + ' o="1" r="%g" g="%g" b="%g"/>'%(color[0],color[1],color[2],) for i,color in colors] \
-               + ['</ColorMap>']
+      colormap = ['[\n {{\n  "ColorSpace" : "RGB", "Name" : "{}",\n  "RGBPoints" : ['.format(name)] \
+               + ['    {:4d},{:8.6f},{:8.6f},{:8.6f},'.format(i,color[0],color[1],color[2],)
+                                                                        for i,color in enumerate(colors[:-1])]\
+               + ['    {:4d},{:8.6f},{:8.6f},{:8.6f} '.format(i+1,colors[-1][0],colors[-1][1],colors[-1][2],)]\
+               + ['   ]\n }\n]']
     
     elif format == 'gmsh':
       colormap = ['View.ColorTable = {'] \

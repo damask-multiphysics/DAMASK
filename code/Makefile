@@ -7,11 +7,11 @@ SHELL = /bin/sh
 # OPTIONS = standard (alternative): meaning
 #-------------------------------------------------------------
 # F90            = ifort (gfortran): compiler type, choose Intel or GNU
-# COMPILERNAME   = name of the compiler executable (if not the same as the ype), e.g. using mpich-g90 instead of ifort
+# FCOMPILERNAME   = name of the compiler executable (if not the same as the ype), e.g. using mpich-g90 instead of ifort
 # PORTABLE       = TRUE (FALSE): decision, if executable is optimized for the machine on which it was built.
 # OPTIMIZATION   = DEFENSIVE (OFF,AGGRESSIVE,ULTRA): Optimization mode: O2, O0, O3 + further options for most files, O3 + further options for all files
 # OPENMP         = TRUE (FALSE): OpenMP multiprocessor support
-# PREFIX         = arbitrary prefix (before compilername)
+# PREFIX         = arbitrary prefix (before FCOMPILERNAME)
 # OPTION         = arbitrary option (just before file to compile)
 # SUFFIX         = arbitrary suffix (after file to compile)
 # STANDARD_CHECK = checking for Fortran 2008, compiler dependend
@@ -24,7 +24,8 @@ include ${PETSC_DIR}/lib/petsc/conf/rules
 
 INCLUDE_DIRS := $(PETSC_FC_INCLUDES) -DPETSc -I../lib
 LIBRARIES    := $(PETSC_WITH_EXTERNAL_LIB)
-COMPILERNAME ?= $(FC)
+FCOMPILERNAME ?= $(FC)
+CCOMPILERNAME ?= $(CC)
 LINKERNAME   ?= $(FLINKER)
 
 # MPI compiler wrappers will tell if they are pointing to ifort or gfortran
@@ -309,7 +310,7 @@ KINEMATICS_FILES = \
    kinematics_vacancy_strain.o kinematics_hydrogen_strain.o
 
 PLASTIC_FILES = \
-   plastic_dislotwin.o plastic_disloUCLA.o plastic_isotropic.o plastic_j2.o \
+   plastic_dislotwin.o plastic_disloUCLA.o plastic_isotropic.o \
    plastic_phenopowerlaw.o plastic_titanmod.o plastic_nonlocal.o plastic_none.o \
    plastic_phenoplus.o
 
@@ -350,7 +351,7 @@ DAMASK_spectral.o: INTERFACENAME   := spectral_interface.f90
 SPECTRAL_SOLVER_FILES = spectral_mech_AL.o spectral_mech_Basic.o spectral_mech_Polarisation.o \
                         spectral_thermal.o spectral_damage.o
 
-SPECTRAL_FILES = prec.o DAMASK_interface.o IO.o numerics.o debug.o math.o \
+SPECTRAL_FILES = C_routines.o system_routines.o prec.o DAMASK_interface.o IO.o libs.o numerics.o debug.o math.o \
                  FEsolving.o mesh.o material.o lattice.o \
                  $(SOURCE_FILES) $(KINEMATICS_FILES) $(PLASTIC_FILES) constitutive.o \
                  crystallite.o \
@@ -368,7 +369,7 @@ DAMASK_spectral.exe: DAMASK_spectral.o
 
 DAMASK_spectral.o: DAMASK_spectral.f90 \
                            $(SPECTRAL_SOLVER_FILES)
-	$(PREFIX) $(COMPILERNAME) $(COMPILE_MAXOPTI) -c DAMASK_spectral.f90 $(SUFFIX)
+	$(PREFIX) $(FCOMPILERNAME) $(COMPILE_MAXOPTI) -c DAMASK_spectral.f90 $(SUFFIX)
 
 spectral_mech_AL.o:            spectral_mech_AL.f90 \
                                spectral_utilities.o
@@ -400,7 +401,7 @@ DAMASK_FEM.exe: INCLUDE_DIRS    += -I./
 
 FEM_SOLVER_FILES = FEM_mech.o FEM_thermal.o FEM_damage.o FEM_vacancyflux.o FEM_porosity.o FEM_hydrogenflux.o
 
-FEM_FILES      = prec.o DAMASK_interface.o FEZoo.o IO.o numerics.o debug.o math.o \
+FEM_FILES      = prec.o DAMASK_interface.o FEZoo.o IO.o libs.o numerics.o debug.o math.o \
                  FEsolving.o mesh.o material.o lattice.o \
                  $(SOURCE_FILES) $(KINEMATICS_FILES) $(PLASTIC_FILES) constitutive.o \
                  crystallite.o \
@@ -415,7 +416,7 @@ DAMASK_FEM.exe:                DAMASK_FEM_driver.o
   $(FEM_FILES) $(LIBRARIES) $(SUFFIX)
 
 DAMASK_FEM_driver.o:           DAMASK_FEM_driver.f90 $(FEM_SOLVER_FILES)
-	$(PREFIX) $(COMPILERNAME) $(COMPILE_MAXOPTI) -c ../private/FEM/code/DAMASK_FEM_driver.f90 $(SUFFIX)
+	$(PREFIX) $(FCOMPILERNAME) $(COMPILE_MAXOPTI) -c ../private/FEM/code/DAMASK_FEM_driver.f90 $(SUFFIX)
 
 FEM_mech.o:                    FEM_mech.f90 \
                                FEM_utilities.o
@@ -440,7 +441,7 @@ FEM_utilities.o:               FEM_utilities.f90 \
 
 FEZoo.o:                       $(wildcard FEZoo.f90) \
                                IO.o
-	$(IGNORE) $(PREFIX) $(COMPILERNAME) $(COMPILE) -c ../private/FEM/code/FEZoo.f90 $(SUFFIX)
+	$(IGNORE) $(PREFIX) $(FCOMPILERNAME) $(COMPILE) -c ../private/FEM/code/FEZoo.f90 $(SUFFIX)
 	touch FEZoo.o
 
 CPFEM.o:                       CPFEM.f90 \
@@ -579,15 +580,12 @@ plastic_phenoplus.o:           plastic_phenoplus.f90 \
 plastic_isotropic.o:           plastic_isotropic.f90 \
                                lattice.o
 
-plastic_j2.o:                  plastic_j2.f90 \
-                               lattice.o
-
 plastic_none.o:                plastic_none.f90 \
                                lattice.o
 ifeq "$(F90)" "gfortran"
 lattice.o:                     lattice.f90 \
                                material.o
-	$(PREFIX) $(COMPILERNAME) $(COMPILE) -ffree-line-length-240 -c lattice.f90 $(SUFFIX)
+	$(PREFIX) $(FCOMPILERNAME) $(COMPILE) -ffree-line-length-240 -c lattice.f90 $(SUFFIX)
 # long lines for interaction matrix
 else
 lattice.o:                     lattice.f90 \
@@ -602,7 +600,7 @@ mesh.o:                        mesh.f90 \
                                FEsolving.o \
                                math.o \
                                FEZoo.o
-	$(PREFIX) $(COMPILERNAME) $(COMPILE) -c $(MESHNAME) -o mesh.o $(SUFFIX)
+	$(PREFIX) $(FCOMPILERNAME) $(COMPILE) -c $(MESHNAME) -o mesh.o $(SUFFIX)
 
 FEsolving.o:                   FEsolving.f90 \
                                debug.o
@@ -614,21 +612,23 @@ debug.o:                       debug.f90 \
                                numerics.o
 
 numerics.o:                    numerics.f90 \
+                               libs.o
+
+libs.o:                        libs.f90 \
                                IO.o
 
 IO.o:                          IO.f90 \
                                DAMASK_interface.o
 
-ifeq "$(F90)" "gfortran"
 DAMASK_interface.o:            spectral_interface.f90 \
                                $(wildcard DAMASK_FEM_interface.f90) \
                                prec.o
-	$(PREFIX) $(COMPILERNAME) $(COMPILE) -c $(INTERFACENAME) -fall-intrinsics -o DAMASK_interface.o $(SUFFIX)
-#-fall-intrinsics:  all intrinsic procedures (including the GNU-specific extensions) are accepted. -Wintrinsics-std will be ignored
-#                   and no user-defined procedure with the same name as any intrinsic will be called except when it is explicitly declared external
-#      -->   allows the use of 'getcwd'
-prec.o:                        prec.f90
-	$(PREFIX) $(COMPILERNAME) $(COMPILE) -c prec.f90 -fno-range-check -fall-intrinsics -fno-fast-math $(SUFFIX)
+	$(PREFIX) $(FCOMPILERNAME) $(COMPILE) -c $(INTERFACENAME) -o DAMASK_interface.o $(SUFFIX)
+
+ifeq "$(F90)" "gfortran"
+prec.o:                        prec.f90 \
+                               system_routines.o
+	$(PREFIX) $(FCOMPILERNAME) $(COMPILE) -c prec.f90 -fno-range-check -fall-intrinsics -fno-fast-math $(SUFFIX)
 # fno-range-check:  Disable range checking on results of simplification of constant expressions during compilation
 #      -->   allows the definition of DAMASK_NaN
 #-fall-intrinsics:  all intrinsic procedures (including the GNU-specific extensions) are accepted. -Wintrinsics-std will be ignored
@@ -637,17 +637,22 @@ prec.o:                        prec.f90
 #-fno-fast-math:
 #      -->   otherwise, when setting -ffast-math, isnan always evaluates to false (I would call it a bug)
 else
-DAMASK_interface.o:            spectral_interface.f90 \
-                               $(wildcard DAMASK_FEM_interface.f90) \
-                               prec.o
-	$(PREFIX) $(COMPILERNAME) $(COMPILE) -c $(INTERFACENAME) -diag-remark 7410 -stand none -warn nostderrors -o DAMASK_interface.o $(SUFFIX)
-# -diag-disable 7410 should disable warning about directory statement in inquire function, but does not work. hence the other 2 statements
-prec.o:                        prec.f90
-	$(PREFIX) $(COMPILERNAME) $(COMPILE) -c prec.f90 $(SUFFIX)
+
+prec.o:                        prec.f90 \
+                               system_routines.o
 endif
 
+system_routines.o:             system_routines.f90 \
+                               C_routines.o
+
+C_routines.o:                  C_routines.c
+
+
 %.o : %.f90
-	$(PREFIX) $(COMPILERNAME) $(COMPILE) -c $< $(SUFFIX)
+	$(PREFIX) $(FCOMPILERNAME) $(COMPILE) -c $< $(SUFFIX)
+
+%.o : %.c
+	$(CCOMPILERNAME) -c $<
 
 .PHONY: tidy
 tidy:
@@ -674,6 +679,6 @@ cleanDAMASK:
 .PHONY: help
 help:
 	F90="$(F90)"
-	COMPILERNAME="$(COMPILERNAME)"
+	FCOMPILERNAME="$(FCOMPILERNAME)"
 	COMPILEROUT="$(COMPILEROUT)"
 

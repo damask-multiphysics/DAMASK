@@ -1,7 +1,5 @@
 # -*- coding: UTF-8 no BOM -*-
 
-# $Id$
-
 import os,sys
 import numpy as np
 
@@ -27,7 +25,7 @@ class ASCIItable():
     self.__IO__ = {'output': [],
                    'buffered': buffered,
                    'labeled':  labeled,                                                             # header contains labels
-                   'labels': [],                                                                    # labels according to file info
+                   'tags': [],                                                                      # labels according to file info
                    'readBuffer': [],                                                                # buffer to hold non-advancing reads
                    'dataStart': 0,
                   }
@@ -51,7 +49,7 @@ class ASCIItable():
       self.__IO__['out'] = outname
 
     self.info   = []
-    self.labels = []
+    self.tags  = []
     self.data   = []
     self.line   = ''
 
@@ -66,6 +64,24 @@ class ASCIItable():
     except:
       return 0.0
 
+# ------------------------------------------------------------------
+  def _removeCRLF(self,
+              string):
+    try:
+      return string.replace('\n','').replace('\r','')
+    except:
+      return string
+
+
+# ------------------------------------------------------------------
+  def _quote(self,
+             what):
+    """quote empty or white space-containing output"""
+    import re
+    
+    return '{quote}{content}{quote}'.format(
+             quote   = ('"' if str(what)=='' or re.search(r"\s",str(what)) else ''),
+             content = what)
 # ------------------------------------------------------------------
   def close(self,
             dismiss = False):
@@ -123,12 +139,12 @@ class ASCIItable():
 # ------------------------------------------------------------------
   def head_read(self):
     """
-    get column labels by either reading
-
-    the first row or, if keyword "head[*]" is present,
-    the last line of the header
+    get column labels
+    
+    by either reading the first row or,
+    if keyword "head[*]" is present, the last line of the header
     """
-    import re
+    import re,shlex
 
     try:
       self.__IO__['in'].seek(0)
@@ -143,7 +159,7 @@ class ASCIItable():
       if self.__IO__['labeled']:                                                                    # table features labels
 
         self.info   = [self.__IO__['in'].readline().strip() for i in xrange(1,int(m.group(1)))]
-        self.labels = self.__IO__['in'].readline().split()                                          # store labels found in last line
+        self.tags = shlex.split(self.__IO__['in'].readline())                                       # store tags found in last line
 
       else:
 
@@ -162,11 +178,11 @@ class ASCIItable():
         else: break                                                                                 # last line of comments
 
       if self.__IO__['labeled']:                                                                    # table features labels
-        self.labels = self.data                                                                     # get labels from last line in "header"...
+        self.tags = self.data                                                                       # get tags from last line in "header"...
         self.data_read()                                                                            # ...and remove from buffer
         
-    if self.__IO__['labeled']:                                                                      # table features labels
-      self.__IO__['labels'] = list(self.labels)                                                     # backup labels (make COPY, not link)
+    if self.__IO__['labeled']:                                                                      # table features tags
+      self.__IO__['tags'] = list(self.tags)                                                         # backup tags (make COPY, not link)
 
     try:
       self.__IO__['dataStart'] = self.__IO__['in'].tell()                                           # current file position is at start of data
@@ -179,7 +195,7 @@ class ASCIItable():
     """write current header information (info + labels)"""
     head = ['{}\theader'.format(len(self.info)+self.__IO__['labeled'])] if header else []
     head.append(self.info)
-    if self.__IO__['labeled']: head.append('\t'.join(self.labels))
+    if self.__IO__['labeled']: head.append('\t'.join(map(self._quote,self.tags)))
     
     return self.output_write(head)
 
@@ -243,18 +259,56 @@ class ASCIItable():
       try:
         for item in what: self.labels_append(item)
       except:
-        self.labels += [str(what)]
+        self.tags += [self._removeCRLF(str(what))]
     else:
-      self.labels += [what]
+      self.tags += [self._removeCRLF(what)]
 
-    self.__IO__['labeled'] = True                                                                  # switch on processing (in particular writing) of labels
-    if reset: self.__IO__['labels'] = list(self.labels)                                            # subsequent data_read uses current labels as data size
+    self.__IO__['labeled'] = True                                                                  # switch on processing (in particular writing) of tags
+    if reset: self.__IO__['tags'] = list(self.tags)                                                # subsequent data_read uses current tags as data size
 
 # ------------------------------------------------------------------
   def labels_clear(self):
     """delete existing labels and switch to no labeling"""
-    self.labels = []
+    self.tags = []
     self.__IO__['labeled'] = False
+
+# ------------------------------------------------------------------
+  def labels(self,
+             tags = None,
+             raw = False):
+    """
+    tell abstract labels.
+    
+    "x" for "1_x","2_x",... unless raw output is requested.
+    operates on object tags or given list.
+    """
+    from collections import Iterable
+    
+    if tags is None: tags = self.tags
+
+    if isinstance(tags, Iterable) and not raw:                                                    # check whether list of tags is requested
+      id = 0
+      dim = 1
+      labelList = []
+
+      while id < len(tags):
+        if not tags[id].startswith('1_'):
+          labelList.append(tags[id])
+        else:
+          label = tags[id][2:]                                                                    # get label
+          while id < len(tags) and tags[id] == '{}_{}'.format(dim,label):                         # check successors
+            id  += 1                                                                              # next label...
+            dim += 1                                                                              # ...should be one higher dimension
+          labelList.append(label)                                                                 # reached end --> store
+          id -= 1                                                                                 # rewind one to consider again
+
+        id += 1
+        dim = 1
+
+    else:
+      labelList = self.tags
+
+    return labelList
 
 # ------------------------------------------------------------------
   def label_index(self,
@@ -275,10 +329,10 @@ class ASCIItable():
             idx.append(int(label)-1)                                                                # column given as integer number?
           except ValueError:
             try:
-              idx.append(self.labels.index(label))                                                  # locate string in label list
+              idx.append(self.tags.index(label))                                                    # locate string in label list
             except ValueError:
               try:
-                idx.append(self.labels.index('1_'+label))                                           # locate '1_'+string in label list
+                idx.append(self.tags.index('1_'+label))                                             # locate '1_'+string in label list
               except ValueError:
                idx.append(-1)                                                                       # not found...
     else:
@@ -286,10 +340,10 @@ class ASCIItable():
         idx = int(labels)-1                                                                         # offset for python array indexing
       except ValueError:
         try:
-          idx = self.labels.index(labels)
+          idx = self.tags.index(labels)
         except ValueError:
           try:
-            idx = self.labels.index('1_'+labels)                                                    # locate '1_'+string in label list
+            idx = self.tags.index('1_'+labels)                                                      # locate '1_'+string in label list
           except ValueError:
             idx = None if labels is None else -1
 
@@ -314,16 +368,16 @@ class ASCIItable():
           try:                                                                                      # column given as number?
             idx = int(label)-1
             myDim = 1                                                                               # if found has at least dimension 1
-            if self.labels[idx].startswith('1_'):                                                   # column has multidim indicator?
-              while idx+myDim < len(self.labels) and self.labels[idx+myDim].startswith("%i_"%(myDim+1)):
+            if self.tags[idx].startswith('1_'):                                                     # column has multidim indicator?
+              while idx+myDim < len(self.tags) and self.tags[idx+myDim].startswith("%i_"%(myDim+1)):
                 myDim += 1                                                                          # add while found
           except ValueError:                                                                        # column has string label
-            if label in self.labels:                                                                # can be directly found?
+            if label in self.tags:                                                                  # can be directly found?
               myDim = 1                                                                             # scalar by definition
-            elif '1_'+label in self.labels:                                                         # look for first entry of possible multidim object
-              idx = self.labels.index('1_'+label)                                                   # get starting column
+            elif '1_'+label in self.tags:                                                           # look for first entry of possible multidim object
+              idx = self.tags.index('1_'+label)                                                     # get starting column
               myDim = 1                                                                             # (at least) one-dimensional
-              while idx+myDim < len(self.labels) and self.labels[idx+myDim].startswith("%i_"%(myDim+1)):
+              while idx+myDim < len(self.tags) and self.tags[idx+myDim].startswith("%i_"%(myDim+1)):
                 myDim += 1                                                                          # keep adding while going through object
 
           dim.append(myDim)
@@ -333,16 +387,16 @@ class ASCIItable():
       try:                                                                                          # column given as number?
         idx = int(labels)-1
         dim = 1                                                                                     # if found has at least dimension 1
-        if self.labels[idx].startswith('1_'):                                                       # column has multidim indicator?
-          while idx+dim < len(self.labels) and self.labels[idx+dim].startswith("%i_"%(dim+1)):
+        if self.tags[idx].startswith('1_'):                                                         # column has multidim indicator?
+          while idx+dim < len(self.tags) and self.tags[idx+dim].startswith("%i_"%(dim+1)):
             dim += 1                                                                                # add as long as found
       except ValueError:                                                                            # column has string label
-        if labels in self.labels:                                                                   # can be directly found?
+        if labels in self.tags:                                                                     # can be directly found?
           dim = 1                                                                                   # scalar by definition
-        elif '1_'+labels in self.labels:                                                            # look for first entry of possible multidim object
-          idx = self.labels.index('1_'+labels)                                                      # get starting column
+        elif '1_'+labels in self.tags:                                                              # look for first entry of possible multidim object
+          idx = self.tags.index('1_'+labels)                                                        # get starting column
           dim = 1                                                                                   # is (at least) one-dimensional
-          while idx+dim < len(self.labels) and self.labels[idx+dim].startswith("%i_"%(dim+1)):
+          while idx+dim < len(self.tags) and self.tags[idx+dim].startswith("%i_"%(dim+1)):
             dim += 1                                                                                # keep adding while going through object
 
     return np.array(dim) if isinstance(dim,Iterable) else dim
@@ -361,8 +415,9 @@ class ASCIItable():
     start = self.label_index(labels)
     dim   = self.label_dimension(labels)
   
-    return map(lambda a,b: xrange(a,a+b), zip(start,dim)) if isinstance(labels, Iterable) and not isinstance(labels, str) \
-    else   xrange(start,start+dim)
+    return np.hstack(map(lambda c: xrange(c[0],c[0]+c[1]), zip(start,dim))) \
+        if isinstance(labels, Iterable) and not isinstance(labels, str) \
+      else xrange(start,start+dim)
 
 # ------------------------------------------------------------------
   def info_append(self,
@@ -372,9 +427,9 @@ class ASCIItable():
       try:
         for item in what: self.info_append(item)
       except:
-        self.info += [str(what)]
+        self.info += [self._removeCRLF(str(what))]
     else:
-      self.info += [what]
+      self.info += [self._removeCRLF(what)]
 
 # ------------------------------------------------------------------
   def info_clear(self):
@@ -385,8 +440,8 @@ class ASCIItable():
   def data_rewind(self):
     self.__IO__['in'].seek(self.__IO__['dataStart'])                                                # position file to start of data section
     self.__IO__['readBuffer'] = []                                                                  # delete any non-advancing data reads
-    self.labels = list(self.__IO__['labels'])                                                       # restore label info found in header (as COPY, not link)
-    self.__IO__['labeled'] = len(self.labels) > 0
+    self.tags = list(self.__IO__['tags'])                                                           # restore label info found in header (as COPY, not link)
+    self.__IO__['labeled'] = len(self.tags) > 0
 
 # ------------------------------------------------------------------
   def data_skipLines(self,
@@ -402,6 +457,8 @@ class ASCIItable():
                 advance = True,
                 respectLabels = True):
     """read next line (possibly buffered) and parse it into data array"""
+    import shlex
+    
     self.line = self.__IO__['readBuffer'].pop(0) if len(self.__IO__['readBuffer']) > 0 \
            else self.__IO__['in'].readline().strip()                                                # take buffered content or get next data row from file
 
@@ -411,10 +468,10 @@ class ASCIItable():
     self.line = self.line.rstrip('\n')
 
     if self.__IO__['labeled'] and respectLabels:                                                    # if table has labels
-      items = self.line.split()[:len(self.__IO__['labels'])]                                        # use up to label count (from original file info)
-      self.data = items if len(items) == len(self.__IO__['labels']) else []                         # take entries if label count matches
+      items = shlex.split(self.line)[:len(self.__IO__['tags'])]                                     # use up to label count (from original file info)
+      self.data = items if len(items) == len(self.__IO__['tags']) else []                           # take entries if label count matches
     else:
-      self.data = self.line.split()                                                                 # otherwise take all
+      self.data = shlex.split(self.line)                                                            # otherwise take all
 
     return self.data != []
 
@@ -449,7 +506,7 @@ class ASCIItable():
                            1))                                                                      
       use = np.array(columns)
 
-      self.labels = list(np.array(self.labels)[use])                                                # update labels with valid subset
+      self.tags = list(np.array(self.tags)[use])                                                    # update labels with valid subset
 
     self.data = np.loadtxt(self.__IO__['in'],usecols=use,ndmin=2)
 
@@ -462,9 +519,9 @@ class ASCIItable():
     if len(self.data) == 0: return True
 
     if isinstance(self.data[0],list):
-      return self.output_write([delimiter.join(map(str,items)) for items in self.data])
+      return self.output_write([delimiter.join(map(self._quote,items)) for items in self.data])
     else:
-      return self.output_write(delimiter.join(map(str,self.data)))
+      return self.output_write( delimiter.join(map(self._quote,self.data)))
 
 # ------------------------------------------------------------------
   def data_writeArray(self,
@@ -524,8 +581,8 @@ class ASCIItable():
     def datatype(item):
       return int(item) if type.lower() == 'i' else float(item)
       
-    N = grid.prod()                                                                       # expected number of microstructure indices in data
-    microstructure = np.zeros(N,type)                                                     # initialize as flat array
+    N = grid.prod()                                                                          # expected number of microstructure indices in data
+    microstructure = np.zeros(N,type)                                                        # initialize as flat array
 
     i = 0
     while i < N and self.data_read():
@@ -536,7 +593,7 @@ class ASCIItable():
         else:                          items = map(datatype,items)
       else:                            items = map(datatype,items)
 
-      s = min(len(items), N-i)                                                            # prevent overflow of microstructure array
+      s = min(len(items), N-i)                                                              # prevent overflow of microstructure array
       microstructure[i:i+s] = items[:s]
       i += len(items)
 

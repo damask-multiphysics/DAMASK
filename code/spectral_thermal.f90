@@ -178,10 +178,6 @@ type(tSolutionState) function spectral_thermal_solution(guess,timeinc,timeinc_ol
    itmax, &
    err_thermal_tolAbs, &
    err_thermal_tolRel
- use spectral_utilities, only: &
-   tBoundaryCondition, &
-   Utilities_maskedCompliance, &
-   Utilities_updateGamma
  use mesh, only: &
    grid, &
    grid3

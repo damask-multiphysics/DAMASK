@@ -7,7 +7,6 @@
 !! untextured polycrystal
 !--------------------------------------------------------------------------------------------------
 module plastic_isotropic
-
  use prec, only: &
    pReal,&
    pInt, &
@@ -140,9 +139,10 @@ subroutine plastic_isotropic_init(fileUnit)
    sizeDeltaState
  character(len=65536) :: &
    tag       = '', &
-   outputtag = '', &
    line      = '', &
    extmsg    = ''
+ character(len=64) :: &
+   outputtag = ''
   integer(pInt) :: NipcMyPhase
 
  mainProcess: if (worldrank == 0) then 
@@ -382,8 +382,7 @@ subroutine plastic_isotropic_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,ipc,ip,el)
    math_mul33xx33, &
    math_transpose33
  use material, only: &
-   phaseAt, phasememberAt, &
-   plasticState, &
+   phasememberAt, &
    material_phase, &
    phase_plasticityInstance
 
@@ -413,7 +412,7 @@ subroutine plastic_isotropic_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,ipc,ip,el)
    k, l, m, n
 
  of = phasememberAt(ipc,ip,el)                                                                      ! phasememberAt should be tackled by material and be renamed to material_phasemember
- instance = phase_plasticityInstance(phaseAt(ipc,ip,el))                                            ! "phaseAt" equivalent to "material_phase" !!
+ instance = phase_plasticityInstance(material_phase(ipc,ip,el))
 
  Tstar_dev_33 = math_deviatoric33(math_Mandel6to33(Tstar_v))                                        ! deviatoric part of 2nd Piola-Kirchhoff stress
  squarenorm_Tstar_dev = math_mul33xx33(Tstar_dev_33,Tstar_dev_33)
@@ -463,8 +462,7 @@ subroutine plastic_isotropic_LiAndItsTangent(Li,dLi_dTstar_3333,Tstar_v,ipc,ip,e
    math_spherical33, &
    math_mul33xx33
  use material, only: &
-   phaseAt, phasememberAt, &
-   plasticState, &
+   phasememberAt, &
    material_phase, &
    phase_plasticityInstance
 
@@ -491,34 +489,29 @@ real(pReal) :: &
    k, l, m, n
 
  of = phasememberAt(ipc,ip,el)                                                                      ! phasememberAt should be tackled by material and be renamed to material_phasemember
- instance = phase_plasticityInstance(phaseAt(ipc,ip,el))                                            ! "phaseAt" equivalent to "material_phase" !!
+ instance = phase_plasticityInstance(material_phase(ipc,ip,el))
 
  Tstar_sph_33 = math_spherical33(math_Mandel6to33(Tstar_v))                                         ! spherical part of 2nd Piola-Kirchhoff stress
  squarenorm_Tstar_sph = math_mul33xx33(Tstar_sph_33,Tstar_sph_33)
  norm_Tstar_sph = sqrt(squarenorm_Tstar_sph) 
 
- if (param(instance)%dilatation) then
-     if (norm_Tstar_sph <= 0.0_pReal) then                                                          ! Tstar == 0 --> both Li and dLi_dTstar are zero
-       Li = 0.0_pReal
-       dLi_dTstar_3333 = 0.0_pReal
-     else
-       gamma_dot = param(instance)%gdot0 &
-                   * (sqrt(1.5_pReal) * norm_Tstar_sph / param(instance)%fTaylor / state(instance)%flowstress(of) ) &
-                   **param(instance)%n
+ if (param(instance)%dilatation .and. norm_Tstar_sph > 0.0_pReal) then                              ! Tstar == 0 or J2 plascitiy --> both Li and dLi_dTstar are zero
+   gamma_dot = param(instance)%gdot0 &
+               * (sqrt(1.5_pReal) * norm_Tstar_sph / param(instance)%fTaylor / state(instance)%flowstress(of) ) &
+               **param(instance)%n
 
-       Li = Tstar_sph_33/norm_Tstar_sph * gamma_dot/param(instance)%fTaylor
+   Li = Tstar_sph_33/norm_Tstar_sph * gamma_dot/param(instance)%fTaylor
 
-       !--------------------------------------------------------------------------------------------------
-       ! Calculation of the tangent of Li
-       forall (k=1_pInt:3_pInt,l=1_pInt:3_pInt,m=1_pInt:3_pInt,n=1_pInt:3_pInt) &
-         dLi_dTstar_3333(k,l,m,n) = (param(instance)%n-1.0_pReal) * &
-                                          Tstar_sph_33(k,l)*Tstar_sph_33(m,n) / squarenorm_Tstar_sph
-       forall (k=1_pInt:3_pInt,l=1_pInt:3_pInt) &
-         dLi_dTstar_3333(k,l,k,l) = dLi_dTstar_3333(k,l,k,l) + 1.0_pReal
+   !--------------------------------------------------------------------------------------------------
+   ! Calculation of the tangent of Li
+   forall (k=1_pInt:3_pInt,l=1_pInt:3_pInt,m=1_pInt:3_pInt,n=1_pInt:3_pInt) &
+     dLi_dTstar_3333(k,l,m,n) = (param(instance)%n-1.0_pReal) * &
+                                      Tstar_sph_33(k,l)*Tstar_sph_33(m,n) / squarenorm_Tstar_sph
+   forall (k=1_pInt:3_pInt,l=1_pInt:3_pInt) &
+     dLi_dTstar_3333(k,l,k,l) = dLi_dTstar_3333(k,l,k,l) + 1.0_pReal
 
-       dLi_dTstar_3333 = gamma_dot / param(instance)%fTaylor * &
-                                          dLi_dTstar_3333 / norm_Tstar_sph
-     endif
+   dLi_dTstar_3333 = gamma_dot / param(instance)%fTaylor * &
+                                      dLi_dTstar_3333 / norm_Tstar_sph
  else
   Li = 0.0_pReal
   dLi_dTstar_3333 = 0.0_pReal
@@ -531,11 +524,12 @@ end subroutine plastic_isotropic_LiAndItsTangent
 !> @brief calculates the rate of change of microstructure
 !--------------------------------------------------------------------------------------------------
 subroutine plastic_isotropic_dotState(Tstar_v,ipc,ip,el)
+ use prec, only: &
+   dEq
  use math, only: &
    math_mul6x6
  use material, only: &
-   phaseAt, phasememberAt, &
-   plasticState, &
+   phasememberAt, &
    material_phase, &
    phase_plasticityInstance
  
@@ -558,7 +552,7 @@ subroutine plastic_isotropic_dotState(Tstar_v,ipc,ip,el)
    of                                                                                               !< shortcut notation for offset position in state array
 
  of = phasememberAt(ipc,ip,el)                                                                      ! phasememberAt should be tackled by material and be renamed to material_phasemember
- instance = phase_plasticityInstance(phaseAt(ipc,ip,el))                                            ! "phaseAt" equivalent to "material_phase" !!
+ instance = phase_plasticityInstance(material_phase(ipc,ip,el))
 
 !--------------------------------------------------------------------------------------------------
 ! norm of (deviatoric) 2nd Piola-Kirchhoff stress
@@ -578,7 +572,7 @@ subroutine plastic_isotropic_dotState(Tstar_v,ipc,ip,el)
 !--------------------------------------------------------------------------------------------------
 ! hardening coefficient
  if (abs(gamma_dot) > 1e-12_pReal) then
-   if (abs(param(instance)%tausat_SinhFitA) <= tiny(0.0_pReal)) then
+   if (dEq(param(instance)%tausat_SinhFitA,0.0_pReal)) then
      saturation = param(instance)%tausat
    else
      saturation = (  param(instance)%tausat &
@@ -614,8 +608,7 @@ function plastic_isotropic_postResults(Tstar_v,ipc,ip,el)
    math_mul6x6
  use material, only: &
    material_phase, &
-   plasticState, &
-   phaseAt, phasememberAt, &
+   phasememberAt, &
    phase_plasticityInstance
 
  implicit none
@@ -639,7 +632,7 @@ function plastic_isotropic_postResults(Tstar_v,ipc,ip,el)
    o
 
  of = phasememberAt(ipc,ip,el)                                                                      ! phasememberAt should be tackled by material and be renamed to material_phasemember
- instance = phase_plasticityInstance(phaseAt(ipc,ip,el))                                            ! "phaseAt" equivalent to "material_phase" !!
+ instance = phase_plasticityInstance(material_phase(ipc,ip,el))
  
 !--------------------------------------------------------------------------------------------------
 ! norm of (deviatoric) 2nd Piola-Kirchhoff stress

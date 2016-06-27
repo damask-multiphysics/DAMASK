@@ -43,7 +43,7 @@ subroutine CPFEM_initAll(el,ip)
    crystallite_init
  use homogenization, only: &
    homogenization_init, &
-materialpoint_postResults
+   materialpoint_postResults
  use IO, only: &
    IO_init
  use DAMASK_interface
@@ -73,7 +73,7 @@ materialpoint_postResults
  call crystallite_init
  call homogenization_init
  call materialpoint_postResults
-     call CPFEM_init
+ call CPFEM_init
 
 end subroutine CPFEM_initAll
 
@@ -251,8 +251,6 @@ subroutine CPFEM_general(age, dt)
    crystallite_Tstar0_v, &
    crystallite_Tstar_v
  use homogenization, only: &  
-   materialpoint_F, &
-   materialpoint_F0, &
    materialpoint_stressAndItsTangent, &
    materialpoint_postResults
  use IO, only: &

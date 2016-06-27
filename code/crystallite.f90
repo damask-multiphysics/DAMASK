@@ -197,8 +197,6 @@ subroutine crystallite_init
    nMax, &                                                                                          !< maximum number of ip neighbors
    myNcomponents, &                                                                                 !< number of components at current IP
    section = 0_pInt, &
-   j, &
-   p, &
    mySize
 
  character(len=65536) :: &
@@ -258,7 +256,8 @@ subroutine crystallite_init
  allocate(crystallite_orientation(4,cMax,iMax,eMax),         source=0.0_pReal)
  allocate(crystallite_orientation0(4,cMax,iMax,eMax),        source=0.0_pReal)
  allocate(crystallite_rotation(4,cMax,iMax,eMax),            source=0.0_pReal)
- allocate(crystallite_disorientation(4,nMax,cMax,iMax,eMax), source=0.0_pReal)
+ if (any(plasticState%nonLocal)) &
+   allocate(crystallite_disorientation(4,nMax,cMax,iMax,eMax),source=0.0_pReal)
  allocate(crystallite_localPlasticity(cMax,iMax,eMax),       source=.true.)
  allocate(crystallite_requested(cMax,iMax,eMax),             source=.false.)
  allocate(crystallite_todo(cMax,iMax,eMax),                  source=.false.)
@@ -510,7 +509,8 @@ end subroutine crystallite_init
 !--------------------------------------------------------------------------------------------------
 subroutine crystallite_stressAndItsTangent(updateJaco)
  use prec, only: &
-   tol_math_check
+   tol_math_check, &
+   dNeq
  use numerics, only: &
    subStepMinCryst, &
    subStepSizeCryst, &
@@ -802,7 +802,7 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
          endif
        else
          subFracIntermediate = maxval(crystallite_subFrac, mask=.not.crystallite_localPlasticity)
-         if (abs(subFracIntermediate) > tiny(0.0_pReal)) then
+         if (dNeq(subFracIntermediate,0.0_pReal)) then
            crystallite_neighborEnforcedCutback = .false.  ! look for ips that require a cutback because of a nonconverged neighbor
            !$OMP PARALLEL
            !$OMP DO PRIVATE(neighboring_e,neighboring_i)
@@ -843,7 +843,7 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
            !$OMP DO PRIVATE(neighboring_e,neighboring_i)
            do e = FEsolving_execElem(1),FEsolving_execElem(2)
              do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
-               if (.not. crystallite_localPlasticity(1,i,e) .and. abs(crystallite_subFrac(1,i,e)) > tiny(0.0_pReal)) then
+               if (.not. crystallite_localPlasticity(1,i,e) .and. dNeq(crystallite_subFrac(1,i,e),0.0_pReal)) then
                  do n = 1_pInt,FE_NipNeighbors(FE_celltype(FE_geomtype(mesh_element(2,e))))
                    neighboring_e = mesh_ipNeighborhood(1,n,i,e)
                    neighboring_i = mesh_ipNeighborhood(2,n,i,e)
@@ -3351,7 +3351,8 @@ end subroutine crystallite_integrateStateFPI
 !--------------------------------------------------------------------------------------------------
 logical function crystallite_stateJump(ipc,ip,el)
  use prec, only: &
-   prec_isNaN
+   prec_isNaN, &
+   dNeq
  use debug, only: &
    debug_level, &
    debug_crystallite, &
@@ -3403,7 +3404,7 @@ logical function crystallite_stateJump(ipc,ip,el)
  enddo
 
 #ifndef _OPENMP
- if (any(plasticState(p)%deltaState(1:mySizePlasticDeltaState,c) /= 0.0_pReal) &
+ if (any(dNeq(plasticState(p)%deltaState(1:mySizePlasticDeltaState,c),0.0_pReal)) &
      .and. iand(debug_level(debug_crystallite), debug_levelExtensive) /= 0_pInt &
      .and. ((el == debug_e .and. ip == debug_i .and. ipc == debug_g) &
              .or. .not. iand(debug_level(debug_crystallite), debug_levelSelective) /= 0_pInt)) then
@@ -3458,7 +3459,8 @@ logical function crystallite_integrateStress(&
       )
  use prec, only:         pLongInt, &
                          tol_math_check, &
-                         prec_isNaN
+                         prec_isNaN, &
+                         dEq
  use numerics, only:     nStress, &
                          aTol_crystalliteStress, &
                          rTol_crystalliteStress, &
@@ -3606,7 +3608,7 @@ logical function crystallite_integrateStress(&
  !* inversion of Fp_current...
 
  invFp_current = math_inv33(Fp_current)
- if (all(abs(invFp_current) <= tiny(0.0_pReal))) then                                               ! math_inv33 returns zero when failed, avoid floating point comparison
+ failedInversionFp: if (all(dEq(invFp_current,0.0_pReal))) then
 #ifndef _OPENMP
    if (iand(debug_level(debug_crystallite), debug_levelBasic) /= 0_pInt) then
      write(6,'(a,i8,1x,a,i8,a,1x,i2,1x,i3)') '<< CRYST >> integrateStress failed on inversion of Fp_current at el (elFE) ip g ',&
@@ -3616,13 +3618,13 @@ logical function crystallite_integrateStress(&
    endif
 #endif
    return
- endif
+ endif failedInversionFp
  A = math_mul33x33(Fg_new,invFp_current)                                                            ! intermediate tensor needed later to calculate dFe_dLp
 
  !* inversion of Fi_current...
 
  invFi_current = math_inv33(Fi_current)
- if (all(abs(invFi_current) <= tiny(0.0_pReal))) then                                               ! math_inv33 returns zero when failed, avoid floating point comparison
+ failedInversionFi: if (all(dEq(invFi_current,0.0_pReal))) then
 #ifndef _OPENMP
    if (iand(debug_level(debug_crystallite), debug_levelBasic) /= 0_pInt) then
      write(6,'(a,i8,1x,a,i8,a,1x,i2,1x,i3)') '<< CRYST >> integrateStress failed on inversion of Fi_current at el (elFE) ip ipc ',&
@@ -3632,7 +3634,7 @@ logical function crystallite_integrateStress(&
    endif
 #endif
    return
- endif
+ endif failedInversionFi
 
  !* start LpLoop with normal step length
 
@@ -3882,7 +3884,7 @@ logical function crystallite_integrateStress(&
  invFp_new = math_mul33x33(invFp_current,B)
  invFp_new = invFp_new / math_det33(invFp_new)**(1.0_pReal/3.0_pReal)                               ! regularize by det
  Fp_new = math_inv33(invFp_new)
- if (all(abs(Fp_new)<= tiny(0.0_pReal))) then                                                       ! math_inv33 returns zero when failed, avoid floating point comparison
+ failedInversionInvFp: if (all(dEq(Fp_new,0.0_pReal))) then
 #ifndef _OPENMP
    if (iand(debug_level(debug_crystallite), debug_levelBasic) /= 0_pInt) then
      write(6,'(a,i8,1x,a,i8,a,1x,i2,1x,i3,a,i3)') '<< CRYST >> integrateStress failed on invFp_new inversion at el ip ipc ',&
@@ -3894,7 +3896,7 @@ logical function crystallite_integrateStress(&
    endif
 #endif
    return
- endif
+ endif failedInversionInvFp
  Fe_new = math_mul33x33(math_mul33x33(Fg_new,invFp_new),invFi_new)    ! calc resulting Fe
 
  !* calculate 1st Piola-Kirchhoff stress
@@ -3961,7 +3963,6 @@ subroutine crystallite_orientations
  use plastic_nonlocal, only: &
    plastic_nonlocal_updateCompatibility
 
-
  implicit none
  integer(pInt) &
    c, &                                                                                             !< counter in integration point component loop
@@ -3977,50 +3978,51 @@ subroutine crystallite_orientations
 
  ! --- CALCULATE ORIENTATION AND LATTICE ROTATION ---
 
- !$OMP PARALLEL DO PRIVATE(orientation)
-   do e = FEsolving_execElem(1),FEsolving_execElem(2)
-     do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
-       do c = 1_pInt,homogenization_Ngrains(mesh_element(3,e))
+!$OMP PARALLEL DO PRIVATE(orientation)
+ do e = FEsolving_execElem(1),FEsolving_execElem(2)
+   do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
+     do c = 1_pInt,homogenization_Ngrains(mesh_element(3,e))
 ! somehow this subroutine is not threadsafe, so need critical statement here; not clear, what exactly the problem is
-         !$OMP CRITICAL (polarDecomp)
-         orientation = math_RtoQ(transpose(math_rotationalPart33(crystallite_Fe(1:3,1:3,c,i,e))))          ! rotational part from polar decomposition as quaternion
-         !$OMP END CRITICAL (polarDecomp)
-         crystallite_rotation(1:4,c,i,e) = lattice_qDisorientation(crystallite_orientation0(1:4,c,i,e), &  ! active rotation from ori0
-                                                                orientation)                               ! to current orientation (with no symmetry)
-         crystallite_orientation(1:4,c,i,e) = orientation
-  enddo; enddo; enddo
- !$OMP END PARALLEL DO
-
-
+!$OMP CRITICAL (polarDecomp)
+       orientation = math_RtoQ(transpose(math_rotationalPart33(crystallite_Fe(1:3,1:3,c,i,e))))
+!$OMP END CRITICAL (polarDecomp)
+       crystallite_rotation(1:4,c,i,e) = lattice_qDisorientation(crystallite_orientation0(1:4,c,i,e), &! active rotation from initial
+                                                                  orientation)                         ! to current orientation (with no symmetry)
+       crystallite_orientation(1:4,c,i,e) = orientation
+ enddo; enddo; enddo
+!$OMP END PARALLEL DO
+ 
+  
  ! --- UPDATE SOME ADDITIONAL VARIABLES THAT ARE NEEDED FOR NONLOCAL MATERIAL ---
  ! --- we use crystallite_orientation from above, so need a separate loop
-
- !$OMP PARALLEL DO PRIVATE(myPhase,neighboring_e,neighboring_i,neighboringPhase)
+  
+ nonlocalPresent: if (any(plasticState%nonLocal)) then
+!$OMP PARALLEL DO PRIVATE(myPhase,neighboring_e,neighboring_i,neighboringPhase)
    do e = FEsolving_execElem(1),FEsolving_execElem(2)
      do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
-       myPhase = material_phase(1,i,e)                                                                     ! get my phase (non-local models make no sense with more than one grain per material point)
-       if (plasticState(myPhase)%nonLocal) then                                                            ! if nonlocal model
+       myPhase = material_phase(1,i,e)                                                              ! get my phase (non-local models make no sense with more than one grain per material point)
+       if (plasticState(myPhase)%nonLocal) then                                                     ! if nonlocal model
          ! --- calculate disorientation between me and my neighbor ---
 
-         do n = 1_pInt,FE_NipNeighbors(FE_celltype(FE_geomtype(mesh_element(2,e))))                        ! loop through my neighbors
+         do n = 1_pInt,FE_NipNeighbors(FE_celltype(FE_geomtype(mesh_element(2,e))))                 ! loop through my neighbors
            neighboring_e = mesh_ipNeighborhood(1,n,i,e)
            neighboring_i = mesh_ipNeighborhood(2,n,i,e)
-           if (neighboring_e > 0 .and. neighboring_i > 0) then                                             ! if neighbor exists
-             neighboringPhase = material_phase(1,neighboring_i,neighboring_e)                              ! get my neighbor's phase
-             if (plasticState(neighboringPhase)%nonLocal) then                                             ! neighbor got also nonlocal plasticity
-               if (lattice_structure(myPhase) == lattice_structure(neighboringPhase)) then                 ! if my neighbor has same crystal structure like me
+           if (neighboring_e > 0 .and. neighboring_i > 0) then                                      ! if neighbor exists
+             neighboringPhase = material_phase(1,neighboring_i,neighboring_e)                       ! get my neighbor's phase
+             if (plasticState(neighboringPhase)%nonLocal) then                                      ! neighbor got also nonlocal plasticity
+               if (lattice_structure(myPhase) == lattice_structure(neighboringPhase)) then          ! if my neighbor has same crystal structure like me
                  crystallite_disorientation(:,n,1,i,e) = &
                    lattice_qDisorientation( crystallite_orientation(1:4,1,i,e), &
                                             crystallite_orientation(1:4,1,neighboring_i,neighboring_e), &
-                                            lattice_structure(myPhase))                                    ! calculate disorientation for given symmetry
-               else                                                                                        ! for neighbor with different phase
-                 crystallite_disorientation(:,n,1,i,e) = [0.0_pReal, 1.0_pReal, 0.0_pReal, 0.0_pReal]      ! 180 degree rotation about 100 axis
+                                            lattice_structure(myPhase))                             ! calculate disorientation for given symmetry
+               else                                                                                 ! for neighbor with different phase
+                 crystallite_disorientation(:,n,1,i,e) = [0.0_pReal, 1.0_pReal, 0.0_pReal, 0.0_pReal]! 180 degree rotation about 100 axis
                endif
-             else                                                                                          ! for neighbor with local plasticity
-               crystallite_disorientation(:,n,1,i,e) = [-1.0_pReal, 0.0_pReal, 0.0_pReal, 0.0_pReal]       ! homomorphic identity
+             else                                                                                   ! for neighbor with local plasticity
+               crystallite_disorientation(:,n,1,i,e) = [-1.0_pReal, 0.0_pReal, 0.0_pReal, 0.0_pReal]! homomorphic identity
              endif
-           else                                                                                            ! no existing neighbor
-             crystallite_disorientation(:,n,1,i,e) = [-1.0_pReal, 0.0_pReal, 0.0_pReal, 0.0_pReal]         ! homomorphic identity
+           else                                                                                     ! no existing neighbor
+             crystallite_disorientation(:,n,1,i,e) = [-1.0_pReal, 0.0_pReal, 0.0_pReal, 0.0_pReal]  ! homomorphic identity
            endif
          enddo
 
@@ -4031,7 +4033,8 @@ subroutine crystallite_orientations
 
        endif
    enddo; enddo
- !$OMP END PARALLEL DO
+!$OMP END PARALLEL DO
+ endif nonlocalPresent
 
 end subroutine crystallite_orientations
 
@@ -4114,7 +4117,7 @@ function crystallite_postResults(ipc, ip, el)
        mySize = 1_pInt
        detF = math_det33(crystallite_partionedF(1:3,1:3,ipc,ip,el))                                 ! V_current = det(F) * V_reference
        crystallite_postResults(c+1) = detF * mesh_ipVolume(ip,el) &
-                                           / homogenization_Ngrains(mesh_element(3,el))             ! grain volume (not fraction but absolute)
+                                           / real(homogenization_Ngrains(mesh_element(3,el)),pReal) ! grain volume (not fraction but absolute)
      case (orientation_ID)
        mySize = 4_pInt
        crystallite_postResults(c+1:c+mySize) = crystallite_orientation(1:4,ipc,ip,el)               ! grain orientation as quaternion

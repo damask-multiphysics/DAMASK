@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2
 # -*- coding: UTF-8 no BOM -*-
 
 import os,sys
@@ -165,7 +165,8 @@ for name in filenames:
 
   table.info_clear()
   table.info_append(scriptID + '\t' + ' '.join(sys.argv[1:]))
-  table.labels = ['bin_%s'%options.data[0],'bin_%s'%options.data[1],'z']
+  table.labels_clear()
+  table.labels_append(['bin_%s'%options.data[0],'bin_%s'%options.data[1],'z'])
   table.head_write()
 
 # --- output result ---------------------------------------------------------------------------------

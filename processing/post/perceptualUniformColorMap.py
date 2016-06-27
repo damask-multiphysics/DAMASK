@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2
 # -*- coding: UTF-8 no BOM -*-
 
 import sys,os
@@ -14,7 +14,7 @@ scriptID   = ' '.join([scriptName,damask.version])
 #Borland, D., & Taylor, R. M. (2007). Rainbow Color Map (Still) Considered Harmful. Computer Graphics and Applications, IEEE, 27(2), 14--17.
 #Moreland, K. (2009). Diverging Color Maps for Scientific Visualization. In Proc. 5th Int. Symp. Visual Computing (pp. 92--103).
 outtypes    = ['paraview','gmsh','raw','GOM']
-extensions  = ['.xml','.msh','.txt','.legend']
+extensions  = ['.json','.msh','.txt','.legend']
 colormodels = ['RGB','HSL','XYZ','CIELAB','MSH']
 
 parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
@@ -34,11 +34,9 @@ parser.add_option('-r','--right', dest='right', type='float', nargs=3, metavar='
 parser.add_option('-c','--colormodel', dest='colormodel', metavar='string',
                   help='colormodel: '+', '.join(colormodels)+' [%default]')
 parser.add_option('-p','--predefined', dest='predefined', metavar='string',
-                  help='predefined colormap [%default]')
+                  help='predefined colormap')
 parser.add_option('-f','--format', dest='format', metavar='string',
                   help='output format: '+', '.join(outtypes)+' [%default]')
-parser.add_option('-b','--basename', dest='basename', metavar='string',
-                  help='basename of output file [%default]')
 parser.set_defaults(colormodel = 'RGB')
 parser.set_defaults(predefined = None)
 parser.set_defaults(basename = None)
@@ -48,7 +46,7 @@ parser.set_defaults(trim  = (-1.0,1.0))
 parser.set_defaults(left  = (1.0,1.0,1.0))
 parser.set_defaults(right = (0.0,0.0,0.0))
 
-(options,filenames) = parser.parse_args()
+(options,filename) = parser.parse_args()
 
 if options.format not in outtypes:
   parser.error('invalid format: "%s" (can be %s).'%(options.format,', '.join(outtypes)))
@@ -62,10 +60,10 @@ if options.trim[0] < -1.0 or \
   parser.error('invalid trim range (-1 +1).')
 
 
-name   = options.format if options.basename is None\
-                        else options.basename
-output = sys.stdout     if options.basename is None\
-                        else open(os.path.basename(options.basename)+extensions[outtypes.index(options.format)],'w')
+name   = options.format if filename[0] is None\
+                        else filename[0]
+output = sys.stdout     if filename[0] is None\
+                        else open(os.path.basename(filename[0])+extensions[outtypes.index(options.format)],'w')
 
 colorLeft = damask.Color(options.colormodel.upper(), list(options.left))
 colorRight = damask.Color(options.colormodel.upper(), list(options.right))

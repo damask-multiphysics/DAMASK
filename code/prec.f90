@@ -21,10 +21,10 @@ module prec
 #if (FLOAT==8)
  integer,     parameter, public :: pReal = 8                                                        !< floating point double precision (was selected_real_kind(15,300), number with 15 significant digits, up to 1e+-300)
 #ifdef __INTEL_COMPILER
- real(pReal), parameter, public :: DAMASK_NaN = Z'7FF8000000000000'                                 !< quiet NaN for double precision (from http://www.hpc.unimelb.edu.au/doc/f90lrm/dfum_035.html, copy can be found in documentation/Code/Fortran)
+ real(pReal), parameter, public :: DAMASK_NaN = Z'7FF8000000000000'                                 !< quiet NaN for double precision (from http://www.hpc.unimelb.edu.au/doc/f90lrm/dfum_035.html)
 #endif
 #ifdef __GFORTRAN__
- real(pReal), parameter, public :: DAMASK_NaN = real(Z'7FF8000000000000',pReal)                     !< quiet NaN for double precision (from http://www.hpc.unimelb.edu.au/doc/f90lrm/dfum_035.html, copy can be found in documentation/Code/Fortran)
+ real(pReal), parameter, public :: DAMASK_NaN = real(Z'7FF8000000000000',pReal)                     !< quiet NaN for double precision (from http://www.hpc.unimelb.edu.au/doc/f90lrm/dfum_035.html)
 #endif
 #else
  NO SUITABLE PRECISION FOR REAL SELECTED, STOPPING COMPILATION
@@ -115,7 +115,9 @@ module prec
    prec_init, &
    prec_isNaN, &
    dEq, &
-   dNeq
+   cEq, &
+   dNeq, &
+   cNeq
  
 contains
 
@@ -180,28 +182,69 @@ end function prec_isNaN
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief equality comparison for double precision
+!> @brief equality comparison for float with double precision
 ! replaces "==" but for certain (relative) tolerance. Counterpart to dNeq
 ! http://www.cygnus-software.com/papers/comparingfloats/comparingfloats.htm
 !--------------------------------------------------------------------------------------------------
 logical elemental pure function dEq(a,b,tol)
-  real(pReal), intent(in) :: a,b
-  real(pReal), intent(in), optional :: tol
-  real(pReal), parameter  :: eps = 2.2204460492503131E-16                                           ! DBL_EPSILON in C
-  dEq = merge(.True., .False.,abs(a-b) <= merge(tol,eps,present(tol))*maxval(abs([a,b])))
+
+ implicit none
+ real(pReal), intent(in)           :: a,b
+ real(pReal), intent(in), optional :: tol
+ real(pReal), parameter            :: eps = 2.220446049250313E-16                                   ! DBL_EPSILON in C
+
+ dEq = merge(.True., .False.,abs(a-b) <= merge(tol,eps,present(tol))*maxval(abs([a,b])))
 end function dEq
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief inequality comparison for double precision
+!> @brief inequality comparison for float with double precision
 ! replaces "!=" but for certain (relative) tolerance. Counterpart to dEq
 ! http://www.cygnus-software.com/papers/comparingfloats/comparingfloats.htm
 !--------------------------------------------------------------------------------------------------
 logical elemental pure function dNeq(a,b,tol)
-  real(pReal), intent(in)           :: a,b
-  real(pReal), intent(in), optional :: tol
-  real(pReal), parameter  :: eps = 2.2204460492503131E-16                                           ! DBL_EPSILON in C
-  dNeq = merge(.False., .True.,abs(a-b) <= merge(tol,eps,present(tol))*maxval(abs([a,b])))
+
+ implicit none
+ real(pReal), intent(in)           :: a,b
+ real(pReal), intent(in), optional :: tol
+ real(pReal), parameter            :: eps = 2.220446049250313E-16                                   ! DBL_EPSILON in C
+
+ dNeq = merge(.False., .True.,abs(a-b) <= merge(tol,eps,present(tol))*maxval(abs([a,b])))
 end function dNeq
+
+!--------------------------------------------------------------------------------------------------
+!> @brief equality comparison for complex with double precision
+! replaces "==" but for certain (relative) tolerance. Counterpart to cNeq
+! http://www.cygnus-software.com/papers/comparingfloats/comparingfloats.htm
+! probably a component wise comparison would be more accurate than the comparsion of the absolute
+! value
+!--------------------------------------------------------------------------------------------------
+logical elemental pure function cEq(a,b,tol)
+
+ implicit none
+ complex(pReal), intent(in)           :: a,b
+ real(pReal),    intent(in), optional :: tol
+ real(pReal),    parameter            :: eps = 2.220446049250313E-16                                ! DBL_EPSILON in C
+
+ cEq = merge(.True., .False.,abs(a-b) <= merge(tol,eps,present(tol))*maxval(abs([a,b])))
+end function cEq
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief inequality comparison for complex with double precision
+! replaces "!=" but for certain (relative) tolerance. Counterpart to cEq
+! http://www.cygnus-software.com/papers/comparingfloats/comparingfloats.htm
+! probably a component wise comparison would be more accurate than the comparsion of the absolute
+! value
+!--------------------------------------------------------------------------------------------------
+logical elemental pure function cNeq(a,b,tol)
+
+ implicit none
+ complex(pReal), intent(in)           :: a,b
+ real(pReal),    intent(in), optional :: tol
+ real(pReal),    parameter            :: eps = 2.220446049250313E-16                                ! DBL_EPSILON in C
+
+ cNeq = merge(.False., .True.,abs(a-b) <= merge(tol,eps,present(tol))*maxval(abs([a,b])))
+end function cNeq
 
 end module prec

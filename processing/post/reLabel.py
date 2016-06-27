@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2
 # -*- coding: UTF-8 no BOM -*-
 
 import os,sys,re
@@ -64,11 +64,11 @@ for name in filenames:
     indices    = table.label_index    (options.label)
     dimensions = table.label_dimension(options.label)
     for i,index in enumerate(indices):
-      if index == -1: remarks.append('label {} not present...'.format(options.label[i]))
+      if index == -1: remarks.append('label "{}" not present...'.format(options.label[i]))
       else:
-        m = pattern[dimensions[i]>1].match(table.labels[index])                                   # isolate label name
+        m = pattern[dimensions[i]>1].match(table.tags[index])                                       # isolate label name
         for j in xrange(dimensions[i]):
-          table.labels[index+j] = table.labels[index+j].replace(m.group(2),options.substitute[i]) # replace name with substitute
+          table.tags[index+j] = table.tags[index+j].replace(m.group(2),options.substitute[i])       # replace name with substitute
 
   if remarks != []: damask.util.croak(remarks)
   if errors  != []:
