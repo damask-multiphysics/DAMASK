@@ -422,7 +422,7 @@ subroutine utilities_updateGamma(C,saveReference)
        forall(l = 1_pInt:3_pInt, m = 1_pInt:3_pInt) &
          xiDyad_cmplx(l,m) = conjg(-xi1st(l,i,j,k-grid3Offset))*xi1st(m,i,j,k-grid3Offset)
        forall(l = 1_pInt:3_pInt, m = 1_pInt:3_pInt) &
-         temp33_complex(l,m) = sum(C_ref(l,1:3,m,1:3)*xiDyad_cmplx)
+         temp33_complex(l,m) = sum(cmplx(C_ref(l,1:3,m,1:3),0.0_pReal)*xiDyad_cmplx)
        matA(1:3,1:3) = real(temp33_complex); matA(4:6,4:6) = real(temp33_complex)
        matA(1:3,4:6) = aimag(temp33_complex); matA(4:6,1:3) = -aimag(temp33_complex)
        if (abs(math_det33(matA(1:3,1:3))) > 1e-16) then
@@ -558,7 +558,7 @@ subroutine utilities_fourierGammaConvolution(fieldAim)
        forall(l = 1_pInt:3_pInt, m = 1_pInt:3_pInt) &
          xiDyad_cmplx(l,m) = conjg(-xi1st(l,i,j,k))*xi1st(m,i,j,k)
        forall(l = 1_pInt:3_pInt, m = 1_pInt:3_pInt) &
-         temp33_complex(l,m) = sum(C_ref(l,1:3,m,1:3)*xiDyad_cmplx)
+         temp33_complex(l,m) = sum(cmplx(C_ref(l,1:3,m,1:3),0.0_pReal)*xiDyad_cmplx)
        matA(1:3,1:3) = real(temp33_complex); matA(4:6,4:6) = real(temp33_complex)
        matA(1:3,4:6) = aimag(temp33_complex); matA(4:6,1:3) = -aimag(temp33_complex)
        if (abs(math_det33(matA(1:3,1:3))) > 1e-16) then
@@ -610,8 +610,8 @@ subroutine utilities_fourierGreenConvolution(D_ref, mobility_ref, deltaT)
 ! do the actual spectral method calculation
  do k = 1_pInt, grid3; do j = 1_pInt, grid(2) ;do i = 1_pInt, grid1Red
    GreenOp_hat =  cmplx(1.0_pReal,0.0_pReal,pReal)/ &
-                  (cmplx(mobility_ref,0.0_pReal,pReal) + &
-                   deltaT*sum(conjg(xi1st(1:3,i,j,k))*matmul(D_ref,xi1st(1:3,i,j,k)))) ! why not use dot_product 
+                  (cmplx(mobility_ref,0.0_pReal,pReal) + cmplx(deltaT,0.0_pReal)*&
+                   sum(conjg(xi1st(1:3,i,j,k))* matmul(cmplx(D_ref,0.0_pReal),xi1st(1:3,i,j,k))))   ! why not use dot_product 
    scalarField_fourier(i,j,k) = scalarField_fourier(i,j,k)*GreenOp_hat
  enddo; enddo; enddo
 
