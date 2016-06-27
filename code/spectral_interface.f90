@@ -89,10 +89,10 @@ subroutine DAMASK_interface_init(loadCaseParameterIn,geometryParameterIn)
 #endif
  call PetscInitialize(PETSC_NULL_CHARACTER,ierr)                                                    ! according to PETSc manual, that should be the first line in the code
  CHKERRQ(ierr)                                                                                      ! this is a macro definition, it is case sensitive
- open(6, encoding='UTF-8')
  call MPI_Comm_rank(PETSC_COMM_WORLD,worldrank,ierr);CHKERRQ(ierr)
 #endif
  mainProcess: if (worldrank == 0) then
+   open(6, encoding='UTF-8')
    call date_and_time(values = dateAndTime)
    write(6,'(/,a)') ' <<<+-  DAMASK_spectral  -+>>>'
    write(6,'(/,a)')              ' Version: '//DAMASKVERSION
@@ -104,6 +104,8 @@ subroutine DAMASK_interface_init(loadCaseParameterIn,geometryParameterIn)
                                               dateAndTime(7)  
    write(6,'(/,a)') ' <<<+-  DAMASK_interface init  -+>>>'
 #include "compilation_info.f90"
+ else mainProcess
+   close(6)
  endif mainProcess
  if ( present(loadcaseParameterIn) .and. present(geometryParameterIn)) then                         ! both mandatory parameters given in function call 
    geometryArg = geometryParameterIn
