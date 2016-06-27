@@ -139,6 +139,7 @@ program DAMASK_spectral
  integer(MPI_OFFSET_KIND) :: fileOffset
  integer(MPI_OFFSET_KIND), dimension(:), allocatable :: outputSize
  integer(pInt), parameter :: maxByteOut = 2147483647-4096                                           !< limit of one file output write https://trac.mpich.org/projects/mpich/ticket/1742
+ integer(pInt), parameter :: maxRealOut = maxByteOut/pReal
  integer(pLongInt), dimension(2) :: outputIndex
  PetscErrorCode :: ierr
  external :: &
@@ -444,8 +445,8 @@ program DAMASK_spectral
 
  if (.not. appendToOutFile) then                                                                    ! if not restarting, write 0th increment
    do i=1, size(materialpoint_results,3)/(maxByteOut/(materialpoint_sizeResults*pReal))+1           ! slice the output of my process in chunks not exceeding the limit for one output
-     outputIndex=int([(i-1_pInt)*((maxByteOut/pReal)/materialpoint_sizeResults)+1_pInt, &
-                      min(i*((maxByteOut/pReal)/materialpoint_sizeResults),size(materialpoint_results,3))],pLongInt)
+     outputIndex=int([(i-1_pInt)*((maxRealOut)/materialpoint_sizeResults)+1_pInt, &
+                      min(i*((maxRealOut)/materialpoint_sizeResults),size(materialpoint_results,3))],pLongInt)
      call MPI_file_write(resUnit,reshape(materialpoint_results(:,:,outputIndex(1):outputIndex(2)),&
                                    [(outputIndex(2)-outputIndex(1)+1)*materialpoint_sizeResults]), &
                          (outputIndex(2)-outputIndex(1)+1)*materialpoint_sizeResults,&
@@ -471,7 +472,7 @@ program DAMASK_spectral
 ! forwarding time
      timeIncOld = timeinc
      if (loadCases(currentLoadCase)%logscale == 0_pInt) then                                        ! linear scale
-       timeinc = loadCases(currentLoadCase)%time/loadCases(currentLoadCase)%incs                    ! only valid for given linear time scale. will be overwritten later in case loglinear scale is used
+       timeinc = loadCases(currentLoadCase)%time/real(loadCases(currentLoadCase)%incs,pReal)        ! only valid for given linear time scale. will be overwritten later in case loglinear scale is used
      else
        if (currentLoadCase == 1_pInt) then                                                          ! 1st currentLoadCase of logarithmic scale            
          if (inc == 1_pInt) then                                                                    ! 1st inc of 1st currentLoadCase of logarithmic scale
@@ -653,8 +654,8 @@ program DAMASK_spectral
          call MPI_file_seek (resUnit,fileOffset,MPI_SEEK_SET,ierr)
          if(ierr /=0_pInt) call IO_error(894_pInt, ext_msg='MPI_file_seek')
          do i=1, size(materialpoint_results,3)/(maxByteOut/(materialpoint_sizeResults*pReal))+1     ! slice the output of my process in chunks not exceeding the limit for one output
-           outputIndex=int([(i-1_pInt)*((maxByteOut/pReal)/materialpoint_sizeResults)+1_pInt, &
-                      min(i*((maxByteOut/pReal)/materialpoint_sizeResults),size(materialpoint_results,3))],pLongInt)
+           outputIndex=int([(i-1_pInt)*((maxRealOut)/materialpoint_sizeResults)+1_pInt, &
+                      min(i*((maxRealOut)/materialpoint_sizeResults),size(materialpoint_results,3))],pLongInt)
            call MPI_file_write(resUnit,reshape(materialpoint_results(:,:,outputIndex(1):outputIndex(2)),&
                                          [(outputIndex(2)-outputIndex(1)+1)*materialpoint_sizeResults]), &
                                (outputIndex(2)-outputIndex(1)+1)*materialpoint_sizeResults,&

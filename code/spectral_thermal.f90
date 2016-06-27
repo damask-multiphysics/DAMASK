@@ -42,7 +42,6 @@ module spectral_thermal
  integer(pInt),               private :: totalIter = 0_pInt                                         !< total iteration in current increment
  real(pReal), dimension(3,3), private :: D_ref
  real(pReal), private                 :: mobility_ref
- character(len=1024),         private :: incInfo
  
  public :: &
    spectral_thermal_init, &
@@ -50,21 +49,7 @@ module spectral_thermal
    spectral_thermal_forward, &
    spectral_thermal_destroy
  external :: &
-   VecDestroy, &
-   DMDestroy, &
-   DMDACreate3D, &
-   DMCreateGlobalVector, &
-   DMDASNESSetFunctionLocal, &
    PETScFinalize, &
-   SNESDestroy, &
-   SNESGetNumberFunctionEvals, &
-   SNESGetIterationNumber, &
-   SNESSolve, &
-   SNESSetDM, &
-   SNESGetConvergedReason, &
-   SNESSetConvergenceTest, &
-   SNESSetFromOptions, &
-   SNESCreate, &
    MPI_Abort, &
    MPI_Bcast, &
    MPI_Allreduce
@@ -99,10 +84,20 @@ subroutine spectral_thermal_init
  integer(pInt) :: proc
  integer(pInt) :: i, j, k, cell
  DM :: thermal_grid
- PetscScalar, pointer :: x_scal(:,:,:)          
+ PetscScalar,  dimension(:,:,:), pointer     :: x_scal
  PetscErrorCode :: ierr
  PetscObject    :: dummy
 
+ external :: &
+   SNESCreate, &
+   SNESSetOptionsPrefix, &
+   DMDACreate3D, &
+   SNESSetDM, &
+   DMDAGetCorners, &
+   DMCreateGlobalVector, &
+   DMDASNESSetFunctionLocal, &
+   SNESSetFromOptions
+   
  mainProcess: if (worldrank == 0_pInt) then
    write(6,'(/,a)') ' <<<+-  spectral_thermal init  -+>>>'
    write(6,'(a15,a)')   ' Current time: ',IO_timeStamp()
@@ -154,6 +149,8 @@ subroutine spectral_thermal_init
  x_scal(xstart:xend,ystart:yend,zstart:zend) = temperature_current
  call DMDAVecRestoreArrayF90(thermal_grid,solution,x_scal,ierr); CHKERRQ(ierr)
 
+!--------------------------------------------------------------------------------------------------
+! thermal reference diffusion update
  cell = 0_pInt
  D_ref = 0.0_pReal
  mobility_ref = 0.0_pReal
@@ -171,7 +168,7 @@ subroutine spectral_thermal_init
 end subroutine spectral_thermal_init
   
 !--------------------------------------------------------------------------------------------------
-!> @brief solution for the Basic PETSC scheme with internal iterations
+!> @brief solution for the spectral thermal scheme with internal iterations
 !--------------------------------------------------------------------------------------------------
 type(tSolutionState) function spectral_thermal_solution(guess,timeinc,timeinc_old,loadCaseTime)
  use numerics, only: &
@@ -196,12 +193,18 @@ type(tSolutionState) function spectral_thermal_solution(guess,timeinc,timeinc_ol
  integer(pInt) :: i, j, k, cell
  PetscInt  :: position
  PetscReal :: minTemperature, maxTemperature, stagNorm, solnNorm
- 
+
 !--------------------------------------------------------------------------------------------------
 ! PETSc Data
  PetscErrorCode :: ierr   
  SNESConvergedReason :: reason
- 
+
+ external :: &
+   VecMin, &
+   VecMax, &
+   SNESSolve, &
+   SNESGetConvergedReason
+
  spectral_thermal_solution%converged =.false.
  
 !--------------------------------------------------------------------------------------------------
@@ -355,8 +358,11 @@ subroutine spectral_thermal_forward(guess,timeinc,timeinc_old,loadCaseTime)
  logical,     intent(in) :: guess
  integer(pInt)           :: i, j, k, cell
  DM                      :: dm_local
- PetscScalar,    pointer :: x_scal(:,:,:)          
+ PetscScalar,  dimension(:,:,:), pointer     :: x_scal
  PetscErrorCode          :: ierr
+ 
+ external :: &
+   SNESGetDM
 
  if (cutBack) then 
    temperature_current = temperature_lastInc
@@ -404,6 +410,10 @@ subroutine spectral_thermal_destroy()
 
  implicit none
  PetscErrorCode :: ierr
+
+ external :: &
+   VecDestroy, &
+   SNESDestroy
 
  call VecDestroy(solution,ierr); CHKERRQ(ierr)
  call SNESDestroy(thermal_snes,ierr); CHKERRQ(ierr)

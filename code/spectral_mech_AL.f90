@@ -22,7 +22,7 @@ module spectral_mech_AL
    DAMASK_spectral_solverAL_label = 'al'
    
 !--------------------------------------------------------------------------------------------------
-! derived types 
+! derived types
  type(tSolutionParams), private :: params
  real(pReal), private, dimension(3,3) :: mask_stress = 0.0_pReal
 
@@ -31,7 +31,7 @@ module spectral_mech_AL
  DM,   private :: da
  SNES, private :: snes
  Vec,  private :: solution_vec
- 
+
 !--------------------------------------------------------------------------------------------------
 ! common pointwise data
  real(pReal), private, dimension(:,:,:,:,:), allocatable :: &
@@ -72,21 +72,7 @@ module spectral_mech_AL
    AL_forward, &
    AL_destroy
  external :: &
-   VecDestroy, &
-   DMDestroy, &
-   DMDACreate3D, &
-   DMCreateGlobalVector, &
-   DMDASNESSetFunctionLocal, &
    PETScFinalize, &
-   SNESDestroy, &
-   SNESGetNumberFunctionEvals, &
-   SNESGetIterationNumber, &
-   SNESSolve, &
-   SNESSetDM, &
-   SNESGetConvergedReason, &
-   SNESSetConvergenceTest, &
-   SNESSetFromOptions, &
-   SNESCreate, &
    MPI_Abort, &
    MPI_Bcast, &
    MPI_Allreduce
@@ -136,11 +122,22 @@ subroutine AL_init
  integer(pInt) :: proc
  character(len=1024) :: rankStr
  
- if (worldrank == 0_pInt) then
+ external :: &
+   SNESCreate, &
+   SNESSetOptionsPrefix, &
+   DMDACreate3D, &
+   SNESSetDM, &
+   DMCreateGlobalVector, &
+   DMDASNESSetFunctionLocal, &
+   SNESGetConvergedReason, &
+   SNESSetConvergenceTest, &
+   SNESSetFromOptions
+   
+ mainProcess: if (worldrank == 0_pInt) then
    write(6,'(/,a)') ' <<<+-  DAMASK_spectral_solverAL init  -+>>>'
    write(6,'(a15,a)')   ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
- endif
+ endif mainProcess
 
 !--------------------------------------------------------------------------------------------------
 ! allocate global fields
@@ -150,7 +147,7 @@ subroutine AL_init
  allocate (F_lambdaDot     (3,3,grid(1),grid(2),grid3),source = 0.0_pReal)
     
 !--------------------------------------------------------------------------------------------------
-! PETSc Init
+! initialize solver specific parts of PETSc
  call SNESCreate(PETSC_COMM_WORLD,snes,ierr); CHKERRQ(ierr)
  call SNESSetOptionsPrefix(snes,'mech_',ierr);CHKERRQ(ierr) 
  allocate(localK(worldsize), source = 0); localK(worldrank+1) = grid3
@@ -185,10 +182,10 @@ subroutine AL_init
      'reading values of increment ', restartInc - 1_pInt, ' from file'
    flush(6)
    write(rankStr,'(a1,i0)')'_',worldrank
-   call IO_read_realFile(777,'F'//trim(rankStr), trim(getSolverJobName()),size(F))
+   call IO_read_realFile(777,'F'//trim(rankStr),trim(getSolverJobName()),size(F))
    read (777,rec=1) F
    close (777)
-   call IO_read_realFile(777,'F_lastInc'//trim(rankStr), trim(getSolverJobName()),size(F_lastInc))
+   call IO_read_realFile(777,'F_lastInc'//trim(rankStr),trim(getSolverJobName()),size(F_lastInc))
    read (777,rec=1) F_lastInc
    close (777)
    call IO_read_realFile(777,'F_lambda'//trim(rankStr),trim(getSolverJobName()),size(F_lambda))
@@ -214,15 +211,14 @@ subroutine AL_init
    F_lambda_lastInc = F_lastInc
  endif restart
 
- 
  call Utilities_updateIPcoords(reshape(F,shape(F_lastInc)))
  call Utilities_constitutiveResponse(F_lastInc, reshape(F,shape(F_lastInc)), &
                    0.0_pReal,P,C_volAvg,C_minMaxAvg,temp33_Real,.false.,math_I3)
  nullify(F)
  nullify(F_lambda)
  call DMDAVecRestoreArrayF90(da,solution_vec,xx_psc,ierr); CHKERRQ(ierr)                            ! write data back to PETSc
-                             
- readRestart: if (restartInc > 1_pInt) then
+
+ restartRead: if (restartInc > 1_pInt) then
    if (iand(debug_level(debug_spectral),debug_spectralRestart)/= 0 .and. worldrank == 0_pInt) &
      write(6,'(/,a,'//IO_intOut(restartInc-1_pInt)//',a)') &
      'reading more values of increment', restartInc - 1_pInt, 'from file'
@@ -236,7 +232,7 @@ subroutine AL_init
    call IO_read_realFile(777,'C_ref',trim(getSolverJobName()),size(C_minMaxAvg))
    read (777,rec=1) C_minMaxAvg
    close (777)
- endif readRestart
+ endif restartRead
 
  call Utilities_updateGamma(C_minMaxAvg,.True.)
  C_scale = C_minMaxAvg
@@ -263,7 +259,7 @@ type(tSolutionState) function &
  use FEsolving, only: &
    restartWrite, &
    terminallyIll
- 
+
  implicit none
 
 !--------------------------------------------------------------------------------------------------
@@ -286,6 +282,10 @@ type(tSolutionState) function &
  PetscErrorCode :: ierr   
  SNESConvergedReason :: reason
 
+ external :: &
+   SNESSolve, &
+   SNESGetConvergedReason
+
  incInfo = incInfoIn
 
 !--------------------------------------------------------------------------------------------------
@@ -298,7 +298,7 @@ type(tSolutionState) function &
  endif  
 
 !--------------------------------------------------------------------------------------------------
-! set module wide availabe data 
+! set module wide availabe data
  mask_stress = P_BC%maskFloat
  params%P_BC = P_BC%values
  params%rotation_BC = rotation_BC
@@ -387,6 +387,10 @@ subroutine AL_formResidual(in,x_scal,f_scal,dummy,ierr)
  integer(pInt) :: &
    i, j, k, e
 
+ external :: &
+   SNESGetNumberFunctionEvals, &
+   SNESGetIterationNumber
+
  F                => x_scal(1:3,1:3,1,&
   XG_RANGE,YG_RANGE,ZG_RANGE)
  F_lambda         => x_scal(1:3,1:3,2,&
@@ -414,7 +418,7 @@ subroutine AL_formResidual(in,x_scal,f_scal,dummy,ierr)
        write(6,'(/,a,/,3(3(f12.7,1x)/))',advance='no') ' deformation gradient aim (lab) =', &
                              math_transpose33(math_rotate_backward33(F_aim,params%rotation_BC))
      write(6,'(/,a,/,3(3(f12.7,1x)/))',advance='no') ' deformation gradient aim =', &
-                                   math_transpose33(F_aim)
+                                 math_transpose33(F_aim)
      flush(6)
    endif
  endif newIteration
@@ -507,7 +511,7 @@ subroutine AL_converged(snes_local,PETScIter,xnorm,snorm,fnorm,reason,dummy,ierr
    fnorm
  SNESConvergedReason :: reason
  PetscObject :: dummy
- PetscErrorCode ::ierr
+ PetscErrorCode :: ierr
  real(pReal) :: &
    curlTol, &
    divTol, &
@@ -703,6 +707,11 @@ subroutine AL_destroy()
 
  implicit none
  PetscErrorCode :: ierr
+
+ external :: &
+   VecDestroy, &
+   SNESDestroy, &
+   DMDestroy
 
  call VecDestroy(solution_vec,ierr); CHKERRQ(ierr)
  call SNESDestroy(snes,ierr); CHKERRQ(ierr)
