@@ -92,6 +92,10 @@ subroutine DAMASK_interface_init(loadCaseParameterIn,geometryParameterIn)
  call MPI_Comm_rank(PETSC_COMM_WORLD,worldrank,ierr);CHKERRQ(ierr)
 #endif
  mainProcess: if (worldrank == 0) then
+   if (output_unit /= 6) then
+     write(output_unit,'(a)') 'STDOUT != 6'
+     call quit(1_pInt)
+   endif
    open(6, encoding='UTF-8')
    call date_and_time(values = dateAndTime)
    write(6,'(/,a)') ' <<<+-  DAMASK_spectral  -+>>>'
