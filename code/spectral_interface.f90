@@ -61,6 +61,7 @@ subroutine DAMASK_interface_init(loadCaseParameterIn,geometryParameterIn)
    tag
  integer :: &
    i, &
+   threadLevel, &
    worldrank = 0
  integer, allocatable, dimension(:) :: &
    chunkPos
@@ -73,15 +74,22 @@ subroutine DAMASK_interface_init(loadCaseParameterIn,geometryParameterIn)
    quit,&
    MPI_Comm_rank,&
    PETScInitialize, &
+   MPI_Init_Thread, &
    MPI_abort
 
 !--------------------------------------------------------------------------------------------------
 ! PETSc Init
 #ifdef PETSc
-  call PetscInitialize(PETSC_NULL_CHARACTER,ierr)                                                   ! according to PETSc manual, that should be the first line in the code
+#ifdef _OPENMP
+ call MPI_Init_Thread(MPI_THREAD_FUNNELED,threadLevel,ierr);CHKERRQ(ierr)                           ! in case of OpenMP, don't rely on PETScInitialize doing MPI init
+ if (threadLevel<MPI_THREAD_FUNNELED) then
+   write(6,'(a)') 'MPI library does not support OpenMP'
+   call quit(1_pInt)
+ endif
+#endif
+ call PetscInitialize(PETSC_NULL_CHARACTER,ierr)                                                    ! according to PETSc manual, that should be the first line in the code
  CHKERRQ(ierr)                                                                                      ! this is a macro definition, it is case sensitive
-
- open(6, encoding='UTF-8')                                                                          ! modern fortran compilers (gfortran >4.4, ifort >11 support it)
+ open(6, encoding='UTF-8')
  call MPI_Comm_rank(PETSC_COMM_WORLD,worldrank,ierr);CHKERRQ(ierr)
 #endif
  mainProcess: if (worldrank == 0) then
@@ -313,6 +321,7 @@ character(len=1024) function getGeometryFile(geometryParameter)
  integer :: posExt, posSep
  logical :: error
  character :: pathSep
+ external  :: quit
 
  getGeometryFile = geometryParameter
  pathSep = getPathSep()
@@ -322,6 +331,7 @@ character(len=1024) function getGeometryFile(geometryParameter)
  if (posExt <= posSep) getGeometryFile = trim(getGeometryFile)//('.geom')                           ! no extension present
  if (scan(getGeometryFile,pathSep) /= 1) then                                                       ! relative path given as command line argument
    error = getcwd(cwd)
+   if (error) call quit(1_pInt)
    getGeometryFile = rectifyPath(trim(cwd)//pathSep//getGeometryFile)
  else
    getGeometryFile = rectifyPath(getGeometryFile)
@@ -347,6 +357,7 @@ character(len=1024) function getLoadCaseFile(loadCaseParameter)
  integer :: posExt, posSep
  logical :: error
  character :: pathSep
+ external  :: quit
 
  getLoadCaseFile = loadcaseParameter
  pathSep = getPathSep()
@@ -356,6 +367,7 @@ character(len=1024) function getLoadCaseFile(loadCaseParameter)
  if (posExt <= posSep) getLoadCaseFile = trim(getLoadCaseFile)//('.load')                           ! no extension present
  if (scan(getLoadCaseFile,pathSep) /= 1) then                                                       ! relative path given as command line argument
    error = getcwd(cwd)
+   if (error) call quit(1_pInt)
    getLoadCaseFile = rectifyPath(trim(cwd)//pathSep//getLoadCaseFile)
  else
    getLoadCaseFile = rectifyPath(getLoadCaseFile)
