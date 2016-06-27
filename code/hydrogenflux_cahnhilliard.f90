@@ -223,8 +223,7 @@ function hydrogenflux_cahnhilliard_getMobility33(ip,el)
  enddo
 
  hydrogenflux_cahnhilliard_getMobility33 = &
-   hydrogenflux_cahnhilliard_getMobility33/ &
-   homogenization_Ngrains(mesh_element(3,el))
+   hydrogenflux_cahnhilliard_getMobility33/real(homogenization_Ngrains(mesh_element(3,el)),pReal)
  
 end function hydrogenflux_cahnhilliard_getMobility33
  
@@ -258,8 +257,7 @@ function hydrogenflux_cahnhilliard_getDiffusion33(ip,el)
  enddo
 
  hydrogenflux_cahnhilliard_getDiffusion33 = &
-   hydrogenflux_cahnhilliard_getDiffusion33/ &
-   homogenization_Ngrains(mesh_element(3,el))
+   hydrogenflux_cahnhilliard_getDiffusion33/real(homogenization_Ngrains(mesh_element(3,el)),pReal)
  
 end function hydrogenflux_cahnhilliard_getDiffusion33
  
@@ -295,8 +293,7 @@ function hydrogenflux_cahnhilliard_getFormationEnergy(ip,el)
  enddo
 
  hydrogenflux_cahnhilliard_getFormationEnergy = &
-   hydrogenflux_cahnhilliard_getFormationEnergy/ &
-   homogenization_Ngrains(mesh_element(3,el))
+   hydrogenflux_cahnhilliard_getFormationEnergy/real(homogenization_Ngrains(mesh_element(3,el)),pReal)
  
 end function hydrogenflux_cahnhilliard_getFormationEnergy
  
@@ -331,10 +328,9 @@ function hydrogenflux_cahnhilliard_getEntropicCoeff(ip,el)
     lattice_hydrogenSurfaceEnergy(material_phase(grain,ip,el))
  enddo
 
- hydrogenflux_cahnhilliard_getEntropicCoeff = &
-   hydrogenflux_cahnhilliard_getEntropicCoeff* &
+ hydrogenflux_cahnhilliard_getEntropicCoeff = hydrogenflux_cahnhilliard_getEntropicCoeff* &
    temperature(material_homog(ip,el))%p(thermalMapping(material_homog(ip,el))%p(ip,el))/ &
-   homogenization_Ngrains(material_homog(ip,el))
+   real(homogenization_Ngrains(material_homog(ip,el)),pReal)
  
 end function hydrogenflux_cahnhilliard_getEntropicCoeff
  
@@ -393,8 +389,8 @@ subroutine hydrogenflux_cahnhilliard_KinematicChemPotAndItsTangent(KPot, dKPot_d
    enddo
  enddo 
  
- KPot = KPot/homogenization_Ngrains(material_homog(ip,el))  
- dKPot_dCh = dKPot_dCh/homogenization_Ngrains(material_homog(ip,el))  
+ KPot = KPot/real(homogenization_Ngrains(material_homog(ip,el)),pReal)
+ dKPot_dCh = dKPot_dCh/real(homogenization_Ngrains(material_homog(ip,el)),pReal)
 
 end subroutine hydrogenflux_cahnhilliard_KinematicChemPotAndItsTangent
  
