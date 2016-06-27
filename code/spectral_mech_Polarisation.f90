@@ -22,7 +22,7 @@ module spectral_mech_Polarisation
    DAMASK_spectral_solverPolarisation_label = 'polarisation'
    
 !--------------------------------------------------------------------------------------------------
-! derived types 
+! derived types
  type(tSolutionParams), private :: params
  real(pReal), private, dimension(3,3) :: mask_stress = 0.0_pReal
 
@@ -31,7 +31,7 @@ module spectral_mech_Polarisation
  DM,   private :: da
  SNES, private :: snes
  Vec,  private :: solution_vec
- 
+
 !--------------------------------------------------------------------------------------------------
 ! common pointwise data
  real(pReal), private, dimension(:,:,:,:,:), allocatable :: &
@@ -57,7 +57,7 @@ module spectral_mech_Polarisation
    S = 0.0_pReal, &                                                                                 !< current compliance (filled up with zeros)
    C_scale = 0.0_pReal, &                             
    S_scale = 0.0_pReal
- 
+
  real(pReal), private :: &
    err_BC, &                                                                                        !< deviation from stress BC
    err_curl, &                                                                                      !< RMS of curl of F
@@ -72,21 +72,7 @@ module spectral_mech_Polarisation
    Polarisation_forward, &
    Polarisation_destroy
  external :: &
-   VecDestroy, &
-   DMDestroy, &
-   DMDACreate3D, &
-   DMCreateGlobalVector, &
-   DMDASNESSetFunctionLocal, &
    PETScFinalize, &
-   SNESDestroy, &
-   SNESGetNumberFunctionEvals, &
-   SNESGetIterationNumber, &
-   SNESSolve, &
-   SNESSetDM, &
-   SNESGetConvergedReason, &
-   SNESSetConvergenceTest, &
-   SNESSetFromOptions, &
-   SNESCreate, &
    MPI_Abort, &
    MPI_Bcast, &
    MPI_Allreduce
@@ -136,11 +122,22 @@ subroutine Polarisation_init
  integer(pInt) :: proc
  character(len=1024) :: rankStr
  
- if (worldrank == 0_pInt) then
+ external :: &
+   SNESCreate, &
+   SNESSetOptionsPrefix, &
+   DMDACreate3D, &
+   SNESSetDM, &
+   DMCreateGlobalVector, &
+   DMDASNESSetFunctionLocal, &
+   SNESGetConvergedReason, &
+   SNESSetConvergenceTest, &
+   SNESSetFromOptions
+   
+ mainProcess: if (worldrank == 0_pInt) then
    write(6,'(/,a)') ' <<<+-  DAMASK_spectral_solverPolarisation init  -+>>>'
    write(6,'(a15,a)')   ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
- endif
+ endif mainProcess
 
 !--------------------------------------------------------------------------------------------------
 ! allocate global fields
@@ -150,7 +147,7 @@ subroutine Polarisation_init
  allocate (F_tauDot     (3,3,grid(1),grid(2),grid3),source = 0.0_pReal)
     
 !--------------------------------------------------------------------------------------------------
-! PETSc Init
+! initialize solver specific parts of PETSc
  call SNESCreate(PETSC_COMM_WORLD,snes,ierr); CHKERRQ(ierr)
  call SNESSetOptionsPrefix(snes,'mech_',ierr);CHKERRQ(ierr) 
  allocate(localK(worldsize), source = 0); localK(worldrank+1) = grid3
@@ -163,7 +160,7 @@ subroutine Polarisation_init
         grid(1),grid(2),grid(3), &                                                                  ! global grid
         1 , 1, worldsize, &
         18, 0, &                                                                                    ! #dof (F tensor), ghost boundary width (domain overlap)
-        grid (1),grid (2),localK, &                                                                 ! local grid
+        grid(1),grid(2),localK, &                                                                   ! local grid
         da,ierr)                                                                                    ! handle, error
  CHKERRQ(ierr)
  call SNESSetDM(snes,da,ierr); CHKERRQ(ierr)
@@ -182,7 +179,7 @@ subroutine Polarisation_init
  restart: if (restartInc > 1_pInt) then 
    if (iand(debug_level(debug_spectral),debug_spectralRestart)/= 0 .and. worldrank == 0_pInt) &
      write(6,'(/,a,'//IO_intOut(restartInc-1_pInt)//',a)') &
-     'reading values of increment', restartInc - 1_pInt, 'from file'
+     'reading values of increment ', restartInc - 1_pInt, ' from file'
    flush(6)
    write(rankStr,'(a1,i0)')'_',worldrank
    call IO_read_realFile(777,'F'//trim(rankStr),trim(getSolverJobName()),size(F))
@@ -221,7 +218,7 @@ subroutine Polarisation_init
  nullify(F_tau)
  call DMDAVecRestoreArrayF90(da,solution_vec,xx_psc,ierr); CHKERRQ(ierr)                            ! write data back to PETSc
 
- readRestart: if (restartInc > 1_pInt) then
+ restartRead: if (restartInc > 1_pInt) then
    if (iand(debug_level(debug_spectral),debug_spectralRestart)/= 0 .and. worldrank == 0_pInt) &
      write(6,'(/,a,'//IO_intOut(restartInc-1_pInt)//',a)') &
      'reading more values of increment', restartInc - 1_pInt, 'from file'
@@ -235,7 +232,7 @@ subroutine Polarisation_init
    call IO_read_realFile(777,'C_ref',trim(getSolverJobName()),size(C_minMaxAvg))
    read (777,rec=1) C_minMaxAvg
    close (777)
- endif readRestart
+ endif restartRead
 
  call Utilities_updateGamma(C_minMaxAvg,.True.)
  C_scale = C_minMaxAvg
@@ -262,7 +259,7 @@ type(tSolutionState) function &
  use FEsolving, only: &
    restartWrite, &
    terminallyIll
- 
+
  implicit none
 
 !--------------------------------------------------------------------------------------------------
@@ -284,6 +281,10 @@ type(tSolutionState) function &
 ! PETSc Data
  PetscErrorCode :: ierr   
  SNESConvergedReason :: reason
+
+ external :: &
+   SNESSolve, &
+   SNESGetConvergedReason
 
  incInfo = incInfoIn
 
@@ -385,7 +386,11 @@ subroutine Polarisation_formResidual(in,x_scal,f_scal,dummy,ierr)
  PetscErrorCode :: ierr
  integer(pInt) :: &
    i, j, k, e
- 
+
+ external :: &
+   SNESGetNumberFunctionEvals, &
+   SNESGetIterationNumber
+
  F              => x_scal(1:3,1:3,1,&
   XG_RANGE,YG_RANGE,ZG_RANGE)
  F_tau          => x_scal(1:3,1:3,2,&
@@ -505,7 +510,7 @@ subroutine Polarisation_converged(snes_local,PETScIter,xnorm,snorm,fnorm,reason,
    fnorm
  SNESConvergedReason :: reason
  PetscObject :: dummy
- PetscErrorCode ::ierr
+ PetscErrorCode :: ierr
  real(pReal) :: &
    curlTol, &
    divTol, &
@@ -631,7 +636,8 @@ subroutine Polarisation_forward(guess,timeinc,timeinc_old,loadCaseTime,F_BC,P_BC
      write (777,rec=1) C_volAvgLastInc
      close(777)
    endif
- endif 
+ endif
+
  call utilities_updateIPcoords(F)
 
  if (cutBack) then 
@@ -700,6 +706,11 @@ subroutine Polarisation_destroy()
 
  implicit none
  PetscErrorCode :: ierr
+
+ external :: &
+   VecDestroy, &
+   SNESDestroy, &
+   DMDestroy
 
  call VecDestroy(solution_vec,ierr); CHKERRQ(ierr)
  call SNESDestroy(snes,ierr); CHKERRQ(ierr)
