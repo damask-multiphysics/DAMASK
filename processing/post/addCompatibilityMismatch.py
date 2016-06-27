@@ -145,14 +145,14 @@ def volumeMismatch(size,F,nodes):
   for k in xrange(grid[2]):
     for j in xrange(grid[1]):
       for i in xrange(grid[0]):
-        coords[0,0:3] = nodes[0:3,i,  j,  k  ]
-        coords[1,0:3] = nodes[0:3,i+1,j,  k  ]
-        coords[2,0:3] = nodes[0:3,i+1,j+1,k  ]
-        coords[3,0:3] = nodes[0:3,i,  j+1,k  ]
-        coords[4,0:3] = nodes[0:3,i,  j,  k+1]
-        coords[5,0:3] = nodes[0:3,i+1,j,  k+1]
-        coords[6,0:3] = nodes[0:3,i+1,j+1,k+1]
-        coords[7,0:3] = nodes[0:3,i,  j+1,k+1]
+        coords[0,0:3] = nodes[i,  j,  k  ,0:3]
+        coords[1,0:3] = nodes[i+1,j,  k  ,0:3]
+        coords[2,0:3] = nodes[i+1,j+1,k  ,0:3]
+        coords[3,0:3] = nodes[i,  j+1,k  ,0:3]
+        coords[4,0:3] = nodes[i,  j,  k+1,0:3]
+        coords[5,0:3] = nodes[i+1,j,  k+1,0:3]
+        coords[6,0:3] = nodes[i+1,j+1,k+1,0:3]
+        coords[7,0:3] = nodes[i,  j+1,k+1,0:3]
         vMismatch[i,j,k] = \
            abs(volTetrahedron([coords[6,0:3],coords[0,0:3],coords[7,0:3],coords[3,0:3]])) \
          + abs(volTetrahedron([coords[6,0:3],coords[0,0:3],coords[7,0:3],coords[4,0:3]])) \
@@ -160,7 +160,7 @@ def volumeMismatch(size,F,nodes):
          + abs(volTetrahedron([coords[6,0:3],coords[0,0:3],coords[2,0:3],coords[1,0:3]])) \
          + abs(volTetrahedron([coords[6,0:3],coords[4,0:3],coords[1,0:3],coords[5,0:3]])) \
          + abs(volTetrahedron([coords[6,0:3],coords[4,0:3],coords[1,0:3],coords[0,0:3]]))
-        vMismatch[i,j,k] = vMismatch[i,j,k]/np.linalg.det(F[0:3,0:3,i,j,k])
+        vMismatch[i,j,k] = vMismatch[i,j,k]/np.linalg.det(F[i,j,k,0:3,0:3])
 
   return vMismatch/volInitial
 
@@ -195,14 +195,14 @@ def shapeMismatch(size,F,nodes,centres):
     for j in xrange(grid[1]):
       for i in xrange(grid[0]):
        sMismatch[i,j,k] = \
-         + np.linalg.norm(nodes[0:3,i,  j,    k] - centres[0:3,i,j,k] - np.dot(F[:,:,i,j,k], coordsInitial[0,0:3]))\
-         + np.linalg.norm(nodes[0:3,i+1,j,    k] - centres[0:3,i,j,k] - np.dot(F[:,:,i,j,k], coordsInitial[1,0:3]))\
-         + np.linalg.norm(nodes[0:3,i+1,j+1,k  ] - centres[0:3,i,j,k] - np.dot(F[:,:,i,j,k], coordsInitial[2,0:3]))\
-         + np.linalg.norm(nodes[0:3,i,  j+1,k  ] - centres[0:3,i,j,k] - np.dot(F[:,:,i,j,k], coordsInitial[3,0:3]))\
-         + np.linalg.norm(nodes[0:3,i,  j,  k+1] - centres[0:3,i,j,k] - np.dot(F[:,:,i,j,k], coordsInitial[4,0:3]))\
-         + np.linalg.norm(nodes[0:3,i+1,j,  k+1] - centres[0:3,i,j,k] - np.dot(F[:,:,i,j,k], coordsInitial[5,0:3]))\
-         + np.linalg.norm(nodes[0:3,i+1,j+1,k+1] - centres[0:3,i,j,k] - np.dot(F[:,:,i,j,k], coordsInitial[6,0:3]))\
-         + np.linalg.norm(nodes[0:3,i,  j+1,k+1] - centres[0:3,i,j,k] - np.dot(F[:,:,i,j,k], coordsInitial[7,0:3]))
+         + np.linalg.norm(nodes[i,  j,    k,0:3] - centres[i,j,k,0:3] - np.dot(F[i,j,k,:,:], coordsInitial[0,0:3]))\
+         + np.linalg.norm(nodes[i+1,j,    k,0:3] - centres[i,j,k,0:3] - np.dot(F[i,j,k,:,:], coordsInitial[1,0:3]))\
+         + np.linalg.norm(nodes[i+1,j+1,k  ,0:3] - centres[i,j,k,0:3] - np.dot(F[i,j,k,:,:], coordsInitial[2,0:3]))\
+         + np.linalg.norm(nodes[i,  j+1,k  ,0:3] - centres[i,j,k,0:3] - np.dot(F[i,j,k,:,:], coordsInitial[3,0:3]))\
+         + np.linalg.norm(nodes[i,  j,  k+1,0:3] - centres[i,j,k,0:3] - np.dot(F[i,j,k,:,:], coordsInitial[4,0:3]))\
+         + np.linalg.norm(nodes[i+1,j,  k+1,0:3] - centres[i,j,k,0:3] - np.dot(F[i,j,k,:,:], coordsInitial[5,0:3]))\
+         + np.linalg.norm(nodes[i+1,j+1,k+1,0:3] - centres[i,j,k,0:3] - np.dot(F[i,j,k,:,:], coordsInitial[6,0:3]))\
+         + np.linalg.norm(nodes[i,  j+1,k+1,0:3] - centres[i,j,k,0:3] - np.dot(F[i,j,k,:,:], coordsInitial[7,0:3]))
   return sMismatch
 
 
