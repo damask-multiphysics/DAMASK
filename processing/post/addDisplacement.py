@@ -69,7 +69,7 @@ def displacementFluctFFT(F,grid,size,nodal=False,transformed=False):
 #--------------------------------------------------------------------------------------------------
 # integration in Fourier space
 
-  displacement_fourier = -np.einsum('ijkml,ijkl,l->ijkm',
+  displacement_fourier = +np.einsum('ijkml,ijkl,l->ijkm',
                                     F if transformed else np.fft.rfftn(F,axes=(0,1,2)),
                                     k_s,
                                     integrator,
