@@ -18,7 +18,7 @@ def curlFFT(geomdim,field):
  if   n == 3:   dataType = 'vector'
  elif n == 9:   dataType = 'tensor'
 
- field_fourier = np.fft.fftpack.rfftn(field,axes=(0,1,2),s=shapeFFT)
+ field_fourier = np.fft.rfftn(field,axes=(0,1,2),s=shapeFFT)
  curl_fourier  = np.empty(field_fourier.shape,'c16')
 
 # differentiation in Fourier space
@@ -56,7 +56,7 @@ def curlFFT(geomdim,field):
          curl_fourier[i,j,k,2] = ( field_fourier[i,j,k,1]*xi[0]\
                                   -field_fourier[i,j,k,0]*xi[1]) *TWOPIIMG
 
- return np.fft.fftpack.irfftn(curl_fourier,axes=(0,1,2),s=shapeFFT).reshape([N,n])
+ return np.fft.irfftn(curl_fourier,axes=(0,1,2),s=shapeFFT).reshape([N,n])
 
 
 # --------------------------------------------------------------------
@@ -158,7 +158,7 @@ for name in filenames:
       # we need to reverse order here, because x is fastest,ie rightmost, but leftmost in our x,y,z notation
       stack.append(curlFFT(size[::-1],
                            table.data[:,data['column'][i]:data['column'][i]+data['dim']].
-                           reshape([grid[2],grid[1],grid[0]]+data['shape'])))
+                           reshape(grid[::-1].tolist()+data['shape'])))
 
 # ------------------------------------------ output result -----------------------------------------
 
