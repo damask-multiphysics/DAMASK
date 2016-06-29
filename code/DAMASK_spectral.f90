@@ -728,8 +728,6 @@ end program DAMASK_spectral
 subroutine quit(stop_id)
  use prec, only: &
    pInt
- use numerics, only: &
-   worldrank  
 
  implicit none
  integer(pInt), intent(in) :: stop_id
