@@ -13,10 +13,8 @@ module DAMASK_interface
    pInt
  implicit none
  private
-#ifdef PETSc
 #include <petsc/finclude/petscsys.h>
-#endif
- logical,             public, protected :: appendToOutFile = .false.                                !< Append to existing spectralOut file (in case of restart, not in case of regridding)
+ logical,             public, protected :: appendToOutFile = .false.                                !< Append to existing spectralOut file (in case of restart)
  integer(pInt),       public, protected :: spectralRestartInc = 1_pInt                              !< Increment at which calculation starts
  character(len=1024), public, protected :: &
    geometryFile = '', &                                                                             !< parameter given for geometry file
@@ -64,9 +62,7 @@ subroutine DAMASK_interface_init()
    chunkPos
  integer, dimension(8) :: &
    dateAndTime                                                                                      ! type default integer
-#ifdef PETSc
  PetscErrorCode :: ierr
-#endif
  external :: &
    quit,&
    MPI_Comm_rank,&
@@ -76,7 +72,6 @@ subroutine DAMASK_interface_init()
 
 !--------------------------------------------------------------------------------------------------
 ! PETSc Init
-#ifdef PETSc
 #ifdef _OPENMP
  call MPI_Init_Thread(MPI_THREAD_FUNNELED,threadLevel,ierr);CHKERRQ(ierr)                           ! in case of OpenMP, don't rely on PETScInitialize doing MPI init
  if (threadLevel<MPI_THREAD_FUNNELED) then
@@ -88,7 +83,6 @@ subroutine DAMASK_interface_init()
  CHKERRQ(ierr)                                                                                      ! this is a macro definition, it is case sensitive
  open(6, encoding='UTF-8')
  call MPI_Comm_rank(PETSC_COMM_WORLD,worldrank,ierr);CHKERRQ(ierr)
-#endif
  mainProcess: if (worldrank == 0) then
    call date_and_time(values = dateAndTime)
    write(6,'(/,a)') ' <<<+-  DAMASK_spectral  -+>>>'
@@ -119,7 +113,6 @@ subroutine DAMASK_interface_init()
          write(6,'(a)')  '    --load         (-l, --loadcase)'
          write(6,'(a)')  '    --workingdir   (-w, --wd, --workingdirectory, -d, --directory)'
          write(6,'(a)')  '    --restart      (-r, --rs)'
-         write(6,'(a)')  '    --regrid       (--rg)'
          write(6,'(a)')  '    --help         (-h)'
          write(6,'(/,a)')' -----------------------------------------------------------------------'
          write(6,'(a)')  ' Mandatory arguments:'
@@ -151,13 +144,6 @@ subroutine DAMASK_interface_init()
          write(6,'(a)')  '            "NameOfGeom_NameOfLoadFile.spectralOut".'
          write(6,'(a)')  '        Works only if the restart information for total increment'
          write(6,'(a)')  '             No. XX-1 is available in the working directory.'
-         write(6,'(/,a)')'   --regrid XX'
-         write(6,'(a)')  '        Reads in total increment No. XX-1 and continues to'
-         write(6,'(a)')  '            calculate total increment No. XX.'
-         write(6,'(a)')  '        Attention: Overwrites existing results file '
-         write(6,'(a)')  '            "NameOfGeom_NameOfLoadFile.spectralOut".'
-         write(6,'(a)')  '        Works only if the restart information for total increment'
-         write(6,'(a)')  '             No. XX-1 is available in the working directory.'
          write(6,'(/,a)')' -----------------------------------------------------------------------'
          write(6,'(a)')  ' Help:'
          write(6,'(/,a)')'   --help'
@@ -173,9 +159,6 @@ subroutine DAMASK_interface_init()
      case ('-r', '--rs', '--restart')
        spectralRestartInc = IIO_IntValue(commandLine,chunkPos,i+1_pInt)
        appendToOutFile = .true.
-     case ('--rg', '--regrid')
-       spectralRestartInc = IIO_IntValue(commandLine,chunkPos,i+1_pInt)
-       appendToOutFile = .false.
    end select
  enddo
  
