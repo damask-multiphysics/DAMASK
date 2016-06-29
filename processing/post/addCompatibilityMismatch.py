@@ -1,9 +1,9 @@
 #!/usr/bin/env python2
 # -*- coding: UTF-8 no BOM -*-
 
-import os,sys
-import numpy as np
+import os
 import math
+import numpy as np
 import scipy.ndimage
 from optparse import OptionParser
 import damask
@@ -18,7 +18,7 @@ def cell2node(cellData,grid):
   datalen = np.array(cellData.shape[3:]).prod()
   
   for i in xrange(datalen):
-    node = scipy.ndimage.convolve(cellData.reshape(tuple(grid)+(datalen,))[...,i],
+    node = scipy.ndimage.convolve(cellData.reshape(tuple(grid[::-1])+(datalen,))[...,i],
                                   np.ones((2,2,2))/8.,                                              # 2x2x2 neighborhood of cells
                                   mode = 'wrap',
                                   origin = -1,                                                      # offset to have cell origin as center
@@ -32,26 +32,26 @@ def cell2node(cellData,grid):
   return nodeData
 
 #--------------------------------------------------------------------------------------------------
-def displacementAvgFFT(F,grid,size,nodal=False,transformed=False):
-  """calculate average cell center (or nodal) displacement for deformation gradient field specified in each grid cell"""
+def deformationAvgFFT(F,grid,size,nodal=False,transformed=False):
+  """calculate average cell center (or nodal) deformation for deformation gradient field specified in each grid cell"""
   if nodal:
-    x, y, z = np.meshgrid(np.linspace(0,size[0],1+grid[0]),
+    x, y, z = np.meshgrid(np.linspace(0,size[2],1+grid[2]),
                           np.linspace(0,size[1],1+grid[1]),
-                          np.linspace(0,size[2],1+grid[2]),
+                          np.linspace(0,size[0],1+grid[0]),
                           indexing = 'ij')
   else:
-    x, y, z = np.meshgrid(np.linspace(0,size[0],grid[0],endpoint=False),
-                          np.linspace(0,size[1],grid[1],endpoint=False),
-                          np.linspace(0,size[2],grid[2],endpoint=False),
+    x, y, z = np.meshgrid(np.linspace(size[2]/grid[2]/2.,size[2]-size[2]/grid[2]/2.,grid[2]),
+                          np.linspace(size[1]/grid[1]/2.,size[1]-size[1]/grid[1]/2.,grid[1]),
+                          np.linspace(size[0]/grid[0]/2.,size[0]-size[0]/grid[0]/2.,grid[0]),
                           indexing = 'ij')
 
   origCoords = np.concatenate((z[:,:,:,None],y[:,:,:,None],x[:,:,:,None]),axis = 3) 
 
   F_fourier = F if transformed else np.fft.rfftn(F,axes=(0,1,2))                                    # transform or use provided data
   Favg = np.real(F_fourier[0,0,0,:,:])/grid.prod()                                                  # take zero freq for average
-  avgDisplacement = np.einsum('ml,ijkl->ijkm',Favg-np.eye(3),origCoords)                            # dX = Favg.X
+  avgDeformation = np.einsum('ml,ijkl->ijkm',Favg,origCoords)                                       # dX = Favg.X
 
-  return avgDisplacement
+  return avgDeformation
 
 #--------------------------------------------------------------------------------------------------
 def displacementFluctFFT(F,grid,size,nodal=False,transformed=False):
@@ -69,16 +69,16 @@ def displacementFluctFFT(F,grid,size,nodal=False,transformed=False):
 #--------------------------------------------------------------------------------------------------
 # integration in Fourier space
 
-  displacement_fourier = +np.einsum('ijkml,ijkl,l->ijkm',
+  displacement_fourier = -np.einsum('ijkml,ijkl,l->ijkm',
                                     F if transformed else np.fft.rfftn(F,axes=(0,1,2)),
                                     k_s,
                                     integrator,
-                                   ) / k_sSquared[...,np.newaxis]
+                                    ) / k_sSquared[...,np.newaxis]
 
 #--------------------------------------------------------------------------------------------------
 # backtransformation to real space
 
-  displacement = np.fft.irfftn(displacement_fourier,grid,axes=(0,1,2))
+  displacement = np.fft.irfftn(displacement_fourier,grid[::-1],axes=(0,1,2))
 
   return cell2node(displacement,grid) if nodal else displacement
 
@@ -137,7 +137,7 @@ def volumeMismatch(size,F,nodes):
   (compatible) cube and determinant of defgrad at the FP
   """
   coords = np.empty([8,3])
-  vMismatch = np.empty(grid)
+  vMismatch = np.empty(grid[::-1])
   volInitial = size.prod()/grid.prod()
  
 #--------------------------------------------------------------------------------------------------
@@ -145,23 +145,22 @@ def volumeMismatch(size,F,nodes):
   for k in xrange(grid[2]):
     for j in xrange(grid[1]):
       for i in xrange(grid[0]):
-        coords[0,0:3] = nodes[i,  j,  k  ,0:3]
-        coords[1,0:3] = nodes[i+1,j,  k  ,0:3]
-        coords[2,0:3] = nodes[i+1,j+1,k  ,0:3]
-        coords[3,0:3] = nodes[i,  j+1,k  ,0:3]
-        coords[4,0:3] = nodes[i,  j,  k+1,0:3]
-        coords[5,0:3] = nodes[i+1,j,  k+1,0:3]
-        coords[6,0:3] = nodes[i+1,j+1,k+1,0:3]
-        coords[7,0:3] = nodes[i,  j+1,k+1,0:3]
-        vMismatch[i,j,k] = \
-           abs(volTetrahedron([coords[6,0:3],coords[0,0:3],coords[7,0:3],coords[3,0:3]])) \
+        coords[0,0:3] = nodes[k,  j,  i  ,0:3]
+        coords[1,0:3] = nodes[k  ,j,  i+1,0:3]
+        coords[2,0:3] = nodes[k  ,j+1,i+1,0:3]
+        coords[3,0:3] = nodes[k,  j+1,i  ,0:3]
+        coords[4,0:3] = nodes[k+1,j,  i  ,0:3]
+        coords[5,0:3] = nodes[k+1,j,  i+1,0:3]
+        coords[6,0:3] = nodes[k+1,j+1,i+1,0:3]
+        coords[7,0:3] = nodes[k+1,j+1,i  ,0:3]
+        vMismatch[k,j,i] = \
+        (  abs(volTetrahedron([coords[6,0:3],coords[0,0:3],coords[7,0:3],coords[3,0:3]])) \
          + abs(volTetrahedron([coords[6,0:3],coords[0,0:3],coords[7,0:3],coords[4,0:3]])) \
          + abs(volTetrahedron([coords[6,0:3],coords[0,0:3],coords[2,0:3],coords[3,0:3]])) \
          + abs(volTetrahedron([coords[6,0:3],coords[0,0:3],coords[2,0:3],coords[1,0:3]])) \
          + abs(volTetrahedron([coords[6,0:3],coords[4,0:3],coords[1,0:3],coords[5,0:3]])) \
-         + abs(volTetrahedron([coords[6,0:3],coords[4,0:3],coords[1,0:3],coords[0,0:3]]))
-        vMismatch[i,j,k] = vMismatch[i,j,k]/np.linalg.det(F[i,j,k,0:3,0:3])
-
+         + abs(volTetrahedron([coords[6,0:3],coords[4,0:3],coords[1,0:3],coords[0,0:3]]))) \
+        /np.linalg.det(F[k,j,i,0:3,0:3])
   return vMismatch/volInitial
 
 
@@ -175,7 +174,7 @@ def shapeMismatch(size,F,nodes,centres):
   the initial volume element with the  current deformation gradient
   """
   coordsInitial = np.empty([8,3])
-  sMismatch    = np.empty(grid)
+  sMismatch    = np.empty(grid[::-1])
    
 #--------------------------------------------------------------------------------------------------
 # initial positions
@@ -194,15 +193,15 @@ def shapeMismatch(size,F,nodes,centres):
   for k in xrange(grid[2]):
     for j in xrange(grid[1]):
       for i in xrange(grid[0]):
-       sMismatch[i,j,k] = \
-         + np.linalg.norm(nodes[i,  j,    k,0:3] - centres[i,j,k,0:3] - np.dot(F[i,j,k,:,:], coordsInitial[0,0:3]))\
-         + np.linalg.norm(nodes[i+1,j,    k,0:3] - centres[i,j,k,0:3] - np.dot(F[i,j,k,:,:], coordsInitial[1,0:3]))\
-         + np.linalg.norm(nodes[i+1,j+1,k  ,0:3] - centres[i,j,k,0:3] - np.dot(F[i,j,k,:,:], coordsInitial[2,0:3]))\
-         + np.linalg.norm(nodes[i,  j+1,k  ,0:3] - centres[i,j,k,0:3] - np.dot(F[i,j,k,:,:], coordsInitial[3,0:3]))\
-         + np.linalg.norm(nodes[i,  j,  k+1,0:3] - centres[i,j,k,0:3] - np.dot(F[i,j,k,:,:], coordsInitial[4,0:3]))\
-         + np.linalg.norm(nodes[i+1,j,  k+1,0:3] - centres[i,j,k,0:3] - np.dot(F[i,j,k,:,:], coordsInitial[5,0:3]))\
-         + np.linalg.norm(nodes[i+1,j+1,k+1,0:3] - centres[i,j,k,0:3] - np.dot(F[i,j,k,:,:], coordsInitial[6,0:3]))\
-         + np.linalg.norm(nodes[i,  j+1,k+1,0:3] - centres[i,j,k,0:3] - np.dot(F[i,j,k,:,:], coordsInitial[7,0:3]))
+       sMismatch[k,j,i] = \
+         + np.linalg.norm(nodes[k,  j,  i  ,0:3] - centres[k,j,i,0:3] - np.dot(F[k,j,i,:,:], coordsInitial[0,0:3]))\
+         + np.linalg.norm(nodes[k,  j,  i+1,0:3] - centres[k,j,i,0:3] - np.dot(F[k,j,i,:,:], coordsInitial[1,0:3]))\
+         + np.linalg.norm(nodes[k,  j+1,i+1,0:3] - centres[k,j,i,0:3] - np.dot(F[k,j,i,:,:], coordsInitial[2,0:3]))\
+         + np.linalg.norm(nodes[k,  j+1,i  ,0:3] - centres[k,j,i,0:3] - np.dot(F[k,j,i,:,:], coordsInitial[3,0:3]))\
+         + np.linalg.norm(nodes[k+1,j,  i  ,0:3] - centres[k,j,i,0:3] - np.dot(F[k,j,i,:,:], coordsInitial[4,0:3]))\
+         + np.linalg.norm(nodes[k+1,j,  i+1,0:3] - centres[k,j,i,0:3] - np.dot(F[k,j,i,:,:], coordsInitial[5,0:3]))\
+         + np.linalg.norm(nodes[k+1,j+1,i+1,0:3] - centres[k,j,i,0:3] - np.dot(F[k,j,i,:,:], coordsInitial[6,0:3]))\
+         + np.linalg.norm(nodes[k+1,j+1,i  ,0:3] - centres[k,j,i,0:3] - np.dot(F[k,j,i,:,:], coordsInitial[7,0:3]))
   return sMismatch
 
 
@@ -307,38 +306,32 @@ for name in filenames:
 # -----------------------------process data and assemble header -------------------------------------
 
   F_fourier = np.fft.rfftn(table.data[:,:9].reshape(grid[2],grid[1],grid[0],3,3),axes=(0,1,2))      # perform transform only once...
-  nodes = np.vstack(np.meshgrid(np.linspace(0.0,size[0],grid[0]+1),
-                                np.linspace(0.0,size[1],grid[1]+1),
-                                np.linspace(0.0,size[2],grid[2]+1))).reshape([3,17,17,17]).T\
-        + displacementFluctFFT(F_fourier,grid,size,True,transformed=True)\
-        + displacementAvgFFT  (F_fourier,grid,size,True,transformed=True)
+  nodes = displacementFluctFFT(F_fourier,grid,size,True,transformed=True)\
+        + deformationAvgFFT   (F_fourier,grid,size,True,transformed=True)
+
   if options.shape:
     table.labels_append(['shapeMismatch({})'.format(options.defgrad)])
-    centres = np.vstack(np.meshgrid(np.linspace(size[0]/grid[0]*.5,size[0]-size[0]/grid[0]*.5,grid[0]),
-                                    np.linspace(size[1]/grid[1]*.5,size[1]-size[1]/grid[1]*.5,grid[1]),
-                                    np.linspace(size[2]/grid[2]*.5,size[2]-size[2]/grid[2]*.5,grid[2]))).reshape([3,16,16,16]).T\
-        + displacementFluctFFT(F_fourier,grid,size,False,transformed=True)\
-        + displacementAvgFFT  (F_fourier,grid,size,False,transformed=True)
+    centres = displacementFluctFFT(F_fourier,grid,size,False,transformed=True)\
+            + deformationAvgFFT   (F_fourier,grid,size,False,transformed=True)
 
   if options.volume:
     table.labels_append(['volMismatch({})'.format(options.defgrad)])
 
   table.head_write()
-  if options.shape:   shapeMismatch = shapeMismatch( size,table.data[:,:9].reshape(grid[2],grid[1],grid[0],3,3),nodes,centres)
-  if options.volume: volumeMismatch = volumeMismatch(size,table.data[:,:9].reshape(grid[2],grid[1],grid[0],3,3),nodes)
+  if options.shape:
+    shapeMismatch = shapeMismatch( size,table.data[:,:9].reshape(grid[2],grid[1],grid[0],3,3),nodes,centres)
+  if options.volume:
+    volumeMismatch = volumeMismatch(size,table.data[:,:9].reshape(grid[2],grid[1],grid[0],3,3),nodes)
 
-# ------------------------------------------ process data ------------------------------------------
-  table.data_rewind()
-  idx = 0
-  outputAlive = True
-  while outputAlive and table.data_read():                                                          # read next data line of ASCII table
-    (x,y,z) = damask.util.gridLocation(idx,grid)                                                    # figure out (x,y,z) position from line count
-    idx += 1
-    if options.shape:  table.data_append( shapeMismatch[x,y,z])
-    if options.volume: table.data_append(volumeMismatch[x,y,z])
-    outputAlive = table.data_write()
+# ------------------------------------------ output data -------------------------------------------
+  for i in xrange(grid[2]):
+    for j in xrange(grid[1]):
+      for k in xrange(grid[0]):
+        table.data_read()
+        if options.shape:  table.data_append(shapeMismatch[i,j,k])
+        if options.volume: table.data_append(volumeMismatch[i,j,k])
+        table.data_write()
 
-# ------------------------------------------ output finalization -----------------------------------  
+# ------------------------------------------ output finalization -----------------------------------
 
-  table.close()               
-
+  table.close()                                                                                     # close ASCII tables
