@@ -1640,8 +1640,6 @@ subroutine IO_error(error_ID,el,ip,g,ext_msg)
    msg = 'update of gamma operator not possible when pre-calculated'
  case (880_pInt)
    msg = 'mismatch of microstructure count and a*b*c in geom file'
- case (890_pInt)
-   msg = 'invalid input for regridding'
  case (891_pInt)
    msg = 'unknown solver type selected'
  case (892_pInt)

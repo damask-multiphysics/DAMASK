@@ -514,11 +514,9 @@ subroutine mesh_init(ip,el)
  integer(pInt) :: j
  logical :: myDebug
  
- mainProcess: if (worldrank == 0) then 
-   write(6,'(/,a)')   ' <<<+-  mesh init  -+>>>'
-   write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
+ write(6,'(/,a)')   ' <<<+-  mesh init  -+>>>'
+ write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
- endif mainProcess
 
  if (allocated(mesh_mapFEtoCPelem))           deallocate(mesh_mapFEtoCPelem)
  if (allocated(mesh_mapFEtoCPnode))           deallocate(mesh_mapFEtoCPnode)
