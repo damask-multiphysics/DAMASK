@@ -15,7 +15,7 @@ def divFFT(geomdim,field):
  N = grid.prod()                                                                          # field size
  n = np.array(np.shape(field)[3:]).prod()                                                 # data size
 
- field_fourier = np.fft.fftpack.rfftn(field,axes=(0,1,2),s=shapeFFT)
+ field_fourier = np.fft.rfftn(field,axes=(0,1,2),s=shapeFFT)
  div_fourier   = np.empty(field_fourier.shape[0:len(np.shape(field))-1],'c16')            # size depents on whether tensor or vector
 
 # differentiation in Fourier space
@@ -42,7 +42,7 @@ def divFFT(geomdim,field):
        elif n == 3:                                                                       # vector, 3 -> 1
          div_fourier[i,j,k] = sum(field_fourier[i,j,k,0:3]*xi) *TWOPIIMG
 
- return np.fft.fftpack.irfftn(div_fourier,axes=(0,1,2),s=shapeFFT).reshape([N,n/3])
+ return np.fft.irfftn(div_fourier,axes=(0,1,2),s=shapeFFT).reshape([N,n/3])
 
 
 # --------------------------------------------------------------------
@@ -145,7 +145,7 @@ for name in filenames:
       # we need to reverse order here, because x is fastest,ie rightmost, but leftmost in our x,y,z notation
       stack.append(divFFT(size[::-1],
                           table.data[:,data['column'][i]:data['column'][i]+data['dim']].
-                          reshape([grid[2],grid[1],grid[0]]+data['shape'])))
+                          reshape(grid[::-1].tolist()+data['shape'])))
 
 # ------------------------------------------ output result -----------------------------------------
 
