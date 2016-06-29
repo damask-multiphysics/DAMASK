@@ -145,7 +145,6 @@ subroutine crystallite_init
    debug_crystallite, &
    debug_levelBasic
  use numerics, only: &
-   worldrank, &
    usePingPong
  use math, only: &
    math_I3, &
@@ -203,11 +202,9 @@ subroutine crystallite_init
    tag = '', &
    line= ''
 
- mainProcess: if (worldrank == 0) then
-   write(6,'(/,a)')   ' <<<+-  crystallite init  -+>>>'
-   write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
+ write(6,'(/,a)')   ' <<<+-  crystallite init  -+>>>'
+ write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
- endif mainProcess
 
  cMax = homogenization_maxNgrains
  iMax = mesh_maxNips
@@ -3578,9 +3575,8 @@ logical function crystallite_integrateStress(&
 #ifndef _OPENMP
  if (iand(debug_level(debug_crystallite), debug_levelExtensive) /= 0_pInt &
      .and. ((el == debug_e .and. ip == debug_i .and. ipc == debug_g) &
-            .or. .not. iand(debug_level(debug_crystallite), debug_levelSelective) /= 0_pInt)) then
+            .or. .not. iand(debug_level(debug_crystallite), debug_levelSelective) /= 0_pInt)) &
    write(6,'(a,i8,1x,i2,1x,i3)') '<< CRYST >> integrateStress at el ip ipc ',el,ip,ipc
- endif
 #endif
 
 
@@ -3686,9 +3682,8 @@ logical function crystallite_integrateStress(&
 
      !* calculate plastic velocity gradient and its tangent from constitutive law
 
-     if (iand(debug_level(debug_crystallite), debug_levelBasic) /= 0_pInt) then
+     if (iand(debug_level(debug_crystallite), debug_levelBasic) /= 0_pInt) &
        call system_clock(count=tick,count_rate=tickrate,count_max=maxticks)
-     endif
 
      call constitutive_LpAndItsTangent(Lp_constitutive, dLp_dT3333, dLp_dFi3333, &
                                        Tstar_v, Fi_new, ipc, ip, el)
@@ -3785,12 +3780,11 @@ logical function crystallite_integrateStress(&
 
    enddo LpLoop
 
-   if (iand(debug_level(debug_crystallite), debug_levelBasic) /= 0_pInt) then
+   if (iand(debug_level(debug_crystallite), debug_levelBasic) /= 0_pInt) &
      !$OMP CRITICAL (distributionStress)
       debug_StressLoopLpDistribution(NiterationStressLp,numerics_integrationMode) = &
         debug_StressLoopLpDistribution(NiterationStressLp,numerics_integrationMode) + 1_pInt
      !$OMP END CRITICAL (distributionStress)
-   endif
 
    !* calculate intermediate velocity gradient and its tangent from constitutive law
 
@@ -3872,12 +3866,11 @@ logical function crystallite_integrateStress(&
    Liguess = Liguess + steplengthLi * deltaLi
  enddo LiLoop
 
- if (iand(debug_level(debug_crystallite), debug_levelBasic) /= 0_pInt) then
+ if (iand(debug_level(debug_crystallite), debug_levelBasic) /= 0_pInt) &
    !$OMP CRITICAL (distributionStress)
     debug_StressLoopLiDistribution(NiterationStressLi,numerics_integrationMode) = &
       debug_StressLoopLiDistribution(NiterationStressLi,numerics_integrationMode) + 1_pInt
    !$OMP END CRITICAL (distributionStress)
- endif
 
  !* calculate new plastic and elastic deformation gradient
 
