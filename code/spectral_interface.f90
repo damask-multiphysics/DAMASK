@@ -77,6 +77,8 @@ subroutine DAMASK_interface_init(loadCaseParameterIn,geometryParameterIn)
    MPI_Init_Thread, &
    MPI_abort
 
+ open(6, encoding='UTF-8')                                                                          ! for special characters in output
+
 !--------------------------------------------------------------------------------------------------
 ! PETSc Init
 #ifdef PETSc
@@ -91,26 +93,29 @@ subroutine DAMASK_interface_init(loadCaseParameterIn,geometryParameterIn)
  CHKERRQ(ierr)                                                                                      ! this is a macro definition, it is case sensitive
  call MPI_Comm_rank(PETSC_COMM_WORLD,worldrank,ierr);CHKERRQ(ierr)
 #endif
+
  mainProcess: if (worldrank == 0) then
    if (output_unit /= 6) then
      write(output_unit,'(a)') 'STDOUT != 6'
      call quit(1_pInt)
    endif
-   open(6, encoding='UTF-8')
-   call date_and_time(values = dateAndTime)
-   write(6,'(/,a)') ' <<<+-  DAMASK_spectral  -+>>>'
-   write(6,'(/,a)')              ' Version: '//DAMASKVERSION
-   write(6,'(a,2(i2.2,a),i4.4)') ' Date:    ',dateAndTime(3),'/',&
-                                              dateAndTime(2),'/',&
-                                              dateAndTime(1) 
-   write(6,'(a,2(i2.2,a),i2.2)') ' Time:    ',dateAndTime(5),':',&
-                                              dateAndTime(6),':',&
-                                              dateAndTime(7)  
-   write(6,'(/,a)') ' <<<+-  DAMASK_interface init  -+>>>'
-#include "compilation_info.f90"
  else mainProcess
-   close(6)
+   close(6)                                                                                         ! disable output for non-master processes (open 6 to rank specific file for debug)
+   open(6,file='/dev/null',status='replace')                                                        ! close(6) alone will leave some temp files in cwd
  endif mainProcess
+
+ call date_and_time(values = dateAndTime)
+ write(6,'(/,a)') ' <<<+-  DAMASK_spectral  -+>>>'
+ write(6,'(/,a)')              ' Version: '//DAMASKVERSION
+ write(6,'(a,2(i2.2,a),i4.4)') ' Date:    ',dateAndTime(3),'/',&
+                                            dateAndTime(2),'/',&
+                                            dateAndTime(1) 
+ write(6,'(a,2(i2.2,a),i2.2)') ' Time:    ',dateAndTime(5),':',&
+                                            dateAndTime(6),':',&
+                                            dateAndTime(7)  
+ write(6,'(/,a)') ' <<<+-  DAMASK_interface init  -+>>>'
+#include "compilation_info.f90"
+
  if ( present(loadcaseParameterIn) .and. present(geometryParameterIn)) then                         ! both mandatory parameters given in function call 
    geometryArg = geometryParameterIn
    loadcaseArg = loadcaseParameterIn
