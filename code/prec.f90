@@ -130,30 +130,17 @@ subroutine prec_init
    iso_fortran_env                                                                                  ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
 
  implicit none
- integer(pInt) :: worldrank = 0_pInt
-#ifdef PETSc
-#include <petsc/finclude/petscsys.h>
- PetscErrorCode :: ierr
-#endif
  external :: &
-   quit, &
-   MPI_Comm_rank, &
-   MPI_Abort
-   
-#ifdef PETSc
- call MPI_Comm_rank(PETSC_COMM_WORLD,worldrank,ierr);CHKERRQ(ierr)
-#endif
+   quit
 
- mainProcess: if (worldrank == 0) then
-   write(6,'(/,a)') ' <<<+-  prec init  -+>>>'
+ write(6,'(/,a)') ' <<<+-  prec init  -+>>>'
 #include "compilation_info.f90"
-   write(6,'(a,i3)')    ' Bytes for pReal:    ',pReal
-   write(6,'(a,i3)')    ' Bytes for pInt:     ',pInt
-   write(6,'(a,i3)')    ' Bytes for pLongInt: ',pLongInt
-   write(6,'(a,e10.3)') ' NaN:           ',     DAMASK_NaN
-   write(6,'(a,l3)')    ' NaN != NaN:         ',DAMASK_NaN /= DAMASK_NaN
-   write(6,'(a,l3,/)')  ' NaN check passed    ',prec_isNAN(DAMASK_NaN)
- endif mainProcess
+ write(6,'(a,i3)')    ' Bytes for pReal:    ',pReal
+ write(6,'(a,i3)')    ' Bytes for pInt:     ',pInt
+ write(6,'(a,i3)')    ' Bytes for pLongInt: ',pLongInt
+ write(6,'(a,e10.3)') ' NaN:           ',     DAMASK_NaN
+ write(6,'(a,l3)')    ' NaN != NaN:         ',DAMASK_NaN /= DAMASK_NaN
+ write(6,'(a,l3,/)')  ' NaN check passed    ',prec_isNAN(DAMASK_NaN)
 
  if ((.not. prec_isNaN(DAMASK_NaN)) .or. (DAMASK_NaN == DAMASK_NaN)) call quit(9000)
  realloc_lhs_test = [1_pInt,2_pInt]
