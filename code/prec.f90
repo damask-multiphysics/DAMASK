@@ -115,8 +115,10 @@ module prec
    prec_init, &
    prec_isNaN, &
    dEq, &
+   dEq0, &
    cEq, &
    dNeq, &
+   dNeq0, &
    cNeq
  
 contains
