@@ -199,6 +199,39 @@ logical elemental pure function dNeq(a,b,tol)
  dNeq = merge(.False., .True.,abs(a-b) <= merge(tol,eps,present(tol))*maxval(abs([a,b])))
 end function dNeq
 
+
+!--------------------------------------------------------------------------------------------------
+!> @brief equality to 0comparison for float with double precision
+! replaces "==0" but for certain (relative) tolerance. Counterpart to dNeq0
+! http://www.cygnus-software.com/papers/comparingfloats/comparingfloats.htm
+!--------------------------------------------------------------------------------------------------
+logical elemental pure function dEq0(a,tol)
+
+ implicit none
+ real(pReal), intent(in)           :: a
+ real(pReal), intent(in), optional :: tol
+ real(pReal), parameter            :: eps = 2.220446049250313E-16                                   ! DBL_EPSILON in C
+
+ dEq0 = merge(.True., .False.,abs(a) <= merge(tol,eps,present(tol))*abs(a))
+end function dEq0
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief inequality comparison to 0 for float with double precision
+! replaces "!=0" but for certain (relative) tolerance. Counterpart to dEq0
+! http://www.cygnus-software.com/papers/comparingfloats/comparingfloats.htm
+!--------------------------------------------------------------------------------------------------
+logical elemental pure function dNeq0(a,tol)
+
+ implicit none
+ real(pReal), intent(in)           :: a
+ real(pReal), intent(in), optional :: tol
+ real(pReal), parameter            :: eps = 2.220446049250313E-16                                   ! DBL_EPSILON in C
+
+ dNeq0 = merge(.False., .True.,abs(a) <= merge(tol,eps,present(tol))*abs(a))
+end function dNeq0
+
+
 !--------------------------------------------------------------------------------------------------
 !> @brief equality comparison for complex with double precision
 ! replaces "==" but for certain (relative) tolerance. Counterpart to cNeq
