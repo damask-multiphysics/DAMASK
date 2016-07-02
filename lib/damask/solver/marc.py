@@ -25,7 +25,7 @@ class Marc(Solver):
 
     MSCpath = damask.environment.Environment(rootRelation).options['MSC_ROOT']
     
-    for release,subdirs in sorted(self.releases.items(),reverse=True):
+    for release,subdirs in sorted(list(self.releases.items()),reverse=True):
       for subdir in subdirs:
         path = '%s/mentat%s/shlib/%s'%(MSCpath,release,subdir)
         if os.path.exists(path): return release
@@ -40,7 +40,7 @@ class Marc(Solver):
 
     MSCpath = damask.environment.Environment(rootRelation).options['MSC_ROOT']
     
-    if len(releases) == 0: releases = self.releases.keys()
+    if len(releases) == 0: releases = list(self.releases.keys())
     if type(releases) is not list: releases = [releases]
     for release in sorted(releases,reverse=True):
       if release not in self.releases: continue

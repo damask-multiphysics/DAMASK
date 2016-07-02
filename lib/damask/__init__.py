@@ -12,7 +12,7 @@ from .config      import Material         # noqa
 from .colormaps   import Colormap, Color  # noqa
 try:
   from .corientation import Quaternion, Rodrigues, Symmetry, Orientation # noqa
-  print "Import Cython version of Orientation module"
+  print("Import Cython version of Orientation module")
 except:
   from .orientation import Quaternion, Rodrigues, Symmetry, Orientation # noqa
 #from .block       import Block           # only one class

@@ -41,7 +41,7 @@ class Environment():
     try:
       cmd = """ ssh mulicense2 "/Stat_Flexlm | grep 'Users of %s: ' | cut -d' ' -f7,13" """%software
       process = subprocess.Popen(shlex.split(cmd),stdout = subprocess.PIPE,stderr = subprocess.PIPE)
-      licenses = map(int, process.stdout.readline().split())
+      licenses = list(map(int, process.stdout.readline().split()))
       try:
         if licenses[0]-licenses[1] >= Nneeded:
           return 0
