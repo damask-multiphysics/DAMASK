@@ -18,7 +18,7 @@ def gradFFT(geomdim,field):
  if   n == 3:   dataType = 'vector'
  elif n == 1:   dataType = 'scalar'
 
- field_fourier = np.fft.fftpack.rfftn(field,axes=(0,1,2),s=shapeFFT)
+ field_fourier = np.fft.rfftn(field,axes=(0,1,2),s=shapeFFT)
  grad_fourier  = np.empty(field_fourier.shape+(3,),'c16')
 
 # differentiation in Fourier space
@@ -46,7 +46,7 @@ def gradFFT(geomdim,field):
          grad_fourier[i,j,k,1,:] = field_fourier[i,j,k,1]*xi *TWOPIIMG                    # tensor field from vector data
          grad_fourier[i,j,k,2,:] = field_fourier[i,j,k,2]*xi *TWOPIIMG
 
- return np.fft.fftpack.irfftn(grad_fourier,axes=(0,1,2),s=shapeFFT).reshape([N,3*n])
+ return np.fft.irfftn(grad_fourier,axes=(0,1,2),s=shapeFFT).reshape([N,3*n])
 
 
 # --------------------------------------------------------------------
@@ -148,7 +148,7 @@ for name in filenames:
       # we need to reverse order here, because x is fastest,ie rightmost, but leftmost in our x,y,z notation
       stack.append(gradFFT(size[::-1],
                            table.data[:,data['column'][i]:data['column'][i]+data['dim']].
-                           reshape([grid[2],grid[1],grid[0]]+data['shape'])))
+                           reshape(grid[::-1].tolist()+data['shape'])))
 
 # ------------------------------------------ output result -----------------------------------------
 

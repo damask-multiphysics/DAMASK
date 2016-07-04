@@ -1,2 +1,3 @@
 core.so
 corientation.so
+*.pyx

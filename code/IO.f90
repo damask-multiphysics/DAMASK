@@ -80,25 +80,10 @@ subroutine IO_init
  use, intrinsic :: iso_fortran_env                                                                  ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
  
  implicit none
- integer(pInt) :: worldrank = 0_pInt
-#ifdef PETSc
-#include <petsc/finclude/petscsys.h>
- PetscErrorCode :: ierr
-#endif
- external :: &
-   MPI_Comm_rank, &
-   MPI_Abort
 
-#ifdef PETSc
- call MPI_Comm_rank(PETSC_COMM_WORLD,worldrank,ierr);CHKERRQ(ierr)
-#endif
-
- mainProcess: if (worldrank == 0) then 
-   write(6,'(/,a)')   ' <<<+-  IO init  -+>>>'
-   write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
+ write(6,'(/,a)')   ' <<<+-  IO init  -+>>>'
+ write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
- endif mainProcess
-
 
 end subroutine IO_init
 
@@ -1640,8 +1625,6 @@ subroutine IO_error(error_ID,el,ip,g,ext_msg)
    msg = 'update of gamma operator not possible when pre-calculated'
  case (880_pInt)
    msg = 'mismatch of microstructure count and a*b*c in geom file'
- case (890_pInt)
-   msg = 'invalid input for regridding'
  case (891_pInt)
    msg = 'unknown solver type selected'
  case (892_pInt)

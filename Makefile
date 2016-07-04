@@ -21,11 +21,11 @@ marc:
 processing:
 	@if hash cython 2>/dev/null; then \
 		cd ./lib/damask; \
+      ln -s orientation.py corientation.pyx; \
 	    CC=gcc python setup_corientation.py build_ext --inplace; \
 		rm -rv build; \
 		rm *.c; \
 	fi
-	@./installation/compile_CoreModule.py ${MAKEFLAGS}
 
 .PHONY: tidy
 tidy:

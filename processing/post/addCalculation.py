@@ -74,31 +74,29 @@ for name in filenames:
              }
 
 # ------------------------------------------ Evaluate condition ---------------------------------------
-  if options.condition:  
+  if options.condition is not None:
     interpolator = []
-    condition = options.condition                                                                     # copy per file, since might be altered inline
+    condition = options.condition                                                                   # copy per file, since might be altered inline
     breaker = False
   
-    for position,operand in enumerate(set(re.findall(r'#(([s]#)?(.+?))#',condition))):                # find three groups
+    for position,operand in enumerate(set(re.findall(r'#(([s]#)?(.+?))#',condition))):              # find three groups
       condition = condition.replace('#'+operand[0]+'#',
                                     {  '': '{%i}'%position,
                                      's#':'"{%i}"'%position}[operand[1]])
-      if operand[2] in specials:                                                                      # special label 
+      if operand[2] in specials:                                                                    # special label 
         interpolator += ['specials["%s"]'%operand[2]]
       else:
         try:
           interpolator += ['%s(table.data[%i])'%({  '':'float',
                                                   's#':'str'}[operand[1]],
-                                                 table.label_index(operand[2]))]                     # ccould be generalized to indexrange as array lookup
+                                                 table.label_index(operand[2]))]                    # could be generalized to indexrange as array lookup
         except:
           damask.util.croak('column "{}" not found.'.format(operand[2]))
           breaker = True
         
-    if breaker: continue                                                                              # found mistake in condition evaluation --> next file
+    if breaker: continue                                                                            # found mistake in condition evaluation --> next file
   
     evaluator_condition = "'" + condition + "'.format(" + ','.join(interpolator) + ")"
-
-  else: condition = ''
 
 # ------------------------------------------ build formulae ----------------------------------------
 
@@ -165,19 +163,19 @@ for name in filenames:
 
     for label in output.labels():
       oldIndices = table.label_indexrange(label)
-      Nold = max(1,len(oldIndices))                                                                  # Nold could be zero for new columns
+      Nold = max(1,len(oldIndices))                                                                 # Nold could be zero for new columns
       Nnew = len(output.label_indexrange(label))
       output.data_append(eval(evaluator[label]) if label in options.labels and
-                                                   (condition == '' or eval(eval(evaluator_condition)))
-                     else np.tile([table.data[i] for i in oldIndices]
-                                  if label in tabLabels
-                                  else np.nan,
-                                  np.ceil(float(Nnew)/Nold))[:Nnew])                                 # spread formula result into given number of columns
+                                                   (options.condition is None or eval(eval(evaluator_condition)))
+                                                else np.tile([table.data[i] for i in oldIndices]
+                                                             if label in tabLabels
+                                                             else np.nan,
+                                                             np.ceil(float(Nnew)/Nold))[:Nnew])     # spread formula result into given number of columns
 
-    outputAlive = output.data_write()                                                                # output processed line
+    outputAlive = output.data_write()                                                               # output processed line
 
 # ------------------------------------------ output finalization -----------------------------------
 
-  table.input_close()                                                                                # close ASCII tables
-  output.close()                                                                                     # close ASCII tables
+  table.input_close()                                                                               # close ASCII tables
+  output.close()                                                                                    # close ASCII tables
   

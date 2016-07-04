@@ -415,7 +415,7 @@ def leastsqBound(func, x0, args=(), bounds=None, Dfun=None, full_output=0,
           try:
               cov_x = inv(np.dot(np.transpose(R), R))
           except LinAlgError as inverror:
-              print inverror
+              print(inverror)
               pass
       return (x, cov_x) + retval[1:-1] + (mesg, info)
   else:
