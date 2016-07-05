@@ -15,6 +15,7 @@ class Color():
   __slots__ = [
                'model',
                'color',
+               '__dict__',
               ]
 
   

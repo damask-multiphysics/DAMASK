@@ -72,10 +72,6 @@ module math
      3_pInt,3_pInt  &
      ],[2,9])                                                                                       !< arrangement in Plain notation
 
-#ifdef Spectral
- include 'fftw3.f03'
-#endif 
-
  public :: &
    math_init, &
    math_qsort, &
@@ -163,21 +159,6 @@ module math
    math_rotate_forward33, &
    math_rotate_backward33, &
    math_rotate_forward3333
-#ifdef Spectral
- public :: &
-   fftw_set_timelimit, &
-   fftw_plan_dft_3d, &
-   fftw_plan_many_dft_r2c, &
-   fftw_plan_many_dft_c2r, &
-   fftw_plan_with_nthreads, &
-   fftw_init_threads, &
-   fftw_alloc_complex, &
-   fftw_execute_dft, &
-   fftw_execute_dft_r2c, &
-   fftw_execute_dft_c2r, &
-   fftw_destroy_plan, &
-   math_tensorAvg
-#endif     
  private :: &
    math_partition, &
    halton, &

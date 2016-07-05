@@ -617,12 +617,12 @@ program DAMASK_spectral
              timeinc = timeinc/2.0_pReal
            elseif (solres(1)%termIll) then                                                          ! material point model cannot find a solution, exit in any casy
              call IO_warning(850_pInt)
-             call quit(-1_pInt*(lastRestartWritten+1_pInt))                                         ! quit and provide information about last restart inc written (e.g. for regridding)
+             call quit(-1_pInt*(lastRestartWritten+1_pInt))                                         ! quit and provide information about last restart inc written
            elseif (continueCalculation == 1_pInt)  then
              guess = .true.                                                                         ! accept non converged BVP solution   
            else                                                                                     ! default behavior, exit if spectral solver does not converge                                
              call IO_warning(850_pInt)
-             call quit(-1_pInt*(lastRestartWritten+1_pInt))                                         ! quit and provide information about last restart inc written (e.g. for regridding)
+             call quit(-1_pInt*(lastRestartWritten+1_pInt))                                         ! quit and provide information about last restart inc written
            endif
          else
            guess = .true.                                                                           ! start guessing after first converged (sub)inc
@@ -722,34 +722,29 @@ end program DAMASK_spectral
 !> @brief quit subroutine to mimic behavior of FEM solvers
 !> @details exits the Spectral solver and reports time and duration. Exit code 0 signals
 !> everything went fine. Exit code 1 signals an error, message according to IO_error. Exit code 
-!> 2 signals request for regridding, increment of last saved restart information is written to
+!> 2 signals no converged solution and increment of last saved restart information is written to
 !> stderr. Exit code 3 signals no severe problems, but some increments did not converge
 !--------------------------------------------------------------------------------------------------
 subroutine quit(stop_id)
  use prec, only: &
    pInt
- use numerics, only: &
-   worldrank  
 
  implicit none
  integer(pInt), intent(in) :: stop_id
  integer, dimension(8) :: dateAndTime                                                               ! type default integer
 
- if (worldrank == 0_pInt) then
-   call date_and_time(values = dateAndTime)
-   write(6,'(/,a)') 'DAMASK terminated on:'
-   write(6,'(a,2(i2.2,a),i4.4)') 'Date:               ',dateAndTime(3),'/',&
-                                                        dateAndTime(2),'/',&
-                                                        dateAndTime(1)
-   write(6,'(a,2(i2.2,a),i2.2)') 'Time:               ',dateAndTime(5),':',&
-                                                        dateAndTime(6),':',&
-                                                        dateAndTime(7)
- endif
+ call date_and_time(values = dateAndTime)
+ write(6,'(/,a)') 'DAMASK terminated on:'
+ write(6,'(a,2(i2.2,a),i4.4)') 'Date:               ',dateAndTime(3),'/',&
+                                                      dateAndTime(2),'/',&
+                                                      dateAndTime(1)
+ write(6,'(a,2(i2.2,a),i2.2)') 'Time:               ',dateAndTime(5),':',&
+                                                      dateAndTime(6),':',&
+                                                      dateAndTime(7)
  
  if (stop_id == 0_pInt) stop 0                                                                      ! normal termination
- if (stop_id <  0_pInt) then                                                                        ! trigger regridding
-   if (worldrank == 0_pInt) &
-     write(0,'(a,i6)') 'restart information available at ', stop_id*(-1_pInt)
+ if (stop_id <  0_pInt) then                                                                        ! terminally ill, restart might help
+   write(0,'(a,i6)') 'restart information available at ', stop_id*(-1_pInt)
    stop 2
  endif
  if (stop_id == 3_pInt) stop 3                                                                      ! not all incs converged

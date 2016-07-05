@@ -13,7 +13,7 @@ class Abaqus(Solver):
       import subprocess
       process = subprocess.Popen(['abaqus', 'information=release'],stdout = subprocess.PIPE,stderr = subprocess.PIPE)
       self.version = process.stdout.readlines()[1].split()[1]
-      print self.version
+      print(self.version)
     else:
       self.version = version
     
