@@ -73,18 +73,18 @@ def laguerreTessellation(undeformed, coords, weights, grains, nonperiodic = Fals
                 [  1, 1, 1 ],
                ]).astype(float)*info['size']
 
-    squaredweights = np.power(np.tile(weights,len(copies)),2)                                       # Laguerre weights (squared, size N*n)
-
-    for i,vec in enumerate(copies):                                                                 # periodic copies of seed points (size N*n)
-      try: seeds = np.append(seeds, coords+vec, axis=0)
+    repeatweights = np.repeat(weights,len(copies),axis=1).flatten(order='F')                        # Laguerre weights (1,2,3,1,2,3,...,1,2,3)
+    
+    for i,vec in enumerate(copies):                                                                 # periodic copies of seed points ...
+      try: seeds = np.append(seeds, coords+vec, axis=0)                                             # ... (1+a,2+a,3+a,...,1+z,2+z,3+z)
       except NameError: seeds = coords+vec   
 
-    if all(squaredweights == 0.0):                                                                  # standard Voronoi (no weights, KD tree)
+    if (repeatweights == 0.0).all():                                                                # standard Voronoi (no weights, KD tree)
       myKDTree = spatial.cKDTree(seeds)
       devNull,closestSeeds = myKDTree.query(undeformed)
     else:
       damask.util.croak('...using {} cpu{}'.format(options.cpus, 's' if options.cpus > 1 else ''))
-      arguments = [[arg] + [seeds,squaredweights] for arg in list(undeformed)]
+      arguments = [[arg] + [seeds,repeatweights] for arg in list(undeformed)]
 
       if cpus > 1:                                                                                  # use multithreading
         pool = multiprocessing.Pool(processes = cpus)                                               # initialize workers
