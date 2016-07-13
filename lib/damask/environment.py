@@ -21,14 +21,10 @@ class Environment():
     return os.path.normpath(os.path.join(os.path.realpath(__file__),'../../../'))
 
   def get_options(self):
-    if os.path.isfile(os.path.join(os.getenv('HOME'),'.damask/damask.conf')):
-      configFile = os.path.join(os.getenv('HOME'),'.damask/damask.conf')
-    else:
-      configFile = '/etc/damask.conf'
-    with open(self.relPath(configFile)) as file:
-      for line in file:
+    with open(self.relPath(self.rootDir()+'/CONFIG')) as configFile:
+      for line in configFile:
         l = line.strip()
-        if not (l.startswith('#') or l == ''):
+        if l and not l.startswith('#'):
           items = l.split('=') + ['','']
           if items[1] != '':                                # nothing specified
             self.options[items[0].upper()] = items[1]
