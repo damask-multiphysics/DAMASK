@@ -7,7 +7,7 @@ SHELL = /bin/sh
 # OPTIONS = standard (alternative): meaning
 #-------------------------------------------------------------
 # F90            = ifort (gfortran): compiler type, choose Intel or GNU
-# FCOMPILERNAME   = name of the compiler executable (if not the same as the ype), e.g. using mpich-g90 instead of ifort
+# FCOMPILERNAME   = name of the compiler executable (if not the same as the type), e.g. using mpich-g90 instead of ifort
 # PORTABLE       = TRUE (FALSE): decision, if executable is optimized for the machine on which it was built.
 # OPTIMIZATION   = DEFENSIVE (OFF,AGGRESSIVE,ULTRA): Optimization mode: O2, O0, O3 + further options for most files, O3 + further options for all files
 # OPENMP         = TRUE (FALSE): OpenMP multiprocessor support
