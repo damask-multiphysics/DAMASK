@@ -1,8 +1,10 @@
-MSC_ROOT=/opt/MSC
-MARC_VERSION=2015
+# "set syntax" needed only for tcsh (but works with bash etc)
 
-DAMASK_NUM_THREADS=4
+set MSC_ROOT=/opt/MSC
+set MARC_VERSION=2015
 
-ABAQUS_VERSION=6.14-5
+set DAMASK_NUM_THREADS=4
+
+set ABAQUS_VERSION=6.14-5
 #Set DAMASK_BIN if not $DAMASK_ROOT/bin
 #DAMASK_BIN

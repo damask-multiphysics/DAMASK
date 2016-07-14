@@ -1,7 +1,7 @@
 # -*- coding: UTF-8 no BOM -*-
 
 
-import os,subprocess,shlex
+import os,subprocess,shlex,re
 
 class Environment():
   __slots__ = [ \
@@ -23,10 +23,10 @@ class Environment():
   def get_options(self):
     with open(self.relPath(self.rootDir()+'/CONFIG')) as configFile:
       for line in configFile:
-        l = line.strip()
+        l = re.sub('^set ', '', line).strip()
         if l and not l.startswith('#'):
-          items = l.split('=') + ['','']
-          if items[1] != '':                                # nothing specified
+          items = l.split('=')
+          if len(items) == 2:
             self.options[items[0].upper()] = items[1]
       
   def isAvailable(self,software,Nneeded =-1):
