@@ -338,7 +338,7 @@ class Quaternion:
                  type = "bunge",
                  degrees = False,
                  standardRange = False):
-      u"""
+      """
       Orientation as Bunge-Euler angles
 
       conversion of ACTIVE rotation to Euler angles taken from:
