@@ -6,14 +6,10 @@ from .solver import Solver
 
 class Abaqus(Solver):
 
-
   def __init__(self,version='',solver=''):                                                          # example version string: 6.12-2, solver: std or exp
     self.solver='Abaqus'
     if version =='':
-      import subprocess
-      process = subprocess.Popen(['abaqus', 'information=release'],stdout = subprocess.PIPE,stderr = subprocess.PIPE)
-      self.version = process.stdout.readlines()[1].split()[1]
-      print(self.version)
+      version = damask.Environment().options['ABAQUS_VERSION']
     else:
       self.version = version
     
@@ -40,6 +36,3 @@ class Abaqus(Solver):
       if self.version != detectedVersion:
         raise Exception('found Abaqus version %s, but requested %s'%(detectedVersion,self.version))
     return '%s -job %s -user %s/code/DAMASK_abaqus_%s interactive'%(cmd,model,env.rootDir(),self.solver)
-      
-
-
