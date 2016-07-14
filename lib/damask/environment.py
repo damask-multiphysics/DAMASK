@@ -5,12 +5,10 @@ import os,subprocess,shlex,re
 
 class Environment():
   __slots__ = [ \
-                'rootRelation',
                 'options',
               ]
 
-  def __init__(self,rootRelation = '.'):
-    self.rootRelation = rootRelation
+  def __init__(self):
     self.options = {}
     self.get_options()
 
@@ -23,11 +21,12 @@ class Environment():
   def get_options(self):
     with open(self.relPath(self.rootDir()+'/CONFIG')) as configFile:
       for line in configFile:
-        l = re.sub('^set ', '', line).strip()
+        l = re.sub('^set ', '', line).strip()                                                       # remove "set" (tcsh) when setting variables
         if l and not l.startswith('#'):
           items = l.split('=')
-          if len(items) == 2:
-            self.options[items[0].upper()] = items[1]
+          if len(items) == 2: 
+            self.options[items[0].upper()] = \
+              re.sub('\$\{*DAMASK_ROOT\}*',self.rootDir(),os.path.expandvars(items[1]))             # expand all shell variables and DAMASK_ROOT
       
   def isAvailable(self,software,Nneeded =-1):
     licensesNeeded = {'abaqus'  :5,

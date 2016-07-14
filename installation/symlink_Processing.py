@@ -3,18 +3,11 @@
 
 # Makes postprocessing routines acessible from everywhere.
 import os,sys
-from damask import Environment
+import damask
 
-BOLD = '\033[1m'
-ENDC = '\033[0m'
-
-damaskEnv = Environment()
+damaskEnv = damask.Environment()
 baseDir = damaskEnv.relPath('processing/')
-codeDir = damaskEnv.relPath('code/')
-try:
-  binDir = damaskEnv.options['DAMASK_BIN']
-except:
-  binDir = '/usr/local/bin' if os.access('/usr/local/bin', os.W_OK) else os.path.join(os.getenv('HOME'),'bin')
+binDir = damaskEnv.options['DAMASK_BIN']
 
 if not os.path.isdir(binDir):
   os.mkdir(binDir)
@@ -36,7 +29,7 @@ for subDir in processing_subDirs:
         os.remove(sym_link)
         sys.stdout.write(sym_link)
       else:
-        sys.stdout.write(BOLD + sym_link + ENDC)
+        sys.stdout.write(damask.util.bcolors.BOLD + sym_link + damask.util.bcolors.ENDC)
 
       os.symlink(src,sym_link)
       sys.stdout.write(' -> '+src+'\n')

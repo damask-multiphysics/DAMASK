@@ -13,16 +13,9 @@ bin_link = { \
 
 MarcReleases =[2011,2012,2013,2013.1,2014,2014.2,2015]
 
-baseDir = damask.Environment('../../').relPath('code/')
-
-try:
-  binDir = damask.Environment().options['DAMASK_BIN']
-except:
-  root=os.access('/usr/local/bin', os.W_OK)
-  if root:
-    binDir = '/usr/local/bin'
-  else:
-    binDir = os.path.join(os.getenv('HOME'),'bin')
+damaskEnv = damask.Environment()
+baseDir = damaskEnv.relPath('code/')
+binDir  = damaskEnv.options['DAMASK_BIN']
 
 if not os.path.isdir(binDir):
   os.mkdir(binDir)
@@ -43,7 +36,11 @@ for version in MarcReleases:
   src = os.path.abspath(os.path.join(baseDir,'DAMASK_marc.f90'))
   if os.path.exists(src): 
     sym_link = os.path.abspath(os.path.join(baseDir,'DAMASK_marc'+str(version)+'.f90'))                    
-    if os.path.lexists(sym_link): os.remove(sym_link)
-    os.symlink(os.path.relpath(src,baseDir),sym_link)
-    sys.stdout.write(sym_link+' -> '+src+'\n')
+    if os.path.lexists(sym_link):
+      os.remove(sym_link)
+      sys.stdout.write(sym_link)
+    else:
+      sys.stdout.write(damask.util.bcolors.BOLD + sym_link + damask.util.bcolors.ENDC)
 
+    os.symlink(src,sym_link)
+    sys.stdout.write(' -> '+src+'\n')
