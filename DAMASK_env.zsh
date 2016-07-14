@@ -8,7 +8,7 @@ else
   print 'Not done yet'
 fi
 
-# allows to source the same file for tcsh and zsh, with and without space around =
+# defining set() allows to source the same file for tcsh and zsh, with and without space around =
 set() {
     export $1$2$3
  }
@@ -57,8 +57,8 @@ if [ ! -z "$PS1" ]; then
   echo
   echo Using environment with ...
   echo "DAMASK             $DAMASK_ROOT"
-  [[ "x$SOLVER"       != "x" ]] && echo "Spectral Solver    $SOLVER" 
-  [[ "x$PROCESSING"   != "x" ]] && echo "Post Processing    $PROCESSING"
+  echo "Spectral Solver    $SOLVER" 
+  echo "Post Processing    $PROCESSING"
   echo "Multithreading     DAMASK_NUM_THREADS=$DAMASK_NUM_THREADS"
   if [ "x$PETSC_DIR"   != "x" ]; then
     echo "PETSc location     $PETSC_DIR"
