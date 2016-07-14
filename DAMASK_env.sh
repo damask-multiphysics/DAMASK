@@ -1,15 +1,20 @@
 # sets up an environment for DAMASK on bash
 # usage:  source DAMASK_env.sh
 
+
 if [ "$OSTYPE" == "linux-gnu" ] || [ "$OSTYPE" == 'linux' ]; then
-  DAMASK_ROOT=$(python -c "import os,sys; print(os.path.realpath(os.path.expanduser(sys.argv[1])))" "`dirname $BASH_SOURCE`")
+  DAMASK_ROOT=$(python -c "import os,sys; print(os.path.realpath(os.path.expanduser(sys.argv[1])))" "$(dirname $BASH_SOURCE)")
 else
   [[ "${BASH_SOURCE::1}" == "/" ]] && BASE="" || BASE="`pwd`/"
   STAT=$(stat "`dirname $BASE$BASH_SOURCE`")
   DAMASK_ROOT=${STAT##* }
 fi
 
-[[ -f $HOME/.damask/damask.conf ]] && source $HOME/.damask/damask.conf || source /etc/damask.conf
+# allows to source the same file for tcsh and bash, with and without space around =
+set() {
+    export $1$2$3
+ }
+source $DAMASK_ROOT/CONFIG
 
 # if DAMASK_BIN is present and not in $PATH, add it
 if [[ "x$DAMASK_BIN" != "x" && ! `echo ":$PATH:" | grep $DAMASK_BIN:` ]]; then
@@ -23,6 +28,9 @@ fi
 PROCESSING=`which postResults 2>/dev/null`
 if [ "x$PROCESSING" == "x" ]; then
   PROCESSING='Not found!'
+fi
+if [ "x$DAMASK_NUM_THREADS" == "x" ]; then
+  DAMASK_NUM_THREADS=1
 fi
 
 # according to http://software.intel.com/en-us/forums/topic/501500
@@ -68,10 +76,12 @@ fi
 export DAMASK_NUM_THREADS
 export PYTHONPATH=$DAMASK_ROOT/lib:$PYTHONPATH
 
-for var in BASE STAT SOLVER PROCESSING FREE; do
+for var in BASE STAT SOLVER PROCESSING FREE DAMASK_BIN; do
   unset "${var}"
 done
-for var in DAMASK IMKL ACML LAPACK MSC FFTW HDF5; do
+for var in DAMASK MSC; do
   unset "${var}_ROOT"
 done
-
+for var in ABAQUS MARC; do
+  unset "${var}_VERSION"
+done
