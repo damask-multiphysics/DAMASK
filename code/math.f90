@@ -214,9 +214,9 @@ subroutine math_init
    call random_number(randTest(i))
  enddo
 
- write(6,'(a,I)') 'size  of random seed:    ', randSize
+ write(6,'(a,I2)') ' size  of random seed:    ', randSize
  do i =1, randSize
-   write(6,'(a,I,I)') 'value of random seed:    ', i, randInit(i)
+   write(6,'(a,I2,I14)') ' value of random seed:    ', i, randInit(i)
  enddo
  write(6,'(a,4(/,26x,f17.14),/)') ' start of random sequence: ', randTest
 
@@ -1189,9 +1189,9 @@ function math_qRand()
  real(pReal), dimension(3) :: rnd
 
  call halton(3_pInt,rnd)
- math_qRand = [cos(2.0_pReal*PI*rnd(1))*sqrt(rnd(3)),
-               sin(2.0_pReal*PI*rnd(2))*sqrt(1.0_pReal-rnd(3)),
-               cos(2.0_pReal*PI*rnd(2))*sqrt(1.0_pReal-rnd(3)),
+ math_qRand = [cos(2.0_pReal*PI*rnd(1))*sqrt(rnd(3)), &
+               sin(2.0_pReal*PI*rnd(2))*sqrt(1.0_pReal-rnd(3)), &
+               cos(2.0_pReal*PI*rnd(2))*sqrt(1.0_pReal-rnd(3)), &
                sin(2.0_pReal*PI*rnd(1))*sqrt(rnd(3))]
 
 end function math_qRand
