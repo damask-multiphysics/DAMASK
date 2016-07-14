@@ -17,16 +17,6 @@ FEM:
 marc:
 	@./installation/mods_MarcMentat/apply_DAMASK_modifications.sh ${MAKEFLAGS}
 
-.PHONY: processing
-processing:
-	@if hash cython 2>/dev/null; then \
-		cd ./lib/damask; \
-      ln -s orientation.py corientation.pyx; \
-	    CC=gcc python setup_corientation.py build_ext --inplace; \
-		rm -rv build; \
-		rm *.c; \
-	fi
-
 .PHONY: tidy
 tidy:
 	@$(MAKE) tidy -C code >/dev/null
