@@ -53,7 +53,7 @@ if [ ! -z "$PS1" ]; then
   echo
   echo Düsseldorf Advanced Materials Simulation Kit - DAMASK
   echo Max-Planck-Institut für Eisenforschung, Düsseldorf
-  echo http://damask.mpie.de
+  echo https://damask.mpie.de
   echo
   echo Using environment with ...
   echo "DAMASK             $DAMASK_ROOT"
