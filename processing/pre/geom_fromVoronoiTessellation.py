@@ -73,18 +73,17 @@ def laguerreTessellation(undeformed, coords, weights, grains, nonperiodic = Fals
                 [  1, 1, 1 ],
                ]).astype(float)*info['size']
 
-    squaredweights = np.power(np.tile(weights,len(copies)),2)                                       # Laguerre weights (squared, size N*n)
-
-    for i,vec in enumerate(copies):                                                                 # periodic copies of seed points (size N*n)
-      try: seeds = np.append(seeds, coords+vec, axis=0)
+    repeatweights = np.tile(weights,len(copies)).flatten(order='F')                                 # Laguerre weights (1,2,3,1,2,3,...,1,2,3)
+    for i,vec in enumerate(copies):                                                                 # periodic copies of seed points ...
+      try: seeds = np.append(seeds, coords+vec, axis=0)                                             # ... (1+a,2+a,3+a,...,1+z,2+z,3+z)
       except NameError: seeds = coords+vec   
 
-    if all(squaredweights == 0.0):                                                                  # standard Voronoi (no weights, KD tree)
+    if (repeatweights == 0.0).all():                                                                # standard Voronoi (no weights, KD tree)
       myKDTree = spatial.cKDTree(seeds)
       devNull,closestSeeds = myKDTree.query(undeformed)
     else:
       damask.util.croak('...using {} cpu{}'.format(options.cpus, 's' if options.cpus > 1 else ''))
-      arguments = [[arg] + [seeds,squaredweights] for arg in list(undeformed)]
+      arguments = [[arg] + [seeds,repeatweights] for arg in list(undeformed)]
 
       if cpus > 1:                                                                                  # use multithreading
         pool = multiprocessing.Pool(processes = cpus)                                               # initialize workers
@@ -134,12 +133,12 @@ group.add_option('-g',
                  '--grid',
                  dest = 'grid',
                  type = 'int', nargs = 3, metavar = ' '.join(['int']*3),
-                 help = 'a,b,c grid of hexahedral box [auto]')
+                 help = 'a,b,c grid of hexahedral box')
 group.add_option('-s',
                  '--size',
                  dest = 'size',
                  type = 'float', nargs = 3, metavar=' '.join(['float']*3),
-                 help = 'x,y,z size of hexahedral box [auto]')
+                 help = 'x,y,z size of hexahedral box')
 group.add_option('-o',
                  '--origin',
                  dest = 'origin',
