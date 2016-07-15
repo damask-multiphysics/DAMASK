@@ -15,6 +15,7 @@ set() {
     export $1$2$3
  }
 source $DAMASK_ROOT/CONFIG
+unset -f set
 
 # if DAMASK_BIN is present and not in $PATH, add it
 if [[ "x$DAMASK_BIN" != "x" && ! `echo ":$PATH:" | grep $DAMASK_BIN:` ]]; then
