@@ -1,8 +1,7 @@
 # -*- coding: UTF-8 no BOM -*-
 
-
 from .solver import Solver
-
+import damask
 
 class Abaqus(Solver):
 
@@ -23,7 +22,6 @@ class Abaqus(Solver):
   def return_run_command(self,model):
     import subprocess
     import re
-    import damask
     env=damask.Environment()
     shortVersion = re.sub('[\.,-]', '',self.version)
     try:
