@@ -73,8 +73,7 @@ def laguerreTessellation(undeformed, coords, weights, grains, nonperiodic = Fals
                 [  1, 1, 1 ],
                ]).astype(float)*info['size']
 
-    repeatweights = np.repeat(weights,len(copies),axis=1).flatten(order='F')                        # Laguerre weights (1,2,3,1,2,3,...,1,2,3)
-    
+    repeatweights = np.tile(weights,len(copies)).flatten(order='F')                                 # Laguerre weights (1,2,3,1,2,3,...,1,2,3)
     for i,vec in enumerate(copies):                                                                 # periodic copies of seed points ...
       try: seeds = np.append(seeds, coords+vec, axis=0)                                             # ... (1+a,2+a,3+a,...,1+z,2+z,3+z)
       except NameError: seeds = coords+vec   
@@ -134,12 +133,12 @@ group.add_option('-g',
                  '--grid',
                  dest = 'grid',
                  type = 'int', nargs = 3, metavar = ' '.join(['int']*3),
-                 help = 'a,b,c grid of hexahedral box [auto]')
+                 help = 'a,b,c grid of hexahedral box')
 group.add_option('-s',
                  '--size',
                  dest = 'size',
                  type = 'float', nargs = 3, metavar=' '.join(['float']*3),
-                 help = 'x,y,z size of hexahedral box [auto]')
+                 help = 'x,y,z size of hexahedral box')
 group.add_option('-o',
                  '--origin',
                  dest = 'origin',
