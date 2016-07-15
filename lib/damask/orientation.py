@@ -342,7 +342,7 @@ class Quaternion:
       Orientation as Bunge-Euler angles
 
       conversion of ACTIVE rotation to Euler angles taken from:
-      Melcher, A.; Unser, A.; Reichhardt, M.; Nestler, B.; Pötschke, M.; Selzer, M.
+      Melcher, A.; Unser, A.; Reichhardt, M.; Nestler, B.; Poetschke, M.; Selzer, M.
       Conversion of EBSD data by a quaternion based algorithm to be used for grain structure simulations
       Technische Mechanik 30 (2010) pp 401--413
       """
