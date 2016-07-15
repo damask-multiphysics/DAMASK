@@ -31,9 +31,9 @@ def meshgrid2(*arrs):
   return tuple(ans)
 
 def findClosestSeed(fargs):
-    point, seeds, weightssquared = fargs
+    point, seeds, myWeights = fargs
     tmp = np.repeat(point.reshape(3,1), len(seeds), axis=1).T
-    dist = np.sum((tmp - seeds)*(tmp - seeds),axis=1) - weightssquared
+    dist = np.sum((tmp - seeds)**2,axis=1) -myWeights
     return np.argmin(dist)                                                                          # seed point closest to point
 
 
