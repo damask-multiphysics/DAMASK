@@ -83,7 +83,7 @@ def laguerreTessellation(undeformed, coords, weights, grains, nonperiodic = Fals
       devNull,closestSeeds = myKDTree.query(undeformed)
     else:
       damask.util.croak('...using {} cpu{}'.format(options.cpus, 's' if options.cpus > 1 else ''))
-      arguments = [[arg] + [seeds,repeatweights] for arg in list(undeformed)]
+      arguments = [[arg,seeds,repeatweights] for arg in list(undeformed)]
 
       if cpus > 1:                                                                                  # use multithreading
         pool = multiprocessing.Pool(processes = cpus)                                               # initialize workers
