@@ -1060,8 +1060,7 @@ for incCount,position in enumerate(locations):     # walk through locations
     file = open(outFilename,'w')
     fileOpen = True
     file.write('2\theader\n')
-    file.write(string.replace('$Id$','\n','\\n')+
-               '\t' + ' '.join(sys.argv[1:]) + '\n')
+    file.write(scriptID + '\t' + ' '.join(sys.argv[1:]))
     headerWritten = False
 
   file.flush()
