@@ -1160,9 +1160,9 @@ function plastic_phenopowerlaw_postResults(Tstar_v,ipc,ip,el)
            enddo
            plastic_phenopowerlaw_postResults(c+j) = plastic_phenopowerlaw_gdot0_slip(instance)*0.5_pReal* &
                     ((abs(tau_slip_pos)/plasticState(ph)%state(j,of))**plastic_phenopowerlaw_n_slip(instance) &
-                    +(abs(tau_slip_neg)/plasticState(ph)%state(j,of))**plastic_phenopowerlaw_n_slip(instance))&
-                    *sign(1.0_pReal,tau_slip_pos)
-
+                    *sign(1.0_pReal,tau_slip_pos) &
+                    +(abs(tau_slip_neg)/(plasticState(ph)%state(j,of)))**plastic_phenopowerlaw_n_slip(instance) &
+                    *sign(1.0_pReal,tau_slip_neg))
          enddo slipSystems1
        enddo slipFamilies1
        c = c + nSlip
