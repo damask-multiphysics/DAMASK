@@ -8,7 +8,7 @@ import damask
 
 scriptName = os.path.splitext(os.path.basename(__file__))[0]
 scriptID   = ' '.join([scriptName,damask.version])
-sys.path.append(damask.solver.Marc().libraryPath('../../'))
+sys.path.append(damask.solver.Marc().libraryPath())
 
 #-------------------------------------------------------------------------------------------------
 def outMentat(cmd,locals):

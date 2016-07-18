@@ -9,7 +9,7 @@ import damask
 scriptName = os.path.splitext(os.path.basename(__file__))[0]
 scriptID   = ' '.join([scriptName,damask.version])
 
-sys.path.append(damask.solver.Marc().libraryPath('../../'))
+sys.path.append(damask.solver.Marc().libraryPath())
 
 active=[True,True,True] # directions on which to add PBC
 def outMentat(cmd,locals):

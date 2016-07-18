@@ -15,7 +15,7 @@ try:                                        # check for Python Image Lib
 except:
   ImageCapability = False
 
-sys.path.append(damask.solver.Marc().libraryPath('../../'))
+sys.path.append(damask.solver.Marc().libraryPath())
 
 try:                                        # check for MSC.Mentat Python interface
   import py_mentat
