@@ -29,7 +29,7 @@ for subDir in processing_subDirs:
         os.remove(sym_link)
         sys.stdout.write(sym_link)
       else:
-        sys.stdout.write(damask.util.bcolors.BOLD + sym_link + damask.util.bcolors.ENDC)
+        sys.stdout.write(damask.util.emph(sym_link))
 
       os.symlink(src,sym_link)
       sys.stdout.write(' -> '+src+'\n')
