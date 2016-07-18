@@ -765,7 +765,7 @@ if options.filetype not in ['marc','spectral']:
   parser.error('file type "%s" not supported...'%options.filetype)
 
 if options.filetype == 'marc':
-  sys.path.append(damask.solver.Marc().libraryPath('../../'))
+  sys.path.append(damask.solver.Marc().libraryPath())
   
   try:
     from py_post import post_open
