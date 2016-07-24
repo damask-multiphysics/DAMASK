@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python2.7
 # -*- coding: UTF-8 no BOM -*-
 
 import os,sys
@@ -40,7 +40,7 @@ for version in MarcReleases:
       os.remove(sym_link)
       sys.stdout.write(sym_link)
     else:
-      sys.stdout.write(damask.util.bcolors.BOLD + sym_link + damask.util.bcolors.ENDC)
+      sys.stdout.write(damask.util.emph(sym_link))
 
     os.symlink(src,sym_link)
     sys.stdout.write(' -> '+src+'\n')
