@@ -81,11 +81,9 @@ subroutine plastic_none_init
      allocate(plasticState(phase)%partionedState0    (sizeState,NofMyPhase))
      allocate(plasticState(phase)%subState0          (sizeState,NofMyPhase))
      allocate(plasticState(phase)%state              (sizeState,NofMyPhase))
-     allocate(plasticState(phase)%state_backup       (sizeState,NofMyPhase))
 
      allocate(plasticState(phase)%dotState           (sizeDotState,NofMyPhase))
      allocate(plasticState(phase)%deltaState        (sizeDeltaState,NofMyPhase))
-     allocate(plasticState(phase)%dotState_backup    (sizeDotState,NofMyPhase))
      if (any(numerics_integrator == 1_pInt)) then
        allocate(plasticState(phase)%previousDotState (sizeDotState,NofMyPhase))
        allocate(plasticState(phase)%previousDotState2(sizeDotState,NofMyPhase))
