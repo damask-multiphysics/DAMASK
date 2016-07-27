@@ -107,7 +107,7 @@ parser.add_option('-p',
 parser.add_option('--nodal',
                   dest    = 'nodal',
                   action  = 'store_true',
-                  help    = 'output nodal (instad of cell-centered) displacements')
+                  help    = 'output nodal (instead of cell-centered) displacements')
 
 parser.set_defaults(defgrad = 'f',
                     pos     = 'pos',

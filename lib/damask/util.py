@@ -49,9 +49,10 @@ def croak(what, newline = True):
   sys.stderr.flush()
 
 # -----------------------------
-def report(who,what):
+def report(who = None,
+           what = None):
   """reports script and file name"""
-  croak( (emph(who) if who else '') + (': '+what if what else '') )
+  croak( (emph(who)+': ' if who else '') + (what if what else '') )
 
 
 # -----------------------------
