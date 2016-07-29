@@ -11,7 +11,7 @@ scriptName = os.path.splitext(os.path.basename(__file__))[0]
 scriptID   = ' '.join([scriptName,damask.version])
 
 def mostFrequent(arr):
-  return np.argmax(np.bincount(arr))
+  return np.argmax(np.bincount(arr.astype('int')))
 
 
 #--------------------------------------------------------------------------------------------------
@@ -72,7 +72,13 @@ for name in filenames:
 
 # --- do work ------------------------------------------------------------------------------------
 
-  microstructure = ndimage.filters.generic_filter(microstructure,mostFrequent,size=(options.stencil,)*3)
+  microstructure = ndimage.filters.generic_filter(microstructure,mostFrequent,size=(options.stencil,)*3).astype('int_')
+  newInfo = {'microstructures': microstructure.max()}
+
+# --- report ---------------------------------------------------------------------------------------
+  if (    newInfo['microstructures'] != info['microstructures']):
+    damask.util.croak('--> microstructures: %i'%newInfo['microstructures'])
+    info['microstructures'] == newInfo['microstructures']
 
 # --- write header ---------------------------------------------------------------------------------
 
