@@ -158,7 +158,8 @@ module math
    math_areaTriangle, &
    math_rotate_forward33, &
    math_rotate_backward33, &
-   math_rotate_forward3333
+   math_rotate_forward3333, &
+   math_limit
  private :: &
    math_partition, &
    halton, &
