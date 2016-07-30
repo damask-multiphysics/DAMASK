@@ -1,18 +1,16 @@
 #!/usr/bin/env python2.7
 # -*- coding: UTF-8 no BOM -*-
 
-import os,re,sys
-import math                                                                                         # noqa
+import os,re,sys,math,collections
 import numpy as np
 from optparse import OptionParser
 import damask
-import  collections
 
 scriptName = os.path.splitext(os.path.basename(__file__))[0]
 scriptID   = ' '.join([scriptName,damask.version])
 
 def listify(x):
-  return (x if isinstance(x, collections.Iterable) else [x])
+  return x if isinstance(x, collections.Iterable) else [x]
 
 
 # --------------------------------------------------------------------
@@ -22,10 +20,12 @@ def listify(x):
 parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
 Add or alter column(s) with derived values according to user-defined arithmetic operation between column(s).
 Column labels are tagged by '#label#' in formulas. Use ';' for ',' in functions.
-Numpy is available as np.
+Numpy is available as 'np'.
 
 Special variables: #_row_# -- row index
-Examples: (1) magnitude of vector -- "np.linalg.norm(#vec#)" (2) rounded root of row number -- "round(math.sqrt(#_row_#);3)"
+Examples:
+(1) magnitude of vector -- "np.linalg.norm(#vec#)"
+(2) rounded root of row number -- "round(math.sqrt(#_row_#);3)"
 
 """, version = scriptID)
 
@@ -55,7 +55,7 @@ if len(options.labels) != len(options.formulas):
 for i in xrange(len(options.formulas)):
   options.formulas[i] = options.formulas[i].replace(';',',')
 
-# --- loop over input files -------------------------------------------------------------------------
+# ------------------------------------- loop over input files --------------------------------------
 
 if filenames == []: filenames = [None]
 
@@ -69,12 +69,12 @@ for name in filenames:
 
   table.head_read()
 
-# -----------------------------------------------------------------------------------------------------
+# --------------------------------------------------------------------------------------------------
   specials = { \
                '_row_': 0,
              }
 
-# ------------------------------------------ Evaluate condition ---------------------------------------
+# --------------------------------------- evaluate condition ---------------------------------------
   if options.condition is not None:
     interpolator = []
     condition = options.condition                                                                   # copy per file, since might be altered inline
@@ -99,7 +99,7 @@ for name in filenames:
   
     evaluator_condition = "'" + condition + "'.format(" + ','.join(interpolator) + ")"
 
-# ------------------------------------------ build formulae ----------------------------------------
+# ------------------------------------------ build formulas ----------------------------------------
 
   evaluator = {}
   
@@ -122,6 +122,10 @@ for name in filenames:
 
     evaluator[label] = formula
 
+# ---------------------------- separate requested labels into old and new --------------------------
+
+  veterans = list(set(options.labels)&set(table.labels(raw=False)+table.labels(raw=True)) )         # intersection of requested and existing
+  newbies  = list(set(options.labels)-set(table.labels(raw=False)+table.labels(raw=True)) )         # requested but not existing
     
 # ------------------------------------------ process data ------------------------------------------
 
@@ -131,45 +135,44 @@ for name in filenames:
   while outputAlive and table.data_read():                                                          # read next data line of ASCII table
     specials['_row_'] += 1                                                                          # count row
     
-# ------------------------------------------ calculate one result to get length of labels  ---------
-
     if firstLine:
       firstLine = False
+
+# ---------------------------- line 1: determine dimension of formulas -----------------------------
+
       resultDim  = {}
       for label in list(options.labels):                                                            # iterate over stable copy
         resultDim[label] = np.size(eval(evaluator[label]))                                          # get dimension of formula[label]
         if resultDim[label] == 0: options.labels.remove(label)                                      # remove label if invalid result
-
-      veterans = list(set(options.labels)&set(table.labels(raw=False)+table.labels(raw=True)) )     # intersection of requested and existing
-      newbies  = list(set(options.labels)-set(table.labels(raw=False)+table.labels(raw=True)) )     # requested but not existing
       
       for veteran in list(veterans):
         if resultDim[veteran] != table.label_dimension(veteran):
-          damask.util.croak('{} is ignored due to inconsistent dimension...'.format(veteran))
-          veterans.remove(veteran)                                                                  # ignore culprit
+          damask.util.croak('skipping {} due to inconsistent dimension...'.format(veteran))
+          veterans.remove(veteran)                                                                  # discard culprit
+
+# ----------------------------------- line 1: assemble header --------------------------------------
+
       for newby in newbies:
         table.labels_append(['{}_{}'.format(i+1,newby) for i in xrange(resultDim[newby])] 
                              if resultDim[newby] > 1 else newby)
 
-# ------------------------------------------ assemble header ---------------------------------------
-
       table.info_append(scriptID + '\t' + ' '.join(sys.argv[1:]))
       table.head_write()
 
-# ------------------------------------------ process data ------------------------------------------
+# -------------------------------------- evaluate formulas -----------------------------------------
 
     if options.condition is None or eval(eval(evaluator_condition)):                                # condition for veteran replacement fulfilled
-      for veteran in veterans:                                                                      # evaluate formulae that overwrite
+      for veteran in veterans:                                                                      # evaluate formulas that overwrite
         table.data[table.label_index(veteran):
                    table.label_index(veteran)+table.label_dimension(veteran)] = \
                    listify(eval(evaluator[veteran]))
     
-    for newby in newbies:                                                                           # evaluate formulae that append
+    for newby in newbies:                                                                           # evaluate formulas that append
       table.data_append(listify(eval(evaluator[newby])))
 
     outputAlive = table.data_write()                                                                # output processed line
 
-# ------------------------------------------ output finalization -----------------------------------
+# ------------------------------------- output finalization ----------------------------------------
 
   table.close()                                                                                     # close ASCII table
 
