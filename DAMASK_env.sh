@@ -43,7 +43,6 @@ if [ "x$FREE" != "x" ]; then
   ulimit -s $(expr $freeMem / $DAMASK_NUM_THREADS / 2)  2>/dev/null # maximum stack size (kB)
   ulimit -d $(expr $freeMem                       / 2)  2>/dev/null # maximum  heap size (kB)
 fi
-ulimit -c 0           2>/dev/null # core  file size (512-byte blocks)
 ulimit -v unlimited   2>/dev/null # maximum virtual memory size
 ulimit -m unlimited   2>/dev/null # maximum physical memory size
 

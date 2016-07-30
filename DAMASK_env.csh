@@ -31,9 +31,6 @@ if ( `which free` != "free: Command not found." ) then
   limit stacksize $stack # maximum stack size (kB)
   limit datasize  $heap  # maximum  heap size (kB)
 endif
-if ( `limit | grep coredumpsize` != "" ) then
-  limit coredumpsize 0        # prevent core dumping
-endif
 if ( `limit | grep memoryuse` != "" ) then
   limit memoryuse  unlimited  # maximum physical memory size
 endif
