@@ -1,7 +1,8 @@
 #!/usr/bin/env python2.7
 # -*- coding: UTF-8 no BOM -*-
 
-import os,re,sys,math,collections
+import os,re,sys,collections
+import math                                                                                         # noqa
 import numpy as np
 from optparse import OptionParser
 import damask
