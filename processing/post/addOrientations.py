@@ -24,24 +24,23 @@ outputChoices = ['quaternion','rodrigues','eulers']
 parser.add_option('-o', '--output',
                   dest = 'output',
                   action = 'extend', metavar = '<string LIST>',
-                  help = 'output orientation formats {%s}'%(','.join(outputChoices)))
-parser.add_option('-r', '--rotation',
-                  dest='rotation',
-                  type = 'float', nargs = 4, metavar = ' '.join(['float']*4),
-                  help = 'angle and axis to (pre)rotate orientation')
-
+                  help = 'output orientation formats {{{}}}'.format(', '.join(outputChoices)))
 parser.add_option('-s', '--symmetry',
                   dest = 'symmetry',
                   type = 'choice', choices = damask.Symmetry.lattices[1:], metavar='string',
                   help = 'crystal symmetry [%default] {{{}}} '.format(', '.join(damask.Symmetry.lattices[1:])))
+parser.add_option('-d', '--degrees',
+                  dest = 'degrees',
+                  action = 'store_true',
+                  help = 'angles are given in degrees [%default]')
+parser.add_option('-r', '--rotation',
+                  dest='rotation',
+                  type = 'float', nargs = 4, metavar = ' '.join(['float']*4),
+                  help = 'angle and axis to (pre)rotate orientation')
 parser.add_option('-e', '--eulers',
                   dest = 'eulers',
                   type = 'string', metavar = 'string',
                   help = 'Euler angles label')
-parser.add_option('-d', '--degrees',
-                  dest = 'degrees',
-                  action = 'store_true',
-                  help = 'Euler angles are given in degrees [%default]')
 parser.add_option('-m', '--matrix',
                   dest = 'matrix',
                   type = 'string', metavar = 'string',
@@ -98,9 +97,8 @@ r = damask.Quaternion().fromAngleAxis(toRadians*options.rotation[0],options.rota
 if filenames == []: filenames = [None]
 
 for name in filenames:
-  try:
-    table = damask.ASCIItable(name = name,
-                              buffered = False)
+  try:    table = damask.ASCIItable(name = name,
+                                    buffered = False)
   except: continue
   damask.util.report(scriptName,name)
 
@@ -126,9 +124,9 @@ for name in filenames:
 
   table.info_append(scriptID + '\t' + ' '.join(sys.argv[1:]))
   for output in options.output:
-    if output == 'quaternion': table.labels_append(['{}_quat({})'.format(     i+1,options.symmetry) for i in xrange(4)])
-    if output == 'rodrigues':  table.labels_append(['{}_rodrigues({})'.format(i+1,options.symmetry) for i in xrange(3)])
-    if output == 'eulers':     table.labels_append(['{}_eulers({})'.format(   i+1,options.symmetry) for i in xrange(3)])
+    if   output == 'quaternion': table.labels_append(['{}_{}_{}({})'.format(i+1,'quat',options.symmetry,label) for i in xrange(4)])
+    elif output == 'rodrigues':  table.labels_append(['{}_{}_{}({})'.format(i+1,'rodr',options.symmetry,label) for i in xrange(3)])
+    elif output == 'eulers':     table.labels_append(['{}_{}_{}({})'.format(i+1,'eulr',options.symmetry,label) for i in xrange(3)])
   table.head_write()
 
 # ------------------------------------------ process data ------------------------------------------
@@ -153,9 +151,9 @@ for name in filenames:
     o.quaternion = r*o.quaternion
 
     for output in options.output:
-      if output == 'quaternion':  table.data_append(o.asQuaternion())
-      if output == 'rodrigues':   table.data_append(o.asRodrigues())
-      if output == 'eulers':      table.data_append(o.asEulers('Bunge', degrees=options.degrees))
+      if   output == 'quaternion': table.data_append(o.asQuaternion())
+      elif output == 'rodrigues':  table.data_append(o.asRodrigues())
+      elif output == 'eulers':     table.data_append(o.asEulers('Bunge', degrees=options.degrees))
     outputAlive = table.data_write()                                                                # output processed line
 
 # ------------------------------------------ output finalization -----------------------------------  
