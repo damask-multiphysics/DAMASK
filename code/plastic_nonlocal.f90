@@ -295,8 +295,6 @@ use material, only: phase_plasticity, &
                     material_phase
 use lattice
 use numerics,only: &
-   analyticJaco, &
-   worldrank, &
    numerics_integrator
 
 
@@ -332,11 +330,9 @@ integer(pInt)          ::                   phase, &
 
  integer(pInt) :: NofMyPhase 
  
- mainProcess: if (worldrank == 0) then 
-   write(6,'(/,a)')   ' <<<+-  constitutive_'//PLASTICITY_NONLOCAL_label//' init  -+>>>'
-   write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
+ write(6,'(/,a)')   ' <<<+-  constitutive_'//PLASTICITY_NONLOCAL_label//' init  -+>>>'
+ write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
- endif mainProcess
 
  maxNinstances = int(count(phase_plasticity == PLASTICITY_NONLOCAL_ID),pInt)
  if (maxNinstances == 0) return                                              ! we don't have to do anything if there's no instance for this constitutive law
@@ -1310,10 +1306,6 @@ allocate(nonSchmidProjection(3,3,4,maxTotalNslip,maxNinstances),                
 
      allocate(plasticState(phase)%dotState            (sizeDotState,NofMyPhase),  source=0.0_pReal)
      allocate(plasticState(phase)%deltaState        (sizeDeltaState,NofMyPhase),  source=0.0_pReal)
-     if (.not. analyticJaco) then
-       allocate(plasticState(phase)%state_backup      (sizeState,NofMyPhase),     source=0.0_pReal)
-       allocate(plasticState(phase)%dotState_backup   (sizeDotState,NofMyPhase),  source=0.0_pReal)
-     endif
      if (any(numerics_integrator == 1_pInt)) then
        allocate(plasticState(phase)%previousDotState  (sizeDotState,NofMyPhase),  source=0.0_pReal)
        allocate(plasticState(phase)%previousDotState2 (sizeDotState,NofMyPhase),  source=0.0_pReal)
