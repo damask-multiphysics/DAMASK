@@ -73,16 +73,16 @@ if [ ! -z "$PS1" ]; then
    || echo $(python -c \
           "import math; \
            size=$(( 1024*$(ulimit -d) )); \
-           print '{:.4g} {}'.format(size / (1 << ((int(math.log(size,2) / 10) if size else 0) * 10)), \
-           ['bytes','KiB','MiB','GiB','TiB','EiB','ZiB'][int(math.log(size,2) / 10) if size else 0])")
+           print('{:.4g} {}'.format(size / (1 << ((int(math.log(size,2) / 10) if size else 0) * 10)), \
+           ['bytes','KiB','MiB','GiB','TiB','EiB','ZiB'][int(math.log(size,2) / 10) if size else 0]))")
   echo -n "stack size         "
    [[ "$(ulimit -s)" == "unlimited" ]] \
    && echo "unlimited" \
    || echo $(python -c \
           "import math; \
            size=$(( 1024*$(ulimit -s) )); \
-           print '{:.4g} {}'.format(size / (1 << ((int(math.log(size,2) / 10) if size else 0) * 10)), \
-           ['bytes','KiB','MiB','GiB','TiB','EiB','ZiB'][int(math.log(size,2) / 10) if size else 0])")
+           print('{:.4g} {}'.format(size / (1 << ((int(math.log(size,2) / 10) if size else 0) * 10)), \
+           ['bytes','KiB','MiB','GiB','TiB','EiB','ZiB'][int(math.log(size,2) / 10) if size else 0]))")
 fi
 
 export DAMASK_NUM_THREADS
