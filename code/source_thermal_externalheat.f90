@@ -73,8 +73,6 @@ subroutine source_thermal_externalheat_init(fileUnit)
    sourceState, &
    MATERIAL_partPhase
  use numerics,only: &
-   analyticJaco, &
-   worldrank, &
    numerics_integrator
 
  implicit none
@@ -89,11 +87,9 @@ subroutine source_thermal_externalheat_init(fileUnit)
    line = ''
  real(pReal), allocatable, dimension(:,:) :: temp_time, temp_rate  
 
- mainProcess: if (worldrank == 0) then 
-   write(6,'(/,a)')   ' <<<+-  source_'//SOURCE_thermal_externalheat_label//' init  -+>>>'
-   write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
+ write(6,'(/,a)')   ' <<<+-  source_'//SOURCE_thermal_externalheat_label//' init  -+>>>'
+ write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
- endif mainProcess
  
  maxNinstance = int(count(phase_source == SOURCE_thermal_externalheat_ID),pInt)
  if (maxNinstance == 0_pInt) return
@@ -189,10 +185,6 @@ subroutine source_thermal_externalheat_init(fileUnit)
 
      allocate(sourceState(phase)%p(sourceOffset)%dotState            (sizeDotState,NofMyPhase),  source=0.0_pReal)
      allocate(sourceState(phase)%p(sourceOffset)%deltaState        (sizeDeltaState,NofMyPhase),  source=0.0_pReal)
-     if (.not. analyticJaco) then
-       allocate(sourceState(phase)%p(sourceOffset)%state_backup      (sizeState,NofMyPhase),     source=0.0_pReal)
-       allocate(sourceState(phase)%p(sourceOffset)%dotState_backup   (sizeDotState,NofMyPhase),  source=0.0_pReal)
-     endif
      if (any(numerics_integrator == 1_pInt)) then
        allocate(sourceState(phase)%p(sourceOffset)%previousDotState  (sizeDotState,NofMyPhase),  source=0.0_pReal)
        allocate(sourceState(phase)%p(sourceOffset)%previousDotState2 (sizeDotState,NofMyPhase),  source=0.0_pReal)

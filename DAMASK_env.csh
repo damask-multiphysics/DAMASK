@@ -23,25 +23,29 @@ endif
 
 # according to http://software.intel.com/en-us/forums/topic/501500
 # this seems to make sense for the stack size
-set FREE=`which free`
-set FREE=''
-if ( "x$FREE" != "x" ) then
+if ( `which free` != "free: Command not found." ) then
   set freeMem=`free -k | grep -E '(Mem|Speicher):' | awk '{print $4;}'`
-  set heap=`expr $freeMem / 2`
   set stack=`expr $freeMem / $DAMASK_NUM_THREADS / 2`
+  set heap=` expr $freeMem                       / 2`
   # http://superuser.com/questions/220059/what-parameters-has-ulimit             
   limit stacksize $stack # maximum stack size (kB)
-  limit datasize  $heap  # maximum heap size (kB)
+  limit datasize  $heap  # maximum  heap size (kB)
 endif
-limit coredumpsize 2000     # core  file size (512-byte blocks)
-limit vmemoryuse unlimited  # maximum virtual memory size
-limit memoryuse  unlimited  # maximum physical memory size
+if ( `limit | grep coredumpsize` != "" ) then
+  limit coredumpsize 0        # prevent core dumping
+endif
+if ( `limit | grep memoryuse` != "" ) then
+  limit memoryuse  unlimited  # maximum physical memory size
+endif
+if ( `limit | grep vmemoryuse` != "" ) then
+  limit vmemoryuse unlimited  # maximum virtual memory size
+endif
 
 # disable output in case of scp
-if($?prompt) then
+if ( $?prompt ) then
   echo ''
-  echo Düsseldorf Advanced Materials Simulation Kit - DAMASK
-  echo Max-Planck-Institut für Eisenforschung, Düsseldorf
+  echo Düsseldorf Advanced Materials Simulation Kit --- DAMASK
+  echo Max-Planck-Institut für Eisenforschung GmbH, Düsseldorf
   echo https://damask.mpie.de
   echo
   echo Using environment with ...
@@ -59,8 +63,8 @@ if($?prompt) then
     echo "MSC.Marc/Mentat    $MSC_ROOT"
   endif
   echo
-  echo `limit stacksize`
   echo `limit datasize`
+  echo `limit stacksize`
 endif
 
 setenv DAMASK_NUM_THREADS $DAMASK_NUM_THREADS
