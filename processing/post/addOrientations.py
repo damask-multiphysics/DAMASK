@@ -17,6 +17,7 @@ parser = OptionParser(option_class=damask.extendableOption, usage='%prog options
 Add quaternion and/or Bunge Euler angle representation of crystal lattice orientation.
 Orientation is given by quaternion, Euler angles, rotation matrix, or crystal frame coordinates
 (i.e. component vectors of rotation matrix).
+Additional (globally fixed) rotations of the lab frame and/or crystal frame can be applied.
 
 """, version = scriptID)
 
@@ -33,10 +34,14 @@ parser.add_option('-d', '--degrees',
                   dest = 'degrees',
                   action = 'store_true',
                   help = 'angles are given in degrees [%default]')
-parser.add_option('-r', '--rotation',
-                  dest='rotation',
+parser.add_option('-R', '--labrotation',
+                  dest='labrotation',
                   type = 'float', nargs = 4, metavar = ' '.join(['float']*4),
-                  help = 'angle and axis to (pre)rotate orientation')
+                  help = 'angle and axis of additional lab frame rotation')
+parser.add_option('-r', '--crystalrotation',
+                  dest='crystalrotation',
+                  type = 'float', nargs = 4, metavar = ' '.join(['float']*4),
+                  help = 'angle and axis of additional crystal frame rotation')
 parser.add_option('-e', '--eulers',
                   dest = 'eulers',
                   type = 'string', metavar = 'string',
@@ -90,7 +95,8 @@ if np.sum(input) != 1: parser.error('needs exactly one input format.')
                          (options.quaternion,4,'quaternion'),
                         ][np.where(input)[0][0]]                                                    # select input label that was requested
 toRadians = math.pi/180.0 if options.degrees else 1.0                                               # rescale degrees to radians
-r = damask.Quaternion().fromAngleAxis(toRadians*options.rotation[0],options.rotation[1:])           # pre-rotation
+r = damask.Quaternion().fromAngleAxis(toRadians*options.crystalrotation[0],options.crystalrotation[1:]) # crystal frame rotation
+R = damask.Quaternion().fromAngleAxis(toRadians*options.    labrotation[0],options.    labrotation[1:]) #     lab frame rotation
 
 # --- loop over input files ------------------------------------------------------------------------
 
@@ -148,7 +154,7 @@ for name in filenames:
       o = damask.Orientation(quaternion = np.array(map(float,table.data[column:column+4])),
                              symmetry   = options.symmetry).reduced()
 
-    o.quaternion = r*o.quaternion
+    o.quaternion = r*o.quaternion*R                                                                 # apply additional lab and crystal frame rotations
 
     for output in options.output:
       if   output == 'quaternion': table.data_append(o.asQuaternion())
