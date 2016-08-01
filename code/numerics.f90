@@ -64,7 +64,6 @@ module numerics
    charLength                 =  1.0_pReal, &                                                       !< characteristic length scale for gradient problems
    residualStiffness          =  1.0e-6_pReal                                                       !< non-zero residual damage   
  logical, protected, public :: &                                                   
-   analyticJaco               = .true., &                                                           !< use analytic Jacobian or perturbation, Default for Spectral solver .true.:
    usePingPong                = .true., & 
    numerics_timeSyncing       = .false.                                                             !< flag indicating if time synchronization in crystallite is used for nonlocal plasticity
 
@@ -315,8 +314,6 @@ subroutine numerics_init
          numerics_integrator(1) = IO_intValue(line,chunkPos,2_pInt)
        case ('integratorstiffness')
          numerics_integrator(2) = IO_intValue(line,chunkPos,2_pInt)
-       case ('analyticjaco')
-         analyticJaco = IO_intValue(line,chunkPos,2_pInt) > 0_pInt
        case ('usepingpong')
          usepingpong = IO_intValue(line,chunkPos,2_pInt) > 0_pInt
        case ('timesyncing')
@@ -528,7 +525,6 @@ subroutine numerics_init
  write(6,'(a24,1x,es8.1)')  ' aTol_crystalliteStress: ',aTol_crystalliteStress
  write(6,'(a24,2(1x,i8))')  ' integrator:             ',numerics_integrator
  write(6,'(a24,1x,L8)')     ' timeSyncing:            ',numerics_timeSyncing
- write(6,'(a24,1x,L8)')     ' analytic Jacobian:      ',analyticJaco
  write(6,'(a24,1x,L8)')     ' use ping pong scheme:   ',usepingpong
  write(6,'(a24,1x,es8.1,/)')' unitlength:             ',numerics_unitlength
 

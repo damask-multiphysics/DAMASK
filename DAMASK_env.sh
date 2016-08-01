@@ -5,8 +5,8 @@
 if [ "$OSTYPE" == "linux-gnu" ] || [ "$OSTYPE" == 'linux' ]; then
   DAMASK_ROOT=$(python -c "import os,sys; print(os.path.realpath(os.path.expanduser(sys.argv[1])))" "$(dirname $BASH_SOURCE)")
 else
-  [[ "${BASH_SOURCE::1}" == "/" ]] && BASE="" || BASE="`pwd`/"
-  STAT=$(stat "`dirname $BASE$BASH_SOURCE`")
+  [[ "${BASH_SOURCE::1}" == "/" ]] && BASE="" || BASE="$(pwd)/"
+  STAT=$(stat "$(dirname $BASE$BASH_SOURCE)")
   DAMASK_ROOT=${STAT##* }
 fi
 
@@ -17,16 +17,16 @@ set() {
 source $DAMASK_ROOT/CONFIG
 unset -f set
 
-# if DAMASK_BIN is present and not in $PATH, add it
-if [[ "x$DAMASK_BIN" != "x" && ! `echo ":$PATH:" | grep $DAMASK_BIN:` ]]; then
+# add DAMASK_BIN if present but not yet in $PATH
+if [[ "x$DAMASK_BIN" != "x" && ! $(echo ":$PATH:" | grep $DAMASK_BIN:) ]]; then
   export PATH=$DAMASK_BIN:$PATH
 fi
 
-SOLVER=`which DAMASK_spectral 2>/dev/null`
+SOLVER=$(which DAMASK_spectral 2>/dev/null)
 if [ "x$SOLVER" == "x" ]; then
   SOLVER='Not found!'
 fi
-PROCESSING=`which postResults 2>/dev/null`
+PROCESSING=$(which postResults 2>/dev/null)
 if [ "x$PROCESSING" == "x" ]; then
   PROCESSING='Not found!'
 fi
@@ -36,25 +36,21 @@ fi
 
 # according to http://software.intel.com/en-us/forums/topic/501500
 # this seems to make sense for the stack size
-FREE=`which free 2>/dev/null`
+FREE=$(which free 2>/dev/null)
 if [ "x$FREE" != "x" ]; then
-  freeMem=`free -k | grep -E '(Mem|Speicher):' | awk '{print $4;}'`
-  heap=`expr $freeMem / 2`
-  stack=`expr $freeMem / $DAMASK_NUM_THREADS / 2`
-
+  freeMem=$(free -k | grep -E '(Mem|Speicher):' | awk '{print $4;}')
   # http://superuser.com/questions/220059/what-parameters-has-ulimit             
-  ulimit -s $stack      2>/dev/null # maximum stack size (kB)
-  ulimit -d $heap       2>/dev/null # maximum heap size (kB)
+  ulimit -s $(expr $freeMem / $DAMASK_NUM_THREADS / 2)  2>/dev/null # maximum stack size (kB)
+  ulimit -d $(expr $freeMem                       / 2)  2>/dev/null # maximum  heap size (kB)
 fi
-ulimit -c 2000        2>/dev/null # core  file size (512-byte blocks)
 ulimit -v unlimited   2>/dev/null # maximum virtual memory size
 ulimit -m unlimited   2>/dev/null # maximum physical memory size
 
 # disable output in case of scp
 if [ ! -z "$PS1" ]; then
   echo
-  echo Düsseldorf Advanced Materials Simulation Kit - DAMASK
-  echo Max-Planck-Institut für Eisenforschung, Düsseldorf
+  echo Düsseldorf Advanced Materials Simulation Kit --- DAMASK
+  echo Max-Planck-Institut für Eisenforschung GmbH, Düsseldorf
   echo https://damask.mpie.de
   echo
   echo Using environment with ...
@@ -64,14 +60,29 @@ if [ ! -z "$PS1" ]; then
   echo "Multithreading     DAMASK_NUM_THREADS=$DAMASK_NUM_THREADS"
   if [ "x$PETSC_DIR"   != "x" ]; then
     echo "PETSc location     $PETSC_DIR"
-    [[ `python -c "import os,sys; print(os.path.realpath(os.path.expanduser(sys.argv[1])))" "$PETSC_DIR"` == $PETSC_DIR ]] \
-    || echo "               ~~> "`python -c "import os,sys; print(os.path.realpath(os.path.expanduser(sys.argv[1])))" "$PETSC_DIR"`
+    [[ $(python -c "import os,sys; print(os.path.realpath(os.path.expanduser(sys.argv[1])))" "$PETSC_DIR") == $PETSC_DIR ]] \
+    || echo "               ~~> "$(python -c "import os,sys; print(os.path.realpath(os.path.expanduser(sys.argv[1])))" "$PETSC_DIR")
   fi
-  [[ "x$PETSC_ARCH"  != "x" ]] && echo "PETSc architecture $PETSC_ARCH"
+  [[ "x$PETSC_ARCH"  == "x" ]] \
+  || echo "PETSc architecture $PETSC_ARCH"
   echo "MSC.Marc/Mentat    $MSC_ROOT"
   echo
-  echo -n "heap  size/MiB     "; echo "`ulimit -d`/1024" | bc
-  echo -n "stack size/MiB     "; echo "`ulimit -s`/1024" | bc
+  echo -n "heap  size         "
+   [[ "$(ulimit -d)" == "unlimited" ]] \
+   && echo "unlimited" \
+   || echo $(python -c \
+          "import math; \
+           size=$(( 1024*$(ulimit -d) )); \
+           print('{:.4g} {}'.format(size / (1 << ((int(math.log(size,2) / 10) if size else 0) * 10)), \
+           ['bytes','KiB','MiB','GiB','TiB','EiB','ZiB'][int(math.log(size,2) / 10) if size else 0]))")
+  echo -n "stack size         "
+   [[ "$(ulimit -s)" == "unlimited" ]] \
+   && echo "unlimited" \
+   || echo $(python -c \
+          "import math; \
+           size=$(( 1024*$(ulimit -s) )); \
+           print('{:.4g} {}'.format(size / (1 << ((int(math.log(size,2) / 10) if size else 0) * 10)), \
+           ['bytes','KiB','MiB','GiB','TiB','EiB','ZiB'][int(math.log(size,2) / 10) if size else 0]))")
 fi
 
 export DAMASK_NUM_THREADS

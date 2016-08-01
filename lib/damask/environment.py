@@ -1,7 +1,6 @@
 # -*- coding: UTF-8 no BOM -*-
 
-
-import os,subprocess,shlex,re
+import os,subprocess,shlex,re,string
 
 class Environment():
   __slots__ = [ \
@@ -23,7 +22,7 @@ class Environment():
       for line in configFile:
         l = re.sub('^set ', '', line).strip()                                                       # remove "set" (tcsh) when setting variables
         if l and not l.startswith('#'):
-          items = l.split('=')
+          items = map(string.strip,l.split('='))
           if len(items) == 2: 
             self.options[items[0].upper()] = \
               re.sub('\$\{*DAMASK_ROOT\}*',self.rootDir(),os.path.expandvars(items[1]))             # expand all shell variables and DAMASK_ROOT

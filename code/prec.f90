@@ -67,11 +67,9 @@ module prec
    real(pReal), allocatable, dimension(:,:) :: &
      partionedState0, &
      subState0, &
-     state_backup, &
      deltaState, &
      previousDotState, &                                                                            !< state rate of previous xxxx
      previousDotState2, &                                                                           !< state rate two xxxx ago
-     dotState_backup, &                                                                             !< backup of state rate
      RK4dotState
    real(pReal), allocatable, dimension(:,:,:) :: &
      RKCK45dotState

@@ -156,11 +156,9 @@ program DAMASK_spectral
 !--------------------------------------------------------------------------------------------------
 ! init DAMASK (all modules)
  call CPFEM_initAll(el = 1_pInt, ip = 1_pInt)
- mainProcess: if (worldrank == 0) then
-   write(6,'(/,a)')   ' <<<+-  DAMASK_spectral init  -+>>>'
-   write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
+ write(6,'(/,a)')   ' <<<+-  DAMASK_spectral init  -+>>>'
+ write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
- endif mainProcess
  
 !--------------------------------------------------------------------------------------------------
 ! initialize field solver information
@@ -199,14 +197,14 @@ program DAMASK_spectral
    allocate(loadCases(i)%ID(nActiveFields))
    field = 1
    loadCases(i)%ID(field) = FIELD_MECH_ID           ! mechanical active by default
-   if (any(thermal_type  == THERMAL_conduction_ID)) then ! thermal field active
+   thermalActive: if (any(thermal_type  == THERMAL_conduction_ID)) then
      field = field + 1
      loadCases(i)%ID(field) = FIELD_THERMAL_ID 
-   endif  
-   if (any(damage_type   == DAMAGE_nonlocal_ID))  then ! damage field active
+   endif thermalActive
+   damageActive: if (any(damage_type   == DAMAGE_nonlocal_ID)) then
      field = field + 1
      loadCases(i)%ID(field) = FIELD_DAMAGE_ID
-   endif
+   endif damageActive
  enddo
 
 !--------------------------------------------------------------------------------------------------

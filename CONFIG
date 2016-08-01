@@ -1,10 +1,11 @@
 # "set"-syntax needed only for tcsh (but works with bash and zsh)
 # DAMASK_ROOT will be expanded
-set DAMASK_BIN=${DAMASK_ROOT}/bin
 
-set DAMASK_NUM_THREADS = 4
+set DAMASK_BIN            = ${DAMASK_ROOT}/bin
 
-set MSC_ROOT=/opt/MSC
-set MARC_VERSION=2015
+set DAMASK_NUM_THREADS    = 4
 
-set ABAQUS_VERSION=6.14-5
+set MSC_ROOT              = /opt/MSC
+set MARC_VERSION          = 2015
+
+set ABAQUS_VERSION        = 6.14-5

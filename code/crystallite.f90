@@ -518,8 +518,7 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
    nCryst, &
    numerics_integrator, &
    numerics_integrationMode, &
-   numerics_timeSyncing, &
-   analyticJaco
+   numerics_timeSyncing
  use debug, only: &
    debug_level, &
    debug_crystallite, &
@@ -582,23 +581,6 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
    invFp, &                                                                                         ! inverse of the plastic deformation gradient
    Fe_guess, &                                                                                      ! guess for elastic deformation gradient
    Tstar                                                                                            ! 2nd Piola-Kirchhoff stress tensor
- real(pReal), allocatable, dimension(:,:,:,:,:,:,:) :: &
-   dPdF_perturbation1, &
-   dPdF_perturbation2
- real(pReal), allocatable, dimension(:,:,:,:,:) :: &
-   F_backup, &
-   Fp_backup, &
-   InvFp_backup, &
-   Fi_backup, &
-   InvFi_backup, &
-   Fe_backup, &
-   Lp_backup, &
-   Li_backup, &
-   P_backup
- real(pReal), allocatable, dimension(:,:,:,:) :: &
-   Tstar_v_backup
- logical,     allocatable, dimension(:,:,:) :: &
-   convergenceFlag_backup
  integer(pInt) :: &
    NiterationCrystallite, &                                                                         ! number of iterations in crystallite loop
    c, &                                                                                             !< counter in integration point component loop
@@ -1137,371 +1119,115 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
 ! --+>> STIFFNESS CALCULATION <<+--
 
  computeJacobian: if(updateJaco) then
-   jacobianMethod: if (analyticJaco) then
+   !$OMP PARALLEL DO PRIVATE(dSdF,dSdFe,dSdFi,dLpdS,dLpdFi,dFpinvdF,dLidS,dLidFi,dFidS,&
+   !$OMP                     rhs_3333,lhs_3333,temp_99,temp_33,temp_3333,myNcomponents,error)
+   elementLooping6: do e = FEsolving_execElem(1),FEsolving_execElem(2)
+     myNcomponents = homogenization_Ngrains(mesh_element(3,e))
+     do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)                                            ! iterate over IPs of this element to be processed
+       do c = 1_pInt,myNcomponents
+         call constitutive_TandItsTangent(temp_33,dSdFe,dSdFi,crystallite_Fe(1:3,1:3,c,i,e), &
+                                          crystallite_Fi(1:3,1:3,c,i,e),c,i,e)                     ! call constitutive law to calculate elastic stress tangent
 
-     ! --- ANALYTIC JACOBIAN ---
+         call constitutive_LiAndItsTangent(temp_33,dLidS,dLidFi,crystallite_Tstar_v(1:6,c,i,e), &
+                                           crystallite_Fi(1:3,1:3,c,i,e), &
+                                           c,i,e)                                                  ! call constitutive law to calculate Li tangent in lattice configuration
+         if (sum(abs(dLidS)) < tol_math_check) then
+           dFidS = 0.0_pReal
+         else
+           temp_33 = math_inv33(crystallite_subFi0(1:3,1:3,c,i,e))
+           lhs_3333 = 0.0_pReal; rhs_3333 = 0.0_pReal
+           do o=1_pInt,3_pInt; do p=1_pInt,3_pInt
+             lhs_3333(1:3,1:3,o,p) = lhs_3333(1:3,1:3,o,p) + &
+                                     crystallite_subdt(c,i,e)*math_mul33x33(temp_33,dLidFi(1:3,1:3,o,p))
+             lhs_3333(1:3,o,1:3,p) = lhs_3333(1:3,o,1:3,p) + &
+                                     crystallite_invFi(1:3,1:3,c,i,e)*crystallite_invFi(p,o,c,i,e)
+             rhs_3333(1:3,1:3,o,p) = rhs_3333(1:3,1:3,o,p) - &
+                                     crystallite_subdt(c,i,e)*math_mul33x33(temp_33,dLidS(1:3,1:3,o,p))
+           enddo; enddo
+           call math_invert(9_pInt,math_Plain3333to99(lhs_3333),temp_99,error)
+           if (error) then
+             call IO_warning(warning_ID=600_pInt,el=e,ip=i,g=c, &
+                             ext_msg='inversion error in analytic tangent calculation')
+             dFidS = 0.0_pReal
+           else
+             dFidS = math_mul3333xx3333(math_Plain99to3333(temp_99),rhs_3333)
+           endif
+           dLidS = math_mul3333xx3333(dLidFi,dFidS) + dLidS
+         endif
 
-     !$OMP PARALLEL DO PRIVATE(dSdF,dSdFe,dSdFi,dLpdS,dLpdFi,dFpinvdF,dLidS,dLidFi,dFidS,&
-     !$OMP                     rhs_3333,lhs_3333,temp_99,temp_33,temp_3333,myNcomponents,error)
-       elementLooping6: do e = FEsolving_execElem(1),FEsolving_execElem(2)
-         myNcomponents = homogenization_Ngrains(mesh_element(3,e))
-         do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)                                            ! iterate over IPs of this element to be processed
-           do c = 1_pInt,myNcomponents
-             call constitutive_TandItsTangent(temp_33,dSdFe,dSdFi,crystallite_Fe(1:3,1:3,c,i,e), &
-                                              crystallite_Fi(1:3,1:3,c,i,e),c,i,e)                     ! call constitutive law to calculate elastic stress tangent
+         call constitutive_LpAndItsTangent(temp_33,dLpdS,dLpdFi,crystallite_Tstar_v(1:6,c,i,e), &
+                                           crystallite_Fi(1:3,1:3,c,i,e),c,i,e)                    ! call constitutive law to calculate Lp tangent in lattice configuration
+         dLpdS = math_mul3333xx3333(dLpdFi,dFidS) + dLpdS
 
-             call constitutive_LiAndItsTangent(temp_33,dLidS,dLidFi,crystallite_Tstar_v(1:6,c,i,e), &
-                                               crystallite_Fi(1:3,1:3,c,i,e), &
-                                               c,i,e)                                                  ! call constitutive law to calculate Li tangent in lattice configuration
-             if (sum(abs(dLidS)) < tol_math_check) then
-               dFidS = 0.0_pReal
-             else
-               temp_33 = math_inv33(crystallite_subFi0(1:3,1:3,c,i,e))
-               lhs_3333 = 0.0_pReal; rhs_3333 = 0.0_pReal
-               do o=1_pInt,3_pInt; do p=1_pInt,3_pInt
-                 lhs_3333(1:3,1:3,o,p) = lhs_3333(1:3,1:3,o,p) + &
-                                         crystallite_subdt(c,i,e)*math_mul33x33(temp_33,dLidFi(1:3,1:3,o,p))
-                 lhs_3333(1:3,o,1:3,p) = lhs_3333(1:3,o,1:3,p) + &
-                                         crystallite_invFi(1:3,1:3,c,i,e)*crystallite_invFi(p,o,c,i,e)
-                 rhs_3333(1:3,1:3,o,p) = rhs_3333(1:3,1:3,o,p) - &
-                                         crystallite_subdt(c,i,e)*math_mul33x33(temp_33,dLidS(1:3,1:3,o,p))
-               enddo; enddo
-               call math_invert(9_pInt,math_Plain3333to99(lhs_3333),temp_99,error)
-               if (error) then
-                 call IO_warning(warning_ID=600_pInt,el=e,ip=i,g=c, &
-                                 ext_msg='inversion error in analytic tangent calculation')
-                 dFidS = 0.0_pReal
-               else
-                 dFidS = math_mul3333xx3333(math_Plain99to3333(temp_99),rhs_3333)
-               endif
-               dLidS = math_mul3333xx3333(dLidFi,dFidS) + dLidS
-             endif
+         temp_33   = math_transpose33(math_mul33x33(crystallite_invFp(1:3,1:3,c,i,e), &
+                                                    crystallite_invFi(1:3,1:3,c,i,e)))
+         rhs_3333 = 0.0_pReal
+         forall(p=1_pInt:3_pInt, o=1_pInt:3_pInt) &
+           rhs_3333(p,o,1:3,1:3) = math_mul33x33(dSdFe(p,o,1:3,1:3),temp_33)
 
-             call constitutive_LpAndItsTangent(temp_33,dLpdS,dLpdFi,crystallite_Tstar_v(1:6,c,i,e), &
-                                               crystallite_Fi(1:3,1:3,c,i,e),c,i,e)                    ! call constitutive law to calculate Lp tangent in lattice configuration
-             dLpdS = math_mul3333xx3333(dLpdFi,dFidS) + dLpdS
+         temp_3333 = 0.0_pReal
+         temp_33 = math_mul33x33(crystallite_subF(1:3,1:3,c,i,e), &
+                                 math_inv33(crystallite_subFp0(1:3,1:3,c,i,e)))
+         forall(p=1_pInt:3_pInt, o=1_pInt:3_pInt) &
+           temp_3333(1:3,1:3,p,o) = math_mul33x33(math_mul33x33(temp_33,dLpdS(1:3,1:3,p,o)), &
+                                                  crystallite_invFi(1:3,1:3,c,i,e))
 
-             temp_33   = math_transpose33(math_mul33x33(crystallite_invFp(1:3,1:3,c,i,e), &
-                                                        crystallite_invFi(1:3,1:3,c,i,e)))
-             rhs_3333 = 0.0_pReal
-             forall(p=1_pInt:3_pInt, o=1_pInt:3_pInt) &
-               rhs_3333(p,o,1:3,1:3) = math_mul33x33(dSdFe(p,o,1:3,1:3),temp_33)
+         temp_33 = math_mul33x33(math_mul33x33(crystallite_subF(1:3,1:3,c,i,e), &
+                                               crystallite_invFp(1:3,1:3,c,i,e)), &
+                                 math_inv33(crystallite_subFi0(1:3,1:3,c,i,e)))
+         forall(p=1_pInt:3_pInt, o=1_pInt:3_pInt) &
+           temp_3333(1:3,1:3,p,o) = temp_3333(1:3,1:3,p,o) + math_mul33x33(temp_33,dLidS(1:3,1:3,p,o))
 
-             temp_3333 = 0.0_pReal
-             temp_33 = math_mul33x33(crystallite_subF(1:3,1:3,c,i,e), &
-                                     math_inv33(crystallite_subFp0(1:3,1:3,c,i,e)))
-             forall(p=1_pInt:3_pInt, o=1_pInt:3_pInt) &
-               temp_3333(1:3,1:3,p,o) = math_mul33x33(math_mul33x33(temp_33,dLpdS(1:3,1:3,p,o)), &
-                                                      crystallite_invFi(1:3,1:3,c,i,e))
+         lhs_3333 = crystallite_subdt(c,i,e)*math_mul3333xx3333(dSdFe,temp_3333) + &
+                    math_mul3333xx3333(dSdFi,dFidS)
 
-             temp_33 = math_mul33x33(math_mul33x33(crystallite_subF(1:3,1:3,c,i,e), &
-                                                   crystallite_invFp(1:3,1:3,c,i,e)), &
-                                     math_inv33(crystallite_subFi0(1:3,1:3,c,i,e)))
-             forall(p=1_pInt:3_pInt, o=1_pInt:3_pInt) &
-               temp_3333(1:3,1:3,p,o) = temp_3333(1:3,1:3,p,o) + math_mul33x33(temp_33,dLidS(1:3,1:3,p,o))
+         call math_invert(9_pInt,math_identity2nd(9_pInt)+math_Plain3333to99(lhs_3333),temp_99,error)
+         if (error) then
+           call IO_warning(warning_ID=600_pInt,el=e,ip=i,g=c, &
+                           ext_msg='inversion error in analytic tangent calculation')
+           dSdF = rhs_3333
+         else
+           dSdF = math_mul3333xx3333(math_Plain99to3333(temp_99),rhs_3333)
+         endif
 
-             lhs_3333 = crystallite_subdt(c,i,e)*math_mul3333xx3333(dSdFe,temp_3333) + &
-                        math_mul3333xx3333(dSdFi,dFidS)
+         dFpinvdF = 0.0_pReal
+         temp_3333 = math_mul3333xx3333(dLpdS,dSdF)
+         forall(p=1_pInt:3_pInt, o=1_pInt:3_pInt) &
+           dFpinvdF(1:3,1:3,p,o) = -crystallite_subdt(c,i,e)* &
+                                    math_mul33x33(math_inv33(crystallite_subFp0(1:3,1:3,c,i,e)), &
+                                                  math_mul33x33(temp_3333(1:3,1:3,p,o), &
+                                                                crystallite_invFi(1:3,1:3,c,i,e)))
 
-             call math_invert(9_pInt,math_identity2nd(9_pInt)+math_Plain3333to99(lhs_3333),temp_99,error)
-             if (error) then
-               call IO_warning(warning_ID=600_pInt,el=e,ip=i,g=c, &
-                               ext_msg='inversion error in analytic tangent calculation')
-               dSdF = rhs_3333
-             else
-               dSdF = math_mul3333xx3333(math_Plain99to3333(temp_99),rhs_3333)
-             endif
+         crystallite_dPdF(1:3,1:3,1:3,1:3,c,i,e) = 0.0_pReal
+         temp_33 = math_mul33x33(crystallite_invFp(1:3,1:3,c,i,e), &
+                              math_mul33x33(math_Mandel6to33(crystallite_Tstar_v(1:6,c,i,e)), &
+                                            math_transpose33(crystallite_invFp(1:3,1:3,c,i,e))))
+         forall(p=1_pInt:3_pInt) &
+           crystallite_dPdF(p,1:3,p,1:3,c,i,e) = math_transpose33(temp_33)
 
-             dFpinvdF = 0.0_pReal
-             temp_3333 = math_mul3333xx3333(dLpdS,dSdF)
-             forall(p=1_pInt:3_pInt, o=1_pInt:3_pInt) &
-               dFpinvdF(1:3,1:3,p,o) = -crystallite_subdt(c,i,e)* &
-                                        math_mul33x33(math_inv33(crystallite_subFp0(1:3,1:3,c,i,e)), &
-                                                      math_mul33x33(temp_3333(1:3,1:3,p,o), &
-                                                                    crystallite_invFi(1:3,1:3,c,i,e)))
+         temp_33 = math_mul33x33(math_Mandel6to33(crystallite_Tstar_v(1:6,c,i,e)), &
+                              math_transpose33(crystallite_invFp(1:3,1:3,c,i,e)))
+         forall(p=1_pInt:3_pInt, o=1_pInt:3_pInt) &
+           crystallite_dPdF(1:3,1:3,p,o,c,i,e) = crystallite_dPdF(1:3,1:3,p,o,c,i,e) + &
+             math_mul33x33(math_mul33x33(crystallite_subF(1:3,1:3,c,i,e),dFpinvdF(1:3,1:3,p,o)),temp_33)
 
-             crystallite_dPdF(1:3,1:3,1:3,1:3,c,i,e) = 0.0_pReal
-             temp_33 = math_mul33x33(crystallite_invFp(1:3,1:3,c,i,e), &
-                                  math_mul33x33(math_Mandel6to33(crystallite_Tstar_v(1:6,c,i,e)), &
-                                                math_transpose33(crystallite_invFp(1:3,1:3,c,i,e))))
-             forall(p=1_pInt:3_pInt) &
-               crystallite_dPdF(p,1:3,p,1:3,c,i,e) = math_transpose33(temp_33)
+         temp_33 = math_mul33x33(crystallite_subF(1:3,1:3,c,i,e), &
+                              crystallite_invFp(1:3,1:3,c,i,e))
+         forall(p=1_pInt:3_pInt, o=1_pInt:3_pInt) &
+           crystallite_dPdF(1:3,1:3,p,o,c,i,e) = crystallite_dPdF(1:3,1:3,p,o,c,i,e) + &
+             math_mul33x33(math_mul33x33(temp_33,dSdF(1:3,1:3,p,o)), &
+                           math_transpose33(crystallite_invFp(1:3,1:3,c,i,e)))
 
-             temp_33 = math_mul33x33(math_Mandel6to33(crystallite_Tstar_v(1:6,c,i,e)), &
-                                  math_transpose33(crystallite_invFp(1:3,1:3,c,i,e)))
-             forall(p=1_pInt:3_pInt, o=1_pInt:3_pInt) &
-               crystallite_dPdF(1:3,1:3,p,o,c,i,e) = crystallite_dPdF(1:3,1:3,p,o,c,i,e) + &
-                 math_mul33x33(math_mul33x33(crystallite_subF(1:3,1:3,c,i,e),dFpinvdF(1:3,1:3,p,o)),temp_33)
+         temp_33 = math_mul33x33(math_mul33x33(crystallite_subF(1:3,1:3,c,i,e), &
+                                            crystallite_invFp(1:3,1:3,c,i,e)), &
+                              math_Mandel6to33(crystallite_Tstar_v(1:6,c,i,e)))
+         forall(p=1_pInt:3_pInt, o=1_pInt:3_pInt) &
+           crystallite_dPdF(1:3,1:3,p,o,c,i,e) = crystallite_dPdF(1:3,1:3,p,o,c,i,e) + &
+             math_mul33x33(temp_33,math_transpose33(dFpinvdF(1:3,1:3,p,o)))
 
-             temp_33 = math_mul33x33(crystallite_subF(1:3,1:3,c,i,e), &
-                                  crystallite_invFp(1:3,1:3,c,i,e))
-             forall(p=1_pInt:3_pInt, o=1_pInt:3_pInt) &
-               crystallite_dPdF(1:3,1:3,p,o,c,i,e) = crystallite_dPdF(1:3,1:3,p,o,c,i,e) + &
-                 math_mul33x33(math_mul33x33(temp_33,dSdF(1:3,1:3,p,o)), &
-                               math_transpose33(crystallite_invFp(1:3,1:3,c,i,e)))
-
-             temp_33 = math_mul33x33(math_mul33x33(crystallite_subF(1:3,1:3,c,i,e), &
-                                                crystallite_invFp(1:3,1:3,c,i,e)), &
-                                  math_Mandel6to33(crystallite_Tstar_v(1:6,c,i,e)))
-             forall(p=1_pInt:3_pInt, o=1_pInt:3_pInt) &
-               crystallite_dPdF(1:3,1:3,p,o,c,i,e) = crystallite_dPdF(1:3,1:3,p,o,c,i,e) + &
-                 math_mul33x33(temp_33,math_transpose33(dFpinvdF(1:3,1:3,p,o)))
-
-         enddo; enddo
-       enddo elementLooping6
-     !$OMP END PARALLEL DO
-
-   else jacobianMethod
-
-     ! --- STANDARD (PERTURBATION METHOD) FOR JACOBIAN ---
-
-     numerics_integrationMode = 2_pInt
-
-     ! --- BACKUP ---
-     allocate(dPdF_perturbation1(3,3,3,3,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), source = 0.0_pReal)
-     allocate(dPdF_perturbation2(3,3,3,3,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), source = 0.0_pReal)
-     allocate(F_backup          (3,3,    homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), source = 0.0_pReal)
-     allocate(Fp_backup         (3,3,    homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), source = 0.0_pReal)
-     allocate(InvFp_backup      (3,3,    homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), source = 0.0_pReal)
-     allocate(Fi_backup         (3,3,    homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), source = 0.0_pReal)
-     allocate(InvFi_backup      (3,3,    homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), source = 0.0_pReal)
-     allocate(Fe_backup         (3,3,    homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), source = 0.0_pReal)
-     allocate(Lp_backup         (3,3,    homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), source = 0.0_pReal)
-     allocate(Li_backup         (3,3,    homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), source = 0.0_pReal)
-     allocate(P_backup          (3,3,    homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), source = 0.0_pReal)
-     allocate(Tstar_v_backup    (6,      homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), source = 0.0_pReal)
-     allocate(convergenceFlag_backup    (homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), source = .false.)
-
-     !$OMP PARALLEL DO PRIVATE(myNcomponents)
-       elementLooping7: do e = FEsolving_execElem(1),FEsolving_execElem(2)
-         myNcomponents = homogenization_Ngrains(mesh_element(3,e))
-         do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e); do c = 1,myNcomponents
-
-           plasticState    (phaseAt(c,i,e))%state_backup(:,phasememberAt(c,i,e)) = &
-           plasticState    (phaseAt(c,i,e))%state(       :,phasememberAt(c,i,e))
-           do mySource = 1_pInt, phase_Nsources(phaseAt(c,i,e))
-             sourceState(phaseAt(c,i,e))%p(mySource)%state_backup(:,phasememberAt(c,i,e)) = &
-             sourceState(phaseAt(c,i,e))%p(mySource)%state(       :,phasememberAt(c,i,e))
-           enddo
-
-           plasticState    (phaseAt(c,i,e))%dotState_backup(:,phasememberAt(c,i,e)) = &
-           plasticState    (phaseAt(c,i,e))%dotState(       :,phasememberAt(c,i,e))
-           do mySource = 1_pInt, phase_Nsources(phaseAt(c,i,e))
-             sourceState(phaseAt(c,i,e))%p(mySource)%dotState_backup(:,phasememberAt(c,i,e)) = &
-             sourceState(phaseAt(c,i,e))%p(mySource)%dotState(       :,phasememberAt(c,i,e))
-           enddo
-
-           F_backup(1:3,1:3,c,i,e)       = crystallite_subF(1:3,1:3,c,i,e)                            ! ... and kinematics
-           Fp_backup(1:3,1:3,c,i,e)      = crystallite_Fp(1:3,1:3,c,i,e)
-           InvFp_backup(1:3,1:3,c,i,e)   = crystallite_invFp(1:3,1:3,c,i,e)
-           Fi_backup(1:3,1:3,c,i,e)      = crystallite_Fi(1:3,1:3,c,i,e)
-           InvFi_backup(1:3,1:3,c,i,e)   = crystallite_invFi(1:3,1:3,c,i,e)
-           Fe_backup(1:3,1:3,c,i,e)      = crystallite_Fe(1:3,1:3,c,i,e)
-           Lp_backup(1:3,1:3,c,i,e)      = crystallite_Lp(1:3,1:3,c,i,e)
-           Li_backup(1:3,1:3,c,i,e)      = crystallite_Li(1:3,1:3,c,i,e)
-           Tstar_v_backup(1:6,c,i,e)     = crystallite_Tstar_v(1:6,c,i,e)
-           P_backup(1:3,1:3,c,i,e)       = crystallite_P(1:3,1:3,c,i,e)
-           convergenceFlag_backup(c,i,e) = crystallite_converged(c,i,e)
-         enddo; enddo
-       enddo elementLooping7
-     !$END PARALLEL DO
-     ! --- CALCULATE STATE AND STRESS FOR PERTURBATION ---
-
-     dPdF_perturbation1 = crystallite_dPdF0                                                            ! initialize stiffness with known good values from last increment
-     dPdF_perturbation2 = crystallite_dPdF0                                                            ! initialize stiffness with known good values from last increment
-     pertubationLoop: do perturbation = 1,2                                                                             ! forward and backward perturbation
-       if (iand(pert_method,perturbation) > 0_pInt) then                                               ! mask for desired direction
-         myPert = -pert_Fg * (-1.0_pReal)**perturbation                                                ! set perturbation step
-         do k = 1,3; do l = 1,3                                                                        ! ...alter individual components
-           if (iand(debug_level(debug_crystallite), debug_levelExtensive) /= 0_pInt &
-               .and. ((e == debug_e .and. i == debug_i .and. c == debug_g) &
-                      .or. .not. iand(debug_level(debug_crystallite),debug_levelSelective) /= 0_pInt)) &
-               write(6,'(a,2(1x,i1),1x,a,/)') '<< CRYST >> [[[[[[ Stiffness perturbation',k,l,']]]]]]'
-           ! --- INITIALIZE UNPERTURBED STATE ---
-
-           select case(numerics_integrator(numerics_integrationMode))
-             case(1_pInt)
-!why not OMP?                                                                           ! Fix-point method: restore to last converged state at end of subinc, since this is probably closest to perturbed state
-               do e = FEsolving_execElem(1),FEsolving_execElem(2)
-                 myNcomponents = homogenization_Ngrains(mesh_element(3,e))
-                 do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e); do c = 1,myNcomponents
-
-                   plasticState    (phaseAt(c,i,e))%state(       :,phasememberAt(c,i,e)) = &
-                   plasticState    (phaseAt(c,i,e))%state_backup(:,phasememberAt(c,i,e))
-                   do mySource = 1_pInt, phase_Nsources(phaseAt(c,i,e))
-                     sourceState(phaseAt(c,i,e))%p(mySource)%state(       :,phasememberAt(c,i,e)) = &
-                     sourceState(phaseAt(c,i,e))%p(mySource)%state_backup(:,phasememberAt(c,i,e))
-                   enddo
-
-                   plasticState    (phaseAt(c,i,e))%dotState(       :,phasememberAt(c,i,e)) = &
-                   plasticState    (phaseAt(c,i,e))%dotState_backup(:,phasememberAt(c,i,e))
-                   do mySource = 1_pInt, phase_Nsources(phaseAt(c,i,e))
-                     sourceState(phaseAt(c,i,e))%p(mySource)%dotState(       :,phasememberAt(c,i,e)) = &
-                     sourceState(phaseAt(c,i,e))%p(mySource)%dotState_backup(:,phasememberAt(c,i,e))
-                   enddo
-
-                   crystallite_Fp(1:3,1:3,c,i,e)    = Fp_backup(1:3,1:3,c,i,e)
-                   crystallite_invFp(1:3,1:3,c,i,e) = InvFp_backup(1:3,1:3,c,i,e)
-                   crystallite_Fi(1:3,1:3,c,i,e)    = Fi_backup(1:3,1:3,c,i,e)
-                   crystallite_invFi(1:3,1:3,c,i,e) = InvFi_backup(1:3,1:3,c,i,e)
-                   crystallite_Fe(1:3,1:3,c,i,e)    = Fe_backup(1:3,1:3,c,i,e)
-                   crystallite_Lp(1:3,1:3,c,i,e)    = Lp_backup(1:3,1:3,c,i,e)
-                   crystallite_Li(1:3,1:3,c,i,e)    = Li_backup(1:3,1:3,c,i,e)
-                   crystallite_Tstar_v(1:6,c,i,e)   = Tstar_v_backup(1:6,c,i,e)
-                 enddo; enddo
-               enddo
-             case(2_pInt,3_pInt)                                                                    ! explicit Euler methods: nothing to restore (except for F), since we are only doing a stress integration step
-             case(4_pInt,5_pInt)
-!why not OMP?                                                                   ! explicit Runge-Kutta methods: restore to start of subinc, since we are doing a full integration of state and stress
-               do e = FEsolving_execElem(1),FEsolving_execElem(2)
-                 myNcomponents = homogenization_Ngrains(mesh_element(3,e))
-                 do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e); do c = 1,myNcomponents
-
-                   plasticState    (phaseAt(c,i,e))%state(    :,phasememberAt(c,i,e)) = &
-                   plasticState    (phaseAt(c,i,e))%subState0(:,phasememberAt(c,i,e))
-                   do mySource = 1_pInt, phase_Nsources(phaseAt(c,i,e))
-                     sourceState(phaseAt(c,i,e))%p(mySource)%state(    :,phasememberAt(c,i,e)) = &
-                     sourceState(phaseAt(c,i,e))%p(mySource)%subState0(:,phasememberAt(c,i,e))
-                   enddo
-
-                   plasticState    (phaseAt(c,i,e))%dotState(       :,phasememberAt(c,i,e)) = &
-                   plasticState    (phaseAt(c,i,e))%dotState_backup(:,phasememberAt(c,i,e))
-                   do mySource = 1_pInt, phase_Nsources(phaseAt(c,i,e))
-                     sourceState(phaseAt(c,i,e))%p(mySource)%dotState(       :,phasememberAt(c,i,e)) = &
-                     sourceState(phaseAt(c,i,e))%p(mySource)%dotState_backup(:,phasememberAt(c,i,e))
-                   enddo
-
-                   crystallite_Fp(1:3,1:3,c,i,e)    = crystallite_subFp0(1:3,1:3,c,i,e)
-                   crystallite_Fi(1:3,1:3,c,i,e)    = crystallite_subFi0(1:3,1:3,c,i,e)
-                   crystallite_Fe(1:3,1:3,c,i,e)    = crystallite_subFe0(1:3,1:3,c,i,e)
-                   crystallite_Lp(1:3,1:3,c,i,e)    = crystallite_subLp0(1:3,1:3,c,i,e)
-                   crystallite_Li(1:3,1:3,c,i,e)    = crystallite_subLi0(1:3,1:3,c,i,e)
-                   crystallite_Tstar_v(1:6,c,i,e)   = crystallite_subTstar0_v(1:6,c,i,e)
-                 enddo; enddo
-               enddo
-           end select
-
-           ! --- PERTURB EITHER FORWARD OR BACKWARD ---
-!why not OMP?
-           do e = FEsolving_execElem(1),FEsolving_execElem(2)
-             myNcomponents = homogenization_Ngrains(mesh_element(3,e))
-             do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
-               do c = 1,myNcomponents
-                 crystallite_subF(1:3,1:3,c,i,e) = F_backup(1:3,1:3,c,i,e)
-                 crystallite_subF(k,l,c,i,e) = crystallite_subF(k,l,c,i,e) + myPert
-                 crystallite_todo(c,i,e) = crystallite_requested(c,i,e) &
-                                          .and. convergenceFlag_backup(c,i,e)
-                 if (crystallite_todo(c,i,e)) crystallite_converged(c,i,e) = .false.                ! start out non-converged
-           enddo; enddo; enddo
-
-
-           select case(numerics_integrator(numerics_integrationMode))
-             case(1_pInt)
-               call crystallite_integrateStateFPI()
-             case(2_pInt)
-               call crystallite_integrateStateEuler()
-             case(3_pInt)
-               call crystallite_integrateStateAdaptiveEuler()
-             case(4_pInt)
-               call crystallite_integrateStateRK4()
-             case(5_pInt)
-               call crystallite_integrateStateRKCK45()
-           end select
-           !why not OMP?
-           elementLooping8: do e = FEsolving_execElem(1),FEsolving_execElem(2)
-             myNcomponents = homogenization_Ngrains(mesh_element(3,e))
-             select case(perturbation)
-               case(1_pInt)
-                 forall (i = FEsolving_execIP(1,e):FEsolving_execIP(2,e), c = 1:myNcomponents, &
-                         crystallite_requested(c,i,e) .and. crystallite_converged(c,i,e)) &         ! converged state warrants stiffness update
-                   dPdF_perturbation1(1:3,1:3,k,l,c,i,e) = &
-                                  (crystallite_P(1:3,1:3,c,i,e) - P_backup(1:3,1:3,c,i,e)) / myPert ! tangent dP_ij/dFg_kl
-               case(2_pInt)
-                 forall (i = FEsolving_execIP(1,e):FEsolving_execIP(2,e), c = 1:myNcomponents, &
-                         crystallite_requested(c,i,e) .and. crystallite_converged(c,i,e)) &         ! converged state warrants stiffness update
-                   dPdF_perturbation2(1:3,1:3,k,l,c,i,e) = &
-                                  (crystallite_P(1:3,1:3,c,i,e) - P_backup(1:3,1:3,c,i,e)) / myPert ! tangent dP_ij/dFg_kl
-               end select
-           enddo elementLooping8
-
-         enddo; enddo                                                                               ! k,l component perturbation loop
-
-       endif
-     enddo pertubationLoop
-
-     ! --- STIFFNESS ACCORDING TO PERTURBATION METHOD AND CONVERGENCE ---
-
-     elementLooping9: do e = FEsolving_execElem(1),FEsolving_execElem(2)
-       myNcomponents = homogenization_Ngrains(mesh_element(3,e))
-       select case(pert_method)
-         case(1_pInt)
-           forall (i = FEsolving_execIP(1,e):FEsolving_execIP(2,e), c = 1:myNcomponents, &
-                   crystallite_requested(c,i,e) .and. convergenceFlag_backup(c,i,e)) &                 ! perturbation mode 1: central solution converged
-             crystallite_dPdF(1:3,1:3,1:3,1:3,c,i,e) = dPdF_perturbation1(1:3,1:3,1:3,1:3,c,i,e)
-         case(2_pInt)
-           forall (i = FEsolving_execIP(1,e):FEsolving_execIP(2,e), c = 1:myNcomponents, &
-                   crystallite_requested(c,i,e) .and. convergenceFlag_backup(c,i,e)) &                 ! perturbation mode 2: central solution converged
-             crystallite_dPdF(1:3,1:3,1:3,1:3,c,i,e) = dPdF_perturbation2(1:3,1:3,1:3,1:3,c,i,e)
-         case(3_pInt)
-           forall (i = FEsolving_execIP(1,e):FEsolving_execIP(2,e), c = 1:myNcomponents, &
-                   crystallite_requested(c,i,e) .and. convergenceFlag_backup(c,i,e)) &                 ! perturbation mode 3: central solution converged
-             crystallite_dPdF(1:3,1:3,1:3,1:3,c,i,e) = 0.5_pReal* (  dPdF_perturbation1(1:3,1:3,1:3,1:3,c,i,e) &
-                                                                   + dPdF_perturbation2(1:3,1:3,1:3,1:3,c,i,e))
-       end select
-       forall (i = FEsolving_execIP(1,e):FEsolving_execIP(2,e), c = 1:myNcomponents, &
-               crystallite_requested(c,i,e) .and. .not. convergenceFlag_backup(c,i,e)) &               ! for any pertubation mode: if central solution did not converge...
-         crystallite_dPdF(1:3,1:3,1:3,1:3,c,i,e) = crystallite_fallbackdPdF(1:3,1:3,1:3,1:3,c,i,e)     ! ...use (elastic) fallback
-     enddo elementLooping9
-
-     ! --- RESTORE ---
-!why not OMP?
-     elementLooping10: do e = FEsolving_execElem(1),FEsolving_execElem(2)
-       myNcomponents = homogenization_Ngrains(mesh_element(3,e))
-       do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e); do c = 1,myNcomponents
-
-         plasticState    (phaseAt(c,i,e))%state(       :,phasememberAt(c,i,e)) = &
-         plasticState    (phaseAt(c,i,e))%state_backup(:,phasememberAt(c,i,e))
-         do mySource = 1_pInt, phase_Nsources(phaseAt(c,i,e))
-           sourceState(phaseAt(c,i,e))%p(mySource)%state(       :,phasememberAt(c,i,e)) = &
-           sourceState(phaseAt(c,i,e))%p(mySource)%state_backup(:,phasememberAt(c,i,e))
-         enddo
-
-         plasticState    (phaseAt(c,i,e))%dotState(       :,phasememberAt(c,i,e)) = &
-         plasticState    (phaseAt(c,i,e))%dotState_backup(:,phasememberAt(c,i,e))
-         do mySource = 1_pInt, phase_Nsources(phaseAt(c,i,e))
-           sourceState(phaseAt(c,i,e))%p(mySource)%dotState(       :,phasememberAt(c,i,e)) = &
-           sourceState(phaseAt(c,i,e))%p(mySource)%dotState_backup(:,phasememberAt(c,i,e))
-         enddo
-
-         crystallite_subF(1:3,1:3,c,i,e)  = F_backup(1:3,1:3,c,i,e)
-         crystallite_Fp(1:3,1:3,c,i,e)    = Fp_backup(1:3,1:3,c,i,e)
-         crystallite_invFp(1:3,1:3,c,i,e) = InvFp_backup(1:3,1:3,c,i,e)
-         crystallite_Fi(1:3,1:3,c,i,e)    = Fi_backup(1:3,1:3,c,i,e)
-         crystallite_invFi(1:3,1:3,c,i,e) = InvFi_backup(1:3,1:3,c,i,e)
-         crystallite_Fe(1:3,1:3,c,i,e)    = Fe_backup(1:3,1:3,c,i,e)
-         crystallite_Lp(1:3,1:3,c,i,e)    = Lp_backup(1:3,1:3,c,i,e)
-         crystallite_Li(1:3,1:3,c,i,e)    = Li_backup(1:3,1:3,c,i,e)
-         crystallite_Tstar_v(1:6,c,i,e)   = Tstar_v_backup(1:6,c,i,e)
-         crystallite_P(1:3,1:3,c,i,e)     = P_backup(1:3,1:3,c,i,e)
-         crystallite_converged(c,i,e)     = convergenceFlag_backup(c,i,e)
-       enddo; enddo
-     enddo elementLooping10
-
-     deallocate(dPdF_perturbation1)
-     deallocate(dPdF_perturbation2)
-     deallocate(F_backup          )
-     deallocate(Fp_backup         )
-     deallocate(InvFp_backup      )
-     deallocate(Fi_backup         )
-     deallocate(InvFi_backup      )
-     deallocate(Fe_backup         )
-     deallocate(Lp_backup         )
-     deallocate(Li_backup         )
-     deallocate(P_backup          )
-     deallocate(Tstar_v_backup    )
-     deallocate(convergenceFlag_backup)
-
-   endif jacobianMethod
+     enddo; enddo
+   enddo elementLooping6
+   !$OMP END PARALLEL DO
  endif computeJacobian
 !why not OMP?
 

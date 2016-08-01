@@ -216,8 +216,6 @@ subroutine plastic_titanmod_init(fileUnit)
    MATERIAL_partPhase
  use lattice
  use numerics,only: &
-   analyticJaco, &
-   worldrank, &
    numerics_integrator
  
  implicit none
@@ -241,11 +239,9 @@ subroutine plastic_titanmod_init(fileUnit)
    tag  = '', &
    line = ''  
  
- mainProcess: if (worldrank == 0) then 
-   write(6,'(/,a)')   ' <<<+-  constitutive_'//PLASTICITY_TITANMOD_label//' init  -+>>>'
-   write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
+ write(6,'(/,a)')   ' <<<+-  constitutive_'//PLASTICITY_TITANMOD_label//' init  -+>>>'
+ write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
- endif mainProcess
 
  maxNinstance = int(count(phase_plasticity == PLASTICITY_TITANMOD_ID),pInt)
  if (maxNinstance == 0_pInt) return
@@ -859,10 +855,6 @@ subroutine plastic_titanmod_init(fileUnit)
 
      allocate(plasticState(phase)%dotState            (sizeDotState,NofMyPhase),  source=0.0_pReal)
      allocate(plasticState(phase)%deltaState        (sizeDeltaState,NofMyPhase),  source=0.0_pReal)
-     if (.not. analyticJaco) then
-       allocate(plasticState(phase)%state_backup      (sizeState,NofMyPhase),     source=0.0_pReal)
-       allocate(plasticState(phase)%dotState_backup   (sizeDotState,NofMyPhase),  source=0.0_pReal)
-     endif
      if (any(numerics_integrator == 1_pInt)) then
        allocate(plasticState(phase)%previousDotState  (sizeDotState,NofMyPhase),  source=0.0_pReal)
        allocate(plasticState(phase)%previousDotState2 (sizeDotState,NofMyPhase),  source=0.0_pReal)
