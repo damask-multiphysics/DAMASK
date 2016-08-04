@@ -38,35 +38,37 @@ for name in filenames:
   inFile = h5py.File(name, 'r')
       
   grid = inFile[rootDir+'/_SIMPL_GEOMETRY/DIMENSIONS'][...]
-  size = grid * inFile[rootDir+'/_SIMPL_GEOMETRY/SPACING'][...]
-  origin = inFile[rootDir+'/_SIMPL_GEOMETRY/ORIGIN'][...]
 
+  
 # --- read comments --------------------------------------------------------------------------------
-  dat = np.hstack( (inFile[rootDir+'/CellData/EulerAngles'][...].reshape(grid.prod(),3),
-                    inFile[rootDir+'/CellData/Phases'][...].reshape(grid.prod(),1),
-                    inFile[rootDir+'/CellData/Confidence Index'][...].reshape(grid.prod(),1),
-                    inFile[rootDir+'/CellData/Fit'][...].reshape(grid.prod(),1),
-                    inFile[rootDir+'/CellData/Image Quality'][...].reshape(grid.prod(),1)))
+                    
+  coords = (np.mgrid[0:grid[2], 0:grid[1], 0: grid[0]]).reshape(3, -1).T
+  coords = (np.fliplr(coords)*inFile[rootDir+'/_SIMPL_GEOMETRY/SPACING'][...]
+            + inFile[rootDir+'/_SIMPL_GEOMETRY/ORIGIN'][...]
+            + inFile[rootDir+'/_SIMPL_GEOMETRY/SPACING'][...]*0.5)
 
-  print dat.shape
-  sys.exit()
-  table.labels_clear()
-  table.labels_append(['1_Euler','2_Euler','3_Euler',
-                       '1_pos','2_pos',
-                       'IQ','CI','PhaseID','Intensity','Fit',
-                      ],                                                                            # OIM Analysis 7.2 Manual, p 403 (of 517)
-                      reset = True)
-
+  table.data = np.hstack( (coords,
+                           inFile[rootDir+'/CellData/EulerAngles'][...].reshape(grid.prod(),3),
+                           inFile[rootDir+'/CellData/Phases'][...].reshape(grid.prod(),1),
+                           inFile[rootDir+'/CellData/Confidence Index'][...].reshape(grid.prod(),1),
+                           inFile[rootDir+'/CellData/Fit'][...].reshape(grid.prod(),1),
+                           inFile[rootDir+'/CellData/Image Quality'][...].reshape(grid.prod(),1)))
+                    
+  
+  labels = ['1_pos','2_pos','3_pos',
+            '1_Euler','2_Euler','3_Euler',
+            'PhaseID','CI','Fit','IQ']
+  try:
+    table.data = np.hstack((table.data, inFile[rootDir+'/CellData/FeatureIds'][...].reshape(grid.prod(),1)))
+    labels.append(['FeatureID'])
+  except Exception:
+    pass
+    
 # ------------------------------------------ assemble header ---------------------------------------
-
+  table.labels_clear()
+  table.labels_append(labels,reset = True)
   table.head_write()
-
-#--- write remainder of data file ------------------------------------------------------------------
-
-  outputAlive = True
-  while outputAlive and table.data_read():
-    outputAlive = table.data_write()
-
+  
 # ------------------------------------------ finalize output ---------------------------------------
-
+  table.data_writeArray() #(fmt='%e2.2')
   table.close()
