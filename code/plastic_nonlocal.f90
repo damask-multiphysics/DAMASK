@@ -1115,7 +1115,7 @@ allocate(nonSchmidProjection(3,3,4,maxTotalNslip,maxNinstances),                
                                             
  initializeInstances: do phase = 1_pInt, size(phase_plasticity)
    NofMyPhase=count(material_phase==phase)
-   myPhase2: if (phase_plasticity(phase) == PLASTICITY_NONLOCAL_ID .and. NofMyPhase/=0) then
+   myPhase2: if (phase_plasticity(phase) == PLASTICITY_NONLOCAL_ID) then
      instance = phase_plasticityInstance(phase)
      !*** Inverse lookup of my slip system family and the slip system in lattice
      
