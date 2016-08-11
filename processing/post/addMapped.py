@@ -2,6 +2,7 @@
 # -*- coding: UTF-8 no BOM -*-
 
 import os,sys
+import numpy as np
 from optparse import OptionParser
 import damask
 
@@ -28,7 +29,7 @@ parser.add_option('-o','--offset',
 parser.add_option('-l','--label',
                   dest = 'label',
                   action = 'extend', metavar = '<string LIST>',
-                  help='heading of column(s) to be mapped')
+                  help='column label(s) to be mapped')
 parser.add_option('-a','--asciitable',
                   dest = 'asciitable',
                   type = 'string', metavar = 'string',
@@ -49,12 +50,13 @@ if options.map is None:
 if options.asciitable is not None and os.path.isfile(options.asciitable):
 
   mappedTable = damask.ASCIItable(name = options.asciitable,
-                                  buffered = False, readonly = True) 
+                                  buffered = False,
+                                  readonly = True) 
   mappedTable.head_read()                                                                           # read ASCII header info of mapped table
   missing_labels = mappedTable.data_readArray(options.label)
 
   if len(missing_labels) > 0:
-    mappedTable.croak('column{} {} not found...'.format('s' if len(missing_labels) > 1 else '',', '.join(missing_labels)))
+    damask.util.croak('column{} {} not found...'.format('s' if len(missing_labels) > 1 else '',', '.join(missing_labels)))
 
 else:
   parser.error('no mapped ASCIItable given.')
@@ -64,9 +66,8 @@ else:
 if filenames == []: filenames = [None]
 
 for name in filenames:
-  try:
-    table = damask.ASCIItable(name = name,
-                              buffered = False)
+  try:    table = damask.ASCIItable(name = name,
+                                    buffered = False)
   except: continue
   damask.util.report(scriptName,name)
 
@@ -96,7 +97,10 @@ for name in filenames:
 
   outputAlive = True
   while outputAlive and table.data_read():                                                          # read next data line of ASCII table
-    table.data_append(mappedTable.data[int(round(float(table.data[mappedColumn])))+options.offset-1]) # add all mapped data types
+    try:
+      table.data_append(mappedTable.data[int(round(float(table.data[mappedColumn])))+options.offset-1]) # add all mapped data types
+    except IndexError:
+      table.data_append(np.nan*np.ones_like(mappedTable.data[0]))
     outputAlive = table.data_write()                                                                # output processed line
 
 # ------------------------------------------ output finalization -----------------------------------  
