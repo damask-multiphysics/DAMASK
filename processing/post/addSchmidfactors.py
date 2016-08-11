@@ -167,7 +167,6 @@ force = np.array(options.force)
 force /= np.linalg.norm(force)
 
 if options.normal:
-  damask.util.croak('got normal')
   normal = np.array(options.normal)
   normal /= np.linalg.norm(normal)
   if abs(np.dot(force,normal)) > 1e-3:
