@@ -501,10 +501,10 @@ class ASCIItable():
       columns = []
       for i,(c,d) in enumerate(zip(indices[present],dimensions[present])):                          # for all valid labels ...
         # ... transparently add all components unless column referenced by number or with explicit dimension
-        columns += range(c,c + \
-                          (d if str(c) != str(labels[present[i]]) else \
+        columns += range(c,c +
+                          (d if str(c) != str(labels[present[i]]) else
                            1))                                                                      
-      use = np.array(columns)
+      use = np.array(columns) if len(columns) > 0 else None
 
       self.tags = list(np.array(self.tags)[use])                                                    # update labels with valid subset
 

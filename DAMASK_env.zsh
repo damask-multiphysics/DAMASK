@@ -41,7 +41,7 @@ if [ ! -z "$PS1" ]; then
   echo Max-Planck-Institut für Eisenforschung GmbH, Düsseldorf
   echo https://damask.mpie.de
   echo
-  echo Using environment with ...
+  echo "Using environment with ..."
   echo "DAMASK             $DAMASK_ROOT"
   echo "Spectral Solver    $SOLVER" 
   echo "Post Processing    $PROCESSING"
