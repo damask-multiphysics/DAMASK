@@ -81,7 +81,7 @@ program DAMASK_spectral
  use spectral_mech_Polarisation
  use spectral_damage
  use spectral_thermal
- 
+
 
  implicit none
 
@@ -93,9 +93,9 @@ program DAMASK_spectral
  logical,     dimension(9) :: temp_maskVector  = .false.                                            !< temporarily from loadcase file when reading in tensors
  integer(pInt), parameter  :: FILEUNIT         = 234_pInt                                           !< file unit, DAMASK IO does not support newunit feature
  integer(pInt), allocatable, dimension(:) :: chunkPos
- 
+
  integer(pInt) :: &
-   N_t   = 0_pInt, &                                                                                !< # of time indicators found in load case file 
+   N_t   = 0_pInt, &                                                                                !< # of time indicators found in load case file
    N_n   = 0_pInt, &                                                                                !< # of increment specifiers found in load case file
    N_def = 0_pInt                                                                                   !< # of rate of deformation specifiers found in load case file
  character(len=65536) :: &
@@ -105,7 +105,7 @@ program DAMASK_spectral
 ! loop variables, convergence etc.
  real(pReal), dimension(3,3), parameter :: &
    ones  = 1.0_pReal, &
-   zeros = 0.0_pReal 
+   zeros = 0.0_pReal
  integer(pInt), parameter :: &
    subStepFactor = 2_pInt                                                                           !< for each substep, divide the last time increment by 2.0
  real(pReal) :: &
@@ -150,6 +150,7 @@ program DAMASK_spectral
    MPI_file_get_position, &
    MPI_file_write, &
    MPI_abort, &
+   MPI_finalize, &
    MPI_allreduce, &
    PETScFinalize
 
@@ -159,7 +160,7 @@ program DAMASK_spectral
  write(6,'(/,a)')   ' <<<+-  DAMASK_spectral init  -+>>>'
  write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
- 
+
 !--------------------------------------------------------------------------------------------------
 ! initialize field solver information
  nActiveFields = 1
@@ -192,14 +193,14 @@ program DAMASK_spectral
    call IO_error(error_ID=837_pInt,ext_msg = trim(loadCaseFile))                                    ! error message for incomplete loadcase
  allocate (loadCases(N_n))                                                                          ! array of load cases
  loadCases%P%myType='p'
- 
+
   do i = 1, size(loadCases)
    allocate(loadCases(i)%ID(nActiveFields))
    field = 1
    loadCases(i)%ID(field) = FIELD_MECH_ID           ! mechanical active by default
    thermalActive: if (any(thermal_type  == THERMAL_conduction_ID)) then
      field = field + 1
-     loadCases(i)%ID(field) = FIELD_THERMAL_ID 
+     loadCases(i)%ID(field) = FIELD_THERMAL_ID
    endif thermalActive
    damageActive: if (any(damage_type   == DAMAGE_nonlocal_ID)) then
      field = field + 1
@@ -231,11 +232,11 @@ program DAMASK_spectral
          do j = 1_pInt, 9_pInt
            temp_maskVector(j) = IO_stringValue(line,chunkPos,i+j) /= '*'                            ! true if not a *
          enddo
-         do j = 1_pInt,9_pInt 
+         do j = 1_pInt,9_pInt
            if (temp_maskVector(j)) temp_valueVector(j) = IO_floatValue(line,chunkPos,i+j)           ! read value where applicable
          enddo
          loadCases(currentLoadCase)%deformation%maskLogical = &                                     ! logical mask in 3x3 notation
-               transpose(reshape(temp_maskVector,[ 3,3]))  
+               transpose(reshape(temp_maskVector,[ 3,3]))
          loadCases(currentLoadCase)%deformation%maskFloat   = &                                     ! float (1.0/0.0) mask in 3x3 notation
                merge(ones,zeros,loadCases(currentLoadCase)%deformation%maskLogical)
          loadCases(currentLoadCase)%deformation%values = math_plain9to33(temp_valueVector)          ! values in 3x3 notation
@@ -259,10 +260,10 @@ program DAMASK_spectral
          loadCases(currentLoadCase)%incs = IO_intValue(line,chunkPos,i+1_pInt)
          loadCases(currentLoadCase)%logscale = 1_pInt
        case('freq','frequency','outputfreq')                                                        ! frequency of result writings
-         loadCases(currentLoadCase)%outputfrequency = IO_intValue(line,chunkPos,i+1_pInt)                
+         loadCases(currentLoadCase)%outputfrequency = IO_intValue(line,chunkPos,i+1_pInt)
        case('r','restart','restartwrite')                                                           ! frequency of writing restart information
          loadCases(currentLoadCase)%restartfrequency = &
-               max(0_pInt,IO_intValue(line,chunkPos,i+1_pInt))                
+               max(0_pInt,IO_intValue(line,chunkPos,i+1_pInt))
        case('guessreset','dropguessing')
          loadCases(currentLoadCase)%followFormerTrajectory = .false.                                ! do not continue to predict deformation along former trajectory
        case('euler')                                                                                ! rotation of currentLoadCase given in euler angles
@@ -271,10 +272,10 @@ program DAMASK_spectral
          k = 1_pInt                                                                                 ! assuming keyword indicating degree/radians present
          select case (IO_lc(IO_stringValue(line,chunkPos,i+1_pInt)))
            case('deg','degree')
-           case('rad','radian')                                                                     ! don't convert from degree to radian           
+           case('rad','radian')                                                                     ! don't convert from degree to radian
              l = 0_pInt
-           case default   
-             k = 0_pInt           
+           case default
+             k = 0_pInt
          end select
          do j = 1_pInt, 3_pInt
            temp_valueVector(j) = IO_floatValue(line,chunkPos,i+k+j)
@@ -289,7 +290,7 @@ program DAMASK_spectral
          loadCases(currentLoadCase)%rotation = math_plain9to33(temp_valueVector)
      end select
  enddo; enddo
- close(FILEUNIT) 
+ close(FILEUNIT)
 
 !--------------------------------------------------------------------------------------------------
 ! consistency checks and output of load case
@@ -323,7 +324,7 @@ program DAMASK_spectral
      enddo
      if (any(loadCases(currentLoadCase)%P%maskLogical .eqv. &
               loadCases(currentLoadCase)%deformation%maskLogical)) errorID = 831_pInt               ! exclusive or masking only
-     if (any(loadCases(currentLoadCase)%P%maskLogical .and. &                                   
+     if (any(loadCases(currentLoadCase)%P%maskLogical .and. &
              transpose(loadCases(currentLoadCase)%P%maskLogical) .and. &
              reshape([ .false.,.true.,.true.,.true.,.false.,.true.,.true.,.true.,.false.],[ 3,3]))) &
              errorID = 838_pInt                                                                     ! no rotation is allowed by stress BC
@@ -358,7 +359,7 @@ program DAMASK_spectral
  endif
 
 !--------------------------------------------------------------------------------------------------
-! doing initialization depending on selected solver 
+! doing initialization depending on selected solver
  call Utilities_init()
  do field = 1, nActiveFields
    select case (loadCases(1)%ID(field))
@@ -370,26 +371,26 @@ program DAMASK_spectral
            if(iand(debug_level(debug_spectral),debug_levelBasic)/= 0 .and. worldrank == 0_pInt) &
            call IO_warning(42_pInt, ext_msg='debug Divergence')
            call AL_init
-         
+
          case (DAMASK_spectral_SolverPolarisation_label)
            if(iand(debug_level(debug_spectral),debug_levelBasic)/= 0 .and. worldrank == 0_pInt) &
            call IO_warning(42_pInt, ext_msg='debug Divergence')
            call Polarisation_init
-         
+
          case default
            call IO_error(error_ID = 891, ext_msg = trim(spectral_solver))
-       
-       end select 
-     
+
+       end select
+
       case(FIELD_THERMAL_ID)
        call spectral_thermal_init
- 
+
      case(FIELD_DAMAGE_ID)
        call spectral_damage_init()
 
    end select
  enddo
- 
+
 !--------------------------------------------------------------------------------------------------
 ! write header of output file
  if (worldrank == 0) then
@@ -408,7 +409,7 @@ program DAMASK_spectral
      write(resUnit) 'logscales:',  loadCases%logscale
      write(resUnit) 'increments:', loadCases%incs                                                     ! one entry per LoadCase
      write(resUnit) 'startingIncrement:', restartInc - 1_pInt                                         ! start with writing out the previous inc
-     write(resUnit) 'eoh'    
+     write(resUnit) 'eoh'
      close(resUnit)                                                                                   ! end of header
      open(newunit=statUnit,file=trim(getSolverWorkingDirectoryName())//trim(getSolverJobName())//&
                                  '.sta',form='FORMATTED',status='REPLACE')
@@ -458,7 +459,7 @@ program DAMASK_spectral
 !--------------------------------------------------------------------------------------------------
 ! loopping over loadcases
  loadCaseLooping: do currentLoadCase = 1_pInt, size(loadCases)
-   time0 = time                                                                                     ! currentLoadCase start time                
+   time0 = time                                                                                     ! currentLoadCase start time
    guess = loadCases(currentLoadCase)%followFormerTrajectory                                        ! change of load case? homogeneous guess for the first inc
 
 !--------------------------------------------------------------------------------------------------
@@ -472,9 +473,9 @@ program DAMASK_spectral
      if (loadCases(currentLoadCase)%logscale == 0_pInt) then                                        ! linear scale
        timeinc = loadCases(currentLoadCase)%time/real(loadCases(currentLoadCase)%incs,pReal)        ! only valid for given linear time scale. will be overwritten later in case loglinear scale is used
      else
-       if (currentLoadCase == 1_pInt) then                                                          ! 1st currentLoadCase of logarithmic scale            
+       if (currentLoadCase == 1_pInt) then                                                          ! 1st currentLoadCase of logarithmic scale
          if (inc == 1_pInt) then                                                                    ! 1st inc of 1st currentLoadCase of logarithmic scale
-           timeinc = loadCases(1)%time*(2.0_pReal**real(    1_pInt-loadCases(1)%incs ,pReal))       ! assume 1st inc is equal to 2nd 
+           timeinc = loadCases(1)%time*(2.0_pReal**real(    1_pInt-loadCases(1)%incs ,pReal))       ! assume 1st inc is equal to 2nd
          else                                                                                       ! not-1st inc of 1st currentLoadCase of logarithmic scale
            timeinc = loadCases(1)%time*(2.0_pReal**real(inc-1_pInt-loadCases(1)%incs ,pReal))
          endif
@@ -492,12 +493,12 @@ program DAMASK_spectral
        stepFraction = 0_pInt
 
 !--------------------------------------------------------------------------------------------------
-! loop over sub incs 
+! loop over sub incs
        subIncLooping: do while (stepFraction/subStepFactor**cutBackLevel <1_pInt)
          time = time + timeinc                                                                      ! forward time
-         stepFraction = stepFraction + 1_pInt 
+         stepFraction = stepFraction + 1_pInt
          remainingLoadCaseTime = time0 - time + loadCases(currentLoadCase)%time + timeInc
-           
+
 !--------------------------------------------------------------------------------------------------
 ! report begin of new increment
          if (worldrank == 0) then
@@ -515,7 +516,7 @@ program DAMASK_spectral
                  ',a,'//IO_intOut(stepFraction)//',a,'//IO_intOut(subStepFactor**cutBackLevel)//')') &
                  'Increment ',totalIncsCounter,'/',sum(loadCases%incs),&
                  '-',stepFraction, '/', subStepFactor**cutBackLevel
-         endif     
+         endif
 
 !--------------------------------------------------------------------------------------------------
 ! forward fields
@@ -541,18 +542,18 @@ program DAMASK_spectral
                        F_BC               = loadCases(currentLoadCase)%deformation, &
                        P_BC               = loadCases(currentLoadCase)%P, &
                        rotation_BC        = loadCases(currentLoadCase)%rotation)
-               end select 
-     
+               end select
+
            case(FIELD_THERMAL_ID)
                call spectral_thermal_forward (&
                    guess,timeinc,timeIncOld,remainingLoadCaseTime)
-                   
+
            case(FIELD_DAMAGE_ID)
                call spectral_damage_forward (&
                    guess,timeinc,timeIncOld,remainingLoadCaseTime)
            end select
-         enddo       
-           
+         enddo
+
 !--------------------------------------------------------------------------------------------------
 ! solve fields
          stagIter = 0_pInt
@@ -568,27 +569,27 @@ program DAMASK_spectral
                          P_BC               = loadCases(currentLoadCase)%P, &
                          F_BC               = loadCases(currentLoadCase)%deformation, &
                          rotation_BC        = loadCases(currentLoadCase)%rotation)
-         
+
                    case (DAMASK_spectral_SolverAL_label)
                      solres(field) = AL_solution (&
                          incInfo,guess,timeinc,timeIncOld,remainingLoadCaseTime, &
                          P_BC               = loadCases(currentLoadCase)%P, &
                          F_BC               = loadCases(currentLoadCase)%deformation, &
                          rotation_BC        = loadCases(currentLoadCase)%rotation)
-         
+
                    case (DAMASK_spectral_SolverPolarisation_label)
                      solres(field) = Polarisation_solution (&
                          incInfo,guess,timeinc,timeIncOld,remainingLoadCaseTime, &
                          P_BC               = loadCases(currentLoadCase)%P, &
                          F_BC               = loadCases(currentLoadCase)%deformation, &
                          rotation_BC        = loadCases(currentLoadCase)%rotation)
-       
-                 end select 
-     
+
+                 end select
+
                case(FIELD_THERMAL_ID)
                  solres(field) = spectral_thermal_solution (&
                      guess,timeinc,timeIncOld,remainingLoadCaseTime)
- 
+
                case(FIELD_DAMAGE_ID)
                  solres(field) = spectral_damage_solution (&
                      guess,timeinc,timeIncOld,remainingLoadCaseTime)
@@ -600,11 +601,11 @@ program DAMASK_spectral
            stagIterate = stagIter < stagItMax .and. &
                          all(solres(:)%converged) .and. &
                          .not. all(solres(:)%stagConverged)
-         enddo     
+         enddo
 
 !--------------------------------------------------------------------------------------------------
-! check solution 
-         cutBack = .False.                                                                   
+! check solution
+         cutBack = .False.
          if(solres(1)%termIll .or. .not. all(solres(:)%converged .and. solres(:)%stagConverged)) then ! no solution found
            if (cutBackLevel < maxCutBack) then                                                      ! do cut back
              if (worldrank == 0) write(6,'(/,a)') ' cut back detected'
@@ -617,8 +618,8 @@ program DAMASK_spectral
              call IO_warning(850_pInt)
              call quit(-1_pInt*(lastRestartWritten+1_pInt))                                         ! quit and provide information about last restart inc written
            elseif (continueCalculation == 1_pInt)  then
-             guess = .true.                                                                         ! accept non converged BVP solution   
-           else                                                                                     ! default behavior, exit if spectral solver does not converge                                
+             guess = .true.                                                                         ! accept non converged BVP solution
+           else                                                                                     ! default behavior, exit if spectral solver does not converge
              call IO_warning(850_pInt)
              call quit(-1_pInt*(lastRestartWritten+1_pInt))                                         ! quit and provide information about last restart inc written
            endif
@@ -630,8 +631,8 @@ program DAMASK_spectral
              write(statUnit,*) totalIncsCounter, time, cutBackLevel, &
                                solres%converged, solres%iterationsNeeded                            ! write statistics about accepted solution
              flush(statUnit)
-           endif 
-         endif  
+           endif
+         endif
        enddo subIncLooping
        cutBackLevel = max(0_pInt, cutBackLevel - 1_pInt)                                            ! try half number of subincs next inc
        if(all(solres(:)%converged)) then                                                            ! report converged inc
@@ -662,11 +663,11 @@ program DAMASK_spectral
          enddo
          fileOffset = fileOffset + sum(outputSize)                                                  ! forward to current file position
        endif
-       if( loadCases(currentLoadCase)%restartFrequency > 0_pInt .and. &                             ! at frequency of writing restart information set restart parameter for FEsolving 
-                      mod(inc,loadCases(currentLoadCase)%restartFrequency) == 0_pInt) then          ! first call to CPFEM_general will write? 
+       if( loadCases(currentLoadCase)%restartFrequency > 0_pInt .and. &                             ! at frequency of writing restart information set restart parameter for FEsolving
+                      mod(inc,loadCases(currentLoadCase)%restartFrequency) == 0_pInt) then          ! first call to CPFEM_general will write?
          restartWrite = .true.
          lastRestartWritten = inc
-       endif 
+       endif
      else forwarding
        time = time + timeinc
        guess = .true.
@@ -698,7 +699,7 @@ program DAMASK_spectral
            call AL_destroy()
          case (DAMASK_spectral_SolverPolarisation_label)
            call Polarisation_destroy()
-       end select 
+       end select
      case(FIELD_THERMAL_ID)
        call spectral_thermal_destroy()
      case(FIELD_DAMAGE_ID)
@@ -708,6 +709,11 @@ program DAMASK_spectral
  call utilities_destroy()
 
  call PETScFinalize(ierr); CHKERRQ(ierr)
+
+ #ifdef _OPENMP
+ call MPI_finalize(i)
+ if (i /= 0_pInt) call IO_error(error_ID=894, el=i, ext_msg="Finalize()")
+ #endif
 
  if (notConvergedCounter > 0_pInt) call quit(3_pInt)                                                ! error if some are not converged
  call quit(0_pInt)                                                                                  ! no complains ;)
@@ -719,7 +725,7 @@ end program DAMASK_spectral
 !> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
 !> @brief quit subroutine to mimic behavior of FEM solvers
 !> @details exits the Spectral solver and reports time and duration. Exit code 0 signals
-!> everything went fine. Exit code 1 signals an error, message according to IO_error. Exit code 
+!> everything went fine. Exit code 1 signals an error, message according to IO_error. Exit code
 !> 2 signals no converged solution and increment of last saved restart information is written to
 !> stderr. Exit code 3 signals no severe problems, but some increments did not converge
 !--------------------------------------------------------------------------------------------------
@@ -739,7 +745,7 @@ subroutine quit(stop_id)
  write(6,'(a,2(i2.2,a),i2.2)') 'Time:               ',dateAndTime(5),':',&
                                                       dateAndTime(6),':',&
                                                       dateAndTime(7)
- 
+
  if (stop_id == 0_pInt) stop 0                                                                      ! normal termination
  if (stop_id <  0_pInt) then                                                                        ! terminally ill, restart might help
    write(0,'(a,i6)') 'restart information available at ', stop_id*(-1_pInt)
