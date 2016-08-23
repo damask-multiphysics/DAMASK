@@ -710,12 +710,12 @@ program DAMASK_spectral
 
  call PETScFinalize(ierr); CHKERRQ(ierr)
 
- #ifdef _OPENMP
+#ifdef _OPENMP
   call MPI_finalize(i)
   if (i /= 0_pInt) then 
     call IO_error(error_ID=894, el=i, ext_msg="Finalize()")
   endif
- #endif
+#endif
 
  if (notConvergedCounter > 0_pInt) call quit(3_pInt)                                                ! error if some are not converged
  call quit(0_pInt)                                                                                  ! no complains ;)
