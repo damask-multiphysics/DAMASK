@@ -32,7 +32,7 @@ parser.add_option('-f','--function',
                   help = 'mapping function [%default]')
 parser.add_option('-a','--all',
                   dest = 'all',
-                  action = 'store_true'
+                  action = 'store_true',
                   help = 'apply mapping function also to grouping column')
 
 parser.set_defaults(function = 'np.average')
