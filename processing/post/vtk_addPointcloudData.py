@@ -37,12 +37,17 @@ parser.add_option('-v', '--vector',
                   dest = 'vector',
                   action = 'extend', metavar = '<string LIST>',
                   help = 'vector value label(s)')
+parser.add_option('-t', '--tensor',
+                  dest = 'tensor',
+                  action = 'extend', metavar = '<string LIST>',
+                  help = 'tensor (3x3) value label(s)')
 parser.add_option('-c', '--color',   dest='color', action='extend',
                   metavar ='<string LIST>',
                   help = 'RGB color tuples')
 
 parser.set_defaults(scalar = [],
                     vector = [],
+                    tensor = [],
                     color = [],
                     inplace = False,
                     render = False,
@@ -94,9 +99,10 @@ for name in filenames:
   errors  = []
   VTKarray = {}
   active = defaultdict(list)
-  
+
   for datatype,dimension,label in [['scalar',1,options.scalar],
                                    ['vector',3,options.vector],
+                                   ['tensor',9,options.tensor],
                                    ['color',3,options.color],
                                    ]:
     for i,dim in enumerate(table.label_dimension(label)):
@@ -107,7 +113,7 @@ for name in filenames:
         remarks.append('adding {} "{}"...'.format(datatype,me))
         active[datatype].append(me)
 
-        if   datatype in ['scalar','vector']: VTKarray[me] = vtk.vtkDoubleArray()
+        if   datatype in ['scalar','vector', 'tensor']: VTKarray[me] = vtk.vtkDoubleArray()
         elif datatype == 'color':             VTKarray[me] = vtk.vtkUnsignedCharArray()
 
         VTKarray[me].SetNumberOfComponents(dimension)
@@ -119,20 +125,21 @@ for name in filenames:
     table.close(dismiss = True)
     continue
 
-# ------------------------------------------ process data ---------------------------------------  
+# ------------------------------------------ process data ---------------------------------------
 
   while table.data_read():                                                                          # read next data line of ASCII table
-    
+
     for datatype,labels in active.items():                                                          # loop over scalar,color
       for me in labels:                                                                             # loop over all requested items
         theData = [table.data[i] for i in table.label_indexrange(me)]                               # read strings
         if   datatype == 'color':  VTKarray[me].InsertNextTuple3(*map(lambda x: int(255.*float(x)),theData))
         elif datatype == 'vector': VTKarray[me].InsertNextTuple3(*map(float,theData))
+        elif datatype == 'tensor': VTKarray[me].InsertNextTuple9(*map(float,theData))
         elif datatype == 'scalar': VTKarray[me].InsertNextValue(float(theData[0]))
 
   table.input_close()                                                     # close input ASCII table
 
-# ------------------------------------------ add data ---------------------------------------  
+# ------------------------------------------ add data ---------------------------------------
 
   for datatype,labels in active.items():                                                            # loop over scalar,color
     if datatype == 'color':
@@ -145,7 +152,7 @@ for name in filenames:
   Polydata.Modified()
   if vtk.VTK_MAJOR_VERSION <= 5: Polydata.Update()
 
-# ------------------------------------------ output result ---------------------------------------  
+# ------------------------------------------ output result ---------------------------------------
 
   writer = vtk.vtkXMLPolyDataWriter()
   writer.SetDataModeToBinary()
@@ -155,7 +162,7 @@ for name in filenames:
   else:                          writer.SetInputData(Polydata)
   writer.Write()
 
-# ------------------------------------------ render result ---------------------------------------  
+# ------------------------------------------ render result ---------------------------------------
 
 if options.render:
   mapper = vtk.vtkDataSetMapper()
@@ -179,7 +186,7 @@ if options.render:
 
   iren = vtk.vtkRenderWindowInteractor()
   iren.SetRenderWindow(renWin)
- 
+
   iren.Initialize()
   renWin.Render()
   iren.Start()
