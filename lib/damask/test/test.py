@@ -17,40 +17,47 @@ class Test():
 
   variants = []
   
-  def __init__(self,test_description):
+  def __init__(self,description = ''):
 
-    logger = logging.getLogger()
-    logger.setLevel(0)
     fh = logging.FileHandler('test.log')                                       # create file handler which logs even debug messages
     fh.setLevel(logging.DEBUG)
-    full = logging.Formatter('%(asctime)s - %(levelname)s: \n%(message)s')
-    fh.setFormatter(full)
+    fh.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s: \n%(message)s'))
+
     ch = logging.StreamHandler(stream=sys.stdout)                              # create console handler with a higher log level
     ch.setLevel(logging.INFO)
-# create formatter and add it to the handlers
-    plain = logging.Formatter('%(message)s')
-    ch.setFormatter(plain)
-# add the handlers to the logger
+    ch.setFormatter(logging.Formatter('%(message)s'))
+
+    logger = logging.getLogger()
     logger.addHandler(fh)
     logger.addHandler(ch)
+    logger.setLevel(0)
 
-    logging.info('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n\n' \
-         +'----------------------------------------------------------------\n' \
-         +'| '+test_description+'\n' \
-         +'----------------------------------------------------------------')
+    logging.info('\n'.join(['+'*40,
+                            '-'*40,
+                            '| '+description,
+                            '-'*40,
+                           ]))
     self.dirBase = os.path.dirname(os.path.realpath(sys.modules[self.__class__.__module__].__file__))
-    self.parser = OptionParser(
-    description = test_description+' (using class: {})'.format(damask.version),
-    usage='./test.py [options]')
-    self.updateRequested = False
-    self.parser.add_option("-d", "--debug", action="store_true",\
-                                    dest="debug",\
-                                    help="debug run, don't calculate but use existing results")
-    self.parser.add_option("-p", "--pass", action="store_true",\
-                                    dest="accept",\
-                                    help="calculate results but always consider test as successfull")
-    self.parser.set_defaults(debug=False,
-                             accept=False)
+
+    self.parser = OptionParser(description = '{} (using class: {})'.format(description,damask.version),
+                               usage = './test.py [options]')
+    self.parser.add_option("-d", "--debug",
+                           action = "store_true",
+                           dest   = "debug",
+                           help   = "debug run, don't calculate but use existing results")
+    self.parser.add_option("-p", "--pass",
+                           action = "store_true",
+                           dest   = "accept",
+                           help   = "calculate results but always consider test as successfull")
+    self.parser.add_option("-u", "--update",
+                           action = "store_true",
+                           dest   = "update",
+                           help   = "use current test results as new reference"
+                           )
+    self.parser.set_defaults(debug  = False,
+                             accept = False,
+                             update = False,
+                            )
 
   def execute(self):
     """Run all variants and report first failure."""
@@ -65,15 +72,17 @@ class Test():
           return variant+1                                                     # return culprit
       return 0
     else:
-      if not self.testPossible(): return -1
+      if not self.feasible(): return -1
+
       self.clean()
       self.prepareAll()
-      for variant in xrange(len(self.variants)):
+
+      for variant,name in enumerate(self.variants):
         try:
           self.prepare(variant)
           self.run(variant)
           self.postprocess(variant)
-          if self.updateRequested:                                             # update requested
+          if self.options.update:                                              # update requested
             self.update(variant)
           elif not (self.options.accept or self.compare(variant)):             # no update, do comparison
             return variant+1                                                   # return culprit
@@ -82,8 +91,8 @@ class Test():
           return variant+1                                                     # return culprit
       return 0
   
-  def testPossible(self):
-    """Check if test is possible or not (e.g. no license available)."""
+  def feasible(self):
+    """Check whether test is possible or not (e.g. no license available)."""
     return True
     
   def clean(self):
