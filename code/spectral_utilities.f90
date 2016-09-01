@@ -237,7 +237,7 @@ subroutine utilities_init()
  grid1Red = grid(1)/2_pInt + 1_pInt
  wgt = 1.0/real(product(grid),pReal)
 
- if (worldrank == 0) then
+ if (worldrank == 0_pInt) then
    write(6,'(a,3(i12  ))')  ' grid     a b c: ', grid
    write(6,'(a,3(es12.5))') ' size     x y z: ', geomSize
  endif
@@ -1015,10 +1015,19 @@ subroutine utilities_constitutiveResponse(F_lastInc,F,timeinc, &
      defgradDetMax = max(defgradDetMax,defgradDet)
      defgradDetMin = min(defgradDetMin,defgradDet)
    end do
-   call MPI_reduce(MPI_IN_PLACE,defgradDetMax,1,MPI_DOUBLE,MPI_MAX,0,PETSC_COMM_WORLD,ierr)
-   if(ierr /=0_pInt) call IO_error(894_pInt, ext_msg='MPI_Allreduce max')
-   call MPI_reduce(MPI_IN_PLACE,defgradDetMin,1,MPI_DOUBLE,MPI_MIN,0,PETSC_COMM_WORLD,ierr)
-   if(ierr /=0_pInt) call IO_error(894_pInt, ext_msg='MPI_Allreduce min')
+
+   if (worldrank == 0_pInt) then
+     call MPI_reduce(MPI_IN_PLACE,defgradDetMax,1,MPI_DOUBLE,MPI_MAX,0,PETSC_COMM_WORLD,ierr)
+   else
+     call MPI_reduce(defgradDetMax,defgradDetMax,1,MPI_DOUBLE,MPI_MAX,0,PETSC_COMM_WORLD,ierr)
+   endif
+   if (ierr /= 0_pInt) call IO_error(894_pInt, ext_msg='MPI_Allreduce max')
+   if (worldrank == 0_pInt) then
+     call MPI_reduce(MPI_IN_PLACE,defgradDetMin,1,MPI_DOUBLE,MPI_MIN,0,PETSC_COMM_WORLD,ierr)
+   else
+     call MPI_reduce(defgradDetMin,defgradDetMin,1,MPI_DOUBLE,MPI_MIN,0,PETSC_COMM_WORLD,ierr)
+   endif
+   if (ierr /= 0_pInt) call IO_error(894_pInt, ext_msg='MPI_Allreduce min')
    if (worldrank == 0_pInt) then
      write(6,'(a,1x,es11.4)') ' max determinant of deformation =', defgradDetMax
      write(6,'(a,1x,es11.4)') ' min determinant of deformation =', defgradDetMin
