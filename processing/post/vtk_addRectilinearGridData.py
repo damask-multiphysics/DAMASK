@@ -134,9 +134,12 @@ for name in filenames:
       for me in labels:                                                                             # loop over all requested items
         theData = [table.data[i] for i in table.label_indexrange(me)]                               # read strings
         if   datatype == 'color':  VTKarray[me].InsertNextTuple3(*map(lambda x: int(255.*float(x)),theData))
-        elif datatype == 'vector': VTKarray[me].InsertNextTuple3(*map(float,theData))
-        elif datatype == 'tensor': VTKarray[me].InsertNextTuple9(*map(float,theData))
         elif datatype == 'scalar': VTKarray[me].InsertNextValue(float(theData[0]))
+        elif datatype == 'vector': VTKarray[me].InsertNextTuple3(*map(float,theData))
+        elif datatype == 'tensor': VTKarray[me].InsertNextTuple9(*0.5*(np.array(theData)+
+                                                                       np.array(theData) \
+                                                                       .reshape(3,3).T \
+                                                                       .reshape(9)))
 
   table.close()                                                                                     # close input ASCII table
 
