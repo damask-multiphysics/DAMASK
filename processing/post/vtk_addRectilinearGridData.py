@@ -3,6 +3,7 @@
 
 import os,vtk
 import damask
+import numpy as np
 from collections import defaultdict
 from optparse import OptionParser
 
