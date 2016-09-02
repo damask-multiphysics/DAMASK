@@ -5,7 +5,6 @@ import os,sys,shutil
 import logging,logging.config
 import damask
 import numpy as np
-import itertools
 from collections import Iterable
 from optparse import OptionParser
 
