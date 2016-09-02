@@ -468,7 +468,7 @@ class Test():
                      rtol = 1e-5,
                      atol = 1e-8,
                      debug = False):
-    """ compare tables with np.allclose """
+    """compare tables with np.allclose"""
     if not (isinstance(files, Iterable) and not isinstance(files, str)):       # check whether list of files is requested
       files = [str(files)]
 
