@@ -995,6 +995,12 @@ class Orientation:
               relationModel,
               direction,
               targetSymmetry = None):
+    """
+    orientation relationship
+
+    positive number: fcc --> bcc
+    negative number: bcc --> fcc
+    """
 
     if relationModel not in ['KS','GT','GTdash','NW','Pitsch','Bain']:  return None
     if int(direction) == 0:  return None
@@ -1227,14 +1233,14 @@ class Orientation:
     myPlane  /= np.linalg.norm(myPlane)
     myNormal  = [float(i) for i in normals[relationModel][variant,me]]                              # map(float, planes[...]) does not work in python 3
     myNormal /= np.linalg.norm(myNormal)
-    myMatrix  = np.array([myPlane,myNormal,np.cross(myPlane,myNormal)])
+    myMatrix  = np.array([myNormal,np.cross(myPlane,myNormal),myPlane]).T
 
     otherPlane   = [float(i) for i in planes[relationModel][variant,other]]                         # map(float, planes[...]) does not work in python 3
     otherPlane  /= np.linalg.norm(otherPlane)
     otherNormal  = [float(i) for i in normals[relationModel][variant,other]]                        # map(float, planes[...]) does not work in python 3
     otherNormal /= np.linalg.norm(otherNormal)
-    otherMatrix  = np.array([otherPlane,otherNormal,np.cross(otherPlane,otherNormal)])
+    otherMatrix  = np.array([otherNormal,np.cross(otherPlane,otherNormal),otherPlane]).T
 
-    rot=np.dot(otherMatrix.T,myMatrix)
+    rot=np.dot(otherMatrix,myMatrix.T)
 
     return Orientation(matrix=np.dot(rot,self.asMatrix()))                                      # no symmetry information ??
