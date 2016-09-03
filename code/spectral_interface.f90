@@ -57,7 +57,8 @@ subroutine DAMASK_interface_init()
  integer :: &
    i, &
    threadLevel, &
-   worldrank = 0
+   worldrank = 0, &
+   worldsize = 0
  integer, allocatable, dimension(:) :: &
    chunkPos
  integer, dimension(8) :: &
@@ -66,6 +67,7 @@ subroutine DAMASK_interface_init()
  external :: &
    quit,&
    MPI_Comm_rank,&
+   MPI_Comm_size,&
    PETScInitialize, &
    MPI_Init_Thread, &
    MPI_abort
@@ -77,17 +79,17 @@ subroutine DAMASK_interface_init()
 #ifdef _OPENMP
  call MPI_Init_Thread(MPI_THREAD_FUNNELED,threadLevel,ierr);CHKERRQ(ierr)                           ! in case of OpenMP, don't rely on PETScInitialize doing MPI init
  if (threadLevel<MPI_THREAD_FUNNELED) then
-   write(6,'(a)') 'MPI library does not support OpenMP'
+   write(6,'(a)') ' MPI library does not support OpenMP'
    call quit(1_pInt)
  endif
 #endif
  call PetscInitialize(PETSC_NULL_CHARACTER,ierr)                                                    ! according to PETSc manual, that should be the first line in the code
  CHKERRQ(ierr)                                                                                      ! this is a macro definition, it is case sensitive
  call MPI_Comm_rank(PETSC_COMM_WORLD,worldrank,ierr);CHKERRQ(ierr)
-
+ call MPI_Comm_size(MPI_COMM_WORLD, worldsize, ierr);CHKERRQ(ierr)
  mainProcess: if (worldrank == 0) then
    if (output_unit /= 6) then
-     write(output_unit,'(a)') 'STDOUT != 6'
+     write(output_unit,'(a)') ' STDOUT != 6'
      call quit(1_pInt)
    endif
  else mainProcess
@@ -104,6 +106,7 @@ subroutine DAMASK_interface_init()
  write(6,'(a,2(i2.2,a),i2.2)') ' Time:    ',dateAndTime(5),':',&
                                             dateAndTime(6),':',&
                                             dateAndTime(7)  
+ write(6,'(/,a,i4.1)') ' MPI processes: ',worldsize
  write(6,'(/,a)') ' <<<+-  DAMASK_interface init  -+>>>'
 #include "compilation_info.f90"
  
