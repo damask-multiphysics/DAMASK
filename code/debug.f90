@@ -104,7 +104,6 @@ contains
 subroutine debug_init
  use, intrinsic :: iso_fortran_env                                                                  ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
  use numerics, only: &
-   worldrank, &
    nStress, &
    nState, &
    nCryst, &
@@ -130,47 +129,27 @@ subroutine debug_init
  integer(pInt), allocatable, dimension(:) :: chunkPos
  character(len=65536)                     :: tag, line
 
- mainProcess: if (worldrank == 0) then
-   write(6,'(/,a)')   ' <<<+-  debug init  -+>>>'
-   write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
+ write(6,'(/,a)')   ' <<<+-  debug init  -+>>>'
+ write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
- endif mainProcess
 
- if (allocated(debug_StressLoopLpDistribution)) &
-    deallocate(debug_StressLoopLpDistribution)
-      allocate(debug_StressLoopLpDistribution(nStress+1,2))
-               debug_StressLoopLpDistribution = 0_pInt
- if (allocated(debug_StressLoopLiDistribution)) &
-    deallocate(debug_StressLoopLiDistribution)
-      allocate(debug_StressLoopLiDistribution(nStress+1,2))
-               debug_StressLoopLiDistribution = 0_pInt
- if (allocated(debug_StateLoopDistribution)) &
-    deallocate(debug_StateLoopDistribution)
-      allocate(debug_StateLoopDistribution(nState+1,2))
-               debug_StateLoopDistribution = 0_pInt
- if (allocated(debug_CrystalliteLoopDistribution)) &
-    deallocate(debug_CrystalliteLoopDistribution)
-      allocate(debug_CrystalliteLoopDistribution(nCryst+1))
-               debug_CrystalliteLoopDistribution = 0_pInt
- if (allocated(debug_MaterialpointStateLoopDistribution)) &
-    deallocate(debug_MaterialpointStateLoopDistribution)
-      allocate(debug_MaterialpointStateLoopDistribution(nMPstate))
-               debug_MaterialpointStateLoopDistribution = 0_pInt
- if (allocated(debug_MaterialpointLoopDistribution)) &
-    deallocate(debug_MaterialpointLoopDistribution)
-      allocate(debug_MaterialpointLoopDistribution(nHomog+1))
-               debug_MaterialpointLoopDistribution = 0_pInt
+ allocate(debug_StressLoopLpDistribution(nStress+1,2), source=0_pInt)
+ allocate(debug_StressLoopLiDistribution(nStress+1,2), source=0_pInt)
+ allocate(debug_StateLoopDistribution(nState+1,2), source=0_pInt)
+ allocate(debug_CrystalliteLoopDistribution(nCryst+1), source=0_pInt)
+ allocate(debug_MaterialpointStateLoopDistribution(nMPstate), source=0_pInt)
+ allocate(debug_MaterialpointLoopDistribution(nHomog+1), source=0_pInt)
 
 !--------------------------------------------------------------------------------------------------
 ! try to open the config file
 
  line = ''
  fileExists: if(IO_open_file_stat(FILEUNIT,debug_configFile)) then
-   do while (trim(line) /= IO_EOF)                                                                 ! read thru sections of phase part
+   do while (trim(line) /= IO_EOF)                                                                  ! read thru sections of phase part
      line = IO_read(FILEUNIT)
      if (IO_isBlank(line)) cycle                                                                    ! skip empty lines
      chunkPos = IO_stringPos(line)
-     tag = IO_lc(IO_stringValue(line,chunkPos,1_pInt))                                             ! extract key
+     tag = IO_lc(IO_stringValue(line,chunkPos,1_pInt))                                              ! extract key
      select case(tag)
        case ('element','e','el')
          debug_e = IO_intValue(line,chunkPos,2_pInt)
