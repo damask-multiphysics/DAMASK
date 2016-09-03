@@ -172,8 +172,7 @@ subroutine utilities_init()
    memory_efficient, &
    petsc_defaultOptions, &
    petsc_options, &
-   divergence_correction, &
-   worldrank
+   divergence_correction
  use debug, only: &
    debug_level, &
    debug_SPECTRAL, &
@@ -212,11 +211,9 @@ subroutine utilities_init()
    vecSize = 3_C_INTPTR_T, &
    tensorSize = 9_C_INTPTR_T
 
- mainProcess: if (worldrank == 0) then
-   write(6,'(/,a)')   ' <<<+-  spectral_utilities init  -+>>>'
-   write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
+ write(6,'(/,a)')   ' <<<+-  spectral_utilities init  -+>>>'
+ write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
- endif mainProcess
 
 !--------------------------------------------------------------------------------------------------
 ! set debugging parameters
@@ -224,11 +221,11 @@ subroutine utilities_init()
  debugRotation   = iand(debug_level(debug_SPECTRAL),debug_SPECTRALROTATION)   /= 0
  debugPETSc      = iand(debug_level(debug_SPECTRAL),debug_SPECTRALPETSC)      /= 0
 
- if(debugPETSc .and. worldrank == 0_pInt) write(6,'(3(/,a),/)') &
+ if(debugPETSc) write(6,'(3(/,a),/)') &
                 ' Initializing PETSc with debug options: ', &
                 trim(PETScDebug), &
-                ' add more using the PETSc_Options keyword in numerics.config '
- flush(6)
+                ' add more using the PETSc_Options keyword in numerics.config '; flush(6)
+
  call PetscOptionsClear(ierr); CHKERRQ(ierr)
  if(debugPETSc) call PetscOptionsInsertString(trim(PETSCDEBUG),ierr); CHKERRQ(ierr)
  call PetscOptionsInsertString(trim(petsc_defaultOptions),ierr); CHKERRQ(ierr)
@@ -237,10 +234,8 @@ subroutine utilities_init()
  grid1Red = grid(1)/2_pInt + 1_pInt
  wgt = 1.0/real(product(grid),pReal)
 
- if (worldrank == 0) then
-   write(6,'(a,3(i12  ))')  ' grid     a b c: ', grid
-   write(6,'(a,3(es12.5))') ' size     x y z: ', geomSize
- endif
+ write(6,'(a,3(i12  ))')  ' grid     a b c: ', grid
+ write(6,'(a,3(es12.5))') ' size     x y z: ', geomSize
 
  select case (spectral_derivative)
    case ('continuous')                                                                                     ! default, no weighting
@@ -342,8 +337,7 @@ subroutine utilities_init()
  if (pReal /= C_DOUBLE .or. pInt /= C_INT) call IO_error(0_pInt,ext_msg='Fortran to C')             ! check for correct precision in C
  call fftw_set_timelimit(fftw_timelimit)                                                            ! set timelimit for plan creation
 
- if (debugGeneral .and. worldrank == 0_pInt) write(6,'(/,a)') ' FFTW initialized'
-   flush(6)
+ if (debugGeneral) write(6,'(/,a)') ' FFTW initialized'; flush(6)
 
 !--------------------------------------------------------------------------------------------------
 ! calculation of discrete angular frequencies, ordered as in FFTW (wrap around)
@@ -527,8 +521,6 @@ subroutine utilities_fourierGammaConvolution(fieldAim)
  use math, only: &
    math_det33, &
    math_invert
- use numerics, only: &
-   worldrank
  use mesh, only: &
    grid3, &
    grid, &
@@ -545,10 +537,8 @@ subroutine utilities_fourierGammaConvolution(fieldAim)
  logical :: err
 
 
- if (worldrank == 0_pInt) then
-   write(6,'(/,a)') ' ... doing gamma convolution ...............................................'
-   flush(6)
- endif
+ write(6,'(/,a)') ' ... doing gamma convolution ...............................................'
+ flush(6)
 
 !--------------------------------------------------------------------------------------------------
 ! do the actual spectral method calculation (mechanical equilibrium)
@@ -624,8 +614,6 @@ end subroutine utilities_fourierGreenConvolution
 real(pReal) function utilities_divergenceRMS()
  use IO, only: &
    IO_error
- use numerics, only: &
-   worldrank
  use mesh, only: &
    geomSize, &
    grid, &
@@ -638,10 +626,9 @@ real(pReal) function utilities_divergenceRMS()
  external :: &
    MPI_Allreduce
 
- if (worldrank == 0_pInt) then
-   write(6,'(/,a)') ' ... calculating divergence ................................................'
-   flush(6)
- endif
+ write(6,'(/,a)') ' ... calculating divergence ................................................'
+ flush(6)
+
  rescaledGeom = cmplx(geomSize/scaledGeomSize,0.0_pReal)
 
 !--------------------------------------------------------------------------------------------------
@@ -680,8 +667,6 @@ end function utilities_divergenceRMS
 real(pReal) function utilities_curlRMS()
  use IO, only: &
    IO_error
- use numerics, only: &
-   worldrank
  use mesh, only: &
    geomSize, &
    grid, &
@@ -693,13 +678,11 @@ real(pReal) function utilities_curlRMS()
  complex(pReal), dimension(3)   :: rescaledGeom
 
  external :: &
-   MPI_Reduce, &
    MPI_Allreduce
 
- if (worldrank == 0_pInt) then
-   write(6,'(/,a)') ' ... calculating curl ......................................................'
-   flush(6)
- endif
+ write(6,'(/,a)') ' ... calculating curl ......................................................'
+ flush(6)
+
  rescaledGeom = cmplx(geomSize/scaledGeomSize,0.0_pReal)
 
 !--------------------------------------------------------------------------------------------------
@@ -757,8 +740,6 @@ function utilities_maskedCompliance(rot_BC,mask_stress,C)
    prec_isNaN
  use IO, only: &
    IO_error
- use numerics, only: &
-   worldrank
  use math, only: &
    math_Plain3333to99, &
    math_plain99to3333, &
@@ -790,7 +771,7 @@ function utilities_maskedCompliance(rot_BC,mask_stress,C)
    allocate (sTimesC(size_reduced,size_reduced),   source =0.0_pReal)
    temp99_Real = math_Plain3333to99(math_rotate_forward3333(C,rot_BC))
 
-   if(debugGeneral .and. worldrank == 0_pInt) then
+   if(debugGeneral) then
      write(6,'(/,a)') ' ... updating masked compliance ............................................'
      write(6,'(/,a,/,9(9(2x,f12.7,1x)/))',advance='no') ' Stiffness C (load) / GPa =',&
                                                   transpose(temp99_Real)/1.e9_pReal
@@ -831,7 +812,7 @@ function utilities_maskedCompliance(rot_BC,mask_stress,C)
        if(m/=n .and. abs(sTimesC(m,n)) > (0.0_pReal + 10.0e-12_pReal)) errmatinv = .true.           ! off diagonal elements of S*C should be 0
      enddo
    enddo
-   if((debugGeneral .or. errmatinv) .and. (worldrank == 0_pInt)) then                               ! report
+   if(debugGeneral .or. errmatinv) then
      write(formatString, '(I16.16)') size_reduced
      formatString = '(/,a,/,'//trim(formatString)//'('//trim(formatString)//'(2x,es9.2,1x)/))'
      write(6,trim(formatString),advance='no') ' C * S (load) ', &
@@ -845,7 +826,7 @@ function utilities_maskedCompliance(rot_BC,mask_stress,C)
  else
    temp99_real = 0.0_pReal
  endif
- if(debugGeneral .and. worldrank == 0_pInt) &                                                       ! report
+ if(debugGeneral) &
    write(6,'(/,a,/,9(9(2x,f12.7,1x)/),/)',advance='no') ' Masked Compliance (load) * GPa =', &
                                                     transpose(temp99_Real*1.e9_pReal)
  flush(6)
@@ -938,15 +919,11 @@ end subroutine utilities_fourierTensorDivergence
 !--------------------------------------------------------------------------------------------------
 subroutine utilities_constitutiveResponse(F_lastInc,F,timeinc, &
                                           P,C_volAvg,C_minmaxAvg,P_av,forwardData,rotation_BC)
- use prec, only: &
-   dNeq
  use IO, only: &
    IO_error
  use debug, only: &
    debug_reset, &
    debug_info
- use numerics, only: &
-   worldrank
  use math, only: &
    math_transpose33, &
    math_rotate_forward33, &
@@ -974,7 +951,7 @@ subroutine utilities_constitutiveResponse(F_lastInc,F,timeinc, &
 
  real(pReal),intent(out), dimension(3,3,3,3)                     :: C_volAvg, C_minmaxAvg           !< average stiffness
  real(pReal),intent(out), dimension(3,3)                         :: P_av                            !< average PK stress
- real(pReal),intent(out), dimension(3,3,grid(1),grid(2),grid3) :: P                !< PK stress
+ real(pReal),intent(out), dimension(3,3,grid(1),grid(2),grid3)   :: P                               !< PK stress
 
  logical :: &
    age
@@ -985,13 +962,10 @@ subroutine utilities_constitutiveResponse(F_lastInc,F,timeinc, &
  real(pReal)   :: max_dPdF_norm, min_dPdF_norm, defgradDetMin, defgradDetMax, defgradDet
 
  external :: &
-   MPI_Reduce, &
    MPI_Allreduce
 
- if (worldrank == 0_pInt) then
-   write(6,'(/,a)') ' ... evaluating constitutive response ......................................'
-   flush(6)
- endif
+ write(6,'(/,a)') ' ... evaluating constitutive response ......................................'
+ flush(6)
  age = .False.
 
  if (forwardData) then                                                                              ! aging results
@@ -1015,15 +989,14 @@ subroutine utilities_constitutiveResponse(F_lastInc,F,timeinc, &
      defgradDetMax = max(defgradDetMax,defgradDet)
      defgradDetMin = min(defgradDetMin,defgradDet)
    end do
-   call MPI_reduce(MPI_IN_PLACE,defgradDetMax,1,MPI_DOUBLE,MPI_MAX,0,PETSC_COMM_WORLD,ierr)
-   if(ierr /=0_pInt) call IO_error(894_pInt, ext_msg='MPI_Allreduce max')
-   call MPI_reduce(MPI_IN_PLACE,defgradDetMin,1,MPI_DOUBLE,MPI_MIN,0,PETSC_COMM_WORLD,ierr)
-   if(ierr /=0_pInt) call IO_error(894_pInt, ext_msg='MPI_Allreduce min')
-   if (worldrank == 0_pInt) then
-     write(6,'(a,1x,es11.4)') ' max determinant of deformation =', defgradDetMax
-     write(6,'(a,1x,es11.4)') ' min determinant of deformation =', defgradDetMin
-     flush(6)
-   endif
+   
+   call MPI_Allreduce(MPI_IN_PLACE,defgradDetMax,1,MPI_DOUBLE,MPI_MAX,PETSC_COMM_WORLD,ierr)
+   if (ierr /= 0_pInt) call IO_error(894_pInt, ext_msg='MPI_Allreduce max')
+   call MPI_Allreduce(MPI_IN_PLACE,defgradDetMin,1,MPI_DOUBLE,MPI_MIN,PETSC_COMM_WORLD,ierr)
+   if (ierr /= 0_pInt) call IO_error(894_pInt, ext_msg='MPI_Allreduce min')
+   write(6,'(a,1x,es11.4)') ' max determinant of deformation =', defgradDetMax
+   write(6,'(a,1x,es11.4)') ' min determinant of deformation =', defgradDetMin
+   flush(6)
  endif
 
  call CPFEM_general(age,timeinc)
@@ -1061,15 +1034,13 @@ subroutine utilities_constitutiveResponse(F_lastInc,F,timeinc, &
  P = reshape(materialpoint_P, [3,3,grid(1),grid(2),grid3])
  P_av = sum(sum(sum(P,dim=5),dim=4),dim=3) * wgt                                                    ! average of P
  call MPI_Allreduce(MPI_IN_PLACE,P_av,9,MPI_DOUBLE,MPI_SUM,PETSC_COMM_WORLD,ierr)
- if (debugRotation .and. worldrank == 0_pInt) &
+ if (debugRotation) &
  write(6,'(/,a,/,3(3(2x,f12.4,1x)/))',advance='no') ' Piola--Kirchhoff stress (lab) / MPa =',&
                                                      math_transpose33(P_av)*1.e-6_pReal
  P_av = math_rotate_forward33(P_av,rotation_BC)
- if (worldrank == 0_pInt) then
-   write(6,'(/,a,/,3(3(2x,f12.4,1x)/))',advance='no') ' Piola--Kirchhoff stress / MPa =',&
+ write(6,'(/,a,/,3(3(2x,f12.4,1x)/))',advance='no') ' Piola--Kirchhoff stress / MPa =',&
                                                      math_transpose33(P_av)*1.e-6_pReal
-   flush(6)
- endif
+ flush(6)
 
 end subroutine utilities_constitutiveResponse
 
