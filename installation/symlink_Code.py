@@ -11,7 +11,15 @@ bin_link = { \
                   ],
            }
 
-MarcReleases =[2011,2012,2013,2013.1,2014,2014.2,2015]
+MarcReleases =[ \
+               '2011',
+               '2012',
+               '2013',
+               '2013.1',
+               '2014',
+               '2014.2',
+               '2015',
+              ]
 
 damaskEnv = damask.Environment()
 baseDir = damaskEnv.relPath('code/')
@@ -20,27 +28,41 @@ binDir  = damaskEnv.options['DAMASK_BIN']
 if not os.path.isdir(binDir):
   os.mkdir(binDir)
 
-for dir in bin_link:
-  for file in bin_link[dir]:
-    src = os.path.abspath(os.path.join(baseDir,dir,file))
-    if os.path.exists(src): 
-      sym_link = os.path.abspath(os.path.join(binDir,\
-                                              {True: dir,
-                                               False:os.path.splitext(file)[0]}[file == '']))
-      if os.path.lexists(sym_link): os.remove(sym_link)
-      os.symlink(src,sym_link)
-      sys.stdout.write(sym_link+' -> '+src+'\n')
+sys.stdout.write('\nsymbolic linking...\n')
 
+for subDir in bin_link:
+  theDir = os.path.abspath(os.path.join(baseDir,subDir))
+  sys.stdout.write('\n'+binDir+' ->\n'+theDir+damask.util.deemph(' ...')+'\n')
+
+  for theFile in bin_link[subDir]:
+    theName,theExt = os.path.splitext(theFile)
+    src = os.path.abspath(os.path.join(theDir,theFile))
+
+    if os.path.exists(src): 
+      sym_link = os.path.abspath(os.path.join(binDir,subDir if theFile == '' else theName))
+
+      if os.path.lexists(sym_link):
+        os.remove(sym_link)
+        output = theName+damask.util.deemph(theExt)
+      else:
+        output = damask.util.emph(theName)+damask.util.deemph(theExt)
+
+      sys.stdout.write(damask.util.deemph('... ')+output+'\n')
+      os.symlink(src,sym_link)
+
+
+sys.stdout.write('\nMSC.Marc versioning...\n\n')
+theMaster = 'DAMASK_marc.f90'
 
 for version in MarcReleases:
-  src = os.path.abspath(os.path.join(baseDir,'DAMASK_marc.f90'))
+  src = os.path.abspath(os.path.join(baseDir,theMaster))
   if os.path.exists(src): 
-    sym_link = os.path.abspath(os.path.join(baseDir,'DAMASK_marc'+str(version)+'.f90'))                    
+    sym_link = os.path.abspath(os.path.join(baseDir,'DAMASK_marc{}.f90'.format(version)))                    
     if os.path.lexists(sym_link):
       os.remove(sym_link)
-      sys.stdout.write(sym_link)
+      output = version
     else:
-      sys.stdout.write(damask.util.emph(sym_link))
+      output = damask.util.emph(version)
 
-    os.symlink(src,sym_link)
-    sys.stdout.write(' -> '+src+'\n')
+    sys.stdout.write(' '+output+'\n')
+    os.symlink(theMaster,sym_link)

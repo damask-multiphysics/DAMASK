@@ -2,6 +2,7 @@
 # -*- coding: UTF-8 no BOM -*-
 
 import os,sys
+import math                                                                                       # noqa
 import numpy as np
 from optparse import OptionParser
 import damask
@@ -14,7 +15,7 @@ scriptID   = ' '.join([scriptName,damask.version])
 # --------------------------------------------------------------------
 
 parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
-Replace all rows for which column 'label' has identical values by a single row containing their average.
+Apply a user-specified function to condense all rows for which column 'label' has identical values into a single row.
 Output table will contain as many rows as there are different (unique) values in the grouping column.
 
 Examples:
@@ -25,11 +26,33 @@ parser.add_option('-l','--label',
                   dest = 'label',
                   type = 'string', metavar = 'string',
                   help = 'column label for grouping rows')
+parser.add_option('-f','--function',
+                  dest = 'function',
+                  type = 'string', metavar = 'string',
+                  help = 'mapping function [%default]')
+parser.add_option('-a','--all',
+                  dest = 'all',
+                  action = 'store_true',
+                  help = 'apply mapping function also to grouping column')
+
+parser.set_defaults(function = 'np.average')
 
 (options,filenames) = parser.parse_args()
 
+funcModule,funcName = options.function.split('.')
+
+try:
+  mapFunction = getattr(locals().get(funcModule) or 
+                        globals().get(funcModule) or
+                        __import__(funcModule), 
+                        funcName)
+except:
+  mapFunction = None
+
 if options.label is None:
   parser.error('no grouping column specified.')
+if not hasattr(mapFunction,'__call__'):
+  parser.error('function "{}" is not callable.'.format(options.function))
 
 
 # --- loop over input files -------------------------------------------------------------------------
@@ -38,10 +61,6 @@ if filenames == []: filenames = [None]
 
 for name in filenames:
   try:    table = damask.ASCIItable(name = name,
-                                    outname = os.path.join(
-                                              os.path.split(name)[0],
-                                              options.label+'_averaged_'+os.path.split(name)[1]
-                                              ) if name else name,
                                     buffered = False)
   except: continue
   damask.util.report(scriptName,name)
@@ -53,6 +72,8 @@ for name in filenames:
     damask.util.croak('column {} is not of scalar dimension.'.format(options.label))
     table.close(dismiss = True)                                                                     # close ASCIItable and remove empty file
     continue
+  else:
+    grpColumn = table.label_index(options.label)
 
 # ------------------------------------------ assemble info ---------------------------------------  
 
@@ -64,17 +85,17 @@ for name in filenames:
   table.data_readArray()
   rows,cols  = table.data.shape
 
-  table.data = table.data[np.lexsort([table.data[:,table.label_index(options.label)]])]
+  table.data = table.data[np.lexsort([table.data[:,grpColumn]])]                                  # sort data by grpColumn
   
-  values,index = np.unique(table.data[:,table.label_index(options.label)], return_index = True)
-  index = np.append(index,rows)
-  avgTable = np.empty((len(values), cols))
+  values,index = np.unique(table.data[:,grpColumn], return_index = True)                          # unique grpColumn values and their positions
+  index = np.append(index,rows)                                                                   # add termination position
+  grpTable = np.empty((len(values), cols))                                                        # initialize output
   
-  for j in xrange(cols) :
-    for i in xrange(len(values)) :
-      avgTable[i,j] = np.average(table.data[index[i]:index[i+1],j])
+  for i in xrange(len(values)):                                                                   # iterate over groups (unique values in grpColumn)
+    grpTable[i] = np.apply_along_axis(mapFunction,0,table.data[index[i]:index[i+1]])              # apply mapping function
+    if not options.all: grpTable[i,grpColumn] = table.data[index[i],grpColumn]                    # restore grouping column value
   
-  table.data = avgTable
+  table.data = grpTable
 
 # ------------------------------------------ output result -------------------------------  
 
