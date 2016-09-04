@@ -41,6 +41,7 @@ class Test():
 
     self.parser = OptionParser(description = '{} (using class: {})'.format(description,damask.version),
                                usage = './test.py [options]')
+    self.updateRequested = False
     self.parser.add_option("-d", "--debug",
                            action = "store_true",
                            dest   = "debug",
@@ -49,14 +50,8 @@ class Test():
                            action = "store_true",
                            dest   = "accept",
                            help   = "calculate results but always consider test as successfull")
-    self.parser.add_option("-u", "--update",
-                           action = "store_true",
-                           dest   = "update",
-                           help   = "use current test results as new reference"
-                           )
     self.parser.set_defaults(debug  = False,
                              accept = False,
-                             update = False,
                             )
 
   def execute(self):
@@ -82,7 +77,7 @@ class Test():
           self.prepare(variant)
           self.run(variant)
           self.postprocess(variant)
-          if self.options.update:                                              # update requested
+          if self.updateRequested:                                             # update requested
             self.update(variant)
           elif not (self.options.accept or self.compare(variant)):             # no update, do comparison
             return variant+1                                                   # return culprit
