@@ -93,10 +93,9 @@ class Test():
   def feasible(self):
     """Check whether test is possible or not (e.g. no license available)."""
     return True
-    
+
   def clean(self):
     """Delete directory tree containing current results."""
-
     try:
       shutil.rmtree(self.dirCurrent())
     except:
@@ -116,7 +115,7 @@ class Test():
   def prepare(self,variant):
     """Do all necessary preparations for the run of each test variant"""
     return True
-  
+
 
   def run(self,variant):
     """Execute the requested test variant."""
@@ -148,17 +147,17 @@ class Test():
     """Directory containing current results of the test."""
     return os.path.normpath(os.path.join(self.dirBase,'current/'))
 
-  
+
   def dirProof(self):
     """Directory containing human readable proof of correctness for the test."""
     return os.path.normpath(os.path.join(self.dirBase,'proof/'))
 
-    
+
   def fileInRoot(self,dir,file):
     """Path to a file in the root directory of DAMASK."""
     return os.path.join(damask.Environment().rootDir(),dir,file)
 
-    
+
   def fileInReference(self,file):
     """Path to a file in the refrence directory for the test."""
     return os.path.join(self.dirReference(),file)
@@ -168,7 +167,7 @@ class Test():
     """Path to a file in the current results directory for the test."""
     return os.path.join(self.dirCurrent(),file)
 
-  
+
   def fileInProof(self,file):
     """Path to a file in the proof directory for the test."""
     return os.path.join(self.dirProof(),file)
@@ -185,58 +184,58 @@ class Test():
 
     for source,target in zip(map(mapA,A),map(mapB,B)):
       try:
-        shutil.copy2(source,target)  
+        shutil.copy2(source,target)
       except:
         logging.critical('error copying {} to {}'.format(source,target))
 
 
   def copy_Reference2Current(self,sourcefiles=[],targetfiles=[]):
-    
+
     if len(targetfiles) == 0: targetfiles = sourcefiles
     for i,file in enumerate(sourcefiles):
       try:
-        shutil.copy2(self.fileInReference(file),self.fileInCurrent(targetfiles[i]))  
+        shutil.copy2(self.fileInReference(file),self.fileInCurrent(targetfiles[i]))
       except:
         logging.critical('Reference2Current: Unable to copy file "{}"'.format(file))
 
- 
+
   def copy_Base2Current(self,sourceDir,sourcefiles=[],targetfiles=[]):
-    
+
     source=os.path.normpath(os.path.join(self.dirBase,'../../..',sourceDir))
     if len(targetfiles) == 0: targetfiles = sourcefiles
     for i,file in enumerate(sourcefiles):
       try:
-        shutil.copy2(os.path.join(source,file),self.fileInCurrent(targetfiles[i]))  
+        shutil.copy2(os.path.join(source,file),self.fileInCurrent(targetfiles[i]))
       except:
         logging.error(os.path.join(source,file))
         logging.critical('Base2Current: Unable to copy file "{}"'.format(file))
 
 
   def copy_Current2Reference(self,sourcefiles=[],targetfiles=[]):
-    
+
     if len(targetfiles) == 0: targetfiles = sourcefiles
     for i,file in enumerate(sourcefiles):
       try:
-        shutil.copy2(self.fileInCurrent(file),self.fileInReference(targetfiles[i]))  
+        shutil.copy2(self.fileInCurrent(file),self.fileInReference(targetfiles[i]))
       except:
         logging.critical('Current2Reference: Unable to copy file "{}"'.format(file))
 
-        
+
   def copy_Proof2Current(self,sourcefiles=[],targetfiles=[]):
-    
+
     if len(targetfiles) == 0: targetfiles = sourcefiles
     for i,file in enumerate(sourcefiles):
       try:
-        shutil.copy2(self.fileInProof(file),self.fileInCurrent(targetfiles[i]))  
+        shutil.copy2(self.fileInProof(file),self.fileInCurrent(targetfiles[i]))
       except:
         logging.critical('Proof2Current: Unable to copy file "{}"'.format(file))
 
-        
+
   def copy_Current2Current(self,sourcefiles=[],targetfiles=[]):
-    
+
     for i,file in enumerate(sourcefiles):
       try:
-        shutil.copy2(self.fileInReference(file),self.fileInCurrent(targetfiles[i]))  
+        shutil.copy2(self.fileInReference(file),self.fileInCurrent(targetfiles[i]))
       except:
         logging.critical('Current2Current: Unable to copy file "{}"'.format(file))
 
@@ -248,11 +247,11 @@ class Test():
 
     logging.info(error)
     logging.debug(out)
-    
-    return out,error
-    
 
-    
+    return out,error
+
+
+
   def compare_Array(self,File1,File2):
 
     import numpy as np
@@ -283,28 +282,28 @@ class Test():
 
 
   def compare_ArrayRefCur(self,ref,cur=''):
-    
+
     if cur =='': cur = ref
     refName = self.fileInReference(ref)
     curName = self.fileInCurrent(cur)
     return self.compare_Array(refName,curName)
 
-    
+
   def compare_ArrayCurCur(self,cur0,cur1):
-    
+
     cur0Name = self.fileInCurrent(cur0)
     cur1Name = self.fileInCurrent(cur1)
     return self.compare_Array(cur0Name,cur1Name)
 
   def compare_Table(self,headings0,file0,headings1,file1,normHeadings='',normType=None,
                                      absoluteTolerance=False,perLine=False,skipLines=[]):
-    
+
     import numpy as np
     logging.info('\n '.join(['comparing ASCII Tables',file0,file1]))
     if normHeadings == '': normHeadings = headings0
 
 # check if comparison is possible and determine lenght of columns
-    if len(headings0) == len(headings1) == len(normHeadings):                                         
+    if len(headings0) == len(headings1) == len(normHeadings):
       dataLength = len(headings0)
       length       = [1   for i in xrange(dataLength)]
       shape        = [[]  for i in xrange(dataLength)]
@@ -312,14 +311,14 @@ class Test():
       maxError     = [0.0 for i in xrange(dataLength)]
       absTol       = [absoluteTolerance for i in xrange(dataLength)]
       column       = [[1 for i in xrange(dataLength)] for j in xrange(2)]
- 
+
       norm         = [[]  for i in xrange(dataLength)]
       normLength   = [1   for i in xrange(dataLength)]
       normShape    = [[]  for i in xrange(dataLength)]
       normColumn   = [1   for i in xrange(dataLength)]
 
       for i in xrange(dataLength):
-        if headings0[i]['shape'] != headings1[i]['shape']: 
+        if headings0[i]['shape'] != headings1[i]['shape']:
           raise Exception('shape mismatch between {} and {} '.format(headings0[i]['label'],headings1[i]['label']))
         shape[i] = headings0[i]['shape']
         for j in xrange(np.shape(shape[i])[0]):
@@ -335,7 +334,7 @@ class Test():
     table0 = damask.ASCIItable(name=file0,readonly=True)
     table0.head_read()
     table1 = damask.ASCIItable(name=file1,readonly=True)
-    table1.head_read()   
+    table1.head_read()
 
     for i in xrange(dataLength):
       key0    = ('1_' if     length[i]>1 else '') +    headings0[i]['label']
@@ -351,7 +350,7 @@ class Test():
         column[0][i]  = table0.label_index(key0)
         column[1][i]  = table1.label_index(key1)
         normColumn[i] = table0.label_index(normKey)
-    
+
     line0 = 0
     while table0.data_read():                                                  # read next data line of ASCII table
       if line0 not in skipLines:
@@ -366,7 +365,7 @@ class Test():
           else:
             norm[i] = np.append(norm[i],np.linalg.norm(np.reshape(normData,normShape[i]),normType))
       line0 += 1
-    
+
     for i in xrange(dataLength):
       if not perLine: norm[i] = [np.max(norm[i]) for j in xrange(line0-len(skipLines))]
       data[i] = np.reshape(data[i],[line0-len(skipLines),length[i]])
@@ -437,14 +436,14 @@ class Test():
       logging.info(files[i]+':'+','.join(columns[i]))
 
     if len(files) < 2: return True                                             # single table is always close to itself...
-    
+
     data = []
     for table,labels in zip(tables,columns):
       table.data_readArray(labels)
       data.append(table.data)
       table.close()
-        
-    
+
+
     for i in xrange(1,len(data)):
       delta = data[i]-data[i-1]
       normBy = (np.abs(data[i]) + np.abs(data[i-1]))*0.5
@@ -453,7 +452,7 @@ class Test():
       std = np.amax(np.std(normedDelta,0))
       logging.info('mean: {:f}'.format(mean))
       logging.info('std: {:f}'.format(std))
-    
+
     return (mean<meanTol) & (std < stdTol)
 
 
@@ -525,10 +524,10 @@ class Test():
 
     return allclose
 
-    
+
   def compare_TableRefCur(self,headingsRef,ref,headingsCur='',cur='',normHeadings='',normType=None,\
                                                  absoluteTolerance=False,perLine=False,skipLines=[]):
-    
+
     if cur == '': cur = ref
     if headingsCur == '': headingsCur = headingsRef
     refName = self.fileInReference(ref)
@@ -536,10 +535,10 @@ class Test():
     return self.compare_Table(headingsRef,refName,headingsCur,curName,normHeadings,normType,
                                                                absoluteTolerance,perLine,skipLines)
 
-    
+
   def compare_TableCurCur(self,headingsCur0,Cur0,Cur1,headingsCur1='',normHeadings='',normType=None,\
                                                  absoluteTolerance=False,perLine=False,skipLines=[]):
-    
+
     if headingsCur1 == '': headingsCur1 = headingsCur0
     cur0Name = self.fileInCurrent(Cur0)
     cur1Name = self.fileInCurrent(Cur1)
@@ -548,15 +547,17 @@ class Test():
 
 
   def report_Success(self,culprit):
-    
+
+    ret = culprit
+
     if culprit == 0:
-      logging.critical(('The test' if len(self.variants) == 1 else 'All {} tests'.format(len(self.variants))) + ' passed')
-      logging.critical('\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n')
-      return 0
-    if culprit == -1:
-      logging.warning('Warning: Could not start test')
-      return 0
+      msg = 'The test passed' if len(self.variants) == 1 \
+       else 'All {} tests passed.'.format(len(self.variants))
+    elif culprit == -1:
+      msg = 'Warning: Could not start test...'
+      ret = 0
     else:
-      logging.critical(' ********\n * Test {} failed...\n ********'.format(culprit))
-      logging.critical('\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n')
-      return culprit
+      msg = ' * Test "{}" failed.'.format(self.variants[culprit-1])
+
+    logging.critical('\n'.join(['*'*40,msg,'*'*40]) + '\n')
+    return ret
