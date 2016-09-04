@@ -41,6 +41,7 @@ class Test():
 
     self.parser = OptionParser(description = '{} (using class: {})'.format(description,damask.version),
                                usage = './test.py [options]')
+    self.updateRequested = False
     self.parser.add_option("-d", "--debug",
                            action = "store_true",
                            dest   = "debug",
