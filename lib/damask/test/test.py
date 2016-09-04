@@ -17,8 +17,16 @@ class Test():
 
   variants = []
   
-  def __init__(self,description = ''):
+  def __init__(self, **kwargs):
 
+    defaults = {'description': '',
+                'keep':   False,
+                'accept': False,
+                'update': False,
+                }
+    for arg in defaults.keys():
+      setattr(self,arg,kwargs.get(arg) if kwargs.get(arg) else defaults[arg])
+    
     fh = logging.FileHandler('test.log')                                       # create file handler which logs even debug messages
     fh.setLevel(logging.DEBUG)
     fh.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s: \n%(message)s'))
@@ -34,62 +42,53 @@ class Test():
 
     logging.info('\n'.join(['+'*40,
                             '-'*40,
-                            '| '+description,
+                            '| '+self.description,
                             '-'*40,
                            ]))
+
     self.dirBase = os.path.dirname(os.path.realpath(sys.modules[self.__class__.__module__].__file__))
 
-    self.parser = OptionParser(description = '{} (using class: {})'.format(description,damask.version),
+    self.parser = OptionParser(description = '{} (Test class version: {})'.format(self.description,damask.version),
                                usage = './test.py [options]')
-    self.parser.add_option("-d", "--debug",
+    self.parser.add_option("-k", "--keep",
                            action = "store_true",
-                           dest   = "debug",
-                           help   = "debug run, don't calculate but use existing results")
-    self.parser.add_option("-p", "--pass",
+                           dest   = "keep",
+                           help   = "keep current results, just run postprocessing")
+    self.parser.add_option("--ok", "--accept",
                            action = "store_true",
                            dest   = "accept",
                            help   = "calculate results but always consider test as successfull")
-    self.parser.add_option("-u", "--update",
-                           action = "store_true",
-                           dest   = "update",
-                           help   = "use current test results as new reference"
-                           )
-    self.parser.set_defaults(debug  = False,
-                             accept = False,
-                             update = False,
+
+    self.parser.set_defaults(keep   = self.keep,
+                             accept = self.accept,
+                             update = self.update,
                             )
 
+    
   def execute(self):
     """Run all variants and report first failure."""
-    if self.options.debug:
-      for variant in xrange(len(self.variants)):
-        try:
-          self.postprocess(variant)
-          if not self.compare(variant):
-            return variant+1                                                   # return culprit
-        except Exception as e :
-          logging.critical('\nWARNING:\n {}\n'.format(e))
-          return variant+1                                                     # return culprit
-      return 0
-    else:
+    if not self.options.keep:
       if not self.feasible(): return -1
-
       self.clean()
       self.prepareAll()
 
-      for variant,name in enumerate(self.variants):
-        try:
+    for variant,name in enumerate(self.variants):
+      try:
+        if not self.options.keep:
           self.prepare(variant)
           self.run(variant)
-          self.postprocess(variant)
-          if self.options.update:                                              # update requested
-            self.update(variant)
-          elif not (self.options.accept or self.compare(variant)):             # no update, do comparison
-            return variant+1                                                   # return culprit
-        except Exception as e :
-          logging.critical('\nWARNING:\n {}\n'.format(e))
-          return variant+1                                                     # return culprit
-      return 0
+
+        self.postprocess(variant)
+
+        if self.options.update and not self.update(variant):
+          logging.critical('update for "{}" failed.'.format(name))
+        elif not (self.options.accept or self.compare(variant)):             # no update, do comparison
+          return variant+1                                                   # return culprit
+
+      except Exception as e :
+        logging.critical('exception during variant execution: {}'.format(e))
+        return variant+1                                                     # return culprit
+    return 0
   
   def feasible(self):
     """Check whether test is possible or not (e.g. no license available)."""
@@ -97,21 +96,18 @@ class Test():
     
   def clean(self):
     """Delete directory tree containing current results."""
-    status = True
 
     try:
       shutil.rmtree(self.dirCurrent())
     except:
       logging.warning('removal of directory "{}" not possible...'.format(self.dirCurrent()))
-      status = status and False
 
     try:
       os.mkdir(self.dirCurrent())
+      return True
     except:
-      logging.critical('creation of directory "{}" failed...'.format(self.dirCurrent()))
-      status = status and False
-
-    return status
+      logging.critical('creation of directory "{}" failed.'.format(self.dirCurrent()))
+      return False
     
   def prepareAll(self):
     """Do all necessary preparations for the whole test"""
@@ -139,8 +135,8 @@ class Test():
 
   def update(self,variant):
     """Update reference with current results."""
-    logging.debug('Update not necessary')
-    return True
+    logging.critical('update not supported.')
+    return False
 
 
   def dirReference(self):
@@ -463,20 +459,16 @@ class Test():
 
 
   def compare_Tables(self,
-                     files = [None,None],                                      # list of file names
+                     files   = [None,None],                                    # list of file names
                      columns = [None],                                         # list of list of column labels (per file)
-                     rtol = 1e-5,
-                     atol = 1e-8,
-                     preFilter = -1.0,
-                     postFilter = -1.0,
-                     debug = False):
-    """
-    compare tables with np.allclose
-
-    threshold can be used to ignore small values (a negative number disables this feature)
-    """
+                     rtol    = 1e-5,
+                     atol    = 1e-8,
+                     debug   = False):
+    """compare multiple tables with np.allclose"""
     if not (isinstance(files, Iterable) and not isinstance(files, str)):       # check whether list of files is requested
       files = [str(files)]
+
+    if len(files) < 2: return True                                             # single table is always close to itself...
 
     tables = [damask.ASCIItable(name = filename,readonly = True) for filename in files]
     for table in tables:
@@ -486,7 +478,7 @@ class Test():
     columns = columns[:len(files)]                                             # truncate to same length as files
 
     for i,column in enumerate(columns):
-      if column is None: columns[i] = tables[i].labels(raw = True)             # if no column is given, read all
+      if column is None: columns[i] = tables[i].labels(raw = False)            # if no column is given, use all
 
     logging.info('comparing ASCIItables')
     for i in xrange(len(columns)):
@@ -494,39 +486,42 @@ class Test():
                  ([columns[i]] if not (isinstance(columns[i], Iterable) and not isinstance(columns[i], str)) else \
                    columns[i]
                  )
-      logging.info(files[i]+':'+','.join(columns[i]))
+      logging.info(files[i]+': '+','.join(columns[i]))
 
-    if len(files) < 2: return True                                             # single table is always close to itself...
-    
-    maximum = np.zeros(len(columns[0]),dtype='f')
-    data = []
-    for table,labels in zip(tables,columns):
-      table.data_readArray(labels)
-      data.append(np.where(np.abs(table.data)<preFilter,np.zeros_like(table.data),table.data))
-      maximum += np.abs(table.data).max(axis=0)
-      table.close()
-    
-    maximum /= len(tables)
-    maximum = np.where(maximum >0.0, maximum, 1)                               # avoid div by zero for empty columns
+    dimensions = tables[0].label_dimension(columns[0])                         # width of each requested column
+    maximum = np.zeros_like(columns[0],dtype=float)                            # one magnitude per column entry
+    data = []                                                                  # list of feature table extracted from each file (ASCII table)
+
+    for i,(table,labels) in enumerate(zip(tables,columns)):
+      if np.any(dimensions != table.label_dimension(labels)):                  # check data object consistency
+        logging.critical('Table {} differs in data layout.'.format(files[i]))
+        return False
+      table.data_readArray(labels)                                             # read data, ...
+      data.append(table.data)                                                  # ... store, ...
+      table.close()                                                            # ... close
+
+      for j,label in enumerate(labels):                                        # iterate over object labels
+        maximum[j] = np.maximum(\
+                       maximum[j],
+                       np.amax(np.linalg.norm(table.data[:,table.label_indexrange(label)],
+                                              axis=1))
+                      )                                                        # find maximum Euclidean norm across rows
+
+    maximum = np.where(maximum > 0.0, maximum, 1.0)                            # avoid div by zero for zero columns
+    maximum = np.repeat(maximum,dimensions)                                    # spread maximum over columns of each object
+
     for i in xrange(len(data)):
-      data[i] /= maximum
-    
-    mask = np.zeros_like(table.data,dtype='bool')
+      data[i] /= maximum                                                       # normalize each table
 
-    for table in data:
-      mask |= np.where(np.abs(table)<postFilter,True,False)                    # mask out (all) tiny values
-     
-    
+    if debug:
+      logging.debug(str(maximum))
+      allclose = np.absolute(data[0]-data[1]) <= (atol + rtol*np.absolute(data[1]))
+      for ok,valA,valB in zip(allclose,data[0],data[1]):
+        logging.debug('{}:\n{}\n{}'.format(ok,valA,valB))
+
     allclose = True                                                            # start optimistic
     for i in xrange(1,len(data)):
-      if debug:
-        t0 = np.where(mask,0.0,data[i-1])
-        t1 = np.where(mask,0.0,data[i  ])
-        j = np.argmin(np.abs(t1)*rtol+atol-np.abs(t0-t1))
-        logging.info('{:f}'.format(np.amax(np.abs(t0-t1)/(np.abs(t1)*rtol+atol))))
-        logging.info('{:f} {:f}'.format((t0*maximum).flatten()[j],(t1*maximum).flatten()[j]))
-      allclose &= np.allclose(np.where(mask,0.0,data[i-1]),
-                              np.where(mask,0.0,data[i  ]),rtol,atol)          # accumulate "pessimism"
+      allclose &= np.allclose(data[i-1],data[i],rtol,atol)                     # accumulate "pessimism"
 
     return allclose
 
