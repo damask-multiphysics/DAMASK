@@ -60,8 +60,6 @@ subroutine FE_init
    IO_warning, &
    IO_timeStamp
  use DAMASK_interface
- use numerics, only: &
-   worldrank
  
  implicit none
 #if defined(Marc4DAMASK) || defined(Abaqus)
