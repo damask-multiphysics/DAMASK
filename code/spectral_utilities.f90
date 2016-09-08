@@ -957,12 +957,9 @@ subroutine utilities_constitutiveResponse(F_lastInc,F,timeinc, &
    age
 
  integer(pInt) :: &
-   j,k,ierr
+   j,k
  real(pReal), dimension(3,3,3,3) :: max_dPdF, min_dPdF
  real(pReal)   :: max_dPdF_norm, min_dPdF_norm, defgradDetMin, defgradDetMax, defgradDet
-
- external :: &
-   MPI_Allreduce
 
  write(6,'(/,a)') ' ... evaluating constitutive response ......................................'
  flush(6)
@@ -990,10 +987,6 @@ subroutine utilities_constitutiveResponse(F_lastInc,F,timeinc, &
      defgradDetMin = min(defgradDetMin,defgradDet)
    end do
    
-   call MPI_Allreduce(MPI_IN_PLACE,defgradDetMax,1,MPI_DOUBLE,MPI_MAX,PETSC_COMM_WORLD,ierr)
-   if (ierr /= 0_pInt) call IO_error(894_pInt, ext_msg='MPI_Allreduce max')
-   call MPI_Allreduce(MPI_IN_PLACE,defgradDetMin,1,MPI_DOUBLE,MPI_MIN,PETSC_COMM_WORLD,ierr)
-   if (ierr /= 0_pInt) call IO_error(894_pInt, ext_msg='MPI_Allreduce min')
    write(6,'(a,1x,es11.4)') ' max determinant of deformation =', defgradDetMax
    write(6,'(a,1x,es11.4)') ' min determinant of deformation =', defgradDetMin
    flush(6)
