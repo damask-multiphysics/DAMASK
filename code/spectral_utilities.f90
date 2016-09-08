@@ -957,7 +957,7 @@ subroutine utilities_constitutiveResponse(F_lastInc,F,timeinc, &
    age
 
  integer(pInt) :: &
-   j,k
+   j,k,ierr
  real(pReal), dimension(3,3,3,3) :: max_dPdF, min_dPdF
  real(pReal)   :: max_dPdF_norm, min_dPdF_norm, defgradDetMin, defgradDetMax, defgradDet
 
@@ -969,12 +969,10 @@ subroutine utilities_constitutiveResponse(F_lastInc,F,timeinc, &
    age = .True.
    materialpoint_F0 = reshape(F_lastInc, [3,3,1,product(grid(1:2))*grid3])
  endif
- if (cutBack) then                                                                                  ! restore saved variables
-   age = .False.
- endif
+ if (cutBack) age = .False.                                                                         ! restore saved variables
 
  materialpoint_F  = reshape(F,[3,3,1,product(grid(1:2))*grid3])
- call debug_reset()
+ call debug_reset()                                                                                 ! this has no effect on rank >0
 
 !--------------------------------------------------------------------------------------------------
 ! calculate bounds of det(F) and report
@@ -1019,7 +1017,7 @@ subroutine utilities_constitutiveResponse(F_lastInc,F,timeinc, &
 
  call MPI_Allreduce(MPI_IN_PLACE,C_volAvg,81,MPI_DOUBLE,MPI_SUM,PETSC_COMM_WORLD,ierr)
 
- call debug_info()
+ call debug_info()                                                                                  ! this has no effect on rank >0
 
  restartWrite = .false.                                                                             ! reset restartWrite status
  cutBack = .false.                                                                                  ! reset cutBack status
