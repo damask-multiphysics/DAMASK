@@ -20,18 +20,18 @@ class Test():
   def __init__(self, **kwargs):
 
     defaults = {'description': '',
-                'keep':   False,
-                'accept': False,
-                'update': False,
+                'keep':          False,
+                'accept':        False,
+                'updateRequest': False,
                 }
     for arg in defaults.keys():
       setattr(self,arg,kwargs.get(arg) if kwargs.get(arg) else defaults[arg])
     
-    fh = logging.FileHandler('test.log')                                       # create file handler which logs even debug messages
+    fh = logging.FileHandler('test.log')                                                            # create file handler which logs even debug messages
     fh.setLevel(logging.DEBUG)
     fh.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s: \n%(message)s'))
 
-    ch = logging.StreamHandler(stream=sys.stdout)                              # create console handler with a higher log level
+    ch = logging.StreamHandler(stream=sys.stdout)                                                   # create console handler with a higher log level
     ch.setLevel(logging.INFO)
     ch.setFormatter(logging.Formatter('%(message)s'))
 
@@ -61,7 +61,7 @@ class Test():
 
     self.parser.set_defaults(keep   = self.keep,
                              accept = self.accept,
-                             update = self.update,
+                             update = self.updateRequest,
                             )
 
     
@@ -80,10 +80,10 @@ class Test():
 
         self.postprocess(variant)
 
-        if self.options.update and not self.update(variant):
-          logging.critical('update for "{}" failed.'.format(name))
-        elif not (self.options.accept or self.compare(variant)):             # no update, do comparison
-          return variant+1                                                   # return culprit
+        if self.options.update:
+          if self.update(variant) != 0: logging.critical('update for "{}" failed.'.format(name))
+        elif not (self.options.accept or self.compare(variant)):                                    # no update, do comparison
+          return variant+1                                                                          # return culprit
 
       except Exception as e :
         logging.critical('exception during variant execution: {}'.format(e))
@@ -135,7 +135,7 @@ class Test():
   def update(self,variant):
     """Update reference with current results."""
     logging.critical('update not supported.')
-    return False
+    return 1
 
 
   def dirReference(self):
