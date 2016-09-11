@@ -40,7 +40,7 @@ def srepr(arg,glue = '\n'):
           hasattr(arg, "__getitem__") or
           hasattr(arg, "__iter__")):
      return glue.join(srepr(x) for x in arg)
-  return arg if isinstance(arg,basestring) else repr(arg)
+  return arg if isinstance(arg,str) else repr(arg)
 
 # -----------------------------
 def croak(what, newline = True):
@@ -136,29 +136,22 @@ class extendableOption(Option):
 class backgroundMessage(threading.Thread):
   """reporting with animation to indicate progress"""
 
-  choices = {'bounce':   ['_',      'o',      'O',      u'\u00B0',
-                          u'\u203e',u'\u203e',u'\u00B0','O','o','_'],
-             'spin':     [u'\u25dc',u'\u25dd',u'\u25de',u'\u25df'],
-             'circle':   [u'\u25f4',u'\u25f5',u'\u25f6',u'\u25f7'],
-             'hexagon':  [u'\u2b22',u'\u2b23'],
-             'square':   [u'\u2596',u'\u2598',u'\u259d',u'\u2597'],
-             'triangle': [u'\u140a',u'\u140a',u'\u1403',u'\u1405',u'\u1405',u'\u1403'],
-             'amoeba':   [u'\u2596',u'\u258f',u'\u2598',u'\u2594',u'\u259d',u'\u2595',
-                          u'\u2597',u'\u2582'],
-             'beat':     [u'\u2581',u'\u2582',u'\u2583',u'\u2585',u'\u2586',u'\u2587',
-                          u'\u2587',u'\u2586',u'\u2585',u'\u2583',u'\u2582',],
-             'prison':   [u'\u168b',u'\u168c',u'\u168d',u'\u168f',u'\u168e',u'\u168d',
-                          u'\u168c',u'\u168b',],
-             'breath':   [u'\u1690',u'\u1691',u'\u1692',u'\u1693',u'\u1694',u'\u1693',
-                          u'\u1692',u'\u1691',u'\u1690',],
-             'pulse':    [u'·',u'•',u'\u25cf',u'\u25cf',u'•',],
-             'ant':      [u'\u2801',u'\u2802',u'\u2810',u'\u2820',u'\u2804',u'\u2840',
-                          u'\u2880',u'\u2820',u'\u2804',u'\u2802',u'\u2810',u'\u2808'],
-             'juggle':   [u'\ua708',u'\ua709',u'\ua70a',u'\ua70b',u'\ua70c',u'\ua711',
-                          u'\ua710',u'\ua70f',u'\ua70d',],
-#             'wobbler':  [u'\u2581',u'\u25e3',u'\u258f',u'\u25e4',u'\u2594',u'\u25e5',u'\u2595',u'\u25e2',],
-             'grout':  [u'\u2581',u'\u258f',u'\u2594',u'\u2595',],
-             'partner':  [u'\u26ac',u'\u26ad',u'\u26ae',u'\u26af',u'\u26ae',u'\u26ad',],
+  choices = {'bounce':   ['_', 'o', 'O', '°', '‾', '‾', '°', 'O', 'o', '_'],
+             'spin':     ['◜', '◝', '◞', '◟'],
+             'circle':   ['◴', '◵', '◶', '◷'],
+             'hexagon':  ['⬢', '⬣'],
+             'square':   ['▖', '▘', '▝', '▗'],
+             'triangle': ['ᐊ', 'ᐊ', 'ᐃ', 'ᐅ', 'ᐅ', 'ᐃ'],
+             'amoeba':   ['▖', '▏', '▘', '▔', '▝', '▕', '▗', '▂'],
+             'beat':     ['▁', '▂', '▃', '▅', '▆', '▇', '▇', '▆', '▅', '▃', '▂'],
+             'prison':   ['ᚋ', 'ᚌ', 'ᚍ', 'ᚏ', 'ᚎ', 'ᚍ', 'ᚌ', 'ᚋ'],
+             'breath':   ['ᚐ', 'ᚑ', 'ᚒ', 'ᚓ', 'ᚔ', 'ᚓ', 'ᚒ', 'ᚑ', 'ᚐ'],
+             'pulse':    ['·', '•', '●', '●', '•'],
+             'ant':      ['⠁', '⠂', '⠐', '⠠', '⠄', '⡀', '⢀', '⠠', '⠄', '⠂', '⠐', '⠈'],
+             'juggle':   ['꜈', '꜉', '꜊', '꜋', '꜌', '꜑', '꜐', '꜏', '꜍'],
+#             'wobbler':  ['▁', '◣', '▏', '◤', '▔', '◥', '▕', '◢'],
+             'grout':    ['▁', '▏', '▔', '▕'],
+             'partner':  ['⚬', '⚭', '⚮', '⚯', '⚮', '⚭'],
              'classic':  ['-', '\\', '|', '/',],
             }    
 
@@ -170,7 +163,7 @@ class backgroundMessage(threading.Thread):
     self.new_message = ''
     self.counter = 0
     self.gap     = ' '
-    self.symbols = self.choices[symbol if symbol in self.choices else random.choice(self.choices.keys())]
+    self.symbols = self.choices[symbol if symbol in self.choices else random.choice(list(self.choices.keys()))]
     self.waittime = wait
   
   def __quit__(self):
@@ -199,7 +192,7 @@ class backgroundMessage(threading.Thread):
   def print_message(self):
     length = len(self.symbols[self.counter] + self.gap + self.message)
     sys.stderr.write(chr(8)*length + ' '*length + chr(8)*length + \
-                     self.symbols[self.counter].encode('utf-8') + self.gap + self.new_message)      # delete former and print new message
+                     self.symbols[self.counter] + self.gap + self.new_message)      # delete former and print new message
     sys.stderr.flush()
     self.message = self.new_message
       

@@ -154,7 +154,7 @@ class Quaternion:
 
     def __div__(self, other):
       """division"""
-      if isinstance(other, (int,float,long)):
+      if isinstance(other, (int,float)):
         w = self.w / other
         x = self.x / other
         y = self.y / other
@@ -165,7 +165,7 @@ class Quaternion:
 
     def __idiv__(self, other):
       """in place division"""
-      if isinstance(other, (int,float,long)):
+      if isinstance(other, (int,float)):
           self.w /= other
           self.x /= other
           self.y /= other
@@ -338,7 +338,7 @@ class Quaternion:
                  type = "bunge",
                  degrees = False,
                  standardRange = False):
-      u"""
+      """
       Orientation as Bunge-Euler angles
 
       conversion of ACTIVE rotation to Euler angles taken from:
@@ -553,7 +553,7 @@ class Symmetry:
 
   def __init__(self, symmetry = None):
     """lattice with given symmetry, defaults to None"""
-    if isinstance(symmetry, basestring) and symmetry.lower() in Symmetry.lattices:
+    if isinstance(symmetry, str) and symmetry.lower() in Symmetry.lattices:
       self.lattice = symmetry.lower()
     else:
       self.lattice = None
@@ -650,8 +650,8 @@ class Symmetry:
                     [ 1.0,0.0,0.0,0.0 ],
                   ]
 
-    return map(Quaternion,
-               np.array(symQuats)[np.atleast_1d(np.array(who)) if who != [] else xrange(len(symQuats))])
+    return list(map(Quaternion,
+               np.array(symQuats)[np.atleast_1d(np.array(who)) if who != [] else range(len(symQuats))]))
     
     
   def equivalentQuaternions(self,
@@ -887,8 +887,7 @@ class Orientation:
 
   def equivalentOrientations(self,
                              who = []):
-    return map(lambda q: Orientation(quaternion = q, symmetry = self.symmetry.lattice),
-               self.equivalentQuaternions(who))
+    return [Orientation(quaternion = q, symmetry = self.symmetry.lattice) for q in self.equivalentQuaternions(who)]
 
   def reduced(self):
     """Transform orientation to fall into fundamental zone according to symmetry"""
@@ -917,7 +916,7 @@ class Orientation:
     for i,sA in enumerate(mySymQs):
       for j,sB in enumerate(otherSymQs):
         theQ = sA.conjugated()*misQ*sB
-        for k in xrange(2):
+        for k in range(2):
           theQ.conjugate()
           breaker = self.symmetry.inFZ(theQ) \
                     and (not SST or other.symmetry.inDisorientationSST(theQ))

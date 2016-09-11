@@ -55,7 +55,7 @@ class Test():
   def execute(self):
     """Run all variants and report first failure."""
     if self.options.debug:
-      for variant in xrange(len(self.variants)):
+      for variant in range(len(self.variants)):
         try:
           self.postprocess(variant)
           if not self.compare(variant):
@@ -68,7 +68,7 @@ class Test():
       if not self.testPossible(): return -1
       self.clean()
       self.prepareAll()
-      for variant in xrange(len(self.variants)):
+      for variant in range(len(self.variants)):
         try:
           self.prepare(variant)
           self.run(variant)
@@ -178,7 +178,7 @@ class Test():
     """
     if not B or len(B) == 0: B = A
 
-    for source,target in zip(map(mapA,A),map(mapB,B)):
+    for source,target in zip(list(map(mapA,A)),list(map(mapB,B))):
       try:
         shutil.copy2(source,target)  
       except:
@@ -269,9 +269,9 @@ class Test():
       max_loc=np.argmax(abs(refArrayNonZero[curArray.nonzero()]/curArray[curArray.nonzero()]-1.))
       refArrayNonZero = refArrayNonZero[curArray.nonzero()]
       curArray = curArray[curArray.nonzero()]
-      print(' ********\n * maximum relative error {} between {} and {}\n ********'.format(max_err,
+      print((' ********\n * maximum relative error {} between {} and {}\n ********'.format(max_err,
                                                                                           refArrayNonZero[max_loc],
-                                                                                          curArray[max_loc]))
+                                                                                          curArray[max_loc])))
       return max_err
     else:
        raise Exception('mismatch in array size to compare')
@@ -301,26 +301,26 @@ class Test():
 # check if comparison is possible and determine lenght of columns
     if len(headings0) == len(headings1) == len(normHeadings):                                         
       dataLength = len(headings0)
-      length       = [1   for i in xrange(dataLength)]
-      shape        = [[]  for i in xrange(dataLength)]
-      data         = [[]  for i in xrange(dataLength)]
-      maxError     = [0.0 for i in xrange(dataLength)]
-      absTol       = [absoluteTolerance for i in xrange(dataLength)]
-      column       = [[1 for i in xrange(dataLength)] for j in xrange(2)]
+      length       = [1   for i in range(dataLength)]
+      shape        = [[]  for i in range(dataLength)]
+      data         = [[]  for i in range(dataLength)]
+      maxError     = [0.0 for i in range(dataLength)]
+      absTol       = [absoluteTolerance for i in range(dataLength)]
+      column       = [[1 for i in range(dataLength)] for j in range(2)]
  
-      norm         = [[]  for i in xrange(dataLength)]
-      normLength   = [1   for i in xrange(dataLength)]
-      normShape    = [[]  for i in xrange(dataLength)]
-      normColumn   = [1   for i in xrange(dataLength)]
+      norm         = [[]  for i in range(dataLength)]
+      normLength   = [1   for i in range(dataLength)]
+      normShape    = [[]  for i in range(dataLength)]
+      normColumn   = [1   for i in range(dataLength)]
 
-      for i in xrange(dataLength):
+      for i in range(dataLength):
         if headings0[i]['shape'] != headings1[i]['shape']: 
           raise Exception('shape mismatch between {} and {} '.format(headings0[i]['label'],headings1[i]['label']))
         shape[i] = headings0[i]['shape']
-        for j in xrange(np.shape(shape[i])[0]):
+        for j in range(np.shape(shape[i])[0]):
           length[i] *= shape[i][j]
         normShape[i] = normHeadings[i]['shape']
-        for j in xrange(np.shape(normShape[i])[0]):
+        for j in range(np.shape(normShape[i])[0]):
           normLength[i] *= normShape[i][j]
     else:
       raise Exception('trying to compare {} with {} normed by {} data sets'.format(len(headings0),
@@ -332,7 +332,7 @@ class Test():
     table1 = damask.ASCIItable(name=file1,readonly=True)
     table1.head_read()   
 
-    for i in xrange(dataLength):
+    for i in range(dataLength):
       key0    = ('1_' if     length[i]>1 else '') +    headings0[i]['label']
       key1    = ('1_' if     length[i]>1 else '') +    headings1[i]['label']
       normKey = ('1_' if normLength[i]>1 else '') + normHeadings[i]['label']
@@ -350,11 +350,11 @@ class Test():
     line0 = 0
     while table0.data_read():                                                  # read next data line of ASCII table
       if line0 not in skipLines:
-        for i in xrange(dataLength):
-          myData = np.array(map(float,table0.data[column[0][i]:\
-                                                  column[0][i]+length[i]]),'d')
-          normData = np.array(map(float,table0.data[normColumn[i]:\
-                                                    normColumn[i]+normLength[i]]),'d')
+        for i in range(dataLength):
+          myData = np.array(list(map(float,table0.data[column[0][i]:\
+                                                  column[0][i]+length[i]])),'d')
+          normData = np.array(list(map(float,table0.data[normColumn[i]:\
+                                                    normColumn[i]+normLength[i]])),'d')
           data[i] = np.append(data[i],np.reshape(myData,shape[i]))
           if normType == 'pInf':
             norm[i] = np.append(norm[i],np.max(np.abs(normData)))
@@ -362,11 +362,11 @@ class Test():
             norm[i] = np.append(norm[i],np.linalg.norm(np.reshape(normData,normShape[i]),normType))
       line0 += 1
     
-    for i in xrange(dataLength):
-      if not perLine: norm[i] = [np.max(norm[i]) for j in xrange(line0-len(skipLines))]
+    for i in range(dataLength):
+      if not perLine: norm[i] = [np.max(norm[i]) for j in range(line0-len(skipLines))]
       data[i] = np.reshape(data[i],[line0-len(skipLines),length[i]])
       if any(norm[i]) == 0.0 or absTol[i]:
-        norm[i] = [1.0 for j in xrange(line0-len(skipLines))]
+        norm[i] = [1.0 for j in range(line0-len(skipLines))]
         absTol[i] = True
         if perLine:
           logging.warning('At least one norm of {} in 1. table is 0.0, using absolute tolerance'.format(headings0[i]['label']))
@@ -376,9 +376,9 @@ class Test():
     line1 = 0
     while table1.data_read():                                                  # read next data line of ASCII table
       if line1 not in skipLines:
-        for i in xrange(dataLength):
-          myData = np.array(map(float,table1.data[column[1][i]:\
-                                                     column[1][i]+length[i]]),'d')
+        for i in range(dataLength):
+          myData = np.array(list(map(float,table1.data[column[1][i]:\
+                                                     column[1][i]+length[i]])),'d')
           maxError[i] = max(maxError[i],np.linalg.norm(np.reshape(myData-data[i][line1-len(skipLines),:],shape[i]))/
                                                                                    norm[i][line1-len(skipLines)])
       line1 +=1
@@ -386,7 +386,7 @@ class Test():
     if (line0 != line1): raise Exception('found {} lines in 1. table but {} in 2. table'.format(line0,line1))
 
     logging.info(' ********')
-    for i in xrange(dataLength):
+    for i in range(dataLength):
       if absTol[i]:
         logging.info(' * maximum absolute error {} between {} and {}'.format(maxError[i],
                                                                              headings0[i]['label'],
@@ -424,7 +424,7 @@ class Test():
       if column is None: columns[i] = tables[i].labels(raw = True)             # if no column is given, read all
 
     logging.info('comparing ASCIItables statistically')
-    for i in xrange(len(columns)):
+    for i in range(len(columns)):
       columns[i] = columns[0]  if not columns[i] else \
                  ([columns[i]] if not (isinstance(columns[i], Iterable) and not isinstance(columns[i], str)) else \
                    columns[i]
@@ -440,7 +440,7 @@ class Test():
       table.close()
         
     
-    for i in xrange(1,len(data)):
+    for i in range(1,len(data)):
       delta = data[i]-data[i-1]
       normBy = (np.abs(data[i]) + np.abs(data[i-1]))*0.5
       normedDelta = np.where(normBy>preFilter,delta/normBy,0.0)
@@ -480,7 +480,7 @@ class Test():
       if column is None: columns[i] = tables[i].labels(raw = True)             # if no column is given, read all
 
     logging.info('comparing ASCIItables')
-    for i in xrange(len(columns)):
+    for i in range(len(columns)):
       columns[i] = columns[0]  if not columns[i] else \
                  ([columns[i]] if not (isinstance(columns[i], Iterable) and not isinstance(columns[i], str)) else \
                    columns[i]
@@ -499,7 +499,7 @@ class Test():
     
     maximum /= len(tables)
     maximum = np.where(maximum >0.0, maximum, 1)                               # avoid div by zero for empty columns
-    for i in xrange(len(data)):
+    for i in range(len(data)):
       data[i] /= maximum
     
     mask = np.zeros_like(table.data,dtype='bool')
@@ -509,7 +509,7 @@ class Test():
      
     
     allclose = True                                                            # start optimistic
-    for i in xrange(1,len(data)):
+    for i in range(1,len(data)):
       if debug:
         t0 = np.where(mask,0.0,data[i-1])
         t1 = np.where(mask,0.0,data[i  ])
