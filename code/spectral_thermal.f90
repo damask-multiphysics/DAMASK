@@ -245,7 +245,7 @@ type(tSolutionState) function spectral_thermal_solution(guess,timeinc,timeinc_ol
  if (worldrank == 0) then 
    if (spectral_thermal_solution%converged) &
      write(6,'(/,a)') ' ... thermal conduction converged ..................................'
-   write(6,'(/,a,f8.4,2x,f8.4,2x,f8.4,/)',advance='no') ' Minimum|Maximum|Delta Temperature = ',&
+   write(6,'(/,a,f8.4,2x,f8.4,2x,f8.4,/)',advance='no') ' Minimum|Maximum|Delta Temperature / K = ',&
                                                        minTemperature, maxTemperature, stagNorm
    write(6,'(/,a)') ' ==========================================================================='
    flush(6) 

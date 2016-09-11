@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python2.7
 # -*- coding: UTF-8 no BOM -*-
 
 import os,sys,math
@@ -17,6 +17,7 @@ parser = OptionParser(option_class=damask.extendableOption, usage='%prog options
 Add quaternion and/or Bunge Euler angle representation of crystal lattice orientation.
 Orientation is given by quaternion, Euler angles, rotation matrix, or crystal frame coordinates
 (i.e. component vectors of rotation matrix).
+Additional (globally fixed) rotations of the lab frame and/or crystal frame can be applied.
 
 """, version = scriptID)
 
@@ -24,24 +25,27 @@ outputChoices = ['quaternion','rodrigues','eulers']
 parser.add_option('-o', '--output',
                   dest = 'output',
                   action = 'extend', metavar = '<string LIST>',
-                  help = 'output orientation formats {%s}'%(','.join(outputChoices)))
-parser.add_option('-r', '--rotation',
-                  dest='rotation',
-                  type = 'float', nargs = 4, metavar = ' '.join(['float']*4),
-                  help = 'angle and axis to (pre)rotate orientation')
-
+                  help = 'output orientation formats {{{}}}'.format(', '.join(outputChoices)))
 parser.add_option('-s', '--symmetry',
                   dest = 'symmetry',
                   type = 'choice', choices = damask.Symmetry.lattices[1:], metavar='string',
                   help = 'crystal symmetry [%default] {{{}}} '.format(', '.join(damask.Symmetry.lattices[1:])))
+parser.add_option('-d', '--degrees',
+                  dest = 'degrees',
+                  action = 'store_true',
+                  help = 'angles are given in degrees [%default]')
+parser.add_option('-R', '--labrotation',
+                  dest='labrotation',
+                  type = 'float', nargs = 4, metavar = ' '.join(['float']*4),
+                  help = 'angle and axis of additional lab frame rotation')
+parser.add_option('-r', '--crystalrotation',
+                  dest='crystalrotation',
+                  type = 'float', nargs = 4, metavar = ' '.join(['float']*4),
+                  help = 'angle and axis of additional crystal frame rotation')
 parser.add_option('-e', '--eulers',
                   dest = 'eulers',
                   type = 'string', metavar = 'string',
                   help = 'Euler angles label')
-parser.add_option('-d', '--degrees',
-                  dest = 'degrees',
-                  action = 'store_true',
-                  help = 'Euler angles are given in degrees [%default]')
 parser.add_option('-m', '--matrix',
                   dest = 'matrix',
                   type = 'string', metavar = 'string',
@@ -65,7 +69,8 @@ parser.add_option('-q', '--quaternion',
 
 parser.set_defaults(output = [],
                     symmetry = damask.Symmetry.lattices[-1],
-                    rotation = (0.,1.,1.,1.),                                                       # no rotation about 1,1,1
+                    labrotation     = (0.,1.,1.,1.),                                                # no rotation about 1,1,1
+                    crystalrotation = (0.,1.,1.,1.),                                                # no rotation about 1,1,1
                     degrees = False,
                    )
 
@@ -91,16 +96,16 @@ if np.sum(input) != 1: parser.error('needs exactly one input format.')
                          (options.quaternion,4,'quaternion'),
                         ][np.where(input)[0][0]]                                                    # select input label that was requested
 toRadians = math.pi/180.0 if options.degrees else 1.0                                               # rescale degrees to radians
-r = damask.Quaternion().fromAngleAxis(toRadians*options.rotation[0],options.rotation[1:])           # pre-rotation
+r = damask.Quaternion().fromAngleAxis(toRadians*options.crystalrotation[0],options.crystalrotation[1:]) # crystal frame rotation
+R = damask.Quaternion().fromAngleAxis(toRadians*options.    labrotation[0],options.    labrotation[1:]) #     lab frame rotation
 
 # --- loop over input files ------------------------------------------------------------------------
 
 if filenames == []: filenames = [None]
 
 for name in filenames:
-  try:
-    table = damask.ASCIItable(name = name,
-                              buffered = False)
+  try:    table = damask.ASCIItable(name = name,
+                                    buffered = False)
   except: continue
   damask.util.report(scriptName,name)
 
@@ -126,9 +131,9 @@ for name in filenames:
 
   table.info_append(scriptID + '\t' + ' '.join(sys.argv[1:]))
   for output in options.output:
-    if output == 'quaternion': table.labels_append(['{}_quat({})'.format(     i+1,options.symmetry) for i in xrange(4)])
-    if output == 'rodrigues':  table.labels_append(['{}_rodrigues({})'.format(i+1,options.symmetry) for i in xrange(3)])
-    if output == 'eulers':     table.labels_append(['{}_eulers({})'.format(   i+1,options.symmetry) for i in xrange(3)])
+    if   output == 'quaternion': table.labels_append(['{}_{}_{}({})'.format(i+1,'quat',options.symmetry,label) for i in xrange(4)])
+    elif output == 'rodrigues':  table.labels_append(['{}_{}_{}({})'.format(i+1,'rodr',options.symmetry,label) for i in xrange(3)])
+    elif output == 'eulers':     table.labels_append(['{}_{}_{}({})'.format(i+1,'eulr',options.symmetry,label) for i in xrange(3)])
   table.head_write()
 
 # ------------------------------------------ process data ------------------------------------------
@@ -150,12 +155,12 @@ for name in filenames:
       o = damask.Orientation(quaternion = np.array(map(float,table.data[column:column+4])),
                              symmetry   = options.symmetry).reduced()
 
-    o.quaternion = r*o.quaternion
+    o.quaternion = r*o.quaternion*R                                                                 # apply additional lab and crystal frame rotations
 
     for output in options.output:
-      if output == 'quaternion':  table.data_append(o.asQuaternion())
-      if output == 'rodrigues':   table.data_append(o.asRodrigues())
-      if output == 'eulers':      table.data_append(o.asEulers('Bunge', degrees=options.degrees))
+      if   output == 'quaternion': table.data_append(o.asQuaternion())
+      elif output == 'rodrigues':  table.data_append(o.asRodrigues())
+      elif output == 'eulers':     table.data_append(o.asEulers('Bunge', degrees=options.degrees))
     outputAlive = table.data_write()                                                                # output processed line
 
 # ------------------------------------------ output finalization -----------------------------------  

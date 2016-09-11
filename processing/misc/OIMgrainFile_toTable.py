@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python2.7
 # -*- coding: UTF-8 no BOM -*-
 
 import os,sys
@@ -12,7 +12,7 @@ scriptID   = ' '.join([scriptName,damask.version])
 #                                MAIN
 #--------------------------------------------------------------------------------------------------
 
-parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
+parser = OptionParser(option_class=damask.extendableOption, usage='%prog [file[s]]', description = """
 Adds header to OIM grain file to make it accesible as ASCII table
 
 """, version = scriptID)

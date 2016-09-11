@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python2.7
 # -*- coding: UTF-8 no BOM -*-
 
 import os,sys
@@ -8,7 +8,7 @@ import damask
 
 scriptName = os.path.splitext(os.path.basename(__file__))[0]
 scriptID   = ' '.join([scriptName,damask.version])
-sys.path.append(damask.solver.Marc().libraryPath('../../'))
+sys.path.append(damask.solver.Marc().libraryPath())
 
 #-------------------------------------------------------------------------------------------------
 def outMentat(cmd,locals):

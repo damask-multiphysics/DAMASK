@@ -20,10 +20,10 @@ class Marc(Solver):
 
 
 #--------------------------
-  def version(self,rootRelation = ''):
+  def version(self):
     import os,damask.environment
 
-    MSCpath = damask.environment.Environment(rootRelation).options['MSC_ROOT']
+    MSCpath = damask.environment.Environment().options['MSC_ROOT']
     
     for release,subdirs in sorted(list(self.releases.items()),reverse=True):
       for subdir in subdirs:
@@ -35,10 +35,10 @@ class Marc(Solver):
       
     
 #--------------------------
-  def libraryPath(self,rootRelation = '',releases = []):
+  def libraryPath(self,releases = []):
     import os,damask.environment
 
-    MSCpath = damask.environment.Environment(rootRelation).options['MSC_ROOT']
+    MSCpath = damask.environment.Environment().options['MSC_ROOT']
     
     if len(releases) == 0: releases = list(self.releases.keys())
     if type(releases) is not list: releases = [releases]
@@ -53,12 +53,12 @@ class Marc(Solver):
   
 
 #--------------------------
-  def toolsPath(self,rootRelation = '',release = ''):
+  def toolsPath(self,release = ''):
     import os,damask.environment
 
-    MSCpath = damask.environment.Environment(rootRelation).options['MSC_ROOT']
+    MSCpath = damask.environment.Environment().options['MSC_ROOT']
     
-    if len(release) == 0: release = self.version(rootRelation)
+    if len(release) == 0: release = self.version()
     path = '%s/marc%s/tools'%(MSCpath,release)
     if os.path.exists(path): return path
     else: return ''
@@ -66,7 +66,6 @@ class Marc(Solver):
 
 #--------------------------
   def submit_job(self,
-                 rootRelation = '',
                  release      = '',
                  model        = 'model',
                  job          = 'job1',
@@ -79,13 +78,13 @@ class Marc(Solver):
     import os,damask.environment
     import subprocess,shlex
     
-    if len(release) == 0: release = self.version(rootRelation)
+    if len(release) == 0: release = self.version()
 
     if release not in self.releases:
       raise Exception("Unknown MSC.Marc Version %s"%release)
       
 
-    damaskEnv = damask.environment.Environment(rootRelation)
+    damaskEnv = damask.environment.Environment()
     
     user = os.path.join(damaskEnv.relPath('code/'),'DAMASK_marc')                                   # might be updated if special version (symlink) is found
     if compile:
@@ -99,7 +98,7 @@ class Marc(Solver):
     script = 'run_damask%s'%({False:'',True:'_'}[optimization!='' or openMP])
     script =  script+'%s%s'%({False:'',True:optimization}[optimization!=''],{False:'',True:'mp'}[openMP])
     
-    cmd = os.path.join(self.toolsPath(rootRelation,release),script) + \
+    cmd = os.path.join(self.toolsPath(release),script) + \
           ' -jid ' + model + '_' + job + \
           ' -nprocd 1  -autorst 0 -ci n  -cr n  -dcoup 0 -b no -v no'
 

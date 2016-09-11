@@ -20,6 +20,7 @@ class bcolors:
     FAIL = '\033[91m'
     ENDC = '\033[0m'
     BOLD = '\033[1m'
+    DIM  = '\033[2m'
     UNDERLINE = '\033[4m'
 
     def disable(self):
@@ -49,9 +50,10 @@ def croak(what, newline = True):
   sys.stderr.flush()
 
 # -----------------------------
-def report(who,what):
+def report(who = None,
+           what = None):
   """reports script and file name"""
-  croak( (emph(who) if who else '') + (': '+what if what else '') )
+  croak( (emph(who)+': ' if who else '') + (what if what else '') )
 
 
 # -----------------------------
@@ -69,8 +71,18 @@ def report_geom(info,
 
 # -----------------------------
 def emph(what):
-  """emphasizes string on screen"""
+  """boldens string"""
   return bcolors.BOLD+srepr(what)+bcolors.ENDC
+
+# -----------------------------
+def deemph(what):
+  """dims string"""
+  return bcolors.DIM+srepr(what)+bcolors.ENDC
+
+# -----------------------------
+def delete(what):
+  """dims string"""
+  return bcolors.DIM+srepr(what)+bcolors.ENDC
 
 # -----------------------------
 def execute(cmd,

@@ -67,11 +67,9 @@ module prec
    real(pReal), allocatable, dimension(:,:) :: &
      partionedState0, &
      subState0, &
-     state_backup, &
      deltaState, &
      previousDotState, &                                                                            !< state rate of previous xxxx
      previousDotState2, &                                                                           !< state rate two xxxx ago
-     dotState_backup, &                                                                             !< backup of state rate
      RK4dotState
    real(pReal), allocatable, dimension(:,:,:) :: &
      RKCK45dotState
@@ -83,7 +81,7 @@ module prec
      nTwin = 0_pInt, &
      nTrans = 0_pInt
    logical :: & 
-     nonlocal = .false.                                                                             !< absolute tolerance for state integration
+     nonlocal = .false.
    real(pReal), pointer,     dimension(:,:), contiguous :: &
      slipRate, &                                                                                    !< slip rate
      accumulatedSlip                                                                                !< accumulated plastic slip
@@ -115,8 +113,10 @@ module prec
    prec_init, &
    prec_isNaN, &
    dEq, &
+   dEq0, &
    cEq, &
    dNeq, &
+   dNeq0, &
    cNeq
  
 contains
@@ -198,6 +198,39 @@ logical elemental pure function dNeq(a,b,tol)
 
  dNeq = merge(.False., .True.,abs(a-b) <= merge(tol,eps,present(tol))*maxval(abs([a,b])))
 end function dNeq
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief equality to 0comparison for float with double precision
+! replaces "==0" but for certain (relative) tolerance. Counterpart to dNeq0
+! http://www.cygnus-software.com/papers/comparingfloats/comparingfloats.htm
+!--------------------------------------------------------------------------------------------------
+logical elemental pure function dEq0(a,tol)
+
+ implicit none
+ real(pReal), intent(in)           :: a
+ real(pReal), intent(in), optional :: tol
+ real(pReal), parameter            :: eps = 2.220446049250313E-16                                   ! DBL_EPSILON in C
+
+ dEq0 = merge(.True., .False.,abs(a) <= merge(tol,eps,present(tol))*abs(a))
+end function dEq0
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief inequality comparison to 0 for float with double precision
+! replaces "!=0" but for certain (relative) tolerance. Counterpart to dEq0
+! http://www.cygnus-software.com/papers/comparingfloats/comparingfloats.htm
+!--------------------------------------------------------------------------------------------------
+logical elemental pure function dNeq0(a,tol)
+
+ implicit none
+ real(pReal), intent(in)           :: a
+ real(pReal), intent(in), optional :: tol
+ real(pReal), parameter            :: eps = 2.220446049250313E-16                                   ! DBL_EPSILON in C
+
+ dNeq0 = merge(.False., .True.,abs(a) <= merge(tol,eps,present(tol))*abs(a))
+end function dNeq0
+
 
 !--------------------------------------------------------------------------------------------------
 !> @brief equality comparison for complex with double precision

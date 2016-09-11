@@ -1,42 +1,59 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python2.7
 # -*- coding: UTF-8 no BOM -*-
 
 # Makes postprocessing routines acessible from everywhere.
 import os,sys
-from damask import Environment
+import damask
 
-BOLD = '\033[1m'
-ENDC = '\033[0m'
-
-damaskEnv = Environment()
+damaskEnv = damask.Environment()
 baseDir = damaskEnv.relPath('processing/')
-codeDir = damaskEnv.relPath('code/')
-try:
-  binDir = damaskEnv.options['DAMASK_BIN']
-except:
-  binDir = '/usr/local/bin' if os.access('/usr/local/bin', os.W_OK) else os.path.join(os.getenv('HOME'),'bin')
+binDir = damaskEnv.options['DAMASK_BIN']
 
 if not os.path.isdir(binDir):
   os.mkdir(binDir)
 
 #define ToDo list
-processing_subDirs = ['pre','post','misc',]
-processing_extensions = ['.py','.sh',]
-            
+processing_subDirs    = ['pre',
+                         'post',
+                         'misc',
+                        ]
+processing_extensions = ['.py',
+                         '.sh',
+                        ]
+
+sys.stdout.write('\nsymbolic linking...\n')
+
 for subDir in processing_subDirs:
   theDir = os.path.abspath(os.path.join(baseDir,subDir))
 
+  sys.stdout.write('\n'+binDir+' ->\n'+theDir+damask.util.deemph(' ...')+'\n')
+
   for theFile in os.listdir(theDir):
-    if os.path.splitext(theFile)[1] in processing_extensions:                           # only consider files with proper extensions
+    theName,theExt = os.path.splitext(theFile)
+    if theExt in processing_extensions:                           # only consider files with proper extensions
 
       src      = os.path.abspath(os.path.join(theDir,theFile))
-      sym_link = os.path.abspath(os.path.join(binDir,os.path.splitext(theFile)[0]))
+      sym_link = os.path.abspath(os.path.join(binDir,theName))
 
       if os.path.lexists(sym_link):
         os.remove(sym_link)
-        sys.stdout.write(sym_link)
+        output = theName+damask.util.deemph(theExt)
       else:
-        sys.stdout.write(BOLD + sym_link + ENDC)
+        output = damask.util.emph(theName)+damask.util.deemph(theExt)
 
+      sys.stdout.write(damask.util.deemph('... ')+output+'\n')
       os.symlink(src,sym_link)
-      sys.stdout.write(' -> '+src+'\n')
+
+
+sys.stdout.write('\npruning broken links...\n')
+
+brokenLinks = 0
+
+for filename in os.listdir(binDir):
+  path = os.path.join(binDir,filename)
+  if os.path.islink(path) and not os.path.exists(path):
+    sys.stdout.write(' '+damask.util.delete(path)+'\n')
+    os.remove(path)
+    brokenLinks += 1
+
+sys.stdout.write(('none.' if brokenLinks == 0 else '')+'\n')

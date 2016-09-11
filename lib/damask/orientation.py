@@ -342,7 +342,7 @@ class Quaternion:
       Orientation as Bunge-Euler angles
 
       conversion of ACTIVE rotation to Euler angles taken from:
-      Melcher, A.; Unser, A.; Reichhardt, M.; Nestler, B.; Pötschke, M.; Selzer, M.
+      Melcher, A.; Unser, A.; Reichhardt, M.; Nestler, B.; Poetschke, M.; Selzer, M.
       Conversion of EBSD data by a quaternion based algorithm to be used for grain structure simulations
       Technische Mechanik 30 (2010) pp 401--413
       """
@@ -413,11 +413,15 @@ class Quaternion:
 
 
     @classmethod
-    def fromAngleAxis(cls, angle, axis):
+    def fromAngleAxis(cls,
+                      angle,
+                      axis,
+                      degrees = False):
       if not isinstance(axis, np.ndarray): axis = np.array(axis,dtype='d')
       axis = axis.astype(float)/np.linalg.norm(axis)
-      s = math.sin(angle / 2.0)
-      w = math.cos(angle / 2.0)
+      angle = np.radians(angle) if degrees else angle
+      s = math.sin(0.5 * angle)
+      w = math.cos(0.5 * angle)
       x = axis[0] * s
       y = axis[1] * s
       z = axis[2] * s
@@ -425,27 +429,26 @@ class Quaternion:
 
 
     @classmethod
-    def fromEulers(cls, eulers, type = 'Bunge'):
+    def fromEulers(cls,
+                   eulers,
+                   type = 'Bunge',
+                   degrees = False):
+      if not isinstance(eulers, np.ndarray): eulers = np.array(eulers,dtype='d')
+      eulers = np.radians(eulers) if degrees else eulers
 
-      eulers *= 0.5                                                                  # reduce to half angles
-
-      c1 = math.cos(eulers[0])
-      s1 = math.sin(eulers[0])
-      c2 = math.cos(eulers[1])
-      s2 = math.sin(eulers[1])
-      c3 = math.cos(eulers[2])
-      s3 = math.sin(eulers[2])
+      c = np.cos(0.5 * eulers)
+      s = np.sin(0.5 * eulers)
 
       if type.lower() == 'bunge' or type.lower() == 'zxz':
-        w =   c1 * c2 * c3 - s1 * c2 * s3
-        x =   c1 * s2 * c3 + s1 * s2 * s3
-        y = - c1 * s2 * s3 + s1 * s2 * c3
-        z =   c1 * c2 * s3 + s1 * c2 * c3
+        w =   c[0] * c[1] * c[2] - s[0] * c[1] * s[2]
+        x =   c[0] * s[1] * c[2] + s[0] * s[1] * s[2]
+        y = - c[0] * s[1] * s[2] + s[0] * s[1] * c[2]
+        z =   c[0] * c[1] * s[2] + s[0] * c[1] * c[2]
       else:
-        w = c1 * c2 * c3 - s1 * s2 * s3
-        x = s1 * s2 * c3 + c1 * c2 * s3
-        y = s1 * c2 * c3 + c1 * s2 * s3
-        z = c1 * s2 * c3 - s1 * c2 * s3
+        w = c[0] * c[1] * c[2] - s[0] * s[1] * s[2]
+        x = s[0] * s[1] * c[2] + c[0] * c[1] * s[2]
+        y = s[0] * c[1] * c[2] + c[0] * s[1] * s[2]
+        z = c[0] * s[1] * c[2] - s[0] * c[1] * s[2]
       return cls([w,x,y,z])
 
 
@@ -819,6 +822,7 @@ class Orientation:
                Eulers     = None,
                random     = False,                                                                  # integer to have a fixed seed or True for real random
                symmetry   = None,
+               degrees    = False,
               ):
     if random:                                                                                      # produce random orientation
       if isinstance(random, bool ):
@@ -826,16 +830,16 @@ class Orientation:
       else:
         self.quaternion = Quaternion.fromRandom(randomSeed=random)
     elif isinstance(Eulers, np.ndarray) and Eulers.shape == (3,):                                   # based on given Euler angles
-      self.quaternion = Quaternion.fromEulers(Eulers,'bunge')
+      self.quaternion = Quaternion.fromEulers(Eulers,type='bunge',degrees=degrees)
     elif isinstance(matrix, np.ndarray) :                                                           # based on given rotation matrix
       self.quaternion = Quaternion.fromMatrix(matrix)
     elif isinstance(angleAxis, np.ndarray) and angleAxis.shape == (4,):                             # based on given angle and rotation axis
-      self.quaternion = Quaternion.fromAngleAxis(angleAxis[0],angleAxis[1:4])
+      self.quaternion = Quaternion.fromAngleAxis(angleAxis[0],angleAxis[1:4],degrees=degrees)
     elif isinstance(Rodrigues, np.ndarray) and Rodrigues.shape == (3,):                             # based on given Rodrigues vector
       self.quaternion = Quaternion.fromRodrigues(Rodrigues)
     elif isinstance(quaternion, Quaternion):                                                        # based on given quaternion
       self.quaternion = quaternion.homomorphed()
-    elif isinstance(quaternion, np.ndarray) and quaternion.shape == (4,):                           # based on given quaternion
+    elif isinstance(quaternion, np.ndarray) and quaternion.shape == (4,):                           # based on given quaternion-like array
       self.quaternion = Quaternion(quaternion).homomorphed()
 
     self.symmetry = Symmetry(symmetry)

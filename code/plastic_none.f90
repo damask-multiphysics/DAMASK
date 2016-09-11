@@ -34,7 +34,6 @@ subroutine plastic_none_init
  use IO, only: &
    IO_timeStamp
  use numerics, only: &
-   worldrank, &
    numerics_integrator
  use material, only: &
    phase_plasticity, &
@@ -53,11 +52,9 @@ subroutine plastic_none_init
    sizeDotState, &
    sizeDeltaState
  
- mainProcess: if (worldrank == 0) then 
-   write(6,'(/,a)')   ' <<<+-  constitutive_'//PLASTICITY_NONE_label//' init  -+>>>'
-   write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
+ write(6,'(/,a)')   ' <<<+-  constitutive_'//PLASTICITY_NONE_label//' init  -+>>>'
+ write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
- endif mainProcess
  
  maxNinstance = int(count(phase_plasticity == PLASTICITY_none_ID),pInt)
  if (maxNinstance == 0_pInt) return
@@ -84,11 +81,9 @@ subroutine plastic_none_init
      allocate(plasticState(phase)%partionedState0    (sizeState,NofMyPhase))
      allocate(plasticState(phase)%subState0          (sizeState,NofMyPhase))
      allocate(plasticState(phase)%state              (sizeState,NofMyPhase))
-     allocate(plasticState(phase)%state_backup       (sizeState,NofMyPhase))
 
      allocate(plasticState(phase)%dotState           (sizeDotState,NofMyPhase))
      allocate(plasticState(phase)%deltaState        (sizeDeltaState,NofMyPhase))
-     allocate(plasticState(phase)%dotState_backup    (sizeDotState,NofMyPhase))
      if (any(numerics_integrator == 1_pInt)) then
        allocate(plasticState(phase)%previousDotState (sizeDotState,NofMyPhase))
        allocate(plasticState(phase)%previousDotState2(sizeDotState,NofMyPhase))

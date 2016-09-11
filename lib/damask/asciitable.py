@@ -512,7 +512,7 @@ class ASCIItable():
         columns += list(range(c,c + \
                           (d if str(c) != str(labels[present[i]]) else \
                            1)))
-      use = np.array(columns)
+      use = np.array(columns) if len(columns) > 0 else None
 
       self.tags = list(np.array(self.tags)[use])                                                    # update labels with valid subset
 

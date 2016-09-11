@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python2.7
 # -*- coding: UTF-8 no BOM -*-
 
 import os,sys
@@ -126,7 +126,7 @@ elif options.palette:
   for theColor in theMap.export(format='list',steps=options.colorcount):
     print '\t'.join(map(lambda x: str(int(255*x)),theColor))
 else:                                                                                               # connect to Mentat and change colorMap
-  sys.path.append(damask.solver.Marc().libraryPath('../../'))
+  sys.path.append(damask.solver.Marc().libraryPath())
   try:
     import py_mentat
     print 'waiting to connect...'

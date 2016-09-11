@@ -7,7 +7,7 @@ SHELL = /bin/sh
 # OPTIONS = standard (alternative): meaning
 #-------------------------------------------------------------
 # F90            = ifort (gfortran): compiler type, choose Intel or GNU
-# FCOMPILERNAME   = name of the compiler executable (if not the same as the ype), e.g. using mpich-g90 instead of ifort
+# FCOMPILERNAME   = name of the compiler executable (if not the same as the type), e.g. using mpich-g90 instead of ifort
 # PORTABLE       = TRUE (FALSE): decision, if executable is optimized for the machine on which it was built.
 # OPTIMIZATION   = DEFENSIVE (OFF,AGGRESSIVE,ULTRA): Optimization mode: O2, O0, O3 + further options for most files, O3 + further options for all files
 # OPENMP         = TRUE (FALSE): OpenMP multiprocessor support
@@ -257,10 +257,10 @@ COMPILE_OPTIONS_gfortran :=-DDAMASKVERSION=\"${DAMASKVERSION}\"\
 #-Wunsafe-loop-optimizations:   warn if the loop cannot be optimized due to nontrivial assumptions.
 #-Wstrict-overflow:
 
-DEBUG_OPTIONS_gfortran    :=-g\
-                           -fbacktrace\
-                           -fdump-core\
-                           -fcheck=all\
+DEBUG_OPTIONS_gfortran    :=-g \
+                           -fbacktrace \
+                           -fdump-core \
+                           -fcheck=all \
                            -ffpe-trap=invalid,zero,overflow
 
 ###################################################################################################
@@ -300,37 +300,60 @@ COMPILE         =$(OPENMP_FLAG_$(F90)) $(STANDARD_CHECK_$(F90)) $(OPTIMIZATION_$
 COMPILE_MAXOPTI =$(OPENMP_FLAG_$(F90)) $(STANDARD_CHECK_$(F90)) $(OPTIMIZATION_$(MAXOPTI)_$(F90)) $(COMPILE_OPTIONS_$(F90)) $(INCLUDE_DIRS) $(PRECISION_$(F90))
 ###################################################################################################
 SOURCE_FILES = \
-   source_thermal_dissipation.o source_thermal_externalheat.o \
-   source_damage_isoBrittle.o source_damage_isoDuctile.o source_damage_anisoBrittle.o source_damage_anisoDuctile.o \
-   source_vacancy_phenoplasticity.o source_vacancy_irradiation.o source_vacancy_thermalfluc.o
+   source_thermal_dissipation.o \
+   source_thermal_externalheat.o \
+   source_damage_isoBrittle.o \
+   source_damage_isoDuctile.o \
+   source_damage_anisoBrittle.o \
+   source_damage_anisoDuctile.o \
+   source_vacancy_phenoplasticity.o \
+   source_vacancy_irradiation.o \
+   source_vacancy_thermalfluc.o
 
 KINEMATICS_FILES = \
-   kinematics_cleavage_opening.o kinematics_slipplane_opening.o \
+   kinematics_cleavage_opening.o \
+   kinematics_slipplane_opening.o \
    kinematics_thermal_expansion.o \
-   kinematics_vacancy_strain.o kinematics_hydrogen_strain.o
+   kinematics_vacancy_strain.o \
+   kinematics_hydrogen_strain.o
 
 PLASTIC_FILES = \
-   plastic_dislotwin.o plastic_disloUCLA.o plastic_isotropic.o \
-   plastic_phenopowerlaw.o plastic_titanmod.o plastic_nonlocal.o plastic_none.o \
+   plastic_dislotwin.o \
+   plastic_disloUCLA.o \
+   plastic_isotropic.o \
+   plastic_phenopowerlaw.o \
+   plastic_titanmod.o \
+   plastic_nonlocal.o \
+   plastic_none.o \
    plastic_phenoplus.o
 
 THERMAL_FILES = \
-   thermal_isothermal.o thermal_adiabatic.o thermal_conduction.o
+   thermal_isothermal.o \
+   thermal_adiabatic.o \
+   thermal_conduction.o
 
 DAMAGE_FILES = \
-   damage_none.o damage_local.o damage_nonlocal.o
+   damage_none.o \
+   damage_local.o \
+   damage_nonlocal.o
 
 VACANCYFLUX_FILES = \
-   vacancyflux_isoconc.o vacancyflux_isochempot.o vacancyflux_cahnhilliard.o
+   vacancyflux_isoconc.o \
+   vacancyflux_isochempot.o \
+   vacancyflux_cahnhilliard.o
 
 POROSITY_FILES = \
-   porosity_none.o porosity_phasefield.o
+   porosity_none.o \
+   porosity_phasefield.o
 
 HYDROGENFLUX_FILES = \
-   hydrogenflux_isoconc.o hydrogenflux_cahnhilliard.o
+   hydrogenflux_isoconc.o \
+   hydrogenflux_cahnhilliard.o
 
 HOMOGENIZATION_FILES = \
-   homogenization_RGC.o homogenization_isostrain.o homogenization_none.o
+   homogenization_RGC.o \
+   homogenization_isostrain.o \
+   homogenization_none.o
 
 #####################
 # Spectral Solver
@@ -351,11 +374,28 @@ DAMASK_spectral.o: INTERFACENAME   := spectral_interface.f90
 SPECTRAL_SOLVER_FILES = spectral_mech_AL.o spectral_mech_Basic.o spectral_mech_Polarisation.o \
                         spectral_thermal.o spectral_damage.o
 
-SPECTRAL_FILES = C_routines.o system_routines.o prec.o DAMASK_interface.o IO.o numerics.o debug.o math.o \
-                 FEsolving.o mesh.o material.o lattice.o \
-                 $(SOURCE_FILES) $(KINEMATICS_FILES) $(PLASTIC_FILES) constitutive.o \
+SPECTRAL_FILES = C_routines.o \
+                 system_routines.o \
+                 prec.o \
+                 DAMASK_interface.o \
+                 IO.o \
+                 numerics.o \
+                 debug.o \
+                 math.o \
+                 FEsolving.o \
+                 mesh.o \
+                 material.o \
+                 lattice.o \
+                 $(SOURCE_FILES) \
+                 $(KINEMATICS_FILES) \
+                 $(PLASTIC_FILES) \
+                 constitutive.o \
                  crystallite.o \
-                 $(THERMAL_FILES) $(DAMAGE_FILES) $(VACANCYFLUX_FILES) $(HYDROGENFLUX_FILES) $(POROSITY_FILES) \
+                 $(THERMAL_FILES) \
+                 $(DAMAGE_FILES) \
+                 $(VACANCYFLUX_FILES) \
+                 $(HYDROGENFLUX_FILES) \
+                 $(POROSITY_FILES) \
                  $(HOMOGENIZATION_FILES) homogenization.o \
                  CPFEM2.o \
                  spectral_utilities.o \
@@ -401,14 +441,31 @@ DAMASK_FEM.exe: INCLUDE_DIRS    += -I./
 
 FEM_SOLVER_FILES = FEM_mech.o FEM_thermal.o FEM_damage.o FEM_vacancyflux.o FEM_porosity.o FEM_hydrogenflux.o
 
-FEM_FILES      = prec.o DAMASK_interface.o FEZoo.o IO.o numerics.o debug.o math.o \
-                 FEsolving.o mesh.o material.o lattice.o \
-                 $(SOURCE_FILES) $(KINEMATICS_FILES) $(PLASTIC_FILES) constitutive.o \
+FEM_FILES      = prec.o \
+                 DAMASK_interface.o \
+                 FEZoo.o \
+                 IO.o \
+                 numerics.o \
+                 debug.o \
+                 math.o \
+                 FEsolving.o \
+                 mesh.o \
+                 material.o \
+                 lattice.o \
+                 $(SOURCE_FILES) \
+                 $(KINEMATICS_FILES) \
+                 $(PLASTIC_FILES) \
+                 constitutive.o \
                  crystallite.o \
-                 $(THERMAL_FILES) $(DAMAGE_FILES) $(VACANCYFLUX_FILES) $(HYDROGENFLUX_FILES) $(POROSITY_FILES) \
+                 $(THERMAL_FILES) \
+                 $(DAMAGE_FILES) \
+                 $(VACANCYFLUX_FILES) \
+                 $(HYDROGENFLUX_FILES) \
+                 $(POROSITY_FILES) \
                  $(HOMOGENIZATION_FILES) homogenization.o \
                  CPFEM.o \
-                 FEM_utilities.o $(FEM_SOLVER_FILES)
+                 FEM_utilities.o \
+                 $(FEM_SOLVER_FILES)
 
 DAMASK_FEM.exe:                DAMASK_FEM_driver.o
 	$(PREFIX) $(LINKERNAME) $(OPENMP_FLAG_$(F90)) $(LINK_OPTIONS_$(F90)) $(STANDARD_CHECK_$(F90))  $(OPTIMIZATION_$(MAXOPTI)_$(F90)) \
@@ -658,8 +715,8 @@ tidy:
 	@rm -rf *.inst.f90  # for instrumentation
 	@rm -rf *.pomp.f90  # for instrumentation
 	@rm -rf *.pp.f90    # for instrumentation
-	@rm -rf *.pdb       # for instrumnentation
-	@rm -rf *.opari.inc # for instrumnentation
+	@rm -rf *.pdb       # for instrumentation
+	@rm -rf *.opari.inc # for instrumentation
 
 .PHONY: cleanDAMASK
 cleanDAMASK:

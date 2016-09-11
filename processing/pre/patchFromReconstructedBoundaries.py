@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python2.7
 # -*- coding: UTF-8 no BOM -*-
 
 import sys,os,math,re
@@ -15,7 +15,7 @@ try:                                        # check for Python Image Lib
 except:
   ImageCapability = False
 
-sys.path.append(damask.solver.Marc().libraryPath('../../'))
+sys.path.append(damask.solver.Marc().libraryPath())
 
 try:                                        # check for MSC.Mentat Python interface
   import py_mentat

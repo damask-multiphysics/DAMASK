@@ -158,7 +158,8 @@ module math
    math_areaTriangle, &
    math_rotate_forward33, &
    math_rotate_backward33, &
-   math_rotate_forward3333
+   math_rotate_forward3333, &
+   math_limit
  private :: &
    math_partition, &
    halton, &
@@ -178,7 +179,6 @@ subroutine math_init
  use, intrinsic :: iso_fortran_env                                                                  ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
  use prec,     only: tol_math_check
  use numerics, only: &
-   worldrank, &
    fixedSeed
  use IO,       only: IO_error, IO_timeStamp
 
@@ -193,11 +193,9 @@ subroutine math_init
                                                                                                     ! comment the first random_seed call out, set randSize to 1, and use ifort
  character(len=64) :: error_msg
 
- mainProcess: if (worldrank == 0) then 
-   write(6,'(/,a)')   ' <<<+-  math init  -+>>>'
-   write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
+ write(6,'(/,a)')   ' <<<+-  math init  -+>>>'
+ write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
- endif mainProcess
 
  call random_seed(size=randSize)
  if (allocated(randInit)) deallocate(randInit)
@@ -216,13 +214,11 @@ subroutine math_init
    call random_number(randTest(i))
  enddo
 
- mainProcess2: if (worldrank == 0) then 
-   write(6,*) 'size  of random seed:    ', randSize
-   do i =1, randSize
-     write(6,*) 'value of random seed:    ', i, randInit(i)
-   enddo
-   write(6,'(a,4(/,26x,f17.14),/)') ' start of random sequence: ', randTest
- endif mainProcess2 
+ write(6,'(a,I2)') ' size  of random seed:    ', randSize
+ do i =1, randSize
+   write(6,'(a,I2,I14)') ' value of random seed:    ', i, randInit(i)
+ enddo
+ write(6,'(a,4(/,26x,f17.14),/)') ' start of random sequence: ', randTest
 
  call random_seed(put = randInit)
 
@@ -705,7 +701,7 @@ end function math_transpose33
 !--------------------------------------------------------------------------------------------------
 pure function math_inv33(A)
  use prec, only: &
-   dNeq
+   dNeq0
 
  implicit none
  real(pReal),dimension(3,3),intent(in)  :: A
@@ -718,7 +714,7 @@ pure function math_inv33(A)
 
  DetA = A(1,1) * math_inv33(1,1) + A(1,2) * math_inv33(2,1) + A(1,3) * math_inv33(3,1)
 
- if (dNeq(DetA,0.0_pReal)) then
+ if (dNeq0(DetA)) then
    math_inv33(1,2) = -A(1,2) * A(3,3) + A(1,3) * A(3,2)
    math_inv33(2,2) =  A(1,1) * A(3,3) - A(1,3) * A(3,1)
    math_inv33(3,2) = -A(1,1) * A(3,2) + A(1,2) * A(3,1)
@@ -743,7 +739,7 @@ end function math_inv33
 !--------------------------------------------------------------------------------------------------
 pure subroutine math_invert33(A, InvA, DetA, error)
  use prec, only: &
-   dEq
+   dEq0
 
  implicit none
  logical, intent(out) :: error
@@ -757,7 +753,7 @@ pure subroutine math_invert33(A, InvA, DetA, error)
 
  DetA = A(1,1) * InvA(1,1) + A(1,2) * InvA(2,1) + A(1,3) * InvA(3,1)
 
- if (dEq(DetA,0.0_pReal)) then
+ if (dEq0(DetA)) then
    InvA = 0.0_pReal
    error = .true.
  else
@@ -1081,7 +1077,7 @@ pure function math_Plain99to3333(m99)
  integer(pInt) :: i,j
 
  forall (i=1_pInt:9_pInt,j=1_pInt:9_pInt) math_Plain99to3333(mapPlain(1,i),mapPlain(2,i),&
-     mapPlain(1,j),mapPlain(2,j)) = m99(i,j)
+   mapPlain(1,j),mapPlain(2,j)) = m99(i,j)
 
 end function math_Plain99to3333
 
@@ -1193,10 +1189,10 @@ function math_qRand()
  real(pReal), dimension(3) :: rnd
 
  call halton(3_pInt,rnd)
- math_qRand(1) = cos(2.0_pReal*PI*rnd(1))*sqrt(rnd(3))
- math_qRand(2) = sin(2.0_pReal*PI*rnd(2))*sqrt(1.0_pReal-rnd(3))
- math_qRand(3) = cos(2.0_pReal*PI*rnd(2))*sqrt(1.0_pReal-rnd(3))
- math_qRand(4) = sin(2.0_pReal*PI*rnd(1))*sqrt(rnd(3))
+ math_qRand = [cos(2.0_pReal*PI*rnd(1))*sqrt(rnd(3)), &
+               sin(2.0_pReal*PI*rnd(2))*sqrt(1.0_pReal-rnd(3)), &
+               cos(2.0_pReal*PI*rnd(2))*sqrt(1.0_pReal-rnd(3)), &
+               sin(2.0_pReal*PI*rnd(1))*sqrt(rnd(3))]
 
 end function math_qRand
 
@@ -1263,7 +1259,7 @@ end function math_qNorm
 !--------------------------------------------------------------------------------------------------
 pure function math_qInv(Q)
  use prec, only: &
-   dNeq
+   dNeq0
 
  implicit none
  real(pReal), dimension(4), intent(in) ::  Q
@@ -1273,7 +1269,7 @@ pure function math_qInv(Q)
  math_qInv = 0.0_pReal
 
  squareNorm = math_qDot(Q,Q)
- if (dNeq(squareNorm,0.0_pReal)) math_qInv = math_qConj(Q) / squareNorm
+ if (dNeq0(squareNorm)) math_qInv = math_qConj(Q) / squareNorm
 
 end function math_qInv
 
@@ -1474,7 +1470,7 @@ pure function math_axisAngleToR(axis,omega)
  real(pReal), dimension(3) :: axisNrm
  real(pReal) :: norm,s,c,c1
 
- norm = sqrt(math_mul3x3(axis,axis))
+ norm = norm2(axis)
  if (norm > 1.0e-8_pReal) then                             ! non-zero rotation
    axisNrm = axis/norm                                     ! normalize axis to be sure
 
@@ -1580,7 +1576,7 @@ pure function math_qToR(q)
 
  S = reshape( [0.0_pReal,     -q(4),      q(3), &
                     q(4), 0.0_pReal,     -q(2), &
-                   -q(3),      q(2), 0.0_pReal],[3,3])                                             ! notation is transposed
+                   -q(3),      q(2), 0.0_pReal],[3,3])                                              ! notation is transposed
 
  math_qToR = (2.0_pReal * q(1)*q(1) - 1.0_pReal) * math_I3 &
            + 2.0_pReal * T - 2.0_pReal * q(1) * S
@@ -1604,17 +1600,17 @@ pure function math_qToEuler(qPassive)
 
  q = math_qConj(qPassive)    ! convert to active rotation, since formulas are defined for active rotations
 
- math_qToEuler(2) = acos(1.0_pReal-2.0_pReal*(q(2)*q(2)+q(3)*q(3)))
+ math_qToEuler(2) = acos(1.0_pReal-2.0_pReal*(q(2)**2+q(3)**2))
 
  if (abs(math_qToEuler(2)) < 1.0e-6_pReal) then
    math_qToEuler(1) = sign(2.0_pReal*acos(math_limit(q(1),-1.0_pReal, 1.0_pReal)),q(4))
    math_qToEuler(3) = 0.0_pReal
  else
-   math_qToEuler(1) = atan2(q(1)*q(3)+q(2)*q(4), q(1)*q(2)-q(3)*q(4))
+   math_qToEuler(1) = atan2(+q(1)*q(3)+q(2)*q(4), q(1)*q(2)-q(3)*q(4))
    math_qToEuler(3) = atan2(-q(1)*q(3)+q(2)*q(4), q(1)*q(2)+q(3)*q(4))
  endif
 
- math_qToEuler = merge(math_qToEuler + [2.0_pReal*PI, PI, 2.0_pReal*PI], &                           ! ensure correct range
+ math_qToEuler = merge(math_qToEuler + [2.0_pReal*PI, PI, 2.0_pReal*PI], &                          ! ensure correct range
                        math_qToEuler,                                    math_qToEuler<0.0_pReal)
 
 end function math_qToEuler
@@ -2078,7 +2074,7 @@ end function math_eigenvectorBasisSym33
 !--------------------------------------------------------------------------------------------------
 function math_rotationalPart33(m)
  use prec, only: &
-   dEq
+   dEq0
  use IO, only: &
    IO_warning
 
@@ -2090,7 +2086,7 @@ function math_rotationalPart33(m)
  U = math_eigenvectorBasisSym33(math_mul33x33(transpose(m),m))
  Uinv = math_inv33(U)
 
- inversionFailed: if (all(dEq(Uinv,0.0_pReal))) then
+ inversionFailed: if (all(dEq0(Uinv))) then
    math_rotationalPart33 = math_I3
    call IO_warning(650_pInt)
  else inversionFailed

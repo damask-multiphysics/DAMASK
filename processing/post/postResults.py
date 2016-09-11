@@ -1,7 +1,7 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python2.7
 # -*- coding: UTF-8 no BOM -*-
 
-import os,sys,math,re,time,struct,string
+import os,sys,math,re,time,struct
 import damask
 from optparse import OptionParser, OptionGroup
 
@@ -18,7 +18,7 @@ fileExtensions = { \
 # -----------------------------
 class vector:   # mimic py_post node object
   x,y,z = [None,None,None]
-  
+
   def __init__(self,coords):
     self.x = coords[0]
     self.y = coords[1]
@@ -102,7 +102,7 @@ class MPIEspectral_result:    # mimic py_post result object
     self._frequencies = self._keyedPackedArray('frequencies:',count=self.N_loadcases,type='i')
     if all ( i is None for i in self._frequencies):
       self._frequencies = self._keyedPackedArray('frequencies',count=self.N_loadcases,type='i')
-    
+
     self._increments  = self._keyedPackedArray('increments:',count=self.N_loadcases,type='i')
     if all (i is None for i in self._increments):
       self._increments  = self._keyedPackedArray('increments',count=self.N_loadcases,type='i')
@@ -111,7 +111,7 @@ class MPIEspectral_result:    # mimic py_post result object
     if self.startingIncrement is None:
       self.startingIncrement = self._keyedPackedArray('startingIncrement',count=1,type='i')[0]
 
-   
+
     self._times       = self._keyedPackedArray('times:',count=self.N_loadcases,type='d')
     if all (i is None for i in self._times):
       self._times       = self._keyedPackedArray('times',count=self.N_loadcases,type='d')
@@ -119,15 +119,15 @@ class MPIEspectral_result:    # mimic py_post result object
     self._logscales   = self._keyedPackedArray('logscales:',count=self.N_loadcases,type='i')
     if all (i is None for i in self._logscales):
       self._logscales   = self._keyedPackedArray('logscales',count=self.N_loadcases,type='i')
-    
+
     self.size         = self._keyedPackedArray('size:',count=3,type='d')
     if self.size == [None,None,None]:                                                               # no 'size' found, try legacy alias 'dimension'
       self.size       = self._keyedPackedArray('dimension',count=3,type='d')
-    
+
     self.grid         = self._keyedPackedArray('grid:',count=3,type='i')
     if self.grid == [None,None,None]:                                                               # no 'grid' found, try legacy alias 'resolution'
       self.grid         = self._keyedPackedArray('resolution',count=3,type='i')
-    
+
     self.N_nodes      = (self.grid[0]+1)*(self.grid[1]+1)*(self.grid[2]+1)
     self.N_elements   =  self.grid[0]   * self.grid[1]   * self.grid[2]
 
@@ -139,7 +139,7 @@ class MPIEspectral_result:    # mimic py_post result object
     self.N_increments = 1                                                    # add zero'th entry
     for i in range(self.N_loadcases):
       self.N_increments += self._increments[i]//self._frequencies[i]
-    
+
 # parameters for file handling depending on output format
 
     if options.legacy:
@@ -176,17 +176,17 @@ class MPIEspectral_result:    # mimic py_post result object
     name = ''
     filepos=0                                                           # start at the beginning
     while name != identifier and filepos < self.dataOffset:             # stop searching when found or when reached end of header
-      self.file.seek(filepos)                     
+      self.file.seek(filepos)
 # read the starting tag in front of the keyword (Fortran indicates start and end of writing by a 4 byte tag indicating the length of the following data)
       dataLen=struct.unpack('i',self.file.read(4))[0]
       name = self.file.read(len(identifier))                                                        # anticipate identifier
-      start=filepos+(4+len(identifier))                                                             # position of the values for the found key  
+      start=filepos+(4+len(identifier))                                                             # position of the values for the found key
       filepos=filepos+(4+dataLen+4)                                                                 # forward to next keyword
- 
+
     if name==identifier:                                                                            # found the correct name
       key['pos']  = start                                                                           # save position
       key['name'] = name
-    return key    
+    return key
 
   def _keyedPackedArray(self,identifier,count = 3,type = 'd',default = None):
     bytecount = {'d': 8,'i': 4}
@@ -251,10 +251,10 @@ class MPIEspectral_result:    # mimic py_post result object
 
   def element_sequence(self,e):
     return e-1
- 
+
   def element_id(self,e):
     return e+1
- 
+
   def element(self,e):
     a = self.grid[0]+1
     b = self.grid[1]+1
@@ -291,7 +291,7 @@ class MPIEspectral_result:    # mimic py_post result object
         print 'seeking',incStart+where
         print 'e',e,'idx',idx
         sys.exit(1)
-    
+
     else:
       self.fourByteLimit = 2**31 -1 -8
 # header & footer + extra header and footer for 4 byte int range (Fortran)
@@ -309,7 +309,7 @@ class MPIEspectral_result:    # mimic py_post result object
             data  += self.file.read(1)
             where += 1
           value = struct.unpack('d',data)[0]
-        else: 
+        else:
           self.file.seek(incStart+where+(where//self.fourByteLimit)*8+4)
           value = struct.unpack('d',self.file.read(8))[0]
       except:
@@ -328,39 +328,39 @@ class MPIEspectral_result:    # mimic py_post result object
 # -----------------------------
 def ipCoords(elemType, nodalCoordinates):
   """returns IP coordinates for a given element"""
-  nodeWeightsPerNode =  { 
-              7:    [ [27.0,  9.0,  3.0,  9.0,  9.0,  3.0,  1.0,  3.0], 
-                      [ 9.0, 27.0,  9.0,  3.0,  3.0,  9.0,  3.0,  1.0], 
-                      [ 3.0,  9.0, 27.0,  9.0,  1.0,  3.0,  9.0,  3.0], 
-                      [ 9.0,  3.0,  9.0, 27.0,  3.0,  1.0,  3.0,  9.0], 
-                      [ 9.0,  3.0,  1.0,  3.0, 27.0,  9.0,  3.0,  9.0], 
-                      [ 3.0,  9.0,  3.0,  1.0,  9.0, 27.0,  9.0,  3.0], 
-                      [ 1.0,  3.0,  9.0,  3.0,  3.0,  9.0, 27.0,  9.0], 
-                      [ 3.0,  1.0,  3.0,  9.0,  9.0,  3.0,  9.0, 27.0] ], 
-              57:   [ [27.0,  9.0,  3.0,  9.0,  9.0,  3.0,  1.0,  3.0], 
-                      [ 9.0, 27.0,  9.0,  3.0,  3.0,  9.0,  3.0,  1.0], 
-                      [ 3.0,  9.0, 27.0,  9.0,  1.0,  3.0,  9.0,  3.0], 
-                      [ 9.0,  3.0,  9.0, 27.0,  3.0,  1.0,  3.0,  9.0], 
-                      [ 9.0,  3.0,  1.0,  3.0, 27.0,  9.0,  3.0,  9.0], 
-                      [ 3.0,  9.0,  3.0,  1.0,  9.0, 27.0,  9.0,  3.0], 
-                      [ 1.0,  3.0,  9.0,  3.0,  3.0,  9.0, 27.0,  9.0], 
-                      [ 3.0,  1.0,  3.0,  9.0,  9.0,  3.0,  9.0, 27.0] ], 
-              117:  [ [ 1.0,  1.0,  1.0,  1.0,  1.0,  1.0,  1.0,  1.0] ], 
+  nodeWeightsPerNode =  {
+              7:    [ [27.0,  9.0,  3.0,  9.0,  9.0,  3.0,  1.0,  3.0],
+                      [ 9.0, 27.0,  9.0,  3.0,  3.0,  9.0,  3.0,  1.0],
+                      [ 3.0,  9.0, 27.0,  9.0,  1.0,  3.0,  9.0,  3.0],
+                      [ 9.0,  3.0,  9.0, 27.0,  3.0,  1.0,  3.0,  9.0],
+                      [ 9.0,  3.0,  1.0,  3.0, 27.0,  9.0,  3.0,  9.0],
+                      [ 3.0,  9.0,  3.0,  1.0,  9.0, 27.0,  9.0,  3.0],
+                      [ 1.0,  3.0,  9.0,  3.0,  3.0,  9.0, 27.0,  9.0],
+                      [ 3.0,  1.0,  3.0,  9.0,  9.0,  3.0,  9.0, 27.0] ],
+              57:   [ [27.0,  9.0,  3.0,  9.0,  9.0,  3.0,  1.0,  3.0],
+                      [ 9.0, 27.0,  9.0,  3.0,  3.0,  9.0,  3.0,  1.0],
+                      [ 3.0,  9.0, 27.0,  9.0,  1.0,  3.0,  9.0,  3.0],
+                      [ 9.0,  3.0,  9.0, 27.0,  3.0,  1.0,  3.0,  9.0],
+                      [ 9.0,  3.0,  1.0,  3.0, 27.0,  9.0,  3.0,  9.0],
+                      [ 3.0,  9.0,  3.0,  1.0,  9.0, 27.0,  9.0,  3.0],
+                      [ 1.0,  3.0,  9.0,  3.0,  3.0,  9.0, 27.0,  9.0],
+                      [ 3.0,  1.0,  3.0,  9.0,  9.0,  3.0,  9.0, 27.0] ],
+              117:  [ [ 1.0,  1.0,  1.0,  1.0,  1.0,  1.0,  1.0,  1.0] ],
               125:  [ [ 3.0,  0.0,  0.0,  4.0,  1.0,  4.0],
                       [ 0.0,  3.0,  0.0,  4.0,  4.0,  1.0],
-                      [ 0.0,  0.0,  3.0,  1.0,  4.0,  4.0],], 
+                      [ 0.0,  0.0,  3.0,  1.0,  4.0,  4.0],],
               127:  [ [ 45.0, 17.0, 17.0, 17.0],
                       [ 17.0, 45.0, 17.0, 17.0],
                       [ 17.0, 17.0, 45.0, 17.0],
-                      [ 17.0, 17.0, 17.0, 45.0],], 
-              136:  [ [42.0, 15.0, 15.0, 14.0,  5.0,  5.0], 
-                      [15.0, 42.0, 15.0,  5.0, 14.0,  5.0], 
-                      [15.0, 15.0, 42.0,  5.0,  5.0, 14.0], 
-                      [14.0,  5.0,  5.0, 42.0, 15.0, 15.0], 
-                      [ 5.0, 14.0,  5.0, 15.0, 42.0, 15.0], 
-                      [ 5.0,  5.0, 14.0, 15.0, 15.0, 42.0] ], 
+                      [ 17.0, 17.0, 17.0, 45.0],],
+              136:  [ [42.0, 15.0, 15.0, 14.0,  5.0,  5.0],
+                      [15.0, 42.0, 15.0,  5.0, 14.0,  5.0],
+                      [15.0, 15.0, 42.0,  5.0,  5.0, 14.0],
+                      [14.0,  5.0,  5.0, 42.0, 15.0, 15.0],
+                      [ 5.0, 14.0,  5.0, 15.0, 42.0, 15.0],
+                      [ 5.0,  5.0, 14.0, 15.0, 15.0, 42.0] ],
             }
-  
+
   Nips = len(nodeWeightsPerNode[elemType])
   ipCoordinates = [[0.0,0.0,0.0] for i in range(Nips)]
   for ip in range(Nips):
@@ -369,7 +369,7 @@ def ipCoords(elemType, nodalCoordinates):
         ipCoordinates[ip][i] += nodeWeightsPerNode[elemType][ip][node] * nodalCoordinates[node][i]
     for i in range(3):
       ipCoordinates[ip][i] /= sum(nodeWeightsPerNode[elemType][ip])
-  
+
   return ipCoordinates
 
 
@@ -377,15 +377,15 @@ def ipCoords(elemType, nodalCoordinates):
 # -----------------------------
 def ipIDs(elemType):
   """returns IP numbers for given element type"""
-  ipPerNode =  { 
-              7:    [ 1, 2, 4, 3, 5, 6, 8, 7 ], 
-              57:   [ 1, 2, 4, 3, 5, 6, 8, 7 ], 
+  ipPerNode =  {
+              7:    [ 1, 2, 4, 3, 5, 6, 8, 7 ],
+              57:   [ 1, 2, 4, 3, 5, 6, 8, 7 ],
               117:  [ 1 ],
-              125:  [ 1, 2, 3 ], 
-              127:  [ 1, 2, 3, 4 ], 
-              136:  [ 1, 2, 3, 4, 5, 6 ], 
+              125:  [ 1, 2, 3 ],
+              127:  [ 1, 2, 3, 4 ],
+              136:  [ 1, 2, 3, 4, 5, 6 ],
             }
-  
+
   return ipPerNode[elemType]
 
 
@@ -457,7 +457,7 @@ def OpenPostfile(name,type,nodal = False):
       }[type](name)
   p.extrapolation({True:'linear',False:'translate'}[nodal])
   p.moveto(1)
-  
+
   return p
 
 
@@ -475,9 +475,9 @@ def ParseOutputFormat(filename,what,me):
         break
       except:
         pass
-  
+
   if content == []: return format                                         # nothing found...
-  
+
   tag = ''
   tagID = 0
   for line in content:
@@ -527,7 +527,7 @@ def ParsePostfile(p,filename, outputFormat):
   'LabelOfElementalTensor': [None]*p.element_tensors(), \
   }
 
-# --- find labels 
+# --- find labels
 
   for labelIndex in range(stat['NumberOfNodalScalars']):
     label =  p.node_scalar_label(labelIndex)
@@ -543,17 +543,17 @@ def ParsePostfile(p,filename, outputFormat):
     label =  p.element_tensor_label(labelIndex)
     stat['IndexOfLabel'][label] = labelIndex
     stat['LabelOfElementalTensor'][labelIndex] = label
-  
+
   if 'User Defined Variable 1' in stat['IndexOfLabel']:       # output format without dedicated names?
     stat['IndexOfLabel']['HomogenizationCount'] = stat['IndexOfLabel']['User Defined Variable 1']  # adjust first named entry
-  
+
   if 'HomogenizationCount' in stat['IndexOfLabel']:          # does the result file contain relevant user defined output at all?
     startIndex = stat['IndexOfLabel']['HomogenizationCount']
     stat['LabelOfElementalScalar'][startIndex] = 'HomogenizationCount'
-    
+
 # We now have to find a mapping for each output label as defined in the .output* files to the output position in the post file
 # Since we know where the user defined outputs start ("startIndex"), we can simply assign increasing indices to the labels
-# given in the .output* file  
+# given in the .output* file
 
     offset = 1
     for (name,N) in outputFormat['Homogenization']['outputs']:
@@ -595,7 +595,7 @@ def ParsePostfile(p,filename, outputFormat):
               print 'trying to assign %s at position %i+%i'%(label,startIndex,offset)
               sys.exit(1)
             offset += 1
-  
+
   return stat
 
 
@@ -614,7 +614,7 @@ def SummarizePostfile(stat,where=sys.stdout,format='marc'):
               + '\n  '.join(stat['LabelOfElementalScalar']) + '\n\n')
   where.write('elemental tensors:\t%i'%stat['NumberOfElementalTensors'] + '\n\n  '\
               + '\n  '.join(stat['LabelOfElementalTensor']) + '\n\n')
-  
+
   return True
 
 
@@ -625,9 +625,9 @@ def SummarizePostfile(stat,where=sys.stdout,format='marc'):
 # --- input parsing
 
 parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
-Extract data from a .t16 (MSC.Marc) or .spectralOut results file. 
+Extract data from a .t16 (MSC.Marc) or .spectralOut results file.
 
-List of output variables is given by options '--ns','--es','--et','--ho','--cr','--co'. 
+List of output variables is given by options '--ns','--es','--et','--ho','--cr','--co'.
 
 Filters and separations use 'elem','node','ip','grain', and 'x','y','z' as key words.
 Example:
@@ -751,12 +751,12 @@ if options.filetype is None:
     if ext in fileExtensions[theType]:
       options.filetype = theType
       break
-      
+
 if options.filetype is not None: options.filetype = options.filetype.lower()
 
 if options.filetype == 'marc':  offset_pos = 1
 else:                           offset_pos = 0
-  
+
 
 # --- more sanity checks
 
@@ -765,8 +765,8 @@ if options.filetype not in ['marc','spectral']:
   parser.error('file type "%s" not supported...'%options.filetype)
 
 if options.filetype == 'marc':
-  sys.path.append(damask.solver.Marc().libraryPath('../../'))
-  
+  sys.path.append(damask.solver.Marc().libraryPath())
+
   try:
     from py_post import post_open
   except:
@@ -810,7 +810,7 @@ else:
   extension = os.path.splitext(files[0])[1]
 
 outputFormat = {}
-me = {  
+me = {
       'Homogenization': options.homog,
       'Crystallite':    options.cryst,
       'Constitutive':   options.phase,
@@ -823,7 +823,7 @@ for what in me:
   if '_id' not in outputFormat[what]['specials']:
     print "\nsection '%s' not found in <%s>"%(me[what], what)
     print '\n'.join(map(lambda x:'  [%s]'%x, outputFormat[what]['specials']['brothers']))
-    
+
 bg.set_message('opening result file...')
 p = OpenPostfile(filename+extension,options.filetype,options.nodal)
 bg.set_message('parsing result file...')
@@ -834,7 +834,7 @@ if options.filetype == 'marc':
 # --- sanity check for output variables
 # for mentat variables (nodalScalar,elemScalar,elemTensor) we simply have to check whether the label
 # is found in the stat[indexOfLabel] dictionary for user defined variables (homogenizationResult,
-# crystalliteResult,constitutiveResult) we have to check the corresponding outputFormat, since the 
+# crystalliteResult,constitutiveResult) we have to check the corresponding outputFormat, since the
 # namescheme in stat['IndexOfLabel'] is different
 
 for opt in ['nodalScalar','elemScalar','elemTensor','homogenizationResult','crystalliteResult','constitutiveResult']:
@@ -856,13 +856,13 @@ if options.info:
     print '\n\n',p
 
   SummarizePostfile(stat)
-  
+
   print '\nUser Defined Outputs'
   for what in me:
     print '\n ',what,':'
     for output in outputFormat[what]['outputs']:
       print '  ',output
-  
+
   sys.exit(0)
 
 
@@ -900,12 +900,12 @@ if options.nodalScalar:
     myElemID = 0
     myIpID = 0
     myGrainID = 0
-    
+
     # generate an expression that is only true for the locations specified by options.filter
     filter = substituteLocation(options.filter, [myElemID,myNodeID,myIpID,myGrainID], myNodeCoordinates)
     if filter != '' and not eval(filter):                                                              # for all filter expressions that are not true:...
       continue                                                                                         # ... ignore this data point and continue with next
-    
+
     # --- group data locations
     # generate a unique key for a group of separated data based on the separation criterium for the location
     grp = substituteLocation('#'.join(options.sep), [myElemID,myNodeID,myIpID,myGrainID], myNodeCoordinates)
@@ -925,7 +925,7 @@ if options.nodalScalar:
                                                myNodeCoordinates)                                      # incrementally update average location
     groups[index[grp]].append([myElemID,myNodeID,myIpID,myGrainID,0])                                  # append a new list defining each group member
     memberCount += 1
-    
+
 else:
   for e in xrange(stat['NumberOfElements']):
     if e%1000 == 0:
@@ -943,22 +943,22 @@ else:
                        and int(p.element_scalar(e, stat['IndexOfLabel']['GrainCount'])[0].value))\
                        or 1):
         myGrainID = g + 1
-        
+
         # --- filter valid locations
         # generates an expression that is only true for the locations specified by options.filter
-        filter = substituteLocation(options.filter, [myElemID,myNodeID,myIpID,myGrainID], myIpCoordinates[n]) 
+        filter = substituteLocation(options.filter, [myElemID,myNodeID,myIpID,myGrainID], myIpCoordinates[n])
         if filter != '' and not eval(filter):                                                               # for all filter expressions that are not true:...
           continue                                                                                          # ... ignore this data point and continue with next
-        
+
         # --- group data locations
         # generates a unique key for a group of separated data based on the separation criterium for the location
-        grp = substituteLocation('#'.join(options.sep), [myElemID,myNodeID,myIpID,myGrainID], myIpCoordinates[n]) 
-  
+        grp = substituteLocation('#'.join(options.sep), [myElemID,myNodeID,myIpID,myGrainID], myIpCoordinates[n])
+
         if grp not in index:                                                                                # create a new group if not yet present
           index[grp] = groupCount
           groups.append([[0,0,0,0,0.0,0.0,0.0]])                                                            # initialize with avg location
           groupCount += 1
-  
+
         groups[index[grp]][0][:4] = mapIncremental('','unique',
                                                    len(groups[index[grp]])-1,
                                                    groups[index[grp]][0][:4],
@@ -1055,13 +1055,12 @@ for incCount,position in enumerate(locations):     # walk through locations
                       +'"%(dirname + os.sep + options.prefix + os.path.split(filename)[1],increments[incCount],options.suffix)')
   else:
     outFilename = '%s.txt'%(dirname + os.sep + options.prefix + os.path.split(filename)[1] + options.suffix)
-  
+
   if not fileOpen:
     file = open(outFilename,'w')
     fileOpen = True
     file.write('2\theader\n')
-    file.write(string.replace('$Id$','\n','\\n')+
-               '\t' + ' '.join(sys.argv[1:]) + '\n')
+    file.write(scriptID + '\t' + ' '.join(sys.argv[1:]) + '\n')
     headerWritten = False
 
   file.flush()
@@ -1098,7 +1097,7 @@ for incCount,position in enumerate(locations):     # walk through locations
 
       if options.elemScalar:
         for label in options.elemScalar:
-          if assembleHeader: 
+          if assembleHeader:
             header += [''.join( label.split() )]
           newby.append({'label':label,
                         'len':1,
@@ -1106,17 +1105,17 @@ for incCount,position in enumerate(locations):     # walk through locations
 
       if options.elemTensor:
         for label in options.elemTensor:
-          if assembleHeader: 
+          if assembleHeader:
             header += heading('.',[[''.join( label.split() ),component]
                       for component in ['intensity','t11','t22','t33','t12','t23','t13']])
           myTensor = p.element_tensor(p.element_sequence(e),stat['IndexOfLabel'][label])[n_local]
           newby.append({'label':label,
                         'len':7,
-                        'content':[ myTensor.intensity, 
+                        'content':[ myTensor.intensity,
                                     myTensor.t11, myTensor.t22, myTensor.t33,
                                     myTensor.t12, myTensor.t23, myTensor.t13,
                                   ]})
-    
+
       if options.homogenizationResult or \
          options.crystalliteResult or \
          options.constitutiveResult:
@@ -1136,7 +1135,7 @@ for incCount,position in enumerate(locations):     # walk through locations
           try:
             newby.append({'label':label,
                           'len':length,
-                          'content':[ p.element_scalar(p.element_sequence(e),stat['IndexOfLabel'][head])[n_local].value 
+                          'content':[ p.element_scalar(p.element_sequence(e),stat['IndexOfLabel'][head])[n_local].value
                                       for head in thisHead ]})
           except KeyError:
             print '\nDAMASK outputs seem missing from "post" section of the *.dat file!'
@@ -1166,7 +1165,7 @@ for incCount,position in enumerate(locations):     # walk through locations
                                  group[0] + \
                                  mappedResult)
                         ) + '\n')
-    
+
 if fileOpen:
   file.close()
 

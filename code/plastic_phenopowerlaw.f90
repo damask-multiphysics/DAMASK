@@ -157,8 +157,6 @@ subroutine plastic_phenopowerlaw_init(fileUnit)
    MATERIAL_partPhase
  use lattice
  use numerics,only: &
-   analyticJaco, &
-   worldrank, &
    numerics_integrator
 
  implicit none
@@ -181,11 +179,9 @@ subroutine plastic_phenopowerlaw_init(fileUnit)
    line = ''
  real(pReal), dimension(:), allocatable :: tempPerSlip
 
- mainProcess: if (worldrank == 0) then
-   write(6,'(/,a)')   ' <<<+-  constitutive_'//PLASTICITY_PHENOPOWERLAW_label//' init  -+>>>'
-   write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
+ write(6,'(/,a)')   ' <<<+-  constitutive_'//PLASTICITY_PHENOPOWERLAW_label//' init  -+>>>'
+ write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
- endif mainProcess
 
  maxNinstance = int(count(phase_plasticity == PLASTICITY_PHENOPOWERLAW_ID),pInt)
  if (maxNinstance == 0_pInt) return
@@ -587,10 +583,6 @@ subroutine plastic_phenopowerlaw_init(fileUnit)
      allocate(plasticState(phase)%state              (   sizeState,NipcMyPhase), source=0.0_pReal)
      allocate(plasticState(phase)%dotState           (sizeDotState,NipcMyPhase), source=0.0_pReal)
      allocate(plasticState(phase)%deltaState       (sizeDeltaState,NipcMyPhase), source=0.0_pReal)
-     if (.not. analyticJaco) then
-       allocate(plasticState(phase)%state_backup     (   sizeState,NipcMyPhase),source=0.0_pReal)
-       allocate(plasticState(phase)%dotState_backup  (sizeDotState,NipcMyPhase),source=0.0_pReal)
-     endif
      if (any(numerics_integrator == 1_pInt)) then
        allocate(plasticState(phase)%previousDotState (sizeDotState,NipcMyPhase),source=0.0_pReal)
        allocate(plasticState(phase)%previousDotState2(sizeDotState,NipcMyPhase),source=0.0_pReal)
@@ -1160,9 +1152,9 @@ function plastic_phenopowerlaw_postResults(Tstar_v,ipc,ip,el)
            enddo
            plastic_phenopowerlaw_postResults(c+j) = plastic_phenopowerlaw_gdot0_slip(instance)*0.5_pReal* &
                     ((abs(tau_slip_pos)/plasticState(ph)%state(j,of))**plastic_phenopowerlaw_n_slip(instance) &
-                    +(abs(tau_slip_neg)/plasticState(ph)%state(j,of))**plastic_phenopowerlaw_n_slip(instance))&
-                    *sign(1.0_pReal,tau_slip_pos)
-
+                    *sign(1.0_pReal,tau_slip_pos) &
+                    +(abs(tau_slip_neg)/(plasticState(ph)%state(j,of)))**plastic_phenopowerlaw_n_slip(instance) &
+                    *sign(1.0_pReal,tau_slip_neg))
          enddo slipSystems1
        enddo slipFamilies1
        c = c + nSlip

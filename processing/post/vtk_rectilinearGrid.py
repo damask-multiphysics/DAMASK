@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python2.7
 # -*- coding: UTF-8 no BOM -*-
 
 import os,sys,vtk
@@ -79,9 +79,9 @@ for name in filenames:
   coords = [np.unique(table.data[:,i]) for i in xrange(3)]
 
   if options.mode == 'cell':
-    coords = [0.5 * np.array([3.0 * coords[i][0] - coords[i][0 + len(coords[i]) > 1]] + \
+    coords = [0.5 * np.array([3.0 * coords[i][0] - coords[i][0 + int(len(coords[i]) > 1)]] + \
                              [coords[i][j-1] + coords[i][j] for j in xrange(1,len(coords[i]))] + \
-                             [3.0 * coords[i][-1] - coords[i][-1 - (len(coords[i]) > 1)]]) for i in xrange(3)]
+                             [3.0 * coords[i][-1] - coords[i][-1 - int(len(coords[i]) > 1)]]) for i in xrange(3)]
 
   grid = np.array(map(len,coords),'i')
   N = grid.prod() if options.mode == 'point' else (grid-1).prod()

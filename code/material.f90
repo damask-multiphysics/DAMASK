@@ -499,12 +499,12 @@ subroutine material_init()
  allocate(HomogenizationPosition(material_Nhomogenization),source=0_pInt)
  allocate(CrystallitePosition   (material_Nphase),         source=0_pInt)
 
- ElemLoop:do e = 1_pInt,mesh_NcpElems                                                               ! loop over elements
+ ElemLoop:do e = 1_pInt,mesh_NcpElems
  myHomog = mesh_element(3,e)
-   IPloop:do i = 1_pInt,FE_Nips(FE_geomtype(mesh_element(2,e)))                                     ! loop over IPs
+   IPloop:do i = 1_pInt,FE_Nips(FE_geomtype(mesh_element(2,e)))
      HomogenizationPosition(myHomog) = HomogenizationPosition(myHomog) + 1_pInt
      mappingHomogenization(1:2,i,e) = [HomogenizationPosition(myHomog),myHomog]
-     GrainLoop:do g = 1_pInt,homogenization_Ngrains(mesh_element(3,e))                              ! loop over grains
+     GrainLoop:do g = 1_pInt,homogenization_Ngrains(mesh_element(3,e))
        phase = material_phase(g,i,e)
        ConstitutivePosition(phase) = ConstitutivePosition(phase)+1_pInt                             ! not distinguishing between instances of same phase
        phaseAt(g,i,e)              = phase
@@ -1344,10 +1344,10 @@ subroutine material_populateGrains
      write(6,'(a32,1x,a32,1x,a6)') 'homogenization_name','microstructure_name','grain#'
    !$OMP END CRITICAL (write2out)
  endif
- do homog = 1_pInt,material_Nhomogenization                                                         ! loop over homogenizations
+ homogenizationLoop: do homog = 1_pInt,material_Nhomogenization
    dGrains = homogenization_Ngrains(homog)                                                          ! grain number per material point
-   do micro = 1_pInt,material_Nmicrostructure                                                       ! all pairs of homog and micro
-     if (Ngrains(homog,micro) > 0_pInt) then                                                        ! an active pair of homog and micro
+   microstructureLoop: do micro = 1_pInt,material_Nmicrostructure                                                       ! all pairs of homog and micro
+     activePair: if (Ngrains(homog,micro) > 0_pInt) then
        myNgrains = Ngrains(homog,micro)                                                             ! assign short name for total number of grains to populate
        myNconstituents = microstructure_Nconstituents(micro)                                        ! assign short name for number of constituents
        if (iand(myDebug,debug_levelBasic) /= 0_pInt) then
@@ -1578,9 +1578,9 @@ subroutine material_populateGrains
          enddo
 
        enddo
-     endif                                                                                          ! active homog,micro pair
-   enddo
- enddo
+     endif activePair
+   enddo microstructureLoop
+ enddo homogenizationLoop
 
  deallocate(volumeOfGrain)
  deallocate(phaseOfGrain)

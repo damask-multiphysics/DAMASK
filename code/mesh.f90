@@ -481,6 +481,7 @@ subroutine mesh_init(ip,el)
 #endif
 #ifdef Spectral
    IO_open_file, &
+   IO_error, &
 #else
    IO_open_InputFile, &
 #endif
@@ -507,7 +508,8 @@ subroutine mesh_init(ip,el)
  
  implicit none
 #ifdef Spectral
- integer(C_INTPTR_T) :: gridMPI(3), alloc_local, local_K, local_K_offset
+ integer(C_INTPTR_T) :: devNull, local_K, local_K_offset
+ integer :: ierr, worldsize
 #endif
  integer(pInt), parameter :: FILEUNIT = 222_pInt
  integer(pInt), intent(in) :: el, ip
@@ -547,10 +549,13 @@ subroutine mesh_init(ip,el)
  call IO_open_file(FILEUNIT,geometryFile)                                                           ! parse info from geometry file...
  if (myDebug) write(6,'(a)') ' Opened geometry file'; flush(6)
  grid     = mesh_spectral_getGrid(fileUnit)
+ call MPI_comm_size(MPI_COMM_WORLD, worldsize, ierr)
+ if(ierr /=0_pInt) call IO_error(894_pInt, ext_msg='MPI_comm_size')
+ if(worldsize>grid(3)) call IO_error(894_pInt, ext_msg='number of processes exceeds grid(3)')
+
  geomSize = mesh_spectral_getSize(fileUnit)
- gridMPI = int(grid,C_INTPTR_T)
- alloc_local = fftw_mpi_local_size_3d(gridMPI(3), gridMPI(2), gridMPI(1)/2 +1, &
-                                      MPI_COMM_WORLD, local_K, local_K_offset)
+ devNull = fftw_mpi_local_size_3d(int(grid(3),C_INTPTR_T),int(grid(2),C_INTPTR_T),&
+                                  int(grid(1),C_INTPTR_T)/2+1,MPI_COMM_WORLD,local_K,local_K_offset)
  grid3       = int(local_K,pInt)
  grid3Offset = int(local_K_offset,pInt)
  size3       = geomSize(3)*real(grid3,pReal)      /real(grid(3),pReal)

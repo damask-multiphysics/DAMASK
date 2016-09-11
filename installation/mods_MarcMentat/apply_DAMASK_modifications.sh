@@ -1,21 +1,24 @@
 #!/usr/bin/env bash
 
-DEFAULT_VERSION='2015'
-
-WORKINGDIR="$( cd "$( dirname "$0" )" && pwd )"
-
-if [ -f $HOME/.damask/damask.conf ]; then
-   source $HOME/.damask/damask.conf
-else
-   source /etc/damask.conf
-fi
+SCRIPTLOCATION="$( cd "$( dirname "$0" )" && pwd )"
+DAMASK_ROOT=$SCRIPTLOCATION/../../
+# defining set() allows to source the same file for tcsh and bash, with and without space around =
+set() {
+    export $1$2$3
+ }
+source $DAMASK_ROOT/CONFIG
 
 if [ "x$MSC_ROOT" != "x" ]; then
  DEFAULT_DIR=$MSC_ROOT
 fi
+if [ "x$MARC_VERSION" != "x" ]; then
+ DEFAULT_VERSION=$MARC_VERSION
+fi
+if [ "x$DAMASK_BIN" != "x" ]; then
+ BIN_DIR=$DAMASK_BIN
+fi
 
-
-while [ ! -d "$WORKINGDIR/$VERSION" ] || [ -z "$VERSION" ]
+while [ ! -d "$SCRIPTLOCATION/$VERSION" ] || [ -z "$VERSION" ]
 do
   echo "Input version of MARC/MENTAT installation: [${DEFAULT_VERSION}]"
   read VERSION
@@ -66,7 +69,7 @@ for filename in 'comp_damask' \
                 'run_damask_lmp' \
                 'run_damask_hmp' \
                 'include_linux64'; do
-  cp $WORKINGDIR/$VERSION/Marc_tools/$filename $theDIR
+  cp $SCRIPTLOCATION/$VERSION/Marc_tools/$filename $theDIR
   echo $theDIR/$filename | xargs perl -pi -e "s:%INSTALLDIR%:${INSTALLDIR}:g"
   echo $theDIR/$filename | xargs perl -pi -e "s:%VERSION%:${VERSION}:g"
   echo $filename
@@ -89,7 +92,7 @@ for filename in 'edit_window' \
                 'kill7' \
                 'kill8' \
                 'kill9'; do
-  cp $WORKINGDIR/$VERSION/Mentat_bin/$filename $theDIR
+  cp $SCRIPTLOCATION/$VERSION/Mentat_bin/$filename $theDIR
   echo $theDIR/$filename | xargs perl -pi -e "s:%INSTALLDIR%:${INSTALLDIR}:g"
   echo $theDIR/$filename | xargs perl -pi -e "s:%VERSION%:${VERSION}:g"
   echo $theDIR/$filename | xargs perl -pi -e "s:%EDITOR%:${EDITOR}:g"
@@ -101,7 +104,7 @@ echo ''
 echo 'copying Mentat menus...'
 theDIR=$INSTALLDIR/mentat$VERSION/menus
 for filename in 'job_run.ms'; do
-  cp $WORKINGDIR/$VERSION/Mentat_menus/$filename $theDIR
+  cp $SCRIPTLOCATION/$VERSION/Mentat_menus/$filename $theDIR
   echo $theDIR/$filename | xargs perl -pi -e "s:%INSTALLDIR%:${INSTALLDIR}:g"
   echo $theDIR/$filename | xargs perl -pi -e "s:%VERSION%:${VERSION}:g"
   echo $filename
@@ -121,31 +124,33 @@ chmod 755 $INSTALLDIR/mentat$VERSION/bin/submit{4..9}
 chmod 755 $INSTALLDIR/mentat$VERSION/bin/kill{4..9}
 
 #creating symlinks for run_damask_scripts in /usr/local/bin
-BIN_DIR=/usr/local/bin
-echo ''
-echo "Do you want to create symlinks for run_damask scripts in ${BIN_DIR} [YES/no] ?"
-read YESNO
-  if [ -z "$YESNO" ]; then
-    YESNO=yes
-  fi
-case $YESNO in
- y* | Y* )
-  echo''
-  echo 'creating symlinks ...'
-  echo''
-  theDIR=$INSTALLDIR/marc$VERSION/tools
-  for filename in 'run_damask' \
-                  'run_damask_l' \
-                  'run_damask_h' \
-                  'run_damask_mp' \
-                  'run_damask_lmp' \
-                  'run_damask_hmp'; do
-    echo ${filename:4}$VERSION
-    [ -f $BIN_DIR/${filename:4}$VERSION ] && rm $BIN_DIR/${filename:4}$VERSION
-    ln -s $theDIR/$filename $BIN_DIR/${filename:4}$VERSION 
-  done
-  ;;
-esac
+
+if [ -d "$BIN_DIR" ]; then
+  echo ''
+  echo "Do you want to create symlinks for run_damask scripts in ${BIN_DIR} [YES/no] ?"
+  read YESNO
+    if [ -z "$YESNO" ]; then
+      YESNO=yes
+    fi
+  case $YESNO in
+   y* | Y* )
+    echo''
+    echo 'creating symlinks ...'
+    echo''
+    theDIR=$INSTALLDIR/marc$VERSION/tools
+    for filename in 'run_damask' \
+                    'run_damask_l' \
+                    'run_damask_h' \
+                    'run_damask_mp' \
+                    'run_damask_lmp' \
+                    'run_damask_hmp'; do
+      echo ${filename:4}$VERSION
+      [ -f $BIN_DIR/${filename:4}$VERSION ] && rm $BIN_DIR/${filename:4}$VERSION
+      ln -s $theDIR/$filename $BIN_DIR/${filename:4}$VERSION 
+    done
+    ;;
+  esac
+fi
 
 echo ''
 echo 'done.'
