@@ -82,7 +82,7 @@ for name in filenames:
 
   table.head_read()
   info,extra_header = table.head_getGeom()
-  
+
   damask.util.croak(['grid     a b c:  %s'%(' x '.join(map(str,info['grid']))),
                      'size     x y z:  %s'%(' x '.join(map(str,info['size']))),
                      'origin   x y z:  %s'%(' : '.join(map(str,info['origin']))),
@@ -126,9 +126,9 @@ for name in filenames:
           primPos = invRotation*gridpos                                                             # rotate back to primitive coordinate system
           if np.dot(mask*primPos/dim,mask*primPos/dim) <= 0.25 and \
              np.all(abs((1.-mask)*primPos/dim) <= 0.5):                                          # inside ellipsoid and inside box
-             microstructure[(gridpos[0]+options.center[0])%info['grid'][0],
-                            (gridpos[1]+options.center[1])%info['grid'][1],
-                            (gridpos[2]+options.center[2])%info['grid'][2]] = options.fill          # assign microstructure index
+             microstructure[int((gridpos[0]+options.center[0])%info['grid'][0]),
+                            int((gridpos[1]+options.center[1])%info['grid'][1]),
+                            int((gridpos[2]+options.center[2])%info['grid'][2])] = options.fill          # assign microstructure index
 
   newInfo['microstructures'] = microstructure.max()
 
@@ -153,7 +153,7 @@ for name in filenames:
   table.labels_clear()
   table.head_write()
   table.output_flush()
-    
+
 # --- write microstructure information ------------------------------------------------------------
 
   formatwidth = int(math.floor(math.log10(microstructure.max())+1))
