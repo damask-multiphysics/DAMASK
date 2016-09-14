@@ -29,7 +29,7 @@ def kdtree_search(cloud, queryPoints):
 # --------------------------------------------------------------------
 
 parser = OptionParser(option_class=damask.extendableOption, usage='%prog [options]', description = """
-Distribute given number of points randomly within the three-dimensional cube [0.0,0.0,0.0]--[1.0,1.0,1.0].
+Distribute given number of points randomly within (a fraction of) the three-dimensional cube [0.0,0.0,0.0]--[1.0,1.0,1.0].
 Reports positions with random crystal orientations in seeds file format to STDOUT.
 
 """, version = scriptID)
@@ -38,6 +38,11 @@ parser.add_option('-N',
                   dest = 'N',
                   type = 'int', metavar = 'int',
                   help = 'number of seed points [%default]')
+parser.add_option('-f',
+                  '--fraction',
+                  dest = 'fraction',
+                  type = 'float', nargs = 3, metavar = 'float float float',
+                  help='fractions along x,y,z of unit cube to fill %default')
 parser.add_option('-g',
                   '--grid',
                   dest = 'grid',
@@ -86,8 +91,7 @@ group.add_option( '-s',
                   action = 'store_true',
                   dest   = 'selective',
                   help   = 'selective picking of seed points from random seed points [%default]')
-group.add_option( '-f',
-                  '--force',
+group.add_option( '--force',
                   action = 'store_true',
                   dest   = 'force',
                   help   = 'try selective picking despite large seed point number [%default]')
@@ -103,6 +107,7 @@ parser.add_option_group(group)
 
 parser.set_defaults(randomSeed = None,
                     grid = (16,16,16),
+                    fraction = (1.0,1.0,1.0),
                     N = 20,
                     weights = False,
                     max = 0.0,
@@ -118,6 +123,7 @@ parser.set_defaults(randomSeed = None,
 
 (options,filenames) = parser.parse_args()
 
+options.fraction = np.array(options.fraction)
 options.grid = np.array(options.grid)
 gridSize = options.grid.prod()
 
@@ -160,16 +166,25 @@ for name in filenames:
   grainEuler[2,:] *= 360.0                                                                          # phi_2    is uniformly distributed
 
   if not options.selective:
+    seeds = np.array([])
+    
+    while len(seeds) < options.N:
 
-    seeds = np.zeros((3,options.N),dtype='d')                                                       # seed positions array
-    gridpoints = random.sample(range(gridSize),options.N)                                           # choose first N from random permutation of grid positions
+      theSeeds = np.zeros((options.N,3),dtype=float)                                                 # seed positions array
+      gridpoints = random.sample(range(gridSize),options.N)                                          # choose first N from random permutation of grid positions
 
-    seeds[0,:] = (np.mod(gridpoints                                   ,options.grid[0])\
-                 +np.random.random(options.N))                        /options.grid[0]
-    seeds[1,:] = (np.mod(gridpoints//                 options.grid[0] ,options.grid[1])\
-                 +np.random.random(options.N))                        /options.grid[1]
-    seeds[2,:] = (np.mod(gridpoints//(options.grid[1]*options.grid[0]),options.grid[2])\
-                 +np.random.random(options.N))                        /options.grid[2]
+      theSeeds[:,0] = (np.mod(gridpoints                                   ,options.grid[0])\
+                      +np.random.random(options.N))                        /options.grid[0]
+      theSeeds[:,1] = (np.mod(gridpoints//                 options.grid[0] ,options.grid[1])\
+                      +np.random.random(options.N))                        /options.grid[1]
+      theSeeds[:,2] = (np.mod(gridpoints//(options.grid[1]*options.grid[0]),options.grid[2])\
+                      +np.random.random(options.N))                        /options.grid[2]
+
+      goodSeeds = theSeeds[np.all(theSeeds<=options.fraction,axis=1)]                               # pick seeds within threshold fraction
+      seeds = goodSeeds if len(seeds) == 0 else np.vstack((seeds,goodSeeds))
+      if len(seeds) > options.N: seeds = seeds[:min(options.N,len(seeds))]
+
+    seeds = seeds.T                                                                                 # switch layout to point index as last index
 
   else:
 
