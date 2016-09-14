@@ -135,7 +135,7 @@ for name in filenames:
         VTKdata[:,2] = VTKdata[:,6] = 0.5*(VTKdata[:,2]+VTKdata[:,6])
         VTKdata[:,5] = VTKdata[:,7] = 0.5*(VTKdata[:,5]+VTKdata[:,7])
 
-      VTKarray[me] = numpy_support.numpy_to_vtk(num_array=VTKdata,array_type=VTKtype)
+      VTKarray[me] = numpy_support.numpy_to_vtk(num_array=VTKdata,deep=True,array_type=VTKtype)
       VTKarray[me].SetName(me)
 
   table.close()                                                                                     # close input ASCII table
