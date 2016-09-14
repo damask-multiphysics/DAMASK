@@ -31,14 +31,10 @@ parser.add_option('-r', '--render',
                   dest = 'render',
                   action = 'store_true',
                   help = 'open output in VTK render window')
-parser.add_option('-s', '--scalar',
-                  dest = 'scalar',
+parser.add_option('-d', '--data',
+                  dest = 'data',
                   action = 'extend', metavar = '<string LIST>',
-                  help = 'scalar value label(s)')
-parser.add_option('-v', '--vector',
-                  dest = 'vector',
-                  action = 'extend', metavar = '<string LIST>',
-                  help = 'vector value label(s)')
+                  help = 'scalar/vector value(s) label(s)')
 parser.add_option('-t', '--tensor',
                   dest = 'tensor',
                   action = 'extend', metavar = '<string LIST>',
@@ -48,8 +44,7 @@ parser.add_option('-c', '--color',
                   action = 'extend', metavar = '<string LIST>',
                   help = 'RGB color tuple label')
 
-parser.set_defaults(scalar = [],
-                    vector = [],
+parser.set_defaults(data = [],
                     tensor = [],
                     color = [],
                     inplace = False,
@@ -99,8 +94,7 @@ for name in filenames:
   VTKarray = {}
   active = defaultdict(list)
 
-  for datatype,dimension,label in [['scalar',1,options.scalar],
-                                   ['vector',99,options.vector],
+  for datatype,dimension,label in [['data',99,options.data],
                                    ['tensor',9,options.tensor],
                                    ['color' ,3,options.color],
                                    ]:
