@@ -100,7 +100,7 @@ for name in filenames:
   active = defaultdict(list)
 
   for datatype,dimension,label in [['scalar',1,options.scalar],
-                                   ['vector',3,options.vector],
+                                   ['vector',99,options.vector],
                                    ['tensor',9,options.tensor],
                                    ['color' ,3,options.color],
                                    ]:
