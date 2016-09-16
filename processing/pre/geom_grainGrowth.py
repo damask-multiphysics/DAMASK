@@ -99,16 +99,15 @@ for name in filenames:
 
 
   for smoothIter in xrange(options.N):
-    boundary = np.zeros(microstructure.shape)
+    interfaceEnergy = np.zeros(microstructure.shape)
     for i in (-1,0,1):
       for j in (-1,0,1):
         for k in (-1,0,1):
             # assign interfacial energy to all voxels that have a differing neighbor (in Moore neighborhood)
-          boundary = np.maximum(boundary,
+          interfaceEnergy = np.maximum(interfaceEnergy,
                                           interfacialEnergy(microstructure,np.roll(np.roll(np.roll(
                                                             microstructure,i,axis=0), j,axis=1), k,axis=2)))
-    interfaceEnergy = boundary
-    
+
     # periodically extend interfacial energy array by half a grid size in positive and negative directions
     periodic_interfaceEnergy = np.tile(interfaceEnergy,(3,3,3))[grid[0]/2:-grid[0]/2,
                                                                    grid[1]/2:-grid[1]/2,
