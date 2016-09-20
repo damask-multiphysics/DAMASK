@@ -1,3 +1,5 @@
+!--------------------------------------------------------------------------------------------------
+!> @author   Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
 !> @author   Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
 !> @brief    Interfacing between the spectral solver and the material subroutines provided
 !!           by DAMASK
