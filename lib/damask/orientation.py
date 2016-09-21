@@ -1001,7 +1001,6 @@ class Orientation:
     positive number: fcc --> bcc
     negative number: bcc --> fcc
     """
-
     if relationModel not in ['KS','GT','GTdash','NW','Pitsch','Bain']:  return None
     if int(direction) == 0:  return None
 
