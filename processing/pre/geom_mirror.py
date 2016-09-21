@@ -14,15 +14,24 @@ scriptID   = ' '.join([scriptName,damask.version])
 #                                MAIN
 #--------------------------------------------------------------------------------------------------
 
+validDirections = ['x','y','z']
 parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [geomfile(s)]', description = """
-Mirros spectral geometry description along given direction.
+Mirrors spectral geometry description along given directions.
 
 """, version=scriptID)
 
+parser.add_option('-d','--direction',
+                  dest = 'directions',
+                  action = 'extend', metavar = '<string LIST>',
+                  help = "directions in which to mirror {'x','y','z'}")
 
 (options, filenames) = parser.parse_args()
 
-
+if options.directions is None:
+  parser.error('no direction given.')
+if not set(options.directions).issubset(validDirections):
+  invalidDirections = [str(e) for e in set(options.directions).difference(validDirections)]
+  parser.error('invalid directions {}. '.format(*invalidDirections))
 
 # --- loop over input files -------------------------------------------------------------------------
 
@@ -57,11 +66,14 @@ for name in filenames:
 
 # --- read data ------------------------------------------------------------------------------------
 
-  microstructure = table.microstructure_read(info['grid']).reshape(info['grid'],order='F')                    # read microstructure
+  microstructure = table.microstructure_read(info['grid']).reshape(info['grid'],order='F')          # read microstructure
 
-  microstructure = np.concatenate([microstructure,microstructure[:,:,::-1]],2)
-  microstructure = np.concatenate([microstructure,microstructure[:,::-1,:]],1)
-  microstructure = np.concatenate([microstructure,microstructure[::-1,:,:]],0)
+  if 'z' in options.directions:
+    microstructure = np.concatenate([microstructure,microstructure[:,:,::-1]],2)
+  if 'y' in options.directions:
+    microstructure = np.concatenate([microstructure,microstructure[:,::-1,:]],1)
+  if 'x' in options.directions:
+    microstructure = np.concatenate([microstructure,microstructure[::-1,:,:]],0)
 
 # --- do work ------------------------------------------------------------------------------------
 
