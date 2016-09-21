@@ -4,7 +4,6 @@
 import os,sys,math
 import numpy as np
 import damask
-from scipy import ndimage
 from optparse import OptionParser
 
 scriptName = os.path.splitext(os.path.basename(__file__))[0]
