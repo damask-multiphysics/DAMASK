@@ -1,7 +1,7 @@
 #!/usr/bin/env python2.7
 # -*- coding: UTF-8 no BOM -*-
 
-import os,h5py,sys
+import os,h5py
 import numpy as np
 from optparse import OptionParser
 import damask
@@ -43,8 +43,8 @@ for name in filenames:
 # --- read comments --------------------------------------------------------------------------------
                     
   coords = (np.mgrid[0:grid[2], 0:grid[1], 0: grid[0]]).reshape(3, -1).T
-  coords = (np.fliplr(coords)*inFile[rootDir+'/_SIMPL_GEOMETRY/SPACING'][...]
-            + inFile[rootDir+'/_SIMPL_GEOMETRY/ORIGIN'][...]
+  coords = (np.fliplr(coords)*inFile[rootDir+'/_SIMPL_GEOMETRY/SPACING'][...] \
+            + inFile[rootDir+'/_SIMPL_GEOMETRY/ORIGIN'][...] \
             + inFile[rootDir+'/_SIMPL_GEOMETRY/SPACING'][...]*0.5)
 
   table.data = np.hstack( (coords,
