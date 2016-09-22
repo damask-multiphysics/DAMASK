@@ -3,6 +3,14 @@
 import os,sys
 import numpy as np
 
+# ------------------------------------------------------------------
+# python 3 has no unicode object, this ensures that the code works on Python 2&3
+try:
+  test=isinstance('test', unicode)
+except(NameError):
+  unicode=str
+
+# ------------------------------------------------------------------
 class ASCIItable():
   """Read and write to ASCII tables"""
 
@@ -158,12 +166,12 @@ class ASCIItable():
 
       if self.__IO__['labeled']:                                                                    # table features labels
 
-        self.info   = [self.__IO__['in'].readline().strip() for i in xrange(1,int(m.group(1)))]
+        self.info   = [self.__IO__['in'].readline().strip() for i in range(1,int(m.group(1)))]
         self.tags = shlex.split(self.__IO__['in'].readline())                                       # store tags found in last line
 
       else:
 
-        self.info    = [self.__IO__['in'].readline().strip() for i in xrange(0,int(m.group(1)))]    # all header is info ...
+        self.info    = [self.__IO__['in'].readline().strip() for i in range(0,int(m.group(1)))]     # all header is info ...
 
     else:                                                                                           # other table format
       try:
@@ -224,11 +232,11 @@ class ASCIItable():
     extra_header = []
 
     for header in self.info:
-      headitems = map(str.lower,header.split())
+      headitems = list(map(str.lower,header.split()))
       if len(headitems) == 0: continue                                                              # skip blank lines
-      if headitems[0] in mappings.keys():
-        if headitems[0] in identifiers.keys():
-          for i in xrange(len(identifiers[headitems[0]])):
+      if headitems[0] in list(mappings.keys()):
+        if headitems[0] in list(identifiers.keys()):
+          for i in range(len(identifiers[headitems[0]])):
             info[headitems[0]][i] = \
               mappings[headitems[0]](headitems[headitems.index(identifiers[headitems[0]][i])+1])
         else:
@@ -415,9 +423,9 @@ class ASCIItable():
     start = self.label_index(labels)
     dim   = self.label_dimension(labels)
   
-    return np.hstack(map(lambda c: xrange(c[0],c[0]+c[1]), zip(start,dim))) \
+    return np.hstack([range(c[0],c[0]+c[1]) for c in zip(start,dim)]) \
         if isinstance(labels, Iterable) and not isinstance(labels, str) \
-      else xrange(start,start+dim)
+      else range(start,start+dim)
 
 # ------------------------------------------------------------------
   def info_append(self,
@@ -447,7 +455,7 @@ class ASCIItable():
   def data_skipLines(self,
                      count):
     """wind forward by count number of lines"""
-    for i in xrange(count):
+    for i in range(count):
       alive = self.data_read()
 
     return alive
@@ -501,10 +509,10 @@ class ASCIItable():
       columns = []
       for i,(c,d) in enumerate(zip(indices[present],dimensions[present])):                          # for all valid labels ...
         # ... transparently add all components unless column referenced by number or with explicit dimension
-        columns += range(c,c + \
+        columns += list(range(c,c + \
                           (d if str(c) != str(labels[present[i]]) else \
-                           1))                                                                      
-      use = np.array(columns)
+                           1)))
+      use = np.array(columns) if len(columns) > 0 else None
 
       self.tags = list(np.array(self.tags)[use])                                                    # update labels with valid subset
 
@@ -530,7 +538,7 @@ class ASCIItable():
     """write whole numpy array data"""
     for row in self.data:
       try:
-        output = [fmt % value for value in row] if fmt else map(repr,row)
+        output = [fmt % value for value in row] if fmt else list(map(repr,row))
       except:
         output = [fmt % row] if fmt else [repr(row)]
       
@@ -555,7 +563,7 @@ class ASCIItable():
     try:
       idx = self.label_index(where)
       if len(self.data) <= idx:
-        self.data_append(['n/a' for i in xrange(idx+1-len(self.data))])         # grow data if too short
+        self.data_append(['n/a' for i in range(idx+1-len(self.data))])                              # grow data if too short
       self.data[idx] = str(what)
     except(ValueError):
       pass
@@ -568,7 +576,7 @@ class ASCIItable():
 
 # ------------------------------------------------------------------
   def data_asFloat(self):
-    return map(self._transliterateToFloat,self.data)
+    return list(map(self._transliterateToFloat,self.data))
 
 
 
@@ -590,8 +598,8 @@ class ASCIItable():
       if len(items) > 2:
         if   items[1].lower() == 'of': items = np.ones(datatype(items[0]))*datatype(items[2])
         elif items[1].lower() == 'to': items = np.arange(datatype(items[0]),1+datatype(items[2]))
-        else:                          items = map(datatype,items)
-      else:                            items = map(datatype,items)
+        else:                          items = list(map(datatype,items))
+      else:                            items = list(map(datatype,items))
 
       s = min(len(items), N-i)                                                              # prevent overflow of microstructure array
       microstructure[i:i+s] = items[:s]

@@ -154,7 +154,7 @@ class Quaternion:
 
     def __div__(self, other):
       """division"""
-      if isinstance(other, (int,float,long)):
+      if isinstance(other, (int,float)):
         w = self.w / other
         x = self.x / other
         y = self.y / other
@@ -165,7 +165,7 @@ class Quaternion:
 
     def __idiv__(self, other):
       """in place division"""
-      if isinstance(other, (int,float,long)):
+      if isinstance(other, (int,float)):
           self.w /= other
           self.x /= other
           self.y /= other
@@ -556,7 +556,7 @@ class Symmetry:
 
   def __init__(self, symmetry = None):
     """lattice with given symmetry, defaults to None"""
-    if isinstance(symmetry, basestring) and symmetry.lower() in Symmetry.lattices:
+    if isinstance(symmetry, str) and symmetry.lower() in Symmetry.lattices:
       self.lattice = symmetry.lower()
     else:
       self.lattice = None
@@ -653,8 +653,8 @@ class Symmetry:
                     [ 1.0,0.0,0.0,0.0 ],
                   ]
 
-    return map(Quaternion,
-               np.array(symQuats)[np.atleast_1d(np.array(who)) if who != [] else xrange(len(symQuats))])
+    return list(map(Quaternion,
+               np.array(symQuats)[np.atleast_1d(np.array(who)) if who != [] else range(len(symQuats))]))
     
     
   def equivalentQuaternions(self,
@@ -891,8 +891,7 @@ class Orientation:
 
   def equivalentOrientations(self,
                              who = []):
-    return map(lambda q: Orientation(quaternion = q, symmetry = self.symmetry.lattice),
-               self.equivalentQuaternions(who))
+    return [Orientation(quaternion = q, symmetry = self.symmetry.lattice) for q in self.equivalentQuaternions(who)]
 
   def reduced(self):
     """Transform orientation to fall into fundamental zone according to symmetry"""
@@ -921,7 +920,7 @@ class Orientation:
     for i,sA in enumerate(mySymQs):
       for j,sB in enumerate(otherSymQs):
         theQ = sA.conjugated()*misQ*sB
-        for k in xrange(2):
+        for k in range(2):
           theQ.conjugate()
           breaker = self.symmetry.inFZ(theQ) \
                     and (not SST or other.symmetry.inDisorientationSST(theQ))
@@ -996,11 +995,17 @@ class Orientation:
               relationModel,
               direction,
               targetSymmetry = None):
+    """
+    orientation relationship
 
+    positive number: fcc --> bcc
+    negative number: bcc --> fcc
+    """
     if relationModel not in ['KS','GT','GTdash','NW','Pitsch','Bain']:  return None
     if int(direction) == 0:  return None
 
-    # KS from S. Morito et al./Journal of Alloys and Compounds 5775 (2013) S587-S592 DOES THIS PAPER EXISTS?
+    # KS from S. Morito et al./Journal of Alloys and Compounds 5775 (2013) S587-S592
+    # for KS rotation matrices also check  K. Kitahara et al./Acta Materialia 54 (2006) 1279-1288
     # GT from Y. He et al./Journal of Applied Crystallography (2006). 39, 72-81
     # GT' from Y. He et al./Journal of Applied Crystallography (2006). 39, 72-81
     # NW from H. Kitahara et al./Materials Characterization 54 (2005) 378-386
@@ -1227,14 +1232,14 @@ class Orientation:
     myPlane  /= np.linalg.norm(myPlane)
     myNormal  = [float(i) for i in normals[relationModel][variant,me]]                              # map(float, planes[...]) does not work in python 3
     myNormal /= np.linalg.norm(myNormal)
-    myMatrix  = np.array([myPlane,myNormal,np.cross(myPlane,myNormal)])
+    myMatrix  = np.array([myNormal,np.cross(myPlane,myNormal),myPlane]).T
 
     otherPlane   = [float(i) for i in planes[relationModel][variant,other]]                         # map(float, planes[...]) does not work in python 3
     otherPlane  /= np.linalg.norm(otherPlane)
     otherNormal  = [float(i) for i in normals[relationModel][variant,other]]                        # map(float, planes[...]) does not work in python 3
     otherNormal /= np.linalg.norm(otherNormal)
-    otherMatrix  = np.array([otherPlane,otherNormal,np.cross(otherPlane,otherNormal)])
+    otherMatrix  = np.array([otherNormal,np.cross(otherPlane,otherNormal),otherPlane]).T
 
-    rot=np.dot(otherMatrix.T,myMatrix)
+    rot=np.dot(otherMatrix,myMatrix.T)
 
     return Orientation(matrix=np.dot(rot,self.asMatrix()))                                      # no symmetry information ??

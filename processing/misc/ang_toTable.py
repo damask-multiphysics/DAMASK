@@ -13,7 +13,7 @@ scriptID   = ' '.join([scriptName,damask.version])
 #                                MAIN
 #--------------------------------------------------------------------------------------------------
 
-parser = OptionParser(option_class=damask.extendableOption, usage='%prog [geomfile[s]]', description = """
+parser = OptionParser(option_class=damask.extendableOption, usage='%prog [angfile[s]]', description = """
 Convert TSL/EDAX *.ang file to ASCIItable
 
 """, version = scriptID)
@@ -30,7 +30,7 @@ for name in filenames:
                               outname = os.path.splitext(name)[0]+'.txt' if name else name,
                               buffered = False, labeled = False)
   except: continue
-  table.croak('\033[1m'+scriptName+'\033[0m'+(': '+name if name else ''))
+  damask.util.report(scriptName,name)
 
 # --- interpret header -----------------------------------------------------------------------------
 

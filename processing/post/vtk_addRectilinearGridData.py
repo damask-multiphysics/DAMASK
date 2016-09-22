@@ -3,6 +3,7 @@
 
 import os,vtk
 import damask
+from vtk.util import numpy_support
 from collections import defaultdict
 from optparse import OptionParser
 
@@ -30,21 +31,21 @@ parser.add_option('-r', '--render',
                   dest = 'render',
                   action = 'store_true',
                   help = 'open output in VTK render window')
-parser.add_option('-s', '--scalar',
-                  dest = 'scalar',
+parser.add_option('-d', '--data',
+                  dest = 'data',
                   action = 'extend', metavar = '<string LIST>',
-                  help = 'scalar value label(s)')
-parser.add_option('-v', '--vector',
-                  dest = 'vector',
+                  help = 'scalar/vector value(s) label(s)')
+parser.add_option('-t', '--tensor',
+                  dest = 'tensor',
                   action = 'extend', metavar = '<string LIST>',
-                  help = 'vector value label(s)')
+                  help = 'tensor (3x3) value label(s)')
 parser.add_option('-c', '--color',
                   dest = 'color',
                   action = 'extend', metavar = '<string LIST>',
                   help = 'RGB color tuple label')
 
-parser.set_defaults(scalar = [],
-                    vector = [],
+parser.set_defaults(data = [],
+                    tensor = [],
                     color = [],
                     inplace = False,
                     render = False,
@@ -92,24 +93,18 @@ for name in filenames:
   errors  = []
   VTKarray = {}
   active = defaultdict(list)
-  
-  for datatype,dimension,label in [['scalar',1,options.scalar],
-                                   ['vector',3,options.vector],
-                                   ['color',3,options.color],
+
+  for datatype,dimension,label in [['data',99,options.data],
+                                   ['tensor',9,options.tensor],
+                                   ['color' ,3,options.color],
                                    ]:
     for i,dim in enumerate(table.label_dimension(label)):
       me = label[i]
-      if dim == -1: remarks.append('{} "{}" not found...'.format(datatype,me))
+      if dim == -1:         remarks.append('{} "{}" not found...'.format(datatype,me))
       elif dim > dimension: remarks.append('"{}" not of dimension {}...'.format(me,dimension))
       else:
         remarks.append('adding {} "{}"...'.format(datatype,me))
         active[datatype].append(me)
-
-        if   datatype in ['scalar','vector']: VTKarray[me] = vtk.vtkDoubleArray()
-        elif datatype == 'color':             VTKarray[me] = vtk.vtkUnsignedCharArray()
-
-        VTKarray[me].SetNumberOfComponents(dimension)
-        VTKarray[me].SetName(label[i])
 
   if remarks != []: damask.util.croak(remarks)
   if errors  != []:
@@ -117,26 +112,32 @@ for name in filenames:
     table.close(dismiss = True)
     continue
 
-# ------------------------------------------ process data ---------------------------------------  
+# ------------------------------------------ process data ---------------------------------------
 
-  datacount = 0
+  table.data_readArray([item for sublist in active.values() for item in sublist])                 # read all requested data
 
-  while table.data_read():                                                                          # read next data line of ASCII table
+  for datatype,labels in active.items():                                                          # loop over scalar,color
+    for me in labels:                                                                             # loop over all requested items
+      VTKtype = vtk.VTK_DOUBLE
+      VTKdata = table.data[:, table.label_indexrange(me)].copy()                                  # copy to force contiguous layout
 
-    datacount += 1                                                                                  # count data lines
-    for datatype,labels in active.items():                                                          # loop over scalar,color
-      for me in labels:                                                                             # loop over all requested items
-        theData = [table.data[i] for i in table.label_indexrange(me)]                               # read strings
-        if   datatype == 'color':  VTKarray[me].InsertNextTuple3(*map(lambda x: int(255.*float(x)),theData))
-        elif datatype == 'vector': VTKarray[me].InsertNextTuple3(*map(float,theData))
-        elif datatype == 'scalar': VTKarray[me].InsertNextValue(float(theData[0]))
+      if datatype == 'color':
+        VTKtype = vtk.VTK_UNSIGNED_CHAR
+        VTKdata = (VTKdata*255).astype(int)                                                       # translate to 0..255 UCHAR
+      elif datatype == 'tensor':
+        VTKdata[:,1] = VTKdata[:,3] = 0.5*(VTKdata[:,1]+VTKdata[:,3])
+        VTKdata[:,2] = VTKdata[:,6] = 0.5*(VTKdata[:,2]+VTKdata[:,6])
+        VTKdata[:,5] = VTKdata[:,7] = 0.5*(VTKdata[:,5]+VTKdata[:,7])
+
+      VTKarray[me] = numpy_support.numpy_to_vtk(num_array=VTKdata,deep=True,array_type=VTKtype)
+      VTKarray[me].SetName(me)
 
   table.close()                                                                                     # close input ASCII table
 
-# ------------------------------------------ add data ---------------------------------------  
+# ------------------------------------------ add data ---------------------------------------
 
-  if   datacount == Npoints:  mode = 'point'
-  elif datacount == Ncells:   mode = 'cell'
+  if   len(table.data) == Npoints:  mode = 'point'
+  elif len(table.data) == Ncells:   mode = 'cell'
   else:
     damask.util.croak('Data count is incompatible with grid...')
     continue
@@ -154,7 +155,7 @@ for name in filenames:
   rGrid.Modified()
   if vtk.VTK_MAJOR_VERSION <= 5: rGrid.Update()
 
-# ------------------------------------------ output result ---------------------------------------  
+# ------------------------------------------ output result ---------------------------------------
 
   writer = vtk.vtkXMLRectilinearGridWriter()
   writer.SetDataModeToBinary()
@@ -164,7 +165,7 @@ for name in filenames:
   else:                          writer.SetInputData(rGrid)
   writer.Write()
 
-# ------------------------------------------ render result ---------------------------------------  
+# ------------------------------------------ render result ---------------------------------------
 
 if options.render:
   mapper = vtk.vtkDataSetMapper()
@@ -188,7 +189,7 @@ if options.render:
 
   iren = vtk.vtkRenderWindowInteractor()
   iren.SetRenderWindow(renWin)
- 
+
   iren.Initialize()
   renWin.Render()
   iren.Start()

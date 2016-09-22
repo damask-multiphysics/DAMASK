@@ -19,7 +19,7 @@ class Section():
         self.parameters[key] = data[key]
 
     if '__order__' not in self.parameters:
-      self.parameters['__order__'] = self.parameters.keys()
+      self.parameters['__order__'] = list(self.parameters.keys())
     if part.lower() in classes:
       self.__class__ = classes[part.lower()]
       self.__init__(data)
@@ -61,11 +61,11 @@ class Texture(Section):
     
   def add_component(self,theType,properties):
     
-    if 'scatter' not in map(str.lower,properties.keys()):
+    if 'scatter' not in list(map(str.lower,list(properties.keys()))):
       scatter = 0.0
     else: 
       scatter = properties['scatter']
-    if 'fraction' not in map(str.lower,properties.keys()):
+    if 'fraction' not in list(map(str.lower,list(properties.keys()))):
       fraction = 1.0
     else:
       fraction = properties['fraction']
@@ -224,10 +224,10 @@ class Material():
   def add_microstructure(self, section='',
                                components={},      # dict of phase,texture, and fraction lists
                         ):
-    """Experimental! Needs expansion to multi-constituent microstructures..."""   
+    """Experimental! Needs expansion to multi-constituent microstructures..."""
     microstructure = Microstructure()
     # make keys lower case (http://stackoverflow.com/questions/764235/dictionary-to-lowercase-in-python)
-    components=dict((k.lower(), v) for k,v in components.iteritems())                               
+    components=dict((k.lower(), v) for k,v in components.items())
    
     for key in ['phase','texture','fraction','crystallite']:
       if type(components[key]) is not list:

@@ -81,7 +81,7 @@ module prec
      nTwin = 0_pInt, &
      nTrans = 0_pInt
    logical :: & 
-     nonlocal = .false.                                                                             !< absolute tolerance for state integration
+     nonlocal = .false.
    real(pReal), pointer,     dimension(:,:), contiguous :: &
      slipRate, &                                                                                    !< slip rate
      accumulatedSlip                                                                                !< accumulated plastic slip

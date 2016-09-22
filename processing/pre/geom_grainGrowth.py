@@ -81,17 +81,20 @@ for name in filenames:
   periodic_microstructure = np.tile(microstructure,(3,3,3))[grid[0]/2:-grid[0]/2,
                                                             grid[1]/2:-grid[1]/2,
                                                             grid[2]/2:-grid[2]/2]                   # periodically extend the microstructure
+
 # store a copy the initial microstructure to find locations of immutable indices
   microstructure_original = np.copy(microstructure)                                                 
 
   X,Y,Z = np.mgrid[0:grid[0],0:grid[1],0:grid[2]]
+  
+  # Calculates gaussian weights for simulating 3d diffusion
   gauss = np.exp(-(X*X + Y*Y + Z*Z)/(2.0*options.d*options.d))/math.pow(2.0*np.pi*options.d*options.d,1.5)
-  gauss[:,:,grid[2]/2::] = gauss[:,:,round(grid[2]/2.)-1::-1]     # trying to cope with uneven (odd) grid size
-  gauss[:,grid[1]/2::,:] = gauss[:,round(grid[1]/2.)-1::-1,:]
-  gauss[grid[0]/2::,:,:] = gauss[round(grid[0]/2.)-1::-1,:,:]
+  gauss[:,:,grid[2]/2::] = gauss[:,:,int(round(grid[2]/2.))-1::-1]     # trying to cope with uneven (odd) grid size
+  gauss[:,grid[1]/2::,:] = gauss[:,int(round(grid[1]/2.))-1::-1,:]
+  gauss[grid[0]/2::,:,:] = gauss[int(round(grid[0]/2.))-1::-1,:,:]
   gauss = np.fft.rfftn(gauss)
 
-  interfacialEnergy = lambda A,B: (A*B != 0)*(A != B)*1.0
+  interfacialEnergy = lambda A,B: (A*B != 0)*(A != B)*1.0       #1.0 if A & B are distinct & nonzero, 0.0 otherwise
   struc = ndimage.generate_binary_structure(3,1)                                                                                 # 3D von Neumann neighborhood
 
 
@@ -101,9 +104,11 @@ for name in filenames:
       for j in (-1,0,1):
         for k in (-1,0,1):
             # assign interfacial energy to all voxels that have a differing neighbor (in Moore neighborhood)
-          interfaceEnergy = np.maximum(boundary,
+          boundary = np.maximum(boundary,
                                           interfacialEnergy(microstructure,np.roll(np.roll(np.roll(
                                                             microstructure,i,axis=0), j,axis=1), k,axis=2)))
+    interfaceEnergy = boundary
+    
     # periodically extend interfacial energy array by half a grid size in positive and negative directions
     periodic_interfaceEnergy = np.tile(interfaceEnergy,(3,3,3))[grid[0]/2:-grid[0]/2,
                                                                    grid[1]/2:-grid[1]/2,

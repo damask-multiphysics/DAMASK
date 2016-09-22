@@ -129,6 +129,7 @@ recursive function IO_read(fileUnit,reset) result(line)
 !--------------------------------------------------------------------------------------------------
 ! normal case
  if (input == '') return                                                                            ! regular line
+
 !--------------------------------------------------------------------------------------------------
 ! recursion case 
  if (stack >= 10_pInt) call IO_error(104_pInt,ext_msg=input)                                        ! recursion limit reached
@@ -141,7 +142,7 @@ recursive function IO_read(fileUnit,reset) result(line)
    pathOn(stack) = path(1:scan(path,SEP,.true.))//input                                             ! glue include to current file's dir
  endif
 
- open(newunit=unitOn(stack),iostat=myStat,file=pathOn(stack))                                       ! open included file
+ open(newunit=unitOn(stack),iostat=myStat,file=pathOn(stack),action='read')                         ! open included file
  if (myStat /= 0_pInt) call IO_error(100_pInt,el=myStat,ext_msg=pathOn(stack))
 
  line = IO_read(fileUnit)

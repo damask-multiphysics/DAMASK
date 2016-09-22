@@ -1,6 +1,6 @@
 # -*- coding: UTF-8 no BOM -*-
 
-import os,subprocess,shlex,re,string
+import os,subprocess,shlex,re
 
 class Environment():
   __slots__ = [ \
@@ -22,7 +22,7 @@ class Environment():
       for line in configFile:
         l = re.sub('^set ', '', line).strip()                                                       # remove "set" (tcsh) when setting variables
         if l and not l.startswith('#'):
-          items = map(string.strip,l.split('='))
+          items = re.split(r'\s*=\s*',l)
           if len(items) == 2: 
             self.options[items[0].upper()] = \
               re.sub('\$\{*DAMASK_ROOT\}*',self.rootDir(),os.path.expandvars(items[1]))             # expand all shell variables and DAMASK_ROOT
@@ -35,7 +35,7 @@ class Environment():
     try:
       cmd = """ ssh mulicense2 "/Stat_Flexlm | grep 'Users of %s: ' | cut -d' ' -f7,13" """%software
       process = subprocess.Popen(shlex.split(cmd),stdout = subprocess.PIPE,stderr = subprocess.PIPE)
-      licenses = map(int, process.stdout.readline().split())
+      licenses = list(map(int, process.stdout.readline().split()))
       try:
         if licenses[0]-licenses[1] >= Nneeded:
           return 0

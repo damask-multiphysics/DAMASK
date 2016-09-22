@@ -69,7 +69,8 @@ parser.add_option('-q', '--quaternion',
 
 parser.set_defaults(output = [],
                     symmetry = damask.Symmetry.lattices[-1],
-                    rotation = (0.,1.,1.,1.),                                                       # no rotation about 1,1,1
+                    labrotation     = (0.,1.,1.,1.),                                                # no rotation about 1,1,1
+                    crystalrotation = (0.,1.,1.,1.),                                                # no rotation about 1,1,1
                     degrees = False,
                    )
 

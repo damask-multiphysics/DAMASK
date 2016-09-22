@@ -33,7 +33,7 @@ class Color():
                     }
 
     model = model.upper()
-    if model not in self.__transforms__.keys(): model = 'RGB'
+    if model not in list(self.__transforms__.keys()): model = 'RGB'
     if model == 'RGB' and max(color) > 1.0:                                                         # are we RGB255 ?
       for i in range(3):
         color[i] /= 255.0                                                                           # rescale to RGB
@@ -62,7 +62,7 @@ class Color():
 # ------------------------------------------------------------------
   def convertTo(self,toModel = 'RGB'):
     toModel = toModel.upper()
-    if toModel not in self.__transforms__.keys(): return 
+    if toModel not in list(self.__transforms__.keys()): return 
 
     sourcePos = self.__transforms__[self.model]['index']
     targetPos = self.__transforms__[toModel]['index']
@@ -139,7 +139,7 @@ class Color():
       HSL[0] = HSL[0]*60.0                                                                           # scaling to 360 might be dangerous for small values
       if (HSL[0] < 0.0):
         HSL[0] = HSL[0] + 360.0
-    for i in xrange(2):
+    for i in range(2):
       HSL[i+1] = min(HSL[i+1],1.0) 
       HSL[i+1] = max(HSL[i+1],0.0) 
     
@@ -164,11 +164,11 @@ class Color():
                         [0.212671,0.715160,0.072169],
                         [0.019334,0.119193,0.950227]])
  
-    for i in xrange(3):
+    for i in range(3):
       if (self.color[i] > 0.04045): RGB_lin[i] = ((self.color[i]+0.0555)/1.0555)**2.4
       else:                         RGB_lin[i] =   self.color[i]        /12.92
     XYZ = np.dot(convert,RGB_lin)
-    for i in xrange(3):
+    for i in range(3):
       
       XYZ[i] = max(XYZ[i],0.0) 
 
@@ -193,10 +193,10 @@ class Color():
     RGB_lin = np.dot(convert,self.color)
     RGB     = np.zeros(3,'d')
 
-    for i in xrange(3):
+    for i in range(3):
       if (RGB_lin[i] > 0.0031308): RGB[i] = ((RGB_lin[i])**(1.0/2.4))*1.0555-0.0555
       else:                        RGB[i] =   RGB_lin[i]             *12.92
-    for i in xrange(3):
+    for i in range(3):
       RGB[i] = min(RGB[i],1.0) 
       RGB[i] = max(RGB[i],0.0) 
         
@@ -225,7 +225,7 @@ class Color():
     XYZ[0] = XYZ[1]   + self.color[1]/ 500.0
     XYZ[2] = XYZ[1]   - self.color[2]/ 200.0
     
-    for i in xrange(len(XYZ)):
+    for i in range(len(XYZ)):
       if (XYZ[i] > 6./29. ): XYZ[i] = XYZ[i]**3.
       else:                  XYZ[i] = 108./841. * (XYZ[i] - 4./29.)
         
@@ -245,7 +245,7 @@ class Color():
     ref_white = np.array([.95047, 1.00000, 1.08883],'d')                                            # Observer = 2, Illuminant = D65
     XYZ = self.color/ref_white
       
-    for i in xrange(len(XYZ)):
+    for i in range(len(XYZ)):
       if (XYZ[i] > 216./24389 ): XYZ[i] = XYZ[i]**(1.0/3.0)
       else:                      XYZ[i] = (841./108. * XYZ[i]) + 16.0/116.0
         
@@ -451,7 +451,7 @@ class Colormap():
     """
     format = format.lower()                                                                         # consistent comparison basis
     frac = 0.5*(np.array(crop) + 1.0)                                                               # rescale crop range to fractions
-    colors = [self.color(float(i)/(steps-1)*(frac[1]-frac[0])+frac[0]).expressAs(model).color for i in xrange(steps)]
+    colors = [self.color(float(i)/(steps-1)*(frac[1]-frac[0])+frac[0]).expressAs(model).color for i in range(steps)]
     if   format == 'paraview':
       colormap = ['[\n {{\n  "ColorSpace" : "RGB", "Name" : "{}",\n  "RGBPoints" : ['.format(name)] \
                + ['    {:4d},{:8.6f},{:8.6f},{:8.6f},'.format(i,color[0],color[1],color[2],)
@@ -461,7 +461,7 @@ class Colormap():
     
     elif format == 'gmsh':
       colormap = ['View.ColorTable = {'] \
-               + [',\n'.join(['{%s}'%(','.join(map(lambda x:str(x*255.0),color))) for color in colors])] \
+               + [',\n'.join(['{%s}'%(','.join([str(x*255.0) for x in color])) for color in colors])] \
                + ['}']
     
     elif format == 'gom':
@@ -469,7 +469,7 @@ class Colormap():
                  + ' 9 ' + str(name) \
                  + ' 0 1 0 3 0 0 -1 9 \ 0 0 0 255 255 255 0 0 255 ' \
                  + '30 NO_UNIT 1 1 64 64 64 255 1 0 0 0 0 0 0 3 0 ' + str(len(colors)) \
-                 + ' '.join([' 0 %s 255 1'%(' '.join(map(lambda x:str(int(x*255.0)),color))) for color in reversed(colors)])]
+                 + ' '.join([' 0 %s 255 1'%(' '.join([str(int(x*255.0)) for x in color])) for color in reversed(colors)])]
     
     elif format == 'raw':
       colormap = ['\t'.join(map(str,color)) for color in colors]

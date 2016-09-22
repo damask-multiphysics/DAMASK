@@ -158,7 +158,8 @@ module math
    math_areaTriangle, &
    math_rotate_forward33, &
    math_rotate_backward33, &
-   math_rotate_forward3333
+   math_rotate_forward3333, &
+   math_limit
  private :: &
    math_partition, &
    halton, &
@@ -178,7 +179,6 @@ subroutine math_init
  use, intrinsic :: iso_fortran_env                                                                  ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
  use prec,     only: tol_math_check
  use numerics, only: &
-   worldrank, &
    fixedSeed
  use IO,       only: IO_error, IO_timeStamp
 
