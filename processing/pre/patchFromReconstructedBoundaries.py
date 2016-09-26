@@ -270,7 +270,6 @@ def rcbParser(content,M,size,tolerance,idcolumn,segmentcolumn):
         myWalk = point['segments'].pop()
         grainLegs = [myWalk]
         myEnd = segments[myWalk][1 if segments[myWalk][0] == myStart else 0]
-
         while (myEnd != pointId):
           myV = [points[myEnd]['coords'][0]-points[myStart]['coords'][0],
                  points[myEnd]['coords'][1]-points[myStart]['coords'][1]]
@@ -281,18 +280,18 @@ def rcbParser(content,M,size,tolerance,idcolumn,segmentcolumn):
             if peek == myWalk:
               continue                                                                              # do not go back same path
             peekEnd = segments[peek][1 if segments[peek][0] == myEnd else 0]
-            peekV = [points[myEnd]['coords'][0]-points[peekEnd]['coords'][0],
-                     points[myEnd]['coords'][1]-points[peekEnd]['coords'][1]]
+            peekV = [points[peekEnd]['coords'][0]-points[myEnd]['coords'][0],
+                     points[peekEnd]['coords'][1]-points[myEnd]['coords'][1]]
             peekLen = math.sqrt(peekV[0]**2+peekV[1]**2)
             if peekLen == 0.0: damask.util.croak('peeklen is zero: peek point {}'.format(peek))
             crossproduct = (myV[0]*peekV[1] - myV[1]*peekV[0])/myLen/peekLen
             dotproduct   = (myV[0]*peekV[0] + myV[1]*peekV[1])/myLen/peekLen
-            innerAngle = crossproduct*(dotproduct+1.0)
+            innerAngle = math.copysign(1.0,crossproduct)*(dotproduct-1.0)
             if innerAngle >= best['product']:                                    # takes sharpest left turn
               best['product'] = innerAngle
               best['peek'] = peek
               best['point'] = peekEnd
-
+          
           innerAngleSum += best['product']
           myWalk = best['peek']
           myStart = myEnd
@@ -301,7 +300,7 @@ def rcbParser(content,M,size,tolerance,idcolumn,segmentcolumn):
           if myWalk in points[myStart]['segments']:
             points[myStart]['segments'].remove(myWalk)
           else:
-            damask.utilcroak('{} not in segments of point {}'.format(myWalk,myStart))
+            damask.util.croak('{} not in segments of point {}'.format(myWalk,myStart))
           grainDraw.append(points[myStart]['coords'])
           grainLegs.append(myWalk)
           
@@ -311,7 +310,6 @@ def rcbParser(content,M,size,tolerance,idcolumn,segmentcolumn):
         else:
           grains['box'] = grainLegs
 
-  
 # build overall data structure
 
   rcData = {'dimension':[dX,dY],
@@ -772,8 +770,8 @@ def fftbuild(rcData,height,xframe,yframe,resolution,extrusion):
              'dimension':(xsize,ysize,zsize)}
   
   frameindex=len(rcData['grain'])+1                                          # calculate frame index as largest grain index plus one 
-  dx = xsize/(xres+1)                                                        # calculate step sizes
-  dy = ysize/(yres+1)
+  dx = xsize/(xres)                                                          # calculate step sizes
+  dy = ysize/(yres)
  
   grainpoints = []
   for segments in rcData['grain']:                                           # get segments of each grain
@@ -788,11 +786,10 @@ def fftbuild(rcData,height,xframe,yframe,resolution,extrusion):
     grainpoints.append([])                                                   # start out blank for current grain
     for p in sorted(points, key=points.get):                                 # loop thru set of sorted points
       grainpoints[-1].append([rcData['point'][p][0],rcData['point'][p][1]])  # append x,y of point
- 
   bestGuess = 0                                                              # assume grain 0 as best guess
   for i in range(int(xres*yres)):                                            # walk through all points in xy plane
     xtest = -xframe+((i%xres)+0.5)*dx                                        # calculate coordinates
-    ytest = -yframe+(int(i/xres)+0.5)*dy
+    ytest = -yframe+((i//xres)+0.5)*dy
     if(xtest < 0 or xtest > maxX):                                           # check wether part of frame
       if( ytest < 0 or ytest > maxY):                                        # part of edges
         fftdata['fftpoints'].append(frameindex+2)                            # append frameindex to result array
@@ -944,8 +941,8 @@ if 'spectral' in options.output:
   
   geomFile = open(myName+'_'+str(int(fftdata['resolution'][0]))+'.geom','w')  # open geom file for writing
   geomFile.write('3\theader\n')                                               # write header info
-  geomFile.write('resolution a %i b %i c %i\n'%(fftdata['resolution']))       # resolution
-  geomFile.write('dimension x %f y %f z %f\n'%(fftdata['dimension']))         # size
+  geomFile.write('grid a %i b %i c %i\n'%(fftdata['resolution']))             # grid resolution
+  geomFile.write('size x %f y %f z %f\n'%(fftdata['dimension']))              # size
   geomFile.write('homogenization 1\n')                                        # homogenization
   for z in xrange(fftdata['resolution'][2]):                                  # z repetions
     for y in xrange(fftdata['resolution'][1]):                                # each x-row separately
