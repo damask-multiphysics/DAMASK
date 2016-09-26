@@ -944,8 +944,8 @@ if 'spectral' in options.output:
   
   geomFile = open(myName+'_'+str(int(fftdata['resolution'][0]))+'.geom','w')  # open geom file for writing
   geomFile.write('3\theader\n')                                               # write header info
-  geomFile.write('resolution a %i b %i c %i\n'%(fftdata['resolution']))       # resolution
-  geomFile.write('dimension x %f y %f z %f\n'%(fftdata['dimension']))         # size
+  geomFile.write('grid a %i b %i c %i\n'%(fftdata['resolution']))             # grid resolution
+  geomFile.write('size x %f y %f z %f\n'%(fftdata['dimension']))              # size
   geomFile.write('homogenization 1\n')                                        # homogenization
   for z in xrange(fftdata['resolution'][2]):                                  # z repetions
     for y in xrange(fftdata['resolution'][1]):                                # each x-row separately
