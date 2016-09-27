@@ -11,7 +11,7 @@ do
   < $geom \
   | \
   vtk_addRectilinearGridData \
-    --scalar microstructure \
+    --data microstructure \
     --inplace \
     --vtk ${geom%.*}.vtk
   rm ${geom%.*}.vtk

@@ -20,6 +20,7 @@ module DAMASK_interface
    geometryFile = '', &                                                                             !< parameter given for geometry file
    loadCaseFile = ''                                                                                !< parameter given for load case file
  character(len=1024), private           :: workingDirectory                                         !< accessed by getSolverWorkingDirectoryName for compatibility reasons
+ character,           private,parameter :: pathSep = '/'
 
  public :: &
    getSolverWorkingDirectoryName, &
@@ -31,7 +32,6 @@ module DAMASK_interface
    getLoadCaseFile, &
    rectifyPath, &
    makeRelativePath, &
-   getPathSep, &
    IIO_stringValue, &
    IIO_intValue, &
    IIO_lc, &
@@ -44,6 +44,8 @@ contains
 !--------------------------------------------------------------------------------------------------
 subroutine DAMASK_interface_init()
  use, intrinsic :: iso_fortran_env                                                                  ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
+ use system_routines, only: &
+   getHostName
 
  implicit none
  character(len=1024) :: &
@@ -64,6 +66,7 @@ subroutine DAMASK_interface_init()
  integer, dimension(8) :: &
    dateAndTime                                                                                      ! type default integer
  PetscErrorCode :: ierr
+ logical        :: error
  external :: &
    quit,&
    MPI_Comm_rank,&
@@ -116,54 +119,52 @@ subroutine DAMASK_interface_init()
    tag = IIO_lc(IIO_stringValue(commandLine,chunkPos,i))                                            ! extract key
    select case(tag)
      case ('-h','--help')
-       mainProcess2: if (worldrank == 0) then
-         write(6,'(a)')  ' #######################################################################'
-         write(6,'(a)')  ' DAMASK_spectral:'
-         write(6,'(a)')  ' The spectral method boundary value problem solver for'
-         write(6,'(a)')  ' the Düsseldorf Advanced Material Simulation Kit'
-         write(6,'(a,/)')' #######################################################################'
-         write(6,'(a,/)')' Valid command line switches:'
-         write(6,'(a)')  '    --geom         (-g, --geometry)'
-         write(6,'(a)')  '    --load         (-l, --loadcase)'
-         write(6,'(a)')  '    --workingdir   (-w, --wd, --workingdirectory, -d, --directory)'
-         write(6,'(a)')  '    --restart      (-r, --rs)'
-         write(6,'(a)')  '    --help         (-h)'
-         write(6,'(/,a)')' -----------------------------------------------------------------------'
-         write(6,'(a)')  ' Mandatory arguments:'
-         write(6,'(/,a)')'   --geom PathToGeomFile/NameOfGeom.geom'
-         write(6,'(a)')  '        Specifies the location of the geometry definition file,' 
-         write(6,'(a)')  '            if no extension is given, .geom will be appended.' 
-         write(6,'(a)')  '        "PathToGeomFile" will be the working directory if not specified'
-         write(6,'(a)')  '            via --workingdir.'
-         write(6,'(a)')  '        Make sure the file "material.config" exists in the working'
-         write(6,'(a)')  '            directory.'   
-         write(6,'(a)')  '        For further configuration place "numerics.config"'
-         write(6,'(a)')'            and "numerics.config" in that directory.'
-         write(6,'(/,a)')'   --load PathToLoadFile/NameOfLoadFile.load'
-         write(6,'(a)')  '        Specifies the location of the load case definition file,' 
-         write(6,'(a)')  '            if no extension is given, .load will be appended.' 
-         write(6,'(/,a)')' -----------------------------------------------------------------------'
-         write(6,'(a)')  ' Optional arguments:'
-         write(6,'(/,a)')'   --workingdirectory PathToWorkingDirectory'
-         write(6,'(a)')  '        Specifies the working directory and overwrites the default'
-         write(6,'(a)')  '            "PathToGeomFile".'
-         write(6,'(a)')  '        Make sure the file "material.config" exists in the working'
-         write(6,'(a)')  '            directory.'   
-         write(6,'(a)')  '        For further configuration place "numerics.config"'
-         write(6,'(a)')'            and "numerics.config" in that directory.'
-         write(6,'(/,a)')'   --restart XX'
-         write(6,'(a)')  '        Reads in total increment No. XX-1 and continues to'
-         write(6,'(a)')  '            calculate total increment No. XX.'
-         write(6,'(a)')  '        Appends to existing results file '
-         write(6,'(a)')  '            "NameOfGeom_NameOfLoadFile.spectralOut".'
-         write(6,'(a)')  '        Works only if the restart information for total increment'
-         write(6,'(a)')  '             No. XX-1 is available in the working directory.'
-         write(6,'(/,a)')' -----------------------------------------------------------------------'
-         write(6,'(a)')  ' Help:'
-         write(6,'(/,a)')'   --help'
-         write(6,'(a,/)')'        Prints this message and exits'
-         call quit(0_pInt)                                                                        ! normal Termination
-       endif mainProcess2
+       write(6,'(a)')  ' #######################################################################'
+       write(6,'(a)')  ' DAMASK_spectral:'
+       write(6,'(a)')  ' The spectral method boundary value problem solver for'
+       write(6,'(a)')  ' the Düsseldorf Advanced Material Simulation Kit'
+       write(6,'(a,/)')' #######################################################################'
+       write(6,'(a,/)')' Valid command line switches:'
+       write(6,'(a)')  '    --geom         (-g, --geometry)'
+       write(6,'(a)')  '    --load         (-l, --loadcase)'
+       write(6,'(a)')  '    --workingdir   (-w, --wd, --workingdirectory, -d, --directory)'
+       write(6,'(a)')  '    --restart      (-r, --rs)'
+       write(6,'(a)')  '    --help         (-h)'
+       write(6,'(/,a)')' -----------------------------------------------------------------------'
+       write(6,'(a)')  ' Mandatory arguments:'
+       write(6,'(/,a)')'   --geom PathToGeomFile/NameOfGeom.geom'
+       write(6,'(a)')  '        Specifies the location of the geometry definition file,' 
+       write(6,'(a)')  '            if no extension is given, .geom will be appended.' 
+       write(6,'(a)')  '        "PathToGeomFile" will be the working directory if not specified'
+       write(6,'(a)')  '            via --workingdir.'
+       write(6,'(a)')  '        Make sure the file "material.config" exists in the working'
+       write(6,'(a)')  '            directory.'   
+       write(6,'(a)')  '        For further configuration place "numerics.config"'
+       write(6,'(a)')'            and "numerics.config" in that directory.'
+       write(6,'(/,a)')'   --load PathToLoadFile/NameOfLoadFile.load'
+       write(6,'(a)')  '        Specifies the location of the load case definition file,' 
+       write(6,'(a)')  '            if no extension is given, .load will be appended.' 
+       write(6,'(/,a)')' -----------------------------------------------------------------------'
+       write(6,'(a)')  ' Optional arguments:'
+       write(6,'(/,a)')'   --workingdirectory PathToWorkingDirectory'
+       write(6,'(a)')  '        Specifies the working directory and overwrites the default'
+       write(6,'(a)')  '            "PathToGeomFile".'
+       write(6,'(a)')  '        Make sure the file "material.config" exists in the working'
+       write(6,'(a)')  '            directory.'   
+       write(6,'(a)')  '        For further configuration place "numerics.config"'
+       write(6,'(a)')'            and "numerics.config" in that directory.'
+       write(6,'(/,a)')'   --restart XX'
+       write(6,'(a)')  '        Reads in total increment No. XX-1 and continues to'
+       write(6,'(a)')  '            calculate total increment No. XX.'
+       write(6,'(a)')  '        Appends to existing results file '
+       write(6,'(a)')  '            "NameOfGeom_NameOfLoadFile.spectralOut".'
+       write(6,'(a)')  '        Works only if the restart information for total increment'
+       write(6,'(a)')  '             No. XX-1 is available in the working directory.'
+       write(6,'(/,a)')' -----------------------------------------------------------------------'
+       write(6,'(a)')  ' Help:'
+       write(6,'(/,a)')'   --help'
+       write(6,'(a,/)')'        Prints this message and exits'
+       call quit(0_pInt)                                                                        ! normal Termination
      case ('-l', '--load', '--loadcase')
        loadcaseArg = IIO_stringValue(commandLine,chunkPos,i+1_pInt)
      case ('-g', '--geom', '--geometry')
@@ -185,25 +186,23 @@ subroutine DAMASK_interface_init()
  geometryFile = getGeometryFile(geometryArg)
  loadCaseFile = getLoadCaseFile(loadCaseArg)
 
- call get_environment_variable('HOSTNAME',hostName)
  call get_environment_variable('USER',userName)
- mainProcess3: if (worldrank == 0) then
-   write(6,'(a,a)')      ' Host name:             ', trim(hostName)
-   write(6,'(a,a)')      ' User name:             ', trim(userName)
-   write(6,'(a,a)')      ' Path separator:        ', getPathSep()
-   write(6,'(a,a)')      ' Command line call:     ', trim(commandLine)
-   if (len(trim(workingDirArg))>0) &
-     write(6,'(a,a)')    ' Working dir argument:  ', trim(workingDirArg)
-   write(6,'(a,a)')      ' Geometry argument:     ', trim(geometryArg)
-   write(6,'(a,a)')      ' Loadcase argument:     ', trim(loadcaseArg)
-   write(6,'(a,a)')      ' Working directory:     ', trim(getSolverWorkingDirectoryName())
-   write(6,'(a,a)')      ' Geometry file:         ', trim(geometryFile)
-   write(6,'(a,a)')      ' Loadcase file:         ', trim(loadCaseFile)
-   write(6,'(a,a)')      ' Solver job name:       ', trim(getSolverJobName())
-   if (SpectralRestartInc > 1_pInt) &
-     write(6,'(a,i6.6)') ' Restart at increment:  ', spectralRestartInc
-   write(6,'(a,l1,/)')   ' Append to result file: ', appendToOutFile
- endif mainProcess3
+ error = getHostName(hostName)
+ write(6,'(a,a)')      ' Host name:             ', trim(hostName)
+ write(6,'(a,a)')      ' User name:             ', trim(userName)
+ write(6,'(a,a)')      ' Path separator:        ', pathSep
+ write(6,'(a,a)')      ' Command line call:     ', trim(commandLine)
+ if (len(trim(workingDirArg))>0) &
+   write(6,'(a,a)')    ' Working dir argument:  ', trim(workingDirArg)
+ write(6,'(a,a)')      ' Geometry argument:     ', trim(geometryArg)
+ write(6,'(a,a)')      ' Loadcase argument:     ', trim(loadcaseArg)
+ write(6,'(a,a)')      ' Working directory:     ', trim(getSolverWorkingDirectoryName())
+ write(6,'(a,a)')      ' Geometry file:         ', trim(geometryFile)
+ write(6,'(a,a)')      ' Loadcase file:         ', trim(loadCaseFile)
+ write(6,'(a,a)')      ' Solver job name:       ', trim(getSolverJobName())
+ if (SpectralRestartInc > 1_pInt) &
+   write(6,'(a,i6.6)') ' Restart at increment:  ', spectralRestartInc
+ write(6,'(a,l1,/)')   ' Append to result file: ', appendToOutFile
 
 end subroutine DAMASK_interface_init
 
@@ -222,11 +221,9 @@ character(len=1024) function storeWorkingDirectory(workingDirectoryArg,geometryA
  character(len=*),  intent(in) :: workingDirectoryArg                                               !< working directory argument
  character(len=*),  intent(in) :: geometryArg                                                       !< geometry argument
  character(len=1024)           :: cwd
- character                     :: pathSep
  logical                       :: error
  external                      :: quit
 
- pathSep = getPathSep()
  wdGiven: if (len(workingDirectoryArg)>0) then
    absolutePath: if (workingDirectoryArg(1:1) == pathSep) then
      storeWorkingDirectory = workingDirectoryArg
@@ -262,6 +259,7 @@ end function storeWorkingDirectory
 character(len=1024) function getSolverWorkingDirectoryName()
 
  implicit none
+
  getSolverWorkingDirectoryName = workingDirectory
 
 end function getSolverWorkingDirectoryName
@@ -274,10 +272,8 @@ character(len=1024) function getSolverJobName()
 
  implicit none
  integer :: posExt,posSep
- character :: pathSep
  character(len=1024) :: tempString 
 
- pathSep = getPathSep()
 
  tempString = geometryFile
  posExt = scan(tempString,'.',back=.true.)
@@ -308,11 +304,9 @@ character(len=1024) function getGeometryFile(geometryParameter)
    cwd
  integer :: posExt, posSep
  logical :: error
- character :: pathSep
  external  :: quit
 
  getGeometryFile = geometryParameter
- pathSep = getPathSep()
  posExt = scan(getGeometryFile,'.',back=.true.)
  posSep = scan(getGeometryFile,pathSep,back=.true.)
 
@@ -344,11 +338,9 @@ character(len=1024) function getLoadCaseFile(loadCaseParameter)
    cwd
  integer :: posExt, posSep
  logical :: error
- character :: pathSep
  external  :: quit
 
  getLoadCaseFile = loadcaseParameter
- pathSep = getPathSep()
  posExt = scan(getLoadCaseFile,'.',back=.true.)
  posSep = scan(getLoadCaseFile,pathSep,back=.true.)
 
@@ -374,10 +366,7 @@ function rectifyPath(path)
  implicit none
  character(len=*) :: path
  character(len=len_trim(path)) :: rectifyPath
- character :: pathSep
  integer :: i,j,k,l                                                                                 ! no pInt
-
- pathSep = getPathSep()
 
 !--------------------------------------------------------------------------------------------------
 ! remove /./ from path
@@ -415,10 +404,8 @@ character(len=1024) function makeRelativePath(a,b)
 
  implicit none
  character (len=*) :: a,b
- character :: pathSep
  integer :: i,posLastCommonSlash,remainingSlashes !no pInt
 
- pathSep = getPathSep()
  posLastCommonSlash = 0
  remainingSlashes = 0
 
@@ -432,35 +419,6 @@ character(len=1024) function makeRelativePath(a,b)
  makeRelativePath = repeat('..'//pathSep,remainingSlashes)//b(posLastCommonSlash+1:len_trim(b))
 
 end function makeRelativePath
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief counting / and \ in $PATH System variable the character occuring more often is assumed
-! to be the path separator
-!--------------------------------------------------------------------------------------------------
-character function getPathSep()
-
- implicit none
- character(len=2048) :: &
-   path
- integer(pInt) :: &
-   backslash = 0_pInt, &
-   slash = 0_pInt
- integer :: i
-
- call get_environment_variable('PATH',path)
- do i=1, len(trim(path))
-   if (path(i:i)=='/') slash     =     slash + 1_pInt
-   if (path(i:i)=='\') backslash = backslash + 1_pInt
- enddo
-
- if (backslash>slash) then
-   getPathSep = '\'
- else
-   getPathSep = '/'
- endif
-
-end function getPathSep
 
 
 !--------------------------------------------------------------------------------------------------

@@ -23,6 +23,8 @@ class Test():
                 'keep':          False,
                 'accept':        False,
                 'updateRequest': False,
+                'show':          False,
+                'select':        None,
                 }
     for arg in defaults.keys():
       setattr(self,arg,kwargs.get(arg) if kwargs.get(arg) else defaults[arg])
@@ -58,10 +60,18 @@ class Test():
                            action = "store_true",
                            dest   = "accept",
                            help   = "calculate results but always consider test as successfull")
-
+    self.parser.add_option("-l",   "--list",
+                           action = "store_true",
+                           dest   = "show",
+                           help   = "show all test variants and do no calculation")
+    self.parser.add_option("-s",   "--select",
+                           dest   = "select",
+                           help   = "run test of given name only")
     self.parser.set_defaults(keep   = self.keep,
                              accept = self.accept,
                              update = self.updateRequest,
+                             show   = self.show,
+                             select = self.select,
                             )
 
     
@@ -73,21 +83,26 @@ class Test():
       self.prepareAll()
 
     for variant,name in enumerate(self.variants):
-      try:
-        if not self.options.keep:
-          self.prepare(variant)
-          self.run(variant)
+      if self.options.show:
+        logging.critical('{}: {}'.format(variant,name))
+      elif self.options.select is not None and name != self.options.select:
+        pass
+      else:
+        try:
+          if not self.options.keep:
+            self.prepare(variant)
+            self.run(variant)
 
-        self.postprocess(variant)
+          self.postprocess(variant)
 
-        if self.options.update:
-          if self.update(variant) != 0: logging.critical('update for "{}" failed.'.format(name))
-        elif not (self.options.accept or self.compare(variant)):                                    # no update, do comparison
-          return variant+1                                                                          # return culprit
+          if self.options.update:
+            if self.update(variant) != 0: logging.critical('update for "{}" failed.'.format(name))
+          elif not (self.options.accept or self.compare(variant)):                                    # no update, do comparison
+            return variant+1                                                                          # return culprit
 
-      except Exception as e :
-        logging.critical('exception during variant execution: {}'.format(e))
-        return variant+1                                                     # return culprit
+        except Exception as e :
+          logging.critical('exception during variant execution: {}'.format(e))
+          return variant+1                                                     # return culprit
     return 0
   
   def feasible(self):

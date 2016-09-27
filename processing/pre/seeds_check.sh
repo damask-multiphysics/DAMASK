@@ -5,7 +5,7 @@ do
   vtk_pointcloud $seeds
 
   vtk_addPointcloudData $seeds \
-    --scalar microstructure,weight \
+    --data microstructure,weight \
     --inplace \
     --vtk ${seeds%.*}.vtp \
     

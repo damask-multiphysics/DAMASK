@@ -1450,7 +1450,7 @@ pure function math_EulerToQ(eulerangles)
                  cos(halfangles(1)-halfangles(3)) * s, &
                  sin(halfangles(1)-halfangles(3)) * s, &
                  sin(halfangles(1)+halfangles(3)) * c ]
- math_EulerToQ = math_qConj(math_EulerToQ)                 ! convert to passive rotation
+ math_EulerToQ = math_qConj(math_EulerToQ)                                                          ! convert to passive rotation
 
 end function math_EulerToQ
 
@@ -1508,7 +1508,7 @@ pure function math_EulerAxisAngleToR(axis,omega)
  real(pReal), dimension(3), intent(in) :: axis
  real(pReal), intent(in) :: omega
 
- math_EulerAxisAngleToR = transpose(math_axisAngleToR(axis,omega))  ! convert to passive rotation
+ math_EulerAxisAngleToR = transpose(math_axisAngleToR(axis,omega))                                  ! convert to passive rotation
 
 end function math_EulerAxisAngleToR
 
@@ -1527,7 +1527,7 @@ pure function math_EulerAxisAngleToQ(axis,omega)
  real(pReal), dimension(3), intent(in) :: axis
  real(pReal), intent(in) :: omega
 
- math_EulerAxisAngleToQ = math_qConj(math_axisAngleToQ(axis,omega))                                   ! convert to passive rotation
+ math_EulerAxisAngleToQ = math_qConj(math_axisAngleToQ(axis,omega))                                 ! convert to passive rotation
 
 end function math_EulerAxisAngleToQ
 
@@ -1550,7 +1550,7 @@ pure function math_axisAngleToQ(axis,omega)
 
  norm = sqrt(math_mul3x3(axis,axis))
  rotation: if (norm > 1.0e-8_pReal) then
-   axisNrm = axis/norm                                                                                ! normalize axis to be sure
+   axisNrm = axis/norm                                                                              ! normalize axis to be sure
    math_axisAngleToQ = [cos(0.5_pReal*omega), sin(0.5_pReal*omega) * axisNrm(1:3)]
  else rotation
    math_axisAngleToQ = [1.0_pReal,0.0_pReal,0.0_pReal,0.0_pReal]
@@ -1864,37 +1864,29 @@ end function math_sampleGaussVar
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief symmetrically equivalent Euler angles for given sample symmetry 1:triclinic, 2:monoclinic, 4:orthotropic
+!> @brief symmetrically equivalent Euler angles for given sample symmetry 
+!> @detail 1 (equivalent to != 2 and !=4):triclinic, 2:monoclinic, 4:orthotropic
 !--------------------------------------------------------------------------------------------------
 pure function math_symmetricEulers(sym,Euler)
 
  implicit none
- integer(pInt), intent(in) :: sym
+ integer(pInt), intent(in) :: sym                                                                   !< symmetry Class
  real(pReal), dimension(3), intent(in) :: Euler
  real(pReal), dimension(3,3) :: math_symmetricEulers
- integer(pInt) :: i,j
 
- math_symmetricEulers(1,1) = PI+Euler(1)
- math_symmetricEulers(2,1) = Euler(2)
- math_symmetricEulers(3,1) = Euler(3)
+ math_symmetricEulers = transpose(reshape([PI+Euler(1), PI-Euler(1), 2.0_pReal*PI-Euler(1), &
+                                              Euler(2), PI-Euler(2), PI          -Euler(2), &
+                                              Euler(3), PI+Euler(3), PI          +Euler(3)],[3,3])) ! transpose is needed to have symbolic notation instead of column-major
 
- math_symmetricEulers(1,2) = PI-Euler(1)
- math_symmetricEulers(2,2) = PI-Euler(2)
- math_symmetricEulers(3,2) = PI+Euler(3)
-
- math_symmetricEulers(1,3) = 2.0_pReal*PI-Euler(1)
- math_symmetricEulers(2,3) = PI-Euler(2)
- math_symmetricEulers(3,3) = PI+Euler(3)
-
- forall (i=1_pInt:3_pInt,j=1_pInt:3_pInt) math_symmetricEulers(j,i) = modulo(math_symmetricEulers(j,i),2.0_pReal*pi)
+ math_symmetricEulers = modulo(math_symmetricEulers,2.0_pReal*pi)
 
  select case (sym)
-   case (4_pInt) ! all done
+   case (4_pInt)                                                                                    ! orthotropic: all done
 
-   case (2_pInt)  ! return only first
+   case (2_pInt)                                                                                    ! monoclinic: return only first
      math_symmetricEulers(1:3,2:3) = 0.0_pReal
 
-   case default         ! return blank
+   case default                                                                                     ! triclinic: return blank
      math_symmetricEulers = 0.0_pReal
  end select
 

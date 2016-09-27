@@ -1568,8 +1568,6 @@ subroutine IO_error(error_ID,el,ip,g,ext_msg)
    msg = 'math_check: R*v == q*v failed'
  case (410_pInt)
    msg = 'eigenvalues computation error'
- case (450_pInt)
-   msg = 'unknown symmetry type specified'
 
 !-------------------------------------------------------------------------------------------------
 ! homogenization errors

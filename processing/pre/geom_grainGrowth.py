@@ -89,9 +89,9 @@ for name in filenames:
   
   # Calculates gaussian weights for simulating 3d diffusion
   gauss = np.exp(-(X*X + Y*Y + Z*Z)/(2.0*options.d*options.d))/math.pow(2.0*np.pi*options.d*options.d,1.5)
-  gauss[:,:,grid[2]/2::] = gauss[:,:,round(grid[2]/2.)-1::-1]     # trying to cope with uneven (odd) grid size
-  gauss[:,grid[1]/2::,:] = gauss[:,round(grid[1]/2.)-1::-1,:]
-  gauss[grid[0]/2::,:,:] = gauss[round(grid[0]/2.)-1::-1,:,:]
+  gauss[:,:,grid[2]/2::] = gauss[:,:,int(round(grid[2]/2.))-1::-1]     # trying to cope with uneven (odd) grid size
+  gauss[:,grid[1]/2::,:] = gauss[:,int(round(grid[1]/2.))-1::-1,:]
+  gauss[grid[0]/2::,:,:] = gauss[int(round(grid[0]/2.))-1::-1,:,:]
   gauss = np.fft.rfftn(gauss)
 
   interfacialEnergy = lambda A,B: (A*B != 0)*(A != B)*1.0       #1.0 if A & B are distinct & nonzero, 0.0 otherwise
