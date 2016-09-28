@@ -577,26 +577,26 @@ module lattice
  real(pReal), dimension(4+4,LATTICE_hex_Nslip), parameter, private :: &
    LATTICE_hex_systemSlip = reshape(real([&
     ! Slip direction     Plane normal
-    ! Basal systems <11.0>{00.1} (independent of c/a-ratio, Bravais notation (4 coordinate base))
+    ! Basal systems                         <11.0>{00.1} (independent of c/a-ratio, Bravais notation (4 coordinate base))
       2, -1, -1,  0,     0,  0,  0,  1, &
      -1,  2, -1,  0,     0,  0,  0,  1, &
      -1, -1,  2,  0,     0,  0,  0,  1, &
-    ! 1st type prismatic systems <11.0>{10.0}  (independent of c/a-ratio)
+    ! 1st type prismatic systems            <11.0>{10.0}  (independent of c/a-ratio)
       2, -1, -1,  0,     0,  1, -1,  0, &
      -1,  2, -1,  0,    -1,  0,  1,  0, &
      -1, -1,  2,  0,     1, -1,  0,  0, &
-    ! 2nd type prismatic systems <10.0>{11.0} -- a slip; plane normals independent of c/a-ratio
+    ! 2nd type prismatic systems            <10.0>{11.0} -- a slip; plane normals independent of c/a-ratio
       0,  1,  -1, 0,     2, -1, -1,  0, &
      -1,  0,  1,  0,    -1,  2, -1,  0, &
       1, -1,  0,  0,    -1, -1,  2,  0,  &
-    ! 1st type 1st order pyramidal systems <11.0>{-11.1} -- plane normals depend on the c/a-ratio
+    ! 1st type 1st order pyramidal systems  <11.0>{-11.1} -- plane normals depend on the c/a-ratio
       2, -1, -1,  0,     0,  1, -1,  1, &
      -1,  2, -1,  0,    -1,  0,  1,  1, &
      -1, -1,  2,  0,     1, -1,  0,  1, &
       1,  1, -2,  0,    -1,  1,  0,  1, &
      -2,  1,  1,  0,     0, -1,  1,  1, &
       1, -2,  1,  0,     1,  0, -1,  1, &
-    ! pyramidal system: c+a slip <11.3>{-10.1} -- plane normals depend on the c/a-ratio
+    ! pyramidal system: c+a slip            <11.3>{-10.1} -- plane normals depend on the c/a-ratio
       2, -1, -1,  3,    -1,  1,  0,  1, &
       1, -2,  1,  3,    -1,  1,  0,  1, &
      -1, -1,  2,  3,     1,  0, -1,  1, &
@@ -609,7 +609,7 @@ module lattice
       2, -1, -1,  3,    -1,  0,  1,  1, &
       1, -2,  1,  3,     0,  1, -1,  1, &
      -1, -1,  2,  3,     0,  1, -1,  1, &
-    ! pyramidal system: c+a slip <11.3>{-1-1.2} -- as for hexagonal ice (Castelnau et al. 1996, similar to twin system found below) 
+    ! pyramidal system: c+a slip            <11.3>{-1-1.2} -- as for hexagonal ice (Castelnau et al. 1996, similar to twin system found below)
       2, -1, -1,  3,    -2,  1,  1,  2, & ! sorted according to similar twin system
      -1,  2, -1,  3,     1, -2,  1,  2, & ! <11.3>{-1-1.2} shear = 2((c/a)^2-2)/(3 c/a)
      -1, -1,  2,  3,     1,  1, -2,  2, &
