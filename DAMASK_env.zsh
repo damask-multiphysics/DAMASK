@@ -51,8 +51,6 @@ if [ ! -z "$PS1" ]; then
     [[ $(python -c "import os,sys; print(os.path.realpath(os.path.expanduser(sys.argv[1])))" "$PETSC_DIR") == $PETSC_DIR ]] \
     || echo "               ~~> "$(python -c "import os,sys; print(os.path.realpath(os.path.expanduser(sys.argv[1])))" "$PETSC_DIR")
   fi
-  [[ "x$PETSC_ARCH"  == "x" ]] \
-  || echo "PETSc architecture $PETSC_ARCH"
   echo "MSC.Marc/Mentat    $MSC_ROOT"
   echo
   echo -n "heap  size         "

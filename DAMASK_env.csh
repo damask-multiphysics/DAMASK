@@ -53,9 +53,6 @@ if ( $?prompt ) then
   if ( $?PETSC_DIR) then
     echo "PETSc location     $PETSC_DIR"
   endif
-  if ( $?PETSC_ARCH) then
-    echo "PETSc architecture $PETSC_ARCH"
-  endif
   if ( $?MSC_ROOT) then
     echo "MSC.Marc/Mentat    $MSC_ROOT"
   endif
