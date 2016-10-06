@@ -17,16 +17,18 @@ Adds header to OIM grain file to make it accesible as ASCII table
 
 """, version = scriptID)
 
+defaults = {'labels':['1_euler','2_euler','3_euler','1_pos','2_pos','IQ','CI','Fit','GrainID']}
+
 parser.add_option('-l', '--labels',
                   dest   = 'labels',
                   action = 'extend', metavar = '<string LIST>',
-                  help   = 'lables of requested columns')
+                  help   = 'lables of requested columns [{}]'.format(defaults['labels']))
 
-parser.set_defaults(labels = ['1_euler','2_euler','3_euler',
-                              '1_pos','2_pos', 'IQ', 'CI', 'Fit', 'GrainID',],
-                   )
 
 (options, filenames) = parser.parse_args()
+
+if options.labels is None:
+  options.labels = defaults['labels']
 
 # --- loop over input files -------------------------------------------------------------------------
 
