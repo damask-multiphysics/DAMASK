@@ -1,0 +1,13 @@
+<?xml version="1.0"?>
+<LABEL2PATH_DAMASK>
+    <f>
+        <type>tensor</type>
+        <h5path>/f</h5path>
+        <description>deformation gradient (F)</description>
+    </f>
+    <Cauchy>
+        <type>tensor</type>
+        <h5path>/Cauchy</h5path>
+        <description>Cauchy stress tensor</description>
+    </Cauchy>
+</LABEL2PATH_DAMASK>
