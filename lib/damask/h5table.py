@@ -48,15 +48,17 @@ class H5Table(object):
         Absolute path the HDF5 file
     METHOD
     ------
+    del_entry()
     get_attr()
     add_attr()
-
     get_data()
     add_data()
     NOTE
     ----
         1. As an interface class, it uses the lazy evaluation design
         that read the data only when its absolutely necessary.
+        2. The command line used to generate new feature is stored with
+        each dataset as dataset attribute.
     """
 
     def __init__(self, h5f_path):
@@ -64,20 +66,24 @@ class H5Table(object):
         """
         self.h5f_path = h5f_path
 
-    def __del__(self, feature_name=None):
+    def del_entry(self, feature_name):
+        """ delete entry in HDF5 table """
         dataType, h5f_path = lables_to_path(feature_name)
         h5f = h5py.File(self.h5f_path, 'a')
         del h5f[h5f_path]
 
-    def get_attr(self, attr_name=None):
-        """
-        """
+    def get_attr(self, attr_name):
         h5f = h5py.File(self.h5f_path, 'r')
+        dataType, h5f_path = lables_to_path(attr_name)
+        return h5f[h5f_path].attrs[attr_name]
 
-    def add_attr(self, ):
-        """
-        """
-        pass
+    def add_attr(self, attr_name, attr_data):
+        h5f = h5py.File(self.h5f_path, 'a')
+        dataType, h5f_path = lables_to_path(attr_name)
+        if dataType == "attr":
+            h5f[h5f_path].attrs[attr_name] = attr_data
+        else:
+            raise ValueError("Unspported attr: {}".format(attr_name))
 
     def get_data(self, feature_name=None):
         """ extract dataset from HDF5 table and return it in a numpy array """
@@ -94,3 +100,9 @@ class H5Table(object):
             h5f.create_dataset(h5f_path, data=dataset)
         else:
             raise ValueError("feature {} isn't valid".format(feature_name))
+
+    def get_log(self, feature_name):
+        """ get cmd history used to generate the data"""
+        dataType, h5f_path = lables_to_path(feature_name)
+        h5f = ht5py.File(self.h5f_path, 'r')
+        return h5f[h5f_path].attrs['log']
