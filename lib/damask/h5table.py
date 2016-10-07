@@ -4,6 +4,7 @@ import os
 import sys
 import h5py
 import numpy as np
+import xml.etree.cElementTree as ET
 
 # ---------------------------------------------------------------- #
 # python 3 has no unicode object, this ensures that the code works #
@@ -26,12 +27,13 @@ except(NameError):
 #       <FEATURE_NAME> ==> the name of the feature, e.g. f, ...
 #       <TYPE> ==> attribute, dataset
 #       <PATH> ==> path_in_HDF5_file, e.g. '/f'
-#   3. for future HDF5 data structure, this can be convert
-#      into a function to get more complicated path, this would
-#      be a great time to integrate XML parser
-def lables_to_path(label):
+def lables_to_path(label, ns="https://damask.mpie.de"):
     """ read the xml definition file and return the path."""
-    path = '/{}'.format(lable)
+    dsXMLPath = os.path.abspath(__file__).replace("h5table.py",
+                                                  "DS_HDF5.xml")
+    tree = ET.parse(dsXMLPath)
+    root = tree.getroot()
+    path = 'test'
     return path
 
 
