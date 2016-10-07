@@ -1,5 +1,5 @@
 <?xml version="1.0"?>
-<LABEL2PATH_DAMASK>
+<h5ds xmlns='https://damask.mpie.de'>
     <f>
         <type>tensor</type>
         <h5path>/f</h5path>
@@ -10,4 +10,4 @@
         <h5path>/Cauchy</h5path>
         <description>Cauchy stress tensor</description>
     </Cauchy>
-</LABEL2PATH_DAMASK>
+</h5ds>
