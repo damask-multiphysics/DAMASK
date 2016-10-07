@@ -20,21 +20,17 @@ except(NameError):
 # Singleton class for converting feature name to H5F path #
 # ------------------------------------------------------- #
 # NOTE:
-#   1. use simple diction to mimic the singleton class in
+#   use simple function to mimic the singleton class in
 #   C++/Java
-#   2. data structure
-#   {<FEATURE_NAME>: (<TYPE>, <PATH>), ...}
-#       <FEATURE_NAME> ==> the name of the feature, e.g. f, ...
-#       <TYPE> ==> attribute, dataset
-#       <PATH> ==> path_in_HDF5_file, e.g. '/f'
-def lables_to_path(label, ns="https://damask.mpie.de"):
+def lables_to_path(label, dsXMLPath=None):
     """ read the xml definition file and return the path."""
-    dsXMLPath = os.path.abspath(__file__).replace("h5table.py",
-                                                  "DS_HDF5.xml")
+    if dsXMLPath is None:
+        dsXMLPath = os.path.abspath(__file__).replace("h5table.py",
+                                                      "DS_HDF5.xml")
     tree = ET.parse(dsXMLPath)
-    root = tree.getroot()
-    path = 'test'
-    return path
+    dataType = tree.find('{}/type'.format(label)).text
+    h5path = tree.find('{}/h5path'.format(label)).text
+    return (dataType, h5path)
 
 
 # ----------------------- #
@@ -44,12 +40,12 @@ class H5Table(object):
     """
     DESCRIPTION
     -----------
-        Container class for interfacing with HDF5 file format. This
-        is a bare-bone interface class that provide simplified getter
-        and setter for retrieving and appending data and attributes.
+        Interface class for manipulating data in HDF5 with DAMASK
+        specialized data structure.
     PARAMETERS
     ----------
-    h5f_path
+    h5f_path: str
+        Absolute path the HDF5 file
     METHOD
     ------
     get_attr()
@@ -63,7 +59,6 @@ class H5Table(object):
     ----
         1. As an interface class, it uses the lazy evaluation design
         that read the data only when its absolutely necessary.
-        2.
     """
 
     def __init__(self, h5f_path):
@@ -71,11 +66,10 @@ class H5Table(object):
         """
         self.h5f_path = h5f_path
 
-    def get_attr(self, feature_name=None):
+    def get_attr(self, attr_name=None):
         """
         """
         h5f = h5py.File(self.h5f_path, 'r')
-        pass
 
     def add_attr(self, ):
         """
@@ -87,10 +81,12 @@ class H5Table(object):
         """
         pass
 
-    def get_data(self, ):
-        """
-        """
-        pass
+    def get_data(self, feature_name=None):
+        """ extract dataset from HDF5 table and return it in a numpy array """
+        dataType, h5f_path = lables_to_path(feature_name)
+        h5f = h5py.File(self.h5f_path, 'r')
+        h5f_dst = h5f[h5f_path]  # get the handle for target dataset(table)
+        return h5f_dst.read_direct(np.zeros(h5f_dst.shape))
 
     def add_data(self, ):
         """
