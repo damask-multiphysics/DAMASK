@@ -50,11 +50,9 @@ class H5Table(object):
     ------
     get_attr()
     add_attr()
-    del_attr()
 
     get_data()
     add_data()
-    del_data()
     NOTE
     ----
         1. As an interface class, it uses the lazy evaluation design
@@ -66,17 +64,17 @@ class H5Table(object):
         """
         self.h5f_path = h5f_path
 
+    def __del__(self, feature_name=None):
+        dataType, h5f_path = lables_to_path(feature_name)
+        h5f = h5py.File(self.h5f_path, 'a')
+        del h5f[h5f_path]
+
     def get_attr(self, attr_name=None):
         """
         """
         h5f = h5py.File(self.h5f_path, 'r')
 
     def add_attr(self, ):
-        """
-        """
-        pass
-
-    def del_attr(self, ):
         """
         """
         pass
@@ -88,12 +86,11 @@ class H5Table(object):
         h5f_dst = h5f[h5f_path]  # get the handle for target dataset(table)
         return h5f_dst.read_direct(np.zeros(h5f_dst.shape))
 
-    def add_data(self, ):
-        """
-        """
-        pass
-
-    def del_data(self, ):
-        """
-        """
-        pass
+    def add_data(self, feature_name, dataset=None):
+        """ adding new feature into existing HDF5 file """
+        dataType, h5f_path = lables_to_path(feature_name)
+        if dataType is not "attr":
+            h5f = h5py.File(self.h5f_path, 'a')
+            h5f.create_dataset(h5f_path, data=dataset)
+        else:
+            raise ValueError("feature {} isn't valid".format(feature_name))
