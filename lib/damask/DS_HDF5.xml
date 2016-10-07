@@ -2,9 +2,10 @@
 <h5ds>
     <inc>
         <type>attr</type>
-        <h5path></h5path>
+        <h5path>/</h5path>
         <category></category>
         <description></description>
+        <log></log>
     </inc>
 
     <ip>
@@ -12,6 +13,7 @@
         <h5path>/ip</h5path>
         <category></category>
         <description></description>
+        <log></log>
     </ip>
 
     <node>
@@ -19,10 +21,12 @@
         <h5path>/node</h5path>
         <category></category>
         <description></description>
+        <log></log>
     </node>
 
     <pos>
         <type>vector</type>
+        <log></log>
     </pos>
 
     <elem>
@@ -30,6 +34,7 @@
         <h5path>/elem</h5path>
         <category></category>
         <description></description>
+        <log></log>
     </elem>
 
     <phase>
@@ -37,6 +42,7 @@
         <h5path>/phase</h5path>
         <category>Crystallite</category>
         <description></description>
+        <log></log>
     </phase>
 
     <texture>
@@ -44,6 +50,7 @@
         <h5path>/texture</h5path>
         <category>Crystallite</category>
         <description></description>
+        <log></log>
     </texture>
 
     <volume>
@@ -51,6 +58,7 @@
         <h5path>/volume</h5path>
         <category>Crystallite</category>
         <description></description>
+        <log></log>
     </volume>
 
     <orientation>
@@ -58,6 +66,7 @@
         <h5path>/orientation</h5path>
         <category>Crystallite</category>
         <description></description>
+        <log></log>
     </orientation>
 
     <eulerangles>
@@ -65,6 +74,7 @@
         <h5path>/eulerangles</h5path>
         <category>Crystallite</category>
         <description>Bunnge Euler angles in degrees</description>
+        <log></log>
     </eulerangles>
 
     <grainrotation>
@@ -72,6 +82,7 @@
         <h5path>/grainrotation</h5path>
         <category>Crystallite</category>
         <description></description>
+        <log></log>
     </grainrotation>
 
     <f>
@@ -79,6 +90,7 @@
         <h5path>/f</h5path>
         <category>Crystallite</category>
         <description>deformation gradient (F)</description>
+        <log></log>
     </f>
 
     <p>
@@ -86,6 +98,7 @@
         <h5path>/p</h5path>
         <category>Crystallite</category>
         <description>Pikola Kirkhoff stress</description>
+        <log></log>
     </p>
 
     <resistance_slip>
