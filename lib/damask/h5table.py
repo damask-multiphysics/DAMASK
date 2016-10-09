@@ -51,8 +51,8 @@ def lables_to_path(label, dsXMLPath=None):
 
 
 class H5Table(object):
+    """Interface class for h5py
 
-    """
     DESCRIPTION
     -----------
         Interface/wrapper class for manipulating data in HDF5 with DAMASK
@@ -76,6 +76,7 @@ class H5Table(object):
         that read the data only when its absolutely necessary.
         2. The command line used to generate new feature is stored with
         each dataset as dataset attribute.
+
     """
 
     def __init__(self, h5f_path, new_file=False, dsXMLFile=None):
