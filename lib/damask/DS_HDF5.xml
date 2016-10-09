@@ -1,5 +1,12 @@
 <?xml version="1.0"?>
 <h5ds>
+    <history>
+        <type>attr</type>
+        <h5path>/</h5path>
+        <category></category>
+        <description>store cmd history</description>
+    </history>
+
     <inc>
         <type>attr</type>
         <h5path>/</h5path>
