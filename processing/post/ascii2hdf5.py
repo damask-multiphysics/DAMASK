@@ -11,6 +11,7 @@
 
 import os
 import damask
+import numpy as np
 from optparse import OptionParser
 
 scriptName = os.path.splitext(os.path.basename(__file__))[0]
@@ -51,7 +52,9 @@ asciiTable = damask.ASCIItable(name=filenames, buffered=False)
 asciiTable.head_read()
 asciiTable.data_readArray()
 incNum = int(asciiTable.data[asciiTable.label_index('inc'), 0])
-allData = np.copy(asciiTable.data)  # deep copy all data, just to be safe
+fullTable = np.copy(asciiTable.data)  # deep copy all data, just to be safe
+labels = table.labels()
+labels_idx = [table.label_index(label) for label in labels]
 featuresDim = [labels_idx[i+1] - labels_idx[i] for i in xrange(len(labels)-1)]
 featuresDim.append(fullTable.shape[1] - labels_idx[-1])
 
