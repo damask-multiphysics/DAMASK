@@ -34,8 +34,12 @@ def lables_to_path(label, dsXMLPath=None):
     """ read the xml definition file and return the path."""
     if dsXMLPath is None:
         # use the default storage layout in DS_HDF5.xml
-        dsXMLPath = os.path.abspath(__file__).replace("h5table.py",
-                                                      "DS_HDF5.xml")
+        if "h5table.pyc" in __file__:
+            dsXMLPath = os.path.abspath(__file__).replace("h5table.pyc",
+                                                          "DS_HDF5.xml")
+        else:
+            dsXMLPath = os.path.abspath(__file__).replace("h5table.py",
+                                                          "DS_HDF5.xml")
     # This current implementation requires that all variables
     # stay under the root node, the nesting is defined through the
     # h5path. This could be improved easily with more advanced parsing
@@ -77,53 +81,59 @@ class H5Table(object):
         each dataset as dataset attribute.
     """
 
-    def __init__(self, h5f_path):
-        """
-        """
+    def __init__(self, h5f_path, new_file=False, dsXMLFile=None):
         self.h5f_path = h5f_path
+        self.dsXMLFile = dsXMLFile
+        msg = 'Created by H5Talbe from DAMASK'
+        mode = 'w' if new_file else 'a'
+        with h5py.File(self.h5f_path, mode) as h5f:
+            h5f['/'].attrs['description'] = msg
 
     def del_entry(self, feature_name):
         """ delete entry in HDF5 table """
-        # WARNING: this will PERMENANTLY delete attributes/dataset
-        #          use with caution
-        dataType, h5f_path = lables_to_path(feature_name)
-        h5f = h5py.File(self.h5f_path, 'a')
-        del h5f[h5f_path]
+        dataType, h5f_path = lables_to_path(feature_name,
+                                            dsXMLPath=self.dsXMLFile)
+        with h5py.File(self.h5f_path, 'a') as h5f:
+            del h5f[h5f_path]
 
     def get_attr(self, attr_name):
-        h5f = h5py.File(self.h5f_path, 'r')
-        dataType, h5f_path = lables_to_path(attr_name)
-        return h5f[h5f_path].attrs[attr_name]
+        dataType, h5f_path = lables_to_path(attr_name,
+                                            dsXMLPath=self.dsXMLFile)
+        with h5py.File(self.h5f_path, 'a') as h5f:
+            rst_attr = h5f[h5f_path].attrs[attr_name]
+        return rst_attr
 
     def add_attr(self, attr_name, attr_data):
-        h5f = h5py.File(self.h5f_path, 'a')
-        dataType, h5f_path = lables_to_path(attr_name)
-        if dataType == "attr":
+        dataType, h5f_path = lables_to_path(attr_name,
+                                            dsXMLPath=self.dsXMLFile)
+        with h5py.File(self.h5f_path, 'a') as h5f:
             h5f[h5f_path].attrs[attr_name] = attr_data
-        else:
-            raise ValueError("Unspported attr: {}".format(attr_name))
+            h5f.flush()
 
     def get_data(self, feature_name=None):
         """ extract dataset from HDF5 table and return it in a numpy array """
-        dataType, h5f_path = lables_to_path(feature_name)
-        h5f = h5py.File(self.h5f_path, 'r')
-        h5f_dst = h5f[h5f_path]  # get the handle for target dataset(table)
-        return h5f_dst.read_direct(np.zeros(h5f_dst.shape))
+        dataType, h5f_path = lables_to_path(feature_name,
+                                            dsXMLPath=self.dsXMLFile)
+        with h5py.File(self.h5f_path, 'a') as h5f:
+            h5f_dst = h5f[h5f_path]  # get the handle for target dataset(table)
+            rst_data = h5f_dst.read_direct(np.zeros(h5f_dst.shape))
+        return rst_data
 
-    def add_data(self, feature_name, dataset=None, cmd_log=None):
+    def add_data(self, feature_name, dataset, cmd_log=None):
         """ adding new feature into existing HDF5 file """
-        dataType, h5f_path = lables_to_path(feature_name)
-        if dataType is not "attr":
-            h5f = h5py.File(self.h5f_path, 'a')
+        dataType, h5f_path = lables_to_path(feature_name,
+                                            dsXMLPath=self.dsXMLFile)
+        with h5py.File(self.h5f_path, 'a') as h5f:
             h5f.create_dataset(h5f_path, data=dataset)
             # store the cmd in log is possible
             if cmd_log is not None:
                 h5f[h5f_path].attrs['log'] = str(cmd_log)
-        else:
-            raise ValueError("feature {} isn't valid".format(feature_name))
+            h5f.flush()
 
     def get_cmdlog(self, feature_name):
         """ get cmd history used to generate the feature"""
-        dataType, h5f_path = lables_to_path(feature_name)
-        h5f = ht5py.File(self.h5f_path, 'r')
-        return h5f[h5f_path].attrs['log']
+        dataType, h5f_path = lables_to_path(feature_name,
+                                            dsXMLPath=self.dsXMLFile)
+        with ht5py.File(self.h5f_path, 'a') as h5f:
+            cmd_logs = h5f[h5f_path].attrs['log']
+        return cmd_logs
