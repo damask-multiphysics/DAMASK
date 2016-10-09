@@ -54,21 +54,21 @@ class H5Table(object):
     """
     DESCRIPTION
     -----------
-        Interface class for manipulating data in HDF5 with DAMASK
+        Interface/wrapper class for manipulating data in HDF5 with DAMASK
         specialized data structure.
+        -->Minimal API design.
     PARAMETERS
     ----------
     h5f_path: str
         Absolute path the HDF5 file
     METHOD
     ------
-    del_entry()
-    get_attr()
-    add_attr()
-    get_data()
-    add_data()
-    get_cmdlog()
-        Return the command used to generate the data if possible.
+    del_entry()  -- Force delete attributes/group/datasets (Dangerous)
+    get_attr()   -- Return attributes if possible
+    add_attr()   -- Add NEW attributes to dataset/group (please delete old first!)
+    get_data()   -- Retrieve data in numpy.ndarray
+    add_data()   -- Add dataset to H5 file
+    get_cmdlog() -- Return the command used to generate the data if possible.
     NOTE
     ----
         1. As an interface class, it uses the lazy evaluation design
