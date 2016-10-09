@@ -1,5 +1,13 @@
 # -*- coding: UTF-8 no BOM -*-
 
+# ----------------------------------------------------------- #
+# Ideally the h5py should be enough to serve as the data      #
+# interface for future DAMASK, but since we are still not     #
+# sure when this major shift will happen, it seems to be a    #
+# good idea to provide a interface class that help user ease  #
+# into using HDF5 as the new daily storage driver.            #
+# ----------------------------------------------------------- #
+
 import os
 import sys
 import h5py
@@ -25,8 +33,14 @@ except(NameError):
 def lables_to_path(label, dsXMLPath=None):
     """ read the xml definition file and return the path."""
     if dsXMLPath is None:
+        # use the default storage layout in DS_HDF5.xml
         dsXMLPath = os.path.abspath(__file__).replace("h5table.py",
                                                       "DS_HDF5.xml")
+    # This current implementation requires that all variables
+    # stay under the root node, the nesting is defined through the
+    # h5path. This could be improved easily with more advanced parsing
+    # using ET interface, but for now I can not see the benefits in doing
+    # so.
     tree = ET.parse(dsXMLPath)
     dataType = tree.find('{}/type'.format(label)).text
     h5path = tree.find('{}/h5path'.format(label)).text
@@ -53,6 +67,8 @@ class H5Table(object):
     add_attr()
     get_data()
     add_data()
+    get_cmdlog()
+        Return the command used to generate the data if possible.
     NOTE
     ----
         1. As an interface class, it uses the lazy evaluation design
@@ -68,6 +84,8 @@ class H5Table(object):
 
     def del_entry(self, feature_name):
         """ delete entry in HDF5 table """
+        # WARNING: this will PERMENANTLY delete attributes/dataset
+        #          use with caution
         dataType, h5f_path = lables_to_path(feature_name)
         h5f = h5py.File(self.h5f_path, 'a')
         del h5f[h5f_path]
@@ -92,17 +110,20 @@ class H5Table(object):
         h5f_dst = h5f[h5f_path]  # get the handle for target dataset(table)
         return h5f_dst.read_direct(np.zeros(h5f_dst.shape))
 
-    def add_data(self, feature_name, dataset=None):
+    def add_data(self, feature_name, dataset=None, cmd_log=None):
         """ adding new feature into existing HDF5 file """
         dataType, h5f_path = lables_to_path(feature_name)
         if dataType is not "attr":
             h5f = h5py.File(self.h5f_path, 'a')
             h5f.create_dataset(h5f_path, data=dataset)
+            # store the cmd in log is possible
+            if cmd_log is not None:
+                h5f[h5f_path].attrs['log'] = str(cmd_log)
         else:
             raise ValueError("feature {} isn't valid".format(feature_name))
 
-    def get_log(self, feature_name):
-        """ get cmd history used to generate the data"""
+    def get_cmdlog(self, feature_name):
+        """ get cmd history used to generate the feature"""
         dataType, h5f_path = lables_to_path(feature_name)
         h5f = ht5py.File(self.h5f_path, 'r')
         return h5f[h5f_path].attrs['log']
