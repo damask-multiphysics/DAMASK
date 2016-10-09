@@ -8,6 +8,7 @@ with open(os.path.join(os.path.dirname(__file__),'../../VERSION')) as f:
 
 from .environment import Environment      # noqa
 from .asciitable  import ASCIItable       # noqa
+from .h5table     import H5Table
 from .config      import Material         # noqa
 from .colormaps   import Colormap, Color  # noqa
 from .orientation import Quaternion, Rodrigues, Symmetry, Orientation # noqa
