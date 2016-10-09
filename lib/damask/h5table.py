@@ -9,7 +9,6 @@
 # ----------------------------------------------------------- #
 
 import os
-import sys
 import h5py
 import numpy as np
 import xml.etree.cElementTree as ET
@@ -31,7 +30,7 @@ except(NameError):
 #   use simple function to mimic the singleton class in
 #   C++/Java
 def lables_to_path(label, dsXMLPath=None):
-    """ read the xml definition file and return the path."""
+    """read the xml definition file and return the path."""
     if dsXMLPath is None:
         # use the default storage layout in DS_HDF5.xml
         if "h5table.pyc" in __file__:
@@ -51,9 +50,6 @@ def lables_to_path(label, dsXMLPath=None):
     return (dataType, h5path)
 
 
-# ----------------------- #
-# H5Table interface class #
-# ----------------------- #
 class H5Table(object):
     """
     DESCRIPTION
@@ -90,7 +86,7 @@ class H5Table(object):
             h5f['/'].attrs['description'] = msg
 
     def del_entry(self, feature_name):
-        """ delete entry in HDF5 table """
+        """delete entry in HDF5 table"""
         dataType, h5f_path = lables_to_path(feature_name,
                                             dsXMLPath=self.dsXMLFile)
         with h5py.File(self.h5f_path, 'a') as h5f:
@@ -111,7 +107,7 @@ class H5Table(object):
             h5f.flush()
 
     def get_data(self, feature_name=None):
-        """ extract dataset from HDF5 table and return it in a numpy array """
+        """extract dataset from HDF5 table and return it in a numpy array"""
         dataType, h5f_path = lables_to_path(feature_name,
                                             dsXMLPath=self.dsXMLFile)
         with h5py.File(self.h5f_path, 'a') as h5f:
@@ -120,7 +116,7 @@ class H5Table(object):
         return rst_data
 
     def add_data(self, feature_name, dataset, cmd_log=None):
-        """ adding new feature into existing HDF5 file """
+        """adding new feature into existing HDF5 file"""
         dataType, h5f_path = lables_to_path(feature_name,
                                             dsXMLPath=self.dsXMLFile)
         with h5py.File(self.h5f_path, 'a') as h5f:
@@ -131,7 +127,7 @@ class H5Table(object):
             h5f.flush()
 
     def get_cmdlog(self, feature_name):
-        """ get cmd history used to generate the feature"""
+        """get cmd history used to generate the feature"""
         dataType, h5f_path = lables_to_path(feature_name,
                                             dsXMLPath=self.dsXMLFile)
         with ht5py.File(self.h5f_path, 'a') as h5f:
