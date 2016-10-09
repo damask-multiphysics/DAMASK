@@ -51,6 +51,7 @@ def lables_to_path(label, dsXMLPath=None):
 
 
 class H5Table(object):
+
     """
     DESCRIPTION
     -----------
@@ -130,6 +131,6 @@ class H5Table(object):
         """get cmd history used to generate the feature"""
         dataType, h5f_path = lables_to_path(feature_name,
                                             dsXMLPath=self.dsXMLFile)
-        with ht5py.File(self.h5f_path, 'a') as h5f:
+        with h5py.File(self.h5f_path, 'a') as h5f:
             cmd_logs = h5f[h5f_path].attrs['log']
         return cmd_logs
