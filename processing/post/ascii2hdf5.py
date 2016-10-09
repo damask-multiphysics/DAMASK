@@ -53,8 +53,8 @@ asciiTable.head_read()
 asciiTable.data_readArray()
 incNum = int(asciiTable.data[asciiTable.label_index('inc'), 0])
 fullTable = np.copy(asciiTable.data)  # deep copy all data, just to be safe
-labels = table.labels()
-labels_idx = [table.label_index(label) for label in labels]
+labels = asciiTable.labels()
+labels_idx = [asciiTable.label_index(label) for label in labels]
 featuresDim = [labels_idx[i+1] - labels_idx[i] for i in xrange(len(labels)-1)]
 featuresDim.append(fullTable.shape[1] - labels_idx[-1])
 
