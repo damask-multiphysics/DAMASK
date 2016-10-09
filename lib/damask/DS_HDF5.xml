@@ -31,8 +31,19 @@
         <log></log>
     </node>
 
+    <grain>
+        <type>vector</type>
+        <h5path>/grain</h5path>
+        <category></category>
+        <description></description>
+        <log></log>
+    </grain>
+
     <pos>
         <type>vector</type>
+        <h5path>/pos</h5path>
+        <category></category>
+        <description></description>
         <log></log>
     </pos>
 
