@@ -31,16 +31,12 @@ parser.add_option('-D', '--DefinitionFile',
                   type = 'string',
                   metavar = 'string',
                   help = 'definition file for H5 data storage')
-parser.add_option('-d','--debug',
-                  dest = 'debug output toggle',
-                  type = 'boolean',
-                  metavar = 'boolean',
-                  help = 'toggle on debug output')  # not necessary for now
 
-parser.set_defaults(debug=False,
-                    DefinitionFile='default')
+parser.set_defaults(DefinitionFile='default')
 
 (options,filenames) = parser.parse_args()
+
+filename = filenames[0]
 
 if options.DefinitionFile == 'default':
     defFile = None
@@ -48,7 +44,7 @@ else:
     defFile = options.DefinitionFile
 
 # ----- read in data using DAMASK ASCII table class ----- #
-asciiTable = damask.ASCIItable(name=filenames, buffered=False)
+asciiTable = damask.ASCIItable(name=filename, buffered=False)
 asciiTable.head_read()
 asciiTable.data_readArray()
 incNum = int(asciiTable.data[asciiTable.label_index('inc'), 0])
@@ -61,7 +57,7 @@ featuresDim.append(fullTable.shape[1] - labels_idx[-1])
 # ----- create a new HDF5 file and save the data -----#
 # Will overwrite existing HDF5 file with the same name
 
-h5f = damask.H5Table(filenames.replace(".txt", ".h5"),
+h5f = damask.H5Table(filename.replace(".txt", ".h5"),
                      new_file=True,
                      dsXMLFile=defFile)
 # adding increment number as root level attributes
