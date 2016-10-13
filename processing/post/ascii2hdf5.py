@@ -12,6 +12,13 @@
 #      using Paraview. The current solution is using cell structured  #
 #      HDF5 so that Xdmf can describe the data shape as a rectangular #
 #      mesh rather than polyvertex.                                   #
+# TODO:                                                               #
+#   1. remove the <ASCII_TABLE>._tmp file, basically need a way to    #
+#      just load data from ASCII table.                               #
+#   2. a progress monitor when transferring data from ASCII table     #
+#      to HDF5.                                                       #
+#   3. a more flexible way handle the data structure rather than a    #
+#      xml file.                                                      #
 # ------------------------------------------------------------------- #
 
 import os
@@ -98,9 +105,11 @@ h5f.add_data("Vy", Vy)
 h5f.add_data("Vz", Vz)
 
 # add the rest of data from table
+addedLabels = ['inc']
 for fi in xrange(len(labels)):
     featureName = labels[fi]
-    if 'inc' in featureName: continue
+    # skip increment and duplicated columns in the ASCII table
+    if featureName in addedLabels: continue
     # remove trouble maker "("" and ")"
     if "(" in featureName: featureName = featureName.replace("(", "")
     if ")" in featureName: featureName = featureName.replace(")", "")
@@ -109,7 +118,11 @@ for fi in xrange(len(labels)):
     # grab the data hook
     dataset = fullTable[:, featureIdx:featureIdx+featureDim]
     # mapping 2D data onto a 3D rectangular mesh to get 4D data
-    dataset = dataset.reshape((mshGridDim[0], mshGridDim[1], mshGridDim[2],
+    # In paraview, the data is mapped as:
+    # -->  len(z), len(y), len(x), size(data)
+    dataset = dataset.reshape((mshGridDim[2], mshGridDim[1], mshGridDim[0],
                                dataset.shape[1]))
     # write out data
     h5f.add_data(featureName, dataset)
+    # write down the processed label
+    addedLabels.append(featureName)
