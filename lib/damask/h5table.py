@@ -23,12 +23,6 @@ except(NameError):
   unicode=str
 
 
-# ------------------------------------------------------- #
-# Singleton class for converting feature name to H5F path #
-# ------------------------------------------------------- #
-# NOTE:
-#   use simple function to mimic the singleton class in
-#   C++/Java
 def lables_to_path(label, dsXMLPath=None):
     """read the xml definition file and return the path."""
     if dsXMLPath is None:
@@ -41,23 +35,26 @@ def lables_to_path(label, dsXMLPath=None):
                                                           "DS_HDF5.xml")
     # This current implementation requires that all variables
     # stay under the root node, the nesting is defined through the
-    # h5path. This could be improved easily with more advanced parsing
-    # using ET interface, but for now I can not see the benefits in doing
-    # so.
+    # h5path.
+    # Allow new derived data to be put under the root
     tree = ET.parse(dsXMLPath)
-    dataType = tree.find('{}/type'.format(label)).text
-    h5path = tree.find('{}/h5path'.format(label)).text
+    try:
+        dataType = tree.find('{}/type'.format(label)).text
+        h5path = tree.find('{}/h5path'.format(label)).text
+    except:
+        dataType = "Scalar"
+        h5path = "/{}".format(label)  # just put it under root
     return (dataType, h5path)
 
 
 class H5Table(object):
-    """Interface class for h5py
+    """light weight interface class for h5py
 
     DESCRIPTION
     -----------
         Interface/wrapper class for manipulating data in HDF5 with DAMASK
         specialized data structure.
-        -->Minimal API design.
+        -->try to maintain a minimal API design.
     PARAMETERS
     ----------
     h5f_path: str
@@ -114,7 +111,8 @@ class H5Table(object):
                                             dsXMLPath=self.dsXMLFile)
         with h5py.File(self.h5f_path, 'a') as h5f:
             h5f_dst = h5f[h5f_path]  # get the handle for target dataset(table)
-            rst_data = h5f_dst.read_direct(np.zeros(h5f_dst.shape))
+            rst_data = np.zeros(h5f_dst.shape)
+            h5f_dst.read_direct(rst_data)
         return rst_data
 
     def add_data(self, feature_name, dataset, cmd_log=None):

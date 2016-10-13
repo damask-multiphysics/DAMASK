@@ -1,5 +1,6 @@
 <?xml version="1.0"?>
 <h5ds>
+    <!--Top level attributes-->
     <history>
         <type>attr</type>
         <h5path>/</h5path>
@@ -12,174 +13,186 @@
         <h5path>/</h5path>
         <category></category>
         <description></description>
-        <log></log>
     </inc>
 
+    <!--Geometry section-->
+    <Vx>
+        <type>Scalar</type>
+        <h5path>/Geometry/Vx</h5path>
+        <category>Geometry</category>
+        <description>Vector along x define the spectral mesh</description>
+    </Vx>
+
+    <Vy>
+        <type>Scalar</type>
+        <h5path>/Geometry/Vy</h5path>
+        <category>Geometry</category>
+        <description>Vector along y defines the spectral mesh</description>
+    </Vy>
+
+    <Vz>
+        <type>Scalar</type>
+        <h5path>/Geometry/Vz</h5path>
+        <category>Geometry</category>
+        <description>Vector along z defines the spectral mesh</description>
+    </Vz>
+
     <ip>
-        <type>scalar</type>
-        <h5path>/ip</h5path>
-        <category></category>
+        <type>Scalar</type>
+        <h5path>/Geometry/ip</h5path>
+        <category>Geometry</category>
         <description></description>
-        <log></log>
     </ip>
 
     <node>
-        <type>scalar</type>
-        <h5path>/node</h5path>
-        <category></category>
+        <type>Scalar</type>
+        <h5path>/Geometry/node</h5path>
+        <category>Geometry</category>
         <description></description>
-        <log></log>
     </node>
 
     <grain>
-        <type>vector</type>
-        <h5path>/grain</h5path>
-        <category></category>
+        <type>Scalar</type>
+        <h5path>/Geometry/grain</h5path>
+        <category>Geometry</category>
         <description></description>
-        <log></log>
     </grain>
 
     <pos>
-        <type>vector</type>
-        <h5path>/pos</h5path>
-        <category></category>
+        <type>Vector</type>
+        <h5path>/Geometry/pos</h5path>
+        <category>Geometry</category>
         <description></description>
-        <log></log>
     </pos>
 
     <elem>
-        <type>integer</type>
-        <h5path>/elem</h5path>
-        <category></category>
+        <type>Scalar</type>
+        <h5path>/Geometry/elem</h5path>
+        <category>Geometry</category>
         <description></description>
-        <log></log>
     </elem>
 
+    <!--Crystallite section-->
     <phase>
-        <type>integer</type>
-        <h5path>/phase</h5path>
+        <type>Scalar</type>
+        <h5path>/Crystallite/phase</h5path>
         <category>Crystallite</category>
         <description></description>
-        <log></log>
     </phase>
 
     <texture>
-        <type>integer</type>
-        <h5path>/texture</h5path>
+        <type>Scalar</type>
+        <h5path>/Crystallite/texture</h5path>
         <category>Crystallite</category>
         <description></description>
-        <log></log>
     </texture>
 
     <volume>
-        <type>scalar</type>
-        <h5path>/volume</h5path>
+        <type>Scalar</type>
+        <h5path>/Crystallite/volume</h5path>
         <category>Crystallite</category>
         <description></description>
-        <log></log>
     </volume>
 
     <orientation>
-        <type>vector</type>
-        <h5path>/orientation</h5path>
+        <type>Vector</type>
+        <h5path>/Crystallite/orientation</h5path>
         <category>Crystallite</category>
         <description></description>
-        <log></log>
     </orientation>
 
     <eulerangles>
-        <type>vector</type>
-        <h5path>/eulerangles</h5path>
+        <type>Vector</type>
+        <h5path>/Crystallite/eulerangles</h5path>
         <category>Crystallite</category>
         <description>Bunnge Euler angles in degrees</description>
-        <log></log>
     </eulerangles>
 
     <grainrotation>
-        <type>vector</type>
-        <h5path>/grainrotation</h5path>
+        <type>Vector</type>
+        <h5path>/Crystallite/grainrotation</h5path>
         <category>Crystallite</category>
         <description></description>
-        <log></log>
     </grainrotation>
 
     <f>
-        <type>tensor</type>
-        <h5path>/f</h5path>
+        <type>Tensor</type>
+        <h5path>/Crystallite/f</h5path>
         <category>Crystallite</category>
         <description>deformation gradient (F)</description>
-        <log></log>
     </f>
 
     <p>
-        <type>tensor</type>
-        <h5path>/p</h5path>
+        <type>Tensor</type>
+        <h5path>/Crystallite/p</h5path>
         <category>Crystallite</category>
         <description>Pikola Kirkhoff stress</description>
-        <log></log>
     </p>
 
+    <Cauchy>
+        <type>Tensor</type>
+        <h5path>/Crystallite/Cauchy</h5path>
+        <category>Crystallite</category>
+        <description>Cauchy stress tensor</description>
+    </Cauchy>
+
+    <lnV>
+        <type>Tensor</type>
+        <h5path>/Crystallite/lnV</h5path>
+        <category>Crystallite</category>
+        <description></description>
+    </lnV>
+
+    <MisesCauchy>
+        <type>Scalar</type>
+        <h5path>/Crystallite/MisesCauchy</h5path>
+        <category>Crystallite</category>
+        <description>von Mises equivalent of Cauchy stress</description>
+    </MisesCauchy>
+
+    <MiseslnV>
+        <type>Scalar</type>
+        <h5path>/Crystallite/MiseslnV</h5path>
+        <category>Crystallite</category>
+        <description>left von Mises strain</description>
+    </MiseslnV>
+
+    <!--Constitutive section-->
     <resistance_slip>
-        <type>vector</type>
-        <h5path>/resistance_slip</h5path>
+        <type>Vector</type>
+        <h5path>/Constitutive/resistance_slip</h5path>
         <category>Constitutive</category>
         <description></description>
     </resistance_slip>
 
     <shearrate_slip>
-        <type>vector</type>
-        <h5path>/shearrate_slip</h5path>
+        <type>Vector</type>
+        <h5path>/Constitutive/shearrate_slip</h5path>
         <category>Constitutive</category>
         <description></description>
     </shearrate_slip>
 
     <resolvedstress_slip>
-        <type>vector</type>
-        <h5path>/resolvedstress_slip</h5path>
+        <type>Vector</type>
+        <h5path>/Constitutive/resolvedstress_slip</h5path>
         <category>Constitutive</category>
         <description></description>
     </resolvedstress_slip>
 
     <totalshear>
-        <type>scalar</type>
-        <h5path>/totalshear</h5path>
+        <type>Scalar</type>
+        <h5path>/Constitutive/totalshear</h5path>
         <category>Constitutive</category>
         <description></description>
     </totalshear>
 
     <accumulatedshear_slip>
-        <type>vector</type>
-        <h5path>/accumulatedshear_slip</h5path>
+        <type>Matrix</type>
+        <h5path>/Constitutive/accumulatedshear_slip</h5path>
         <category>Constitutive</category>
         <description>vector contains accumulated shear per slip system</description>
     </accumulatedshear_slip>
 
-    <Cauchy>
-        <type>tensor</type>
-        <h5path>/Cauchy</h5path>
-        <category>Derived</category>
-        <description>Cauchy stress tensor</description>
-    </Cauchy>
-
-    <lnV>
-        <type>tensor</type>
-        <h5path>/lnV</h5path>
-        <category>Derived</category>
-        <description></description>
-    </lnV>
-
-    <MisesCauchy>
-        <type>scalar</type>
-        <h5path>/MisesCauchy</h5path>
-        <category>Derived</category>
-        <description>von Mises equivalent of Cauchy stress</description>
-    </MisesCauchy>
-
-    <MiseslnV>
-        <type>scalar</type>
-        <h5path>/MiseslnV</h5path>
-        <category>Derived</category>
-        <description>left von Mises strain</description>
-    </MiseslnV>
+    <!--Derived section-->
 
 </h5ds>
