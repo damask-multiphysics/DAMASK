@@ -90,11 +90,16 @@ Vx = get_rectMshVectors(xyz_array, 0)
 Vy = get_rectMshVectors(xyz_array, 1)
 Vz = get_rectMshVectors(xyz_array, 2)
 # use the dimension of the rectangular grid to reshape all other data
-mshGridDim = (len(Vx)-1, len(Vy)-1, len(Vz)-1)
+mshGridDim = [len(Vx)-1, len(Vy)-1, len(Vz)-1]
 
 # ----- create a new HDF5 file and save the data -----#
-# Will overwrite existing HDF5 file with the same name
-h5f = damask.H5Table(filename.replace(".txt", ".h5"),
+# force remove existing HDF5 file
+h5fName = filename.replace(".txt", ".h5")
+try:
+    os.remove(h5fName)
+except OSError:
+    pass
+h5f = damask.H5Table(h5fName,
                      new_file=True,
                      dsXMLFile=defFile)
 # adding increment number as root level attributes
@@ -105,24 +110,26 @@ h5f.add_data("Vy", Vy)
 h5f.add_data("Vz", Vz)
 
 # add the rest of data from table
-addedLabels = ['inc']
+labelsProcessed = ['inc']
 for fi in xrange(len(labels)):
     featureName = labels[fi]
-    # skip increment and duplicated columns in the ASCII table
-    if featureName in addedLabels: continue
-    # remove trouble maker "("" and ")"
+    # remove trouble maker "("" and ")" from label/feature name
     if "(" in featureName: featureName = featureName.replace("(", "")
     if ")" in featureName: featureName = featureName.replace(")", "")
+    # skip increment and duplicated columns in the ASCII table
+    if featureName in labelsProcessed: continue
+
     featureIdx = labels_idx[fi]
     featureDim = featuresDim[fi]
     # grab the data hook
     dataset = fullTable[:, featureIdx:featureIdx+featureDim]
     # mapping 2D data onto a 3D rectangular mesh to get 4D data
-    # In paraview, the data is mapped as:
+    # WARNING: In paraview, the data for a recmesh is mapped as:
     # -->  len(z), len(y), len(x), size(data)
-    dataset = dataset.reshape((mshGridDim[2], mshGridDim[1], mshGridDim[0],
-                               dataset.shape[1]))
+    # dataset = dataset.reshape((mshGridDim[0], mshGridDim[1], mshGridDim[2],
+    #                            dataset.shape[1]))
     # write out data
+    print "adding {}...".format(featureName)
     h5f.add_data(featureName, dataset)
     # write down the processed label
-    addedLabels.append(featureName)
+    labelsProcessed.append(featureName)
