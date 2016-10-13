@@ -15,9 +15,11 @@
 # ------------------------------------------------------------------- #
 
 
+import os
 import damask
 import h5py
 import xml.etree.cElementTree as ET
+from optparse import OptionParser
 from xml.dom import minidom
 from damask.h5table import lables_to_path
 
@@ -49,6 +51,7 @@ parser = OptionParser(option_class=damask.extendableOption,
 (options, filenames) = parser.parse_args()
 
 h5f = filenames[0]
+h5f_base = h5f.split("/")[-1]
 
 # ----- parse HDF5 file ----- #
 h5f_dataDim = {}
@@ -70,7 +73,7 @@ with h5py.File(h5f, 'a') as f:
         dataType, h5Path = lables_to_path(label)
         h5f_dataType[label] = dataType
         h5f_dataDim[label] = " ".join(map(str,f[h5Path].shape))
-        h5f_dataPath[label] = h5Paths
+        h5f_dataPath[label] = h5Path
 
 # ----- constructing xdmf elements ----- #
 root = ET.Element("Xdmf", version='3.3')
