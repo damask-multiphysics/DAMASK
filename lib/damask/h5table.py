@@ -18,9 +18,9 @@ import xml.etree.cElementTree as ET
 # on Python 2&3                                                    #
 # ---------------------------------------------------------------- #
 try:
-  test=isinstance('test', unicode)
+    test = isinstance('test', unicode)
 except(NameError):
-  unicode=str
+    unicode = str
 
 
 def lables_to_path(label, dsXMLPath=None):
