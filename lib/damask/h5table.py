@@ -120,6 +120,16 @@ class H5Table(object):
         dataType, h5f_path = lables_to_path(feature_name,
                                             dsXMLPath=self.dsXMLFile)
         with h5py.File(self.h5f_path, 'a') as h5f:
+            # NOTE:
+            # --> If dataset exists, delete the old one so as to write
+            #     a new one. For brand new dataset. For brand new one,
+            #     record its state as fresh in the cmd log.
+            try:
+                del h5f[h5f_path]
+                print "***deleting old {} from {}".format(feature_name,
+                                                          self.h5f_path)
+            except:
+                cmd_log += " [FRESH]"
             h5f.create_dataset(h5f_path, data=dataset)
             # store the cmd in log is possible
             if cmd_log is not None:
