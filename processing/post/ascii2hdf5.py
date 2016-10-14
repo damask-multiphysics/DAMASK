@@ -33,44 +33,44 @@ scriptID   = ' '.join([scriptName,damask.version])
 
 # ----- helper function ----- #
 def get_rectMshVectors(xyz_array, posNum):
-    """take in a xyz array from rectangular mesh and figure out Vx, Vy, Vz"""
-    # need some improvement, and only works for rectangular grid
-    v = sorted(list(set(xyz_array[:, posNum])))
-    v_interval = (v[2]+v[1])/2.0 - (v[1]+v[0])/2.0
-    v_start = (v[1]+v[0])/2.0 - v_interval
-    v_end = (v[-1]+v[-2])/2.0 + v_interval
-    V = np.linspace(v_start, v_end, len(v)+1)
-    return V
+        """take in a xyz array from rectangular mesh and figure out Vx, Vy, Vz"""
+        # need some improvement, and only works for rectangular grid
+        v = sorted(list(set(xyz_array[:, posNum])))
+        v_interval = (v[2]+v[1])/2.0 - (v[1]+v[0])/2.0
+        v_start = (v[1]+v[0])/2.0 - v_interval
+        v_end = (v[-1]+v[-2])/2.0 + v_interval
+        V = np.linspace(v_start, v_end, len(v)+1)
+        return V
 
 
 # ----- MAIN ---- #
 desp_msg = "Convert DAMASK ascii table to HDF5 file"
 parser = OptionParser(option_class=damask.extendableOption,
-                      usage='%prog options [file[s]]',
-                      description = desp_msg,
-                      version = scriptID)
+                                            usage='%prog options [file[s]]',
+                                            description = desp_msg,
+                                            version = scriptID)
 parser.add_option('-D', '--DefinitionFile',
-                  dest = 'storage definition file',
-                  type = 'string',
-                  metavar = 'string',
-                  help = 'definition file for H5 data storage')
+                                    dest = 'storage definition file',
+                                    type = 'string',
+                                    metavar = 'string',
+                                    help = 'definition file for H5 data storage')
 parser.add_option('-p',
-                  '--pos', '--position',
-                  dest = 'pos',
-                  type = 'string', metavar = 'string',
-                  help = 'label of coordinates [%default]')
+                                    '--pos', '--position',
+                                    dest = 'pos',
+                                    type = 'string', metavar = 'string',
+                                    help = 'label of coordinates [%default]')
 
 parser.set_defaults(DefinitionFile='default',
-                    pos='pos')
+                                        pos='pos')
 
 (options,filenames) = parser.parse_args()
 
 filename = filenames[0]
 
 if options.DefinitionFile == 'default':
-    defFile = None
+        defFile = None
 else:
-    defFile = options.DefinitionFile
+        defFile = options.DefinitionFile
 
 # ----- read in data using DAMASK ASCII table class ----- #
 asciiTable = damask.ASCIItable(name=filename, buffered=False)
@@ -96,9 +96,9 @@ mshGridDim = [len(Vx)-1, len(Vy)-1, len(Vz)-1]
 # force remove existing HDF5 file
 h5fName = filename.replace(".txt", ".h5")
 try:
-    os.remove(h5fName)
+        os.remove(h5fName)
 except OSError:
-    pass
+        pass
 h5f = damask.H5Table(h5fName,
                      new_file=True,
                      dsXMLFile=defFile)
@@ -112,24 +112,29 @@ h5f.add_data("Vz", Vz)
 # add the rest of data from table
 labelsProcessed = ['inc']
 for fi in xrange(len(labels)):
-    featureName = labels[fi]
-    # remove trouble maker "("" and ")" from label/feature name
-    if "(" in featureName: featureName = featureName.replace("(", "")
-    if ")" in featureName: featureName = featureName.replace(")", "")
-    # skip increment and duplicated columns in the ASCII table
-    if featureName in labelsProcessed: continue
+        featureName = labels[fi]
+        # remove trouble maker "("" and ")" from label/feature name
+        if "(" in featureName:
+            featureName = featureName.replace("(", "")
+        if ")" in featureName:
+            featureName = featureName.replace(")", "")
+        # skip increment and duplicated columns in the ASCII table
+        if featureName in labelsProcessed:
+            continue
 
-    featureIdx = labels_idx[fi]
-    featureDim = featuresDim[fi]
-    # grab the data hook
-    dataset = fullTable[:, featureIdx:featureIdx+featureDim]
-    # mapping 2D data onto a 3D rectangular mesh to get 4D data
-    # WARNING: In paraview, the data for a recmesh is mapped as:
-    # -->  len(z), len(y), len(x), size(data)
-    # dataset = dataset.reshape((mshGridDim[0], mshGridDim[1], mshGridDim[2],
-    #                            dataset.shape[1]))
-    # write out data
-    print "adding {}...".format(featureName)
-    h5f.add_data(featureName, dataset)
-    # write down the processed label
-    labelsProcessed.append(featureName)
+        featureIdx = labels_idx[fi]
+        featureDim = featuresDim[fi]
+        # grab the data hook
+        dataset = fullTable[:, featureIdx:featureIdx+featureDim]
+        # mapping 2D data onto a 3D rectangular mesh to get 4D data
+        # WARNING: In paraview, the data for a recmesh is mapped as:
+        # -->  len(z), len(y), len(x), size(data)
+        # dataset = dataset.reshape((mshGridDim[0],
+        #                            mshGridDim[1],
+        #                            mshGridDim[2],
+        #                            dataset.shape[1]))
+        # write out data
+        print "adding {}...".format(featureName)
+        h5f.add_data(featureName, dataset)
+        # write down the processed label
+        labelsProcessed.append(featureName)
