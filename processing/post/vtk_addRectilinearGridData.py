@@ -6,6 +6,7 @@ import damask
 from vtk.util import numpy_support
 from collections import defaultdict
 from optparse import OptionParser
+from damask.h5table import lables_to_path
 
 scriptName = os.path.splitext(os.path.basename(__file__))[0]
 scriptID   = ' '.join([scriptName,damask.version])
@@ -14,10 +15,12 @@ scriptID   = ' '.join([scriptName,damask.version])
 #                                MAIN
 # --------------------------------------------------------------------
 
-parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
-Add scalars, vectors, and/or an RGB tuple from an ASCIItable to existing VTK rectilinear grid (.vtr/.vtk).
-
-""", version = scriptID)
+msg = "Add scalars, vectors, and/or an RGB tuple from"
+msg += "an ASCIItable to existing VTK rectilinear grid (.vtr/.vtk)."
+parser = OptionParser(option_class=damask.extendableOption,
+                      usage='%prog options [file[s]]',
+                      description = msg,
+                      version = scriptID)
 
 parser.add_option(      '--vtk',
                   dest = 'vtk',
