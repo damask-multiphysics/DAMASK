@@ -63,7 +63,7 @@ class H5Table(object):
     ------
     del_entry()  -- Force delete attributes/group/datasets (Dangerous)
     get_attr()   -- Return attributes if possible
-    add_attr()   -- Add NEW attributes to dataset/group (please delete old first!)
+    add_attr()   -- Add NEW attributes to dataset/group (no force overwrite)
     get_data()   -- Retrieve data in numpy.ndarray
     add_data()   -- Add dataset to H5 file
     get_cmdlog() -- Return the command used to generate the data if possible.
