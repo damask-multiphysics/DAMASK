@@ -28,12 +28,12 @@ from optparse import OptionParser
 
 
 scriptName = os.path.splitext(os.path.basename(__file__))[0]
-scriptID   = ' '.join([scriptName,damask.version])
+scriptID = ' '.join([scriptName, damask.version])
 
 
 # ----- helper function ----- #
 def get_rectMshVectors(xyz_array, posNum):
-        """take in a xyz array from rectangular mesh and figure out Vx, Vy, Vz"""
+        """Get Vx, Vy, Vz for rectLinear grid"""
         # need some improvement, and only works for rectangular grid
         v = sorted(list(set(xyz_array[:, posNum])))
         v_interval = (v[2]+v[1])/2.0 - (v[1]+v[0])/2.0
@@ -46,24 +46,23 @@ def get_rectMshVectors(xyz_array, posNum):
 # ----- MAIN ---- #
 desp_msg = "Convert DAMASK ascii table to HDF5 file"
 parser = OptionParser(option_class=damask.extendableOption,
-                                            usage='%prog options [file[s]]',
-                                            description = desp_msg,
-                                            version = scriptID)
+                      usage='%prog options [file[s]]',
+                      description=desp_msg,
+                      version=scriptID)
 parser.add_option('-D', '--DefinitionFile',
-                                    dest = 'storage definition file',
-                                    type = 'string',
-                                    metavar = 'string',
-                                    help = 'definition file for H5 data storage')
-parser.add_option('-p',
-                                    '--pos', '--position',
-                                    dest = 'pos',
-                                    type = 'string', metavar = 'string',
-                                    help = 'label of coordinates [%default]')
+                  dest='storage definition file',
+                  type='string',
+                  metavar='string',
+                  help='definition file for H5 data storage')
+parser.add_option('-p', '--pos', '--position',
+                  dest='pos',
+                  type='string', metavar='string',
+                  help='label of coordinates [%default]')
 
 parser.set_defaults(DefinitionFile='default',
-                                        pos='pos')
+                    pos='pos')
 
-(options,filenames) = parser.parse_args()
+(options, filenames) = parser.parse_args()
 
 filename = filenames[0]
 
