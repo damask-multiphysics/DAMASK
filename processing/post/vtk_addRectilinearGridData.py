@@ -6,7 +6,6 @@ import damask
 from vtk.util import numpy_support
 from collections import defaultdict
 from optparse import OptionParser
-from damask.h5table import lables_to_path
 
 scriptName = os.path.splitext(os.path.basename(__file__))[0]
 scriptID   = ' '.join([scriptName,damask.version])
