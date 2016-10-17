@@ -129,7 +129,8 @@ class H5Table(object):
                 print "***deleting old {} from {}".format(feature_name,
                                                           self.h5f_path)
             except:
-                cmd_log += " [FRESH]"
+                # if no cmd log, None will used
+                cmd_log = str(cmd_log) + " [FRESH]"
             h5f.create_dataset(h5f_path, data=dataset)
             # store the cmd in log is possible
             if cmd_log is not None:
