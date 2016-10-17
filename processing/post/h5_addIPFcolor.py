@@ -16,35 +16,6 @@ scriptID = ' '.join([scriptName, damask.version])
 #   element at a time, maybe there are some other ways to make this
 #   faster.
 
-
-# ----- Helper functions ----- #
-# ref: http://stackoverflow.com/questions/16801322/how-can-i-check-that-a-list-
-#      has-one-and-only-one-truthy-value
-# NOTE:
-#   These functions might be useful in the future
-def n_trues(iterable, n=1):
-    """N(trues) = n"""
-    i = iter(iterable)
-    return all(any(i) for j in range(n)) and not any(i)
-
-
-def up_to_n_trues(iterable, n=1):
-    i = iter(iterable)
-    all(any(i) for j in range(n))
-    return not any(i)
-
-
-def at_least_n_trues(iterable, n=1):
-    i = iter(iterable)
-    return all(any(i) for j in range(n))
-
-
-def m_to_n_trues(iterable, m=1, n=1):
-    i = iter(iterable)
-    assert m <= n
-    return at_least_n_trues(i, m) and up_to_n_trues(i, n - m)
-
-
 # --------------------------------------------------------------------
 #                                MAIN
 # --------------------------------------------------------------------
