@@ -2,12 +2,12 @@
 # -*- coding: UTF-8 no BOM -*-
 
 import os
-import re
-import sys
+# import re
+# import sys
 import collections
-import math
+# import math
 import damask
-import numpy as np
+# import numpy as np
 from optparse import OptionParser
 
 scriptName = os.path.splitext(os.path.basename(__file__))[0]
