@@ -91,6 +91,9 @@ Vz = get_rectMshVectors(xyz_array, 2)
 # use the dimension of the rectangular grid to reshape all other data
 mshGridDim = [len(Vx)-1, len(Vy)-1, len(Vz)-1]
 
+# ----- compose cmd log ----- #
+cmd_log = " ".join([scriptID, filename])
+
 # ----- create a new HDF5 file and save the data -----#
 # force remove existing HDF5 file
 h5fName = filename.replace(".txt", ".h5")
@@ -104,9 +107,9 @@ h5f = damask.H5Table(h5fName,
 # adding increment number as root level attributes
 h5f.add_attr('inc', incNum)
 # add the mesh grid data now
-h5f.add_data("Vx", Vx)
-h5f.add_data("Vy", Vy)
-h5f.add_data("Vz", Vz)
+h5f.add_data("Vx", Vx, cmd_log=cmd_log)
+h5f.add_data("Vy", Vy, cmd_log=cmd_log)
+h5f.add_data("Vz", Vz, cmd_log=cmd_log)
 
 # add the rest of data from table
 labelsProcessed = ['inc']
@@ -134,6 +137,6 @@ for fi in xrange(len(labels)):
         #                            dataset.shape[1]))
         # write out data
         print "adding {}...".format(featureName)
-        h5f.add_data(featureName, dataset)
+        h5f.add_data(featureName, dataset, cmd_log=cmd_log)
         # write down the processed label
         labelsProcessed.append(featureName)
