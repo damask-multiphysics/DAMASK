@@ -32,8 +32,8 @@ def calcEPS(defgrads, stretchType, strainType):
     # this loop can use some performance boost
     # (multi-threading?)
     for ri in xrange(defgrads.shape[0]):
-        f = defgrads[ri, :, :].reshape(3, 3)
-        U, S, Vh = np.lingalg.svd(f)
+        f = defgrads[ri, :].reshape(3, 3)
+        U, S, Vh = np.linalg.svd(f)
         R = np.dot(U, Vh)  # rotation of polar decomposition
         if stretchType == 'U':
             stretch = np.dot(np.linalg.inv(R), f)  # F = RU
@@ -94,6 +94,9 @@ parser.add_option('-2', '--green',
                   dest='green',
                   action='store_true',
                   help='calculate green strain tensor')
+# NOTE:
+#   It might be easier to just calculate one type of deformation gradient
+#   at a time.
 msg = 'heading(s) of columns containing deformation tensor values'
 parser.add_option('-f', '--defgrad',
                   dest='defgrad',
@@ -103,7 +106,7 @@ parser.add_option('-f', '--defgrad',
 
 parser.set_defaults(right=False, left=False,
                     logarithmic=False, biot=False, green=False,
-                    defgrad=['f'])
+                    defgrad='f')
 
 (options, filenames) = parser.parse_args()
 
@@ -134,7 +137,7 @@ for name in filenames:
     damask.util.report(scriptName, name)
 
     # extract defgrads from HDF5 storage
-    F = h5f.get_data(options.defgrads)
+    F = h5f.get_data(options.defgrad)
 
     # allow calculate multiple types of strain within the
     # same cmd call
