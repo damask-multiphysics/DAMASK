@@ -336,6 +336,7 @@ class ASCIItable():
           try:
             idx.append(int(label)-1)                                                                # column given as integer number?
           except ValueError:
+            label = label[1:-1] if label[0] == label[-1] and label[0] in ('"',"'") else label       # remove outermost quotations
             try:
               idx.append(self.tags.index(label))                                                    # locate string in label list
             except ValueError:
@@ -348,6 +349,7 @@ class ASCIItable():
         idx = int(labels)-1                                                                         # offset for python array indexing
       except ValueError:
         try:
+          labels = labels[1:-1] if labels[0] == labels[-1] and labels[0] in ('"',"'") else labels   # remove outermost quotations
           idx = self.tags.index(labels)
         except ValueError:
           try:
@@ -380,6 +382,7 @@ class ASCIItable():
               while idx+myDim < len(self.tags) and self.tags[idx+myDim].startswith("%i_"%(myDim+1)):
                 myDim += 1                                                                          # add while found
           except ValueError:                                                                        # column has string label
+            label = label[1:-1] if label[0] == label[-1] and label[0] in ('"',"'") else label       # remove outermost quotations
             if label in self.tags:                                                                  # can be directly found?
               myDim = 1                                                                             # scalar by definition
             elif '1_'+label in self.tags:                                                           # look for first entry of possible multidim object
@@ -399,6 +402,7 @@ class ASCIItable():
           while idx+dim < len(self.tags) and self.tags[idx+dim].startswith("%i_"%(dim+1)):
             dim += 1                                                                                # add as long as found
       except ValueError:                                                                            # column has string label
+        labels = labels[1:-1] if labels[0] == labels[-1] and labels[0] in ('"',"'") else labels     # remove outermost quotations
         if labels in self.tags:                                                                     # can be directly found?
           dim = 1                                                                                   # scalar by definition
         elif '1_'+labels in self.tags:                                                              # look for first entry of possible multidim object
