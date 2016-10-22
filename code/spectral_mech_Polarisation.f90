@@ -244,7 +244,7 @@ end subroutine Polarisation_init
 !> @brief solution for the Polarisation scheme with internal iterations
 !--------------------------------------------------------------------------------------------------
 type(tSolutionState) function &
-  Polarisation_solution(incInfoIn,guess,timeinc,timeinc_old,loadCaseTime,P_BC,F_BC,rotation_BC)
+  Polarisation_solution(incInfoIn,timeinc,timeinc_old,P_BC,rotation_BC)
  use IO, only: &
    IO_error
  use numerics, only: &
@@ -265,13 +265,9 @@ type(tSolutionState) function &
 ! input data for solution
  real(pReal), intent(in) :: &
    timeinc, &                                                                                       !< increment in time for current solution
-   timeinc_old, &                                                                                   !< increment in time of last increment
-   loadCaseTime                                                                                     !< remaining time of current load case
- logical, intent(in) :: &
-   guess
+   timeinc_old                                                                                      !< increment in time of last increment
  type(tBoundaryCondition),      intent(in) :: &
-   P_BC, &
-   F_BC
+   P_BC
  character(len=*), intent(in) :: &
    incInfoIn
  real(pReal), dimension(3,3), intent(in) :: rotation_BC

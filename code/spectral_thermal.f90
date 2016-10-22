@@ -170,7 +170,7 @@ end subroutine spectral_thermal_init
 !--------------------------------------------------------------------------------------------------
 !> @brief solution for the spectral thermal scheme with internal iterations
 !--------------------------------------------------------------------------------------------------
-type(tSolutionState) function spectral_thermal_solution(guess,timeinc,timeinc_old,loadCaseTime)
+type(tSolutionState) function spectral_thermal_solution(timeinc,timeinc_old,loadCaseTime)
  use numerics, only: &
    itmax, &
    err_thermal_tolAbs, &
@@ -189,7 +189,6 @@ type(tSolutionState) function spectral_thermal_solution(guess,timeinc,timeinc_ol
    timeinc, &                                                                                       !< increment in time for current solution
    timeinc_old, &                                                                                   !< increment in time of last increment
    loadCaseTime                                                                                     !< remaining time of current load case
- logical, intent(in) :: guess
  integer(pInt) :: i, j, k, cell
  PetscInt  :: position
  PetscReal :: minTemperature, maxTemperature, stagNorm, solnNorm
@@ -337,7 +336,7 @@ end subroutine spectral_thermal_formResidual
 !--------------------------------------------------------------------------------------------------
 !> @brief forwarding routine
 !--------------------------------------------------------------------------------------------------
-subroutine spectral_thermal_forward(guess,timeinc,timeinc_old,loadCaseTime)
+subroutine spectral_thermal_forward()
  use mesh, only: &
    grid, &
    grid3
@@ -351,11 +350,6 @@ subroutine spectral_thermal_forward(guess,timeinc,timeinc_old,loadCaseTime)
    thermal_conduction_getSpecificHeat
    
  implicit none
- real(pReal), intent(in) :: &
-   timeinc_old, &
-   timeinc, &
-   loadCaseTime                                                                                     !< remaining time of current load case
- logical,     intent(in) :: guess
  integer(pInt)           :: i, j, k, cell
  DM                      :: dm_local
  PetscScalar,  dimension(:,:,:), pointer     :: x_scal

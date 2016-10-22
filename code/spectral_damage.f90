@@ -171,7 +171,7 @@ end subroutine spectral_damage_init
 !--------------------------------------------------------------------------------------------------
 !> @brief solution for the spectral damage scheme with internal iterations
 !--------------------------------------------------------------------------------------------------
-type(tSolutionState) function spectral_damage_solution(guess,timeinc,timeinc_old,loadCaseTime)
+type(tSolutionState) function spectral_damage_solution(timeinc,timeinc_old,loadCaseTime)
  use numerics, only: &
    itmax, &
    err_damage_tolAbs, &
@@ -190,7 +190,6 @@ type(tSolutionState) function spectral_damage_solution(guess,timeinc,timeinc_old
    timeinc, &                                                                                       !< increment in time for current solution
    timeinc_old, &                                                                                   !< increment in time of last increment
    loadCaseTime                                                                                     !< remaining time of current load case
- logical, intent(in) :: guess
  integer(pInt) :: i, j, k, cell
  PetscInt  ::position
  PetscReal ::  minDamage, maxDamage, stagNorm, solnNorm
@@ -341,7 +340,7 @@ end subroutine spectral_damage_formResidual
 !--------------------------------------------------------------------------------------------------
 !> @brief spectral damage forwarding routine
 !--------------------------------------------------------------------------------------------------
-subroutine spectral_damage_forward(guess,timeinc,timeinc_old,loadCaseTime)
+subroutine spectral_damage_forward()
  use mesh, only: &
    grid, &
    grid3
@@ -354,11 +353,6 @@ subroutine spectral_damage_forward(guess,timeinc,timeinc_old,loadCaseTime)
    damage_nonlocal_getMobility
    
  implicit none
- real(pReal), intent(in) :: &
-   timeinc_old, &
-   timeinc, &
-   loadCaseTime                                                                                     !< remaining time of current load case
- logical,     intent(in)                     :: guess
  integer(pInt)                               :: i, j, k, cell
  DM :: dm_local
  PetscScalar,  dimension(:,:,:), pointer     :: x_scal

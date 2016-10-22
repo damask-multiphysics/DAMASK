@@ -541,13 +541,8 @@ program DAMASK_spectral
                        rotation_BC        = loadCases(currentLoadCase)%rotation)
                end select
 
-           case(FIELD_THERMAL_ID)
-               call spectral_thermal_forward (&
-                   guess,timeinc,timeIncOld,remainingLoadCaseTime)
-
-           case(FIELD_DAMAGE_ID)
-               call spectral_damage_forward (&
-                   guess,timeinc,timeIncOld,remainingLoadCaseTime)
+           case(FIELD_THERMAL_ID); call spectral_thermal_forward()
+           case(FIELD_DAMAGE_ID); call spectral_damage_forward()
            end select
          enddo
 
@@ -562,34 +557,29 @@ program DAMASK_spectral
                  select case (spectral_solver)
                    case (DAMASK_spectral_SolverBasicPETSc_label)
                      solres(field) = BasicPETSC_solution (&
-                         incInfo,guess,timeinc,timeIncOld,remainingLoadCaseTime, &
+                         incInfo,timeinc,timeIncOld, &
                          P_BC               = loadCases(currentLoadCase)%P, &
-                         F_BC               = loadCases(currentLoadCase)%deformation, &
                          rotation_BC        = loadCases(currentLoadCase)%rotation)
 
                    case (DAMASK_spectral_SolverAL_label)
                      solres(field) = AL_solution (&
-                         incInfo,guess,timeinc,timeIncOld,remainingLoadCaseTime, &
+                         incInfo,timeinc,timeIncOld, &
                          P_BC               = loadCases(currentLoadCase)%P, &
-                         F_BC               = loadCases(currentLoadCase)%deformation, &
                          rotation_BC        = loadCases(currentLoadCase)%rotation)
 
                    case (DAMASK_spectral_SolverPolarisation_label)
                      solres(field) = Polarisation_solution (&
-                         incInfo,guess,timeinc,timeIncOld,remainingLoadCaseTime, &
+                         incInfo,timeinc,timeIncOld, &
                          P_BC               = loadCases(currentLoadCase)%P, &
-                         F_BC               = loadCases(currentLoadCase)%deformation, &
                          rotation_BC        = loadCases(currentLoadCase)%rotation)
 
                  end select
 
                case(FIELD_THERMAL_ID)
-                 solres(field) = spectral_thermal_solution (&
-                     guess,timeinc,timeIncOld,remainingLoadCaseTime)
+                 solres(field) = spectral_thermal_solution(timeinc,timeIncOld,remainingLoadCaseTime)
 
                case(FIELD_DAMAGE_ID)
-                 solres(field) = spectral_damage_solution (&
-                     guess,timeinc,timeIncOld,remainingLoadCaseTime)
+                 solres(field) = spectral_damage_solution(timeinc,timeIncOld,remainingLoadCaseTime)
 
              end select
              if (.not. solres(field)%converged) exit                                                ! no solution found
