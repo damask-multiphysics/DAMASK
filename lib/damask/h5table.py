@@ -18,9 +18,9 @@ import xml.etree.cElementTree as ET
 # on Python 2&3                                                    #
 # ---------------------------------------------------------------- #
 try:
-  test=isinstance('test', unicode)
+    test = isinstance('test', unicode)
 except(NameError):
-  unicode=str
+    unicode = str
 
 
 def lables_to_path(label, dsXMLPath=None):
@@ -63,7 +63,7 @@ class H5Table(object):
     ------
     del_entry()  -- Force delete attributes/group/datasets (Dangerous)
     get_attr()   -- Return attributes if possible
-    add_attr()   -- Add NEW attributes to dataset/group (please delete old first!)
+    add_attr()   -- Add NEW attributes to dataset/group (no force overwrite)
     get_data()   -- Retrieve data in numpy.ndarray
     add_data()   -- Add dataset to H5 file
     get_cmdlog() -- Return the command used to generate the data if possible.
@@ -120,6 +120,17 @@ class H5Table(object):
         dataType, h5f_path = lables_to_path(feature_name,
                                             dsXMLPath=self.dsXMLFile)
         with h5py.File(self.h5f_path, 'a') as h5f:
+            # NOTE:
+            # --> If dataset exists, delete the old one so as to write
+            #     a new one. For brand new dataset. For brand new one,
+            #     record its state as fresh in the cmd log.
+            try:
+                del h5f[h5f_path]
+                print "***deleting old {} from {}".format(feature_name,
+                                                          self.h5f_path)
+            except:
+                # if no cmd log, None will used
+                cmd_log = str(cmd_log) + " [FRESH]"
             h5f.create_dataset(h5f_path, data=dataset)
             # store the cmd in log is possible
             if cmd_log is not None:

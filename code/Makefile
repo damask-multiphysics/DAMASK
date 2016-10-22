@@ -65,7 +65,7 @@ endif
 
 # settings for shared memory multicore support
 ifeq "$(OPENMP)" "ON"
-OPENMP_FLAG_ifort =-openmp -openmp-report0 -parallel
+OPENMP_FLAG_ifort =-qopenmp -parallel
 OPENMP_FLAG_gfortran =-fopenmp
 endif
 

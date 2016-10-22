@@ -1,6 +1,7 @@
 !--------------------------------------------------------------------------------------------------
 !> @author Pratheek Shanthraj, Max-Planck-Institut für Eisenforschung GmbH
-!> @brief material subroutine for thermal source due to plastic dissipation
+!> @author Philip Eisenlohr, Michigan State University
+!> @brief material subroutine for variable heat source
 !> @details to be done
 !--------------------------------------------------------------------------------------------------
 module source_thermal_externalheat
@@ -10,24 +11,24 @@ module source_thermal_externalheat
 
  implicit none
  private
- integer(pInt),                       dimension(:),           allocatable,         public, protected :: &
+ integer(pInt),                       dimension(:),   allocatable,         public, protected :: &
    source_thermal_externalheat_sizePostResults, &                                                        !< cumulative size of post results
    source_thermal_externalheat_offset, &                                                                 !< which source is my current thermal dissipation mechanism?
    source_thermal_externalheat_instance                                                                  !< instance of thermal dissipation source mechanism
 
- integer(pInt),                       dimension(:,:),         allocatable, target, public :: &
+ integer(pInt),                       dimension(:,:), allocatable, target, public :: &
    source_thermal_externalheat_sizePostResult                                                            !< size of each post result output
 
- character(len=64),                   dimension(:,:),         allocatable, target, public :: &
+ character(len=64),                   dimension(:,:), allocatable, target, public :: &
    source_thermal_externalheat_output                                                                    !< name of each post result output
    
- integer(pInt),                       dimension(:),           allocatable, target, public :: &
+ integer(pInt),                       dimension(:),   allocatable, target, public :: &
    source_thermal_externalheat_Noutput                                                                   !< number of outputs per instance of this source 
 
- integer(pInt),                       dimension(:),           allocatable,        private :: &
+ integer(pInt),                       dimension(:),   allocatable,        private :: &
    source_thermal_externalheat_nIntervals
 
- real(pReal),                         dimension(:,:),         allocatable,        private :: &
+ real(pReal),                         dimension(:,:), allocatable,        private :: &
    source_thermal_externalheat_time, &
    source_thermal_externalheat_rate
 
@@ -136,23 +137,26 @@ subroutine source_thermal_externalheat_init(fileUnit)
 
    if (phase > 0_pInt ) then; if (any(phase_source(:,phase) == SOURCE_thermal_externalheat_ID)) then ! do not short-circuit here (.and. with next if statemen). It's not safe in Fortran
 
-     instance = source_thermal_externalheat_instance(phase)                                          ! which instance of my source is present phase
+     instance = source_thermal_externalheat_instance(phase)                                         ! which instance of my source is present phase
      chunkPos = IO_stringPos(line)
-     tag = IO_lc(IO_stringValue(line,chunkPos,1_pInt))                                             ! extract key
+     tag = IO_lc(IO_stringValue(line,chunkPos,1_pInt))                                              ! extract key
      select case(tag)
-       case ('externalheat_time')
+       case ('externalheat_time','externalheat_rate')
          if (chunkPos(1) <= 2_pInt) &
            call IO_error(150_pInt,ext_msg=trim(tag)//' ('//SOURCE_thermal_externalheat_label//')')
+         if (      source_thermal_externalheat_nIntervals(instance) > 0_pInt &
+             .and. source_thermal_externalheat_nIntervals(instance) /= chunkPos(1) - 2_pInt) &
+           call IO_error(150_pInt,ext_msg=trim(tag)//' ('//SOURCE_thermal_externalheat_label//')')
+
          source_thermal_externalheat_nIntervals(instance) = chunkPos(1) - 2_pInt
          do interval = 1, source_thermal_externalheat_nIntervals(instance) + 1_pInt
-           temp_time(instance, interval) = IO_floatValue(line,chunkPos,1_pInt + interval)
+           select case(tag)
+             case ('externalheat_time')
+               temp_time(instance, interval) = IO_floatValue(line,chunkPos,1_pInt + interval)
+             case ('externalheat_rate')
+               temp_rate(instance, interval) = IO_floatValue(line,chunkPos,1_pInt + interval)
+           end select
          enddo  
-
-       case ('externalheat_rate')
-         do interval = 1, source_thermal_externalheat_nIntervals(instance) + 1_pInt
-           temp_rate(instance, interval) = IO_floatValue(line,chunkPos,1_pInt + interval)
-         enddo  
-
      end select
    endif; endif
  enddo parsingFile
@@ -162,13 +166,13 @@ subroutine source_thermal_externalheat_init(fileUnit)
 
  initializeInstances: do phase = 1_pInt, material_Nphase
    if (any(phase_source(:,phase) == SOURCE_thermal_externalheat_ID)) then
-     NofMyPhase=count(material_phase==phase)
+     NofMyPhase = count(material_phase==phase)
      instance = source_thermal_externalheat_instance(phase)
      sourceOffset = source_thermal_externalheat_offset(phase)
      source_thermal_externalheat_time(instance,1:source_thermal_externalheat_nIntervals(instance)+1_pInt) = &
-       temp_time(instance,1:source_thermal_externalheat_nIntervals(instance)+1_pInt)
+                            temp_time(instance,1:source_thermal_externalheat_nIntervals(instance)+1_pInt)
      source_thermal_externalheat_rate(instance,1:source_thermal_externalheat_nIntervals(instance)+1_pInt) = &
-       temp_rate(instance,1:source_thermal_externalheat_nIntervals(instance)+1_pInt)
+                            temp_rate(instance,1:source_thermal_externalheat_nIntervals(instance)+1_pInt)
 
      sizeDotState              =   1_pInt
      sizeDeltaState            =   0_pInt
@@ -200,7 +204,8 @@ subroutine source_thermal_externalheat_init(fileUnit)
 end subroutine source_thermal_externalheat_init
 
 !--------------------------------------------------------------------------------------------------
-!> @brief calculates derived quantities from state
+!> @brief rate of change of state
+!> @details state only contains current time to linearly interpolate given heat powers
 !--------------------------------------------------------------------------------------------------
 subroutine source_thermal_externalheat_dotState(ipc, ip, el)
  use material, only: &
@@ -221,12 +226,12 @@ subroutine source_thermal_externalheat_dotState(ipc, ip, el)
  constituent = phasememberAt(ipc,ip,el)
  sourceOffset = source_thermal_externalheat_offset(phase)
  
- sourceState(phase)%p(sourceOffset)%dotState(1,constituent) = 1.0_pReal
+ sourceState(phase)%p(sourceOffset)%dotState(1,constituent) = 1.0_pReal                             ! state is current time
 
 end subroutine source_thermal_externalheat_dotState
 
 !--------------------------------------------------------------------------------------------------
-!> @brief returns local vacancy generation rate 
+!> @brief returns local heat generation rate 
 !--------------------------------------------------------------------------------------------------
 subroutine source_thermal_externalheat_getRateAndItsTangent(TDot, dTDot_dT, ipc, ip, el)
  use material, only: &
@@ -244,21 +249,24 @@ subroutine source_thermal_externalheat_getRateAndItsTangent(TDot, dTDot_dT, ipc,
  integer(pInt) :: &
    instance, phase, constituent, sourceOffset, interval
  real(pReal) :: &
-   norm_time   
+   frac_time   
 
  phase = phaseAt(ipc,ip,el)
  constituent = phasememberAt(ipc,ip,el)
  instance = source_thermal_externalheat_instance(phase)
  sourceOffset = source_thermal_externalheat_offset(phase)
 
- do interval = 1, source_thermal_externalheat_nIntervals(instance)
-   norm_time = (sourceState(phase)%p(sourceOffset)%state(1,constituent) - &
+ do interval = 1, source_thermal_externalheat_nIntervals(instance)                                  ! scan through all rate segments
+   frac_time = (sourceState(phase)%p(sourceOffset)%state(1,constituent) - &
                 source_thermal_externalheat_time(instance,interval)) / &
                (source_thermal_externalheat_time(instance,interval+1) - &
-                source_thermal_externalheat_time(instance,interval))
-   if (norm_time >= 0.0_pReal .and. norm_time < 1.0_pReal) &
-     TDot = source_thermal_externalheat_rate(instance,interval  ) * (1.0_pReal - norm_time) + &
-            source_thermal_externalheat_rate(instance,interval+1) * norm_time
+                source_thermal_externalheat_time(instance,interval))                                ! fractional time within segment
+   if (     (frac_time <  0.0_pReal .and. interval == 1) &
+       .or. (frac_time >= 1.0_pReal .and. interval == source_thermal_externalheat_nIntervals(instance)) &
+       .or. (frac_time >= 0.0_pReal .and. frac_time < 1.0_pReal) ) &
+     TDot = source_thermal_externalheat_rate(instance,interval  ) * (1.0_pReal - frac_time) + &
+            source_thermal_externalheat_rate(instance,interval+1) * frac_time                       ! interpolate heat rate between segment boundaries...
+                                                                                                    ! ...or extrapolate if outside of bounds
  enddo
  dTDot_dT = 0.0
  

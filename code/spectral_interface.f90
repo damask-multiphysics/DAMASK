@@ -152,7 +152,7 @@ subroutine DAMASK_interface_init()
        write(6,'(a)')  '        Make sure the file "material.config" exists in the working'
        write(6,'(a)')  '            directory.'   
        write(6,'(a)')  '        For further configuration place "numerics.config"'
-       write(6,'(a)')'            and "numerics.config" in that directory.'
+       write(6,'(a)')'            and "debug.config" in that directory.'
        write(6,'(/,a)')'   --restart XX'
        write(6,'(a)')  '        Reads in total increment No. XX-1 and continues to'
        write(6,'(a)')  '            calculate total increment No. XX.'

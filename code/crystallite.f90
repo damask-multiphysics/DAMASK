@@ -513,8 +513,6 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
    subStepMinCryst, &
    subStepSizeCryst, &
    stepIncreaseCryst, &
-   pert_Fg, &
-   pert_method, &
    nCryst, &
    numerics_integrator, &
    numerics_integrationMode, &
@@ -574,7 +572,6 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
  logical, intent(in) :: &
    updateJaco                                                                                       !< whether to update the Jacobian (stiffness) or not
  real(pReal) :: &
-   myPert, &                                                                                        ! perturbation with correct sign
    formerSubStep, &
    subFracIntermediate
  real(pReal), dimension(3,3) :: &
@@ -586,14 +583,11 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
    c, &                                                                                             !< counter in integration point component loop
    i, &                                                                                             !< counter in integration point loop
    e, &                                                                                             !< counter in element loop
-   k, &
-   l, &
    n, startIP, endIP, &
    neighboring_e, &
    neighboring_i, &
    o, &
    p, &
-   perturbation , &                                                                                 ! loop counter for forward,backward perturbation mode
    myNcomponents, &
    mySource
  ! local variables used for calculating analytic Jacobian
