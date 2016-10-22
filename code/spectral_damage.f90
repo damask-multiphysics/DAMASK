@@ -81,7 +81,6 @@ subroutine spectral_damage_init()
  DM :: damage_grid
  Vec :: uBound, lBound
  PetscErrorCode :: ierr
- PetscObject    :: dummy
  character(len=100) :: snes_type
 
  external :: &
@@ -124,7 +123,8 @@ subroutine spectral_damage_init()
  CHKERRQ(ierr)
  call SNESSetDM(damage_snes,damage_grid,ierr); CHKERRQ(ierr)                                        !< connect snes to da
  call DMCreateGlobalVector(damage_grid,solution,ierr); CHKERRQ(ierr)                                !< global solution vector (grid x 1, i.e. every def grad tensor)
- call DMDASNESSetFunctionLocal(damage_grid,INSERT_VALUES,spectral_damage_formResidual,dummy,ierr)   !< residual vector of same shape as solution vector
+ call DMDASNESSetFunctionLocal(damage_grid,INSERT_VALUES,spectral_damage_formResidual,&
+                                                                            PETSC_NULL_OBJECT,ierr) !< residual vector of same shape as solution vector
  CHKERRQ(ierr) 
  call SNESSetFromOptions(damage_snes,ierr); CHKERRQ(ierr)                                           !< pull it all together with additional cli arguments
  call SNESGetType(damage_snes,snes_type,ierr); CHKERRQ(ierr)

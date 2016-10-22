@@ -105,7 +105,6 @@ subroutine basicPETSc_init
    temp33_Real = 0.0_pReal
 
  PetscErrorCode :: ierr
- PetscObject :: dummy 
  PetscScalar, pointer, dimension(:,:,:,:)   ::  F
 
  integer(pInt), dimension(:), allocatable :: localK  
@@ -153,10 +152,10 @@ subroutine basicPETSc_init
  CHKERRQ(ierr)
  call SNESSetDM(snes,da,ierr); CHKERRQ(ierr)
  call DMCreateGlobalVector(da,solution_vec,ierr); CHKERRQ(ierr)                                     ! global solution vector (grid x 9, i.e. every def grad tensor)
- call DMDASNESSetFunctionLocal(da,INSERT_VALUES,BasicPETSC_formResidual,dummy,ierr)                 ! residual vector of same shape as solution vector
+ call DMDASNESSetFunctionLocal(da,INSERT_VALUES,BasicPETSC_formResidual,PETSC_NULL_OBJECT,ierr)     ! residual vector of same shape as solution vector
  CHKERRQ(ierr) 
  call SNESSetDM(snes,da,ierr); CHKERRQ(ierr)                                                        ! connect snes to da
- call SNESSetConvergenceTest(snes,BasicPETSC_converged,dummy,PETSC_NULL_FUNCTION,ierr)              ! specify custom convergence check function "_converged"
+ call SNESSetConvergenceTest(snes,BasicPETSC_converged,PETSC_NULL_OBJECT,PETSC_NULL_FUNCTION,ierr)  ! specify custom convergence check function "_converged"
  CHKERRQ(ierr)
  call SNESSetFromOptions(snes,ierr); CHKERRQ(ierr)                                                  ! pull it all together with additional cli arguments
 

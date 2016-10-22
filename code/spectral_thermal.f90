@@ -86,7 +86,6 @@ subroutine spectral_thermal_init
  DM :: thermal_grid
  PetscScalar,  dimension(:,:,:), pointer     :: x_scal
  PetscErrorCode :: ierr
- PetscObject    :: dummy
 
  external :: &
    SNESCreate, &
@@ -123,7 +122,8 @@ subroutine spectral_thermal_init
  CHKERRQ(ierr)
  call SNESSetDM(thermal_snes,thermal_grid,ierr); CHKERRQ(ierr)                                      ! connect snes to da
  call DMCreateGlobalVector(thermal_grid,solution        ,ierr); CHKERRQ(ierr)                       ! global solution vector (grid x 1, i.e. every def grad tensor)
- call DMDASNESSetFunctionLocal(thermal_grid,INSERT_VALUES,spectral_thermal_formResidual,dummy,ierr) ! residual vector of same shape as solution vector
+ call DMDASNESSetFunctionLocal(thermal_grid,INSERT_VALUES,spectral_thermal_formResidual,&
+                                                                            PETSC_NULL_OBJECT,ierr) ! residual vector of same shape as solution vector
  CHKERRQ(ierr) 
  call SNESSetFromOptions(thermal_snes,ierr); CHKERRQ(ierr)                                          ! pull it all together with additional cli arguments
 

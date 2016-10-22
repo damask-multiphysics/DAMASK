@@ -116,7 +116,6 @@ subroutine AL_init
    temp33_Real = 0.0_pReal
 
  PetscErrorCode :: ierr
- PetscObject :: dummy
  PetscScalar, pointer, dimension(:,:,:,:) :: xx_psc, F, F_lambda
  integer(pInt), dimension(:), allocatable :: localK  
  integer(pInt) :: proc
@@ -165,9 +164,9 @@ subroutine AL_init
  CHKERRQ(ierr)
  call SNESSetDM(snes,da,ierr); CHKERRQ(ierr)
  call DMCreateGlobalVector(da,solution_vec,ierr); CHKERRQ(ierr)
- call DMDASNESSetFunctionLocal(da,INSERT_VALUES,AL_formResidual,dummy,ierr)
+ call DMDASNESSetFunctionLocal(da,INSERT_VALUES,AL_formResidual,PETSC_NULL_OBJECT,ierr)
  CHKERRQ(ierr)
- call SNESSetConvergenceTest(snes,AL_converged,dummy,PETSC_NULL_FUNCTION,ierr)
+ call SNESSetConvergenceTest(snes,AL_converged,PETSC_NULL_OBJECT,PETSC_NULL_FUNCTION,ierr)
  CHKERRQ(ierr)
  call SNESSetFromOptions(snes,ierr); CHKERRQ(ierr)
 
