@@ -283,10 +283,10 @@ subroutine spectral_damage_formResidual(in,x_scal,f_scal,dummy,ierr)
  DMDALocalInfo, dimension(DMDA_LOCAL_INFO_SIZE) :: &
    in
  PetscScalar, dimension( &
-   XG_RANGE,YG_RANGE,ZG_RANGE) :: &
+   XG_RANGE,YG_RANGE,ZG_RANGE), intent(in) :: &
    x_scal
  PetscScalar, dimension( &
-   X_RANGE,Y_RANGE,Z_RANGE) :: &
+   X_RANGE,Y_RANGE,Z_RANGE), intent(out) :: &
    f_scal
  PetscObject :: dummy
  PetscErrorCode :: ierr

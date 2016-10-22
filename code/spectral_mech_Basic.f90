@@ -330,10 +330,10 @@ subroutine BasicPETSC_formResidual(in,x_scal,f_scal,dummy,ierr)
  DMDALocalInfo, dimension(DMDA_LOCAL_INFO_SIZE) :: &
    in
  PetscScalar, dimension(3,3, &
-   XG_RANGE,YG_RANGE,ZG_RANGE) :: &
+   XG_RANGE,YG_RANGE,ZG_RANGE), intent(in) :: &
    x_scal
  PetscScalar, dimension(3,3, &
-   X_RANGE,Y_RANGE,Z_RANGE) :: &
+   X_RANGE,Y_RANGE,Z_RANGE), intent(out) :: &
    f_scal
  PetscInt :: &
    PETScIter, &

@@ -368,10 +368,10 @@ subroutine AL_formResidual(in,x_scal,f_scal,dummy,ierr)
    DMDA_LOCAL_INFO_SIZE) :: &
    in
  PetscScalar, target, dimension(3,3,2, &
-   XG_RANGE,YG_RANGE,ZG_RANGE) :: &
+   XG_RANGE,YG_RANGE,ZG_RANGE), intent(in) :: &
    x_scal
  PetscScalar, target, dimension(3,3,2, &
-   X_RANGE,Y_RANGE,Z_RANGE) :: &
+   X_RANGE,Y_RANGE,Z_RANGE), intent(out) :: &
    f_scal
  PetscScalar, pointer, dimension(:,:,:,:,:) :: &
    F, &
