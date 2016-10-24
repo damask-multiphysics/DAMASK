@@ -42,9 +42,9 @@ def outStdout(cmd,locals):
     exec(cmd[3:])
   elif cmd[0:3] == '(?)':
     cmd = eval(cmd[3:])
-    print cmd
+    print(cmd)
   else:
-    print cmd
+    print(cmd)
   return
 
 
@@ -84,7 +84,7 @@ def rcbOrientationParser(content,idcolumn):
   return grains
 
 def rcbParser(content,M,size,tolerance,idcolumn,segmentcolumn):
-  """parser for TSL-OIM reconstructed boundary files"""
+  """Parser for TSL-OIM reconstructed boundary files"""
 # find bounding box
   boxX = [1.*sys.maxint,-1.*sys.maxint]
   boxY = [1.*sys.maxint,-1.*sys.maxint]
@@ -333,21 +333,21 @@ def rcbParser(content,M,size,tolerance,idcolumn,segmentcolumn):
   for neighbors in grainNeighbors:
     rcData['neighbors'].append(neighbors)
 
-  for legs in grains['legs']:                                                             # loop over grains
-    rcData['grain'].append(legs)                                                          # store list of boundary segments
+  for legs in grains['legs']:                                                                       # loop over grains
+    rcData['grain'].append(legs)                                                                    # store list of boundary segments
     myNeighbors = {}
-    for leg in legs:                                                                      # test each boundary segment
-      if leg < len(grainNeighbors):                                                       # a valid segment index?
-        for side in range(2):                                                             # look at both sides of the segment
-          if grainNeighbors[leg][side] in myNeighbors:                                    # count occurrence of grain IDs
+    for leg in legs:                                                                                # test each boundary segment
+      if leg < len(grainNeighbors):                                                                 # a valid segment index?
+        for side in range(2):                                                                       # look at both sides of the segment
+          if grainNeighbors[leg][side] in myNeighbors:                                              # count occurrence of grain IDs
             myNeighbors[grainNeighbors[leg][side]] += 1
           else:
             myNeighbors[grainNeighbors[leg][side]] = 1
-    if myNeighbors:                                                                       # do I have any neighbors (i.e., non-bounding box segment)
-      candidateGrains = sorted(myNeighbors.iteritems(), key=lambda (k,v): (v,k), reverse=True)  # sort grain counting
-                                                                                          # most frequent one not yet seen?
+    if myNeighbors:                                                                                 # do I have any neighbors (i.e., non-bounding box segment)
+      candidateGrains = sorted(myNeighbors.items(), key=lambda (k,v): (v,k), reverse=True)          # sort grain counting
+                                                                                                    # most frequent one not yet seen?
       rcData['grainMapping'].append(candidateGrains[0 if candidateGrains[0][0] not in rcData['grainMapping'] else 1][0]) # must be me then
-                                                                                          # special case of bi-crystal situation...
+                                                                                                    # special case of bi-crystal situation...
       
   damask.util.croak('  found {} grains'.format(len(rcData['grain'])))
 
@@ -729,7 +729,7 @@ def image(name,imgsize,marginX,marginY,rcData):
 
 # -------------------------
 def inside(x,y,points):
-  """tests whether point(x,y) is within polygon described by points"""
+  """Tests whether point(x,y) is within polygon described by points"""
   inside = False
   npoints=len(points)
   (x1,y1) = points[npoints-1]                                                # start with last point of points
@@ -751,7 +751,7 @@ def inside(x,y,points):
   
 # -------------------------
 def fftbuild(rcData,height,xframe,yframe,resolution,extrusion):
-  """build array of grain numbers"""
+  """Build array of grain numbers"""
   maxX = -1.*sys.maxint
   maxY = -1.*sys.maxint
   for line in rcData['point']:                                               # find data range

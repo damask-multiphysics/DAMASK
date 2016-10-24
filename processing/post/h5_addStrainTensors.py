@@ -25,13 +25,13 @@ def operator(stretch, strain, eigenvalues):
 
 
 def calcEPS(defgrads, stretchType, strainType):
-    """calculate specific type of strain tensor"""
+    """Calculate specific type of strain tensor"""
     eps = np.zeros(defgrads.shape)  # initialize container
 
     # TODO:
     # this loop can use some performance boost
     # (multi-threading?)
-    for ri in xrange(defgrads.shape[0]):
+    for ri in range(defgrads.shape[0]):
         f = defgrads[ri, :].reshape(3, 3)
         U, S, Vh = np.linalg.svd(f)
         R = np.dot(U, Vh)  # rotation of polar decomposition

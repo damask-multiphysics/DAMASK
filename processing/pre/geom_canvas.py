@@ -93,12 +93,12 @@ for name in filenames:
 
   microstructure_cropped = np.zeros(newInfo['grid'],datatype)
   microstructure_cropped.fill(options.fill if options.real or options.fill > 0 else microstructure.max()+1)
-  xindex = list(set(xrange(options.offset[0],options.offset[0]+newInfo['grid'][0])) & \
-                                                               set(xrange(info['grid'][0])))
-  yindex = list(set(xrange(options.offset[1],options.offset[1]+newInfo['grid'][1])) & \
-                                                               set(xrange(info['grid'][1])))
-  zindex = list(set(xrange(options.offset[2],options.offset[2]+newInfo['grid'][2])) & \
-                                                               set(xrange(info['grid'][2])))
+  xindex = list(set(range(options.offset[0],options.offset[0]+newInfo['grid'][0])) & \
+                                                               set(range(info['grid'][0])))
+  yindex = list(set(range(options.offset[1],options.offset[1]+newInfo['grid'][1])) & \
+                                                               set(range(info['grid'][1])))
+  zindex = list(set(range(options.offset[2],options.offset[2]+newInfo['grid'][2])) & \
+                                                               set(range(info['grid'][2])))
   translate_x = [i - options.offset[0] for i in xindex]
   translate_y = [i - options.offset[1] for i in yindex]
   translate_z = [i - options.offset[2] for i in zindex]

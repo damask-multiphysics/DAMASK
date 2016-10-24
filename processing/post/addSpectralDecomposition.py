@@ -57,8 +57,8 @@ for name in filenames:
       if dim != data['dim']: remarks.append('column {} is not a {}...'.format(what,type))
       else:
         items[type]['column'].append(table.label_index(what))
-        table.labels_append(['{}_eigval({})'.format(i+1,what) for i in xrange(3)])                  # extend ASCII header with new labels
-        table.labels_append(['{}_eigvec({})'.format(i+1,what) for i in xrange(9)])                  # extend ASCII header with new labels
+        table.labels_append(['{}_eigval({})'.format(i+1,what) for i in range(3)])                   # extend ASCII header with new labels
+        table.labels_append(['{}_eigvec({})'.format(i+1,what) for i in range(9)])                   # extend ASCII header with new labels
 
   if remarks != []: damask.util.croak(remarks)
   if errors  != []:

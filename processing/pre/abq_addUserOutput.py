@@ -3,7 +3,7 @@
 
 import sys,os,re
 from optparse import OptionParser
-import damask 
+import damask
 
 scriptName = os.path.splitext(os.path.basename(__file__))[0]
 scriptID   = ' '.join([scriptName,damask.version])
@@ -14,13 +14,13 @@ def ParseOutputFormat(filename,what,me):
 
   outputmetafile = filename+'.output'+what
   try:
-    file = open(outputmetafile)
+    myFile = open(outputmetafile)
   except:
     print('Could not open file %s'%outputmetafile)
     raise
   else: 
-    content = file.readlines()
-    file.close()
+    content = myFile.readlines()
+    myFile.close()
 
   tag = ''
   tagID = 0
@@ -60,7 +60,7 @@ that are written during the first run of the model.
 Specify which user block format you want to apply by stating the homogenization, crystallite, and phase identifiers.
 Or have an existing set of user variables copied over from another *.inp file.
 
-""", version= scriptID)
+""", version = scriptID)
 
 parser.add_option('-m', dest='number', type='int', metavar = 'int',
                   help='maximum requested User Defined Variable [%default]')
@@ -92,15 +92,15 @@ me = {  'Homogenization':   options.homog,
      }
 
 
-for file in files:
-  print '\033[1m'+scriptName+'\033[0m: '+file+'\n'
+for myFile in files:
+  print('\033[1m'+scriptName+'\033[0m: '+myFile+'\n')
   if options.useFile:
     formatFile = os.path.splitext(options.useFile)[0]
   else:
-    formatFile = os.path.splitext(file)[0]
-  file = os.path.splitext(file)[0]+'.inp'
-  if not os.path.lexists(file):
-    print file,'not found'
+    formatFile = os.path.splitext(myFile)[0]
+  myFile = os.path.splitext(myFile)[0]+'.inp'
+  if not os.path.lexists(myFile):
+    print('{} not found'.format(myFile))
     continue
     
   print('Scanning format files of: %s'%formatFile)
@@ -111,8 +111,8 @@ for file in files:
     for what in me:
       outputFormat[what] = ParseOutputFormat(formatFile,what,me[what])
       if '_id' not in outputFormat[what]['specials']:
-        print "'%s' not found in <%s>"%(me[what],what)
-        print '\n'.join(map(lambda x:'  '+x,outputFormat[what]['specials']['brothers']))
+        print("'{}' not found in <{}>".format(me[what],what))
+        print('\n'.join(map(lambda x:'  '+x,outputFormat[what]['specials']['brothers'])))
         sys.exit(1)
 
     UserVars = ['HomogenizationCount']
@@ -140,11 +140,11 @@ for file in files:
           UserVars += ['%i_%s'%(grain+1,var[0]) for i in range(var[1])]
 
 # Now change *.inp file(s)        
-  print('Adding labels to:         %s'%file)
-  inFile = open(file)
+  print('Adding labels to:         %s'%myFile)
+  inFile = open(myFile)
   input = inFile.readlines()
   inFile.close()
-  output = open(file,'w')
+  output = open(myFile,'w')
   thisSection = ''
   if options.damaskOption:
     output.write('$damask {0}\n'.format(options.damaskOption))
@@ -165,3 +165,4 @@ for file in files:
     if (thisSection.upper() != '*DEPVAR' or not re.match('\s*\d',line)):
       output.write(line)
   output.close()
+

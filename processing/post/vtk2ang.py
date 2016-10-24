@@ -12,7 +12,7 @@ scriptID   = ' '.join([scriptName,damask.version])
 
 # -----------------------------
 def getHeader(filename,sizeFastIndex,sizeSlowIndex,stepsize):
-  """returns header for ang file step size in micrometer"""
+  """Returns header for ang file step size in micrometer"""
   return '\n'.join([ \
     '# TEM_PIXperUM          1.000000', \
     '# x-star                1.000000', \
@@ -48,7 +48,7 @@ def getHeader(filename,sizeFastIndex,sizeSlowIndex,stepsize):
 
 # -----------------------------
 def positiveRadians(angle):
-  """returns positive angle in radians from angle in degrees"""
+  """Returns positive angle in radians from angle in degrees"""
   angle = math.radians(float(angle))
   while angle < 0.0:
     angle += 2.0 * math.pi
@@ -59,7 +59,7 @@ def positiveRadians(angle):
 # -----------------------------
 def getDataLine(angles,x,y,validData=True):
   """
-  returns string of one line in ang file
+  Returns string of one line in ang file
 
   convention in ang file: y coordinate comes first and is fastest index
   positions in micrometer
@@ -295,13 +295,13 @@ for filename in filenames:
 
   if options.verbose: sys.stdout.write("\nGENERATING POINTS FOR POINT GRID")
   points = vtk.vtkPoints()
-  for k in xrange(Npoints[2]):
-    for j in xrange(Npoints[0]):  
-      for i in xrange(Npoints[1]):   # y is fastest index
+  for k in range(Npoints[2]):
+    for j in range(Npoints[0]):  
+      for i in range(Npoints[1]):    # y is fastest index
         rotatedpoint = np.array([rotatedbox[0][0] + (float(j) + 0.5) * options.resolution,
                                     rotatedbox[1][0] + (float(i) + 0.5) * options.resolution,
-                                    rotatedbox[2][0] + (float(k) + 0.5) * options.distance ])  # point in rotated system
-        point = np.dot(R.T,rotatedpoint)                                                    # point in mesh system
+                                    rotatedbox[2][0] + (float(k) + 0.5) * options.distance ])       # point in rotated system
+        point = np.dot(R.T,rotatedpoint)                                                            # point in mesh system
         points.InsertNextPoint(list(point))
         if options.verbose: 
           sys.stdout.write("\rGENERATING POINTS FOR POINT GRID %d%%" %(100*(Npoints[1]*(k*Npoints[0]+j)+i+1)/totalNpoints))
@@ -315,7 +315,7 @@ for filename in filenames:
 
   if options.verbose: sys.stdout.write("\nGENERATING VERTICES FOR POINT GRID")
   vertices = vtk.vtkCellArray()
-  for i in xrange(totalNpoints):
+  for i in range(totalNpoints):
     vertex = vtk.vtkVertex()
     vertex.GetPointIds().SetId(0,i)  # each vertex consists of exactly one (index 0) point with ID "i"
     vertices.InsertNextCell(vertex)
@@ -378,7 +378,7 @@ for filename in filenames:
     with open(angfilename,'w') as angfile:
       if options.verbose: sys.stdout.write("  %s\n"%angfilename)
       angfile.write(getHeader(filename,Npoints[1],Npoints[0],options.resolution*options.scale))
-      for i in xrange(sliceN*NpointsPerSlice,(sliceN+1)*NpointsPerSlice):   # Iterate over points on slice
+      for i in range(sliceN*NpointsPerSlice,(sliceN+1)*NpointsPerSlice):   # Iterate over points on slice
         
 
         # Get euler angles of closest IDs

@@ -17,7 +17,7 @@ def cell2node(cellData,grid):
   nodeData = 0.0
   datalen = np.array(cellData.shape[3:]).prod()
   
-  for i in xrange(datalen):
+  for i in range(datalen):
     node = scipy.ndimage.convolve(cellData.reshape(tuple(grid[::-1])+(datalen,))[...,i],
                                   np.ones((2,2,2))/8.,                                              # 2x2x2 neighborhood of cells
                                   mode = 'wrap',
@@ -33,7 +33,7 @@ def cell2node(cellData,grid):
 
 #--------------------------------------------------------------------------------------------------
 def displacementAvgFFT(F,grid,size,nodal=False,transformed=False):
-  """calculate average cell center (or nodal) displacement for deformation gradient field specified in each grid cell"""
+  """Calculate average cell center (or nodal) displacement for deformation gradient field specified in each grid cell"""
   if nodal:
     x, y, z = np.meshgrid(np.linspace(0,size[2],1+grid[2]),
                           np.linspace(0,size[1],1+grid[1]),
@@ -55,7 +55,7 @@ def displacementAvgFFT(F,grid,size,nodal=False,transformed=False):
 
 #--------------------------------------------------------------------------------------------------
 def displacementFluctFFT(F,grid,size,nodal=False,transformed=False):
-  """calculate cell center (or nodal) displacement for deformation gradient field specified in each grid cell"""
+  """Calculate cell center (or nodal) displacement for deformation gradient field specified in each grid cell"""
   integrator = 0.5j * size / math.pi
 
   kk, kj, ki = np.meshgrid(np.where(np.arange(grid[2])>grid[2]//2,np.arange(grid[2])-grid[2],np.arange(grid[2])),
@@ -167,7 +167,7 @@ for name in filenames:
                             np.zeros((table.data.shape[0],
                                       3-table.data[:,9:].shape[1]),dtype='f')))                     # fill coords up to 3D with zeros
 
-  coords = [np.unique(table.data[:,9+i]) for i in xrange(3)]
+  coords = [np.unique(table.data[:,9+i]) for i in range(3)]
   mincorner = np.array(map(min,coords))
   maxcorner = np.array(map(max,coords))
   grid   = np.array(map(len,coords),'i')
@@ -196,16 +196,16 @@ for name in filenames:
     table.labels_clear()
 
   table.info_append(scriptID + '\t' + ' '.join(sys.argv[1:]))
-  table.labels_append((['{}_pos'         .format(i+1)   for i in xrange(3)] if options.nodal else []) +
-                       ['{}_avg({}).{}'  .format(i+1,options.defgrad,options.pos) for i in xrange(3)] +
-                       ['{}_fluct({}).{}'.format(i+1,options.defgrad,options.pos) for i in xrange(3)] )
+  table.labels_append((['{}_pos'         .format(i+1)   for i in range(3)] if options.nodal else []) +
+                       ['{}_avg({}).{}'  .format(i+1,options.defgrad,options.pos) for i in range(3)] +
+                       ['{}_fluct({}).{}'.format(i+1,options.defgrad,options.pos) for i in range(3)] )
   table.head_write()
 
 # ------------------------------------------ output data -------------------------------------------
 
-  Zrange = np.linspace(0,size[2],1+grid[2]) if options.nodal else xrange(grid[2])
-  Yrange = np.linspace(0,size[1],1+grid[1]) if options.nodal else xrange(grid[1])
-  Xrange = np.linspace(0,size[0],1+grid[0]) if options.nodal else xrange(grid[0])
+  Zrange = np.linspace(0,size[2],1+grid[2]) if options.nodal else range(grid[2])
+  Yrange = np.linspace(0,size[1],1+grid[1]) if options.nodal else range(grid[1])
+  Xrange = np.linspace(0,size[0],1+grid[0]) if options.nodal else range(grid[0])
 
   for i,z     in enumerate(Zrange):
     for j,y   in enumerate(Yrange):

@@ -24,7 +24,7 @@ except(NameError):
 
 
 def lables_to_path(label, dsXMLPath=None):
-    """read the xml definition file and return the path."""
+    """Read the xml definition file and return the path."""
     if dsXMLPath is None:
         # use the default storage layout in DS_HDF5.xml
         if "h5table.pyc" in __file__:
@@ -48,7 +48,7 @@ def lables_to_path(label, dsXMLPath=None):
 
 
 class H5Table(object):
-    """light weight interface class for h5py
+    """Light weight interface class for h5py
 
     DESCRIPTION
     -----------
@@ -85,7 +85,7 @@ class H5Table(object):
             h5f['/'].attrs['description'] = msg
 
     def del_entry(self, feature_name):
-        """delete entry in HDF5 table"""
+        """Delete entry in HDF5 table"""
         dataType, h5f_path = lables_to_path(feature_name,
                                             dsXMLPath=self.dsXMLFile)
         with h5py.File(self.h5f_path, 'a') as h5f:
@@ -106,7 +106,7 @@ class H5Table(object):
             h5f.flush()
 
     def get_data(self, feature_name=None):
-        """extract dataset from HDF5 table and return it in a numpy array"""
+        """Extract dataset from HDF5 table and return it in a numpy array"""
         dataType, h5f_path = lables_to_path(feature_name,
                                             dsXMLPath=self.dsXMLFile)
         with h5py.File(self.h5f_path, 'a') as h5f:
@@ -116,7 +116,7 @@ class H5Table(object):
         return rst_data
 
     def add_data(self, feature_name, dataset, cmd_log=None):
-        """adding new feature into existing HDF5 file"""
+        """Adding new feature into existing HDF5 file"""
         dataType, h5f_path = lables_to_path(feature_name,
                                             dsXMLPath=self.dsXMLFile)
         with h5py.File(self.h5f_path, 'a') as h5f:
@@ -126,8 +126,7 @@ class H5Table(object):
             #     record its state as fresh in the cmd log.
             try:
                 del h5f[h5f_path]
-                print "***deleting old {} from {}".format(feature_name,
-                                                          self.h5f_path)
+                print("***deleting old {} from {}".format(feature_name,self.h5f_path))
             except:
                 # if no cmd log, None will used
                 cmd_log = str(cmd_log) + " [FRESH]"
@@ -138,7 +137,7 @@ class H5Table(object):
             h5f.flush()
 
     def get_cmdlog(self, feature_name):
-        """get cmd history used to generate the feature"""
+        """Get cmd history used to generate the feature"""
         dataType, h5f_path = lables_to_path(feature_name,
                                             dsXMLPath=self.dsXMLFile)
         with h5py.File(self.h5f_path, 'a') as h5f:

@@ -105,8 +105,8 @@ microstructure = np.where(radius < float(options.canal),1,0) + np.where(radius >
 
 alphaOfGrain = np.zeros(info['grid'][0]*info['grid'][1],'d')
 betaOfGrain  = np.zeros(info['grid'][0]*info['grid'][1],'d')
-for y in xrange(info['grid'][1]):
-  for x in xrange(info['grid'][0]):
+for y in range(info['grid'][1]):
+  for x in range(info['grid'][0]):
     if microstructure[y,x] == 0:
       microstructure[y,x] = info['microstructures']
       alphaOfGrain[info['microstructures']] = alpha[y,x]
@@ -129,7 +129,7 @@ header.append('(constituent)\tphase 1\ttexture 1\tfraction 1.0')
 header.append('[interstitial]')
 header.append('crystallite %i'%options.crystallite)
 header.append('(constituent)\tphase 2\ttexture 2\tfraction 1.0')
-for i in xrange(3,info['microstructures']):
+for i in range(3,info['microstructures']):
   header.append('[Grain%s]'%(str(i).zfill(formatwidth)))
   header.append('crystallite %i'%options.crystallite)
   header.append('(constituent)\tphase 3\ttexture %s\tfraction 1.0'%(str(i).rjust(formatwidth)))
@@ -137,7 +137,7 @@ for i in xrange(3,info['microstructures']):
 header.append('<texture>')
 header.append('[canal]')
 header.append('[interstitial]')
-for i in xrange(3,info['microstructures']):
+for i in range(3,info['microstructures']):
   header.append('[Grain%s]'%(str(i).zfill(formatwidth)))
   header.append('(gauss)\tphi1 %g\tPhi %g\tphi2 0\tscatter 0.0\tfraction 1.0'\
                                                           %(alphaOfGrain[i],betaOfGrain[i]))

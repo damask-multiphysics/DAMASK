@@ -168,8 +168,8 @@ for name in filenames:
   im = Image.new('RGBA',imagesize)
   draw = ImageDraw.Draw(im)
   
-  for y in xrange(options.dimension[1]):
-    for x in xrange(options.dimension[0]):
+  for y in range(options.dimension[1]):
+    for x in range(options.dimension[0]):
       draw.polygon([nodes[0,x  ,y  ,options.z],
                     nodes[1,x  ,y  ,options.z],
                     nodes[0,x+1,y  ,options.z],
