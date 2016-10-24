@@ -1,3 +1,4 @@
+!--------------------------------------------------------------------------------------------------
 !> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
 !> @author Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
 !> @brief Utilities used by the different spectral solver variants
@@ -227,9 +228,12 @@ subroutine utilities_init()
                 ' add more using the PETSc_Options keyword in numerics.config '; flush(6)
 
  call PetscOptionsClear(ierr); CHKERRQ(ierr)
- if(debugPETSc) call PetscOptionsInsertString(trim(PETSCDEBUG),ierr); CHKERRQ(ierr)
- call PetscOptionsInsertString(trim(petsc_defaultOptions),ierr); CHKERRQ(ierr)
- call PetscOptionsInsertString(trim(petsc_options),ierr); CHKERRQ(ierr)
+ if(debugPETSc) call PetscOptionsInsertString(trim(PETSCDEBUG),ierr)
+ CHKERRQ(ierr)
+ call PetscOptionsInsertString(trim(petsc_defaultOptions),ierr)
+ CHKERRQ(ierr)
+ call PetscOptionsInsertString(trim(petsc_options),ierr)
+ CHKERRQ(ierr)
 
  grid1Red = grid(1)/2_pInt + 1_pInt
  wgt = 1.0/real(product(grid),pReal)
@@ -238,11 +242,11 @@ subroutine utilities_init()
  write(6,'(a,3(es12.5))') ' size     x y z: ', geomSize
 
  select case (spectral_derivative)
-   case ('continuous')                                                                                     ! default, no weighting
+   case ('continuous')
      spectral_derivative_ID = DERIVATIVE_CONTINUOUS_ID
-   case ('central_difference')                                                                                   ! cosine curve with 1 for avg and zero for highest freq
+   case ('central_difference')
      spectral_derivative_ID = DERIVATIVE_CENTRAL_DIFF_ID
-   case ('fwbw_difference')                                                                                 ! gradient, might need grid scaling as for cosine filter
+   case ('fwbw_difference')
      spectral_derivative_ID = DERIVATIVE_FWBW_DIFF_ID
    case default
      call IO_error(892_pInt,ext_msg=trim(spectral_derivative))
@@ -271,9 +275,9 @@ subroutine utilities_init()
 ! MPI allocation
  gridFFTW = int(grid,C_INTPTR_T)
  alloc_local = fftw_mpi_local_size_3d(gridFFTW(3), gridFFTW(2), gridFFTW(1)/2 +1, &
-                                      MPI_COMM_WORLD, local_K, local_K_offset)
- allocate (xi1st (3,grid1Red,grid(2),grid3),source = cmplx(0.0_pReal,0.0_pReal,pReal))                                       ! frequencies, only half the size for first dimension
- allocate (xi2nd (3,grid1Red,grid(2),grid3),source = cmplx(0.0_pReal,0.0_pReal,pReal))                                       ! frequencies, only half the size for first dimension
+                                      PETSC_COMM_WORLD, local_K, local_K_offset)
+ allocate (xi1st (3,grid1Red,grid(2),grid3),source = cmplx(0.0_pReal,0.0_pReal,pReal))              ! frequencies for first derivatives, only half the size for first dimension
+ allocate (xi2nd (3,grid1Red,grid(2),grid3),source = cmplx(0.0_pReal,0.0_pReal,pReal))              ! frequencies for second derivatives, only half the size for first dimension
  
  tensorField = fftw_alloc_complex(tensorSize*alloc_local)
  call c_f_pointer(tensorField, tensorField_real,    [3_C_INTPTR_T,3_C_INTPTR_T, &
@@ -298,12 +302,12 @@ subroutine utilities_init()
  planTensorForth = fftw_mpi_plan_many_dft_r2c(3, [gridFFTW(3),gridFFTW(2),gridFFTW(1)], &           ! dimension, logical length in each dimension in reversed order
                                        tensorSize, FFTW_MPI_DEFAULT_BLOCK, FFTW_MPI_DEFAULT_BLOCK, &! no. of transforms, default iblock and oblock
                                                       tensorField_real, tensorField_fourier, &      ! input data, output data
-                                                                MPI_COMM_WORLD, fftw_planner_flag)  ! use all processors, planer precision
+                                                              PETSC_COMM_WORLD, fftw_planner_flag)  ! use all processors, planer precision
  if (.not. C_ASSOCIATED(planTensorForth)) call IO_error(810, ext_msg='planTensorForth')
  planTensorBack  = fftw_mpi_plan_many_dft_c2r(3, [gridFFTW(3),gridFFTW(2),gridFFTW(1)], &           ! dimension, logical length in each dimension in reversed order
                                       tensorSize,  FFTW_MPI_DEFAULT_BLOCK, FFTW_MPI_DEFAULT_BLOCK, &! no. of transforms, default iblock and oblock
                                                        tensorField_fourier,tensorField_real, &      ! input data, output data
-                                                                MPI_COMM_WORLD, fftw_planner_flag)  ! all processors, planer precision
+                                                              PETSC_COMM_WORLD, fftw_planner_flag)  ! all processors, planer precision
  if (.not. C_ASSOCIATED(planTensorBack)) call IO_error(810, ext_msg='planTensorBack')
 
 !--------------------------------------------------------------------------------------------------
@@ -311,12 +315,12 @@ subroutine utilities_init()
  planVectorForth = fftw_mpi_plan_many_dft_r2c(3, [gridFFTW(3),gridFFTW(2),gridFFTW(1)], &           ! dimension, logical length in each dimension in reversed order
                                           vecSize, FFTW_MPI_DEFAULT_BLOCK, FFTW_MPI_DEFAULT_BLOCK, &! no. of transforms, default iblock and oblock
                                                       vectorField_real, vectorField_fourier, &      ! input data, output data
-                                                                MPI_COMM_WORLD, fftw_planner_flag)  ! use all processors, planer precision
+                                                              PETSC_COMM_WORLD, fftw_planner_flag)  ! use all processors, planer precision
  if (.not. C_ASSOCIATED(planVectorForth)) call IO_error(810, ext_msg='planVectorForth')
  planVectorBack  = fftw_mpi_plan_many_dft_c2r(3, [gridFFTW(3),gridFFTW(2),gridFFTW(1)],  &          ! dimension, logical length in each dimension in reversed order
                                         vecSize, FFTW_MPI_DEFAULT_BLOCK, FFTW_MPI_DEFAULT_BLOCK, &  ! no. of transforms, default iblock and oblock
                                                      vectorField_fourier,vectorField_real, &        ! input data, output data
-                                                                MPI_COMM_WORLD, fftw_planner_flag)  ! all processors, planer precision
+                                                              PETSC_COMM_WORLD, fftw_planner_flag)  ! all processors, planer precision
  if (.not. C_ASSOCIATED(planVectorBack)) call IO_error(810, ext_msg='planVectorBack')
 
 !--------------------------------------------------------------------------------------------------
@@ -324,12 +328,12 @@ subroutine utilities_init()
  planScalarForth = fftw_mpi_plan_many_dft_r2c(3, [gridFFTW(3),gridFFTW(2),gridFFTW(1)], &           ! dimension, logical length in each dimension in reversed order
                                       scalarSize, FFTW_MPI_DEFAULT_BLOCK, FFTW_MPI_DEFAULT_BLOCK, & ! no. of transforms, default iblock and oblock
                                                       scalarField_real, scalarField_fourier, &      ! input data, output data
-                                                               MPI_COMM_WORLD, fftw_planner_flag)   ! use all processors, planer precision
+                                                              PETSC_COMM_WORLD, fftw_planner_flag)  ! use all processors, planer precision
  if (.not. C_ASSOCIATED(planScalarForth)) call IO_error(810, ext_msg='planScalarForth')
- planScalarBack  = fftw_mpi_plan_many_dft_c2r(3, [gridFFTW(3),gridFFTW(2),gridFFTW(1)], &        ! dimension, logical length in each dimension in reversed order, no. of transforms
+ planScalarBack  = fftw_mpi_plan_many_dft_c2r(3, [gridFFTW(3),gridFFTW(2),gridFFTW(1)], &           ! dimension, logical length in each dimension in reversed order, no. of transforms
                                       scalarSize, FFTW_MPI_DEFAULT_BLOCK, FFTW_MPI_DEFAULT_BLOCK, & ! no. of transforms, default iblock and oblock
-                                                      scalarField_fourier,scalarField_real, &        ! input data, output data
-                                                               MPI_COMM_WORLD, fftw_planner_flag)   ! use all processors, planer precision
+                                                      scalarField_fourier,scalarField_real, &       ! input data, output data
+                                                              PETSC_COMM_WORLD, fftw_planner_flag)  ! use all processors, planer precision
  if (.not. C_ASSOCIATED(planScalarBack)) call IO_error(810, ext_msg='planScalarBack')
 
 !--------------------------------------------------------------------------------------------------
@@ -699,8 +703,8 @@ real(pReal) function utilities_curlRMS()
        curl_fourier(l,3) = (+tensorField_fourier(l,2,i,j,k)*xi1st(1,i,j,k)*rescaledGeom(1) &
                             -tensorField_fourier(l,1,i,j,k)*xi1st(2,i,j,k)*rescaledGeom(2))
      enddo
-     utilities_curlRMS = utilities_curlRMS + &
-                        2.0_pReal*sum(real(curl_fourier)**2.0_pReal + aimag(curl_fourier)**2.0_pReal)! Has somewhere a conj. complex counterpart. Therefore count it twice.
+     utilities_curlRMS = utilities_curlRMS &
+                       +2.0_pReal*sum(real(curl_fourier)**2.0_pReal+aimag(curl_fourier)**2.0_pReal) ! Has somewhere a conj. complex counterpart. Therefore count it twice.
    enddo
    do l = 1_pInt, 3_pInt
       curl_fourier = (+tensorField_fourier(l,3,1,j,k)*xi1st(2,1,j,k)*rescaledGeom(2) &
@@ -710,8 +714,8 @@ real(pReal) function utilities_curlRMS()
       curl_fourier = (+tensorField_fourier(l,2,1,j,k)*xi1st(1,1,j,k)*rescaledGeom(1) &
                       -tensorField_fourier(l,1,1,j,k)*xi1st(2,1,j,k)*rescaledGeom(2))
    enddo
-   utilities_curlRMS = utilities_curlRMS + &
-                                  sum(real(curl_fourier)**2.0_pReal + aimag(curl_fourier)**2.0_pReal)! this layer (DC) does not have a conjugate complex counterpart (if grid(1) /= 1)
+   utilities_curlRMS = utilities_curlRMS &
+                     + sum(real(curl_fourier)**2.0_pReal + aimag(curl_fourier)**2.0_pReal)          ! this layer (DC) does not have a conjugate complex counterpart (if grid(1) /= 1)
    do l = 1_pInt, 3_pInt
      curl_fourier = (+tensorField_fourier(l,3,grid1Red,j,k)*xi1st(2,grid1Red,j,k)*rescaledGeom(2) &
                      -tensorField_fourier(l,2,grid1Red,j,k)*xi1st(3,grid1Red,j,k)*rescaledGeom(3))
@@ -720,14 +724,14 @@ real(pReal) function utilities_curlRMS()
      curl_fourier = (+tensorField_fourier(l,2,grid1Red,j,k)*xi1st(1,grid1Red,j,k)*rescaledGeom(1) &
                      -tensorField_fourier(l,1,grid1Red,j,k)*xi1st(2,grid1Red,j,k)*rescaledGeom(2))
    enddo
-   utilities_curlRMS = utilities_curlRMS + &
-                                  sum(real(curl_fourier)**2.0_pReal + aimag(curl_fourier)**2.0_pReal)! this layer (Nyquist) does not have a conjugate complex counterpart (if grid(1) /= 1)
+   utilities_curlRMS = utilities_curlRMS &
+                     + sum(real(curl_fourier)**2.0_pReal + aimag(curl_fourier)**2.0_pReal)          ! this layer (Nyquist) does not have a conjugate complex counterpart (if grid(1) /= 1)
  enddo; enddo
 
  call MPI_Allreduce(MPI_IN_PLACE,utilities_curlRMS,1,MPI_DOUBLE,MPI_SUM,PETSC_COMM_WORLD,ierr)
  if(ierr /=0_pInt) call IO_error(894_pInt, ext_msg='utilities_curlRMS')
  utilities_curlRMS = sqrt(utilities_curlRMS) * wgt
- if(grid(1) == 1_pInt) utilities_curlRMS = utilities_curlRMS * 0.5_pReal                             ! counted twice in case of grid(1) == 1
+ if(grid(1) == 1_pInt) utilities_curlRMS = utilities_curlRMS * 0.5_pReal                            ! counted twice in case of grid(1) == 1
 
 end function utilities_curlRMS
 

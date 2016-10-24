@@ -89,7 +89,7 @@ subroutine DAMASK_interface_init()
  call PetscInitialize(PETSC_NULL_CHARACTER,ierr)                                                    ! according to PETSc manual, that should be the first line in the code
  CHKERRQ(ierr)                                                                                      ! this is a macro definition, it is case sensitive
  call MPI_Comm_rank(PETSC_COMM_WORLD,worldrank,ierr);CHKERRQ(ierr)
- call MPI_Comm_size(MPI_COMM_WORLD, worldsize, ierr);CHKERRQ(ierr)
+ call MPI_Comm_size(PETSC_COMM_WORLD,worldsize,ierr);CHKERRQ(ierr)
  mainProcess: if (worldrank == 0) then
    if (output_unit /= 6) then
      write(output_unit,'(a)') ' STDOUT != 6'
