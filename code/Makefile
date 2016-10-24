@@ -22,7 +22,7 @@ DAMASKVERSION :=$(shell cat ../VERSION)
 include ${PETSC_DIR}/lib/petsc/conf/variables
 include ${PETSC_DIR}/lib/petsc/conf/rules
 
-INCLUDE_DIRS := $(PETSC_FC_INCLUDES) -DPETSc -I../lib
+INCLUDE_DIRS := $(PETSC_FC_INCLUDES) -DPETSc
 LIBRARIES    := $(PETSC_WITH_EXTERNAL_LIB)
 FCOMPILERNAME ?= $(FC)
 CCOMPILERNAME ?= $(CC)
