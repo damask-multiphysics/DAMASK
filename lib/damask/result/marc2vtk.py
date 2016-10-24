@@ -13,7 +13,6 @@ import numpy as np
 import py_post  # MSC closed source module to access marc result files
 
 class MARC_POST():
-  import re
   def __init__(self):
       self.projdir='./'
 
@@ -383,7 +382,6 @@ class VTK_WRITER():
   to plot semi-transparent iso-surfaces.
   """
 
-  import re
   def __init__(self):
     self.p=MARC_POST() # self.p
     
