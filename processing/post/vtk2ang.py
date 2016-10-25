@@ -59,9 +59,9 @@ def positiveRadians(angle):
 # -----------------------------
 def getDataLine(angles,x,y,validData=True):
   """
-  Returns string of one line in ang file
+  Returns string of one line in ang file.
 
-  convention in ang file: y coordinate comes first and is fastest index
+  Convention in ang file: y coordinate comes first and is fastest index
   positions in micrometer
   """
   info = {True:  (9999.9, 1.0, 0,99999,0.0),
