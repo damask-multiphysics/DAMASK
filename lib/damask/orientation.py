@@ -42,7 +42,7 @@ class Quaternion:
 
     def __init__(self,
                  quatArray = [1.0,0.0,0.0,0.0]):
-      """initializes to identity if not given"""
+      """Initializes to identity if not given"""
       self.w, \
       self.x, \
       self.y, \
@@ -50,23 +50,23 @@ class Quaternion:
       self.homomorph()
 
     def __iter__(self):
-      """components"""
+      """Components"""
       return iter([self.w,self.x,self.y,self.z])
 
     def __copy__(self):
-      """create copy"""
+      """Create copy"""
       Q = Quaternion([self.w,self.x,self.y,self.z])
       return Q
 
     copy = __copy__
 
     def __repr__(self):
-      """readbable string"""
+      """Readbable string"""
       return 'Quaternion(real=%+.6f, imag=<%+.6f, %+.6f, %+.6f>)' % \
           (self.w, self.x, self.y, self.z)
 
     def __pow__(self, exponent):
-      """power"""
+      """Power"""
       omega = math.acos(self.w)
       vRescale = math.sin(exponent*omega)/math.sin(omega)
       Q = Quaternion()
@@ -77,7 +77,7 @@ class Quaternion:
       return Q
 
     def __ipow__(self, exponent):
-      """in place power"""
+      """In place power"""
       omega    = math.acos(self.w)
       vRescale = math.sin(exponent*omega)/math.sin(omega)
       self.w  = np.cos(exponent*omega)
@@ -87,7 +87,7 @@ class Quaternion:
       return self
 
     def __mul__(self, other):
-      """multiplication"""
+      """Multiplication"""
       try:                                                          # quaternion
           Aw = self.w
           Ax = self.x
@@ -135,7 +135,7 @@ class Quaternion:
           return self.copy()
 
     def __imul__(self, other):
-      """in place multiplication"""
+      """In place multiplication"""
       try:                                                        # Quaternion
           Ax = self.x
           Ay = self.y
@@ -153,7 +153,7 @@ class Quaternion:
       return self
 
     def __div__(self, other):
-      """division"""
+      """Division"""
       if isinstance(other, (int,float)):
         w = self.w / other
         x = self.x / other
@@ -164,7 +164,7 @@ class Quaternion:
           return NotImplemented
 
     def __idiv__(self, other):
-      """in place division"""
+      """In place division"""
       if isinstance(other, (int,float)):
           self.w /= other
           self.x /= other
@@ -173,7 +173,7 @@ class Quaternion:
       return self
 
     def __add__(self, other):
-      """addition"""
+      """Addition"""
       if isinstance(other, Quaternion):
         w = self.w + other.w
         x = self.x + other.x
@@ -184,7 +184,7 @@ class Quaternion:
           return NotImplemented
 
     def __iadd__(self, other):
-      """in place division"""
+      """In place division"""
       if isinstance(other, Quaternion):
           self.w += other.w
           self.x += other.x
@@ -193,7 +193,7 @@ class Quaternion:
       return self
 
     def __sub__(self, other):
-      """subtraction"""
+      """Subtraction"""
       if isinstance(other, Quaternion):
           Q = self.copy()
           Q.w -= other.w
@@ -205,7 +205,7 @@ class Quaternion:
           return self.copy()
 
     def __isub__(self, other):
-      """in place subtraction"""
+      """In place subtraction"""
       if isinstance(other, Quaternion):
           self.w -= other.w
           self.x -= other.x
@@ -214,7 +214,7 @@ class Quaternion:
       return self
 
     def __neg__(self):
-      """additive inverse"""
+      """Additive inverse"""
       self.w = -self.w
       self.x = -self.x
       self.y = -self.y
@@ -222,7 +222,7 @@ class Quaternion:
       return self
 
     def __abs__(self):
-      """norm"""
+      """Norm"""
       return math.sqrt(self.w ** 2 + \
                        self.x ** 2 + \
                        self.y ** 2 + \
@@ -231,7 +231,7 @@ class Quaternion:
     magnitude = __abs__
 
     def __eq__(self,other):
-      """equal at e-8 precision"""
+      """Equal at e-8 precision"""
       return (abs(self.w-other.w) < 1e-8 and \
               abs(self.x-other.x) < 1e-8 and \
               abs(self.y-other.y) < 1e-8 and \
@@ -243,12 +243,12 @@ class Quaternion:
               abs(-self.z-other.z) < 1e-8)
 
     def __ne__(self,other):
-      """not equal at e-8 precision"""
+      """Not equal at e-8 precision"""
       return not self.__eq__(self,other)
 
     def __cmp__(self,other):
-      """linear ordering"""
-      return cmp(self.Rodrigues(),other.Rodrigues())
+      """Linear ordering"""
+      return (self.Rodrigues()>other.Rodrigues()) - (self.Rodrigues()<other.Rodrigues())
 
     def magnitude_squared(self):
       return self.w ** 2 + \
@@ -508,7 +508,7 @@ class Quaternion:
     @classmethod
     def new_interpolate(cls, q1, q2, t):
         """
-        interpolation
+        Interpolation
  
         see http://ntrs.nasa.gov/archive/nasa/casi.ntrs.nasa.gov/20070017872_2007014421.pdf
         for (another?) way to interpolate quaternions
@@ -555,7 +555,7 @@ class Symmetry:
   lattices = [None,'orthorhombic','tetragonal','hexagonal','cubic',]
 
   def __init__(self, symmetry = None):
-    """lattice with given symmetry, defaults to None"""
+    """Lattice with given symmetry, defaults to None"""
     if isinstance(symmetry, str) and symmetry.lower() in Symmetry.lattices:
       self.lattice = symmetry.lower()
     else:
@@ -563,28 +563,30 @@ class Symmetry:
 
 
   def __copy__(self):
-    """copy"""
+    """Copy"""
     return self.__class__(self.lattice)
 
   copy = __copy__
 
 
   def __repr__(self):
-    """readbable string"""
+    """Readbable string"""
     return '%s' % (self.lattice)
 
 
   def __eq__(self, other):
-    """equal"""
+    """Equal"""
     return self.lattice == other.lattice
 
   def __neq__(self, other):
-    """not equal"""
+    """Not equal"""
     return not self.__eq__(other)
 
   def __cmp__(self,other):
-    """linear ordering"""
-    return cmp(Symmetry.lattices.index(self.lattice),Symmetry.lattices.index(other.lattice))
+    """Linear ordering"""
+    myOrder = Symmetry.lattices.index(self.lattice)
+    otherOrder = Symmetry.lattices.index(other.lattice)
+    return (myOrder > otherOrder) - (myOrder < otherOrder)
 
   def symmetryQuats(self,who = []):
     """List of symmetry operations as quaternions."""
@@ -845,14 +847,14 @@ class Orientation:
     self.symmetry = Symmetry(symmetry)
 
   def __copy__(self):
-    """copy"""
+    """Copy"""
     return self.__class__(quaternion=self.quaternion,symmetry=self.symmetry.lattice)
 
   copy = __copy__
 
 
   def __repr__(self):
-    """value as all implemented representations"""
+    """Value as all implemented representations"""
     return 'Symmetry: %s\n' % (self.symmetry) + \
            'Quaternion: %s\n' % (self.quaternion) + \
            'Matrix:\n%s\n' % ( '\n'.join(['\t'.join(map(str,self.asMatrix()[i,:])) for i in range(3)]) ) + \
@@ -937,7 +939,7 @@ class Orientation:
                   axis,
                   proper = False,
                   SST = True):
-    """axis rotated according to orientation (using crystal symmetry to ensure location falls into SST)"""
+    """Axis rotated according to orientation (using crystal symmetry to ensure location falls into SST)"""
     if SST:                                                                                         # pole requested to be within SST
       for i,q in enumerate(self.symmetry.equivalentQuaternions(self.quaternion)):                   # test all symmetric equivalent quaternions
         pole = q.conjugated()*axis                                                                  # align crystal direction to axis
@@ -963,7 +965,7 @@ class Orientation:
               orientations,
               multiplicity = []):
     """
-    average orientation
+    Average orientation
 
     ref: F. Landis Markley, Yang Cheng, John Lucas Crassidis, and Yaakov Oshman.
          Averaging Quaternions,
@@ -996,7 +998,7 @@ class Orientation:
               direction,
               targetSymmetry = None):
     """
-    orientation relationship
+    Orientation relationship
 
     positive number: fcc --> bcc
     negative number: bcc --> fcc
