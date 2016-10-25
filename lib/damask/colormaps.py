@@ -85,7 +85,7 @@ class Color():
 
   def _HSL2RGB(self):
     """
-    convert H(ue) S(aturation) L(uminance) to R(red) G(reen) B(lue) 
+    Convert H(ue) S(aturation) L(uminance) to R(red) G(reen) B(lue) 
     
     with S,L,H,R,G,B running from 0 to 1
     from http://en.wikipedia.org/wiki/HSL_and_HSV
@@ -111,7 +111,7 @@ class Color():
  
   def _RGB2HSL(self):
     """
-    convert R(ed) G(reen) B(lue) to H(ue) S(aturation) L(uminance)
+    Convert R(ed) G(reen) B(lue) to H(ue) S(aturation) L(uminance)
     
     with S,L,H,R,G,B running from 0 to 1
     from http://130.113.54.154/~monger/hsl-rgb.html 
@@ -151,7 +151,7 @@ class Color():
 
   def _RGB2XYZ(self):
     """
-    convert R(ed) G(reen) B(lue) to CIE XYZ
+    Convert R(ed) G(reen) B(lue) to CIE XYZ
  
     with all values in the range of 0 to 1
     from http://www.cs.rit.edu/~ncs/color/t_convert.html
@@ -180,12 +180,13 @@ class Color():
 
   def _XYZ2RGB(self):
     """
-    convert  CIE XYZ to R(ed) G(reen) B(lue)
+    Convert  CIE XYZ to R(ed) G(reen) B(lue)
 
     with all values in the range of 0 to 1
     from http://www.cs.rit.edu/~ncs/color/t_convert.html
     """
-    if self.model != 'XYZ': return
+    if self.model != 'XYZ':
+      return
 
     convert = np.array([[ 3.240479,-1.537150,-0.498535],
                         [-0.969256, 1.875992, 0.041556],
@@ -211,7 +212,7 @@ class Color():
 
   def _CIELAB2XYZ(self):
     """
-    convert  CIE Lab to CIE XYZ
+    Convert  CIE Lab to CIE XYZ
 
     with XYZ in the range of 0 to 1
     from http://www.easyrgb.com/index.php?X=MATH&H=07#text7
@@ -235,7 +236,7 @@ class Color():
 
   def _XYZ2CIELAB(self):
     """
-    convert CIE XYZ to CIE Lab
+    Convert CIE XYZ to CIE Lab
 
     with XYZ in the range of 0 to 1
     from http://en.wikipedia.org/wiki/Lab_color_space, http://www.cs.rit.edu/~ncs/color/t_convert.html
@@ -258,7 +259,7 @@ class Color():
  
   def _CIELAB2MSH(self):
     """
-    convert CIE Lab to Msh colorspace 
+    Convert CIE Lab to Msh colorspace 
    
     from http://www.cs.unm.edu/~kmorel/documents/ColorMaps/DivergingColorMapWorkshop.xls
     """  
@@ -278,7 +279,7 @@ class Color():
 
   def _MSH2CIELAB(self):
     """
-    convert Msh colorspace to CIE Lab
+    Convert Msh colorspace to CIE Lab
 
     s,h in radians
     from http://www.cs.unm.edu/~kmorel/documents/ColorMaps/DivergingColorMapWorkshop.xls
@@ -296,7 +297,7 @@ class Color():
 
 
 class Colormap():
-  """perceptually uniform diverging or sequential colormaps."""
+  """Perceptually uniform diverging or sequential colormaps."""
 
   __slots__ = [
                'left',
@@ -371,7 +372,7 @@ class Colormap():
   
 # ------------------------------------------------------------------
   def __repr__(self):
-    """left and right value of colormap"""
+    """Left and right value of colormap"""
     return 'Left: %s Right: %s'%(self.left,self.right)
   
   
@@ -416,7 +417,7 @@ class Colormap():
     
     def interpolate_linear(lo, hi, frac):
       """
-      linearly interpolate color at given fraction between lower and
+      Linearly interpolate color at given fraction between lower and
 
       higher color in model of lower color
       """
@@ -456,9 +457,8 @@ class Colormap():
       colormap = ['[\n {{\n  "ColorSpace" : "RGB", "Name" : "{}",\n  "RGBPoints" : ['.format(name)] \
                + ['    {:4d},{:8.6f},{:8.6f},{:8.6f},'.format(i,color[0],color[1],color[2],)
                                                                         for i,color in enumerate(colors[:-1])]\
-               + ['    {:4d},{:8.6f},{:8.6f},{:8.6f} '.format(i+1,colors[-1][0],colors[-1][1],colors[-1][2],)]\
+               + ['    {:4d},{:8.6f},{:8.6f},{:8.6f} '.format(len(colors),colors[-1][0],colors[-1][1],colors[-1][2],)]\
                + ['   ]\n }\n]']
-    
     elif format == 'gmsh':
       colormap = ['View.ColorTable = {'] \
                + [',\n'.join(['{%s}'%(','.join([str(x*255.0) for x in color])) for color in colors])] \
