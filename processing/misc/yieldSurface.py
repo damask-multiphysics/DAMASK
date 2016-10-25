@@ -28,7 +28,7 @@ def runFit(exponent, eqStress, dimension, criterion):
     nParas = nParas-nExpo
     fitCriteria[criterion]['bound'][dDim] = fitCriteria[criterion]['bound'][dDim][:nParas]
 
-  for i in xrange(nParas):
+  for i in range(nParas):
     temp = fitCriteria[criterion]['bound'][dDim][i]
     if fitCriteria[criterion]['bound'][dDim][i] == (None,None):
       Guess.append(1.0)
@@ -42,8 +42,8 @@ def runFit(exponent, eqStress, dimension, criterion):
   myLoad = Loadcase(options.load[0],options.load[1],options.load[2],
                     nSet = 10, dimension = dimension, vegter = options.criterion=='vegter')
 
-  stressAll= [np.zeros(0,'d').reshape(0,0) for i in xrange(int(options.yieldValue[2]))]
-  strainAll= [np.zeros(0,'d').reshape(0,0) for i in xrange(int(options.yieldValue[2]))]
+  stressAll= [np.zeros(0,'d').reshape(0,0) for i in range(int(options.yieldValue[2]))]
+  strainAll= [np.zeros(0,'d').reshape(0,0) for i in range(int(options.yieldValue[2]))]
 
   myFit = Criterion(exponent,eqStress, dimension, criterion)
   for t in range(options.threads):
@@ -57,12 +57,12 @@ def runFit(exponent, eqStress, dimension, criterion):
 
 def principalStresses(sigmas):
   """
-  computes principal stresses (i.e. eigenvalues) for a set of Cauchy stresses.
+  Computes principal stresses (i.e. eigenvalues) for a set of Cauchy stresses.
 
   sorted in descending order.
   """
   lambdas=np.zeros(0,'d')
-  for i in xrange(np.shape(sigmas)[1]):
+  for i in range(np.shape(sigmas)[1]):
     eigenvalues = np.linalg.eigvalsh(sym6toT33(sigmas[:,i]))
     lambdas = np.append(lambdas,np.sort(eigenvalues)[::-1]) #append eigenvalues in descending order
   lambdas = np.transpose(lambdas.reshape(np.shape(sigmas)[1],3))
@@ -82,7 +82,7 @@ def principalStress(p):
                     t1 + t2*np.cos(phi+np.pi*2.0/3.0),
                     t1 + t2*np.cos(phi+np.pi*4.0/3.0)])
 
-def principalStrs_Der(p, (s1, s2, s3, s4, s5, s6), dim, Karafillis=False):
+def principalStrs_Der(p, s, dim, Karafillis=False):
   """Derivative of principal stress with respect to stress"""
   third  = 1.0/3.0
   third2 = 2.0*third
@@ -111,31 +111,31 @@ def principalStrs_Der(p, (s1, s2, s3, s4, s5, s6), dim, Karafillis=False):
   dSdI = np.array([dSidIj(phi),dSidIj(phi+np.pi*2.0/3.0),dSidIj(phi+np.pi*4.0/3.0)]) # i=1,2,3; j=1,2,3
   
 # calculate the derivation of principal stress with regards to the anisotropic coefficients  
-  one    = np.ones_like(s1); zero = np.zeros_like(s1); num  = len(s1)
+  one    = np.ones_like(s); zero = np.zeros_like(s); num  = len(s)
   dIdp = np.array([[one,    one,    one,    zero,   zero,   zero], 
                    [p[1]+p[2], p[2]+p[0], p[0]+p[1], -2.0*p[3], -2.0*p[4], -2.0*p[5]],
                    [p[1]*p[2]-p[4]**2, p[2]*p[0]-p[5]**2, p[0]*p[1]-p[3]**2, 
                     -2.0*p[3]*p[2]+2.0*p[4]*p[5], -2.0*p[4]*p[0]+2.0*p[5]*p[3], -2.0*p[5]*p[1]+2.0*p[3]*p[4]] ]) 
   if Karafillis:
-    dpdc = np.array([[zero,s1-s3,s1-s2], [s2-s3,zero,s2-s1], [s3-s2,s3-s1,zero]])/3.0
-    dSdp = np.array([np.dot(dSdI[:,:,i],dIdp[:,:,i]).T for i in xrange(num)]).T
+    dpdc = np.array([[zero,s[0]-s[2],s[0]-s[1]], [s[1]-s[2],zero,s[1]-s[0]], [s[2]-s[1],s[2]-s[0],zero]])/3.0
+    dSdp = np.array([np.dot(dSdI[:,:,i],dIdp[:,:,i]).T for i in range(num)]).T
     if dim == 2:
-      temp = np.vstack([dSdp[:,3]*s4]).T.reshape(num,1,3).T
+      temp = np.vstack([dSdp[:,3]*s[3]]).T.reshape(num,1,3).T
     else: 
-      temp = np.vstack([dSdp[:,3]*s4,dSdp[:,4]*s5,dSdp[:,5]*s6]).T.reshape(num,3,3).T
+      temp = np.vstack([dSdp[:,3]*s[3],dSdp[:,4]*s[4],dSdp[:,5]*s[5]]).T.reshape(num,3,3).T
 
-    return np.concatenate((np.array([np.dot(dSdp[:,0:3,i], dpdc[:,:,i]).T for i in xrange(num)]).T,
+    return np.concatenate((np.array([np.dot(dSdp[:,0:3,i], dpdc[:,:,i]).T for i in range(num)]).T,
                            temp), axis=1)
   else:
     if dim == 2:
-      dIdc=np.array([[-dIdp[i,0]*s2, -dIdp[i,1]*s1, -dIdp[i,1]*s3,
-                      -dIdp[i,2]*s2, -dIdp[i,2]*s1, -dIdp[i,0]*s3,
-                       dIdp[i,3]*s4 ] for i in xrange(3)])
+      dIdc=np.array([[-dIdp[i,0]*s[1], -dIdp[i,1]*s[0], -dIdp[i,1]*s[2],
+                      -dIdp[i,2]*s[1], -dIdp[i,2]*s[0], -dIdp[i,0]*s[2],
+                       dIdp[i,3]*s[3] ] for i in range(3)])
     else:
-      dIdc=np.array([[-dIdp[i,0]*s2, -dIdp[i,1]*s1, -dIdp[i,1]*s3,
-                      -dIdp[i,2]*s2, -dIdp[i,2]*s1, -dIdp[i,0]*s3,
-                       dIdp[i,3]*s4,  dIdp[i,4]*s5,  dIdp[i,5]*s6 ] for i in xrange(3)])
-    return np.array([np.dot(dSdI[:,:,i],dIdc[:,:,i]).T for i in xrange(num)]).T
+      dIdc=np.array([[-dIdp[i,0]*s[1], -dIdp[i,1]*s[0], -dIdp[i,1]*s[2],
+                      -dIdp[i,2]*s[1], -dIdp[i,2]*s[0], -dIdp[i,0]*s[2],
+                       dIdp[i,3]*s[3],  dIdp[i,4]*s[4],  dIdp[i,5]*s[5] ] for i in range(3)])
+    return np.array([np.dot(dSdI[:,:,i],dIdc[:,:,i]).T for i in range(num)]).T
 
 def invariant(sigmas):
     I = np.zeros(3)
@@ -194,7 +194,7 @@ class Vegter(object):
       refNormals = np.empty([13,2])
       refPts[12] = refPtsQtr[0]
       refNormals[12] = refNormalsQtr[0]
-      for i in xrange(3):
+      for i in range(3):
         refPts[i]   = refPtsQtr[i]
         refPts[i+3] = refPtsQtr[3-i][::-1]
         refPts[i+6] =-refPtsQtr[i]
@@ -207,7 +207,7 @@ class Vegter(object):
 
   def _getHingePoints(self):
     """
-    calculate the hinge point B according to the reference points A,C and the normals n,m
+    Calculate the hinge point B according to the reference points A,C and the normals n,m
     
     refPoints  = np.array([[p1_x, p1_y], [p2_x, p2_y]]);
     refNormals = np.array([[n1_x, n1_y], [n2_x, n2_y]])
@@ -220,7 +220,7 @@ class Vegter(object):
       B1 = (m2*(n1*A1 + n2*A2) - n2*(m1*C1 + m2*C2))/(n1*m2-m1*n2)
       B2 = (n1*(m1*C1 + m2*C2) - m1*(n1*A1 + n2*A2))/(n1*m2-m1*n2)
       return np.array([B1,B2])
-    return np.array([hingPoint(self.refPts[i:i+2],self.refNormals[i:i+2]) for i in xrange(len(self.refPts)-1)])
+    return np.array([hingPoint(self.refPts[i:i+2],self.refNormals[i:i+2]) for i in range(len(self.refPts)-1)])
 
   def getBezier(self):
     def bezier(R,H):
@@ -228,7 +228,7 @@ class Vegter(object):
       for mu in np.linspace(0.0,1.0,self.nspace):
         b.append(np.array(R[0]*np.ones_like(mu) + 2.0*mu*(H - R[0]) + mu**2*(R[0]+R[1] - 2.0*H)))
       return b
-    return np.array([bezier(self.refPts[i:i+2],self.hingePts[i]) for i in xrange(len(self.refPts)-1)])
+    return np.array([bezier(self.refPts[i:i+2],self.hingePts[i]) for i in range(len(self.refPts)-1)])
 
 def VetgerCriterion(stress,lankford, rhoBi0, theta=0.0):
   """0-pure shear; 1-uniaxial; 2-plane strain; 3-equi-biaxial"""
@@ -238,7 +238,7 @@ def VetgerCriterion(stress,lankford, rhoBi0, theta=0.0):
     lmatrix = np.empty([nset,nset])
     theta = np.linspace(0.0,np.pi/2,nset)
     for i,th in enumerate(theta):
-      lmatrix[i] = np.array([np.cos(2*j*th) for j in xrange(nset)])
+      lmatrix[i] = np.array([np.cos(2*j*th) for j in range(nset)])
     return np.linalg.solve(lmatrix, r)
 
   nps = len(stress)
@@ -250,10 +250,10 @@ def VetgerCriterion(stress,lankford, rhoBi0, theta=0.0):
     strsSet = stress.reshape(nset,4,2)
   refPts = np.empty([4,2])
 
-  fouriercoeffs = np.array([np.cos(2.0*i*theta) for i in xrange(nset)])
-  for i in xrange(2):
+  fouriercoeffs = np.array([np.cos(2.0*i*theta) for i in range(nset)])
+  for i in range(2):
     refPts[3,i] = sum(strsSet[:,3,i])/nset
-    for j in xrange(3):
+    for j in range(3):
       refPts[j,i] = np.dot(getFourierParas(strsSet[:,j,i]), fouriercoeffs)
 
 
@@ -752,9 +752,9 @@ def Yld2000(eqStress, paras, sigmas, mFix, criteria, dim, Jac=False):
                  (4.0*D[0]-4.0*D[2]-4.0*D[1]+    D[3])*s11 + (8.0*D[1]-2.0*D[3]-2.0*D[0]+2.0*D[2])*s22,
                   9.0*D[4]*s12 ])/9.0
 
-  def priStrs((sx,sy,sxy)):
-    temp = np.sqrt( (sx-sy)**2 + 4.0*sxy**2 )
-    return 0.5*(sx+sy + temp), 0.5*(sx+sy - temp)
+  def priStrs(s):
+    temp = np.sqrt( (s[0]-s[1])**2 + 4.0*s[2]**2 )
+    return 0.5*(s[0]+s[1] + temp), 0.5*(s[0]+s[1] - temp)
   m2 = m/2.0; m21 = m2 - 1.0
   (X1,X2), (Y1,Y2) = priStrs(X), priStrs(Y) # Principal values of X, Y
   phi1s, phi21s, phi22s  = (X1-X2)**2, (2.0*Y2+Y1)**2, (2.0*Y1+Y2)**2
@@ -768,10 +768,11 @@ def Yld2000(eqStress, paras, sigmas, mFix, criteria, dim, Jac=False):
     drdl,  drdm  = r/m/left, r*math_ln(0.5*left)*(-1.0/m/m) #/(-m*m) 
     dldm = ( phi1*math_ln(phi1s) + phi21*math_ln(phi21s) + phi22*math_ln(phi22s) )*0.5
     zero = np.zeros_like(s11); num  = len(s11)
-    def dPrincipalds((X1,X2,X12)):                                                                  # derivative of principla with respect to stress
-      temp   = 1.0/np.sqrt( (X1-X2)**2 + 4.0*X12**2 )
-      dP1dsi = 0.5*np.array([ 1.0+temp*(X1-X2), 1.0-temp*(X1-X2),  temp*4.0*X12])
-      dP2dsi = 0.5*np.array([ 1.0-temp*(X1-X2), 1.0+temp*(X1-X2), -temp*4.0*X12])
+    def dPrincipalds(X): 
+      """Derivative of principla with respect to stress"""
+      temp   = 1.0/np.sqrt( (X[0]-X[1])**2 + 4.0*X[2]**2 )
+      dP1dsi = 0.5*np.array([ 1.0+temp*(X[0]-X[1]), 1.0-temp*(X[0]-X[1]),  temp*4.0*X[2]])
+      dP2dsi = 0.5*np.array([ 1.0-temp*(X[0]-X[1]), 1.0+temp*(X[0]-X[1]), -temp*4.0*X[2]])
       return np.array([dP1dsi, dP2dsi])
     
     dXdXi, dYdYi = dPrincipalds(X), dPrincipalds(Y)
@@ -782,14 +783,14 @@ def Yld2000(eqStress, paras, sigmas, mFix, criteria, dim, Jac=False):
                         [  4.0*s11-2.0*s22, -4.0*s11+8.0*s22, -4.0*s11+2.0*s22,      s11-2.0*s22,    zero ],  #dY22dD
                         [             zero,             zero,             zero,             zero, 9.0*s12 ] ])/9.0  #dY12dD
     
-    dXdC=np.array([np.dot(dXdXi[:,:,i], dXidC[:,:,i]).T for i in xrange(num)]).T
-    dYdD=np.array([np.dot(dYdYi[:,:,i], dYidD[:,:,i]).T for i in xrange(num)]).T
+    dXdC=np.array([np.dot(dXdXi[:,:,i], dXidC[:,:,i]).T for i in range(num)]).T
+    dYdD=np.array([np.dot(dYdYi[:,:,i], dYidD[:,:,i]).T for i in range(num)]).T
     
     dldX = m*np.array([ phi1s**m21*(X1-X2),           phi1s**m21*(X2-X1)])
     dldY = m*np.array([phi21s**m21*(2.0*Y2+Y1) + 2.0*phi22s**m21*(2.0*Y1+Y2), \
                        phi22s**m21*(2.0*Y1+Y2) + 2.0*phi21s**m21*(2.0*Y2+Y1) ])
-    jC = drdl*np.array([np.dot(dldX[:,i], dXdC[:,:,i]) for i in xrange(num)]).T
-    jD = drdl*np.array([np.dot(dldY[:,i], dYdD[:,:,i]) for i in xrange(num)]).T
+    jC = drdl*np.array([np.dot(dldX[:,i], dXdC[:,:,i]) for i in range(num)]).T
+    jD = drdl*np.array([np.dot(dldY[:,i], dYdD[:,:,i]) for i in range(num)]).T
 
     jm   = drdl*dldm + drdm
     if mFix[0]: return np.vstack((jC,jD)).T
@@ -817,7 +818,7 @@ def Yld200418p(eqStress, paras, sigmas, mFix, criteria, dim, Jac=False):
   p,q = ys(sdev, C), ys(sdev, D)
   pLambdas, qLambdas = principalStress(p), principalStress(q)   # no sort
 
-  m2 = m/2.0; x3 = xrange(3); num = len(sv)
+  m2 = m/2.0; x3 = range(3); num = len(sv)
   PiQj  = np.array([(pLambdas[i,:]-qLambdas[j,:]) for i in x3 for j in x3])
   QiPj  = np.array([(qLambdas[i,:]-pLambdas[j,:]) for i in x3 for j in x3]).reshape(3,3,num)
   PiQjs = PiQj**2
@@ -831,8 +832,8 @@ def Yld200418p(eqStress, paras, sigmas, mFix, criteria, dim, Jac=False):
     dldm = np.sum(PiQjs**m2*math_ln(PiQjs),axis=0)*0.5
     dPdc, dQdd = principalStrs_Der(p, sdev, dim), principalStrs_Der(q, sdev, dim)
     PiQjs3d = ( PiQjs**(m2-1.0) ).reshape(3,3,num)
-    dldP = -m*np.array([np.diag(np.dot(PiQjs3d[:,:,i], QiPj   [:,:,i])) for i in xrange(num)]).T
-    dldQ =  m*np.array([np.diag(np.dot(QiPj   [:,:,i], PiQjs3d[:,:,i])) for i in xrange(num)]).T
+    dldP = -m*np.array([np.diag(np.dot(PiQjs3d[:,:,i], QiPj   [:,:,i])) for i in range(num)]).T
+    dldQ =  m*np.array([np.diag(np.dot(QiPj   [:,:,i], PiQjs3d[:,:,i])) for i in range(num)]).T
 
     jm = drdl*dldm + drdm
     jc = drdl*np.sum([dldP[i]*dPdc[i] for i in x3],axis=0)
@@ -851,9 +852,9 @@ def KarafillisBoyce(eqStress, paras, sigmas, mFix, criteria, dim, Jac=False):
   0<c<1, m are optional
   criteria are invalid input
   """
-  ks = lambda (s1,s2,s3,s4,s5,s6),(c1,c2,c3,c4,c5,c6): np.array( [
-         ((c2+c3)*s1-c3*s2-c2*s3)/3.0,  ((c3+c1)*s2-c3*s1-c1*s3)/3.0,
-         ((c1+c2)*s3-c2*s1-c1*s2)/3.0,  c4*s4, c5*s5, c6*s6 ])
+  ks = lambda s,c: np.array( [
+         ((c[1]+c[2])*s[0]-c[2]*s[1]-c[1]*s[2])/3.0,  ((c[2]+c[0])*s[1]-c[2]*s[0]-c[0]*s[2])/3.0,
+         ((c[0]+c[1])*s[2]-c[1]*s[0]-c[0]*s[1])/3.0,  c[3]*s[3], c[4]*s[4], c[5]*s[5] ])
   if dim == 2: C1,c = np.append(paras[0:4],[0.0,0.0]), paras[4]
   else:        C1,c = paras[0:6], paras[6]
   if mFix[0]:  m = mFix[1]
@@ -887,7 +888,7 @@ def KarafillisBoyce(eqStress, paras, sigmas, mFix, criteria, dim, Jac=False):
     dldP = (1.0-c)*dphi1dP + c*dphi2dP*rm2
 
     jm  = drdl * dldm + drdm  #drda*(-1.0/m/m)
-    jc1 = drdl * np.sum([dldP[i]*dPdc[i] for i in xrange(3)],axis=0)
+    jc1 = drdl * np.sum([dldP[i]*dPdc[i] for i in range(3)],axis=0)
     jc  = drdl * (-phi1 + rm2*phi2)
 
     if mFix[0]: return np.vstack((jc1,jc)).T
@@ -1029,7 +1030,7 @@ thresholdParameter = ['totalshear','equivalentStrain']
 
 #---------------------------------------------------------------------------------------------------
 class Loadcase():
-  """generating load cases for the spectral solver"""
+  """Generating load cases for the spectral solver"""
 
   def __init__(self,finalStrain,incs,time,nSet=1,dimension=3,vegter=False):
     self.finalStrain = finalStrain
@@ -1098,10 +1099,10 @@ class Loadcase():
           ' time %s'%self.time
 
   def _vegterLoadcase(self):
-    """generate the stress points for Vegter criteria (incomplete/untested)"""
+    """Generate the stress points for Vegter criteria (incomplete/untested)"""
     theta = np.linspace(0.0,np.pi/2.0,self.nSet)
     f = [0.0, 0.0, '*']*3;  loadcase = []
-    for i in xrange(self.nSet*4): loadcase.append(f)
+    for i in range(self.nSet*4): loadcase.append(f)
 
     # more to do for F
     F = np.array([  [[1.1, 0.1], [0.1, 1.1]],              # uniaxial tension
@@ -1111,12 +1112,12 @@ class Loadcase():
                  ])
     for i,t in enumerate(theta):
       R = np.array([np.cos(t), np.sin(t), -np.sin(t), np.cos(t)]).reshape(2,2)
-      for j in xrange(4): 
+      for j in range(4): 
         loadcase[i*4+j][0],loadcase[i*4+j][1],loadcase[i*4+j][3],loadcase[i*4+j][4] = np.dot(R.T,np.dot(F[j],R)).reshape(4)
     return loadcase
 
   def _getLoadcase2dRandom(self):
-    """generate random stress points for 2D tests"""
+    """Generate random stress points for 2D tests"""
     self.NgeneratedLoadCases+=1
     defgrad=['0', '0', '*']*3
     stress =['*', '*', '0']*3
@@ -1279,7 +1280,7 @@ def doSim(thread):
     if l not in table.labels(raw = True): damask.util.croak('%s not found'%l)
   s.release()
 
-  table.data_readArray(['%i_Cauchy'%(i+1) for i in xrange(9)]+[thresholdKey]+['%i_ln(V)'%(i+1) for i in xrange(9)])
+  table.data_readArray(['%i_Cauchy'%(i+1) for i in range(9)]+[thresholdKey]+['%i_ln(V)'%(i+1) for i in range(9)])
 
   validity = np.zeros((int(options.yieldValue[2])), dtype=bool)                                    # found data for desired threshold
   yieldStress     = np.empty((int(options.yieldValue[2]),6),'d')
