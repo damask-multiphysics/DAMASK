@@ -48,7 +48,8 @@ def lables_to_path(label, dsXMLPath=None):
 
 
 class H5Table(object):
-    """Light weight interface class for h5py
+    """
+    Light weight interface class for h5py
 
     DESCRIPTION
     -----------

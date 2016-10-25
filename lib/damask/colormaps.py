@@ -5,7 +5,8 @@ import math,numpy as np
 ### --- COLOR CLASS --------------------------------------------------
 
 class Color():
-  """Conversion of colors between different color-spaces.
+  """
+  Conversion of colors between different color-spaces.
 
   Colors should be given in the form 
   Color('model',[vector]).To convert and copy color from one space to other, use the methods 
