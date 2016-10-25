@@ -49,7 +49,7 @@ module spectral_mech_AL
    F_av = 0.0_pReal, &                                                                              !< average incompatible def grad field
    P_av = 0.0_pReal, &                                                                              !< average 1st Piola--Kirchhoff stress
    P_avLastEval = 0.0_pReal                                                                         !< average 1st Piola--Kirchhoff stress last call of CPFEM_general
- character(len=1024), private :: incInfo                                                            !< time and increment information
+   character(len=1024), private :: incInfo                                                          !< time and increment information
  real(pReal), private, dimension(3,3,3,3) :: &
    C_volAvg = 0.0_pReal, &                                                                          !< current volume average stiffness 
    C_volAvgLastInc = 0.0_pReal, &                                                                   !< previous volume average stiffness
@@ -57,7 +57,7 @@ module spectral_mech_AL
    S = 0.0_pReal, &                                                                                 !< current compliance (filled up with zeros)
    C_scale = 0.0_pReal, &                             
    S_scale = 0.0_pReal
- 
+
  real(pReal), private :: &
    err_BC, &                                                                                        !< deviation from stress BC
    err_curl, &                                                                                      !< RMS of curl of F
@@ -132,11 +132,9 @@ subroutine AL_init
    SNESSetConvergenceTest, &
    SNESSetFromOptions
    
- mainProcess: if (worldrank == 0_pInt) then
-   write(6,'(/,a)') ' <<<+-  DAMASK_spectral_solverAL init  -+>>>'
-   write(6,'(a15,a)')   ' Current time: ',IO_timeStamp()
+ write(6,'(/,a)') ' <<<+-  DAMASK_spectral_solverAL init  -+>>>'
+ write(6,'(a15,a)')   ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
- endif mainProcess
 
 !--------------------------------------------------------------------------------------------------
 ! allocate global fields
@@ -244,7 +242,7 @@ end subroutine AL_init
 !> @brief solution for the AL scheme with internal iterations
 !--------------------------------------------------------------------------------------------------
 type(tSolutionState) function &
-  AL_solution(incInfoIn,timeinc,timeinc_old,P_BC,rotation_BC)
+  AL_solution(incInfoIn,timeinc,timeinc_old,stress_BC,rotation_BC)
  use IO, only: &
    IO_error
  use numerics, only: &
@@ -267,7 +265,7 @@ type(tSolutionState) function &
    timeinc, &                                                                                       !< increment in time for current solution
    timeinc_old                                                                                      !< increment in time of last increment
  type(tBoundaryCondition),      intent(in) :: &
-   P_BC
+   stress_BC
  character(len=*), intent(in) :: &
    incInfoIn
  real(pReal), dimension(3,3), intent(in) :: rotation_BC
@@ -285,7 +283,7 @@ type(tSolutionState) function &
 
 !--------------------------------------------------------------------------------------------------
 ! update stiffness (and gamma operator)
- S = Utilities_maskedCompliance(rotation_BC,P_BC%maskLogical,C_volAvg)
+ S = Utilities_maskedCompliance(rotation_BC,stress_BC%maskLogical,C_volAvg)
  if (update_gamma) then
    call Utilities_updateGamma(C_minMaxAvg,restartWrite)
    C_scale = C_minMaxAvg
@@ -294,11 +292,11 @@ type(tSolutionState) function &
 
 !--------------------------------------------------------------------------------------------------
 ! set module wide availabe data
- mask_stress = P_BC%maskFloat
- params%P_BC = P_BC%values
+ mask_stress        = stress_BC%maskFloat
+ params%stress_BC   = stress_BC%values
  params%rotation_BC = rotation_BC
- params%timeinc = timeinc
- params%timeincOld = timeinc_old
+ params%timeinc     = timeinc
+ params%timeincOld  = timeinc_old
 
 !--------------------------------------------------------------------------------------------------
 ! solve BVP 
@@ -326,8 +324,7 @@ subroutine AL_formResidual(in,x_scal,f_scal,dummy,ierr)
    itmax, &
    itmin, &
    polarAlpha, &
-   polarBeta, &
-   worldrank
+   polarBeta
  use mesh, only: &
    grid3, &
    grid
@@ -406,16 +403,14 @@ subroutine AL_formResidual(in,x_scal,f_scal,dummy,ierr)
 !--------------------------------------------------------------------------------------------------
 ! report begin of new iteration
    totalIter = totalIter + 1_pInt
-   if (worldrank == 0_pInt) then
-     write(6,'(1x,a,3(a,'//IO_intOut(itmax)//'))') trim(incInfo), &
-                    ' @ Iteration ', itmin, '≤',totalIter, '≤', itmax
-     if (iand(debug_level(debug_spectral),debug_spectralRotation) /= 0) &
-       write(6,'(/,a,/,3(3(f12.7,1x)/))',advance='no') ' deformation gradient aim (lab) =', &
-                             math_transpose33(math_rotate_backward33(F_aim,params%rotation_BC))
-     write(6,'(/,a,/,3(3(f12.7,1x)/))',advance='no') ' deformation gradient aim =', &
-                                 math_transpose33(F_aim)
-     flush(6)
-   endif
+   write(6,'(1x,a,3(a,'//IO_intOut(itmax)//'))') trim(incInfo), &
+                  ' @ Iteration ', itmin, '≤',totalIter, '≤', itmax
+   if (iand(debug_level(debug_spectral),debug_spectralRotation) /= 0) &
+     write(6,'(/,a,/,3(3(f12.7,1x)/))',advance='no') ' deformation gradient aim (lab) =', &
+                           math_transpose33(math_rotate_backward33(F_aim,params%rotation_BC))
+   write(6,'(/,a,/,3(3(f12.7,1x)/))',advance='no') ' deformation gradient aim =', &
+                               math_transpose33(F_aim)
+   flush(6)
  endif newIteration
 
 !--------------------------------------------------------------------------------------------------
@@ -490,8 +485,7 @@ subroutine AL_converged(snes_local,PETScIter,xnorm,snorm,fnorm,reason,dummy,ierr
    err_curl_tolRel, &
    err_curl_tolAbs, &
    err_stress_tolAbs, &
-   err_stress_tolRel, &
-   worldrank
+   err_stress_tolRel
  use math, only: &
    math_mul3333xx33
  use FEsolving, only: &
@@ -514,9 +508,9 @@ subroutine AL_converged(snes_local,PETScIter,xnorm,snorm,fnorm,reason,dummy,ierr
      
 !--------------------------------------------------------------------------------------------------
 ! stress BC handling
- F_aim = F_aim - math_mul3333xx33(S, ((P_av - params%P_BC)))                                        ! S = 0.0 for no bc
+ F_aim = F_aim - math_mul3333xx33(S, ((P_av - params%stress_BC)))                                   ! S = 0.0 for no bc
  err_BC = maxval(abs((-mask_stress+1.0_pReal)*math_mul3333xx33(C_scale,F_aim-F_av) + &
-                         mask_stress              *(P_av - params%P_BC)))                           ! mask = 0.0 for no bc
+                         mask_stress              *(P_av - params%stress_BC)))                      ! mask = 0.0 for no bc
 
 !--------------------------------------------------------------------------------------------------
 ! error calculation
@@ -538,24 +532,22 @@ subroutine AL_converged(snes_local,PETScIter,xnorm,snorm,fnorm,reason,dummy,ierr
 
 !--------------------------------------------------------------------------------------------------
 ! report
- if (worldrank == 0_pInt) then
-   write(6,'(1/,a)') ' ... reporting .............................................................'
-   write(6,'(/,a,f12.2,a,es8.2,a,es9.2,a)') ' error curl =       ', &
-            err_curl/curlTol,' (',err_curl,' -,   tol =',curlTol,')'
-   write(6,'  (a,f12.2,a,es8.2,a,es9.2,a)') ' error divergence = ', &
-            err_div/divTol,  ' (',err_div, ' / m, tol =',divTol,')'
-   write(6,'  (a,f12.2,a,es8.2,a,es9.2,a)') ' error BC =         ', &
-            err_BC/BC_tol, ' (',err_BC,    ' Pa,  tol =',BC_tol,')' 
-   write(6,'(/,a)') ' ==========================================================================='
-   flush(6) 
- endif
+ write(6,'(1/,a)') ' ... reporting .............................................................'
+ write(6,'(/,a,f12.2,a,es8.2,a,es9.2,a)') ' error curl =       ', &
+           err_curl/curlTol,' (',err_curl,' -,   tol =',curlTol,')'
+ write(6,'  (a,f12.2,a,es8.2,a,es9.2,a)') ' error divergence = ', &
+           err_div/divTol,  ' (',err_div, ' / m, tol =',divTol,')'
+ write(6,'  (a,f12.2,a,es8.2,a,es9.2,a)') ' error BC =         ', &
+           err_BC/BC_tol, ' (',err_BC,    ' Pa,  tol =',BC_tol,')' 
+ write(6,'(/,a)') ' ==========================================================================='
+ flush(6) 
 
 end subroutine AL_converged
 
 !--------------------------------------------------------------------------------------------------
 !> @brief forwarding routine
 !--------------------------------------------------------------------------------------------------
-subroutine AL_forward(guess,timeinc,timeinc_old,loadCaseTime,F_BC,P_BC,rotation_BC)
+subroutine AL_forward(guess,timeinc,timeinc_old,loadCaseTime,deformation_BC,stress_BC,rotation_BC)
  use math, only: &
    math_mul33x33, &
    math_mul3333xx33, &
@@ -583,8 +575,8 @@ subroutine AL_forward(guess,timeinc,timeinc_old,loadCaseTime,F_BC,P_BC,rotation_
    timeinc, &
    loadCaseTime                                                                                     !< remaining time of current load case
  type(tBoundaryCondition),      intent(in) :: &
-   P_BC, &
-   F_BC
+   stress_BC, &
+   deformation_BC
  real(pReal), dimension(3,3), intent(in) :: rotation_BC
  logical, intent(in) :: &
    guess
@@ -600,21 +592,19 @@ subroutine AL_forward(guess,timeinc,timeinc_old,loadCaseTime,F_BC,P_BC,rotation_
  F => xx_psc(0:8,:,:,:)
  F_lambda => xx_psc(9:17,:,:,:)
  if (restartWrite) then
-   if (worldrank == 0_pInt) then
-     write(6,'(/,a)') ' writing converged results for restart'
-     flush(6)
-   endif
+   write(6,'(/,a)') ' writing converged results for restart'
+   flush(6)
    write(rankStr,'(a1,i0)')'_',worldrank
-   call IO_write_jobRealFile(777,'F'//trim(rankStr),size(F))                                                       ! writing deformation gradient field to file
+   call IO_write_jobRealFile(777,'F'//trim(rankStr),size(F))                                        ! writing deformation gradient field to file
    write (777,rec=1) F
    close (777)
-   call IO_write_jobRealFile(777,'F_lastInc'//trim(rankStr),size(F_lastInc))                                       ! writing F_lastInc field to file
+   call IO_write_jobRealFile(777,'F_lastInc'//trim(rankStr),size(F_lastInc))                        ! writing F_lastInc field to file
    write (777,rec=1) F_lastInc
    close (777)
-   call IO_write_jobRealFile(777,'F_lambda'//trim(rankStr),size(F_lambda))                                         ! writing deformation gradient field to file
+   call IO_write_jobRealFile(777,'F_lambda'//trim(rankStr),size(F_lambda))                          ! writing deformation gradient field to file
    write (777,rec=1) F_lambda
    close (777)
-   call IO_write_jobRealFile(777,'F_lambda_lastInc'//trim(rankStr),size(F_lambda_lastInc))                         ! writing F_lastInc field to file
+   call IO_write_jobRealFile(777,'F_lambda_lastInc'//trim(rankStr),size(F_lambda_lastInc))          ! writing F_lastInc field to file
    write (777,rec=1) F_lambda_lastInc
    close (777)
    if (worldrank == 0_pInt) then
@@ -648,14 +638,14 @@ subroutine AL_forward(guess,timeinc,timeinc_old,loadCaseTime,F_BC,P_BC,rotation_
    C_volAvgLastInc = C_volAvg
 !--------------------------------------------------------------------------------------------------
 ! calculate rate for aim
-   if (F_BC%myType=='l') then                                                                       ! calculate f_aimDot from given L and current F
-     f_aimDot = F_BC%maskFloat * math_mul33x33(F_BC%values, F_aim)
-   elseif(F_BC%myType=='fdot') then                                                                 ! f_aimDot is prescribed
-     f_aimDot = F_BC%maskFloat * F_BC%values
-   elseif(F_BC%myType=='f') then                                                                    ! aim at end of load case is prescribed
-     f_aimDot = F_BC%maskFloat * (F_BC%values -F_aim)/loadCaseTime
+   if (deformation_BC%myType=='l') then                                                             ! calculate f_aimDot from given L and current F
+     f_aimDot = deformation_BC%maskFloat * math_mul33x33(deformation_BC%values, F_aim)
+   elseif(deformation_BC%myType=='fdot') then                                                       ! f_aimDot is prescribed
+     f_aimDot = deformation_BC%maskFloat * deformation_BC%values
+   elseif(deformation_BC%myType=='f') then                                                          ! aim at end of load case is prescribed
+     f_aimDot = deformation_BC%maskFloat * (deformation_BC%values -F_aim)/loadCaseTime
    endif
-   if (guess) f_aimDot  = f_aimDot + P_BC%maskFloat * (F_aim - F_aim_lastInc)/timeinc_old
+   if (guess) f_aimDot  = f_aimDot + stress_BC%maskFloat * (F_aim - F_aim_lastInc)/timeinc_old
    F_aim_lastInc = F_aim
 
 !--------------------------------------------------------------------------------------------------

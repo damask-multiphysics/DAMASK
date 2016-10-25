@@ -192,7 +192,7 @@ program DAMASK_spectral
  if ((N_def /= N_n) .or. (N_n /= N_t) .or. N_n < 1_pInt) &                                          ! sanity check
    call IO_error(error_ID=837_pInt,ext_msg = trim(loadCaseFile))                                    ! error message for incomplete loadcase
  allocate (loadCases(N_n))                                                                          ! array of load cases
- loadCases%P%myType='p'
+ loadCases%stress%myType='stress'
 
   do i = 1, size(loadCases)
    allocate(loadCases(i)%ID(nActiveFields))
@@ -244,10 +244,10 @@ program DAMASK_spectral
            temp_maskVector(j) = IO_stringValue(line,chunkPos,i+j) /= '*'                            ! true if not an asterisk
            if (temp_maskVector(j)) temp_valueVector(j) = IO_floatValue(line,chunkPos,i+j)           ! read value where applicable
          enddo
-         loadCases(currentLoadCase)%P%maskLogical = transpose(reshape(temp_maskVector,[ 3,3]))
-         loadCases(currentLoadCase)%P%maskFloat   = merge(ones,zeros,&
-                                                        loadCases(currentLoadCase)%P%maskLogical)
-         loadCases(currentLoadCase)%P%values      = math_plain9to33(temp_valueVector)
+         loadCases(currentLoadCase)%stress%maskLogical = transpose(reshape(temp_maskVector,[ 3,3]))
+         loadCases(currentLoadCase)%stress%maskFloat   = merge(ones,zeros,&
+                                                        loadCases(currentLoadCase)%stress%maskLogical)
+         loadCases(currentLoadCase)%stress%values      = math_plain9to33(temp_valueVector)
        case('t','time','delta')                                                                     ! increment time
          loadCases(currentLoadCase)%time = IO_floatValue(line,chunkPos,i+1_pInt)
        case('n','incs','increments','steps')                                                        ! number of increments
@@ -318,16 +318,16 @@ program DAMASK_spectral
          endif
        enddo; write(6,'(/)',advance='no')
      enddo
-     if (any(loadCases(currentLoadCase)%P%maskLogical .eqv. &
+     if (any(loadCases(currentLoadCase)%stress%maskLogical .eqv. &
              loadCases(currentLoadCase)%deformation%maskLogical)) errorID = 831_pInt                ! exclusive or masking only
-     if (any(loadCases(currentLoadCase)%P%maskLogical .and. &                                   
-             transpose(loadCases(currentLoadCase)%P%maskLogical) .and. &
+     if (any(loadCases(currentLoadCase)%stress%maskLogical .and. &                                   
+             transpose(loadCases(currentLoadCase)%stress%maskLogical) .and. &
              reshape([ .false.,.true.,.true.,.true.,.false.,.true.,.true.,.true.,.false.],[ 3,3]))) &
              errorID = 838_pInt                                                                     ! no rotation is allowed by stress BC
      write(6,'(2x,a)') 'stress / GPa:'
      do i = 1_pInt, 3_pInt; do j = 1_pInt, 3_pInt
-       if(loadCases(currentLoadCase)%P%maskLogical(i,j)) then
-         write(6,'(2x,f12.7)',advance='no') loadCases(currentLoadCase)%P%values(i,j)*1e-9_pReal
+       if(loadCases(currentLoadCase)%stress%maskLogical(i,j)) then
+         write(6,'(2x,f12.7)',advance='no') loadCases(currentLoadCase)%stress%values(i,j)*1e-9_pReal
        else
          write(6,'(2x,12a)',advance='no') '     *      '
        endif
@@ -524,20 +524,20 @@ program DAMASK_spectral
                  case (DAMASK_spectral_SolverBasicPETSc_label)
                    call BasicPETSc_forward (&
                        guess,timeinc,timeIncOld,remainingLoadCaseTime, &
-                       F_BC               = loadCases(currentLoadCase)%deformation, &
-                       P_BC               = loadCases(currentLoadCase)%P, &
+                       deformation_BC     = loadCases(currentLoadCase)%deformation, &
+                       stress_BC          = loadCases(currentLoadCase)%stress, &
                        rotation_BC        = loadCases(currentLoadCase)%rotation)
                  case (DAMASK_spectral_SolverAL_label)
                    call AL_forward (&
                        guess,timeinc,timeIncOld,remainingLoadCaseTime, &
-                       F_BC               = loadCases(currentLoadCase)%deformation, &
-                       P_BC               = loadCases(currentLoadCase)%P, &
+                       deformation_BC     = loadCases(currentLoadCase)%deformation, &
+                       stress_BC          = loadCases(currentLoadCase)%stress, &
                        rotation_BC        = loadCases(currentLoadCase)%rotation)
                  case (DAMASK_spectral_SolverPolarisation_label)
                    call Polarisation_forward (&
                        guess,timeinc,timeIncOld,remainingLoadCaseTime, &
-                       F_BC               = loadCases(currentLoadCase)%deformation, &
-                       P_BC               = loadCases(currentLoadCase)%P, &
+                       deformation_BC     = loadCases(currentLoadCase)%deformation, &
+                       stress_BC          = loadCases(currentLoadCase)%stress, &
                        rotation_BC        = loadCases(currentLoadCase)%rotation)
                end select
 
@@ -558,19 +558,19 @@ program DAMASK_spectral
                    case (DAMASK_spectral_SolverBasicPETSc_label)
                      solres(field) = BasicPETSC_solution (&
                          incInfo,timeinc,timeIncOld, &
-                         P_BC               = loadCases(currentLoadCase)%P, &
+                         stress_BC          = loadCases(currentLoadCase)%stress, &
                          rotation_BC        = loadCases(currentLoadCase)%rotation)
 
                    case (DAMASK_spectral_SolverAL_label)
                      solres(field) = AL_solution (&
                          incInfo,timeinc,timeIncOld, &
-                         P_BC               = loadCases(currentLoadCase)%P, &
+                         stress_BC          = loadCases(currentLoadCase)%stress, &
                          rotation_BC        = loadCases(currentLoadCase)%rotation)
 
                    case (DAMASK_spectral_SolverPolarisation_label)
                      solres(field) = Polarisation_solution (&
                          incInfo,timeinc,timeIncOld, &
-                         P_BC               = loadCases(currentLoadCase)%P, &
+                         stress_BC          = loadCases(currentLoadCase)%stress, &
                          rotation_BC        = loadCases(currentLoadCase)%rotation)
 
                  end select

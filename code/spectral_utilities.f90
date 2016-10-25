@@ -85,7 +85,7 @@ module spectral_utilities
 
  type, public :: tLoadCase
    real(pReal), dimension (3,3) :: rotation               = math_I3                                 !< rotation of BC
-   type(tBoundaryCondition) ::     P, &                                                             !< stress BC
+   type(tBoundaryCondition) ::     stress, &                                                        !< stress BC
                                    deformation                                                      !< deformation BC (Fdot or L)
    real(pReal) ::                  time                   = 0.0_pReal                               !< length of increment
    integer(pInt) ::                incs                   = 0_pInt, &                               !< number of increments
@@ -97,7 +97,7 @@ module spectral_utilities
  end type tLoadCase
 
  type, public :: tSolutionParams                                                                    !< @todo use here the type definition for a full loadcase including mask
-   real(pReal), dimension(3,3) :: P_BC, rotation_BC
+   real(pReal), dimension(3,3) :: stress_BC, rotation_BC
    real(pReal) :: timeinc
    real(pReal) :: timeincOld
    real(pReal) :: density

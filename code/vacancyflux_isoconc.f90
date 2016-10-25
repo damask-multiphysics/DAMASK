@@ -23,21 +23,17 @@ subroutine vacancyflux_isoconc_init()
  use IO, only: &
    IO_timeStamp
  use material
- use numerics, only: &
-   worldrank
  
  implicit none
  integer(pInt) :: &
    homog, &
    NofMyHomog
 
- mainProcess: if (worldrank == 0) then 
-   write(6,'(/,a)')   ' <<<+-  vacancyflux_'//VACANCYFLUX_isoconc_label//' init  -+>>>'
-   write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
+ write(6,'(/,a)')   ' <<<+-  vacancyflux_'//VACANCYFLUX_isoconc_label//' init  -+>>>'
+ write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
- endif mainProcess
 
-  initializeInstances: do homog = 1_pInt, material_Nhomogenization
+ initializeInstances: do homog = 1_pInt, material_Nhomogenization
    
    myhomog: if (vacancyflux_type(homog) == VACANCYFLUX_isoconc_ID) then
      NofMyHomog = count(material_homog == homog)

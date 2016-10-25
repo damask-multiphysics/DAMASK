@@ -98,11 +98,9 @@ subroutine spectral_damage_init()
    DMRestoreGlobalVector, &
    SNESVISetVariableBounds
 
- mainProcess: if (worldrank == 0_pInt) then
-   write(6,'(/,a)') ' <<<+-  spectral_damage init  -+>>>'
-   write(6,'(a15,a)')   ' Current time: ',IO_timeStamp()
+ write(6,'(/,a)') ' <<<+-  spectral_damage init  -+>>>'
+ write(6,'(a15,a)')   ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
- endif mainProcess
  
 !--------------------------------------------------------------------------------------------------
 ! initialize solver specific parts of PETSc
