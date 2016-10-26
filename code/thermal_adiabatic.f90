@@ -74,8 +74,6 @@ subroutine thermal_adiabatic_init(fileUnit)
    temperature, &
    temperatureRate, &
    material_partHomogenization
- use numerics,only: &
-   worldrank
 
  implicit none
  integer(pInt), intent(in) :: fileUnit
@@ -88,11 +86,9 @@ subroutine thermal_adiabatic_init(fileUnit)
    tag  = '', &
    line = ''
 
- mainProcess: if (worldrank == 0) then 
-   write(6,'(/,a)')   ' <<<+-  thermal_'//THERMAL_ADIABATIC_label//' init  -+>>>'
-   write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
+ write(6,'(/,a)')   ' <<<+-  thermal_'//THERMAL_ADIABATIC_label//' init  -+>>>'
+ write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
- endif mainProcess
  
  maxNinstance = int(count(thermal_type == THERMAL_adiabatic_ID),pInt)
  if (maxNinstance == 0_pInt) return

@@ -67,8 +67,6 @@ subroutine kinematics_hydrogen_strain_init(fileUnit)
    KINEMATICS_hydrogen_strain_ID, &
    material_Nphase, &
    MATERIAL_partPhase
- use numerics,only: &
-   worldrank
 
  implicit none
  integer(pInt), intent(in) :: fileUnit
@@ -79,11 +77,9 @@ subroutine kinematics_hydrogen_strain_init(fileUnit)
    tag  = '', &
    line = ''
 
- mainProcess: if (worldrank == 0) then 
-   write(6,'(/,a)')   ' <<<+-  kinematics_'//KINEMATICS_hydrogen_strain_LABEL//' init  -+>>>'
-   write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
+ write(6,'(/,a)')   ' <<<+-  kinematics_'//KINEMATICS_hydrogen_strain_LABEL//' init  -+>>>'
+ write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
- endif mainProcess
 
  maxNinstance = int(count(phase_kinematics == KINEMATICS_hydrogen_strain_ID),pInt)
  if (maxNinstance == 0_pInt) return

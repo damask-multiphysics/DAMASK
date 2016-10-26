@@ -90,8 +90,6 @@ subroutine vacancyflux_cahnhilliard_init(fileUnit)
    vacancyflux_initialCv, &
    material_partHomogenization, &
    material_partPhase
- use numerics,only: &
-   worldrank
 
  implicit none
  integer(pInt), intent(in) :: fileUnit
@@ -104,11 +102,9 @@ subroutine vacancyflux_cahnhilliard_init(fileUnit)
    tag  = '', &
    line = ''
 
- mainProcess: if (worldrank == 0) then 
-   write(6,'(/,a)')   ' <<<+-  vacancyflux_'//VACANCYFLUX_cahnhilliard_label//' init  -+>>>'
-   write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
+ write(6,'(/,a)')   ' <<<+-  vacancyflux_'//VACANCYFLUX_cahnhilliard_label//' init  -+>>>'
+ write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
- endif mainProcess
  
  maxNinstance = int(count(vacancyflux_type == VACANCYFLUX_cahnhilliard_ID),pInt)
  if (maxNinstance == 0_pInt) return

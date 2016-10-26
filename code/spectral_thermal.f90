@@ -86,7 +86,6 @@ subroutine spectral_thermal_init
  DM :: thermal_grid
  PetscScalar,  dimension(:,:,:), pointer     :: x_scal
  PetscErrorCode :: ierr
- PetscObject    :: dummy
 
  external :: &
    SNESCreate, &
@@ -123,7 +122,8 @@ subroutine spectral_thermal_init
  CHKERRQ(ierr)
  call SNESSetDM(thermal_snes,thermal_grid,ierr); CHKERRQ(ierr)                                      ! connect snes to da
  call DMCreateGlobalVector(thermal_grid,solution        ,ierr); CHKERRQ(ierr)                       ! global solution vector (grid x 1, i.e. every def grad tensor)
- call DMDASNESSetFunctionLocal(thermal_grid,INSERT_VALUES,spectral_thermal_formResidual,dummy,ierr) ! residual vector of same shape as solution vector
+ call DMDASNESSetFunctionLocal(thermal_grid,INSERT_VALUES,spectral_thermal_formResidual,&
+                                                                            PETSC_NULL_OBJECT,ierr) ! residual vector of same shape as solution vector
  CHKERRQ(ierr) 
  call SNESSetFromOptions(thermal_snes,ierr); CHKERRQ(ierr)                                          ! pull it all together with additional cli arguments
 
@@ -170,7 +170,7 @@ end subroutine spectral_thermal_init
 !--------------------------------------------------------------------------------------------------
 !> @brief solution for the spectral thermal scheme with internal iterations
 !--------------------------------------------------------------------------------------------------
-type(tSolutionState) function spectral_thermal_solution(guess,timeinc,timeinc_old,loadCaseTime)
+type(tSolutionState) function spectral_thermal_solution(timeinc,timeinc_old,loadCaseTime)
  use numerics, only: &
    itmax, &
    err_thermal_tolAbs, &
@@ -189,7 +189,6 @@ type(tSolutionState) function spectral_thermal_solution(guess,timeinc,timeinc_ol
    timeinc, &                                                                                       !< increment in time for current solution
    timeinc_old, &                                                                                   !< increment in time of last increment
    loadCaseTime                                                                                     !< remaining time of current load case
- logical, intent(in) :: guess
  integer(pInt) :: i, j, k, cell
  PetscInt  :: position
  PetscReal :: minTemperature, maxTemperature, stagNorm, solnNorm
@@ -283,10 +282,10 @@ subroutine spectral_thermal_formResidual(in,x_scal,f_scal,dummy,ierr)
  DMDALocalInfo, dimension(DMDA_LOCAL_INFO_SIZE) :: &
    in
  PetscScalar, dimension( &
-   XG_RANGE,YG_RANGE,ZG_RANGE) :: &
+   XG_RANGE,YG_RANGE,ZG_RANGE), intent(in) :: &
    x_scal
  PetscScalar, dimension( &
-   X_RANGE,Y_RANGE,Z_RANGE) :: &
+   X_RANGE,Y_RANGE,Z_RANGE), intent(out) :: &
    f_scal
  PetscObject :: dummy
  PetscErrorCode :: ierr
@@ -337,7 +336,7 @@ end subroutine spectral_thermal_formResidual
 !--------------------------------------------------------------------------------------------------
 !> @brief forwarding routine
 !--------------------------------------------------------------------------------------------------
-subroutine spectral_thermal_forward(guess,timeinc,timeinc_old,loadCaseTime)
+subroutine spectral_thermal_forward()
  use mesh, only: &
    grid, &
    grid3
@@ -351,11 +350,6 @@ subroutine spectral_thermal_forward(guess,timeinc,timeinc_old,loadCaseTime)
    thermal_conduction_getSpecificHeat
    
  implicit none
- real(pReal), intent(in) :: &
-   timeinc_old, &
-   timeinc, &
-   loadCaseTime                                                                                     !< remaining time of current load case
- logical,     intent(in) :: guess
  integer(pInt)           :: i, j, k, cell
  DM                      :: dm_local
  PetscScalar,  dimension(:,:,:), pointer     :: x_scal

@@ -20,12 +20,7 @@ module prec
  private 
 #if (FLOAT==8)
  integer,     parameter, public :: pReal = 8                                                        !< floating point double precision (was selected_real_kind(15,300), number with 15 significant digits, up to 1e+-300)
-#ifdef __INTEL_COMPILER
- real(pReal), parameter, public :: DAMASK_NaN = Z'7FF8000000000000'                                 !< quiet NaN for double precision (from http://www.hpc.unimelb.edu.au/doc/f90lrm/dfum_035.html)
-#endif
-#ifdef __GFORTRAN__
  real(pReal), parameter, public :: DAMASK_NaN = real(Z'7FF8000000000000',pReal)                     !< quiet NaN for double precision (from http://www.hpc.unimelb.edu.au/doc/f90lrm/dfum_035.html)
-#endif
 #else
  NO SUITABLE PRECISION FOR REAL SELECTED, STOPPING COMPILATION
 #endif
