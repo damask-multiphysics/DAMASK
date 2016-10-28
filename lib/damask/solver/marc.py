@@ -9,6 +9,7 @@ class Marc(Solver):
   def __init__(self):
     self.solver = 'Marc'
     self.releases = { \
+              '2016':  ['linux64',''],
               '2015':  ['linux64',''],
               '2014.2':['linux64',''],
               '2014'  :['linux64',''],

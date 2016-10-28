@@ -19,6 +19,7 @@ MarcReleases =[ \
                '2014',
                '2014.2',
                '2015',
+               '2016'
               ]
 
 damaskEnv = damask.Environment()
