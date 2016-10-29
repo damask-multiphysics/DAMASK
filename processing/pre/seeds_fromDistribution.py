@@ -200,15 +200,15 @@ parser.add_option('--bins',          dest='bins', type='int', metavar='int',
 parser.add_option('--maxseeds',      dest='maxseeds', type='int', metavar='int',
                                      help='maximum number of seeds to move simulateneously [number of seeds]')
 
-parser.set_defaults(seedFile    = 'seeds')
-parser.set_defaults(grid        = (64,64,64))
-parser.set_defaults(threads     = 2)
-parser.set_defaults(randomSeed  = None)
-parser.set_defaults(target      = 'geom')
-parser.set_defaults(threshold   = 20)
-parser.set_defaults(bins        = 15)
-parser.set_defaults(scale       = 1.0)
-parser.set_defaults(maxseeds    = 0)
+parser.set_defaults(seedFile    = 'seeds',
+                    grid        = (64,64,64),
+                    threads     = 2,
+                    randomSeed  = None,
+                    target      = 'geom',
+                    threshold   = 20,
+                    bins        = 15,
+                    scale       = 1.0,
+                    maxseeds    = 0)
 
 options = parser.parse_args()[0]
 
