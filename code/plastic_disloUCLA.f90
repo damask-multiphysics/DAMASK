@@ -974,7 +974,7 @@ end subroutine plastic_disloUCLA_LpAndItsTangent
 subroutine plastic_disloUCLA_dotState(Tstar_v,Temperature,ipc,ip,el)
  use prec, only: &
    tol_math_check, &
-   dEq
+   dEq0
  use math, only: &
    pi
  use material, only: &
@@ -1112,7 +1112,7 @@ subroutine plastic_disloUCLA_dotState(Tstar_v,Temperature,ipc,ip,el)
      !* Dipole formation
      EdgeDipMinDistance = &
        plastic_disloUCLA_CEdgeDipMinDistance(instance)*plastic_disloUCLA_burgersPerSlipSystem(j,instance)
-     if (dEq(tau_slip_pos,0.0_pReal)) then
+     if (dEq0(tau_slip_pos)) then
        DotRhoDipFormation = 0.0_pReal
      else
        EdgeDipDistance = &
@@ -1140,7 +1140,7 @@ subroutine plastic_disloUCLA_dotState(Tstar_v,Temperature,ipc,ip,el)
         plastic_disloUCLA_CAtomicVolume(instance)*plastic_disloUCLA_burgersPerSlipSystem(j,instance)**(3.0_pReal)
      VacancyDiffusion = &
         plastic_disloUCLA_D0(instance)*exp(-plastic_disloUCLA_Qsd(instance)/(kB*Temperature))
-     if (dEq(tau_slip_pos,0.0_pReal)) then
+     if (dEq0(tau_slip_pos)) then
        DotRhoEdgeDipClimb = 0.0_pReal
      else
        ClimbVelocity = &
@@ -1174,7 +1174,7 @@ end subroutine plastic_disloUCLA_dotState
 function plastic_disloUCLA_postResults(Tstar_v,Temperature,ipc,ip,el)
  use prec, only: &
    tol_math_check, &
-   dEq
+   dEq0
  use math, only: &
    pi
  use material, only: &
@@ -1402,7 +1402,7 @@ function plastic_disloUCLA_postResults(Tstar_v,Temperature,ipc,ip,el)
           c = c + ns
         elseif(plastic_disloUCLA_outputID(o,instance) == stress_exponent_ID) then
           do j = 1_pInt, ns
-            if (dEq(gdot_slip_pos(j)+gdot_slip_neg(j),0.0_pReal)) then
+            if (dEq0(gdot_slip_pos(j)+gdot_slip_neg(j))) then
               plastic_disloUCLA_postResults(c+j) = 0.0_pReal
             else
               plastic_disloUCLA_postResults(c+j) = (tau_slip_pos(j)+tau_slip_neg(j))/&

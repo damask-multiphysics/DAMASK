@@ -387,7 +387,7 @@ end subroutine homogenization_RGC_partitionDeformation
 !--------------------------------------------------------------------------------------------------
 function homogenization_RGC_updateState(P,F,F0,avgF,dt,dPdF,ip,el)
  use prec, only: &
-   dEq
+   dEq0
  use debug, only: &
    debug_level, &
    debug_homogenization,&
@@ -443,7 +443,7 @@ function homogenization_RGC_updateState(P,F,F0,avgF,dt,dPdF,ip,el)
  real(pReal), dimension(:,:), allocatable :: tract,jmatrix,jnverse,smatrix,pmatrix,rmatrix
  real(pReal), dimension(:), allocatable   :: resid,relax,p_relax,p_resid,drelax
  
- zeroTimeStep: if(dEq(dt,0.0_pReal)) then
+ zeroTimeStep: if(dEq0(dt)) then
    homogenization_RGC_updateState = .true.                                                          ! pretend everything is fine and return
    return                                                                    
  endif zeroTimeStep

@@ -508,7 +508,7 @@ end subroutine crystallite_init
 subroutine crystallite_stressAndItsTangent(updateJaco)
  use prec, only: &
    tol_math_check, &
-   dNeq
+   dNeq0
  use numerics, only: &
    subStepMinCryst, &
    subStepSizeCryst, &
@@ -776,7 +776,7 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
          endif
        else
          subFracIntermediate = maxval(crystallite_subFrac, mask=.not.crystallite_localPlasticity)
-         if (dNeq(subFracIntermediate,0.0_pReal)) then
+         if (dNeq0(subFracIntermediate)) then
            crystallite_neighborEnforcedCutback = .false.  ! look for ips that require a cutback because of a nonconverged neighbor
            !$OMP PARALLEL
            !$OMP DO PRIVATE(neighboring_e,neighboring_i)
@@ -817,7 +817,7 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
            !$OMP DO PRIVATE(neighboring_e,neighboring_i)
            do e = FEsolving_execElem(1),FEsolving_execElem(2)
              do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
-               if (.not. crystallite_localPlasticity(1,i,e) .and. dNeq(crystallite_subFrac(1,i,e),0.0_pReal)) then
+               if (.not. crystallite_localPlasticity(1,i,e) .and. dNeq0(crystallite_subFrac(1,i,e))) then
                  do n = 1_pInt,FE_NipNeighbors(FE_celltype(FE_geomtype(mesh_element(2,e))))
                    neighboring_e = mesh_ipNeighborhood(1,n,i,e)
                    neighboring_i = mesh_ipNeighborhood(2,n,i,e)
@@ -3070,7 +3070,7 @@ end subroutine crystallite_integrateStateFPI
 logical function crystallite_stateJump(ipc,ip,el)
  use prec, only: &
    prec_isNaN, &
-   dNeq
+   dNeq0
  use debug, only: &
    debug_level, &
    debug_crystallite, &
@@ -3122,7 +3122,7 @@ logical function crystallite_stateJump(ipc,ip,el)
  enddo
 
 #ifndef _OPENMP
- if (any(dNeq(plasticState(p)%deltaState(1:mySizePlasticDeltaState,c),0.0_pReal)) &
+ if (any(dNeq0(plasticState(p)%deltaState(1:mySizePlasticDeltaState,c))) &
      .and. iand(debug_level(debug_crystallite), debug_levelExtensive) /= 0_pInt &
      .and. ((el == debug_e .and. ip == debug_i .and. ipc == debug_g) &
              .or. .not. iand(debug_level(debug_crystallite), debug_levelSelective) /= 0_pInt)) then
@@ -3178,7 +3178,7 @@ logical function crystallite_integrateStress(&
  use prec, only:         pLongInt, &
                          tol_math_check, &
                          prec_isNaN, &
-                         dEq
+                         dEq0
  use numerics, only:     nStress, &
                          aTol_crystalliteStress, &
                          rTol_crystalliteStress, &
@@ -3325,7 +3325,7 @@ logical function crystallite_integrateStress(&
  !* inversion of Fp_current...
 
  invFp_current = math_inv33(Fp_current)
- failedInversionFp: if (all(dEq(invFp_current,0.0_pReal))) then
+ failedInversionFp: if (all(dEq0(invFp_current))) then
 #ifndef _OPENMP
    if (iand(debug_level(debug_crystallite), debug_levelBasic) /= 0_pInt) then
      write(6,'(a,i8,1x,a,i8,a,1x,i2,1x,i3)') '<< CRYST >> integrateStress failed on inversion of Fp_current at el (elFE) ip g ',&
@@ -3341,7 +3341,7 @@ logical function crystallite_integrateStress(&
  !* inversion of Fi_current...
 
  invFi_current = math_inv33(Fi_current)
- failedInversionFi: if (all(dEq(invFi_current,0.0_pReal))) then
+ failedInversionFi: if (all(dEq0(invFi_current))) then
 #ifndef _OPENMP
    if (iand(debug_level(debug_crystallite), debug_levelBasic) /= 0_pInt) then
      write(6,'(a,i8,1x,a,i8,a,1x,i2,1x,i3)') '<< CRYST >> integrateStress failed on inversion of Fi_current at el (elFE) ip ipc ',&
@@ -3600,7 +3600,7 @@ logical function crystallite_integrateStress(&
  invFp_new = math_mul33x33(invFp_current,B)
  invFp_new = invFp_new / math_det33(invFp_new)**(1.0_pReal/3.0_pReal)                               ! regularize by det
  Fp_new = math_inv33(invFp_new)
- failedInversionInvFp: if (all(dEq(Fp_new,0.0_pReal))) then
+ failedInversionInvFp: if (all(dEq0(Fp_new))) then
 #ifndef _OPENMP
    if (iand(debug_level(debug_crystallite), debug_levelBasic) /= 0_pInt) then
      write(6,'(a,i8,1x,a,i8,a,1x,i2,1x,i3,a,i3)') '<< CRYST >> integrateStress failed on invFp_new inversion at el ip ipc ',&
