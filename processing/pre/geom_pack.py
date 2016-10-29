@@ -67,7 +67,7 @@ for name in filenames:
   
 # --- write packed microstructure information -----------------------------------------------------
 
-  type = ''
+  compressType = ''
   former = start = -1
   reps = 0
 
@@ -82,24 +82,24 @@ for name in filenames:
 
     for current in items:
       if current == former+1 and start+reps == former+1:   
-        type = 'to'
+        compressType = 'to'
         reps += 1
       elif current == former and start == former:
-        type = 'of'
+        compressType = 'of'
         reps += 1
       else:
-        if   type == '':
+        if   compressType == '':
           table.data = []
-        elif type == '.':
+        elif compressType == '.':
           table.data = [former]
-        elif type == 'to':
+        elif compressType == 'to':
           table.data = [start,'to',former]
-        elif type == 'of':
+        elif compressType == 'of':
           table.data = [reps,'of',former]
 
         outputAlive = table.data_write(delimiter = ' ')                                             # output processed line
 
-        type = '.'
+        compressType = '.'
         start = current
         reps = 1
 
@@ -109,7 +109,7 @@ for name in filenames:
                 '.' : [former],
                 'to': [former-reps+1,'to',former],
                 'of': [reps,'of',former],
-               }[type]
+               }[compressType]
 
   outputAlive = table.data_write(delimiter = ' ')                                                   # output processed line
 
