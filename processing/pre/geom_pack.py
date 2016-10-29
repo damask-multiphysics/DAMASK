@@ -93,7 +93,7 @@ for name in filenames:
         elif type == '.':
           table.data = [former]
         elif type == 'to':
-          table.data = [former-reps+1,'to',former]
+          table.data = [start,'to',former]
         elif type == 'of':
           table.data = [reps,'of',former]
 
