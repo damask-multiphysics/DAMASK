@@ -107,7 +107,7 @@ for name in filenames:
 
   table.data = {
                 '.' : [former],
-                'to': [former-reps+1,'to',former],
+                'to': [start,'to',former],
                 'of': [reps,'of',former],
                }[compressType]
 
