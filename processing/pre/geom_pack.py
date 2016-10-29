@@ -81,7 +81,7 @@ for name in filenames:
     else:                            items = map(int,items)
 
     for current in items:
-      if current == former+1 and start+reps == former+1:   
+      if abs(current - former) == 1 and abs(start-former) == reps - 1:
         compressType = 'to'
         reps += 1
       elif current == former and start == former:
