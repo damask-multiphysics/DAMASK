@@ -418,10 +418,7 @@ class Colormap():
       return Color('MSH',Msh)
     
     def interpolate_linear(lo, hi, frac):
-      """
-      Linearly interpolate color at given fraction between lower and
-      higher color using model of lower color.
-      """
+      """Linear interpolation between lo and hi color at given fraction; output in model of lo color."""
       interpolation = (1.0 - frac) * np.array(lo.color[:]) \
                            + frac  * np.array(hi.expressAs(lo.model).color[:])
       
