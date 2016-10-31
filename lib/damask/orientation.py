@@ -28,14 +28,14 @@ class Rodrigues:
 # ******************************************************************************************
 class Quaternion:
     """
-    Orientation represented as unit quaternion
+    Orientation represented as unit quaternion.
     
-    All methods and naming conventions based on http://www.euclideanspace.com/maths/algebra/realNormedAlgebra/quaternions
+    All methods and naming conventions based on http://www.euclideanspace.com/maths/algebra/realNormedAlgebra/quaternions.
 
-    w is the real part, (x, y, z) are the imaginary parts
+    w is the real part, (x, y, z) are the imaginary parts.
     Representation of rotation is in ACTIVE form!
-    (derived directly or through angleAxis, Euler angles, or active matrix)
-    vector "a" (defined in coordinate system "A") is actively rotated to new coordinates "b"
+    (Derived directly or through angleAxis, Euler angles, or active matrix)
+    Vector "a" (defined in coordinate system "A") is actively rotated to new coordinates "b".
     b = Q * a
     b = np.dot(Q.asMatrix(),a)
     """
@@ -77,7 +77,7 @@ class Quaternion:
       return Q
 
     def __ipow__(self, exponent):
-      """In place power"""
+      """In-place power"""
       omega    = math.acos(self.w)
       vRescale = math.sin(exponent*omega)/math.sin(omega)
       self.w  = np.cos(exponent*omega)
@@ -135,7 +135,7 @@ class Quaternion:
           return self.copy()
 
     def __imul__(self, other):
-      """In place multiplication"""
+      """In-place multiplication"""
       try:                                                        # Quaternion
           Ax = self.x
           Ay = self.y
@@ -164,7 +164,7 @@ class Quaternion:
           return NotImplemented
 
     def __idiv__(self, other):
-      """In place division"""
+      """In-place division"""
       if isinstance(other, (int,float)):
           self.w /= other
           self.x /= other
@@ -184,7 +184,7 @@ class Quaternion:
           return NotImplemented
 
     def __iadd__(self, other):
-      """In place division"""
+      """In-place addition"""
       if isinstance(other, Quaternion):
           self.w += other.w
           self.x += other.x
@@ -205,7 +205,7 @@ class Quaternion:
           return self.copy()
 
     def __isub__(self, other):
-      """In place subtraction"""
+      """In-place subtraction"""
       if isinstance(other, Quaternion):
           self.w -= other.w
           self.x -= other.x
@@ -339,12 +339,12 @@ class Quaternion:
                  degrees = False,
                  standardRange = False):
       """
-      Orientation as Bunge-Euler angles
+      Orientation as Bunge-Euler angles.
 
-      conversion of ACTIVE rotation to Euler angles taken from:
+      Conversion of ACTIVE rotation to Euler angles taken from:
       Melcher, A.; Unser, A.; Reichhardt, M.; Nestler, B.; Poetschke, M.; Selzer, M.
       Conversion of EBSD data by a quaternion based algorithm to be used for grain structure simulations
-      Technische Mechanik 30 (2010) pp 401--413
+      Technische Mechanik 30 (2010) pp 401--413.
       """
       angles = [0.0,0.0,0.0]
 
@@ -510,8 +510,8 @@ class Quaternion:
         """
         Interpolation
  
-        see http://ntrs.nasa.gov/archive/nasa/casi.ntrs.nasa.gov/20070017872_2007014421.pdf
-        for (another?) way to interpolate quaternions
+        See http://ntrs.nasa.gov/archive/nasa/casi.ntrs.nasa.gov/20070017872_2007014421.pdf
+        for (another?) way to interpolate quaternions.
         """
         assert isinstance(q1, Quaternion) and isinstance(q2, Quaternion)
         Q = cls()
@@ -744,39 +744,39 @@ class Symmetry:
 
     if self.lattice == 'cubic':
       basis = {'improper':np.array([ [-1.            ,  0.            ,  1. ],
-                                   [ np.sqrt(2.)   , -np.sqrt(2.)   ,  0. ],
-                                   [ 0.            ,  np.sqrt(3.)   ,  0. ] ]),
-             'proper':np.array([ [ 0.            , -1.            ,  1. ],
-                                   [-np.sqrt(2.)   , np.sqrt(2.)    ,  0. ],
-                                   [ np.sqrt(3.)   ,  0.            ,  0. ] ]),
+                                   [ np.sqrt(2.)     , -np.sqrt(2.)   ,  0. ],
+                                   [ 0.              ,  np.sqrt(3.)   ,  0. ] ]),
+                 'proper':np.array([ [ 0.            , -1.            ,  1. ],
+                                   [-np.sqrt(2.)     , np.sqrt(2.)    ,  0. ],
+                                   [ np.sqrt(3.  )   ,  0.            ,  0. ] ]),
               }
     elif self.lattice == 'hexagonal':
       basis = {'improper':np.array([ [ 0.            ,  0.            ,  1. ],
-                                   [ 1.            , -np.sqrt(3.),     0. ],
-                                   [ 0.            ,  2.            ,  0. ] ]),
-             'proper':np.array([ [ 0.            ,  0.            ,  1. ],
-                                   [-1.            ,  np.sqrt(3.)   ,  0. ],
-                                   [ np.sqrt(3)    , -1.            ,  0. ] ]),
+                                   [ 1.              , -np.sqrt(3.)   ,  0. ],
+                                   [ 0.              ,  2.            ,  0. ] ]),
+               'proper':np.array([ [ 0.              ,  0.            ,  1. ],
+                                   [-1.              ,  np.sqrt(3.)   ,  0. ],
+                                   [ np.sqrt(3)      , -1.            ,  0. ] ]),
               }
     elif self.lattice == 'tetragonal':
       basis = {'improper':np.array([ [ 0.            ,  0.            ,  1. ],
-                                   [ 1.            , -1.            ,  0. ],
-                                   [ 0.            ,  np.sqrt(2.),     0. ] ]),
-             'proper':np.array([ [ 0.            ,  0.            ,  1. ],
-                                   [-1.            ,  1.            ,  0. ],
-                                   [ np.sqrt(2.)   ,  0.            ,  0. ] ]),
+                                   [ 1.              , -1.            ,  0. ],
+                                   [ 0.              ,  np.sqrt(2.)   ,  0. ] ]),
+               'proper':np.array([ [ 0.              ,  0.            ,  1. ],
+                                   [-1.              ,  1.            ,  0. ],
+                                   [ np.sqrt(2.)     ,  0.            ,  0. ] ]),
               }
     elif self.lattice == 'orthorhombic':
       basis = {'improper':np.array([ [ 0., 0., 1.],
-                                   [ 1., 0., 0.],
-                                   [ 0., 1., 0.] ]),
-             'proper':np.array([ [ 0., 0., 1.],
-                                   [-1., 0., 0.],
-                                   [ 0., 1., 0.] ]),
+                                     [ 1., 0., 0.],
+                                     [ 0., 1., 0.] ]),
+                 'proper':np.array([ [ 0., 0., 1.],
+                                     [-1., 0., 0.],
+                                     [ 0., 1., 0.] ]),
               }
     else:
-      basis = {'improper':np.zeros((3,3),dtype=float),
-             'proper':np.zeros((3,3),dtype=float),
+      basis = {'improper': np.zeros((3,3),dtype=float),
+                 'proper': np.zeros((3,3),dtype=float),
               }
 
     if np.all(basis == 0.0):

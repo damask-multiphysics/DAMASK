@@ -51,7 +51,7 @@ def ParseOutputFormat(filename,what,me):
 
 parser = OptionParser(option_class=damask.extendableOption, usage='%prog [option(s)] Abaqus.Inputfile(s)', description = """
 Transfer the output variables requested in the material.config to
-properly labelled user defined variables within the Abaqus input file (*.inp).
+properly labelled user-defined variables within the Abaqus input file (*.inp).
 
 Requires the files 
 <modelname_jobname>.output<Homogenization/Crystallite/Constitutive>
@@ -84,7 +84,7 @@ parser.set_defaults(number = 0,
 (options, files) = parser.parse_args()
 
 if not files:
-  parser.error('no file(s) specified...')
+  parser.error('no file(s) specified.')
 
 me = {  'Homogenization':   options.homog,
         'Crystallite':      options.cryst,
@@ -93,7 +93,7 @@ me = {  'Homogenization':   options.homog,
 
 
 for myFile in files:
-  print('\033[1m'+scriptName+'\033[0m: '+myFile+'\n')
+  damask.util.report(scriptName,myFile)
   if options.useFile:
     formatFile = os.path.splitext(options.useFile)[0]
   else:
@@ -103,7 +103,7 @@ for myFile in files:
     print('{} not found'.format(myFile))
     continue
     
-  print('Scanning format files of: %s'%formatFile)
+  print('Scanning format files of: {}'.format(formatFile))
 
   if options.number < 1:
     outputFormat = {}
@@ -140,7 +140,7 @@ for myFile in files:
           UserVars += ['%i_%s'%(grain+1,var[0]) for i in range(var[1])]
 
 # Now change *.inp file(s)        
-  print('Adding labels to:         %s'%myFile)
+  print('Adding labels to:         {}'.format(myFile))
   inFile = open(myFile)
   input = inFile.readlines()
   inFile.close()
@@ -154,11 +154,11 @@ for myFile in files:
     if m:
       lastSection = thisSection
       thisSection = m.group(1)
-      if (lastSection.upper() == '*DEPVAR' and thisSection.upper() == '*USER'):       #Abaqus keyword can be upper or lower case
+      if (lastSection.upper() == '*DEPVAR' and thisSection.upper() == '*USER'):      # Abaqus keyword can be upper or lower case
         if options.number > 0:
-          output.write('%i\n'%options.number)                                         #Abaqus needs total number of SDVs in the line after *Depvar keyword
+          output.write('{}\n'.format(options.number))                                # Abaqus needs total number of SDVs in the line after *Depvar keyword
         else:
-          output.write('%i\n'%len(UserVars))
+          output.write('{}\n'.format(len(UserVars)))
           
           for i in range(len(UserVars)): 
              output.write('%i,"%i%s","%i%s"\n'%(i+1,0,UserVars[i],0,UserVars[i]))    #index,output variable key,output variable description

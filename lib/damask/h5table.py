@@ -24,7 +24,7 @@ except(NameError):
 
 
 def lables_to_path(label, dsXMLPath=None):
-    """Read the xml definition file and return the path."""
+    """Read the XML definition file and return the path."""
     if dsXMLPath is None:
         # use the default storage layout in DS_HDF5.xml
         if "h5table.pyc" in __file__:
@@ -49,31 +49,31 @@ def lables_to_path(label, dsXMLPath=None):
 
 class H5Table(object):
     """
-    Light weight interface class for h5py
+    Lightweight interface class for h5py
 
     DESCRIPTION
     -----------
         Interface/wrapper class for manipulating data in HDF5 with DAMASK
         specialized data structure.
-        -->try to maintain a minimal API design.
+        --> try to maintain a minimal API design.
     PARAMETERS
     ----------
     h5f_path: str
-        Absolute path the HDF5 file
+        Absolute path of the HDF5 file
     METHOD
     ------
-    del_entry()  -- Force delete attributes/group/datasets (Dangerous)
+    del_entry()  -- Force delete attributes/group/datasets (dangerous)
     get_attr()   -- Return attributes if possible
     add_attr()   -- Add NEW attributes to dataset/group (no force overwrite)
     get_data()   -- Retrieve data in numpy.ndarray
     add_data()   -- Add dataset to H5 file
-    get_cmdlog() -- Return the command used to generate the data if possible.
+    get_cmdlog() -- Return the command used to generate the data if possible
     NOTE
     ----
         1. As an interface class, it uses the lazy evaluation design
-        that read the data only when its absolutely necessary.
-        2. The command line used to generate new feature is stored with
-        each dataset as dataset attribute.
+           that reads the data only when it is absolutely necessary.
+        2. The command line used to generate each new feature is stored with
+           each dataset as dataset attribute.
 
     """
 
