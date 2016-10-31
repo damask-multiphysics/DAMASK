@@ -94,7 +94,7 @@ me = {  'Homogenization':   options.homog,
 
 for myFile in files:
   damask.util.report(scriptName,myFile)
-  if options.useFile:
+  if options.useFile is not None:
     formatFile = os.path.splitext(options.useFile)[0]
   else:
     formatFile = os.path.splitext(myFile)[0]
@@ -146,7 +146,7 @@ for myFile in files:
   inFile.close()
   output = open(myFile,'w')
   thisSection = ''
-  if options.damaskOption:
+  if options.damaskOption is not None:
     output.write('$damask {0}\n'.format(options.damaskOption))
   for line in input:
     #Abaqus keyword line begins with: *keyword, argument1, ...
@@ -165,4 +165,3 @@ for myFile in files:
     if (thisSection.upper() != '*DEPVAR' or not re.match('\s*\d',line)):
       output.write(line)
   output.close()
-

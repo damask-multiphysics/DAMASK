@@ -48,9 +48,9 @@ def ParseOutputFormat(filename,what,me):
           format['outputs'].append([output,length])
   return format
 
-parser = OptionParser(option_class=damask.extendableOption, usage='%prog [option(s)] Marc.Inputfile(s)', description="""
+parser = OptionParser(option_class=damask.extendableOption, usage='%prog [option(s)] Marc.Inputfile(s)', description = """
 Transfer the output variables requested in the material.config to
-properly labelled user defined variables within the Marc input file (*.dat).
+properly labelled user-defined variables within the Marc input file (*.dat).
 
 Requires the files 
 <modelname_jobname>.output<Homogenization/Crystallite/Constitutive>
@@ -61,40 +61,29 @@ Or have an existing set of user variables copied over from another *.dat file.
 
 """, version = scriptID)
 
-
-parser.add_option('-n','--number', dest='number', type='int', \
-          metavar='int',
-          help='maximum requested User Defined Variable [%default]')
-parser.add_option('--homogenization', dest='homog', \
-          metavar='string',
-          help='homogenization identifier (as string or integer [%default])')
-parser.add_option('--crystallite', dest='cryst', \
-          metavar='string',
-          help='crystallite identifier (as string or integer [%default])')
-parser.add_option('--phase', dest='phase', \
-          metavar='string',
-          help='phase identifier (as string or integer [%default])')
-parser.add_option('--use', dest='useFile', \
-          metavar='string',
-          help='Optionally parse output descriptors from '+
-               'different <model_job>.outputZZZ file. Saves the effort '+
-               'to start a calculation for each job)')
-parser.add_option('--option', dest='damaskOption', \
-          metavar='string',
-          help='Add damask option to input file '+
-               'for example: "periodic x z"')
-parser.set_defaults(number = 0)
-parser.set_defaults(homog = '1')
-parser.set_defaults(cryst = '1')
-parser.set_defaults(phase = '1')
-parser.set_defaults(useFile = '')
-parser.set_defaults(damaskOption = '')
+parser.add_option('-m', dest='number', type='int', metavar = 'int',
+                  help='maximum requested User Defined Variable [%default]')
+parser.add_option('--homogenization', dest='homog', metavar = 'string',
+                  help='homogenization name or index [%default]')
+parser.add_option('--crystallite', dest='cryst', metavar = 'string',
+                  help='crystallite identifier name or index [%default]')
+parser.add_option('--phase', dest='phase', metavar = 'string',
+                  help='phase identifier name or index [%default]')
+parser.add_option('--use', dest='useFile', metavar = 'string',
+                  help='optionally parse output descriptors from '+
+                       'outputXXX files of given name')
+parser.add_option('--option', dest='damaskOption', metavar = 'string',
+                  help='Add DAMASK option to input file, e.g. "periodic x z"')
+ 
+parser.set_defaults(number = 0,
+                    homog = '1',
+                    cryst = '1',
+                    phase = '1')
 
 (options, files) = parser.parse_args()
 
 if not files:
-  parser.print_help()
-  parser.error('no file(s) specified...')
+  parser.error('no file(s) specified.')
 
 me = {  'Homogenization':   options.homog,
         'Crystallite':      options.cryst,
@@ -103,8 +92,8 @@ me = {  'Homogenization':   options.homog,
 
 
 for myFile in files:
-  print('\033[1m'+scriptName+'\033[0m: '+myFile+'\n')
-  if options.useFile != '':
+  damask.util.report(scriptName,myFile)
+  if options.useFile is not None:
     formatFile = os.path.splitext(options.useFile)[0]
   else:
     formatFile = os.path.splitext(myFile)[0]
@@ -113,7 +102,7 @@ for myFile in files:
     print('{} not found'.format(myFile))
     continue
     
-  print('Scanning format files of: %s'%formatFile)
+  print('Scanning format files of: {}'.format(formatFile))
 
   if options.number < 1:
     outputFormat = {}
@@ -121,7 +110,7 @@ for myFile in files:
     for what in me:
       outputFormat[what] = ParseOutputFormat(formatFile,what,me[what])
       if '_id' not in outputFormat[what]['specials']:
-        print("'{}' not found in <{}>"%(me[what],what))
+        print("'{}' not found in <{}>".format(me[what],what))
         print('\n'.join(map(lambda x:'  '+x,outputFormat[what]['specials']['brothers'])))
         sys.exit(1)
 
@@ -150,13 +139,13 @@ for myFile in files:
           UserVars += ['%i_%s'%(grain+1,var[0]) for i in range(var[1])]
 
 # Now change *.dat file(s)        
-  print('Adding labels to:         %s'%myFile)
+  print('Adding labels to:         {}'.format(myFile))
   inFile = open(myFile)
   input = inFile.readlines()
   inFile.close()
   output = open(myFile,'w')
   thisSection = ''
-  if options.damaskOption:
+  if options.damaskOption is not None:
     output.write('$damask {0}\n'.format(options.damaskOption))
   for line in input:
     m = re.match('(\w+)\s',line)
