@@ -8,9 +8,9 @@ class Color():
   """
   Conversion of colors between different color-spaces.
 
-  Colors should be given in the form 
-  Color('model',[vector]).To convert and copy color from one space to other, use the methods 
-  convertTo('model') and expressAs('model')spectively
+  Colors should be given in the form Color('model',[vector]).
+  To convert or copy color from one space to other, use the methods 
+  convertTo('model') or expressAs('model'), respectively.
   """
   
   __slots__ = [
@@ -88,7 +88,7 @@ class Color():
     """
     Convert H(ue) S(aturation) L(uminance) to R(red) G(reen) B(lue) 
     
-    with S,L,H,R,G,B running from 0 to 1
+    with all values in the range of 0 to 1
     from http://en.wikipedia.org/wiki/HSL_and_HSV
     """
     if self.model != 'HSL': return
@@ -114,7 +114,7 @@ class Color():
     """
     Convert R(ed) G(reen) B(lue) to H(ue) S(aturation) L(uminance)
     
-    with S,L,H,R,G,B running from 0 to 1
+    with all values in the range of 0 to 1
     from http://130.113.54.154/~monger/hsl-rgb.html 
     """ 
     if self.model != 'RGB': return
@@ -240,7 +240,8 @@ class Color():
     Convert CIE XYZ to CIE Lab
 
     with XYZ in the range of 0 to 1
-    from http://en.wikipedia.org/wiki/Lab_color_space, http://www.cs.rit.edu/~ncs/color/t_convert.html
+    from http://en.wikipedia.org/wiki/Lab_color_space,
+    http://www.cs.rit.edu/~ncs/color/t_convert.html
     """
     if self.model != 'XYZ': return
     
@@ -282,7 +283,7 @@ class Color():
     """
     Convert Msh colorspace to CIE Lab
 
-    s,h in radians
+    with s,h in radians
     from http://www.cs.unm.edu/~kmorel/documents/ColorMaps/DivergingColorMapWorkshop.xls
     """
     if self.model != 'MSH': return
@@ -419,8 +420,7 @@ class Colormap():
     def interpolate_linear(lo, hi, frac):
       """
       Linearly interpolate color at given fraction between lower and
-
-      higher color in model of lower color
+      higher color using model of lower color.
       """
       interpolation = (1.0 - frac) * np.array(lo.color[:]) \
                            + frac  * np.array(hi.expressAs(lo.model).color[:])
@@ -445,10 +445,10 @@ class Colormap():
     """
     [RGB] colormap for use in paraview or gmsh, or as raw string, or array.
 
-    arguments: name, format, steps, crop.
-    format is one of (paraview, gmsh, raw, list).
-    crop selects a (sub)range in [-1.0,1.0].
-    generates sequential map if one limiting color is either white or black,
+    Arguments: name, format, steps, crop.
+    Format is one of (paraview, gmsh, raw, list).
+    Crop selects a (sub)range in [-1.0,1.0].
+    Generates sequential map if one limiting color is either white or black,
     diverging map otherwise.
     """
     format = format.lower()                                                                         # consistent comparison basis
@@ -482,4 +482,3 @@ class Colormap():
       raise NameError('unknown color export format')
     
     return '\n'.join(colormap) + '\n' if type(colormap[0]) is str else colormap
-      
