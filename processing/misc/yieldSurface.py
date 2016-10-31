@@ -11,15 +11,10 @@ scriptName = os.path.splitext(os.path.basename(__file__))[0]
 scriptID   = ' '.join([scriptName,damask.version])
 
 def runFit(exponent, eqStress, dimension, criterion):
-  global s, threads, myFit, myLoad
-  global fitResults, fitErrors, fitResidual, stressAll, strainAll
-  global N_simulations, Guess, dDim
-  
-  fitResults = []
-  fitErrors = []
-  fitResidual = []
-  Guess = []
-  threads=[]
+  global threads, myFit, myLoad
+  global fitResidual
+  global Guess, dDim
+
   dDim = dimension - 3
   nParas = len(fitCriteria[criterion]['bound'][dDim])
   nExpo = fitCriteria[criterion]['nExpo']
@@ -37,13 +32,9 @@ def runFit(exponent, eqStress, dimension, criterion):
       if g == 0: g = temp[1]*0.5
       Guess.append(g)
 
-  N_simulations=0
-  s=threading.Semaphore(1)
   myLoad = Loadcase(options.load[0],options.load[1],options.load[2],
                     nSet = 10, dimension = dimension, vegter = options.criterion=='vegter')
 
-  stressAll= [np.zeros(0,'d').reshape(0,0) for i in range(int(options.yieldValue[2]))]
-  strainAll= [np.zeros(0,'d').reshape(0,0) for i in range(int(options.yieldValue[2]))]
 
   myFit = Criterion(exponent,eqStress, dimension, criterion)
   for t in range(options.threads):
@@ -1222,17 +1213,17 @@ class myThread (threading.Thread):
     threading.Thread.__init__(self)
     self.threadID = threadID
   def run(self):
-    s.acquire()
+    semaphore.acquire()
     conv=converged()
-    s.release()
+    semaphore.release()
     while not conv:
       doSim(self.name)
-      s.acquire()
+      semaphore.acquire()
       conv=converged()
-      s.release()
+      semaphore.release()
 
 def doSim(thread):
-  s.acquire()
+  semaphore.acquire()
   global myLoad
   loadNo=loadcaseNo()
   if not os.path.isfile('%s.load'%loadNo):
@@ -1240,22 +1231,22 @@ def doSim(thread):
     f=open('%s.load'%loadNo,'w')
     f.write(myLoad.getLoadcase(loadNo))
     f.close()
-    s.release()
-  else: s.release()
+    semaphore.release()
+  else: semaphore.release()
 
 # if spectralOut does not exist, run simulation
-  s.acquire()
+  semaphore.acquire()
   if not os.path.isfile('%s_%i.spectralOut'%(options.geometry,loadNo)):
     damask.util.croak('Starting simulation %i (%s)'%(loadNo,thread))
-    s.release()
+    semaphore.release()
     damask.util.execute('DAMASK_spectral -g %s -l %i'%(options.geometry,loadNo))
-  else: s.release()
+  else: semaphore.release()
 
 # if ASCII tables do not exist, run postprocessing
-  s.acquire()
+  semaphore.acquire()
   if not os.path.isfile('./postProc/%s_%i.txt'%(options.geometry,loadNo)):
     damask.util.croak('Starting post processing for simulation %i (%s)'%(loadNo,thread))
-    s.release()
+    semaphore.release()
     try:
       damask.util.execute('postResults --cr f,p --co totalshear %s_%i.spectralOut'%(options.geometry,loadNo))
     except:
@@ -1263,10 +1254,10 @@ def doSim(thread):
     damask.util.execute('addCauchy ./postProc/%s_%i.txt'%(options.geometry,loadNo))
     damask.util.execute('addStrainTensors -0 -v ./postProc/%s_%i.txt'%(options.geometry,loadNo))
     damask.util.execute('addMises -s Cauchy -e ln(V) ./postProc/%s_%i.txt'%(options.geometry,loadNo))
-  else: s.release()
+  else: semaphore.release()
 
 # reading values from ASCII table (including linear interpolation between points)
-  s.acquire()
+  semaphore.acquire()
   damask.util.croak('Reading values from simulation %i (%s)'%(loadNo,thread))
   refFile = './postProc/%s_%i.txt'%(options.geometry,loadNo)
   table = damask.ASCIItable(refFile,readonly=True)
@@ -1278,7 +1269,7 @@ def doSim(thread):
 
   for l in [thresholdKey,'1_Cauchy']:
     if l not in table.labels(raw = True): damask.util.croak('%s not found'%l)
-  s.release()
+  semaphore.release()
 
   table.data_readArray(['%i_Cauchy'%(i+1) for i in range(9)]+[thresholdKey]+['%i_ln(V)'%(i+1) for i in range(9)])
 
@@ -1303,13 +1294,13 @@ def doSim(thread):
       else:
         line+=1
     if not validity[i]:
-      s.acquire()
+      semaphore.acquire()
       damask.util.croak('The data of result %i at the threshold %f is invalid,'%(loadNo,threshold)\
                         +'the fitting at this point is skipped')
-      s.release()
+      semaphore.release()
 
 # do the actual fitting procedure and write results to file
-  s.acquire()
+  semaphore.acquire()
   global stressAll, strainAll
   f=open(options.geometry+'_'+options.criterion+'_'+str(time.time())+'.txt','w')
   f.write(' '.join([options.fitting]+myFit.report_labels())+'\n')
@@ -1322,10 +1313,10 @@ def doSim(thread):
                  ' '.join(map(str,myFit.fit(stressAll[i].reshape(len(stressAll[i])//6,6).transpose())))+'\n')
   except Exception:
     damask.util.croak('Could not fit results of simulation (%s)'%thread)
-    s.release()
+    semaphore.release()
     return
   damask.util.croak('\n')
-  s.release()
+  semaphore.release()
 
 def loadcaseNo():
   global N_simulations
@@ -1420,6 +1411,20 @@ if options.dimension not in fitCriteria[options.criterion]['dimen']:
 
 if options.criterion not in ['vonmises','tresca','drucker','hill1948'] and options.eqStress is None:
    parser.error('please specify an equivalent stress (e.g. fitting to von Mises)') 
+  
+# global variables
+fitResults = []
+fitErrors = []
+fitResidual = []
+stressAll= [np.zeros(0,'d').reshape(0,0) for i in range(int(options.yieldValue[2]))]
+strainAll= [np.zeros(0,'d').reshape(0,0) for i in range(int(options.yieldValue[2]))]
+N_simulations=0
+Guess = []
+threads=[]
+semaphore=threading.Semaphore(1)
+dDim = None
+myLoad = None
+myFit = None
 
 run = runFit(options.exponent, options.eqStress, options.dimension, options.criterion)
 
