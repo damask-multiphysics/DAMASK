@@ -199,7 +199,7 @@ if options.lattice in latticeChoices[:2]:
   c_normal    = slipSystems[options.lattice][:,3:]
 elif options.lattice == latticeChoices[2]:
   # convert 4 Miller index notation of hex to orthogonal 3 Miller index notation
-  for i in xrange(len(c_direction)):
+  for i in range(len(c_direction)):
     c_direction[i] = np.array([slipSystems['hex'][i,0]*1.5,
                               (slipSystems['hex'][i,0] + 2.*slipSystems['hex'][i,1])*0.5*np.sqrt(3),
                                slipSystems['hex'][i,3]*options.CoverA,

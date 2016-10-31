@@ -14,7 +14,7 @@ scriptID = ' '.join([scriptName, damask.version])
 
 # ----- Helper functions ----- #
 def calcMises(what, tensor):
-    """calculate von Mises equivalent"""
+    """Calculate von Mises equivalent"""
     dev = tensor - np.trace(tensor)/3.0*np.eye(3)
     symdev = 0.5*(dev+dev.T)
     return math.sqrt(np.sum(symdev*symdev.T) *
@@ -61,7 +61,7 @@ for name in filenames:
 
         # calculate von Mises equivalent row by row
         vmStress = np.zeros(tnsr.shape[0])
-        for ri in xrange(tnsr.shape[0]):
+        for ri in range(tnsr.shape[0]):
             stressTnsr = tnsr[ri, :].reshape(3, 3)
             vmStress[ri] = calcMises('stress', stressTnsr)
 
@@ -77,7 +77,7 @@ for name in filenames:
     if options.strain is not None:
         tnsr = h5f.get_data(options.strain)
         vmStrain = np.zeros(tnsr.shape[0])
-        for ri in xrange(tnsr.shape[0]):
+        for ri in range(tnsr.shape[0]):
             strainTnsr = tnsr[ri, :].reshape(3, 3)
             vmStrain[ri] = calcMises('strain', strainTnsr)
         label = "Mises{}".format(options.strain)

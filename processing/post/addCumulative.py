@@ -59,7 +59,7 @@ for name in filenames:
       dims.append(dim)
       columns.append(table.label_index(what))
       table.labels_append('cum({})'.format(what) if dim == 1 else
-                         ['{}_cum({})'.format(i+1,what) for i in xrange(dim)]  )                    # extend ASCII header with new labels
+                         ['{}_cum({})'.format(i+1,what) for i in range(dim)]  )                     # extend ASCII header with new labels
 
   if remarks != []: damask.util.croak(remarks)
   if errors  != []:

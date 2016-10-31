@@ -127,12 +127,12 @@ for name in filenames:
                                         weights=None if options.weight is None else table.data[:,2])
 
   if options.normCol:
-    for x in xrange(options.bins[0]):
+    for x in range(options.bins[0]):
       sum = np.sum(grid[x,:])
       if sum > 0.0:
         grid[x,:] /= sum
   if options.normRow:
-    for y in xrange(options.bins[1]):
+    for y in range(options.bins[1]):
       sum = np.sum(grid[:,y])
       if sum > 0.0:
         grid[:,y] /= sum
@@ -150,8 +150,8 @@ for name in filenames:
 
   delta[2] = minmax[2,1]-minmax[2,0]
 
-  for x in xrange(options.bins[0]):
-    for y in xrange(options.bins[1]):
+  for x in range(options.bins[0]):
+    for y in range(options.bins[1]):
       result[x,y,:] = [minmax[0,0]+delta[0]/options.bins[0]*(x+0.5),
                        minmax[1,0]+delta[1]/options.bins[1]*(y+0.5),
                        min(1.0,max(0.0,(grid[x,y]-minmax[2,0])/delta[2]))]

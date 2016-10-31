@@ -119,7 +119,7 @@ for name in filenames:
 
     # calculate the IPF color
     rgbArrays = np.zeros((orieData.shape[0], 3))
-    for ci in xrange(rgbArrays.shape[0]):
+    for ci in range(rgbArrays.shape[0]):
         if inputtype == 'eulers':
             o = damask.Orientation(Eulers=np.array(orieData[ci, :])*toRadians,
                                    symmetry=options.symmetry).reduced()

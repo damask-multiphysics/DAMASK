@@ -17,7 +17,7 @@ def cell2node(cellData,grid):
   nodeData = 0.0
   datalen = np.array(cellData.shape[3:]).prod()
   
-  for i in xrange(datalen):
+  for i in range(datalen):
     node = scipy.ndimage.convolve(cellData.reshape(tuple(grid[::-1])+(datalen,))[...,i],
                                   np.ones((2,2,2))/8.,                                              # 2x2x2 neighborhood of cells
                                   mode = 'wrap',
@@ -33,7 +33,7 @@ def cell2node(cellData,grid):
 
 #--------------------------------------------------------------------------------------------------
 def deformationAvgFFT(F,grid,size,nodal=False,transformed=False):
-  """calculate average cell center (or nodal) deformation for deformation gradient field specified in each grid cell"""
+  """Calculate average cell center (or nodal) deformation for deformation gradient field specified in each grid cell"""
   if nodal:
     x, y, z = np.meshgrid(np.linspace(0,size[2],1+grid[2]),
                           np.linspace(0,size[1],1+grid[1]),
@@ -55,7 +55,7 @@ def deformationAvgFFT(F,grid,size,nodal=False,transformed=False):
 
 #--------------------------------------------------------------------------------------------------
 def displacementFluctFFT(F,grid,size,nodal=False,transformed=False):
-  """calculate cell center (or nodal) displacement for deformation gradient field specified in each grid cell"""
+  """Calculate cell center (or nodal) displacement for deformation gradient field specified in each grid cell"""
   integrator = 0.5j * size / math.pi
 
   kk, kj, ki = np.meshgrid(np.where(np.arange(grid[2])>grid[2]//2,np.arange(grid[2])-grid[2],np.arange(grid[2])),
@@ -131,7 +131,7 @@ def volTetrahedron(coords):
 
 def volumeMismatch(size,F,nodes):
   """
-  calculates the volume mismatch
+  Calculates the volume mismatch
   
   volume mismatch is defined as the difference between volume of reconstructed 
   (compatible) cube and determinant of defgrad at the FP
@@ -142,9 +142,9 @@ def volumeMismatch(size,F,nodes):
  
 #--------------------------------------------------------------------------------------------------
 # calculate actual volume and volume resulting from deformation gradient
-  for k in xrange(grid[2]):
-    for j in xrange(grid[1]):
-      for i in xrange(grid[0]):
+  for k in range(grid[2]):
+    for j in range(grid[1]):
+      for i in range(grid[0]):
         coords[0,0:3] = nodes[k,  j,  i  ,0:3]
         coords[1,0:3] = nodes[k  ,j,  i+1,0:3]
         coords[2,0:3] = nodes[k  ,j+1,i+1,0:3]
@@ -190,9 +190,9 @@ def shapeMismatch(size,F,nodes,centres):
  
 #--------------------------------------------------------------------------------------------------
 # compare deformed original and deformed positions to actual positions
-  for k in xrange(grid[2]):
-    for j in xrange(grid[1]):
-      for i in xrange(grid[0]):
+  for k in range(grid[2]):
+    for j in range(grid[1]):
+      for i in range(grid[0]):
        sMismatch[k,j,i] = \
          + np.linalg.norm(nodes[k,  j,  i  ,0:3] - centres[k,j,i,0:3] - np.dot(F[k,j,i,:,:], coordsInitial[0,0:3]))\
          + np.linalg.norm(nodes[k,  j,  i+1,0:3] - centres[k,j,i,0:3] - np.dot(F[k,j,i,:,:], coordsInitial[1,0:3]))\
@@ -288,7 +288,7 @@ for name in filenames:
                             np.zeros((table.data.shape[0],
                                       3-table.data[:,9:].shape[1]),dtype='f')))                     # fill coords up to 3D with zeros
 
-  coords = [np.unique(table.data[:,9+i]) for i in xrange(3)]
+  coords = [np.unique(table.data[:,9+i]) for i in range(3)]
   mincorner = np.array(map(min,coords))
   maxcorner = np.array(map(max,coords))
   grid   = np.array(map(len,coords),'i')
@@ -324,9 +324,9 @@ for name in filenames:
     volumeMismatch = volumeMismatch(size,table.data[:,:9].reshape(grid[2],grid[1],grid[0],3,3),nodes)
 
 # ------------------------------------------ output data -------------------------------------------
-  for i in xrange(grid[2]):
-    for j in xrange(grid[1]):
-      for k in xrange(grid[0]):
+  for i in range(grid[2]):
+    for j in range(grid[1]):
+      for k in range(grid[0]):
         table.data_read()
         if options.shape:  table.data_append(shapeMismatch[i,j,k])
         if options.volume: table.data_append(volumeMismatch[i,j,k])

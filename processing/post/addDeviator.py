@@ -85,7 +85,7 @@ for name in filenames:
   table.info_append(scriptID + '\t' + ' '.join(sys.argv[1:]))
   for type, data in items.iteritems():
     for label in data['active']:
-      table.labels_append(['{}_dev({})'.format(i+1,label) for i in xrange(data['dim'])] + \
+      table.labels_append(['{}_dev({})'.format(i+1,label) for i in range(data['dim'])] + \
                          (['sph({})'.format(label)] if options.spherical else []))                  # extend ASCII header with new labels
   table.head_write()
 

@@ -56,7 +56,7 @@ parser.set_defaults(condition=None)
 (options, filenames) = parser.parse_args()
 
 # ----- parse formulas ----- #
-for i in xrange(len(options.formulas)):
+for i in range(len(options.formulas)):
     options.formulas[i] = options.formulas[i].replace(';', ',')
 
 # ----- loop over input files ----- #
@@ -64,7 +64,7 @@ for name in filenames:
     try:
         h5f = damask.H5Table(name, new_file=False)
     except:
-        print "!!!Cannot process {}".format(name)
+        print("!!!Cannot process {}".format(name))
         continue
     damask.util.report(scriptName, name)
 

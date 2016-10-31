@@ -79,7 +79,7 @@ incNum = int(asciiTable.data[asciiTable.label_index('inc'), 0])
 fullTable = np.copy(asciiTable.data)  # deep copy all data, just to be safe
 labels = asciiTable.labels()
 labels_idx = [asciiTable.label_index(label) for label in labels]
-featuresDim = [labels_idx[i+1] - labels_idx[i] for i in xrange(len(labels)-1)]
+featuresDim = [labels_idx[i+1] - labels_idx[i] for i in range(len(labels)-1)]
 featuresDim.append(fullTable.shape[1] - labels_idx[-1])
 
 # ----- figure out size and grid ----- #
@@ -113,7 +113,7 @@ h5f.add_data("Vz", Vz, cmd_log=cmd_log)
 
 # add the rest of data from table
 labelsProcessed = ['inc']
-for fi in xrange(len(labels)):
+for fi in range(len(labels)):
         featureName = labels[fi]
         # remove trouble maker "("" and ")" from label/feature name
         if "(" in featureName:
@@ -136,7 +136,7 @@ for fi in xrange(len(labels)):
         #                            mshGridDim[2],
         #                            dataset.shape[1]))
         # write out data
-        print "adding {}...".format(featureName)
+        print("adding {}...".format(featureName))
         h5f.add_data(featureName, dataset, cmd_log=cmd_log)
         # write down the processed label
         labelsProcessed.append(featureName)

@@ -69,7 +69,7 @@ for name in filenames:
   if columnMissing: continue
 
 # ------------------------------------------ assemble header ---------------------------------------
-  table.labels_append(['%i_coord'%(i+1) for i in xrange(3)])                                       # extend ASCII header with new labels
+  table.labels_append(['%i_coord'%(i+1) for i in range(3)])                                         # extend ASCII header with new labels
   table.head_write()
   
 # ------------------------------------------ process data ------------------------------------------

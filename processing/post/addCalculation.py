@@ -53,7 +53,7 @@ if options.labels is None or options.formulas is None:
 if len(options.labels) != len(options.formulas):
   parser.error('number of labels ({}) and formulas ({}) do not match.'.format(len(options.labels),len(options.formulas)))
 
-for i in xrange(len(options.formulas)):
+for i in range(len(options.formulas)):
   options.formulas[i] = options.formulas[i].replace(';',',')
 
 # ------------------------------------- loop over input files --------------------------------------
@@ -154,7 +154,7 @@ for name in filenames:
 # ----------------------------------- line 1: assemble header --------------------------------------
 
       for newby in newbies:
-        table.labels_append(['{}_{}'.format(i+1,newby) for i in xrange(resultDim[newby])] 
+        table.labels_append(['{}_{}'.format(i+1,newby) for i in range(resultDim[newby])] 
                              if resultDim[newby] > 1 else newby)
 
       table.info_append(scriptID + '\t' + ' '.join(sys.argv[1:]))

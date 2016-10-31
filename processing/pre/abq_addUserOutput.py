@@ -3,7 +3,7 @@
 
 import sys,os,re
 from optparse import OptionParser
-import damask 
+import damask
 
 scriptName = os.path.splitext(os.path.basename(__file__))[0]
 scriptID   = ' '.join([scriptName,damask.version])
@@ -14,13 +14,13 @@ def ParseOutputFormat(filename,what,me):
 
   outputmetafile = filename+'.output'+what
   try:
-    file = open(outputmetafile)
+    myFile = open(outputmetafile)
   except:
     print('Could not open file %s'%outputmetafile)
     raise
   else: 
-    content = file.readlines()
-    file.close()
+    content = myFile.readlines()
+    myFile.close()
 
   tag = ''
   tagID = 0
@@ -51,7 +51,7 @@ def ParseOutputFormat(filename,what,me):
 
 parser = OptionParser(option_class=damask.extendableOption, usage='%prog [option(s)] Abaqus.Inputfile(s)', description = """
 Transfer the output variables requested in the material.config to
-properly labelled user defined variables within the Abaqus input file (*.inp).
+properly labelled user-defined variables within the Abaqus input file (*.inp).
 
 Requires the files 
 <modelname_jobname>.output<Homogenization/Crystallite/Constitutive>
@@ -60,7 +60,7 @@ that are written during the first run of the model.
 Specify which user block format you want to apply by stating the homogenization, crystallite, and phase identifiers.
 Or have an existing set of user variables copied over from another *.inp file.
 
-""", version= scriptID)
+""", version = scriptID)
 
 parser.add_option('-m', dest='number', type='int', metavar = 'int',
                   help='maximum requested User Defined Variable [%default]')
@@ -84,7 +84,7 @@ parser.set_defaults(number = 0,
 (options, files) = parser.parse_args()
 
 if not files:
-  parser.error('no file(s) specified...')
+  parser.error('no file(s) specified.')
 
 me = {  'Homogenization':   options.homog,
         'Crystallite':      options.cryst,
@@ -92,18 +92,18 @@ me = {  'Homogenization':   options.homog,
      }
 
 
-for file in files:
-  print '\033[1m'+scriptName+'\033[0m: '+file+'\n'
+for myFile in files:
+  damask.util.report(scriptName,myFile)
   if options.useFile:
     formatFile = os.path.splitext(options.useFile)[0]
   else:
-    formatFile = os.path.splitext(file)[0]
-  file = os.path.splitext(file)[0]+'.inp'
-  if not os.path.lexists(file):
-    print file,'not found'
+    formatFile = os.path.splitext(myFile)[0]
+  myFile = os.path.splitext(myFile)[0]+'.inp'
+  if not os.path.lexists(myFile):
+    print('{} not found'.format(myFile))
     continue
     
-  print('Scanning format files of: %s'%formatFile)
+  print('Scanning format files of: {}'.format(formatFile))
 
   if options.number < 1:
     outputFormat = {}
@@ -111,8 +111,8 @@ for file in files:
     for what in me:
       outputFormat[what] = ParseOutputFormat(formatFile,what,me[what])
       if '_id' not in outputFormat[what]['specials']:
-        print "'%s' not found in <%s>"%(me[what],what)
-        print '\n'.join(map(lambda x:'  '+x,outputFormat[what]['specials']['brothers']))
+        print("'{}' not found in <{}>".format(me[what],what))
+        print('\n'.join(map(lambda x:'  '+x,outputFormat[what]['specials']['brothers'])))
         sys.exit(1)
 
     UserVars = ['HomogenizationCount']
@@ -140,11 +140,11 @@ for file in files:
           UserVars += ['%i_%s'%(grain+1,var[0]) for i in range(var[1])]
 
 # Now change *.inp file(s)        
-  print('Adding labels to:         %s'%file)
-  inFile = open(file)
+  print('Adding labels to:         {}'.format(myFile))
+  inFile = open(myFile)
   input = inFile.readlines()
   inFile.close()
-  output = open(file,'w')
+  output = open(myFile,'w')
   thisSection = ''
   if options.damaskOption:
     output.write('$damask {0}\n'.format(options.damaskOption))
@@ -154,14 +154,15 @@ for file in files:
     if m:
       lastSection = thisSection
       thisSection = m.group(1)
-      if (lastSection.upper() == '*DEPVAR' and thisSection.upper() == '*USER'):       #Abaqus keyword can be upper or lower case
+      if (lastSection.upper() == '*DEPVAR' and thisSection.upper() == '*USER'):      # Abaqus keyword can be upper or lower case
         if options.number > 0:
-          output.write('%i\n'%options.number)                                         #Abaqus needs total number of SDVs in the line after *Depvar keyword
+          output.write('{}\n'.format(options.number))                                # Abaqus needs total number of SDVs in the line after *Depvar keyword
         else:
-          output.write('%i\n'%len(UserVars))
+          output.write('{}\n'.format(len(UserVars)))
           
           for i in range(len(UserVars)): 
              output.write('%i,"%i%s","%i%s"\n'%(i+1,0,UserVars[i],0,UserVars[i]))    #index,output variable key,output variable description
     if (thisSection.upper() != '*DEPVAR' or not re.match('\s*\d',line)):
       output.write(line)
   output.close()
+

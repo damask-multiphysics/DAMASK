@@ -13,7 +13,7 @@ scriptID   = ' '.join([scriptName,damask.version])
 
 
 def meshgrid2(*arrs):
-  """code inspired by http://stackoverflow.com/questions/1827489/numpy-meshgrid-in-3d"""
+  """Code inspired by http://stackoverflow.com/questions/1827489/numpy-meshgrid-in-3d"""
   arrs = tuple(reversed(arrs))
   arrs = tuple(arrs)
   lens = np.array(map(len, arrs))
@@ -240,7 +240,7 @@ for name in filenames:
   if     np.any(info['size'] <= 0.0) \
      and np.all(info['grid'] < 1):   errors.append('invalid size x y z.')
   else:
-    for i in xrange(3):
+    for i in range(3):
       if info['size'][i] <= 0.0:                                                                      # any invalid size?
         info['size'][i] = float(info['grid'][i])/max(info['grid'])                                    # normalize to grid
         remarks.append('rescaling size {} to {}...'.format({0:'x',1:'y',2:'z'}[i],info['size'][i]))

@@ -27,9 +27,9 @@ def outStdout(cmd,locals):
         exec(cmd[3:])
     elif cmd[0:3] == '(?)':
         cmd = eval(cmd[3:])
-        print cmd
+        print(cmd)
     else:
-        print cmd
+        print(cmd)
     return
 
 
@@ -121,17 +121,17 @@ if options.inverse:
   theMap = theMap.invert()
 
 if options.palettef:
-  print theMap.export(format='raw',steps=options.colorcount)
+  print(theMap.export(format='raw',steps=options.colorcount))
 elif options.palette:
   for theColor in theMap.export(format='list',steps=options.colorcount):
-    print '\t'.join(map(lambda x: str(int(255*x)),theColor))
+    print('\t'.join(map(lambda x: str(int(255*x)),theColor)))
 else:                                                                                               # connect to Mentat and change colorMap
   sys.path.append(damask.solver.Marc().libraryPath())
   try:
     import py_mentat
-    print 'waiting to connect...'
+    print('waiting to connect...')
     py_mentat.py_connect('',options.port)
-    print 'connected...'
+    print('connected...')
     mentat = True
   except:
     sys.stderr.write('warning: no valid Mentat release found\n')

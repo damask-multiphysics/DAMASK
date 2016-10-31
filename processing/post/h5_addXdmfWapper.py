@@ -29,7 +29,7 @@ scriptID   = ' '.join([scriptName,damask.version])
 
 # ----- HELPER FUNCTIONS -----#
 def addTopLvlCmt(xmlstr, topLevelCmt):
-    """add top level comment to string from ET"""
+    """Add top level comment to string from ET"""
     # a quick hack to add the top level comment to XML file
     # --> somehow Elementtree does not provide this functionality
     # --> by default
@@ -42,7 +42,7 @@ def addTopLvlCmt(xmlstr, topLevelCmt):
 #                                MAIN
 # --------------------------------------------------------------------
 
-msg = 'generate Xdmf wrapper for HDF5 file.'
+msg = 'Generate Xdmf wrapper for HDF5 file.'
 parser = OptionParser(option_class=damask.extendableOption,
                       usage='%prog options [file[s]]',
                       description = msg,
@@ -108,7 +108,7 @@ labelsProcessed = ['Vx', 'Vy', 'Vz']
 # walk through each attributes
 for label in labels:
     if label in labelsProcessed: continue
-    print "adding {}...".format(label)
+    print("adding {}...".format(label))
     attr = ET.SubElement(grid, 'Attribute',
                          Name=label,
                          Type="None",

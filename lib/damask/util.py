@@ -1,6 +1,5 @@
 # -*- coding: UTF-8 no BOM -*-
 
-# damask utility functions
 import sys,time,random,threading,os,subprocess,shlex
 import numpy as np
 from optparse import Option
@@ -36,7 +35,7 @@ class bcolors:
 
 # -----------------------------
 def srepr(arg,glue = '\n'):
-  """joins arguments as individual lines"""
+  """Joins arguments as individual lines"""
   if (not hasattr(arg, "strip") and
           hasattr(arg, "__getitem__") or
           hasattr(arg, "__iter__")):
@@ -45,21 +44,21 @@ def srepr(arg,glue = '\n'):
 
 # -----------------------------
 def croak(what, newline = True):
-  """writes formated to stderr"""
+  """Writes formated to stderr"""
   sys.stderr.write(srepr(what,glue = '\n') + ('\n' if newline else ''))
   sys.stderr.flush()
 
 # -----------------------------
 def report(who = None,
            what = None):
-  """reports script and file name"""
+  """Reports script and file name"""
   croak( (emph(who)+': ' if who else '') + (what if what else '') )
 
 
 # -----------------------------
 def report_geom(info,
                 what = ['grid','size','origin','homogenization','microstructures']):
-  """reports (selected) geometry information"""
+  """Reports (selected) geometry information"""
   output = {
             'grid'   : 'grid     a b c:  {}'.format(' x '.join(map(str,info['grid'  ]))),
             'size'   : 'size     x y z:  {}'.format(' x '.join(map(str,info['size'  ]))),
@@ -71,24 +70,24 @@ def report_geom(info,
 
 # -----------------------------
 def emph(what):
-  """boldens string"""
+  """Boldens string"""
   return bcolors.BOLD+srepr(what)+bcolors.ENDC
 
 # -----------------------------
 def deemph(what):
-  """dims string"""
+  """Dims string"""
   return bcolors.DIM+srepr(what)+bcolors.ENDC
 
 # -----------------------------
 def delete(what):
-  """dims string"""
+  """Dims string"""
   return bcolors.DIM+srepr(what)+bcolors.ENDC
 
 # -----------------------------
 def execute(cmd,
             streamIn = None,
             wd = './'):
-  """executes a command in given directory and returns stdout and stderr for optional stdin"""
+  """Executes a command in given directory and returns stdout and stderr for optional stdin"""
   initialPath = os.getcwd()
   os.chdir(wd)
   process = subprocess.Popen(shlex.split(cmd),
@@ -127,7 +126,7 @@ def gridIndex(location,res):
 # -----------------------------
 class extendableOption(Option):
   """
-  used for definition of new option parser action 'extend', which enables to take multiple option arguments
+  Used for definition of new option parser action 'extend', which enables to take multiple option arguments
 
   taken from online tutorial http://docs.python.org/library/optparse.html
   """
@@ -146,7 +145,7 @@ class extendableOption(Option):
 
 # -----------------------------
 class backgroundMessage(threading.Thread):
-  """reporting with animation to indicate progress"""
+  """Reporting with animation to indicate progress"""
 
   choices = {'bounce':   ['_', 'o', 'O', '°', '‾', '‾', '°', 'O', 'o', '_'],
              'spin':     ['◜', '◝', '◞', '◟'],
@@ -168,7 +167,7 @@ class backgroundMessage(threading.Thread):
             }    
 
   def __init__(self,symbol = None,wait = 0.1):
-    """sets animation symbol"""
+    """Sets animation symbol"""
     super(backgroundMessage, self).__init__()
     self._stop = threading.Event()
     self.message = ''
@@ -179,7 +178,7 @@ class backgroundMessage(threading.Thread):
     self.waittime = wait
   
   def __quit__(self):
-    """cleans output"""
+    """Cleans output"""
     length = len(self.symbols[self.counter] + self.gap + self.message)
     sys.stderr.write(chr(8)*length + ' '*length + chr(8)*length)
     sys.stderr.write('')
@@ -282,7 +281,7 @@ def leastsqBound(func, x0, args=(), bounds=None, Dfun=None, full_output=0,
     return grad
   
   def _int2extFunc(bounds):
-    """transform internal parameters into external parameters."""
+    """Transform internal parameters into external parameters."""
     local = [_int2extLocal(b) for b in bounds]
     def _transform_i2e(p_int):
         p_ext = np.empty_like(p_int)
@@ -291,7 +290,7 @@ def leastsqBound(func, x0, args=(), bounds=None, Dfun=None, full_output=0,
     return _transform_i2e
   
   def _ext2intFunc(bounds):
-    """transform external parameters into internal parameters."""
+    """Transform external parameters into internal parameters."""
     local = [_ext2intLocal(b) for b in bounds]
     def _transform_e2i(p_ext):
         p_int = np.empty_like(p_ext)
@@ -300,7 +299,7 @@ def leastsqBound(func, x0, args=(), bounds=None, Dfun=None, full_output=0,
     return _transform_e2i
 
   def _int2extLocal(bound):
-    """transform a single internal parameter to an external parameter."""
+    """Transform a single internal parameter to an external parameter."""
     lower, upper = bound
     if lower is None and upper is None:      # no constraints
         return lambda x: x
@@ -312,7 +311,7 @@ def leastsqBound(func, x0, args=(), bounds=None, Dfun=None, full_output=0,
         return lambda x: lower + ((upper - lower)/2.0)*(np.sin(x) + 1.0)
   
   def _ext2intLocal(bound):
-    """transform a single external parameter to an internal parameter."""
+    """Transform a single external parameter to an internal parameter."""
     lower, upper = bound
     if lower is None and upper is None:  # no constraints
         return lambda x: x

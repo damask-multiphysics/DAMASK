@@ -95,7 +95,7 @@ for name in filenames:
   struc = ndimage.generate_binary_structure(3,1)                                                    # 3D von Neumann neighborhood
 
 
-  for smoothIter in xrange(options.N):
+  for smoothIter in range(options.N):
     periodic_microstructure = np.tile(microstructure,(3,3,3))[grid[0]/2:-grid[0]/2,
                                                               grid[1]/2:-grid[1]/2,
                                                               grid[2]/2:-grid[2]/2]                 # periodically extend the microstructure
