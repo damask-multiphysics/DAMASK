@@ -600,8 +600,11 @@ class ASCIItable():
     while i < N and self.data_read():
       items = self.data
       if len(items) > 2:
-        if   items[1].lower() == 'of': items = np.ones(datatype(items[0]))*datatype(items[2])
-        elif items[1].lower() == 'to': items = np.arange(datatype(items[0]),1+datatype(items[2]))
+        if   items[1].lower() == 'of':
+          items = np.ones(datatype(items[0]))*datatype(items[2])
+        elif items[1].lower() == 'to': 
+          items = np.linspace(datatype(items[0]),datatype(items[2]),
+                              abs(datatype(items[2])-datatype(items[0]))+1,dtype=int)
         else:                          items = list(map(datatype,items))
       else:                            items = list(map(datatype,items))
 

@@ -1267,8 +1267,8 @@ integer(pInt) function IO_countContinuousIntValues(fileUnit)
      line = IO_read(fileUnit, .true.)                                                               ! reset IO_read 
      exit
    elseif (IO_lc(IO_stringValue(line,chunkPos,2_pInt)) == 'to' ) then                               ! found range indicator
-     IO_countContinuousIntValues = 1_pInt + IO_intValue(line,chunkPos,3_pInt) &
-                                          - IO_intValue(line,chunkPos,1_pInt)
+     IO_countContinuousIntValues = 1_pInt + abs(  IO_intValue(line,chunkPos,3_pInt) &
+                                                - IO_intValue(line,chunkPos,1_pInt))
      line = IO_read(fileUnit, .true.)                                                               ! reset IO_read 
      exit                                                                                           ! only one single range indicator allowed
    else if (IO_lc(IO_stringValue(line,chunkPos,2_pInt)) == 'of' ) then                              ! found multiple entries indicator
@@ -1321,9 +1321,9 @@ function IO_continuousIntValues(fileUnit,maxN,lookupName,lookupMap,lookupMaxN)
                                                   lookupMaxN
  integer(pInt),     dimension(:,:), intent(in) :: lookupMap
  character(len=64), dimension(:),   intent(in) :: lookupName
- integer(pInt) :: i
+ integer(pInt) :: i,first,last
 #ifdef Abaqus
- integer(pInt) :: j,l,c,first,last
+ integer(pInt) :: j,l,c
 #endif
 
  integer(pInt), allocatable, dimension(:) :: chunkPos
@@ -1348,7 +1348,9 @@ function IO_continuousIntValues(fileUnit,maxN,lookupName,lookupMap,lookupMaxN)
      enddo
      exit
    else if (chunkPos(1) > 2_pInt .and. IO_lc(IO_stringValue(line,chunkPos,2_pInt)) == 'to' ) then   ! found range indicator
-     do i = IO_intValue(line,chunkPos,1_pInt),IO_intValue(line,chunkPos,3_pInt)
+     first = IO_intValue(line,chunkPos,1_pInt)
+     last  = IO_intValue(line,chunkPos,3_pInt)
+     do i = first, last, sign(1_pInt,last-first) 
        IO_continuousIntValues(1) = IO_continuousIntValues(1) + 1_pInt
        IO_continuousIntValues(1+IO_continuousIntValues(1)) = i
      enddo
