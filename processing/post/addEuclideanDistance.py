@@ -20,13 +20,13 @@ def periodic_3Dpad(array, rimdim=(1,1,1)):
          rimdim[2]:rimdim[2]+size[2]] = array
 
   p = np.zeros(3,'i')
-  for side in xrange(3):
-    for p[(side+2)%3] in xrange(padded.shape[(side+2)%3]):
-      for p[(side+1)%3] in xrange(padded.shape[(side+1)%3]):
-        for p[side%3] in xrange(rimdim[side%3]):
+  for side in range(3):
+    for p[(side+2)%3] in range(padded.shape[(side+2)%3]):
+      for p[(side+1)%3] in range(padded.shape[(side+1)%3]):
+        for p[side%3] in range(rimdim[side%3]):
           spot = (p-rimdim)%size
           padded[p[0],p[1],p[2]] = array[spot[0],spot[1],spot[2]]
-        for p[side%3] in xrange(rimdim[side%3]+size[side%3],size[side%3]+2*rimdim[side%3]):
+        for p[side%3] in range(rimdim[side%3]+size[side%3],size[side%3]+2*rimdim[side%3]):
           spot = (p-rimdim)%size
           padded[p[0],p[1],p[2]] = array[spot[0],spot[1],spot[2]]
   return padded
@@ -178,7 +178,7 @@ for name in filenames:
 
   table.data_readArray()
 
-  coords = [np.unique(table.data[:,coordCol+i]) for i in xrange(coordDim)]
+  coords = [np.unique(table.data[:,coordCol+i]) for i in range(coordDim)]
   mincorner = np.array(map(min,coords))
   maxcorner = np.array(map(max,coords))
   grid   = np.array(map(len,coords)+[1]*(3-len(coords)),'i')
@@ -215,7 +215,7 @@ for name in filenames:
                                                                                                     # ...reflects number of unique neighbors
   uniques = np.where(diffToNeighbor[1:-1,1:-1,1:-1,0] != 0, 1,0)                                    # initialize unique value counter (exclude myself [= 0])
 
-  for i in xrange(1,len(neighborhood)):                                                             # check remaining points in neighborhood
+  for i in range(1,len(neighborhood)):                                                              # check remaining points in neighborhood
     uniques += np.where(np.logical_and(
                          diffToNeighbor[1:-1,1:-1,1:-1,i] != 0,                                     # not myself?
                          diffToNeighbor[1:-1,1:-1,1:-1,i] != diffToNeighbor[1:-1,1:-1,1:-1,i-1],
@@ -229,7 +229,7 @@ for name in filenames:
     distance[i,:,:,:] = ndimage.morphology.distance_transform_edt(distance[i,:,:,:])*[options.scale]*3
 
   distance = distance.reshape([len(feature_list),grid.prod(),1],order='F')
-  for i in xrange(len(feature_list)):
+  for i in range(len(feature_list)):
     stack.append(distance[i,:])
 
 # ------------------------------------------ output result -----------------------------------------

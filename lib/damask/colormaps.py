@@ -5,11 +5,12 @@ import math,numpy as np
 ### --- COLOR CLASS --------------------------------------------------
 
 class Color():
-  """Conversion of colors between different color-spaces.
+  """
+  Conversion of colors between different color-spaces.
 
-  Colors should be given in the form 
-  Color('model',[vector]).To convert and copy color from one space to other, use the methods 
-  convertTo('model') and expressAs('model')spectively
+  Colors should be given in the form Color('model',[vector]).
+  To convert or copy color from one space to other, use the methods 
+  convertTo('model') or expressAs('model'), respectively.
   """
   
   __slots__ = [
@@ -85,9 +86,9 @@ class Color():
 
   def _HSL2RGB(self):
     """
-    convert H(ue) S(aturation) L(uminance) to R(red) G(reen) B(lue) 
+    Convert H(ue) S(aturation) L(uminance) to R(red) G(reen) B(lue) 
     
-    with S,L,H,R,G,B running from 0 to 1
+    with all values in the range of 0 to 1
     from http://en.wikipedia.org/wiki/HSL_and_HSV
     """
     if self.model != 'HSL': return
@@ -111,9 +112,9 @@ class Color():
  
   def _RGB2HSL(self):
     """
-    convert R(ed) G(reen) B(lue) to H(ue) S(aturation) L(uminance)
+    Convert R(ed) G(reen) B(lue) to H(ue) S(aturation) L(uminance)
     
-    with S,L,H,R,G,B running from 0 to 1
+    with all values in the range of 0 to 1
     from http://130.113.54.154/~monger/hsl-rgb.html 
     """ 
     if self.model != 'RGB': return
@@ -151,7 +152,7 @@ class Color():
 
   def _RGB2XYZ(self):
     """
-    convert R(ed) G(reen) B(lue) to CIE XYZ
+    Convert R(ed) G(reen) B(lue) to CIE XYZ
  
     with all values in the range of 0 to 1
     from http://www.cs.rit.edu/~ncs/color/t_convert.html
@@ -180,12 +181,13 @@ class Color():
 
   def _XYZ2RGB(self):
     """
-    convert  CIE XYZ to R(ed) G(reen) B(lue)
+    Convert  CIE XYZ to R(ed) G(reen) B(lue)
 
     with all values in the range of 0 to 1
     from http://www.cs.rit.edu/~ncs/color/t_convert.html
     """
-    if self.model != 'XYZ': return
+    if self.model != 'XYZ':
+      return
 
     convert = np.array([[ 3.240479,-1.537150,-0.498535],
                         [-0.969256, 1.875992, 0.041556],
@@ -211,7 +213,7 @@ class Color():
 
   def _CIELAB2XYZ(self):
     """
-    convert  CIE Lab to CIE XYZ
+    Convert  CIE Lab to CIE XYZ
 
     with XYZ in the range of 0 to 1
     from http://www.easyrgb.com/index.php?X=MATH&H=07#text7
@@ -235,10 +237,11 @@ class Color():
 
   def _XYZ2CIELAB(self):
     """
-    convert CIE XYZ to CIE Lab
+    Convert CIE XYZ to CIE Lab
 
     with XYZ in the range of 0 to 1
-    from http://en.wikipedia.org/wiki/Lab_color_space, http://www.cs.rit.edu/~ncs/color/t_convert.html
+    from http://en.wikipedia.org/wiki/Lab_color_space,
+    http://www.cs.rit.edu/~ncs/color/t_convert.html
     """
     if self.model != 'XYZ': return
     
@@ -258,7 +261,7 @@ class Color():
  
   def _CIELAB2MSH(self):
     """
-    convert CIE Lab to Msh colorspace 
+    Convert CIE Lab to Msh colorspace 
    
     from http://www.cs.unm.edu/~kmorel/documents/ColorMaps/DivergingColorMapWorkshop.xls
     """  
@@ -278,9 +281,9 @@ class Color():
 
   def _MSH2CIELAB(self):
     """
-    convert Msh colorspace to CIE Lab
+    Convert Msh colorspace to CIE Lab
 
-    s,h in radians
+    with s,h in radians
     from http://www.cs.unm.edu/~kmorel/documents/ColorMaps/DivergingColorMapWorkshop.xls
     """
     if self.model != 'MSH': return
@@ -296,7 +299,7 @@ class Color():
 
 
 class Colormap():
-  """perceptually uniform diverging or sequential colormaps."""
+  """Perceptually uniform diverging or sequential colormaps."""
 
   __slots__ = [
                'left',
@@ -371,7 +374,7 @@ class Colormap():
   
 # ------------------------------------------------------------------
   def __repr__(self):
-    """left and right value of colormap"""
+    """Left and right value of colormap"""
     return 'Left: %s Right: %s'%(self.left,self.right)
   
   
@@ -415,11 +418,7 @@ class Colormap():
       return Color('MSH',Msh)
     
     def interpolate_linear(lo, hi, frac):
-      """
-      linearly interpolate color at given fraction between lower and
-
-      higher color in model of lower color
-      """
+      """Linear interpolation between lo and hi color at given fraction; output in model of lo color."""
       interpolation = (1.0 - frac) * np.array(lo.color[:]) \
                            + frac  * np.array(hi.expressAs(lo.model).color[:])
       
@@ -443,10 +442,10 @@ class Colormap():
     """
     [RGB] colormap for use in paraview or gmsh, or as raw string, or array.
 
-    arguments: name, format, steps, crop.
-    format is one of (paraview, gmsh, raw, list).
-    crop selects a (sub)range in [-1.0,1.0].
-    generates sequential map if one limiting color is either white or black,
+    Arguments: name, format, steps, crop.
+    Format is one of (paraview, gmsh, raw, list).
+    Crop selects a (sub)range in [-1.0,1.0].
+    Generates sequential map if one limiting color is either white or black,
     diverging map otherwise.
     """
     format = format.lower()                                                                         # consistent comparison basis
@@ -456,9 +455,8 @@ class Colormap():
       colormap = ['[\n {{\n  "ColorSpace" : "RGB", "Name" : "{}",\n  "RGBPoints" : ['.format(name)] \
                + ['    {:4d},{:8.6f},{:8.6f},{:8.6f},'.format(i,color[0],color[1],color[2],)
                                                                         for i,color in enumerate(colors[:-1])]\
-               + ['    {:4d},{:8.6f},{:8.6f},{:8.6f} '.format(i+1,colors[-1][0],colors[-1][1],colors[-1][2],)]\
+               + ['    {:4d},{:8.6f},{:8.6f},{:8.6f} '.format(len(colors),colors[-1][0],colors[-1][1],colors[-1][2],)]\
                + ['   ]\n }\n]']
-    
     elif format == 'gmsh':
       colormap = ['View.ColorTable = {'] \
                + [',\n'.join(['{%s}'%(','.join([str(x*255.0) for x in color])) for color in colors])] \
@@ -481,4 +479,3 @@ class Colormap():
       raise NameError('unknown color export format')
     
     return '\n'.join(colormap) + '\n' if type(colormap[0]) is str else colormap
-      

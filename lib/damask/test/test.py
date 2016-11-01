@@ -1,6 +1,5 @@
 # -*- coding: UTF-8 no BOM -*-
 
-
 import os,sys,shutil
 import logging,logging.config
 import damask
@@ -191,7 +190,7 @@ class Test():
   def copy(self, mapA, mapB,
                  A = [], B = []):
     """
-    copy list of files from (mapped) source to target.
+    Copy list of files from (mapped) source to target.
 
     mapA/B is one of self.fileInX.
     """
@@ -382,7 +381,7 @@ class Test():
       line0 += 1
 
     for i in range(dataLength):
-      if not perLine: norm[i] = [np.max(norm[i]) for j in xrange(line0-len(skipLines))]
+      if not perLine: norm[i] = [np.max(norm[i]) for j in range(line0-len(skipLines))]
       data[i] = np.reshape(data[i],[line0-len(skipLines),length[i]])
       if any(norm[i]) == 0.0 or absTol[i]:
         norm[i] = [1.0 for j in range(line0-len(skipLines))]
@@ -425,7 +424,7 @@ class Test():
                      stdTol = 1.0e-6,
                      preFilter = 1.0e-9):
     """
-    calculate statistics of tables
+    Calculate statistics of tables
 
     threshold can be used to ignore small values (a negative number disables this feature)
     """
@@ -478,7 +477,7 @@ class Test():
                      rtol    = 1e-5,
                      atol    = 1e-8,
                      debug   = False):
-    """compare multiple tables with np.allclose"""
+    """Compare multiple tables with np.allclose"""
     if not (isinstance(files, Iterable) and not isinstance(files, str)):       # check whether list of files is requested
       files = [str(files)]
 

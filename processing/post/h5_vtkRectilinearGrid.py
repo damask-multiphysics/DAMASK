@@ -21,24 +21,24 @@ scriptID = ' '.join([scriptName, damask.version])
 
 # ----- HELPER FUNCTION ----- #
 def getMeshFromXYZ(xyzArray, mode):
-    """calc Vx,Vy,Vz vectors for vtk rectangular mesh"""
+    """Calc Vx,Vy,Vz vectors for vtk rectangular mesh"""
     # NOTE:
     # --> np.unique will automatically sort the list
     # --> although not exactly n(1), but since mesh dimension should
     #     small anyway, so this is still light weight.
     dim = xyzArray.shape[1]  # 2D:2, 3D:3
-    coords = [np.unique(xyzArray[:, i]) for i in xrange(dim)]
+    coords = [np.unique(xyzArray[:, i]) for i in range(dim)]
 
     if mode == 'cell':
         # since x, y, z might now have the same number of elements,
         # we have to deal with them individually
-        for ri in xrange(dim):
+        for ri in range(dim):
             vctr_pt = coords[ri]
             vctr_cell = np.empty(len(vctr_pt)+1)
             # calculate first and last end point
             vctr_cell[0] = vctr_pt[0] - 0.5*abs(vctr_pt[1] - vctr_pt[0])
             vctr_cell[-1] = vctr_pt[-1] + 0.5*abs(vctr_pt[-2] - vctr_pt[-1])
-            for cj in xrange(1, len(vctr_cell)-1):
+            for cj in range(1, len(vctr_cell)-1):
                 vctr_cell[cj] = 0.5*(vctr_pt[cj-1] + vctr_pt[cj])
             # update the coords
             coords[ri] = vctr_cell

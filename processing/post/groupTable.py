@@ -2,7 +2,7 @@
 # -*- coding: UTF-8 no BOM -*-
 
 import os,sys
-import math                                                                                       # noqa
+import math                                                                                         # noqa
 import numpy as np
 from optparse import OptionParser, OptionGroup
 import damask
@@ -110,18 +110,18 @@ for name in filenames:
   table.data_readArray()
   rows,cols  = table.data.shape
 
-  table.data = table.data[np.lexsort([table.data[:,grpColumn]])]                                  # sort data by grpColumn
+  table.data = table.data[np.lexsort([table.data[:,grpColumn]])]                                    # sort data by grpColumn
   
-  values,index = np.unique(table.data[:,grpColumn], return_index = True)                          # unique grpColumn values and their positions
-  index = np.append(index,rows)                                                                   # add termination position
-  grpTable = np.empty((len(values), cols))                                                        # initialize output
+  values,index = np.unique(table.data[:,grpColumn], return_index = True)                            # unique grpColumn values and their positions
+  index = np.append(index,rows)                                                                     # add termination position
+  grpTable = np.empty((len(values), cols))                                                          # initialize output
   
-  for i in xrange(len(values)):                                                                   # iterate over groups (unique values in grpColumn)
+  for i in range(len(values)):                                                                      # iterate over groups (unique values in grpColumn)
     if options.periodic :
-       grpTable[i] = periodicAverage(table.data[index[i]:index[i+1]],options.boundary)           # apply periodicAverage mapping function
+       grpTable[i] = periodicAverage(table.data[index[i]:index[i+1]],options.boundary)              # apply periodicAverage mapping function
     else :
-       grpTable[i] = np.apply_along_axis(mapFunction,0,table.data[index[i]:index[i+1]])           # apply mapping function
-    if not options.all: grpTable[i,grpColumn] = table.data[index[i],grpColumn]                    # restore grouping column value
+       grpTable[i] = np.apply_along_axis(mapFunction,0,table.data[index[i]:index[i+1]])             # apply mapping function
+    if not options.all: grpTable[i,grpColumn] = table.data[index[i],grpColumn]                      # restore grouping column value
   
   table.data = grpTable
 

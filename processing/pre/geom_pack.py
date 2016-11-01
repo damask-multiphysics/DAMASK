@@ -76,7 +76,7 @@ for name in filenames:
     items = table.data
     if len(items) > 2:
       if   items[1].lower() == 'of': items = [int(items[2])]*int(items[0])
-      elif items[1].lower() == 'to': items = xrange(int(items[0]),1+int(items[2]))
+      elif items[1].lower() == 'to': items = range(int(items[0]),1+int(items[2]))
       else:                          items = map(int,items)
     else:                            items = map(int,items)
 

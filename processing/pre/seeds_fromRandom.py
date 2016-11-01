@@ -14,12 +14,12 @@ scriptID   = ' '.join([scriptName,damask.version])
 # ------------------------------------------ aux functions ---------------------------------
 
 def kdtree_search(cloud, queryPoints):
-  """find distances to nearest neighbor among cloud (N,d) for each of the queryPoints (n,d)"""
+  """Find distances to nearest neighbor among cloud (N,d) for each of the queryPoints (n,d)"""
   n = queryPoints.shape[0]
   distances = np.zeros(n,dtype=float)
   tree = spatial.cKDTree(cloud)
   
-  for i in xrange(n):
+  for i in range(n):
     distances[i], index = tree.query(queryPoints[i])
 
   return distances
@@ -227,8 +227,8 @@ for name in filenames:
     "randomSeed\t{}".format(options.randomSeed),
     ])
   table.labels_clear()
-  table.labels_append( ['{dim}_{label}'.format(dim = 1+k,label = 'pos')   for k in xrange(3)] +
-                       ['{dim}_{label}'.format(dim = 1+k,label = 'euler') for k in xrange(3)] + 
+  table.labels_append( ['{dim}_{label}'.format(dim = 1+k,label = 'pos')   for k in range(3)] +
+                       ['{dim}_{label}'.format(dim = 1+k,label = 'euler') for k in range(3)] + 
                        ['microstructure'] +
                       (['weight'] if options.weights else []))
   table.head_write()

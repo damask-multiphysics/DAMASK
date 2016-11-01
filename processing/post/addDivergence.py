@@ -21,23 +21,23 @@ def divFFT(geomdim,field):
 # differentiation in Fourier space
  k_s = np.zeros([3],'i')
  TWOPIIMG = 2.0j*math.pi
- for i in xrange(grid[2]):
+ for i in range(grid[2]):
    k_s[0] = i
    if grid[2]%2 == 0 and i == grid[2]//2:  k_s[0] = 0                                     # for even grid, set Nyquist freq to 0 (Johnson, MIT, 2011)
    elif i > grid[2]//2:                    k_s[0] -= grid[2]
 
-   for j in xrange(grid[1]):
+   for j in range(grid[1]):
      k_s[1] = j
      if grid[1]%2 == 0 and j == grid[1]//2: k_s[1] = 0                                    # for even grid, set Nyquist freq to 0 (Johnson, MIT, 2011)
      elif j > grid[1]//2:                   k_s[1] -= grid[1]
 
-     for k in xrange(grid[0]//2+1):
+     for k in range(grid[0]//2+1):
        k_s[2] = k
        if grid[0]%2 == 0 and k == grid[0]//2: k_s[2] = 0                                  # for even grid, set Nyquist freq to 0 (Johnson, MIT, 2011)
 
        xi = (k_s/geomdim)[2::-1].astype('c16')                                            # reversing the field input order
        if n == 9:                                                                         # tensor, 3x3 -> 3
-         for l in xrange(3):
+         for l in range(3):
            div_fourier[i,j,k,l] = sum(field_fourier[i,j,k,l,0:3]*xi) *TWOPIIMG
        elif n == 3:                                                                       # vector, 3 -> 1
          div_fourier[i,j,k] = sum(field_fourier[i,j,k,0:3]*xi) *TWOPIIMG
@@ -123,14 +123,14 @@ for name in filenames:
   for type, data in items.iteritems():
     for label in data['active']:
       table.labels_append(['divFFT({})'.format(label) if type == 'vector' else
-                           '{}_divFFT({})'.format(i+1,label) for i in xrange(data['dim']//3)])        # extend ASCII header with new labels
+                           '{}_divFFT({})'.format(i+1,label) for i in range(data['dim']//3)])       # extend ASCII header with new labels
   table.head_write()
 
 # --------------- figure out size and grid ---------------------------------------------------------
 
   table.data_readArray()
 
-  coords = [np.unique(table.data[:,colCoord+i]) for i in xrange(3)]
+  coords = [np.unique(table.data[:,colCoord+i]) for i in range(3)]
   mincorner = np.array(map(min,coords))
   maxcorner = np.array(map(max,coords))
   grid   = np.array(map(len,coords),'i')

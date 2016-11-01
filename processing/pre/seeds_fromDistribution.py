@@ -4,7 +4,6 @@
 import threading,time,os,sys,random
 import numpy as np
 from optparse import OptionParser
-from operator import mul
 from cStringIO import StringIO
 import damask
 
@@ -65,7 +64,7 @@ class myThread (threading.Thread):
         NmoveGrains = random.randrange(1,maxSeeds)
         selectedMs = []
         direction = []
-        for i in xrange(NmoveGrains):
+        for i in range(NmoveGrains):
           selectedMs.append(random.randrange(1,nMicrostructures))
 
           direction.append(np.array(((random.random()-0.5)*delta[0],
@@ -110,7 +109,7 @@ class myThread (threading.Thread):
       currentData=np.bincount(perturbedGeomTable.data.astype(int).ravel())[1:]/points
       currentError=[]
       currentHist=[]
-      for i in xrange(nMicrostructures):                                                            # calculate the deviation in all bins per histogram
+      for i in range(nMicrostructures):                                                             # calculate the deviation in all bins per histogram
         currentHist.append(np.histogram(currentData,bins=target[i]['bins'])[0])
         currentError.append(np.sqrt(np.square(np.array(target[i]['histogram']-currentHist[i])).sum()))
 
@@ -122,12 +121,12 @@ class myThread (threading.Thread):
       bestMatch = match
 #--- count bin classes with no mismatch ----------------------------------------------------------------------
       myMatch=0
-      for i in xrange(nMicrostructures):
+      for i in range(nMicrostructures):
         if currentError[i] > 0.0: break
         myMatch = i+1
 
       if myNmicrostructures == nMicrostructures:
-        for i in xrange(min(nMicrostructures,myMatch+options.bins)):
+        for i in range(min(nMicrostructures,myMatch+options.bins)):
           if currentError[i] > target[i]['error']:                                                  # worse fitting, next try
             randReset = True
             break
@@ -146,7 +145,7 @@ class myThread (threading.Thread):
               for line in perturbedSeedsVFile:
                 currentSeedsFile.write(line)
                 bestSeedsVFile.write(line)
-            for j in xrange(nMicrostructures):                                                      # save new errors for all bins
+            for j in range(nMicrostructures):                                                       # save new errors for all bins
               target[j]['error'] = currentError[j]
             if myMatch > match:                                                                     # one or more new bins have no deviation
               damask.util.croak( 'Stage {:d}  cleared'.format(myMatch))
@@ -160,7 +159,7 @@ class myThread (threading.Thread):
             bestSeedsVFile = StringIO()
             for line in perturbedSeedsVFile:
               bestSeedsVFile.write(line)
-            for j in xrange(nMicrostructures):
+            for j in range(nMicrostructures):
               target[j]['error'] = currentError[j]
             randReset = True
       else:                                                                                         #--- not all grains are tessellated
@@ -219,8 +218,7 @@ if options.randomSeed is None:
 damask.util.croak(options.randomSeed)
 delta = (options.scale/options.grid[0],options.scale/options.grid[1],options.scale/options.grid[2])
 baseFile=os.path.splitext(os.path.basename(options.seedFile))[0]
-points = float(reduce(mul,options.grid))
-
+points = np.array(options.grid).prod().astype('float')
 
 # ----------- calculate target distribution and bin edges
 targetGeomFile = os.path.splitext(os.path.basename(options.target))[0]+'.geom'
@@ -231,7 +229,7 @@ nMicrostructures = info['microstructures']
 targetVolFrac = np.bincount(targetGeomTable.microstructure_read(info['grid']))[1:nMicrostructures+1]/\
                                                                        float(info['grid'].prod())
 target=[]
-for i in xrange(1,nMicrostructures+1):
+for i in range(1,nMicrostructures+1):
   targetHist,targetBins = np.histogram(targetVolFrac,bins=i) #bin boundaries
   target.append({'histogram':targetHist,'bins':targetBins})
 
@@ -260,7 +258,7 @@ info,devNull =  initialGeomTable.head_getGeom()
 if info['microstructures'] != nMicrostructures: damask.util.croak('error. Microstructure count mismatch')
 
 initialData = np.bincount(initialGeomTable.microstructure_read(info['grid']))/points
-for i in xrange(nMicrostructures):
+for i in range(nMicrostructures):
   initialHist = np.histogram(initialData,bins=target[i]['bins'])[0]
   target[i]['error']=np.sqrt(np.square(np.array(target[i]['histogram']-initialHist)).sum())
 
@@ -269,7 +267,7 @@ if target[0]['error'] > 0.0:
   target[0]['error'] *=((target[0]['bins'][0]-np.min(initialData))**2.0+
                         (target[0]['bins'][1]-np.max(initialData))**2.0)**0.5
 match=0
-for i in xrange(nMicrostructures):
+for i in range(nMicrostructures):
   if target[i]['error'] > 0.0: break
   match = i+1
 

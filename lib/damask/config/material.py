@@ -104,7 +104,7 @@ class Material():
   __slots__ = ['data']
 
   def __init__(self,verbose=True):
-    """generates ordered list of parts"""
+    """Generates ordered list of parts"""
     self.parts = [
              'homogenization',
              'microstructure',
@@ -122,7 +122,7 @@ class Material():
     self.verbose = verbose
            
   def __repr__(self):
-    """returns current configuration to be used as material.config"""
+    """Returns current configuration to be used as material.config"""
     me = []
     for part in self.parts:
       if self.verbose: print('doing '+part)

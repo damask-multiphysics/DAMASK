@@ -46,7 +46,7 @@ parser.set_defaults(origin = (0.0,0.0,0.0),
 datatype = 'f' if options.real else 'i'
 
 sub = {}
-for i in xrange(len(options.substitute)/2):                                                       # split substitution list into "from" -> "to"
+for i in range(len(options.substitute)/2):                                                          # split substitution list into "from" -> "to"
   sub[int(options.substitute[i*2])] = int(options.substitute[i*2+1])
 
 # --- loop over input files ----------------------------------------------------------------------
@@ -82,7 +82,7 @@ for name in filenames:
 
 # --- read data ----------------------------------------------------------------------------------
 
-  microstructure = table.microstructure_read(info['grid'],datatype)                               # read microstructure
+  microstructure = table.microstructure_read(info['grid'],datatype)                                 # read microstructure
 
 # --- do work ------------------------------------------------------------------------------------
 

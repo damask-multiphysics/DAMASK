@@ -11,7 +11,7 @@ scriptID = ' '.join([scriptName, damask.version])
 
 
 def getCauchy(f, p):
-    """return Cauchy stress for given f and p"""
+    """Return Cauchy stress for given f and p"""
     # [Cauchy] = (1/det(F)) * [P].[F_transpose]
     f = f.reshape((3, 3))
     p = p.reshape((3, 3))

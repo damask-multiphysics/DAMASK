@@ -63,7 +63,7 @@ for name in filenames:
   table.info_clear()
   table.info_append(extra_header + [scriptID + '\t' + ' '.join(sys.argv[1:])])
   table.labels_clear()
-  table.labels_append(['{}_{}'.format(1+i,'pos') for i in xrange(3)]+['microstructure'])
+  table.labels_append(['{}_{}'.format(1+i,'pos') for i in range(3)]+['microstructure'])
   table.head_write()
   table.output_flush()
 

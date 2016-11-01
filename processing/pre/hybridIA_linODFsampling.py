@@ -19,7 +19,7 @@ def integerFactorization(i):
   return j
 
 def binAsBins(bin,intervals):
-  """explode compound bin into 3D bins list"""
+  """Explode compound bin into 3D bins list"""
   bins = [0]*3
   bins[0] = (bin//(intervals[1] * intervals[2])) % intervals[0]
   bins[1] = (bin//intervals[2]) % intervals[1]
@@ -27,17 +27,17 @@ def binAsBins(bin,intervals):
   return bins
   
 def binsAsBin(bins,intervals):
-  """implode 3D bins into compound bin"""
+  """Implode 3D bins into compound bin"""
   return (bins[0]*intervals[1] + bins[1])*intervals[2] + bins[2]
 
 def EulersAsBins(Eulers,intervals,deltas,center):
-  """return list of Eulers translated into 3D bins list"""
+  """Return list of Eulers translated into 3D bins list"""
   return [int((euler+(0.5-center)*delta)//delta)%interval \
                   for euler,delta,interval in zip(Eulers,deltas,intervals) \
          ]
 
 def binAsEulers(bin,intervals,deltas,center):
-  """compound bin number translated into list of Eulers"""
+  """Compound bin number translated into list of Eulers"""
   Eulers = [0.0]*3
   Eulers[2] = (bin%intervals[2] + center)*deltas[2]
   Eulers[1] = (bin//intervals[2]%intervals[1] + center)*deltas[1]
@@ -45,7 +45,7 @@ def binAsEulers(bin,intervals,deltas,center):
   return Eulers
 
 def directInvRepetitions(probability,scale):
-  """calculate number of samples drawn by direct inversion"""
+  """Calculate number of samples drawn by direct inversion"""
   nDirectInv = 0
   for bin in range(len(probability)):                                                               # loop over bins
     nDirectInv += int(round(probability[bin]*scale))                                                # calc repetition
@@ -270,7 +270,7 @@ for name in filenames:
   ODF['limit'] = np.radians(limits[1,:])                                                            # right hand limits in radians
   ODF['center'] = 0.0 if all(limits[0,:]<1e-8) else 0.5                                             # vertex or cell centered
 
-  ODF['interval'] = np.array(map(len,[np.unique(table.data[:,i]) for i in xrange(3)]),'i')          # steps are number of distict values
+  ODF['interval'] = np.array(map(len,[np.unique(table.data[:,i]) for i in range(3)]),'i')           # steps are number of distict values
   ODF['nBins'] = ODF['interval'].prod()
   ODF['delta'] = np.radians(np.array(limits[1,0:3]-limits[0,0:3])/(ODF['interval']-1))              # step size
 
@@ -349,7 +349,7 @@ for name in filenames:
       '#-------------------#',
       ]
   
-  for i,ID in enumerate(xrange(nSamples)):
+  for i,ID in enumerate(range(nSamples)):
     materialConfig += ['[Grain%s]'%(str(ID+1).zfill(formatwidth)),
                       'crystallite %i'%options.crystallite,
                       '(constituent)   phase %i   texture %s   fraction 1.0'%(options.phase,str(ID+1).rjust(formatwidth)),
@@ -361,7 +361,7 @@ for name in filenames:
       '#-------------------#',
       ]
 
-  for ID in xrange(nSamples):
+  for ID in range(nSamples):
     eulers = Orientations[ID]
   
     materialConfig += ['[Grain%s]'%(str(ID+1).zfill(formatwidth)),
