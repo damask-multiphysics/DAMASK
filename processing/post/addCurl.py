@@ -22,39 +22,26 @@ def curlFFT(geomdim,field):
  curl_fourier  = np.empty(field_fourier.shape,'c16')
 
 # differentiation in Fourier space
- k_s = np.zeros([3],'i')
  TWOPIIMG = 2.0j*math.pi
- for i in range(grid[2]):
-   k_s[0] = i
-   if grid[2]%2 == 0 and i == grid[2]//2:  k_s[0] = 0                                     # for even grid, set Nyquist freq to 0 (Johnson, MIT, 2011)
-   elif i > grid[2]//2:                    k_s[0] -= grid[2]
-
-   for j in range(grid[1]):
-     k_s[1] = j
-     if grid[1]%2 == 0 and j == grid[1]//2: k_s[1] = 0                                    # for even grid, set Nyquist freq to 0 (Johnson, MIT, 2011)
-     elif j > grid[1]//2:                   k_s[1] -= grid[1]
-
-     for k in range(grid[0]//2+1):
-       k_s[2] = k
-       if grid[0]%2 == 0 and k == grid[0]//2: k_s[2] = 0                                  # for even grid, set Nyquist freq to 0 (Johnson, MIT, 2011)
-
-       xi = (k_s/geomdim)[2::-1].astype('c16')                                            # reversing the field input order
-
-       if dataType == 'tensor': 
-         for l in range(3):
-           curl_fourier[i,j,k,0,l] = ( field_fourier[i,j,k,l,2]*xi[1]\
-                                      -field_fourier[i,j,k,l,1]*xi[2]) *TWOPIIMG
-           curl_fourier[i,j,k,1,l] = (-field_fourier[i,j,k,l,2]*xi[0]\
-                                      +field_fourier[i,j,k,l,0]*xi[2]) *TWOPIIMG
-           curl_fourier[i,j,k,2,l] = ( field_fourier[i,j,k,l,1]*xi[0]\
-                                      -field_fourier[i,j,k,l,0]*xi[1]) *TWOPIIMG
-       elif dataType == 'vector': 
-         curl_fourier[i,j,k,0] = ( field_fourier[i,j,k,2]*xi[1]\
-                                  -field_fourier[i,j,k,1]*xi[2]) *TWOPIIMG
-         curl_fourier[i,j,k,1] = (-field_fourier[i,j,k,2]*xi[0]\
-                                  +field_fourier[i,j,k,0]*xi[2]) *TWOPIIMG
-         curl_fourier[i,j,k,2] = ( field_fourier[i,j,k,1]*xi[0]\
-                                  -field_fourier[i,j,k,0]*xi[1]) *TWOPIIMG
+ k_sk = np.where(np.arange(grid[2])>grid[2]//2,np.arange(grid[2])-grid[2],np.arange(grid[2]))/geomdim[0]
+ if grid[2]%2 == 0: k_sk[grid[2]//2] = 0                                                  # for even grid, set Nyquist freq to 0 (Johnson, MIT, 2011)
+ 
+ k_sj = np.where(np.arange(grid[1])>grid[1]//2,np.arange(grid[1])-grid[1],np.arange(grid[1]))/geomdim[1]
+ if grid[1]%2 == 0: k_sj[grid[1]//2] = 0                                                  # for even grid, set Nyquist freq to 0 (Johnson, MIT, 2011)
+ 
+ k_si = np.arange(grid[0]//2+1)/geomdim[2]
+ 
+ kk, kj, ki = np.meshgrid(k_sk,k_sj,k_si,indexing = 'ij')
+ k_s = np.concatenate((ki[:,:,:,None],kj[:,:,:,None],kk[:,:,:,None]),axis = 3).astype('c16')
+ 
+ e = np.zeros((3, 3, 3))
+ e[0, 1, 2] = e[1, 2, 0] = e[2, 0, 1] = 1.0                                               # Levi-Civita symbols 
+ e[0, 2, 1] = e[2, 1, 0] = e[1, 0, 2] = -1.0
+ 
+ if dataType == 'tensor': 
+   curl_fourier = np.einsum('slm,ijkl,ijknm->ijksn',e,k_s,field_fourier)*TWOPIIMG
+ elif dataType == 'vector':
+   curl_fourier = np.einsum('slm,ijkl,ijkm->ijks',e,k_s,field_fourier)*TWOPIIMG
 
  return np.fft.irfftn(curl_fourier,axes=(0,1,2),s=shapeFFT).reshape([N,n])
 
