@@ -12,30 +12,30 @@ scriptID   = ' '.join([scriptName,damask.version])
 def divFFT(geomdim,field):
  shapeFFT    = np.array(np.shape(field))[0:3]
  grid = np.array(np.shape(field)[2::-1])
- N = grid.prod()                                                                          # field size
- n = np.array(np.shape(field)[3:]).prod()                                                 # data size
+ N = grid.prod()                                                                                    # field size
+ n = np.array(np.shape(field)[3:]).prod()                                                           # data size
 
  if   n == 3:   dataType = 'vector'
  elif n == 9:   dataType = 'tensor'
- 
+
  field_fourier = np.fft.rfftn(field,axes=(0,1,2),s=shapeFFT)
- div_fourier   = np.empty(field_fourier.shape[0:len(np.shape(field))-1],'c16')            # size depents on whether tensor or vector
+ div_fourier   = np.empty(field_fourier.shape[0:len(np.shape(field))-1],'c16')
 
 # differentiation in Fourier space
  TWOPIIMG = 2.0j*math.pi
  k_sk = np.where(np.arange(grid[2])>grid[2]//2,np.arange(grid[2])-grid[2],np.arange(grid[2]))/geomdim[0]
- if grid[2]%2 == 0:  k_sk[grid[2]//2] = 0                                                 # for even grid, set Nyquist freq to 0 (Johnson, MIT, 2011)
+ if grid[2]%2 == 0: k_sk[grid[2]//2] = 0                                                            # for even grid, set Nyquist freq to 0 (Johnson, MIT, 2011)
  
  k_sj = np.where(np.arange(grid[1])>grid[1]//2,np.arange(grid[1])-grid[1],np.arange(grid[1]))/geomdim[1]
- if grid[1]%2 == 0:  k_sj[grid[1]//2] = 0                                                 # for even grid, set Nyquist freq to 0 (Johnson, MIT, 2011)
+ if grid[1]%2 == 0: k_sj[grid[1]//2] = 0                                                            # for even grid, set Nyquist freq to 0 (Johnson, MIT, 2011)
 
  k_si = np.arange(grid[0]//2+1)/geomdim[2]
  
  kk, kj, ki = np.meshgrid(k_sk,k_sj,k_si,indexing = 'ij')
  k_s = np.concatenate((ki[:,:,:,None],kj[:,:,:,None],kk[:,:,:,None]),axis = 3).astype('c16')                           
- if dataType == 'tensor':                                                                 # tensor, 3x3 -> 3
+ if dataType == 'tensor':                                                                           # tensor, 3x3 -> 3
    div_fourier = np.einsum('ijklm,ijkm->ijkl',field_fourier,k_s)*TWOPIIMG
- elif dataType == 'vector':                                                               # vector, 3 -> 1
+ elif dataType == 'vector':                                                                         # vector, 3 -> 1
    div_fourier = np.einsum('ijkl,ijkl->ijk',field_fourier,k_s)*TWOPIIMG
  
  return np.fft.irfftn(div_fourier,axes=(0,1,2),s=shapeFFT).reshape([N,n/3])

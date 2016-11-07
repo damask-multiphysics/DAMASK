@@ -12,8 +12,8 @@ scriptID   = ' '.join([scriptName,damask.version])
 def curlFFT(geomdim,field):
  shapeFFT    = np.array(np.shape(field))[0:3]
  grid = np.array(np.shape(field)[2::-1])
- N = grid.prod()                                                                          # field size
- n = np.array(np.shape(field)[3:]).prod()                                                 # data size
+ N = grid.prod()                                                                                    # field size
+ n = np.array(np.shape(field)[3:]).prod()                                                           # data size
 
  if   n == 3:   dataType = 'vector'
  elif n == 9:   dataType = 'tensor'
@@ -24,23 +24,23 @@ def curlFFT(geomdim,field):
 # differentiation in Fourier space
  TWOPIIMG = 2.0j*math.pi
  k_sk = np.where(np.arange(grid[2])>grid[2]//2,np.arange(grid[2])-grid[2],np.arange(grid[2]))/geomdim[0]
- if grid[2]%2 == 0: k_sk[grid[2]//2] = 0                                                  # for even grid, set Nyquist freq to 0 (Johnson, MIT, 2011)
+ if grid[2]%2 == 0: k_sk[grid[2]//2] = 0                                                            # for even grid, set Nyquist freq to 0 (Johnson, MIT, 2011)
  
  k_sj = np.where(np.arange(grid[1])>grid[1]//2,np.arange(grid[1])-grid[1],np.arange(grid[1]))/geomdim[1]
- if grid[1]%2 == 0: k_sj[grid[1]//2] = 0                                                  # for even grid, set Nyquist freq to 0 (Johnson, MIT, 2011)
- 
+ if grid[1]%2 == 0: k_sj[grid[1]//2] = 0                                                            # for even grid, set Nyquist freq to 0 (Johnson, MIT, 2011)
+
  k_si = np.arange(grid[0]//2+1)/geomdim[2]
  
  kk, kj, ki = np.meshgrid(k_sk,k_sj,k_si,indexing = 'ij')
  k_s = np.concatenate((ki[:,:,:,None],kj[:,:,:,None],kk[:,:,:,None]),axis = 3).astype('c16')
  
  e = np.zeros((3, 3, 3))
- e[0, 1, 2] = e[1, 2, 0] = e[2, 0, 1] = 1.0                                               # Levi-Civita symbols 
+ e[0, 1, 2] = e[1, 2, 0] = e[2, 0, 1] = 1.0                                                         # Levi-Civita symbols 
  e[0, 2, 1] = e[2, 1, 0] = e[1, 0, 2] = -1.0
  
- if dataType == 'tensor':                                                                 # tensor, 3x3 -> 3x3 
+ if dataType == 'tensor':                                                                           # tensor, 3x3 -> 3x3 
    curl_fourier = np.einsum('slm,ijkl,ijknm->ijksn',e,k_s,field_fourier)*TWOPIIMG
- elif dataType == 'vector':                                                               # vector, 3 -> 3
+ elif dataType == 'vector':                                                                         # vector, 3 -> 3
    curl_fourier = np.einsum('slm,ijkl,ijkm->ijks',e,k_s,field_fourier)*TWOPIIMG
 
  return np.fft.irfftn(curl_fourier,axes=(0,1,2),s=shapeFFT).reshape([N,n])
