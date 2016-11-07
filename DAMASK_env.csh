@@ -25,11 +25,11 @@ endif
 # this seems to make sense for the stack size
 if ( `which free` != "free: Command not found." ) then
   set freeMem=`free -k | grep -E '(Mem|Speicher):' | awk '{print $4;}'`
-  set stack=`expr $freeMem / $DAMASK_NUM_THREADS / 2`
   set heap=` expr $freeMem                       / 2`
+  set stack=`expr $freeMem / $DAMASK_NUM_THREADS / 2`
   # http://superuser.com/questions/220059/what-parameters-has-ulimit             
-  limit stacksize $stack # maximum stack size (kB)
   limit datasize  $heap  # maximum  heap size (kB)
+  limit stacksize $stack # maximum stack size (kB)
 endif
 if ( `limit | grep memoryuse` != "" ) then
   limit memoryuse  unlimited  # maximum physical memory size

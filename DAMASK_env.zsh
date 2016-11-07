@@ -28,8 +28,8 @@ if [ "`which free 2>/dev/null`" != "free not found" ]; then
   freeMem=`free -k | grep -E '(Mem|Speicher):' | awk '{print $4;}'`
 
   # http://superuser.com/questions/220059/what-parameters-has-ulimit             
+  #ulimit -d `expr $freeMem                       / 2` 2>/dev/null # maximum  heap size (kB)
   ulimit -s `expr $freeMem / $DAMASK_NUM_THREADS / 2` 2>/dev/null # maximum stack size (kB)
-  ulimit -d `expr $freeMem                       / 2` 2>/dev/null # maximum  heap size (kB)
 fi
 ulimit -v unlimited   2>/dev/null # maximum virtual memory size
 ulimit -m unlimited   2>/dev/null # maximum physical memory size
