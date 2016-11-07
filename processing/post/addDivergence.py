@@ -15,6 +15,9 @@ def divFFT(geomdim,field):
  N = grid.prod()                                                                          # field size
  n = np.array(np.shape(field)[3:]).prod()                                                 # data size
 
+ if   n == 3:   dataType = 'vector'
+ elif n == 9:   dataType = 'tensor'
+ 
  field_fourier = np.fft.rfftn(field,axes=(0,1,2),s=shapeFFT)
  div_fourier   = np.empty(field_fourier.shape[0:len(np.shape(field))-1],'c16')            # size depents on whether tensor or vector
 
@@ -30,9 +33,9 @@ def divFFT(geomdim,field):
  
  kk, kj, ki = np.meshgrid(k_sk,k_sj,k_si,indexing = 'ij')
  k_s = np.concatenate((ki[:,:,:,None],kj[:,:,:,None],kk[:,:,:,None]),axis = 3).astype('c16')                           
- if n == 9:                                                                               # tensor, 3x3 -> 3
+ if dataType == 'tensor':                                                                 # tensor, 3x3 -> 3
    div_fourier = np.einsum('ijklm,ijkm->ijkl',field_fourier,k_s)*TWOPIIMG
- elif n == 3:                                                                             # vector, 3 -> 1
+ elif dataType == 'vector':                                                               # vector, 3 -> 1
    div_fourier = np.einsum('ijkl,ijkl->ijk',field_fourier,k_s)*TWOPIIMG
  
  return np.fft.irfftn(div_fourier,axes=(0,1,2),s=shapeFFT).reshape([N,n/3])

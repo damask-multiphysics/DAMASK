@@ -38,9 +38,9 @@ def curlFFT(geomdim,field):
  e[0, 1, 2] = e[1, 2, 0] = e[2, 0, 1] = 1.0                                               # Levi-Civita symbols 
  e[0, 2, 1] = e[2, 1, 0] = e[1, 0, 2] = -1.0
  
- if dataType == 'tensor': 
+ if dataType == 'tensor':                                                                 # tensor, 3x3 -> 3x3 
    curl_fourier = np.einsum('slm,ijkl,ijknm->ijksn',e,k_s,field_fourier)*TWOPIIMG
- elif dataType == 'vector':
+ elif dataType == 'vector':                                                               # vector, 3 -> 3
    curl_fourier = np.einsum('slm,ijkl,ijkm->ijks',e,k_s,field_fourier)*TWOPIIMG
 
  return np.fft.irfftn(curl_fourier,axes=(0,1,2),s=shapeFFT).reshape([N,n])
