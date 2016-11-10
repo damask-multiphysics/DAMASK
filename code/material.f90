@@ -1586,13 +1586,8 @@ subroutine material_populateGrains
  deallocate(phaseOfGrain)
  deallocate(textureOfGrain)
  deallocate(orientationOfGrain)
+ deallocate(texture_transformation)
  deallocate(Nelems)
- !> @todo - causing segmentation fault: needs looking into
- !do homog = 1,material_Nhomogenization
- !  do micro = 1,material_Nmicrostructure
- !    if (Nelems(homog,micro) > 0_pInt) deallocate(elemsOfHomogMicro(homog,micro)%p)
- !  enddo
- !enddo
  deallocate(elemsOfHomogMicro)
 
 end subroutine material_populateGrains
