@@ -101,29 +101,6 @@ def execute(cmd,
   if process.returncode != 0: raise RuntimeError('{} failed with returncode {}'.format(cmd,process.returncode))
   return out,error
 
-
-# -----------------------------
-# Matlab like trigonometric functions that take and return angles in degrees.
-# -----------------------------
-for f in ['cos', 'sin', 'tan']:
-  exec('def %sd(deg): return (np.%s(np.deg2rad(deg)))'%(f,f))
-  exec('def a%sd(val): return (np.rad2deg(np.arc%s(val)))'%(f,f))
-
-
-# -----------------------------
-def gridLocation(idx,res):
-  return ( idx  % res[0], \
-         ( idx // res[0]) % res[1], \
-         ( idx // res[0] // res[1]) % res[2] )
-
-
-# -----------------------------
-def gridIndex(location,res):
-  return ( location[0] % res[0]                    + \
-         ( location[1] % res[1]) * res[0]          + \
-         ( location[2] % res[2]) * res[1] * res[0]   )
-
-
 # -----------------------------
 class extendableOption(Option):
   """
