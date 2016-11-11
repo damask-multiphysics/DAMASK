@@ -125,7 +125,7 @@ contains
 subroutine plastic_phenopowerlaw_init(fileUnit)
  use, intrinsic :: iso_fortran_env                                                                  ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
  use prec, only: &
-   dEq
+   dEq0
  use debug, only: &
    debug_level, &
    debug_constitutive,&
@@ -485,8 +485,7 @@ subroutine plastic_phenopowerlaw_init(fileUnit)
      if (any(plastic_phenopowerlaw_tausat_slip(:,instance) <= 0.0_pReal .and. &
              plastic_phenopowerlaw_Nslip(:,instance) > 0)) &
        call IO_error(211_pInt,el=instance,ext_msg='tausat_slip ('//PLASTICITY_PHENOPOWERLAW_label//')')
-     if (any(dEq(plastic_phenopowerlaw_a_slip(instance),0.0_pReal) .and. &
-             plastic_phenopowerlaw_Nslip(:,instance) > 0)) &
+     if (any(dEq0(plastic_phenopowerlaw_a_slip(instance)) .and. plastic_phenopowerlaw_Nslip(:,instance) > 0)) &
        call IO_error(211_pInt,el=instance,ext_msg='a_slip ('//PLASTICITY_PHENOPOWERLAW_label//')')
      if (any(plastic_phenopowerlaw_tau0_twin(:,instance) < 0.0_pReal .and. &
              plastic_phenopowerlaw_Ntwin(:,instance) > 0)) &
@@ -769,7 +768,7 @@ end subroutine plastic_phenopowerlaw_aTolState
 !--------------------------------------------------------------------------------------------------
 subroutine plastic_phenopowerlaw_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,ipc,ip,el)
  use prec, only: &
-   dNeq
+   dNeq0
  use math, only: &
    math_Plain3333to99, &
    math_Mandel6to33
@@ -859,7 +858,7 @@ subroutine plastic_phenopowerlaw_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,ipc,ip,
                (gdot_slip_pos+gdot_slip_neg)*lattice_Sslip(1:3,1:3,1,index_myFamily+i,ph)
 
      ! Calculation of the tangent of Lp
-     if (dNeq(gdot_slip_pos,0.0_pReal)) then
+     if (dNeq0(gdot_slip_pos)) then
        dgdot_dtauslip_pos = gdot_slip_pos*plastic_phenopowerlaw_n_slip(instance)/tau_slip_pos
        forall (k=1_pInt:3_pInt,l=1_pInt:3_pInt,m=1_pInt:3_pInt,n=1_pInt:3_pInt) &
          dLp_dTstar3333(k,l,m,n) = dLp_dTstar3333(k,l,m,n) + &
@@ -867,7 +866,7 @@ subroutine plastic_phenopowerlaw_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,ipc,ip,
                                                      nonSchmid_tensor(m,n,1)
      endif
 
-     if (dNeq(gdot_slip_neg,0.0_pReal)) then
+     if (dNeq0(gdot_slip_neg)) then
        dgdot_dtauslip_neg = gdot_slip_neg*plastic_phenopowerlaw_n_slip(instance)/tau_slip_neg
        forall (k=1_pInt:3_pInt,l=1_pInt:3_pInt,m=1_pInt:3_pInt,n=1_pInt:3_pInt) &
          dLp_dTstar3333(k,l,m,n) = dLp_dTstar3333(k,l,m,n) + &
@@ -894,7 +893,7 @@ subroutine plastic_phenopowerlaw_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,ipc,ip,
      Lp = Lp + gdot_twin*lattice_Stwin(1:3,1:3,index_myFamily+i,ph)
 
      ! Calculation of the tangent of Lp
-     if (dNeq(gdot_twin,0.0_pReal)) then
+     if (dNeq0(gdot_twin)) then
        dgdot_dtautwin = gdot_twin*plastic_phenopowerlaw_n_twin(instance)/tau_twin
        forall (k=1_pInt:3_pInt,l=1_pInt:3_pInt,m=1_pInt:3_pInt,n=1_pInt:3_pInt) &
          dLp_dTstar3333(k,l,m,n) = dLp_dTstar3333(k,l,m,n) + &

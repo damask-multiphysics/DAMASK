@@ -23,8 +23,6 @@ subroutine thermal_isothermal_init()
  use IO, only: &
    IO_timeStamp
  use material
- use numerics, only: &
-   worldrank
  
  implicit none
  integer(pInt) :: &
@@ -32,13 +30,11 @@ subroutine thermal_isothermal_init()
    NofMyHomog, &
    sizeState
 
- mainProcess: if (worldrank == 0) then 
-   write(6,'(/,a)')   ' <<<+-  thermal_'//THERMAL_isothermal_label//' init  -+>>>'
-   write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
+ write(6,'(/,a)')   ' <<<+-  thermal_'//THERMAL_isothermal_label//' init  -+>>>'
+ write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
- endif mainProcess
 
-  initializeInstances: do homog = 1_pInt, material_Nhomogenization
+ initializeInstances: do homog = 1_pInt, material_Nhomogenization
    
    myhomog: if (thermal_type(homog) == THERMAL_isothermal_ID) then
      NofMyHomog = count(material_homog == homog)

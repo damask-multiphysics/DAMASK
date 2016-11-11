@@ -69,7 +69,7 @@ for name in filenames:
 # ------------------------------------------ assemble header --------------------------------------
 
   table.info_append(scriptID + '\t' + ' '.join(sys.argv[1:]))
-  table.labels_append(['%i_S'%(i+1) for i in xrange(9)])                                       # extend ASCII header with new labels
+  table.labels_append(['{}_S'.format(i+1) for i in range(9)])                                       # extend ASCII header with new labels
   table.head_write()
 
 # ------------------------------------------ process data ------------------------------------------

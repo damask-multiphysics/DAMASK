@@ -13,7 +13,7 @@ scriptID   = ' '.join([scriptName,damask.version])
 try:                                        # check for Python Image Lib
   from PIL import Image,ImageDraw
   ImageCapability = True
-except:
+except ImportError:
   ImageCapability = False
 
 sys.path.append(damask.solver.Marc().libraryPath())
@@ -21,7 +21,7 @@ sys.path.append(damask.solver.Marc().libraryPath())
 try:                                        # check for MSC.Mentat Python interface
   import py_mentat
   MentatCapability = True
-except:
+except ImportError:
   MentatCapability = False
 
 
@@ -42,9 +42,9 @@ def outStdout(cmd,locals):
     exec(cmd[3:])
   elif cmd[0:3] == '(?)':
     cmd = eval(cmd[3:])
-    print cmd
+    print(cmd)
   else:
-    print cmd
+    print(cmd)
   return
 
 
@@ -84,7 +84,7 @@ def rcbOrientationParser(content,idcolumn):
   return grains
 
 def rcbParser(content,M,size,tolerance,idcolumn,segmentcolumn):
-  """parser for TSL-OIM reconstructed boundary files"""
+  """Parser for TSL-OIM reconstructed boundary files"""
 # find bounding box
   boxX = [1.*sys.maxint,-1.*sys.maxint]
   boxY = [1.*sys.maxint,-1.*sys.maxint]
@@ -333,21 +333,21 @@ def rcbParser(content,M,size,tolerance,idcolumn,segmentcolumn):
   for neighbors in grainNeighbors:
     rcData['neighbors'].append(neighbors)
 
-  for legs in grains['legs']:                                                             # loop over grains
-    rcData['grain'].append(legs)                                                          # store list of boundary segments
+  for legs in grains['legs']:                                                                       # loop over grains
+    rcData['grain'].append(legs)                                                                    # store list of boundary segments
     myNeighbors = {}
-    for leg in legs:                                                                      # test each boundary segment
-      if leg < len(grainNeighbors):                                                       # a valid segment index?
-        for side in range(2):                                                             # look at both sides of the segment
-          if grainNeighbors[leg][side] in myNeighbors:                                    # count occurrence of grain IDs
+    for leg in legs:                                                                                # test each boundary segment
+      if leg < len(grainNeighbors):                                                                 # a valid segment index?
+        for side in range(2):                                                                       # look at both sides of the segment
+          if grainNeighbors[leg][side] in myNeighbors:                                              # count occurrence of grain IDs
             myNeighbors[grainNeighbors[leg][side]] += 1
           else:
             myNeighbors[grainNeighbors[leg][side]] = 1
-    if myNeighbors:                                                                       # do I have any neighbors (i.e., non-bounding box segment)
-      candidateGrains = sorted(myNeighbors.iteritems(), key=lambda (k,v): (v,k), reverse=True)  # sort grain counting
-                                                                                          # most frequent one not yet seen?
+    if myNeighbors:                                                                                 # do I have any neighbors (i.e., non-bounding box segment)
+      candidateGrains = sorted(myNeighbors.iteritems(), key=lambda p: (p[1],p[0]), reverse=True)    # sort grain counting
+                                                                                                    # most frequent one not yet seen?
       rcData['grainMapping'].append(candidateGrains[0 if candidateGrains[0][0] not in rcData['grainMapping'] else 1][0]) # must be me then
-                                                                                          # special case of bi-crystal situation...
+                                                                                                    # special case of bi-crystal situation...
       
   damask.util.croak('  found {} grains'.format(len(rcData['grain'])))
 
@@ -647,7 +647,6 @@ def job(grainNumber,grainMapping,twoD):
   "*job_param univ_gas_const 8.314472",
   "*job_param planck_radiation_2 1.4387752e-2",
   "*job_param speed_light_vacuum 299792458",
-#  "*job_usersub_file /san/%s/FEM/DAMASK/code/mpie_cpfem_marc2010.f90  | subroutine definition"%(pwd.getpwuid(os.geteuid())[0].rpartition("\\")[2]),
   "*job_option user_source:compile_save",
   ]
 
@@ -729,7 +728,7 @@ def image(name,imgsize,marginX,marginY,rcData):
 
 # -------------------------
 def inside(x,y,points):
-  """tests whether point(x,y) is within polygon described by points"""
+  """Tests whether point(x,y) is within polygon described by points"""
   inside = False
   npoints=len(points)
   (x1,y1) = points[npoints-1]                                                # start with last point of points
@@ -750,8 +749,8 @@ def inside(x,y,points):
   return inside
   
 # -------------------------
-def fftbuild(rcData,height,xframe,yframe,resolution,extrusion):
-  """build array of grain numbers"""
+def fftbuild(rcData,height,xframe,yframe,grid,extrusion):
+  """Build array of grain numbers"""
   maxX = -1.*sys.maxint
   maxY = -1.*sys.maxint
   for line in rcData['point']:                                               # find data range
@@ -760,14 +759,14 @@ def fftbuild(rcData,height,xframe,yframe,resolution,extrusion):
     maxY = max(maxY, y)
   xsize = maxX+2*xframe                                                      # add framsize
   ysize = maxY+2*yframe
-  xres = int(round(resolution/2.0)*2)                                        # use only even resolution
-  yres = int(round(xres/xsize*ysize/2.0)*2)                                  # calculate other resolutions
+  xres = int(grid)
+  yres = int(xres/xsize*ysize)
   zres = extrusion
   zsize = extrusion*min([xsize/xres,ysize/yres])
   
   fftdata = {'fftpoints':[], \
-             'resolution':(xres,yres,zres), \
-             'dimension':(xsize,ysize,zsize)}
+             'grid':(xres,yres,zres), \
+             'size':(xsize,ysize,zsize)}
   
   frameindex=len(rcData['grain'])+1                                          # calculate frame index as largest grain index plus one 
   dx = xsize/(xres)                                                          # calculate step sizes
@@ -841,8 +840,8 @@ parser.add_option('-x', '--xmargin', type='float', metavar = 'float',
         dest='xmargin',help='margin in x in units of patch size [%default]')
 parser.add_option('-y', '--ymargin', type='float', metavar = 'float',
         dest='ymargin', help='margin in y in units of patch size [%default]')
-parser.add_option('-r', '--resolution', type='int', metavar = 'int',
-        dest='resolution',help='number of Fourier points/Finite Elements across patch size + x_margin [%default]')
+parser.add_option('-g', '--grid', type='int', metavar = 'int',
+        dest='grid',help='number of Fourier points/Finite Elements across patch size + x_margin [%default]')
 parser.add_option('-z', '--extrusion', type='int', metavar = 'int',
         dest='extrusion', help='number of repetitions in z-direction [%default]')
 parser.add_option('-i', '--imagesize', type='int', metavar = 'int',
@@ -861,7 +860,7 @@ parser.set_defaults(output = [],
                     port = 40007,
                     xmargin = 0.0,
                     ymargin = 0.0,
-                    resolution = 64,
+                    grid = 64,
                     extrusion = 2,
                     imgsize = 512,
                     M = (0.0,1.0,1.0,0.0),  # M_11, M_12, M_21, M_22.  x,y in RCB is y,x of Eulers!!
@@ -903,14 +902,14 @@ rcData = rcbParser(boundarySegments,options.M,options.size,options.tolerance,opt
 Minv = np.linalg.inv(np.array(options.M).reshape(2,2))
 
 if 'rcb' in options.output:
-  print """# Header:
-# 
-# Column 1-3:    right hand average orientation (phi1, PHI, phi2 in radians)
-# Column 4-6:    left hand average orientation (phi1, PHI, phi2 in radians)
-# Column 7:      length (in microns)
-# Column 8:      trace angle (in degrees)
-# Column 9-12:   x,y coordinates of endpoints (in microns)
-# Column 13-14:  IDs of right hand and left hand grains"""
+  print('# Header:\n'+
+        '# \n'+
+        '# Column 1-3:    right hand average orientation (phi1, PHI, phi2 in radians)\n'+
+        '# Column 4-6:    left hand average orientation (phi1, PHI, phi2 in radians)\n'+
+        '# Column 7:      length (in microns)\n'+
+        '# Column 8:      trace angle (in degrees)\n'+
+        '# Column 9-12:   x,y coordinates of endpoints (in microns)\n'+
+        '# Column 13-14:  IDs of right hand and left hand grains')
   for i,(left,right) in enumerate(rcData['neighbors']):
     if rcData['segment'][i]:
       first  = np.dot(Minv,np.array([rcData['bounds'][0][0]+rcData['point'][rcData['segment'][i][0]][0]/rcData['scale'],
@@ -919,12 +918,12 @@ if 'rcb' in options.output:
       second = np.dot(Minv,np.array([rcData['bounds'][0][0]+rcData['point'][rcData['segment'][i][1]][0]/rcData['scale'],
                                      rcData['bounds'][0][1]+rcData['point'][rcData['segment'][i][1]][1]/rcData['scale'],
                                      ]))
-      print ' '.join(map(str,orientationData[left-1]+orientationData[right-1])),
-      print np.linalg.norm(first-second),
-      print '0',
-      print ' '.join(map(str,first)),
-      print ' '.join(map(str,second)),
-      print ' '.join(map(str,[left,right]))
+      print(' '.join(map(str,orientationData[left-1]+orientationData[right-1]))+
+            str(np.linalg.norm(first-second))+
+            '0'+
+            ' '.join(map(str,first))+
+            ' '.join(map(str,second))+
+            ' '.join(map(str,[left,right])))
 
 # ----- write image -----
 
@@ -934,28 +933,67 @@ if 'image' in options.output and options.imgsize > 0:
   else:
     damask.util.croak('...no image drawing possible (PIL missing)...')
 
+# ----- generate material.config  -----
+
+if any(output in options.output for output in ['spectral','mentat']):
+  config = []
+  config.append('<microstructure>')
+  
+  for i,grain in enumerate(rcData['grainMapping']):
+    config+=['[grain{}]'.format(grain),
+             'crystallite\t1',
+             '(constituent)\tphase 1\ttexture {}\tfraction 1.0'.format(i+1)]
+  if (options.xmargin > 0.0):
+    config+=['[x-margin]',
+             'crystallite\t1',
+             '(constituent)\tphase 2\ttexture {}\tfraction 1.0\n'.format(len(rcData['grainMapping'])+1)]
+  if (options.ymargin > 0.0):
+    config+=['[y-margin]',
+             'crystallite\t1',
+             '(constituent)\tphase 2\ttexture {}\tfraction 1.0\n'.format(len(rcData['grainMapping'])+1)]
+  if (options.xmargin > 0.0 and options.ymargin > 0.0):
+    config+=['[xy-margin]',
+             'crystallite\t1',
+             '(constituent)\tphase 2\ttexture {}\tfraction 1.0\n'.format(len(rcData['grainMapping'])+1)]
+  
+  if (options.xmargin > 0.0 or options.ymargin > 0.0):
+    config.append('[margin]')
+
+  config.append('<texture>')
+  for grain in rcData['grainMapping']:
+    config+=['[grain{}]'.format(grain),
+             '(gauss)\tphi1\t%f\tphi\t%f\tphi2\t%f\tscatter\t%f\tfraction\t1.0'\
+                %(math.degrees(orientationData[grain-1][0]),math.degrees(orientationData[grain-1][1]),\
+                  math.degrees(orientationData[grain-1][2]),options.scatter)]
+  if (options.xmargin > 0.0 or options.ymargin > 0.0):
+     config+=['[margin]',
+              '(random)\t\tscatter\t0.0\tfraction\t1.0']
+
 # ----- write spectral geom -----
 
 if 'spectral' in options.output:
-  fftdata = fftbuild(rcData, options.size, options.xmargin, options.ymargin, options.resolution, options.extrusion)
+  fftdata = fftbuild(rcData, options.size, options.xmargin, options.ymargin, options.grid, options.extrusion)
   
-  geomFile = open(myName+'_'+str(int(fftdata['resolution'][0]))+'.geom','w')  # open geom file for writing
-  geomFile.write('3\theader\n')                                               # write header info
-  geomFile.write('grid a %i b %i c %i\n'%(fftdata['resolution']))             # grid resolution
-  geomFile.write('size x %f y %f z %f\n'%(fftdata['dimension']))              # size
-  geomFile.write('homogenization 1\n')                                        # homogenization
-  for z in xrange(fftdata['resolution'][2]):                                  # z repetions
-    for y in xrange(fftdata['resolution'][1]):                                # each x-row separately
-      geomFile.write('\t'.join(map(str,fftdata['fftpoints'][ y   *fftdata['resolution'][0]:
-                                                            (y+1)*fftdata['resolution'][0]]))+'\n')  # grain indexes, x-row per line
-  geomFile.close()                                                            # close geom file
-  
-  damask.util.croak('assigned {} out of {} (2D) Fourier points...'
-                    .format(len(fftdata['fftpoints']),
-                            int(fftdata['resolution'][0])*int(fftdata['resolution'][1])))
-  
+  table = damask.ASCIItable(outname = myName+'_'+str(int(fftdata['grid'][0]))+'.geom',
+                            labeled = False,
+                            buffered = False)
+  table.labels_clear()
+  table.info_clear()
+  table.info_append([
+    scriptID + ' ' + ' '.join(sys.argv[1:]),
+    "grid\ta {grid[0]}\tb {grid[1]}\tc {grid[2]}".format(grid=fftdata['grid']),
+    "size\tx {size[0]}\ty {size[1]}\tz {size[2]}".format(size=fftdata['size']),
+    "homogenization\t1",
+    ])
+  table.info_append(config)
+  table.head_write()
 
-# ----- write Mentat procedure -----
+  table.data = np.array(fftdata['fftpoints']*options.extrusion).\
+                        reshape(fftdata['grid'][1]*fftdata['grid'][2],fftdata['grid'][0])
+  formatwidth = 1+int(math.log10(np.max(table.data)))
+  table.data_writeArray('%%%ii'%(formatwidth),delimiter=' ')
+  table.close() 
+
 
 if 'mentat' in options.output:
   if MentatCapability:
@@ -964,19 +1002,19 @@ if 'mentat' in options.output:
     
     cmds = [\
       init(),
-      sample(options.size,rcData['dimension'][1]/rcData['dimension'][0],12,options.xmargin,options.ymargin),
-      patch(options.size,options.resolution,options.mesh,rcData),
+      sample(options.size,rcData['dimension'][1]/rcData['size'][0],12,options.xmargin,options.ymargin),
+      patch(options.size,options.grid,options.mesh,rcData),
       gage(options.mesh,rcData),
       ]
     
     if not options.twoD:
-      cmds += [expand3D(options.size*(1.0+2.0*options.xmargin)/options.resolution*options.extrusion,options.extrusion),]
+      cmds += [expand3D(options.size*(1.0+2.0*options.xmargin)/options.grid*options.extrusion,options.extrusion),]
     
     cmds += [\
       cleanUp(options.size),
       materials(),
       initial_conditions(len(rcData['grain']),rcData['grainMapping']),
-      boundary_conditions(options.strainrate,options.size*(1.0+2.0*options.xmargin)/options.resolution*options.extrusion,\
+      boundary_conditions(options.strainrate,options.size*(1.0+2.0*options.xmargin)/options.grid*options.extrusion,\
                           options.size,rcData['dimension'][1]/rcData['dimension'][0],options.xmargin,options.ymargin),
       loadcase(options.strain/options.strainrate,options.increments,0.01),
       job(len(rcData['grain']),rcData['grainMapping'],options.twoD),
@@ -996,51 +1034,5 @@ if 'mentat' in options.output:
   else:
     damask.util.croak('...no interaction with Mentat possible...')
     
-
-# ----- write config data to file -----
-
-if 'mentat' in options.output or 'spectral' in options.output:
-  output = ''
-  output += '\n\n<homogenization>\n' + \
-            '\n[SX]\n' + \
-            'type\tisostrain\n' + \
-            'Ngrains\t1\n' + \
-            '\n\n<microstructure>\n'
-  
-  for i,grain in enumerate(rcData['grainMapping']):
-    output += '\n[grain %i]\n'%grain + \
-              'crystallite\t1\n' + \
-              '(constituent)\tphase 1\ttexture %i\tfraction 1.0\n'%(i+1)
-  if (options.xmargin > 0.0):
-      output += '\n[x-margin]\n' + \
-                'crystallite\t1\n' + \
-                '(constituent)\tphase 2\ttexture %i\tfraction 1.0\n'%(len(rcData['grainMapping'])+1)
-  if (options.ymargin > 0.0):
-      output += '\n[y-margin]\n' + \
-                'crystallite\t1\n' + \
-                '(constituent)\tphase 2\ttexture %i\tfraction 1.0\n'%(len(rcData['grainMapping'])+1)
-  if (options.xmargin > 0.0 and options.ymargin > 0.0):
-      output += '\n[margin edge]\n' + \
-                'crystallite\t1\n' + \
-                '(constituent)\tphase 2\ttexture %i\tfraction 1.0\n'%(len(rcData['grainMapping'])+1)
-  
-  output += '\n\n<crystallite>\n' + \
-            '\n[fillMeIn]\n' + \
-            '\n\n<phase>\n' + \
-            '\n[patch]\n'
-  if (options.xmargin > 0.0 or options.ymargin > 0.0):
-    output += '\n[margin]\n'
-  
-  output += '\n\n<texture>\n\n'
-  for grain in rcData['grainMapping']:
-    output += '\n[grain %i]\n'%grain + \
-              '(gauss)\tphi1\t%f\tphi\t%f\tphi2\t%f\tscatter\t%f\tfraction\t1.0\n'\
-              %(math.degrees(orientationData[grain-1][0]),math.degrees(orientationData[grain-1][1]),\
-              math.degrees(orientationData[grain-1][2]),options.scatter)
-  if (options.xmargin > 0.0 or options.ymargin > 0.0):
-    output += '\n[margin]\n' + \
-              '(random)\t\tscatter\t0.0\tfraction\t1.0\n'
-  
-  configFile = open(myName+'.config','w')
-  configFile.write(output)
-  configFile.close()
+  with open(myName+'.config','w') as configFile:
+    configFile.write('\n'.join(config))

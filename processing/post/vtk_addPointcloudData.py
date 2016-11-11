@@ -97,7 +97,7 @@ for name in filenames:
   VTKarray = {}
   active = defaultdict(list)
 
-  for datatype,dimension,label in [['data',99,options.vector],
+  for datatype,dimension,label in [['data',99,options.data],
                                    ['tensor',9,options.tensor],
                                    ['color' ,3,options.color],
                                    ]:

@@ -67,7 +67,7 @@ for name in filenames:
   
 # --- write packed microstructure information -----------------------------------------------------
 
-  type = ''
+  compressType = ''
   former = start = -1
   reps = 0
 
@@ -76,30 +76,30 @@ for name in filenames:
     items = table.data
     if len(items) > 2:
       if   items[1].lower() == 'of': items = [int(items[2])]*int(items[0])
-      elif items[1].lower() == 'to': items = xrange(int(items[0]),1+int(items[2]))
+      elif items[1].lower() == 'to': items = range(int(items[0]),1+int(items[2]))
       else:                          items = map(int,items)
     else:                            items = map(int,items)
 
     for current in items:
-      if current == former+1 and start+reps == former+1:   
-        type = 'to'
+      if abs(current - former) == 1 and abs(start-former) == reps - 1:
+        compressType = 'to'
         reps += 1
       elif current == former and start == former:
-        type = 'of'
+        compressType = 'of'
         reps += 1
       else:
-        if   type == '':
+        if   compressType == '':
           table.data = []
-        elif type == '.':
+        elif compressType == '.':
           table.data = [former]
-        elif type == 'to':
-          table.data = [former-reps+1,'to',former]
-        elif type == 'of':
+        elif compressType == 'to':
+          table.data = [start,'to',former]
+        elif compressType == 'of':
           table.data = [reps,'of',former]
 
         outputAlive = table.data_write(delimiter = ' ')                                             # output processed line
 
-        type = '.'
+        compressType = '.'
         start = current
         reps = 1
 
@@ -107,9 +107,9 @@ for name in filenames:
 
   table.data = {
                 '.' : [former],
-                'to': [former-reps+1,'to',former],
+                'to': [start,'to',former],
                 'of': [reps,'of',former],
-               }[type]
+               }[compressType]
 
   outputAlive = table.data_write(delimiter = ' ')                                                   # output processed line
 

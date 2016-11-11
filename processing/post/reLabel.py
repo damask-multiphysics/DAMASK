@@ -67,7 +67,7 @@ for name in filenames:
       if index == -1: remarks.append('label "{}" not present...'.format(options.label[i]))
       else:
         m = pattern[dimensions[i]>1].match(table.tags[index])                                       # isolate label name
-        for j in xrange(dimensions[i]):
+        for j in range(dimensions[i]):
           table.tags[index+j] = table.tags[index+j].replace(m.group(2),options.substitute[i])       # replace name with substitute
 
   if remarks != []: damask.util.croak(remarks)

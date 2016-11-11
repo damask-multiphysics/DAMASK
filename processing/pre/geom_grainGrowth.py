@@ -78,9 +78,6 @@ for name in filenames:
 
 #--- initialize support data -----------------------------------------------------------------------
 
-  periodic_microstructure = np.tile(microstructure,(3,3,3))[grid[0]/2:-grid[0]/2,
-                                                            grid[1]/2:-grid[1]/2,
-                                                            grid[2]/2:-grid[2]/2]                   # periodically extend the microstructure
 
 # store a copy the initial microstructure to find locations of immutable indices
   microstructure_original = np.copy(microstructure)                                                 
@@ -94,24 +91,27 @@ for name in filenames:
   gauss[grid[0]/2::,:,:] = gauss[int(round(grid[0]/2.))-1::-1,:,:]
   gauss = np.fft.rfftn(gauss)
 
-  interfacialEnergy = lambda A,B: (A*B != 0)*(A != B)*1.0       #1.0 if A & B are distinct & nonzero, 0.0 otherwise
-  struc = ndimage.generate_binary_structure(3,1)                                                                                 # 3D von Neumann neighborhood
+  getInterfaceEnergy = lambda A,B: (A*B != 0)*(A != B)*1.0                                          # 1.0 if A & B are distinct & nonzero, 0.0 otherwise
+  struc = ndimage.generate_binary_structure(3,1)                                                    # 3D von Neumann neighborhood
 
 
-  for smoothIter in xrange(options.N):
+  for smoothIter in range(options.N):
+    periodic_microstructure = np.tile(microstructure,(3,3,3))[grid[0]/2:-grid[0]/2,
+                                                              grid[1]/2:-grid[1]/2,
+                                                              grid[2]/2:-grid[2]/2]                 # periodically extend the microstructure
     interfaceEnergy = np.zeros(microstructure.shape)
     for i in (-1,0,1):
       for j in (-1,0,1):
         for k in (-1,0,1):
             # assign interfacial energy to all voxels that have a differing neighbor (in Moore neighborhood)
           interfaceEnergy = np.maximum(interfaceEnergy,
-                                          interfacialEnergy(microstructure,np.roll(np.roll(np.roll(
-                                                            microstructure,i,axis=0), j,axis=1), k,axis=2)))
+                                       getInterfaceEnergy(microstructure,np.roll(np.roll(np.roll(
+                                                          microstructure,i,axis=0), j,axis=1), k,axis=2)))
 
     # periodically extend interfacial energy array by half a grid size in positive and negative directions
     periodic_interfaceEnergy = np.tile(interfaceEnergy,(3,3,3))[grid[0]/2:-grid[0]/2,
-                                                                   grid[1]/2:-grid[1]/2,
-                                                                   grid[2]/2:-grid[2]/2]
+                                                                grid[1]/2:-grid[1]/2,
+                                                                grid[2]/2:-grid[2]/2]
     # transform bulk volume (i.e. where interfacial energy is zero)
     index = ndimage.morphology.distance_transform_edt(periodic_interfaceEnergy == 0.,                                            
                                                       return_distances = False,

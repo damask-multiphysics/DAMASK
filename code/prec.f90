@@ -20,12 +20,7 @@ module prec
  private 
 #if (FLOAT==8)
  integer,     parameter, public :: pReal = 8                                                        !< floating point double precision (was selected_real_kind(15,300), number with 15 significant digits, up to 1e+-300)
-#ifdef __INTEL_COMPILER
- real(pReal), parameter, public :: DAMASK_NaN = Z'7FF8000000000000'                                 !< quiet NaN for double precision (from http://www.hpc.unimelb.edu.au/doc/f90lrm/dfum_035.html)
-#endif
-#ifdef __GFORTRAN__
  real(pReal), parameter, public :: DAMASK_NaN = real(Z'7FF8000000000000',pReal)                     !< quiet NaN for double precision (from http://www.hpc.unimelb.edu.au/doc/f90lrm/dfum_035.html)
-#endif
 #else
  NO SUITABLE PRECISION FOR REAL SELECTED, STOPPING COMPILATION
 #endif
@@ -171,7 +166,7 @@ end function prec_isNaN
 !--------------------------------------------------------------------------------------------------
 !> @brief equality comparison for float with double precision
 ! replaces "==" but for certain (relative) tolerance. Counterpart to dNeq
-! http://www.cygnus-software.com/papers/comparingfloats/comparingfloats.htm
+! https://randomascii.wordpress.com/2012/02/25/comparing-floating-point-numbers-2012-edition/
 !--------------------------------------------------------------------------------------------------
 logical elemental pure function dEq(a,b,tol)
 
@@ -187,7 +182,7 @@ end function dEq
 !--------------------------------------------------------------------------------------------------
 !> @brief inequality comparison for float with double precision
 ! replaces "!=" but for certain (relative) tolerance. Counterpart to dEq
-! http://www.cygnus-software.com/papers/comparingfloats/comparingfloats.htm
+! https://randomascii.wordpress.com/2012/02/25/comparing-floating-point-numbers-2012-edition/
 !--------------------------------------------------------------------------------------------------
 logical elemental pure function dNeq(a,b,tol)
 
@@ -201,9 +196,9 @@ end function dNeq
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief equality to 0comparison for float with double precision
-! replaces "==0" but for certain (relative) tolerance. Counterpart to dNeq0
-! http://www.cygnus-software.com/papers/comparingfloats/comparingfloats.htm
+!> @brief equality to 0 comparison for float with double precision
+! replaces "==0" but for certain (absolute) tolerance. Counterpart to dNeq0
+! https://randomascii.wordpress.com/2012/02/25/comparing-floating-point-numbers-2012-edition/
 !--------------------------------------------------------------------------------------------------
 logical elemental pure function dEq0(a,tol)
 
@@ -212,14 +207,14 @@ logical elemental pure function dEq0(a,tol)
  real(pReal), intent(in), optional :: tol
  real(pReal), parameter            :: eps = 2.220446049250313E-16                                   ! DBL_EPSILON in C
 
- dEq0 = merge(.True., .False.,abs(a) <= merge(tol,eps,present(tol))*abs(a))
+ dEq0 = merge(.True., .False.,abs(a) <= merge(tol,eps,present(tol))*10.0_pReal)
 end function dEq0
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief inequality comparison to 0 for float with double precision
-! replaces "!=0" but for certain (relative) tolerance. Counterpart to dEq0
-! http://www.cygnus-software.com/papers/comparingfloats/comparingfloats.htm
+!> @brief inequality to 0 comparison for float with double precision
+! replaces "!=0" but for certain (absolute) tolerance. Counterpart to dEq0
+! https://randomascii.wordpress.com/2012/02/25/comparing-floating-point-numbers-2012-edition/
 !--------------------------------------------------------------------------------------------------
 logical elemental pure function dNeq0(a,tol)
 
@@ -228,14 +223,14 @@ logical elemental pure function dNeq0(a,tol)
  real(pReal), intent(in), optional :: tol
  real(pReal), parameter            :: eps = 2.220446049250313E-16                                   ! DBL_EPSILON in C
 
- dNeq0 = merge(.False., .True.,abs(a) <= merge(tol,eps,present(tol))*abs(a))
+ dNeq0 = merge(.False., .True.,abs(a) <= merge(tol,eps,present(tol))*10.0_pReal)
 end function dNeq0
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief equality comparison for complex with double precision
 ! replaces "==" but for certain (relative) tolerance. Counterpart to cNeq
-! http://www.cygnus-software.com/papers/comparingfloats/comparingfloats.htm
+! https://randomascii.wordpress.com/2012/02/25/comparing-floating-point-numbers-2012-edition/
 ! probably a component wise comparison would be more accurate than the comparsion of the absolute
 ! value
 !--------------------------------------------------------------------------------------------------
@@ -253,7 +248,7 @@ end function cEq
 !--------------------------------------------------------------------------------------------------
 !> @brief inequality comparison for complex with double precision
 ! replaces "!=" but for certain (relative) tolerance. Counterpart to cEq
-! http://www.cygnus-software.com/papers/comparingfloats/comparingfloats.htm
+! https://randomascii.wordpress.com/2012/02/25/comparing-floating-point-numbers-2012-edition/
 ! probably a component wise comparison would be more accurate than the comparsion of the absolute
 ! value
 !--------------------------------------------------------------------------------------------------

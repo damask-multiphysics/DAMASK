@@ -131,9 +131,9 @@ for name in filenames:
 
   table.info_append(scriptID + '\t' + ' '.join(sys.argv[1:]))
   for output in options.output:
-    if   output == 'quaternion': table.labels_append(['{}_{}_{}({})'.format(i+1,'quat',options.symmetry,label) for i in xrange(4)])
-    elif output == 'rodrigues':  table.labels_append(['{}_{}_{}({})'.format(i+1,'rodr',options.symmetry,label) for i in xrange(3)])
-    elif output == 'eulers':     table.labels_append(['{}_{}_{}({})'.format(i+1,'eulr',options.symmetry,label) for i in xrange(3)])
+    if   output == 'quaternion': table.labels_append(['{}_{}_{}({})'.format(i+1,'quat',options.symmetry,label) for i in range(4)])
+    elif output == 'rodrigues':  table.labels_append(['{}_{}_{}({})'.format(i+1,'rodr',options.symmetry,label) for i in range(3)])
+    elif output == 'eulers':     table.labels_append(['{}_{}_{}({})'.format(i+1,'eulr',options.symmetry,label) for i in range(3)])
   table.head_write()
 
 # ------------------------------------------ process data ------------------------------------------

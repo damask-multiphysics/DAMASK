@@ -150,7 +150,7 @@ class MPIEspectral_result:    # mimic py_post result object
     self.expectedFileSize = self.dataOffset+self.N_increments*(self.tagLen+self.N_elements*self.N_element_scalars*8)
     if options.legacy: self.expectedFileSize+=self.expectedFileSize//self.fourByteLimit*8             # add extra 8 bytes for additional headers at 4 GB limits
     if self.expectedFileSize != self.filesize:
-      print '\n**\n* Unexpected file size. Incomplete simulation or file corrupted!\n**'
+      print('\n**\n* Unexpected file size. Incomplete simulation or file corrupted!\n**')
 
   def __str__(self):
     """Summary of results file"""
@@ -288,8 +288,8 @@ class MPIEspectral_result:    # mimic py_post result object
         self.file.seek(incStart+where)
         value = struct.unpack('d',self.file.read(8))[0]
       except:
-        print 'seeking',incStart+where
-        print 'e',e,'idx',idx
+        print('seeking {}'.format(incStart+where))
+        print('e {} idx {}'.format(e,idx))
         sys.exit(1)
 
     else:
@@ -304,7 +304,7 @@ class MPIEspectral_result:    # mimic py_post result object
       try:
         if where%self.fourByteLimit + 8 >= self.fourByteLimit:                       # danger of reading into fortran record footer at 4 byte limit
           data=''
-          for i in xrange(8):
+          for i in range(8):
             self.file.seek(incStart+where+(where//self.fourByteLimit)*8+4)
             data  += self.file.read(1)
             where += 1
@@ -313,8 +313,8 @@ class MPIEspectral_result:    # mimic py_post result object
           self.file.seek(incStart+where+(where//self.fourByteLimit)*8+4)
           value = struct.unpack('d',self.file.read(8))[0]
       except:
-        print 'seeking',incStart+where+(where//self.fourByteLimit)*8+4
-        print 'e',e,'idx',idx
+        print('seeking {}'.format(incStart+where+(where//self.fourByteLimit)*8+4))
+        print('e {} idx {}'.format(e,idx))
         sys.exit(1)
 
     return [elemental_scalar(node,value) for node in self.element(e).items]
@@ -327,7 +327,7 @@ class MPIEspectral_result:    # mimic py_post result object
 
 # -----------------------------
 def ipCoords(elemType, nodalCoordinates):
-  """returns IP coordinates for a given element"""
+  """Returns IP coordinates for a given element"""
   nodeWeightsPerNode =  {
               7:    [ [27.0,  9.0,  3.0,  9.0,  9.0,  3.0,  1.0,  3.0],
                       [ 9.0, 27.0,  9.0,  3.0,  3.0,  9.0,  3.0,  1.0],
@@ -376,7 +376,7 @@ def ipCoords(elemType, nodalCoordinates):
 
 # -----------------------------
 def ipIDs(elemType):
-  """returns IP numbers for given element type"""
+  """Returns IP numbers for given element type"""
   ipPerNode =  {
               7:    [ 1, 2, 4, 3, 5, 6, 8, 7 ],
               57:   [ 1, 2, 4, 3, 5, 6, 8, 7 ],
@@ -392,7 +392,7 @@ def ipIDs(elemType):
 
 # -----------------------------
 def substituteLocation(string, mesh, coords):
-  """do variable interpolation in group and filter strings"""
+  """Do variable interpolation in group and filter strings"""
   substitute = string
   substitute = substitute.replace('elem', str(mesh[0]))
   substitute = substitute.replace('node', str(mesh[1]))
@@ -407,7 +407,7 @@ def substituteLocation(string, mesh, coords):
 
 # -----------------------------
 def heading(glue,parts):
-  """joins pieces from parts by glue. second to last entry in pieces tells multiplicity"""
+  """Joins pieces from parts by glue. second to last entry in pieces tells multiplicity"""
   header = []
   for pieces in parts:
     if pieces[-2] == 0:
@@ -420,7 +420,7 @@ def heading(glue,parts):
 # -----------------------------
 def mapIncremental(label, mapping, N, base, new):
   """
-  applies the function defined by "mapping"
+  Applies the function defined by "mapping"
 
   (can be either 'min','max','avg', 'sum', or user specified)
   to a list of data
@@ -450,7 +450,7 @@ def mapIncremental(label, mapping, N, base, new):
 
 # -----------------------------
 def OpenPostfile(name,type,nodal = False):
-  """open postfile with extrapolation mode 'translate'"""
+  """Open postfile with extrapolation mode 'translate'"""
   p = {\
          'spectral': MPIEspectral_result,\
          'marc':     post_open,\
@@ -463,7 +463,7 @@ def OpenPostfile(name,type,nodal = False):
 
 # -----------------------------
 def ParseOutputFormat(filename,what,me):
-  """parse .output* files in order to get a list of outputs"""
+  """Parse .output* files in order to get a list of outputs"""
   content = []
   format = {'outputs':{},'specials':{'brothers':[]}}
   for prefix in ['']+map(str,range(1,17)):
@@ -508,7 +508,7 @@ def ParseOutputFormat(filename,what,me):
 # -----------------------------
 def ParsePostfile(p,filename, outputFormat):
   """
-  parse postfile in order to get position and labels of outputs
+  Parse postfile in order to get position and labels of outputs
 
   needs "outputFormat" for mapping of output names to postfile output indices
   """
@@ -592,7 +592,7 @@ def ParsePostfile(p,filename, outputFormat):
             try:
               stat['LabelOfElementalScalar'][startIndex + offset] = label
             except IndexError:
-              print 'trying to assign %s at position %i+%i'%(label,startIndex,offset)
+              print('trying to assign {} at position {}+{}'.format(label,startIndex,offset))
               sys.exit(1)
             offset += 1
 
@@ -821,8 +821,8 @@ bg.set_message('parsing .output files...')
 for what in me:
   outputFormat[what] = ParseOutputFormat(filename, what, me[what])
   if '_id' not in outputFormat[what]['specials']:
-    print "\nsection '%s' not found in <%s>"%(me[what], what)
-    print '\n'.join(map(lambda x:'  [%s]'%x, outputFormat[what]['specials']['brothers']))
+    print("\nsection '{}' not found in <{}>".format(me[what], what))
+    print('\n'.join(map(lambda x:'  [%s]'%x, outputFormat[what]['specials']['brothers'])))
 
 bg.set_message('opening result file...')
 p = OpenPostfile(filename+extension,options.filetype,options.nodal)
@@ -851,17 +851,17 @@ for opt in ['nodalScalar','elemScalar','elemTensor','homogenizationResult','crys
 
 if options.info:
   if options.filetype == 'marc':
-    print '\n\nMentat release %s'%damask.solver.Marc().version('../../')
+    print('\n\nMentat release {}'.format(damask.solver.Marc().version('../../')))
   if options.filetype == 'spectral':
-    print '\n\n',p
+    print('\n\n{}'.format(p))
 
   SummarizePostfile(stat)
 
-  print '\nUser Defined Outputs'
+  print('\nUser Defined Outputs')
   for what in me:
-    print '\n ',what,':'
+    print('\n {}:'.format(what))
     for output in outputFormat[what]['outputs']:
-      print '  ',output
+      print('  {}'.format(output))
 
   sys.exit(0)
 
@@ -869,7 +869,7 @@ if options.info:
 # --- build connectivity maps
 
 elementsOfNode = {}
-for e in xrange(stat['NumberOfElements']):
+for e in range(stat['NumberOfElements']):
   if e%1000 == 0:
     bg.set_message('connect elem %i...'%e)
   for n in map(p.node_sequence,p.element(e).items):
@@ -892,7 +892,7 @@ groupCount = 0
 memberCount = 0
 
 if options.nodalScalar:
-  for n in xrange(stat['NumberOfNodes']):
+  for n in range(stat['NumberOfNodes']):
     if n%1000 == 0:
       bg.set_message('scan node %i...'%n)
     myNodeID = p.node_id(n)
@@ -927,7 +927,7 @@ if options.nodalScalar:
     memberCount += 1
 
 else:
-  for e in xrange(stat['NumberOfElements']):
+  for e in range(stat['NumberOfElements']):
     if e%1000 == 0:
       bg.set_message('scan elem %i...'%e)
     myElemID = p.element_id(e)
@@ -947,27 +947,27 @@ else:
         # --- filter valid locations
         # generates an expression that is only true for the locations specified by options.filter
         filter = substituteLocation(options.filter, [myElemID,myNodeID,myIpID,myGrainID], myIpCoordinates[n])
-        if filter != '' and not eval(filter):                                                               # for all filter expressions that are not true:...
-          continue                                                                                          # ... ignore this data point and continue with next
+        if filter != '' and not eval(filter):                                                       # for all filter expressions that are not true:...
+          continue                                                                                  # ... ignore this data point and continue with next
 
         # --- group data locations
         # generates a unique key for a group of separated data based on the separation criterium for the location
         grp = substituteLocation('#'.join(options.sep), [myElemID,myNodeID,myIpID,myGrainID], myIpCoordinates[n])
 
-        if grp not in index:                                                                                # create a new group if not yet present
+        if grp not in index:                                                                        # create a new group if not yet present
           index[grp] = groupCount
-          groups.append([[0,0,0,0,0.0,0.0,0.0]])                                                            # initialize with avg location
+          groups.append([[0,0,0,0,0.0,0.0,0.0]])                                                    # initialize with avg location
           groupCount += 1
 
         groups[index[grp]][0][:4] = mapIncremental('','unique',
                                                    len(groups[index[grp]])-1,
                                                    groups[index[grp]][0][:4],
-                                                   [myElemID,myNodeID,myIpID,myGrainID])                    # keep only if unique average location
+                                                   [myElemID,myNodeID,myIpID,myGrainID])            # keep only if unique average location
         groups[index[grp]][0][4:] = mapIncremental('','avg',
                                                    len(groups[index[grp]])-1,
                                                    groups[index[grp]][0][4:],
-                                                   myIpCoordinates[n])                                      # incrementally update average location
-        groups[index[grp]].append([myElemID,myNodeID,myIpID,myGrainID,n])                                   # append a new list defining each group member
+                                                   myIpCoordinates[n])                              # incrementally update average location
+        groups[index[grp]].append([myElemID,myNodeID,myIpID,myGrainID,n])                           # append a new list defining each group member
         memberCount += 1
 
 
@@ -996,14 +996,14 @@ if 'none' not in map(str.lower, options.sort):
 
 sortKeys = eval('lambda x:(%s)'%(','.join(theKeys)))
 bg.set_message('sorting groups...')
-groups.sort(key = sortKeys)                                                                                 # in-place sorting to save mem
+groups.sort(key = sortKeys)                                                                         # in-place sorting to save mem
 
 
 # ---------------------------   create output dir   --------------------------------
 
 dirname = os.path.abspath(os.path.join(os.path.dirname(filename),options.dir))
 if not os.path.isdir(dirname):
-  os.mkdir(dirname,0755)
+  os.mkdir(dirname,0o755)
 
 fileOpen = False
 assembleHeader = True
@@ -1049,7 +1049,7 @@ for incCount,position in enumerate(locations):     # walk through locations
 
   if options.separateFiles:
     if fileOpen:
-      file.close()
+      file.close()                                                                                  # noqa
       fileOpen = False
     outFilename = eval('"'+eval("'%%s_inc%%0%ii%%s.txt'%(math.log10(max(increments+[1]))+1)")\
                       +'"%(dirname + os.sep + options.prefix + os.path.split(filename)[1],increments[incCount],options.suffix)')
@@ -1070,15 +1070,15 @@ for incCount,position in enumerate(locations):     # walk through locations
   member = 0
   for group in groups:
 
-    N = 0                                                                          # group member counter
-    for (e,n,i,g,n_local) in group[1:]:                                            # loop over group members
+    N = 0                                                                                           # group member counter
+    for (e,n,i,g,n_local) in group[1:]:                                                             # loop over group members
       member += 1
       if member%1000 == 0:
         time_delta = ((len(locations)*memberCount)/float(member+incCount*memberCount)-1.0)*(time.time()-time_start)
         bg.set_message('(%02i:%02i:%02i) processing point %i of %i from increment %i (position %i)...'
           %(time_delta//3600,time_delta%3600//60,time_delta%60,member,memberCount,increments[incCount],position))
 
-      newby = []                                                                   # current member's data
+      newby = []                                                                                    # current member's data
 
       if options.nodalScalar:
         for label in options.nodalScalar:
@@ -1126,7 +1126,7 @@ for incCount,position in enumerate(locations):     # walk through locations
                                       ['Crystallite']*len(options.crystalliteResult) +
                                       ['Constitutive']*len(options.constitutiveResult)
                                       ):
-          outputIndex = list(zip(*outputFormat[resultType]['outputs'])[0]).index(label)       # find the position of this output in the outputFormat
+          outputIndex = list(zip(*outputFormat[resultType]['outputs'])[0]).index(label)             # find the position of this output in the outputFormat
           length = int(outputFormat[resultType]['outputs'][outputIndex][1])
           thisHead = heading('_',[[component,''.join( label.split() )] for component in range(int(length>1),length+int(length>1))])
           if assembleHeader: header += thisHead
@@ -1138,13 +1138,13 @@ for incCount,position in enumerate(locations):     # walk through locations
                           'content':[ p.element_scalar(p.element_sequence(e),stat['IndexOfLabel'][head])[n_local].value
                                       for head in thisHead ]})
           except KeyError:
-            print '\nDAMASK outputs seem missing from "post" section of the *.dat file!'
+            print('\nDAMASK outputs seem missing from "post" section of the *.dat file!')
             sys.exit()
 
       assembleHeader = False
 
       if N == 0:
-        mappedResult = [float(x) for x in xrange(len(header))]                               # initialize with debug data (should get deleted by *N at N=0)
+        mappedResult = [float(x) for x in range(len(header))]                                       # init with debug data (should get deleted by *N at N=0)
 
       pos = 0
       for chunk in newby:

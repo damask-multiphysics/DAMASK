@@ -517,7 +517,7 @@ end subroutine plastic_isotropic_LiAndItsTangent
 !--------------------------------------------------------------------------------------------------
 subroutine plastic_isotropic_dotState(Tstar_v,ipc,ip,el)
  use prec, only: &
-   dEq
+   dEq0
  use math, only: &
    math_mul6x6
  use material, only: &
@@ -564,7 +564,7 @@ subroutine plastic_isotropic_dotState(Tstar_v,ipc,ip,el)
 !--------------------------------------------------------------------------------------------------
 ! hardening coefficient
  if (abs(gamma_dot) > 1e-12_pReal) then
-   if (dEq(param(instance)%tausat_SinhFitA,0.0_pReal)) then
+   if (dEq0(param(instance)%tausat_SinhFitA)) then
      saturation = param(instance)%tausat
    else
      saturation = (  param(instance)%tausat &

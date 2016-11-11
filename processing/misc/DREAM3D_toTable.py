@@ -14,14 +14,28 @@ scriptID   = ' '.join([scriptName,damask.version])
 #                                MAIN
 #--------------------------------------------------------------------------------------------------
 
-parser = OptionParser(option_class=damask.extendableOption, usage='%prog [geomfile[s]]', description = """
-Convert DREAM3D file to ASCIItable
+parser = OptionParser(option_class=damask.extendableOption, usage='%prog [dream3dfile[s]]', description = """
+Convert DREAM3D file to ASCIItable. Works for 3D datasets, but, hey, its not called DREAM2D ;)
 
 """, version = scriptID)
 
+parser.add_option('-d','--data',
+                  dest = 'data',
+                  action = 'extend', metavar = '<string LIST>',
+                  help = 'data to extract from DREAM3D file')
+parser.add_option('-c','--container',
+                  dest = 'container', metavar = 'string',
+                  help = 'root container(group) in which data is stored [%default]')
+
+parser.set_defaults(container="ImageDataContainer",
+                   )
+
 (options, filenames) = parser.parse_args()
 
-rootDir ='DataContainers/ImageDataContainer'
+if options.data is None:
+  parser.error('No data selected')
+
+rootDir ='DataContainers/'+options.container
 
 # --- loop over input files -------------------------------------------------------------------------
 
@@ -36,33 +50,29 @@ for name in filenames:
   damask.util.report(scriptName,name)
 
   inFile = h5py.File(name, 'r')
-      
-  grid = inFile[rootDir+'/_SIMPL_GEOMETRY/DIMENSIONS'][...]
-
+  try:
+    grid = inFile[rootDir+'/_SIMPL_GEOMETRY/DIMENSIONS'][...]
+  except:
+    damask.util.croak('Group {} not found'.format(options.container))
+    table.close(dismiss = True)
+    continue
   
 # --- read comments --------------------------------------------------------------------------------
                     
-  coords = (np.mgrid[0:grid[2], 0:grid[1], 0: grid[0]]).reshape(3, -1).T
-  coords = (np.fliplr(coords)*inFile[rootDir+'/_SIMPL_GEOMETRY/SPACING'][...] \
-            + inFile[rootDir+'/_SIMPL_GEOMETRY/ORIGIN'][...] \
-            + inFile[rootDir+'/_SIMPL_GEOMETRY/SPACING'][...]*0.5)
-
-  table.data = np.hstack( (coords,
-                           inFile[rootDir+'/CellData/EulerAngles'][...].reshape(grid.prod(),3),
-                           inFile[rootDir+'/CellData/Phases'][...].reshape(grid.prod(),1),
-                           inFile[rootDir+'/CellData/Confidence Index'][...].reshape(grid.prod(),1),
-                           inFile[rootDir+'/CellData/Fit'][...].reshape(grid.prod(),1),
-                           inFile[rootDir+'/CellData/Image Quality'][...].reshape(grid.prod(),1)))
-                    
-  
-  labels = ['1_pos','2_pos','3_pos',
-            '1_Euler','2_Euler','3_Euler',
-            'PhaseID','CI','Fit','IQ']
-  try:
-    table.data = np.hstack((table.data, inFile[rootDir+'/CellData/FeatureIds'][...].reshape(grid.prod(),1)))
-    labels.append(['FeatureID'])
-  except Exception:
-    pass
+  coords = (np.mgrid[0:grid[2], 0:grid[1], 0: grid[0]]).reshape(3, -1).T                             
+  table.data = (np.fliplr(coords)*inFile[rootDir+'/_SIMPL_GEOMETRY/SPACING'][...] \
+             + inFile[rootDir+'/_SIMPL_GEOMETRY/ORIGIN'][...] \
+             + inFile[rootDir+'/_SIMPL_GEOMETRY/SPACING'][...]*0.5)
+  labels = ['1_pos','2_pos','3_pos']
+  for data in options.data:
+    try:
+      l = np.prod(inFile[rootDir+'/CellData/'+data].shape[3:])
+      labels+=['{}_{}'.format(i+1,data.replace(' ','')) for i in range(l)] if l >1 else [data.replace(' ','')]
+    except KeyError:
+      damask.util.croak('Data {} not found'.format(data))
+      pass
+    table.data = np.hstack((table.data,
+                            inFile[rootDir+'/CellData/'+data][...].reshape(grid.prod(),l)))
     
 # ------------------------------------------ assemble header ---------------------------------------
   table.labels_clear()
@@ -70,5 +80,5 @@ for name in filenames:
   table.head_write()
   
 # ------------------------------------------ finalize output ---------------------------------------
-  table.data_writeArray() #(fmt='%e2.2')
+  table.data_writeArray()
   table.close()

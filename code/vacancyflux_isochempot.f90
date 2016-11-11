@@ -72,8 +72,6 @@ subroutine vacancyflux_isochempot_init(fileUnit)
    vacancyConcRate, &
    vacancyflux_initialCv, &
    material_partHomogenization
- use numerics,only: &
-   worldrank
 
  implicit none
  integer(pInt), intent(in) :: fileUnit
@@ -86,11 +84,9 @@ subroutine vacancyflux_isochempot_init(fileUnit)
    tag  = '', &
    line = ''
 
- mainProcess: if (worldrank == 0) then 
-   write(6,'(/,a)')   ' <<<+-  vacancyflux_'//VACANCYFLUX_isochempot_label//' init  -+>>>'
-   write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
+ write(6,'(/,a)')   ' <<<+-  vacancyflux_'//VACANCYFLUX_isochempot_label//' init  -+>>>'
+ write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
- endif mainProcess
  
  maxNinstance = int(count(vacancyflux_type == VACANCYFLUX_isochempot_ID),pInt)
  if (maxNinstance == 0_pInt) return

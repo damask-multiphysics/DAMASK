@@ -549,13 +549,13 @@ subroutine mesh_init(ip,el)
  call IO_open_file(FILEUNIT,geometryFile)                                                           ! parse info from geometry file...
  if (myDebug) write(6,'(a)') ' Opened geometry file'; flush(6)
  grid     = mesh_spectral_getGrid(fileUnit)
- call MPI_comm_size(MPI_COMM_WORLD, worldsize, ierr)
+ call MPI_comm_size(PETSC_COMM_WORLD, worldsize, ierr)
  if(ierr /=0_pInt) call IO_error(894_pInt, ext_msg='MPI_comm_size')
  if(worldsize>grid(3)) call IO_error(894_pInt, ext_msg='number of processes exceeds grid(3)')
 
  geomSize = mesh_spectral_getSize(fileUnit)
  devNull = fftw_mpi_local_size_3d(int(grid(3),C_INTPTR_T),int(grid(2),C_INTPTR_T),&
-                                  int(grid(1),C_INTPTR_T)/2+1,MPI_COMM_WORLD,local_K,local_K_offset)
+                                  int(grid(1),C_INTPTR_T)/2+1,PETSC_COMM_WORLD,local_K,local_K_offset)
  grid3       = int(local_K,pInt)
  grid3Offset = int(local_K_offset,pInt)
  size3       = geomSize(3)*real(grid3,pReal)      /real(grid(3),pReal)

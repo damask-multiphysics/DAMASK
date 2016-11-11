@@ -12,8 +12,8 @@ scriptID   = ' '.join([scriptName,damask.version])
 def gradFFT(geomdim,field):
  shapeFFT    = np.array(np.shape(field))[0:3]
  grid = np.array(np.shape(field)[2::-1])
- N = grid.prod()                                                                          # field size
- n = np.array(np.shape(field)[3:]).prod()                                                 # data size
+ N = grid.prod()                                                                                    # field size
+ n = np.array(np.shape(field)[3:]).prod()                                                           # data size
 
  if   n == 3:   dataType = 'vector'
  elif n == 1:   dataType = 'scalar'
@@ -22,29 +22,21 @@ def gradFFT(geomdim,field):
  grad_fourier  = np.empty(field_fourier.shape+(3,),'c16')
 
 # differentiation in Fourier space
- k_s = np.zeros([3],'i')
  TWOPIIMG = 2.0j*math.pi
- for i in xrange(grid[2]):
-   k_s[0] = i
-   if grid[2]%2 == 0 and i == grid[2]//2:  k_s[0] = 0                                     # for even grid, set Nyquist freq to 0 (Johnson, MIT, 2011)
-   elif i > grid[2]//2:                    k_s[0] -= grid[2]
+ k_sk = np.where(np.arange(grid[2])>grid[2]//2,np.arange(grid[2])-grid[2],np.arange(grid[2]))/geomdim[0]
+ if grid[2]%2 == 0: k_sk[grid[2]//2] = 0                                                            # for even grid, set Nyquist freq to 0 (Johnson, MIT, 2011)
+ 
+ k_sj = np.where(np.arange(grid[1])>grid[1]//2,np.arange(grid[1])-grid[1],np.arange(grid[1]))/geomdim[1]
+ if grid[1]%2 == 0: k_sj[grid[1]//2] = 0                                                            # for even grid, set Nyquist freq to 0 (Johnson, MIT, 2011)
 
-   for j in xrange(grid[1]):
-     k_s[1] = j
-     if grid[1]%2 == 0 and j == grid[1]//2: k_s[1] = 0                                    # for even grid, set Nyquist freq to 0 (Johnson, MIT, 2011)
-     elif j > grid[1]//2:                   k_s[1] -= grid[1]
-
-     for k in xrange(grid[0]//2+1):
-       k_s[2] = k
-       if grid[0]%2 == 0 and k == grid[0]//2: k_s[2] = 0                                  # for even grid, set Nyquist freq to 0 (Johnson, MIT, 2011)
-
-       xi = (k_s/geomdim)[2::-1].astype('c16')                                            # reversing the field order
-       
-       grad_fourier[i,j,k,0,:] = field_fourier[i,j,k,0]*xi *TWOPIIMG                      # vector field from scalar data
-
-       if dataType == 'vector':
-         grad_fourier[i,j,k,1,:] = field_fourier[i,j,k,1]*xi *TWOPIIMG                    # tensor field from vector data
-         grad_fourier[i,j,k,2,:] = field_fourier[i,j,k,2]*xi *TWOPIIMG
+ k_si = np.arange(grid[0]//2+1)/geomdim[2]
+ 
+ kk, kj, ki = np.meshgrid(k_sk,k_sj,k_si,indexing = 'ij')
+ k_s = np.concatenate((ki[:,:,:,None],kj[:,:,:,None],kk[:,:,:,None]),axis = 3).astype('c16')                           
+ if dataType == 'vector':                                                                           # vector, 3 -> 3x3
+   grad_fourier = np.einsum('ijkl,ijkm->ijklm',field_fourier,k_s)*TWOPIIMG
+ elif dataType == 'scalar':                                                                         # scalar, 1 -> 3
+   grad_fourier = np.einsum('ijkl,ijkl->ijkl',field_fourier,k_s)*TWOPIIMG
 
  return np.fft.irfftn(grad_fourier,axes=(0,1,2),s=shapeFFT).reshape([N,3*n])
 
@@ -126,14 +118,14 @@ for name in filenames:
   table.info_append(scriptID + '\t' + ' '.join(sys.argv[1:]))
   for type, data in items.iteritems():
     for label in data['active']:
-      table.labels_append(['{}_gradFFT({})'.format(i+1,label) for i in xrange(3 * data['dim'])])        # extend ASCII header with new labels
+      table.labels_append(['{}_gradFFT({})'.format(i+1,label) for i in range(3 * data['dim'])])     # extend ASCII header with new labels
   table.head_write()
 
 # --------------- figure out size and grid ---------------------------------------------------------
 
   table.data_readArray()
 
-  coords = [np.unique(table.data[:,colCoord+i]) for i in xrange(3)]
+  coords = [np.unique(table.data[:,colCoord+i]) for i in range(3)]
   mincorner = np.array(map(min,coords))
   maxcorner = np.array(map(max,coords))
   grid   = np.array(map(len,coords),'i')

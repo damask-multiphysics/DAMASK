@@ -112,7 +112,7 @@ for name in filenames:
             table.labels_append(['{}_{}({}){}'.format(i+1,                                          # extend ASCII header with new labels  
                                                       theStrain,
                                                       theStretch,
-                                                      what if what != 'f' else '') for i in xrange(9)])
+                                                      what if what != 'f' else '') for i in range(9)])
 
   if remarks != []: damask.util.croak(remarks)
   if errors  != []:

@@ -200,7 +200,8 @@ contains
 subroutine plastic_dislotwin_init(fileUnit)
  use, intrinsic :: iso_fortran_env                                                                  ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
  use prec, only: &
-   dEq, &
+   dEq0, &
+   dNeq0, &
    dNeq
  use debug, only: &
    debug_level,&
@@ -748,8 +749,8 @@ subroutine plastic_dislotwin_init(fileUnit)
       if (plastic_dislotwin_Qsd(instance) <= 0.0_pReal) &
         call IO_error(211_pInt,el=instance,ext_msg='Qsd ('//PLASTICITY_DISLOTWIN_label//')')
       if (sum(plastic_dislotwin_Ntwin(:,instance)) > 0_pInt) then
-        if (dEq(plastic_dislotwin_SFE_0K(instance), 0.0_pReal) .and. &
-            dEq(plastic_dislotwin_dSFE_dT(instance),0.0_pReal) .and. &
+        if (dEq0(plastic_dislotwin_SFE_0K(instance)) .and. &
+            dEq0(plastic_dislotwin_dSFE_dT(instance)) .and. &
                             lattice_structure(phase) == LATTICE_fcc_ID) &
           call IO_error(211_pInt,el=instance,ext_msg='SFE0K ('//PLASTICITY_DISLOTWIN_label//')')
         if (plastic_dislotwin_aTolRho(instance) <= 0.0_pReal) &
@@ -758,8 +759,8 @@ subroutine plastic_dislotwin_init(fileUnit)
           call IO_error(211_pInt,el=instance,ext_msg='aTolTwinFrac ('//PLASTICITY_DISLOTWIN_label//')')
       endif
       if (sum(plastic_dislotwin_Ntrans(:,instance)) > 0_pInt) then
-        if (dEq(plastic_dislotwin_SFE_0K(instance), 0.0_pReal) .and. &
-            dEq(plastic_dislotwin_dSFE_dT(instance),0.0_pReal) .and. &
+        if (dEq0(plastic_dislotwin_SFE_0K(instance)) .and. &
+            dEq0(plastic_dislotwin_dSFE_dT(instance)) .and. &
                             lattice_structure(phase) == LATTICE_fcc_ID) &
           call IO_error(211_pInt,el=instance,ext_msg='SFE0K ('//PLASTICITY_DISLOTWIN_label//')')
         if (plastic_dislotwin_aTolTransFrac(instance) <= 0.0_pReal) &
@@ -772,7 +773,7 @@ subroutine plastic_dislotwin_init(fileUnit)
       if (plastic_dislotwin_sbVelocity(instance) > 0.0_pReal .and. &
           plastic_dislotwin_pShearBand(instance) <= 0.0_pReal) &
         call IO_error(211_pInt,el=instance,ext_msg='pShearBand ('//PLASTICITY_DISLOTWIN_label//')')
-      if (dNeq(plastic_dislotwin_dipoleFormationFactor(instance), 0.0_pReal) .and. &
+      if (dNeq0(plastic_dislotwin_dipoleFormationFactor(instance)) .and. &
           dNeq(plastic_dislotwin_dipoleFormationFactor(instance), 1.0_pReal)) &
         call IO_error(211_pInt,el=instance,ext_msg='dipoleFormationFactor ('//PLASTICITY_DISLOTWIN_label//')')
       if (plastic_dislotwin_sbVelocity(instance) > 0.0_pReal .and. &
@@ -1624,7 +1625,7 @@ end subroutine plastic_dislotwin_microstructure
 subroutine plastic_dislotwin_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,Temperature,ipc,ip,el)
  use prec, only: &
    tol_math_check, &
-   dNeq
+   dNeq0
  use math, only: &
    math_Plain3333to99, &
    math_Mandel6to33, &
@@ -1771,8 +1772,7 @@ subroutine plastic_dislotwin_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,Temperature
  
 !--------------------------------------------------------------------------------------------------
 ! Shear banding (shearband) part
- if(dNeq(plastic_dislotwin_sbVelocity(instance),  0.0_pReal) .and. &
-    dNeq(plastic_dislotwin_sbResistance(instance),0.0_pReal)) then
+ if(dNeq0(plastic_dislotwin_sbVelocity(instance)) .and. dNeq0(plastic_dislotwin_sbResistance(instance))) then
    gdot_sb = 0.0_pReal
    dgdot_dtausb = 0.0_pReal
    call math_eigenValuesVectorsSym(math_Mandel6to33(Tstar_v),eigValues,eigVectors,error)
@@ -1939,7 +1939,7 @@ end subroutine plastic_dislotwin_LpAndItsTangent
 subroutine plastic_dislotwin_dotState(Tstar_v,Temperature,ipc,ip,el)
  use prec, only: &
    tol_math_check, &
-   dEq
+   dEq0
  use math, only: &
    pi
  use material, only: &
@@ -2040,7 +2040,7 @@ subroutine plastic_dislotwin_dotState(Tstar_v,Temperature,ipc,ip,el)
       !* Dipole formation
       EdgeDipMinDistance = &
         plastic_dislotwin_CEdgeDipMinDistance(instance)*plastic_dislotwin_burgersPerSlipSystem(j,instance)
-      if (dEq(tau_slip(j),0.0_pReal)) then
+      if (dEq0(tau_slip(j))) then
         DotRhoDipFormation = 0.0_pReal
       else
         EdgeDipDistance = &
@@ -2068,10 +2068,10 @@ subroutine plastic_dislotwin_dotState(Tstar_v,Temperature,ipc,ip,el)
         plastic_dislotwin_CAtomicVolume(instance)*plastic_dislotwin_burgersPerSlipSystem(j,instance)**(3.0_pReal)
       VacancyDiffusion = &
         plastic_dislotwin_D0(instance)*exp(-plastic_dislotwin_Qsd(instance)/(kB*Temperature))
-      if (dEq(tau_slip(j),0.0_pReal)) then
+      if (dEq0(tau_slip(j))) then
         DotRhoEdgeDipClimb = 0.0_pReal
       else
-        if (dEq(EdgeDipDistance-EdgeDipMinDistance,0.0_pReal)) then
+        if (dEq0(EdgeDipDistance-EdgeDipMinDistance)) then
           DotRhoEdgeDipClimb = 0.0_pReal
         else
           ClimbVelocity = 3.0_pReal*lattice_mu(ph)*VacancyDiffusion*AtomicVolume/ &
@@ -2187,7 +2187,7 @@ end subroutine plastic_dislotwin_dotState
 function plastic_dislotwin_postResults(Tstar_v,Temperature,ipc,ip,el)
  use prec, only: &
    tol_math_check, &
-   dEq
+   dEq0
  use math, only: &
    pi, &
    math_Mandel6to33, &
@@ -2503,7 +2503,7 @@ function plastic_dislotwin_postResults(Tstar_v,Temperature,ipc,ip,el)
 
              !* Stress exponent
              plastic_dislotwin_postResults(c+j) = &
-               merge(0.0_pReal,(tau/gdot_slip(j))*dgdot_dtauslip,dEq(gdot_slip(j),0.0_pReal))
+               merge(0.0_pReal,(tau/gdot_slip(j))*dgdot_dtauslip,dEq0(gdot_slip(j)))
          enddo ; enddo
          c = c + ns
       case (sb_eigenvalues_ID)
