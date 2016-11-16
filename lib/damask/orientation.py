@@ -744,27 +744,27 @@ class Symmetry:
 
     if self.lattice == 'cubic':
       basis = {'improper':np.array([ [-1.            ,  0.            ,  1. ],
-                                   [ np.sqrt(2.)     , -np.sqrt(2.)   ,  0. ],
-                                   [ 0.              ,  np.sqrt(3.)   ,  0. ] ]),
+                                     [ np.sqrt(2.)   , -np.sqrt(2.)   ,  0. ],
+                                     [ 0.            ,  np.sqrt(3.)   ,  0. ] ]),
                  'proper':np.array([ [ 0.            , -1.            ,  1. ],
-                                   [-np.sqrt(2.)     , np.sqrt(2.)    ,  0. ],
-                                   [ np.sqrt(3.  )   ,  0.            ,  0. ] ]),
+                                     [-np.sqrt(2.)   , np.sqrt(2.)    ,  0. ],
+                                     [ np.sqrt(3.)   ,  0.            ,  0. ] ]),
               }
     elif self.lattice == 'hexagonal':
       basis = {'improper':np.array([ [ 0.            ,  0.            ,  1. ],
-                                   [ 1.              , -np.sqrt(3.)   ,  0. ],
-                                   [ 0.              ,  2.            ,  0. ] ]),
-               'proper':np.array([ [ 0.              ,  0.            ,  1. ],
-                                   [-1.              ,  np.sqrt(3.)   ,  0. ],
-                                   [ np.sqrt(3)      , -1.            ,  0. ] ]),
+                                     [ 1.            , -np.sqrt(3.)   ,  0. ],
+                                     [ 0.            ,  2.            ,  0. ] ]),
+               'proper':np.array([   [ 0.            ,  0.            ,  1. ],
+                                     [-1.            ,  np.sqrt(3.)   ,  0. ],
+                                     [ np.sqrt(3.)   , -1.            ,  0. ] ]),
               }
     elif self.lattice == 'tetragonal':
       basis = {'improper':np.array([ [ 0.            ,  0.            ,  1. ],
-                                   [ 1.              , -1.            ,  0. ],
-                                   [ 0.              ,  np.sqrt(2.)   ,  0. ] ]),
-               'proper':np.array([ [ 0.              ,  0.            ,  1. ],
-                                   [-1.              ,  1.            ,  0. ],
-                                   [ np.sqrt(2.)     ,  0.            ,  0. ] ]),
+                                     [ 1.            , -1.            ,  0. ],
+                                     [ 0.            ,  np.sqrt(2.)   ,  0. ] ]),
+               'proper':np.array([   [ 0.            ,  0.            ,  1. ],
+                                     [-1.            ,  1.            ,  0. ],
+                                     [ np.sqrt(2.)   ,  0.            ,  0. ] ]),
               }
     elif self.lattice == 'orthorhombic':
       basis = {'improper':np.array([ [ 0., 0., 1.],
@@ -806,7 +806,7 @@ class Symmetry:
     else:
       return inSST
 
-# code derived from http://pyeuclid.googlecode.com/svn/trunk/euclid.py
+# code derived from https://github.com/ezag/pyeuclid
 # suggested reading: http://web.mit.edu/2.998/www/QuaternionReport1.pdf
 
 
