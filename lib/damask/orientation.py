@@ -774,26 +774,23 @@ class Symmetry:
                                      [-1., 0., 0.],
                                      [ 0., 1., 0.] ]),
               }
-    else:
-      basis = {'improper': np.zeros((3,3),dtype=float),
-                 'proper': np.zeros((3,3),dtype=float),
-              }
+    else:                                                                                           # direct exit for unspecified symmetry
+      if color:
+        return (True,np.zeros(3,'d'))
+      else:
+        return True
 
-    if np.all(basis == 0.0):
-      theComponents = -np.ones(3,'d')
+    v = np.array(vector,dtype = float)
+    if proper:                                                                                      # check both improper ...
+      theComponents = np.dot(basis['improper'],v)
       inSST = np.all(theComponents >= 0.0)
-    else:
-      v = np.array(vector,dtype = float)
-      if proper:                                                                                    # check both improper ...
-        theComponents = np.dot(basis['improper'],v)
+      if not inSST:                                                                                 # ... and proper SST
+        theComponents = np.dot(basis['proper'],v)
         inSST = np.all(theComponents >= 0.0)
-        if not inSST:                                                                               # ... and proper SST
-          theComponents = np.dot(basis['proper'],v)
-          inSST = np.all(theComponents >= 0.0)
-      else:      
-        v[2] = abs(v[2])                                                                            # z component projects identical 
-        theComponents = np.dot(basis['improper'],v)                                                 # for positive and negative values
-        inSST = np.all(theComponents >= 0.0)
+    else:      
+      v[2] = abs(v[2])                                                                              # z component projects identical 
+      theComponents = np.dot(basis['improper'],v)                                                   # for positive and negative values
+      inSST = np.all(theComponents >= 0.0)
 
     if color:                                                                                       # have to return color array
       if inSST:
