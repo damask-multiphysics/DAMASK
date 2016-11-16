@@ -1051,6 +1051,8 @@ end subroutine material_parsePhase
 !> @brief parses the texture part in the material configuration file
 !--------------------------------------------------------------------------------------------------
 subroutine material_parseTexture(fileUnit,myPart)
+ use prec, only: &
+   dNeq
  use IO, only: &
    IO_read, &
    IO_globalTagInPart, &
@@ -1069,6 +1071,7 @@ subroutine material_parseTexture(fileUnit,myPart)
    inRad, &
    math_sampleRandomOri, &
    math_I3, &
+   math_det33, &
    math_inv33
 
  implicit none
@@ -1153,6 +1156,9 @@ subroutine material_parseTexture(fileUnit,myPart)
                call IO_error(157_pInt,section)
            end select
          enddo
+
+         if(dNeq(math_det33(texture_transformation(1:3,1:3,section)),1.0_pReal)) &
+           call IO_error(157_pInt,section)
 
        case ('hybridia') textureType
          texture_ODFfile(section) = IO_stringValue(line,chunkPos,2_pInt)
