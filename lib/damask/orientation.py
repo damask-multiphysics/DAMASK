@@ -993,7 +993,7 @@ class Orientation:
   def related(self,
               relationModel,
               direction,
-              targetSymmetry = None):
+              targetSymmetry = 'cubic'):
     """
     Orientation relationship
 
@@ -1241,4 +1241,4 @@ class Orientation:
 
     rot=np.dot(otherMatrix,myMatrix.T)
 
-    return Orientation(matrix=np.dot(rot,self.asMatrix()))                                      # no symmetry information ??
+    return Orientation(matrix=np.dot(rot,self.asMatrix()),symmetry=targetSymmetry)
