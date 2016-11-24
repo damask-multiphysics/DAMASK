@@ -137,18 +137,18 @@ class Quaternion:
     def __imul__(self, other):
       """In-place multiplication"""
       try:                                                        # Quaternion
+          Aw = self.w
           Ax = self.x
           Ay = self.y
           Az = self.z
-          Aw = self.w
+          Bw = other.w
           Bx = other.x
           By = other.y
           Bz = other.z
-          Bw = other.w
-          self.x =  Ax * Bw + Ay * Bz - Az * By + Aw * Bx
-          self.y = -Ax * Bz + Ay * Bw + Az * Bx + Aw * By
-          self.z =  Ax * By - Ay * Bx + Az * Bw + Aw * Bz
-          self.w = -Ax * Bx - Ay * By - Az * Bz + Aw * Bw
+          self.w = - Ax * Bx - Ay * By - Az * Bz + Aw * Bw
+          self.x = + Ax * Bw + Ay * Bz - Az * By + Aw * Bx
+          self.y = - Ax * Bz + Ay * Bw + Az * Bx + Aw * By
+          self.z = + Ax * By - Ay * Bx + Az * Bw + Aw * Bz
       except: pass
       return self
 
