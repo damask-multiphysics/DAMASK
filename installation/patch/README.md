@@ -6,7 +6,7 @@ This folder contains patches that modify the functionality of the current versio
 
 ```bash
 cd DAMASK_ROOT
-patch -p1 installation/patch/nameOfPatch
+patch -p1 < installation/patch/nameOfPatch
 ```
 
 ## Available patches
