@@ -14,18 +14,19 @@ scriptID   = ' '.join([scriptName,damask.version])
 # --------------------------------------------------------------------
 
 parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
-Add data in column(s) of second ASCIItable selected from the row indexed by the value in a mapping column.
+Add data in column(s) of mapped ASCIItable selected from the row indexed by the value in a mapping column.
+Row numbers start at 1.
 
 """, version = scriptID)
 
-parser.add_option('-c','--map',
-                  dest = 'map',
+parser.add_option('--index',
+                  dest = 'index',
                   type = 'string', metavar = 'string',
-                  help = 'column label containing row mapping')
+                  help = 'column label containing row index')
 parser.add_option('-o','--offset',
                   dest = 'offset',
                   type = 'int', metavar = 'int',
-                  help = 'offset between mapping column value and actual row in mapped table [%default]')
+                  help = 'constant offset for index column value [%default]')
 parser.add_option('-l','--label',
                   dest = 'label',
                   action = 'extend', metavar = '<string LIST>',
@@ -42,19 +43,19 @@ parser.set_defaults(offset = 0,
 
 if options.label is None:
   parser.error('no data columns specified.')
-if options.map is None:
-  parser.error('no mapping column given.')
+if options.index is None:
+  parser.error('no index column given.')
 
-# ------------------------------------------ process mapping ASCIItable ---------------------------
+# ------------------------------------------ process indexed ASCIItable ---------------------------
 
 if options.asciitable is not None and os.path.isfile(options.asciitable):
 
-  mappedTable = damask.ASCIItable(name = options.asciitable,
-                                  buffered = False,
-                                  readonly = True) 
-  mappedTable.head_read()                                                                           # read ASCII header info of mapped table
-  missing_labels = mappedTable.data_readArray(options.label)
-  mappedTable.close()                                                                               # close mapped input ASCII table
+  indexedTable = damask.ASCIItable(name = options.asciitable,
+                                   buffered = False,
+                                   readonly = True) 
+  indexedTable.head_read()                                                                          # read ASCII header info of indexed table
+  missing_labels = indexedTable.data_readArray(options.label)
+  indexedTable.close()                                                                              # close input ASCII table
 
   if len(missing_labels) > 0:
     damask.util.croak('column{} {} not found...'.format('s' if len(missing_labels) > 1 else '',', '.join(missing_labels)))
@@ -80,8 +81,8 @@ for name in filenames:
 
   errors = []
 
-  mappedColumn = table.label_index(options.map)  
-  if mappedColumn <  0: errors.append('mapping column {} not found.'.format(options.map))
+  indexColumn = table.label_index(options.index)  
+  if indexColumn <  0: errors.append('index column {} not found.'.format(options.index))
 
   if errors != []:
     damask.util.croak(errors)
@@ -91,7 +92,7 @@ for name in filenames:
 # ------------------------------------------ assemble header --------------------------------------
 
   table.info_append(scriptID + '\t' + ' '.join(sys.argv[1:]))
-  table.labels_append(mappedTable.labels(raw = True))                                              # extend ASCII header with new labels
+  table.labels_append(indexedTable.labels(raw = True))                                              # extend ASCII header with new labels
   table.head_write()
 
 # ------------------------------------------ process data ------------------------------------------
@@ -99,9 +100,9 @@ for name in filenames:
   outputAlive = True
   while outputAlive and table.data_read():                                                          # read next data line of ASCII table
     try:
-      table.data_append(mappedTable.data[int(round(float(table.data[mappedColumn])))+options.offset-1]) # add all mapped data types
+      table.data_append(indexedTable.data[int(round(float(table.data[indexColumn])))+options.offset-1]) # add all mapped data types
     except IndexError:
-      table.data_append(np.nan*np.ones_like(mappedTable.data[0]))
+      table.data_append(np.nan*np.ones_like(indexedTable.data[0]))
     outputAlive = table.data_write()                                                                # output processed line
 
 # ------------------------------------------ output finalization -----------------------------------  

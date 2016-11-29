@@ -14,12 +14,12 @@ scriptID   = ' '.join([scriptName,damask.version])
 # --------------------------------------------------------------------
 
 parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
-Add data of selected column(s) from (first) row of second ASCIItable that shares the mapping column value.
+Add data of selected column(s) from (first) row of second ASCIItable that shares the linking column value.
 
 """, version = scriptID)
 
-parser.add_option('-c','--map',
-                  dest = 'map', nargs = 2,
+parser.add_option('--link',
+                  dest = 'link', nargs = 2,
                   type = 'string', metavar = 'string string',
                   help = 'column labels containing linked values')
 parser.add_option('-l','--label',
@@ -29,7 +29,7 @@ parser.add_option('-l','--label',
 parser.add_option('-a','--asciitable',
                   dest = 'asciitable',
                   type = 'string', metavar = 'string',
-                  help = 'indexed ASCIItable')
+                  help = 'linked ASCIItable')
 
 parser.set_defaults()
 
@@ -37,32 +37,32 @@ parser.set_defaults()
 
 if options.label is None:
   parser.error('no data columns specified.')
-if options.map is None:
-  parser.error('no mapping columns given.')
+if options.link is None:
+  parser.error('no linking columns given.')
 
-# ------------------------------------------ process mapping ASCIItable ---------------------------
+# -------------------------------------- process linked ASCIItable --------------------------------
 
 if options.asciitable is not None and os.path.isfile(options.asciitable):
 
-  mappedTable = damask.ASCIItable(name = options.asciitable,
+  linkedTable = damask.ASCIItable(name = options.asciitable,
                                   buffered = False,
                                   readonly = True) 
-  mappedTable.head_read()                                                                           # read ASCII header info of mapped table
-  if mappedTable.label_dimension(options.map[1]) != 1:
-    parser.error('mapping column {} needs to be scalar valued.'.format(options.map[1]))
+  linkedTable.head_read()                                                                           # read ASCII header info of linked table
+  if linkedTable.label_dimension(options.link[1]) != 1:
+    parser.error('linking column {} needs to be scalar valued.'.format(options.link[1]))
 
-  missing_labels = mappedTable.data_readArray([options.map[1]]+options.label)
-  mappedTable.close()                                                                               # close mapped input ASCII table
+  missing_labels = linkedTable.data_readArray([options.link[1]]+options.label)
+  linkedTable.close()                                                                               # close linked ASCII table
 
   if len(missing_labels) > 0:
     damask.util.croak('column{} {} not found...'.format('s' if len(missing_labels) > 1 else '',', '.join(missing_labels)))
 
-  index = mappedTable.data[:,0]
-  data  = mappedTable.data[:,1:]
+  index = linkedTable.data[:,0]
+  data  = linkedTable.data[:,1:]
 else:
-  parser.error('no indexed ASCIItable given.')
+  parser.error('no linked ASCIItable given.')
 
-# --- loop over input files -------------------------------------------------------------------------
+# --- loop over input files -----------------------------------------------------------------------
 
 if filenames == []: filenames = [None]
 
@@ -80,8 +80,8 @@ for name in filenames:
 
   errors = []
 
-  mappedColumn = table.label_index(options.map[0])  
-  if mappedColumn <  0: errors.append('mapping column {} not found.'.format(options.map[0]))
+  linkColumn = table.label_index(options.link[0])  
+  if linkColumn <  0: errors.append('linking column {} not found.'.format(options.link[0]))
 
   if errors != []:
     damask.util.croak(errors)
@@ -91,7 +91,7 @@ for name in filenames:
 # ------------------------------------------ assemble header --------------------------------------
 
   table.info_append(scriptID + '\t' + ' '.join(sys.argv[1:]))
-  table.labels_append(mappedTable.labels(raw = True)[1:])                                           # extend with new labels (except for mapped column)
+  table.labels_append(linkedTable.labels(raw = True)[1:])                                           # extend with new labels (except for linked column)
   
   table.head_write()
 
@@ -100,7 +100,7 @@ for name in filenames:
   outputAlive = True
   while outputAlive and table.data_read():                                                          # read next data line of ASCII table
     try:
-      table.data_append(data[np.argwhere(index == float(table.data[mappedColumn]))[0]])             # add data from first matching line
+      table.data_append(data[np.argwhere(index == float(table.data[linkColumn]))[0]])               # add data from first matching line
     except IndexError:
       table.data_append(np.nan*np.ones_like(data[0]))                                               # or add NaNs
     outputAlive = table.data_write()                                                                # output processed line
