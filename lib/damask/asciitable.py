@@ -427,8 +427,8 @@ class ASCIItable():
     start = self.label_index(labels)
     dim   = self.label_dimension(labels)
   
-    return np.hstack([range(c[0],c[0]+c[1]) for c in zip(start,dim)]) \
-        if isinstance(labels, Iterable) and not isinstance(labels, str) \
+    return np.hstack([range(s,s+d) for s,d in zip(start,dim)]).astype(int) \
+        if isinstance(labels, Iterable) and not isinstance(labels, str)    \
       else range(start,start+dim)
 
 # ------------------------------------------------------------------
