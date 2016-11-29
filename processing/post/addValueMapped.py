@@ -57,6 +57,8 @@ if options.asciitable is not None and os.path.isfile(options.asciitable):
   if len(missing_labels) > 0:
     damask.util.croak('column{} {} not found...'.format('s' if len(missing_labels) > 1 else '',', '.join(missing_labels)))
 
+  index = mappedTable.data[:,0]
+  data  = mappedTable.data[:,1:]
 else:
   parser.error('no indexed ASCIItable given.')
 
@@ -90,6 +92,7 @@ for name in filenames:
 
   table.info_append(scriptID + '\t' + ' '.join(sys.argv[1:]))
   table.labels_append(mappedTable.labels(raw = True)[1:])                                           # extend with new labels (except for mapped column)
+  
   table.head_write()
 
 # ------------------------------------------ process data ------------------------------------------
@@ -97,10 +100,9 @@ for name in filenames:
   outputAlive = True
   while outputAlive and table.data_read():                                                          # read next data line of ASCII table
     try:
-      table.data_append(mappedTable.data[np.argwhere(mappedTable.data[:,0] == 
-                                                     float(table.data[mappedColumn]))[0]])          # add data from first matching line
+      table.data_append(data[np.argwhere(index == float(table.data[mappedColumn]))[0]])             # add data from first matching line
     except IndexError:
-      table.data_append(np.nan*np.ones_like(mappedTable.data[0]))                                   # or add NaNs
+      table.data_append(np.nan*np.ones_like(data[0]))                                               # or add NaNs
     outputAlive = table.data_write()                                                                # output processed line
 
 # ------------------------------------------ output finalization -----------------------------------  
