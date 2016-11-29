@@ -34,10 +34,9 @@ parser.set_defaults(pos = 'pos',
 if filenames == []: filenames = [None]
 
 for name in filenames:
-  try:
-    table = damask.ASCIItable(name = name,
-                              buffered = False,
-                              readonly = True)
+  try:    table = damask.ASCIItable(name = name,
+                                    buffered = False,
+                                    readonly = True)
   except: continue
   damask.util.report(scriptName,name)
 

@@ -25,7 +25,7 @@ parser.add_option('-c','--map',
 parser.add_option('-l','--label',
                   dest = 'label',
                   action = 'extend', metavar = '<string LIST>',
-                  help='column label(s) to be appended')
+                  help = 'column label(s) to be appended')
 parser.add_option('-a','--asciitable',
                   dest = 'asciitable',
                   type = 'string', metavar = 'string',

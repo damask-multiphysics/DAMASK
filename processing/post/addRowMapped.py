@@ -29,7 +29,7 @@ parser.add_option('-o','--offset',
 parser.add_option('-l','--label',
                   dest = 'label',
                   action = 'extend', metavar = '<string LIST>',
-                  help='column label(s) to be appended')
+                  help = 'column label(s) to be appended')
 parser.add_option('-a','--asciitable',
                   dest = 'asciitable',
                   type = 'string', metavar = 'string',
@@ -60,7 +60,7 @@ if options.asciitable is not None and os.path.isfile(options.asciitable):
     damask.util.croak('column{} {} not found...'.format('s' if len(missing_labels) > 1 else '',', '.join(missing_labels)))
 
 else:
-  parser.error('no mapped ASCIItable given.')
+  parser.error('no indexed ASCIItable given.')
 
 # --- loop over input files -------------------------------------------------------------------------
 
