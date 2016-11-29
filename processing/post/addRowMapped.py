@@ -14,14 +14,14 @@ scriptID   = ' '.join([scriptName,damask.version])
 # --------------------------------------------------------------------
 
 parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
-Add data in column(s) of second ASCIItable selected from row that is given by the value in a mapping column.
+Add data in column(s) of second ASCIItable selected from the row indexed by the value in a mapping column.
 
 """, version = scriptID)
 
 parser.add_option('-c','--map',
                   dest = 'map',
                   type = 'string', metavar = 'string',
-                  help = 'heading of column containing row mapping')
+                  help = 'column label containing row mapping')
 parser.add_option('-o','--offset',
                   dest = 'offset',
                   type = 'int', metavar = 'int',
@@ -29,11 +29,11 @@ parser.add_option('-o','--offset',
 parser.add_option('-l','--label',
                   dest = 'label',
                   action = 'extend', metavar = '<string LIST>',
-                  help='column label(s) to be mapped')
+                  help='column label(s) to be appended')
 parser.add_option('-a','--asciitable',
                   dest = 'asciitable',
                   type = 'string', metavar = 'string',
-                  help = 'mapped ASCIItable')
+                  help = 'indexed ASCIItable')
 
 parser.set_defaults(offset = 0,
                    )
@@ -54,6 +54,7 @@ if options.asciitable is not None and os.path.isfile(options.asciitable):
                                   readonly = True) 
   mappedTable.head_read()                                                                           # read ASCII header info of mapped table
   missing_labels = mappedTable.data_readArray(options.label)
+  mappedTable.close()                                                                               # close mapped input ASCII table
 
   if len(missing_labels) > 0:
     damask.util.croak('column{} {} not found...'.format('s' if len(missing_labels) > 1 else '',', '.join(missing_labels)))
@@ -106,5 +107,3 @@ for name in filenames:
 # ------------------------------------------ output finalization -----------------------------------  
 
   table.close()                                                                                     # close ASCII tables
-
-mappedTable.close()                                                                                 # close mapped input ASCII table
