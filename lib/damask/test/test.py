@@ -58,11 +58,11 @@ class Test():
     self.parser.add_option("--ok", "--accept",
                            action = "store_true",
                            dest   = "accept",
-                           help   = "calculate results but always consider test as successfull")
+                           help   = "calculate results but always consider test as successful")
     self.parser.add_option("-l",   "--list",
                            action = "store_true",
                            dest   = "show",
-                           help   = "show all test variants and do no calculation")
+                           help   = "show all test variants without actual calculation")
     self.parser.add_option("-s",   "--select",
                            dest   = "select",
                            help   = "run test of given name only")
@@ -83,8 +83,9 @@ class Test():
 
     for variant,name in enumerate(self.variants):
       if self.options.show:
-        logging.critical('{}: {}'.format(variant,name))
-      elif self.options.select is not None and name != self.options.select:
+        logging.critical('{}: {}'.format(variant+1,name))
+      elif self.options.select is not None \
+           and not (name == self.options.select or str(variant+1) == self.options.select):
         pass
       else:
         try:
@@ -93,14 +94,15 @@ class Test():
             self.run(variant)
 
           self.postprocess(variant)
-
+          self.compare(variant)
+          
           if self.options.update:
             if self.update(variant) != 0: logging.critical('update for "{}" failed.'.format(name))
           elif not (self.options.accept or self.compare(variant)):                                    # no update, do comparison
             return variant+1                                                                          # return culprit
 
-        except Exception as e :
-          logging.critical('exception during variant execution: {}'.format(e))
+        except Exception as e:
+          logging.critical('exception during variant execution: "{}"'.format(e.message))
           return variant+1                                                     # return culprit
     return 0
   
@@ -465,7 +467,7 @@ class Test():
       mean = np.amax(np.abs(np.mean(normedDelta,0)))
       std = np.amax(np.std(normedDelta,0))
       logging.info('mean: {:f}'.format(mean))
-      logging.info('std: {:f}'.format(std))
+      logging.info('std:  {:f}'.format(std))
 
     return (mean<meanTol) & (std < stdTol)
 
@@ -514,7 +516,7 @@ class Test():
       table.close()                                                            # ... close
 
       for j,label in enumerate(labels):                                        # iterate over object labels
-        maximum[j] = np.maximum(\
+        maximum[j] = np.maximum(
                        maximum[j],
                        np.amax(np.linalg.norm(table.data[:,table.label_indexrange(label)],
                                               axis=1))
@@ -525,12 +527,21 @@ class Test():
 
     for i in range(len(data)):
       data[i] /= maximum                                                       # normalize each table
+      logging.info('shape of data {}: {}'.format(i,data[i].shape))
 
     if debug:
-      logging.debug(str(maximum))
-      allclose = np.absolute(data[0]-data[1]) <= (atol + rtol*np.absolute(data[1]))
-      for ok,valA,valB in zip(allclose,data[0],data[1]):
-        logging.debug('{}:\n{}\n{}'.format(ok,valA,valB))
+      violators = np.absolute(data[0]-data[1]) > atol + rtol*np.absolute(data[1])
+      logging.info('shape of violators: {}'.format(violators.shape))
+      for j,culprits in enumerate(violators):
+        goodguys = np.logical_not(culprits)
+        if culprits.any():
+          logging.info('{} has {}'.format(j,np.sum(culprits)))
+          logging.info('deviation: {}'.format(np.absolute(data[0][j]-data[1][j])[culprits]))
+          logging.info('data     : {}'.format(np.absolute(data[1][j])[culprits]))
+          logging.info('deviation: {}'.format(np.absolute(data[0][j]-data[1][j])[goodguys]))
+          logging.info('data     : {}'.format(np.absolute(data[1][j])[goodguys]))
+#      for ok,valA,valB in zip(allclose,data[0],data[1]):
+#        logging.debug('{}:\n{}\n{}'.format(ok,valA,valB))
 
     allclose = True                                                            # start optimistic
     for i in range(1,len(data)):
@@ -565,7 +576,7 @@ class Test():
     ret = culprit
 
     if culprit == 0:
-      msg = 'The test passed' if len(self.variants) == 1 \
+      msg = 'The test passed.' if (self.options.select is not None or len(self.variants) == 1) \
        else 'All {} tests passed.'.format(len(self.variants))
     elif culprit == -1:
       msg = 'Warning: Could not start test...'
