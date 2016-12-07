@@ -109,7 +109,6 @@ for name in filenames:
     for j in range(Ny):
       grid[0] = round((i+0.5)*box[0]*info['grid'][0]/Nx-0.5)+offset[0]
       grid[1] = round((j+0.5)*box[1]*info['grid'][1]/Ny-0.5)+offset[1]
-      damask.util.croak('x,y coord on surface: {},{}...'.format(*grid[:2]))
       for k in range(Nz):
         grid[2] = k + offset[2]
         grid %= info['grid']
