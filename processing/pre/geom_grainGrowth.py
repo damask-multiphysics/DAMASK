@@ -109,6 +109,15 @@ for name in filenames:
 
 
   for smoothIter in range(options.N):
+
+    # replace immutable microstructures with closest mutable ones
+    index = ndimage.morphology.distance_transform_edt(np.in1d(microstructure,options.immutable).reshape(grid),
+                                                      return_distances = False,
+                                                      return_indices = True)
+    microstructure = microstructure[index[0],
+                                    index[1],
+                                    index[2]]
+
     interfaceEnergy = np.zeros(microstructure.shape)
     for i in (-1,0,1):
       for j in (-1,0,1):
@@ -146,7 +155,7 @@ for name in filenames:
                        np.where(
                          ndimage.morphology.binary_dilation(interfaceEnergy > 0.,
                                                             structure = struc,
-                                                            iterations = int(round(options.d*2.))),# fat boundary
+                                                            iterations = int(round(options.d*2.))-1),# fat boundary
                          periodic_bulkEnergy[grid[0]/2:-grid[0]/2,                                 # retain filled energy on fat boundary...
                                              grid[1]/2:-grid[1]/2,
                                              grid[2]/2:-grid[2]/2],                                # ...and zero everywhere else
@@ -158,7 +167,7 @@ for name in filenames:
 
 
     # transform voxels close to interface region
-    index = ndimage.morphology.distance_transform_edt(periodic_diffusedEnergy >= 0.5*np.amax(periodic_diffusedEnergy),                                            
+    index = ndimage.morphology.distance_transform_edt(periodic_diffusedEnergy >= 0.95*np.amax(periodic_diffusedEnergy),
                                                       return_distances = False,
                                                       return_indices = True)                       # want index of closest bulk grain
 
@@ -173,9 +182,9 @@ for name in filenames:
                                                                        grid[2]/2:-grid[2]/2]       # extent grains into interface region
 
     immutable = np.zeros(microstructure.shape, dtype=bool)
-    # find locations where immutable microstructures have been or are now
+    # find locations where immutable microstructures have been (or are now)
     for micro in options.immutable:
-      immutable += np.logical_or(microstructure == micro, microstructure_original == micro)
+      immutable += microstructure_original == micro
 
     # undo any changes involving immutable microstructures
     microstructure = np.where(immutable, microstructure_original,microstructure)
