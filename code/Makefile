@@ -712,6 +712,7 @@ C_routines.o:                  C_routines.c
 tidy:
 	@rm -rf *.o
 	@rm -rf *.mod
+	@rm -rf *.optrpt
 	@rm -rf *.inst.f90  # for instrumentation
 	@rm -rf *.pomp.f90  # for instrumentation
 	@rm -rf *.pp.f90    # for instrumentation
@@ -724,6 +725,7 @@ cleanDAMASK:
 	@rm -rf *.marc
 	@rm -rf *.o
 	@rm -rf *.mod
+	@rm -rf *.optrpt
 	@rm -rf *.inst.f90  # for instrumentation
 	@rm -rf *.pomp.f90  # for instrumentation
 	@rm -rf *.pp.f90    # for instrumentation
