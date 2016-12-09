@@ -51,7 +51,7 @@ parser.set_defaults(d = 1,
 
 options.immutable = map(int,options.immutable)
 
-getInterfaceEnergy = lambda A,B: (A*B != 0)*(A != B)*1.0                                           # 1.0 if A & B are distinct & nonzero, 0.0 otherwise
+getInterfaceEnergy = lambda A,B: np.float32((A*B != 0)*(A != B)*1.0)                               # 1.0 if A & B are distinct & nonzero, 0.0 otherwise
 struc = ndimage.generate_binary_structure(3,1)                                                     # 3D von Neumann neighborhood
 
 # --- loop over input files -----------------------------------------------------------------------
@@ -99,14 +99,13 @@ for name in filenames:
     X,Y,Z = np.mgrid[0:grid[0],0:grid[1],0:grid[2]]
   
     # Calculates gaussian weights for simulating 3d diffusion
-    gauss = np.exp(-(X*X + Y*Y + Z*Z)/(2.0*options.d*options.d)) \
-            /math.pow(2.0*np.pi*options.d*options.d,(3.0 - np.count_nonzero(info['grid'] == 1))/2.)
+    gauss = np.exp(-(X*X + Y*Y + Z*Z)/(2.0*options.d*options.d),dtype=np.float32) \
+            /np.power(2.0*np.pi*options.d*options.d,(3.0 - np.count_nonzero(info['grid'] == 1))/2.,dtype=np.float32)
           
     gauss[:,:,:grid[2]/2:-1] = gauss[:,:,1:(grid[2]+1)/2]     # trying to cope with uneven (odd) grid size
     gauss[:,:grid[1]/2:-1,:] = gauss[:,1:(grid[1]+1)/2,:]
     gauss[:grid[0]/2:-1,:,:] = gauss[1:(grid[0]+1)/2,:,:]
-    gauss = np.fft.rfftn(gauss)
-
+    gauss = np.fft.rfftn(gauss).astype(np.complex64)
 
   for smoothIter in range(options.N):
 
@@ -118,7 +117,7 @@ for name in filenames:
                                     index[1],
                                     index[2]]
 
-    interfaceEnergy = np.zeros(microstructure.shape)
+    interfaceEnergy = np.zeros(microstructure.shape,dtype=np.float32)
     for i in (-1,0,1):
       for j in (-1,0,1):
         for k in (-1,0,1):
@@ -141,11 +140,12 @@ for name in filenames:
     periodic_bulkEnergy = periodic_interfaceEnergy[index[0],
                                                    index[1],
                                                    index[2]].reshape(2*grid)                       # fill bulk with energy of nearest interface
+
     if options.ndimage:
       periodic_diffusedEnergy = ndimage.gaussian_filter(
                                 np.where(ndimage.morphology.binary_dilation(periodic_interfaceEnergy > 0.,
                                                                             structure = struc,
-                                                                            iterations = int(round(options.d*2.)),   # fat boundary
+                                                                            iterations = int(round(options.d*2.))-1,   # fat boundary
                                                                            ),
                                          periodic_bulkEnergy,                                      # ...and zero everywhere else
                                          0.),
@@ -159,7 +159,8 @@ for name in filenames:
                          periodic_bulkEnergy[grid[0]/2:-grid[0]/2,                                 # retain filled energy on fat boundary...
                                              grid[1]/2:-grid[1]/2,
                                              grid[2]/2:-grid[2]/2],                                # ...and zero everywhere else
-                         0.))*gauss)
+                         0.)).astype(np.complex64) *
+                         gauss).astype(np.float32)
 
       periodic_diffusedEnergy = np.tile(diffusedEnergy,(3,3,3))[grid[0]/2:-grid[0]/2,
                                                                 grid[1]/2:-grid[1]/2,
@@ -181,7 +182,7 @@ for name in filenames:
                                                                        grid[1]/2:-grid[1]/2,
                                                                        grid[2]/2:-grid[2]/2]       # extent grains into interface region
 
-    immutable = np.zeros(microstructure.shape, dtype=bool)
+    immutable = np.zeros(microstructure.shape, dtype=np.bool)
     # find locations where immutable microstructures have been (or are now)
     for micro in options.immutable:
       immutable += microstructure_original == micro
