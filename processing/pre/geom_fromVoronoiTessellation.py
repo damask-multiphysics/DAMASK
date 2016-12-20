@@ -178,6 +178,10 @@ parser.add_option_group(group)
 
 group = OptionGroup(parser, "Configuration","")
 
+group.add_option('--no-config',
+                 dest = 'config',
+                 action = 'store_false',
+                 help = 'omit material configuration header')
 group.add_option('--homogenization',
                  dest = 'homogenization',
                  type = 'int', metavar = 'int',
@@ -203,6 +207,7 @@ parser.set_defaults(pos            = 'pos',
                     cpus           = 2,
                     laguerre       = False,
                     nonperiodic    = False,
+                    config         = True,
                   )
 (options,filenames) = parser.parse_args()
 
@@ -303,20 +308,21 @@ for name in filenames:
   config_header = []
   formatwidth = 1+int(math.log10(NgrainIDs))
 
-  config_header += ['<microstructure>']
-  for i,ID in enumerate(grainIDs):
-    config_header += ['[Grain{}]'.format(str(ID).zfill(formatwidth)),
-                      'crystallite {}'.format(options.crystallite),
-                      '(constituent)\tphase {}\ttexture {}\tfraction 1.0'.format(options.phase,str(ID).rjust(formatwidth)),
-                     ]
-  if hasEulers:
-    config_header += ['<texture>']
-    for ID in grainIDs:
-      eulerID = np.nonzero(grains == ID)[0][0]                                                    # find first occurrence of this grain id
+  if options.config:
+    config_header += ['<microstructure>']
+    for i,ID in enumerate(grainIDs):
       config_header += ['[Grain{}]'.format(str(ID).zfill(formatwidth)),
-                        '(gauss)\tphi1 {:g}\tPhi {:g}\tphi2 {:g}\tscatter 0.0\tfraction 1.0'.format(*eulers[eulerID])
+                        'crystallite {}'.format(options.crystallite),
+                        '(constituent)\tphase {}\ttexture {}\tfraction 1.0'.format(options.phase,str(ID).rjust(formatwidth)),
                        ]
-      if options.axes is not None: config_header.append('axes\t{} {} {}'.format(*options.axes))
+    if hasEulers:
+      config_header += ['<texture>']
+      for ID in grainIDs:
+        eulerID = np.nonzero(grains == ID)[0][0]                                                    # find first occurrence of this grain id
+        config_header += ['[Grain{}]'.format(str(ID).zfill(formatwidth)),
+                          '(gauss)\tphi1 {:g}\tPhi {:g}\tphi2 {:g}\tscatter 0.0\tfraction 1.0'.format(*eulers[eulerID])
+                         ]
+        if options.axes is not None: config_header.append('axes\t{} {} {}'.format(*options.axes))
   
   table.labels_clear()
   table.info_clear()

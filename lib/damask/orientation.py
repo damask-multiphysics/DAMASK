@@ -137,18 +137,18 @@ class Quaternion:
     def __imul__(self, other):
       """In-place multiplication"""
       try:                                                        # Quaternion
+          Aw = self.w
           Ax = self.x
           Ay = self.y
           Az = self.z
-          Aw = self.w
+          Bw = other.w
           Bx = other.x
           By = other.y
           Bz = other.z
-          Bw = other.w
-          self.x =  Ax * Bw + Ay * Bz - Az * By + Aw * Bx
-          self.y = -Ax * Bz + Ay * Bw + Az * Bx + Aw * By
-          self.z =  Ax * By - Ay * Bx + Az * Bw + Aw * Bz
-          self.w = -Ax * Bx - Ay * By - Az * Bz + Aw * Bw
+          self.w = - Ax * Bx - Ay * By - Az * Bz + Aw * Bw
+          self.x = + Ax * Bw + Ay * Bz - Az * By + Aw * Bx
+          self.y = - Ax * Bz + Ay * Bw + Az * Bx + Aw * By
+          self.z = + Ax * By - Ay * Bx + Az * Bw + Aw * Bz
       except: pass
       return self
 
@@ -744,27 +744,27 @@ class Symmetry:
 
     if self.lattice == 'cubic':
       basis = {'improper':np.array([ [-1.            ,  0.            ,  1. ],
-                                   [ np.sqrt(2.)     , -np.sqrt(2.)   ,  0. ],
-                                   [ 0.              ,  np.sqrt(3.)   ,  0. ] ]),
+                                     [ np.sqrt(2.)   , -np.sqrt(2.)   ,  0. ],
+                                     [ 0.            ,  np.sqrt(3.)   ,  0. ] ]),
                  'proper':np.array([ [ 0.            , -1.            ,  1. ],
-                                   [-np.sqrt(2.)     , np.sqrt(2.)    ,  0. ],
-                                   [ np.sqrt(3.  )   ,  0.            ,  0. ] ]),
+                                     [-np.sqrt(2.)   , np.sqrt(2.)    ,  0. ],
+                                     [ np.sqrt(3.)   ,  0.            ,  0. ] ]),
               }
     elif self.lattice == 'hexagonal':
       basis = {'improper':np.array([ [ 0.            ,  0.            ,  1. ],
-                                   [ 1.              , -np.sqrt(3.)   ,  0. ],
-                                   [ 0.              ,  2.            ,  0. ] ]),
-               'proper':np.array([ [ 0.              ,  0.            ,  1. ],
-                                   [-1.              ,  np.sqrt(3.)   ,  0. ],
-                                   [ np.sqrt(3)      , -1.            ,  0. ] ]),
+                                     [ 1.            , -np.sqrt(3.)   ,  0. ],
+                                     [ 0.            ,  2.            ,  0. ] ]),
+               'proper':np.array([   [ 0.            ,  0.            ,  1. ],
+                                     [-1.            ,  np.sqrt(3.)   ,  0. ],
+                                     [ np.sqrt(3.)   , -1.            ,  0. ] ]),
               }
     elif self.lattice == 'tetragonal':
       basis = {'improper':np.array([ [ 0.            ,  0.            ,  1. ],
-                                   [ 1.              , -1.            ,  0. ],
-                                   [ 0.              ,  np.sqrt(2.)   ,  0. ] ]),
-               'proper':np.array([ [ 0.              ,  0.            ,  1. ],
-                                   [-1.              ,  1.            ,  0. ],
-                                   [ np.sqrt(2.)     ,  0.            ,  0. ] ]),
+                                     [ 1.            , -1.            ,  0. ],
+                                     [ 0.            ,  np.sqrt(2.)   ,  0. ] ]),
+               'proper':np.array([   [ 0.            ,  0.            ,  1. ],
+                                     [-1.            ,  1.            ,  0. ],
+                                     [ np.sqrt(2.)   ,  0.            ,  0. ] ]),
               }
     elif self.lattice == 'orthorhombic':
       basis = {'improper':np.array([ [ 0., 0., 1.],
@@ -774,26 +774,23 @@ class Symmetry:
                                      [-1., 0., 0.],
                                      [ 0., 1., 0.] ]),
               }
-    else:
-      basis = {'improper': np.zeros((3,3),dtype=float),
-                 'proper': np.zeros((3,3),dtype=float),
-              }
+    else:                                                                                           # direct exit for unspecified symmetry
+      if color:
+        return (True,np.zeros(3,'d'))
+      else:
+        return True
 
-    if np.all(basis == 0.0):
-      theComponents = -np.ones(3,'d')
+    v = np.array(vector,dtype = float)
+    if proper:                                                                                      # check both improper ...
+      theComponents = np.dot(basis['improper'],v)
       inSST = np.all(theComponents >= 0.0)
-    else:
-      v = np.array(vector,dtype = float)
-      if proper:                                                                                    # check both improper ...
-        theComponents = np.dot(basis['improper'],v)
+      if not inSST:                                                                                 # ... and proper SST
+        theComponents = np.dot(basis['proper'],v)
         inSST = np.all(theComponents >= 0.0)
-        if not inSST:                                                                               # ... and proper SST
-          theComponents = np.dot(basis['proper'],v)
-          inSST = np.all(theComponents >= 0.0)
-      else:      
-        v[2] = abs(v[2])                                                                            # z component projects identical 
-        theComponents = np.dot(basis['improper'],v)                                                 # for positive and negative values
-        inSST = np.all(theComponents >= 0.0)
+    else:      
+      v[2] = abs(v[2])                                                                              # z component projects identical 
+      theComponents = np.dot(basis['improper'],v)                                                   # for positive and negative values
+      inSST = np.all(theComponents >= 0.0)
 
     if color:                                                                                       # have to return color array
       if inSST:
@@ -806,7 +803,7 @@ class Symmetry:
     else:
       return inSST
 
-# code derived from http://pyeuclid.googlecode.com/svn/trunk/euclid.py
+# code derived from https://github.com/ezag/pyeuclid
 # suggested reading: http://web.mit.edu/2.998/www/QuaternionReport1.pdf
 
 
@@ -996,7 +993,7 @@ class Orientation:
   def related(self,
               relationModel,
               direction,
-              targetSymmetry = None):
+              targetSymmetry = 'cubic'):
     """
     Orientation relationship
 
@@ -1244,4 +1241,4 @@ class Orientation:
 
     rot=np.dot(otherMatrix,myMatrix.T)
 
-    return Orientation(matrix=np.dot(rot,self.asMatrix()))                                      # no symmetry information ??
+    return Orientation(matrix=np.dot(rot,self.asMatrix()),symmetry=targetSymmetry)

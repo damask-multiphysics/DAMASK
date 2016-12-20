@@ -19,7 +19,16 @@ Translate geom description into ASCIItable containing position and microstructur
 
 """, version = scriptID)
 
+parser.add_option('--float',
+                  dest = 'real',
+                  action = 'store_true',
+                  help = 'use float input')
+
+parser.set_defaults(real = False,
+                   )
 (options, filenames) = parser.parse_args()
+
+datatype = 'f' if options.real else 'i'
 
 # --- loop over input files -------------------------------------------------------------------------
 
@@ -56,7 +65,7 @@ for name in filenames:
 
 # --- read data ------------------------------------------------------------------------------------
 
-  microstructure = table.microstructure_read(info['grid'])
+  microstructure = table.microstructure_read(info['grid'],datatype)
 
 # ------------------------------------------ assemble header ---------------------------------------
 

@@ -427,8 +427,8 @@ class ASCIItable():
     start = self.label_index(labels)
     dim   = self.label_dimension(labels)
   
-    return np.hstack([range(c[0],c[0]+c[1]) for c in zip(start,dim)]) \
-        if isinstance(labels, Iterable) and not isinstance(labels, str) \
+    return np.hstack([range(s,s+d) for s,d in zip(start,dim)]).astype(int) \
+        if isinstance(labels, Iterable) and not isinstance(labels, str)    \
       else range(start,start+dim)
 
 # ------------------------------------------------------------------
@@ -513,14 +513,15 @@ class ASCIItable():
       columns = []
       for i,(c,d) in enumerate(zip(indices[present],dimensions[present])):                          # for all valid labels ...
         # ... transparently add all components unless column referenced by number or with explicit dimension
-        columns += list(range(c,c + \
-                          (d if str(c) != str(labels[present[i]]) else \
+        columns += list(range(c,c + 
+                          (d if str(c) != str(labels[present[i]]) else 
                            1)))
       use = np.array(columns) if len(columns) > 0 else None
 
       self.tags = list(np.array(self.tags)[use])                                                    # update labels with valid subset
 
     self.data = np.loadtxt(self.__IO__['in'],usecols=use,ndmin=2)
+#    self.data = np.genfromtxt(self.__IO__['in'],dtype=None,names=self.tags,usecols=use)
 
     return labels_missing
 

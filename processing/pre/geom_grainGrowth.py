@@ -22,32 +22,46 @@ The final geometry is assembled by selecting at each voxel that grain index for 
 
 """, version = scriptID)
 
-parser.add_option('-d', '--distance', dest='d', type='int', metavar='int',
-                  help='diffusion distance in voxels [%default]')
-parser.add_option('-N', '--smooth', dest='N', type='int', metavar='int',
-                 help='N for curvature flow [%default]')
-parser.add_option('-r', '--renumber', dest='renumber', action='store_true',
-                  help='renumber microstructure indices from 1...N [%default]')
-parser.add_option('-i', '--immutable', action='extend', dest='immutable', metavar = '<int LIST>',
-                  help='list of immutable microstructures')
+parser.add_option('-d', '--distance',
+                  dest = 'd',
+                  type = 'float', metavar = 'float',
+                  help = 'diffusion distance in voxels [%default]')
+parser.add_option('-N', '--iterations',
+                  dest = 'N',
+                  type = 'int', metavar = 'int',
+                  help = 'curvature flow iterations [%default]')
+parser.add_option('-i', '--immutable',
+                  action = 'extend', dest = 'immutable', metavar = '<int LIST>',
+                  help = 'list of immutable microstructure indices')
+parser.add_option('-r', '--renumber',
+                  dest = 'renumber', action='store_true',
+                  help = 'output consecutive microstructure indices')
+parser.add_option('--ndimage',
+                  dest = 'ndimage', action='store_true',
+                  help = 'use ndimage.gaussian_filter in lieu of explicit FFT')
 
-parser.set_defaults(d = 1)
-parser.set_defaults(N = 1)
-parser.set_defaults(renumber = False)
-parser.set_defaults(immutable = [])
+parser.set_defaults(d = 1,
+                    N = 1,
+                   immutable = [],
+                   renumber = False,
+                   ndimage = False,
+                   )
 
 (options, filenames) = parser.parse_args()
 
 options.immutable = map(int,options.immutable)
 
-# --- loop over input files -------------------------------------------------------------------------
+getInterfaceEnergy = lambda A,B: np.float32((A*B != 0)*(A != B)*1.0)                               # 1.0 if A & B are distinct & nonzero, 0.0 otherwise
+struc = ndimage.generate_binary_structure(3,1)                                                     # 3D von Neumann neighborhood
+
+# --- loop over input files -----------------------------------------------------------------------
 
 if filenames == []: filenames = [None]
 
 for name in filenames:
-  try:
-    table = damask.ASCIItable(name = name,
-                              buffered = False, labeled = False)
+  try:    table = damask.ASCIItable(name = name,
+                                    buffered = False,
+                                    labeled = False)
   except: continue
   damask.util.report(scriptName,name)
 
@@ -56,12 +70,12 @@ for name in filenames:
   table.head_read()
   info,extra_header = table.head_getGeom()
   
-  damask.util.croak(['grid     a b c:  %s'%(' x '.join(map(str,info['grid']))),
-               'size     x y z:  %s'%(' x '.join(map(str,info['size']))),
-               'origin   x y z:  %s'%(' : '.join(map(str,info['origin']))),
-               'homogenization:  %i'%info['homogenization'],
-               'microstructures: %i'%info['microstructures'],
-              ])
+  damask.util.croak(['grid     a b c:  {}'.format(' x '.join(map(str,info['grid']))),
+                     'size     x y z:  {}'.format(' x '.join(map(str,info['size']))),
+                     'origin   x y z:  {}'.format(' : '.join(map(str,info['origin']))),
+                     'homogenization:  {}'.format(info['homogenization']),
+                     'microstructures: {}'.format(info['microstructures']),
+                    ])
 
   errors = []
   if np.any(info['grid'] < 1):    errors.append('invalid grid a b c.')
@@ -71,39 +85,43 @@ for name in filenames:
     table.close(dismiss = True)
     continue
 
-# --- read data ------------------------------------------------------------------------------------
-  microstructure = np.tile(np.array(table.microstructure_read(info['grid']),'i').reshape(info['grid'],order='F'),
-                              np.where(info['grid'] == 1, 2,1))                                     # make one copy along dimensions with grid == 1
+# --- read data -----------------------------------------------------------------------------------
+  microstructure = np.tile(table.microstructure_read(info['grid']).reshape(info['grid'],order='F'),
+                           np.where(info['grid'] == 1, 2,1))                                       # make one copy along dimensions with grid == 1
   grid = np.array(microstructure.shape)
 
-#--- initialize support data -----------------------------------------------------------------------
-
+# --- initialize support data ---------------------------------------------------------------------
 
 # store a copy the initial microstructure to find locations of immutable indices
   microstructure_original = np.copy(microstructure)                                                 
 
-  X,Y,Z = np.mgrid[0:grid[0],0:grid[1],0:grid[2]]
+  if not options.ndimage:
+    X,Y,Z = np.mgrid[0:grid[0],0:grid[1],0:grid[2]]
   
-  # Calculates gaussian weights for simulating 3d diffusion
-  gauss = np.exp(-(X*X + Y*Y + Z*Z)/(2.0*options.d*options.d))/math.pow(2.0*np.pi*options.d*options.d,1.5)
-  gauss[:,:,grid[2]/2::] = gauss[:,:,int(round(grid[2]/2.))-1::-1]     # trying to cope with uneven (odd) grid size
-  gauss[:,grid[1]/2::,:] = gauss[:,int(round(grid[1]/2.))-1::-1,:]
-  gauss[grid[0]/2::,:,:] = gauss[int(round(grid[0]/2.))-1::-1,:,:]
-  gauss = np.fft.rfftn(gauss)
-
-  getInterfaceEnergy = lambda A,B: (A*B != 0)*(A != B)*1.0                                          # 1.0 if A & B are distinct & nonzero, 0.0 otherwise
-  struc = ndimage.generate_binary_structure(3,1)                                                    # 3D von Neumann neighborhood
-
+    # Calculates gaussian weights for simulating 3d diffusion
+    gauss = np.exp(-(X*X + Y*Y + Z*Z)/(2.0*options.d*options.d),dtype=np.float32) \
+            /np.power(2.0*np.pi*options.d*options.d,(3.0 - np.count_nonzero(info['grid'] == 1))/2.,dtype=np.float32)
+          
+    gauss[:,:,:grid[2]/2:-1] = gauss[:,:,1:(grid[2]+1)/2]     # trying to cope with uneven (odd) grid size
+    gauss[:,:grid[1]/2:-1,:] = gauss[:,1:(grid[1]+1)/2,:]
+    gauss[:grid[0]/2:-1,:,:] = gauss[1:(grid[0]+1)/2,:,:]
+    gauss = np.fft.rfftn(gauss).astype(np.complex64)
 
   for smoothIter in range(options.N):
-    periodic_microstructure = np.tile(microstructure,(3,3,3))[grid[0]/2:-grid[0]/2,
-                                                              grid[1]/2:-grid[1]/2,
-                                                              grid[2]/2:-grid[2]/2]                 # periodically extend the microstructure
-    interfaceEnergy = np.zeros(microstructure.shape)
+
+    # replace immutable microstructures with closest mutable ones
+    index = ndimage.morphology.distance_transform_edt(np.in1d(microstructure,options.immutable).reshape(grid),
+                                                      return_distances = False,
+                                                      return_indices = True)
+    microstructure = microstructure[index[0],
+                                    index[1],
+                                    index[2]]
+
+    interfaceEnergy = np.zeros(microstructure.shape,dtype=np.float32)
     for i in (-1,0,1):
       for j in (-1,0,1):
         for k in (-1,0,1):
-            # assign interfacial energy to all voxels that have a differing neighbor (in Moore neighborhood)
+          # assign interfacial energy to all voxels that have a differing neighbor (in Moore neighborhood)
           interfaceEnergy = np.maximum(interfaceEnergy,
                                        getInterfaceEnergy(microstructure,np.roll(np.roll(np.roll(
                                                           microstructure,i,axis=0), j,axis=1), k,axis=2)))
@@ -112,44 +130,67 @@ for name in filenames:
     periodic_interfaceEnergy = np.tile(interfaceEnergy,(3,3,3))[grid[0]/2:-grid[0]/2,
                                                                 grid[1]/2:-grid[1]/2,
                                                                 grid[2]/2:-grid[2]/2]
-    # transform bulk volume (i.e. where interfacial energy is zero)
+
+    # transform bulk volume (i.e. where interfacial energy remained zero), store index of closest boundary voxel
     index = ndimage.morphology.distance_transform_edt(periodic_interfaceEnergy == 0.,                                            
                                                       return_distances = False,
                                                       return_indices = True)
+
     # want array index of nearest voxel on periodically extended boundary
     periodic_bulkEnergy = periodic_interfaceEnergy[index[0],
                                                    index[1],
-                                                   index[2]].reshape(2*grid)                        # fill bulk with energy of nearest interface
-    diffusedEnergy = np.fft.irfftn(np.fft.rfftn(
-                     np.where(
-                       ndimage.morphology.binary_dilation(interfaceEnergy > 0.,
-                                                          structure = struc,
-                                                          iterations = options.d/2 + 1),            # fat boundary | PE: why 2d-1? I would argue for d/2 + 1
-                       periodic_bulkEnergy[grid[0]/2:-grid[0]/2,                                    # retain filled energy on fat boundary...
-                                           grid[1]/2:-grid[1]/2,
-                                           grid[2]/2:-grid[2]/2],                                   # ...and zero everywhere else
-                       0.))*gauss)
-    periodic_diffusedEnergy = np.tile(diffusedEnergy,(3,3,3))[grid[0]/2:-grid[0]/2,
-                                                                 grid[1]/2:-grid[1]/2,
-                                                                 grid[2]/2:-grid[2]/2]              # periodically extend the smoothed bulk energy
-    # transform voxels close to interface region | question PE: what motivates 1/2 (could be any small number, or)?
-    index = ndimage.morphology.distance_transform_edt(periodic_diffusedEnergy >= 0.5,                                            
+                                                   index[2]].reshape(2*grid)                       # fill bulk with energy of nearest interface
+
+    if options.ndimage:
+      periodic_diffusedEnergy = ndimage.gaussian_filter(
+                                np.where(ndimage.morphology.binary_dilation(periodic_interfaceEnergy > 0.,
+                                                                            structure = struc,
+                                                                            iterations = int(round(options.d*2.))-1,   # fat boundary
+                                                                           ),
+                                         periodic_bulkEnergy,                                      # ...and zero everywhere else
+                                         0.),
+                                sigma = options.d)
+    else:
+      diffusedEnergy = np.fft.irfftn(np.fft.rfftn(
+                       np.where(
+                         ndimage.morphology.binary_dilation(interfaceEnergy > 0.,
+                                                            structure = struc,
+                                                            iterations = int(round(options.d*2.))-1),# fat boundary
+                         periodic_bulkEnergy[grid[0]/2:-grid[0]/2,                                 # retain filled energy on fat boundary...
+                                             grid[1]/2:-grid[1]/2,
+                                             grid[2]/2:-grid[2]/2],                                # ...and zero everywhere else
+                         0.)).astype(np.complex64) *
+                         gauss).astype(np.float32)
+
+      periodic_diffusedEnergy = np.tile(diffusedEnergy,(3,3,3))[grid[0]/2:-grid[0]/2,
+                                                                grid[1]/2:-grid[1]/2,
+                                                                grid[2]/2:-grid[2]/2]              # periodically extend the smoothed bulk energy
+
+
+    # transform voxels close to interface region
+    index = ndimage.morphology.distance_transform_edt(periodic_diffusedEnergy >= 0.95*np.amax(periodic_diffusedEnergy),
                                                       return_distances = False,
-                                                      return_indices = True)                        # want index of closest bulk grain
+                                                      return_indices = True)                       # want index of closest bulk grain
+
+    periodic_microstructure = np.tile(microstructure,(3,3,3))[grid[0]/2:-grid[0]/2,
+                                                              grid[1]/2:-grid[1]/2,
+                                                              grid[2]/2:-grid[2]/2]                # periodically extend the microstructure
+
     microstructure = periodic_microstructure[index[0],
                                              index[1],
                                              index[2]].reshape(2*grid)[grid[0]/2:-grid[0]/2,
                                                                        grid[1]/2:-grid[1]/2,
-                                                                       grid[2]/2:-grid[2]/2]        # extent grains into interface region
+                                                                       grid[2]/2:-grid[2]/2]       # extent grains into interface region
 
-    immutable = np.zeros(microstructure.shape, dtype=bool)
-    # find locations where immutable microstructures have been or are now
+    immutable = np.zeros(microstructure.shape, dtype=np.bool)
+    # find locations where immutable microstructures have been (or are now)
     for micro in options.immutable:
-      immutable += np.logical_or(microstructure == micro, microstructure_original == micro)         
-    # undo any changes involving immutable microstructures
-    microstructure = np.where(immutable, microstructure_original,microstructure)                    
+      immutable += microstructure_original == micro
 
-# --- renumber to sequence 1...Ngrains if requested ------------------------------------------------
+    # undo any changes involving immutable microstructures
+    microstructure = np.where(immutable, microstructure_original,microstructure)
+
+# --- renumber to sequence 1...Ngrains if requested -----------------------------------------------
 #  http://stackoverflow.com/questions/10741346/np-frequency-counts-for-unique-values-in-an-array
 
   if options.renumber:
@@ -162,13 +203,14 @@ for name in filenames:
   newInfo = {'microstructures': 0,}
   newInfo['microstructures'] = microstructure.max()
 
-# --- report ---------------------------------------------------------------------------------------
+# --- report --------------------------------------------------------------------------------------
 
   remarks = []
-  if (newInfo['microstructures'] != info['microstructures']): remarks.append('--> microstructures: %i'%newInfo['microstructures'])
+  if newInfo['microstructures'] != info['microstructures']:
+    remarks.append('--> microstructures: {}'.format(newInfo['microstructures']))
   if remarks != []: damask.util.croak(remarks)
 
-# --- write header ---------------------------------------------------------------------------------
+# --- write header --------------------------------------------------------------------------------
 
   table.labels_clear()
   table.info_clear()
@@ -185,8 +227,11 @@ for name in filenames:
 # --- write microstructure information ------------------------------------------------------------
 
   formatwidth = int(math.floor(math.log10(microstructure.max())+1))
-  table.data = microstructure.reshape((info['grid'][0],info['grid'][1]*info['grid'][2]),order='F').transpose()
-  table.data_writeArray('%%%ii'%(formatwidth),delimiter = ' ')
+  table.data = microstructure[::1 if info['grid'][0]>1 else 2,
+                              ::1 if info['grid'][1]>1 else 2,
+                              ::1 if info['grid'][2]>1 else 2,].\
+                              reshape((info['grid'][0],info['grid'][1]*info['grid'][2]),order='F').transpose()
+  table.data_writeArray('%{}i'.format(formatwidth),delimiter = ' ')
 
 # --- output finalization --------------------------------------------------------------------------
 
