@@ -28,7 +28,7 @@ module numerics
    fixedSeed                  =  0_pInt, &                                                          !< fixed seeding for pseudo-random number generator, Default 0: use random seed
    worldrank                  =  0_pInt, &                                                          !< MPI worldrank (/=0 for MPI simulations only)
    worldsize                  =  0_pInt                                                             !< MPI worldsize (/=0 for MPI simulations only)
- integer, protected, public :: &
+ integer(4), protected, public :: &
    DAMASK_NumThreadsInt       =  0                                                                  !< value stored in environment variable DAMASK_NUM_THREADS, set to zero if no OpenMP directive
  integer(pInt), public :: &
    numerics_integrationMode   =  0_pInt                                                             !< integrationMode 1 = central solution; integrationMode 2 = perturbation, Default 0: undefined, is not read from file
@@ -210,7 +210,6 @@ subroutine numerics_init
    IO_warning, &
    IO_timeStamp, &
    IO_EOF
-
 #if defined(Spectral) || defined(FEM)
 !$ use OMP_LIB, only: omp_set_num_threads                                                           ! Use the standard conforming module file for omp if using the spectral solver
  implicit none
@@ -242,10 +241,10 @@ subroutine numerics_init
 !$ call GET_ENVIRONMENT_VARIABLE(NAME='DAMASK_NUM_THREADS',VALUE=DAMASK_NumThreadsString,STATUS=gotDAMASK_NUM_THREADS)   ! get environment variable DAMASK_NUM_THREADS...
 !$ if(gotDAMASK_NUM_THREADS /= 0) then                                                              ! could not get number of threads, set it to 1
 !$   call IO_warning(35_pInt,ext_msg='BEGIN:'//DAMASK_NumThreadsString//':END')
-!$   DAMASK_NumThreadsInt = 1
+!$   DAMASK_NumThreadsInt = 1_4
 !$ else
 !$   read(DAMASK_NumThreadsString,'(i6)') DAMASK_NumThreadsInt                                      ! read as integer
-!$   if (DAMASK_NumThreadsInt < 1) DAMASK_NumThreadsInt = 1                                         ! in case of string conversion fails, set it to one
+!$   if (DAMASK_NumThreadsInt < 1_4) DAMASK_NumThreadsInt = 1_4                                     ! in case of string conversion fails, set it to one
 !$ endif
 !$ call omp_set_num_threads(DAMASK_NumThreadsInt)                                                   ! set number of threads for parallel execution
 
