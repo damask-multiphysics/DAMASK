@@ -299,7 +299,23 @@ fi
 
 . "$DIR/getarch"
 
+
+# getting user subroutine file name
+found=0
+for i in "$@"; do
+  if test $found = 1; then
+    DAMASK_USER=$i
+    found=0
+  fi
+  case $i in
+    -u* | -U*)
+      found=1
+    ;;
+  esac
+done
+# sourcing include_linux64 (needs DAMASK_USER to be set)
 . $MARC_INCLUDE
+
 #
 
 #
