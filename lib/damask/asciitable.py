@@ -547,7 +547,10 @@ class ASCIItable():
       except:
         output = [fmt % row] if fmt else [repr(row)]
       
-      self.__IO__['out'].write(delimiter.join(output) + '\n')
+      try:
+        self.__IO__['out'].write(delimiter.join(output) + '\n')
+      except:
+        pass
 
 # ------------------------------------------------------------------
   def data_append(self,
