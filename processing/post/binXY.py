@@ -89,15 +89,13 @@ if options.weight is not None: labels += [options.weight]                       
 if filenames == []: filenames = [None]
 
 for name in filenames:
-  try:
-    table = damask.ASCIItable(name = name,
-                              outname = os.path.join(os.path.dirname(name),
-                                                     'binned-{}-{}_'.format(*options.data)+ \
-                                                    ('weighted-{}_'.format(options.weight) if options.weight else '') + \
-                                                     os.path.basename(name)) if name else name,
-                              buffered = False)
-  except:
-    continue
+  try:    table = damask.ASCIItable(name = name,
+                                    outname = os.path.join(os.path.dirname(name),
+                                                           'binned-{}-{}_'.format(*options.data) +
+                                                          ('weighted-{}_'.format(options.weight) if options.weight else '') +
+                                                           os.path.basename(name)) if name else name,
+                                    buffered = False)
+  except: continue
   damask.util.report(scriptName,name)
 
 # ------------------------------------------ read header ------------------------------------------
