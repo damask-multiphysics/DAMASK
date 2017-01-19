@@ -128,7 +128,8 @@ for name in filenames:
                                     outname = outname,
                                     buffered = False)
   except: continue
-  damask.util.report(scriptName,'{}{}'.format(name,' --> {}'.format(outname) if outname else ''))
+  damask.util.report(scriptName,'{}{}'.format(name if name else '',
+                                              ' --> {}'.format(outname) if outname else ''))
 
 # ------------------------------------------ read header ------------------------------------------
 
