@@ -10,6 +10,9 @@ else
   DAMASK_ROOT=${STAT##* }
 fi
 
+# shorthand command to change to DAMASK_ROOT directory
+eval "function damask() { cd $DAMASK_ROOT; }"
+
 # defining set() allows to source the same file for tcsh and bash, with and without space around =
 set() {
     export $1$2$3
