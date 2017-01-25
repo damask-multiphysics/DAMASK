@@ -3,6 +3,9 @@
 
 DAMASK_ROOT=${0:a:h}
 
+# shorthand command to change to DAMASK_ROOT directory
+eval "function damask() { cd $DAMASK_ROOT; }"
+
 # defining set() allows to source the same file for tcsh and zsh, with and without space around =
 set() {
     export $1$2$3
