@@ -835,7 +835,6 @@ module lattice
      ],pReal),[ 4_pInt + 4_pInt,LATTICE_hex_Ncleavage])
 
 
-
 !--------------------------------------------------------------------------------------------------
 ! body centered tetragonal
  integer(pInt), dimension(LATTICE_maxNslipFamily), parameter, public :: &
