@@ -166,7 +166,6 @@ subroutine plastic_phenoplus_init(fileUnit)
    line = ''
  real(pReal), dimension(:), allocatable :: tempPerSlip
 
-
  write(6,'(/,a)')   ' <<<+-  constitutive_'//PLASTICITY_PHENOPLUS_label//' init  -+>>>'
  write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
