@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python2.7
 # -*- coding: UTF-8 no BOM -*-
 
 import os,sys,math
@@ -17,8 +17,8 @@ def cell2node(cellData,grid):
   nodeData = 0.0
   datalen = np.array(cellData.shape[3:]).prod()
   
-  for i in xrange(datalen):
-    node = scipy.ndimage.convolve(cellData.reshape(tuple(grid)+(datalen,))[...,i],
+  for i in range(datalen):
+    node = scipy.ndimage.convolve(cellData.reshape(tuple(grid[::-1])+(datalen,))[...,i],
                                   np.ones((2,2,2))/8.,                                              # 2x2x2 neighborhood of cells
                                   mode = 'wrap',
                                   origin = -1,                                                      # offset to have cell origin as center
@@ -33,16 +33,16 @@ def cell2node(cellData,grid):
 
 #--------------------------------------------------------------------------------------------------
 def displacementAvgFFT(F,grid,size,nodal=False,transformed=False):
-  """calculate average cell center (or nodal) displacement for deformation gradient field specified in each grid cell"""
+  """Calculate average cell center (or nodal) displacement for deformation gradient field specified in each grid cell"""
   if nodal:
-    x, y, z = np.meshgrid(np.linspace(0,size[0],1+grid[0]),
+    x, y, z = np.meshgrid(np.linspace(0,size[2],1+grid[2]),
                           np.linspace(0,size[1],1+grid[1]),
-                          np.linspace(0,size[2],1+grid[2]),
+                          np.linspace(0,size[0],1+grid[0]),
                           indexing = 'ij')
   else:
-    x, y, z = np.meshgrid(np.linspace(0,size[0],grid[0],endpoint=False),
+    x, y, z = np.meshgrid(np.linspace(0,size[2],grid[2],endpoint=False),
                           np.linspace(0,size[1],grid[1],endpoint=False),
-                          np.linspace(0,size[2],grid[2],endpoint=False),
+                          np.linspace(0,size[0],grid[0],endpoint=False),
                           indexing = 'ij')
 
   origCoords = np.concatenate((z[:,:,:,None],y[:,:,:,None],x[:,:,:,None]),axis = 3) 
@@ -55,7 +55,7 @@ def displacementAvgFFT(F,grid,size,nodal=False,transformed=False):
 
 #--------------------------------------------------------------------------------------------------
 def displacementFluctFFT(F,grid,size,nodal=False,transformed=False):
-  """calculate cell center (or nodal) displacement for deformation gradient field specified in each grid cell"""
+  """Calculate cell center (or nodal) displacement for deformation gradient field specified in each grid cell"""
   integrator = 0.5j * size / math.pi
 
   kk, kj, ki = np.meshgrid(np.where(np.arange(grid[2])>grid[2]//2,np.arange(grid[2])-grid[2],np.arange(grid[2])),
@@ -78,7 +78,7 @@ def displacementFluctFFT(F,grid,size,nodal=False,transformed=False):
 #--------------------------------------------------------------------------------------------------
 # backtransformation to real space
 
-  displacement = np.fft.irfftn(displacement_fourier,grid,axes=(0,1,2))
+  displacement = np.fft.irfftn(displacement_fourier,grid[::-1],axes=(0,1,2))
 
   return cell2node(displacement,grid) if nodal else displacement
 
@@ -107,7 +107,7 @@ parser.add_option('-p',
 parser.add_option('--nodal',
                   dest    = 'nodal',
                   action  = 'store_true',
-                  help    = 'output nodal (instad of cell-centered) displacements')
+                  help    = 'output nodal (instead of cell-centered) displacements')
 
 parser.set_defaults(defgrad = 'f',
                     pos     = 'pos',
@@ -128,7 +128,8 @@ for name in filenames:
                                     outname = outname,
                                     buffered = False)
   except: continue
-  damask.util.report(scriptName,'{}{}'.format(name,' --> {}'.format(outname) if outname else ''))
+  damask.util.report(scriptName,'{}{}'.format(name if name else '',
+                                              ' --> {}'.format(outname) if outname else ''))
 
 # ------------------------------------------ read header ------------------------------------------
 
@@ -167,7 +168,7 @@ for name in filenames:
                             np.zeros((table.data.shape[0],
                                       3-table.data[:,9:].shape[1]),dtype='f')))                     # fill coords up to 3D with zeros
 
-  coords = [np.unique(table.data[:,9+i]) for i in xrange(3)]
+  coords = [np.unique(table.data[:,9+i]) for i in range(3)]
   mincorner = np.array(map(min,coords))
   maxcorner = np.array(map(max,coords))
   grid   = np.array(map(len,coords),'i')
@@ -186,8 +187,8 @@ for name in filenames:
 
   F_fourier = np.fft.rfftn(table.data[:,:9].reshape(grid[2],grid[1],grid[0],3,3),axes=(0,1,2))      # perform transform only once...
 
-  displacement    = displacementFluctFFT(F_fourier,grid,size,options.nodal,transformed=True)
-  avgDisplacement = displacementAvgFFT  (F_fourier,grid,size,options.nodal,transformed=True)
+  fluctDisplacement = displacementFluctFFT(F_fourier,grid,size,options.nodal,transformed=True)
+  avgDisplacement   = displacementAvgFFT  (F_fourier,grid,size,options.nodal,transformed=True)
 
 # ------------------------------------------ assemble header ---------------------------------------
 
@@ -196,25 +197,25 @@ for name in filenames:
     table.labels_clear()
 
   table.info_append(scriptID + '\t' + ' '.join(sys.argv[1:]))
-  table.labels_append((['{}_pos'         .format(i+1)   for i in xrange(3)] if options.nodal else []) +
-                       ['{}_avg({}).{}'  .format(i+1,options.defgrad,options.pos) for i in xrange(3)] +
-                       ['{}_fluct({}).{}'.format(i+1,options.defgrad,options.pos) for i in xrange(3)] )
+  table.labels_append((['{}_pos'         .format(i+1)   for i in range(3)] if options.nodal else []) +
+                       ['{}_avg({}).{}'  .format(i+1,options.defgrad,options.pos) for i in range(3)] +
+                       ['{}_fluct({}).{}'.format(i+1,options.defgrad,options.pos) for i in range(3)] )
   table.head_write()
 
 # ------------------------------------------ output data -------------------------------------------
 
-  zrange = np.linspace(0,size[2],1+grid[2]) if options.nodal else xrange(grid[2])
-  yrange = np.linspace(0,size[1],1+grid[1]) if options.nodal else xrange(grid[1])
-  xrange = np.linspace(0,size[0],1+grid[0]) if options.nodal else xrange(grid[0])
+  Zrange = np.linspace(0,size[2],1+grid[2]) if options.nodal else range(grid[2])
+  Yrange = np.linspace(0,size[1],1+grid[1]) if options.nodal else range(grid[1])
+  Xrange = np.linspace(0,size[0],1+grid[0]) if options.nodal else range(grid[0])
 
-  for i,z     in enumerate(zrange):
-    for j,y   in enumerate(yrange):
-      for k,x in enumerate(xrange):
+  for i,z     in enumerate(Zrange):
+    for j,y   in enumerate(Yrange):
+      for k,x in enumerate(Xrange):
         if options.nodal: table.data_clear()
         else:             table.data_read()
         table.data_append([x,y,z] if options.nodal else [])
-        table.data_append(list(avgDisplacement[i,j,k,:]))
-        table.data_append(list(   displacement[i,j,k,:]))
+        table.data_append(list(  avgDisplacement[i,j,k,:]))
+        table.data_append(list(fluctDisplacement[i,j,k,:]))
         table.data_write()                       
 
 # ------------------------------------------ output finalization -----------------------------------

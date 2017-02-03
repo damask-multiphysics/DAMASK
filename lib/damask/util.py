@@ -1,6 +1,5 @@
 # -*- coding: UTF-8 no BOM -*-
 
-# damask utility functions
 import sys,time,random,threading,os,subprocess,shlex
 import numpy as np
 from optparse import Option
@@ -20,6 +19,7 @@ class bcolors:
     FAIL = '\033[91m'
     ENDC = '\033[0m'
     BOLD = '\033[1m'
+    DIM  = '\033[2m'
     UNDERLINE = '\033[4m'
 
     def disable(self):
@@ -35,29 +35,30 @@ class bcolors:
 
 # -----------------------------
 def srepr(arg,glue = '\n'):
-  """joins arguments as individual lines"""
+  """Joins arguments as individual lines"""
   if (not hasattr(arg, "strip") and
           hasattr(arg, "__getitem__") or
           hasattr(arg, "__iter__")):
      return glue.join(srepr(x) for x in arg)
-  return arg if isinstance(arg,basestring) else repr(arg)
+  return arg if isinstance(arg,str) else repr(arg)
 
 # -----------------------------
 def croak(what, newline = True):
-  """writes formated to stderr"""
+  """Writes formated to stderr"""
   sys.stderr.write(srepr(what,glue = '\n') + ('\n' if newline else ''))
   sys.stderr.flush()
 
 # -----------------------------
-def report(who,what):
-  """reports script and file name"""
-  croak( (emph(who) if who else '') + (': '+what if what else '') )
+def report(who = None,
+           what = None):
+  """Reports script and file name"""
+  croak( (emph(who)+': ' if who else '') + (what if what else '') )
 
 
 # -----------------------------
 def report_geom(info,
                 what = ['grid','size','origin','homogenization','microstructures']):
-  """reports (selected) geometry information"""
+  """Reports (selected) geometry information"""
   output = {
             'grid'   : 'grid     a b c:  {}'.format(' x '.join(map(str,info['grid'  ]))),
             'size'   : 'size     x y z:  {}'.format(' x '.join(map(str,info['size'  ]))),
@@ -69,14 +70,24 @@ def report_geom(info,
 
 # -----------------------------
 def emph(what):
-  """emphasizes string on screen"""
+  """Boldens string"""
   return bcolors.BOLD+srepr(what)+bcolors.ENDC
+
+# -----------------------------
+def deemph(what):
+  """Dims string"""
+  return bcolors.DIM+srepr(what)+bcolors.ENDC
+
+# -----------------------------
+def delete(what):
+  """Dims string"""
+  return bcolors.DIM+srepr(what)+bcolors.ENDC
 
 # -----------------------------
 def execute(cmd,
             streamIn = None,
             wd = './'):
-  """executes a command in given directory and returns stdout and stderr for optional stdin"""
+  """Executes a command in given directory and returns stdout and stderr for optional stdin"""
   initialPath = os.getcwd()
   os.chdir(wd)
   process = subprocess.Popen(shlex.split(cmd),
@@ -115,7 +126,7 @@ def gridIndex(location,res):
 # -----------------------------
 class extendableOption(Option):
   """
-  used for definition of new option parser action 'extend', which enables to take multiple option arguments
+  Used for definition of new option parser action 'extend', which enables to take multiple option arguments
 
   taken from online tutorial http://docs.python.org/library/optparse.html
   """
@@ -134,47 +145,40 @@ class extendableOption(Option):
 
 # -----------------------------
 class backgroundMessage(threading.Thread):
-  """reporting with animation to indicate progress"""
+  """Reporting with animation to indicate progress"""
 
-  choices = {'bounce':   ['_',      'o',      'O',      u'\u00B0',
-                          u'\u203e',u'\u203e',u'\u00B0','O','o','_'],
-             'spin':     [u'\u25dc',u'\u25dd',u'\u25de',u'\u25df'],
-             'circle':   [u'\u25f4',u'\u25f5',u'\u25f6',u'\u25f7'],
-             'hexagon':  [u'\u2b22',u'\u2b23'],
-             'square':   [u'\u2596',u'\u2598',u'\u259d',u'\u2597'],
-             'triangle': [u'\u140a',u'\u140a',u'\u1403',u'\u1405',u'\u1405',u'\u1403'],
-             'amoeba':   [u'\u2596',u'\u258f',u'\u2598',u'\u2594',u'\u259d',u'\u2595',
-                          u'\u2597',u'\u2582'],
-             'beat':     [u'\u2581',u'\u2582',u'\u2583',u'\u2585',u'\u2586',u'\u2587',
-                          u'\u2587',u'\u2586',u'\u2585',u'\u2583',u'\u2582',],
-             'prison':   [u'\u168b',u'\u168c',u'\u168d',u'\u168f',u'\u168e',u'\u168d',
-                          u'\u168c',u'\u168b',],
-             'breath':   [u'\u1690',u'\u1691',u'\u1692',u'\u1693',u'\u1694',u'\u1693',
-                          u'\u1692',u'\u1691',u'\u1690',],
-             'pulse':    [u'·',u'•',u'\u25cf',u'\u25cf',u'•',],
-             'ant':      [u'\u2801',u'\u2802',u'\u2810',u'\u2820',u'\u2804',u'\u2840',
-                          u'\u2880',u'\u2820',u'\u2804',u'\u2802',u'\u2810',u'\u2808'],
-             'juggle':   [u'\ua708',u'\ua709',u'\ua70a',u'\ua70b',u'\ua70c',u'\ua711',
-                          u'\ua710',u'\ua70f',u'\ua70d',],
-#             'wobbler':  [u'\u2581',u'\u25e3',u'\u258f',u'\u25e4',u'\u2594',u'\u25e5',u'\u2595',u'\u25e2',],
-             'grout':  [u'\u2581',u'\u258f',u'\u2594',u'\u2595',],
-             'partner':  [u'\u26ac',u'\u26ad',u'\u26ae',u'\u26af',u'\u26ae',u'\u26ad',],
+  choices = {'bounce':   ['_', 'o', 'O', '°', '‾', '‾', '°', 'O', 'o', '_'],
+             'spin':     ['◜', '◝', '◞', '◟'],
+             'circle':   ['◴', '◵', '◶', '◷'],
+             'hexagon':  ['⬢', '⬣'],
+             'square':   ['▖', '▘', '▝', '▗'],
+             'triangle': ['ᐊ', 'ᐊ', 'ᐃ', 'ᐅ', 'ᐅ', 'ᐃ'],
+             'amoeba':   ['▖', '▏', '▘', '▔', '▝', '▕', '▗', '▂'],
+             'beat':     ['▁', '▂', '▃', '▅', '▆', '▇', '▇', '▆', '▅', '▃', '▂'],
+             'prison':   ['ᚋ', 'ᚌ', 'ᚍ', 'ᚏ', 'ᚎ', 'ᚍ', 'ᚌ', 'ᚋ'],
+             'breath':   ['ᚐ', 'ᚑ', 'ᚒ', 'ᚓ', 'ᚔ', 'ᚓ', 'ᚒ', 'ᚑ', 'ᚐ'],
+             'pulse':    ['·', '•', '●', '●', '•'],
+             'ant':      ['⠁', '⠂', '⠐', '⠠', '⠄', '⡀', '⢀', '⠠', '⠄', '⠂', '⠐', '⠈'],
+             'juggle':   ['꜈', '꜉', '꜊', '꜋', '꜌', '꜑', '꜐', '꜏', '꜍'],
+#             'wobbler':  ['▁', '◣', '▏', '◤', '▔', '◥', '▕', '◢'],
+             'grout':    ['▁', '▏', '▔', '▕'],
+             'partner':  ['⚬', '⚭', '⚮', '⚯', '⚮', '⚭'],
              'classic':  ['-', '\\', '|', '/',],
             }    
 
   def __init__(self,symbol = None,wait = 0.1):
-    """sets animation symbol"""
+    """Sets animation symbol"""
     super(backgroundMessage, self).__init__()
     self._stop = threading.Event()
     self.message = ''
     self.new_message = ''
     self.counter = 0
     self.gap     = ' '
-    self.symbols = self.choices[symbol if symbol in self.choices else random.choice(self.choices.keys())]
+    self.symbols = self.choices[symbol if symbol in self.choices else random.choice(list(self.choices.keys()))]
     self.waittime = wait
   
   def __quit__(self):
-    """cleans output"""
+    """Cleans output"""
     length = len(self.symbols[self.counter] + self.gap + self.message)
     sys.stderr.write(chr(8)*length + ' '*length + chr(8)*length)
     sys.stderr.write('')
@@ -199,7 +203,7 @@ class backgroundMessage(threading.Thread):
   def print_message(self):
     length = len(self.symbols[self.counter] + self.gap + self.message)
     sys.stderr.write(chr(8)*length + ' '*length + chr(8)*length + \
-                     self.symbols[self.counter].encode('utf-8') + self.gap + self.new_message)      # delete former and print new message
+                     self.symbols[self.counter] + self.gap + self.new_message)      # delete former and print new message
     sys.stderr.flush()
     self.message = self.new_message
       
@@ -277,7 +281,7 @@ def leastsqBound(func, x0, args=(), bounds=None, Dfun=None, full_output=0,
     return grad
   
   def _int2extFunc(bounds):
-    """transform internal parameters into external parameters."""
+    """Transform internal parameters into external parameters."""
     local = [_int2extLocal(b) for b in bounds]
     def _transform_i2e(p_int):
         p_ext = np.empty_like(p_int)
@@ -286,7 +290,7 @@ def leastsqBound(func, x0, args=(), bounds=None, Dfun=None, full_output=0,
     return _transform_i2e
   
   def _ext2intFunc(bounds):
-    """transform external parameters into internal parameters."""
+    """Transform external parameters into internal parameters."""
     local = [_ext2intLocal(b) for b in bounds]
     def _transform_e2i(p_ext):
         p_int = np.empty_like(p_ext)
@@ -295,7 +299,7 @@ def leastsqBound(func, x0, args=(), bounds=None, Dfun=None, full_output=0,
     return _transform_e2i
 
   def _int2extLocal(bound):
-    """transform a single internal parameter to an external parameter."""
+    """Transform a single internal parameter to an external parameter."""
     lower, upper = bound
     if lower is None and upper is None:      # no constraints
         return lambda x: x
@@ -307,7 +311,7 @@ def leastsqBound(func, x0, args=(), bounds=None, Dfun=None, full_output=0,
         return lambda x: lower + ((upper - lower)/2.0)*(np.sin(x) + 1.0)
   
   def _ext2intLocal(bound):
-    """transform a single external parameter to an internal parameter."""
+    """Transform a single external parameter to an internal parameter."""
     lower, upper = bound
     if lower is None and upper is None:  # no constraints
         return lambda x: x
@@ -415,7 +419,7 @@ def leastsqBound(func, x0, args=(), bounds=None, Dfun=None, full_output=0,
           try:
               cov_x = inv(np.dot(np.transpose(R), R))
           except LinAlgError as inverror:
-              print inverror
+              print(inverror)
               pass
       return (x, cov_x) + retval[1:-1] + (mesg, info)
   else:

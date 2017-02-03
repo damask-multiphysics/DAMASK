@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python2.7
 # -*- coding: UTF-8 no BOM -*-
 
 import os,sys,math
@@ -12,37 +12,33 @@ scriptID   = ' '.join([scriptName,damask.version])
 def divFFT(geomdim,field):
  shapeFFT    = np.array(np.shape(field))[0:3]
  grid = np.array(np.shape(field)[2::-1])
- N = grid.prod()                                                                          # field size
- n = np.array(np.shape(field)[3:]).prod()                                                 # data size
+ N = grid.prod()                                                                                    # field size
+ n = np.array(np.shape(field)[3:]).prod()                                                           # data size
 
- field_fourier = np.fft.fftpack.rfftn(field,axes=(0,1,2),s=shapeFFT)
- div_fourier   = np.empty(field_fourier.shape[0:len(np.shape(field))-1],'c16')            # size depents on whether tensor or vector
+ if   n == 3:   dataType = 'vector'
+ elif n == 9:   dataType = 'tensor'
+
+ field_fourier = np.fft.rfftn(field,axes=(0,1,2),s=shapeFFT)
+ div_fourier   = np.empty(field_fourier.shape[0:len(np.shape(field))-1],'c16')
 
 # differentiation in Fourier space
- k_s = np.zeros([3],'i')
  TWOPIIMG = 2.0j*math.pi
- for i in xrange(grid[2]):
-   k_s[0] = i
-   if grid[2]%2 == 0 and i == grid[2]//2:  k_s[0] = 0                                     # for even grid, set Nyquist freq to 0 (Johnson, MIT, 2011)
-   elif i > grid[2]//2:                    k_s[0] -= grid[2]
+ k_sk = np.where(np.arange(grid[2])>grid[2]//2,np.arange(grid[2])-grid[2],np.arange(grid[2]))/geomdim[0]
+ if grid[2]%2 == 0: k_sk[grid[2]//2] = 0                                                            # for even grid, set Nyquist freq to 0 (Johnson, MIT, 2011)
+ 
+ k_sj = np.where(np.arange(grid[1])>grid[1]//2,np.arange(grid[1])-grid[1],np.arange(grid[1]))/geomdim[1]
+ if grid[1]%2 == 0: k_sj[grid[1]//2] = 0                                                            # for even grid, set Nyquist freq to 0 (Johnson, MIT, 2011)
 
-   for j in xrange(grid[1]):
-     k_s[1] = j
-     if grid[1]%2 == 0 and j == grid[1]//2: k_s[1] = 0                                    # for even grid, set Nyquist freq to 0 (Johnson, MIT, 2011)
-     elif j > grid[1]//2:                   k_s[1] -= grid[1]
-
-     for k in xrange(grid[0]//2+1):
-       k_s[2] = k
-       if grid[0]%2 == 0 and k == grid[0]//2: k_s[2] = 0                                  # for even grid, set Nyquist freq to 0 (Johnson, MIT, 2011)
-
-       xi = (k_s/geomdim)[2::-1].astype('c16')                                            # reversing the field input order
-       if n == 9:                                                                         # tensor, 3x3 -> 3
-         for l in xrange(3):
-           div_fourier[i,j,k,l] = sum(field_fourier[i,j,k,l,0:3]*xi) *TWOPIIMG
-       elif n == 3:                                                                       # vector, 3 -> 1
-         div_fourier[i,j,k] = sum(field_fourier[i,j,k,0:3]*xi) *TWOPIIMG
-
- return np.fft.fftpack.irfftn(div_fourier,axes=(0,1,2),s=shapeFFT).reshape([N,n/3])
+ k_si = np.arange(grid[0]//2+1)/geomdim[2]
+ 
+ kk, kj, ki = np.meshgrid(k_sk,k_sj,k_si,indexing = 'ij')
+ k_s = np.concatenate((ki[:,:,:,None],kj[:,:,:,None],kk[:,:,:,None]),axis = 3).astype('c16')                           
+ if dataType == 'tensor':                                                                           # tensor, 3x3 -> 3
+   div_fourier = np.einsum('ijklm,ijkm->ijkl',field_fourier,k_s)*TWOPIIMG
+ elif dataType == 'vector':                                                                         # vector, 3 -> 1
+   div_fourier = np.einsum('ijkl,ijkl->ijk',field_fourier,k_s)*TWOPIIMG
+ 
+ return np.fft.irfftn(div_fourier,axes=(0,1,2),s=shapeFFT).reshape([N,n/3])
 
 
 # --------------------------------------------------------------------
@@ -123,14 +119,14 @@ for name in filenames:
   for type, data in items.iteritems():
     for label in data['active']:
       table.labels_append(['divFFT({})'.format(label) if type == 'vector' else
-                           '{}_divFFT({})'.format(i+1,label) for i in xrange(data['dim']//3)])        # extend ASCII header with new labels
+                           '{}_divFFT({})'.format(i+1,label) for i in range(data['dim']//3)])       # extend ASCII header with new labels
   table.head_write()
 
 # --------------- figure out size and grid ---------------------------------------------------------
 
   table.data_readArray()
 
-  coords = [np.unique(table.data[:,colCoord+i]) for i in xrange(3)]
+  coords = [np.unique(table.data[:,colCoord+i]) for i in range(3)]
   mincorner = np.array(map(min,coords))
   maxcorner = np.array(map(max,coords))
   grid   = np.array(map(len,coords),'i')
@@ -145,7 +141,7 @@ for name in filenames:
       # we need to reverse order here, because x is fastest,ie rightmost, but leftmost in our x,y,z notation
       stack.append(divFFT(size[::-1],
                           table.data[:,data['column'][i]:data['column'][i]+data['dim']].
-                          reshape([grid[2],grid[1],grid[0]]+data['shape'])))
+                          reshape(grid[::-1].tolist()+data['shape'])))
 
 # ------------------------------------------ output result -----------------------------------------
 

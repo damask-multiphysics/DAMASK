@@ -152,8 +152,6 @@ subroutine plastic_disloUCLA_init(fileUnit)
    MATERIAL_partPhase
  use lattice
  use numerics,only: &
-   analyticJaco, &
-   worldrank, &
    numerics_integrator
  
  implicit none
@@ -173,11 +171,9 @@ subroutine plastic_disloUCLA_init(fileUnit)
    line = ''
  real(pReal), dimension(:), allocatable :: tempPerSlip
   
- mainProcess: if (worldrank == 0) then 
-   write(6,'(/,a)')   ' <<<+-  constitutive_'//PLASTICITY_DISLOUCLA_label//' init  -+>>>'
-   write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
+ write(6,'(/,a)')   ' <<<+-  constitutive_'//PLASTICITY_DISLOUCLA_label//' init  -+>>>'
+ write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
- endif mainProcess
  
  maxNinstance = int(count(phase_plasticity == PLASTICITY_DISLOUCLA_ID),pInt)
  if (maxNinstance == 0_pInt) return
@@ -498,10 +494,6 @@ subroutine plastic_disloUCLA_init(fileUnit)
 
      allocate(plasticState(phase)%dotState            (sizeDotState,NofMyPhase),  source=0.0_pReal)
      allocate(plasticState(phase)%deltaState        (sizeDeltaState,NofMyPhase),  source=0.0_pReal)
-     if (.not. analyticJaco) then
-       allocate(plasticState(phase)%state_backup      (sizeState,NofMyPhase),     source=0.0_pReal)
-       allocate(plasticState(phase)%dotState_backup   (sizeDotState,NofMyPhase),  source=0.0_pReal)
-     endif
      if (any(numerics_integrator == 1_pInt)) then
        allocate(plasticState(phase)%previousDotState  (sizeDotState,NofMyPhase),  source=0.0_pReal)
        allocate(plasticState(phase)%previousDotState2 (sizeDotState,NofMyPhase),  source=0.0_pReal)
@@ -981,7 +973,8 @@ end subroutine plastic_disloUCLA_LpAndItsTangent
 !--------------------------------------------------------------------------------------------------
 subroutine plastic_disloUCLA_dotState(Tstar_v,Temperature,ipc,ip,el)
  use prec, only: &
-   tol_math_check
+   tol_math_check, &
+   dEq0
  use math, only: &
    pi
  use material, only: &
@@ -1119,7 +1112,7 @@ subroutine plastic_disloUCLA_dotState(Tstar_v,Temperature,ipc,ip,el)
      !* Dipole formation
      EdgeDipMinDistance = &
        plastic_disloUCLA_CEdgeDipMinDistance(instance)*plastic_disloUCLA_burgersPerSlipSystem(j,instance)
-     if (abs(tau_slip_pos) <= tiny(0.0_pReal)) then
+     if (dEq0(tau_slip_pos)) then
        DotRhoDipFormation = 0.0_pReal
      else
        EdgeDipDistance = &
@@ -1147,7 +1140,7 @@ subroutine plastic_disloUCLA_dotState(Tstar_v,Temperature,ipc,ip,el)
         plastic_disloUCLA_CAtomicVolume(instance)*plastic_disloUCLA_burgersPerSlipSystem(j,instance)**(3.0_pReal)
      VacancyDiffusion = &
         plastic_disloUCLA_D0(instance)*exp(-plastic_disloUCLA_Qsd(instance)/(kB*Temperature))
-     if (abs(tau_slip_pos) <= tiny(0.0_pReal)) then
+     if (dEq0(tau_slip_pos)) then
        DotRhoEdgeDipClimb = 0.0_pReal
      else
        ClimbVelocity = &
@@ -1180,7 +1173,8 @@ end subroutine plastic_disloUCLA_dotState
 !--------------------------------------------------------------------------------------------------
 function plastic_disloUCLA_postResults(Tstar_v,Temperature,ipc,ip,el)
  use prec, only: &
-   tol_math_check
+   tol_math_check, &
+   dEq
  use math, only: &
    pi
  use material, only: &
@@ -1408,7 +1402,7 @@ function plastic_disloUCLA_postResults(Tstar_v,Temperature,ipc,ip,el)
           c = c + ns
         elseif(plastic_disloUCLA_outputID(o,instance) == stress_exponent_ID) then
           do j = 1_pInt, ns
-            if (abs(gdot_slip_pos(j)+gdot_slip_neg(j))<=tiny(0.0_pReal)) then
+            if (dEq(gdot_slip_pos(j)+gdot_slip_neg(j),0.0_pReal)) then
               plastic_disloUCLA_postResults(c+j) = 0.0_pReal
             else
               plastic_disloUCLA_postResults(c+j) = (tau_slip_pos(j)+tau_slip_neg(j))/&

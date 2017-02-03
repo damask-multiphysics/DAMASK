@@ -184,7 +184,7 @@ subroutine damage_nonlocal_getSourceAndItsTangent(phiDot, dPhiDot_dPhi, phi, ip,
  use material, only: &
    homogenization_Ngrains, &
    mappingHomogenization, &
-   phaseAt, phasememberAt, &
+   phaseAt, &
    phase_source, &
    phase_Nsources, &
    SOURCE_damage_isoBrittle_ID, &
@@ -241,8 +241,8 @@ subroutine damage_nonlocal_getSourceAndItsTangent(phiDot, dPhiDot_dPhi, phi, ip,
    enddo  
  enddo
  
- phiDot = phiDot/homogenization_Ngrains(mappingHomogenization(2,ip,el))
- dPhiDot_dPhi = dPhiDot_dPhi/homogenization_Ngrains(mappingHomogenization(2,ip,el))
+ phiDot = phiDot/real(homogenization_Ngrains(mappingHomogenization(2,ip,el)),pReal)
+ dPhiDot_dPhi = dPhiDot_dPhi/real(homogenization_Ngrains(mappingHomogenization(2,ip,el)),pReal)
  
 end subroutine damage_nonlocal_getSourceAndItsTangent
 
@@ -279,9 +279,7 @@ function damage_nonlocal_getDiffusion33(ip,el)
  enddo
 
  damage_nonlocal_getDiffusion33 = &
-   charLength*charLength* &
-   damage_nonlocal_getDiffusion33/ &
-   homogenization_Ngrains(homog)
+   charLength**2_pInt*damage_nonlocal_getDiffusion33/real(homogenization_Ngrains(homog),pReal)
  
 end function damage_nonlocal_getDiffusion33
  
@@ -310,7 +308,8 @@ real(pReal) function damage_nonlocal_getMobility(ip,el)
    damage_nonlocal_getMobility = damage_nonlocal_getMobility + lattice_DamageMobility(material_phase(ipc,ip,el))
  enddo
 
- damage_nonlocal_getMobility = damage_nonlocal_getMobility /homogenization_Ngrains(mesh_element(3,el))
+ damage_nonlocal_getMobility = damage_nonlocal_getMobility/&
+                               real(homogenization_Ngrains(mesh_element(3,el)),pReal)
 
 end function damage_nonlocal_getMobility
 

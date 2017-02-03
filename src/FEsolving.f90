@@ -60,8 +60,6 @@ subroutine FE_init
    IO_warning, &
    IO_timeStamp
  use DAMASK_interface
- use numerics, only: &
-   worldrank
  
  implicit none
 #if defined(Marc4DAMASK) || defined(Abaqus)
@@ -72,11 +70,9 @@ subroutine FE_init
  integer(pInt), allocatable, dimension(:) :: chunkPos
 #endif
 
- mainProcess: if (worldrank == 0) then 
-   write(6,'(/,a)')   ' <<<+-  FEsolving init  -+>>>'
-   write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
+ write(6,'(/,a)')   ' <<<+-  FEsolving init  -+>>>'
+ write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
- endif mainProcess
 
  modelName = getSolverJobName()
 #ifdef Spectral
@@ -153,10 +149,6 @@ subroutine FE_init
  200 close(FILEUNIT)
  endif
 
-!--------------------------------------------------------------------------------------------------
-! the following array are allocated by mesh.f90 and need to be deallocated in case of regridding
- if (allocated(calcMode)) deallocate(calcMode)
- if (allocated(FEsolving_execIP)) deallocate(FEsolving_execIP)
 #endif
  if (iand(debug_level(debug_FEsolving),debug_levelBasic) /= 0_pInt) then
    write(6,'(a21,l1)') ' restart writing:    ', restartWrite

@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python2.7
 # -*- coding: UTF-8 no BOM -*-
 
 import os,sys
@@ -20,7 +20,7 @@ Produces a binned grid of two columns from an ASCIItable, i.e. a two-dimensional
 
 parser.add_option('-d','--data',
                   dest = 'data',
-                  type='string', nargs = 2, metavar = 'string string',
+                  type = 'string', nargs = 2, metavar = 'string string',
                   help = 'column labels containing x and y ')
 parser.add_option('-w','--weight',
                   dest = 'weight',
@@ -49,15 +49,15 @@ parser.add_option('-z','--zrange',
 parser.add_option('-i','--invert',
                   dest = 'invert',
                   action = 'store_true',
-                  help = 'invert probability density [%default]')
+                  help = 'invert probability density')
 parser.add_option('-r','--rownormalize',
                   dest = 'normRow',
                   action = 'store_true',
-                  help = 'normalize probability density in each row [%default]')
+                  help = 'normalize probability density in each row')
 parser.add_option('-c','--colnormalize',
                   dest = 'normCol',
                   action = 'store_true',
-                  help = 'normalize probability density in each column [%default]')
+                  help = 'normalize probability density in each column')
 
 parser.set_defaults(bins = (10,10),
                     type = ('linear','linear','linear'),
@@ -79,7 +79,8 @@ result = np.zeros((options.bins[0],options.bins[1],3),'f')
 
 if options.data is None: parser.error('no data columns specified.')
 
-labels = options.data
+labels = list(options.data)
+
 
 if options.weight is not None: labels += [options.weight]                                               # prevent character splitting of single string value
 
@@ -88,15 +89,13 @@ if options.weight is not None: labels += [options.weight]                       
 if filenames == []: filenames = [None]
 
 for name in filenames:
-  try:
-    table = damask.ASCIItable(name = name,
-                              outname = os.path.join(os.path.dirname(name),
-                                                     'binned-{}-{}_'.format(*options.data)+ \
-                                                    ('weighted-{}_'.format(options.weight) if options.weight else '') + \
-                                                     os.path.basename(name)) if name else name,
-                              buffered = False)
-  except:
-    continue
+  try:    table = damask.ASCIItable(name = name,
+                                    outname = os.path.join(os.path.dirname(name),
+                                                           'binned-{}-{}_'.format(*options.data) +
+                                                          ('weighted-{}_'.format(options.weight) if options.weight else '') +
+                                                           os.path.basename(name)) if name else name,
+                                    buffered = False)
+  except: continue
   damask.util.report(scriptName,name)
 
 # ------------------------------------------ read header ------------------------------------------
@@ -106,7 +105,7 @@ for name in filenames:
 # ------------------------------------------ sanity checks ----------------------------------------
 
   missing_labels = table.data_readArray(labels)
- 
+
   if len(missing_labels) > 0:
     damask.util.croak('column{} {} not found.'.format('s' if len(missing_labels) > 1 else '',', '.join(missing_labels)))
     table.close(dismiss = True)
@@ -119,24 +118,23 @@ for name in filenames:
       minmax[c] = np.log(minmax[c])                                                                 # change minmax to log, too
 
   delta = minmax[:,1]-minmax[:,0]
-  
-  for i in xrange(len(table.data)):
-    x = int(options.bins[0]*(table.data[i,0]-minmax[0,0])/delta[0])
-    y = int(options.bins[1]*(table.data[i,1]-minmax[1,0])/delta[1])
-    if x >= 0 and x < options.bins[0] and y >= 0 and y < options.bins[1]:
-      grid[x,y] += 1. if options.weight is None else table.data[i,2]                                # count (weighted) occurrences
+
+  (grid,xedges,yedges) = np.histogram2d(table.data[:,0],table.data[:,1],
+                                        bins=options.bins,
+                                        range=minmax,
+                                        weights=None if options.weight is None else table.data[:,2])
 
   if options.normCol:
-    for x in xrange(options.bins[0]):
+    for x in range(options.bins[0]):
       sum = np.sum(grid[x,:])
       if sum > 0.0:
         grid[x,:] /= sum
   if options.normRow:
-    for y in xrange(options.bins[1]):
+    for y in range(options.bins[1]):
       sum = np.sum(grid[:,y])
       if sum > 0.0:
         grid[:,y] /= sum
-  
+
   if (minmax[2] == 0.0).all(): minmax[2] = [grid.min(),grid.max()]                                   # auto scale from data
   if minmax[2,0] == minmax[2,1]:
     minmax[2,0] -= 1.
@@ -147,11 +145,11 @@ for name in filenames:
   if options.type[2].lower() == 'log':
     grid = np.log(grid)
     minmax[2] = np.log(minmax[2])
-    
+
   delta[2] = minmax[2,1]-minmax[2,0]
 
-  for x in xrange(options.bins[0]):
-    for y in xrange(options.bins[1]):
+  for x in range(options.bins[0]):
+    for y in range(options.bins[1]):
       result[x,y,:] = [minmax[0,0]+delta[0]/options.bins[0]*(x+0.5),
                        minmax[1,0]+delta[1]/options.bins[1]*(y+0.5),
                        min(1.0,max(0.0,(grid[x,y]-minmax[2,0])/delta[2]))]

@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python2.7
 # -*- coding: UTF-8 no BOM -*-
 
 import os,sys
@@ -57,8 +57,8 @@ for name in filenames:
       if dim != data['dim']: remarks.append('column {} is not a {}...'.format(what,type))
       else:
         items[type]['column'].append(table.label_index(what))
-        table.labels_append(['{}_eigval({})'.format(i+1,what) for i in xrange(3)])                  # extend ASCII header with new labels
-        table.labels_append(['{}_eigvec({})'.format(i+1,what) for i in xrange(9)])                  # extend ASCII header with new labels
+        table.labels_append(['{}_eigval({})'.format(i+1,what) for i in range(3)])                   # extend ASCII header with new labels
+        table.labels_append(['{}_eigvec({})'.format(i+1,what) for i in range(9)])                   # extend ASCII header with new labels
 
   if remarks != []: damask.util.croak(remarks)
   if errors  != []:
@@ -78,6 +78,7 @@ for name in filenames:
     for type, data in items.iteritems():
       for column in data['column']:
         (u,v) = np.linalg.eigh(np.array(map(float,table.data[column:column+data['dim']])).reshape(data['shape']))
+        if np.dot(np.cross(v[:,0], v[:,1]), v[:,2]) < 0.0 : v[:, 2] *= -1.0                         # ensure right-handed coordinate system
         table.data_append(list(u))
         table.data_append(list(v.transpose().reshape(data['dim'])))
     outputAlive = table.data_write()                                                                # output processed line

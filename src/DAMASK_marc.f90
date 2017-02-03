@@ -240,17 +240,17 @@ subroutine hypela2(d,g,e,de,s,t,dt,ngens,m,nn,kcus,matus,ndi,nshear,disp, &
  real(pReal), dimension(6) ::   stress
  real(pReal), dimension(6,6) :: ddsdde
  integer(pInt) :: computationMode, i, cp_en, node, CPnodeID
- !$ integer :: defaultNumThreadsInt                                                                 !< default value set by Marc
+ !$ integer(4) :: defaultNumThreadsInt                                                              !< default value set by Marc
 
  if (iand(debug_level(debug_MARC),debug_LEVELBASIC) /= 0_pInt) then
    write(6,'(a,/,i8,i8,i2)') ' MSC.MARC information on shape of element(2), IP:', m, nn
-   write(6,'(a,2(1i))'), ' Jacobian:                      ', ngens,ngens 
-   write(6,'(a,1i)'),    ' Direct stress:                 ', ndi  
-   write(6,'(a,1i)'),    ' Shear stress:                  ', nshear  
-   write(6,'(a,1i)'),    ' DoF:                           ', ndeg
-   write(6,'(a,1i)'),    ' Coordinates:                   ', ncrd
-   write(6,'(a,1i)'),    ' Nodes:                         ', nnode 
-   write(6,'(a,1i)'),    ' Deformation gradient:          ', itel 
+   write(6,'(a,2(i1))')      ' Jacobian:                      ', ngens,ngens 
+   write(6,'(a,i1)')         ' Direct stress:                 ', ndi  
+   write(6,'(a,i1)')         ' Shear stress:                  ', nshear  
+   write(6,'(a,i2)')         ' DoF:                           ', ndeg
+   write(6,'(a,i2)')         ' Coordinates:                   ', ncrd
+   write(6,'(a,i12)')        ' Nodes:                         ', nnode 
+   write(6,'(a,i1)')         ' Deformation gradient:          ', itel 
    write(6,'(/,a,/,3(3(f12.7,1x)/))',advance='no') ' Deformation gradient at t=n:', &
                                  math_transpose33(ffn)
    write(6,'(/,a,/,3(3(f12.7,1x)/))',advance='no') ' Deformation gradient at t=n+1:', &

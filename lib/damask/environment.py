@@ -1,16 +1,13 @@
 # -*- coding: UTF-8 no BOM -*-
 
-
-import os,subprocess,shlex
+import os,subprocess,shlex,re
 
 class Environment():
   __slots__ = [ \
-                'rootRelation',
                 'options',
               ]
 
-  def __init__(self,rootRelation = '.'):
-    self.rootRelation = rootRelation
+  def __init__(self):
     self.options = {}
     self.get_options()
 
@@ -21,17 +18,14 @@ class Environment():
     return os.path.normpath(os.path.join(os.path.realpath(__file__),'../../../'))
 
   def get_options(self):
-    if os.path.isfile(os.path.join(os.getenv('HOME'),'.damask/damask.conf')):
-      configFile = os.path.join(os.getenv('HOME'),'.damask/damask.conf')
-    else:
-      configFile = '/etc/damask.conf'
-    with open(self.relPath(configFile)) as file:
-      for line in file:
-        l = line.strip()
-        if not (l.startswith('#') or l == ''):
-          items = l.split('=') + ['','']
-          if items[1] != '':                                # nothing specified
-            self.options[items[0].upper()] = items[1]
+    with open(self.relPath(self.rootDir()+'/CONFIG')) as configFile:
+      for line in configFile:
+        l = re.sub('^set ', '', line).strip()                                                       # remove "set" (tcsh) when setting variables
+        if l and not l.startswith('#'):
+          items = re.split(r'\s*=\s*',l)
+          if len(items) == 2: 
+            self.options[items[0].upper()] = \
+              re.sub('\$\{*DAMASK_ROOT\}*',self.rootDir(),os.path.expandvars(items[1]))             # expand all shell variables and DAMASK_ROOT
       
   def isAvailable(self,software,Nneeded =-1):
     licensesNeeded = {'abaqus'  :5,
@@ -41,7 +35,7 @@ class Environment():
     try:
       cmd = """ ssh mulicense2 "/Stat_Flexlm | grep 'Users of %s: ' | cut -d' ' -f7,13" """%software
       process = subprocess.Popen(shlex.split(cmd),stdout = subprocess.PIPE,stderr = subprocess.PIPE)
-      licenses = map(int, process.stdout.readline().split())
+      licenses = list(map(int, process.stdout.readline().split()))
       try:
         if licenses[0]-licenses[1] >= Nneeded:
           return 0

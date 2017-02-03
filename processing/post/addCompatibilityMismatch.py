@@ -1,13 +1,209 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python2.7
 # -*- coding: UTF-8 no BOM -*-
 
-import os,sys
+import os
+import math
 import numpy as np
+import scipy.ndimage
 from optparse import OptionParser
 import damask
 
 scriptName = os.path.splitext(os.path.basename(__file__))[0]
 scriptID   = ' '.join([scriptName,damask.version])
+
+#--------------------------------------------------------------------------------------------------
+def cell2node(cellData,grid):
+
+  nodeData = 0.0
+  datalen = np.array(cellData.shape[3:]).prod()
+  
+  for i in range(datalen):
+    node = scipy.ndimage.convolve(cellData.reshape(tuple(grid[::-1])+(datalen,))[...,i],
+                                  np.ones((2,2,2))/8.,                                              # 2x2x2 neighborhood of cells
+                                  mode = 'wrap',
+                                  origin = -1,                                                      # offset to have cell origin as center
+                                 )                                                                  # now averaged at cell origins
+    node = np.append(node,node[np.newaxis,0,:,:,...],axis=0)                                        # wrap along z
+    node = np.append(node,node[:,0,np.newaxis,:,...],axis=1)                                        # wrap along y
+    node = np.append(node,node[:,:,0,np.newaxis,...],axis=2)                                        # wrap along x
+
+    nodeData = node[...,np.newaxis] if i==0 else np.concatenate((nodeData,node[...,np.newaxis]),axis=-1)
+
+  return nodeData
+
+#--------------------------------------------------------------------------------------------------
+def deformationAvgFFT(F,grid,size,nodal=False,transformed=False):
+  """Calculate average cell center (or nodal) deformation for deformation gradient field specified in each grid cell"""
+  if nodal:
+    x, y, z = np.meshgrid(np.linspace(0,size[2],1+grid[2]),
+                          np.linspace(0,size[1],1+grid[1]),
+                          np.linspace(0,size[0],1+grid[0]),
+                          indexing = 'ij')
+  else:
+    x, y, z = np.meshgrid(np.linspace(size[2]/grid[2]/2.,size[2]-size[2]/grid[2]/2.,grid[2]),
+                          np.linspace(size[1]/grid[1]/2.,size[1]-size[1]/grid[1]/2.,grid[1]),
+                          np.linspace(size[0]/grid[0]/2.,size[0]-size[0]/grid[0]/2.,grid[0]),
+                          indexing = 'ij')
+
+  origCoords = np.concatenate((z[:,:,:,None],y[:,:,:,None],x[:,:,:,None]),axis = 3) 
+
+  F_fourier = F if transformed else np.fft.rfftn(F,axes=(0,1,2))                                    # transform or use provided data
+  Favg = np.real(F_fourier[0,0,0,:,:])/grid.prod()                                                  # take zero freq for average
+  avgDeformation = np.einsum('ml,ijkl->ijkm',Favg,origCoords)                                       # dX = Favg.X
+
+  return avgDeformation
+
+#--------------------------------------------------------------------------------------------------
+def displacementFluctFFT(F,grid,size,nodal=False,transformed=False):
+  """Calculate cell center (or nodal) displacement for deformation gradient field specified in each grid cell"""
+  integrator = 0.5j * size / math.pi
+
+  kk, kj, ki = np.meshgrid(np.where(np.arange(grid[2])>grid[2]//2,np.arange(grid[2])-grid[2],np.arange(grid[2])),
+                           np.where(np.arange(grid[1])>grid[1]//2,np.arange(grid[1])-grid[1],np.arange(grid[1])),
+                                    np.arange(grid[0]//2+1),
+                           indexing = 'ij')
+  k_s = np.concatenate((ki[:,:,:,None],kj[:,:,:,None],kk[:,:,:,None]),axis = 3) 
+  k_sSquared = np.einsum('...l,...l',k_s,k_s)
+  k_sSquared[0,0,0] = 1.0                                                                           # ignore global average frequency
+
+#--------------------------------------------------------------------------------------------------
+# integration in Fourier space
+
+  displacement_fourier = -np.einsum('ijkml,ijkl,l->ijkm',
+                                    F if transformed else np.fft.rfftn(F,axes=(0,1,2)),
+                                    k_s,
+                                    integrator,
+                                    ) / k_sSquared[...,np.newaxis]
+
+#--------------------------------------------------------------------------------------------------
+# backtransformation to real space
+
+  displacement = np.fft.irfftn(displacement_fourier,grid[::-1],axes=(0,1,2))
+
+  return cell2node(displacement,grid) if nodal else displacement
+
+
+def volTetrahedron(coords):
+  """
+  Return the volume of the tetrahedron with given vertices or sides.
+  
+  Ifvertices are given they must be in a NumPy array with shape (4,3): the
+  position vectors of the 4 vertices in 3 dimensions; if the six sides are
+  given, they must be an array of length 6. If both are given, the sides
+  will be used in the calculation.
+
+  This method implements
+  Tartaglia's formula using the Cayley-Menger determinant:
+              |0   1    1    1    1  |
+              |1   0   s1^2 s2^2 s3^2|
+    288 V^2 = |1  s1^2  0   s4^2 s5^2|
+              |1  s2^2 s4^2  0   s6^2|
+              |1  s3^2 s5^2 s6^2  0  |
+  where s1, s2, ..., s6 are the tetrahedron side lengths.
+
+  from http://codereview.stackexchange.com/questions/77593/calculating-the-volume-of-a-tetrahedron
+  """
+  # The indexes of rows in the vertices array corresponding to all
+  # possible pairs of vertices
+  vertex_pair_indexes = np.array(((0, 1), (0, 2), (0, 3),
+                                  (1, 2), (1, 3), (2, 3)))
+
+  # Get all the squares of all side lengths from the differences between
+  # the 6 different pairs of vertex positions
+  vertices =  np.concatenate((coords[0],coords[1],coords[2],coords[3])).reshape([4,3])
+  vertex1, vertex2 = vertex_pair_indexes[:,0], vertex_pair_indexes[:,1]
+  sides_squared = np.sum((vertices[vertex1] - vertices[vertex2])**2,axis=-1)
+
+
+  # Set up the Cayley-Menger determinant
+  M = np.zeros((5,5))
+  # Fill in the upper triangle of the matrix
+  M[0,1:] = 1
+  # The squared-side length elements can be indexed using the vertex
+  # pair indices (compare with the determinant illustrated above)
+  M[tuple(zip(*(vertex_pair_indexes + 1)))] = sides_squared
+
+  # The matrix is symmetric, so we can fill in the lower triangle by
+  # adding the transpose
+  M = M + M.T
+  return np.sqrt(np.linalg.det(M) / 288)
+
+
+def volumeMismatch(size,F,nodes):
+  """
+  Calculates the volume mismatch
+  
+  volume mismatch is defined as the difference between volume of reconstructed 
+  (compatible) cube and determinant of defgrad at the FP
+  """
+  coords = np.empty([8,3])
+  vMismatch = np.empty(grid[::-1])
+  volInitial = size.prod()/grid.prod()
+ 
+#--------------------------------------------------------------------------------------------------
+# calculate actual volume and volume resulting from deformation gradient
+  for k in range(grid[2]):
+    for j in range(grid[1]):
+      for i in range(grid[0]):
+        coords[0,0:3] = nodes[k,  j,  i  ,0:3]
+        coords[1,0:3] = nodes[k  ,j,  i+1,0:3]
+        coords[2,0:3] = nodes[k  ,j+1,i+1,0:3]
+        coords[3,0:3] = nodes[k,  j+1,i  ,0:3]
+        coords[4,0:3] = nodes[k+1,j,  i  ,0:3]
+        coords[5,0:3] = nodes[k+1,j,  i+1,0:3]
+        coords[6,0:3] = nodes[k+1,j+1,i+1,0:3]
+        coords[7,0:3] = nodes[k+1,j+1,i  ,0:3]
+        vMismatch[k,j,i] = \
+        (  abs(volTetrahedron([coords[6,0:3],coords[0,0:3],coords[7,0:3],coords[3,0:3]])) \
+         + abs(volTetrahedron([coords[6,0:3],coords[0,0:3],coords[7,0:3],coords[4,0:3]])) \
+         + abs(volTetrahedron([coords[6,0:3],coords[0,0:3],coords[2,0:3],coords[3,0:3]])) \
+         + abs(volTetrahedron([coords[6,0:3],coords[0,0:3],coords[2,0:3],coords[1,0:3]])) \
+         + abs(volTetrahedron([coords[6,0:3],coords[4,0:3],coords[1,0:3],coords[5,0:3]])) \
+         + abs(volTetrahedron([coords[6,0:3],coords[4,0:3],coords[1,0:3],coords[0,0:3]]))) \
+        /np.linalg.det(F[k,j,i,0:3,0:3])
+  return vMismatch/volInitial
+
+
+
+def shapeMismatch(size,F,nodes,centres):
+  """
+  Routine to calculate the shape mismatch
+  
+  shape mismatch is defined as difference between the vectors from the central point to
+  the corners of reconstructed (combatible) volume element and the vectors calculated by deforming
+  the initial volume element with the  current deformation gradient
+  """
+  coordsInitial = np.empty([8,3])
+  sMismatch    = np.empty(grid[::-1])
+   
+#--------------------------------------------------------------------------------------------------
+# initial positions
+  coordsInitial[0,0:3] = [-size[0]/grid[0],-size[1]/grid[1],-size[2]/grid[2]]
+  coordsInitial[1,0:3] = [+size[0]/grid[0],-size[1]/grid[1],-size[2]/grid[2]]
+  coordsInitial[2,0:3] = [+size[0]/grid[0],+size[1]/grid[1],-size[2]/grid[2]]
+  coordsInitial[3,0:3] = [-size[0]/grid[0],+size[1]/grid[1],-size[2]/grid[2]]
+  coordsInitial[4,0:3] = [-size[0]/grid[0],-size[1]/grid[1],+size[2]/grid[2]]
+  coordsInitial[5,0:3] = [+size[0]/grid[0],-size[1]/grid[1],+size[2]/grid[2]]
+  coordsInitial[6,0:3] = [+size[0]/grid[0],+size[1]/grid[1],+size[2]/grid[2]]
+  coordsInitial[7,0:3] = [-size[0]/grid[0],+size[1]/grid[1],+size[2]/grid[2]]
+  coordsInitial = coordsInitial/2.0
+ 
+#--------------------------------------------------------------------------------------------------
+# compare deformed original and deformed positions to actual positions
+  for k in range(grid[2]):
+    for j in range(grid[1]):
+      for i in range(grid[0]):
+       sMismatch[k,j,i] = \
+         + np.linalg.norm(nodes[k,  j,  i  ,0:3] - centres[k,j,i,0:3] - np.dot(F[k,j,i,:,:], coordsInitial[0,0:3]))\
+         + np.linalg.norm(nodes[k,  j,  i+1,0:3] - centres[k,j,i,0:3] - np.dot(F[k,j,i,:,:], coordsInitial[1,0:3]))\
+         + np.linalg.norm(nodes[k,  j+1,i+1,0:3] - centres[k,j,i,0:3] - np.dot(F[k,j,i,:,:], coordsInitial[2,0:3]))\
+         + np.linalg.norm(nodes[k,  j+1,i  ,0:3] - centres[k,j,i,0:3] - np.dot(F[k,j,i,:,:], coordsInitial[3,0:3]))\
+         + np.linalg.norm(nodes[k+1,j,  i  ,0:3] - centres[k,j,i,0:3] - np.dot(F[k,j,i,:,:], coordsInitial[4,0:3]))\
+         + np.linalg.norm(nodes[k+1,j,  i+1,0:3] - centres[k,j,i,0:3] - np.dot(F[k,j,i,:,:], coordsInitial[5,0:3]))\
+         + np.linalg.norm(nodes[k+1,j+1,i+1,0:3] - centres[k,j,i,0:3] - np.dot(F[k,j,i,:,:], coordsInitial[6,0:3]))\
+         + np.linalg.norm(nodes[k+1,j+1,i  ,0:3] - centres[k,j,i,0:3] - np.dot(F[k,j,i,:,:], coordsInitial[7,0:3]))
+  return sMismatch
+
 
 # --------------------------------------------------------------------
 #                                MAIN
@@ -64,79 +260,78 @@ for name in filenames:
   errors  = []
   remarks = []
   
-  if table.label_dimension(options.pos) != 3:
-    errors.append('coordinates "{}" are not a vector.'.format(options.pos))
-  else: colCoord = table.label_index(options.pos)
-
   if table.label_dimension(options.defgrad) != 9:
-    errors.append('deformation gradient "{}" is not a tensor.'.format(options.defgrad))
-  else: colF = table.label_index(options.defgrad)
+    errors.append('deformation gradient "{}" is not a 3x3 tensor.'.format(options.defgrad))
+
+  coordDim = table.label_dimension(options.pos)
+  if not 3 >= coordDim >= 1:
+    errors.append('coordinates "{}" need to have one, two, or three dimensions.'.format(options.pos))
+  elif coordDim < 3:
+    remarks.append('appending {} dimension{} to coordinates "{}"...'.format(3-coordDim,
+                                                                            's' if coordDim < 2 else '',
+                                                                            options.pos))
 
   if remarks != []: damask.util.croak(remarks)
   if errors  != []:
     damask.util.croak(errors)
-    table.close(dismiss = True)
+    table.close(dismiss=True)
     continue
-
-# ------------------------------------------ assemble header --------------------------------------
-
-  table.info_append(scriptID + '\t' + ' '.join(sys.argv[1:]))
-  if options.shape:  table.labels_append('shapeMismatch({})'.format(options.defgrad))
-  if options.volume: table.labels_append('volMismatch({})'.format(options.defgrad))
 
 # --------------- figure out size and grid ---------------------------------------------------------
 
-  table.data_readArray()
+  table.data_readArray([options.defgrad,options.pos])
+  table.data_rewind()
 
-  coords = [np.unique(table.data[:,colCoord+i]) for i in xrange(3)]
+  if len(table.data.shape) < 2: table.data.shape += (1,)                                            # expand to 2D shape
+  if table.data[:,9:].shape[1] < 3:
+    table.data = np.hstack((table.data,
+                            np.zeros((table.data.shape[0],
+                                      3-table.data[:,9:].shape[1]),dtype='f')))                     # fill coords up to 3D with zeros
+
+  coords = [np.unique(table.data[:,9+i]) for i in range(3)]
   mincorner = np.array(map(min,coords))
   maxcorner = np.array(map(max,coords))
   grid   = np.array(map(len,coords),'i')
   size   = grid/np.maximum(np.ones(3,'d'), grid-1.0) * (maxcorner-mincorner)                        # size from edge to edge = dim * n/(n-1) 
-  size   = np.where(grid > 1, size, min(size[grid > 1]/grid[grid > 1]))                             # grid==1 spacing set to smallest among other ones
+  size   = np.where(grid > 1, size, min(size[grid > 1]/grid[grid > 1]))                             # spacing for grid==1 set to smallest among other spacings
 
   N = grid.prod()
-  
-# --------------- figure out columns to process  ---------------------------------------------------
-  key = '1_'+options.defgrad
-  if table.label_index(key) == -1:
-    damask.util.croak('column "{}" not found...'.format(key))
+
+  if N != len(table.data): errors.append('data count {} does not match grid {}x{}x{}.'.format(N,*grid))
+  if errors  != []:
+    damask.util.croak(errors)
+    table.close(dismiss = True)
     continue
-  else:
-    column = table.label_index(key)                                                                 # remember columns of requested data
-
-# ------------------------------------------ assemble header ---------------------------------------
-  if options.shape:  table.labels_append(['shapeMismatch({})'.format(options.defgrad)])
-  if options.volume: table.labels_append(['volMismatch({})'.format(options.defgrad)])
-  table.head_write()
-
-# ------------------------------------------ read deformation gradient field -----------------------
-  table.data_rewind()
-  F = np.zeros(N*9,'d').reshape([3,3]+list(grid))
-  idx = 0
-  while table.data_read():    
-    (x,y,z) = damask.util.gridLocation(idx,grid)                                                     # figure out (x,y,z) position from line count
-    idx += 1
-    F[0:3,0:3,x,y,z] = np.array(map(float,table.data[column:column+9]),'d').reshape(3,3)
-
-  Favg = damask.core.math.tensorAvg(F)
-  centres = damask.core.mesh.deformedCoordsFFT(size,F,Favg,[1.0,1.0,1.0])
   
-  nodes   = damask.core.mesh.nodesAroundCentres(size,Favg,centres)
-  if options.shape:   shapeMismatch = damask.core.mesh.shapeMismatch( size,F,nodes,centres)
-  if options.volume: volumeMismatch = damask.core.mesh.volumeMismatch(size,F,nodes)
+# -----------------------------process data and assemble header -------------------------------------
 
-# ------------------------------------------ process data ------------------------------------------
-  table.data_rewind()
-  idx = 0
-  outputAlive = True
-  while outputAlive and table.data_read():                                                          # read next data line of ASCII table
-    (x,y,z) = damask.util.gridLocation(idx,grid)                                                    # figure out (x,y,z) position from line count
-    idx += 1
-    if options.shape:  table.data_append( shapeMismatch[x,y,z])
-    if options.volume: table.data_append(volumeMismatch[x,y,z])
-    outputAlive = table.data_write()
+  F_fourier = np.fft.rfftn(table.data[:,:9].reshape(grid[2],grid[1],grid[0],3,3),axes=(0,1,2))      # perform transform only once...
+  nodes = displacementFluctFFT(F_fourier,grid,size,True,transformed=True)\
+        + deformationAvgFFT   (F_fourier,grid,size,True,transformed=True)
 
-# ------------------------------------------ output finalization -----------------------------------  
+  if options.shape:
+    table.labels_append(['shapeMismatch({})'.format(options.defgrad)])
+    centres = displacementFluctFFT(F_fourier,grid,size,False,transformed=True)\
+            + deformationAvgFFT   (F_fourier,grid,size,False,transformed=True)
+
+  if options.volume:
+    table.labels_append(['volMismatch({})'.format(options.defgrad)])
+
+  table.head_write()
+  if options.shape:
+    shapeMismatch = shapeMismatch( size,table.data[:,:9].reshape(grid[2],grid[1],grid[0],3,3),nodes,centres)
+  if options.volume:
+    volumeMismatch = volumeMismatch(size,table.data[:,:9].reshape(grid[2],grid[1],grid[0],3,3),nodes)
+
+# ------------------------------------------ output data -------------------------------------------
+  for i in range(grid[2]):
+    for j in range(grid[1]):
+      for k in range(grid[0]):
+        table.data_read()
+        if options.shape:  table.data_append(shapeMismatch[i,j,k])
+        if options.volume: table.data_append(volumeMismatch[i,j,k])
+        table.data_write()
+
+# ------------------------------------------ output finalization -----------------------------------
 
   table.close()                                                                                     # close ASCII tables

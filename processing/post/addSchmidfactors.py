@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python2.7
 # -*- coding: UTF-8 no BOM -*-
 
 import os,sys,math
@@ -167,7 +167,6 @@ force = np.array(options.force)
 force /= np.linalg.norm(force)
 
 if options.normal:
-  damask.util.croak('got normal')
   normal = np.array(options.normal)
   normal /= np.linalg.norm(normal)
   if abs(np.dot(force,normal)) > 1e-3:
@@ -200,7 +199,7 @@ if options.lattice in latticeChoices[:2]:
   c_normal    = slipSystems[options.lattice][:,3:]
 elif options.lattice == latticeChoices[2]:
   # convert 4 Miller index notation of hex to orthogonal 3 Miller index notation
-  for i in xrange(len(c_direction)):
+  for i in range(len(c_direction)):
     c_direction[i] = np.array([slipSystems['hex'][i,0]*1.5,
                               (slipSystems['hex'][i,0] + 2.*slipSystems['hex'][i,1])*0.5*np.sqrt(3),
                                slipSystems['hex'][i,3]*options.CoverA,

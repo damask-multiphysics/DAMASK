@@ -72,8 +72,6 @@ subroutine vacancyflux_isochempot_init(fileUnit)
    vacancyConcRate, &
    vacancyflux_initialCv, &
    material_partHomogenization
- use numerics,only: &
-   worldrank
 
  implicit none
  integer(pInt), intent(in) :: fileUnit
@@ -86,11 +84,9 @@ subroutine vacancyflux_isochempot_init(fileUnit)
    tag  = '', &
    line = ''
 
- mainProcess: if (worldrank == 0) then 
-   write(6,'(/,a)')   ' <<<+-  vacancyflux_'//VACANCYFLUX_isochempot_label//' init  -+>>>'
-   write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
+ write(6,'(/,a)')   ' <<<+-  vacancyflux_'//VACANCYFLUX_isochempot_label//' init  -+>>>'
+ write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
- endif mainProcess
  
  maxNinstance = int(count(vacancyflux_type == VACANCYFLUX_isochempot_ID),pInt)
  if (maxNinstance == 0_pInt) return
@@ -235,7 +231,7 @@ subroutine vacancyflux_isochempot_getSourceAndItsTangent(CvDot, dCvDot_dCv, Cv, 
  use material, only: &
    homogenization_Ngrains, &
    mappingHomogenization, &
-   phaseAt, phasememberAt, &
+   phaseAt, &
    phase_source, &
    phase_Nsources, &
    SOURCE_vacancy_phenoplasticity_ID, &
@@ -282,8 +278,8 @@ subroutine vacancyflux_isochempot_getSourceAndItsTangent(CvDot, dCvDot_dCv, Cv, 
    enddo  
  enddo
  
- CvDot = CvDot/homogenization_Ngrains(mappingHomogenization(2,ip,el))
- dCvDot_dCv = dCvDot_dCv/homogenization_Ngrains(mappingHomogenization(2,ip,el))
+ CvDot = CvDot/real(homogenization_Ngrains(mappingHomogenization(2,ip,el)),pReal)
+ dCvDot_dCv = dCvDot_dCv/real(homogenization_Ngrains(mappingHomogenization(2,ip,el)),pReal)
  
 end subroutine vacancyflux_isochempot_getSourceAndItsTangent
 

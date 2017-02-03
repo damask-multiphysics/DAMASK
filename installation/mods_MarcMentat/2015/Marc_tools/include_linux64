@@ -442,20 +442,13 @@ FORTNA="$FCOMP $FORT_OPT -fno-alias -O3 $I8FFLAGS -I$MARC_SOURCE/common \
  -I$MARC_SOURCE/${BCS_DIR}/common -I$MARC_SOURCE/mumpssolver/include $I8DEFINES -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM"
 
 # determine DAMASK version
-HIT=0
-for arg in "$@"
-do
-  if [ $HIT = 1 ]
-  then
-   DAMASKPATH=`dirname $arg`
-   break
-  elif [ ${arg:0:2} = -u -o ${arg:0:2} = -U ]
-  then 
-    HIT=1
-  fi
-done
-read DAMASKVERSION < $DAMASKPATH/../VERSION
-DAMASKVERSION="'"$DAMASKVERSION"'"
+if test -n "$DAMASK_USER"; then
+  DAMASKROOT=`dirname $DAMASK_USER`/..
+  read DAMASKVERSION < $DAMASKROOT/VERSION
+  DAMASKVERSION="'"$DAMASKVERSION"'"
+else
+  DAMASKVERSION="'N/A'"
+fi
 
 # DAMASK compiler calls: additional flags are in line 2 OpenMP flags in line 3
 DFORTLOW="$FCOMP $FORT_OPT $PROFILE -O0 $I8FFLAGS -I$MARC_SOURCE/common \
@@ -682,9 +675,9 @@ else
 fi
 
 if test "$MARC_INTEGER_SIZE" = "i4" ; then
- MKLLIB="$MARC_MKL/libmkl_scalapack_lp64.a  $MARC_MKL/libmkl_blacs_lp64.a  -Wl,--start-group $MARC_MKL/libmkl_intel_lp64.a  $MARC_MKL/libmkl_intel_thread.a $MARC_MKL/libmkl_core.a -Wl,--end-group"
+ MKLLIB="$MARC_MKL/libmkl_scalapack_lp64.a  -Wl,--start-group $MARC_MKL/libmkl_intel_lp64.a  $MARC_MKL/libmkl_core.a $MARC_MKL/libmkl_intel_thread.a $MARC_MKL/libmkl_blacs_intelmpi_lp64.a  -Wl,--end-group"
 else
- MKLLIB="$MARC_MKL/libmkl_scalapack_ilp64.a $MARC_MKL/libmkl_blacs_ilp64.a -Wl,--start-group $MARC_MKL/libmkl_intel_ilp64.a $MARC_MKL/libmkl_intel_thread.a $MARC_MKL/libmkl_core.a -Wl,--end-group"
+ MKLLIB="$MARC_MKL/libmkl_scalapack_ilp64.a -Wl,--start-group $MARC_MKL/libmkl_intel_ilp64.a $MARC_MKL/libmkl_core.a $MARC_MKL/libmkl_intel_thread.a $MARC_MKL/libmkl_blacs_intelmpi_ilp64.a -Wl,--end-group"
 fi
 
 SECLIBS="-L$MARC_LIB -llapi"

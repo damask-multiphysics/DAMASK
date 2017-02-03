@@ -124,6 +124,8 @@ contains
 !--------------------------------------------------------------------------------------------------
 subroutine plastic_phenopowerlaw_init(fileUnit)
  use, intrinsic :: iso_fortran_env                                                                  ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
+ use prec, only: &
+   dEq0
  use debug, only: &
    debug_level, &
    debug_constitutive,&
@@ -155,8 +157,6 @@ subroutine plastic_phenopowerlaw_init(fileUnit)
    MATERIAL_partPhase
  use lattice
  use numerics,only: &
-   analyticJaco, &
-   worldrank, &
    numerics_integrator
 
  implicit none
@@ -179,11 +179,9 @@ subroutine plastic_phenopowerlaw_init(fileUnit)
    line = ''
  real(pReal), dimension(:), allocatable :: tempPerSlip
 
- mainProcess: if (worldrank == 0) then
-   write(6,'(/,a)')   ' <<<+-  constitutive_'//PLASTICITY_PHENOPOWERLAW_label//' init  -+>>>'
-   write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
+ write(6,'(/,a)')   ' <<<+-  constitutive_'//PLASTICITY_PHENOPOWERLAW_label//' init  -+>>>'
+ write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
- endif mainProcess
 
  maxNinstance = int(count(phase_plasticity == PLASTICITY_PHENOPOWERLAW_ID),pInt)
  if (maxNinstance == 0_pInt) return
@@ -487,8 +485,7 @@ subroutine plastic_phenopowerlaw_init(fileUnit)
      if (any(plastic_phenopowerlaw_tausat_slip(:,instance) <= 0.0_pReal .and. &
              plastic_phenopowerlaw_Nslip(:,instance) > 0)) &
        call IO_error(211_pInt,el=instance,ext_msg='tausat_slip ('//PLASTICITY_PHENOPOWERLAW_label//')')
-     if (any(abs(plastic_phenopowerlaw_a_slip(instance)) <= tiny(0.0_pReal) .and. &
-             plastic_phenopowerlaw_Nslip(:,instance) > 0)) &
+     if (any(dEq0(plastic_phenopowerlaw_a_slip(instance)) .and. plastic_phenopowerlaw_Nslip(:,instance) > 0)) &
        call IO_error(211_pInt,el=instance,ext_msg='a_slip ('//PLASTICITY_PHENOPOWERLAW_label//')')
      if (any(plastic_phenopowerlaw_tau0_twin(:,instance) < 0.0_pReal .and. &
              plastic_phenopowerlaw_Ntwin(:,instance) > 0)) &
@@ -585,10 +582,6 @@ subroutine plastic_phenopowerlaw_init(fileUnit)
      allocate(plasticState(phase)%state              (   sizeState,NipcMyPhase), source=0.0_pReal)
      allocate(plasticState(phase)%dotState           (sizeDotState,NipcMyPhase), source=0.0_pReal)
      allocate(plasticState(phase)%deltaState       (sizeDeltaState,NipcMyPhase), source=0.0_pReal)
-     if (.not. analyticJaco) then
-       allocate(plasticState(phase)%state_backup     (   sizeState,NipcMyPhase),source=0.0_pReal)
-       allocate(plasticState(phase)%dotState_backup  (sizeDotState,NipcMyPhase),source=0.0_pReal)
-     endif
      if (any(numerics_integrator == 1_pInt)) then
        allocate(plasticState(phase)%previousDotState (sizeDotState,NipcMyPhase),source=0.0_pReal)
        allocate(plasticState(phase)%previousDotState2(sizeDotState,NipcMyPhase),source=0.0_pReal)
@@ -774,6 +767,8 @@ end subroutine plastic_phenopowerlaw_aTolState
 !> @brief calculates plastic velocity gradient and its tangent
 !--------------------------------------------------------------------------------------------------
 subroutine plastic_phenopowerlaw_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,ipc,ip,el)
+ use prec, only: &
+   dNeq0
  use math, only: &
    math_Plain3333to99, &
    math_Mandel6to33
@@ -863,7 +858,7 @@ subroutine plastic_phenopowerlaw_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,ipc,ip,
                (gdot_slip_pos+gdot_slip_neg)*lattice_Sslip(1:3,1:3,1,index_myFamily+i,ph)
 
      ! Calculation of the tangent of Lp
-     if (abs(gdot_slip_pos) > tiny(0.0_pReal)) then
+     if (dNeq0(gdot_slip_pos)) then
        dgdot_dtauslip_pos = gdot_slip_pos*plastic_phenopowerlaw_n_slip(instance)/tau_slip_pos
        forall (k=1_pInt:3_pInt,l=1_pInt:3_pInt,m=1_pInt:3_pInt,n=1_pInt:3_pInt) &
          dLp_dTstar3333(k,l,m,n) = dLp_dTstar3333(k,l,m,n) + &
@@ -871,7 +866,7 @@ subroutine plastic_phenopowerlaw_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,ipc,ip,
                                                      nonSchmid_tensor(m,n,1)
      endif
 
-     if (abs(gdot_slip_neg) > tiny(0.0_pReal)) then
+     if (dNeq0(gdot_slip_neg)) then
        dgdot_dtauslip_neg = gdot_slip_neg*plastic_phenopowerlaw_n_slip(instance)/tau_slip_neg
        forall (k=1_pInt:3_pInt,l=1_pInt:3_pInt,m=1_pInt:3_pInt,n=1_pInt:3_pInt) &
          dLp_dTstar3333(k,l,m,n) = dLp_dTstar3333(k,l,m,n) + &
@@ -898,7 +893,7 @@ subroutine plastic_phenopowerlaw_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,ipc,ip,
      Lp = Lp + gdot_twin*lattice_Stwin(1:3,1:3,index_myFamily+i,ph)
 
      ! Calculation of the tangent of Lp
-     if (abs(gdot_twin) > tiny(0.0_pReal)) then
+     if (dNeq0(gdot_twin)) then
        dgdot_dtautwin = gdot_twin*plastic_phenopowerlaw_n_twin(instance)/tau_twin
        forall (k=1_pInt:3_pInt,l=1_pInt:3_pInt,m=1_pInt:3_pInt,n=1_pInt:3_pInt) &
          dLp_dTstar3333(k,l,m,n) = dLp_dTstar3333(k,l,m,n) + &
@@ -1009,8 +1004,9 @@ subroutine plastic_phenopowerlaw_dotState(Tstar_v,ipc,ip,el)
      enddo nonSchmidSystems
      gdot_slip(j) = plastic_phenopowerlaw_gdot0_slip(instance)*0.5_pReal* &
                   ((abs(tau_slip_pos)/(plasticState(ph)%state(j,of)))**plastic_phenopowerlaw_n_slip(instance) &
-                  +(abs(tau_slip_neg)/(plasticState(ph)%state(j,of)))**plastic_phenopowerlaw_n_slip(instance))&
-                  *sign(1.0_pReal,tau_slip_pos)
+                  *sign(1.0_pReal,tau_slip_pos) &
+                  +(abs(tau_slip_neg)/(plasticState(ph)%state(j,of)))**plastic_phenopowerlaw_n_slip(instance) &
+                  *sign(1.0_pReal,tau_slip_neg))
    enddo slipSystems1
  enddo slipFamilies1
 
@@ -1155,9 +1151,9 @@ function plastic_phenopowerlaw_postResults(Tstar_v,ipc,ip,el)
            enddo
            plastic_phenopowerlaw_postResults(c+j) = plastic_phenopowerlaw_gdot0_slip(instance)*0.5_pReal* &
                     ((abs(tau_slip_pos)/plasticState(ph)%state(j,of))**plastic_phenopowerlaw_n_slip(instance) &
-                    +(abs(tau_slip_neg)/plasticState(ph)%state(j,of))**plastic_phenopowerlaw_n_slip(instance))&
-                    *sign(1.0_pReal,tau_slip_pos)
-
+                    *sign(1.0_pReal,tau_slip_pos) &
+                    +(abs(tau_slip_neg)/(plasticState(ph)%state(j,of)))**plastic_phenopowerlaw_n_slip(instance) &
+                    *sign(1.0_pReal,tau_slip_neg))
          enddo slipSystems1
        enddo slipFamilies1
        c = c + nSlip

@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python2.7
 # -*- coding: UTF-8 no BOM -*-
 
 import os,sys
@@ -19,7 +19,16 @@ Translate geom description into ASCIItable containing position and microstructur
 
 """, version = scriptID)
 
+parser.add_option('--float',
+                  dest = 'real',
+                  action = 'store_true',
+                  help = 'use float input')
+
+parser.set_defaults(real = False,
+                   )
 (options, filenames) = parser.parse_args()
+
+datatype = 'f' if options.real else 'i'
 
 # --- loop over input files -------------------------------------------------------------------------
 
@@ -56,14 +65,14 @@ for name in filenames:
 
 # --- read data ------------------------------------------------------------------------------------
 
-  microstructure = table.microstructure_read(info['grid'])
+  microstructure = table.microstructure_read(info['grid'],datatype)
 
 # ------------------------------------------ assemble header ---------------------------------------
 
   table.info_clear()
   table.info_append(extra_header + [scriptID + '\t' + ' '.join(sys.argv[1:])])
   table.labels_clear()
-  table.labels_append(['{}_{}'.format(1+i,'pos') for i in xrange(3)]+['microstructure'])
+  table.labels_append(['{}_{}'.format(1+i,'pos') for i in range(3)]+['microstructure'])
   table.head_write()
   table.output_flush()
 

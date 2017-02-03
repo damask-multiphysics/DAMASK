@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python2.7
 # -*- coding: UTF-8 no BOM -*-
 
 import os,sys,math,types,time
@@ -163,7 +163,7 @@ for name in filenames:
 
 # --------------- figure out size and grid ---------------------------------------------------------
 
-  coords = [np.unique(table.data[:,i]) for i in xrange(3)]
+  coords = [np.unique(table.data[:,i]) for i in range(3)]
   mincorner = np.array(map(min,coords))
   maxcorner = np.array(map(max,coords))
   grid   = np.array(map(len,coords),'i')
@@ -217,9 +217,9 @@ for name in filenames:
     tick = time.clock()
     if options.verbose: bg.set_message('assigning grain IDs...')
 
-    for z in xrange(grid[2]):
-      for y in xrange(grid[1]):
-        for x in xrange(grid[0]):
+    for z in range(grid[2]):
+      for y in range(grid[1]):
+        for x in range(grid[0]):
           if (myPos+1)%(N/500.) < 1:
             time_delta = (time.clock()-tick) * (N - myPos) / myPos
             if options.verbose: bg.set_message('(%02i:%02i:%02i) processing point %i of %i (grain count %i)...'

@@ -80,25 +80,10 @@ subroutine IO_init
  use, intrinsic :: iso_fortran_env                                                                  ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
  
  implicit none
- integer(pInt) :: worldrank = 0_pInt
-#ifdef PETSc
-#include <petsc/finclude/petscsys.h>
- PetscErrorCode :: ierr
-#endif
- external :: &
-   MPI_Comm_rank, &
-   MPI_Abort
 
-#ifdef PETSc
- call MPI_Comm_rank(PETSC_COMM_WORLD,worldrank,ierr);CHKERRQ(ierr)
-#endif
-
- mainProcess: if (worldrank == 0) then 
-   write(6,'(/,a)')   ' <<<+-  IO init  -+>>>'
-   write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
+ write(6,'(/,a)')   ' <<<+-  IO init  -+>>>'
+ write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
- endif mainProcess
-
 
 end subroutine IO_init
 
@@ -144,6 +129,7 @@ recursive function IO_read(fileUnit,reset) result(line)
 !--------------------------------------------------------------------------------------------------
 ! normal case
  if (input == '') return                                                                            ! regular line
+
 !--------------------------------------------------------------------------------------------------
 ! recursion case 
  if (stack >= 10_pInt) call IO_error(104_pInt,ext_msg=input)                                        ! recursion limit reached
@@ -156,7 +142,7 @@ recursive function IO_read(fileUnit,reset) result(line)
    pathOn(stack) = path(1:scan(path,SEP,.true.))//input                                             ! glue include to current file's dir
  endif
 
- open(newunit=unitOn(stack),iostat=myStat,file=pathOn(stack))                                       ! open included file
+ open(newunit=unitOn(stack),iostat=myStat,file=pathOn(stack),action='read')                         ! open included file
  if (myStat /= 0_pInt) call IO_error(100_pInt,el=myStat,ext_msg=pathOn(stack))
 
  line = IO_read(fileUnit)
@@ -546,7 +532,7 @@ function IO_hybridIA(Nast,ODFfileName)
   
 !--------------------------------------------------------------------------------------------------
 ! math module is not available
- real(pReal),      parameter  :: PI = 3.14159265358979323846264338327950288419716939937510_pReal
+ real(pReal),      parameter  :: PI = 3.141592653589793_pReal
  real(pReal),      parameter  :: INRAD = PI/180.0_pReal
 
  integer(pInt) :: i,j,bin,NnonZero,Nset,Nreps,reps,phi1,Phi,phi2
@@ -666,7 +652,7 @@ function IO_hybridIA(Nast,ODFfileName)
     else
       prob = 0.0_pReal
     endif
-    dV_V(phi2,Phi,phi1) = prob*dg_0*sin((Phi-1.0_pReal+center)*deltas(2))
+    dV_V(phi2,Phi,phi1) = prob*dg_0*sin((real(Phi-1_pInt,pReal)+center)*deltas(2))
  enddo; enddo; enddo  
  close(FILEUNIT)
  dV_V = dV_V/sum_dV_V                                                                               ! normalize to 1
@@ -713,7 +699,7 @@ function IO_hybridIA(Nast,ODFfileName)
  do i=1_pInt,Nast
    if (i < Nast) then
      call random_number(rnd)
-     j = nint(rnd*(Nreps-i)+i+0.5_pReal,pInt)
+     j = nint(rnd*real(Nreps-i,pReal)+real(i,pReal)+0.5_pReal,pInt)
    else
      j = i
    endif
@@ -1281,8 +1267,8 @@ integer(pInt) function IO_countContinuousIntValues(fileUnit)
      line = IO_read(fileUnit, .true.)                                                               ! reset IO_read 
      exit
    elseif (IO_lc(IO_stringValue(line,chunkPos,2_pInt)) == 'to' ) then                               ! found range indicator
-     IO_countContinuousIntValues = 1_pInt + IO_intValue(line,chunkPos,3_pInt) &
-                                          - IO_intValue(line,chunkPos,1_pInt)
+     IO_countContinuousIntValues = 1_pInt + abs(  IO_intValue(line,chunkPos,3_pInt) &
+                                                - IO_intValue(line,chunkPos,1_pInt))
      line = IO_read(fileUnit, .true.)                                                               ! reset IO_read 
      exit                                                                                           ! only one single range indicator allowed
    else if (IO_lc(IO_stringValue(line,chunkPos,2_pInt)) == 'of' ) then                              ! found multiple entries indicator
@@ -1335,9 +1321,9 @@ function IO_continuousIntValues(fileUnit,maxN,lookupName,lookupMap,lookupMaxN)
                                                   lookupMaxN
  integer(pInt),     dimension(:,:), intent(in) :: lookupMap
  character(len=64), dimension(:),   intent(in) :: lookupName
- integer(pInt) :: i
+ integer(pInt) :: i,first,last
 #ifdef Abaqus
- integer(pInt) :: j,l,c,first,last
+ integer(pInt) :: j,l,c
 #endif
 
  integer(pInt), allocatable, dimension(:) :: chunkPos
@@ -1362,7 +1348,9 @@ function IO_continuousIntValues(fileUnit,maxN,lookupName,lookupMap,lookupMaxN)
      enddo
      exit
    else if (chunkPos(1) > 2_pInt .and. IO_lc(IO_stringValue(line,chunkPos,2_pInt)) == 'to' ) then   ! found range indicator
-     do i = IO_intValue(line,chunkPos,1_pInt),IO_intValue(line,chunkPos,3_pInt)
+     first = IO_intValue(line,chunkPos,1_pInt)
+     last  = IO_intValue(line,chunkPos,3_pInt)
+     do i = first, last, sign(1_pInt,last-first) 
        IO_continuousIntValues(1) = IO_continuousIntValues(1) + 1_pInt
        IO_continuousIntValues(1+IO_continuousIntValues(1)) = i
      enddo
@@ -1582,8 +1570,6 @@ subroutine IO_error(error_ID,el,ip,g,ext_msg)
    msg = 'math_check: R*v == q*v failed'
  case (410_pInt)
    msg = 'eigenvalues computation error'
- case (450_pInt)
-   msg = 'unknown symmetry type specified'
 
 !-------------------------------------------------------------------------------------------------
 ! homogenization errors
@@ -1640,8 +1626,6 @@ subroutine IO_error(error_ID,el,ip,g,ext_msg)
    msg = 'update of gamma operator not possible when pre-calculated'
  case (880_pInt)
    msg = 'mismatch of microstructure count and a*b*c in geom file'
- case (890_pInt)
-   msg = 'invalid input for regridding'
  case (891_pInt)
    msg = 'unknown solver type selected'
  case (892_pInt)

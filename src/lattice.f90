@@ -377,7 +377,6 @@ module lattice
    LATTICE_bcc_Ntrans     = 0_pInt, &  !sum(lattice_bcc_NtransSystem), &                            !< total # of transformation systems for bcc
    LATTICE_bcc_Ncleavage  = 9_pInt     !sum(lattice_bcc_NcleavageSystem)                            !< total # of cleavage systems for bcc
 
-
  real(pReal), dimension(3+3,LATTICE_bcc_Nslip), parameter, private :: &
    LATTICE_bcc_systemSlip = reshape(real([&
     ! Slip direction     Plane normal

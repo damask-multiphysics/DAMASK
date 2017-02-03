@@ -75,8 +75,6 @@ subroutine thermal_conduction_init(fileUnit)
    temperature, &
    temperatureRate, &
    material_partHomogenization
- use numerics,only: &
-   worldrank
 
  implicit none
  integer(pInt), intent(in) :: fileUnit
@@ -89,11 +87,9 @@ subroutine thermal_conduction_init(fileUnit)
    tag  = '', &
    line = ''
 
- mainProcess: if (worldrank == 0) then 
-   write(6,'(/,a)')   ' <<<+-  thermal_'//THERMAL_CONDUCTION_label//' init  -+>>>'
-   write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
+ write(6,'(/,a)')   ' <<<+-  thermal_'//THERMAL_CONDUCTION_label//' init  -+>>>'
+ write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
- endif mainProcess
  
  maxNinstance = int(count(thermal_type == THERMAL_conduction_ID),pInt)
  if (maxNinstance == 0_pInt) return
@@ -190,7 +186,7 @@ subroutine thermal_conduction_getSourceAndItsTangent(Tdot, dTdot_dT, T, ip, el)
  use material, only: &
    homogenization_Ngrains, &
    mappingHomogenization, &
-   phaseAt, phasememberAt, &
+   phaseAt, &
    thermal_typeInstance, &
    phase_Nsources, &
    phase_source, &
@@ -252,8 +248,8 @@ subroutine thermal_conduction_getSourceAndItsTangent(Tdot, dTdot_dT, T, ip, el)
    enddo  
  enddo
  
- Tdot = Tdot/homogenization_Ngrains(homog)
- dTdot_dT = dTdot_dT/homogenization_Ngrains(homog)
+ Tdot = Tdot/real(homogenization_Ngrains(homog),pReal)
+ dTdot_dT = dTdot_dT/real(homogenization_Ngrains(homog),pReal)
  
 end subroutine thermal_conduction_getSourceAndItsTangent
  
@@ -291,8 +287,7 @@ function thermal_conduction_getConductivity33(ip,el)
  enddo
 
  thermal_conduction_getConductivity33 = &
-   thermal_conduction_getConductivity33/ &
-   homogenization_Ngrains(mesh_element(3,el))
+   thermal_conduction_getConductivity33/real(homogenization_Ngrains(mesh_element(3,el)),pReal)
  
 end function thermal_conduction_getConductivity33
  
@@ -330,8 +325,7 @@ function thermal_conduction_getSpecificHeat(ip,el)
  enddo
 
  thermal_conduction_getSpecificHeat = &
-   thermal_conduction_getSpecificHeat/ &
-   homogenization_Ngrains(mesh_element(3,el))
+   thermal_conduction_getSpecificHeat/real(homogenization_Ngrains(mesh_element(3,el)),pReal)
  
 end function thermal_conduction_getSpecificHeat
  
@@ -369,8 +363,7 @@ function thermal_conduction_getMassDensity(ip,el)
  enddo
 
  thermal_conduction_getMassDensity = &
-   thermal_conduction_getMassDensity/ &
-   homogenization_Ngrains(mesh_element(3,el))
+   thermal_conduction_getMassDensity/real(homogenization_Ngrains(mesh_element(3,el)),pReal)
  
 end function thermal_conduction_getMassDensity
  

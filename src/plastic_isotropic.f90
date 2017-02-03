@@ -94,8 +94,6 @@ subroutine plastic_isotropic_init(fileUnit)
    debug_constitutive, &
    debug_levelBasic
  use numerics, only: &
-   analyticJaco, &
-   worldrank, &
    numerics_integrator
  use math, only: &
    math_Mandel3333to66, &
@@ -145,11 +143,9 @@ subroutine plastic_isotropic_init(fileUnit)
    outputtag = ''
   integer(pInt) :: NipcMyPhase
 
- mainProcess: if (worldrank == 0) then 
-   write(6,'(/,a)')   ' <<<+-  constitutive_'//PLASTICITY_ISOTROPIC_label//' init  -+>>>'
-   write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
+ write(6,'(/,a)')   ' <<<+-  constitutive_'//PLASTICITY_ISOTROPIC_label//' init  -+>>>'
+ write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
- endif mainProcess
  
  maxNinstance = int(count(phase_plasticity == PLASTICITY_ISOTROPIC_ID),pInt)
  if (maxNinstance == 0_pInt) return
@@ -316,10 +312,6 @@ subroutine plastic_isotropic_init(fileUnit)
      allocate(plasticState(phase)%state              (   sizeState,NipcMyPhase),source=0.0_pReal)
      allocate(plasticState(phase)%dotState           (sizeDotState,NipcMyPhase),source=0.0_pReal)
      allocate(plasticState(phase)%deltaState       (sizeDeltaState,NipcMyPhase),source=0.0_pReal)
-     if (.not. analyticJaco) then
-       allocate(plasticState(phase)%state_backup     (   sizeState,NipcMyPhase),source=0.0_pReal)
-       allocate(plasticState(phase)%dotState_backup  (sizeDotState,NipcMyPhase),source=0.0_pReal)
-     endif
      if (any(numerics_integrator == 1_pInt)) then
        allocate(plasticState(phase)%previousDotState (sizeDotState,NipcMyPhase),source=0.0_pReal)
        allocate(plasticState(phase)%previousDotState2(sizeDotState,NipcMyPhase),source=0.0_pReal)
@@ -524,6 +516,8 @@ end subroutine plastic_isotropic_LiAndItsTangent
 !> @brief calculates the rate of change of microstructure
 !--------------------------------------------------------------------------------------------------
 subroutine plastic_isotropic_dotState(Tstar_v,ipc,ip,el)
+ use prec, only: &
+   dEq0
  use math, only: &
    math_mul6x6
  use material, only: &
@@ -570,7 +564,7 @@ subroutine plastic_isotropic_dotState(Tstar_v,ipc,ip,el)
 !--------------------------------------------------------------------------------------------------
 ! hardening coefficient
  if (abs(gamma_dot) > 1e-12_pReal) then
-   if (abs(param(instance)%tausat_SinhFitA) <= tiny(0.0_pReal)) then
+   if (dEq0(param(instance)%tausat_SinhFitA)) then
      saturation = param(instance)%tausat
    else
      saturation = (  param(instance)%tausat &

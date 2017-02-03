@@ -4,8 +4,8 @@ for seeds in "$@"
 do
   vtk_pointcloud $seeds
 
-  vtk_addPointCloudData $seeds \
-    --scalar microstructure,weight \
+  vtk_addPointcloudData $seeds \
+    --data microstructure,weight \
     --inplace \
     --vtk ${seeds%.*}.vtp \
     

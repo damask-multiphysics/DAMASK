@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python2.7
 # -*- coding: UTF-8 no BOM -*-
 
 import os,sys,math
@@ -30,30 +30,37 @@ parser.add_option('-s', '--substitute',
                   dest = 'substitute',
                   action = 'extend', metavar = '<string LIST>',
                   help = 'substitutions of microstructure indices from,to,from,to,...')
+parser.add_option('--float',
+                  dest = 'real',
+                  action = 'store_true',
+                  help = 'use float input')
 
 parser.set_defaults(origin = (0.0,0.0,0.0),
                     microstructure = 0,
                     substitute = [],
+                    real = False,
                    )
 
 (options, filenames) = parser.parse_args()
 
+datatype = 'f' if options.real else 'i'
+
 sub = {}
-for i in xrange(len(options.substitute)/2):                                                         # split substitution list into "from" -> "to"
+for i in range(len(options.substitute)/2):                                                          # split substitution list into "from" -> "to"
   sub[int(options.substitute[i*2])] = int(options.substitute[i*2+1])
 
-# --- loop over input files -------------------------------------------------------------------------
+# --- loop over input files ----------------------------------------------------------------------
 
 if filenames == []: filenames = [None]
 
 for name in filenames:
-  try:
-    table = damask.ASCIItable(name = name,
-                              buffered = False, labeled = False)
+  try:    table = damask.ASCIItable(name = name,
+                                    buffered = False,
+                                    labeled = False)
   except: continue
   damask.util.report(scriptName,name)
 
-# --- interpret header ----------------------------------------------------------------------------
+# --- interpret header ---------------------------------------------------------------------------
 
   table.head_read()
   info,extra_header = table.head_getGeom()
@@ -73,9 +80,9 @@ for name in filenames:
     table.close(dismiss = True)
     continue
 
-# --- read data ------------------------------------------------------------------------------------
+# --- read data ----------------------------------------------------------------------------------
 
-  microstructure = table.microstructure_read(info['grid'])                                          # read microstructure
+  microstructure = table.microstructure_read(info['grid'],datatype)                                 # read microstructure
 
 # --- do work ------------------------------------------------------------------------------------
 
@@ -90,9 +97,9 @@ for name in filenames:
   substituted += options.microstructure                                                             # shift microstructure indices
 
   newInfo['origin'] = info['origin'] + options.origin
-  newInfo['microstructures'] = substituted.max()
+  newInfo['microstructures'] = len(np.unique(substituted))
 
-# --- report ---------------------------------------------------------------------------------------
+# --- report -------------------------------------------------------------------------------------
 
   remarks = []
   if (any(newInfo['origin']          != info['origin'])):
@@ -101,7 +108,7 @@ for name in filenames:
     remarks.append('--> microstructures: %i'%newInfo['microstructures'])
   if remarks != []: damask.util.croak(remarks)
 
-# --- write header ---------------------------------------------------------------------------------
+# --- write header -------------------------------------------------------------------------------
 
   table.labels_clear()
   table.info_clear()
@@ -116,12 +123,12 @@ for name in filenames:
     ])
   table.head_write()
 
-# --- write microstructure information ------------------------------------------------------------
+# --- write microstructure information -----------------------------------------------------------
 
-  formatwidth = int(math.floor(math.log10(microstructure.max())+1))
+  format = '%g' if options.real else '%{}i'.format(int(math.floor(math.log10(microstructure.max())+1)))
   table.data = substituted.reshape((info['grid'][0],info['grid'][1]*info['grid'][2]),order='F').transpose()
-  table.data_writeArray('%%%ii'%(formatwidth),delimiter = ' ')
+  table.data_writeArray(format,delimiter = ' ')
 
-# --- output finalization --------------------------------------------------------------------------
+# --- output finalization ------------------------------------------------------------------------
 
-  table.close()                                                                                     # close ASCII table
+  table.close()                                                                                   # close ASCII table

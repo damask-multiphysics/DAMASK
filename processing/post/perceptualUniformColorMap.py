@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python2.7
 # -*- coding: UTF-8 no BOM -*-
 
 import sys,os
@@ -49,7 +49,7 @@ parser.set_defaults(right = (0.0,0.0,0.0))
 (options,filename) = parser.parse_args()
 
 if options.format not in outtypes:
-  parser.error('invalid format: "%s" (can be %s).'%(options.format,', '.join(outtypes)))
+  parser.error('invalid format: "{}" (choices: {}).'.format(options.format,', '.join(outtypes)))
 
 if options.N < 2:
   parser.error('too few steps (need at least 2).')
@@ -59,10 +59,9 @@ if options.trim[0] < -1.0 or \
    options.trim[0] >= options.trim[1]:
   parser.error('invalid trim range (-1 +1).')
 
-
-name   = options.format if filename[0] is None\
+name   = options.format if filename == [] \
                         else filename[0]
-output = sys.stdout     if filename[0] is None\
+output = sys.stdout     if filename == [] \
                         else open(os.path.basename(filename[0])+extensions[outtypes.index(options.format)],'w')
 
 colorLeft = damask.Color(options.colormodel.upper(), list(options.left))

@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python2.7
 # -*- coding: UTF-8 no BOM -*-
 
 import os,sys,math
@@ -113,7 +113,7 @@ for name in filenames:
 # ------------------------------------------ assemble header ---------------------------------------
 
   table.info_append(scriptID + '\t' + ' '.join(sys.argv[1:]))
-  table.labels_append(['{}_pole_{}{}{}'.format(i+1,*options.pole) for i in xrange(2)])
+  table.labels_append(['{}_pole_{}{}{}'.format(i+1,*options.pole) for i in range(2)])
   table.head_write()
 
 # ------------------------------------------ process data ------------------------------------------

@@ -673,9 +673,9 @@ else
 fi
 
 if test "$MARC_INTEGER_SIZE" = "i4" ; then
- MKLLIB="$MARC_MKL/libmkl_blacs_lp64.a $MARC_MKL/libmkl_scalapack_lp64.a $MARC_MKL/libmkl_intel_lp64.a $MARC_MKL/libmkl_intel_thread.a $MARC_MKL/libmkl_core.a "
+ MKLLIB="$MARC_MKL/libmkl_scalapack_lp64.a  -Wl,--start-group $MARC_MKL/libmkl_intel_lp64.a  $MARC_MKL/libmkl_core.a $MARC_MKL/libmkl_intel_thread.a $MARC_MKL/libmkl_blacs_intelmpi_lp64.a  -Wl,--end-group"
 else
- MKLLIB="$MARC_MKL/libmkl_blacs_ilp64.a $MARC_MKL/libmkl_scalapack_ilp64.a $MARC_MKL/libmkl_intel_ilp64.a $MARC_MKL/libmkl_intel_thread.a $MARC_MKL/libmkl_core.a "
+ MKLLIB="$MARC_MKL/libmkl_scalapack_ilp64.a -Wl,--start-group $MARC_MKL/libmkl_intel_ilp64.a $MARC_MKL/libmkl_core.a $MARC_MKL/libmkl_intel_thread.a $MARC_MKL/libmkl_blacs_intelmpi_ilp64.a -Wl,--end-group"
 fi
 
 SECLIBS="-L$MARC_LIB -llapi"

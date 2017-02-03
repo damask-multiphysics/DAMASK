@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python2.7
 # -*- coding: UTF-8 no BOM -*-
 
 import os,sys
@@ -79,7 +79,7 @@ for name in filenames:
   table.data_readArray(options.pos)
   table.data_rewind()
 
-  coords = [np.unique(table.data[:,i]) for i in xrange(3)]
+  coords = [np.unique(table.data[:,i]) for i in range(3)]
   mincorner = np.array(map(min,coords))
   maxcorner = np.array(map(max,coords))
   grid   = np.array(map(len,coords),'i')
@@ -99,9 +99,9 @@ for name in filenames:
   data = np.zeros(outSize.tolist()+[len(table.labels(raw = True))])
   p = np.zeros(3,'i')
   
-  for p[2] in xrange(grid[2]):
-    for p[1] in xrange(grid[1]):
-      for p[0] in xrange(grid[0]):
+  for p[2] in range(grid[2]):
+    for p[1] in range(grid[1]):
+      for p[0] in range(grid[0]):
         d = p*packing
         table.data_read()
         data[d[0]:d[0]+packing[0],
@@ -110,9 +110,9 @@ for name in filenames:
              : ] = np.tile(np.array(table.data_asFloat(),'d'),packing.tolist()+[1])                 # tile to match blowUp voxel size
   elementSize = size/grid/packing
   elem = 1
-  for c in xrange(outSize[2]):
-    for b in xrange(outSize[1]):
-      for a in xrange(outSize[0]):
+  for c in range(outSize[2]):
+    for b in range(outSize[1]):
+      for a in range(outSize[0]):
         data[a,b,c,colCoord:colCoord+3] = [a+0.5,b+0.5,c+0.5]*elementSize
         if colElem != -1: data[a,b,c,colElem] = elem
         table.data = data[a,b,c,:].tolist()

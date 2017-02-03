@@ -13,10 +13,10 @@ module math
 
  implicit none
  private
- real(pReal),    parameter, public :: PI = 3.14159265358979323846264338327950288419716939937510_pReal !< ratio of a circle's circumference to its diameter
+ real(pReal),    parameter, public :: PI = 3.141592653589793_pReal                                  !< ratio of a circle's circumference to its diameter
  real(pReal),    parameter, public :: INDEG = 180.0_pReal/PI                                        !< conversion from radian into degree
  real(pReal),    parameter, public :: INRAD = PI/180.0_pReal                                        !< conversion from degree into radian
- complex(pReal), parameter, public :: TWOPIIMG = (0.0_pReal,2.0_pReal)* PI                          !< Re(0.0), Im(2xPi)
+ complex(pReal), parameter, public :: TWOPIIMG = (0.0_pReal,2.0_pReal)*(PI,0.0_pReal)               !< Re(0.0), Im(2xPi)
 
  real(pReal), dimension(3,3), parameter, public :: &
    MATH_I3 = reshape([&
@@ -71,10 +71,6 @@ module math
      3_pInt,2_pInt, &
      3_pInt,3_pInt  &
      ],[2,9])                                                                                       !< arrangement in Plain notation
-
-#ifdef Spectral
- include 'fftw3.f03'
-#endif 
 
  public :: &
    math_init, &
@@ -162,22 +158,8 @@ module math
    math_areaTriangle, &
    math_rotate_forward33, &
    math_rotate_backward33, &
-   math_rotate_forward3333
-#ifdef Spectral
- public :: &
-   fftw_set_timelimit, &
-   fftw_plan_dft_3d, &
-   fftw_plan_many_dft_r2c, &
-   fftw_plan_many_dft_c2r, &
-   fftw_plan_with_nthreads, &
-   fftw_init_threads, &
-   fftw_alloc_complex, &
-   fftw_execute_dft, &
-   fftw_execute_dft_r2c, &
-   fftw_execute_dft_c2r, &
-   fftw_destroy_plan, &
-   math_tensorAvg
-#endif     
+   math_rotate_forward3333, &
+   math_limit
  private :: &
    math_partition, &
    halton, &
@@ -197,7 +179,6 @@ subroutine math_init
  use, intrinsic :: iso_fortran_env                                                                  ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
  use prec,     only: tol_math_check
  use numerics, only: &
-   worldrank, &
    fixedSeed
  use IO,       only: IO_error, IO_timeStamp
 
@@ -212,11 +193,9 @@ subroutine math_init
                                                                                                     ! comment the first random_seed call out, set randSize to 1, and use ifort
  character(len=64) :: error_msg
 
- mainProcess: if (worldrank == 0) then 
-   write(6,'(/,a)')   ' <<<+-  math init  -+>>>'
-   write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
+ write(6,'(/,a)')   ' <<<+-  math init  -+>>>'
+ write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
- endif mainProcess
 
  call random_seed(size=randSize)
  if (allocated(randInit)) deallocate(randInit)
@@ -235,13 +214,11 @@ subroutine math_init
    call random_number(randTest(i))
  enddo
 
- mainProcess2: if (worldrank == 0) then 
-   write(6,*) 'size  of random seed:    ', randSize
-   do i =1, randSize
-     write(6,*) 'value of random seed:    ', i, randInit(i)
-   enddo
-   write(6,'(a,4(/,26x,f17.14),/)') ' start of random sequence: ', randTest
- endif mainProcess2 
+ write(6,'(a,I2)') ' size  of random seed:    ', randSize
+ do i =1, randSize
+   write(6,'(a,I2,I14)') ' value of random seed:    ', i, randInit(i)
+ enddo
+ write(6,'(a,4(/,26x,f17.14),/)') ' start of random sequence: ', randTest
 
  call random_seed(put = randInit)
 
@@ -723,6 +700,8 @@ end function math_transpose33
 !   returns all zeroes if not possible, i.e. if det close to zero
 !--------------------------------------------------------------------------------------------------
 pure function math_inv33(A)
+ use prec, only: &
+   dNeq0
 
  implicit none
  real(pReal),dimension(3,3),intent(in)  :: A
@@ -735,7 +714,7 @@ pure function math_inv33(A)
 
  DetA = A(1,1) * math_inv33(1,1) + A(1,2) * math_inv33(2,1) + A(1,3) * math_inv33(3,1)
 
- if (abs(DetA) > tiny(DetA)) then                                             ! use a real threshold here
+ if (dNeq0(DetA)) then
    math_inv33(1,2) = -A(1,2) * A(3,3) + A(1,3) * A(3,2)
    math_inv33(2,2) =  A(1,1) * A(3,3) - A(1,3) * A(3,1)
    math_inv33(3,2) = -A(1,1) * A(3,2) + A(1,2) * A(3,1)
@@ -759,6 +738,8 @@ end function math_inv33
 !   returns error if not possible, i.e. if det close to zero
 !--------------------------------------------------------------------------------------------------
 pure subroutine math_invert33(A, InvA, DetA, error)
+ use prec, only: &
+   dEq0
 
  implicit none
  logical, intent(out) :: error
@@ -772,7 +753,7 @@ pure subroutine math_invert33(A, InvA, DetA, error)
 
  DetA = A(1,1) * InvA(1,1) + A(1,2) * InvA(2,1) + A(1,3) * InvA(3,1)
 
- if (abs(DetA) <= tiny(DetA)) then
+ if (dEq0(DetA)) then
    InvA = 0.0_pReal
    error = .true.
  else
@@ -1096,7 +1077,7 @@ pure function math_Plain99to3333(m99)
  integer(pInt) :: i,j
 
  forall (i=1_pInt:9_pInt,j=1_pInt:9_pInt) math_Plain99to3333(mapPlain(1,i),mapPlain(2,i),&
-     mapPlain(1,j),mapPlain(2,j)) = m99(i,j)
+   mapPlain(1,j),mapPlain(2,j)) = m99(i,j)
 
 end function math_Plain99to3333
 
@@ -1208,10 +1189,10 @@ function math_qRand()
  real(pReal), dimension(3) :: rnd
 
  call halton(3_pInt,rnd)
- math_qRand(1) = cos(2.0_pReal*PI*rnd(1))*sqrt(rnd(3))
- math_qRand(2) = sin(2.0_pReal*PI*rnd(2))*sqrt(1.0_pReal-rnd(3))
- math_qRand(3) = cos(2.0_pReal*PI*rnd(2))*sqrt(1.0_pReal-rnd(3))
- math_qRand(4) = sin(2.0_pReal*PI*rnd(1))*sqrt(rnd(3))
+ math_qRand = [cos(2.0_pReal*PI*rnd(1))*sqrt(rnd(3)), &
+               sin(2.0_pReal*PI*rnd(2))*sqrt(1.0_pReal-rnd(3)), &
+               cos(2.0_pReal*PI*rnd(2))*sqrt(1.0_pReal-rnd(3)), &
+               sin(2.0_pReal*PI*rnd(1))*sqrt(rnd(3))]
 
 end function math_qRand
 
@@ -1277,6 +1258,8 @@ end function math_qNorm
 !> @brief quaternion inversion
 !--------------------------------------------------------------------------------------------------
 pure function math_qInv(Q)
+ use prec, only: &
+   dNeq0
 
  implicit none
  real(pReal), dimension(4), intent(in) ::  Q
@@ -1286,8 +1269,7 @@ pure function math_qInv(Q)
  math_qInv = 0.0_pReal
 
  squareNorm = math_qDot(Q,Q)
- if (abs(squareNorm) > tiny(squareNorm)) &
-   math_qInv = math_qConj(Q) / squareNorm
+ if (dNeq0(squareNorm)) math_qInv = math_qConj(Q) / squareNorm
 
 end function math_qInv
 
@@ -1468,7 +1450,7 @@ pure function math_EulerToQ(eulerangles)
                  cos(halfangles(1)-halfangles(3)) * s, &
                  sin(halfangles(1)-halfangles(3)) * s, &
                  sin(halfangles(1)+halfangles(3)) * c ]
- math_EulerToQ = math_qConj(math_EulerToQ)                 ! convert to passive rotation
+ math_EulerToQ = math_qConj(math_EulerToQ)                                                          ! convert to passive rotation
 
 end function math_EulerToQ
 
@@ -1488,7 +1470,7 @@ pure function math_axisAngleToR(axis,omega)
  real(pReal), dimension(3) :: axisNrm
  real(pReal) :: norm,s,c,c1
 
- norm = sqrt(math_mul3x3(axis,axis))
+ norm = norm2(axis)
  if (norm > 1.0e-8_pReal) then                             ! non-zero rotation
    axisNrm = axis/norm                                     ! normalize axis to be sure
 
@@ -1526,7 +1508,7 @@ pure function math_EulerAxisAngleToR(axis,omega)
  real(pReal), dimension(3), intent(in) :: axis
  real(pReal), intent(in) :: omega
 
- math_EulerAxisAngleToR = transpose(math_axisAngleToR(axis,omega))  ! convert to passive rotation
+ math_EulerAxisAngleToR = transpose(math_axisAngleToR(axis,omega))                                  ! convert to passive rotation
 
 end function math_EulerAxisAngleToR
 
@@ -1545,7 +1527,7 @@ pure function math_EulerAxisAngleToQ(axis,omega)
  real(pReal), dimension(3), intent(in) :: axis
  real(pReal), intent(in) :: omega
 
- math_EulerAxisAngleToQ = math_qConj(math_axisAngleToQ(axis,omega))                                   ! convert to passive rotation
+ math_EulerAxisAngleToQ = math_qConj(math_axisAngleToQ(axis,omega))                                 ! convert to passive rotation
 
 end function math_EulerAxisAngleToQ
 
@@ -1568,7 +1550,7 @@ pure function math_axisAngleToQ(axis,omega)
 
  norm = sqrt(math_mul3x3(axis,axis))
  rotation: if (norm > 1.0e-8_pReal) then
-   axisNrm = axis/norm                                                                                ! normalize axis to be sure
+   axisNrm = axis/norm                                                                              ! normalize axis to be sure
    math_axisAngleToQ = [cos(0.5_pReal*omega), sin(0.5_pReal*omega) * axisNrm(1:3)]
  else rotation
    math_axisAngleToQ = [1.0_pReal,0.0_pReal,0.0_pReal,0.0_pReal]
@@ -1594,7 +1576,7 @@ pure function math_qToR(q)
 
  S = reshape( [0.0_pReal,     -q(4),      q(3), &
                     q(4), 0.0_pReal,     -q(2), &
-                   -q(3),      q(2), 0.0_pReal],[3,3])                                             ! notation is transposed
+                   -q(3),      q(2), 0.0_pReal],[3,3])                                              ! notation is transposed
 
  math_qToR = (2.0_pReal * q(1)*q(1) - 1.0_pReal) * math_I3 &
            + 2.0_pReal * T - 2.0_pReal * q(1) * S
@@ -1618,17 +1600,17 @@ pure function math_qToEuler(qPassive)
 
  q = math_qConj(qPassive)    ! convert to active rotation, since formulas are defined for active rotations
 
- math_qToEuler(2) = acos(1.0_pReal-2.0_pReal*(q(2)*q(2)+q(3)*q(3)))
+ math_qToEuler(2) = acos(1.0_pReal-2.0_pReal*(q(2)**2+q(3)**2))
 
  if (abs(math_qToEuler(2)) < 1.0e-6_pReal) then
    math_qToEuler(1) = sign(2.0_pReal*acos(math_limit(q(1),-1.0_pReal, 1.0_pReal)),q(4))
    math_qToEuler(3) = 0.0_pReal
  else
-   math_qToEuler(1) = atan2(q(1)*q(3)+q(2)*q(4), q(1)*q(2)-q(3)*q(4))
+   math_qToEuler(1) = atan2(+q(1)*q(3)+q(2)*q(4), q(1)*q(2)-q(3)*q(4))
    math_qToEuler(3) = atan2(-q(1)*q(3)+q(2)*q(4), q(1)*q(2)+q(3)*q(4))
  endif
 
- math_qToEuler = merge(math_qToEuler + [2.0_pReal*PI, PI, 2.0_pReal*PI], &                           ! ensure correct range
+ math_qToEuler = merge(math_qToEuler + [2.0_pReal*PI, PI, 2.0_pReal*PI], &                          ! ensure correct range
                        math_qToEuler,                                    math_qToEuler<0.0_pReal)
 
 end function math_qToEuler
@@ -1882,37 +1864,29 @@ end function math_sampleGaussVar
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief symmetrically equivalent Euler angles for given sample symmetry 1:triclinic, 2:monoclinic, 4:orthotropic
+!> @brief symmetrically equivalent Euler angles for given sample symmetry 
+!> @detail 1 (equivalent to != 2 and !=4):triclinic, 2:monoclinic, 4:orthotropic
 !--------------------------------------------------------------------------------------------------
 pure function math_symmetricEulers(sym,Euler)
 
  implicit none
- integer(pInt), intent(in) :: sym
+ integer(pInt), intent(in) :: sym                                                                   !< symmetry Class
  real(pReal), dimension(3), intent(in) :: Euler
  real(pReal), dimension(3,3) :: math_symmetricEulers
- integer(pInt) :: i,j
 
- math_symmetricEulers(1,1) = PI+Euler(1)
- math_symmetricEulers(2,1) = Euler(2)
- math_symmetricEulers(3,1) = Euler(3)
+ math_symmetricEulers = transpose(reshape([PI+Euler(1), PI-Euler(1), 2.0_pReal*PI-Euler(1), &
+                                              Euler(2), PI-Euler(2), PI          -Euler(2), &
+                                              Euler(3), PI+Euler(3), PI          +Euler(3)],[3,3])) ! transpose is needed to have symbolic notation instead of column-major
 
- math_symmetricEulers(1,2) = PI-Euler(1)
- math_symmetricEulers(2,2) = PI-Euler(2)
- math_symmetricEulers(3,2) = PI+Euler(3)
-
- math_symmetricEulers(1,3) = 2.0_pReal*PI-Euler(1)
- math_symmetricEulers(2,3) = PI-Euler(2)
- math_symmetricEulers(3,3) = PI+Euler(3)
-
- forall (i=1_pInt:3_pInt,j=1_pInt:3_pInt) math_symmetricEulers(j,i) = modulo(math_symmetricEulers(j,i),2.0_pReal*pi)
+ math_symmetricEulers = modulo(math_symmetricEulers,2.0_pReal*pi)
 
  select case (sym)
-   case (4_pInt) ! all done
+   case (4_pInt)                                                                                    ! orthotropic: all done
 
-   case (2_pInt)  ! return only first
+   case (2_pInt)                                                                                    ! monoclinic: return only first
      math_symmetricEulers(1:3,2:3) = 0.0_pReal
 
-   case default         ! return blank
+   case default                                                                                     ! triclinic: return blank
      math_symmetricEulers = 0.0_pReal
  end select
 
@@ -2091,6 +2065,8 @@ end function math_eigenvectorBasisSym33
 !> @brief rotational part from polar decomposition of 33 tensor m
 !--------------------------------------------------------------------------------------------------
 function math_rotationalPart33(m)
+ use prec, only: &
+   dEq0
  use IO, only: &
    IO_warning
 
@@ -2102,12 +2078,12 @@ function math_rotationalPart33(m)
  U = math_eigenvectorBasisSym33(math_mul33x33(transpose(m),m))
  Uinv = math_inv33(U)
 
- if (all(abs(Uinv) <= tiny(Uinv))) then                                                             ! math_inv33 returns zero when failed, avoid floating point equality comparison
+ inversionFailed: if (all(dEq0(Uinv))) then
    math_rotationalPart33 = math_I3
    call IO_warning(650_pInt)
- else
+ else inversionFailed
    math_rotationalPart33 = math_mul33x33(m,Uinv)
- endif
+ endif inversionFailed
 
 end function math_rotationalPart33
 

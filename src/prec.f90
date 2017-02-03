@@ -20,12 +20,7 @@ module prec
  private 
 #if (FLOAT==8)
  integer,     parameter, public :: pReal = 8                                                        !< floating point double precision (was selected_real_kind(15,300), number with 15 significant digits, up to 1e+-300)
-#ifdef __INTEL_COMPILER
- real(pReal), parameter, public :: DAMASK_NaN = Z'7FF8000000000000'                                 !< quiet NaN for double precision (from http://www.hpc.unimelb.edu.au/doc/f90lrm/dfum_035.html, copy can be found in documentation/Code/Fortran)
-#endif
-#ifdef __GFORTRAN__
- real(pReal), parameter, public :: DAMASK_NaN = real(Z'7FF8000000000000',pReal)                     !< quiet NaN for double precision (from http://www.hpc.unimelb.edu.au/doc/f90lrm/dfum_035.html, copy can be found in documentation/Code/Fortran)
-#endif
+ real(pReal), parameter, public :: DAMASK_NaN = real(Z'7FF8000000000000',pReal)                     !< quiet NaN for double precision (from http://www.hpc.unimelb.edu.au/doc/f90lrm/dfum_035.html)
 #else
  NO SUITABLE PRECISION FOR REAL SELECTED, STOPPING COMPILATION
 #endif
@@ -67,11 +62,9 @@ module prec
    real(pReal), allocatable, dimension(:,:) :: &
      partionedState0, &
      subState0, &
-     state_backup, &
      deltaState, &
      previousDotState, &                                                                            !< state rate of previous xxxx
      previousDotState2, &                                                                           !< state rate two xxxx ago
-     dotState_backup, &                                                                             !< backup of state rate
      RK4dotState
    real(pReal), allocatable, dimension(:,:,:) :: &
      RKCK45dotState
@@ -83,7 +76,7 @@ module prec
      nTwin = 0_pInt, &
      nTrans = 0_pInt
    logical :: & 
-     nonlocal = .false.                                                                             !< absolute tolerance for state integration
+     nonlocal = .false.
    real(pReal), pointer,     dimension(:,:), contiguous :: &
      slipRate, &                                                                                    !< slip rate
      accumulatedSlip                                                                                !< accumulated plastic slip
@@ -115,7 +108,11 @@ module prec
    prec_init, &
    prec_isNaN, &
    dEq, &
-   dNeq
+   dEq0, &
+   cEq, &
+   dNeq, &
+   dNeq0, &
+   cNeq
  
 contains
 
@@ -128,30 +125,17 @@ subroutine prec_init
    iso_fortran_env                                                                                  ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
 
  implicit none
- integer(pInt) :: worldrank = 0_pInt
-#ifdef PETSc
-#include <petsc/finclude/petscsys.h>
- PetscErrorCode :: ierr
-#endif
  external :: &
-   quit, &
-   MPI_Comm_rank, &
-   MPI_Abort
-   
-#ifdef PETSc
- call MPI_Comm_rank(PETSC_COMM_WORLD,worldrank,ierr);CHKERRQ(ierr)
-#endif
+   quit
 
- mainProcess: if (worldrank == 0) then
-   write(6,'(/,a)') ' <<<+-  prec init  -+>>>'
+ write(6,'(/,a)') ' <<<+-  prec init  -+>>>'
 #include "compilation_info.f90"
-   write(6,'(a,i3)')    ' Bytes for pReal:    ',pReal
-   write(6,'(a,i3)')    ' Bytes for pInt:     ',pInt
-   write(6,'(a,i3)')    ' Bytes for pLongInt: ',pLongInt
-   write(6,'(a,e10.3)') ' NaN:           ',     DAMASK_NaN
-   write(6,'(a,l3)')    ' NaN != NaN:         ',DAMASK_NaN /= DAMASK_NaN
-   write(6,'(a,l3,/)')  ' NaN check passed    ',prec_isNAN(DAMASK_NaN)
- endif mainProcess
+ write(6,'(a,i3)')    ' Bytes for pReal:    ',pReal
+ write(6,'(a,i3)')    ' Bytes for pInt:     ',pInt
+ write(6,'(a,i3)')    ' Bytes for pLongInt: ',pLongInt
+ write(6,'(a,e10.3)') ' NaN:           ',     DAMASK_NaN
+ write(6,'(a,l3)')    ' NaN != NaN:         ',DAMASK_NaN /= DAMASK_NaN
+ write(6,'(a,l3,/)')  ' NaN check passed    ',prec_isNAN(DAMASK_NaN)
 
  if ((.not. prec_isNaN(DAMASK_NaN)) .or. (DAMASK_NaN == DAMASK_NaN)) call quit(9000)
  realloc_lhs_test = [1_pInt,2_pInt]
@@ -180,28 +164,102 @@ end function prec_isNaN
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief equality comparison for double precision
+!> @brief equality comparison for float with double precision
 ! replaces "==" but for certain (relative) tolerance. Counterpart to dNeq
-! http://www.cygnus-software.com/papers/comparingfloats/comparingfloats.htm
+! https://randomascii.wordpress.com/2012/02/25/comparing-floating-point-numbers-2012-edition/
 !--------------------------------------------------------------------------------------------------
 logical elemental pure function dEq(a,b,tol)
-  real(pReal), intent(in) :: a,b
-  real(pReal), intent(in), optional :: tol
-  real(pReal), parameter  :: eps = 2.2204460492503131E-16                                           ! DBL_EPSILON in C
-  dEq = merge(.True., .False.,abs(a-b) <= merge(tol,eps,present(tol))*maxval(abs([a,b])))
+
+ implicit none
+ real(pReal), intent(in)           :: a,b
+ real(pReal), intent(in), optional :: tol
+ real(pReal), parameter            :: eps = 2.220446049250313E-16                                   ! DBL_EPSILON in C
+
+ dEq = merge(.True., .False.,abs(a-b) <= merge(tol,eps,present(tol))*maxval(abs([a,b])))
 end function dEq
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief inequality comparison for double precision
+!> @brief inequality comparison for float with double precision
 ! replaces "!=" but for certain (relative) tolerance. Counterpart to dEq
-! http://www.cygnus-software.com/papers/comparingfloats/comparingfloats.htm
+! https://randomascii.wordpress.com/2012/02/25/comparing-floating-point-numbers-2012-edition/
 !--------------------------------------------------------------------------------------------------
 logical elemental pure function dNeq(a,b,tol)
-  real(pReal), intent(in)           :: a,b
-  real(pReal), intent(in), optional :: tol
-  real(pReal), parameter  :: eps = 2.2204460492503131E-16                                           ! DBL_EPSILON in C
-  dNeq = merge(.False., .True.,abs(a-b) <= merge(tol,eps,present(tol))*maxval(abs([a,b])))
+
+ implicit none
+ real(pReal), intent(in)           :: a,b
+ real(pReal), intent(in), optional :: tol
+ real(pReal), parameter            :: eps = 2.220446049250313E-16                                   ! DBL_EPSILON in C
+
+ dNeq = merge(.False., .True.,abs(a-b) <= merge(tol,eps,present(tol))*maxval(abs([a,b])))
 end function dNeq
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief equality to 0 comparison for float with double precision
+! replaces "==0" but for certain (absolute) tolerance. Counterpart to dNeq0
+! https://randomascii.wordpress.com/2012/02/25/comparing-floating-point-numbers-2012-edition/
+!--------------------------------------------------------------------------------------------------
+logical elemental pure function dEq0(a,tol)
+
+ implicit none
+ real(pReal), intent(in)           :: a
+ real(pReal), intent(in), optional :: tol
+ real(pReal), parameter            :: eps = 2.220446049250313E-16                                   ! DBL_EPSILON in C
+
+ dEq0 = merge(.True., .False.,abs(a) <= merge(tol,eps,present(tol))*10.0_pReal)
+end function dEq0
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief inequality to 0 comparison for float with double precision
+! replaces "!=0" but for certain (absolute) tolerance. Counterpart to dEq0
+! https://randomascii.wordpress.com/2012/02/25/comparing-floating-point-numbers-2012-edition/
+!--------------------------------------------------------------------------------------------------
+logical elemental pure function dNeq0(a,tol)
+
+ implicit none
+ real(pReal), intent(in)           :: a
+ real(pReal), intent(in), optional :: tol
+ real(pReal), parameter            :: eps = 2.220446049250313E-16                                   ! DBL_EPSILON in C
+
+ dNeq0 = merge(.False., .True.,abs(a) <= merge(tol,eps,present(tol))*10.0_pReal)
+end function dNeq0
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief equality comparison for complex with double precision
+! replaces "==" but for certain (relative) tolerance. Counterpart to cNeq
+! https://randomascii.wordpress.com/2012/02/25/comparing-floating-point-numbers-2012-edition/
+! probably a component wise comparison would be more accurate than the comparsion of the absolute
+! value
+!--------------------------------------------------------------------------------------------------
+logical elemental pure function cEq(a,b,tol)
+
+ implicit none
+ complex(pReal), intent(in)           :: a,b
+ real(pReal),    intent(in), optional :: tol
+ real(pReal),    parameter            :: eps = 2.220446049250313E-16                                ! DBL_EPSILON in C
+
+ cEq = merge(.True., .False.,abs(a-b) <= merge(tol,eps,present(tol))*maxval(abs([a,b])))
+end function cEq
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief inequality comparison for complex with double precision
+! replaces "!=" but for certain (relative) tolerance. Counterpart to cEq
+! https://randomascii.wordpress.com/2012/02/25/comparing-floating-point-numbers-2012-edition/
+! probably a component wise comparison would be more accurate than the comparsion of the absolute
+! value
+!--------------------------------------------------------------------------------------------------
+logical elemental pure function cNeq(a,b,tol)
+
+ implicit none
+ complex(pReal), intent(in)           :: a,b
+ real(pReal),    intent(in), optional :: tol
+ real(pReal),    parameter            :: eps = 2.220446049250313E-16                                ! DBL_EPSILON in C
+
+ cNeq = merge(.False., .True.,abs(a-b) <= merge(tol,eps,present(tol))*maxval(abs([a,b])))
+end function cNeq
 
 end module prec

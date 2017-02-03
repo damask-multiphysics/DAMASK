@@ -116,12 +116,8 @@ module mesh
 #endif
 
 #ifdef Spectral
-#ifdef PETSc
 #include <petsc/finclude/petscsys.h>
  include 'fftw3-mpi.f03'
-#else
- include 'fftw3.f03'
-#endif
 #endif
 
 ! These definitions should actually reside in the FE-solver specific part (different for MARC/ABAQUS)
@@ -413,18 +409,13 @@ module mesh
    mesh_build_ipVolumes, &
    mesh_build_ipCoordinates, &
    mesh_cellCenterCoordinates, &
-   mesh_init_postprocessing, &
    mesh_get_Ncellnodes, &
    mesh_get_unitlength, &
    mesh_get_nodeAtIP
 #ifdef Spectral
  public :: &
    mesh_spectral_getGrid, &
-   mesh_spectral_getSize, &
-   mesh_nodesAroundCentres, &
-   mesh_deformedCoordsFFT, &
-   mesh_volumeMismatch, &
-   mesh_shapeMismatch
+   mesh_spectral_getSize
 #endif
 
  private :: &
@@ -436,8 +427,7 @@ module mesh
    mesh_spectral_build_nodes, &
    mesh_spectral_build_elements, &
    mesh_spectral_build_ipNeighborhood, &
-#endif 
-#ifdef Marc4DAMASK
+#elif defined Marc4DAMASK
    mesh_marc_get_tableStyles, &
    mesh_marc_count_nodesAndElements, &
    mesh_marc_count_elementSets, &
@@ -448,8 +438,7 @@ module mesh
    mesh_marc_build_nodes, &
    mesh_marc_count_cpSizes, &
    mesh_marc_build_elements, &
-#endif 
-#ifdef Abaqus
+#elif defined Abaqus
    mesh_abaqus_count_nodesAndElements, &
    mesh_abaqus_count_elementSets, &
    mesh_abaqus_count_materials, &
@@ -473,11 +462,7 @@ module mesh
    mesh_tell_statistics, &
    FE_mapElemtype, &
    mesh_faceMatch, &
-   mesh_build_FEdata, &
-   mesh_write_cellGeom, &
-   mesh_write_elemGeom, &
-   mesh_write_meshfile, &
-   mesh_read_meshfile
+   mesh_build_FEdata
 
 contains
 
@@ -487,9 +472,7 @@ contains
 !! Order and routines strongly depend on type of solver
 !--------------------------------------------------------------------------------------------------
 subroutine mesh_init(ip,el)
-#ifdef Spectral
  use, intrinsic :: iso_c_binding
-#endif
  use DAMASK_interface
  use, intrinsic :: iso_fortran_env                                                                  ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
  use IO, only: &
@@ -498,6 +481,7 @@ subroutine mesh_init(ip,el)
 #endif
 #ifdef Spectral
    IO_open_file, &
+   IO_error, &
 #else
    IO_open_InputFile, &
 #endif
@@ -524,18 +508,17 @@ subroutine mesh_init(ip,el)
  
  implicit none
 #ifdef Spectral
- integer(C_INTPTR_T) :: gridMPI(3), alloc_local, local_K, local_K_offset
+ integer(C_INTPTR_T) :: devNull, local_K, local_K_offset
+ integer :: ierr, worldsize
 #endif
  integer(pInt), parameter :: FILEUNIT = 222_pInt
  integer(pInt), intent(in) :: el, ip
  integer(pInt) :: j
  logical :: myDebug
  
- mainProcess: if (worldrank == 0) then 
-   write(6,'(/,a)')   ' <<<+-  mesh init  -+>>>'
-   write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
+ write(6,'(/,a)')   ' <<<+-  mesh init  -+>>>'
+ write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
- endif mainProcess
 
  if (allocated(mesh_mapFEtoCPelem))           deallocate(mesh_mapFEtoCPelem)
  if (allocated(mesh_mapFEtoCPnode))           deallocate(mesh_mapFEtoCPnode)
@@ -562,25 +545,21 @@ subroutine mesh_init(ip,el)
  myDebug = (iand(debug_level(debug_mesh),debug_levelBasic) /= 0_pInt)
 
 #ifdef Spectral
-#ifdef PETSc
  call fftw_mpi_init()
-#endif
  call IO_open_file(FILEUNIT,geometryFile)                                                           ! parse info from geometry file...
  if (myDebug) write(6,'(a)') ' Opened geometry file'; flush(6)
  grid     = mesh_spectral_getGrid(fileUnit)
- geomSize = mesh_spectral_getSize(fileUnit)
+ call MPI_comm_size(PETSC_COMM_WORLD, worldsize, ierr)
+ if(ierr /=0_pInt) call IO_error(894_pInt, ext_msg='MPI_comm_size')
+ if(worldsize>grid(3)) call IO_error(894_pInt, ext_msg='number of processes exceeds grid(3)')
 
-#ifdef PETSc
- gridMPI = int(grid,C_INTPTR_T)
- alloc_local = fftw_mpi_local_size_3d(gridMPI(3), gridMPI(2), gridMPI(1)/2 +1, &
-                                      MPI_COMM_WORLD, local_K, local_K_offset)
+ geomSize = mesh_spectral_getSize(fileUnit)
+ devNull = fftw_mpi_local_size_3d(int(grid(3),C_INTPTR_T),int(grid(2),C_INTPTR_T),&
+                                  int(grid(1),C_INTPTR_T)/2+1,PETSC_COMM_WORLD,local_K,local_K_offset)
  grid3       = int(local_K,pInt)
  grid3Offset = int(local_K_offset,pInt)
- 
  size3       = geomSize(3)*real(grid3,pReal)      /real(grid(3),pReal)
  size3Offset = geomSize(3)*real(grid3Offset,pReal)/real(grid(3),pReal)
-#endif
-
  if (myDebug) write(6,'(a)') ' Grid partitioned'; flush(6)
  call mesh_spectral_count()
  if (myDebug) write(6,'(a)') ' Counted nodes/elements'; flush(6)
@@ -592,8 +571,7 @@ subroutine mesh_init(ip,el)
  if (myDebug) write(6,'(a)') ' Built nodes'; flush(6)
  call mesh_spectral_build_elements(FILEUNIT)
  if (myDebug) write(6,'(a)') ' Built elements'; flush(6)
-#endif
-#ifdef Marc4DAMASK
+#elif defined Marc4DAMASK
  call IO_open_inputFile(FILEUNIT,modelName)                                                         ! parse info from input file...
  if (myDebug) write(6,'(a)') ' Opened input file'; flush(6)
  call mesh_marc_get_tableStyles(FILEUNIT)
@@ -616,8 +594,7 @@ subroutine mesh_init(ip,el)
  if (myDebug) write(6,'(a)') ' Counted CP sizes'; flush(6)
  call mesh_marc_build_elements(FILEUNIT)
  if (myDebug) write(6,'(a)') ' Built elements'; flush(6)
-#endif
-#ifdef Abaqus
+#elif defined Abaqus
  call IO_open_inputFile(FILEUNIT,modelName)                                                         ! parse info from input file...
  if (myDebug) write(6,'(a)') ' Opened input file'; flush(6)
  noPart = IO_abaqus_hasNoPart(FILEUNIT)
@@ -666,15 +643,12 @@ subroutine mesh_init(ip,el)
  if (myDebug) write(6,'(a)') ' Built shared elements'; flush(6)
  call mesh_build_ipNeighborhood
 #else
- call mesh_spectral_build_ipNeighborhood(FILEUNIT)
+ call mesh_spectral_build_ipNeighborhood
 #endif
  if (myDebug) write(6,'(a)') ' Built IP neighborhood'; flush(6)
 
  if (worldrank == 0_pInt) then
    call mesh_tell_statistics
-   call mesh_write_meshfile
-   call mesh_write_cellGeom
-   call mesh_write_elemGeom
  endif
 
  if (usePingPong .and. (mesh_Nelems /= mesh_NcpElems)) &
@@ -1417,11 +1391,9 @@ end subroutine mesh_spectral_build_elements
 !> @brief build neighborhood relations for spectral
 !> @details assign globals: mesh_ipNeighborhood
 !--------------------------------------------------------------------------------------------------
-subroutine mesh_spectral_build_ipNeighborhood(fileUnit)
+subroutine mesh_spectral_build_ipNeighborhood
 
  implicit none
- integer(pInt), intent(in) :: &
-  fileUnit
  integer(pInt) :: &
   x,y,z, &
   e
@@ -1558,332 +1530,8 @@ function mesh_nodesAroundCentres(gDim,Favg,centres) result(nodes)
  nodes = nodes/8.0_pReal
 
 end function mesh_nodesAroundCentres
-
- 
-!--------------------------------------------------------------------------------------------------
-!> @brief calculate coordinates in current configuration for given defgrad
-! using integration in Fourier space 
-!--------------------------------------------------------------------------------------------------
-function mesh_deformedCoordsFFT(gDim,F,FavgIn,scalingIn) result(coords)
- use IO, only: &
-   IO_error
- use numerics, only: &
-   fftw_timelimit, &
-   fftw_planner_flag
- use debug, only: &
-   debug_mesh, &
-   debug_level, &
-   debug_levelBasic
- use math, only: &
-   PI, &
-   math_mul33x3
-
- implicit none
- real(pReal), intent(in), dimension(:,:,:,:,:) ::                                F
- real(pReal),             dimension(3,size(F,3),size(F,4),size(F,5)) ::          coords
- real(pReal), intent(in), dimension(3) ::                                        gDim
- real(pReal), intent(in), dimension(3,3),                           optional  :: FavgIn
- real(pReal), intent(in), dimension(3),                             optional  :: scalingIn
-
-! allocatable arrays for fftw c routines
- type(C_PTR) :: planForth, planBack
- type(C_PTR) :: coords_fftw, defgrad_fftw
- real(pReal),    dimension(:,:,:,:,:), pointer :: F_real
- complex(pReal), dimension(:,:,:,:,:), pointer :: F_fourier
- real(pReal),    dimension(:,:,:,:),   pointer :: coords_real
- complex(pReal), dimension(:,:,:,:),   pointer :: coords_fourier
- ! other variables
- integer(pInt) :: i, j, k, m, res1Red
- integer(pInt), dimension(3) :: k_s, iRes
- real(pReal),   dimension(3) :: scaling, step, offset_coords, integrator
- real(pReal),   dimension(3,3) :: Favg
- integer(pInt), dimension(2:3,2) :: Nyquist                                                         ! highest frequencies to be removed (1 if even, 2 if odd)
-
- if (present(scalingIn)) then
-  where (scalingIn < 0.0_pReal)                                                                     ! invalid values. in case of f2py -1 if not present
-     scaling = [1.0_pReal,1.0_pReal,1.0_pReal]
-   elsewhere
-     scaling = scalingIn
-   end where
- else
-   scaling = 1.0_pReal
- endif
- 
- iRes =  [size(F,3),size(F,4),size(F,5)]
- integrator = gDim / 2.0_pReal / PI                                                                 ! see notes where it is used
- res1Red = iRes(1)/2_pInt + 1_pInt                                                                  ! size of complex array in first dimension (c2r, r2c)
- step = gDim/real(iRes, pReal)
- Nyquist(2,1:2) = [iRes(2)/2_pInt + 1_pInt, iRes(2)/2_pInt + 1_pInt + mod(iRes(2),2_pInt)]
- Nyquist(3,1:2) = [iRes(3)/2_pInt + 1_pInt, iRes(3)/2_pInt + 1_pInt + mod(iRes(3),2_pInt)]
-
-!--------------------------------------------------------------------------------------------------
-! report
- if (iand(debug_level(debug_mesh),debug_levelBasic) /= 0_pInt) then
-   write(6,'(a)')           ' Restore geometry using FFT-based integration'
-   write(6,'(a,3(i12  ))')  ' grid     a b c: ', iRes
-   write(6,'(a,3(es12.5))') ' size     x y z: ', gDim
- endif
-
-!--------------------------------------------------------------------------------------------------
-! sanity check
- if (pReal /= C_DOUBLE .or. pInt /= C_INT) &
-   call IO_error(0_pInt,ext_msg='Fortran to C in mesh_deformedCoordsFFT')
-
-!--------------------------------------------------------------------------------------------------
-! allocation and FFTW initialization
- defgrad_fftw =  fftw_alloc_complex(int(res1Red *iRes(2)*iRes(3)*9_pInt,C_SIZE_T))                 ! C_SIZE_T is of type integer(8)
- coords_fftw  =  fftw_alloc_complex(int(res1Red *iRes(2)*iRes(3)*3_pInt,C_SIZE_T))                 ! C_SIZE_T is of type integer(8)
- call c_f_pointer(defgrad_fftw, F_real, &
-   [iRes(1)+2_pInt-mod(iRes(1),2_pInt),iRes(2),iRes(3),3_pInt,3_pInt])
- call c_f_pointer(defgrad_fftw, F_fourier, &
-   [res1Red,                           iRes(2),iRes(3),3_pInt,3_pInt])
- call c_f_pointer(coords_fftw, coords_real, &
-   [iRes(1)+2_pInt-mod(iRes(1),2_pInt),iRes(2),iRes(3),3_pInt])
- call c_f_pointer(coords_fftw, coords_fourier, &
-   [res1Red,                           iRes(2),iRes(3),3_pInt])
-
- call fftw_set_timelimit(fftw_timelimit)
- planForth = fftw_plan_many_dft_r2c(3_pInt,[iRes(3),iRes(2) ,iRes(1)],9_pInt,&                      ! dimensions , length in each dimension in reversed order
-                                    F_real,[iRes(3),iRes(2) ,iRes(1)+2_pInt-mod(iRes(1),2_pInt)],&  ! input data , physical length in each dimension in reversed order
-                                    1_pInt, iRes(3)*iRes(2)*(iRes(1)+2_pInt-mod(iRes(1),2_pInt)),&  ! striding   , product of physical lenght in the 3 dimensions
-                                 F_fourier,[iRes(3),iRes(2) ,res1Red],&
-                                   1_pInt,  iRes(3)*iRes(2)* res1Red,fftw_planner_flag)
-
- planBack  = fftw_plan_many_dft_c2r(3_pInt,[iRes(3),iRes(2) ,iRes(1)],3_pInt,&
-                            coords_fourier,[iRes(3),iRes(2) ,res1Red],&
-                                   1_pInt,  iRes(3)*iRes(2)* res1Red,&
-                               coords_real,[iRes(3),iRes(2) ,iRes(1)+2_pInt-mod(iRes(1),2_pInt)],&
-                                   1_pInt,  iRes(3)*iRes(2)*(iRes(1)+2_pInt-mod(iRes(1),2_pInt)),&
-                                                                      fftw_planner_flag)
- F_real(1:iRes(1),1:iRes(2),1:iRes(3),1:3,1:3) = & 
-                                      reshape(F,[iRes(1),iRes(2),iRes(3),3,3], order = [4,5,1,2,3]) ! F_real is overwritten during plan creatio, is larger (padding) and has different order
-
-!--------------------------------------------------------------------------------------------------
-! FFT
- call fftw_execute_dft_r2c(planForth, F_real, F_fourier)
- 
-!--------------------------------------------------------------------------------------------------
-! if no average F is given, compute it in Fourier space
- if (present(FavgIn)) then
-   if (all(FavgIn < 0.0_pReal)) then
-     Favg = real(F_fourier(1,1,1,1:3,1:3),pReal)/real(product(iRes),pReal)                           !the f2py way to tell it is not present
-   else
-     Favg = FavgIn
-   endif
- else
-   Favg = real(F_fourier(1,1,1,1:3,1:3),pReal)/real(product(iRes),pReal)
- endif
- 
-!--------------------------------------------------------------------------------------------------
-! remove highest frequency in each direction, in third direction only if not 2D
-
- if(iRes(1)/=1_pInt) &                                                                               ! do not delete the whole slice in case of 2D calculation
-   F_fourier (res1Red,  1:iRes(2),                1:iRes(3),              1:3,1:3) &
-                                                     = cmplx(0.0_pReal,0.0_pReal,pReal)
- if(iRes(2)/=1_pInt) &                                                                               ! do not delete the whole slice in case of 2D calculation
-   F_fourier (1:res1Red,Nyquist(2,1):Nyquist(2,2),1:iRes(3),               1:3,1:3) & 
-                                                     = cmplx(0.0_pReal,0.0_pReal,pReal)
- if(iRes(3)/=1_pInt) &                                                                               ! do not delete the whole slice in case of 2D calculation
-   F_fourier (1:res1Red,1:iRes(2),                Nyquist(3,1):Nyquist(3,2),1:3,1:3) &
-                                                     = cmplx(0.0_pReal,0.0_pReal,pReal)
-
-!--------------------------------------------------------------------------------------------------
-! integration in Fourier space
- coords_fourier = cmplx(0.0_pReal,0.0_pReal,pReal)
- do k = 1_pInt, iRes(3)
-   k_s(3) = k-1_pInt
-   if(k > iRes(3)/2_pInt+1_pInt) k_s(3) = k_s(3)-iRes(3)
-   do j = 1_pInt, iRes(2)
-     k_s(2) = j-1_pInt
-     if(j > iRes(2)/2_pInt+1_pInt) k_s(2) = k_s(2)-iRes(2)
-     do i = 1_pInt, res1Red
-       k_s(1) = i-1_pInt
-       do m = 1_pInt,3_pInt
-         coords_fourier(i,j,k,m) = sum(F_fourier(i,j,k,m,1:3)*&
-                                       cmplx(0.0_pReal,real(k_s,pReal)*integrator,pReal))
-       enddo
-       if (any(k_s /= 0_pInt)) coords_fourier(i,j,k,1:3) = &
-                               coords_fourier(i,j,k,1:3) / cmplx(-sum(k_s*k_s),0.0_pReal,pReal)
- enddo; enddo; enddo
-
-!--------------------------------------------------------------------------------------------------
-! iFFT and freeing memory
- call fftw_execute_dft_c2r(planBack,coords_fourier,coords_real)
- coords = reshape(coords_real(1:iRes(1),1:iRes(2),1:iRes(3),1:3), [3,iRes(1),iRes(2),iRes(3)], &
-                  order = [2,3,4,1])/real(product(iRes),pReal)                                      ! weight and change order
- call fftw_destroy_plan(planForth)
- call fftw_destroy_plan(planBack)
- call fftw_free(defgrad_fftw)
- call fftw_free(coords_fftw)
-
-!--------------------------------------------------------------------------------------------------
-! add average to scaled fluctuation and put (0,0,0) on (0,0,0)
- offset_coords = math_mul33x3(F(1:3,1:3,1,1,1),step/2.0_pReal) - scaling*coords(1:3,1,1,1)
- forall(k = 1_pInt:iRes(3), j = 1_pInt:iRes(2), i = 1_pInt:iRes(1)) &
-   coords(1:3,i,j,k) = scaling(1:3)*coords(1:3,i,j,k) &
-                     + offset_coords &
-                     + math_mul33x3(Favg,step*real([i,j,k]-1_pInt,pReal))
-
-end function mesh_deformedCoordsFFT
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief calculates the mismatch between volume of reconstructed (compatible) cube and 
-! determinant of defgrad at the FP
-!--------------------------------------------------------------------------------------------------
-function mesh_volumeMismatch(gDim,F,nodes) result(vMismatch)
- use IO, only: &
-   IO_error
- use debug, only: &
-   debug_mesh, &
-   debug_level, &
-   debug_levelBasic
- use math, only:  &
-   math_det33, &
-   math_volTetrahedron
-
- implicit none
- real(pReal),   intent(in), dimension(:,:,:,:,:) :: &
-   F
- real(pReal),               dimension(size(F,3),size(F,4),size(F,5)) :: &
-   vMismatch
- real(pReal),   intent(in), dimension(:,:,:,:)   :: &
-   nodes
- real(pReal),               dimension(3) :: &
-   gDim
- integer(pInt),             dimension(3) :: &
-   iRes
- real(pReal),   dimension(3,8) ::  coords
- integer(pInt) :: i,j,k
- real(pReal) :: volInitial
-
- iRes = [size(F,3),size(F,4),size(F,5)]
- volInitial = product(gDim)/real(product(iRes), pReal)
-
-!--------------------------------------------------------------------------------------------------
-! report and check 
- if (iand(debug_level(debug_mesh),debug_levelBasic) /= 0_pInt) then
-   write(6,'(a)')           ' Calculating volume mismatch'
-   write(6,'(a,3(i12  ))')  ' grid     a b c: ', iRes
-   write(6,'(a,3(es12.5))') ' size     x y z: ', gDim
- endif
-  
- if (any([iRes/=size(nodes,2)-1_pInt,iRes/=size(nodes,3)-1_pInt,iRes/=size(nodes,4)-1_pInt]))&
-   call IO_error(0_pInt,ext_msg='Arrays F and nodes in mesh_volumeMismatch')
- 
-!--------------------------------------------------------------------------------------------------
-! calculate actual volume and volume resulting from deformation gradient
- do k = 1_pInt,iRes(3)
-   do j = 1_pInt,iRes(2)
-     do i = 1_pInt,iRes(1)
-       coords(1:3,1) = nodes(1:3,i,       j,       k       )
-       coords(1:3,2) = nodes(1:3,i+1_pInt,j,       k       )
-       coords(1:3,3) = nodes(1:3,i+1_pInt,j+1_pInt,k       )
-       coords(1:3,4) = nodes(1:3,i,       j+1_pInt,k       )
-       coords(1:3,5) = nodes(1:3,i,       j,       k+1_pInt)
-       coords(1:3,6) = nodes(1:3,i+1_pInt,j,       k+1_pInt)
-       coords(1:3,7) = nodes(1:3,i+1_pInt,j+1_pInt,k+1_pInt)
-       coords(1:3,8) = nodes(1:3,i,       j+1_pInt,k+1_pInt)
-       vMismatch(i,j,k) = &
-           abs(math_volTetrahedron(coords(1:3,7),coords(1:3,1),coords(1:3,8),coords(1:3,4))) &
-         + abs(math_volTetrahedron(coords(1:3,7),coords(1:3,1),coords(1:3,8),coords(1:3,5))) &
-         + abs(math_volTetrahedron(coords(1:3,7),coords(1:3,1),coords(1:3,3),coords(1:3,4))) &
-         + abs(math_volTetrahedron(coords(1:3,7),coords(1:3,1),coords(1:3,3),coords(1:3,2))) &
-         + abs(math_volTetrahedron(coords(1:3,7),coords(1:3,5),coords(1:3,2),coords(1:3,6))) &
-         + abs(math_volTetrahedron(coords(1:3,7),coords(1:3,5),coords(1:3,2),coords(1:3,1)))
-       vMismatch(i,j,k) = vMismatch(i,j,k)/math_det33(F(1:3,1:3,i,j,k))
- enddo; enddo; enddo
- vMismatch = vMismatch/volInitial
-
-end function mesh_volumeMismatch
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief Routine to calculate the mismatch between the vectors from the central point to
-! the corners of reconstructed (combatible) volume element and the vectors calculated by deforming
-! the initial volume element with the  current deformation gradient
-!--------------------------------------------------------------------------------------------------
-function mesh_shapeMismatch(gDim,F,nodes,centres)  result(sMismatch)
- use IO, only: &
-   IO_error
- use debug, only: &
-   debug_mesh, &
-   debug_level, &
-   debug_levelBasic
- use math, only: &
-  math_mul33x3
-
- implicit none
- real(pReal),   intent(in), dimension(:,:,:,:,:) :: &
-   F
- real(pReal),               dimension(size(F,3),size(F,4),size(F,5)) :: &
-   sMismatch
- real(pReal),   intent(in), dimension(:,:,:,:)   :: &
-   nodes, &
-   centres
- real(pReal),               dimension(3) :: &
-   gDim, &
-   fRes
- integer(pInt),             dimension(3) :: &
-   iRes
- real(pReal), dimension(3,8) :: coordsInitial
- integer(pInt) i,j,k
-
- iRes = [size(F,3),size(F,4),size(F,5)]
- fRes = real(iRes,pReal)
- 
-!--------------------------------------------------------------------------------------------------
-! report and check
- if (iand(debug_level(debug_mesh),debug_levelBasic) /= 0_pInt) then
-   write(6,'(a)')           ' Calculating shape mismatch'
-   write(6,'(a,3(i12  ))')  ' grid     a b c: ', iRes
-   write(6,'(a,3(es12.5))') ' size     x y z: ', gDim
- endif
-
- if(any([iRes/=size(nodes,2)-1_pInt,iRes/=size(nodes,3)-1_pInt,iRes/=size(nodes,4)-1_pInt]) .or.&
-    any([iRes/=size(centres,2),     iRes/=size(centres,3),     iRes/=size(centres,4)]))&
-   call IO_error(0_pInt,ext_msg='Arrays F and nodes/centres in mesh_shapeMismatch')
-   
-!--------------------------------------------------------------------------------------------------
-! initial positions
- coordsInitial(1:3,1) = [-gDim(1)/fRes(1),-gDim(2)/fRes(2),-gDim(3)/fRes(3)]
- coordsInitial(1:3,2) = [+gDim(1)/fRes(1),-gDim(2)/fRes(2),-gDim(3)/fRes(3)]
- coordsInitial(1:3,3) = [+gDim(1)/fRes(1),+gDim(2)/fRes(2),-gDim(3)/fRes(3)]
- coordsInitial(1:3,4) = [-gDim(1)/fRes(1),+gDim(2)/fRes(2),-gDim(3)/fRes(3)]
- coordsInitial(1:3,5) = [-gDim(1)/fRes(1),-gDim(2)/fRes(2),+gDim(3)/fRes(3)]
- coordsInitial(1:3,6) = [+gDim(1)/fRes(1),-gDim(2)/fRes(2),+gDim(3)/fRes(3)]
- coordsInitial(1:3,7) = [+gDim(1)/fRes(1),+gDim(2)/fRes(2),+gDim(3)/fRes(3)]
- coordsInitial(1:3,8) = [-gDim(1)/fRes(1),+gDim(2)/fRes(2),+gDim(3)/fRes(3)]
- coordsInitial = coordsInitial/2.0_pReal
- 
-!--------------------------------------------------------------------------------------------------
-! compare deformed original and deformed positions to actual positions
- do k = 1_pInt,iRes(3)
-   do j = 1_pInt,iRes(2)
-     do i = 1_pInt,iRes(1)
-       sMismatch(i,j,k) = &
-           sqrt(sum((nodes(1:3,i,       j,       k        ) - centres(1:3,i,j,k)&
-                    - math_mul33x3(F(1:3,1:3,i,j,k), coordsInitial(1:3,1)))**2.0_pReal))&
-         + sqrt(sum((nodes(1:3,i+1_pInt,j,       k        ) - centres(1:3,i,j,k)&
-                    - math_mul33x3(F(1:3,1:3,i,j,k), coordsInitial(1:3,2)))**2.0_pReal))&
-         + sqrt(sum((nodes(1:3,i+1_pInt,j+1_pInt,k        ) - centres(1:3,i,j,k)&
-                    - math_mul33x3(F(1:3,1:3,i,j,k), coordsInitial(1:3,3)))**2.0_pReal))&
-         + sqrt(sum((nodes(1:3,i,       j+1_pInt,k        ) - centres(1:3,i,j,k)&
-                    - math_mul33x3(F(1:3,1:3,i,j,k), coordsInitial(1:3,4)))**2.0_pReal))&
-         + sqrt(sum((nodes(1:3,i,       j,       k+1_pInt) - centres(1:3,i,j,k)&
-                    - math_mul33x3(F(1:3,1:3,i,j,k), coordsInitial(1:3,5)))**2.0_pReal))&
-         + sqrt(sum((nodes(1:3,i+1_pInt,j,       k+1_pInt) - centres(1:3,i,j,k)&
-                    - math_mul33x3(F(1:3,1:3,i,j,k), coordsInitial(1:3,6)))**2.0_pReal))&
-         + sqrt(sum((nodes(1:3,i+1_pInt,j+1_pInt,k+1_pInt) - centres(1:3,i,j,k)&
-                    - math_mul33x3(F(1:3,1:3,i,j,k), coordsInitial(1:3,7)))**2.0_pReal))&
-         + sqrt(sum((nodes(1:3,i,       j+1_pInt,k+1_pInt) - centres(1:3,i,j,k)&
-                    - math_mul33x3(F(1:3,1:3,i,j,k), coordsInitial(1:3,8)))**2.0_pReal))
- enddo; enddo; enddo
-
-end function mesh_shapeMismatch
 #endif
-
-
+ 
 #ifdef Marc4DAMASK
 !--------------------------------------------------------------------------------------------------
 !> @brief Figures out table styles (Marc only) and stores to 'initialcondTableStyle' and 
@@ -4509,212 +4157,6 @@ subroutine mesh_build_FEdata
 
 
 end subroutine mesh_build_FEdata
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief writes out initial cell geometry
-!--------------------------------------------------------------------------------------------------
-subroutine mesh_write_cellGeom
- use DAMASK_interface, only: &
-   getSolverJobName, &
-   getSolverWorkingDirectoryName
- use IR_Precision, only: &
-   I4P
- use Lib_VTK_IO, only: &
-   VTK_ini, &
-   VTK_geo, &
-   VTK_con, &
-   VTK_end 
- implicit none
- integer(I4P), dimension(1:mesh_Ncells)                                :: celltype
- integer(I4P), dimension(mesh_Ncells*(1_pInt+FE_maxNcellnodesPerCell)) :: cellconnection
- integer(I4P):: error
- integer(I4P):: g, c, e, CellID, i, j
-
- cellID = 0_pInt
- j = 0_pInt
- do e = 1_pInt, mesh_NcpElems                                                                      ! loop over cpElems
-   g = FE_geomtype(mesh_element(2_pInt,e))                                                         ! get geometry type
-   c = FE_celltype(g)                                                                              ! get cell type
-   do i = 1_pInt,FE_Nips(g)                                                                        ! loop over ips=cells in this element
-     cellID = cellID + 1_pInt
-     celltype(cellID) = MESH_VTKCELLTYPE(c)
-     cellconnection(j+1_pInt:j+FE_NcellnodesPerCell(c)+1_pInt) &
-       = [FE_NcellnodesPerCell(c),mesh_cell(1:FE_NcellnodesPerCell(c),i,e)-1_pInt]                 ! number of cellnodes per cell & list of global cellnode IDs belnging to this cell (cellnode counting starts at 0)
-     j = j + FE_NcellnodesPerCell(c) + 1_pInt
-   enddo
- enddo
-
- error=VTK_ini(output_format = 'ASCII', &
-       title=trim(getSolverJobName())//' cell mesh', &
-       filename = trim(getSolverWorkingDirectoryName())//trim(getSolverJobName())//'_ipbased.vtk', &
-       mesh_topology = 'UNSTRUCTURED_GRID')
- !ToDo: check error here
- error=VTK_geo(NN = int(mesh_Ncellnodes,I4P), &
-       X = mesh_cellnode(1,1:mesh_Ncellnodes), &
-       Y = mesh_cellnode(2,1:mesh_Ncellnodes), &
-       Z = mesh_cellnode(3,1:mesh_Ncellnodes))
- !ToDo: check error here
- error=VTK_con(NC = int(mesh_Ncells,I4P), &
-       connect = cellconnection(1:j), &
- !ToDo: check error here
-       cell_type = celltype)
- error=VTK_end()
- !ToDo: check error here
-
-end subroutine mesh_write_cellGeom
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief writes out initial element geometry
-!--------------------------------------------------------------------------------------------------
-subroutine mesh_write_elemGeom
- use DAMASK_interface, only: &
-   getSolverJobName, &
-   getSolverWorkingDirectoryName
- use IR_Precision, only: &
-   I4P
- use Lib_VTK_IO, only: &
-   VTK_ini, &
-   VTK_geo, &
-   VTK_con, &
-   VTK_end 
- 
- implicit none
- integer(I4P), dimension(1:mesh_NcpElems)                     :: elemtype 
- integer(I4P), dimension(mesh_NcpElems*(1_pInt+FE_maxNnodes)) :: elementconnection
- integer(I4P):: error
- integer(pInt):: e, t, n, i
-
- i = 0_pInt
- do e = 1_pInt, mesh_NcpElems                                                                      ! loop over cpElems
-   t = mesh_element(2,e)                                                                           ! get element type
-   elemtype(e) = MESH_VTKELEMTYPE(t)
-   elementconnection(i+1_pInt) = FE_Nnodes(t)                                                      ! number of nodes per element 
-   do n = 1_pInt,FE_Nnodes(t)
-     elementconnection(i+1_pInt+n) = mesh_element(4_pInt+n,e) - 1_pInt                             ! global node ID of node that belongs to this element (node counting starts at 0)
-   enddo
-   i = i + 1_pInt + FE_Nnodes(t)
- enddo
-
- error=VTK_ini(output_format = 'ASCII', &
-       title=trim(getSolverJobName())//' element mesh', &
-       filename = trim(getSolverWorkingDirectoryName())//trim(getSolverJobName())//'_nodebased.vtk', &
-       mesh_topology = 'UNSTRUCTURED_GRID')
- !ToDo: check error here
- error=VTK_geo(NN = int(mesh_Nnodes,I4P), &
-       X = mesh_node0(1,1:mesh_Nnodes), &
-       Y = mesh_node0(2,1:mesh_Nnodes), &
-       Z = mesh_node0(3,1:mesh_Nnodes))
- !ToDo: check error here
- error=VTK_con(NC = int(mesh_Nelems,I4P), &
-       connect = elementconnection(1:i), &
-       cell_type = elemtype)
- !ToDo: check error here
- error =VTK_end()
- !ToDo: check error here
-
-end subroutine mesh_write_elemGeom
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief writes description file for mesh
-!--------------------------------------------------------------------------------------------------
-subroutine mesh_write_meshfile
- use IO, only: &
-   IO_write_jobFile
-
- implicit none
- integer(pInt), parameter :: fileUnit = 223_pInt
- integer(pInt) :: e,i,t,g,c,n
-
- call IO_write_jobFile(fileUnit,'mesh') 
- write(fileUnit,'(A16,E10.3)') 'unitlength', mesh_unitlength
- write(fileUnit,'(A16,I10)') 'maxNcellnodes', mesh_maxNcellnodes
- write(fileUnit,'(A16,I10)') 'maxNips', mesh_maxNips
- write(fileUnit,'(A16,I10)') 'maxNnodes', mesh_maxNnodes
- write(fileUnit,'(A16,I10)') 'Nnodes', mesh_Nnodes
- write(fileUnit,'(A16,I10)') 'NcpElems', mesh_NcpElems
- do e = 1_pInt,mesh_NcpElems
-   t = mesh_element(2,e)
-   write(fileUnit,'(20(I10))') mesh_element(1_pInt:4_pInt+FE_Nnodes(t),e)
- enddo
- write(fileUnit,'(A16,I10)') 'Ncellnodes', mesh_Ncellnodes
- do n = 1_pInt,mesh_Ncellnodes
-   write(fileUnit,'(2(I10))') mesh_cellnodeParent(1:2,n)
- enddo
- write(fileUnit,'(A16,I10)') 'Ncells', mesh_Ncells
- do e = 1_pInt,mesh_NcpElems
-   t = mesh_element(2,e)
-   g = FE_geomtype(t)
-   c = FE_celltype(g)
-   do i = 1_pInt,FE_Nips(g)
-     write(fileUnit,'(8(I10))') &
-       mesh_cell(1_pInt:FE_NcellnodesPerCell(c),i,e)
-   enddo
- enddo
- close(fileUnit)
-
-end subroutine mesh_write_meshfile
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief reads mesh description file
-!--------------------------------------------------------------------------------------------------
-integer function mesh_read_meshfile(filepath)
-
- implicit none
- character(len=*), intent(in) :: filepath
- integer(pInt), parameter :: fileUnit = 223_pInt
- integer(pInt) :: e,i,t,g,n
-
- open(fileUnit,status='old',err=100,iostat=mesh_read_meshfile,action='read',file=filepath)
- read(fileUnit,'(TR16,E10.3)',err=100,iostat=mesh_read_meshfile) mesh_unitlength
- read(fileUnit,'(TR16,I10)',err=100,iostat=mesh_read_meshfile) mesh_maxNcellnodes
- read(fileUnit,'(TR16,I10)',err=100,iostat=mesh_read_meshfile) mesh_maxNips
- read(fileUnit,'(TR16,I10)',err=100,iostat=mesh_read_meshfile) mesh_maxNnodes
- read(fileUnit,'(TR16,I10)',err=100,iostat=mesh_read_meshfile) mesh_Nnodes
- read(fileUnit,'(TR16,I10)',err=100,iostat=mesh_read_meshfile) mesh_NcpElems
- if (.not. allocated(mesh_element)) allocate(mesh_element(4_pInt+mesh_maxNnodes,mesh_NcpElems))
- mesh_element = 0_pInt
- do e = 1_pInt,mesh_NcpElems
-   read(fileUnit,'(20(I10))',err=100,iostat=mesh_read_meshfile) &
-     mesh_element(:,e)
- enddo
- read(fileUnit,'(TR16,I10)',err=100,iostat=mesh_read_meshfile) mesh_Ncellnodes
- if (.not. allocated(mesh_cellnodeParent)) allocate(mesh_cellnodeParent(2_pInt,mesh_Ncellnodes))
- do n = 1_pInt,mesh_Ncellnodes
-   read(fileUnit,'(2(I10))',err=100,iostat=mesh_read_meshfile) mesh_cellnodeParent(1:2,n)
- enddo
- read(fileUnit,'(TR16,I10)',err=100,iostat=mesh_read_meshfile) mesh_Ncells
- if (.not. allocated(mesh_cell)) allocate(mesh_cell(FE_maxNcellnodesPerCell,mesh_maxNips,mesh_NcpElems))
- do e = 1_pInt,mesh_NcpElems
-   t = mesh_element(2,e)
-   g = FE_geomtype(t)
-   do i = 1_pInt,FE_Nips(g)
-     read(fileUnit,'(8(I10))',err=100,iostat=mesh_read_meshfile) mesh_cell(:,i,e)
-   enddo
- enddo
- close(fileUnit)
-
- mesh_read_meshfile = 0                                                                             ! successfully read data
-
-100 continue 
-end function mesh_read_meshfile
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief initializes mesh data for use in post processing
-!--------------------------------------------------------------------------------------------------
-integer function mesh_init_postprocessing(filepath)
-
- implicit none
- character(len=*), intent(in) :: filepath
-
- call mesh_build_FEdata
- mesh_init_postprocessing = mesh_read_meshfile(filepath)
-
-end function mesh_init_postprocessing
 
 
 !--------------------------------------------------------------------------------------------------

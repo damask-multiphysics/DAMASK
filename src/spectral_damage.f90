@@ -42,7 +42,6 @@ module spectral_damage
  integer(pInt),               private :: totalIter = 0_pInt                                         !< total iteration in current increment
  real(pReal), dimension(3,3), private :: D_ref
  real(pReal), private                 :: mobility_ref
- character(len=1024),         private :: incInfo
  
  public :: &
    spectral_damage_init, &
@@ -50,21 +49,7 @@ module spectral_damage
    spectral_damage_forward, &
    spectral_damage_destroy
  external :: &
-   VecDestroy, &
-   DMDestroy, &
-   DMDACreate3D, &
-   DMCreateGlobalVector, &
-   DMDASNESSetFunctionLocal, &
    PETScFinalize, &
-   SNESDestroy, &
-   SNESGetNumberFunctionEvals, &
-   SNESGetIterationNumber, &
-   SNESSolve, &
-   SNESSetDM, &
-   SNESGetConvergedReason, &
-   SNESSetConvergenceTest, &
-   SNESSetFromOptions, &
-   SNESCreate, &
    MPI_Abort, &
    MPI_Bcast, &
    MPI_Allreduce
@@ -90,20 +75,32 @@ subroutine spectral_damage_init()
    damage_nonlocal_getMobility
    
  implicit none
- DM :: damage_grid
- Vec :: uBound, lBound
- PetscErrorCode :: ierr
- PetscObject    :: dummy
  integer(pInt), dimension(:), allocatable :: localK  
  integer(pInt) :: proc
  integer(pInt) :: i, j, k, cell
+ DM :: damage_grid
+ Vec :: uBound, lBound
+ PetscErrorCode :: ierr
  character(len=100) :: snes_type
 
- mainProcess: if (worldrank == 0_pInt) then
-   write(6,'(/,a)') ' <<<+-  spectral_damage init  -+>>>'
-   write(6,'(a15,a)')   ' Current time: ',IO_timeStamp()
+ external :: &
+   SNESCreate, &
+   SNESSetOptionsPrefix, &
+   DMDACreate3D, &
+   SNESSetDM, &
+   DMDAGetCorners, &
+   DMCreateGlobalVector, &
+   DMDASNESSetFunctionLocal, &
+   SNESSetFromOptions, &
+   SNESGetType, &
+   VecSet, &
+   DMGetGlobalVector, &
+   DMRestoreGlobalVector, &
+   SNESVISetVariableBounds
+
+ write(6,'(/,a)') ' <<<+-  spectral_damage init  -+>>>'
+ write(6,'(a15,a)')   ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
- endif mainProcess
  
 !--------------------------------------------------------------------------------------------------
 ! initialize solver specific parts of PETSc
@@ -124,7 +121,8 @@ subroutine spectral_damage_init()
  CHKERRQ(ierr)
  call SNESSetDM(damage_snes,damage_grid,ierr); CHKERRQ(ierr)                                        !< connect snes to da
  call DMCreateGlobalVector(damage_grid,solution,ierr); CHKERRQ(ierr)                                !< global solution vector (grid x 1, i.e. every def grad tensor)
- call DMDASNESSetFunctionLocal(damage_grid,INSERT_VALUES,spectral_damage_formResidual,dummy,ierr)   !< residual vector of same shape as solution vector
+ call DMDASNESSetFunctionLocal(damage_grid,INSERT_VALUES,spectral_damage_formResidual,&
+                                                                            PETSC_NULL_OBJECT,ierr) !< residual vector of same shape as solution vector
  CHKERRQ(ierr) 
  call SNESSetFromOptions(damage_snes,ierr); CHKERRQ(ierr)                                           !< pull it all together with additional cli arguments
  call SNESGetType(damage_snes,snes_type,ierr); CHKERRQ(ierr)
@@ -171,15 +169,11 @@ end subroutine spectral_damage_init
 !--------------------------------------------------------------------------------------------------
 !> @brief solution for the spectral damage scheme with internal iterations
 !--------------------------------------------------------------------------------------------------
-type(tSolutionState) function spectral_damage_solution(guess,timeinc,timeinc_old,loadCaseTime)
+type(tSolutionState) function spectral_damage_solution(timeinc,timeinc_old,loadCaseTime)
  use numerics, only: &
    itmax, &
    err_damage_tolAbs, &
    err_damage_tolRel
- use spectral_utilities, only: &
-   tBoundaryCondition, &
-   Utilities_maskedCompliance, &
-   Utilities_updateGamma
  use mesh, only: &
    grid, &
    grid3
@@ -194,16 +188,21 @@ type(tSolutionState) function spectral_damage_solution(guess,timeinc,timeinc_old
    timeinc, &                                                                                       !< increment in time for current solution
    timeinc_old, &                                                                                   !< increment in time of last increment
    loadCaseTime                                                                                     !< remaining time of current load case
- logical, intent(in) :: guess
  integer(pInt) :: i, j, k, cell
  PetscInt  ::position
  PetscReal ::  minDamage, maxDamage, stagNorm, solnNorm
- 
+
 !--------------------------------------------------------------------------------------------------
 ! PETSc Data
  PetscErrorCode :: ierr   
  SNESConvergedReason :: reason
- 
+
+ external :: &
+   VecMin, &
+   VecMax, &
+   SNESSolve, &
+   SNESGetConvergedReason
+
  spectral_damage_solution%converged =.false.
  
 !--------------------------------------------------------------------------------------------------
@@ -281,10 +280,10 @@ subroutine spectral_damage_formResidual(in,x_scal,f_scal,dummy,ierr)
  DMDALocalInfo, dimension(DMDA_LOCAL_INFO_SIZE) :: &
    in
  PetscScalar, dimension( &
-   XG_RANGE,YG_RANGE,ZG_RANGE) :: &
+   XG_RANGE,YG_RANGE,ZG_RANGE), intent(in) :: &
    x_scal
  PetscScalar, dimension( &
-   X_RANGE,Y_RANGE,Z_RANGE) :: &
+   X_RANGE,Y_RANGE,Z_RANGE), intent(out) :: &
    f_scal
  PetscObject :: dummy
  PetscErrorCode :: ierr
@@ -339,7 +338,7 @@ end subroutine spectral_damage_formResidual
 !--------------------------------------------------------------------------------------------------
 !> @brief spectral damage forwarding routine
 !--------------------------------------------------------------------------------------------------
-subroutine spectral_damage_forward(guess,timeinc,timeinc_old,loadCaseTime)
+subroutine spectral_damage_forward()
  use mesh, only: &
    grid, &
    grid3
@@ -352,15 +351,13 @@ subroutine spectral_damage_forward(guess,timeinc,timeinc_old,loadCaseTime)
    damage_nonlocal_getMobility
    
  implicit none
- real(pReal), intent(in) :: &
-   timeinc_old, &
-   timeinc, &
-   loadCaseTime                                                                                     !< remaining time of current load case
- logical,     intent(in)                     :: guess
- PetscErrorCode                              :: ierr
  integer(pInt)                               :: i, j, k, cell
  DM :: dm_local
  PetscScalar,  dimension(:,:,:), pointer     :: x_scal
+ PetscErrorCode                              :: ierr
+ 
+ external :: &
+   SNESGetDM
 
  if (cutBack) then 
    damage_current = damage_lastInc
@@ -403,6 +400,10 @@ subroutine spectral_damage_destroy()
 
  implicit none
  PetscErrorCode :: ierr
+
+ external :: &
+   VecDestroy, &
+   SNESDestroy
 
  call VecDestroy(solution,ierr); CHKERRQ(ierr)
  call SNESDestroy(damage_snes,ierr); CHKERRQ(ierr)

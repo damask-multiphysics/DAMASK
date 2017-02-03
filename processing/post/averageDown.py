@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python2.7
 # -*- coding: UTF-8 no BOM -*-
 
 import os,sys
@@ -94,7 +94,7 @@ for name in filenames:
   table.data_readArray()
 
   if (any(options.grid) == 0 or any(options.size) == 0.0):
-    coords = [np.unique(table.data[:,colCoord+i]) for i in xrange(3)]
+    coords = [np.unique(table.data[:,colCoord+i]) for i in range(3)]
     mincorner = np.array(map(min,coords))
     maxcorner = np.array(map(max,coords))
     grid   = np.array(map(len,coords),'i')

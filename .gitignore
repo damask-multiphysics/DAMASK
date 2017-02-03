@@ -4,5 +4,6 @@
 *.exe
 *.bak
 *~
+bin
 PRIVATE
 build

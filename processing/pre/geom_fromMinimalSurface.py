@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python2.7
 # -*- coding: UTF-8 no BOM -*-
 
 import os,sys,math
@@ -125,10 +125,10 @@ for name in filenames:
   Y = options.periods*2.0*math.pi*(np.arange(options.grid[1])+0.5)/options.grid[1]
   Z = options.periods*2.0*math.pi*(np.arange(options.grid[2])+0.5)/options.grid[2]
 
-  for z in xrange(options.grid[2]):
-    for y in xrange(options.grid[1]):
+  for z in range(options.grid[2]):
+    for y in range(options.grid[1]):
       table.data_clear()
-      for x in xrange(options.grid[0]):
+      for x in range(options.grid[0]):
         table.data_append(options.microstructure[options.threshold < surface[options.type](X[x],Y[y],Z[z])])
       table.data_write()
 

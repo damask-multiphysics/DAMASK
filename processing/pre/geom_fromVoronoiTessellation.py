@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python2.7
 # -*- coding: UTF-8 no BOM -*-
 
 import os,sys,math
@@ -13,7 +13,7 @@ scriptID   = ' '.join([scriptName,damask.version])
 
 
 def meshgrid2(*arrs):
-  """code inspired by http://stackoverflow.com/questions/1827489/numpy-meshgrid-in-3d"""
+  """Code inspired by http://stackoverflow.com/questions/1827489/numpy-meshgrid-in-3d"""
   arrs = tuple(reversed(arrs))
   arrs = tuple(arrs)
   lens = np.array(map(len, arrs))
@@ -31,9 +31,9 @@ def meshgrid2(*arrs):
   return tuple(ans)
 
 def findClosestSeed(fargs):
-    point, seeds, weightssquared = fargs
+    point, seeds, myWeights = fargs
     tmp = np.repeat(point.reshape(3,1), len(seeds), axis=1).T
-    dist = np.sum((tmp - seeds)*(tmp - seeds),axis=1) - weightssquared
+    dist = np.sum((tmp - seeds)**2,axis=1) -myWeights
     return np.argmin(dist)                                                                          # seed point closest to point
 
 
@@ -73,18 +73,17 @@ def laguerreTessellation(undeformed, coords, weights, grains, nonperiodic = Fals
                 [  1, 1, 1 ],
                ]).astype(float)*info['size']
 
-    squaredweights = np.power(np.tile(weights,len(copies)),2)                                       # Laguerre weights (squared, size N*n)
-
-    for i,vec in enumerate(copies):                                                                 # periodic copies of seed points (size N*n)
-      try: seeds = np.append(seeds, coords+vec, axis=0)
+    repeatweights = np.tile(weights,len(copies)).flatten(order='F')                                 # Laguerre weights (1,2,3,1,2,3,...,1,2,3)
+    for i,vec in enumerate(copies):                                                                 # periodic copies of seed points ...
+      try: seeds = np.append(seeds, coords+vec, axis=0)                                             # ... (1+a,2+a,3+a,...,1+z,2+z,3+z)
       except NameError: seeds = coords+vec   
 
-    if all(squaredweights == 0.0):                                                                  # standard Voronoi (no weights, KD tree)
+    if (repeatweights == 0.0).all():                                                                # standard Voronoi (no weights, KD tree)
       myKDTree = spatial.cKDTree(seeds)
       devNull,closestSeeds = myKDTree.query(undeformed)
     else:
       damask.util.croak('...using {} cpu{}'.format(options.cpus, 's' if options.cpus > 1 else ''))
-      arguments = [[arg] + [seeds,squaredweights] for arg in list(undeformed)]
+      arguments = [[arg,seeds,repeatweights] for arg in list(undeformed)]
 
       if cpus > 1:                                                                                  # use multithreading
         pool = multiprocessing.Pool(processes = cpus)                                               # initialize workers
@@ -134,12 +133,12 @@ group.add_option('-g',
                  '--grid',
                  dest = 'grid',
                  type = 'int', nargs = 3, metavar = ' '.join(['int']*3),
-                 help = 'a,b,c grid of hexahedral box [auto]')
+                 help = 'a,b,c grid of hexahedral box')
 group.add_option('-s',
                  '--size',
                  dest = 'size',
                  type = 'float', nargs = 3, metavar=' '.join(['float']*3),
-                 help = 'x,y,z size of hexahedral box [auto]')
+                 help = 'x,y,z size of hexahedral box')
 group.add_option('-o',
                  '--origin',
                  dest = 'origin',
@@ -179,6 +178,10 @@ parser.add_option_group(group)
 
 group = OptionGroup(parser, "Configuration","")
 
+group.add_option('--without-config',
+                 dest = 'config',
+                 action = 'store_false',
+                 help = 'omit material configuration header')
 group.add_option('--homogenization',
                  dest = 'homogenization',
                  type = 'int', metavar = 'int',
@@ -204,6 +207,7 @@ parser.set_defaults(pos            = 'pos',
                     cpus           = 2,
                     laguerre       = False,
                     nonperiodic    = False,
+                    config         = True,
                   )
 (options,filenames) = parser.parse_args()
 
@@ -241,7 +245,7 @@ for name in filenames:
   if     np.any(info['size'] <= 0.0) \
      and np.all(info['grid'] < 1):   errors.append('invalid size x y z.')
   else:
-    for i in xrange(3):
+    for i in range(3):
       if info['size'][i] <= 0.0:                                                                      # any invalid size?
         info['size'][i] = float(info['grid'][i])/max(info['grid'])                                    # normalize to grid
         remarks.append('rescaling size {} to {}...'.format({0:'x',1:'y',2:'z'}[i],info['size'][i]))
@@ -304,20 +308,21 @@ for name in filenames:
   config_header = []
   formatwidth = 1+int(math.log10(NgrainIDs))
 
-  config_header += ['<microstructure>']
-  for i,ID in enumerate(grainIDs):
-    config_header += ['[Grain{}]'.format(str(ID).zfill(formatwidth)),
-                      'crystallite {}'.format(options.crystallite),
-                      '(constituent)\tphase {}\ttexture {}\tfraction 1.0'.format(options.phase,str(ID).rjust(formatwidth)),
-                     ]
-  if hasEulers:
-    config_header += ['<texture>']
-    for ID in grainIDs:
-      eulerID = np.nonzero(grains == ID)[0][0]                                                    # find first occurrence of this grain id
+  if options.config:
+    config_header += ['<microstructure>']
+    for i,ID in enumerate(grainIDs):
       config_header += ['[Grain{}]'.format(str(ID).zfill(formatwidth)),
-                        '(gauss)\tphi1 {:g}\tPhi {:g}\tphi2 {:g}\tscatter 0.0\tfraction 1.0'.format(*eulers[eulerID])
+                        'crystallite {}'.format(options.crystallite),
+                        '(constituent)\tphase {}\ttexture {}\tfraction 1.0'.format(options.phase,str(ID).rjust(formatwidth)),
                        ]
-      if options.axes is not None: config_header.append('axes\t{} {} {}'.format(*options.axes))
+    if hasEulers:
+      config_header += ['<texture>']
+      for ID in grainIDs:
+        eulerID = np.nonzero(grains == ID)[0][0]                                                    # find first occurrence of this grain id
+        config_header += ['[Grain{}]'.format(str(ID).zfill(formatwidth)),
+                          '(gauss)\tphi1 {:g}\tPhi {:g}\tphi2 {:g}\tscatter 0.0\tfraction 1.0'.format(*eulers[eulerID])
+                         ]
+        if options.axes is not None: config_header.append('axes\t{} {} {}'.format(*options.axes))
   
   table.labels_clear()
   table.info_clear()

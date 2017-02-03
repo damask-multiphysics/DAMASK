@@ -10,7 +10,6 @@ module CPFEM
 
  implicit none
  private
-#if defined(Marc4DAMASK) || defined(Abaqus)
  real(pReal),                      parameter,   private :: &
    CPFEM_odd_stress    = 1e15_pReal, &                                                              !< return value for stress in case of ping pong dummy cycle
    CPFEM_odd_jacobian  = 1e50_pReal                                                                 !< return value for jacobian in case of ping pong dummy cycle
@@ -20,7 +19,6 @@ module CPFEM
    CPFEM_dcsdE                                                                                      !< Cauchy stress tangent
  real(pReal), dimension (:,:,:,:), allocatable, private :: &
    CPFEM_dcsdE_knownGood                                                                            !< known good tangent
-#endif
  integer(pInt),                                 public :: &
    cycleCounter =  0_pInt, &                                                                        !< needs description
    theInc       = -1_pInt, &                                                                        !< needs description
@@ -83,10 +81,6 @@ subroutine CPFEM_initAll(el,ip)
  use IO, only: &
    IO_init
  use DAMASK_interface
-#ifdef FEM
- use FEZoo, only: &
-   FEZoo_init
-#endif
 
  implicit none
  integer(pInt), intent(in) ::                        el, &                                          !< FE el number
@@ -97,9 +91,6 @@ subroutine CPFEM_initAll(el,ip)
      call DAMASK_interface_init                                                                    ! Spectral and FEM interface to commandline
      call prec_init
      call IO_init
-#ifdef FEM
-     call FEZoo_init
-#endif
      call numerics_init
      call debug_init
      call math_init
@@ -138,16 +129,12 @@ subroutine CPFEM_init
    debug_levelBasic, &
    debug_levelExtensive
  use FEsolving, only: &
-#if defined(Marc4DAMASK) || defined(Abaqus)
    symmetricSolver, &
-#endif
    restartRead, &
    modelName
-#if defined(Marc4DAMASK) || defined(Abaqus)
  use mesh, only: &
    mesh_NcpElems, &
    mesh_maxNips
-#endif
  use material, only: &
    material_phase, &
    homogState, &
@@ -173,12 +160,10 @@ subroutine CPFEM_init
 #include "compilation_info.f90"
  endif mainProcess
 
-#if defined(Marc4DAMASK) || defined(Abaqus)
  ! initialize stress and jacobian to zero
  allocate(CPFEM_cs(6,mesh_maxNips,mesh_NcpElems)) ;                CPFEM_cs              = 0.0_pReal
  allocate(CPFEM_dcsdE(6,6,mesh_maxNips,mesh_NcpElems)) ;           CPFEM_dcsdE           = 0.0_pReal
  allocate(CPFEM_dcsdE_knownGood(6,6,mesh_maxNips,mesh_NcpElems)) ; CPFEM_dcsdE_knownGood = 0.0_pReal
-#endif
 
  ! *** restore the last converged values of each essential variable from the binary file
  if (restartRead) then
@@ -243,21 +228,17 @@ subroutine CPFEM_init
    enddo readHomogInstances
    close (777)
 
-#if defined(Marc4DAMASK) || defined(Abaqus)
    call IO_read_realFile(777,'convergeddcsdE',modelName,size(CPFEM_dcsdE))
    read (777,rec=1) CPFEM_dcsdE
    close (777)
-#endif
    restartRead = .false.
  endif
-#if defined(Marc4DAMASK) || defined(Abaqus)
  if (iand(debug_level(debug_CPFEM), debug_levelBasic) /= 0) then
    write(6,'(a32,1x,6(i8,1x))')   'CPFEM_cs:              ', shape(CPFEM_cs)
    write(6,'(a32,1x,6(i8,1x))')   'CPFEM_dcsdE:           ', shape(CPFEM_dcsdE)
    write(6,'(a32,1x,6(i8,1x),/)') 'CPFEM_dcsdE_knownGood: ', shape(CPFEM_dcsdE_knownGood)
    write(6,'(a32,l1)')            'symmetricSolver:       ', symmetricSolver
  endif
-#endif
  flush(6)
 
 end subroutine CPFEM_init
@@ -266,11 +247,7 @@ end subroutine CPFEM_init
 !--------------------------------------------------------------------------------------------------
 !> @brief perform initialization at first call, update variables and call the actual material model
 !--------------------------------------------------------------------------------------------------
-#if defined(Marc4DAMASK) || defined(Abaqus)
 subroutine CPFEM_general(mode, parallelExecution, ffn, ffn1, temperature_inp, dt, elFE, ip, cauchyStress, jacobian)
-#else
-subroutine CPFEM_general(mode, ffn, ffn1, dt, elFE, ip)
-#endif
  use numerics, only: &
    defgradTolerance, &
    iJacoStiffness, &
@@ -281,7 +258,6 @@ subroutine CPFEM_general(mode, ffn, ffn1, dt, elFE, ip)
    debug_levelBasic, &
    debug_levelExtensive, &
    debug_levelSelective, &
-#if defined(Marc4DAMASK) || defined(Abaqus)
    debug_stressMaxLocation, &
    debug_stressMinLocation, &
    debug_jacobianMaxLocation, &
@@ -290,7 +266,6 @@ subroutine CPFEM_general(mode, ffn, ffn1, dt, elFE, ip)
    debug_stressMin, &
    debug_jacobianMax, &
    debug_jacobianMin, &
-#endif
    debug_e, &
    debug_i
  use FEsolving, only: &
@@ -348,12 +323,10 @@ subroutine CPFEM_general(mode, ffn, ffn1, dt, elFE, ip)
  use homogenization, only: &  
    materialpoint_F, &
    materialpoint_F0, &
-#if defined(Marc4DAMASK) || defined(Abaqus)
    materialpoint_P, &
    materialpoint_dPdF, &
    materialpoint_results, &
    materialpoint_sizeResults, &
-#endif
    materialpoint_stressAndItsTangent, &
    materialpoint_postResults
  use IO, only: &
@@ -368,7 +341,6 @@ subroutine CPFEM_general(mode, ffn, ffn1, dt, elFE, ip)
  real(pReal), dimension (3,3), intent(in) ::         ffn, &                                         !< deformation gradient for t=t0
                                                      ffn1                                           !< deformation gradient for t=t1
  integer(pInt), intent(in) ::                        mode                                           !< computation mode  1: regular computation plus aging of results
-#if defined(Marc4DAMASK) || defined(Abaqus)
  real(pReal), intent(in) ::                          temperature_inp                                !< temperature
  logical, intent(in) ::                              parallelExecution                              !< flag indicating parallel computation of requested IPs
  real(pReal), dimension(6), intent(out) ::           cauchyStress                                   !< stress vector in Mandel notation
@@ -381,20 +353,13 @@ subroutine CPFEM_general(mode, ffn, ffn1, dt, elFE, ip)
  real(pReal), dimension (3,3,3,3) ::                 H_sym, &
                                                      H, &
                                                      jacobian3333                                   ! jacobian in Matrix notation
-#else
- logical, parameter ::                               parallelExecution = .true.
-#endif
 
  integer(pInt)                                       elCP, &                                        ! crystal plasticity element number
                                                      i, j, k, l, m, n, ph, homog, mySource
  logical                                             updateJaco                                     ! flag indicating if JAcobian has to be updated
  character(len=1024) :: rankStr
 
-#if defined(Marc4DAMASK) || defined(Abaqus)
  elCP = mesh_FEasCP('elem',elFE)
-#else
- elCP = elFE
-#endif
 
  if (iand(debug_level(debug_CPFEM), debug_levelBasic) /= 0_pInt &
      .and. elCP == debug_e .and. ip == debug_i) then
@@ -411,13 +376,10 @@ subroutine CPFEM_general(mode, ffn, ffn1, dt, elFE, ip)
    write(6,'(a,/)') '#############################################'; flush (6)
  endif
 
-
-#if defined(Marc4DAMASK) || defined(Abaqus)
  if (iand(mode, CPFEM_BACKUPJACOBIAN) /= 0_pInt) &
    CPFEM_dcsde_knownGood = CPFEM_dcsde
  if (iand(mode, CPFEM_RESTOREJACOBIAN) /= 0_pInt) &
    CPFEM_dcsde = CPFEM_dcsde_knownGood
-#endif
 
  !*** age results and write restart data if requested
  if (iand(mode, CPFEM_AGERESULTS) /= 0_pInt) then
@@ -514,11 +476,9 @@ subroutine CPFEM_general(mode, ffn, ffn1, dt, elFE, ip)
      enddo writeHomogInstances
      close (777)
 
-#if defined(Marc4DAMASK) || defined(Abaqus)
      call IO_write_jobRealFile(777,'convergeddcsdE',size(CPFEM_dcsdE))
      write (777,rec=1) CPFEM_dcsdE
      close (777)
-#endif
 
    endif
  endif                                                              ! results aging
@@ -529,22 +489,18 @@ subroutine CPFEM_general(mode, ffn, ffn1, dt, elFE, ip)
  !*   If no parallel execution is required, there is no need to collect FEM input
 
  if (.not. parallelExecution) then
-#if defined(Marc4DAMASK) || defined(Abaqus)
    temperature(material_homog(ip,elCP))%p(thermalMapping(material_homog(ip,elCP))%p(ip,elCP)) = &
      temperature_inp
-#endif
    materialpoint_F0(1:3,1:3,ip,elCP) = ffn
    materialpoint_F(1:3,1:3,ip,elCP) = ffn1
 
  elseif (iand(mode, CPFEM_COLLECT) /= 0_pInt) then
-#if defined(Marc4DAMASK) || defined(Abaqus)
    call random_number(rnd)
    if (rnd < 0.5_pReal) rnd = rnd - 1.0_pReal
    CPFEM_cs(1:6,ip,elCP) = rnd * CPFEM_odd_stress
    CPFEM_dcsde(1:6,1:6,ip,elCP) = CPFEM_odd_jacobian * math_identity2nd(6)
    temperature(material_homog(ip,elCP))%p(thermalMapping(material_homog(ip,elCP))%p(ip,elCP)) = &
      temperature_inp
-#endif
    materialpoint_F0(1:3,1:3,ip,elCP) = ffn
    materialpoint_F(1:3,1:3,ip,elCP) = ffn1
    CPFEM_calc_done = .false.
@@ -569,12 +525,10 @@ subroutine CPFEM_general(mode, ffn, ffn1, dt, elFE, ip)
        endif
        outdatedFFN1 = .true.
      endif
-#if defined(Marc4DAMASK) || defined(Abaqus)
      call random_number(rnd)
      if (rnd < 0.5_pReal) rnd = rnd - 1.0_pReal
      CPFEM_cs(1:6,ip,elCP) = rnd*CPFEM_odd_stress
      CPFEM_dcsde(1:6,1:6,ip,elCP) = CPFEM_odd_jacobian*math_identity2nd(6)
-#endif
 
    !*** deformation gradient is not outdated
 
@@ -607,7 +561,6 @@ subroutine CPFEM_general(mode, ffn, ffn1, dt, elFE, ip)
      endif
 
      !* map stress and stiffness (or return odd values if terminally ill)
-#if defined(Marc4DAMASK) || defined(Abaqus)
      terminalIllness: if ( terminallyIll ) then
 
        call random_number(rnd)
@@ -648,11 +601,8 @@ subroutine CPFEM_general(mode, ffn, ffn1, dt, elFE, ip)
        CPFEM_dcsde(1:6,1:6,ip,elCP) = math_Mandel3333to66(J_inverse * H_sym)
 
      endif terminalIllness
-#endif
-
    endif validCalculation
 
-#if defined(Marc4DAMASK) || defined(Abaqus)
    !* report stress and stiffness
    if ((iand(debug_level(debug_CPFEM), debug_levelExtensive) /= 0_pInt) &
         .and. ((debug_e == elCP .and. debug_i == ip) &
@@ -663,11 +613,9 @@ subroutine CPFEM_general(mode, ffn, ffn1, dt, elFE, ip)
          '<< CPFEM >> Jacobian/GPa at elFE ip ', elFE, ip, transpose(CPFEM_dcsdE(1:6,1:6,ip,elCP))*1.0e-9_pReal
        flush(6)
    endif
-#endif
 
  endif
 
-#if defined(Marc4DAMASK) || defined(Abaqus)
  !*** warn if stiffness close to zero
  if (all(abs(CPFEM_dcsdE(1:6,1:6,ip,elCP)) < 1e-10_pReal)) call IO_warning(601,elCP,ip)
 
@@ -696,7 +644,6 @@ subroutine CPFEM_general(mode, ffn, ffn1, dt, elFE, ip)
    debug_jacobianMinLocation = [elCP, ip]
    debug_jacobianMin = minval(jacobian3333)
  endif
-#endif
 
 end subroutine CPFEM_general
 

@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python2.7
 # -*- coding: UTF-8 no BOM -*-
 
 import os,sys,math
@@ -92,10 +92,10 @@ for name in filenames:
   newInfo['size'] = np.where(newInfo['size'] <= 0.0, info['size'],newInfo['size'])
 
   multiplicity = []
-  for j in xrange(3):
+  for j in range(3):
     multiplicity.append([])
     last = 0
-    for i in xrange(info['grid'][j]):
+    for i in range(info['grid'][j]):
       this = int((i+1)*float(newInfo['grid'][j])/info['grid'][j])
       multiplicity[j].append(this-last)
       last = this

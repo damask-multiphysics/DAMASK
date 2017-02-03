@@ -28,7 +28,7 @@ module numerics
    fixedSeed                  =  0_pInt, &                                                          !< fixed seeding for pseudo-random number generator, Default 0: use random seed
    worldrank                  =  0_pInt, &                                                          !< MPI worldrank (/=0 for MPI simulations only)
    worldsize                  =  0_pInt                                                             !< MPI worldsize (/=0 for MPI simulations only)
- integer, protected, public :: &
+ integer(4), protected, public :: &
    DAMASK_NumThreadsInt       =  0                                                                  !< value stored in environment variable DAMASK_NUM_THREADS, set to zero if no OpenMP directive
  integer(pInt), public :: &
    numerics_integrationMode   =  0_pInt                                                             !< integrationMode 1 = central solution; integrationMode 2 = perturbation, Default 0: undefined, is not read from file
@@ -64,7 +64,6 @@ module numerics
    charLength                 =  1.0_pReal, &                                                       !< characteristic length scale for gradient problems
    residualStiffness          =  1.0e-6_pReal                                                       !< non-zero residual damage   
  logical, protected, public :: &                                                   
-   analyticJaco               = .true., &                                                           !< use analytic Jacobian or perturbation, Default for Spectral solver .true.:
    usePingPong                = .true., & 
    numerics_timeSyncing       = .false.                                                             !< flag indicating if time synchronization in crystallite is used for nonlocal plasticity
 
@@ -111,7 +110,7 @@ module numerics
    fftw_plan_mode             = 'FFTW_PATIENT'                                                      !< reads the planing-rigor flag, see manual on www.fftw.org, Default FFTW_PATIENT: use patient planner flag
  character(len=64), protected, public :: & 
    spectral_solver            = 'basicpetsc'  , &                                                   !< spectral solution method 
-   spectral_derivative        = 'continuous'                                                        !< spectral filtering method
+   spectral_derivative        = 'continuous'                                                        !< spectral spatial derivative method
  character(len=1024), protected, public :: &
    petsc_defaultOptions       = '-mech_snes_type ngmres &
                                 &-damage_snes_type ngmres &
@@ -211,7 +210,6 @@ subroutine numerics_init
    IO_warning, &
    IO_timeStamp, &
    IO_EOF
-
 #if defined(Spectral) || defined(FEM)
 !$ use OMP_LIB, only: omp_set_num_threads                                                           ! Use the standard conforming module file for omp if using the spectral solver
  implicit none
@@ -236,19 +234,17 @@ subroutine numerics_init
  call MPI_Comm_rank(PETSC_COMM_WORLD,worldrank,ierr);CHKERRQ(ierr)
  call MPI_Comm_size(PETSC_COMM_WORLD,worldsize,ierr);CHKERRQ(ierr)
 #endif
- mainProcess: if (worldrank == 0) then
-   write(6,'(/,a)') ' <<<+-  numerics init  -+>>>'
-   write(6,'(a15,a)')   ' Current time: ',IO_timeStamp()
+ write(6,'(/,a)') ' <<<+-  numerics init  -+>>>'
+ write(6,'(a15,a)')   ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
- endif mainProcess
  
 !$ call GET_ENVIRONMENT_VARIABLE(NAME='DAMASK_NUM_THREADS',VALUE=DAMASK_NumThreadsString,STATUS=gotDAMASK_NUM_THREADS)   ! get environment variable DAMASK_NUM_THREADS...
 !$ if(gotDAMASK_NUM_THREADS /= 0) then                                                              ! could not get number of threads, set it to 1
 !$   call IO_warning(35_pInt,ext_msg='BEGIN:'//DAMASK_NumThreadsString//':END')
-!$   DAMASK_NumThreadsInt = 1
+!$   DAMASK_NumThreadsInt = 1_4
 !$ else
 !$   read(DAMASK_NumThreadsString,'(i6)') DAMASK_NumThreadsInt                                      ! read as integer
-!$   if (DAMASK_NumThreadsInt < 1) DAMASK_NumThreadsInt = 1                                         ! in case of string conversion fails, set it to one
+!$   if (DAMASK_NumThreadsInt < 1_4) DAMASK_NumThreadsInt = 1_4                                     ! in case of string conversion fails, set it to one
 !$ endif
 !$ call omp_set_num_threads(DAMASK_NumThreadsInt)                                                   ! set number of threads for parallel execution
 
@@ -317,8 +313,6 @@ subroutine numerics_init
          numerics_integrator(1) = IO_intValue(line,chunkPos,2_pInt)
        case ('integratorstiffness')
          numerics_integrator(2) = IO_intValue(line,chunkPos,2_pInt)
-       case ('analyticjaco')
-         analyticJaco = IO_intValue(line,chunkPos,2_pInt) > 0_pInt
        case ('usepingpong')
          usepingpong = IO_intValue(line,chunkPos,2_pInt) > 0_pInt
        case ('timesyncing')
@@ -489,14 +483,8 @@ subroutine numerics_init
    close(FILEUNIT)
 
  else fileExists
-#ifdef FEM
-   if (worldrank == 0) then
-#endif  
    write(6,'(a,/)') ' using standard values'
    flush(6)
-#ifdef FEM
-   endif
-#endif  
  endif fileExists
 
 #ifdef Spectral
@@ -519,128 +507,125 @@ subroutine numerics_init
 
 !--------------------------------------------------------------------------------------------------
 ! writing parameters to output
- mainProcess3: if (worldrank == 0) then
-   write(6,'(a24,1x,es8.1)')  ' relevantStrain:         ',relevantStrain
-   write(6,'(a24,1x,es8.1)')  ' defgradTolerance:       ',defgradTolerance
-   write(6,'(a24,1x,i8)')     ' iJacoStiffness:         ',iJacoStiffness
-   write(6,'(a24,1x,i8)')     ' iJacoLpresiduum:        ',iJacoLpresiduum
-   write(6,'(a24,1x,es8.1)')  ' pert_Fg:                ',pert_Fg
-   write(6,'(a24,1x,i8)')     ' pert_method:            ',pert_method
-   write(6,'(a24,1x,i8)')     ' nCryst:                 ',nCryst
-   write(6,'(a24,1x,es8.1)')  ' subStepMinCryst:        ',subStepMinCryst
-   write(6,'(a24,1x,es8.1)')  ' subStepSizeCryst:       ',subStepSizeCryst
-   write(6,'(a24,1x,es8.1)')  ' stepIncreaseCryst:      ',stepIncreaseCryst
-   write(6,'(a24,1x,i8)')     ' nState:                 ',nState
-   write(6,'(a24,1x,i8)')     ' nStress:                ',nStress
-   write(6,'(a24,1x,es8.1)')  ' rTol_crystalliteState:  ',rTol_crystalliteState
-   write(6,'(a24,1x,es8.1)')  ' rTol_crystalliteStress: ',rTol_crystalliteStress
-   write(6,'(a24,1x,es8.1)')  ' aTol_crystalliteStress: ',aTol_crystalliteStress
-   write(6,'(a24,2(1x,i8))')  ' integrator:             ',numerics_integrator
-   write(6,'(a24,1x,L8)')     ' timeSyncing:            ',numerics_timeSyncing
-   write(6,'(a24,1x,L8)')     ' analytic Jacobian:      ',analyticJaco
-   write(6,'(a24,1x,L8)')     ' use ping pong scheme:   ',usepingpong
-   write(6,'(a24,1x,es8.1,/)')' unitlength:             ',numerics_unitlength
+ write(6,'(a24,1x,es8.1)')  ' relevantStrain:         ',relevantStrain
+ write(6,'(a24,1x,es8.1)')  ' defgradTolerance:       ',defgradTolerance
+ write(6,'(a24,1x,i8)')     ' iJacoStiffness:         ',iJacoStiffness
+ write(6,'(a24,1x,i8)')     ' iJacoLpresiduum:        ',iJacoLpresiduum
+ write(6,'(a24,1x,es8.1)')  ' pert_Fg:                ',pert_Fg
+ write(6,'(a24,1x,i8)')     ' pert_method:            ',pert_method
+ write(6,'(a24,1x,i8)')     ' nCryst:                 ',nCryst
+ write(6,'(a24,1x,es8.1)')  ' subStepMinCryst:        ',subStepMinCryst
+ write(6,'(a24,1x,es8.1)')  ' subStepSizeCryst:       ',subStepSizeCryst
+ write(6,'(a24,1x,es8.1)')  ' stepIncreaseCryst:      ',stepIncreaseCryst
+ write(6,'(a24,1x,i8)')     ' nState:                 ',nState
+ write(6,'(a24,1x,i8)')     ' nStress:                ',nStress
+ write(6,'(a24,1x,es8.1)')  ' rTol_crystalliteState:  ',rTol_crystalliteState
+ write(6,'(a24,1x,es8.1)')  ' rTol_crystalliteStress: ',rTol_crystalliteStress
+ write(6,'(a24,1x,es8.1)')  ' aTol_crystalliteStress: ',aTol_crystalliteStress
+ write(6,'(a24,2(1x,i8))')  ' integrator:             ',numerics_integrator
+ write(6,'(a24,1x,L8)')     ' timeSyncing:            ',numerics_timeSyncing
+ write(6,'(a24,1x,L8)')     ' use ping pong scheme:   ',usepingpong
+ write(6,'(a24,1x,es8.1,/)')' unitlength:             ',numerics_unitlength
 
-   write(6,'(a24,1x,i8)')     ' nHomog:                 ',nHomog
-   write(6,'(a24,1x,es8.1)')  ' subStepMinHomog:        ',subStepMinHomog
-   write(6,'(a24,1x,es8.1)')  ' subStepSizeHomog:       ',subStepSizeHomog
-   write(6,'(a24,1x,es8.1)')  ' stepIncreaseHomog:      ',stepIncreaseHomog
-   write(6,'(a24,1x,i8,/)')   ' nMPstate:               ',nMPstate
+ write(6,'(a24,1x,i8)')     ' nHomog:                 ',nHomog
+ write(6,'(a24,1x,es8.1)')  ' subStepMinHomog:        ',subStepMinHomog
+ write(6,'(a24,1x,es8.1)')  ' subStepSizeHomog:       ',subStepSizeHomog
+ write(6,'(a24,1x,es8.1)')  ' stepIncreaseHomog:      ',stepIncreaseHomog
+ write(6,'(a24,1x,i8,/)')   ' nMPstate:               ',nMPstate
 
 !--------------------------------------------------------------------------------------------------
 ! RGC parameters
-   write(6,'(a24,1x,es8.1)')   ' aTol_RGC:               ',absTol_RGC
-   write(6,'(a24,1x,es8.1)')   ' rTol_RGC:               ',relTol_RGC
-   write(6,'(a24,1x,es8.1)')   ' aMax_RGC:               ',absMax_RGC
-   write(6,'(a24,1x,es8.1)')   ' rMax_RGC:               ',relMax_RGC
-   write(6,'(a24,1x,es8.1)')   ' perturbPenalty_RGC:     ',pPert_RGC
-   write(6,'(a24,1x,es8.1)')   ' relevantMismatch_RGC:   ',xSmoo_RGC
-   write(6,'(a24,1x,es8.1)')   ' viscosityrate_RGC:      ',viscPower_RGC
-   write(6,'(a24,1x,es8.1)')   ' viscositymodulus_RGC:   ',viscModus_RGC
-   write(6,'(a24,1x,es8.1)')   ' maxrelaxation_RGC:      ',maxdRelax_RGC
-   write(6,'(a24,1x,es8.1)')   ' maxVolDiscrepancy_RGC:  ',maxVolDiscr_RGC
-   write(6,'(a24,1x,es8.1)')   ' volDiscrepancyMod_RGC:  ',volDiscrMod_RGC
-   write(6,'(a24,1x,es8.1,/)') ' discrepancyPower_RGC:   ',volDiscrPow_RGC
+ write(6,'(a24,1x,es8.1)')   ' aTol_RGC:               ',absTol_RGC
+ write(6,'(a24,1x,es8.1)')   ' rTol_RGC:               ',relTol_RGC
+ write(6,'(a24,1x,es8.1)')   ' aMax_RGC:               ',absMax_RGC
+ write(6,'(a24,1x,es8.1)')   ' rMax_RGC:               ',relMax_RGC
+ write(6,'(a24,1x,es8.1)')   ' perturbPenalty_RGC:     ',pPert_RGC
+ write(6,'(a24,1x,es8.1)')   ' relevantMismatch_RGC:   ',xSmoo_RGC
+ write(6,'(a24,1x,es8.1)')   ' viscosityrate_RGC:      ',viscPower_RGC
+ write(6,'(a24,1x,es8.1)')   ' viscositymodulus_RGC:   ',viscModus_RGC
+ write(6,'(a24,1x,es8.1)')   ' maxrelaxation_RGC:      ',maxdRelax_RGC
+ write(6,'(a24,1x,es8.1)')   ' maxVolDiscrepancy_RGC:  ',maxVolDiscr_RGC
+ write(6,'(a24,1x,es8.1)')   ' volDiscrepancyMod_RGC:  ',volDiscrMod_RGC
+ write(6,'(a24,1x,es8.1,/)') ' discrepancyPower_RGC:   ',volDiscrPow_RGC
 
 !--------------------------------------------------------------------------------------------------
 ! Random seeding parameter
-   write(6,'(a24,1x,i16,/)')    ' fixed_seed:            ',fixedSeed
-   if (fixedSeed <= 0_pInt) &
-     write(6,'(a,/)') ' No fixed Seed: Random is random!'
+ write(6,'(a24,1x,i16,/)')    ' fixed_seed:            ',fixedSeed
+ if (fixedSeed <= 0_pInt) &
+   write(6,'(a,/)') ' No fixed Seed: Random is random!'
 
 !--------------------------------------------------------------------------------------------------
 ! gradient parameter
-   write(6,'(a24,1x,es8.1)')   ' charLength:             ',charLength
-   write(6,'(a24,1x,es8.1)')   ' residualStiffness:      ',residualStiffness
+ write(6,'(a24,1x,es8.1)')   ' charLength:             ',charLength
+ write(6,'(a24,1x,es8.1)')   ' residualStiffness:      ',residualStiffness
 
 !--------------------------------------------------------------------------------------------------
 ! openMP parameter
-  !$  write(6,'(a24,1x,i8,/)')   ' number of threads:      ',DAMASK_NumThreadsInt
+ !$  write(6,'(a24,1x,i8,/)')   ' number of threads:      ',DAMASK_NumThreadsInt
 
 !--------------------------------------------------------------------------------------------------
 ! field parameters
-   write(6,'(a24,1x,i8)')      ' itmax:                  ',itmax
-   write(6,'(a24,1x,i8)')      ' itmin:                  ',itmin
-   write(6,'(a24,1x,i8)')      ' maxCutBack:             ',maxCutBack
-   write(6,'(a24,1x,i8)')      ' maxStaggeredIter:       ',stagItMax
-   write(6,'(a24,1x,i8)')      ' vacancyPolyOrder:       ',vacancyPolyOrder
-   write(6,'(a24,1x,i8)')      ' hydrogenPolyOrder:      ',hydrogenPolyOrder
-   write(6,'(a24,1x,es8.1)')   ' err_struct_tolAbs:      ',err_struct_tolAbs
-   write(6,'(a24,1x,es8.1)')   ' err_struct_tolRel:      ',err_struct_tolRel
-   write(6,'(a24,1x,es8.1)')   ' err_thermal_tolabs:     ',err_thermal_tolabs
-   write(6,'(a24,1x,es8.1)')   ' err_thermal_tolrel:     ',err_thermal_tolrel
-   write(6,'(a24,1x,es8.1)')   ' err_damage_tolabs:      ',err_damage_tolabs
-   write(6,'(a24,1x,es8.1)')   ' err_damage_tolrel:      ',err_damage_tolrel
-   write(6,'(a24,1x,es8.1)')   ' err_vacancyflux_tolabs: ',err_vacancyflux_tolabs
-   write(6,'(a24,1x,es8.1)')   ' err_vacancyflux_tolrel: ',err_vacancyflux_tolrel
-   write(6,'(a24,1x,es8.1)')   ' err_porosity_tolabs:    ',err_porosity_tolabs
-   write(6,'(a24,1x,es8.1)')   ' err_porosity_tolrel:    ',err_porosity_tolrel
-   write(6,'(a24,1x,es8.1)')   ' err_hydrogenflux_tolabs:',err_hydrogenflux_tolabs
-   write(6,'(a24,1x,es8.1)')   ' err_hydrogenflux_tolrel:',err_hydrogenflux_tolrel
-   write(6,'(a24,1x,es8.1)')   ' vacancyBoundPenalty:    ',vacancyBoundPenalty
-   write(6,'(a24,1x,es8.1)')   ' hydrogenBoundPenalty:   ',hydrogenBoundPenalty
+ write(6,'(a24,1x,i8)')      ' itmax:                  ',itmax
+ write(6,'(a24,1x,i8)')      ' itmin:                  ',itmin
+ write(6,'(a24,1x,i8)')      ' maxCutBack:             ',maxCutBack
+ write(6,'(a24,1x,i8)')      ' maxStaggeredIter:       ',stagItMax
+ write(6,'(a24,1x,i8)')      ' vacancyPolyOrder:       ',vacancyPolyOrder
+ write(6,'(a24,1x,i8)')      ' hydrogenPolyOrder:      ',hydrogenPolyOrder
+ write(6,'(a24,1x,es8.1)')   ' err_struct_tolAbs:      ',err_struct_tolAbs
+ write(6,'(a24,1x,es8.1)')   ' err_struct_tolRel:      ',err_struct_tolRel
+ write(6,'(a24,1x,es8.1)')   ' err_thermal_tolabs:     ',err_thermal_tolabs
+ write(6,'(a24,1x,es8.1)')   ' err_thermal_tolrel:     ',err_thermal_tolrel
+ write(6,'(a24,1x,es8.1)')   ' err_damage_tolabs:      ',err_damage_tolabs
+ write(6,'(a24,1x,es8.1)')   ' err_damage_tolrel:      ',err_damage_tolrel
+ write(6,'(a24,1x,es8.1)')   ' err_vacancyflux_tolabs: ',err_vacancyflux_tolabs
+ write(6,'(a24,1x,es8.1)')   ' err_vacancyflux_tolrel: ',err_vacancyflux_tolrel
+ write(6,'(a24,1x,es8.1)')   ' err_porosity_tolabs:    ',err_porosity_tolabs
+ write(6,'(a24,1x,es8.1)')   ' err_porosity_tolrel:    ',err_porosity_tolrel
+ write(6,'(a24,1x,es8.1)')   ' err_hydrogenflux_tolabs:',err_hydrogenflux_tolabs
+ write(6,'(a24,1x,es8.1)')   ' err_hydrogenflux_tolrel:',err_hydrogenflux_tolrel
+ write(6,'(a24,1x,es8.1)')   ' vacancyBoundPenalty:    ',vacancyBoundPenalty
+ write(6,'(a24,1x,es8.1)')   ' hydrogenBoundPenalty:   ',hydrogenBoundPenalty
 
 !--------------------------------------------------------------------------------------------------
 ! spectral parameters
 #ifdef Spectral
-   write(6,'(a24,1x,i8)')      ' continueCalculation:    ',continueCalculation
-   write(6,'(a24,1x,L8)')      ' memory_efficient:       ',memory_efficient
-   write(6,'(a24,1x,i8)')      ' divergence_correction:  ',divergence_correction
-   write(6,'(a24,1x,a)')       ' spectral_derivative:    ',trim(spectral_derivative)
-   if(fftw_timelimit<0.0_pReal) then
-     write(6,'(a24,1x,L8)')    ' fftw_timelimit:         ',.false.
-   else    
-     write(6,'(a24,1x,es8.1)') ' fftw_timelimit:         ',fftw_timelimit
-   endif
-   write(6,'(a24,1x,a)')       ' fftw_plan_mode:         ',trim(fftw_plan_mode)
-   write(6,'(a24,1x,i8)')      ' fftw_planner_flag:      ',fftw_planner_flag
-   write(6,'(a24,1x,L8,/)')    ' update_gamma:           ',update_gamma
-   write(6,'(a24,1x,es8.1)')   ' err_stress_tolAbs:      ',err_stress_tolAbs
-   write(6,'(a24,1x,es8.1)')   ' err_stress_tolRel:      ',err_stress_tolRel
-   write(6,'(a24,1x,es8.1)')   ' err_div_tolAbs:         ',err_div_tolAbs
-   write(6,'(a24,1x,es8.1)')   ' err_div_tolRel:         ',err_div_tolRel
-   write(6,'(a24,1x,es8.1)')   ' err_curl_tolAbs:        ',err_curl_tolAbs
-   write(6,'(a24,1x,es8.1)')   ' err_curl_tolRel:        ',err_curl_tolRel
-   write(6,'(a24,1x,es8.1)')   ' polarAlpha:             ',polarAlpha
-   write(6,'(a24,1x,es8.1)')   ' polarBeta:              ',polarBeta
-   write(6,'(a24,1x,a)')       ' spectral solver:        ',trim(spectral_solver)
-   write(6,'(a24,1x,a)')       ' PETSc_options:          ',trim(petsc_defaultOptions)//' '//trim(petsc_options)
+ write(6,'(a24,1x,i8)')      ' continueCalculation:    ',continueCalculation
+ write(6,'(a24,1x,L8)')      ' memory_efficient:       ',memory_efficient
+ write(6,'(a24,1x,i8)')      ' divergence_correction:  ',divergence_correction
+ write(6,'(a24,1x,a)')       ' spectral_derivative:    ',trim(spectral_derivative)
+ if(fftw_timelimit<0.0_pReal) then
+   write(6,'(a24,1x,L8)')    ' fftw_timelimit:         ',.false.
+ else    
+   write(6,'(a24,1x,es8.1)') ' fftw_timelimit:         ',fftw_timelimit
+ endif
+ write(6,'(a24,1x,a)')       ' fftw_plan_mode:         ',trim(fftw_plan_mode)
+ write(6,'(a24,1x,i8)')      ' fftw_planner_flag:      ',fftw_planner_flag
+ write(6,'(a24,1x,L8,/)')    ' update_gamma:           ',update_gamma
+ write(6,'(a24,1x,es8.1)')   ' err_stress_tolAbs:      ',err_stress_tolAbs
+ write(6,'(a24,1x,es8.1)')   ' err_stress_tolRel:      ',err_stress_tolRel
+ write(6,'(a24,1x,es8.1)')   ' err_div_tolAbs:         ',err_div_tolAbs
+ write(6,'(a24,1x,es8.1)')   ' err_div_tolRel:         ',err_div_tolRel
+ write(6,'(a24,1x,es8.1)')   ' err_curl_tolAbs:        ',err_curl_tolAbs
+ write(6,'(a24,1x,es8.1)')   ' err_curl_tolRel:        ',err_curl_tolRel
+ write(6,'(a24,1x,es8.1)')   ' polarAlpha:             ',polarAlpha
+ write(6,'(a24,1x,es8.1)')   ' polarBeta:              ',polarBeta
+ write(6,'(a24,1x,a)')       ' spectral solver:        ',trim(spectral_solver)
+ write(6,'(a24,1x,a)')       ' PETSc_options:          ',trim(petsc_defaultOptions)//' '//trim(petsc_options)
 #endif
 
 !--------------------------------------------------------------------------------------------------
 ! spectral parameters
 #ifdef FEM
-   write(6,'(a24,1x,i8)')      ' integrationOrder:       ',integrationOrder
-   write(6,'(a24,1x,i8)')      ' structOrder:            ',structOrder
-   write(6,'(a24,1x,i8)')      ' thermalOrder:           ',thermalOrder
-   write(6,'(a24,1x,i8)')      ' damageOrder:            ',damageOrder
-   write(6,'(a24,1x,i8)')      ' vacancyfluxOrder:       ',vacancyfluxOrder
-   write(6,'(a24,1x,i8)')      ' porosityOrder:          ',porosityOrder 
-   write(6,'(a24,1x,i8)')      ' hydrogenfluxOrder:      ',hydrogenfluxOrder
-   write(6,'(a24,1x,a)')       ' PETSc_options:          ',trim(petsc_defaultOptions)//' '//trim(petsc_options)
-   write(6,'(a24,1x,L8)')      ' B-Bar stabilisation:    ',BBarStabilisation
+ write(6,'(a24,1x,i8)')      ' integrationOrder:       ',integrationOrder
+ write(6,'(a24,1x,i8)')      ' structOrder:            ',structOrder
+ write(6,'(a24,1x,i8)')      ' thermalOrder:           ',thermalOrder
+ write(6,'(a24,1x,i8)')      ' damageOrder:            ',damageOrder
+ write(6,'(a24,1x,i8)')      ' vacancyfluxOrder:       ',vacancyfluxOrder
+ write(6,'(a24,1x,i8)')      ' porosityOrder:          ',porosityOrder 
+ write(6,'(a24,1x,i8)')      ' hydrogenfluxOrder:      ',hydrogenfluxOrder
+ write(6,'(a24,1x,a)')       ' PETSc_options:          ',trim(petsc_defaultOptions)//' '//trim(petsc_options)
+ write(6,'(a24,1x,L8)')      ' B-Bar stabilisation:    ',BBarStabilisation
 #endif
- endif mainProcess3
  
 
 !--------------------------------------------------------------------------------------------------

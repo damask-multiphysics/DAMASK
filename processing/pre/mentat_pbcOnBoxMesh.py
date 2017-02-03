@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python2.7
 # -*- coding: UTF-8 no BOM -*-
 
 import sys,os
@@ -9,7 +9,7 @@ import damask
 scriptName = os.path.splitext(os.path.basename(__file__))[0]
 scriptID   = ' '.join([scriptName,damask.version])
 
-sys.path.append(damask.solver.Marc().libraryPath('../../'))
+sys.path.append(damask.solver.Marc().libraryPath())
 
 active=[True,True,True] # directions on which to add PBC
 def outMentat(cmd,locals):
@@ -58,14 +58,14 @@ def servoLink():
       }
   Nnodes = py_mentat.py_get_int("nnodes()")
   NodeCoords = np.zeros((Nnodes,3),dtype='d')
-  for node in xrange(Nnodes):
+  for node in range(Nnodes):
     NodeCoords[node,0] = py_mentat.py_get_float("node_x(%i)"%(node+1))
     NodeCoords[node,1] = py_mentat.py_get_float("node_y(%i)"%(node+1))
     NodeCoords[node,2] = py_mentat.py_get_float("node_z(%i)"%(node+1))
-  box['min'] = NodeCoords.min(axis=0)                   # find the bounding box
+  box['min'] = NodeCoords.min(axis=0)                                                               # find the bounding box
   box['max'] = NodeCoords.max(axis=0)
   box['delta'] = box['max']-box['min']
-  for coord in xrange(3):                               # calc the dimension of the bounding box
+  for coord in range(3):                                                                            # calc the dimension of the bounding box
     if box['delta'][coord] != 0.0:
       for extremum in ['min','max']:
         rounded = round(box[extremum][coord]*1e+15/box['delta'][coord]) * \
@@ -76,12 +76,12 @@ def servoLink():
 
 #-------------------------------------------------------------------------------------------------
 # loop over all nodes
-  for node in xrange(Nnodes):
+  for node in range(Nnodes):
     key = {}
     maxFlag = [False, False, False]
     Nmax = 0
     Nmin = 0
-    for coord in xrange(3):                             # for each direction
+    for coord in range(3):                                                                          # for each direction
       if box['delta'][coord] != 0.0:
         rounded = round(NodeCoords[node,coord]*1e+15/box['delta'][coord]) * \
                                                1e-15*box['delta'][coord]                            # rounding to 1e-15 of dimension
@@ -102,18 +102,18 @@ def servoLink():
       if key['z'] not in baseNode[key['x']][key['y']].keys():
         baseNode[key['x']][key['y']][key['z']] = 0
         
-      baseNode[key['x']][key['y']][key['z']] = node+1   # remember the base node id
+      baseNode[key['x']][key['y']][key['z']] = node+1                                               # remember the base node id
 
-    if Nmax > 0 and Nmax >= Nmin:                   # node is on at least as many front than back faces
-      if any([maxFlag[i] and active[i] for i in xrange(3)]):
-        linkNodes.append({'id': node+1,'coord': NodeCoords[node], 'faceMember': [maxFlag[i] and active[i] for i in xrange(3)]})
+    if Nmax > 0 and Nmax >= Nmin:                                                                   # node is on at least as many front than back faces
+      if any([maxFlag[i] and active[i] for i in range(3)]):
+        linkNodes.append({'id': node+1,'coord': NodeCoords[node], 'faceMember': [maxFlag[i] and active[i] for i in range(3)]})
   
   baseCorner = baseNode["%.8e"%box['min'][0]]["%.8e"%box['min'][1]]["%.8e"%box['min'][2]]           # detect ultimate base node
   
   
   for node in linkNodes:                                                                            # loop over all linked nodes
     linkCoord = [node['coord']]                                                                     # start list of control node coords with my coords
-    for dir in xrange(3):                                                                           # check for each direction
+    for dir in range(3):                                                                            # check for each direction
       if node['faceMember'][dir]:                                                                   # me on this front face
         linkCoord[0][dir] = box['min'][dir]                                                         # project me onto rear face along dir
         linkCoord.append(np.array(box['min']))                                                      # append base corner
