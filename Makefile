@@ -11,25 +11,19 @@ build/spectral: build
 	@mkdir build/spectral
 	@(cd build/spectral; cmake -Wno-dev -DCMAKE_BUILD_TYPE=RELEASE -DDAMASK_SOLVER=SPECTRAL ../..;)
 
-build: bin
-	@mkdir build
-
-bin:
-	@mkdir bin
-
 FEM: build/FEM
 	@(cd build/FEM; make --no-print-directory -ws all install;)
 
 build/FEM: build
 	@mkdir build
 	@(cd build/FEM; cmake -Wno-dev -DCMAKE_BUILD_TYPE=RELEASE -DDAMASK_SOLVER=FEM ../..;)
-.PHONY: spectral
-spectral:
-	$(MAKE) DAMASK_spectral.exe -C code
 
-.PHONY: FEM
-FEM:
-	$(MAKE) DAMASK_FEM.exe -C code
+build: bin
+	@mkdir build
+
+bin:
+	@mkdir bin
+
 
 .PHONY: marc
 marc:
