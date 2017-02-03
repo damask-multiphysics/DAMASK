@@ -1,5 +1,8 @@
-# SOME FILES REQUIRE SPECIAL FLAGS
+# special flags for some files
 if (${CMAKE_Fortran_COMPILER_ID} STREQUAL "GNU")
+
+    SET_SOURCE_FILES_PROPERTIES( "prec.f90" PROPERTIES
+                                    COMPILE_FLAGS "-fno-range-check -fall-intrinsics -fno-fast-math")
     # fno-range-check:  Disable range checking on results of simplification of constant expressions during compilation
     #      -->   allows the definition of DAMASK_NaN
     #-fall-intrinsics:  all intrinsic procedures (including the GNU-specific extensions) are accepted. -Wintrinsics-std will be ignored
@@ -7,13 +10,14 @@ if (${CMAKE_Fortran_COMPILER_ID} STREQUAL "GNU")
     #      -->   allows the use of 'isnan'
     #-fno-fast-math:
     #      -->   otherwise, when setting -ffast-math, isnan always evaluates to false (I would call it a bug)
-    SET_SOURCE_FILES_PROPERTIES( "prec.f90" PROPERTIES
-                                    COMPILE_FLAGS "-fno-range-check -fall-intrinsics -fno-fast-math")
-    # long lines for interaction matrix
+
     SET_SOURCE_FILES_PROPERTIES( "lattice.f90" PROPERTIES
                                 COMPILE_FLAGS "-ffree-line-length-240")
+    # long lines for interaction matrix
 endif()
+
 set( CMAKE_VERBOSE_MAKEFILE on )
+
 # The dependency detection in CMake is not functioning for Fortran,
 # hence we declare the dependencies from top to bottom in the following
 add_library(C_ROUTINES OBJECT "C_routines.c")
@@ -30,7 +34,7 @@ list(APPEND OBJECTFILES $<TARGET_OBJECTS:PREC>)
 if ("${PROJECT_NAME}" STREQUAL "DAMASK_spectral")
       add_library(DAMASK_INTERFACE OBJECT "spectral_interface.f90")
 elseif ("${PROJECT_NAME}" STREQUAL "DAMASK_FEM")
-      add_library(DAMASK_INTERFACE OBJECT "DAMASK_FEM_interface.f90")
+      add_library(DAMASK_INTERFACE OBJECT "FEM_interface.f90")
 endif()
 add_dependencies(DAMASK_INTERFACE PREC)
 list(APPEND OBJECTFILES $<TARGET_OBJECTS:DAMASK_INTERFACE>)
@@ -51,11 +55,8 @@ add_library(FEsolving OBJECT "FEsolving.f90")
 add_dependencies(FEsolving DEBUG)
 list(APPEND OBJECTFILES $<TARGET_OBJECTS:FEsolving>)
 
-add_library(EXTERNAL_LIBS OBJECT "libs.f90")
-list(APPEND OBJECTFILES $<TARGET_OBJECTS:EXTERNAL_LIBS>)
-
 add_library(DAMASK_MATH OBJECT "math.f90")
-add_dependencies(DAMASK_MATH FEsolving EXTERNAL_LIBS)
+add_dependencies(DAMASK_MATH FEsolving)
 list(APPEND OBJECTFILES $<TARGET_OBJECTS:DAMASK_MATH>)
 
 # SPECTRAL solver and FEM solver use different mesh files

@@ -1,23 +1,22 @@
 ########################################################################################
-# CMAKE for build the Material subroutine for BVP solution
-########################################################################################
+# Compiler options for building DAMASK
 cmake_minimum_required (VERSION 2.8.8 FATAL_ERROR)
 
 #---------------------------------------------------------------------------------------
 # Find PETSc from system environment
 set(PETSC_DIR $ENV{PETSC_DIR})
 if ("${PETSC_DIR}" STREQUAL "")
-  message (FATAL_ERROR "PETSC_DIR is not defined in system!")
+  message (FATAL_ERROR "PETSC_DIR is not defined")
 endif ("${PETSC_DIR}" STREQUAL "")
 
-# BRUTAL FORCE TO FIND THE VARIABLES DEFINED IN PETSC
+# Use existing variables from PETSc
 # https://github.com/jedbrown/cmake-modules/blob/master/FindPETSc.cmake
 exec_program(mktemp ARGS -d OUTPUT_VARIABLE PETSC_TEMP)
 
 set(petsc_conf_variables "${PETSC_DIR}/lib/petsc/conf/variables")
 set(petsc_conf_rules     "${PETSC_DIR}/lib/petsc/conf/rules"    )
 # Generate a temporary makefile to probe the PETSc configuration
-# This file will be deleted once the setting from PETSc is parsed
+# This file will be deleted once the settings from PETSc are parsed
 # into CMake
 set (petsc_config_makefile "${PETSC_TEMP}/Makefile.petsc")
 
@@ -47,8 +46,6 @@ linker:
 
 # CMake will execute each target in the ${petsc_config_makefile}
 # to acquire corresponding PETSc Variables.
-# The include path and linking libraries in PETSc usually contains
-# duplicated entries, which is cleaned up later using CMake list.
 find_program (MAKE_EXECUTABLE NAMES make gmake)
 # Find the PETSc includes directory settings
 execute_process(COMMAND ${MAKE_EXECUTABLE} --no-print-directory -f ${petsc_config_makefile} "includes"
@@ -79,7 +76,7 @@ execute_process(COMMAND ${MAKE_EXECUTABLE} --no-print-directory -f ${petsc_confi
 # Remove temporary makefile, no need to keep it anymore.
 file (REMOVE_RECURSE ${PETSC_TEMP})
 
-# REMOVE DUPLICATE FLAGS FOR COMPILER AND LINKING
+# Remove duplicate compiler and linker flags
 string( REGEX MATCHALL "-I([^\" ]+)" TMP_LIST "${petsc_includes}")
 list(REMOVE_DUPLICATES TMP_LIST)
 foreach (dir ${TMP_LIST})
@@ -91,12 +88,12 @@ foreach (exlib ${TMP_LIST})
     set(PETSC_EXTERNAL_LIB "${PETSC_EXTERNAL_LIB} ${exlib}")
 endforeach(exlib)
 
-message("***Found PETSC_DIR:\n${PETSC_DIR}\n"                  )
-message("***Found PETSC_INCLUDES:\n${PETSC_INCLUDES}\n"        )
-message("***Found PETSC_EXTERNAL_LIB:\n${PETSC_EXTERNAL_LIB}\n")
-message("***Found PETSC_LINKER:\n${PETSC_LINKER}\n"            )
-message("***Found MPI FORTRAN COMPILER:\n${PETSC_MPIFC}\n"     )
-message("***Found MPI C COMPILER:\n${PETSC_MPICC}\n"           )
+message("Found PETSC_DIR:\n${PETSC_DIR}\n"                  )
+message("Found PETSC_INCLUDES:\n${PETSC_INCLUDES}\n"        )
+message("Found PETSC_EXTERNAL_LIB:\n${PETSC_EXTERNAL_LIB}\n")
+message("Found PETSC_LINKER:\n${PETSC_LINKER}\n"            )
+message("Found MPI Fortran Compiler:\n${PETSC_MPIFC}\n"     )
+message("Found MPI C Compiler:\n${PETSC_MPICC}\n"           )
 
 #---------------------------------------------------------------------------------------
 # Now start to care about DAMASK
@@ -105,11 +102,11 @@ message("***Found MPI C COMPILER:\n${PETSC_MPICC}\n"           )
 if ("${DAMASK_SOLVER}" STREQUAL "SPECTRAL")
     project(DAMASK_spectral Fortran C)
     add_definitions(-DSpectral)
-    message("***Configuring Spectral Solver\n")
+    message("Configuring Spectral Solver\n")
 elseif ("${DAMASK_SOLVER}" STREQUAL "FEM")
     project(DAMASK_FEM Fortran C)
     add_definitions(-DFEM)
-    message("***Configuring FEM Solver\n")
+    message("Configuring FEM Solver\n")
 endif()
 
 # set compiler and linker commands (need to be done after defining the project)
@@ -123,15 +120,32 @@ set(CMAKE_LINKER           "${PETSC_LINKER}")
 option(OPENMP             "Use OpenMP libaries for DAMASK"                              ON   )
 option(OPTIMIZATION       "DAMASK optimization level [OFF,DEFENSIVE,AGGRESSIVE]" "DEFENSIVE" )
 
-# Setting installation prefix
-if (DEFINED DAMASK_INSTALL)
-    set (CMAKE_INSTALL_PREFIX "${DAMASK_INSTALL}")
-else(DEFINED DAMASK_INSTALL)
-    set (CMAKE_INSTALL_PREFIX "${PROJECT_SOURCE_DIR}/bin")
-endif(DEFINED DAMASK_INSTALL)
-message("\n***The binary will be installed at\n${CMAKE_INSTALL_PREFIX}\n")
+if("${CMAKE_BUILD_TYPE}" STREQUAL "DEBUG")
+    set (OPENMP "OFF")
+    set (OPTIMIZATION "OFF")
+endif("${CMAKE_BUILD_TYPE}" STREQUAL "DEBUG")
 
-# Find DAMASK version (DAMASK_V) in DAMASK_ROOT
+# Parse DAMASK_BIN from CONFIG file
+file(READ "CONFIG" CONFIGFILE)
+STRING(REGEX REPLACE ";"  "\\\\;" CONFIGFILE "${CONFIGFILE}")
+STRING(REGEX REPLACE "\n" ";"     CONFIGFILE "${CONFIGFILE}")
+FOREACH(item ${CONFIGFILE})
+  STRING(REGEX MATCH ".+DAMASK_BIN.+" item ${item})
+    IF(item)
+      message("${item}")
+      string(REGEX REPLACE "set" "" item "${item}")
+      message("${item}")
+      string(REGEX REPLACE "="  " " item "${item}")
+      message("${item}")
+      string(REGEX REPLACE "\\\${DAMASK_ROOT}" "${CMAKE_CURRENT_SOURCE_DIR}" item "${item}")
+      message("${item}")
+      string(REPLACE "DAMASK_BIN" ";" STRING_LIST ${item})
+      list(GET STRING_LIST 1 item)
+      string(STRIP "${item}" CMAKE_INSTALL_PREFIX)
+    ENDIF(item)
+ENDFOREACH(item ${CONFIGFILE})
+
+# Parse DAMASK version from VERSION file
 find_program (CAT_EXECUTABLE NAMES cat)
 execute_process(COMMAND ${CAT_EXECUTABLE} ${PROJECT_SOURCE_DIR}/VERSION
                 RESULT_VARIABLE DAMASK_VERSION_RETURN
@@ -153,7 +167,7 @@ set (DAMASK_INCLUDE_FLAGS "${DAMASK_INCLUDE_FLAGS} -I${PROJECT_SOURCE_DIR}/lib")
 if(${CMAKE_Fortran_COMPILER_ID} STREQUAL "Intel")
 
   if (OPENMP)
-    set (OPENMP_FLAGS "-openmp -openmp-report0 -parallel")
+    set (OPENMP_FLAGS "-qopenmp -parallel")
   endif(OPENMP)
 
   if ("${OPTIMIZATION}" STREQUAL "OFF")
@@ -161,69 +175,104 @@ if(${CMAKE_Fortran_COMPILER_ID} STREQUAL "Intel")
   elseif("${OPTIMIZATION}" STREQUAL "DEFENSIVE")
       set (OPTIMIZATION_FLAGS    "-O2")
   elseif ("${OPTIMIZATION}" STREQUAL "AGGRESSIVE")
-      set (OPTIMIZATION_FLAGS    "-ipo -O3 -no-prec-div -fp-model fast=2 -xHost"  )  #-fast = -ipo, -O3, -no-prec-div, -static, -fp-model fast=2, and -xHost"
+      set (OPTIMIZATION_FLAGS    "-ipo -O3 -no-prec-div -fp-model fast=2 -xHost"  )  
+      # -fast = -ipo, -O3, -no-prec-div, -static, -fp-model fast=2, and -xHost"
   endif()
 
   set (STANDARD_CHECK "-stand f08 -standard-semantics")
-  set (LINKER_FLAGS   "-shared-intel")
+  set (LINKER_FLAGS   "${LINKER_FLAGS} -shared-intel")
+  # Link against shared Intel libraries instead of static ones
 
 #------------------------------------------------------------------------------------------------
-# COMPILE SWITCHES
-#  -fimplicit-none:          assume "implicit-none" even if not present in source
-#     stderrors:               warnings about Fortran standard violations are changed to errors (STANDARD_CHECK)
+# Fine tuning compilation options
+  set (COMPILE_FLAGS "${COMPILE_FLAGS} -fpp")
+  # preprocessor
+  set (COMPILE_FLAGS "${COMPILE_FLAGS} -ftz")
+  # flush unterflow to zero, automatically set if O<0,1,2,3> >0
+  set (COMPILE_FLAGS "${COMPILE_FLAGS} -assume")
+  # assume 
+  set (COMPILE_FLAGS "${COMPILE_FLAGS}byterecl")
+  #   record length is given in bytes (also set by -standard-semantics)
+  set (COMPILE_FLAGS "${COMPILE_FLAGS},fpe_summary")  
+  #   print list of floating point exceptions occured during execution
+  set (COMPILE_FLAGS "${COMPILE_FLAGS} -diag-disable")
+  # disables warnings, where
+  set (COMPILE_FLAGS "${COMPILE_FLAGS}5268")
+  #   the text exceeds right hand column allowed on the line (we have only comments there)
+  set (COMPILE_FLAGS "${COMPILE_FLAGS} -warn")
+  # enables warnings, where
+  set (COMPILE_FLAGS "${COMPILE_FLAGS}declarations")
+  #   any undeclared names (alternative name: -implicitnone)
+  set (COMPILE_FLAGS "${COMPILE_FLAGS},general")
+  #   warning messages and informational messages are issued by the compiler
+  set (COMPILE_FLAGS "${COMPILE_FLAGS},usage")
+  #   questionable programming practices
+  set (COMPILE_FLAGS "${COMPILE_FLAGS},interfaces")
+  #   checks the interfaces of all SUBROUTINEs called and FUNCTIONs invoked in your compilation against an external set of interface blocks
+  set (COMPILE_FLAGS "${COMPILE_FLAGS},ignore_loc")
+  #   %LOC is stripped from an actual argument
+  set (COMPILE_FLAGS "${COMPILE_FLAGS},alignments")
+  #   data that is not naturally aligned
+  set (COMPILE_FLAGS "${COMPILE_FLAGS},unused")
+  #   declared variables that are never used
 
-  set (COMPILE_FLAGS "${COMPILE_FLAGS} -fpp")          #  preprocessor
-  set (COMPILE_FLAGS "${COMPILE_FLAGS} -ftz")          # flush unterflow to zero, automatically set if O<0,1,2,3> >0
-  set (COMPILE_FLAGS "${COMPILE_FLAGS} -assume")       #  assume 
-  set (COMPILE_FLAGS "${COMPILE_FLAGS} byterecl,")     #  record length is given in bytes (also set by -standard-semantics)
-  set (COMPILE_FLAGS "${COMPILE_FLAGS} ,fpe_summary")  #  print list of floating point exceptions occured during execution
-  set (COMPILE_FLAGS "${COMPILE_FLAGS} -diag-disable") #  disables warnings, where
-  set (COMPILE_FLAGS "${COMPILE_FLAGS} 5268")          # the text exceeds right hand column allowed on the line (we have only comments there)
-  set (COMPILE_FLAGS "${COMPILE_FLAGS} -warn")         #  enables warnings, where
-  set (COMPILE_FLAGS "${COMPILE_FLAGS} declarations")  # any undeclared names (alternative name: -implicitnone)
-  set (COMPILE_FLAGS "${COMPILE_FLAGS} ,general")      #  warning messages and informational messages are issued by the compiler
-  set (COMPILE_FLAGS "${COMPILE_FLAGS} ,usage")        #  questionable programming practices
-  set (COMPILE_FLAGS "${COMPILE_FLAGS} ,interfaces")   #  checks the interfaces of all SUBROUTINEs called and FUNCTIONs invoked in your compilation against an external set of interface blocks
-  set (COMPILE_FLAGS "${COMPILE_FLAGS} ,ignore_loc")   # %LOC is stripped from an actual argument
-  set (COMPILE_FLAGS "${COMPILE_FLAGS} ,alignments")   # data that is not naturally aligned
-  set (COMPILE_FLAGS "${COMPILE_FLAGS} ,unused")       #  declared variables that are never used
-# MORE OPTIONS FOR DEBUGGING DURING COMPILATION
-#  -warn:                    enables warnings, where
-#     truncated_source:        Determines whether warnings occur when source exceeds the maximum column width in fixed-format files. (too many warnings because we have comments beyond character 132)
-#     uncalled:                Determines whether warnings occur when a statement function is never called
-#     all:
-#  -name as_is: case sensitive Fortran!
+  # Additional options
+  #  -warn:                    enables warnings, where
+  #     truncated_source:        Determines whether warnings occur when source exceeds the maximum column width in fixed-format files.
+  #                               (too many warnings because we have comments beyond character 132)
+  #     uncalled:                Determines whether warnings occur when a statement function is never called
+  #     all:
+  #  -name as_is: case sensitive Fortran!
 
 #------------------------------------------------------------------------------------------------
-# COMPILE SWITCHES FOR RUNTIME DEBUGGING
-  set (DEBUG_FLAGS "${DEBUG_FLAGS} -g"                                                     )# Generate symbolic debugging information in the object file
-  set (DEBUG_FLAGS "${DEBUG_FLAGS} -traceback"                                             )# Generate extra information in the object file to provide source file traceback information when a severe error occurs at run time.
-  set (DEBUG_FLAGS "${DEBUG_FLAGS} -gen-interfaces"                                        )# Generate an interface block for each routine. http://software.intel.com/en-us/blogs/2012/01/05/doctor-fortran-gets-explicit-again/
-  set (DEBUG_FLAGS "${DEBUG_FLAGS} -fp-stack-check"                                        )# Generate extra code after every function call to ensure that the floating-point (FP) stack is in the expected state.
-  set (DEBUG_FLAGS "${DEBUG_FLAGS} -fp-model strict"                                       )# Trap uninitalized variables
-  set (DEBUG_FLAGS "${DEBUG_FLAGS} -check bounds,format,output_conversion,pointers,uninit" )# Checks at runtime, where
-                                                                                            #  bounds:            if an array index is too small (<1) or too large!
-                                                                                            #  format:            for the data type of an item being formatted for output.
-                                                                                            #  output_conversion: for the fit of data items within a designated format descriptor field.
-                                                                                            #  pointers:          for certain disassociated or uninitialized pointers or unallocated allocatable objects.
-                                                                                            #  uninit:            for uninitialized variables.
-  set (DEBUG_FLAGS "${DEBUG_FLAGS} -ftrapuv"                                               )
-  set (DEBUG_FLAGS "${DEBUG_FLAGS} -fpe-all0"                                              )# Capture all floating-point exceptions, sets -ftz automatically
-  set (DEBUG_FLAGS "${DEBUG_FLAGS} -warn errors,stderrors"                                 )# Configures warnings, where
-                                                                                            #  errors:            warnings are changed to errors
-                                                                                            #  stderrors:         warnings about Fortran standard violations are changed to errors
+# Runtime debugging
+  set (DEBUG_FLAGS "${DEBUG_FLAGS} -g")
+  # Generate symbolic debugging information in the object file
+  set (DEBUG_FLAGS "${DEBUG_FLAGS} -traceback")
+  # Generate extra information in the object file to provide source file traceback information when a severe error occurs at run time.
+  set (DEBUG_FLAGS "${DEBUG_FLAGS} -gen-interfaces")
+  # Generate an interface block for each routine. http://software.intel.com/en-us/blogs/2012/01/05/doctor-fortran-gets-explicit-again/
+  set (DEBUG_FLAGS "${DEBUG_FLAGS} -fp-stack-check")
+  # Generate extra code after every function call to ensure that the floating-point (FP) stack is in the expected state.
+  set (DEBUG_FLAGS "${DEBUG_FLAGS} -fp-model strict")
+  # Trap uninitalized variables
+  set (DEBUG_FLAGS "${DEBUG_FLAGS} -check" )
+  # Checks at runtime, where
+  set (DEBUG_FLAGS "${DEBUG_FLAGS}bounds")
+  #   if an array index is too small (<1) or too large!
+  set (DEBUG_FLAGS "${DEBUG_FLAGS},format")
+  #   for the data type of an item being formatted for output.
+  set (DEBUG_FLAGS "${DEBUG_FLAGS},output_conversion")
+  #   for the fit of data items within a designated format descriptor field.
+  set (DEBUG_FLAGS "${DEBUG_FLAGS},pointers")
+  #   for certain disassociated or uninitialized pointers or unallocated allocatable objects.
+  set (DEBUG_FLAGS "${DEBUG_FLAGS},uninit")
+  #   for uninitialized variables.
+  set (DEBUG_FLAGS "${DEBUG_FLAGS} -ftrapuv")
+  #   initializes stack local variables to an unusual value to aid error detection
+  set (DEBUG_FLAGS "${DEBUG_FLAGS} -fpe-all0")
+  #   capture all floating-point exceptions, sets -ftz automatically
+  set (DEBUG_FLAGS "${DEBUG_FLAGS} -warn")
+  # enables warnings, where
+  set (DEBUG_FLAGS "${DEBUG_FLAGS}errors")
+  #   warnings are changed to errors
+  set (DEBUG_FLAGS "${DEBUG_FLAGS},stderrors")
+  #   warnings about Fortran standard violations are changed to errors
   set (DEBUG_FLAGS "${DEBUG_FLAGS} -debug-parameters all"                                  )
-# MORE OPTIONS FOR RUNTIME DEBUGGING
-# -heap-arrays:            Should not be done for OpenMP, but set "ulimit -s unlimited" on shell. Probably it helps also to unlimit other limits
-# -check:                  Checks at runtime, where
-#    arg_temp_created:        will cause a lot of warnings because we create a bunch of temporary arrays (performance?)
-#    stack:
+  # generate debug information for parameters
+
+  # Additional options
+  # -heap-arrays:            Should not be done for OpenMP, but set "ulimit -s unlimited" on shell. Probably it helps also to unlimit other limits
+  # -check:                  Checks at runtime, where
+  #    arg_temp_created:       will cause a lot of warnings because we create a bunch of temporary arrays (performance?)
+  #    stack:
 
 #------------------------------------------------------------------------------------------------
-# PRECISION SETTINGS
-#-real-size 32:               set precision to one of those 32/64/128 (= 4/8/16 bytes) for standard real (=8 for pReal)
-#-integer-size 16:            set precision to one of those 16/32/64 (= 2/4/8 bytes) for standard integer (=4 for pInt)
-  set (PRECISION_FLAGS "-real-size 64 -integer-size 32")
+#  precision settings
+  set (PRECISION_FLAGS "${PRECISION_FLAGS} -real-size 64")
+  # set precision to one of those 32/64/128 (= 4/8/16 bytes) for standard real (=8 for pReal)
+  set (PRECISION_FLAGS "${PRECISION_FLAGS} -integer-size 32")
+  # set precision to one of those 16/32/64 (= 2/4/8 bytes) for standard integer (=4 for pInt)
 
 
 ###################################################################################################
@@ -244,130 +293,135 @@ elseif(${CMAKE_Fortran_COMPILER_ID} STREQUAL "GNU")
   endif()
 
   set (STANDARD_CHECK "-std=f2008ts -pedantic-errors" )
-  set (LINKER_FLAGS   "-Wl,-undefined,dynamic_lookup" )# ensure to link against dynamic libraries
+  set (LINKER_FLAGS  "${LINKER_FLAGS} -Wl")
+  # options parsed directly to the linker
+  set (LINKER_FLAGS  "${LINKER_FLAGS},-undefined")
+  set (LINKER_FLAGS  "${LINKER_FLAGS},-dynamic_lookup" )
+  #   ensure to link against dynamic libraries
 
 #------------------------------------------------------------------------------------------------
-# COMPILE SWITCHES
-  set (COMPILE_FLAGS "${COMPILE_FLAGS} -xf95-cpp-input"             )# preprocessor
-  set (COMPILE_FLAGS "${COMPILE_FLAGS} -ffree-line-length-132"      )# restrict line length to the standard 132 characters (lattice.f90 require larger)
-  set (COMPILE_FLAGS "${COMPILE_FLAGS} -fimplicit-none"             )# assume "implicit none" even if not present in source
-  set (COMPILE_FLAGS "${COMPILE_FLAGS} -fmodule-private"            )# assume "private" even if not present in source
-  set (COMPILE_FLAGS "${COMPILE_FLAGS} -Wall"                       )# sets the following Fortran options:
-                                                                  #   -Waliasing:                   warn about possible aliasing of dummy arguments. Specifically, it warns if the same actual argument is associated with a dummy argument with "INTENT(IN)" and a dummy argument with "INTENT(OUT)" in a call with an explicit interface.
-                                                                  #   -Wampersand:                  checks if a character expression is continued proberly by an ampersand at the end of the line and at the beginning of the new line
-                                                                  #   -Warray-bounds:               checks if array reference is out of bounds at compile time. use -fcheck-bounds to also check during runtime
-                                                                  #   -Wconversion:                 warn about implicit conversions between different type
-                                                                  #   -Wsurprising:                 warn when "suspicious" code constructs are encountered. While technically legal these usually indicate that an error has been made.
-                                                                  #   -Wc-binding-type:
-                                                                  #   -Wintrinsics-std:             only standard intrisics are available, e.g. "call flush(6)" will cause an error
-                                                                  #   -Wno-tabs:                    do not allow tabs in source
-                                                                  #   -Wintrinsic-shadow:           warn if a user-defined procedure or module procedure has the same name as an intrinsic
-                                                                  #   -Wline-truncation:
-                                                                  #   -Wtarget-lifetime:
-                                                                  #   -Wreal-q-constant:            warn about real-literal-constants with 'q'  exponent-letter
-                                                                  #   -Wunused:                     a number of unused-xxx warnings
-                                                                  #  these are general (non -Fortran options) implied by -Wall
-                                                                  #   -Waddress
-                                                                  #   -Warray-bounds (only with -O2)
-                                                                  #   -Wc++11-compat
-                                                                  #   -Wchar-subscripts
-                                                                  #   -Wcomment
-                                                                  #   -Wformat
-                                                                  #   -Wmaybe-uninitialized
-                                                                  #   -Wnonnull
-                                                                  #   -Wparentheses
-                                                                  #   -Wpointer-sign
-                                                                  #   -Wreorder
-                                                                  #   -Wreturn-type
-                                                                  #   -Wsequence-point
-                                                                  #   -Wstrict-aliasing
-                                                                  #   -Wstrict-overflow=1
-                                                                  #   -Wswitch
-                                                                  #   -Wtrigraphs
-                                                                  #   -Wuninitialized
-                                                                  #   -Wunknown-pragmas
-                                                                  #   -Wunused-function
-                                                                  #   -Wunused-label
-                                                                  #   -Wunused-value
-                                                                  #   -Wunused-variable
-                                                                  #   -Wvolatile-register-var
-  set (COMPILE_FLAGS "${COMPILE_FLAGS} -Wextra"                     )
-# -Wextra:                      sets the following Fortran options:
-#   -Wunuses-parameter:
-#   -Wcompare-reals:
-#  these are general (non -Fortran options) implied by -Wextra
-#   -Wclobbered
-#   -Wempty-body
-#   -Wignored-qualifiers
-#   -Wmissing-field-initializers
-#   -Woverride-init
-#   -Wsign-compare
-#   -Wtype-limits
-#   -Wuninitialized
-#   -Wunused-but-set-parameter (only with -Wunused or -Wall)
-#   -Wno-globals
-  set (COMPILE_FLAGS "${COMPILE_FLAGS} -Wcharacter-truncation"      )# warn if character expressions (strings) are truncated
-  set (COMPILE_FLAGS "${COMPILE_FLAGS} -Wunderflow"                 )# produce a warning when numerical constant expressions are encountered, which yield an UNDERFLOW during compilation
-  set (COMPILE_FLAGS "${COMPILE_FLAGS} -Wsuggest-attribute=pure"    )
+# Fine tuning compilation options
+  set (COMPILE_FLAGS "${COMPILE_FLAGS} -xf95-cpp-input")
+  # preprocessor
+  set (COMPILE_FLAGS "${COMPILE_FLAGS} -ffree-line-length-132")
+  # restrict line length to the standard 132 characters (lattice.f90 require more characters)
+  set (COMPILE_FLAGS "${COMPILE_FLAGS} -fimplicit-none")
+  # assume "implicit none" even if not present in source
+  set (COMPILE_FLAGS "${COMPILE_FLAGS} -fmodule-private")
+  # assume "private" even if not present in source
+  set (COMPILE_FLAGS "${COMPILE_FLAGS} -Wall")
+  # sets the following Fortran options:
+  #   -Waliasing:                   warn about possible aliasing of dummy arguments. Specifically, it warns if the same actual argument is associated with a dummy argument with "INTENT(IN)" and a dummy argument with "INTENT(OUT)" in a call with an explicit interface.
+  #   -Wampersand:                  checks if a character expression is continued proberly by an ampersand at the end of the line and at the beginning of the new line
+  #   -Warray-bounds:               checks if array reference is out of bounds at compile time. use -fcheck-bounds to also check during runtime
+  #   -Wconversion:                 warn about implicit conversions between different type
+  #   -Wsurprising:                 warn when "suspicious" code constructs are encountered. While technically legal these usually indicate that an error has been made.
+  #   -Wc-binding-type:
+  #   -Wintrinsics-std:             only standard intrisics are available, e.g. "call flush(6)" will cause an error
+  #   -Wno-tabs:                    do not allow tabs in source
+  #   -Wintrinsic-shadow:           warn if a user-defined procedure or module procedure has the same name as an intrinsic
+  #   -Wline-truncation:
+  #   -Wtarget-lifetime:
+  #   -Wreal-q-constant:            warn about real-literal-constants with 'q'  exponent-letter
+  #   -Wunused:                     a number of unused-xxx warnings
+  # and sets the general (non-Fortran options) options:
+  #   -Waddress
+  #   -Warray-bounds (only with -O2)
+  #   -Wc++11-compat
+  #   -Wchar-subscripts
+  #   -Wcomment
+  #   -Wformat
+  #   -Wmaybe-uninitialized
+  #   -Wnonnull
+  #   -Wparentheses
+  #   -Wpointer-sign
+  #   -Wreorder
+  #   -Wreturn-type
+  #   -Wsequence-point
+  #   -Wstrict-aliasing
+  #   -Wstrict-overflow=1
+  #   -Wswitch
+  #   -Wtrigraphs
+  #   -Wuninitialized
+  #   -Wunknown-pragmas
+  #   -Wunused-function
+  #   -Wunused-label
+  #   -Wunused-value
+  #   -Wunused-variable
+  #   -Wvolatile-register-var
+  set (COMPILE_FLAGS "${COMPILE_FLAGS} -Wextra")
+  # sets the following Fortran options:
+  #   -Wunuses-parameter:
+  #   -Wcompare-reals:
+  # and sets the general (non-Fortran options) options:
+  #   -Wclobbered
+  #   -Wempty-body
+  #   -Wignored-qualifiers
+  #   -Wmissing-field-initializers
+  #   -Woverride-init
+  #   -Wsign-compare
+  #   -Wtype-limits
+  #   -Wuninitialized
+  #   -Wunused-but-set-parameter (only with -Wunused or -Wall)
+  #   -Wno-globals
+  set (COMPILE_FLAGS "${COMPILE_FLAGS} -Wcharacter-truncation")
+  # warn if character expressions (strings) are truncated
+  set (COMPILE_FLAGS "${COMPILE_FLAGS} -Wunderflow")
+  # produce a warning when numerical constant expressions are encountered, which yield an UNDERFLOW during compilation
+  set (COMPILE_FLAGS "${COMPILE_FLAGS} -Wsuggest-attribute=pure")
   set (COMPILE_FLAGS "${COMPILE_FLAGS} -Wsuggest-attribute=noreturn")
-  set (COMPILE_FLAGS "${COMPILE_FLAGS} -Wconversion-extra"          )
-  set (COMPILE_FLAGS "${COMPILE_FLAGS} -Wimplicit-procedure"        )
-  set (COMPILE_FLAGS "${COMPILE_FLAGS} -Wno-unused-parameter"       )
-# MORE OPTIONS FOR DEBUGGING DURING COMPILATION
-# -Warray-temporarieswarnings:   because we have many temporary arrays (performance issue?):
-# -Wimplicit-interface:          no interfaces for lapack/MPI routines
-# -Wunsafe-loop-optimizations:   warn if the loop cannot be optimized due to nontrivial assumptions.
-# -ffpe-summary:                 print summary of floating point exeptions (‘invalid’, ‘zero’, ‘overflow’, ‘underflow’, ‘inexact’ and ‘denormal’)
-# -ffpe-summary=all:             only for newer gfortran
+  set (COMPILE_FLAGS "${COMPILE_FLAGS} -Wconversion-extra")
+  set (COMPILE_FLAGS "${COMPILE_FLAGS} -Wimplicit-procedure")
+  set (COMPILE_FLAGS "${COMPILE_FLAGS} -Wno-unused-parameter")
+  set (COMPILE_FLAGS "${COMPILE_FLAGS} -ffpe-summary=all")
+  # print summary of floating point exeptions (invalid,zero,overflow,underflow,inexact,denormal)
 
+  # Additional options
+  # -Warray-temporarieswarnings:   because we have many temporary arrays (performance issue?):
+  # -Wimplicit-interface:          no interfaces for lapack/MPI routines
+  # -Wunsafe-loop-optimizations:   warn if the loop cannot be optimized due to nontrivial assumptions.
 
 #------------------------------------------------------------------------------------------------
-# COMPILE SWITCHES FOR RUNTIME DEBUGGING
-# -ffpe-trap=invalid,\         stop execution if floating point exception is detected (NaN is silent)
-#            zero,\
-#            overflow
-#
-# MORE OPTIONS FOR RUNTIME DEBUGGING
-# -ffpe-trap=precision,
-#            denormal,
-#            underflow
-  set (DEBUG_FLAGS "${DEBUG_FLAGS} -g"                              )
+# Runtime debugging
+  set (DEBUG_FLAGS "${DEBUG_FLAGS} -ffpe-trap=invalid,zero,overflow")
+  # stop execution if floating point exception is detected (NaN is silent)
+  set (DEBUG_FLAGS "${DEBUG_FLAGS} -g")
+  # Generate symbolic debugging information in the object file
   set (DEBUG_FLAGS "${DEBUG_FLAGS} -fbacktrace"                     )
   set (DEBUG_FLAGS "${DEBUG_FLAGS} -fdump-core"                     )
   set (DEBUG_FLAGS "${DEBUG_FLAGS} -fcheck=all"                     )
-# -fcheck=all:                   sets the following Fortran options:
-# array-temps
-# bounds
-# do
-# mem
-# pointer
-# recursion
-  set (DEBUG_FLAGS "${DEBUG_FLAGS} -ffpe-trap=invalid,zero,overflow")
+  # checks for (array-temps,bounds,do,mem,pointer,recursion)
 
+  # Additional options
+  # -ffpe-trap=precision,denormal,underflow
 #------------------------------------------------------------------------------------------------
-# PRECISION SETTINGS
-#-fdefault-real-8:            set precision to 8 bytes for standard real (=8 for pReal). Will set size of double to 16 bytes as long as -fdefault-double-8 is not set
-#-fdefault-double-8:          set precision to 8 bytes for double real, would be 16 bytes because -fdefault-real-8 is used
-#-fdefault-integer-8:         Use it to set precision to 8 bytes for integer, don't use it for the standard case of pInt=4 (there is no -fdefault-integer-4)
-  set (PRECISION_FLAGS "-fdefault-real-8 -fdefault-double-8")
+#  precision settings
+  set (PRECISION_FLAGS "${PRECISION_FLAGS} -fdefault-real-8")
+  # set precision to 8 bytes for standard real (=8 for pReal). Will set size of double to 16 bytes as long as -fdefault-double-8 is not set
+  set (PRECISION_FLAGS "${PRECISION_FLAGS} -fdefault-double-8")
+  # set precision to 8 bytes for double real, would be 16 bytes if -fdefault-real-8 is used
+
+  # Additional options
+  # -fdefault-integer-8: Use it to set precision to 8 bytes for integer, don't use it for the standard case of pInt=4 (there is no -fdefault-integer-4)
 endif()
 
 set (CMAKE_Fortran_FLAGS            "${BUILDCMD_PRE} ${OPENMP_FLAGS} ${STANDARD_CHECK} ${OPTIMIZATION_FLAGS} ${COMPILE_FLAGS} ${PRECISION_FLAGS}")
 set (CMAKE_Fortran_LINK_EXECUTABLE  "${BUILDCMD_PRE} ${CMAKE_LINKER} ${OPENMP_FLAGS}   ${OPTIMIZATION_FLAGS} ${LINKER_FLAGS}")
 
-if (NOT "${CMAKE_BUILD_TYPE}" STREQUAL "RELEASE")
+if("${CMAKE_BUILD_TYPE}" STREQUAL "")
+  set (CMAKE_BUILD_TYPE "RELEASE")
+elseif("${CMAKE_BUILD_TYPE}" STREQUAL "DEBUG")
   set (CMAKE_Fortran_FLAGS            "${CMAKE_Fortran_FLAGS} ${DEBUG_FLAGS}")
   set (CMAKE_Fortran_LINK_EXECUTABLE  "${CMAKE_Fortran_LINK_EXECUTABLE} ${DEBUG_FLAGS}")
 endif()
 
-
 set (CMAKE_Fortran_LINK_EXECUTABLE "${CMAKE_Fortran_LINK_EXECUTABLE} <OBJECTS> -o <TARGET> <LINK_LIBRARIES> ${PETSC_EXTERNAL_LIB} ${BUILDCMD_POST}")
 set (CMAKE_Fortran_FLAGS  "${CMAKE_Fortran_FLAGS} ${DAMASK_INCLUDE_FLAGS} ${BUILDCMD_POST}")
 
-message("***COMPILE FLAGS:\n${CMAKE_Fortran_FLAGS}\n")
-message("***LINKER:\n${CMAKE_Fortran_LINK_EXECUTABLE}\n")
+message("Compiler Flags (Fortran):\n${CMAKE_Fortran_FLAGS}\n")
+message("Linker Flags (Fortran):\n${CMAKE_Fortran_LINK_EXECUTABLE}\n")
 
-# MOVE to SOURCE DIRECTORY for BUILDING
+# location of code
 add_subdirectory(src)
 
 # INSTALL BUILT BINARIES
