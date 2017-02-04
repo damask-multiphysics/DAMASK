@@ -74,10 +74,10 @@ for name in filenames:
   while outputAlive and table.data_read():
     if table.data != []:
       currPos = table.data[3:6]
-      for i in xrange(3):
+      for i in range(3):
         coords[i][currPos[i]] = True
       currPos = map(float,currPos)
-      for i in xrange(3):
+      for i in range(3):
         pos['min'][i] = min(pos['min'][i],currPos[i])
         pos['max'][i] = max(pos['max'][i],currPos[i])
       eulerangles.append(map(math.degrees,map(float,table.data[:3])))
@@ -94,10 +94,10 @@ for name in filenames:
 
   limits = [360,180,360]
   if any([np.any(eulerangles[:,i]>=limits[i]) for i in [0,1,2]]):
-    file['croak'].write('Error: euler angles out of bound. Ang file might contain unidexed poins.\n')
+    damask.util.croak.write('Error: euler angles out of bound. Ang file might contain unidexed poins.\n')
     for i,angle in enumerate(['phi1','PHI','phi2']):
       for n in np.nditer(np.where(eulerangles[:,i]>=limits[i]),['zerosize_ok']):
-        file['croak'].write('%s in line %i (%4.2f %4.2f %4.2f)\n'
+        damask.util.croak.write('%s in line %i (%4.2f %4.2f %4.2f)\n'
                                      %(angle,n,eulerangles[n,0],eulerangles[n,1],eulerangles[n,2]))
     continue
   eulerangles=np.around(eulerangles,int(options.precision))                                         # round to desired precision
@@ -114,9 +114,9 @@ for name in filenames:
     formatString='{0:0>'+str(int(options.precision)+3)+'}'
     euleranglesRadInt = (eulerangles*10**int(options.precision)).astype('int')
     eulerKeys = np.array([int(''.join(map(formatString.format,euleranglesRadInt[i,:]))) \
-                                                             for i in xrange(info['grid'].prod())])
+                                                             for i in range(info['grid'].prod())])
     devNull, texture, eulerKeys_idx = np.unique(eulerKeys, return_index = True, return_inverse=True)
-    msFull = np.array([[eulerKeys_idx[i],phase[i]] for i in xrange(info['grid'].prod())],'i8')
+    msFull = np.array([[eulerKeys_idx[i],phase[i]] for i in range(info['grid'].prod())],'i8')
     devNull,msUnique,matPoints = np.unique(msFull.view('c16'),True,True)
     matPoints+=1
     microstructure = np.array([msFull[i] for i in msUnique])                                        # pick only unique microstructures
@@ -129,7 +129,7 @@ for name in filenames:
 
   formatwidth = 1+int(math.log10(len(microstructure)))
   config_header += ['<microstructure>']
-  for i in xrange(len(microstructure)):
+  for i in range(len(microstructure)):
     config_header += ['[Grain%s]'%str(i+1).zfill(formatwidth),
                        'crystallite\t%i'%options.crystallite,
                        '(constituent)\tphase %i\ttexture %i\tfraction 1.0'%(microstructure[i,1],microstructure[i,0]+1)
@@ -138,7 +138,7 @@ for name in filenames:
 
   eulerFormatOut='%%%i.%if'%(int(options.precision)+4,int(options.precision))
   outStringAngles='(gauss) phi1 '+eulerFormatOut+' Phi '+eulerFormatOut+' phi2 '+eulerFormatOut+' scatter 0.0 fraction 1.0'
-  for i in xrange(len(texture)):
+  for i in range(len(texture)):
     config_header +=    ['[Texture%s]'%str(i+1).zfill(formatOut),
                           outStringAngles%tuple(eulerangles[texture[i],...])
                         ]
