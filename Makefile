@@ -11,15 +11,14 @@ FEM: build/FEM
 	@(cd build/FEM; make --no-print-directory -ws all install;)
 
 
-OPTIONS="-Wno-dev -DCMAKE_BUILD_TYPE=${BUILD_TYPE} -DBUILDCMD_POST=${BUILDCMD_POST} -DBUILDCMD_PRE={BUILDCMD_PRE} -DOPTIMIZATION=${OPTIMIZATION} -DOPENMP=${OPENMP}"
 
 build/spectral: build
 	@mkdir -p build/spectral
-	@(cd build/spectral; cmake -DDAMASK_SOLVER=SPECTRAL ${OPTIONS} ../..;)
+	@(cd build/spectral; cmake -Wno-dev -DDAMASK_SOLVER=SPECTRAL -DCMAKE_BUILD_TYPE=${BUILD_TYPE} -DBUILDCMD_POST=${BUILDCMD_POST} -DBUILDCMD_PRE=${BUILDCMD_PRE} -DOPTIMIZATION=${OPTIMIZATION} -DOPENMP=${OPENMP} ../../;)
 
 build/FEM: build
 	@mkdir -p build/FEM
-	@(cd build/FEM; cmake -DDAMASK_SOLVER=FEM ${OPTIONS} ../..;)
+	@(cd build/FEM; cmake -Wno-dev -DDAMASK_SOLVER=FEM -DCMAKE_BUILD_TYPE=${BUILD_TYPE} -DBUILDCMD_POST=${BUILDCMD_POST} -DBUILDCMD_PRE=${BUILDCMD_PRE} -DOPTIMIZATION=${OPTIMIZATION} -DOPENMP=${OPENMP} ../../;)
 
 
 build:

@@ -115,15 +115,32 @@ set(CMAKE_Fortran_COMPILER "${PETSC_MPIFC}")
 set(CMAKE_C_COMPILER       "${PETSC_MPICC}")
 set(CMAKE_LINKER           "${PETSC_LINKER}")
 
-# Built-in options for DAMASK build system
-#   -> can be overwritten from commandline/install_script
-option(OPENMP             "Use OpenMP libaries for DAMASK"                              ON   )
-option(OPTIMIZATION       "DAMASK optimization level [OFF,DEFENSIVE,AGGRESSIVE]" "DEFENSIVE" )
-
-if("${CMAKE_BUILD_TYPE}" STREQUAL "DEBUG")
-    set (OPENMP "OFF")
-    set (OPTIMIZATION "OFF")
+# Predefined sets for OPTIMIZATION/OPENMP based on BUILD_TYPE
+if("${CMAKE_BUILD_TYPE}" STREQUAL "DEBUG" OR "${CMAKE_BUILD_TYPE}" STREQUAL "SYNTAXONLY" )
+    set (PARALLEL "OFF")
+    set (OPTI "OFF")
+    set (BUILDCMD_POST "${BUILDCMD_POST} -fsyntax-only")
+elseif("${CMAKE_BUILD_TYPE}" STREQUAL "RELEASE")
+    set (PARALLEL "ON")
+    set (OPTI "DEFENSIVE")
+elseif("${CMAKE_BUILD_TYPE}" STREQUAL "PERFORMANCE")
+    set (PARALLEL "ON")
+    set (OPTI "AGGRESSIVE")
 endif("${CMAKE_BUILD_TYPE}" STREQUAL "DEBUG")
+
+# overwrite optimization if given
+if("${OPTIMIZATION}" STREQUAL "")
+    set(OPTIMIZATION "${OPTI}")
+else("${OPTIMIZATION}" STREQUAL "")
+    set(OPTIMIZATION "${OPTIMIZATION}")
+endif("${OPTIMIZATION}" STREQUAL "")
+
+# overwrite optimization if given
+if("${OPENMP}" STREQUAL "")
+    set(OPENMP "${PARALLEL}")
+else("${OPENMP}" STREQUAL "")
+    set(OPENMP "${OPENMP}")
+endif("${OPENMP}" STREQUAL "")
 
 # Parse DAMASK_BIN from CONFIG file
 file(READ "CONFIG" CONFIGFILE)
@@ -132,13 +149,9 @@ STRING(REGEX REPLACE "\n" ";"     CONFIGFILE "${CONFIGFILE}")
 FOREACH(item ${CONFIGFILE})
   STRING(REGEX MATCH ".+DAMASK_BIN.+" item ${item})
     IF(item)
-      message("${item}")
       string(REGEX REPLACE "set" "" item "${item}")
-      message("${item}")
       string(REGEX REPLACE "="  " " item "${item}")
-      message("${item}")
-      string(REGEX REPLACE "\\\${DAMASK_ROOT}" "${CMAKE_CURRENT_SOURCE_DIR}" item "${item}")
-      message("${item}")
+      string(REGEX REPLACE "\\\${DAMASK_ROOT}" "${PROJECT_SOURCE_DIR}" item "${item}")
       string(REPLACE "DAMASK_BIN" ";" STRING_LIST ${item})
       list(GET STRING_LIST 1 item)
       string(STRIP "${item}" CMAKE_INSTALL_PREFIX)
@@ -387,9 +400,9 @@ elseif(${CMAKE_Fortran_COMPILER_ID} STREQUAL "GNU")
   # stop execution if floating point exception is detected (NaN is silent)
   set (DEBUG_FLAGS "${DEBUG_FLAGS} -g")
   # Generate symbolic debugging information in the object file
-  set (DEBUG_FLAGS "${DEBUG_FLAGS} -fbacktrace"                     )
-  set (DEBUG_FLAGS "${DEBUG_FLAGS} -fdump-core"                     )
-  set (DEBUG_FLAGS "${DEBUG_FLAGS} -fcheck=all"                     )
+  set (DEBUG_FLAGS "${DEBUG_FLAGS} -fbacktrace")
+  set (DEBUG_FLAGS "${DEBUG_FLAGS} -fdump-core")
+  set (DEBUG_FLAGS "${DEBUG_FLAGS} -fcheck=all")
   # checks for (array-temps,bounds,do,mem,pointer,recursion)
 
   # Additional options
@@ -425,10 +438,16 @@ message("Linker Flags (Fortran):\n${CMAKE_Fortran_LINK_EXECUTABLE}\n")
 add_subdirectory(src)
 
 # INSTALL BUILT BINARIES
-if ("${PROJECT_NAME}" STREQUAL "DAMASK_spectral")
-    INSTALL(PROGRAMS    ${PROJECT_BINARY_DIR}/src/DAMASK_spectral
-            DESTINATION ${CMAKE_INSTALL_PREFIX})
-elseif ("${PROJECT_NAME}" STREQUAL "DAMASK_FEM")
-    INSTALL(PROGRAMS    ${PROJECT_BINARY_DIR}/src/DAMASK_FEM
-            DESTINATION ${CMAKE_INSTALL_PREFIX})
-endif("${PROJECT_NAME}" STREQUAL "DAMASK_spectral")
+if ("${BUILD_TYPE}" STREQUAL SYNTAXONLY)
+   if ("${PROJECT_NAME}" STREQUAL DAMASK_spectral)
+       INSTALL(PROGRAMS    ${PROJECT_BINARY_DIR}/src/DAMASK_spectral
+               DESTINATION ${CMAKE_INSTALL_PREFIX})
+   elseif ("${PROJECT_NAME}" STREQUAL DAMASK_FEM)
+       INSTALL(PROGRAMS    ${PROJECT_BINARY_DIR}/src/DAMASK_FEM
+               DESTINATION ${CMAKE_INSTALL_PREFIX})
+   endif("${PROJECT_NAME}" STREQUAL DAMASK_spectral)
+else("${BUILD_TYPE}" STREQUAL SYNTAXONLY)
+       exec_program(mktemp ARGS -d OUTPUT_VARIABLE BLACK_HOLE)
+       INSTALL(PROGRAMS    ${PROJECT_BINARY_DIR}/src/prec.mod
+               DESTINATION ${BLACK_HOLE})
+endif()
