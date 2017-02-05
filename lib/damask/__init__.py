@@ -1,7 +1,7 @@
 # -*- coding: UTF-8 no BOM -*-
 
 """Main aggregator"""
-import os
+import os,sys
 
 with open(os.path.join(os.path.dirname(__file__),'../../VERSION')) as f:
   version = f.readline()[:-1]
@@ -11,7 +11,7 @@ from .asciitable  import ASCIItable       # noqa
 try:
   from .h5table     import H5Table        # noqa
 except ImportError:
-  print("h5py module not found")
+  sys.stderr.write("h5py module not found")
 from .config      import Material         # noqa
 from .colormaps   import Colormap, Color  # noqa
 from .orientation import Quaternion, Rodrigues, Symmetry, Orientation # noqa
