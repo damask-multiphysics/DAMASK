@@ -385,7 +385,7 @@ end subroutine hypela2
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief solve the heat equation
+!> @brief calculate internal heat generated due to inelastic energy dissipation
 !--------------------------------------------------------------------------------------------------
 subroutine flux(f,ts,n,time)
  use prec, only: &
@@ -406,9 +406,9 @@ subroutine flux(f,ts,n,time)
  real(pReal),   dimension(2),           intent(out) :: &
    f
 
-! f(1) = materialpoint_heat(n(3),mesh_FEasCP('elem',n(1)))
  call thermal_conduction_getSourceAndItsTangent(f(1), f(2), ts(3), n(3),mesh_FEasCP('elem',n(1)))
-end subroutine flux
+
+ end subroutine flux
 
 
 !--------------------------------------------------------------------------------------------------
