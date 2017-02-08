@@ -3353,15 +3353,10 @@ end function FE_mapElemtype
 subroutine mesh_faceMatch(elem, face ,matchingElem, matchingFace)
 
 implicit none
-!*** output variables
 integer(pInt), intent(out) ::     matchingElem, &                                                   ! matching CP element ID
                                   matchingFace                                                      ! matching face ID 
-
-!*** input variables
 integer(pInt), intent(in) ::      face, &                                                           ! face ID
                                   elem                                                              ! CP elem ID
-
-!*** local variables
 integer(pInt), dimension(FE_NmatchingNodesPerFace(face,FE_geomtype(mesh_element(2,elem)))) :: &
                                   myFaceNodes                                                       ! global node ids on my face
 integer(pInt)        ::           myType, &
