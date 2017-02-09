@@ -5,7 +5,7 @@ set DAMASK_BIN            = ${DAMASK_ROOT}/bin
 
 set DAMASK_NUM_THREADS    = 4
 
-set MSC_ROOT              = /opt/MSC
-set MARC_VERSION          = 2015
+set MSC_ROOT              = /opt/msc
+set MARC_VERSION          = 2016
 
 set ABAQUS_VERSION        = 6.14-5
