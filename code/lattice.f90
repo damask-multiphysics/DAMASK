@@ -1283,11 +1283,9 @@ subroutine lattice_init
    a_fcc, &                                                                                         !< lattice parameter a for fcc austenite
    a_bcc                                                                                            !< lattice paramater a for bcc martensite
 
- mainProcess: if (worldrank == 0) then 
-   write(6,'(/,a)') ' <<<+-  lattice init  -+>>>'
-   write(6,'(a15,a)')   ' Current time: ',IO_timeStamp()
+ write(6,'(/,a)') ' <<<+-  lattice init  -+>>>'
+ write(6,'(a15,a)')   ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
- endif mainProcess
 
 !--------------------------------------------------------------------------------------------------
 ! consistency checks (required since ifort 15.0 does not support sum/maxval in parameter definition)
