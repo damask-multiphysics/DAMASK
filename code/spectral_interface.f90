@@ -95,6 +95,10 @@ subroutine DAMASK_interface_init()
      write(output_unit,'(a)') ' STDOUT != 6'
      call quit(1_pInt)
    endif
+   if (error_unit /= 0) then
+     write(output_unit,'(a)') ' STERR != 0'
+     call quit(1_pInt)
+   endif
  else mainProcess
    close(6)                                                                                         ! disable output for non-master processes (open 6 to rank specific file for debug)
    open(6,file='/dev/null',status='replace')                                                        ! close(6) alone will leave some temp files in cwd
