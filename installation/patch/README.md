@@ -13,5 +13,3 @@ patch -p1 < installation/patch/nameOfPatch
 
   * **fwbw_derivative** switches the default spatial derivative from continuous to forward/backward difference.  
     This generally reduces spurious oscillations in the result as the spatial accuracy of the derivative is then compatible with the underlying solution grid.
-  * **petsc3.7** adapts to API changes introduced between PETSc 3.6.x and 3.7.x for setting PETSc options.  
-    Use this patch if your system runs PETSc 3.7.x.
