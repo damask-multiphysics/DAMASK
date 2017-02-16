@@ -619,7 +619,7 @@ subroutine material_parseHomogenization(fileUnit,myPart)
      chunkPos = IO_stringPos(line)
      tag = IO_lc(IO_stringValue(line,chunkPos,1_pInt))                                             ! extract key
      select case(tag)
-       case ('type')
+       case ('type','mech','mechanical')
          select case (IO_lc(IO_stringValue(line,chunkPos,2_pInt)))
            case(HOMOGENIZATION_NONE_label)
              homogenization_type(section) = HOMOGENIZATION_NONE_ID
