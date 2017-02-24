@@ -33,24 +33,31 @@ Depending on the sign of the dimension parameters, these objects can be boxes, c
 
 """, version = scriptID)
 
-parser.add_option('-c', '--center',     dest='center', type='int', nargs = 3, metavar=' '.join(['int']*3),
+parser.add_option('-c', '--center',     dest='center', type='float', nargs = 3, metavar=' '.join(['float']*3),
                   help='a,b,c origin of primitive %default')
-parser.add_option('-d', '--dimension',  dest='dimension', type='int', nargs = 3, metavar=' '.join(['int']*3),
+parser.add_option('-d', '--dimension',  dest='dimension', type='float', nargs = 3, metavar=' '.join(['float']*3),
                   help='a,b,c extension of hexahedral box; negative values are diameters')
+parser.add_option('-e', '--exponent',  dest='exponent', type='float', nargs = 3, metavar=' '.join(['float']*3),
+                  help='i,j,k exponents for axes - 2 gives a sphere (x^2 + y^2 + z^2 < 1), 1 makes \
+octahedron (|x| + |y| + |z| < 1).  Large values produce boxes, 0 - 1 is concave. ')
 parser.add_option('-f', '--fill',       dest='fill', type='int', metavar = 'int',
                   help='grain index to fill primitive. "0" selects maximum microstructure index + 1 [%default]')
 parser.add_option('-q', '--quaternion', dest='quaternion', type='float', nargs = 4, metavar=' '.join(['float']*4),
                   help = 'rotation of primitive as quaternion')
 parser.add_option('-a', '--angleaxis',  dest='angleaxis', nargs = 4, metavar=' '.join(['float']*4),
-                  help = 'rotation of primitive as angle and axis')
+                  help = 'angle,x,y,z clockwise rotation of primitive about axis by angle')
 parser.add_option(     '--degrees',     dest='degrees', action='store_true',
                   help = 'angle is given in degrees [%default]')
+parser.add_option(     '--nonperiodic', dest='periodic', action='store_false',
+                  help = 'wrap around edges [%default]')
 
 parser.set_defaults(center = [0,0,0],
                     fill = 0,
                     quaternion = [],
                     angleaxis = [],
                     degrees = False,
+                    exponent = [1e10,1e10,1e10], # box shape by default
+                    periodic = True
                    )
 
 (options, filenames) = parser.parse_args()
@@ -58,15 +65,14 @@ parser.set_defaults(center = [0,0,0],
 if options.angleaxis != []:
   options.angleaxis = map(float,options.angleaxis)
   rotation = damask.Quaternion().fromAngleAxis(np.radians(options.angleaxis[0]) if options.degrees else options.angleaxis[0],
-                                               options.angleaxis[1:4]).conjugated()
+                                               options.angleaxis[1:4])
 elif options.quaternion != []:
   options.quaternion = map(float,options.quaternion)
-  rotation = damask.Quaternion(options.quaternion).conjugated()
+  rotation = damask.Quaternion(options.quaternion)
 else:
-  rotation = damask.Quaternion().conjugated()
+  rotation = damask.Quaternion()
 
 options.center = np.array(options.center)
-invRotation = rotation.conjugated()                                                             # rotation of gridpos into primitive coordinate system
 
 # --- loop over input files -------------------------------------------------------------------------
 if filenames == []: filenames = [None]
@@ -108,33 +114,84 @@ for name in filenames:
              'microstructures': 0,
             }
 
-
   if options.fill == 0:
     options.fill = microstructure.max()+1
-
+  
+  # If we have a negative dimension, make it an ellipsoid for backwards compatibility
+  options.exponent = np.where(np.array(options.dimension) > 0, options.exponent, 2)
+  
   microstructure = microstructure.reshape(info['grid'],order='F')
-
-  if options.dimension is not None:
-    mask = (np.array(options.dimension) < 0).astype(float)                                       # zero where positive dimension, otherwise one
-    dim = abs(np.array(options.dimension))                                                       # dimensions of primitive body
-    pos = np.zeros(3,dtype='float')
-#    hiresPrimitive = np.zeros((2*dim[0],2*dim[1],2*dim[2],3))                                   # primitive discretized at twice the grid resolution
-    for     i,pos[0] in enumerate(np.arange(-dim[0]/oversampling,(dim[0]+1)/oversampling,1./oversampling)):
-      for   j,pos[1] in enumerate(np.arange(-dim[1]/oversampling,(dim[1]+1)/oversampling,1./oversampling)):
-        for k,pos[2] in enumerate(np.arange(-dim[2]/oversampling,(dim[2]+1)/oversampling,1./oversampling)):
-          gridpos = np.floor(rotation*pos)                                                       # rotate and lock into spacial grid
-          primPos = invRotation*gridpos                                                             # rotate back to primitive coordinate system
-          if np.dot(mask*primPos/dim,mask*primPos/dim) <= 0.25 and \
-             np.all(abs((1.-mask)*primPos/dim) <= 0.5):                                          # inside ellipsoid and inside box
-             microstructure[int((gridpos[0]+options.center[0])%info['grid'][0]),
-                            int((gridpos[1]+options.center[1])%info['grid'][1]),
-                            int((gridpos[2]+options.center[2])%info['grid'][2])] = options.fill          # assign microstructure index
+  
+  size = microstructure.shape  
+  
+  if options.periodic: # use padding to achieve periodicity
+    # change to coordinate space where the primitive is the unit sphere/cube/etc
+    (Y, X, Z) = np.meshgrid(np.arange(-size[0], 2*size[0], dtype=np.float64), 
+                            np.arange(-size[1], 2*size[1], dtype=np.float64), 
+                            np.arange(-size[2], 2*size[2], dtype=np.float64))
+    # first by translating the center onto 0, 0.5 shifts the voxel origin onto the center of the voxel
+    X -= options.center[0] - 0.5
+    Y -= options.center[1] - 0.5
+    Z -= options.center[2] - 0.5
+    # and then by applying the quaternion
+    # this should be rotation.conjugate() * (X,Y,Z), but it is this way for backwards compatibility with the older version of this script
+    (X, Y, Z) = rotation * (X, Y, Z)
+    # and finally by scaling (we don't worry about options.dimension being negative, np.abs occurs on the microstructure = np.where... line)
+    X /= options.dimension[0] * 0.5
+    Y /= options.dimension[1] * 0.5
+    Z /= options.dimension[2] * 0.5
+    
+    # High exponents can cause underflow & overflow - loss of precision is okay here, we just compare it to 1, so +infinity and 0 are fine
+    old_settings = np.seterr()
+    np.seterr(over='ignore', under='ignore')
+    
+    inside = np.zeros(size, dtype=bool)
+    for i in range(3):
+      for j in range(3):
+        for k in range(3):
+          inside = inside | ( # Most of this is handling the padding
+                np.abs(X[size[0] * i : size[0] * (i+1),
+                         size[1] * j : size[1] * (j+1),
+                         size[2] * k : size[2] * (k+1)])**options.exponent[0] +
+                np.abs(Y[size[0] * i : size[0] * (i+1),
+                         size[1] * j : size[1] * (j+1),
+                         size[2] * k : size[2] * (k+1)])**options.exponent[1] +
+                np.abs(Z[size[0] * i : size[0] * (i+1),
+                         size[1] * j : size[1] * (j+1),
+                         size[2] * k : size[2] * (k+1)])**options.exponent[2] < 1)
+    
+    microstructure = np.where(inside, options.fill, microstructure)
+    np.seterr(**old_settings) # Reset warnings to old state
+    
+  else: # nonperiodic, much lighter on resources
+    # change to coordinate space where the primitive is the unit sphere/cube/etc
+    (Y, X, Z) = np.meshgrid(np.arange(0, size[0], dtype=np.float64), 
+                            np.arange(0, size[1], dtype=np.float64), 
+                            np.arange(0, size[2], dtype=np.float64))
+    # first by translating the center onto 0, 0.5 shifts the voxel origin onto the center of the voxel
+    X -= options.center[0] - 0.5
+    Y -= options.center[1] - 0.5
+    Z -= options.center[2] - 0.5
+    # and then by applying the quaternion (the implementation of quat. does q*v*q.conj)
+    # this should be rotation.conjugate() * (X,Y,Z), but it is this way for backwards compatibility with the older version of this script
+    (X, Y, Z) = rotation * (X, Y, Z)
+    # and finally by scaling (we don't worry about options.dimension being negative, np.abs occurs on the microstructure = np.where... line)
+    X /= options.dimension[0] * 0.5
+    Y /= options.dimension[1] * 0.5
+    Z /= options.dimension[2] * 0.5
+    
+    # High exponents can cause underflow & overflow - loss of precision is okay here, we just compare it to 1, so +infinity and 0 are fine
+    old_settings = np.seterr()
+    np.seterr(over='ignore', under='ignore')
+    microstructure = np.where(np.abs(X)**options.exponent[0] +
+                              np.abs(Y)**options.exponent[1] +
+                              np.abs(Z)**options.exponent[2] < 1, options.fill, microstructure)
+    np.seterr(**old_settings) # Reset warnings to old state
 
   newInfo['microstructures'] = microstructure.max()
 
-
 # --- report ---------------------------------------------------------------------------------------
-  if (    newInfo['microstructures'] != info['microstructures']):
+  if (newInfo['microstructures'] != info['microstructures']):
     damask.util.croak('--> microstructures: %i'%newInfo['microstructures'])
 
 
