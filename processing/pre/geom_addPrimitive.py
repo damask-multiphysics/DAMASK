@@ -126,9 +126,24 @@ for name in filenames:
   
   if options.periodic: # use padding to achieve periodicity
     # change to coordinate space where the primitive is the unit sphere/cube/etc
-    (Y, X, Z) = np.meshgrid(np.arange(-size[0], 2*size[0], dtype=np.float64), 
-                            np.arange(-size[1], 2*size[1], dtype=np.float64), 
-                            np.arange(-size[2], 2*size[2], dtype=np.float64))
+    (X, Y, Z) = np.meshgrid(np.arange(-size[0]/2, (3*size[0])/2, dtype=np.float32), # 50% padding on each side 
+                            np.arange(-size[1]/2, (3*size[1])/2, dtype=np.float32), 
+                            np.arange(-size[2]/2, (3*size[2])/2, dtype=np.float32),
+                            indexing='ij')
+    # Padding handling
+    X = np.roll(np.roll(np.roll(X,
+            -size[0]/2, axis=0), 
+            -size[1]/2, axis=1), 
+            -size[2]/2, axis=2)
+    Y = np.roll(np.roll(np.roll(Y,
+            -size[0]/2, axis=0), 
+            -size[1]/2, axis=1), 
+            -size[2]/2, axis=2)
+    Z = np.roll(np.roll(np.roll(Z,
+            -size[0]/2, axis=0), 
+            -size[1]/2, axis=1), 
+            -size[2]/2, axis=2)
+    
     # first by translating the center onto 0, 0.5 shifts the voxel origin onto the center of the voxel
     X -= options.center[0] - 0.5
     Y -= options.center[1] - 0.5
@@ -146,9 +161,9 @@ for name in filenames:
     np.seterr(over='ignore', under='ignore')
     
     inside = np.zeros(size, dtype=bool)
-    for i in range(3):
-      for j in range(3):
-        for k in range(3):
+    for i in range(2):
+      for j in range(2):
+        for k in range(2):
           inside = inside | ( # Most of this is handling the padding
                 np.abs(X[size[0] * i : size[0] * (i+1),
                          size[1] * j : size[1] * (j+1),
@@ -165,9 +180,10 @@ for name in filenames:
     
   else: # nonperiodic, much lighter on resources
     # change to coordinate space where the primitive is the unit sphere/cube/etc
-    (Y, X, Z) = np.meshgrid(np.arange(0, size[0], dtype=np.float64), 
-                            np.arange(0, size[1], dtype=np.float64), 
-                            np.arange(0, size[2], dtype=np.float64))
+    (X, Y, Z) = np.meshgrid(np.arange(0, size[0], dtype=np.float32), 
+                            np.arange(0, size[1], dtype=np.float32), 
+                            np.arange(0, size[2], dtype=np.float32),
+                            indexing='ij')
     # first by translating the center onto 0, 0.5 shifts the voxel origin onto the center of the voxel
     X -= options.center[0] - 0.5
     Y -= options.center[1] - 0.5
