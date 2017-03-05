@@ -9,8 +9,6 @@ import damask
 scriptName = os.path.splitext(os.path.basename(__file__))[0]
 scriptID   = ' '.join([scriptName,damask.version])
 
-oversampling = 2.
-
 #--------------------------------------------------------------------------------------------------
 #                                MAIN
 #--------------------------------------------------------------------------------------------------
@@ -123,9 +121,9 @@ for name in filenames:
   microstructure = microstructure.reshape(info['grid'],order='F')
   
   size = microstructure.shape  
-  
+
+  # change to coordinate space where the primitive is the unit sphere/cube/etc
   if options.periodic: # use padding to achieve periodicity
-    # change to coordinate space where the primitive is the unit sphere/cube/etc
     (X, Y, Z) = np.meshgrid(np.arange(-size[0]/2, (3*size[0])/2, dtype=np.float32), # 50% padding on each side 
                             np.arange(-size[1]/2, (3*size[1])/2, dtype=np.float32), 
                             np.arange(-size[2]/2, (3*size[2])/2, dtype=np.float32),
@@ -143,23 +141,31 @@ for name in filenames:
             -size[0]/2, axis=0), 
             -size[1]/2, axis=1), 
             -size[2]/2, axis=2)
+  else: # nonperiodic, much lighter on resources
+    # change to coordinate space where the primitive is the unit sphere/cube/etc
+    (X, Y, Z) = np.meshgrid(np.arange(0, size[0], dtype=np.float32), 
+                            np.arange(0, size[1], dtype=np.float32), 
+                            np.arange(0, size[2], dtype=np.float32),
+                            indexing='ij')
     
-    # first by translating the center onto 0, 0.5 shifts the voxel origin onto the center of the voxel
-    X -= options.center[0] - 0.5
-    Y -= options.center[1] - 0.5
-    Z -= options.center[2] - 0.5
-    # and then by applying the quaternion
-    # this should be rotation.conjugate() * (X,Y,Z), but it is this way for backwards compatibility with the older version of this script
-    (X, Y, Z) = rotation * (X, Y, Z)
-    # and finally by scaling (we don't worry about options.dimension being negative, np.abs occurs on the microstructure = np.where... line)
-    X /= options.dimension[0] * 0.5
-    Y /= options.dimension[1] * 0.5
-    Z /= options.dimension[2] * 0.5
+  # first by translating the center onto 0, 0.5 shifts the voxel origin onto the center of the voxel
+  X -= options.center[0] - 0.5
+  Y -= options.center[1] - 0.5
+  Z -= options.center[2] - 0.5
+  # and then by applying the quaternion
+  # this should be rotation.conjugate() * (X,Y,Z), but it is this way for backwards compatibility with the older version of this script
+  (X, Y, Z) = rotation * (X, Y, Z)
+  # and finally by scaling (we don't worry about options.dimension being negative, np.abs occurs on the microstructure = np.where... line)
+  X /= options.dimension[0] * 0.5
+  Y /= options.dimension[1] * 0.5
+  Z /= options.dimension[2] * 0.5
     
-    # High exponents can cause underflow & overflow - loss of precision is okay here, we just compare it to 1, so +infinity and 0 are fine
-    old_settings = np.seterr()
-    np.seterr(over='ignore', under='ignore')
-    
+
+ # High exponents can cause underflow & overflow - loss of precision is okay here, we just compare it to 1, so +infinity and 0 are fine
+  old_settings = np.seterr()
+  np.seterr(over='ignore', under='ignore')
+  
+  if options.periodic: # use padding to achieve periodicity
     inside = np.zeros(size, dtype=bool)
     for i in range(2):
       for j in range(2):
@@ -175,35 +181,14 @@ for name in filenames:
                          size[1] * j : size[1] * (j+1),
                          size[2] * k : size[2] * (k+1)])**options.exponent[2] < 1)
     
-    microstructure = np.where(inside, options.fill, microstructure)
-    np.seterr(**old_settings) # Reset warnings to old state
-    
+    microstructure = np.where(inside, options.fill, microstructure)   
+
   else: # nonperiodic, much lighter on resources
-    # change to coordinate space where the primitive is the unit sphere/cube/etc
-    (X, Y, Z) = np.meshgrid(np.arange(0, size[0], dtype=np.float32), 
-                            np.arange(0, size[1], dtype=np.float32), 
-                            np.arange(0, size[2], dtype=np.float32),
-                            indexing='ij')
-    # first by translating the center onto 0, 0.5 shifts the voxel origin onto the center of the voxel
-    X -= options.center[0] - 0.5
-    Y -= options.center[1] - 0.5
-    Z -= options.center[2] - 0.5
-    # and then by applying the quaternion (the implementation of quat. does q*v*q.conj)
-    # this should be rotation.conjugate() * (X,Y,Z), but it is this way for backwards compatibility with the older version of this script
-    (X, Y, Z) = rotation * (X, Y, Z)
-    # and finally by scaling (we don't worry about options.dimension being negative, np.abs occurs on the microstructure = np.where... line)
-    X /= options.dimension[0] * 0.5
-    Y /= options.dimension[1] * 0.5
-    Z /= options.dimension[2] * 0.5
-    
-    # High exponents can cause underflow & overflow - loss of precision is okay here, we just compare it to 1, so +infinity and 0 are fine
-    old_settings = np.seterr()
-    np.seterr(over='ignore', under='ignore')
     microstructure = np.where(np.abs(X)**options.exponent[0] +
                               np.abs(Y)**options.exponent[1] +
                               np.abs(Z)**options.exponent[2] < 1, options.fill, microstructure)
-    np.seterr(**old_settings) # Reset warnings to old state
 
+  np.seterr(**old_settings) # Reset warnings to old state
   newInfo['microstructures'] = microstructure.max()
 
 # --- report ---------------------------------------------------------------------------------------
