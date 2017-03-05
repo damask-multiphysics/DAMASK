@@ -1,0 +1,3 @@
+[submodule "PRIVATE"]
+	path = PRIVATE
+	url = git@magit1.mpie.de:damask/PRIVATE.git
