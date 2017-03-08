@@ -51,23 +51,22 @@ parser.add_option(     '--nonperiodic', dest='periodic', action='store_false',
 parser.add_option(     '--voxelspace',  dest='voxelspace', action='store_true',
                   help = '-c and -d are given in (0 to grid) coordinates instead of (origin to origin+size) \
 coordinates [%default]')
-parser.set_defaults(center = [0,0,0],
+parser.set_defaults(center = (.0,.0,.0),
                     fill = 0,
-                    quaternion = [],
-                    angleaxis = [],
                     degrees = False,
-                    exponent = [1e10,1e10,1e10], # box shape by default
+                    exponent = (1e10,1e10,1e10), # box shape by default
                     periodic = True,
                     voxelspace = False
                    )
 
 (options, filenames) = parser.parse_args()
-
-if options.angleaxis != []:
+if options.dimension is None:
+  parser.error('no dimension specified.')   
+if options.angleaxis is not None:
   options.angleaxis = map(float,options.angleaxis)
   rotation = damask.Quaternion().fromAngleAxis(np.radians(options.angleaxis[0]) if options.degrees else options.angleaxis[0],
                                                options.angleaxis[1:4])
-elif options.quaternion != []:
+elif options.quaternion is not None:
   options.quaternion = map(float,options.quaternion)
   rotation = damask.Quaternion(options.quaternion)
 else:
@@ -125,7 +124,7 @@ for name in filenames:
   
   # coordinates given in real space (default) vs voxel space
   if not options.voxelspace:
-    options.center += info['origin']
+    options.center    += info['origin']
     options.center    *= np.array(info['grid']) / np.array(info['size'])
     options.dimension *= np.array(info['grid']) / np.array(info['size'])
 
