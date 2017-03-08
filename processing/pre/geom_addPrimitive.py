@@ -48,14 +48,17 @@ parser.add_option(     '--degrees',     dest='degrees', action='store_true',
                   help = 'angle is given in degrees [%default]')
 parser.add_option(     '--nonperiodic', dest='periodic', action='store_false',
                   help = 'wrap around edges [%default]')
-
+parser.add_option(     '--voxelspace',  dest='voxelspace', action='store_true',
+                  help = '-c and -d are given in (0 to grid) coordinates instead of (origin to origin+size) \
+coordinates [%default]')
 parser.set_defaults(center = [0,0,0],
                     fill = 0,
                     quaternion = [],
                     angleaxis = [],
                     degrees = False,
                     exponent = [1e10,1e10,1e10], # box shape by default
-                    periodic = True
+                    periodic = True,
+                    voxelspace = False
                    )
 
 (options, filenames) = parser.parse_args()
@@ -71,6 +74,7 @@ else:
   rotation = damask.Quaternion()
 
 options.center = np.array(options.center)
+options.dimension = np.array(options.dimension)
 
 # --- loop over input files -------------------------------------------------------------------------
 if filenames == []: filenames = [None]
@@ -117,9 +121,14 @@ for name in filenames:
   
   # If we have a negative dimension, make it an ellipsoid for backwards compatibility
   options.exponent = np.where(np.array(options.dimension) > 0, options.exponent, 2)
-  
   microstructure = microstructure.reshape(info['grid'],order='F')
   
+  # coordinates given in real space (default) vs voxel space
+  if not options.voxelspace:
+    options.center += info['origin']
+    options.center    *= np.array(info['grid']) / np.array(info['size'])
+    options.dimension *= np.array(info['grid']) / np.array(info['size'])
+
   size = microstructure.shape  
 
   # change to coordinate space where the primitive is the unit sphere/cube/etc
