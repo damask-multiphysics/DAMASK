@@ -54,7 +54,7 @@ echo "Editor: $EDITOR"
 
 # tools
 echo ''
-echo 'copying Marc tools...'
+echo 'adapting Marc tools...'
 theDIR=$INSTALLDIR/marc$VERSION/tools
 for filename in 'comp_damask' \
                 'comp_damask_l' \
@@ -77,7 +77,7 @@ done
 
 # Mentat scripts
 echo ''
-echo 'copying Mentat scripts...'
+echo 'adapting Mentat scripts...'
 theDIR=$INSTALLDIR/mentat$VERSION/bin
 for filename in 'edit_window' \
                 'submit4' \
@@ -101,7 +101,7 @@ done
 
 # Mentat scripts
 echo ''
-echo 'copying Mentat menus...'
+echo 'adapting Mentat menus...'
 theDIR=$INSTALLDIR/mentat$VERSION/menus
 for filename in 'job_run.ms'; do
   cp $SCRIPTLOCATION/$VERSION/Mentat_menus/$filename $theDIR
@@ -112,16 +112,20 @@ done
 
 # compile menus
 echo ''
-echo 'compiling menus...'
-$INSTALLDIR/mentat$VERSION/bin/mentat -compile $INSTALLDIR/mentat$VERSION/menus/linux64/main.msb
+echo 'compiling Mentat menu binaries...'
+$(which xvfb-run 2>/dev/null) $INSTALLDIR/mentat$VERSION/bin/mentat -compile $INSTALLDIR/mentat$VERSION/menus/linux64/main.msb
+[[ $? != 0 ]] && echo '...failed. Try installing xvfb-run on your system.'
 
 # setting access rights
 echo ''
 echo 'setting file access rights...'
-chmod 755 $INSTALLDIR/marc$VERSION/tools/run_damask*
-chmod 755 $INSTALLDIR/marc$VERSION/tools/comp_damask*
-chmod 755 $INSTALLDIR/mentat$VERSION/bin/submit{4..9}
-chmod 755 $INSTALLDIR/mentat$VERSION/bin/kill{4..9}
+for filename in marc$VERSION/tools/run_damask* \
+                marc$VERSION/tools/comp_damask* \
+                mentat$VERSION/bin/submit{4..9} \
+                mentat$VERSION/bin/kill{4..9} \
+                
+  chmod 755 $INSTALLDIR/${filename}
+done
 
 #creating symlinks for run_damask_scripts in /usr/local/bin
 
@@ -151,6 +155,16 @@ if [ -d "$BIN_DIR" ]; then
     ;;
   esac
 fi
+
+# cloning user subroutine
+echo ''
+echo 'cloning $VERSION HYPELA2 user subroutine...'
+ln -s DAMASK_marc.f90 ${DAMASK_ROOT}/src/DAMASK_marc${VERSION}.f90
+
+# precompiling user subroutine
+echo ''
+echo 'precompiling $VERSION HYPELA2 user subroutine...'
+echo 'not yet implemented..!'
 
 echo ''
 echo 'done.'
