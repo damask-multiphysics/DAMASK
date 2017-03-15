@@ -7,7 +7,7 @@ cmake_minimum_required (VERSION 2.8.8 FATAL_ERROR)
 set(PETSC_DIR $ENV{PETSC_DIR})
 if ("${PETSC_DIR}" STREQUAL "")
   message (FATAL_ERROR "PETSC_DIR is not defined")
-endif
+endif ()
 
 set (petsc_conf_variables "${PETSC_DIR}/lib/petsc/conf/variables")
 set (petsc_conf_rules     "${PETSC_DIR}/lib/petsc/conf/rules"    )
@@ -108,7 +108,7 @@ elseif ("${DAMASK_SOLVER}" STREQUAL "FEM")
     project (DAMASK_FEM Fortran C)
     add_definitions (-DFEM)
     message ("Building FEM Solver\n")
-endif
+endif ()
 
 # set compiler and linker commands (need to be done after defining the project)
 # https://cmake.org/Wiki/CMake_FAQ#How_do_I_use_a_different_compiler.3F
@@ -127,21 +127,21 @@ elseif ("${CMAKE_BUILD_TYPE}" STREQUAL "RELEASE")
 elseif ("${CMAKE_BUILD_TYPE}" STREQUAL "PERFORMANCE")
     set (PARALLEL "ON")
     set (OPTI "AGGRESSIVE")
-endif
+endif ()
 
 # $OPTIMIZATION takes precedence over $BUILD_TYPE defaults
 if ("${OPTIMIZATION}" STREQUAL "")
     set (OPTIMIZATION "${OPTI}")
-else
+else ()
     set (OPTIMIZATION "${OPTIMIZATION}")
-endif
+endif ()
 
 # $OPENMP takes precedence over $BUILD_TYPE defaults
 if ("${OPENMP}" STREQUAL "")
     set (OPENMP "${PARALLEL}")
-else
+else ()
     set(OPENMP "${OPENMP}")
-endif
+endif ()
 
 # Parse DAMASK_BIN from CONFIG file
 file (READ "CONFIG" CONFIGFILE)
@@ -156,7 +156,7 @@ foreach (item ${CONFIGFILE})
       string (REPLACE "DAMASK_BIN" ";" STRING_LIST ${item})
       list (GET STRING_LIST 1 item)
       string (STRIP "${item}" CMAKE_INSTALL_PREFIX)
-    endif
+    endif ()
 endforeach(item ${CONFIGFILE})
 
 # Parse DAMASK version from VERSION file
@@ -182,7 +182,7 @@ if (${CMAKE_Fortran_COMPILER_ID} STREQUAL "Intel")
 
   if (OPENMP)
     set (OPENMP_FLAGS "-qopenmp -parallel")
-  endif
+  endif ()
 
   if ("${OPTIMIZATION}" STREQUAL "OFF")
       set (OPTIMIZATION_FLAGS    "-O0 -no-ip")
@@ -191,7 +191,7 @@ if (${CMAKE_Fortran_COMPILER_ID} STREQUAL "Intel")
   elseif ("${OPTIMIZATION}" STREQUAL "AGGRESSIVE")
       set (OPTIMIZATION_FLAGS    "-ipo -O3 -no-prec-div -fp-model fast=2 -xHost")
       # -fast = -ipo, -O3, -no-prec-div, -static, -fp-model fast=2, and -xHost"
-  endif
+  endif ()
 
   set (STANDARD_CHECK "-stand f08 -standard-semantics")
   set (LINKER_FLAGS   "${LINKER_FLAGS} -shared-intel")
@@ -307,7 +307,7 @@ elseif(${CMAKE_Fortran_COMPILER_ID} STREQUAL "GNU")
 
   if (OPENMP)
     set (OPENMP_FLAGS "-fopenmp")
-  endif
+  endif ()
 
   if ("${OPTIMIZATION}" STREQUAL "OFF")
       set (OPTIMIZATION_FLAGS "-O0"       )
@@ -315,13 +315,12 @@ elseif(${CMAKE_Fortran_COMPILER_ID} STREQUAL "GNU")
       set (OPTIMIZATION_FLAGS "-O2")
   elseif ("${OPTIMIZATION}" STREQUAL "AGGRESSIVE")
       set (OPTIMIZATION_FLAGS "-O3 -ffast-math -funroll-loops -ftree-vectorize")
-  endif
+  endif ()
 
   set (STANDARD_CHECK "-std=f2008ts -pedantic-errors" )
   set (LINKER_FLAGS  "${LINKER_FLAGS} -Wl")
   # options parsed directly to the linker
-  set (LINKER_FLAGS  "${LINKER_FLAGS},-undefined")
-  set (LINKER_FLAGS  "${LINKER_FLAGS},-dynamic_lookup" )
+  set (LINKER_FLAGS  "${LINKER_FLAGS},-undefined,dynamic_lookup" )
   #   ensure to link against dynamic libraries
 
 #------------------------------------------------------------------------------------------------
@@ -439,7 +438,7 @@ elseif(${CMAKE_Fortran_COMPILER_ID} STREQUAL "GNU")
 
   # Additional options
   # -fdefault-integer-8: Use it to set precision to 8 bytes for integer, don't use it for the standard case of pInt=4 (there is no -fdefault-integer-4)
-endif
+endif ()
 
 set (CMAKE_Fortran_FLAGS            "${BUILDCMD_PRE} ${OPENMP_FLAGS} ${STANDARD_CHECK} ${OPTIMIZATION_FLAGS} ${COMPILE_FLAGS} ${PRECISION_FLAGS}")
 set (CMAKE_Fortran_LINK_EXECUTABLE  "${BUILDCMD_PRE} ${CMAKE_LINKER} ${OPENMP_FLAGS}   ${OPTIMIZATION_FLAGS} ${LINKER_FLAGS}")
@@ -449,7 +448,7 @@ if ("${CMAKE_BUILD_TYPE}" STREQUAL "")
 elseif ("${CMAKE_BUILD_TYPE}" STREQUAL "DEBUG")
   set (CMAKE_Fortran_FLAGS            "${CMAKE_Fortran_FLAGS} ${DEBUG_FLAGS}")
   set (CMAKE_Fortran_LINK_EXECUTABLE  "${CMAKE_Fortran_LINK_EXECUTABLE} ${DEBUG_FLAGS}")
-endif
+endif ()
 
 set (CMAKE_Fortran_LINK_EXECUTABLE "${CMAKE_Fortran_LINK_EXECUTABLE} <OBJECTS> -o <TARGET> <LINK_LIBRARIES> ${PETSC_EXTERNAL_LIB} ${BUILDCMD_POST}")
 set (CMAKE_Fortran_FLAGS  "${CMAKE_Fortran_FLAGS} ${DAMASK_INCLUDE_FLAGS} ${BUILDCMD_POST}")
@@ -468,9 +467,9 @@ if ("${BUILD_TYPE}" STREQUAL SYNTAXONLY)
    elseif ("${PROJECT_NAME}" STREQUAL DAMASK_FEM)
        install (PROGRAMS    ${PROJECT_BINARY_DIR}/src/DAMASK_FEM
                 DESTINATION ${CMAKE_INSTALL_PREFIX})
-   endif
-else
+   endif ()
+else ()
    exec_program(mktemp ARGS -d OUTPUT_VARIABLE BLACK_HOLE)
    install (PROGRAMS    ${PROJECT_BINARY_DIR}/src/prec.mod
             DESTINATION ${BLACK_HOLE})
-endif
+endif ()
