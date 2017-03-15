@@ -461,6 +461,10 @@ add_subdirectory (src)
 
 # INSTALL BUILT BINARIES
 if ("${BUILD_TYPE}" STREQUAL SYNTAXONLY)
+   exec_program (mktemp ARGS -d OUTPUT_VARIABLE BLACK_HOLE)
+   install (PROGRAMS    ${PROJECT_BINARY_DIR}/src/prec.mod
+            DESTINATION ${BLACK_HOLE})
+else ()
    if ("${PROJECT_NAME}" STREQUAL DAMASK_spectral)
        install (PROGRAMS    ${PROJECT_BINARY_DIR}/src/DAMASK_spectral
                 DESTINATION ${CMAKE_INSTALL_PREFIX})
@@ -468,8 +472,4 @@ if ("${BUILD_TYPE}" STREQUAL SYNTAXONLY)
        install (PROGRAMS    ${PROJECT_BINARY_DIR}/src/DAMASK_FEM
                 DESTINATION ${CMAKE_INSTALL_PREFIX})
    endif ()
-else ()
-   exec_program(mktemp ARGS -d OUTPUT_VARIABLE BLACK_HOLE)
-   install (PROGRAMS    ${PROJECT_BINARY_DIR}/src/prec.mod
-            DESTINATION ${BLACK_HOLE})
 endif ()
