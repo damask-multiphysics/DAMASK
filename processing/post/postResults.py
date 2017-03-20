@@ -851,7 +851,7 @@ for opt in ['nodalScalar','elemScalar','elemTensor','homogenizationResult','crys
 
 if options.info:
   if options.filetype == 'marc':
-    print('\n\nMentat release {}'.format(damask.solver.Marc().version('../../')))
+    print('\n\nMentat release {}'.format(damask.solver.Marc().version()))
   if options.filetype == 'spectral':
     print('\n\n{}'.format(p))
 
