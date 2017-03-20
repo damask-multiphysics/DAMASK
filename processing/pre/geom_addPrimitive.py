@@ -9,8 +9,6 @@ import damask
 scriptName = os.path.splitext(os.path.basename(__file__))[0]
 scriptID   = ' '.join([scriptName,damask.version])
 
-oversampling = 2.
-
 #--------------------------------------------------------------------------------------------------
 #                                MAIN
 #--------------------------------------------------------------------------------------------------
@@ -50,14 +48,17 @@ parser.add_option(     '--degrees',     dest='degrees', action='store_true',
                   help = 'angle is given in degrees [%default]')
 parser.add_option(     '--nonperiodic', dest='periodic', action='store_false',
                   help = 'wrap around edges [%default]')
-
+parser.add_option(     '--voxelspace',  dest='voxelspace', action='store_true',
+                  help = '-c and -d are given in (0 to grid) coordinates instead of (origin to origin+size) \
+coordinates [%default]')
 parser.set_defaults(center = [0,0,0],
                     fill = 0,
                     quaternion = [],
                     angleaxis = [],
                     degrees = False,
                     exponent = [1e10,1e10,1e10], # box shape by default
-                    periodic = True
+                    periodic = True,
+                    voxelspace = False
                    )
 
 (options, filenames) = parser.parse_args()
@@ -73,6 +74,7 @@ else:
   rotation = damask.Quaternion()
 
 options.center = np.array(options.center)
+options.dimension = np.array(options.dimension)
 
 # --- loop over input files -------------------------------------------------------------------------
 if filenames == []: filenames = [None]
@@ -119,36 +121,64 @@ for name in filenames:
   
   # If we have a negative dimension, make it an ellipsoid for backwards compatibility
   options.exponent = np.where(np.array(options.dimension) > 0, options.exponent, 2)
-  
   microstructure = microstructure.reshape(info['grid'],order='F')
   
+  # coordinates given in real space (default) vs voxel space
+  if not options.voxelspace:
+    options.center += info['origin']
+    options.center    *= np.array(info['grid']) / np.array(info['size'])
+    options.dimension *= np.array(info['grid']) / np.array(info['size'])
+
   size = microstructure.shape  
+
+  # change to coordinate space where the primitive is the unit sphere/cube/etc
+  if options.periodic: # use padding to achieve periodicity
+    (X, Y, Z) = np.meshgrid(np.arange(-size[0]/2, (3*size[0])/2, dtype=np.float32), # 50% padding on each side 
+                            np.arange(-size[1]/2, (3*size[1])/2, dtype=np.float32), 
+                            np.arange(-size[2]/2, (3*size[2])/2, dtype=np.float32),
+                            indexing='ij')
+    # Padding handling
+    X = np.roll(np.roll(np.roll(X,
+            -size[0]/2, axis=0), 
+            -size[1]/2, axis=1), 
+            -size[2]/2, axis=2)
+    Y = np.roll(np.roll(np.roll(Y,
+            -size[0]/2, axis=0), 
+            -size[1]/2, axis=1), 
+            -size[2]/2, axis=2)
+    Z = np.roll(np.roll(np.roll(Z,
+            -size[0]/2, axis=0), 
+            -size[1]/2, axis=1), 
+            -size[2]/2, axis=2)
+  else: # nonperiodic, much lighter on resources
+    # change to coordinate space where the primitive is the unit sphere/cube/etc
+    (X, Y, Z) = np.meshgrid(np.arange(0, size[0], dtype=np.float32), 
+                            np.arange(0, size[1], dtype=np.float32), 
+                            np.arange(0, size[2], dtype=np.float32),
+                            indexing='ij')
+    
+  # first by translating the center onto 0, 0.5 shifts the voxel origin onto the center of the voxel
+  X -= options.center[0] - 0.5
+  Y -= options.center[1] - 0.5
+  Z -= options.center[2] - 0.5
+  # and then by applying the quaternion
+  # this should be rotation.conjugate() * (X,Y,Z), but it is this way for backwards compatibility with the older version of this script
+  (X, Y, Z) = rotation * (X, Y, Z)
+  # and finally by scaling (we don't worry about options.dimension being negative, np.abs occurs on the microstructure = np.where... line)
+  X /= options.dimension[0] * 0.5
+  Y /= options.dimension[1] * 0.5
+  Z /= options.dimension[2] * 0.5
+    
+
+ # High exponents can cause underflow & overflow - loss of precision is okay here, we just compare it to 1, so +infinity and 0 are fine
+  old_settings = np.seterr()
+  np.seterr(over='ignore', under='ignore')
   
   if options.periodic: # use padding to achieve periodicity
-    # change to coordinate space where the primitive is the unit sphere/cube/etc
-    (Y, X, Z) = np.meshgrid(np.arange(-size[0], 2*size[0], dtype=np.float64), 
-                            np.arange(-size[1], 2*size[1], dtype=np.float64), 
-                            np.arange(-size[2], 2*size[2], dtype=np.float64))
-    # first by translating the center onto 0, 0.5 shifts the voxel origin onto the center of the voxel
-    X -= options.center[0] - 0.5
-    Y -= options.center[1] - 0.5
-    Z -= options.center[2] - 0.5
-    # and then by applying the quaternion
-    # this should be rotation.conjugate() * (X,Y,Z), but it is this way for backwards compatibility with the older version of this script
-    (X, Y, Z) = rotation * (X, Y, Z)
-    # and finally by scaling (we don't worry about options.dimension being negative, np.abs occurs on the microstructure = np.where... line)
-    X /= options.dimension[0] * 0.5
-    Y /= options.dimension[1] * 0.5
-    Z /= options.dimension[2] * 0.5
-    
-    # High exponents can cause underflow & overflow - loss of precision is okay here, we just compare it to 1, so +infinity and 0 are fine
-    old_settings = np.seterr()
-    np.seterr(over='ignore', under='ignore')
-    
     inside = np.zeros(size, dtype=bool)
-    for i in range(3):
-      for j in range(3):
-        for k in range(3):
+    for i in range(2):
+      for j in range(2):
+        for k in range(2):
           inside = inside | ( # Most of this is handling the padding
                 np.abs(X[size[0] * i : size[0] * (i+1),
                          size[1] * j : size[1] * (j+1),
@@ -160,34 +190,14 @@ for name in filenames:
                          size[1] * j : size[1] * (j+1),
                          size[2] * k : size[2] * (k+1)])**options.exponent[2] < 1)
     
-    microstructure = np.where(inside, options.fill, microstructure)
-    np.seterr(**old_settings) # Reset warnings to old state
-    
+    microstructure = np.where(inside, options.fill, microstructure)   
+
   else: # nonperiodic, much lighter on resources
-    # change to coordinate space where the primitive is the unit sphere/cube/etc
-    (Y, X, Z) = np.meshgrid(np.arange(0, size[0], dtype=np.float64), 
-                            np.arange(0, size[1], dtype=np.float64), 
-                            np.arange(0, size[2], dtype=np.float64))
-    # first by translating the center onto 0, 0.5 shifts the voxel origin onto the center of the voxel
-    X -= options.center[0] - 0.5
-    Y -= options.center[1] - 0.5
-    Z -= options.center[2] - 0.5
-    # and then by applying the quaternion (the implementation of quat. does q*v*q.conj)
-    # this should be rotation.conjugate() * (X,Y,Z), but it is this way for backwards compatibility with the older version of this script
-    (X, Y, Z) = rotation * (X, Y, Z)
-    # and finally by scaling (we don't worry about options.dimension being negative, np.abs occurs on the microstructure = np.where... line)
-    X /= options.dimension[0] * 0.5
-    Y /= options.dimension[1] * 0.5
-    Z /= options.dimension[2] * 0.5
-    
-    # High exponents can cause underflow & overflow - loss of precision is okay here, we just compare it to 1, so +infinity and 0 are fine
-    old_settings = np.seterr()
-    np.seterr(over='ignore', under='ignore')
     microstructure = np.where(np.abs(X)**options.exponent[0] +
                               np.abs(Y)**options.exponent[1] +
                               np.abs(Z)**options.exponent[2] < 1, options.fill, microstructure)
-    np.seterr(**old_settings) # Reset warnings to old state
 
+  np.seterr(**old_settings) # Reset warnings to old state
   newInfo['microstructures'] = microstructure.max()
 
 # --- report ---------------------------------------------------------------------------------------

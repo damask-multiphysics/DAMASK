@@ -203,58 +203,63 @@ class Test():
         shutil.copy2(source,target)
       except:
         logging.critical('error copying {} to {}'.format(source,target))
+        raise
 
 
   def copy_Reference2Current(self,sourcefiles=[],targetfiles=[]):
 
     if len(targetfiles) == 0: targetfiles = sourcefiles
-    for i,file in enumerate(sourcefiles):
+    for i,f in enumerate(sourcefiles):
       try:
-        shutil.copy2(self.fileInReference(file),self.fileInCurrent(targetfiles[i]))
+        shutil.copy2(self.fileInReference(f),self.fileInCurrent(targetfiles[i]))
       except:
-        logging.critical('Reference2Current: Unable to copy file "{}"'.format(file))
+        logging.critical('Reference2Current: Unable to copy file "{}"'.format(f))
+        raise
 
 
   def copy_Base2Current(self,sourceDir,sourcefiles=[],targetfiles=[]):
 
     source=os.path.normpath(os.path.join(self.dirBase,'../../..',sourceDir))
     if len(targetfiles) == 0: targetfiles = sourcefiles
-    for i,file in enumerate(sourcefiles):
+    for i,f in enumerate(sourcefiles):
       try:
-        shutil.copy2(os.path.join(source,file),self.fileInCurrent(targetfiles[i]))
+        shutil.copy2(os.path.join(source,f),self.fileInCurrent(targetfiles[i]))
       except:
-        logging.error(os.path.join(source,file))
-        logging.critical('Base2Current: Unable to copy file "{}"'.format(file))
+        logging.error(os.path.join(source,f))
+        logging.critical('Base2Current: Unable to copy file "{}"'.format(f))
+        raise
 
 
   def copy_Current2Reference(self,sourcefiles=[],targetfiles=[]):
 
     if len(targetfiles) == 0: targetfiles = sourcefiles
-    for i,file in enumerate(sourcefiles):
+    for i,f in enumerate(sourcefiles):
       try:
-        shutil.copy2(self.fileInCurrent(file),self.fileInReference(targetfiles[i]))
+        shutil.copy2(self.fileInCurrent(f),self.fileInReference(targetfiles[i]))
       except:
-        logging.critical('Current2Reference: Unable to copy file "{}"'.format(file))
+        logging.critical('Current2Reference: Unable to copy file "{}"'.format(f))
+        raise
 
 
   def copy_Proof2Current(self,sourcefiles=[],targetfiles=[]):
 
     if len(targetfiles) == 0: targetfiles = sourcefiles
-    for i,file in enumerate(sourcefiles):
+    for i,f in enumerate(sourcefiles):
       try:
-        shutil.copy2(self.fileInProof(file),self.fileInCurrent(targetfiles[i]))
+        shutil.copy2(self.fileInProof(f),self.fileInCurrent(targetfiles[i]))
       except:
-        logging.critical('Proof2Current: Unable to copy file "{}"'.format(file))
+        logging.critical('Proof2Current: Unable to copy file "{}"'.format(f))
+        raise
 
 
   def copy_Current2Current(self,sourcefiles=[],targetfiles=[]):
 
-    for i,file in enumerate(sourcefiles):
+    for i,f in enumerate(sourcefiles):
       try:
-        shutil.copy2(self.fileInReference(file),self.fileInCurrent(targetfiles[i]))
+        shutil.copy2(self.fileInReference(f),self.fileInCurrent(targetfiles[i]))
       except:
-        logging.critical('Current2Current: Unable to copy file "{}"'.format(file))
-
+        logging.critical('Current2Current: Unable to copy file "{}"'.format(f))
+        raise
 
   def execute_inCurrentDir(self,cmd,streamIn=None):
 
