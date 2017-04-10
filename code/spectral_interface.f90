@@ -95,7 +95,11 @@ subroutine DAMASK_interface_init()
      call quit(1_pInt)
    endif
    if (error_unit /= 0) then
-     write(output_unit,'(a)') ' STERR != 0'
+     write(output_unit,'(a)') ' STDERR != 0'
+     call quit(1_pInt)
+   endif
+   if (PETSC_VERSION_MAJOR /= 3 .or. PETSC_VERSION_MINOR /= 7) then
+     write(6,'(a,2(i1.1,a))') 'PETSc ',PETSC_VERSION_MAJOR,'.',PETSC_VERSION_MINOR,'.x not supported'
      call quit(1_pInt)
    endif
  else mainProcess
