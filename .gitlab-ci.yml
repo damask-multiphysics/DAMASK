@@ -88,8 +88,8 @@ checkout:
     - git checkout $CI_COMMIT_SHA
     - git clone git@magit1.mpie.de:damask/PRIVATE.git
     - echo $DAMASKROOT
-    - eval 'source $DAMASKROOT/DAMASK_env.sh'
-    - make -C $DAMASKROOT install
+    - eval 'source DAMASK_env.sh'
+    - make install
 
 ###################################################################################################
 OrientationRelationship:
