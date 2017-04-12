@@ -80,7 +80,7 @@ checkout:
   before_script: 
     - echo 'Do nothing'
   script:
-    - mkdir /tmp/GitlabCI_Pipeline_$CI_PIPELINE_ID
+    - mkdir -p $DAMASKROOT
     - git clone -b GitLabRunner git@magit1.mpie.de:damask/DAMASK.git $DAMASKROOT
     - git clone git@magit1.mpie.de:damask/PRIVATE.git $DAMASKROOT/PRIVATE
     - eval 'source $DAMASKROOT/DAMASK_env.sh'
