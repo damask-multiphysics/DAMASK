@@ -286,10 +286,14 @@ Abaqus_compile2017:
 ###################################################################################################
 SpectralExample:
   stage: example
+  only:
+    - development
   script: SpectralAll_example/test.py
 
 AbaqusExample:
   stage: example
+  only:
+    - development
   script:
     - module load $IntelCompiler16_0 $Abaqus
     - Abaqus_example/test.py
