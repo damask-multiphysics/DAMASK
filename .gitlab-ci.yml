@@ -85,6 +85,8 @@ checkout:
     - mkdir -p $DAMASKROOT
     - git clone git@magit1.mpie.de:damask/DAMASK.git $DAMASKROOT
     - cd $DAMASKROOT
+    - export CI_COMMIT_SHA
+    - echo $CI_COMMIT_SHA
     - git checkout $CI_COMMIT_SHA git@magit1.mpie.de:damask/DAMASK.git
     - git clone git@magit1.mpie.de:damask/PRIVATE.git
     - eval 'source $DAMASKROOT/DAMASK_env.sh'
