@@ -89,7 +89,11 @@ checkout:
     #- git clone git@magit1.mpie.de:damask/PRIVATE.git
     - echo $DAMASKROOT
     - echo $PWD
+    - type source
+    - type .
+    - type cd
     - cat DAMASK_env.sh
+    - . $DAMASKROOT/DAMASK_env.sh > /tmp/log
     - source $DAMASKROOT/DAMASK_env.sh > /tmp/log
     - echo p $PYTHONPATH
     - make install
