@@ -88,7 +88,9 @@ checkout:
     - git checkout $CI_COMMIT_SHA
     #- git clone git@magit1.mpie.de:damask/PRIVATE.git
     - echo $DAMASKROOT
-    - eval 'source ./DAMASK_env.sh > /tmp/log'
+    - echo $PWD
+    - cat DAMASK_env.sh
+    - eval 'source $DAMASKROOT/DAMASK_env.sh > /tmp/log'
     - echo p $PYTHONPATH
     - make install
 
