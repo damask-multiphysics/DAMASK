@@ -19,8 +19,8 @@ if [[ ( "x$DAMASK_BIN" != "x" ) && ( "x$MATCH" = "x" ) ]]; then
   export PATH=$DAMASK_BIN:$PATH
 fi
 
-SOLVER=`which DAMASK_spectral 2>/dev/null`
-PROCESSING=`which postResults 2>/dev/null`
+SOLVER=`which DAMASK_spectral || True 2>/dev/null`
+PROCESSING=`which postResults || True 2>/dev/null`
 if [ "x$DAMASK_NUM_THREADS" = "x" ]; then
   DAMASK_NUM_THREADS=1
 fi

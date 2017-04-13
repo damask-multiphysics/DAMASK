@@ -1,0 +1,489 @@
+stages:
+  - prepareAll
+  - preprocessing
+  - postprocessing
+  - compileSpectralIntel
+  - compileSpectralGNU
+  - prepareSpectral
+  - spectral
+  - compileMarc2014
+  - compileMarc2014.2
+  - compileMarc2015
+  - compileMarc2016
+  - marc
+  - compileAbaqus2016
+  - compileAbaqus2017
+  - example
+  - updateMaster
+  - createDocumentation
+  - clean
+
+###################################################################################################
+before_script:
+  - source $DAMASKROOT/DAMASK_env.sh
+  - module purge
+  - cd $DAMASKROOT/PRIVATE/testing
+
+###################################################################################################
+variables:
+  #================================================================================================
+  # GitLab Settings
+  #================================================================================================
+  GIT_SUBMODULE_STRATEGY: none
+
+  #================================================================================================
+  # Shortcut names
+  #================================================================================================
+  DAMASKROOT:                      "$HOME/GitlabCI_Pipeline_$CI_PIPELINE_ID/DAMASK"
+
+  #================================================================================================
+  # Names of module files to load
+  #================================================================================================
+  # ++++++++++++ Compiler ++++++++++++++++++++++++++++++++++++++++++++++
+  IntelCompiler16_0:               "Compiler/Intel/16.0 Libraries/IMKL/2016"
+  IntelCompiler17_0:               "Compiler/Intel/17.0 Libraries/IMKL/2017"
+  GNUCompiler5_3:                  "Compiler/GNU/5.3"
+  # ------------ Defaults ----------------------------------------------
+  IntelCompiler:                   "$IntelCompiler17_0"
+  GNUCompiler:                     "$GNUCompiler5_3"
+  # ++++++++++++ MPI +++++++++++++++++++++++++++++++++++++++++++++++++++
+  MPICH3_2Intel17_0:               "MPI/Intel/17.0/MPICH/3.2"
+  MPICH3_2GNU5_3:                  "MPI/GNU/5.3/MPICH/3.2"
+  # ------------ Defaults ----------------------------------------------
+  MPICH_GNU:                       "$MPICH3_2GNU5_3"
+  MPICH_Intel:                     "$MPICH3_2Intel17_0"
+  # ++++++++++++ PETSc +++++++++++++++++++++++++++++++++++++++++++++++++
+  PETSc3_6_4MPICH3_2Intel17_0:     "Libraries/PETSc/3.6.4/Intel-17.0-MPICH-3.2"
+  PETSc3_7_5MPICH3_2Intel17_0:     "Libraries/PETSc/3.7.5/Intel-17.0-MPICH-3.2"
+  PETSc3_7_5MPICH3_2GNU5_3:        "Libraries/PETSc/3.7.5/GNU-5.3-MPICH-3.2"
+  # ------------ Defaults ----------------------------------------------
+  PETSc_MPICH_Intel:               "$PETSc3_7_5MPICH3_2Intel17_0"
+  PETSc_MPICH_GNU:                 "$PETSc3_7_5MPICH3_2GNU5_3"
+  # ++++++++++++ FEM +++++++++++++++++++++++++++++++++++++++++++++++++++
+  Abaqus2016:                      "FEM/Abaqus/2016"
+  Abaqus2017:                      "FEM/Abaqus/2017"
+  MSC2014:                         "FEM/MSC/2014"
+  MSC2014_2:                       "FEM/MSC/2014.2"
+  MSC2015:                         "FEM/MSC/2015"
+  MSC2016:                         "FEM/MSC/2016"
+  # ------------ Defaults ----------------------------------------------
+  Abaqus:                          "$Abaqus2017"
+  MSC:                             "$MSC2016"
+  # ++++++++++++ Documentation +++++++++++++++++++++++++++++++++++++++++
+  Doxygen1_8_13:                   "Documentation/Doxygen/1.8.13"
+  # ------------ Defaults ----------------------------------------------
+  Doxygen:                         "$Doxygen1_8_13"
+
+
+###################################################################################################
+checkout: 
+  stage: prepareAll
+  before_script: 
+    - $HOME/wait.sh
+    - echo $CI_PIPELINE_ID > $HOME/GitLabCI.lock
+  script:
+    - mkdir -p $DAMASKROOT
+    - git clone -q git@magit1.mpie.de:damask/DAMASK.git $DAMASKROOT
+    - cd $DAMASKROOT
+    - git checkout $CI_COMMIT_SHA
+    - git clone -q git@magit1.mpie.de:damask/PRIVATE.git
+    - source $DAMASKROOT/DAMASK_env.sh
+    - make install
+  except:
+    - master
+    - release
+
+###################################################################################################
+OrientationRelationship:
+  stage: preprocessing
+  script: OrientationRelationship/test.py
+  except:
+    - master
+    - release
+
+Pre_SeedGeneration:
+  stage: preprocessing
+  script: PreProcessing_SeedGeneration/test.py
+  except:
+    - master
+    - release
+
+Pre_GeomGeneration:
+  stage: preprocessing
+  script: PreProcessing_GeomGeneration/test.py
+  except:
+    - master
+    - release
+
+Pre_GeomModification:
+  stage: preprocessing
+  script: PreProcessing_GeomModification/test.py
+  except:
+    - master
+    - release
+
+Pre_General:
+  stage: preprocessing
+  script: PreProcessing/test.py
+  except:
+    - master
+    - release
+
+Spectral_geometryPacking:
+  stage: preprocessing
+  script: Spectral_geometryPacking/test.py
+  except:
+    - master
+    - release
+
+###################################################################################################
+Post_General:
+  stage: postprocessing
+  script: PostProcessing/test.py
+  except:
+    - master
+    - release
+
+Post_GeometryReconstruction:
+  stage: postprocessing
+  script: Spectral_geometryReconstruction/test.py
+  except:
+    - master
+    - release
+
+Post_addCurl:
+  stage: postprocessing
+  script: addCurl/test.py
+  except:
+    - master
+    - release
+
+Post_addDivergence:
+  stage: postprocessing
+  script: addDivergence/test.py
+  except:
+    - master
+    - release
+
+Post_addGradient:
+  stage: postprocessing
+  script: addGradient/test.py
+  except:
+    - master
+    - release
+
+Post_ParaviewRelated:
+  stage: postprocessing
+  script: ParaviewRelated/test.py
+  except:
+    - master
+    - release
+
+###################################################################################################
+Compile_Intel:
+  stage: compileSpectralIntel 
+  script:
+    - module load $IntelCompiler $MPICH_Intel $PETSc_MPICH_Intel
+    - SpectralAll_compileIfort/test.py
+  except:
+    - master
+    - release
+
+###################################################################################################
+Compile_GNU:
+  stage: compileSpectralGNU
+  script:
+    - module load $GNUCompiler $MPICH_GNU $PETSc_MPICH_GNU
+    - SpectralAll_compileGfortran/test.py
+  except:
+    - master
+    - release
+
+###################################################################################################
+Compile_Intel_Prepare:
+  stage: prepareSpectral
+  script:
+    - module load $IntelCompiler $MPICH_Intel $PETSc_MPICH_Intel
+    - make -C $DAMASKROOT clean spectral install tidy
+  except:
+    - master
+    - release
+ 
+###################################################################################################
+Spectral_PackedGeometry:
+  stage: spectral
+  script: Spectral_PackedGeometry/test.py
+  except:
+    - master
+    - release
+
+Spectral_parsingArguments:
+  stage: spectral
+  script: Spectral_parsingArguments/test.py
+  except:
+    - master
+    - release
+
+StateIntegration_compareVariants:
+  stage: spectral
+  script: StateIntegration_compareVariants/test.py
+  except:
+    - master
+    - release
+
+nonlocal_densityConservation:
+  stage: spectral
+  script: nonlocal_densityConservation/test.py
+  except:
+    - master
+    - release
+
+Spectral_ipNeighborhood:
+  stage: spectral
+  script: Spectral_ipNeighborhood/test.py
+  except:
+    - master
+    - release
+
+Nonlocal_Damage_DetectChanges:
+  stage: spectral
+  script: Nonlocal_Damage_DetectChanges/test.py
+  except:
+    - master
+    - release
+
+SpectralAll_restart:
+  stage: spectral
+  script: SpectralAll_restart/test.py
+  except:
+    - master
+    - release
+
+SpectralAll_parsingLoadCase:
+  stage: spectral
+  script: SpectralAll_parsingLoadCase/test.py
+  except:
+    - master
+    - release
+
+SpectralBasic_loadCaseRotation:
+  stage: spectral
+  script: SpectralBasic_loadCaseRotation/test.py
+  except:
+    - master
+    - release
+
+Spectral_MPI:
+  stage: spectral
+  script:
+    - module load $IntelCompiler $MPICH_Intel $PETSc_MPICH_Intel
+    - Spectral_MPI/test.py
+  except:
+    - master
+    - release
+
+Plasticity_DetectChanges:
+  stage: spectral
+  script: Plasticity_DetectChanges/test.py
+  except:
+    - master
+    - release
+
+Homogenization:
+  stage: spectral
+  script: Homogenization/test.py
+  except:
+    - master
+    - release
+
+Phenopowerlaw_singleSlip:
+  stage: spectral
+  script: Phenopowerlaw_singleSlip/test.py
+  except:
+    - master
+    - release
+
+HybridIA:
+  stage: spectral
+  script: HybridIA/test.py
+  except:
+    - master
+    - release
+
+###################################################################################################
+Marc_compileIfort2014:
+  stage: compileMarc2014
+  script:
+    - module load $IntelCompiler16_0 $MSC2014
+    - Marc_compileIfort/test.py -m 2014
+  except:
+    - master
+    - release
+
+###################################################################################################
+Marc_compileIfort2014.2:
+  stage: compileMarc2014.2
+  script:
+    - module load $IntelCompiler16_0 $MSC2014_2
+    - Marc_compileIfort/test.py -m 2014.2
+  except:
+    - master
+    - release
+
+###################################################################################################
+Marc_compileIfort2015:
+  stage: compileMarc2015
+  script:
+    - module load $IntelCompiler16_0 $MSC2015
+    - Marc_compileIfort/test.py -m 2015
+  except:
+    - master
+    - release
+
+###################################################################################################
+Marc_compileIfort2016:
+  stage: compileMarc2016
+  script:
+    - module load $IntelCompiler16_0 $MSC2016
+    - Marc_compileIfort/test.py -m 2016
+  except:
+    - master
+    - release
+
+###################################################################################################
+Hex_elastic:
+  stage: marc
+  script:
+    - module load $IntelCompiler16_0 $MSC
+    - Hex_elastic/test.py
+  except:
+    - master
+    - release
+
+CubicFCC_elastic:
+  stage: marc
+  script:
+    - module load $IntelCompiler16_0 $MSC
+    - CubicFCC_elastic/test.py
+  except:
+    - master
+    - release
+
+CubicBCC_elastic:
+  stage: marc
+  script:
+    - module load $IntelCompiler16_0 $MSC
+    - CubicBCC_elastic/test.py
+  except:
+    - master
+    - release
+
+J2_plasticBehavior:
+  stage: marc
+  script:
+    - module load $IntelCompiler16_0 $MSC
+    - J2_plasticBehavior/test.py
+  except:
+    - master
+    - release
+
+###################################################################################################
+Abaqus_compile2016:
+  stage: compileAbaqus2016
+  script:
+    - module load $IntelCompiler16_0 $Abaqus2016
+    - Abaqus_compileIfort/test.py -a 2016
+  except:
+    - master
+    - release
+
+###################################################################################################
+Abaqus_compile2017:
+  stage: compileAbaqus2017
+  script:
+    - module load $IntelCompiler16_0 $Abaqus2017
+    - Abaqus_compileIfort/test.py -a 2017
+  except:
+    - master
+    - release
+
+###################################################################################################
+SpectralExample:
+  stage: example
+  script: SpectralAll_example/test.py
+  only:
+    - development
+
+AbaqusExample:
+  stage: example
+  script:
+    - module load $IntelCompiler16_0 $Abaqus
+    - Abaqus_example/test.py
+  only:
+    - development
+
+##################################################################################################
+mergeIntoMaster: 
+  stage: updateMaster
+  script:
+    - cd $DAMASKROOT
+    - export TESTEDREV=$(git describe)                                                              # might be detached from development branch
+    - echo $TESTEDREV > VERSION
+    - git commit VERSION -m "[skip ci] updated version information after successful test of $TESTEDREV"
+    - export UPDATEDREV=$(git describe)                                                             # tested state + 1 commit
+    - git checkout master
+    - git merge $UPDATEDREV
+    - git push origin master                                                                        # master is now tested version and has updated VERSION file
+    - git checkout development
+    - git merge master -s ours                                                                      # only possible conflict is in VERSION file
+    - git push origin development                                                                   # development is unchanged (as master is based on it) but has updated VERSION file
+  only:
+    - development
+
+###################################################################################################
+AbaqusExp: 
+  stage: createDocumentation
+  script:
+    - module load $IntelCompiler $MPICH_Intel $PETSc_MPICH_Intel $Doxygen
+    - $DAMASKROOT/PRIVATE/documenting/runDoxygen.sh $DAMASKROOT abaqus_exp
+  except:
+    - master
+    - release
+
+AbaqusStd: 
+  stage: createDocumentation
+  script:
+    - module load $IntelCompiler $MPICH_Intel $PETSc_MPICH_Intel $Doxygen
+    - $DAMASKROOT/PRIVATE/documenting/runDoxygen.sh $DAMASKROOT abaqus_std
+  except:
+    - master
+    - release
+
+Marc: 
+  stage: createDocumentation
+  script:
+    - module load $IntelCompiler $MPICH_Intel $PETSc_MPICH_Intel $Doxygen
+    - $DAMASKROOT/PRIVATE/documenting/runDoxygen.sh $DAMASKROOT marc
+  except:
+    - master
+    - release
+
+Spectral: 
+  stage: createDocumentation
+  script:
+    - module load $IntelCompiler $MPICH_Intel $PETSc_MPICH_Intel $Doxygen
+    - $DAMASKROOT/PRIVATE/documenting/runDoxygen.sh $DAMASKROOT spectral
+  except:
+    - master
+    - release
+
+###################################################################################################
+removeLock: 
+  stage: clean
+  before_script: 
+    - echo 'Do nothing'
+  when: always
+  script: rm $HOME/GitLabCI.lock
+  except:
+    - master
+    - release
