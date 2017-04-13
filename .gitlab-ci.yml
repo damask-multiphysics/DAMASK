@@ -1,19 +1,19 @@
 stages:
   - prepareAll
-  - preprocessing
-  - postprocessing
-  - compileSpectralIntel
-  - compileSpectralGNU
-  - prepareSpectral
-  - spectral
-  - compileMarc2014
-  - compileMarc2014.2
-  - compileMarc2015
-  - compileMarc2016
-  - marc
-  - compileAbaqus2016
-  - compileAbaqus2017
-  - example
+  #- preprocessing
+  #- postprocessing
+  #- compileSpectralIntel
+  #- compileSpectralGNU
+  #- prepareSpectral
+  #- spectral
+  #- compileMarc2014
+  #- compileMarc2014.2
+  #- compileMarc2015
+  #- compileMarc2016
+  #- marc
+  #- compileAbaqus2016
+  #- compileAbaqus2017
+  #- example
   - updateMaster
   - createDocumentation
   - clean
@@ -310,6 +310,7 @@ mergeIntoMaster:
   script:
     - cd $DAMASKROOT
     - export TESTEDREV=$(git describe)                                                              # might be detached from development branch
+    - echo $TESTEDREV > VERSION
     - git commit VERSION -m "[skip ci] updated version information after successful test of $TESTEDREV"
     - export UPDATEDREV=$(git describe)                                                             # tested state + 1 commit
     - git checkout master
