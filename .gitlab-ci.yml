@@ -84,18 +84,10 @@ checkout:
   script:
     - mkdir -p $DAMASKROOT
     - git clone git@magit1.mpie.de:damask/DAMASK.git $DAMASKROOT
-    - git checkout $CI_COMMIT_SHA --git-dir=$DAMASKROOT/.git
+    - cd $DAMASKROOT
+    - git checkout $CI_COMMIT_SHA
     #- git clone -q git@magit1.mpie.de:damask/PRIVATE.git
-    - echo $DAMASKROOT
-    - echo $PWD
-    - type source
-    - type .
-    - type cd
-    - cat $DAMASKROOT/DAMASK_env.sh
-    - echo $SHELL
-    - echo $0
-    - . $DAMASKROOT/DAMASK_env.sh > /tmp/log
-    - source $DAMASKROOT/DAMASK_env.sh > /tmp/log
+    - export PYTHONPATH=$PYTHONPATH:$DAMASKROOT/lib
     - echo p $PYTHONPATH
     - make install
 
