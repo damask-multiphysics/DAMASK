@@ -93,6 +93,8 @@ checkout:
     - type .
     - type cd
     - cat DAMASK_env.sh
+    - echo $SHELL
+    - echo $0
     - . $DAMASKROOT/DAMASK_env.sh > /tmp/log
     - source $DAMASKROOT/DAMASK_env.sh > /tmp/log
     - echo p $PYTHONPATH
