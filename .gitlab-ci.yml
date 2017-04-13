@@ -90,7 +90,7 @@ checkout:
     - echo $DAMASKROOT
     - echo $PWD
     - cat DAMASK_env.sh
-    - eval 'source $DAMASKROOT/DAMASK_env.sh > /tmp/log'
+    - source $DAMASKROOT/DAMASK_env.sh > /tmp/log
     - echo p $PYTHONPATH
     - make install
 
