@@ -20,7 +20,7 @@ stages:
 
 ###################################################################################################
 before_script:
-  - source $DAMASKROOT/DAMASK_env.sh
+  - eval 'source $DAMASKROOT/DAMASK_env.sh'
   - module purge
   - cd $DAMASKROOT/PRIVATE/testing
 
@@ -87,8 +87,7 @@ checkout:
     - cd $DAMASKROOT
     - git checkout $CI_COMMIT_SHA
     #- git clone -q git@magit1.mpie.de:damask/PRIVATE.git
-    - export PYTHONPATH=$PYTHONPATH:$DAMASKROOT/lib
-    - echo p $PYTHONPATH
+    - eval 'source $DAMASKROOT/DAMASK_env.sh'
     - make install
 
 ###################################################################################################
