@@ -20,7 +20,7 @@ stages:
 
 ###################################################################################################
 before_script:
-  - eval 'source $DAMASKROOT/DAMASK_env.sh'
+  - source $DAMASKROOT/DAMASK_env.sh
   - module purge
   - cd $DAMASKROOT/PRIVATE/testing
 
@@ -34,7 +34,7 @@ variables:
   #================================================================================================
   # Shortcut names
   #================================================================================================
-  DAMASKROOT:                      "$HOME/GitlabCI_Pipeline_$CI_PIPELINE_ID/DAMASK"
+  DAMASKROOT:                      "/tmp/GitlabCI_Pipeline_$CI_PIPELINE_ID/DAMASK"
 
   #================================================================================================
   # Names of module files to load
