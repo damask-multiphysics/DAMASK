@@ -79,7 +79,7 @@ variables:
 checkout: 
   stage: prepareAll
   before_script: 
-    - $HOME/wait.sh
+    - while [ -e $HOME/GitLabCI.lock ]; do sleep 5m; done
     - echo $CI_PIPELINE_ID > $HOME/GitLabCI.lock
   script:
     - mkdir -p $DAMASKROOT
