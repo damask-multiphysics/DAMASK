@@ -79,7 +79,7 @@ variables:
 checkout: 
   stage: prepareAll
   before_script: 
-    - $HOME/wait.sh
+    - while [ -e $HOME/GitLabCI.lock ]; do sleep 5m; done
     - echo $CI_PIPELINE_ID > $HOME/GitLabCI.lock
   script:
     - mkdir -p $DAMASKROOT
@@ -483,7 +483,7 @@ removeLock:
   before_script: 
     - echo 'Do nothing'
   when: always
-  script: rm $HOME/GitLabCI.lock
+  script: if grep -q $CI_PIPELINE_ID $HOME/GitLabCI.lock; then; rm $HOME/GitLabCI.lock; fi
   except:
     - master
     - release
