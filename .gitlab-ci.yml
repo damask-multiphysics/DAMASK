@@ -483,7 +483,7 @@ removeLock:
   before_script: 
     - echo 'Do nothing'
   when: always
-  script: rm $HOME/GitLabCI.lock
+  script: if grep -q $CI_PIPELINE_ID $HOME/GitLabCI.lock; then; rm $HOME/GitLabCI.lock; fi
   except:
     - master
     - release
