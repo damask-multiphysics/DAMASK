@@ -83,7 +83,8 @@ checkout:
     - echo $CI_PIPELINE_ID > $HOME/GitLabCI.lock
   script:
     - mkdir -p $DAMASKROOT
-    - git clone -b $CI_COMMIT_SHA git@magit1.mpie.de:damask/DAMASK.git $DAMASKROOT
+    - git clone git@magit1.mpie.de:damask/DAMASK.git $DAMASKROOT
+    - git checkout $CI_COMMIT_SHA --git-dir=$DAMASKROOT/.git
     #- git clone -q git@magit1.mpie.de:damask/PRIVATE.git
     - echo $DAMASKROOT
     - echo $PWD
