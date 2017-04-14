@@ -435,6 +435,7 @@ mergeIntoMaster:
     - git merge $UPDATEDREV
     - git push origin master                                                                        # master is now tested version and has updated VERSION file
     - git checkout development
+    - git pull
     - git merge master -s ours                                                                      # only possible conflict is in VERSION file
     - git push origin development                                                                   # development is unchanged (as master is based on it) but has updated VERSION file
   only:
