@@ -80,7 +80,7 @@ checkout:
   stage: prepareAll
   before_script: 
     - echo $CI_PIPELINE_ID >> $HOME/GitLabCI.queue
-    - while [ "$(awk '/$CI_PIPELINE_ID/{print NR}' GitLabCI.queue)" -ne 1 ];do sleep 5m; done
+    - while [ "$(awk '/$CI_PIPELINE_ID/{print NR}' $HOME/GitLabCI.queue)" -ne 1 ];do sleep 5m; done
   script:
     - mkdir -p $DAMASKROOT
     - git clone -q --recurse-submodules git@magit1.mpie.de:damask/DAMASK.git $DAMASKROOT
@@ -484,7 +484,7 @@ removeLock:
   before_script: 
     - echo 'Do nothing'
   when: always
-  script: sed -i '/$CI_PIPELINE_ID/d' GitLabCI.queue
+  script: sed -i '/$CI_PIPELINE_ID/d' $HOME/GitLabCI.queue
   except:
     - master
     - release
