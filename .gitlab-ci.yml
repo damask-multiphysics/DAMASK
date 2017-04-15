@@ -80,13 +80,13 @@ checkout:
   stage: prepareAll
   before_script: 
     - echo $CI_PIPELINE_ID >> $HOME/GitLabCI.queue
-    - while [ "$(awk '/$CI_PIPELINE_ID/{print NR}' $HOME/GitLabCI.queue)" -ne 1 ];do sleep 5m; done
+    - while [ $(awk "/$CI_PIPELINE_ID/{print NR}" $HOME/GitLabCI.queue) -ne 1 ];do sleep 5m; done
   script:
     - mkdir -p $DAMASKROOT
-    - git clone -q --recurse-submodules git@magit1.mpie.de:damask/DAMASK.git $DAMASKROOT
+    - git clone -q git@magit1.mpie.de:damask/DAMASK.git $DAMASKROOT
     - cd $DAMASKROOT
     - git checkout $CI_COMMIT_SHA
-    - git submodule update
+    - git submodule update --init
     - source DAMASK_env.sh
     - make install
   except:
@@ -484,7 +484,7 @@ removeLock:
   before_script: 
     - echo 'Do nothing'
   when: always
-  script: sed -i '/$CI_PIPELINE_ID/d' $HOME/GitLabCI.queue
+  script: sed -i "/$CI_PIPELINE_ID/d" $HOME/GitLabCI.queue
   except:
     - master
     - release
