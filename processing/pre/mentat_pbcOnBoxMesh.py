@@ -153,34 +153,31 @@ parser.add_option("-p", "--port", type="int", dest="port", metavar='int',
                                   help="Mentat connection port [%default]")
 parser.add_option("-v", "--verbose", action="store_true", dest="verbose",
                                   help="write Mentat command stream also to stdout [%default]")
-parser.set_defaults(port = 40007)
-parser.set_defaults(verbose = False)
+parser.set_defaults(port = 40007,
+                    verbose = False)
 
 (options, args) = parser.parse_args()
-
-if options.verbose:
-  file={'croak':sys.stderr}
-else:
-  file={'croak':sys.stdout}
 
 try:
   import py_mentat
 except:
-  file['croak'].write('error: no valid Mentat release found')
+  damask.util.croak('error: no valid Mentat release found')
   sys.exit(-1)
 
 outputLocals = {}
 
-file['croak'].write('\033[1m'+scriptName+'\033[0m\n\n')
-file['croak'].write( 'waiting to connect...\n')
+damask.util.report(scriptName,'waiting to connect...')
+
 try:
   py_mentat.py_connect('',options.port)
-# prevent redrawing in Mentat, should be much faster. Since py_connect has no return value, try this to determine if failed or not
+# prevent redrawing in Mentat, should be much faster.
+# Since py_connect has no return value, try this to determine if failed or not
   output(['*draw_manual'],outputLocals,'Mentat')
 except:
-  file['croak'].write('Could not connect. Set Tools/Python/"Run as Separate Process" & "Initiate"...\n')
+  damask.util.croak('Could not connect. Set Tools/Python/"Run as Separate Process" & "Initiate"...')
   sys.exit()
-file['croak'].write( 'connected...\n')
+
+damask.util.croak('connected...')
 
 output(['*remove_all_servos',
         '*sweep_all',
@@ -190,6 +187,10 @@ output(['*remove_all_servos',
 
 cmds = servoLink()
 output(cmds,outputLocals,'Mentat')
+
+output(['*draw_automatic',
+        ],outputLocals,'Mentat')     # script depends on consecutive numbering of nodes
+
 py_mentat.py_disconnect()
 
 if options.verbose:

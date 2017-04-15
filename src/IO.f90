@@ -878,7 +878,7 @@ function IO_spotTagInPart(fileUnit,part,tag,Nsections)
 
  IO_spotTagInPart = .false.                                                                         ! assume to nowhere spot tag
  section = 0_pInt
- line =''
+ line = ''
 
  rewind(fileUnit)
  do while (trim(line) /= IO_EOF .and. IO_lc(IO_getTag(line,'<','>')) /= part)                       ! search for part
@@ -1669,33 +1669,33 @@ subroutine IO_error(error_ID,el,ip,g,ext_msg)
  end select
  
  !$OMP CRITICAL (write2out)
- write(6,'(/,a)')      ' +--------------------------------------------------------+'
- write(6,'(a)')        ' +                         error                          +'
- write(6,'(a,i3,a)')   ' +                         ',error_ID,'                            +'
- write(6,'(a)')        ' +                                                        +'
+ write(0,'(/,a)')      ' +--------------------------------------------------------+'
+ write(0,'(a)')        ' +                         error                          +'
+ write(0,'(a,i3,a)')   ' +                         ',error_ID,'                            +'
+ write(0,'(a)')        ' +                                                        +'
  write(formatString,'(a,i6.6,a,i6.6,a)') '(1x,a2,a',max(1,len(trim(msg))),',',&
                                                     max(1,60-len(trim(msg))-5),'x,a)'
- write(6,formatString) '+ ', trim(msg),'+'
+ write(0,formatString) '+ ', trim(msg),'+'
  if (present(ext_msg)) then
    write(formatString,'(a,i6.6,a,i6.6,a)') '(1x,a2,a',max(1,len(trim(ext_msg))),',',&
                                                       max(1,60-len(trim(ext_msg))-5),'x,a)'
-   write(6,formatString) '+ ', trim(ext_msg),'+'
+   write(0,formatString) '+ ', trim(ext_msg),'+'
  endif
  if (present(el)) then
    if (present(ip)) then
      if (present(g)) then
-       write(6,'(a13,1x,i9,1x,a2,1x,i2,1x,a5,1x,i4,18x,a1)') ' + at element',el,'IP',ip,'grain',g,'+'
+       write(0,'(a13,1x,i9,1x,a2,1x,i2,1x,a5,1x,i4,18x,a1)') ' + at element',el,'IP',ip,'grain',g,'+'
      else
-       write(6,'(a13,1x,i9,1x,a2,1x,i2,29x,a1)') ' + at element',el,'IP',ip,'+'
+       write(0,'(a13,1x,i9,1x,a2,1x,i2,29x,a1)') ' + at element',el,'IP',ip,'+'
      endif
    else
-     write(6,'(a13,1x,i9,35x,a1)') ' + at element',el,'+'
+     write(0,'(a13,1x,i9,35x,a1)') ' + at element',el,'+'
    endif
  elseif (present(ip)) then                                                                          ! now having the meaning of "instance"
-   write(6,'(a15,1x,i9,33x,a1)') ' + for instance',ip,'+'
+   write(0,'(a15,1x,i9,33x,a1)') ' + for instance',ip,'+'
  endif
- write(6,'(a)')      ' +--------------------------------------------------------+'
- flush(6)
+ write(0,'(a)')      ' +--------------------------------------------------------+'
+ flush(0)
  call quit(9000_pInt+error_ID)
  !$OMP END CRITICAL (write2out)
 

@@ -25,6 +25,7 @@ do
   if [ -z "$VERSION" ]; then
     VERSION=${DEFAULT_VERSION}
   fi
+  [[ -d "$SCRIPTLOCATION/$VERSION" ]] || echo -e "$VERSION not supported..!\n"
 done
 echo "MSC version: $VERSION"
 
@@ -35,6 +36,7 @@ do
   if [ -z "$INSTALLDIR" ]; then
     INSTALLDIR=${DEFAULT_DIR}
   fi
+  [[ -d "$INSTALLDIR" ]] || echo -e "$INSTALLDIR not found..!\n"
 done
 
 INSTALLDIR=${INSTALLDIR%/}               # remove trailing slash

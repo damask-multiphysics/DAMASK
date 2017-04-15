@@ -1,4 +1,4 @@
-code
+.noH5py
 *.pyc
 *.mod
 *.o
@@ -6,5 +6,4 @@ code
 *.bak
 *~
 bin
-PRIVATE
 build

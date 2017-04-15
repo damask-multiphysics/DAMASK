@@ -694,9 +694,9 @@ subroutine numerics_init
                    .not. memory_efficient) call IO_error(error_ID = 847_pInt)
  if (err_stress_tolrel <= 0.0_pReal)       call IO_error(301_pInt,ext_msg='err_stress_tolRel')
  if (err_stress_tolabs <= 0.0_pReal)       call IO_error(301_pInt,ext_msg='err_stress_tolAbs')
- if (err_div_tolRel <= 0.0_pReal)          call IO_error(301_pInt,ext_msg='err_div_tolRel')
+ if (err_div_tolRel < 0.0_pReal)           call IO_error(301_pInt,ext_msg='err_div_tolRel')
  if (err_div_tolAbs <= 0.0_pReal)          call IO_error(301_pInt,ext_msg='err_div_tolAbs')
- if (err_curl_tolRel <= 0.0_pReal)         call IO_error(301_pInt,ext_msg='err_curl_tolRel')
+ if (err_curl_tolRel < 0.0_pReal)          call IO_error(301_pInt,ext_msg='err_curl_tolRel')
  if (err_curl_tolAbs <= 0.0_pReal)         call IO_error(301_pInt,ext_msg='err_curl_tolAbs')
  if (polarAlpha <= 0.0_pReal .or. &
      polarAlpha >  2.0_pReal)              call IO_error(301_pInt,ext_msg='polarAlpha')

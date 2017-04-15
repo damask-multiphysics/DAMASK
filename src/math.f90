@@ -1180,6 +1180,9 @@ end function math_Voigt66to3333
 
 !--------------------------------------------------------------------------------------------------
 !> @brief random quaternion
+! http://math.stackexchange.com/questions/131336/uniform-random-quaternion-in-a-restricted-angle-range
+! K. Shoemake. Uniform random rotations. In D. Kirk, editor, Graphics Gems III, pages 124-132. 
+! Academic, New York, 1992.
 !--------------------------------------------------------------------------------------------------
 function math_qRand()
 

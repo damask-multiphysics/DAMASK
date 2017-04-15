@@ -472,9 +472,8 @@ contains
 !! Order and routines strongly depend on type of solver
 !--------------------------------------------------------------------------------------------------
 subroutine mesh_init(ip,el)
- use, intrinsic :: iso_c_binding
- use DAMASK_interface
  use, intrinsic :: iso_fortran_env                                                                  ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
+ use DAMASK_interface
  use IO, only: &
 #ifdef Abaqus
    IO_abaqus_hasNoPart, &

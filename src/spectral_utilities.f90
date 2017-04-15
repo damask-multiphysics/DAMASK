@@ -227,12 +227,13 @@ subroutine utilities_init()
                 trim(PETScDebug), &
                 ' add more using the PETSc_Options keyword in numerics.config '; flush(6)
 
- call PetscOptionsClear(ierr); CHKERRQ(ierr)
- if(debugPETSc) call PetscOptionsInsertString(trim(PETSCDEBUG),ierr)
+ call PetscOptionsClear(PETSC_NULL_OBJECT,ierr)
  CHKERRQ(ierr)
- call PetscOptionsInsertString(trim(petsc_defaultOptions),ierr)
+ if(debugPETSc) call PetscOptionsInsertString(PETSC_NULL_OBJECT,trim(PETSCDEBUG),ierr)
  CHKERRQ(ierr)
- call PetscOptionsInsertString(trim(petsc_options),ierr)
+ call PetscOptionsInsertString(PETSC_NULL_OBJECT,trim(petsc_defaultOptions),ierr)
+ CHKERRQ(ierr)
+ call PetscOptionsInsertString(PETSC_NULL_OBJECT,trim(petsc_options),ierr)
  CHKERRQ(ierr)
 
  grid1Red = grid(1)/2_pInt + 1_pInt
