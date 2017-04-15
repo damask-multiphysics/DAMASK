@@ -1,4 +1,4 @@
 [submodule "PRIVATE"]
 	path = PRIVATE
-  url = ../../damask/PRIVATE.git
+  url = ../PRIVATE.git
   branch = master
