@@ -758,7 +758,7 @@ subroutine material_parseMicrostructure(fileUnit,myPart)
  allocate(microstructure_elemhomo(Nsections),             source=.false.)
 
  if(any(mesh_element(4,1:mesh_NcpElems) > Nsections)) &
-  call IO_error(155_pInt,ext_msg='Microstructure in geometry > Sections in material.config')
+  call IO_error(155_pInt,ext_msg='More microstructures in geometry than sections in material.config')
 
  forall (e = 1_pInt:mesh_NcpElems) microstructure_active(mesh_element(4,e)) = .true.                ! current microstructure used in model? Elementwise view, maximum N operations for N elements
 
@@ -801,7 +801,7 @@ subroutine material_parseMicrostructure(fileUnit,myPart)
          microstructure_crystallite(section) = IO_intValue(line,chunkPos,2_pInt)
        case ('(constituent)')
          constituent = constituent + 1_pInt
-         do i=2_pInt,6_pInt,2_pInt
+         do i = 2_pInt,6_pInt,2_pInt
            tag = IO_lc(IO_stringValue(line,chunkPos,i))
            select case (tag)
              case('phase')
@@ -816,6 +816,11 @@ subroutine material_parseMicrostructure(fileUnit,myPart)
    endif
  enddo
 
+ !sanity check
+do section = 1_pInt, Nsections
+  if (sum(microstructure_fraction(:,section)) /= 1.0_pReal) &
+    call IO_error(153_pInt,ext_msg=microstructure_name(section))
+enddo
 end subroutine material_parseMicrostructure
 
 
