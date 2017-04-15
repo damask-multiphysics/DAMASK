@@ -247,6 +247,7 @@ for name in filenames:
     '*identify_sets',
     '*show_model',
     '*redraw',
+    '*draw_automatic',
   ]
   
   outputLocals = {}
