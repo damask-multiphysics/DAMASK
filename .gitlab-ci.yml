@@ -432,7 +432,7 @@ mergeIntoMaster:
     - git commit VERSION -m "[skip ci] updated version information after successful test of $TESTEDREV"
     - export UPDATEDREV=$(git describe)                                                             # tested state + 1 commit
     - git checkout master
-    - git merge $UPDATEDREV
+    - git merge $UPDATEDREV -s ours                                                                 # conflicts occur only for inconsistent state
     - git push origin master                                                                        # master is now tested version and has updated VERSION file
     - git checkout development
     - git pull
