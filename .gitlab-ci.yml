@@ -432,11 +432,11 @@ mergeIntoMaster:
     - git commit VERSION -m "[skip ci] updated version information after successful test of $TESTEDREV"
     - export UPDATEDREV=$(git describe)                                                             # tested state + 1 commit
     - git checkout master
-    - git merge $UPDATEDREV -s ours                                                                 # conflicts occur only for inconsistent state
+    - git merge $UPDATEDREV -s recursive -X ours                                                    # conflicts occur only for inconsistent state
     - git push origin master                                                                        # master is now tested version and has updated VERSION file
     - git checkout development
     - git pull
-    - git merge master -s ours -m "[skip ci] Merge branch 'master' into development"                # only possible conflict is in VERSION file
+    - git merge master -s recursive -X ours -m "[skip ci] Merge branch 'master' into development"   # only possible conflict is in VERSION file
     - git push origin development                                                                   # development is unchanged (as master is based on it) but has updated VERSION file
   only:
     - development
