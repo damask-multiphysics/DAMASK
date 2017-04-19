@@ -21,7 +21,6 @@ stages:
 ###################################################################################################
 before_script:
   - source $DAMASKROOT/DAMASK_env.sh
-  - module purge
   - cd $DAMASKROOT/PRIVATE/testing
 
 ###################################################################################################
@@ -88,7 +87,7 @@ checkout:
     - git checkout $CI_COMMIT_SHA
     - git clone -q git@magit1.mpie.de:damask/PRIVATE.git
     - source $DAMASKROOT/DAMASK_env.sh
-    - make install
+    - make processing
   except:
     - master
     - release
@@ -184,7 +183,7 @@ Compile_Intel:
   stage: compileSpectralIntel 
   script:
     - module load $IntelCompiler $MPICH_Intel $PETSc_MPICH_Intel
-    - SpectralAll_compileIfort/test.py
+    - SpectralAll_compile/test.py
   except:
     - master
     - release
@@ -194,7 +193,7 @@ Compile_GNU:
   stage: compileSpectralGNU
   script:
     - module load $GNUCompiler $MPICH_GNU $PETSc_MPICH_GNU
-    - SpectralAll_compileGfortran/test.py
+    - SpectralAll_compile/test.py
   except:
     - master
     - release
@@ -202,9 +201,12 @@ Compile_GNU:
 ###################################################################################################
 Compile_Intel_Prepare:
   stage: prepareSpectral
-  script:
+  before_script: 
     - module load $IntelCompiler $MPICH_Intel $PETSc_MPICH_Intel
-    - make -C $DAMASKROOT clean spectral install tidy
+  script:
+    - cd $DAMASKROOT
+    - source DAMASK_env.sh
+    - make clean spectral processing
   except:
     - master
     - release

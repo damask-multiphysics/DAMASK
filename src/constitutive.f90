@@ -207,7 +207,7 @@ subroutine constitutive_init()
            outputName = PLASTICITY_NONE_label
            thisNoutput => null()
            thisOutput => null()
-           thisSize   => null() 
+           thisSize   => null()
          case (PLASTICITY_ISOTROPIC_ID) plasticityType
            outputName = PLASTICITY_ISOTROPIC_label
            thisNoutput => plastic_isotropic_Noutput
