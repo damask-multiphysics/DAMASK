@@ -21,7 +21,6 @@ stages:
 ###################################################################################################
 before_script:
   - source $DAMASKROOT/DAMASK_env.sh
-  - module purge
   - cd $DAMASKROOT/PRIVATE/testing
 
 ###################################################################################################
@@ -203,10 +202,10 @@ Compile_GNU:
 Compile_Intel_Prepare:
   stage: prepareSpectral
   before_script: 
-    - module purge
-    - cd $DAMASKROOT
-  script:
     - module load $IntelCompiler $MPICH_Intel $PETSc_MPICH_Intel
+  script:
+    - cd $DAMASKROOT
+    - source DAMASK_env.sh
     - make clean spectral processing
   except:
     - master
