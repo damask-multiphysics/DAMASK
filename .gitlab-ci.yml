@@ -14,8 +14,8 @@ stages:
   - compileAbaqus2016
   - compileAbaqus2017
   - example
-  - updateMaster
   - createDocumentation
+  - updateMaster
   - clean
 
 ###################################################################################################
