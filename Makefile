@@ -3,30 +3,36 @@ SHELL = /bin/sh
 # Makefile for the installation of DAMASK
 ########################################################################################
 .PHONY: all
-all: spectral marc processing
+all: spectral FEM marc processing
 
 .PHONY: spectral
-spectral:
-	$(MAKE) DAMASK_spectral.exe -C code
+spectral: build/spectral
+	@(cd build/spectral;make --no-print-directory -ws all install VERBOSE=1;)
 
 .PHONY: FEM
-FEM:
-	$(MAKE) DAMASK_FEM.exe -C code
+FEM: build/FEM
+	@(cd build/FEM; make --no-print-directory -ws all install;)
+
+.PHONY: build/spectral
+build/spectral:
+	@mkdir -p build/spectral
+	@(cd build/spectral; cmake -Wno-dev -DDAMASK_SOLVER=SPECTRAL -DCMAKE_BUILD_TYPE=${BUILD_TYPE} -DBUILDCMD_POST=${BUILDCMD_POST} -DBUILDCMD_PRE=${BUILDCMD_PRE} -DOPTIMIZATION=${OPTIMIZATION} -DOPENMP=${OPENMP} ../../;)
+
+.PHONY: build/FEM
+build/FEM:
+	@mkdir -p build/FEM
+	@(cd build/FEM; cmake -Wno-dev -DDAMASK_SOLVER=FEM -DCMAKE_BUILD_TYPE=${BUILD_TYPE} -DBUILDCMD_POST=${BUILDCMD_POST} -DBUILDCMD_PRE=${BUILDCMD_PRE} -DOPTIMIZATION=${OPTIMIZATION} -DOPENMP=${OPENMP} ../../;)
 
 .PHONY: marc
 marc:
+	@./installation/symLink_Code.sh
 	@./installation/mods_MarcMentat/apply_DAMASK_modifications.sh ${MAKEFLAGS}
-
-.PHONY: tidy
-tidy:
-	@$(MAKE) tidy -C code >/dev/null
 
 .PHONY: clean
 clean:
-	@$(MAKE) cleanDAMASK -C code >/dev/null
+	@rm -rf build
 
-.PHONY: install
-install:
-	@./installation/symlink_Code.py ${MAKEFLAGS}
+.PHONY: processing
+processing:
 	@./installation/symlink_Processing.py ${MAKEFLAGS}
 

@@ -878,7 +878,7 @@ function IO_spotTagInPart(fileUnit,part,tag,Nsections)
 
  IO_spotTagInPart = .false.                                                                         ! assume to nowhere spot tag
  section = 0_pInt
- line =''
+ line = ''
 
  rewind(fileUnit)
  do while (trim(line) /= IO_EOF .and. IO_lc(IO_getTag(line,'<','>')) /= part)                       ! search for part
