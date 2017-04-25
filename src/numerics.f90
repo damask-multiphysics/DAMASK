@@ -251,10 +251,8 @@ subroutine numerics_init
 !--------------------------------------------------------------------------------------------------
 ! try to open the config file
  fileExists: if(IO_open_file_stat(FILEUNIT,numerics_configFile)) then 
-   mainProcess2: if (worldrank == 0) then
-     write(6,'(a,/)') ' using values from config file'
-     flush(6)
-   endif mainProcess2
+   write(6,'(a,/)') ' using values from config file'
+   flush(6)
     
 !--------------------------------------------------------------------------------------------------
 ! read variables from config file and overwrite default parameters if keyword is present

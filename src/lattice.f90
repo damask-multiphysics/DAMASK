@@ -1266,8 +1266,6 @@ subroutine lattice_init
    debug_level, &
    debug_lattice, &
    debug_levelBasic
- use numerics, only: &
-   worldrank
 
  implicit none
  integer(pInt), parameter :: FILEUNIT = 200_pInt
