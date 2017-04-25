@@ -54,7 +54,7 @@ execute_process (COMMAND ${MAKE_EXECUTABLE} --no-print-directory -f ${petsc_conf
                  OUTPUT_VARIABLE petsc_includes
                  OUTPUT_STRIP_TRAILING_WHITESPACE)
 # Find the PETSc external linking directory settings
-# //required for final linking, must be appended after the executable
+# required for final linking, must be appended after the executable
 execute_process (COMMAND ${MAKE_EXECUTABLE} --no-print-directory -f ${petsc_config_makefile} "extlibs"
                  RESULT_VARIABLE PETSC_EXTERNAL_LIB_RETURN
                  OUTPUT_VARIABLE petsc_external_lib
@@ -108,6 +108,10 @@ elseif ("${DAMASK_SOLVER}" STREQUAL "FEM")
     project (DAMASK_FEM Fortran C)
     add_definitions (-DFEM)
     message ("Building FEM Solver\n")
+endif ()
+
+if ("${CMAKE_BUILD_TYPE}" STREQUAL "")
+  set (CMAKE_BUILD_TYPE "RELEASE")
 endif ()
 
 # set compiler and linker commands (need to be done after defining the project)
@@ -177,7 +181,6 @@ add_definitions (-DFLOAT=8)
 add_definitions (-DINT=4)
 
 set (DAMASK_INCLUDE_FLAGS "${DAMASK_INCLUDE_FLAGS} ${PETSC_INCLUDES}")
-set (DAMASK_INCLUDE_FLAGS "${DAMASK_INCLUDE_FLAGS} -I${PROJECT_SOURCE_DIR}/lib")
 
 ###################################################################################################
 # Intel Compiler
@@ -447,9 +450,7 @@ endif ()
 set (CMAKE_Fortran_FLAGS            "${BUILDCMD_PRE} ${OPENMP_FLAGS} ${STANDARD_CHECK} ${OPTIMIZATION_FLAGS} ${COMPILE_FLAGS} ${PRECISION_FLAGS}")
 set (CMAKE_Fortran_LINK_EXECUTABLE  "${BUILDCMD_PRE} ${CMAKE_LINKER} ${OPENMP_FLAGS}   ${OPTIMIZATION_FLAGS} ${LINKER_FLAGS}")
 
-if ("${CMAKE_BUILD_TYPE}" STREQUAL "")
-  set (CMAKE_BUILD_TYPE "RELEASE")
-elseif ("${CMAKE_BUILD_TYPE}" STREQUAL "DEBUG")
+if ("${CMAKE_BUILD_TYPE}" STREQUAL "DEBUG")
   set (CMAKE_Fortran_FLAGS            "${CMAKE_Fortran_FLAGS} ${DEBUG_FLAGS}")
   set (CMAKE_Fortran_LINK_EXECUTABLE  "${CMAKE_Fortran_LINK_EXECUTABLE} ${DEBUG_FLAGS}")
 endif ()

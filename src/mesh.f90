@@ -921,24 +921,22 @@ subroutine mesh_build_ipCoordinates
  integer(pInt) :: e,t,g,c,i,n
  real(pReal), dimension(3) :: myCoords
 
- if (.not. allocated(mesh_ipCoordinates)) then
-   allocate(mesh_ipCoordinates(3,mesh_maxNips,mesh_NcpElems))
-   mesh_ipCoordinates = 0.0_pReal
- endif
+ if (.not. allocated(mesh_ipCoordinates)) &
+   allocate(mesh_ipCoordinates(3,mesh_maxNips,mesh_NcpElems),source=0.0_pReal)
  
  !$OMP PARALLEL DO PRIVATE(t,g,c,myCoords)
-   do e = 1_pInt,mesh_NcpElems                                                                      ! loop over cpElems
-     t = mesh_element(2_pInt,e)                                                                     ! get element type
-     g = FE_geomtype(t)                                                                             ! get geometry type
-     c = FE_celltype(g)                                                                             ! get cell type
-     do i = 1_pInt,FE_Nips(g)                                                                       ! loop over ips=cells in this element
-       myCoords = 0.0_pReal
-       do n = 1_pInt,FE_NcellnodesPerCell(c)                                                        ! loop over cell nodes in this cell
-         myCoords = myCoords + mesh_cellnode(1:3,mesh_cell(n,i,e))
-       enddo
-       mesh_ipCoordinates(1:3,i,e) = myCoords / FE_NcellnodesPerCell(c)
+ do e = 1_pInt,mesh_NcpElems                                                                        ! loop over cpElems
+   t = mesh_element(2_pInt,e)                                                                       ! get element type
+   g = FE_geomtype(t)                                                                               ! get geometry type
+   c = FE_celltype(g)                                                                               ! get cell type
+   do i = 1_pInt,FE_Nips(g)                                                                         ! loop over ips=cells in this element
+     myCoords = 0.0_pReal
+     do n = 1_pInt,FE_NcellnodesPerCell(c)                                                          ! loop over cell nodes in this cell
+       myCoords = myCoords + mesh_cellnode(1:3,mesh_cell(n,i,e))
      enddo
+     mesh_ipCoordinates(1:3,i,e) = myCoords / real(FE_NcellnodesPerCell(c),pReal)
    enddo
+ enddo
  !$OMP END PARALLEL DO
 
 end subroutine mesh_build_ipCoordinates
@@ -955,7 +953,6 @@ pure function mesh_cellCenterCoordinates(ip,el)
  real(pReal), dimension(3) :: mesh_cellCenterCoordinates                                             !< x,y,z coordinates of the cell center of the requested IP cell
  integer(pInt) :: t,g,c,n
  
-
  t = mesh_element(2_pInt,el)                                                                         ! get element type
  g = FE_geomtype(t)                                                                                  ! get geometry type
  c = FE_celltype(g)                                                                                  ! get cell type
@@ -963,7 +960,7 @@ pure function mesh_cellCenterCoordinates(ip,el)
  do n = 1_pInt,FE_NcellnodesPerCell(c)                                                               ! loop over cell nodes in this cell
    mesh_cellCenterCoordinates = mesh_cellCenterCoordinates + mesh_cellnode(1:3,mesh_cell(n,ip,el))
  enddo
- mesh_cellCenterCoordinates = mesh_cellCenterCoordinates / FE_NcellnodesPerCell(c)
+ mesh_cellCenterCoordinates = mesh_cellCenterCoordinates / real(FE_NcellnodesPerCell(c),pReal)
 
  end function mesh_cellCenterCoordinates
 
@@ -1511,8 +1508,8 @@ function mesh_nodesAroundCentres(gDim,Favg,centres) result(nodes)
          shift = sign(abs(iRes+diag-2_pInt*me)/(iRes+diag),iRes+diag-2_pInt*me)
          lookup = me-diag+shift*iRes
          wrappedCentres(1:3,i+1_pInt,        j+1_pInt,        k+1_pInt) = &
-                centres(1:3,lookup(1)+1_pInt,lookup(2)+1_pInt,lookup(3)+1_pInt) - &
-                                                           math_mul33x3(Favg, shift*gDim)
+                centres(1:3,lookup(1)+1_pInt,lookup(2)+1_pInt,lookup(3)+1_pInt) &
+                - math_mul33x3(Favg, real(shift,pReal)*gDim)
        endif
  enddo; enddo; enddo
  
