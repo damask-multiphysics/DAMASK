@@ -447,19 +447,20 @@ elseif(${CMAKE_Fortran_COMPILER_ID} STREQUAL "GNU")
   # -fdefault-integer-8: Use it to set precision to 8 bytes for integer, don't use it for the standard case of pInt=4 (there is no -fdefault-integer-4)
 endif ()
 
-set (CMAKE_Fortran_FLAGS            "${BUILDCMD_PRE} ${OPENMP_FLAGS} ${STANDARD_CHECK} ${OPTIMIZATION_FLAGS} ${COMPILE_FLAGS} ${PRECISION_FLAGS}")
-set (CMAKE_Fortran_LINK_EXECUTABLE  "${BUILDCMD_PRE} ${CMAKE_LINKER} ${OPENMP_FLAGS}   ${OPTIMIZATION_FLAGS} ${LINKER_FLAGS}")
+set (CMAKE_Fortran_FLAGS_${CMAKE_BUILD_TYPE} "${BUILDCMD_PRE} ${OPENMP_FLAGS} ${STANDARD_CHECK} ${OPTIMIZATION_FLAGS} ${COMPILE_FLAGS} ${PRECISION_FLAGS}")
+set (CMAKE_Fortran_LINK_EXECUTABLE           "${BUILDCMD_PRE} ${CMAKE_LINKER} ${OPENMP_FLAGS}   ${OPTIMIZATION_FLAGS} ${LINKER_FLAGS}")
 
 if ("${CMAKE_BUILD_TYPE}" STREQUAL "DEBUG")
-  set (CMAKE_Fortran_FLAGS            "${CMAKE_Fortran_FLAGS} ${DEBUG_FLAGS}")
-  set (CMAKE_Fortran_LINK_EXECUTABLE  "${CMAKE_Fortran_LINK_EXECUTABLE} ${DEBUG_FLAGS}")
+  set (CMAKE_Fortran_FLAGS_${CMAKE_BUILD_TYPE} "${CMAKE_Fortran_FLAGS_${CMAKE_BUILD_TYPE}} ${DEBUG_FLAGS}")
+  set (CMAKE_Fortran_LINK_EXECUTABLE           "${CMAKE_Fortran_LINK_EXECUTABLE} ${DEBUG_FLAGS}")
 endif ()
 
-set (CMAKE_Fortran_LINK_EXECUTABLE "${CMAKE_Fortran_LINK_EXECUTABLE} <OBJECTS> -o <TARGET> <LINK_LIBRARIES> ${PETSC_EXTERNAL_LIB} ${BUILDCMD_POST}")
-set (CMAKE_Fortran_FLAGS  "${CMAKE_Fortran_FLAGS} ${DAMASK_INCLUDE_FLAGS} ${BUILDCMD_POST}")
+set (CMAKE_Fortran_FLAGS_${CMAKE_BUILD_TYPE}   "${CMAKE_Fortran_FLAGS_${CMAKE_BUILD_TYPE}} ${DAMASK_INCLUDE_FLAGS} ${BUILDCMD_POST}")
+set (CMAKE_Fortran_LINK_EXECUTABLE             "${CMAKE_Fortran_LINK_EXECUTABLE} <OBJECTS> -o <TARGET> <LINK_LIBRARIES> ${PETSC_EXTERNAL_LIB} ${BUILDCMD_POST}")
 
-message ("Fortran Compiler Flags:\n${CMAKE_Fortran_FLAGS}\n")
-message ("Fortran Linker   Flags:\n${CMAKE_Fortran_LINK_EXECUTABLE}\n")
+message ("Fortran Compiler Flags:\n${CMAKE_Fortran_FLAGS_${CMAKE_BUILD_TYPE}}\n")
+message ("C Compiler Flags:\n${CMAKE_C_FLAGS_${CMAKE_BUILD_TYPE}}\n")
+message ("Fortran Linker Command:\n${CMAKE_Fortran_LINK_EXECUTABLE}\n")
 
 # location of code
 add_subdirectory (src)
