@@ -16,8 +16,6 @@ if (${CMAKE_Fortran_COMPILER_ID} STREQUAL "GNU")
     # long lines for interaction matrix
 endif()
 
-set( CMAKE_VERBOSE_MAKEFILE on )
-
 # The dependency detection in CMake is not functioning for Fortran,
 # hence we declare the dependencies from top to bottom in the following
 add_library(C_ROUTINES OBJECT "C_routines.c")
