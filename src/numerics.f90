@@ -42,6 +42,7 @@ module numerics
    subStepMinHomog            =  1.0e-3_pReal, &                                                    !< minimum (relative) size of sub-step allowed during cutback in homogenization
    subStepSizeCryst           =  0.25_pReal, &                                                      !< size of first substep when cutback in crystallite
    subStepSizeHomog           =  0.25_pReal, &                                                      !< size of first substep when cutback in homogenization
+   subStepSizeLp              =  0.5_pReal, &                                                       !< size of first substep when cutback in Lp calculation
    stepIncreaseCryst          =  1.5_pReal, &                                                       !< increase of next substep size when previous substep converged in crystallite
    stepIncreaseHomog          =  1.5_pReal, &                                                       !< increase of next substep size when previous substep converged in homogenization
    rTol_crystalliteState      =  1.0e-6_pReal, &                                                    !< relative tolerance in crystallite state loop 
@@ -295,6 +296,8 @@ subroutine numerics_init
          subStepSizeCryst = IO_floatValue(line,chunkPos,2_pInt)
        case ('stepincreasecryst')
          stepIncreaseCryst = IO_floatValue(line,chunkPos,2_pInt)
+       case ('substepsizelp')
+         subStepSizeLp = IO_floatValue(line,chunkPos,2_pInt)
        case ('substepminhomog')
          subStepMinHomog = IO_floatValue(line,chunkPos,2_pInt)
        case ('substepsizehomog')
@@ -515,6 +518,7 @@ subroutine numerics_init
  write(6,'(a24,1x,es8.1)')  ' subStepMinCryst:        ',subStepMinCryst
  write(6,'(a24,1x,es8.1)')  ' subStepSizeCryst:       ',subStepSizeCryst
  write(6,'(a24,1x,es8.1)')  ' stepIncreaseCryst:      ',stepIncreaseCryst
+ write(6,'(a24,1x,es8.1)')  ' subStepSizeLp:          ',subStepSizeLp
  write(6,'(a24,1x,i8)')     ' nState:                 ',nState
  write(6,'(a24,1x,i8)')     ' nStress:                ',nStress
  write(6,'(a24,1x,es8.1)')  ' rTol_crystalliteState:  ',rTol_crystalliteState
@@ -643,6 +647,7 @@ subroutine numerics_init
  if (subStepMinCryst <= 0.0_pReal)         call IO_error(301_pInt,ext_msg='subStepMinCryst')
  if (subStepSizeCryst <= 0.0_pReal)        call IO_error(301_pInt,ext_msg='subStepSizeCryst')
  if (stepIncreaseCryst <= 0.0_pReal)       call IO_error(301_pInt,ext_msg='stepIncreaseCryst')
+ if (subStepSizeLp <= 0.0_pReal)           call IO_error(301_pInt,ext_msg='subStepSizeLp')
  if (subStepMinHomog <= 0.0_pReal)         call IO_error(301_pInt,ext_msg='subStepMinHomog')
  if (subStepSizeHomog <= 0.0_pReal)        call IO_error(301_pInt,ext_msg='subStepSizeHomog')
  if (stepIncreaseHomog <= 0.0_pReal)       call IO_error(301_pInt,ext_msg='stepIncreaseHomog')

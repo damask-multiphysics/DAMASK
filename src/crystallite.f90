@@ -1316,7 +1316,7 @@ subroutine crystallite_integrateStateRK4()
 ! first Runge-Kutta step
  !$OMP PARALLEL
  !$OMP DO
-   do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)             ! iterate over elements, ips and grains
+   do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                 ! iterate over elements, ips and grains
      if (crystallite_todo(g,i,e)) &
        call constitutive_collectDotState(crystallite_Tstar_v(1:6,g,i,e), &
                                          crystallite_Fe, &
@@ -1326,7 +1326,7 @@ subroutine crystallite_integrateStateRK4()
  !$OMP ENDDO
 
  !$OMP DO PRIVATE(p,c,NaN)
-   do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)             ! iterate over elements, ips and grains
+   do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                 ! iterate over elements, ips and grains
      !$OMP FLUSH(crystallite_todo)
      if (crystallite_todo(g,i,e)) then
        c = phasememberAt(g,i,e)
@@ -1335,13 +1335,13 @@ subroutine crystallite_integrateStateRK4()
        do mySource = 1_pInt, phase_Nsources(p)
          NaN = NaN .or. any(IEEE_is_NaN(sourceState(p)%p(mySource)%dotState(:,c)))
        enddo
-       if (NaN) then                                                                                ! NaN occured in any dotState
-         if (.not. crystallite_localPlasticity(g,i,e)) then                                         ! if broken non-local...
+       if (NaN) then                                                                                    ! NaN occured in any dotState
+         if (.not. crystallite_localPlasticity(g,i,e)) then                                             ! if broken non-local...
            !$OMP CRITICAL (checkTodo)
-             crystallite_todo = crystallite_todo .and. crystallite_localPlasticity                  ! ...all non-locals skipped
+             crystallite_todo = crystallite_todo .and. crystallite_localPlasticity                      ! ...all non-locals skipped
            !$OMP END CRITICAL (checkTodo)
-         else                                                                                       ! if broken local...
-           crystallite_todo(g,i,e) = .false.                                                        ! ... skip this one next time
+         else                                                                                           ! if broken local...
+           crystallite_todo(g,i,e) = .false.                                                            ! ... skip this one next time
          endif
        endif
      endif
@@ -1356,7 +1356,7 @@ subroutine crystallite_integrateStateRK4()
 
    !$OMP PARALLEL
    !$OMP DO PRIVATE(p,c)
-     do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)           ! iterate over elements, ips and grains
+     do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                  ! iterate over elements, ips and grains
        if (crystallite_todo(g,i,e)) then
          p = phaseAt(g,i,e)
          c = phasememberAt(g,i,e)
@@ -1371,7 +1371,7 @@ subroutine crystallite_integrateStateRK4()
    !$OMP ENDDO
 
    !$OMP DO PRIVATE(mySizePlasticDotState,mySizeSourceDotState,p,c)
-     do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)           ! iterate over elements, ips and grains
+     do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                  ! iterate over elements, ips and grains
        if (crystallite_todo(g,i,e)) then
 
          p = phaseAt(g,i,e)
@@ -2732,7 +2732,7 @@ subroutine crystallite_integrateStateFPI()
 
  !$OMP ENDDO
  !$OMP DO PRIVATE(p,c,NaN)
-   do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)             ! iterate over elements, ips and grains
+   do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                    ! iterate over elements, ips and grains
      !$OMP FLUSH(crystallite_todo)
      if (crystallite_todo(g,i,e)) then
        p = phaseAt(g,i,e)
@@ -2741,13 +2741,13 @@ subroutine crystallite_integrateStateFPI()
        do mySource = 1_pInt, phase_Nsources(p)
          NaN = NaN .or. any(IEEE_is_NaN(sourceState(p)%p(mySource)%dotState(:,c)))
        enddo
-       if (NaN) then                                                                                ! NaN occured in any dotState
-         if (.not. crystallite_localPlasticity(g,i,e)) then                                         ! if broken is a non-local...
+       if (NaN) then                                                                                       ! NaN occured in any dotState
+         if (.not. crystallite_localPlasticity(g,i,e)) then                                                ! if broken is a non-local...
            !$OMP CRITICAL (checkTodo)
-             crystallite_todo = crystallite_todo .and. crystallite_localPlasticity                  ! ...all non-locals done (and broken)
+             crystallite_todo = crystallite_todo .and. crystallite_localPlasticity                         ! ...all non-locals done (and broken)
            !$OMP END CRITICAL (checkTodo)
-         else                                                                                       ! broken one was local...
-           crystallite_todo(g,i,e) = .false.                                                        ! ... done (and broken)
+         else                                                                                              ! broken one was local...
+           crystallite_todo(g,i,e) = .false.                                                               ! ... done (and broken)
          endif
        endif
      endif
@@ -3107,7 +3107,7 @@ logical function crystallite_stateJump(ipc,ip,el)
                                                       plasticState(p)%deltaState(1:mySizePlasticDeltaState,c)
  do mySource = 1_pInt, phase_Nsources(p)
    mySizeSourceDeltaState = sourceState(p)%p(mySource)%sizeDeltaState
-   if( any(IEEE_is_NaN(sourceState(p)%p(mySource)%deltaState(:,c)))) then                           ! NaN occured in deltaState
+   if( any(IEEE_is_NaN(sourceState(p)%p(mySource)%deltaState(:,c)))) then                          ! NaN occured in deltaState
      crystallite_stateJump = .false.
      return
    endif
@@ -3374,8 +3374,7 @@ logical function crystallite_integrateStress(&
 
    NiterationStressLp = 0_pInt
    jacoCounterLp      = 0_pInt
-   steplengthLp0      = 1.0_pReal
-   steplengthLp       = steplengthLp0
+   steplengthLp       = 1.0_pReal
    residuumLp_old     = 0.0_pReal
    Lpguess_old        = Lpguess
 
@@ -3428,8 +3427,8 @@ logical function crystallite_integrateStress(&
 
      !* update current residuum and check for convergence of loop
 
-     aTolLp = max(rTol_crystalliteStress * max(norm2(Lpguess),norm2(Lp_constitutive)), &            ! absolute tolerance from largest acceptable relative error
-                  aTol_crystalliteStress)                                                           ! minimum lower cutoff
+     aTolLp = max(rTol_crystalliteStress * max(norm2(Lpguess),norm2(Lp_constitutive)), &             ! absolute tolerance from largest acceptable relative error
+                  aTol_crystalliteStress)                                                            ! minimum lower cutoff
      residuumLp = Lpguess - Lp_constitutive
 
      if (any(IEEE_is_NaN(residuumLp))) then                                                         ! NaN in residuum...
@@ -3440,16 +3439,16 @@ logical function crystallite_integrateStress(&
                                                         ' ; iteration ', NiterationStressLp,&
                                                         ' >> returning..!'
 #endif
-       return                                                                                       ! ...me = .false. to inform integrator about problem
-     elseif (norm2(residuumLp) < aTolLp) then                                                       ! converged if below absolute tolerance
-       exit LpLoop                                                                                  ! ...leave iteration loop
+       return                                                                                         ! ...me = .false. to inform integrator about problem
+     elseif (norm2(residuumLp) < aTolLp) then                                                         ! converged if below absolute tolerance
+       exit LpLoop                                                                                    ! ...leave iteration loop
      elseif (     NiterationStressLp == 1_pInt &
-             .or. norm2(residuumLp) < norm2(residuumLp_old)) then                                   ! not converged, but improved norm of residuum (always proceed in first iteration)...
-       residuumLp_old = residuumLp                                                                  ! ...remember old values and...
+             .or. norm2(residuumLp) < norm2(residuumLp_old)) then                                     ! not converged, but improved norm of residuum (always proceed in first iteration)...
+       residuumLp_old = residuumLp                                                                    ! ...remember old values and...
        Lpguess_old    = Lpguess
-       steplengthLp   = steplengthLp0                                                               ! ...proceed with normal step length (calculate new search direction)
-     else                                                                                           ! not converged and residuum not improved...
-       steplengthLp = 0.5_pReal * steplengthLp                                                      ! ...try with smaller step length in same direction
+       steplengthLp   = 1.0_pReal                                                                     ! ...proceed with normal step length (calculate new search direction)
+     else                                                                                             ! not converged and residuum not improved...
+       steplengthLp = subStepSizeLp * steplengthLp                                                    ! ...try with smaller step length in same direction
        Lpguess    = Lpguess_old + steplengthLp * deltaLp
        cycle LpLoop
      endif
