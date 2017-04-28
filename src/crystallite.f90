@@ -3179,7 +3179,9 @@ logical function crystallite_integrateStress(&
                          aTol_crystalliteStress, &
                          rTol_crystalliteStress, &
                          iJacoLpresiduum, &
-                         numerics_integrationMode
+                         numerics_integrationMode, &
+                         subStepSizeLp, &
+                         subStepSizeLi
  use debug, only:        debug_level, &
                          debug_crystallite, &
                          debug_levelBasic, &
@@ -3265,9 +3267,7 @@ logical function crystallite_integrateStress(&
                                      dLp_dT3333, &
                                      dLi_dT3333
  real(pReal)                         detInvFi, &                                                     ! determinant of InvFi
-                                     steplengthLp0, &
                                      steplengthLp, &
-                                     steplengthLi0, &
                                      steplengthLi, &
                                      dt, &                                                           ! time increment
                                      aTolLp, &
@@ -3529,9 +3529,9 @@ logical function crystallite_integrateStress(&
            .or. norm2(residuumLi) < norm2(residuumLi_old)) then                                     ! not converged, but improved norm of residuum (always proceed in first iteration)...
      residuumLi_old = residuumLi                                                                    ! ...remember old values and...
      Liguess_old    = Liguess
-     steplengthLi   = steplengthLi0                                                                 ! ...proceed with normal step length (calculate new search direction)
+     steplengthLi   = 1.0_pReal                                                                     ! ...proceed with normal step length (calculate new search direction)
    else                                                                                             ! not converged and residuum not improved...
-     steplengthLi   = 0.5_pReal * steplengthLi                                                      ! ...try with smaller step length in same direction
+     steplengthLi   = subStepSizeLi * steplengthLi                                                  ! ...try with smaller step length in same direction
      Liguess        = Liguess_old + steplengthLi * deltaLi
      cycle LiLoop
    endif
