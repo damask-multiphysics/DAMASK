@@ -491,11 +491,11 @@ subroutine CPFEM_general(mode, parallelExecution, ffn, ffn1, temperature_inp, dt
  !*   If no parallel execution is required, there is no need to collect FEM input
 
  if (.not. parallelExecution) then
-   chosenThermal: select case (thermal_type(mesh_element(3,el)))
-     case (THERMAL_conduction_ID) chosenThermal
+   chosenThermal1: select case (thermal_type(mesh_element(3,elCP)))
+     case (THERMAL_conduction_ID) chosenThermal1
        temperature(material_homog(ip,elCP))%p(thermalMapping(material_homog(ip,elCP))%p(ip,elCP)) = &
          temperature_inp
-     end select chosenThermal
+     end select chosenThermal1
    materialpoint_F0(1:3,1:3,ip,elCP) = ffn
    materialpoint_F(1:3,1:3,ip,elCP) = ffn1
 
@@ -504,11 +504,11 @@ subroutine CPFEM_general(mode, parallelExecution, ffn, ffn1, temperature_inp, dt
    if (rnd < 0.5_pReal) rnd = rnd - 1.0_pReal
    CPFEM_cs(1:6,ip,elCP) = rnd * CPFEM_odd_stress
    CPFEM_dcsde(1:6,1:6,ip,elCP) = CPFEM_odd_jacobian * math_identity2nd(6)
-   chosenThermal: select case (thermal_type(mesh_element(3,el)))
-     case (THERMAL_conduction_ID) chosenThermal
+   chosenThermal2: select case (thermal_type(mesh_element(3,elCP)))
+     case (THERMAL_conduction_ID) chosenThermal2
        temperature(material_homog(ip,elCP))%p(thermalMapping(material_homog(ip,elCP))%p(ip,elCP)) = &
          temperature_inp
-     end select chosenThermal
+     end select chosenThermal2
    materialpoint_F0(1:3,1:3,ip,elCP) = ffn
    materialpoint_F(1:3,1:3,ip,elCP) = ffn1
    CPFEM_calc_done = .false.
