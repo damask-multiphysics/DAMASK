@@ -1,10 +1,9 @@
 #!/usr/bin/env python2.7
 # -*- coding: UTF-8 no BOM -*-
 
-from __future__ import print_function
 import sys,os,re,time,tempfile
 import numpy as np
-import argparse
+from optparse import OptionParser
 import damask
 
 sys.path.append(damask.solver.Marc().libraryPath())
@@ -15,49 +14,48 @@ scriptID   = ' '.join([scriptName,damask.version])
 # Convert .mfd file into a usable format
 # Broken into labeled sections (eg. nodes, links, etc)
 # Each section has a list of labeled elements with formatted numerical data
-def parseMFD(fname):
+def parseMFD(dat):
   formatted = []
-  with open(fname,'r') as dat:
-    section = 0
-    formatted.append({'label': 'header', 'uid': -1, 'els': []})
-    # in between =beg= and =end= part of file
-    in_block = False
-    for line in dat:
-      if in_block: # currently in a section
-        # lines that start with a space are numerical data
-        if line[0] == ' ':
+  section = 0
+  formatted.append({'label': 'header', 'uid': -1, 'els': []})
+  # in between =beg= and =end= part of file
+  in_block = False
+  for line in dat:
+    if in_block: # currently in a section
+      # lines that start with a space are numerical data
+      if line[0] == ' ':
+        formatted[section]['els'].append([])
+        
+        # grab numbers
+        nums = re.split(r'\s+', line.strip())
+        
+        for num in nums:  
+          # floating point has format ' -x.xxxxxxxxxxxxe+yy'
+          # scientific notation is used for float
+          if (len(num) >= 4) and (num[-4] == 'e'):
+            formatted[section]['els'][-1].append(float(num))
+          else: # integer
+            formatted[section]['els'][-1].append(int(num))
+      else: # not numerical data, so it is a label for an element or section end
+        if line[0] == '=' and re.search(r'=end=$', line) is not None: # End of section, avoiding regex if possible
+          in_block = False
+        else:
           formatted[section]['els'].append([])
-          
-          # grab numbers
-          nums = re.split(r'\s+', line.strip())
-          
-          for num in nums:  
-            # floating point has format ' -x.xxxxxxxxxxxxe+yy'
-            # scientific notation is used for float
-            if (len(num) >= 4) and (num[-4] == 'e'):
-              formatted[section]['els'][-1].append(float(num))
-            else: # integer
-              formatted[section]['els'][-1].append(int(num))
-        else: # not numerical data, so it is a label for an element or section end
-          if line[0] == '=' and re.search(r'=end=$', line) is not None: # End of section, avoiding regex if possible
-            in_block = False
-          else:
-            formatted[section]['els'].append([])
-            formatted[section]['els'][-1] = line
-          
-      else: # Not in a section, we are looking for a =beg= now
-        search = re.search(r'=beg=\s+(\d+)\s\((.*?)\)', line)
-        if search is not None: # found start of a new section
+          formatted[section]['els'][-1] = line
+        
+    else: # Not in a section, we are looking for a =beg= now
+      search = re.search(r'=beg=\s+(\d+)\s\((.*?)\)', line)
+      if search is not None: # found start of a new section
+        section += 1
+        in_block = True
+        formatted.append({'label': search.group(2), 'uid': int(search.group(1)), 'els': []})
+      else: # No =beg= found, probably in the header
+        # Either header or somthing we didn't plan for - just save the line so it isn't lost
+        if formatted[section]['uid'] > 0:
           section += 1
-          in_block = True
-          formatted.append({'label': search.group(2), 'uid': int(search.group(1)), 'els': []})
-        else: # No =beg= found, probably in the header
-          # Either header or somthing we didn't plan for - just save the line so it isn't lost
-          if formatted[section]['uid'] > 0:
-            section += 1
-            formatted.append({'label': '', 'uid': -2, 'els': []}) # make dummy section to store unrecognized data
-          formatted[section]['els'].append(line)
-  
+          formatted.append({'label': '', 'uid': -2, 'els': []}) # make dummy section to store unrecognized data
+        formatted[section]['els'].append(line)
+ 
   return formatted
 
 def asMFD(mfd_data):
@@ -203,30 +201,32 @@ def add_servoLinks(mfd_data,active=[True,True,True]):  # directions on which to 
 #--------------------------------------------------------------------------------------------------
 #                                MAIN
 #-------------------------------------------------------------------------------------------------- 
-parser = argparse.ArgumentParser(description = """
+parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
 Set up servo linking to achieve periodic boundary conditions for a regular hexahedral mesh.
 Use *py_connection to operate on model presently opened in MSC.Mentat.
 
 """, version = scriptID)
 
-parser.add_argument('-p', '--port',
-                    type = int, metavar = 'int', default = None,
-                    help = 'Mentat connection port')
-parser.add_argument('-x',
-                    action = 'store_false',
-                    help = 'no PBC along x direction')
-parser.add_argument('-y',
-                    action = 'store_false',
-                    help = 'no PBC along y direction')
-parser.add_argument('-z',
-                    action = 'store_false',
-                    help = 'no PBC along z direction')
-parser.add_argument('file', nargs='*',
-                    help = 'Mentat formatted data (.mfd) file[s] to add periodic boundary conditions to')
+parser.add_option('-p', '--port',
+                  type = int, metavar = 'int', default = None,
+                  help = 'Mentat connection port')
+parser.add_option('-x',
+                  action = 'store_false', default = True,
+                  help = 'no PBC along x direction')
+parser.add_option('-y',
+                  action = 'store_false', default = True,
+                  help = 'no PBC along y direction')
+parser.add_option('-z',
+                  action = 'store_false', default = True,
+                  help = 'no PBC along z direction')
 
-args = parser.parse_args()
+(options, filenames) = parser.parse_args()
 
-remote = args.port is not None
+remote = options.port is not None
+
+if remote and filenames != []:
+  parser.error('file can not be specified when port is given.')
+if filenames == []: filenames = [None]
 
 if remote:
   try:    import py_mentat
@@ -235,25 +235,27 @@ if remote:
     sys.exit(-1)
 
   damask.util.report(scriptName, 'waiting to connect...')
-  args.file = [os.path.join(tempfile._get_default_tempdir(), next(tempfile._get_candidate_names()) + '.mfd')]
+  filenames = [os.path.join(tempfile._get_default_tempdir(), next(tempfile._get_candidate_names()) + '.mfd')]
   try:
-    py_mentat.py_connect('',args.port)
+    py_mentat.py_connect('',options.port)
     py_mentat.py_send('*set_save_formatted on')
-    py_mentat.py_send('*save_as_model "{}" yes'.format(args.file[0]))
+    py_mentat.py_send('*save_as_model "{}" yes'.format(filenames[0]))
     py_mentat.py_get_int("nnodes()")                                    # hopefully blocks until file is written
   except:
     damask.util.croak('failed. try setting Tools/Python/"Run as Separate Process" & "Initiate".')
     sys.exit()
   damask.util.croak( 'connected...')
 
-for mfdfile in args.file:
-  while remote and not os.path.exists(mfdfile): time.sleep(0.5)           # wait for Mentat to write MFD file
-  damask.util.report(scriptName, mfdfile)
-  mfd = parseMFD(mfdfile)
-  add_servoLinks(mfd,[args.x,args.y,args.z])
-  with open(mfdfile, 'w') as file:
-    file.write(asMFD(mfd))
+for name in filenames:
+  while remote and not os.path.exists(name): time.sleep(0.5)           # wait for Mentat to write MFD file
+  with  open( name,'r') if name is not None else sys.stdin as fileIn:
+    damask.util.report(scriptName, name)
+    mfd = parseMFD(fileIn)
+
+  add_servoLinks(mfd,[options.x,options.y,options.z])
+  with open( name,'w') if name is not None else sys.stdout as fileOut:
+    fileOut.write(asMFD(mfd))
 
 if remote:
-  try:    py_mentat.py_send('*open_model "{}"'.format(args.file[0]))
-  except: damask.util.croak('lost connection on sending open command for "{}".'.format(args.file[0]))
+  try:    py_mentat.py_send('*open_model "{}"'.format(filenames[0]))
+  except: damask.util.croak('lost connection on sending open command for "{}".'.format(filenames[0]))
