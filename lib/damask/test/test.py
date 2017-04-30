@@ -85,7 +85,8 @@ class Test():
       self.clean()
       self.prepareAll()
 
-    for variant,name in enumerate(map(self.variantName,self.variants)):
+    for variant,object in enumerate(self.variants):
+      name = self.variantName(variant)
       if self.options.show:
         logging.critical('{}: {}'.format(variant+1,name))
       elif self.options.select is not None \
