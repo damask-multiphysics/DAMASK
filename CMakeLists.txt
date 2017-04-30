@@ -96,6 +96,11 @@ message ("Found PETSC_LINKER:\n${PETSC_LINKER}\n"            )
 message ("Found MPI Fortran Compiler:\n${PETSC_MPIFC}\n"     )
 message ("Found MPI C Compiler:\n${PETSC_MPICC}\n"           )
 
+# set compiler commands to match PETSc (needs to be done before defining the project)
+# https://cmake.org/Wiki/CMake_FAQ#How_do_I_use_a_different_compiler.3F
+set (CMAKE_Fortran_COMPILER "${PETSC_MPIFC}")
+set (CMAKE_C_COMPILER       "${PETSC_MPICC}")
+
 #---------------------------------------------------------------------------------------
 # Now start to care about DAMASK
 
@@ -110,15 +115,12 @@ elseif ("${DAMASK_SOLVER}" STREQUAL "FEM")
     message ("Building FEM Solver\n")
 endif ()
 
+# set linker commands (needs to be done after defining the project)
+set (CMAKE_LINKER           "${PETSC_LINKER}")
+
 if ("${CMAKE_BUILD_TYPE}" STREQUAL "")
   set (CMAKE_BUILD_TYPE "RELEASE")
 endif ()
-
-# set compiler and linker commands (need to be done after defining the project)
-# https://cmake.org/Wiki/CMake_FAQ#How_do_I_use_a_different_compiler.3F
-set (CMAKE_Fortran_COMPILER "${PETSC_MPIFC}")
-set (CMAKE_C_COMPILER       "${PETSC_MPICC}")
-set (CMAKE_LINKER           "${PETSC_LINKER}")
 
 # Predefined sets for OPTIMIZATION/OPENMP based on BUILD_TYPE
 if ("${CMAKE_BUILD_TYPE}" STREQUAL "DEBUG" OR "${CMAKE_BUILD_TYPE}" STREQUAL "SYNTAXONLY" )
