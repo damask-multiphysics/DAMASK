@@ -74,6 +74,10 @@ class Test():
                             )
 
     
+  def variantName(self,variant):
+    """Generate name of (numerical) variant."""
+    return str(variant)
+
   def execute(self):
     """Run all variants and report first failure."""
     if not self.options.keep:
@@ -81,7 +85,7 @@ class Test():
       self.clean()
       self.prepareAll()
 
-    for variant,name in enumerate(self.variants):
+    for variant,name in enumerate(map(self.variantName,self.variants)):
       if self.options.show:
         logging.critical('{}: {}'.format(variant+1,name))
       elif self.options.select is not None \
