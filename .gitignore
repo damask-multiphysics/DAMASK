@@ -6,4 +6,4 @@
 *.bak
 *~
 bin
-PRIVATE
+build

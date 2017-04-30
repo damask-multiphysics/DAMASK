@@ -251,10 +251,8 @@ subroutine numerics_init
 !--------------------------------------------------------------------------------------------------
 ! try to open the config file
  fileExists: if(IO_open_file_stat(FILEUNIT,numerics_configFile)) then 
-   mainProcess2: if (worldrank == 0) then
-     write(6,'(a,/)') ' using values from config file'
-     flush(6)
-   endif mainProcess2
+   write(6,'(a,/)') ' using values from config file'
+   flush(6)
     
 !--------------------------------------------------------------------------------------------------
 ! read variables from config file and overwrite default parameters if keyword is present
@@ -694,9 +692,9 @@ subroutine numerics_init
                    .not. memory_efficient) call IO_error(error_ID = 847_pInt)
  if (err_stress_tolrel <= 0.0_pReal)       call IO_error(301_pInt,ext_msg='err_stress_tolRel')
  if (err_stress_tolabs <= 0.0_pReal)       call IO_error(301_pInt,ext_msg='err_stress_tolAbs')
- if (err_div_tolRel <= 0.0_pReal)          call IO_error(301_pInt,ext_msg='err_div_tolRel')
+ if (err_div_tolRel < 0.0_pReal)           call IO_error(301_pInt,ext_msg='err_div_tolRel')
  if (err_div_tolAbs <= 0.0_pReal)          call IO_error(301_pInt,ext_msg='err_div_tolAbs')
- if (err_curl_tolRel <= 0.0_pReal)         call IO_error(301_pInt,ext_msg='err_curl_tolRel')
+ if (err_curl_tolRel < 0.0_pReal)          call IO_error(301_pInt,ext_msg='err_curl_tolRel')
  if (err_curl_tolAbs <= 0.0_pReal)         call IO_error(301_pInt,ext_msg='err_curl_tolAbs')
  if (polarAlpha <= 0.0_pReal .or. &
      polarAlpha >  2.0_pReal)              call IO_error(301_pInt,ext_msg='polarAlpha')

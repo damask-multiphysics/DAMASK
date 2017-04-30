@@ -57,7 +57,9 @@ subroutine DAMASK_interface_init()
    tag
  integer :: &
    i, &
+#ifdef _OPENMP
    threadLevel, &
+#endif
    worldrank = 0, &
    worldsize = 0
  integer, allocatable, dimension(:) :: &
