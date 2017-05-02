@@ -20,6 +20,8 @@ stages:
 
 ###################################################################################################
 before_script:
+  - [ $(awk "/$CI_PIPELINE_ID/{print NR}" $HOME/GitLabCI.queue)x == 'x' ] && echo $CI_PIPELINE_ID >> $HOME/GitLabCI.queue
+  - while [ $(awk "/$CI_PIPELINE_ID/{print NR}" $HOME/GitLabCI.queue) -ne 1 ];do sleep 5m; done
   - source $DAMASKROOT/DAMASK_env.sh
   - cd $DAMASKROOT/PRIVATE/testing
 
@@ -52,9 +54,9 @@ variables:
   MPICH_GNU:                       "$MPICH3_2GNU5_3"
   MPICH_Intel:                     "$MPICH3_2Intel17_0"
   # ++++++++++++ PETSc +++++++++++++++++++++++++++++++++++++++++++++++++
-  PETSc3_6_4MPICH3_2Intel17_0:     "Libraries/PETSc/3.6.4/Intel-17.0-MPICH-3.2"
-  PETSc3_7_6MPICH3_2Intel17_0:     "Libraries/PETSc/3.7.5/Intel-17.0-MPICH-3.2"
+  PETSc3_7_6MPICH3_2Intel17_0:     "Libraries/PETSc/3.7.6/Intel-17.0-MPICH-3.2"
   PETSc3_7_5MPICH3_2Intel17_0:     "Libraries/PETSc/3.7.5/Intel-17.0-MPICH-3.2"
+  PETSc3_6_4MPICH3_2Intel17_0:     "Libraries/PETSc/3.6.4/Intel-17.0-MPICH-3.2"
   PETSc3_7_5MPICH3_2GNU5_3:        "Libraries/PETSc/3.7.5/GNU-5.3-MPICH-3.2"
   # ------------ Defaults ----------------------------------------------
   PETSc_MPICH_Intel:               "$PETSc3_7_6MPICH3_2Intel17_0"
@@ -83,8 +85,8 @@ checkout:
     - while [ $(awk "/$CI_PIPELINE_ID/{print NR}" $HOME/GitLabCI.queue) -ne 1 ];do sleep 5m; done
   script:
     - mkdir -p $DAMASKROOT
-    - git clone -q git@magit1.mpie.de:damask/DAMASK.git $DAMASKROOT
     - cd $DAMASKROOT
+    - git clone -q git@magit1.mpie.de:damask/DAMASK.git .
     - git checkout $CI_COMMIT_SHA
     - git submodule update --init
     - source DAMASK_env.sh
@@ -202,11 +204,9 @@ Compile_GNU:
 ###################################################################################################
 Compile_Intel_Prepare:
   stage: prepareSpectral
-  before_script: 
-    - module load $IntelCompiler $MPICH_Intel $PETSc_MPICH_Intel
   script:
+    - module load $IntelCompiler $MPICH_Intel $PETSc_MPICH_Intel
     - cd $DAMASKROOT
-    - source DAMASK_env.sh
     - make clean spectral processing
   except:
     - master
