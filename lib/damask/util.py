@@ -101,20 +101,6 @@ def execute(cmd,
   return out,error
 
 # -----------------------------
-def gridLocation(idx,res):
-  return ( idx  % res[0], \
-         ( idx // res[0]) % res[1], \
-         ( idx // res[0] // res[1]) % res[2] )
-
-
-# -----------------------------
-def gridIndex(location,res):
-  return ( location[0] % res[0]                    + \
-         ( location[1] % res[1]) * res[0]          + \
-         ( location[2] % res[2]) * res[1] * res[0]   )
-
-
-# -----------------------------
 class extendableOption(Option):
   """
   Used for definition of new option parser action 'extend', which enables to take multiple option arguments
