@@ -729,6 +729,8 @@ end subroutine material_parseHomogenization
 !> @brief parses the microstructure part in the material configuration file
 !--------------------------------------------------------------------------------------------------
 subroutine material_parseMicrostructure(fileUnit,myPart)
+ use prec, only: &
+  dNeq
  use IO
  use mesh, only: &
    mesh_element, &
@@ -737,7 +739,6 @@ subroutine material_parseMicrostructure(fileUnit,myPart)
  implicit none
  character(len=*), intent(in) :: myPart
  integer(pInt),    intent(in) :: fileUnit
-
 
  integer(pInt), allocatable, dimension(:) :: chunkPos
  integer(pInt) :: Nsections, section, constituent, e, i
@@ -818,9 +819,10 @@ subroutine material_parseMicrostructure(fileUnit,myPart)
 
  !sanity check
 do section = 1_pInt, Nsections
-  if (sum(microstructure_fraction(:,section)) /= 1.0_pReal) &
+  if (dNeq(sum(microstructure_fraction(:,section)),1.0_pReal)) &
     call IO_error(153_pInt,ext_msg=microstructure_name(section))
 enddo
+
 end subroutine material_parseMicrostructure
 
 

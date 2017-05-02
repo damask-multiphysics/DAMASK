@@ -1,67 +1,101 @@
 #!/usr/bin/env python2.7
 # -*- coding: UTF-8 no BOM -*-
 
-import sys,os
+import sys,os,re,time,tempfile
 import numpy as np
 from optparse import OptionParser
 import damask
 
+sys.path.append(damask.solver.Marc().libraryPath())
+
 scriptName = os.path.splitext(os.path.basename(__file__))[0]
 scriptID   = ' '.join([scriptName,damask.version])
 
-sys.path.append(damask.solver.Marc().libraryPath())
+# Convert .mfd file into a usable format
+# Broken into labeled sections (eg. nodes, links, etc)
+# Each section has a list of labeled elements with formatted numerical data
+def parseMFD(dat):
+  formatted = []
+  section = 0
+  formatted.append({'label': 'header', 'uid': -1, 'els': []})
+  # in between =beg= and =end= part of file
+  in_block = False
+  for line in dat:
+    if in_block: # currently in a section
+      # lines that start with a space are numerical data
+      if line[0] == ' ':
+        formatted[section]['els'].append([])
+        
+        # grab numbers
+        nums = re.split(r'\s+', line.strip())
+        
+        for num in nums:  
+          # floating point has format ' -x.xxxxxxxxxxxxe+yy'
+          # scientific notation is used for float
+          if (len(num) >= 4) and (num[-4] == 'e'):
+            formatted[section]['els'][-1].append(float(num))
+          else: # integer
+            formatted[section]['els'][-1].append(int(num))
+      else: # not numerical data, so it is a label for an element or section end
+        if line[0] == '=' and re.search(r'=end=$', line) is not None: # End of section, avoiding regex if possible
+          in_block = False
+        else:
+          formatted[section]['els'].append([])
+          formatted[section]['els'][-1] = line
+        
+    else: # Not in a section, we are looking for a =beg= now
+      search = re.search(r'=beg=\s+(\d+)\s\((.*?)\)', line)
+      if search is not None: # found start of a new section
+        section += 1
+        in_block = True
+        formatted.append({'label': search.group(2), 'uid': int(search.group(1)), 'els': []})
+      else: # No =beg= found, probably in the header
+        # Either header or somthing we didn't plan for - just save the line so it isn't lost
+        if formatted[section]['uid'] > 0:
+          section += 1
+          formatted.append({'label': '', 'uid': -2, 'els': []}) # make dummy section to store unrecognized data
+        formatted[section]['els'].append(line)
+ 
+  return formatted
 
-active=[True,True,True] # directions on which to add PBC
-def outMentat(cmd,locals):
-  if cmd[0:3] == '(!)':
-    exec(cmd[3:])
-  elif cmd[0:3] == '(?)':
-    cmd = eval(cmd[3:])
-    py_mentat.py_send(cmd)
-  else:
-    py_mentat.py_send(cmd)
-  return
-
-#-------------------------------------------------------------------------------------------------
-def outFile(cmd,locals,dest):
-  if cmd[0:3] == '(!)':
-    exec(cmd[3:])
-  elif cmd[0:3] == '(?)':
-    cmd = eval(cmd[3:])
-    dest.write(cmd+'\n')
-  else:
-    dest.write(cmd+'\n')
-  return
-
-
-#-------------------------------------------------------------------------------------------------
-def output(cmds,locals,dest):
-  for cmd in cmds:
-    if isinstance(cmd,list):
-      output(cmd,locals,dest)
-    else:
-      if dest == 'Mentat':
-        outMentat(str(cmd),locals)
+def asMFD(mfd_data):
+  result = ''
+  for section in mfd_data:
+    if section['uid'] > 0:
+      result += '=beg={0:5d} ({1})\n'.format(section['uid'], section['label'])
+    for el in section['els']:
+      if type(el) == str:
+        result += el
+      elif type(el) == list:
+        for num in el:
+          if type(num) == int:
+            result += '{:20d}'.format(num)
+          elif type(num) == float:
+            result += '{:20.12e}'.format(num)
+          else:
+            damask.util.croak('WARNING: encountered unknown type: ' + str(type(el)))
+        result += '\n'
       else:
-        outFile(str(cmd),locals,dest)
-  return
+        damask.util.croak('WARNING: encountered unknown type: ' + str(type(el)))
+    if section['uid'] > 0:
+      result += '=end=\n'
+  return result.strip()
 
 
-
-def servoLink():
-
-  cmds = []
+def add_servoLinks(mfd_data,active=[True,True,True]):  # directions on which to add PBC
   base = ['x','y','z']
   box = {'min': np.zeros(3,dtype='d'),
          'max': np.zeros(3,dtype='d'),
        'delta': np.zeros(3,dtype='d'),
       }
-  Nnodes = py_mentat.py_get_int("nnodes()")
-  NodeCoords = np.zeros((Nnodes,3),dtype='d')
-  for node in range(Nnodes):
-    NodeCoords[node,0] = py_mentat.py_get_float("node_x(%i)"%(node+1))
-    NodeCoords[node,1] = py_mentat.py_get_float("node_y(%i)"%(node+1))
-    NodeCoords[node,2] = py_mentat.py_get_float("node_z(%i)"%(node+1))
+  
+  mfd_dict = {}
+  for i in range(len(mfd_data)):
+    mfd_dict[mfd_data[i]['label']] = i
+
+  NodeCoords = np.array(mfd_data[mfd_dict['nodes']]['els'][0::4])[:,1:4]
+  Nnodes = NodeCoords.shape[0]  
+  
   box['min'] = NodeCoords.min(axis=0)                                                               # find the bounding box
   box['max'] = NodeCoords.max(axis=0)
   box['delta'] = box['max']-box['min']
@@ -108,9 +142,12 @@ def servoLink():
       if any([maxFlag[i] and active[i] for i in range(3)]):
         linkNodes.append({'id': node+1,'coord': NodeCoords[node], 'faceMember': [maxFlag[i] and active[i] for i in range(3)]})
   
+  mfd_data[mfd_dict['entities']]['els'][0][0] += len(linkNodes) * 3
+  
   baseCorner = baseNode["%.8e"%box['min'][0]]["%.8e"%box['min'][1]]["%.8e"%box['min'][2]]           # detect ultimate base node
   
-  
+  links = {'uid': 1705, 'label': 'links', 'els': [[7,0],[9,0]]}
+  linkID = 0
   for node in linkNodes:                                                                            # loop over all linked nodes
     linkCoord = [node['coord']]                                                                     # start list of control node coords with my coords
     for dir in range(3):                                                                            # check for each direction
@@ -121,77 +158,104 @@ def servoLink():
 
     nLinks = len(linkCoord)
     for dof in [1,2,3]:
-      cmds.append([
-        "*new_link *link_class servo",
-        "*link_class servo *tied_node %i"%node['id'],
-        "*link_class servo *tied_dof %i"%dof,
-        "*servo_nterms %i"%(1+nLinks),
-        ])
-      for i in range(nLinks):
-        cmds.append([
-        "*link_class servo *servo_ret_node %i %i"\
-          %(i+1,baseNode["%.8e"%linkCoord[i][0]]["%.8e"%linkCoord[i][1]]["%.8e"%linkCoord[i][2]]),
-        "*link_class servo *servo_ret_dof %i %i"%(i+1,dof),
-        "*link_class servo *servo_ret_coef %i 1"%(i+1),
-        ])
-      cmds.append([
-      "*link_class servo *servo_ret_node %i %i"%(1+nLinks,baseCorner),
-      "*link_class servo *servo_ret_dof %i %i"%(1+nLinks,dof),
-      "*link_class servo *servo_ret_coef %i -%i"%(1+nLinks,nLinks-1),
-      ])
-  return cmds
+      tied_node = node['id']
+      nterms = 1 + nLinks
+      
+      linkID += 1
+      # Link header
+      links['els'].append('link{0}\n'.format(linkID))
+      links['els'].append([linkID, 1])
+      links['els'].append([0])
+      links['els'].append([0])
+      links['els'].append([0, 0, 0, tied_node])
+      
+      # these need to be put in groups of four
+      link_payload = [dof, 0, nterms]
+      
+      # Individual node contributions (node, dof, coef.)
+      for i in range(nterms):
+        if i == nLinks:
+          link_payload.append(baseCorner)
+        else:
+          link_payload.append(baseNode["%.8e"%linkCoord[i][0]]["%.8e"%linkCoord[i][1]]["%.8e"%linkCoord[i][2]])
+      for i in range(nterms):
+          link_payload.append(dof)
+      for i in range(nterms):
+        if i == nLinks:
+          link_payload.append(1.0 - nLinks)
+        else:
+          link_payload.append(1.0)
+      
+      # Needs to be formatted 4 data points per row, character width of 20, so 80 total
+      for j in range(0, len(link_payload), 4):
+        links['els'].append(link_payload[j:j+4])
+      if j+4 < len(link_payload):
+        links['els'].append(link_payload[j+4:])
 
+  i = 0
+  while i < len(mfd_data) and mfd_data[i]['uid'] < 1705: i += 1
+
+  if mfd_data[i]['uid'] == 1705: del mfd_data[i]
+  mfd_data.insert(i, links)
+  
 #--------------------------------------------------------------------------------------------------
 #                                MAIN
 #-------------------------------------------------------------------------------------------------- 
-parser = OptionParser(option_class=damask.extendableOption, usage = '%prog [options]', description = """
-Set up servo linking to achieve periodic boundary conditions for a regular hexahedral mesh presently opened in MSC.Mentat
+parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
+Set up servo linking to achieve periodic boundary conditions for a regular hexahedral mesh.
+Use *py_connection to operate on model presently opened in MSC.Mentat.
 
 """, version = scriptID)
 
-parser.add_option("-p", "--port", type="int", dest="port", metavar='int',
-                                  help="Mentat connection port [%default]")
-parser.add_option("-v", "--verbose", action="store_true", dest="verbose",
-                                  help="write Mentat command stream also to stdout [%default]")
-parser.set_defaults(port = 40007,
-                    verbose = False)
+parser.add_option('-p', '--port',
+                  type = int, metavar = 'int', default = None,
+                  help = 'Mentat connection port')
+parser.add_option('-x',
+                  action = 'store_false', default = True,
+                  help = 'no PBC along x direction')
+parser.add_option('-y',
+                  action = 'store_false', default = True,
+                  help = 'no PBC along y direction')
+parser.add_option('-z',
+                  action = 'store_false', default = True,
+                  help = 'no PBC along z direction')
 
-(options, args) = parser.parse_args()
+(options, filenames) = parser.parse_args()
 
-try:
-  import py_mentat
-except:
-  damask.util.croak('error: no valid Mentat release found')
-  sys.exit(-1)
+remote = options.port is not None
 
-outputLocals = {}
+if remote and filenames != []:
+  parser.error('file can not be specified when port is given.')
+if filenames == []: filenames = [None]
 
-damask.util.report(scriptName,'waiting to connect...')
+if remote:
+  try:    import py_mentat
+  except:
+    damask.util.croak('no valid Mentat release found.')
+    sys.exit(-1)
 
-try:
-  py_mentat.py_connect('',options.port)
-# prevent redrawing in Mentat, should be much faster.
-# Since py_connect has no return value, try this to determine if failed or not
-  output(['*draw_manual'],outputLocals,'Mentat')
-except:
-  damask.util.croak('Could not connect. Set Tools/Python/"Run as Separate Process" & "Initiate"...')
-  sys.exit()
+  damask.util.report(scriptName, 'waiting to connect...')
+  filenames = [os.path.join(tempfile._get_default_tempdir(), next(tempfile._get_candidate_names()) + '.mfd')]
+  try:
+    py_mentat.py_connect('',options.port)
+    py_mentat.py_send('*set_save_formatted on')
+    py_mentat.py_send('*save_as_model "{}" yes'.format(filenames[0]))
+    py_mentat.py_get_int("nnodes()")                                    # hopefully blocks until file is written
+  except:
+    damask.util.croak('failed. try setting Tools/Python/"Run as Separate Process" & "Initiate".')
+    sys.exit()
+  damask.util.croak( 'connected...')
 
-damask.util.croak('connected...')
+for name in filenames:
+  while remote and not os.path.exists(name): time.sleep(0.5)           # wait for Mentat to write MFD file
+  with  open( name,'r') if name is not None else sys.stdin as fileIn:
+    damask.util.report(scriptName, name)
+    mfd = parseMFD(fileIn)
 
-output(['*remove_all_servos',
-        '*sweep_all',
-        '*renumber_nodes',
-        '*set_links off',
-        ],outputLocals,'Mentat')     # script depends on consecutive numbering of nodes
+  add_servoLinks(mfd,[options.x,options.y,options.z])
+  with open( name,'w') if name is not None else sys.stdout as fileOut:
+    fileOut.write(asMFD(mfd))
 
-cmds = servoLink()
-output(cmds,outputLocals,'Mentat')
-
-output(['*draw_automatic',
-        ],outputLocals,'Mentat')     # script depends on consecutive numbering of nodes
-
-py_mentat.py_disconnect()
-
-if options.verbose:
-  output(cmds,outputLocals,sys.stdout)
+if remote:
+  try:    py_mentat.py_send('*open_model "{}"'.format(filenames[0]))
+  except: damask.util.croak('lost connection on sending open command for "{}".'.format(filenames[0]))

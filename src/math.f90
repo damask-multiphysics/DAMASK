@@ -452,7 +452,6 @@ pure function math_tensorproduct(A,B)
  implicit none
  real(pReal), dimension(:), intent(in) ::  A,B
  real(pReal), dimension(size(A,1),size(B,1)) ::  math_tensorproduct
-
  integer(pInt) :: i,j
 
  forall (i=1_pInt:size(A,1),j=1_pInt:size(B,1)) math_tensorproduct(i,j) = A(i)*B(j)
