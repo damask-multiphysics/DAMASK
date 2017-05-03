@@ -9,8 +9,7 @@
 module plastic_isotropic
  use prec, only: &
    pReal,&
-   pInt, &
-   DAMASK_NaN
+   pInt
  
  implicit none
  private
@@ -36,14 +35,14 @@ module plastic_isotropic
    integer(kind(undefined_ID)), allocatable, dimension(:) :: & 
      outputID
   real(pReal) :: &
-     fTaylor        = DAMASK_NaN, &
-     tau0           = DAMASK_NaN, &
-     gdot0          = DAMASK_NaN, &
-     n              = DAMASK_NaN, &
-     h0             = DAMASK_NaN, &
+     fTaylor, &
+     tau0, &
+     gdot0, &
+     n, &
+     h0, &
      h0_slopeLnRate = 0.0_pReal, &
-     tausat         = DAMASK_NaN, &
-     a              = DAMASK_NaN, &
+     tausat, &
+     a, &
      aTolFlowstress = 1.0_pReal, &
      aTolShear      = 1.0e-6_pReal, &
      tausat_SinhFitA= 0.0_pReal, &
