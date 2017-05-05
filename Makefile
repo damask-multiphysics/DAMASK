@@ -7,7 +7,7 @@ all: spectral FEM marc processing
 
 .PHONY: spectral
 spectral: build/spectral
-	@(cd build/spectral;make --no-print-directory -ws all install VERBOSE=1;)
+	@(cd build/spectral;make --no-print-directory -ws all install;)
 
 .PHONY: FEM
 FEM: build/FEM
