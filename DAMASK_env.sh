@@ -46,8 +46,7 @@ if [ "x$FREE" != "x" ]; then
   ulimit -d unlimited 2>/dev/null \
   || ulimit -d $(expr $freeMem                       / 2)  2>/dev/null # maximum  heap size (kB)
   ulimit -s unlimited 2>/dev/null \
-  || echo "cannot unlimit stack..." \
-  && ulimit -s $(expr $freeMem / $DAMASK_NUM_THREADS / 2)  2>/dev/null # maximum stack size (kB)
+  || ulimit -s $(expr $freeMem / $DAMASK_NUM_THREADS / 2)  2>/dev/null # maximum stack size (kB)
 fi
 ulimit -v unlimited   2>/dev/null # maximum virtual memory size
 ulimit -m unlimited   2>/dev/null # maximum physical memory size
