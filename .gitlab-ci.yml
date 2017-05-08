@@ -14,6 +14,7 @@ stages:
   - compileAbaqus2016
   - compileAbaqus2017
   - example
+  - performance
   - createDocumentation
   - updateMaster
   - clean
@@ -425,25 +426,19 @@ AbaqusExample:
   only:
     - development
 
-##################################################################################################
-mergeIntoMaster: 
-  stage: updateMaster
+###################################################################################################
+SpectralRuntime:
+  stage: performance
   script:
+    - module load $IntelCompiler $MPICH_Intel $PETSc_MPICH_Intel
     - cd $DAMASKROOT
-    - export TESTEDREV=$(git describe)                                                              # might be detached from development branch
-    - echo $TESTEDREV > VERSION
-    - git commit VERSION -m "[skip ci] updated version information after successful test of $TESTEDREV"
-    - export UPDATEDREV=$(git describe)                                                             # tested state + 1 commit
-    - git checkout master
-    - git merge $UPDATEDREV -s recursive -X ours                                                    # conflicts occur only for inconsistent state
-    - git push origin master                                                                        # master is now tested version and has updated VERSION file
-    - git checkout development
-    - git pull
-    - git merge master -s recursive -X ours -m "[skip ci] Merge branch 'master' into development"   # only possible conflict is in VERSION file
-    - git push origin development                                                                   # development is unchanged (as master is based on it) but has updated VERSION file
-  only:
-    - development
-
+    - make clean spectral processing OPTIMIZATION=AGGRESSIVE
+    - cd $DAMASKROOT/PRIVATE/testing
+    - SpectralAll_runtime/test.py
+  except:
+    - master
+    - release
+ 
 ###################################################################################################
 AbaqusExp: 
   stage: createDocumentation
@@ -480,6 +475,25 @@ Spectral:
   except:
     - master
     - release
+
+##################################################################################################
+mergeIntoMaster: 
+  stage: updateMaster
+  script:
+    - cd $DAMASKROOT
+    - export TESTEDREV=$(git describe)                                                              # might be detached from development branch
+    - echo $TESTEDREV > VERSION
+    - git commit VERSION -m "[skip ci] updated version information after successful test of $TESTEDREV"
+    - export UPDATEDREV=$(git describe)                                                             # tested state + 1 commit
+    - git checkout master
+    - git merge $UPDATEDREV -s recursive -X ours                                                    # conflicts occur only for inconsistent state
+    - git push origin master                                                                        # master is now tested version and has updated VERSION file
+    - git checkout development
+    - git pull
+    - git merge master -s recursive -X ours -m "[skip ci] Merge branch 'master' into development"   # only possible conflict is in VERSION file
+    - git push origin development                                                                   # development is unchanged (as master is based on it) but has updated VERSION file
+  only:
+    - development
 
 ###################################################################################################
 removeLock: 
