@@ -21,8 +21,8 @@ stages:
 
 ###################################################################################################
 before_script:
-  - if [ $(awk "/$CI_PIPELINE_ID/{print NR}" $HOME/GitLabCI.queue)x == 'x' ]; then echo $CI_PIPELINE_ID >> $HOME/GitLabCI.queue; fi
-  - while [ $(awk "/$CI_PIPELINE_ID/{print NR}" $HOME/GitLabCI.queue) -ne 1 ];do sleep 5m; done
+  - if [ $(awk "/$CI_PIPELINE_ID/{print NR}" $TESTROOT/GitLabCI.queue)x == 'x' ]; then echo $CI_PIPELINE_ID >> $TESTROOT/GitLabCI.queue; fi
+  - while [ $(awk "/$CI_PIPELINE_ID/{print NR}" $TESTROOT/GitLabCI.queue) -ne 1 ];do sleep 5m; done
   - source $DAMASKROOT/DAMASK_env.sh
   - cd $DAMASKROOT/PRIVATE/testing
 
@@ -36,7 +36,7 @@ variables:
   #================================================================================================
   # Shortcut names
   #================================================================================================
-  DAMASKROOT:                      "$HOME/GitLabCI_Pipeline_$CI_PIPELINE_ID/DAMASK"
+  DAMASKROOT:                      "$TESTROOT/GitLabCI_Pipeline_$CI_PIPELINE_ID/DAMASK"
 
   #================================================================================================
   # Names of module files to load
@@ -82,8 +82,8 @@ variables:
 checkout: 
   stage: prepareAll
   before_script: 
-    - echo $CI_PIPELINE_ID >> $HOME/GitLabCI.queue
-    - while [ $(awk "/$CI_PIPELINE_ID/{print NR}" $HOME/GitLabCI.queue) -ne 1 ];do sleep 5m; done
+    - echo $CI_PIPELINE_ID >> $TESTROOT/GitLabCI.queue
+    - while [ $(awk "/$CI_PIPELINE_ID/{print NR}" $TESTROOT/GitLabCI.queue) -ne 1 ];do sleep 5m; done
   script:
     - mkdir -p $DAMASKROOT
     - cd $DAMASKROOT
@@ -492,6 +492,7 @@ mergeIntoMaster:
     - git pull
     - git merge master -s recursive -X ours -m "[skip ci] Merge branch 'master' into development"   # only possible conflict is in VERSION file
     - git push origin development                                                                   # development is unchanged (as master is based on it) but has updated VERSION file
+    - sed -i "/$CI_PIPELINE_ID/d" $TESTROOT/GitLabCI.queue
   only:
     - development
 
@@ -501,7 +502,7 @@ removeLock:
   before_script: 
     - echo 'Do nothing'
   when: always
-  script: sed -i "/$CI_PIPELINE_ID/d" $HOME/GitLabCI.queue
+  script: sed -i "/$CI_PIPELINE_ID/d" $TESTROOT/GitLabCI.queue
   except:
     - master
     - release
