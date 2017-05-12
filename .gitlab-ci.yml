@@ -16,8 +16,10 @@ stages:
   - example
   - performance
   - createDocumentation
+  - saveDocumentation
   - updateMaster
   - clean
+  - releaseLock
 
 ###################################################################################################
 before_script:
@@ -92,6 +94,7 @@ checkout:
     - git submodule update --init
     - source DAMASK_env.sh
     - make processing
+    - mkdir $BACKUP/$CI_COMMIT_SHA
   except:
     - master
     - release
@@ -434,7 +437,7 @@ SpectralRuntime:
     - cd $DAMASKROOT
     - make clean spectral processing OPTIMIZATION=AGGRESSIVE
     - cd $DAMASKROOT/PRIVATE/testing
-    - SpectralAll_runtime/test.py
+    - SpectralAll_runtime/test.py -d $TESTROOT
   except:
     - master
     - release
@@ -478,6 +481,19 @@ Spectral:
 
 ##################################################################################################
 mergeIntoMaster: 
+  stage: saveDocumentation
+  script:
+    - cp $TESTROOT/time.txt $BACKUP/$CI_COMMIT_SHA
+    - mv $TESTROOT/time.png $BACKUP/$CI_COMMIT_SHA
+    - cp $TESTROOT/time.txt $BACKUP/$CI_COMMIT_SHA
+    - mv $TESTROOT/time.png $BACKUP/$CI_COMMIT_SHA
+    - mv $DAMASKROOT/PRIVATE/documenting/DAMASK_* $BACKUP/$CI_COMMIT_SHA/
+  except:
+    - master
+    - release
+
+##################################################################################################
+mergeIntoMaster: 
   stage: updateMaster
   script:
     - cd $DAMASKROOT
@@ -492,13 +508,24 @@ mergeIntoMaster:
     - git pull
     - git merge master -s recursive -X ours -m "[skip ci] Merge branch 'master' into development"   # only possible conflict is in VERSION file
     - git push origin development                                                                   # development is unchanged (as master is based on it) but has updated VERSION file
-    - sed -i "/$CI_PIPELINE_ID/d" $TESTROOT/GitLabCI.queue
   only:
     - development
 
 ###################################################################################################
-removeLock: 
+removeData: 
   stage: clean
+  before_script: 
+    - echo 'Do nothing'
+  script:
+    - rm -rf $TESTROOT/GitLabCI_Pipeline_$CI_PIPELINE_ID
+    - sed -i "/$CI_PIPELINE_ID/d" $TESTROOT/GitLabCI.queue                                          # in case pipeline was manually (web GUI) restarted and releaseLock was performed already
+  except:
+    - master
+    - release
+
+###################################################################################################
+removeLock: 
+  stage: releaseLock
   before_script: 
     - echo 'Do nothing'
   when: always
