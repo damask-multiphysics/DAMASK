@@ -2,6 +2,7 @@
 
 from .solver import Solver
 import damask
+import subprocess,re
 
 class Abaqus(Solver):
 
@@ -20,8 +21,6 @@ class Abaqus(Solver):
       raise Exception('unknown Abaqus solver %'%solver)
 
   def return_run_command(self,model):
-    import subprocess
-    import re
     env=damask.Environment()
     shortVersion = re.sub('[\.,-]', '',self.version)
     try:
@@ -33,4 +32,4 @@ class Abaqus(Solver):
       detectedVersion = process.stdout.readlines()[1].split()[1]
       if self.version != detectedVersion:
         raise Exception('found Abaqus version %s, but requested %s'%(detectedVersion,self.version))
-    return '%s -job %s -user %s/code/DAMASK_abaqus_%s interactive'%(cmd,model,env.rootDir(),self.solver)
+    return '%s -job %s -user %s/src/DAMASK_abaqus_%s interactive'%(cmd,model,env.rootDir(),self.solver)

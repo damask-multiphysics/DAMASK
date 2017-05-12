@@ -52,7 +52,7 @@ def croak(what, newline = True):
 def report(who = None,
            what = None):
   """Reports script and file name"""
-  croak( (emph(who)+': ' if who else '') + (what if what else '') )
+  croak( (emph(who)+': ' if who is not None else '') + (what if what is not None else '') )
 
 
 # -----------------------------

@@ -3,6 +3,9 @@
 
 DAMASK_ROOT=${0:a:h}
 
+# shorthand command to change to DAMASK_ROOT directory
+eval "function damask() { cd $DAMASK_ROOT; }"
+
 # defining set() allows to source the same file for tcsh and zsh, with and without space around =
 set() {
     export $1$2$3
@@ -16,8 +19,8 @@ if [[ ( "x$DAMASK_BIN" != "x" ) && ( "x$MATCH" = "x" ) ]]; then
   export PATH=$DAMASK_BIN:$PATH
 fi
 
-SOLVER=`which DAMASK_spectral 2>/dev/null`
-PROCESSING=`which postResults 2>/dev/null`
+SOLVER=`which DAMASK_spectral || True 2>/dev/null`
+PROCESSING=`which postResults || True 2>/dev/null`
 if [ "x$DAMASK_NUM_THREADS" = "x" ]; then
   DAMASK_NUM_THREADS=1
 fi

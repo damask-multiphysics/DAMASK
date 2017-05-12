@@ -1,3 +1,4 @@
+.noH5py
 *.pyc
 *.mod
 *.o
@@ -6,3 +7,4 @@
 *~
 bin
 PRIVATE
+build

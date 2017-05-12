@@ -1,0 +1,4 @@
+[submodule "PRIVATE"]
+	path = PRIVATE
+  url = ../PRIVATE.git
+  branch = master

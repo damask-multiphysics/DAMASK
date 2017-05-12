@@ -186,7 +186,6 @@ subroutine plastic_isotropic_init(fileUnit)
      instance = phase_plasticityInstance(phase)                                                     ! which instance of my plasticity is present phase
      chunkPos = IO_stringPos(line) 
      tag = IO_lc(IO_stringValue(line,chunkPos,1_pInt))                                              ! extract key
-     extmsg = trim(tag)//' ('//PLASTICITY_ISOTROPIC_label//')'                                      ! prepare error message identifier
 
      select case(tag)
        case ('(output)')
@@ -200,7 +199,6 @@ subroutine plastic_isotropic_init(fileUnit)
              plastic_isotropic_Noutput(instance) = plastic_isotropic_Noutput(instance) + 1_pInt
              param(instance)%outputID (plastic_isotropic_Noutput(instance)) = strainrate_ID
              plastic_isotropic_output(plastic_isotropic_Noutput(instance),instance) = outputtag
-
          end select
 
        case ('/dilatation/')
@@ -208,15 +206,12 @@ subroutine plastic_isotropic_init(fileUnit)
 
        case ('tau0')
          param(instance)%tau0            = IO_floatValue(line,chunkPos,2_pInt)
-         if (param(instance)%tau0 < 0.0_pReal)                  call IO_error(211_pInt,ext_msg=extmsg)
 
        case ('gdot0')
          param(instance)%gdot0           = IO_floatValue(line,chunkPos,2_pInt)
-         if (param(instance)%gdot0 <= 0.0_pReal)                call IO_error(211_pInt,ext_msg=extmsg)
 
        case ('n')
          param(instance)%n               = IO_floatValue(line,chunkPos,2_pInt)
-         if (param(instance)%n <= 0.0_pReal)                    call IO_error(211_pInt,ext_msg=extmsg)
 
        case ('h0')
          param(instance)%h0              = IO_floatValue(line,chunkPos,2_pInt)
@@ -226,7 +221,6 @@ subroutine plastic_isotropic_init(fileUnit)
 
        case ('tausat')
          param(instance)%tausat          = IO_floatValue(line,chunkPos,2_pInt)
-         if (param(instance)%tausat <= 0.0_pReal)               call IO_error(211_pInt,ext_msg=extmsg)
 
        case ('tausat_sinhfita')
          param(instance)%tausat_SinhFitA = IO_floatValue(line,chunkPos,2_pInt)
@@ -242,15 +236,12 @@ subroutine plastic_isotropic_init(fileUnit)
 
        case ('a', 'w0')
          param(instance)%a               = IO_floatValue(line,chunkPos,2_pInt)
-         if (param(instance)%a <= 0.0_pReal)                    call IO_error(211_pInt,ext_msg=extmsg)
 
        case ('taylorfactor')
          param(instance)%fTaylor         = IO_floatValue(line,chunkPos,2_pInt)
-         if (param(instance)%fTaylor <= 0.0_pReal)              call IO_error(211_pInt,ext_msg=extmsg)
 
        case ('atol_flowstress')
          param(instance)%aTolFlowstress  = IO_floatValue(line,chunkPos,2_pInt)
-         if (param(instance)%aTolFlowstress <= 0.0_pReal)       call IO_error(211_pInt,ext_msg=extmsg)
 
        case ('atol_shear')
          param(instance)%aTolShear       = IO_floatValue(line,chunkPos,2_pInt)
@@ -270,11 +261,21 @@ subroutine plastic_isotropic_init(fileUnit)
    myPhase: if (phase_plasticity(phase) == PLASTICITY_isotropic_ID) then                            ! isolate instances of own constitutive description
      NipcMyPhase = count(material_phase == phase)                                                   ! number of own material points (including point components ipc)
      instance = phase_plasticityInstance(phase)
+     extmsg = ''
 !--------------------------------------------------------------------------------------------------
 !  sanity checks
-     if (param(instance)%aTolShear <= 0.0_pReal) &
-       param(instance)%aTolShear = 1.0e-6_pReal                                         ! default absolute tolerance 1e-6
-
+     if (param(instance)%aTolShear        <= 0.0_pReal) param(instance)%aTolShear = 1.0e-6_pReal    ! default absolute tolerance 1e-6
+     if (param(instance)%tau0              < 0.0_pReal) extmsg = trim(extmsg)//' tau0'
+     if (param(instance)%gdot0            <= 0.0_pReal) extmsg = trim(extmsg)//' gdot0'
+     if (param(instance)%n                <= 0.0_pReal) extmsg = trim(extmsg)//' n'
+     if (param(instance)%tausat           <= 0.0_pReal) extmsg = trim(extmsg)//' tausat'
+     if (param(instance)%a                <= 0.0_pReal) extmsg = trim(extmsg)//' a' 
+     if (param(instance)%fTaylor          <= 0.0_pReal) extmsg = trim(extmsg)//' taylorfactor'
+     if (param(instance)%aTolFlowstress   <= 0.0_pReal) extmsg = trim(extmsg)//' atol_flowstress'
+     if (extmsg /= '') then 
+       extmsg = trim(extmsg)//' ('//PLASTICITY_ISOTROPIC_label//')'                                 ! prepare error message identifier
+       call IO_error(211_pInt,ip=instance,ext_msg=extmsg)
+     endif
 !--------------------------------------------------------------------------------------------------
 !  Determine size of postResults array
      outputsLoop: do o = 1_pInt,plastic_isotropic_Noutput(instance)
@@ -567,18 +568,13 @@ subroutine plastic_isotropic_dotState(Tstar_v,ipc,ip,el)
    if (dEq0(param(instance)%tausat_SinhFitA)) then
      saturation = param(instance)%tausat
    else
-     saturation = (  param(instance)%tausat &
-                   + ( log(  ( gamma_dot / param(instance)%tausat_SinhFitA&
-                               )**(1.0_pReal / param(instance)%tausat_SinhFitD)&
-                            + sqrt(  ( gamma_dot / param(instance)%tausat_SinhFitA &
-                                      )**(2.0_pReal / param(instance)%tausat_SinhFitD) &
-                                   + 1.0_pReal ) &
-                            ) & ! asinh(K) = ln(K + sqrt(K^2 +1))
+     saturation = param(instance)%tausat &
+                + asinh( (gamma_dot / param(instance)%tausat_SinhFitA&
+                         )**(1.0_pReal / param(instance)%tausat_SinhFitD)&
                        )**(1.0_pReal / param(instance)%tausat_SinhFitC) &
-                   / (  param(instance)%tausat_SinhFitB &
-                      * (gamma_dot / param(instance)%gdot0)**(1.0_pReal / param(instance)%n) &
-                      ) &
-                   )
+                   / ( param(instance)%tausat_SinhFitB &
+                       * (gamma_dot / param(instance)%gdot0)**(1.0_pReal / param(instance)%n) &
+                     )
    endif
    hardening = ( param(instance)%h0 + param(instance)%h0_slopeLnRate * log(gamma_dot) ) &
                * abs( 1.0_pReal - state(instance)%flowstress(of)/saturation )**param(instance)%a &

@@ -33,7 +33,7 @@ class Environment():
                       'explicit':5}
     if Nneeded == -1: Nneeded = licensesNeeded[software]
     try:
-      cmd = """ ssh mulicense2 "/Stat_Flexlm | grep 'Users of %s: ' | cut -d' ' -f7,13" """%software
+      cmd = """ ssh mulicense2 "/lm-status | grep 'Users of %s: ' | cut -d' ' -f7,13" """%software
       process = subprocess.Popen(shlex.split(cmd),stdout = subprocess.PIPE,stderr = subprocess.PIPE)
       licenses = list(map(int, process.stdout.readline().split()))
       try:

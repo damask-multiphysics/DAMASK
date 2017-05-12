@@ -10,6 +10,9 @@ else
   DAMASK_ROOT=${STAT##* }
 fi
 
+# shorthand command to change to DAMASK_ROOT directory
+eval "function damask() { cd $DAMASK_ROOT; }"
+
 # defining set() allows to source the same file for tcsh and bash, with and without space around =
 set() {
     export $1$2$3
@@ -22,11 +25,11 @@ if [[ "x$DAMASK_BIN" != "x" && ! $(echo ":$PATH:" | grep $DAMASK_BIN:) ]]; then
   export PATH=$DAMASK_BIN:$PATH
 fi
 
-SOLVER=$(which DAMASK_spectral 2>/dev/null)
+SOLVER=$(which DAMASK_spectral || true 2>/dev/null)
 if [ "x$SOLVER" == "x" ]; then
   SOLVER='Not found!'
 fi
-PROCESSING=$(which postResults 2>/dev/null)
+PROCESSING=$(which postResults || true 2>/dev/null)
 if [ "x$PROCESSING" == "x" ]; then
   PROCESSING='Not found!'
 fi
@@ -36,12 +39,14 @@ fi
 
 # according to http://software.intel.com/en-us/forums/topic/501500
 # this seems to make sense for the stack size
-FREE=$(which free 2>/dev/null)
+FREE=$(type -p free 2>/dev/null)
 if [ "x$FREE" != "x" ]; then
   freeMem=$(free -k | grep -E '(Mem|Speicher):' | awk '{print $4;}')
   # http://superuser.com/questions/220059/what-parameters-has-ulimit             
-  ulimit -d $(expr $freeMem                       / 2)  2>/dev/null # maximum  heap size (kB)
-  ulimit -s $(expr $freeMem / $DAMASK_NUM_THREADS / 2)  2>/dev/null # maximum stack size (kB)
+  ulimit -d unlimited 2>/dev/null \
+  || ulimit -d $(expr $freeMem                       / 2)  2>/dev/null # maximum  heap size (kB)
+  ulimit -s unlimited 2>/dev/null \
+  || ulimit -s $(expr $freeMem / $DAMASK_NUM_THREADS / 2)  2>/dev/null # maximum stack size (kB)
 fi
 ulimit -v unlimited   2>/dev/null # maximum virtual memory size
 ulimit -m unlimited   2>/dev/null # maximum physical memory size

@@ -36,12 +36,12 @@ for name in filenames:
   table.head_read()
   info,extra_header = table.head_getGeom()
   
-  damask.util.croak(['grid     a b c:  %s'%(' x '.join(map(str,info['grid']))),
-               'size     x y z:  %s'%(' x '.join(map(str,info['size']))),
-               'origin   x y z:  %s'%(' : '.join(map(str,info['origin']))),
-               'homogenization:  %i'%info['homogenization'],
-               'microstructures: %i'%info['microstructures'],
-              ])
+  damask.util.croak(['grid     a b c:  {}'.format(' x '.join(map(str,info['grid']))),
+                     'size     x y z:  {}'.format(' x '.join(map(str,info['size']))),
+                     'origin   x y z:  {}'.format(' : '.join(map(str,info['origin']))),
+                     'homogenization:  {}'.format(info['homogenization']),
+                     'microstructures: {}'.format(info['microstructures']),
+                    ])
 
   errors = []
   if np.any(info['grid'] < 1):    errors.append('invalid grid a b c.')
@@ -81,7 +81,7 @@ for name in filenames:
     else:                            items = map(int,items)
 
     for current in items:
-      if abs(current - former) == 1 and abs(start-former) == reps - 1:
+      if abs(current - former) == 1 and (start - current) == reps*(former - current):
         compressType = 'to'
         reps += 1
       elif current == former and start == former:

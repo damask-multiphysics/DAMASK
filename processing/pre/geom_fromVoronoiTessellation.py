@@ -178,7 +178,7 @@ parser.add_option_group(group)
 
 group = OptionGroup(parser, "Configuration","")
 
-group.add_option('--no-config',
+group.add_option('--without-config',
                  dest = 'config',
                  action = 'store_false',
                  help = 'omit material configuration header')

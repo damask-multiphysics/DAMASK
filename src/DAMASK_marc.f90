@@ -1,5 +1,5 @@
-#define QUOTE(x) #x                                                                                 
-#define PASTE(x,y) x ## y  
+#define QUOTE(x) #x
+#define PASTE(x,y) x ## y
 
 #ifndef INT
 #define INT 4
@@ -35,7 +35,7 @@
 !> @details   - creeps: timinc
 !--------------------------------------------------------------------------------------------------
 module DAMASK_interface
- 
+
  implicit none
  character(len=4), parameter :: InputFileExtension = '.dat'
  character(len=4), parameter :: LogFileExtension = '.log'
@@ -57,18 +57,18 @@ subroutine DAMASK_interface_init
  write(6,'(/,a)')              ' Version: '//DAMASKVERSION
  write(6,'(a,2(i2.2,a),i4.4)') ' Date:    ',dateAndTime(3),'/',&
                                             dateAndTime(2),'/',&
-                                            dateAndTime(1) 
+                                            dateAndTime(1)
  write(6,'(a,2(i2.2,a),i2.2)') ' Time:    ',dateAndTime(5),':',&
                                             dateAndTime(6),':',&
-                                            dateAndTime(7)  
+                                            dateAndTime(7)
  write(6,'(/,a)') ' <<<+-  DAMASK_interface init  -+>>>'
-#include "compilation_info.f90"  
+#include "compilation_info.f90"
 
 end subroutine DAMASK_interface_init
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief returns the current workingDir 
+!> @brief returns the current workingDir
 !--------------------------------------------------------------------------------------------------
 function getSolverWorkingDirectoryName()
 
@@ -185,7 +185,7 @@ subroutine hypela2(d,g,e,de,s,t,dt,ngens,m,nn,kcus,matus,ndi,nshear,disp, &
 !$ include "omp_lib.h"                                                                              ! the openMP function library
  integer(pInt),                         intent(in) :: &                                             ! according to MSC.Marc 2012 Manual D
    ngens, &                                                                                         !< size of stress-strain law
-   nn, &                                                                                            !< integration point number 
+   nn, &                                                                                            !< integration point number
    ndi, &                                                                                           !< number of direct components
    nshear, &                                                                                        !< number of shear components
    ncrd, &                                                                                          !< number of coordinates
@@ -199,7 +199,7 @@ subroutine hypela2(d,g,e,de,s,t,dt,ngens,m,nn,kcus,matus,ndi,nshear,disp, &
  integer(pInt), dimension(2),           intent(in) :: &                                             ! according to MSC.Marc 2012 Manual D
    m, &                                                                                             !< (1) user element number, (2) internal element number
    matus, &                                                                                         !< (1) user material identification number, (2) internal material identification number
-   kcus, &                                                                                          !< (1) layer number, (2) internal layer number 
+   kcus, &                                                                                          !< (1) layer number, (2) internal layer number
    lclass                                                                                           !< (1) element class, (2) 0: displacement, 1: low order Herrmann, 2: high order Herrmann
  real(pReal),   dimension(*),           intent(in) :: &                                             ! has dimension(1) according to MSC.Marc 2012 Manual D, but according to example hypela2.f dimension(*)
    e, &                                                                                             !< total elastic strain
@@ -240,17 +240,17 @@ subroutine hypela2(d,g,e,de,s,t,dt,ngens,m,nn,kcus,matus,ndi,nshear,disp, &
  real(pReal), dimension(6) ::   stress
  real(pReal), dimension(6,6) :: ddsdde
  integer(pInt) :: computationMode, i, cp_en, node, CPnodeID
- !$ integer :: defaultNumThreadsInt                                                                 !< default value set by Marc
+ !$ integer(4) :: defaultNumThreadsInt                                                              !< default value set by Marc
 
  if (iand(debug_level(debug_MARC),debug_LEVELBASIC) /= 0_pInt) then
    write(6,'(a,/,i8,i8,i2)') ' MSC.MARC information on shape of element(2), IP:', m, nn
-   write(6,'(a,2(i1))')      ' Jacobian:                      ', ngens,ngens 
-   write(6,'(a,i1)')         ' Direct stress:                 ', ndi  
-   write(6,'(a,i1)')         ' Shear stress:                  ', nshear  
+   write(6,'(a,2(i1))')      ' Jacobian:                      ', ngens,ngens
+   write(6,'(a,i1)')         ' Direct stress:                 ', ndi
+   write(6,'(a,i1)')         ' Shear stress:                  ', nshear
    write(6,'(a,i2)')         ' DoF:                           ', ndeg
    write(6,'(a,i2)')         ' Coordinates:                   ', ncrd
-   write(6,'(a,i12)')        ' Nodes:                         ', nnode 
-   write(6,'(a,i1)')         ' Deformation gradient:          ', itel 
+   write(6,'(a,i12)')        ' Nodes:                         ', nnode
+   write(6,'(a,i1)')         ' Deformation gradient:          ', itel
    write(6,'(/,a,/,3(3(f12.7,1x)/))',advance='no') ' Deformation gradient at t=n:', &
                                  math_transpose33(ffn)
    write(6,'(/,a,/,3(3(f12.7,1x)/))',advance='no') ' Deformation gradient at t=n+1:', &
@@ -310,7 +310,7 @@ subroutine hypela2(d,g,e,de,s,t,dt,ngens,m,nn,kcus,matus,ndi,nshear,disp, &
      !$OMP END CRITICAL (write2out)
    endif                                                                                            ! convergence treatment end
 
-   
+
    if (usePingPong) then
      calcMode(nn,cp_en) = .not. calcMode(nn,cp_en)                                                  ! ping pong (calc <--> collect)
      if (calcMode(nn,cp_en)) then                                                                   ! now --- CALC ---
@@ -339,7 +339,7 @@ subroutine hypela2(d,g,e,de,s,t,dt,ngens,m,nn,kcus,matus,ndi,nshear,disp, &
          mesh_node(1:ndeg,CPnodeID) = mesh_node0(1:ndeg,CPnodeID) + numerics_unitlength * dispt(1:ndeg,node)
        enddo
      endif
-   
+
    else                                                                                             ! --- PLAIN MODE ---
      computationMode = CPFEM_CALCRESULTS                                                            ! always calc
      if (lastLovl /= lovl) then
@@ -378,10 +378,37 @@ subroutine hypela2(d,g,e,de,s,t,dt,ngens,m,nn,kcus,matus,ndi,nshear,disp, &
  s(1:ndi+nshear) = stress(1:ndi+nshear)*invnrmMandel(1:ndi+nshear)
  g = 0.0_pReal
  if(symmetricSolver) d = 0.5_pReal*(d+transpose(d))
- 
+
  !$ call omp_set_num_threads(defaultNumThreadsInt)                                                  ! reset number of threads to stored default value
 
 end subroutine hypela2
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief calculate internal heat generated due to inelastic energy dissipation
+!--------------------------------------------------------------------------------------------------
+subroutine flux(f,ts,n,time)
+ use prec, only: &
+   pReal, &
+   pInt
+ use thermal_conduction, only: &
+   thermal_conduction_getSourceAndItsTangent
+ use mesh, only: &
+   mesh_FEasCP
+
+ implicit none
+ real(pReal),   dimension(6),           intent(in) :: &
+   ts
+ integer(pInt), dimension(10),          intent(in) :: &
+   n
+ real(pReal),                           intent(in) :: &
+   time
+ real(pReal),   dimension(2),           intent(out) :: &
+   f
+
+ call thermal_conduction_getSourceAndItsTangent(f(1), f(2), ts(3), n(3),mesh_FEasCP('elem',n(1)))
+
+ end subroutine flux
 
 
 !--------------------------------------------------------------------------------------------------
@@ -399,7 +426,7 @@ subroutine plotv(v,s,sp,etot,eplas,ecreep,t,m,nn,layer,ndi,nshear,jpltcd)
  use homogenization, only: &
    materialpoint_results,&
    materialpoint_sizeResults
- 
+
  implicit none
  integer(pInt),               intent(in) :: &
    m, &                                                                                             !< element number
@@ -411,7 +438,7 @@ subroutine plotv(v,s,sp,etot,eplas,ecreep,t,m,nn,layer,ndi,nshear,jpltcd)
  real(pReal),   dimension(*), intent(in) :: &
    s, &                                                                                             !< stress array
    sp, &                                                                                            !< stresses in preferred direction
-   etot, &                                                                                          !< total strain (generalized) 
+   etot, &                                                                                          !< total strain (generalized)
    eplas, &                                                                                         !< total plastic strain
    ecreep, &                                                                                        !< total creep strain
    t                                                                                                !< current temperature

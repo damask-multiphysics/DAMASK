@@ -421,7 +421,7 @@ subroutine crystallite_init
  crystallite_partionedFp0 = crystallite_Fp0
  crystallite_partionedFi0 = crystallite_Fi0
  crystallite_partionedF0  = crystallite_F0
- crystallite_partionedF   = crystallite_F0                                                          
+ crystallite_partionedF   = crystallite_F0
 
  call crystallite_orientations()
  crystallite_orientation0 = crystallite_orientation                                                 ! store initial orientations for calculation of grain rotations
@@ -1428,7 +1428,6 @@ subroutine crystallite_integrateStateRK4()
    !$OMP DO
      do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                  ! iterate over elements, ips and grains
        if (crystallite_todo(g,i,e)) &
-         !***dirty way to pass orientation information
          call constitutive_microstructure(crystallite_orientation,       &
                                           crystallite_Fe(1:3,1:3,g,i,e), &
                                           crystallite_Fp(1:3,1:3,g,i,e), &
@@ -1754,7 +1753,6 @@ subroutine crystallite_integrateStateRKCK45()
    !$OMP DO
      do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                  ! iterate over elements, ips and grains
        if (crystallite_todo(g,i,e)) &
-         !***dirty way to pass orientations to constitutive_microstructure
          call constitutive_microstructure(crystallite_orientation,       &
                                           crystallite_Fe(1:3,1:3,g,i,e), &
                                           crystallite_Fp(1:3,1:3,g,i,e), &
@@ -1974,7 +1972,6 @@ subroutine crystallite_integrateStateRKCK45()
  !$OMP DO
    do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                    ! iterate over elements, ips and grains
      if (crystallite_todo(g,i,e)) &
-       !***dirty way to pass orientations to constitutive_microstructure
        call constitutive_microstructure(crystallite_orientation,       &
                                         crystallite_Fe(1:3,1:3,g,i,e), &
                                         crystallite_Fp(1:3,1:3,g,i,e), &
@@ -2209,7 +2206,6 @@ subroutine crystallite_integrateStateAdaptiveEuler()
    !$OMP DO
      do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                  ! iterate over elements, ips and grains
        if (crystallite_todo(g,i,e)) &
-         !***dirty way to pass orientations to constitutive_microstructure
          call constitutive_microstructure(crystallite_orientation,       &
                                           crystallite_Fe(1:3,1:3,g,i,e), &
                                           crystallite_Fp(1:3,1:3,g,i,e), &
@@ -2553,7 +2549,6 @@ eIter = FEsolving_execElem(1:2)
    !$OMP DO
      do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                    ! iterate over elements, ips and grains
        if (crystallite_todo(g,i,e) .and. .not. crystallite_converged(g,i,e)) &
-         !***dirty way to pass orientations to constitutive_microstructure
          call constitutive_microstructure(crystallite_orientation,       &
                                           crystallite_Fe(1:3,1:3,g,i,e), &
                                           crystallite_Fp(1:3,1:3,g,i,e), &
@@ -2798,7 +2793,6 @@ subroutine crystallite_integrateStateFPI()
    !$OMP DO PRIVATE(p,c)
      do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                    ! iterate over elements, ips and grains
        if (crystallite_todo(g,i,e) .and. .not. crystallite_converged(g,i,e)) &
-         !***dirty way to pass orientations to constitutive_micrsotructure
          call constitutive_microstructure(crystallite_orientation,       &
                                           crystallite_Fe(1:3,1:3,g,i,e), &
                                           crystallite_Fp(1:3,1:3,g,i,e), &

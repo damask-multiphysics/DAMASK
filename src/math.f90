@@ -452,7 +452,6 @@ pure function math_tensorproduct(A,B)
  implicit none
  real(pReal), dimension(:), intent(in) ::  A,B
  real(pReal), dimension(size(A,1),size(B,1)) ::  math_tensorproduct
-
  integer(pInt) :: i,j
 
  forall (i=1_pInt:size(A,1),j=1_pInt:size(B,1)) math_tensorproduct(i,j) = A(i)*B(j)
@@ -1181,6 +1180,9 @@ end function math_Voigt66to3333
 
 !--------------------------------------------------------------------------------------------------
 !> @brief random quaternion
+! http://math.stackexchange.com/questions/131336/uniform-random-quaternion-in-a-restricted-angle-range
+! K. Shoemake. Uniform random rotations. In D. Kirk, editor, Graphics Gems III, pages 124-132. 
+! Academic, New York, 1992.
 !--------------------------------------------------------------------------------------------------
 function math_qRand()
 

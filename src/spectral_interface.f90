@@ -20,7 +20,6 @@ module DAMASK_interface
    geometryFile = '', &                                                                             !< parameter given for geometry file
    loadCaseFile = ''                                                                                !< parameter given for load case file
  character(len=1024), private           :: workingDirectory                                         !< accessed by getSolverWorkingDirectoryName for compatibility reasons
- character,           private,parameter :: pathSep = '/'
 
  public :: &
    getSolverWorkingDirectoryName, &
@@ -58,7 +57,9 @@ subroutine DAMASK_interface_init()
    tag
  integer :: &
    i, &
+#ifdef _OPENMP
    threadLevel, &
+#endif
    worldrank = 0, &
    worldsize = 0
  integer, allocatable, dimension(:) :: &
@@ -93,6 +94,14 @@ subroutine DAMASK_interface_init()
  mainProcess: if (worldrank == 0) then
    if (output_unit /= 6) then
      write(output_unit,'(a)') ' STDOUT != 6'
+     call quit(1_pInt)
+   endif
+   if (error_unit /= 0) then
+     write(output_unit,'(a)') ' STDERR != 0'
+     call quit(1_pInt)
+   endif
+   if (PETSC_VERSION_MAJOR /= 3 .or. PETSC_VERSION_MINOR /= 7) then
+     write(6,'(a,2(i1.1,a))') 'PETSc ',PETSC_VERSION_MAJOR,'.',PETSC_VERSION_MINOR,'.x not supported'
      call quit(1_pInt)
    endif
  else mainProcess
@@ -164,7 +173,7 @@ subroutine DAMASK_interface_init()
        write(6,'(a)')  ' Help:'
        write(6,'(/,a)')'   --help'
        write(6,'(a,/)')'        Prints this message and exits'
-       call quit(0_pInt)                                                                        ! normal Termination
+       call quit(0_pInt)                                                                            ! normal Termination
      case ('-l', '--load', '--loadcase')
        loadcaseArg = IIO_stringValue(commandLine,chunkPos,i+1_pInt)
      case ('-g', '--geom', '--geometry')
@@ -190,7 +199,6 @@ subroutine DAMASK_interface_init()
  error = getHostName(hostName)
  write(6,'(a,a)')      ' Host name:             ', trim(hostName)
  write(6,'(a,a)')      ' User name:             ', trim(userName)
- write(6,'(a,a)')      ' Path separator:        ', pathSep
  write(6,'(a,a)')      ' Command line call:     ', trim(commandLine)
  if (len(trim(workingDirArg))>0) &
    write(6,'(a,a)')    ' Working dir argument:  ', trim(workingDirArg)
@@ -225,22 +233,22 @@ character(len=1024) function storeWorkingDirectory(workingDirectoryArg,geometryA
  external                      :: quit
 
  wdGiven: if (len(workingDirectoryArg)>0) then
-   absolutePath: if (workingDirectoryArg(1:1) == pathSep) then
+   absolutePath: if (workingDirectoryArg(1:1) == '/') then
      storeWorkingDirectory = workingDirectoryArg
    else absolutePath
      error = getCWD(cwd)
      if (error) call quit(1_pInt)
-     storeWorkingDirectory = trim(cwd)//pathSep//workingDirectoryArg
+     storeWorkingDirectory = trim(cwd)//'/'//workingDirectoryArg
    endif absolutePath
-   if (storeWorkingDirectory(len(trim(storeWorkingDirectory)):len(trim(storeWorkingDirectory))) /= pathSep) &
-     storeWorkingDirectory = trim(storeWorkingDirectory)//pathSep                                   ! if path seperator is not given, append it
+   if (storeWorkingDirectory(len(trim(storeWorkingDirectory)):len(trim(storeWorkingDirectory))) /= '/') &
+     storeWorkingDirectory = trim(storeWorkingDirectory)//'/'                                       ! if path seperator is not given, append it
  else wdGiven
-   if (geometryArg(1:1) == pathSep) then                                                            ! absolute path given as command line argument
-     storeWorkingDirectory = geometryArg(1:scan(geometryArg,pathSep,back=.true.))
+   if (geometryArg(1:1) == '/') then                                                                ! absolute path given as command line argument
+     storeWorkingDirectory = geometryArg(1:scan(geometryArg,'/',back=.true.))
    else
      error = getCWD(cwd)                                                                            ! relative path given as command line argument
      if (error) call quit(1_pInt)
-     storeWorkingDirectory = trim(cwd)//pathSep//geometryArg(1:scan(geometryArg,pathSep,back=.true.))
+     storeWorkingDirectory = trim(cwd)//'/'//geometryArg(1:scan(geometryArg,'/',back=.true.))
    endif
  endif wdGiven
 
@@ -277,13 +285,13 @@ character(len=1024) function getSolverJobName()
 
  tempString = geometryFile
  posExt = scan(tempString,'.',back=.true.)
- posSep = scan(tempString,pathSep,back=.true.)
+ posSep = scan(tempString,'/',back=.true.)
 
  getSolverJobName = tempString(posSep+1:posExt-1)
 
  tempString = loadCaseFile
  posExt = scan(tempString,'.',back=.true.)
- posSep = scan(tempString,pathSep,back=.true.)
+ posSep = scan(tempString,'/',back=.true.)
 
  getSolverJobName = trim(getSolverJobName)//'_'//tempString(posSep+1:posExt-1)
 
@@ -308,13 +316,13 @@ character(len=1024) function getGeometryFile(geometryParameter)
 
  getGeometryFile = geometryParameter
  posExt = scan(getGeometryFile,'.',back=.true.)
- posSep = scan(getGeometryFile,pathSep,back=.true.)
+ posSep = scan(getGeometryFile,'/',back=.true.)
 
  if (posExt <= posSep) getGeometryFile = trim(getGeometryFile)//('.geom')                           ! no extension present
- if (scan(getGeometryFile,pathSep) /= 1) then                                                       ! relative path given as command line argument
+ if (scan(getGeometryFile,'/') /= 1) then                                                           ! relative path given as command line argument
    error = getcwd(cwd)
    if (error) call quit(1_pInt)
-   getGeometryFile = rectifyPath(trim(cwd)//pathSep//getGeometryFile)
+   getGeometryFile = rectifyPath(trim(cwd)//'/'//getGeometryFile)
  else
    getGeometryFile = rectifyPath(getGeometryFile)
  endif
@@ -342,13 +350,13 @@ character(len=1024) function getLoadCaseFile(loadCaseParameter)
 
  getLoadCaseFile = loadcaseParameter
  posExt = scan(getLoadCaseFile,'.',back=.true.)
- posSep = scan(getLoadCaseFile,pathSep,back=.true.)
+ posSep = scan(getLoadCaseFile,'/',back=.true.)
 
  if (posExt <= posSep) getLoadCaseFile = trim(getLoadCaseFile)//('.load')                           ! no extension present
- if (scan(getLoadCaseFile,pathSep) /= 1) then                                                       ! relative path given as command line argument
+ if (scan(getLoadCaseFile,'/') /= 1) then                                                           ! relative path given as command line argument
    error = getcwd(cwd)
    if (error) call quit(1_pInt)
-   getLoadCaseFile = rectifyPath(trim(cwd)//pathSep//getLoadCaseFile)
+   getLoadCaseFile = rectifyPath(trim(cwd)//'/'//getLoadCaseFile)
  else
    getLoadCaseFile = rectifyPath(getLoadCaseFile)
  endif
@@ -373,26 +381,26 @@ function rectifyPath(path)
  l = len_trim(path)
  rectifyPath = path
  do i = l,3,-1
-   if (rectifyPath(i-2:i) == pathSep//'.'//pathSep) &
+   if (rectifyPath(i-2:i) == '/'//'.'//'/') &
      rectifyPath(i-1:l) = rectifyPath(i+1:l)//'  '
  enddo
 
 !--------------------------------------------------------------------------------------------------
 ! remove ../ and corresponding directory from rectifyPath
  l = len_trim(rectifyPath)
- i = index(rectifyPath(i:l),'..'//pathSep)
+ i = index(rectifyPath(i:l),'..'//'/')
  j = 0
  do while (i > j)
-    j = scan(rectifyPath(1:i-2),pathSep,back=.true.)
+    j = scan(rectifyPath(1:i-2),'/',back=.true.)
     rectifyPath(j+1:l) = rectifyPath(i+3:l)//repeat(' ',2+i-j)
-    if (rectifyPath(j+1:j+1) == pathSep) then                                                       !search for '//' that appear in case of XXX/../../XXX
+    if (rectifyPath(j+1:j+1) == '/') then                                                           !search for '//' that appear in case of XXX/../../XXX
       k = len_trim(rectifyPath)
       rectifyPath(j+1:k-1) = rectifyPath(j+2:k)
       rectifyPath(k:k) = ' '
     endif
-    i = j+index(rectifyPath(j+1:l),'..'//pathSep)
+    i = j+index(rectifyPath(j+1:l),'..'//'/')
  enddo
- if(len_trim(rectifyPath) == 0) rectifyPath = pathSep
+ if(len_trim(rectifyPath) == 0) rectifyPath = '/'
 
 end function rectifyPath
 
@@ -411,12 +419,12 @@ character(len=1024) function makeRelativePath(a,b)
 
  do i = 1, min(1024,len_trim(a),len_trim(b))
    if (a(i:i) /= b(i:i)) exit
-   if (a(i:i) == pathSep) posLastCommonSlash = i
+   if (a(i:i) == '/') posLastCommonSlash = i
  enddo
  do i = posLastCommonSlash+1,len_trim(a)
-   if (a(i:i) == pathSep) remainingSlashes = remainingSlashes + 1
+   if (a(i:i) == '/') remainingSlashes = remainingSlashes + 1
  enddo
- makeRelativePath = repeat('..'//pathSep,remainingSlashes)//b(posLastCommonSlash+1:len_trim(b))
+ makeRelativePath = repeat('..'//'/',remainingSlashes)//b(posLastCommonSlash+1:len_trim(b))
 
 end function makeRelativePath
 

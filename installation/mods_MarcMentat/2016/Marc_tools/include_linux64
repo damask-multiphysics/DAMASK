@@ -452,10 +452,10 @@ fi
 FORT_OPT="-c -assume byterecl -stand f08 -standard-semantics -safe_cray_ptr -mp1 -WB -fp-model source"
 if test "$MTHREAD" = "OPENMP"
 then
-  FORT_OPT=" $FORT_OPT -openmp"
+  FORT_OPT=" $FORT_OPT -qopenmp"
   if test "$OMP_COMPAT" = "YES"
   then
-    FORT_OPT=" $FORT_OPT -openmp-threadprivate=compat"
+    FORT_OPT=" $FORT_OPT -qopenmp-threadprivate=compat"
   fi
 else
 #  FORT_OPT=" $FORT_OPT -auto "
@@ -471,21 +471,14 @@ FORTHIGH="$FCOMP $FORT_OPT $PROFILE -fno-alias -O3 $I8FFLAGS -I$MARC_SOURCE/comm
 FORTNA="$FCOMP $FORT_OPT -fno-alias -O3 $I8FFLAGS -I$MARC_SOURCE/common \
  -I$MARC_SOURCE/${BCS_DIR}/common -I$MARC_SOURCE/mumpssolver/include $I8DEFINES -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM"
 
- # determine DAMASK version
-HIT=0
-for arg in "$@"
-do
-  if [ $HIT = 1 ]
-  then
-   DAMASKPATH=`dirname $arg`
-   break
-  elif [ ${arg:0:2} = -u -o ${arg:0:2} = -U ]
-  then 
-    HIT=1
-  fi
-done
-read DAMASKVERSION < $DAMASKPATH/../VERSION
-DAMASKVERSION="'"$DAMASKVERSION"'"
+# determine DAMASK version
+if test -n "$DAMASK_USER"; then
+  DAMASKROOT=`dirname $DAMASK_USER`/..
+  read DAMASKVERSION < $DAMASKROOT/VERSION
+  DAMASKVERSION="'"$DAMASKVERSION"'"
+else
+  DAMASKVERSION="'N/A'"
+fi
 
 # DAMASK compiler calls: additional flags are in line 2 OpenMP flags in line 3
 DFORTLOW="$FCOMP $FORT_OPT $PROFILE -O0 $I8FFLAGS -I$MARC_SOURCE/common \
@@ -493,21 +486,21 @@ DFORTLOW="$FCOMP $FORT_OPT $PROFILE -O0 $I8FFLAGS -I$MARC_SOURCE/common \
  -I$MARC_SOURCE/${BCS_DIR}/common -I$MARC_SOURCE/mumpssolver/include $I8DEFINES -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM $SOLVERFLAGS"
 DFORTLOWMP="$FCOMP -c -assume byterecl -stand f08 -standard-semantics -safe_cray_ptr $PROFILE -zero -mp1 -WB  -O0 $I8FFLAGS -I$MARC_SOURCE/common \
  -fpp -ftz -diag-disable 5268 -warn declarations -warn general -warn usage -warn interfaces -warn ignore_loc -warn alignments -DMarc4DAMASK=2016 -DDAMASKVERSION=$DAMASKVERSION \
- -openmp -openmp_report2 -openmp-threadprivate=compat\
+ -qopenmp -qopenmp-threadprivate=compat\
  -I$MARC_SOURCE/${BCS_DIR}/common -I$MARC_SOURCE/mumpssolver/include $I8DEFINES -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM $SOLVERFLAGS"
 DFORTRAN="$FCOMP $FORT_OPT $PROFILE -O1 $I8FFLAGS -I$MARC_SOURCE/common \
  -fpp -ftz -diag-enable sc3 -diag-disable 5268 -warn declarations -warn general -warn usage -warn interfaces -warn ignore_loc -warn alignments -DMarc4DAMASK=2016 -DDAMASKVERSION=$DAMASKVERSION \
  -I$MARC_SOURCE/${BCS_DIR}/common -I$MARC_SOURCE/mumpssolver/include $I8DEFINES -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM $SOLVERFLAGS"
 DFORTRANMP="$FCOMP -c -assume byterecl -stand f08 -standard-semantics -safe_cray_ptr $PROFILE -zero -mp1 -WB  -O1 $I8FFLAGS -I$MARC_SOURCE/common \
  -fpp -ftz -diag-disable 5268 -warn declarations -warn general -warn usage -warn interfaces -warn ignore_loc -warn alignments -DMarc4DAMASK=2016 -DDAMASKVERSION=$DAMASKVERSION \
- -openmp -openmp_report2 -openmp-threadprivate=compat\
+ -qopenmp -qopenmp-threadprivate=compat\
  -I$MARC_SOURCE/${BCS_DIR}/common -I$MARC_SOURCE/mumpssolver/include $I8DEFINES -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM $SOLVERFLAGS"
 DFORTHIGH="$FCOMP $FORT_OPT $PROFILE -fno-alias -O2 $I8FFLAGS -I$MARC_SOURCE/common \
  -fpp -ftz -diag-enable sc3 -diag-disable 5268 -warn declarations -warn general -warn usage -warn interfaces -warn ignore_loc -warn alignments -DMarc4DAMASK=2016 -DDAMASKVERSION=$DAMASKVERSION \
  -I$MARC_SOURCE/${BCS_DIR}/common -I$MARC_SOURCE/mumpssolver/include $I8DEFINES -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM $SOLVERFLAGS"
 DFORTHIGHMP="$FCOMP -c -assume byterecl -stand f08 -standard-semantics -safe_cray_ptr $PROFILE -zero -mp1 -WB  -fno-alias -O2 $I8FFLAGS -I$MARC_SOURCE/common \
  -fpp -ftz -diag-disable 5268 -warn declarations -warn general -warn usage -warn interfaces -warn ignore_loc -warn alignments -DMarc4DAMASK=2016 -DDAMASKVERSION=$DAMASKVERSION \
- -openmp -openmp_report2 -openmp-threadprivate=compat\
+ -qopenmp -qopenmp-threadprivate=compat\
  -I$MARC_SOURCE/${BCS_DIR}/common -I$MARC_SOURCE/mumpssolver/include $I8DEFINES -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM $SOLVERFLAGS"
 
 if test "$MARCDEBUG" = "ON"
@@ -527,21 +520,21 @@ then
    -I$MARC_SOURCE/${BCS_DIR}/common -I$MARC_SOURCE/mumpssolver/include $I8DEFINES -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM $SOLVERFLAGS"
   DFORTLOWMP="$FCOMP -c -assume byterecl -stand f08 -standard-semantics -safe_cray_ptr $PROFILE -zero -mp1 -WB  $I8FFLAGS -I$MARC_SOURCE/common \
    -fpp -ftz -diag-disable 5268 -warn declarations -warn general -warn usage -warn interfaces -warn ignore_loc -warn alignments -DMarc4DAMASK=2016 -DDAMASKVERSION=$DAMASKVERSION \
-   -openmp -openmp_report2 -openmp-threadprivate=compat\
+   -qopenmp -qopenmp-threadprivate=compat\
    -I$MARC_SOURCE/${BCS_DIR}/common -I$MARC_SOURCE/mumpssolver/include $I8DEFINES -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM $SOLVERFLAGS"
   DFORTRAN="$FCOMP $FORT_OPT $PROFILE $I8FFLAGS -I$MARC_SOURCE/common \
    -fpp -ftz -diag-enable sc3 -diag-disable 5268 -warn declarations -warn general -warn usage -warn interfaces -warn ignore_loc -warn alignments -DMarc4DAMASK=2016 -DDAMASKVERSION=$DAMASKVERSION \
    -I$MARC_SOURCE/${BCS_DIR}/common -I$MARC_SOURCE/mumpssolver/include $I8DEFINES  -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM $SOLVERFLAGS"
   DFORTRANMP="$FCOMP -c -assume byterecl -stand f08 -standard-semantics -safe_cray_ptr $PROFILE -zero -mp1 -WB  $I8FFLAGS -I$MARC_SOURCE/common \
    -fpp -ftz -diag-disable 5268 -warn declarations -warn general -warn usage -warn interfaces -warn ignore_loc -warn alignments -DMarc4DAMASK=2016 -DDAMASKVERSION=$DAMASKVERSION \
-   -openmp -openmp_report2 -openmp-threadprivate=compat\
+   -qopenmp -qopenmp-threadprivate=compat\
    -I$MARC_SOURCE/${BCS_DIR}/common -I$MARC_SOURCE/mumpssolver/include $I8DEFINES  -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM $SOLVERFLAGS"
   DFORTHIGH="$FCOMP $FORT_OPT $PROFILE -fno-alias $I8FFLAGS -I$MARC_SOURCE/common \
    -fpp -ftz -diag-enable sc3 -diag-disable 5268 -warn declarations -warn general -warn usage -warn interfaces -warn ignore_loc -warn alignments -DMarc4DAMASK=2016 -DDAMASKVERSION=$DAMASKVERSION \
    -I$MARC_SOURCE/${BCS_DIR}/common -I$MARC_SOURCE/mumpssolver/include $I8DEFINES -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM $SOLVERFLAGS"
   DFORTHIGHMP="$FCOMP -c -assume byterecl -stand f08 -standard-semantics -safe_cray_ptr $PROFILE -zero -mp1 -WB  -fno-alias $I8FFLAGS -I$MARC_SOURCE/common \
    -fpp -ftz -diag-disable 5268 -warn declarations -warn general -warn usage -warn interfaces -warn ignore_loc -warn alignments -DMarc4DAMASK=2016 -DDAMASKVERSION=$DAMASKVERSION \
-   -openmp -openmp_report2 -openmp-threadprivate=compat\
+   -qopenmp -qopenmp-threadprivate=compat\
    -I$MARC_SOURCE/${BCS_DIR}/common -I$MARC_SOURCE/mumpssolver/include $I8DEFINES -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM $SOLVERFLAGS"
 
 fi
@@ -726,7 +719,7 @@ else
  SFLIB=" "
 fi
 
-OPENMP="-openmp"
+OPENMP="-qopenmp"
 
 SYSLIBS=" $OPENMP -lpthread "
 
