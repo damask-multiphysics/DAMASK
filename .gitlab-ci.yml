@@ -94,7 +94,6 @@ checkout:
     - git submodule update --init
     - source DAMASK_env.sh
     - make processing
-    - mkdir $BACKUP/$CI_COMMIT_SHA
   except:
     - master
     - release
@@ -480,14 +479,15 @@ Spectral:
     - release
 
 ##################################################################################################
-mergeIntoMaster: 
+backupData: 
   stage: saveDocumentation
   script:
-    - cp $TESTROOT/time.txt $BACKUP/$CI_COMMIT_SHA
-    - mv $TESTROOT/time.png $BACKUP/$CI_COMMIT_SHA
-    - cp $TESTROOT/time.txt $BACKUP/$CI_COMMIT_SHA
-    - mv $TESTROOT/time.png $BACKUP/$CI_COMMIT_SHA
-    - mv $DAMASKROOT/PRIVATE/documenting/DAMASK_* $BACKUP/$CI_COMMIT_SHA/
+    - mkdir $BACKUP/${CI_PIPELINE_ID}_${CI_COMMIT_SHA}
+    - cp $TESTROOT/time.txt $BACKUP/${CI_PIPELINE_ID}_${CI_COMMIT_SHA}/
+    - mv $TESTROOT/time.png $BACKUP/${CI_PIPELINE_ID}_${CI_COMMIT_SHA}/
+    - cp $TESTROOT/time.txt $BACKUP/${CI_PIPELINE_ID}_${CI_COMMIT_SHA}/
+    - mv $TESTROOT/time.png $BACKUP/${CI_PIPELINE_ID}_${CI_COMMIT_SHA}/
+    - mv $DAMASKROOT/PRIVATE/documenting/DAMASK_* $BACKUP/${CI_PIPELINE_ID}_${CI_COMMIT_SHA}/
   except:
     - master
     - release
@@ -512,9 +512,9 @@ mergeIntoMaster:
     - development
 
 ###################################################################################################
-removeData: 
+removeData:
   stage: clean
-  before_script: 
+  before_script:
     - echo 'Do nothing'
   script:
     - rm -rf $TESTROOT/GitLabCI_Pipeline_$CI_PIPELINE_ID
