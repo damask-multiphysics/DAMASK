@@ -14,10 +14,11 @@ module IO
  private
  character(len=5), parameter, public :: &
    IO_EOF = '#EOF#'                                                                                 !< end of file string
- character(len=168), parameter, private :: &
-   IO_divider = '───────────────────'//&
+ character(len=207), parameter, private :: &
+   IO_DIVIDER = '───────────────────'//&
                 '───────────────────'//&
-                '──────────────────'
+                '───────────────────'//&
+                '────────────'
  public :: &
    IO_init, &
    IO_read, &
@@ -1457,11 +1458,11 @@ end function IO_timeStamp
 !> @brief write error statements to standard out and terminate the Marc/spectral run with exit #9xxx
 !> in ABAQUS either time step is reduced or execution terminated
 !--------------------------------------------------------------------------------------------------
-subroutine IO_error(error_ID,el,ip,g,ext_msg)
+subroutine IO_error(error_ID,el,ip,g,instance,ext_msg)
 
  implicit none
  integer(pInt),              intent(in) :: error_ID
- integer(pInt),    optional, intent(in) :: el,ip,g
+ integer(pInt),    optional, intent(in) :: el,ip,g,instance
  character(len=*), optional, intent(in) :: ext_msg
  
  external                               :: quit
@@ -1672,34 +1673,28 @@ subroutine IO_error(error_ID,el,ip,g,ext_msg)
  end select
  
  !$OMP CRITICAL (write2out)
- write(0,'(/,a)')    ' ┌'//IO_divider//'┐'
- write(0,'(a)')      ' │                         error                          │'
- write(0,'(a)')      ' ├'//IO_divider//'┤'
- write(0,'(a,i3,a)') ' │                          ',error_ID,'                           │'
- write(0,'(a)')      ' │                                                        │'
+ write(0,'(/,a)')                ' ┌'//IO_DIVIDER//'┐'
+ write(0,'(a,24x,a,40x,a)')      ' │','error',                                             '│'
+ write(0,'(a,24x,i3,42x,a)')     ' │',error_ID,                                            '│'
+ write(0,'(a)')                  ' ├'//IO_DIVIDER//'┤'
  write(formatString,'(a,i6.6,a,i6.6,a)') '(1x,a4,a',max(1,len(trim(msg))),',',&
-                                                    max(1,60-len(trim(msg))-5),'x,a)'
- write(0,formatString) '│ ',trim(msg),'│'
+                                                    max(1,72-len(trim(msg))-4),'x,a)'
+ write(0,formatString)            '│ ',trim(msg),                                          '│'
  if (present(ext_msg)) then
    write(formatString,'(a,i6.6,a,i6.6,a)') '(1x,a4,a',max(1,len(trim(ext_msg))),',',&
-                                                      max(1,60-len(trim(ext_msg))-5),'x,a)'
-   write(0,formatString) '│ ',trim(ext_msg),'│'
+                                                      max(1,72-len(trim(ext_msg))-4),'x,a)'
+   write(0,formatString)          '│ ',trim(ext_msg),                                      '│'
  endif
- if (present(el)) then
-   if (present(ip)) then
-     if (present(g)) then
-       write(0,'(a13,1x,i9,1x,a2,1x,i2,1x,a5,1x,i4,18x,a1)') ' │ at element',el,'IP',ip,'grain',g,'│'
-     else
-       write(0,'(a13,1x,i9,1x,a2,1x,i2,29x,a1)') ' │ at element',el,'IP',ip,'│'
-     endif
-   else
-     write(0,'(a13,1x,i9,35x,a1)') ' │ at element',el,'│'
-   endif
- elseif (present(ip)) then                                                                          ! now having the meaning of "instance"
-   write(0,'(a14,1x,i9,34x,a1)') ' │ at instance',ip,'│'
- endif
- write(0,'(a)')      ' │                                                        │'
- write(0,'(a)')      ' └'//IO_divider//'┘'
+ if (present(el)) &
+   write(0,'(a19,1x,i9,44x,a3)') ' │ at element    ',el,                                   '│'
+ if (present(ip)) &
+   write(0,'(a19,1x,i9,44x,a3)') ' │ at IP         ',ip,                                   '│'
+ if (present(g)) &
+   write(0,'(a19,1x,i9,44x,a3)') ' │ at constituent',g,                                    '│'
+ if (present(instance)) &
+   write(0,'(a19,1x,i9,44x,a3)') ' │ at instance   ',instance,                             '│'
+ write(0,'(a,69x,a)')            ' │',                                                     '│'
+ write(0,'(a)')                  ' └'//IO_DIVIDER//'┘'
  flush(0)
  call quit(9000_pInt+error_ID)
  !$OMP END CRITICAL (write2out)
@@ -1766,30 +1761,26 @@ subroutine IO_warning(warning_ID,el,ip,g,ext_msg)
  end select
  
  !$OMP CRITICAL (write2out)
- write(6,'(/,a)')      ' +--------------------------------------------------------+'
- write(6,'(a)')        ' +                        warning                         +'
- write(6,'(a,i3,a)')   ' +                         ',warning_ID,'                            +'
- write(6,'(a)')        ' +                                                        +'
- write(formatString,'(a,i6.6,a,i6.6,a)') '(1x,a2,a',max(1,len(trim(msg))),',',&
-                                                    max(1,60-len(trim(msg))-5),'x,a)'
- write(6,formatString) '+ ', trim(msg),'+'
+ write(6,'(/,a)')                ' ┌'//IO_DIVIDER//'┐'
+ write(6,'(a,24x,a,38x,a)')      ' │','warning',                                           '│'
+ write(6,'(a,24x,i3,42x,a)')     ' │',warning_ID,                                          '│'
+ write(6,'(a)')                  ' ├'//IO_DIVIDER//'┤'
+ write(formatString,'(a,i6.6,a,i6.6,a)') '(1x,a4,a',max(1,len(trim(msg))),',',&
+                                                    max(1,72-len(trim(msg))-4),'x,a)'
+ write(6,formatString)            '│ ',trim(msg),                                          '│'
  if (present(ext_msg)) then
-   write(formatString,'(a,i6.6,a,i6.6,a)') '(1x,a2,a',max(1,len(trim(ext_msg))),',',&
-                                                      max(1,60-len(trim(ext_msg))-5),'x,a)'
-   write(6,formatString) '+ ', trim(ext_msg),'+'
+   write(formatString,'(a,i6.6,a,i6.6,a)') '(1x,a4,a',max(1,len(trim(ext_msg))),',',&
+                                                      max(1,72-len(trim(ext_msg))-4),'x,a)'
+   write(6,formatString)          '│ ',trim(ext_msg),                                      '│'
  endif
- if (present(el)) then
-   if (present(ip)) then
-     if (present(g)) then
-       write(6,'(a13,1x,i9,1x,a2,1x,i2,1x,a5,1x,i4,18x,a1)') ' + at element',el,'IP',ip,'grain',g,'+'
-     else
-       write(6,'(a13,1x,i9,1x,a2,1x,i2,29x,a1)') ' + at element',el,'IP',ip,'+'
-     endif
-   else
-     write(6,'(a13,1x,i9,35x,a1)') ' + at element',el,'+'
-   endif
- endif
- write(6,'(a)')      ' +--------------------------------------------------------+'
+ if (present(el)) &
+   write(6,'(a19,1x,i9,44x,a3)') ' │ at element    ',el,                                   '│'
+ if (present(ip)) &
+   write(6,'(a19,1x,i9,44x,a3)') ' │ at IP         ',ip,                                   '│'
+ if (present(g)) &
+   write(6,'(a19,1x,i9,44x,a3)') ' │ at constituent',g,                                    '│'
+ write(6,'(a,69x,a)')            ' │',                                                     '│'
+ write(6,'(a)')                  ' └'//IO_DIVIDER//'┘'
  flush(6)
  !$OMP END CRITICAL (write2out)
 
