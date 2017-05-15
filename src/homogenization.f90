@@ -928,7 +928,6 @@ subroutine materialpoint_postResults
    constitutive_plasticity_maxSizePostResults, &
    constitutive_source_maxSizePostResults, &
 #endif
-   constitutive_postResults
  use crystallite, only: &
 #ifdef FEM
    crystallite_maxSizePostResults, &
