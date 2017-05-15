@@ -99,7 +99,6 @@ class Test():
             self.run(variant)
 
           self.postprocess(variant)
-          self.compare(variant)
           
           if self.options.update:
             if self.update(variant) != 0: logging.critical('update for "{}" failed.'.format(name))
