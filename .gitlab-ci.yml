@@ -488,9 +488,8 @@ backupData:
     - cp $TESTROOT/memory.txt $BACKUP/${CI_PIPELINE_ID}_${CI_COMMIT_SHA}/
     - mv $TESTROOT/memory.png $BACKUP/${CI_PIPELINE_ID}_${CI_COMMIT_SHA}/
     - mv $DAMASKROOT/PRIVATE/documenting/DAMASK_* $BACKUP/${CI_PIPELINE_ID}_${CI_COMMIT_SHA}/
-  except:
-    - master
-    - release
+  only:
+    - development
 
 ##################################################################################################
 mergeIntoMaster: 
