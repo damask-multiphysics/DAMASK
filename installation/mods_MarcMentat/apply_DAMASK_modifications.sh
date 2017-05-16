@@ -129,7 +129,7 @@ for filename in marc$VERSION/tools/run_damask* \
   chmod 755 $INSTALLDIR/${filename}
 done
 
-#creating symlinks for run_damask_scripts in /usr/local/bin
+#creating symlinks for run_damask_scripts
 
 if [ -d "$BIN_DIR" ]; then
   echo ''
@@ -157,11 +157,6 @@ if [ -d "$BIN_DIR" ]; then
     ;;
   esac
 fi
-
-# cloning user subroutine
-echo ''
-echo 'cloning $VERSION HYPELA2 user subroutine...'
-ln -s DAMASK_marc.f90 ${DAMASK_ROOT}/src/DAMASK_marc${VERSION}.f90
 
 # precompiling user subroutine
 echo ''

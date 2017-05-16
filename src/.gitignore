@@ -1,4 +1,3 @@
-DAMASK_marc*.f90
 Makefile
 cmake_install.cmake
 quit__genmod.f90
