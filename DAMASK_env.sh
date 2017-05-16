@@ -1,1 +1,1 @@
-env/DAMASK_env.sh
+env/DAMASK.sh
