@@ -435,8 +435,10 @@ SpectralRuntime:
     - module load $IntelCompiler $MPICH_Intel $PETSc_MPICH_Intel
     - cd $DAMASKROOT
     - make clean spectral processing OPTIMIZATION=AGGRESSIVE
+    - cd $TESTROOT/performance                                                                      # location of old results
+    - git checkout .                                                                                # undo any changes (i.e. run time data from non-development branch)
     - cd $DAMASKROOT/PRIVATE/testing
-    - SpectralAll_runtime/test.py -d $TESTROOT
+    - SpectralAll_runtime/test.py -d $TESTROOT/performance
   except:
     - master
     - release
@@ -482,11 +484,13 @@ Spectral:
 backupData: 
   stage: saveDocumentation
   script:
+    - cd $TESTROOT/performance                                                                      # location of new runtime results
+    - git commit -am"${CI_PIPELINE_ID}_${CI_COMMIT_SHA}"
     - mkdir $BACKUP/${CI_PIPELINE_ID}_${CI_COMMIT_SHA}
-    - cp $TESTROOT/time.txt $BACKUP/${CI_PIPELINE_ID}_${CI_COMMIT_SHA}/
-    - mv $TESTROOT/time.png $BACKUP/${CI_PIPELINE_ID}_${CI_COMMIT_SHA}/
-    - cp $TESTROOT/memory.txt $BACKUP/${CI_PIPELINE_ID}_${CI_COMMIT_SHA}/
-    - mv $TESTROOT/memory.png $BACKUP/${CI_PIPELINE_ID}_${CI_COMMIT_SHA}/
+    - cp $TESTROOT/performance/time.txt $BACKUP/${CI_PIPELINE_ID}_${CI_COMMIT_SHA}/
+    - mv $TESTROOT/performance/time.png $BACKUP/${CI_PIPELINE_ID}_${CI_COMMIT_SHA}/
+    - cp $TESTROOT/performance/memory.txt $BACKUP/${CI_PIPELINE_ID}_${CI_COMMIT_SHA}/
+    - mv $TESTROOT/performance/memory.png $BACKUP/${CI_PIPELINE_ID}_${CI_COMMIT_SHA}/
     - mv $DAMASKROOT/PRIVATE/documenting/DAMASK_* $BACKUP/${CI_PIPELINE_ID}_${CI_COMMIT_SHA}/
   only:
     - development
