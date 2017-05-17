@@ -1666,15 +1666,16 @@ end function math_qToEulerAxisAngle
 !> @brief Rodrigues vector (x, y, z) from unit quaternion (w+ix+jy+kz)
 !--------------------------------------------------------------------------------------------------
 pure function math_qToRodrig(Q)
+ use, intrinsic :: &
+   IEEE_arithmetic
  use prec, only: &
-   DAMASK_NaN, &
    tol_math_check
 
  implicit none
  real(pReal), dimension(4), intent(in) :: Q
  real(pReal), dimension(3) :: math_qToRodrig
 
- math_qToRodrig = merge(Q(2:4)/Q(1),DAMASK_NaN,abs(Q(1)) > tol_math_check)                          ! NaN for 180 deg since Rodrig is unbound
+ math_qToRodrig = merge(Q(2:4)/Q(1),IEEE_value(1.0_pReal,IEEE_quiet_NaN),abs(Q(1)) > tol_math_check)! NaN for 180 deg since Rodrig is unbound
 
 end function math_qToRodrig
 
@@ -2092,11 +2093,11 @@ end function math_rotationalPart33
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Eigenvalues of symmetric matrix m
-! will return NaN  on error
+! will return NaN on error
 !--------------------------------------------------------------------------------------------------
 function math_eigenvaluesSym(m)
- use prec, only: &
-   DAMASK_NaN
+ use, intrinsic :: &
+   IEEE_arithmetic
  
  implicit none
  real(pReal), dimension(:,:),                  intent(in)  :: m
@@ -2109,7 +2110,7 @@ function math_eigenvaluesSym(m)
 
  vectors = m                                                                                         ! copy matrix to input (doubles as output) array
  call dsyev('N','U',size(m,1),vectors,size(m,1),math_eigenvaluesSym,work,(64+2)*size(m,1),info)
- if (info /= 0_pInt) math_eigenvaluesSym = DAMASK_NaN
+ if (info /= 0_pInt) math_eigenvaluesSym = IEEE_value(1.0_pReal,IEEE_quiet_NaN)
 
 end function math_eigenvaluesSym
 
@@ -2702,28 +2703,12 @@ end function math_rotate_forward3333
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief calculate average of tensor field
-!--------------------------------------------------------------------------------------------------
-function math_tensorAvg(field)
- 
- implicit none
- real(pReal), dimension(3,3) :: math_tensorAvg
- real(pReal), intent(in), dimension(:,:,:,:,:) :: field
- real(pReal) :: wgt
- 
- wgt = 1.0_pReal/real(size(field,3)*size(field,4)*size(field,5), pReal) 
- math_tensorAvg = sum(sum(sum(field,dim=5),dim=4),dim=3)*wgt
-
-end function math_tensorAvg
-
-
-!--------------------------------------------------------------------------------------------------
 !> @brief limits a scalar value to a certain range (either one or two sided)
 ! Will return NaN if left > right
 !--------------------------------------------------------------------------------------------------
 real(pReal) pure function math_limit(a, left, right)
- use prec, only: &
-   DAMASK_NaN
+ use, intrinsic :: &
+   IEEE_arithmetic
 
  implicit none
  real(pReal), intent(in) :: a
@@ -2735,7 +2720,8 @@ real(pReal) pure function math_limit(a, left, right)
                         merge(right, huge(a), present(right)) &
                   )
 
- if (present(left) .and. present(right)) math_limit = merge (DAMASK_NaN,math_limit, left>right)
+ if (present(left) .and. present(right)) &
+   math_limit = merge (IEEE_value(1.0_pReal,IEEE_quiet_NaN),math_limit, left>right)
 
 end function math_limit
  

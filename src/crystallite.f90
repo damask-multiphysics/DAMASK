@@ -1232,8 +1232,8 @@ end subroutine crystallite_stressAndItsTangent
 !> @brief integrate stress, state with 4th order explicit Runge Kutta method
 !--------------------------------------------------------------------------------------------------
 subroutine crystallite_integrateStateRK4()
- use prec, only: &
-   prec_isNaN
+ use, intrinsic :: &
+   IEEE_arithmetic
  use numerics, only: &
    numerics_integrationMode
  use debug, only: &
@@ -1316,7 +1316,7 @@ subroutine crystallite_integrateStateRK4()
 ! first Runge-Kutta step
  !$OMP PARALLEL
  !$OMP DO
-   do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                 ! iterate over elements, ips and grains
+   do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)             ! iterate over elements, ips and grains
      if (crystallite_todo(g,i,e)) &
        call constitutive_collectDotState(crystallite_Tstar_v(1:6,g,i,e), &
                                          crystallite_Fe, &
@@ -1326,22 +1326,22 @@ subroutine crystallite_integrateStateRK4()
  !$OMP ENDDO
 
  !$OMP DO PRIVATE(p,c,NaN)
-   do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                 ! iterate over elements, ips and grains
+   do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)             ! iterate over elements, ips and grains
      !$OMP FLUSH(crystallite_todo)
      if (crystallite_todo(g,i,e)) then
        c = phasememberAt(g,i,e)
        p = phaseAt(g,i,e)
-       NaN = any(prec_isNaN(plasticState(p)%dotState(:,c)))
+       NaN = any(IEEE_is_NaN(plasticState(p)%dotState(:,c)))
        do mySource = 1_pInt, phase_Nsources(p)
-         NaN = NaN .or. any(prec_isNaN(sourceState(p)%p(mySource)%dotState(:,c)))
+         NaN = NaN .or. any(IEEE_is_NaN(sourceState(p)%p(mySource)%dotState(:,c)))
        enddo
-       if (NaN) then                                                                                    ! NaN occured in any dotState
-         if (.not. crystallite_localPlasticity(g,i,e)) then                                             ! if broken non-local...
+       if (NaN) then                                                                                ! NaN occured in any dotState
+         if (.not. crystallite_localPlasticity(g,i,e)) then                                         ! if broken non-local...
            !$OMP CRITICAL (checkTodo)
-             crystallite_todo = crystallite_todo .and. crystallite_localPlasticity                      ! ...all non-locals skipped
+             crystallite_todo = crystallite_todo .and. crystallite_localPlasticity                  ! ...all non-locals skipped
            !$OMP END CRITICAL (checkTodo)
-         else                                                                                           ! if broken local...
-           crystallite_todo(g,i,e) = .false.                                                            ! ... skip this one next time
+         else                                                                                       ! if broken local...
+           crystallite_todo(g,i,e) = .false.                                                        ! ... skip this one next time
          endif
        endif
      endif
@@ -1356,7 +1356,7 @@ subroutine crystallite_integrateStateRK4()
 
    !$OMP PARALLEL
    !$OMP DO PRIVATE(p,c)
-     do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                  ! iterate over elements, ips and grains
+     do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)           ! iterate over elements, ips and grains
        if (crystallite_todo(g,i,e)) then
          p = phaseAt(g,i,e)
          c = phasememberAt(g,i,e)
@@ -1371,7 +1371,7 @@ subroutine crystallite_integrateStateRK4()
    !$OMP ENDDO
 
    !$OMP DO PRIVATE(mySizePlasticDotState,mySizeSourceDotState,p,c)
-     do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                  ! iterate over elements, ips and grains
+     do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)           ! iterate over elements, ips and grains
        if (crystallite_todo(g,i,e)) then
 
          p = phaseAt(g,i,e)
@@ -1475,9 +1475,9 @@ subroutine crystallite_integrateStateRK4()
 
            p = phaseAt(g,i,e)
            c = phasememberAt(g,i,e)
-           NaN = any(prec_isNaN(plasticState(p)%dotState(:,c)))
+           NaN = any(IEEE_is_NaN(plasticState(p)%dotState(:,c)))
            do mySource = 1_pInt, phase_Nsources(p)
-             NaN = NaN .or. any(prec_isNaN(sourceState(p)%p(mySource)%dotState(:,c)))
+             NaN = NaN .or. any(IEEE_is_NaN(sourceState(p)%p(mySource)%dotState(:,c)))
            enddo
            if (NaN) then                                                                                   ! NaN occured in any dotState
              if (.not. crystallite_localPlasticity(g,i,e)) then                                            ! if broken non-local...
@@ -1528,8 +1528,8 @@ end subroutine crystallite_integrateStateRK4
 !> adaptive step size  (use 5th order solution to advance = "local extrapolation")
 !--------------------------------------------------------------------------------------------------
 subroutine crystallite_integrateStateRKCK45()
- use prec, only: &
-   prec_isNaN
+ use, intrinsic :: &
+   IEEE_arithmetic
  use debug, only: &
    debug_level, &
    debug_crystallite, &
@@ -1647,9 +1647,9 @@ subroutine crystallite_integrateStateRKCK45()
      if (crystallite_todo(g,i,e)) then
        cc = phasememberAt(g,i,e)
        p = phaseAt(g,i,e)
-       NaN = any(prec_isNaN(plasticState(p)%dotState(:,cc)))
+       NaN = any(IEEE_is_NaN(plasticState(p)%dotState(:,cc)))
        do mySource = 1_pInt, phase_Nsources(p)
-         NaN = NaN .or. any(prec_isNaN(sourceState(p)%p(mySource)%dotState(:,cc)))
+         NaN = NaN .or. any(IEEE_is_NaN(sourceState(p)%p(mySource)%dotState(:,cc)))
        enddo
        if (NaN) then                                                                                       ! NaN occured in any dotState
          if (.not. crystallite_localPlasticity(g,i,e)) then                                                ! if broken non-local...
@@ -1801,9 +1801,9 @@ subroutine crystallite_integrateStateRKCK45()
 
          p = phaseAt(g,i,e)
          cc = phasememberAt(g,i,e)
-         NaN = any(prec_isNaN(plasticState(p)%dotState(:,cc)))
+         NaN = any(IEEE_is_NaN(plasticState(p)%dotState(:,cc)))
          do mySource = 1_pInt, phase_Nsources(p)
-           NaN = NaN .or. any(prec_isNaN(sourceState(p)%p(mySource)%dotState(:,cc)))
+           NaN = NaN .or. any(IEEE_is_NaN(sourceState(p)%p(mySource)%dotState(:,cc)))
          enddo
          if (NaN) then                                                                                   ! NaN occured in any dotState
            if (.not. crystallite_localPlasticity(g,i,e)) then                                              ! if broken non-local...
@@ -2031,8 +2031,8 @@ end subroutine crystallite_integrateStateRKCK45
 !> @brief integrate stress, state with 1st order Euler method with adaptive step size
 !--------------------------------------------------------------------------------------------------
 subroutine crystallite_integrateStateAdaptiveEuler()
- use prec, only: &
-   prec_isNaN
+ use, intrinsic :: &
+   IEEE_arithmetic
  use debug, only: &
    debug_level, &
    debug_crystallite, &
@@ -2133,9 +2133,9 @@ subroutine crystallite_integrateStateAdaptiveEuler()
        if (crystallite_todo(g,i,e)) then
          p = phaseAt(g,i,e)
          c = phasememberAt(g,i,e)
-         NaN = any(prec_isNaN(plasticState(p)%dotState(:,c)))
+         NaN = any(IEEE_is_NaN(plasticState(p)%dotState(:,c)))
          do mySource = 1_pInt, phase_Nsources(p)
-           NaN = NaN .or. any(prec_isNaN(sourceState(p)%p(mySource)%dotState(:,c)))
+           NaN = NaN .or. any(IEEE_is_NaN(sourceState(p)%p(mySource)%dotState(:,c)))
          enddo
          if (NaN) then                                                                                       ! NaN occured in any dotState
            if (.not. crystallite_localPlasticity(g,i,e)) then                                                ! if broken non-local...
@@ -2254,9 +2254,9 @@ subroutine crystallite_integrateStateAdaptiveEuler()
        if (crystallite_todo(g,i,e)) then
          p = phaseAt(g,i,e)
          c = phasememberAt(g,i,e)
-         NaN = any(prec_isNaN(plasticState(p)%dotState(:,c)))
+         NaN = any(IEEE_is_NaN(plasticState(p)%dotState(:,c)))
          do mySource = 1_pInt, phase_Nsources(p)
-           NaN = NaN .or. any(prec_isNaN(sourceState(p)%p(mySource)%dotState(:,c)))
+           NaN = NaN .or. any(IEEE_is_NaN(sourceState(p)%p(mySource)%dotState(:,c)))
          enddo
          if (NaN) then                                                                                     ! NaN occured in any dotState
            if (.not. crystallite_localPlasticity(g,i,e)) then                                              ! if broken non-local...
@@ -2391,8 +2391,8 @@ end subroutine crystallite_integrateStateAdaptiveEuler
 !> @brief integrate stress, and state with 1st order explicit Euler method
 !--------------------------------------------------------------------------------------------------
 subroutine crystallite_integrateStateEuler()
- use prec, only: &
-   prec_isNaN
+ use, intrinsic :: &
+   IEEE_arithmetic
  use debug, only: &
    debug_level, &
    debug_crystallite, &
@@ -2471,9 +2471,9 @@ eIter = FEsolving_execElem(1:2)
        if (crystallite_todo(g,i,e) .and. .not. crystallite_converged(g,i,e)) then
          c = phasememberAt(g,i,e)
          p = phaseAt(g,i,e)
-         NaN = any(prec_isNaN(plasticState(p)%dotState(:,c)))
+         NaN = any(IEEE_is_NaN(plasticState(p)%dotState(:,c)))
          do mySource = 1_pInt, phase_Nsources(p)
-           NaN = NaN .or. any(prec_isNaN(sourceState(p)%p(mySource)%dotState(:,c)))
+           NaN = NaN .or. any(IEEE_is_NaN(sourceState(p)%p(mySource)%dotState(:,c)))
          enddo
          if (NaN) then                                                                                       ! NaN occured in any dotState
            if (.not. crystallite_localPlasticity(g,i,e) .and. .not. numerics_timeSyncing) then               ! if broken non-local...
@@ -2614,8 +2614,8 @@ end subroutine crystallite_integrateStateEuler
 !> using Fixed Point Iteration to adapt the stepsize
 !--------------------------------------------------------------------------------------------------
 subroutine crystallite_integrateStateFPI()
- use prec, only: &
-   prec_isNaN
+ use, intrinsic :: &
+   IEEE_arithmetic
  use debug, only: &
    debug_e, &
    debug_i, &
@@ -2732,22 +2732,22 @@ subroutine crystallite_integrateStateFPI()
 
  !$OMP ENDDO
  !$OMP DO PRIVATE(p,c,NaN)
-   do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                    ! iterate over elements, ips and grains
+   do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)             ! iterate over elements, ips and grains
      !$OMP FLUSH(crystallite_todo)
      if (crystallite_todo(g,i,e)) then
        p = phaseAt(g,i,e)
        c = phasememberAt(g,i,e)
-       NaN = any(prec_isNaN(plasticState(p)%dotState(:,c)))
+       NaN = any(IEEE_is_NaN(plasticState(p)%dotState(:,c)))
        do mySource = 1_pInt, phase_Nsources(p)
-         NaN = NaN .or. any(prec_isNaN(sourceState(p)%p(mySource)%dotState(:,c)))
+         NaN = NaN .or. any(IEEE_is_NaN(sourceState(p)%p(mySource)%dotState(:,c)))
        enddo
-       if (NaN) then                                                                                       ! NaN occured in any dotState
-         if (.not. crystallite_localPlasticity(g,i,e)) then                                                ! if broken is a non-local...
+       if (NaN) then                                                                                ! NaN occured in any dotState
+         if (.not. crystallite_localPlasticity(g,i,e)) then                                         ! if broken is a non-local...
            !$OMP CRITICAL (checkTodo)
-             crystallite_todo = crystallite_todo .and. crystallite_localPlasticity                         ! ...all non-locals done (and broken)
+             crystallite_todo = crystallite_todo .and. crystallite_localPlasticity                  ! ...all non-locals done (and broken)
            !$OMP END CRITICAL (checkTodo)
-         else                                                                                              ! broken one was local...
-           crystallite_todo(g,i,e) = .false.                                                               ! ... done (and broken)
+         else                                                                                       ! broken one was local...
+           crystallite_todo(g,i,e) = .false.                                                        ! ... done (and broken)
          endif
        endif
      endif
@@ -2851,9 +2851,9 @@ subroutine crystallite_integrateStateFPI()
        if (crystallite_todo(g,i,e) .and. .not. crystallite_converged(g,i,e)) then
          p = phaseAt(g,i,e)
          c = phasememberAt(g,i,e)
-         NaN = any(prec_isNaN(plasticState(p)%dotState(:,c)))
+         NaN = any(IEEE_is_NaN(plasticState(p)%dotState(:,c)))
          do mySource = 1_pInt, phase_Nsources(p)
-           NaN = NaN .or. any(prec_isNaN(sourceState(p)%p(mySource)%dotState(:,c)))
+           NaN = NaN .or. any(IEEE_is_NaN(sourceState(p)%p(mySource)%dotState(:,c)))
          enddo
          if (NaN) then                                                                                       ! NaN occured in any dotState
            crystallite_todo(g,i,e) = .false.                                                                 ! ... skip me next time
@@ -3062,8 +3062,9 @@ end subroutine crystallite_integrateStateFPI
 !> returns true, if state jump was successfull or not needed. false indicates NaN in delta state
 !--------------------------------------------------------------------------------------------------
 logical function crystallite_stateJump(ipc,ip,el)
+ use, intrinsic :: &
+   IEEE_arithmetic
  use prec, only: &
-   prec_isNaN, &
    dNeq0
  use debug, only: &
    debug_level, &
@@ -3098,7 +3099,7 @@ logical function crystallite_stateJump(ipc,ip,el)
  p = phaseAt(ipc,ip,el)
  call constitutive_collectDeltaState(crystallite_Tstar_v(1:6,ipc,ip,el), crystallite_Fe(1:3,1:3,ipc,ip,el), ipc,ip,el)
  mySizePlasticDeltaState = plasticState(p)%sizeDeltaState
- if( any(prec_isNaN(plasticState(p)%deltaState(:,c)))) then                                         ! NaN occured in deltaState
+ if( any(IEEE_is_NaN(plasticState(p)%deltaState(:,c)))) then                                       ! NaN occured in deltaState
    crystallite_stateJump = .false.
    return
  endif
@@ -3106,7 +3107,7 @@ logical function crystallite_stateJump(ipc,ip,el)
                                                       plasticState(p)%deltaState(1:mySizePlasticDeltaState,c)
  do mySource = 1_pInt, phase_Nsources(p)
    mySizeSourceDeltaState = sourceState(p)%p(mySource)%sizeDeltaState
-   if( any(prec_isNaN(sourceState(p)%p(mySource)%deltaState(:,c)))) then                            ! NaN occured in deltaState
+   if( any(IEEE_is_NaN(sourceState(p)%p(mySource)%deltaState(:,c)))) then                           ! NaN occured in deltaState
      crystallite_stateJump = .false.
      return
    endif
@@ -3169,9 +3170,10 @@ logical function crystallite_integrateStress(&
       el,&          ! element number
       timeFraction &
       )
+ use, intrinsic :: &
+   IEEE_arithmetic
  use prec, only:         pLongInt, &
                          tol_math_check, &
-                         prec_isNaN, &
                          dEq0
  use numerics, only:     nStress, &
                          aTol_crystalliteStress, &
@@ -3426,11 +3428,11 @@ logical function crystallite_integrateStress(&
 
      !* update current residuum and check for convergence of loop
 
-     aTolLp = max(rTol_crystalliteStress * max(norm2(Lpguess),norm2(Lp_constitutive)), &             ! absolute tolerance from largest acceptable relative error
-                  aTol_crystalliteStress)                                                            ! minimum lower cutoff
+     aTolLp = max(rTol_crystalliteStress * max(norm2(Lpguess),norm2(Lp_constitutive)), &            ! absolute tolerance from largest acceptable relative error
+                  aTol_crystalliteStress)                                                           ! minimum lower cutoff
      residuumLp = Lpguess - Lp_constitutive
 
-     if (any(prec_isNaN(residuumLp))) then                                                           ! NaN in residuum...
+     if (any(IEEE_is_NaN(residuumLp))) then                                                         ! NaN in residuum...
 #ifndef _OPENMP
        if (iand(debug_level(debug_crystallite), debug_levelBasic) /= 0_pInt) &
          write(6,'(a,i8,1x,a,i8,a,1x,i2,1x,i3,a,i3,a)') '<< CRYST >> integrateStress encountered NaN at el (elFE) ip ipc ', &
@@ -3438,16 +3440,16 @@ logical function crystallite_integrateStress(&
                                                         ' ; iteration ', NiterationStressLp,&
                                                         ' >> returning..!'
 #endif
-       return                                                                                         ! ...me = .false. to inform integrator about problem
-     elseif (norm2(residuumLp) < aTolLp) then                                                         ! converged if below absolute tolerance
-       exit LpLoop                                                                                    ! ...leave iteration loop
+       return                                                                                       ! ...me = .false. to inform integrator about problem
+     elseif (norm2(residuumLp) < aTolLp) then                                                       ! converged if below absolute tolerance
+       exit LpLoop                                                                                  ! ...leave iteration loop
      elseif (     NiterationStressLp == 1_pInt &
-             .or. norm2(residuumLp) < norm2(residuumLp_old)) then                                     ! not converged, but improved norm of residuum (always proceed in first iteration)...
-       residuumLp_old = residuumLp                                                                    ! ...remember old values and...
+             .or. norm2(residuumLp) < norm2(residuumLp_old)) then                                   ! not converged, but improved norm of residuum (always proceed in first iteration)...
+       residuumLp_old = residuumLp                                                                  ! ...remember old values and...
        Lpguess_old    = Lpguess
-       steplengthLp   = steplengthLp0                                                                 ! ...proceed with normal step length (calculate new search direction)
-     else                                                                                             ! not converged and residuum not improved...
-       steplengthLp = 0.5_pReal * steplengthLp                                                        ! ...try with smaller step length in same direction
+       steplengthLp   = steplengthLp0                                                               ! ...proceed with normal step length (calculate new search direction)
+     else                                                                                           ! not converged and residuum not improved...
+       steplengthLp = 0.5_pReal * steplengthLp                                                      ! ...try with smaller step length in same direction
        Lpguess    = Lpguess_old + steplengthLp * deltaLp
        cycle LpLoop
      endif
@@ -3520,7 +3522,7 @@ logical function crystallite_integrateStress(&
    aTolLi = max(rTol_crystalliteStress * max(norm2(Liguess),norm2(Li_constitutive)), &              ! absolute tolerance from largest acceptable relative error
                 aTol_crystalliteStress)                                                             ! minimum lower cutoff
    residuumLi = Liguess - Li_constitutive
-   if (any(prec_isNaN(residuumLi))) then                                                            ! NaN in residuum...
+   if (any(IEEE_is_NaN(residuumLi))) then                                                           ! NaN in residuum...
      return                                                                                         ! ...me = .false. to inform integrator about problem
    elseif (norm2(residuumLi) < aTolLi) then                                                         ! converged if below absolute tolerance
      exit LiLoop                                                                                    ! ...leave iteration loop
