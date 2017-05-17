@@ -1,3 +1,4 @@
+---
 stages:
   - prepareAll
   - preprocessing
@@ -23,26 +24,30 @@ stages:
 
 ###################################################################################################
 before_script:
-  - if [ $(awk "/$CI_PIPELINE_ID/{print NR}" $TESTROOT/GitLabCI.queue)x == 'x' ]; then echo $CI_PIPELINE_ID >> $TESTROOT/GitLabCI.queue; fi
-  - while [ $(awk "/$CI_PIPELINE_ID/{print NR}" $TESTROOT/GitLabCI.queue) -ne 1 ];do sleep 5m; done
+  - if [ $(awk "/$CI_PIPELINE_ID/{print NR}" $TESTROOT/GitLabCI.queue)x == 'x' ]
+      then echo $CI_PIPELINE_ID >> $TESTROOT/GitLabCI.queue
+    fi
+  - while [ $(awk "/$CI_PIPELINE_ID/{print NR}" $TESTROOT/GitLabCI.queue) != 1 ]
+      do sleep 5m
+    done
   - source $DAMASKROOT/DAMASK_env.sh
   - cd $DAMASKROOT/PRIVATE/testing
 
 ###################################################################################################
 variables:
-  #================================================================================================
+  # ===============================================================================================
   # GitLab Settings
-  #================================================================================================
+  # ===============================================================================================
   GIT_SUBMODULE_STRATEGY: none
 
-  #================================================================================================
+  # ===============================================================================================
   # Shortcut names
-  #================================================================================================
-  DAMASKROOT:                      "$TESTROOT/GitLabCI_Pipeline_$CI_PIPELINE_ID/DAMASK"
+  # ===============================================================================================
+  DAMASKROOT: "$TESTROOT/GitLabCI_Pipeline_$CI_PIPELINE_ID/DAMASK"
 
-  #================================================================================================
+  # ===============================================================================================
   # Names of module files to load
-  #================================================================================================
+  # ===============================================================================================
   # ++++++++++++ Compiler ++++++++++++++++++++++++++++++++++++++++++++++
   IntelCompiler16_0:               "Compiler/Intel/16.0 Libraries/IMKL/2016"
   IntelCompiler17_0:               "Compiler/Intel/17.0 Libraries/IMKL/2017"
@@ -81,11 +86,13 @@ variables:
 
 
 ###################################################################################################
-checkout: 
+checkout:
   stage: prepareAll
-  before_script: 
+  before_script:
     - echo $CI_PIPELINE_ID >> $TESTROOT/GitLabCI.queue
-    - while [ $(awk "/$CI_PIPELINE_ID/{print NR}" $TESTROOT/GitLabCI.queue) -ne 1 ];do sleep 5m; done
+    - while [ $(awk "/$CI_PIPELINE_ID/{print NR}" $TESTROOT/GitLabCI.queue) != 1 ]
+        do sleep 5m
+      done
   script:
     - mkdir -p $DAMASKROOT
     - cd $DAMASKROOT
@@ -186,7 +193,7 @@ Post_ParaviewRelated:
 
 ###################################################################################################
 Compile_Intel:
-  stage: compileSpectralIntel 
+  stage: compileSpectralIntel
   script:
     - module load $IntelCompiler $MPICH_Intel $PETSc_MPICH_Intel
     - SpectralAll_compile/test.py
@@ -214,7 +221,7 @@ Compile_Intel_Prepare:
   except:
     - master
     - release
- 
+
 ###################################################################################################
 Spectral_PackedGeometry:
   stage: spectral
@@ -442,9 +449,9 @@ SpectralRuntime:
   except:
     - master
     - release
- 
+
 ###################################################################################################
-AbaqusExp: 
+AbaqusExp:
   stage: createDocumentation
   script:
     - module load $IntelCompiler $MPICH_Intel $PETSc_MPICH_Intel $Doxygen
@@ -453,7 +460,7 @@ AbaqusExp:
     - master
     - release
 
-AbaqusStd: 
+AbaqusStd:
   stage: createDocumentation
   script:
     - module load $IntelCompiler $MPICH_Intel $PETSc_MPICH_Intel $Doxygen
@@ -462,7 +469,7 @@ AbaqusStd:
     - master
     - release
 
-Marc: 
+Marc:
   stage: createDocumentation
   script:
     - module load $IntelCompiler $MPICH_Intel $PETSc_MPICH_Intel $Doxygen
@@ -471,7 +478,7 @@ Marc:
     - master
     - release
 
-Spectral: 
+Spectral:
   stage: createDocumentation
   script:
     - module load $IntelCompiler $MPICH_Intel $PETSc_MPICH_Intel $Doxygen
@@ -481,7 +488,7 @@ Spectral:
     - release
 
 ##################################################################################################
-backupData: 
+backupData:
   stage: saveDocumentation
   script:
     - cd $TESTROOT/performance                                                                      # location of new runtime results
@@ -496,7 +503,7 @@ backupData:
     - development
 
 ##################################################################################################
-mergeIntoMaster: 
+mergeIntoMaster:
   stage: updateMaster
   script:
     - cd $DAMASKROOT
@@ -527,9 +534,9 @@ removeData:
     - release
 
 ###################################################################################################
-removeLock: 
+removeLock:
   stage: releaseLock
-  before_script: 
+  before_script:
     - echo 'Do nothing'
   when: always
   script: sed -i "/$CI_PIPELINE_ID/d" $TESTROOT/GitLabCI.queue
