@@ -567,18 +567,13 @@ subroutine plastic_isotropic_dotState(Tstar_v,ipc,ip,el)
    if (dEq0(param(instance)%tausat_SinhFitA)) then
      saturation = param(instance)%tausat
    else
-     saturation = (  param(instance)%tausat &
-                   + ( log(  ( gamma_dot / param(instance)%tausat_SinhFitA&
-                               )**(1.0_pReal / param(instance)%tausat_SinhFitD)&
-                            + sqrt(  ( gamma_dot / param(instance)%tausat_SinhFitA &
-                                      )**(2.0_pReal / param(instance)%tausat_SinhFitD) &
-                                   + 1.0_pReal ) &
-                            ) & ! asinh(K) = ln(K + sqrt(K^2 +1))
+     saturation = param(instance)%tausat &
+                + asinh( (gamma_dot / param(instance)%tausat_SinhFitA&
+                         )**(1.0_pReal / param(instance)%tausat_SinhFitD)&
                        )**(1.0_pReal / param(instance)%tausat_SinhFitC) &
-                   / (  param(instance)%tausat_SinhFitB &
-                      * (gamma_dot / param(instance)%gdot0)**(1.0_pReal / param(instance)%n) &
-                      ) &
-                   )
+                   / ( param(instance)%tausat_SinhFitB &
+                       * (gamma_dot / param(instance)%gdot0)**(1.0_pReal / param(instance)%n) &
+                     )
    endif
    hardening = ( param(instance)%h0 + param(instance)%h0_slopeLnRate * log(gamma_dot) ) &
                * abs( 1.0_pReal - state(instance)%flowstress(of)/saturation )**param(instance)%a &

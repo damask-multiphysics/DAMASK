@@ -14,14 +14,17 @@ stages:
   - compileAbaqus2016
   - compileAbaqus2017
   - example
+  - performance
   - createDocumentation
+  - saveDocumentation
   - updateMaster
   - clean
+  - releaseLock
 
 ###################################################################################################
 before_script:
-  - if [ $(awk "/$CI_PIPELINE_ID/{print NR}" $HOME/GitLabCI.queue)x == 'x' ]; then echo $CI_PIPELINE_ID >> $HOME/GitLabCI.queue; fi
-  - while [ $(awk "/$CI_PIPELINE_ID/{print NR}" $HOME/GitLabCI.queue) -ne 1 ];do sleep 5m; done
+  - if [ $(awk "/$CI_PIPELINE_ID/{print NR}" $TESTROOT/GitLabCI.queue)x == 'x' ]; then echo $CI_PIPELINE_ID >> $TESTROOT/GitLabCI.queue; fi
+  - while [ $(awk "/$CI_PIPELINE_ID/{print NR}" $TESTROOT/GitLabCI.queue) -ne 1 ];do sleep 5m; done
   - source $DAMASKROOT/DAMASK_env.sh
   - cd $DAMASKROOT/PRIVATE/testing
 
@@ -35,7 +38,7 @@ variables:
   #================================================================================================
   # Shortcut names
   #================================================================================================
-  DAMASKROOT:                      "$HOME/GitLabCI_Pipeline_$CI_PIPELINE_ID/DAMASK"
+  DAMASKROOT:                      "$TESTROOT/GitLabCI_Pipeline_$CI_PIPELINE_ID/DAMASK"
 
   #================================================================================================
   # Names of module files to load
@@ -81,8 +84,8 @@ variables:
 checkout: 
   stage: prepareAll
   before_script: 
-    - echo $CI_PIPELINE_ID >> $HOME/GitLabCI.queue
-    - while [ $(awk "/$CI_PIPELINE_ID/{print NR}" $HOME/GitLabCI.queue) -ne 1 ];do sleep 5m; done
+    - echo $CI_PIPELINE_ID >> $TESTROOT/GitLabCI.queue
+    - while [ $(awk "/$CI_PIPELINE_ID/{print NR}" $TESTROOT/GitLabCI.queue) -ne 1 ];do sleep 5m; done
   script:
     - mkdir -p $DAMASKROOT
     - cd $DAMASKROOT
@@ -425,25 +428,21 @@ AbaqusExample:
   only:
     - development
 
-##################################################################################################
-mergeIntoMaster: 
-  stage: updateMaster
+###################################################################################################
+SpectralRuntime:
+  stage: performance
   script:
+    - module load $IntelCompiler $MPICH_Intel $PETSc_MPICH_Intel
     - cd $DAMASKROOT
-    - export TESTEDREV=$(git describe)                                                              # might be detached from development branch
-    - echo $TESTEDREV > VERSION
-    - git commit VERSION -m "[skip ci] updated version information after successful test of $TESTEDREV"
-    - export UPDATEDREV=$(git describe)                                                             # tested state + 1 commit
-    - git checkout master
-    - git merge $UPDATEDREV -s recursive -X ours                                                    # conflicts occur only for inconsistent state
-    - git push origin master                                                                        # master is now tested version and has updated VERSION file
-    - git checkout development
-    - git pull
-    - git merge master -s recursive -X ours -m "[skip ci] Merge branch 'master' into development"   # only possible conflict is in VERSION file
-    - git push origin development                                                                   # development is unchanged (as master is based on it) but has updated VERSION file
-  only:
-    - development
-
+    - make clean spectral processing OPTIMIZATION=AGGRESSIVE
+    - cd $TESTROOT/performance                                                                      # location of old results
+    - git checkout .                                                                                # undo any changes (i.e. run time data from non-development branch)
+    - cd $DAMASKROOT/PRIVATE/testing
+    - SpectralAll_runtime/test.py -d $TESTROOT/performance
+  except:
+    - master
+    - release
+ 
 ###################################################################################################
 AbaqusExp: 
   stage: createDocumentation
@@ -481,13 +480,59 @@ Spectral:
     - master
     - release
 
+##################################################################################################
+backupData: 
+  stage: saveDocumentation
+  script:
+    - cd $TESTROOT/performance                                                                      # location of new runtime results
+    - git commit -am"${CI_PIPELINE_ID}_${CI_COMMIT_SHA}"
+    - mkdir $BACKUP/${CI_PIPELINE_ID}_${CI_COMMIT_SHA}
+    - cp $TESTROOT/performance/time.txt $BACKUP/${CI_PIPELINE_ID}_${CI_COMMIT_SHA}/
+    - mv $TESTROOT/performance/time.png $BACKUP/${CI_PIPELINE_ID}_${CI_COMMIT_SHA}/
+    - cp $TESTROOT/performance/memory.txt $BACKUP/${CI_PIPELINE_ID}_${CI_COMMIT_SHA}/
+    - mv $TESTROOT/performance/memory.png $BACKUP/${CI_PIPELINE_ID}_${CI_COMMIT_SHA}/
+    - mv $DAMASKROOT/PRIVATE/documenting/DAMASK_* $BACKUP/${CI_PIPELINE_ID}_${CI_COMMIT_SHA}/
+  only:
+    - development
+
+##################################################################################################
+mergeIntoMaster: 
+  stage: updateMaster
+  script:
+    - cd $DAMASKROOT
+    - export TESTEDREV=$(git describe)                                                              # might be detached from development branch
+    - echo $TESTEDREV > VERSION
+    - git commit VERSION -m "[skip ci] updated version information after successful test of $TESTEDREV"
+    - export UPDATEDREV=$(git describe)                                                             # tested state + 1 commit
+    - git checkout master
+    - git merge $UPDATEDREV -s recursive -X ours                                                    # conflicts occur only for inconsistent state
+    - git push origin master                                                                        # master is now tested version and has updated VERSION file
+    - git checkout development
+    - git pull
+    - git merge master -s recursive -X ours -m "[skip ci] Merge branch 'master' into development"   # only possible conflict is in VERSION file
+    - git push origin development                                                                   # development is unchanged (as master is based on it) but has updated VERSION file
+  only:
+    - development
+
+###################################################################################################
+removeData:
+  stage: clean
+  before_script:
+    - echo 'Do nothing'
+  script:
+    - rm -rf $TESTROOT/GitLabCI_Pipeline_$CI_PIPELINE_ID
+    - sed -i "/$CI_PIPELINE_ID/d" $TESTROOT/GitLabCI.queue                                          # in case pipeline was manually (web GUI) restarted and releaseLock was performed already
+  except:
+    - master
+    - release
+
 ###################################################################################################
 removeLock: 
-  stage: clean
+  stage: releaseLock
   before_script: 
     - echo 'Do nothing'
   when: always
-  script: sed -i "/$CI_PIPELINE_ID/d" $HOME/GitLabCI.queue
+  script: sed -i "/$CI_PIPELINE_ID/d" $TESTROOT/GitLabCI.queue
   except:
     - master
     - release
