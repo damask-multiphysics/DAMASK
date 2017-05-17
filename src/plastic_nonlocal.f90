@@ -2377,9 +2377,9 @@ end subroutine plastic_nonlocal_deltaState
 !---------------------------------------------------------------------------------------------------
 subroutine plastic_nonlocal_dotState(Tstar_v, Fe, Fp, Temperature, &
                                      timestep,subfrac, ip,el)
-
-use prec,     only: DAMASK_NaN, &
-                    dNeq0, &
+use, intrinsic :: &
+  IEEE_arithmetic
+use prec,     only: dNeq0, &
                     dNeq, &
                     dEq0
 use numerics, only: numerics_integrationMode, &
@@ -2701,7 +2701,7 @@ if (.not. phase_localPlasticity(material_phase(1_pInt,ip,el))) then             
       write(6,'(a)') '<< CONST >> enforcing cutback !!!'
     endif
 #endif
-    plasticState(p)%dotState =  DAMASK_NaN                                                     ! -> return NaN and, hence, enforce cutback
+    plasticState(p)%dotState = IEEE_value(1.0_pReal,IEEE_quiet_NaN)                                 ! -> return NaN and, hence, enforce cutback
     return
   endif
 
@@ -2984,7 +2984,7 @@ if (    any(rhoSglOriginal(1:ns,1:4) + rhoDot(1:ns,1:4) * timestep < -aTolRho(in
     write(6,'(a)') '<< CONST >> enforcing cutback !!!'
   endif
 #endif
-  plasticState(p)%dotState = DAMASK_NaN
+  plasticState(p)%dotState = IEEE_value(1.0_pReal,IEEE_quiet_NaN)
   return
 else
   forall (s = 1:ns, t = 1_pInt:4_pInt) 
