@@ -1,38 +1,51 @@
-# sets up an environment for DAMASK on zsh
-# usage:  source DAMASK_env.zsh
+# sets up an environment for DAMASK on bash
+# usage:  source DAMASK.sh
 
-DAMASK_ROOT=${0:a:h}
+
+if [ "$OSTYPE" == "linux-gnu" ] || [ "$OSTYPE" == 'linux' ]; then
+  DAMASK_ROOT=$(python -c "import os,sys; print(os.path.realpath(os.path.expanduser(sys.argv[1])))" "$(dirname $BASH_SOURCE)")
+else
+  [[ "${BASH_SOURCE::1}" == "/" ]] && BASE="" || BASE="$(pwd)/"
+  STAT=$(stat "$(dirname $BASE$BASH_SOURCE)")
+  DAMASK_ROOT=${STAT##* }
+fi
+
+# transition compatibility (renamed $DAMASK_ROOT/DAMASK_env.sh to $DAMASK_ROOT/env/DAMASK.sh)
+if [ ${BASH_SOURCE##*/} == "DAMASK.sh" ]; then
+  DAMASK_ROOT=$DAMASK_ROOT'/..'
+fi
 
 # shorthand command to change to DAMASK_ROOT directory
 eval "function damask() { cd $DAMASK_ROOT; }"
 
-# defining set() allows to source the same file for tcsh and zsh, with and without space around =
+# defining set() allows to source the same file for tcsh and bash, with and without space around =
 set() {
     export $1$2$3
  }
 source $DAMASK_ROOT/CONFIG
 unset -f set
 
-# add DAMASK_BIN if present but not yet in $PATH
-MATCH=`echo ":$PATH:" | grep $DAMASK_BIN:`
-if [[ ( "x$DAMASK_BIN" != "x" ) && ( "x$MATCH" = "x" ) ]]; then
-  export PATH=$DAMASK_BIN:$PATH
-fi
+# add DAMASK_BIN if present
+[ "x$DAMASK_BIN" != "x" ] && PATH=$DAMASK_BIN:$PATH
 
-SOLVER=`which DAMASK_spectral || True 2>/dev/null`
-PROCESSING=`which postResults || True 2>/dev/null`
-if [ "x$DAMASK_NUM_THREADS" = "x" ]; then
-  DAMASK_NUM_THREADS=1
-fi
+SOLVER=$(which DAMASK_spectral || true 2>/dev/null)
+[ "x$SOLVER" == "x" ] && SOLVER='Not found!'
+
+PROCESSING=$(which postResults || true 2>/dev/null)
+[ "x$PROCESSING" == "x" ] && PROCESSING='Not found!'
+
+[ "x$DAMASK_NUM_THREADS" == "x" ] && DAMASK_NUM_THREADS=1
 
 # according to http://software.intel.com/en-us/forums/topic/501500
 # this seems to make sense for the stack size
-if [ "`which free 2>/dev/null`" != "free not found" ]; then
-  freeMem=`free -k | grep -E '(Mem|Speicher):' | awk '{print $4;}'`
-
+FREE=$(type -p free 2>/dev/null)
+if [ "x$FREE" != "x" ]; then
+  freeMem=$(free -k | grep -E '(Mem|Speicher):' | awk '{print $4;}')
   # http://superuser.com/questions/220059/what-parameters-has-ulimit             
-  #ulimit -d `expr $freeMem                       / 2` 2>/dev/null # maximum  heap size (kB)
-  ulimit -s `expr $freeMem / $DAMASK_NUM_THREADS / 2` 2>/dev/null # maximum stack size (kB)
+  ulimit -d unlimited 2>/dev/null \
+  || ulimit -d $(expr $freeMem                       / 2)  2>/dev/null # maximum  heap size (kB)
+  ulimit -s unlimited 2>/dev/null \
+  || ulimit -s $(expr $freeMem / $DAMASK_NUM_THREADS / 2)  2>/dev/null # maximum stack size (kB)
 fi
 ulimit -v unlimited   2>/dev/null # maximum virtual memory size
 ulimit -m unlimited   2>/dev/null # maximum physical memory size
@@ -44,7 +57,7 @@ if [ ! -z "$PS1" ]; then
   echo Max-Planck-Institut für Eisenforschung GmbH, Düsseldorf
   echo https://damask.mpie.de
   echo
-  echo "Using environment with ..."
+  echo Using environment with ...
   echo "DAMASK             $DAMASK_ROOT"
   echo "Spectral Solver    $SOLVER" 
   echo "Post Processing    $PROCESSING"
@@ -54,8 +67,6 @@ if [ ! -z "$PS1" ]; then
     [[ $(python -c "import os,sys; print(os.path.realpath(os.path.expanduser(sys.argv[1])))" "$PETSC_DIR") == $PETSC_DIR ]] \
     || echo "               ~~> "$(python -c "import os,sys; print(os.path.realpath(os.path.expanduser(sys.argv[1])))" "$PETSC_DIR")
   fi
-  [[ "x$PETSC_ARCH"  == "x" ]] \
-  || echo "PETSc architecture $PETSC_ARCH"
   echo "MSC.Marc/Mentat    $MSC_ROOT"
   echo
   echo -n "heap  size         "
@@ -79,7 +90,7 @@ fi
 export DAMASK_NUM_THREADS
 export PYTHONPATH=$DAMASK_ROOT/lib:$PYTHONPATH
 
-for var in BASE STAT SOLVER PROCESSING FREE DAMASK_BIN MATCH; do
+for var in BASE STAT SOLVER PROCESSING FREE DAMASK_BIN; do
   unset "${var}"
 done
 for var in DAMASK MSC; do

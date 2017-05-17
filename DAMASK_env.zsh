@@ -1,1 +1,1 @@
-env/DAMASK_env.zsh
+./env/DAMASK.zsh
