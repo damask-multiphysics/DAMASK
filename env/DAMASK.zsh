@@ -19,7 +19,7 @@ source $DAMASK_ROOT/CONFIG
 unset -f set
 
 # add DAMASK_BIN if present
-[ ( "x$DAMASK_BIN" != "x" ) ] && PATH=$DAMASK_BIN:$PATH
+[ "x$DAMASK_BIN" != "x" ] && PATH=$DAMASK_BIN:$PATH
 
 SOLVER=`which DAMASK_spectral || True 2>/dev/null`
 PROCESSING=`which postResults || True 2>/dev/null`
