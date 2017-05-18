@@ -3353,8 +3353,7 @@ logical function crystallite_integrateStress(&
 
  NiterationStressLi = 0_pInt
  jacoCounterLi      = 0_pInt
- steplengthLi0      = 1.0_pReal
- steplengthLi       = steplengthLi0
+ steplengthLi       = 1.0_pReal
  residuumLi_old     = 0.0_pReal
 
  LiLoop: do

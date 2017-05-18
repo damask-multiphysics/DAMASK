@@ -923,10 +923,10 @@ subroutine materialpoint_postResults
    material_phase, &
    homogenization_Ngrains, &
    microstructure_crystallite
- use constitutive, only: &
 #ifdef FEM
+ use constitutive, only: &
    constitutive_plasticity_maxSizePostResults, &
-   constitutive_source_maxSizePostResults, &
+   constitutive_source_maxSizePostResults
 #endif
  use crystallite, only: &
 #ifdef FEM
