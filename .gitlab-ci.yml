@@ -24,11 +24,11 @@ stages:
 
 ###################################################################################################
 before_script:
-  - if [ $(awk "/$CI_PIPELINE_ID/{print NR}" $TESTROOT/GitLabCI.queue)x == 'x' ]
-      then echo $CI_PIPELINE_ID >> $TESTROOT/GitLabCI.queue
+  - if [ $(awk "/$CI_PIPELINE_ID/{print NR}" $TESTROOT/GitLabCI.queue)x == 'x' ];
+      then echo $CI_PIPELINE_ID >> $TESTROOT/GitLabCI.queue;
     fi
-  - while [ $(awk "/$CI_PIPELINE_ID/{print NR}" $TESTROOT/GitLabCI.queue) != 1 ]
-      do sleep 5m
+  - while [ $(awk "/$CI_PIPELINE_ID/{print NR}" $TESTROOT/GitLabCI.queue) != 1 ];
+      do sleep 5m;
     done
   - source $DAMASKROOT/DAMASK_env.sh
   - cd $DAMASKROOT/PRIVATE/testing
@@ -90,8 +90,8 @@ checkout:
   stage: prepareAll
   before_script:
     - echo $CI_PIPELINE_ID >> $TESTROOT/GitLabCI.queue
-    - while [ $(awk "/$CI_PIPELINE_ID/{print NR}" $TESTROOT/GitLabCI.queue) != 1 ]
-        do sleep 5m
+    - while [ $(awk "/$CI_PIPELINE_ID/{print NR}" $TESTROOT/GitLabCI.queue) != 1 ];
+        do sleep 5m;
       done
   script:
     - mkdir -p $DAMASKROOT
