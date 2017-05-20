@@ -30,7 +30,7 @@ before_script:
   - while [ $(awk "/$CI_PIPELINE_ID/{print NR}" $TESTROOT/GitLabCI.queue) != 1 ];
       do sleep 5m;
     done
-  - source $DAMASKROOT/DAMASK_env.sh
+  - source $DAMASKROOT/env/DAMASK.sh
   - cd $DAMASKROOT/PRIVATE/testing
 
 ###################################################################################################
@@ -99,7 +99,7 @@ checkout:
     - git clone -q git@magit1.mpie.de:damask/DAMASK.git .
     - git checkout $CI_COMMIT_SHA
     - git submodule update --init
-    - source DAMASK_env.sh
+    - source env/DAMASK.sh
     - make processing
   except:
     - master
