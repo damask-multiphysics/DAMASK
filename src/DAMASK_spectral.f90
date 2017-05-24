@@ -511,7 +511,6 @@ program DAMASK_spectral
                ',a,'//IO_intOut(stepFraction)//',a,'//IO_intOut(subStepFactor**cutBackLevel)//')') &
                'Increment ',totalIncsCounter,'/',sum(loadCases%incs),&
                '-',stepFraction, '/', subStepFactor**cutBackLevel
-         endif
 
 !--------------------------------------------------------------------------------------------------
 ! forward fields
@@ -706,13 +705,17 @@ subroutine quit(stop_id)
 
  implicit none
  
- #include <petsc/finclude/petscsys.h>
+#include <petsc/finclude/petscsys.h>
  integer(pInt), intent(in) :: stop_id
  integer, dimension(8) :: dateAndTime                                                               ! type default integer
  integer(pInt) :: error = 0_pInt
  PetscErrorCode :: ierr = 0
  logical :: ErrorInQuit
  
+ external :: &
+   PETScFinalize, &
+   MPI_finalize
+
  call BasicPETSC_destroy()
  call AL_destroy()
  call Polarisation_destroy()
