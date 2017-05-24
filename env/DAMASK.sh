@@ -16,7 +16,7 @@ if [ ${BASH_SOURCE##*/} == "DAMASK.sh" ]; then
 fi
 
 # shorthand command to change to DAMASK_ROOT directory
-eval "function damask() { cd $DAMASK_ROOT; }"
+eval "function DAMASK_root() { cd $DAMASK_ROOT; }"
 
 # defining set() allows to source the same file for tcsh and bash, with and without space around =
 set() {
