@@ -96,6 +96,7 @@ checkout:
   script:
     - mkdir -p $DAMASKROOT
     - cd $DAMASKROOT
+    - if [ -d DAMASK ]; then rm -rf DAMASK; fi                                                      # there might be some leftovers from a failed clone
     - git clone -q git@magit1.mpie.de:damask/DAMASK.git .
     - git checkout $CI_COMMIT_SHA
     - git submodule update --init
