@@ -16,9 +16,9 @@ scriptID   = ' '.join([scriptName,damask.version])
 # --------------------------------------------------------------------
 
 parser = OptionParser(option_class=damask.extendableOption, usage='%prog option(s) [ASCIItable(s)]', description = """
-Add column(s) containing gradient of requested column(s).
-Operates on periodic ordered three-dimensional data sets.
-Deals with both vector- and scalar fields.
+Add column(s) containing Gaussian filtered values of requested column(s).
+Operates on periodic and non-periodic ordered three-dimensional data sets.
+For Details see scipy.ndimage documentation.
 
 """, version = scriptID)
 
