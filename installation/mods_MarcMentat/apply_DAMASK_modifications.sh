@@ -163,5 +163,4 @@ echo ''
 echo 'precompiling $VERSION HYPELA2 user subroutine...'
 echo 'not yet implemented..!'
 
-echo ''
-echo 'done.'
+echo -e '\ndone.'
