@@ -25,6 +25,7 @@ module material
    PLASTICITY_none_label                = 'none', &
    PLASTICITY_isotropic_label           = 'isotropic', &
    PLASTICITY_phenopowerlaw_label       = 'phenopowerlaw', &
+   PLASTICITY_mitdiag_label             = 'mitdiag', &
    PLASTICITY_phenoplus_label           = 'phenoplus', &
    PLASTICITY_dislotwin_label           = 'dislotwin', &
    PLASTICITY_disloucla_label           = 'disloucla', &
@@ -73,6 +74,7 @@ module material
    enumerator :: PLASTICITY_undefined_ID, &
                  PLASTICITY_none_ID, &
                  PLASTICITY_isotropic_ID, &
+                 PLASTICITY_mitdiag_ID, &
                  PLASTICITY_phenopowerlaw_ID, &
                  PLASTICITY_phenoplus_ID, &
                  PLASTICITY_dislotwin_ID, &
@@ -312,6 +314,7 @@ module material
    PLASTICITY_none_ID, &
    PLASTICITY_isotropic_ID, &
    PLASTICITY_phenopowerlaw_ID, &
+   PLASTICITY_mitdiag_ID, &
    PLASTICITY_phenoplus_ID, &
    PLASTICITY_dislotwin_ID, &
    PLASTICITY_disloucla_ID, &
@@ -671,7 +674,7 @@ subroutine material_parseHomogenization(fileUnit,myPart)
 
         case ('porosity')
          select case (IO_lc(IO_stringValue(line,chunkPos,2_pInt)))
-           case(POROSITY_NONE_label)
+           case(POROSITY_none_label)
              porosity_type(section) = POROSITY_none_ID
            case(POROSITY_phasefield_label)
              porosity_type(section) = POROSITY_phasefield_ID
@@ -729,8 +732,6 @@ end subroutine material_parseHomogenization
 !> @brief parses the microstructure part in the material configuration file
 !--------------------------------------------------------------------------------------------------
 subroutine material_parseMicrostructure(fileUnit,myPart)
- use prec, only: &
-  dNeq
  use IO
  use mesh, only: &
    mesh_element, &
@@ -739,6 +740,7 @@ subroutine material_parseMicrostructure(fileUnit,myPart)
  implicit none
  character(len=*), intent(in) :: myPart
  integer(pInt),    intent(in) :: fileUnit
+
 
  integer(pInt), allocatable, dimension(:) :: chunkPos
  integer(pInt) :: Nsections, section, constituent, e, i
@@ -759,7 +761,7 @@ subroutine material_parseMicrostructure(fileUnit,myPart)
  allocate(microstructure_elemhomo(Nsections),             source=.false.)
 
  if(any(mesh_element(4,1:mesh_NcpElems) > Nsections)) &
-  call IO_error(155_pInt,ext_msg='More microstructures in geometry than sections in material.config')
+  call IO_error(155_pInt,ext_msg='Microstructure in geometry > Sections in material.config')
 
  forall (e = 1_pInt:mesh_NcpElems) microstructure_active(mesh_element(4,e)) = .true.                ! current microstructure used in model? Elementwise view, maximum N operations for N elements
 
@@ -802,7 +804,7 @@ subroutine material_parseMicrostructure(fileUnit,myPart)
          microstructure_crystallite(section) = IO_intValue(line,chunkPos,2_pInt)
        case ('(constituent)')
          constituent = constituent + 1_pInt
-         do i = 2_pInt,6_pInt,2_pInt
+         do i=2_pInt,6_pInt,2_pInt
            tag = IO_lc(IO_stringValue(line,chunkPos,i))
            select case (tag)
              case('phase')
@@ -816,12 +818,6 @@ subroutine material_parseMicrostructure(fileUnit,myPart)
      end select
    endif
  enddo
-
- !sanity check
-do section = 1_pInt, Nsections
-  if (dNeq(sum(microstructure_fraction(:,section)),1.0_pReal)) &
-    call IO_error(153_pInt,ext_msg=microstructure_name(section))
-enddo
 
 end subroutine material_parseMicrostructure
 
@@ -979,17 +975,19 @@ subroutine material_parsePhase(fileUnit,myPart)
          end select
        case ('plasticity')
          select case (IO_lc(IO_stringValue(line,chunkPos,2_pInt)))
-           case (PLASTICITY_NONE_label)
-             phase_plasticity(section) = PLASTICITY_NONE_ID
+           case (PLASTICITY_none_label)
+             phase_plasticity(section) = PLASTICITY_none_ID
            case (PLASTICITY_ISOTROPIC_label)
              phase_plasticity(section) = PLASTICITY_ISOTROPIC_ID
+           case (PLASTICITY_mitdiag_label)
+             phase_plasticity(section) = PLASTICITY_MITDIAG_ID
            case (PLASTICITY_PHENOPOWERLAW_label)
              phase_plasticity(section) = PLASTICITY_PHENOPOWERLAW_ID
            case (PLASTICITY_PHENOPLUS_label)
              phase_plasticity(section) = PLASTICITY_PHENOPLUS_ID
            case (PLASTICITY_DISLOTWIN_label)
              phase_plasticity(section) = PLASTICITY_DISLOTWIN_ID
-           case (PLASTICITY_DISLOUCLA_label)
+           case (PLASTICITY_disloUCLA_label)
              phase_plasticity(section) = PLASTICITY_DISLOUCLA_ID
            case (PLASTICITY_TITANMOD_label)
              phase_plasticity(section) = PLASTICITY_TITANMOD_ID

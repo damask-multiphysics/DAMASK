@@ -70,6 +70,7 @@ subroutine constitutive_init()
    PLASTICITY_none_ID, &
    PLASTICITY_isotropic_ID, &
    PLASTICITY_phenopowerlaw_ID, &
+   PLASTICITY_mitdiag_ID ,&
    PLASTICITY_phenoplus_ID, &
    PLASTICITY_dislotwin_ID, &
    PLASTICITY_disloucla_ID, &
@@ -93,6 +94,7 @@ subroutine constitutive_init()
    PLASTICITY_NONE_label, &
    PLASTICITY_ISOTROPIC_label, &
    PLASTICITY_PHENOPOWERLAW_label, &
+   PLASTICITY_MITDIAG_label, &   
    PLASTICITY_PHENOPLUS_label, &
    PLASTICITY_DISLOTWIN_label, &
    PLASTICITY_DISLOUCLA_label, &
@@ -113,6 +115,7 @@ subroutine constitutive_init()
  use plastic_none
  use plastic_isotropic
  use plastic_phenopowerlaw
+ use plastic_mitdiag 
  use plastic_phenoplus
  use plastic_dislotwin
  use plastic_disloucla
@@ -158,6 +161,7 @@ subroutine constitutive_init()
  if (any(phase_plasticity == PLASTICITY_NONE_ID))          call plastic_none_init
  if (any(phase_plasticity == PLASTICITY_ISOTROPIC_ID))     call plastic_isotropic_init(FILEUNIT)
  if (any(phase_plasticity == PLASTICITY_PHENOPOWERLAW_ID)) call plastic_phenopowerlaw_init(FILEUNIT)
+ if (any(phase_plasticity == PLASTICITY_MITDIAG_ID))       call plastic_mitdiag_init(FILEUNIT)
  if (any(phase_plasticity == PLASTICITY_PHENOPLUS_ID))     call plastic_phenoplus_init(FILEUNIT)
  if (any(phase_plasticity == PLASTICITY_DISLOTWIN_ID))     call plastic_dislotwin_init(FILEUNIT)
  if (any(phase_plasticity == PLASTICITY_DISLOUCLA_ID))     call plastic_disloucla_init(FILEUNIT)
@@ -207,7 +211,7 @@ subroutine constitutive_init()
            outputName = PLASTICITY_NONE_label
            thisNoutput => null()
            thisOutput => null()
-           thisSize   => null()
+           thisSize   => null() 
          case (PLASTICITY_ISOTROPIC_ID) plasticityType
            outputName = PLASTICITY_ISOTROPIC_label
            thisNoutput => plastic_isotropic_Noutput
@@ -218,6 +222,11 @@ subroutine constitutive_init()
            thisNoutput => plastic_phenopowerlaw_Noutput
            thisOutput => plastic_phenopowerlaw_output
            thisSize   => plastic_phenopowerlaw_sizePostResult
+         case (PLASTICITY_MITDIAG_ID) plasticityType
+           outputName = PLASTICITY_MITDIAG_label
+           thisNoutput => plastic_mitdiag_Noutput
+           thisOutput => plastic_mitdiag_output
+           thisSize   => plastic_mitdiag_sizePostResult
          case (PLASTICITY_PHENOPLUS_ID) plasticityType
            outputName = PLASTICITY_PHENOPLUS_label
            thisNoutput => plastic_phenoplus_Noutput
@@ -501,6 +510,7 @@ subroutine constitutive_LpAndItsTangent(Lp, dLp_dTstar3333, dLp_dFi3333, Tstar_v
    PLASTICITY_NONE_ID, &
    PLASTICITY_ISOTROPIC_ID, &
    PLASTICITY_PHENOPOWERLAW_ID, &
+   PLASTICITY_MITDIAG_ID, &
    PLASTICITY_PHENOPLUS_ID, &
    PLASTICITY_DISLOTWIN_ID, &
    PLASTICITY_DISLOUCLA_ID, &
@@ -510,6 +520,8 @@ subroutine constitutive_LpAndItsTangent(Lp, dLp_dTstar3333, dLp_dFi3333, Tstar_v
    plastic_isotropic_LpAndItsTangent
  use plastic_phenopowerlaw, only: &
    plastic_phenopowerlaw_LpAndItsTangent
+ use plastic_mitdiag, only: &
+   plastic_mitdiag_LpAndItsTangent
  use plastic_phenoplus, only: &
    plastic_phenoplus_LpAndItsTangent
  use plastic_dislotwin, only: &
@@ -560,6 +572,8 @@ subroutine constitutive_LpAndItsTangent(Lp, dLp_dTstar3333, dLp_dFi3333, Tstar_v
      call plastic_isotropic_LpAndItsTangent(Lp,dLp_dMstar,Mstar_v,ipc,ip,el)
    case (PLASTICITY_PHENOPOWERLAW_ID) plasticityType
      call plastic_phenopowerlaw_LpAndItsTangent(Lp,dLp_dMstar,Mstar_v,ipc,ip,el)
+   case (PLASTICITY_MITDIAG_ID) plasticityType
+     call plastic_mitdiag_LpAndItsTangent(Lp,dLp_dMstar,Mstar_v,ipc,ip,el)
    case (PLASTICITY_PHENOPLUS_ID) plasticityType
      call plastic_phenoplus_LpAndItsTangent(Lp,dLp_dMstar,Mstar_v,ipc,ip,el)
    case (PLASTICITY_NONLOCAL_ID) plasticityType
@@ -884,6 +898,7 @@ subroutine constitutive_collectDotState(Tstar_v, FeArray, FpArray, subdt, subfra
    PLASTICITY_none_ID, &
    PLASTICITY_isotropic_ID, &
    PLASTICITY_phenopowerlaw_ID, &
+   PLASTICITY_mitdiag_ID, &
    PLASTICITY_phenoplus_ID, &
    PLASTICITY_dislotwin_ID, &
    PLASTICITY_disloucla_ID, &
@@ -897,6 +912,8 @@ subroutine constitutive_collectDotState(Tstar_v, FeArray, FpArray, subdt, subfra
    plastic_isotropic_dotState
  use plastic_phenopowerlaw, only: &
    plastic_phenopowerlaw_dotState
+ use plastic_mitdiag, only: &
+   plastic_mitdiag_dotState
  use plastic_phenoplus, only: &
    plastic_phenoplus_dotState
  use plastic_dislotwin, only: &
@@ -950,6 +967,8 @@ subroutine constitutive_collectDotState(Tstar_v, FeArray, FpArray, subdt, subfra
      call plastic_isotropic_dotState    (Tstar_v,ipc,ip,el)
    case (PLASTICITY_PHENOPOWERLAW_ID) plasticityType
      call plastic_phenopowerlaw_dotState(Tstar_v,ipc,ip,el)
+   case (PLASTICITY_MITDIAG_ID) plasticityType
+     call plastic_mitdiag_dotState(Tstar_v,ipc,ip,el)
    case (PLASTICITY_PHENOPLUS_ID) plasticityType
      call plastic_phenoplus_dotState    (Tstar_v,ipc,ip,el)
    case (PLASTICITY_DISLOTWIN_ID) plasticityType
@@ -1093,6 +1112,7 @@ function constitutive_postResults(Tstar_v, FeArray, ipc, ip, el)
    PLASTICITY_NONE_ID, &
    PLASTICITY_ISOTROPIC_ID, &
    PLASTICITY_PHENOPOWERLAW_ID, &
+   PLASTICITY_MITDIAG_ID, &
    PLASTICITY_PHENOPLUS_ID, &
    PLASTICITY_DISLOTWIN_ID, &
    PLASTICITY_DISLOUCLA_ID, &
@@ -1108,6 +1128,8 @@ function constitutive_postResults(Tstar_v, FeArray, ipc, ip, el)
    plastic_phenopowerlaw_postResults
  use plastic_phenoplus, only: &
    plastic_phenoplus_postResults
+ use plastic_mitdiag, only: &
+   plastic_mitdiag_postResults
  use plastic_dislotwin, only: &
    plastic_dislotwin_postResults
  use plastic_disloucla, only: &
@@ -1160,6 +1182,9 @@ function constitutive_postResults(Tstar_v, FeArray, ipc, ip, el)
    case (PLASTICITY_PHENOPOWERLAW_ID) plasticityType
      constitutive_postResults(startPos:endPos) = &
        plastic_phenopowerlaw_postResults(Tstar_v,ipc,ip,el)
+   case (PLASTICITY_MITDIAG_ID) plasticityType
+     constitutive_postResults(startPos:endPos) = &
+       plastic_mitdiag_postResults(Tstar_v,ipc,ip,el)
    case (PLASTICITY_PHENOPLUS_ID) plasticityType
      constitutive_postResults(startPos:endPos) = &
        plastic_phenoplus_postResults(Tstar_v,ipc,ip,el)
