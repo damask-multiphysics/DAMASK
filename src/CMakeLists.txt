@@ -74,7 +74,6 @@ add_library (PLASTIC OBJECT
   "plastic_disloUCLA.f90"
   "plastic_isotropic.f90"
   "plastic_phenopowerlaw.f90"
-  "plastic_MITdiag.f90"
   "plastic_titanmod.f90"
   "plastic_nonlocal.f90"
   "plastic_none.f90"
