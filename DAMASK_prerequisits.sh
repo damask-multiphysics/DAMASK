@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-OUTFILE="bla.txt"
+OUTFILE="system_report.txt"
 echo date +"%m-%d-%y" >OUTFILE
 
 # redirect STDOUT and STDERR to logfile
@@ -14,7 +14,6 @@ DAMASK_ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 echo ==============================================================================================
 echo DAMASK settings
 echo ==============================================================================================
-echo
 echo DAMASK_ROOT: $DAMASK_ROOT
 echo
 echo Settings in CONFIG:
@@ -37,8 +36,53 @@ echo
 for module in numpy scipy;do
   echo ----------------------------------------------------------------------------------------------
   echo $module
-  $DEFAULT_PYTHON -c "import $module; print('Version: {}'.format($module.__version__));print('Location: {}'.format($module.__file__))"
+  echo ----------------------------------------------------------------------------------------------
+  $DEFAULT_PYTHON -c "import $module; \
+                      print('Version: {}'.format($module.__version__)); \
+                      print('Location: {}'.format($module.__file__))"
 done
 echo ----------------------------------------------------------------------------------------------
 echo vtk
-$DEFAULT_PYTHON -c "import vtk; print('Location: {}'.format(vtk.__file__))"
+echo ----------------------------------------------------------------------------------------------
+$DEFAULT_PYTHON -c "import vtk; \
+                    print('Version: {}'.format(vtk.vtkVersion.GetVTKVersion())); \
+                    print('Location: {}'.format(vtk.__file__))"
+echo ----------------------------------------------------------------------------------------------
+echo h5py
+echo ----------------------------------------------------------------------------------------------
+$DEFAULT_PYTHON -c "import h5py; \
+                    print('Version: {}'.format(h5py.version.version)); \
+                    print('Location: {}'.format(h5py.__file__))"
+echo
+echo ==============================================================================================
+echo GCC
+echo ==============================================================================================
+for executable in gcc g++ gfortran ;do
+  if [[ "$(which $executable)x" != "x" ]]; then
+    echo $(which $executable) version: $($executable --version 2>&1)
+  else
+     echo $executable does not exist
+  fi
+done
+echo
+echo ==============================================================================================
+echo Intel Compiler Suite
+echo ==============================================================================================
+for executable in icc icpc ifort ;do
+  if [[ "$(which $executable)x" != "x" ]]; then
+    echo $(which $executable) version: $($executable --version 2>&1)
+  else
+     echo $executable does not exist
+  fi
+done
+echo
+echo ==============================================================================================
+echo MPI Wrappers
+echo ==============================================================================================
+for executable in mpicc mpiCC mpicxx mpicxx mpifort mpif90 mpif77; do
+  if [[ "$(which $executable)x" != "x" ]]; then
+    echo $(which $executable) version: $($executable --show 2>&1)
+  else
+     echo $executable does not exist
+  fi
+done
