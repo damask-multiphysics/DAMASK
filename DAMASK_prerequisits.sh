@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 OUTFILE="system_report.txt"
-echo date +"%m-%d-%y" >OUTFILE
+echo date +"%m-%d-%y" >$OUTFILE
 
 # redirect STDOUT and STDERR to logfile
 # https://stackoverflow.com/questions/11229385/redirect-all-output-in-a-bash-script-when-using-set-x^
@@ -14,10 +14,19 @@ DAMASK_ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 echo ==============================================================================================
 echo DAMASK settings
 echo ==============================================================================================
-echo DAMASK_ROOT: $DAMASK_ROOT
+echo DAMASK_ROOT: 
+echo $DAMASK_ROOT
+echo
+echo Version:
+cat  VERSION
 echo
 echo Settings in CONFIG:
 cat  CONFIG
+echo
+echo ==============================================================================================
+echo System
+echo ==============================================================================================
+uname -a
 echo
 echo ==============================================================================================
 echo Python
