@@ -36,19 +36,13 @@ PROCESSING=$(which postResults || true 2>/dev/null)
 
 [ "x$DAMASK_NUM_THREADS" == "x" ] && DAMASK_NUM_THREADS=1
 
-# according to http://software.intel.com/en-us/forums/topic/501500
-# this seems to make sense for the stack size
-FREE=$(type -p free 2>/dev/null)
-if [ "x$FREE" != "x" ]; then
-  freeMem=$(free -k | grep -E '(Mem|Speicher):' | awk '{print $4;}')
-  # http://superuser.com/questions/220059/what-parameters-has-ulimit             
-  ulimit -d unlimited 2>/dev/null \
-  || ulimit -d $(expr $freeMem                       / 2)  2>/dev/null # maximum  heap size (kB)
-  ulimit -s unlimited 2>/dev/null \
-  || ulimit -s $(expr $freeMem / $DAMASK_NUM_THREADS / 2)  2>/dev/null # maximum stack size (kB)
-fi
-ulimit -v unlimited   2>/dev/null # maximum virtual memory size
-ulimit -m unlimited   2>/dev/null # maximum physical memory size
+# currently, there is no information that unlimited causes problems
+# still,  http://software.intel.com/en-us/forums/topic/501500 suggest to fix it
+# http://superuser.com/questions/220059/what-parameters-has-ulimit             
+ulimit -d unlimited 2>/dev/null # maximum  heap size (kB)
+ulimit -s unlimited 2>/dev/null # maximum stack size (kB)
+ulimit -v unlimited 2>/dev/null # maximum virtual memory size
+ulimit -m unlimited 2>/dev/null # maximum physical memory size
 
 # disable output in case of scp
 if [ ! -z "$PS1" ]; then

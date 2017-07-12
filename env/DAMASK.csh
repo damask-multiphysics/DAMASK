@@ -26,15 +26,11 @@ if ( "x$DAMASK_NUM_THREADS" == "x" ) then
   set DAMASK_NUM_THREADS=1
 endif
 
-# according to http://software.intel.com/en-us/forums/topic/501500
-# this seems to make sense for the stack size
-if ( `which free` != "free: Command not found." ) then
-  set freeMem=`free -k | grep -E '(Mem|Speicher):' | awk '{print $4;}'`
-  set heap=` expr $freeMem                       / 2`
-  set stack=`expr $freeMem / $DAMASK_NUM_THREADS / 2`
-  # http://superuser.com/questions/220059/what-parameters-has-ulimit             
-  limit datasize  $heap  # maximum  heap size (kB)
-  limit stacksize $stack # maximum stack size (kB)
+# currently, there is no information that unlimited causes problems
+# still,  http://software.intel.com/en-us/forums/topic/501500 suggest to fix it
+# http://superuser.com/questions/220059/what-parameters-has-ulimit             
+limit datasize  unlimited  # maximum  heap size (kB)
+limit stacksize unlimited  # maximum stack size (kB)
 endif
 if ( `limit | grep memoryuse` != "" ) then
   limit memoryuse  unlimited  # maximum physical memory size
