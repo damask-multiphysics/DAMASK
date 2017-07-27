@@ -1174,7 +1174,7 @@ function Mises(m, mType)
  trace = math_trace33(m)
  dev = m - trace/3.0*eye
  symdev = 0.5*(dev+transpose(dev))
- if (mType .eq. 'stress') then
+ if (mType == 'stress') then
   Mises = sqrt(3.0/2.0*sum(symdev*transpose(symdev)))
  else
   Mises = sqrt(2.0/3.0*sum(symdev*transpose(symdev)))
