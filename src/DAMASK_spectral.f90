@@ -699,21 +699,21 @@ program DAMASK_spectral
        call utilities_calcPlasticity(yieldStressNew, plasticStrainNew, eqStressNew, eqTotalStrainNew, &
                                      eqPlasticStrainNew, plasticWorkNew)
        
-       if(stopFlag .eq. 'totalStrain') then
+       if(stopFlag == 'totalStrain') then
          if(eqTotalStrainNew > yieldStopValue) then
            yieldStress = yieldStressOld * (eqTotalStrainNew - yieldStopValue)/(eqTotalStrainNew - eqTotalStrainOld) &   ! linear interpolation of stress values
                        + yieldStressNew * (yieldStopValue - eqTotalStrainOld)/(eqTotalStrainNew - eqTotalStrainOld)
            plasticStrainRate = (plasticStrainNew - plasticStrainOld)/(time - time0)                                     ! calculate plastic strain rate
            yieldStopSatisfied = .True.
          endif
-       elseif(stopFlag .eq. 'plasticStrain') then
+       elseif(stopFlag == 'plasticStrain') then
          if(eqPlasticStrainNew > yieldStopValue) then
            yieldStress = yieldStressOld * (eqPlasticStrainNew - yieldStopValue)/(eqPlasticStrainNew - eqPlasticStrainOld) &
                        + yieldStressNew * (yieldStopValue - eqPlasticStrainOld)/(eqPlasticStrainNew - eqPlasticStrainOld)
            plasticStrainRate = (plasticStrainNew - plasticStrainOld)/(time - time0)
            yieldStopSatisfied = .True.
          endif
-       elseif(stopFlag .eq. 'plasticWork') then
+       elseif(stopFlag == 'plasticWork') then
          if(plasticWorkNew > yieldStopValue) then
            yieldStress = yieldStressOld * (plasticWorkNew - yieldStopValue)/(plasticWorkNew - plasticWorkOld) &
                        + yieldStressNew * (yieldStopValue - plasticWorkOld)/(plasticWorkNew - plasticWorkOld)
