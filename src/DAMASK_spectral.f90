@@ -721,12 +721,12 @@ program DAMASK_spectral
            yieldStopSatisfied = .True.
          endif
        endif
-	 endif yieldCheck
+     endif yieldCheck
 
-	 if (yieldStopSatisfied) then                                                                   ! when yield, write the yield stress and strain rate to file and quit the job
+     if (yieldStopSatisfied) then                                                                   ! when yield, write the yield stress and strain rate to file and quit the job
        if (worldrank == 0) then
          open(newunit=yieldResUnit,file=trim(getSolverWorkingDirectoryName())//trim(getSolverJobName())//&
-								 '.yield',form='FORMATTED',status='REPLACE')
+                                  '.yield',form='FORMATTED',status='REPLACE')
          do i = 1_pInt,3_pInt
            write(yieldResUnit,*) (yieldStress(i,j), j=1,3)
          enddo
