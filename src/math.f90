@@ -145,6 +145,7 @@ module math
    math_sampleGaussVar, &
    math_symmetricEulers, &
    math_eigenvectorBasisSym33, &
+   math_eigenvectorBasisSym33_log, &
    math_eigenvectorBasisSym, &
    math_eigenValuesVectorsSym33, &
    math_eigenValuesVectorsSym, &
@@ -2063,6 +2064,70 @@ function math_eigenvectorBasisSym33(m)
 
 end function math_eigenvectorBasisSym33
 
+
+!--------------------------------------------------------------------------------------------------
+!> @brief logarithm eigenvector basis of symmetric 33 matrix m
+!--------------------------------------------------------------------------------------------------
+function math_eigenvectorBasisSym33_log(m)
+
+ implicit none
+ real(pReal), dimension(3,3)              :: math_eigenvectorBasisSym33_log
+ real(pReal), dimension(3)                :: invariants, values
+ real(pReal), dimension(3,3), intent(in) :: m
+ real(pReal) :: P, Q, rho, phi
+ real(pReal), parameter :: TOL=1.e-14_pReal
+ real(pReal), dimension(3,3,3) :: N, EB
+
+ invariants = math_invariantsSym33(m)
+ EB = 0.0_pReal
+
+ P = invariants(2)-invariants(1)**2.0_pReal/3.0_pReal
+ Q = -2.0_pReal/27.0_pReal*invariants(1)**3.0_pReal+product(invariants(1:2))/3.0_pReal-invariants(3)
+
+ threeSimilarEigenvalues: if(all(abs([P,Q]) < TOL)) then
+   values = invariants(1)/3.0_pReal
+!   this is not really correct, but at least the basis is correct
+   EB(1,1,1)=1.0_pReal
+   EB(2,2,2)=1.0_pReal
+   EB(3,3,3)=1.0_pReal
+ else threeSimilarEigenvalues
+   rho=sqrt(-3.0_pReal*P**3.0_pReal)/9.0_pReal
+   phi=acos(math_limit(-Q/rho*0.5_pReal,-1.0_pReal,1.0_pReal))
+   values = 2.0_pReal*rho**(1.0_pReal/3.0_pReal)* &
+                             [cos(phi/3.0_pReal), &
+                              cos((phi+2.0_pReal*PI)/3.0_pReal), &
+                              cos((phi+4.0_pReal*PI)/3.0_pReal) &
+                             ] + invariants(1)/3.0_pReal
+   N(1:3,1:3,1) = m-values(1)*math_I3
+   N(1:3,1:3,2) = m-values(2)*math_I3
+   N(1:3,1:3,3) = m-values(3)*math_I3
+   twoSimilarEigenvalues: if(abs(values(1)-values(2)) < TOL) then 
+     EB(1:3,1:3,3)=math_mul33x33(N(1:3,1:3,1),N(1:3,1:3,2))/ &
+                                               ((values(3)-values(1))*(values(3)-values(2)))
+     EB(1:3,1:3,1)=math_I3-EB(1:3,1:3,3)
+   elseif(abs(values(2)-values(3)) < TOL) then twoSimilarEigenvalues
+     EB(1:3,1:3,1)=math_mul33x33(N(1:3,1:3,2),N(1:3,1:3,3))/ &
+                                               ((values(1)-values(2))*(values(1)-values(3)))
+     EB(1:3,1:3,2)=math_I3-EB(1:3,1:3,1)
+   elseif(abs(values(3)-values(1)) < TOL) then twoSimilarEigenvalues 
+     EB(1:3,1:3,2)=math_mul33x33(N(1:3,1:3,1),N(1:3,1:3,3))/ &
+                                               ((values(2)-values(1))*(values(2)-values(3)))
+     EB(1:3,1:3,1)=math_I3-EB(1:3,1:3,2)
+   else twoSimilarEigenvalues
+     EB(1:3,1:3,1)=math_mul33x33(N(1:3,1:3,2),N(1:3,1:3,3))/ &
+                                               ((values(1)-values(2))*(values(1)-values(3)))
+     EB(1:3,1:3,2)=math_mul33x33(N(1:3,1:3,1),N(1:3,1:3,3))/ &
+                                               ((values(2)-values(1))*(values(2)-values(3)))
+     EB(1:3,1:3,3)=math_mul33x33(N(1:3,1:3,1),N(1:3,1:3,2))/ &
+                                               ((values(3)-values(1))*(values(3)-values(2)))
+   endif twoSimilarEigenvalues
+ endif threeSimilarEigenvalues
+
+ math_eigenvectorBasisSym33_log = log(sqrt(values(1))) * EB(1:3,1:3,1) &
+                            + log(sqrt(values(2))) * EB(1:3,1:3,2) &
+                            + log(sqrt(values(3))) * EB(1:3,1:3,3)
+
+end function math_eigenvectorBasisSym33_log
 
 !--------------------------------------------------------------------------------------------------
 !> @brief rotational part from polar decomposition of 33 tensor m
