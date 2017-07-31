@@ -1,9 +1,13 @@
 # sets up an environment for DAMASK on bash
 # usage:  source DAMASK.sh
 
+function canonicalPath {
+  python -c "import os,sys; print(os.path.realpath(os.path.expanduser(sys.argv[1])))" $1
+}
+
 
 if [ "$OSTYPE" == "linux-gnu" ] || [ "$OSTYPE" == 'linux' ]; then
-  DAMASK_ROOT=$(python -c "import os,sys; print(os.path.realpath(os.path.expanduser(sys.argv[1])))" "$(dirname $BASH_SOURCE)")
+  DAMASK_ROOT=$(canonicalPath "$(dirname $BASH_SOURCE)")
 else
   [[ "${BASH_SOURCE::1}" == "/" ]] && BASE="" || BASE="$(pwd)/"
   STAT=$(stat "$(dirname $BASE$BASH_SOURCE)")
@@ -12,8 +16,9 @@ fi
 
 # transition compatibility (renamed $DAMASK_ROOT/DAMASK_env.sh to $DAMASK_ROOT/env/DAMASK.sh)
 if [ ${BASH_SOURCE##*/} == "DAMASK.sh" ]; then
-  DAMASK_ROOT=$DAMASK_ROOT'/..'
+  DAMASK_ROOT=$(canonicalPath "$DAMASK_ROOT/..")
 fi
+
 
 # shorthand command to change to DAMASK_ROOT directory
 eval "function DAMASK_root() { cd $DAMASK_ROOT; }"
@@ -64,8 +69,8 @@ if [ ! -z "$PS1" ]; then
   echo "Multithreading     DAMASK_NUM_THREADS=$DAMASK_NUM_THREADS"
   if [ "x$PETSC_DIR"   != "x" ]; then
     echo "PETSc location     $PETSC_DIR"
-    [[ $(python -c "import os,sys; print(os.path.realpath(os.path.expanduser(sys.argv[1])))" "$PETSC_DIR") == $PETSC_DIR ]] \
-    || echo "               ~~> "$(python -c "import os,sys; print(os.path.realpath(os.path.expanduser(sys.argv[1])))" "$PETSC_DIR")
+    [[ $(canonicalPath "$PETSC_DIR") == $PETSC_DIR ]] \
+    || echo "               ~~> "$(canonicalPath "$PETSC_DIR")
   fi
   echo "MSC.Marc/Mentat    $MSC_ROOT"
   echo
