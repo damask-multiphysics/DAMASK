@@ -101,12 +101,7 @@ for name in filenames:
   outputAlive = True
   while outputAlive and table.data_read():                                                          # read next data line of ASCII table
     try:
-      table.data_append(
-        data[
-          np.argwhere(np.all(
-            (map(float,table.data[myLink:myLink+myLinkDim]) - index) == 0,
-             axis = 1))[0]
-            ])                                                                                      # add data from first matching line
+      table.data_append(data[np.argwhere(np.all((map(float,table.data[myLink:myLink+myLinkDim]) - index)==0,axis=1))[0]])  # add data of first matching line
     except IndexError:
       table.data_append(np.nan*np.ones_like(data[0]))                                               # or add NaNs
     outputAlive = table.data_write()                                                                # output processed line
