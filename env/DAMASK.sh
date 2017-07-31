@@ -1,9 +1,13 @@
 # sets up an environment for DAMASK on bash
 # usage:  source DAMASK.sh
 
+function canonicalPath {
+  python -c "import os,sys; print(os.path.realpath(os.path.expanduser(sys.argv[1])))" $1
+}
+
 
 if [ "$OSTYPE" == "linux-gnu" ] || [ "$OSTYPE" == 'linux' ]; then
-  DAMASK_ROOT=$(python -c "import os,sys; print(os.path.realpath(os.path.expanduser(sys.argv[1])))" "$(dirname $BASH_SOURCE)")
+  DAMASK_ROOT=$(dirname $BASH_SOURCE)
 else
   [[ "${BASH_SOURCE::1}" == "/" ]] && BASE="" || BASE="$(pwd)/"
   STAT=$(stat "$(dirname $BASE$BASH_SOURCE)")
@@ -12,8 +16,10 @@ fi
 
 # transition compatibility (renamed $DAMASK_ROOT/DAMASK_env.sh to $DAMASK_ROOT/env/DAMASK.sh)
 if [ ${BASH_SOURCE##*/} == "DAMASK.sh" ]; then
-  DAMASK_ROOT=$DAMASK_ROOT'/..'
+  DAMASK_ROOT="$DAMASK_ROOT/.."
 fi
+
+DAMASK_ROOT=$(canonicalPath $DAMASK_ROOT)
 
 # shorthand command to change to DAMASK_ROOT directory
 eval "function DAMASK_root() { cd $DAMASK_ROOT; }"
@@ -28,10 +34,10 @@ unset -f set
 # add DAMASK_BIN if present
 [ "x$DAMASK_BIN" != "x" ] && PATH=$DAMASK_BIN:$PATH
 
-SOLVER=$(which DAMASK_spectral || true 2>/dev/null)
+SOLVER=$(type -p DAMASK_spectral || true 2>/dev/null)
 [ "x$SOLVER" == "x" ] && SOLVER='Not found!'
 
-PROCESSING=$(which postResults || true 2>/dev/null)
+PROCESSING=$(type -p postResults || true 2>/dev/null)
 [ "x$PROCESSING" == "x" ] && PROCESSING='Not found!'
 
 [ "x$DAMASK_NUM_THREADS" == "x" ] && DAMASK_NUM_THREADS=1
@@ -64,8 +70,8 @@ if [ ! -z "$PS1" ]; then
   echo "Multithreading     DAMASK_NUM_THREADS=$DAMASK_NUM_THREADS"
   if [ "x$PETSC_DIR"   != "x" ]; then
     echo "PETSc location     $PETSC_DIR"
-    [[ $(python -c "import os,sys; print(os.path.realpath(os.path.expanduser(sys.argv[1])))" "$PETSC_DIR") == $PETSC_DIR ]] \
-    || echo "               ~~> "$(python -c "import os,sys; print(os.path.realpath(os.path.expanduser(sys.argv[1])))" "$PETSC_DIR")
+    [[ $(canonicalPath "$PETSC_DIR") == $PETSC_DIR ]] \
+    || echo "               ~~> "$(canonicalPath "$PETSC_DIR")
   fi
   echo "MSC.Marc/Mentat    $MSC_ROOT"
   echo
