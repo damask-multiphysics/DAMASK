@@ -1,16 +1,5 @@
 # special flags for some files
 if (${CMAKE_Fortran_COMPILER_ID} STREQUAL "GNU")
-
-    SET_SOURCE_FILES_PROPERTIES( "prec.f90" PROPERTIES
-                                    COMPILE_FLAGS "-fno-range-check -fall-intrinsics -fno-fast-math")
-    # fno-range-check:  Disable range checking on results of simplification of constant expressions during compilation
-    #      -->   allows the definition of DAMASK_NaN
-    #-fall-intrinsics:  all intrinsic procedures (including the GNU-specific extensions) are accepted. -Wintrinsics-std will be ignored
-    #                   and no user-defined procedure with the same name as any intrinsic will be called except when it is explicitly declared external
-    #      -->   allows the use of 'isnan'
-    #-fno-fast-math:
-    #      -->   otherwise, when setting -ffast-math, isnan always evaluates to false (I would call it a bug)
-
     SET_SOURCE_FILES_PROPERTIES( "lattice.f90" PROPERTIES
                                 COMPILE_FLAGS "-ffree-line-length-240")
     # long lines for interaction matrix
@@ -185,8 +174,10 @@ if ("${PROJECT_NAME}" STREQUAL "DAMASK_spectral")
       list(APPEND OBJECTFILES $<TARGET_OBJECTS:SPECTRAL_SOLVER>)
       if(NOT "${CMAKE_BUILD_TYPE}" STREQUAL "SYNTAXONLY")
         add_executable(DAMASK_spectral "DAMASK_spectral.f90" ${OBJECTFILES})
-        add_dependencies(DAMASK_spectral SPECTRAL_SOLVER)
+      else()
+        add_library(DAMASK_spectral OBJECT "DAMASK_spectral.f90")
       endif()
+      add_dependencies(DAMASK_spectral SPECTRAL_SOLVER)
 elseif ("${PROJECT_NAME}" STREQUAL "DAMASK_FEM")
       add_library(FEM_UTILITIES OBJECT "FEM_utilities.f90")
       add_dependencies(FEM_UTILITIES DAMASK_CPFE)

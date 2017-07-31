@@ -741,8 +741,8 @@ end function utilities_curlRMS
 !> @brief calculates mask compliance tensor used to adjust F to fullfill stress BC
 !--------------------------------------------------------------------------------------------------
 function utilities_maskedCompliance(rot_BC,mask_stress,C)
- use prec, only: &
-   prec_isNaN
+ use, intrinsic :: &
+   IEEE_arithmetic
  use IO, only: &
    IO_error
  use math, only: &
@@ -794,7 +794,7 @@ function utilities_maskedCompliance(rot_BC,mask_stress,C)
    endif; enddo; endif; enddo
 
    call math_invert(size_reduced, c_reduced, s_reduced, errmatinv)                                  ! invert reduced stiffness
-   if (any(prec_isNaN(s_reduced))) errmatinv = .true.
+   if (any(IEEE_is_NaN(s_reduced))) errmatinv = .true.
    if(errmatinv) call IO_error(error_ID=400_pInt,ext_msg='utilities_maskedCompliance')
    temp99_Real = 0.0_pReal                                                                          ! fill up compliance with zeros
     k = 0_pInt

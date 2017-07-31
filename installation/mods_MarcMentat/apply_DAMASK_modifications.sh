@@ -102,8 +102,7 @@ for filename in 'edit_window' \
 done
 
 # Mentat scripts
-echo ''
-echo 'adapting Mentat menus...'
+echo -e '\nadapting Mentat menus...'
 theDIR=$INSTALLDIR/mentat$VERSION/menus
 for filename in 'job_run.ms'; do
   cp $SCRIPTLOCATION/$VERSION/Mentat_menus/$filename $theDIR
@@ -163,5 +162,4 @@ echo ''
 echo 'precompiling $VERSION HYPELA2 user subroutine...'
 echo 'not yet implemented..!'
 
-echo ''
-echo 'done.'
+echo -e '\ndone.'

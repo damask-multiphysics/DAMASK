@@ -23,7 +23,7 @@ Generate geometry description and material configuration from position, phase, a
 parser.add_option('--coordinates',
                   dest = 'pos',
                   type = 'string', metavar = 'string',
-                  help = 'coordinates label')
+                  help = 'coordinates label (%default)')
 parser.add_option('--phase',
                   dest = 'phase',
                   type = 'string', metavar = 'string',
@@ -90,6 +90,7 @@ parser.set_defaults(symmetry       = [damask.Symmetry.lattices[-1]],
                     homogenization = 1,
                     crystallite    = 1,
                     verbose        = False,
+                    pos            = 'pos',
                    )
 
 (options,filenames) = parser.parse_args()

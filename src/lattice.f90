@@ -2170,8 +2170,8 @@ pure function lattice_symmetrize33(struct,T33)
 !> @brief figures whether unit quat falls into stereographic standard triangle
 !--------------------------------------------------------------------------------------------------
 logical pure function lattice_qInSST(Q, struct)
- use prec, only: &
-   prec_isNaN
+ use, intrinsic :: &
+   IEEE_arithmetic
  use math, only: &
    math_qToRodrig
 
@@ -2181,7 +2181,7 @@ logical pure function lattice_qInSST(Q, struct)
  real(pReal), dimension(3) ::                  Rodrig                                               ! Rodrigues vector of Q
 
  Rodrig = math_qToRodrig(Q)
- if (any(prec_isNaN(Rodrig))) then
+ if (any(IEEE_is_NaN(Rodrig))) then
    lattice_qInSST = .false.
  else
    select case (struct)

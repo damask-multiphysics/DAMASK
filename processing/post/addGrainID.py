@@ -148,7 +148,7 @@ for name in filenames:
 
   bg.set_message('reading positions...')
 
-  table.data_readArray(options.pos)                                                              # read position vectors
+  table.data_readArray(options.pos)                                                                 # read position vectors
   grainID = -np.ones(len(table.data),dtype=int)
 
   start = tick = time.clock()

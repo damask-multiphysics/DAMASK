@@ -3,16 +3,21 @@
 
 set CALLED=($_)
 set DIRNAME=`dirname $CALLED[2]`
+
+# transition compatibility (renamed $DAMASK_ROOT/DAMASK_env.csh to $DAMASK_ROOT/env/DAMASK.csh)
+set FILENAME=`basename $CALLED[2]`
+if ($FILENAME == "DAMASK.csh") then
+  set DIRNAME=$DIRNAME"/../"
+endif
+
 set DAMASK_ROOT=`python -c "import os,sys; print(os.path.realpath(os.path.expanduser(sys.argv[1])))" $DIRNAME`
+
 
 source $DAMASK_ROOT/CONFIG
 
-# if DAMASK_BIN is present and not in $PATH, add it
+# if DAMASK_BIN is present
 if ( $?DAMASK_BIN) then
-  set MATCH=`echo :${PATH}: | grep ${DAMASK_BIN}:`
-  if ( "x$MATCH" == "x" ) then
-    set PATH=${DAMASK_BIN}:${PATH}
-  endif
+  set path = ($DAMASK_BIN $path)
 endif
 
 set SOLVER=`which DAMASK_spectral`                                                          
@@ -62,4 +67,8 @@ if ( $?prompt ) then
 endif
 
 setenv DAMASK_NUM_THREADS $DAMASK_NUM_THREADS
-setenv PYTHONPATH $DAMASK_ROOT/lib:$PYTHONPATH
+if ( ! $?PYTHONPATH ) then
+  setenv PYTHONPATH $DAMASK_ROOT/lib
+else
+  setenv PYTHONPATH $DAMASK_ROOT/lib:$PYTHONPATH
+endif

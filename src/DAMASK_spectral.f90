@@ -364,12 +364,12 @@ program DAMASK_spectral
          case (DAMASK_spectral_SolverBasicPETSc_label)
            call basicPETSc_init
          case (DAMASK_spectral_SolverAL_label)
-           if(iand(debug_level(debug_spectral),debug_levelBasic)/= 0 .and. worldrank == 0_pInt) &
+           if(iand(debug_level(debug_spectral),debug_levelBasic)/= 0) &
            call IO_warning(42_pInt, ext_msg='debug Divergence')
            call AL_init
 
          case (DAMASK_spectral_SolverPolarisation_label)
-           if(iand(debug_level(debug_spectral),debug_levelBasic)/= 0 .and. worldrank == 0_pInt) &
+           if(iand(debug_level(debug_spectral),debug_levelBasic)/= 0) &
            call IO_warning(42_pInt, ext_msg='debug Divergence')
            call Polarisation_init
 
@@ -450,8 +450,7 @@ program DAMASK_spectral
      if (ierr /= 0_pInt) call IO_error(error_ID=894_pInt, ext_msg='MPI_file_write')
    enddo
    fileOffset = fileOffset + sum(outputSize)                                                        ! forward to current file position
-   if (worldrank == 0) &
-     write(6,'(1/,a)') ' ... writing initial configuration to file ........................'
+   write(6,'(1/,a)') ' ... writing initial configuration to file ........................'
  endif
 !--------------------------------------------------------------------------------------------------
 ! loopping over loadcases
@@ -498,22 +497,20 @@ program DAMASK_spectral
 
 !--------------------------------------------------------------------------------------------------
 ! report begin of new increment
-         if (worldrank == 0) then
-           write(6,'(/,a)') ' ###########################################################################'
-           write(6,'(1x,a,es12.5'//&
-                   ',a,'//IO_intOut(inc)//',a,'//IO_intOut(loadCases(currentLoadCase)%incs)//&
-                   ',a,'//IO_intOut(stepFraction)//',a,'//IO_intOut(subStepFactor**cutBackLevel)//&
-                   ',a,'//IO_intOut(currentLoadCase)//',a,'//IO_intOut(size(loadCases))//')') &
-                   'Time', time, &
-                   's: Increment ', inc, '/', loadCases(currentLoadCase)%incs,&
-                   '-', stepFraction, '/', subStepFactor**cutBackLevel,&
-                   ' of load case ', currentLoadCase,'/',size(loadCases)
-           flush(6)
-           write(incInfo,'(a,'//IO_intOut(totalIncsCounter)//',a,'//IO_intOut(sum(loadCases%incs))//&
-                 ',a,'//IO_intOut(stepFraction)//',a,'//IO_intOut(subStepFactor**cutBackLevel)//')') &
-                 'Increment ',totalIncsCounter,'/',sum(loadCases%incs),&
-                 '-',stepFraction, '/', subStepFactor**cutBackLevel
-         endif
+         write(6,'(/,a)') ' ###########################################################################'
+         write(6,'(1x,a,es12.5'//&
+                 ',a,'//IO_intOut(inc)//',a,'//IO_intOut(loadCases(currentLoadCase)%incs)//&
+                 ',a,'//IO_intOut(stepFraction)//',a,'//IO_intOut(subStepFactor**cutBackLevel)//&
+                 ',a,'//IO_intOut(currentLoadCase)//',a,'//IO_intOut(size(loadCases))//')') &
+                 'Time', time, &
+                 's: Increment ', inc, '/', loadCases(currentLoadCase)%incs,&
+                 '-', stepFraction, '/', subStepFactor**cutBackLevel,&
+                 ' of load case ', currentLoadCase,'/',size(loadCases)
+         flush(6)
+         write(incInfo,'(a,'//IO_intOut(totalIncsCounter)//',a,'//IO_intOut(sum(loadCases%incs))//&
+               ',a,'//IO_intOut(stepFraction)//',a,'//IO_intOut(subStepFactor**cutBackLevel)//')') &
+               'Increment ',totalIncsCounter,'/',sum(loadCases%incs),&
+               '-',stepFraction, '/', subStepFactor**cutBackLevel
 
 !--------------------------------------------------------------------------------------------------
 ! forward fields
@@ -595,7 +592,7 @@ program DAMASK_spectral
          cutBack = .False.
          if(solres(1)%termIll .or. .not. all(solres(:)%converged .and. solres(:)%stagConverged)) then ! no solution found
            if (cutBackLevel < maxCutBack) then                                                      ! do cut back
-             if (worldrank == 0) write(6,'(/,a)') ' cut back detected'
+             write(6,'(/,a)') ' cut back detected'
              cutBack = .True.
              stepFraction = (stepFraction - 1_pInt) * subStepFactor                                 ! adjust to new denominator
              cutBackLevel = cutBackLevel + 1_pInt
@@ -603,11 +600,15 @@ program DAMASK_spectral
              timeinc = timeinc/2.0_pReal
            elseif (solres(1)%termIll) then                                                          ! material point model cannot find a solution, exit in any casy
              call IO_warning(850_pInt)
+             call MPI_file_close(resUnit,ierr)
+             close(statUnit)
              call quit(-1_pInt*(lastRestartWritten+1_pInt))                                         ! quit and provide information about last restart inc written
            elseif (continueCalculation == 1_pInt)  then
              guess = .true.                                                                         ! accept non converged BVP solution
            else                                                                                     ! default behavior, exit if spectral solver does not converge
              call IO_warning(850_pInt)
+             call MPI_file_close(resUnit,ierr)
+             close(statUnit)
              call quit(-1_pInt*(lastRestartWritten+1_pInt))                                         ! quit and provide information about last restart inc written
            endif
          else
@@ -624,13 +625,11 @@ program DAMASK_spectral
        cutBackLevel = max(0_pInt, cutBackLevel - 1_pInt)                                            ! try half number of subincs next inc
        if(all(solres(:)%converged)) then                                                            ! report converged inc
          convergedCounter = convergedCounter + 1_pInt
-         if (worldrank == 0) &
-           write(6,'(/,a,'//IO_intOut(totalIncsCounter)//',a)') &
-                                     ' increment ', totalIncsCounter, ' converged'
+         write(6,'(/,a,'//IO_intOut(totalIncsCounter)//',a)') &
+                                   ' increment ', totalIncsCounter, ' converged'
        else
-         if (worldrank == 0) &
-           write(6,'(/,a,'//IO_intOut(totalIncsCounter)//',a)') &                                   ! report non-converged inc
-                                     ' increment ', totalIncsCounter, ' NOT converged'
+         write(6,'(/,a,'//IO_intOut(totalIncsCounter)//',a)') &                                   ! report non-converged inc
+                                   ' increment ', totalIncsCounter, ' NOT converged'
          notConvergedCounter = notConvergedCounter + 1_pInt
        endif; flush(6)
        if (mod(inc,loadCases(currentLoadCase)%outputFrequency) == 0_pInt) then                      ! at output frequency
@@ -665,44 +664,14 @@ program DAMASK_spectral
 
 !--------------------------------------------------------------------------------------------------
 ! report summary of whole calculation
- if (worldrank == 0) then
-   write(6,'(/,a)') ' ###########################################################################'
-   write(6,'(1x,i6.6,a,i6.6,a,f5.1,a)') convergedCounter, ' out of ', &
-                                     notConvergedCounter + convergedCounter, ' (', &
-                                     real(convergedCounter, pReal)/&
-                                     real(notConvergedCounter + convergedCounter,pReal)*100.0_pReal, &
-                                     ' %) increments converged!'
- endif
+ write(6,'(/,a)') ' ###########################################################################'
+ write(6,'(1x,i6.6,a,i6.6,a,f5.1,a)') convergedCounter, ' out of ', &
+                                   notConvergedCounter + convergedCounter, ' (', &
+                                   real(convergedCounter, pReal)/&
+                                   real(notConvergedCounter + convergedCounter,pReal)*100.0_pReal, &
+                                   ' %) increments converged!'
  call MPI_file_close(resUnit,ierr)
  close(statUnit)
-
- do field = 1, nActiveFields
-   select case(loadCases(1)%ID(field))
-     case(FIELD_MECH_ID)
-       select case (spectral_solver)
-         case (DAMASK_spectral_SolverBasicPETSc_label)
-           call BasicPETSC_destroy()
-         case (DAMASK_spectral_SolverAL_label)
-           call AL_destroy()
-         case (DAMASK_spectral_SolverPolarisation_label)
-           call Polarisation_destroy()
-       end select
-     case(FIELD_THERMAL_ID)
-       call spectral_thermal_destroy()
-     case(FIELD_DAMAGE_ID)
-       call spectral_damage_destroy()
-   end select
- enddo
- call utilities_destroy()
-
- call PETScFinalize(ierr); CHKERRQ(ierr)
-
-#ifdef _OPENMP
-  call MPI_finalize(i)
-  if (i /= 0_pInt) then 
-    call IO_error(error_ID=894, el=i, ext_msg="Finalize()")
-  endif
-#endif
 
  if (notConvergedCounter > 0_pInt) call quit(3_pInt)                                                ! error if some are not converged
  call quit(0_pInt)                                                                                  ! no complains ;)
@@ -721,11 +690,47 @@ end program DAMASK_spectral
 subroutine quit(stop_id)
  use prec, only: &
    pInt
+ use spectral_mech_Basic, only: &
+   BasicPETSC_destroy
+ use spectral_mech_AL, only: &
+   AL_destroy
+ use spectral_mech_Polarisation, only: &
+   Polarisation_destroy
+ use spectral_damage, only: &
+   spectral_damage_destroy
+ use spectral_thermal, only: &
+   spectral_thermal_destroy
+ use spectral_utilities, only: &
+   utilities_destroy
 
  implicit none
+ 
+#include <petsc/finclude/petscsys.h>
  integer(pInt), intent(in) :: stop_id
  integer, dimension(8) :: dateAndTime                                                               ! type default integer
+ integer(pInt) :: error = 0_pInt
+ PetscErrorCode :: ierr = 0
+ logical :: ErrorInQuit
+ 
+ external :: &
+   PETScFinalize, &
+   MPI_finalize
 
+ call BasicPETSC_destroy()
+ call AL_destroy()
+ call Polarisation_destroy()
+ call spectral_damage_destroy()
+ call spectral_thermal_destroy()
+ call utilities_destroy()
+
+ call PETScFinalize(ierr)
+ if(ierr /= 0) write(6,'(a)') ' Error in PETScFinalize'
+#ifdef _OPENMP
+ call MPI_finalize(error)
+ if(error /= 0) write(6,'(a)') ' Error in MPI_finalize'
+#endif
+ ErrorInQuit = (ierr /= 0 .or. error /= 0_pInt)
+ 
  call date_and_time(values = dateAndTime)
  write(6,'(/,a)') 'DAMASK terminated on:'
  write(6,'(a,2(i2.2,a),i4.4)') 'Date:               ',dateAndTime(3),'/',&
@@ -735,12 +740,13 @@ subroutine quit(stop_id)
                                                       dateAndTime(6),':',&
                                                       dateAndTime(7)
 
- if (stop_id == 0_pInt) stop 0                                                                      ! normal termination
- if (stop_id <  0_pInt) then                                                                        ! terminally ill, restart might help
+ if (stop_id == 0_pInt .and. .not. ErrorInQuit) stop 0                                              ! normal termination
+ if (stop_id <  0_pInt .and. .not. ErrorInQuit) then                                                                        ! terminally ill, restart might help
    write(0,'(a,i6)') 'restart information available at ', stop_id*(-1_pInt)
    stop 2
  endif
- if (stop_id == 3_pInt) stop 3                                                                      ! not all incs converged
+ if (stop_id == 3_pInt .and. .not. ErrorInQuit) stop 3                                              ! not all incs converged
+ 
  stop 1                                                                                             ! error (message from IO_error)
 
 end subroutine quit

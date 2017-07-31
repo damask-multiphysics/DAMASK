@@ -1,10 +1,15 @@
 # sets up an environment for DAMASK on zsh
-# usage:  source DAMASK_env.zsh
+# usage:  source DAMASK.zsh
 
-DAMASK_ROOT=${0:a:h}
+# transition compatibility (renamed $DAMASK_ROOT/DAMASK_env.zsh to $DAMASK_ROOT/env/DAMASK.zsh)
+if [ ${0:t:r} = 'DAMASK' ]; then
+  DAMASK_ROOT=${0:a:h}'/..'
+else
+  DAMASK_ROOT=${0:a:h}
+fi
 
 # shorthand command to change to DAMASK_ROOT directory
-eval "function damask() { cd $DAMASK_ROOT; }"
+eval "function DAMASK_root() { cd $DAMASK_ROOT; }"
 
 # defining set() allows to source the same file for tcsh and zsh, with and without space around =
 set() {
@@ -13,17 +18,12 @@ set() {
 source $DAMASK_ROOT/CONFIG
 unset -f set
 
-# add DAMASK_BIN if present but not yet in $PATH
-MATCH=`echo ":$PATH:" | grep $DAMASK_BIN:`
-if [[ ( "x$DAMASK_BIN" != "x" ) && ( "x$MATCH" = "x" ) ]]; then
-  export PATH=$DAMASK_BIN:$PATH
-fi
+# add DAMASK_BIN if present
+[ "x$DAMASK_BIN" != "x" ] && PATH=$DAMASK_BIN:$PATH
 
 SOLVER=`which DAMASK_spectral || True 2>/dev/null`
 PROCESSING=`which postResults || True 2>/dev/null`
-if [ "x$DAMASK_NUM_THREADS" = "x" ]; then
-  DAMASK_NUM_THREADS=1
-fi
+[ "x$DAMASK_NUM_THREADS" = "x" ] && DAMASK_NUM_THREADS=1
 
 # according to http://software.intel.com/en-us/forums/topic/501500
 # this seems to make sense for the stack size

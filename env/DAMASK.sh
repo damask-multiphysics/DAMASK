@@ -1,5 +1,5 @@
 # sets up an environment for DAMASK on bash
-# usage:  source DAMASK_env.sh
+# usage:  source DAMASK.sh
 
 
 if [ "$OSTYPE" == "linux-gnu" ] || [ "$OSTYPE" == 'linux' ]; then
@@ -10,8 +10,13 @@ else
   DAMASK_ROOT=${STAT##* }
 fi
 
+# transition compatibility (renamed $DAMASK_ROOT/DAMASK_env.sh to $DAMASK_ROOT/env/DAMASK.sh)
+if [ ${BASH_SOURCE##*/} == "DAMASK.sh" ]; then
+  DAMASK_ROOT=$DAMASK_ROOT'/..'
+fi
+
 # shorthand command to change to DAMASK_ROOT directory
-eval "function damask() { cd $DAMASK_ROOT; }"
+eval "function DAMASK_root() { cd $DAMASK_ROOT; }"
 
 # defining set() allows to source the same file for tcsh and bash, with and without space around =
 set() {
@@ -20,22 +25,16 @@ set() {
 source $DAMASK_ROOT/CONFIG
 unset -f set
 
-# add DAMASK_BIN if present but not yet in $PATH
-if [[ "x$DAMASK_BIN" != "x" && ! $(echo ":$PATH:" | grep $DAMASK_BIN:) ]]; then
-  export PATH=$DAMASK_BIN:$PATH
-fi
+# add DAMASK_BIN if present
+[ "x$DAMASK_BIN" != "x" ] && PATH=$DAMASK_BIN:$PATH
 
 SOLVER=$(which DAMASK_spectral || true 2>/dev/null)
-if [ "x$SOLVER" == "x" ]; then
-  SOLVER='Not found!'
-fi
+[ "x$SOLVER" == "x" ] && SOLVER='Not found!'
+
 PROCESSING=$(which postResults || true 2>/dev/null)
-if [ "x$PROCESSING" == "x" ]; then
-  PROCESSING='Not found!'
-fi
-if [ "x$DAMASK_NUM_THREADS" == "x" ]; then
-  DAMASK_NUM_THREADS=1
-fi
+[ "x$PROCESSING" == "x" ] && PROCESSING='Not found!'
+
+[ "x$DAMASK_NUM_THREADS" == "x" ] && DAMASK_NUM_THREADS=1
 
 # according to http://software.intel.com/en-us/forums/topic/501500
 # this seems to make sense for the stack size
