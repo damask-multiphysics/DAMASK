@@ -43,7 +43,7 @@ PROCESSING=$(type -p postResults || true 2>/dev/null)
 
 # currently, there is no information that unlimited causes problems
 # still,  http://software.intel.com/en-us/forums/topic/501500 suggest to fix it
-# http://superuser.com/questions/220059/what-parameters-has-ulimit             
+# http://superuser.com/questions/220059/what-parameters-has-ulimit
 ulimit -d unlimited 2>/dev/null # maximum  heap size (kB)
 ulimit -s unlimited 2>/dev/null # maximum stack size (kB)
 ulimit -v unlimited 2>/dev/null # maximum virtual memory size

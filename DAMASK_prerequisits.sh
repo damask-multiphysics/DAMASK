@@ -14,7 +14,7 @@ DAMASK_ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 echo ==============================================================================================
 echo DAMASK settings
 echo ==============================================================================================
-echo DAMASK_ROOT: 
+echo DAMASK_ROOT:
 echo $DAMASK_ROOT
 echo
 echo Version:
