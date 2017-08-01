@@ -5,7 +5,6 @@ function canonicalPath {
   python -c "import os,sys; print(os.path.realpath(os.path.expanduser(sys.argv[1])))" $1
 }
 
-
 if [ "$OSTYPE" == "linux-gnu" ] || [ "$OSTYPE" == 'linux' ]; then
   DAMASK_ROOT=$(dirname $BASH_SOURCE)
 else
