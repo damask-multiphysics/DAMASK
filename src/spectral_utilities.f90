@@ -1047,6 +1047,7 @@ end subroutine utilities_constitutiveResponse
 subroutine utilities_calcPlasticity(yieldStress, plasticStrain, eqStress, eqTotalStrain, eqPlasticStrain, plasticWork)
  use crystallite, only: &
    crystallite_Fp, &
+   crystallite_Fe, &
    crystallite_P, &
    crystallite_subF
  use material, only: &
@@ -1075,7 +1076,7 @@ subroutine utilities_calcPlasticity(yieldStress, plasticStrain, eqStress, eqTota
  real(pReal), dimension(3)   :: Values, S
  real(pReal), dimension(3,3) :: Vectors, diag
  real(pReal), dimension(3,3,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems) :: &
-   Bp, Vp, F, F_temp, Fp, U, VT, R, V, V_total
+   Be, Ve, Vp, F, F_temp, Fe, Fp, U, VT, R, V, V_total
  real(pReal), dimension(15)   :: WORK                                                                         !< previous deformation gradient
  integer(pInt) :: INFO, i, j, k, l, ierr
  real(pReal) :: stress, stress_av, strain_total, strain_total_av, strain_plastic, strain_plastic_av, wgtm
@@ -1092,18 +1093,13 @@ subroutine utilities_calcPlasticity(yieldStress, plasticStrain, eqStress, eqTota
  do k = 1_pInt, mesh_NcpElems;  do j = 1_pInt, mesh_maxNips;  do i = 1_pInt,homogenization_maxNgrains
    F(1:3,1:3,i,j,k) = crystallite_subF(1:3,1:3,i,j,k)
    Fp(1:3,1:3,i,j,k) = crystallite_Fp(1:3,1:3,i,j,k)
+   Fe(1:3,1:3,i,j,k) = crystallite_Fe(1:3,1:3,i,j,k)
    
    P = crystallite_P(1:3,1:3,i,j,k)
    cauchy = 1.0/math_det33(F(1:3,1:3,i,j,k))*math_mul33x33(P,transpose(F(1:3,1:3,i,j,k)))
    cauchy_av = cauchy_av + cauchy
    stress = Mises(cauchy, 'stress')
    stress_av = stress_av + stress
-   
-   Bp(1:3,1:3,i,j,k) = math_mul33x33(Fp(1:3,1:3,i,j,k),math_transpose33(Fp(1:3,1:3,i,j,k)))         ! plastic part of left Cauchy–Green deformation tensor
-   Vp(1:3,1:3,i,j,k) = math_eigenvectorBasisSym33_log(Bp(1:3,1:3,i,j,k))
-   strain_plastic = Mises(Vp(1:3,1:3,i,j,k), 'strain')
-   strain_plastic_av = strain_plastic_av + strain_plastic
-   Vp_av = Vp_av + Vp(1:3,1:3,i,j,k)
    
    F_temp(1:3,1:3,i,j,k) = F(1:3,1:3,i,j,k)
    call dgesvd ('A', 'A', 3, 3, F_temp(1:3,1:3,i,j,k), 3, &
@@ -1137,6 +1133,14 @@ subroutine utilities_calcPlasticity(yieldStress, plasticStrain, eqStress, eqTota
    strain_total = Mises(V_total(1:3,1:3,i,j,k), 'strain')
    strain_total_av = strain_total_av + strain_total
    
+   Be(1:3,1:3,i,j,k) = math_mul33x33(Fe(1:3,1:3,i,j,k),math_transpose33(Fe(1:3,1:3,i,j,k)))         ! plastic part of left Cauchy–Green deformation tensor
+   Ve(1:3,1:3,i,j,k) = math_eigenvectorBasisSym33_log(Be(1:3,1:3,i,j,k))
+   Vp(1:3,1:3,i,j,k) = V_total(1:3,1:3,i,j,k) - Ve(1:3,1:3,i,j,k)
+   strain_plastic = Mises(Vp(1:3,1:3,i,j,k), 'strain')
+   strain_plastic_av = strain_plastic_av + strain_plastic
+   Vp_av = Vp_av + Vp(1:3,1:3,i,j,k)
+
+ flush(6)
  enddo; enddo; enddo
  
 
