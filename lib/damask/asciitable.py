@@ -14,12 +14,6 @@ except(NameError):
 class ASCIItable():
   """Read and write to ASCII tables"""
 
-  __slots__ = ['__IO__',
-               'info',
-               'labeled',
-               'data',
-              ]
-
   tmpext = '_tmp'                                                                                   # filename extension for in-place access
   
 # ------------------------------------------------------------------
