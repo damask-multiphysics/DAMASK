@@ -54,7 +54,7 @@ parser.add_option(     '--realspace',  dest='realspace', action='store_true',
 parser.set_defaults(center = (.0,.0,.0),
                     fill = 0,
                     degrees = False,
-                    exponent = (1e10,1e10,1e10), # box shape by default
+                    exponent = (20,20,20), # box shape by default
                     periodic = True,
                     realspace = False,
                    )
@@ -74,7 +74,8 @@ else:
 
 options.center = np.array(options.center)
 options.dimension = np.array(options.dimension)
-options.exponent = np.power(2,options.exponent)                                                    # undo logarithmic sense of exponent
+# undo logarithmic sense of exponent and generate ellipsoids for negative dimensions (backward compatibility)
+options.exponent = np.where(np.array(options.dimension) > 0, np.power(2,options.exponent), 2)
 
 # --- loop over input files -------------------------------------------------------------------------
 if filenames == []: filenames = [None]
@@ -118,8 +119,6 @@ for name in filenames:
 
   options.fill = microstructure.max()+1 if options.fill == 0 else options.fill
   
-  # If we have a negative dimension, make it an ellipsoid for backwards compatibility
-  options.exponent = np.where(np.array(options.dimension) > 0, options.exponent, 2)
   microstructure = microstructure.reshape(info['grid'],order='F')
   
   # coordinates given in real space (default) vs voxel space
