@@ -1332,7 +1332,7 @@ parser.add_option('-e', '--exponent',  dest='exponent', type='float',
 parser.add_option('-u', '--uniaxial',  dest='eqStress', type='float',
                                        help='Equivalent stress',  metavar='float') 
 parser.add_option('--flag',            dest='flag', type='string',
-                                       help='the variable based which the yield will be judged, totalStrain, plasticStrain or plasticWork',  metavar='string') 
+                                       help='yield stop flag, totalStrain, plasticStrain or plasticWork',  metavar='string')
 
 parser.set_defaults(min        = 12,
                     max        = 20,
