@@ -1140,7 +1140,6 @@ subroutine utilities_calcPlasticity(yieldStress, plasticStrain, eqStress, eqTota
    strain_plastic_av = strain_plastic_av + strain_plastic
    Vp_av = Vp_av + Vp(1:3,1:3,i,j,k)
 
- flush(6)
  enddo; enddo; enddo
  
 
