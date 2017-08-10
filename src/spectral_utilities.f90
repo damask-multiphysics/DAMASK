@@ -1080,9 +1080,12 @@ subroutine utilities_calcPlasticity(yieldStress, plasticStrain, eqStress, eqTota
  real(pReal), dimension(15)   :: WORK                                                                         !< previous deformation gradient
  integer(pInt) :: INFO, i, j, k, l, ierr
  real(pReal) :: stress, stress_av, strain_total, strain_total_av, strain_plastic, strain_plastic_av, wgtm
+ real(pReal) :: eqStressOld, eqPlasticStrainOld
  
  external :: dgesvd
  
+ eqStressOld = eqStress
+ eqPlasticStrainOld = eqPlasticStrain
  wgtm = 1.0/real(mesh_NcpElems*mesh_maxNips*homogenization_maxNgrains,pReal)
  Vp_av = 0.0_pReal
  V_total_av = 0.0_pReal
@@ -1142,20 +1145,18 @@ subroutine utilities_calcPlasticity(yieldStress, plasticStrain, eqStress, eqTota
 
  enddo; enddo; enddo
  
-
  yieldStress = cauchy_av  * wgtm
  call MPI_Allreduce(MPI_IN_PLACE,yieldStress,9,MPI_DOUBLE,MPI_SUM,PETSC_COMM_WORLD,ierr)
  plasticStrain = Vp_av * wgtm
  call MPI_Allreduce(MPI_IN_PLACE,plasticStrain,9,MPI_DOUBLE,MPI_SUM,PETSC_COMM_WORLD,ierr)
  
- plasticWork = plasticWork + 0.5*(eqStress + stress_av * wgtm) * (strain_total_av * wgtm - eqTotalStrain)
- call MPI_Allreduce(MPI_IN_PLACE,plasticWork,1,MPI_DOUBLE,MPI_SUM,PETSC_COMM_WORLD,ierr)
  eqStress = stress_av * wgtm
  call MPI_Allreduce(MPI_IN_PLACE,eqStress,1,MPI_DOUBLE,MPI_SUM,PETSC_COMM_WORLD,ierr)
  eqTotalStrain = strain_total_av * wgtm
  call MPI_Allreduce(MPI_IN_PLACE,eqTotalStrain,1,MPI_DOUBLE,MPI_SUM,PETSC_COMM_WORLD,ierr)
  eqPlasticStrain = strain_plastic_av * wgtm
  call MPI_Allreduce(MPI_IN_PLACE,eqPlasticStrain,1,MPI_DOUBLE,MPI_SUM,PETSC_COMM_WORLD,ierr)
+ plasticWork = plasticWork + 0.5*(eqStressOld + eqStress) * (eqPlasticStrain - eqPlasticStrainOld)
  
 end subroutine utilities_calcPlasticity 
 

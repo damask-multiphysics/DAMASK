@@ -316,7 +316,15 @@ program DAMASK_spectral
      end select
  enddo; enddo
  close(FILEUNIT)
-
+ 
+ if(yieldStop) then                                                                                ! initialize variables related to yield stop
+   yieldStressNew = 0.0_pReal
+   plasticStrainNew = 0.0_pReal
+   eqStressNew = 0.0_pReal
+   eqTotalStrainNew = 0.0_pReal
+   eqPlasticStrainNew = 0.0_pReal
+   plasticWorkNew = 0.0_pReal
+ endif
 !--------------------------------------------------------------------------------------------------
 ! consistency checks and output of load case
  loadCases(1)%followFormerTrajectory = .false.                                                      ! cannot guess along trajectory for first inc of first currentLoadCase
