@@ -36,8 +36,9 @@ parser.add_option('-c', '--center',     dest='center', type='float', nargs = 3, 
 parser.add_option('-d', '--dimension',  dest='dimension', type='float', nargs = 3, metavar=' '.join(['float']*3),
                   help='a,b,c extension of hexahedral box; negative values are diameters')
 parser.add_option('-e', '--exponent',  dest='exponent', type='float', nargs = 3, metavar=' '.join(['float']*3),
-                  help='i,j,k exponents for axes - 2 gives a sphere (x^2 + y^2 + z^2 < 1), 1 makes \
-octahedron (|x| + |y| + |z| < 1).  Large values produce boxes, 0 - 1 is concave. ')
+                  help='i,j,k exponents for axes - 0 gives octahedron (|x|^(2^0) + |y|^(2^0) + |z|^(2^0) < 1), \
+                  1 gives a sphere (|x|^(2^1) + |y|^(2^1) + |z|^(2^1) < 1), \
+                  large values produce boxes, negative turns concave.')
 parser.add_option('-f', '--fill',       dest='fill', type='int', metavar = 'int',
                   help='grain index to fill primitive. "0" selects maximum microstructure index + 1 [%default]')
 parser.add_option('-q', '--quaternion', dest='quaternion', type='float', nargs = 4, metavar=' '.join(['float']*4),
@@ -48,15 +49,14 @@ parser.add_option(     '--degrees',     dest='degrees', action='store_true',
                   help = 'angle is given in degrees [%default]')
 parser.add_option(     '--nonperiodic', dest='periodic', action='store_false',
                   help = 'wrap around edges [%default]')
-parser.add_option(     '--voxelspace',  dest='voxelspace', action='store_true',
-                  help = '-c and -d are given in (0 to grid) coordinates instead of (origin to origin+size) \
-coordinates [%default]')
+parser.add_option(     '--realspace',  dest='realspace', action='store_true',
+                  help = '-c and -d span [origin,origin+size] instead of [0,grid] coordinates')
 parser.set_defaults(center = (.0,.0,.0),
                     fill = 0,
                     degrees = False,
-                    exponent = (1e10,1e10,1e10), # box shape by default
+                    exponent = (20,20,20), # box shape by default
                     periodic = True,
-                    voxelspace = False
+                    realspace = False,
                    )
 
 (options, filenames) = parser.parse_args()
@@ -74,14 +74,16 @@ else:
 
 options.center = np.array(options.center)
 options.dimension = np.array(options.dimension)
+# undo logarithmic sense of exponent and generate ellipsoids for negative dimensions (backward compatibility)
+options.exponent = np.where(np.array(options.dimension) > 0, np.power(2,options.exponent), 2)
 
 # --- loop over input files -------------------------------------------------------------------------
 if filenames == []: filenames = [None]
 
 for name in filenames:
-  try:
-    table = damask.ASCIItable(name = name,
-                              buffered = False, labeled = False)
+  try:    table = damask.ASCIItable(name = name,
+                                    buffered = False,
+                                    labeled = False)
   except: continue
   damask.util.report(scriptName,name)
 
@@ -115,45 +117,42 @@ for name in filenames:
              'microstructures': 0,
             }
 
-  if options.fill == 0:
-    options.fill = microstructure.max()+1
+  options.fill = microstructure.max()+1 if options.fill == 0 else options.fill
   
-  # If we have a negative dimension, make it an ellipsoid for backwards compatibility
-  options.exponent = np.where(np.array(options.dimension) > 0, options.exponent, 2)
   microstructure = microstructure.reshape(info['grid'],order='F')
   
   # coordinates given in real space (default) vs voxel space
-  if not options.voxelspace:
-    options.center    += info['origin']
+  if options.realspace:
+    options.center    -= info['origin']
     options.center    *= np.array(info['grid']) / np.array(info['size'])
     options.dimension *= np.array(info['grid']) / np.array(info['size'])
 
-  size = microstructure.shape  
+  grid = microstructure.shape  
 
   # change to coordinate space where the primitive is the unit sphere/cube/etc
   if options.periodic: # use padding to achieve periodicity
-    (X, Y, Z) = np.meshgrid(np.arange(-size[0]/2, (3*size[0])/2, dtype=np.float32), # 50% padding on each side 
-                            np.arange(-size[1]/2, (3*size[1])/2, dtype=np.float32), 
-                            np.arange(-size[2]/2, (3*size[2])/2, dtype=np.float32),
+    (X, Y, Z) = np.meshgrid(np.arange(-grid[0]/2, (3*grid[0])/2, dtype=np.float32), # 50% padding on each side 
+                            np.arange(-grid[1]/2, (3*grid[1])/2, dtype=np.float32), 
+                            np.arange(-grid[2]/2, (3*grid[2])/2, dtype=np.float32),
                             indexing='ij')
     # Padding handling
     X = np.roll(np.roll(np.roll(X,
-            -size[0]/2, axis=0), 
-            -size[1]/2, axis=1), 
-            -size[2]/2, axis=2)
+            -grid[0]/2, axis=0), 
+            -grid[1]/2, axis=1), 
+            -grid[2]/2, axis=2)
     Y = np.roll(np.roll(np.roll(Y,
-            -size[0]/2, axis=0), 
-            -size[1]/2, axis=1), 
-            -size[2]/2, axis=2)
+            -grid[0]/2, axis=0), 
+            -grid[1]/2, axis=1), 
+            -grid[2]/2, axis=2)
     Z = np.roll(np.roll(np.roll(Z,
-            -size[0]/2, axis=0), 
-            -size[1]/2, axis=1), 
-            -size[2]/2, axis=2)
+            -grid[0]/2, axis=0), 
+            -grid[1]/2, axis=1), 
+            -grid[2]/2, axis=2)
   else: # nonperiodic, much lighter on resources
     # change to coordinate space where the primitive is the unit sphere/cube/etc
-    (X, Y, Z) = np.meshgrid(np.arange(0, size[0], dtype=np.float32), 
-                            np.arange(0, size[1], dtype=np.float32), 
-                            np.arange(0, size[2], dtype=np.float32),
+    (X, Y, Z) = np.meshgrid(np.arange(0, grid[0], dtype=np.float32), 
+                            np.arange(0, grid[1], dtype=np.float32), 
+                            np.arange(0, grid[2], dtype=np.float32),
                             indexing='ij')
     
   # first by translating the center onto 0, 0.5 shifts the voxel origin onto the center of the voxel
@@ -174,27 +173,27 @@ for name in filenames:
   np.seterr(over='ignore', under='ignore')
   
   if options.periodic: # use padding to achieve periodicity
-    inside = np.zeros(size, dtype=bool)
+    inside = np.zeros(grid, dtype=bool)
     for i in range(2):
       for j in range(2):
         for k in range(2):
           inside = inside | ( # Most of this is handling the padding
-                np.abs(X[size[0] * i : size[0] * (i+1),
-                         size[1] * j : size[1] * (j+1),
-                         size[2] * k : size[2] * (k+1)])**options.exponent[0] +
-                np.abs(Y[size[0] * i : size[0] * (i+1),
-                         size[1] * j : size[1] * (j+1),
-                         size[2] * k : size[2] * (k+1)])**options.exponent[1] +
-                np.abs(Z[size[0] * i : size[0] * (i+1),
-                         size[1] * j : size[1] * (j+1),
-                         size[2] * k : size[2] * (k+1)])**options.exponent[2] < 1)
+                np.abs(X[grid[0] * i : grid[0] * (i+1),
+                         grid[1] * j : grid[1] * (j+1),
+                         grid[2] * k : grid[2] * (k+1)])**options.exponent[0] +
+                np.abs(Y[grid[0] * i : grid[0] * (i+1),
+                         grid[1] * j : grid[1] * (j+1),
+                         grid[2] * k : grid[2] * (k+1)])**options.exponent[1] +
+                np.abs(Z[grid[0] * i : grid[0] * (i+1),
+                         grid[1] * j : grid[1] * (j+1),
+                         grid[2] * k : grid[2] * (k+1)])**options.exponent[2] <= 1.0)
     
     microstructure = np.where(inside, options.fill, microstructure)   
 
   else: # nonperiodic, much lighter on resources
     microstructure = np.where(np.abs(X)**options.exponent[0] +
                               np.abs(Y)**options.exponent[1] +
-                              np.abs(Z)**options.exponent[2] < 1, options.fill, microstructure)
+                              np.abs(Z)**options.exponent[2] <= 1.0, options.fill, microstructure)
 
   np.seterr(**old_settings) # Reset warnings to old state
   newInfo['microstructures'] = microstructure.max()
@@ -209,11 +208,11 @@ for name in filenames:
   table.info_clear()
   table.info_append([
     scriptID + ' ' + ' '.join(sys.argv[1:]),
-    "grid\ta {grid[0]}\tb {grid[1]}\tc {grid[2]}".format(grid=info['grid']),
-    "size\tx {size[0]}\ty {size[1]}\tz {size[2]}".format(size=info['size']),
-    "origin\tx {origin[0]}\ty {origin[1]}\tz {origin[2]}".format(origin=info['origin']),
-    "homogenization\t{homog}".format(homog=info['homogenization']),
-    "microstructures\t{microstructures}".format(microstructures=newInfo['microstructures']),
+    "grid\ta {}\tb {}\tc {}".format(*info['grid']),
+    "size\tx {}\ty {}\tz {}".format(*info['size']),
+    "origin\tx {}\ty {}\tz {}".format(*info['origin']),
+    "homogenization\t{}".format(info['homogenization']),
+    "microstructures\t{}".format(newInfo['microstructures']),
     extra_header
     ])
   table.labels_clear()
