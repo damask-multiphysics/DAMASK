@@ -51,7 +51,7 @@ parser.add_option('-c','--condition',
                   dest   = 'condition', metavar='string',
                   help   = 'condition to filter rows')
 
-parser.set_defaults(condition = '',
+parser.set_defaults(condition = None,
                    )
 
 (options,filenames) = parser.parse_args()
@@ -98,23 +98,29 @@ for name in filenames:
   else:
     order = range(len(labels))                                                                      # maintain original order of labels
   
-  interpolator = []
-  condition = options.condition                                                                     # copy per file, might be altered
-  for position,operand in enumerate(set(re.findall(r'#(([s]#)?(.+?))#',condition))):                # find three groups
-    condition = condition.replace('#'+operand[0]+'#',
-                                          {  '': '{{{}}}' .format(position),
-                                           's#':'"{{{}}}"'.format(position)}[operand[1]])
-    if operand[2] in specials:                                                                      # special label ?
-      interpolator += ['specials["{}"]'.format(operand[2])]
-    else:
-      try:
-        interpolator += ['{}(table.data[{}])'.format({  '':'float',
-                                                      's#':'str'}[operand[1]],
-                                                     table.label_index(operand[2]))]
-      except:
-        parser.error('column "{}" not found...\n'.format(operand[2]))
-
-  evaluator = "'" + condition + "'.format(" + ','.join(interpolator) + ")"
+# --------------------------------------- evaluate condition ---------------------------------------
+  if options.condition is not None:
+    condition = options.condition                                                                   # copy per file, since might be altered inline
+    breaker = False
+  
+    for position,(all,marker,column) in enumerate(set(re.findall(r'#(([s]#)?(.+?))#',condition))):              # find three groups
+      idx = table.label_index(column)
+      dim = table.label_dimension(column)
+      if idx < 0 and column not in specials:
+        damask.util.croak('column "{}" not found.'.format(column))
+        breaker = True
+      else:
+        if column in specials:
+          replacement = 'specials["{}"]'.format(column)
+        elif dim == 1:                                                                                # scalar input
+          replacement = '{}(table.data[{}])'.format({  '':'float',
+                                                        's#':'str'}[marker],idx)                      # take float or string value of data column
+        elif dim > 1:                                                                                 # multidimensional input (vector, tensor, etc.)
+          replacement = 'np.array(table.data[{}:{}],dtype=float)'.format(idx,idx+dim)                 # use (flat) array representation
+       
+        condition = condition.replace('#'+all+'#',replacement)
+    
+    if breaker: continue                                                                              # found mistake in condition evaluation --> next file
   
 # ------------------------------------------ assemble header ---------------------------------------
 
@@ -129,7 +135,7 @@ for name in filenames:
   outputAlive = True
   while outputAlive and table.data_read():                                                          # read next data line of ASCII table
     specials['_row_'] += 1                                                                          # count row
-    if condition == '' or eval(eval(evaluator)):                                                    # valid row ?
+    if options.condition is None or eval(condition):                                                # valid row ?
       table.data = [table.data[position] for position in positions]                                 # retain filtered columns
       outputAlive = table.data_write()                                                              # output processed line
 

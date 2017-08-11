@@ -77,7 +77,6 @@ for name in filenames:
 
 # --------------------------------------- evaluate condition ---------------------------------------
   if options.condition is not None:
-    interpolator = []
     condition = options.condition                                                                   # copy per file, since might be altered inline
     breaker = False
   
@@ -162,7 +161,7 @@ for name in filenames:
 
 # -------------------------------------- evaluate formulas -----------------------------------------
 
-    if options.condition is None or eval(condition):                                # condition for veteran replacement fulfilled
+    if options.condition is None or eval(condition):                                                # condition for veteran replacement fulfilled
       for veteran in veterans:                                                                      # evaluate formulas that overwrite
         table.data[table.label_index(veteran):
                    table.label_index(veteran)+table.label_dimension(veteran)] = \
