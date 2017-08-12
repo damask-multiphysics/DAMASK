@@ -6,7 +6,6 @@
 !> @brief Mathematical library, including random number generation and tensor represenations
 !--------------------------------------------------------------------------------------------------
 module math
- use, intrinsic :: iso_c_binding
  use prec, only: &
    pReal, &
    pInt
@@ -161,13 +160,10 @@ module math
    math_rotate_forward3333, &
    math_limit
  private :: &
-   math_partition, &
    halton, &
    halton_memory, &
    halton_ndim_set, &
-   halton_seed_set, &
-   i_to_halton, &
-   prime
+   halton_seed_set
 
 contains
 
@@ -289,52 +285,53 @@ recursive subroutine math_qsort(a, istart, iend)
  integer(pInt) :: ipivot
 
  if (istart < iend) then
-   ipivot = math_partition(a,istart, iend)
+   ipivot = qsort_partition(a,istart, iend)
    call math_qsort(a, istart, ipivot-1_pInt)
    call math_qsort(a, ipivot+1_pInt, iend)
  endif
 
+!--------------------------------------------------------------------------------------------------
+ contains
+
+ !-------------------------------------------------------------------------------------------------
+ !> @brief Partitioning required for quicksort
+ !-------------------------------------------------------------------------------------------------
+ integer(pInt) function qsort_partition(a, istart, iend)
+ 
+   implicit none
+   integer(pInt), dimension(:,:), intent(inout) :: a
+   integer(pInt), intent(in) :: istart,iend
+   integer(pInt) :: i,j,k,tmp
+  
+   do
+  ! find the first element on the right side less than or equal to the pivot point
+     do j = iend, istart, -1_pInt
+       if (a(1,j) <= a(1,istart)) exit
+     enddo
+  ! find the first element on the left side greater than the pivot point
+     do i = istart, iend
+       if (a(1,i) > a(1,istart)) exit
+     enddo
+     if (i < j) then ! if the indexes do not cross, exchange values
+       do k = 1_pInt, int(size(a,1_pInt), pInt)
+         tmp = a(k,i)
+         a(k,i) = a(k,j)
+         a(k,j) = tmp
+       enddo
+     else           ! if they do cross, exchange left value with pivot and return with the partition index
+       do k = 1_pInt, int(size(a,1_pInt), pInt)
+         tmp = a(k,istart)
+         a(k,istart) = a(k,j)
+         a(k,j) = tmp
+       enddo
+       qsort_partition = j
+       return
+     endif
+   enddo
+ 
+ end function qsort_partition
+
 end subroutine math_qsort
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief Partitioning required for quicksort
-!--------------------------------------------------------------------------------------------------
-integer(pInt) function math_partition(a, istart, iend)
-
- implicit none
- integer(pInt), dimension(:,:), intent(inout) :: a
- integer(pInt), intent(in) :: istart,iend
- integer(pInt) :: i,j,k,tmp
-
-
- do
-! find the first element on the right side less than or equal to the pivot point
-   do j = iend, istart, -1_pInt
-     if (a(1,j) <= a(1,istart)) exit
-   enddo
-! find the first element on the left side greater than the pivot point
-   do i = istart, iend
-     if (a(1,i) > a(1,istart)) exit
-   enddo
-   if (i < j) then ! if the indexes do not cross, exchange values
-     do k = 1_pInt,d
-      tmp = a(k,i)
-      a(k,i) = a(k,j)
-      a(k,j) = tmp
-     enddo
-   else           ! if they do cross, exchange left value with pivot and return with the partition index
-     do k = 1_pInt, int(size(a,1_pInt), pInt) ! number of linked data
-      tmp = a(k,istart)
-      a(k,istart) = a(k,j)
-      a(k,j) = tmp
-     enddo
-     math_partition = j
-     return
-   endif
- enddo
-
-end function math_partition
 
 
 !--------------------------------------------------------------------------------------------------
@@ -2183,6 +2180,53 @@ subroutine halton(ndim, r)
  value_halton(1) = 1_pInt
  call halton_memory ('INC', 'SEED', 1_pInt, value_halton)
 
+
+!--------------------------------------------------------------------------------------------------
+ contains
+ 
+ !-------------------------------------------------------------------------------------------------
+ !> @brief computes an element of a Halton sequence.
+ !> @details Only the absolute value of SEED is considered. SEED = 0 is allowed, and returns R = 0.
+ !> @details Halton Bases should be distinct prime numbers. This routine only checks that each base 
+ !> @details is greater than 1.
+ !> @details Reference:
+ !> @details J.H. Halton: On the efficiency of certain quasi-random sequences of points in evaluating 
+ !> @details multi-dimensional integrals, Numerische Mathematik, Volume 2, pages 84-90, 1960.
+ !> @author John Burkardt
+ !-------------------------------------------------------------------------------------------------
+ subroutine i_to_halton (seed, base, ndim, r)
+   use IO, only: &
+     IO_error
+   
+   implicit none
+   integer(pInt), intent(in) :: &
+     ndim, &                                                                                        !< dimension of the sequence
+     seed                                                                                           !< index of the desired element
+   integer(pInt), intent(in),  dimension(ndim) :: base                                              !< Halton bases
+   real(pReal),   intent(out), dimension(ndim) :: r                                                 !< the SEED-th element of the Halton sequence for the given bases
+  
+   real(pReal),                dimension(ndim) ::  base_inv
+   integer(pInt),              dimension(ndim) :: &
+     digit, &
+     seed2
+  
+   seed2 = abs(seed)
+   r = 0.0_pReal
+  
+   if (any (base(1:ndim) <= 1_pInt)) call IO_error(error_ID=405_pInt)
+  
+   base_inv(1:ndim) = 1.0_pReal / real (base(1:ndim), pReal)
+  
+   do while ( any ( seed2(1:ndim) /= 0_pInt) )
+     digit(1:ndim) = mod ( seed2(1:ndim), base(1:ndim))
+     r(1:ndim) = r(1:ndim) + real ( digit(1:ndim), pReal) * base_inv(1:ndim)
+     base_inv(1:ndim) = base_inv(1:ndim) / real ( base(1:ndim), pReal)
+     seed2(1:ndim) = seed2(1:ndim) / base(1:ndim)
+   enddo
+  
+ end subroutine i_to_halton
+
+
 end subroutine halton
 
 
@@ -2199,6 +2243,8 @@ end subroutine halton
 !> @author John Burkardt
 !--------------------------------------------------------------------------------------------------
 subroutine halton_memory (action_halton, name_halton, ndim, value_halton)
+  use IO, only: &
+    IO_lc
 
  implicit none
  character(len = *), intent(in) :: & 
@@ -2208,8 +2254,8 @@ subroutine halton_memory (action_halton, name_halton, ndim, value_halton)
  integer(pInt), allocatable, save, dimension(:) :: base
  logical, save :: first_call = .true.
  integer(pInt), intent(in) :: ndim                                                                  !< dimension of the quantity
- integer(pInt):: i
  integer(pInt), save :: ndim_save = 0_pInt, seed = 1_pInt
+ integer(pInt) :: i
 
  if (first_call) then
    ndim_save = 1_pInt
@@ -2220,146 +2266,43 @@ subroutine halton_memory (action_halton, name_halton, ndim, value_halton)
  
 !--------------------------------------------------------------------------------------------------
 ! Set
- if(action_halton(1:1) == 'S' .or. action_halton(1:1) == 's') then
+ actionHalton: if(IO_lc(action_halton(1:1)) == 's') then
 
-   if(name_halton(1:1) == 'B' .or. name_halton(1:1) == 'b') then
-
-     if(ndim_save /= ndim) then
-       deallocate(base)
-       ndim_save = ndim
-       allocate(base(ndim_save))
-     endif
-
-     base(1:ndim) = value_halton(1:ndim)
-
-   elseif(name_halton(1:1) == 'N' .or. name_halton(1:1) == 'n') then
-
+   nameSet: if(IO_lc(name_halton(1:1)) == 'b') then
+     if(ndim_save /= ndim) ndim_save = ndim
+     base = value_halton(1:ndim)
+   elseif(IO_lc(name_halton(1:1)) == 'n') then nameSet
      if(ndim_save /= value_halton(1)) then
-       deallocate(base)
        ndim_save = value_halton(1)
-       allocate(base(ndim_save))
-       do i = 1_pInt, ndim_save
-         base(i) = prime (i)
-       enddo
+       base = [(prime(i),i=1_pInt,ndim_save)]
      else
        ndim_save = value_halton(1)
      endif
-   elseif(name_halton(1:1) == 'S' .or. name_halton(1:1) == 's') then
+   elseif(IO_lc(name_halton(1:1)) == 's') then nameSet
      seed = value_halton(1)
- endif
+   endif nameSet
  
 !--------------------------------------------------------------------------------------------------
 ! Get
- elseif(action_halton(1:1) == 'G' .or. action_halton(1:1) == 'g') then
-   if(name_halton(1:1) == 'B' .or. name_halton(1:1) == 'b') then
+ elseif(IO_lc(action_halton(1:1)) == 'g') then actionHalton
+   nameGet: if(IO_lc(name_halton(1:1)) == 'b') then
      if(ndim /= ndim_save) then
-  deallocate(base)
-  ndim_save = ndim
-  allocate(base(ndim_save))
-  do i = 1_pInt, ndim_save
-    base(i) = prime(i)
-  enddo
+       ndim_save = ndim
+       base = [(prime(i),i=1_pInt,ndim_save)]
      endif
      value_halton(1:ndim_save) = base(1:ndim_save)
-   elseif(name_halton(1:1) == 'N' .or. name_halton(1:1) == 'n') then
+   elseif(IO_lc(name_halton(1:1)) == 'n') then nameGet
      value_halton(1) = ndim_save
-   elseif(name_halton(1:1) == 'S' .or. name_halton(1:1) == 's') then
+   elseif(IO_lc(name_halton(1:1)) == 's') then nameGet
      value_halton(1) = seed
-   endif
+   endif nameGet
    
 !--------------------------------------------------------------------------------------------------
 !   Increment
- elseif(action_halton(1:1) == 'I' .or. action_halton(1:1) == 'i') then
-   if(name_halton(1:1) == 'S' .or. name_halton(1:1) == 's') then
-     seed = seed + value_halton(1)
-   end if
- endif
-
-end subroutine halton_memory
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief sets the dimension for a Halton sequence
-!> @author John Burkardt
-!--------------------------------------------------------------------------------------------------
-subroutine halton_ndim_set (ndim)
-
- implicit none
- integer(pInt), intent(in) :: ndim                                                                  !< dimension of the Halton vectors
- integer(pInt) :: value_halton(1)
-
- value_halton(1) = ndim
- call halton_memory ('SET', 'NDIM', 1_pInt, value_halton)
-
-end subroutine halton_ndim_set
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief  sets the seed for the Halton sequence.
-!> @details Calling HALTON repeatedly returns the elements of the Halton sequence in order, 
-!> @details starting with element number 1.
-!> @details An internal counter, called SEED, keeps track of the next element to return. Each time 
-!> @details is computed, and then SEED is incremented by 1.
-!> @details To restart the Halton sequence, it is only necessary to reset SEED to 1. It might also 
-!> @details be desirable to reset SEED to some other value. This routine allows the user to specify 
-!> @details any value of SEED.
-!> @details The default value of SEED is 1, which restarts the Halton sequence.
-!> @author John Burkardt
-!--------------------------------------------------------------------------------------------------
-subroutine halton_seed_set(seed)
- implicit none
-
- integer(pInt), parameter :: NDIM = 1_pInt
- integer(pInt), intent(in) :: seed                                                                  !< seed for the Halton sequence.
- integer(pInt) :: value_halton(ndim)
-
- value_halton(1) = seed
- call halton_memory ('SET', 'SEED', NDIM, value_halton)
-
-end subroutine halton_seed_set
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief computes an element of a Halton sequence.
-!> @details Only the absolute value of SEED is considered. SEED = 0 is allowed, and returns R = 0.
-!> @details Halton Bases should be distinct prime numbers. This routine only checks that each base 
-!> @details is greater than 1.
-!> @details Reference:
-!> @details J.H. Halton: On the efficiency of certain quasi-random sequences of points in evaluating 
-!> @details multi-dimensional integrals, Numerische Mathematik, Volume 2, pages 84-90, 1960.
-!> @author John Burkardt
-!--------------------------------------------------------------------------------------------------
-subroutine i_to_halton (seed, base, ndim, r)
- use IO, only: &
-   IO_error
- 
- implicit none
- integer(pInt), intent(in) :: ndim                                                                  !< dimension of the sequence
- integer(pInt), intent(in), dimension(ndim) :: base                                                 !< Halton bases
- real(pReal), dimension(ndim) ::  base_inv
- integer(pInt), dimension(ndim) :: digit
- real(pReal), dimension(ndim), intent(out) ::r                                                      !< the SEED-th element of the Halton sequence for the given bases
- integer(pInt) , intent(in):: seed                                                                  !< index of the desired element
- integer(pInt), dimension(ndim) :: seed2
-
- seed2(1:ndim) = abs(seed)
-
- r(1:ndim) = 0.0_pReal
-
- if (any (base(1:ndim) <= 1_pInt)) call IO_error(error_ID=405_pInt)
-
- base_inv(1:ndim) = 1.0_pReal / real (base(1:ndim), pReal)
-
- do while ( any ( seed2(1:ndim) /= 0_pInt) )
-   digit(1:ndim) = mod ( seed2(1:ndim), base(1:ndim))
-   r(1:ndim) = r(1:ndim) + real ( digit(1:ndim), pReal) * base_inv(1:ndim)
-   base_inv(1:ndim) = base_inv(1:ndim) / real ( base(1:ndim), pReal)
-   seed2(1:ndim) = seed2(1:ndim) / base(1:ndim)
- enddo
-
-end subroutine i_to_halton
-
-
+ elseif(IO_lc(action_halton(1:1)) == 'i') then actionHalton
+   if(IO_lc(name_halton(1:1)) == 's') seed = seed + value_halton(1)
+ endif actionHalton
+contains
 !--------------------------------------------------------------------------------------------------
 !> @brief returns any of the first 1500 prime numbers.
 !> @details n <= 0 returns 1500, the index of the largest prime (12553) available.
@@ -2563,6 +2506,51 @@ integer(pInt) function prime(n)
  end if
 
 end function prime
+
+
+
+end subroutine halton_memory
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief sets the dimension for a Halton sequence
+!> @author John Burkardt
+!--------------------------------------------------------------------------------------------------
+subroutine halton_ndim_set (ndim)
+
+ implicit none
+ integer(pInt), intent(in) :: ndim                                                                  !< dimension of the Halton vectors
+ integer(pInt) :: value_halton(1)
+
+ value_halton(1) = ndim
+ call halton_memory ('SET', 'NDIM', 1_pInt, value_halton)
+
+end subroutine halton_ndim_set
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief  sets the seed for the Halton sequence.
+!> @details Calling HALTON repeatedly returns the elements of the Halton sequence in order, 
+!> @details starting with element number 1.
+!> @details An internal counter, called SEED, keeps track of the next element to return. Each time 
+!> @details is computed, and then SEED is incremented by 1.
+!> @details To restart the Halton sequence, it is only necessary to reset SEED to 1. It might also 
+!> @details be desirable to reset SEED to some other value. This routine allows the user to specify 
+!> @details any value of SEED.
+!> @details The default value of SEED is 1, which restarts the Halton sequence.
+!> @author John Burkardt
+!--------------------------------------------------------------------------------------------------
+subroutine halton_seed_set(seed)
+ implicit none
+
+ integer(pInt), parameter :: NDIM = 1_pInt
+ integer(pInt), intent(in) :: seed                                                                  !< seed for the Halton sequence.
+ integer(pInt) :: value_halton(ndim)
+
+ value_halton(1) = seed
+ call halton_memory ('SET', 'SEED', NDIM, value_halton)
+
+end subroutine halton_seed_set
 
 
 !--------------------------------------------------------------------------------------------------
