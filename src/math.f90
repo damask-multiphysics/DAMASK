@@ -305,23 +305,17 @@ integer(pInt) function math_partition(a, istart, iend)
  implicit none
  integer(pInt), dimension(:,:), intent(inout) :: a
  integer(pInt), intent(in) :: istart,iend
- integer(pInt) :: d,i,j,k,x,tmp
+ integer(pInt) :: i,j,k,tmp
 
- d = int(size(a,1_pInt), pInt) ! number of linked data
-! set the starting and ending points, and the pivot point
 
- i = istart
-
- j = iend
- x = a(1,istart)
  do
 ! find the first element on the right side less than or equal to the pivot point
-   do j = j, istart, -1_pInt
-     if (a(1,j) <= x) exit
+   do j = iend, istart, -1_pInt
+     if (a(1,j) <= a(1,istart)) exit
    enddo
 ! find the first element on the left side greater than the pivot point
-   do i = i, iend
-     if (a(1,i) > x) exit
+   do i = istart, iend
+     if (a(1,i) > a(1,istart)) exit
    enddo
    if (i < j) then ! if the indexes do not cross, exchange values
      do k = 1_pInt,d
@@ -330,7 +324,7 @@ integer(pInt) function math_partition(a, istart, iend)
       a(k,j) = tmp
      enddo
    else           ! if they do cross, exchange left value with pivot and return with the partition index
-     do k = 1_pInt,d
+     do k = 1_pInt, int(size(a,1_pInt), pInt) ! number of linked data
       tmp = a(k,istart)
       a(k,istart) = a(k,j)
       a(k,j) = tmp
