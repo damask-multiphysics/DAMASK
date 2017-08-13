@@ -43,7 +43,8 @@ for name in filenames:
 
   table.head_read()
 
-# ------------------------------------------ sanity checks ----------------------------------------
+
+# ------------------------------------------ assemble header 1 ------------------------------------
 
   items = {
             'tensor': {'dim': 9, 'shape': [3,3], 'labels':options.tensor, 'column': []},
@@ -57,8 +58,10 @@ for name in filenames:
       if dim != data['dim']: remarks.append('column {} is not a {}...'.format(what,type))
       else:
         items[type]['column'].append(table.label_index(what))
-        table.labels_append(['{}_eigval({})'.format(i+1,what) for i in range(3)])                   # extend ASCII header with new labels
-        table.labels_append(['{}_eigvec({})'.format(i+1,what) for i in range(9)])                   # extend ASCII header with new labels
+        table.labels_append(['eigval{}({})'.format(t,what) for t in ['Min','Mid','Max']])
+        table.labels_append(['{}_eigvec{}({})'.format(i+1,t,what) for t in ['Min','Mid','Max'] for i in range(3)])
+
+# ------------------------------------------ sanity checks ----------------------------------------
 
   if remarks != []: damask.util.croak(remarks)
   if errors  != []:
@@ -66,12 +69,12 @@ for name in filenames:
     table.close(dismiss = True)
     continue
 
-# ------------------------------------------ assemble header --------------------------------------
+# ------------------------------------------ assemble header 2 ------------------------------------
 
   table.info_append(scriptID + '\t' + ' '.join(sys.argv[1:]))
   table.head_write()
 
-# ------------------------------------------ process data ------------------------------------------
+# ------------------------------------------ process data -----------------------------------------
 
   outputAlive = True
   while outputAlive and table.data_read():                                                          # read next data line of ASCII table
