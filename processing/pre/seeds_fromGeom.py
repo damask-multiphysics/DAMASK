@@ -31,7 +31,7 @@ parser.add_option('-b',
                   help   = 'blacklist of grain IDs')
 parser.add_option('-p',
                   '--pos', '--seedposition',
-                  dest = 'position',
+                  dest = 'pos',
                   type = 'string', metavar = 'string',
                   help = 'label of coordinates [%default]')
 
