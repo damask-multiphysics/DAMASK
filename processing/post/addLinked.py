@@ -69,7 +69,7 @@ for name in filenames:
   try:    table = damask.ASCIItable(name = name,
                                     buffered = False)
   except: continue
-  damask.util.report(scriptName,"{} <-- {}".format(name,options.asciitable))
+  damask.util.report(scriptName,"{} <== {}".format(name,options.asciitable))
 
 # ------------------------------------------ read header ------------------------------------------
 
