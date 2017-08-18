@@ -37,12 +37,9 @@ def findClosestSeed(fargs):
     return np.argmin(dist)                                                                          # seed point closest to point
 
 
-def laguerreTessellation(undeformed, coords, weights, grains, nonperiodic = False, cpus = 2):
+def laguerreTessellation(undeformed, coords, weights, grains, periodic = True, cpus = 2):
 
     copies = \
-      np.array([
-                [  0, 0, 0 ],
-               ]).astype(float) if nonperiodic else \
       np.array([
                 [ -1,-1,-1 ],
                 [  0,-1,-1 ],
@@ -71,7 +68,10 @@ def laguerreTessellation(undeformed, coords, weights, grains, nonperiodic = Fals
                 [ -1, 1, 1 ],
                 [  0, 1, 1 ],
                 [  1, 1, 1 ],
-               ]).astype(float)*info['size']
+               ]).astype(float)*info['size'] if periodic else \
+      np.array([
+                [  0, 0, 0 ],
+               ]).astype(float)
 
     repeatweights = np.tile(weights,len(copies)).flatten(order='F')                                 # Laguerre weights (1,2,3,1,2,3,...,1,2,3)
     for i,vec in enumerate(copies):                                                                 # periodic copies of seed points ...
@@ -121,8 +121,8 @@ group.add_option('--cpus',
                  type = 'int', metavar = 'int',
                  help = 'number of parallel processes to use for Laguerre tessellation [%default]')
 group.add_option('--nonperiodic',
-                 dest = 'nonperiodic',
-                 action = 'store_true',
+                 dest = 'periodic',
+                 action = 'store_false',
                  help = 'nonperiodic tessellation')
 
 parser.add_option_group(group)
@@ -144,6 +144,10 @@ group.add_option('-o',
                  dest = 'origin',
                  type = 'float', nargs = 3, metavar=' '.join(['float']*3),
                  help = 'origin of grid')
+group.add_option('--nonnormalized',
+                 dest = 'normalized',
+                 action = 'store_false',
+                 help = 'seed coordinates are not normalized to a unit cube')
 
 parser.add_option_group(group)
 
@@ -206,7 +210,8 @@ parser.set_defaults(pos            = 'pos',
                     phase          = 1,
                     cpus           = 2,
                     laguerre       = False,
-                    nonperiodic    = False,
+                    periodic       = True,
+                    normalized     = True,
                     config         = True,
                   )
 (options,filenames) = parser.parse_args()
@@ -248,7 +253,7 @@ for name in filenames:
     for i in range(3):
       if info['size'][i] <= 0.0:                                                                      # any invalid size?
         info['size'][i] = float(info['grid'][i])/max(info['grid'])                                    # normalize to grid
-        remarks.append('rescaling size {} to {}...'.format({0:'x',1:'y',2:'z'}[i],info['size'][i]))
+        remarks.append('rescaling size {} to {}...'.format(['x','y','z'][i],info['size'][i]))
 
   if table.label_dimension(options.pos) != 3:
     errors.append('seed positions "{}" have dimension {}.'.format(options.pos,
@@ -256,6 +261,7 @@ for name in filenames:
   else:
     labels += [options.pos]
 
+  if not options.normalized:               remarks.append('using real-space seed coordinates...')
   if not hasEulers:                        remarks.append('missing seed orientations...')
   else: labels += [options.eulers]
   if not hasGrains:                        remarks.append('missing seed microstructure indices...')
@@ -272,7 +278,8 @@ for name in filenames:
 # ------------------------------------------ read seeds ---------------------------------------  
       
   table.data_readArray(labels)
-  coords    = table.data[:,table.label_indexrange(options.pos)] * info['size']
+  coords    = table.data[:,table.label_indexrange(options.pos)] * info['size'] if options.normalized \
+        else  table.data[:,table.label_indexrange(options.pos)] - info['origin']
   eulers    = table.data[:,table.label_indexrange(options.eulers)] if hasEulers \
               else np.zeros(3*len(coords))
   grains    = table.data[:,table.label_indexrange(options.microstructure)].astype('i') if hasGrains \
@@ -291,7 +298,7 @@ for name in filenames:
   damask.util.croak('tessellating...')
 
   grid = np.vstack(meshgrid2(x, y, z)).reshape(3,-1).T
-  indices = laguerreTessellation(grid, coords, weights, grains, options.nonperiodic, options.cpus)
+  indices = laguerreTessellation(grid, coords, weights, grains, options.periodic, options.cpus)
     
 # --- write header ------------------------------------------------------------------------
 
