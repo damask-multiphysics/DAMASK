@@ -85,7 +85,7 @@ for name in filenames:
     scriptID + ' ' + ' '.join(sys.argv[1:]),
     "grid\ta {grid[0]}\tb {grid[1]}\tc {grid[2]}".format(grid=info['grid']),
     "size\tx {size[0]}\ty {size[1]}\tz {size[2]}".format(size=info['size']),
-    "origin\tx {origin[0]}\ty {origin[1]}\tz {origin[2]}".format(origin=newInfo['origin']),
+    "origin\tx {origin[0]}\ty {origin[1]}\tz {origin[2]}".format(origin=info['origin']),
     "homogenization\t{homog}".format(homog=info['homogenization']),
     "microstructures\t{microstructures}".format(microstructures=newInfo['microstructures']),
     ])
@@ -93,7 +93,7 @@ for name in filenames:
 
 # --- write microstructure information -----------------------------------------------------------
 
-  format = '%{}i'.format(int(math.floor(math.log10(len(grainIDs))+1)))
+  format = '%{}i'.format(int(math.floor(math.log10(newInfo['microstructures'])+1)))
   table.data = renumbered.reshape((info['grid'][0],info['grid'][1]*info['grid'][2]),order='F').transpose()
   table.data_writeArray(format,delimiter = ' ')
 
