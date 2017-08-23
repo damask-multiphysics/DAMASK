@@ -143,14 +143,13 @@ for name in filenames:
 # --- write header ---------------------------------------------------------------------------------
 
   table.info_clear()
-  table.info_append([
+  table.info_append(extra_header+[
     scriptID + ' ' + ' '.join(sys.argv[1:]),
     "grid\ta {}\tb {}\tc {}".format(*newInfo['grid']),
     "size\tx {}\ty {}\tz {}".format(*newInfo['size']),
     "origin\tx {}\ty {}\tz {}".format(*newInfo['origin']),
     "homogenization\t{}".format(info['homogenization']),
     "microstructures\t{}".format(newInfo['microstructures']),
-    extra_header
     ])
   table.labels_clear()
   table.head_write()
