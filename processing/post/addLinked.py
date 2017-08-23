@@ -55,6 +55,9 @@ if options.asciitable is not None and os.path.isfile(options.asciitable):
 
   if len(missing_labels) > 0:
     damask.util.croak('column{} {} not found...'.format('s' if len(missing_labels) > 1 else '',', '.join(missing_labels)))
+  if len(missing_labels) >= len(options.label):
+    damask.util.croak('aborting...')
+    sys.exit()
 
   index = linkedTable.data[:,:linkDim]
   data  = linkedTable.data[:,linkDim:]
