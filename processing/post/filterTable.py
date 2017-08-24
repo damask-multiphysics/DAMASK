@@ -126,18 +126,23 @@ for name in filenames:
 
   table.info_append(scriptID + '\t' + ' '.join(sys.argv[1:]))
   table.labels_clear()
-  table.labels_append(np.array(labels)[order])                                                      # update with new label set
+  table.labels_append(np.array(labels)[order])                                                        # update with new label set
   table.head_write()
 
 # ------------------------------------------ process and output data ------------------------------------------
 
   positions = np.array(positions)[order]
-  outputAlive = True
-  while outputAlive and table.data_read():                                                          # read next data line of ASCII table
-    specials['_row_'] += 1                                                                          # count row
-    if options.condition is None or eval(condition):                                                # valid row ?
-      table.data = [table.data[position] for position in positions]                                 # retain filtered columns
-      outputAlive = table.data_write()                                                              # output processed line
+  
+  if options.condition is None:                                                                       # read full array and filter columns
+    table.data_readArray(1+positions)                                                                 # read desired columns (indexed 1,...)
+    table.data_writeArray()                                                                           # directly write out
+  else:
+    outputAlive = True
+    while outputAlive and table.data_read():                                                          # read next data line of ASCII table
+      specials['_row_'] += 1                                                                          # count row
+      if eval(condition):                                                                             # valid row ?
+        table.data = [table.data[position] for position in positions]                                 # retain filtered columns
+        outputAlive = table.data_write()                                                              # output processed line
 
 # ------------------------------------------ finalize output -----------------------------------------
 
