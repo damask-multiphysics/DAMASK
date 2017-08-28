@@ -93,8 +93,8 @@ for name in filenames:
                or fnmatch.fnmatch(label,needle) for needle in options.whitelist]                    # which whitelist items do match it
       whitelistitem[i] = match.index(True) if np.sum(match) == 1 else -1                            # unique match to a whitelist item --> store which
 
-    sorted = np.lexsort(sortingList(labels,whitelistitem))
-    order = range(len(labels)) if sorted[0] < 0 else sorted                                         # skip reordering if non-unique, i.e. first sorted is "-1"
+    order =      range(len(labels)) if np.any(whitelistitem < 0) \
+            else np.lexsort(sortingList(labels,whitelistitem))                                      # reorder if unique, i.e. no "-1" in whitelistitem
   else:
     order = range(len(labels))                                                                      # maintain original order of labels
   
@@ -133,14 +133,19 @@ for name in filenames:
 
   positions = np.array(positions)[order]
   
-  if options.condition is None:                                                                       # read full array and filter columns
-    table.data_readArray(1+positions)                                                                 # read desired columns (indexed 1,...)
-    table.data_writeArray()                                                                           # directly write out
-  else:
+  atOnce = options.condition is None
+  if atOnce:                                                                                          # read full array and filter columns
+    try:
+      table.data_readArray(positions+1)                                                               # read desired columns (indexed 1,...)
+      table.data_writeArray()                                                                         # directly write out
+    except:
+      atOnce = False                                                                                  # data contains items that prevent array chunking
+
+  if not atOnce:                                                                                      # read data line by line
     outputAlive = True
     while outputAlive and table.data_read():                                                          # read next data line of ASCII table
       specials['_row_'] += 1                                                                          # count row
-      if eval(condition):                                                                             # valid row ?
+      if options.condition is None or eval(condition):                                                # valid row ?
         table.data = [table.data[position] for position in positions]                                 # retain filtered columns
         outputAlive = table.data_write()                                                              # output processed line
 
