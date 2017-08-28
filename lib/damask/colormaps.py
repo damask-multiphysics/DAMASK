@@ -87,7 +87,6 @@ class Color():
 
   def _HSV2HSL(self):
     """Convert H(ue) S(aturation) V(alue or brightness) to H(ue) S(aturation) L(uminance)
-
     with all values in the range of 0 to 1
     http://codeitdown.com/hsl-hsb-hsv-color/
     """
@@ -107,7 +106,6 @@ class Color():
 
   def _HSL2HSV(self):
     """Convert H(ue) S(aturation) L(uminance) to H(ue) S(aturation) V(alue or brightness)
-
     with all values in the range of 0 to 1
     http://codeitdown.com/hsl-hsb-hsv-color/
     """
