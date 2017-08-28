@@ -93,7 +93,7 @@ class Color():
     http://codeitdown.com/hsl-hsb-hsv-color/
     """
     if self.model != 'HSV': return
-    print "HSV: ",self.color
+
     converted = Color('HSL',np.array([
                                       self.color[0],
                                       1. if self.color[2] == 0.0 or (self.color[1] == 0.0 and self.color[2] == 1.0) \
