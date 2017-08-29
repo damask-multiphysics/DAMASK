@@ -95,14 +95,13 @@ for name in filenames:
 
   table.labels_clear()
   table.info_clear()
-  table.info_append([
+  table.info_append(extra_header+[
     scriptID + ' ' + ' '.join(sys.argv[1:]),
     "grid\ta {grid[0]}\tb {grid[1]}\tc {grid[2]}".format(grid=newInfo['grid']),
     "size\tx {size[0]}\ty {size[1]}\tz {size[2]}".format(size=newInfo['size']),
     "origin\tx {origin[0]}\ty {origin[1]}\tz {origin[2]}".format(origin=info['origin']),
     "homogenization\t{homog}".format(homog=info['homogenization']),
     "microstructures\t{microstructures}".format(microstructures=info['microstructures']),
-    extra_header
     ])
   table.head_write()
 

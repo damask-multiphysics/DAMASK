@@ -101,8 +101,6 @@ class Texture(Section):
 class Material():
   """Reads, manipulates and writes material.config files"""
 
-  __slots__ = ['data']
-
   def __init__(self,verbose=True):
     """Generates ordered list of parts"""
     self.parts = [

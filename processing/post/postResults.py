@@ -431,7 +431,7 @@ def mapIncremental(label, mapping, N, base, new):
               'avgabs': lambda n,b,a: (n*b+abs(a))/(n+1),
               'sum': lambda n,b,a: a if n==0 else b+a,
               'sumabs': lambda n,b,a: abs(a) if n==0 else b+abs(a),
-              'unique': lambda n,b,a: a if n==0 or b==a else 'n/a'
+              'unique': lambda n,b,a: a if n==0 or b==a else 'nan'
             }
   if mapping in theMap:
     mapped = map(theMap[mapping],[N]*len(base),base,new)                        # map one of the standard functions to data
@@ -442,7 +442,7 @@ def mapIncremental(label, mapping, N, base, new):
     try:
       mapped = eval('map(%s,[N]*len(base),base,new)'%mapping)                   # map user defined function to colums in chunks
     except:
-      mapped = ['n/a']*len(base)
+      mapped = ['nan']*len(base)
 
   return mapped
 

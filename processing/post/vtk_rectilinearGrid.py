@@ -70,7 +70,6 @@ for name in filenames:
 # --------------- figure out size and grid ---------------------------------------------------------
 
   table.data_readArray(options.pos)
-  if len(table.data.shape) < 2: table.data.shape += (1,)                                            # expand to 2D shape
   if table.data.shape[1] < 3:
     table.data = np.hstack((table.data,
                             np.zeros((table.data.shape[0],

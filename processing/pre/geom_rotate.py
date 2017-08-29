@@ -49,16 +49,18 @@ parser.set_defaults(degrees = False,
 
 (options, filenames) = parser.parse_args()
 
-if sum(x is not None for x in [options.rotation,options.eulers,options.matrix,options.quaternion]) !=1:
+if sum(x is not None for x in [options.rotation,options.eulers,options.matrix,options.quaternion]) != 1:
   parser.error('not exactly one rotation specified...')
 
-toRadian = math.pi/180. if options.degrees else 1.0
 eulers = np.array(damask.orientation.Orientation(
-                         quaternion=np.array(options.quaternion)      if options.quaternion else None,
-                         angleAxis =np.array(options.rotation)        if options.rotation else None,
-                         matrix    =np.array(options.matrix)          if options.matrix else None,
-                         Eulers    =np.array(options.eulers)*toRadian if options.eulers else None
-                  ).asEulers()) *180./math.pi
+                         quaternion = np.array(options.quaternion)  if options.quaternion else None,
+                         angleAxis  = np.array(options.rotation)    if options.rotation else None,
+                         matrix     = np.array(options.matrix)      if options.matrix else None,
+                         Eulers     = np.array(options.eulers)      if options.eulers else None,
+                         degrees    = options.degrees,
+                  ).asEulers(degrees=True))
+
+damask.util.croak('{} {} {}'.format(*eulers))
 
 # --- loop over input files -------------------------------------------------------------------------
 
@@ -67,7 +69,8 @@ if filenames == []: filenames = [None]
 for name in filenames:
   try:
     table = damask.ASCIItable(name = name,
-                              buffered = False, labeled = False)
+                              buffered = False,
+                              labeled = False)
   except: continue
   damask.util.report(scriptName,name)
 
@@ -76,11 +79,11 @@ for name in filenames:
   table.head_read()
   info,extra_header = table.head_getGeom()
 
-  damask.util.croak(['grid     a b c:  %s'%(' x '.join(map(str,info['grid']))),
-                     'size     x y z:  %s'%(' x '.join(map(str,info['size']))),
-                     'origin   x y z:  %s'%(' : '.join(map(str,info['origin']))),
-                     'homogenization:  %i'%info['homogenization'],
-                     'microstructures: %i'%info['microstructures'],
+  damask.util.croak(['grid     a b c:  {}'.format(' x '.join(map(str,info['grid']))),
+                     'size     x y z:  {}'.format(' x '.join(map(str,info['size']))),
+                     'origin   x y z:  {}'.format(' : '.join(map(str,info['origin']))),
+                     'homogenization:  {}'.format(info['homogenization']),
+                     'microstructures: {}'.format(info['microstructures']),
                     ])
 
   errors = []
@@ -95,10 +98,10 @@ for name in filenames:
 
   microstructure = table.microstructure_read(info['grid']).reshape(info['grid'],order='F')                    # read microstructure
 
-  newGrainID = options.fill if options.fill > 0 else microstructure.max()+1
-  microstructure = ndimage.rotate(microstructure,eulers[2],(0,1),order=0,output=int,cval=newGrainID) # rotation around Z
-  microstructure = ndimage.rotate(microstructure,eulers[1],(1,2),order=0,output=int,cval=newGrainID) # rotation around X
-  microstructure = ndimage.rotate(microstructure,eulers[0],(0,1),order=0,output=int,cval=newGrainID) # rotation around Z
+  newGrainID = options.fill if options.fill != 0 else microstructure.max()+1
+  microstructure = ndimage.rotate(microstructure,eulers[2],(0,1),order=0,prefilter=False,output=int,cval=newGrainID) # rotation around Z
+  microstructure = ndimage.rotate(microstructure,eulers[1],(1,2),order=0,prefilter=False,output=int,cval=newGrainID) # rotation around X
+  microstructure = ndimage.rotate(microstructure,eulers[0],(0,1),order=0,prefilter=False,output=int,cval=newGrainID) # rotation around Z
 
 # --- do work ------------------------------------------------------------------------------------
 
@@ -124,14 +127,13 @@ for name in filenames:
 
   table.labels_clear()
   table.info_clear()
-  table.info_append([
+  table.info_append(extra_header+[
     scriptID + ' ' + ' '.join(sys.argv[1:]),
     "grid\ta {grid[0]}\tb {grid[1]}\tc {grid[2]}".format(grid=newInfo['grid']),
     "size\tx {size[0]}\ty {size[1]}\tz {size[2]}".format(size=newInfo['size']),
     "origin\tx {origin[0]}\ty {origin[1]}\tz {origin[2]}".format(origin=info['origin']),
     "homogenization\t{homog}".format(homog=info['homogenization']),
     "microstructures\t{microstructures}".format(microstructures=newInfo['microstructures']),
-    extra_header
     ])
   table.head_write()
 
