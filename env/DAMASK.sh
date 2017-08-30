@@ -64,15 +64,16 @@ if [ ! -z "$PS1" ]; then
   echo "DAMASK             $DAMASK_ROOT"
   echo "Spectral Solver    $SOLVER" 
   echo "Post Processing    $PROCESSING"
-  echo "Multithreading     DAMASK_NUM_THREADS=$DAMASK_NUM_THREADS"
   if [ "x$PETSC_DIR"   != "x" ]; then
-    echo "PETSc location     $PETSC_DIR"
+    echo -n "PETSc location     "
+    [ -d $PETSC_DIR ] && echo $PETSC_DIR || blink $PETSC_DIR
     [[ $(canonicalPath "$PETSC_DIR") == $PETSC_DIR ]] \
     || echo "               ~~> "$(canonicalPath "$PETSC_DIR")
   fi
   echo -n "MSC.Marc/Mentat    "
   [ -d $MSC_ROOT ] && echo $MSC_ROOT || blink $MSC_ROOT
   echo
+  echo "Multithreading     DAMASK_NUM_THREADS=$DAMASK_NUM_THREADS"
   echo -n "heap  size         "
    [[ "$(ulimit -d)" == "unlimited" ]] \
    && echo "unlimited" \
