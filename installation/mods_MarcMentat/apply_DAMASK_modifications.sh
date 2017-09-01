@@ -123,8 +123,7 @@ echo 'setting file access rights...'
 for filename in marc$VERSION/tools/run_damask* \
                 marc$VERSION/tools/comp_damask* \
                 mentat$VERSION/bin/submit{4..9} \
-                mentat$VERSION/bin/kill{4..9} \
-                
+                mentat$VERSION/bin/kill{4..9} ; do
   chmod 755 $INSTALLDIR/${filename}
 done
 
