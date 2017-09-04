@@ -13,41 +13,12 @@ scriptID   = ' '.join([scriptName,damask.version])
 #                                MAIN
 #--------------------------------------------------------------------------------------------------
 
-parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
-translate microstructure indices (shift or substitute) and/or geometry origin.
+parser = OptionParser(option_class=damask.extendableOption, usage='%prog [file[s]]', description = """
+renumber sorted microstructure indices to 1,...,N.
 
 """, version=scriptID)
 
-parser.add_option('-o', '--origin',
-                  dest = 'origin',
-                  type = 'float', nargs = 3, metavar = ' '.join(['float']*3),
-                  help = 'offset from old to new origin of grid')
-parser.add_option('-m', '--microstructure',
-                  dest = 'microstructure',
-                  type = 'int', metavar = 'int',
-                  help = 'offset from old to new microstructure indices')
-parser.add_option('-s', '--substitute',
-                  dest = 'substitute',
-                  action = 'extend', metavar = '<string LIST>',
-                  help = 'substitutions of microstructure indices from,to,from,to,...')
-parser.add_option('--float',
-                  dest = 'real',
-                  action = 'store_true',
-                  help = 'use float input')
-
-parser.set_defaults(origin = (0.0,0.0,0.0),
-                    microstructure = 0,
-                    substitute = [],
-                    real = False,
-                   )
-
 (options, filenames) = parser.parse_args()
-
-datatype = 'f' if options.real else 'i'
-
-sub = {}
-for i in range(len(options.substitute)/2):                                                          # split substitution list into "from" -> "to"
-  sub[int(options.substitute[i*2])] = int(options.substitute[i*2+1])
 
 # --- loop over input files ----------------------------------------------------------------------
 
@@ -82,7 +53,7 @@ for name in filenames:
 
 # --- read data ----------------------------------------------------------------------------------
 
-  microstructure = table.microstructure_read(info['grid'],datatype)                                 # read microstructure
+  microstructure = table.microstructure_read(info['grid'])                                 # read microstructure
 
 # --- do work ------------------------------------------------------------------------------------
 
@@ -91,19 +62,17 @@ for name in filenames:
              'microstructures': 0,
             }
 
-  substituted = np.copy(microstructure)
-  for k, v in sub.iteritems(): substituted[microstructure==k] = v                                   # substitute microstructure indices
+  grainIDs = np.unique(microstructure)
+  renumbered = np.copy(microstructure)
+  
+  for i, oldID in enumerate(grainIDs):
+    renumbered = np.where(microstructure == oldID, i+1, renumbered)
 
-  substituted += options.microstructure                                                             # shift microstructure indices
-
-  newInfo['origin'] = info['origin'] + options.origin
-  newInfo['microstructures'] = len(np.unique(substituted))
+  newInfo['microstructures'] = len(grainIDs)
 
 # --- report -------------------------------------------------------------------------------------
 
   remarks = []
-  if (any(newInfo['origin']          != info['origin'])):
-    remarks.append('--> origin   x y z:  %s'%(' : '.join(map(str,newInfo['origin']))))
   if (    newInfo['microstructures'] != info['microstructures']):
     remarks.append('--> microstructures: %i'%newInfo['microstructures'])
   if remarks != []: damask.util.croak(remarks)
@@ -116,7 +85,7 @@ for name in filenames:
     scriptID + ' ' + ' '.join(sys.argv[1:]),
     "grid\ta {grid[0]}\tb {grid[1]}\tc {grid[2]}".format(grid=info['grid']),
     "size\tx {size[0]}\ty {size[1]}\tz {size[2]}".format(size=info['size']),
-    "origin\tx {origin[0]}\ty {origin[1]}\tz {origin[2]}".format(origin=newInfo['origin']),
+    "origin\tx {origin[0]}\ty {origin[1]}\tz {origin[2]}".format(origin=info['origin']),
     "homogenization\t{homog}".format(homog=info['homogenization']),
     "microstructures\t{microstructures}".format(microstructures=newInfo['microstructures']),
     ])
@@ -124,8 +93,8 @@ for name in filenames:
 
 # --- write microstructure information -----------------------------------------------------------
 
-  format = '%g' if options.real else '%{}i'.format(int(math.floor(math.log10(microstructure.max())+1)))
-  table.data = substituted.reshape((info['grid'][0],info['grid'][1]*info['grid'][2]),order='F').transpose()
+  format = '%{}i'.format(int(math.floor(math.log10(newInfo['microstructures'])+1)))
+  table.data = renumbered.reshape((info['grid'][0],info['grid'][1]*info['grid'][2]),order='F').transpose()
   table.data_writeArray(format,delimiter = ' ')
 
 # --- output finalization ------------------------------------------------------------------------

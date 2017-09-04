@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 
 OUTFILE="system_report.txt"
+echo generating $OUTFILE
+
 echo date +"%m-%d-%y" >$OUTFILE
 
 # redirect STDOUT and STDERR to logfile

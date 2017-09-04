@@ -14,7 +14,7 @@ scriptID   = ' '.join([scriptName,damask.version])
 # --------------------------------------------------------------------
 
 parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
-Add data of selected column(s) from (first) row of second ASCIItable that shares the linking column value.
+Add data of selected column(s) from (first) row of linked ASCIItable that shares the linking column value.
 
 """, version = scriptID)
 
@@ -25,7 +25,7 @@ parser.add_option('--link',
 parser.add_option('-l','--label',
                   dest = 'label',
                   action = 'extend', metavar = '<string LIST>',
-                  help = 'column label(s) to be appended')
+                  help = 'column label(s) to add from linked ASCIItable')
 parser.add_option('-a','--asciitable',
                   dest = 'asciitable',
                   type = 'string', metavar = 'string',
@@ -55,6 +55,9 @@ if options.asciitable is not None and os.path.isfile(options.asciitable):
 
   if len(missing_labels) > 0:
     damask.util.croak('column{} {} not found...'.format('s' if len(missing_labels) > 1 else '',', '.join(missing_labels)))
+  if len(missing_labels) >= len(options.label):
+    damask.util.croak('aborting...')
+    sys.exit()
 
   index = linkedTable.data[:,:linkDim]
   data  = linkedTable.data[:,linkDim:]
@@ -69,7 +72,8 @@ for name in filenames:
   try:    table = damask.ASCIItable(name = name,
                                     buffered = False)
   except: continue
-  damask.util.report(scriptName,name)
+  damask.util.report(scriptName,"{} {} <== {} {}".format(name,damask.util.deemph('@ '+options.link[0]),
+                                                         options.asciitable,damask.util.deemph('@ '+options.link[1])))
 
 # ------------------------------------------ read header ------------------------------------------
 
