@@ -972,7 +972,7 @@ real(pReal) pure function math_detSym33(m)
  real(pReal), dimension(3,3), intent(in) :: m
  
   math_detSym33 = -(m(1,1)*m(2,3)**2_pInt + m(2,2)*m(1,3)**2_pInt + m(3,3)*m(1,2)**2_pInt) &
-                  + m(1,1)*m(2,2)*m(3,3)  - 2.0_pReal * m(1,2)*m(1,3)*m(2,3)
+                  + m(1,1)*m(2,2)*m(3,3)  + 2.0_pReal * m(1,2)*m(1,3)*m(2,3)
 
 end function  math_detSym33
 
@@ -1962,6 +1962,7 @@ subroutine math_eigenValuesVectorsSym33(m,values,vectors)
 
 ! Calculate third eigenvector according to  v[2] = v[0] x v[1]
  vectors(1:3,3) = math_crossproduct(vectors(1:3,1),vectors(1:3,2))
+
 end subroutine math_eigenValuesVectorsSym33
 
 
@@ -1984,7 +1985,7 @@ function math_eigenvectorBasisSym(m)
  
  do i=1_pInt, size(m,1)
    math_eigenvectorBasisSym = math_eigenvectorBasisSym &
-                            +  sqrt(values(i)) * math_tensorproduct(vectors(:,i),vectors(:,i))
+                            + sqrt(values(i)) * math_tensorproduct(vectors(:,i),vectors(:,i))
  enddo
 
 end function math_eigenvectorBasisSym
@@ -2137,6 +2138,7 @@ function math_eigenvaluesSym33(m)
                           cos((phi+4.0_pReal*PI)/3.0_pReal) &
                          ] + invariants(1)/3.0_pReal
  endif
+
 end function math_eigenvaluesSym33
 
 
