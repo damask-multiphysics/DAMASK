@@ -60,15 +60,18 @@ module plastic_isotropic
      flowstress, &
      accumulatedShear
  end type
+
  type, private :: tIsotropicAbsTol                                                                  !< internal alias for abs tolerance in state
    real(pReal), pointer :: &                                                                        ! scalars along NipcMyInstance
      flowstress, &
      accumulatedShear
  end type
+
  type(tIsotropicState), allocatable, dimension(:), private :: &                                       !< state aliases per instance
    state, &
    state0, &
    dotState
+
  type(tIsotropicAbsTol), allocatable, dimension(:), private :: &                                       !< state aliases per instance
    stateAbsTol
 
@@ -140,7 +143,7 @@ subroutine plastic_isotropic_init(fileUnit)
    extmsg    = ''
  character(len=64) :: &
    outputtag = ''
-  integer(pInt) :: NipcMyPhase
+ integer(pInt) :: NipcMyPhase
 
  write(6,'(/,a)')   ' <<<+-  constitutive_'//PLASTICITY_ISOTROPIC_label//' init  -+>>>'
  write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
@@ -293,9 +296,9 @@ subroutine plastic_isotropic_init(fileUnit)
 
 !--------------------------------------------------------------------------------------------------
 ! allocate state arrays
-     sizeState    = 2_pInt                                                                           ! flowstress, accumulated_shear
-     sizeDotState = sizeState                                                                        ! both evolve
+     sizeDotState   = 2_pInt                                                                         ! flowstress, accumulated_shear
      sizeDeltaState = 0_pInt                                                                         ! no sudden jumps in state
+     sizeState      = sizeDotState + sizeDeltaState
      plasticState(phase)%sizeState = sizeState
      plasticState(phase)%sizeDotState = sizeDotState
      plasticState(phase)%sizeDeltaState = sizeDeltaState
@@ -418,7 +421,7 @@ subroutine plastic_isotropic_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,ipc,ip,el)
              * ( sqrt(1.5_pReal) * norm_Tstar_dev / param(instance)%fTaylor / state(instance)%flowstress(of) ) &
              **param(instance)%n
 
-   Lp = Tstar_dev_33/norm_Tstar_dev * gamma_dot/param(instance)%fTaylor
+   Lp = Tstar_dev_33/norm_Tstar_dev * gamma_dot/param(instance)%fTaylor 
 
    if (iand(debug_level(debug_constitutive), debug_levelExtensive) /= 0_pInt &
        .and. ((el == debug_e .and. ip == debug_i .and. ipc == debug_g) &
