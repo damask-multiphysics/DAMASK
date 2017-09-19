@@ -1587,7 +1587,7 @@ subroutine IO_error(error_ID,el,ip,g,instance,ext_msg)
  case (601_pInt)
    msg = 'Ping-Pong needed when using non-local plasticity'
  case (602_pInt)
-   msg = 'invalid element/IP/component (grain) selected for debug'
+   msg = 'invalid selection for debug'
 
 !-------------------------------------------------------------------------------------------------
 ! DAMASK_marc errors
