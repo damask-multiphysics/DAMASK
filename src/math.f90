@@ -3,7 +3,7 @@
 !> @author Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
 !> @author Christoph Kords, Max-Planck-Institut für Eisenforschung GmbH
 !> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
-!> @brief Mathematical library, including random number generation and tensor represenations
+!> @brief Mathematical library, including random number generation and tensor representations
 !--------------------------------------------------------------------------------------------------
 module math
  use prec, only: &
@@ -173,10 +173,8 @@ contains
 subroutine math_init
 
  use, intrinsic :: iso_fortran_env                                                                  ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
- use prec,     only: tol_math_check
- use numerics, only: &
-   fixedSeed
- use IO,       only: IO_error, IO_timeStamp
+ use numerics, only: fixedSeed
+ use IO,       only: IO_timeStamp
 
  implicit none
  integer(pInt) :: i
@@ -226,12 +224,10 @@ end subroutine math_init
 !--------------------------------------------------------------------------------------------------
 subroutine math_check
 
- use, intrinsic :: iso_fortran_env                                                                  ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
  use prec,     only: tol_math_check
- use numerics, only: &
-   fixedSeed
- use IO,       only: IO_error, IO_timeStamp
+ use IO,       only: IO_error
 
+ implicit none
  character(len=64) :: error_msg
 
  real(pReal), dimension(3,3) :: R,R2
@@ -268,7 +264,7 @@ subroutine math_check
  if ( any(abs( q-q2) > tol_math_check) .and. &
       any(abs(-q-q2) > tol_math_check) ) then
    write (error_msg, '(a,e14.6)' ) &
-          'quat -> euler -> quatmaximum deviation ',min(maxval(abs( q-q2)),maxval(abs(-q-q2)))
+          'quat -> euler -> quat maximum deviation ',min(maxval(abs( q-q2)),maxval(abs(-q-q2)))
    call IO_error(401_pInt,ext_msg=error_msg)
  endif
 
@@ -373,23 +369,19 @@ end subroutine math_qsort
 
 !--------------------------------------------------------------------------------------------------
 !> @brief vector expansion
-!> @details takes a set of numbers (a,b,c,...) and corresponding multipliers (x,y,z,...)
-!> to return a vector of x times a, y times b, z times c, ...
+!> @details takes a set of numbers (a,b,c,...) and corresponding multiples (x,y,z,...)
+!> to return a vector of x times a, y times b, z times c, ... 
 !--------------------------------------------------------------------------------------------------
 pure function math_expand(what,how)
 
  implicit none
- real(pReal), dimension(:), intent(in) ::  what
- integer(pInt), dimension(:), intent(in) ::  how
+ real(pReal),   dimension(:), intent(in) :: what
+ integer(pInt), dimension(:), intent(in) :: how
  real(pReal), dimension(sum(how)) ::  math_expand
- integer(pInt) :: i,j,o
+ integer(pInt) :: i
 
- o = 0_pInt
- do i = 1, size(how)
-   do j = 1, how(i)
-     o = o + 1_pInt
-     math_expand(o) = what(1+mod(i-1,size(what)))
-   enddo 
+ do i = 1_pInt, size(how)
+   math_expand(sum(how(1:i-1))+1:sum(how(1:i))) = what(mod(i-1_pInt,size(what))+1_pInt)
  enddo
 
 end function math_expand
@@ -709,22 +701,20 @@ end function math_mul66x6
 pure function math_exp33(A,n)
 
  implicit none
- integer(pInt) :: i,order
+ integer(pInt) :: i
  integer(pInt), intent(in), optional :: n
- real(pReal), dimension(3,3), intent(in) ::  A
- real(pReal), dimension(3,3) ::  B,math_exp33
- real(pReal) :: invfac
-
- order = merge(n,5_pInt,present(n))
+ real(pReal), dimension(3,3), intent(in) :: A
+ real(pReal), dimension(3,3) :: B, math_exp33
+ real(pReal) :: invFac
 
  B = math_I3                                                                                        ! init
- invfac = 1.0_pReal                                                                                 ! 0!
+ invFac = 1.0_pReal                                                                                 ! 0!
  math_exp33 = B                                                                                     ! A^0 = eye2
 
- do i = 1_pInt,n
-   invfac = invfac/real(i,pReal)                                                                    ! invfac = 1/i!
+ do i = 1_pInt, merge(n,5_pInt,present(n))
+   invFac = invFac/real(i,pReal)                                                                    ! invfac = 1/i!
    B = math_mul33x33(B,A)
-   math_exp33 = math_exp33 + invfac*B                                                               ! exp = SUM (A^i)/i!
+   math_exp33 = math_exp33 + invFac*B                                                               ! exp = SUM (A^i)/i!
  enddo
 
 end function math_exp33
