@@ -3,7 +3,7 @@
 !> @author Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
 !> @author Christoph Kords, Max-Planck-Institut für Eisenforschung GmbH
 !> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
-!> @brief Mathematical library, including random number generation and tensor represenations
+!> @brief Mathematical library, including random number generation and tensor representations
 !--------------------------------------------------------------------------------------------------
 module math
  use prec, only: &
@@ -173,22 +173,16 @@ contains
 subroutine math_init
 
  use, intrinsic :: iso_fortran_env                                                                  ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
- use prec,     only: tol_math_check
- use numerics, only: &
-   fixedSeed
- use IO,       only: IO_error, IO_timeStamp
+ use numerics, only: fixedSeed
+ use IO,       only: IO_timeStamp
 
  implicit none
  integer(pInt) :: i
- real(pReal), dimension(3,3) :: R,R2
- real(pReal), dimension(3) ::   Eulers,v
- real(pReal), dimension(4) ::   q,q2,axisangle,randTest
+ real(pReal), dimension(4) ::   randTest
 ! the following variables are system dependend and shound NOT be pInt
  integer :: randSize                                                                                ! gfortran requires a variable length to compile
  integer, dimension(:), allocatable :: randInit                                                     ! if recalculations of former randomness (with given seed) is necessary
                                                                                                     ! comment the first random_seed call out, set randSize to 1, and use ifort
- character(len=64) :: error_msg
-
  write(6,'(/,a)')   ' <<<+-  math init  -+>>>'
  write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
@@ -211,7 +205,7 @@ subroutine math_init
  enddo
 
  write(6,'(a,I2)') ' size  of random seed:    ', randSize
- do i =1, randSize
+ do i = 1_pInt,randSize
    write(6,'(a,I2,I14)') ' value of random seed:    ', i, randInit(i)
  enddo
  write(6,'(a,4(/,26x,f17.14),/)') ' start of random sequence: ', randTest
@@ -220,6 +214,25 @@ subroutine math_init
 
  call halton_seed_set(int(randInit(1), pInt))
  call halton_ndim_set(3_pInt)
+
+ call math_check()
+
+end subroutine math_init
+ 
+!--------------------------------------------------------------------------------------------------
+!> @brief check correctness of (some) math functions
+!--------------------------------------------------------------------------------------------------
+subroutine math_check
+
+ use prec,     only: tol_math_check
+ use IO,       only: IO_error
+
+ implicit none
+ character(len=64) :: error_msg
+
+ real(pReal), dimension(3,3) :: R,R2
+ real(pReal), dimension(3) ::   Eulers,v
+ real(pReal), dimension(4) ::   q,q2,axisangle
 
  ! --- check rotation dictionary ---
 
@@ -230,7 +243,8 @@ subroutine math_init
  q2 = math_axisAngleToQ(axisangle(1:3),axisangle(4))
  if ( any(abs( q-q2) > tol_math_check) .and. &
       any(abs(-q-q2) > tol_math_check) ) then
-   write (error_msg, '(a,e14.6)' ) 'maximum deviation ',min(maxval(abs( q-q2)),maxval(abs(-q-q2)))
+   write (error_msg, '(a,e14.6)' ) &
+          'quat -> axisAngle -> quat maximum deviation ',min(maxval(abs( q-q2)),maxval(abs(-q-q2)))
    call IO_error(401_pInt,ext_msg=error_msg)
  endif
 
@@ -239,8 +253,9 @@ subroutine math_init
  q2 = math_RtoQ(R)
  if ( any(abs( q-q2) > tol_math_check) .and. &
       any(abs(-q-q2) > tol_math_check) ) then
-   write (error_msg, '(a,e14.6)' ) 'maximum deviation ',min(maxval(abs( q-q2)),maxval(abs(-q-q2)))
-   call IO_error(402_pInt,ext_msg=error_msg)
+   write (error_msg, '(a,e14.6)' ) &
+          'quat -> R -> quat maximum deviation ',min(maxval(abs( q-q2)),maxval(abs(-q-q2)))
+   call IO_error(401_pInt,ext_msg=error_msg)
  endif
 
  ! +++ q -> euler -> q  +++
@@ -248,28 +263,46 @@ subroutine math_init
  q2 = math_EulerToQ(Eulers)
  if ( any(abs( q-q2) > tol_math_check) .and. &
       any(abs(-q-q2) > tol_math_check) ) then
-   write (error_msg, '(a,e14.6)' ) 'maximum deviation ',min(maxval(abs( q-q2)),maxval(abs(-q-q2)))
-   call IO_error(403_pInt,ext_msg=error_msg)
+   write (error_msg, '(a,e14.6)' ) &
+          'quat -> euler -> quat maximum deviation ',min(maxval(abs( q-q2)),maxval(abs(-q-q2)))
+   call IO_error(401_pInt,ext_msg=error_msg)
  endif
 
  ! +++ R -> euler -> R  +++
  Eulers = math_RtoEuler(R)
  R2 = math_EulerToR(Eulers)
  if ( any(abs( R-R2) > tol_math_check) ) then
-   write (error_msg, '(a,e14.6)' ) 'maximum deviation ',maxval(abs( R-R2))
-   call IO_error(404_pInt,ext_msg=error_msg)
+   write (error_msg, '(a,e14.6)' ) &
+          'R -> euler -> R maximum deviation ',maxval(abs( R-R2))
+   call IO_error(401_pInt,ext_msg=error_msg)
  endif
 
  ! +++ check rotation sense of q and R +++
- q = math_qRand()          ! random quaternion
  call halton(3_pInt,v)     ! random vector
  R = math_qToR(q)
  if (any(abs(math_mul33x3(R,v) - math_qRot(q,v)) > tol_math_check)) then
-   write(6,'(a,4(f8.3,1x))') 'q',q
-   call IO_error(409_pInt)
+   write (error_msg, '(a)' ) 'R(q)*v has different sense than q*v'
+   call IO_error(401_pInt,ext_msg=error_msg)
  endif
 
-end subroutine math_init
+ ! +++ check vector expansion +++
+ if (any(abs([1.0_pReal,2.0_pReal,2.0_pReal,3.0_pReal,3.0_pReal,3.0_pReal] - &
+             math_expand([1.0_pReal,2.0_pReal,3.0_pReal],[1_pInt,2_pInt,3_pInt,0_pInt])) > tol_math_check)) then
+   write (error_msg, '(a)' ) 'math_expand [1,2,3] by [1,2,3,0] => [1,2,2,3,3,3]'
+   call IO_error(401_pInt,ext_msg=error_msg)
+ endif
+ if (any(abs([1.0_pReal,2.0_pReal,2.0_pReal] - &
+             math_expand([1.0_pReal,2.0_pReal,3.0_pReal],[1_pInt,2_pInt])) > tol_math_check)) then
+   write (error_msg, '(a)' ) 'math_expand [1,2,3] by [1,2] => [1,2,2]'
+   call IO_error(401_pInt,ext_msg=error_msg)
+ endif
+ if (any(abs([1.0_pReal,2.0_pReal,2.0_pReal,1.0_pReal,1.0_pReal,1.0_pReal] - &
+             math_expand([1.0_pReal,2.0_pReal],[1_pInt,2_pInt,3_pInt])) > tol_math_check)) then
+   write (error_msg, '(a)' ) 'math_expand [1,2] by [1,2,3] => [1,2,2,1,1,1]'
+   call IO_error(401_pInt,ext_msg=error_msg)
+ endif
+ 
+end subroutine math_check
  
 
 !--------------------------------------------------------------------------------------------------
@@ -332,6 +365,26 @@ recursive subroutine math_qsort(a, istart, iend)
  end function qsort_partition
 
 end subroutine math_qsort
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief vector expansion
+!> @details takes a set of numbers (a,b,c,...) and corresponding multiples (x,y,z,...)
+!> to return a vector of x times a, y times b, z times c, ... 
+!--------------------------------------------------------------------------------------------------
+pure function math_expand(what,how)
+
+ implicit none
+ real(pReal),   dimension(:), intent(in) :: what
+ integer(pInt), dimension(:), intent(in) :: how
+ real(pReal), dimension(sum(how)) ::  math_expand
+ integer(pInt) :: i
+
+ do i = 1_pInt, size(how)
+   math_expand(sum(how(1:i-1))+1:sum(how(1:i))) = what(mod(i-1_pInt,size(what))+1_pInt)
+ enddo
+
+end function math_expand
 
 
 !--------------------------------------------------------------------------------------------------
@@ -648,22 +701,20 @@ end function math_mul66x6
 pure function math_exp33(A,n)
 
  implicit none
- integer(pInt) :: i,order
+ integer(pInt) :: i
  integer(pInt), intent(in), optional :: n
- real(pReal), dimension(3,3), intent(in) ::  A
- real(pReal), dimension(3,3) ::  B,math_exp33
- real(pReal) :: invfac
-
- order = merge(n,5_pInt,present(n))
+ real(pReal), dimension(3,3), intent(in) :: A
+ real(pReal), dimension(3,3) :: B, math_exp33
+ real(pReal) :: invFac
 
  B = math_I3                                                                                        ! init
- invfac = 1.0_pReal                                                                                 ! 0!
+ invFac = 1.0_pReal                                                                                 ! 0!
  math_exp33 = B                                                                                     ! A^0 = eye2
 
- do i = 1_pInt,n
-   invfac = invfac/real(i,pReal)                                                                    ! invfac = 1/i!
+ do i = 1_pInt, merge(n,5_pInt,present(n))
+   invFac = invFac/real(i,pReal)                                                                    ! invfac = 1/i!
    B = math_mul33x33(B,A)
-   math_exp33 = math_exp33 + invfac*B                                                               ! exp = SUM (A^i)/i!
+   math_exp33 = math_exp33 + invFac*B                                                               ! exp = SUM (A^i)/i!
  enddo
 
 end function math_exp33
@@ -972,7 +1023,7 @@ real(pReal) pure function math_detSym33(m)
  real(pReal), dimension(3,3), intent(in) :: m
  
   math_detSym33 = -(m(1,1)*m(2,3)**2_pInt + m(2,2)*m(1,3)**2_pInt + m(3,3)*m(1,2)**2_pInt) &
-                  + m(1,1)*m(2,2)*m(3,3)  - 2.0_pReal * m(1,2)*m(1,3)*m(2,3)
+                  + m(1,1)*m(2,2)*m(3,3)  + 2.0_pReal * m(1,2)*m(1,3)*m(2,3)
 
 end function  math_detSym33
 
@@ -1962,6 +2013,7 @@ subroutine math_eigenValuesVectorsSym33(m,values,vectors)
 
 ! Calculate third eigenvector according to  v[2] = v[0] x v[1]
  vectors(1:3,3) = math_crossproduct(vectors(1:3,1),vectors(1:3,2))
+
 end subroutine math_eigenValuesVectorsSym33
 
 
@@ -1984,7 +2036,7 @@ function math_eigenvectorBasisSym(m)
  
  do i=1_pInt, size(m,1)
    math_eigenvectorBasisSym = math_eigenvectorBasisSym &
-                            +  sqrt(values(i)) * math_tensorproduct(vectors(:,i),vectors(:,i))
+                            + sqrt(values(i)) * math_tensorproduct(vectors(:,i),vectors(:,i))
  enddo
 
 end function math_eigenvectorBasisSym
@@ -2137,6 +2189,7 @@ function math_eigenvaluesSym33(m)
                           cos((phi+4.0_pReal*PI)/3.0_pReal) &
                          ] + invariants(1)/3.0_pReal
  endif
+
 end function math_eigenvaluesSym33
 
 

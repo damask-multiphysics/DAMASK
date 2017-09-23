@@ -1557,13 +1557,7 @@ subroutine IO_error(error_ID,el,ip,g,instance,ext_msg)
  case (400_pInt)
    msg = 'matrix inversion error'
  case (401_pInt)
-   msg = 'math_check: quat -> axisAngle -> quat failed'
- case (402_pInt)
-   msg = 'math_check: quat -> R -> quat failed'
- case (403_pInt)
-   msg = 'math_check: quat -> euler -> quat failed'
- case (404_pInt)
-   msg = 'math_check: R -> euler -> R failed'
+   msg = 'math_check failed'
  case (405_pInt)
    msg = 'I_TO_HALTON-error: an input base BASE is <= 1'
  case (406_pInt)
@@ -1587,7 +1581,7 @@ subroutine IO_error(error_ID,el,ip,g,instance,ext_msg)
  case (601_pInt)
    msg = 'Ping-Pong needed when using non-local plasticity'
  case (602_pInt)
-   msg = 'invalid element/IP/component (grain) selected for debug'
+   msg = 'invalid selection for debug'
 
 !-------------------------------------------------------------------------------------------------
 ! DAMASK_marc errors
