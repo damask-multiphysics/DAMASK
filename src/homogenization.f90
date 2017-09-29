@@ -471,7 +471,7 @@ subroutine homogenization_init
  flush(6)
 
  if (debug_g < 1 .or. debug_g > homogenization_Ngrains(mesh_element(3,debug_e))) &
-   call IO_error(602_pInt,ext_msg='component (grain)')
+   call IO_error(602_pInt,ext_msg='component (grain)', el=debug_e, g=debug_g)
 
 end subroutine homogenization_init
 
