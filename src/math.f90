@@ -74,6 +74,7 @@ module math
  public :: &
    math_init, &
    math_qsort, &
+   math_expand, &
    math_range, &
    math_identity2nd, &
    math_identity4th, &
@@ -382,14 +383,12 @@ pure function math_expand(what,how)
  real(pReal), dimension(:), intent(in) ::  what
  integer(pInt), dimension(:), intent(in) ::  how
  real(pReal), dimension(sum(how)) ::  math_expand
- integer(pInt) :: i,j,o
+ integer(pInt) :: i,o
 
- o = 0_pInt
+ o = 1_pInt
  do i = 1, size(how)
-   do j = 1, how(i)
-     o = o + 1_pInt
-     math_expand(o) = what(1+mod(i-1,size(what)))
-   enddo 
+   math_expand(o:o+how(i)-1_pInt) = what(1+mod(i-1,size(what)))
+   o = o + how(i)
  enddo
 
 end function math_expand
