@@ -45,14 +45,14 @@ module prec
      sizePostResults = 0_pInt                                                                       !< size of output data
    real(pReal), pointer,     dimension(:), contiguous :: &
      atolState
-   real(pReal), pointer,     dimension(:,:), contiguous :: &                                        ! a pointer is needed here because we might point to state/doState. However, they will never point to something, but are rather allocated and, hence, contiguous 
+   real(pReal), pointer,     dimension(:,:), contiguous :: &                                        ! a pointer is needed here because we might point to state/dot/deltaState. However, they will never point to something, but are rather allocated and, hence, contiguous 
      state, &                                                                                       !< state
-     dotState, &                                                                                    !< state rate
-     state0
+     state0, &                                                                                      !< state at beginning of increment
+     dotState, &                                                                                    !< rate of state change
+     deltaState                                                                                     !< increment of state change
    real(pReal), allocatable, dimension(:,:) :: &
      partionedState0, &
      subState0, &
-     deltaState, &
      previousDotState, &                                                                            !< state rate of previous xxxx
      previousDotState2, &                                                                           !< state rate two xxxx ago
      RK4dotState
