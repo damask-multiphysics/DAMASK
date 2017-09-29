@@ -61,7 +61,7 @@ module plastic_isotropic
      accumulatedShear
  end type
  type, private :: tIsotropicAbsTol                                                                  !< internal alias for abs tolerance in state
-   real(pReal), pointer :: &                                                                        ! scalars along NipcMyInstance
+   real(pReal), pointer :: &                                                                        ! scalars
      flowstress, &
      accumulatedShear
  end type
