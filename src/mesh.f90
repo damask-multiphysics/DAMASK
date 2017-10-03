@@ -515,6 +515,8 @@ subroutine mesh_init(ip,el)
  integer(pInt) :: j
  logical :: myDebug
  
+ external :: MPI_comm_size
+
  write(6,'(/,a)')   ' <<<+-  mesh init  -+>>>'
  write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
