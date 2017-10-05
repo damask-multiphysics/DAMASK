@@ -81,7 +81,11 @@ contains
 !> @brief only outputs revision number
 !--------------------------------------------------------------------------------------------------
 subroutine IO_init
- use, intrinsic :: iso_fortran_env                                                                  ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
+#ifdef __GFORTRAN__
+ use, intrinsic :: iso_fortran_env, only: &
+   compiler_version, &
+   compiler_options
+#endif
  
  implicit none
 
