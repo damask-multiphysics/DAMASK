@@ -451,9 +451,9 @@ def mapIncremental(label, mapping, N, base, new):
 # -----------------------------
 def OpenPostfile(name,type,nodal = False):
   """Open postfile with extrapolation mode 'translate'"""
-  p = {\
-         'spectral': MPIEspectral_result,\
-         'marc':     post_open,\
+  p = {
+         'spectral': MPIEspectral_result,
+         'marc':     post_open,
       }[type](name)
   p.extrapolation({True:'linear',False:'translate'}[nodal])
   p.moveto(1)
@@ -512,19 +512,19 @@ def ParsePostfile(p,filename, outputFormat):
 
   needs "outputFormat" for mapping of output names to postfile output indices
   """
-  stat = { \
-  'IndexOfLabel': {}, \
-  'Title': p.title(), \
-  'Extrapolation': p.extrapolate, \
-  'NumberOfIncrements': p.increments(), \
-  'NumberOfNodes': p.nodes(), \
-  'NumberOfNodalScalars': p.node_scalars(), \
-  'LabelOfNodalScalar': [None]*p.node_scalars() , \
-  'NumberOfElements': p.elements(), \
-  'NumberOfElementalScalars': p.element_scalars(), \
-  'LabelOfElementalScalar': [None]*p.element_scalars() , \
-  'NumberOfElementalTensors': p.element_tensors(), \
-  'LabelOfElementalTensor': [None]*p.element_tensors(), \
+  stat = {
+  'IndexOfLabel': {},
+  'Title': p.title(),
+  'Extrapolation': p.extrapolate,
+  'NumberOfIncrements': p.increments(),
+  'NumberOfNodes': p.nodes(),
+  'NumberOfNodalScalars': p.node_scalars(),
+  'LabelOfNodalScalar': [None]*p.node_scalars(),
+  'NumberOfElements': p.elements(),
+  'NumberOfElementalScalars': p.element_scalars(),
+  'LabelOfElementalScalar': [None]*p.element_scalars(),
+  'NumberOfElementalTensors': p.element_tensors(),
+  'LabelOfElementalTensor': [None]*p.element_tensors(),
   }
 
 # --- find labels
@@ -671,6 +671,9 @@ parser.add_option('-m','--map', dest='func',
 parser.add_option('-p','--type', dest='filetype',
                   metavar = 'string',
                   help = 'type of result file [auto]')
+parser.add_option('-q','--quiet', dest='verbose',
+                  action = 'store_false',
+                  help = 'suppress verbose output')
 
 group_material = OptionGroup(parser,'Material identifier')
 
@@ -711,24 +714,26 @@ parser.add_option_group(group_material)
 parser.add_option_group(group_general)
 parser.add_option_group(group_special)
 
-parser.set_defaults(info = False)
-parser.set_defaults(legacy = False)
-parser.set_defaults(nodal = False)
-parser.set_defaults(prefix = '')
-parser.set_defaults(suffix = '')
-parser.set_defaults(dir = 'postProc')
-parser.set_defaults(filetype = None)
-parser.set_defaults(func = 'avg')
-parser.set_defaults(homog = '1')
-parser.set_defaults(cryst = '1')
-parser.set_defaults(phase = '1')
-parser.set_defaults(filter = '')
-parser.set_defaults(sep = [])
-parser.set_defaults(sort = [])
-parser.set_defaults(inc = False)
-parser.set_defaults(time = False)
-parser.set_defaults(separateFiles = False)
-parser.set_defaults(getIncrements= False)
+parser.set_defaults(info = False,
+                    verbose = True,
+                    legacy = False,
+                    nodal = False,
+                    prefix = '',
+                    suffix = '',
+                    dir = 'postProc',
+                    filetype = None,
+                    func = 'avg',
+                    homog = '1',
+                    cryst = '1',
+                    phase = '1',
+                    filter = '',
+                    sep = [],
+                    sort = [],
+                    inc = False,
+                    time = False,
+                    separateFiles = False,
+                    getIncrements= False,
+                   )
 
 (options, files) = parser.parse_args()
 
@@ -797,8 +802,9 @@ options.sep.reverse()
 
 # --- start background messaging
 
-bg = damask.util.backgroundMessage()
-bg.start()
+if options.verbose:
+  bg = damask.util.backgroundMessage()
+  bg.start()
 
 # --- parse .output and .t16 files
 
@@ -816,7 +822,7 @@ me = {
       'Constitutive':   options.phase,
      }
 
-bg.set_message('parsing .output files...')
+if options.verbose: bg.set_message('parsing .output files...')
 
 for what in me:
   outputFormat[what] = ParseOutputFormat(filename, what, me[what])
@@ -824,9 +830,10 @@ for what in me:
     print("\nsection '{}' not found in <{}>".format(me[what], what))
     print('\n'.join(map(lambda x:'  [%s]'%x, outputFormat[what]['specials']['brothers'])))
 
-bg.set_message('opening result file...')
+if options.verbose: bg.set_message('opening result file...')
+
 p = OpenPostfile(filename+extension,options.filetype,options.nodal)
-bg.set_message('parsing result file...')
+if options.verbose: bg.set_message('parsing result file...')
 stat = ParsePostfile(p, filename, outputFormat)
 if options.filetype == 'marc':
   stat['NumberOfIncrements'] -= 1             # t16 contains one "virtual" increment (at 0)
@@ -870,8 +877,7 @@ if options.info:
 
 elementsOfNode = {}
 for e in range(stat['NumberOfElements']):
-  if e%1000 == 0:
-    bg.set_message('connect elem %i...'%e)
+  if options.verbose and e%1000 == 0: bg.set_message('connect elem %i...'%e)
   for n in map(p.node_sequence,p.element(e).items):
     if n not in elementsOfNode:
       elementsOfNode[n] = [p.element_id(e)]
@@ -893,8 +899,7 @@ memberCount = 0
 
 if options.nodalScalar:
   for n in range(stat['NumberOfNodes']):
-    if n%1000 == 0:
-      bg.set_message('scan node %i...'%n)
+    if options.verbose and n%1000 == 0: bg.set_message('scan node %i...'%n)
     myNodeID = p.node_id(n)
     myNodeCoordinates = [p.node(n).x, p.node(n).y, p.node(n).z]
     myElemID = 0
@@ -928,8 +933,7 @@ if options.nodalScalar:
 
 else:
   for e in range(stat['NumberOfElements']):
-    if e%1000 == 0:
-      bg.set_message('scan elem %i...'%e)
+    if options.verbose and e%1000 == 0: bg.set_message('scan elem %i...'%e)
     myElemID = p.element_id(e)
     myIpCoordinates = ipCoords(p.element(e).type, map(lambda node: [node.x, node.y, node.z],
                                                          map(p.node, map(p.node_sequence, p.element(e).items))))
@@ -995,7 +999,7 @@ if 'none' not in map(str.lower, options.sort):
       theKeys.append('x[0][%i]'%where[criterium])
 
 sortKeys = eval('lambda x:(%s)'%(','.join(theKeys)))
-bg.set_message('sorting groups...')
+if options.verbose: bg.set_message('sorting groups...')
 groups.sort(key = sortKeys)                                                                         # in-place sorting to save mem
 
 
@@ -1014,7 +1018,7 @@ standard = ['inc'] + \
 
 # ---------------------------   loop over positions   --------------------------------
 
-bg.set_message('getting map between positions and increments...')
+if options.verbose: bg.set_message('getting map between positions and increments...')
 
 incAtPosition = {}
 positionOfInc = {}
@@ -1075,7 +1079,7 @@ for incCount,position in enumerate(locations):     # walk through locations
       member += 1
       if member%1000 == 0:
         time_delta = ((len(locations)*memberCount)/float(member+incCount*memberCount)-1.0)*(time.time()-time_start)
-        bg.set_message('(%02i:%02i:%02i) processing point %i of %i from increment %i (position %i)...'
+        if options.verbose: bg.set_message('(%02i:%02i:%02i) processing point %i of %i from increment %i (position %i)...'
           %(time_delta//3600,time_delta%3600//60,time_delta%60,member,memberCount,increments[incCount],position))
 
       newby = []                                                                                    # current member's data
