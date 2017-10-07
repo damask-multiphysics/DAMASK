@@ -364,48 +364,29 @@ class ASCIItable():
     """
     from collections import Iterable
 
-    if isinstance(labels, Iterable) and not isinstance(labels, str):                                # check whether list of labels is requested
-      dim = []
-      for label in labels:
-        if label is not None:
-          myDim = -1
-          try:                                                                                      # column given as number?
-            idx = int(label)-1
-            myDim = 1                                                                               # if found has at least dimension 1
-            if self.tags[idx].startswith('1_'):                                                     # column has multidim indicator?
-              while idx+myDim < len(self.tags) and self.tags[idx+myDim].startswith("%i_"%(myDim+1)):
-                myDim += 1                                                                          # add while found
-          except ValueError:                                                                        # column has string label
-            label = label[1:-1] if label[0] == label[-1] and label[0] in ('"',"'") else label       # remove outermost quotations
-            if label in self.tags:                                                                  # can be directly found?
-              myDim = 1                                                                             # scalar by definition
-            elif '1_'+label in self.tags:                                                           # look for first entry of possible multidim object
-              idx = self.tags.index('1_'+label)                                                     # get starting column
-              myDim = 1                                                                             # (at least) one-dimensional
-              while idx+myDim < len(self.tags) and self.tags[idx+myDim].startswith("%i_"%(myDim+1)):
-                myDim += 1                                                                          # keep adding while going through object
+    listOfLabels = isinstance(labels, Iterable) and not isinstance(labels, str)                   # check whether list of labels is requested
+    if not listOfLabels: labels = [labels]
 
-          dim.append(myDim)
-    else:
-      dim = -1                                                                                      # assume invalid label
-      idx = -1
-      try:                                                                                          # column given as number?
-        idx = int(labels)-1
-        dim = 1                                                                                     # if found has at least dimension 1
-        if self.tags[idx].startswith('1_'):                                                         # column has multidim indicator?
-          while idx+dim < len(self.tags) and self.tags[idx+dim].startswith("%i_"%(dim+1)):
-            dim += 1                                                                                # add as long as found
-      except ValueError:                                                                            # column has string label
-        labels = labels[1:-1] if labels[0] == labels[-1] and labels[0] in ('"',"'") else labels     # remove outermost quotations
-        if labels in self.tags:                                                                     # can be directly found?
-          dim = 1                                                                                   # scalar by definition
-        elif '1_'+labels in self.tags:                                                              # look for first entry of possible multidim object
-          idx = self.tags.index('1_'+labels)                                                        # get starting column
-          dim = 1                                                                                   # is (at least) one-dimensional
-          while idx+dim < len(self.tags) and self.tags[idx+dim].startswith("%i_"%(dim+1)):
-            dim += 1                                                                                # keep adding while going through object
+    dim = []
+    for label in labels:
+      if label is not None:
+        myDim = -1
+        try:                                                                                      # column given as number?
+          idx = int(label)-1
+          myDim = 1                                                                               # if found treat as single column of dimension 1
+        except ValueError:                                                                        # column has string label
+          label = label[1:-1] if label[0] == label[-1] and label[0] in ('"',"'") else label       # remove outermost quotations
+          if label in self.tags:                                                                  # can be directly found?
+            myDim = 1                                                                             # scalar by definition
+          elif '1_'+label in self.tags:                                                           # look for first entry of possible multidim object
+            idx = self.tags.index('1_'+label)                                                     # get starting column
+            myDim = 1                                                                             # (at least) one-dimensional
+            while idx+myDim < len(self.tags) and self.tags[idx+myDim].startswith("%i_"%(myDim+1)):
+              myDim += 1                                                                          # keep adding while going through object
 
-    return np.array(dim) if isinstance(dim,Iterable) else dim
+        dim.append(myDim)
+
+    return np.array(dim) if listOfLabels else dim[0]
 
 # ------------------------------------------------------------------
   def label_indexrange(self,
@@ -511,7 +492,7 @@ class ASCIItable():
                           (d if str(c) != str(labels[present[i]]) else 
                            1)))
       use = np.array(columns) if len(columns) > 0 else None
-
+      
       self.tags = list(np.array(self.tags)[use])                                                    # update labels with valid subset
 
     self.data = np.loadtxt(self.__IO__['in'],usecols=use,ndmin=2)

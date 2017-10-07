@@ -81,7 +81,11 @@ contains
 !> @brief only outputs revision number
 !--------------------------------------------------------------------------------------------------
 subroutine IO_init
- use, intrinsic :: iso_fortran_env                                                                  ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
+#ifdef __GFORTRAN__
+ use, intrinsic :: iso_fortran_env, only: &
+   compiler_version, &
+   compiler_options
+#endif
  
  implicit none
 
@@ -1557,13 +1561,7 @@ subroutine IO_error(error_ID,el,ip,g,instance,ext_msg)
  case (400_pInt)
    msg = 'matrix inversion error'
  case (401_pInt)
-   msg = 'math_check: quat -> axisAngle -> quat failed'
- case (402_pInt)
-   msg = 'math_check: quat -> R -> quat failed'
- case (403_pInt)
-   msg = 'math_check: quat -> euler -> quat failed'
- case (404_pInt)
-   msg = 'math_check: R -> euler -> R failed'
+   msg = 'math_check failed'
  case (405_pInt)
    msg = 'I_TO_HALTON-error: an input base BASE is <= 1'
  case (406_pInt)
@@ -1587,12 +1585,14 @@ subroutine IO_error(error_ID,el,ip,g,instance,ext_msg)
  case (601_pInt)
    msg = 'Ping-Pong needed when using non-local plasticity'
  case (602_pInt)
-   msg = 'invalid element/IP/component (grain) selected for debug'
+   msg = 'invalid selection for debug'
 
 !-------------------------------------------------------------------------------------------------
 ! DAMASK_marc errors
  case (700_pInt)
    msg = 'invalid materialpoint result requested'
+ case (701_pInt)
+   msg = 'not supported input file format, use Marc 2016 or earlier'
 
 !-------------------------------------------------------------------------------------------------
 ! errors related to spectral solver

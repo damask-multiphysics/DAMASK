@@ -39,20 +39,21 @@ module prec
 !http://stackoverflow.com/questions/3948210/can-i-have-a-pointer-to-an-item-in-an-allocatable-array
  type, public :: tState
    integer(pInt) :: &
-     sizeState = 0_pInt , &                                                                         !< size of state
-     sizeDotState = 0_pInt, &                                                                       !< size of dot state, i.e. parts of the state that are integrated
-     sizeDeltaState = 0_pInt, &                                                                     !< size of delta state, i.e. parts of the state that have discontinuous rates
-     sizePostResults = 0_pInt                                                                       !< size of output data
+     sizeState        = 0_pInt, &                                                                   !< size of state
+     sizeDotState     = 0_pInt, &                                                                   !< size of dot state, i.e. state(1:sizeDot) follows time evolution by dotState rates
+     offsetDeltaState = 0_pInt, &                                                                   !< offset of delta state
+     sizeDeltaState   = 0_pInt, &                                                                   !< size of delta state, i.e. state(offset+1:offset+sizeDot) follows time evolution by deltaState increments
+     sizePostResults  = 0_pInt                                                                      !< size of output data
    real(pReal), pointer,     dimension(:), contiguous :: &
      atolState
    real(pReal), pointer,     dimension(:,:), contiguous :: &                                        ! a pointer is needed here because we might point to state/doState. However, they will never point to something, but are rather allocated and, hence, contiguous 
+     state0, &
      state, &                                                                                       !< state
-     dotState, &                                                                                    !< state rate
-     state0
+     dotState, &                                                                                    !< rate of state change
+     deltaState                                                                                     !< increment of state change
    real(pReal), allocatable, dimension(:,:) :: &
      partionedState0, &
      subState0, &
-     deltaState, &
      previousDotState, &                                                                            !< state rate of previous xxxx
      previousDotState2, &                                                                           !< state rate two xxxx ago
      RK4dotState
@@ -110,8 +111,11 @@ contains
 !> @brief reporting precision
 !--------------------------------------------------------------------------------------------------
 subroutine prec_init
- use, intrinsic :: &
-   iso_fortran_env                                                                                  ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
+#ifdef __GFORTRAN__
+ use, intrinsic :: iso_fortran_env, only: &
+   compiler_version, &
+   compiler_options
+#endif
 
  implicit none
  external :: &

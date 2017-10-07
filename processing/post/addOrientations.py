@@ -42,14 +42,22 @@ parser.add_option('-r', '--crystalrotation',
                   dest='crystalrotation',
                   type = 'float', nargs = 4, metavar = ' '.join(['float']*4),
                   help = 'angle and axis of additional crystal frame rotation')
-parser.add_option('-e', '--eulers',
+parser.add_option(      '--eulers',
                   dest = 'eulers',
                   type = 'string', metavar = 'string',
                   help = 'Euler angles label')
-parser.add_option('-m', '--matrix',
+parser.add_option(      '--rodrigues',
+                  dest = 'rodrigues',
+                  type = 'string', metavar = 'string',
+                  help = 'Rodrigues vector label')
+parser.add_option(      '--matrix',
                   dest = 'matrix',
                   type = 'string', metavar = 'string',
                   help = 'orientation matrix label')
+parser.add_option(       '--quaternion',
+                  dest = 'quaternion',
+                  type = 'string', metavar = 'string',
+                  help = 'quaternion label')
 parser.add_option('-a',
                   dest = 'a',
                   type = 'string', metavar = 'string',
@@ -62,10 +70,6 @@ parser.add_option('-c',
                   dest = 'c',
                   type = 'string', metavar = 'string',
                   help = 'crystal frame c vector label')
-parser.add_option('-q', '--quaternion',
-                  dest = 'quaternion',
-                  type = 'string', metavar = 'string',
-                  help = 'quaternion label')
 
 parser.set_defaults(output = [],
                     symmetry = damask.Symmetry.lattices[-1],
@@ -81,6 +85,7 @@ if options.output == [] or (not set(options.output).issubset(set(outputChoices))
   parser.error('output must be chosen from {}.'.format(', '.join(outputChoices)))
 
 input = [options.eulers     is not None,
+         options.rodrigues  is not None,
          options.a          is not None and \
          options.b          is not None and \
          options.c          is not None,
@@ -91,6 +96,7 @@ input = [options.eulers     is not None,
 if np.sum(input) != 1: parser.error('needs exactly one input format.')
 
 (label,dim,inputtype) = [(options.eulers,3,'eulers'),
+                         (options.rodrigues,3,'rodrigues'),
                          ([options.a,options.b,options.c],[3,3,3],'frame'),
                          (options.matrix,9,'matrix'),
                          (options.quaternion,4,'quaternion'),
@@ -142,6 +148,9 @@ for name in filenames:
   while outputAlive and table.data_read():                                                          # read next data line of ASCII table
     if inputtype == 'eulers':
       o = damask.Orientation(Eulers   = np.array(map(float,table.data[column:column+3]))*toRadians,
+                             symmetry = options.symmetry).reduced()
+    elif inputtype == 'rodrigues':
+      o = damask.Orientation(Rodrigues= np.array(map(float,table.data[column:column+3])),
                              symmetry = options.symmetry).reduced()
     elif inputtype == 'matrix':
       o = damask.Orientation(matrix   = np.array(map(float,table.data[column:column+9])).reshape(3,3).transpose(),
