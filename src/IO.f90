@@ -1587,6 +1587,8 @@ subroutine IO_error(error_ID,el,ip,g,instance,ext_msg)
 ! DAMASK_marc errors
  case (700_pInt)
    msg = 'invalid materialpoint result requested'
+ case (701_pInt)
+   msg = 'not supported input file format, use Marc 2016 or earlier'
 
 !-------------------------------------------------------------------------------------------------
 ! errors related to spectral solver
