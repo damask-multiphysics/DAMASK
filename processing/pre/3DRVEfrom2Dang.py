@@ -110,7 +110,8 @@ if options.vtr:
   strCommand = 'vtk_rectilinearGrid ' + pipes.quote(options.outName) + '.ang'
   os.system(strCommand)
   os.rename(pipes.quote(options.outName) + '_pos(cell)'+'.vtr', pipes.quote(options.outName) + '.vtr')
-  strCommand = 'vtk_addRectilinearGridData --vtk '+ pipes.quote(options.outName) + '.vtr --color IPF_001_cubic ' + pipes.quote(options.outName) + '.ang'
+  strCommand = 'vtk_addRectilinearGridData --vtk '+ pipes.quote(options.outName) + '.vtr --color IPF_001_cubic '\
+               + pipes.quote(options.outName) + '.ang'
   os.system(strCommand)
   
 # delete tmp files
