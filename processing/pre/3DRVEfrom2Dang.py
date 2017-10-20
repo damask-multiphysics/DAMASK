@@ -2,7 +2,6 @@
 # -*- coding: UTF-8 no BOM -*-
 
 import os,sys,math
-import numpy as np
 from optparse import OptionParser
 import damask
 import pipes
