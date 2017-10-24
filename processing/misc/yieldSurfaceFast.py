@@ -83,12 +83,8 @@ def doFacetFit():
   
   if options.dimension == 2:
     reducedIndices = [0,1,4,5,6,9]
-    strainRateIndices = [0,1,4]
-    stressIndices = [5,6,9]
   elif options.dimension == 3:
     reducedIndices = [i for i in range(10)]
-    strainRateIndices = [0,1,2,3,4]
-    stressIndices = [5,6,7,8,9]
   
   numDirections = Data.shape[0]
   Indices = np.arange(numDirections)
