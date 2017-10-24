@@ -7,7 +7,6 @@ from optparse import OptionParser
 import damask
 from damask.util import leastsqBound
 from scipy.optimize import nnls
-import math
 
 scriptName = os.path.splitext(os.path.basename(__file__))[0]
 scriptID   = ' '.join([scriptName,damask.version])
@@ -58,24 +57,22 @@ def doFacetFit():
   Data = np.zeros((options.numpoints, 10))
   for i in range(options.numpoints):
     fileName = options.geometry + '_' + str(i+1) + '.yield'
-    while os.path.exists(fileName):
-      break
     data_i = np.loadtxt(fileName)
     
     sv = (data_i[0,0] + data_i[1,1] + data_i[2,2])/3.0
     
     #convert stress and strain form the 6D to 5D space
-    S1 = math.sqrt(2.0)*(data_i[0,0] - data_i[1,1])/2.0
-    S2 = math.sqrt(6.0)*(data_i[0,0] + data_i[1,1] - 2.0*sv)/2.0
-    S3 = math.sqrt(2.0)*data_i[1,2]
-    S4 = math.sqrt(2.0)*data_i[2,0]
-    S5 = math.sqrt(2.0)*data_i[0,1]
+    S1 = np.sqrt(2.0)*(data_i[0,0] - data_i[1,1])/2.0
+    S2 = np.sqrt(6.0)*(data_i[0,0] + data_i[1,1] - 2.0*sv)/2.0
+    S3 = np.sqrt(2.0)*data_i[1,2]
+    S4 = np.sqrt(2.0)*data_i[2,0]
+    S5 = np.sqrt(2.0)*data_i[0,1]
     
-    E1 = math.sqrt(2.0)*(data_i[3,0]-data_i[4,1])/2.0
-    E2 = math.sqrt(6.0)*(data_i[3,0]+data_i[4,1])/2.0
-    E3 = math.sqrt(2.0)*data_i[4,2]
-    E4 = math.sqrt(2.0)*data_i[5,0]
-    E5 = math.sqrt(2.0)*data_i[3,1]
+    E1 = np.sqrt(2.0)*(data_i[3,0]-data_i[4,1])/2.0
+    E2 = np.sqrt(6.0)*(data_i[3,0]+data_i[4,1])/2.0
+    E3 = np.sqrt(2.0)*data_i[4,2]
+    E4 = np.sqrt(2.0)*data_i[5,0]
+    E5 = np.sqrt(2.0)*data_i[3,1]
     
     Data[i,:] = [E1,E2,E3,E4,E5,S1,S2,S3,S4,S5]
   
