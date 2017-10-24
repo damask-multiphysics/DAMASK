@@ -982,7 +982,7 @@ real(pReal) pure function math_detSym33(m)
  real(pReal), dimension(3,3), intent(in) :: m
  
   math_detSym33 = -(m(1,1)*m(2,3)**2_pInt + m(2,2)*m(1,3)**2_pInt + m(3,3)*m(1,2)**2_pInt) &
-                  + m(1,1)*m(2,2)*m(3,3)  - 2.0_pReal * m(1,2)*m(1,3)*m(2,3)
+                  + m(1,1)*m(2,2)*m(3,3)  + 2.0_pReal * m(1,2)*m(1,3)*m(2,3)
 
 end function  math_detSym33
 
@@ -1994,7 +1994,7 @@ function math_eigenvectorBasisSym(m)
  
  do i=1_pInt, size(m,1)
    math_eigenvectorBasisSym = math_eigenvectorBasisSym &
-                            +  sqrt(values(i)) * math_tensorproduct(vectors(:,i),vectors(:,i))
+                            + sqrt(values(i)) * math_tensorproduct(vectors(:,i),vectors(:,i))
  enddo
 
 end function math_eigenvectorBasisSym

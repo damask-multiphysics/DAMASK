@@ -6,6 +6,8 @@ import numpy as np
 from optparse import OptionParser
 import damask
 from damask.util import leastsqBound
+from scipy.optimize import nnls
+import math
 
 scriptName = os.path.splitext(os.path.basename(__file__))[0]
 scriptID   = ' '.join([scriptName,damask.version])
@@ -14,23 +16,24 @@ def runFit(exponent, eqStress, dimension, criterion):
   global threads, myFit, myLoad
   global fitResidual
   global Guess, dDim
+  
+  if options.criterion!='facet':
+    dDim = dimension - 3
+    nParas = len(fitCriteria[criterion]['bound'][dDim])
+    nExpo = fitCriteria[criterion]['nExpo']
 
-  dDim = dimension - 3
-  nParas = len(fitCriteria[criterion]['bound'][dDim])
-  nExpo = fitCriteria[criterion]['nExpo']
+    if exponent > 0.0:                                                                                # User defined exponents
+      nParas = nParas-nExpo
+      fitCriteria[criterion]['bound'][dDim] = fitCriteria[criterion]['bound'][dDim][:nParas]
 
-  if exponent > 0.0:                                                                                # User defined exponents
-    nParas = nParas-nExpo
-    fitCriteria[criterion]['bound'][dDim] = fitCriteria[criterion]['bound'][dDim][:nParas]
-
-  for i in range(nParas):
-    temp = fitCriteria[criterion]['bound'][dDim][i]
-    if fitCriteria[criterion]['bound'][dDim][i] == (None,None):
-      Guess.append(1.0)
-    else: 
-      g = (temp[0]+temp[1])/2.0
-      if g == 0: g = temp[1]*0.5
-      Guess.append(g)
+    for i in range(nParas):
+      temp = fitCriteria[criterion]['bound'][dDim][i]
+      if fitCriteria[criterion]['bound'][dDim][i] == (None,None):
+        Guess.append(1.0)
+      else: 
+        g = (temp[0]+temp[1])/2.0
+        if g == 0: g = temp[1]*0.5
+        Guess.append(g)
 
   myLoad = Loadcase(options.load[0],options.load[1],options.load[2],options.flag,options.yieldValue,
                     nSet = 10, dimension = dimension, vegter = options.criterion=='vegter')
@@ -43,8 +46,91 @@ def runFit(exponent, eqStress, dimension, criterion):
 
   for t in range(options.threads):
     threads[t].join()
+  
+  if options.criterion=='facet':
+    doFacetFit()
+  
   damask.util.croak('Residuals')
   damask.util.croak(fitResidual)
+
+def doFacetFit():
+  n = options.order
+  Data = np.zeros((options.numpoints, 10))
+  for i in range(options.numpoints):
+    fileName = options.geometry + '_' + str(i+1) + '.yield'
+    while os.path.exists(fileName):
+      break
+    data_i = np.loadtxt(fileName)
+    
+    sv = (data_i[0,0] + data_i[1,1] + data_i[2,2])/3.0
+    
+    #convert stress and strain form the 6D to 5D space
+    S1 = math.sqrt(2.0)*(data_i[0,0] - data_i[1,1])/2.0
+    S2 = math.sqrt(6.0)*(data_i[0,0] + data_i[1,1] - 2.0*sv)/2.0
+    S3 = math.sqrt(2.0)*data_i[1,2]
+    S4 = math.sqrt(2.0)*data_i[2,0]
+    S5 = math.sqrt(2.0)*data_i[0,1]
+    
+    E1 = math.sqrt(2.0)*(data_i[3,0]-data_i[4,1])/2.0
+    E2 = math.sqrt(6.0)*(data_i[3,0]+data_i[4,1])/2.0
+    E3 = math.sqrt(2.0)*data_i[4,2]
+    E4 = math.sqrt(2.0)*data_i[5,0]
+    E5 = math.sqrt(2.0)*data_i[3,1]
+    
+    Data[i,:] = [E1,E2,E3,E4,E5,S1,S2,S3,S4,S5]
+  
+  Data[:,5:] =  Data[:,5:] / 100000000.0
+  
+  path=os.path.join(os.getcwd(),'final.mmm')
+  np.savetxt(path, Data, header='', comments='', fmt='% 15.10f')
+  
+  if options.dimension == 2:
+    reducedIndices = [0,1,4,5,6,9]
+    strainRateIndices = [0,1,4]
+    stressIndices = [5,6,9]
+  elif options.dimension == 3:
+    reducedIndices = [i for i in range(10)]
+    strainRateIndices = [0,1,2,3,4]
+    stressIndices = [5,6,7,8,9]
+  
+  numDirections = Data.shape[0]
+  Indices = np.arange(numDirections)
+  sdPairs = Data[:,reducedIndices][Indices,:]
+  numPairs = sdPairs.shape[0]
+  dimensionality = sdPairs.shape[1] / 2
+  ds = sdPairs[:,0:dimensionality]
+  s = sdPairs[:,dimensionality::]
+  
+  A = np.zeros((numPairs, numPairs))
+  B = np.ones((numPairs,))
+  for i in range(numPairs):
+    for j in range(numPairs):
+      lamb = 1.0
+      s_i = s[i,:]
+      ds_j = ds[j,:]
+      A[i,j] = lamb * (np.dot(s_i.ravel(), ds_j.ravel()) ** n)
+  
+  lambdas, residuals = nnls(A, B)
+  nonZeroTerms = np.logical_not(np.isclose(lambdas, 0.))
+  numNonZeroTerms = np.sum(nonZeroTerms)
+  dataOut = np.zeros((numNonZeroTerms, 6))
+  
+  if options.dimension == 2:
+    dataOut[:,0] = lambdas[nonZeroTerms]
+    dataOut[:,1] = ds[nonZeroTerms,:][:,0]
+    dataOut[:,2] = ds[nonZeroTerms,:][:,1]
+    dataOut[:,5] = ds[nonZeroTerms,:][:,2]
+  elif options.dimension == 3:
+    dataOut[:,0] = lambdas[nonZeroTerms]
+    dataOut[:,1] = ds[nonZeroTerms,:][:,0]
+    dataOut[:,2] = ds[nonZeroTerms,:][:,1]
+    dataOut[:,3] = ds[nonZeroTerms,:][:,2]
+    dataOut[:,4] = ds[nonZeroTerms,:][:,3]
+    dataOut[:,5] = ds[nonZeroTerms,:][:,4]
+
+  headerText = 'facet\n  1     \n  F    \n  {0:<3d}  \n  {1:<3d}  '.format(n, numNonZeroTerms)
+  path=os.path.join(os.getcwd(),'facet_o{0}.fac'.format(n))
+  np.savetxt(path, dataOut, header=headerText, comments='', fmt='% 15.10f')
 
 def principalStresses(sigmas):
   """
@@ -1014,7 +1100,13 @@ fitCriteria = {
   'vegter'         :{'name':   'Vegter',
                      'labels': 'a,b,c,d,e,f,g,h',
                      'dimen':  [2],
-                    },      
+                    },
+  'facet'         :{'name':   'Facet',
+                    'nExpo':  None,
+                    'bound':  [(None,None)],
+                    'labels': 'lambdas',
+                    'dimen':  [2,3],
+                    },
                   }
 
 thresholdParameter = ['totalshear','equivalentStrain']
@@ -1225,7 +1317,10 @@ class myThread (threading.Thread):
     conv=converged()
     semaphore.release()
     while not conv:
-      doSim(self.name)
+      if options.criterion=='facet':
+        doSimForFacet(self.name)
+      else:
+        doSim(self.name)
       semaphore.acquire()
       conv=converged()
       semaphore.release()
@@ -1278,6 +1373,26 @@ def doSim(thread):
     return
   damask.util.croak('\n')
   semaphore.release()
+  
+def doSimForFacet(thread):
+  semaphore.acquire()
+  global myLoad
+  loadNo=loadcaseNo()
+  if not os.path.isfile('%s.load'%loadNo):
+    damask.util.croak('Generating load case for simulation %s (%s)'%(loadNo,thread))
+    f=open('%s.load'%loadNo,'w')
+    f.write(myLoad.getLoadcase(loadNo))
+    f.close()
+    semaphore.release()
+  else: semaphore.release()
+
+# if spectralOut does not exist, run simulation
+  semaphore.acquire()
+  if not os.path.isfile('%s_%i.spectralOut'%(options.geometry,loadNo)):
+    damask.util.croak('Starting simulation %i (%s)'%(loadNo,thread))
+    semaphore.release()
+    damask.util.execute('DAMASK_spectral -g %s -l %i'%(options.geometry,loadNo))
+  else: semaphore.release()
 
 def loadcaseNo():
   global N_simulations
@@ -1286,15 +1401,21 @@ def loadcaseNo():
 
 def converged():
   global N_simulations; fitResidual
-
-  if N_simulations < options.max:
-    if len(fitResidual) > 5 and N_simulations >= options.min:
-      residualList = np.array(fitResidual[len(fitResidual)-5:])
-      if np.std(residualList)/np.max(residualList) < 0.05: 
-        return True
-    return False
+  
+  if options.criterion=='facet':
+    if N_simulations == options.numpoints:
+      return True
+    else:
+      return False
   else:
-    return True
+    if N_simulations < options.max:
+      if len(fitResidual) > 5 and N_simulations >= options.min:
+        residualList = np.array(fitResidual[len(fitResidual)-5:])
+        if np.std(residualList)/np.max(residualList) < 0.05: 
+          return True
+      return False
+    else:
+      return True
 
 # --------------------------------------------------------------------
 #                                MAIN
@@ -1333,6 +1454,10 @@ parser.add_option('-u', '--uniaxial',  dest='eqStress', type='float',
                                        help='Equivalent stress',  metavar='float') 
 parser.add_option('--flag',            dest='flag', type='string',
                                        help='yield stop flag, totalStrain, plasticStrain or plasticWork',  metavar='string')
+parser.add_option('--numpoints',       dest='numpoints', type='int',
+                                       help='number of yield points to fit facet potential [%default]',  metavar='int')
+parser.add_option('--order',           dest='order', type='int',
+                                       help='order of facet potential [%default]',  metavar='int')
 
 parser.set_defaults(min        = 12,
                     max        = 20,
@@ -1346,6 +1471,8 @@ parser.set_defaults(min        = 12,
                     dimension  = '3',
                     exponent   = -1.0,
                     flag       = 'totalStrain',
+                    numpoints  = 100,
+                    order      = 8
                    )
 
 options = parser.parse_args()[0]
@@ -1385,6 +1512,9 @@ dDim = None
 myLoad = None
 myFit = None
 
-run = runFit(options.exponent, options.eqStress, options.dimension, options.criterion)
+if options.criterion == 'facet':
+  run = runFit(options.exponent, options.eqStress, options.dimension, options.criterion)
+else:
+  run = runFit(options.exponent, options.eqStress, options.dimension, options.criterion)
 
 damask.util.croak('Finished fitting to yield criteria')
