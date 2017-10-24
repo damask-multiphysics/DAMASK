@@ -51,7 +51,7 @@ parser.add_option('-c','--condition',
                   dest   = 'condition', metavar='string',
                   help   = 'condition to filter rows')
 
-parser.set_defaults(condition = '',
+parser.set_defaults(condition = None,
                    )
 
 (options,filenames) = parser.parse_args()
@@ -93,45 +93,61 @@ for name in filenames:
                or fnmatch.fnmatch(label,needle) for needle in options.whitelist]                    # which whitelist items do match it
       whitelistitem[i] = match.index(True) if np.sum(match) == 1 else -1                            # unique match to a whitelist item --> store which
 
-    sorted = np.lexsort(sortingList(labels,whitelistitem))
-    order = range(len(labels)) if sorted[0] < 0 else sorted                                         # skip reordering if non-unique, i.e. first sorted is "-1"
+    order =      range(len(labels)) if np.any(whitelistitem < 0) \
+            else np.lexsort(sortingList(labels,whitelistitem))                                      # reorder if unique, i.e. no "-1" in whitelistitem
   else:
     order = range(len(labels))                                                                      # maintain original order of labels
   
-  interpolator = []
-  condition = options.condition                                                                     # copy per file, might be altered
-  for position,operand in enumerate(set(re.findall(r'#(([s]#)?(.+?))#',condition))):                # find three groups
-    condition = condition.replace('#'+operand[0]+'#',
-                                          {  '': '{{{}}}' .format(position),
-                                           's#':'"{{{}}}"'.format(position)}[operand[1]])
-    if operand[2] in specials:                                                                      # special label ?
-      interpolator += ['specials["{}"]'.format(operand[2])]
-    else:
-      try:
-        interpolator += ['{}(table.data[{}])'.format({  '':'float',
-                                                      's#':'str'}[operand[1]],
-                                                     table.label_index(operand[2]))]
-      except:
-        parser.error('column "{}" not found...\n'.format(operand[2]))
-
-  evaluator = "'" + condition + "'.format(" + ','.join(interpolator) + ")"
+# --------------------------------------- evaluate condition ---------------------------------------
+  if options.condition is not None:
+    condition = options.condition                                                                   # copy per file, since might be altered inline
+    breaker = False
+  
+    for position,(all,marker,column) in enumerate(set(re.findall(r'#(([s]#)?(.+?))#',condition))):              # find three groups
+      idx = table.label_index(column)
+      dim = table.label_dimension(column)
+      if idx < 0 and column not in specials:
+        damask.util.croak('column "{}" not found.'.format(column))
+        breaker = True
+      else:
+        if column in specials:
+          replacement = 'specials["{}"]'.format(column)
+        elif dim == 1:                                                                                # scalar input
+          replacement = '{}(table.data[{}])'.format({  '':'float',
+                                                        's#':'str'}[marker],idx)                      # take float or string value of data column
+        elif dim > 1:                                                                                 # multidimensional input (vector, tensor, etc.)
+          replacement = 'np.array(table.data[{}:{}],dtype=float)'.format(idx,idx+dim)                 # use (flat) array representation
+       
+        condition = condition.replace('#'+all+'#',replacement)
+    
+    if breaker: continue                                                                              # found mistake in condition evaluation --> next file
   
 # ------------------------------------------ assemble header ---------------------------------------
 
   table.info_append(scriptID + '\t' + ' '.join(sys.argv[1:]))
   table.labels_clear()
-  table.labels_append(np.array(labels)[order])                                                      # update with new label set
+  table.labels_append(np.array(labels)[order])                                                        # update with new label set
   table.head_write()
 
 # ------------------------------------------ process and output data ------------------------------------------
 
   positions = np.array(positions)[order]
-  outputAlive = True
-  while outputAlive and table.data_read():                                                          # read next data line of ASCII table
-    specials['_row_'] += 1                                                                          # count row
-    if condition == '' or eval(eval(evaluator)):                                                    # valid row ?
-      table.data = [table.data[position] for position in positions]                                 # retain filtered columns
-      outputAlive = table.data_write()                                                              # output processed line
+  
+  atOnce = options.condition is None
+  if atOnce:                                                                                          # read full array and filter columns
+    try:
+      table.data_readArray(positions+1)                                                               # read desired columns (indexed 1,...)
+      table.data_writeArray()                                                                         # directly write out
+    except:
+      atOnce = False                                                                                  # data contains items that prevent array chunking
+
+  if not atOnce:                                                                                      # read data line by line
+    outputAlive = True
+    while outputAlive and table.data_read():                                                          # read next data line of ASCII table
+      specials['_row_'] += 1                                                                          # count row
+      if options.condition is None or eval(condition):                                                # valid row ?
+        table.data = [table.data[position] for position in positions]                                 # retain filtered columns
+        outputAlive = table.data_write()                                                              # output processed line
 
 # ------------------------------------------ finalize output -----------------------------------------
 

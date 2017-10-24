@@ -1,6 +1,10 @@
 # sets up an environment for DAMASK on zsh
 # usage:  source DAMASK.zsh
 
+function canonicalPath {
+  python -c "import os,sys; print(os.path.realpath(os.path.expanduser(sys.argv[1])))" $1
+}
+
 # transition compatibility (renamed $DAMASK_ROOT/DAMASK_env.zsh to $DAMASK_ROOT/env/DAMASK.zsh)
 if [ ${0:t:r} = 'DAMASK' ]; then
   DAMASK_ROOT=${0:a:h}'/..'
@@ -19,23 +23,23 @@ source $DAMASK_ROOT/CONFIG
 unset -f set
 
 # add DAMASK_BIN if present
-[ "x$DAMASK_BIN" != "x" ] && PATH=$DAMASK_BIN:$PATH
+[ "x$DAMASK_BIN != x" ] && PATH=$DAMASK_BIN:$PATH
 
-SOLVER=`which DAMASK_spectral || True 2>/dev/null`
-PROCESSING=`which postResults || True 2>/dev/null`
-[ "x$DAMASK_NUM_THREADS" = "x" ] && DAMASK_NUM_THREADS=1
+SOLVER=$(type -p DAMASK_spectral || true 2>/dev/null)
+[ "x$SOLVER == x" ] && SOLVER='Not found!'
 
-# according to http://software.intel.com/en-us/forums/topic/501500
-# this seems to make sense for the stack size
-if [ "`which free 2>/dev/null`" != "free not found" ]; then
-  freeMem=`free -k | grep -E '(Mem|Speicher):' | awk '{print $4;}'`
+PROCESSING=$(type -p postResults || true 2>/dev/null)
+[ "x$PROCESSING == x" ] && PROCESSING='Not found!'
 
-  # http://superuser.com/questions/220059/what-parameters-has-ulimit             
-  #ulimit -d `expr $freeMem                       / 2` 2>/dev/null # maximum  heap size (kB)
-  ulimit -s `expr $freeMem / $DAMASK_NUM_THREADS / 2` 2>/dev/null # maximum stack size (kB)
-fi
-ulimit -v unlimited   2>/dev/null # maximum virtual memory size
-ulimit -m unlimited   2>/dev/null # maximum physical memory size
+[ "x$DAMASK_NUM_THREADS == x" ] && DAMASK_NUM_THREADS=1
+
+# currently, there is no information that unlimited causes problems
+# still,  http://software.intel.com/en-us/forums/topic/501500 suggest to fix it
+# http://superuser.com/questions/220059/what-parameters-has-ulimit
+ulimit -d unlimited 2>/dev/null # maximum  heap size (kB)
+ulimit -s unlimited 2>/dev/null # maximum stack size (kB)
+ulimit -v unlimited 2>/dev/null # maximum virtual memory size
+ulimit -m unlimited 2>/dev/null # maximum physical memory size
 
 # disable output in case of scp
 if [ ! -z "$PS1" ]; then
@@ -51,8 +55,8 @@ if [ ! -z "$PS1" ]; then
   echo "Multithreading     DAMASK_NUM_THREADS=$DAMASK_NUM_THREADS"
   if [ "x$PETSC_DIR"   != "x" ]; then
     echo "PETSc location     $PETSC_DIR"
-    [[ $(python -c "import os,sys; print(os.path.realpath(os.path.expanduser(sys.argv[1])))" "$PETSC_DIR") == $PETSC_DIR ]] \
-    || echo "               ~~> "$(python -c "import os,sys; print(os.path.realpath(os.path.expanduser(sys.argv[1])))" "$PETSC_DIR")
+    [[ $(canonicalPath "$PETSC_DIR") == $PETSC_DIR ]] \
+    || echo "               ~~> "$(canonicalPath "$PETSC_DIR")
   fi
   [[ "x$PETSC_ARCH"  == "x" ]] \
   || echo "PETSc architecture $PETSC_ARCH"
@@ -79,7 +83,7 @@ fi
 export DAMASK_NUM_THREADS
 export PYTHONPATH=$DAMASK_ROOT/lib:$PYTHONPATH
 
-for var in BASE STAT SOLVER PROCESSING FREE DAMASK_BIN MATCH; do
+for var in BASE STAT SOLVER PROCESSING FREE DAMASK_BIN; do
   unset "${var}"
 done
 for var in DAMASK MSC; do

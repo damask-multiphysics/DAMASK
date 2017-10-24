@@ -1,0 +1,8 @@
+#!/bin/sh
+
+if [ "$1" = "" ]; then
+ echo "usage: $0 job_name"
+ exit 1
+fi
+
+echo STOP > $1.cnt

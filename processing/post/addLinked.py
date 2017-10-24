@@ -14,7 +14,7 @@ scriptID   = ' '.join([scriptName,damask.version])
 # --------------------------------------------------------------------
 
 parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
-Add data of selected column(s) from (first) row of second ASCIItable that shares the linking column value.
+Add data of selected column(s) from (first) row of linked ASCIItable that shares the linking column value.
 
 """, version = scriptID)
 
@@ -25,7 +25,7 @@ parser.add_option('--link',
 parser.add_option('-l','--label',
                   dest = 'label',
                   action = 'extend', metavar = '<string LIST>',
-                  help = 'column label(s) to be appended')
+                  help = 'column label(s) to add from linked ASCIItable')
 parser.add_option('-a','--asciitable',
                   dest = 'asciitable',
                   type = 'string', metavar = 'string',
@@ -48,17 +48,19 @@ if options.asciitable is not None and os.path.isfile(options.asciitable):
                                   buffered = False,
                                   readonly = True) 
   linkedTable.head_read()                                                                           # read ASCII header info of linked table
-  if linkedTable.label_dimension(options.link[1]) != 1:
-    parser.error('linking column {} needs to be scalar valued.'.format(options.link[1]))
+  linkDim = linkedTable.label_dimension(options.link[1])                                            # dimension of linking column
 
-  missing_labels = linkedTable.data_readArray([options.link[1]]+options.label)
+  missing_labels = linkedTable.data_readArray([options.link[1]]+options.label)                      # try reading linked ASCII table
   linkedTable.close()                                                                               # close linked ASCII table
 
   if len(missing_labels) > 0:
     damask.util.croak('column{} {} not found...'.format('s' if len(missing_labels) > 1 else '',', '.join(missing_labels)))
+  if len(missing_labels) >= len(options.label):
+    damask.util.croak('aborting...')
+    sys.exit()
 
-  index = linkedTable.data[:,0]
-  data  = linkedTable.data[:,1:]
+  index = linkedTable.data[:,:linkDim]
+  data  = linkedTable.data[:,linkDim:]
 else:
   parser.error('no linked ASCIItable given.')
 
@@ -70,7 +72,8 @@ for name in filenames:
   try:    table = damask.ASCIItable(name = name,
                                     buffered = False)
   except: continue
-  damask.util.report(scriptName,name)
+  damask.util.report(scriptName,"{} {} <== {} {}".format(name,damask.util.deemph('@ '+options.link[0]),
+                                                         options.asciitable,damask.util.deemph('@ '+options.link[1])))
 
 # ------------------------------------------ read header ------------------------------------------
 
@@ -80,8 +83,10 @@ for name in filenames:
 
   errors = []
 
-  linkColumn = table.label_index(options.link[0])  
-  if linkColumn <  0: errors.append('linking column {} not found.'.format(options.link[0]))
+  myLink    = table.label_index    (options.link[0])  
+  myLinkDim = table.label_dimension(options.link[0])  
+  if myLink <  0:          errors.append('linking column {} not found.'.format(options.link[0]))
+  if myLinkDim != linkDim: errors.append('dimension mismatch for column {}.'.format(options.link[0]))
 
   if errors != []:
     damask.util.croak(errors)
@@ -91,7 +96,7 @@ for name in filenames:
 # ------------------------------------------ assemble header --------------------------------------
 
   table.info_append(scriptID + '\t' + ' '.join(sys.argv[1:]))
-  table.labels_append(linkedTable.labels(raw = True)[1:])                                           # extend with new labels (except for linked column)
+  table.labels_append(linkedTable.labels(raw = True)[linkDim:])                                     # extend with new labels (except for linked column)
   
   table.head_write()
 
@@ -100,7 +105,7 @@ for name in filenames:
   outputAlive = True
   while outputAlive and table.data_read():                                                          # read next data line of ASCII table
     try:
-      table.data_append(data[np.argwhere(index == float(table.data[linkColumn]))[0]])               # add data from first matching line
+      table.data_append(data[np.argwhere(np.all((map(float,table.data[myLink:myLink+myLinkDim]) - index)==0,axis=1))[0]])  # add data of first matching line
     except IndexError:
       table.data_append(np.nan*np.ones_like(data[0]))                                               # or add NaNs
     outputAlive = table.data_write()                                                                # output processed line

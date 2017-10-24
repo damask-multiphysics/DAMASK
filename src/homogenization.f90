@@ -71,7 +71,11 @@ contains
 !> @brief module initialization
 !--------------------------------------------------------------------------------------------------
 subroutine homogenization_init
- use, intrinsic :: iso_fortran_env                                                                  ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
+#ifdef __GFORTRAN__
+ use, intrinsic :: iso_fortran_env, only: &
+   compiler_version, &
+   compiler_options
+#endif
  use math, only: &
    math_I3
  use debug, only: &
@@ -471,7 +475,7 @@ subroutine homogenization_init
  flush(6)
 
  if (debug_g < 1 .or. debug_g > homogenization_Ngrains(mesh_element(3,debug_e))) &
-   call IO_error(602_pInt,ext_msg='component (grain)')
+   call IO_error(602_pInt,ext_msg='component (grain)', el=debug_e, g=debug_g)
 
 end subroutine homogenization_init
 

@@ -55,7 +55,7 @@ parser.set_defaults(data = [],
 
 (options, filenames) = parser.parse_args()
 
-if not options.vtk:                 parser.error('No VTK file specified.')
+if not options.vtk:                 parser.error('no VTK file specified.')
 if not os.path.exists(options.vtk): parser.error('VTK file does not exist.')
 
 if os.path.splitext(options.vtk)[1] == '.vtr':
@@ -69,7 +69,7 @@ elif os.path.splitext(options.vtk)[1] == '.vtk':
   reader.Update()
   rGrid = reader.GetRectilinearGridOutput()
 else:
-  parser.error('Unsupported VTK file type extension.')
+  parser.error('unsupported VTK file type extension.')
 
 Npoints = rGrid.GetNumberOfPoints()
 Ncells  = rGrid.GetNumberOfCells()
@@ -96,16 +96,19 @@ for name in filenames:
   VTKarray = {}
   active = defaultdict(list)
 
-  for datatype,dimension,label in [['data',99,options.data],
+  for datatype,dimension,label in [['data',0,options.data],
                                    ['tensor',9,options.tensor],
                                    ['color' ,3,options.color],
                                    ]:
     for i,dim in enumerate(table.label_dimension(label)):
       me = label[i]
-      if dim == -1:         remarks.append('{} "{}" not found...'.format(datatype,me))
-      elif dim > dimension: remarks.append('"{}" not of dimension {}...'.format(me,dimension))
+      if dim == -1:          remarks.append('{} "{}" not found...'.format(datatype,me))
+      elif dimension > 0 \
+       and dim != dimension: remarks.append('"{}" not of dimension {}...'.format(me,dimension))
       else:
-        remarks.append('adding {} "{}"...'.format(datatype,me))
+        remarks.append('adding {}{} "{}"...'.format(datatype if dim > 1 else 'scalar',
+                                                    '' if dimension > 0 or dim == 1 else '[{}]'.format(dim),
+                                                    me))
         active[datatype].append(me)
 
   if remarks != []: damask.util.croak(remarks)
@@ -141,7 +144,7 @@ for name in filenames:
   if   len(table.data) == Npoints:  mode = 'point'
   elif len(table.data) == Ncells:   mode = 'cell'
   else:
-    damask.util.croak('Data count is incompatible with grid...')
+    damask.util.croak('data count is incompatible with grid...')
     continue
 
   damask.util.croak('{} mode...'.format(mode))
