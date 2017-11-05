@@ -22,7 +22,13 @@ parser.add_option('-t','--tensor',
                   dest = 'tensor',
                   action = 'extend', metavar = '<string LIST>',
                   help = 'heading of columns containing tensor field values')
+parser.add_option('--no-check',
+                  dest = 'rh',
+                  action = 'store_false',
+                  help = 'skip check for right-handed eigenvector basis')
 
+parser.set_defaults(rh = True,
+                    )
 (options,filenames) = parser.parse_args()
 
 if options.tensor is None:
@@ -43,7 +49,8 @@ for name in filenames:
 
   table.head_read()
 
-# ------------------------------------------ sanity checks ----------------------------------------
+
+# ------------------------------------------ assemble header 1 ------------------------------------
 
   items = {
             'tensor': {'dim': 9, 'shape': [3,3], 'labels':options.tensor, 'column': []},
@@ -57,8 +64,10 @@ for name in filenames:
       if dim != data['dim']: remarks.append('column {} is not a {}...'.format(what,type))
       else:
         items[type]['column'].append(table.label_index(what))
-        table.labels_append(['{}_eigval({})'.format(i+1,what) for i in range(3)])                   # extend ASCII header with new labels
-        table.labels_append(['{}_eigvec({})'.format(i+1,what) for i in range(9)])                   # extend ASCII header with new labels
+        for order in ['Min','Mid','Max']:
+          table.labels_append(['eigval{}({})'.format(order,what)])                                         # extend ASCII header with new labels
+        for order in ['Min','Mid','Max']:
+          table.labels_append(['{}_eigvec{}({})'.format(i+1,order,what) for i in range(3)])                # extend ASCII header with new labels
 
   if remarks != []: damask.util.croak(remarks)
   if errors  != []:
@@ -66,22 +75,22 @@ for name in filenames:
     table.close(dismiss = True)
     continue
 
-# ------------------------------------------ assemble header --------------------------------------
+# ------------------------------------------ assemble header 2 ------------------------------------
 
   table.info_append(scriptID + '\t' + ' '.join(sys.argv[1:]))
   table.head_write()
 
-# ------------------------------------------ process data ------------------------------------------
+# ------------------------------------------ process data -----------------------------------------
 
   outputAlive = True
   while outputAlive and table.data_read():                                                          # read next data line of ASCII table
     for type, data in items.iteritems():
       for column in data['column']:
         (u,v) = np.linalg.eigh(np.array(map(float,table.data[column:column+data['dim']])).reshape(data['shape']))
-        if np.dot(np.cross(v[:,0], v[:,1]), v[:,2]) < 0.0 : v[:, 2] *= -1.0                         # ensure right-handed coordinate system
-        table.data_append(list(u))
-        table.data_append(list(v.transpose().reshape(data['dim'])))
-    outputAlive = table.data_write()                                                                # output processed line
+        if options.rh and np.dot(np.cross(v[:,0], v[:,1]), v[:,2]) < 0.0 : v[:, 2] *= -1.0          # ensure right-handed eigenvector basis
+        table.data_append(list(u))                                                                  # vector of max,mid,min eigval
+        table.data_append(list(v.transpose().reshape(data['dim'])))                                 # 3x3=9 combo vector of max,mid,min eigvec coordinates
+    outputAlive = table.data_write()                                                                # output processed line in accordance with column labeling
 
 # ------------------------------------------ output finalization -----------------------------------
 

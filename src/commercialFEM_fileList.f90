@@ -28,8 +28,6 @@
 #include "plastic_none.f90"
 #include "plastic_isotropic.f90"
 #include "plastic_phenopowerlaw.f90"
-#include "plastic_phenoplus.f90"
-#include "plastic_titanmod.f90"
 #include "plastic_dislotwin.f90"
 #include "plastic_disloUCLA.f90"
 #include "plastic_nonlocal.f90"

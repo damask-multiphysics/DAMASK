@@ -137,7 +137,11 @@ contains
 !> @brief allocates and initialize per grain variables
 !--------------------------------------------------------------------------------------------------
 subroutine crystallite_init
- use, intrinsic :: iso_fortran_env                                                                  ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
+#ifdef __GFORTRAN__
+ use, intrinsic :: iso_fortran_env, only: &
+   compiler_version, &
+   compiler_options
+#endif
  use debug, only: &
    debug_info, &
    debug_reset, &
@@ -3084,35 +3088,49 @@ logical function crystallite_stateJump(ipc,ip,el)
 
  implicit none
  integer(pInt), intent(in):: &
-   el, &                      ! element index
-   ip, &                      ! integration point index
+   el, &                       ! element index
+   ip, &                       ! integration point index
    ipc                         ! grain index
 
  integer(pInt) :: &
    c, &
    p, &
    mySource, &
+   myOffsetPlasticDeltaState, &
+   myOffsetSourceDeltaState, &
    mySizePlasticDeltaState, &
    mySizeSourceDeltaState
 
- c= phasememberAt(ipc,ip,el)
+ c = phasememberAt(ipc,ip,el)
  p = phaseAt(ipc,ip,el)
+
  call constitutive_collectDeltaState(crystallite_Tstar_v(1:6,ipc,ip,el), crystallite_Fe(1:3,1:3,ipc,ip,el), ipc,ip,el)
- mySizePlasticDeltaState = plasticState(p)%sizeDeltaState
- if( any(IEEE_is_NaN(plasticState(p)%deltaState(:,c)))) then                                       ! NaN occured in deltaState
+
+ myOffsetPlasticDeltaState = plasticState(p)%offsetDeltaState
+ mySizePlasticDeltaState   = plasticState(p)%sizeDeltaState
+
+ if( any(IEEE_is_NaN(plasticState(p)%deltaState(1:mySizePlasticDeltaState,c)))) then                                       ! NaN occured in deltaState
    crystallite_stateJump = .false.
    return
  endif
- plasticState(p)%state(1:mySizePlasticDeltaState,c) = plasticState(p)%state(1:mySizePlasticDeltaState,c) + &
-                                                      plasticState(p)%deltaState(1:mySizePlasticDeltaState,c)
+
+ plasticState(p)%state(myOffsetPlasticDeltaState + 1_pInt                 : &
+                       myOffsetPlasticDeltaState + mySizePlasticDeltaState,c) = &
+ plasticState(p)%state(myOffsetPlasticDeltaState + 1_pInt                 : &
+                       myOffsetPlasticDeltaState + mySizePlasticDeltaState,c) + &
+    plasticState(p)%deltaState(1:mySizePlasticDeltaState,c)
+
  do mySource = 1_pInt, phase_Nsources(p)
-   mySizeSourceDeltaState = sourceState(p)%p(mySource)%sizeDeltaState
-   if( any(IEEE_is_NaN(sourceState(p)%p(mySource)%deltaState(:,c)))) then                          ! NaN occured in deltaState
+   myOffsetSourceDeltaState = sourceState(p)%p(mySource)%offsetDeltaState
+   mySizeSourceDeltaState   = sourceState(p)%p(mySource)%sizeDeltaState
+   if (any(IEEE_is_NaN(sourceState(p)%p(mySource)%deltaState(1:mySizeSourceDeltaState,c)))) then   ! NaN occured in deltaState
      crystallite_stateJump = .false.
      return
    endif
-   sourceState(p)%p(mySource)%state(1:mySizeSourceDeltaState,c) = &
-     sourceState(p)%p(mySource)%state(1:mySizeSourceDeltaState,c) + &
+   sourceState(p)%p(mySource)%state(myOffsetSourceDeltaState + 1_pInt                : &
+                                    myOffsetSourceDeltaState + mySizeSourceDeltaState,c) = &
+   sourceState(p)%p(mySource)%state(myOffsetSourceDeltaState + 1_pInt                : &
+                                    myOffsetSourceDeltaState + mySizeSourceDeltaState,c) + &
      sourceState(p)%p(mySource)%deltaState(1:mySizeSourceDeltaState,c)
  enddo
 
@@ -3123,7 +3141,9 @@ logical function crystallite_stateJump(ipc,ip,el)
              .or. .not. iand(debug_level(debug_crystallite), debug_levelSelective) /= 0_pInt)) then
    write(6,'(a,i8,1x,i2,1x,i3, /)') '<< CRYST >> update state at el ip ipc ',el,ip,ipc
    write(6,'(a,/,(12x,12(e12.5,1x)),/)') '<< CRYST >> deltaState', plasticState(p)%deltaState(1:mySizePlasticDeltaState,c)
-   write(6,'(a,/,(12x,12(e12.5,1x)),/)') '<< CRYST >> new state',  plasticState(p)%state     (1:mySizePlasticDeltaState,c)
+   write(6,'(a,/,(12x,12(e12.5,1x)),/)') '<< CRYST >> new state', &
+     plasticState(p)%state(myOffsetSourceDeltaState + 1_pInt                : &
+                           myOffsetSourceDeltaState + mySizeSourceDeltaState,c)
  endif
 #endif
 

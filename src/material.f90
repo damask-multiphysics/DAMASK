@@ -25,10 +25,8 @@ module material
    PLASTICITY_none_label                = 'none', &
    PLASTICITY_isotropic_label           = 'isotropic', &
    PLASTICITY_phenopowerlaw_label       = 'phenopowerlaw', &
-   PLASTICITY_phenoplus_label           = 'phenoplus', &
    PLASTICITY_dislotwin_label           = 'dislotwin', &
    PLASTICITY_disloucla_label           = 'disloucla', &
-   PLASTICITY_titanmod_label            = 'titanmod', &
    PLASTICITY_nonlocal_label            = 'nonlocal', &
    SOURCE_thermal_dissipation_label     = 'thermal_dissipation', &
    SOURCE_thermal_externalheat_label    = 'thermal_externalheat', &
@@ -74,10 +72,8 @@ module material
                  PLASTICITY_none_ID, &
                  PLASTICITY_isotropic_ID, &
                  PLASTICITY_phenopowerlaw_ID, &
-                 PLASTICITY_phenoplus_ID, &
                  PLASTICITY_dislotwin_ID, &
                  PLASTICITY_disloucla_ID, &
-                 PLASTICITY_titanmod_ID, &
                  PLASTICITY_nonlocal_ID
  end enum
 
@@ -312,10 +308,8 @@ module material
    PLASTICITY_none_ID, &
    PLASTICITY_isotropic_ID, &
    PLASTICITY_phenopowerlaw_ID, &
-   PLASTICITY_phenoplus_ID, &
    PLASTICITY_dislotwin_ID, &
    PLASTICITY_disloucla_ID, &
-   PLASTICITY_titanmod_ID, &
    PLASTICITY_nonlocal_ID, &
    SOURCE_thermal_dissipation_ID, &
    SOURCE_thermal_externalheat_ID, &
@@ -367,7 +361,11 @@ contains
 !> material.config
 !--------------------------------------------------------------------------------------------------
 subroutine material_init()
- use, intrinsic :: iso_fortran_env                             ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
+#ifdef __GFORTRAN__
+ use, intrinsic :: iso_fortran_env, only: &
+   compiler_version, &
+   compiler_options
+#endif
  use IO, only: &
    IO_error, &
    IO_open_file, &
@@ -985,14 +983,10 @@ subroutine material_parsePhase(fileUnit,myPart)
              phase_plasticity(section) = PLASTICITY_ISOTROPIC_ID
            case (PLASTICITY_PHENOPOWERLAW_label)
              phase_plasticity(section) = PLASTICITY_PHENOPOWERLAW_ID
-           case (PLASTICITY_PHENOPLUS_label)
-             phase_plasticity(section) = PLASTICITY_PHENOPLUS_ID
            case (PLASTICITY_DISLOTWIN_label)
              phase_plasticity(section) = PLASTICITY_DISLOTWIN_ID
            case (PLASTICITY_DISLOUCLA_label)
              phase_plasticity(section) = PLASTICITY_DISLOUCLA_ID
-           case (PLASTICITY_TITANMOD_label)
-             phase_plasticity(section) = PLASTICITY_TITANMOD_ID
            case (PLASTICITY_NONLOCAL_label)
              phase_plasticity(section) = PLASTICITY_NONLOCAL_ID
            case default
