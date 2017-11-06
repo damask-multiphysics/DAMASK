@@ -439,13 +439,15 @@ subroutine debug_info
      write(6,'(a15,i10,1x,i10)') '          total',integral,sum(debug_MaterialpointLoopDistribution)
    endif debugOutputHomog
 
-   debugOutputCPFEM: if (iand(debug_level(debug_CPFEM),debug_LEVELBASIC) /= 0) then
-     write(6,'(2/,a,/)') ' Extreme values of returned stress and jacobian'
+   debugOutputCPFEM: if (iand(debug_level(debug_CPFEM),debug_LEVELBASIC) /= 0 &
+                      .and. any(debug_stressMinLocation /= 0_pInt) &
+                      .and. any(debug_stressMaxLocation /= 0_pInt) ) then
+     write(6,'(2/,a,/)') ' Extreme values of returned stress and Jacobian'
      write(6,'(a39)')                      '                      value     el   ip'
-     write(6,'(a14,1x,e12.3,1x,i6,1x,i4)')   ' stress   min :', debug_stressMin, debug_stressMinLocation
-     write(6,'(a14,1x,e12.3,1x,i6,1x,i4)')   '          max :', debug_stressMax, debug_stressMaxLocation
-     write(6,'(a14,1x,e12.3,1x,i6,1x,i4)')   ' jacobian min :', debug_jacobianMin, debug_jacobianMinLocation
-     write(6,'(a14,1x,e12.3,1x,i6,1x,i4,/)') '          max :', debug_jacobianMax, debug_jacobianMaxLocation
+     write(6,'(a14,1x,e12.3,1x,i8,1x,i4)')   ' stress   min :', debug_stressMin, debug_stressMinLocation
+     write(6,'(a14,1x,e12.3,1x,i8,1x,i4)')   '          max :', debug_stressMax, debug_stressMaxLocation
+     write(6,'(a14,1x,e12.3,1x,i8,1x,i4)')   ' Jacobian min :', debug_jacobianMin, debug_jacobianMinLocation
+     write(6,'(a14,1x,e12.3,1x,i8,1x,i4,/)') '          max :', debug_jacobianMax, debug_jacobianMaxLocation
    endif debugOutputCPFEM
  !$OMP END CRITICAL (write2out)
 

@@ -984,7 +984,7 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
              crystallite_todo(c,i,e) = crystallite_subStep(c,i,e) > subStepMinCryst                  ! still on track or already done (beyond repair)
              !$OMP FLUSH(crystallite_todo)
 #ifdef DEBUG
-             if (iand(debug_level(debug_crystallite),debug_levelBasic) /= 0_pInt) then
+             if (iand(debug_level(debug_crystallite),debug_levelExtensive) /= 0_pInt) then
                if (crystallite_todo(c,i,e)) then
                  write(6,'(a,f12.8,a,i8,1x,i2,1x,i3,/)') '<< CRYST >> cutback step in crystallite_stressAndItsTangent &
                                                         &with new crystallite_subStep: ',&
@@ -1040,10 +1040,10 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
    endif timeSyncing2
 
    if (iand(debug_level(debug_crystallite),debug_levelExtensive) /= 0_pInt) then
-     write(6,'(/,a,e12.5)') '<< CRYST >> min(subStep) ',minval(crystallite_subStep)
-     write(6,'(a,e12.5)')   '<< CRYST >> max(subStep) ',maxval(crystallite_subStep)
-     write(6,'(a,e12.5)')   '<< CRYST >> min(subFrac) ',minval(crystallite_subFrac)
-     write(6,'(a,e12.5,/)') '<< CRYST >> max(subFrac) ',maxval(crystallite_subFrac)
+     write(6,'(/,a,f8.5)') '<< CRYST >> min(subStep) ',minval(crystallite_subStep)
+     write(6,'(a,f8.5)')   '<< CRYST >> max(subStep) ',maxval(crystallite_subStep)
+     write(6,'(a,f8.5)')   '<< CRYST >> min(subFrac) ',minval(crystallite_subFrac)
+     write(6,'(a,f8.5,/)') '<< CRYST >> max(subFrac) ',maxval(crystallite_subFrac)
      flush(6)
    endif
 
@@ -1051,7 +1051,7 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
 
    if (any(crystallite_todo)) then
      if (iand(debug_level(debug_crystallite),debug_levelExtensive) /= 0_pInt) then
-       write(6,'(/,a,i3)') '<< CRYST >> doing integrate state ',numerics_integrator(numerics_integrationMode)
+       write(6,'(/,a,i3)') '<< CRYST >> using state integrator ',numerics_integrator(numerics_integrationMode)
        flush(6)
      endif
      select case(numerics_integrator(numerics_integrationMode))
@@ -3043,8 +3043,8 @@ subroutine crystallite_integrateStateFPI()
    !$OMP END PARALLEL
 
    if (iand(debug_level(debug_crystallite), debug_levelExtensive) /= 0_pInt) &
-     write(6,'(a,i8,a,i2,/)') '<< CRYST >> ', count(crystallite_converged(:,:,:)), &
-                               ' grains converged after state integration #', NiterationState
+     write(6,'(a,i8,a,i2)') '<< CRYST >> ', count(crystallite_converged(:,:,:)), &
+                            ' grains converged after state integration #', NiterationState
 
 
    ! --- NON-LOCAL CONVERGENCE CHECK ---
@@ -3157,8 +3157,8 @@ logical function crystallite_stateJump(ipc,ip,el)
    write(6,'(a,i8,1x,i2,1x,i3, /)') '<< CRYST >> update state at el ip ipc ',el,ip,ipc
    write(6,'(a,/,(12x,12(e12.5,1x)),/)') '<< CRYST >> deltaState', plasticState(p)%deltaState(1:mySizePlasticDeltaState,c)
    write(6,'(a,/,(12x,12(e12.5,1x)),/)') '<< CRYST >> new state', &
-     plasticState(p)%state(myOffsetSourceDeltaState + 1_pInt                : &
-                           myOffsetSourceDeltaState + mySizeSourceDeltaState,c)
+     plasticState(p)%state(myOffsetPlasticDeltaState + 1_pInt                : &
+                           myOffsetPlasticDeltaState + mySizePlasticDeltaState,c)
  endif
 #endif
 
