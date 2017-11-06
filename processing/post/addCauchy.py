@@ -72,6 +72,7 @@ for name in filenames:
   table.head_write()
 
 # ------------------------------------------ process data ------------------------------------------
+
   outputAlive = True
   while outputAlive and table.data_read():                                                          # read next data line of ASCII table
     F = np.array(map(float,table.data[column[options.defgrad]:column[options.defgrad]+9]),'d').reshape(3,3)
