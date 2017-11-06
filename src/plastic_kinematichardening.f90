@@ -58,7 +58,7 @@ module plastic_kinehardening
      
    
    real(pReal),                         dimension(:),   allocatable,          private :: &
-     tau0, &                                                                                           !< initial critical shear stress for slip (input parameter, per family)
+     crss0, &                                                                                           !< initial critical shear stress for slip (input parameter, per family)
      theta0, &                                                                                         !< initial hardening rate of forward stress for each slip
      theta1, &                                                                                         !< asymptotic hardening rate of forward stress for each slip >
      theta0_b, &                                                                                       !< initial hardening rate of back stress for each slip > 
@@ -221,7 +221,7 @@ subroutine plastic_kinehardening_init(fileUnit)
        Nchunks_SlipSlip     = maxval(lattice_interactionSlipSlip(:,:,phase))
        Nchunks_nonSchmid    = lattice_NnonSchmid(phase)
        allocate(param(instance)%outputID(phase_Noutput(phase)), source=0_pInt)                      ! allocate space for IDs of every requested output
-       allocate(param(instance)%tau0    (Nchunks_SlipFamilies), source=0.0_pReal)
+       allocate(param(instance)%crss0    (Nchunks_SlipFamilies), source=0.0_pReal)
        allocate(param(instance)%tau1    (Nchunks_SlipFamilies), source=0.0_pReal)
        allocate(param(instance)%tau1_b  (Nchunks_SlipFamilies), source=0.0_pReal)
        allocate(param(instance)%theta0  (Nchunks_SlipFamilies), source=0.0_pReal)
@@ -281,15 +281,15 @@ subroutine plastic_kinehardening_init(fileUnit)
            plastic_kinehardening_Nslip(j,instance) = IO_intValue(line,chunkPos,1_pInt+j)
          enddo
       
-       case ('tau0','tau1','tau1_b','theta0','theta1','theta0_b','theta1_b')
+       case ('crss0','tau1','tau1_b','theta0','theta1','theta0_b','theta1_b')
          tempPerSlip = 0.0_pReal
          do j = 1_pInt, Nchunks_SlipFamilies
            if (plastic_kinehardening_Nslip(j,instance) > 0_pInt) &
              tempPerSlip(j) = IO_floatValue(line,chunkPos,1_pInt+j)
          enddo
          select case(tag)
-           case ('tau0')
-             param(instance)%tau0(1:Nchunks_SlipFamilies) = tempPerSlip(1:Nchunks_SlipFamilies)  
+           case ('crss0')
+             param(instance)%crss0(1:Nchunks_SlipFamilies) = tempPerSlip(1:Nchunks_SlipFamilies)  
            case ('tau1')
              param(instance)%tau1(1:Nchunks_SlipFamilies) = tempPerSlip(1:Nchunks_SlipFamilies)  
            case ('tau1_b')
@@ -362,7 +362,7 @@ subroutine plastic_kinehardening_init(fileUnit)
 !  sanity checks
  
      if (any(plastic_kinehardening_Nslip(1:nSlipFamilies,instance) > 0_pInt &
-             .and. param(instance)%tau0(1:nSlipFamilies)           < 0.0_pReal)) extmsg = trim(extmsg)//' tau0'
+             .and. param(instance)%crss0(1:nSlipFamilies)           < 0.0_pReal)) extmsg = trim(extmsg)//' crss0'
      if (any(plastic_kinehardening_Nslip(1:nSlipFamilies,instance) > 0_pInt &
              .and. param(instance)%tau1(1:nSlipFamilies)          <= 0.0_pReal)) extmsg = trim(extmsg)//' tau1'
      if (any(plastic_kinehardening_Nslip(1:nSlipFamilies,instance) > 0_pInt &
@@ -431,6 +431,7 @@ subroutine plastic_kinehardening_init(fileUnit)
      plasticState(phase)%sizeState = sizeState
      plasticState(phase)%sizeDotState = sizeDotState
      plasticState(phase)%sizeDeltaState = sizeDeltaState
+     plasticState(phase)%offsetDeltaState = sizeDotState
      plasticState(phase)%sizePostResults = plastic_kinehardening_sizePostResults(instance)
      plasticState(phase)%nSlip = nSlip
   
@@ -482,7 +483,7 @@ subroutine plastic_kinehardening_init(fileUnit)
      state0  (instance)%crss          => plasticState(phase)%state0   (startIndex  :endIndex  ,1:NipcMyPhase)
      dotState(instance)%crss          => plasticState(phase)%dotState (startIndex-o:endIndex-o,1:NipcMyPhase)
 
-     state0(instance)%crss                                  = spread(math_expand(param(instance)%tau0,&
+     state0(instance)%crss                                  = spread(math_expand(param(instance)%crss0,&
                                                                                  plastic_kinehardening_Nslip(:,instance)), &
                                                                      2, NipcMyPhase)
      plasticState(phase)%aTolState(startIndex-o:endIndex-o) = param(instance)%aTolResistance
@@ -717,6 +718,11 @@ end subroutine plastic_kinehardening_LpAndItsTangent
 subroutine plastic_kinehardening_deltaState(Tstar_v,ipc,ip,el)
  use prec, only: &
    dNeq
+ use debug, only: &
+   debug_level, &
+   debug_constitutive, &
+   debug_levelExtensive, &
+   debug_levelSelective
  use material, only: &
    phaseAt, &
    phasememberAt, &
@@ -749,13 +755,39 @@ subroutine plastic_kinehardening_deltaState(Tstar_v,ipc,ip,el)
                                        Tstar_v,ph,instance,of)
 
  sense = sign(1.0_pReal,gdot_pos+gdot_neg)                                                          ! current sense of shear direction
+
+#ifdef DEBUG
+         if (iand(debug_level(debug_constitutive), debug_levelExtensive) /= 0_pInt &
+            .and. ((e == debug_e .and. i == debug_i) &
+                   .or. .not. iand(debug_level(debug_constitutive),debug_levelSelective) /= 0_pInt)) then
+           write(6,'a') '======= kinehardening delta state ======='
+         endif
+#endif
+
 !--------------------------------------------------------------------------------------------------
 ! switch in sense of shear?
  do j = 1,plastic_kinehardening_totalNslip(instance)
+#ifdef DEBUG
+         if (iand(debug_level(debug_constitutive), debug_levelExtensive) /= 0_pInt &
+            .and. ((e == debug_e .and. i == debug_i) &
+                   .or. .not. iand(debug_level(debug_constitutive),debug_levelSelective) /= 0_pInt)) then
+           write(6,'i2,1x,f7.4,1x,f7.4') j,sense(j),state(instance)%sense(j,of)
+         endif
+#endif
    if (dNeq(sense(j),state(instance)%sense(j,of),0.1_pReal)) then
      deltaState(instance)%sense (j,of) = sense(j) - state(instance)%sense(j,of)                              ! switch sense
      deltaState(instance)%chi0  (j,of) = abs(state(instance)%crss_back(j,of)) - state(instance)%chi0(j,of)   ! remember current backstress magnitude
      deltaState(instance)%gamma0(j,of) = state(instance)%accshear(j,of) - state(instance)%gamma0(j,of)       ! remember current accumulated shear
+#ifdef DEBUG
+         if (iand(debug_level(debug_constitutive), debug_levelExtensive) /= 0_pInt &
+            .and. ((e == debug_e .and. i == debug_i) &
+                   .or. .not. iand(debug_level(debug_constitutive),debug_levelSelective) /= 0_pInt)) then
+           write(6,'a') 'change of sense!'
+           write(6,*) deltaState(instance)%sense (j,of), &
+                      deltaState(instance)%chi0(j,of), &
+                      deltaState(instance)%gamma0(j,of)
+         endif
+#endif
    endif
  enddo
 
@@ -789,7 +821,7 @@ subroutine plastic_kinehardening_dotState(Tstar_v,ipc,ip,el)
  integer(pInt) :: &
    instance,ph, &
    f,i,j,k, &
-   index_Gamma,index_myFamily,index_otherFamily, &
+   index_myFamily,index_otherFamily, &
    nSlip, &
    offset_accshear, &
    of
@@ -803,6 +835,8 @@ subroutine plastic_kinehardening_dotState(Tstar_v,ipc,ip,el)
  instance = phase_plasticityInstance(ph)
  nSlip = plastic_kinehardening_totalNslip(instance)
  
+ dotState(instance)%sumGamma(of) = 0.0_pReal
+
  call plastic_kinehardening_shearRates(gdot_pos,gdot_neg,tau_pos,tau_neg, &
                                        Tstar_v,ph,instance,of)
                                        
@@ -864,7 +898,7 @@ function plastic_kinehardening_postResults(Tstar_v,ipc,ip,el)
    instance,ph, of, &
    nSlip,&
    o,f,i,c,j,k, &
-   index_Gamma,index_accshear,index_myFamily
+   index_myFamily
    
  real(pReal), dimension(plastic_kinehardening_totalNslip(phase_plasticityInstance(material_phase(ipc,ip,el)))) :: &
    gdot_pos,gdot_neg, &
