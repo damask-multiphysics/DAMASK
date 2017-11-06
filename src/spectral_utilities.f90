@@ -160,7 +160,11 @@ contains
 !> Initializes FFTW.
 !--------------------------------------------------------------------------------------------------
 subroutine utilities_init()
- use, intrinsic :: iso_fortran_env                                                                  ! to get compiler_version and compiler_options (at least for gfortran >4.6 at the moment)
+#ifdef __GFORTRAN__
+ use, intrinsic :: iso_fortran_env, only: &
+   compiler_version, &
+   compiler_options
+#endif
  use IO, only: &
    IO_error, &
    IO_warning, &
@@ -965,6 +969,9 @@ subroutine utilities_constitutiveResponse(F_lastInc,F,timeinc, &
    j,k,ierr
  real(pReal), dimension(3,3,3,3) :: max_dPdF, min_dPdF
  real(pReal)   :: max_dPdF_norm, min_dPdF_norm, defgradDetMin, defgradDetMax, defgradDet
+
+ external :: &
+  MPI_Allreduce
 
  write(6,'(/,a)') ' ... evaluating constitutive response ......................................'
  flush(6)

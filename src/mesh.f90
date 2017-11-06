@@ -472,7 +472,11 @@ contains
 !! Order and routines strongly depend on type of solver
 !--------------------------------------------------------------------------------------------------
 subroutine mesh_init(ip,el)
- use, intrinsic :: iso_fortran_env                                                                  ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
+#ifdef __GFORTRAN__
+ use, intrinsic :: iso_fortran_env, only: &
+   compiler_version, &
+   compiler_options
+#endif
  use DAMASK_interface
  use IO, only: &
 #ifdef Abaqus
@@ -515,6 +519,8 @@ subroutine mesh_init(ip,el)
  integer(pInt) :: j
  logical :: myDebug
  
+ external :: MPI_comm_size
+
  write(6,'(/,a)')   ' <<<+-  mesh init  -+>>>'
  write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
@@ -706,7 +712,6 @@ integer(pInt) function mesh_FEasCP(what,myID)
    mesh_FEasCP = lookupMap(2_pInt,upper)
    return
  endif
- ! this might be the reason for the heap problems
  binarySearch: do while (upper-lower > 1_pInt)
    center = (lower+upper)/2_pInt
    if (lookupMap(1_pInt,center) < myID) then
@@ -1692,13 +1697,15 @@ subroutine mesh_marc_count_cpElements(fileUnit)
  use IO,   only: IO_lc, &
                  IO_stringValue, &
                  IO_stringPos, &
-                 IO_countContinuousIntValues
+                 IO_countContinuousIntValues, &
+                 IO_error, &
+                 IO_intValue
                  
  implicit none
  integer(pInt), intent(in) :: fileUnit
  
  integer(pInt), allocatable, dimension(:) :: chunkPos
- integer(pInt) :: i
+ integer(pInt) :: i, version
  character(len=300):: line
 
  mesh_NcpElems = 0_pInt
@@ -1709,15 +1716,26 @@ subroutine mesh_marc_count_cpElements(fileUnit)
  do 
    read (fileUnit,610,END=620) line
    chunkPos = IO_stringPos(line)
-
-   if ( IO_lc(IO_stringValue(line,chunkPos,1_pInt)) == 'hypoelastic') then
-       do i=1_pInt,3_pInt+hypoelasticTableStyle  ! Skip 3 or 4 lines
+   if ( IO_lc(IO_stringValue(line,chunkPos,1_pInt)) == 'version') then
+     version = IO_intValue(line,chunkPos,2_pInt)
+     if (version < 13) then                                                                             ! Marc 2016 or earlier
+       rewind(fileUnit)
+       do 
          read (fileUnit,610,END=620) line
+         chunkPos = IO_stringPos(line)
+         if ( IO_lc(IO_stringValue(line,chunkPos,1_pInt)) == 'hypoelastic') then
+           do i=1_pInt,3_pInt+hypoelasticTableStyle  ! Skip 3 or 4 lines
+             read (fileUnit,610,END=620) line
+           enddo
+           mesh_NcpElems = mesh_NcpElems + IO_countContinuousIntValues(fileUnit)                        ! why not simply mesh_NcpElems = IO_countContinuousIntValues(fileUnit)? keyword hypoelastic might appear several times
+           exit
+         endif
        enddo
-       mesh_NcpElems = mesh_NcpElems + IO_countContinuousIntValues(fileUnit)                        ! why not simply mesh_NcpElems = IO_countContinuousIntValues(fileUnit)?
-     exit
-   endif
- enddo
+     else                                                                                                  ! Marc2017 and later
+       call IO_error(error_ID=701_pInt)
+     end if
+   end if
+ enddo     
 
 620 end subroutine mesh_marc_count_cpElements
 

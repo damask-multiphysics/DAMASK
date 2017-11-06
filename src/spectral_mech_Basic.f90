@@ -72,7 +72,11 @@ contains
 !> @brief allocates all neccessary fields and fills them with data, potentially from restart info
 !--------------------------------------------------------------------------------------------------
 subroutine basicPETSc_init
- use, intrinsic :: iso_fortran_env                                                                  ! to get compiler_version and compiler_options (at least for gfortran >4.6 at the moment)
+#ifdef __GFORTRAN__
+ use, intrinsic :: iso_fortran_env, only: &
+   compiler_version, &
+   compiler_options
+#endif
  use IO, only: &
    IO_intOut, &
    IO_read_realFile, &
@@ -306,7 +310,6 @@ subroutine BasicPETSC_formResidual(in,x_scal,f_scal,dummy,ierr)
    debug_spectral, &
    debug_spectralRotation
  use spectral_utilities, only: &
-   wgt, &
    tensorField_real, &
    utilities_FFTtensorForward, &
    utilities_fourierGammaConvolution, &

@@ -137,7 +137,11 @@ contains
 !> @brief allocates and initialize per grain variables
 !--------------------------------------------------------------------------------------------------
 subroutine crystallite_init
- use, intrinsic :: iso_fortran_env                                                                  ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
+#ifdef __GFORTRAN__
+ use, intrinsic :: iso_fortran_env, only: &
+   compiler_version, &
+   compiler_options
+#endif
  use debug, only: &
    debug_info, &
    debug_reset, &
@@ -550,7 +554,6 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
    FEsolving_execIP
  use mesh, only: &
    mesh_element, &
-   mesh_NcpElems, &
    mesh_maxNips, &
    mesh_ipNeighborhood, &
    FE_NipNeighbors, &
@@ -561,8 +564,7 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
    plasticState, &
    sourceState, &
    phase_Nsources, &
-   phaseAt, phasememberAt, &
-   homogenization_maxNgrains
+   phaseAt, phasememberAt
  use constitutive, only:  &
    constitutive_TandItsTangent, &
    constitutive_LpAndItsTangent, &
@@ -3358,7 +3360,7 @@ logical function crystallite_integrateStress(&
  failedInversionFp: if (all(dEq0(invFp_current))) then
 #ifdef DEBUG
    if (iand(debug_level(debug_crystallite), debug_levelBasic) /= 0_pInt) then
-     write(6,'(a,i8,1x,a,i8,a,1x,i2,1x,i3)') '<< CRYST >> integrateStress failed on inversion of Fp_current at el (elFE) ip g ',&
+     write(6,'(a,i8,1x,a,i8,a,1x,i2,1x,i3)') '<< CRYST >> integrateStress failed on inversion of Fp_current at el (elFE) ip ipc ',&
        el,'(',mesh_element(1,el),')',ip,ipc
      if (iand(debug_level(debug_crystallite), debug_levelExtensive) > 0_pInt) &
        write(6,'(/,a,/,3(12x,3(f12.7,1x)/))') '<< CRYST >> Fp_current',math_transpose33(Fp_current(1:3,1:3))
@@ -3396,7 +3398,7 @@ logical function crystallite_integrateStress(&
 #ifdef DEBUG
      if (iand(debug_level(debug_crystallite), debug_levelBasic) /= 0_pInt) &
        write(6,'(a,i3,a,i8,1x,a,i8,a,1x,i2,1x,i3,/)') '<< CRYST >> integrateStress reached inelastic loop limit',nStress, &
-       ' at el (elFE) ip ipc ', el,mesh_element(1,el),ip,ipc
+       ' at el (elFE) ip ipc ', el,'(',mesh_element(1,el),')',ip,ipc
 #endif
      return
    endif IloopsExeced
@@ -3464,11 +3466,11 @@ logical function crystallite_integrateStress(&
                   aTol_crystalliteStress)                                                            ! minimum lower cutoff
      residuumLp = Lpguess - Lp_constitutive
 
-     if (any(IEEE_is_NaN(residuumLp))) then                                                         ! NaN in residuum...
+     if (any(IEEE_is_NaN(residuumLp))) then                                                          ! NaN in residuum...
 #ifdef DEBUG
        if (iand(debug_level(debug_crystallite), debug_levelBasic) /= 0_pInt) &
          write(6,'(a,i8,1x,a,i8,a,1x,i2,1x,i3,a,i3,a)') '<< CRYST >> integrateStress encountered NaN at el (elFE) ip ipc ', &
-           el,mesh_element(1,el),ip,ipc, &
+           el,'(',mesh_element(1,el),')',ip,ipc, &
                                                         ' ; iteration ', NiterationStressLp,&
                                                         ' >> returning..!'
 #endif
@@ -3502,8 +3504,8 @@ logical function crystallite_integrateStress(&
        if (ierr /= 0_pInt) then
 #ifdef DEBUG
          if (iand(debug_level(debug_crystallite), debug_levelBasic) /= 0_pInt) then
-           write(6,'(a,i8,1x,a,i8,a,1x,i2,1x,i3,a,i3)') '<< CRYST >> integrateStress failed on dR/dLp inversion at el ip ipc ', &
-             el,mesh_element(1,el),ip,ipc
+           write(6,'(a,i8,1x,a,i8,a,1x,i2,1x,i3)') '<< CRYST >> integrateStress failed on dR/dLp inversion at el (elFE) ip ipc ', &
+             el,'(',mesh_element(1,el),')',ip,ipc
            if (iand(debug_level(debug_crystallite), debug_levelExtensive) /= 0_pInt &
                .and. ((el == debug_e .and. ip == debug_i .and. ipc == debug_g)&
                       .or. .not. iand(debug_level(debug_crystallite), debug_levelSelective) /= 0_pInt)) then
@@ -3591,8 +3593,8 @@ logical function crystallite_integrateStress(&
      if (ierr /= 0_pInt) then
 #ifdef DEBUG
        if (iand(debug_level(debug_crystallite), debug_levelBasic) /= 0_pInt) then
-         write(6,'(a,i8,1x,a,i8,a,1x,i2,1x,i3,a,i3)') '<< CRYST >> integrateStress failed on dR/dLi inversion at el ip ipc ', &
-               el,mesh_element(1,el),ip,ipc
+         write(6,'(a,i8,1x,a,i8,a,1x,i2,1x,i3)') '<< CRYST >> integrateStress failed on dR/dLi inversion at el (elFE) ip ipc ', &
+               el,'(',mesh_element(1,el),')',ip,ipc
          if (iand(debug_level(debug_crystallite), debug_levelExtensive) /= 0_pInt &
              .and. ((el == debug_e .and. ip == debug_i .and. ipc == debug_g)&
                     .or. .not. iand(debug_level(debug_crystallite), debug_levelSelective) /= 0_pInt)) then
@@ -3631,8 +3633,8 @@ logical function crystallite_integrateStress(&
  failedInversionInvFp: if (all(dEq0(Fp_new))) then
 #ifdef DEBUG
    if (iand(debug_level(debug_crystallite), debug_levelBasic) /= 0_pInt) then
-     write(6,'(a,i8,1x,a,i8,a,1x,i2,1x,i3,a,i3)') '<< CRYST >> integrateStress failed on invFp_new inversion at el ip ipc ',&
-       el,mesh_element(1,el),ip,ipc, ' ; iteration ', NiterationStressLp
+     write(6,'(a,i8,1x,a,i8,a,1x,i2,1x,i3,a,i3)') '<< CRYST >> integrateStress failed on invFp_new inversion at el (elFE) ip ipc ',&
+       el,'(',mesh_element(1,el),')',ip,ipc, ' ; iteration ', NiterationStressLp
      if (iand(debug_level(debug_crystallite), debug_levelExtensive) /= 0_pInt &
          .and. ((el == debug_e .and. ip == debug_i .and. ipc == debug_g) &
                 .or. .not. iand(debug_level(debug_crystallite), debug_levelSelective) /= 0_pInt)) &

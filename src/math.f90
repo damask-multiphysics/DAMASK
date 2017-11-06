@@ -173,7 +173,11 @@ contains
 !--------------------------------------------------------------------------------------------------
 subroutine math_init
 
- use, intrinsic :: iso_fortran_env                                                                  ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
+#ifdef __GFORTRAN__
+ use, intrinsic :: iso_fortran_env, only: &
+   compiler_version, &
+   compiler_options
+#endif
  use numerics, only: fixedSeed
  use IO,       only: IO_timeStamp
 
@@ -1436,35 +1440,37 @@ end function math_RtoQ
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief rotation matrix from Euler angles (in radians)
-!> @details rotation matrix is meant to represent a PASSIVE rotation, 
-!> @details composed of INTRINSIC rotations around the axes of the 
-!> @details rotating reference frame 
-!> @details (see http://en.wikipedia.org/wiki/Euler_angles for definitions)
+!> @brief rotation matrix from Bunge-Euler (3-1-3) angles (in radians)
+!> @details rotation matrix is meant to represent a PASSIVE rotation, composed of INTRINSIC
+!> @details rotations around the axes of the details rotating reference frame.
+!> @details similar to eu2om from "D Rowenhorst et al. Consistent representations of and conversions
+!> @details between 3D rotations, Model. Simul. Mater. Sci. Eng. 23-8 (2015)", but R is transposed
 !--------------------------------------------------------------------------------------------------
 pure function math_EulerToR(Euler)
 
  implicit none
  real(pReal), dimension(3), intent(in) :: Euler
  real(pReal), dimension(3,3) :: math_EulerToR
- real(pReal) c1, c, c2, s1, s, s2
+ real(pReal) :: c1, C, c2, s1, S, s2
 
- C1 = cos(Euler(1))
+ c1 = cos(Euler(1))
  C  = cos(Euler(2))
- C2 = cos(Euler(3))
- S1 = sin(Euler(1))
+ c2 = cos(Euler(3))
+ s1 = sin(Euler(1))
  S  = sin(Euler(2))
- S2 = sin(Euler(3))
+ s2 = sin(Euler(3))
 
- math_EulerToR(1,1)=C1*C2-S1*S2*C
- math_EulerToR(1,2)=-C1*S2-S1*C2*C
- math_EulerToR(1,3)=S1*S
- math_EulerToR(2,1)=S1*C2+C1*S2*C
- math_EulerToR(2,2)=-S1*S2+C1*C2*C
- math_EulerToR(2,3)=-C1*S
- math_EulerToR(3,1)=S2*S
- math_EulerToR(3,2)=C2*S
- math_EulerToR(3,3)=C
+ math_EulerToR(1,1) =  c1*c2 -s1*C*s2
+ math_EulerToR(1,2) = -c1*s2 -s1*C*c2
+ math_EulerToR(1,3) =  s1*S
+
+ math_EulerToR(2,1) =  s1*c2 +c1*C*s2
+ math_EulerToR(2,2) = -s1*s2 +c1*C*c2
+ math_EulerToR(2,3) = -c1*S
+
+ math_EulerToR(3,1) =  S*s2
+ math_EulerToR(3,2) =  S*c2
+ math_EulerToR(3,3) =  C
  
  math_EulerToR = transpose(math_EulerToR)  ! convert to passive rotation
 
@@ -1472,29 +1478,29 @@ end function math_EulerToR
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief quaternion (w+ix+jy+kz) from 3-1-3 Euler angles (in radians)
-!> @details quaternion is meant to represent a PASSIVE rotation, 
-!> @details composed of INTRINSIC rotations around the axes of the 
-!> @details rotating reference frame 
-!> @details (see http://en.wikipedia.org/wiki/Euler_angles for definitions)
+!> @brief quaternion (w+ix+jy+kz) from Bunge-Euler (3-1-3) angles (in radians)
+!> @details rotation matrix is meant to represent a PASSIVE rotation, composed of INTRINSIC
+!> @details rotations around the axes of the details rotating reference frame.
+!> @details similar to eu2qu from "D Rowenhorst et al. Consistent representations of and
+!> @details conversions between 3D rotations, Model. Simul. Mater. Sci. Eng. 23-8 (2015)", but
+!> @details Q is conjucated and Q is not reversed for Q(0) < 0.
 !--------------------------------------------------------------------------------------------------
 pure function math_EulerToQ(eulerangles)
 
  implicit none
  real(pReal), dimension(3), intent(in) :: eulerangles
  real(pReal), dimension(4) :: math_EulerToQ
- real(pReal), dimension(3) :: halfangles
- real(pReal) :: c, s
+ real(pReal) :: c, s, sigma, delta
 
- halfangles = 0.5_pReal * eulerangles
-
- c = cos(halfangles(2))
- s = sin(halfangles(2))
-
- math_EulerToQ= [cos(halfangles(1)+halfangles(3)) * c, &
-                 cos(halfangles(1)-halfangles(3)) * s, &
-                 sin(halfangles(1)-halfangles(3)) * s, &
-                 sin(halfangles(1)+halfangles(3)) * c ]
+ c = cos(0.5_pReal * eulerangles(2))
+ s = sin(0.5_pReal * eulerangles(2))
+ sigma = 0.5_pReal * (eulerangles(1)+eulerangles(3))
+ delta = 0.5_pReal * (eulerangles(1)-eulerangles(3))
+ 
+ math_EulerToQ= [c * cos(sigma), &
+                 s * cos(delta), &
+                 s * sin(delta), &
+                 c * sin(sigma) ]
  math_EulerToQ = math_qConj(math_EulerToQ)                                                          ! convert to passive rotation
 
 end function math_EulerToQ
@@ -1505,6 +1511,8 @@ end function math_EulerToQ
 !> @details rotation matrix is meant to represent a ACTIVE rotation
 !> @details (see http://en.wikipedia.org/wiki/Euler_angles for definitions)
 !> @details formula for active rotation taken from http://mathworld.wolfram.com/RodriguesRotationFormula.html
+!> @details equivalent to eu2om (P=-1) from "D Rowenhorst et al. Consistent representations of and
+!> @details conversions between 3D rotations, Model. Simul. Mater. Sci. Eng. 23-8 (2015)"
 !--------------------------------------------------------------------------------------------------
 pure function math_axisAngleToR(axis,omega)
 
@@ -1512,31 +1520,31 @@ pure function math_axisAngleToR(axis,omega)
  real(pReal), dimension(3,3) :: math_axisAngleToR
  real(pReal), dimension(3), intent(in) :: axis
  real(pReal), intent(in) :: omega
- real(pReal), dimension(3) :: axisNrm
+ real(pReal), dimension(3) :: n
  real(pReal) :: norm,s,c,c1
 
  norm = norm2(axis)
- if (norm > 1.0e-8_pReal) then                             ! non-zero rotation
-   axisNrm = axis/norm                                     ! normalize axis to be sure
+ wellDefined: if (norm > 1.0e-8_pReal) then
+   n = axis/norm                                           ! normalize axis to be sure
 
    s = sin(omega)
    c = cos(omega)
    c1 = 1.0_pReal - c
 
-   math_axisAngleToR(1,1) =  c + c1*axisNrm(1)**2.0_pReal
-   math_axisAngleToR(1,2) = -s*axisNrm(3) + c1*axisNrm(1)*axisNrm(2)
-   math_axisAngleToR(1,3) =  s*axisNrm(2) + c1*axisNrm(1)*axisNrm(3)
+   math_axisAngleToR(1,1) =  c + c1*n(1)**2.0_pReal
+   math_axisAngleToR(1,2) =  c1*n(1)*n(2) - s*n(3)
+   math_axisAngleToR(1,3) =  c1*n(1)*n(3) + s*n(2)
                              
-   math_axisAngleToR(2,1) =  s*axisNrm(3) + c1*axisNrm(2)*axisNrm(1)
-   math_axisAngleToR(2,2) =  c + c1*axisNrm(2)**2.0_pReal
-   math_axisAngleToR(2,3) = -s*axisNrm(1) + c1*axisNrm(2)*axisNrm(3)
+   math_axisAngleToR(2,1) =  c1*n(1)*n(2) + s*n(3)
+   math_axisAngleToR(2,2) =  c + c1*n(2)**2.0_pReal
+   math_axisAngleToR(2,3) =  c1*n(2)*n(3) - s*n(1)
                              
-   math_axisAngleToR(3,1) = -s*axisNrm(2) + c1*axisNrm(3)*axisNrm(1)
-   math_axisAngleToR(3,2) =  s*axisNrm(1) + c1*axisNrm(3)*axisNrm(2)
-   math_axisAngleToR(3,3) =  c + c1*axisNrm(3)**2.0_pReal
- else
+   math_axisAngleToR(3,1) =  c1*n(1)*n(3) - s*n(2)
+   math_axisAngleToR(3,2) =  c1*n(2)*n(3) + s*n(1)
+   math_axisAngleToR(3,3) =  c + c1*n(3)**2.0_pReal
+ else wellDefined
    math_axisAngleToR = math_I3
- endif
+ endif wellDefined
  
 end function math_axisAngleToR
 
@@ -1545,6 +1553,8 @@ end function math_axisAngleToR
 !> @brief rotation matrix from axis and angle (in radians)
 !> @details rotation matrix is meant to represent a PASSIVE rotation
 !> @details (see http://en.wikipedia.org/wiki/Euler_angles for definitions)
+!> @details eq-uivalent to eu2qu (P=+1) from "D Rowenhorst et al. Consistent representations of and
+!> @details conversions between 3D rotations, Model. Simul. Mater. Sci. Eng. 23-8 (2015)"
 !--------------------------------------------------------------------------------------------------
 pure function math_EulerAxisAngleToR(axis,omega)
 
@@ -1581,8 +1591,10 @@ end function math_EulerAxisAngleToQ
 !> @brief quaternion (w+ix+jy+kz) from axis and angle (in radians)
 !> @details quaternion is meant to represent an ACTIVE rotation
 !> @details (see http://en.wikipedia.org/wiki/Euler_angles for definitions)
-!> @details formula for active rotation taken from 
+!> @details formula for active rotation taken from
 !> @details http://en.wikipedia.org/wiki/Rotation_representation_%28mathematics%29#Rodrigues_parameters
+!> @details equivalent to eu2qu (P=+1) from "D Rowenhorst et al. Consistent representations of and
+!> @details conversions between 3D rotations, Model. Simul. Mater. Sci. Eng. 23-8 (2015)"
 !--------------------------------------------------------------------------------------------------
 pure function math_axisAngleToQ(axis,omega)
 
@@ -1593,13 +1605,13 @@ pure function math_axisAngleToQ(axis,omega)
  real(pReal), dimension(3) :: axisNrm
  real(pReal) :: norm
 
- norm = sqrt(math_mul3x3(axis,axis))
- rotation: if (norm > 1.0e-8_pReal) then
+ norm = norm2(axis)
+ wellDefined: if (norm > 1.0e-8_pReal) then
    axisNrm = axis/norm                                                                              ! normalize axis to be sure
    math_axisAngleToQ = [cos(0.5_pReal*omega), sin(0.5_pReal*omega) * axisNrm(1:3)]
- else rotation
+ else wellDefined
    math_axisAngleToQ = [1.0_pReal,0.0_pReal,0.0_pReal,0.0_pReal]
- endif rotation
+ endif wellDefined
 
 end function math_axisAngleToQ
 
