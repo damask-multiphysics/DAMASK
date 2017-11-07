@@ -582,8 +582,6 @@ subroutine plastic_kinehardening_shearRates(gdot_pos,gdot_neg,tau_pos,tau_neg, &
  integer(pInt) :: &
    index_myFamily, &
    f,i,j,k
- real(pReal) :: &
-   tau
 
 
  j = 0_pInt
@@ -722,7 +720,9 @@ subroutine plastic_kinehardening_deltaState(Tstar_v,ipc,ip,el)
    debug_level, &
    debug_constitutive, &
    debug_levelExtensive, &
-   debug_levelSelective
+   debug_levelSelective, &
+   debug_e, &
+   debug_i
  use material, only: &
    phaseAt, &
    phasememberAt, &
@@ -758,9 +758,9 @@ subroutine plastic_kinehardening_deltaState(Tstar_v,ipc,ip,el)
 
 #ifdef DEBUG
          if (iand(debug_level(debug_constitutive), debug_levelExtensive) /= 0_pInt &
-            .and. ((e == debug_e .and. i == debug_i) &
+            .and. ((el == debug_e .and. ip == debug_i) &
                    .or. .not. iand(debug_level(debug_constitutive),debug_levelSelective) /= 0_pInt)) then
-           write(6,'a') '======= kinehardening delta state ======='
+           write(6,'(a)') '======= kinehardening delta state ======='
          endif
 #endif
 
@@ -769,9 +769,9 @@ subroutine plastic_kinehardening_deltaState(Tstar_v,ipc,ip,el)
  do j = 1,plastic_kinehardening_totalNslip(instance)
 #ifdef DEBUG
          if (iand(debug_level(debug_constitutive), debug_levelExtensive) /= 0_pInt &
-            .and. ((e == debug_e .and. i == debug_i) &
+            .and. ((el == debug_e .and. ip == debug_i) &
                    .or. .not. iand(debug_level(debug_constitutive),debug_levelSelective) /= 0_pInt)) then
-           write(6,'i2,1x,f7.4,1x,f7.4') j,sense(j),state(instance)%sense(j,of)
+           write(6,'(i2,1x,f7.4,1x,f7.4)') j,sense(j),state(instance)%sense(j,of)
          endif
 #endif
    if (dNeq(sense(j),state(instance)%sense(j,of),0.1_pReal)) then
@@ -780,9 +780,9 @@ subroutine plastic_kinehardening_deltaState(Tstar_v,ipc,ip,el)
      deltaState(instance)%gamma0(j,of) = state(instance)%accshear(j,of) - state(instance)%gamma0(j,of)       ! remember current accumulated shear
 #ifdef DEBUG
          if (iand(debug_level(debug_constitutive), debug_levelExtensive) /= 0_pInt &
-            .and. ((e == debug_e .and. i == debug_i) &
+            .and. ((el == debug_e .and. ip == debug_i) &
                    .or. .not. iand(debug_level(debug_constitutive),debug_levelSelective) /= 0_pInt)) then
-           write(6,'a') 'change of sense!'
+           write(6,'(a)') 'change of sense!'
            write(6,*) deltaState(instance)%sense (j,of), &
                       deltaState(instance)%chi0(j,of), &
                       deltaState(instance)%gamma0(j,of)
