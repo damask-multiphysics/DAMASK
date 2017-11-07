@@ -25,7 +25,7 @@ module numerics
    nState                     = 10_pInt, &                                                          !< state loop limit
    nStress                    = 40_pInt, &                                                          !< stress loop limit
    pert_method                =  1_pInt, &                                                          !< method used in perturbation technique for tangent
-   fixedSeed                  =  0_pInt, &                                                          !< fixed seeding for pseudo-random number generator, Default 0: use random seed
+   randomSeed                 =  0_pInt, &                                                          !< fixed seeding for pseudo-random number generator, Default 0: use random seed
    worldrank                  =  0_pInt, &                                                          !< MPI worldrank (/=0 for MPI simulations only)
    worldsize                  =  0_pInt                                                             !< MPI worldsize (/=0 for MPI simulations only)
  integer(4), protected, public :: &
@@ -359,8 +359,8 @@ subroutine numerics_init
 
 !--------------------------------------------------------------------------------------------------
 ! random seeding parameter
-       case ('fixed_seed')
-         fixedSeed = IO_intValue(line,chunkPos,2_pInt)
+       case ('random_seed','fixed_seed')
+         randomSeed = IO_intValue(line,chunkPos,2_pInt)
 
 !--------------------------------------------------------------------------------------------------
 ! gradient parameter
@@ -560,9 +560,9 @@ subroutine numerics_init
 
 !--------------------------------------------------------------------------------------------------
 ! Random seeding parameter
- write(6,'(a24,1x,i16,/)')    ' fixed_seed:            ',fixedSeed
- if (fixedSeed <= 0_pInt) &
-   write(6,'(a,/)') ' No fixed Seed: Random is random!'
+ write(6,'(a24,1x,i16,/)')    ' random_seed:            ',randomSeed
+ if (randomSeed <= 0_pInt) &
+   write(6,'(a,/)')           ' random seed will be generated!'
 
 !--------------------------------------------------------------------------------------------------
 ! gradient parameter

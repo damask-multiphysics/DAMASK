@@ -177,7 +177,7 @@ subroutine math_init
    compiler_version, &
    compiler_options
 #endif
- use numerics, only: fixedSeed
+ use numerics, only: randomSeed
  use IO,       only: IO_timeStamp
 
  implicit none
@@ -194,8 +194,8 @@ subroutine math_init
  call random_seed(size=randSize)
  if (allocated(randInit)) deallocate(randInit)
  allocate(randInit(randSize))
- if (fixedSeed > 0_pInt) then
-   randInit(1:randSize) = int(fixedSeed)                                                            ! fixedSeed is of type pInt, randInit not
+ if (randomSeed > 0_pInt) then
+   randInit(1:randSize) = int(randomSeed)                                                           ! randomSeed is of type pInt, randInit not
    call random_seed(put=randInit)
  else
    call random_seed()
