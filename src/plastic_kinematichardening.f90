@@ -1,6 +1,6 @@
-!-------------------------------------------------------------------------------------------------
-!> @author Franz Roters, Max-Planck-Institut für Eisenforschung GmbH
+!--------------------------------------------------------------------------------------------------
 !> @author Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
+!> @author Zhuowen Zhao, Michigan State University
 !> @brief Introducing Voce-type kinematic hardening rule into crystal phenopowerlaw plasticity  
 !! formulation using a power law fitting
 !--------------------------------------------------------------------------------------------------
@@ -51,6 +51,12 @@ module plastic_kinehardening
      outputID                                                                                          !< ID of each post result output
     
    real(pReal) :: &
+ !     F0, &
+!      mu, &
+!      mu0, &
+!      tau_hat0, &
+!      p1, &
+!      q1, &
      gdot0, &                                                                                          !< reference shear strain rate for slip (input parameter)
      n_slip, &                                                                                         !< stress exponent for slip (input parameter)
      aTolResistance, &
@@ -319,7 +325,25 @@ subroutine plastic_kinehardening_init(fileUnit)
            param(instance)%nonSchmidCoeff(j) = IO_floatValue(line,chunkPos,1_pInt+j)
          enddo  
 !--------------------------------------------------------------------------------------------------
-! parameters independent of number of slip families         
+! parameters independent of number of slip families 
+      !  case ('F0')
+!          param(instance)%F0                    = IO_floatValue(line,chunkPos,2_pInt)
+!          
+!        case ('mu')
+!          param(instance)%mu                    = IO_floatValue(line,chunkPos,2_pInt)
+!          
+!        case ('mu0')
+!          param(instance)%mu0                    = IO_floatValue(line,chunkPos,2_pInt)
+!          
+!        case ('tau_hat0')
+!          param(instance)%tau_hat0                    = IO_floatValue(line,chunkPos,2_pInt)
+!          
+!        case ('p1')
+!          param(instance)%p1                    = IO_floatValue(line,chunkPos,2_pInt)
+!          
+!        case ('q1')
+!          param(instance)%q1                    = IO_floatValue(line,chunkPos,2_pInt)
+                                                
        case ('gdot0')
          param(instance)%gdot0                    = IO_floatValue(line,chunkPos,2_pInt)
              
@@ -375,21 +399,6 @@ subroutine plastic_kinehardening_init(fileUnit)
        extmsg = trim(extmsg)//' ('//PLASTICITY_KINEHARDENING_label//')'                                 ! prepare error message identifier
        call IO_error(211_pInt,ip=instance,ext_msg=extmsg)
      endif
-
-     allocate(param(instance)%hardeningMatrix_SlipSlip(nSlip,nSlip),  source=0.0_pReal)
-     do f = 1_pInt,lattice_maxNslipFamily                                                               ! >>> interaction slip -- X
-       index_myFamily = sum(plastic_kinehardening_Nslip(1:f-1_pInt,instance))
-       do j = 1_pInt,plastic_kinehardening_Nslip(f,instance)                                            ! loop over (active) systems in my family (slip)
-         do o = 1_pInt,lattice_maxNslipFamily
-           index_otherFamily = sum(plastic_kinehardening_Nslip(1:o-1_pInt,instance))
-           do k = 1_pInt,plastic_kinehardening_Nslip(o,instance)                                        ! loop over (active) systems in other family (slip)
-             param(instance)%hardeningMatrix_SlipSlip(index_myFamily+j,index_otherFamily+k) = &
-                 param(instance)%interaction_SlipSlip(lattice_interactionSlipSlip( &
-                                                                   sum(lattice_NslipSystem(1:f-1,phase))+j, &
-                                                                   sum(lattice_NslipSystem(1:o-1,phase))+k, &
-                                                                   phase))
-           enddo; enddo
-     enddo; enddo
      
 
 !--------------------------------------------------------------------------------------------------
@@ -455,8 +464,9 @@ subroutine plastic_kinehardening_init(fileUnit)
      plasticState(phase)%slipRate => &
        plasticState(phase)%dotState(offset_slip+1:offset_slip+plasticState(phase)%nSlip,1:NipcMyPhase)
      plasticState(phase)%accumulatedSlip => &
-       plasticState(phase)%state(offset_slip+1:offset_slip+plasticState(phase)%nSlip,1:NipcMyPhase)
+       plasticState(phase)%state(offset_slip+1:offset_slip+plasticState(phase)%nSlip,1:NipcMyPhase) 
 
+     allocate(param(instance)%hardeningMatrix_SlipSlip(nSlip,nSlip),  source=0.0_pReal)
      do f = 1_pInt,lattice_maxNslipFamily                                                                    ! >>> interaction slip -- X
        index_myFamily = sum(plastic_kinehardening_Nslip(1:f-1_pInt,instance))
         do j = 1_pInt,plastic_kinehardening_Nslip(f,instance)                                                ! loop over (active) systems in my family (slip)
@@ -601,11 +611,37 @@ subroutine plastic_kinehardening_shearRates(gdot_pos,gdot_neg,tau_pos,tau_neg, &
  enddo slipFamilies
 
  gdot_pos = 0.5_pReal * param(instance)%gdot0 * &
-            (abs(tau_pos-state(instance)%crss_back(:,of))/state(instance)%crss(:,of))**param(instance)%n_slip &
+            (abs(tau_pos-state(instance)%sense(:,of)*state(instance)%crss_back(:,of))/ &
+            state(instance)%crss(:,of))**param(instance)%n_slip &
             *sign(1.0_pReal,tau_pos) 
  gdot_neg = 0.5_pReal * param(instance)%gdot0 * &
-            (abs(tau_neg-state(instance)%crss_back(:,of))/state(instance)%crss(:,of))**param(instance)%n_slip &
+            (abs(tau_neg-state(instance)%sense(:,of)*state(instance)%crss_back(:,of))/ &
+            state(instance)%crss(:,of))**param(instance)%n_slip &
             *sign(1.0_pReal,tau_neg) 
+            
+!  gdot_pos = 0.5_pReal * param(instance)%gdot0 * &
+!             exp(-param(instance)%F0/(1.38e-23*298.15)* &
+!                 (1-((abs(tau_pos-state(instance)%crss_back(:,of)) &
+!                       -state(instance)%crss(:,of)*param(instance)%mu/param(instance)%mu) / &
+!                     !----------------------------------------------------------------------------
+!                       param(instance)%tau_hat0*param(instance)%mu/param(instance)%mu &
+!                     )**param(instance)%p1 &
+!                 )**param(instance)%q1 &
+!                )*sign(1.0_pReal,(tau_pos-state(instance)%crss_back(:,of)))
+!             
+!             
+!              
+!  gdot_neg = 0.5_pReal * param(instance)%gdot0 * &
+!             exp(-param(instance)%F0/(1.38e-23*298.15)* &
+!                 (1-((abs(tau_neg-state(instance)%crss_back(:,of)) &
+!                       -state(instance)%crss(:,of)*param(instance)%mu/param(instance)%mu) / &
+!                      !---------------------------------------------------------------------------- 
+!                       param(instance)%tau_hat0*param(instance)%mu/param(instance)%mu &
+!                     )**param(instance)%p1 &
+!                 )**param(instance)%q1 &
+!                )*sign(1.0_pReal,(tau_neg-state(instance)%crss_back(:,of)))      
+
+  
 
 end subroutine plastic_kinehardening_shearRates
 
@@ -617,9 +653,18 @@ subroutine plastic_kinehardening_LpAndItsTangent(Lp,dLp_dTstar99, &
                                                  Tstar_v,ipc,ip,el)
  use prec, only: &
    dNeq0
+ use debug, only: &
+   debug_level, &
+   debug_constitutive, &
+   debug_levelExtensive, &
+   debug_levelSelective, &
+   debug_e, &
+   debug_i, &
+   debug_g
  use math, only: &
    math_Plain3333to99, &
-   math_Mandel6to33
+   math_Mandel6to33, &
+   math_transpose33
  use lattice, only: &
    lattice_Sslip, &       !< schmid matrix
    lattice_Sslip_v, &
@@ -671,6 +716,7 @@ subroutine plastic_kinehardening_LpAndItsTangent(Lp,dLp_dTstar99, &
  call plastic_kinehardening_shearRates(gdot_pos,gdot_neg,tau_pos,tau_neg, &
                                        Tstar_v,ph,instance,of)
 
+
  j = 0_pInt                                                                                          ! reading and marking the starting index for each slip family
  slipFamilies: do f = 1_pInt,lattice_maxNslipFamily
    index_myFamily = sum(lattice_NslipSystem(1:f-1_pInt,ph))                                          ! at which index starts my family
@@ -681,32 +727,36 @@ subroutine plastic_kinehardening_LpAndItsTangent(Lp,dLp_dTstar99, &
      nonSchmid_tensor(1:3,1:3,1) = lattice_Sslip(1:3,1:3,1,index_myFamily+i,ph)
      nonSchmid_tensor(1:3,1:3,2) = nonSchmid_tensor(1:3,1:3,1)
      do k = 1,lattice_NnonSchmid(ph)
-       nonSchmid_tensor(1:3,1:3,1) = nonSchmid_tensor(1:3,1:3,1) + param(instance)%nonSchmidCoeff(k)*&
-                                           lattice_Sslip(1:3,1:3,2*k,index_myFamily+i,ph)
-       nonSchmid_tensor(1:3,1:3,2) = nonSchmid_tensor(1:3,1:3,2) + param(instance)%nonSchmidCoeff(k)*&
-                                           lattice_Sslip(1:3,1:3,2*k+1,index_myFamily+i,ph)
+       nonSchmid_tensor(1:3,1:3,1) = &
+       nonSchmid_tensor(1:3,1:3,1) + param(instance)%nonSchmidCoeff(k) * &
+                                     lattice_Sslip(1:3,1:3,2*k,index_myFamily+i,ph)
+       nonSchmid_tensor(1:3,1:3,2) = &
+       nonSchmid_tensor(1:3,1:3,2) + param(instance)%nonSchmidCoeff(k) * &
+                                     lattice_Sslip(1:3,1:3,2*k+1,index_myFamily+i,ph)
      enddo
 
-     Lp = Lp + (gdot_pos(j)+gdot_neg(j))*lattice_Sslip(1:3,1:3,1,index_myFamily+i,ph)           ! sum of all gdot*SchmidTensor gives Lp
+     Lp = Lp + (gdot_pos(j)+gdot_neg(j))*lattice_Sslip(1:3,1:3,1,index_myFamily+i,ph)                ! sum of all gdot*SchmidTensor gives Lp
 
      ! Calculation of the tangent of Lp                                                              ! sensitivity of Lp
      if (dNeq0(gdot_pos(j))) then
        dgdot_dtau_pos = gdot_pos(j)*param(instance)%n_slip/(tau_pos(j)-state(instance)%crss_back(j,of))
        forall (k=1_pInt:3_pInt,l=1_pInt:3_pInt,m=1_pInt:3_pInt,n=1_pInt:3_pInt) &
-         dLp_dTstar3333(k,l,m,n) = dLp_dTstar3333(k,l,m,n) + &
-                                   dgdot_dtau_pos*lattice_Sslip(k,l,1,index_myFamily+i,ph)* &
-                                                     nonSchmid_tensor(m,n,1)
+         dLp_dTstar3333(k,l,m,n) = &
+         dLp_dTstar3333(k,l,m,n) + dgdot_dtau_pos*lattice_Sslip(k,l,1,index_myFamily+i,ph)* &
+                                                  nonSchmid_tensor(m,n,1)
      endif
 
      if (dNeq0(gdot_neg(j))) then
        dgdot_dtau_neg = gdot_neg(j)*param(instance)%n_slip/(tau_neg(j)-state(instance)%crss_back(j,of))
        forall (k=1_pInt:3_pInt,l=1_pInt:3_pInt,m=1_pInt:3_pInt,n=1_pInt:3_pInt) &
-         dLp_dTstar3333(k,l,m,n) = dLp_dTstar3333(k,l,m,n) + &
-                                   dgdot_dtau_neg*lattice_Sslip(k,l,1,index_myFamily+i,ph)* &
-                                                     nonSchmid_tensor(m,n,2)
+         dLp_dTstar3333(k,l,m,n) = &
+         dLp_dTstar3333(k,l,m,n) + dgdot_dtau_neg*lattice_Sslip(k,l,1,index_myFamily+i,ph)* &
+                                                  nonSchmid_tensor(m,n,2)
      endif
    enddo slipSystems
  enddo slipFamilies
+
+ dLp_dTstar99 = math_Plain3333to99(dLp_dTstar3333)
 
 end subroutine plastic_kinehardening_LpAndItsTangent
 
@@ -722,7 +772,8 @@ subroutine plastic_kinehardening_deltaState(Tstar_v,ipc,ip,el)
    debug_levelExtensive, &
    debug_levelSelective, &
    debug_e, &
-   debug_i
+   debug_i, &
+   debug_g
  use material, only: &
    phaseAt, &
    phasememberAt, &
@@ -758,7 +809,7 @@ subroutine plastic_kinehardening_deltaState(Tstar_v,ipc,ip,el)
 
 #ifdef DEBUG
          if (iand(debug_level(debug_constitutive), debug_levelExtensive) /= 0_pInt &
-            .and. ((el == debug_e .and. ip == debug_i) &
+            .and. ((el == debug_e .and. ip == debug_i .and. ipc == debug_g) &
                    .or. .not. iand(debug_level(debug_constitutive),debug_levelSelective) /= 0_pInt)) then
            write(6,'(a)') '======= kinehardening delta state ======='
          endif
@@ -769,7 +820,7 @@ subroutine plastic_kinehardening_deltaState(Tstar_v,ipc,ip,el)
  do j = 1,plastic_kinehardening_totalNslip(instance)
 #ifdef DEBUG
          if (iand(debug_level(debug_constitutive), debug_levelExtensive) /= 0_pInt &
-            .and. ((el == debug_e .and. ip == debug_i) &
+            .and. ((el == debug_e .and. ip == debug_i .and. ipc == debug_g) &
                    .or. .not. iand(debug_level(debug_constitutive),debug_levelSelective) /= 0_pInt)) then
            write(6,'(i2,1x,f7.4,1x,f7.4)') j,sense(j),state(instance)%sense(j,of)
          endif
@@ -778,16 +829,10 @@ subroutine plastic_kinehardening_deltaState(Tstar_v,ipc,ip,el)
      deltaState(instance)%sense (j,of) = sense(j) - state(instance)%sense(j,of)                              ! switch sense
      deltaState(instance)%chi0  (j,of) = abs(state(instance)%crss_back(j,of)) - state(instance)%chi0(j,of)   ! remember current backstress magnitude
      deltaState(instance)%gamma0(j,of) = state(instance)%accshear(j,of) - state(instance)%gamma0(j,of)       ! remember current accumulated shear
-#ifdef DEBUG
-         if (iand(debug_level(debug_constitutive), debug_levelExtensive) /= 0_pInt &
-            .and. ((el == debug_e .and. ip == debug_i) &
-                   .or. .not. iand(debug_level(debug_constitutive),debug_levelSelective) /= 0_pInt)) then
-           write(6,'(a)') 'change of sense!'
-           write(6,*) deltaState(instance)%sense (j,of), &
-                      deltaState(instance)%chi0(j,of), &
-                      deltaState(instance)%gamma0(j,of)
-         endif
-#endif
+   else
+     deltaState(instance)%sense (j,of) = 0.0_pReal                                                           ! no change
+     deltaState(instance)%chi0  (j,of) = 0.0_pReal
+     deltaState(instance)%gamma0(j,of) = 0.0_pReal
    endif
  enddo
 
@@ -852,7 +897,7 @@ subroutine plastic_kinehardening_dotState(Tstar_v,ipc,ip,el)
            *exp(-state(instance)%sumGamma(of)*param(instance)%theta0(f)/param(instance)%tau1(f)) &                  ! V term depending on the harding law
           )
      dotState(instance)%crss_back(j,of) = &                                                                   ! evolution of back stress resistance j
-          dot_product(param(instance)%hardeningMatrix_SlipSlip(j,1:nSlip),abs(gdot_pos+gdot_neg)) * &
+          state(instance)%sense(j,of)*abs(gdot_pos(j)+gdot_neg(j)) * &
           ( param(instance)%theta1_b(f) + &
            (param(instance)%theta0_b(f) - param(instance)%theta1_b(f) &
             + param(instance)%theta0_b(f)*param(instance)%theta1_b(f)/(param(instance)%tau1_b(f)+state(instance)%chi0(j,of)) &
