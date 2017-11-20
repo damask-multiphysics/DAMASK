@@ -16,3 +16,10 @@ patch -p1 < installation/patch/nameOfPatch
 
   * **PETSc-3.8** adjusts all includes nad calls to PETSc to the 3.8.x API
     This allows to use the current version of PETSc
+
+## Create patch
+commit your changes
+
+```bash
+git format-patch PATH_TO_COMPARE --stdout >
+```
