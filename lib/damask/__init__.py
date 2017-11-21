@@ -1,7 +1,7 @@
 # -*- coding: UTF-8 no BOM -*-
 
 """Main aggregator"""
-import os,sys,time
+import os
 
 with open(os.path.join(os.path.dirname(__file__),'../../VERSION')) as f:
   version = f.readline()[:-1]
