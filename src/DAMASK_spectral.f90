@@ -708,7 +708,7 @@ program DAMASK_spectral
        plasticWorkOld = plasticWorkNew
        
        call utilities_calcPlasticity(yieldStressNew, plasticStrainNew, eqStressNew, eqTotalStrainNew, &
-                                     eqPlasticStrainNew, plasticWorkNew)
+                                     eqPlasticStrainNew, plasticWorkNew, loadCases(currentLoadCase)%rotation)
        
        if(stopFlag == 'totalStrain') then
          if(eqTotalStrainNew > yieldStopValue) then

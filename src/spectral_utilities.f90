@@ -1048,9 +1048,9 @@ end subroutine utilities_constitutiveResponse
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates yield stress, plastic strain, total strain and their equivalent values
 !--------------------------------------------------------------------------------------------------
-subroutine utilities_calcPlasticity(yieldStress, plasticStrain, eqStress, eqTotalStrain, eqPlasticStrain, plasticWork)
+subroutine utilities_calcPlasticity(yieldStress, plasticStrain, eqStress, eqTotalStrain, &
+                                    eqPlasticStrain, plasticWork, rotation_BC)
  use crystallite, only: &
-   crystallite_Fp, &
    crystallite_Fe, &
    crystallite_P, &
    crystallite_subF
@@ -1065,6 +1065,7 @@ subroutine utilities_calcPlasticity(yieldStress, plasticStrain, eqStress, eqTota
    math_mul33x33, &
    math_trace33, &
    math_transpose33, &
+   math_rotate_forward33, &
    math_identity2nd, &
    math_crossproduct, &
    math_eigenvectorBasisSym, &
@@ -1074,95 +1075,90 @@ subroutine utilities_calcPlasticity(yieldStress, plasticStrain, eqStress, eqTota
    
  implicit none
 
- real(pReal), intent(out) :: eqStress, eqTotalStrain, eqPlasticStrain, plasticWork
+ real(pReal), intent(inout) :: eqStress, eqPlasticStrain, plasticWork
+ real(pReal), intent(out) :: eqTotalStrain
  real(pReal), dimension(3,3),intent(out) :: yieldStress, plasticStrain
- real(pReal), dimension(3,3) :: cauchy, cauchy_av, P, Vp_av, V_total_av                                       !< average
+ real(pReal), intent(in), dimension(3,3) :: rotation_BC                                                       !< rotation of load frame
+ real(pReal), dimension(3,3) :: cauchy, P_av, F_av, Ve_av                                 !< average
  real(pReal), dimension(3)   :: Values, S
  real(pReal), dimension(3,3) :: Vectors, diag
+ real(pReal), dimension(3,3) :: &
+   Vp, F_temp, U, VT, R, V, V_total
  real(pReal), dimension(3,3,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems) :: &
-   Be, Ve, Vp, F, F_temp, Fe, Fp, U, VT, R, V, V_total
+   Be, Ve, Fe
  real(pReal), dimension(15)   :: WORK                                                                         !< previous deformation gradient
  integer(pInt) :: INFO, i, j, k, l, ierr
- real(pReal) :: stress, stress_av, strain_total, strain_total_av, strain_plastic, strain_plastic_av, wgtm
- real(pReal) :: eqStressOld, eqPlasticStrainOld
+ real(pReal) :: wgtm
+ real(pReal) :: eqStressOld, eqPlasticStrainOld, plasticWorkOld
  
  external :: dgesvd
  
  eqStressOld = eqStress
  eqPlasticStrainOld = eqPlasticStrain
+ plasticWorkOld = plasticWork
  wgtm = 1.0/real(mesh_NcpElems*mesh_maxNips*homogenization_maxNgrains,pReal)
- Vp_av = 0.0_pReal
- V_total_av = 0.0_pReal
- strain_plastic_av = 0.0_pReal
- strain_total_av = 0.0_pReal
- cauchy_av = 0.0_pReal
  diag = 0.0_pReal
+ 
+ P_av = sum(sum(sum(crystallite_P,dim=5),dim=4),dim=3) * wgtm
+ call MPI_Allreduce(MPI_IN_PLACE,P_av,9,MPI_DOUBLE,MPI_SUM,PETSC_COMM_WORLD,ierr)
+ P_av = math_rotate_forward33(P_av,rotation_BC)
+ 
+ F_av = sum(sum(sum(crystallite_subF,dim=5),dim=4),dim=3) * wgtm
+ call MPI_Allreduce(MPI_IN_PLACE,F_av,9,MPI_DOUBLE,MPI_SUM,PETSC_COMM_WORLD,ierr)
+ 
+ cauchy = 1.0/math_det33(F_av)*math_mul33x33(P_av,transpose(F_av))
+ yieldStress = cauchy
+ eqStress = Mises(cauchy, 'stress')
+ 
+ F_temp = F_av
+ call dgesvd ('A', 'A', 3, 3, F_temp, 3, S, U, 3, VT, 3, WORK, 15, INFO)                            ! singular value decomposition
+ 
+ R = math_mul33x33(U, VT)                                                                           ! rotation of polar decomposition
+ V = math_mul33x33(F_av,math_inv33(R))
+ 
+ call math_eigenValuesVectorsSym33(V,Values,Vectors)
+ do l = 1_pInt, 3_pInt
+   if (Values(l) < 0.0_pReal) then
+     Values(l) = -Values(l)
+     Vectors(1:3, l) = -Vectors(1:3, l)
+   endif
+   Values(l) = log(Values(l))
+   diag(l,l) = Values(l)
+ enddo
+ if (dot_product(Vectors(1:3,1),Vectors(1:3,2)) /= 0) then
+   Vectors(1:3,2) = math_crossproduct(Vectors(1:3,3), Vectors(1:3,1))
+   Vectors(1:3,2) = Vectors(1:3,2)/sqrt(dot_product(Vectors(1:3,2),Vectors(1:3,2)))
+ endif
+ if (dot_product(Vectors(1:3,2),Vectors(1:3,3)) /= 0) then
+   Vectors(1:3,3) = math_crossproduct(Vectors(1:3,1), Vectors(1:3,2))
+   Vectors(1:3,3) = Vectors(1:3,3)/sqrt(dot_product(Vectors(1:3,3),Vectors(1:3,3)))
+ endif
+ if (dot_product(Vectors(1:3,3),Vectors(1:3,1)) /= 0) then
+   Vectors(1:3,1) = math_crossproduct(Vectors(1:3,2), Vectors(1:3,3))
+   Vectors(1:3,1) = Vectors(1:3,1)/sqrt(dot_product(Vectors(1:3,1),Vectors(1:3,1)))
+ endif
+ 
+ V_total = REAL(math_mul33x33(Vectors, math_mul33x33(diag, transpose(Vectors))))
+ eqTotalStrain = Mises(V_total, 'strain')
+ 
  do k = 1_pInt, mesh_NcpElems;  do j = 1_pInt, mesh_maxNips;  do i = 1_pInt,homogenization_maxNgrains
-   F(1:3,1:3,i,j,k) = crystallite_subF(1:3,1:3,i,j,k)
-   Fp(1:3,1:3,i,j,k) = crystallite_Fp(1:3,1:3,i,j,k)
    Fe(1:3,1:3,i,j,k) = crystallite_Fe(1:3,1:3,i,j,k)
-   
-   P = crystallite_P(1:3,1:3,i,j,k)
-   cauchy = 1.0/math_det33(F(1:3,1:3,i,j,k))*math_mul33x33(P,transpose(F(1:3,1:3,i,j,k)))
-   cauchy_av = cauchy_av + cauchy
-   stress = Mises(cauchy, 'stress')
-   stress_av = stress_av + stress
-   
-   F_temp(1:3,1:3,i,j,k) = F(1:3,1:3,i,j,k)
-   call dgesvd ('A', 'A', 3, 3, F_temp(1:3,1:3,i,j,k), 3, &
-     S, U(1:3,1:3,i,j,k), 3, VT(1:3,1:3,i,j,k), 3, WORK, 15, INFO)                                  ! singular value decomposition
-   R(1:3,1:3,i,j,k) = math_mul33x33(U(1:3,1:3,i,j,k), VT(1:3,1:3,i,j,k))                            ! rotation of polar decomposition
-   V(1:3,1:3,i,j,k) = math_mul33x33(F(1:3,1:3,i,j,k),math_inv33(R(1:3,1:3,i,j,k)))
-   
-   call math_eigenValuesVectorsSym33(V(1:3,1:3,i,j,k),Values,Vectors)
-   do l = 1_pInt, 3_pInt
-     if (Values(l) < 0.0_pReal) then
-       Values(l) = -Values(l)
-       Vectors(1:3, l) = -Vectors(1:3, l)
-     endif
-     Values(l) = log(Values(l))
-     diag(l,l) = Values(l)
-   enddo
-   if (dot_product(Vectors(1:3,1),Vectors(1:3,2)) /= 0) then
-     Vectors(1:3,2) = math_crossproduct(Vectors(1:3,3), Vectors(1:3,1))
-     Vectors(1:3,2) = Vectors(1:3,2)/sqrt(dot_product(Vectors(1:3,2),Vectors(1:3,2)))
-   endif
-   if (dot_product(Vectors(1:3,2),Vectors(1:3,3)) /= 0) then
-     Vectors(1:3,3) = math_crossproduct(Vectors(1:3,1), Vectors(1:3,2))
-     Vectors(1:3,3) = Vectors(1:3,3)/sqrt(dot_product(Vectors(1:3,3),Vectors(1:3,3)))
-   endif
-   if (dot_product(Vectors(1:3,3),Vectors(1:3,1)) /= 0) then
-     Vectors(1:3,1) = math_crossproduct(Vectors(1:3,2), Vectors(1:3,3))
-     Vectors(1:3,1) = Vectors(1:3,1)/sqrt(dot_product(Vectors(1:3,1),Vectors(1:3,1)))
-   endif
-
-   V_total(1:3,1:3,i,j,k) = REAL(math_mul33x33(Vectors, math_mul33x33(diag, transpose(Vectors))))
-   strain_total = Mises(V_total(1:3,1:3,i,j,k), 'strain')
-   strain_total_av = strain_total_av + strain_total
-   
    Be(1:3,1:3,i,j,k) = math_mul33x33(Fe(1:3,1:3,i,j,k),math_transpose33(Fe(1:3,1:3,i,j,k)))         ! plastic part of left Cauchy–Green deformation tensor
    Ve(1:3,1:3,i,j,k) = math_eigenvectorBasisSym33_log(Be(1:3,1:3,i,j,k))
-   Vp(1:3,1:3,i,j,k) = V_total(1:3,1:3,i,j,k) - Ve(1:3,1:3,i,j,k)
-   strain_plastic = Mises(Vp(1:3,1:3,i,j,k), 'strain')
-   strain_plastic_av = strain_plastic_av + strain_plastic
-   Vp_av = Vp_av + Vp(1:3,1:3,i,j,k)
-
  enddo; enddo; enddo
  
- yieldStress = cauchy_av  * wgtm
- call MPI_Allreduce(MPI_IN_PLACE,yieldStress,9,MPI_DOUBLE,MPI_SUM,PETSC_COMM_WORLD,ierr)
- plasticStrain = Vp_av * wgtm
- call MPI_Allreduce(MPI_IN_PLACE,plasticStrain,9,MPI_DOUBLE,MPI_SUM,PETSC_COMM_WORLD,ierr)
+ Ve_av = sum(sum(sum(Ve,dim=5),dim=4),dim=3) * wgtm
+ call MPI_Allreduce(MPI_IN_PLACE,Ve_av,9,MPI_DOUBLE,MPI_SUM,PETSC_COMM_WORLD,ierr)
  
- eqStress = stress_av * wgtm
- call MPI_Allreduce(MPI_IN_PLACE,eqStress,1,MPI_DOUBLE,MPI_SUM,PETSC_COMM_WORLD,ierr)
- eqTotalStrain = strain_total_av * wgtm
- call MPI_Allreduce(MPI_IN_PLACE,eqTotalStrain,1,MPI_DOUBLE,MPI_SUM,PETSC_COMM_WORLD,ierr)
- eqPlasticStrain = strain_plastic_av * wgtm
- call MPI_Allreduce(MPI_IN_PLACE,eqPlasticStrain,1,MPI_DOUBLE,MPI_SUM,PETSC_COMM_WORLD,ierr)
- plasticWork = plasticWork + 0.5*(eqStressOld + eqStress) * (eqPlasticStrain - eqPlasticStrainOld)
+ Vp = V_total - Ve_av
  
-end subroutine utilities_calcPlasticity 
+ eqPlasticStrain = Mises(Vp, 'strain')
+ 
+ plasticStrain = Vp
+ 
+ plasticWork = plasticWorkOld + 0.5*(eqStressOld + eqStress) * (eqPlasticStrain - eqPlasticStrainOld)
+ 
+end subroutine utilities_calcPlasticity
 
 !--------------------------------------------------------------------------------------------------
 !> @brief vonMises equivalent values for symmetric part of requested strains and/or stresses.
