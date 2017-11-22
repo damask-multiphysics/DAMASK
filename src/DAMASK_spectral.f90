@@ -166,6 +166,7 @@ program DAMASK_spectral
  yieldStopValue
  real(pReal), dimension(3,3) :: yieldStress,yieldStressOld,yieldStressNew, plasticStrainOld, plasticStrainNew, plasticStrainRate
  integer(pInt) :: yieldResUnit = 0_pInt
+ integer(pInt) :: stressstrainUnit = 0_pInt
  character(len=13)  :: stopFlag
  logical :: yieldStop, yieldStopSatisfied
  ! logical :: &
@@ -709,6 +710,21 @@ program DAMASK_spectral
        
        call utilities_calcPlasticity(yieldStressNew, plasticStrainNew, eqStressNew, eqTotalStrainNew, &
                                      eqPlasticStrainNew, plasticWorkNew, loadCases(currentLoadCase)%rotation)
+       
+       if (worldrank == 0) then                                                                     ! output the stress-strain curve to file if yield stop criterion is used
+         if ((currentLoadCase == 1_pInt) .and. (inc == 1_pInt)) then
+           open(newunit=stressstrainUnit,file=trim(getSolverWorkingDirectoryName())//trim(getSolverJobName())//&
+                                  '.stressstrain',form='FORMATTED',status='REPLACE')
+           write(stressstrainUnit,*) 0.0_pReal, 0.0_pReal
+           write(stressstrainUnit,*) eqTotalStrainNew, eqStressNew
+           close(stressstrainUnit)
+         else
+           open(newunit=stressstrainUnit,file=trim(getSolverWorkingDirectoryName())//trim(getSolverJobName())//&
+                                 '.stressstrain',form='FORMATTED', position='APPEND', status='OLD')
+           write(stressstrainUnit,*) eqTotalStrainNew, eqStressNew
+           close(stressstrainUnit)
+         endif
+       endif
        
        if(stopFlag == 'totalStrain') then
          if(eqTotalStrainNew > yieldStopValue) then
