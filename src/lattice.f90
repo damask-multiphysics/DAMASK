@@ -96,19 +96,19 @@ module lattice
 
  real(pReal), dimension(3+3,LATTICE_fcc_Nslip), parameter, private :: &
    LATTICE_fcc_systemSlip = reshape(real([&
-    ! Slip direction     Plane normal
-      0, 1,-1,     1, 1, 1, &
-     -1, 0, 1,     1, 1, 1, &
-      1,-1, 0,     1, 1, 1, &
-      0,-1,-1,    -1,-1, 1, &
-      1, 0, 1,    -1,-1, 1, &
-     -1, 1, 0,    -1,-1, 1, &
-      0,-1, 1,     1,-1,-1, &
-     -1, 0,-1,     1,-1,-1, &
-      1, 1, 0,     1,-1,-1, &
-      0, 1, 1,    -1, 1,-1, &
-      1, 0,-1,    -1, 1,-1, &
-     -1,-1, 0,    -1, 1,-1  &
+    ! Slip direction     Plane normal                                                               ! SCHMID-BOAS notation
+      0, 1,-1,     1, 1, 1, &                                                                       ! B2
+     -1, 0, 1,     1, 1, 1, &                                                                       ! B4
+      1,-1, 0,     1, 1, 1, &                                                                       ! B5
+      0,-1,-1,    -1,-1, 1, &                                                                       ! C1
+      1, 0, 1,    -1,-1, 1, &                                                                       ! C3
+     -1, 1, 0,    -1,-1, 1, &                                                                       ! C5
+      0,-1, 1,     1,-1,-1, &                                                                       ! A2
+     -1, 0,-1,     1,-1,-1, &                                                                       ! A3
+      1, 1, 0,     1,-1,-1, &                                                                       ! A6
+      0, 1, 1,    -1, 1,-1, &                                                                       ! D1
+      1, 0,-1,    -1, 1,-1, &                                                                       ! D4
+     -1,-1, 0,    -1, 1,-1  &                                                                       ! D6
      ],pReal),[ 3_pInt + 3_pInt,LATTICE_fcc_Nslip])                                                 !< Slip system <110>{111} directions. Sorted according to Eisenlohr & Hantcherli
 
  real(pReal), dimension(3+3,LATTICE_fcc_Ntwin), parameter, private :: &

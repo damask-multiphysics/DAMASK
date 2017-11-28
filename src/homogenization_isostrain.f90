@@ -62,8 +62,6 @@ subroutine homogenization_isostrain_init(fileUnit)
    debug_levelBasic
  use IO
  use material
- use numerics, only: &
-   worldrank
  
  implicit none
  integer(pInt),                                      intent(in) :: fileUnit
@@ -80,11 +78,9 @@ subroutine homogenization_isostrain_init(fileUnit)
    tag  = '', &
    line = ''
  
- mainProcess: if (worldrank == 0) then 
-   write(6,'(/,a)')   ' <<<+-  homogenization_'//HOMOGENIZATION_ISOSTRAIN_label//' init  -+>>>'
-   write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
+ write(6,'(/,a)')   ' <<<+-  homogenization_'//HOMOGENIZATION_ISOSTRAIN_label//' init  -+>>>'
+ write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
- endif mainProcess
 
  maxNinstance = count(homogenization_type == HOMOGENIZATION_ISOSTRAIN_ID)
  if (maxNinstance == 0) return

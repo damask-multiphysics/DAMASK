@@ -81,8 +81,6 @@ subroutine kinematics_cleavage_opening_init(fileUnit)
    KINEMATICS_cleavage_opening_ID, &
    material_Nphase, &
    MATERIAL_partPhase
- use numerics,only: &
-   worldrank
  use lattice, only: &
    lattice_maxNcleavageFamily, &
    lattice_NcleavageSystem
@@ -97,11 +95,9 @@ subroutine kinematics_cleavage_opening_init(fileUnit)
    tag  = '', &
    line = ''
 
- mainProcess: if (worldrank == 0) then 
-   write(6,'(/,a)')   ' <<<+-  kinematics_'//KINEMATICS_cleavage_opening_LABEL//' init  -+>>>'
-   write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
+ write(6,'(/,a)')   ' <<<+-  kinematics_'//KINEMATICS_cleavage_opening_LABEL//' init  -+>>>'
+ write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
- endif mainProcess
 
  maxNinstance = int(count(phase_kinematics == KINEMATICS_cleavage_opening_ID),pInt)
  if (maxNinstance == 0_pInt) return

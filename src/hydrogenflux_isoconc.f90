@@ -27,21 +27,17 @@ subroutine hydrogenflux_isoconc_init()
  use IO, only: &
    IO_timeStamp
  use material
- use numerics, only: &
-   worldrank
  
  implicit none
  integer(pInt) :: &
    homog, &
    NofMyHomog
 
- mainProcess: if (worldrank == 0) then 
-   write(6,'(/,a)')   ' <<<+-  hydrogenflux_'//HYDROGENFLUX_isoconc_label//' init  -+>>>'
-   write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
+ write(6,'(/,a)')   ' <<<+-  hydrogenflux_'//HYDROGENFLUX_isoconc_label//' init  -+>>>'
+ write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
- endif mainProcess
 
-  initializeInstances: do homog = 1_pInt, material_Nhomogenization
+ initializeInstances: do homog = 1_pInt, material_Nhomogenization
    
    myhomog: if (hydrogenflux_type(homog) == HYDROGENFLUX_isoconc_ID) then
      NofMyHomog = count(material_homog == homog)
