@@ -1,7 +1,7 @@
 #!/usr/bin/env python2.7
 # -*- coding: UTF-8 no BOM -*-
 
-import os,sys,math
+import os,sys
 import numpy as np
 from optparse import OptionParser
 import damask
@@ -87,7 +87,7 @@ for name in filenames:
       dims.append(dim)
       columns.append(table.label_index(what))
       table.labels_append('d({})/d({})'.format(what,options.coordinates) if dim == 1 else
-                         ['{}_d({})/d({})'.format(i+1,what,options.coordinates) for i in range(dim)]  )  # extend ASCII heade      table.labels_append('norm{}({})'.format(options.norm.capitalize(),what))                    # extend ASCII header with new labels
+                         ['{}_d({})/d({})'.format(i+1,what,options.coordinates) for i in range(dim)]  )  # extend ASCII header with new labels
 
   if remarks != []: damask.util.croak(remarks)
   if errors  != []:
