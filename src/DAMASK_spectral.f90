@@ -442,8 +442,9 @@ program DAMASK_spectral
  if (ierr /= 0_pInt) call IO_error(error_ID=894_pInt, ext_msg='MPI_file_seek')
 
  if (.not. appendToOutFile) then                                                                    ! if not restarting, write 0th increment
+   write(6,'(1/,a)') ' ... writing initial configuration to file ........................'
    do i = 1, size(materialpoint_results,3)/(maxByteOut/(materialpoint_sizeResults*pReal))+1         ! slice the output of my process in chunks not exceeding the limit for one output
-     outputIndex = int([(i-1_pInt)*((maxRealOut)/materialpoint_sizeResults)+1_pInt, &
+     outputIndex = int([(i-1_pInt)*((maxRealOut)/materialpoint_sizeResults)+1_pInt, &               ! QUESTION: why not starting i at 0 instead of murky 1?
                              min(i*((maxRealOut)/materialpoint_sizeResults),size(materialpoint_results,3))],pLongInt)
      call MPI_file_write(resUnit, &
                          reshape(materialpoint_results(:,:,outputIndex(1):outputIndex(2)), &
@@ -453,7 +454,6 @@ program DAMASK_spectral
      if (ierr /= 0_pInt) call IO_error(error_ID=894_pInt, ext_msg='MPI_file_write')
    enddo
    fileOffset = fileOffset + sum(outputSize)                                                        ! forward to current file position
-   write(6,'(1/,a)') ' ... writing initial configuration to file ........................'
  endif
 !--------------------------------------------------------------------------------------------------
 ! loopping over loadcases
@@ -487,19 +487,22 @@ program DAMASK_spectral
        endif
      endif
      timeinc = timeinc / 2.0_pReal**real(cutBackLevel,pReal)                                        ! depending on cut back level, decrease time step
-
-     forwarding: if (totalIncsCounter >= restartInc) then
-       stepFraction = 0_pInt
-
-!--------------------------------------------------------------------------------------------------
-! loop over sub incs
-       subIncLooping: do while (stepFraction/subStepFactor**cutBackLevel <1_pInt)
-         time = time + timeinc                                                                      ! forward time
-         stepFraction = stepFraction + 1_pInt
-         remainingLoadCaseTime = time0 - time + loadCases(currentLoadCase)%time + timeInc
+                                                                                                    ! QUESTION: what happens to inc-counter when cutbacklevel is not zero? not clear where half an inc gets incremented..?
+     skipping: if (totalIncsCounter < restartInc) then                                              ! not yet at restart inc?
+       time = time + timeinc                                                                        ! just advance time, skip already performed calculation
+       guess = .true.                                                                               ! QUESTION:why forced guessing instead of inheriting loadcase preference
+     else skipping
+       stepFraction = 0_pInt                                                                        ! fraction scaled by stepFactor**cutLevel
 
 !--------------------------------------------------------------------------------------------------
-! report begin of new increment
+! loop over sub step
+       subStepLooping: do while (stepFraction < subStepFactor**cutBackLevel)
+         remainingLoadCaseTime = loadCases(currentLoadCase)%time+time0 - time
+         time = time + timeinc                                                                      ! forward target time
+         stepFraction = stepFraction + 1_pInt                                                       ! count step
+
+!--------------------------------------------------------------------------------------------------
+! report begin of new step
          write(6,'(/,a)') ' ###########################################################################'
          write(6,'(1x,a,es12.5'//&
                  ',a,'//IO_intOut(inc)//',a,'//IO_intOut(loadCases(currentLoadCase)%incs)//&
@@ -582,33 +585,33 @@ program DAMASK_spectral
                  solres(field) = spectral_damage_solution(timeinc,timeIncOld,remainingLoadCaseTime)
 
              end select
+
              if (.not. solres(field)%converged) exit                                                ! no solution found
+
            enddo
            stagIter = stagIter + 1_pInt
-           stagIterate = stagIter < stagItMax .and. &
-                         all(solres(:)%converged) .and. &
-                         .not. all(solres(:)%stagConverged)
+           stagIterate =            stagIter < stagItMax &
+                        .and.       all(solres(:)%converged) &
+                        .and. .not. all(solres(:)%stagConverged)
          enddo
 
 !--------------------------------------------------------------------------------------------------
 ! check solution
          cutBack = .False.
-         if(solres(1)%termIll .or. .not. all(solres(:)%converged .and. solres(:)%stagConverged)) then ! no solution found
-           if (cutBackLevel < maxCutBack) then                                                      ! do cut back
-             write(6,'(/,a)') ' cut back detected'
-             cutBack = .True.
+
+         if (solres(1)%termIll &
+             .or. .not. all(solres(:)%converged .and. solres(:)%stagConverged)) then                ! no solution found
+                                                                                                    ! QUESTION: why termIll checked only for first field? only one that can be mechanic?
+           if (cutBackLevel < maxCutBack) then                                                      ! further cutbacking tolerated?
+             write(6,'(/,a)') ' cutting back '
+             cutBack = .true.
              stepFraction = (stepFraction - 1_pInt) * subStepFactor                                 ! adjust to new denominator
              cutBackLevel = cutBackLevel + 1_pInt
              time    = time - timeinc                                                               ! rewind time
              timeinc = timeinc/2.0_pReal
-           elseif (solres(1)%termIll) then                                                          ! material point model cannot find a solution, exit in any casy
-             call IO_warning(850_pInt)
-             call MPI_file_close(resUnit,ierr)
-             close(statUnit)
-             call quit(-1_pInt*(lastRestartWritten+1_pInt))                                         ! quit and provide information about last restart inc written
-           elseif (continueCalculation == 1_pInt)  then
+           elseif (continueCalculation == 1_pInt .and. .not. solres(1)%termIll)  then
              guess = .true.                                                                         ! accept non converged BVP solution
-           else                                                                                     ! default behavior, exit if spectral solver does not converge
+           else                                                                                     ! material point model cannot find a solution
              call IO_warning(850_pInt)
              call MPI_file_close(resUnit,ierr)
              close(statUnit)
@@ -617,6 +620,7 @@ program DAMASK_spectral
          else
            guess = .true.                                                                           ! start guessing after first converged (sub)inc
          endif
+         
          if (.not. cutBack) then
            if (worldrank == 0) then
              write(statUnit,*) totalIncsCounter, time, cutBackLevel, &
@@ -624,23 +628,26 @@ program DAMASK_spectral
              flush(statUnit)
            endif
          endif
-       enddo subIncLooping
+       enddo subStepLooping
+
        cutBackLevel = max(0_pInt, cutBackLevel - 1_pInt)                                            ! try half number of subincs next inc
-       if(all(solres(:)%converged)) then                                                            ! report converged inc
+
+       if (all(solres(:)%converged)) then
          convergedCounter = convergedCounter + 1_pInt
-         write(6,'(/,a,'//IO_intOut(totalIncsCounter)//',a)') &
+         write(6,'(/,a,'//IO_intOut(totalIncsCounter)//',a)') &                                     ! report converged inc
                                    ' increment ', totalIncsCounter, ' converged'
        else
-         write(6,'(/,a,'//IO_intOut(totalIncsCounter)//',a)') &                                   ! report non-converged inc
-                                   ' increment ', totalIncsCounter, ' NOT converged'
          notConvergedCounter = notConvergedCounter + 1_pInt
+         write(6,'(/,a,'//IO_intOut(totalIncsCounter)//',a)') &                                     ! report non-converged inc
+                                   ' increment ', totalIncsCounter, ' NOT converged'
        endif; flush(6)
+
        if (mod(inc,loadCases(currentLoadCase)%outputFrequency) == 0_pInt) then                      ! at output frequency
          if (worldrank == 0) &
            write(6,'(1/,a)') ' ... writing results to file ......................................'
          call materialpoint_postResults()
          call MPI_file_seek (resUnit,fileOffset,MPI_SEEK_SET,ierr)
-         if(ierr /=0_pInt) call IO_error(894_pInt, ext_msg='MPI_file_seek')
+         if (ierr /=0_pInt) call IO_error(894_pInt, ext_msg='MPI_file_seek')
          do i=1, size(materialpoint_results,3)/(maxByteOut/(materialpoint_sizeResults*pReal))+1     ! slice the output of my process in chunks not exceeding the limit for one output
            outputIndex=int([(i-1_pInt)*((maxRealOut)/materialpoint_sizeResults)+1_pInt, &
                       min(i*((maxRealOut)/materialpoint_sizeResults),size(materialpoint_results,3))],pLongInt)
@@ -652,15 +659,12 @@ program DAMASK_spectral
          enddo
          fileOffset = fileOffset + sum(outputSize)                                                  ! forward to current file position
        endif
-       if( loadCases(currentLoadCase)%restartFrequency > 0_pInt .and. &                             ! at frequency of writing restart information set restart parameter for FEsolving
-                      mod(inc,loadCases(currentLoadCase)%restartFrequency) == 0_pInt) then          ! first call to CPFEM_general will write?
-         restartWrite = .true.
-         lastRestartWritten = inc
+       if (              loadCases(currentLoadCase)%restartFrequency > 0_pInt &                     ! writing of restart info requested ...
+           .and. mod(inc,loadCases(currentLoadCase)%restartFrequency) == 0_pInt) then               ! ... and at frequency of writing restart information
+         restartWrite = .true.                                                                      ! set restart parameter for FEsolving
+         lastRestartWritten = inc                                                                   ! QUESTION: first call to CPFEM_general will write?
        endif
-     else forwarding
-       time = time + timeinc
-       guess = .true.
-     endif forwarding
+     endif skipping
 
     enddo incLooping
  enddo loadCaseLooping

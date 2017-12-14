@@ -196,8 +196,9 @@ subroutine basicPETSc_init
     .false., &
     math_I3)
  call DMDAVecRestoreArrayF90(da,solution_vec,F,ierr); CHKERRQ(ierr)                                 ! write data back to PETSc
+                                                                                                    ! QUESTION: why not writing back right after reading (l.189)?
 
- restartRead: if (restartInc > 1_pInt) then
+ restartRead: if (restartInc > 1_pInt) then                                                         ! QUESTION: are those values not calc'ed by constitutiveResponse? why reading from file?
    if (iand(debug_level(debug_spectral),debug_spectralRestart)/= 0 .and. worldrank == 0_pInt) &
      write(6,'(/,a,'//IO_intOut(restartInc-1_pInt)//',a)') &
      'reading more values of increment', restartInc - 1_pInt, 'from file'
@@ -220,8 +221,7 @@ end subroutine basicPETSc_init
 !--------------------------------------------------------------------------------------------------
 !> @brief solution for the Basic PETSC scheme with internal iterations
 !--------------------------------------------------------------------------------------------------
-type(tSolutionState) function &
-  basicPETSc_solution(incInfoIn,timeinc,timeinc_old,stress_BC,rotation_BC)
+type(tSolutionState) function basicPETSc_solution(incInfoIn,timeinc,timeinc_old,stress_BC,rotation_BC)
  use IO, only: &
    IO_error
  use numerics, only: &
@@ -283,9 +283,8 @@ type(tSolutionState) function &
  CHKERRQ(ierr)
  basicPETSc_solution%termIll = terminallyIll
  terminallyIll = .false.
- BasicPETSc_solution%converged =.true.
  if (reason == -4) call IO_error(893_pInt)
- if (reason < 1) basicPETSC_solution%converged = .false.
+ BasicPETSc_solution%converged = reason > 0
  basicPETSC_solution%iterationsNeeded = totalIter
 
 end function BasicPETSc_solution
@@ -343,8 +342,8 @@ subroutine BasicPETSC_formResidual(in,x_scal,f_scal,dummy,ierr)
  call SNESGetNumberFunctionEvals(snes,nfuncs,ierr); CHKERRQ(ierr)
  call SNESGetIterationNumber(snes,PETScIter,ierr); CHKERRQ(ierr)
 
- if(nfuncs== 0 .and. PETScIter == 0) totalIter = -1_pInt                                            ! new increment
- newIteration: if(totalIter <= PETScIter) then
+ if (nfuncs == 0 .and. PETScIter == 0) totalIter = -1_pInt                                            ! new increment
+ newIteration: if (totalIter <= PETScIter) then
 !--------------------------------------------------------------------------------------------------
 ! report begin of new iteration
    totalIter = totalIter + 1_pInt
@@ -480,10 +479,10 @@ subroutine BasicPETSc_forward(guess,timeinc,timeinc_old,loadCaseTime,deformation
 
  character(len=1024) :: rankStr
 
- call DMDAVecGetArrayF90(da,solution_vec,F,ierr)
+ call DMDAVecGetArrayF90(da,solution_vec,F,ierr)                                                  ! get F from PETSc data structure
 !--------------------------------------------------------------------------------------------------
 ! restart information for spectral solver
- if (restartWrite) then
+ if (restartWrite) then                                                                           ! QUESTION: where is this logical properly set?
    write(6,'(/,a)') ' writing converged results for restart'
    flush(6)
    write(rankStr,'(a1,i0)')'_',worldrank
@@ -506,23 +505,23 @@ subroutine BasicPETSc_forward(guess,timeinc,timeinc_old,loadCaseTime,deformation
    endif
  endif
 
- call utilities_updateIPcoords(F)
+ call utilities_updateIPcoords(F)                                                                 ! QUESTION: why do this even when cutback happened??
 
- if (cutBack) then 
-   F_aim = F_aim_lastInc
-   F    = reshape(F_lastInc,    [9,grid(1),grid(2),grid3]) 
+ if (cutBack) then                                                                                ! reset to former inc's values
+   F        = reshape(F_lastInc,[9,grid(1),grid(2),grid3])                                        ! QUESTION: purpose of resetting this when updating in line 541?
+   F_aim    = F_aim_lastInc
    C_volAvg = C_volAvgLastInc
  else
-   ForwardData = .True.
+   ForwardData = .true.                                                                           ! QUESTION: who is resetting this?
    C_volAvgLastInc = C_volAvg
 !--------------------------------------------------------------------------------------------------
 ! calculate rate for aim
-   if (deformation_BC%myType=='l') then                                                             ! calculate f_aimDot from given L and current F
+   if     (deformation_BC%myType=='l') then                                                          ! calculate f_aimDot from given L and current F
      f_aimDot = deformation_BC%maskFloat * math_mul33x33(deformation_BC%values, F_aim)
-   elseif(deformation_BC%myType=='fdot') then                                                       ! f_aimDot is prescribed
+   elseif(deformation_BC%myType=='fdot') then                                                        ! f_aimDot is prescribed
      f_aimDot = deformation_BC%maskFloat * deformation_BC%values
-   elseif(deformation_BC%myType=='f') then                                                          ! aim at end of load case is prescribed
-     f_aimDot = deformation_BC%maskFloat * (deformation_BC%values -F_aim)/loadCaseTime
+   elseif (deformation_BC%myType=='f') then                                                          ! aim at end of load case is prescribed
+     f_aimDot = deformation_BC%maskFloat * (deformation_BC%values - F_aim)/loadCaseTime
    endif
    if (guess) f_aimDot  = f_aimDot + stress_BC%maskFloat * (F_aim - F_aim_lastInc)/timeinc_old
    F_aim_lastInc = F_aim
@@ -531,8 +530,8 @@ subroutine BasicPETSc_forward(guess,timeinc,timeinc_old,loadCaseTime,deformation
 ! update coordinates and rate and forward last inc
    call utilities_updateIPcoords(F)
    Fdot =  Utilities_calculateRate(math_rotate_backward33(f_aimDot,rotation_BC), &
-                  timeinc_old,guess,F_lastInc,reshape(F,[3,3,grid(1),grid(2),grid3]))
-   F_lastInc     = reshape(F,       [3,3,grid(1),grid(2),grid3])
+                  timeinc_old,guess,F_lastInc,reshape(F,[3,3,grid(1),grid(2),grid3]))               ! QUESTION: what do we need Fdot for and why is it not restored at cutback?
+   F_lastInc     = reshape(F,[3,3,grid(1),grid(2),grid3])
  endif
 
  F_aim = F_aim + f_aimDot * timeinc
