@@ -1,7 +1,7 @@
 !--------------------------------------------------------------------------------------------------
 !> @author Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
 !> @author Zhuowen Zhao, Michigan State University
-!> @brief Introducing Voce-type kinematic hardening rule into crystal phenopowerlaw plasticity  
+!> @brief Introducing Voce-type kinematic hardening rule into crystal plasticity  
 !! formulation using a power law fitting
 !--------------------------------------------------------------------------------------------------
 module plastic_kinehardening
@@ -318,7 +318,7 @@ subroutine plastic_kinehardening_init(fileUnit)
          do j = 1_pInt, Nchunks_SlipSlip
            param(instance)%interaction_slipslip(j) = IO_floatValue(line,chunkPos,1_pInt+j)
          enddo
-       case ('nonSchmidCoeff')
+       case ('nonschmidcoeff')
          if (chunkPos(1) < 1_pInt + Nchunks_nonSchmid) &
            call IO_warning(52_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_KINEHARDENING_label//')')
          do j = 1_pInt,Nchunks_nonSchmid
@@ -350,10 +350,10 @@ subroutine plastic_kinehardening_init(fileUnit)
        case ('n_slip')
          param(instance)%n_slip                   = IO_floatValue(line,chunkPos,2_pInt)
              
-       case ('aTolResistance')
+       case ('atol_resistance')
          param(instance)%aTolResistance           = IO_floatValue(line,chunkPos,2_pInt)
        
-       case ('aTolShear')
+       case ('atol_shear')
          param(instance)%aTolShear                = IO_floatValue(line,chunkPos,2_pInt)
                
        case default
