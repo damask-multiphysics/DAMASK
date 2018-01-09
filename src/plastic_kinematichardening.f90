@@ -226,7 +226,7 @@ subroutine plastic_kinehardening_init(fileUnit)
        Nchunks_SlipFamilies = count(lattice_NslipSystem(:,phase) > 0_pInt)                          ! maximum number of slip families according to lattice type of current phase
        Nchunks_SlipSlip     = maxval(lattice_interactionSlipSlip(:,:,phase))
        Nchunks_nonSchmid    = lattice_NnonSchmid(phase)
-       allocate(param(instance)%outputID(phase_Noutput(phase)), source=0)                           ! allocate space for IDs of every requested output
+       allocate(param(instance)%outputID(phase_Noutput(phase)), source=undefined_ID)                           ! allocate space for IDs of every requested output
        allocate(param(instance)%crss0   (Nchunks_SlipFamilies), source=0.0_pReal)
        allocate(param(instance)%tau1    (Nchunks_SlipFamilies), source=0.0_pReal)
        allocate(param(instance)%tau1_b  (Nchunks_SlipFamilies), source=0.0_pReal)
