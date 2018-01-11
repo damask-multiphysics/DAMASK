@@ -75,8 +75,9 @@ module mesh
  integer(pInt), private :: &
    MarcVersion, &                                                                                   !< Version of input file format (Marc only)
    hypoelasticTableStyle, &                                                                         !< Table style (Marc only)
-   initialcondTableStyle, &                                                                         !< Table style (Marc only)
-   Marc_matNumber                                                                                   !< Material number of hypoelastic material (Marc only)
+   initialcondTableStyle                                                                            !< Table style (Marc only)
+ integer(pInt), dimension(:), allocatable, private :: &
+   Marc_matNumber                                                                                   !< array of material numbers for hypoelastic material (Marc only)
 #endif
 
  integer(pInt), dimension(2), private :: &
@@ -590,7 +591,7 @@ subroutine mesh_init(ip,el)
  if (MarcVersion > 12) then
    call mesh_marc_get_matNumber(FILEUNIT)
    if (myDebug) write(6,'(a)') ' Got hypoleastic material number'; flush(6)
- endif  
+ endif
  call mesh_marc_count_nodesAndElements(FILEUNIT)
  if (myDebug) write(6,'(a)') ' Counted nodes/elements'; flush(6)
  call mesh_marc_count_elementSets(FILEUNIT)
@@ -1574,7 +1575,7 @@ subroutine mesh_marc_get_fileFormat(fileUnit)
 
 620 end subroutine mesh_marc_get_fileFormat
 
- 
+
 !--------------------------------------------------------------------------------------------------
 !> @brief Figures out table styles (Marc only) and stores to 'initialcondTableStyle' and
 !! 'hypoelasticTableStyle'
@@ -1612,7 +1613,7 @@ subroutine mesh_marc_get_tableStyles(fileUnit)
 620 end subroutine mesh_marc_get_tableStyles
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Figures out material number of hypoelastic material and sores it as Marc_matNumber
+!> @brief Figures out material number of hypoelastic material and stores it in Marc_matNumber array
 !--------------------------------------------------------------------------------------------------
 subroutine mesh_marc_get_matNumber(fileUnit)
  use IO, only: &
@@ -1625,21 +1626,31 @@ subroutine mesh_marc_get_matNumber(fileUnit)
  integer(pInt), intent(in) :: fileUnit
 
  integer(pInt), allocatable, dimension(:) :: chunkPos
- integer(pInt) :: i
+ integer(pInt) :: i, j, data_blocks
  character(len=300) line
 
 610 FORMAT(A300)
 
  rewind(fileUnit)
 
+ data_blocks = 1_pInt
  do
   read (fileUnit,610,END=620) line
   chunkPos = IO_stringPos(line)
   if ( IO_lc(IO_stringValue(line,chunkPos,1_pInt)) == 'hypoelastic') then
-    do i=1_pInt,1_pInt+hypoelasticTableStyle  ! Skip 1 or 2 lines
+    read (fileUnit,610,END=620) line
+    if (len(trim(line))/=0_pInt) then
+      chunkPos = IO_stringPos(line)
+      data_blocks = IO_intValue(line,chunkPos,1_pInt)
+    endif  
+    do i=1_pInt,data_blocks                                                                        ! read all data blocks
       read (fileUnit,610,END=620) line
+      chunkPos = IO_stringPos(line)
+      Marc_matNumber = (/Marc_matNumber, IO_intValue(line,chunkPos,1_pInt)/)
+      do j=1_pint,2_pInt + hypoelasticTableStyle                                                   ! read 2 or 3 remaining lines of data block
+        read (fileUnit,610,END=620) line
+      enddo
     enddo
-    Marc_matNumber = IO_intValue(line,chunkPos,1_pInt)
     exit
   endif
  enddo
@@ -1810,9 +1821,8 @@ subroutine mesh_marc_count_cpElements(fileUnit)
      if ( IO_lc(IO_stringValue(line,chunkPos,1_pInt)) == 'connectivity') then
        read (fileUnit,610,END=620) line
        chunkPos = IO_stringPos(line)
-       if (IO_intValue(line,chunkPos,6_pInt)==Marc_matNumber) then
+       if (any(Marc_matNumber==IO_intValue(line,chunkPos,6_pInt))) then
          mesh_NcpElems = mesh_NcpElems + IO_countNumericalDataLines(fileUnit)
-         exit
        endif
      endif
    enddo
