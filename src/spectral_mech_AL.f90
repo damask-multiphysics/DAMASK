@@ -213,8 +213,9 @@ subroutine AL_init
  endif restart
 
  call Utilities_updateIPcoords(reshape(F,shape(F_lastInc)))
- call Utilities_constitutiveResponse(F_lastInc, reshape(F,shape(F_lastInc)), &
-                   0.0_pReal,P,C_volAvg,C_minMaxAvg,temp33_Real,.false.,math_I3)
+ call Utilities_constitutiveResponse(P,temp33_Real,C_volAvg,C_minMaxAvg, &
+                                     reshape(F,shape(F_lastInc)), 0.0_pReal, math_I3)
+ 
  nullify(F)
  nullify(F_lambda)
  call DMDAVecRestoreArrayF90(da,solution_vec,xx_psc,ierr); CHKERRQ(ierr)                            ! write data back to PETSc
@@ -364,12 +365,10 @@ subroutine AL_formResidual(in,x_scal,f_scal,dummy,ierr)
  DMDALocalInfo,        dimension(&
    DMDA_LOCAL_INFO_SIZE) :: &
    in
- PetscScalar, target, dimension(3,3,2, &
-   XG_RANGE,YG_RANGE,ZG_RANGE), intent(in) :: &
-   x_scal
- PetscScalar, target, dimension(3,3,2, &
-   X_RANGE,Y_RANGE,Z_RANGE), intent(out) :: &
-   f_scal
+ PetscScalar, &
+   target, dimension(3,3,2, XG_RANGE,YG_RANGE,ZG_RANGE), intent(in) :: x_scal
+ PetscScalar, &
+   target, dimension(3,3,2,  X_RANGE, Y_RANGE, Z_RANGE), intent(out) :: f_scal
  PetscScalar, pointer, dimension(:,:,:,:,:) :: &
    F, &
    F_lambda, &
@@ -441,8 +440,9 @@ subroutine AL_formResidual(in,x_scal,f_scal,dummy,ierr)
 !--------------------------------------------------------------------------------------------------
 ! evaluate constitutive response
  P_avLastEval = P_av
- call Utilities_constitutiveResponse(F_lastInc,F - residual_F_lambda/polarBeta,params%timeinc, &
-                                     residual_F,C_volAvg,C_minMaxAvg,P_av,ForwardData,params%rotation_BC)
+
+ call Utilities_constitutiveResponse(residual_F,P_av,C_volAvg,C_minMaxAvg, &
+                                     F - residual_F_lambda/polarBeta,params%timeinc, params%rotation_BC)
  call MPI_Allreduce(MPI_IN_PLACE,terminallyIll,1,MPI_LOGICAL,MPI_LOR,PETSC_COMM_WORLD,ierr)
  ForwardData = .False.
 
@@ -655,10 +655,12 @@ subroutine AL_forward(guess,timeinc,timeinc_old,loadCaseTime,deformation_BC,stre
 !--------------------------------------------------------------------------------------------------
 ! update coordinates and rate and forward last inc
    call utilities_updateIPcoords(F)
-   Fdot =  Utilities_calculateRate(math_rotate_backward33(f_aimDot,rotation_BC), &
-                  timeinc_old,guess,F_lastInc,reshape(F,[3,3,grid(1),grid(2),grid3]))
-   F_lambdaDot =  Utilities_calculateRate(math_rotate_backward33(f_aimDot,rotation_BC), &
-                  timeinc_old,guess,F_lambda_lastInc,reshape(F_lambda,[3,3,grid(1),grid(2),grid3]))  
+   Fdot =        Utilities_calculateRate(guess, &
+                                         F_lastInc,       reshape(F,       [3,3,grid(1),grid(2),grid3]), timeinc_old, &
+                                         math_rotate_backward33(f_aimDot,rotation_BC))
+   F_lambdaDot = Utilities_calculateRate(guess, &
+                                         F_lambda_lastInc,reshape(F_lambda,[3,3,grid(1),grid(2),grid3]), timeinc_old, &
+                                         math_rotate_backward33(f_aimDot,rotation_BC))
    F_lastInc        = reshape(F,       [3,3,grid(1),grid(2),grid3])
    F_lambda_lastInc = reshape(F_lambda,[3,3,grid(1),grid(2),grid3])
  endif
