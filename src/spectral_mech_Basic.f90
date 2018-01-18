@@ -168,17 +168,18 @@ subroutine basicPETSc_init
  call DMDAVecGetArrayF90(da,solution_vec,F,ierr); CHKERRQ(ierr)                                     ! get the data out of PETSc to work with
 
  restart: if (restartInc > 1_pInt) then                                                     
-   if (iand(debug_level(debug_spectral),debug_spectralRestart)/= 0) &
+   if (iand(debug_level(debug_spectral),debug_spectralRestart) /= 0) then
      write(6,'(/,a,'//IO_intOut(restartInc-1_pInt)//',a)') &
      'reading values of increment ', restartInc - 1_pInt, ' from file'
-   flush(6)
+     flush(6)
+   endif
    write(rankStr,'(a1,i0)')'_',worldrank
    call IO_read_realFile(777,'F'//trim(rankStr),trim(getSolverJobName()),size(F))
    read (777,rec=1) F; close (777)
    call IO_read_realFile(777,'F_lastInc'//trim(rankStr),trim(getSolverJobName()),size(F_lastInc))
    read (777,rec=1) F_lastInc; close (777)
-   call IO_read_realFile(777,'F_aimDot',trim(getSolverJobName()),size(f_aimDot))
-   read (777,rec=1) f_aimDot; close (777)
+   call IO_read_realFile(777,'F_aimDot',trim(getSolverJobName()),size(F_aimDot))
+   read (777,rec=1) F_aimDot; close (777)
    F_aim         = reshape(sum(sum(sum(F,dim=4),dim=3),dim=2) * wgt, [3,3])                         ! average of F
    F_aim_lastInc = sum(sum(sum(F_lastInc,dim=5),dim=4),dim=3) * wgt                                 ! average of F_lastInc 
  elseif (restartInc == 1_pInt) then restart 
@@ -499,6 +500,8 @@ subroutine BasicPETSc_forward(guess,timeinc,timeinc_old,loadCaseTime,deformation
         write (777,rec=1) C_minMaxAvg; close(777)
         call IO_write_jobRealFile(777,'C_minMaxAvgLastInc',size(C_volAvgLastInc))
         write (777,rec=1) C_minMaxAvgLastInc; close(777)
+        call IO_write_jobRealFile(777,'F_aimDot',size(F_aimDot))
+        write (777,rec=1) F_aimDot; close(777)
       endif
 
       write(rankStr,'(a1,i0)')'_',worldrank
@@ -522,10 +525,10 @@ subroutine BasicPETSc_forward(guess,timeinc,timeinc_old,loadCaseTime,deformation
     F_aim_lastInc = F_aim
     !--------------------------------------------------------------------------------------------------
     ! calculate rate for aim
-    if     (deformation_BC%myType=='l') then                                                          ! calculate f_aimDot from given L and current F
+    if     (deformation_BC%myType=='l') then                                                          ! calculate F_aimDot from given L and current F
       F_aimDot = &
       F_aimDot + deformation_BC%maskFloat * math_mul33x33(deformation_BC%values, F_aim_lastInc)
-    elseif(deformation_BC%myType=='fdot') then                                                        ! f_aimDot is prescribed
+    elseif(deformation_BC%myType=='fdot') then                                                        ! F_aimDot is prescribed
       F_aimDot = &
       F_aimDot + deformation_BC%maskFloat * deformation_BC%values
     elseif (deformation_BC%myType=='f') then                                                          ! aim at end of load case is prescribed
@@ -536,14 +539,14 @@ subroutine BasicPETSc_forward(guess,timeinc,timeinc_old,loadCaseTime,deformation
 
     Fdot =  Utilities_calculateRate(guess, &
                                     F_lastInc,reshape(F,[3,3,grid(1),grid(2),grid3]),timeinc_old, &
-                                    math_rotate_backward33(f_aimDot,rotation_BC))
+                                    math_rotate_backward33(F_aimDot,rotation_BC))
     F_lastInc        = reshape(F,         [3,3,grid(1),grid(2),grid3])                                ! winding F forward
     materialpoint_F0 = reshape(F_lastInc, [3,3,1,product(grid(1:2))*grid3])                           ! set starting condition for materialpoint_stressAndItsTangent
   endif
 
 !--------------------------------------------------------------------------------------------------
 ! update average and local deformation gradients
-  F_aim = F_aim_lastInc + f_aimDot * timeinc
+  F_aim = F_aim_lastInc + F_aimDot * timeinc
   F = reshape(Utilities_forwardField(timeinc,F_lastInc,Fdot, &                                       ! estimate of F at end of time+timeinc that matches rotated F_aim on average
               math_rotate_backward33(F_aim,rotation_BC)),[9,grid(1),grid(2),grid3])
   call DMDAVecRestoreArrayF90(da,solution_vec,F,ierr); CHKERRQ(ierr)
