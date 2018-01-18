@@ -456,21 +456,21 @@ program DAMASK_spectral
    fileOffset = fileOffset + sum(outputSize)                                                        ! forward to current file position
  endif
 !--------------------------------------------------------------------------------------------------
-! loopping over loadcases
+! looping over loadcases
  loadCaseLooping: do currentLoadCase = 1_pInt, size(loadCases)
    time0 = time                                                                                     ! currentLoadCase start time
    guess = loadCases(currentLoadCase)%followFormerTrajectory                                        ! change of load case? homogeneous guess for the first inc
 
 !--------------------------------------------------------------------------------------------------
-! loop oper incs defined in input file for current currentLoadCase
+! loop over incs defined in input file for current currentLoadCase
    incLooping: do inc = 1_pInt, loadCases(currentLoadCase)%incs
      totalIncsCounter = totalIncsCounter + 1_pInt
 
 !--------------------------------------------------------------------------------------------------
 ! forwarding time
-     timeIncOld = timeinc
+     timeIncOld = timeinc                                                                           ! last timeinc that brought former inc to an end
      if (loadCases(currentLoadCase)%logscale == 0_pInt) then                                        ! linear scale
-       timeinc = loadCases(currentLoadCase)%time/real(loadCases(currentLoadCase)%incs,pReal)        ! only valid for given linear time scale. will be overwritten later in case loglinear scale is used
+       timeinc = loadCases(currentLoadCase)%time/real(loadCases(currentLoadCase)%incs,pReal)
      else
        if (currentLoadCase == 1_pInt) then                                                          ! 1st currentLoadCase of logarithmic scale
          if (inc == 1_pInt) then                                                                    ! 1st inc of 1st currentLoadCase of logarithmic scale
@@ -486,8 +486,13 @@ program DAMASK_spectral
                                                      real(loadCases(currentLoadCase)%incs ,pReal)))
        endif
      endif
+<<<<<<< HEAD
      timeinc = timeinc / 2.0_pReal**real(cutBackLevel,pReal)                                        ! depending on cut back level, decrease time step
                                                                                                     ! QUESTION: what happens to inc-counter when cutbacklevel is not zero? not clear where half an inc gets incremented..?
+=======
+     timeinc = timeinc / real(subStepFactor,pReal)**real(cutBackLevel,pReal)                        ! depending on cut back level, decrease time step
+
+>>>>>>> spectralSolver-cutbackfix
      skipping: if (totalIncsCounter < restartInc) then                                              ! not yet at restart inc?
        time = time + timeinc                                                                        ! just advance time, skip already performed calculation
        guess = .true.                                                                               ! QUESTION:why forced guessing instead of inheriting loadcase preference
@@ -512,11 +517,11 @@ program DAMASK_spectral
                  's: Increment ', inc, '/', loadCases(currentLoadCase)%incs,&
                  '-', stepFraction, '/', subStepFactor**cutBackLevel,&
                  ' of load case ', currentLoadCase,'/',size(loadCases)
-         flush(6)
          write(incInfo,'(a,'//IO_intOut(totalIncsCounter)//',a,'//IO_intOut(sum(loadCases%incs))//&
                ',a,'//IO_intOut(stepFraction)//',a,'//IO_intOut(subStepFactor**cutBackLevel)//')') &
                'Increment ',totalIncsCounter,'/',sum(loadCases%incs),&
                '-',stepFraction, '/', subStepFactor**cutBackLevel
+         flush(6)
 
 !--------------------------------------------------------------------------------------------------
 ! forward fields
@@ -545,7 +550,7 @@ program DAMASK_spectral
                end select
 
            case(FIELD_THERMAL_ID); call spectral_thermal_forward()
-           case(FIELD_DAMAGE_ID); call spectral_damage_forward()
+           case(FIELD_DAMAGE_ID);  call spectral_damage_forward()
            end select
          enddo
 
@@ -592,6 +597,7 @@ program DAMASK_spectral
            stagIter = stagIter + 1_pInt
            stagIterate =            stagIter < stagItMax &
                         .and.       all(solres(:)%converged) &
+<<<<<<< HEAD
                         .and. .not. all(solres(:)%stagConverged)
          enddo
 
@@ -622,12 +628,41 @@ program DAMASK_spectral
          endif
          
          if (.not. cutBack) then
+=======
+                        .and. .not. all(solres(:)%stagConverged)                                    ! stationary with respect to staggered iteration
+         enddo
+
+!--------------------------------------------------------------------------------------------------
+! check solution for either advance or retry
+
+         if ( (continueCalculation .or. all(solres(:)%converged .and. solres(:)%stagConverged)) &   ! don't care or did converge
+              .and. .not. solres(1)%termIll) then                                                   ! and acceptable solution found
+           timeIncOld = timeinc
+           cutBack = .false.
+           guess = .true.                                                                           ! start guessing after first converged (sub)inc
+>>>>>>> spectralSolver-cutbackfix
            if (worldrank == 0) then
              write(statUnit,*) totalIncsCounter, time, cutBackLevel, &
-                               solres%converged, solres%iterationsNeeded                            ! write statistics about accepted solution
+                               solres%converged, solres%iterationsNeeded
              flush(statUnit)
            endif
+         elseif (cutBackLevel < maxCutBack) then                                                    ! further cutbacking tolerated?
+           cutBack = .true.
+           stepFraction = (stepFraction - 1_pInt) * subStepFactor                                   ! adjust to new denominator
+           cutBackLevel = cutBackLevel + 1_pInt
+           time    = time - timeinc                                                                 ! rewind time
+           timeinc = timeinc/real(subStepFactor,pReal)                                              ! cut timestep
+           write(6,'(/,a)') ' cutting back '
+         else                                                                                       ! no more options to continue
+           call IO_warning(850_pInt)
+           call MPI_file_close(resUnit,ierr)
+           close(statUnit)
+           call quit(-1_pInt*(lastRestartWritten+1_pInt))                                           ! quit and provide information about last restart inc written
          endif
+<<<<<<< HEAD
+=======
+
+>>>>>>> spectralSolver-cutbackfix
        enddo subStepLooping
 
        cutBackLevel = max(0_pInt, cutBackLevel - 1_pInt)                                            ! try half number of subincs next inc
@@ -645,9 +680,14 @@ program DAMASK_spectral
        if (mod(inc,loadCases(currentLoadCase)%outputFrequency) == 0_pInt) then                      ! at output frequency
          if (worldrank == 0) &
            write(6,'(1/,a)') ' ... writing results to file ......................................'
+           flush(6)
          call materialpoint_postResults()
          call MPI_file_seek (resUnit,fileOffset,MPI_SEEK_SET,ierr)
+<<<<<<< HEAD
          if (ierr /=0_pInt) call IO_error(894_pInt, ext_msg='MPI_file_seek')
+=======
+         if (ierr /= 0_pInt) call IO_error(894_pInt, ext_msg='MPI_file_seek')
+>>>>>>> spectralSolver-cutbackfix
          do i=1, size(materialpoint_results,3)/(maxByteOut/(materialpoint_sizeResults*pReal))+1     ! slice the output of my process in chunks not exceeding the limit for one output
            outputIndex=int([(i-1_pInt)*((maxRealOut)/materialpoint_sizeResults)+1_pInt, &
                       min(i*((maxRealOut)/materialpoint_sizeResults),size(materialpoint_results,3))],pLongInt)
@@ -677,6 +717,7 @@ program DAMASK_spectral
                                    real(convergedCounter, pReal)/&
                                    real(notConvergedCounter + convergedCounter,pReal)*100.0_pReal, &
                                    ' %) increments converged!'
+ flush(6)
  call MPI_file_close(resUnit,ierr)
  close(statUnit)
 

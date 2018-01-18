@@ -190,11 +190,11 @@ subroutine constitutive_init()
  if (any(phase_kinematics == KINEMATICS_hydrogen_strain_ID))   call kinematics_hydrogen_strain_init(FILEUNIT)
  close(FILEUNIT)
 
- mainProcess: if (worldrank == 0) then
-   write(6,'(/,a)')   ' <<<+-  constitutive init  -+>>>'
-   write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
+ write(6,'(/,a)')   ' <<<+-  constitutive init  -+>>>'
+ write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
 
+ mainProcess: if (worldrank == 0) then
 !--------------------------------------------------------------------------------------------------
 ! write description file for constitutive output
    call IO_write_jobFile(FILEUNIT,'outputConstitutive')

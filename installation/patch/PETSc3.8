@@ -1,38 +1,23 @@
-From 2355d41203f829e5a24154184ab1a1a05e40b5e2 Mon Sep 17 00:00:00 2001
+From 87e307a9c511f3f40598edbd5996297d7804ce62 Mon Sep 17 00:00:00 2001
 From: Martin Diehl <m.diehl@mpie.de>
-Date: Sun, 5 Nov 2017 12:48:31 +0100
-Subject: [PATCH 1/3] adjusted calling of PETSc routines. Compiles but crashes
- conditional prints for worldrank not needed (redirected to /dev/null) failing
- during compilation is faster than during runtime
+Date: Tue, 21 Nov 2017 15:12:04 +0100
+Subject: [PATCH] due to changes in interface of PETSc
 
 ---
- src/DAMASK_spectral.f90              | 27 ++++++------------
- src/constitutive.f90                 |  6 ++--
- src/damage_local.f90                 |  8 ++----
- src/damage_none.f90                  |  8 ++----
- src/damage_nonlocal.f90              |  8 ++----
- src/homogenization_RGC.f90           |  8 ++----
- src/homogenization_isostrain.f90     |  8 ++----
- src/homogenization_none.f90          | 10 ++-----
- src/hydrogenflux_cahnhilliard.f90    |  8 ++----
- src/hydrogenflux_isoconc.f90         | 10 ++-----
- src/kinematics_cleavage_opening.f90  |  8 ++----
- src/kinematics_slipplane_opening.f90 |  8 ++----
- src/kinematics_thermal_expansion.f90 |  8 ++----
- src/kinematics_vacancy_strain.f90    |  8 ++----
- src/mesh.f90                         | 10 +++----
- src/numerics.f90                     | 13 ++++-----
- src/spectral_damage.f90              | 37 +++++++-----------------
- src/spectral_interface.f90           | 31 ++++++++++----------
- src/spectral_mech_AL.f90             | 43 +++++++++-------------------
- src/spectral_mech_Basic.f90          | 48 +++++++++++--------------------
- src/spectral_mech_Polarisation.f90   | 49 +++++++++++---------------------
- src/spectral_thermal.f90             | 55 ++++++++++++++++--------------------
- src/spectral_utilities.f90           | 34 ++++++++--------------
- 23 files changed, 156 insertions(+), 297 deletions(-)
+ src/DAMASK_spectral.f90            | 27 +++++---------
+ src/mesh.f90                       | 12 +++---
+ src/numerics.f90                   | 13 +++----
+ src/spectral_damage.f90            | 39 ++++++--------------
+ src/spectral_interface.f90         | 31 ++++++++--------
+ src/spectral_mech_AL.f90           | 46 ++++++++---------------
+ src/spectral_mech_Basic.f90        | 52 +++++++++-----------------
+ src/spectral_mech_Polarisation.f90 | 52 ++++++++++----------------
+ src/spectral_thermal.f90           | 75 ++++++++++++++++++--------------------
+ src/spectral_utilities.f90         | 34 ++++++-----------
+ 10 files changed, 146 insertions(+), 235 deletions(-)
 
 diff --git a/src/DAMASK_spectral.f90 b/src/DAMASK_spectral.f90
-index dc529b2e..ee6b20fc 100644
+index f32bfb7b..c315b1b8 100644
 --- a/src/DAMASK_spectral.f90
 +++ b/src/DAMASK_spectral.f90
 @@ -12,6 +12,8 @@ program DAMASK_spectral
@@ -82,9 +67,9 @@ index dc529b2e..ee6b20fc 100644
 @@ -448,7 +440,7 @@ program DAMASK_spectral
       call MPI_file_write(resUnit, &
                           reshape(materialpoint_results(:,:,outputIndex(1):outputIndex(2)), &
-                                 [(outputIndex(2)-outputIndex(1)+1)*materialpoint_sizeResults]), &
--                         (outputIndex(2)-outputIndex(1)+1)*materialpoint_sizeResults, &
-+                         int((outputIndex(2)-outputIndex(1)+1)*materialpoint_sizeResults), &
+                                 [(outputIndex(2)-outputIndex(1)+1)*int(materialpoint_sizeResults,pLongInt)]), &
+-                         (outputIndex(2)-outputIndex(1)+1)*int(materialpoint_sizeResults,pLongInt), &
++                         int(outputIndex(2)-outputIndex(1)+1)*materialpoint_sizeResults, &
                           MPI_DOUBLE, MPI_STATUS_IGNORE, ierr)
       if (ierr /= 0_pInt) call IO_error(error_ID=894_pInt, ext_msg='MPI_file_write')
     enddo
@@ -101,360 +86,14 @@ index dc529b2e..ee6b20fc 100644
 @@ -646,7 +637,7 @@ program DAMASK_spectral
                        min(i*((maxRealOut)/materialpoint_sizeResults),size(materialpoint_results,3))],pLongInt)
             call MPI_file_write(resUnit,reshape(materialpoint_results(:,:,outputIndex(1):outputIndex(2)),&
-                                          [(outputIndex(2)-outputIndex(1)+1)*materialpoint_sizeResults]), &
--                               (outputIndex(2)-outputIndex(1)+1)*materialpoint_sizeResults,&
-+                               int((outputIndex(2)-outputIndex(1)+1)*materialpoint_sizeResults), &
+                                          [(outputIndex(2)-outputIndex(1)+1)*int(materialpoint_sizeResults,pLongInt)]), &
+-                               (outputIndex(2)-outputIndex(1)+1)*int(materialpoint_sizeResults,pLongInt),&
++                               int(outputIndex(2)-outputIndex(1)+1)*materialpoint_sizeResults,&
                                 MPI_DOUBLE, MPI_STATUS_IGNORE, ierr)
             if(ierr /=0_pInt) call IO_error(894_pInt, ext_msg='MPI_file_write')
           enddo
-diff --git a/src/constitutive.f90 b/src/constitutive.f90
-index 202242ae..f124e545 100644
---- a/src/constitutive.f90
-+++ b/src/constitutive.f90
-@@ -186,11 +186,11 @@ subroutine constitutive_init()
-  if (any(phase_kinematics == KINEMATICS_hydrogen_strain_ID))   call kinematics_hydrogen_strain_init(FILEUNIT)
-  close(FILEUNIT)
- 
-- mainProcess: if (worldrank == 0) then
--   write(6,'(/,a)')   ' <<<+-  constitutive init  -+>>>'
--   write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
-+ write(6,'(/,a)')   ' <<<+-  constitutive init  -+>>>'
-+ write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
- #include "compilation_info.f90"
- 
-+ mainProcess: if (worldrank == 0) then
- !--------------------------------------------------------------------------------------------------
- ! write description file for constitutive output
-    call IO_write_jobFile(FILEUNIT,'outputConstitutive')
-diff --git a/src/damage_local.f90 b/src/damage_local.f90
-index a24f0b1a..2f301493 100644
---- a/src/damage_local.f90
-+++ b/src/damage_local.f90
-@@ -72,8 +72,6 @@ subroutine damage_local_init(fileUnit)
-    damage, &
-    damage_initialPhi, &
-    material_partHomogenization
-- use numerics,only: &
--   worldrank
-  
-  implicit none
-  integer(pInt), intent(in) :: fileUnit
-@@ -86,11 +84,9 @@ subroutine damage_local_init(fileUnit)
-    tag  = '', &
-    line = ''
- 
-- mainProcess: if (worldrank == 0) then 
--   write(6,'(/,a)')   ' <<<+-  damage_'//DAMAGE_local_label//' init  -+>>>'
--   write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
-+ write(6,'(/,a)')   ' <<<+-  damage_'//DAMAGE_local_label//' init  -+>>>'
-+ write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
- #include "compilation_info.f90"
-- endif mainProcess
- 
-  maxNinstance = int(count(damage_type == DAMAGE_local_ID),pInt)
-  if (maxNinstance == 0_pInt) return
-diff --git a/src/damage_none.f90 b/src/damage_none.f90
-index 746de340..4750f594 100644
---- a/src/damage_none.f90
-+++ b/src/damage_none.f90
-@@ -26,19 +26,15 @@ subroutine damage_none_init()
-  use IO, only: &
-    IO_timeStamp
-  use material
-- use numerics, only: &
--   worldrank
-  
-  implicit none
-  integer(pInt) :: &
-    homog, &
-    NofMyHomog
- 
-- mainProcess: if (worldrank == 0) then 
--   write(6,'(/,a)')   ' <<<+-  damage_'//DAMAGE_none_label//' init  -+>>>'
--   write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
-+ write(6,'(/,a)')   ' <<<+-  damage_'//DAMAGE_none_label//' init  -+>>>'
-+ write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
- #include "compilation_info.f90"
-- endif mainProcess
- 
-   initializeInstances: do homog = 1_pInt, material_Nhomogenization
-    
-diff --git a/src/damage_nonlocal.f90 b/src/damage_nonlocal.f90
-index fb960ed7..cd6ba8a5 100644
---- a/src/damage_nonlocal.f90
-+++ b/src/damage_nonlocal.f90
-@@ -77,8 +77,6 @@ subroutine damage_nonlocal_init(fileUnit)
-    damage, &
-    damage_initialPhi, &
-    material_partHomogenization
-- use numerics,only: &
--   worldrank
- 
-  implicit none
-  integer(pInt), intent(in) :: fileUnit
-@@ -91,11 +89,9 @@ subroutine damage_nonlocal_init(fileUnit)
-    tag  = '', &
-    line = ''
- 
-- mainProcess: if (worldrank == 0) then 
--   write(6,'(/,a)')   ' <<<+-  damage_'//DAMAGE_nonlocal_label//' init  -+>>>'
--   write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
-+ write(6,'(/,a)')   ' <<<+-  damage_'//DAMAGE_nonlocal_label//' init  -+>>>'
-+ write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
- #include "compilation_info.f90"
-- endif mainProcess
-  
-  maxNinstance = int(count(damage_type == DAMAGE_nonlocal_ID),pInt)
-  if (maxNinstance == 0_pInt) return
-diff --git a/src/homogenization_RGC.f90 b/src/homogenization_RGC.f90
-index 43c16a39..84cb594d 100644
---- a/src/homogenization_RGC.f90
-+++ b/src/homogenization_RGC.f90
-@@ -100,8 +100,6 @@ subroutine homogenization_RGC_init(fileUnit)
-    FE_geomtype
-  use IO
-  use material
-- use numerics, only: &
--   worldrank
- 
-  implicit none
-  integer(pInt), intent(in) :: fileUnit                                                              !< file pointer to material configuration
-@@ -117,11 +115,9 @@ subroutine homogenization_RGC_init(fileUnit)
-    tag = '', &
-    line = ''
-  
-- mainProcess: if (worldrank == 0) then 
--   write(6,'(/,a)')   ' <<<+-  homogenization_'//HOMOGENIZATION_RGC_label//' init  -+>>>'
--   write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
-+ write(6,'(/,a)')   ' <<<+-  homogenization_'//HOMOGENIZATION_RGC_label//' init  -+>>>'
-+ write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
- #include "compilation_info.f90"
-- endif mainProcess
- 
-  maxNinstance = int(count(homogenization_type == HOMOGENIZATION_RGC_ID),pInt)
-  if (maxNinstance == 0_pInt) return
-diff --git a/src/homogenization_isostrain.f90 b/src/homogenization_isostrain.f90
-index aeb77c27..055bfbb4 100644
---- a/src/homogenization_isostrain.f90
-+++ b/src/homogenization_isostrain.f90
-@@ -62,8 +62,6 @@ subroutine homogenization_isostrain_init(fileUnit)
-    debug_levelBasic
-  use IO
-  use material
-- use numerics, only: &
--   worldrank
-  
-  implicit none
-  integer(pInt),                                      intent(in) :: fileUnit
-@@ -80,11 +78,9 @@ subroutine homogenization_isostrain_init(fileUnit)
-    tag  = '', &
-    line = ''
-  
-- mainProcess: if (worldrank == 0) then 
--   write(6,'(/,a)')   ' <<<+-  homogenization_'//HOMOGENIZATION_ISOSTRAIN_label//' init  -+>>>'
--   write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
-+ write(6,'(/,a)')   ' <<<+-  homogenization_'//HOMOGENIZATION_ISOSTRAIN_label//' init  -+>>>'
-+ write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
- #include "compilation_info.f90"
-- endif mainProcess
- 
-  maxNinstance = count(homogenization_type == HOMOGENIZATION_ISOSTRAIN_ID)
-  if (maxNinstance == 0) return
-diff --git a/src/homogenization_none.f90 b/src/homogenization_none.f90
-index 11bed781..75d8bcd3 100644
---- a/src/homogenization_none.f90
-+++ b/src/homogenization_none.f90
-@@ -29,21 +29,17 @@ subroutine homogenization_none_init()
-  use IO, only: &
-    IO_timeStamp
-  use material
-- use numerics, only: &
--   worldrank
-  
-  implicit none
-  integer(pInt) :: &
-    homog, &
-    NofMyHomog
- 
-- mainProcess: if (worldrank == 0) then 
--   write(6,'(/,a)')   ' <<<+-  homogenization_'//HOMOGENIZATION_NONE_label//' init  -+>>>'
--   write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
-+ write(6,'(/,a)')   ' <<<+-  homogenization_'//HOMOGENIZATION_NONE_label//' init  -+>>>'
-+ write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
- #include "compilation_info.f90"
-- endif mainProcess
- 
--  initializeInstances: do homog = 1_pInt, material_Nhomogenization
-+ initializeInstances: do homog = 1_pInt, material_Nhomogenization
-    
-    myhomog: if (homogenization_type(homog) == HOMOGENIZATION_none_ID) then
-      NofMyHomog = count(material_homog == homog)
-diff --git a/src/hydrogenflux_cahnhilliard.f90 b/src/hydrogenflux_cahnhilliard.f90
-index db08bf5d..89479a9c 100644
---- a/src/hydrogenflux_cahnhilliard.f90
-+++ b/src/hydrogenflux_cahnhilliard.f90
-@@ -84,8 +84,6 @@ subroutine hydrogenflux_cahnhilliard_init(fileUnit)
-    hydrogenflux_initialCh, &
-    material_partHomogenization, &
-    material_partPhase
-- use numerics,only: &
--   worldrank
- 
-  implicit none
-  integer(pInt), intent(in) :: fileUnit
-@@ -98,11 +96,9 @@ subroutine hydrogenflux_cahnhilliard_init(fileUnit)
-    tag  = '', &
-    line = ''
- 
-- mainProcess: if (worldrank == 0) then 
--   write(6,'(/,a)')   ' <<<+-  hydrogenflux_'//HYDROGENFLUX_cahnhilliard_label//' init  -+>>>'
--   write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
-+ write(6,'(/,a)')   ' <<<+-  hydrogenflux_'//HYDROGENFLUX_cahnhilliard_label//' init  -+>>>'
-+ write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
- #include "compilation_info.f90"
-- endif mainProcess
-  
-  maxNinstance = int(count(hydrogenflux_type == HYDROGENFLUX_cahnhilliard_ID),pInt)
-  if (maxNinstance == 0_pInt) return
-diff --git a/src/hydrogenflux_isoconc.f90 b/src/hydrogenflux_isoconc.f90
-index df5c01e6..bef2a843 100644
---- a/src/hydrogenflux_isoconc.f90
-+++ b/src/hydrogenflux_isoconc.f90
-@@ -27,21 +27,17 @@ subroutine hydrogenflux_isoconc_init()
-  use IO, only: &
-    IO_timeStamp
-  use material
-- use numerics, only: &
--   worldrank
-  
-  implicit none
-  integer(pInt) :: &
-    homog, &
-    NofMyHomog
- 
-- mainProcess: if (worldrank == 0) then 
--   write(6,'(/,a)')   ' <<<+-  hydrogenflux_'//HYDROGENFLUX_isoconc_label//' init  -+>>>'
--   write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
-+ write(6,'(/,a)')   ' <<<+-  hydrogenflux_'//HYDROGENFLUX_isoconc_label//' init  -+>>>'
-+ write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
- #include "compilation_info.f90"
-- endif mainProcess
- 
--  initializeInstances: do homog = 1_pInt, material_Nhomogenization
-+ initializeInstances: do homog = 1_pInt, material_Nhomogenization
-    
-    myhomog: if (hydrogenflux_type(homog) == HYDROGENFLUX_isoconc_ID) then
-      NofMyHomog = count(material_homog == homog)
-diff --git a/src/kinematics_cleavage_opening.f90 b/src/kinematics_cleavage_opening.f90
-index 146918f5..fffa2616 100644
---- a/src/kinematics_cleavage_opening.f90
-+++ b/src/kinematics_cleavage_opening.f90
-@@ -81,8 +81,6 @@ subroutine kinematics_cleavage_opening_init(fileUnit)
-    KINEMATICS_cleavage_opening_ID, &
-    material_Nphase, &
-    MATERIAL_partPhase
-- use numerics,only: &
--   worldrank
-  use lattice, only: &
-    lattice_maxNcleavageFamily, &
-    lattice_NcleavageSystem
-@@ -97,11 +95,9 @@ subroutine kinematics_cleavage_opening_init(fileUnit)
-    tag  = '', &
-    line = ''
- 
-- mainProcess: if (worldrank == 0) then 
--   write(6,'(/,a)')   ' <<<+-  kinematics_'//KINEMATICS_cleavage_opening_LABEL//' init  -+>>>'
--   write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
-+ write(6,'(/,a)')   ' <<<+-  kinematics_'//KINEMATICS_cleavage_opening_LABEL//' init  -+>>>'
-+ write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
- #include "compilation_info.f90"
-- endif mainProcess
- 
-  maxNinstance = int(count(phase_kinematics == KINEMATICS_cleavage_opening_ID),pInt)
-  if (maxNinstance == 0_pInt) return
-diff --git a/src/kinematics_slipplane_opening.f90 b/src/kinematics_slipplane_opening.f90
-index f32efa92..07b98aa2 100644
---- a/src/kinematics_slipplane_opening.f90
-+++ b/src/kinematics_slipplane_opening.f90
-@@ -81,8 +81,6 @@ subroutine kinematics_slipplane_opening_init(fileUnit)
-    KINEMATICS_slipplane_opening_ID, &
-    material_Nphase, &
-    MATERIAL_partPhase
-- use numerics,only: &
--   worldrank
-  use lattice, only: &
-    lattice_maxNslipFamily, &
-    lattice_NslipSystem
-@@ -97,11 +95,9 @@ subroutine kinematics_slipplane_opening_init(fileUnit)
-    tag  = '', &
-    line = ''
- 
-- mainProcess: if (worldrank == 0) then 
--   write(6,'(/,a)')   ' <<<+-  kinematics_'//KINEMATICS_slipplane_opening_LABEL//' init  -+>>>'
--   write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
-+ write(6,'(/,a)')   ' <<<+-  kinematics_'//KINEMATICS_slipplane_opening_LABEL//' init  -+>>>'
-+ write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
- #include "compilation_info.f90"
-- endif mainProcess
- 
-  maxNinstance = int(count(phase_kinematics == KINEMATICS_slipplane_opening_ID),pInt)
-  if (maxNinstance == 0_pInt) return
-diff --git a/src/kinematics_thermal_expansion.f90 b/src/kinematics_thermal_expansion.f90
-index 30c267d3..e7cbca67 100644
---- a/src/kinematics_thermal_expansion.f90
-+++ b/src/kinematics_thermal_expansion.f90
-@@ -71,8 +71,6 @@ subroutine kinematics_thermal_expansion_init(fileUnit)
-    KINEMATICS_thermal_expansion_ID, &
-    material_Nphase, &
-    MATERIAL_partPhase
-- use numerics,only: &
--   worldrank
- 
-  implicit none
-  integer(pInt), intent(in) :: fileUnit
-@@ -83,11 +81,9 @@ subroutine kinematics_thermal_expansion_init(fileUnit)
-    tag     = '', &
-    line    = ''
- 
-- mainProcess: if (worldrank == 0) then 
--   write(6,'(/,a)')   ' <<<+-  kinematics_'//KINEMATICS_thermal_expansion_LABEL//' init  -+>>>'
--   write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
-+ write(6,'(/,a)')   ' <<<+-  kinematics_'//KINEMATICS_thermal_expansion_LABEL//' init  -+>>>'
-+ write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
- #include "compilation_info.f90"
-- endif mainProcess
- 
-  maxNinstance = int(count(phase_kinematics == KINEMATICS_thermal_expansion_ID),pInt)
-  if (maxNinstance == 0_pInt) return
-diff --git a/src/kinematics_vacancy_strain.f90 b/src/kinematics_vacancy_strain.f90
-index 791c0e3c..9558f506 100644
---- a/src/kinematics_vacancy_strain.f90
-+++ b/src/kinematics_vacancy_strain.f90
-@@ -71,8 +71,6 @@ subroutine kinematics_vacancy_strain_init(fileUnit)
-    KINEMATICS_vacancy_strain_ID, &
-    material_Nphase, &
-    MATERIAL_partPhase
-- use numerics,only: &
--   worldrank
- 
-  implicit none
-  integer(pInt), intent(in) :: fileUnit
-@@ -83,11 +81,9 @@ subroutine kinematics_vacancy_strain_init(fileUnit)
-    tag  = '', &
-    line = ''
- 
-- mainProcess: if (worldrank == 0) then 
--   write(6,'(/,a)')   ' <<<+-  kinematics_'//KINEMATICS_vacancy_strain_LABEL//' init  -+>>>'
--   write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
-+ write(6,'(/,a)')   ' <<<+-  kinematics_'//KINEMATICS_vacancy_strain_LABEL//' init  -+>>>'
-+ write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
- #include "compilation_info.f90"
-- endif mainProcess
- 
-  maxNinstance = int(count(phase_kinematics == KINEMATICS_vacancy_strain_ID),pInt)
-  if (maxNinstance == 0_pInt) return
 diff --git a/src/mesh.f90 b/src/mesh.f90
-index 87160f2c..6e3b4823 100644
+index 666fe1e3..a314c22c 100644
 --- a/src/mesh.f90
 +++ b/src/mesh.f90
 @@ -115,11 +115,6 @@ module mesh
@@ -488,8 +127,17 @@ index 87160f2c..6e3b4823 100644
   integer(C_INTPTR_T) :: devNull, local_K, local_K_offset
   integer :: ierr, worldsize
  #endif
+@@ -518,8 +518,6 @@ subroutine mesh_init(ip,el)
+  integer(pInt), intent(in) :: el, ip
+  integer(pInt) :: j
+  logical :: myDebug
+- 
+- external :: MPI_comm_size
+ 
+  write(6,'(/,a)')   ' <<<+-  mesh init  -+>>>'
+  write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 diff --git a/src/numerics.f90 b/src/numerics.f90
-index 2085e221..d2d00f3e 100644
+index 70c7f3c3..e7d54893 100644
 --- a/src/numerics.f90
 +++ b/src/numerics.f90
 @@ -10,9 +10,6 @@ module numerics
@@ -527,7 +175,7 @@ index 2085e221..d2d00f3e 100644
   call MPI_Comm_rank(PETSC_COMM_WORLD,worldrank,ierr);CHKERRQ(ierr)
   call MPI_Comm_size(PETSC_COMM_WORLD,worldsize,ierr);CHKERRQ(ierr)
 diff --git a/src/spectral_damage.f90 b/src/spectral_damage.f90
-index 72765987..cea6f69c 100644
+index 72765987..11da3b96 100644
 --- a/src/spectral_damage.f90
 +++ b/src/spectral_damage.f90
 @@ -4,8 +4,10 @@
@@ -597,8 +245,12 @@ index 72765987..cea6f69c 100644
          DM_BOUNDARY_NONE, DM_BOUNDARY_NONE, DM_BOUNDARY_NONE, &                                     !< cut off stencil at boundary
          DMDA_STENCIL_BOX, &                                                                         !< Moore (26) neighborhood around central point
          grid(1),grid(2),grid(3), &                                                                  !< global grid
-@@ -126,7 +116,7 @@ subroutine spectral_damage_init()
+@@ -124,9 +114,11 @@ subroutine spectral_damage_init()
+         damage_grid,ierr)                                                                           !< handle, error
+  CHKERRQ(ierr)
   call SNESSetDM(damage_snes,damage_grid,ierr); CHKERRQ(ierr)                                        !< connect snes to da
++ call DMsetFromOptions(damage_grid,ierr); CHKERRQ(ierr)
++ call DMsetUp(damage_grid,ierr); CHKERRQ(ierr)
   call DMCreateGlobalVector(damage_grid,solution,ierr); CHKERRQ(ierr)                                !< global solution vector (grid x 1, i.e. every def grad tensor)
   call DMDASNESSetFunctionLocal(damage_grid,INSERT_VALUES,spectral_damage_formResidual,&
 -                                                                            PETSC_NULL_OBJECT,ierr) !< residual vector of same shape as solution vector
@@ -606,16 +258,16 @@ index 72765987..cea6f69c 100644
   CHKERRQ(ierr) 
   call SNESSetFromOptions(damage_snes,ierr); CHKERRQ(ierr)                                           !< pull it all together with additional cli arguments
   call SNESGetType(damage_snes,snes_type,ierr); CHKERRQ(ierr)
-@@ -214,7 +204,7 @@ type(tSolutionState) function spectral_damage_solution(timeinc,timeinc_old,loadC
+@@ -214,7 +206,7 @@ type(tSolutionState) function spectral_damage_solution(timeinc,timeinc_old,loadC
   params%timeinc = timeinc
   params%timeincOld = timeinc_old
  
 - call SNESSolve(damage_snes,PETSC_NULL_OBJECT,solution,ierr); CHKERRQ(ierr)
-+ call SNESSolve(damage_snes,PETSC_NULL_SNES,solution,ierr); CHKERRQ(ierr)
++ call SNESSolve(damage_snes,PETSC_NULL_VEC,solution,ierr); CHKERRQ(ierr)
   call SNESGetConvergedReason(damage_snes,reason,ierr); CHKERRQ(ierr)
  
   if (reason < 1) then
-@@ -360,9 +350,6 @@ subroutine spectral_damage_forward()
+@@ -360,9 +352,6 @@ subroutine spectral_damage_forward()
   PetscScalar,  dimension(:,:,:), pointer     :: x_scal
   PetscErrorCode                              :: ierr
   
@@ -625,7 +277,7 @@ index 72765987..cea6f69c 100644
   if (cutBack) then 
     damage_current = damage_lastInc
     damage_stagInc = damage_lastInc
-@@ -405,10 +392,6 @@ subroutine spectral_damage_destroy()
+@@ -405,10 +394,6 @@ subroutine spectral_damage_destroy()
   implicit none
   PetscErrorCode :: ierr
  
@@ -716,7 +368,7 @@ index 3c8489d0..51360ac1 100644
   getGeometryFile = geometryParameter
   posExt = scan(getGeometryFile,'.',back=.true.)
 diff --git a/src/spectral_mech_AL.f90 b/src/spectral_mech_AL.f90
-index 6d0fff28..e7ff0fbe 100644
+index 6d0fff28..dc221f6c 100644
 --- a/src/spectral_mech_AL.f90
 +++ b/src/spectral_mech_AL.f90
 @@ -5,6 +5,8 @@
@@ -778,9 +430,12 @@ index 6d0fff28..e7ff0fbe 100644
   write(6,'(/,a)') ' <<<+-  DAMASK_spectral_solverAL init  -+>>>'
   write(6,'(a15,a)')   ' Current time: ',IO_timeStamp()
  #include "compilation_info.f90"
-@@ -166,9 +161,9 @@ subroutine AL_init
+@@ -165,10 +160,12 @@ subroutine AL_init
+         da,ierr)                                                                                    ! handle, error
   CHKERRQ(ierr)
   call SNESSetDM(snes,da,ierr); CHKERRQ(ierr)
++ call DMsetFromOptions(da,ierr); CHKERRQ(ierr)
++ call DMsetUp(da,ierr); CHKERRQ(ierr)
   call DMCreateGlobalVector(da,solution_vec,ierr); CHKERRQ(ierr)
 - call DMDASNESSetFunctionLocal(da,INSERT_VALUES,AL_formResidual,PETSC_NULL_OBJECT,ierr)
 + call DMDASNESSetFunctionLocal(da,INSERT_VALUES,AL_formResidual,PETSC_NULL_SNES,ierr)
@@ -790,7 +445,7 @@ index 6d0fff28..e7ff0fbe 100644
   CHKERRQ(ierr)
   call SNESSetFromOptions(snes,ierr); CHKERRQ(ierr)
  
-@@ -280,8 +275,7 @@ type(tSolutionState) function &
+@@ -280,8 +277,7 @@ type(tSolutionState) function &
   SNESConvergedReason :: reason
  
   external :: &
@@ -800,16 +455,17 @@ index 6d0fff28..e7ff0fbe 100644
  
   incInfo = incInfoIn
  
-@@ -304,7 +298,7 @@ type(tSolutionState) function &
+@@ -304,8 +300,7 @@ type(tSolutionState) function &
  
  !--------------------------------------------------------------------------------------------------
  ! solve BVP 
 - call SNESSolve(snes,PETSC_NULL_OBJECT,solution_vec,ierr)
-+ call SNESSolve(snes,PETSC_NULL_SNES,solution_vec,ierr)
-  CHKERRQ(ierr)
+- CHKERRQ(ierr)
++ call SNESsolve(snes,PETSC_NULL_VEC,solution_vec,ierr); CHKERRQ(ierr)
  
  !--------------------------------------------------------------------------------------------------
-@@ -383,10 +377,6 @@ subroutine AL_formResidual(in,x_scal,f_scal,dummy,ierr)
+ ! check convergence
+@@ -383,10 +378,6 @@ subroutine AL_formResidual(in,x_scal,f_scal,dummy,ierr)
   integer(pInt) :: &
     i, j, k, e
  
@@ -820,7 +476,7 @@ index 6d0fff28..e7ff0fbe 100644
   F                => x_scal(1:3,1:3,1,&
    XG_RANGE,YG_RANGE,ZG_RANGE)
   F_lambda         => x_scal(1:3,1:3,2,&
-@@ -697,11 +687,6 @@ subroutine AL_destroy()
+@@ -697,11 +688,6 @@ subroutine AL_destroy()
   implicit none
   PetscErrorCode :: ierr
  
@@ -833,7 +489,7 @@ index 6d0fff28..e7ff0fbe 100644
   call SNESDestroy(snes,ierr); CHKERRQ(ierr)
   call DMDestroy(da,ierr); CHKERRQ(ierr)
 diff --git a/src/spectral_mech_Basic.f90 b/src/spectral_mech_Basic.f90
-index cfb72712..b02cfd8c 100644
+index 55403ee7..fe9eb493 100644
 --- a/src/spectral_mech_Basic.f90
 +++ b/src/spectral_mech_Basic.f90
 @@ -5,6 +5,8 @@
@@ -888,7 +544,7 @@ index cfb72712..b02cfd8c 100644
   write(6,'(/,a)') ' <<<+-  DAMASK_spectral_solverBasicPETSc init  -+>>>'
   write(6,'(a15,a)')   ' Current time: ',IO_timeStamp()
  #include "compilation_info.f90"
-@@ -152,14 +146,14 @@ subroutine basicPETSc_init
+@@ -152,19 +146,20 @@ subroutine basicPETSc_init
          grid(1),grid(2),localK, &                                                                   ! local grid
          da,ierr)                                                                                    ! handle, error
   CHKERRQ(ierr)
@@ -896,6 +552,8 @@ index cfb72712..b02cfd8c 100644
 - call DMCreateGlobalVector(da,solution_vec,ierr); CHKERRQ(ierr)                                     ! global solution vector (grid x 9, i.e. every def grad tensor)
 - call DMDASNESSetFunctionLocal(da,INSERT_VALUES,BasicPETSC_formResidual,PETSC_NULL_OBJECT,ierr)     ! residual vector of same shape as solution vector
 + call SNESsetDM(snes,da,ierr); CHKERRQ(ierr)
++ call DMsetFromOptions(da,ierr); CHKERRQ(ierr)
++ call DMsetUp(da,ierr); CHKERRQ(ierr)
 + call DMcreateGlobalVector(da,solution_vec,ierr); CHKERRQ(ierr)                                     ! global solution vector (grid x 9, i.e. every def grad tensor)
 + call DMDASNESsetFunctionLocal(da,INSERT_VALUES,BasicPETSC_formResidual,PETSC_NULL_SNES,ierr)       ! residual vector of same shape as solution vector
   CHKERRQ(ierr) 
@@ -909,7 +567,12 @@ index cfb72712..b02cfd8c 100644
  
  !--------------------------------------------------------------------------------------------------
  ! init fields                 
-@@ -253,8 +247,7 @@ type(tSolutionState) function &
+  call DMDAVecGetArrayF90(da,solution_vec,F,ierr); CHKERRQ(ierr)                                     ! get the data out of PETSc to work with
+-
+  restart: if (restartInc > 1_pInt) then                                                     
+    if (iand(debug_level(debug_spectral),debug_spectralRestart)/= 0) &
+      write(6,'(/,a,'//IO_intOut(restartInc-1_pInt)//',a)') &
+@@ -253,8 +248,7 @@ type(tSolutionState) function &
   SNESConvergedReason :: reason
  
   external :: &
@@ -919,16 +582,17 @@ index cfb72712..b02cfd8c 100644
  
   incInfo = incInfoIn
  
-@@ -274,7 +267,7 @@ type(tSolutionState) function &
+@@ -274,8 +268,7 @@ type(tSolutionState) function &
  
  !--------------------------------------------------------------------------------------------------
  ! solve BVP 
 - call SNESSolve(snes,PETSC_NULL_OBJECT,solution_vec,ierr)
-+ call SNESSolve(snes,PETSC_NULL_SNES,solution_vec,ierr)
-  CHKERRQ(ierr)
+- CHKERRQ(ierr)
++ call SNESsolve(snes,PETSC_NULL_VEC,solution_vec,ierr); CHKERRQ(ierr)
  
  !--------------------------------------------------------------------------------------------------
-@@ -337,10 +330,6 @@ subroutine BasicPETSC_formResidual(in,x_scal,f_scal,dummy,ierr)
+ ! check convergence
+@@ -336,10 +329,6 @@ subroutine BasicPETSC_formResidual(in,x_scal,f_scal,dummy,ierr)
   PetscObject :: dummy
   PetscErrorCode :: ierr
  
@@ -939,7 +603,7 @@ index cfb72712..b02cfd8c 100644
   call SNESGetNumberFunctionEvals(snes,nfuncs,ierr); CHKERRQ(ierr)
   call SNESGetIterationNumber(snes,PETScIter,ierr); CHKERRQ(ierr)
  
-@@ -556,11 +545,6 @@ subroutine BasicPETSc_destroy()
+@@ -555,11 +544,6 @@ subroutine BasicPETSc_destroy()
   implicit none
   PetscErrorCode :: ierr
  
@@ -952,7 +616,7 @@ index cfb72712..b02cfd8c 100644
   call SNESDestroy(snes,ierr); CHKERRQ(ierr)
   call DMDestroy(da,ierr); CHKERRQ(ierr)
 diff --git a/src/spectral_mech_Polarisation.f90 b/src/spectral_mech_Polarisation.f90
-index ecf707d4..2b9dddc0 100644
+index ecf707d4..3b024f56 100644
 --- a/src/spectral_mech_Polarisation.f90
 +++ b/src/spectral_mech_Polarisation.f90
 @@ -5,6 +5,8 @@
@@ -1014,7 +678,7 @@ index ecf707d4..2b9dddc0 100644
   write(6,'(/,a)') ' <<<+-  DAMASK_spectral_solverPolarisation init  -+>>>'
   write(6,'(a15,a)')   ' Current time: ',IO_timeStamp()
  #include "compilation_info.f90"
-@@ -164,13 +159,13 @@ subroutine Polarisation_init
+@@ -164,13 +159,15 @@ subroutine Polarisation_init
          grid(1),grid(2),localK, &                                                                   ! local grid
          da,ierr)                                                                                    ! handle, error
   CHKERRQ(ierr)
@@ -1022,6 +686,8 @@ index ecf707d4..2b9dddc0 100644
 - call DMCreateGlobalVector(da,solution_vec,ierr); CHKERRQ(ierr)
 - call DMDASNESSetFunctionLocal(da,INSERT_VALUES,Polarisation_formResidual,PETSC_NULL_OBJECT,ierr)
 + call SNESsetDM(snes,da,ierr); CHKERRQ(ierr)
++ call DMsetFromOptions(da,ierr); CHKERRQ(ierr)
++ call DMsetUp(da,ierr); CHKERRQ(ierr)
 + call DMcreateGlobalVector(da,solution_vec,ierr); CHKERRQ(ierr)
 + call DMDASNESsetFunctionLocal(da,INSERT_VALUES,Polarisation_formResidual,PETSC_NULL_SNES,ierr)
   CHKERRQ(ierr)
@@ -1033,7 +699,7 @@ index ecf707d4..2b9dddc0 100644
  
  !--------------------------------------------------------------------------------------------------
  ! init fields                 
-@@ -280,8 +275,7 @@ type(tSolutionState) function &
+@@ -280,8 +277,7 @@ type(tSolutionState) function &
   SNESConvergedReason :: reason
  
   external :: &
@@ -1043,16 +709,17 @@ index ecf707d4..2b9dddc0 100644
  
   incInfo = incInfoIn
  
-@@ -304,7 +298,7 @@ type(tSolutionState) function &
+@@ -304,8 +300,7 @@ type(tSolutionState) function &
  
  !--------------------------------------------------------------------------------------------------
  ! solve BVP 
 - call SNESSolve(snes,PETSC_NULL_OBJECT,solution_vec,ierr)
-+ call SNESSolve(snes,PETSC_NULL_SNES,solution_vec,ierr)
-  CHKERRQ(ierr)
+- CHKERRQ(ierr)
++ call SNESsolve(snes,PETSC_NULL_VEC,solution_vec,ierr); CHKERRQ(ierr)
  
  !--------------------------------------------------------------------------------------------------
-@@ -383,10 +377,6 @@ subroutine Polarisation_formResidual(in,x_scal,f_scal,dummy,ierr)
+ ! check convergence
+@@ -383,10 +378,6 @@ subroutine Polarisation_formResidual(in,x_scal,f_scal,dummy,ierr)
   integer(pInt) :: &
     i, j, k, e
  
@@ -1063,7 +730,7 @@ index ecf707d4..2b9dddc0 100644
   F              => x_scal(1:3,1:3,1,&
    XG_RANGE,YG_RANGE,ZG_RANGE)
   F_tau          => x_scal(1:3,1:3,2,&
-@@ -698,11 +688,6 @@ subroutine Polarisation_destroy()
+@@ -698,11 +689,6 @@ subroutine Polarisation_destroy()
   implicit none
   PetscErrorCode :: ierr
  
@@ -1076,7 +743,7 @@ index ecf707d4..2b9dddc0 100644
   call SNESDestroy(snes,ierr); CHKERRQ(ierr)
   call DMDestroy(da,ierr); CHKERRQ(ierr)
 diff --git a/src/spectral_thermal.f90 b/src/spectral_thermal.f90
-index 322f1203..cc0f7678 100644
+index 322f1203..2374d83b 100644
 --- a/src/spectral_thermal.f90
 +++ b/src/spectral_thermal.f90
 @@ -4,6 +4,8 @@
@@ -1151,25 +818,64 @@ index 322f1203..cc0f7678 100644
   
  !--------------------------------------------------------------------------------------------------
  ! initialize solver specific parts of PETSc
-@@ -127,7 +122,7 @@ subroutine spectral_thermal_init
-  call SNESSetDM(thermal_snes,thermal_grid,ierr); CHKERRQ(ierr)                                      ! connect snes to da
-  call DMCreateGlobalVector(thermal_grid,solution        ,ierr); CHKERRQ(ierr)                       ! global solution vector (grid x 1, i.e. every def grad tensor)
-  call DMDASNESSetFunctionLocal(thermal_grid,INSERT_VALUES,spectral_thermal_formResidual,&
+@@ -124,16 +119,18 @@ subroutine spectral_thermal_init
+         grid (1),grid(2),localK, &                                                                  ! local grid
+         thermal_grid,ierr)                                                                          ! handle, error
+  CHKERRQ(ierr)
+- call SNESSetDM(thermal_snes,thermal_grid,ierr); CHKERRQ(ierr)                                      ! connect snes to da
+- call DMCreateGlobalVector(thermal_grid,solution        ,ierr); CHKERRQ(ierr)                       ! global solution vector (grid x 1, i.e. every def grad tensor)
+- call DMDASNESSetFunctionLocal(thermal_grid,INSERT_VALUES,spectral_thermal_formResidual,&
 -                                                                            PETSC_NULL_OBJECT,ierr) ! residual vector of same shape as solution vector
++ call SNESsetDM(thermal_snes,thermal_grid,ierr); CHKERRQ(ierr)                                      ! connect snes to da
++ call DMsetFromOptions(thermal_grid,ierr); CHKERRQ(ierr)
++ call DMsetUp(thermal_grid,ierr); CHKERRQ(ierr)
++ call DMcreateGlobalVector(thermal_grid,solution,ierr); CHKERRQ(ierr)                               ! global solution vector (grid x 1, i.e. every def grad tensor)
++ call DMDASNESsetFunctionLocal(thermal_grid,INSERT_VALUES,spectral_thermal_formResidual,&
 +                                                                            PETSC_NULL_SNES,ierr)   ! residual vector of same shape as solution vector
   CHKERRQ(ierr) 
-  call SNESSetFromOptions(thermal_snes,ierr); CHKERRQ(ierr)                                          ! pull it all together with additional cli arguments
+- call SNESSetFromOptions(thermal_snes,ierr); CHKERRQ(ierr)                                          ! pull it all together with additional cli arguments
++ call SNESsetFromOptions(thermal_snes,ierr); CHKERRQ(ierr)                                          ! pull it all together with additional cli arguments
  
-@@ -215,7 +210,7 @@ type(tSolutionState) function spectral_thermal_solution(timeinc,timeinc_old,load
+ !--------------------------------------------------------------------------------------------------
+ ! init fields             
+- call DMDAGetCorners(thermal_grid,xstart,ystart,zstart,xend,yend,zend,ierr)
++ call DMDAgetCorners(thermal_grid,xstart,ystart,zstart,xend,yend,zend,ierr)
+  CHKERRQ(ierr)
+  xend = xstart + xend - 1
+  yend = ystart + yend - 1
+@@ -149,9 +146,9 @@ subroutine spectral_thermal_init
+    temperature_lastInc(i,j,k) = temperature_current(i,j,k)
+    temperature_stagInc(i,j,k) = temperature_current(i,j,k)
+  enddo; enddo; enddo
+- call DMDAVecGetArrayF90(thermal_grid,solution,x_scal,ierr); CHKERRQ(ierr)                              !< get the data out of PETSc to work with
++ call DMDAvecGetArrayF90(thermal_grid,solution,x_scal,ierr); CHKERRQ(ierr)                              !< get the data out of PETSc to work with
+  x_scal(xstart:xend,ystart:yend,zstart:zend) = temperature_current
+- call DMDAVecRestoreArrayF90(thermal_grid,solution,x_scal,ierr); CHKERRQ(ierr)
++ call DMDAvecRestoreArrayF90(thermal_grid,solution,x_scal,ierr); CHKERRQ(ierr)
+ 
+ !--------------------------------------------------------------------------------------------------
+ ! thermal reference diffusion update
+@@ -205,8 +202,8 @@ type(tSolutionState) function spectral_thermal_solution(timeinc,timeinc_old,load
+  external :: &
+    VecMin, &
+    VecMax, &
+-   SNESSolve, &
+-   SNESGetConvergedReason
++   SNESsolve, &
++   SNESgetConvergedReason
+ 
+  spectral_thermal_solution%converged =.false.
+  
+@@ -215,7 +212,7 @@ type(tSolutionState) function spectral_thermal_solution(timeinc,timeinc_old,load
   params%timeinc = timeinc
   params%timeincOld = timeinc_old
  
 - call SNESSolve(thermal_snes,PETSC_NULL_OBJECT,solution,ierr); CHKERRQ(ierr)
-+ call SNESSolve(thermal_snes,PETSC_NULL_SNES,solution,ierr); CHKERRQ(ierr)
++ call SNESsolve(thermal_snes,PETSC_NULL_VEC,solution,ierr); CHKERRQ(ierr)
   call SNESGetConvergedReason(thermal_snes,reason,ierr); CHKERRQ(ierr)
  
   if (reason < 1) then
-@@ -245,14 +240,12 @@ type(tSolutionState) function spectral_thermal_solution(timeinc,timeinc_old,load
+@@ -245,14 +242,12 @@ type(tSolutionState) function spectral_thermal_solution(timeinc,timeinc_old,load
  
   call VecMin(solution,position,minTemperature,ierr); CHKERRQ(ierr)
   call VecMax(solution,position,maxTemperature,ierr); CHKERRQ(ierr)
@@ -1191,7 +897,7 @@ index 322f1203..cc0f7678 100644
  end function spectral_thermal_solution
  
 diff --git a/src/spectral_utilities.f90 b/src/spectral_utilities.f90
-index 1ad25174..bbef337f 100644
+index 1bbf2e60..52bb07fd 100644
 --- a/src/spectral_utilities.f90
 +++ b/src/spectral_utilities.f90
 @@ -5,15 +5,16 @@
@@ -1282,7 +988,7 @@ index 1ad25174..bbef337f 100644
   write(6,'(/,a)') ' ... calculating curl ......................................................'
   flush(6)
  
-@@ -1096,9 +1089,6 @@ function utilities_forwardField(timeinc,field_lastInc,rate,aim)
+@@ -1099,9 +1092,6 @@ function utilities_forwardField(timeinc,field_lastInc,rate,aim)
   real(pReal),                       dimension(3,3)                       :: fieldDiff               !< <a + adot*t> - aim
   PetscErrorCode :: ierr
  
@@ -1292,7 +998,7 @@ index 1ad25174..bbef337f 100644
   utilities_forwardField = field_lastInc + rate*timeinc
   if (present(aim)) then                                                                             !< correct to match average
     fieldDiff = sum(sum(sum(utilities_forwardField,dim=5),dim=4),dim=3)*wgt
-@@ -1190,8 +1180,6 @@ subroutine utilities_updateIPcoords(F)
+@@ -1193,8 +1183,6 @@ subroutine utilities_updateIPcoords(F)
   integer(pInt) :: i, j, k, m, ierr
   real(pReal),   dimension(3) :: step, offset_coords
   real(pReal),   dimension(3,3) :: Favg
@@ -1301,228 +1007,6 @@ index 1ad25174..bbef337f 100644
  
  !--------------------------------------------------------------------------------------------------
  ! integration in Fourier space
--- 
-2.15.0
-
-
-From 237f199bbf574bb2509123ce8b037ac751abd15d Mon Sep 17 00:00:00 2001
-From: Martin Diehl <m.diehl@mpie.de>
-Date: Sun, 5 Nov 2017 13:45:52 +0100
-Subject: [PATCH 2/3] extra function calls for da needed
- (https://lists.mcs.anl.gov/pipermail/petsc-users/2017-February/031538.html)
- SNESsolve requires PETSC_NULL_VEC not PETSC_NULL_SNES (indicating b=0)
-
----
- src/spectral_damage.f90            |  4 +++-
- src/spectral_mech_AL.f90           |  5 +++--
- src/spectral_mech_Basic.f90        |  6 +++---
- src/spectral_mech_Polarisation.f90 |  5 +++--
- src/spectral_thermal.f90           | 22 ++++++++++++----------
- 5 files changed, 24 insertions(+), 18 deletions(-)
-
-diff --git a/src/spectral_damage.f90 b/src/spectral_damage.f90
-index cea6f69c..2c195c56 100644
---- a/src/spectral_damage.f90
-+++ b/src/spectral_damage.f90
-@@ -114,6 +114,8 @@ subroutine spectral_damage_init()
-         damage_grid,ierr)                                                                           !< handle, error
-  CHKERRQ(ierr)
-  call SNESSetDM(damage_snes,damage_grid,ierr); CHKERRQ(ierr)                                        !< connect snes to da
-+ call DMsetFromOptions(da,ierr); CHKERRQ(ierr)
-+ call DMsetUp(da,ierr); CHKERRQ(ierr)
-  call DMCreateGlobalVector(damage_grid,solution,ierr); CHKERRQ(ierr)                                !< global solution vector (grid x 1, i.e. every def grad tensor)
-  call DMDASNESSetFunctionLocal(damage_grid,INSERT_VALUES,spectral_damage_formResidual,&
-                                                                             PETSC_NULL_SNES,ierr) !< residual vector of same shape as solution vector
-@@ -204,7 +206,7 @@ type(tSolutionState) function spectral_damage_solution(timeinc,timeinc_old,loadC
-  params%timeinc = timeinc
-  params%timeincOld = timeinc_old
- 
-- call SNESSolve(damage_snes,PETSC_NULL_SNES,solution,ierr); CHKERRQ(ierr)
-+ call SNESSolve(damage_snes,PETSC_NULL_VEC,solution,ierr); CHKERRQ(ierr)
-  call SNESGetConvergedReason(damage_snes,reason,ierr); CHKERRQ(ierr)
- 
-  if (reason < 1) then
-diff --git a/src/spectral_mech_AL.f90 b/src/spectral_mech_AL.f90
-index e7ff0fbe..dc221f6c 100644
---- a/src/spectral_mech_AL.f90
-+++ b/src/spectral_mech_AL.f90
-@@ -160,6 +160,8 @@ subroutine AL_init
-         da,ierr)                                                                                    ! handle, error
-  CHKERRQ(ierr)
-  call SNESSetDM(snes,da,ierr); CHKERRQ(ierr)
-+ call DMsetFromOptions(da,ierr); CHKERRQ(ierr)
-+ call DMsetUp(da,ierr); CHKERRQ(ierr)
-  call DMCreateGlobalVector(da,solution_vec,ierr); CHKERRQ(ierr)
-  call DMDASNESSetFunctionLocal(da,INSERT_VALUES,AL_formResidual,PETSC_NULL_SNES,ierr)
-  CHKERRQ(ierr)
-@@ -298,8 +300,7 @@ type(tSolutionState) function &
- 
- !--------------------------------------------------------------------------------------------------
- ! solve BVP 
-- call SNESSolve(snes,PETSC_NULL_SNES,solution_vec,ierr)
-- CHKERRQ(ierr)
-+ call SNESsolve(snes,PETSC_NULL_VEC,solution_vec,ierr); CHKERRQ(ierr)
- 
- !--------------------------------------------------------------------------------------------------
- ! check convergence
-diff --git a/src/spectral_mech_Basic.f90 b/src/spectral_mech_Basic.f90
-index b02cfd8c..c335f2d7 100644
---- a/src/spectral_mech_Basic.f90
-+++ b/src/spectral_mech_Basic.f90
-@@ -147,6 +147,8 @@ subroutine basicPETSc_init
-         da,ierr)                                                                                    ! handle, error
-  CHKERRQ(ierr)
-  call SNESsetDM(snes,da,ierr); CHKERRQ(ierr)
-+ call DMsetFromOptions(da,ierr); CHKERRQ(ierr)
-+ call DMsetUp(da,ierr); CHKERRQ(ierr)
-  call DMcreateGlobalVector(da,solution_vec,ierr); CHKERRQ(ierr)                                     ! global solution vector (grid x 9, i.e. every def grad tensor)
-  call DMDASNESsetFunctionLocal(da,INSERT_VALUES,BasicPETSC_formResidual,PETSC_NULL_SNES,ierr)       ! residual vector of same shape as solution vector
-  CHKERRQ(ierr) 
-@@ -158,7 +160,6 @@ subroutine basicPETSc_init
- !--------------------------------------------------------------------------------------------------
- ! init fields                 
-  call DMDAVecGetArrayF90(da,solution_vec,F,ierr); CHKERRQ(ierr)                                     ! get the data out of PETSc to work with
--
-  restart: if (restartInc > 1_pInt) then                                                     
-    if (iand(debug_level(debug_spectral),debug_spectralRestart)/= 0) &
-      write(6,'(/,a,'//IO_intOut(restartInc-1_pInt)//',a)') &
-@@ -267,8 +268,7 @@ type(tSolutionState) function &
- 
- !--------------------------------------------------------------------------------------------------
- ! solve BVP 
-- call SNESSolve(snes,PETSC_NULL_SNES,solution_vec,ierr)
-- CHKERRQ(ierr)
-+ call SNESsolve(snes,PETSC_NULL_VEC,solution_vec,ierr); CHKERRQ(ierr)
- 
- !--------------------------------------------------------------------------------------------------
- ! check convergence
-diff --git a/src/spectral_mech_Polarisation.f90 b/src/spectral_mech_Polarisation.f90
-index 2b9dddc0..3b024f56 100644
---- a/src/spectral_mech_Polarisation.f90
-+++ b/src/spectral_mech_Polarisation.f90
-@@ -160,6 +160,8 @@ subroutine Polarisation_init
-         da,ierr)                                                                                    ! handle, error
-  CHKERRQ(ierr)
-  call SNESsetDM(snes,da,ierr); CHKERRQ(ierr)
-+ call DMsetFromOptions(da,ierr); CHKERRQ(ierr)
-+ call DMsetUp(da,ierr); CHKERRQ(ierr)
-  call DMcreateGlobalVector(da,solution_vec,ierr); CHKERRQ(ierr)
-  call DMDASNESsetFunctionLocal(da,INSERT_VALUES,Polarisation_formResidual,PETSC_NULL_SNES,ierr)
-  CHKERRQ(ierr)
-@@ -298,8 +300,7 @@ type(tSolutionState) function &
- 
- !--------------------------------------------------------------------------------------------------
- ! solve BVP 
-- call SNESSolve(snes,PETSC_NULL_SNES,solution_vec,ierr)
-- CHKERRQ(ierr)
-+ call SNESsolve(snes,PETSC_NULL_VEC,solution_vec,ierr); CHKERRQ(ierr)
- 
- !--------------------------------------------------------------------------------------------------
- ! check convergence
-diff --git a/src/spectral_thermal.f90 b/src/spectral_thermal.f90
-index cc0f7678..7115538c 100644
---- a/src/spectral_thermal.f90
-+++ b/src/spectral_thermal.f90
-@@ -119,16 +119,18 @@ subroutine spectral_thermal_init
-         grid (1),grid(2),localK, &                                                                  ! local grid
-         thermal_grid,ierr)                                                                          ! handle, error
-  CHKERRQ(ierr)
-- call SNESSetDM(thermal_snes,thermal_grid,ierr); CHKERRQ(ierr)                                      ! connect snes to da
-- call DMCreateGlobalVector(thermal_grid,solution        ,ierr); CHKERRQ(ierr)                       ! global solution vector (grid x 1, i.e. every def grad tensor)
-- call DMDASNESSetFunctionLocal(thermal_grid,INSERT_VALUES,spectral_thermal_formResidual,&
-+ call SNESsetDM(thermal_snes,thermal_grid,ierr); CHKERRQ(ierr)                                      ! connect snes to da
-+ call DMsetFromOptions(da,ierr); CHKERRQ(ierr)
-+ call DMsetUp(da,ierr); CHKERRQ(ierr)
-+ call DMcreateGlobalVector(thermal_grid,solution,ierr); CHKERRQ(ierr)                               ! global solution vector (grid x 1, i.e. every def grad tensor)
-+ call DMDASNESsetFunctionLocal(thermal_grid,INSERT_VALUES,spectral_thermal_formResidual,&
-                                                                             PETSC_NULL_SNES,ierr)   ! residual vector of same shape as solution vector
-  CHKERRQ(ierr) 
-- call SNESSetFromOptions(thermal_snes,ierr); CHKERRQ(ierr)                                          ! pull it all together with additional cli arguments
-+ call SNESsetFromOptions(thermal_snes,ierr); CHKERRQ(ierr)                                          ! pull it all together with additional cli arguments
- 
- !--------------------------------------------------------------------------------------------------
- ! init fields             
-- call DMDAGetCorners(thermal_grid,xstart,ystart,zstart,xend,yend,zend,ierr)
-+ call DMDAgetCorners(thermal_grid,xstart,ystart,zstart,xend,yend,zend,ierr)
-  CHKERRQ(ierr)
-  xend = xstart + xend - 1
-  yend = ystart + yend - 1
-@@ -144,9 +146,9 @@ subroutine spectral_thermal_init
-    temperature_lastInc(i,j,k) = temperature_current(i,j,k)
-    temperature_stagInc(i,j,k) = temperature_current(i,j,k)
-  enddo; enddo; enddo
-- call DMDAVecGetArrayF90(thermal_grid,solution,x_scal,ierr); CHKERRQ(ierr)                              !< get the data out of PETSc to work with
-+ call DMDAvecGetArrayF90(thermal_grid,solution,x_scal,ierr); CHKERRQ(ierr)                              !< get the data out of PETSc to work with
-  x_scal(xstart:xend,ystart:yend,zstart:zend) = temperature_current
-- call DMDAVecRestoreArrayF90(thermal_grid,solution,x_scal,ierr); CHKERRQ(ierr)
-+ call DMDAvecRestoreArrayF90(thermal_grid,solution,x_scal,ierr); CHKERRQ(ierr)
- 
- !--------------------------------------------------------------------------------------------------
- ! thermal reference diffusion update
-@@ -200,8 +202,8 @@ type(tSolutionState) function spectral_thermal_solution(timeinc,timeinc_old,load
-  external :: &
-    VecMin, &
-    VecMax, &
--   SNESSolve, &
--   SNESGetConvergedReason
-+   SNESsolve, &
-+   SNESgetConvergedReason
- 
-  spectral_thermal_solution%converged =.false.
-  
-@@ -210,7 +212,7 @@ type(tSolutionState) function spectral_thermal_solution(timeinc,timeinc_old,load
-  params%timeinc = timeinc
-  params%timeincOld = timeinc_old
- 
-- call SNESSolve(thermal_snes,PETSC_NULL_SNES,solution,ierr); CHKERRQ(ierr)
-+ call SNESsolve(thermal_snes,PETSC_NULL_VEC,solution,ierr); CHKERRQ(ierr)
-  call SNESGetConvergedReason(thermal_snes,reason,ierr); CHKERRQ(ierr)
- 
-  if (reason < 1) then
--- 
-2.15.0
-
-
-From 1af2e332a1b86f388aa9e481255f4405874d7960 Mon Sep 17 00:00:00 2001
-From: Martin Diehl <m.diehl@mpie.de>
-Date: Sun, 5 Nov 2017 14:18:45 +0100
-Subject: [PATCH 3/3] named better in thermal and damage
-
----
- src/spectral_damage.f90  | 4 ++--
- src/spectral_thermal.f90 | 4 ++--
- 2 files changed, 4 insertions(+), 4 deletions(-)
-
-diff --git a/src/spectral_damage.f90 b/src/spectral_damage.f90
-index 2c195c56..11da3b96 100644
---- a/src/spectral_damage.f90
-+++ b/src/spectral_damage.f90
-@@ -114,8 +114,8 @@ subroutine spectral_damage_init()
-         damage_grid,ierr)                                                                           !< handle, error
-  CHKERRQ(ierr)
-  call SNESSetDM(damage_snes,damage_grid,ierr); CHKERRQ(ierr)                                        !< connect snes to da
-- call DMsetFromOptions(da,ierr); CHKERRQ(ierr)
-- call DMsetUp(da,ierr); CHKERRQ(ierr)
-+ call DMsetFromOptions(damage_grid,ierr); CHKERRQ(ierr)
-+ call DMsetUp(damage_grid,ierr); CHKERRQ(ierr)
-  call DMCreateGlobalVector(damage_grid,solution,ierr); CHKERRQ(ierr)                                !< global solution vector (grid x 1, i.e. every def grad tensor)
-  call DMDASNESSetFunctionLocal(damage_grid,INSERT_VALUES,spectral_damage_formResidual,&
-                                                                             PETSC_NULL_SNES,ierr) !< residual vector of same shape as solution vector
-diff --git a/src/spectral_thermal.f90 b/src/spectral_thermal.f90
-index 7115538c..2374d83b 100644
---- a/src/spectral_thermal.f90
-+++ b/src/spectral_thermal.f90
-@@ -120,8 +120,8 @@ subroutine spectral_thermal_init
-         thermal_grid,ierr)                                                                          ! handle, error
-  CHKERRQ(ierr)
-  call SNESsetDM(thermal_snes,thermal_grid,ierr); CHKERRQ(ierr)                                      ! connect snes to da
-- call DMsetFromOptions(da,ierr); CHKERRQ(ierr)
-- call DMsetUp(da,ierr); CHKERRQ(ierr)
-+ call DMsetFromOptions(thermal_grid,ierr); CHKERRQ(ierr)
-+ call DMsetUp(thermal_grid,ierr); CHKERRQ(ierr)
-  call DMcreateGlobalVector(thermal_grid,solution,ierr); CHKERRQ(ierr)                               ! global solution vector (grid x 1, i.e. every def grad tensor)
-  call DMDASNESsetFunctionLocal(thermal_grid,INSERT_VALUES,spectral_thermal_formResidual,&
-                                                                             PETSC_NULL_SNES,ierr)   ! residual vector of same shape as solution vector
 -- 
 2.15.0
 

@@ -72,8 +72,6 @@ subroutine damage_local_init(fileUnit)
    damage, &
    damage_initialPhi, &
    material_partHomogenization
- use numerics,only: &
-   worldrank
  
  implicit none
  integer(pInt), intent(in) :: fileUnit
@@ -86,11 +84,9 @@ subroutine damage_local_init(fileUnit)
    tag  = '', &
    line = ''
 
- mainProcess: if (worldrank == 0) then 
-   write(6,'(/,a)')   ' <<<+-  damage_'//DAMAGE_local_label//' init  -+>>>'
-   write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
+ write(6,'(/,a)')   ' <<<+-  damage_'//DAMAGE_local_label//' init  -+>>>'
+ write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
- endif mainProcess
 
  maxNinstance = int(count(damage_type == DAMAGE_local_ID),pInt)
  if (maxNinstance == 0_pInt) return

@@ -162,6 +162,7 @@ subroutine CPFEM_init
    write(6,'(/,a)')   ' <<<+-  CPFEM init  -+>>>'
    write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
+   flush(6)
  endif mainProcess
 
  ! initialize stress and jacobian to zero
@@ -242,8 +243,8 @@ subroutine CPFEM_init
    write(6,'(a32,1x,6(i8,1x))')   'CPFEM_dcsdE:           ', shape(CPFEM_dcsdE)
    write(6,'(a32,1x,6(i8,1x),/)') 'CPFEM_dcsdE_knownGood: ', shape(CPFEM_dcsdE_knownGood)
    write(6,'(a32,l1)')            'symmetricSolver:       ', symmetricSolver
+   flush(6)
  endif
- flush(6)
 
 end subroutine CPFEM_init
 
