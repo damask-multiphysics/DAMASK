@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
 
+#==================================================================================================
+# Execute this script and send system_report.txt to damask@mpie.de for support
+#==================================================================================================
+
 OUTFILE="system_report.txt"
 echo generating $OUTFILE
 
