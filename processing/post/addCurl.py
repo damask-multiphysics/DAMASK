@@ -4,6 +4,7 @@
 import os,sys,math
 import numpy as np
 from optparse import OptionParser
+from collections import defaultdict
 import damask
 
 scriptName = os.path.splitext(os.path.basename(__file__))[0]
@@ -52,31 +53,25 @@ def curlFFT(geomdim,field):
 
 parser = OptionParser(option_class=damask.extendableOption, usage='%prog option(s) [ASCIItable(s)]', description = """
 Add column(s) containing curl of requested column(s).
-Operates on periodic ordered three-dimensional data sets.
-Deals with both vector- and tensor fields.
-
+Operates on periodic ordered three-dimensional data sets
+of vector and tensor fields.
 """, version = scriptID)
 
 parser.add_option('-p','--pos','--periodiccellcenter',
                   dest = 'pos',
                   type = 'string', metavar = 'string',
                   help = 'label of coordinates [%default]')
-parser.add_option('-v','--vector',
-                  dest = 'vector',
+parser.add_option('-d','--data',
+                  dest = 'data',
                   action = 'extend', metavar = '<string LIST>',
-                  help = 'label(s) of vector field values')
-parser.add_option('-t','--tensor',
-                  dest = 'tensor',
-                  action = 'extend', metavar = '<string LIST>',
-                  help = 'label(s) of tensor field values')
+                  help = 'label(s) of field values')
 
 parser.set_defaults(pos = 'pos',
                    )
 
 (options,filenames) = parser.parse_args()
 
-if options.vector is None and options.tensor is None:
-  parser.error('no data column specified.')
+if options.data is None: parser.error('no data column specified.')
 
 # --- loop over input files ------------------------------------------------------------------------
 
@@ -87,30 +82,31 @@ for name in filenames:
   except: continue
   damask.util.report(scriptName,name)
 
-# ------------------------------------------ read header ------------------------------------------
+# --- interpret header ----------------------------------------------------------------------------
 
   table.head_read()
 
-# ------------------------------------------ sanity checks ----------------------------------------
-
-  items = {
-            'tensor': {'dim': 9, 'shape': [3,3], 'labels':options.tensor, 'active':[], 'column': []},
-            'vector': {'dim': 3, 'shape': [3],   'labels':options.vector, 'active':[], 'column': []},
-          }
-  errors  = []
   remarks = []
-  column = {}
-  
-  if table.label_dimension(options.pos) != 3: errors.append('coordinates {} are not a vector.'.format(options.pos))
-  else: colCoord = table.label_index(options.pos)
+  errors  = []
+  active = defaultdict(list)
 
-  for type, data in items.iteritems():
-    for what in (data['labels'] if data['labels'] is not None else []):
-      dim = table.label_dimension(what)
-      if dim != data['dim']: remarks.append('column {} is not a {}.'.format(what,type))
-      else:
-        items[type]['active'].append(what)
-        items[type]['column'].append(table.label_index(what))
+  coordDim = table.label_dimension(options.pos)
+  if coordDim != 3:
+    errors.append('coordinates "{}" must be three-dimensional.'.format(options.pos))
+  else: coordCol = table.label_index(options.pos)
+
+  for i,dim in enumerate(table.label_dimension(options.data)):
+    me = options.data[i]
+    if dim == -1:
+      remarks.append('"{}" not found...'.format(me))
+    elif dim == 9:
+      active['tensor'].append(me)
+      remarks.append('differentiating tensor "{}"...'.format(me))
+    elif dim == 3:
+      active['vector'].append(me)
+      remarks.append('differentiating vector "{}"...'.format(me))
+    else:
+      remarks.append('skipping "{}" of dimension {}...'.format(me,dim))
 
   if remarks != []: damask.util.croak(remarks)
   if errors  != []:
@@ -118,19 +114,20 @@ for name in filenames:
     table.close(dismiss = True)
     continue
 
+
 # ------------------------------------------ assemble header --------------------------------------
 
   table.info_append(scriptID + '\t' + ' '.join(sys.argv[1:]))
-  for type, data in items.iteritems():
-    for label in data['active']:
-      table.labels_append(['{}_curlFFT({})'.format(i+1,label) for i in range(data['dim'])])         # extend ASCII header with new labels
+  for type, data in active.iteritems():
+    for label in data:
+      table.labels_append(['{}_curlFFT({})'.format(i+1,label) for i in range(table.label_dimension(label))])     # extend ASCII header with new labels
   table.head_write()
 
 # --------------- figure out size and grid ---------------------------------------------------------
 
   table.data_readArray()
 
-  coords = [np.unique(table.data[:,colCoord+i]) for i in range(3)]
+  coords = [np.unique(table.data[:,coordCol+i]) for i in range(3)]
   mincorner = np.array(map(min,coords))
   maxcorner = np.array(map(max,coords))
   grid   = np.array(map(len,coords),'i')
@@ -140,12 +137,12 @@ for name in filenames:
 # ------------------------------------------ process value field -----------------------------------
 
   stack = [table.data]
-  for type, data in items.iteritems():
-    for i,label in enumerate(data['active']):
+  for type, data in active.iteritems():
+    for i,label in enumerate(data):
       # we need to reverse order here, because x is fastest,ie rightmost, but leftmost in our x,y,z notation
       stack.append(curlFFT(size[::-1],
-                           table.data[:,data['column'][i]:data['column'][i]+data['dim']].
-                           reshape(grid[::-1].tolist()+data['shape'])))
+                           table.data[:,table.label_indexrange(label)].
+                           reshape(grid[::-1].tolist()+[table.label_dimension(label)])))
 
 # ------------------------------------------ output result -----------------------------------------
 
