@@ -98,10 +98,10 @@ for name in filenames:
       remarks.append('"{}" not found...'.format(me))
     elif dim == 1:
       active['scalar'].append(me)
-      remarks.append('adding scalar "{}"...'.format(me))
+      remarks.append('differentiating scalar "{}"...'.format(me))
     elif dim == 3:
       active['vector'].append(me)
-      remarks.append('adding vector "{}"...'.format(me))
+      remarks.append('differentiating vector "{}"...'.format(me))
     else:
       remarks.append('skipping "{}" of dimension {}...'.format(me,dim))
 
