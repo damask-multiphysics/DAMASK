@@ -49,7 +49,8 @@ class Test():
 
     self.dirBase = os.path.dirname(os.path.realpath(sys.modules[self.__class__.__module__].__file__))
 
-    self.parser = OptionParser(description = '{} (Test class version: {})'.format(self.description,damask.version),
+    self.parser = OptionParser(option_class=damask.extendableOption,
+                               description = '{} (Test class version: {})'.format(self.description,damask.version),
                                usage = './test.py [options]')
     self.parser.add_option("-k", "--keep",
                            action = "store_true",
@@ -65,7 +66,8 @@ class Test():
                            help   = "show all test variants without actual calculation")
     self.parser.add_option("-s",   "--select",
                            dest   = "select",
-                           help   = "run test of given name only")
+                           action = 'extend', metavar = '<string LIST>',
+                           help   = "run test(s) of given name only")
     self.parser.set_defaults(keep   = self.keep,
                              accept = self.accept,
                              update = self.updateRequest,
@@ -90,7 +92,7 @@ class Test():
       if self.options.show:
         logging.critical('{}: {}'.format(variant+1,name))
       elif self.options.select is not None \
-           and not (name == self.options.select or str(variant+1) == self.options.select):
+           and not (name in self.options.select or str(variant+1) in self.options.select):
         pass
       else:
         try:
@@ -106,7 +108,7 @@ class Test():
             return variant+1                                                                          # return culprit
 
         except Exception as e:
-          logging.critical('exception during variant execution: "{}"'.format(e.message))
+          logging.critical('exception during variant execution: "{}"'.format(str(e)))
           return variant+1                                                     # return culprit
     return 0
   
@@ -585,13 +587,13 @@ class Test():
     ret = culprit
 
     if culprit == 0:
-      msg = 'The test passed.' if (self.options.select is not None or len(self.variants) == 1) \
-       else 'All {} tests passed.'.format(len(self.variants))
+      count = len(self.variants) if self.options.select is None else len(self.options.select)
+      msg = 'Test passed.' if count == 1 else 'All {} tests passed.'.format(count)
     elif culprit == -1:
-      msg = 'Warning: Could not start test...'
+      msg = 'Warning: could not start test...'
       ret = 0
     else:
-      msg = ' * Test "{}" failed.'.format(self.variants[culprit-1])
+      msg = 'Test "{}" failed.'.format(self.variantName(culprit-1))
 
     logging.critical('\n'.join(['*'*40,msg,'*'*40]) + '\n')
     return ret
