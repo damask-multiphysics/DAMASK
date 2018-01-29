@@ -38,7 +38,7 @@ def gradFFT(geomdim,field):
  if dataType == 'vector':                                                                           # vector, 3 -> 3x3
    grad_fourier = np.einsum('ijkl,ijkm->ijklm',field_fourier,k_s)*TWOPIIMG
  elif dataType == 'scalar':                                                                         # scalar, 1 -> 3
-   grad_fourier = np.einsum('ijkl,ijkl->ijkl',field_fourier,k_s)*TWOPIIMG
+   grad_fourier = np.einsum('ijkl,ijkm->ijkm',field_fourier,k_s)*TWOPIIMG
 
  return np.fft.irfftn(grad_fourier,axes=(0,1,2),s=shapeFFT).reshape([N,3*n])
 
