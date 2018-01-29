@@ -4,11 +4,20 @@
 import os,sys,math
 import numpy as np
 from optparse import OptionParser
-from collections import defaultdict
 import damask
 
 scriptName = os.path.splitext(os.path.basename(__file__))[0]
 scriptID   = ' '.join([scriptName,damask.version])
+
+def merge_dicts(*dict_args):
+    """
+    Given any number of dicts, shallow copy and merge into a new dict,
+    precedence goes to key value pairs in latter dicts.
+    """
+    result = {}
+    for dictionary in dict_args:
+        result.update(dictionary)
+    return result
 
 def curlFFT(geomdim,field):
  shapeFFT    = np.array(np.shape(field))[0:3]
@@ -69,9 +78,21 @@ parser.add_option('-d','--data',
 parser.set_defaults(pos = 'pos',
                    )
 
+
 (options,filenames) = parser.parse_args()
 
 if options.data is None: parser.error('no data column specified.')
+
+# --- define possible data types -------------------------------------------------------------------
+
+datatypes = {
+              3: {'name': 'vector',
+                  'shape': [3],
+                 },
+              9: {'name': 'tensor',
+                  'shape': [3,3],
+                 },
+            }
 
 # --- loop over input files ------------------------------------------------------------------------
 
@@ -88,25 +109,21 @@ for name in filenames:
 
   remarks = []
   errors  = []
-  active = defaultdict(list)
+  active = []
 
   coordDim = table.label_dimension(options.pos)
   if coordDim != 3:
     errors.append('coordinates "{}" must be three-dimensional.'.format(options.pos))
   else: coordCol = table.label_index(options.pos)
 
-  for i,dim in enumerate(table.label_dimension(options.data)):
-    me = options.data[i]
-    if dim == -1:
-      remarks.append('"{}" not found...'.format(me))
-    elif dim == 9:
-      active['tensor'].append(me)
-      remarks.append('differentiating tensor "{}"...'.format(me))
-    elif dim == 3:
-      active['vector'].append(me)
-      remarks.append('differentiating vector "{}"...'.format(me))
+  for me in options.data:
+    dim = table.label_dimension(me)
+    if dim in datatypes:
+      active.append(merge_dicts({'label':me},datatypes[dim]))
+      remarks.append('differentiating {} "{}"...'.format(datatypes[dim]['name'],me))
     else:
-      remarks.append('skipping "{}" of dimension {}...'.format(me,dim))
+      remarks.append('skipping "{}" of dimension {}...'.format(me,dim) if dim != -1 else \
+                     '"{}" not found...'.format(me) )
 
   if remarks != []: damask.util.croak(remarks)
   if errors  != []:
@@ -114,13 +131,11 @@ for name in filenames:
     table.close(dismiss = True)
     continue
 
-
 # ------------------------------------------ assemble header --------------------------------------
 
   table.info_append(scriptID + '\t' + ' '.join(sys.argv[1:]))
-  for type, data in active.iteritems():
-    for label in data:
-      table.labels_append(['{}_curlFFT({})'.format(i+1,label) for i in range(table.label_dimension(label))])     # extend ASCII header with new labels
+  for data in active:
+    table.labels_append(['{}_curlFFT({})'.format(i+1,data['label']) for i in range(np.prod(np.array(data['shape'])))])     # extend ASCII header with new labels
   table.head_write()
 
 # --------------- figure out size and grid ---------------------------------------------------------
@@ -137,12 +152,11 @@ for name in filenames:
 # ------------------------------------------ process value field -----------------------------------
 
   stack = [table.data]
-  for type, data in active.iteritems():
-    for i,label in enumerate(data):
-      # we need to reverse order here, because x is fastest,ie rightmost, but leftmost in our x,y,z notation
-      stack.append(curlFFT(size[::-1],
-                           table.data[:,table.label_indexrange(label)].
-                           reshape(grid[::-1].tolist()+[table.label_dimension(label)])))
+  for data in active:
+    # we need to reverse order here, because x is fastest,ie rightmost, but leftmost in our x,y,z notation
+    stack.append(curlFFT(size[::-1],
+                         table.data[:,table.label_indexrange(data['label'])].
+                         reshape(grid[::-1].tolist()+data['shape'])))
 
 # ------------------------------------------ output result -----------------------------------------
 
