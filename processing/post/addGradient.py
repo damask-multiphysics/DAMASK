@@ -10,46 +10,42 @@ scriptName = os.path.splitext(os.path.basename(__file__))[0]
 scriptID   = ' '.join([scriptName,damask.version])
 
 def merge_dicts(*dict_args):
-    """
-    Given any number of dicts, shallow copy and merge into a new dict,
-    precedence goes to key value pairs in latter dicts.
-    """
-    result = {}
-    for dictionary in dict_args:
-        result.update(dictionary)
-    return result
+  """Given any number of dicts, shallow copy and merge into a new dict, with precedence going to key value pairs in latter dicts."""
+  result = {}
+  for dictionary in dict_args:
+      result.update(dictionary)
+  return result
 
 def gradFFT(geomdim,field):
- shapeFFT    = np.array(np.shape(field))[0:3]
- grid = np.array(np.shape(field)[2::-1])
- N = grid.prod()                                                                                    # field size
- n = np.array(np.shape(field)[3:]).prod()                                                           # data size
+  """Calculate gradient of a vector or scalar field by transforming into Fourier space."""
+  shapeFFT = np.array(np.shape(field))[0:3]
+  grid     = np.array(np.shape(field)[2::-1])
+  N = grid.prod()                                                                                    # field size
+  n = np.array(np.shape(field)[3:]).prod()                                                           # data size
 
- if   n == 3:   dataType = 'vector'
- elif n == 1:   dataType = 'scalar'
+  field_fourier = np.fft.rfftn(field,axes=(0,1,2),s=shapeFFT)
+  grad_fourier  = np.empty(field_fourier.shape+(3,),'c16')
 
- field_fourier = np.fft.rfftn(field,axes=(0,1,2),s=shapeFFT)
- grad_fourier  = np.empty(field_fourier.shape+(3,),'c16')
+  # differentiation in Fourier space
+  TWOPIIMG = 2.0j*math.pi
+  einsums = { 
+              1:'ijkl,ijkm->ijkm',                                                                   # scalar, 1 -> 3
+              3:'ijkl,ijkm->ijklm',                                                                  # vector, 3 -> 3x3
+            }
 
-# differentiation in Fourier space
-# Question: why are grid[0,1,2] normalized by geomdim[2,1,0]??
- TWOPIIMG = 2.0j*math.pi
- k_sk = np.where(np.arange(grid[2])>grid[2]//2,np.arange(grid[2])-grid[2],np.arange(grid[2]))/geomdim[0]
- if grid[2]%2 == 0: k_sk[grid[2]//2] = 0                                                            # for even grid, set Nyquist freq to 0 (Johnson, MIT, 2011)
- 
- k_sj = np.where(np.arange(grid[1])>grid[1]//2,np.arange(grid[1])-grid[1],np.arange(grid[1]))/geomdim[1]
- if grid[1]%2 == 0: k_sj[grid[1]//2] = 0                                                            # for even grid, set Nyquist freq to 0 (Johnson, MIT, 2011)
+  k_sk = np.where(np.arange(grid[2])>grid[2]//2,np.arange(grid[2])-grid[2],np.arange(grid[2]))/geomdim[0]
+  if grid[2]%2 == 0: k_sk[grid[2]//2] = 0                                                            # Nyquist freq=0 for even grid (Johnson, MIT, 2011)
 
- k_si = np.arange(grid[0]//2+1)/geomdim[2]
- 
- kk, kj, ki = np.meshgrid(k_sk,k_sj,k_si,indexing = 'ij')
- k_s = np.concatenate((ki[:,:,:,None],kj[:,:,:,None],kk[:,:,:,None]),axis = 3).astype('c16')                           
- if dataType == 'vector':                                                                           # vector, 3 -> 3x3
-   grad_fourier = np.einsum('ijkl,ijkm->ijklm',field_fourier,k_s)*TWOPIIMG
- elif dataType == 'scalar':                                                                         # scalar, 1 -> 3
-   grad_fourier = np.einsum('ijkl,ijkm->ijkm',field_fourier,k_s)*TWOPIIMG
+  k_sj = np.where(np.arange(grid[1])>grid[1]//2,np.arange(grid[1])-grid[1],np.arange(grid[1]))/geomdim[1]
+  if grid[1]%2 == 0: k_sj[grid[1]//2] = 0                                                            # Nyquist freq=0 for even grid (Johnson, MIT, 2011)
 
- return np.fft.irfftn(grad_fourier,axes=(0,1,2),s=shapeFFT).reshape([N,3*n])
+  k_si = np.arange(grid[0]//2+1)/geomdim[2]
+
+  kk, kj, ki = np.meshgrid(k_sk,k_sj,k_si,indexing = 'ij')
+  k_s = np.concatenate((ki[:,:,:,None],kj[:,:,:,None],kk[:,:,:,None]),axis = 3).astype('c16')                           
+  grad_fourier = np.einsum(einsums[n],field_fourier,k_s)*TWOPIIMG
+
+  return np.fft.irfftn(grad_fourier,axes=(0,1,2),s=shapeFFT).reshape([N,3*n])
 
 
 # --------------------------------------------------------------------
@@ -131,7 +127,8 @@ for name in filenames:
 
   table.info_append(scriptID + '\t' + ' '.join(sys.argv[1:]))
   for data in active:
-    table.labels_append(['{}_gradFFT({})'.format(i+1,data['label']) for i in range(coordDim*np.prod(np.array(data['shape'])))])     # extend ASCII header with new labels
+    table.labels_append(['{}_gradFFT({})'.format(i+1,data['label']) 
+                        for i in range(coordDim*np.prod(np.array(data['shape'])))])                 # extend ASCII header with new labels
   table.head_write()
 
 # --------------- figure out size and grid ---------------------------------------------------------
