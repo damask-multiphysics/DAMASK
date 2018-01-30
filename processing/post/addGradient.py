@@ -135,12 +135,7 @@ for name in filenames:
 
   table.data_readArray()
 
-  coords = [np.unique(table.data[:,coordCol+i]) for i in range(3)]
-  mincorner = np.array(map(min,coords))
-  maxcorner = np.array(map(max,coords))
-  grid   = np.array(map(len,coords),'i')
-  size   = grid/np.maximum(np.ones(3,'d'), grid-1.0) * (maxcorner-mincorner)                        # size from edge to edge = dim * n/(n-1) 
-  size   = np.where(grid > 1, size, min(size[grid > 1]/grid[grid > 1]))                             # spacing for grid==1 equal to smallest among other ones
+  grid,size = damask.util.coordGridAndSize(table.data[:,table.label_indexrange(options.pos)])
 
 # ------------------------------------------ process value field -----------------------------------
 
