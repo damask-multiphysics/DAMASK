@@ -139,7 +139,7 @@ for name in filenames:
 
   table.data_readArray()
 
-  grid,size = damask.util.gridAndSize(table.data[:,table.label_indexrange(options.pos)])
+  grid,size = damask.util.coordGridAndSize(table.data[:,table.label_indexrange(options.pos)])
 
 # ------------------------------------------ process value field -----------------------------------
 
