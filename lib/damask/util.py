@@ -100,6 +100,18 @@ def execute(cmd,
   if process.returncode != 0: raise RuntimeError('{} failed with returncode {}'.format(cmd,process.returncode))
   return out,error
 
+
+def coordGridAndSize(coordinates):
+  """Determines grid count and overall physical size along each dimension of an ordered array of coordinates"""
+  dim    = coordinates.shape[1]
+  coords = [np.unique(coordinates[:,i]) for i in range(dim)]
+  mincorner = np.array(map(min,coords))
+  maxcorner = np.array(map(max,coords))
+  grid   = np.array(map(len,coords),'i')
+  size   = grid/np.maximum(np.ones(dim,'d'), grid-1.0) * (maxcorner-mincorner)                      # size from edge to edge = dim * n/(n-1) 
+  size   = np.where(grid > 1, size, min(size[grid > 1]/grid[grid > 1]))                             # spacing for grid==1 equal to smallest among other ones
+  return grid,size
+  
 # -----------------------------
 class extendableOption(Option):
   """
@@ -130,7 +142,7 @@ class backgroundMessage(threading.Thread):
              'hexagon':  ['⬢', '⬣'],
              'square':   ['▖', '▘', '▝', '▗'],
              'triangle': ['ᐊ', 'ᐊ', 'ᐃ', 'ᐅ', 'ᐅ', 'ᐃ'],
-             'amoeba':   ['▖', '▏', '▘', '▔', '▝', '▕', '▗', '▂'],
+             'amoeba':   ['▖', '▏', '▘', '▔', '▝', '▕', '▗', '▁'],
              'beat':     ['▁', '▂', '▃', '▅', '▆', '▇', '▇', '▆', '▅', '▃', '▂'],
              'prison':   ['ᚋ', 'ᚌ', 'ᚍ', 'ᚏ', 'ᚎ', 'ᚍ', 'ᚌ', 'ᚋ'],
              'breath':   ['ᚐ', 'ᚑ', 'ᚒ', 'ᚓ', 'ᚔ', 'ᚓ', 'ᚒ', 'ᚑ', 'ᚐ'],
