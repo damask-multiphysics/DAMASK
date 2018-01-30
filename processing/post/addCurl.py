@@ -66,7 +66,7 @@ parser.add_option('-p','--pos','--periodiccellcenter',
                   dest = 'pos',
                   type = 'string', metavar = 'string',
                   help = 'label of coordinates [%default]')
-parser.add_option('-d','--data',
+parser.add_option('-l','--label',
                   dest = 'data',
                   action = 'extend', metavar = '<string LIST>',
                   help = 'label(s) of field values')

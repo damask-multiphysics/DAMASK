@@ -109,7 +109,7 @@ class Test():
 
         except Exception as e:
           logging.critical('exception during variant execution: "{}"'.format(str(e)))
-          return variant+1                                                     # return culprit
+          return variant+1                                                                            # return culprit
     return 0
   
   def feasible(self):
