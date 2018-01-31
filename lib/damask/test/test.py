@@ -570,7 +570,7 @@ class Test():
     return self.compare_Table(headingsRef,
                               self.fileInReference(ref),
                               headingsRef if headingsCur == '' else headingsCur,
-                              self.fileInReference(ref if cur == '' else cur),
+                              self.fileInCurrent(ref if cur == '' else cur),
                               normHeadings,normType,
                               absoluteTolerance,perLine,skipLines)
 
