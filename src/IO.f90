@@ -1268,7 +1268,7 @@ integer(pInt) function IO_countNumericalDataLines(fileUnit)
    line = IO_read(fileUnit)
    chunkPos = IO_stringPos(line)
    tmp = IO_lc(IO_stringValue(line,chunkPos,1_pInt))
-   if (scan(tmp,"abcdefghijklmnopqrstuvwxyz")/=0) then                                                  ! found keyword
+   if (verify(trim(tmp) ,"0123456789")/=0) then                                                            ! found keyword
      line = IO_read(fileUnit, .true.)                                                               ! reset IO_read
      exit
    else
@@ -1839,12 +1839,12 @@ integer(pInt) function IO_verifyIntValue (string,validChars,myName)
  invalidWhere = verify(string,validChars)
  if (invalidWhere == 0_pInt) then
    read(UNIT=string,iostat=readStatus,FMT=*) IO_verifyIntValue                                        ! no offending chars found
-   if (readStatus /= 0_pInt) &                                                                        ! error during string to float conversion
+   if (readStatus /= 0_pInt) &                                                                        ! error during string to integer conversion
      call IO_warning(203_pInt,ext_msg=myName//'"'//string//'"')
  else
    call IO_warning(202_pInt,ext_msg=myName//'"'//string//'"')                                         ! complain about offending characters
    read(UNIT=string(1_pInt:invalidWhere-1_pInt),iostat=readStatus,FMT=*) IO_verifyIntValue            ! interpret remaining string
-   if (readStatus /= 0_pInt) &                                                                        ! error during string to float conversion
+   if (readStatus /= 0_pInt) &                                                                        ! error during string to integer conversion
      call IO_warning(203_pInt,ext_msg=myName//'"'//string(1_pInt:invalidWhere-1_pInt)//'"')
  endif
 
