@@ -43,7 +43,7 @@ contains
 !> solver the information is provided by the interface module
 !--------------------------------------------------------------------------------------------------
 subroutine FE_init
-#ifdef __GFORTRAN__
+#if defined(__GFORTRAN__) || __INTEL_COMPILER >= 1800
  use, intrinsic :: iso_fortran_env, only: &
    compiler_version, &
    compiler_options

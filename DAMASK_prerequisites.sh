@@ -119,7 +119,7 @@ echo
 echo ==============================================================================================
 echo MPI Wrappers
 echo ==============================================================================================
-for executable in mpicc mpiCC mpic++ mpicxx mpifort mpif90 mpif77; do
+for executable in mpicc mpiCC mpic++ mpicpc mpicxx mpifort mpif90 mpif77; do
   getDetails $executable '-show'
 done
 echo

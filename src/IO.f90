@@ -82,7 +82,7 @@ contains
 !> @brief only outputs revision number
 !--------------------------------------------------------------------------------------------------
 subroutine IO_init
-#ifdef __GFORTRAN__
+#if defined(__GFORTRAN__) || __INTEL_COMPILER >= 1800
  use, intrinsic :: iso_fortran_env, only: &
    compiler_version, &
    compiler_options

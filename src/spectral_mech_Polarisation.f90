@@ -84,7 +84,7 @@ contains
 !> @todo use sourced allocation, e.g. allocate(Fdot,source = F_lastInc)
 !--------------------------------------------------------------------------------------------------
 subroutine Polarisation_init
-#ifdef __GFORTRAN__
+#if defined(__GFORTRAN__) || __INTEL_COMPILER >= 1800
  use, intrinsic :: iso_fortran_env, only: &
    compiler_version, &
    compiler_options
