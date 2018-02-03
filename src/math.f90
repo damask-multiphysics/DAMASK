@@ -1780,9 +1780,8 @@ function math_sampleGaussOri(center,noise)
  real(pReal), dimension(3), intent(in) :: center 
  real(pReal) :: cosScatter,scatter
  real(pReal), dimension(3) :: math_sampleGaussOri, disturb
- real(pReal), dimension(3), parameter :: ORIGIN = [0.0_pReal,0.0_pReal,0.0_pReal]
+ real(pReal), dimension(3), parameter :: ORIGIN = 0.0_pReal
  real(pReal), dimension(5) :: rnd
- integer(pInt) :: i
 
  if (abs(noise) < tol_math_check) then
    math_sampleGaussOri = center
@@ -1796,10 +1795,10 @@ function math_sampleGaussOri(center,noise)
 
  do
    call halton(5_pInt,rnd)
-   forall (i=1_pInt:3_pInt) rnd(i) = 2.0_pReal*rnd(i)-1.0_pReal  ! expand 1:3 to range [-1,+1]
+   rnd(1:3) = 2.0_pReal*rnd(1:3)-1.0_pReal                                                          ! expand 1:3 to range [-1,+1]
    disturb  = [ scatter * rnd(1), &                                                       ! phi1
                 sign(1.0_pReal,rnd(2))*acos(cosScatter+(1.0_pReal-cosScatter)*rnd(4)), &  ! Phi
-                scatter * rnd(2)]                                                         ! phi2
+                scatter * rnd(3)]                                                         ! phi2
    if (rnd(5) <= exp(-1.0_pReal*(math_EulerMisorientation(ORIGIN,disturb)/scatter)**2_pReal)) exit
  enddo
 
