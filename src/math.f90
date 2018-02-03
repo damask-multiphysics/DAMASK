@@ -1741,13 +1741,12 @@ real(pReal) pure function math_EulerMisorientation(EulerA,EulerB)
 
  implicit none
  real(pReal), dimension(3), intent(in) :: EulerA,EulerB
- real(pReal), dimension(3,3) :: r
- real(pReal) :: tr
+ real(pReal) :: cosTheta
 
- r = math_mul33x33(math_EulerToR(EulerB),transpose(math_EulerToR(EulerA)))
+ cosTheta = (math_trace33(math_mul33x33(math_EulerToR(EulerB), &
+                              transpose(math_EulerToR(EulerA)))) - 1.0_pReal) * 0.5_pReal
 
- tr = (math_trace33(r)-1.0_pReal)*0.4999999_pReal
- math_EulerMisorientation = abs(0.5_pReal*PI-asin(tr))
+ math_EulerMisorientation = acos(math_limit(cosTheta,-1.0_pReal,1.0_pReal))
 
 end function math_EulerMisorientation
 
