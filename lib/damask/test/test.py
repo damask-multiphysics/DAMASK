@@ -322,8 +322,10 @@ class Test():
     cur1Name = self.fileInCurrent(cur1)
     return self.compare_Array(cur0Name,cur1Name)
 
-  def compare_Table(self,headings0,file0,headings1,file1,normHeadings='',normType=None,
-                                     absoluteTolerance=False,perLine=False,skipLines=[]):
+  def compare_Table(self,headings0,file0,
+                         headings1,file1,
+                         normHeadings='',normType=None,
+                         absoluteTolerance=False,perLine=False,skipLines=[]):
 
     import numpy as np
     logging.info('\n '.join(['comparing ASCII Tables',file0,file1]))
@@ -337,7 +339,7 @@ class Test():
       data         = [[]  for i in range(dataLength)]
       maxError     = [0.0 for i in range(dataLength)]
       absTol       = [absoluteTolerance for i in range(dataLength)]
-      column       = [[1 for i in range(dataLength)] for j in range(2)]
+      column       = [[1  for i in range(dataLength)] for j in range(2)]
 
       norm         = [[]  for i in range(dataLength)]
       normLength   = [1   for i in range(dataLength)]
@@ -368,11 +370,11 @@ class Test():
       key1    = ('1_' if     length[i]>1 else '') +    headings1[i]['label']
       normKey = ('1_' if normLength[i]>1 else '') + normHeadings[i]['label']
       if key0 not in table0.labels(raw = True):
-        raise Exception('column {} not found in 1. table...\n'.format(key0))
+        raise Exception('column "{}" not found in first table...\n'.format(key0))
       elif key1 not in table1.labels(raw = True):
-        raise Exception('column {} not found in 2. table...\n'.format(key1))
+        raise Exception('column "{}" not found in second table...\n'.format(key1))
       elif normKey not in table0.labels(raw = True):
-        raise Exception('column {} not found in 1. table...\n'.format(normKey))
+        raise Exception('column "{}" not found in first table...\n'.format(normKey))
       else:
         column[0][i]  = table0.label_index(key0)
         column[1][i]  = table1.label_index(key1)
@@ -400,9 +402,9 @@ class Test():
         norm[i] = [1.0 for j in range(line0-len(skipLines))]
         absTol[i] = True
         if perLine:
-          logging.warning('At least one norm of {} in 1. table is 0.0, using absolute tolerance'.format(headings0[i]['label']))
+          logging.warning('At least one norm of "{}" in first table is 0.0, using absolute tolerance'.format(headings0[i]['label']))
         else:
-          logging.warning('Maximum norm of {} in 1. table is 0.0, using absolute tolerance'.format(headings0[i]['label']))
+          logging.warning('Maximum norm of "{}" in first table is 0.0, using absolute tolerance'.format(headings0[i]['label']))
 
     line1 = 0
     while table1.data_read():                                                  # read next data line of ASCII table
@@ -414,7 +416,7 @@ class Test():
                                                                                    norm[i][line1-len(skipLines)])
       line1 +=1
 
-    if (line0 != line1): raise Exception('found {} lines in 1. table but {} in 2. table'.format(line0,line1))
+    if (line0 != line1): raise Exception('found {} lines in first table but {} in second table'.format(line0,line1))
 
     logging.info(' ********')
     for i in range(dataLength):
@@ -561,25 +563,28 @@ class Test():
     return allclose
 
 
-  def compare_TableRefCur(self,headingsRef,ref,headingsCur='',cur='',normHeadings='',normType=None,\
-                                                 absoluteTolerance=False,perLine=False,skipLines=[]):
+  def compare_TableRefCur(self,headingsRef,ref,headingsCur='',cur='',
+                               normHeadings='',normType=None,
+                               absoluteTolerance=False,perLine=False,skipLines=[]):
 
-    if cur == '': cur = ref
-    if headingsCur == '': headingsCur = headingsRef
-    refName = self.fileInReference(ref)
-    curName = self.fileInCurrent(cur)
-    return self.compare_Table(headingsRef,refName,headingsCur,curName,normHeadings,normType,
-                                                               absoluteTolerance,perLine,skipLines)
+    return self.compare_Table(headingsRef,
+                              self.fileInReference(ref),
+                              headingsRef if headingsCur == '' else headingsCur,
+                              self.fileInCurrent(ref if cur == '' else cur),
+                              normHeadings,normType,
+                              absoluteTolerance,perLine,skipLines)
 
 
-  def compare_TableCurCur(self,headingsCur0,Cur0,Cur1,headingsCur1='',normHeadings='',normType=None,\
-                                                 absoluteTolerance=False,perLine=False,skipLines=[]):
+  def compare_TableCurCur(self,headingsCur0,Cur0,Cur1,
+                               headingsCur1='',
+                               normHeadings='',normType=None,
+                               absoluteTolerance=False,perLine=False,skipLines=[]):
 
-    if headingsCur1 == '': headingsCur1 = headingsCur0
-    cur0Name = self.fileInCurrent(Cur0)
-    cur1Name = self.fileInCurrent(Cur1)
-    return self.compare_Table(headingsCur0,cur0Name,headingsCur1,cur1Name,normHeadings,normType,
-                                                               absoluteTolerance,perLine,skipLines)
+    return self.compare_Table(headingsCur0,
+                              self.fileInCurrent(Cur0),
+                              headingsCur0 if headingsCur1 == '' else headingsCur1,
+                              self.fileInCurrent(Cur1),
+                              normHeadings,normType,absoluteTolerance,perLine,skipLines)
 
 
   def report_Success(self,culprit):

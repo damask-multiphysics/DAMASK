@@ -1642,11 +1642,12 @@ subroutine mesh_marc_get_matNumber(fileUnit)
     if (len(trim(line))/=0_pInt) then
       chunkPos = IO_stringPos(line)
       data_blocks = IO_intValue(line,chunkPos,1_pInt)
-    endif  
+    endif
+    allocate(Marc_matNumber(data_blocks))
     do i=1_pInt,data_blocks                                                                        ! read all data blocks
       read (fileUnit,610,END=620) line
       chunkPos = IO_stringPos(line)
-      Marc_matNumber = (/Marc_matNumber, IO_intValue(line,chunkPos,1_pInt)/)
+      Marc_matNumber(i) = IO_intValue(line,chunkPos,1_pInt)
       do j=1_pint,2_pInt + hypoelasticTableStyle                                                   ! read 2 or 3 remaining lines of data block
         read (fileUnit,610,END=620) line
       enddo
@@ -1809,12 +1810,11 @@ subroutine mesh_marc_count_cpElements(fileUnit)
        do i=1_pInt,3_pInt+hypoelasticTableStyle  ! Skip 3 or 4 lines
          read (fileUnit,610,END=620) line
        enddo
-       mesh_NcpElems = mesh_NcpElems + IO_countContinuousIntValues(fileUnit)                        ! why not simply mesh_NcpElems = IO_countContinuousIntValues(fileUnit)? keyword hypoelastic might appear several times so the next line probably should not be there
+       mesh_NcpElems = mesh_NcpElems + IO_countContinuousIntValues(fileUnit)                            ! why not simply mesh_NcpElems = IO_countContinuousIntValues(fileUnit)? not fully correct as hypoelastic can have multiple data fields, needs update
        exit
      endif
    enddo
- else                                                                                                  ! Marc2017 and later
-   call IO_error(error_ID=701_pInt)
+ else                                                                                                   ! Marc2017 and later
    do
      read (fileUnit,610,END=620) line
      chunkPos = IO_stringPos(line)
@@ -1839,6 +1839,7 @@ subroutine mesh_marc_map_elements(fileUnit)
 
  use math, only: math_qsort
  use IO,   only: IO_lc, &
+                 IO_intValue, &
                  IO_stringValue, &
                  IO_stringPos, &
                  IO_continuousIntValues
@@ -1847,7 +1848,8 @@ subroutine mesh_marc_map_elements(fileUnit)
  integer(pInt), intent(in) :: fileUnit
 
  integer(pInt), allocatable, dimension(:) :: chunkPos
- character(len=300) :: line
+ character(len=300) :: line, &
+                       tmp
 
  integer(pInt), dimension (1_pInt+mesh_NcpElems) :: contInts
  integer(pInt) :: i,cpElem = 0_pInt
@@ -1856,25 +1858,47 @@ subroutine mesh_marc_map_elements(fileUnit)
 
 610 FORMAT(A300)
 
+ contInts = 0_pInt
  rewind(fileUnit)
  do
    read (fileUnit,610,END=660) line
    chunkPos = IO_stringPos(line)
-   if( IO_lc(IO_stringValue(line,chunkPos,1_pInt)) == 'hypoelastic' ) then
-     do i=1_pInt,3_pInt+hypoelasticTableStyle                                                       ! skip three (or four if new table style!) lines
-       read (fileUnit,610,END=660) line
-     enddo
-     contInts = IO_continuousIntValues(fileUnit,mesh_NcpElems,mesh_nameElemSet,&
+   if (MarcVersion < 13) then                                                                             ! Marc 2016 or earlier
+     if( IO_lc(IO_stringValue(line,chunkPos,1_pInt)) == 'hypoelastic' ) then
+       do i=1_pInt,3_pInt+hypoelasticTableStyle                                                           ! skip three (or four if new table style!) lines
+         read (fileUnit,610,END=660) line
+       enddo
+       contInts = IO_continuousIntValues(fileUnit,mesh_NcpElems,mesh_nameElemSet,&
                                               mesh_mapElemSet,mesh_NelemSets)
-     do i = 1_pInt,contInts(1)
-       cpElem = cpElem+1_pInt
-       mesh_mapFEtoCPelem(1,cpElem) = contInts(1_pInt+i)
-       mesh_mapFEtoCPelem(2,cpElem) = cpElem
-     enddo
-   endif
- enddo
-
-660 call math_qsort(mesh_mapFEtoCPelem,1_pInt,int(size(mesh_mapFEtoCPelem,2_pInt),pInt))            ! should be mesh_NcpElems
+       exit
+     endif  
+   else                                                                                                   ! Marc2017 and later
+     if ( IO_lc(IO_stringValue(line,chunkPos,1_pInt)) == 'connectivity') then
+       read (fileUnit,610,END=660) line
+       chunkPos = IO_stringPos(line)
+       if(any(Marc_matNumber==IO_intValue(line,chunkPos,6_pInt))) then
+         do 
+           read (fileUnit,610,END=660) line
+           chunkPos = IO_stringPos(line)
+           tmp = IO_lc(IO_stringValue(line,chunkPos,1_pInt))
+           if (verify(trim(tmp),"0123456789")/=0) then                                                          ! found keyword
+             exit
+           else
+             contInts(1) = contInts(1) + 1_pInt  
+             read (tmp,*) contInts(contInts(1)+1)     
+           endif
+         enddo
+       endif  
+     endif
+   endif    
+ enddo    
+660 do i = 1_pInt,contInts(1)
+      cpElem = cpElem+1_pInt
+      mesh_mapFEtoCPelem(1,cpElem) = contInts(1_pInt+i)
+      mesh_mapFEtoCPelem(2,cpElem) = cpElem
+    enddo
+ 
+call math_qsort(mesh_mapFEtoCPelem,1_pInt,int(size(mesh_mapFEtoCPelem,2_pInt),pInt))                  ! should be mesh_NcpElems
 
 end subroutine mesh_marc_map_elements
 
