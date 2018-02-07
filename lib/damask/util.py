@@ -39,7 +39,7 @@ def srepr(arg,glue = '\n'):
   if (not hasattr(arg, "strip") and
           hasattr(arg, "__getitem__") or
           hasattr(arg, "__iter__")):
-     return glue.join(srepr(x) for x in arg)
+     return glue.join(str(x) for x in arg)
   return arg if isinstance(arg,str) else repr(arg)
 
 # -----------------------------
@@ -100,6 +100,18 @@ def execute(cmd,
   if process.returncode != 0: raise RuntimeError('{} failed with returncode {}'.format(cmd,process.returncode))
   return out,error
 
+
+def coordGridAndSize(coordinates):
+  """Determines grid count and overall physical size along each dimension of an ordered array of coordinates"""
+  dim    = coordinates.shape[1]
+  coords = [np.unique(coordinates[:,i]) for i in range(dim)]
+  mincorner = np.array(map(min,coords))
+  maxcorner = np.array(map(max,coords))
+  grid   = np.array(map(len,coords),'i')
+  size   = grid/np.maximum(np.ones(dim,'d'), grid-1.0) * (maxcorner-mincorner)                      # size from edge to edge = dim * n/(n-1) 
+  size   = np.where(grid > 1, size, min(size[grid > 1]/grid[grid > 1]))                             # spacing for grid==1 equal to smallest among other ones
+  return grid,size
+  
 # -----------------------------
 class extendableOption(Option):
   """
@@ -130,7 +142,7 @@ class backgroundMessage(threading.Thread):
              'hexagon':  ['⬢', '⬣'],
              'square':   ['▖', '▘', '▝', '▗'],
              'triangle': ['ᐊ', 'ᐊ', 'ᐃ', 'ᐅ', 'ᐅ', 'ᐃ'],
-             'amoeba':   ['▖', '▏', '▘', '▔', '▝', '▕', '▗', '▂'],
+             'amoeba':   ['▖', '▏', '▘', '▔', '▝', '▕', '▗', '▁'],
              'beat':     ['▁', '▂', '▃', '▅', '▆', '▇', '▇', '▆', '▅', '▃', '▂'],
              'prison':   ['ᚋ', 'ᚌ', 'ᚍ', 'ᚏ', 'ᚎ', 'ᚍ', 'ᚌ', 'ᚋ'],
              'breath':   ['ᚐ', 'ᚑ', 'ᚒ', 'ᚓ', 'ᚔ', 'ᚓ', 'ᚒ', 'ᚑ', 'ᚐ'],
@@ -221,6 +233,7 @@ def leastsqBound(func, x0, args=(), bounds=None, Dfun=None, full_output=0,
  
   def _check_func(checker, argname, thefunc, x0, args, numinputs,
                 output_shape=None):
+    from numpy import shape
     """The same as that of minpack.py"""
     res = np.atleast_1d(thefunc(*((x0[:numinputs],) + args)))
     if (output_shape is not None) and (shape(res) != output_shape):

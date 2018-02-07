@@ -78,7 +78,8 @@ program DAMASK_spectral
    FIELD_UNDEFINED_ID, &
    FIELD_MECH_ID, &
    FIELD_THERMAL_ID, &
-   FIELD_DAMAGE_ID
+   FIELD_DAMAGE_ID, &
+   utilities_calcPlasticity
  use spectral_mech_Basic
  use spectral_mech_AL
  use spectral_mech_Polarisation
@@ -156,6 +157,19 @@ program DAMASK_spectral
    MPI_finalize, &
    MPI_allreduce, &
    PETScFinalize
+!--------------------------------------------------------------------------------------------------
+! variables related to stop criterion for yielding
+ real(pReal) :: plasticWorkOld, plasticWorkNew, &                                                   ! plastic work
+ eqTotalStrainOld,  eqTotalStrainNew, &                                                             ! total equivalent strain
+ eqPlasticStrainOld, eqPlasticStrainNew, &                                                          ! total equivalent plastic strain
+ eqStressOld, eqStressNew , &                                                                       ! equivalent stress
+ yieldStopValue
+ real(pReal), dimension(3,3) :: yieldStress,yieldStressOld,yieldStressNew, &
+   plasticStrainOld, plasticStrainNew, plasticStrainRate
+ integer(pInt) :: yieldResUnit = 0_pInt
+ integer(pInt) :: stressstrainUnit = 0_pInt
+ character(len=13)  :: stopFlag
+ logical :: yieldStop, yieldStopSatisfied
 
 !--------------------------------------------------------------------------------------------------
 ! init DAMASK (all modules)
@@ -213,6 +227,8 @@ program DAMASK_spectral
 
 !--------------------------------------------------------------------------------------------------
 ! reading the load case and assign values to the allocated data structure
+ yieldStop = .False.
+ yieldStopSatisfied = .False.
  rewind(FILEUNIT)
  do
    line = IO_read(FILEUNIT)
@@ -287,10 +303,30 @@ program DAMASK_spectral
            temp_valueVector(j) = IO_floatValue(line,chunkPos,i+j)
          enddo
          loadCases(currentLoadCase)%rotation = math_plain9to33(temp_valueVector)
+       case('totalstrain')
+         yieldStop = .True.
+         stopFlag = 'totalStrain'
+         yieldStopValue = IO_floatValue(line,chunkPos,i+1_pInt)
+       case('plasticstrain')
+         yieldStop = .True.
+         stopFlag = 'plasticStrain'
+         yieldStopValue = IO_floatValue(line,chunkPos,i+1_pInt)
+       case('plasticwork')
+         yieldStop = .True.
+         stopFlag = 'plasticWork'
+         yieldStopValue = IO_floatValue(line,chunkPos,i+1_pInt)
      end select
  enddo; enddo
  close(FILEUNIT)
-
+ 
+ if(yieldStop) then                                                                                 ! initialize variables related to yield stop
+   yieldStressNew = 0.0_pReal
+   plasticStrainNew = 0.0_pReal
+   eqStressNew = 0.0_pReal
+   eqTotalStrainNew = 0.0_pReal
+   eqPlasticStrainNew = 0.0_pReal
+   plasticWorkNew = 0.0_pReal
+ endif
 !--------------------------------------------------------------------------------------------------
 ! consistency checks and output of load case
  loadCases(1)%followFormerTrajectory = .false.                                                      ! cannot guess along trajectory for first inc of first currentLoadCase
@@ -704,11 +740,84 @@ program DAMASK_spectral
          restartWrite = .true.                                                                      ! set restart parameter for FEsolving
          lastRestartWritten = inc                                                                   ! QUESTION: first call to CPFEM_general will write?
        endif
+<<<<<<< HEAD
      endif skipping
+=======
+     else forwarding
+       time = time + timeinc
+       guess = .true.
+     endif forwarding
+     
+     yieldCheck: if(yieldStop) then                                                                 ! check if it yields or satisfies the certain stop condition
+       yieldStressOld = yieldStressNew
+       plasticStrainOld = plasticStrainNew
+       eqStressOld = eqStressNew
+       eqTotalStrainOld = eqTotalStrainNew
+       eqPlasticStrainOld = eqPlasticStrainNew
+       plasticWorkOld = plasticWorkNew
+       
+       call utilities_calcPlasticity(yieldStressNew, plasticStrainNew, eqStressNew, eqTotalStrainNew, &
+                                     eqPlasticStrainNew, plasticWorkNew, loadCases(currentLoadCase)%rotation)
+       
+       if (worldrank == 0) then                                                                     ! output the stress-strain curve to file if yield stop criterion is used
+         if ((currentLoadCase == 1_pInt) .and. (inc == 1_pInt)) then
+           open(newunit=stressstrainUnit,file=trim(getSolverWorkingDirectoryName())//trim(getSolverJobName())//&
+                                  '.stressstrain',form='FORMATTED',status='REPLACE')
+           write(stressstrainUnit,*) 0.0_pReal, 0.0_pReal
+           write(stressstrainUnit,*) eqTotalStrainNew, eqStressNew
+           close(stressstrainUnit)
+         else
+           open(newunit=stressstrainUnit,file=trim(getSolverWorkingDirectoryName())//trim(getSolverJobName())//&
+                                 '.stressstrain',form='FORMATTED', position='APPEND', status='OLD')
+           write(stressstrainUnit,*) eqTotalStrainNew, eqStressNew
+           close(stressstrainUnit)
+         endif
+       endif
+       
+       if(stopFlag == 'totalStrain') then
+         if(eqTotalStrainNew > yieldStopValue) then
+           yieldStress = yieldStressOld * (eqTotalStrainNew - yieldStopValue)/(eqTotalStrainNew - eqTotalStrainOld) &   ! linear interpolation of stress values
+                       + yieldStressNew * (yieldStopValue - eqTotalStrainOld)/(eqTotalStrainNew - eqTotalStrainOld)
+           plasticStrainRate = (plasticStrainNew - plasticStrainOld)/(time - time0)                                     ! calculate plastic strain rate
+           yieldStopSatisfied = .True.
+         endif
+       elseif(stopFlag == 'plasticStrain') then
+         if(eqPlasticStrainNew > yieldStopValue) then
+           yieldStress = yieldStressOld * (eqPlasticStrainNew - yieldStopValue)/(eqPlasticStrainNew - eqPlasticStrainOld) &
+                       + yieldStressNew * (yieldStopValue - eqPlasticStrainOld)/(eqPlasticStrainNew - eqPlasticStrainOld)
+           plasticStrainRate = (plasticStrainNew - plasticStrainOld)/(time - time0)
+           yieldStopSatisfied = .True.
+         endif
+       elseif(stopFlag == 'plasticWork') then
+         if(plasticWorkNew > yieldStopValue) then
+           yieldStress = yieldStressOld * (plasticWorkNew - yieldStopValue)/(plasticWorkNew - plasticWorkOld) &
+                       + yieldStressNew * (yieldStopValue - plasticWorkOld)/(plasticWorkNew - plasticWorkOld)
+           plasticStrainRate = (plasticStrainNew - plasticStrainOld)/(time - time0)
+           yieldStopSatisfied = .True.
+         endif
+       endif
+     endif yieldCheck
+
+     if (yieldStopSatisfied) then                                                                   ! when yield, write the yield stress and strain rate to file and quit the job
+       if (worldrank == 0) then
+         open(newunit=yieldResUnit,file=trim(getSolverWorkingDirectoryName())//trim(getSolverJobName())//&
+                                  '.yield',form='FORMATTED',status='REPLACE')
+         do i = 1_pInt,3_pInt
+           write(yieldResUnit,*) (yieldStress(i,j), j=1,3)
+         enddo
+         do i = 1_pInt,3_pInt
+           write(yieldResUnit,*) (plasticStrainRate(i,j), j=1,3)
+         enddo
+         close(yieldResUnit)
+         call quit(0_pInt)
+       endif
+     endif
+>>>>>>> development
 
     enddo incLooping
  enddo loadCaseLooping
-
+ 
+ 
 !--------------------------------------------------------------------------------------------------
 ! report summary of whole calculation
  write(6,'(/,a)') ' ###########################################################################'

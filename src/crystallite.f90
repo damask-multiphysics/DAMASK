@@ -55,14 +55,14 @@ module crystallite
    crystallite_Li0, &                                                                               !< intermediate velocitiy grad at start of FE inc
    crystallite_partionedLi0,&                                                                       !< intermediate velocity grad at start of homog inc
    crystallite_Fe, &                                                                                !< current "elastic" def grad (end of converged time step)
-   crystallite_P                                                                                    !< 1st Piola-Kirchhoff stress per grain
+   crystallite_P,  &                                                                                !< 1st Piola-Kirchhoff stress per grain
+   crystallite_subF                                                                                 !< def grad to be reached at end of crystallite inc
  real(pReal),                dimension(:,:,:,:,:),    allocatable, private :: &
    crystallite_subFe0,&                                                                             !< "elastic" def grad at start of crystallite inc
    crystallite_invFp, &                                                                             !< inverse of current plastic def grad (end of converged time step)
    crystallite_subFp0,&                                                                             !< plastic def grad at start of crystallite inc
    crystallite_invFi, &                                                                             !< inverse of current intermediate def grad (end of converged time step)
    crystallite_subFi0,&                                                                             !< intermediate def grad at start of crystallite inc
-   crystallite_subF,  &                                                                             !< def grad to be reached at end of crystallite inc
    crystallite_subF0, &                                                                             !< def grad at start of crystallite inc
    crystallite_subLp0,&                                                                             !< plastic velocity grad at start of crystallite inc
    crystallite_subLi0,&                                                                             !< intermediate velocity grad at start of crystallite inc
