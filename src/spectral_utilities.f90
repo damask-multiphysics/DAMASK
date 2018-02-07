@@ -1068,6 +1068,8 @@ subroutine utilities_calcPlasticity(yieldStress, plasticStrain, eqStress, eqTota
    math_mul33x33, &
    math_trace33, &
    math_transpose33, &
+   math_equivStrain33, &
+   math_equivStress33, &
    math_rotate_forward33, &
    math_identity2nd, &
    math_crossproduct, &
@@ -1099,7 +1101,7 @@ subroutine utilities_calcPlasticity(yieldStress, plasticStrain, eqStress, eqTota
  eqStressOld = eqStress
  eqPlasticStrainOld = eqPlasticStrain
  plasticWorkOld = plasticWork
- wgtm = 1.0/real(mesh_NcpElems*mesh_maxNips*homogenization_maxNgrains,pReal)
+ wgtm = 1.0_pReal/real(mesh_NcpElems*mesh_maxNips*homogenization_maxNgrains,pReal)
  diag = 0.0_pReal
  
  P_av = sum(sum(sum(crystallite_P,dim=5),dim=4),dim=3) * wgtm
@@ -1110,9 +1112,9 @@ subroutine utilities_calcPlasticity(yieldStress, plasticStrain, eqStress, eqTota
  call MPI_Allreduce(MPI_IN_PLACE,F_av,9,MPI_DOUBLE,MPI_SUM,PETSC_COMM_WORLD,ierr)
  F_av = math_rotate_forward33(F_av,rotation_BC)
  
- cauchy = 1.0/math_det33(F_av)*math_mul33x33(P_av,transpose(F_av))
+ cauchy = 1.0_pReal/math_det33(F_av)*math_mul33x33(P_av,transpose(F_av))
  yieldStress = cauchy
- eqStress = Mises(cauchy, 'stress')
+ eqStress = math_equivStress33(cauchy)
  
  F_temp = F_av
  call dgesvd ('A', 'A', 3, 3, F_temp, 3, S, U, 3, VT, 3, WORK, 15, INFO)                            ! singular value decomposition
@@ -1143,7 +1145,7 @@ subroutine utilities_calcPlasticity(yieldStress, plasticStrain, eqStress, eqTota
  endif
  
  V_total = REAL(math_mul33x33(Vectors, math_mul33x33(diag, transpose(Vectors))))
- eqTotalStrain = Mises(V_total, 'strain')
+ eqTotalStrain = math_equivStrain33(V_total)
  
  do k = 1_pInt, mesh_NcpElems;  do j = 1_pInt, mesh_maxNips;  do i = 1_pInt,homogenization_maxNgrains
    Fe(1:3,1:3,i,j,k) = crystallite_Fe(1:3,1:3,i,j,k)
@@ -1157,7 +1159,7 @@ subroutine utilities_calcPlasticity(yieldStress, plasticStrain, eqStress, eqTota
  
  Vp = V_total - Ve_av
  
- eqPlasticStrain = Mises(Vp, 'strain')
+ eqPlasticStrain = math_equivStrain33(Vp)
  
  plasticStrain = Vp
  
@@ -1165,30 +1167,6 @@ subroutine utilities_calcPlasticity(yieldStress, plasticStrain, eqStress, eqTota
  
 end subroutine utilities_calcPlasticity
 
-!--------------------------------------------------------------------------------------------------
-!> @brief vonMises equivalent values for symmetric part of requested strains and/or stresses.
-!--------------------------------------------------------------------------------------------------
-function Mises(m, mType)
- use math, only: &
-  math_trace33, &
-  math_identity2nd
-  
- implicit none
- real(pReal), intent(in), dimension(3,3) :: m
- character(len=*), intent(in) :: mType
- real(pReal) :: trace, Mises
- real(pReal), dimension(3,3) :: eye, dev, symdev
- 
- eye = math_identity2nd(3)
- trace = math_trace33(m)
- dev = m - trace/3.0*eye
- symdev = 0.5*(dev+transpose(dev))
- if (mType == 'stress') then
-  Mises = sqrt(3.0/2.0*sum(symdev*transpose(symdev)))
- else
-  Mises = sqrt(2.0/3.0*sum(symdev*transpose(symdev)))
- endif
-end function Mises
 
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates forward rate, either guessing or just add delta/timeinc
