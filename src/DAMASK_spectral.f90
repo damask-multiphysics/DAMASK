@@ -159,20 +159,18 @@ program DAMASK_spectral
    PETScFinalize
 !--------------------------------------------------------------------------------------------------
 ! variables related to stop criterion for yielding
- real(pReal) :: plasticWorkOld, plasticWorkNew, &                                   ! plastic work
- eqTotalStrainOld,  eqTotalStrainNew, &                                                           ! total equivalent strain
- eqPlasticStrainOld, eqPlasticStrainNew, &                                                        ! total equivalent plastic strain
- eqStressOld, eqStressNew , &                                                                     ! equivalent stress
+ real(pReal) :: plasticWorkOld, plasticWorkNew, &                                                   ! plastic work
+ eqTotalStrainOld,  eqTotalStrainNew, &                                                             ! total equivalent strain
+ eqPlasticStrainOld, eqPlasticStrainNew, &                                                          ! total equivalent plastic strain
+ eqStressOld, eqStressNew , &                                                                       ! equivalent stress
  yieldStopValue
- real(pReal), dimension(3,3) :: yieldStress,yieldStressOld,yieldStressNew, plasticStrainOld, plasticStrainNew, plasticStrainRate
+ real(pReal), dimension(3,3) :: yieldStress,yieldStressOld,yieldStressNew, &
+   plasticStrainOld, plasticStrainNew, plasticStrainRate
  integer(pInt) :: yieldResUnit = 0_pInt
  integer(pInt) :: stressstrainUnit = 0_pInt
  character(len=13)  :: stopFlag
  logical :: yieldStop, yieldStopSatisfied
- ! logical :: &
-   ! stop_totalStrain, &                                                                                         !< stop criterion
-   ! stop_plasticStrain, &  
-   ! stop_plasticWork
+
 !--------------------------------------------------------------------------------------------------
 ! init DAMASK (all modules)
  call CPFEM_initAll(el = 1_pInt, ip = 1_pInt)
@@ -321,7 +319,7 @@ program DAMASK_spectral
  enddo; enddo
  close(FILEUNIT)
  
- if(yieldStop) then                                                                                ! initialize variables related to yield stop
+ if(yieldStop) then                                                                                 ! initialize variables related to yield stop
    yieldStressNew = 0.0_pReal
    plasticStrainNew = 0.0_pReal
    eqStressNew = 0.0_pReal
