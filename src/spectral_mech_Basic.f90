@@ -310,7 +310,6 @@ subroutine BasicPETSC_formResidual(in,x_scal,f_scal,dummy,ierr)
    debug_spectral, &
    debug_spectralRotation
  use spectral_utilities, only: &
-   wgt, &
    tensorField_real, &
    utilities_FFTtensorForward, &
    utilities_fourierGammaConvolution, &

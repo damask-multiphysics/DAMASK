@@ -1178,7 +1178,7 @@ end subroutine plastic_disloUCLA_dotState
 function plastic_disloUCLA_postResults(Tstar_v,Temperature,ipc,ip,el)
  use prec, only: &
    tol_math_check, &
-   dEq
+   dEq, dNeq0
  use math, only: &
    pi
  use material, only: &
@@ -1445,9 +1445,13 @@ function plastic_disloUCLA_postResults(Tstar_v,Temperature,ipc,ip,el)
            index_myFamily = sum(lattice_NslipSystem(1:f-1_pInt,ph))                                 ! at which index starts my family
            slipSystems2: do i = 1_pInt,plastic_disloUCLA_Nslip(f,instance)
               j = j + 1_pInt
+              if (dNeq0(abs(dot_product(Tstar_v,lattice_Sslip_v(:,1,index_myFamily+i,ph))))) then
               plastic_disloUCLA_postResults(c+j) = &
                 (3.0_pReal*lattice_mu(ph)*plastic_disloUCLA_burgersPerSlipSystem(j,instance))/&
                 (16.0_pReal*pi*abs(dot_product(Tstar_v,lattice_Sslip_v(:,1,index_myFamily+i,ph))))
+              else
+              plastic_disloUCLA_postResults(c+j) = huge(1.0_pReal)
+              endif
               plastic_disloUCLA_postResults(c+j)=min(plastic_disloUCLA_postResults(c+j),&
                                                             state(instance)%mfp_slip(j,of))
         enddo slipSystems2; enddo slipFamilies2

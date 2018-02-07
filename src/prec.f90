@@ -137,6 +137,7 @@ end subroutine prec_init
 !> @brief equality comparison for float with double precision
 ! replaces "==" but for certain (relative) tolerance. Counterpart to dNeq
 ! https://randomascii.wordpress.com/2012/02/25/comparing-floating-point-numbers-2012-edition/
+! AlmostEqualRelative
 !--------------------------------------------------------------------------------------------------
 logical elemental pure function dEq(a,b,tol)
 
@@ -153,6 +154,7 @@ end function dEq
 !> @brief inequality comparison for float with double precision
 ! replaces "!=" but for certain (relative) tolerance. Counterpart to dEq
 ! https://randomascii.wordpress.com/2012/02/25/comparing-floating-point-numbers-2012-edition/
+! AlmostEqualRelative NOT
 !--------------------------------------------------------------------------------------------------
 logical elemental pure function dNeq(a,b,tol)
 
@@ -167,33 +169,35 @@ end function dNeq
 
 !--------------------------------------------------------------------------------------------------
 !> @brief equality to 0 comparison for float with double precision
-! replaces "==0" but for certain (absolute) tolerance. Counterpart to dNeq0
-! https://randomascii.wordpress.com/2012/02/25/comparing-floating-point-numbers-2012-edition/
+! replaces "==0" but everything not representable as a normal number is treated as 0. Counterpart to dNeq0
+! https://de.mathworks.com/help/matlab/ref/realmin.html
+! https://docs.oracle.com/cd/E19957-01/806-3568/ncg_math.html
 !--------------------------------------------------------------------------------------------------
 logical elemental pure function dEq0(a,tol)
 
  implicit none
  real(pReal), intent(in)           :: a
  real(pReal), intent(in), optional :: tol
- real(pReal), parameter            :: eps = 2.220446049250313E-16                                   ! DBL_EPSILON in C
+ real(pReal), parameter            :: eps = 2.2250738585072014E-308                                 ! smallest non-denormalized number
 
- dEq0 = merge(.True., .False.,abs(a) <= merge(tol,eps,present(tol))*10.0_pReal)
+ dEq0 = merge(.True., .False.,abs(a) <= merge(tol,eps,present(tol)))
 end function dEq0
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief inequality to 0 comparison for float with double precision
-! replaces "!=0" but for certain (absolute) tolerance. Counterpart to dEq0
-! https://randomascii.wordpress.com/2012/02/25/comparing-floating-point-numbers-2012-edition/
+! replaces "!=0" but everything not representable as a normal number is treated as 0. Counterpart to dEq0
+! https://de.mathworks.com/help/matlab/ref/realmin.html
+! https://docs.oracle.com/cd/E19957-01/806-3568/ncg_math.html
 !--------------------------------------------------------------------------------------------------
 logical elemental pure function dNeq0(a,tol)
 
  implicit none
  real(pReal), intent(in)           :: a
  real(pReal), intent(in), optional :: tol
- real(pReal), parameter            :: eps = 2.220446049250313E-16                                   ! DBL_EPSILON in C
+ real(pReal), parameter            :: eps = 2.2250738585072014E-308                                 ! smallest non-denormalized number
 
- dNeq0 = merge(.False., .True.,abs(a) <= merge(tol,eps,present(tol))*10.0_pReal)
+ dNeq0 = merge(.False., .True.,abs(a) <= merge(tol,eps,present(tol)))
 end function dNeq0
 
 

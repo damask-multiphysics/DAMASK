@@ -971,6 +971,9 @@ subroutine utilities_constitutiveResponse(F_lastInc,F,timeinc, &
  real(pReal), dimension(3,3,3,3) :: max_dPdF, min_dPdF
  real(pReal)   :: max_dPdF_norm, min_dPdF_norm, defgradDetMin, defgradDetMax, defgradDet
 
+ external :: &
+  MPI_Allreduce
+
  write(6,'(/,a)') ' ... evaluating constitutive response ......................................'
  flush(6)
  age = .False.

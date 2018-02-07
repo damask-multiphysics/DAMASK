@@ -9,7 +9,7 @@ module IO
  use prec, only: &
    pInt, &
    pReal
- 
+
  implicit none
  private
  character(len=5), parameter, public :: &
@@ -50,6 +50,7 @@ module IO
    IO_skipChunks, &
    IO_extractValue, &
    IO_countDataLines, &
+   IO_countNumericalDataLines, &
    IO_countContinuousIntValues, &
    IO_continuousIntValues, &
    IO_error, &
@@ -61,7 +62,7 @@ module IO
    IO_open_inputFile, &
    IO_open_logFile
 #endif
-#ifdef Abaqus  
+#ifdef Abaqus
  public :: &
    IO_abaqus_hasNoPart
 #endif
@@ -69,7 +70,7 @@ module IO
    IO_fixedFloatValue, &
    IO_verifyFloatValue, &
    IO_verifyIntValue
-#ifdef Abaqus 
+#ifdef Abaqus
  private :: &
    abaqus_assembleInputFile
 #endif
@@ -86,7 +87,7 @@ subroutine IO_init
    compiler_version, &
    compiler_options
 #endif
- 
+
  implicit none
 
  write(6,'(/,a)')   ' <<<+-  IO init  -+>>>'
@@ -101,7 +102,7 @@ end subroutine IO_init
 !!        Recursion is triggered by "{path/to/inputfile}" in a line
 !--------------------------------------------------------------------------------------------------
 recursive function IO_read(fileUnit,reset) result(line)
- 
+
  implicit none
  integer(pInt), intent(in)           :: fileUnit                                                    !< file unit
  logical,       intent(in), optional :: reset
@@ -131,7 +132,7 @@ recursive function IO_read(fileUnit,reset) result(line)
  unitOn(1) = fileUnit
 
  read(unitOn(stack),'(a65536)',END=100) line
- 
+
  input = IO_getTag(line,'{','}')
 
 !--------------------------------------------------------------------------------------------------
@@ -139,7 +140,7 @@ recursive function IO_read(fileUnit,reset) result(line)
  if (input == '') return                                                                            ! regular line
 
 !--------------------------------------------------------------------------------------------------
-! recursion case 
+! recursion case
  if (stack >= 10_pInt) call IO_error(104_pInt,ext_msg=input)                                        ! recursion limit reached
 
  inquire(UNIT=unitOn(stack),NAME=path)                                                              ! path of current file
@@ -154,9 +155,9 @@ recursive function IO_read(fileUnit,reset) result(line)
  if (myStat /= 0_pInt) call IO_error(100_pInt,el=myStat,ext_msg=pathOn(stack))
 
  line = IO_read(fileUnit)
- 
+
  return
- 
+
 !--------------------------------------------------------------------------------------------------
 ! end of file case
 100 if (stack > 1_pInt) then                                                                        ! can go back to former file
@@ -175,13 +176,13 @@ end function IO_read
 !!        error message
 !--------------------------------------------------------------------------------------------------
 subroutine IO_checkAndRewind(fileUnit)
- 
+
  implicit none
  integer(pInt), intent(in) :: fileUnit                                                                !< file unit
  logical                   :: fileOpened
  character(len=15)         :: fileRead
 
- inquire(unit=fileUnit, opened=fileOpened, read=fileRead) 
+ inquire(unit=fileUnit, opened=fileOpened, read=fileRead)
  if (.not. fileOpened .or. trim(fileRead)/='YES') call IO_error(102_pInt)
  rewind(fileUnit)
 
@@ -189,7 +190,7 @@ end subroutine IO_checkAndRewind
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief   opens existing file for reading to given unit. Path to file is relative to working 
+!> @brief   opens existing file for reading to given unit. Path to file is relative to working
 !!          directory
 !> @details like IO_open_file_stat, but error is handled via call to IO_error and not via return
 !!          value
@@ -197,47 +198,47 @@ end subroutine IO_checkAndRewind
 subroutine IO_open_file(fileUnit,relPath)
  use DAMASK_interface, only: &
    getSolverWorkingDirectoryName
- 
+
  implicit none
  integer(pInt),      intent(in) :: fileUnit                                                         !< file unit
  character(len=*),   intent(in) :: relPath                                                          !< relative path from working directory
 
  integer(pInt)                  :: myStat
  character(len=1024)            :: path
- 
+
  path = trim(getSolverWorkingDirectoryName())//relPath
  open(fileUnit,status='old',iostat=myStat,file=path)
  if (myStat /= 0_pInt) call IO_error(100_pInt,el=myStat,ext_msg=path)
- 
+
 end subroutine IO_open_file
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief   opens existing file for reading to given unit. Path to file is relative to working 
+!> @brief   opens existing file for reading to given unit. Path to file is relative to working
 !!          directory
 !> @details Like IO_open_file, but error is handled via return value and not via call to IO_error
 !--------------------------------------------------------------------------------------------------
 logical function IO_open_file_stat(fileUnit,relPath)
  use DAMASK_interface, only: &
    getSolverWorkingDirectoryName
- 
+
  implicit none
  integer(pInt),      intent(in) :: fileUnit                                                         !< file unit
  character(len=*),   intent(in) :: relPath                                                          !< relative path from working directory
 
  integer(pInt)                  :: myStat
  character(len=1024)            :: path
- 
+
  path = trim(getSolverWorkingDirectoryName())//relPath
  open(fileUnit,status='old',iostat=myStat,file=path)
  IO_open_file_stat = (myStat == 0_pInt)
- 
+
 end function IO_open_file_stat
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief   opens existing file for reading to given unit. File is named after solver job name 
-!!          plus given extension and located in current working directory 
+!> @brief   opens existing file for reading to given unit. File is named after solver job name
+!!          plus given extension and located in current working directory
 !> @details like IO_open_jobFile_stat, but error is handled via call to IO_error and not via return
 !!          value
 !--------------------------------------------------------------------------------------------------
@@ -256,14 +257,14 @@ subroutine IO_open_jobFile(fileUnit,ext)
  path = trim(getSolverWorkingDirectoryName())//trim(getSolverJobName())//'.'//ext
  open(fileUnit,status='old',iostat=myStat,file=path)
  if (myStat /= 0_pInt) call IO_error(100_pInt,el=myStat,ext_msg=path)
- 
+
 end subroutine IO_open_jobFile
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief   opens existing file for reading to given unit. File is named after solver job name 
-!!          plus given extension and located in current working directory 
-!> @details Like IO_open_jobFile, but error is handled via return value and not via call to 
+!> @brief   opens existing file for reading to given unit. File is named after solver job name
+!!          plus given extension and located in current working directory
+!> @details Like IO_open_jobFile, but error is handled via return value and not via call to
 !!          IO_error
 !--------------------------------------------------------------------------------------------------
 logical function IO_open_jobFile_stat(fileUnit,ext)
@@ -303,7 +304,7 @@ subroutine IO_open_inputFile(fileUnit,modelName)
  character(len=1024)            :: path
 #ifdef Abaqus
  integer(pInt)                  :: fileType
- 
+
  fileType = 1_pInt                                                                                  ! assume .pes
  path = trim(getSolverWorkingDirectoryName())//trim(modelName)//inputFileExtension(fileType)        ! attempt .pes, if it exists: it should be used
  open(fileUnit+1,status='old',iostat=myStat,file=path)
@@ -313,12 +314,12 @@ subroutine IO_open_inputFile(fileUnit,modelName)
     open(fileUnit+1,status='old',iostat=myStat,file=path)
  endif
  if (myStat /= 0_pInt) call IO_error(100_pInt,el=myStat,ext_msg=path)
-   
+
  path = trim(getSolverWorkingDirectoryName())//trim(modelName)//inputFileExtension(fileType)//'_assembly'
  open(fileUnit,iostat=myStat,file=path)
  if (myStat /= 0_pInt) call IO_error(100_pInt,el=myStat,ext_msg=path)
     if (.not.abaqus_assembleInputFile(fileUnit,fileUnit+1_pInt)) call IO_error(103_pInt)            ! strip comments and concatenate any "include"s
- close(fileUnit+1_pInt) 
+ close(fileUnit+1_pInt)
 #endif
 #ifdef Marc4DAMASK
    path = trim(getSolverWorkingDirectoryName())//trim(modelName)//inputFileExtension
@@ -330,8 +331,8 @@ end subroutine IO_open_inputFile
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief opens existing FEM log file for reading to given unit. File is named after solver job 
-!!        name and located in current working directory 
+!> @brief opens existing FEM log file for reading to given unit. File is named after solver job
+!!        name and located in current working directory
 !--------------------------------------------------------------------------------------------------
 subroutine IO_open_logFile(fileUnit)
  use DAMASK_interface, only: &
@@ -354,14 +355,14 @@ end subroutine IO_open_logFile
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief opens ASCII file to given unit for writing. File is named after solver job name plus 
+!> @brief opens ASCII file to given unit for writing. File is named after solver job name plus
 !!        given extension and located in current working directory
 !--------------------------------------------------------------------------------------------------
 subroutine IO_write_jobFile(fileUnit,ext)
  use DAMASK_interface,  only: &
    getSolverWorkingDirectoryName, &
    getSolverJobName
- 
+
  implicit none
  integer(pInt),      intent(in) :: fileUnit                                                         !< file unit
  character(len=*),   intent(in) :: ext                                                              !< extension of file
@@ -372,19 +373,19 @@ subroutine IO_write_jobFile(fileUnit,ext)
  path = trim(getSolverWorkingDirectoryName())//trim(getSolverJobName())//'.'//ext
  open(fileUnit,status='replace',iostat=myStat,file=path)
  if (myStat /= 0_pInt) call IO_error(100_pInt,el=myStat,ext_msg=path)
- 
+
 end subroutine IO_write_jobFile
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief opens binary file containing array of pReal numbers to given unit for writing. File is 
+!> @brief opens binary file containing array of pReal numbers to given unit for writing. File is
 !!        named after solver job name plus given extension and located in current working directory
 !--------------------------------------------------------------------------------------------------
 subroutine IO_write_jobRealFile(fileUnit,ext,recMultiplier)
- use DAMASK_interface, only: & 
+ use DAMASK_interface, only: &
    getSolverWorkingDirectoryName, &
    getSolverJobName
- 
+
  implicit none
  integer(pInt),      intent(in)           :: fileUnit                                               !< file unit
  character(len=*),   intent(in)           :: ext                                                    !< extension of file
@@ -403,19 +404,19 @@ subroutine IO_write_jobRealFile(fileUnit,ext,recMultiplier)
  endif
 
  if (myStat /= 0_pInt) call IO_error(100_pInt,el=myStat,ext_msg=path)
- 
+
 end subroutine IO_write_jobRealFile
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief opens binary file containing array of pInt numbers to given unit for writing. File is 
+!> @brief opens binary file containing array of pInt numbers to given unit for writing. File is
 !!        named after solver job name plus given extension and located in current working directory
 !--------------------------------------------------------------------------------------------------
 subroutine IO_write_jobIntFile(fileUnit,ext,recMultiplier)
  use DAMASK_interface,  only: &
    getSolverWorkingDirectoryName, &
    getSolverJobName
- 
+
  implicit none
  integer(pInt),      intent(in)           :: fileUnit                                               !< file unit
  character(len=*),   intent(in)           :: ext                                                    !< extension of file
@@ -434,21 +435,21 @@ subroutine IO_write_jobIntFile(fileUnit,ext,recMultiplier)
  endif
 
  if (myStat /= 0_pInt) call IO_error(100_pInt,el=myStat,ext_msg=path)
- 
+
 end subroutine IO_write_jobIntFile
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief opens binary file containing array of pReal numbers to given unit for reading. File is 
+!> @brief opens binary file containing array of pReal numbers to given unit for reading. File is
 !!        located in current working directory
 !--------------------------------------------------------------------------------------------------
 subroutine IO_read_realFile(fileUnit,ext,modelName,recMultiplier)
  use DAMASK_interface, only: &
    getSolverWorkingDirectoryName
- 
+
  implicit none
  integer(pInt),      intent(in)           :: fileUnit                                               !< file unit
- character(len=*),   intent(in)           :: ext, &                                                 !< extension of file       
+ character(len=*),   intent(in)           :: ext, &                                                 !< extension of file
                                              modelName                                              !< model name, in case of restart not solver job name
  integer(pInt),      intent(in), optional :: recMultiplier                                          !< record length (multiple of pReal Numbers, if not given set to one)
 
@@ -457,28 +458,28 @@ subroutine IO_read_realFile(fileUnit,ext,modelName,recMultiplier)
 
  path = trim(getSolverWorkingDirectoryName())//trim(modelName)//'.'//ext
  if (present(recMultiplier)) then
-   open(fileUnit,status='old',form='unformatted',access='direct', & 
+   open(fileUnit,status='old',form='unformatted',access='direct', &
                  recl=pReal*recMultiplier,iostat=myStat,file=path)
  else
    open(fileUnit,status='old',form='unformatted',access='direct', &
                  recl=pReal,iostat=myStat,file=path)
  endif
  if (myStat /= 0_pInt) call IO_error(100_pInt,el=myStat,ext_msg=path)
- 
+
 end subroutine IO_read_realFile
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief opens binary file containing array of pInt numbers to given unit for reading. File is 
+!> @brief opens binary file containing array of pInt numbers to given unit for reading. File is
 !!        located in current working directory
 !--------------------------------------------------------------------------------------------------
 subroutine IO_read_intFile(fileUnit,ext,modelName,recMultiplier)
  use DAMASK_interface, only: &
    getSolverWorkingDirectoryName
- 
+
  implicit none
  integer(pInt),      intent(in)           :: fileUnit                                               !< file unit
- character(len=*),   intent(in)           :: ext, &                                                 !< extension of file       
+ character(len=*),   intent(in)           :: ext, &                                                 !< extension of file
                                              modelName                                              !< model name, in case of restart not solver job name
  integer(pInt),      intent(in), optional :: recMultiplier                                          !< record length (multiple of pReal Numbers, if not given set to one)
 
@@ -487,14 +488,14 @@ subroutine IO_read_intFile(fileUnit,ext,modelName,recMultiplier)
 
  path = trim(getSolverWorkingDirectoryName())//trim(modelName)//'.'//ext
  if (present(recMultiplier)) then
-   open(fileUnit,status='old',form='unformatted',access='direct', & 
+   open(fileUnit,status='old',form='unformatted',access='direct', &
                  recl=pInt*recMultiplier,iostat=myStat,file=path)
  else
    open(fileUnit,status='old',form='unformatted',access='direct', &
                  recl=pInt,iostat=myStat,file=path)
  endif
  if (myStat /= 0) call IO_error(100_pInt,ext_msg=path)
- 
+
 end subroutine IO_read_intFile
 
 
@@ -509,9 +510,9 @@ logical function IO_abaqus_hasNoPart(fileUnit)
 
  integer(pInt), allocatable, dimension(:)    :: chunkPos
  character(len=65536)                        :: line
- 
+
  IO_abaqus_hasNoPart = .true.
- 
+
 610 FORMAT(A65536)
  rewind(fileUnit)
  do
@@ -522,7 +523,7 @@ logical function IO_abaqus_hasNoPart(fileUnit)
      exit
    endif
  enddo
- 
+
 620 end function IO_abaqus_hasNoPart
 #endif
 
@@ -537,7 +538,7 @@ function IO_hybridIA(Nast,ODFfileName)
  integer(pInt),                 intent(in)   :: Nast                                                !< number of samples?
  real(pReal), dimension(3,Nast)              :: IO_hybridIA
  character(len=*),              intent(in)   :: ODFfileName                                         !< name of ODF file including total path
-  
+
 !--------------------------------------------------------------------------------------------------
 ! math module is not available
  real(pReal),      parameter  :: PI = 3.141592653589793_pReal
@@ -561,7 +562,7 @@ function IO_hybridIA(Nast,ODFfileName)
  write(6,'(/,a,/)',advance='no') ' Using linear ODF file: '//trim(ODFfileName)
 
 !--------------------------------------------------------------------------------------------------
-! parse header of ODF file 
+! parse header of ODF file
  call IO_open_file(FILEUNIT,ODFfileName)
  headerLength = 0_pInt
  line=IO_read(FILEUNIT)
@@ -579,7 +580,7 @@ function IO_hybridIA(Nast,ODFfileName)
    line=IO_read(FILEUNIT)
  enddo
  columns = 0_pInt
- chunkPos = IO_stringPos(line)             
+ chunkPos = IO_stringPos(line)
  do i = 1_pInt, chunkPos(1)
    select case ( IO_lc(IO_StringValue(line,chunkPos,i,.true.)) )
      case ('phi1')
@@ -603,7 +604,7 @@ function IO_hybridIA(Nast,ODFfileName)
 
  line=IO_read(FILEUNIT)
  do while (trim(line) /= IO_EOF)
-   chunkPos = IO_stringPos(line)             
+   chunkPos = IO_stringPos(line)
    eulers=[IO_floatValue(line,chunkPos,columns(1)),&
            IO_floatValue(line,chunkPos,columns(2)),&
            IO_floatValue(line,chunkPos,columns(3))]
@@ -646,7 +647,7 @@ function IO_hybridIA(Nast,ODFfileName)
 
  do phi1=1_pInt,steps(1); do Phi=1_pInt,steps(2); do phi2=1_pInt,steps(3)
    line=IO_read(FILEUNIT)
-   chunkPos = IO_stringPos(line)             
+   chunkPos = IO_stringPos(line)
    eulers=[IO_floatValue(line,chunkPos,columns(1)),&                                                ! read in again for consistency check only
            IO_floatValue(line,chunkPos,columns(2)),&
            IO_floatValue(line,chunkPos,columns(3))]*INRAD
@@ -661,16 +662,16 @@ function IO_hybridIA(Nast,ODFfileName)
       prob = 0.0_pReal
     endif
     dV_V(phi2,Phi,phi1) = prob*dg_0*sin((real(Phi-1_pInt,pReal)+center)*deltas(2))
- enddo; enddo; enddo  
+ enddo; enddo; enddo
  close(FILEUNIT)
  dV_V = dV_V/sum_dV_V                                                                               ! normalize to 1
- 
+
 !--------------------------------------------------------------------------------------------------
 ! now fix bounds
  Nset = max(Nast,NnonZero)                                                                          ! if less than non-zero voxel count requested, sample at least that much
  lowerC = 0.0_pReal
  upperC = real(Nset, pReal)
- 
+
  do while (hybridIA_reps(dV_V,steps,upperC) < Nset)
    lowerC = upperC
    upperC = upperC*2.0_pReal
@@ -717,25 +718,25 @@ function IO_hybridIA(Nast,ODFfileName)
    IO_hybridIA(3,i) = deltas(3)*(real(mod(bin                    ,steps(3)),pReal)+center)          ! phi2
    binSet(j) = binSet(i)
  enddo
- 
+
  contains
  !--------------------------------------------------------------------------------------------------
  !> @brief counts hybrid IA repetitions
  !--------------------------------------------------------------------------------------------------
  integer(pInt) pure function hybridIA_reps(dV_V,steps,C)
- 
+
   implicit none
   integer(pInt), intent(in), dimension(3)                          :: steps                          !< number of bins in Euler space
   real(pReal),   intent(in), dimension(steps(3),steps(2),steps(1)) :: dV_V                           !< needs description
   real(pReal),   intent(in)                                        :: C                              !< needs description
-  
+
   integer(pInt) :: phi1,Phi,phi2
-  
+
   hybridIA_reps = 0_pInt
   do phi1=1_pInt,steps(1); do Phi =1_pInt,steps(2); do phi2=1_pInt,steps(3)
     hybridIA_reps = hybridIA_reps+nint(C*dV_V(phi2,Phi,phi1), pInt)
   enddo; enddo; enddo
-  
+
  end function hybridIA_reps
 
 end function IO_hybridIA
@@ -753,11 +754,11 @@ logical pure function IO_isBlank(string)
  character(len=*),  parameter :: comment = achar(35)                                                ! comment id '#'
 
  integer :: posNonBlank, posComment                                                                 ! no pInt
- 
+
  posNonBlank = verify(string,blankChar)
  posComment  = scan(string,comment)
  IO_isBlank = posNonBlank == 0 .or. posNonBlank == posComment
- 
+
 end function IO_isBlank
 
 
@@ -769,8 +770,8 @@ pure function IO_getTag(string,openChar,closeChar)
  implicit none
  character(len=*), intent(in)  :: string                                                            !< string to check for tag
  character(len=len_trim(string)) :: IO_getTag
- 
- character(len=*), intent(in)  :: openChar, &                                                       !< indicates beginning of tag 
+
+ character(len=*), intent(in)  :: openChar, &                                                       !< indicates beginning of tag
                                   closeChar                                                         !< indicates end of tag
 
  character(len=*), parameter   :: SEP=achar(32)//achar(9)//achar(10)//achar(13)                     ! whitespaces
@@ -780,7 +781,7 @@ pure function IO_getTag(string,openChar,closeChar)
  IO_getTag = ''
  left = scan(string,openChar)
  right = scan(string,closeChar)
- 
+
  if (left == verify(string,SEP) .and. right > left) &                                               ! openChar is first and closeChar occurs
    IO_getTag = string(left+1:right-1)
 
@@ -793,7 +794,7 @@ end function IO_getTag
 integer(pInt) function IO_countSections(fileUnit,part)
 
  implicit none
- integer(pInt),      intent(in) :: fileUnit                                                         !< file handle 
+ integer(pInt),      intent(in) :: fileUnit                                                         !< file handle
  character(len=*),   intent(in) :: part                                                             !< part name in which sections are counted
 
  character(len=65536)           :: line
@@ -811,14 +812,14 @@ integer(pInt) function IO_countSections(fileUnit,part)
    if (IO_isBlank(line)) cycle                                                                      ! skip empty lines
    if (IO_getTag(line,'<','>') /= '') then                                                          ! stop at next part
      line = IO_read(fileUnit, .true.)                                                               ! reset IO_read
-     exit                                                                                           
+     exit
    endif
    if (IO_getTag(line,'[',']') /= '') &                                                             ! found [section] identifier
      IO_countSections = IO_countSections + 1_pInt
  enddo
 
 end function IO_countSections
- 
+
 
 !--------------------------------------------------------------------------------------------------
 !> @brief returns array of tag counts within <part> for at most N [sections]
@@ -828,7 +829,7 @@ function IO_countTagInPart(fileUnit,part,tag,Nsections)
  implicit none
  integer(pInt),   intent(in)                :: Nsections                                            !< maximum number of sections in which tag is searched for
  integer(pInt),   dimension(Nsections)      :: IO_countTagInPart
- integer(pInt),   intent(in)                :: fileUnit                                             !< file handle 
+ integer(pInt),   intent(in)                :: fileUnit                                             !< file handle
  character(len=*),intent(in)                :: part, &                                              !< part in which tag is searched for
                                                tag                                                  !< tag to search for
 
@@ -837,12 +838,12 @@ function IO_countTagInPart(fileUnit,part,tag,Nsections)
  integer(pInt), allocatable, dimension(:)   :: chunkPos
  integer(pInt)                              :: section
  character(len=65536)                       :: line
- 
+
  line = ''
  counter = 0_pInt
  section = 0_pInt
 
- rewind(fileUnit) 
+ rewind(fileUnit)
  do while (trim(line) /= IO_EOF .and. IO_lc(IO_getTag(line,'<','>')) /= part)                       ! search for part
    line = IO_read(fileUnit)
  enddo
@@ -852,14 +853,14 @@ function IO_countTagInPart(fileUnit,part,tag,Nsections)
    if (IO_isBlank(line)) cycle                                                                      ! skip empty lines
    if (IO_getTag(line,'<','>') /= '') then                                                          ! stop at next part
      line = IO_read(fileUnit, .true.)                                                               ! reset IO_read
-     exit                                                                                           
+     exit
    endif
    if (IO_getTag(line,'[',']') /= '') section = section + 1_pInt                                    ! found [section] identifier
    if (section > 0) then
      chunkPos = IO_stringPos(line)
      if (tag == trim(IO_lc(IO_stringValue(line,chunkPos,1_pInt)))) &                                ! match
        counter(section) = counter(section) + 1_pInt
-   endif   
+   endif
  enddo
 
  IO_countTagInPart = counter
@@ -875,7 +876,7 @@ function IO_spotTagInPart(fileUnit,part,tag,Nsections)
  implicit none
  integer(pInt),   intent(in)                :: Nsections                                            !< maximum number of sections in which tag is searched for
  logical,         dimension(Nsections)      :: IO_spotTagInPart
- integer(pInt),   intent(in)                :: fileUnit                                             !< file handle 
+ integer(pInt),   intent(in)                :: fileUnit                                             !< file handle
  character(len=*),intent(in)                :: part, &                                              !< part in which tag is searched for
                                                tag                                                  !< tag to search for
 
@@ -898,11 +899,11 @@ function IO_spotTagInPart(fileUnit,part,tag,Nsections)
    if (IO_isBlank(line)) cycle                                                                      ! skip empty lines
    if (IO_getTag(line,'<','>') /= '') then                                                          ! stop at next part
      line = IO_read(fileUnit, .true.)                                                               ! reset IO_read
-     exit                                                                                           
+     exit
    endif
    if (IO_getTag(line,'[',']') /= '') section = section + 1_pInt                                    ! found [section] identifier
    if (section > 0_pInt) then
-     chunkPos = IO_stringPos(line)                                          
+     chunkPos = IO_stringPos(line)
      if (tag == trim(IO_lc(IO_stringValue(line,chunkPos,1_pInt)))) &                                ! match
        IO_spotTagInPart(section) = .true.
    endif
@@ -917,7 +918,7 @@ function IO_spotTagInPart(fileUnit,part,tag,Nsections)
 logical function IO_globalTagInPart(fileUnit,part,tag)
 
  implicit none
- integer(pInt),   intent(in)                :: fileUnit                                             !< file handle 
+ integer(pInt),   intent(in)                :: fileUnit                                             !< file handle
  character(len=*),intent(in)                :: part, &                                              !< part in which tag is searched for
                                                tag                                                  !< tag to search for
 
@@ -940,21 +941,21 @@ logical function IO_globalTagInPart(fileUnit,part,tag)
    if (IO_isBlank(line)) cycle                                                                      ! skip empty lines
    if (IO_getTag(line,'<','>') /= '') then                                                          ! stop at next part
      line = IO_read(fileUnit, .true.)                                                               ! reset IO_read
-     exit                                                                                           
+     exit
    endif
    if (IO_getTag(line,'[',']') /= '') section = section + 1_pInt                                    ! found [section] identifier
    if (section == 0_pInt) then
      chunkPos = IO_stringPos(line)
      if (tag == trim(IO_lc(IO_stringValue(line,chunkPos,1_pInt)))) &                                ! match
        IO_globalTagInPart = .true.
-   endif   
+   endif
  enddo
 
 end function IO_globalTagInPart
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief locates all space-separated chunks in given string and returns array containing number 
+!> @brief locates all space-separated chunks in given string and returns array containing number
 !! them and the left/right position to be used by IO_xxxVal
 !! Array size is dynamically adjusted to number of chunks found in string
 !! IMPORTANT: first element contains number of chunks!
@@ -964,13 +965,13 @@ pure function IO_stringPos(string)
  implicit none
  integer(pInt), dimension(:), allocatable            :: IO_stringPos
  character(len=*),                        intent(in) :: string                                      !< string in which chunk positions are searched for
- 
+
  character(len=*), parameter  :: SEP=achar(44)//achar(32)//achar(9)//achar(10)//achar(13)           ! comma and whitespaces
  integer                      :: left, right                                                        ! no pInt (verify and scan return default integer)
 
  allocate(IO_stringPos(1), source=0_pInt)
  right = 0
- 
+
  do while (verify(string(right+1:),SEP)>0)
    left  = right + verify(string(right+1:),SEP)
    right = left + scan(string(left:),SEP) - 2
@@ -986,7 +987,7 @@ end function IO_stringPos
 !> @brief reads string value at myChunk from string
 !--------------------------------------------------------------------------------------------------
 function IO_stringValue(string,chunkPos,myChunk,silent)
- 
+
  implicit none
  integer(pInt),   dimension(:),                intent(in) :: chunkPos                               !< positions of start and end of each tag/chunk in given string
  integer(pInt),                                intent(in) :: myChunk                                !< position number of desired chunk
@@ -997,13 +998,13 @@ function IO_stringValue(string,chunkPos,myChunk,silent)
  character(len=16), parameter                             :: MYNAME = 'IO_stringValue: '
 
  logical                                                  :: warn
- 
+
  if (.not. present(silent)) then
    warn = .false.
  else
    warn = silent
  endif
- 
+
  IO_stringValue = ''
  valuePresent: if (myChunk > chunkPos(1) .or. myChunk < 1_pInt) then
    if (warn) call IO_warning(201,el=myChunk,ext_msg=MYNAME//trim(string))
@@ -1018,11 +1019,11 @@ end function IO_stringValue
 !> @brief reads string value at myChunk from fixed format string
 !--------------------------------------------------------------------------------------------------
 pure function IO_fixedStringValue (string,ends,myChunk)
- 
+
  implicit none
  integer(pInt),                                intent(in) :: myChunk                                !< position number of desired chunk
  integer(pInt),   dimension(:),  intent(in)               :: ends                                   !< positions of end of each tag/chunk in given string
- character(len=ends(myChunk+1)-ends(myChunk))             :: IO_fixedStringValue 
+ character(len=ends(myChunk+1)-ends(myChunk))             :: IO_fixedStringValue
  character(len=*),               intent(in)               :: string                                 !< raw input with known ends of each chunk
 
  IO_fixedStringValue = string(ends(myChunk)+1:ends(myChunk+1))
@@ -1059,7 +1060,7 @@ end function IO_floatValue
 !> @brief reads float value at myChunk from fixed format string
 !--------------------------------------------------------------------------------------------------
 real(pReal) function IO_fixedFloatValue (string,ends,myChunk)
- 
+
  implicit none
  character(len=*),               intent(in) :: string                                               !< raw input with known ends of each chunk
  integer(pInt),                                intent(in) :: myChunk                                !< position number of desired chunk
@@ -1086,11 +1087,11 @@ real(pReal) function IO_fixedNoEFloatValue (string,ends,myChunk)
  character(len=22),              parameter  :: MYNAME = 'IO_fixedNoEFloatValue '
  character(len=13),              parameter  :: VALIDBASE = '0123456789.+-'
  character(len=12),              parameter  :: VALIDEXP  = '0123456789+-'
- 
+
  real(pReal)   :: base
  integer(pInt) :: expon
  integer       :: pos_exp
- 
+
  pos_exp = scan(string(ends(myChunk)+1:ends(myChunk+1)),'+-',back=.true.)
  hasExponent: if (pos_exp > 1) then
    base  = IO_verifyFloatValue(trim(adjustl(string(ends(myChunk)+1_pInt:ends(myChunk)+pos_exp-1_pInt))),&
@@ -1135,7 +1136,7 @@ end function IO_intValue
 !> @brief reads integer value at myChunk from fixed format string
 !--------------------------------------------------------------------------------------------------
 integer(pInt) function IO_fixedIntValue(string,ends,myChunk)
- 
+
  implicit none
  character(len=*),               intent(in) :: string                                               !< raw input with known ends of each chunk
  integer(pInt),                                intent(in) :: myChunk                                !< position number of desired chunk
@@ -1159,8 +1160,8 @@ pure function IO_lc(string)
  character(len=len(string))   :: IO_lc
 
  character(26), parameter :: LOWER = 'abcdefghijklmnopqrstuvwxyz'
- character(26), parameter :: UPPER = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ' 
- 
+ character(26), parameter :: UPPER = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+
  integer                      :: i,n                                                                ! no pInt (len returns default integer)
 
  IO_lc = string
@@ -1178,8 +1179,8 @@ end function IO_lc
 subroutine IO_skipChunks(fileUnit,N)
 
  implicit none
- integer(pInt), intent(in)                :: fileUnit, &                                            !< file handle 
-                                             N                                                      !< minimum number of chunks to skip 
+ integer(pInt), intent(in)                :: fileUnit, &                                            !< file handle
+                                             N                                                      !< minimum number of chunks to skip
 
  integer(pInt)                            :: remainingChunks
  character(len=65536)                     :: line
@@ -1198,7 +1199,7 @@ end subroutine IO_skipChunks
 !> @brief extracts string value from key=value pair and check whether key matches
 !--------------------------------------------------------------------------------------------------
 character(len=300) pure function IO_extractValue(pair,key)
- 
+
  implicit none
  character(len=*), intent(in) :: pair, &                                                            !< key=value pair
                                  key                                                                !< key to be expected
@@ -1221,8 +1222,8 @@ end function IO_extractValue
 integer(pInt) function IO_countDataLines(fileUnit)
 
  implicit none
- integer(pInt), intent(in)                :: fileUnit                                               !< file handle 
- 
+ integer(pInt), intent(in)                :: fileUnit                                               !< file handle
+
 
  integer(pInt), allocatable, dimension(:) :: chunkPos
  character(len=65536)                     :: line, &
@@ -1236,7 +1237,7 @@ integer(pInt) function IO_countDataLines(fileUnit)
    chunkPos = IO_stringPos(line)
    tmp = IO_lc(IO_stringValue(line,chunkPos,1_pInt))
    if (tmp(1:1) == '*' .and. tmp(2:2) /= '*') then                                                  ! found keyword
-     line = IO_read(fileUnit, .true.)                                                               ! reset IO_read                                                                                          
+     line = IO_read(fileUnit, .true.)                                                               ! reset IO_read
      exit
    else
      if (tmp(2:2) /= '*') IO_countDataLines = IO_countDataLines + 1_pInt
@@ -1246,7 +1247,38 @@ integer(pInt) function IO_countDataLines(fileUnit)
 
 end function IO_countDataLines
 
- 
+
+!--------------------------------------------------------------------------------------------------
+!> @brief count lines containig data up to next *keyword
+!--------------------------------------------------------------------------------------------------
+integer(pInt) function IO_countNumericalDataLines(fileUnit)
+
+ implicit none
+ integer(pInt), intent(in)                :: fileUnit                                               !< file handle
+
+
+ integer(pInt), allocatable, dimension(:) :: chunkPos
+ character(len=65536)                     :: line, &
+                                             tmp
+
+ IO_countNumericalDataLines = 0_pInt
+ line = ''
+
+ do while (trim(line) /= IO_EOF)
+   line = IO_read(fileUnit)
+   chunkPos = IO_stringPos(line)
+   tmp = IO_lc(IO_stringValue(line,chunkPos,1_pInt))
+   if (verify(trim(tmp) ,"0123456789")/=0) then                                                            ! found keyword
+     line = IO_read(fileUnit, .true.)                                                               ! reset IO_read
+     exit
+   else
+     IO_countNumericalDataLines = IO_countNumericalDataLines + 1_pInt
+   endif
+ enddo
+ backspace(fileUnit)
+
+end function IO_countNumericalDataLines
+
 !--------------------------------------------------------------------------------------------------
 !> @brief count items in consecutive lines depending on lines
 !> @details Marc:      ints concatenated by "c" as last char or range of values a "to" b
@@ -1257,8 +1289,8 @@ integer(pInt) function IO_countContinuousIntValues(fileUnit)
 
  implicit none
  integer(pInt), intent(in) :: fileUnit
- 
-#ifdef Abaqus 
+
+#ifdef Abaqus
  integer(pInt)                            :: l,c
 #endif
  integer(pInt), allocatable, dimension(:) :: chunkPos
@@ -1272,22 +1304,22 @@ integer(pInt) function IO_countContinuousIntValues(fileUnit)
    line = IO_read(fileUnit)
    chunkPos = IO_stringPos(line)
    if (chunkPos(1) < 1_pInt) then                                                                   ! empty line
-     line = IO_read(fileUnit, .true.)                                                               ! reset IO_read 
+     line = IO_read(fileUnit, .true.)                                                               ! reset IO_read
      exit
    elseif (IO_lc(IO_stringValue(line,chunkPos,2_pInt)) == 'to' ) then                               ! found range indicator
      IO_countContinuousIntValues = 1_pInt + abs(  IO_intValue(line,chunkPos,3_pInt) &
                                                 - IO_intValue(line,chunkPos,1_pInt))
-     line = IO_read(fileUnit, .true.)                                                               ! reset IO_read 
+     line = IO_read(fileUnit, .true.)                                                               ! reset IO_read
      exit                                                                                           ! only one single range indicator allowed
    else if (IO_lc(IO_stringValue(line,chunkPos,2_pInt)) == 'of' ) then                              ! found multiple entries indicator
      IO_countContinuousIntValues = IO_intValue(line,chunkPos,1_pInt)
-     line = IO_read(fileUnit, .true.)                                                               ! reset IO_read 
+     line = IO_read(fileUnit, .true.)                                                               ! reset IO_read
      exit                                                                                           ! only one single multiplier allowed
    else
      IO_countContinuousIntValues = IO_countContinuousIntValues+chunkPos(1)-1_pInt                   ! add line's count when assuming 'c'
      if ( IO_lc(IO_stringValue(line,chunkPos,chunkPos(1))) /= 'c' ) then                            ! line finished, read last value
        IO_countContinuousIntValues = IO_countContinuousIntValues+1_pInt
-       line = IO_read(fileUnit, .true.)                                                             ! reset IO_read 
+       line = IO_read(fileUnit, .true.)                                                             ! reset IO_read
        exit                                                                                         ! data ended
      endif
    endif
@@ -1297,7 +1329,7 @@ integer(pInt) function IO_countContinuousIntValues(fileUnit)
  do l = 1_pInt,c
    backspace(fileUnit)                                                                              ! ToDo: substitute by rewind?
  enddo
- 
+
  l = 1_pInt
  do while (trim(line) /= IO_EOF .and. l <= c)                                                       ! ToDo: is this correct
    l = l + 1_pInt
@@ -1313,7 +1345,7 @@ end function IO_countContinuousIntValues
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief return integer list corrsponding to items in consecutive lines.
+!> @brief return integer list corresponding to items in consecutive lines.
 !! First integer in array is counter
 !> @details Marc:      ints concatenated by "c" as last char, range of a "to" b, or named set
 !! Abaqus:    triplet of start,stop,inc or named set
@@ -1324,7 +1356,7 @@ function IO_continuousIntValues(fileUnit,maxN,lookupName,lookupMap,lookupMaxN)
  implicit none
  integer(pInt),                     intent(in) :: maxN
  integer(pInt),     dimension(1+maxN)          :: IO_continuousIntValues
- 
+
  integer(pInt),                     intent(in) :: fileUnit, &
                                                   lookupMaxN
  integer(pInt),     dimension(:,:), intent(in) :: lookupMap
@@ -1358,7 +1390,7 @@ function IO_continuousIntValues(fileUnit,maxN,lookupName,lookupMap,lookupMaxN)
    else if (chunkPos(1) > 2_pInt .and. IO_lc(IO_stringValue(line,chunkPos,2_pInt)) == 'to' ) then   ! found range indicator
      first = IO_intValue(line,chunkPos,1_pInt)
      last  = IO_intValue(line,chunkPos,3_pInt)
-     do i = first, last, sign(1_pInt,last-first) 
+     do i = first, last, sign(1_pInt,last-first)
        IO_continuousIntValues(1) = IO_continuousIntValues(1) + 1_pInt
        IO_continuousIntValues(1+IO_continuousIntValues(1)) = i
      enddo
@@ -1384,7 +1416,7 @@ function IO_continuousIntValues(fileUnit,maxN,lookupName,lookupMap,lookupMaxN)
  do l = 1_pInt,c
    backspace(fileUnit)
  enddo
- 
+
 !--------------------------------------------------------------------------------------------------
 ! check if the element values in the elset are auto generated
  backspace(fileUnit)
@@ -1393,7 +1425,7 @@ function IO_continuousIntValues(fileUnit,maxN,lookupName,lookupMap,lookupMaxN)
  do i = 1_pInt,chunkPos(1)
    if (IO_lc(IO_stringValue(line,chunkPos,i)) == 'generate') rangeGeneration = .true.
  enddo
- 
+
  do l = 1_pInt,c
    read(fileUnit,'(A65536)',end=100) line
    chunkPos = IO_stringPos(line)
@@ -1436,7 +1468,7 @@ pure function IO_intOut(intToPrint)
   character(len=19) :: N_Digits                                                                     ! maximum digits for 64 bit integer
   character(len=40) :: IO_intOut
   integer(pInt), intent(in) :: intToPrint
-  
+
   write(N_Digits, '(I19.19)') 1_pInt + int(log10(real(intToPrint)),pInt)
   IO_intOut = 'I'//trim(N_Digits)//'.'//trim(N_Digits)
 
@@ -1451,7 +1483,7 @@ function IO_timeStamp()
   implicit none
   character(len=10) :: IO_timeStamp
   integer(pInt), dimension(8) :: values
-  
+
   call DATE_AND_TIME(VALUES=values)
   write(IO_timeStamp,'(i2.2,a1,i2.2,a1,i2.2)') values(5),':',values(6),':',values(7)
 
@@ -1468,11 +1500,11 @@ subroutine IO_error(error_ID,el,ip,g,instance,ext_msg)
  integer(pInt),              intent(in) :: error_ID
  integer(pInt),    optional, intent(in) :: el,ip,g,instance
  character(len=*), optional, intent(in) :: ext_msg
- 
+
  external                               :: quit
  character(len=1024)                    :: msg
  character(len=1024)                    :: formatString
- 
+
  select case (error_ID)
 
 !--------------------------------------------------------------------------------------------------
@@ -1494,7 +1526,7 @@ subroutine IO_error(error_ID,el,ip,g,instance,ext_msg)
    msg = '{input} recursion limit reached'
  case (105_pInt)
    msg = 'unknown output:'
- 
+
 !--------------------------------------------------------------------------------------------------
 ! lattice error messages
  case (130_pInt)
@@ -1540,7 +1572,7 @@ subroutine IO_error(error_ID,el,ip,g,instance,ext_msg)
 !--------------------------------------------------------------------------------------------------
 ! plasticity error messages
  case (200_pInt)
-   msg = 'unknown elasticity specified:' 
+   msg = 'unknown elasticity specified:'
  case (201_pInt)
    msg = 'unknown plasticity specified:'
 
@@ -1550,12 +1582,12 @@ subroutine IO_error(error_ID,el,ip,g,instance,ext_msg)
    msg = 'material parameter out of bounds:'
 
 !--------------------------------------------------------------------------------------------------
-! numerics error messages 
+! numerics error messages
  case (300_pInt)
    msg = 'unknown numerics parameter:'
  case (301_pInt)
    msg = 'numerics parameter out of bounds:'
- 
+
 !--------------------------------------------------------------------------------------------------
 ! math errors
  case (400_pInt)
@@ -1577,7 +1609,7 @@ subroutine IO_error(error_ID,el,ip,g,instance,ext_msg)
 ! homogenization errors
  case (500_pInt)
    msg = 'unknown homogenization specified'
- 
+
 !--------------------------------------------------------------------------------------------------
 ! user errors
  case (600_pInt)
@@ -1638,7 +1670,7 @@ subroutine IO_error(error_ID,el,ip,g,instance,ext_msg)
    msg = 'PETSc: SNES_DIVERGED_FNORM_NAN'
  case (894_pInt)
    msg = 'MPI error'
- 
+
 !-------------------------------------------------------------------------------------------------
 ! error messages related to parsing of Abaqus input file
  case (900_pInt)
@@ -1660,9 +1692,9 @@ subroutine IO_error(error_ID,el,ip,g,instance,ext_msg)
  case (908_pInt)
    msg = 'size of mesh_mapFEtoCPnode in mesh_abaqus_map_nodes'
  case (909_pInt)
-   msg = 'size of mesh_node in mesh_abaqus_build_nodes not equal to mesh_Nnodes' 
- 
- 
+   msg = 'size of mesh_node in mesh_abaqus_build_nodes not equal to mesh_Nnodes'
+
+
 !-------------------------------------------------------------------------------------------------
 ! general error messages
  case (666_pInt)
@@ -1671,7 +1703,7 @@ subroutine IO_error(error_ID,el,ip,g,instance,ext_msg)
    msg = 'unknown error number...'
 
  end select
- 
+
  !$OMP CRITICAL (write2out)
  write(0,'(/,a)')                ' ┌'//IO_DIVIDER//'┐'
  write(0,'(a,24x,a,40x,a)')      ' │','error',                                             '│'
@@ -1711,7 +1743,7 @@ subroutine IO_warning(warning_ID,el,ip,g,ext_msg)
  integer(pInt),              intent(in) :: warning_ID
  integer(pInt),    optional, intent(in) :: el,ip,g
  character(len=*), optional, intent(in) :: ext_msg
- 
+
  character(len=1024)                    :: msg
  character(len=1024)                    :: formatString
 
@@ -1759,7 +1791,7 @@ subroutine IO_warning(warning_ID,el,ip,g,ext_msg)
  case default
    msg = 'unknown warning number'
  end select
- 
+
  !$OMP CRITICAL (write2out)
  write(6,'(/,a)')                ' ┌'//IO_DIVIDER//'┐'
  write(6,'(a,24x,a,38x,a)')      ' │','warning',                                           '│'
@@ -1788,34 +1820,34 @@ end subroutine IO_warning
 
 
 !--------------------------------------------------------------------------------------------------
-! internal helper functions 
+! internal helper functions
 
 !--------------------------------------------------------------------------------------------------
 !> @brief returns verified integer value in given string
 !--------------------------------------------------------------------------------------------------
 integer(pInt) function IO_verifyIntValue (string,validChars,myName)
- 
+
  implicit none
- character(len=*), intent(in) :: string, &                                                            !< string for conversion to int value. Must not contain spaces! 
+ character(len=*), intent(in) :: string, &                                                            !< string for conversion to int value. Must not contain spaces!
                                  validChars, &                                                        !< valid characters in string
                                  myName                                                               !< name of caller function (for debugging)
  integer(pInt)                :: readStatus, invalidWhere
  !character(len=len(trim(string))) :: trimmed does not work with ifort 14.0.1
- 
+
  IO_verifyIntValue = 0_pInt
 
  invalidWhere = verify(string,validChars)
  if (invalidWhere == 0_pInt) then
    read(UNIT=string,iostat=readStatus,FMT=*) IO_verifyIntValue                                        ! no offending chars found
-   if (readStatus /= 0_pInt) &                                                                        ! error during string to float conversion
+   if (readStatus /= 0_pInt) &                                                                        ! error during string to integer conversion
      call IO_warning(203_pInt,ext_msg=myName//'"'//string//'"')
  else
    call IO_warning(202_pInt,ext_msg=myName//'"'//string//'"')                                         ! complain about offending characters
    read(UNIT=string(1_pInt:invalidWhere-1_pInt),iostat=readStatus,FMT=*) IO_verifyIntValue            ! interpret remaining string
-   if (readStatus /= 0_pInt) &                                                                        ! error during string to float conversion
+   if (readStatus /= 0_pInt) &                                                                        ! error during string to integer conversion
      call IO_warning(203_pInt,ext_msg=myName//'"'//string(1_pInt:invalidWhere-1_pInt)//'"')
  endif
-  
+
 end function IO_verifyIntValue
 
 
@@ -1823,15 +1855,15 @@ end function IO_verifyIntValue
 !> @brief returns verified float value in given string
 !--------------------------------------------------------------------------------------------------
 real(pReal) function IO_verifyFloatValue (string,validChars,myName)
- 
+
  implicit none
- character(len=*), intent(in) :: string, &                                                            !< string for conversion to int value. Must not contain spaces! 
+ character(len=*), intent(in) :: string, &                                                            !< string for conversion to int value. Must not contain spaces!
                                  validChars, &                                                        !< valid characters in string
                                  myName                                                               !< name of caller function (for debugging)
 
  integer(pInt)                :: readStatus, invalidWhere
  !character(len=len(trim(string))) :: trimmed does not work with ifort 14.0.1
- 
+
  IO_verifyFloatValue = 0.0_pReal
 
  invalidWhere = verify(string,validChars)
@@ -1845,12 +1877,12 @@ real(pReal) function IO_verifyFloatValue (string,validChars,myName)
    if (readStatus /= 0_pInt) &                                                                        ! error during string to float conversion
      call IO_warning(203_pInt,ext_msg=myName//'"'//string(1_pInt:invalidWhere-1_pInt)//'"')
  endif
-  
+
 end function IO_verifyFloatValue
- 
-#ifdef Abaqus 
+
+#ifdef Abaqus
 !--------------------------------------------------------------------------------------------------
-!> @brief create a new input file for abaqus simulations by removing all comment lines and 
+!> @brief create a new input file for abaqus simulations by removing all comment lines and
 !> including "include"s
 !--------------------------------------------------------------------------------------------------
 recursive function abaqus_assembleInputFile(unit1,unit2) result(createSuccess)
@@ -1860,7 +1892,7 @@ recursive function abaqus_assembleInputFile(unit1,unit2) result(createSuccess)
  implicit none
  integer(pInt), intent(in)                :: unit1, &
                                              unit2
- 
+
 
  integer(pInt), allocatable, dimension(:) :: chunkPos
  character(len=65536)                     :: line,fname
@@ -1894,10 +1926,10 @@ recursive function abaqus_assembleInputFile(unit1,unit2) result(createSuccess)
      write(unit1,'(A)') trim(line)
    endif
  enddo
- 
+
 220 createSuccess = .true.
  return
- 
+
 200 createSuccess =.false.
 
 end function abaqus_assembleInputFile

@@ -542,6 +542,7 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
    debug_level, &
    debug_homogenization, &
    debug_levelBasic, &
+   debug_levelExtensive, &
    debug_levelSelective, &
    debug_e, &
    debug_i, &
@@ -638,8 +639,8 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
      IpLooping1: do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
 
        converged: if ( materialpoint_converged(i,e) ) then
-#ifndef _OPENMP
-         if (iand(debug_level(debug_homogenization), debug_levelBasic) /= 0_pInt &
+#ifdef DEBUG
+         if (iand(debug_level(debug_homogenization), debug_levelExtensive) /= 0_pInt &
             .and. ((e == debug_e .and. i == debug_i) &
                    .or. .not. iand(debug_level(debug_homogenization),debug_levelSelective) /= 0_pInt)) then
            write(6,'(a,1x,f12.8,1x,a,1x,f12.8,1x,a,i8,1x,i2/)') '<< HOMOG >> winding forward from', &
@@ -741,8 +742,8 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
            materialpoint_subStep(i,e) = subStepSizeHomog * materialpoint_subStep(i,e)               ! crystallite had severe trouble, so do a significant cutback
            !$OMP FLUSH(materialpoint_subStep)
 
-#ifndef _OPENMP
-           if (iand(debug_level(debug_homogenization), debug_levelBasic) /= 0_pInt &
+#ifdef DEBUG
+           if (iand(debug_level(debug_homogenization), debug_levelExtensive) /= 0_pInt &
               .and. ((e == debug_e .and. i == debug_i) &
                     .or. .not. iand(debug_level(debug_homogenization), debug_levelSelective) /= 0_pInt)) then
              write(6,'(a,1x,f12.8,a,i8,1x,i2/)') &

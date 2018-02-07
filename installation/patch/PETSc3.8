@@ -1,0 +1,1012 @@
+From 87e307a9c511f3f40598edbd5996297d7804ce62 Mon Sep 17 00:00:00 2001
+From: Martin Diehl <m.diehl@mpie.de>
+Date: Tue, 21 Nov 2017 15:12:04 +0100
+Subject: [PATCH] due to changes in interface of PETSc
+
+---
+ src/DAMASK_spectral.f90            | 27 +++++---------
+ src/mesh.f90                       | 12 +++---
+ src/numerics.f90                   | 13 +++----
+ src/spectral_damage.f90            | 39 ++++++--------------
+ src/spectral_interface.f90         | 31 ++++++++--------
+ src/spectral_mech_AL.f90           | 46 ++++++++---------------
+ src/spectral_mech_Basic.f90        | 52 +++++++++-----------------
+ src/spectral_mech_Polarisation.f90 | 52 ++++++++++----------------
+ src/spectral_thermal.f90           | 75 ++++++++++++++++++--------------------
+ src/spectral_utilities.f90         | 34 ++++++-----------
+ 10 files changed, 146 insertions(+), 235 deletions(-)
+
+diff --git a/src/DAMASK_spectral.f90 b/src/DAMASK_spectral.f90
+index f32bfb7b..c315b1b8 100644
+--- a/src/DAMASK_spectral.f90
++++ b/src/DAMASK_spectral.f90
+@@ -12,6 +12,8 @@ program DAMASK_spectral
+    compiler_version, &
+    compiler_options
+ #endif
++#include <petsc/finclude/petscsys.h>
++ use PETSC
+  use prec, only: &
+    pInt, &
+    pLongInt, &
+@@ -85,11 +87,8 @@ program DAMASK_spectral
+  use spectral_damage
+  use spectral_thermal
+ 
+-
+  implicit none
+ 
+-#include <petsc/finclude/petscsys.h>
+-
+ !--------------------------------------------------------------------------------------------------
+ ! variables related to information from load case and geom file
+  real(pReal), dimension(9) :: temp_valueVector = 0.0_pReal                                          !< temporarily from loadcase file when reading in tensors (initialize to 0.0)
+@@ -144,18 +143,11 @@ program DAMASK_spectral
+  integer(pInt), parameter :: maxByteOut = 2147483647-4096                                           !< limit of one file output write https://trac.mpich.org/projects/mpich/ticket/1742
+  integer(pInt), parameter :: maxRealOut = maxByteOut/pReal
+  integer(pLongInt), dimension(2) :: outputIndex
+- PetscErrorCode :: ierr
++ integer :: ierr
++
+  external :: &
+-   quit, &
+-   MPI_file_open, &
+-   MPI_file_close, &
+-   MPI_file_seek, &
+-   MPI_file_get_position, &
+-   MPI_file_write, &
+-   MPI_abort, &
+-   MPI_finalize, &
+-   MPI_allreduce, &
+-   PETScFinalize
++   quit
++
+ 
+ !--------------------------------------------------------------------------------------------------
+ ! init DAMASK (all modules)
+@@ -448,7 +440,7 @@ program DAMASK_spectral
+      call MPI_file_write(resUnit, &
+                          reshape(materialpoint_results(:,:,outputIndex(1):outputIndex(2)), &
+                                 [(outputIndex(2)-outputIndex(1)+1)*int(materialpoint_sizeResults,pLongInt)]), &
+-                         (outputIndex(2)-outputIndex(1)+1)*int(materialpoint_sizeResults,pLongInt), &
++                         int(outputIndex(2)-outputIndex(1)+1)*materialpoint_sizeResults, &
+                          MPI_DOUBLE, MPI_STATUS_IGNORE, ierr)
+      if (ierr /= 0_pInt) call IO_error(error_ID=894_pInt, ext_msg='MPI_file_write')
+    enddo
+@@ -636,8 +628,7 @@ program DAMASK_spectral
+          notConvergedCounter = notConvergedCounter + 1_pInt
+        endif; flush(6)
+        if (mod(inc,loadCases(currentLoadCase)%outputFrequency) == 0_pInt) then                      ! at output frequency
+-         if (worldrank == 0) &
+-           write(6,'(1/,a)') ' ... writing results to file ......................................'
++         write(6,'(1/,a)') ' ... writing results to file ......................................'
+          call materialpoint_postResults()
+          call MPI_file_seek (resUnit,fileOffset,MPI_SEEK_SET,ierr)
+          if(ierr /=0_pInt) call IO_error(894_pInt, ext_msg='MPI_file_seek')
+@@ -646,7 +637,7 @@ program DAMASK_spectral
+                       min(i*((maxRealOut)/materialpoint_sizeResults),size(materialpoint_results,3))],pLongInt)
+            call MPI_file_write(resUnit,reshape(materialpoint_results(:,:,outputIndex(1):outputIndex(2)),&
+                                          [(outputIndex(2)-outputIndex(1)+1)*int(materialpoint_sizeResults,pLongInt)]), &
+-                               (outputIndex(2)-outputIndex(1)+1)*int(materialpoint_sizeResults,pLongInt),&
++                               int(outputIndex(2)-outputIndex(1)+1)*materialpoint_sizeResults,&
+                                MPI_DOUBLE, MPI_STATUS_IGNORE, ierr)
+            if(ierr /=0_pInt) call IO_error(894_pInt, ext_msg='MPI_file_write')
+          enddo
+diff --git a/src/mesh.f90 b/src/mesh.f90
+index 666fe1e3..a314c22c 100644
+--- a/src/mesh.f90
++++ b/src/mesh.f90
+@@ -115,11 +115,6 @@ module mesh
+  logical, private :: noPart                                                                         !< for cases where the ABAQUS input file does not use part/assembly information
+ #endif
+ 
+-#ifdef Spectral
+-#include <petsc/finclude/petscsys.h>
+- include 'fftw3-mpi.f03'
+-#endif
+-
+ ! These definitions should actually reside in the FE-solver specific part (different for MARC/ABAQUS)
+ ! Hence, I suggest to prefix with "FE_"
+ 
+@@ -476,6 +471,10 @@ subroutine mesh_init(ip,el)
+  use, intrinsic :: iso_fortran_env, only: &
+    compiler_version, &
+    compiler_options
++#endif
++#ifdef Spectral
++#include <petsc/finclude/petscsys.h>
++ use petscsys
+ #endif
+  use DAMASK_interface
+  use IO, only: &
+@@ -511,6 +510,7 @@ subroutine mesh_init(ip,el)
+  
+  implicit none
+ #ifdef Spectral
++ include 'fftw3-mpi.f03'
+  integer(C_INTPTR_T) :: devNull, local_K, local_K_offset
+  integer :: ierr, worldsize
+ #endif
+@@ -518,8 +518,6 @@ subroutine mesh_init(ip,el)
+  integer(pInt), intent(in) :: el, ip
+  integer(pInt) :: j
+  logical :: myDebug
+- 
+- external :: MPI_comm_size
+ 
+  write(6,'(/,a)')   ' <<<+-  mesh init  -+>>>'
+  write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
+diff --git a/src/numerics.f90 b/src/numerics.f90
+index 70c7f3c3..e7d54893 100644
+--- a/src/numerics.f90
++++ b/src/numerics.f90
+@@ -10,9 +10,6 @@ module numerics
+ 
+  implicit none
+  private
+-#ifdef PETSc
+-#include <petsc/finclude/petsc.h90>
+-#endif
+  character(len=64), parameter, private :: &
+    numerics_CONFIGFILE        = 'numerics.config'                                                   !< name of configuration file
+ 
+@@ -216,6 +213,10 @@ subroutine numerics_init
+    IO_warning, &
+    IO_timeStamp, &
+    IO_EOF
++#ifdef PETSc
++#include <petsc/finclude/petscsys.h>
++   use petscsys
++#endif
+ #if defined(Spectral) || defined(FEM)
+ !$ use OMP_LIB, only: omp_set_num_threads                                                           ! Use the standard conforming module file for omp if using the spectral solver
+  implicit none
+@@ -232,10 +233,8 @@ subroutine numerics_init
+    line
+ !$ character(len=6) DAMASK_NumThreadsString                                                         ! environment variable DAMASK_NUM_THREADS
+  external :: &
+-   MPI_Comm_rank, &
+-   MPI_Comm_size, &
+-   MPI_Abort
+-
++   PETScErrorF                                                                                      ! is called in the CHKERRQ macro
++ 
+ #ifdef PETSc
+  call MPI_Comm_rank(PETSC_COMM_WORLD,worldrank,ierr);CHKERRQ(ierr)
+  call MPI_Comm_size(PETSC_COMM_WORLD,worldsize,ierr);CHKERRQ(ierr)
+diff --git a/src/spectral_damage.f90 b/src/spectral_damage.f90
+index 72765987..11da3b96 100644
+--- a/src/spectral_damage.f90
++++ b/src/spectral_damage.f90
+@@ -4,8 +4,10 @@
+ !> @brief Spectral solver for nonlocal damage
+ !--------------------------------------------------------------------------------------------------
+ module spectral_damage
++#include <petsc/finclude/petsc.h>
++ use PETSC
+  use prec, only: & 
+-   pInt, &
++   PInt, &
+    pReal
+  use math, only: &
+    math_I3
+@@ -18,7 +20,6 @@ module spectral_damage
+ 
+  implicit none
+  private
+-#include <petsc/finclude/petsc.h90>
+ 
+  character (len=*), parameter, public :: &
+    spectral_damage_label = 'spectraldamage'
+@@ -48,11 +49,9 @@ module spectral_damage
+    spectral_damage_solution, &
+    spectral_damage_forward, &
+    spectral_damage_destroy
++ 
+  external :: &
+-   PETScFinalize, &
+-   MPI_Abort, &
+-   MPI_Bcast, &
+-   MPI_Allreduce
++   PETScErrorF                                                                                      ! is called in the CHKERRQ macro
+ 
+ contains
+ 
+@@ -86,21 +85,12 @@ subroutine spectral_damage_init()
+  Vec :: uBound, lBound
+  PetscErrorCode :: ierr
+  character(len=100) :: snes_type
+-
+  external :: &
+-   SNESCreate, &
+    SNESSetOptionsPrefix, &
++   SNESGetType, &
+    DMDACreate3D, &
+-   SNESSetDM, &
+    DMDAGetCorners, &
+-   DMCreateGlobalVector, &
+-   DMDASNESSetFunctionLocal, &
+-   SNESSetFromOptions, &
+-   SNESGetType, &
+-   VecSet, &
+-   DMGetGlobalVector, &
+-   DMRestoreGlobalVector, &
+-   SNESVISetVariableBounds
++   DMDASNESSetFunctionLocal
+ 
+  write(6,'(/,a)') ' <<<+-  spectral_damage init  -+>>>'
+  write(6,'(a15,a)')   ' Current time: ',IO_timeStamp()
+@@ -114,7 +104,7 @@ subroutine spectral_damage_init()
+  do proc = 1, worldsize
+    call MPI_Bcast(localK(proc),1,MPI_INTEGER,proc-1,PETSC_COMM_WORLD,ierr)
+  enddo  
+- call DMDACreate3d(PETSC_COMM_WORLD, &
++ call DMDACreate3D(PETSC_COMM_WORLD, &
+         DM_BOUNDARY_NONE, DM_BOUNDARY_NONE, DM_BOUNDARY_NONE, &                                     !< cut off stencil at boundary
+         DMDA_STENCIL_BOX, &                                                                         !< Moore (26) neighborhood around central point
+         grid(1),grid(2),grid(3), &                                                                  !< global grid
+@@ -124,9 +114,11 @@ subroutine spectral_damage_init()
+         damage_grid,ierr)                                                                           !< handle, error
+  CHKERRQ(ierr)
+  call SNESSetDM(damage_snes,damage_grid,ierr); CHKERRQ(ierr)                                        !< connect snes to da
++ call DMsetFromOptions(damage_grid,ierr); CHKERRQ(ierr)
++ call DMsetUp(damage_grid,ierr); CHKERRQ(ierr)
+  call DMCreateGlobalVector(damage_grid,solution,ierr); CHKERRQ(ierr)                                !< global solution vector (grid x 1, i.e. every def grad tensor)
+  call DMDASNESSetFunctionLocal(damage_grid,INSERT_VALUES,spectral_damage_formResidual,&
+-                                                                            PETSC_NULL_OBJECT,ierr) !< residual vector of same shape as solution vector
++                                                                            PETSC_NULL_SNES,ierr) !< residual vector of same shape as solution vector
+  CHKERRQ(ierr) 
+  call SNESSetFromOptions(damage_snes,ierr); CHKERRQ(ierr)                                           !< pull it all together with additional cli arguments
+  call SNESGetType(damage_snes,snes_type,ierr); CHKERRQ(ierr)
+@@ -214,7 +206,7 @@ type(tSolutionState) function spectral_damage_solution(timeinc,timeinc_old,loadC
+  params%timeinc = timeinc
+  params%timeincOld = timeinc_old
+ 
+- call SNESSolve(damage_snes,PETSC_NULL_OBJECT,solution,ierr); CHKERRQ(ierr)
++ call SNESSolve(damage_snes,PETSC_NULL_VEC,solution,ierr); CHKERRQ(ierr)
+  call SNESGetConvergedReason(damage_snes,reason,ierr); CHKERRQ(ierr)
+ 
+  if (reason < 1) then
+@@ -360,9 +352,6 @@ subroutine spectral_damage_forward()
+  PetscScalar,  dimension(:,:,:), pointer     :: x_scal
+  PetscErrorCode                              :: ierr
+  
+- external :: &
+-   SNESGetDM
+-
+  if (cutBack) then 
+    damage_current = damage_lastInc
+    damage_stagInc = damage_lastInc
+@@ -405,10 +394,6 @@ subroutine spectral_damage_destroy()
+  implicit none
+  PetscErrorCode :: ierr
+ 
+- external :: &
+-   VecDestroy, &
+-   SNESDestroy
+-
+  call VecDestroy(solution,ierr); CHKERRQ(ierr)
+  call SNESDestroy(damage_snes,ierr); CHKERRQ(ierr)
+ 
+diff --git a/src/spectral_interface.f90 b/src/spectral_interface.f90
+index 3c8489d0..51360ac1 100644
+--- a/src/spectral_interface.f90
++++ b/src/spectral_interface.f90
+@@ -11,9 +11,9 @@
+ module DAMASK_interface
+  use prec, only: &
+    pInt
++
+  implicit none
+  private
+-#include <petsc/finclude/petscsys.h>
+  logical,             public, protected :: appendToOutFile = .false.                                !< Append to existing spectralOut file (in case of restart, not in case of regridding)
+  integer(pInt),       public, protected :: spectralRestartInc = 1_pInt                              !< Increment at which calculation starts
+  character(len=1024), public, protected :: &
+@@ -44,7 +44,13 @@ contains
+ subroutine DAMASK_interface_init()
+  use, intrinsic :: &
+    iso_fortran_env
+-
++#include <petsc/finclude/petscsys.h>
++#if PETSC_VERSION_MAJOR!=3 || PETSC_VERSION_MINOR!=8
++=================================================================================================== 
++=========================   THIS VERSION OF DAMASK REQUIRES PETSc 3.8.x   ========================= 
++===================================================================================================
++#endif
++ use PETScSys
+  use system_routines, only: &
+    getHostName
+ 
+@@ -71,12 +77,9 @@ subroutine DAMASK_interface_init()
+  PetscErrorCode :: ierr
+  logical        :: error
+  external :: &
+-   quit,&
+-   MPI_Comm_rank,&
+-   MPI_Comm_size,&
+-   PETScInitialize, &
+-   MPI_Init_Thread, &
+-   MPI_abort
++   quit, &
++   PETScErrorF, &                                                                                   ! is called in the CHKERRQ macro
++   PETScInitialize
+ 
+  open(6, encoding='UTF-8')                                                                          ! for special characters in output
+ 
+@@ -89,7 +92,7 @@ subroutine DAMASK_interface_init()
+    call quit(1_pInt)
+  endif
+ #endif
+- call PetscInitialize(PETSC_NULL_CHARACTER,ierr)                                                    ! according to PETSc manual, that should be the first line in the code
++ call PETScInitialize(PETSC_NULL_CHARACTER,ierr)                                                    ! according to PETSc manual, that should be the first line in the code
+  CHKERRQ(ierr)                                                                                      ! this is a macro definition, it is case sensitive
+  call MPI_Comm_rank(PETSC_COMM_WORLD,worldrank,ierr);CHKERRQ(ierr)
+  call MPI_Comm_size(PETSC_COMM_WORLD,worldsize,ierr);CHKERRQ(ierr)
+@@ -102,10 +105,6 @@ subroutine DAMASK_interface_init()
+      write(output_unit,'(a)') ' STDERR != 0'
+      call quit(1_pInt)
+    endif
+-   if (PETSC_VERSION_MAJOR /= 3 .or. PETSC_VERSION_MINOR /= 7) then
+-     write(6,'(a,2(i1.1,a))') 'PETSc ',PETSC_VERSION_MAJOR,'.',PETSC_VERSION_MINOR,'.x not supported'
+-     call quit(1_pInt)
+-   endif
+  else mainProcess
+    close(6)                                                                                         ! disable output for non-master processes (open 6 to rank specific file for debug)
+    open(6,file='/dev/null',status='replace')                                                        ! close(6) alone will leave some temp files in cwd
+@@ -312,9 +311,9 @@ character(len=1024) function getGeometryFile(geometryParameter)
+    geometryParameter
+  character(len=1024) :: &
+    cwd
+- integer :: posExt, posSep
+- logical :: error
+- external  :: quit
++ integer  :: posExt, posSep
++ logical  :: error
++ external :: quit
+ 
+  getGeometryFile = geometryParameter
+  posExt = scan(getGeometryFile,'.',back=.true.)
+diff --git a/src/spectral_mech_AL.f90 b/src/spectral_mech_AL.f90
+index 6d0fff28..dc221f6c 100644
+--- a/src/spectral_mech_AL.f90
++++ b/src/spectral_mech_AL.f90
+@@ -5,6 +5,8 @@
+ !> @brief AL scheme solver
+ !--------------------------------------------------------------------------------------------------
+ module spectral_mech_AL
++#include <petsc/finclude/petsc.h>
++ use PETSC
+  use prec, only: & 
+    pInt, &
+    pReal
+@@ -16,7 +18,6 @@ module spectral_mech_AL
+ 
+  implicit none
+  private
+-#include <petsc/finclude/petsc.h90>
+ 
+  character (len=*), parameter, public :: &
+    DAMASK_spectral_solverAL_label = 'al'
+@@ -71,11 +72,9 @@ module spectral_mech_AL
+    AL_solution, &
+    AL_forward, &
+    AL_destroy
++
+  external :: &
+-   PETScFinalize, &
+-   MPI_Abort, &
+-   MPI_Bcast, &
+-   MPI_Allreduce
++   PETScErrorF                                                                                      ! is called in the CHKERRQ macro
+ 
+ contains
+ 
+@@ -121,21 +120,17 @@ subroutine AL_init
+ 
+  PetscErrorCode :: ierr
+  PetscScalar, pointer, dimension(:,:,:,:) :: xx_psc, F, F_lambda
++
+  integer(pInt), dimension(:), allocatable :: localK  
+  integer(pInt) :: proc
+  character(len=1024) :: rankStr
+- 
++
+  external :: &
+-   SNESCreate, &
+-   SNESSetOptionsPrefix, &
+-   DMDACreate3D, &
+-   SNESSetDM, &
+-   DMCreateGlobalVector, &
+-   DMDASNESSetFunctionLocal, &
+-   SNESGetConvergedReason, &
++   SNESsetOptionsPrefix, &
+    SNESSetConvergenceTest, &
+-   SNESSetFromOptions
+-   
++   DMDAcreate3D, &
++   DMDASNESsetFunctionLocal
++ 
+  write(6,'(/,a)') ' <<<+-  DAMASK_spectral_solverAL init  -+>>>'
+  write(6,'(a15,a)')   ' Current time: ',IO_timeStamp()
+ #include "compilation_info.f90"
+@@ -165,10 +160,12 @@ subroutine AL_init
+         da,ierr)                                                                                    ! handle, error
+  CHKERRQ(ierr)
+  call SNESSetDM(snes,da,ierr); CHKERRQ(ierr)
++ call DMsetFromOptions(da,ierr); CHKERRQ(ierr)
++ call DMsetUp(da,ierr); CHKERRQ(ierr)
+  call DMCreateGlobalVector(da,solution_vec,ierr); CHKERRQ(ierr)
+- call DMDASNESSetFunctionLocal(da,INSERT_VALUES,AL_formResidual,PETSC_NULL_OBJECT,ierr)
++ call DMDASNESSetFunctionLocal(da,INSERT_VALUES,AL_formResidual,PETSC_NULL_SNES,ierr)
+  CHKERRQ(ierr)
+- call SNESSetConvergenceTest(snes,AL_converged,PETSC_NULL_OBJECT,PETSC_NULL_FUNCTION,ierr)
++ call SNESSetConvergenceTest(snes,AL_converged,PETSC_NULL_SNES,PETSC_NULL_FUNCTION,ierr)
+  CHKERRQ(ierr)
+  call SNESSetFromOptions(snes,ierr); CHKERRQ(ierr)
+ 
+@@ -280,8 +277,7 @@ type(tSolutionState) function &
+  SNESConvergedReason :: reason
+ 
+  external :: &
+-   SNESSolve, &
+-   SNESGetConvergedReason
++   SNESsolve
+ 
+  incInfo = incInfoIn
+ 
+@@ -304,8 +300,7 @@ type(tSolutionState) function &
+ 
+ !--------------------------------------------------------------------------------------------------
+ ! solve BVP 
+- call SNESSolve(snes,PETSC_NULL_OBJECT,solution_vec,ierr)
+- CHKERRQ(ierr)
++ call SNESsolve(snes,PETSC_NULL_VEC,solution_vec,ierr); CHKERRQ(ierr)
+ 
+ !--------------------------------------------------------------------------------------------------
+ ! check convergence
+@@ -383,10 +378,6 @@ subroutine AL_formResidual(in,x_scal,f_scal,dummy,ierr)
+  integer(pInt) :: &
+    i, j, k, e
+ 
+- external :: &
+-   SNESGetNumberFunctionEvals, &
+-   SNESGetIterationNumber
+-
+  F                => x_scal(1:3,1:3,1,&
+   XG_RANGE,YG_RANGE,ZG_RANGE)
+  F_lambda         => x_scal(1:3,1:3,2,&
+@@ -697,11 +688,6 @@ subroutine AL_destroy()
+  implicit none
+  PetscErrorCode :: ierr
+ 
+- external :: &
+-   VecDestroy, &
+-   SNESDestroy, &
+-   DMDestroy
+-
+  call VecDestroy(solution_vec,ierr); CHKERRQ(ierr)
+  call SNESDestroy(snes,ierr); CHKERRQ(ierr)
+  call DMDestroy(da,ierr); CHKERRQ(ierr)
+diff --git a/src/spectral_mech_Basic.f90 b/src/spectral_mech_Basic.f90
+index 55403ee7..fe9eb493 100644
+--- a/src/spectral_mech_Basic.f90
++++ b/src/spectral_mech_Basic.f90
+@@ -5,6 +5,8 @@
+ !> @brief Basic scheme PETSc solver
+ !--------------------------------------------------------------------------------------------------
+ module spectral_mech_basic
++#include <petsc/finclude/petsc.h>
++ use PETSC
+  use prec, only: & 
+    pInt, &
+    pReal
+@@ -16,7 +18,6 @@ module spectral_mech_basic
+ 
+  implicit none
+  private
+-#include <petsc/finclude/petsc.h90>
+ 
+  character (len=*), parameter, public :: &
+    DAMASK_spectral_SolverBasicPETSC_label = 'basicpetsc'
+@@ -60,11 +61,9 @@ module spectral_mech_basic
+    basicPETSc_solution, &
+    BasicPETSc_forward, &
+    basicPETSc_destroy
++
+  external :: &
+-   PETScFinalize, &
+-   MPI_Abort, &
+-   MPI_Bcast, &
+-   MPI_Allreduce
++   PETScErrorF                                                                                      ! is called in the CHKERRQ macro
+ 
+ contains
+ 
+@@ -116,16 +115,11 @@ subroutine basicPETSc_init
+  character(len=1024) :: rankStr
+  
+  external :: &
+-   SNESCreate, &
+-   SNESSetOptionsPrefix, &
+-   DMDACreate3D, &
+-   SNESSetDM, &
+-   DMCreateGlobalVector, &
+-   DMDASNESSetFunctionLocal, &
+-   SNESGetConvergedReason, &
++   SNESsetOptionsPrefix, &
+    SNESSetConvergenceTest, &
+-   SNESSetFromOptions
+-   
++   DMDAcreate3D, &
++   DMDASNESsetFunctionLocal
++
+  write(6,'(/,a)') ' <<<+-  DAMASK_spectral_solverBasicPETSc init  -+>>>'
+  write(6,'(a15,a)')   ' Current time: ',IO_timeStamp()
+ #include "compilation_info.f90"
+@@ -152,19 +146,20 @@ subroutine basicPETSc_init
+         grid(1),grid(2),localK, &                                                                   ! local grid
+         da,ierr)                                                                                    ! handle, error
+  CHKERRQ(ierr)
+- call SNESSetDM(snes,da,ierr); CHKERRQ(ierr)
+- call DMCreateGlobalVector(da,solution_vec,ierr); CHKERRQ(ierr)                                     ! global solution vector (grid x 9, i.e. every def grad tensor)
+- call DMDASNESSetFunctionLocal(da,INSERT_VALUES,BasicPETSC_formResidual,PETSC_NULL_OBJECT,ierr)     ! residual vector of same shape as solution vector
++ call SNESsetDM(snes,da,ierr); CHKERRQ(ierr)
++ call DMsetFromOptions(da,ierr); CHKERRQ(ierr)
++ call DMsetUp(da,ierr); CHKERRQ(ierr)
++ call DMcreateGlobalVector(da,solution_vec,ierr); CHKERRQ(ierr)                                     ! global solution vector (grid x 9, i.e. every def grad tensor)
++ call DMDASNESsetFunctionLocal(da,INSERT_VALUES,BasicPETSC_formResidual,PETSC_NULL_SNES,ierr)       ! residual vector of same shape as solution vector
+  CHKERRQ(ierr) 
+- call SNESSetDM(snes,da,ierr); CHKERRQ(ierr)                                                        ! connect snes to da
+- call SNESSetConvergenceTest(snes,BasicPETSC_converged,PETSC_NULL_OBJECT,PETSC_NULL_FUNCTION,ierr)  ! specify custom convergence check function "_converged"
++ call SNESsetDM(snes,da,ierr); CHKERRQ(ierr)                                                        ! connect snes to da
++ call SNESsetConvergenceTest(snes,BasicPETSC_converged,PETSC_NULL_SNES,PETSC_NULL_FUNCTION,ierr)    ! specify custom convergence check function "_converged"
+  CHKERRQ(ierr)
+- call SNESSetFromOptions(snes,ierr); CHKERRQ(ierr)                                                  ! pull it all together with additional cli arguments
++ call SNESsetFromOptions(snes,ierr); CHKERRQ(ierr)                                                  ! pull it all together with additional cli arguments
+ 
+ !--------------------------------------------------------------------------------------------------
+ ! init fields                 
+  call DMDAVecGetArrayF90(da,solution_vec,F,ierr); CHKERRQ(ierr)                                     ! get the data out of PETSc to work with
+-
+  restart: if (restartInc > 1_pInt) then                                                     
+    if (iand(debug_level(debug_spectral),debug_spectralRestart)/= 0) &
+      write(6,'(/,a,'//IO_intOut(restartInc-1_pInt)//',a)') &
+@@ -253,8 +248,7 @@ type(tSolutionState) function &
+  SNESConvergedReason :: reason
+ 
+  external :: &
+-   SNESSolve, &
+-   SNESGetConvergedReason
++   SNESsolve
+ 
+  incInfo = incInfoIn
+ 
+@@ -274,8 +268,7 @@ type(tSolutionState) function &
+ 
+ !--------------------------------------------------------------------------------------------------
+ ! solve BVP 
+- call SNESSolve(snes,PETSC_NULL_OBJECT,solution_vec,ierr)
+- CHKERRQ(ierr)
++ call SNESsolve(snes,PETSC_NULL_VEC,solution_vec,ierr); CHKERRQ(ierr)
+ 
+ !--------------------------------------------------------------------------------------------------
+ ! check convergence
+@@ -336,10 +329,6 @@ subroutine BasicPETSC_formResidual(in,x_scal,f_scal,dummy,ierr)
+  PetscObject :: dummy
+  PetscErrorCode :: ierr
+ 
+- external :: &
+-   SNESGetNumberFunctionEvals, &
+-   SNESGetIterationNumber
+-
+  call SNESGetNumberFunctionEvals(snes,nfuncs,ierr); CHKERRQ(ierr)
+  call SNESGetIterationNumber(snes,PETScIter,ierr); CHKERRQ(ierr)
+ 
+@@ -555,11 +544,6 @@ subroutine BasicPETSc_destroy()
+  implicit none
+  PetscErrorCode :: ierr
+ 
+- external :: &
+-   VecDestroy, &
+-   SNESDestroy, &
+-   DMDestroy
+-
+  call VecDestroy(solution_vec,ierr); CHKERRQ(ierr)
+  call SNESDestroy(snes,ierr); CHKERRQ(ierr)
+  call DMDestroy(da,ierr); CHKERRQ(ierr)
+diff --git a/src/spectral_mech_Polarisation.f90 b/src/spectral_mech_Polarisation.f90
+index ecf707d4..3b024f56 100644
+--- a/src/spectral_mech_Polarisation.f90
++++ b/src/spectral_mech_Polarisation.f90
+@@ -5,6 +5,8 @@
+ !> @brief Polarisation scheme solver
+ !--------------------------------------------------------------------------------------------------
+ module spectral_mech_Polarisation
++#include <petsc/finclude/petsc.h>
++ use PETSC
+  use prec, only: & 
+    pInt, &
+    pReal
+@@ -16,7 +18,6 @@ module spectral_mech_Polarisation
+ 
+  implicit none
+  private
+-#include <petsc/finclude/petsc.h90>
+ 
+  character (len=*), parameter, public :: &
+    DAMASK_spectral_solverPolarisation_label = 'polarisation'
+@@ -71,11 +72,9 @@ module spectral_mech_Polarisation
+    Polarisation_solution, &
+    Polarisation_forward, &
+    Polarisation_destroy
++
+  external :: &
+-   PETScFinalize, &
+-   MPI_Abort, &
+-   MPI_Bcast, &
+-   MPI_Allreduce
++   PETScErrorF                                                                                      ! is called in the CHKERRQ macro
+ 
+ contains
+ 
+@@ -121,21 +120,17 @@ subroutine Polarisation_init
+ 
+  PetscErrorCode :: ierr
+  PetscScalar, pointer, dimension(:,:,:,:) :: xx_psc, F, F_tau
++
+  integer(pInt), dimension(:), allocatable :: localK  
+  integer(pInt) :: proc
+  character(len=1024) :: rankStr
+- 
++
+  external :: &
+-   SNESCreate, &
+-   SNESSetOptionsPrefix, &
+-   DMDACreate3D, &
+-   SNESSetDM, &
+-   DMCreateGlobalVector, &
+-   DMDASNESSetFunctionLocal, &
+-   SNESGetConvergedReason, &
++   SNESsetOptionsPrefix, &
+    SNESSetConvergenceTest, &
+-   SNESSetFromOptions
+-   
++   DMDAcreate3D, &
++   DMDASNESsetFunctionLocal
++ 
+  write(6,'(/,a)') ' <<<+-  DAMASK_spectral_solverPolarisation init  -+>>>'
+  write(6,'(a15,a)')   ' Current time: ',IO_timeStamp()
+ #include "compilation_info.f90"
+@@ -164,13 +159,15 @@ subroutine Polarisation_init
+         grid(1),grid(2),localK, &                                                                   ! local grid
+         da,ierr)                                                                                    ! handle, error
+  CHKERRQ(ierr)
+- call SNESSetDM(snes,da,ierr); CHKERRQ(ierr)
+- call DMCreateGlobalVector(da,solution_vec,ierr); CHKERRQ(ierr)
+- call DMDASNESSetFunctionLocal(da,INSERT_VALUES,Polarisation_formResidual,PETSC_NULL_OBJECT,ierr)
++ call SNESsetDM(snes,da,ierr); CHKERRQ(ierr)
++ call DMsetFromOptions(da,ierr); CHKERRQ(ierr)
++ call DMsetUp(da,ierr); CHKERRQ(ierr)
++ call DMcreateGlobalVector(da,solution_vec,ierr); CHKERRQ(ierr)
++ call DMDASNESsetFunctionLocal(da,INSERT_VALUES,Polarisation_formResidual,PETSC_NULL_SNES,ierr)
+  CHKERRQ(ierr)
+- call SNESSetConvergenceTest(snes,Polarisation_converged,PETSC_NULL_OBJECT,PETSC_NULL_FUNCTION,ierr)
++ call SNESsetConvergenceTest(snes,Polarisation_converged,PETSC_NULL_SNES,PETSC_NULL_FUNCTION,ierr)
+  CHKERRQ(ierr)
+- call SNESSetFromOptions(snes,ierr); CHKERRQ(ierr)
++ call SNESsetFromOptions(snes,ierr); CHKERRQ(ierr)
+ 
+ !--------------------------------------------------------------------------------------------------
+ ! init fields                 
+@@ -280,8 +277,7 @@ type(tSolutionState) function &
+  SNESConvergedReason :: reason
+ 
+  external :: &
+-   SNESSolve, &
+-   SNESGetConvergedReason
++   SNESsolve
+ 
+  incInfo = incInfoIn
+ 
+@@ -304,8 +300,7 @@ type(tSolutionState) function &
+ 
+ !--------------------------------------------------------------------------------------------------
+ ! solve BVP 
+- call SNESSolve(snes,PETSC_NULL_OBJECT,solution_vec,ierr)
+- CHKERRQ(ierr)
++ call SNESsolve(snes,PETSC_NULL_VEC,solution_vec,ierr); CHKERRQ(ierr)
+ 
+ !--------------------------------------------------------------------------------------------------
+ ! check convergence
+@@ -383,10 +378,6 @@ subroutine Polarisation_formResidual(in,x_scal,f_scal,dummy,ierr)
+  integer(pInt) :: &
+    i, j, k, e
+ 
+- external :: &
+-   SNESGetNumberFunctionEvals, &
+-   SNESGetIterationNumber
+-
+  F              => x_scal(1:3,1:3,1,&
+   XG_RANGE,YG_RANGE,ZG_RANGE)
+  F_tau          => x_scal(1:3,1:3,2,&
+@@ -698,11 +689,6 @@ subroutine Polarisation_destroy()
+  implicit none
+  PetscErrorCode :: ierr
+ 
+- external :: &
+-   VecDestroy, &
+-   SNESDestroy, &
+-   DMDestroy
+-
+  call VecDestroy(solution_vec,ierr); CHKERRQ(ierr)
+  call SNESDestroy(snes,ierr); CHKERRQ(ierr)
+  call DMDestroy(da,ierr); CHKERRQ(ierr)
+diff --git a/src/spectral_thermal.f90 b/src/spectral_thermal.f90
+index 322f1203..2374d83b 100644
+--- a/src/spectral_thermal.f90
++++ b/src/spectral_thermal.f90
+@@ -4,6 +4,8 @@
+ !> @brief Spectral solver for thermal conduction
+ !--------------------------------------------------------------------------------------------------
+ module spectral_thermal
++#include <petsc/finclude/petsc.h>
++ use PETSC
+  use prec, only: & 
+    pInt, &
+    pReal
+@@ -18,7 +20,6 @@ module spectral_thermal
+ 
+  implicit none
+  private
+-#include <petsc/finclude/petsc.h90>
+ 
+  character (len=*), parameter, public :: &
+    spectral_thermal_label = 'spectralthermal'
+@@ -48,11 +49,9 @@ module spectral_thermal
+    spectral_thermal_solution, &
+    spectral_thermal_forward, &
+    spectral_thermal_destroy
++
+  external :: &
+-   PETScFinalize, &
+-   MPI_Abort, &
+-   MPI_Bcast, &
+-   MPI_Allreduce
++   PETScErrorF                                                                                      ! is called in the CHKERRQ macro
+ 
+ contains
+ 
+@@ -84,28 +83,24 @@ subroutine spectral_thermal_init
+    thermalMapping
+    
+  implicit none
+- integer(pInt), dimension(:), allocatable :: localK  
+- integer(pInt) :: proc
+  integer(pInt) :: i, j, k, cell
+  DM :: thermal_grid
+- PetscScalar,  dimension(:,:,:), pointer     :: x_scal
++ 
+  PetscErrorCode :: ierr
++ PetscScalar,  dimension(:,:,:), pointer :: x_scal
++
++ integer(pInt), dimension(:), allocatable :: localK  
++ integer(pInt) :: proc
+ 
+  external :: &
+-   SNESCreate, &
+-   SNESSetOptionsPrefix, &
+-   DMDACreate3D, &
+-   SNESSetDM, &
+-   DMDAGetCorners, &
+-   DMCreateGlobalVector, &
+-   DMDASNESSetFunctionLocal, &
+-   SNESSetFromOptions
+-   
+- mainProcess: if (worldrank == 0_pInt) then
+-   write(6,'(/,a)') ' <<<+-  spectral_thermal init  -+>>>'
+-   write(6,'(a15,a)')   ' Current time: ',IO_timeStamp()
++   SNESsetOptionsPrefix, &
++   DMDAcreate3D, &
++   DMDAgetCorners, &
++   DMDASNESsetFunctionLocal
++
++ write(6,'(/,a)') ' <<<+-  spectral_thermal init  -+>>>'
++ write(6,'(a15,a)')   ' Current time: ',IO_timeStamp()
+ #include "compilation_info.f90"
+- endif mainProcess
+  
+ !--------------------------------------------------------------------------------------------------
+ ! initialize solver specific parts of PETSc
+@@ -124,16 +119,18 @@ subroutine spectral_thermal_init
+         grid (1),grid(2),localK, &                                                                  ! local grid
+         thermal_grid,ierr)                                                                          ! handle, error
+  CHKERRQ(ierr)
+- call SNESSetDM(thermal_snes,thermal_grid,ierr); CHKERRQ(ierr)                                      ! connect snes to da
+- call DMCreateGlobalVector(thermal_grid,solution        ,ierr); CHKERRQ(ierr)                       ! global solution vector (grid x 1, i.e. every def grad tensor)
+- call DMDASNESSetFunctionLocal(thermal_grid,INSERT_VALUES,spectral_thermal_formResidual,&
+-                                                                            PETSC_NULL_OBJECT,ierr) ! residual vector of same shape as solution vector
++ call SNESsetDM(thermal_snes,thermal_grid,ierr); CHKERRQ(ierr)                                      ! connect snes to da
++ call DMsetFromOptions(thermal_grid,ierr); CHKERRQ(ierr)
++ call DMsetUp(thermal_grid,ierr); CHKERRQ(ierr)
++ call DMcreateGlobalVector(thermal_grid,solution,ierr); CHKERRQ(ierr)                               ! global solution vector (grid x 1, i.e. every def grad tensor)
++ call DMDASNESsetFunctionLocal(thermal_grid,INSERT_VALUES,spectral_thermal_formResidual,&
++                                                                            PETSC_NULL_SNES,ierr)   ! residual vector of same shape as solution vector
+  CHKERRQ(ierr) 
+- call SNESSetFromOptions(thermal_snes,ierr); CHKERRQ(ierr)                                          ! pull it all together with additional cli arguments
++ call SNESsetFromOptions(thermal_snes,ierr); CHKERRQ(ierr)                                          ! pull it all together with additional cli arguments
+ 
+ !--------------------------------------------------------------------------------------------------
+ ! init fields             
+- call DMDAGetCorners(thermal_grid,xstart,ystart,zstart,xend,yend,zend,ierr)
++ call DMDAgetCorners(thermal_grid,xstart,ystart,zstart,xend,yend,zend,ierr)
+  CHKERRQ(ierr)
+  xend = xstart + xend - 1
+  yend = ystart + yend - 1
+@@ -149,9 +146,9 @@ subroutine spectral_thermal_init
+    temperature_lastInc(i,j,k) = temperature_current(i,j,k)
+    temperature_stagInc(i,j,k) = temperature_current(i,j,k)
+  enddo; enddo; enddo
+- call DMDAVecGetArrayF90(thermal_grid,solution,x_scal,ierr); CHKERRQ(ierr)                              !< get the data out of PETSc to work with
++ call DMDAvecGetArrayF90(thermal_grid,solution,x_scal,ierr); CHKERRQ(ierr)                              !< get the data out of PETSc to work with
+  x_scal(xstart:xend,ystart:yend,zstart:zend) = temperature_current
+- call DMDAVecRestoreArrayF90(thermal_grid,solution,x_scal,ierr); CHKERRQ(ierr)
++ call DMDAvecRestoreArrayF90(thermal_grid,solution,x_scal,ierr); CHKERRQ(ierr)
+ 
+ !--------------------------------------------------------------------------------------------------
+ ! thermal reference diffusion update
+@@ -205,8 +202,8 @@ type(tSolutionState) function spectral_thermal_solution(timeinc,timeinc_old,load
+  external :: &
+    VecMin, &
+    VecMax, &
+-   SNESSolve, &
+-   SNESGetConvergedReason
++   SNESsolve, &
++   SNESgetConvergedReason
+ 
+  spectral_thermal_solution%converged =.false.
+  
+@@ -215,7 +212,7 @@ type(tSolutionState) function spectral_thermal_solution(timeinc,timeinc_old,load
+  params%timeinc = timeinc
+  params%timeincOld = timeinc_old
+ 
+- call SNESSolve(thermal_snes,PETSC_NULL_OBJECT,solution,ierr); CHKERRQ(ierr)
++ call SNESsolve(thermal_snes,PETSC_NULL_VEC,solution,ierr); CHKERRQ(ierr)
+  call SNESGetConvergedReason(thermal_snes,reason,ierr); CHKERRQ(ierr)
+ 
+  if (reason < 1) then
+@@ -245,14 +242,12 @@ type(tSolutionState) function spectral_thermal_solution(timeinc,timeinc_old,load
+ 
+  call VecMin(solution,position,minTemperature,ierr); CHKERRQ(ierr)
+  call VecMax(solution,position,maxTemperature,ierr); CHKERRQ(ierr)
+- if (worldrank == 0) then 
+-   if (spectral_thermal_solution%converged) &
+-     write(6,'(/,a)') ' ... thermal conduction converged ..................................'
+-   write(6,'(/,a,f8.4,2x,f8.4,2x,f8.4,/)',advance='no') ' Minimum|Maximum|Delta Temperature / K = ',&
+-                                                       minTemperature, maxTemperature, stagNorm
+-   write(6,'(/,a)') ' ==========================================================================='
+-   flush(6) 
+- endif 
++ if (spectral_thermal_solution%converged) &
++   write(6,'(/,a)') ' ... thermal conduction converged ..................................'
++ write(6,'(/,a,f8.4,2x,f8.4,2x,f8.4,/)',advance='no') ' Minimum|Maximum|Delta Temperature / K = ',&
++                                                     minTemperature, maxTemperature, stagNorm
++ write(6,'(/,a)') ' ==========================================================================='
++ flush(6) 
+ 
+ end function spectral_thermal_solution
+ 
+diff --git a/src/spectral_utilities.f90 b/src/spectral_utilities.f90
+index 1bbf2e60..52bb07fd 100644
+--- a/src/spectral_utilities.f90
++++ b/src/spectral_utilities.f90
+@@ -5,15 +5,16 @@
+ !--------------------------------------------------------------------------------------------------
+ module spectral_utilities
+  use, intrinsic :: iso_c_binding
++#include <petsc/finclude/petscsys.h>
++  use PETScSys
+  use prec, only: &
+    pReal, &
+    pInt
+  use math, only: &
+   math_I3
+-
++ 
+  implicit none
+  private
+-#include <petsc/finclude/petscsys.h>
+  include 'fftw3-mpi.f03'
+ 
+  logical,       public             :: cutBack =.false.                                              !< cut back of BVP solver in case convergence is not achieved or a material point is terminally ill
+@@ -148,6 +149,8 @@ module spectral_utilities
+    FIELD_DAMAGE_ID
+  private :: &
+    utilities_getFreqDerivative
++ external :: &
++   PETScErrorF                                                                                      ! is called in the CHKERRQ macro
+ 
+ contains
+ 
+@@ -196,12 +199,6 @@ subroutine utilities_init()
+    geomSize
+ 
+  implicit none
+-
+- external :: &
+-   PETScOptionsClear, &
+-   PETScOptionsInsertString, &
+-   MPI_Abort
+-
+  PetscErrorCode :: ierr
+  integer(pInt)               :: i, j, k
+  integer(pInt), dimension(3) :: k_s
+@@ -215,6 +212,8 @@ subroutine utilities_init()
+    scalarSize = 1_C_INTPTR_T, &
+    vecSize = 3_C_INTPTR_T, &
+    tensorSize = 9_C_INTPTR_T
++ external :: &
++   PetscOptionsInsertString
+ 
+  write(6,'(/,a)')   ' <<<+-  spectral_utilities init  -+>>>'
+  write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
+@@ -231,13 +230,13 @@ subroutine utilities_init()
+                 trim(PETScDebug), &
+                 ' add more using the PETSc_Options keyword in numerics.config '; flush(6)
+ 
+- call PetscOptionsClear(PETSC_NULL_OBJECT,ierr)
++ call PETScOptionsClear(PETSC_NULL_OPTIONS,ierr)
+  CHKERRQ(ierr)
+- if(debugPETSc) call PetscOptionsInsertString(PETSC_NULL_OBJECT,trim(PETSCDEBUG),ierr)
++ if(debugPETSc) call PETScOptionsInsertString(PETSC_NULL_OPTIONS,trim(PETSCDEBUG),ierr)
+  CHKERRQ(ierr)
+- call PetscOptionsInsertString(PETSC_NULL_OBJECT,trim(petsc_defaultOptions),ierr)
++ call PETScOptionsInsertString(PETSC_NULL_OPTIONS,trim(petsc_defaultOptions),ierr)
+  CHKERRQ(ierr)
+- call PetscOptionsInsertString(PETSC_NULL_OBJECT,trim(petsc_options),ierr)
++ call PETScOptionsInsertString(PETSC_NULL_OPTIONS,trim(petsc_options),ierr)
+  CHKERRQ(ierr)
+ 
+  grid1Red = grid(1)/2_pInt + 1_pInt
+@@ -632,9 +631,6 @@ real(pReal) function utilities_divergenceRMS()
+  integer(pInt) :: i, j, k, ierr
+  complex(pReal), dimension(3)   :: rescaledGeom
+ 
+- external :: &
+-   MPI_Allreduce
+-
+  write(6,'(/,a)') ' ... calculating divergence ................................................'
+  flush(6)
+ 
+@@ -686,9 +682,6 @@ real(pReal) function utilities_curlRMS()
+  complex(pReal), dimension(3,3) :: curl_fourier
+  complex(pReal), dimension(3)   :: rescaledGeom
+ 
+- external :: &
+-   MPI_Allreduce
+-
+  write(6,'(/,a)') ' ... calculating curl ......................................................'
+  flush(6)
+ 
+@@ -1099,9 +1092,6 @@ function utilities_forwardField(timeinc,field_lastInc,rate,aim)
+  real(pReal),                       dimension(3,3)                       :: fieldDiff               !< <a + adot*t> - aim
+  PetscErrorCode :: ierr
+ 
+- external :: &
+-  MPI_Allreduce
+-
+  utilities_forwardField = field_lastInc + rate*timeinc
+  if (present(aim)) then                                                                             !< correct to match average
+    fieldDiff = sum(sum(sum(utilities_forwardField,dim=5),dim=4),dim=3)*wgt
+@@ -1193,8 +1183,6 @@ subroutine utilities_updateIPcoords(F)
+  integer(pInt) :: i, j, k, m, ierr
+  real(pReal),   dimension(3) :: step, offset_coords
+  real(pReal),   dimension(3,3) :: Favg
+- external &
+-   MPI_Bcast
+ 
+ !--------------------------------------------------------------------------------------------------
+ ! integration in Fourier space
+-- 
+2.15.0
+

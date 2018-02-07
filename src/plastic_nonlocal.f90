@@ -1823,14 +1823,14 @@ plasticState(ph)%state(iRhoF(1:ns,instance),of) = rhoForest
 plasticState(ph)%state(iTauF(1:ns,instance),of) = tauThreshold
 plasticState(ph)%state(iTauB(1:ns,instance),of) = tauBack
 
-#ifndef _OPENMP
+#ifdef DEBUG
   if (iand(debug_level(debug_constitutive),debug_levelExtensive) /= 0_pInt &
       .and. ((debug_e == el .and. debug_i == ip)&
              .or. .not. iand(debug_level(debug_constitutive),debug_levelSelective) /= 0_pInt)) then
     write(6,'(/,a,i8,1x,i2,1x,i1,/)') '<< CONST >> nonlocal_microstructure at el ip ',el,ip
     write(6,'(a,/,12x,12(e10.3,1x))') '<< CONST >> rhoForest', rhoForest
-    write(6,'(a,/,12x,12(f10.5,1x))') '<< CONST >> tauThreshold / MPa', tauThreshold/1e6
-    write(6,'(a,/,12x,12(f10.5,1x),/)') '<< CONST >> tauBack / MPa', tauBack/1e6
+    write(6,'(a,/,12x,12(f10.5,1x))') '<< CONST >> tauThreshold / MPa', tauThreshold*1e-6
+    write(6,'(a,/,12x,12(f10.5,1x),/)') '<< CONST >> tauBack / MPa', tauBack*1e-6
   endif
 #endif
 
@@ -1978,15 +1978,15 @@ if (Temperature > 0.0_pReal) then
 endif
     
 
-#ifndef _OPENMP
+#ifdef DEBUG
   if (iand(debug_level(debug_constitutive),debug_levelExtensive) /= 0_pInt &
       .and. ((debug_e == el .and. debug_i == ip)&
              .or. .not. iand(debug_level(debug_constitutive),debug_levelSelective) /= 0_pInt)) then
     write(6,'(/,a,i8,1x,i2,1x,i1,/)') '<< CONST >> nonlocal_kinetics at el ip',el,ip
-    write(6,'(a,/,12x,12(f12.5,1x))') '<< CONST >> tauThreshold / MPa', tauThreshold / 1e6_pReal
-    write(6,'(a,/,12x,12(f12.5,1x))') '<< CONST >> tau / MPa', tau / 1e6_pReal
-    write(6,'(a,/,12x,12(f12.5,1x))') '<< CONST >> tauNS / MPa', tauNS / 1e6_pReal
-    write(6,'(a,/,12x,12(f12.5,1x))') '<< CONST >> v / 1e-3m/s', v * 1e3
+    write(6,'(a,/,12x,12(f12.5,1x))') '<< CONST >> tauThreshold / MPa', tauThreshold * 1e-6_pReal
+    write(6,'(a,/,12x,12(f12.5,1x))') '<< CONST >> tau / MPa', tau * 1e-6_pReal
+    write(6,'(a,/,12x,12(f12.5,1x))') '<< CONST >> tauNS / MPa', tauNS * 1e-6_pReal
+    write(6,'(a,/,12x,12(f12.5,1x))') '<< CONST >> v / mm/s', v * 1e3
     write(6,'(a,/,12x,12(e12.5,1x))') '<< CONST >> dv_dtau', dv_dtau
     write(6,'(a,/,12x,12(e12.5,1x))') '<< CONST >> dv_dtauNS', dv_dtauNS
   endif
@@ -2176,12 +2176,12 @@ enddo
 dLp_dTstar99 = math_Plain3333to99(dLp_dTstar3333)
 
 
-#ifndef _OPENMP
+#ifdef DEBUG
   if (iand(debug_level(debug_constitutive),debug_levelExtensive) /= 0_pInt &
       .and. ((debug_e == el .and. debug_i == ip)&
              .or. .not. iand(debug_level(debug_constitutive),debug_levelSelective) /= 0_pInt )) then
     write(6,'(/,a,i8,1x,i2,1x,i1,/)') '<< CONST >> nonlocal_LpandItsTangent at el ip',el,ip
-    write(6,'(a,/,12x,12(f12.5,1x))') '<< CONST >> gdot total / 1e-3',gdotTotal*1e3_pReal
+    write(6,'(a,/,12x,12(f12.5,1x))') '<< CONST >> gdot total',gdotTotal
     write(6,'(a,/,3(12x,3(f12.7,1x),/))') '<< CONST >> Lp',transpose(Lp)
   endif
 #endif
@@ -2248,7 +2248,7 @@ real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phase(1,ip,e
                                             dUpperOld, &                  ! old maximum stable dipole distance for edges and screws
                                             deltaDUpper                   ! change in maximum stable dipole distance for edges and screws
 
-#ifndef _OPENMP
+#ifdef DEBUG
   if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0_pInt &
       .and. ((debug_e == el .and. debug_i == ip)&
              .or. .not. iand(debug_level(debug_constitutive),debug_levelSelective) /= 0_pInt)) &
@@ -2361,7 +2361,7 @@ forall (s = 1:ns, c = 1_pInt:2_pInt) &
   plasticState(ph)%deltaState(iRhoD(s,c,instance),of) = deltaRho(s,c+8_pInt)
 
 
-#ifndef _OPENMP
+#ifdef DEBUG
   if (iand(debug_level(debug_constitutive),debug_levelExtensive) /= 0_pInt &
       .and. ((debug_e == el .and. debug_i == ip)&
              .or. .not. iand(debug_level(debug_constitutive),debug_levelSelective) /= 0_pInt )) then
@@ -2522,11 +2522,11 @@ logical                                     considerEnteringFlux, &
 
 
 
-#ifndef _OPENMP
+#ifdef DEBUG
   if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0_pInt &
       .and. ((debug_e == el .and. debug_i == ip)&
              .or. .not. iand(debug_level(debug_constitutive),debug_levelSelective) /= 0_pInt)) &
-    write(6,'(/,a,i8,1x,i2,1x,i1,/)') '<< CONST >> nonlocal_dotState at el ip ',el,ip
+    write(6,'(/,a,i8,1x,i2,/)') '<< CONST >> nonlocal_dotState at el ip ',el,ip
 #endif
 
 ph = material_phase(1_pInt,ip,el)
@@ -2589,7 +2589,7 @@ endif
 forall (t = 1_pInt:4_pInt) &
   gdot(1_pInt:ns,t) = rhoSgl(1_pInt:ns,t) * burgers(1:ns,instance) * v(1:ns,t)
 
-#ifndef _OPENMP
+#ifdef DEBUG
   if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0_pInt &
       .and. ((debug_e == el .and. debug_i == ip)&
              .or. .not. iand(debug_level(debug_constitutive),debug_levelSelective) /= 0_pInt )) then
@@ -2663,7 +2663,7 @@ else                                                                            
           / burgers(s,instance) * sqrt(rhoForest(s)) / lambda0(s,instance)
       endif
     enddo
-#ifndef _OPENMP
+#ifdef DEBUG
     if (iand(debug_level(debug_constitutive),debug_levelExtensive) /= 0_pInt &
         .and. ((debug_e == el .and. debug_i == ip)&
              .or. .not. iand(debug_level(debug_constitutive),debug_levelSelective) /= 0_pInt )) &
@@ -2690,7 +2690,7 @@ if (.not. phase_localPlasticity(material_phase(1_pInt,ip,el))) then             
   if (any( abs(gdot) > 0.0_pReal &                                                                  ! any active slip system ...
           .and. CFLfactor(instance) * abs(v) * timestep &
               > mesh_ipVolume(ip,el) / maxval(mesh_ipArea(:,ip,el)))) then                          ! ...with velocity above critical value (we use the reference volume and area for simplicity here)
-#ifndef _OPENMP
+#ifdef DEBUG
     if (iand(debug_level(debug_constitutive),debug_levelExtensive) /= 0_pInt) then 
       write(6,'(a,i5,a,i2)') '<< CONST >> CFL condition not fullfilled at el ',el,' ip ',ip
       write(6,'(a,e10.3,a,e10.3)') '<< CONST >> velocity is at  ', &
@@ -2952,7 +2952,7 @@ if (numerics_integrationMode == 1_pInt) then                                    
 endif
 
 
-#ifndef _OPENMP
+#ifdef DEBUG
   if (iand(debug_level(debug_constitutive),debug_levelExtensive) /= 0_pInt &
       .and. ((debug_e == el .and. debug_i == ip .and. debug_g == 1_pInt)&
              .or. .not. iand(debug_level(debug_constitutive),debug_levelSelective) /= 0_pInt )) then
@@ -2978,7 +2978,7 @@ endif
 
 if (    any(rhoSglOriginal(1:ns,1:4) + rhoDot(1:ns,1:4) * timestep < -aTolRho(instance)) &
    .or. any(rhoDipOriginal(1:ns,1:2) + rhoDot(1:ns,9:10) * timestep < -aTolRho(instance))) then
-#ifndef _OPENMP
+#ifdef DEBUG
   if (iand(debug_level(debug_constitutive),debug_levelExtensive) /= 0_pInt) then 
     write(6,'(a,i5,a,i2)') '<< CONST >> evolution rate leads to negative density at el ',el,' ip ',ip
     write(6,'(a)') '<< CONST >> enforcing cutback !!!'

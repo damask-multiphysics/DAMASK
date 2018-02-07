@@ -485,8 +485,8 @@ program DAMASK_spectral
                              min(i*((maxRealOut)/materialpoint_sizeResults),size(materialpoint_results,3))],pLongInt)
      call MPI_file_write(resUnit, &
                          reshape(materialpoint_results(:,:,outputIndex(1):outputIndex(2)), &
-                                [(outputIndex(2)-outputIndex(1)+1)*materialpoint_sizeResults]), &
-                         (outputIndex(2)-outputIndex(1)+1)*materialpoint_sizeResults, &
+                                [(outputIndex(2)-outputIndex(1)+1)*int(materialpoint_sizeResults,pLongInt)]), &
+                         (outputIndex(2)-outputIndex(1)+1)*int(materialpoint_sizeResults,pLongInt), &
                          MPI_DOUBLE, MPI_STATUS_IGNORE, ierr)
      if (ierr /= 0_pInt) call IO_error(error_ID=894_pInt, ext_msg='MPI_file_write')
    enddo
@@ -683,8 +683,8 @@ program DAMASK_spectral
            outputIndex=int([(i-1_pInt)*((maxRealOut)/materialpoint_sizeResults)+1_pInt, &
                       min(i*((maxRealOut)/materialpoint_sizeResults),size(materialpoint_results,3))],pLongInt)
            call MPI_file_write(resUnit,reshape(materialpoint_results(:,:,outputIndex(1):outputIndex(2)),&
-                                         [(outputIndex(2)-outputIndex(1)+1)*materialpoint_sizeResults]), &
-                               (outputIndex(2)-outputIndex(1)+1)*materialpoint_sizeResults,&
+                                         [(outputIndex(2)-outputIndex(1)+1)*int(materialpoint_sizeResults,pLongInt)]), &
+                               (outputIndex(2)-outputIndex(1)+1)*int(materialpoint_sizeResults,pLongInt),&
                                MPI_DOUBLE, MPI_STATUS_IGNORE, ierr)
            if(ierr /=0_pInt) call IO_error(894_pInt, ext_msg='MPI_file_write')
          enddo
@@ -831,10 +831,10 @@ subroutine quit(stop_id)
  call utilities_destroy()
 
  call PETScFinalize(ierr)
- if(ierr /= 0) write(6,'(a)') ' Error in PETScFinalize'
+ if (ierr /= 0) write(6,'(a)') ' Error in PETScFinalize'
 #ifdef _OPENMP
  call MPI_finalize(error)
- if(error /= 0) write(6,'(a)') ' Error in MPI_finalize'
+ if (error /= 0) write(6,'(a)') ' Error in MPI_finalize'
 #endif
  ErrorInQuit = (ierr /= 0 .or. error /= 0_pInt)
  
@@ -848,7 +848,7 @@ subroutine quit(stop_id)
                                                       dateAndTime(7)
 
  if (stop_id == 0_pInt .and. .not. ErrorInQuit) stop 0                                              ! normal termination
- if (stop_id <  0_pInt .and. .not. ErrorInQuit) then                                                                        ! terminally ill, restart might help
+ if (stop_id <  0_pInt .and. .not. ErrorInQuit) then                                                ! terminally ill, restart might help
    write(0,'(a,i6)') 'restart information available at ', stop_id*(-1_pInt)
    stop 2
  endif

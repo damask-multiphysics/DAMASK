@@ -18,7 +18,7 @@ scriptID   = ' '.join([scriptName,damask.version])
 parser = OptionParser(option_class=damask.extendableOption, usage='%prog option(s) [ASCIItable(s)]', description = """
 Add column(s) containing Gaussian filtered values of requested column(s).
 Operates on periodic and non-periodic ordered three-dimensional data sets.
-For Details see scipy.ndimage documentation.
+For details see scipy.ndimage documentation.
 
 """, version = scriptID)
 
@@ -43,15 +43,14 @@ parser.add_option('--sigma',
 parser.add_option('--periodic',
                   dest = 'periodic',
                   action = 'store_true',
-                  help = 'assume periodic grain structure'
-                 )
+                  help = 'assume periodic grain structure')
 
 
 
 parser.set_defaults(pos = 'pos',
                     order = 0,
                     sigma = 1,
-                    periodic = False
+                    periodic = False,
                    )
 
 (options,filenames) = parser.parse_args()
@@ -110,12 +109,7 @@ for name in filenames:
 
   table.data_readArray()
 
-  coords = [np.unique(table.data[:,colCoord+i]) for i in range(3)]
-  mincorner = np.array(map(min,coords))
-  maxcorner = np.array(map(max,coords))
-  grid   = np.array(map(len,coords),'i')
-  size   = grid/np.maximum(np.ones(3,'d'), grid-1.0) * (maxcorner-mincorner)                        # size from edge to edge = dim * n/(n-1) 
-  size   = np.where(grid > 1, size, min(size[grid > 1]/grid[grid > 1]))                             # spacing for grid==1 equal to smallest among other ones
+  grid,size = damask.util.coordGridAndSize(table.data[:,table.label_indexrange(options.pos)])
 
 # ------------------------------------------ process value field -----------------------------------
 

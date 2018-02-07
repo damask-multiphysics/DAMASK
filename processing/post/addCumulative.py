@@ -73,22 +73,17 @@ for name in filenames:
   table.head_write()
 
 # ------------------------------------------ process data ------------------------------------------ 
-
-  table.data_readArray()
-
   mask = []
   for col,dim in zip(columns,dims): mask += range(col,col+dim)                                      # isolate data columns to cumulate
+  cumulated = np.zeros(len(mask),dtype=float)                                                       # prepare output field
 
-  cumulated = np.zeros((len(table.data),len(mask)))                                                 # prepare output field
-  
-  for i,values in enumerate(table.data[:,mask]):
-    cumulated[i,:] = cumulated[max(0,i-1),:] + values                                               # cumulate values
-  
-  table.data = np.hstack((table.data,cumulated))
+  outputAlive = True
+  while outputAlive and table.data_read():                                                          # read next data line of ASCII table
+    for i,col in enumerate(mask):
+      cumulated[i] += float(table.data[col])                                                        # cumulate values
+    table.data_append(cumulated)
 
-# ------------------------------------------ output result -----------------------------------------
-
-  table.data_writeArray()
+    outputAlive = table.data_write()                                                                # output processed line
 
 # ------------------------------------------ output finalization -----------------------------------  
 

@@ -9,41 +9,47 @@ import damask
 scriptName = os.path.splitext(os.path.basename(__file__))[0]
 scriptID   = ' '.join([scriptName,damask.version])
 
+def merge_dicts(*dict_args):
+  """Given any number of dicts, shallow copy and merge into a new dict, with precedence going to key value pairs in latter dicts."""
+  result = {}
+  for dictionary in dict_args:
+      result.update(dictionary)
+  return result
+
 def curlFFT(geomdim,field):
- shapeFFT    = np.array(np.shape(field))[0:3]
- grid = np.array(np.shape(field)[2::-1])
- N = grid.prod()                                                                                    # field size
- n = np.array(np.shape(field)[3:]).prod()                                                           # data size
+  """Calculate curl of a vector or tensor field by transforming into Fourier space."""
+  shapeFFT    = np.array(np.shape(field))[0:3]
+  grid = np.array(np.shape(field)[2::-1])
+  N = grid.prod()                                                                                    # field size
+  n = np.array(np.shape(field)[3:]).prod()                                                           # data size
 
- if   n == 3:   dataType = 'vector'
- elif n == 9:   dataType = 'tensor'
+  field_fourier = np.fft.rfftn(field,axes=(0,1,2),s=shapeFFT)
+  curl_fourier  = np.empty(field_fourier.shape,'c16')
 
- field_fourier = np.fft.rfftn(field,axes=(0,1,2),s=shapeFFT)
- curl_fourier  = np.empty(field_fourier.shape,'c16')
+  # differentiation in Fourier space
+  TWOPIIMG = 2.0j*math.pi
+  einsums = { 
+              3:'slm,ijkl,ijkm->ijks',                                                               # vector, 3 -> 3
+              9:'slm,ijkl,ijknm->ijksn',                                                             # tensor, 3x3 -> 3x3
+            }
+  k_sk = np.where(np.arange(grid[2])>grid[2]//2,np.arange(grid[2])-grid[2],np.arange(grid[2]))/geomdim[0]
+  if grid[2]%2 == 0: k_sk[grid[2]//2] = 0                                                            # Nyquist freq=0 for even grid (Johnson, MIT, 2011)
 
-# differentiation in Fourier space
- TWOPIIMG = 2.0j*math.pi
- k_sk = np.where(np.arange(grid[2])>grid[2]//2,np.arange(grid[2])-grid[2],np.arange(grid[2]))/geomdim[0]
- if grid[2]%2 == 0: k_sk[grid[2]//2] = 0                                                            # for even grid, set Nyquist freq to 0 (Johnson, MIT, 2011)
- 
- k_sj = np.where(np.arange(grid[1])>grid[1]//2,np.arange(grid[1])-grid[1],np.arange(grid[1]))/geomdim[1]
- if grid[1]%2 == 0: k_sj[grid[1]//2] = 0                                                            # for even grid, set Nyquist freq to 0 (Johnson, MIT, 2011)
+  k_sj = np.where(np.arange(grid[1])>grid[1]//2,np.arange(grid[1])-grid[1],np.arange(grid[1]))/geomdim[1]
+  if grid[1]%2 == 0: k_sj[grid[1]//2] = 0                                                            # Nyquist freq=0 for even grid (Johnson, MIT, 2011)
 
- k_si = np.arange(grid[0]//2+1)/geomdim[2]
- 
- kk, kj, ki = np.meshgrid(k_sk,k_sj,k_si,indexing = 'ij')
- k_s = np.concatenate((ki[:,:,:,None],kj[:,:,:,None],kk[:,:,:,None]),axis = 3).astype('c16')
- 
- e = np.zeros((3, 3, 3))
- e[0, 1, 2] = e[1, 2, 0] = e[2, 0, 1] = 1.0                                                         # Levi-Civita symbols 
- e[0, 2, 1] = e[2, 1, 0] = e[1, 0, 2] = -1.0
- 
- if dataType == 'tensor':                                                                           # tensor, 3x3 -> 3x3 
-   curl_fourier = np.einsum('slm,ijkl,ijknm->ijksn',e,k_s,field_fourier)*TWOPIIMG
- elif dataType == 'vector':                                                                         # vector, 3 -> 3
-   curl_fourier = np.einsum('slm,ijkl,ijkm->ijks',e,k_s,field_fourier)*TWOPIIMG
+  k_si = np.arange(grid[0]//2+1)/geomdim[2]
 
- return np.fft.irfftn(curl_fourier,axes=(0,1,2),s=shapeFFT).reshape([N,n])
+  kk, kj, ki = np.meshgrid(k_sk,k_sj,k_si,indexing = 'ij')
+  k_s = np.concatenate((ki[:,:,:,None],kj[:,:,:,None],kk[:,:,:,None]),axis = 3).astype('c16')
+
+  e = np.zeros((3, 3, 3))
+  e[0, 1, 2] = e[1, 2, 0] = e[2, 0, 1] = 1.0                                                         # Levi-Civita symbols 
+  e[0, 2, 1] = e[2, 1, 0] = e[1, 0, 2] = -1.0
+
+  curl_fourier = np.einsum(einsums[n],e,k_s,field_fourier)*TWOPIIMG
+
+  return np.fft.irfftn(curl_fourier,axes=(0,1,2),s=shapeFFT).reshape([N,n])
 
 
 # --------------------------------------------------------------------
@@ -52,31 +58,37 @@ def curlFFT(geomdim,field):
 
 parser = OptionParser(option_class=damask.extendableOption, usage='%prog option(s) [ASCIItable(s)]', description = """
 Add column(s) containing curl of requested column(s).
-Operates on periodic ordered three-dimensional data sets.
-Deals with both vector- and tensor fields.
-
+Operates on periodic ordered three-dimensional data sets
+of vector and tensor fields.
 """, version = scriptID)
 
 parser.add_option('-p','--pos','--periodiccellcenter',
                   dest = 'pos',
                   type = 'string', metavar = 'string',
                   help = 'label of coordinates [%default]')
-parser.add_option('-v','--vector',
-                  dest = 'vector',
+parser.add_option('-l','--label',
+                  dest = 'data',
                   action = 'extend', metavar = '<string LIST>',
-                  help = 'label(s) of vector field values')
-parser.add_option('-t','--tensor',
-                  dest = 'tensor',
-                  action = 'extend', metavar = '<string LIST>',
-                  help = 'label(s) of tensor field values')
+                  help = 'label(s) of field values')
 
 parser.set_defaults(pos = 'pos',
                    )
 
+
 (options,filenames) = parser.parse_args()
 
-if options.vector is None and options.tensor is None:
-  parser.error('no data column specified.')
+if options.data is None: parser.error('no data column specified.')
+
+# --- define possible data types -------------------------------------------------------------------
+
+datatypes = {
+              3: {'name': 'vector',
+                  'shape': [3],
+                 },
+              9: {'name': 'tensor',
+                  'shape': [3,3],
+                 },
+            }
 
 # --- loop over input files ------------------------------------------------------------------------
 
@@ -87,30 +99,27 @@ for name in filenames:
   except: continue
   damask.util.report(scriptName,name)
 
-# ------------------------------------------ read header ------------------------------------------
+# --- interpret header ----------------------------------------------------------------------------
 
   table.head_read()
 
-# ------------------------------------------ sanity checks ----------------------------------------
-
-  items = {
-            'tensor': {'dim': 9, 'shape': [3,3], 'labels':options.tensor, 'active':[], 'column': []},
-            'vector': {'dim': 3, 'shape': [3],   'labels':options.vector, 'active':[], 'column': []},
-          }
-  errors  = []
   remarks = []
-  column = {}
-  
-  if table.label_dimension(options.pos) != 3: errors.append('coordinates {} are not a vector.'.format(options.pos))
-  else: colCoord = table.label_index(options.pos)
+  errors  = []
+  active = []
 
-  for type, data in items.iteritems():
-    for what in (data['labels'] if data['labels'] is not None else []):
-      dim = table.label_dimension(what)
-      if dim != data['dim']: remarks.append('column {} is not a {}.'.format(what,type))
-      else:
-        items[type]['active'].append(what)
-        items[type]['column'].append(table.label_index(what))
+  coordDim = table.label_dimension(options.pos)
+  if coordDim != 3:
+    errors.append('coordinates "{}" must be three-dimensional.'.format(options.pos))
+  else: coordCol = table.label_index(options.pos)
+
+  for me in options.data:
+    dim = table.label_dimension(me)
+    if dim in datatypes:
+      active.append(merge_dicts({'label':me},datatypes[dim]))
+      remarks.append('differentiating {} "{}"...'.format(datatypes[dim]['name'],me))
+    else:
+      remarks.append('skipping "{}" of dimension {}...'.format(me,dim) if dim != -1 else \
+                     '"{}" not found...'.format(me) )
 
   if remarks != []: damask.util.croak(remarks)
   if errors  != []:
@@ -121,31 +130,25 @@ for name in filenames:
 # ------------------------------------------ assemble header --------------------------------------
 
   table.info_append(scriptID + '\t' + ' '.join(sys.argv[1:]))
-  for type, data in items.iteritems():
-    for label in data['active']:
-      table.labels_append(['{}_curlFFT({})'.format(i+1,label) for i in range(data['dim'])])         # extend ASCII header with new labels
+  for data in active:
+    table.labels_append(['{}_curlFFT({})'.format(i+1,data['label']) 
+                        for i in range(np.prod(np.array(data['shape'])))])                         # extend ASCII header with new labels
   table.head_write()
 
 # --------------- figure out size and grid ---------------------------------------------------------
 
   table.data_readArray()
 
-  coords = [np.unique(table.data[:,colCoord+i]) for i in range(3)]
-  mincorner = np.array(map(min,coords))
-  maxcorner = np.array(map(max,coords))
-  grid   = np.array(map(len,coords),'i')
-  size   = grid/np.maximum(np.ones(3,'d'), grid-1.0) * (maxcorner-mincorner)                        # size from edge to edge = dim * n/(n-1) 
-  size   = np.where(grid > 1, size, min(size[grid > 1]/grid[grid > 1]))                             # spacing for grid==1 equal to smallest among other ones
+  grid,size = damask.util.coordGridAndSize(table.data[:,table.label_indexrange(options.pos)])
 
 # ------------------------------------------ process value field -----------------------------------
 
   stack = [table.data]
-  for type, data in items.iteritems():
-    for i,label in enumerate(data['active']):
-      # we need to reverse order here, because x is fastest,ie rightmost, but leftmost in our x,y,z notation
-      stack.append(curlFFT(size[::-1],
-                           table.data[:,data['column'][i]:data['column'][i]+data['dim']].
-                           reshape(grid[::-1].tolist()+data['shape'])))
+  for data in active:
+    # we need to reverse order here, because x is fastest,ie rightmost, but leftmost in our x,y,z notation
+    stack.append(curlFFT(size[::-1],
+                         table.data[:,table.label_indexrange(data['label'])].
+                         reshape(grid[::-1].tolist()+data['shape'])))
 
 # ------------------------------------------ output result -----------------------------------------
 
