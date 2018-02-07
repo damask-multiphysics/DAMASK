@@ -1078,15 +1078,15 @@ subroutine utilities_calcPlasticity(yieldStress, plasticStrain, eqStress, eqTota
  real(pReal), intent(inout) :: eqStress, eqPlasticStrain, plasticWork
  real(pReal), intent(out) :: eqTotalStrain
  real(pReal), dimension(3,3),intent(out) :: yieldStress, plasticStrain
- real(pReal), intent(in), dimension(3,3) :: rotation_BC                                                       !< rotation of load frame
- real(pReal), dimension(3,3) :: cauchy, P_av, F_av, Ve_av                                 !< average
+ real(pReal), intent(in), dimension(3,3) :: rotation_BC                                             !< rotation of load frame
+ real(pReal), dimension(3,3) :: cauchy, P_av, F_av, Ve_av                                           !< average
  real(pReal), dimension(3)   :: Values, S
  real(pReal), dimension(3,3) :: Vectors, diag
  real(pReal), dimension(3,3) :: &
    Vp, F_temp, U, VT, R, V, V_total
  real(pReal), dimension(3,3,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems) :: &
    Be, Ve, Fe
- real(pReal), dimension(15)   :: WORK                                                                         !< previous deformation gradient
+ real(pReal), dimension(15)   :: WORK                                                               !< previous deformation gradient
  integer(pInt) :: INFO, i, j, k, l, ierr
  real(pReal) :: wgtm
  real(pReal) :: eqStressOld, eqPlasticStrainOld, plasticWorkOld
@@ -1105,6 +1105,7 @@ subroutine utilities_calcPlasticity(yieldStress, plasticStrain, eqStress, eqTota
  
  F_av = sum(sum(sum(crystallite_subF,dim=5),dim=4),dim=3) * wgtm
  call MPI_Allreduce(MPI_IN_PLACE,F_av,9,MPI_DOUBLE,MPI_SUM,PETSC_COMM_WORLD,ierr)
+ F_av = math_rotate_forward33(F_av,rotation_BC)
  
  cauchy = 1.0/math_det33(F_av)*math_mul33x33(P_av,transpose(F_av))
  yieldStress = cauchy
@@ -1143,7 +1144,8 @@ subroutine utilities_calcPlasticity(yieldStress, plasticStrain, eqStress, eqTota
  
  do k = 1_pInt, mesh_NcpElems;  do j = 1_pInt, mesh_maxNips;  do i = 1_pInt,homogenization_maxNgrains
    Fe(1:3,1:3,i,j,k) = crystallite_Fe(1:3,1:3,i,j,k)
-   Be(1:3,1:3,i,j,k) = math_mul33x33(Fe(1:3,1:3,i,j,k),math_transpose33(Fe(1:3,1:3,i,j,k)))         ! plastic part of left Cauchy–Green deformation tensor
+   Fe(1:3,1:3,i,j,k) = math_rotate_forward33(Fe(1:3,1:3,i,j,k),rotation_BC)
+   Be(1:3,1:3,i,j,k) = math_mul33x33(Fe(1:3,1:3,i,j,k),math_transpose33(Fe(1:3,1:3,i,j,k)))         ! elastic part of left Cauchy–Green deformation tensor
    Ve(1:3,1:3,i,j,k) = math_eigenvectorBasisSym33_log(Be(1:3,1:3,i,j,k))
  enddo; enddo; enddo
  
