@@ -303,15 +303,15 @@ program DAMASK_spectral
            temp_valueVector(j) = IO_floatValue(line,chunkPos,i+j)
          enddo
          loadCases(currentLoadCase)%rotation = math_plain9to33(temp_valueVector)
-       case('totalStrain', 'totalstrain')
+       case('totalstrain')
          yieldStop = .True.
          stopFlag = 'totalStrain'
          yieldStopValue = IO_floatValue(line,chunkPos,i+1_pInt)
-       case('plasticStrain', 'plasticstrain')
+       case('plasticstrain')
          yieldStop = .True.
          stopFlag = 'plasticStrain'
          yieldStopValue = IO_floatValue(line,chunkPos,i+1_pInt)
-       case('plasticWork', 'plasticwork')
+       case('plasticwork')
          yieldStop = .True.
          stopFlag = 'plasticWork'
          yieldStopValue = IO_floatValue(line,chunkPos,i+1_pInt)
