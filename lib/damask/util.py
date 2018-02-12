@@ -39,7 +39,7 @@ def srepr(arg,glue = '\n'):
   if (not hasattr(arg, "strip") and
           hasattr(arg, "__getitem__") or
           hasattr(arg, "__iter__")):
-     return glue.join(srepr(x) for x in arg)
+     return glue.join(str(x) for x in arg)
   return arg if isinstance(arg,str) else repr(arg)
 
 # -----------------------------
@@ -233,6 +233,7 @@ def leastsqBound(func, x0, args=(), bounds=None, Dfun=None, full_output=0,
  
   def _check_func(checker, argname, thefunc, x0, args, numinputs,
                 output_shape=None):
+    from numpy import shape
     """The same as that of minpack.py"""
     res = np.atleast_1d(thefunc(*((x0[:numinputs],) + args)))
     if (output_shape is not None) and (shape(res) != output_shape):
