@@ -82,7 +82,7 @@ subroutine DAMASK_interface_init()
 
 !--------------------------------------------------------------------------------------------------
 ! PETSc Init
-#ifdef _OPENM
+#ifdef _OPENMP
  ! If openMP is enabled, check if the MPI libary supports it and initialize accordingly.
  ! Otherwise, the first call to PETSc will do the initialization.
  call MPI_Init_Thread(MPI_THREAD_FUNNELED,threadLevel,ierr);CHKERRQ(ierr)
