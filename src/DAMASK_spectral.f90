@@ -831,6 +831,8 @@ subroutine quit(stop_id)
  call PETScFinalize(ierr)
  if (ierr /= 0) write(6,'(a)') ' Error in PETScFinalize'
 #ifdef _OPENMP
+ ! If openMP is enabled, MPI is initialized before and independently of PETSc. Hence, also
+ ! take care of the finalization
  call MPI_finalize(error)
  if (error /= 0) write(6,'(a)') ' Error in MPI_finalize'
 #endif
