@@ -1783,26 +1783,25 @@ function math_sampleGaussOri(center,noise)
  real(pReal), dimension(3), parameter :: ORIGIN = 0.0_pReal
  real(pReal), dimension(5) :: rnd
 
- if (abs(noise) < tol_math_check) then
+ noScatter: if (abs(noise) < tol_math_check) then
    math_sampleGaussOri = center
-   return
- endif
+ else noScatter
+  ! Helming uses different distribution with Bessel functions
+  ! therefore the gauss scatter width has to be scaled differently
+   scatter = 0.95_pReal * noise
+   cosScatter = cos(scatter)
 
-! Helming uses different distribution with Bessel functions
-! therefore the gauss scatter width has to be scaled differently
- scatter = 0.95_pReal * noise
- cosScatter = cos(scatter)
+   do
+     call halton(5_pInt,rnd)
+     rnd(1:3) = 2.0_pReal*rnd(1:3)-1.0_pReal                                                        ! expand 1:3 to range [-1,+1]
+     disturb  = [ scatter * rnd(1), &                                                               ! phi1
+                  sign(1.0_pReal,rnd(2))*acos(cosScatter+(1.0_pReal-cosScatter)*rnd(4)), &          ! Phi
+                  scatter * rnd(3)]                                                                 ! phi2
+     if (rnd(5) <= exp(-1.0_pReal*(math_EulerMisorientation(ORIGIN,disturb)/scatter)**2_pReal)) exit
+   enddo
 
- do
-   call halton(5_pInt,rnd)
-   rnd(1:3) = 2.0_pReal*rnd(1:3)-1.0_pReal                                                          ! expand 1:3 to range [-1,+1]
-   disturb  = [ scatter * rnd(1), &                                                       ! phi1
-                sign(1.0_pReal,rnd(2))*acos(cosScatter+(1.0_pReal-cosScatter)*rnd(4)), &  ! Phi
-                scatter * rnd(3)]                                                         ! phi2
-   if (rnd(5) <= exp(-1.0_pReal*(math_EulerMisorientation(ORIGIN,disturb)/scatter)**2_pReal)) exit
- enddo
-
- math_sampleGaussOri = math_RtoEuler(math_mul33x33(math_EulerToR(disturb),math_EulerToR(center)))
+   math_sampleGaussOri = math_RtoEuler(math_mul33x33(math_EulerToR(disturb),math_EulerToR(center)))
+ endif noScatter
 
 end function math_sampleGaussOri
 
