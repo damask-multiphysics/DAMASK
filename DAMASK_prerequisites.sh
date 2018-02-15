@@ -23,7 +23,7 @@ if which $1 &> /dev/null; then
   $1 $2
   echo -e '\n'
 else
-  echo $ does not exist
+  echo $1 not found
 fi
 }
 
