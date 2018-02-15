@@ -823,11 +823,8 @@ function utilities_maskedCompliance(rot_BC,mask_stress,C)
               .or. (m/=n .and. abs(sTimesC(m,n))           > 1.0e-12_pReal)                      ! off-diagonal elements of S*C should be 0
      enddo
    enddo
-<<<<<<< HEAD
-   if(debugGeneral .or. errmatinv) then
-=======
+
    if (debugGeneral .or. errmatinv) then
->>>>>>> spectralSolver-cutbackfix
      write(formatString, '(i2)') size_reduced
      formatString = '(/,a,/,'//trim(formatString)//'('//trim(formatString)//'(2x,es9.2,1x)/))'
      write(6,trim(formatString),advance='no') ' C * S (load) ', &
@@ -841,18 +838,13 @@ function utilities_maskedCompliance(rot_BC,mask_stress,C)
  else
    temp99_real = 0.0_pReal
  endif
-<<<<<<< HEAD
- if(debugGeneral) &
-   write(6,'(/,a,/,9(9(2x,f10.5,1x)/),/)',advance='no') ' Masked Compliance (load) / GPa =', &
-                                                    transpose(temp99_Real*1.e9_pReal)
- flush(6)
-=======
+ 
  if(debugGeneral) then
    write(6,'(/,a,/,9(9(2x,f10.5,1x)/),/)',advance='no') &
      ' Masked Compliance (load) / GPa =', transpose(temp99_Real*1.e-9_pReal)
    flush(6)
  endif
->>>>>>> spectralSolver-cutbackfix
+ 
  utilities_maskedCompliance = math_Plain99to3333(temp99_Real)
 
 end function utilities_maskedCompliance

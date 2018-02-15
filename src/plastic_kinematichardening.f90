@@ -1,5 +1,5 @@
 !--------------------------------------------------------------------------------------------------
-!> @author Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
+!> @author Philip Eisenlohr, Michigan State University
 !> @author Zhuowen Zhao, Michigan State University
 !> @brief Introducing Voce-type kinematic hardening rule into crystal plasticity  
 !! formulation using a power law fitting
@@ -611,13 +611,13 @@ subroutine plastic_kinehardening_shearRates(gdot_pos,gdot_neg,tau_pos,tau_neg, &
  enddo slipFamilies
 
  gdot_pos = 0.5_pReal * param(instance)%gdot0 * &
-            (abs(tau_pos-state(instance)%sense(:,of)*state(instance)%crss_back(:,of))/ &
+            (abs(tau_pos-state(instance)%crss_back(:,of))/ &
             state(instance)%crss(:,of))**param(instance)%n_slip &
-            *sign(1.0_pReal,tau_pos) 
+            *sign(1.0_pReal,tau_pos-state(instance)%crss_back(:,of)) 
  gdot_neg = 0.5_pReal * param(instance)%gdot0 * &
-            (abs(tau_neg-state(instance)%sense(:,of)*state(instance)%crss_back(:,of))/ &
+            (abs(tau_neg-state(instance)%crss_back(:,of))/ &
             state(instance)%crss(:,of))**param(instance)%n_slip &
-            *sign(1.0_pReal,tau_neg) 
+            *sign(1.0_pReal,tau_neg-state(instance)%crss_back(:,of)) 
             
 !  gdot_pos = 0.5_pReal * param(instance)%gdot0 * &
 !             exp(-param(instance)%F0/(1.38e-23*298.15)* &
@@ -765,7 +765,8 @@ end subroutine plastic_kinehardening_LpAndItsTangent
 !--------------------------------------------------------------------------------------------------
 subroutine plastic_kinehardening_deltaState(Tstar_v,ipc,ip,el)
  use prec, only: &
-   dNeq
+   dNeq, &
+   dEq0
  use debug, only: &
    debug_level, &
    debug_constitutive, &
@@ -804,8 +805,9 @@ subroutine plastic_kinehardening_deltaState(Tstar_v,ipc,ip,el)
 
  call plastic_kinehardening_shearRates(gdot_pos,gdot_neg,tau_pos,tau_neg, &
                                        Tstar_v,ph,instance,of)
-
- sense = sign(1.0_pReal,gdot_pos+gdot_neg)                                                          ! current sense of shear direction
+ sense = merge(state(instance)%sense(:,of), &                                                       ! keep existing...
+               sign(1.0_pReal,gdot_pos+gdot_neg), &                                                 ! ...or have a defined 
+               dEq0(gdot_pos+gdot_neg,1e-10_pReal))                                                 ! current sense of shear direction
 
 #ifdef DEBUG
          if (iand(debug_level(debug_constitutive), debug_levelExtensive) /= 0_pInt &

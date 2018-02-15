@@ -522,13 +522,9 @@ program DAMASK_spectral
                                                      real(loadCases(currentLoadCase)%incs ,pReal)))
        endif
      endif
-<<<<<<< HEAD
-     timeinc = timeinc / 2.0_pReal**real(cutBackLevel,pReal)                                        ! depending on cut back level, decrease time step
-                                                                                                    ! QUESTION: what happens to inc-counter when cutbacklevel is not zero? not clear where half an inc gets incremented..?
-=======
+
      timeinc = timeinc / real(subStepFactor,pReal)**real(cutBackLevel,pReal)                        ! depending on cut back level, decrease time step
 
->>>>>>> spectralSolver-cutbackfix
      skipping: if (totalIncsCounter < restartInc) then                                              ! not yet at restart inc?
        time = time + timeinc                                                                        ! just advance time, skip already performed calculation
        guess = .true.                                                                               ! QUESTION:why forced guessing instead of inheriting loadcase preference
@@ -633,38 +629,7 @@ program DAMASK_spectral
            stagIter = stagIter + 1_pInt
            stagIterate =            stagIter < stagItMax &
                         .and.       all(solres(:)%converged) &
-<<<<<<< HEAD
-                        .and. .not. all(solres(:)%stagConverged)
-         enddo
 
-!--------------------------------------------------------------------------------------------------
-! check solution
-         cutBack = .False.
-
-         if (solres(1)%termIll &
-             .or. .not. all(solres(:)%converged .and. solres(:)%stagConverged)) then                ! no solution found
-                                                                                                    ! QUESTION: why termIll checked only for first field? only one that can be mechanic?
-           if (cutBackLevel < maxCutBack) then                                                      ! further cutbacking tolerated?
-             write(6,'(/,a)') ' cutting back '
-             cutBack = .true.
-             stepFraction = (stepFraction - 1_pInt) * subStepFactor                                 ! adjust to new denominator
-             cutBackLevel = cutBackLevel + 1_pInt
-             time    = time - timeinc                                                               ! rewind time
-             timeinc = timeinc/2.0_pReal
-           elseif (continueCalculation == 1_pInt .and. .not. solres(1)%termIll)  then
-             guess = .true.                                                                         ! accept non converged BVP solution
-           else                                                                                     ! material point model cannot find a solution
-             call IO_warning(850_pInt)
-             call MPI_file_close(resUnit,ierr)
-             close(statUnit)
-             call quit(-1_pInt*(lastRestartWritten+1_pInt))                                         ! quit and provide information about last restart inc written
-           endif
-         else
-           guess = .true.                                                                           ! start guessing after first converged (sub)inc
-         endif
-         
-         if (.not. cutBack) then
-=======
                         .and. .not. all(solres(:)%stagConverged)                                    ! stationary with respect to staggered iteration
          enddo
 
@@ -676,7 +641,6 @@ program DAMASK_spectral
            timeIncOld = timeinc
            cutBack = .false.
            guess = .true.                                                                           ! start guessing after first converged (sub)inc
->>>>>>> spectralSolver-cutbackfix
            if (worldrank == 0) then
              write(statUnit,*) totalIncsCounter, time, cutBackLevel, &
                                solres%converged, solres%iterationsNeeded
@@ -695,10 +659,7 @@ program DAMASK_spectral
            close(statUnit)
            call quit(-1_pInt*(lastRestartWritten+1_pInt))                                           ! quit and provide information about last restart inc written
          endif
-<<<<<<< HEAD
-=======
 
->>>>>>> spectralSolver-cutbackfix
        enddo subStepLooping
 
        cutBackLevel = max(0_pInt, cutBackLevel - 1_pInt)                                            ! try half number of subincs next inc
@@ -719,11 +680,8 @@ program DAMASK_spectral
            flush(6)
          call materialpoint_postResults()
          call MPI_file_seek (resUnit,fileOffset,MPI_SEEK_SET,ierr)
-<<<<<<< HEAD
-         if (ierr /=0_pInt) call IO_error(894_pInt, ext_msg='MPI_file_seek')
-=======
+
          if (ierr /= 0_pInt) call IO_error(894_pInt, ext_msg='MPI_file_seek')
->>>>>>> spectralSolver-cutbackfix
          do i=1, size(materialpoint_results,3)/(maxByteOut/(materialpoint_sizeResults*pReal))+1     ! slice the output of my process in chunks not exceeding the limit for one output
            outputIndex=int([(i-1_pInt)*((maxRealOut)/materialpoint_sizeResults)+1_pInt, &
                       min(i*((maxRealOut)/materialpoint_sizeResults),size(materialpoint_results,3))],pLongInt)
@@ -740,9 +698,7 @@ program DAMASK_spectral
          restartWrite = .true.                                                                      ! set restart parameter for FEsolving
          lastRestartWritten = inc                                                                   ! QUESTION: first call to CPFEM_general will write?
        endif
-<<<<<<< HEAD
-     endif skipping
-=======
+
      else forwarding
        time = time + timeinc
        guess = .true.
@@ -812,7 +768,6 @@ program DAMASK_spectral
          call quit(0_pInt)
        endif
      endif
->>>>>>> development
 
     enddo incLooping
  enddo loadCaseLooping

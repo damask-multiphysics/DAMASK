@@ -280,13 +280,8 @@ type(tSolutionState) function basicPETSc_solution(incInfoIn,timeinc,timeinc_old,
  basicPETSC_solution%iterationsNeeded = totalIter
  basicPETSc_solution%termIll = terminallyIll
  terminallyIll = .false.
-<<<<<<< HEAD
- if (reason == -4) call IO_error(893_pInt)
- BasicPETSc_solution%converged = reason > 0
- basicPETSC_solution%iterationsNeeded = totalIter
-=======
  if (reason == -4) call IO_error(893_pInt)                                                         ! MPI error
->>>>>>> spectralSolver-cutbackfix
+
 
 end function BasicPETSc_solution
 
@@ -343,10 +338,6 @@ subroutine BasicPETSC_formResidual(in,x_scal,f_scal,dummy,ierr)
  call SNESGetIterationNumber(snes,PETScIter,ierr); CHKERRQ(ierr)
 
  if (nfuncs == 0 .and. PETScIter == 0) totalIter = -1_pInt                                            ! new increment
-<<<<<<< HEAD
- newIteration: if (totalIter <= PETScIter) then
-=======
->>>>>>> spectralSolver-cutbackfix
 !--------------------------------------------------------------------------------------------------
 ! begin of new iteration
  newIteration: if (totalIter <= PETScIter) then
@@ -449,106 +440,6 @@ end subroutine BasicPETSc_converged
 !> possibly writing restart information, triggering of state increment in DAMASK, and updating of IPcoordinates
 !--------------------------------------------------------------------------------------------------
 subroutine BasicPETSc_forward(guess,timeinc,timeinc_old,loadCaseTime,deformation_BC,stress_BC,rotation_BC)
-<<<<<<< HEAD
- use math, only: &
-   math_mul33x33 ,&
-   math_rotate_backward33
- use numerics, only: &
-   worldrank 
- use mesh, only: &
-   grid, &
-   grid3
- use spectral_utilities, only: &
-   Utilities_calculateRate, &
-   Utilities_forwardField, &
-   Utilities_updateIPcoords, &
-   tBoundaryCondition, &
-   cutBack
- use IO, only: &
-   IO_write_JobRealFile
- use FEsolving, only: &
-   restartWrite
-
- implicit none
- real(pReal), intent(in) :: &
-   timeinc_old, &
-   timeinc, &
-   loadCaseTime                                                                                     !< remaining time of current load case
- type(tBoundaryCondition),      intent(in) :: &
-   stress_BC, &
-   deformation_BC
- real(pReal), dimension(3,3), intent(in) :: rotation_BC
- logical, intent(in) :: &
-   guess
- PetscErrorCode :: ierr 
- PetscScalar, pointer :: F(:,:,:,:)
-
- character(len=1024) :: rankStr
-
- call DMDAVecGetArrayF90(da,solution_vec,F,ierr)                                                  ! get F from PETSc data structure
-!--------------------------------------------------------------------------------------------------
-! restart information for spectral solver
- if (restartWrite) then                                                                           ! QUESTION: where is this logical properly set?
-   write(6,'(/,a)') ' writing converged results for restart'
-   flush(6)
-   write(rankStr,'(a1,i0)')'_',worldrank
-   call IO_write_jobRealFile(777,'F'//trim(rankStr),size(F))                                                       ! writing deformation gradient field to file
-   write (777,rec=1) F
-   close (777)
-   call IO_write_jobRealFile(777,'F_lastInc'//trim(rankStr),size(F_lastInc))                                       ! writing F_lastInc field to file
-   write (777,rec=1) F_lastInc
-   close (777)
-   if (worldrank == 0_pInt) then
-     call IO_write_jobRealFile(777,'F_aimDot',size(F_aimDot))
-     write (777,rec=1) F_aimDot
-     close(777)
-     call IO_write_jobRealFile(777,'C_volAvg',size(C_volAvg))
-     write (777,rec=1) C_volAvg
-     close(777)
-     call IO_write_jobRealFile(777,'C_volAvgLastInc',size(C_volAvgLastInc))
-     write (777,rec=1) C_volAvgLastInc
-     close(777)
-   endif
- endif
-
- call utilities_updateIPcoords(F)                                                                 ! QUESTION: why do this even when cutback happened??
-
- if (cutBack) then                                                                                ! reset to former inc's values
-   F        = reshape(F_lastInc,[9,grid(1),grid(2),grid3])                                        ! QUESTION: purpose of resetting this when updating in line 541?
-   F_aim    = F_aim_lastInc
-   C_volAvg = C_volAvgLastInc
- else
-   ForwardData = .true.                                                                           ! QUESTION: who is resetting this?
-   C_volAvgLastInc = C_volAvg
-!--------------------------------------------------------------------------------------------------
-! calculate rate for aim
-   if     (deformation_BC%myType=='l') then                                                          ! calculate f_aimDot from given L and current F
-     f_aimDot = deformation_BC%maskFloat * math_mul33x33(deformation_BC%values, F_aim)
-   elseif(deformation_BC%myType=='fdot') then                                                        ! f_aimDot is prescribed
-     f_aimDot = deformation_BC%maskFloat * deformation_BC%values
-   elseif (deformation_BC%myType=='f') then                                                          ! aim at end of load case is prescribed
-     f_aimDot = deformation_BC%maskFloat * (deformation_BC%values - F_aim)/loadCaseTime
-   endif
-   if (guess) f_aimDot  = f_aimDot + stress_BC%maskFloat * (F_aim - F_aim_lastInc)/timeinc_old
-   F_aim_lastInc = F_aim
-
-!--------------------------------------------------------------------------------------------------
-! update coordinates and rate and forward last inc
-   call utilities_updateIPcoords(F)
-   Fdot =  Utilities_calculateRate(math_rotate_backward33(f_aimDot,rotation_BC), &
-                  timeinc_old,guess,F_lastInc,reshape(F,[3,3,grid(1),grid(2),grid3]))               ! QUESTION: what do we need Fdot for and why is it not restored at cutback?
-   F_lastInc     = reshape(F,[3,3,grid(1),grid(2),grid3])
- endif
-
- F_aim = F_aim + f_aimDot * timeinc
-
-!--------------------------------------------------------------------------------------------------
-! update local deformation gradient
- F = reshape(Utilities_forwardField(timeinc,F_lastInc,Fdot, &                                       ! ensure that it matches rotated F_aim
-             math_rotate_backward33(F_aim,rotation_BC)),[9,grid(1),grid(2),grid3])
- call DMDAVecRestoreArrayF90(da,solution_vec,F,ierr); CHKERRQ(ierr)
-
-=======
   use math, only: &
     math_mul33x33 ,&
     math_rotate_backward33
@@ -660,8 +551,7 @@ subroutine BasicPETSc_forward(guess,timeinc,timeinc_old,loadCaseTime,deformation
   F = reshape(Utilities_forwardField(timeinc,F_lastInc,Fdot, &                                       ! estimate of F at end of time+timeinc that matches rotated F_aim on average
               math_rotate_backward33(F_aim,rotation_BC)),[9,grid(1),grid(2),grid3])
   call DMDAVecRestoreArrayF90(da,solution_vec,F,ierr); CHKERRQ(ierr)
-  
->>>>>>> spectralSolver-cutbackfix
+
 end subroutine BasicPETSc_forward
 
 !--------------------------------------------------------------------------------------------------
