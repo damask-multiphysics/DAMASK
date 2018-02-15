@@ -1783,7 +1783,7 @@ function math_sampleGaussOri(center,noise)
  real(pReal), dimension(3), parameter :: ORIGIN = 0.0_pReal
  real(pReal), dimension(5) :: rnd
 
- noScatter: if (abs(noise) < tol_math_check) then
+ noScatter: if (noise < 0.5_pReal*INRAD) then
    math_sampleGaussOri = center
  else noScatter
   ! Helming uses different distribution with Bessel functions
