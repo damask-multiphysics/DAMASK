@@ -43,7 +43,7 @@ module spectral_mech_Polarisation
 !--------------------------------------------------------------------------------------------------
 ! stress, stiffness and compliance average etc.
  real(pReal), private, dimension(3,3) :: &
-   F_aimDot, &                                                                                      !< assumed rate of average deformation gradient
+   F_aimDot = 0.0_pReal, &                                                                          !< assumed rate of average deformation gradient
    F_aim = math_I3, &                                                                               !< current prescribed deformation gradient
    F_aim_lastInc = math_I3, &                                                                       !< previous average deformation gradient
    F_av = 0.0_pReal, &                                                                              !< average incompatible def grad field
@@ -54,6 +54,7 @@ module spectral_mech_Polarisation
    C_volAvg = 0.0_pReal, &                                                                          !< current volume average stiffness 
    C_volAvgLastInc = 0.0_pReal, &                                                                   !< previous volume average stiffness
    C_minMaxAvg = 0.0_pReal, &                                                                       !< current (min+max)/2 stiffness
+   C_minMaxAvgLastInc = 0.0_pReal, &                                                                !< previous (min+max)/2 stiffness
    S = 0.0_pReal, &                                                                                 !< current compliance (filled up with zeros)
    C_scale = 0.0_pReal, &                             
    S_scale = 0.0_pReal
@@ -62,7 +63,7 @@ module spectral_mech_Polarisation
    err_BC, &                                                                                        !< deviation from stress BC
    err_curl, &                                                                                      !< RMS of curl of F
    err_div                                                                                          !< RMS of div of P
- logical, private :: ForwardData
+  
  integer(pInt), private :: &
    totalIter = 0_pInt                                                                               !< total iteration in current increment
  
@@ -80,7 +81,7 @@ module spectral_mech_Polarisation
 contains
 
 !--------------------------------------------------------------------------------------------------
-!> @brief allocates all neccessary fields and fills them with data, potentially from restart info
+!> @brief allocates all necessary fields and fills them with data, potentially from restart info
 !> @todo use sourced allocation, e.g. allocate(Fdot,source = F_lastInc)
 !--------------------------------------------------------------------------------------------------
 subroutine Polarisation_init
@@ -102,12 +103,15 @@ subroutine Polarisation_init
  use numerics, only: &
    worldrank, &
    worldsize
+ use homogenization, only: &
+   materialpoint_F0
  use DAMASK_interface, only: &
    getSolverJobName
  use spectral_utilities, only: &
    Utilities_constitutiveResponse, &
    Utilities_updateGamma, &
-   Utilities_updateIPcoords
+   Utilities_updateIPcoords, &
+   wgt
  use mesh, only: &
    grid, &
    grid3
@@ -120,7 +124,11 @@ subroutine Polarisation_init
    temp33_Real = 0.0_pReal
 
  PetscErrorCode :: ierr
- PetscScalar, pointer, dimension(:,:,:,:) :: xx_psc, F, F_tau
+ PetscScalar, pointer, dimension(:,:,:,:) :: &
+   FandF_tau, &                                                                                                    ! overall pointer to solution data
+   F, &                                                                                                         ! specific (sub)pointer
+   F_tau                                                                                                     ! specific (sub)pointer
+
  integer(pInt), dimension(:), allocatable :: localK  
  integer(pInt) :: proc
  character(len=1024) :: rankStr
@@ -164,78 +172,69 @@ subroutine Polarisation_init
         grid(1),grid(2),localK, &                                                                   ! local grid
         da,ierr)                                                                                    ! handle, error
  CHKERRQ(ierr)
- call SNESSetDM(snes,da,ierr); CHKERRQ(ierr)
- call DMCreateGlobalVector(da,solution_vec,ierr); CHKERRQ(ierr)
- call DMDASNESSetFunctionLocal(da,INSERT_VALUES,Polarisation_formResidual,PETSC_NULL_OBJECT,ierr)
+ call SNESSetDM(snes,da,ierr); CHKERRQ(ierr)                                                        ! connect snes to da
+ call DMCreateGlobalVector(da,solution_vec,ierr); CHKERRQ(ierr)                                     ! global solution vector (grid x 9, i.e. every def grad tensor)
+ call DMDASNESSetFunctionLocal(da,INSERT_VALUES,Polarisation_formResidual,PETSC_NULL_OBJECT,ierr)   ! residual vector of same shape as solution vector
+ CHKERRQ(ierr) 
+ call SNESSetConvergenceTest(snes,Polarisation_converged,PETSC_NULL_OBJECT,PETSC_NULL_FUNCTION,ierr)  ! specify custom convergence check function "_converged"
  CHKERRQ(ierr)
- call SNESSetConvergenceTest(snes,Polarisation_converged,PETSC_NULL_OBJECT,PETSC_NULL_FUNCTION,ierr)
- CHKERRQ(ierr)
- call SNESSetFromOptions(snes,ierr); CHKERRQ(ierr)
+ call SNESSetFromOptions(snes,ierr); CHKERRQ(ierr)                                                  ! pull it all together with additional cli arguments
 
 !--------------------------------------------------------------------------------------------------
 ! init fields                 
- call DMDAVecGetArrayF90(da,solution_vec,xx_psc,ierr); CHKERRQ(ierr)                                ! places pointer xx_psc on PETSc data
- F => xx_psc(0:8,:,:,:)
- F_tau => xx_psc(9:17,:,:,:)
- restart: if (restartInc > 1_pInt) then 
-   if (iand(debug_level(debug_spectral),debug_spectralRestart)/= 0) &
+ call DMDAVecGetArrayF90(da,solution_vec,FandF_tau,ierr); CHKERRQ(ierr)                             ! places pointer on PETSc data
+ F        => FandF_tau( 0: 8,:,:,:)
+ F_tau    => FandF_tau( 9:17,:,:,:)
+ restart: if (restartInc > 1_pInt) then
+   if (iand(debug_level(debug_spectral),debug_spectralRestart) /= 0) then
      write(6,'(/,a,'//IO_intOut(restartInc-1_pInt)//',a)') &
      'reading values of increment ', restartInc - 1_pInt, ' from file'
-   flush(6)
+     flush(6)
+   endif
    write(rankStr,'(a1,i0)')'_',worldrank
    call IO_read_realFile(777,'F'//trim(rankStr),trim(getSolverJobName()),size(F))
-   read (777,rec=1) F
-   close (777)
+   read (777,rec=1) F; close (777)
    call IO_read_realFile(777,'F_lastInc'//trim(rankStr),trim(getSolverJobName()),size(F_lastInc))
-   read (777,rec=1) F_lastInc
-   close (777)
+   read (777,rec=1) F_lastInc; close (777)
    call IO_read_realFile(777,'F_tau'//trim(rankStr),trim(getSolverJobName()),size(F_tau))
-   read (777,rec=1) F_tau
-   close (777)
-   call IO_read_realFile(777,'F_tau_lastInc'//trim(rankStr),&
-                                        trim(getSolverJobName()),size(F_tau_lastInc))
-   read (777,rec=1) F_tau_lastInc
-   close (777)
-   call IO_read_realFile(777,'F_aim', trim(getSolverJobName()),size(F_aim))
-   read (777,rec=1) F_aim
-   close (777)
-   call IO_read_realFile(777,'F_aim_lastInc', trim(getSolverJobName()),size(F_aim_lastInc))
-   read (777,rec=1) F_aim_lastInc
-   close (777)
-   call IO_read_realFile(777,'F_aimDot',trim(getSolverJobName()),size(f_aimDot))
-   read (777,rec=1) f_aimDot
-   close (777)
+   read (777,rec=1) F_tau; close (777)
+   call IO_read_realFile(777,'F_tau_lastInc'//trim(rankStr),trim(getSolverJobName()),size(F_tau_lastInc))
+   read (777,rec=1) F_tau_lastInc; close (777)
+   call IO_read_realFile(777,'F_aimDot',trim(getSolverJobName()),size(F_aimDot))
+   read (777,rec=1) F_aimDot; close (777)
+   F_aim         = reshape(sum(sum(sum(F,dim=4),dim=3),dim=2) * wgt, [3,3])                         ! average of F
+   F_aim_lastInc = sum(sum(sum(F_lastInc,dim=5),dim=4),dim=3) * wgt                                 ! average of F_lastInc 
  elseif (restartInc == 1_pInt) then restart
-   F_lastInc     = spread(spread(spread(math_I3,3,grid(1)),4,grid(2)),5,grid3)                      ! initialize to identity
+   F_lastInc = spread(spread(spread(math_I3,3,grid(1)),4,grid(2)),5,grid3)                          ! initialize to identity
    F = reshape(F_lastInc,[9,grid(1),grid(2),grid3])
-   F_tau = 2.0_pReal* F
+   F_tau = 2.0_pReal*F
    F_tau_lastInc = 2.0_pReal*F_lastInc
  endif restart
 
+ materialpoint_F0 = reshape(F_lastInc, [3,3,1,product(grid(1:2))*grid3])                            ! set starting condition for materialpoint_stressAndItsTangent
  call Utilities_updateIPcoords(reshape(F,shape(F_lastInc)))
- call Utilities_constitutiveResponse(F_lastInc, reshape(F,shape(F_lastInc)), &
-   0.0_pReal,P,C_volAvg,C_minMaxAvg,temp33_Real,.false.,math_I3)
+ call Utilities_constitutiveResponse(P,temp33_Real,C_volAvg,C_minMaxAvg, &                          ! stress field, stress avg, global average of stiffness and (min+max)/2
+                                     reshape(F,shape(F_lastInc)), &                                 ! target F
+                                     0.0_pReal, &                                                   ! time increment
+                                     math_I3)                                                       ! no rotation of boundary condition
  nullify(F)
  nullify(F_tau)
- call DMDAVecRestoreArrayF90(da,solution_vec,xx_psc,ierr); CHKERRQ(ierr)                            ! write data back to PETSc
+ call DMDAVecRestoreArrayF90(da,solution_vec,FandF_tau,ierr); CHKERRQ(ierr)                         ! write data back to PETSc
 
  restartRead: if (restartInc > 1_pInt) then
    if (iand(debug_level(debug_spectral),debug_spectralRestart)/= 0 .and. worldrank == 0_pInt) &
      write(6,'(/,a,'//IO_intOut(restartInc-1_pInt)//',a)') &
-     'reading more values of increment', restartInc - 1_pInt, 'from file'
+     'reading more values of increment ', restartInc-1_pInt, ' from file'
    flush(6)
    call IO_read_realFile(777,'C_volAvg',trim(getSolverJobName()),size(C_volAvg))
-   read (777,rec=1) C_volAvg
-   close (777)
+   read (777,rec=1) C_volAvg; close (777)
    call IO_read_realFile(777,'C_volAvgLastInc',trim(getSolverJobName()),size(C_volAvgLastInc))
-   read (777,rec=1) C_volAvgLastInc
-   close (777)
+   read (777,rec=1) C_volAvgLastInc; close (777)
    call IO_read_realFile(777,'C_ref',trim(getSolverJobName()),size(C_minMaxAvg))
-   read (777,rec=1) C_minMaxAvg
-   close (777)
+   read (777,rec=1) C_minMaxAvg; close (777)
  endif restartRead
 
- call Utilities_updateGamma(C_minMaxAvg,.True.)
+ call Utilities_updateGamma(C_minMaxAvg,.true.)
  C_scale = C_minMaxAvg
  S_scale = math_invSym3333(C_minMaxAvg)
  
@@ -245,8 +244,7 @@ end subroutine Polarisation_init
 !--------------------------------------------------------------------------------------------------
 !> @brief solution for the Polarisation scheme with internal iterations
 !--------------------------------------------------------------------------------------------------
-type(tSolutionState) function &
-  Polarisation_solution(incInfoIn,timeinc,timeinc_old,stress_BC,rotation_BC)
+type(tSolutionState) function Polarisation_solution(incInfoIn,timeinc,timeinc_old,stress_BC,rotation_BC)
  use IO, only: &
    IO_error
  use numerics, only: &
@@ -265,13 +263,13 @@ type(tSolutionState) function &
 
 !--------------------------------------------------------------------------------------------------
 ! input data for solution
- real(pReal), intent(in) :: &
-   timeinc, &                                                                                       !< increment in time for current solution
-   timeinc_old                                                                                      !< increment in time of last increment
- type(tBoundaryCondition),      intent(in) :: &
-   stress_BC
  character(len=*), intent(in) :: &
    incInfoIn
+ real(pReal), intent(in) :: &
+   timeinc, &                                                                                       !< increment time for current solution
+   timeinc_old                                                                                      !< increment time of last successful increment
+ type(tBoundaryCondition),    intent(in) :: &
+   stress_BC
  real(pReal), dimension(3,3), intent(in) :: rotation_BC
  
 !--------------------------------------------------------------------------------------------------
@@ -304,18 +302,17 @@ type(tSolutionState) function &
 
 !--------------------------------------------------------------------------------------------------
 ! solve BVP 
- call SNESSolve(snes,PETSC_NULL_OBJECT,solution_vec,ierr)
- CHKERRQ(ierr)
+ call SNESSolve(snes,PETSC_NULL_OBJECT,solution_vec,ierr); CHKERRQ(ierr)
 
 !--------------------------------------------------------------------------------------------------
 ! check convergence
- call SNESGetConvergedReason(snes,reason,ierr)
- CHKERRQ(ierr)
+ call SNESGetConvergedReason(snes,reason,ierr); CHKERRQ(ierr)
+
+ Polarisation_solution%converged = reason > 0
+ Polarisation_solution%iterationsNeeded = totalIter
  Polarisation_solution%termIll = terminallyIll
  terminallyIll = .false.
- if (reason == -4) call IO_error(893_pInt)
- if (reason < 1) Polarisation_solution%converged = .false.
- Polarisation_solution%iterationsNeeded = totalIter
+ if (reason == -4) call IO_error(893_pInt)                                                         ! MPI error
 
 end function Polarisation_solution
 
@@ -330,8 +327,8 @@ subroutine Polarisation_formResidual(in,x_scal,f_scal,dummy,ierr)
    polarAlpha, &
    polarBeta
  use mesh, only: &
-   grid3, &
-   grid
+   grid, &
+   grid3
  use IO, only: &
    IO_intOut
  use math, only: &
@@ -340,6 +337,10 @@ subroutine Polarisation_formResidual(in,x_scal,f_scal,dummy,ierr)
    math_mul3333xx33, &
    math_invSym3333, &
    math_mul33x33
+ use debug, only: &
+   debug_level, &
+   debug_spectral, &
+   debug_spectralRotation
  use spectral_utilities, only: &
    wgt, &
    tensorField_real, &
@@ -349,27 +350,17 @@ subroutine Polarisation_formResidual(in,x_scal,f_scal,dummy,ierr)
    Utilities_constitutiveResponse, &
    Utilities_divergenceRMS, &
    Utilities_curlRMS
- use debug, only: &
-   debug_level, &
-   debug_spectral, &
-   debug_spectralRotation
  use homogenization, only: &
    materialpoint_dPdF
  use FEsolving, only: &
    terminallyIll
 
  implicit none
-!--------------------------------------------------------------------------------------------------
-! strange syntax in the next line because otherwise macros expand beyond 132 character limit 
- DMDALocalInfo,        dimension(&
-   DMDA_LOCAL_INFO_SIZE) :: &
-   in
- PetscScalar, target, dimension(3,3,2, &
-   XG_RANGE,YG_RANGE,ZG_RANGE), intent(in) :: &
-   x_scal
- PetscScalar, target, dimension(3,3,2, &
-   X_RANGE,Y_RANGE,Z_RANGE), intent(out) :: &
-   f_scal
+ DMDALocalInfo, dimension(DMDA_LOCAL_INFO_SIZE) :: in
+ PetscScalar, &
+   target, dimension(3,3,2, XG_RANGE,YG_RANGE,ZG_RANGE), intent(in) :: x_scal
+ PetscScalar, &
+   target, dimension(3,3,2,  X_RANGE, Y_RANGE, Z_RANGE), intent(out) :: f_scal
  PetscScalar, pointer, dimension(:,:,:,:,:) :: &
    F, &
    F_tau, &
@@ -387,33 +378,33 @@ subroutine Polarisation_formResidual(in,x_scal,f_scal,dummy,ierr)
    SNESGetNumberFunctionEvals, &
    SNESGetIterationNumber
 
- F              => x_scal(1:3,1:3,1,&
-  XG_RANGE,YG_RANGE,ZG_RANGE)
- F_tau          => x_scal(1:3,1:3,2,&
-  XG_RANGE,YG_RANGE,ZG_RANGE)
- residual_F     => f_scal(1:3,1:3,1,&
-  X_RANGE,Y_RANGE,Z_RANGE)
- residual_F_tau => f_scal(1:3,1:3,2,&
-  X_RANGE,Y_RANGE,Z_RANGE)
- 
- call SNESGetNumberFunctionEvals(snes,nfuncs,ierr); CHKERRQ(ierr)
- call SNESGetIterationNumber(snes,PETScIter,ierr); CHKERRQ(ierr)
+ F                 => x_scal(1:3,1:3,1,&
+                             XG_RANGE,YG_RANGE,ZG_RANGE)
+ F_tau             => x_scal(1:3,1:3,2,&
+                             XG_RANGE,YG_RANGE,ZG_RANGE)
+ residual_F        => f_scal(1:3,1:3,1,&
+                              X_RANGE, Y_RANGE, Z_RANGE)
+ residual_F_tau    => f_scal(1:3,1:3,2,&
+                              X_RANGE, Y_RANGE, Z_RANGE)
 
  F_av = sum(sum(sum(F,dim=5),dim=4),dim=3) * wgt
  call MPI_Allreduce(MPI_IN_PLACE,F_av,9,MPI_DOUBLE,MPI_SUM,PETSC_COMM_WORLD,ierr)
  
- if(nfuncs== 0 .and. PETScIter == 0) totalIter = -1_pInt                                            ! new increment
- newIteration: if(totalIter <= PETScIter) then
+ call SNESGetNumberFunctionEvals(snes,nfuncs,ierr); CHKERRQ(ierr)
+ call SNESGetIterationNumber(snes,PETScIter,ierr); CHKERRQ(ierr)
+
+ if (nfuncs == 0 .and. PETScIter == 0) totalIter = -1_pInt                                            ! new increment
 !--------------------------------------------------------------------------------------------------
-! report begin of new iteration
+! begin of new iteration
+ newIteration: if (totalIter <= PETScIter) then
    totalIter = totalIter + 1_pInt
-   write(6,'(1x,a,3(a,'//IO_intOut(itmax)//'))') trim(incInfo), &
-                  ' @ Iteration ', itmin, '≤',totalIter, '≤', itmax
+   write(6,'(1x,a,3(a,'//IO_intOut(itmax)//'))') &
+           trim(incInfo), ' @ Iteration ', itmin, '≤',totalIter, '≤', itmax
    if (iand(debug_level(debug_spectral),debug_spectralRotation) /= 0) &
-     write(6,'(/,a,/,3(3(f12.7,1x)/))',advance='no') ' deformation gradient aim (lab) =', &
-                           math_transpose33(math_rotate_backward33(F_aim,params%rotation_BC))
-   write(6,'(/,a,/,3(3(f12.7,1x)/))',advance='no') ' deformation gradient aim =', &
-                               math_transpose33(F_aim)
+     write(6,'(/,a,/,3(3(f12.7,1x)/))',advance='no') &
+             ' deformation gradient aim (lab) =', math_transpose33(math_rotate_backward33(F_aim,params%rotation_BC))
+   write(6,'(/,a,/,3(3(f12.7,1x)/))',advance='no') &
+             ' deformation gradient aim       =', math_transpose33(F_aim)
    flush(6)
  endif newIteration
 
@@ -440,18 +431,16 @@ subroutine Polarisation_formResidual(in,x_scal,f_scal,dummy,ierr)
 !--------------------------------------------------------------------------------------------------
 ! evaluate constitutive response
  P_avLastEval = P_av
- call Utilities_constitutiveResponse(F_lastInc,F - residual_F_tau/polarBeta,params%timeinc, &
-                                     residual_F,C_volAvg,C_minMaxAvg,P_av,ForwardData,params%rotation_BC)
+ call Utilities_constitutiveResponse(residual_F,P_av,C_volAvg,C_minMaxAvg, &
+                                     F - residual_F_tau/polarBeta,params%timeinc,params%rotation_BC)
  call MPI_Allreduce(MPI_IN_PLACE,terminallyIll,1,MPI_LOGICAL,MPI_LOR,PETSC_COMM_WORLD,ierr) 
- ForwardData = .False.
 
 !--------------------------------------------------------------------------------------------------
 ! calculate divergence
  tensorField_real = 0.0_pReal
- tensorField_real(1:3,1:3,1:grid(1),1:grid(2),1:grid3) = residual_F
+ tensorField_real(1:3,1:3,1:grid(1),1:grid(2),1:grid3) = residual_F                                   !< stress field in disguise
  call utilities_FFTtensorForward()
- err_div = Utilities_divergenceRMS()
- call utilities_FFTtensorBackward()
+ err_div = Utilities_divergenceRMS()                                                                  !< root mean squared error in divergence of stress
  
 !--------------------------------------------------------------------------------------------------
 ! constructing residual
@@ -471,8 +460,11 @@ subroutine Polarisation_formResidual(in,x_scal,f_scal,dummy,ierr)
  tensorField_real(1:3,1:3,1:grid(1),1:grid(2),1:grid3) = F
  call utilities_FFTtensorForward()
  err_curl = Utilities_curlRMS()
- call utilities_FFTtensorBackward()
- 
+
+ nullify(F)
+ nullify(F_tau)
+ nullify(residual_F)
+ nullify(residual_F_tau)
 end subroutine Polarisation_formResidual
 
 
@@ -487,8 +479,8 @@ subroutine Polarisation_converged(snes_local,PETScIter,xnorm,snorm,fnorm,reason,
    err_div_tolAbs, &
    err_curl_tolRel, &
    err_curl_tolAbs, &
-   err_stress_tolAbs, &
-   err_stress_tolRel
+   err_stress_tolRel, &
+   err_stress_tolAbs
  use math, only: &
    math_mul3333xx33
  use FEsolving, only: &
@@ -507,24 +499,24 @@ subroutine Polarisation_converged(snes_local,PETScIter,xnorm,snorm,fnorm,reason,
  real(pReal) :: &
    curlTol, &
    divTol, &
-   BC_tol
+   BCTol
      
 !--------------------------------------------------------------------------------------------------
 ! stress BC handling
  F_aim = F_aim - math_mul3333xx33(S, ((P_av - params%stress_BC)))                                   ! S = 0.0 for no bc
- err_BC = maxval(abs((-mask_stress+1.0_pReal)*math_mul3333xx33(C_scale,F_aim-F_av) + &
-                         mask_stress              *(P_av - params%stress_BC)))                      ! mask = 0.0 for no bc
+ err_BC = maxval(abs((1.0_pReal-mask_stress) * math_mul3333xx33(C_scale,F_aim-F_av) + &
+                                mask_stress  * (P_av-params%stress_BC)))                            ! mask = 0.0 for no bc
 
 !--------------------------------------------------------------------------------------------------
 ! error calculation
- curlTol    = max(maxval(abs(F_aim-math_I3))*err_curl_tolRel,err_curl_tolAbs)
- divTol     = max(maxval(abs(P_av))         *err_div_tolRel,err_div_tolAbs)
- BC_tol     = max(maxval(abs(P_av))    *err_stress_tolrel,err_stress_tolabs)
+ curlTol    = max(maxval(abs(F_aim-math_I3))*err_curl_tolRel  ,err_curl_tolAbs)
+ divTol     = max(maxval(abs(P_av))         *err_div_tolRel   ,err_div_tolAbs)
+ BCTol      = max(maxval(abs(P_av))         *err_stress_tolRel,err_stress_tolAbs)
 
  converged: if ((totalIter >= itmin .and. &
-                           all([ err_div/divTol, &
+                           all([ err_div /divTol, &
                                  err_curl/curlTol, &
-                                 err_BC/BC_tol       ] < 1.0_pReal)) &
+                                 err_BC  /BCTol       ] < 1.0_pReal)) &
              .or.    terminallyIll) then
    reason = 1
  elseif (totalIter >= itmax) then converged
@@ -536,12 +528,12 @@ subroutine Polarisation_converged(snes_local,PETScIter,xnorm,snorm,fnorm,reason,
 !--------------------------------------------------------------------------------------------------
 ! report
  write(6,'(1/,a)') ' ... reporting .............................................................'
- write(6,'(/,a,f12.2,a,es8.2,a,es9.2,a)') ' error curl =       ', &
-           err_curl/curlTol,' (',err_curl,' -,   tol =',curlTol,')'
- write(6,'  (a,f12.2,a,es8.2,a,es9.2,a)') ' error divergence = ', &
-           err_div/divTol,  ' (',err_div, ' / m, tol =',divTol,')'
- write(6,'  (a,f12.2,a,es8.2,a,es9.2,a)') ' error BC =         ', &
-           err_BC/BC_tol, ' (',err_BC,    ' Pa,  tol =',BC_tol,')' 
+ write(6,'(/,a,f12.2,a,es8.2,a,es9.2,a)') ' error divergence = ', &
+           err_div/divTol,  ' (',err_div, ' / m, tol = ',divTol,')'
+ write(6,  '(a,f12.2,a,es8.2,a,es9.2,a)') ' error curl       = ', &
+           err_curl/curlTol,' (',err_curl,' -,   tol = ',curlTol,')'
+ write(6,  '(a,f12.2,a,es8.2,a,es9.2,a)') ' error BC         = ', &
+           err_BC/BCTol,    ' (',err_BC,  ' Pa,  tol = ',BCTol,')' 
  write(6,'(/,a)') ' ==========================================================================='
  flush(6) 
 
@@ -549,6 +541,8 @@ end subroutine Polarisation_converged
 
 !--------------------------------------------------------------------------------------------------
 !> @brief forwarding routine
+!> @details find new boundary conditions and best F estimate for end of current timestep
+!> possibly writing restart information, triggering of state increment in DAMASK, and updating of IPcoordinates
 !--------------------------------------------------------------------------------------------------
 subroutine Polarisation_forward(guess,timeinc,timeinc_old,loadCaseTime,deformation_BC,stress_BC,rotation_BC)
  use math, only: &
@@ -558,133 +552,140 @@ subroutine Polarisation_forward(guess,timeinc,timeinc_old,loadCaseTime,deformati
    math_rotate_backward33
  use numerics, only: &
    worldrank
+  use homogenization, only: &
+    materialpoint_F0
  use mesh, only: &
-   grid3, &
-   grid
- use spectral_utilities, only: &
-   Utilities_calculateRate, &
-   Utilities_forwardField, &
-   Utilities_updateIPcoords, &
-   tBoundaryCondition, &
-   cutBack
- use IO, only: &
-   IO_write_JobRealFile
- use FEsolving, only: &
-   restartWrite
+    grid, &
+    grid3
+  use CPFEM2, only: &
+    CPFEM_age
+  use spectral_utilities, only: &
+    Utilities_calculateRate, &
+    Utilities_forwardField, &
+    Utilities_updateIPcoords, &
+    tBoundaryCondition, &
+    cutBack
+  use IO, only: &
+    IO_write_JobRealFile
+  use FEsolving, only: &
+    restartWrite
 
  implicit none
- real(pReal), intent(in) :: &
-   timeinc_old, &
-   timeinc, &
-   loadCaseTime                                                                                     !< remaining time of current load case
- type(tBoundaryCondition),      intent(in) :: &
-   stress_BC, &
-   deformation_BC
- real(pReal), dimension(3,3), intent(in) :: rotation_BC
- logical, intent(in) :: &
-   guess
- PetscErrorCode :: ierr
- PetscScalar, dimension(:,:,:,:), pointer :: xx_psc, F, F_tau
- integer(pInt) :: i, j, k
- real(pReal), dimension(3,3) :: F_lambda33
- character(len=1024) :: rankStr
+  logical, intent(in) :: &
+    guess
+  real(pReal), intent(in) :: &
+    timeinc_old, &
+    timeinc, &
+    loadCaseTime                                                                                     !< remaining time of current load case
+  type(tBoundaryCondition),      intent(in) :: &
+    stress_BC, &
+    deformation_BC
+  real(pReal), dimension(3,3), intent(in) ::&
+    rotation_BC
+  PetscErrorCode :: ierr
+  PetscScalar, dimension(:,:,:,:), pointer :: FandF_tau, F, F_tau
+  integer(pInt) :: i, j, k
+  real(pReal), dimension(3,3) :: F_lambda33
+  character(len=32) :: rankStr
 
 !--------------------------------------------------------------------------------------------------
 ! update coordinates and rate and forward last inc
- call DMDAVecGetArrayF90(da,solution_vec,xx_psc,ierr)
- F => xx_psc(0:8,:,:,:)
- F_tau => xx_psc(9:17,:,:,:)
- if (restartWrite) then
-   write(6,'(/,a)') ' writing converged results for restart'
-   flush(6)
-   write(rankStr,'(a1,i0)')'_',worldrank
-   call IO_write_jobRealFile(777,'F'//trim(rankStr),size(F))                                        ! writing deformation gradient field to file
-   write (777,rec=1) F
-   close (777)
-   call IO_write_jobRealFile(777,'F_lastInc'//trim(rankStr),size(F_lastInc))                        ! writing F_lastInc field to file
-   write (777,rec=1) F_lastInc
-   close (777)
-   call IO_write_jobRealFile(777,'F_tau'//trim(rankStr),size(F_tau))                                ! writing deformation gradient field to file
-   write (777,rec=1) F_tau
-   close (777)
-   call IO_write_jobRealFile(777,'F_tau_lastInc'//trim(rankStr),size(F_tau_lastInc))                ! writing F_lastInc field to file
-   write (777,rec=1) F_tau_lastInc
-   close (777)
-   if (worldrank == 0_pInt) then
-     call IO_write_jobRealFile(777,'F_aim',size(F_aim))
-     write (777,rec=1) F_aim
-     close(777)
-     call IO_write_jobRealFile(777,'F_aim_lastInc',size(F_aim_lastInc))
-     write (777,rec=1) F_aim_lastInc
-     close (777)
-     call IO_write_jobRealFile(777,'F_aimDot',size(F_aimDot))
-     write (777,rec=1) F_aimDot
-     close(777)
-     call IO_write_jobRealFile(777,'C_volAvg',size(C_volAvg))
-     write (777,rec=1) C_volAvg
-     close(777)
-     call IO_write_jobRealFile(777,'C_volAvgLastInc',size(C_volAvgLastInc))
-     write (777,rec=1) C_volAvgLastInc
-     close(777)
-   endif
- endif
+  call DMDAVecGetArrayF90(da,solution_vec,FandF_tau,ierr); CHKERRQ(ierr)
+  F        => FandF_tau( 0: 8,:,:,:)
+  F_tau    => FandF_tau( 9:17,:,:,:)
 
- call utilities_updateIPcoords(F)
+  if (cutBack) then
+    C_volAvg    = C_volAvgLastInc                                                                  ! QUESTION: where is this required?
+    C_minMaxAvg = C_minMaxAvgLastInc                                                               ! QUESTION: where is this required?
+  else
+  !--------------------------------------------------------------------------------------------------
+    ! restart information for spectral solver
+    if (restartWrite) then                                                                           ! QUESTION: where is this logical properly set?
+      write(6,'(/,a)') ' writing converged results for restart'
+      flush(6)
 
- if (cutBack) then 
-   F_aim = F_aim_lastInc
-   F_tau= reshape(F_tau_lastInc,[9,grid(1),grid(2),grid3]) 
-   F    = reshape(F_lastInc,    [9,grid(1),grid(2),grid3]) 
-   C_volAvg = C_volAvgLastInc
- else
-   ForwardData = .True.
-   C_volAvgLastInc = C_volAvg
-!--------------------------------------------------------------------------------------------------
-! calculate rate for aim
-   if (deformation_BC%myType=='l') then                                                             ! calculate f_aimDot from given L and current F
-     f_aimDot = deformation_BC%maskFloat * math_mul33x33(deformation_BC%values, F_aim)
-   elseif(deformation_BC%myType=='fdot') then                                                       ! f_aimDot is prescribed
-     f_aimDot = deformation_BC%maskFloat * deformation_BC%values
-   elseif(deformation_BC%myType=='f') then                                                          ! aim at end of load case is prescribed
-     f_aimDot = deformation_BC%maskFloat * (deformation_BC%values -F_aim)/loadCaseTime
-   endif
-   if (guess) f_aimDot  = f_aimDot + stress_BC%maskFloat * (F_aim - F_aim_lastInc)/timeinc_old
-   F_aim_lastInc = F_aim
+      if (worldrank == 0_pInt) then
+        call IO_write_jobRealFile(777,'C_volAvg',size(C_volAvg))
+        write (777,rec=1) C_volAvg; close(777)
+        call IO_write_jobRealFile(777,'C_volAvgLastInc',size(C_volAvgLastInc))
+        write (777,rec=1) C_volAvgLastInc; close(777)
+        call IO_write_jobRealFile(777,'F_aimDot',size(F_aimDot))
+        write (777,rec=1) F_aimDot; close(777)
+      endif
 
-!--------------------------------------------------------------------------------------------------
-! update coordinates and rate and forward last inc
-   call utilities_updateIPcoords(F)
-   Fdot =  Utilities_calculateRate(math_rotate_backward33(f_aimDot,rotation_BC), &
-                                                                  timeinc_old,guess,F_lastInc, &
-                            reshape(F,[3,3,grid(1),grid(2),grid3]))
-   F_tauDot =  Utilities_calculateRate(math_rotate_backward33(2.0_pReal*f_aimDot,rotation_BC), &
-                                                              timeinc_old,guess,F_tau_lastInc, &
-                        reshape(F_tau,[3,3,grid(1),grid(2),grid3]))  
-   F_lastInc     = reshape(F,       [3,3,grid(1),grid(2),grid3])
-   F_tau_lastInc = reshape(F_tau,[3,3,grid(1),grid(2),grid3])
- endif
+      write(rankStr,'(a1,i0)')'_',worldrank
+      call IO_write_jobRealFile(777,'F'//trim(rankStr),size(F))                                      ! writing deformation gradient field to file
+      write (777,rec=1) F; close (777)
+      call IO_write_jobRealFile(777,'F_lastInc'//trim(rankStr),size(F_lastInc))                      ! writing F_lastInc field to file
+      write (777,rec=1) F_lastInc; close (777)
+      call IO_write_jobRealFile(777,'F_tau'//trim(rankStr),size(F_tau))                              ! writing deformation gradient field to file
+      write (777,rec=1) F_tau; close (777)
+      call IO_write_jobRealFile(777,'F_tau_lastInc'//trim(rankStr),size(F_tau_lastInc))              ! writing F_tau_lastInc field to file
+      write (777,rec=1) F_tau_lastInc; close (777)
+    endif
 
- F_aim = F_aim + f_aimDot * timeinc
+    call CPFEM_age()                                                                                 ! age state and kinematics
+    call utilities_updateIPcoords(F)
+
+    C_volAvgLastInc    = C_volAvg
+    C_minMaxAvgLastInc = C_minMaxAvg
+
+    if (guess) then                                                                                   ! QUESTION: better with a =  L ? x:y
+      F_aimDot = stress_BC%maskFloat * (F_aim - F_aim_lastInc)/timeinc_old                            ! initialize with correction based on last inc
+    else
+      F_aimDot = 0.0_pReal
+    endif
+    F_aim_lastInc = F_aim
+    !--------------------------------------------------------------------------------------------------
+    ! calculate rate for aim
+    if     (deformation_BC%myType=='l') then                                                          ! calculate F_aimDot from given L and current F
+      F_aimDot = &
+      F_aimDot + deformation_BC%maskFloat * math_mul33x33(deformation_BC%values, F_aim_lastInc)
+    elseif(deformation_BC%myType=='fdot') then                                                        ! F_aimDot is prescribed
+      F_aimDot = &
+      F_aimDot + deformation_BC%maskFloat * deformation_BC%values
+    elseif (deformation_BC%myType=='f') then                                                          ! aim at end of load case is prescribed
+      F_aimDot = &
+      F_aimDot + deformation_BC%maskFloat * (deformation_BC%values - F_aim_lastInc)/loadCaseTime
+    endif
+
+
+    Fdot        = Utilities_calculateRate(guess, &
+                                          F_lastInc,reshape(F,[3,3,grid(1),grid(2),grid3]),timeinc_old, &
+                                          math_rotate_backward33(F_aimDot,rotation_BC))
+    F_tauDot    = Utilities_calculateRate(guess, &
+                                          F_tau_lastInc,reshape(F_tau,[3,3,grid(1),grid(2),grid3]), timeinc_old, &
+                                          math_rotate_backward33(F_aimDot,rotation_BC))
+    F_lastInc        = reshape(F,         [3,3,grid(1),grid(2),grid3])                                ! winding F forward
+    F_tau_lastInc    = reshape(F_tau,     [3,3,grid(1),grid(2),grid3])                                ! winding F_tau forward
+    materialpoint_F0 = reshape(F_lastInc, [3,3,1,product(grid(1:2))*grid3])                           ! set starting condition for materialpoint_stressAndItsTangent
+  endif
 
 !--------------------------------------------------------------------------------------------------
-! update local deformation gradient
- F = reshape(Utilities_forwardField(timeinc,F_lastInc,Fdot, &                                       ! ensure that it matches rotated F_aim
-                               math_rotate_backward33(F_aim,rotation_BC)), &
-   [9,grid(1),grid(2),grid3])
- F_tau = reshape(Utilities_forwardField(timeinc,F_tau_lastInc,F_taudot),  &                         ! does not have any average value as boundary condition
-                                                  [9,grid(1),grid(2),grid3])          
- if (.not. guess) then                                                                              ! large strain forwarding
+! update average and local deformation gradients
+  F_aim = F_aim_lastInc + F_aimDot * timeinc
+
+  F = reshape(Utilities_forwardField(timeinc,F_lastInc,Fdot, &                                        ! estimate of F at end of time+timeinc that matches rotated F_aim on average
+                                     math_rotate_backward33(F_aim,rotation_BC)),&
+              [9,grid(1),grid(2),grid3])
+  if (guess) then
+    F_tau = reshape(Utilities_forwardField(timeinc,F_tau_lastInc,F_taudot), &
+                    [9,grid(1),grid(2),grid3])                                                        ! does not have any average value as boundary condition
+  else
    do k = 1_pInt, grid3; do j = 1_pInt, grid(2); do i = 1_pInt, grid(1)
       F_lambda33 = reshape(F_tau(1:9,i,j,k)-F(1:9,i,j,k),[3,3])
       F_lambda33 = math_mul3333xx33(S_scale,math_mul33x33(F_lambda33, &
                                   math_mul3333xx33(C_scale,&
                                                    math_mul33x33(math_transpose33(F_lambda33),&
-                                                                 F_lambda33) -math_I3))*0.5_pReal)&
+                                                                 F_lambda33)-math_I3))*0.5_pReal)&
                               + math_I3
       F_tau(1:9,i,j,k) = reshape(F_lambda33,[9])+F(1:9,i,j,k)
    enddo; enddo; enddo
  endif
- call DMDAVecRestoreArrayF90(da,solution_vec,xx_psc,ierr); CHKERRQ(ierr)
+
+  nullify(F)
+  nullify(F_tau)
+  call DMDAVecRestoreArrayF90(da,solution_vec,FandF_tau,ierr); CHKERRQ(ierr)
 
 end subroutine Polarisation_forward
 
