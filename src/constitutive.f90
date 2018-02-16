@@ -885,7 +885,8 @@ subroutine constitutive_collectDotState(Tstar_v, FeArray, FpArray, subdt, subfra
  real(pReal),  intent(in), dimension(6) :: &
    Tstar_v                                                                                          !< 2nd Piola Kirchhoff stress tensor (Mandel)
  integer(pLongInt) :: &
-   tick, tock, &
+   tick = 0_pLongInt, &
+   tock = 0_pLongInt, &
    tickrate, &
    maxticks
  integer(pInt) :: &

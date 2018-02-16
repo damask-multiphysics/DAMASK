@@ -153,9 +153,9 @@ contains
 
 !--------------------------------------------------------------------------------------------------
 !> @brief allocates all neccessary fields, sets debug flags, create plans for FFTW
-!> @details Sets the debug levels for general, divergence, restart and FFTW from the biwise coding
+!> @details Sets the debug levels for general, divergence, restart, and FFTW from the bitwise coding
 !> provided by the debug module to logicals.
-!> Allocates all fields used by FFTW and create the corresponding plans depending on the debug
+!> Allocate all fields used by FFTW and create the corresponding plans depending on the debug
 !> level chosen.
 !> Initializes FFTW.
 !--------------------------------------------------------------------------------------------------
@@ -377,10 +377,10 @@ end subroutine utilities_init
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief updates references stiffness and potentially precalculated gamma operator
+!> @brief updates reference stiffness and potentially precalculated gamma operator
 !> @details Sets the current reference stiffness to the stiffness given as an argument.
 !> If the gamma operator is precalculated, it is calculated with this stiffness.
-!> In case of a on-the-fly calculation, only the reference stiffness is updated.
+!> In case of an on-the-fly calculation, only the reference stiffness is updated.
 !> Also writes out the current reference stiffness for restart.
 !--------------------------------------------------------------------------------------------------
 subroutine utilities_updateGamma(C,saveReference)
