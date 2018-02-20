@@ -393,23 +393,23 @@ program DAMASK_spectral
 !--------------------------------------------------------------------------------------------------
 ! write header of output file
  if (worldrank == 0) then
-   if (.not. appendToOutFile) then                                                                    ! after restart, append to existing results file
+   if (.not. appendToOutFile) then                                                                  ! after restart, append to existing results file
      open(newunit=resUnit,file=trim(getSolverWorkingDirectoryName())//trim(getSolverJobName())//&
                                  '.spectralOut',form='UNFORMATTED',status='REPLACE')
-     write(resUnit) 'load:',       trim(loadCaseFile)                                                 ! ... and write header
+     write(resUnit) 'load:',       trim(loadCaseFile)                                               ! ... and write header
      write(resUnit) 'workingdir:', trim(getSolverWorkingDirectoryName())
      write(resUnit) 'geometry:',   trim(geometryFile)
      write(resUnit) 'grid:',       grid
      write(resUnit) 'size:',       geomSize
      write(resUnit) 'materialpoint_sizeResults:', materialpoint_sizeResults
      write(resUnit) 'loadcases:',  size(loadCases)
-     write(resUnit) 'frequencies:', loadCases%outputfrequency                                         ! one entry per LoadCase
-     write(resUnit) 'times:',      loadCases%time                                                     ! one entry per LoadCase
+     write(resUnit) 'frequencies:', loadCases%outputfrequency                                       ! one entry per LoadCase
+     write(resUnit) 'times:',      loadCases%time                                                   ! one entry per LoadCase
      write(resUnit) 'logscales:',  loadCases%logscale
-     write(resUnit) 'increments:', loadCases%incs                                                     ! one entry per LoadCase
-     write(resUnit) 'startingIncrement:', restartInc - 1_pInt                                         ! start with writing out the previous inc
+     write(resUnit) 'increments:', loadCases%incs                                                   ! one entry per LoadCase
+     write(resUnit) 'startingIncrement:', restartInc                                                ! start with writing out the previous inc
      write(resUnit) 'eoh'
-     close(resUnit)                                                                                   ! end of header
+     close(resUnit)                                                                                 ! end of header
      open(newunit=statUnit,file=trim(getSolverWorkingDirectoryName())//trim(getSolverJobName())//&
                                  '.sta',form='FORMATTED',status='REPLACE')
      write(statUnit,'(a)') 'Increment Time CutbackLevel Converged IterationsNeeded'                 ! statistics file
@@ -480,15 +480,15 @@ program DAMASK_spectral
          endif
        else                                                                                         ! not-1st currentLoadCase of logarithmic scale
          timeinc = time0 * &
-              ( (1.0_pReal + loadCases(currentLoadCase)%time/time0 )**(real(          inc,pReal)/&
+              ( (1.0_pReal + loadCases(currentLoadCase)%time/time0 )**(real( inc         ,pReal)/&
                                                     real(loadCases(currentLoadCase)%incs ,pReal))&
-               -(1.0_pReal + loadCases(currentLoadCase)%time/time0 )**(real( (inc-1_pInt),pReal)/&
+               -(1.0_pReal + loadCases(currentLoadCase)%time/time0 )**(real( inc-1_pInt  ,pReal)/&
                                                     real(loadCases(currentLoadCase)%incs ,pReal)))
        endif
      endif
      timeinc = timeinc * real(subStepFactor,pReal)**real(-cutBackLevel,pReal)                       ! depending on cut back level, decrease time step
 
-     skipping: if (totalIncsCounter < restartInc) then                                              ! not yet at restart inc?
+     skipping: if (totalIncsCounter <= restartInc) then                                             ! not yet at restart inc?
        time = time + timeinc                                                                        ! just advance time, skip already performed calculation
        guess = .true.                                                                               ! QUESTION:why forced guessing instead of inheriting loadcase preference
      else skipping
@@ -509,8 +509,8 @@ program DAMASK_spectral
                  ',a,'//IO_intOut(stepFraction)   //',a,'//IO_intOut(subStepFactor**cutBackLevel)//&
                  ',a,'//IO_intOut(currentLoadCase)//',a,'//IO_intOut(size(loadCases))//')') &
                  'Time', time, &
-                 's: Increment ', inc, '/', loadCases(currentLoadCase)%incs,&
-                 '-', stepFraction, '/', subStepFactor**cutBackLevel,&
+                 's: Increment ', inc,'/',loadCases(currentLoadCase)%incs,&
+                 '-', stepFraction,'/',subStepFactor**cutBackLevel,&
                  ' of load case ', currentLoadCase,'/',size(loadCases)
          write(incInfo,&
                  '(a,'//IO_intOut(totalIncsCounter)//&
@@ -518,7 +518,7 @@ program DAMASK_spectral
                  ',a,'//IO_intOut(stepFraction)//&
                  ',a,'//IO_intOut(subStepFactor**cutBackLevel)//')') &
                  'Increment ',totalIncsCounter,'/',sum(loadCases%incs),&
-                 '-',stepFraction, '/', subStepFactor**cutBackLevel
+                 '-', stepFraction,'/',subStepFactor**cutBackLevel
          flush(6)
 
 !--------------------------------------------------------------------------------------------------

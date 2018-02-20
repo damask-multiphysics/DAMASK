@@ -79,20 +79,22 @@ subroutine FE_init
 #include "compilation_info.f90"
 
  modelName = getSolverJobName()
+
+#if defined(Spectral) || defined(FEM)
+
 #ifdef Spectral
  restartInc = spectralRestartInc
- if(restartInc <= 0_pInt) then
-   call IO_warning(warning_ID=34_pInt)
-   restartInc = 1_pInt
- endif
- restartRead = restartInc > 1_pInt                                                                  ! only read in if "true" restart requested
-#elif defined FEM
+#endif
+#ifdef FEM
  restartInc = FEMRestartInc
- if(restartInc <= 0_pInt) then
+#endif
+
+ if(restartInc < 0_pInt) then
    call IO_warning(warning_ID=34_pInt)
-   restartInc = 1_pInt
+   restartInc = 0_pInt
  endif
- restartRead = restartInc > 1_pInt 
+ restartRead = restartInc > 0_pInt                                                                  ! only read in if "true" restart requested
+
 #else
  call IO_open_inputFile(FILEUNIT,modelName)
  rewind(FILEUNIT)
@@ -131,19 +133,19 @@ subroutine FE_init
    do
      read (FILEUNIT,'(a1024)',END=200) line
      chunkPos = IO_stringPos(line)
-     if ( IO_lc(IO_stringValue(line,chunkPos,1_pInt)) == 'restart' .and. &
-          IO_lc(IO_stringValue(line,chunkPos,2_pInt)) == 'file' .and. &
-          IO_lc(IO_stringValue(line,chunkPos,3_pInt)) == 'job' .and. &
-          IO_lc(IO_stringValue(line,chunkPos,4_pInt)) == 'id' ) &
+     if (   IO_lc(IO_stringValue(line,chunkPos,1_pInt)) == 'restart' &
+      .and. IO_lc(IO_stringValue(line,chunkPos,2_pInt)) == 'file'    &
+      .and. IO_lc(IO_stringValue(line,chunkPos,3_pInt)) == 'job'     &
+      .and. IO_lc(IO_stringValue(line,chunkPos,4_pInt)) == 'id' )    &
         modelName = IO_StringValue(line,chunkPos,6_pInt)
    enddo
-#else
+#else                                                                                               ! QUESTION: is this meaningful for the spectral/FEM case?
    call IO_open_inputFile(FILEUNIT,modelName)
    rewind(FILEUNIT)
    do
      read (FILEUNIT,'(a1024)',END=200) line
      chunkPos = IO_stringPos(line)
-     if ( IO_lc(IO_stringValue(line,chunkPos,1_pInt))=='*heading') then
+     if (IO_lc(IO_stringValue(line,chunkPos,1_pInt))=='*heading') then
        read (FILEUNIT,'(a1024)',END=200) line
        chunkPos = IO_stringPos(line)
        modelName = IO_StringValue(line,chunkPos,1_pInt)

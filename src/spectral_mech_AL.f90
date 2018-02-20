@@ -188,10 +188,10 @@ subroutine AL_init
  F        => FandF_lambda( 0: 8,:,:,:)
  F_lambda => FandF_lambda( 9:17,:,:,:)
 
- restart: if (restartInc > 1_pInt) then
+ restart: if (restartInc > 0_pInt) then
    if (iand(debug_level(debug_spectral),debug_spectralRestart) /= 0) then
-     write(6,'(/,a,'//IO_intOut(restartInc-1_pInt)//',a)') &
-     'reading values of increment ', restartInc-1_pInt, ' from file'
+     write(6,'(/,a,'//IO_intOut(restartInc)//',a)') &
+     'reading values of increment ', restartInc, ' from file'
      flush(6)
    endif
    write(rankStr,'(a1,i0)')'_',worldrank
@@ -207,7 +207,7 @@ subroutine AL_init
    read (777,rec=1) F_aimDot; close (777)
    F_aim         = reshape(sum(sum(sum(F,dim=4),dim=3),dim=2) * wgt, [3,3])                         ! average of F
    F_aim_lastInc = sum(sum(sum(F_lastInc,dim=5),dim=4),dim=3) * wgt                                 ! average of F_lastInc 
- elseif (restartInc == 1_pInt) then restart
+ elseif (restartInc == 0_pInt) then restart
    F_lastInc = spread(spread(spread(math_I3,3,grid(1)),4,grid(2)),5,grid3)                          ! initialize to identity
    F = reshape(F_lastInc,[9,grid(1),grid(2),grid3])
    F_lambda = F
@@ -224,10 +224,10 @@ subroutine AL_init
  nullify(F_lambda)
  call DMDAVecRestoreArrayF90(da,solution_vec,FandF_lambda,ierr); CHKERRQ(ierr)                      ! write data back to PETSc
 
- restartRead: if (restartInc > 1_pInt) then
+ restartRead: if (restartInc > 0_pInt) then
    if (iand(debug_level(debug_spectral),debug_spectralRestart)/= 0 .and. worldrank == 0_pInt) &
-     write(6,'(/,a,'//IO_intOut(restartInc-1_pInt)//',a)') &
-     'reading more values of increment ', restartInc-1_pInt, ' from file'
+     write(6,'(/,a,'//IO_intOut(restartInc)//',a)') &
+     'reading more values of increment ', restartInc, ' from file'
    flush(6)
    call IO_read_realFile(777,'C_volAvg',trim(getSolverJobName()),size(C_volAvg))
    read (777,rec=1) C_volAvg; close (777)
