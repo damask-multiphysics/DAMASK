@@ -1769,26 +1769,27 @@ end function math_sampleRandomOri
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief draw a random sample from Gauss component with noise (in radians) half-width
+!> @brief draw a sample from an Gaussian distribution around given orientation and Full Width
+! at Half Maximum (FWHM)
 !--------------------------------------------------------------------------------------------------
-function math_sampleGaussOri(center,noise)
+function math_sampleGaussOri(center,FWHM)
  use prec, only: &
    tol_math_check
 
  implicit none
- real(pReal), intent(in) :: noise
+ real(pReal), intent(in) :: FWHM
  real(pReal), dimension(3), intent(in) :: center 
  real(pReal) :: cosScatter,scatter
  real(pReal), dimension(3) :: math_sampleGaussOri, disturb
  real(pReal), dimension(3), parameter :: ORIGIN = 0.0_pReal
  real(pReal), dimension(5) :: rnd
 
- noScatter: if (noise < 0.5_pReal*INRAD) then
+ noScatter: if (FWHM < 0.5_pReal*INRAD) then
    math_sampleGaussOri = center
  else noScatter
   ! Helming uses different distribution with Bessel functions
   ! therefore the gauss scatter width has to be scaled differently
-   scatter = 0.95_pReal * noise
+   scatter = 0.95_pReal * FWHM
    cosScatter = cos(scatter)
 
    do
@@ -1807,18 +1808,20 @@ end function math_sampleGaussOri
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief draw a random sample from Fiber component with noise (in radians)
-!--------------------------------------------------------------------------------------------------
-function math_sampleFiberOri(alpha,beta,noise)
+!> @brief draw a sample from an Gaussian distribution around given fiber texture and Full Width
+! at Half Maximum (FWHM)
+!-------------------------------------------------------------------------------------------------
+function math_sampleFiberOri(alpha,beta,FWHM)
  use prec, only: &
    tol_math_check
 
  implicit none
  real(pReal), dimension(3) :: math_sampleFiberOri, fiberInC,fiberInS,axis
  real(pReal), dimension(2), intent(in) :: alpha,beta
+ real(pReal), intent(in) :: FWHM
  real(pReal), dimension(6) :: rnd
  real(pReal), dimension(3,3) :: oRot,fRot,pRot
- real(pReal) :: noise, scatter, cos2Scatter, angle
+ real(pReal) :: scatter, cos2Scatter, angle
  integer(pInt), dimension(2,3), parameter :: ROTMAP = reshape([2_pInt,3_pInt,&
                                                                3_pInt,1_pInt,&
                                                                1_pInt,2_pInt],[2,3])
@@ -1826,7 +1829,7 @@ function math_sampleFiberOri(alpha,beta,noise)
 
 ! Helming uses different distribution with Bessel functions
 ! therefore the gauss scatter width has to be scaled differently
- scatter = 0.95_pReal * noise
+ scatter = 0.95_pReal * FWHM
  cos2Scatter = cos(2.0_pReal*scatter)
 
 ! fiber axis in crystal coordinate system
@@ -1867,7 +1870,7 @@ function math_sampleFiberOri(alpha,beta,noise)
    end if
 
 ! scattered rotation angle
-   if (noise > 0.0_pReal) then
+   if (FWHM > 0.0_pReal) then
      angle = acos(cos2Scatter+(1.0_pReal-cos2Scatter)*rnd(4))
      if (rnd(5) <= exp(-1.0_pReal*(angle/scatter)**2.0_pReal)) exit
    else
