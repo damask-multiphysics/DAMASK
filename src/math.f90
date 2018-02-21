@@ -1828,8 +1828,8 @@ function math_sampleFiberOri(alpha,beta,FWHM)
                                                                1_pInt,2_pInt],[2,3])
  integer(pInt) :: i
 
-! Helming uses different distribution with Bessel functions
-! therefore the gauss scatter width has to be scaled differently
+! MD: this is a leftover from using the wrongly scaled Gaussian distribution.
+! I'm relatively sure that it is not correct to scale by any constant factor here
  scatter = 0.95_pReal * FWHM
  cos2Scatter = cos(2.0_pReal*scatter)
 
@@ -1853,9 +1853,9 @@ function math_sampleFiberOri(alpha,beta,FWHM)
  end if
 
 ! ---# rotation matrix about fiber axis (random angle) #---
- do
+ GaussConvolution: do
    rnd = halton(6_pInt)
-   fRot = math_EulerAxisAngleToR(fiberInS,rnd(1)*2.0_pReal*pi)
+   fRot = math_EulerAxisAngleToR(fiberInS,rnd(1)*2.0_pReal*PI)
 
 ! ---# rotation about random axis perpend to fiber #---
 ! random axis pependicular to fiber axis
@@ -1872,13 +1872,13 @@ function math_sampleFiberOri(alpha,beta,FWHM)
 
 ! scattered rotation angle
    if (FWHM > 0.0_pReal) then
-     angle = acos(cos2Scatter+(1.0_pReal-cos2Scatter)*rnd(4))
-     if (rnd(5) <= exp(-1.0_pReal*(angle/scatter)**2.0_pReal)) exit
+     angle = acos(cos2Scatter+(1.0_pReal-cos2Scatter)*rnd(4))                 ! MD: This is probably not ok
+     if (rnd(5) <= exp(-4.0_pReal*log(2.0_pReal)*(angle/FWHM)**2.0_pReal)) exit
    else
      angle = 0.0_pReal
      exit
    end if
- enddo
+ enddo GaussConvolution
  if (rnd(6) <= 0.5) angle = -angle
  
  pRot = math_EulerAxisAngleToR(axis,angle)
