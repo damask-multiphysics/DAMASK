@@ -1773,7 +1773,7 @@ function math_sampleGaussOri(center,FWHM)
  implicit none
  real(pReal), intent(in) :: FWHM
  real(pReal), dimension(3), intent(in) :: center 
- real(pReal) :: scatter, omega
+ real(pReal) :: omega
  real(pReal), dimension(3)   :: math_sampleGaussOri, axis
  real(pReal), dimension(2)   :: rnd
  real(pReal), dimension(3,3) :: R
@@ -1781,10 +1781,6 @@ function math_sampleGaussOri(center,FWHM)
  noScatter: if (FWHM < 0.5_pReal*INRAD) then
    math_sampleGaussOri = center
  else noScatter
-  ! Helming uses different distribution with Bessel functions
-  ! therefore the gauss scatter width has to be scaled differentlyuu
-   scatter = 0.95_pReal * FWHM
-
    GaussConvolution: do
      selectiveSampling: if (FWHM*INRAD < 90.0_pReal) then
        rnd        = halton(2_pInt)
@@ -1800,9 +1796,9 @@ function math_sampleGaussOri(center,FWHM)
      else selectiveSampling
        R = math_EulerToR(math_sampleRandomOri())
      endif selectiveSampling 
-     exit
-     !if (rnd(3) <= exp(-(math_EulerMisorientation([0.0_pReal,0.0_pReal,0.0_pReal],&
-     !                                             math_RtoEuler(R))/scatter)**2_pReal)) exit
+       call random_number(rnd)                                                                      ! no halton to avoid correlation
+       omega = math_EulerMisorientation([0.0_pReal,0.0_pReal,0.0_pReal],math_RtoEuler(R))
+       if (rnd(1) <= exp(-4.0_pReal*log(2.0_pReal)*(omega/FWHM)**2_pReal)) exit
    enddo GaussConvolution
 
    math_sampleGaussOri = math_RtoEuler(math_mul33x33(R,math_EulerToR(center)))
