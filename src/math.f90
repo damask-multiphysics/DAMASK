@@ -214,9 +214,6 @@ subroutine math_init
  write(6,'(a,4(/,26x,f17.14),/)') ' start of random sequence: ', randTest
 
  call random_seed(put = randInit)
-
- randTest = halton(4,seed = randTest(1))
-
  call math_check()
 
 end subroutine math_init
@@ -1776,32 +1773,43 @@ function math_sampleGaussOri(center,FWHM)
  implicit none
  real(pReal), intent(in) :: FWHM
  real(pReal), dimension(3), intent(in) :: center 
- real(pReal) :: cosScatter,scatter
- real(pReal), dimension(3) :: math_sampleGaussOri, disturb
- real(pReal), dimension(3), parameter :: ORIGIN = 0.0_pReal
- real(pReal), dimension(5) :: rnd
+ real(pReal) :: scatter, omega
+ real(pReal), dimension(3)   :: math_sampleGaussOri, axis
+ real(pReal), dimension(2)   :: rnd
+ real(pReal), dimension(3,3) :: R
 
  noScatter: if (FWHM < 0.5_pReal*INRAD) then
    math_sampleGaussOri = center
  else noScatter
   ! Helming uses different distribution with Bessel functions
-  ! therefore the gauss scatter width has to be scaled differently
+  ! therefore the gauss scatter width has to be scaled differentlyuu
    scatter = 0.95_pReal * FWHM
-   cosScatter = cos(scatter)
 
-   do
-     rnd =  halton(5_pInt)
-     rnd(1:3) = 2.0_pReal*rnd(1:3)-1.0_pReal                                                        ! expand 1:3 to range [-1,+1]
-     disturb  = [ scatter * rnd(1), &                                                               ! phi1
-                  sign(1.0_pReal,rnd(2))*acos(cosScatter+(1.0_pReal-cosScatter)*rnd(4)), &          ! Phi
-                  scatter * rnd(3)]                                                                 ! phi2
-     if (rnd(5) <= exp(-1.0_pReal*(math_EulerMisorientation(ORIGIN,disturb)/scatter)**2_pReal)) exit
-   enddo
+   GaussConvolution: do
+     selectiveSampling: if (FWHM*INRAD < 90.0_pReal) then
+       rnd        = halton(2_pInt)
+       axis(1)    = rnd(1)*2.0_pReal-1.0_pReal                                                      ! uniform on [-1,1]
+       axis(2:3)  = [sqrt(1.0-axis(1)**2.0_pReal)*cos(rnd(2)*2.0*PI),&
+                     sqrt(1.0-axis(1)**2.0_pReal)*sin(rnd(2)*2.0*PI)]
+       do
+         call random_number(rnd)                                                                    ! no halton to avoid correlation
+         omega = (rnd(1)*(2.0_pReal*FWHM)**3.0_pReal)**(1.0_pReal/3.0_pReal)
+         if (rnd(2) < sin(omega)**2.0_pReal/omega**2.0_pReal) exit
+       enddo
+       R = math_axisAngleToR(axis,omega)
+     else selectiveSampling
+       R = math_EulerToR(math_sampleRandomOri())
+     endif selectiveSampling 
+     exit
+     !if (rnd(3) <= exp(-(math_EulerMisorientation([0.0_pReal,0.0_pReal,0.0_pReal],&
+     !                                             math_RtoEuler(R))/scatter)**2_pReal)) exit
+   enddo GaussConvolution
 
-   math_sampleGaussOri = math_RtoEuler(math_mul33x33(math_EulerToR(disturb),math_EulerToR(center)))
+   math_sampleGaussOri = math_RtoEuler(math_mul33x33(R,math_EulerToR(center)))
  endif noScatter
 
 end function math_sampleGaussOri
+
 
 
 !--------------------------------------------------------------------------------------------------
@@ -2293,18 +2301,15 @@ end function math_invariantsSym33
 !> @details multi-dimensional integrals, Numerische Mathematik, Volume 2, pages 84-90, 1960.
 !> @author John Burkardt
 !-------------------------------------------------------------------------------------------------
-function halton(ndim, seed)
+function halton(ndim)
    
  implicit none
  integer(pInt), intent(in) :: &
    ndim                                                                                             !< dimension of the sequence
- real(pReal),   intent(in), optional :: &
-   seed                                                                                             !< seed value [0.0,1.0]
  real(pReal),             dimension(ndim) :: &
    halton
  integer(pInt), save :: &
-   start, &
-   current
+   current = 1_pInt
  real(pReal),                dimension(ndim) :: &
    base_inv
  integer(pInt),              dimension(ndim) :: &
@@ -2491,15 +2496,9 @@ function halton(ndim, seed)
        13313, 13327, 13331, 13337, 13339, 13367, 13381, 13397, 13399, 13411, &
        13417, 13421, 13441, 13451, 13457, 13463, 13469, 13477, 13487, 13499],pInt)
 
- 
- if (present(seed)) then
-   start = int(seed * 1599.0_pReal,pInt) + 1_pInt                                                   ! select one prime number to start with
-   current = 1_pInt
- else
-   current = current + 1_pInt
- endif
+ current = current + 1_pInt
 
- base = [(prime(mod(start,1600_pInt)+i), i=1_pInt, ndim)]
+ base = [(prime(i), i=1_pInt, ndim)]
  base_inv = 1.0_pReal/real(base,pReal)
 
  halton = 0.0_pReal
