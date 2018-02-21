@@ -1902,18 +1902,17 @@ real(pReal) function math_sampleGaussVar(meanvalue, stddev, width)
 
  if (abs(stddev) < tol_math_check) then
    math_sampleGaussVar = meanvalue
-   return
+ else
+   myWidth = merge(width,3.0_pReal,present(width))                                                  ! use +-3*sigma as default value for scatter if not given
+  
+   do
+     call halton(2_pInt, rnd)
+     scatter = myWidth * (2.0_pReal * rnd(1) - 1.0_pReal)
+     if (rnd(2) <= exp(-0.5_pReal * scatter ** 2.0_pReal)) exit                                     ! test if scattered value is drawn
+   enddo
+
+   math_sampleGaussVar = scatter * stddev
  endif
-
- myWidth = merge(width,3.0_pReal,present(width))                                                    ! use +-3*sigma as default value for scatter if not given
-
- do
-   call halton(2_pInt, rnd)
-   scatter = myWidth * (2.0_pReal * rnd(1) - 1.0_pReal)
-   if (rnd(2) <= exp(-0.5_pReal * scatter ** 2.0_pReal)) exit                                       ! test if scattered value is drawn
- enddo
-
- math_sampleGaussVar = scatter * stddev
 
 end function math_sampleGaussVar
 
