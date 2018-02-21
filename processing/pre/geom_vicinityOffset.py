@@ -29,9 +29,14 @@ parser.add_option('-m', '--microstructureoffset',
                   type = 'int', metavar = 'int',
                   help = 'offset (positive or negative) for tagged microstructure indices. '+
                          '"0" selects maximum microstructure index [%default]')
+parser.add_option('-n', '--nonperiodic',
+                  dest = 'mode',
+                  action = 'store_const', const = 'nearest',
+                  help = 'assume geometry to be non-periodic')
 
 parser.set_defaults(vicinity = 1,
                     offset   = 0,
+                    mode     = 'wrap',
                    )
 
 (options, filenames) = parser.parse_args()
@@ -79,8 +84,8 @@ for name in filenames:
 
   if options.offset == 0: options.offset = microstructure.max()
 
-  microstructure = np.where(ndimage.filters.maximum_filter(microstructure,size=1+2*options.vicinity,mode='wrap') ==
-                            ndimage.filters.minimum_filter(microstructure,size=1+2*options.vicinity,mode='wrap'),
+  microstructure = np.where(ndimage.filters.maximum_filter(microstructure,size=1+2*options.vicinity,mode=options.mode) ==
+                            ndimage.filters.minimum_filter(microstructure,size=1+2*options.vicinity,mode=options.mode),
                             microstructure, microstructure + options.offset)
 
   newInfo['microstructures'] = microstructure.max()

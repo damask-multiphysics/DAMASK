@@ -16,7 +16,7 @@ module spectral_utilities
 #include <petsc/finclude/petscsys.h>
  include 'fftw3-mpi.f03'
 
- logical,       public             :: cutBack =.false.                                              !< cut back of BVP solver in case convergence is not achieved or a material point is terminally ill
+ logical,       public             :: cutBack = .false.                                              !< cut back of BVP solver in case convergence is not achieved or a material point is terminally ill
  integer(pInt), public, parameter  :: maxPhaseFields = 2_pInt
  integer(pInt), public             :: nActiveFields = 0_pInt
 
@@ -145,8 +145,7 @@ module spectral_utilities
    FIELD_UNDEFINED_ID, &
    FIELD_MECH_ID, &
    FIELD_THERMAL_ID, &
-   FIELD_DAMAGE_ID, &
-   utilities_calcPlasticity
+   FIELD_DAMAGE_ID
  private :: &
    utilities_getFreqDerivative
 
@@ -154,9 +153,9 @@ contains
 
 !--------------------------------------------------------------------------------------------------
 !> @brief allocates all neccessary fields, sets debug flags, create plans for FFTW
-!> @details Sets the debug levels for general, divergence, restart and FFTW from the biwise coding
+!> @details Sets the debug levels for general, divergence, restart, and FFTW from the bitwise coding
 !> provided by the debug module to logicals.
-!> Allocates all fields used by FFTW and create the corresponding plans depending on the debug
+!> Allocate all fields used by FFTW and create the corresponding plans depending on the debug
 !> level chosen.
 !> Initializes FFTW.
 !--------------------------------------------------------------------------------------------------
@@ -378,10 +377,10 @@ end subroutine utilities_init
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief updates references stiffness and potentially precalculated gamma operator
+!> @brief updates reference stiffness and potentially precalculated gamma operator
 !> @details Sets the current reference stiffness to the stiffness given as an argument.
 !> If the gamma operator is precalculated, it is calculated with this stiffness.
-!> In case of a on-the-fly calculation, only the reference stiffness is updated.
+!> In case of an on-the-fly calculation, only the reference stiffness is updated.
 !> Also writes out the current reference stiffness for restart.
 !--------------------------------------------------------------------------------------------------
 subroutine utilities_updateGamma(C,saveReference)
@@ -414,8 +413,7 @@ subroutine utilities_updateGamma(C,saveReference)
      write(6,'(/,a)') ' writing reference stiffness to file'
      flush(6)
      call IO_write_jobRealFile(777,'C_ref',size(C_ref))
-     write (777,rec=1) C_ref
-     close(777)
+     write (777,rec=1) C_ref; close(777)
    endif
  endif
 
@@ -800,7 +798,7 @@ function utilities_maskedCompliance(rot_BC,mask_stress,C)
 
    call math_invert(size_reduced, c_reduced, s_reduced, errmatinv)                                  ! invert reduced stiffness
    if (any(IEEE_is_NaN(s_reduced))) errmatinv = .true.
-   if(errmatinv) call IO_error(error_ID=400_pInt,ext_msg='utilities_maskedCompliance')
+   if (errmatinv) call IO_error(error_ID=400_pInt,ext_msg='utilities_maskedCompliance')
    temp99_Real = 0.0_pReal                                                                          ! fill up compliance with zeros
     k = 0_pInt
     do n = 1_pInt,9_pInt
@@ -818,28 +816,30 @@ function utilities_maskedCompliance(rot_BC,mask_stress,C)
    sTimesC = matmul(c_reduced,s_reduced)
    do m=1_pInt, size_reduced
      do n=1_pInt, size_reduced
-       if(m==n .and. abs(sTimesC(m,n)) > (1.0_pReal + 10.0e-12_pReal)) errmatinv = .true.           ! diagonal elements of S*C should be 1
-       if(m/=n .and. abs(sTimesC(m,n)) > (0.0_pReal + 10.0e-12_pReal)) errmatinv = .true.           ! off diagonal elements of S*C should be 0
+       errmatinv = errmatinv &
+              .or. (m==n .and. abs(sTimesC(m,n)-1.0_pReal) > 1.0e-12_pReal) &                    ! diagonal elements of S*C should be 1
+              .or. (m/=n .and. abs(sTimesC(m,n))           > 1.0e-12_pReal)                      ! off-diagonal elements of S*C should be 0
      enddo
    enddo
-   if(debugGeneral .or. errmatinv) then
-     write(formatString, '(I16.16)') size_reduced
+   if (debugGeneral .or. errmatinv) then
+     write(formatString, '(i2)') size_reduced
      formatString = '(/,a,/,'//trim(formatString)//'('//trim(formatString)//'(2x,es9.2,1x)/))'
      write(6,trim(formatString),advance='no') ' C * S (load) ', &
                                                             transpose(matmul(c_reduced,s_reduced))
      write(6,trim(formatString),advance='no') ' S (load) ', transpose(s_reduced)
+     if(errmatinv) call IO_error(error_ID=400_pInt,ext_msg='utilities_maskedCompliance')
    endif
-   if(errmatinv) call IO_error(error_ID=400_pInt,ext_msg='utilities_maskedCompliance')
    deallocate(c_reduced)
    deallocate(s_reduced)
    deallocate(sTimesC)
  else
    temp99_real = 0.0_pReal
  endif
- if(debugGeneral) &
-   write(6,'(/,a,/,9(9(2x,f12.7,1x)/),/)',advance='no') ' Masked Compliance (load) * GPa =', &
-                                                    transpose(temp99_Real*1.e9_pReal)
- flush(6)
+ if(debugGeneral) then
+   write(6,'(/,a,/,9(9(2x,f10.5,1x)/),/)',advance='no') &
+     ' Masked Compliance (load) / GPa =', transpose(temp99_Real*1.e-9_pReal)
+   flush(6)
+ endif
  utilities_maskedCompliance = math_Plain99to3333(temp99_Real)
 
 end function utilities_maskedCompliance
@@ -925,10 +925,10 @@ end subroutine utilities_fourierTensorDivergence
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief calculates constitutive response
+!> @brief calculate constitutive response from materialpoint_F0 to F during timeinc
 !--------------------------------------------------------------------------------------------------
-subroutine utilities_constitutiveResponse(F_lastInc,F,timeinc, &
-                                          P,C_volAvg,C_minmaxAvg,P_av,forwardData,rotation_BC)
+subroutine utilities_constitutiveResponse(P,P_av,C_volAvg,C_minmaxAvg,&
+                                          F,timeinc,rotation_BC)
  use IO, only: &
    IO_error
  use debug, only: &
@@ -941,31 +941,22 @@ subroutine utilities_constitutiveResponse(F_lastInc,F,timeinc, &
  use mesh, only: &
    grid,&
    grid3
- use FEsolving, only: &
-   restartWrite
- use CPFEM2, only: &
-   CPFEM_general
  use homogenization, only: &
-   materialpoint_F0, &
    materialpoint_F, &
    materialpoint_P, &
-   materialpoint_dPdF
+   materialpoint_dPdF, &
+   materialpoint_stressAndItsTangent
 
  implicit none
- real(pReal), intent(in), dimension(3,3,grid(1),grid(2),grid3) :: &
-   F_lastInc, &                                                                                     !< target deformation gradient
-   F                                                                                                !< previous deformation gradient
- real(pReal), intent(in)                                         :: timeinc                         !< loading time
- logical,     intent(in)                                         :: forwardData                     !< age results
- real(pReal), intent(in), dimension(3,3)                         :: rotation_BC                     !< rotation of load frame
-
  real(pReal),intent(out), dimension(3,3,3,3)                     :: C_volAvg, C_minmaxAvg           !< average stiffness
  real(pReal),intent(out), dimension(3,3)                         :: P_av                            !< average PK stress
  real(pReal),intent(out), dimension(3,3,grid(1),grid(2),grid3)   :: P                               !< PK stress
 
- logical :: &
-   age
+ real(pReal), intent(in), dimension(3,3,grid(1),grid(2),grid3)   :: F                               !< deformation gradient target                                                                                                !< previous deformation gradient
+ real(pReal), intent(in)                                         :: timeinc                         !< loading time
+ real(pReal), intent(in), dimension(3,3)                         :: rotation_BC                     !< rotation of load frame
 
+ 
  integer(pInt) :: &
    j,k,ierr
  real(pReal), dimension(3,3,3,3) :: max_dPdF, min_dPdF
@@ -976,17 +967,9 @@ subroutine utilities_constitutiveResponse(F_lastInc,F,timeinc, &
 
  write(6,'(/,a)') ' ... evaluating constitutive response ......................................'
  flush(6)
- age = .False.
-
- if (forwardData) then                                                                              ! aging results
-   age = .True.
-   materialpoint_F0 = reshape(F_lastInc, [3,3,1,product(grid(1:2))*grid3])
- endif
- if (cutBack) age = .False.                                                                         ! restore saved variables
-
- materialpoint_F  = reshape(F,[3,3,1,product(grid(1:2))*grid3])
- call debug_reset()                                                                                 ! this has no effect on rank >0
-
+ 
+ materialpoint_F  = reshape(F,[3,3,1,product(grid(1:2))*grid3])                                     ! set materialpoint target F to estimated field
+ 
 !--------------------------------------------------------------------------------------------------
 ! calculate bounds of det(F) and report
  if(debugGeneral) then
@@ -1003,7 +986,19 @@ subroutine utilities_constitutiveResponse(F_lastInc,F,timeinc, &
    flush(6)
  endif
 
- call CPFEM_general(age,timeinc)
+ call debug_reset()                                                                                 ! this has no effect on rank >0
+ call materialpoint_stressAndItsTangent(.true.,timeinc)                                              ! calculate P field
+
+ P = reshape(materialpoint_P, [3,3,grid(1),grid(2),grid3])
+ P_av = sum(sum(sum(P,dim=5),dim=4),dim=3) * wgt                                                    ! average of P
+ call MPI_Allreduce(MPI_IN_PLACE,P_av,9,MPI_DOUBLE,MPI_SUM,PETSC_COMM_WORLD,ierr)
+ if (debugRotation) &
+ write(6,'(/,a,/,3(3(2x,f12.4,1x)/))',advance='no') ' Piola--Kirchhoff stress (lab) / MPa =',&
+                                                     math_transpose33(P_av)*1.e-6_pReal
+ P_av = math_rotate_forward33(P_av,rotation_BC)
+ write(6,'(/,a,/,3(3(2x,f12.4,1x)/))',advance='no') ' Piola--Kirchhoff stress       / MPa =',&
+                                                     math_transpose33(P_av)*1.e-6_pReal
+ flush(6)
 
  max_dPdF = 0.0_pReal
  max_dPdF_norm = 0.0_pReal
@@ -1021,157 +1016,24 @@ subroutine utilities_constitutiveResponse(F_lastInc,F,timeinc, &
  end do
 
  call MPI_Allreduce(MPI_IN_PLACE,max_dPdF,81,MPI_DOUBLE,MPI_MAX,PETSC_COMM_WORLD,ierr)
- if(ierr /=0_pInt) call IO_error(894_pInt, ext_msg='MPI_Allreduce max')
+ if (ierr /= 0_pInt) call IO_error(894_pInt, ext_msg='MPI_Allreduce max')
  call MPI_Allreduce(MPI_IN_PLACE,min_dPdF,81,MPI_DOUBLE,MPI_MIN,PETSC_COMM_WORLD,ierr)
- if(ierr /=0_pInt) call IO_error(894_pInt, ext_msg='MPI_Allreduce min')
+ if (ierr /= 0_pInt) call IO_error(894_pInt, ext_msg='MPI_Allreduce min')
 
  C_minmaxAvg = 0.5_pReal*(max_dPdF + min_dPdF)
- C_volAvg = sum(sum(materialpoint_dPdF,dim=6),dim=5) * wgt
 
+ C_volAvg = sum(sum(materialpoint_dPdF,dim=6),dim=5) * wgt
  call MPI_Allreduce(MPI_IN_PLACE,C_volAvg,81,MPI_DOUBLE,MPI_SUM,PETSC_COMM_WORLD,ierr)
 
  call debug_info()                                                                                  ! this has no effect on rank >0
 
- restartWrite = .false.                                                                             ! reset restartWrite status
- cutBack = .false.                                                                                  ! reset cutBack status
-
- P = reshape(materialpoint_P, [3,3,grid(1),grid(2),grid3])
- P_av = sum(sum(sum(P,dim=5),dim=4),dim=3) * wgt                                                    ! average of P
- call MPI_Allreduce(MPI_IN_PLACE,P_av,9,MPI_DOUBLE,MPI_SUM,PETSC_COMM_WORLD,ierr)
- if (debugRotation) &
- write(6,'(/,a,/,3(3(2x,f12.4,1x)/))',advance='no') ' Piola--Kirchhoff stress (lab) / MPa =',&
-                                                     math_transpose33(P_av)*1.e-6_pReal
- P_av = math_rotate_forward33(P_av,rotation_BC)
- write(6,'(/,a,/,3(3(2x,f12.4,1x)/))',advance='no') ' Piola--Kirchhoff stress / MPa =',&
-                                                     math_transpose33(P_av)*1.e-6_pReal
- flush(6)
-
 end subroutine utilities_constitutiveResponse
-
-!--------------------------------------------------------------------------------------------------
-!> @brief calculates yield stress, plastic strain, total strain and their equivalent values
-!--------------------------------------------------------------------------------------------------
-subroutine utilities_calcPlasticity(yieldStress, plasticStrain, eqStress, eqTotalStrain, &
-                                    eqPlasticStrain, plasticWork, rotation_BC)
- use crystallite, only: &
-   crystallite_Fe, &
-   crystallite_P, &
-   crystallite_subF
- use material, only: &
-   homogenization_maxNgrains
- use mesh, only: &
-   mesh_maxNips,&
-   mesh_NcpElems
- use math, only: &
-   math_det33, &
-   math_inv33, &
-   math_mul33x33, &
-   math_trace33, &
-   math_transpose33, &
-   math_equivStrain33, &
-   math_equivStress33, &
-   math_rotate_forward33, &
-   math_identity2nd, &
-   math_crossproduct, &
-   math_eigenvectorBasisSym, &
-   math_eigenvectorBasisSym33, &
-   math_eigenvectorBasisSym33_log, &
-   math_eigenValuesVectorsSym33
-   
- implicit none
-
- real(pReal), intent(inout) :: eqStress, eqPlasticStrain, plasticWork
- real(pReal), intent(out) :: eqTotalStrain
- real(pReal), dimension(3,3),intent(out) :: yieldStress, plasticStrain
- real(pReal), intent(in), dimension(3,3) :: rotation_BC                                             !< rotation of load frame
- real(pReal), dimension(3,3) :: cauchy, P_av, F_av, Ve_av                                           !< average
- real(pReal), dimension(3)   :: Values, S
- real(pReal), dimension(3,3) :: Vectors, diag
- real(pReal), dimension(3,3) :: &
-   Vp, F_temp, U, VT, R, V, V_total
- real(pReal), dimension(3,3,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems) :: &
-   Be, Ve, Fe
- real(pReal), dimension(15)   :: WORK                                                               !< previous deformation gradient
- integer(pInt) :: INFO, i, j, k, l, ierr
- real(pReal) :: wgtm
- real(pReal) :: eqStressOld, eqPlasticStrainOld, plasticWorkOld
- 
- external :: dgesvd
- 
- eqStressOld = eqStress
- eqPlasticStrainOld = eqPlasticStrain
- plasticWorkOld = plasticWork
- wgtm = 1.0_pReal/real(mesh_NcpElems*mesh_maxNips*homogenization_maxNgrains,pReal)
- diag = 0.0_pReal
- 
- P_av = sum(sum(sum(crystallite_P,dim=5),dim=4),dim=3) * wgtm
- call MPI_Allreduce(MPI_IN_PLACE,P_av,9,MPI_DOUBLE,MPI_SUM,PETSC_COMM_WORLD,ierr)
- P_av = math_rotate_forward33(P_av,rotation_BC)
- 
- F_av = sum(sum(sum(crystallite_subF,dim=5),dim=4),dim=3) * wgtm
- call MPI_Allreduce(MPI_IN_PLACE,F_av,9,MPI_DOUBLE,MPI_SUM,PETSC_COMM_WORLD,ierr)
- F_av = math_rotate_forward33(F_av,rotation_BC)
- 
- cauchy = 1.0_pReal/math_det33(F_av)*math_mul33x33(P_av,transpose(F_av))
- yieldStress = cauchy
- eqStress = math_equivStress33(cauchy)
- 
- F_temp = F_av
- call dgesvd ('A', 'A', 3, 3, F_temp, 3, S, U, 3, VT, 3, WORK, 15, INFO)                            ! singular value decomposition
- 
- R = math_mul33x33(U, VT)                                                                           ! rotation of polar decomposition
- V = math_mul33x33(F_av,math_inv33(R))
- 
- call math_eigenValuesVectorsSym33(V,Values,Vectors)
- do l = 1_pInt, 3_pInt
-   if (Values(l) < 0.0_pReal) then
-     Values(l) = -Values(l)
-     Vectors(1:3, l) = -Vectors(1:3, l)
-   endif
-   Values(l) = log(Values(l))
-   diag(l,l) = Values(l)
- enddo
- if (dot_product(Vectors(1:3,1),Vectors(1:3,2)) /= 0) then
-   Vectors(1:3,2) = math_crossproduct(Vectors(1:3,3), Vectors(1:3,1))
-   Vectors(1:3,2) = Vectors(1:3,2)/sqrt(dot_product(Vectors(1:3,2),Vectors(1:3,2)))
- endif
- if (dot_product(Vectors(1:3,2),Vectors(1:3,3)) /= 0) then
-   Vectors(1:3,3) = math_crossproduct(Vectors(1:3,1), Vectors(1:3,2))
-   Vectors(1:3,3) = Vectors(1:3,3)/sqrt(dot_product(Vectors(1:3,3),Vectors(1:3,3)))
- endif
- if (dot_product(Vectors(1:3,3),Vectors(1:3,1)) /= 0) then
-   Vectors(1:3,1) = math_crossproduct(Vectors(1:3,2), Vectors(1:3,3))
-   Vectors(1:3,1) = Vectors(1:3,1)/sqrt(dot_product(Vectors(1:3,1),Vectors(1:3,1)))
- endif
- 
- V_total = REAL(math_mul33x33(Vectors, math_mul33x33(diag, transpose(Vectors))))
- eqTotalStrain = math_equivStrain33(V_total)
- 
- do k = 1_pInt, mesh_NcpElems;  do j = 1_pInt, mesh_maxNips;  do i = 1_pInt,homogenization_maxNgrains
-   Fe(1:3,1:3,i,j,k) = crystallite_Fe(1:3,1:3,i,j,k)
-   Fe(1:3,1:3,i,j,k) = math_rotate_forward33(Fe(1:3,1:3,i,j,k),rotation_BC)
-   Be(1:3,1:3,i,j,k) = math_mul33x33(Fe(1:3,1:3,i,j,k),math_transpose33(Fe(1:3,1:3,i,j,k)))         ! elastic part of left Cauchy–Green deformation tensor
-   Ve(1:3,1:3,i,j,k) = math_eigenvectorBasisSym33_log(Be(1:3,1:3,i,j,k))
- enddo; enddo; enddo
- 
- Ve_av = sum(sum(sum(Ve,dim=5),dim=4),dim=3) * wgtm
- call MPI_Allreduce(MPI_IN_PLACE,Ve_av,9,MPI_DOUBLE,MPI_SUM,PETSC_COMM_WORLD,ierr)
- 
- Vp = V_total - Ve_av
- 
- eqPlasticStrain = math_equivStrain33(Vp)
- 
- plasticStrain = Vp
- 
- plasticWork = plasticWorkOld + 0.5*(eqStressOld + eqStress) * (eqPlasticStrain - eqPlasticStrainOld)
- 
-end subroutine utilities_calcPlasticity
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates forward rate, either guessing or just add delta/timeinc
 !--------------------------------------------------------------------------------------------------
-pure function utilities_calculateRate(avRate,timeinc_old,guess,field_lastInc,field)
+pure function utilities_calculateRate(heterogeneous,field0,field,dt,avRate)
  use mesh, only: &
    grid3, &
    grid
@@ -1179,17 +1041,17 @@ pure function utilities_calculateRate(avRate,timeinc_old,guess,field_lastInc,fie
  implicit none
  real(pReal), intent(in), dimension(3,3)                      :: avRate                             !< homogeneous addon
  real(pReal), intent(in) :: &
-   timeinc_old                                                                                      !< timeinc of last step
+   dt                                                                                               !< timeinc between field0 and field
  logical, intent(in) :: &
-   guess                                                                                            !< guess along former trajectory
+   heterogeneous                                                                                    !< calculate field of rates
  real(pReal), intent(in), dimension(3,3,grid(1),grid(2),grid3) :: &
-   field_lastInc, &                                                                                 !< data of previous step
+   field0, &                                                                                        !< data of previous step
    field                                                                                            !< data of current step
  real(pReal),             dimension(3,3,grid(1),grid(2),grid3) :: &
    utilities_calculateRate
 
- if (guess) then
-   utilities_calculateRate = (field-field_lastInc) / timeinc_old
+ if (heterogeneous) then
+   utilities_calculateRate = (field-field0) / dt
  else
    utilities_calculateRate = spread(spread(spread(avRate,3,grid(1)),4,grid(2)),5,grid3)
  endif

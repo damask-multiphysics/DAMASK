@@ -9,7 +9,7 @@ module CPFEM2
  private
 
  public :: &
-   CPFEM_general, &
+   CPFEM_age, &
    CPFEM_initAll
 
 contains
@@ -127,6 +127,7 @@ subroutine CPFEM_init
    write(6,'(/,a)')   ' <<<+-  CPFEM init  -+>>>'
    write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
+   flush(6)
  endif mainProcess
 
  ! *** restore the last converged values of each essential variable from the binary file
@@ -139,36 +140,28 @@ subroutine CPFEM_init
    write(rankStr,'(a1,i0)')'_',worldrank
 
    call IO_read_intFile(777,'recordedPhase'//trim(rankStr),modelName,size(material_phase))
-   read (777,rec=1) material_phase
-   close (777)
+   read (777,rec=1) material_phase;       close (777)
 
    call IO_read_realFile(777,'convergedF'//trim(rankStr),modelName,size(crystallite_F0))
-   read (777,rec=1) crystallite_F0
-   close (777)
+   read (777,rec=1) crystallite_F0;       close (777)
 
    call IO_read_realFile(777,'convergedFp'//trim(rankStr),modelName,size(crystallite_Fp0))
-   read (777,rec=1) crystallite_Fp0
-   close (777)
+   read (777,rec=1) crystallite_Fp0;      close (777)
 
    call IO_read_realFile(777,'convergedFi'//trim(rankStr),modelName,size(crystallite_Fi0))
-   read (777,rec=1) crystallite_Fi0
-   close (777)
+   read (777,rec=1) crystallite_Fi0;      close (777)
 
    call IO_read_realFile(777,'convergedLp'//trim(rankStr),modelName,size(crystallite_Lp0))
-   read (777,rec=1) crystallite_Lp0
-   close (777)
+   read (777,rec=1) crystallite_Lp0;      close (777)
 
    call IO_read_realFile(777,'convergedLi'//trim(rankStr),modelName,size(crystallite_Li0))
-   read (777,rec=1) crystallite_Li0
-   close (777)
+   read (777,rec=1) crystallite_Li0;      close (777)
 
    call IO_read_realFile(777,'convergeddPdF'//trim(rankStr),modelName,size(crystallite_dPdF0))
-   read (777,rec=1) crystallite_dPdF0
-   close (777)
+   read (777,rec=1) crystallite_dPdF0;    close (777)
 
    call IO_read_realFile(777,'convergedTstar'//trim(rankStr),modelName,size(crystallite_Tstar0_v))
-   read (777,rec=1) crystallite_Tstar0_v
-   close (777)
+   read (777,rec=1) crystallite_Tstar0_v; close (777)
 
    call IO_read_realFile(777,'convergedStateConst'//trim(rankStr),modelName)
    m = 0_pInt
@@ -194,7 +187,6 @@ subroutine CPFEM_init
 
    restartRead = .false.
  endif
- flush(6)
 
 end subroutine CPFEM_init
 
@@ -202,7 +194,7 @@ end subroutine CPFEM_init
 !--------------------------------------------------------------------------------------------------
 !> @brief perform initialization at first call, update variables and call the actual material model
 !--------------------------------------------------------------------------------------------------
-subroutine CPFEM_general(age, dt)
+subroutine CPFEM_age()
  use prec, only: &
    pReal, &
    pInt
@@ -215,7 +207,6 @@ subroutine CPFEM_general(age, dt)
    debug_levelExtensive, &
    debug_levelSelective
  use FEsolving, only: &
-   terminallyIll, &
    restartWrite
  use math, only: &
    math_identity2nd, &
@@ -254,114 +245,99 @@ subroutine CPFEM_general(age, dt)
    crystallite_dPdF, &
    crystallite_Tstar0_v, &
    crystallite_Tstar_v
- use homogenization, only: &  
-   materialpoint_stressAndItsTangent, &
-   materialpoint_postResults
  use IO, only: &
    IO_write_jobRealFile, &
    IO_warning
  use DAMASK_interface
 
  implicit none
- real(pReal), intent(in) ::                          dt                                         !< time increment
- logical, intent(in) ::                              age                                        !< age results
 
  integer(pInt) ::                                    i, k, l, m, ph, homog, mySource
- character(len=1024) :: rankStr
+ character(len=32) :: rankStr
 
- !*** age results and write restart data if requested
- if (age) then
-   crystallite_F0  = crystallite_partionedF                                                    ! crystallite deformation (_subF is perturbed...)
-   crystallite_Fp0 = crystallite_Fp                                                            ! crystallite plastic deformation
-   crystallite_Lp0 = crystallite_Lp                                                            ! crystallite plastic velocity
-   crystallite_Fi0 = crystallite_Fi                                                            ! crystallite intermediate deformation
-   crystallite_Li0 = crystallite_Li                                                            ! crystallite intermediate velocity
-   crystallite_dPdF0 = crystallite_dPdF                                                        ! crystallite stiffness
-   crystallite_Tstar0_v = crystallite_Tstar_v                                                  ! crystallite 2nd Piola Kirchhoff stress
+if (iand(debug_level(debug_CPFEM), debug_levelBasic) /= 0_pInt) &
+  write(6,'(a)') '<< CPFEM >> aging states'
 
-   forall ( i = 1:size(plasticState    )) plasticState(i)%state0     = plasticState(i)%state   ! copy state in this lenghty way because: A component cannot be an array if the encompassing structure is an array
-   do i = 1, size(sourceState)
-     do mySource = 1,phase_Nsources(i)
-       sourceState(i)%p(mySource)%state0 = sourceState(i)%p(mySource)%state                    ! copy state in this lenghty way because: A component cannot be an array if the encompassing structure is an array
-   enddo; enddo
-   if (iand(debug_level(debug_CPFEM), debug_levelBasic) /= 0_pInt) &
-     write(6,'(a)') '<< CPFEM >> aging states'
+crystallite_F0  = crystallite_partionedF                                                    ! crystallite deformation (_subF is perturbed...)
+crystallite_Fp0 = crystallite_Fp                                                            ! crystallite plastic deformation
+crystallite_Lp0 = crystallite_Lp                                                            ! crystallite plastic velocity
+crystallite_Fi0 = crystallite_Fi                                                            ! crystallite intermediate deformation
+crystallite_Li0 = crystallite_Li                                                            ! crystallite intermediate velocity
+crystallite_dPdF0 = crystallite_dPdF                                                        ! crystallite stiffness
+crystallite_Tstar0_v = crystallite_Tstar_v                                                  ! crystallite 2nd Piola Kirchhoff stress
 
-   do homog = 1_pInt, material_Nhomogenization
-     homogState       (homog)%state0 =  homogState       (homog)%state
-     thermalState     (homog)%state0 =  thermalState     (homog)%state
-     damageState      (homog)%state0 =  damageState      (homog)%state
-     vacancyfluxState (homog)%state0 =  vacancyfluxState (homog)%state
-     hydrogenfluxState(homog)%state0 =  hydrogenfluxState(homog)%state
-   enddo
+forall (i = 1:size(plasticState)) plasticState(i)%state0 = plasticState(i)%state            ! copy state in this lengthy way because: A component cannot be an array if the encompassing structure is an array
 
+do i = 1, size(sourceState)
+  do mySource = 1,phase_Nsources(i)
+    sourceState(i)%p(mySource)%state0 = sourceState(i)%p(mySource)%state                    ! copy state in this lengthy way because: A component cannot be an array if the encompassing structure is an array
+enddo; enddo
 
-   if (restartWrite) then
-     if (iand(debug_level(debug_CPFEM), debug_levelBasic) /= 0_pInt) &
-        write(6,'(a)') '<< CPFEM >> writing state variables of last converged step to binary files'
-   
-     write(rankStr,'(a1,i0)')'_',worldrank
+do homog = 1_pInt, material_Nhomogenization
+  homogState       (homog)%state0 =  homogState       (homog)%state
+  thermalState     (homog)%state0 =  thermalState     (homog)%state
+  damageState      (homog)%state0 =  damageState      (homog)%state
+  vacancyfluxState (homog)%state0 =  vacancyfluxState (homog)%state
+  hydrogenfluxState(homog)%state0 =  hydrogenfluxState(homog)%state
+enddo
 
-     call IO_write_jobRealFile(777,'recordedPhase'//trim(rankStr),size(material_phase))
-     write (777,rec=1) material_phase
-     close (777)
+if (restartWrite) then
+  if (iand(debug_level(debug_CPFEM), debug_levelBasic) /= 0_pInt) &
+    write(6,'(a)') '<< CPFEM >> writing state variables of last converged step to binary files'
 
-     call IO_write_jobRealFile(777,'convergedF'//trim(rankStr),size(crystallite_F0))
-     write (777,rec=1) crystallite_F0
-     close (777)
+  write(rankStr,'(a1,i0)')'_',worldrank
 
-     call IO_write_jobRealFile(777,'convergedFp'//trim(rankStr),size(crystallite_Fp0))
-     write (777,rec=1) crystallite_Fp0
-     close (777)
+  call IO_write_jobRealFile(777,'recordedPhase'//trim(rankStr),size(material_phase))
+  write (777,rec=1) material_phase;       close (777)
 
-     call IO_write_jobRealFile(777,'convergedFi'//trim(rankStr),size(crystallite_Fi0))
-     write (777,rec=1) crystallite_Fi0
-     close (777)
+  call IO_write_jobRealFile(777,'convergedF'//trim(rankStr),size(crystallite_F0))
+  write (777,rec=1) crystallite_F0;       close (777)
 
-     call IO_write_jobRealFile(777,'convergedLp'//trim(rankStr),size(crystallite_Lp0))
-     write (777,rec=1) crystallite_Lp0
-     close (777)
+  call IO_write_jobRealFile(777,'convergedFp'//trim(rankStr),size(crystallite_Fp0))
+  write (777,rec=1) crystallite_Fp0;      close (777)
 
-     call IO_write_jobRealFile(777,'convergedLi'//trim(rankStr),size(crystallite_Li0))
-     write (777,rec=1) crystallite_Li0
-     close (777)
+  call IO_write_jobRealFile(777,'convergedFi'//trim(rankStr),size(crystallite_Fi0))
+  write (777,rec=1) crystallite_Fi0;      close (777)
 
-     call IO_write_jobRealFile(777,'convergeddPdF'//trim(rankStr),size(crystallite_dPdF0))
-     write (777,rec=1) crystallite_dPdF0
-     close (777)
+  call IO_write_jobRealFile(777,'convergedLp'//trim(rankStr),size(crystallite_Lp0))
+  write (777,rec=1) crystallite_Lp0;      close (777)
 
-     call IO_write_jobRealFile(777,'convergedTstar'//trim(rankStr),size(crystallite_Tstar0_v))
-     write (777,rec=1) crystallite_Tstar0_v
-     close (777)
+  call IO_write_jobRealFile(777,'convergedLi'//trim(rankStr),size(crystallite_Li0))
+  write (777,rec=1) crystallite_Li0;      close (777)
 
-     call IO_write_jobRealFile(777,'convergedStateConst'//trim(rankStr))
-     m = 0_pInt
-     writePlasticityInstances: do ph = 1_pInt, size(phase_plasticity)
-       do k = 1_pInt, plasticState(ph)%sizeState
-         do l = 1, size(plasticState(ph)%state0(1,:))
-           m = m+1_pInt
-           write(777,rec=m) plasticState(ph)%state0(k,l)
-       enddo; enddo
-     enddo writePlasticityInstances
-     close (777)
+  call IO_write_jobRealFile(777,'convergeddPdF'//trim(rankStr),size(crystallite_dPdF0))
+  write (777,rec=1) crystallite_dPdF0;    close (777)
 
-     call IO_write_jobRealFile(777,'convergedStateHomog'//trim(rankStr))
-     m = 0_pInt
-     writeHomogInstances: do homog = 1_pInt, material_Nhomogenization
-       do k = 1_pInt, homogState(homog)%sizeState
-         do l = 1, size(homogState(homog)%state0(1,:))
-           m = m+1_pInt
-           write(777,rec=m) homogState(homog)%state0(k,l)
-       enddo; enddo
-     enddo writeHomogInstances
-     close (777)
+  call IO_write_jobRealFile(777,'convergedTstar'//trim(rankStr),size(crystallite_Tstar0_v))
+  write (777,rec=1) crystallite_Tstar0_v; close (777)
 
-   endif
- endif
+  call IO_write_jobRealFile(777,'convergedStateConst'//trim(rankStr))
+  m = 0_pInt
+  writePlasticityInstances: do ph = 1_pInt, size(phase_plasticity)
+    do k = 1_pInt, plasticState(ph)%sizeState
+      do l = 1, size(plasticState(ph)%state0(1,:))
+        m = m+1_pInt
+        write(777,rec=m) plasticState(ph)%state0(k,l)
+    enddo; enddo
+  enddo writePlasticityInstances
+  close (777)
 
- if (.not. terminallyIll) &
-   call materialpoint_stressAndItsTangent(.True., dt)
+  call IO_write_jobRealFile(777,'convergedStateHomog'//trim(rankStr))
+  m = 0_pInt
+  writeHomogInstances: do homog = 1_pInt, material_Nhomogenization
+    do k = 1_pInt, homogState(homog)%sizeState
+      do l = 1, size(homogState(homog)%state0(1,:))
+        m = m+1_pInt
+        write(777,rec=m) homogState(homog)%state0(k,l)
+    enddo; enddo
+  enddo writeHomogInstances
+  close (777)
 
-end subroutine CPFEM_general
+endif
+
+if (iand(debug_level(debug_CPFEM), debug_levelBasic) /= 0_pInt) &
+  write(6,'(a)') '<< CPFEM >> done aging states'
+
+end subroutine CPFEM_age
 
 end module CPFEM2

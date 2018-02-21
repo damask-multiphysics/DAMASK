@@ -1268,11 +1268,11 @@ integer(pInt) function IO_countNumericalDataLines(fileUnit)
    line = IO_read(fileUnit)
    chunkPos = IO_stringPos(line)
    tmp = IO_lc(IO_stringValue(line,chunkPos,1_pInt))
-   if (verify(trim(tmp) ,"0123456789")/=0) then                                                            ! found keyword
+   if (verify(trim(tmp),'0123456789') == 0) then                                                    ! numerical values
+     IO_countNumericalDataLines = IO_countNumericalDataLines + 1_pInt
+   else
      line = IO_read(fileUnit, .true.)                                                               ! reset IO_read
      exit
-   else
-     IO_countNumericalDataLines = IO_countNumericalDataLines + 1_pInt
    endif
  enddo
  backspace(fileUnit)

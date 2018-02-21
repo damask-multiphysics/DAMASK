@@ -379,30 +379,30 @@ module mesh
   ],pInt)
 
 
- integer(pInt), dimension(FE_Nelemtypes), parameter, private ::  MESH_VTKELEMTYPE = &
- int([ &
-      5, & ! element   6 (2D 3node 1ip)
-     22, & ! element 125 (2D 6node 3ip)
-      9, & ! element  11 (2D 4node 4ip)
-     23, & ! element  27 (2D 8node 9ip)
-     23, & ! element  54 (2D 8node 4ip)
-     10, & ! element 134 (3D 4node 1ip)
-     10, & ! element 157 (3D 5node 4ip)
-     24, & ! element 127 (3D 10node 4ip)
-     13, & ! element 136 (3D 6node 6ip)
-     12, & ! element 117 (3D 8node 1ip)
-     12, & ! element   7 (3D 8node 8ip)
-     25, & ! element  57 (3D 20node 8ip)
-     25  & ! element  21 (3D 20node 27ip)
-  ],pInt)
-
- integer(pInt), dimension(FE_Ncelltypes), parameter, private ::  MESH_VTKCELLTYPE = &
- int([ &
-      5, & ! (2D 3node)
-      9, & ! (2D 4node)
-     10, & ! (3D 4node)
-     12  & ! (3D 8node)
-  ],pInt)
+!  integer(pInt), dimension(FE_Nelemtypes), parameter, private ::  MESH_VTKELEMTYPE = &
+!  int([ &
+!       5, & ! element   6 (2D 3node 1ip)
+!      22, & ! element 125 (2D 6node 3ip)
+!       9, & ! element  11 (2D 4node 4ip)
+!      23, & ! element  27 (2D 8node 9ip)
+!      23, & ! element  54 (2D 8node 4ip)
+!      10, & ! element 134 (3D 4node 1ip)
+!      10, & ! element 157 (3D 5node 4ip)
+!      24, & ! element 127 (3D 10node 4ip)
+!      13, & ! element 136 (3D 6node 6ip)
+!      12, & ! element 117 (3D 8node 1ip)
+!      12, & ! element   7 (3D 8node 8ip)
+!      25, & ! element  57 (3D 20node 8ip)
+!      25  & ! element  21 (3D 20node 27ip)
+!   ],pInt)
+! 
+!  integer(pInt), dimension(FE_Ncelltypes), parameter, private ::  MESH_VTKCELLTYPE = &
+!  int([ &
+!       5, & ! (2D 3node)
+!       9, & ! (2D 4node)
+!      10, & ! (3D 4node)
+!      12  & ! (3D 8node)
+!   ],pInt)
 
 
  public :: &
@@ -2848,16 +2848,18 @@ use IO, only: &
  implicit none
  integer(pInt), intent(in) :: fileUnit
 
-#ifndef Spectral
+#ifdef Spectral
+ mesh_periodicSurface = .true.
+
+ end subroutine mesh_get_damaskOptions
+
+#else
+
  integer(pInt), allocatable, dimension(:) :: chunkPos
  integer(pInt) chunk, Nchunks
  character(len=300) :: line, damaskOption, v
  character(len=300) :: keyword
-#endif
 
-#ifdef Spectral
- mesh_periodicSurface = .true.
-#else
  mesh_periodicSurface = .false.
 #ifdef Marc4DAMASK
  keyword = '$damask'
@@ -2886,9 +2888,9 @@ use IO, only: &
  enddo
 
 610 FORMAT(A300)
-#endif
 
 620 end subroutine mesh_get_damaskOptions
+#endif
 
 
 !--------------------------------------------------------------------------------------------------
