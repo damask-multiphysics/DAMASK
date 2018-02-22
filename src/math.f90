@@ -277,7 +277,7 @@ subroutine math_check
  endif
 
  ! +++ check rotation sense of q and R +++
- v = halton(3_pInt)     ! random vector
+ v = halton([2_pInt,8_pInt,5_pInt])     ! random vector
  R = math_qToR(q)
  if (any(abs(math_mul33x3(R,v) - math_qRot(q,v)) > tol_math_check)) then
    write (error_msg, '(a)' ) 'R(q)*v has different sense than q*v'
@@ -1231,7 +1231,7 @@ function math_qRand()
  real(pReal), dimension(4) :: math_qRand
  real(pReal), dimension(3) :: rnd
 
- rnd = halton(3_pInt)
+ rnd = halton([8_pInt,4_pInt,9_pInt])
  math_qRand = [cos(2.0_pReal*PI*rnd(1))*sqrt(rnd(3)), &
                sin(2.0_pReal*PI*rnd(2))*sqrt(1.0_pReal-rnd(3)), &
                cos(2.0_pReal*PI*rnd(2))*sqrt(1.0_pReal-rnd(3)), &
@@ -1754,7 +1754,7 @@ function math_sampleRandomOri()
  implicit none
  real(pReal), dimension(3) :: math_sampleRandomOri, rnd
 
- rnd = halton(3_pInt)
+ rnd = halton([1_pInt,7_pInt,3_pInt])
  math_sampleRandomOri  = [rnd(1)*2.0_pReal*PI, &
                           acos(2.0_pReal*rnd(2)-1.0_pReal), &
                           rnd(3)*2.0_pReal*PI]
@@ -1783,12 +1783,12 @@ function math_sampleGaussOri(center,FWHM)
  else noScatter
    GaussConvolution: do
      selectiveSampling: if (FWHM*INRAD < 90.0_pReal) then
-       rnd        = halton(2_pInt)
+       rnd = halton([3_pInt,6_pInt])
        axis(1)    = rnd(1)*2.0_pReal-1.0_pReal                                                      ! uniform on [-1,1]
        axis(2:3)  = [sqrt(1.0-axis(1)**2.0_pReal)*cos(rnd(2)*2.0*PI),&
                      sqrt(1.0-axis(1)**2.0_pReal)*sin(rnd(2)*2.0*PI)]
        do
-         call random_number(rnd)                                                                    ! no halton to avoid correlation
+         rnd = halton([14_pInt,10_pInt])
          omega = (rnd(1)*(2.0_pReal*FWHM)**3.0_pReal)**(1.0_pReal/3.0_pReal)
          if (rnd(2) < sin(omega)**2.0_pReal/omega**2.0_pReal) exit
        enddo
@@ -1796,7 +1796,7 @@ function math_sampleGaussOri(center,FWHM)
      else selectiveSampling
        R = math_EulerToR(math_sampleRandomOri())
      endif selectiveSampling 
-       call random_number(rnd)                                                                      ! no halton to avoid correlation
+       rnd = halton([8_pInt,11_pInt])
        omega = math_EulerMisorientation([0.0_pReal,0.0_pReal,0.0_pReal],math_RtoEuler(R))
        if (rnd(1) <= exp(-4.0_pReal*log(2.0_pReal)*(omega/FWHM)**2_pReal)) exit
    enddo GaussConvolution
@@ -1822,7 +1822,7 @@ function math_sampleFiberOri(alpha,beta,FWHM)
  real(pReal), intent(in) :: FWHM
  real(pReal), dimension(6) :: rnd
  real(pReal), dimension(3,3) :: oRot,fRot,pRot
- real(pReal) :: scatter, cos2Scatter, angle
+ real(pReal) :: cos2Scatter, angle
  integer(pInt), dimension(2,3), parameter :: ROTMAP = reshape([2_pInt,3_pInt,&
                                                                3_pInt,1_pInt,&
                                                                1_pInt,2_pInt],[2,3])
@@ -1830,8 +1830,7 @@ function math_sampleFiberOri(alpha,beta,FWHM)
 
 ! MD: this is a leftover from using the wrongly scaled Gaussian distribution.
 ! I'm relatively sure that it is not correct to scale by any constant factor here
- scatter = 0.95_pReal * FWHM
- cos2Scatter = cos(2.0_pReal*scatter)
+ cos2Scatter = cos(2.0_pReal*0.95_pReal * FWHM)
 
 ! fiber axis in crystal coordinate system
  fiberInC = [ sin(alpha(1))*cos(alpha(2)) , &
@@ -1852,13 +1851,13 @@ function math_sampleFiberOri(alpha,beta,FWHM)
    oRot = math_I3
  end if
 
-! ---# rotation matrix about fiber axis (random angle) #---
  GaussConvolution: do
-   rnd = halton(6_pInt)
+   rnd = halton(int([14,5,10,3,9,17],pInt))
+   
+   ! random rotation around fiber axis
    fRot = math_EulerAxisAngleToR(fiberInS,rnd(1)*2.0_pReal*PI)
 
-! ---# rotation about random axis perpend to fiber #---
-! random axis pependicular to fiber axis
+   ! random axis pependicular to fiber axis
    axis(1:2) = rnd(2:3)
    if (abs(fiberInS(3)) > tol_math_check) then
      axis(3)=-(axis(1)*fiberInS(1)+axis(2)*fiberInS(2))/fiberInS(3)
@@ -1870,9 +1869,10 @@ function math_sampleFiberOri(alpha,beta,FWHM)
      axis(1)=-(axis(2)*fiberInS(2)+axis(3)*fiberInS(3))/fiberInS(1)
    end if
 
-! scattered rotation angle
+   ! rotate by XXX amount around axis perpendicular to fiber axis
+   ! Proabably https://math.stackexchange.com/questions/56784 is the right approach
    if (FWHM > 0.0_pReal) then
-     angle = acos(cos2Scatter+(1.0_pReal-cos2Scatter)*rnd(4))                 ! MD: This is probably not ok
+     angle = acos(cos2Scatter+(1.0_pReal-cos2Scatter)*rnd(4))
      if (rnd(5) <= exp(-4.0_pReal*log(2.0_pReal)*(angle/FWHM)**2.0_pReal)) exit
    else
      angle = 0.0_pReal
@@ -1910,7 +1910,7 @@ real(pReal) function math_sampleGaussVar(meanvalue, stddev, width)
    myWidth = merge(width,3.0_pReal,present(width))                                                  ! use +-3*sigma as default value for scatter if not given
   
    do
-     rnd = halton(2_pInt)
+     rnd = halton([6_pInt,2_pInt])
      scatter = myWidth * (2.0_pReal * rnd(1) - 1.0_pReal)
      if (rnd(2) <= exp(-0.5_pReal * scatter ** 2.0_pReal)) exit                                     ! test if scattered value is drawn
    enddo
@@ -2297,18 +2297,18 @@ end function math_invariantsSym33
 !> @details multi-dimensional integrals, Numerische Mathematik, Volume 2, pages 84-90, 1960.
 !> @author John Burkardt
 !-------------------------------------------------------------------------------------------------
-function halton(ndim)
+function halton(bases)
    
  implicit none
- integer(pInt), intent(in) :: &
-   ndim                                                                                             !< dimension of the sequence
- real(pReal),             dimension(ndim) :: &
+ integer(pInt), intent(in), dimension(:):: &
+   bases                                                                                            !< dimension of the sequence
+ real(pReal),               dimension(size(bases)) :: &
    halton
  integer(pInt), save :: &
    current = 1_pInt
- real(pReal),                dimension(ndim) :: &
+ real(pReal),               dimension(size(bases)) :: &
    base_inv
- integer(pInt),              dimension(ndim) :: &
+ integer(pInt),             dimension(size(bases)) :: &
    base, &
    t
  integer(pInt) :: &
@@ -2494,7 +2494,7 @@ function halton(ndim)
 
  current = current + 1_pInt
 
- base = [(prime(i), i=1_pInt, ndim)]
+ base = prime(bases)
  base_inv = 1.0_pReal/real(base,pReal)
 
  halton = 0.0_pReal
