@@ -1817,16 +1817,12 @@ function math_sampleFiberOri(alpha,beta,FWHM)
    tol_math_check
 
  implicit none
- real(pReal), dimension(3) :: math_sampleFiberOri, fiberInC,fiberInS,axis
  real(pReal), dimension(2), intent(in) :: alpha,beta
  real(pReal), intent(in) :: FWHM
+ real(pReal), dimension(3) :: math_sampleFiberOri, fiberInC,fiberInS,axis
  real(pReal), dimension(6) :: rnd
  real(pReal), dimension(3,3) :: oRot,fRot,pRot
  real(pReal) :: cos2Scatter, angle
- integer(pInt), dimension(2,3), parameter :: ROTMAP = reshape([2_pInt,3_pInt,&
-                                                               3_pInt,1_pInt,&
-                                                               1_pInt,2_pInt],[2,3])
- integer(pInt) :: i
 
 ! MD: this is a leftover from using the wrongly scaled Gaussian distribution.
 ! I'm relatively sure that it is not correct to scale by any constant factor here
@@ -1841,15 +1837,8 @@ function math_sampleFiberOri(alpha,beta,FWHM)
               sin(beta(1))*sin(beta(2)), &
               cos(beta(1))]
 
-! ---# rotation matrix from sample to crystal system #---
- angle = -acos(dot_product(fiberInC,fiberInS))
- if(abs(angle) > tol_math_check) then
-!   rotation axis between sample and crystal system (cross product)
-   forall(i=1_pInt:3_pInt) axis(i) = fiberInC(ROTMAP(1,i))*fiberInS(ROTMAP(2,i))-fiberInC(ROTMAP(2,i))*fiberInS(ROTMAP(1,i))
-   oRot = math_EulerAxisAngleToR(math_crossproduct(fiberInC,fiberInS),angle)
- else
-   oRot = math_I3
- end if
+ oRot = merge(math_EulerAxisAngleToR(math_crossproduct(fiberInC,fiberInS),angle),
+              math_I3, acos(dot_product(fiberInC,fiberInS)) > tol_math_check)
 
  GaussConvolution: do
    rnd = halton(int([14,5,10,3,9,17],pInt))
@@ -1860,14 +1849,15 @@ function math_sampleFiberOri(alpha,beta,FWHM)
    ! random axis pependicular to fiber axis
    axis(1:2) = rnd(2:3)
    if (abs(fiberInS(3)) > tol_math_check) then
-     axis(3)=-(axis(1)*fiberInS(1)+axis(2)*fiberInS(2))/fiberInS(3)
+     axis(3)=-(axis(1)*fiberInS(1)+axis(2)*fiberInS(2))
    else if(abs(fiberInS(2)) > tol_math_check) then
      axis(3)=axis(2)
-     axis(2)=-(axis(1)*fiberInS(1)+axis(3)*fiberInS(3))/fiberInS(2)
+     axis(2)=-(axis(1)*fiberInS(1)+axis(3)*fiberInS(3))
    else if(abs(fiberInS(1)) > tol_math_check) then
      axis(3)=axis(1)
-     axis(1)=-(axis(2)*fiberInS(2)+axis(3)*fiberInS(3))/fiberInS(1)
+     axis(1)=-(axis(2)*fiberInS(2)+axis(3)*fiberInS(3))
    end if
+   axis = axis/norm2(axis)
 
    ! rotate by XXX amount around axis perpendicular to fiber axis
    ! Proabably https://math.stackexchange.com/questions/56784 is the right approach
