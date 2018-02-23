@@ -1519,7 +1519,7 @@ pure function math_axisAngleToR(axis,omega)
 
  norm = norm2(axis)
  wellDefined: if (norm > 1.0e-8_pReal) then
-   n = axis/norm                                           ! normalize axis to be sure
+   n = axis/norm                                                                                    ! normalize axis to be sure
 
    s = sin(omega)
    c = cos(omega)
@@ -1765,20 +1765,26 @@ end function math_sampleRandomOri
 !--------------------------------------------------------------------------------------------------
 !> @brief draw a sample from an Gaussian distribution around given orientation and Full Width
 ! at Half Maximum (FWHM)
+!> @details: for very small FWHM values the given orientation is returned.
+!> @details: for intermediate FWHM values, an orientation is picked from uniformly distributed
+!> @details: oreintations around the nominal orientation with maximum misorientation of 2*FWHM 
+!> @deatils: according to https://math.stackexchange.com/questions/13133 followed by
+!> @details: the application of a Gaussian filter.
+!> @details: for large FWHM values, a random orientation from a uniform distribution is picked
+!> @details: followed by tge aookucatuib if a Gaussian filter. Additionally, the misorientation is
+!> @details: limited to 2*FWHM,
 !--------------------------------------------------------------------------------------------------
 function math_sampleGaussOri(center,FWHM)
- use prec, only: &
-   tol_math_check
 
  implicit none
  real(pReal), intent(in) :: FWHM
  real(pReal), dimension(3), intent(in) :: center 
- real(pReal) :: omega
+ real(pReal) :: angle
  real(pReal), dimension(3)   :: math_sampleGaussOri, axis
  real(pReal), dimension(2)   :: rnd
  real(pReal), dimension(3,3) :: R
 
- noScatter: if (FWHM < 0.5_pReal*INRAD) then
+ noScatter: if (FWHM < 0.1_pReal*INRAD) then
    math_sampleGaussOri = center
  else noScatter
    GaussConvolution: do
@@ -1786,19 +1792,20 @@ function math_sampleGaussOri(center,FWHM)
        rnd = halton([3_pInt,6_pInt])
        axis(1)    = rnd(1)*2.0_pReal-1.0_pReal                                                      ! uniform on [-1,1]
        axis(2:3)  = [sqrt(1.0-axis(1)**2.0_pReal)*cos(rnd(2)*2.0*PI),&
-                     sqrt(1.0-axis(1)**2.0_pReal)*sin(rnd(2)*2.0*PI)]
+                     sqrt(1.0-axis(1)**2.0_pReal)*sin(rnd(2)*2.0*PI)]                               ! random axis
        do
          rnd = halton([14_pInt,10_pInt])
-         omega = (rnd(1)*(2.0_pReal*FWHM)**3.0_pReal)**(1.0_pReal/3.0_pReal)
-         if (rnd(2) < sin(omega)**2.0_pReal/omega**2.0_pReal) exit
+         angle = (rnd(1)*(2.0_pReal*FWHM)**3.0_pReal)**(1.0_pReal/3.0_pReal)                        ! maximum misorientation of 2*FWHM
+         if (rnd(2) < sin(angle)**2.0_pReal/angle**2.0_pReal) exit                                  ! rejection sampling
        enddo
-       R = math_axisAngleToR(axis,omega)
+       R = math_axisAngleToR(axis,angle)
      else selectiveSampling
        R = math_EulerToR(math_sampleRandomOri())
      endif selectiveSampling 
        rnd = halton([8_pInt,11_pInt])
-       omega = math_EulerMisorientation([0.0_pReal,0.0_pReal,0.0_pReal],math_RtoEuler(R))
-       if (rnd(1) <= exp(-4.0_pReal*log(2.0_pReal)*(omega/FWHM)**2_pReal)) exit
+       angle = math_EulerMisorientation([0.0_pReal,0.0_pReal,0.0_pReal],math_RtoEuler(R))
+       if (rnd(1) <= exp(-4.0_pReal*log(2.0_pReal)*(angle/FWHM)**2_pReal) .and. &                   ! rejection sampling (Gaussian)
+           angle < 2.0_pReal * FWHM) exit                                                           ! limit (in case of non-selective orientation selection
    enddo GaussConvolution
 
    math_sampleGaussOri = math_RtoEuler(math_mul33x33(R,math_EulerToR(center)))
@@ -1807,74 +1814,52 @@ function math_sampleGaussOri(center,FWHM)
 end function math_sampleGaussOri
 
 
-
 !--------------------------------------------------------------------------------------------------
 !> @brief draw a sample from an Gaussian distribution around given fiber texture and Full Width
 ! at Half Maximum (FWHM)
+!>@details: vector in cone around axis is uniformly distributed according to 
+! https://math.stackexchange.com/questions/56784 
 !-------------------------------------------------------------------------------------------------
 function math_sampleFiberOri(alpha,beta,FWHM)
- use prec, only: &
-   tol_math_check
 
  implicit none
  real(pReal), dimension(2), intent(in) :: alpha,beta
  real(pReal), intent(in) :: FWHM
- real(pReal), dimension(3) :: math_sampleFiberOri, fiberInC,fiberInS,axis
- real(pReal), dimension(6) :: rnd
- real(pReal), dimension(3,3) :: oRot,fRot,pRot
- real(pReal) :: cos2Scatter, angle
+ real(pReal), dimension(3) :: math_sampleFiberOri,  &
+   fInC,&                                                                                           !< fiber axis in crystal coordinate system
+   fInS,&                                                                                           !< fiber axis in sample coordinate system
+   axis
+ real(pReal), dimension(5) :: rnd
+ real(pReal), dimension(3,3) ::  &
+   R_o, &                                                                                           !< rotation to aling fiber axis in crystal and sample system 
+   R_f, &                                                                                           !< random rotation along fiber axis [0, 2*Pi[
+   R_p                                                                                              !< deviation of axis alingment, bound by 2*FWHM
+ real(pReal) :: angle
 
-! MD: this is a leftover from using the wrongly scaled Gaussian distribution.
-! I'm relatively sure that it is not correct to scale by any constant factor here
- cos2Scatter = cos(2.0_pReal*0.95_pReal * FWHM)
+ fInC = [sin(alpha(1))*cos(alpha(2)), sin(alpha(1))*sin(alpha(2)), cos(alpha(1))]
+ fInS = [sin(beta(1))*cos(beta(2)),   sin(beta(1))*sin(beta(2)),   cos(beta(1))]
 
-! fiber axis in crystal coordinate system
- fiberInC = [ sin(alpha(1))*cos(alpha(2)) , &
-              sin(alpha(1))*sin(alpha(2)), &
-              cos(alpha(1))]
-! fiber axis in sample coordinate system
- fiberInS = [ sin(beta(1))*cos(beta(2)), &
-              sin(beta(1))*sin(beta(2)), &
-              cos(beta(1))]
+ R_o = math_EulerAxisAngleToR(math_crossproduct(fInC,fInS),-acos(dot_product(fInC,fInS)))
 
- oRot = merge(math_EulerAxisAngleToR(math_crossproduct(fiberInC,fiberInS),angle),
-              math_I3, acos(dot_product(fiberInC,fiberInS)) > tol_math_check)
-
- GaussConvolution: do
-   rnd = halton(int([14,5,10,3,9,17],pInt))
-   
-   ! random rotation around fiber axis
-   fRot = math_EulerAxisAngleToR(fiberInS,rnd(1)*2.0_pReal*PI)
-
-   ! random axis pependicular to fiber axis
-   axis(1:2) = rnd(2:3)
-   if (abs(fiberInS(3)) > tol_math_check) then
-     axis(3)=-(axis(1)*fiberInS(1)+axis(2)*fiberInS(2))
-   else if(abs(fiberInS(2)) > tol_math_check) then
-     axis(3)=axis(2)
-     axis(2)=-(axis(1)*fiberInS(1)+axis(3)*fiberInS(3))
-   else if(abs(fiberInS(1)) > tol_math_check) then
-     axis(3)=axis(1)
-     axis(1)=-(axis(2)*fiberInS(2)+axis(3)*fiberInS(3))
-   end if
-   axis = axis/norm2(axis)
-
-   ! rotate by XXX amount around axis perpendicular to fiber axis
-   ! Proabably https://math.stackexchange.com/questions/56784 is the right approach
-   if (FWHM > 0.0_pReal) then
-     angle = acos(cos2Scatter+(1.0_pReal-cos2Scatter)*rnd(4))
-     if (rnd(5) <= exp(-4.0_pReal*log(2.0_pReal)*(angle/FWHM)**2.0_pReal)) exit
-   else
-     angle = 0.0_pReal
-     exit
-   end if
- enddo GaussConvolution
- if (rnd(6) <= 0.5) angle = -angle
+ if (FWHM > 0.0_pReal) then
+   GaussConvolution: do
+     rnd = halton(int([5,10,3,9,17],pInt))
+     rnd(1:2) = [cos(FWHM*2.0_pReal),-1.0_pReal] + rnd(1:2)*[1.0_pReal - cos(FWHM*2.0_pReal),2.0_pReal]
+     axis = [sqrt(1.0_pReal - rnd(2)**2.0_pReal)*sin(rnd(1)),&
+             sqrt(1.0_pReal - rnd(2)**2.0_pReal)*cos(rnd(1)),rnd(2)]
+     angle = acos(dot_product([0.0_pReal,0.0_pReal,1.0_pReal],axis))
+     if (rnd(3) <= exp(-4.0_pReal*log(2.0_pReal)*(angle/FWHM)**2.0_pReal)) exit
+   enddo GaussConvolution
+   if (rnd(4) <= 0.5) angle = -angle
+   R_p = math_EulerAxisAngleToR(math_crossproduct(axis,[0.0_pReal,0.0_pReal,1.0_pReal]),angle)
+ else
+   R_p = math_I3
+   rnd = halton(int([5,10,3,9,17],pInt))
+ endif
  
- pRot = math_EulerAxisAngleToR(axis,angle)
+ R_f = math_EulerAxisAngleToR(fInS,rnd(5)*2.0_pReal*PI)
 
-! ---# apply the three rotations #---
- math_sampleFiberOri = math_RtoEuler(math_mul33x33(pRot,math_mul33x33(fRot,oRot)))
+ math_sampleFiberOri = math_RtoEuler(math_mul33x33(R_p,math_mul33x33(R_f,R_o)))
 
 end function math_sampleFiberOri
 
@@ -2279,19 +2264,23 @@ end function math_invariantsSym33
 
 !-------------------------------------------------------------------------------------------------
 !> @brief computes an element of a Halton sequence.
-!> @details Only the absolute value of SEED is considered. SEED = 0 is allowed, and returns R = 0.
-!> @details Halton Bases should be distinct prime numbers. This routine only checks that each base 
-!> @details is greater than 1.
+!> @author John Burkardt
+!> @author Martin Diehl
+!> @details Incrementally increasing elements of the Halton sequence for given bases (> 0)
 !> @details Reference:
 !> @details J.H. Halton: On the efficiency of certain quasi-random sequences of points in evaluating 
 !> @details multi-dimensional integrals, Numerische Mathematik, Volume 2, pages 84-90, 1960.
-!> @author John Burkardt
+!> @details Reference for prime numbers:
+!> @details Milton Abramowitz and Irene Stegun: Handbook of Mathematical Functions,
+!> @details US Department of Commerce, 1964, pages 870-873.
+!> @details Daniel Zwillinger: CRC Standard Mathematical Tables and Formulae,
+!> @details 30th Edition, CRC Press, 1996, pages 95-98.
 !-------------------------------------------------------------------------------------------------
 function halton(bases)
    
  implicit none
  integer(pInt), intent(in), dimension(:):: &
-   bases                                                                                            !< dimension of the sequence
+   bases                                                                                            !< bases (prime number ID)
  real(pReal),               dimension(size(bases)) :: &
    halton
  integer(pInt), save :: &
@@ -2301,8 +2290,6 @@ function halton(bases)
  integer(pInt),             dimension(size(bases)) :: &
    base, &
    t
- integer(pInt) :: &
-   i 
  integer(pInt), dimension(0:1600), parameter :: &
    prime = int([&
            1, &
@@ -2496,17 +2483,6 @@ function halton(bases)
    t = t / base
  enddo
  
- !--------------------------------------------------------------------------------------------------
- !> @brief returns any of the first 1600 prime numbers.
- !> @details n = 0 is legal, returning PRIME = 1.
- !> @details 0 > n > 1600 returns -1
- !> @details Reference:
- !> @details Milton Abramowitz and Irene Stegun: Handbook of Mathematical Functions,
- !> @details US Department of Commerce, 1964, pages 870-873.
- !> @details Daniel Zwillinger: CRC Standard Mathematical Tables and Formulae,
- !> @details 30th Edition, CRC Press, 1996, pages 95-98.
- !> @author John Burkardt
- !--------------------------------------------------------------------------------------------------
 end function halton
 
 
