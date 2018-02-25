@@ -2755,8 +2755,7 @@ pure function math_rotate_forward33(tensor,rot_tensor)
  real(pReal), dimension(3,3) ::  math_rotate_forward33
  real(pReal), dimension(3,3), intent(in) :: tensor, rot_tensor
 
- math_rotate_forward33 = math_mul33x33(rot_tensor,&
-                         math_mul33x33(tensor,math_transpose33(rot_tensor)))
+ math_rotate_forward33 = math_mul33x33(rot_tensor,math_mul33x33(tensor,transpose(rot_tensor)))
 
 end function math_rotate_forward33
 
@@ -2770,8 +2769,7 @@ pure function math_rotate_backward33(tensor,rot_tensor)
  real(pReal), dimension(3,3) ::  math_rotate_backward33
  real(pReal), dimension(3,3), intent(in) :: tensor, rot_tensor
 
- math_rotate_backward33 = math_mul33x33(math_transpose33(rot_tensor),&
-                           math_mul33x33(tensor,rot_tensor))
+ math_rotate_backward33 = math_mul33x33(transpose(rot_tensor),math_mul33x33(tensor,rot_tensor))
 
 end function math_rotate_backward33
 
@@ -2791,7 +2789,7 @@ pure function math_rotate_forward3333(tensor,rot_tensor)
 
  do i = 1_pInt,3_pInt; do j = 1_pInt,3_pInt; do k = 1_pInt,3_pInt; do l = 1_pInt,3_pInt
    do m = 1_pInt,3_pInt; do n = 1_pInt,3_pInt; do o = 1_pInt,3_pInt; do p = 1_pInt,3_pInt
-     math_rotate_forward3333(i,j,k,l) = math_rotate_forward3333(i,j,k,l) &
+     math_rotate_forward3333(m,n,o,p) = math_rotate_forward3333(i,j,k,l) &
                                       + rot_tensor(m,i) * rot_tensor(n,j) &
                                       * rot_tensor(o,k) * rot_tensor(p,l) * tensor(m,n,o,p)
  enddo; enddo; enddo; enddo; enddo; enddo; enddo; enddo
