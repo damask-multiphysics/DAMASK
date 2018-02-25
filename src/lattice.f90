@@ -1082,9 +1082,10 @@ module lattice
    lattice_nu, &
    lattice_trans_mu, &
    lattice_trans_nu
+ real(pReal),                              dimension(:,:,:,:), allocatable, public, protected :: &  ! with higher-order parameters (e.g. temperature-dependent)
+   lattice_thermalExpansion33
  real(pReal),                              dimension(:,:,:),   allocatable, public, protected :: &
    lattice_thermalConductivity33, &
-   lattice_thermalExpansion33, &
    lattice_damageDiffusion33, &
    lattice_vacancyfluxDiffusion33, &
    lattice_vacancyfluxMobility33, &
@@ -1380,8 +1381,8 @@ subroutine lattice_init
  allocate(lattice_C3333(3,3,3,3,Nphases),  source=0.0_pReal)
  allocate(lattice_trans_C66(6,6,Nphases),  source=0.0_pReal)
  allocate(lattice_trans_C3333(3,3,3,3,Nphases),  source=0.0_pReal)
+ allocate(lattice_thermalExpansion33     (3,3,3,Nphases), source=0.0_pReal)                       ! constant, linear, quadratic coefficients
  allocate(lattice_thermalConductivity33  (3,3,Nphases), source=0.0_pReal)
- allocate(lattice_thermalExpansion33     (3,3,Nphases), source=0.0_pReal)
  allocate(lattice_damageDiffusion33      (3,3,Nphases), source=0.0_pReal)
  allocate(lattice_vacancyfluxDiffusion33 (3,3,Nphases), source=0.0_pReal)
  allocate(lattice_vacancyfluxMobility33  (3,3,Nphases), source=0.0_pReal)
@@ -1545,11 +1546,17 @@ subroutine lattice_init
      case ('thermal_conductivity33')
        lattice_thermalConductivity33(3,3,section) = IO_floatValue(line,chunkPos,2_pInt)
      case ('thermal_expansion11')
-       lattice_thermalExpansion33(1,1,section) = IO_floatValue(line,chunkPos,2_pInt)
+         do i = 2_pInt, min(4,chunkPos(1))                                                        ! read up to three parameters (constant, linear, quadratic with T)
+           lattice_thermalExpansion33(1,1,i-1_pInt,section) = IO_floatValue(line,chunkPos,i)
+         enddo
      case ('thermal_expansion22')
-       lattice_thermalExpansion33(2,2,section) = IO_floatValue(line,chunkPos,2_pInt)
+         do i = 2_pInt, min(4,chunkPos(1))                                                        ! read up to three parameters (constant, linear, quadratic with T)
+           lattice_thermalExpansion33(2,2,i-1_pInt,section) = IO_floatValue(line,chunkPos,i)
+         enddo
      case ('thermal_expansion33')
-       lattice_thermalExpansion33(3,3,section) = IO_floatValue(line,chunkPos,2_pInt)
+         do i = 2_pInt, min(4,chunkPos(1))                                                        ! read up to three parameters (constant, linear, quadratic with T)
+           lattice_thermalExpansion33(3,3,i-1_pInt,section) = IO_floatValue(line,chunkPos,i)
+         enddo
      case ('specific_heat')
        lattice_specificHeat(section) = IO_floatValue(line,chunkPos,2_pInt)
      case ('vacancyformationenergy')
@@ -1756,22 +1763,24 @@ subroutine lattice_initializeStructure(myPhase,CoverA,CoverA_trans,a_fcc,a_bcc)
      end select
  end select
 
- lattice_thermalConductivity33(1:3,1:3,myPhase) = lattice_symmetrize33(lattice_structure(myPhase),&
-                                                                       lattice_thermalConductivity33(1:3,1:3,myPhase))
- lattice_thermalExpansion33(1:3,1:3,myPhase) = lattice_symmetrize33(lattice_structure(myPhase),&
-                                                                    lattice_thermalExpansion33(1:3,1:3,myPhase))
- lattice_DamageDiffusion33(1:3,1:3,myPhase) = lattice_symmetrize33(lattice_structure(myPhase),&
-                                                                 lattice_DamageDiffusion33(1:3,1:3,myPhase))
- lattice_vacancyfluxDiffusion33(1:3,1:3,myPhase) = lattice_symmetrize33(lattice_structure(myPhase),&
-                                                                 lattice_vacancyfluxDiffusion33(1:3,1:3,myPhase))
- lattice_vacancyfluxMobility33(1:3,1:3,myPhase) = lattice_symmetrize33(lattice_structure(myPhase),&
-                                                                 lattice_vacancyfluxMobility33(1:3,1:3,myPhase))
- lattice_PorosityDiffusion33(1:3,1:3,myPhase) = lattice_symmetrize33(lattice_structure(myPhase),&
-                                                                 lattice_PorosityDiffusion33(1:3,1:3,myPhase))
+ forall (i = 1_pInt:3_pInt) &
+   lattice_thermalExpansion33 (1:3,1:3,i,myPhase) = lattice_symmetrize33(lattice_structure(myPhase),&
+                                                                         lattice_thermalExpansion33   (1:3,1:3,i,myPhase))
+
+ lattice_thermalConductivity33  (1:3,1:3,myPhase) = lattice_symmetrize33(lattice_structure(myPhase),&
+                                                                         lattice_thermalConductivity33  (1:3,1:3,myPhase))
+ lattice_DamageDiffusion33      (1:3,1:3,myPhase) = lattice_symmetrize33(lattice_structure(myPhase),&
+                                                                         lattice_DamageDiffusion33      (1:3,1:3,myPhase))
+ lattice_vacancyfluxDiffusion33 (1:3,1:3,myPhase) = lattice_symmetrize33(lattice_structure(myPhase),&
+                                                                         lattice_vacancyfluxDiffusion33 (1:3,1:3,myPhase))
+ lattice_vacancyfluxMobility33  (1:3,1:3,myPhase) = lattice_symmetrize33(lattice_structure(myPhase),&
+                                                                         lattice_vacancyfluxMobility33  (1:3,1:3,myPhase))
+ lattice_PorosityDiffusion33    (1:3,1:3,myPhase) = lattice_symmetrize33(lattice_structure(myPhase),&
+                                                                         lattice_PorosityDiffusion33    (1:3,1:3,myPhase))
  lattice_hydrogenfluxDiffusion33(1:3,1:3,myPhase) = lattice_symmetrize33(lattice_structure(myPhase),&
-                                                                 lattice_hydrogenfluxDiffusion33(1:3,1:3,myPhase))
- lattice_hydrogenfluxMobility33(1:3,1:3,myPhase) = lattice_symmetrize33(lattice_structure(myPhase),&
-                                                                 lattice_hydrogenfluxMobility33(1:3,1:3,myPhase))
+                                                                         lattice_hydrogenfluxDiffusion33(1:3,1:3,myPhase))
+ lattice_hydrogenfluxMobility33 (1:3,1:3,myPhase) = lattice_symmetrize33(lattice_structure(myPhase),&
+                                                                         lattice_hydrogenfluxMobility33 (1:3,1:3,myPhase))
 
  select case(lattice_structure(myPhase))
 !--------------------------------------------------------------------------------------------------
