@@ -782,7 +782,7 @@ function utilities_maskedCompliance(rot_BC,mask_stress,C)
    if(debugGeneral) then
      write(6,'(/,a)') ' ... updating masked compliance ............................................'
      write(6,'(/,a,/,9(9(2x,f12.7,1x)/))',advance='no') ' Stiffness C (load) / GPa =',&
-                                                  transpose(temp99_Real)/1.e9_pReal
+                                                  transpose(temp99_Real)*1.0e-9_pReal
      flush(6)
    endif
    k = 0_pInt                                                                                       ! calculate reduced stiffness
@@ -837,7 +837,7 @@ function utilities_maskedCompliance(rot_BC,mask_stress,C)
  endif
  if(debugGeneral) then
    write(6,'(/,a,/,9(9(2x,f10.5,1x)/),/)',advance='no') &
-     ' Masked Compliance (load) / GPa =', transpose(temp99_Real*1.e-9_pReal)
+     ' Masked Compliance (load) * GPa =', transpose(temp99_Real)*1.0e9_pReal
    flush(6)
  endif
  utilities_maskedCompliance = math_Plain99to3333(temp99_Real)
