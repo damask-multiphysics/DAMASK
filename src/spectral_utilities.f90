@@ -70,7 +70,6 @@ module spectral_utilities
 ! derived types
  type, public :: tSolutionState                                                                     !< return type of solution from spectral solver variants
    logical       :: converged         = .true.
-   logical       :: regrid            = .false.
    logical       :: stagConverged     = .true.
    logical       :: termIll           = .false.
    integer(pInt) :: iterationsNeeded  = 0_pInt
