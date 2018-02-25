@@ -935,7 +935,6 @@ subroutine utilities_constitutiveResponse(P,P_av,C_volAvg,C_minmaxAvg,&
    debug_reset, &
    debug_info
  use math, only: &
-   math_transpose33, &
    math_rotate_forward33, &
    math_det33
  use mesh, only: &
@@ -994,10 +993,10 @@ subroutine utilities_constitutiveResponse(P,P_av,C_volAvg,C_minmaxAvg,&
  call MPI_Allreduce(MPI_IN_PLACE,P_av,9,MPI_DOUBLE,MPI_SUM,PETSC_COMM_WORLD,ierr)
  if (debugRotation) &
  write(6,'(/,a,/,3(3(2x,f12.4,1x)/))',advance='no') ' Piola--Kirchhoff stress (lab) / MPa =',&
-                                                     math_transpose33(P_av)*1.e-6_pReal
+                                                     transpose(P_av)*1.e-6_pReal
  P_av = math_rotate_forward33(P_av,rotation_BC)
  write(6,'(/,a,/,3(3(2x,f12.4,1x)/))',advance='no') ' Piola--Kirchhoff stress       / MPa =',&
-                                                     math_transpose33(P_av)*1.e-6_pReal
+                                                     transpose(P_av)*1.e-6_pReal
  flush(6)
 
  max_dPdF = 0.0_pReal
