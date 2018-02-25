@@ -333,7 +333,6 @@ subroutine Polarisation_formResidual(in,x_scal,f_scal,dummy,ierr)
    IO_intOut
  use math, only: &
    math_rotate_backward33, &
-   math_transpose33, &
    math_mul3333xx33, &
    math_invSym3333, &
    math_mul33x33
@@ -402,9 +401,9 @@ subroutine Polarisation_formResidual(in,x_scal,f_scal,dummy,ierr)
            trim(incInfo), ' @ Iteration ', itmin, '≤',totalIter, '≤', itmax
    if (iand(debug_level(debug_spectral),debug_spectralRotation) /= 0) &
      write(6,'(/,a,/,3(3(f12.7,1x)/))',advance='no') &
-             ' deformation gradient aim (lab) =', math_transpose33(math_rotate_backward33(F_aim,params%rotation_BC))
+             ' deformation gradient aim (lab) =', transpose(math_rotate_backward33(F_aim,params%rotation_BC))
    write(6,'(/,a,/,3(3(f12.7,1x)/))',advance='no') &
-             ' deformation gradient aim       =', math_transpose33(F_aim)
+             ' deformation gradient aim       =', transpose(F_aim)
    flush(6)
  endif newIteration
 
@@ -548,7 +547,6 @@ subroutine Polarisation_forward(guess,timeinc,timeinc_old,loadCaseTime,deformati
  use math, only: &
    math_mul33x33, &
    math_mul3333xx33, &
-   math_transpose33, &
    math_rotate_backward33
  use numerics, only: &
    worldrank
@@ -630,11 +628,7 @@ subroutine Polarisation_forward(guess,timeinc,timeinc_old,loadCaseTime,deformati
     C_volAvgLastInc    = C_volAvg
     C_minMaxAvgLastInc = C_minMaxAvg
 
-    if (guess) then                                                                                   ! QUESTION: better with a =  L ? x:y
-      F_aimDot = stress_BC%maskFloat * (F_aim - F_aim_lastInc)/timeinc_old                            ! initialize with correction based on last inc
-    else
-      F_aimDot = 0.0_pReal
-    endif
+    F_aimDot = merge(stress_BC%maskFloat*(F_aim-F_aim_lastInc)/timeinc_old, 0.0_pReal, guess)
     F_aim_lastInc = F_aim
     !--------------------------------------------------------------------------------------------------
     ! calculate rate for aim
@@ -676,16 +670,16 @@ subroutine Polarisation_forward(guess,timeinc,timeinc_old,loadCaseTime,deformati
       F_lambda33 = reshape(F_tau(1:9,i,j,k)-F(1:9,i,j,k),[3,3])
       F_lambda33 = math_mul3333xx33(S_scale,math_mul33x33(F_lambda33, &
                                   math_mul3333xx33(C_scale,&
-                                                   math_mul33x33(math_transpose33(F_lambda33),&
+                                                   math_mul33x33(transpose(F_lambda33),&
                                                                  F_lambda33)-math_I3))*0.5_pReal)&
                               + math_I3
       F_tau(1:9,i,j,k) = reshape(F_lambda33,[9])+F(1:9,i,j,k)
    enddo; enddo; enddo
  endif
 
-  nullify(F)
-  nullify(F_tau)
-  call DMDAVecRestoreArrayF90(da,solution_vec,FandF_tau,ierr); CHKERRQ(ierr)
+ nullify(F)
+ nullify(F_tau)
+ call DMDAVecRestoreArrayF90(da,solution_vec,FandF_tau,ierr); CHKERRQ(ierr)
 
 end subroutine Polarisation_forward
 
