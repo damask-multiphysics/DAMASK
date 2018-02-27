@@ -70,7 +70,6 @@ module spectral_utilities
 ! derived types
  type, public :: tSolutionState                                                                     !< return type of solution from spectral solver variants
    logical       :: converged         = .true.
-   logical       :: regrid            = .false.
    logical       :: stagConverged     = .true.
    logical       :: termIll           = .false.
    integer(pInt) :: iterationsNeeded  = 0_pInt
@@ -782,7 +781,7 @@ function utilities_maskedCompliance(rot_BC,mask_stress,C)
    if(debugGeneral) then
      write(6,'(/,a)') ' ... updating masked compliance ............................................'
      write(6,'(/,a,/,9(9(2x,f12.7,1x)/))',advance='no') ' Stiffness C (load) / GPa =',&
-                                                  transpose(temp99_Real)/1.e9_pReal
+                                                  transpose(temp99_Real)*1.0e-9_pReal
      flush(6)
    endif
    k = 0_pInt                                                                                       ! calculate reduced stiffness
@@ -837,7 +836,7 @@ function utilities_maskedCompliance(rot_BC,mask_stress,C)
  endif
  if(debugGeneral) then
    write(6,'(/,a,/,9(9(2x,f10.5,1x)/),/)',advance='no') &
-     ' Masked Compliance (load) / GPa =', transpose(temp99_Real*1.e-9_pReal)
+     ' Masked Compliance (load) * GPa =', transpose(temp99_Real)*1.0e9_pReal
    flush(6)
  endif
  utilities_maskedCompliance = math_Plain99to3333(temp99_Real)
@@ -935,7 +934,6 @@ subroutine utilities_constitutiveResponse(P,P_av,C_volAvg,C_minmaxAvg,&
    debug_reset, &
    debug_info
  use math, only: &
-   math_transpose33, &
    math_rotate_forward33, &
    math_det33
  use mesh, only: &
@@ -994,10 +992,10 @@ subroutine utilities_constitutiveResponse(P,P_av,C_volAvg,C_minmaxAvg,&
  call MPI_Allreduce(MPI_IN_PLACE,P_av,9,MPI_DOUBLE,MPI_SUM,PETSC_COMM_WORLD,ierr)
  if (debugRotation) &
  write(6,'(/,a,/,3(3(2x,f12.4,1x)/))',advance='no') ' Piola--Kirchhoff stress (lab) / MPa =',&
-                                                     math_transpose33(P_av)*1.e-6_pReal
+                                                     transpose(P_av)*1.e-6_pReal
  P_av = math_rotate_forward33(P_av,rotation_BC)
  write(6,'(/,a,/,3(3(2x,f12.4,1x)/))',advance='no') ' Piola--Kirchhoff stress       / MPa =',&
-                                                     math_transpose33(P_av)*1.e-6_pReal
+                                                     transpose(P_av)*1.e-6_pReal
  flush(6)
 
  max_dPdF = 0.0_pReal
