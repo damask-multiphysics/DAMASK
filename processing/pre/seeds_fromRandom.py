@@ -166,14 +166,15 @@ for name in filenames:
   grainEuler[2,:] *= 360.0                                                                          # phi_2    is uniformly distributed
 
   if not options.selective:
-    n = np.array(options.grid * options.fraction,dtype=int)                                         # find valid grid indices within fraction
+    n = np.maximum(np.ones(3),np.array(options.grid*options.fraction),
+                   dtype=int,casting='unsafe')                                                      # find max grid indices within fraction
     meshgrid = np.meshgrid(*map(np.arange,n),indexing='ij')                                         # create a meshgrid within fraction
-    
     coords = np.vstack((meshgrid[0],meshgrid[1],meshgrid[2])).reshape(3,n.prod()).T                 # assemble list of 3D coordinates
-    seeds = ((random.sample(coords,options.N)+np.random.random(options.N*3).reshape(options.N,3))/options.grid).T # pick options.N of those and rattle position
-
+    seeds = ((random.sample(coords,options.N)+np.random.random(options.N*3).reshape(options.N,3))\
+              / \
+             (n/options.fraction)).T                                                                # pick options.N of those, rattle position,
+                                                                                                    # and rescale to fall within fraction
   else:
-
     seeds = np.zeros((options.N,3),dtype=float)                                                     # seed positions array
     seeds[0] = np.random.random(3)*options.grid/max(options.grid)
     i = 1                                                                                           # start out with one given point
