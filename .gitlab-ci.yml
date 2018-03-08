@@ -324,6 +324,13 @@ HybridIA:
     - master
     - release
 
+TextureComponents:
+  stage: spectral
+  script: TextureComponents/test.py
+  except:
+    - master
+    - release
+
 ###################################################################################################
 Marc_compileIfort2014:
   stage: compileMarc2014
