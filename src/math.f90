@@ -1765,14 +1765,8 @@ end function math_sampleRandomOri
 !--------------------------------------------------------------------------------------------------
 !> @brief draw a sample from an Gaussian distribution around given orientation and Full Width
 ! at Half Maximum (FWHM)
-!> @details: for very small FWHM values the given orientation is returned.
-!> @details: for intermediate FWHM values, an orientation is picked from uniformly distributed
-!> @details: oreintations around the nominal orientation with maximum misorientation of 2*FWHM 
-!> @deatils: according to https://math.stackexchange.com/questions/13133 followed by
-!> @details: the application of a Gaussian filter.
-!> @details: for large FWHM values, a random orientation from a uniform distribution is picked
-!> @details: followed by tge aookucatuib if a Gaussian filter. Additionally, the misorientation is
-!> @details: limited to 2*FWHM,
+!> @details: A uniform misorientation (limited to 2*FWHM) is sampled followed by convolution with 
+! a Gausian distribution
 !--------------------------------------------------------------------------------------------------
 function math_sampleGaussOri(center,FWHM)
 
@@ -1781,35 +1775,25 @@ function math_sampleGaussOri(center,FWHM)
  real(pReal), dimension(3), intent(in) :: center 
  real(pReal) :: angle
  real(pReal), dimension(3)   :: math_sampleGaussOri, axis
- real(pReal), dimension(2)   :: rnd
+ real(pReal), dimension(4)   :: rnd
  real(pReal), dimension(3,3) :: R
 
- noScatter: if (FWHM < 0.1_pReal*INRAD) then
-   math_sampleGaussOri = center
- else noScatter
+ if (FWHM < 0.1_pReal*INRAD) then
+   R = math_I3
+ else
    GaussConvolution: do
-     selectiveSampling: if (FWHM*INRAD < 90.0_pReal) then
-       rnd = halton([3_pInt,6_pInt])
-       axis(1)    = rnd(1)*2.0_pReal-1.0_pReal                                                      ! uniform on [-1,1]
-       axis(2:3)  = [sqrt(1.0-axis(1)**2.0_pReal)*cos(rnd(2)*2.0*PI),&
-                     sqrt(1.0-axis(1)**2.0_pReal)*sin(rnd(2)*2.0*PI)]                               ! random axis
-       do
-         rnd = halton([14_pInt,10_pInt])
-         angle = (rnd(1)*(2.0_pReal*FWHM)**3.0_pReal)**(1.0_pReal/3.0_pReal)                        ! maximum misorientation of 2*FWHM
-         if (rnd(2) < sin(angle)**2.0_pReal/angle**2.0_pReal) exit                                  ! rejection sampling
-       enddo
-       R = math_axisAngleToR(axis,angle)
-     else selectiveSampling
-       R = math_EulerToR(math_sampleRandomOri())
-     endif selectiveSampling 
-       rnd = halton([8_pInt,11_pInt])
-       angle = math_EulerMisorientation([0.0_pReal,0.0_pReal,0.0_pReal],math_RtoEuler(R))
-       if (rnd(1) <= exp(-4.0_pReal*log(2.0_pReal)*(angle/FWHM)**2_pReal) .and. &                   ! rejection sampling (Gaussian)
-           angle < 2.0_pReal * FWHM) exit                                                           ! limit (in case of non-selective orientation selection
+     rnd = halton([8_pInt,3_pInt,6_pInt,11_pInt])
+     axis(1)    = rnd(1)*2.0_pReal-1.0_pReal                                                        ! uniform on [-1,1]
+     axis(2:3)  = [sqrt(1.0-axis(1)**2.0_pReal)*cos(rnd(2)*2.0*PI),&
+                   sqrt(1.0-axis(1)**2.0_pReal)*sin(rnd(2)*2.0*PI)]                                 ! random axis
+     angle = (rnd(3)-0.5_pReal)*4.0_pReal*FWHM                                                      ! rotation by [0, +-2 FWHM]
+     R = math_axisAngleToR(axis,angle)
+     angle = math_EulerMisorientation([0.0_pReal,0.0_pReal,0.0_pReal],math_RtoEuler(R))
+     if (rnd(4) <= exp(-4.0_pReal*log(2.0_pReal)*(angle/FWHM)**2_pReal)) exit                       ! rejection sampling (Gaussian)
    enddo GaussConvolution
+ endif
 
-   math_sampleGaussOri = math_RtoEuler(math_mul33x33(R,math_EulerToR(center)))
- endif noScatter
+ math_sampleGaussOri = math_RtoEuler(math_mul33x33(R,math_EulerToR(center)))
 
 end function math_sampleGaussOri
 
@@ -1817,8 +1801,6 @@ end function math_sampleGaussOri
 !--------------------------------------------------------------------------------------------------
 !> @brief draw a sample from an Gaussian distribution around given fiber texture and Full Width
 ! at Half Maximum (FWHM)
-!>@details: vector in cone around axis is uniformly distributed according to 
-! https://math.stackexchange.com/questions/56784 
 !-------------------------------------------------------------------------------------------------
 function math_sampleFiberOri(alpha,beta,FWHM)
 
@@ -1828,38 +1810,49 @@ function math_sampleFiberOri(alpha,beta,FWHM)
  real(pReal), dimension(3) :: math_sampleFiberOri,  &
    fInC,&                                                                                           !< fiber axis in crystal coordinate system
    fInS,&                                                                                           !< fiber axis in sample coordinate system
-   axis
- real(pReal), dimension(5) :: rnd
- real(pReal), dimension(3,3) ::  &
-   R_o, &                                                                                           !< rotation to aling fiber axis in crystal and sample system 
-   R_f, &                                                                                           !< random rotation along fiber axis [0, 2*Pi[
-   R_p                                                                                              !< deviation of axis alingment, bound by 2*FWHM
- real(pReal) :: angle
+   u
+ real(pReal), dimension(3) :: rnd
+ real(pReal), dimension(:),allocatable :: a                                                         !< 2D vector to tilt
+ integer(pInt), dimension(:),allocatable :: idx                                                     !< components of 2D vector
+ real(pReal), dimension(3,3) :: R                                                                   !< Rotation matrix (composed of three components)
+ real(pReal):: angle,c
+ integer(pInt):: j,&                                                                                !< index of smallest component
+   i
 
  fInC = [sin(alpha(1))*cos(alpha(2)), sin(alpha(1))*sin(alpha(2)), cos(alpha(1))]
  fInS = [sin(beta(1))*cos(beta(2)),   sin(beta(1))*sin(beta(2)),   cos(beta(1))]
 
- R_o = math_EulerAxisAngleToR(math_crossproduct(fInC,fInS),-acos(dot_product(fInC,fInS)))
+ R = math_EulerAxisAngleToR(math_crossproduct(fInC,fInS),-acos(dot_product(fInC,fInS)))             !< rotation to align fiber axis in crystal and sample system
 
- if (FWHM > 0.0_pReal) then
+ rnd = halton([7_pInt,10_pInt,3_pInt])
+ R = math_mul33x33(R,math_EulerAxisAngleToR(fInS,rnd(1)*2.0_pReal*PI))                              !< additional rotation (0..360deg) perpendicular to fiber axis
+
+ if (FWHM > 0.1_pReal*INRAD) then
+   reducedTo2D: do i=1_pInt,3_pInt
+     if (i /= minloc(abs(fInS),1)) then
+       a=[a,fInS(i)]
+       idx=[b,i]
+     else
+       j = i
+     endif
+   enddo reducedTo2D
    GaussConvolution: do
-     rnd = halton(int([5,10,3,9,17],pInt))
-     rnd(1:2) = [cos(FWHM*2.0_pReal),-1.0_pReal] + rnd(1:2)*[1.0_pReal - cos(FWHM*2.0_pReal),2.0_pReal]
-     axis = [sqrt(1.0_pReal - rnd(2)**2.0_pReal)*sin(rnd(1)),&
-             sqrt(1.0_pReal - rnd(2)**2.0_pReal)*cos(rnd(1)),rnd(2)]
-     angle = acos(dot_product([0.0_pReal,0.0_pReal,1.0_pReal],axis))
-     if (rnd(3) <= exp(-4.0_pReal*log(2.0_pReal)*(angle/FWHM)**2.0_pReal)) exit
-   enddo GaussConvolution
-   if (rnd(4) <= 0.5) angle = -angle
-   R_p = math_EulerAxisAngleToR(math_crossproduct(axis,[0.0_pReal,0.0_pReal,1.0_pReal]),angle)
- else
-   R_p = math_I3
-   rnd = halton(int([5,10,3,9,17],pInt))
- endif
- 
- R_f = math_EulerAxisAngleToR(fInS,rnd(5)*2.0_pReal*PI)
+     angle = (rnd(2)-0.5_pReal)*4.0_pReal*FWHM                                                      ! rotation by [0, +-2 FWHM]
+     ! solve cos(angle) = dot_product(fInS,u) under the assumption that their smallest component is the same
+     c = cos(angle)-fInS(j)**2
+     u(idx(2)) = -(2.0_pReal*c*a(2) + sqrt(4*((c*a(2))**2-sum(a**2)*(c**2-a(1)**2*(1-fInS(j)**2)))))/&
+                                                                                      (2*sum(a**2))
+     u(idx(1)) = sqrt(1-u(idx(2))**2-fInS(j)**2)
+     u(j)    = fInS(j)
 
- math_sampleFiberOri = math_RtoEuler(math_mul33x33(R_p,math_mul33x33(R_f,R_o)))
+     rejectionSampling: if (rnd(3) <= exp(-4.0_pReal*log(2.0_pReal)*(angle/FWHM)**2_pReal)) then
+       R = math_mul33x33(R,math_EulerAxisAngleToR(math_crossproduct(u,fInS),angle))                 ! tilt around direction of smallest component
+       exit
+     endif rejectionSampling
+     rnd = halton([7_pInt,10_pInt,3_pInt])
+   enddo GaussConvolution
+ endif
+ math_sampleFiberOri = math_RtoEuler(R)
 
 end function math_sampleFiberOri
 
