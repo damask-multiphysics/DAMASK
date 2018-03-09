@@ -15,7 +15,7 @@ module DAMASK_interface
  private
 #include <petsc/finclude/petscsys.h>
  logical,             public, protected :: appendToOutFile = .false.                                !< Append to existing spectralOut file (in case of restart, not in case of regridding)
- integer(pInt),       public, protected :: spectralRestartInc = 1_pInt                              !< Increment at which calculation starts
+ integer(pInt),       public, protected :: spectralRestartInc = 0_pInt                              !< Increment at which calculation starts
  character(len=1024), public, protected :: &
    geometryFile = '', &                                                                             !< parameter given for geometry file
    loadCaseFile = ''                                                                                !< parameter given for load case file
@@ -83,7 +83,9 @@ subroutine DAMASK_interface_init()
 !--------------------------------------------------------------------------------------------------
 ! PETSc Init
 #ifdef _OPENMP
- call MPI_Init_Thread(MPI_THREAD_FUNNELED,threadLevel,ierr);CHKERRQ(ierr)                           ! in case of OpenMP, don't rely on PETScInitialize doing MPI init
+ ! If openMP is enabled, check if the MPI libary supports it and initialize accordingly.
+ ! Otherwise, the first call to PETSc will do the initialization.
+ call MPI_Init_Thread(MPI_THREAD_FUNNELED,threadLevel,ierr);CHKERRQ(ierr)
  if (threadLevel<MPI_THREAD_FUNNELED) then
    write(6,'(a)') ' MPI library does not support OpenMP'
    call quit(1_pInt)
@@ -165,12 +167,12 @@ subroutine DAMASK_interface_init()
        write(6,'(a)')  '        For further configuration place "numerics.config"'
        write(6,'(a)')'            and "debug.config" in that directory.'
        write(6,'(/,a)')'   --restart XX'
-       write(6,'(a)')  '        Reads in total increment No. XX-1 and continues to'
-       write(6,'(a)')  '            calculate total increment No. XX.'
-       write(6,'(a)')  '        Appends to existing results file '
+       write(6,'(a)')  '        Reads in increment XX and continues with calculating'
+       write(6,'(a)')  '            increment XX+1 based on this.'
+       write(6,'(a)')  '        Appends to existing results file'
        write(6,'(a)')  '            "NameOfGeom_NameOfLoadFile.spectralOut".'
-       write(6,'(a)')  '        Works only if the restart information for total increment'
-       write(6,'(a)')  '             No. XX-1 is available in the working directory.'
+       write(6,'(a)')  '        Works only if the restart information for increment XX'
+       write(6,'(a)')  '            is available in the working directory.'
        write(6,'(/,a)')' -----------------------------------------------------------------------'
        write(6,'(a)')  ' Help:'
        write(6,'(/,a)')'   --help'
@@ -199,20 +201,20 @@ subroutine DAMASK_interface_init()
 
  call get_environment_variable('USER',userName)
  error = getHostName(hostName)
- write(6,'(a,a)')      ' Host name:             ', trim(hostName)
- write(6,'(a,a)')      ' User name:             ', trim(userName)
- write(6,'(a,a)')      ' Command line call:     ', trim(commandLine)
- if (len(trim(workingDirArg))>0) &
-   write(6,'(a,a)')    ' Working dir argument:  ', trim(workingDirArg)
- write(6,'(a,a)')      ' Geometry argument:     ', trim(geometryArg)
- write(6,'(a,a)')      ' Loadcase argument:     ', trim(loadcaseArg)
- write(6,'(a,a)')      ' Working directory:     ', trim(getSolverWorkingDirectoryName())
- write(6,'(a,a)')      ' Geometry file:         ', trim(geometryFile)
- write(6,'(a,a)')      ' Loadcase file:         ', trim(loadCaseFile)
- write(6,'(a,a)')      ' Solver job name:       ', trim(getSolverJobName())
- if (SpectralRestartInc > 1_pInt) &
-   write(6,'(a,i6.6)') ' Restart at increment:  ', spectralRestartInc
- write(6,'(a,l1,/)')   ' Append to result file: ', appendToOutFile
+ write(6,'(a,a)')      ' Host name:              ', trim(hostName)
+ write(6,'(a,a)')      ' User name:              ', trim(userName)
+ write(6,'(a,a)')      ' Command line call:      ', trim(commandLine)
+ if (len(trim(workingDirArg)) > 0) &
+   write(6,'(a,a)')    ' Working dir argument:   ', trim(workingDirArg)
+ write(6,'(a,a)')      ' Geometry argument:      ', trim(geometryArg)
+ write(6,'(a,a)')      ' Loadcase argument:      ', trim(loadcaseArg)
+ write(6,'(a,a)')      ' Working directory:      ', trim(getSolverWorkingDirectoryName())
+ write(6,'(a,a)')      ' Geometry file:          ', trim(geometryFile)
+ write(6,'(a,a)')      ' Loadcase file:          ', trim(loadCaseFile)
+ write(6,'(a,a)')      ' Solver job name:        ', trim(getSolverJobName())
+ if (SpectralRestartInc > 0_pInt) &
+   write(6,'(a,i6.6)') ' Restart from increment: ', spectralRestartInc
+ write(6,'(a,l1,/)')   ' Append to result file:  ', appendToOutFile
 
 end subroutine DAMASK_interface_init
 

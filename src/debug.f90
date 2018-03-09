@@ -102,7 +102,7 @@ contains
 !> @brief reads in parameters from debug.config and allocates arrays
 !--------------------------------------------------------------------------------------------------
 subroutine debug_init
-#ifdef __GFORTRAN__
+#if defined(__GFORTRAN__) || __INTEL_COMPILER >= 1800
  use, intrinsic :: iso_fortran_env, only: &
    compiler_version, &
    compiler_options

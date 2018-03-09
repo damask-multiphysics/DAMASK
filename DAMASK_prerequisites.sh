@@ -9,14 +9,28 @@ OUTFILE="system_report.txt"
 echo ===========================================
 echo +  Generating $OUTFILE                    
 echo +  Send to damask@mpie.de for support
+echo +  view with \'cat $OUTFILE\'
 echo ===========================================
 
-
+function getDetails {
+if which $1 &> /dev/null; then
+  echo ----------------------------------------------------------------------------------------------
+  echo $1:
+  echo ----------------------------------------------------------------------------------------------
+  echo + location:
+  which $1
+  echo + $1 $2:
+  $1 $2
+  echo -e '\n'
+else
+  echo $ does not exist
+fi
+}
 
 # redirect STDOUT and STDERR to logfile
 # https://stackoverflow.com/questions/11229385/redirect-all-output-in-a-bash-script-when-using-set-x^
 exec > $OUTFILE 2>&1
-
+ 
 # directory, file is not a symlink by definition
 # https://stackoverflow.com/questions/59895/getting-the-source-directory-of-a-bash-script-from-within
 DAMASK_ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
@@ -28,13 +42,19 @@ echo
 echo ==============================================================================================
 echo DAMASK settings
 echo ==============================================================================================
+echo ----------------------------------------------------------------------------------------------
 echo DAMASK_ROOT:
+echo ----------------------------------------------------------------------------------------------
 echo $DAMASK_ROOT
 echo
+echo ----------------------------------------------------------------------------------------------
 echo Version:
+echo ----------------------------------------------------------------------------------------------
 cat  VERSION
 echo
+echo ----------------------------------------------------------------------------------------------
 echo Settings in CONFIG:
+echo ----------------------------------------------------------------------------------------------
 cat  CONFIG
 echo
 echo ==============================================================================================
@@ -46,6 +66,8 @@ echo PATH: $PATH
 echo LD_LIBRARY_PATH: $LD_LIBRARY_PATH
 echo PYTHONPATH: $PYTHONPATH
 echo SHELL: $SHELL
+echo PETSC_ARCH: $PETSC_ARCH
+echo PETSC_DIR: $PETSC_DIR
 echo 
 echo ==============================================================================================
 echo Python
@@ -53,16 +75,14 @@ echo ===========================================================================
 
 DEFAULT_PYTHON=python2.7
 for executable in python python2 python3 python2.7; do
-  if which $executable &> /dev/null; then
-    echo $executable version: $($executable --version 2>&1)
-  else
-    echo $executable does not exist
-  fi
+  getDetails $executable '--version'
 done
-echo Details on $DEFAULT_PYTHON: $(ls -la $(which $DEFAULT_PYTHON))
-echo
+echo ----------------------------------------------------------------------------------------------
+echo Details on $DEFAULT_PYTHON:
+echo ----------------------------------------------------------------------------------------------
+echo $(ls -la $(which $DEFAULT_PYTHON))
 for module in numpy scipy;do
-  echo ----------------------------------------------------------------------------------------------
+  echo -e '\n----------------------------------------------------------------------------------------------'
   echo $module
   echo ----------------------------------------------------------------------------------------------
   $DEFAULT_PYTHON -c "import $module; \
@@ -86,31 +106,36 @@ echo ===========================================================================
 echo GCC
 echo ==============================================================================================
 for executable in gcc g++ gfortran ;do
-  if which $executable &> /dev/null; then
-    echo $(which $executable) version: $($executable --version 2>&1)
-  else
-     echo $executable does not exist
-  fi
+  getDetails $executable '--version'
 done
 echo
 echo ==============================================================================================
 echo Intel Compiler Suite
 echo ==============================================================================================
 for executable in icc icpc ifort ;do
-  if which $executable &> /dev/null; then
-    echo $(which $executable) version: $($executable --version 2>&1)
-  else
-    echo $executable does not exist
-  fi
+  getDetails $executable '--version'
 done
 echo
 echo ==============================================================================================
 echo MPI Wrappers
 echo ==============================================================================================
-for executable in mpicc mpiCC mpicxx mpicxx mpifort mpif90 mpif77; do
-  if which $executable &> /dev/null; then
-    echo $(which $executable) version: $($executable --show 2>&1)
-  else
-     echo $executable does not exist
-  fi
+for executable in mpicc mpiCC mpic++ mpicpc mpicxx mpifort mpif90 mpif77; do
+  getDetails $executable '-show'
 done
+echo
+echo ==============================================================================================
+echo MPI Launchers
+echo ==============================================================================================
+for executable in mpirun mpiexec; do
+  getDetails $executable '--version'
+done
+echo
+echo ==============================================================================================
+echo Abaqus
+echo ==============================================================================================
+cd installation/mods_Abaqus                                                                         # to have the right environment file
+for executable in abaqus abq2016 abq2017; do
+  getDetails $executable 'information=all'
+done
+cd ../..
+

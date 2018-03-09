@@ -55,14 +55,14 @@ module crystallite
    crystallite_Li0, &                                                                               !< intermediate velocitiy grad at start of FE inc
    crystallite_partionedLi0,&                                                                       !< intermediate velocity grad at start of homog inc
    crystallite_Fe, &                                                                                !< current "elastic" def grad (end of converged time step)
-   crystallite_P,  &                                                                                !< 1st Piola-Kirchhoff stress per grain
-   crystallite_subF                                                                                 !< def grad to be reached at end of crystallite inc
+   crystallite_P                                                                                    !< 1st Piola-Kirchhoff stress per grain
  real(pReal),                dimension(:,:,:,:,:),    allocatable, private :: &
    crystallite_subFe0,&                                                                             !< "elastic" def grad at start of crystallite inc
    crystallite_invFp, &                                                                             !< inverse of current plastic def grad (end of converged time step)
    crystallite_subFp0,&                                                                             !< plastic def grad at start of crystallite inc
    crystallite_invFi, &                                                                             !< inverse of current intermediate def grad (end of converged time step)
    crystallite_subFi0,&                                                                             !< intermediate def grad at start of crystallite inc
+   crystallite_subF,  &                                                                             !< def grad to be reached at end of crystallite inc
    crystallite_subF0, &                                                                             !< def grad at start of crystallite inc
    crystallite_subLp0,&                                                                             !< plastic velocity grad at start of crystallite inc
    crystallite_subLi0,&                                                                             !< intermediate velocity grad at start of crystallite inc
@@ -137,7 +137,7 @@ contains
 !> @brief allocates and initialize per grain variables
 !--------------------------------------------------------------------------------------------------
 subroutine crystallite_init
-#ifdef __GFORTRAN__
+#if defined(__GFORTRAN__) || __INTEL_COMPILER >= 1800
  use, intrinsic :: iso_fortran_env, only: &
    compiler_version, &
    compiler_options
@@ -193,7 +193,7 @@ subroutine crystallite_init
    c, &                                                                                             !< counter in integration point component loop
    i, &                                                                                             !< counter in integration point loop
    e, &                                                                                             !< counter in element loop
-   o, &                                                                                             !< counter in output loop
+   o = 0_pInt, &                                                                                    !< counter in output loop
    r, &                                                                                             !< counter in crystallite loop
    cMax, &                                                                                          !< maximum number of  integration point components
    iMax, &                                                                                          !< maximum number of integration points
@@ -1250,14 +1250,16 @@ subroutine crystallite_integrateStateRK4()
  use numerics, only: &
    numerics_integrationMode
  use debug, only: &
+#ifdef DEBUG
+   debug_e, &
+   debug_i, &
+   debug_g, &
+#endif
    debug_level, &
    debug_crystallite, &
    debug_levelBasic, &
    debug_levelExtensive, &
    debug_levelSelective, &
-   debug_e, &
-   debug_i, &
-   debug_g, &
    debug_StateLoopDistribution
  use FEsolving, only: &
    FEsolving_execElem, &
@@ -1544,14 +1546,16 @@ subroutine crystallite_integrateStateRKCK45()
  use, intrinsic :: &
    IEEE_arithmetic
  use debug, only: &
+#ifdef DEBUG
+   debug_e, &
+   debug_i, &
+   debug_g, &
+#endif
    debug_level, &
    debug_crystallite, &
    debug_levelBasic, &
    debug_levelExtensive, &
    debug_levelSelective, &
-   debug_e, &
-   debug_i, &
-   debug_g, &
    debug_StateLoopDistribution
  use numerics, only: &
    rTol_crystalliteState, &
@@ -2047,14 +2051,16 @@ subroutine crystallite_integrateStateAdaptiveEuler()
  use, intrinsic :: &
    IEEE_arithmetic
  use debug, only: &
+#ifdef DEBUG
+   debug_e, &
+   debug_i, &
+   debug_g, &
+#endif
    debug_level, &
    debug_crystallite, &
    debug_levelBasic, &
    debug_levelExtensive, &
    debug_levelSelective, &
-   debug_e, &
-   debug_i, &
-   debug_g, &
    debug_StateLoopDistribution
  use numerics, only: &
    rTol_crystalliteState, &
@@ -2407,14 +2413,16 @@ subroutine crystallite_integrateStateEuler()
  use, intrinsic :: &
    IEEE_arithmetic
  use debug, only: &
+#ifdef DEBUG
+   debug_e, &
+   debug_i, &
+   debug_g, &
+#endif
    debug_level, &
    debug_crystallite, &
    debug_levelBasic, &
    debug_levelExtensive, &
    debug_levelSelective, &
-   debug_e, &
-   debug_i, &
-   debug_g, &
    debug_StateLoopDistribution
  use numerics, only: &
    numerics_integrationMode, &
@@ -2630,9 +2638,11 @@ subroutine crystallite_integrateStateFPI()
  use, intrinsic :: &
    IEEE_arithmetic
  use debug, only: &
+#ifdef DEBUG
    debug_e, &
    debug_i, &
    debug_g, &
+#endif
    debug_level,&
    debug_crystallite, &
    debug_levelBasic, &
@@ -3094,14 +3104,16 @@ logical function crystallite_stateJump(ipc,ip,el)
    IEEE_arithmetic
  use prec, only: &
    dNeq0
+#ifdef DEBUG
  use debug, only: &
+   debug_e, &
+   debug_i, &
+   debug_g, &
    debug_level, &
    debug_crystallite, &
    debug_levelExtensive, &
-   debug_levelSelective, &
-   debug_e, &
-   debug_i, &
-   debug_g
+   debug_levelSelective
+#endif
  use material, only: &
    plasticState, &
    sourceState, &
@@ -3231,9 +3243,11 @@ logical function crystallite_integrateStress(&
                          debug_levelBasic, &
                          debug_levelExtensive, &
                          debug_levelSelective, &
+#ifdef DEBUG
                          debug_e, &
                          debug_i, &
                          debug_g, &
+#endif
                          debug_cumLpCalls, &
                          debug_cumLpTicks, &
                          debug_StressLoopLpDistribution, &
@@ -3259,7 +3273,9 @@ logical function crystallite_integrateStress(&
                          math_Plain33to9, &
                          math_Plain9to33, &
                          math_Plain99to3333
+#ifdef DEBUG
  use mesh, only:         mesh_element
+#endif
 
  implicit none
  integer(pInt), intent(in)::         el, &                                                           ! element index
@@ -3323,8 +3339,8 @@ logical function crystallite_integrateStress(&
                                      p, &
                                      jacoCounterLp, &
                                      jacoCounterLi                                                    ! counters to check for Jacobian update
- integer(pLongInt)                   tick, &
-                                     tock, &
+ integer(pLongInt) ::                tick = 0_pLongInt, &
+                                     tock = 0_pLongInt, &
                                      tickrate, &
                                      maxticks
 

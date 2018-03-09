@@ -82,7 +82,7 @@ end subroutine CPFEM_initAll
 !> @brief allocate the arrays defined in module CPFEM and initialize them
 !--------------------------------------------------------------------------------------------------
 subroutine CPFEM_init
-#ifdef __GFORTRAN__
+#if defined(__GFORTRAN__) || __INTEL_COMPILER >= 1800
  use, intrinsic :: iso_fortran_env, only: &
    compiler_version, &
    compiler_options
@@ -140,36 +140,28 @@ subroutine CPFEM_init
    write(rankStr,'(a1,i0)')'_',worldrank
 
    call IO_read_intFile(777,'recordedPhase'//trim(rankStr),modelName,size(material_phase))
-   read (777,rec=1) material_phase
-   close (777)
+   read (777,rec=1) material_phase;       close (777)
 
    call IO_read_realFile(777,'convergedF'//trim(rankStr),modelName,size(crystallite_F0))
-   read (777,rec=1) crystallite_F0
-   close (777)
+   read (777,rec=1) crystallite_F0;       close (777)
 
    call IO_read_realFile(777,'convergedFp'//trim(rankStr),modelName,size(crystallite_Fp0))
-   read (777,rec=1) crystallite_Fp0
-   close (777)
+   read (777,rec=1) crystallite_Fp0;      close (777)
 
    call IO_read_realFile(777,'convergedFi'//trim(rankStr),modelName,size(crystallite_Fi0))
-   read (777,rec=1) crystallite_Fi0
-   close (777)
+   read (777,rec=1) crystallite_Fi0;      close (777)
 
    call IO_read_realFile(777,'convergedLp'//trim(rankStr),modelName,size(crystallite_Lp0))
-   read (777,rec=1) crystallite_Lp0
-   close (777)
+   read (777,rec=1) crystallite_Lp0;      close (777)
 
    call IO_read_realFile(777,'convergedLi'//trim(rankStr),modelName,size(crystallite_Li0))
-   read (777,rec=1) crystallite_Li0
-   close (777)
+   read (777,rec=1) crystallite_Li0;      close (777)
 
    call IO_read_realFile(777,'convergeddPdF'//trim(rankStr),modelName,size(crystallite_dPdF0))
-   read (777,rec=1) crystallite_dPdF0
-   close (777)
+   read (777,rec=1) crystallite_dPdF0;    close (777)
 
    call IO_read_realFile(777,'convergedTstar'//trim(rankStr),modelName,size(crystallite_Tstar0_v))
-   read (777,rec=1) crystallite_Tstar0_v
-   close (777)
+   read (777,rec=1) crystallite_Tstar0_v; close (777)
 
    call IO_read_realFile(777,'convergedStateConst'//trim(rankStr),modelName)
    m = 0_pInt
@@ -296,25 +288,25 @@ if (restartWrite) then
   write(rankStr,'(a1,i0)')'_',worldrank
 
   call IO_write_jobRealFile(777,'recordedPhase'//trim(rankStr),size(material_phase))
-  write (777,rec=1) material_phase; close (777)
+  write (777,rec=1) material_phase;       close (777)
 
   call IO_write_jobRealFile(777,'convergedF'//trim(rankStr),size(crystallite_F0))
-  write (777,rec=1) crystallite_F0; close (777)
+  write (777,rec=1) crystallite_F0;       close (777)
 
   call IO_write_jobRealFile(777,'convergedFp'//trim(rankStr),size(crystallite_Fp0))
-  write (777,rec=1) crystallite_Fp0; close (777)
+  write (777,rec=1) crystallite_Fp0;      close (777)
 
   call IO_write_jobRealFile(777,'convergedFi'//trim(rankStr),size(crystallite_Fi0))
-  write (777,rec=1) crystallite_Fi0; close (777)
+  write (777,rec=1) crystallite_Fi0;      close (777)
 
   call IO_write_jobRealFile(777,'convergedLp'//trim(rankStr),size(crystallite_Lp0))
-  write (777,rec=1) crystallite_Lp0; close (777)
+  write (777,rec=1) crystallite_Lp0;      close (777)
 
   call IO_write_jobRealFile(777,'convergedLi'//trim(rankStr),size(crystallite_Li0))
-  write (777,rec=1) crystallite_Li0; close (777)
+  write (777,rec=1) crystallite_Li0;      close (777)
 
   call IO_write_jobRealFile(777,'convergeddPdF'//trim(rankStr),size(crystallite_dPdF0))
-  write (777,rec=1) crystallite_dPdF0; close (777)
+  write (777,rec=1) crystallite_dPdF0;    close (777)
 
   call IO_write_jobRealFile(777,'convergedTstar'//trim(rankStr),size(crystallite_Tstar0_v))
   write (777,rec=1) crystallite_Tstar0_v; close (777)

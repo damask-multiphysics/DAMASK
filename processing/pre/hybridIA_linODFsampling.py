@@ -251,7 +251,7 @@ for name in filenames:
   table.head_read()
 
   errors = []
-  labels = ['phi1','Phi','phi2','intensity']
+  labels = ['1_euler','2_euler','3_euler','intensity']
   for i,index in enumerate(table.label_index(labels)):
     if index < 0: errors.append('label {} not present.'.format(labels[i]))
   

@@ -7,7 +7,7 @@
 !> results
 !--------------------------------------------------------------------------------------------------
 program DAMASK_spectral
-#ifdef __GFORTRAN__
+#if defined(__GFORTRAN__) || __INTEL_COMPILER >= 1800
  use, intrinsic :: iso_fortran_env, only: &
    compiler_version, &
    compiler_options
@@ -78,8 +78,7 @@ program DAMASK_spectral
    FIELD_UNDEFINED_ID, &
    FIELD_MECH_ID, &
    FIELD_THERMAL_ID, &
-   FIELD_DAMAGE_ID, &
-   utilities_calcPlasticity
+   FIELD_DAMAGE_ID
  use spectral_mech_Basic
  use spectral_mech_AL
  use spectral_mech_Polarisation
@@ -157,19 +156,6 @@ program DAMASK_spectral
    MPI_finalize, &
    MPI_allreduce, &
    PETScFinalize
-!--------------------------------------------------------------------------------------------------
-! variables related to stop criterion for yielding
- real(pReal) :: plasticWorkOld, plasticWorkNew, &                                                   ! plastic work
- eqTotalStrainOld,  eqTotalStrainNew, &                                                             ! total equivalent strain
- eqPlasticStrainOld, eqPlasticStrainNew, &                                                          ! total equivalent plastic strain
- eqStressOld, eqStressNew , &                                                                       ! equivalent stress
- yieldStopValue
- real(pReal), dimension(3,3) :: yieldStress,yieldStressOld,yieldStressNew, &
-   plasticStrainOld, plasticStrainNew, plasticStrainRate
- integer(pInt) :: yieldResUnit = 0_pInt
- integer(pInt) :: stressstrainUnit = 0_pInt
- character(len=13)  :: stopFlag
- logical :: yieldStop, yieldStopSatisfied
 
 !--------------------------------------------------------------------------------------------------
 ! init DAMASK (all modules)
@@ -227,8 +213,6 @@ program DAMASK_spectral
 
 !--------------------------------------------------------------------------------------------------
 ! reading the load case and assign values to the allocated data structure
- yieldStop = .False.
- yieldStopSatisfied = .False.
  rewind(FILEUNIT)
  do
    line = IO_read(FILEUNIT)
@@ -303,30 +287,10 @@ program DAMASK_spectral
            temp_valueVector(j) = IO_floatValue(line,chunkPos,i+j)
          enddo
          loadCases(currentLoadCase)%rotation = math_plain9to33(temp_valueVector)
-       case('totalstrain')
-         yieldStop = .True.
-         stopFlag = 'totalStrain'
-         yieldStopValue = IO_floatValue(line,chunkPos,i+1_pInt)
-       case('plasticstrain')
-         yieldStop = .True.
-         stopFlag = 'plasticStrain'
-         yieldStopValue = IO_floatValue(line,chunkPos,i+1_pInt)
-       case('plasticwork')
-         yieldStop = .True.
-         stopFlag = 'plasticWork'
-         yieldStopValue = IO_floatValue(line,chunkPos,i+1_pInt)
      end select
  enddo; enddo
  close(FILEUNIT)
  
- if(yieldStop) then                                                                                 ! initialize variables related to yield stop
-   yieldStressNew = 0.0_pReal
-   plasticStrainNew = 0.0_pReal
-   eqStressNew = 0.0_pReal
-   eqTotalStrainNew = 0.0_pReal
-   eqPlasticStrainNew = 0.0_pReal
-   plasticWorkNew = 0.0_pReal
- endif
 !--------------------------------------------------------------------------------------------------
 ! consistency checks and output of load case
  loadCases(1)%followFormerTrajectory = .false.                                                      ! cannot guess along trajectory for first inc of first currentLoadCase
@@ -387,7 +351,7 @@ program DAMASK_spectral
      if (loadCases(currentLoadCase)%outputfrequency < 1_pInt)  errorID = 836_pInt                   ! non-positive result frequency
      write(6,'(2x,a,i5)')    'output  frequency:  ', &
                 loadCases(currentLoadCase)%outputfrequency
-     write(6,'(2x,a,i5,/)')    'restart frequency:  ', &
+     write(6,'(2x,a,i5,/)')  'restart frequency:  ', &
                 loadCases(currentLoadCase)%restartfrequency
      if (errorID > 0_pInt) call IO_error(error_ID = errorID, ext_msg = loadcase_string)             ! exit with error message
    enddo checkLoadcases
@@ -429,23 +393,23 @@ program DAMASK_spectral
 !--------------------------------------------------------------------------------------------------
 ! write header of output file
  if (worldrank == 0) then
-   if (.not. appendToOutFile) then                                                                    ! after restart, append to existing results file
+   if (.not. appendToOutFile) then                                                                  ! after restart, append to existing results file
      open(newunit=resUnit,file=trim(getSolverWorkingDirectoryName())//trim(getSolverJobName())//&
                                  '.spectralOut',form='UNFORMATTED',status='REPLACE')
-     write(resUnit) 'load:',       trim(loadCaseFile)                                                 ! ... and write header
+     write(resUnit) 'load:',       trim(loadCaseFile)                                               ! ... and write header
      write(resUnit) 'workingdir:', trim(getSolverWorkingDirectoryName())
      write(resUnit) 'geometry:',   trim(geometryFile)
      write(resUnit) 'grid:',       grid
      write(resUnit) 'size:',       geomSize
      write(resUnit) 'materialpoint_sizeResults:', materialpoint_sizeResults
      write(resUnit) 'loadcases:',  size(loadCases)
-     write(resUnit) 'frequencies:', loadCases%outputfrequency                                         ! one entry per LoadCase
-     write(resUnit) 'times:',      loadCases%time                                                     ! one entry per LoadCase
+     write(resUnit) 'frequencies:', loadCases%outputfrequency                                       ! one entry per LoadCase
+     write(resUnit) 'times:',      loadCases%time                                                   ! one entry per LoadCase
      write(resUnit) 'logscales:',  loadCases%logscale
-     write(resUnit) 'increments:', loadCases%incs                                                     ! one entry per LoadCase
-     write(resUnit) 'startingIncrement:', restartInc - 1_pInt                                         ! start with writing out the previous inc
+     write(resUnit) 'increments:', loadCases%incs                                                   ! one entry per LoadCase
+     write(resUnit) 'startingIncrement:', restartInc                                                ! start with writing out the previous inc
      write(resUnit) 'eoh'
-     close(resUnit)                                                                                   ! end of header
+     close(resUnit)                                                                                 ! end of header
      open(newunit=statUnit,file=trim(getSolverWorkingDirectoryName())//trim(getSolverJobName())//&
                                  '.sta',form='FORMATTED',status='REPLACE')
      write(statUnit,'(a)') 'Increment Time CutbackLevel Converged IterationsNeeded'                 ! statistics file
@@ -516,16 +480,15 @@ program DAMASK_spectral
          endif
        else                                                                                         ! not-1st currentLoadCase of logarithmic scale
          timeinc = time0 * &
-              ( (1.0_pReal + loadCases(currentLoadCase)%time/time0 )**(real(          inc,pReal)/&
+              ( (1.0_pReal + loadCases(currentLoadCase)%time/time0 )**(real( inc         ,pReal)/&
                                                     real(loadCases(currentLoadCase)%incs ,pReal))&
-               -(1.0_pReal + loadCases(currentLoadCase)%time/time0 )**(real( (inc-1_pInt),pReal)/&
-                                                     real(loadCases(currentLoadCase)%incs ,pReal)))
+               -(1.0_pReal + loadCases(currentLoadCase)%time/time0 )**(real( inc-1_pInt  ,pReal)/&
+                                                    real(loadCases(currentLoadCase)%incs ,pReal)))
        endif
      endif
+     timeinc = timeinc * real(subStepFactor,pReal)**real(-cutBackLevel,pReal)                       ! depending on cut back level, decrease time step
 
-     timeinc = timeinc / real(subStepFactor,pReal)**real(cutBackLevel,pReal)                        ! depending on cut back level, decrease time step
-
-     skipping: if (totalIncsCounter < restartInc) then                                              ! not yet at restart inc?
+     skipping: if (totalIncsCounter <= restartInc) then                                             ! not yet at restart inc?
        time = time + timeinc                                                                        ! just advance time, skip already performed calculation
        guess = .true.                                                                               ! QUESTION:why forced guessing instead of inheriting loadcase preference
      else skipping
@@ -542,17 +505,20 @@ program DAMASK_spectral
 ! report begin of new step
          write(6,'(/,a)') ' ###########################################################################'
          write(6,'(1x,a,es12.5'//&
-                 ',a,'//IO_intOut(inc)//',a,'//IO_intOut(loadCases(currentLoadCase)%incs)//&
-                 ',a,'//IO_intOut(stepFraction)//',a,'//IO_intOut(subStepFactor**cutBackLevel)//&
+                 ',a,'//IO_intOut(inc)            //',a,'//IO_intOut(loadCases(currentLoadCase)%incs)//&
+                 ',a,'//IO_intOut(stepFraction)   //',a,'//IO_intOut(subStepFactor**cutBackLevel)//&
                  ',a,'//IO_intOut(currentLoadCase)//',a,'//IO_intOut(size(loadCases))//')') &
                  'Time', time, &
-                 's: Increment ', inc, '/', loadCases(currentLoadCase)%incs,&
-                 '-', stepFraction, '/', subStepFactor**cutBackLevel,&
+                 's: Increment ', inc,'/',loadCases(currentLoadCase)%incs,&
+                 '-', stepFraction,'/',subStepFactor**cutBackLevel,&
                  ' of load case ', currentLoadCase,'/',size(loadCases)
-         write(incInfo,'(a,'//IO_intOut(totalIncsCounter)//',a,'//IO_intOut(sum(loadCases%incs))//&
-               ',a,'//IO_intOut(stepFraction)//',a,'//IO_intOut(subStepFactor**cutBackLevel)//')') &
-               'Increment ',totalIncsCounter,'/',sum(loadCases%incs),&
-               '-',stepFraction, '/', subStepFactor**cutBackLevel
+         write(incInfo,&
+                 '(a,'//IO_intOut(totalIncsCounter)//&
+                 ',a,'//IO_intOut(sum(loadCases%incs))//&
+                 ',a,'//IO_intOut(stepFraction)//&
+                 ',a,'//IO_intOut(subStepFactor**cutBackLevel)//')') &
+                 'Increment ',totalIncsCounter,'/',sum(loadCases%incs),&
+                 '-', stepFraction,'/',subStepFactor**cutBackLevel
          flush(6)
 
 !--------------------------------------------------------------------------------------------------
@@ -629,7 +595,6 @@ program DAMASK_spectral
            stagIter = stagIter + 1_pInt
            stagIterate =            stagIter < stagItMax &
                         .and.       all(solres(:)%converged) &
-
                         .and. .not. all(solres(:)%stagConverged)                                    ! stationary with respect to staggered iteration
          enddo
 
@@ -675,12 +640,10 @@ program DAMASK_spectral
        endif; flush(6)
 
        if (mod(inc,loadCases(currentLoadCase)%outputFrequency) == 0_pInt) then                      ! at output frequency
-         if (worldrank == 0) &
-           write(6,'(1/,a)') ' ... writing results to file ......................................'
-           flush(6)
+         write(6,'(1/,a)') ' ... writing results to file ......................................'
+         flush(6)
          call materialpoint_postResults()
          call MPI_file_seek (resUnit,fileOffset,MPI_SEEK_SET,ierr)
-
          if (ierr /= 0_pInt) call IO_error(894_pInt, ext_msg='MPI_file_seek')
          do i=1, size(materialpoint_results,3)/(maxByteOut/(materialpoint_sizeResults*pReal))+1     ! slice the output of my process in chunks not exceeding the limit for one output
            outputIndex=int([(i-1_pInt)*((maxRealOut)/materialpoint_sizeResults)+1_pInt, &
@@ -699,88 +662,22 @@ program DAMASK_spectral
          lastRestartWritten = inc                                                                   ! QUESTION: first call to CPFEM_general will write?
        endif
 
-     else forwarding
-       time = time + timeinc
-       guess = .true.
-     endif forwarding
-     
-     yieldCheck: if(yieldStop) then                                                                 ! check if it yields or satisfies the certain stop condition
-       yieldStressOld = yieldStressNew
-       plasticStrainOld = plasticStrainNew
-       eqStressOld = eqStressNew
-       eqTotalStrainOld = eqTotalStrainNew
-       eqPlasticStrainOld = eqPlasticStrainNew
-       plasticWorkOld = plasticWorkNew
-       
-       call utilities_calcPlasticity(yieldStressNew, plasticStrainNew, eqStressNew, eqTotalStrainNew, &
-                                     eqPlasticStrainNew, plasticWorkNew, loadCases(currentLoadCase)%rotation)
-       
-       if (worldrank == 0) then                                                                     ! output the stress-strain curve to file if yield stop criterion is used
-         if ((currentLoadCase == 1_pInt) .and. (inc == 1_pInt)) then
-           open(newunit=stressstrainUnit,file=trim(getSolverWorkingDirectoryName())//trim(getSolverJobName())//&
-                                  '.stressstrain',form='FORMATTED',status='REPLACE')
-           write(stressstrainUnit,*) 0.0_pReal, 0.0_pReal
-           write(stressstrainUnit,*) eqTotalStrainNew, eqStressNew
-           close(stressstrainUnit)
-         else
-           open(newunit=stressstrainUnit,file=trim(getSolverWorkingDirectoryName())//trim(getSolverJobName())//&
-                                 '.stressstrain',form='FORMATTED', position='APPEND', status='OLD')
-           write(stressstrainUnit,*) eqTotalStrainNew, eqStressNew
-           close(stressstrainUnit)
-         endif
-       endif
-       
-       if(stopFlag == 'totalStrain') then
-         if(eqTotalStrainNew > yieldStopValue) then
-           yieldStress = yieldStressOld * (eqTotalStrainNew - yieldStopValue)/(eqTotalStrainNew - eqTotalStrainOld) &   ! linear interpolation of stress values
-                       + yieldStressNew * (yieldStopValue - eqTotalStrainOld)/(eqTotalStrainNew - eqTotalStrainOld)
-           plasticStrainRate = (plasticStrainNew - plasticStrainOld)/(time - time0)                                     ! calculate plastic strain rate
-           yieldStopSatisfied = .True.
-         endif
-       elseif(stopFlag == 'plasticStrain') then
-         if(eqPlasticStrainNew > yieldStopValue) then
-           yieldStress = yieldStressOld * (eqPlasticStrainNew - yieldStopValue)/(eqPlasticStrainNew - eqPlasticStrainOld) &
-                       + yieldStressNew * (yieldStopValue - eqPlasticStrainOld)/(eqPlasticStrainNew - eqPlasticStrainOld)
-           plasticStrainRate = (plasticStrainNew - plasticStrainOld)/(time - time0)
-           yieldStopSatisfied = .True.
-         endif
-       elseif(stopFlag == 'plasticWork') then
-         if(plasticWorkNew > yieldStopValue) then
-           yieldStress = yieldStressOld * (plasticWorkNew - yieldStopValue)/(plasticWorkNew - plasticWorkOld) &
-                       + yieldStressNew * (yieldStopValue - plasticWorkOld)/(plasticWorkNew - plasticWorkOld)
-           plasticStrainRate = (plasticStrainNew - plasticStrainOld)/(time - time0)
-           yieldStopSatisfied = .True.
-         endif
-       endif
-     endif yieldCheck
-
-     if (yieldStopSatisfied) then                                                                   ! when yield, write the yield stress and strain rate to file and quit the job
-       if (worldrank == 0) then
-         open(newunit=yieldResUnit,file=trim(getSolverWorkingDirectoryName())//trim(getSolverJobName())//&
-                                  '.yield',form='FORMATTED',status='REPLACE')
-         do i = 1_pInt,3_pInt
-           write(yieldResUnit,*) (yieldStress(i,j), j=1,3)
-         enddo
-         do i = 1_pInt,3_pInt
-           write(yieldResUnit,*) (plasticStrainRate(i,j), j=1,3)
-         enddo
-         close(yieldResUnit)
-         call quit(0_pInt)
-       endif
-     endif
+     endif skipping
 
     enddo incLooping
+
  enddo loadCaseLooping
  
  
 !--------------------------------------------------------------------------------------------------
 ! report summary of whole calculation
  write(6,'(/,a)') ' ###########################################################################'
- write(6,'(1x,i6.6,a,i6.6,a,f5.1,a)') convergedCounter, ' out of ', &
-                                   notConvergedCounter + convergedCounter, ' (', &
-                                   real(convergedCounter, pReal)/&
-                                   real(notConvergedCounter + convergedCounter,pReal)*100.0_pReal, &
-                                   ' %) increments converged!'
+ write(6,'(1x,'//IO_intOut(convergedCounter)//',a,'//IO_intOut(notConvergedCounter + convergedCounter)//',a,f5.1,a)') &
+   convergedCounter, ' out of ', &
+   notConvergedCounter + convergedCounter, ' (', &
+   real(convergedCounter, pReal)/&
+   real(notConvergedCounter + convergedCounter,pReal)*100.0_pReal, &
+   ' %) increments converged!'
  flush(6)
  call MPI_file_close(resUnit,ierr)
  close(statUnit)

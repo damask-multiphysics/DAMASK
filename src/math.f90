@@ -174,7 +174,7 @@ contains
 !--------------------------------------------------------------------------------------------------
 subroutine math_init
 
-#ifdef __GFORTRAN__
+#if defined(__GFORTRAN__) || __INTEL_COMPILER >= 1800
  use, intrinsic :: iso_fortran_env, only: &
    compiler_version, &
    compiler_options
@@ -1743,13 +1743,12 @@ real(pReal) pure function math_EulerMisorientation(EulerA,EulerB)
 
  implicit none
  real(pReal), dimension(3), intent(in) :: EulerA,EulerB
- real(pReal), dimension(3,3) :: r
- real(pReal) :: tr
+ real(pReal) :: cosTheta
 
- r = math_mul33x33(math_EulerToR(EulerB),transpose(math_EulerToR(EulerA)))
+ cosTheta = (math_trace33(math_mul33x33(math_EulerToR(EulerB), &
+                              transpose(math_EulerToR(EulerA)))) - 1.0_pReal) * 0.5_pReal
 
- tr = (math_trace33(r)-1.0_pReal)*0.4999999_pReal
- math_EulerMisorientation = abs(0.5_pReal*PI-asin(tr))
+ math_EulerMisorientation = acos(math_limit(cosTheta,-1.0_pReal,1.0_pReal))
 
 end function math_EulerMisorientation
 
@@ -1782,30 +1781,28 @@ function math_sampleGaussOri(center,noise)
  real(pReal), dimension(3), intent(in) :: center 
  real(pReal) :: cosScatter,scatter
  real(pReal), dimension(3) :: math_sampleGaussOri, disturb
- real(pReal), dimension(3), parameter :: ORIGIN = [0.0_pReal,0.0_pReal,0.0_pReal]
+ real(pReal), dimension(3), parameter :: ORIGIN = 0.0_pReal
  real(pReal), dimension(5) :: rnd
- integer(pInt) :: i
 
- if (abs(noise) < tol_math_check) then
+ noScatter: if (abs(noise) < tol_math_check) then
    math_sampleGaussOri = center
-   return
- endif
+ else noScatter
+  ! Helming uses different distribution with Bessel functions
+  ! therefore the gauss scatter width has to be scaled differently
+   scatter = 0.95_pReal * noise
+   cosScatter = cos(scatter)
 
-! Helming uses different distribution with Bessel functions
-! therefore the gauss scatter width has to be scaled differently
- scatter = 0.95_pReal * noise
- cosScatter = cos(scatter)
+   do
+     call halton(5_pInt,rnd)
+     rnd(1:3) = 2.0_pReal*rnd(1:3)-1.0_pReal                                                        ! expand 1:3 to range [-1,+1]
+     disturb  = [ scatter * rnd(1), &                                                               ! phi1
+                  sign(1.0_pReal,rnd(2))*acos(cosScatter+(1.0_pReal-cosScatter)*rnd(4)), &          ! Phi
+                  scatter * rnd(3)]                                                                 ! phi2
+     if (rnd(5) <= exp(-1.0_pReal*(math_EulerMisorientation(ORIGIN,disturb)/scatter)**2_pReal)) exit
+   enddo
 
- do
-   call halton(5_pInt,rnd)
-   forall (i=1_pInt:3_pInt) rnd(i) = 2.0_pReal*rnd(i)-1.0_pReal  ! expand 1:3 to range [-1,+1]
-   disturb  = [ scatter * rnd(1), &                                                       ! phi1
-                sign(1.0_pReal,rnd(2))*acos(cosScatter+(1.0_pReal-cosScatter)*rnd(4)), &  ! Phi
-                scatter * rnd(2)]                                                         ! phi2
-   if (rnd(5) <= exp(-1.0_pReal*(math_EulerMisorientation(ORIGIN,disturb)/scatter)**2_pReal)) exit
- enddo
-
- math_sampleGaussOri = math_RtoEuler(math_mul33x33(math_EulerToR(disturb),math_EulerToR(center)))
+   math_sampleGaussOri = math_RtoEuler(math_mul33x33(math_EulerToR(disturb),math_EulerToR(center)))
+ endif noScatter
 
 end function math_sampleGaussOri
 
@@ -2759,8 +2756,7 @@ pure function math_rotate_forward33(tensor,rot_tensor)
  real(pReal), dimension(3,3) ::  math_rotate_forward33
  real(pReal), dimension(3,3), intent(in) :: tensor, rot_tensor
 
- math_rotate_forward33 = math_mul33x33(rot_tensor,&
-                         math_mul33x33(tensor,math_transpose33(rot_tensor)))
+ math_rotate_forward33 = math_mul33x33(rot_tensor,math_mul33x33(tensor,transpose(rot_tensor)))
 
 end function math_rotate_forward33
 
@@ -2774,8 +2770,7 @@ pure function math_rotate_backward33(tensor,rot_tensor)
  real(pReal), dimension(3,3) ::  math_rotate_backward33
  real(pReal), dimension(3,3), intent(in) :: tensor, rot_tensor
 
- math_rotate_backward33 = math_mul33x33(math_transpose33(rot_tensor),&
-                           math_mul33x33(tensor,rot_tensor))
+ math_rotate_backward33 = math_mul33x33(transpose(rot_tensor),math_mul33x33(tensor,rot_tensor))
 
 end function math_rotate_backward33
 
@@ -2796,8 +2791,8 @@ pure function math_rotate_forward3333(tensor,rot_tensor)
  do i = 1_pInt,3_pInt; do j = 1_pInt,3_pInt; do k = 1_pInt,3_pInt; do l = 1_pInt,3_pInt
    do m = 1_pInt,3_pInt; do n = 1_pInt,3_pInt; do o = 1_pInt,3_pInt; do p = 1_pInt,3_pInt
      math_rotate_forward3333(i,j,k,l) = math_rotate_forward3333(i,j,k,l) &
-                                      + rot_tensor(m,i) * rot_tensor(n,j) &
-                                      * rot_tensor(o,k) * rot_tensor(p,l) * tensor(m,n,o,p)
+                                      + rot_tensor(i,m) * rot_tensor(j,n) &
+                                      * rot_tensor(k,o) * rot_tensor(l,p) * tensor(m,n,o,p)
  enddo; enddo; enddo; enddo; enddo; enddo; enddo; enddo
 
 end function math_rotate_forward3333
