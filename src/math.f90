@@ -1779,7 +1779,7 @@ function math_sampleGaussOri(center,FWHM)
  real(pReal), dimension(3,3) :: R
 
  if (FWHM < 0.1_pReal*INRAD) then
-   R = math_I3
+   math_sampleGaussOri = center
  else
    GaussConvolution: do
      rnd = halton([8_pInt,3_pInt,6_pInt,11_pInt])
@@ -1791,9 +1791,9 @@ function math_sampleGaussOri(center,FWHM)
      angle = math_EulerMisorientation([0.0_pReal,0.0_pReal,0.0_pReal],math_RtoEuler(R))
      if (rnd(4) <= exp(-4.0_pReal*log(2.0_pReal)*(angle/FWHM)**2_pReal)) exit                       ! rejection sampling (Gaussian)
    enddo GaussConvolution
+   math_sampleGaussOri = math_RtoEuler(math_mul33x33(R,math_EulerToR(center)))
  endif
 
- math_sampleGaussOri = math_RtoEuler(math_mul33x33(R,math_EulerToR(center)))
 
 end function math_sampleGaussOri
 
