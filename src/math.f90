@@ -1831,7 +1831,7 @@ function math_sampleFiberOri(alpha,beta,FWHM)
    reducedTo2D: do i=1_pInt,3_pInt
      if (i /= minloc(abs(fInS),1)) then
        a=[a,fInS(i)]
-       idx=[b,i]
+       idx=[idx,i]
      else
        j = i
      endif
