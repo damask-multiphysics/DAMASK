@@ -174,8 +174,12 @@ pure function kinematics_thermal_expansion_initialStrain(ipc, ip, el)
  offset = thermalMapping(homog)%p(ip,el)
  
  kinematics_thermal_expansion_initialStrain = &
-   (temperature(homog)%p(offset) - lattice_referenceTemperature(phase)) * &
-   lattice_thermalExpansion33(1:3,1:3,phase)
+   (temperature(homog)%p(offset) - lattice_referenceTemperature(phase))**1 / 1. * &
+   lattice_thermalExpansion33(1:3,1:3,1,phase) + &                                                  ! constant  coefficient
+   (temperature(homog)%p(offset) - lattice_referenceTemperature(phase))**2 / 2. * &
+   lattice_thermalExpansion33(1:3,1:3,2,phase) + &                                                  ! linear    coefficient
+   (temperature(homog)%p(offset) - lattice_referenceTemperature(phase))**3 / 3. * &
+   lattice_thermalExpansion33(1:3,1:3,3,phase)                                                      ! quadratic coefficient
   
 end function kinematics_thermal_expansion_initialStrain
 
@@ -215,9 +219,16 @@ subroutine kinematics_thermal_expansion_LiAndItsTangent(Li, dLi_dTstar3333, ipc,
  TDot = temperatureRate(homog)%p(offset)
  TRef = lattice_referenceTemperature(phase)
  
- Li = TDot* &
-      lattice_thermalExpansion33(1:3,1:3,phase)/ &
-      (1.0_pReal + lattice_thermalExpansion33(1:3,1:3,phase)*(T - TRef))
+ Li = TDot * ( &
+               lattice_thermalExpansion33(1:3,1:3,1,phase)*(T - TRef)**0 &                           ! constant  coefficient
+             + lattice_thermalExpansion33(1:3,1:3,2,phase)*(T - TRef)**1 &                           ! linear    coefficient
+             + lattice_thermalExpansion33(1:3,1:3,3,phase)*(T - TRef)**2 &                           ! quadratic coefficient
+             ) / &
+      (1.0_pReal \
+            + lattice_thermalExpansion33(1:3,1:3,1,phase)*(T - TRef)**1 / 1. &
+            + lattice_thermalExpansion33(1:3,1:3,2,phase)*(T - TRef)**2 / 2. &
+            + lattice_thermalExpansion33(1:3,1:3,3,phase)*(T - TRef)**3 / 3. &
+      )
  dLi_dTstar3333 = 0.0_pReal 
   
 end subroutine kinematics_thermal_expansion_LiAndItsTangent

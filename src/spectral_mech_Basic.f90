@@ -301,7 +301,6 @@ subroutine BasicPETSC_formResidual(in,x_scal,f_scal,dummy,ierr)
    grid3
  use math, only: &
    math_rotate_backward33, &
-   math_transpose33, &
    math_mul3333xx33
  use debug, only: &
    debug_level, &
@@ -349,9 +348,9 @@ subroutine BasicPETSC_formResidual(in,x_scal,f_scal,dummy,ierr)
            trim(incInfo), ' @ Iteration ', itmin, '≤',totalIter, '≤', itmax
    if (iand(debug_level(debug_spectral),debug_spectralRotation) /= 0) &
      write(6,'(/,a,/,3(3(f12.7,1x)/))',advance='no') &
-             ' deformation gradient aim (lab) =', math_transpose33(math_rotate_backward33(F_aim,params%rotation_BC))
+             ' deformation gradient aim (lab) =', transpose(math_rotate_backward33(F_aim,params%rotation_BC))
    write(6,'(/,a,/,3(3(f12.7,1x)/))',advance='no') &
-             ' deformation gradient aim       =', math_transpose33(F_aim)
+             ' deformation gradient aim       =', transpose(F_aim)
    flush(6)
  endif newIteration
 
@@ -516,13 +515,10 @@ subroutine BasicPETSc_forward(guess,timeinc,timeinc_old,loadCaseTime,deformation
 
     C_volAvgLastInc    = C_volAvg
     C_minMaxAvgLastInc = C_minMaxAvg
-
-    if (guess) then                                                                                   ! QUESTION: better with a =  L ? x:y
-      F_aimDot = stress_BC%maskFloat * (F_aim - F_aim_lastInc)/timeinc_old                            ! initialize with correction based on last inc
-    else
-      F_aimDot = 0.0_pReal
-    endif                                                                                             ! components of deformation_BC%maskFloat always start out with zero
+ 
+    F_aimDot = merge(stress_BC%maskFloat*(F_aim-F_aim_lastInc)/timeinc_old, 0.0_pReal, guess)
     F_aim_lastInc = F_aim
+
     !--------------------------------------------------------------------------------------------------
     ! calculate rate for aim
     if     (deformation_BC%myType=='l') then                                                          ! calculate F_aimDot from given L and current F
