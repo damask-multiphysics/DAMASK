@@ -166,28 +166,15 @@ for name in filenames:
   grainEuler[2,:] *= 360.0                                                                          # phi_2    is uniformly distributed
 
   if not options.selective:
-    seeds = np.array([])
-    
-    while len(seeds) < options.N:
-
-      theSeeds = np.zeros((options.N,3),dtype=float)                                                 # seed positions array
-      gridpoints = random.sample(range(gridSize),options.N)                                          # choose first N from random permutation of grid positions
-
-      theSeeds[:,0] = (np.mod(gridpoints                                   ,options.grid[0])\
-                      +np.random.random(options.N))                        /options.grid[0]
-      theSeeds[:,1] = (np.mod(gridpoints//                 options.grid[0] ,options.grid[1])\
-                      +np.random.random(options.N))                        /options.grid[1]
-      theSeeds[:,2] = (np.mod(gridpoints//(options.grid[1]*options.grid[0]),options.grid[2])\
-                      +np.random.random(options.N))                        /options.grid[2]
-
-      goodSeeds = theSeeds[np.all(theSeeds<=options.fraction,axis=1)]                               # pick seeds within threshold fraction
-      seeds = goodSeeds if len(seeds) == 0 else np.vstack((seeds,goodSeeds))
-      if len(seeds) > options.N: seeds = seeds[:min(options.N,len(seeds))]
-
-    seeds = seeds.T                                                                                 # switch layout to point index as last index
-
+    n = np.maximum(np.ones(3),np.array(options.grid*options.fraction),
+                   dtype=int,casting='unsafe')                                                      # find max grid indices within fraction
+    meshgrid = np.meshgrid(*map(np.arange,n),indexing='ij')                                         # create a meshgrid within fraction
+    coords = np.vstack((meshgrid[0],meshgrid[1],meshgrid[2])).reshape(3,n.prod()).T                 # assemble list of 3D coordinates
+    seeds = ((random.sample(coords,options.N)+np.random.random(options.N*3).reshape(options.N,3))\
+              / \
+             (n/options.fraction)).T                                                                # pick options.N of those, rattle position,
+                                                                                                    # and rescale to fall within fraction
   else:
-
     seeds = np.zeros((options.N,3),dtype=float)                                                     # seed positions array
     seeds[0] = np.random.random(3)*options.grid/max(options.grid)
     i = 1                                                                                           # start out with one given point
