@@ -109,14 +109,6 @@ for name in filenames:
 
   for smoothIter in range(options.N):
 
-    # replace immutable microstructures with closest mutable ones
-    index = ndimage.morphology.distance_transform_edt(np.in1d(microstructure,options.immutable).reshape(grid),
-                                                      return_distances = False,
-                                                      return_indices = True)
-    microstructure = microstructure[index[0],
-                                    index[1],
-                                    index[2]]
-
     interfaceEnergy = np.zeros(microstructure.shape,dtype=np.float32)
     for i in (-1,0,1):
       for j in (-1,0,1):
@@ -182,8 +174,16 @@ for name in filenames:
                                                                        grid[1]/2:-grid[1]/2,
                                                                        grid[2]/2:-grid[2]/2]       # extent grains into interface region
 
+    # replace immutable microstructures with closest mutable ones
+    index = ndimage.morphology.distance_transform_edt(np.in1d(microstructure,options.immutable).reshape(grid),
+                                                      return_distances = False,
+                                                      return_indices = True)
+    microstructure = microstructure[index[0],
+                                    index[1],
+                                    index[2]]
+
     immutable = np.zeros(microstructure.shape, dtype=np.bool)
-    # find locations where immutable microstructures have been (or are now)
+    # find locations where immutable microstructures have been in original structure
     for micro in options.immutable:
       immutable += microstructure_original == micro
 
