@@ -10,13 +10,24 @@ import damask
 scriptName = os.path.splitext(os.path.basename(__file__))[0]
 scriptID   = ' '.join([scriptName,damask.version])
 
+def taintedNeighborhood(stencil,trigger=[],size=1):
+
+  me = stencil[stencil.shape[0]//2]
+  if len(trigger) == 0:
+    return np.any(stencil != me)
+  if me in trigger:
+    trigger = set(trigger)
+    trigger.remove(me)
+    trigger = list(trigger)
+  return np.any(np.in1d(stencil,np.array(trigger)))
+
 #--------------------------------------------------------------------------------------------------
 #                                MAIN
 #--------------------------------------------------------------------------------------------------
 
 parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
-Offset microstructure index for points which see a microstructure different from themselves within a given (cubic) vicinity,
-i.e. within the region close to a grain/phase boundary.
+Offset microstructure index for points which see a microstructure different from themselves
+(or listed as triggers) within a given (cubic) vicinity, i.e. within the region close to a grain/phase boundary.
 
 """, version = scriptID)
 
@@ -29,6 +40,9 @@ parser.add_option('-m', '--microstructureoffset',
                   type = 'int', metavar = 'int',
                   help = 'offset (positive or negative) for tagged microstructure indices. '+
                          '"0" selects maximum microstructure index [%default]')
+parser.add_option('-t', '--trigger',
+                  action = 'extend', dest = 'trigger', metavar = '<int LIST>',
+                  help = 'list of microstructure indices triggering a change')
 parser.add_option('-n', '--nonperiodic',
                   dest = 'mode',
                   action = 'store_const', const = 'nearest',
@@ -36,10 +50,13 @@ parser.add_option('-n', '--nonperiodic',
 
 parser.set_defaults(vicinity = 1,
                     offset   = 0,
+                    trigger  = [],
                     mode     = 'wrap',
                    )
 
 (options, filenames) = parser.parse_args()
+options.trigger = np.array(options.trigger, dtype=int)
+
 
 # --- loop over input files -------------------------------------------------------------------------
 
@@ -84,9 +101,12 @@ for name in filenames:
 
   if options.offset == 0: options.offset = microstructure.max()
 
-  microstructure = np.where(ndimage.filters.maximum_filter(microstructure,size=1+2*options.vicinity,mode=options.mode) ==
-                            ndimage.filters.minimum_filter(microstructure,size=1+2*options.vicinity,mode=options.mode),
-                            microstructure, microstructure + options.offset)
+  microstructure = np.where(ndimage.filters.generic_filter(microstructure,
+                                                           taintedNeighborhood,
+                                                           size=1+2*options.vicinity,mode=options.mode,
+                                                           extra_arguments=(),
+                                                           extra_keywords={"trigger":options.trigger,"size":1+2*options.vicinity}),
+                            microstructure + options.offset,microstructure)
 
   newInfo['microstructures'] = microstructure.max()
 
