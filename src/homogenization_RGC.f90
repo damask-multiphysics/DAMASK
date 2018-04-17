@@ -116,6 +116,8 @@ subroutine homogenization_RGC_init(fileUnit)
    line = ''
  
  write(6,'(/,a)')   ' <<<+-  homogenization_'//HOMOGENIZATION_RGC_label//' init  -+>>>'
+ write(6,'(/,a)')   ' Tjahjanto et. al, Modelling and Simulation in Materials Science and Engineering, 18:015006, 2010'
+ write(6,'(/,a)')	' doi: 10.1088/0965-0393/18/1/015006.'
  write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
 
