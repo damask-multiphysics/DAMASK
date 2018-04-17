@@ -147,9 +147,9 @@ subroutine AL_init
    SNESSetFromOptions
    
  write(6,'(/,a)') ' <<<+-  DAMASK_spectral_solverAL init  -+>>>'
- write(6,'(/,a)')   ' Shanthraj et. al, International Journal of Plasticity, 66:31–45, 2015 '
- write(6,'(/,a)')	' doi: 10.1016/j.ijplas.2014.02.006 '
- write(6,'(a15,a)')   ' Current time: ',IO_timeStamp()
+ write(6,'(/,a)') ' Shanthraj et. al, International Journal of Plasticity, 66:31–45, 2015 '
+ write(6,'(/,a)') ' doi: 10.1016/j.ijplas.2014.02.006 '
+ write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
 
 !--------------------------------------------------------------------------------------------------
