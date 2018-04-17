@@ -69,7 +69,7 @@ module homogenization_RGC
 contains
 
 !--------------------------------------------------------------------------------------------------
-!> @brief allocates all neccessary fields, reads information from material configuration file
+!> @brief allocates all necessary fields, reads information from material configuration file
 !--------------------------------------------------------------------------------------------------
 subroutine homogenization_RGC_init(fileUnit)
 #if defined(__GFORTRAN__) || __INTEL_COMPILER >= 1800
