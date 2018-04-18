@@ -560,7 +560,7 @@ function IO_hybridIA(Nast,ODFfileName)
 
  IO_hybridIA = 0.0_pReal                                                                           ! initialize return value for case of error
  write(6,'(/,a,/)',advance='no') ' Using linear ODF file: '//trim(ODFfileName)
- write(6,'(/,a)') 'Eisenlohr et.al,  Computational Materials Science, 42(4):670–678, 2008'
+ write(6,'(/,a)') 'Eisenlohr et. al,  Computational Materials Science, 42(4):670–678, 2008'
  write(6,'(/,a)') 'https://doi.org/10.1016/j.commatsci.2007.09.015'
 
 
