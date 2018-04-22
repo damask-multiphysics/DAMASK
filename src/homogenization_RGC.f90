@@ -69,7 +69,7 @@ module homogenization_RGC
 contains
 
 !--------------------------------------------------------------------------------------------------
-!> @brief allocates all neccessary fields, reads information from material configuration file
+!> @brief allocates all necessary fields, reads information from material configuration file
 !--------------------------------------------------------------------------------------------------
 subroutine homogenization_RGC_init(fileUnit)
 #if defined(__GFORTRAN__) || __INTEL_COMPILER >= 1800
@@ -116,6 +116,10 @@ subroutine homogenization_RGC_init(fileUnit)
    line = ''
  
  write(6,'(/,a)')   ' <<<+-  homogenization_'//HOMOGENIZATION_RGC_label//' init  -+>>>'
+ write(6,'(/,a)')   ' Tjahjanto et al., International Journal of Material Forming, 2(1):939–942, 2009'
+ write(6,'(/,a)')   ' https://doi.org/10.1007/s12289-009-0619-1'
+ write(6,'(/,a)')   ' Tjahjanto et al., Modelling and Simulation in Materials Science and Engineering, 18:015006, 2010'
+ write(6,'(/,a)')   ' https://doi.org/10.1088/0965-0393/18/1/015006'
  write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
 
