@@ -103,7 +103,7 @@ subroutine spectral_thermal_init
    
  mainProcess: if (worldrank == 0_pInt) then
    write(6,'(/,a)') ' <<<+-  spectral_thermal init  -+>>>'
-   write(6,'(/,a)') ' Shanthraj et. al, Handbook of Mechanics of Materials, volume in press,'
+   write(6,'(/,a)') ' Shanthraj et al., Handbook of Mechanics of Materials, volume in press,'
    write(6,'(/,a)') ' chapter Spectral Solvers for Crystal Plasticity and Multi-Physics Simulations. Springer, 2018'
    write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"

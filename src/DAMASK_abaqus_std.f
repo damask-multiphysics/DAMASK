@@ -37,7 +37,7 @@ subroutine DAMASK_interface_init
    dateAndTime                                                                                      ! type default integer
  call date_and_time(values = dateAndTime)
  write(6,'(/,a)') ' <<<+-  DAMASK_abaqus_std  -+>>>'
- write(6,'(/,a)') ' Roters et. al, Computational Materials Science, 2018'
+ write(6,'(/,a)') ' Roters et al., Computational Materials Science, 2018'
  write(6,'(/,a)')              ' Version: '//DAMASKVERSION
  write(6,'(a,2(i2.2,a),i4.4)') ' Date:    ',dateAndTime(3),'/',&
                                             dateAndTime(2),'/',&

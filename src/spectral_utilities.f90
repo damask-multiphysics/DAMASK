@@ -216,7 +216,7 @@ subroutine utilities_init()
    tensorSize = 9_C_INTPTR_T
 
  write(6,'(/,a)') ' <<<+-  spectral_utilities init  -+>>>'
- write(6,'(/,a)') ' Eisenlohr et. al, International Journal of Plasticity, 46:37–53, 2013'
+ write(6,'(/,a)') ' Eisenlohr et al., International Journal of Plasticity, 46:37–53, 2013'
  write(6,'(/,a)') ' https://doi.org/10.1016/j.ijplas.2012.09.012'
  write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
