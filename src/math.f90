@@ -159,7 +159,8 @@ module math
    math_rotate_forward33, &
    math_rotate_backward33, &
    math_rotate_forward3333, &
-   math_limit
+   math_limit, &
+   math_expand
  private :: &
    halton, &
    halton_memory, &
