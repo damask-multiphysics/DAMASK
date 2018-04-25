@@ -579,11 +579,11 @@ subroutine plastic_phenopowerlaw_init(fileUnit)
      plasticState(phase)%nSlip =plastic_phenopowerlaw_totalNslip(instance)
      plasticState(phase)%nTwin =plastic_phenopowerlaw_totalNtwin(instance)
      plasticState(phase)%nTrans=plastic_phenopowerlaw_totalNtrans(instance)
+     allocate(plasticState(phase)%aTolState          (   sizeState),             source=0.0_pReal)
      allocate(plasticState(phase)%state0             (   sizeState,NipcMyPhase), source=0.0_pReal)
      allocate(plasticState(phase)%partionedState0    (   sizeState,NipcMyPhase), source=0.0_pReal)
      allocate(plasticState(phase)%subState0          (   sizeState,NipcMyPhase), source=0.0_pReal)
      allocate(plasticState(phase)%state              (   sizeState,NipcMyPhase), source=0.0_pReal)
-     allocate(plasticState(phase)%aTolState          (sizeDotState),             source=0.0_pReal)
      allocate(plasticState(phase)%dotState           (sizeDotState,NipcMyPhase), source=0.0_pReal)
      allocate(plasticState(phase)%deltaState       (sizeDeltaState,NipcMyPhase), source=0.0_pReal)
      if (any(numerics_integrator == 1_pInt)) then
@@ -987,15 +987,13 @@ subroutine plastic_phenopowerlaw_dotState(Tstar_v,ipc,ip,el)
    index_myFamily = sum(lattice_NslipSystem(1:f-1_pInt,ph))                                         ! at which index starts my family
    slipSystems1: do i = 1_pInt,plastic_phenopowerlaw_Nslip(f,instance)
      j = j+1_pInt
-     left_SlipSlip(j) = (1.0_pReal + plastic_phenopowerlaw_H_int(f,instance)) &
-                        *abs(1.0_pReal-plasticState(ph)%state(j,of) / &                             ! no system-dependent left part
-                                      (plastic_phenopowerlaw_tausat_slip(f,instance)+ssat_offset)) &
-                        **plastic_phenopowerlaw_a_slip(instance)&
-                        *sign(1.0_pReal,1.0_pReal-plasticState(ph)%state(j,of) / &
-                                      (plastic_phenopowerlaw_tausat_slip(f,instance)+ssat_offset))              
-     left_SlipTwin(j) = 1.0_pReal                                                                   
-     right_SlipSlip(j) = 1.0_pReal                                                                  ! system-dependent part (beta summation)
-                 
+     left_SlipSlip(j) = 1.0_pReal + plastic_phenopowerlaw_H_int(f,instance)                         ! modified no system-dependent left part
+     left_SlipTwin(j) = 1.0_pReal                                                                   ! no system-dependent left part
+     right_SlipSlip(j) = abs(1.0_pReal-plasticState(ph)%state(j,of) / &
+                                    (plastic_phenopowerlaw_tausat_slip(f,instance)+ssat_offset)) &
+                         **plastic_phenopowerlaw_a_slip(instance)&
+                         *sign(1.0_pReal,1.0_pReal-plasticState(ph)%state(j,of) / &
+                                    (plastic_phenopowerlaw_tausat_slip(f,instance)+ssat_offset))
      right_TwinSlip(j) = 1.0_pReal                                                                  ! no system-dependent part
 
 !--------------------------------------------------------------------------------------------------
