@@ -603,7 +603,7 @@ subroutine plastic_phenopowerlaw_init(fileUnit)
      state   (instance)%s_twin=>plasticState(phase)%state   (startIndex:endIndex,:)
      dotState(instance)%s_twin=>plasticState(phase)%dotState(startIndex:endIndex,:)
      plasticState(phase)%state0(startIndex:endIndex,:) = &
-       spread(param(instance)%tau0_twin(1:totalNtwin(instance)),2,NipcMyPhase)
+       spread(math_expand(param(instance)%tau0_twin, param(instance)%Ntwin), 2, NipcMyPhase)
      plasticState(phase)%aTolState(startIndex:endIndex) = param(instance)%aTolResistance
 
      startIndex = endIndex + 1_pInt
