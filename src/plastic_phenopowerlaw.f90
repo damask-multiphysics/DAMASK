@@ -1037,7 +1037,7 @@ function plastic_phenopowerlaw_postResults(Tstar_v,ipc,ip,el)
 
      case (resolvedstress_slip_ID)
        j = 0_pInt
-       slipFamilies2: do f = 1_pInt,size(param(instance)%Ntwin,1)
+       slipFamilies2: do f = 1_pInt,size(param(instance)%Nslip,1)
          index_myFamily = sum(lattice_NslipSystem(1:f-1_pInt,ph))                                ! at which index starts my family
          slipSystems2: do i = 1_pInt,param(instance)%Nslip(f)
            j = j + 1_pInt
