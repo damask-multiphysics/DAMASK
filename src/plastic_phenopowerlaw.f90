@@ -814,9 +814,8 @@ subroutine plastic_phenopowerlaw_dotState(Tstar_v,ipc,ip,el)
 
  integer(pInt) :: &
    instance,ph, &
-   nSlip,nTwin, &
    f,i,j,k, &
-   index_myfamily, &
+   index_myFamily, &
    of
  real(pReal) :: &
    c_SlipSlip,c_TwinSlip,c_TwinTwin, &
