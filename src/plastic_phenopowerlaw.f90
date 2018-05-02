@@ -202,7 +202,7 @@ subroutine plastic_phenopowerlaw_init(fileUnit)
 
  allocate(totalNslip(maxNinstance),                    source=0_pInt)
  allocate(totalNtwin(maxNinstance),                    source=0_pInt)
-  allocate(param(maxNinstance))                                                                      ! one container of parameters per instance
+ allocate(param(maxNinstance))                                                                      ! one container of parameters per instance
 
  rewind(fileUnit)
  phase = 0_pInt
