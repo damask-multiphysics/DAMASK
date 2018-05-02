@@ -202,7 +202,7 @@ subroutine plastic_phenopowerlaw_init(fileUnit)
 
  allocate(totalNslip(maxNinstance),                    source=0_pInt)
  allocate(totalNtwin(maxNinstance),                    source=0_pInt)
-  allocate(param(maxNinstance))                                                                      ! one container of parameters per instance
+ allocate(param(maxNinstance))                                                                      ! one container of parameters per instance
 
  rewind(fileUnit)
  phase = 0_pInt
@@ -814,9 +814,8 @@ subroutine plastic_phenopowerlaw_dotState(Tstar_v,ipc,ip,el)
 
  integer(pInt) :: &
    instance,ph, &
-   nSlip,nTwin, &
    f,i,j,k, &
-   index_myfamily, &
+   index_myFamily, &
    of
  real(pReal) :: &
    c_SlipSlip,c_TwinSlip,c_TwinTwin, &
@@ -858,8 +857,8 @@ subroutine plastic_phenopowerlaw_dotState(Tstar_v,ipc,ip,el)
      right_SlipSlip(j) = abs(1.0_pReal-state(instance)%s_slip(j,of) / &
                                     (param(instance)%tausat_slip(f)+ssat_offset)) &
                          **param(instance)%a_slip&
-                         *sign(1.0_pReal,1.0_pReal-state(instance)%s_slip(j,of)) / &
-                                    (param(instance)%tausat_slip(f)+ssat_offset)
+                         *sign(1.0_pReal,1.0_pReal-state(instance)%s_slip(j,of) / &
+                                    (param(instance)%tausat_slip(f)+ssat_offset))
      right_TwinSlip(j) = 1.0_pReal                                                                  ! no system-dependent part
 
 !--------------------------------------------------------------------------------------------------
