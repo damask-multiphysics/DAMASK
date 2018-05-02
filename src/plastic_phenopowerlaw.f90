@@ -982,7 +982,8 @@ function plastic_phenopowerlaw_postResults(Tstar_v,ipc,ip,el)
  ph = phaseAt(ipc,ip,el)
  instance = phase_plasticityInstance(ph)
 
-
+ nSlip= totalNslip(instance)
+ nTwin= totalNtwin(instance)
  
  plastic_phenopowerlaw_postResults = 0.0_pReal
  c = 0_pInt
@@ -990,11 +991,11 @@ function plastic_phenopowerlaw_postResults(Tstar_v,ipc,ip,el)
  outputsLoop: do o = 1_pInt,plastic_phenopowerlaw_Noutput(instance)
    select case(plastic_phenopowerlaw_outputID(o,instance))
      case (resistance_slip_ID)
-       plastic_phenopowerlaw_postResults(c+1_pInt:c+nSlip) = state(instance)%s_slip(of)
+       plastic_phenopowerlaw_postResults(c+1_pInt:c+nSlip) = state(instance)%s_slip(1:nSlip,of)
        c = c + nSlip
 
      case (accumulatedshear_slip_ID)
-       plastic_phenopowerlaw_postResults(c+1_pInt:c+nSlip) = state(instance)%accshear_slip(of)
+       plastic_phenopowerlaw_postResults(c+1_pInt:c+nSlip) = state(instance)%accshear_slip(1:nSlip,of)
        c = c + nSlip
 
      case (shearrate_slip_ID)
@@ -1039,12 +1040,12 @@ function plastic_phenopowerlaw_postResults(Tstar_v,ipc,ip,el)
 
      case (resistance_twin_ID)
        plastic_phenopowerlaw_postResults(c+1_pInt:c+nTwin) = &
-                            state(instance)%s_twin(of)
+                            state(instance)%s_twin(1:nTwin,of)
        c = c + nTwin
 
      case (accumulatedshear_twin_ID)
        plastic_phenopowerlaw_postResults(c+1_pInt:c+nTwin) = &
-                             state(instance)%accshear_twin(of)
+                             state(instance)%accshear_twin(1:nTwin,of)
        c = c + nTwin
      case (shearrate_twin_ID)
        j = 0_pInt
