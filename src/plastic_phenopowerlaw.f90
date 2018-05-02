@@ -856,8 +856,8 @@ subroutine plastic_phenopowerlaw_dotState(Tstar_v,ipc,ip,el)
      right_SlipSlip(j) = abs(1.0_pReal-state(instance)%s_slip(j,of) / &
                                     (param(instance)%tausat_slip(f)+ssat_offset)) &
                          **param(instance)%a_slip&
-                         *sign(1.0_pReal,1.0_pReal-state(instance)%s_slip(j,of)) / &
-                                    (param(instance)%tausat_slip(f)+ssat_offset)
+                         *sign(1.0_pReal,1.0_pReal-state(instance)%s_slip(j,of) / &
+                                    (param(instance)%tausat_slip(f)+ssat_offset))
      right_TwinSlip(j) = 1.0_pReal                                                                  ! no system-dependent part
 
 !--------------------------------------------------------------------------------------------------
