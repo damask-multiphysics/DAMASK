@@ -6,7 +6,7 @@ module plastic_dislotwin
  use prec, only: &
    pReal, &
    pInt
-
+    
  implicit none
  private
  integer(pInt),                       dimension(:),           allocatable,         public, protected :: &
@@ -25,9 +25,9 @@ module plastic_dislotwin
    plastic_dislotwin_Noutput                                                                   !< number of outputs per instance of this plasticity 
 
  integer(pInt),                       dimension(:),           allocatable,         private :: &
-   totalNslip, &                                                            				   !< total number of active slip systems for each instance
-   totalNtwin, &                                                            				   !< total number of active twin systems for each instance
-   totalNtrans                                                               				   !< number of active transformation systems 
+   totalNslip, &                                                                               !< total number of active slip systems for each instance
+   totalNtwin, &                                                                               !< total number of active twin systems for each instance
+   totalNtrans                                                                                 !< number of active transformation systems 
 
  integer(pInt),                       dimension(:,:),         allocatable,         private :: &
    Nslip, &                                                                  !< number of active slip systems for each family and instance
@@ -37,9 +37,6 @@ module plastic_dislotwin
    
   
  real(pReal),                         dimension(:),           allocatable,         private :: &
-   !CAtomicVolume, &                                                          !< atomic volume in Bugers vector unit
-   !D0, &                                                                     !< prefactor for self-diffusion coefficient
-   !Qsd, &                                                                    !< activation energy for dislocation climb
    GrainSize, &                                                              !< grain size
    pShearBand, &                                                             !< p-exponent in shearband velocity
    qShearBand, &                                                             !< q-exponent in shearband velocity
@@ -157,13 +154,11 @@ module plastic_dislotwin
   type,private :: tParameters
    real(pReal) :: &
      CAtomicVolume, &                                                                           !< atomic volume in Bugers vector unit
-     D0, &				                                                        				!< prefactor for self-diffusion coefficient
-     Qsd, &               				                                       				    !< activation energy for dislocation climb
+     D0, &                                                                                        !< prefactor for self-diffusion coefficient
+     Qsd                                                                                              !< activation energy for dislocation climb
   end type 
   
-  type(tParameters), dimension(:), allocatable, private :: param		        	            !< containers of constitutive parameters (len Ninstance)
- 
- 
+  type(tParameters), dimension(:), allocatable, private :: param                                !< containers of constitutive parameters (len Ninstance)
  
  
  type, private :: tDislotwinState
@@ -310,9 +305,6 @@ subroutine plastic_dislotwin_init(fileUnit)
  allocate(totalNslip(maxNinstance),                          source=0_pInt)
  allocate(totalNtwin(maxNinstance),                          source=0_pInt)
  allocate(totalNtrans(maxNinstance),                         source=0_pInt)
- !allocate(CAtomicVolume(maxNinstance),                       source=0.0_pReal)
- !allocate(D0(maxNinstance),                                  source=0.0_pReal)
- !allocate(Qsd(maxNinstance),                                 source=0.0_pReal)
  allocate(GrainSize(maxNinstance),                           source=0.0_pReal)
  allocate(pShearBand(maxNinstance),                          source=0.0_pReal)
  allocate(qShearBand(maxNinstance),                          source=0.0_pReal)
@@ -1292,8 +1284,8 @@ subroutine plastic_dislotwin_stateInit(ph,instance)
 
  integer(pInt) :: i,j,f,ns,nt,nr, index_myFamily
  real(pReal), dimension(totalNslip(instance)) :: &
-   rhoEdge0, &
-   rhoEdgeDip0, &
+   rhoEdge0_temp, &
+   rhoEdgeDip0_temp, &
    invLambdaSlip0, &
    MeanFreePathSlip0, &
    tauSlipThreshold0
@@ -1310,21 +1302,21 @@ subroutine plastic_dislotwin_stateInit(ph,instance)
 ! initialize basic slip state variables
  do f = 1_pInt,lattice_maxNslipFamily
    index_myFamily   = sum(Nslip(1:f-1_pInt,instance))                        ! index in truncated slip system list
-   rhoEdge0(index_myFamily+1_pInt: &
+   rhoEdge0_temp(index_myFamily+1_pInt: &
             index_myFamily+Nslip(f,instance)) = &
      rhoEdge0(f,instance)
-   rhoEdgeDip0(index_myFamily+1_pInt: &
+   rhoEdgeDip0_temp(index_myFamily+1_pInt: &
                index_myFamily+Nslip(f,instance)) = &
      rhoEdgeDip0(f,instance)
  enddo
  
- tempState(1_pInt:ns)           = rhoEdge0
- tempState(ns+1_pInt:2_pInt*ns) = rhoEdgeDip0
+ tempState(1_pInt:ns)           = rhoEdge0_temp
+ tempState(ns+1_pInt:2_pInt*ns) = rhoEdgeDip0_temp
  
 !--------------------------------------------------------------------------------------------------
 ! initialize dependent slip microstructural variables
  forall (i = 1_pInt:ns) &
-   invLambdaSlip0(i) = sqrt(dot_product((rhoEdge0+rhoEdgeDip0),forestProjectionEdge(1:ns,i,instance)))/ &
+   invLambdaSlip0(i) = sqrt(dot_product((rhoEdge0_temp+rhoEdgeDip0_temp),forestProjectionEdge(1:ns,i,instance)))/ &
                        CLambdaSlipPerSlipSystem(i,instance)
  tempState(3_pInt*ns+2_pInt*nt+2_pInt*nr+1:4_pInt*ns+2_pInt*nt+2_pInt*nr) = invLambdaSlip0
  
@@ -1336,7 +1328,7 @@ subroutine plastic_dislotwin_stateInit(ph,instance)
  forall (i = 1_pInt:ns) &
    tauSlipThreshold0(i) = &
      lattice_mu(ph)*burgersPerSlipSystem(i,instance) * &
-     sqrt(dot_product((rhoEdge0+rhoEdgeDip0),interactionMatrix_SlipSlip(i,1:ns,instance)))
+     sqrt(dot_product((rhoEdge0_temp+rhoEdgeDip0_temp),interactionMatrix_SlipSlip(i,1:ns,instance)))
 
  tempState(7_pInt*ns+4_pInt*nt+4_pInt*nr+1:8_pInt*ns+4_pInt*nt+4_pInt*nr) = tauSlipThreshold0
 
