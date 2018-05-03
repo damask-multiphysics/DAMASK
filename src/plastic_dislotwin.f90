@@ -29,11 +29,6 @@ module plastic_dislotwin
    totalNtwin, &                                                                               !< total number of active twin systems for each instance
    totalNtrans                                                                                 !< number of active transformation systems 
 
- !integer(pInt),                       dimension(:,:),         allocatable,         private :: &
-   !Nslip, &                                                                  !< number of active slip systems for each family and instance
-   !Ntwin, &                                                                  !< number of active twin systems for each family and instance
-   !Ntrans                                                                    !< number of active transformation systems for each family and instance
-
    
   
 
@@ -394,117 +389,98 @@ subroutine plastic_dislotwin_init(fileUnit)
      tag = IO_lc(IO_stringValue(line,chunkPos,1_pInt))                                             ! extract key
      select case(tag)
        case ('(output)')
+         plastic_dislotwin_Noutput(instance) = plastic_dislotwin_Noutput(instance) + 1_pInt
+         plastic_dislotwin_output(plastic_dislotwin_Noutput(instance),instance) = &
+                                                       IO_lc(IO_stringValue(line,chunkPos,2_pInt))
          select case(IO_lc(IO_stringValue(line,chunkPos,2_pInt)))
            case ('edge_density')
-             plastic_dislotwin_Noutput(instance) = plastic_dislotwin_Noutput(instance) + 1_pInt
+           
              plastic_dislotwin_outputID(plastic_dislotwin_Noutput(instance),instance) = edge_density_ID
-             plastic_dislotwin_output(plastic_dislotwin_Noutput(instance),instance) = &
-                                                       IO_lc(IO_stringValue(line,chunkPos,2_pInt))
+
            case ('dipole_density')
-             plastic_dislotwin_Noutput(instance) = plastic_dislotwin_Noutput(instance) + 1_pInt
+
              plastic_dislotwin_outputID(plastic_dislotwin_Noutput(instance),instance) = dipole_density_ID
-             plastic_dislotwin_output(plastic_dislotwin_Noutput(instance),instance) = &
-                                                       IO_lc(IO_stringValue(line,chunkPos,2_pInt))
+
            case ('shear_rate_slip','shearrate_slip')
-             plastic_dislotwin_Noutput(instance) = plastic_dislotwin_Noutput(instance) + 1_pInt
+
              plastic_dislotwin_outputID(plastic_dislotwin_Noutput(instance),instance) = shear_rate_slip_ID
-             plastic_dislotwin_output(plastic_dislotwin_Noutput(instance),instance) = &
-                                                       IO_lc(IO_stringValue(line,chunkPos,2_pInt))
+
            case ('accumulated_shear_slip')
-             plastic_dislotwin_Noutput(instance) = plastic_dislotwin_Noutput(instance) + 1_pInt
+
              plastic_dislotwin_outputID(plastic_dislotwin_Noutput(instance),instance) = accumulated_shear_slip_ID
-             plastic_dislotwin_output(plastic_dislotwin_Noutput(instance),instance) = &
-                                                       IO_lc(IO_stringValue(line,chunkPos,2_pInt))
+
            case ('mfp_slip')
-             plastic_dislotwin_Noutput(instance) = plastic_dislotwin_Noutput(instance) + 1_pInt
+
              plastic_dislotwin_outputID(plastic_dislotwin_Noutput(instance),instance) = mfp_slip_ID
-             plastic_dislotwin_output(plastic_dislotwin_Noutput(instance),instance) = &
-                                                       IO_lc(IO_stringValue(line,chunkPos,2_pInt))
+
            case ('resolved_stress_slip')
-             plastic_dislotwin_Noutput(instance) = plastic_dislotwin_Noutput(instance) + 1_pInt
+
              plastic_dislotwin_outputID(plastic_dislotwin_Noutput(instance),instance) = resolved_stress_slip_ID
-             plastic_dislotwin_output(plastic_dislotwin_Noutput(instance),instance) = &
-                                                       IO_lc(IO_stringValue(line,chunkPos,2_pInt))
+
            case ('threshold_stress_slip')
-             plastic_dislotwin_Noutput(instance) = plastic_dislotwin_Noutput(instance) + 1_pInt
+
              plastic_dislotwin_outputID(plastic_dislotwin_Noutput(instance),instance) = threshold_stress_slip_ID
-             plastic_dislotwin_output(plastic_dislotwin_Noutput(instance),instance) = &
-                                                       IO_lc(IO_stringValue(line,chunkPos,2_pInt))
+
            case ('edge_dipole_distance')
-             plastic_dislotwin_Noutput(instance) = plastic_dislotwin_Noutput(instance) + 1_pInt
+
              plastic_dislotwin_outputID(plastic_dislotwin_Noutput(instance),instance) = edge_dipole_distance_ID
-             plastic_dislotwin_output(plastic_dislotwin_Noutput(instance),instance) = &
-                                                       IO_lc(IO_stringValue(line,chunkPos,2_pInt))
+
            case ('stress_exponent')
-             plastic_dislotwin_Noutput(instance) = plastic_dislotwin_Noutput(instance) + 1_pInt
+
              plastic_dislotwin_outputID(plastic_dislotwin_Noutput(instance),instance) = stress_exponent_ID
-             plastic_dislotwin_output(plastic_dislotwin_Noutput(instance),instance) = &
-                                                       IO_lc(IO_stringValue(line,chunkPos,2_pInt))
+
            case ('twin_fraction')
-             plastic_dislotwin_Noutput(instance) = plastic_dislotwin_Noutput(instance) + 1_pInt
+
              plastic_dislotwin_outputID(plastic_dislotwin_Noutput(instance),instance) = twin_fraction_ID
-             plastic_dislotwin_output(plastic_dislotwin_Noutput(instance),instance) = &
-                                                       IO_lc(IO_stringValue(line,chunkPos,2_pInt))
+
            case ('shear_rate_twin','shearrate_twin')
-             plastic_dislotwin_Noutput(instance) = plastic_dislotwin_Noutput(instance) + 1_pInt
+
              plastic_dislotwin_outputID(plastic_dislotwin_Noutput(instance),instance) = shear_rate_twin_ID
-             plastic_dislotwin_output(plastic_dislotwin_Noutput(instance),instance) = &
-                                                       IO_lc(IO_stringValue(line,chunkPos,2_pInt))
+
            case ('accumulated_shear_twin')
-             plastic_dislotwin_Noutput(instance) = plastic_dislotwin_Noutput(instance) + 1_pInt
+
              plastic_dislotwin_outputID(plastic_dislotwin_Noutput(instance),instance) = accumulated_shear_twin_ID
-             plastic_dislotwin_output(plastic_dislotwin_Noutput(instance),instance) = &
-                                                       IO_lc(IO_stringValue(line,chunkPos,2_pInt))
+
            case ('mfp_twin')
-             plastic_dislotwin_Noutput(instance) = plastic_dislotwin_Noutput(instance) + 1_pInt
+
              plastic_dislotwin_outputID(plastic_dislotwin_Noutput(instance),instance) = mfp_twin_ID
-             plastic_dislotwin_output(plastic_dislotwin_Noutput(instance),instance) = &
-                                                       IO_lc(IO_stringValue(line,chunkPos,2_pInt))
+
            case ('resolved_stress_twin')
-             plastic_dislotwin_Noutput(instance) = plastic_dislotwin_Noutput(instance) + 1_pInt
+
              plastic_dislotwin_outputID(plastic_dislotwin_Noutput(instance),instance) = resolved_stress_twin_ID
-             plastic_dislotwin_output(plastic_dislotwin_Noutput(instance),instance) = &
-                                                       IO_lc(IO_stringValue(line,chunkPos,2_pInt))
+
            case ('threshold_stress_twin')
-             plastic_dislotwin_Noutput(instance) = plastic_dislotwin_Noutput(instance) + 1_pInt
+
              plastic_dislotwin_outputID(plastic_dislotwin_Noutput(instance),instance) = threshold_stress_twin_ID
-             plastic_dislotwin_output(plastic_dislotwin_Noutput(instance),instance) = &
-                                                       IO_lc(IO_stringValue(line,chunkPos,2_pInt))
+
            case ('resolved_stress_shearband')
-             plastic_dislotwin_Noutput(instance) = plastic_dislotwin_Noutput(instance) + 1_pInt
+
              plastic_dislotwin_outputID(plastic_dislotwin_Noutput(instance),instance) = resolved_stress_shearband_ID
-             plastic_dislotwin_output(plastic_dislotwin_Noutput(instance),instance) = &
-                                                       IO_lc(IO_stringValue(line,chunkPos,2_pInt))
+
            case ('shear_rate_shearband','shearrate_shearband')
-             plastic_dislotwin_Noutput(instance) = plastic_dislotwin_Noutput(instance) + 1_pInt
+
              plastic_dislotwin_outputID(plastic_dislotwin_Noutput(instance),instance) = shear_rate_shearband_ID
-             plastic_dislotwin_output(plastic_dislotwin_Noutput(instance),instance) = &
-                                                       IO_lc(IO_stringValue(line,chunkPos,2_pInt))
+
            case ('sb_eigenvalues')
-             plastic_dislotwin_Noutput(instance) = plastic_dislotwin_Noutput(instance) + 1_pInt
+
              plastic_dislotwin_outputID(plastic_dislotwin_Noutput(instance),instance) = sb_eigenvalues_ID
-             plastic_dislotwin_output(plastic_dislotwin_Noutput(instance),instance) = &
-                                                       IO_lc(IO_stringValue(line,chunkPos,2_pInt))
+
            case ('sb_eigenvectors')
-             plastic_dislotwin_Noutput(instance) = plastic_dislotwin_Noutput(instance) + 1_pInt
+
              plastic_dislotwin_outputID(plastic_dislotwin_Noutput(instance),instance) = sb_eigenvectors_ID
-             plastic_dislotwin_output(plastic_dislotwin_Noutput(instance),instance) = &
-                                                       IO_lc(IO_stringValue(line,chunkPos,2_pInt))
+
            case ('stress_trans_fraction')
-             plastic_dislotwin_Noutput(instance) = plastic_dislotwin_Noutput(instance) + 1_pInt
+
              plastic_dislotwin_outputID(plastic_dislotwin_Noutput(instance),instance) = stress_trans_fraction_ID
-             plastic_dislotwin_output(plastic_dislotwin_Noutput(instance),instance) = &
-                                                       IO_lc(IO_stringValue(line,chunkPos,2_pInt))
+
            case ('strain_trans_fraction')
-             plastic_dislotwin_Noutput(instance) = plastic_dislotwin_Noutput(instance) + 1_pInt
+
              plastic_dislotwin_outputID(plastic_dislotwin_Noutput(instance),instance) = strain_trans_fraction_ID
-             plastic_dislotwin_output(plastic_dislotwin_Noutput(instance),instance) = &
-                                                       IO_lc(IO_stringValue(line,chunkPos,2_pInt))
+
            case ('trans_fraction','total_trans_fraction')
-             plastic_dislotwin_Noutput(instance) = plastic_dislotwin_Noutput(instance) + 1_pInt
+
              plastic_dislotwin_outputID(plastic_dislotwin_Noutput(instance),instance) = trans_fraction_ID
-             plastic_dislotwin_output(plastic_dislotwin_Noutput(instance),instance) = &
-                                                       IO_lc(IO_stringValue(line,chunkPos,2_pInt))
+
           end select
 !--------------------------------------------------------------------------------------------------
 ! parameters depending on number of slip system families
