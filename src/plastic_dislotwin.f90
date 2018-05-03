@@ -37,32 +37,8 @@ module plastic_dislotwin
    
   
  real(pReal),                         dimension(:),           allocatable,         private :: &
-   GrainSize, &                                                              !< grain size
-   pShearBand, &                                                             !< p-exponent in shearband velocity
-   qShearBand, &                                                             !< q-exponent in shearband velocity
-   MaxTwinFraction, &                                                        !< maximum allowed total twin volume fraction
-   CEdgeDipMinDistance, &                                                    !<
-   Cmfptwin, &                                                               !<
-   Cthresholdtwin, &                                                         !<
-   SolidSolutionStrength, &                                                  !< Strength due to elements in solid solution
-   L0_twin, &                                                                !< Length of twin nuclei in Burgers vectors
-   L0_trans, &                                                               !< Length of trans nuclei in Burgers vectors
-   xc_twin, &                                                                !< critical distance for formation of twin nucleus
-   xc_trans, &                                                               !< critical distance for formation of trans nucleus
-   VcrossSlip, &                                                             !< cross slip volume
    sbResistance, &                                                           !< value for shearband resistance (might become an internal state variable at some point)
-   sbVelocity, &                                                             !< value for shearband velocity_0
-   sbQedge, &                                                                !< value for shearband systems Qedge
-   SFE_0K, &                                                                 !< stacking fault energy at zero K
-   dSFE_dT, &                                                                !< temperature dependance of stacking fault energy
-   dipoleFormationFactor, &                                                  !< scaling factor for dipole formation: 0: off, 1: on. other values not useful
-   aTolRho, &                                                                !< absolute tolerance for integration of dislocation density
-   aTolTwinFrac, &                                                           !< absolute tolerance for integration of twin volume fraction
-   aTolTransFrac, &                                                          !< absolute tolerance for integration of trans volume fraction
-   deltaG, &                                                                 !< Free energy difference between austensite and martensite
-   Cmfptrans, &                                                              !<
-   Cthresholdtrans, &                                                        !<
-   transStackHeight                                                          !< Stack height of hex nucleus
+   dipoleFormationFactor                                                  !< scaling factor for dipole formation: 0: off, 1: on. other values not useful
 
  real(pReal),                         dimension(:,:,:,:),     allocatable,         private :: &
    Ctwin66                                                                   !< twin elasticity matrix in Mandel notation for each instance
@@ -155,7 +131,33 @@ module plastic_dislotwin
    real(pReal) :: &
      CAtomicVolume, &                                                                           !< atomic volume in Bugers vector unit
      D0, &                                                                                        !< prefactor for self-diffusion coefficient
-     Qsd                                                                                              !< activation energy for dislocation climb
+     Qsd, &                                                                                              !< activation energy for dislocation climb
+     GrainSize, &                                                                                  !<grain size
+     pShearBand, &                                                                                 !< p-exponent in shear band velocity
+     qShearBand, &                                                                                 !< q-exponent in shear band velocity
+     MaxTwinFraction, &                                                                            !<max allowed total twin volume fraction
+     CEdgeDipMinDistance, &                                                                        !<
+     Cmfptwin, &                                                                                   !<
+     Cthresholdtwin, &                                                                             !<
+     SolidSolutionStrength, &                                                                      !<strength due to elements in solid solution
+     L0_twin, &                                                                                    !< Length of twin nuclei in Burgers vectors
+     L0_trans, &                                                                                   !< Length of trans nuclei in Burgers vectors
+     xc_twin, &                                                                                    !< critical distance for formation of twin nucleus
+     xc_trans, &                                                                                   !< critical distance for formation of trans nucleus
+     VcrossSlip, &                                                                                 !< cross slip volume
+     !sbResistance, &                                                                               !< value for shearband resistance (might become an internal state variable at some point)
+     sbVelocity, &                                                                                 !< value for shearband velocity_0
+     sbQedge, &                                                                                    !< value for shearband systems Qedge
+     SFE_0K, &                                                                                     !< stacking fault energy at zero K
+     dSFE_dT, &                                                                                    !< temperature dependance of stacking fault energy
+     !dipoleFormationFactor, &                                                                      !< scaling factor for dipole formation: 0: off, 1: on. other values not useful
+     aTolRho, &                                                                                    !< absolute tolerance for integration of dislocation density
+     aTolTwinFrac, &                                                                               !< absolute tolerance for integration of twin volume fraction
+     aTolTransFrac, &                                                                              !< absolute tolerance for integration of trans volume fraction
+     deltaG, &                                                                                     !< Free energy difference between austensite and martensite
+     Cmfptrans, &                                                                                  !<
+     Cthresholdtrans, &                                                                            !<
+     transStackHeight                                                                              !< Stack height of hex nucleus 
   end type 
   
   type(tParameters), dimension(:), allocatable, private :: param                                !< containers of constitutive parameters (len Ninstance)
@@ -305,32 +307,8 @@ subroutine plastic_dislotwin_init(fileUnit)
  allocate(totalNslip(maxNinstance),                          source=0_pInt)
  allocate(totalNtwin(maxNinstance),                          source=0_pInt)
  allocate(totalNtrans(maxNinstance),                         source=0_pInt)
- allocate(GrainSize(maxNinstance),                           source=0.0_pReal)
- allocate(pShearBand(maxNinstance),                          source=0.0_pReal)
- allocate(qShearBand(maxNinstance),                          source=0.0_pReal)
- allocate(MaxTwinFraction(maxNinstance),                     source=0.0_pReal)
- allocate(CEdgeDipMinDistance(maxNinstance),                 source=0.0_pReal)
- allocate(Cmfptwin(maxNinstance),                            source=0.0_pReal)
- allocate(Cthresholdtwin(maxNinstance),                      source=0.0_pReal)
- allocate(SolidSolutionStrength(maxNinstance),               source=0.0_pReal)
- allocate(L0_twin(maxNinstance),                             source=0.0_pReal)
- allocate(L0_trans(maxNinstance),                            source=0.0_pReal)
- allocate(xc_twin(maxNinstance),                             source=0.0_pReal)
- allocate(xc_trans(maxNinstance),                            source=0.0_pReal)
- allocate(VcrossSlip(maxNinstance),                          source=0.0_pReal)
- allocate(aTolRho(maxNinstance),                             source=0.0_pReal)
- allocate(aTolTwinFrac(maxNinstance),                        source=0.0_pReal)
- allocate(aTolTransFrac(maxNinstance),                       source=0.0_pReal)
  allocate(sbResistance(maxNinstance),                        source=0.0_pReal)
- allocate(sbVelocity(maxNinstance),                          source=0.0_pReal)
- allocate(sbQedge(maxNinstance),                             source=0.0_pReal)
- allocate(SFE_0K(maxNinstance),                              source=0.0_pReal)
- allocate(dSFE_dT(maxNinstance),                             source=0.0_pReal)
  allocate(dipoleFormationFactor(maxNinstance),               source=1.0_pReal) !should be on by default
- allocate(deltaG(maxNinstance),                              source=0.0_pReal)
- allocate(Cmfptrans(maxNinstance),                           source=0.0_pReal)
- allocate(Cthresholdtrans(maxNinstance),                     source=0.0_pReal)
- allocate(transStackHeight(maxNinstance),                    source=0.0_pReal)
  allocate(rhoEdge0(lattice_maxNslipFamily,maxNinstance),     source=0.0_pReal)
  allocate(rhoEdgeDip0(lattice_maxNslipFamily,maxNinstance),  source=0.0_pReal)
  allocate(burgersPerSlipFamily(lattice_maxNslipFamily,maxNinstance), &
@@ -669,63 +647,63 @@ subroutine plastic_dislotwin_init(fileUnit)
 !--------------------------------------------------------------------------------------------------
 ! parameters independent of number of slip/twin/trans systems
        case ('grainsize')
-         GrainSize(instance) = IO_floatValue(line,chunkPos,2_pInt)
+         param(instance)%GrainSize = IO_floatValue(line,chunkPos,2_pInt)
        case ('maxtwinfraction')
-         MaxTwinFraction(instance) = IO_floatValue(line,chunkPos,2_pInt)
+         param(instance)%MaxTwinFraction = IO_floatValue(line,chunkPos,2_pInt)
        case ('p_shearband')
-         pShearBand(instance) = IO_floatValue(line,chunkPos,2_pInt)
+         param(instance)%pShearBand = IO_floatValue(line,chunkPos,2_pInt)
        case ('q_shearband')
-         qShearBand(instance) = IO_floatValue(line,chunkPos,2_pInt)
+         param(instance)%qShearBand = IO_floatValue(line,chunkPos,2_pInt)
        case ('d0')
          param(instance)%D0 = IO_floatValue(line,chunkPos,2_pInt)
        case ('qsd')
          param(instance)%Qsd = IO_floatValue(line,chunkPos,2_pInt)
        case ('atol_rho')
-         aTolRho(instance) = IO_floatValue(line,chunkPos,2_pInt)
+         param(instance)%aTolRho = IO_floatValue(line,chunkPos,2_pInt)
        case ('atol_twinfrac')
-         aTolTwinFrac(instance) = IO_floatValue(line,chunkPos,2_pInt)
+         param(instance)%aTolTwinFrac = IO_floatValue(line,chunkPos,2_pInt)
        case ('atol_transfrac')
-         aTolTransFrac(instance) = IO_floatValue(line,chunkPos,2_pInt)
+         param(instance)%aTolTransFrac = IO_floatValue(line,chunkPos,2_pInt)
        case ('cmfptwin')
-         Cmfptwin(instance) = IO_floatValue(line,chunkPos,2_pInt)
+         param(instance)%Cmfptwin = IO_floatValue(line,chunkPos,2_pInt)
        case ('cthresholdtwin')
-         Cthresholdtwin(instance) = IO_floatValue(line,chunkPos,2_pInt)
+         param(instance)%Cthresholdtwin = IO_floatValue(line,chunkPos,2_pInt)
        case ('solidsolutionstrength')
-         SolidSolutionStrength(instance) = IO_floatValue(line,chunkPos,2_pInt)
+         param(instance)%SolidSolutionStrength = IO_floatValue(line,chunkPos,2_pInt)
        case ('l0_twin')
-         L0_twin(instance) = IO_floatValue(line,chunkPos,2_pInt)
+         param(instance)%L0_twin = IO_floatValue(line,chunkPos,2_pInt)
        case ('l0_trans')
-         L0_trans(instance) = IO_floatValue(line,chunkPos,2_pInt)
+         param(instance)%L0_trans = IO_floatValue(line,chunkPos,2_pInt)
        case ('xc_twin')
-              xc_twin(instance) = IO_floatValue(line,chunkPos,2_pInt)
+              param(instance)%xc_twin = IO_floatValue(line,chunkPos,2_pInt)
        case ('xc_trans')
-              xc_trans(instance) = IO_floatValue(line,chunkPos,2_pInt)
+              param(instance)%xc_trans = IO_floatValue(line,chunkPos,2_pInt)
        case ('vcrossslip')
-              VcrossSlip(instance) = IO_floatValue(line,chunkPos,2_pInt)
+              param(instance)%VcrossSlip = IO_floatValue(line,chunkPos,2_pInt)
        case ('cedgedipmindistance')
-         CEdgeDipMinDistance(instance) = IO_floatValue(line,chunkPos,2_pInt)
+         param(instance)%CEdgeDipMinDistance = IO_floatValue(line,chunkPos,2_pInt)
        case ('catomicvolume')
          param(instance)%CAtomicVolume = IO_floatValue(line,chunkPos,2_pInt)
        case ('sfe_0k')
-         SFE_0K(instance) = IO_floatValue(line,chunkPos,2_pInt)
+         param(instance)%SFE_0K = IO_floatValue(line,chunkPos,2_pInt)
        case ('dsfe_dt')
-         dSFE_dT(instance) = IO_floatValue(line,chunkPos,2_pInt)
+         param(instance)%dSFE_dT = IO_floatValue(line,chunkPos,2_pInt)
        case ('dipoleformationfactor')
          dipoleFormationFactor(instance) = IO_floatValue(line,chunkPos,2_pInt)
        case ('shearbandresistance')
          sbResistance(instance) = IO_floatValue(line,chunkPos,2_pInt)
        case ('shearbandvelocity')
-         sbVelocity(instance) = IO_floatValue(line,chunkPos,2_pInt)
+         param(instance)%sbVelocity = IO_floatValue(line,chunkPos,2_pInt)
        case ('qedgepersbsystem')
-         sbQedge(instance) = IO_floatValue(line,chunkPos,2_pInt)
+         param(instance)%sbQedge = IO_floatValue(line,chunkPos,2_pInt)
        case ('deltag')
-         deltaG(instance) = IO_floatValue(line,chunkPos,2_pInt)
+         param(instance)%deltaG = IO_floatValue(line,chunkPos,2_pInt)
        case ('cmfptrans')
-         Cmfptrans(instance) = IO_floatValue(line,chunkPos,2_pInt)
+         param(instance)%Cmfptrans = IO_floatValue(line,chunkPos,2_pInt)
        case ('cthresholdtrans')
-         Cthresholdtrans(instance) = IO_floatValue(line,chunkPos,2_pInt)
+         param(instance)%Cthresholdtrans = IO_floatValue(line,chunkPos,2_pInt)
        case ('transstackheight')
-         transStackHeight(instance) = IO_floatValue(line,chunkPos,2_pInt)
+         param(instance)%transStackHeight = IO_floatValue(line,chunkPos,2_pInt)
      end select
    endif; endif
  enddo parsingFile
@@ -769,35 +747,35 @@ subroutine plastic_dislotwin_init(fileUnit)
       if (param(instance)%Qsd <= 0.0_pReal) &
         call IO_error(211_pInt,el=instance,ext_msg='Qsd ('//PLASTICITY_DISLOTWIN_label//')')
       if (sum(Ntwin(:,instance)) > 0_pInt) then
-        if (dEq0(SFE_0K(instance)) .and. &
-            dEq0(dSFE_dT(instance)) .and. &
+        if (dEq0(param(instance)%SFE_0K) .and. &
+            dEq0(param(instance)%dSFE_dT) .and. &
                             lattice_structure(phase) == LATTICE_fcc_ID) &
           call IO_error(211_pInt,el=instance,ext_msg='SFE0K ('//PLASTICITY_DISLOTWIN_label//')')
-        if (aTolRho(instance) <= 0.0_pReal) &
+        if (param(instance)%aTolRho <= 0.0_pReal) &
           call IO_error(211_pInt,el=instance,ext_msg='aTolRho ('//PLASTICITY_DISLOTWIN_label//')')   
-        if (aTolTwinFrac(instance) <= 0.0_pReal) &
+        if (param(instance)%aTolTwinFrac <= 0.0_pReal) &
           call IO_error(211_pInt,el=instance,ext_msg='aTolTwinFrac ('//PLASTICITY_DISLOTWIN_label//')')
       endif
       if (sum(Ntrans(:,instance)) > 0_pInt) then
-        if (dEq0(SFE_0K(instance)) .and. &
-            dEq0(dSFE_dT(instance)) .and. &
+        if (dEq0(param(instance)%SFE_0K) .and. &
+            dEq0(param(instance)%dSFE_dT) .and. &
                             lattice_structure(phase) == LATTICE_fcc_ID) &
           call IO_error(211_pInt,el=instance,ext_msg='SFE0K ('//PLASTICITY_DISLOTWIN_label//')')
-        if (aTolTransFrac(instance) <= 0.0_pReal) &
+        if (param(instance)%aTolTransFrac <= 0.0_pReal) &
           call IO_error(211_pInt,el=instance,ext_msg='aTolTransFrac ('//PLASTICITY_DISLOTWIN_label//')')
       endif
       if (sbResistance(instance) < 0.0_pReal) &
         call IO_error(211_pInt,el=instance,ext_msg='sbResistance ('//PLASTICITY_DISLOTWIN_label//')')
-      if (sbVelocity(instance) < 0.0_pReal) &
+      if (param(instance)%sbVelocity < 0.0_pReal) &
         call IO_error(211_pInt,el=instance,ext_msg='sbVelocity ('//PLASTICITY_DISLOTWIN_label//')')
-      if (sbVelocity(instance) > 0.0_pReal .and. &
-          pShearBand(instance) <= 0.0_pReal) &
+      if (param(instance)%sbVelocity > 0.0_pReal .and. &
+          param(instance)%pShearBand <= 0.0_pReal) &
         call IO_error(211_pInt,el=instance,ext_msg='pShearBand ('//PLASTICITY_DISLOTWIN_label//')')
       if (dNeq0(dipoleFormationFactor(instance)) .and. &
           dNeq(dipoleFormationFactor(instance), 1.0_pReal)) &
         call IO_error(211_pInt,el=instance,ext_msg='dipoleFormationFactor ('//PLASTICITY_DISLOTWIN_label//')')
-      if (sbVelocity(instance) > 0.0_pReal .and. &
-          qShearBand(instance) <= 0.0_pReal) &
+      if (param(instance)%sbVelocity > 0.0_pReal .and. &
+          param(instance)%qShearBand <= 0.0_pReal) &
         call IO_error(211_pInt,el=instance,ext_msg='qShearBand ('//PLASTICITY_DISLOTWIN_label//')')
 
 !--------------------------------------------------------------------------------------------------
@@ -1322,7 +1300,7 @@ subroutine plastic_dislotwin_stateInit(ph,instance)
  
  forall (i = 1_pInt:ns) &
    MeanFreePathSlip0(i) = &
-     GrainSize(instance)/(1.0_pReal+invLambdaSlip0(i)*GrainSize(instance))
+     param(instance)%GrainSize/(1.0_pReal+invLambdaSlip0(i)*param(instance)%GrainSize)
  tempState(6_pInt*ns+3_pInt*nt+3_pInt*nr+1:7_pInt*ns+3_pInt*nt+3_pInt*nr) = MeanFreePathSlip0
  
  forall (i = 1_pInt:ns) &
@@ -1335,7 +1313,7 @@ subroutine plastic_dislotwin_stateInit(ph,instance)
 !--------------------------------------------------------------------------------------------------
 ! initialize dependent twin microstructural variables
  forall (j = 1_pInt:nt) &
-   MeanFreePathTwin0(j) = GrainSize(instance)
+   MeanFreePathTwin0(j) = param(instance)%GrainSize
  tempState(7_pInt*ns+3_pInt*nt+3_pInt*nr+1_pInt:7_pInt*ns+4_pInt*nt+3_pInt*nr) = MeanFreePathTwin0
  
  forall (j = 1_pInt:nt) &
@@ -1346,7 +1324,7 @@ subroutine plastic_dislotwin_stateInit(ph,instance)
 !--------------------------------------------------------------------------------------------------
 ! initialize dependent trans microstructural variables
  forall (j = 1_pInt:nr) &
-   MeanFreePathTrans0(j) = GrainSize(instance)
+   MeanFreePathTrans0(j) = param(instance)%GrainSize
  tempState(7_pInt*ns+4_pInt*nt+3_pInt*nr+1_pInt:7_pInt*ns+4_pInt*nt+4_pInt*nr) = MeanFreePathTrans0
  
  forall (j = 1_pInt:nr) &
@@ -1378,7 +1356,7 @@ subroutine plastic_dislotwin_aTolState(ph,instance)
 
  ! Tolerance state for dislocation densities
  plasticState(ph)%aTolState(1_pInt: &
-                            2_pInt*ns) = aTolRho(instance)
+                            2_pInt*ns) = param(instance)%aTolRho
 
  ! Tolerance state for accumulated shear due to slip 
  plasticState(ph)%aTolState(2_pInt*ns+1_pInt: &
@@ -1386,7 +1364,7 @@ subroutine plastic_dislotwin_aTolState(ph,instance)
  
  ! Tolerance state for twin volume fraction
  plasticState(ph)%aTolState(3_pInt*ns+1_pInt: &
-                            3_pInt*ns+nt) = aTolTwinFrac(instance)
+                            3_pInt*ns+nt) = param(instance)%aTolTwinFrac
 
  ! Tolerance state for accumulated shear due to twin
  plasticState(ph)%aTolState(3_pInt*ns+nt+1_pInt: &
@@ -1394,11 +1372,11 @@ subroutine plastic_dislotwin_aTolState(ph,instance)
 
 ! Tolerance state for stress-assisted martensite volume fraction
  plasticState(ph)%aTolState(3_pInt*ns+2_pInt*nt+1_pInt: &
-                            3_pInt*ns+2_pInt*nt+nr) = aTolTransFrac(instance)
+                            3_pInt*ns+2_pInt*nt+nr) = param(instance)%aTolTransFrac
 
 ! Tolerance state for strain-induced martensite volume fraction
  plasticState(ph)%aTolState(3_pInt*ns+2_pInt*nt+nr+1_pInt: &
-                            3_pInt*ns+2_pInt*nt+2_pInt*nr) = aTolTransFrac(instance)
+                            3_pInt*ns+2_pInt*nt+2_pInt*nr) = param(instance)%aTolTransFrac
 
 end subroutine plastic_dislotwin_aTolState
 
@@ -1505,8 +1483,8 @@ subroutine plastic_dislotwin_microstructure(temperature,ipc,ip,el)
           sum(state(instance)%strainTransFraction(1_pInt:nr,of))
 
  !* Stacking fault energy
- sfe = SFE_0K(instance) + & 
-       dSFE_dT(instance) * Temperature
+ sfe = param(instance)%SFE_0K + & 
+       param(instance)%dSFE_dT * Temperature
  
  !* rescaled twin volume fraction for topology
  forall (t = 1_pInt:nt) &
@@ -1556,28 +1534,28 @@ subroutine plastic_dislotwin_microstructure(temperature,ipc,ip,el)
  do s = 1_pInt,ns
     if ((nt > 0_pInt) .or. (nr > 0_pInt)) then
        state(instance)%mfp_slip(s,of) = &
-         GrainSize(instance)/(1.0_pReal+GrainSize(instance)*&
+         param(instance)%GrainSize/(1.0_pReal+param(instance)%GrainSize*&
          (state(instance)%invLambdaSlip(s,of) + &
           state(instance)%invLambdaSlipTwin(s,of) + &
           state(instance)%invLambdaSlipTrans(s,of)))
     else
        state(instance)%mfp_slip(s,of) = &  
-         GrainSize(instance)/&
-         (1.0_pReal+GrainSize(instance)*(state(instance)%invLambdaSlip(s,of))) !!!!!! correct?
+         param(instance)%GrainSize/&
+         (1.0_pReal+param(instance)%GrainSize*(state(instance)%invLambdaSlip(s,of))) !!!!!! correct?
     endif
  enddo
 
  !* mean free path between 2 obstacles seen by a growing twin
  forall (t = 1_pInt:nt) &
    state(instance)%mfp_twin(t,of) = &
-     Cmfptwin(instance)*GrainSize(instance)/&
-       (1.0_pReal+GrainSize(instance)*state(ph)%invLambdaTwin(t,of))
+     param(instance)%Cmfptwin*param(instance)%GrainSize/&
+       (1.0_pReal+param(instance)%GrainSize*state(ph)%invLambdaTwin(t,of))
  
  !* mean free path between 2 obstacles seen by a growing martensite
  forall (r = 1_pInt:nr) &
    state(instance)%mfp_trans(r,of) = &
-     Cmfptrans(instance)*GrainSize(instance)/&
-      (1.0_pReal+GrainSize(instance)*state(instance)%invLambdaTrans(r,of))
+     param(instance)%Cmfptrans*param(instance)%GrainSize/&
+      (1.0_pReal+param(instance)%GrainSize*state(instance)%invLambdaTrans(r,of))
 
  !* threshold stress for dislocation motion
  forall (s = 1_pInt:ns) &
@@ -1589,20 +1567,20 @@ subroutine plastic_dislotwin_microstructure(temperature,ipc,ip,el)
  !* threshold stress for growing twin
  forall (t = 1_pInt:nt) &
    state(instance)%threshold_stress_twin(t,of) = &
-     Cthresholdtwin(instance)* &
+     param(instance)%Cthresholdtwin* &
        (sfe/(3.0_pReal*burgersPerTwinSystem(t,instance)) &
         + 3.0_pReal*burgersPerTwinSystem(t,instance)*lattice_mu(ph)/&
-            (L0_twin(instance)*burgersPerSlipSystem(t,instance)) &
+            (param(instance)%L0_twin*burgersPerSlipSystem(t,instance)) &
         )
 
  !* threshold stress for growing martensite
  forall (r = 1_pInt:nr) &
    state(instance)%threshold_stress_trans(r,of) = &
-     Cthresholdtrans(instance)* &
+     param(instance)%Cthresholdtrans* &
        (sfe/(3.0_pReal*burgersPerTransSystem(r,instance)) &
         + 3.0_pReal*burgersPerTransSystem(r,instance)*lattice_mu(ph)/&
-            (L0_trans(instance)*burgersPerSlipSystem(r,instance))&
-        + transStackHeight(instance)*deltaG(instance)/ &
+            (param(instance)%L0_trans*burgersPerSlipSystem(r,instance))&
+        + param(instance)%transStackHeight*param(instance)%deltaG/ &
             (3.0_pReal*burgersPerTransSystem(r,instance)) &
         )    
 
@@ -1624,7 +1602,7 @@ subroutine plastic_dislotwin_microstructure(temperature,ipc,ip,el)
      (sfe*8.0_pReal*pi)*(2.0_pReal+lattice_nu(ph))/(1.0_pReal-lattice_nu(ph))
    tau_r_twin(t,instance)= &
         lattice_mu(ph)*burgersPerTwinSystem(t,instance)/(2.0_pReal*pi)*&     
-        (1/(x0+xc_twin(instance))+cos(pi/3.0_pReal)/x0)
+        (1/(x0+param(instance)%xc_twin)+cos(pi/3.0_pReal)/x0)
  enddo
 
  !* equilibrium separation of partial dislocations (trans)
@@ -1633,7 +1611,7 @@ subroutine plastic_dislotwin_microstructure(temperature,ipc,ip,el)
      (sfe*8.0_pReal*pi)*(2.0_pReal+lattice_nu(ph))/(1.0_pReal-lattice_nu(ph))
    tau_r_trans(r,instance)= &
         lattice_mu(ph)*burgersPerTransSystem(r,instance)/(2.0_pReal*pi)*&     
-        (1/(x0+xc_trans(instance))+cos(pi/3.0_pReal)/x0)
+        (1/(x0+param(instance)%xc_trans)+cos(pi/3.0_pReal)/x0)
  enddo
 
 end subroutine plastic_dislotwin_microstructure
@@ -1744,7 +1722,7 @@ subroutine plastic_dislotwin_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,Temperature
       if((abs(tau_slip(j))-state(instance)%threshold_stress_slip(j,of)) > tol_math_check) then
       !* Stress ratios
         stressRatio =((abs(tau_slip(j))- state(instance)%threshold_stress_slip(j,of))/&
-          (SolidSolutionStrength(instance)+tau_peierlsPerSlipFamily(f,instance)))
+          (param(instance)%SolidSolutionStrength+tau_peierlsPerSlipFamily(f,instance)))
         StressRatio_p       = stressRatio** pPerSlipFamily(f,instance)
         StressRatio_pminus1 = stressRatio**(pPerSlipFamily(f,instance)-1.0_pReal)
       !* Boltzmann ratio
@@ -1763,7 +1741,7 @@ subroutine plastic_dislotwin_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,Temperature
         dgdot_dtauslip(j) = &
           abs(gdot_slip(j))*BoltzmannRatio*pPerSlipFamily(f,instance)&
           *qPerSlipFamily(f,instance)/&
-          (SolidSolutionStrength(instance)+tau_peierlsPerSlipFamily(f,instance))*&
+          (param(instance)%SolidSolutionStrength+tau_peierlsPerSlipFamily(f,instance))*&
           StressRatio_pminus1*(1-StressRatio_p)**(qPerSlipFamily(f,instance)-1.0_pReal)
       endif
  
@@ -1792,7 +1770,7 @@ subroutine plastic_dislotwin_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,Temperature
  
 !--------------------------------------------------------------------------------------------------
 ! Shear banding (shearband) part
- if(dNeq0(sbVelocity(instance)) .and. dNeq0(sbResistance(instance))) then
+ if(dNeq0(param(instance)%sbVelocity) .and. dNeq0(sbResistance(instance))) then
    gdot_sb = 0.0_pReal
    dgdot_dtausb = 0.0_pReal
    call math_eigenValuesVectorsSym(math_Mandel6to33(Tstar_v),eigValues,eigVectors,error)
@@ -1812,26 +1790,26 @@ subroutine plastic_dislotwin_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,Temperature
         StressRatio_pminus1 = 0.0_pReal
       else
        StressRatio_p = (abs(tau_sb(j))/sbResistance(instance))&
-                 **pShearBand(instance)
+                 **param(instance)%pShearBand
        StressRatio_pminus1 = (abs(tau_sb(j))/sbResistance(instance))&
-                 **(pShearBand(instance)-1.0_pReal)
+                 **(param(instance)%pShearBand-1.0_pReal)
       endif
 
      !* Boltzmann ratio
-     BoltzmannRatio = sbQedge(instance)/(kB*Temperature)
+     BoltzmannRatio = param(instance)%sbQedge/(kB*Temperature)
      !* Initial shear rates
-     DotGamma0 = sbVelocity(instance)
+     DotGamma0 = param(instance)%sbVelocity
  
      !* Shear rates due to shearband
      gdot_sb(j) = DotGamma0*exp(-BoltzmannRatio*(1_pInt-StressRatio_p)**&
-                  qShearBand(instance))*sign(1.0_pReal,tau_sb(j))
+                  param(instance)%qShearBand)*sign(1.0_pReal,tau_sb(j))
                   
      !* Derivatives of shear rates
      dgdot_dtausb(j) = &
        ((abs(gdot_sb(j))*BoltzmannRatio*&
-       pShearBand(instance)*qShearBand(instance))/&
+       param(instance)%pShearBand*param(instance)%qShearBand)/&
        sbResistance(instance))*&
-       StressRatio_pminus1*(1_pInt-StressRatio_p)**(qShearBand(instance)-1.0_pReal)
+       StressRatio_pminus1*(1_pInt-StressRatio_p)**(param(instance)%qShearBand-1.0_pReal)
  
      !* Plastic velocity gradient for shear banding
      Lp = Lp + gdot_sb(j)*sb_Smatrix
@@ -1870,8 +1848,8 @@ subroutine plastic_dislotwin_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,Temperature
             if (tau_twin(j) < tau_r_twin(j,instance)) then
               Ndot0_twin=(abs(gdot_slip(s1))*(state(instance)%rhoEdge(s2,of)+state(ph)%rhoEdgeDip(s2,of))+&  !!!!! correct?
                      abs(gdot_slip(s2))*(state(instance)%rhoEdge(s1,of)+state(instance)%rhoEdgeDip(s1,of)))/&
-                    (L0_twin(instance)*burgersPerSlipSystem(j,instance))*&
-                    (1.0_pReal-exp(-VcrossSlip(instance)/(kB*Temperature)*&
+                    (param(instance)%L0_twin*burgersPerSlipSystem(j,instance))*&
+                    (1.0_pReal-exp(-param(instance)%VcrossSlip/(kB*Temperature)*&
                     (tau_r_twin(j,instance)-tau_twin(j))))
             else
               Ndot0_twin=0.0_pReal
@@ -1920,8 +1898,8 @@ subroutine plastic_dislotwin_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,Temperature
             if (tau_trans(j) < tau_r_trans(j,instance)) then
               Ndot0_trans=(abs(gdot_slip(s1))*(state(instance)%rhoEdge(s2,of)+state(instance)%rhoEdgeDip(s2,of))+&  !!!!! correct?
                            abs(gdot_slip(s2))*(state(instance)%rhoEdge(s1,of)+state(instance)%rhoEdgeDip(s1,of)))/&
-                          (L0_trans(instance)*burgersPerSlipSystem(j,instance))*&
-                          (1.0_pReal-exp(-VcrossSlip(instance)/(kB*Temperature)*&
+                          (param(instance)%L0_trans*burgersPerSlipSystem(j,instance))*&
+                          (1.0_pReal-exp(-param(instance)%VcrossSlip/(kB*Temperature)*&
                           (tau_r_trans(j,instance)-tau_trans(j))))
             else
               Ndot0_trans=0.0_pReal
@@ -2040,7 +2018,7 @@ subroutine plastic_dislotwin_dotState(Tstar_v,Temperature,ipc,ip,el)
       if((abs(tau_slip(j))-state(instance)%threshold_stress_slip(j,of)) > tol_math_check) then
       !* Stress ratios
         stressRatio =((abs(tau_slip(j))- state(instance)%threshold_stress_slip(j,of))/&
-          (SolidSolutionStrength(instance)+tau_peierlsPerSlipFamily(f,instance)))
+          (param(instance)%SolidSolutionStrength+tau_peierlsPerSlipFamily(f,instance)))
         StressRatio_p       = stressRatio** pPerSlipFamily(f,instance)
         StressRatio_pminus1 = stressRatio**(pPerSlipFamily(f,instance)-1.0_pReal)
       !* Boltzmann ratio
@@ -2059,7 +2037,7 @@ subroutine plastic_dislotwin_dotState(Tstar_v,Temperature,ipc,ip,el)
                                 (burgersPerSlipSystem(j,instance)*state(instance)%mfp_slip(j,of))
       !* Dipole formation
       EdgeDipMinDistance = &
-        CEdgeDipMinDistance(instance)*burgersPerSlipSystem(j,instance)
+        param(instance)%CEdgeDipMinDistance*burgersPerSlipSystem(j,instance)
       if (dEq0(tau_slip(j))) then
         DotRhoDipFormation = 0.0_pReal
       else
@@ -2136,8 +2114,8 @@ subroutine plastic_dislotwin_dotState(Tstar_v,Temperature,ipc,ip,el)
             if (tau_twin(j) < tau_r_twin(j,instance)) then
               Ndot0_twin=(abs(gdot_slip(s1))*(state(instance)%rhoEdge(s2,of)+state(instance)%rhoEdgeDip(s2,of))+&
                      abs(gdot_slip(s2))*(state(instance)%rhoEdge(s1,of)+state(instance)%rhoEdgeDip(s1,of)))/&
-                    (L0_twin(instance)*burgersPerSlipSystem(j,instance))*&
-                    (1.0_pReal-exp(-VcrossSlip(instance)/(kB*Temperature)*&
+                    (param(instance)%L0_twin*burgersPerSlipSystem(j,instance))*&
+                    (1.0_pReal-exp(-param(instance)%VcrossSlip/(kB*Temperature)*&
                     (tau_r_twin(j,instance)-tau_twin(j))))
             else
               Ndot0_twin=0.0_pReal
@@ -2177,8 +2155,8 @@ subroutine plastic_dislotwin_dotState(Tstar_v,Temperature,ipc,ip,el)
             if (tau_trans(j) < tau_r_trans(j,instance)) then
               Ndot0_trans=(abs(gdot_slip(s1))*(state(instance)%rhoEdge(s2,of)+state(instance)%rhoEdgeDip(s2,of))+&
                            abs(gdot_slip(s2))*(state(instance)%rhoEdge(s1,of)+state(instance)%rhoEdgeDip(s1,of)))/&
-                          (L0_trans(instance)*burgersPerSlipSystem(j,instance))*&
-                          (1.0_pReal-exp(-VcrossSlip(instance)/(kB*Temperature)*&
+                          (param(instance)%L0_trans*burgersPerSlipSystem(j,instance))*&
+                          (1.0_pReal-exp(-param(instance)%VcrossSlip/(kB*Temperature)*&
                           (tau_r_trans(j,instance)-tau_trans(j))))
             else
               Ndot0_trans=0.0_pReal
@@ -2292,7 +2270,7 @@ function plastic_dislotwin_postResults(Tstar_v,Temperature,ipc,ip,el)
               if((abs(tau)-state(instance)%threshold_stress_slip(j,of)) > tol_math_check) then
               !* Stress ratios
                 stressRatio = ((abs(tau)-state(ph)%threshold_stress_slip(j,of))/&
-                                (SolidSolutionStrength(instance)+&
+                                (param(instance)%SolidSolutionStrength+&
                                  tau_peierlsPerSlipFamily(f,instance)))
                 StressRatio_p       = stressRatio** pPerSlipFamily(f,instance)
                 StressRatio_pminus1 = stressRatio**(pPerSlipFamily(f,instance)-1.0_pReal)
@@ -2366,17 +2344,17 @@ function plastic_dislotwin_postResults(Tstar_v,Temperature,ipc,ip,el)
                 StressRatio_pminus1 = 0.0_pReal
               else
                 StressRatio_p = (abs(tau)/sbResistance(instance))**&
-                                 pShearBand(instance)
+                                 param(instance)%pShearBand
                 StressRatio_pminus1 = (abs(tau)/sbResistance(instance))**&
-                                (pShearBand(instance)-1.0_pReal)
+                                (param(instance)%pShearBand-1.0_pReal)
               endif
               !* Boltzmann ratio
-              BoltzmannRatio = sbQedge(instance)/(kB*Temperature)
+              BoltzmannRatio = param(instance)%sbQedge/(kB*Temperature)
               !* Initial shear rates
-              DotGamma0 = sbVelocity(instance)
+              DotGamma0 = param(instance)%sbVelocity
               ! Shear rate due to shear band
               plastic_dislotwin_postResults(c+j) = &
-          DotGamma0*exp(-BoltzmannRatio*(1_pInt-StressRatio_p)**qShearBand(instance))*&
+          DotGamma0*exp(-BoltzmannRatio*(1_pInt-StressRatio_p)**param(instance)%qShearBand)*&
                 sign(1.0_pReal,tau)
          enddo 
         c = c + 6_pInt
@@ -2398,11 +2376,11 @@ function plastic_dislotwin_postResults(Tstar_v,Temperature,ipc,ip,el)
                if((abs(tau)-state(instance)%threshold_stress_slip(j,of)) > tol_math_check) then
                !* Stress ratios
                  StressRatio_p = ((abs(tau)-state(instance)%threshold_stress_slip(j,of))/&
-                                 (SolidSolutionStrength(instance)+&
+                                 (param(instance)%SolidSolutionStrength+&
                                   tau_peierlsPerSlipFamily(f,instance)))&
                                                     **pPerSlipFamily(f,instance)
                  StressRatio_pminus1 = ((abs(tau)-state(instance)%threshold_stress_slip(j,of))/&
-                                       (SolidSolutionStrength(instance)+&
+                                       (param(instance)%SolidSolutionStrength+&
                                         tau_peierlsPerSlipFamily(f,instance)))&
                                                     **(pPerSlipFamily(f,instance)-1.0_pReal)
                !* Boltzmann ratio
@@ -2438,9 +2416,9 @@ function plastic_dislotwin_postResults(Tstar_v,Temperature,ipc,ip,el)
                   if (tau < tau_r_twin(j,instance)) then
                     Ndot0_twin=(abs(gdot_slip(s1))*(state(instance)%rhoEdge(s2,of)+state(instance)%rhoEdgeDip(s2,of))+&
                            abs(gdot_slip(s2))*(state(instance)%rhoEdge(s1,of)+state(instance)%rhoEdgeDip(s1,of)))/&
-                          (L0_twin(instance)*&
+                          (param(instance)%L0_twin*&
                            burgersPerSlipSystem(j,instance))*&
-                          (1.0_pReal-exp(-VcrossSlip(instance)/(kB*Temperature)*&
+                          (1.0_pReal-exp(-param(instance)%VcrossSlip/(kB*Temperature)*&
                           (tau_r_twin(j,instance)-tau)))
                   else
                     Ndot0_twin=0.0_pReal
@@ -2451,7 +2429,7 @@ function plastic_dislotwin_postResults(Tstar_v,Temperature,ipc,ip,el)
                 StressRatio_r = (state(instance)%threshold_stress_twin(j,of)/tau) &
                                                    **rPerTwinFamily(f,instance)
                 plastic_dislotwin_postResults(c+j) = &
-                  (MaxTwinFraction(instance)-sumf)*lattice_shearTwin(index_myFamily+i,ph)*&
+                  (param(instance)%MaxTwinFraction-sumf)*lattice_shearTwin(index_myFamily+i,ph)*&
                   state(instance)%twinVolume(j,of)*Ndot0_twin*exp(-StressRatio_r)
               endif
  
@@ -2490,11 +2468,11 @@ function plastic_dislotwin_postResults(Tstar_v,Temperature,ipc,ip,el)
              if((abs(tau)-state(instance)%threshold_stress_slip(j,of)) > tol_math_check) then
              !* Stress ratios
                StressRatio_p = ((abs(tau)-state(instance)%threshold_stress_slip(j,of))/&
-                               (SolidSolutionStrength(instance)+&
+                               (param(instance)%SolidSolutionStrength+&
                                 tau_peierlsPerSlipFamily(f,instance)))&
                                                   **pPerSlipFamily(f,instance)
                StressRatio_pminus1 = ((abs(tau)-state(instance)%threshold_stress_slip(j,of))/&
-                                     (SolidSolutionStrength(instance)+&
+                                     (param(instance)%SolidSolutionStrength+&
                                       tau_peierlsPerSlipFamily(f,instance)))&
                                                   **(pPerSlipFamily(f,instance)-1.0_pReal)
              !* Boltzmann ratio
@@ -2512,7 +2490,7 @@ function plastic_dislotwin_postResults(Tstar_v,Temperature,ipc,ip,el)
                dgdot_dtauslip = &
                  abs(gdot_slip(j))*BoltzmannRatio*pPerSlipFamily(f,instance)&
                  *qPerSlipFamily(f,instance)/&
-                 (SolidSolutionStrength(instance)+&
+                 (param(instance)%SolidSolutionStrength+&
                   tau_peierlsPerSlipFamily(f,instance))*&
                  StressRatio_pminus1*(1-StressRatio_p)**(qPerSlipFamily(f,instance)-1.0_pReal)
              
