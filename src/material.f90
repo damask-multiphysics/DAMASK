@@ -25,6 +25,7 @@ module material
    PLASTICITY_none_label                = 'none', &
    PLASTICITY_isotropic_label           = 'isotropic', &
    PLASTICITY_phenopowerlaw_label       = 'phenopowerlaw', &
+   PLASTICITY_kinehardening_label       = 'kinehardening', &
    PLASTICITY_dislotwin_label           = 'dislotwin', &
    PLASTICITY_disloucla_label           = 'disloucla', &
    PLASTICITY_nonlocal_label            = 'nonlocal', &
@@ -72,6 +73,7 @@ module material
                  PLASTICITY_none_ID, &
                  PLASTICITY_isotropic_ID, &
                  PLASTICITY_phenopowerlaw_ID, &
+                 PLASTICITY_kinehardening_ID, &
                  PLASTICITY_dislotwin_ID, &
                  PLASTICITY_disloucla_ID, &
                  PLASTICITY_nonlocal_ID
@@ -308,6 +310,7 @@ module material
    PLASTICITY_none_ID, &
    PLASTICITY_isotropic_ID, &
    PLASTICITY_phenopowerlaw_ID, &
+   PLASTICITY_kinehardening_ID, &
    PLASTICITY_dislotwin_ID, &
    PLASTICITY_disloucla_ID, &
    PLASTICITY_nonlocal_ID, &
@@ -983,6 +986,8 @@ subroutine material_parsePhase(fileUnit,myPart)
              phase_plasticity(section) = PLASTICITY_ISOTROPIC_ID
            case (PLASTICITY_PHENOPOWERLAW_label)
              phase_plasticity(section) = PLASTICITY_PHENOPOWERLAW_ID
+           case (PLASTICITY_KINEHARDENING_label)
+             phase_plasticity(section) = PLASTICITY_KINEHARDENING_ID
            case (PLASTICITY_DISLOTWIN_label)
              phase_plasticity(section) = PLASTICITY_DISLOTWIN_ID
            case (PLASTICITY_DISLOUCLA_label)

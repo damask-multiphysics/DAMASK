@@ -74,6 +74,7 @@ module math
  public :: &
    math_init, &
    math_qsort, &
+   math_expand, &
    math_range, &
    math_identity2nd, &
    math_identity4th, &
