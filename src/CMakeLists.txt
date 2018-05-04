@@ -166,7 +166,6 @@ if ("${PROJECT_NAME}" STREQUAL "DAMASK_spectral")
       add_library(SPECTRAL_SOLVER OBJECT
       "spectral_thermal.f90"
       "spectral_damage.f90"
-      "spectral_mech_AL.f90"
       "spectral_mech_Polarisation.f90"
       "spectral_mech_Basic.f90")
       add_dependencies(SPECTRAL_SOLVER SPECTRAL_UTILITIES)
