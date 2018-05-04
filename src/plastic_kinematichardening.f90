@@ -51,12 +51,6 @@ module plastic_kinehardening
      outputID                                                                                          !< ID of each post result output
     
    real(pReal) :: &
- !     F0, &
-!      mu, &
-!      mu0, &
-!      tau_hat0, &
-!      p1, &
-!      q1, &
      gdot0, &                                                                                          !< reference shear strain rate for slip (input parameter)
      n_slip, &                                                                                         !< stress exponent for slip (input parameter)
      aTolResistance, &
@@ -325,25 +319,6 @@ subroutine plastic_kinehardening_init(fileUnit)
            param(instance)%nonSchmidCoeff(j) = IO_floatValue(line,chunkPos,1_pInt+j)
          enddo  
 !--------------------------------------------------------------------------------------------------
-! parameters independent of number of slip families 
-      !  case ('F0')
-!          param(instance)%F0                    = IO_floatValue(line,chunkPos,2_pInt)
-!          
-!        case ('mu')
-!          param(instance)%mu                    = IO_floatValue(line,chunkPos,2_pInt)
-!          
-!        case ('mu0')
-!          param(instance)%mu0                    = IO_floatValue(line,chunkPos,2_pInt)
-!          
-!        case ('tau_hat0')
-!          param(instance)%tau_hat0                    = IO_floatValue(line,chunkPos,2_pInt)
-!          
-!        case ('p1')
-!          param(instance)%p1                    = IO_floatValue(line,chunkPos,2_pInt)
-!          
-!        case ('q1')
-!          param(instance)%q1                    = IO_floatValue(line,chunkPos,2_pInt)
-                                                
        case ('gdot0')
          param(instance)%gdot0                    = IO_floatValue(line,chunkPos,2_pInt)
              
@@ -619,29 +594,6 @@ subroutine plastic_kinehardening_shearRates(gdot_pos,gdot_neg,tau_pos,tau_neg, &
             state(instance)%crss(:,of))**param(instance)%n_slip &
             *sign(1.0_pReal,tau_neg-state(instance)%crss_back(:,of)) 
             
-!  gdot_pos = 0.5_pReal * param(instance)%gdot0 * &
-!             exp(-param(instance)%F0/(1.38e-23*298.15)* &
-!                 (1-((abs(tau_pos-state(instance)%crss_back(:,of)) &
-!                       -state(instance)%crss(:,of)*param(instance)%mu/param(instance)%mu) / &
-!                     !----------------------------------------------------------------------------
-!                       param(instance)%tau_hat0*param(instance)%mu/param(instance)%mu &
-!                     )**param(instance)%p1 &
-!                 )**param(instance)%q1 &
-!                )*sign(1.0_pReal,(tau_pos-state(instance)%crss_back(:,of)))
-!             
-!             
-!              
-!  gdot_neg = 0.5_pReal * param(instance)%gdot0 * &
-!             exp(-param(instance)%F0/(1.38e-23*298.15)* &
-!                 (1-((abs(tau_neg-state(instance)%crss_back(:,of)) &
-!                       -state(instance)%crss(:,of)*param(instance)%mu/param(instance)%mu) / &
-!                      !---------------------------------------------------------------------------- 
-!                       param(instance)%tau_hat0*param(instance)%mu/param(instance)%mu &
-!                     )**param(instance)%p1 &
-!                 )**param(instance)%q1 &
-!                )*sign(1.0_pReal,(tau_neg-state(instance)%crss_back(:,of)))      
-
-  
 
 end subroutine plastic_kinehardening_shearRates
 
@@ -891,14 +843,14 @@ subroutine plastic_kinehardening_dotState(Tstar_v,ipc,ip,el)
  slipFamilies: do f = 1_pInt,lattice_maxNslipFamily
    slipSystems: do i = 1_pInt,plastic_kinehardening_Nslip(f,instance)
      j = j+1_pInt    
-     dotState(instance)%crss(j,of) = &                                                                        ! evolution of slip resistance j
+     dotState(instance)%crss(j,of) = &                                                                               ! evolution of slip resistance j
           dot_product(param(instance)%hardeningMatrix_SlipSlip(j,1:nSlip),abs(gdot_pos+gdot_neg)) * &
           ( param(instance)%theta1(f) + &
            (param(instance)%theta0(f) - param(instance)%theta1(f) &
             + param(instance)%theta0(f)*param(instance)%theta1(f)*state(instance)%sumGamma(of)/param(instance)%tau1(f)) &
-           *exp(-state(instance)%sumGamma(of)*param(instance)%theta0(f)/param(instance)%tau1(f)) &                  ! V term depending on the harding law
+           *exp(-state(instance)%sumGamma(of)*param(instance)%theta0(f)/param(instance)%tau1(f)) &                   ! V term depending on the harding law
           )
-     dotState(instance)%crss_back(j,of) = &                                                                   ! evolution of back stress resistance j
+     dotState(instance)%crss_back(j,of) = &                                                                          ! evolution of back stress resistance j
           state(instance)%sense(j,of)*abs(gdot_pos(j)+gdot_neg(j)) * &
           ( param(instance)%theta1_b(f) + &
            (param(instance)%theta0_b(f) - param(instance)%theta1_b(f) &
