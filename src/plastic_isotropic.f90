@@ -62,7 +62,7 @@ module plastic_isotropic
  end type
 
  type, private :: tIsotropicAbsTol                                                                  !< internal alias for abs tolerance in state
-   real(pReal), pointer :: &                                                                        ! scalars along NipcMyInstance
+   real(pReal), pointer :: &                                                                        ! scalars
      flowstress, &
      accumulatedShear
  end type
@@ -150,6 +150,8 @@ subroutine plastic_isotropic_init(fileUnit)
  integer(pInt) :: NipcMyPhase
 
  write(6,'(/,a)')   ' <<<+-  constitutive_'//PLASTICITY_ISOTROPIC_label//' init  -+>>>'
+ write(6,'(/,a)')   ' Ma et al., Computational Materials Science, 109:323–329, 2015'
+ write(6,'(/,a)')   ' https://doi.org/10.1016/j.commatsci.2015.07.041'
  write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
  

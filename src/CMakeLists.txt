@@ -74,6 +74,7 @@ add_library (PLASTIC OBJECT
   "plastic_disloUCLA.f90"
   "plastic_isotropic.f90"
   "plastic_phenopowerlaw.f90"
+  "plastic_kinematichardening.f90"
   "plastic_nonlocal.f90"
   "plastic_none.f90")
 add_dependencies(PLASTIC DAMASK_HELPERS)
@@ -165,7 +166,6 @@ if ("${PROJECT_NAME}" STREQUAL "DAMASK_spectral")
       add_library(SPECTRAL_SOLVER OBJECT
       "spectral_thermal.f90"
       "spectral_damage.f90"
-      "spectral_mech_AL.f90"
       "spectral_mech_Polarisation.f90"
       "spectral_mech_Basic.f90")
       add_dependencies(SPECTRAL_SOLVER SPECTRAL_UTILITIES)

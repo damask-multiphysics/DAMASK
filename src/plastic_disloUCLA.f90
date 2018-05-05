@@ -176,6 +176,8 @@ subroutine plastic_disloUCLA_init(fileUnit)
  real(pReal), dimension(:), allocatable :: tempPerSlip
   
  write(6,'(/,a)')   ' <<<+-  constitutive_'//PLASTICITY_DISLOUCLA_label//' init  -+>>>'
+ write(6,'(/,a)')   ' Cereceda et al., International Journal of Plasticity 78, 2016, 242-256'
+ write(6,'(/,a)')   ' http://dx.doi.org/10.1016/j.ijplas.2015.09.002'
  write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
  
