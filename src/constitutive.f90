@@ -948,15 +948,6 @@ subroutine constitutive_collectDotState(Tstar_v, FeArray, FpArray, subdt, subfra
    end select sourceType
  enddo SourceLoop
 
- if (iand(debug_level(debug_constitutive), debug_levelBasic) /= 0_pInt) then
-   call system_clock(count=tock,count_rate=tickrate,count_max=maxticks)
-   !$OMP CRITICAL (debugTimingDotState)
-   !debug_cumDotStateCalls = debug_cumDotStateCalls + 1_pInt
-   !debug_cumDotStateTicks = debug_cumDotStateTicks + tock-tick
-   !$OMP FLUSH (debug_cumDotStateTicks)
-   !if (tock < tick) debug_cumDotStateTicks  = debug_cumDotStateTicks + maxticks
-   !$OMP END CRITICAL (debugTimingDotState)
- endif
 end subroutine constitutive_collectDotState
 
 !--------------------------------------------------------------------------------------------------
@@ -1031,16 +1022,6 @@ subroutine constitutive_collectDeltaState(Tstar_v, Fe, ipc, ip, el)
        call source_vacancy_thermalfluc_deltaState(ipc, ip, el)
    end select sourceType
  enddo SourceLoop
-
- if (iand(debug_level(debug_constitutive), debug_levelBasic) /= 0_pInt) then
-   call system_clock(count=tock,count_rate=tickrate,count_max=maxticks)
-   !$OMP CRITICAL (debugTimingDeltaState)
-     !debug_cumDeltaStateCalls = debug_cumDeltaStateCalls + 1_pInt
-     !debug_cumDeltaStateTicks = debug_cumDeltaStateTicks + tock-tick
-     !$OMP FLUSH (debug_cumDeltaStateTicks)
-     !if (tock < tick) debug_cumDeltaStateTicks  = debug_cumDeltaStateTicks + maxticks
-   !$OMP END CRITICAL (debugTimingDeltaState)
- endif
 
 end subroutine constitutive_collectDeltaState
 

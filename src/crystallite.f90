@@ -3239,19 +3239,16 @@ logical function crystallite_integrateStress(&
                          subStepSizeLp, &
                          subStepSizeLi
  use debug, only:        debug_level, &
-                         debug_crystallite, &
-                         debug_levelBasic, &
-                         debug_levelExtensive, &
-                         debug_levelSelective, &
 #ifdef DEBUG
                          debug_e, &
                          debug_i, &
-                         debug_g!, &
+                         debug_g, &
 #endif
-                         !debug_cumLpCalls, &
-                         !debug_cumLpTicks, &
-                         !debug_StressLoopLpDistribution, &
-                         !debug_StressLoopLiDistribution
+                         debug_crystallite, &
+                         debug_levelBasic, &
+                         debug_levelExtensive, &
+                         debug_levelSelective
+
  use constitutive, only: constitutive_LpAndItsTangent, &
                          constitutive_LiAndItsTangent, &
                          constitutive_TandItsTangent
@@ -3457,9 +3454,6 @@ logical function crystallite_integrateStress(&
 
      !* calculate plastic velocity gradient and its tangent from constitutive law
 
-     if (iand(debug_level(debug_crystallite), debug_levelBasic) /= 0_pInt) &
-       call system_clock(count=tick,count_rate=tickrate,count_max=maxticks)
-
 #ifdef DEBUG
      if (iand(debug_level(debug_crystallite), debug_levelExtensive) /= 0_pInt &
          .and. ((el == debug_e .and. ip == debug_i .and. ipc == debug_g) &
@@ -3473,16 +3467,6 @@ logical function crystallite_integrateStress(&
 #endif
      call constitutive_LpAndItsTangent(Lp_constitutive, dLp_dT3333, dLp_dFi3333, &
                                        Tstar_v, Fi_new, ipc, ip, el)
-
-     if (iand(debug_level(debug_crystallite), debug_levelBasic) /= 0_pInt) then
-       call system_clock(count=tock,count_rate=tickrate,count_max=maxticks)
-       !$OMP CRITICAL (debugTimingLpTangent)
-         !debug_cumLpCalls = debug_cumLpCalls + 1_pInt
-         !debug_cumLpTicks = debug_cumLpTicks + tock-tick
-         !$OMP FLUSH (debug_cumLpTicks)
-         !if (tock < tick) debug_cumLpTicks = debug_cumLpTicks + maxticks
-       !$OMP END CRITICAL (debugTimingLpTangent)
-     endif
 
 #ifdef DEBUG
      if (iand(debug_level(debug_crystallite), debug_levelExtensive) /= 0_pInt &
