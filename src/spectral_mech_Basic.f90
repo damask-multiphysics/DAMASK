@@ -19,7 +19,7 @@ module spectral_mech_basic
 #include <petsc/finclude/petsc.h90>
 
  character (len=*), parameter, public :: &
-   DAMASK_spectral_SolverBasicPETSC_label = 'basicpetsc'
+   DAMASK_spectral_SolverPETSC_label = 'petsc'
    
 !--------------------------------------------------------------------------------------------------
 ! derived types
@@ -62,10 +62,10 @@ module spectral_mech_basic
  real(pReal), private, dimension(3,3) :: mask_stress = 0.0_pReal
 
  public :: &
-   basicPETSc_init, &
-   basicPETSc_solution, &
-   BasicPETSc_forward, &
-   basicPETSc_destroy
+   PETSc_init, &
+   PETSc_solution, &
+   PETSc_forward, &
+   PETSc_destroy
  external :: &
    PETScFinalize, &
    MPI_Abort, &
@@ -77,7 +77,7 @@ contains
 !--------------------------------------------------------------------------------------------------
 !> @brief allocates all necessary fields and fills them with data, potentially from restart info
 !--------------------------------------------------------------------------------------------------
-subroutine basicPETSc_init
+subroutine PETSc_init
 #if defined(__GFORTRAN__) || __INTEL_COMPILER >= 1800
  use, intrinsic :: iso_fortran_env, only: &
    compiler_version, &
@@ -134,7 +134,7 @@ subroutine basicPETSc_init
    SNESSetConvergenceTest, &
    SNESSetFromOptions
    
- write(6,'(/,a)') ' <<<+-  DAMASK_spectral_solverBasicPETSc init  -+>>>'
+ write(6,'(/,a)') ' <<<+-  DAMASK_spectral_solverPETSc init  -+>>>'
  write(6,'(/,a)') ' Shanthraj et al., International Journal of Plasticity, 66:31–45, 2015'
  write(6,'(/,a)') ' https://doi.org/10.1016/j.ijplas.2014.02.006'
  write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
@@ -164,9 +164,9 @@ subroutine basicPETSc_init
  CHKERRQ(ierr)
  call SNESSetDM(snes,da,ierr); CHKERRQ(ierr)                                                        ! connect snes to da
  call DMCreateGlobalVector(da,solution_vec,ierr); CHKERRQ(ierr)                                     ! global solution vector (grid x 9, i.e. every def grad tensor)
- call DMDASNESSetFunctionLocal(da,INSERT_VALUES,BasicPETSC_formResidual,PETSC_NULL_OBJECT,ierr)     ! residual vector of same shape as solution vector
+ call DMDASNESSetFunctionLocal(da,INSERT_VALUES,PETSC_formResidual,PETSC_NULL_OBJECT,ierr)     ! residual vector of same shape as solution vector
  CHKERRQ(ierr) 
- call SNESSetConvergenceTest(snes,BasicPETSC_converged,PETSC_NULL_OBJECT,PETSC_NULL_FUNCTION,ierr)  ! specify custom convergence check function "_converged"
+ call SNESSetConvergenceTest(snes,PETSC_converged,PETSC_NULL_OBJECT,PETSC_NULL_FUNCTION,ierr)  ! specify custom convergence check function "_converged"
  CHKERRQ(ierr)
  call SNESSetFromOptions(snes,ierr); CHKERRQ(ierr)                                                  ! pull it all together with additional cli arguments
 
@@ -218,12 +218,12 @@ subroutine basicPETSc_init
 
  call Utilities_updateGamma(C_minMaxAvg,.true.)
 
-end subroutine basicPETSc_init
+end subroutine PETSc_init
 
 !--------------------------------------------------------------------------------------------------
-!> @brief solution for the Basic PETSC scheme with internal iterations
+!> @brief solution for the PETSC scheme with internal iterations
 !--------------------------------------------------------------------------------------------------
-type(tSolutionState) function basicPETSc_solution(incInfoIn,timeinc,timeinc_old,stress_BC,rotation_BC)
+type(tSolutionState) function PETSc_solution(incInfoIn,timeinc,timeinc_old,stress_BC,rotation_BC)
  use IO, only: &
    IO_error
  use numerics, only: &
@@ -282,19 +282,19 @@ type(tSolutionState) function basicPETSc_solution(incInfoIn,timeinc,timeinc_old,
 ! check convergence
  call SNESGetConvergedReason(snes,reason,ierr); CHKERRQ(ierr)
  
- BasicPETSc_solution%converged = reason > 0
- basicPETSC_solution%iterationsNeeded = totalIter
- basicPETSc_solution%termIll = terminallyIll
+ PETSc_solution%converged = reason > 0
+ PETSC_solution%iterationsNeeded = totalIter
+ PETSc_solution%termIll = terminallyIll
  terminallyIll = .false.
  if (reason == -4) call IO_error(893_pInt)                                                         ! MPI error
 
-end function BasicPETSc_solution
+end function PETSc_solution
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief forms the basic residual vector
+!> @brief forms the residual vector
 !--------------------------------------------------------------------------------------------------
-subroutine BasicPETSC_formResidual(in,x_scal,f_scal,dummy,ierr)
+subroutine PETSC_formResidual(in,x_scal,f_scal,dummy,ierr)
  use numerics, only: &
    itmax, &
    itmin
@@ -381,13 +381,13 @@ subroutine BasicPETSC_formResidual(in,x_scal,f_scal,dummy,ierr)
 ! constructing residual
  f_scal = tensorField_real(1:3,1:3,1:grid(1),1:grid(2),1:grid3)                                     ! Gamma*P gives correction towards div(P) = 0, so needs to be zero, too
 
-end subroutine BasicPETSc_formResidual
+end subroutine PETSc_formResidual
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief convergence check
 !--------------------------------------------------------------------------------------------------
-subroutine BasicPETSc_converged(snes_local,PETScIter,xnorm,snorm,fnorm,reason,dummy,ierr)
+subroutine PETSc_converged(snes_local,PETScIter,xnorm,snorm,fnorm,reason,dummy,ierr)
  use numerics, only: &
    itmax, &
    itmin, &
@@ -436,14 +436,14 @@ subroutine BasicPETSc_converged(snes_local,PETScIter,xnorm,snorm,fnorm,reason,du
  write(6,'(/,a)') ' ==========================================================================='
 flush(6) 
  
-end subroutine BasicPETSc_converged
+end subroutine PETSc_converged
 
 !--------------------------------------------------------------------------------------------------
 !> @brief forwarding routine
 !> @details find new boundary conditions and best F estimate for end of current timestep
 !> possibly writing restart information, triggering of state increment in DAMASK, and updating of IPcoordinates
 !--------------------------------------------------------------------------------------------------
-subroutine BasicPETSc_forward(guess,timeinc,timeinc_old,loadCaseTime,deformation_BC,stress_BC,rotation_BC)
+subroutine PETSc_forward(guess,timeinc,timeinc_old,loadCaseTime,deformation_BC,stress_BC,rotation_BC)
   use math, only: &
     math_mul33x33 ,&
     math_rotate_backward33
@@ -549,12 +549,12 @@ subroutine BasicPETSc_forward(guess,timeinc,timeinc_old,loadCaseTime,deformation
               math_rotate_backward33(F_aim,rotation_BC)),[9,grid(1),grid(2),grid3])
   call DMDAVecRestoreArrayF90(da,solution_vec,F,ierr); CHKERRQ(ierr)
   
-end subroutine BasicPETSc_forward
+end subroutine PETSc_forward
 
 !--------------------------------------------------------------------------------------------------
 !> @brief destroy routine
 !--------------------------------------------------------------------------------------------------
-subroutine BasicPETSc_destroy()
+subroutine PETSc_destroy()
  use spectral_utilities, only: &
    Utilities_destroy
 
@@ -570,6 +570,6 @@ subroutine BasicPETSc_destroy()
  call SNESDestroy(snes,ierr); CHKERRQ(ierr)
  call DMDestroy(da,ierr); CHKERRQ(ierr)
 
-end subroutine BasicPETSc_destroy
+end subroutine PETSc_destroy
 
 end module spectral_mech_basic

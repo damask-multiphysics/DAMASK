@@ -364,8 +364,8 @@ program DAMASK_spectral
    select case (loadCases(1)%ID(field))
      case(FIELD_MECH_ID)
        select case (spectral_solver)
-         case (DAMASK_spectral_SolverBasicPETSc_label)
-           call basicPETSc_init
+         case (DAMASK_spectral_SolverPETSc_label)
+           call PETSc_init
            
          case (DAMASK_spectral_SolverPolarisation_label)
            if(iand(debug_level(debug_spectral),debug_levelBasic)/= 0) &
@@ -523,8 +523,8 @@ program DAMASK_spectral
            select case(loadCases(currentLoadCase)%ID(field))
              case(FIELD_MECH_ID)
                select case (spectral_solver)
-                 case (DAMASK_spectral_SolverBasicPETSc_label)
-                   call BasicPETSc_forward (&
+                 case (DAMASK_spectral_SolverPETSc_label)
+                   call PETSc_forward (&
                        guess,timeinc,timeIncOld,remainingLoadCaseTime, &
                        deformation_BC     = loadCases(currentLoadCase)%deformation, &
                        stress_BC          = loadCases(currentLoadCase)%stress, &
@@ -552,8 +552,8 @@ program DAMASK_spectral
              select case(loadCases(currentLoadCase)%ID(field))
                case(FIELD_MECH_ID)
                  select case (spectral_solver)
-                   case (DAMASK_spectral_SolverBasicPETSc_label)
-                     solres(field) = BasicPETSC_solution (&
+                   case (DAMASK_spectral_SolverPETSc_label)
+                     solres(field) = PETSc_solution (&
                          incInfo,timeinc,timeIncOld, &
                          stress_BC          = loadCases(currentLoadCase)%stress, &
                          rotation_BC        = loadCases(currentLoadCase)%rotation)
@@ -685,7 +685,7 @@ subroutine quit(stop_id)
  use prec, only: &
    pInt
  use spectral_mech_Basic, only: &
-   BasicPETSC_destroy
+   PETSc_destroy
  use spectral_mech_Polarisation, only: &
    Polarisation_destroy
  use spectral_damage, only: &
@@ -708,7 +708,7 @@ subroutine quit(stop_id)
    PETScFinalize, &
    MPI_finalize
 
- call BasicPETSC_destroy()
+ call PETSc_destroy()
  call Polarisation_destroy()
  call spectral_damage_destroy()
  call spectral_thermal_destroy()
