@@ -5,6 +5,8 @@
 !--------------------------------------------------------------------------------------------------
 module spectral_utilities
  use, intrinsic :: iso_c_binding
+#include <petsc/finclude/petscsys.h>
+  use PETScSys
  use prec, only: &
    pReal, &
    pInt
@@ -13,7 +15,6 @@ module spectral_utilities
 
  implicit none
  private
-#include <petsc/finclude/petscsys.h>
  include 'fftw3-mpi.f03'
 
  logical,       public             :: cutBack = .false.                                              !< cut back of BVP solver in case convergence is not achieved or a material point is terminally ill
@@ -147,6 +148,8 @@ module spectral_utilities
    FIELD_DAMAGE_ID
  private :: &
    utilities_getFreqDerivative
+ external :: &
+   PETScErrorF                                                                                      ! is called in the CHKERRQ macro
 
 contains
 
@@ -195,12 +198,6 @@ subroutine utilities_init()
    geomSize
 
  implicit none
-
- external :: &
-   PETScOptionsClear, &
-   PETScOptionsInsertString, &
-   MPI_Abort
-
  PetscErrorCode :: ierr
  integer(pInt)               :: i, j, k
  integer(pInt), dimension(3) :: k_s
@@ -214,6 +211,8 @@ subroutine utilities_init()
    scalarSize = 1_C_INTPTR_T, &
    vecSize = 3_C_INTPTR_T, &
    tensorSize = 9_C_INTPTR_T
+ external :: &
+   PetscOptionsInsertString
 
  write(6,'(/,a)') ' <<<+-  spectral_utilities init  -+>>>'
  write(6,'(/,a)') ' Eisenlohr et al., International Journal of Plasticity, 46:37–53, 2013'
@@ -232,13 +231,13 @@ subroutine utilities_init()
                 trim(PETScDebug), &
                 ' add more using the PETSc_Options keyword in numerics.config '; flush(6)
 
- call PetscOptionsClear(PETSC_NULL_OBJECT,ierr)
+ call PETScOptionsClear(PETSC_NULL_OPTIONS,ierr)
  CHKERRQ(ierr)
- if(debugPETSc) call PetscOptionsInsertString(PETSC_NULL_OBJECT,trim(PETSCDEBUG),ierr)
+ if(debugPETSc) call PETScOptionsInsertString(PETSC_NULL_OPTIONS,trim(PETSCDEBUG),ierr)
  CHKERRQ(ierr)
- call PetscOptionsInsertString(PETSC_NULL_OBJECT,trim(petsc_defaultOptions),ierr)
+ call PETScOptionsInsertString(PETSC_NULL_OPTIONS,trim(petsc_defaultOptions),ierr)
  CHKERRQ(ierr)
- call PetscOptionsInsertString(PETSC_NULL_OBJECT,trim(petsc_options),ierr)
+ call PETScOptionsInsertString(PETSC_NULL_OPTIONS,trim(petsc_options),ierr)
  CHKERRQ(ierr)
 
  grid1Red = grid(1)/2_pInt + 1_pInt
@@ -632,9 +631,6 @@ real(pReal) function utilities_divergenceRMS()
  integer(pInt) :: i, j, k, ierr
  complex(pReal), dimension(3)   :: rescaledGeom
 
- external :: &
-   MPI_Allreduce
-
  write(6,'(/,a)') ' ... calculating divergence ................................................'
  flush(6)
 
@@ -685,9 +681,6 @@ real(pReal) function utilities_curlRMS()
  integer(pInt)  ::  i, j, k, l, ierr
  complex(pReal), dimension(3,3) :: curl_fourier
  complex(pReal), dimension(3)   :: rescaledGeom
-
- external :: &
-   MPI_Allreduce
 
  write(6,'(/,a)') ' ... calculating curl ......................................................'
  flush(6)
@@ -962,9 +955,6 @@ subroutine utilities_constitutiveResponse(P,P_av,C_volAvg,C_minmaxAvg,&
  real(pReal), dimension(3,3,3,3) :: max_dPdF, min_dPdF
  real(pReal)   :: max_dPdF_norm, min_dPdF_norm, defgradDetMin, defgradDetMax, defgradDet
 
- external :: &
-  MPI_Allreduce
-
  write(6,'(/,a)') ' ... evaluating constitutive response ......................................'
  flush(6)
  
@@ -1081,9 +1071,6 @@ function utilities_forwardField(timeinc,field_lastInc,rate,aim)
  real(pReal),                       dimension(3,3)                       :: fieldDiff               !< <a + adot*t> - aim
  PetscErrorCode :: ierr
 
- external :: &
-  MPI_Allreduce
-
  utilities_forwardField = field_lastInc + rate*timeinc
  if (present(aim)) then                                                                             !< correct to match average
    fieldDiff = sum(sum(sum(utilities_forwardField,dim=5),dim=4),dim=3)*wgt
@@ -1175,8 +1162,6 @@ subroutine utilities_updateIPcoords(F)
  integer(pInt) :: i, j, k, m, ierr
  real(pReal),   dimension(3) :: step, offset_coords
  real(pReal),   dimension(3,3) :: Favg
- external &
-   MPI_Bcast
 
 !--------------------------------------------------------------------------------------------------
 ! integration in Fourier space

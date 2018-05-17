@@ -5,6 +5,10 @@
 !> @brief Polarisation scheme solver
 !--------------------------------------------------------------------------------------------------
 module spectral_mech_Polarisation
+#include <petsc/finclude/petscsnes.h>
+#include <petsc/finclude/petscdmda.h>
+ use PETScdmda
+ use PETScsnes
  use prec, only: & 
    pInt, &
    pReal
@@ -16,7 +20,6 @@ module spectral_mech_Polarisation
 
  implicit none
  private
-#include <petsc/finclude/petsc.h90>
 
  character (len=*), parameter, public :: &
    DAMASK_spectral_solverPolarisation_label = 'polarisation'
@@ -73,10 +76,7 @@ module spectral_mech_Polarisation
    Polarisation_forward, &
    Polarisation_destroy
  external :: &
-   PETScFinalize, &
-   MPI_Abort, &
-   MPI_Bcast, &
-   MPI_Allreduce
+   PETScErrorF                                                                                      ! is called in the CHKERRQ macro
 
 contains
 
@@ -125,28 +125,21 @@ subroutine Polarisation_init
 
  PetscErrorCode :: ierr
  PetscScalar, pointer, dimension(:,:,:,:) :: &
-   FandF_tau, &                                                                                                    ! overall pointer to solution data
-   F, &                                                                                                         ! specific (sub)pointer
-   F_tau                                                                                                     ! specific (sub)pointer
-
- integer(pInt), dimension(:), allocatable :: localK  
+   FandF_tau, &                                                                                     ! overall pointer to solution data
+   F, &                                                                                             ! specific (sub)pointer
+   F_tau                                                                                            ! specific (sub)pointer
+ PetscInt, dimension(:), allocatable :: localK 
  integer(pInt) :: proc
  character(len=1024) :: rankStr
  
  external :: &
-   SNESCreate, &
    SNESSetOptionsPrefix, &
-   DMDACreate3D, &
-   SNESSetDM, &
-   DMCreateGlobalVector, &
-   DMDASNESSetFunctionLocal, &
-   SNESGetConvergedReason, &
    SNESSetConvergenceTest, &
-   SNESSetFromOptions
+   DMDASNESsetFunctionLocal
    
  write(6,'(/,a)') ' <<<+-  DAMASK_spectral_solverPolarisation init  -+>>>'
  write(6,'(/,a)') ' Shanthraj et al., International Journal of Plasticity, 66:31–45, 2015'
- write(6,'(/,a)') ' https://doi.org/10.1016/j.ijplas.2014.02.006'
+ write(6,'(a,/)') ' https://doi.org/10.1016/j.ijplas.2014.02.006'
  write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
 
@@ -171,16 +164,18 @@ subroutine Polarisation_init
         grid(1),grid(2),grid(3), &                                                                  ! global grid
         1 , 1, worldsize, &
         18, 0, &                                                                                    ! #dof (F tensor), ghost boundary width (domain overlap)
-        grid(1),grid(2),localK, &                                                                   ! local grid
+        [grid(1)],[grid(2)],localK, &                                                               ! local grid
         da,ierr)                                                                                    ! handle, error
  CHKERRQ(ierr)
  call SNESSetDM(snes,da,ierr); CHKERRQ(ierr)                                                        ! connect snes to da
- call DMCreateGlobalVector(da,solution_vec,ierr); CHKERRQ(ierr)                                     ! global solution vector (grid x 9, i.e. every def grad tensor)
- call DMDASNESSetFunctionLocal(da,INSERT_VALUES,Polarisation_formResidual,PETSC_NULL_OBJECT,ierr)   ! residual vector of same shape as solution vector
+ call DMsetFromOptions(da,ierr); CHKERRQ(ierr)
+ call DMsetUp(da,ierr); CHKERRQ(ierr)
+ call DMcreateGlobalVector(da,solution_vec,ierr); CHKERRQ(ierr)                                     ! global solution vector (grid x 18, i.e. every def grad tensor)
+ call DMDASNESsetFunctionLocal(da,INSERT_VALUES,Polarisation_formResidual,PETSC_NULL_SNES,ierr)     ! residual vector of same shape as solution vector
  CHKERRQ(ierr) 
- call SNESSetConvergenceTest(snes,Polarisation_converged,PETSC_NULL_OBJECT,PETSC_NULL_FUNCTION,ierr)  ! specify custom convergence check function "_converged"
+ call SNESsetConvergenceTest(snes,Polarisation_converged,PETSC_NULL_SNES,PETSC_NULL_FUNCTION,ierr)  ! specify custom convergence check function "_converged"
  CHKERRQ(ierr)
- call SNESSetFromOptions(snes,ierr); CHKERRQ(ierr)                                                  ! pull it all together with additional cli arguments
+ call SNESsetFromOptions(snes,ierr); CHKERRQ(ierr)                                                  ! pull it all together with additional CLI arguments
 
 !--------------------------------------------------------------------------------------------------
 ! init fields                 
@@ -280,8 +275,7 @@ type(tSolutionState) function Polarisation_solution(incInfoIn,timeinc,timeinc_ol
  SNESConvergedReason :: reason
 
  external :: &
-   SNESSolve, &
-   SNESGetConvergedReason
+   SNESSolve
 
  incInfo = incInfoIn
 
@@ -304,7 +298,7 @@ type(tSolutionState) function Polarisation_solution(incInfoIn,timeinc,timeinc_ol
 
 !--------------------------------------------------------------------------------------------------
 ! solve BVP 
- call SNESSolve(snes,PETSC_NULL_OBJECT,solution_vec,ierr); CHKERRQ(ierr)
+ call SNESsolve(snes,PETSC_NULL_VEC,solution_vec,ierr); CHKERRQ(ierr)
 
 !--------------------------------------------------------------------------------------------------
 ! check convergence
@@ -374,10 +368,6 @@ subroutine Polarisation_formResidual(in,x_scal,f_scal,dummy,ierr)
  PetscErrorCode :: ierr
  integer(pInt) :: &
    i, j, k, e
-
- external :: &
-   SNESGetNumberFunctionEvals, &
-   SNESGetIterationNumber
 
  F                 => x_scal(1:3,1:3,1,&
                              XG_RANGE,YG_RANGE,ZG_RANGE)
@@ -694,11 +684,6 @@ subroutine Polarisation_destroy()
 
  implicit none
  PetscErrorCode :: ierr
-
- external :: &
-   VecDestroy, &
-   SNESDestroy, &
-   DMDestroy
 
  call VecDestroy(solution_vec,ierr); CHKERRQ(ierr)
  call SNESDestroy(snes,ierr); CHKERRQ(ierr)

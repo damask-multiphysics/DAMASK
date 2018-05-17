@@ -4,6 +4,10 @@
 !> @brief Spectral solver for thermal conduction
 !--------------------------------------------------------------------------------------------------
 module spectral_thermal
+#include <petsc/finclude/petscsnes.h>
+#include <petsc/finclude/petscdmda.h>
+ use PETScdmda
+ use PETScsnes
  use prec, only: & 
    pInt, &
    pReal
@@ -18,7 +22,6 @@ module spectral_thermal
 
  implicit none
  private
-#include <petsc/finclude/petsc.h90>
 
  character (len=*), parameter, public :: &
    spectral_thermal_label = 'spectralthermal'
@@ -49,10 +52,7 @@ module spectral_thermal
    spectral_thermal_forward, &
    spectral_thermal_destroy
  external :: &
-   PETScFinalize, &
-   MPI_Abort, &
-   MPI_Bcast, &
-   MPI_Allreduce
+   PETScErrorF                                                                                      ! is called in the CHKERRQ macro
 
 contains
 
@@ -92,22 +92,15 @@ subroutine spectral_thermal_init
  PetscErrorCode :: ierr
 
  external :: &
-   SNESCreate, &
-   SNESSetOptionsPrefix, &
-   DMDACreate3D, &
-   SNESSetDM, &
-   DMDAGetCorners, &
-   DMCreateGlobalVector, &
-   DMDASNESSetFunctionLocal, &
-   SNESSetFromOptions
+   SNESsetOptionsPrefix, &
+   DMDAgetCorners, &
+   DMDASNESsetFunctionLocal
    
- mainProcess: if (worldrank == 0_pInt) then
-   write(6,'(/,a)') ' <<<+-  spectral_thermal init  -+>>>'
-   write(6,'(/,a)') ' Shanthraj et al., Handbook of Mechanics of Materials, volume in press,'
-   write(6,'(/,a)') ' chapter Spectral Solvers for Crystal Plasticity and Multi-Physics Simulations. Springer, 2018'
-   write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
+ write(6,'(/,a)') ' <<<+-  spectral_thermal init  -+>>>'
+ write(6,'(/,a)') ' Shanthraj et al., Handbook of Mechanics of Materials, volume in press,'
+ write(6,'(/,a)') ' chapter Spectral Solvers for Crystal Plasticity and Multi-Physics Simulations. Springer, 2018'
+ write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
- endif mainProcess
  
 !--------------------------------------------------------------------------------------------------
 ! initialize solver specific parts of PETSc
@@ -117,21 +110,23 @@ subroutine spectral_thermal_init
  do proc = 1, worldsize
    call MPI_Bcast(localK(proc),1,MPI_INTEGER,proc-1,PETSC_COMM_WORLD,ierr)
  enddo  
- call DMDACreate3d(PETSC_COMM_WORLD, &
+ call DMDACreate3D(PETSC_COMM_WORLD, &
         DM_BOUNDARY_NONE, DM_BOUNDARY_NONE, DM_BOUNDARY_NONE, &                                     ! cut off stencil at boundary
         DMDA_STENCIL_BOX, &                                                                         ! Moore (26) neighborhood around central point
         grid(1),grid(2),grid(3), &                                                                  ! global grid
         1, 1, worldsize, &
-        1, 0, &                                                                                     ! #dof (temperature field), ghost boundary width (domain overlap)
-        grid (1),grid(2),localK, &                                                                  ! local grid
-        thermal_grid,ierr)                                                                          ! handle, error
+        1, 0, &                                                                                     !< #dof (thermal phase field), ghost boundary width (domain overlap)
+        [grid(1)],[grid(2)],localK, &                                                               !< local grid
+        thermal_grid,ierr)                                                                          !< handle, error
  CHKERRQ(ierr)
  call SNESSetDM(thermal_snes,thermal_grid,ierr); CHKERRQ(ierr)                                      ! connect snes to da
+ call DMsetFromOptions(thermal_grid,ierr); CHKERRQ(ierr)
+ call DMsetUp(thermal_grid,ierr); CHKERRQ(ierr)
  call DMCreateGlobalVector(thermal_grid,solution        ,ierr); CHKERRQ(ierr)                       ! global solution vector (grid x 1, i.e. every def grad tensor)
  call DMDASNESSetFunctionLocal(thermal_grid,INSERT_VALUES,spectral_thermal_formResidual,&
-                                                                            PETSC_NULL_OBJECT,ierr) ! residual vector of same shape as solution vector
+                                                                            PETSC_NULL_SNES,ierr)   ! residual vector of same shape as solution vector
  CHKERRQ(ierr) 
- call SNESSetFromOptions(thermal_snes,ierr); CHKERRQ(ierr)                                          ! pull it all together with additional cli arguments
+ call SNESSetFromOptions(thermal_snes,ierr); CHKERRQ(ierr)                                          ! pull it all together with additional CLI arguments
 
 !--------------------------------------------------------------------------------------------------
 ! init fields             
@@ -207,8 +202,7 @@ type(tSolutionState) function spectral_thermal_solution(timeinc,timeinc_old,load
  external :: &
    VecMin, &
    VecMax, &
-   SNESSolve, &
-   SNESGetConvergedReason
+   SNESSolve
 
  spectral_thermal_solution%converged =.false.
  
@@ -217,7 +211,7 @@ type(tSolutionState) function spectral_thermal_solution(timeinc,timeinc_old,load
  params%timeinc = timeinc
  params%timeincOld = timeinc_old
 
- call SNESSolve(thermal_snes,PETSC_NULL_OBJECT,solution,ierr); CHKERRQ(ierr)
+ call SNESSolve(thermal_snes,PETSC_NULL_VEC,solution,ierr); CHKERRQ(ierr)
  call SNESGetConvergedReason(thermal_snes,reason,ierr); CHKERRQ(ierr)
 
  if (reason < 1) then
@@ -246,15 +240,13 @@ type(tSolutionState) function spectral_thermal_solution(timeinc,timeinc_old,load
  enddo; enddo; enddo
 
  call VecMin(solution,position,minTemperature,ierr); CHKERRQ(ierr)
- call VecMax(solution,position,maxTemperature,ierr); CHKERRQ(ierr)
- if (worldrank == 0) then 
-   if (spectral_thermal_solution%converged) &
-     write(6,'(/,a)') ' ... thermal conduction converged ..................................'
-   write(6,'(/,a,f8.4,2x,f8.4,2x,f8.4,/)',advance='no') ' Minimum|Maximum|Delta Temperature / K = ',&
+ call VecMax(solution,position,maxTemperature,ierr); CHKERRQ(ierr) 
+ if (spectral_thermal_solution%converged) &
+   write(6,'(/,a)') ' ... thermal conduction converged ..................................'
+ write(6,'(/,a,f8.4,2x,f8.4,2x,f8.4,/)',advance='no') ' Minimum|Maximum|Delta Temperature / K = ',&
                                                        minTemperature, maxTemperature, stagNorm
-   write(6,'(/,a)') ' ==========================================================================='
-   flush(6) 
- endif 
+ write(6,'(/,a)') ' ==========================================================================='
+ flush(6) 
 
 end function spectral_thermal_solution
 
@@ -361,9 +353,6 @@ subroutine spectral_thermal_forward()
  PetscScalar,  dimension(:,:,:), pointer     :: x_scal
  PetscErrorCode          :: ierr
  
- external :: &
-   SNESGetDM
-
  if (cutBack) then 
    temperature_current = temperature_lastInc
    temperature_stagInc = temperature_lastInc
@@ -410,10 +399,6 @@ subroutine spectral_thermal_destroy()
 
  implicit none
  PetscErrorCode :: ierr
-
- external :: &
-   VecDestroy, &
-   SNESDestroy
 
  call VecDestroy(solution,ierr); CHKERRQ(ierr)
  call SNESDestroy(thermal_snes,ierr); CHKERRQ(ierr)

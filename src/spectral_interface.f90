@@ -11,9 +11,9 @@
 module DAMASK_interface
  use prec, only: &
    pInt
+
  implicit none
  private
-#include <petsc/finclude/petscsys.h>
  logical,             public, protected :: appendToOutFile = .false.                                !< Append to existing spectralOut file (in case of restart, not in case of regridding)
  integer(pInt),       public, protected :: spectralRestartInc = 0_pInt                              !< Increment at which calculation starts
  character(len=1024), public, protected :: &
@@ -44,7 +44,13 @@ contains
 subroutine DAMASK_interface_init()
  use, intrinsic :: &
    iso_fortran_env
-
+#include <petsc/finclude/petscsys.h>
+#if PETSC_VERSION_MAJOR!=3 || PETSC_VERSION_MINOR!=9
+=================================================================================================== 
+=========================   THIS VERSION OF DAMASK REQUIRES PETSc 3.9.x   ========================= 
+===================================================================================================
+#endif
+ use PETScSys
  use system_routines, only: &
    getHostName
 
@@ -72,11 +78,8 @@ subroutine DAMASK_interface_init()
  logical        :: error
  external :: &
    quit,&
-   MPI_Comm_rank,&
-   MPI_Comm_size,&
-   PETScInitialize, &
-   MPI_Init_Thread, &
-   MPI_abort
+   PETScErrorF, &                                                                                   ! is called in the CHKERRQ macro
+   PETScInitialize
 
  open(6, encoding='UTF-8')                                                                          ! for special characters in output
 
@@ -91,7 +94,7 @@ subroutine DAMASK_interface_init()
    call quit(1_pInt)
  endif
 #endif
- call PetscInitialize(PETSC_NULL_CHARACTER,ierr)                                                    ! according to PETSc manual, that should be the first line in the code
+ call PETScInitialize(PETSC_NULL_CHARACTER,ierr)                                                    ! according to PETSc manual, that should be the first line in the code
  CHKERRQ(ierr)                                                                                      ! this is a macro definition, it is case sensitive
  call MPI_Comm_rank(PETSC_COMM_WORLD,worldrank,ierr);CHKERRQ(ierr)
  call MPI_Comm_size(PETSC_COMM_WORLD,worldsize,ierr);CHKERRQ(ierr)
@@ -102,10 +105,6 @@ subroutine DAMASK_interface_init()
    endif
    if (error_unit /= 0) then
      write(output_unit,'(a)') ' STDERR != 0'
-     call quit(1_pInt)
-   endif
-   if (PETSC_VERSION_MAJOR /= 3 .or. PETSC_VERSION_MINOR /= 7) then
-     write(6,'(a,2(i1.1,a))') 'PETSc ',PETSC_VERSION_MAJOR,'.',PETSC_VERSION_MINOR,'.x not supported'
      call quit(1_pInt)
    endif
  else mainProcess

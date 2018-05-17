@@ -12,6 +12,8 @@ program DAMASK_spectral
    compiler_version, &
    compiler_options
 #endif
+#include <petsc/finclude/petscsys.h>
+ use PETScsys
  use prec, only: &
    pInt, &
    pLongInt, &
@@ -84,10 +86,7 @@ program DAMASK_spectral
  use spectral_damage
  use spectral_thermal
 
-
  implicit none
-
-#include <petsc/finclude/petscsys.h>
 
 !--------------------------------------------------------------------------------------------------
 ! variables related to information from load case and geom file
@@ -143,18 +142,11 @@ program DAMASK_spectral
  integer(pInt), parameter :: maxByteOut = 2147483647-4096                                           !< limit of one file output write https://trac.mpich.org/projects/mpich/ticket/1742
  integer(pInt), parameter :: maxRealOut = maxByteOut/pReal
  integer(pLongInt), dimension(2) :: outputIndex
- PetscErrorCode :: ierr
+ integer :: ierr
+
  external :: &
-   quit, &
-   MPI_file_open, &
-   MPI_file_close, &
-   MPI_file_seek, &
-   MPI_file_get_position, &
-   MPI_file_write, &
-   MPI_abort, &
-   MPI_finalize, &
-   MPI_allreduce, &
-   PETScFinalize
+   quit
+
 
 !--------------------------------------------------------------------------------------------------
 ! init DAMASK (all modules)
@@ -442,10 +434,9 @@ program DAMASK_spectral
    do i = 1, size(materialpoint_results,3)/(maxByteOut/(materialpoint_sizeResults*pReal))+1         ! slice the output of my process in chunks not exceeding the limit for one output
      outputIndex = int([(i-1_pInt)*((maxRealOut)/materialpoint_sizeResults)+1_pInt, &               ! QUESTION: why not starting i at 0 instead of murky 1?
                              min(i*((maxRealOut)/materialpoint_sizeResults),size(materialpoint_results,3))],pLongInt)
-     call MPI_file_write(resUnit, &
-                         reshape(materialpoint_results(:,:,outputIndex(1):outputIndex(2)), &
-                                [(outputIndex(2)-outputIndex(1)+1)*int(materialpoint_sizeResults,pLongInt)]), &
-                         (outputIndex(2)-outputIndex(1)+1)*int(materialpoint_sizeResults,pLongInt), &
+     call MPI_file_write(resUnit,reshape(materialpoint_results(:,:,outputIndex(1):outputIndex(2)), &
+                                 [(outputIndex(2)-outputIndex(1)+1)*int(materialpoint_sizeResults,pLongInt)]), &
+                         int((outputIndex(2)-outputIndex(1)+1)*int(materialpoint_sizeResults,pLongInt)), &
                          MPI_DOUBLE, MPI_STATUS_IGNORE, ierr)
      if (ierr /= 0_pInt) call IO_error(error_ID=894_pInt, ext_msg='MPI_file_write')
    enddo
@@ -634,8 +625,8 @@ program DAMASK_spectral
            outputIndex=int([(i-1_pInt)*((maxRealOut)/materialpoint_sizeResults)+1_pInt, &
                       min(i*((maxRealOut)/materialpoint_sizeResults),size(materialpoint_results,3))],pLongInt)
            call MPI_file_write(resUnit,reshape(materialpoint_results(:,:,outputIndex(1):outputIndex(2)),&
-                                         [(outputIndex(2)-outputIndex(1)+1)*int(materialpoint_sizeResults,pLongInt)]), &
-                               (outputIndex(2)-outputIndex(1)+1)*int(materialpoint_sizeResults,pLongInt),&
+                                       [(outputIndex(2)-outputIndex(1)+1)*int(materialpoint_sizeResults,pLongInt)]), &
+                               int((outputIndex(2)-outputIndex(1)+1)*int(materialpoint_sizeResults,pLongInt)),&
                                MPI_DOUBLE, MPI_STATUS_IGNORE, ierr)
            if(ierr /=0_pInt) call IO_error(894_pInt, ext_msg='MPI_file_write')
          enddo
@@ -682,6 +673,7 @@ end program DAMASK_spectral
 !> stderr. Exit code 3 signals no severe problems, but some increments did not converge
 !--------------------------------------------------------------------------------------------------
 subroutine quit(stop_id)
+ use MPI
  use prec, only: &
    pInt
  use spectral_mech_Basic, only: &
@@ -705,8 +697,7 @@ subroutine quit(stop_id)
  logical :: ErrorInQuit
  
  external :: &
-   PETScFinalize, &
-   MPI_finalize
+   PETScFinalize
 
  call BasicPETSC_destroy()
  call Polarisation_destroy()
