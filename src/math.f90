@@ -82,6 +82,7 @@ module math
    math_crossproduct, &
    math_tensorproduct33, &
    math_mul3x3, &
+   math_expand, &
    math_mul6x6, &
    math_mul33xx33, &
    math_mul3333xx33, &
@@ -384,7 +385,8 @@ pure function math_expand(what,how)
  integer(pInt), dimension(:), intent(in) :: how
  real(pReal), dimension(sum(how)) ::  math_expand
  integer(pInt) :: i
-
+ if(sum(how)==0) &
+   return
  do i = 1_pInt, size(how)
    math_expand(sum(how(1:i-1))+1:sum(how(1:i))) = what(mod(i-1_pInt,size(what))+1_pInt)
  enddo
