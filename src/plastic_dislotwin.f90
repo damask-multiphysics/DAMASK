@@ -198,9 +198,6 @@ module plastic_dislotwin
    plastic_dislotwin_LpAndItsTangent, &
    plastic_dislotwin_dotState, &
    plastic_dislotwin_postResults
- private :: &
-   plastic_dislotwin_stateInit, &
-   plastic_dislotwin_aTolState
 
 contains
 
@@ -226,7 +223,9 @@ subroutine plastic_dislotwin_init(fileUnit)
  use math, only: &
    math_Mandel3333to66, &
    math_Voigt66to3333, &
-   math_mul3x3
+   math_mul3x3, &
+   math_expand,&
+   pi
  use mesh, only: &
    mesh_maxNips, &
    mesh_NcpElems
@@ -262,7 +261,7 @@ subroutine plastic_dislotwin_init(fileUnit)
 
  integer(pInt), allocatable, dimension(:) :: chunkPos
  integer(pInt) :: maxNinstance,mySize=0_pInt,phase,maxTotalNslip,maxTotalNtwin,maxTotalNtrans,&
-                  f,instance,j,k,l,m,n,o,p,q,r,s,ns,nt,nr, &
+                  f,instance,j,i,k,l,m,n,o,p,q,r,s,ns,nt,nr, &
                   Nchunks_SlipSlip = 0_pInt, Nchunks_SlipTwin = 0_pInt, &
                   Nchunks_TwinSlip = 0_pInt, Nchunks_TwinTwin = 0_pInt, &
                   Nchunks_SlipTrans = 0_pInt, Nchunks_TransSlip = 0_pInt, Nchunks_TransTrans = 0_pInt, &
@@ -271,6 +270,16 @@ subroutine plastic_dislotwin_init(fileUnit)
                   startIndex, endIndex
  integer(pInt) :: sizeState, sizeDotState, sizeDeltaState
  integer(pInt) :: NofMyPhase   
+ 
+ real(pReal),  allocatable, dimension(:) :: &
+     invLambdaSlip0,&
+     MeanFreePathSlip0,&
+     MeanFreePathTrans0,&
+     MeanFreePathTwin0,&
+     tauSlipThreshold0,&
+     TwinVolume0,&
+     MartensiteVolume0
+
  character(len=65536) :: &
    tag  = '', &
    line = ''
@@ -1112,255 +1121,158 @@ subroutine plastic_dislotwin_init(fileUnit)
      startIndex=1_pInt
      endIndex=ns
      state(instance)%rhoEdge=>plasticState(phase)%state(startIndex:endIndex,:)
-     state0(instance)%rhoEdge=>plasticState(phase)%state0(startIndex:endIndex,:)
      dotState(instance)%rhoEdge=>plasticState(phase)%dotState(startIndex:endIndex,:)
+     plasticState(phase)%state0(startIndex:endIndex,:) = &
+        spread(math_expand(rhoEdge0(instance,:),Nslip(instance,:)),2,NofMyPhase)
+     plasticState(phase)%aTolState(startIndex:endIndex) = param(instance)%aTolRho
 
      startIndex=endIndex+1
      endIndex=endIndex+ns
      state(instance)%rhoEdgeDip=>plasticState(phase)%state(startIndex:endIndex,:)
-     state0(instance)%rhoEdgeDip=>plasticState(phase)%state0(startIndex:endIndex,:)
      dotState(instance)%rhoEdgeDip=>plasticState(phase)%dotState(startIndex:endIndex,:)
+     plasticState(phase)%state0(startIndex:endIndex,:) = &
+        spread(math_expand(rhoEdgeDip0(instance,:),Nslip(instance,:)),2,NofMyPhase)
+     plasticState(phase)%aTolState(startIndex:endIndex) = param(instance)%aTolRho
+     
      
      startIndex=endIndex+1
      endIndex=endIndex+ns
      state(instance)%accshear_slip=>plasticState(phase)%state(startIndex:endIndex,:)
-     state0(instance)%accshear_slip=>plasticState(phase)%state0(startIndex:endIndex,:)
      dotState(instance)%accshear_slip=>plasticState(phase)%dotState(startIndex:endIndex,:)
+     plasticState(phase)%aTolState(startIndex:endIndex) = 1e6_pReal
+     
 
      startIndex=endIndex+1
      endIndex=endIndex+nt
      state(instance)%twinFraction=>plasticState(phase)%state(startIndex:endIndex,:)
-     state0(instance)%twinFraction=>plasticState(phase)%state0(startIndex:endIndex,:)
      dotState(instance)%twinFraction=>plasticState(phase)%dotState(startIndex:endIndex,:)
+     plasticState(phase)%aTolState(startIndex:endIndex) = param(instance)%aTolTwinFrac
+     
      
      startIndex=endIndex+1
      endIndex=endIndex+nt
      state(instance)%accshear_twin=>plasticState(phase)%state(startIndex:endIndex,:)
-     state0(instance)%accshear_twin=>plasticState(phase)%state0(startIndex:endIndex,:)
      dotState(instance)%accshear_twin=>plasticState(phase)%dotState(startIndex:endIndex,:)
+     plasticState(phase)%aTolState(startIndex:endIndex) = 1e6_pReal
      
      startIndex=endIndex+1
      endIndex=endIndex+nr
      state(instance)%stressTransFraction=>plasticState(phase)%state(startIndex:endIndex,:)
-     state0(instance)%stressTransFraction=>plasticState(phase)%state0(startIndex:endIndex,:)
      dotState(instance)%stressTransFraction=>plasticState(phase)%dotState(startIndex:endIndex,:)
+     plasticState(phase)%aTolState(startIndex:endIndex) = param(instance)%aTolTransFrac
+     
      
      startIndex=endIndex+1
      endIndex=endIndex+nr
      state(instance)%strainTransFraction=>plasticState(phase)%state(startIndex:endIndex,:)
-     state0(instance)%strainTransFraction=>plasticState(phase)%state0(startIndex:endIndex,:)
      dotState(instance)%strainTransFraction=>plasticState(phase)%dotState(startIndex:endIndex,:)
+     plasticState(phase)%aTolState(startIndex:endIndex) = param(instance)%aTolTransFrac
      
      startIndex=endIndex+1
      endIndex=endIndex+ns
      state(instance)%invLambdaSlip=>plasticState(phase)%state(startIndex:endIndex,:)
-     state0(instance)%invLambdaSlip=>plasticState(phase)%state0(startIndex:endIndex,:)
+     invLambdaSlip0 = spread(0.0_pReal,1,ns)
+     forall (i = 1_pInt:ns) &
+       invLambdaSlip0(i) = sqrt(dot_product(math_expand(rhoEdge0(instance,:),Nslip(instance,:))+ &
+       math_expand(rhoEdgeDip0(instance,:),Nslip(instance,:)),forestProjectionEdge(1:ns,i,instance)))/ &
+                           CLambdaSlipPerSlipSystem(i,instance)
+     plasticState(phase)%state0(startIndex:endIndex,:) = &
+       spread(math_expand(invLambdaSlip0,Nslip(instance,:)),2, NofMyPhase)
+     
      
      startIndex=endIndex+1
      endIndex=endIndex+ns
      state(instance)%invLambdaSlipTwin=>plasticState(phase)%state(startIndex:endIndex,:)
-     state0(instance)%invLambdaSlipTwin=>plasticState(phase)%state0(startIndex:endIndex,:)
+
      
      startIndex=endIndex+1
      endIndex=endIndex+nt
      state(instance)%invLambdaTwin=>plasticState(phase)%state(startIndex:endIndex,:)
-     state0(instance)%invLambdaTwin=>plasticState(phase)%state0(startIndex:endIndex,:)
+
+     
      
      startIndex=endIndex+1
      endIndex=endIndex+ns
      state(instance)%invLambdaSlipTrans=>plasticState(phase)%state(startIndex:endIndex,:)
-     state0(instance)%invLambdaSlipTrans=>plasticState(phase)%state0(startIndex:endIndex,:)
+
+     
 
      startIndex=endIndex+1
      endIndex=endIndex+nr
      state(instance)%invLambdaTrans=>plasticState(phase)%state(startIndex:endIndex,:)
-     state0(instance)%invLambdaTrans=>plasticState(phase)%state0(startIndex:endIndex,:)
+
 
      startIndex=endIndex+1
      endIndex=endIndex+ns
      state(instance)%mfp_slip=>plasticState(phase)%state(startIndex:endIndex,:)
      state0(instance)%mfp_slip=>plasticState(phase)%state0(startIndex:endIndex,:)
+     MeanFreePathSlip0 = param(instance)%GrainSize/(1.0_pReal+invLambdaSlip0*param(instance)%GrainSize)
+     plasticState(phase)%state0(startIndex:endIndex,:) = &
+       spread(math_expand(MeanFreePathSlip0,Nslip(instance,:)),2, NofMyPhase)
+     
      
      startIndex=endIndex+1
      endIndex=endIndex+nt
      state(instance)%mfp_twin=>plasticState(phase)%state(startIndex:endIndex,:)
-     state0(instance)%mfp_twin=>plasticState(phase)%state0(startIndex:endIndex,:)
+     MeanFreePathTwin0 = param(instance)%GrainSize
+     plasticState(phase)%state0(startIndex:endIndex,:) = &
+        spread(math_expand(MeanFreePathTwin0,Ntwin(instance,:)),2, NofMyPhase)
 
      startIndex=endIndex+1
      endIndex=endIndex+nr
      state(instance)%mfp_trans=>plasticState(phase)%state(startIndex:endIndex,:)
-     state0(instance)%mfp_trans=>plasticState(phase)%state0(startIndex:endIndex,:)
+     MeanFreePathTrans0 = param(instance)%GrainSize
+     plasticState(phase)%state0(startIndex:endIndex,:) = &
+         spread(math_expand(MeanFreePathTrans0,Ntrans(instance,:)),2, NofMyPhase)
 
      startIndex=endIndex+1
      endIndex=endIndex+ns
      state(instance)%threshold_stress_slip=>plasticState(phase)%state(startIndex:endIndex,:)
-     state0(instance)%threshold_stress_slip=>plasticState(phase)%state0(startIndex:endIndex,:)
+     tauSlipThreshold0 = spread(0.0_pReal,1,ns)
+     forall (i = 1_pInt:ns) &
+      tauSlipThreshold0(i) = &
+       lattice_mu(phase)*burgersPerSlipSystem(i,instance) * &
+       sqrt(dot_product(math_expand(rhoEdge0(instance,:),Nslip(instance,:))+ &
+      math_expand(rhoEdgeDip0(instance,:),Nslip(instance,:)),interactionMatrix_SlipSlip(i,1:ns,instance)))
+     plasticState(phase)%state0(startIndex:endIndex,:) = &
+       spread(math_expand(tauSlipThreshold0,Nslip(instance,:)),2, NofMyPhase)
 
      startIndex=endIndex+1
      endIndex=endIndex+nt
      state(instance)%threshold_stress_twin=>plasticState(phase)%state(startIndex:endIndex,:)
-     state0(instance)%threshold_stress_twin=>plasticState(phase)%state0(startIndex:endIndex,:)
+
 
      startIndex=endIndex+1
      endIndex=endIndex+nr
      state(instance)%threshold_stress_trans=>plasticState(phase)%state(startIndex:endIndex,:)
-     state0(instance)%threshold_stress_trans=>plasticState(phase)%state0(startIndex:endIndex,:)
+
 
      startIndex=endIndex+1
      endIndex=endIndex+nt
      state(instance)%twinVolume=>plasticState(phase)%state(startIndex:endIndex,:)
-     state0(instance)%twinVolume=>plasticState(phase)%state0(startIndex:endIndex,:)
+     TwinVolume0= spread(0.0_pReal,1,nt)
+     forall (j = 1_pInt:nt) &
+      TwinVolume0(j) = &
+      (pi/4.0_pReal)*twinsizePerTwinSystem(j,instance)*MeanFreePathTwin0(j)**(2.0_pReal)
+     plasticState(phase)%state0(startIndex:endIndex,:) = &
+        spread(math_expand(TwinVolume0,Ntwin(instance,:)),2, NofMyPhase)
 
      startIndex=endIndex+1
      endIndex=endIndex+nr
      state(instance)%martensiteVolume=>plasticState(phase)%state(startIndex:endIndex,:)
-     state0(instance)%martensiteVolume=>plasticState(phase)%state0(startIndex:endIndex,:)
-     
-     call plastic_dislotwin_stateInit(phase,instance)
-     call plastic_dislotwin_aTolState(phase,instance)
+     MartensiteVolume0= spread(0.0_pReal,1,nr)
+     forall (j = 1_pInt:nr) &
+       MartensiteVolume0(j) = &
+       (pi/4.0_pReal)*lamellarsizePerTransSystem(j,instance)*MeanFreePathTrans0(j)**(2.0_pReal)
+     plasticState(phase)%state0(startIndex:endIndex,:) = &
+       spread(math_expand(MartensiteVolume0,Ntrans(instance,:)),2, NofMyPhase)
+
    endif myPhase2
  
  enddo initializeInstances
 end subroutine plastic_dislotwin_init
 
-!--------------------------------------------------------------------------------------------------
-!> @brief sets the relevant state values for a given instance of this plasticity
-!--------------------------------------------------------------------------------------------------
-subroutine plastic_dislotwin_stateInit(ph,instance)
- use math, only: &
-   pi
- use lattice, only: &
-   lattice_maxNslipFamily, &
-   lattice_mu
- use material, only: &
-   plasticState
 
- implicit none
- integer(pInt), intent(in) :: &
-   instance, &                                                                                      !< number specifying the instance of the plasticity
-   ph 
-
-  real(pReal), dimension(plasticState(ph)%sizeState) :: tempState
-
- integer(pInt) :: i,j,f,ns,nt,nr, index_myFamily
- real(pReal), dimension(totalNslip(instance)) :: &
-   rhoEdge0_temp, &
-   rhoEdgeDip0_temp, &
-   invLambdaSlip0, &
-   MeanFreePathSlip0, &
-   tauSlipThreshold0
- real(pReal), dimension(totalNtwin(instance)) :: &
-   MeanFreePathTwin0,TwinVolume0
- real(pReal), dimension(totalNtrans(instance)) :: &
-   MeanFreePathTrans0,MartensiteVolume0
- tempState = 0.0_pReal
- ns = totalNslip(instance)
- nt = totalNtwin(instance)
- nr = totalNtrans(instance)
-
-!--------------------------------------------------------------------------------------------------
-! initialize basic slip state variables
- do f = 1_pInt,lattice_maxNslipFamily
-   index_myFamily   = sum(Nslip(1:f-1_pInt,instance))                        ! index in truncated slip system list
-   rhoEdge0_temp(index_myFamily+1_pInt: &
-            index_myFamily+Nslip(f,instance)) = &
-     rhoEdge0(f,instance)
-   rhoEdgeDip0_temp(index_myFamily+1_pInt: &
-               index_myFamily+Nslip(f,instance)) = &
-     rhoEdgeDip0(f,instance)
- enddo
- 
- tempState(1_pInt:ns)           = rhoEdge0_temp
- tempState(ns+1_pInt:2_pInt*ns) = rhoEdgeDip0_temp
- 
-!--------------------------------------------------------------------------------------------------
-! initialize dependent slip microstructural variables
- forall (i = 1_pInt:ns) &
-   invLambdaSlip0(i) = sqrt(dot_product((rhoEdge0_temp+rhoEdgeDip0_temp),forestProjectionEdge(1:ns,i,instance)))/ &
-                       CLambdaSlipPerSlipSystem(i,instance)
- tempState(3_pInt*ns+2_pInt*nt+2_pInt*nr+1:4_pInt*ns+2_pInt*nt+2_pInt*nr) = invLambdaSlip0
- 
- forall (i = 1_pInt:ns) &
-   MeanFreePathSlip0(i) = &
-     param(instance)%GrainSize/(1.0_pReal+invLambdaSlip0(i)*param(instance)%GrainSize)
- tempState(6_pInt*ns+3_pInt*nt+3_pInt*nr+1:7_pInt*ns+3_pInt*nt+3_pInt*nr) = MeanFreePathSlip0
- 
- forall (i = 1_pInt:ns) &
-   tauSlipThreshold0(i) = &
-     lattice_mu(ph)*burgersPerSlipSystem(i,instance) * &
-     sqrt(dot_product((rhoEdge0_temp+rhoEdgeDip0_temp),interactionMatrix_SlipSlip(i,1:ns,instance)))
-
- tempState(7_pInt*ns+4_pInt*nt+4_pInt*nr+1:8_pInt*ns+4_pInt*nt+4_pInt*nr) = tauSlipThreshold0
-
-!--------------------------------------------------------------------------------------------------
-! initialize dependent twin microstructural variables
- forall (j = 1_pInt:nt) &
-   MeanFreePathTwin0(j) = param(instance)%GrainSize
- tempState(7_pInt*ns+3_pInt*nt+3_pInt*nr+1_pInt:7_pInt*ns+4_pInt*nt+3_pInt*nr) = MeanFreePathTwin0
- 
- forall (j = 1_pInt:nt) &
-   TwinVolume0(j) = &
-     (pi/4.0_pReal)*twinsizePerTwinSystem(j,instance)*MeanFreePathTwin0(j)**(2.0_pReal)
- tempState(8_pInt*ns+5_pInt*nt+5_pInt*nr+1_pInt:8_pInt*ns+6_pInt*nt+5_pInt*nr) = TwinVolume0
- 
-!--------------------------------------------------------------------------------------------------
-! initialize dependent trans microstructural variables
- forall (j = 1_pInt:nr) &
-   MeanFreePathTrans0(j) = param(instance)%GrainSize
- tempState(7_pInt*ns+4_pInt*nt+3_pInt*nr+1_pInt:7_pInt*ns+4_pInt*nt+4_pInt*nr) = MeanFreePathTrans0
- 
- forall (j = 1_pInt:nr) &
-   MartensiteVolume0(j) = &
-     (pi/4.0_pReal)*lamellarsizePerTransSystem(j,instance)*MeanFreePathTrans0(j)**(2.0_pReal)
- tempState(8_pInt*ns+6_pInt*nt+5_pInt*nr+1_pInt:8_pInt*ns+6_pInt*nt+6_pInt*nr) = MartensiteVolume0
-
-plasticState(ph)%state0 = spread(tempState,2,size(plasticState(ph)%state(1,:)))
-
-end subroutine plastic_dislotwin_stateInit
-
-!--------------------------------------------------------------------------------------------------
-!> @brief sets the relevant state values for a given instance of this plasticity
-!--------------------------------------------------------------------------------------------------
-subroutine plastic_dislotwin_aTolState(ph,instance)
- use material, only: &
-  plasticState
-
- implicit none
- integer(pInt), intent(in) ::  &
-   ph, &
-   instance                                                                                         ! number specifying the current instance of the plasticity
- 
- integer(pInt) :: ns, nt, nr
- 
- ns = totalNslip(instance)
- nt = totalNtwin(instance)
- nr = totalNtrans(instance) 
-
- ! Tolerance state for dislocation densities
- plasticState(ph)%aTolState(1_pInt: &
-                            2_pInt*ns) = param(instance)%aTolRho
-
- ! Tolerance state for accumulated shear due to slip 
- plasticState(ph)%aTolState(2_pInt*ns+1_pInt: &
-                            3_pInt*ns)=1.0e6_pReal
- 
- ! Tolerance state for twin volume fraction
- plasticState(ph)%aTolState(3_pInt*ns+1_pInt: &
-                            3_pInt*ns+nt) = param(instance)%aTolTwinFrac
-
- ! Tolerance state for accumulated shear due to twin
- plasticState(ph)%aTolState(3_pInt*ns+nt+1_pInt: &
-                            3_pInt*ns+2_pInt*nt) = 1.0e6_pReal
-
-! Tolerance state for stress-assisted martensite volume fraction
- plasticState(ph)%aTolState(3_pInt*ns+2_pInt*nt+1_pInt: &
-                            3_pInt*ns+2_pInt*nt+nr) = param(instance)%aTolTransFrac
-
-! Tolerance state for strain-induced martensite volume fraction
- plasticState(ph)%aTolState(3_pInt*ns+2_pInt*nt+nr+1_pInt: &
-                            3_pInt*ns+2_pInt*nt+2_pInt*nr) = param(instance)%aTolTransFrac
-
-end subroutine plastic_dislotwin_aTolState
 
 
 !--------------------------------------------------------------------------------------------------
