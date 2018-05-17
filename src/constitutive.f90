@@ -838,8 +838,6 @@ subroutine constitutive_collectDotState(Tstar_v, FeArray, FpArray, subdt, subfra
    pReal, &
    pLongInt
  use debug, only: &
-   !debug_cumDotStateCalls, &
-   !debug_cumDotStateTicks, &
    debug_level, &
    debug_constitutive, &
    debug_levelBasic
@@ -959,8 +957,6 @@ subroutine constitutive_collectDeltaState(Tstar_v, Fe, ipc, ip, el)
    pReal, &
    pLongInt
  use debug, only: &
-   !debug_cumDeltaStateCalls, &
-   !debug_cumDeltaStateTicks, &
    debug_level, &
    debug_constitutive, &
    debug_levelBasic

@@ -529,8 +529,7 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
    debug_levelSelective, &
    debug_e, &
    debug_i, &
-   debug_g!, &
-   !debug_CrystalliteLoopDistribution
+   debug_g
  use IO, only: &
    IO_warning, &
    IO_error
@@ -949,8 +948,6 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
                if (iand(debug_level(debug_crystallite),debug_levelBasic) /= 0_pInt &
                    .and. formerSubStep > 0.0_pReal) then
                  !$OMP CRITICAL (distributionCrystallite)
-                   !debug_CrystalliteLoopDistribution(min(nCryst+1_pInt,NiterationCrystallite)) = &
-                     !debug_CrystalliteLoopDistribution(min(nCryst+1_pInt,NiterationCrystallite)) + 1_pInt
                  !$OMP END CRITICAL (distributionCrystallite)
                endif
              endif
@@ -1259,8 +1256,7 @@ subroutine crystallite_integrateStateRK4()
    debug_crystallite, &
    debug_levelBasic, &
    debug_levelExtensive, &
-   debug_levelSelective !, &
-   !debug_StateLoopDistribution
+   debug_levelSelective
  use FEsolving, only: &
    FEsolving_execElem, &
    FEsolving_execIP
@@ -1519,8 +1515,6 @@ subroutine crystallite_integrateStateRK4()
      crystallite_converged(g,i,e) = .true.                                                                ! if still "to do" then converged per definitionem
      if (iand(debug_level(debug_crystallite), debug_levelBasic) /= 0_pInt) then
        !$OMP CRITICAL (distributionState)
-         !debug_StateLoopDistribution(4,numerics_integrationMode) = &
-           !debug_StateLoopDistribution(4,numerics_integrationMode) + 1_pInt
        !$OMP END CRITICAL (distributionState)
      endif
    endif
@@ -1555,8 +1549,7 @@ subroutine crystallite_integrateStateRKCK45()
    debug_crystallite, &
    debug_levelBasic, &
    debug_levelExtensive, &
-   debug_levelSelective!, &
-   !debug_StateLoopDistribution
+   debug_levelSelective
  use numerics, only: &
    rTol_crystalliteState, &
    numerics_integrationMode
@@ -2023,8 +2016,6 @@ subroutine crystallite_integrateStateRKCK45()
        crystallite_converged(g,i,e) = .true.                                                               ! if still "to do" then converged per definition
        if (iand(debug_level(debug_crystallite), debug_levelBasic) /= 0_pInt) then
          !$OMP CRITICAL (distributionState)
-           !debug_StateLoopDistribution(6,numerics_integrationMode) = &
-             !debug_StateLoopDistribution(6,numerics_integrationMode) + 1_pInt
          !$OMP END CRITICAL (distributionState)
        endif
      endif
@@ -2060,8 +2051,7 @@ subroutine crystallite_integrateStateAdaptiveEuler()
    debug_crystallite, &
    debug_levelBasic, &
    debug_levelExtensive, &
-   debug_levelSelective!, &
-   !debug_StateLoopDistribution
+   debug_levelSelective
  use numerics, only: &
    rTol_crystalliteState, &
    numerics_integrationMode
@@ -2365,8 +2355,6 @@ subroutine crystallite_integrateStateAdaptiveEuler()
            crystallite_converged(g,i,e) = .true.                                                             ! ... converged per definitionem
            if (iand(debug_level(debug_crystallite), debug_levelBasic) /= 0_pInt) then
              !$OMP CRITICAL (distributionState)
-               !debug_StateLoopDistribution(2,numerics_integrationMode) = &
-                 !debug_StateLoopDistribution(2,numerics_integrationMode) + 1_pInt
              !$OMP END CRITICAL (distributionState)
            endif
          endif
@@ -2383,8 +2371,6 @@ subroutine crystallite_integrateStateAdaptiveEuler()
          crystallite_converged(g,i,e) = .true.                                                               ! ... converged per definitionem
          if (iand(debug_level(debug_crystallite), debug_levelBasic) /= 0_pInt) then
            !$OMP CRITICAL (distributionState)
-             !debug_StateLoopDistribution(2,numerics_integrationMode) = &
-               !debug_StateLoopDistribution(2,numerics_integrationMode) + 1_pInt
            !$OMP END CRITICAL (distributionState)
          endif
        endif
@@ -2422,8 +2408,7 @@ subroutine crystallite_integrateStateEuler()
    debug_crystallite, &
    debug_levelBasic, &
    debug_levelExtensive, &
-   debug_levelSelective!, &
-   !debug_StateLoopDistribution
+   debug_levelSelective
  use numerics, only: &
    numerics_integrationMode, &
    numerics_timeSyncing
@@ -2608,8 +2593,6 @@ eIter = FEsolving_execElem(1:2)
        crystallite_converged(g,i,e) = .true.                                                               ! if still "to do" then converged per definitionem
        if (iand(debug_level(debug_crystallite), debug_levelBasic) /= 0_pInt) then
          !$OMP CRITICAL (distributionState)
-           !debug_StateLoopDistribution(1,numerics_integrationMode) = &
-             !debug_StateLoopDistribution(1,numerics_integrationMode) + 1_pInt
          !$OMP END CRITICAL (distributionState)
        endif
      endif
@@ -2647,8 +2630,7 @@ subroutine crystallite_integrateStateFPI()
    debug_crystallite, &
    debug_levelBasic, &
    debug_levelExtensive, &
-   debug_levelSelective!, &
-   !debug_StateLoopDistribution
+   debug_levelSelective
  use numerics, only: &
    nState, &
    numerics_integrationMode, &
@@ -3025,8 +3007,6 @@ subroutine crystallite_integrateStateFPI()
 
            if (iand(debug_level(debug_crystallite), debug_levelBasic) /= 0_pInt) then
              !$OMP CRITICAL (distributionState)
-               !debug_StateLoopDistribution(NiterationState,numerics_integrationMode) = &
-                 !debug_StateLoopDistribution(NiterationState,numerics_integrationMode) + 1_pInt
              !$OMP END CRITICAL (distributionState)
            endif
          endif
@@ -3567,8 +3547,6 @@ logical function crystallite_integrateStress(&
 
    if (iand(debug_level(debug_crystallite), debug_levelBasic) /= 0_pInt) then
      !$OMP CRITICAL (distributionStress)
-      !debug_StressLoopLpDistribution(NiterationStressLp,numerics_integrationMode) = &
-        !debug_StressLoopLpDistribution(NiterationStressLp,numerics_integrationMode) + 1_pInt
      !$OMP END CRITICAL (distributionStress)
    endif
 
@@ -3654,8 +3632,6 @@ logical function crystallite_integrateStress(&
 
  if (iand(debug_level(debug_crystallite), debug_levelBasic) /= 0_pInt) then
    !$OMP CRITICAL (distributionStress)
-    !debug_StressLoopLiDistribution(NiterationStressLi,numerics_integrationMode) = &
-      !debug_StressLoopLiDistribution(NiterationStressLi,numerics_integrationMode) + 1_pInt
    !$OMP END CRITICAL (distributionStress)
  endif
 
