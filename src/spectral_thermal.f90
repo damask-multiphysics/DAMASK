@@ -49,8 +49,7 @@ module spectral_thermal
  public :: &
    spectral_thermal_init, &
    spectral_thermal_solution, &
-   spectral_thermal_forward, &
-   spectral_thermal_destroy
+   spectral_thermal_forward
  external :: &
    PETScErrorF                                                                                      ! is called in the CHKERRQ macro
 
@@ -390,19 +389,6 @@ subroutine spectral_thermal_forward()
    call MPI_Allreduce(MPI_IN_PLACE,mobility_ref,1,MPI_DOUBLE,MPI_SUM,PETSC_COMM_WORLD,ierr)
  endif
  
- end subroutine spectral_thermal_forward
-
-!--------------------------------------------------------------------------------------------------
-!> @brief destroy routine
-!--------------------------------------------------------------------------------------------------
-subroutine spectral_thermal_destroy()
-
- implicit none
- PetscErrorCode :: ierr
-
- call VecDestroy(solution,ierr); CHKERRQ(ierr)
- call SNESDestroy(thermal_snes,ierr); CHKERRQ(ierr)
-
-end subroutine spectral_thermal_destroy
+end subroutine spectral_thermal_forward
 
 end module spectral_thermal

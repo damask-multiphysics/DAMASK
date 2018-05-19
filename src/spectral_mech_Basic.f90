@@ -67,8 +67,7 @@ module spectral_mech_basic
  public :: &
    basicPETSc_init, &
    basicPETSc_solution, &
-   BasicPETSc_forward, &
-   basicPETSc_destroy
+   BasicPETSc_forward
  external :: &
    PETScErrorF                                                                                      ! is called in the CHKERRQ macro
 
@@ -540,21 +539,5 @@ subroutine BasicPETSc_forward(guess,timeinc,timeinc_old,loadCaseTime,deformation
   call DMDAVecRestoreArrayF90(da,solution_vec,F,ierr); CHKERRQ(ierr)
   
 end subroutine BasicPETSc_forward
-
-!--------------------------------------------------------------------------------------------------
-!> @brief destroy routine
-!--------------------------------------------------------------------------------------------------
-subroutine BasicPETSc_destroy()
- use spectral_utilities, only: &
-   Utilities_destroy
-
- implicit none
- PetscErrorCode :: ierr
-
- call VecDestroy(solution_vec,ierr); CHKERRQ(ierr)
- call SNESDestroy(snes,ierr); CHKERRQ(ierr)
- call DMDestroy(da,ierr); CHKERRQ(ierr)
-
-end subroutine BasicPETSc_destroy
 
 end module spectral_mech_basic

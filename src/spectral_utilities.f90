@@ -140,7 +140,6 @@ module spectral_utilities
    utilities_constitutiveResponse, &
    utilities_calculateRate, &
    utilities_forwardField, &
-   utilities_destroy, &
    utilities_updateIPcoords, &
    FIELD_UNDEFINED_ID, &
    FIELD_MECH_ID, &
@@ -1199,22 +1198,5 @@ subroutine utilities_updateIPcoords(F)
  enddo; enddo; enddo
 
 end subroutine utilities_updateIPcoords
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief cleans up
-!--------------------------------------------------------------------------------------------------
-subroutine utilities_destroy()
- implicit none
-
- call fftw_destroy_plan(planTensorForth)
- call fftw_destroy_plan(planTensorBack)
- call fftw_destroy_plan(planVectorForth)
- call fftw_destroy_plan(planVectorBack)
- call fftw_destroy_plan(planScalarForth)
- call fftw_destroy_plan(planScalarBack)
-
-end subroutine utilities_destroy
-
 
 end module spectral_utilities

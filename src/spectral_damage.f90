@@ -49,8 +49,7 @@ module spectral_damage
  public :: &
    spectral_damage_init, &
    spectral_damage_solution, &
-   spectral_damage_forward, &
-   spectral_damage_destroy
+   spectral_damage_forward
  external :: &
    PETScErrorF                                                                                      ! is called in the CHKERRQ macro
 
@@ -383,19 +382,6 @@ subroutine spectral_damage_forward()
    call MPI_Allreduce(MPI_IN_PLACE,mobility_ref,1,MPI_DOUBLE,MPI_SUM,PETSC_COMM_WORLD,ierr)
  endif  
 
- end subroutine spectral_damage_forward
-
-!--------------------------------------------------------------------------------------------------
-!> @brief destroy routine
-!--------------------------------------------------------------------------------------------------
-subroutine spectral_damage_destroy()
-
- implicit none
- PetscErrorCode :: ierr
-
- call VecDestroy(solution,ierr); CHKERRQ(ierr)
- call SNESDestroy(damage_snes,ierr); CHKERRQ(ierr)
-
-end subroutine spectral_damage_destroy
+end subroutine spectral_damage_forward
 
 end module spectral_damage

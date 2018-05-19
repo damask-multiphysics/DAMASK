@@ -73,8 +73,7 @@ module spectral_mech_Polarisation
  public :: &
    Polarisation_init, &
    Polarisation_solution, &
-   Polarisation_forward, &
-   Polarisation_destroy
+   Polarisation_forward
  external :: &
    PETScErrorF                                                                                      ! is called in the CHKERRQ macro
 
@@ -674,21 +673,5 @@ subroutine Polarisation_forward(guess,timeinc,timeinc_old,loadCaseTime,deformati
  call DMDAVecRestoreArrayF90(da,solution_vec,FandF_tau,ierr); CHKERRQ(ierr)
 
 end subroutine Polarisation_forward
-
-!--------------------------------------------------------------------------------------------------
-!> @brief destroy routine
-!--------------------------------------------------------------------------------------------------
-subroutine Polarisation_destroy()
- use spectral_utilities, only: &
-   Utilities_destroy
-
- implicit none
- PetscErrorCode :: ierr
-
- call VecDestroy(solution_vec,ierr); CHKERRQ(ierr)
- call SNESDestroy(snes,ierr); CHKERRQ(ierr)
- call DMDestroy(da,ierr); CHKERRQ(ierr)
-
-end subroutine Polarisation_destroy
 
 end module spectral_mech_Polarisation

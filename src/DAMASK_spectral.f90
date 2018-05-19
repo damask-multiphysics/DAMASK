@@ -72,7 +72,6 @@ program DAMASK_spectral
    DAMAGE_nonlocal_ID
  use spectral_utilities, only: &
    utilities_init, &
-   utilities_destroy, &
    tSolutionState, &
    tLoadCase, &
    cutBack, &
@@ -673,23 +672,12 @@ end program DAMASK_spectral
 !> stderr. Exit code 3 signals no severe problems, but some increments did not converge
 !--------------------------------------------------------------------------------------------------
 subroutine quit(stop_id)
+#include <petsc/finclude/petscsys.h>
  use MPI
  use prec, only: &
    pInt
- use spectral_mech_Basic, only: &
-   BasicPETSC_destroy
- use spectral_mech_Polarisation, only: &
-   Polarisation_destroy
- use spectral_damage, only: &
-   spectral_damage_destroy
- use spectral_thermal, only: &
-   spectral_thermal_destroy
- use spectral_utilities, only: &
-   utilities_destroy
-
- implicit none
  
-#include <petsc/finclude/petscsys.h>
+ implicit none
  integer(pInt), intent(in) :: stop_id
  integer, dimension(8) :: dateAndTime                                                               ! type default integer
  integer(pInt) :: error = 0_pInt
@@ -698,12 +686,6 @@ subroutine quit(stop_id)
  
  external :: &
    PETScFinalize
-
- call BasicPETSC_destroy()
- call Polarisation_destroy()
- call spectral_damage_destroy()
- call spectral_thermal_destroy()
- call utilities_destroy()
 
  call PETScFinalize(ierr)
  if (ierr /= 0) write(6,'(a)') ' Error in PETScFinalize'
