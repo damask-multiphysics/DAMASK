@@ -16,7 +16,7 @@ The Intel Fortran compiler needs to be installed.
 
 APPENDIX:
 
-The structure of this directory should be (VERSION = 2010.2 or 2011 or 2012 or 2013 or 2014):
+The structure of this directory should be (VERSION = 20XX or 20XX.Y)
 
 ./installation.txt                              this text
 ./apply_MPIE_modifications                      script file to apply modifications to the installation
