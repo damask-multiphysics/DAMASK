@@ -83,7 +83,6 @@ module math
    math_crossproduct, &
    math_tensorproduct33, &
    math_mul3x3, &
-   math_expand, &
    math_mul6x6, &
    math_mul33xx33, &
    math_mul3333xx33, &
