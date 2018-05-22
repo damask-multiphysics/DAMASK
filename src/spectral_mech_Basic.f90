@@ -5,6 +5,10 @@
 !> @brief Basic scheme PETSc solver
 !--------------------------------------------------------------------------------------------------
 module spectral_mech_basic
+#include <petsc/finclude/petscsnes.h>
+#include <petsc/finclude/petscdmda.h>
+ use PETScdmda
+ use PETScsnes
  use prec, only: & 
    pInt, &
    pReal
@@ -16,7 +20,6 @@ module spectral_mech_basic
 
  implicit none
  private
-#include <petsc/finclude/petsc.h90>
 
  character (len=*), parameter, public :: &
    DAMASK_spectral_SolverBasicPETSC_label = 'basicpetsc'
@@ -64,13 +67,9 @@ module spectral_mech_basic
  public :: &
    basicPETSc_init, &
    basicPETSc_solution, &
-   BasicPETSc_forward, &
-   basicPETSc_destroy
+   BasicPETSc_forward
  external :: &
-   PETScFinalize, &
-   MPI_Abort, &
-   MPI_Bcast, &
-   MPI_Allreduce
+   PETScErrorF                                                                                      ! is called in the CHKERRQ macro
 
 contains
 
@@ -118,25 +117,18 @@ subroutine basicPETSc_init
 
  PetscErrorCode :: ierr
  PetscScalar, pointer, dimension(:,:,:,:)   ::  F
-
- integer(pInt), dimension(:), allocatable :: localK  
+ PetscInt, dimension(:), allocatable :: localK  
  integer(pInt) :: proc
  character(len=1024) :: rankStr
  
  external :: &
-   SNESCreate, &
    SNESSetOptionsPrefix, &
-   DMDACreate3D, &
-   SNESSetDM, &
-   DMCreateGlobalVector, &
-   DMDASNESSetFunctionLocal, &
-   SNESGetConvergedReason, &
    SNESSetConvergenceTest, &
-   SNESSetFromOptions
+   DMDASNESsetFunctionLocal
    
  write(6,'(/,a)') ' <<<+-  DAMASK_spectral_solverBasicPETSc init  -+>>>'
  write(6,'(/,a)') ' Shanthraj et al., International Journal of Plasticity, 66:31–45, 2015'
- write(6,'(/,a)') ' https://doi.org/10.1016/j.ijplas.2014.02.006'
+ write(6,'(a,/)') ' https://doi.org/10.1016/j.ijplas.2014.02.006'
  write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
 
@@ -159,16 +151,18 @@ subroutine basicPETSc_init
         grid(1),grid(2),grid(3), &                                                                  ! global grid
         1 , 1, worldsize, &
         9, 0, &                                                                                     ! #dof (F tensor), ghost boundary width (domain overlap)
-        grid(1),grid(2),localK, &                                                                   ! local grid
+        [grid(1)],[grid(2)],localK, &                                                               ! local grid
         da,ierr)                                                                                    ! handle, error
  CHKERRQ(ierr)
  call SNESSetDM(snes,da,ierr); CHKERRQ(ierr)                                                        ! connect snes to da
- call DMCreateGlobalVector(da,solution_vec,ierr); CHKERRQ(ierr)                                     ! global solution vector (grid x 9, i.e. every def grad tensor)
- call DMDASNESSetFunctionLocal(da,INSERT_VALUES,BasicPETSC_formResidual,PETSC_NULL_OBJECT,ierr)     ! residual vector of same shape as solution vector
+ call DMsetFromOptions(da,ierr); CHKERRQ(ierr)
+ call DMsetUp(da,ierr); CHKERRQ(ierr)
+ call DMcreateGlobalVector(da,solution_vec,ierr); CHKERRQ(ierr)                                     ! global solution vector (grid x 9, i.e. every def grad tensor)
+ call DMDASNESsetFunctionLocal(da,INSERT_VALUES,BasicPETSC_formResidual,PETSC_NULL_SNES,ierr)       ! residual vector of same shape as solution vector
  CHKERRQ(ierr) 
- call SNESSetConvergenceTest(snes,BasicPETSC_converged,PETSC_NULL_OBJECT,PETSC_NULL_FUNCTION,ierr)  ! specify custom convergence check function "_converged"
+ call SNESsetConvergenceTest(snes,BasicPETSC_converged,PETSC_NULL_SNES,PETSC_NULL_FUNCTION,ierr)    ! specify custom convergence check function "_converged"
  CHKERRQ(ierr)
- call SNESSetFromOptions(snes,ierr); CHKERRQ(ierr)                                                  ! pull it all together with additional cli arguments
+ call SNESsetFromOptions(snes,ierr); CHKERRQ(ierr)                                                  ! pull it all together with additional CLI arguments
 
 !--------------------------------------------------------------------------------------------------
 ! init fields                 
@@ -255,8 +249,7 @@ type(tSolutionState) function basicPETSc_solution(incInfoIn,timeinc,timeinc_old,
  SNESConvergedReason :: reason
 
  external :: &
-   SNESSolve, &
-   SNESGetConvergedReason
+   SNESsolve
 
  incInfo = incInfoIn
 
@@ -276,7 +269,7 @@ type(tSolutionState) function basicPETSc_solution(incInfoIn,timeinc,timeinc_old,
 
 !--------------------------------------------------------------------------------------------------
 ! solve BVP 
- call SNESSolve(snes,PETSC_NULL_OBJECT,solution_vec,ierr); CHKERRQ(ierr)
+ call SNESsolve(snes,PETSC_NULL_VEC,solution_vec,ierr); CHKERRQ(ierr)
 
 !--------------------------------------------------------------------------------------------------
 ! check convergence
@@ -333,10 +326,6 @@ subroutine BasicPETSC_formResidual(in,x_scal,f_scal,dummy,ierr)
  PetscErrorCode :: ierr
  real(pReal), dimension(3,3) :: &
    deltaF_aim
-
- external :: &
-   SNESGetNumberFunctionEvals, &
-   SNESGetIterationNumber
 
  call SNESGetNumberFunctionEvals(snes,nfuncs,ierr); CHKERRQ(ierr)
  call SNESGetIterationNumber(snes,PETScIter,ierr); CHKERRQ(ierr)
@@ -550,26 +539,5 @@ subroutine BasicPETSc_forward(guess,timeinc,timeinc_old,loadCaseTime,deformation
   call DMDAVecRestoreArrayF90(da,solution_vec,F,ierr); CHKERRQ(ierr)
   
 end subroutine BasicPETSc_forward
-
-!--------------------------------------------------------------------------------------------------
-!> @brief destroy routine
-!--------------------------------------------------------------------------------------------------
-subroutine BasicPETSc_destroy()
- use spectral_utilities, only: &
-   Utilities_destroy
-
- implicit none
- PetscErrorCode :: ierr
-
- external :: &
-   VecDestroy, &
-   SNESDestroy, &
-   DMDestroy
-
- call VecDestroy(solution_vec,ierr); CHKERRQ(ierr)
- call SNESDestroy(snes,ierr); CHKERRQ(ierr)
- call DMDestroy(da,ierr); CHKERRQ(ierr)
-
-end subroutine BasicPETSc_destroy
 
 end module spectral_mech_basic
