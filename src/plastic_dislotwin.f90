@@ -1138,7 +1138,7 @@ subroutine plastic_dislotwin_init(fileUnit)
      endIndex=endIndex+ns
      state(instance)%accshear_slip=>plasticState(phase)%state(startIndex:endIndex,:)
      dotState(instance)%accshear_slip=>plasticState(phase)%dotState(startIndex:endIndex,:)
-     plasticState(phase)%aTolState(startIndex:endIndex) = 1e6_pReal
+     plasticState(phase)%aTolState(startIndex:endIndex) = 1e-6_pReal
      
      startIndex=endIndex+1
      endIndex=endIndex+nt
@@ -1150,7 +1150,7 @@ subroutine plastic_dislotwin_init(fileUnit)
      endIndex=endIndex+nt
      state(instance)%accshear_twin=>plasticState(phase)%state(startIndex:endIndex,:)
      dotState(instance)%accshear_twin=>plasticState(phase)%dotState(startIndex:endIndex,:)
-     plasticState(phase)%aTolState(startIndex:endIndex) = 1e6_pReal
+     plasticState(phase)%aTolState(startIndex:endIndex) = 1e-6_pReal
      
      startIndex=endIndex+1
      endIndex=endIndex+nr
