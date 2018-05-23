@@ -190,7 +190,7 @@ set (DAMASK_INCLUDE_FLAGS "${DAMASK_INCLUDE_FLAGS} ${PETSC_INCLUDES}")
 ###################################################################################################
 # Intel Compiler
 ###################################################################################################
-if ( CMAKE_Fortran_COMPILER_ID  STREQUAL "Intel")
+if ("${CMAKE_Fortran_COMPILER_ID}"  STREQUAL "Intel")
 
   if (OPENMP)
     set (OPENMP_FLAGS "-qopenmp -parallel")
@@ -310,7 +310,7 @@ if ( CMAKE_Fortran_COMPILER_ID  STREQUAL "Intel")
 ###################################################################################################
 # GNU Compiler
 ###################################################################################################
-elseif( CMAKE_Fortran_COMPILER_ID  STREQUAL "GNU")
+elseif("${CMAKE_Fortran_COMPILER_ID}"  STREQUAL "GNU")
 
   if (OPENMP)
     set (OPENMP_FLAGS "-fopenmp")
