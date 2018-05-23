@@ -113,6 +113,8 @@ elseif ("${DAMASK_SOLVER}" STREQUAL "FEM")
     project (DAMASK_FEM Fortran C)
     add_definitions (-DFEM)
     message ("Building FEM Solver\n")
+else ()
+    message (FATAL_ERROR "DAMASK_SOLVER is not defined!")
 endif ()
 
 # set linker commands (needs to be done after defining the project)
@@ -188,7 +190,7 @@ set (DAMASK_INCLUDE_FLAGS "${DAMASK_INCLUDE_FLAGS} ${PETSC_INCLUDES}")
 ###################################################################################################
 # Intel Compiler
 ###################################################################################################
-if (${CMAKE_Fortran_COMPILER_ID} STREQUAL "Intel")
+if ( CMAKE_Fortran_COMPILER_ID  STREQUAL "Intel")
 
   if (OPENMP)
     set (OPENMP_FLAGS "-qopenmp -parallel")
@@ -308,7 +310,7 @@ if (${CMAKE_Fortran_COMPILER_ID} STREQUAL "Intel")
 ###################################################################################################
 # GNU Compiler
 ###################################################################################################
-elseif(${CMAKE_Fortran_COMPILER_ID} STREQUAL "GNU")
+elseif( CMAKE_Fortran_COMPILER_ID  STREQUAL "GNU")
 
   if (OPENMP)
     set (OPENMP_FLAGS "-fopenmp")

@@ -1,5 +1,5 @@
 # special flags for some files
-if (${CMAKE_Fortran_COMPILER_ID} STREQUAL "GNU")
+if (CMAKE_Fortran_COMPILER_ID STREQUAL "GNU")
     SET_SOURCE_FILES_PROPERTIES( "lattice.f90" PROPERTIES
                                 COMPILE_FLAGS "-ffree-line-length-240")
     # long lines for interaction matrix
@@ -22,6 +22,8 @@ if ("${PROJECT_NAME}" STREQUAL "DAMASK_spectral")
       add_library(DAMASK_INTERFACE OBJECT "spectral_interface.f90")
 elseif ("${PROJECT_NAME}" STREQUAL "DAMASK_FEM")
       add_library(DAMASK_INTERFACE OBJECT "FEM_interface.f90")
+else ()
+    message ( FATAL_ERROR "PROJECT_NAME is not defined!")
 endif()
 add_dependencies(DAMASK_INTERFACE PREC)
 list(APPEND OBJECTFILES $<TARGET_OBJECTS:DAMASK_INTERFACE>)
