@@ -4,6 +4,10 @@
 !> @brief Spectral solver for nonlocal damage
 !--------------------------------------------------------------------------------------------------
 module spectral_damage
+#include <petsc/finclude/petscsnes.h>
+#include <petsc/finclude/petscdmda.h>
+ use PETScdmda
+ use PETScsnes
  use prec, only: & 
    pInt, &
    pReal
@@ -18,7 +22,6 @@ module spectral_damage
 
  implicit none
  private
-#include <petsc/finclude/petsc.h90>
 
  character (len=*), parameter, public :: &
    spectral_damage_label = 'spectraldamage'
@@ -46,13 +49,9 @@ module spectral_damage
  public :: &
    spectral_damage_init, &
    spectral_damage_solution, &
-   spectral_damage_forward, &
-   spectral_damage_destroy
+   spectral_damage_forward
  external :: &
-   PETScFinalize, &
-   MPI_Abort, &
-   MPI_Bcast, &
-   MPI_Allreduce
+   PETScErrorF                                                                                      ! is called in the CHKERRQ macro
 
 contains
 
@@ -79,32 +78,22 @@ subroutine spectral_damage_init()
    damage_nonlocal_getMobility
    
  implicit none
- integer(pInt), dimension(:), allocatable :: localK  
+ PetscInt, dimension(:), allocatable :: localK  
  integer(pInt) :: proc
  integer(pInt) :: i, j, k, cell
  DM :: damage_grid
  Vec :: uBound, lBound
  PetscErrorCode :: ierr
  character(len=100) :: snes_type
-
  external :: &
-   SNESCreate, &
    SNESSetOptionsPrefix, &
-   DMDACreate3D, &
-   SNESSetDM, &
-   DMDAGetCorners, &
-   DMCreateGlobalVector, &
-   DMDASNESSetFunctionLocal, &
-   SNESSetFromOptions, &
    SNESGetType, &
-   VecSet, &
-   DMGetGlobalVector, &
-   DMRestoreGlobalVector, &
-   SNESVISetVariableBounds
+   DMDAGetCorners, &
+   DMDASNESSetFunctionLocal
 
  write(6,'(/,a)') ' <<<+-  spectral_damage init  -+>>>'
  write(6,'(/,a)') ' Shanthraj et al., Handbook of Mechanics of Materials, volume in press, '
- write(6,'(/,a)') ' chapter Spectral Solvers for Crystal Plasticity and Multi-Physics Simulations. Springer, 2018 '
+ write(6,'(a,/)') ' chapter Spectral Solvers for Crystal Plasticity and Multi-Physics Simulations. Springer, 2018 '
  write(6,'(a15,a)')   ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
  
@@ -116,21 +105,23 @@ subroutine spectral_damage_init()
  do proc = 1, worldsize
    call MPI_Bcast(localK(proc),1,MPI_INTEGER,proc-1,PETSC_COMM_WORLD,ierr)
  enddo  
- call DMDACreate3d(PETSC_COMM_WORLD, &
+ call DMDACreate3D(PETSC_COMM_WORLD, &
         DM_BOUNDARY_NONE, DM_BOUNDARY_NONE, DM_BOUNDARY_NONE, &                                     !< cut off stencil at boundary
         DMDA_STENCIL_BOX, &                                                                         !< Moore (26) neighborhood around central point
         grid(1),grid(2),grid(3), &                                                                  !< global grid
         1, 1, worldsize, &
         1, 0, &                                                                                     !< #dof (damage phase field), ghost boundary width (domain overlap)
-        grid(1),grid(2),localK, &                                                                   !< local grid
+        [grid(1)],[grid(2)],localK, &                                                               !< local grid
         damage_grid,ierr)                                                                           !< handle, error
  CHKERRQ(ierr)
  call SNESSetDM(damage_snes,damage_grid,ierr); CHKERRQ(ierr)                                        !< connect snes to da
+ call DMsetFromOptions(damage_grid,ierr); CHKERRQ(ierr)
+ call DMsetUp(damage_grid,ierr); CHKERRQ(ierr)
  call DMCreateGlobalVector(damage_grid,solution,ierr); CHKERRQ(ierr)                                !< global solution vector (grid x 1, i.e. every def grad tensor)
  call DMDASNESSetFunctionLocal(damage_grid,INSERT_VALUES,spectral_damage_formResidual,&
-                                                                            PETSC_NULL_OBJECT,ierr) !< residual vector of same shape as solution vector
+                                                                            PETSC_NULL_SNES,ierr)   !< residual vector of same shape as solution vector
  CHKERRQ(ierr) 
- call SNESSetFromOptions(damage_snes,ierr); CHKERRQ(ierr)                                           !< pull it all together with additional cli arguments
+ call SNESSetFromOptions(damage_snes,ierr); CHKERRQ(ierr)                                           !< pull it all together with additional CLI arguments
  call SNESGetType(damage_snes,snes_type,ierr); CHKERRQ(ierr)
  if (trim(snes_type) == 'vinewtonrsls' .or. &
      trim(snes_type) == 'vinewtonssls') then
@@ -138,7 +129,7 @@ subroutine spectral_damage_init()
    call DMGetGlobalVector(damage_grid,uBound,ierr); CHKERRQ(ierr)
    call VecSet(lBound,0.0,ierr); CHKERRQ(ierr)
    call VecSet(uBound,1.0,ierr); CHKERRQ(ierr)
-   call SNESVISetVariableBounds(damage_snes,lBound,uBound,ierr)                                        !< variable bounds for variational inequalities like contact mechanics, damage etc.
+   call SNESVISetVariableBounds(damage_snes,lBound,uBound,ierr)                                     !< variable bounds for variational inequalities like contact mechanics, damage etc.
    call DMRestoreGlobalVector(damage_grid,lBound,ierr); CHKERRQ(ierr)
    call DMRestoreGlobalVector(damage_grid,uBound,ierr); CHKERRQ(ierr)
  endif
@@ -206,8 +197,7 @@ type(tSolutionState) function spectral_damage_solution(timeinc,timeinc_old,loadC
  external :: &
    VecMin, &
    VecMax, &
-   SNESSolve, &
-   SNESGetConvergedReason
+   SNESSolve
 
  spectral_damage_solution%converged =.false.
  
@@ -216,7 +206,7 @@ type(tSolutionState) function spectral_damage_solution(timeinc,timeinc_old,loadC
  params%timeinc = timeinc
  params%timeincOld = timeinc_old
 
- call SNESSolve(damage_snes,PETSC_NULL_OBJECT,solution,ierr); CHKERRQ(ierr)
+ call SNESSolve(damage_snes,PETSC_NULL_VEC,solution,ierr); CHKERRQ(ierr)
  call SNESGetConvergedReason(damage_snes,reason,ierr); CHKERRQ(ierr)
 
  if (reason < 1) then
@@ -244,14 +234,12 @@ type(tSolutionState) function spectral_damage_solution(timeinc,timeinc_old,loadC
 
  call VecMin(solution,position,minDamage,ierr); CHKERRQ(ierr)
  call VecMax(solution,position,maxDamage,ierr); CHKERRQ(ierr)
- if (worldrank == 0) then 
-   if (spectral_damage_solution%converged) &
-     write(6,'(/,a)') ' ... nonlocal damage converged .....................................'
-   write(6,'(/,a,f8.6,2x,f8.6,2x,f8.6,/)',advance='no') ' Minimum|Maximum|Delta Damage      = ',&
+ if (spectral_damage_solution%converged) &
+    write(6,'(/,a)') ' ... nonlocal damage converged .....................................'
+  write(6,'(/,a,f8.6,2x,f8.6,2x,f8.6,/)',advance='no') ' Minimum|Maximum|Delta Damage      = ',&
                                                        minDamage, maxDamage, stagNorm
-   write(6,'(/,a)') ' ==========================================================================='
-   flush(6) 
- endif 
+ write(6,'(/,a)') ' ==========================================================================='
+ flush(6) 
 
 end function spectral_damage_solution
 
@@ -361,9 +349,6 @@ subroutine spectral_damage_forward()
  DM :: dm_local
  PetscScalar,  dimension(:,:,:), pointer     :: x_scal
  PetscErrorCode                              :: ierr
- 
- external :: &
-   SNESGetDM
 
  if (cutBack) then 
    damage_current = damage_lastInc
@@ -397,23 +382,6 @@ subroutine spectral_damage_forward()
    call MPI_Allreduce(MPI_IN_PLACE,mobility_ref,1,MPI_DOUBLE,MPI_SUM,PETSC_COMM_WORLD,ierr)
  endif  
 
- end subroutine spectral_damage_forward
-
-!--------------------------------------------------------------------------------------------------
-!> @brief destroy routine
-!--------------------------------------------------------------------------------------------------
-subroutine spectral_damage_destroy()
-
- implicit none
- PetscErrorCode :: ierr
-
- external :: &
-   VecDestroy, &
-   SNESDestroy
-
- call VecDestroy(solution,ierr); CHKERRQ(ierr)
- call SNESDestroy(damage_snes,ierr); CHKERRQ(ierr)
-
-end subroutine spectral_damage_destroy
+end subroutine spectral_damage_forward
 
 end module spectral_damage

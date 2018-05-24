@@ -68,7 +68,7 @@ module prec
      nTrans = 0_pInt
    logical :: & 
      nonlocal = .false.
-   real(pReal), pointer,     dimension(:,:), contiguous :: &
+   real(pReal), pointer,     dimension(:,:) :: &
      slipRate, &                                                                                    !< slip rate
      accumulatedSlip                                                                                !< accumulated plastic slip
  end type

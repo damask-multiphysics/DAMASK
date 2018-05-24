@@ -10,9 +10,6 @@ module numerics
 
  implicit none
  private
-#ifdef PETSc
-#include <petsc/finclude/petsc.h90>
-#endif
  character(len=64), parameter, private :: &
    numerics_CONFIGFILE        = 'numerics.config'                                                   !< name of configuration file
 
@@ -216,6 +213,10 @@ subroutine numerics_init
    IO_warning, &
    IO_timeStamp, &
    IO_EOF
+#ifdef PETSc
+#include <petsc/finclude/petscsys.h>
+   use petscsys
+#endif
 #if defined(Spectral) || defined(FEM)
 !$ use OMP_LIB, only: omp_set_num_threads                                                           ! Use the standard conforming module file for omp if using the spectral solver
  implicit none
@@ -232,9 +233,7 @@ subroutine numerics_init
    line
 !$ character(len=6) DAMASK_NumThreadsString                                                         ! environment variable DAMASK_NUM_THREADS
  external :: &
-   MPI_Comm_rank, &
-   MPI_Comm_size, &
-   MPI_Abort
+   PETScErrorF                                                                                      ! is called in the CHKERRQ macro
 
 #ifdef PETSc
  call MPI_Comm_rank(PETSC_COMM_WORLD,worldrank,ierr);CHKERRQ(ierr)
