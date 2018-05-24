@@ -130,7 +130,7 @@ subroutine plastic_isotropic_init(fileUnit)
  implicit none
  integer(pInt), intent(in) :: fileUnit
  
- type tParameters, pointer :: p
+ type(tParameters), pointer :: p
  
  integer(pInt), allocatable, dimension(:) :: chunkPos
  integer(pInt) :: &
