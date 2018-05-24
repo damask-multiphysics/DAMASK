@@ -177,8 +177,6 @@ subroutine plastic_kinehardening_init(fileUnit)
    tag       = '', &
    line      = '', &
    extmsg    = ''
- character(len=64) :: &
-   outputtag = ''
 
  write(6,'(/,a)')   ' <<<+-  constitutive_'//PLASTICITY_KINEHARDENING_label//' init  -+>>>'
  write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
@@ -241,34 +239,42 @@ subroutine plastic_kinehardening_init(fileUnit)
      tag = IO_lc(IO_stringValue(line,chunkPos,1_pInt))                                              ! extract key
      select case(tag)
        case ('(output)')
-         outputtag = IO_lc(IO_stringValue(line,chunkPos,2_pInt))
-         output_ID = undefined_ID
-         select case(outputtag)
+         plastic_kinehardening_Noutput(instance) = plastic_kinehardening_Noutput(instance) + 1_pInt
+         plastic_kinehardening_output(plastic_kinehardening_Noutput(instance),instance) = &
+                                                        IO_lc(IO_stringValue(line,chunkPos,2_pInt))
+         select case(IO_lc(IO_stringValue(line,chunkPos,2_pInt)))
            case ('resistance')
              output_ID = crss_ID
+
            case ('backstress')
              output_ID = crss_back_ID
+
            case ('sense')
              output_ID = sense_ID
+
            case ('chi0')
              output_ID = chi0_ID
+
            case ('gamma0')
              output_ID = gamma0_ID
+
            case ('accumulatedshear')
              output_ID = accshear_ID
+
            case ('totalshear')
              output_ID = sumGamma_ID
+
            case ('shearrate')
              output_ID = shearrate_ID
+
            case ('resolvedstress')
              output_ID = resolvedstress_ID
+
+           case default
+             plastic_kinehardening_Noutput(instance) = plastic_kinehardening_Noutput(instance) - 1_pInt ! correct for invalid
+
          end select
 
-         if (output_ID /= undefined_ID) then
-           plastic_kinehardening_Noutput(instance) = plastic_kinehardening_Noutput(instance) + 1_pInt
-           plastic_kinehardening_output(plastic_kinehardening_Noutput(instance),instance) = outputtag
-           param(instance)%outputID (plastic_kinehardening_Noutput(instance)) = output_ID
-         endif
 !--------------------------------------------------------------------------------------------------
 ! parameters depending on number of slip families 
        case ('nslip')
@@ -619,7 +625,6 @@ subroutine plastic_kinehardening_LpAndItsTangent(Lp,dLp_dTstar99, &
    math_transpose33
  use lattice, only: &
    lattice_Sslip, &       !< schmid matrix
-   lattice_Sslip_v, &
    lattice_maxNslipFamily, &
    lattice_NslipSystem, &
    lattice_NnonSchmid
@@ -739,8 +744,6 @@ subroutine plastic_kinehardening_deltaState(Tstar_v,ipc,ip,el)
    ipc, &                                                                                           !< component-ID of integration point
    ip, &                                                                                            !< integration point
    el                                                                                               !< element
- real(pReal), dimension(6) :: &
-   Tstar_dev_v                                                                                      !< deviatoric 2nd Piola Kirchhoff stress tensor in Mandel notation
  real(pReal), dimension(plastic_kinehardening_totalNslip(phase_plasticityInstance(phaseAt(ipc,ip,el)))) :: &
    gdot_pos,gdot_neg, &
    tau_pos,tau_neg, &
@@ -799,14 +802,10 @@ end subroutine plastic_kinehardening_deltaState
 !--------------------------------------------------------------------------------------------------
 subroutine plastic_kinehardening_dotState(Tstar_v,ipc,ip,el)
  use lattice, only: &
-   lattice_Sslip_v, &
-   lattice_maxNslipFamily, &
-   lattice_NslipSystem, &
-   lattice_NnonSchmid
+   lattice_maxNslipFamily
  use material, only: &
    material_phase, &
    phaseAt, phasememberAt, &
-   plasticState, &
    phase_plasticityInstance
 
  implicit none
@@ -819,10 +818,8 @@ subroutine plastic_kinehardening_dotState(Tstar_v,ipc,ip,el)
 
  integer(pInt) :: &
    instance,ph, &
-   f,i,j,k, &
-   index_myFamily,index_otherFamily, &
+   f,i,j, &
    nSlip, &
-   offset_accshear, &
    of
  
  real(pReal), dimension(plastic_kinehardening_totalNslip(phase_plasticityInstance(material_phase(ipc,ip,el)))) :: &
@@ -873,14 +870,12 @@ end subroutine plastic_kinehardening_dotState
 function plastic_kinehardening_postResults(Tstar_v,ipc,ip,el)
  use material, only: &
    material_phase, &
-   plasticState, &
    phaseAt, phasememberAt, &
    phase_plasticityInstance
  use lattice, only: &
    lattice_Sslip_v, &
    lattice_maxNslipFamily, &
-   lattice_NslipSystem, &
-   lattice_NnonSchmid
+   lattice_NslipSystem
 
  implicit none
  real(pReal), dimension(6), intent(in) :: &
@@ -896,7 +891,7 @@ function plastic_kinehardening_postResults(Tstar_v,ipc,ip,el)
  integer(pInt) :: &
    instance,ph, of, &
    nSlip,&
-   o,f,i,c,j,k, &
+   o,f,i,c,j,&
    index_myFamily
    
  real(pReal), dimension(plastic_kinehardening_totalNslip(phase_plasticityInstance(material_phase(ipc,ip,el)))) :: &
