@@ -6,7 +6,7 @@ cmake_minimum_required (VERSION 2.8.8 FATAL_ERROR)
 # Find PETSc from system environment
 set(PETSC_DIR $ENV{PETSC_DIR})
 if (PETSC_DIR STREQUAL "")
-  message (FATAL_ERROR "PETSC_DIR is not defined")
+  message (FATAL_ERROR "PETSc location (PETSC_DIR) is not defined")
 endif ()
 
 set (petsc_conf_variables "${PETSC_DIR}/lib/petsc/conf/variables")
@@ -114,7 +114,7 @@ elseif (DAMASK_SOLVER STREQUAL "FEM")
     add_definitions (-DFEM)
     message ("Building FEM Solver\n")
 else ()
-    message (FATAL_ERROR "DAMASK_SOLVER is not defined!")
+    message (FATAL_ERROR "Build target (DAMASK_SOLVER) is not defined")
 endif ()
 
 # set linker commands (needs to be done after defining the project)
@@ -197,12 +197,12 @@ if (CMAKE_Fortran_COMPILER_ID STREQUAL "Intel")
   endif ()
 
   if (OPTIMIZATION STREQUAL "OFF")
-      set (OPTIMIZATION_FLAGS    "-O0 -no-ip")
+    set (OPTIMIZATION_FLAGS    "-O0 -no-ip")
   elseif (OPTIMIZATION STREQUAL "DEFENSIVE")
-      set (OPTIMIZATION_FLAGS    "-O2")
+    set (OPTIMIZATION_FLAGS    "-O2")
   elseif (OPTIMIZATION STREQUAL "AGGRESSIVE")
-      set (OPTIMIZATION_FLAGS    "-ipo -O3 -no-prec-div -fp-model fast=2 -xHost")
-      # -fast = -ipo, -O3, -no-prec-div, -static, -fp-model fast=2, and -xHost"
+    set (OPTIMIZATION_FLAGS    "-ipo -O3 -no-prec-div -fp-model fast=2 -xHost")
+    # -fast = -ipo, -O3, -no-prec-div, -static, -fp-model fast=2, and -xHost"
   endif ()
 
   # -assume std_mod_proc_name (included in -standard-semantics) causes problems if other modules
@@ -317,11 +317,11 @@ elseif(CMAKE_Fortran_COMPILER_ID STREQUAL "GNU")
   endif ()
 
   if (OPTIMIZATION STREQUAL "OFF")
-      set (OPTIMIZATION_FLAGS "-O0"       )
+    set (OPTIMIZATION_FLAGS "-O0"       )
   elseif (OPTIMIZATION STREQUAL "DEFENSIVE")
-      set (OPTIMIZATION_FLAGS "-O2")
+    set (OPTIMIZATION_FLAGS "-O2")
   elseif (OPTIMIZATION STREQUAL "AGGRESSIVE")
-      set (OPTIMIZATION_FLAGS "-O3 -ffast-math -funroll-loops -ftree-vectorize")
+    set (OPTIMIZATION_FLAGS "-O3 -ffast-math -funroll-loops -ftree-vectorize")
   endif ()
 
   set (STANDARD_CHECK "-std=f2008ts -pedantic-errors" )
@@ -445,7 +445,10 @@ elseif(CMAKE_Fortran_COMPILER_ID STREQUAL "GNU")
 
   # Additional options
   # -fdefault-integer-8: Use it to set precision to 8 bytes for integer, don't use it for the standard case of pInt=4 (there is no -fdefault-integer-4)
+else ()
+  message (FATAL_ERROR "Compiler type (CMAKE_Fortran_COMPILER_ID) not recognized")
 endif ()
+
 
 set (CMAKE_Fortran_FLAGS_${CMAKE_BUILD_TYPE} "${BUILDCMD_PRE} ${OPENMP_FLAGS} ${STANDARD_CHECK} ${OPTIMIZATION_FLAGS} ${COMPILE_FLAGS} ${PRECISION_FLAGS}")
 set (CMAKE_Fortran_LINK_EXECUTABLE           "${BUILDCMD_PRE} ${CMAKE_LINKER} ${OPENMP_FLAGS}   ${OPTIMIZATION_FLAGS} ${LINKER_FLAGS}")
