@@ -119,7 +119,7 @@ module plastic_dislotwin
                  trans_fraction_ID
  end enum
  integer(kind(undefined_ID)),         dimension(:,:),         allocatable,          private :: & 
-   plastic_dislotwin_outputID                                                                  !< ID of each post result output
+   outputID                                                                  !< ID of each post result output
  
   type,private :: tParameters
    real(pReal) :: &
@@ -305,7 +305,7 @@ subroutine plastic_dislotwin_init(fileUnit)
  allocate(plastic_dislotwin_sizePostResult(maxval(phase_Noutput),maxNinstance),source=0_pInt)
  allocate(plastic_dislotwin_output(maxval(phase_Noutput),maxNinstance))
           plastic_dislotwin_output = ''
- allocate(plastic_dislotwin_outputID(maxval(phase_Noutput),maxNinstance),      source=undefined_ID)
+ allocate(outputID(maxval(phase_Noutput),maxNinstance),      source=undefined_ID)
  allocate(plastic_dislotwin_Noutput(maxNinstance),                             source=0_pInt)
  
  allocate(param(maxNinstance))
@@ -411,92 +411,73 @@ subroutine plastic_dislotwin_init(fileUnit)
                                                        IO_lc(IO_stringValue(line,chunkPos,2_pInt))
          select case(IO_lc(IO_stringValue(line,chunkPos,2_pInt)))
            case ('edge_density')
-           
-             plastic_dislotwin_outputID(plastic_dislotwin_Noutput(instance),instance) = edge_density_ID
+             outputID(plastic_dislotwin_Noutput(instance),instance) = edge_density_ID
 
            case ('dipole_density')
-
-             plastic_dislotwin_outputID(plastic_dislotwin_Noutput(instance),instance) = dipole_density_ID
+             outputID(plastic_dislotwin_Noutput(instance),instance) = dipole_density_ID
 
            case ('shear_rate_slip','shearrate_slip')
-
-             plastic_dislotwin_outputID(plastic_dislotwin_Noutput(instance),instance) = shear_rate_slip_ID
+             outputID(plastic_dislotwin_Noutput(instance),instance) = shear_rate_slip_ID
 
            case ('accumulated_shear_slip')
-
-             plastic_dislotwin_outputID(plastic_dislotwin_Noutput(instance),instance) = accumulated_shear_slip_ID
+             outputID(plastic_dislotwin_Noutput(instance),instance) = accumulated_shear_slip_ID
 
            case ('mfp_slip')
-
-             plastic_dislotwin_outputID(plastic_dislotwin_Noutput(instance),instance) = mfp_slip_ID
+             outputID(plastic_dislotwin_Noutput(instance),instance) = mfp_slip_ID
 
            case ('resolved_stress_slip')
-
-             plastic_dislotwin_outputID(plastic_dislotwin_Noutput(instance),instance) = resolved_stress_slip_ID
+             outputID(plastic_dislotwin_Noutput(instance),instance) = resolved_stress_slip_ID
 
            case ('threshold_stress_slip')
-
-             plastic_dislotwin_outputID(plastic_dislotwin_Noutput(instance),instance) = threshold_stress_slip_ID
+             outputID(plastic_dislotwin_Noutput(instance),instance) = threshold_stress_slip_ID
 
            case ('edge_dipole_distance')
-
-             plastic_dislotwin_outputID(plastic_dislotwin_Noutput(instance),instance) = edge_dipole_distance_ID
+             outputID(plastic_dislotwin_Noutput(instance),instance) = edge_dipole_distance_ID
 
            case ('stress_exponent')
-
-             plastic_dislotwin_outputID(plastic_dislotwin_Noutput(instance),instance) = stress_exponent_ID
+             outputID(plastic_dislotwin_Noutput(instance),instance) = stress_exponent_ID
 
            case ('twin_fraction')
-
-             plastic_dislotwin_outputID(plastic_dislotwin_Noutput(instance),instance) = twin_fraction_ID
+             outputID(plastic_dislotwin_Noutput(instance),instance) = twin_fraction_ID
 
            case ('shear_rate_twin','shearrate_twin')
-
-             plastic_dislotwin_outputID(plastic_dislotwin_Noutput(instance),instance) = shear_rate_twin_ID
+             outputID(plastic_dislotwin_Noutput(instance),instance) = shear_rate_twin_ID
 
            case ('accumulated_shear_twin')
-
-             plastic_dislotwin_outputID(plastic_dislotwin_Noutput(instance),instance) = accumulated_shear_twin_ID
+             outputID(plastic_dislotwin_Noutput(instance),instance) = accumulated_shear_twin_ID
 
            case ('mfp_twin')
-
-             plastic_dislotwin_outputID(plastic_dislotwin_Noutput(instance),instance) = mfp_twin_ID
+             outputID(plastic_dislotwin_Noutput(instance),instance) = mfp_twin_ID
 
            case ('resolved_stress_twin')
-
-             plastic_dislotwin_outputID(plastic_dislotwin_Noutput(instance),instance) = resolved_stress_twin_ID
+             outputID(plastic_dislotwin_Noutput(instance),instance) = resolved_stress_twin_ID
 
            case ('threshold_stress_twin')
-
-             plastic_dislotwin_outputID(plastic_dislotwin_Noutput(instance),instance) = threshold_stress_twin_ID
+             outputID(plastic_dislotwin_Noutput(instance),instance) = threshold_stress_twin_ID
 
            case ('resolved_stress_shearband')
-
-             plastic_dislotwin_outputID(plastic_dislotwin_Noutput(instance),instance) = resolved_stress_shearband_ID
+             outputID(plastic_dislotwin_Noutput(instance),instance) = resolved_stress_shearband_ID
 
            case ('shear_rate_shearband','shearrate_shearband')
-
-             plastic_dislotwin_outputID(plastic_dislotwin_Noutput(instance),instance) = shear_rate_shearband_ID
+             outputID(plastic_dislotwin_Noutput(instance),instance) = shear_rate_shearband_ID
 
            case ('sb_eigenvalues')
-
-             plastic_dislotwin_outputID(plastic_dislotwin_Noutput(instance),instance) = sb_eigenvalues_ID
+             outputID(plastic_dislotwin_Noutput(instance),instance) = sb_eigenvalues_ID
 
            case ('sb_eigenvectors')
-
-             plastic_dislotwin_outputID(plastic_dislotwin_Noutput(instance),instance) = sb_eigenvectors_ID
+             outputID(plastic_dislotwin_Noutput(instance),instance) = sb_eigenvectors_ID
 
            case ('stress_trans_fraction')
-
-             plastic_dislotwin_outputID(plastic_dislotwin_Noutput(instance),instance) = stress_trans_fraction_ID
+             outputID(plastic_dislotwin_Noutput(instance),instance) = stress_trans_fraction_ID
 
            case ('strain_trans_fraction')
-
-             plastic_dislotwin_outputID(plastic_dislotwin_Noutput(instance),instance) = strain_trans_fraction_ID
+             outputID(plastic_dislotwin_Noutput(instance),instance) = strain_trans_fraction_ID
 
            case ('trans_fraction','total_trans_fraction')
-
-             plastic_dislotwin_outputID(plastic_dislotwin_Noutput(instance),instance) = trans_fraction_ID
+             outputID(plastic_dislotwin_Noutput(instance),instance) = trans_fraction_ID
+             
+           case default
+             plastic_dislotwin_Noutput(instance) = plastic_dislotwin_Noutput(instance) - 1_pInt
 
           end select
 !--------------------------------------------------------------------------------------------------
@@ -845,7 +826,7 @@ subroutine plastic_dislotwin_init(fileUnit)
 !--------------------------------------------------------------------------------------------------
 !  Determine size of postResults array
      outputsLoop: do o = 1_pInt,plastic_dislotwin_Noutput(instance)
-       select case(plastic_dislotwin_outputID(o,instance))
+       select case(outputID(o,instance))
          case(edge_density_ID, &
               dipole_density_ID, &
               shear_rate_slip_ID, &
@@ -2126,7 +2107,7 @@ function plastic_dislotwin_postResults(Tstar_v,Temperature,ipc,ip,el)
  c = 0_pInt
  plastic_dislotwin_postResults = 0.0_pReal
  do o = 1_pInt,plastic_dislotwin_Noutput(instance)
-    select case(plastic_dislotwin_outputID(o,instance))
+    select case(outputID(o,instance))
  
       case (edge_density_ID)
         plastic_dislotwin_postResults(c+1_pInt:c+ns) = state(instance)%rhoEdge(1_pInt:ns,of)
