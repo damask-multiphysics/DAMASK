@@ -403,7 +403,7 @@ subroutine plastic_isotropic_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,ipc,ip,el)
    ip, &                                                                                            !< integration point
    el                                                                                               !< element
 
- type tParameters, pointer :: p
+ type(tParameters), pointer :: p
  
  real(pReal), dimension(3,3) :: &
    Tstar_dev_33                                                                                     !< deviatoric part of the 2nd Piola Kirchhoff stress tensor as 2nd order tensor
@@ -485,7 +485,7 @@ subroutine plastic_isotropic_LiAndItsTangent(Li,dLi_dTstar_3333,Tstar_v,ipc,ip,e
    ip, &                                                                                            !< integration point
    el                                                                                               !< element
 
- type tParameters, pointer :: p
+ type(tParameters), pointer :: p
  
  real(pReal), dimension(3,3) :: &
    Tstar_sph_33                                                                                     !< sphiatoric part of the 2nd Piola Kirchhoff stress tensor as 2nd order tensor
@@ -526,8 +526,7 @@ subroutine plastic_isotropic_LiAndItsTangent(Li,dLi_dTstar_3333,Tstar_v,ipc,ip,e
   Li = 0.0_pReal
   dLi_dTstar_3333 = 0.0_pReal
  endif
- 
-end subroutine plastic_isotropic_LiAndItsTangent
+ end subroutine plastic_isotropic_LiAndItsTangent
 
 
 !--------------------------------------------------------------------------------------------------
@@ -550,7 +549,7 @@ subroutine plastic_isotropic_dotState(Tstar_v,ipc,ip,el)
    ipc, &                                                                                           !< component-ID of integration point
    ip, &                                                                                            !< integration point
    el                                                                                               !< element
- type tParameters, pointer :: p
+ type(tParameters), pointer :: p
  real(pReal), dimension(6) :: &
    Tstar_dev_v                                                                                      !< deviatoric 2nd Piola Kirchhoff stress tensor in Mandel notation
  real(pReal) :: &
@@ -626,7 +625,7 @@ function plastic_isotropic_postResults(Tstar_v,ipc,ip,el)
    ip, &                                                                                            !< integration point
    el                                                                                               !< element
 
- type tParameters, pointer :: p
+ type(tParameters), pointer :: p
  
  real(pReal), dimension(plastic_isotropic_sizePostResults(phase_plasticityInstance(material_phase(ipc,ip,el)))) :: &
                                            plastic_isotropic_postResults
