@@ -172,9 +172,8 @@ class Material():
               self.data[part][name_section][items[0]] = items[1:]
                   
   def read(self,file=None):
-    f=open(file,'r')
-    c=f.readlines()
-    f.close()
+    with open(file,'r') as f:
+      c=f.readlines()
     for p in self.parts:
       self.parse_data(part=p, content=c)
        
