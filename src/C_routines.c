@@ -11,9 +11,9 @@
 
 int isdirectory_c(const char *dir){
   struct stat statbuf;
-  if(stat(dir, &statbuf) != 0)
-    return 0;
-  return S_ISDIR(statbuf.st_mode);
+  if(stat(dir, &statbuf) != 0)                                                                      /* error */
+    return 0;                                                                                       /* return "NO, this is not a directory" */
+  return S_ISDIR(statbuf.st_mode);                                                                  /* 1 => is directory, 0 => this is NOT a directory */
 }
 
 
@@ -29,7 +29,7 @@ void getcurrentworkdir_c(char cwd[], int *stat ){
 }
 
 
-void gethostname_c(char hostname[], int *stat ){
+void gethostname_c(char hostname[], int *stat){
   char hostname_tmp[1024];
   if(gethostname(hostname_tmp, sizeof(hostname_tmp)) == 0){
     strcpy(hostname,hostname_tmp);
@@ -38,4 +38,9 @@ void gethostname_c(char hostname[], int *stat ){
   else{
     *stat = 1;
   }
+}
+
+
+int chdir_c(const char *dir){
+  return chdir(dir);
 }
