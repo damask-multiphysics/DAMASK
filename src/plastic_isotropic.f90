@@ -61,19 +61,9 @@ module plastic_isotropic
      accumulatedShear
  end type
 
- type, private :: tIsotropicAbsTol                                                                  !< internal alias for abs tolerance in state
-   real(pReal), pointer :: &                                                                        ! scalars
-     flowstress, &
-     accumulatedShear
- end type
-
  type(tIsotropicState), allocatable, dimension(:), private :: &                                       !< state aliases per instance
    state, &
-   state0, &
    dotState
-
- type(tIsotropicAbsTol), allocatable, dimension(:), private :: &                                       !< state aliases per instance
-   stateAbsTol
 
  public  :: &
    plastic_isotropic_init, &
@@ -263,9 +253,7 @@ subroutine plastic_isotropic_init(fileUnit)
  enddo parsingFile
 
  allocate(state(maxNinstance))                                                                      ! internal state aliases
- allocate(state0(maxNinstance))
  allocate(dotState(maxNinstance))
- allocate(stateAbsTol(maxNinstance))
 
  initializeInstances: do phase = 1_pInt, size(phase_plasticity)                                     ! loop over every plasticity
    myPhase: if (phase_plasticity(phase) == PLASTICITY_isotropic_ID) then                            ! isolate instances of own constitutive description
@@ -334,31 +322,20 @@ subroutine plastic_isotropic_init(fileUnit)
        allocate(plasticState(phase)%RKCK45dotState (6,sizeDotState,NipcMyPhase),source=0.0_pReal)
 
 !--------------------------------------------------------------------------------------------------
-! globally required state aliases
-     plasticState(phase)%slipRate           => plasticState(phase)%dotState(2:2,1:NipcMyPhase)
-     plasticState(phase)%accumulatedSlip    => plasticState(phase)%state   (2:2,1:NipcMyPhase)
+! locally defined state aliases and initialization of state0 and aTolState
 
-!--------------------------------------------------------------------------------------------------
-! locally defined state aliases
      state(instance)%flowstress             => plasticState(phase)%state    (1,1:NipcMyPhase)
-     state0(instance)%flowstress            => plasticState(phase)%state0   (1,1:NipcMyPhase)
      dotState(instance)%flowstress          => plasticState(phase)%dotState (1,1:NipcMyPhase)
-     stateAbsTol(instance)%flowstress       => plasticState(phase)%aTolState(1)
+     plasticState(phase)%state0(1,1:NipcMyPhase) = p%tau0
+     plasticState(phase)%aTolState(1)       =  p%aTolFlowstress
 
      state(instance)%accumulatedShear       => plasticState(phase)%state    (2,1:NipcMyPhase)
-     state0(instance)%accumulatedShear      => plasticState(phase)%state0   (2,1:NipcMyPhase)
      dotState(instance)%accumulatedShear    => plasticState(phase)%dotState (2,1:NipcMyPhase)
-     stateAbsTol(instance)%accumulatedShear => plasticState(phase)%aTolState(2)
-
-!--------------------------------------------------------------------------------------------------
-! init state
-     state0(instance)%flowstress       = p%tau0
-     state0(instance)%accumulatedShear = 0.0_pReal
-
-!--------------------------------------------------------------------------------------------------
-! init absolute state tolerances
-     stateAbsTol(instance)%flowstress       = p%aTolFlowstress
-     stateAbsTol(instance)%accumulatedShear = p%aTolShear
+     plasticState(phase)%state0 (2,1:NipcMyPhase) = 0.0_pReal
+     plasticState(phase)%aTolState(2)       =  p%aTolShear
+     ! global alias
+     plasticState(phase)%slipRate           => plasticState(phase)%dotState(2:2,1:NipcMyPhase)
+     plasticState(phase)%accumulatedSlip    => plasticState(phase)%state   (2:2,1:NipcMyPhase)
 
    endif myPhase
  enddo initializeInstances
