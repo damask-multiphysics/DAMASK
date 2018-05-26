@@ -218,7 +218,6 @@ subroutine plastic_kinehardening_init(fileUnit)
        Nchunks_SlipFamilies = count(lattice_NslipSystem(:,phase) > 0_pInt)                          ! maximum number of slip families according to lattice type of current phase
        Nchunks_SlipSlip     = maxval(lattice_interactionSlipSlip(:,:,phase))
        Nchunks_nonSchmid    = lattice_NnonSchmid(phase)
-       allocate(param(instance)%outputID(phase_Noutput(phase)), source=undefined_ID)                           ! allocate space for IDs of every requested output
        allocate(param(instance)%crss0   (Nchunks_SlipFamilies), source=0.0_pReal)
        allocate(param(instance)%tau1    (Nchunks_SlipFamilies), source=0.0_pReal)
        allocate(param(instance)%tau1_b  (Nchunks_SlipFamilies), source=0.0_pReal)
@@ -234,14 +233,11 @@ subroutine plastic_kinehardening_init(fileUnit)
      cycle                                                                                          ! skip to next line
    endif
    if (phase > 0_pInt ) then; if (phase_plasticity(phase) == PLASTICITY_KINEHARDENING_ID) then      ! one of my phases. Do not short-circuit here (.and. between if-statements), it's not safe in Fortran
-     instance = phase_plasticityInstance(phase)                                                     ! which instance of my plasticity is present phase
      chunkPos = IO_stringPos(line)
      tag = IO_lc(IO_stringValue(line,chunkPos,1_pInt))                                              ! extract key
      select case(tag)
        case ('(output)')
-         plastic_kinehardening_Noutput(instance) = plastic_kinehardening_Noutput(instance) + 1_pInt
-         plastic_kinehardening_output(plastic_kinehardening_Noutput(instance),instance) = &
-                                                        IO_lc(IO_stringValue(line,chunkPos,2_pInt))
+         output_ID = undefined_ID
          select case(IO_lc(IO_stringValue(line,chunkPos,2_pInt)))
            case ('resistance')
              output_ID = crss_ID
@@ -270,10 +266,14 @@ subroutine plastic_kinehardening_init(fileUnit)
            case ('resolvedstress')
              output_ID = resolvedstress_ID
 
-           case default
-             plastic_kinehardening_Noutput(instance) = plastic_kinehardening_Noutput(instance) - 1_pInt ! correct for invalid
-
          end select
+
+         if (output_ID /= undefined_ID) then
+           plastic_kinehardening_Noutput(instance) = plastic_kinehardening_Noutput(instance) + 1_pInt
+           plastic_kinehardening_output(plastic_kinehardening_Noutput(instance),instance) = &
+                                                          IO_lc(IO_stringValue(line,chunkPos,2_pInt))
+           param(instance)%outputID = [param(instance)%outputID, output_ID]
+         endif
 
 !--------------------------------------------------------------------------------------------------
 ! parameters depending on number of slip families 
