@@ -22,7 +22,7 @@ module spectral_mech_basic
  private
 
  character (len=*), parameter, public :: &
-   DAMASK_spectral_SolverBasicPETSC_label = 'petsc'
+   DAMASK_spectral_SolverBasicPETSC_label = 'basic'
    
 !--------------------------------------------------------------------------------------------------
 ! derived types
