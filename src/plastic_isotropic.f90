@@ -287,7 +287,7 @@ subroutine plastic_isotropic_init(fileUnit)
 
 !--------------------------------------------------------------------------------------------------
 ! allocate state arrays
-     sizeDotState   = len(["flowstress       ","accumulated_shear"])
+     sizeDotState   = size(["flowstress       ","accumulated_shear"])
      sizeDeltaState = 0_pInt                                                                         ! no sudden jumps in state
      sizeState      = sizeDotState + sizeDeltaState
      plasticState(phase)%sizeState = sizeState
