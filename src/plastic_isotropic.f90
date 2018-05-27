@@ -141,8 +141,6 @@ subroutine plastic_isotropic_init(fileUnit)
  integer(pInt) :: NipcMyPhase
 
  write(6,'(/,a)')   ' <<<+-  constitutive_'//PLASTICITY_ISOTROPIC_label//' init  -+>>>'
- write(6,'(/,a)')   ' Ma et al., Computational Materials Science, 109:323–329, 2015'
- write(6,'(/,a)')   ' https://doi.org/10.1016/j.commatsci.2015.07.041'
  write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
  
@@ -289,7 +287,7 @@ subroutine plastic_isotropic_init(fileUnit)
 
 !--------------------------------------------------------------------------------------------------
 ! allocate state arrays
-     sizeDotState   = 2_pInt                                                                         ! flowstress, accumulated_shear
+     sizeDotState   = len(["flowstress       ","accumulated_shear"])
      sizeDeltaState = 0_pInt                                                                         ! no sudden jumps in state
      sizeState      = sizeDotState + sizeDeltaState
      plasticState(phase)%sizeState = sizeState
