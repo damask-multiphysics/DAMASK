@@ -26,14 +26,11 @@ module plastic_phenopowerlaw
    totalNslip, &                                                         !< no. of slip system used in simulation
    totalNtwin                                                            !< no. of twin system used in simulation
 
-
-
  real(pReal),                         dimension(:,:,:),   allocatable,          private :: &
-  
- interaction_SlipSlip, &                                               !< interaction factors slip - slip (input parameter)
+   interaction_SlipSlip, &                                               !< interaction factors slip - slip (input parameter)
    interaction_SlipTwin, &                                               !< interaction factors slip - twin (input parameter)
    interaction_TwinSlip, &                                               !< interaction factors twin - slip (input parameter)
-  interaction_TwinTwin                                                  !< interaction factors twin - twin (input parameter)
+   interaction_TwinTwin                                                  !< interaction factors twin - twin (input parameter)
 
 
  enum, bind(c)
@@ -52,7 +49,16 @@ module plastic_phenopowerlaw
  integer(kind(undefined_ID)),         dimension(:,:),   allocatable,          private :: &
    plastic_phenopowerlaw_outputID                                                              !< ID of each post result output
 
+ type :: tKeyValues
+   character(len=64) :: &
+     key       = ''
+ character(len=65536) :: &
+     rawValues       = ''
+ end type
+
  type, private :: tParameters                                                                       !< container type for internal constitutive parameters
+   type(tKeyValues) :: &
+     keyValues
    real(pReal) :: &
      gdot0_slip, &                                                                                  !< reference shear strain rate for slip
      gdot0_twin, &                                                                                  !< reference shear strain rate for twin
@@ -172,6 +178,9 @@ subroutine plastic_phenopowerlaw_init(fileUnit)
    offset_slip, index_myFamily, index_otherFamily, &
    mySize=0_pInt,sizeState,sizeDotState, sizeDeltaState, &
    startIndex, endIndex
+
+ type(tKeyValues) :: keyValuesTemp
+
  character(len=65536) :: &
    tag       = '', &
    line      = '', &
@@ -184,67 +193,85 @@ subroutine plastic_phenopowerlaw_init(fileUnit)
  write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
 
- maxNinstance = int(count(phase_plasticity == PLASTICITY_PHENOPOWERLAW_ID),pInt)
+ maxNinstance = int(count(phase_plasticity == PLASTICITY_PHENOPOWERLAW_ID),pInt)                    ! ToDo: this does not happen
  if (maxNinstance == 0_pInt) return
 
  if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0_pInt) &
    write(6,'(a16,1x,i5,/)') '# instances:',maxNinstance
 
 
- allocate(plastic_phenopowerlaw_sizePostResults(maxNinstance),                   source=0_pInt)
- allocate(plastic_phenopowerlaw_sizePostResult(maxval(phase_Noutput),maxNinstance), &
-                                                                                 source=0_pInt)
+ allocate(plastic_phenopowerlaw_sizePostResults(maxNinstance),                     source=0_pInt)
+ allocate(plastic_phenopowerlaw_sizePostResult(maxval(phase_Noutput),maxNinstance),source=0_pInt)
+ allocate(plastic_phenopowerlaw_Noutput(maxNinstance),                             source=0_pInt)
  allocate(plastic_phenopowerlaw_output(maxval(phase_Noutput),maxNinstance))
-          plastic_phenopowerlaw_output               = ''
- allocate(plastic_phenopowerlaw_outputID(maxval(phase_Noutput),maxNinstance),source=undefined_ID)
- 
- allocate(plastic_phenopowerlaw_Noutput(maxNinstance),                       source=0_pInt)
+          plastic_phenopowerlaw_output = ''
 
+ allocate(plastic_phenopowerlaw_outputID(maxval(phase_Noutput),maxNinstance),source=undefined_ID)
  allocate(totalNslip(maxNinstance),                    source=0_pInt)
  allocate(totalNtwin(maxNinstance),                    source=0_pInt)
  allocate(param(maxNinstance))                                                                      ! one container of parameters per instance
 
  rewind(fileUnit)
  phase = 0_pInt
- do while (trim(line) /= IO_EOF .and. IO_lc(IO_getTag(line,'<','>')) /= material_partPhase)         ! wind forward to <phase>
+ windForward: do while (IO_lc(IO_getTag(line,'<','>')) /= material_partPhase)
    line = IO_read(fileUnit)
- enddo
-
- parsingFile: do while (trim(line) /= IO_EOF)                                                       ! read through sections of phase part
+ enddo windForward
+ getKeys: do while (trim(line) /= IO_EOF)                                                           ! read through sections of phase part
    line = IO_read(fileUnit)
-   if (IO_isBlank(line)) cycle                                                                      ! skip empty lines
+   if (IO_isBlank(line) .or. phase == 0_pInt) cycle                                                 ! skip empty lines
+   if (IO_getTag(line,'[',']') /= '') phase = phase + 1_pInt                                        ! next phase
+     phase = phase + 1_pInt                                                                         ! advance phase section counter
+     instance = phase_plasticityInstance(phase)                                                     ! instance of present phase
+     cycle
+   endif
+   if (phase_plasticity(phase) /= PLASTICITY_PHENOPOWERLAW_ID) cycle
    if (IO_getTag(line,'<','>') /= '') then                                                          ! stop at next part
      line = IO_read(fileUnit, .true.)                                                               ! reset IO_read
      exit
    endif
-   if (IO_getTag(line,'[',']') /= '') then                                                          ! next phase
-     phase = phase + 1_pInt                                                                         ! advance phase section counter
-     if (phase_plasticity(phase) == PLASTICITY_PHENOPOWERLAW_ID) then
-          instance = phase_plasticityInstance(phase)                                                     ! which instance of my plasticity is present phase
-       Nchunks_SlipFamilies  = count(lattice_NslipSystem(:,phase) > 0_pInt)                         ! maximum number of slip families according to lattice type of current phase
-       Nchunks_TwinFamilies  = count(lattice_NtwinSystem(:,phase) > 0_pInt)                         ! maximum number of twin families according to lattice type of current phase
-       Nchunks_SlipSlip =     maxval(lattice_interactionSlipSlip(:,:,phase))
-       Nchunks_SlipTwin =     maxval(lattice_interactionSlipTwin(:,:,phase))
-       Nchunks_TwinSlip =     maxval(lattice_interactionTwinSlip(:,:,phase))
-       Nchunks_TwinTwin =     maxval(lattice_interactionTwinTwin(:,:,phase))
-       Nchunks_nonSchmid =    lattice_NnonSchmid(phase)
-       if(allocated(tempPerSlip)) deallocate(tempPerSlip)
-       !allocate(param(instance)%H_int,source=tempPerSlip) gfortran 5 does not support this
-              allocate(param(instance)%H_int(Nchunks_SlipFamilies),source=0.0_pReal)
-       allocate(param(instance)%interaction_SlipSlip(Nchunks_SlipSlip),source=0.0_pReal)
-       allocate(param(instance)%interaction_SlipTwin(Nchunks_SlipTwin),source=0.0_pReal)
-       allocate(param(instance)%interaction_TwinSlip(Nchunks_TwinSlip),source=0.0_pReal)
-       allocate(param(instance)%interaction_TwinTwin(Nchunks_TwinTwin),source=0.0_pReal)
-       allocate(param(instance)%nonSchmidCoeff(Nchunks_nonSchmid),source=0.0_pReal)
+   chunkPos = IO_stringPos(line)
+   keyValuesTemp%key = IO_lc(IO_stringValue(line,chunkPos,1_pInt))                                     ! extract key
+   if(chunkPos(1) > 1) keyValuesTemp%rawValues = IO_lc(line(chunkPos(4),:))
+   param(instance)%keyValues = [(instance)%keyValues,keyValuesTemp]
+ enddo getKeys
 
-       allocate(tempPerSlip(Nchunks_SlipFamilies))
-     endif
-     cycle                                                                                          ! skip to next line
+ parseString: do instance = 1_pInt, maxNinstance
+   do i = 1_pInt, size(param(instance)%keyValues); key = param(instance)%keyValues(i)
+   enddo
+ enddo parseStrings
+ 
+   myPhase: if (phase_plasticity(phase) == PLASTICITY_phenopowerlaw_ID) then
+     instance = phase_plasticityInstance(phase)
+
+   !  if (phase_plasticity(phase) == PLASTICITY_PHENOPOWERLAW_ID) then
+   !    instance = phase_plasticityInstance(phase)                                                   ! which instance of my plasticity is present phase
+   !  chunkPos = IO_stringPos(line)
+   !  configTemp%key = IO_lc(IO_stringValue(line,chunkPos,1_pInt))                                     ! extract key
+   !  if(chunkPos(1) > 1) configTemp%rawValues = IO_lc(line(chunkPos(4),:))
+   !  config = [config,configTemp]
+
+   !    Nchunks_SlipFamilies  = count(lattice_NslipSystem(:,phase) > 0_pInt)                         ! maximum number of slip families according to lattice type of current phase
+   !    Nchunks_TwinFamilies  = count(lattice_NtwinSystem(:,phase) > 0_pInt)                         ! maximum number of twin families according to lattice type of current phase
+   !    Nchunks_SlipSlip =     maxval(lattice_interactionSlipSlip(:,:,phase))
+   !    Nchunks_SlipTwin =     maxval(lattice_interactionSlipTwin(:,:,phase))
+   !    Nchunks_TwinSlip =     maxval(lattice_interactionTwinSlip(:,:,phase))
+   !    Nchunks_TwinTwin =     maxval(lattice_interactionTwinTwin(:,:,phase))
+   !    Nchunks_nonSchmid =    lattice_NnonSchmid(phase)
+   !    if(allocated(tempPerSlip)) deallocate(tempPerSlip)
+   !    !allocate(param(instance)%H_int,source=tempPerSlip) gfortran 5 does not support this
+   !           allocate(param(instance)%H_int(Nchunks_SlipFamilies),source=0.0_pReal)
+   !    allocate(param(instance)%interaction_SlipSlip(Nchunks_SlipSlip),source=0.0_pReal)
+   !    allocate(param(instance)%interaction_SlipTwin(Nchunks_SlipTwin),source=0.0_pReal)
+   !    allocate(param(instance)%interaction_TwinSlip(Nchunks_TwinSlip),source=0.0_pReal)
+   !    allocate(param(instance)%interaction_TwinTwin(Nchunks_TwinTwin),source=0.0_pReal)
+   !    allocate(param(instance)%nonSchmidCoeff(Nchunks_nonSchmid),source=0.0_pReal)
+
+   !    allocate(tempPerSlip(Nchunks_SlipFamilies))
+   !  endif
+   !  cycle                                                                                          ! skip to next line
    endif
    if (phase > 0_pInt ) then; if (phase_plasticity(phase) == PLASTICITY_PHENOPOWERLAW_ID) then      ! one of my phases. Do not short-circuit here (.and. between if-statements), it's not safe in Fortran
-
-     chunkPos = IO_stringPos(line)
-     tag = IO_lc(IO_stringValue(line,chunkPos,1_pInt))                                             ! extract key
+     tag = IO_lc(IO_stringValue(line,chunkPos,1_pInt))                                              ! extract key
    select case(tag)
      
        case ('(output)')

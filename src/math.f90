@@ -160,8 +160,7 @@ module math
    math_rotate_forward33, &
    math_rotate_backward33, &
    math_rotate_forward3333, &
-   math_limit, &
-   math_expand
+   math_limit
  private :: &
    math_check, &
    halton
