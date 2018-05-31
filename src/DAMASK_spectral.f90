@@ -12,6 +12,8 @@ program DAMASK_spectral
    compiler_version, &
    compiler_options
 #endif
+#include <petsc/finclude/petscsys.h>
+ use PETScsys
  use prec, only: &
    pInt, &
    pLongInt, &
@@ -70,7 +72,6 @@ program DAMASK_spectral
    DAMAGE_nonlocal_ID
  use spectral_utilities, only: &
    utilities_init, &
-   utilities_destroy, &
    tSolutionState, &
    tLoadCase, &
    cutBack, &
@@ -80,15 +81,11 @@ program DAMASK_spectral
    FIELD_THERMAL_ID, &
    FIELD_DAMAGE_ID
  use spectral_mech_Basic
- use spectral_mech_AL
  use spectral_mech_Polarisation
  use spectral_damage
  use spectral_thermal
 
-
  implicit none
-
-#include <petsc/finclude/petscsys.h>
 
 !--------------------------------------------------------------------------------------------------
 ! variables related to information from load case and geom file
@@ -144,24 +141,17 @@ program DAMASK_spectral
  integer(pInt), parameter :: maxByteOut = 2147483647-4096                                           !< limit of one file output write https://trac.mpich.org/projects/mpich/ticket/1742
  integer(pInt), parameter :: maxRealOut = maxByteOut/pReal
  integer(pLongInt), dimension(2) :: outputIndex
- PetscErrorCode :: ierr
+ integer :: ierr
+
  external :: &
-   quit, &
-   MPI_file_open, &
-   MPI_file_close, &
-   MPI_file_seek, &
-   MPI_file_get_position, &
-   MPI_file_write, &
-   MPI_abort, &
-   MPI_finalize, &
-   MPI_allreduce, &
-   PETScFinalize
+   quit
+
 
 !--------------------------------------------------------------------------------------------------
 ! init DAMASK (all modules)
  call CPFEM_initAll(el = 1_pInt, ip = 1_pInt)
  write(6,'(/,a)')   ' <<<+-  DAMASK_spectral init  -+>>>'
- write(6,'(/,a)')   ' Roters et al., Computational Materials Science, 2018'
+ write(6,'(/,a,/)') ' Roters et al., Computational Materials Science, 2018'
  write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
 
@@ -367,11 +357,7 @@ program DAMASK_spectral
        select case (spectral_solver)
          case (DAMASK_spectral_SolverBasicPETSc_label)
            call basicPETSc_init
-         case (DAMASK_spectral_SolverAL_label)
-           if(iand(debug_level(debug_spectral),debug_levelBasic)/= 0) &
-           call IO_warning(42_pInt, ext_msg='debug Divergence')
-           call AL_init
-
+           
          case (DAMASK_spectral_SolverPolarisation_label)
            if(iand(debug_level(debug_spectral),debug_levelBasic)/= 0) &
            call IO_warning(42_pInt, ext_msg='debug Divergence')
@@ -447,10 +433,9 @@ program DAMASK_spectral
    do i = 1, size(materialpoint_results,3)/(maxByteOut/(materialpoint_sizeResults*pReal))+1         ! slice the output of my process in chunks not exceeding the limit for one output
      outputIndex = int([(i-1_pInt)*((maxRealOut)/materialpoint_sizeResults)+1_pInt, &               ! QUESTION: why not starting i at 0 instead of murky 1?
                              min(i*((maxRealOut)/materialpoint_sizeResults),size(materialpoint_results,3))],pLongInt)
-     call MPI_file_write(resUnit, &
-                         reshape(materialpoint_results(:,:,outputIndex(1):outputIndex(2)), &
-                                [(outputIndex(2)-outputIndex(1)+1)*int(materialpoint_sizeResults,pLongInt)]), &
-                         (outputIndex(2)-outputIndex(1)+1)*int(materialpoint_sizeResults,pLongInt), &
+     call MPI_file_write(resUnit,reshape(materialpoint_results(:,:,outputIndex(1):outputIndex(2)), &
+                                 [(outputIndex(2)-outputIndex(1)+1)*int(materialpoint_sizeResults,pLongInt)]), &
+                         int((outputIndex(2)-outputIndex(1)+1)*int(materialpoint_sizeResults,pLongInt)), &
                          MPI_DOUBLE, MPI_STATUS_IGNORE, ierr)
      if (ierr /= 0_pInt) call IO_error(error_ID=894_pInt, ext_msg='MPI_file_write')
    enddo
@@ -534,12 +519,7 @@ program DAMASK_spectral
                        deformation_BC     = loadCases(currentLoadCase)%deformation, &
                        stress_BC          = loadCases(currentLoadCase)%stress, &
                        rotation_BC        = loadCases(currentLoadCase)%rotation)
-                 case (DAMASK_spectral_SolverAL_label)
-                   call AL_forward (&
-                       guess,timeinc,timeIncOld,remainingLoadCaseTime, &
-                       deformation_BC     = loadCases(currentLoadCase)%deformation, &
-                       stress_BC          = loadCases(currentLoadCase)%stress, &
-                       rotation_BC        = loadCases(currentLoadCase)%rotation)
+
                  case (DAMASK_spectral_SolverPolarisation_label)
                    call Polarisation_forward (&
                        guess,timeinc,timeIncOld,remainingLoadCaseTime, &
@@ -564,12 +544,6 @@ program DAMASK_spectral
                  select case (spectral_solver)
                    case (DAMASK_spectral_SolverBasicPETSc_label)
                      solres(field) = BasicPETSC_solution (&
-                         incInfo,timeinc,timeIncOld, &
-                         stress_BC          = loadCases(currentLoadCase)%stress, &
-                         rotation_BC        = loadCases(currentLoadCase)%rotation)
-
-                   case (DAMASK_spectral_SolverAL_label)
-                     solres(field) = AL_solution (&
                          incInfo,timeinc,timeIncOld, &
                          stress_BC          = loadCases(currentLoadCase)%stress, &
                          rotation_BC        = loadCases(currentLoadCase)%rotation)
@@ -650,8 +624,8 @@ program DAMASK_spectral
            outputIndex=int([(i-1_pInt)*((maxRealOut)/materialpoint_sizeResults)+1_pInt, &
                       min(i*((maxRealOut)/materialpoint_sizeResults),size(materialpoint_results,3))],pLongInt)
            call MPI_file_write(resUnit,reshape(materialpoint_results(:,:,outputIndex(1):outputIndex(2)),&
-                                         [(outputIndex(2)-outputIndex(1)+1)*int(materialpoint_sizeResults,pLongInt)]), &
-                               (outputIndex(2)-outputIndex(1)+1)*int(materialpoint_sizeResults,pLongInt),&
+                                       [(outputIndex(2)-outputIndex(1)+1)*int(materialpoint_sizeResults,pLongInt)]), &
+                               int((outputIndex(2)-outputIndex(1)+1)*int(materialpoint_sizeResults,pLongInt)),&
                                MPI_DOUBLE, MPI_STATUS_IGNORE, ierr)
            if(ierr /=0_pInt) call IO_error(894_pInt, ext_msg='MPI_file_write')
          enddo
@@ -698,24 +672,12 @@ end program DAMASK_spectral
 !> stderr. Exit code 3 signals no severe problems, but some increments did not converge
 !--------------------------------------------------------------------------------------------------
 subroutine quit(stop_id)
+#include <petsc/finclude/petscsys.h>
+ use MPI
  use prec, only: &
    pInt
- use spectral_mech_Basic, only: &
-   BasicPETSC_destroy
- use spectral_mech_AL, only: &
-   AL_destroy
- use spectral_mech_Polarisation, only: &
-   Polarisation_destroy
- use spectral_damage, only: &
-   spectral_damage_destroy
- use spectral_thermal, only: &
-   spectral_thermal_destroy
- use spectral_utilities, only: &
-   utilities_destroy
-
- implicit none
  
-#include <petsc/finclude/petscsys.h>
+ implicit none
  integer(pInt), intent(in) :: stop_id
  integer, dimension(8) :: dateAndTime                                                               ! type default integer
  integer(pInt) :: error = 0_pInt
@@ -723,15 +685,7 @@ subroutine quit(stop_id)
  logical :: ErrorInQuit
  
  external :: &
-   PETScFinalize, &
-   MPI_finalize
-
- call BasicPETSC_destroy()
- call AL_destroy()
- call Polarisation_destroy()
- call spectral_damage_destroy()
- call spectral_thermal_destroy()
- call utilities_destroy()
+   PETScFinalize
 
  call PETScFinalize(ierr)
  if (ierr /= 0) write(6,'(a)') ' Error in PETScFinalize'

@@ -203,7 +203,9 @@ if (${CMAKE_Fortran_COMPILER_ID} STREQUAL "Intel")
       # -fast = -ipo, -O3, -no-prec-div, -static, -fp-model fast=2, and -xHost"
   endif ()
 
-  set (STANDARD_CHECK "-stand f08 -standard-semantics")
+  # -assume std_mod_proc_name (included in -standard-semantics) causes problems if other modules
+  # (PETSc, HDF5) are not compiled with this option (https://software.intel.com/en-us/forums/intel-fortran-compiler-for-linux-and-mac-os-x/topic/62172)
+  set (STANDARD_CHECK "-stand f08 -standard-semantics -assume nostd_mod_proc_name")
   set (LINKER_FLAGS   "${LINKER_FLAGS} -shared-intel")
   # Link against shared Intel libraries instead of static ones
 
@@ -214,13 +216,6 @@ if (${CMAKE_Fortran_COMPILER_ID} STREQUAL "Intel")
 
   set (COMPILE_FLAGS "${COMPILE_FLAGS} -ftz")
   # flush underflow to zero, automatically set if -O[1,2,3]
-
-  set (COMPILE_FLAGS "${COMPILE_FLAGS} -assume")
-  # assume ...
-  set (COMPILE_FLAGS "${COMPILE_FLAGS} byterecl")
-  #   ... record length is given in bytes (also set by -standard-semantics)
-  set (COMPILE_FLAGS "${COMPILE_FLAGS},fpe_summary")  
-  #   ... print list of floating point exceptions occured during execution
 
   set (COMPILE_FLAGS "${COMPILE_FLAGS} -diag-disable")
   # disables warnings ...
