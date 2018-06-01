@@ -13,15 +13,10 @@ module plastic_isotropic
  
  implicit none
  private
- integer(pInt),                       dimension(:),     allocatable,         public, protected :: &
-   plastic_isotropic_sizePostResults                                                                  !< cumulative size of post results
-   
  integer(pInt),                       dimension(:,:),   allocatable, target, public :: &
    plastic_isotropic_sizePostResult                                                                   !< size of each post result output
-   
  character(len=64),                   dimension(:,:),   allocatable, target, public :: &
    plastic_isotropic_output                                                                           !< name of each post result output
- 
  integer(pInt),                       dimension(:),     allocatable, target, public :: &
    plastic_isotropic_Noutput                                                                          !< number of outputs per instance
  
@@ -135,7 +130,6 @@ use IO
    write(6,'(a16,1x,i5,/)') '# instances:',maxNinstance
 
 ! public variables
- allocate(plastic_isotropic_sizePostResults(maxNinstance),                      source=0_pInt)
  allocate(plastic_isotropic_sizePostResult(maxval(phase_Noutput), maxNinstance),source=0_pInt)
  allocate(plastic_isotropic_output(maxval(phase_Noutput), maxNinstance))
           plastic_isotropic_output = ''
@@ -173,15 +167,15 @@ use IO
            case ('flowstress')
              plastic_isotropic_Noutput(instance) = plastic_isotropic_Noutput(instance) + 1_pInt
              plastic_isotropic_output(plastic_isotropic_Noutput(instance),instance) = outputs(i)
-             plastic_isotropic_sizePostResults(instance) = &
-               plastic_isotropic_sizePostResults(instance) + 1_pInt
+             plasticState(phase)%sizePostResults = &
+               plasticState(phase)%sizePostResults + 1_pInt
              plastic_isotropic_sizePostResult(i,instance) = 1_pInt
              p%outputID = [p%outputID,flowstress_ID]
            case ('strainrate')
              plastic_isotropic_Noutput(instance) = plastic_isotropic_Noutput(instance) + 1_pInt
              plastic_isotropic_output(plastic_isotropic_Noutput(instance),instance) = outputs(i)
-             plastic_isotropic_sizePostResults(instance) = &
-               plastic_isotropic_sizePostResults(instance) + 1_pInt
+             plasticState(phase)%sizePostResults = &
+               plasticState(phase)%sizePostResults + 1_pInt
              plastic_isotropic_sizePostResult(i,instance) = 1_pInt
              p%outputID = [p%outputID,strainrate_ID]
          end select
@@ -212,7 +206,6 @@ use IO
      plasticState(phase)%sizeState = sizeState
      plasticState(phase)%sizeDotState = sizeDotState
      plasticState(phase)%sizeDeltaState = sizeDeltaState
-     plasticState(phase)%sizePostResults = plastic_isotropic_sizePostResults(instance)
      plasticState(phase)%nSlip = 1
      allocate(plasticState(phase)%aTolState          (   sizeState))
      allocate(plasticState(phase)%state0             (   sizeState,NipcMyPhase),source=0.0_pReal)
@@ -270,8 +263,7 @@ subroutine plastic_isotropic_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,ipc,ip,el)
    math_Mandel6to33, &
    math_Plain3333to99, &
    math_deviatoric33, &
-   math_mul33xx33, &
-   math_transpose33
+   math_mul33xx33
  use material, only: &
    phasememberAt, &
    material_phase, &
@@ -327,7 +319,7 @@ subroutine plastic_isotropic_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,ipc,ip,el)
               .or. .not. iand(debug_level(debug_constitutive),debug_levelSelective) /= 0_pInt)) then
      write(6,'(a,i8,1x,i2,1x,i3)') '<< CONST isotropic >> at el ip g ',el,ip,ipc
      write(6,'(/,a,/,3(12x,3(f12.4,1x)/))') '<< CONST isotropic >> Tstar (dev) / MPa', &
-                                      math_transpose33(Tstar_dev_33(1:3,1:3))*1.0e-6_pReal
+                                      transpose(Tstar_dev_33(1:3,1:3))*1.0e-6_pReal
      write(6,'(/,a,/,f12.5)') '<< CONST isotropic >> norm Tstar / MPa', norm_Tstar_dev*1.0e-6_pReal
      write(6,'(/,a,/,f12.5)') '<< CONST isotropic >> gdot', gamma_dot
    end if
@@ -500,6 +492,7 @@ function plastic_isotropic_postResults(Tstar_v,ipc,ip,el)
  use math, only: &
    math_mul6x6
  use material, only: &
+   plasticState, &
    material_phase, &
    phasememberAt, &
    phase_plasticityInstance
@@ -514,7 +507,7 @@ function plastic_isotropic_postResults(Tstar_v,ipc,ip,el)
 
  type(tParameters), pointer :: p
  
- real(pReal), dimension(plastic_isotropic_sizePostResults(phase_plasticityInstance(material_phase(ipc,ip,el)))) :: &
+ real(pReal), dimension(plasticState(material_phase(ipc,ip,el))%sizePostResults) :: &
                                            plastic_isotropic_postResults
 
  real(pReal), dimension(6) :: &
