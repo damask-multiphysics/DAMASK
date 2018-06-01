@@ -160,41 +160,40 @@ use IO
      p%aTolShear =  phaseConfig(phase)%getFloat('atol_shear',default=1.0e-6_pReal)
     
      p%dilatation      = phaseConfig(phase)%keyExists('/dilatation/')
+
      outputs = phaseConfig(phase)%getStrings('(output)')
      allocate(p%outputID(0))
      do i=1_pInt, size(outputs)
-         select case(outputs(i))
-           case ('flowstress')
-             plastic_isotropic_Noutput(instance) = plastic_isotropic_Noutput(instance) + 1_pInt
-             plastic_isotropic_output(plastic_isotropic_Noutput(instance),instance) = outputs(i)
-             plasticState(phase)%sizePostResults = &
-               plasticState(phase)%sizePostResults + 1_pInt
-             plastic_isotropic_sizePostResult(i,instance) = 1_pInt
-             p%outputID = [p%outputID,flowstress_ID]
-           case ('strainrate')
-             plastic_isotropic_Noutput(instance) = plastic_isotropic_Noutput(instance) + 1_pInt
-             plastic_isotropic_output(plastic_isotropic_Noutput(instance),instance) = outputs(i)
-             plasticState(phase)%sizePostResults = &
-               plasticState(phase)%sizePostResults + 1_pInt
-             plastic_isotropic_sizePostResult(i,instance) = 1_pInt
-             p%outputID = [p%outputID,strainrate_ID]
-         end select
+       select case(outputs(i))
+         case ('flowstress')
+           plastic_isotropic_Noutput(instance) = plastic_isotropic_Noutput(instance) + 1_pInt
+           plastic_isotropic_output(plastic_isotropic_Noutput(instance),instance) = outputs(i)
+           plasticState(phase)%sizePostResults =  plasticState(phase)%sizePostResults + 1_pInt
+           plastic_isotropic_sizePostResult(i,instance) = 1_pInt
+           p%outputID = [p%outputID,flowstress_ID]
+         case ('strainrate')
+           plastic_isotropic_Noutput(instance) = plastic_isotropic_Noutput(instance) + 1_pInt
+           plastic_isotropic_output(plastic_isotropic_Noutput(instance),instance) = outputs(i)
+           plasticState(phase)%sizePostResults = &
+             plasticState(phase)%sizePostResults + 1_pInt
+           plastic_isotropic_sizePostResult(i,instance) = 1_pInt
+           p%outputID = [p%outputID,strainrate_ID]
+       end select
      enddo
-     extmsg = ''
+
 !--------------------------------------------------------------------------------------------------
 !  sanity checks
+     extmsg = ''
      if (p%aTolShear        <= 0.0_pReal) extmsg = trim(extmsg)//"'aTolShear' "
      if (p%tau0              < 0.0_pReal) extmsg = trim(extmsg)//"'tau0' "
      if (p%gdot0            <= 0.0_pReal) extmsg = trim(extmsg)//"'gdot0' "
      if (p%n                <= 0.0_pReal) extmsg = trim(extmsg)//"'n' "
-     if (p%tausat           <= 0.0_pReal) extmsg = trim(extmsg)//"'tausat' "
+     if (p%tausat           <= p%tau0)    extmsg = trim(extmsg)//"'tausat' "
      if (p%a                <= 0.0_pReal) extmsg = trim(extmsg)//"'a' " 
      if (p%fTaylor          <= 0.0_pReal) extmsg = trim(extmsg)//"'taylorfactor' "
      if (p%aTolFlowstress   <= 0.0_pReal) extmsg = trim(extmsg)//"'atol_flowstress' "
-     if (extmsg /= '') then 
-       extmsg = trim(extmsg)//' ('//PLASTICITY_ISOTROPIC_label//')'                                 ! prepare error message identifier
-       call IO_error(211_pInt,ip=instance,ext_msg=extmsg)
-     endif
+     if (extmsg /= '') call IO_error(211_pInt,ip=instance,&
+                            ext_msg=trim(extmsg)//'('//PLASTICITY_ISOTROPIC_label//')')
 
 !--------------------------------------------------------------------------------------------------
 ! allocate state arrays
