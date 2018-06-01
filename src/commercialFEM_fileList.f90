@@ -4,6 +4,7 @@
 !> @details List of files needed by MSC.Marc, Abaqus/Explicit, and Abaqus/Standard
 !--------------------------------------------------------------------------------------------------
 #include "IO.f90"
+#include "list.f90"
 #include "numerics.f90"
 #include "debug.f90"
 #include "math.f90"
