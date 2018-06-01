@@ -143,7 +143,6 @@ subroutine constitutive_init()
    ins                                                                                              !< instance of plasticity/source
 
  integer(pInt), dimension(:,:), pointer :: thisSize
- integer(pInt), dimension(:)  , pointer :: thisNoutput
  character(len=64), dimension(:,:), pointer :: thisOutput
  character(len=32) :: outputName                                                                    !< name of output, intermediate fix until HDF5 output is ready
  logical :: knownPlasticity, knownSource, nonlocalConstitutionPresent
@@ -158,7 +157,7 @@ subroutine constitutive_init()
 ! parse plasticities from config file
  if (any(phase_plasticity == PLASTICITY_NONE_ID))          call plastic_none_init
  if (any(phase_plasticity == PLASTICITY_ISOTROPIC_ID))     call plastic_isotropic_init
- if (any(phase_plasticity == PLASTICITY_PHENOPOWERLAW_ID)) call plastic_phenopowerlaw_init(FILEUNIT)
+ if (any(phase_plasticity == PLASTICITY_PHENOPOWERLAW_ID)) call plastic_phenopowerlaw_init
  if (any(phase_plasticity == PLASTICITY_KINEHARDENING_ID)) call plastic_kinehardening_init(FILEUNIT)
  if (any(phase_plasticity == PLASTICITY_DISLOTWIN_ID))     call plastic_dislotwin_init(FILEUNIT)
  if (any(phase_plasticity == PLASTICITY_DISLOUCLA_ID))     call plastic_disloucla_init(FILEUNIT)
@@ -205,37 +204,30 @@ subroutine constitutive_init()
        plasticityType: select case(phase_plasticity(p))
          case (PLASTICITY_NONE_ID) plasticityType
            outputName = PLASTICITY_NONE_label
-           thisNoutput => null()
            thisOutput => null()
            thisSize   => null()
          case (PLASTICITY_ISOTROPIC_ID) plasticityType
            outputName = PLASTICITY_ISOTROPIC_label
-           thisNoutput => plastic_isotropic_Noutput
            thisOutput => plastic_isotropic_output
            thisSize   => plastic_isotropic_sizePostResult
          case (PLASTICITY_PHENOPOWERLAW_ID) plasticityType
            outputName = PLASTICITY_PHENOPOWERLAW_label
-           thisNoutput => plastic_phenopowerlaw_Noutput
            thisOutput => plastic_phenopowerlaw_output
            thisSize   => plastic_phenopowerlaw_sizePostResult
          case (PLASTICITY_KINEHARDENING_ID) plasticityType
            outputName = PLASTICITY_KINEHARDENING_label
-           thisNoutput => plastic_kinehardening_Noutput
            thisOutput => plastic_kinehardening_output
            thisSize   => plastic_kinehardening_sizePostResult  
          case (PLASTICITY_DISLOTWIN_ID) plasticityType
            outputName = PLASTICITY_DISLOTWIN_label
-           thisNoutput => plastic_dislotwin_Noutput
            thisOutput => plastic_dislotwin_output
            thisSize   => plastic_dislotwin_sizePostResult
          case (PLASTICITY_DISLOUCLA_ID) plasticityType
            outputName = PLASTICITY_DISLOUCLA_label
-           thisNoutput => plastic_disloucla_Noutput
            thisOutput => plastic_disloucla_output
            thisSize   => plastic_disloucla_sizePostResult
          case (PLASTICITY_NONLOCAL_ID) plasticityType
            outputName = PLASTICITY_NONLOCAL_label
-           thisNoutput => plastic_nonlocal_Noutput
            thisOutput => plastic_nonlocal_output
            thisSize   => plastic_nonlocal_sizePostResult
          case default plasticityType
@@ -246,7 +238,7 @@ subroutine constitutive_init()
 
          write(FILEUNIT,'(a)') '(plasticity)'//char(9)//trim(outputName)
          if (phase_plasticity(p) /= PLASTICITY_NONE_ID) then
-           OutputPlasticityLoop: do o = 1_pInt,thisNoutput(ins)
+           OutputPlasticityLoop: do o = 1_pInt,size(thisOutput(:,ins))
              write(FILEUNIT,'(a,i4)') trim(thisOutput(o,ins))//char(9),thisSize(o,ins)
            enddo OutputPlasticityLoop
          endif
@@ -257,55 +249,46 @@ subroutine constitutive_init()
            case (SOURCE_thermal_dissipation_ID) sourceType
              ins = source_thermal_dissipation_instance(p)
              outputName = SOURCE_thermal_dissipation_label
-             thisNoutput => source_thermal_dissipation_Noutput
              thisOutput => source_thermal_dissipation_output
              thisSize   => source_thermal_dissipation_sizePostResult
            case (SOURCE_thermal_externalheat_ID) sourceType
              ins = source_thermal_externalheat_instance(p)
              outputName = SOURCE_thermal_externalheat_label
-             thisNoutput => source_thermal_externalheat_Noutput
              thisOutput => source_thermal_externalheat_output
              thisSize   => source_thermal_externalheat_sizePostResult
            case (SOURCE_damage_isoBrittle_ID) sourceType
              ins = source_damage_isoBrittle_instance(p)
              outputName = SOURCE_damage_isoBrittle_label
-             thisNoutput => source_damage_isoBrittle_Noutput
              thisOutput => source_damage_isoBrittle_output
              thisSize   => source_damage_isoBrittle_sizePostResult
            case (SOURCE_damage_isoDuctile_ID) sourceType
              ins = source_damage_isoDuctile_instance(p)
              outputName = SOURCE_damage_isoDuctile_label
-             thisNoutput => source_damage_isoDuctile_Noutput
              thisOutput => source_damage_isoDuctile_output
              thisSize   => source_damage_isoDuctile_sizePostResult
            case (SOURCE_damage_anisoBrittle_ID) sourceType
              ins = source_damage_anisoBrittle_instance(p)
              outputName = SOURCE_damage_anisoBrittle_label
-             thisNoutput => source_damage_anisoBrittle_Noutput
              thisOutput => source_damage_anisoBrittle_output
              thisSize   => source_damage_anisoBrittle_sizePostResult
            case (SOURCE_damage_anisoDuctile_ID) sourceType
              ins = source_damage_anisoDuctile_instance(p)
              outputName = SOURCE_damage_anisoDuctile_label
-             thisNoutput => source_damage_anisoDuctile_Noutput
              thisOutput => source_damage_anisoDuctile_output
              thisSize   => source_damage_anisoDuctile_sizePostResult
            case (SOURCE_vacancy_phenoplasticity_ID) sourceType
              ins = source_vacancy_phenoplasticity_instance(p)
              outputName = SOURCE_vacancy_phenoplasticity_label
-             thisNoutput => source_vacancy_phenoplasticity_Noutput
              thisOutput => source_vacancy_phenoplasticity_output
              thisSize   => source_vacancy_phenoplasticity_sizePostResult
            case (SOURCE_vacancy_irradiation_ID) sourceType
              ins = source_vacancy_irradiation_instance(p)
              outputName = SOURCE_vacancy_irradiation_label
-             thisNoutput => source_vacancy_irradiation_Noutput
              thisOutput => source_vacancy_irradiation_output
              thisSize   => source_vacancy_irradiation_sizePostResult
            case (SOURCE_vacancy_thermalfluc_ID) sourceType
              ins = source_vacancy_thermalfluc_instance(p)
              outputName = SOURCE_vacancy_thermalfluc_label
-             thisNoutput => source_vacancy_thermalfluc_Noutput
              thisOutput => source_vacancy_thermalfluc_output
              thisSize   => source_vacancy_thermalfluc_sizePostResult
            case default sourceType
@@ -313,7 +296,7 @@ subroutine constitutive_init()
          end select sourceType
          if (knownSource) then
            write(FILEUNIT,'(a)') '(source)'//char(9)//trim(outputName)
-           OutputSourceLoop: do o = 1_pInt,thisNoutput(ins)
+           OutputSourceLoop: do o = 1_pInt,size(thisOutput(:,ins))
              write(FILEUNIT,'(a,i4)') trim(thisOutput(o,ins))//char(9),thisSize(o,ins)
            enddo OutputSourceLoop
          endif
