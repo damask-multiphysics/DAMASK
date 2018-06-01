@@ -239,7 +239,8 @@ subroutine constitutive_init()
          write(FILEUNIT,'(a)') '(plasticity)'//char(9)//trim(outputName)
          if (phase_plasticity(p) /= PLASTICITY_NONE_ID) then
            OutputPlasticityLoop: do o = 1_pInt,size(thisOutput(:,ins))
-             write(FILEUNIT,'(a,i4)') trim(thisOutput(o,ins))//char(9),thisSize(o,ins)
+             if(len(trim(thisOutput(o,ins))) > 0_pInt) &
+               write(FILEUNIT,'(a,i4)') trim(thisOutput(o,ins))//char(9),thisSize(o,ins)
            enddo OutputPlasticityLoop
          endif
        endif
@@ -297,7 +298,8 @@ subroutine constitutive_init()
          if (knownSource) then
            write(FILEUNIT,'(a)') '(source)'//char(9)//trim(outputName)
            OutputSourceLoop: do o = 1_pInt,size(thisOutput(:,ins))
-             write(FILEUNIT,'(a,i4)') trim(thisOutput(o,ins))//char(9),thisSize(o,ins)
+             if(len(trim(thisOutput(o,ins))) > 0_pInt) &
+               write(FILEUNIT,'(a,i4)') trim(thisOutput(o,ins))//char(9),thisSize(o,ins)
            enddo OutputSourceLoop
          endif
        enddo SourceLoop
