@@ -7,6 +7,7 @@
 !! 'phase', 'texture', and 'microstucture'
 !--------------------------------------------------------------------------------------------------
 module material
+ use chained_list
  use prec, only: &
    pReal, &
    pInt, &
@@ -303,6 +304,8 @@ module material
    temperatureRate, &                                                                               !< temperature change rate field
    vacancyConcRate, &                                                                               !< vacancy conc change field
    hydrogenConcRate                                                                                 !< hydrogen conc change field
+
+ type(tPartitionedStringList), public,protected, allocatable, dimension(:) :: phaseConfig
 
  public :: &
    material_init, &
@@ -933,6 +936,8 @@ subroutine material_parsePhase(fileUnit,myPart)
  allocate(phase_Noutput(Nsections),              source=0_pInt)
  allocate(phase_localPlasticity(Nsections),      source=.false.)
 
+ allocate(phaseConfig(Nsections))
+
  phase_Noutput = IO_countTagInPart(fileUnit,myPart,'(output)',Nsections)
  phase_Nsources = IO_countTagInPart(fileUnit,myPart,'(source)',Nsections)
  phase_Nkinematics = IO_countTagInPart(fileUnit,myPart,'(kinematics)',Nsections)
@@ -970,6 +975,7 @@ subroutine material_parsePhase(fileUnit,myPart)
    if (section > 0_pInt) then
      chunkPos = IO_stringPos(line)
      tag = IO_lc(IO_stringValue(line,chunkPos,1_pInt))                                             ! extract key
+     call phaseConfig(section)%add(trim(line),chunkPos)
      select case(tag)
        case ('elasticity')
          select case (IO_lc(IO_stringValue(line,chunkPos,2_pInt)))

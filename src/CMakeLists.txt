@@ -30,6 +30,10 @@ add_library(IO OBJECT "IO.f90")
 add_dependencies(IO DAMASK_INTERFACE)
 list(APPEND OBJECTFILES $<TARGET_OBJECTS:IO>)
 
+add_library(CHAINED_LIST OBJECT "list.f90")
+add_dependencies(CHAINED_LIST IO)
+list(APPEND OBJECTFILES $<TARGET_OBJECTS:CHAINED_LIST>)
+
 add_library(NUMERICS OBJECT "numerics.f90")
 add_dependencies(NUMERICS IO)
 list(APPEND OBJECTFILES $<TARGET_OBJECTS:NUMERICS>)
@@ -61,7 +65,7 @@ elseif ("${PROJECT_NAME}" STREQUAL "DAMASK_FEM")
 endif()
 
 add_library(MATERIAL OBJECT "material.f90")
-add_dependencies(MATERIAL MESH)
+add_dependencies(MATERIAL MESH CHAINED_LIST)
 list(APPEND OBJECTFILES $<TARGET_OBJECTS:MATERIAL>)
 
 add_library(DAMASK_HELPERS OBJECT "lattice.f90")
