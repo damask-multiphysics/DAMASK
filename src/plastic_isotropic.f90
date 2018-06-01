@@ -150,14 +150,14 @@ use IO
      p%n               =  phaseConfig(phase)%getFloat('n')
      p%h0              =  phaseConfig(phase)%getFloat('h0')
      p%fTaylor         =  phaseConfig(phase)%getFloat('taylorfactor')
-     p%h0_slopeLnRate  =  phaseConfig(phase)%getFloat('h0_slopelnrate', default=0.0_pReal)          ! ToDo: alias allowed?
-     p%tausat_SinhFitA =  phaseConfig(phase)%getFloat('tausat_sinhfita',default=0.0_pReal)
-     p%tausat_SinhFitB =  phaseConfig(phase)%getFloat('tausat_sinhfitb',default=0.0_pReal)
-     p%tausat_SinhFitC =  phaseConfig(phase)%getFloat('tausat_sinhfitc',default=0.0_pReal)
-     p%tausat_SinhFitD =  phaseConfig(phase)%getFloat('tausat_sinhfitd',default=0.0_pReal)
+     p%h0_slopeLnRate  =  phaseConfig(phase)%getFloat('h0_slopelnrate', defaultVal=0.0_pReal)          ! ToDo: alias allowed?
+     p%tausat_SinhFitA =  phaseConfig(phase)%getFloat('tausat_sinhfita',defaultVal=0.0_pReal)
+     p%tausat_SinhFitB =  phaseConfig(phase)%getFloat('tausat_sinhfitb',defaultVal=0.0_pReal)
+     p%tausat_SinhFitC =  phaseConfig(phase)%getFloat('tausat_sinhfitc',defaultVal=0.0_pReal)
+     p%tausat_SinhFitD =  phaseConfig(phase)%getFloat('tausat_sinhfitd',defaultVal=0.0_pReal)
      p%a               =  phaseConfig(phase)%getFloat('a')                                          ! ToDo: alias
-     p%aTolFlowStress =  phaseConfig(phase)%getFloat('atol_flowstress',default=1.0_pReal)
-     p%aTolShear =  phaseConfig(phase)%getFloat('atol_shear',default=1.0e-6_pReal)
+     p%aTolFlowStress =  phaseConfig(phase)%getFloat('atol_flowstress',defaultVal=1.0_pReal)
+     p%aTolShear =  phaseConfig(phase)%getFloat('atol_shear',defaultVal=1.0e-6_pReal)
     
      p%dilatation      = phaseConfig(phase)%keyExists('/dilatation/')
 
