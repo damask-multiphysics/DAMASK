@@ -975,7 +975,7 @@ subroutine material_parsePhase(fileUnit,myPart)
    if (section > 0_pInt) then
      chunkPos = IO_stringPos(line)
      tag = IO_lc(IO_stringValue(line,chunkPos,1_pInt))                                             ! extract key
-     call phaseConfig(section)%add(trim(line),chunkPos)
+     call phaseConfig(section)%add(IO_lc(trim(line)),chunkPos)
      select case(tag)
        case ('elasticity')
          select case (IO_lc(IO_stringValue(line,chunkPos,2_pInt)))

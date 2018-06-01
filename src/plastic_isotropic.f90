@@ -149,7 +149,7 @@ use IO
      p%gdot0           =  phaseConfig(phase)%getFloat('gdot0')
      p%n               =  phaseConfig(phase)%getFloat('n')
      p%h0              =  phaseConfig(phase)%getFloat('h0')
-     p%fTaylor         =  phaseConfig(phase)%getFloat('taylorfactor')
+     p%fTaylor         =  phaseConfig(phase)%getFloat('m')
      p%h0_slopeLnRate  =  phaseConfig(phase)%getFloat('h0_slopelnrate', defaultVal=0.0_pReal)          ! ToDo: alias allowed?
      p%tausat_SinhFitA =  phaseConfig(phase)%getFloat('tausat_sinhfita',defaultVal=0.0_pReal)
      p%tausat_SinhFitB =  phaseConfig(phase)%getFloat('tausat_sinhfitb',defaultVal=0.0_pReal)
@@ -190,7 +190,7 @@ use IO
      if (p%n                <= 0.0_pReal) extmsg = trim(extmsg)//"'n' "
      if (p%tausat           <= p%tau0)    extmsg = trim(extmsg)//"'tausat' "
      if (p%a                <= 0.0_pReal) extmsg = trim(extmsg)//"'a' " 
-     if (p%fTaylor          <= 0.0_pReal) extmsg = trim(extmsg)//"'taylorfactor' "
+     if (p%fTaylor          <= 0.0_pReal) extmsg = trim(extmsg)//"'m' "
      if (p%aTolFlowstress   <= 0.0_pReal) extmsg = trim(extmsg)//"'atol_flowstress' "
      if (extmsg /= '') call IO_error(211_pInt,ip=instance,&
                             ext_msg=trim(extmsg)//'('//PLASTICITY_ISOTROPIC_label//')')
