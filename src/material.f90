@@ -173,7 +173,6 @@ module material
 
  integer(kind(HOMOGENIZATION_undefined_ID)), dimension(:),   allocatable, public, protected :: &
    homogenization_type                                                                              !< type of each homogenization
-!ToDo: should be private
 
  character(len=64), dimension(:), allocatable, public, protected :: &
    phase_name, &                                                                                    !< name of each phase
@@ -656,9 +655,9 @@ character(len=65536) function material_parseHomogenization(fileUnit)
  forall (h = 1_pInt:material_Nhomogenization) homogenization_active(h) = any(mesh_element(3,:) == h)
 
 
- !  homogenization_Noutput = IO_countTagInPart(fileUnit,myPart,'(output)',Nsections)
 
  do h=1_pInt, material_Nhomogenization
+   homogenization_Noutput(h) = homogenizationConfig(h)%countKeys('(output)')
    tag = homogenizationConfig(h)%getString('mech')
 
          select case (trim(tag))
@@ -679,6 +678,8 @@ character(len=65536) function material_parseHomogenization(fileUnit)
    if (homogenizationConfig(h)%keyExists('thermal')) then
       tag = homogenizationConfig(h)%getString('thermal')
 
+!       case ('t0')
+!         thermal_initialT(section) = IO_floatValue(line,chunkPos,2_pInt)
          select case (trim(tag))
            case(THERMAL_isothermal_label)
              thermal_type(h) = THERMAL_isothermal_ID
@@ -689,70 +690,63 @@ character(len=65536) function material_parseHomogenization(fileUnit)
            case default
              call IO_error(500_pInt,ext_msg=trim(tag))
          end select
+endif
 
+   if (homogenizationConfig(h)%keyExists('damage')) then
       tag = homogenizationConfig(h)%getString('damage')
+!       case ('initialdamage')
+!         damage_initialPhi(section) = IO_floatValue(line,chunkPos,2_pInt)
          select case (trim(tag))
-!           case(DAMAGE_NONE_label)
-!             damage_type(section) = DAMAGE_none_ID
-!           case(DAMAGE_LOCAL_label)
-!             damage_type(section) = DAMAGE_local_ID
-!           case(DAMAGE_NONLOCAL_label)
-!             damage_type(section) = DAMAGE_nonlocal_ID
+           case(DAMAGE_NONE_label)
+             damage_type(h) = DAMAGE_none_ID
+           case(DAMAGE_LOCAL_label)
+             damage_type(h) = DAMAGE_local_ID
+           case(DAMAGE_NONLOCAL_label)
+             damage_type(h) = DAMAGE_nonlocal_ID
            case default
              call IO_error(500_pInt,ext_msg=trim(tag))
          end select
-!
+endif
+   if (homogenizationConfig(h)%keyExists('vacancyflux')) then
       tag = homogenizationConfig(h)%getString('vacancyflux')
+!       case ('cv0')
+!         vacancyflux_initialCv(section) = IO_floatValue(line,chunkPos,2_pInt)
          select case (trim(tag))
-!           case(VACANCYFLUX_isoconc_label)
-!             vacancyflux_type(section) = VACANCYFLUX_isoconc_ID
-!           case(VACANCYFLUX_isochempot_label)
-!             vacancyflux_type(section) = VACANCYFLUX_isochempot_ID
-!           case(VACANCYFLUX_cahnhilliard_label)
-!             vacancyflux_type(section) = VACANCYFLUX_cahnhilliard_ID
+           case(VACANCYFLUX_isoconc_label)
+             vacancyflux_type(h) = VACANCYFLUX_isoconc_ID
+           case(VACANCYFLUX_isochempot_label)
+             vacancyflux_type(h) = VACANCYFLUX_isochempot_ID
+           case(VACANCYFLUX_cahnhilliard_label)
+             vacancyflux_type(h) = VACANCYFLUX_cahnhilliard_ID
            case default
              call IO_error(500_pInt,ext_msg=trim(tag))
           end select
-!
+endif
+   if (homogenizationConfig(h)%keyExists('porosity')) then
       tag = homogenizationConfig(h)%getString('porosity')
          select case (trim(tag))
-!           case(POROSITY_NONE_label)
-!             porosity_type(section) = POROSITY_none_ID
-!           case(POROSITY_phasefield_label)
-!             porosity_type(section) = POROSITY_phasefield_ID
+           case(POROSITY_NONE_label)
+             porosity_type(h) = POROSITY_none_ID
+           case(POROSITY_phasefield_label)
+             porosity_type(h) = POROSITY_phasefield_ID
            case default
              call IO_error(500_pInt,ext_msg=trim(tag))
           end select
-!
+endif
+   if (homogenizationConfig(h)%keyExists('hydrogenflux')) then
       tag = homogenizationConfig(h)%getString('hydrogenflux')
+!       case ('ch0')
+!         hydrogenflux_initialCh(section) = IO_floatValue(line,chunkPos,2_pInt)
          select case (trim(tag))
-!           case(HYDROGENFLUX_isoconc_label)
-!             hydrogenflux_type(section) = HYDROGENFLUX_isoconc_ID
-!           case(HYDROGENFLUX_cahnhilliard_label)
-!             hydrogenflux_type(section) = HYDROGENFLUX_cahnhilliard_ID
+           case(HYDROGENFLUX_isoconc_label)
+             hydrogenflux_type(h) = HYDROGENFLUX_isoconc_ID
+           case(HYDROGENFLUX_cahnhilliard_label)
+             hydrogenflux_type(h) = HYDROGENFLUX_cahnhilliard_ID
            case default
              call IO_error(500_pInt,ext_msg=trim(tag))
          end select
    endif
  enddo
-
-!
-!       case ('t0')
-!         thermal_initialT(section) = IO_floatValue(line,chunkPos,2_pInt)
-!
-!       case ('initialdamage')
-!         damage_initialPhi(section) = IO_floatValue(line,chunkPos,2_pInt)
-!
-!       case ('cv0')
-!         vacancyflux_initialCv(section) = IO_floatValue(line,chunkPos,2_pInt)
-!
-!
-!       case ('ch0')
-!         hydrogenflux_initialCh(section) = IO_floatValue(line,chunkPos,2_pInt)
-!
-!     end select
-!   endif
-! enddo
 
  do h=1_pInt, material_Nhomogenization
    homogenization_typeInstance(h)  = count(homogenization_type(1:h)  == homogenization_type(h))
