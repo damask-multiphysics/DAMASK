@@ -408,7 +408,10 @@ end function getFloatArray
 
       tmp => this%next
       do 
-        if (.not. associated(tmp)) exit
+        if (.not. associated(tmp)) then
+          if (.not. allocated(getStrings)) allocate(getStrings(0),source=str)
+          exit
+        endif
         if (trim(IO_stringValue(tmp%string%val,tmp%string%pos,1))==trim(key)) then
           if (tmp%string%pos(1) < 2) print*, "NOT WORKKING"
           str = IO_StringValue(tmp%string%val,tmp%string%pos,2)
