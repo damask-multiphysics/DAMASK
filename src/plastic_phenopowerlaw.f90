@@ -272,46 +272,40 @@ subroutine plastic_phenopowerlaw_init
           p%outputID = [p%outputID , outputID]
         endif
 
-      end do
+     end do
 
-!--------------------------------------------------------------------------------------------------
-! parameters independent of number of slip/twin systems
-      extmsg = ''
-      if (size(p%tau0_slip) /= size(p%nslip)) extmsg = trim(extmsg)//" shape(tau0_slip) "
-      if (size(p%tausat_slip) /= size(p%nslip)) extmsg = trim(extmsg)//" shape(tausat_slip) "
-      if (size(p%H_int) /= size(p%nslip)) extmsg = trim(extmsg)//" shape(h_int) "
-      if (size(p%tau0_twin) /= size(p%ntwin)) extmsg = trim(extmsg)//" shape(tau0_twin) "
-           if (extmsg /= '') call IO_error(211_pInt,ip=instance,&
-                                  ext_msg=trim(extmsg)//'('//PLASTICITY_PHENOPOWERLAW_label//')')
-      
-      if (any(p%tau0_slip < 0.0_pReal .and. p%Nslip > 0_pInt)) &
-        extmsg = trim(extmsg)//" 'tau0_slip' "
-      if (any(p%tau0_slip < p%tausat_slip .and. p%Nslip > 0_pInt)) &
-        extmsg = trim(extmsg)//" 'tausat_slip' "
-      if (any(p%gdot0_slip <= 0.0_pReal .and. p%Nslip > 0_pInt)) &
-        extmsg = trim(extmsg)//" 'tausat_slip' "
-      if (p%n_slip <= 0.0_pReal) extmsg = trim(extmsg)//" 'n_slip' "
+     extmsg = ''
+     if (sum(p%Nslip) > 0_pInt) then
+       if (size(p%tau0_slip) /= size(p%nslip)) extmsg = trim(extmsg)//" shape(tau0_slip) "
+       if (size(p%tausat_slip) /= size(p%nslip)) extmsg = trim(extmsg)//" shape(tausat_slip) "
+       if (size(p%H_int) /= size(p%nslip)) extmsg = trim(extmsg)//" shape(h_int) "
 
-       !if (any(dEq0(p%a_slip) .and. sum(p%Nslip) > 0)) &
-       !  call IO_error(211_pInt,el=instance,ext_msg='a_slip ('//PLASTICITY_PHENOPOWERLAW_label//')')
+       if (any(p%tau0_slip < 0.0_pReal .and. p%Nslip > 0_pInt)) &
+         extmsg = trim(extmsg)//" 'tau0_slip' "
+       if (any(p%tausat_slip < p%tau0_slip .and. p%Nslip > 0_pInt)) &
+         extmsg = trim(extmsg)//" 'tausat_slip' "
 
-     !    if (any(p%tau0_twin < 0.0_pReal .and. &
-    !           p%Ntwin(:) > 0)) &
-    !     call IO_error(211_pInt,el=instance,ext_msg='tau0_twin ('//PLASTICITY_PHENOPOWERLAW_label//')')
-    !   if (    p%gdot0_twin <= 0.0_pReal .and. &
-    !       any(p%Ntwin(:) > 0)) &
-    !     call IO_error(211_pInt,el=instance,ext_msg='gdot0_twin ('//PLASTICITY_PHENOPOWERLAW_label//')')
-    !   if (    p%n_twin <= 0.0_pReal .and. &
-    !      any(p%Ntwin(:) > 0)) &
-    !     call IO_error(211_pInt,el=instance,ext_msg='n_twin ('//PLASTICITY_PHENOPOWERLAW_label//')')
+       if (p%gdot0_slip <= 0.0_pReal) extmsg = trim(extmsg)//" 'gdot0_slip' "
+       if (dEq0(p%a_slip))            extmsg = trim(extmsg)//" a_slip " ! ToDo: negative values ok?
+       if (dEq0(p%n_slip))            extmsg = trim(extmsg)//" n_slip " ! ToDo: negative values ok?
+     endif 
 
-     if (p%aTolResistance <= 0.0_pReal) &
-       call IO_error(211_pInt,el=instance,ext_msg='aTolResistance ('//PLASTICITY_PHENOPOWERLAW_label//')')
-     if (p%aTolShear      <= 0.0_pReal) &
-       call IO_error(211_pInt,el=instance,ext_msg='aTolShear ('//PLASTICITY_PHENOPOWERLAW_label//')')
-     if (p%aTolTwinfrac   <= 0.0_pReal) &
-       call IO_error(211_pInt,el=instance,ext_msg='aTolTwinfrac ('//PLASTICITY_PHENOPOWERLAW_label//')')
+     if (sum(p%Ntwin) > 0_pInt) then
+       if (size(p%tau0_twin) /= size(p%ntwin)) extmsg = trim(extmsg)//" shape(tau0_twin) "
 
+       if (any(p%tau0_twin < 0.0_pReal .and. p%Ntwin > 0_pInt)) &
+         extmsg = trim(extmsg)//" 'tau0_twin' "
+
+       if (p%gdot0_twin <= 0.0_pReal) extmsg = trim(extmsg)//" 'gdot0_twin' "
+       if (dEq0(p%n_twin))            extmsg = trim(extmsg)//" n_twin " ! ToDo: negative values ok?
+     endif
+
+     if (p%aTolResistance <= 0.0_pReal)  extmsg = trim(extmsg)//" 'aTolresistance' "
+     if (p%aTolShear      <= 0.0_pReal)  extmsg = trim(extmsg)//" 'aTolShear' "
+     if (p%aTolTwinfrac   <= 0.0_pReal)  extmsg = trim(extmsg)//" 'atoltwinfrac' "
+
+     if (extmsg /= '') call IO_error(211_pInt,ip=instance,&
+                                   ext_msg=trim(extmsg)//'('//PLASTICITY_PHENOPOWERLAW_label//')')
 
 !--------------------------------------------------------------------------------------------------
 ! allocate state arrays
@@ -471,8 +465,7 @@ subroutine plastic_phenopowerlaw_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,ipc,ip,
    lattice_maxNslipFamily, &
    lattice_maxNtwinFamily, &
    lattice_NslipSystem, &
-   lattice_NtwinSystem, &
-   lattice_NnonSchmid
+   lattice_NtwinSystem
  use material, only: &
    phaseAt, phasememberAt, &
    phase_plasticityInstance
