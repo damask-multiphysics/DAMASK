@@ -173,6 +173,7 @@ module material
 
  integer(kind(HOMOGENIZATION_undefined_ID)), dimension(:),   allocatable, public, protected :: &
    homogenization_type                                                                              !< type of each homogenization
+!ToDo: should be private
 
  character(len=64), dimension(:), allocatable, public, protected :: &
    phase_name, &                                                                                    !< name of each phase
@@ -308,6 +309,7 @@ module material
  type(tPartitionedStringList), public,protected, allocatable, dimension(:) :: &
    phaseConfig, &
    microstructureConfig, &
+   homogenizationConfig, &
    crystalliteConfig
 
  public :: &
@@ -439,14 +441,17 @@ subroutine material_init()
        line = material_parseCrystallite(FILEUNIT)
        if (iand(myDebug,debug_levelBasic) /= 0_pInt) write(6,'(a)') ' Crystallite parsed'; flush(6)
     
+     case (trim(material_partHomogenization))
+       line = material_parseHomogenization(FILEUNIT)
+       if (iand(myDebug,debug_levelBasic) /= 0_pInt) write(6,'(a)') ' Homogenization parsed'; flush(6)
+
      case default
        line = IO_read(fileUnit)
+
    end select
 
  enddo
 
- call material_parseHomogenization(FILEUNIT,material_partHomogenization)
- if (iand(myDebug,debug_levelBasic) /= 0_pInt) write(6,'(a)') ' Homogenization parsed'; flush(6)
  call material_parseTexture(FILEUNIT,material_partTexture)
  if (iand(myDebug,debug_levelBasic) /= 0_pInt) write(6,'(a)') ' Texture parsed'; flush(6)
  close(FILEUNIT)
@@ -559,14 +564,14 @@ subroutine material_init()
    allocate(vacancyConcRate (myHomog)%p(1), source=0.0_pReal)
    allocate(hydrogenConcRate(myHomog)%p(1), source=0.0_pReal)
  enddo
-
+ 
 end subroutine material_init
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief parses the homogenization part in the material configuration file
 !--------------------------------------------------------------------------------------------------
-subroutine material_parseHomogenization(fileUnit,myPart)
+character(len=65536) function material_parseHomogenization(fileUnit)
  use IO, only: &
    IO_read, &
    IO_globalTagInPart, &
@@ -585,174 +590,183 @@ subroutine material_parseHomogenization(fileUnit,myPart)
    mesh_element
 
  implicit none
- character(len=*), intent(in) :: myPart
  integer(pInt),    intent(in) :: fileUnit
 
 
  integer(pInt), allocatable, dimension(:) :: chunkPos
- integer(pInt)        :: Nsections, section, s, p
- character(len=65536) :: &
-   tag, line
+ integer(pInt)        :: Nsections,  h
+ character(len=65536) :: line, tag,devNull
+ character(len=64) ::  tag2
  logical              :: echo
+ 
+ allocate(homogenizationConfig(0))
 
- echo = IO_globalTagInPart(fileUnit,myPart,'/echo/')
- Nsections = IO_countSections(fileUnit,myPart)
- material_Nhomogenization = Nsections
- if (Nsections < 1_pInt) call IO_error(160_pInt,ext_msg=myPart)
-
- allocate(homogenization_name(Nsections));          homogenization_name = ''
- allocate(homogenization_type(Nsections),           source=HOMOGENIZATION_undefined_ID)
- allocate(thermal_type(Nsections),                  source=THERMAL_isothermal_ID)
- allocate(damage_type (Nsections),                  source=DAMAGE_none_ID)
- allocate(vacancyflux_type(Nsections),              source=VACANCYFLUX_isoconc_ID)
- allocate(porosity_type (Nsections),                source=POROSITY_none_ID)
- allocate(hydrogenflux_type(Nsections),             source=HYDROGENFLUX_isoconc_ID)
- allocate(homogenization_typeInstance(Nsections),   source=0_pInt)
- allocate(thermal_typeInstance(Nsections),          source=0_pInt)
- allocate(damage_typeInstance(Nsections),           source=0_pInt)
- allocate(vacancyflux_typeInstance(Nsections),      source=0_pInt)
- allocate(porosity_typeInstance(Nsections),         source=0_pInt)
- allocate(hydrogenflux_typeInstance(Nsections),     source=0_pInt)
- allocate(homogenization_Ngrains(Nsections),        source=0_pInt)
- allocate(homogenization_Noutput(Nsections),        source=0_pInt)
- allocate(homogenization_active(Nsections),         source=.false.)  !!!!!!!!!!!!!!!
- allocate(thermal_initialT(Nsections),              source=300.0_pReal)
- allocate(damage_initialPhi(Nsections),             source=1.0_pReal)
- allocate(vacancyflux_initialCv(Nsections),         source=0.0_pReal)
- allocate(porosity_initialPhi(Nsections),           source=1.0_pReal)
- allocate(hydrogenflux_initialCh(Nsections),        source=0.0_pReal)
-
- forall (s = 1_pInt:Nsections) homogenization_active(s) = any(mesh_element(3,:) == s)               ! current homogenization used in model? Homogenization view, maximum operations depend on maximum number of homog schemes
-   homogenization_Noutput = IO_countTagInPart(fileUnit,myPart,'(output)',Nsections)
-
- rewind(fileUnit)
- line        = ''                                                                                   ! to have it initialized
- section     = 0_pInt                                                                               !  - " -
- do while (trim(line) /= IO_EOF .and. IO_lc(IO_getTag(line,'<','>')) /= myPart)                     ! wind forward to <homogenization>
-   line = IO_read(fileUnit)
- enddo
- if (echo) write(6,'(/,1x,a)') trim(line)                                                           ! echo part header
-
+ h = 0_pInt
  do while (trim(line) /= IO_EOF)                                                                    ! read through sections of material part
    line = IO_read(fileUnit)
    if (IO_isBlank(line)) cycle                                                                      ! skip empty lines
-   if (IO_getTag(line,'<','>') /= '') then                                                          ! stop at next part
-     line = IO_read(fileUnit, .true.)                                                               ! reset IO_read
+   foundNextPart: if (IO_getTag(line,'<','>') /= '') then
+     devNull = IO_read(fileUnit, .true.)                                                            ! reset IO_read
      exit
-   endif
-   if (echo) write(6,'(2x,a)') trim(line)                                                           ! echo back read lines
-   if (IO_getTag(line,'[',']') /= '') then                                                          ! next section
-     section = section + 1_pInt
-     homogenization_name(section) = IO_getTag(line,'[',']')
-   endif
-   if (section > 0_pInt) then
+   endif foundNextPart
+   nextSection: if (IO_getTag(line,'[',']') /= '') then
+     h = h + 1_pInt
+     homogenizationConfig = [homogenizationConfig, emptyList]
+     tag2 = IO_getTag(line,'[',']')
+     GfortranBug86033: if (.not. allocated(homogenization_name)) then
+       allocate(homogenization_name(1),source=tag2)
+     else GfortranBug86033
+       homogenization_name  = [homogenization_name,tag2]
+     endif GfortranBug86033
+   endif nextSection
+   chunkPos = IO_stringPos(line)
+   tag = IO_lc(IO_stringValue(trim(line),chunkPos,1_pInt))                                          ! extract key
+   inSection: if (h > 0_pInt) then
      chunkPos = IO_stringPos(line)
-     tag = IO_lc(IO_stringValue(line,chunkPos,1_pInt))                                             ! extract key
-     select case(tag)
-       case ('type','mech','mechanical')
-         select case (IO_lc(IO_stringValue(line,chunkPos,2_pInt)))
+     call homogenizationConfig(h)%add(IO_lc(trim(line)),chunkPos)
+   else inSection
+     echo = (trim(tag) == '/echo/')
+   endif inSection
+ enddo
+
+ material_Nhomogenization = size(homogenizationConfig)
+ if (material_Nhomogenization < 1_pInt) call IO_error(160_pInt,ext_msg=material_partHomogenization)
+
+ allocate(homogenization_type(material_Nhomogenization),           source=HOMOGENIZATION_undefined_ID)
+ allocate(thermal_type(material_Nhomogenization),                  source=THERMAL_isothermal_ID)
+ allocate(damage_type (material_Nhomogenization),                  source=DAMAGE_none_ID)
+ allocate(vacancyflux_type(material_Nhomogenization),              source=VACANCYFLUX_isoconc_ID)
+ allocate(porosity_type (material_Nhomogenization),                source=POROSITY_none_ID)
+ allocate(hydrogenflux_type(material_Nhomogenization),             source=HYDROGENFLUX_isoconc_ID)
+ allocate(homogenization_typeInstance(material_Nhomogenization),   source=0_pInt)
+ allocate(thermal_typeInstance(material_Nhomogenization),          source=0_pInt)
+ allocate(damage_typeInstance(material_Nhomogenization),           source=0_pInt)
+ allocate(vacancyflux_typeInstance(material_Nhomogenization),      source=0_pInt)
+ allocate(porosity_typeInstance(material_Nhomogenization),         source=0_pInt)
+ allocate(hydrogenflux_typeInstance(material_Nhomogenization),     source=0_pInt)
+ allocate(homogenization_Ngrains(material_Nhomogenization),        source=0_pInt)
+ allocate(homogenization_Noutput(material_Nhomogenization),        source=0_pInt)
+ allocate(homogenization_active(material_Nhomogenization),         source=.false.)  !!!!!!!!!!!!!!!
+ allocate(thermal_initialT(material_Nhomogenization),              source=300.0_pReal)
+ allocate(damage_initialPhi(material_Nhomogenization),             source=1.0_pReal)
+ allocate(vacancyflux_initialCv(material_Nhomogenization),         source=0.0_pReal)
+ allocate(porosity_initialPhi(material_Nhomogenization),           source=1.0_pReal)
+ allocate(hydrogenflux_initialCh(material_Nhomogenization),        source=0.0_pReal)
+
+ forall (h = 1_pInt:material_Nhomogenization) homogenization_active(h) = any(mesh_element(3,:) == h)
+
+
+ !  homogenization_Noutput = IO_countTagInPart(fileUnit,myPart,'(output)',Nsections)
+
+ do h=1_pInt, material_Nhomogenization
+   tag = homogenizationConfig(h)%getString('mech')
+
+         select case (trim(tag))
            case(HOMOGENIZATION_NONE_label)
-             homogenization_type(section) = HOMOGENIZATION_NONE_ID
-             homogenization_Ngrains(section) = 1_pInt
+             homogenization_type(h) = HOMOGENIZATION_NONE_ID
+             homogenization_Ngrains(h) = 1_pInt
            case(HOMOGENIZATION_ISOSTRAIN_label)
-             homogenization_type(section) = HOMOGENIZATION_ISOSTRAIN_ID
+             homogenization_type(h) = HOMOGENIZATION_ISOSTRAIN_ID
+             homogenization_Ngrains(h) = homogenizationConfig(h)%getInt('nconstituents')
            case(HOMOGENIZATION_RGC_label)
-             homogenization_type(section) = HOMOGENIZATION_RGC_ID
+             homogenization_type(h) = HOMOGENIZATION_RGC_ID
+             homogenization_Ngrains(h) = homogenizationConfig(h)%getInt('nconstituents')
            case default
-             call IO_error(500_pInt,ext_msg=trim(IO_stringValue(line,chunkPos,2_pInt)))
+             call IO_error(500_pInt,ext_msg=trim(tag))
          end select
-         homogenization_typeInstance(section) = &
-                                          count(homogenization_type==homogenization_type(section))  ! count instances
-        case ('thermal')
-         select case (IO_lc(IO_stringValue(line,chunkPos,2_pInt)))
+         homogenization_typeInstance(h) = &
+                                          count(homogenization_type==homogenization_type(h))  ! count instances
+   if (homogenizationConfig(h)%keyExists('thermal')) then
+      tag = homogenizationConfig(h)%getString('thermal')
+
+         select case (trim(tag))
            case(THERMAL_isothermal_label)
-             thermal_type(section) = THERMAL_isothermal_ID
+             thermal_type(h) = THERMAL_isothermal_ID
            case(THERMAL_adiabatic_label)
-             thermal_type(section) = THERMAL_adiabatic_ID
+             thermal_type(h) = THERMAL_adiabatic_ID
            case(THERMAL_conduction_label)
-             thermal_type(section) = THERMAL_conduction_ID
+             thermal_type(h) = THERMAL_conduction_ID
            case default
-             call IO_error(500_pInt,ext_msg=trim(IO_stringValue(line,chunkPos,2_pInt)))
+             call IO_error(500_pInt,ext_msg=trim(tag))
          end select
 
-        case ('damage')
-         select case (IO_lc(IO_stringValue(line,chunkPos,2_pInt)))
-           case(DAMAGE_NONE_label)
-             damage_type(section) = DAMAGE_none_ID
-           case(DAMAGE_LOCAL_label)
-             damage_type(section) = DAMAGE_local_ID
-           case(DAMAGE_NONLOCAL_label)
-             damage_type(section) = DAMAGE_nonlocal_ID
+      tag = homogenizationConfig(h)%getString('damage')
+         select case (trim(tag))
+!           case(DAMAGE_NONE_label)
+!             damage_type(section) = DAMAGE_none_ID
+!           case(DAMAGE_LOCAL_label)
+!             damage_type(section) = DAMAGE_local_ID
+!           case(DAMAGE_NONLOCAL_label)
+!             damage_type(section) = DAMAGE_nonlocal_ID
            case default
-             call IO_error(500_pInt,ext_msg=trim(IO_stringValue(line,chunkPos,2_pInt)))
+             call IO_error(500_pInt,ext_msg=trim(tag))
          end select
-
-        case ('vacancyflux')
-         select case (IO_lc(IO_stringValue(line,chunkPos,2_pInt)))
-           case(VACANCYFLUX_isoconc_label)
-             vacancyflux_type(section) = VACANCYFLUX_isoconc_ID
-           case(VACANCYFLUX_isochempot_label)
-             vacancyflux_type(section) = VACANCYFLUX_isochempot_ID
-           case(VACANCYFLUX_cahnhilliard_label)
-             vacancyflux_type(section) = VACANCYFLUX_cahnhilliard_ID
+!
+      tag = homogenizationConfig(h)%getString('vacancyflux')
+         select case (trim(tag))
+!           case(VACANCYFLUX_isoconc_label)
+!             vacancyflux_type(section) = VACANCYFLUX_isoconc_ID
+!           case(VACANCYFLUX_isochempot_label)
+!             vacancyflux_type(section) = VACANCYFLUX_isochempot_ID
+!           case(VACANCYFLUX_cahnhilliard_label)
+!             vacancyflux_type(section) = VACANCYFLUX_cahnhilliard_ID
            case default
-             call IO_error(500_pInt,ext_msg=trim(IO_stringValue(line,chunkPos,2_pInt)))
-         end select
-
-        case ('porosity')
-         select case (IO_lc(IO_stringValue(line,chunkPos,2_pInt)))
-           case(POROSITY_NONE_label)
-             porosity_type(section) = POROSITY_none_ID
-           case(POROSITY_phasefield_label)
-             porosity_type(section) = POROSITY_phasefield_ID
+             call IO_error(500_pInt,ext_msg=trim(tag))
+          end select
+!
+      tag = homogenizationConfig(h)%getString('porosity')
+         select case (trim(tag))
+!           case(POROSITY_NONE_label)
+!             porosity_type(section) = POROSITY_none_ID
+!           case(POROSITY_phasefield_label)
+!             porosity_type(section) = POROSITY_phasefield_ID
            case default
-             call IO_error(500_pInt,ext_msg=trim(IO_stringValue(line,chunkPos,2_pInt)))
-         end select
-
-        case ('hydrogenflux')
-         select case (IO_lc(IO_stringValue(line,chunkPos,2_pInt)))
-           case(HYDROGENFLUX_isoconc_label)
-             hydrogenflux_type(section) = HYDROGENFLUX_isoconc_ID
-           case(HYDROGENFLUX_cahnhilliard_label)
-             hydrogenflux_type(section) = HYDROGENFLUX_cahnhilliard_ID
+             call IO_error(500_pInt,ext_msg=trim(tag))
+          end select
+!
+      tag = homogenizationConfig(h)%getString('hydrogenflux')
+         select case (trim(tag))
+!           case(HYDROGENFLUX_isoconc_label)
+!             hydrogenflux_type(section) = HYDROGENFLUX_isoconc_ID
+!           case(HYDROGENFLUX_cahnhilliard_label)
+!             hydrogenflux_type(section) = HYDROGENFLUX_cahnhilliard_ID
            case default
-             call IO_error(500_pInt,ext_msg=trim(IO_stringValue(line,chunkPos,2_pInt)))
+             call IO_error(500_pInt,ext_msg=trim(tag))
          end select
-
-       case ('nconstituents')
-         homogenization_Ngrains(section) = IO_intValue(line,chunkPos,2_pInt)
-
-       case ('t0')
-         thermal_initialT(section) = IO_floatValue(line,chunkPos,2_pInt)
-
-       case ('initialdamage')
-         damage_initialPhi(section) = IO_floatValue(line,chunkPos,2_pInt)
-
-       case ('cv0')
-         vacancyflux_initialCv(section) = IO_floatValue(line,chunkPos,2_pInt)
-
-       case ('initialporosity')
-         porosity_initialPhi(section) = IO_floatValue(line,chunkPos,2_pInt)
-
-       case ('ch0')
-         hydrogenflux_initialCh(section) = IO_floatValue(line,chunkPos,2_pInt)
-
-     end select
    endif
  enddo
 
- do p=1_pInt, Nsections
-   homogenization_typeInstance(p)  = count(homogenization_type(1:p)  == homogenization_type(p))
-   thermal_typeInstance(p)         = count(thermal_type       (1:p)  == thermal_type       (p))
-   damage_typeInstance(p)          = count(damage_type        (1:p)  == damage_type        (p))
-   vacancyflux_typeInstance(p)     = count(vacancyflux_type   (1:p)  == vacancyflux_type   (p))
-   porosity_typeInstance(p)        = count(porosity_type      (1:p)  == porosity_type      (p))
-   hydrogenflux_typeInstance(p)    = count(hydrogenflux_type  (1:p)  == hydrogenflux_type  (p))
+!
+!       case ('t0')
+!         thermal_initialT(section) = IO_floatValue(line,chunkPos,2_pInt)
+!
+!       case ('initialdamage')
+!         damage_initialPhi(section) = IO_floatValue(line,chunkPos,2_pInt)
+!
+!       case ('cv0')
+!         vacancyflux_initialCv(section) = IO_floatValue(line,chunkPos,2_pInt)
+!
+!
+!       case ('ch0')
+!         hydrogenflux_initialCh(section) = IO_floatValue(line,chunkPos,2_pInt)
+!
+!     end select
+!   endif
+! enddo
+
+ do h=1_pInt, material_Nhomogenization
+   homogenization_typeInstance(h)  = count(homogenization_type(1:h)  == homogenization_type(h))
+   thermal_typeInstance(h)         = count(thermal_type       (1:h)  == thermal_type       (h))
+   damage_typeInstance(h)          = count(damage_type        (1:h)  == damage_type        (h))
+   vacancyflux_typeInstance(h)     = count(vacancyflux_type   (1:h)  == vacancyflux_type   (h))
+   porosity_typeInstance(h)        = count(porosity_type      (1:h)  == porosity_type      (h))
+   hydrogenflux_typeInstance(h)    = count(hydrogenflux_type  (1:h)  == hydrogenflux_type  (h))
  enddo
 
  homogenization_maxNgrains = maxval(homogenization_Ngrains,homogenization_active)
+ material_parseHomogenization=line
 
-end subroutine material_parseHomogenization
+end function material_parseHomogenization
 
 
 !--------------------------------------------------------------------------------------------------
@@ -769,8 +783,9 @@ character(len=65536) function material_parseMicrostructure(fileUnit)
  implicit none
  integer(pInt),    intent(in) :: fileUnit
 
- character(len=64), dimension(:), allocatable :: &
+ character(len=256), dimension(:), allocatable :: &
    str 
+ character(len=64) :: tag2
  integer(pInt), allocatable, dimension(:) :: chunkPos
  integer(pInt), allocatable, dimension(:,:) :: chunkPoss
  integer(pInt) :: e, m, constituent, i
@@ -778,7 +793,6 @@ character(len=65536) function material_parseMicrostructure(fileUnit)
    tag,line,devNull
  logical              :: echo
 
- allocate(microstructure_name(0))
  allocate(MicrostructureConfig(0))
  line    = ''                                                                                       ! to have it initialized
  m       = 0_pInt
@@ -794,7 +808,12 @@ character(len=65536) function material_parseMicrostructure(fileUnit)
    nextSection: if (IO_getTag(line,'[',']') /= '') then
      m = m + 1_pInt
      microstructureConfig = [microstructureConfig, emptyList]
-     microstructure_name  = [microstructure_Name,IO_getTag(line,'[',']')]
+     tag2 = IO_getTag(line,'[',']')
+     GfortranBug86033: if (.not. allocated(microstructure_name)) then
+       allocate(microstructure_name(1),source=tag2)
+     else GfortranBug86033
+       microstructure_name  = [microstructure_name,tag2]
+     endif GfortranBug86033
    endif nextSection
    chunkPos = IO_stringPos(line)
    tag = IO_lc(IO_stringValue(trim(line),chunkPos,1_pInt))                                          ! extract key
@@ -878,11 +897,11 @@ character(len=65536) function material_parseCrystallite(fileUnit)
  integer(pInt),    intent(in) :: fileUnit
  integer(pInt), allocatable, dimension(:) :: chunkPos
 
+ character(len=64) ::  tag2
  integer(pInt)        :: c
  character(len=65536) :: line, tag,devNull
  logical              :: echo
 
- allocate(crystallite_name(0))
  allocate(crystalliteConfig(0))
  c = 0_pInt
  do while (trim(line) /= IO_EOF)                                                                    ! read through sections of material part
@@ -895,7 +914,12 @@ character(len=65536) function material_parseCrystallite(fileUnit)
    nextSection: if (IO_getTag(line,'[',']') /= '') then
      c = c + 1_pInt
      crystalliteConfig = [crystalliteConfig, emptyList]
-     crystallite_name  = [crystallite_name,IO_getTag(line,'[',']')]
+     tag2 = IO_getTag(line,'[',']')
+     GfortranBug86033: if (.not. allocated(crystallite_name)) then
+       allocate(crystallite_name(1),source=tag2)
+     else GfortranBug86033
+       crystallite_name  = [crystallite_name,tag2]
+     endif GfortranBug86033
    endif nextSection
    chunkPos = IO_stringPos(line)
    tag = IO_lc(IO_stringValue(trim(line),chunkPos,1_pInt))                                          ! extract key
@@ -947,11 +971,11 @@ character(len=65536) function material_parsePhase(fileUnit)
  integer(pInt) :: sourceCtr, kinematicsCtr, stiffDegradationCtr, p
  character(len=65536) :: &
   tag,line,devNull
+ character(len=64) ::  tag2
  character(len=64), dimension(:), allocatable :: &
    str 
  logical              :: echo
 
- allocate(phase_name(0))
  allocate(phaseConfig(0))
  line    = ''                                                                                       ! to have it initialized
  p = 0_pInt                                                                                         !  - " -
@@ -967,7 +991,12 @@ character(len=65536) function material_parsePhase(fileUnit)
    nextSection: if (IO_getTag(line,'[',']') /= '') then
      p = p + 1_pInt
      phaseConfig = [phaseConfig, emptyList]
-     phase_name  = [phase_Name,IO_getTag(line,'[',']')]
+     tag2 = IO_getTag(line,'[',']')
+     GfortranBug86033: if (.not. allocated(phase_name)) then
+       allocate(phase_name(1),source=tag2)
+     else GfortranBug86033
+       phase_name  = [phase_name,tag2]
+     endif GfortranBug86033
    endif nextSection
    chunkPos = IO_stringPos(line)
    tag = IO_lc(IO_stringValue(trim(line),chunkPos,1_pInt))                                          ! extract key
