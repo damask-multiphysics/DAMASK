@@ -857,13 +857,13 @@ character(len=65536) function material_parseMicrostructure(fileUnit)
 
            select case (tag)
              case('phase')
-               microstructure_phase(constituent,m) =    IO_intValue(str(constituent),chunkPos,i+1_pInt)
+               microstructure_phase(constituent,m) =    IO_intValue(str(constituent),chunkPoss(:,constituent),i+1_pInt)
                  
              case('texture')
-               microstructure_texture(constituent,m) =  IO_intValue(str(constituent),chunkPos,i+1_pInt)
+               microstructure_texture(constituent,m) =  IO_intValue(str(constituent),chunkPoss(:,constituent),i+1_pInt)
 
              case('fraction')
-               microstructure_fraction(constituent,m) =  IO_floatValue(str(constituent),chunkPos,i+1_pInt)
+               microstructure_fraction(constituent,m) =  IO_floatValue(str(constituent),chunkPoss(:,constituent),i+1_pInt)
 
            end select
        enddo
