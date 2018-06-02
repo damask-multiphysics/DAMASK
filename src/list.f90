@@ -13,8 +13,10 @@ module chained_list
  type, public :: tPartitionedStringList
    type(tPartitionedString)    :: string
    type(tPartitionedStringList),  pointer :: next => null()
+   type(tPartitionedStringList),  pointer :: prev => null()
    contains
      procedure :: add            => add
+     procedure :: show           => show
      procedure :: getRaw         => getRaw
      procedure :: getRaws         => getRaws
 
@@ -24,11 +26,15 @@ module chained_list
      procedure :: getInt         => getInt
      procedure :: getIntArray    => getIntArray
 
+     procedure :: getString      => getString
      procedure :: getStrings     => getStrings
      procedure :: keyExists      => keyExists
+     procedure :: countKeys      => countKeys
 
  end type tPartitionedStringList
- 
+
+ type(tPartitionedStringList), public :: emptyList
+
 contains
 
 !--------------------------------------------------------------------------------------------------
@@ -58,6 +64,24 @@ subroutine add(this,string,stringPos)
 
 end subroutine add
 
+
+!--------------------------------------------------------------------------------------------------
+!> @brief add element
+!> @details adds raw string and start/end position of chunks in this string
+!--------------------------------------------------------------------------------------------------
+subroutine show(this)
+ implicit none
+ class(tPartitionedStringList) :: this
+ type(tPartitionedStringList),  pointer  :: tmp
+
+ tmp => this%next
+ do 
+   if (.not. associated(tmp)) exit
+   write(6,*) trim(tmp%string%val)
+   tmp => tmp%next
+ end do
+
+end subroutine show
 
 !--------------------------------------------------------------------------------------------------
 !> @brief gets raw data
@@ -206,6 +230,40 @@ end function getInt
 
 
 !--------------------------------------------------------------------------------------------------
+!> @brief gets string value for given key
+!> @details if key is not found exits with error unless default is given
+!--------------------------------------------------------------------------------------------------
+character(len=64) function getString(this,key,defaultVal)
+ use IO, only: &
+   IO_error, &
+   IO_stringValue
+
+ implicit none
+ class(tPartitionedStringList), intent(in)           :: this
+ character(len=*),              intent(in)           :: key
+ character(len=64),             intent(in), optional :: defaultVal
+ type(tPartitionedStringList),  pointer              :: tmp
+
+ tmp => this%next
+ do 
+   endOfList: if (.not. associated(tmp)) then
+     if(present(defaultVal)) then
+       getString = defaultVal
+       exit
+     else
+       call IO_error(1_pInt,ext_msg=key)
+     endif
+   endif endOfList
+   foundKey: if (trim(IO_stringValue(tmp%string%val,tmp%string%pos,1))==trim(key)) then
+     if (tmp%string%pos(1) < 2_pInt) call IO_error(1_pInt,ext_msg=key)
+     getString = IO_StringValue(tmp%string%val,tmp%string%pos,2)
+     exit
+   endif foundKey
+   tmp => tmp%next
+ end do
+end function getString
+
+!--------------------------------------------------------------------------------------------------
 !> @brief gets array of int values for given key
 !> @details if key is not found exits with error unless default is given
 !--------------------------------------------------------------------------------------------------
@@ -314,6 +372,27 @@ end function getFloatArray
     end function
 
 
+    integer(pInt) function countKeys(this,key)
+      use IO
+
+      implicit none
+      class(tPartitionedStringList), intent(in) :: this
+      character(len=*), intent(in) :: key
+      type(tPartitionedStringList), pointer :: tmp
+      integer(pInt) :: i
+
+      countKeys = 0_pInt
+
+      tmp => this%next
+      do 
+        if (.not. associated(tmp)) exit
+        if (trim(IO_stringValue(tmp%string%val,tmp%string%pos,1))==trim(key)) then
+          countKeys = countKeys + 1_pInt
+        endif
+        tmp => tmp%next
+      end do
+    end function
+
     function getStrings(this,key)
       use IO
 
@@ -326,17 +405,15 @@ end function getFloatArray
       type(tPartitionedStringList), pointer :: tmp
       integer(pInt) :: i
 
+      allocate(getStrings(0))
+
       tmp => this%next
       do 
         if (.not. associated(tmp)) exit
         if (trim(IO_stringValue(tmp%string%val,tmp%string%pos,1))==trim(key)) then
           if (tmp%string%pos(1) < 2) print*, "NOT WORKKING"
           str = IO_StringValue(tmp%string%val,tmp%string%pos,2)
-          if (.not. allocated(getStrings)) then
-            getStrings = [str]
-          else
-            getStrings = [getStrings,str]
-          endif
+          getStrings = [getStrings,str]
         endif
         tmp => tmp%next
       end do
