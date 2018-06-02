@@ -405,7 +405,6 @@ end function getFloatArray
       type(tPartitionedStringList), pointer :: tmp
       integer(pInt) :: i
 
-      allocate(getStrings(0))
 
       tmp => this%next
       do 
@@ -413,7 +412,12 @@ end function getFloatArray
         if (trim(IO_stringValue(tmp%string%val,tmp%string%pos,1))==trim(key)) then
           if (tmp%string%pos(1) < 2) print*, "NOT WORKKING"
           str = IO_StringValue(tmp%string%val,tmp%string%pos,2)
-          getStrings = [getStrings,str]
+
+     GfortranBug86033: if (.not. allocated(getStrings)) then
+       allocate(getStrings(1),source=str)
+     else GfortranBug86033
+       getStrings  = [getStrings,str]
+     endif GfortranBug86033
         endif
         tmp => tmp%next
       end do
