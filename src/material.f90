@@ -388,8 +388,6 @@ subroutine material_init()
    mesh_element, &
    FE_Nips, &
    FE_geomtype
- use numerics, only: &
-   worldrank
 
  implicit none
  integer(pInt), parameter :: FILEUNIT = 200_pInt
@@ -405,11 +403,9 @@ subroutine material_init()
 
  myDebug = debug_level(debug_material)
 
- mainProcess: if (worldrank == 0) then
-   write(6,'(/,a)') ' <<<+-  material init  -+>>>'
-   write(6,'(a15,a)')   ' Current time: ',IO_timeStamp()
+ write(6,'(/,a)') ' <<<+-  material init  -+>>>'
+ write(6,'(a15,a)')   ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
- endif mainProcess
 
  if (.not. IO_open_jobFile_stat(FILEUNIT,material_localFileExt)) &                                  ! no local material configuration present...
    call IO_open_file(FILEUNIT,material_configFile)                                                  ! ...open material.config file
@@ -894,6 +890,8 @@ end subroutine material_parseCrystallite
 !> @brief parses the phase part in the material configuration file
 !--------------------------------------------------------------------------------------------------
 subroutine material_parsePhase(fileUnit,myPart)
+ use chained_list, only: &
+   emptyList 
  use IO, only: &
    IO_read, &
    IO_globalTagInPart, &
@@ -917,140 +915,152 @@ subroutine material_parsePhase(fileUnit,myPart)
  integer(pInt) :: Nsections, section, sourceCtr, kinematicsCtr, stiffDegradationCtr, p
  character(len=65536) :: &
   tag,line
+ character(len=64), dimension(:), allocatable :: &
+   str 
  logical              :: echo
 
- echo = IO_globalTagInPart(fileUnit,myPart,'/echo/')
+ allocate(phase_name(0))
+ allocate(phaseConfig(0))
+ line    = ''                                                                                       ! to have it initialized
+ section = 0_pInt                                                                                   !  - " -
+ echo    =.false.
 
- Nsections = IO_countSections(fileUnit,myPart)
+ rewind(fileUnit)
+ do while (trim(line) /= IO_EOF .and. IO_lc(IO_getTag(line,'<','>')) /= myPart)                     ! wind forward to <Phase>
+   line = IO_read(fileUnit)
+ enddo
+
+ do while (trim(line) /= IO_EOF)                                                                    ! read through sections of material part
+   line = IO_read(fileUnit)
+   if (IO_isBlank(line)) cycle                                                                      ! skip empty lines
+   foundNextPart: if (IO_getTag(line,'<','>') /= '') then
+     line = IO_read(fileUnit, .true.)                                                               ! reset IO_read
+     exit
+   endif foundNextPart
+   nextSection: if (IO_getTag(line,'[',']') /= '') then
+     section = section + 1_pInt
+     phaseConfig = [phaseConfig, emptyList]
+     phase_name  = [phase_Name,IO_getTag(line,'[',']')]
+   endif nextSection
+   chunkPos = IO_stringPos(line)
+   tag = IO_lc(IO_stringValue(trim(line),chunkPos,1_pInt))                                          ! extract key
+   inSection: if (section > 0_pInt) then
+     chunkPos = IO_stringPos(line)
+     call phaseConfig(section)%add(IO_lc(trim(line)),chunkPos)
+   else inSection
+     echo = (trim(tag) == '/echo/')
+   endif inSection
+ enddo
+
+ Nsections = size(phaseConfig)
  material_Nphase = Nsections
  if (Nsections < 1_pInt) call IO_error(160_pInt,ext_msg=myPart)
 
- allocate(phase_name(Nsections));                phase_name = ''
- allocate(phase_elasticity(Nsections),           source=ELASTICITY_undefined_ID)
- allocate(phase_elasticityInstance(Nsections),   source=0_pInt)
- allocate(phase_plasticity(Nsections) ,          source=PLASTICITY_undefined_ID)
- allocate(phase_plasticityInstance(Nsections),   source=0_pInt)
- allocate(phase_Nsources(Nsections),             source=0_pInt)
- allocate(phase_Nkinematics(Nsections),          source=0_pInt)
+ allocate(phase_elasticity(Nsections),source=ELASTICITY_undefined_ID)
+ allocate(phase_plasticity(Nsections),source=PLASTICITY_undefined_ID)
+ allocate(phase_Nsources(Nsections),              source=0_pInt)
+ allocate(phase_Nkinematics(Nsections),           source=0_pInt)
  allocate(phase_NstiffnessDegradations(Nsections),source=0_pInt)
- allocate(phase_Noutput(Nsections),              source=0_pInt)
- allocate(phase_localPlasticity(Nsections),      source=.false.)
+ allocate(phase_Noutput(Nsections),               source=0_pInt)
+ allocate(phase_localPlasticity(Nsections),       source=.false.)
 
- allocate(phaseConfig(Nsections))
+ do p=1_pInt, Nsections
+   phase_Noutput(p) =                 phaseConfig(p)%countKeys('(output)')
+   phase_Nsources(p) =                phaseConfig(p)%countKeys('(source)')
+   phase_Nkinematics(p) =             phaseConfig(p)%countKeys('(kinematics)')
+   phase_NstiffnessDegradations(p) =  phaseConfig(p)%countKeys('(stiffness_degradation)')
+   !phase_localPlasticity(p) = .not.   IO_spotTagInPart(fileUnit,myPart,'/nonlocal/')
 
- phase_Noutput = IO_countTagInPart(fileUnit,myPart,'(output)',Nsections)
- phase_Nsources = IO_countTagInPart(fileUnit,myPart,'(source)',Nsections)
- phase_Nkinematics = IO_countTagInPart(fileUnit,myPart,'(kinematics)',Nsections)
- phase_NstiffnessDegradations = IO_countTagInPart(fileUnit,myPart,'(stiffness_degradation)',Nsections)
- phase_localPlasticity = .not. IO_spotTagInPart(fileUnit,myPart,'/nonlocal/',Nsections)
+   select case (phaseConfig(p)%getString('elasticity'))
+     case (ELASTICITY_HOOKE_label)
+       phase_elasticity(p) = ELASTICITY_HOOKE_ID
+     case default
+       call IO_error(200_pInt,ext_msg=trim(phaseConfig(p)%getString('elasticity')))
+   end select
+
+   select case (phaseConfig(p)%getString('plasticity'))
+     case (PLASTICITY_NONE_label)
+       phase_plasticity(p) = PLASTICITY_NONE_ID
+     case (PLASTICITY_ISOTROPIC_label)
+       phase_plasticity(p) = PLASTICITY_ISOTROPIC_ID
+     case (PLASTICITY_PHENOPOWERLAW_label)
+       phase_plasticity(p) = PLASTICITY_PHENOPOWERLAW_ID
+     case (PLASTICITY_KINEHARDENING_label)
+       phase_plasticity(p) = PLASTICITY_KINEHARDENING_ID
+     case (PLASTICITY_DISLOTWIN_label)
+       phase_plasticity(p) = PLASTICITY_DISLOTWIN_ID
+     case (PLASTICITY_DISLOUCLA_label)
+       phase_plasticity(p) = PLASTICITY_DISLOUCLA_ID
+     case (PLASTICITY_NONLOCAL_label)
+       phase_plasticity(p) = PLASTICITY_NONLOCAL_ID
+     case default
+       call IO_error(201_pInt,ext_msg=trim(phaseConfig(p)%getString('plasticity')))
+   end select
+
+ enddo
 
  allocate(phase_source(maxval(phase_Nsources),Nsections), source=SOURCE_undefined_ID)
  allocate(phase_kinematics(maxval(phase_Nkinematics),Nsections), source=KINEMATICS_undefined_ID)
  allocate(phase_stiffnessDegradation(maxval(phase_NstiffnessDegradations),Nsections), &
           source=STIFFNESS_DEGRADATION_undefined_ID)
-
- rewind(fileUnit)
- line        = ''                                                                                   ! to have it initialized
- section     = 0_pInt                                                                               !  - " -
- do while (trim(line) /= IO_EOF .and. IO_lc(IO_getTag(line,'<','>')) /= myPart)                     ! wind forward to <Phase>
-   line = IO_read(fileUnit)
- enddo
- if (echo) write(6,'(/,1x,a)') trim(line)                                                           ! echo part header
-
- do while (trim(line) /= IO_EOF)                                                                    ! read through sections of material part
-   line = IO_read(fileUnit)
-   if (IO_isBlank(line)) cycle                                                                      ! skip empty lines
-   if (IO_getTag(line,'<','>') /= '') then                                                          ! stop at next part
-     line = IO_read(fileUnit, .true.)                                                               ! reset IO_read
-     exit
+ do p=1_pInt, Nsections
+   if (phase_Nsources(p) /= 0_pInt) then
+     str = phaseConfig(p)%getStrings('(source)')
+     do sourceCtr = 1_pInt, size(str)
+       select case (trim(str(sourceCtr)))
+         case (SOURCE_thermal_dissipation_label)
+           phase_source(sourceCtr,section) = SOURCE_thermal_dissipation_ID
+         case (SOURCE_thermal_externalheat_label)
+           phase_source(sourceCtr,section) = SOURCE_thermal_externalheat_ID
+         case (SOURCE_damage_isoBrittle_label)
+           phase_source(sourceCtr,section) = SOURCE_damage_isoBrittle_ID
+         case (SOURCE_damage_isoDuctile_label)
+           phase_source(sourceCtr,section) = SOURCE_damage_isoDuctile_ID
+         case (SOURCE_damage_anisoBrittle_label)
+           phase_source(sourceCtr,section) = SOURCE_damage_anisoBrittle_ID
+         case (SOURCE_damage_anisoDuctile_label)
+           phase_source(sourceCtr,section) = SOURCE_damage_anisoDuctile_ID
+         case (SOURCE_vacancy_phenoplasticity_label)
+           phase_source(sourceCtr,section) = SOURCE_vacancy_phenoplasticity_ID
+         case (SOURCE_vacancy_irradiation_label)
+           phase_source(sourceCtr,section) = SOURCE_vacancy_irradiation_ID
+         case (SOURCE_vacancy_thermalfluc_label)
+           phase_source(sourceCtr,section) = SOURCE_vacancy_thermalfluc_ID
+       end select
+     enddo
    endif
-   if (echo) write(6,'(2x,a)') trim(line)                                                           ! echo back read lines
-   if (IO_getTag(line,'[',']') /= '') then                                                          ! next section
-     section = section + 1_pInt
-     sourceCtr = 0_pInt
-     kinematicsCtr = 0_pInt
-     stiffDegradationCtr = 0_pInt
-     phase_name(section) = IO_getTag(line,'[',']')
+   if (phase_Nkinematics(p) /= 0_pInt) then
+     str = phaseConfig(p)%getStrings('(kinematics)')
+     do kinematicsCtr = 1_pInt, size(str)
+       select case (trim(str(kinematicsCtr)))
+         case (KINEMATICS_cleavage_opening_label)
+           phase_kinematics(kinematicsCtr,section) = KINEMATICS_cleavage_opening_ID
+         case (KINEMATICS_slipplane_opening_label)
+           phase_kinematics(kinematicsCtr,section) = KINEMATICS_slipplane_opening_ID
+         case (KINEMATICS_thermal_expansion_label)
+           phase_kinematics(kinematicsCtr,section) = KINEMATICS_thermal_expansion_ID
+         case (KINEMATICS_vacancy_strain_label)
+           phase_kinematics(kinematicsCtr,section) = KINEMATICS_vacancy_strain_ID
+         case (KINEMATICS_hydrogen_strain_label)
+           phase_kinematics(kinematicsCtr,section) = KINEMATICS_hydrogen_strain_ID
+       end select
+     enddo
    endif
-   if (section > 0_pInt) then
-     chunkPos = IO_stringPos(line)
-     tag = IO_lc(IO_stringValue(line,chunkPos,1_pInt))                                             ! extract key
-     call phaseConfig(section)%add(IO_lc(trim(line)),chunkPos)
-     select case(tag)
-       case ('elasticity')
-         select case (IO_lc(IO_stringValue(line,chunkPos,2_pInt)))
-           case (ELASTICITY_HOOKE_label)
-             phase_elasticity(section) = ELASTICITY_HOOKE_ID
-           case default
-             call IO_error(200_pInt,ext_msg=trim(IO_stringValue(line,chunkPos,2_pInt)))
-         end select
-       case ('plasticity')
-         select case (IO_lc(IO_stringValue(line,chunkPos,2_pInt)))
-           case (PLASTICITY_NONE_label)
-             phase_plasticity(section) = PLASTICITY_NONE_ID
-           case (PLASTICITY_ISOTROPIC_label)
-             phase_plasticity(section) = PLASTICITY_ISOTROPIC_ID
-           case (PLASTICITY_PHENOPOWERLAW_label)
-             phase_plasticity(section) = PLASTICITY_PHENOPOWERLAW_ID
-           case (PLASTICITY_KINEHARDENING_label)
-             phase_plasticity(section) = PLASTICITY_KINEHARDENING_ID
-           case (PLASTICITY_DISLOTWIN_label)
-             phase_plasticity(section) = PLASTICITY_DISLOTWIN_ID
-           case (PLASTICITY_DISLOUCLA_label)
-             phase_plasticity(section) = PLASTICITY_DISLOUCLA_ID
-           case (PLASTICITY_NONLOCAL_label)
-             phase_plasticity(section) = PLASTICITY_NONLOCAL_ID
-           case default
-             call IO_error(201_pInt,ext_msg=trim(IO_stringValue(line,chunkPos,2_pInt)))
-         end select
-       case ('(source)')
-         sourceCtr = sourceCtr + 1_pInt
-         select case (IO_lc(IO_stringValue(line,chunkPos,2_pInt)))
-           case (SOURCE_thermal_dissipation_label)
-             phase_source(sourceCtr,section) = SOURCE_thermal_dissipation_ID
-           case (SOURCE_thermal_externalheat_label)
-             phase_source(sourceCtr,section) = SOURCE_thermal_externalheat_ID
-           case (SOURCE_damage_isoBrittle_label)
-             phase_source(sourceCtr,section) = SOURCE_damage_isoBrittle_ID
-           case (SOURCE_damage_isoDuctile_label)
-             phase_source(sourceCtr,section) = SOURCE_damage_isoDuctile_ID
-           case (SOURCE_damage_anisoBrittle_label)
-             phase_source(sourceCtr,section) = SOURCE_damage_anisoBrittle_ID
-           case (SOURCE_damage_anisoDuctile_label)
-             phase_source(sourceCtr,section) = SOURCE_damage_anisoDuctile_ID
-           case (SOURCE_vacancy_phenoplasticity_label)
-             phase_source(sourceCtr,section) = SOURCE_vacancy_phenoplasticity_ID
-           case (SOURCE_vacancy_irradiation_label)
-             phase_source(sourceCtr,section) = SOURCE_vacancy_irradiation_ID
-           case (SOURCE_vacancy_thermalfluc_label)
-             phase_source(sourceCtr,section) = SOURCE_vacancy_thermalfluc_ID
-         end select
-       case ('(kinematics)')
-         kinematicsCtr = kinematicsCtr + 1_pInt
-         select case (IO_lc(IO_stringValue(line,chunkPos,2_pInt)))
-           case (KINEMATICS_cleavage_opening_label)
-             phase_kinematics(kinematicsCtr,section) = KINEMATICS_cleavage_opening_ID
-           case (KINEMATICS_slipplane_opening_label)
-             phase_kinematics(kinematicsCtr,section) = KINEMATICS_slipplane_opening_ID
-           case (KINEMATICS_thermal_expansion_label)
-             phase_kinematics(kinematicsCtr,section) = KINEMATICS_thermal_expansion_ID
-           case (KINEMATICS_vacancy_strain_label)
-             phase_kinematics(kinematicsCtr,section) = KINEMATICS_vacancy_strain_ID
-           case (KINEMATICS_hydrogen_strain_label)
-             phase_kinematics(kinematicsCtr,section) = KINEMATICS_hydrogen_strain_ID
-         end select
-       case ('(stiffness_degradation)')
-         stiffDegradationCtr = stiffDegradationCtr + 1_pInt
-         select case (IO_lc(IO_stringValue(line,chunkPos,2_pInt)))
-           case (STIFFNESS_DEGRADATION_damage_label)
-             phase_stiffnessDegradation(stiffDegradationCtr,section) = STIFFNESS_DEGRADATION_damage_ID
-           case (STIFFNESS_DEGRADATION_porosity_label)
-             phase_stiffnessDegradation(stiffDegradationCtr,section) = STIFFNESS_DEGRADATION_porosity_ID
-         end select
-
-     end select
+   if (phase_NstiffnessDegradations(p) /= 0_pInt) then
+     str = phaseConfig(p)%getStrings('(stiffness_degradation)')
+     do stiffDegradationCtr = 1_pInt, size(str)
+       select case (trim(str(stiffDegradationCtr)))
+         case (STIFFNESS_DEGRADATION_damage_label)
+           phase_stiffnessDegradation(stiffDegradationCtr,section) = STIFFNESS_DEGRADATION_damage_ID
+         case (STIFFNESS_DEGRADATION_porosity_label)
+           phase_stiffnessDegradation(stiffDegradationCtr,section) = STIFFNESS_DEGRADATION_porosity_ID
+      end select
+     enddo
    endif
  enddo
+
+ allocate(phase_plasticityInstance(Nsections),   source=0_pInt)
+ allocate(phase_elasticityInstance(Nsections),   source=0_pInt)
 
  do p=1_pInt, Nsections
    phase_elasticityInstance(p)  = count(phase_elasticity(1:p)  == phase_elasticity(p))
