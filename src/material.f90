@@ -841,7 +841,7 @@ character(len=65536) function material_parseMicrostructure(fileUnit)
  do m=1_pInt, material_Nmicrostructure
    microstructure_Nconstituents(m) =  microstructureConfig(m)%countKeys('(constituent)')
    microstructure_crystallite(m)   =  microstructureConfig(m)%getInt('crystallite')
-  ! microstructure_elemhomo = IO_spotTagInPart(fileUnit,myPart,'/elementhomogeneous/',Nsections)
+   microstructure_elemhomo(m)      =  microstructureConfig(m)%keyExists('/elementhomogeneous/')
  enddo
 
  microstructure_maxNconstituents = maxval(microstructure_Nconstituents)
@@ -1025,7 +1025,7 @@ character(len=65536) function material_parsePhase(fileUnit)
    phase_Nsources(p) =                phaseConfig(p)%countKeys('(source)')
    phase_Nkinematics(p) =             phaseConfig(p)%countKeys('(kinematics)')
    phase_NstiffnessDegradations(p) =  phaseConfig(p)%countKeys('(stiffness_degradation)')
-   !phase_localPlasticity(p) = .not.   IO_spotTagInPart(fileUnit,myPart,'/nonlocal/')
+   phase_localPlasticity(p) = .not.   phaseConfig(p)%KeyExists('/nonlocal/')
 
    select case (phaseConfig(p)%getString('elasticity'))
      case (ELASTICITY_HOOKE_label)
