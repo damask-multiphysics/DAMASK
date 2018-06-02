@@ -155,7 +155,6 @@ subroutine crystallite_init
    math_I3, &
    math_EulerToR, &
    math_inv33, &
-   math_transpose33, &
    math_mul33xx33, &
    math_mul33x33
  use FEsolving, only:  &
@@ -167,28 +166,18 @@ subroutine crystallite_init
    mesh_maxNips, &
    mesh_maxNipNeighbors
  use IO, only: &
-   IO_read, &
    IO_timeStamp, &
-   IO_open_jobFile_stat, &
-   IO_open_file, &
-   IO_lc, &
-   IO_getTag, &
-   IO_isBlank, &
-   IO_stringPos, &
    IO_stringValue, &
    IO_write_jobFile, &
-   IO_error, &
-   IO_EOF
+   IO_error
  use material
  use constitutive, only: &
    constitutive_initialFi, &
    constitutive_microstructure                                                                     ! derived (shortcut) quantities of given state
 
  implicit none
- integer(pInt), parameter :: &
-   FILEUNIT = 200_pInt
 
- integer(pInt), allocatable, dimension(:) :: chunkPos
+ integer(pInt), parameter :: FILEUNIT=434_pInt
  integer(pInt) :: &
    c, &                                                                                             !< counter in integration point component loop
    i, &                                                                                             !< counter in integration point loop
@@ -200,12 +189,11 @@ subroutine crystallite_init
    eMax, &                                                                                          !< maximum number of elements
    nMax, &                                                                                          !< maximum number of ip neighbors
    myNcomponents, &                                                                                 !< number of components at current IP
-   section = 0_pInt, &
    mySize
 
+ character(len=64), dimension(:), allocatable :: str
  character(len=65536) :: &
-   tag = '', &
-   line= ''
+   tag = ''
 
  write(6,'(/,a)')   ' <<<+-  crystallite init  -+>>>'
  write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
@@ -277,85 +265,61 @@ subroutine crystallite_init
  allocate(crystallite_sizePostResult(maxval(crystallite_Noutput), &
                                      material_Ncrystallite), source=0_pInt)
 
- if (.not. IO_open_jobFile_stat(FILEUNIT,material_localFileExt)) &                                  !  no local material configuration present...
-   call IO_open_file(FILEUNIT,material_configFile)                                                  ! ...open material.config file
 
- do while (trim(line) /= IO_EOF .and. IO_lc(IO_getTag(line,'<','>')) /= material_partCrystallite)   ! wind forward to <crystallite>
-   line = IO_read(FILEUNIT)
- enddo
-
- do while (trim(line) /= IO_EOF)                                                                    ! read through sections of crystallite part
-   line = IO_read(FILEUNIT)
-   if (IO_isBlank(line)) cycle                                                                      ! skip empty lines
-   if (IO_getTag(line,'<','>') /= '') then                                                          ! stop at next part
-     line = IO_read(FILEUNIT, .true.)                                                               ! reset IO_read
-     exit
-   endif
-   if (IO_getTag(line,'[',']') /= '') then                                                          ! next section
-     section = section + 1_pInt
-     o = 0_pInt                                                                                     ! reset output counter
-     cycle                                                                                          ! skip to next line
-   endif
-   if (section > 0_pInt) then
-     chunkPos = IO_stringPos(line)
-     tag = IO_lc(IO_stringValue(line,chunkPos,1_pInt))                                              ! extract key
-     select case(tag)
-       case ('(output)')
-         o = o + 1_pInt
-         crystallite_output(o,section) = IO_lc(IO_stringValue(line,chunkPos,2_pInt))
-         outputName: select case(crystallite_output(o,section))
+ do c = 1_pInt, material_Ncrystallite
+   str =  crystalliteConfig(c)%getStrings('(output)')!,defaultVal=[])
+   do o = 1_pInt, size(str)
+     outputName: select case(str(o))
            case ('phase') outputName
-             crystallite_outputID(o,section) = phase_ID
+             crystallite_outputID(o,c) = phase_ID
            case ('texture') outputName
-             crystallite_outputID(o,section) = texture_ID
+             crystallite_outputID(o,c) = texture_ID
            case ('volume') outputName
-             crystallite_outputID(o,section) = volume_ID
+             crystallite_outputID(o,c) = volume_ID
            case ('grainrotationx') outputName
-             crystallite_outputID(o,section) = grainrotationx_ID
+             crystallite_outputID(o,c) = grainrotationx_ID
            case ('grainrotationy') outputName
-             crystallite_outputID(o,section) = grainrotationy_ID
+             crystallite_outputID(o,c) = grainrotationy_ID
            case ('grainrotationz') outputName
-             crystallite_outputID(o,section) = grainrotationx_ID
+             crystallite_outputID(o,c) = grainrotationx_ID
            case ('orientation') outputName
-             crystallite_outputID(o,section) = orientation_ID
+             crystallite_outputID(o,c) = orientation_ID
            case ('grainrotation') outputName
-             crystallite_outputID(o,section) = grainrotation_ID
+             crystallite_outputID(o,c) = grainrotation_ID
            case ('eulerangles') outputName
-             crystallite_outputID(o,section) = eulerangles_ID
+             crystallite_outputID(o,c) = eulerangles_ID
            case ('defgrad','f') outputName
-             crystallite_outputID(o,section) = defgrad_ID
+             crystallite_outputID(o,c) = defgrad_ID
            case ('fe') outputName
-             crystallite_outputID(o,section) = fe_ID
+             crystallite_outputID(o,c) = fe_ID
            case ('fp') outputName
-             crystallite_outputID(o,section) = fp_ID
+             crystallite_outputID(o,c) = fp_ID
            case ('fi') outputName
-             crystallite_outputID(o,section) = fi_ID
+             crystallite_outputID(o,c) = fi_ID
            case ('lp') outputName
-             crystallite_outputID(o,section) = lp_ID
+             crystallite_outputID(o,c) = lp_ID
            case ('li') outputName
-             crystallite_outputID(o,section) = li_ID
+             crystallite_outputID(o,c) = li_ID
            case ('e') outputName
-             crystallite_outputID(o,section) = e_ID
+             crystallite_outputID(o,c) = e_ID
            case ('ee') outputName
-             crystallite_outputID(o,section) = ee_ID
+             crystallite_outputID(o,c) = ee_ID
            case ('p','firstpiola','1stpiola') outputName
-             crystallite_outputID(o,section) = p_ID
+             crystallite_outputID(o,c) = p_ID
            case ('s','tstar','secondpiola','2ndpiola') outputName
-             crystallite_outputID(o,section) = s_ID
+             crystallite_outputID(o,c) = s_ID
            case ('elasmatrix') outputName
-             crystallite_outputID(o,section) = elasmatrix_ID
+             crystallite_outputID(o,c) = elasmatrix_ID
            case ('neighboringip') outputName
-             crystallite_outputID(o,section) = neighboringip_ID
+             crystallite_outputID(o,c) = neighboringip_ID
            case ('neighboringelement') outputName
-             crystallite_outputID(o,section) = neighboringelement_ID
+             crystallite_outputID(o,c) = neighboringelement_ID
            case default outputName
-             call IO_error(105_pInt,ext_msg=IO_stringValue(line,chunkPos,2_pInt)//' (Crystallite)')
+             call IO_error(105_pInt,ext_msg=tag//' (Crystallite)')
          end select outputName
-     end select
-   endif
+enddo
  enddo
 
- close(FILEUNIT)
 
  do r = 1_pInt,material_Ncrystallite
    do o = 1_pInt,crystallite_Noutput(r)
@@ -537,7 +501,6 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
  use math, only: &
    math_inv33, &
    math_identity2nd, &
-   math_transpose33, &
    math_mul33x33, &
    math_mul66x6, &
    math_Mandel6to33, &
@@ -616,17 +579,17 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
      write(6,'(/,a,i8,1x,a,i8,a,1x,i2,1x,i3)')      '<< CRYST >> boundary values at el ip ipc ', &
        debug_e,'(',mesh_element(1,debug_e), ')',debug_i, debug_g
    write(6,'(a,/,3(12x,3(f14.9,1x)/))') '<< CRYST >> F  ', &
-                                         math_transpose33(crystallite_partionedF(1:3,1:3,debug_g,debug_i,debug_e))
+                                         transpose(crystallite_partionedF(1:3,1:3,debug_g,debug_i,debug_e))
    write(6,'(a,/,3(12x,3(f14.9,1x)/))') '<< CRYST >> F0 ', &
-                                         math_transpose33(crystallite_partionedF0(1:3,1:3,debug_g,debug_i,debug_e))
+                                         transpose(crystallite_partionedF0(1:3,1:3,debug_g,debug_i,debug_e))
    write(6,'(a,/,3(12x,3(f14.9,1x)/))') '<< CRYST >> Fp0', &
-                                         math_transpose33(crystallite_partionedFp0(1:3,1:3,debug_g,debug_i,debug_e))
+                                         transpose(crystallite_partionedFp0(1:3,1:3,debug_g,debug_i,debug_e))
    write(6,'(a,/,3(12x,3(f14.9,1x)/))') '<< CRYST >> Fi0', &
-                                         math_transpose33(crystallite_partionedFi0(1:3,1:3,debug_g,debug_i,debug_e))
+                                         transpose(crystallite_partionedFi0(1:3,1:3,debug_g,debug_i,debug_e))
    write(6,'(a,/,3(12x,3(f14.9,1x)/))') '<< CRYST >> Lp0', &
-                                         math_transpose33(crystallite_partionedLp0(1:3,1:3,debug_g,debug_i,debug_e))
+                                         transpose(crystallite_partionedLp0(1:3,1:3,debug_g,debug_i,debug_e))
    write(6,'(a,/,3(12x,3(f14.9,1x)/))') '<< CRYST >> Li0', &
-                                         math_transpose33(crystallite_partionedLi0(1:3,1:3,debug_g,debug_i,debug_e))
+                                         transpose(crystallite_partionedLi0(1:3,1:3,debug_g,debug_i,debug_e))
  endif
 
 !--------------------------------------------------------------------------------------------------
@@ -1107,15 +1070,15 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
                   .or. .not. iand(debug_level(debug_crystallite),debug_levelSelective) /= 0_pInt)) then
          write(6,'(a,i8,1x,i2,1x,i3)') '<< CRYST >> central solution of cryst_StressAndTangent at el ip ipc ',e,i,c
          write(6,'(/,a,/,3(12x,3(f12.4,1x)/))') '<< CRYST >> P / MPa', &
-                                          math_transpose33(crystallite_P(1:3,1:3,c,i,e))*1.0e-6_pReal
+                                          transpose(crystallite_P(1:3,1:3,c,i,e))*1.0e-6_pReal
          write(6,'(a,/,3(12x,3(f14.9,1x)/))')   '<< CRYST >> Fp', &
-                                          math_transpose33(crystallite_Fp(1:3,1:3,c,i,e))
+                                          transpose(crystallite_Fp(1:3,1:3,c,i,e))
          write(6,'(a,/,3(12x,3(f14.9,1x)/))')   '<< CRYST >> Fi', &
-                                          math_transpose33(crystallite_Fi(1:3,1:3,c,i,e))
+                                          transpose(crystallite_Fi(1:3,1:3,c,i,e))
          write(6,'(a,/,3(12x,3(f14.9,1x)/),/)') '<< CRYST >> Lp', &
-                                          math_transpose33(crystallite_Lp(1:3,1:3,c,i,e))
+                                          transpose(crystallite_Lp(1:3,1:3,c,i,e))
          write(6,'(a,/,3(12x,3(f14.9,1x)/),/)') '<< CRYST >> Li', &
-                                          math_transpose33(crystallite_Li(1:3,1:3,c,i,e))
+                                          transpose(crystallite_Li(1:3,1:3,c,i,e))
          flush(6)
        endif
      enddo
@@ -1166,7 +1129,7 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
                                            crystallite_Fi(1:3,1:3,c,i,e),c,i,e)                    ! call constitutive law to calculate Lp tangent in lattice configuration
          dLpdS = math_mul3333xx3333(dLpdFi,dFidS) + dLpdS
 
-         temp_33   = math_transpose33(math_mul33x33(crystallite_invFp(1:3,1:3,c,i,e), &
+         temp_33   = transpose(math_mul33x33(crystallite_invFp(1:3,1:3,c,i,e), &
                                                     crystallite_invFi(1:3,1:3,c,i,e)))
          rhs_3333 = 0.0_pReal
          forall(p=1_pInt:3_pInt, o=1_pInt:3_pInt) &
@@ -1208,12 +1171,12 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
          crystallite_dPdF(1:3,1:3,1:3,1:3,c,i,e) = 0.0_pReal
          temp_33 = math_mul33x33(crystallite_invFp(1:3,1:3,c,i,e), &
                               math_mul33x33(math_Mandel6to33(crystallite_Tstar_v(1:6,c,i,e)), &
-                                            math_transpose33(crystallite_invFp(1:3,1:3,c,i,e))))
+                                            transpose(crystallite_invFp(1:3,1:3,c,i,e))))
          forall(p=1_pInt:3_pInt) &
-           crystallite_dPdF(p,1:3,p,1:3,c,i,e) = math_transpose33(temp_33)
+           crystallite_dPdF(p,1:3,p,1:3,c,i,e) = transpose(temp_33)
 
          temp_33 = math_mul33x33(math_Mandel6to33(crystallite_Tstar_v(1:6,c,i,e)), &
-                              math_transpose33(crystallite_invFp(1:3,1:3,c,i,e)))
+                              transpose(crystallite_invFp(1:3,1:3,c,i,e)))
          forall(p=1_pInt:3_pInt, o=1_pInt:3_pInt) &
            crystallite_dPdF(1:3,1:3,p,o,c,i,e) = crystallite_dPdF(1:3,1:3,p,o,c,i,e) + &
              math_mul33x33(math_mul33x33(crystallite_subF(1:3,1:3,c,i,e),dFpinvdF(1:3,1:3,p,o)),temp_33)
@@ -1223,14 +1186,14 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
          forall(p=1_pInt:3_pInt, o=1_pInt:3_pInt) &
            crystallite_dPdF(1:3,1:3,p,o,c,i,e) = crystallite_dPdF(1:3,1:3,p,o,c,i,e) + &
              math_mul33x33(math_mul33x33(temp_33,dSdF(1:3,1:3,p,o)), &
-                           math_transpose33(crystallite_invFp(1:3,1:3,c,i,e)))
+                           transpose(crystallite_invFp(1:3,1:3,c,i,e)))
 
          temp_33 = math_mul33x33(math_mul33x33(crystallite_subF(1:3,1:3,c,i,e), &
                                             crystallite_invFp(1:3,1:3,c,i,e)), &
                               math_Mandel6to33(crystallite_Tstar_v(1:6,c,i,e)))
          forall(p=1_pInt:3_pInt, o=1_pInt:3_pInt) &
            crystallite_dPdF(1:3,1:3,p,o,c,i,e) = crystallite_dPdF(1:3,1:3,p,o,c,i,e) + &
-             math_mul33x33(temp_33,math_transpose33(dFpinvdF(1:3,1:3,p,o)))
+             math_mul33x33(temp_33,transpose(dFpinvdF(1:3,1:3,p,o)))
 
      enddo; enddo
    enddo elementLooping6
@@ -3195,7 +3158,6 @@ function crystallite_push33ToRef(ipc,ip,el, tensor33)
  use math, only: &
   math_mul33x33, &
   math_inv33, &
-  math_transpose33, &
   math_EulerToR
  use material, only: &
   material_EulerAngles
@@ -3210,8 +3172,8 @@ function crystallite_push33ToRef(ipc,ip,el, tensor33)
    ipc                         ! grain index
 
  T = math_mul33x33(math_EulerToR(material_EulerAngles(1:3,ipc,ip,el)), &
-                   math_transpose33(math_inv33(crystallite_subF(1:3,1:3,ipc,ip,el))))
- crystallite_push33ToRef = math_mul33x33(math_transpose33(T),math_mul33x33(tensor33,T))
+                   transpose(math_inv33(crystallite_subF(1:3,1:3,ipc,ip,el))))
+ crystallite_push33ToRef = math_mul33x33(transpose(T),math_mul33x33(tensor33,T))
 
 end function crystallite_push33ToRef
 
@@ -3260,7 +3222,6 @@ logical function crystallite_integrateStress(&
                          math_mul3333xx3333, &
                          math_mul66x6, &
                          math_mul99x99, &
-                         math_transpose33, &
                          math_inv33, &
                          math_invert, &
                          math_det33, &
@@ -3386,7 +3347,7 @@ logical function crystallite_integrateStress(&
      write(6,'(a,i8,1x,a,i8,a,1x,i2,1x,i3)') '<< CRYST >> integrateStress failed on inversion of Fp_current at el (elFE) ip ipc ',&
        el,'(',mesh_element(1,el),')',ip,ipc
      if (iand(debug_level(debug_crystallite), debug_levelExtensive) > 0_pInt) &
-       write(6,'(/,a,/,3(12x,3(f12.7,1x)/))') '<< CRYST >> Fp_current',math_transpose33(Fp_current(1:3,1:3))
+       write(6,'(/,a,/,3(12x,3(f12.7,1x)/))') '<< CRYST >> Fp_current',transpose(Fp_current(1:3,1:3))
    endif
 #endif
    return
@@ -3402,7 +3363,7 @@ logical function crystallite_integrateStress(&
      write(6,'(a,i8,1x,a,i8,a,1x,i2,1x,i3)') '<< CRYST >> integrateStress failed on inversion of Fi_current at el (elFE) ip ipc ',&
        el,'(',mesh_element(1,el),')',ip,ipc
      if (iand(debug_level(debug_crystallite), debug_levelExtensive) > 0_pInt) &
-       write(6,'(/,a,/,3(12x,3(f12.7,1x)/))') '<< CRYST >> Fp_current',math_transpose33(Fi_current(1:3,1:3))
+       write(6,'(/,a,/,3(12x,3(f12.7,1x)/))') '<< CRYST >> Fp_current',transpose(Fi_current(1:3,1:3))
    endif
 #endif
    return
@@ -3465,9 +3426,9 @@ logical function crystallite_integrateStress(&
          .and. ((el == debug_e .and. ip == debug_i .and. ipc == debug_g) &
                 .or. .not. iand(debug_level(debug_crystallite), debug_levelSelective) /= 0_pInt)) then
        write(6,'(a,i3,/)')                  '<< CRYST >> stress iteration ', NiterationStressLp
-       write(6,'(a,/,3(12x,3(e20.10,1x)/))') '<< CRYST >> Lpguess', math_transpose33(Lpguess)
-       write(6,'(a,/,3(12x,3(e20.10,1x)/))') '<< CRYST >> Fi', math_transpose33(Fi_new)
-       write(6,'(a,/,3(12x,3(e20.10,1x)/))') '<< CRYST >> Fe', math_transpose33(Fe)
+       write(6,'(a,/,3(12x,3(e20.10,1x)/))') '<< CRYST >> Lpguess', transpose(Lpguess)
+       write(6,'(a,/,3(12x,3(e20.10,1x)/))') '<< CRYST >> Fi', transpose(Fi_new)
+       write(6,'(a,/,3(12x,3(e20.10,1x)/))') '<< CRYST >> Fe', transpose(Fe)
        write(6,'(a,/,6(e20.10,1x))')         '<< CRYST >> Tstar', Tstar_v
      endif
 #endif
@@ -3488,7 +3449,7 @@ logical function crystallite_integrateStress(&
      if (iand(debug_level(debug_crystallite), debug_levelExtensive) /= 0_pInt &
          .and. ((el == debug_e .and. ip == debug_i .and. ipc == debug_g) &
                 .or. .not. iand(debug_level(debug_crystallite), debug_levelSelective) /= 0_pInt)) then
-       write(6,'(a,/,3(12x,3(e20.10,1x)/))') '<< CRYST >> Lp_constitutive', math_transpose33(Lp_constitutive)
+       write(6,'(a,/,3(12x,3(e20.10,1x)/))') '<< CRYST >> Lp_constitutive', transpose(Lp_constitutive)
      endif
 #endif
 
@@ -3534,7 +3495,7 @@ logical function crystallite_integrateStress(&
      if (mod(jacoCounterLp, iJacoLpresiduum) == 0_pInt) then
        dFe_dLp3333 = 0.0_pReal
        forall(o=1_pInt:3_pInt,p=1_pInt:3_pInt) &
-         dFe_dLp3333(o,1:3,p,1:3) = A(o,p)*math_transpose33(invFi_new)                                ! dFe_dLp(i,j,k,l) = -dt * A(i,k) invFi(l,j)
+         dFe_dLp3333(o,1:3,p,1:3) = A(o,p)*transpose(invFi_new)                                ! dFe_dLp(i,j,k,l) = -dt * A(i,k) invFi(l,j)
        dFe_dLp3333 = - dt * dFe_dLp3333
        dRLp_dLp    =   math_identity2nd(9_pInt) &
                      - math_Plain3333to99(math_mul3333xx3333(math_mul3333xx3333(dLp_dT3333,dT_dFe3333),dFe_dLp3333))
@@ -3564,10 +3525,10 @@ logical function crystallite_integrateStress(&
              write(6,'(a,/,9(12x,9(e15.3,1x)/))') '<< CRYST >> dFe_dLp',transpose(math_Plain3333to99(dFe_dLp3333))
              write(6,'(a,/,9(12x,9(e15.3,1x)/))') '<< CRYST >> dT_dFe_constitutive',transpose(math_Plain3333to99(dT_dFe3333))
              write(6,'(a,/,9(12x,9(e15.3,1x)/))') '<< CRYST >> dLp_dT_constitutive',transpose(math_Plain3333to99(dLp_dT3333))
-             write(6,'(a,/,3(12x,3(e20.7,1x)/))') '<< CRYST >> A',math_transpose33(A)
-             write(6,'(a,/,3(12x,3(e20.7,1x)/))') '<< CRYST >> B',math_transpose33(B)
-             write(6,'(a,/,3(12x,3(e20.7,1x)/))') '<< CRYST >> Lp_constitutive',math_transpose33(Lp_constitutive)
-             write(6,'(a,/,3(12x,3(e20.7,1x)/))') '<< CRYST >> Lpguess',math_transpose33(Lpguess)
+             write(6,'(a,/,3(12x,3(e20.7,1x)/))') '<< CRYST >> A',transpose(A)
+             write(6,'(a,/,3(12x,3(e20.7,1x)/))') '<< CRYST >> B',transpose(B)
+             write(6,'(a,/,3(12x,3(e20.7,1x)/))') '<< CRYST >> Lp_constitutive',transpose(Lp_constitutive)
+             write(6,'(a,/,3(12x,3(e20.7,1x)/))') '<< CRYST >> Lpguess',transpose(Lpguess)
            endif
          endif
 #endif
@@ -3597,8 +3558,8 @@ logical function crystallite_integrateStress(&
      if (iand(debug_level(debug_crystallite), debug_levelExtensive) /= 0_pInt &
          .and. ((el == debug_e .and. ip == debug_i .and. ipc == debug_g) &
                 .or. .not. iand(debug_level(debug_crystallite), debug_levelSelective) /= 0_pInt)) then
-       write(6,'(a,/,3(12x,3(e20.7,1x)/))') '<< CRYST >> Li_constitutive', math_transpose33(Li_constitutive)
-       write(6,'(a,/,3(12x,3(e20.7,1x)/))') '<< CRYST >> Liguess', math_transpose33(Liguess)
+       write(6,'(a,/,3(12x,3(e20.7,1x)/))') '<< CRYST >> Li_constitutive', transpose(Li_constitutive)
+       write(6,'(a,/,3(12x,3(e20.7,1x)/))') '<< CRYST >> Liguess', transpose(Liguess)
      endif
 #endif
    !* update current residuum and check for convergence of loop
@@ -3653,8 +3614,8 @@ logical function crystallite_integrateStress(&
            write(6,'(a,/,9(12x,9(e15.3,1x)/))') '<< CRYST >> dFe_dLi',transpose(math_Plain3333to99(dFe_dLi3333))
            write(6,'(a,/,9(12x,9(e15.3,1x)/))') '<< CRYST >> dT_dFi_constitutive',transpose(math_Plain3333to99(dT_dFi3333))
            write(6,'(a,/,9(12x,9(e15.3,1x)/))') '<< CRYST >> dLi_dT_constitutive',transpose(math_Plain3333to99(dLi_dT3333))
-           write(6,'(a,/,3(12x,3(e20.7,1x)/))') '<< CRYST >> Li_constitutive',math_transpose33(Li_constitutive)
-           write(6,'(a,/,3(12x,3(e20.7,1x)/))') '<< CRYST >> Liguess',math_transpose33(Liguess)
+           write(6,'(a,/,3(12x,3(e20.7,1x)/))') '<< CRYST >> Li_constitutive',transpose(Li_constitutive)
+           write(6,'(a,/,3(12x,3(e20.7,1x)/))') '<< CRYST >> Liguess',transpose(Liguess)
          endif
        endif
 #endif
@@ -3688,7 +3649,7 @@ logical function crystallite_integrateStress(&
      if (iand(debug_level(debug_crystallite), debug_levelExtensive) /= 0_pInt &
          .and. ((el == debug_e .and. ip == debug_i .and. ipc == debug_g) &
                 .or. .not. iand(debug_level(debug_crystallite), debug_levelSelective) /= 0_pInt)) &
-       write(6,'(/,a,/,3(12x,3(f12.7,1x)/))') '<< CRYST >> invFp_new',math_transpose33(invFp_new)
+       write(6,'(/,a,/,3(12x,3(f12.7,1x)/))') '<< CRYST >> invFp_new',transpose(invFp_new)
    endif
 #endif
    return
@@ -3699,7 +3660,7 @@ logical function crystallite_integrateStress(&
 
  crystallite_P(1:3,1:3,ipc,ip,el) = math_mul33x33(math_mul33x33(Fg_new,invFp_new), &
                                               math_mul33x33(math_Mandel6to33(Tstar_v), &
-                                                            math_transpose33(invFp_new)))
+                                                            transpose(invFp_new)))
 
  !* store local values in global variables
 
@@ -3719,13 +3680,13 @@ logical function crystallite_integrateStress(&
  if (iand(debug_level(debug_crystallite),debug_levelExtensive) /= 0_pInt &
      .and. ((el == debug_e .and. ip == debug_i .and. ipc == debug_g) &
              .or. .not. iand(debug_level(debug_crystallite), debug_levelSelective) /= 0_pInt)) then
-   write(6,'(a,/,3(12x,3(f12.7,1x)/))') '<< CRYST >> P / MPa',math_transpose33(crystallite_P(1:3,1:3,ipc,ip,el))*1.0e-6_pReal
+   write(6,'(a,/,3(12x,3(f12.7,1x)/))') '<< CRYST >> P / MPa',transpose(crystallite_P(1:3,1:3,ipc,ip,el))*1.0e-6_pReal
    write(6,'(a,/,3(12x,3(f12.7,1x)/))') '<< CRYST >> Cauchy / MPa', &
-              math_mul33x33(crystallite_P(1:3,1:3,ipc,ip,el), math_transpose33(Fg_new)) * 1.0e-6_pReal / math_det33(Fg_new)
+              math_mul33x33(crystallite_P(1:3,1:3,ipc,ip,el), transpose(Fg_new)) * 1.0e-6_pReal / math_det33(Fg_new)
    write(6,'(a,/,3(12x,3(f12.7,1x)/))') '<< CRYST >> Fe Lp Fe^-1', &
-              math_transpose33(math_mul33x33(Fe_new, math_mul33x33(crystallite_Lp(1:3,1:3,ipc,ip,el), math_inv33(Fe_new))))    ! transpose to get correct print out order
-   write(6,'(a,/,3(12x,3(f12.7,1x)/))') '<< CRYST >> Fp',math_transpose33(crystallite_Fp(1:3,1:3,ipc,ip,el))
-   write(6,'(a,/,3(12x,3(f12.7,1x)/))') '<< CRYST >> Fi',math_transpose33(crystallite_Fi(1:3,1:3,ipc,ip,el))
+              transpose(math_mul33x33(Fe_new, math_mul33x33(crystallite_Lp(1:3,1:3,ipc,ip,el), math_inv33(Fe_new))))    ! transpose to get correct print out order
+   write(6,'(a,/,3(12x,3(f12.7,1x)/))') '<< CRYST >> Fp',transpose(crystallite_Fp(1:3,1:3,ipc,ip,el))
+   write(6,'(a,/,3(12x,3(f12.7,1x)/))') '<< CRYST >> Fi',transpose(crystallite_Fi(1:3,1:3,ipc,ip,el))
  endif
 #endif
 
@@ -3842,7 +3803,6 @@ function crystallite_postResults(ipc, ip, el)
    math_qToEuler, &
    math_qToEulerAxisAngle, &
    math_mul33x33, &
-   math_transpose33, &
    math_det33, &
    math_I3, &
    inDeg, &
@@ -3945,41 +3905,41 @@ function crystallite_postResults(ipc, ip, el)
      case (defgrad_ID)
        mySize = 9_pInt
        crystallite_postResults(c+1:c+mySize) = &
-         reshape(math_transpose33(crystallite_partionedF(1:3,1:3,ipc,ip,el)),[mySize])
+         reshape(transpose(crystallite_partionedF(1:3,1:3,ipc,ip,el)),[mySize])
      case (e_ID)
        mySize = 9_pInt
        crystallite_postResults(c+1:c+mySize) = 0.5_pReal * reshape((math_mul33x33( &
-                                               math_transpose33(crystallite_partionedF(1:3,1:3,ipc,ip,el)), &
+                                               transpose(crystallite_partionedF(1:3,1:3,ipc,ip,el)), &
                                                crystallite_partionedF(1:3,1:3,ipc,ip,el)) - math_I3),[mySize])
      case (fe_ID)
        mySize = 9_pInt
        crystallite_postResults(c+1:c+mySize) = &
-         reshape(math_transpose33(crystallite_Fe(1:3,1:3,ipc,ip,el)),[mySize])
+         reshape(transpose(crystallite_Fe(1:3,1:3,ipc,ip,el)),[mySize])
      case (ee_ID)
-       Ee = 0.5_pReal *(math_mul33x33(math_transpose33(crystallite_Fe(1:3,1:3,ipc,ip,el)), &
+       Ee = 0.5_pReal *(math_mul33x33(transpose(crystallite_Fe(1:3,1:3,ipc,ip,el)), &
                                                crystallite_Fe(1:3,1:3,ipc,ip,el)) - math_I3)
        mySize = 9_pInt
        crystallite_postResults(c+1:c+mySize) = reshape(Ee,[mySize])
      case (fp_ID)
        mySize = 9_pInt
        crystallite_postResults(c+1:c+mySize) = &
-         reshape(math_transpose33(crystallite_Fp(1:3,1:3,ipc,ip,el)),[mySize])
+         reshape(transpose(crystallite_Fp(1:3,1:3,ipc,ip,el)),[mySize])
      case (fi_ID)
        mySize = 9_pInt
        crystallite_postResults(c+1:c+mySize) = &
-         reshape(math_transpose33(crystallite_Fi(1:3,1:3,ipc,ip,el)),[mySize])
+         reshape(transpose(crystallite_Fi(1:3,1:3,ipc,ip,el)),[mySize])
      case (lp_ID)
        mySize = 9_pInt
        crystallite_postResults(c+1:c+mySize) = &
-         reshape(math_transpose33(crystallite_Lp(1:3,1:3,ipc,ip,el)),[mySize])
+         reshape(transpose(crystallite_Lp(1:3,1:3,ipc,ip,el)),[mySize])
      case (li_ID)
        mySize = 9_pInt
        crystallite_postResults(c+1:c+mySize) = &
-         reshape(math_transpose33(crystallite_Li(1:3,1:3,ipc,ip,el)),[mySize])
+         reshape(transpose(crystallite_Li(1:3,1:3,ipc,ip,el)),[mySize])
      case (p_ID)
        mySize = 9_pInt
        crystallite_postResults(c+1:c+mySize) = &
-         reshape(math_transpose33(crystallite_P(1:3,1:3,ipc,ip,el)),[mySize])
+         reshape(transpose(crystallite_P(1:3,1:3,ipc,ip,el)),[mySize])
      case (s_ID)
        mySize = 9_pInt
        crystallite_postResults(c+1:c+mySize) = &

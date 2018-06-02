@@ -443,11 +443,9 @@ subroutine homogenization_init
  allocate(materialpoint_results(materialpoint_sizeResults,mesh_maxNips,mesh_NcpElems))
 #endif
 
- mainProcess: if (worldrank == 0) then
-   write(6,'(/,a)')   ' <<<+-  homogenization init  -+>>>'
-   write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
+ write(6,'(/,a)')   ' <<<+-  homogenization init  -+>>>'
+ write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
- endif mainProcess
 
  if (iand(debug_level(debug_homogenization), debug_levelBasic) /= 0_pInt) then
 #ifdef TODO
@@ -475,7 +473,7 @@ subroutine homogenization_init
  flush(6)
 
  if (debug_g < 1 .or. debug_g > homogenization_Ngrains(mesh_element(3,debug_e))) &
-   call IO_error(602_pInt,ext_msg='component (grain)', el=debug_e, g=debug_g)
+   call IO_error(602_pInt,ext_msg='constituent', el=debug_e, g=debug_g)
 
 end subroutine homogenization_init
 
