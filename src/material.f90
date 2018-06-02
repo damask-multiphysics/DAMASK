@@ -833,7 +833,6 @@ character(len=65536) function material_parseMicrostructure(fileUnit)
  do m=1_pInt, material_Nmicrostructure
      call microstructureConfig(m)%getRaws('(constituent)',str,chunkPoss)
      do constituent = 1_pInt, size(str)
-        print*, trim(str(constituent))
         do i = 2_pInt,6_pInt,2_pInt
            tag = IO_lc(IO_stringValue(str(constituent),chunkPoss(:,constituent),i))
 
