@@ -309,6 +309,7 @@ module material
    phaseConfig, &
    microstructureConfig, &
    homogenizationConfig, &
+   textureConfig, &
    crystalliteConfig
 
  public :: &
@@ -443,6 +444,10 @@ subroutine material_init()
      case (trim(material_partHomogenization))
        line = material_parseHomogenization(FILEUNIT)
        if (iand(myDebug,debug_levelBasic) /= 0_pInt) write(6,'(a)') ' Homogenization parsed'; flush(6)
+    
+     case (trim(material_partTexture))
+       line = material_parseTexture(FILEUNIT)
+       if (iand(myDebug,debug_levelBasic) /= 0_pInt) write(6,'(a)') ' Texture parsed'; flush(6)
 
      case default
        line = IO_read(fileUnit)
@@ -450,10 +455,6 @@ subroutine material_init()
    end select
 
  enddo
-
- call material_parseTexture(FILEUNIT,material_partTexture)
- if (iand(myDebug,debug_levelBasic) /= 0_pInt) write(6,'(a)') ' Texture parsed'; flush(6)
- close(FILEUNIT)
 
  allocate(plasticState       (material_Nphase))
  allocate(sourceState        (material_Nphase))
@@ -1002,7 +1003,6 @@ character(len=65536) function material_parsePhase(fileUnit)
    endif inSection
  enddo
 
-
  material_Nphase = size(phaseConfig)
  if (material_Nphase < 1_pInt) call IO_error(160_pInt,ext_msg=material_partPhase)
 
@@ -1123,7 +1123,7 @@ end function material_parsePhase
 !--------------------------------------------------------------------------------------------------
 !> @brief parses the texture part in the material configuration file
 !--------------------------------------------------------------------------------------------------
-subroutine material_parseTexture(fileUnit,myPart)
+character(len=65536) function material_parseTexture(fileUnit)
  use prec, only: &
    dNeq
  use IO, only: &
@@ -1148,63 +1148,77 @@ subroutine material_parseTexture(fileUnit,myPart)
    math_inv33
 
  implicit none
- character(len=*), intent(in) :: myPart
  integer(pInt),    intent(in) :: fileUnit
 
 
  integer(pInt), allocatable, dimension(:) :: chunkPos
- integer(pInt) :: Nsections, section, gauss, fiber, j
- character(len=65536) :: tag
- character(len=65536) :: line
+ integer(pInt) :: Nsections, section, gauss, fiber, j, t, i
+ character(len=64) ::  tag2
+ character(len=256), dimension(:), allocatable ::  bla
  logical              :: echo
 
- echo = IO_globalTagInPart(fileUnit,myPart,'/echo/')
+ character(len=65536) :: line, tag,devNull
 
- Nsections = IO_countSections(fileUnit,myPart)
- material_Ntexture = Nsections
- if (Nsections < 1_pInt) call IO_error(160_pInt,ext_msg=myPart)
+ allocate(textureConfig(0))
 
- allocate(texture_name(Nsections));        texture_name=''
- allocate(texture_ODFfile(Nsections));  texture_ODFfile=''
- allocate(texture_symmetry(Nsections),           source=1_pInt)
- allocate(texture_Ngauss(Nsections),             source=0_pInt)
- allocate(texture_Nfiber(Nsections),             source=0_pInt)
-
- texture_Ngauss = IO_countTagInPart(fileUnit,myPart,'(gauss)', Nsections) + &
-                  IO_countTagInPart(fileUnit,myPart,'(random)',Nsections)
- texture_Nfiber = IO_countTagInPart(fileUnit,myPart,'(fiber)', Nsections)
- texture_maxNgauss = maxval(texture_Ngauss)
- texture_maxNfiber = maxval(texture_Nfiber)
- allocate(texture_Gauss (5,texture_maxNgauss,Nsections), source=0.0_pReal)
- allocate(texture_Fiber (6,texture_maxNfiber,Nsections), source=0.0_pReal)
- allocate(texture_transformation(3,3,Nsections),         source=0.0_pReal)
- texture_transformation = spread(math_I3,3,Nsections)
-
- rewind(fileUnit)
- line    = ''                                                                                       ! to have in initialized
- section = 0_pInt                                                                                   ! - " -
- gauss   = 0_pInt                                                                                   ! - " -
- fiber   = 0_pInt                                                                                   ! - " -
- do while (trim(line) /= IO_EOF .and. IO_lc(IO_getTag(line,'<','>')) /= myPart)                     ! wind forward to <texture>
-   line = IO_read(fileUnit)
- enddo
- if (echo) write(6,'(/,1x,a)') trim(line)                                                           ! echo part header
-
- do while (trim(line) /= IO_EOF)
+ t = 0_pInt
+ do while (trim(line) /= IO_EOF)                                                                    ! read through sections of material part
    line = IO_read(fileUnit)
    if (IO_isBlank(line)) cycle                                                                      ! skip empty lines
-   if (IO_getTag(line,'<','>') /= '') then                                                          ! stop at next part
-     line = IO_read(fileUnit, .true.)                                                               ! reset IO_read
+   foundNextPart: if (IO_getTag(line,'<','>') /= '') then
+     devNull = IO_read(fileUnit, .true.)                                                            ! reset IO_read
      exit
-   endif
-   if (echo) write(6,'(2x,a)') trim(line)                                                           ! echo back read lines
-   if (IO_getTag(line,'[',']') /= '') then                                                          ! next section
-     section = section + 1_pInt
-     gauss = 0_pInt
-     fiber = 0_pInt
-     texture_name(section) = IO_getTag(line,'[',']')
-   endif
-   if (section > 0_pInt) then
+   endif foundNextPart
+   nextSection: if (IO_getTag(line,'[',']') /= '') then
+     t = t + 1_pInt
+     textureConfig = [textureConfig, emptyList]
+     tag2 = IO_getTag(line,'[',']')
+     GfortranBug86033: if (.not. allocated(texture_name)) then
+       allocate(texture_name(1),source=tag2)
+     else GfortranBug86033
+       texture_name  = [texture_name,tag2]
+     endif GfortranBug86033
+   endif nextSection
+   chunkPos = IO_stringPos(line)
+   tag = IO_lc(IO_stringValue(trim(line),chunkPos,1_pInt))                                          ! extract key
+   inSection: if (t > 0_pInt) then
+     chunkPos = IO_stringPos(line)
+     call textureConfig(t)%add(IO_lc(trim(line)),chunkPos)
+   else inSection
+     echo = (trim(tag) == '/echo/')
+   endif inSection
+ enddo
+
+ material_Ntexture = size(textureConfig)
+ if (material_Ntexture < 1_pInt) call IO_error(160_pInt,ext_msg=material_partTexture)
+
+ allocate(texture_ODFfile(material_Ntexture));           texture_ODFfile=''
+ allocate(texture_symmetry(material_Ntexture),           source=1_pInt)
+ allocate(texture_Ngauss(material_Ntexture),             source=0_pInt)
+ allocate(texture_Nfiber(material_Ntexture),             source=0_pInt)
+
+ do t=1_pInt, material_Ntexture
+   texture_Ngauss(t) =  textureConfig(t)%countKeys('(gauss)') &
+                     +  textureConfig(t)%countKeys('(random)')
+   texture_Nfiber(t) =  textureConfig(t)%countKeys('(fiber)')
+ enddo
+
+ texture_maxNgauss = maxval(texture_Ngauss)
+ texture_maxNfiber = maxval(texture_Nfiber)
+ allocate(texture_Gauss (5,texture_maxNgauss,material_Ntexture), source=0.0_pReal)
+ allocate(texture_Fiber (6,texture_maxNfiber,material_Ntexture), source=0.0_pReal)
+ allocate(texture_transformation(3,3,material_Ntexture),         source=0.0_pReal)
+          texture_transformation = spread(math_I3,3,material_Ntexture)
+
+ do t=1_pInt, material_Ntexture
+   section = t
+   gauss = 0_pInt
+   fiber = 0_pInt
+   bla = textureConfig(t)%getStringsRaw()
+
+   lines: do i=1_pInt, size(bla)
+     line = bla(i)
+
      chunkPos = IO_stringPos(line)
      tag = IO_lc(IO_stringValue(line,chunkPos,1_pInt))                                             ! extract key
      textureType: select case(tag)
@@ -1297,12 +1311,12 @@ subroutine material_parseTexture(fileUnit,myPart)
                  texture_Fiber(6,fiber,section) = IO_floatValue(line,chunkPos,j+1_pInt)
            end select
          enddo
-
      end select textureType
-   endif
+   enddo lines
  enddo
 
-end subroutine material_parseTexture
+     material_parseTexture = line
+end function material_parseTexture
 
 
 !--------------------------------------------------------------------------------------------------
