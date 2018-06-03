@@ -1157,33 +1157,33 @@ character(len=65536) function material_parseTexture(fileUnit)
  character(len=256), dimension(:), allocatable ::  bla
  logical              :: echo
 
- character(len=65536) :: line, tag,devNull
+ character(len=65536) :: line, tag,devNull, line2
 
  allocate(textureConfig(0))
 
  t = 0_pInt
- do while (trim(line) /= IO_EOF)                                                                    ! read through sections of material part
-   line = IO_read(fileUnit)
-   if (IO_isBlank(line)) cycle                                                                      ! skip empty lines
-   foundNextPart: if (IO_getTag(line,'<','>') /= '') then
+ do while (trim(line2) /= IO_EOF)                                                                    ! read through sections of material part
+   line2 = IO_read(fileUnit)
+   if (IO_isBlank(line2)) cycle                                                                      ! skip empty lines
+   foundNextPart: if (IO_getTag(line2,'<','>') /= '') then
      devNull = IO_read(fileUnit, .true.)                                                            ! reset IO_read
      exit
    endif foundNextPart
-   nextSection: if (IO_getTag(line,'[',']') /= '') then
+   nextSection: if (IO_getTag(line2,'[',']') /= '') then
      t = t + 1_pInt
      textureConfig = [textureConfig, emptyList]
-     tag2 = IO_getTag(line,'[',']')
+     tag2 = IO_getTag(line2,'[',']')
      GfortranBug86033: if (.not. allocated(texture_name)) then
        allocate(texture_name(1),source=tag2)
      else GfortranBug86033
        texture_name  = [texture_name,tag2]
      endif GfortranBug86033
    endif nextSection
-   chunkPos = IO_stringPos(line)
-   tag = IO_lc(IO_stringValue(trim(line),chunkPos,1_pInt))                                          ! extract key
+   chunkPos = IO_stringPos(line2)
+   tag = IO_lc(IO_stringValue(trim(line2),chunkPos,1_pInt))                                          ! extract key
    inSection: if (t > 0_pInt) then
-     chunkPos = IO_stringPos(line)
-     call textureConfig(t)%add(IO_lc(trim(line)),chunkPos)
+     chunkPos = IO_stringPos(line2)
+     call textureConfig(t)%add(IO_lc(trim(line2)),chunkPos)
    else inSection
      echo = (trim(tag) == '/echo/')
    endif inSection
@@ -1315,7 +1315,7 @@ character(len=65536) function material_parseTexture(fileUnit)
    enddo lines
  enddo
 
-     material_parseTexture = line
+     material_parseTexture = line2
 end function material_parseTexture
 
 
