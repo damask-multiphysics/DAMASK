@@ -269,6 +269,7 @@ subroutine crystallite_init
  do c = 1_pInt, material_Ncrystallite
    str =  crystalliteConfig(c)%getStrings('(output)')!,defaultVal=[])
    do o = 1_pInt, size(str)
+     crystallite_output(o,c) = str(o)
      outputName: select case(str(o))
            case ('phase') outputName
              crystallite_outputID(o,c) = phase_ID

@@ -19,6 +19,7 @@ module chained_list
      procedure :: show           => show
      procedure :: getRaw         => getRaw
      procedure :: getRaws         => getRaws
+     procedure :: getStringsRaw         => getStringsRaw
 
      procedure :: getFloat       => getFloat
      procedure :: getFloatArray  => getFloatArray
@@ -156,6 +157,37 @@ subroutine getRaws(this,key,string,stringPos)
  end do
 end subroutine getRaws
 
+
+!--------------------------------------------------------------------------------------------------
+!> @brief gets raw data
+!> @details returns raw string and start/end position of chunks in this string
+!--------------------------------------------------------------------------------------------------
+function getStringsRaw(this)
+ use IO, only: &
+   IO_error, &
+   IO_stringValue
+
+ implicit none
+ class(tPartitionedStringList), intent(in)           :: this
+ character(len=256), dimension(:),allocatable :: getStringsRaw
+ character(len=256)          :: stringTmp
+ type(tPartitionedStringList),  pointer              :: tmp
+
+ tmp => this%next
+ do 
+   if (.not. associated(tmp)) then
+     if(size(getStringsRaw) < 0_pInt) call IO_error(1_pInt,ext_msg='getallraw empty list')
+     exit
+   endif
+     stringTmp = tmp%string%val
+     if (.not. allocated(getStringsRaw)) then
+       allocate(getStringsRaw(1),source=stringTmp)
+     else
+       getStringsRaw = [getStringsRaw,stringTmp]
+     endif 
+   tmp => tmp%next
+ end do
+end function getStringsRaw
 
 !--------------------------------------------------------------------------------------------------
 !> @brief gets float value for given key
@@ -408,7 +440,10 @@ end function getFloatArray
 
       tmp => this%next
       do 
-        if (.not. associated(tmp)) exit
+        if (.not. associated(tmp)) then
+          if (.not. allocated(getStrings)) allocate(getStrings(0),source=str)
+          exit
+        endif
         if (trim(IO_stringValue(tmp%string%val,tmp%string%pos,1))==trim(key)) then
           if (tmp%string%pos(1) < 2) print*, "NOT WORKKING"
           str = IO_StringValue(tmp%string%val,tmp%string%pos,2)

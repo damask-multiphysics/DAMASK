@@ -68,10 +68,10 @@ subroutine CPFEM_initAll(el,ip)
    math_init
  use mesh, only: &
    mesh_init
- use lattice, only: &
-   lattice_init
  use material, only: &
    material_init
+ use lattice, only: &
+   lattice_init
  use constitutive, only: &
    constitutive_init
  use crystallite, only: &
