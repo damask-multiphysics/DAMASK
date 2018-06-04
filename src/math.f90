@@ -1820,6 +1820,8 @@ function math_sampleFiberOri(alpha,beta,FWHM)
  integer(pInt):: j,&                                                                                !< index of smallest component
    i
 
+ allocate(a(0))
+ allocate(idx(0))
  fInC = [sin(alpha(1))*cos(alpha(2)), sin(alpha(1))*sin(alpha(2)), cos(alpha(1))]
  fInS = [sin(beta(1))*cos(beta(2)),   sin(beta(1))*sin(beta(2)),   cos(beta(1))]
 
