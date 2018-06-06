@@ -172,8 +172,9 @@ class Material():
               self.data[part][name_section][items[0]] = items[1:]
                   
   def read(self,file=None):
+    #re_include  = re.compile(r'^{(.+)}$')                   # pattern for file include
     with open(file,'r') as f:
-      c=f.readlines()
+      c = f.readlines()
     for p in self.parts:
       self.parse_data(part=p, content=c)
        
