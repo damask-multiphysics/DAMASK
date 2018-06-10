@@ -10,27 +10,32 @@ module config_material
  use prec, only: &
    pReal, &
    pInt
+
  implicit none
- !private 
+ private 
  type(tPartitionedStringList), public, protected, allocatable, dimension(:) :: &
    phaseConfig, &
    microstructureConfig, &
    homogenizationConfig, &
    textureConfig, &
    crystalliteConfig
+ 
  character(len=64), dimension(:), allocatable, public, protected :: &
    phase_name, &                                                                                    !< name of each phase
    homogenization_name, &                                                                           !< name of each homogenization
    crystallite_name, &                                                                              !< name of each crystallite setting
    microstructure_name, &                                                                           !< name of each microstructure
    texture_name                                                                                     !< name of each texture
+
+! ToDo: make private, no one needs to know that
  character(len=*), parameter, public  :: &
    MATERIAL_partHomogenization = 'homogenization', &                                                !< keyword for homogenization part
    MATERIAL_partCrystallite    = 'crystallite', &                                                   !< keyword for crystallite part
-   MATERIAL_partPhase          = 'phase',&                                                            !< keyword for phase part
+   MATERIAL_partPhase          = 'phase', &                                                         !< keyword for phase part
    MATERIAL_partMicrostructure = 'microstructure', &                                                !< keyword for microstructure part
    MATERIAL_partTexture        = 'texture'                                                          !< keyword for texture part
 
+! ToDo: Remove, use size(phaseConfig) etc
  integer(pInt), public, protected :: &
    material_Ntexture, &                                                                             !< number of textures
    material_Nphase, &                                                                               !< number of phases
@@ -38,9 +43,12 @@ module config_material
    material_Nmicrostructure, &                                                                      !< number of microstructures
    material_Ncrystallite                                                                            !< number of crystallite settings
 
+! ToDo: make private, no one needs to know that
  character(len=*), parameter, public  :: &
    MATERIAL_configFile         = 'material.config', &                                               !< generic name for material configuration file
    MATERIAL_localFileExt       = 'materialConfig'                                                   !< extension of solver job name depending material configuration file
+
+ public :: config_material_init
 
 contains
 
@@ -66,18 +74,11 @@ subroutine config_material_init()
 
  implicit none
  integer(pInt), parameter :: FILEUNIT = 200_pInt
- integer(pInt)            :: m,c,h, myDebug, myPhase, myHomog
- integer(pInt) :: &
-  g, &                                                                                              !< grain number
-  i, &                                                                                              !< integration point number
-  e, &                                                                                              !< element number
-  phase
- integer(pInt), dimension(:), allocatable :: ConstitutivePosition
- integer(pInt), dimension(:), allocatable :: CrystallitePosition
- integer(pInt), dimension(:), allocatable :: HomogenizationPosition
+ integer(pInt)            :: myDebug
 
  character(len=65536) :: &                                                                          
-  line,part
+  line, &
+  part
 
 
  myDebug = debug_level(debug_material)
@@ -158,7 +159,7 @@ subroutine parseFile(sectionNames,part,fileUnit,line)
  character(len=65536),intent(out) :: line
 
  integer(pInt), allocatable, dimension(:) :: chunkPos
- integer(pInt)        :: Nsections,  s
+ integer(pInt)        :: s
  character(len=65536) :: devNull
  character(len=64)    :: tag
  logical              :: echo
@@ -192,6 +193,11 @@ subroutine parseFile(sectionNames,part,fileUnit,line)
    endif inSection
  enddo
 
+ if (echo) then
+   do s = 1, size(sectionNames)
+     call part(s)%show()
+   end do
+ end if 
 end subroutine parseFile
 
 end module config_material

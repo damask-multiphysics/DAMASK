@@ -346,13 +346,7 @@ subroutine material_init()
 #endif
  use IO, only: &
    IO_error, &
-   IO_open_file, &
-   IO_read, &
-   IO_lc, &
-   IO_open_jobFile_stat, &
-   IO_getTag, &
-   IO_timeStamp, &
-   IO_EOF
+   IO_timeStamp
  use debug, only: &
    debug_level, &
    debug_material, &
@@ -376,9 +370,6 @@ subroutine material_init()
  integer(pInt), dimension(:), allocatable :: ConstitutivePosition
  integer(pInt), dimension(:), allocatable :: CrystallitePosition
  integer(pInt), dimension(:), allocatable :: HomogenizationPosition
-
- character(len=65536) :: &                                                                          
-  line,part
 
  myDebug = debug_level(debug_material)
 
@@ -520,30 +511,16 @@ subroutine material_parseHomogenization
  use config_material, only : &
    homogenizationConfig
  use IO, only: &
-   IO_read, &
-   IO_globalTagInPart, &
-   IO_countSections, &
    IO_error, &
-   IO_countTagInPart, &
-   IO_lc, &
-   IO_getTag, &
-   IO_isBlank, &
    IO_stringValue, &
    IO_intValue, &
-   IO_floatValue, &
-   IO_stringPos, &
-   IO_EOF
+   IO_floatValue
  use mesh, only: &
    mesh_element
 
  implicit none
-
-
- integer(pInt), allocatable, dimension(:) :: chunkPos
- integer(pInt)        :: Nsections,  h
- character(len=65536) :: line, tag,devNull
- character(len=64) ::  tag2
- logical              :: echo
+ integer(pInt)        :: h
+ character(len=65536) :: tag
 
  allocate(homogenization_type(material_Nhomogenization),           source=HOMOGENIZATION_undefined_ID)
  allocate(thermal_type(material_Nhomogenization),                  source=THERMAL_isothermal_ID)
@@ -690,17 +667,13 @@ subroutine material_parseMicrostructure
  implicit none
  character(len=256), dimension(:), allocatable :: &
    str 
- character(len=64) :: tag2
- integer(pInt), allocatable, dimension(:) :: chunkPos
  integer(pInt), allocatable, dimension(:,:) :: chunkPoss
  integer(pInt) :: e, m, constituent, i
  character(len=65536) :: &
-   tag,line,devNull
- logical              :: echo
+   tag,line
 
  line    = ''                                                                                       ! to have it initialized
  m       = 0_pInt
- echo    =.false.
 
 
  allocate(microstructure_crystallite(material_Nmicrostructure),          source=0_pInt)
@@ -728,7 +701,7 @@ subroutine material_parseMicrostructure
      call microstructureConfig(m)%getRaws('(constituent)',str,chunkPoss)
      do constituent = 1_pInt, size(str)
         do i = 2_pInt,6_pInt,2_pInt
-           tag = IO_lc(IO_stringValue(str(constituent),chunkPoss(:,constituent),i))
+           tag = IO_stringValue(str(constituent),chunkPoss(:,constituent),i)
 
            select case (tag)
              case('phase')
@@ -757,25 +730,11 @@ end subroutine material_parseMicrostructure
 !> @brief parses the crystallite part in the material configuration file
 !--------------------------------------------------------------------------------------------------
 subroutine material_parseCrystallite
- use IO, only: &
-   IO_read, &
-   IO_error, &
-   IO_getTag, &
-   IO_lc, &
-   IO_stringPos, &
-   IO_stringValue, &
-   IO_isBlank, &
-   IO_EOF
 
  implicit none
- integer(pInt), allocatable, dimension(:) :: chunkPos
-
- character(len=64) ::  tag2
  integer(pInt)        :: c
- character(len=65536) :: line, tag,devNull
- logical              :: echo
 
- allocate(crystallite_Noutput(material_Ncrystallite),           source=0_pInt)
+ allocate(crystallite_Noutput(material_Ncrystallite),source=0_pInt)
  do c=1_pInt, material_Ncrystallite
    crystallite_Noutput(c) =  crystalliteConfig(c)%countKeys('(output)')
  enddo
@@ -788,34 +747,14 @@ end subroutine material_parseCrystallite
 !--------------------------------------------------------------------------------------------------
 subroutine material_parsePhase
  use IO, only: &
-   IO_read, &
-   IO_globalTagInPart, &
-   IO_countSections, &
    IO_error, &
-   IO_countTagInPart, &
    IO_getTag, &
-   IO_spotTagInPart, &
-   IO_lc, &
-   IO_isBlank, &
-   IO_stringValue, &
-   IO_stringPos, &
-   IO_EOF
+   IO_stringValue
 
  implicit none
-
-
- integer(pInt), allocatable, dimension(:) :: chunkPos
  integer(pInt) :: sourceCtr, kinematicsCtr, stiffDegradationCtr, p
- character(len=65536) :: &
-  tag,line,devNull
- character(len=64) ::  tag2
- character(len=64), dimension(:), allocatable :: &
-   str 
- logical              :: echo
+ character(len=256), dimension(:), allocatable ::  str 
 
- line    = ''                                                                                       ! to have it initialized
- p = 0_pInt                                                                                         !  - " -
- echo    =.false.
 
  allocate(phase_elasticity(material_Nphase),source=ELASTICITY_undefined_ID)
  allocate(phase_plasticity(material_Nphase),source=PLASTICITY_undefined_ID)
@@ -937,19 +876,10 @@ subroutine material_parseTexture
  use prec, only: &
    dNeq
  use IO, only: &
-   IO_read, &
-   IO_globalTagInPart, &
-   IO_countSections, &
    IO_error, &
-   IO_countTagInPart, &
-   IO_getTag, &
-   IO_spotTagInPart, &
-   IO_lc, &
-   IO_isBlank, &
-   IO_floatValue, &
-   IO_stringValue, &
    IO_stringPos, &
-   IO_EOF
+   IO_floatValue, &
+   IO_stringValue
  use math, only: &
    inRad, &
    math_sampleRandomOri, &
@@ -958,20 +888,15 @@ subroutine material_parseTexture
    math_inv33
 
  implicit none
-
-
- integer(pInt), allocatable, dimension(:) :: chunkPos
- integer(pInt) :: Nsections, section, gauss, fiber, j, t, i
- character(len=64) ::  tag2
+ integer(pInt) :: section, gauss, fiber, j, t, i
  character(len=256), dimension(:), allocatable ::  bla
- logical              :: echo
+ integer(pInt), dimension(:), allocatable :: chunkPos
+ character(len=65536) :: line, tag
 
- character(len=65536) :: line, tag,devNull, line2
-
- allocate(texture_ODFfile(material_Ntexture));           texture_ODFfile=''
- allocate(texture_symmetry(material_Ntexture),           source=1_pInt)
- allocate(texture_Ngauss(material_Ntexture),             source=0_pInt)
- allocate(texture_Nfiber(material_Ntexture),             source=0_pInt)
+ allocate(texture_ODFfile(material_Ntexture)); texture_ODFfile=''
+ allocate(texture_symmetry(material_Ntexture), source=1_pInt)
+ allocate(texture_Ngauss(material_Ntexture),   source=0_pInt)
+ allocate(texture_Nfiber(material_Ntexture),   source=0_pInt)
 
  do t=1_pInt, material_Ntexture
    texture_Ngauss(t) =  textureConfig(t)%countKeys('(gauss)') &
@@ -996,12 +921,12 @@ subroutine material_parseTexture
      line = bla(i)
 
      chunkPos = IO_stringPos(line)
-     tag = IO_lc(IO_stringValue(line,chunkPos,1_pInt))                                             ! extract key
+     tag = IO_stringValue(line,chunkPos,1_pInt)                                                     ! extract key
      textureType: select case(tag)
 
        case ('axes', 'rotation') textureType
          do j = 1_pInt, 3_pInt                                                                      ! look for "x", "y", and "z" entries
-           tag = IO_lc(IO_stringValue(line,chunkPos,j+1_pInt))
+           tag = IO_stringValue(line,chunkPos,j+1_pInt)
            select case (tag)
              case('x', '+x')
                texture_transformation(j,1:3,section) = [ 1.0_pReal, 0.0_pReal, 0.0_pReal]           ! original axis is now +x-axis
@@ -1027,7 +952,7 @@ subroutine material_parseTexture
          texture_ODFfile(section) = IO_stringValue(line,chunkPos,2_pInt)
 
        case ('symmetry') textureType
-         tag = IO_lc(IO_stringValue(line,chunkPos,2_pInt))
+         tag = IO_stringValue(line,chunkPos,2_pInt)
          select case (tag)
            case('orthotropic')
              texture_symmetry(section) = 4_pInt
@@ -1041,7 +966,7 @@ subroutine material_parseTexture
          gauss = gauss + 1_pInt
          texture_Gauss(1:3,gauss,section) = math_sampleRandomOri()
          do j = 2_pInt,4_pInt,2_pInt
-           tag = IO_lc(IO_stringValue(line,chunkPos,j))
+           tag = IO_stringValue(line,chunkPos,j)
            select case (tag)
              case('scatter')
                  texture_Gauss(4,gauss,section) = IO_floatValue(line,chunkPos,j+1_pInt)*inRad
@@ -1053,7 +978,7 @@ subroutine material_parseTexture
        case ('(gauss)') textureType
          gauss = gauss + 1_pInt
          do j = 2_pInt,10_pInt,2_pInt
-           tag = IO_lc(IO_stringValue(line,chunkPos,j))
+           tag = IO_stringValue(line,chunkPos,j)
            select case (tag)
              case('phi1')
                  texture_Gauss(1,gauss,section) = IO_floatValue(line,chunkPos,j+1_pInt)*inRad
@@ -1071,7 +996,7 @@ subroutine material_parseTexture
        case ('(fiber)') textureType
          fiber = fiber + 1_pInt
          do j = 2_pInt,12_pInt,2_pInt
-           tag = IO_lc(IO_stringValue(line,chunkPos,j))
+           tag = IO_stringValue(line,chunkPos,j)
            select case (tag)
              case('alpha1')
                  texture_Fiber(1,fiber,section) = IO_floatValue(line,chunkPos,j+1_pInt)*inRad
