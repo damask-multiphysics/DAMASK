@@ -8,7 +8,7 @@
 !--------------------------------------------------------------------------------------------------
 module material
  use config_material
- use chained_list
+ use linked_list
  use prec, only: &
    pReal, &
    pInt, &

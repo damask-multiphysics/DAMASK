@@ -6,7 +6,7 @@
 !! parts 'homogenization', 'crystallite', 'phase', 'texture', and 'microstucture'
 !--------------------------------------------------------------------------------------------------
 module config_material
- use chained_list
+ use linked_list
  use prec, only: &
    pReal, &
    pInt

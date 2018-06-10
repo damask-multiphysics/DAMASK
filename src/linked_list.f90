@@ -2,7 +2,7 @@
 !> @author   Martin Dieh, Max-Planck-Institut für Eisenforschung GmbH
 !> @brief    Chained list to store string together with position of delimiters
 !--------------------------------------------------------------------------------------------------
-module chained_list
+module linked_list
  use prec, only: &
    pReal, &
    pInt
@@ -513,4 +513,4 @@ end function getFloatArray
 
 
 
-end module chained_list
+end module linked_list
