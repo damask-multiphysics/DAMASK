@@ -982,6 +982,10 @@ pure function IO_stringPos(string)
    if ( string(left:left) == '#' ) exit
    IO_stringPos = [IO_stringPos,int(left, pInt), int(right, pInt)]
    IO_stringPos(1) = IO_stringPos(1)+1_pInt
+   endOfString: if (right < left) then
+     IO_stringPos(IO_stringPos(1)*2+1) = len_trim(string)
+     exit
+   endif endOfString
  enddo
 
 end function IO_stringPos
