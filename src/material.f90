@@ -889,14 +889,13 @@ subroutine material_parseTexture
    inRad, &
    math_sampleRandomOri, &
    math_I3, &
-   math_det33, &
-   math_inv33
+   math_det33
 
  implicit none
  integer(pInt) :: section, gauss, fiber, j, t, i
- character(len=256), dimension(:), allocatable ::  bla
+ character(len=65536), dimension(:), allocatable ::  lines
  integer(pInt), dimension(:), allocatable :: chunkPos
- character(len=65536) :: line, tag
+ character(len=65536) :: tag
 
  allocate(texture_ODFfile(material_Ntexture)); texture_ODFfile=''
  allocate(texture_symmetry(material_Ntexture), source=1_pInt)
@@ -920,18 +919,17 @@ subroutine material_parseTexture
    section = t
    gauss = 0_pInt
    fiber = 0_pInt
-   bla = textureConfig(t)%getStringsRaw()
+   lines = textureConfig(t)%getStringsRaw()
 
-   lines: do i=1_pInt, size(bla)
-     line = bla(i)
+   do i=1_pInt, size(lines)
 
-     chunkPos = IO_stringPos(line)
-     tag = IO_stringValue(line,chunkPos,1_pInt)                                                     ! extract key
+     chunkPos = IO_stringPos(lines(i))
+     tag = IO_stringValue(lines(i),chunkPos,1_pInt)                                                     ! extract key
      textureType: select case(tag)
 
        case ('axes', 'rotation') textureType
          do j = 1_pInt, 3_pInt                                                                      ! look for "x", "y", and "z" entries
-           tag = IO_stringValue(line,chunkPos,j+1_pInt)
+           tag = IO_stringValue(lines(i),chunkPos,j+1_pInt)
            select case (tag)
              case('x', '+x')
                texture_transformation(j,1:3,t) = [ 1.0_pReal, 0.0_pReal, 0.0_pReal]           ! original axis is now +x-axis
@@ -954,10 +952,10 @@ subroutine material_parseTexture
            call IO_error(157_pInt,t)
 
        case ('hybridia') textureType
-         texture_ODFfile(t) = IO_stringValue(line,chunkPos,2_pInt)
+         texture_ODFfile(t) = IO_stringValue(lines(i),chunkPos,2_pInt)
 
        case ('symmetry') textureType
-         tag = IO_stringValue(line,chunkPos,2_pInt)
+         tag = IO_stringValue(lines(i),chunkPos,2_pInt)
          select case (tag)
            case('orthotropic')
              texture_symmetry(t) = 4_pInt
@@ -971,54 +969,54 @@ subroutine material_parseTexture
          gauss = gauss + 1_pInt
          texture_Gauss(1:3,gauss,t) = math_sampleRandomOri()
          do j = 2_pInt,4_pInt,2_pInt
-           tag = IO_stringValue(line,chunkPos,j)
+           tag = IO_stringValue(lines(i),chunkPos,j)
            select case (tag)
              case('scatter')
-                 texture_Gauss(4,gauss,t) = IO_floatValue(line,chunkPos,j+1_pInt)*inRad
+                 texture_Gauss(4,gauss,t) = IO_floatValue(lines(i),chunkPos,j+1_pInt)*inRad
              case('fraction')
-                 texture_Gauss(5,gauss,t) = IO_floatValue(line,chunkPos,j+1_pInt)
+                 texture_Gauss(5,gauss,t) = IO_floatValue(lines(i),chunkPos,j+1_pInt)
            end select
          enddo
 
        case ('(gauss)') textureType
          gauss = gauss + 1_pInt
          do j = 2_pInt,10_pInt,2_pInt
-           tag = IO_stringValue(line,chunkPos,j)
+           tag = IO_stringValue(lines(i),chunkPos,j)
            select case (tag)
              case('phi1')
-                 texture_Gauss(1,gauss,t) = IO_floatValue(line,chunkPos,j+1_pInt)*inRad
+                 texture_Gauss(1,gauss,t) = IO_floatValue(lines(i),chunkPos,j+1_pInt)*inRad
              case('phi')
-                 texture_Gauss(2,gauss,t) = IO_floatValue(line,chunkPos,j+1_pInt)*inRad
+                 texture_Gauss(2,gauss,t) = IO_floatValue(lines(i),chunkPos,j+1_pInt)*inRad
              case('phi2')
-                 texture_Gauss(3,gauss,t) = IO_floatValue(line,chunkPos,j+1_pInt)*inRad
+                 texture_Gauss(3,gauss,t) = IO_floatValue(lines(i),chunkPos,j+1_pInt)*inRad
              case('scatter')
-                 texture_Gauss(4,gauss,t) = IO_floatValue(line,chunkPos,j+1_pInt)*inRad
+                 texture_Gauss(4,gauss,t) = IO_floatValue(lines(i),chunkPos,j+1_pInt)*inRad
              case('fraction')
-                 texture_Gauss(5,gauss,t) = IO_floatValue(line,chunkPos,j+1_pInt)
+                 texture_Gauss(5,gauss,t) = IO_floatValue(lines(i),chunkPos,j+1_pInt)
            end select
          enddo
 
        case ('(fiber)') textureType
          fiber = fiber + 1_pInt
          do j = 2_pInt,12_pInt,2_pInt
-           tag = IO_stringValue(line,chunkPos,j)
+           tag = IO_stringValue(lines(i),chunkPos,j)
            select case (tag)
              case('alpha1')
-                 texture_Fiber(1,fiber,t) = IO_floatValue(line,chunkPos,j+1_pInt)*inRad
+                 texture_Fiber(1,fiber,t) = IO_floatValue(lines(i),chunkPos,j+1_pInt)*inRad
              case('alpha2')
-                 texture_Fiber(2,fiber,t) = IO_floatValue(line,chunkPos,j+1_pInt)*inRad
+                 texture_Fiber(2,fiber,t) = IO_floatValue(lines(i),chunkPos,j+1_pInt)*inRad
              case('beta1')
-                 texture_Fiber(3,fiber,t) = IO_floatValue(line,chunkPos,j+1_pInt)*inRad
+                 texture_Fiber(3,fiber,t) = IO_floatValue(lines(i),chunkPos,j+1_pInt)*inRad
              case('beta2')
-                 texture_Fiber(4,fiber,t) = IO_floatValue(line,chunkPos,j+1_pInt)*inRad
+                 texture_Fiber(4,fiber,t) = IO_floatValue(lines(i),chunkPos,j+1_pInt)*inRad
              case('scatter')
-                 texture_Fiber(5,fiber,t) = IO_floatValue(line,chunkPos,j+1_pInt)*inRad
+                 texture_Fiber(5,fiber,t) = IO_floatValue(lines(i),chunkPos,j+1_pInt)*inRad
              case('fraction')
-                 texture_Fiber(6,fiber,t) = IO_floatValue(line,chunkPos,j+1_pInt)
+                 texture_Fiber(6,fiber,t) = IO_floatValue(lines(i),chunkPos,j+1_pInt)
            end select
          enddo
      end select textureType
-   enddo lines
+   enddo
  enddo
 
 end subroutine material_parseTexture
