@@ -62,6 +62,8 @@ subroutine CPFEM_initAll(el,ip)
    numerics_init
  use debug, only: &
    debug_init
+ use config_material, only: &
+   config_material_init
  use FEsolving, only: &
    FE_init
  use math, only: &
@@ -93,6 +95,7 @@ subroutine CPFEM_initAll(el,ip)
      call IO_init
      call numerics_init
      call debug_init
+     call config_material_init
      call math_init
      call FE_init
      call mesh_init(ip, el)                                                                        ! pass on coordinates to alter calcMode of first ip

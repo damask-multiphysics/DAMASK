@@ -1,3 +1,7 @@
+!--------------------------------------------------------------------------------------------------
+!> @author   Martin Dieh, Max-Planck-Institut für Eisenforschung GmbH
+!> @brief    Chained list to store string together with position of delimiters
+!--------------------------------------------------------------------------------------------------
 module chained_list
  use prec, only: &
    pReal, &
@@ -17,9 +21,13 @@ module chained_list
    contains
      procedure :: add            => add
      procedure :: show           => show
+
+     procedure :: keyExists      => keyExists
+     procedure :: countKeys      => countKeyAppearances
+     procedure :: getStringsRaw  => strings
+
      procedure :: getRaw         => getRaw
-     procedure :: getRaws         => getRaws
-     procedure :: getStringsRaw         => getStringsRaw
+     procedure :: getRaws        => getRaws
 
      procedure :: getFloat       => getFloat
      procedure :: getFloatArray  => getFloatArray
@@ -29,8 +37,6 @@ module chained_list
 
      procedure :: getString      => getString
      procedure :: getStrings     => getStrings
-     procedure :: keyExists      => keyExists
-     procedure :: countKeys      => countKeys
 
  end type tPartitionedStringList
 
@@ -40,7 +46,9 @@ contains
 
 !--------------------------------------------------------------------------------------------------
 !> @brief add element
-!> @details adds raw string and start/end position of chunks in this string
+!> @details Adds a string together with the start/end position of chunks in this string. The new 
+!! element is added at the end of the list. Empty strings are not added. All strings are converted
+!! to lower case
 !--------------------------------------------------------------------------------------------------
 subroutine add(this,string)
   use IO, only: &
@@ -49,16 +57,14 @@ subroutine add(this,string)
     IO_stringPos
 
   implicit none
-  class(tPartitionedStringList), target   :: this
-  character(len=*), intent(in)            :: string
-  
-  integer(pInt), allocatable,dimension(:) :: p
-  type(tPartitionedStringList), pointer   :: new, tmp
+  class(tPartitionedStringList),  target, intent(in) :: this
+  character(len=*),                       intent(in) :: string
+  type(tPartitionedStringList),   pointer            :: new, tmp
 
   if (IO_isBlank(string)) return
 
   allocate(new)
-  new%string%val=trim(string)
+  new%string%val=IO_lc(trim(string))
   new%string%pos=IO_stringPos(trim(string))
 
   tmp => this
@@ -71,10 +77,11 @@ end subroutine add
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief add element
-!> @details adds raw string and start/end position of chunks in this string
+!> @brief prints all elements
+!> @details Strings are printed in order of insertion (FIFO)
 !--------------------------------------------------------------------------------------------------
 subroutine show(this)
+
  implicit none
  class(tPartitionedStringList) :: this
  type(tPartitionedStringList),  pointer  :: tmp
@@ -88,8 +95,117 @@ subroutine show(this)
 
 end subroutine show
 
+
 !--------------------------------------------------------------------------------------------------
-!> @brief gets raw data
+!> @brief deallocates all elements of a given list
+!> @details Strings are printed in order of insertion (FIFO)
+!--------------------------------------------------------------------------------------------------
+!    subroutine free_all()
+!      implicit none
+!                 
+!      type(node), pointer :: tmp
+!         
+!      do        
+!      tmp => first
+!         
+!        if (associated(tmp) .eqv. .FALSE.) exit
+!          
+!        first => first%next
+!        deallocate(tmp)
+!      end do                     
+!    end subroutine free_all
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief reports wether a given key (string value at first position) exists in the list
+!--------------------------------------------------------------------------------------------------
+logical function keyExists(this,key)
+ use IO, only: &
+   IO_stringValue
+
+ implicit none
+ class(tPartitionedStringList), intent(in) :: this
+ character(len=*), intent(in)              :: key
+ type(tPartitionedStringList), pointer     :: tmp
+
+ keyExists = .false.
+
+ tmp => this%next
+ do 
+   if (.not. associated(tmp)) exit
+   if (trim(IO_stringValue(tmp%string%val,tmp%string%pos,1))==trim(key)) then
+     keyExists = .true.
+     exit
+   endif
+   tmp => tmp%next
+ end do
+
+end function keyExists
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief prints all elements
+!> @details Strings are printed in order of insertion (FIFO)
+!--------------------------------------------------------------------------------------------------
+integer(pInt) function countKeyAppearances(this,key)
+ use IO, only: &
+   IO_stringValue
+
+ implicit none
+
+ class(tPartitionedStringList), intent(in) :: this
+ character(len=*), intent(in)              :: key
+ type(tPartitionedStringList), pointer     :: tmp
+ integer(pInt) :: i
+
+ countKeyAppearances = 0_pInt
+
+ tmp => this%next
+ do 
+   if (.not. associated(tmp)) exit
+   if (trim(IO_stringValue(tmp%string%val,tmp%string%pos,1))==trim(key)) then
+     countKeyAppearances = countKeyAppearances + 1_pInt
+   endif
+   tmp => tmp%next
+ end do
+
+end function countKeyAppearances
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief returns all strings in the list
+!> @details returns raw string without start/end position of chunks
+!--------------------------------------------------------------------------------------------------
+function strings(this)
+ use IO, only: &
+   IO_error, &
+   IO_stringValue
+
+ implicit none
+ class(tPartitionedStringList),      intent(in)  :: this
+ character(len=65536), dimension(:), allocatable :: strings
+ character(len=65536)                            :: stringTmp
+ type(tPartitionedStringList),  pointer          :: tmp
+
+ tmp => this%next
+ do 
+   if (.not. associated(tmp)) then
+     if(size(strings) < 0_pInt) call IO_error(142_pInt)
+     exit
+   endif
+     stringTmp = tmp%string%val
+     GfortranBug86033: if (.not. allocated(strings)) then
+       allocate(strings(1),source=stringTmp)
+     else GfortranBug86033
+       strings = [strings,stringTmp]
+     endif GfortranBug86033
+   tmp => tmp%next
+ end do
+end function strings
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief gets first string that matches given key (i.e. first chunk)
 !> @details returns raw string and start/end position of chunks in this string
 !--------------------------------------------------------------------------------------------------
 subroutine getRaw(this,key,string,stringPos)
@@ -98,15 +214,15 @@ subroutine getRaw(this,key,string,stringPos)
    IO_stringValue
 
  implicit none
- class(tPartitionedStringList), intent(in)           :: this
- character(len=*),              intent(in)           :: key
- integer(pInt), dimension(:),allocatable,   intent(out)          :: stringPos
- character(len=*),              intent(out)          :: string
- type(tPartitionedStringList),  pointer              :: tmp
+ class(tPartitionedStringList),            intent(in)  :: this
+ character(len=*),                         intent(in)  :: key
+ integer(pInt), dimension(:), allocatable, intent(out) :: stringPos
+ character(len=*),                         intent(out) :: string
+ type(tPartitionedStringList),  pointer                :: tmp
 
  tmp => this%next
  do 
-   if (.not. associated(tmp)) call IO_error(1_pInt,ext_msg=key)
+   if (.not. associated(tmp)) call IO_error(140_pInt,ext_msg=key)
    foundKey: if (trim(IO_stringValue(tmp%string%val,tmp%string%pos,1))==trim(key)) then
      stringPos = tmp%string%pos
      string    = tmp%string%val
@@ -118,8 +234,9 @@ end subroutine getRaw
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief gets raw data
-!> @details returns raw string and start/end position of chunks in this string
+!> @brief gets all strings that matches given key (i.e. first chunk)
+!> @details returns raw strings and start/end positions of chunks in these strings. Will fail if
+! number of positions in strings differs
 !--------------------------------------------------------------------------------------------------
 subroutine getRaws(this,key,string,stringPos)
  use IO, only: &
@@ -127,20 +244,21 @@ subroutine getRaws(this,key,string,stringPos)
    IO_stringValue
 
  implicit none
- class(tPartitionedStringList), intent(in)           :: this
- character(len=*),              intent(in)           :: key
- integer(pInt), dimension(:,:),allocatable, intent(out)          :: stringPos
- character(len=256), dimension(:),allocatable,   intent(out)          :: string
- character(len=256)          :: stringTmp
- integer(pInt)  :: posSize
- integer(pInt), dimension(:),allocatable        :: stringPosFlat
- type(tPartitionedStringList),  pointer              :: tmp
+ class(tPartitionedStringList),                     intent(in)  :: this
+ character(len=*),                                  intent(in)  :: key
+ integer(pInt),        dimension(:,:), allocatable, intent(out) :: stringPos
+ character(len=65536), dimension(:),   allocatable, intent(out) :: string
+ 
+ character(len=65536)                      :: stringTmp
+ integer(pInt)                             :: posSize
+ integer(pInt),  dimension(:), allocatable :: stringPosFlat
+ type(tPartitionedStringList), pointer     :: tmp
 
  posSize = -1_pInt
  tmp => this%next
  do 
    if (.not. associated(tmp)) then
-     if(posSize < 0_pInt) call IO_error(1_pInt,ext_msg=key)
+     if(posSize < 0_pInt) call IO_error(140_pInt,ext_msg=key)
      stringPos = reshape(stringPosFlat,[posSize,size(string)])
      exit
    endif
@@ -151,7 +269,8 @@ subroutine getRaws(this,key,string,stringPos)
        allocate(string(1))
        string(1) = tmp%string%val
      else
-       if (size(tmp%string%pos) /= posSize) call IO_error(1_pInt,ext_msg=key)
+       if (size(tmp%string%pos) /= posSize) &
+         call IO_error(141_pInt,ext_msg=trim(tmp%string%val),el=posSize)
        stringPosFlat = [stringPosFlat,tmp%string%pos]
        stringTmp = tmp%string%val
        string = [string,stringTmp]
@@ -159,43 +278,13 @@ subroutine getRaws(this,key,string,stringPos)
    endif foundKey
    tmp => tmp%next
  end do
+
 end subroutine getRaws
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief gets raw data
-!> @details returns raw string and start/end position of chunks in this string
-!--------------------------------------------------------------------------------------------------
-function getStringsRaw(this)
- use IO, only: &
-   IO_error, &
-   IO_stringValue
-
- implicit none
- class(tPartitionedStringList), intent(in)           :: this
- character(len=256), dimension(:),allocatable :: getStringsRaw
- character(len=256)          :: stringTmp
- type(tPartitionedStringList),  pointer              :: tmp
-
- tmp => this%next
- do 
-   if (.not. associated(tmp)) then
-     if(size(getStringsRaw) < 0_pInt) call IO_error(1_pInt,ext_msg='getallraw empty list')
-     exit
-   endif
-     stringTmp = tmp%string%val
-     if (.not. allocated(getStringsRaw)) then
-       allocate(getStringsRaw(1),source=stringTmp)
-     else
-       getStringsRaw = [getStringsRaw,stringTmp]
-     endif 
-   tmp => tmp%next
- end do
-end function getStringsRaw
-
-!--------------------------------------------------------------------------------------------------
-!> @brief gets float value for given key
-!> @details if key is not found exits with error unless default is given
+!> @brief gets float value of first string that matches given key (i.e. first chunk)
+!> @details gets one float value. If key is not found exits with error unless default is given
 !--------------------------------------------------------------------------------------------------
 real(pReal) function getFloat(this,key,defaultVal)
  use IO, only : &
@@ -216,22 +305,23 @@ real(pReal) function getFloat(this,key,defaultVal)
        getFloat = defaultVal
        exit
      else
-       call IO_error(1_pInt,ext_msg=key)
+       call IO_error(140_pInt,ext_msg=key)
      endif
    endif endOfList
    foundKey: if (trim(IO_stringValue(tmp%string%val,tmp%string%pos,1))==trim(key)) then
-     if (tmp%string%pos(1) < 2_pInt) call IO_error(1_pInt,ext_msg=key)
+     if (tmp%string%pos(1) < 2_pInt) call IO_error(143_pInt,ext_msg=key)
      getFloat = IO_FloatValue(tmp%string%val,tmp%string%pos,2)
      exit
    endif foundKey
    tmp => tmp%next
  end do
+
 end function getFloat
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief gets float value for given key
-!> @details if key is not found exits with error unless default is given
+!> @brief gets integer value for given key
+!> @details gets one integer value. If key is not found exits with error unless default is given
 !--------------------------------------------------------------------------------------------------
 integer(pInt) function getInt(this,key,defaultVal)
  use IO, only: &
@@ -252,16 +342,17 @@ integer(pInt) function getInt(this,key,defaultVal)
        getInt = defaultVal
        exit
      else
-       call IO_error(1_pInt,ext_msg=key)
+       call IO_error(140_pInt,ext_msg=key)
      endif
    endif endOfList
    foundKey: if (trim(IO_stringValue(tmp%string%val,tmp%string%pos,1))==trim(key)) then
-     if (tmp%string%pos(1) < 2_pInt) call IO_error(1_pInt,ext_msg=key)
+     if (tmp%string%pos(1) < 2_pInt) call IO_error(143_pInt,ext_msg=key)
      getInt = IO_IntValue(tmp%string%val,tmp%string%pos,2)
      exit
    endif foundKey
    tmp => tmp%next
  end do
+
 end function getInt
 
 
@@ -269,7 +360,7 @@ end function getInt
 !> @brief gets string value for given key
 !> @details if key is not found exits with error unless default is given
 !--------------------------------------------------------------------------------------------------
-character(len=64) function getString(this,key,defaultVal)
+character(len=65536) function getString(this,key,defaultVal)
  use IO, only: &
    IO_error, &
    IO_stringValue
@@ -277,7 +368,7 @@ character(len=64) function getString(this,key,defaultVal)
  implicit none
  class(tPartitionedStringList), intent(in)           :: this
  character(len=*),              intent(in)           :: key
- character(len=64),             intent(in), optional :: defaultVal
+ character(len=65536),          intent(in), optional :: defaultVal
  type(tPartitionedStringList),  pointer              :: tmp
 
  tmp => this%next
@@ -287,17 +378,54 @@ character(len=64) function getString(this,key,defaultVal)
        getString = defaultVal
        exit
      else
-       call IO_error(1_pInt,ext_msg=key)
+       call IO_error(140_pInt,ext_msg=key)
      endif
    endif endOfList
    foundKey: if (trim(IO_stringValue(tmp%string%val,tmp%string%pos,1))==trim(key)) then
-     if (tmp%string%pos(1) < 2_pInt) call IO_error(1_pInt,ext_msg=key)
+     if (tmp%string%pos(1) < 2_pInt) call IO_error(143_pInt,ext_msg=key)
      getString = IO_StringValue(tmp%string%val,tmp%string%pos,2)
      exit
    endif foundKey
    tmp => tmp%next
  end do
+
 end function getString
+
+
+function getStrings(this,key)
+  use IO
+
+  implicit none
+  character(len=64),dimension(:),allocatable :: getStrings
+  character(len=64) :: str
+
+  class(tPartitionedStringList), intent(in) :: this
+  character(len=*), intent(in) :: key
+  type(tPartitionedStringList), pointer :: tmp
+  integer(pInt) :: i
+
+
+  tmp => this%next
+  do 
+    if (.not. associated(tmp)) then
+      if (.not. allocated(getStrings)) allocate(getStrings(0),source=str)
+      exit
+    endif
+    if (trim(IO_stringValue(tmp%string%val,tmp%string%pos,1))==trim(key)) then
+      if (tmp%string%pos(1) < 2) print*, "NOT WORKKING"
+      str = IO_StringValue(tmp%string%val,tmp%string%pos,2)
+
+ GfortranBug86033: if (.not. allocated(getStrings)) then
+   allocate(getStrings(1),source=str)
+ else GfortranBug86033
+   getStrings  = [getStrings,str]
+ endif GfortranBug86033
+    endif
+    tmp => tmp%next
+  end do
+end function
+
+
 
 !--------------------------------------------------------------------------------------------------
 !> @brief gets array of int values for given key
@@ -326,11 +454,11 @@ function getIntArray(this,key,defaultVal)
        getIntArray = defaultVal
        exit
      else
-       call IO_error(1_pInt,ext_msg=key)
+       call IO_error(140_pInt,ext_msg=key)
      endif
    endif endOfList
    foundKey: if (trim(IO_stringValue(tmp%string%val,tmp%string%pos,1))==trim(key)) then
-     if (tmp%string%pos(1) < 2_pInt) call IO_error(1_pInt,ext_msg=key)
+     if (tmp%string%pos(1) < 2_pInt) call IO_error(143_pInt,ext_msg=key)
      do i = 2_pInt, tmp%string%pos(1)
        getIntArray = [getIntArray,IO_IntValue(tmp%string%val,tmp%string%pos,i)]
      enddo
@@ -369,11 +497,11 @@ function getFloatArray(this,key,defaultVal)
        getFloatArray = defaultVal
        exit
      else
-       call IO_error(1_pInt,ext_msg=key)
+       call IO_error(140_pInt,ext_msg=key)
      endif
    endif endOfList
    foundKey: if (trim(IO_stringValue(tmp%string%val,tmp%string%pos,1))==trim(key)) then
-     if (tmp%string%pos(1) < 2_pInt) call IO_error(1_pInt,ext_msg=key)
+     if (tmp%string%pos(1) < 2_pInt) call IO_error(143_pInt,ext_msg=key)
      do i = 2_pInt, tmp%string%pos(1)
        getFloatArray = [getFloatArray,IO_FloatValue(tmp%string%val,tmp%string%pos,i)]
      enddo
@@ -383,98 +511,6 @@ function getFloatArray(this,key,defaultVal)
  end do
 end function getFloatArray
 
-! reports wether a key exists at least once
-    function keyExists(this,key)
-      use IO
 
-      implicit none
-      logical :: keyExists
-
-      class(tPartitionedStringList), intent(in) :: this
-      character(len=*), intent(in) :: key
-      type(tPartitionedStringList), pointer :: tmp
-
-      keyExists = .false.
-
-      tmp => this%next
-      do 
-        if (.not. associated(tmp)) exit
-        if (trim(IO_stringValue(tmp%string%val,tmp%string%pos,1))==trim(key)) then
-          keyExists = .true.
-          exit
-        endif
-        tmp => tmp%next
-      end do
-    end function
-
-
-    integer(pInt) function countKeys(this,key)
-      use IO
-
-      implicit none
-      class(tPartitionedStringList), intent(in) :: this
-      character(len=*), intent(in) :: key
-      type(tPartitionedStringList), pointer :: tmp
-      integer(pInt) :: i
-
-      countKeys = 0_pInt
-
-      tmp => this%next
-      do 
-        if (.not. associated(tmp)) exit
-        if (trim(IO_stringValue(tmp%string%val,tmp%string%pos,1))==trim(key)) then
-          countKeys = countKeys + 1_pInt
-        endif
-        tmp => tmp%next
-      end do
-    end function
-
-    function getStrings(this,key)
-      use IO
-
-      implicit none
-      character(len=64),dimension(:),allocatable :: getStrings
-      character(len=64) :: str
-
-      class(tPartitionedStringList), intent(in) :: this
-      character(len=*), intent(in) :: key
-      type(tPartitionedStringList), pointer :: tmp
-      integer(pInt) :: i
-
-
-      tmp => this%next
-      do 
-        if (.not. associated(tmp)) then
-          if (.not. allocated(getStrings)) allocate(getStrings(0),source=str)
-          exit
-        endif
-        if (trim(IO_stringValue(tmp%string%val,tmp%string%pos,1))==trim(key)) then
-          if (tmp%string%pos(1) < 2) print*, "NOT WORKKING"
-          str = IO_StringValue(tmp%string%val,tmp%string%pos,2)
-
-     GfortranBug86033: if (.not. allocated(getStrings)) then
-       allocate(getStrings(1),source=str)
-     else GfortranBug86033
-       getStrings  = [getStrings,str]
-     endif GfortranBug86033
-        endif
-        tmp => tmp%next
-      end do
-    end function
-
-!    subroutine free_all()
-!      implicit none
-!                 
-!      type(node), pointer :: tmp
-!         
-!      do        
-!      tmp => first
-!         
-!        if (associated(tmp) .eqv. .FALSE.) exit
-!          
-!        first => first%next
-!        deallocate(tmp)
-!      end do                     
-!    end subroutine free_all
 
 end module chained_list

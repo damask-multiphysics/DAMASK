@@ -1551,6 +1551,17 @@ subroutine IO_error(error_ID,el,ip,g,instance,ext_msg)
    msg = 'zero entry on stiffness diagonal for transformed phase'
 
 !--------------------------------------------------------------------------------------------------
+! errors related to the parsing of material.config
+ case (140_pInt)
+   msg = 'key not found'
+ case (141_pInt)
+   msg = 'number of chunks in string differs'
+ case (142_pInt)
+   msg = 'empty list'
+ case (143_pInt)
+   msg = 'no value found for key'
+
+!--------------------------------------------------------------------------------------------------
 ! material error messages and related messages in mesh
  case (150_pInt)
    msg = 'index out of bounds'
