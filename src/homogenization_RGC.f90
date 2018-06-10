@@ -100,6 +100,7 @@ subroutine homogenization_RGC_init(fileUnit)
    FE_geomtype
  use IO
  use material
+ use config_material
 
  implicit none
  integer(pInt), intent(in) :: fileUnit                                                              !< file pointer to material configuration

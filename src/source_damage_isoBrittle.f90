@@ -81,9 +81,10 @@ subroutine source_damage_isoBrittle_init(fileUnit)
    phase_Noutput, &
    SOURCE_damage_isoBrittle_label, &
    SOURCE_damage_isoBrittle_ID, &
-   material_Nphase, &
    material_phase, &  
-   sourceState, &
+   sourceState
+ use config_material, only: &
+   material_Nphase, &
    MATERIAL_partPhase
  use numerics,only: &
    numerics_integrator

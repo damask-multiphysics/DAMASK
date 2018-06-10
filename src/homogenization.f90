@@ -101,6 +101,7 @@ subroutine homogenization_init
    crystallite_maxSizePostResults
 #endif
  use material
+ use config_material
  use homogenization_none
  use homogenization_isostrain
  use homogenization_RGC

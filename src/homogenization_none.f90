@@ -29,6 +29,7 @@ subroutine homogenization_none_init()
  use IO, only: &
    IO_timeStamp
  use material
+ use config_material
  
  implicit none
  integer(pInt) :: &

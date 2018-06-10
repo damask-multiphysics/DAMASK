@@ -157,7 +157,8 @@ subroutine plastic_phenopowerlaw_init(fileUnit)
    PLASTICITY_PHENOPOWERLAW_label, &
    PLASTICITY_PHENOPOWERLAW_ID, &
    material_phase, &
-   plasticState, &
+   plasticState
+ use config_material, only: &
    MATERIAL_partPhase
  use lattice
  use numerics,only: &

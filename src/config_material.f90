@@ -11,8 +11,8 @@ module config_material
    pReal, &
    pInt
  implicit none
- private 
- type(tPartitionedStringList), private,protected, allocatable, dimension(:) :: &
+ !private 
+ type(tPartitionedStringList), public, protected, allocatable, dimension(:) :: &
    phaseConfig, &
    microstructureConfig, &
    homogenizationConfig, &
@@ -24,7 +24,7 @@ module config_material
    crystallite_name, &                                                                              !< name of each crystallite setting
    microstructure_name, &                                                                           !< name of each microstructure
    texture_name                                                                                     !< name of each texture
- character(len=*), parameter  :: &
+ character(len=*), parameter, public  :: &
    MATERIAL_partHomogenization = 'homogenization', &                                                !< keyword for homogenization part
    MATERIAL_partCrystallite    = 'crystallite', &                                                   !< keyword for crystallite part
    MATERIAL_partPhase          = 'phase',&                                                            !< keyword for phase part
@@ -38,6 +38,9 @@ module config_material
    material_Nmicrostructure, &                                                                      !< number of microstructures
    material_Ncrystallite                                                                            !< number of crystallite settings
 
+ character(len=*), parameter, public  :: &
+   MATERIAL_configFile         = 'material.config', &                                               !< generic name for material configuration file
+   MATERIAL_localFileExt       = 'materialConfig'                                                   !< extension of solver job name depending material configuration file
 
 contains
 
@@ -59,14 +62,7 @@ subroutine config_material_init()
  use debug, only: &
    debug_level, &
    debug_material, &
-   debug_levelBasic, &
-   debug_levelExtensive
- use mesh, only: &
-   mesh_maxNips, &
-   mesh_NcpElems, &
-   mesh_element, &
-   FE_Nips, &
-   FE_geomtype
+   debug_levelBasic
 
  implicit none
  integer(pInt), parameter :: FILEUNIT = 200_pInt
@@ -83,9 +79,6 @@ subroutine config_material_init()
  character(len=65536) :: &                                                                          
   line,part
 
- character(len=*), parameter  :: &
-   MATERIAL_configFile         = 'material.config', &                                               !< generic name for material configuration file
-   MATERIAL_localFileExt       = 'materialConfig'                                                   !< extension of solver job name depending material configuration file
 
  myDebug = debug_level(debug_material)
 
@@ -147,7 +140,7 @@ end subroutine config_material_init
 !--------------------------------------------------------------------------------------------------
 !> @brief parses the homogenization part in the material configuration file
 !--------------------------------------------------------------------------------------------------
-subroutine parseFile(partLabel,part,fileUnit,nextLine)
+subroutine parseFile(sectionNames,part,fileUnit,line)
  use IO, only: &
    IO_read, &
    IO_error, &
@@ -160,21 +153,19 @@ subroutine parseFile(partLabel,part,fileUnit,nextLine)
 
  implicit none
  integer(pInt),    intent(in) :: fileUnit
-
+ character(len=*),  dimension(:), allocatable, intent(inout)  :: sectionNames
+ type(tPartitionedStringList), allocatable, dimension(:), intent(inout) :: part
+ character(len=65536),intent(out) :: line
 
  integer(pInt), allocatable, dimension(:) :: chunkPos
- integer(pInt)        :: Nsections,  h
- character(len=65536) :: line, tag,devNull
- character(len=65536) :: nextLine
- character(len=64) ::  tag2
+ integer(pInt)        :: Nsections,  s
+ character(len=65536) :: devNull
+ character(len=64)    :: tag
  logical              :: echo
- type(tPartitionedStringList), allocatable, dimension(:), intent(inout) :: &
-   part
- character(len=*),  dimension(:), allocatable, intent(inout)  :: partLabel
  
  allocate(part(0))
 
- h = 0_pInt
+ s = 0_pInt
  do while (trim(line) /= IO_EOF)                                                                    ! read through sections of material part
    line = IO_read(fileUnit)
    if (IO_isBlank(line)) cycle                                                                      ! skip empty lines
@@ -183,20 +174,19 @@ subroutine parseFile(partLabel,part,fileUnit,nextLine)
      exit
    endif foundNextPart
    nextSection: if (IO_getTag(line,'[',']') /= '') then
-     h = h + 1_pInt
+     s = s + 1_pInt
      part = [part, emptyList]
-     tag2 = IO_getTag(line,'[',']')
-     GfortranBug86033: if (.not. allocated(partLabel)) then
-       allocate(partLabel(1),source=tag2)
+     tag = IO_getTag(line,'[',']')
+     GfortranBug86033: if (.not. allocated(sectionNames)) then
+       allocate(sectionNames(1),source=tag)
      else GfortranBug86033
-       partLabel  = [partLabel,tag2]
+       sectionNames  = [sectionNames,tag]
      endif GfortranBug86033
    endif nextSection
    chunkPos = IO_stringPos(line)
    tag = IO_lc(IO_stringValue(trim(line),chunkPos,1_pInt))                                          ! extract key
-   inSection: if (h > 0_pInt) then
-     chunkPos = IO_stringPos(line)
-     call part(h)%add(IO_lc(trim(line)))
+   inSection: if (s > 0_pInt) then
+     call part(s)%add(IO_lc(trim(line)))
    else inSection
      echo = (trim(tag) == '/echo/')
    endif inSection

@@ -69,9 +69,10 @@ subroutine source_vacancy_irradiation_init(fileUnit)
    phase_Noutput, &
    SOURCE_vacancy_irradiation_label, &
    SOURCE_vacancy_irradiation_ID, &
-   material_Nphase, &
    material_phase, &  
-   sourceState, &
+   sourceState
+ use config_material, only: &
+   material_Nphase, &
    MATERIAL_partPhase
  use numerics,only: &
    numerics_integrator

@@ -64,6 +64,8 @@ subroutine thermal_adiabatic_init(fileUnit)
    IO_error, &
    IO_timeStamp, &
    IO_EOF
+ use config_material, only: &
+   material_partHomogenization
  use material, only: &
    thermal_type, &
    thermal_typeInstance, &
@@ -76,8 +78,7 @@ subroutine thermal_adiabatic_init(fileUnit)
    thermalMapping, &
    thermal_initialT, &
    temperature, &
-   temperatureRate, &
-   material_partHomogenization
+   temperatureRate
 
  implicit none
  integer(pInt), intent(in) :: fileUnit

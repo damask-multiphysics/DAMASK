@@ -7,6 +7,7 @@
 !! 'phase', 'texture', and 'microstucture'
 !--------------------------------------------------------------------------------------------------
 module material
+ use config_material
  use chained_list
  use prec, only: &
    pReal, &
@@ -142,15 +143,6 @@ module material
                  HOMOGENIZATION_rgc_ID
  end enum
 
- character(len=*), parameter, public  :: &
-   MATERIAL_configFile         = 'material.config', &                                               !< generic name for material configuration file
-   MATERIAL_localFileExt       = 'materialConfig'                                                   !< extension of solver job name depending material configuration file
-
- character(len=*), parameter, public  :: &
-   MATERIAL_partHomogenization = 'homogenization', &                                                !< keyword for homogenization part
-   MATERIAL_partCrystallite    = 'crystallite', &                                                   !< keyword for crystallite part
-   MATERIAL_partPhase          = 'phase'                                                            !< keyword for phase part
-
  integer(kind(ELASTICITY_undefined_ID)),     dimension(:),   allocatable, public, protected :: &
    phase_elasticity                                                                                 !< elasticity of each phase
  integer(kind(PLASTICITY_undefined_ID)),     dimension(:),   allocatable, public, protected :: &
@@ -174,17 +166,8 @@ module material
  integer(kind(HOMOGENIZATION_undefined_ID)), dimension(:),   allocatable, public, protected :: &
    homogenization_type                                                                              !< type of each homogenization
 
- character(len=64), dimension(:), allocatable, public, protected :: &
-   phase_name, &                                                                                    !< name of each phase
-   homogenization_name, &                                                                           !< name of each homogenization
-   crystallite_name                                                                                 !< name of each crystallite setting
-
  integer(pInt), public, protected :: &
-   homogenization_maxNgrains, &                                                                     !< max number of grains in any USED homogenization
-   material_Nphase, &                                                                               !< number of phases
-   material_Nhomogenization, &                                                                      !< number of homogenizations
-   material_Nmicrostructure, &                                                                      !< number of microstructures
-   material_Ncrystallite                                                                            !< number of crystallite settings
+   homogenization_maxNgrains                                                                        !< max number of grains in any USED homogenization
 
  integer(pInt), dimension(:), allocatable, public, protected :: &
    phase_Nsources, &                                                                                !< number of source mechanisms active in each phase
@@ -243,19 +226,10 @@ module material
    phase_localPlasticity                                                                            !< flags phases with local constitutive law
 
 
- character(len=*), parameter, private :: &
-   MATERIAL_partMicrostructure = 'microstructure', &                                                !< keyword for microstructure part
-   MATERIAL_partTexture        = 'texture'                                                          !< keyword for texture part
-
- character(len=64), dimension(:), allocatable, private :: &
-   microstructure_name, &                                                                           !< name of each microstructure
-   texture_name                                                                                     !< name of each texture
-
  character(len=256), dimension(:), allocatable, private :: &
    texture_ODFfile                                                                                  !< name of each ODF file
 
  integer(pInt), private :: &
-   material_Ntexture, &                                                                             !< number of textures
    microstructure_maxNconstituents, &                                                               !< max number of constituents in any phase
    texture_maxNgauss, &                                                                             !< max number of Gauss components in any texture
    texture_maxNfiber                                                                                !< max number of Fiber components in any texture
@@ -304,13 +278,6 @@ module material
    temperatureRate, &                                                                               !< temperature change rate field
    vacancyConcRate, &                                                                               !< vacancy conc change field
    hydrogenConcRate                                                                                 !< hydrogen conc change field
-
- type(tPartitionedStringList), public,protected, allocatable, dimension(:) :: &
-   phaseConfig, &
-   microstructureConfig, &
-   homogenizationConfig, &
-   textureConfig, &
-   crystalliteConfig
 
  public :: &
    material_init, &
@@ -419,42 +386,20 @@ subroutine material_init()
  write(6,'(a15,a)')   ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
 
- if (.not. IO_open_jobFile_stat(FILEUNIT,material_localFileExt)) &                                  ! no local material configuration present...
-   call IO_open_file(FILEUNIT,material_configFile)                                                  ! ...open material.config file
-
- rewind(fileUnit)
- line        = ''                                                                                   ! to have it initialized
- do while (trim(line) /= IO_EOF)
-   part = IO_lc(IO_getTag(line,'<','>'))
-
-   select case (trim(part))
-    
-     case (trim(material_partPhase))
-       line = material_parsePhase(FILEUNIT)
+       call material_parsePhase()
        if (iand(myDebug,debug_levelBasic) /= 0_pInt) write(6,'(a)') ' Phase parsed'; flush(6)
     
-     case (trim(material_partMicrostructure))
-       line = material_parseMicrostructure(FILEUNIT)
+       call material_parseMicrostructure()
        if (iand(myDebug,debug_levelBasic) /= 0_pInt) write(6,'(a)') ' Microstructure parsed'; flush(6)
     
-     case (trim(material_partCrystallite))
-       line = material_parseCrystallite(FILEUNIT)
+       call material_parseCrystallite()
        if (iand(myDebug,debug_levelBasic) /= 0_pInt) write(6,'(a)') ' Crystallite parsed'; flush(6)
     
-     case (trim(material_partHomogenization))
-       line = material_parseHomogenization(FILEUNIT)
+       call material_parseHomogenization()
        if (iand(myDebug,debug_levelBasic) /= 0_pInt) write(6,'(a)') ' Homogenization parsed'; flush(6)
     
-     case (trim(material_partTexture))
-       line = material_parseTexture(FILEUNIT)
+       call material_parseTexture()
        if (iand(myDebug,debug_levelBasic) /= 0_pInt) write(6,'(a)') ' Texture parsed'; flush(6)
-
-     case default
-       line = IO_read(fileUnit)
-
-   end select
-
- enddo
 
  allocate(plasticState       (material_Nphase))
  allocate(sourceState        (material_Nphase))
@@ -571,7 +516,9 @@ end subroutine material_init
 !--------------------------------------------------------------------------------------------------
 !> @brief parses the homogenization part in the material configuration file
 !--------------------------------------------------------------------------------------------------
-character(len=65536) function material_parseHomogenization(fileUnit)
+subroutine material_parseHomogenization
+ use config_material, only : &
+   homogenizationConfig
  use IO, only: &
    IO_read, &
    IO_globalTagInPart, &
@@ -590,7 +537,6 @@ character(len=65536) function material_parseHomogenization(fileUnit)
    mesh_element
 
  implicit none
- integer(pInt),    intent(in) :: fileUnit
 
 
  integer(pInt), allocatable, dimension(:) :: chunkPos
@@ -598,40 +544,6 @@ character(len=65536) function material_parseHomogenization(fileUnit)
  character(len=65536) :: line, tag,devNull
  character(len=64) ::  tag2
  logical              :: echo
- 
- allocate(homogenizationConfig(0))
-
- h = 0_pInt
- do while (trim(line) /= IO_EOF)                                                                    ! read through sections of material part
-   line = IO_read(fileUnit)
-   if (IO_isBlank(line)) cycle                                                                      ! skip empty lines
-   foundNextPart: if (IO_getTag(line,'<','>') /= '') then
-     devNull = IO_read(fileUnit, .true.)                                                            ! reset IO_read
-     exit
-   endif foundNextPart
-   nextSection: if (IO_getTag(line,'[',']') /= '') then
-     h = h + 1_pInt
-     homogenizationConfig = [homogenizationConfig, emptyList]
-     tag2 = IO_getTag(line,'[',']')
-     GfortranBug86033: if (.not. allocated(homogenization_name)) then
-       allocate(homogenization_name(1),source=tag2)
-     else GfortranBug86033
-       homogenization_name  = [homogenization_name,tag2]
-     endif GfortranBug86033
-   endif nextSection
-   chunkPos = IO_stringPos(line)
-   tag = IO_lc(IO_stringValue(trim(line),chunkPos,1_pInt))                                          ! extract key
-   inSection: if (h > 0_pInt) then
-     call homogenizationConfig(h)%add(line)
-   else inSection
-     echo = (trim(tag) == '/echo/')
-   endif inSection
- enddo
- 
- if (echo) call homogenizationConfig(1)%show()
-
- material_Nhomogenization = size(homogenizationConfig)
- if (material_Nhomogenization < 1_pInt) call IO_error(160_pInt,ext_msg=material_partHomogenization)
 
  allocate(homogenization_type(material_Nhomogenization),           source=HOMOGENIZATION_undefined_ID)
  allocate(thermal_type(material_Nhomogenization),                  source=THERMAL_isothermal_ID)
@@ -760,15 +672,14 @@ endif
  enddo
 
  homogenization_maxNgrains = maxval(homogenization_Ngrains,homogenization_active)
- material_parseHomogenization=line
 
-end function material_parseHomogenization
+end subroutine material_parseHomogenization
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief parses the microstructure part in the material configuration file
 !--------------------------------------------------------------------------------------------------
-character(len=65536) function material_parseMicrostructure(fileUnit)
+subroutine material_parseMicrostructure
  use prec, only: &
   dNeq
  use IO
@@ -777,8 +688,6 @@ character(len=65536) function material_parseMicrostructure(fileUnit)
    mesh_NcpElems
 
  implicit none
- integer(pInt),    intent(in) :: fileUnit
-
  character(len=256), dimension(:), allocatable :: &
    str 
  character(len=64) :: tag2
@@ -789,40 +698,10 @@ character(len=65536) function material_parseMicrostructure(fileUnit)
    tag,line,devNull
  logical              :: echo
 
- allocate(MicrostructureConfig(0))
  line    = ''                                                                                       ! to have it initialized
  m       = 0_pInt
  echo    =.false.
 
- do while (trim(line) /= IO_EOF)                                                                    ! read through sections of material part
-   line = IO_read(fileUnit)
-   if (IO_isBlank(line)) cycle                                                                      ! skip empty lines
-   foundNextPart: if (IO_getTag(line,'<','>') /= '') then
-     devNull = IO_read(fileUnit, .true.)                                                            ! reset IO_read
-     exit
-   endif foundNextPart
-   nextSection: if (IO_getTag(line,'[',']') /= '') then
-     m = m + 1_pInt
-     microstructureConfig = [microstructureConfig, emptyList]
-     tag2 = IO_getTag(line,'[',']')
-     GfortranBug86033: if (.not. allocated(microstructure_name)) then
-       allocate(microstructure_name(1),source=tag2)
-     else GfortranBug86033
-       microstructure_name  = [microstructure_name,tag2]
-     endif GfortranBug86033
-   endif nextSection
-   chunkPos = IO_stringPos(line)
-   tag = IO_lc(IO_stringValue(trim(line),chunkPos,1_pInt))                                          ! extract key
-   inSection: if (m > 0_pInt) then
-     chunkPos = IO_stringPos(line)
-     call microstructureConfig(m)%add(IO_lc(line))
-   else inSection
-     echo = (trim(tag) == '/echo/')
-   endif inSection
- enddo
-
- material_Nmicrostructure = size(microstructureConfig)
- if (material_Nmicrostructure < 1_pInt) call IO_error(160_pInt,ext_msg=material_partMicrostructure)
 
  allocate(microstructure_crystallite(material_Nmicrostructure),          source=0_pInt)
  allocate(microstructure_Nconstituents(material_Nmicrostructure),        source=0_pInt)
@@ -871,14 +750,13 @@ enddo
      call IO_error(153_pInt,ext_msg=microstructure_name(m))
  enddo
 
- material_parseMicrostructure = line
-end function material_parseMicrostructure
+end subroutine material_parseMicrostructure
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief parses the crystallite part in the material configuration file
 !--------------------------------------------------------------------------------------------------
-character(len=65536) function material_parseCrystallite(fileUnit)
+subroutine material_parseCrystallite
  use IO, only: &
    IO_read, &
    IO_error, &
@@ -890,7 +768,6 @@ character(len=65536) function material_parseCrystallite(fileUnit)
    IO_EOF
 
  implicit none
- integer(pInt),    intent(in) :: fileUnit
  integer(pInt), allocatable, dimension(:) :: chunkPos
 
  character(len=64) ::  tag2
@@ -898,53 +775,18 @@ character(len=65536) function material_parseCrystallite(fileUnit)
  character(len=65536) :: line, tag,devNull
  logical              :: echo
 
- allocate(crystalliteConfig(0))
- c = 0_pInt
- do while (trim(line) /= IO_EOF)                                                                    ! read through sections of material part
-   line = IO_read(fileUnit)
-   if (IO_isBlank(line)) cycle                                                                      ! skip empty lines
-   foundNextPart: if (IO_getTag(line,'<','>') /= '') then
-     devNull = IO_read(fileUnit, .true.)                                                               ! reset IO_read
-     exit
-   endif foundNextPart
-   nextSection: if (IO_getTag(line,'[',']') /= '') then
-     c = c + 1_pInt
-     crystalliteConfig = [crystalliteConfig, emptyList]
-     tag2 = IO_getTag(line,'[',']')
-     GfortranBug86033: if (.not. allocated(crystallite_name)) then
-       allocate(crystallite_name(1),source=tag2)
-     else GfortranBug86033
-       crystallite_name  = [crystallite_name,tag2]
-     endif GfortranBug86033
-   endif nextSection
-   chunkPos = IO_stringPos(line)
-   tag = IO_lc(IO_stringValue(trim(line),chunkPos,1_pInt))                                          ! extract key
-   inSection: if (c > 0_pInt) then
-     chunkPos = IO_stringPos(trim(line))
-     call crystalliteConfig(c)%add(IO_lc(line))
-   else inSection
-     echo = (trim(tag) == '/echo/')
-   endif inSection
- enddo
-
- material_Ncrystallite = size(crystalliteConfig)
- if (material_Ncrystallite < 1_pInt) call IO_error(160_pInt,ext_msg=material_partCrystallite)
-
  allocate(crystallite_Noutput(material_Ncrystallite),           source=0_pInt)
  do c=1_pInt, material_Ncrystallite
    crystallite_Noutput(c) =  crystalliteConfig(c)%countKeys('(output)')
  enddo
 
- material_parseCrystallite = line
-end function material_parseCrystallite
+end subroutine material_parseCrystallite
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief parses the phase part in the material configuration file
 !--------------------------------------------------------------------------------------------------
-character(len=65536) function material_parsePhase(fileUnit)
- use chained_list, only: &
-   emptyList 
+subroutine material_parsePhase
  use IO, only: &
    IO_read, &
    IO_globalTagInPart, &
@@ -960,7 +802,6 @@ character(len=65536) function material_parsePhase(fileUnit)
    IO_EOF
 
  implicit none
- integer(pInt),    intent(in) :: fileUnit
 
 
  integer(pInt), allocatable, dimension(:) :: chunkPos
@@ -972,40 +813,9 @@ character(len=65536) function material_parsePhase(fileUnit)
    str 
  logical              :: echo
 
- allocate(phaseConfig(0))
  line    = ''                                                                                       ! to have it initialized
  p = 0_pInt                                                                                         !  - " -
  echo    =.false.
-
- do while (trim(line) /= IO_EOF)                                                                    ! read through sections of material part
-   line = IO_read(fileUnit)
-   if (IO_isBlank(line)) cycle                                                                      ! skip empty lines
-   foundNextPart: if (IO_getTag(line,'<','>') /= '') then
-     devNull = IO_read(fileUnit, .true.)                                                            ! reset IO_read
-     exit
-   endif foundNextPart
-   nextSection: if (IO_getTag(line,'[',']') /= '') then
-     p = p + 1_pInt
-     phaseConfig = [phaseConfig, emptyList]
-     tag2 = IO_getTag(line,'[',']')
-     GfortranBug86033: if (.not. allocated(phase_name)) then
-       allocate(phase_name(1),source=tag2)
-     else GfortranBug86033
-       phase_name  = [phase_name,tag2]
-     endif GfortranBug86033
-   endif nextSection
-   chunkPos = IO_stringPos(line)
-   tag = IO_lc(IO_stringValue(trim(line),chunkPos,1_pInt))                                          ! extract key
-   inSection: if (p > 0_pInt) then
-     chunkPos = IO_stringPos(line)
-     call phaseConfig(p)%add(IO_lc(trim(line)))
-   else inSection
-     echo = (trim(tag) == '/echo/')
-   endif inSection
- enddo
-
- material_Nphase = size(phaseConfig)
- if (material_Nphase < 1_pInt) call IO_error(160_pInt,ext_msg=material_partPhase)
 
  allocate(phase_elasticity(material_Nphase),source=ELASTICITY_undefined_ID)
  allocate(phase_plasticity(material_Nphase),source=PLASTICITY_undefined_ID)
@@ -1118,13 +928,12 @@ character(len=65536) function material_parsePhase(fileUnit)
    phase_plasticityInstance(p)  = count(phase_plasticity(1:p)  == phase_plasticity(p))
  enddo
 
-     material_parsePhase = line
-end function material_parsePhase
+end subroutine material_parsePhase
 
 !--------------------------------------------------------------------------------------------------
 !> @brief parses the texture part in the material configuration file
 !--------------------------------------------------------------------------------------------------
-character(len=65536) function material_parseTexture(fileUnit)
+subroutine material_parseTexture
  use prec, only: &
    dNeq
  use IO, only: &
@@ -1149,7 +958,6 @@ character(len=65536) function material_parseTexture(fileUnit)
    math_inv33
 
  implicit none
- integer(pInt),    intent(in) :: fileUnit
 
 
  integer(pInt), allocatable, dimension(:) :: chunkPos
@@ -1159,39 +967,6 @@ character(len=65536) function material_parseTexture(fileUnit)
  logical              :: echo
 
  character(len=65536) :: line, tag,devNull, line2
-
- allocate(textureConfig(0))
-
- t = 0_pInt
- do while (trim(line2) /= IO_EOF)                                                                    ! read through sections of material part
-   line2 = IO_read(fileUnit)
-   if (IO_isBlank(line2)) cycle                                                                      ! skip empty lines
-   foundNextPart: if (IO_getTag(line2,'<','>') /= '') then
-     devNull = IO_read(fileUnit, .true.)                                                            ! reset IO_read
-     exit
-   endif foundNextPart
-   nextSection: if (IO_getTag(line2,'[',']') /= '') then
-     t = t + 1_pInt
-     textureConfig = [textureConfig, emptyList]
-     tag2 = IO_getTag(line2,'[',']')
-     GfortranBug86033: if (.not. allocated(texture_name)) then
-       allocate(texture_name(1),source=tag2)
-     else GfortranBug86033
-       texture_name  = [texture_name,tag2]
-     endif GfortranBug86033
-   endif nextSection
-   chunkPos = IO_stringPos(line2)
-   tag = IO_lc(IO_stringValue(trim(line2),chunkPos,1_pInt))                                          ! extract key
-   inSection: if (t > 0_pInt) then
-     chunkPos = IO_stringPos(line2)
-     call textureConfig(t)%add(IO_lc(trim(line2)))
-   else inSection
-     echo = (trim(tag) == '/echo/')
-   endif inSection
- enddo
-
- material_Ntexture = size(textureConfig)
- if (material_Ntexture < 1_pInt) call IO_error(160_pInt,ext_msg=material_partTexture)
 
  allocate(texture_ODFfile(material_Ntexture));           texture_ODFfile=''
  allocate(texture_symmetry(material_Ntexture),           source=1_pInt)
@@ -1316,8 +1091,7 @@ character(len=65536) function material_parseTexture(fileUnit)
    enddo lines
  enddo
 
-     material_parseTexture = line2
-end function material_parseTexture
+end subroutine material_parseTexture
 
 
 !--------------------------------------------------------------------------------------------------

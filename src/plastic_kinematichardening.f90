@@ -145,7 +145,8 @@ subroutine plastic_kinehardening_init(fileUnit)
    phase_plasticityInstance, &
    phase_Noutput, &
    material_phase, &
-   plasticState, &
+   plasticState
+ use config_material, only: &
    MATERIAL_partPhase
  use lattice
  use numerics,only: &

@@ -62,6 +62,7 @@ subroutine homogenization_isostrain_init(fileUnit)
    debug_levelBasic
  use IO
  use material
+ use config_material
  
  implicit none
  integer(pInt),                                      intent(in) :: fileUnit

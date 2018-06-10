@@ -49,7 +49,7 @@ subroutine add(this,string)
     IO_stringPos
 
   implicit none
-  class(tPartitionedStringList)           :: this
+  class(tPartitionedStringList), target   :: this
   character(len=*), intent(in)            :: string
   
   integer(pInt), allocatable,dimension(:) :: p
@@ -61,14 +61,11 @@ subroutine add(this,string)
   new%string%val=trim(string)
   new%string%pos=IO_stringPos(trim(string))
 
-  if (.not. associated(this%next)) then
-    this%next => new
-  else
-    tmp => this%next
-    this%next => new
-    this%next%next => tmp
-    !new%prev => this%prev%next
-  end if
+  tmp => this
+  do while (associated(tmp%next))
+    tmp => tmp%next
+  enddo
+  tmp%next => new
 
 end subroutine add
 
@@ -85,7 +82,7 @@ subroutine show(this)
  tmp => this%next
  do 
    if (.not. associated(tmp)) exit
-   write(6,*) trim(tmp%string%val)
+   write(6,'(a)') trim(tmp%string%val)
    tmp => tmp%next
  end do
 

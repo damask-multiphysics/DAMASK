@@ -108,7 +108,8 @@ subroutine CPFEM_init
    material_phase, &
    homogState, &
    phase_plasticity, &
-   plasticState, &
+   plasticState
+ use config_material, only: &
    material_Nhomogenization
  use crystallite, only: &
    crystallite_F0, &
@@ -228,7 +229,8 @@ subroutine CPFEM_age()
    hydrogenfluxState, &
    material_phase, &
    phase_plasticity, &
-   phase_Nsources, &
+   phase_Nsources
+ use config_material, only: &
    material_Nhomogenization
  use crystallite, only: &
    crystallite_partionedF,&

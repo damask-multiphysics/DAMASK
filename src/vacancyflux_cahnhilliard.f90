@@ -91,9 +91,10 @@ subroutine vacancyflux_cahnhilliard_init(fileUnit)
    vacancyfluxMapping, &
    vacancyConc, &
    vacancyConcRate, &
-   vacancyflux_initialCv, &
-   material_partHomogenization, &
-   material_partPhase
+   vacancyflux_initialCv
+ use config_material, only: &
+   material_partPhase, &
+   material_partHomogenization
 
  implicit none
  integer(pInt), intent(in) :: fileUnit

@@ -143,7 +143,8 @@ subroutine CPFEM_init
    material_phase, &
    homogState, &
    phase_plasticity, &
-   plasticState, &
+   plasticState
+ use config_material, only: &
    material_Nhomogenization
  use crystallite, only: &
    crystallite_F0, &
@@ -310,7 +311,8 @@ subroutine CPFEM_general(mode, parallelExecution, ffn, ffn1, temperature_inp, dt
    thermal_type, &
    THERMAL_conduction_ID, &
    phase_Nsources, &
-   material_homog, &
+   material_homog
+ use config_material, only: &
    material_Nhomogenization
  use crystallite, only: &
    crystallite_partionedF,&
