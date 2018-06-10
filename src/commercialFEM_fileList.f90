@@ -6,7 +6,7 @@
 #include "IO.f90"
 #include "numerics.f90"
 #include "debug.f90"
-#include "list.f90"
+#include "linked_list.f90"
 #include "config_material.f90"
 #include "math.f90"
 #include "FEsolving.f90"

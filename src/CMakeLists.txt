@@ -37,7 +37,7 @@ add_library(DEBUG OBJECT "debug.f90")
 add_dependencies(DEBUG NUMERICS)
 list(APPEND OBJECTFILES $<TARGET_OBJECTS:DEBUG>)
 
-add_library(CHAINED_LIST OBJECT "list.f90")
+add_library(CHAINED_LIST OBJECT "linked_list.f90")
 add_dependencies(CHAINED_LIST DEBUG)
 list(APPEND OBJECTFILES $<TARGET_OBJECTS:CHAINED_LIST>)
 
