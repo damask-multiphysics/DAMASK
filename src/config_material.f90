@@ -163,7 +163,8 @@ subroutine parseFile(sectionNames,part,fileUnit,line)
  character(len=65536) :: devNull
  character(len=64)    :: tag
  logical              :: echo
- 
+
+ echo = .false. 
  allocate(part(0))
 
  s = 0_pInt
