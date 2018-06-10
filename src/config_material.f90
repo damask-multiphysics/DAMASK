@@ -1,3 +1,10 @@
+!--------------------------------------------------------------------------------------------------
+!> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
+!> @brief Reads in the material configuration from file
+!> @details Reads the material configuration file, where solverJobName.materialConfig takes
+!! precedence over material.config. Stores the raw strings and the positions of delimiters for the
+!! parts 'homogenization', 'crystallite', 'phase', 'texture', and 'microstucture'
+!--------------------------------------------------------------------------------------------------
 module config_material
  use chained_list
  use prec, only: &
@@ -189,7 +196,7 @@ subroutine parseFile(partLabel,part,fileUnit,nextLine)
    tag = IO_lc(IO_stringValue(trim(line),chunkPos,1_pInt))                                          ! extract key
    inSection: if (h > 0_pInt) then
      chunkPos = IO_stringPos(line)
-     call homogenizationConfig(h)%add(IO_lc(trim(line)),chunkPos)
+     call part(h)%add(IO_lc(trim(line)))
    else inSection
      echo = (trim(tag) == '/echo/')
    endif inSection

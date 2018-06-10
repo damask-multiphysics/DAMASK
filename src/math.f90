@@ -223,7 +223,6 @@ end subroutine math_init
 !> @brief check correctness of (some) math functions
 !--------------------------------------------------------------------------------------------------
 subroutine math_check
-
  use prec,     only: tol_math_check
  use IO,       only: IO_error
 

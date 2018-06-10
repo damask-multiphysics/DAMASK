@@ -42,18 +42,24 @@ contains
 !> @brief add element
 !> @details adds raw string and start/end position of chunks in this string
 !--------------------------------------------------------------------------------------------------
-subroutine add(this,string,stringPos)
+subroutine add(this,string)
+  use IO, only: &
+    IO_isBlank, &
+    IO_lc, &
+    IO_stringPos
+
   implicit none
-  class(tPartitionedStringList) :: this
-  type(tPartitionedStringList), pointer :: &
-    new, &
-    tmp
-  character(len=*), intent(in) :: string
-  integer(pInt), dimension(:), intent(in) :: stringPos
+  class(tPartitionedStringList)           :: this
+  character(len=*), intent(in)            :: string
+  
+  integer(pInt), allocatable,dimension(:) :: p
+  type(tPartitionedStringList), pointer   :: new, tmp
+
+  if (IO_isBlank(string)) return
 
   allocate(new)
-  new%string%val=string
-  new%string%pos=stringPos
+  new%string%val=trim(string)
+  new%string%pos=IO_stringPos(trim(string))
 
   if (.not. associated(this%next)) then
     this%next => new
@@ -61,6 +67,7 @@ subroutine add(this,string,stringPos)
     tmp => this%next
     this%next => new
     this%next%next => tmp
+    !new%prev => this%prev%next
   end if
 
 end subroutine add

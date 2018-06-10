@@ -622,12 +622,13 @@ character(len=65536) function material_parseHomogenization(fileUnit)
    chunkPos = IO_stringPos(line)
    tag = IO_lc(IO_stringValue(trim(line),chunkPos,1_pInt))                                          ! extract key
    inSection: if (h > 0_pInt) then
-     chunkPos = IO_stringPos(line)
-     call homogenizationConfig(h)%add(IO_lc(trim(line)),chunkPos)
+     call homogenizationConfig(h)%add(line)
    else inSection
      echo = (trim(tag) == '/echo/')
    endif inSection
  enddo
+ 
+ if (echo) call homogenizationConfig(1)%show()
 
  material_Nhomogenization = size(homogenizationConfig)
  if (material_Nhomogenization < 1_pInt) call IO_error(160_pInt,ext_msg=material_partHomogenization)
@@ -814,7 +815,7 @@ character(len=65536) function material_parseMicrostructure(fileUnit)
    tag = IO_lc(IO_stringValue(trim(line),chunkPos,1_pInt))                                          ! extract key
    inSection: if (m > 0_pInt) then
      chunkPos = IO_stringPos(line)
-     call microstructureConfig(m)%add(IO_lc(trim(line)),chunkPos)
+     call microstructureConfig(m)%add(IO_lc(line))
    else inSection
      echo = (trim(tag) == '/echo/')
    endif inSection
@@ -919,8 +920,8 @@ character(len=65536) function material_parseCrystallite(fileUnit)
    chunkPos = IO_stringPos(line)
    tag = IO_lc(IO_stringValue(trim(line),chunkPos,1_pInt))                                          ! extract key
    inSection: if (c > 0_pInt) then
-     chunkPos = IO_stringPos(line)
-     call crystalliteConfig(c)%add(IO_lc(trim(line)),chunkPos)
+     chunkPos = IO_stringPos(trim(line))
+     call crystalliteConfig(c)%add(IO_lc(line))
    else inSection
      echo = (trim(tag) == '/echo/')
    endif inSection
@@ -997,7 +998,7 @@ character(len=65536) function material_parsePhase(fileUnit)
    tag = IO_lc(IO_stringValue(trim(line),chunkPos,1_pInt))                                          ! extract key
    inSection: if (p > 0_pInt) then
      chunkPos = IO_stringPos(line)
-     call phaseConfig(p)%add(IO_lc(trim(line)),chunkPos)
+     call phaseConfig(p)%add(IO_lc(trim(line)))
    else inSection
      echo = (trim(tag) == '/echo/')
    endif inSection
@@ -1183,7 +1184,7 @@ character(len=65536) function material_parseTexture(fileUnit)
    tag = IO_lc(IO_stringValue(trim(line2),chunkPos,1_pInt))                                          ! extract key
    inSection: if (t > 0_pInt) then
      chunkPos = IO_stringPos(line2)
-     call textureConfig(t)%add(IO_lc(trim(line2)),chunkPos)
+     call textureConfig(t)%add(IO_lc(trim(line2)))
    else inSection
      echo = (trim(tag) == '/echo/')
    endif inSection
