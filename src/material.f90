@@ -564,7 +564,7 @@ subroutine material_parseHomogenization
    homogenization_typeInstance(h) = count(homogenization_type==homogenization_type(h))
 
    if (homogenizationConfig(h)%keyExists('thermal')) then
-     thermal_initialT(h) =  homogenizationConfig(h)%getFloat('t0')
+     thermal_initialT(h) =  homogenizationConfig(h)%getFloat('t0',defaultVal=300.0_pReal)
 
      tag = homogenizationConfig(h)%getString('thermal')
      select case (trim(tag))
@@ -581,9 +581,9 @@ subroutine material_parseHomogenization
    endif
 
    if (homogenizationConfig(h)%keyExists('damage')) then
-     damage_initialPhi(h) =  homogenizationConfig(h)%getFloat('initialdamage')
+     damage_initialPhi(h) =  homogenizationConfig(h)%getFloat('initialdamage',defaultVal=1.0_pReal)
 
-     tag = homogenizationConfig(h)%getString('thermal')
+     tag = homogenizationConfig(h)%getString('damage')
      select case (trim(tag))
        case(DAMAGE_NONE_label)
          damage_type(h) = DAMAGE_none_ID
@@ -598,7 +598,7 @@ subroutine material_parseHomogenization
    endif
    
    if (homogenizationConfig(h)%keyExists('vacancyflux')) then
-     vacancyflux_initialCv(h) = homogenizationConfig(h)%getFloat('cv0')
+     vacancyflux_initialCv(h) = homogenizationConfig(h)%getFloat('cv0',defaultVal=0.0_pReal)
 
      tag = homogenizationConfig(h)%getString('vacancyflux')
      select case (trim(tag))
@@ -630,7 +630,7 @@ subroutine material_parseHomogenization
    endif
 
    if (homogenizationConfig(h)%keyExists('hydrogenflux')) then
-     hydrogenflux_initialCh(h) = homogenizationConfig(h)%getFloat('ch0')
+     hydrogenflux_initialCh(h) = homogenizationConfig(h)%getFloat('ch0',defaultVal=0.0_pReal)
 
      tag = homogenizationConfig(h)%getString('hydrogenflux')
      select case (trim(tag))
