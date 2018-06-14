@@ -299,7 +299,7 @@ real(pReal) function getFloat(this,key,defaultVal)
  type(tPartitionedStringList),  pointer              :: list_tmp
  logical                                             :: found
 
- found  = merge(.true.,.false.,present(defaultVal))
+ found = present(defaultVal)
  if (present(defaultVal)) getFloat = defaultVal
  list_tmp => this%next
 
@@ -315,7 +315,6 @@ real(pReal) function getFloat(this,key,defaultVal)
    endif foundKey
    list_tmp => list_tmp%next
  end do
-
 
 end function getFloat
 
@@ -337,7 +336,7 @@ integer(pInt) function getInt(this,key,defaultVal)
  type(tPartitionedStringList),  pointer              :: list_tmp
  logical                                             :: found
 
- found  = merge(.true.,.false.,present(defaultVal))
+ found = present(defaultVal)
  if (present(defaultVal)) getInt = defaultVal
  list_tmp => this%next
 
@@ -375,7 +374,7 @@ character(len=65536) function getString(this,key,defaultVal,raw)
  logical                                             :: split
  logical                                             :: found
 
- found     = merge(.true.,.false.,present(defaultVal))
+ found = present(defaultVal)
  if (present(defaultVal)) getString = defaultVal
  split     = merge(raw,.false.,present(raw))
  list_tmp => this%next
