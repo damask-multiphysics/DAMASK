@@ -297,24 +297,25 @@ real(pReal) function getFloat(this,key,defaultVal)
  character(len=*),              intent(in)           :: key
  real(pReal),                   intent(in), optional :: defaultVal
  type(tPartitionedStringList),  pointer              :: list_tmp
+ logical                                             :: found
 
+ found  = merge(.true.,.false.,present(defaultVal))
+ if (present(defaultVal)) getFloat = defaultVal
  list_tmp => this%next
+
  do 
    endOfList: if (.not. associated(list_tmp)) then
-     if(present(defaultVal)) then
-       getFloat = defaultVal
-       exit
-     else
-       call IO_error(140_pInt,ext_msg=key)
-     endif
+     if(.not. found) call IO_error(140_pInt,ext_msg=key)
+     exit
    endif endOfList
    foundKey: if (trim(IO_stringValue(list_tmp%string%val,list_tmp%string%pos,1))==trim(key)) then
+     found = .true.
      if (list_tmp%string%pos(1) < 2_pInt) call IO_error(143_pInt,ext_msg=key)
      getFloat = IO_FloatValue(list_tmp%string%val,list_tmp%string%pos,2)
-     exit
    endif foundKey
    list_tmp => list_tmp%next
  end do
+
 
 end function getFloat
 
@@ -334,21 +335,21 @@ integer(pInt) function getInt(this,key,defaultVal)
  character(len=*),              intent(in)           :: key
  integer(pInt),                 intent(in), optional :: defaultVal
  type(tPartitionedStringList),  pointer              :: list_tmp
+ logical                                             :: found
 
+ found  = merge(.true.,.false.,present(defaultVal))
+ if (present(defaultVal)) getInt = defaultVal
  list_tmp => this%next
+
  do 
    endOfList: if (.not. associated(list_tmp)) then
-     if(present(defaultVal)) then
-       getInt = defaultVal
-       exit
-     else
-       call IO_error(140_pInt,ext_msg=key)
-     endif
+     if(.not. found) call IO_error(140_pInt,ext_msg=key)
+     exit
    endif endOfList
    foundKey: if (trim(IO_stringValue(list_tmp%string%val,list_tmp%string%pos,1))==trim(key)) then
+     found = .true.
      if (list_tmp%string%pos(1) < 2_pInt) call IO_error(143_pInt,ext_msg=key)
      getInt = IO_IntValue(list_tmp%string%val,list_tmp%string%pos,2)
-     exit
    endif foundKey
    list_tmp => list_tmp%next
  end do
@@ -360,7 +361,7 @@ end function getInt
 !> @brief gets string value for given key
 !> @details if key is not found exits with error unless default is given
 !--------------------------------------------------------------------------------------------------
-character(len=65536) function getString(this,key,defaultVal)
+character(len=65536) function getString(this,key,defaultVal,raw)
  use IO, only: &
    IO_error, &
    IO_stringValue
@@ -369,22 +370,29 @@ character(len=65536) function getString(this,key,defaultVal)
  class(tPartitionedStringList), intent(in)           :: this
  character(len=*),              intent(in)           :: key
  character(len=65536),          intent(in), optional :: defaultVal
+ logical,                       intent(in), optional :: raw
  type(tPartitionedStringList),  pointer              :: list_tmp
+ logical                                             :: split
+ logical                                             :: found
 
+ found     = merge(.true.,.false.,present(defaultVal))
+ if (present(defaultVal)) getString = defaultVal
+ split     = merge(raw,.false.,present(raw))
  list_tmp => this%next
+
  do 
    endOfList: if (.not. associated(list_tmp)) then
-     if(present(defaultVal)) then
-       getString = defaultVal
-       exit
-     else
-       call IO_error(140_pInt,ext_msg=key)
-     endif
+     if(.not. found) call IO_error(140_pInt,ext_msg=key)
+     exit
    endif endOfList
    foundKey: if (trim(IO_stringValue(list_tmp%string%val,list_tmp%string%pos,1))==trim(key)) then
-     if (list_tmp%string%pos(1) < 2_pInt) call IO_error(143_pInt,ext_msg=key)
-     getString = IO_StringValue(list_tmp%string%val,list_tmp%string%pos,2)
-     exit
+     found = .true.
+     if (split) then
+       if (list_tmp%string%pos(1) < 2_pInt) call IO_error(143_pInt,ext_msg=key)
+       getString = IO_StringValue(list_tmp%string%val,list_tmp%string%pos,2)
+     else
+       getString = list_tmp%string%val(list_tmp%string%pos(3):)
+     endif
    endif foundKey
    list_tmp => list_tmp%next
  end do
