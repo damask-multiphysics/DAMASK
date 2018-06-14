@@ -98,23 +98,23 @@ subroutine config_material_init()
    select case (trim(part))
     
      case (trim(material_partPhase))
-       call parseFile(phase_name,phaseConfig,FILEUNIT,line)
+       call parseFile(line,phase_name,phaseConfig,FILEUNIT)
        if (iand(myDebug,debug_levelBasic) /= 0_pInt) write(6,'(a)') ' Phase parsed'; flush(6)
     
      case (trim(material_partMicrostructure))
-       call parseFile(microstructure_name,microstructureConfig,FILEUNIT,line)
+       call parseFile(line,microstructure_name,microstructureConfig,FILEUNIT)
        if (iand(myDebug,debug_levelBasic) /= 0_pInt) write(6,'(a)') ' Microstructure parsed'; flush(6)
     
      case (trim(material_partCrystallite))
-       call parseFile(crystallite_name,crystalliteConfig,FILEUNIT,line)
+       call parseFile(line,crystallite_name,crystalliteConfig,FILEUNIT)
        if (iand(myDebug,debug_levelBasic) /= 0_pInt) write(6,'(a)') ' Crystallite parsed'; flush(6)
     
      case (trim(material_partHomogenization))
-       call parseFile(homogenization_name,homogenizationConfig,FILEUNIT,line)
+       call parseFile(line,homogenization_name,homogenizationConfig,FILEUNIT)
        if (iand(myDebug,debug_levelBasic) /= 0_pInt) write(6,'(a)') ' Homogenization parsed'; flush(6)
     
      case (trim(material_partTexture))
-       call parseFile(texture_name,textureConfig,FILEUNIT,line)
+       call parseFile(line,texture_name,textureConfig,FILEUNIT)
        if (iand(myDebug,debug_levelBasic) /= 0_pInt) write(6,'(a)') ' Texture parsed'; flush(6)
 
      case default
@@ -141,7 +141,8 @@ end subroutine config_material_init
 !--------------------------------------------------------------------------------------------------
 !> @brief parses the homogenization part in the material configuration file
 !--------------------------------------------------------------------------------------------------
-subroutine parseFile(sectionNames,part,fileUnit,line)
+subroutine parseFile(line,&
+                     sectionNames,part,fileUnit)
  use IO, only: &
    IO_read, &
    IO_error, &
