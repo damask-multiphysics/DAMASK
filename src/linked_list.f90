@@ -376,7 +376,7 @@ character(len=65536) function getString(this,key,defaultVal,raw)
 
  found = present(defaultVal)
  if (present(defaultVal)) getString = defaultVal
- split     = merge(raw,.false.,present(raw))
+ split     = merge(raw,.true.,present(raw))
  list_tmp => this%next
 
  do 
@@ -390,7 +390,7 @@ character(len=65536) function getString(this,key,defaultVal,raw)
        if (list_tmp%string%pos(1) < 2_pInt) call IO_error(143_pInt,ext_msg=key)
        getString = IO_StringValue(list_tmp%string%val,list_tmp%string%pos,2)
      else
-       getString = list_tmp%string%val(list_tmp%string%pos(3):)
+       getString = trim(list_tmp%string%val(list_tmp%string%pos(4):))
      endif
    endif foundKey
    list_tmp => list_tmp%next
