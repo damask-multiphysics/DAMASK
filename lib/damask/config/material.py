@@ -1,7 +1,7 @@
 # -*- coding: UTF-8 no BOM -*-
 
 import re
-import os, sys
+import os
 
 class Section():
   def __init__(self,data = {'__order__':[]},part = ''):
