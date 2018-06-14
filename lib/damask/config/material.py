@@ -1,6 +1,7 @@
 # -*- coding: UTF-8 no BOM -*-
 
 import re
+import os, sys
 
 class Section():
   def __init__(self,data = {'__order__':[]},part = ''):
@@ -14,7 +15,7 @@ class Section():
     self.parameters = {}
     for key in data:
       if type(data[key]) is not list:
-        self.parameters[key] = [data[key]]
+        self.parameters[key] = [data[key]]  #this is creating a dictionary. So this is a way to create elements in a dictionary
       else:
         self.parameters[key] = data[key]
 
@@ -139,6 +140,7 @@ class Material():
 
     re_part = re.compile(r'^<(.+)>$')                     # pattern for part
     re_sec  = re.compile(r'^\[(.+)\]$')                   # pattern for section
+    re_include  = re.compile(r'^{(.+)}$')                 # pattern for include
 
     name_section = ''
     active = False
@@ -160,7 +162,34 @@ class Material():
             self.data[part]['__order__'].append(name_section)  # ... and position
             self.data[part][name_section] = {'__order__':[]}
             continue
-          
+          # This part accesses the data in the files mentioned in the curly brackets. For now the file should be present in the working folder
+          #trying to generalize the file and its location. 
+          if line:
+            match_include = re_include.match(line.split()[0])
+            if match_include:
+              sub_file = match_include.group(1).split('/')[1]    #get the file name which has to be opened to get the data
+              #code to search for file when it is located anywhere
+              path_file = os.environ['PATH']
+              path_file = path_file[:(path_file.find("DAMASK") + len("DAMASK"))]
+              for root, dirs, files in os.walk(path_file):
+                if sub_file in files:
+                  target_path = os.path.join(root, sub_file)  #this would give the path for the sub_file
+                  with open(target_path,'r') as f1:   #using the target_path to open the file
+                    subdata = f1.readlines()
+                  subdata = [a for a in subdata if a != '\n']   #removes '\n' elements from the list
+                if subdata:
+                  for entry in subdata:
+                    if sections == [] or name_section in sections:  # respect subset
+                      items = entry.split()
+                      if items[0] not in self.data[part][name_section]:         # first encounter of key?
+                        self.data[part][name_section][items[0]] = []            # create item
+                        self.data[part][name_section]['__order__'].append(items[0])
+                      if items[0].startswith('(') and items[0].endswith(')'):   # multiple "(key)"
+                        self.data[part][name_section][items[0]].append(items[1:])
+                      else:                                                     # plain key
+                        self.data[part][name_section][items[0]] = items[1:]
+              continue 
+
           if sections == [] or name_section in sections:  # respect subset
             items = line.split()
             if items[0] not in self.data[part][name_section]:         # first encounter of key?
@@ -172,12 +201,11 @@ class Material():
               self.data[part][name_section][items[0]] = items[1:]
                   
   def read(self,file=None):
-    #re_include  = re.compile(r'^{(.+)}$')                   # pattern for file include
     with open(file,'r') as f:
       c = f.readlines()
     for p in self.parts:
       self.parse_data(part=p, content=c)
-       
+      
   def write(self,file='material.config', overwrite=False):
     import os
     i = 0
