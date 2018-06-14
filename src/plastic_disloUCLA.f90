@@ -153,7 +153,7 @@ subroutine plastic_disloUCLA_init(fileUnit)
    PLASTICITY_DISLOUCLA_ID, &
    material_phase, &
    plasticState
- use config_material, only: &
+ use config, only: &
    MATERIAL_partPhase
  use lattice
  use numerics,only: &

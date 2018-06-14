@@ -240,7 +240,7 @@ subroutine plastic_dislotwin_init(fileUnit)
    PLASTICITY_DISLOTWIN_ID, &
    material_phase, &  
    plasticState
- use config_material, only: &
+ use config, only: &
    MATERIAL_partPhase
  use lattice
  use numerics,only: &

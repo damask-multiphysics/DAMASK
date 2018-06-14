@@ -82,7 +82,7 @@ subroutine hydrogenflux_cahnhilliard_init(fileUnit)
    hydrogenConc, &
    hydrogenConcRate, &
    hydrogenflux_initialCh
- use config_material, only: &
+ use config, only: &
    material_partHomogenization, &
    material_partPhase
 

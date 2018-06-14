@@ -71,7 +71,7 @@ subroutine source_vacancy_irradiation_init(fileUnit)
    SOURCE_vacancy_irradiation_ID, &
    material_phase, &  
    sourceState
- use config_material, only: &
+ use config, only: &
    material_Nphase, &
    MATERIAL_partPhase
  use numerics,only: &

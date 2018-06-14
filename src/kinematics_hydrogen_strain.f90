@@ -69,7 +69,7 @@ subroutine kinematics_hydrogen_strain_init(fileUnit)
    phase_Noutput, &
    KINEMATICS_hydrogen_strain_label, &
    KINEMATICS_hydrogen_strain_ID
- use config_material, only: &
+ use config, only: &
    material_Nphase, &
    MATERIAL_partPhase
 

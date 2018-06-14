@@ -27,7 +27,7 @@ subroutine porosity_none_init()
  use IO, only: &
    IO_timeStamp
  use material
- use config_material
+ use config
  
  implicit none
  integer(pInt) :: &

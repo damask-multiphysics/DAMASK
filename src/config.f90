@@ -5,7 +5,7 @@
 !! precedence over material.config. Stores the raw strings and the positions of delimiters for the
 !! parts 'homogenization', 'crystallite', 'phase', 'texture', and 'microstucture'
 !--------------------------------------------------------------------------------------------------
-module config_material
+module config
  use linked_list
  use prec, only: &
    pReal, &
@@ -48,11 +48,11 @@ module config_material
    MATERIAL_configFile         = 'material.config', &                                               !< generic name for material configuration file
    MATERIAL_localFileExt       = 'materialConfig'                                                   !< extension of solver job name depending material configuration file
 
- public :: config_material_init
+ public :: config_init
 
 contains
 
-subroutine config_material_init()
+subroutine config_init()
 #if defined(__GFORTRAN__) || __INTEL_COMPILER >= 1800
  use, intrinsic :: iso_fortran_env, only: &
    compiler_version, &
@@ -136,7 +136,7 @@ subroutine config_material_init()
  if (material_Ntexture < 1_pInt) call IO_error(160_pInt,ext_msg=material_partTexture)
 
 
-end subroutine config_material_init
+end subroutine config_init
 
 !--------------------------------------------------------------------------------------------------
 !> @brief parses the homogenization part in the material configuration file
@@ -202,4 +202,4 @@ subroutine parseFile(line,&
  end if 
 end subroutine parseFile
 
-end module config_material
+end module config

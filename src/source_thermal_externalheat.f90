@@ -75,7 +75,7 @@ subroutine source_thermal_externalheat_init(fileUnit)
    SOURCE_thermal_externalheat_ID, &
    material_phase, &  
    sourceState
- use config_material, only: &
+ use config, only: &
    material_Nphase, &
    MATERIAL_partPhase
  use numerics,only: &

@@ -83,7 +83,7 @@ subroutine source_damage_isoDuctile_init(fileUnit)
    SOURCE_damage_isoDuctile_ID, &
    material_phase, &  
    sourceState
- use config_material, only: &
+ use config, only: &
    material_Nphase, &
    MATERIAL_partPhase
  

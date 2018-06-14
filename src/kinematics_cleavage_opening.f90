@@ -79,7 +79,7 @@ subroutine kinematics_cleavage_opening_init(fileUnit)
    phase_Noutput, &
    KINEMATICS_cleavage_opening_label, &
    KINEMATICS_cleavage_opening_ID
- use config_material, only: &
+ use config, only: &
    material_Nphase, &
    MATERIAL_partPhase
  use lattice, only: &

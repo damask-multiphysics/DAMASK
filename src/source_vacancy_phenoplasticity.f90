@@ -69,7 +69,7 @@ subroutine source_vacancy_phenoplasticity_init(fileUnit)
    SOURCE_vacancy_phenoplasticity_ID, &
    material_phase, &  
    sourceState
- use config_material, only: &
+ use config, only: &
    material_Nphase, &
    MATERIAL_partPhase
  use numerics,only: &

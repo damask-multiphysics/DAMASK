@@ -97,7 +97,7 @@ subroutine source_damage_anisoDuctile_init(fileUnit)
    SOURCE_damage_anisoDuctile_ID, &
    material_phase, &  
    sourceState
- use config_material, only: &
+ use config, only: &
    material_Nphase, &
    MATERIAL_partPhase
  use numerics,only: &

@@ -7,7 +7,7 @@
 !! 'phase', 'texture', and 'microstucture'
 !--------------------------------------------------------------------------------------------------
 module material
- use config_material
+ use config
  use linked_list
  use prec, only: &
    pReal, &
@@ -508,7 +508,7 @@ end subroutine material_init
 !> @brief parses the homogenization part from the material configuration
 !--------------------------------------------------------------------------------------------------
 subroutine material_parseHomogenization
- use config_material, only : &
+ use config, only : &
    homogenizationConfig
  use IO, only: &
    IO_error

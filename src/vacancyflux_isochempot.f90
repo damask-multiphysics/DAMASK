@@ -75,7 +75,7 @@ subroutine vacancyflux_isochempot_init(fileUnit)
    vacancyConc, &
    vacancyConcRate, &
    vacancyflux_initialCv
- use config_material, only: &
+ use config, only: &
    material_partHomogenization
 
  implicit none

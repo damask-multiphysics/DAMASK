@@ -78,7 +78,7 @@ subroutine porosity_phasefield_init(fileUnit)
    porosityMapping, &
    porosity, &
    porosity_initialPhi
- use config_material, only: &
+ use config, only: &
    material_partHomogenization, &
    material_partPhase
 

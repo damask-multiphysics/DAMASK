@@ -93,7 +93,7 @@ subroutine source_damage_anisoBrittle_init(fileUnit)
    SOURCE_damage_anisoBrittle_ID, &
    material_phase, &
    sourceState
- use config_material, only: &
+ use config, only: &
    material_Nphase, &
    MATERIAL_partPhase
  use numerics,only: &

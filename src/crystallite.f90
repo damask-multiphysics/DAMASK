@@ -171,7 +171,7 @@ subroutine crystallite_init
    IO_write_jobFile, &
    IO_error
  use material
- use config_material
+ use config
  use constitutive, only: &
    constitutive_initialFi, &
    constitutive_microstructure                                                                     ! derived (shortcut) quantities of given state
@@ -1238,7 +1238,7 @@ subroutine crystallite_integrateStateRK4()
    sourceState, &
    phase_Nsources, &
    phaseAt, phasememberAt
- use config_material, only: &
+ use config, only: &
    material_Nphase
  use constitutive, only: &
    constitutive_collectDotState, &

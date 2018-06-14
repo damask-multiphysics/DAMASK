@@ -92,7 +92,7 @@ subroutine vacancyflux_cahnhilliard_init(fileUnit)
    vacancyConc, &
    vacancyConcRate, &
    vacancyflux_initialCv
- use config_material, only: &
+ use config, only: &
    material_partPhase, &
    material_partHomogenization
 

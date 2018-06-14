@@ -78,7 +78,7 @@ subroutine thermal_conduction_init(fileUnit)
    thermal_initialT, &
    temperature, &
    temperatureRate
- use config_material, only: &
+ use config, only: &
    material_partHomogenization
 
  implicit none

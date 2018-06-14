@@ -292,7 +292,7 @@ use material, only: phase_plasticity, &
                     PLASTICITY_NONLOCAL_ID, &
                     plasticState, &
                     material_phase
-use config_material, only:  MATERIAL_partPhase
+use config, only:  MATERIAL_partPhase
 use lattice
 use numerics,only: &
    numerics_integrator

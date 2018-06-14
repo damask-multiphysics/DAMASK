@@ -69,7 +69,7 @@ subroutine source_thermal_dissipation_init(fileUnit)
    SOURCE_thermal_dissipation_ID, &
    material_phase, &  
    sourceState
- use config_material, only: &
+ use config, only: &
    material_Nphase, &
    MATERIAL_partPhase
  use numerics,only: &

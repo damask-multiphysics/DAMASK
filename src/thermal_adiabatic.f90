@@ -64,7 +64,7 @@ subroutine thermal_adiabatic_init(fileUnit)
    IO_error, &
    IO_timeStamp, &
    IO_EOF
- use config_material, only: &
+ use config, only: &
    material_partHomogenization
  use material, only: &
    thermal_type, &
