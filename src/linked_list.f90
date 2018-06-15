@@ -10,19 +10,19 @@ module linked_list
  implicit none
  private
  type, private :: tPartitionedString
-   character(len=:),      allocatable :: val
+   character(len=:),            allocatable :: val
    integer(pInt), dimension(:), allocatable :: pos
  end type tPartitionedString
  
  type, public :: tPartitionedStringList
-   type(tPartitionedString)    :: string
+   type(tPartitionedString)               :: string
    type(tPartitionedStringList),  pointer :: next => null()
    type(tPartitionedStringList),  pointer :: prev => null()
    contains
      procedure :: add            => add
      procedure :: show           => show
 
-     procedure :: keyExists      => keyExists
+     procedure :: keyExists      => exist
      procedure :: countKeys      => countKeyAppearances
      procedure :: getStringsRaw  => strings
 
@@ -59,19 +59,19 @@ subroutine add(this,string)
   implicit none
   class(tPartitionedStringList),  target, intent(in) :: this
   character(len=*),                       intent(in) :: string
-  type(tPartitionedStringList),   pointer            :: new, list_tmp
+  type(tPartitionedStringList),   pointer            :: new, item
 
   if (IO_isBlank(string)) return
 
   allocate(new)
-  new%string%val=IO_lc(trim(string))
-  new%string%pos=IO_stringPos(trim(string))
+  new%string%val = IO_lc       (trim(string))
+  new%string%pos = IO_stringPos(trim(string))
 
-  list_tmp => this
-  do while (associated(list_tmp%next))
-    list_tmp => list_tmp%next
+  item => this
+  do while (associated(item%next))
+    item => item%next
   enddo
-  list_tmp%next => new
+  item%next => new
 
 end subroutine add
 
@@ -84,13 +84,12 @@ subroutine show(this)
 
  implicit none
  class(tPartitionedStringList) :: this
- type(tPartitionedStringList),  pointer  :: list_tmp
+ type(tPartitionedStringList), pointer :: item
 
- list_tmp => this%next
- do 
-   if (.not. associated(list_tmp)) exit
-   write(6,'(a)') trim(list_tmp%string%val)
-   list_tmp => list_tmp%next
+ item => this%next
+ do while (associated(item))
+   write(6,'(a)') trim(item%string%val)
+   item => item%next
  end do
 
 end subroutine show
@@ -103,15 +102,15 @@ end subroutine show
 !    subroutine free_all()
 !      implicit none
 !                 
-!      type(node), pointer :: list_tmp
+!      type(node), pointer :: item
 !         
 !      do        
-!      list_tmp => first
+!        item => first
 !         
-!        if (associated(list_tmp) .eqv. .FALSE.) exit
+!        if (associated(item) .eqv. .FALSE.) exit
 !          
 !        first => first%next
-!        deallocate(list_tmp)
+!        deallocate(item)
 !      end do                     
 !    end subroutine free_all
 
@@ -119,28 +118,24 @@ end subroutine show
 !--------------------------------------------------------------------------------------------------
 !> @brief reports wether a given key (string value at first position) exists in the list
 !--------------------------------------------------------------------------------------------------
-logical function keyExists(this,key)
+logical function exist(this,key)
  use IO, only: &
    IO_stringValue
 
  implicit none
  class(tPartitionedStringList), intent(in) :: this
  character(len=*), intent(in)              :: key
- type(tPartitionedStringList), pointer     :: list_tmp
+ type(tPartitionedStringList), pointer     :: item
 
- keyExists = .false.
+ exist = .false.
 
- list_tmp => this%next
- do 
-   if (.not. associated(list_tmp)) exit
-   if (trim(IO_stringValue(list_tmp%string%val,list_tmp%string%pos,1))==trim(key)) then
-     keyExists = .true.
-     exit
-   endif
-   list_tmp => list_tmp%next
+ item => this%next
+ do while (associated(item) .and. .not. exist)
+   exist = trim(IO_stringValue(item%string%val,item%string%pos,1)) == trim(key)
+   item => item%next
  end do
 
-end function keyExists
+end function exist
 
 
 !--------------------------------------------------------------------------------------------------
@@ -155,18 +150,17 @@ integer(pInt) function countKeyAppearances(this,key)
 
  class(tPartitionedStringList), intent(in) :: this
  character(len=*), intent(in)              :: key
- type(tPartitionedStringList), pointer     :: list_tmp
+ type(tPartitionedStringList), pointer     :: item
  integer(pInt) :: i
 
  countKeyAppearances = 0_pInt
 
- list_tmp => this%next
- do 
-   if (.not. associated(list_tmp)) exit
-   if (trim(IO_stringValue(list_tmp%string%val,list_tmp%string%pos,1))==trim(key)) then
+ item => this%next
+ do while (associated(item))
+   if (trim(IO_stringValue(item%string%val,item%string%pos,1)) == trim(key)) then
      countKeyAppearances = countKeyAppearances + 1_pInt
    endif
-   list_tmp => list_tmp%next
+   item => item%next
  end do
 
 end function countKeyAppearances
@@ -184,23 +178,21 @@ function strings(this)
  implicit none
  class(tPartitionedStringList),      intent(in)  :: this
  character(len=65536), dimension(:), allocatable :: strings
- character(len=65536)                            :: string_tmp
- type(tPartitionedStringList),  pointer          :: list_tmp
+ character(len=65536)                            :: string
+ type(tPartitionedStringList),  pointer          :: item
 
- list_tmp => this%next
- do 
-   if (.not. associated(list_tmp)) then
-     if(size(strings) < 0_pInt) call IO_error(142_pInt)
-     exit
-   endif
-     string_tmp = list_tmp%string%val
-     GfortranBug86033: if (.not. allocated(strings)) then
-       allocate(strings(1),source=string_tmp)
-     else GfortranBug86033
-       strings = [strings,string_tmp]
-     endif GfortranBug86033
-   list_tmp => list_tmp%next
+ item => this%next
+ do while (associated(item))
+   string = item%string%val
+   GfortranBug86033: if (.not. allocated(strings)) then
+     allocate(strings(1),source=string)
+   else GfortranBug86033
+     strings = [strings,string]
+   endif GfortranBug86033
+   item => item%next
  end do
+ if (size(strings) < 0_pInt) call IO_error(142_pInt)
+
 end function strings
 
 
@@ -218,18 +210,21 @@ subroutine getRaw(this,key,string,stringPos)
  character(len=*),                         intent(in)  :: key
  integer(pInt), dimension(:), allocatable, intent(out) :: stringPos
  character(len=*),                         intent(out) :: string
- type(tPartitionedStringList),  pointer                :: list_tmp
-
- list_tmp => this%next
- do 
-   if (.not. associated(list_tmp)) call IO_error(140_pInt,ext_msg=key)
-   foundKey: if (trim(IO_stringValue(list_tmp%string%val,list_tmp%string%pos,1))==trim(key)) then
-     stringPos = list_tmp%string%pos
-     string    = list_tmp%string%val
-     exit
-   endif foundKey
-   list_tmp => list_tmp%next
+ type(tPartitionedStringList),  pointer                :: item
+ logical                                               :: found
+ 
+ found = .false.
+ item => this%next
+ do while (associated(item) .and. .not. found)
+   found = trim(IO_stringValue(item%string%val,item%string%pos,1)) == trim(key)
+   if (found) then
+     stringPos = item%string%pos
+     string    = item%string%val
+   endif
+   item => item%next
  end do
+ if (.not. found) call IO_error(140_pInt,ext_msg=key)
+
 end subroutine getRaw
 
 
@@ -252,31 +247,31 @@ subroutine getRaws(this,key,string,stringPos)
  character(len=65536)                      :: string_tmp
  integer(pInt)                             :: posSize
  integer(pInt),  dimension(:), allocatable :: stringPosFlat
- type(tPartitionedStringList), pointer     :: list_tmp
+ type(tPartitionedStringList), pointer     :: item
 
  posSize = -1_pInt
- list_tmp => this%next
+ item => this%next
  do 
-   if (.not. associated(list_tmp)) then
+   if (.not. associated(item)) then
      if(posSize < 0_pInt) call IO_error(140_pInt,ext_msg=key)
      stringPos = reshape(stringPosFlat,[posSize,size(string)])
      exit
    endif
-   foundKey: if (trim(IO_stringValue(list_tmp%string%val,list_tmp%string%pos,1))==trim(key)) then
+   foundKey: if (trim(IO_stringValue(item%string%val,item%string%pos,1))==trim(key)) then
      if (posSize < 0_pInt) then
-       posSize = size(list_tmp%string%pos)
-       stringPosFlat = list_tmp%string%pos
+       posSize = size(item%string%pos)
+       stringPosFlat = item%string%pos
        allocate(string(1))
-       string(1) = list_tmp%string%val
+       string(1) = item%string%val
      else
-       if (size(list_tmp%string%pos) /= posSize) &
-         call IO_error(141_pInt,ext_msg=trim(list_tmp%string%val),el=posSize)
-       stringPosFlat = [stringPosFlat,list_tmp%string%pos]
-       string_tmp = list_tmp%string%val
+       if (size(item%string%pos) /= posSize) &
+         call IO_error(141_pInt,ext_msg=trim(item%string%val),el=posSize)
+       stringPosFlat = [stringPosFlat,item%string%pos]
+       string_tmp = item%string%val
        string = [string,string_tmp]
      endif 
    endif foundKey
-   list_tmp => list_tmp%next
+   item => item%next
  end do
 
 end subroutine getRaws
@@ -296,25 +291,23 @@ real(pReal) function getFloat(this,key,defaultVal)
  class(tPartitionedStringList), intent(in)           :: this
  character(len=*),              intent(in)           :: key
  real(pReal),                   intent(in), optional :: defaultVal
- type(tPartitionedStringList),  pointer              :: list_tmp
+ type(tPartitionedStringList),  pointer              :: item
  logical                                             :: found
 
- found = present(defaultVal)
  if (present(defaultVal)) getFloat = defaultVal
- list_tmp => this%next
+ found = .false.
+ item => this%next
 
- do 
-   endOfList: if (.not. associated(list_tmp)) then
-     if(.not. found) call IO_error(140_pInt,ext_msg=key)
-     exit
-   endif endOfList
-   foundKey: if (trim(IO_stringValue(list_tmp%string%val,list_tmp%string%pos,1))==trim(key)) then
-     found = .true.
-     if (list_tmp%string%pos(1) < 2_pInt) call IO_error(143_pInt,ext_msg=key)
-     getFloat = IO_FloatValue(list_tmp%string%val,list_tmp%string%pos,2)
-   endif foundKey
-   list_tmp => list_tmp%next
+ do while (associated(item) .and. .not. found)
+   found = trim(IO_stringValue(item%string%val,item%string%pos,1)) == trim(key)
+   if (found) then
+     if (item%string%pos(1) < 2_pInt) call IO_error(143_pInt,ext_msg=key)
+     getFloat = IO_FloatValue(item%string%val,item%string%pos,2)
+   endif
+   item => item%next
  end do
+
+ if (.not. found .and. .not. present(defaultVal)) call IO_error(140_pInt,ext_msg=key)
 
 end function getFloat
 
@@ -333,25 +326,23 @@ integer(pInt) function getInt(this,key,defaultVal)
  class(tPartitionedStringList), intent(in)           :: this
  character(len=*),              intent(in)           :: key
  integer(pInt),                 intent(in), optional :: defaultVal
- type(tPartitionedStringList),  pointer              :: list_tmp
+ type(tPartitionedStringList),  pointer              :: item
  logical                                             :: found
 
- found = present(defaultVal)
  if (present(defaultVal)) getInt = defaultVal
- list_tmp => this%next
+ found = .false.
+ item => this%next
 
- do 
-   endOfList: if (.not. associated(list_tmp)) then
-     if(.not. found) call IO_error(140_pInt,ext_msg=key)
-     exit
-   endif endOfList
-   foundKey: if (trim(IO_stringValue(list_tmp%string%val,list_tmp%string%pos,1))==trim(key)) then
-     found = .true.
-     if (list_tmp%string%pos(1) < 2_pInt) call IO_error(143_pInt,ext_msg=key)
-     getInt = IO_IntValue(list_tmp%string%val,list_tmp%string%pos,2)
-   endif foundKey
-   list_tmp => list_tmp%next
+ do while (associated(item) .and. .not. found)
+   found = trim(IO_stringValue(item%string%val,item%string%pos,1)) == trim(key)
+   if (found) then
+     if (item%string%pos(1) < 2_pInt) call IO_error(143_pInt,ext_msg=key)
+     getInt = IO_IntValue(item%string%val,item%string%pos,2)
+   endif
+   item => item%next
  end do
+
+ if (.not. found .and. .not. present(defaultVal)) call IO_error(140_pInt,ext_msg=key)
 
 end function getInt
 
@@ -370,35 +361,39 @@ character(len=65536) function getString(this,key,defaultVal,raw)
  character(len=*),              intent(in)           :: key
  character(len=65536),          intent(in), optional :: defaultVal
  logical,                       intent(in), optional :: raw
- type(tPartitionedStringList),  pointer              :: list_tmp
+ type(tPartitionedStringList),  pointer              :: item
  logical                                             :: split
  logical                                             :: found
 
  found = present(defaultVal)
  if (present(defaultVal)) getString = defaultVal
  split     = merge(raw,.true.,present(raw))
- list_tmp => this%next
+ item => this%next
 
  do 
-   endOfList: if (.not. associated(list_tmp)) then
+   endOfList: if (.not. associated(item)) then
      if(.not. found) call IO_error(140_pInt,ext_msg=key)
      exit
    endif endOfList
-   foundKey: if (trim(IO_stringValue(list_tmp%string%val,list_tmp%string%pos,1))==trim(key)) then
+   foundKey: if (trim(IO_stringValue(item%string%val,item%string%pos,1)) == trim(key)) then
      found = .true.
      if (split) then
-       if (list_tmp%string%pos(1) < 2_pInt) call IO_error(143_pInt,ext_msg=key)
-       getString = IO_StringValue(list_tmp%string%val,list_tmp%string%pos,2)
+       if (item%string%pos(1) < 2_pInt) call IO_error(143_pInt,ext_msg=key)
+       getString = IO_StringValue(item%string%val,item%string%pos,2)
      else
-       getString = trim(list_tmp%string%val(list_tmp%string%pos(4):))
+       getString = trim(item%string%val(item%string%pos(4):))
      endif
    endif foundKey
-   list_tmp => list_tmp%next
+   item => item%next
  end do
 
 end function getString
 
 
+!--------------------------------------------------------------------------------------------------
+!> @brief ...
+!> @details ...
+!--------------------------------------------------------------------------------------------------
 function getStrings(this,key)
   use IO
 
@@ -447,14 +442,14 @@ function getIntArray(this,key,defaultVal)
  integer(pInt), dimension(:), allocatable            :: getIntArray
  class(tPartitionedStringList), intent(in)           :: this
  character(len=*),              intent(in)           :: key
- integer(pInt),dimension(:),    intent(in), optional :: defaultVal
- type(tPartitionedStringList),  pointer              :: list_tmp
- integer(pInt) :: i
+ integer(pInt), dimension(:),   intent(in), optional :: defaultVal
+ type(tPartitionedStringList),  pointer              :: item
+ integer(pInt)                                       :: i
  logical                                             :: found
  logical                                             :: cumulative
 
  cumulative = (key(1:1) == '(' .and. key(len_trim(key):len_trim(key)) == ')')
- found = present(defaultVal)
+ found = .false.
 
  if (present(defaultVal)) then
    getIntArray = defaultVal
@@ -462,25 +457,24 @@ function getIntArray(this,key,defaultVal)
    allocate(getIntArray(0))
  endif
 
- list_tmp => this%next
- do 
-   endOfList: if (.not. associated(list_tmp)) then
-     if(.not. found) call IO_error(140_pInt,ext_msg=key)
-     exit
-   endif endOfList
-   foundKey: if (trim(IO_stringValue(list_tmp%string%val,list_tmp%string%pos,1))==trim(key)) then
+ item => this%next
+ do while (associated(item) .and. (.not. found .or. cumulative))
+   found = trim(IO_stringValue(item%string%val,item%string%pos,1)) == trim(key)
+   if (found) then
      if (.not. cumulative) then
        deallocate(getIntArray) ! use here rhs allocation with empty list
        allocate(getIntArray(0))
      endif
-     found = .true.
-     if (list_tmp%string%pos(1) < 2_pInt) call IO_error(143_pInt,ext_msg=key)
-     do i = 2_pInt, list_tmp%string%pos(1)
-       getIntArray = [getIntArray,IO_IntValue(list_tmp%string%val,list_tmp%string%pos,i)]
+     if (item%string%pos(1) < 2_pInt) call IO_error(143_pInt,ext_msg=key)
+     do i = 2_pInt, item%string%pos(1)
+       getIntArray = [getIntArray,IO_IntValue(item%string%val,item%string%pos,i)]
      enddo
-   endif foundKey
-   list_tmp => list_tmp%next
+   endif
+   item => item%next
  end do
+
+ if (.not. found .and. .not. present(defaultVal)) call IO_error(140_pInt,ext_msg=key)
+
 end function getIntArray
 
 
@@ -499,31 +493,33 @@ function getFloatArray(this,key,defaultVal)
  real(pReal), dimension(:), allocatable              :: getFloatArray
  class(tPartitionedStringList), intent(in)           :: this
  character(len=*),              intent(in)           :: key
- real(pReal),dimension(:),      intent(in), optional :: defaultVal
- type(tPartitionedStringList),  pointer              :: list_tmp
- integer(pInt) :: i
+ real(pReal), dimension(:),     intent(in), optional :: defaultVal
+ type(tPartitionedStringList),  pointer              :: item
+ integer(pInt)                                       :: i
+ logical                                             :: found
 
- allocate(getFloatArray(0))
+ found = .false.
 
- list_tmp => this%next
- do 
-   endOfList: if (.not. associated(list_tmp)) then
-     if(present(defaultVal)) then
-       getFloatArray = defaultVal
-       exit
-     else
-       call IO_error(140_pInt,ext_msg=key)
-     endif
-   endif endOfList
-   foundKey: if (trim(IO_stringValue(list_tmp%string%val,list_tmp%string%pos,1))==trim(key)) then
-     if (list_tmp%string%pos(1) < 2_pInt) call IO_error(143_pInt,ext_msg=key)
-     do i = 2_pInt, list_tmp%string%pos(1)
-       getFloatArray = [getFloatArray,IO_FloatValue(list_tmp%string%val,list_tmp%string%pos,i)]
+ if (present(defaultVal)) then
+   getFloatArray = defaultVal
+ else
+   allocate(getFloatArray(0))
+ endif
+
+ item => this%next
+ do while (associated(item) .and. .not. found)
+   found = trim(IO_stringValue(item%string%val,item%string%pos,1)) == trim(key)
+   if (found) then
+     if (item%string%pos(1) < 2_pInt) call IO_error(143_pInt,ext_msg=key)
+     do i = 2_pInt, item%string%pos(1)
+       getFloatArray = [getFloatArray,IO_FloatValue(item%string%val,item%string%pos,i)]
      enddo
-     exit
-   endif foundKey
-   list_tmp => list_tmp%next
+   endif
+   item => item%next
  end do
+
+ if (.not. found .and. .not. present(defaultVal)) call IO_error(140_pInt,ext_msg=key)
+
 end function getFloatArray
 
 
