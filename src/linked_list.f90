@@ -433,7 +433,6 @@ function getStrings(this,key)
 end function
 
 
-
 !--------------------------------------------------------------------------------------------------
 !> @brief gets array of int values for given key
 !> @details if key is not found exits with error unless default is given
@@ -451,25 +450,34 @@ function getIntArray(this,key,defaultVal)
  integer(pInt),dimension(:),    intent(in), optional :: defaultVal
  type(tPartitionedStringList),  pointer              :: list_tmp
  integer(pInt) :: i
+ logical                                             :: found
+ logical                                             :: cumulative
 
- allocate(getIntArray(0))
+ cumulative = (key(1:1) == '(' .and. key(len_trim(key):len_trim(key)) == ')')
+ found = present(defaultVal)
+
+ if (present(defaultVal)) then
+   getIntArray = defaultVal
+ else
+   allocate(getIntArray(0))
+ endif
 
  list_tmp => this%next
  do 
    endOfList: if (.not. associated(list_tmp)) then
-     if(present(defaultVal)) then
-       getIntArray = defaultVal
-       exit
-     else
-       call IO_error(140_pInt,ext_msg=key)
-     endif
+     if(.not. found) call IO_error(140_pInt,ext_msg=key)
+     exit
    endif endOfList
    foundKey: if (trim(IO_stringValue(list_tmp%string%val,list_tmp%string%pos,1))==trim(key)) then
+     if (.not. cumulative) then
+       deallocate(getIntArray) ! use here rhs allocation with empty list
+       allocate(getIntArray(0))
+     endif
+     found = .true.
      if (list_tmp%string%pos(1) < 2_pInt) call IO_error(143_pInt,ext_msg=key)
      do i = 2_pInt, list_tmp%string%pos(1)
        getIntArray = [getIntArray,IO_IntValue(list_tmp%string%val,list_tmp%string%pos,i)]
      enddo
-     exit
    endif foundKey
    list_tmp => list_tmp%next
  end do
