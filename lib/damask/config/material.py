@@ -140,7 +140,6 @@ class Material():
 
     re_part = re.compile(r'^<(.+)>$')                     # pattern for part
     re_sec  = re.compile(r'^\[(.+)\]$')                   # pattern for section
-    re_include  = re.compile(r'^{(.+)}$')                 # pattern for include
 
     name_section = ''
     active = False
@@ -187,7 +186,7 @@ class Material():
           if match.group(1).startswith('/'):
             sub_file = match.group(1)
           else:
-            pass
+            sub_file = os.path.normpath(os.path.dirname(file).join(match.group(1)))
           with open(sub_file,'r') as f1:   #using the target_path to open the file
             for l in f1.readlines(): c.append(l)
         else:
