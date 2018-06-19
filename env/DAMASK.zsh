@@ -2,15 +2,14 @@
 # usage:  source DAMASK.zsh
 
 function canonicalPath {
-  python -c "import os,sys; print(os.path.realpath(os.path.expanduser(sys.argv[1])))" $1
+  python -c "import os,sys; print(os.path.normpath(os.path.realpath(os.path.expanduser(sys.argv[1]))))" $1
 }
 
-# transition compatibility (renamed $DAMASK_ROOT/DAMASK_env.zsh to $DAMASK_ROOT/env/DAMASK.zsh)
-if [ ${0:t:r} = 'DAMASK' ]; then
-  DAMASK_ROOT=${0:a:h}'/..'
-else
-  DAMASK_ROOT=${0:a:h}
-fi
+function blink {
+  echo -e "\033[2;5m$1\033[0m"
+}
+
+DAMASK_ROOT=$(canonicalPath "${0:a:h}'/..")
 
 # shorthand command to change to DAMASK_ROOT directory
 eval "function DAMASK_root() { cd $DAMASK_ROOT; }"
@@ -26,10 +25,10 @@ unset -f set
 [ "x$DAMASK_BIN != x" ] && PATH=$DAMASK_BIN:$PATH
 
 SOLVER=$(type -p DAMASK_spectral || true 2>/dev/null)
-[ "x$SOLVER == x" ] && SOLVER='Not found!'
+[ "x$SOLVER == x" ] && SOLVER=$(blink 'Not found!')
 
 PROCESSING=$(type -p postResults || true 2>/dev/null)
-[ "x$PROCESSING == x" ] && PROCESSING='Not found!'
+[ "x$PROCESSING == x" ] && PROCESSING=$(blink 'Not found!')
 
 [ "x$DAMASK_NUM_THREADS == x" ] && DAMASK_NUM_THREADS=1
 
@@ -52,16 +51,18 @@ if [ ! -z "$PS1" ]; then
   echo "DAMASK             $DAMASK_ROOT"
   echo "Spectral Solver    $SOLVER" 
   echo "Post Processing    $PROCESSING"
-  echo "Multithreading     DAMASK_NUM_THREADS=$DAMASK_NUM_THREADS"
   if [ "x$PETSC_DIR"   != "x" ]; then
-    echo "PETSc location     $PETSC_DIR"
+    echo -n "PETSc location     "
+    [ -d $PETSC_DIR ] && echo $PETSC_DIR || blink $PETSC_DIR
     [[ $(canonicalPath "$PETSC_DIR") == $PETSC_DIR ]] \
     || echo "               ~~> "$(canonicalPath "$PETSC_DIR")
   fi
   [[ "x$PETSC_ARCH"  == "x" ]] \
   || echo "PETSc architecture $PETSC_ARCH"
-  echo "MSC.Marc/Mentat    $MSC_ROOT"
+  echo -n "MSC.Marc/Mentat    "
+  [ -d $MSC_ROOT ] && echo $MSC_ROOT || blink $MSC_ROOT
   echo
+  echo "Multithreading     DAMASK_NUM_THREADS=$DAMASK_NUM_THREADS"
   echo -n "heap  size         "
    [[ "$(ulimit -d)" == "unlimited" ]] \
    && echo "unlimited" \
