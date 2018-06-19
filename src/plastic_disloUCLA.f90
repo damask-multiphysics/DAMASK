@@ -151,8 +151,9 @@ subroutine plastic_disloUCLA_init(fileUnit)
    phase_Noutput, &
    PLASTICITY_DISLOUCLA_label, &
    PLASTICITY_DISLOUCLA_ID, &
-   material_phase, &  
-   plasticState, & 
+   material_phase, &
+   plasticState
+ use config, only: &
    MATERIAL_partPhase
  use lattice
  use numerics,only: &

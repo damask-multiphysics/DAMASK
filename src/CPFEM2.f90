@@ -27,6 +27,8 @@ subroutine CPFEM_initAll(el,ip)
    numerics_init
  use debug, only: &
    debug_init
+ use config, only: &
+   config_init
  use FEsolving, only: &
    FE_init
  use math, only: &
@@ -64,6 +66,7 @@ subroutine CPFEM_initAll(el,ip)
 #endif
  call numerics_init
  call debug_init
+ call config_init
  call math_init
  call FE_init
  call mesh_init(ip, el)                                                                        ! pass on coordinates to alter calcMode of first ip
@@ -108,7 +111,8 @@ subroutine CPFEM_init
    material_phase, &
    homogState, &
    phase_plasticity, &
-   plasticState, &
+   plasticState
+ use config, only: &
    material_Nhomogenization
  use crystallite, only: &
    crystallite_F0, &
@@ -228,7 +232,8 @@ subroutine CPFEM_age()
    hydrogenfluxState, &
    material_phase, &
    phase_plasticity, &
-   phase_Nsources, &
+   phase_Nsources
+ use config, only: &
    material_Nhomogenization
  use crystallite, only: &
    crystallite_partionedF,&

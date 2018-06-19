@@ -128,10 +128,9 @@ subroutine plastic_phenopowerlaw_init
    PLASTICITY_PHENOPOWERLAW_label, &
    PLASTICITY_PHENOPOWERLAW_ID, &
    material_phase, &
-   plasticState, &
-   MATERIAL_partPhase, &
-   phaseConfig
-
+   plasticState
+ use config, only: &
+   MATERIAL_partPhase
  use lattice
  use numerics,only: &
    numerics_integrator

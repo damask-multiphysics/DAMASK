@@ -12,32 +12,32 @@ module plastic_kinehardening
  implicit none
  private
  integer(pInt),                       dimension(:),     allocatable,         public, protected :: &
-   plastic_kinehardening_sizePostResults                                                                  !< cumulative size of post results
+   plastic_kinehardening_sizePostResults                                                            !< cumulative size of post results
    
  integer(pInt),                       dimension(:,:),   allocatable, target, public :: &
-   plastic_kinehardening_sizePostResult                                                                   !< size of each post result output
+   plastic_kinehardening_sizePostResult                                                             !< size of each post result output
    
  character(len=64),                   dimension(:,:),   allocatable, target, public :: &
-   plastic_kinehardening_output                                                                           !< name of each post result output
+   plastic_kinehardening_output                                                                     !< name of each post result output
  
  integer(pInt),                       dimension(:),     allocatable, target, public :: &
-   plastic_kinehardening_Noutput                                                                          !< number of outputs per instance
+   plastic_kinehardening_Noutput                                                                    !< number of outputs per instance
  
  integer(pInt),                       dimension(:),     allocatable,         public, protected :: &
-   plastic_kinehardening_totalNslip                                                                       !< no. of slip system used in simulation
+   plastic_kinehardening_totalNslip                                                                 !< no. of slip system used in simulation
   
 
  integer(pInt),                       dimension(:,:),   allocatable,         private :: &
-   plastic_kinehardening_Nslip                                                                            !< active number of slip systems per family (input parameter, per family)
+   plastic_kinehardening_Nslip                                                                      !< active number of slip systems per family (input parameter, per family)
    
 
  enum, bind(c)
    enumerator :: undefined_ID, &
-                 crss_ID, &                                                                               !< critical resolved stress
-                 crss_back_ID, &                                                                          !< critical resolved back stress
-                 sense_ID, &                                                                              !< sense of acting shear stress (-1 or +1)
-                 chi0_ID, &                                                                               !< backstress at last switch of stress sense (positive?)
-                 gamma0_ID, &                                                                             !< accumulated shear at last switch of stress sense (at current switch?)
+                 crss_ID, &                                                                         !< critical resolved stress
+                 crss_back_ID, &                                                                    !< critical resolved back stress
+                 sense_ID, &                                                                        !< sense of acting shear stress (-1 or +1)
+                 chi0_ID, &                                                                         !< backstress at last switch of stress sense (positive?)
+                 gamma0_ID, &                                                                       !< accumulated shear at last switch of stress sense (at current switch?)
                  accshear_ID, &
                  sumGamma_ID, &
                  shearrate_ID, &
@@ -46,26 +46,26 @@ module plastic_kinehardening
  end enum
  
  
- type, private :: tParameters                                                                          !< container type for internal constitutive parameters
+ type, private :: tParameters                                                                       !< container type for internal constitutive parameters
    integer(kind(undefined_ID)),         dimension(:),   allocatable,          private :: &
-     outputID                                                                                          !< ID of each post result output
+     outputID                                                                                       !< ID of each post result output
     
    real(pReal) :: &
-     gdot0, &                                                                                          !< reference shear strain rate for slip (input parameter)
-     n_slip, &                                                                                         !< stress exponent for slip (input parameter)
+     gdot0, &                                                                                       !< reference shear strain rate for slip (input parameter)
+     n_slip, &                                                                                      !< stress exponent for slip (input parameter)
      aTolResistance, &
      aTolShear
      
    
    real(pReal),                         dimension(:),   allocatable,          private :: &
-     crss0, &                                                                                           !< initial critical shear stress for slip (input parameter, per family)
-     theta0, &                                                                                         !< initial hardening rate of forward stress for each slip
-     theta1, &                                                                                         !< asymptotic hardening rate of forward stress for each slip >
-     theta0_b, &                                                                                       !< initial hardening rate of back stress for each slip > 
-     theta1_b, &                                                                                       !< asymptotic hardening rate of back stress for each slip >
+     crss0, &                                                                                        !< initial critical shear stress for slip (input parameter, per family)
+     theta0, &                                                                                      !< initial hardening rate of forward stress for each slip
+     theta1, &                                                                                      !< asymptotic hardening rate of forward stress for each slip >
+     theta0_b, &                                                                                    !< initial hardening rate of back stress for each slip > 
+     theta1_b, &                                                                                    !< asymptotic hardening rate of back stress for each slip >
      tau1, &
      tau1_b, &
-     interaction_slipslip, &                                                                           !< latent hardening matrix
+     interaction_slipslip, &                                                                        !< latent hardening matrix
      nonSchmidCoeff
         
    real(pReal),                       dimension(:,:),   allocatable,          private :: &
@@ -73,20 +73,20 @@ module plastic_kinehardening
  end type
 
  type, private :: tKinehardeningState
-   real(pReal), pointer, dimension(:,:) :: &                                                           !< vectors along NipcMyInstance
-     crss, &                                                                                           !< critical resolved stress
-     crss_back, &                                                                                      !< critical resolved back stress
-     sense, &                                                                                          !< sense of acting shear stress (-1 or +1)
-     chi0, &                                                                                           !< backstress at last switch of stress sense
-     gamma0, &                                                                                         !< accumulated shear at last switch of stress sense
-     accshear                                                                                          !< accumulated (absolute) shear
+   real(pReal), pointer, dimension(:,:) :: &                                                        !< vectors along NipcMyInstance
+     crss, &                                                                                        !< critical resolved stress
+     crss_back, &                                                                                   !< critical resolved back stress
+     sense, &                                                                                       !< sense of acting shear stress (-1 or +1)
+     chi0, &                                                                                        !< backstress at last switch of stress sense
+     gamma0, &                                                                                      !< accumulated shear at last switch of stress sense
+     accshear                                                                                       !< accumulated (absolute) shear
 
-   real(pReal), pointer, dimension(:) :: &                                                             !< scalars along NipcMyInstance
-     sumGamma                                                                                          !< accumulated shear across all systems
+   real(pReal), pointer, dimension(:) :: &                                                          !< scalars along NipcMyInstance
+     sumGamma                                                                                       !< accumulated shear across all systems
  end type
 
  type(tParameters), dimension(:), allocatable, private :: &
-   param                                                                                               !< containers of constitutive parameters (len Ninstance)
+   param                                                                                            !< containers of constitutive parameters (len Ninstance)
  
  type(tKinehardeningState), allocatable, dimension(:), private :: &
    dotState, &
@@ -145,7 +145,8 @@ subroutine plastic_kinehardening_init(fileUnit)
    phase_plasticityInstance, &
    phase_Noutput, &
    material_phase, &
-   plasticState, &
+   plasticState
+ use config, only: &
    MATERIAL_partPhase
  use lattice
  use numerics,only: &
@@ -155,9 +156,10 @@ subroutine plastic_kinehardening_init(fileUnit)
  integer(pInt), intent(in) :: fileUnit
 
  integer(pInt), allocatable, dimension(:) :: chunkPos
+ integer(kind(undefined_ID)) :: &
+   output_ID
  integer(pInt) :: &
    o, j, k, f, &
-   output_ID, &
    phase, & 
    instance, &
    maxNinstance, &
@@ -177,8 +179,6 @@ subroutine plastic_kinehardening_init(fileUnit)
    tag       = '', &
    line      = '', &
    extmsg    = ''
- character(len=64) :: &
-   outputtag = ''
 
  write(6,'(/,a)')   ' <<<+-  constitutive_'//PLASTICITY_KINEHARDENING_label//' init  -+>>>'
  write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
@@ -220,7 +220,6 @@ subroutine plastic_kinehardening_init(fileUnit)
        Nchunks_SlipFamilies = count(lattice_NslipSystem(:,phase) > 0_pInt)                          ! maximum number of slip families according to lattice type of current phase
        Nchunks_SlipSlip     = maxval(lattice_interactionSlipSlip(:,:,phase))
        Nchunks_nonSchmid    = lattice_NnonSchmid(phase)
-       allocate(param(instance)%outputID(phase_Noutput(phase)), source=undefined_ID)                           ! allocate space for IDs of every requested output
        allocate(param(instance)%crss0   (Nchunks_SlipFamilies), source=0.0_pReal)
        allocate(param(instance)%tau1    (Nchunks_SlipFamilies), source=0.0_pReal)
        allocate(param(instance)%tau1_b  (Nchunks_SlipFamilies), source=0.0_pReal)
@@ -236,39 +235,48 @@ subroutine plastic_kinehardening_init(fileUnit)
      cycle                                                                                          ! skip to next line
    endif
    if (phase > 0_pInt ) then; if (phase_plasticity(phase) == PLASTICITY_KINEHARDENING_ID) then      ! one of my phases. Do not short-circuit here (.and. between if-statements), it's not safe in Fortran
-     instance = phase_plasticityInstance(phase)                                                     ! which instance of my plasticity is present phase
      chunkPos = IO_stringPos(line)
      tag = IO_lc(IO_stringValue(line,chunkPos,1_pInt))                                              ! extract key
      select case(tag)
        case ('(output)')
-         outputtag = IO_lc(IO_stringValue(line,chunkPos,2_pInt))
          output_ID = undefined_ID
-         select case(outputtag)
+         select case(IO_lc(IO_stringValue(line,chunkPos,2_pInt)))
            case ('resistance')
              output_ID = crss_ID
+
            case ('backstress')
              output_ID = crss_back_ID
+
            case ('sense')
              output_ID = sense_ID
+
            case ('chi0')
              output_ID = chi0_ID
+
            case ('gamma0')
              output_ID = gamma0_ID
+
            case ('accumulatedshear')
              output_ID = accshear_ID
+
            case ('totalshear')
              output_ID = sumGamma_ID
+
            case ('shearrate')
              output_ID = shearrate_ID
+
            case ('resolvedstress')
              output_ID = resolvedstress_ID
+
          end select
 
          if (output_ID /= undefined_ID) then
            plastic_kinehardening_Noutput(instance) = plastic_kinehardening_Noutput(instance) + 1_pInt
-           plastic_kinehardening_output(plastic_kinehardening_Noutput(instance),instance) = outputtag
-           param(instance)%outputID (plastic_kinehardening_Noutput(instance)) = output_ID
+           plastic_kinehardening_output(plastic_kinehardening_Noutput(instance),instance) = &
+                                                          IO_lc(IO_stringValue(line,chunkPos,2_pInt))
+           param(instance)%outputID = [param(instance)%outputID, output_ID]
          endif
+
 !--------------------------------------------------------------------------------------------------
 ! parameters depending on number of slip families 
        case ('nslip')
@@ -619,7 +627,6 @@ subroutine plastic_kinehardening_LpAndItsTangent(Lp,dLp_dTstar99, &
    math_transpose33
  use lattice, only: &
    lattice_Sslip, &       !< schmid matrix
-   lattice_Sslip_v, &
    lattice_maxNslipFamily, &
    lattice_NslipSystem, &
    lattice_NnonSchmid
@@ -739,8 +746,6 @@ subroutine plastic_kinehardening_deltaState(Tstar_v,ipc,ip,el)
    ipc, &                                                                                           !< component-ID of integration point
    ip, &                                                                                            !< integration point
    el                                                                                               !< element
- real(pReal), dimension(6) :: &
-   Tstar_dev_v                                                                                      !< deviatoric 2nd Piola Kirchhoff stress tensor in Mandel notation
  real(pReal), dimension(plastic_kinehardening_totalNslip(phase_plasticityInstance(phaseAt(ipc,ip,el)))) :: &
    gdot_pos,gdot_neg, &
    tau_pos,tau_neg, &
@@ -799,14 +804,10 @@ end subroutine plastic_kinehardening_deltaState
 !--------------------------------------------------------------------------------------------------
 subroutine plastic_kinehardening_dotState(Tstar_v,ipc,ip,el)
  use lattice, only: &
-   lattice_Sslip_v, &
-   lattice_maxNslipFamily, &
-   lattice_NslipSystem, &
-   lattice_NnonSchmid
+   lattice_maxNslipFamily
  use material, only: &
    material_phase, &
    phaseAt, phasememberAt, &
-   plasticState, &
    phase_plasticityInstance
 
  implicit none
@@ -819,10 +820,8 @@ subroutine plastic_kinehardening_dotState(Tstar_v,ipc,ip,el)
 
  integer(pInt) :: &
    instance,ph, &
-   f,i,j,k, &
-   index_myFamily,index_otherFamily, &
+   f,i,j, &
    nSlip, &
-   offset_accshear, &
    of
  
  real(pReal), dimension(plastic_kinehardening_totalNslip(phase_plasticityInstance(material_phase(ipc,ip,el)))) :: &
@@ -873,14 +872,12 @@ end subroutine plastic_kinehardening_dotState
 function plastic_kinehardening_postResults(Tstar_v,ipc,ip,el)
  use material, only: &
    material_phase, &
-   plasticState, &
    phaseAt, phasememberAt, &
    phase_plasticityInstance
  use lattice, only: &
    lattice_Sslip_v, &
    lattice_maxNslipFamily, &
-   lattice_NslipSystem, &
-   lattice_NnonSchmid
+   lattice_NslipSystem
 
  implicit none
  real(pReal), dimension(6), intent(in) :: &
@@ -896,7 +893,7 @@ function plastic_kinehardening_postResults(Tstar_v,ipc,ip,el)
  integer(pInt) :: &
    instance,ph, of, &
    nSlip,&
-   o,f,i,c,j,k, &
+   o,f,i,c,j,&
    index_myFamily
    
  real(pReal), dimension(plastic_kinehardening_totalNslip(phase_plasticityInstance(material_phase(ipc,ip,el)))) :: &

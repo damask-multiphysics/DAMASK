@@ -7,7 +7,8 @@
 !! 'phase', 'texture', and 'microstucture'
 !--------------------------------------------------------------------------------------------------
 module material
- use chained_list
+ use config
+ use linked_list
  use prec, only: &
    pReal, &
    pInt, &
@@ -142,15 +143,6 @@ module material
                  HOMOGENIZATION_rgc_ID
  end enum
 
- character(len=*), parameter, public  :: &
-   MATERIAL_configFile         = 'material.config', &                                               !< generic name for material configuration file
-   MATERIAL_localFileExt       = 'materialConfig'                                                   !< extension of solver job name depending material configuration file
-
- character(len=*), parameter, public  :: &
-   MATERIAL_partHomogenization = 'homogenization', &                                                !< keyword for homogenization part
-   MATERIAL_partCrystallite    = 'crystallite', &                                                   !< keyword for crystallite part
-   MATERIAL_partPhase          = 'phase'                                                            !< keyword for phase part
-
  integer(kind(ELASTICITY_undefined_ID)),     dimension(:),   allocatable, public, protected :: &
    phase_elasticity                                                                                 !< elasticity of each phase
  integer(kind(PLASTICITY_undefined_ID)),     dimension(:),   allocatable, public, protected :: &
@@ -174,17 +166,8 @@ module material
  integer(kind(HOMOGENIZATION_undefined_ID)), dimension(:),   allocatable, public, protected :: &
    homogenization_type                                                                              !< type of each homogenization
 
- character(len=64), dimension(:), allocatable, public, protected :: &
-   phase_name, &                                                                                    !< name of each phase
-   homogenization_name, &                                                                           !< name of each homogenization
-   crystallite_name                                                                                 !< name of each crystallite setting
-
  integer(pInt), public, protected :: &
-   homogenization_maxNgrains, &                                                                     !< max number of grains in any USED homogenization
-   material_Nphase, &                                                                               !< number of phases
-   material_Nhomogenization, &                                                                      !< number of homogenizations
-   material_Nmicrostructure, &                                                                      !< number of microstructures
-   material_Ncrystallite                                                                            !< number of crystallite settings
+   homogenization_maxNgrains                                                                        !< max number of grains in any USED homogenization
 
  integer(pInt), dimension(:), allocatable, public, protected :: &
    phase_Nsources, &                                                                                !< number of source mechanisms active in each phase
@@ -243,19 +226,10 @@ module material
    phase_localPlasticity                                                                            !< flags phases with local constitutive law
 
 
- character(len=*), parameter, private :: &
-   MATERIAL_partMicrostructure = 'microstructure', &                                                !< keyword for microstructure part
-   MATERIAL_partTexture        = 'texture'                                                          !< keyword for texture part
-
- character(len=64), dimension(:), allocatable, private :: &
-   microstructure_name, &                                                                           !< name of each microstructure
-   texture_name                                                                                     !< name of each texture
-
  character(len=256), dimension(:), allocatable, private :: &
    texture_ODFfile                                                                                  !< name of each ODF file
 
  integer(pInt), private :: &
-   material_Ntexture, &                                                                             !< number of textures
    microstructure_maxNconstituents, &                                                               !< max number of constituents in any phase
    texture_maxNgauss, &                                                                             !< max number of Gauss components in any texture
    texture_maxNfiber                                                                                !< max number of Fiber components in any texture
@@ -304,13 +278,6 @@ module material
    temperatureRate, &                                                                               !< temperature change rate field
    vacancyConcRate, &                                                                               !< vacancy conc change field
    hydrogenConcRate                                                                                 !< hydrogen conc change field
-
- type(tPartitionedStringList), public,protected, allocatable, dimension(:) :: &
-   phaseConfig, &
-   microstructureConfig, &
-   homogenizationConfig, &
-   textureConfig, &
-   crystalliteConfig
 
  public :: &
    material_init, &
@@ -379,13 +346,7 @@ subroutine material_init()
 #endif
  use IO, only: &
    IO_error, &
-   IO_open_file, &
-   IO_read, &
-   IO_lc, &
-   IO_open_jobFile_stat, &
-   IO_getTag, &
-   IO_timeStamp, &
-   IO_EOF
+   IO_timeStamp
  use debug, only: &
    debug_level, &
    debug_material, &
@@ -410,51 +371,26 @@ subroutine material_init()
  integer(pInt), dimension(:), allocatable :: CrystallitePosition
  integer(pInt), dimension(:), allocatable :: HomogenizationPosition
 
- character(len=65536) :: &                                                                          
-  line,part
-
  myDebug = debug_level(debug_material)
 
  write(6,'(/,a)') ' <<<+-  material init  -+>>>'
  write(6,'(a15,a)')   ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
 
- if (.not. IO_open_jobFile_stat(FILEUNIT,material_localFileExt)) &                                  ! no local material configuration present...
-   call IO_open_file(FILEUNIT,material_configFile)                                                  ! ...open material.config file
-
- rewind(fileUnit)
- line        = ''                                                                                   ! to have it initialized
- do while (trim(line) /= IO_EOF)
-   part = IO_lc(IO_getTag(line,'<','>'))
-
-   select case (trim(part))
-    
-     case (trim(material_partPhase))
-       line = material_parsePhase(FILEUNIT)
-       if (iand(myDebug,debug_levelBasic) /= 0_pInt) write(6,'(a)') ' Phase parsed'; flush(6)
-    
-     case (trim(material_partMicrostructure))
-       line = material_parseMicrostructure(FILEUNIT)
-       if (iand(myDebug,debug_levelBasic) /= 0_pInt) write(6,'(a)') ' Microstructure parsed'; flush(6)
-    
-     case (trim(material_partCrystallite))
-       line = material_parseCrystallite(FILEUNIT)
-       if (iand(myDebug,debug_levelBasic) /= 0_pInt) write(6,'(a)') ' Crystallite parsed'; flush(6)
-    
-     case (trim(material_partHomogenization))
-       line = material_parseHomogenization(FILEUNIT)
-       if (iand(myDebug,debug_levelBasic) /= 0_pInt) write(6,'(a)') ' Homogenization parsed'; flush(6)
-    
-     case (trim(material_partTexture))
-       line = material_parseTexture(FILEUNIT)
-       if (iand(myDebug,debug_levelBasic) /= 0_pInt) write(6,'(a)') ' Texture parsed'; flush(6)
-
-     case default
-       line = IO_read(fileUnit)
-
-   end select
-
- enddo
+ call material_parsePhase()
+ if (iand(myDebug,debug_levelBasic) /= 0_pInt) write(6,'(a)') ' Phase parsed'; flush(6)
+ 
+ call material_parseMicrostructure()
+ if (iand(myDebug,debug_levelBasic) /= 0_pInt) write(6,'(a)') ' Microstructure parsed'; flush(6)
+ 
+ call material_parseCrystallite()
+ if (iand(myDebug,debug_levelBasic) /= 0_pInt) write(6,'(a)') ' Crystallite parsed'; flush(6)
+ 
+ call material_parseHomogenization()
+ if (iand(myDebug,debug_levelBasic) /= 0_pInt) write(6,'(a)') ' Homogenization parsed'; flush(6)
+ 
+ call material_parseTexture()
+ if (iand(myDebug,debug_levelBasic) /= 0_pInt) write(6,'(a)') ' Texture parsed'; flush(6)
 
  allocate(plasticState       (material_Nphase))
  allocate(sourceState        (material_Nphase))
@@ -569,68 +505,19 @@ end subroutine material_init
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief parses the homogenization part in the material configuration file
+!> @brief parses the homogenization part from the material configuration
 !--------------------------------------------------------------------------------------------------
-character(len=65536) function material_parseHomogenization(fileUnit)
+subroutine material_parseHomogenization
+ use config, only : &
+   homogenizationConfig
  use IO, only: &
-   IO_read, &
-   IO_globalTagInPart, &
-   IO_countSections, &
-   IO_error, &
-   IO_countTagInPart, &
-   IO_lc, &
-   IO_getTag, &
-   IO_isBlank, &
-   IO_stringValue, &
-   IO_intValue, &
-   IO_floatValue, &
-   IO_stringPos, &
-   IO_EOF
+   IO_error
  use mesh, only: &
    mesh_element
 
  implicit none
- integer(pInt),    intent(in) :: fileUnit
-
-
- integer(pInt), allocatable, dimension(:) :: chunkPos
- integer(pInt)        :: Nsections,  h
- character(len=65536) :: line, tag,devNull
- character(len=64) ::  tag2
- logical              :: echo
- 
- allocate(homogenizationConfig(0))
-
- h = 0_pInt
- do while (trim(line) /= IO_EOF)                                                                    ! read through sections of material part
-   line = IO_read(fileUnit)
-   if (IO_isBlank(line)) cycle                                                                      ! skip empty lines
-   foundNextPart: if (IO_getTag(line,'<','>') /= '') then
-     devNull = IO_read(fileUnit, .true.)                                                            ! reset IO_read
-     exit
-   endif foundNextPart
-   nextSection: if (IO_getTag(line,'[',']') /= '') then
-     h = h + 1_pInt
-     homogenizationConfig = [homogenizationConfig, emptyList]
-     tag2 = IO_getTag(line,'[',']')
-     GfortranBug86033: if (.not. allocated(homogenization_name)) then
-       allocate(homogenization_name(1),source=tag2)
-     else GfortranBug86033
-       homogenization_name  = [homogenization_name,tag2]
-     endif GfortranBug86033
-   endif nextSection
-   chunkPos = IO_stringPos(line)
-   tag = IO_lc(IO_stringValue(trim(line),chunkPos,1_pInt))                                          ! extract key
-   inSection: if (h > 0_pInt) then
-     chunkPos = IO_stringPos(line)
-     call homogenizationConfig(h)%add(IO_lc(trim(line)),chunkPos)
-   else inSection
-     echo = (trim(tag) == '/echo/')
-   endif inSection
- enddo
-
- material_Nhomogenization = size(homogenizationConfig)
- if (material_Nhomogenization < 1_pInt) call IO_error(160_pInt,ext_msg=material_partHomogenization)
+ integer(pInt)        :: h
+ character(len=65536) :: tag
 
  allocate(homogenization_type(material_Nhomogenization),           source=HOMOGENIZATION_undefined_ID)
  allocate(thermal_type(material_Nhomogenization),                  source=THERMAL_isothermal_ID)
@@ -656,97 +543,107 @@ character(len=65536) function material_parseHomogenization(fileUnit)
  forall (h = 1_pInt:material_Nhomogenization) homogenization_active(h) = any(mesh_element(3,:) == h)
 
 
-
  do h=1_pInt, material_Nhomogenization
    homogenization_Noutput(h) = homogenizationConfig(h)%countKeys('(output)')
+
    tag = homogenizationConfig(h)%getString('mech')
+   select case (trim(tag))
+     case(HOMOGENIZATION_NONE_label)
+       homogenization_type(h) = HOMOGENIZATION_NONE_ID
+       homogenization_Ngrains(h) = 1_pInt
+     case(HOMOGENIZATION_ISOSTRAIN_label)
+       homogenization_type(h) = HOMOGENIZATION_ISOSTRAIN_ID
+       homogenization_Ngrains(h) = homogenizationConfig(h)%getInt('nconstituents')
+     case(HOMOGENIZATION_RGC_label)
+       homogenization_type(h) = HOMOGENIZATION_RGC_ID
+       homogenization_Ngrains(h) = homogenizationConfig(h)%getInt('nconstituents')
+     case default
+       call IO_error(500_pInt,ext_msg=trim(tag))
+   end select
+   
+   homogenization_typeInstance(h) = count(homogenization_type==homogenization_type(h))
 
-         select case (trim(tag))
-           case(HOMOGENIZATION_NONE_label)
-             homogenization_type(h) = HOMOGENIZATION_NONE_ID
-             homogenization_Ngrains(h) = 1_pInt
-           case(HOMOGENIZATION_ISOSTRAIN_label)
-             homogenization_type(h) = HOMOGENIZATION_ISOSTRAIN_ID
-             homogenization_Ngrains(h) = homogenizationConfig(h)%getInt('nconstituents')
-           case(HOMOGENIZATION_RGC_label)
-             homogenization_type(h) = HOMOGENIZATION_RGC_ID
-             homogenization_Ngrains(h) = homogenizationConfig(h)%getInt('nconstituents')
-           case default
-             call IO_error(500_pInt,ext_msg=trim(tag))
-         end select
-         homogenization_typeInstance(h) = &
-                                          count(homogenization_type==homogenization_type(h))  ! count instances
    if (homogenizationConfig(h)%keyExists('thermal')) then
-      tag = homogenizationConfig(h)%getString('thermal')
+     thermal_initialT(h) =  homogenizationConfig(h)%getFloat('t0',defaultVal=300.0_pReal)
 
-!       case ('t0')
-!         thermal_initialT(section) = IO_floatValue(line,chunkPos,2_pInt)
-         select case (trim(tag))
-           case(THERMAL_isothermal_label)
-             thermal_type(h) = THERMAL_isothermal_ID
-           case(THERMAL_adiabatic_label)
-             thermal_type(h) = THERMAL_adiabatic_ID
-           case(THERMAL_conduction_label)
-             thermal_type(h) = THERMAL_conduction_ID
-           case default
-             call IO_error(500_pInt,ext_msg=trim(tag))
-         end select
-endif
+     tag = homogenizationConfig(h)%getString('thermal')
+     select case (trim(tag))
+       case(THERMAL_isothermal_label)
+         thermal_type(h) = THERMAL_isothermal_ID
+       case(THERMAL_adiabatic_label)
+         thermal_type(h) = THERMAL_adiabatic_ID
+       case(THERMAL_conduction_label)
+         thermal_type(h) = THERMAL_conduction_ID
+       case default
+         call IO_error(500_pInt,ext_msg=trim(tag))
+     end select
+
+   endif
 
    if (homogenizationConfig(h)%keyExists('damage')) then
-      tag = homogenizationConfig(h)%getString('damage')
-!       case ('initialdamage')
-!         damage_initialPhi(section) = IO_floatValue(line,chunkPos,2_pInt)
-         select case (trim(tag))
-           case(DAMAGE_NONE_label)
-             damage_type(h) = DAMAGE_none_ID
-           case(DAMAGE_LOCAL_label)
-             damage_type(h) = DAMAGE_local_ID
-           case(DAMAGE_NONLOCAL_label)
-             damage_type(h) = DAMAGE_nonlocal_ID
-           case default
-             call IO_error(500_pInt,ext_msg=trim(tag))
-         end select
-endif
-   if (homogenizationConfig(h)%keyExists('vacancyflux')) then
-      tag = homogenizationConfig(h)%getString('vacancyflux')
-!       case ('cv0')
-!         vacancyflux_initialCv(section) = IO_floatValue(line,chunkPos,2_pInt)
-         select case (trim(tag))
-           case(VACANCYFLUX_isoconc_label)
-             vacancyflux_type(h) = VACANCYFLUX_isoconc_ID
-           case(VACANCYFLUX_isochempot_label)
-             vacancyflux_type(h) = VACANCYFLUX_isochempot_ID
-           case(VACANCYFLUX_cahnhilliard_label)
-             vacancyflux_type(h) = VACANCYFLUX_cahnhilliard_ID
-           case default
-             call IO_error(500_pInt,ext_msg=trim(tag))
-          end select
-endif
-   if (homogenizationConfig(h)%keyExists('porosity')) then
-      tag = homogenizationConfig(h)%getString('porosity')
-         select case (trim(tag))
-           case(POROSITY_NONE_label)
-             porosity_type(h) = POROSITY_none_ID
-           case(POROSITY_phasefield_label)
-             porosity_type(h) = POROSITY_phasefield_ID
-           case default
-             call IO_error(500_pInt,ext_msg=trim(tag))
-          end select
-endif
-   if (homogenizationConfig(h)%keyExists('hydrogenflux')) then
-      tag = homogenizationConfig(h)%getString('hydrogenflux')
-!       case ('ch0')
-!         hydrogenflux_initialCh(section) = IO_floatValue(line,chunkPos,2_pInt)
-         select case (trim(tag))
-           case(HYDROGENFLUX_isoconc_label)
-             hydrogenflux_type(h) = HYDROGENFLUX_isoconc_ID
-           case(HYDROGENFLUX_cahnhilliard_label)
-             hydrogenflux_type(h) = HYDROGENFLUX_cahnhilliard_ID
-           case default
-             call IO_error(500_pInt,ext_msg=trim(tag))
-         end select
+     damage_initialPhi(h) =  homogenizationConfig(h)%getFloat('initialdamage',defaultVal=1.0_pReal)
+
+     tag = homogenizationConfig(h)%getString('damage')
+     select case (trim(tag))
+       case(DAMAGE_NONE_label)
+         damage_type(h) = DAMAGE_none_ID
+       case(DAMAGE_LOCAL_label)
+         damage_type(h) = DAMAGE_local_ID
+       case(DAMAGE_NONLOCAL_label)
+         damage_type(h) = DAMAGE_nonlocal_ID
+       case default
+         call IO_error(500_pInt,ext_msg=trim(tag))
+     end select
+
    endif
+   
+   if (homogenizationConfig(h)%keyExists('vacancyflux')) then
+     vacancyflux_initialCv(h) = homogenizationConfig(h)%getFloat('cv0',defaultVal=0.0_pReal)
+
+     tag = homogenizationConfig(h)%getString('vacancyflux')
+     select case (trim(tag))
+       case(VACANCYFLUX_isoconc_label)
+         vacancyflux_type(h) = VACANCYFLUX_isoconc_ID
+       case(VACANCYFLUX_isochempot_label)
+         vacancyflux_type(h) = VACANCYFLUX_isochempot_ID
+       case(VACANCYFLUX_cahnhilliard_label)
+         vacancyflux_type(h) = VACANCYFLUX_cahnhilliard_ID
+       case default
+         call IO_error(500_pInt,ext_msg=trim(tag))
+     end select
+   
+   endif
+
+   if (homogenizationConfig(h)%keyExists('porosity')) then
+     !ToDo?
+
+     tag = homogenizationConfig(h)%getString('porosity')
+     select case (trim(tag))
+       case(POROSITY_NONE_label)
+         porosity_type(h) = POROSITY_none_ID
+       case(POROSITY_phasefield_label)
+         porosity_type(h) = POROSITY_phasefield_ID
+       case default
+         call IO_error(500_pInt,ext_msg=trim(tag))
+      end select
+
+   endif
+
+   if (homogenizationConfig(h)%keyExists('hydrogenflux')) then
+     hydrogenflux_initialCh(h) = homogenizationConfig(h)%getFloat('ch0',defaultVal=0.0_pReal)
+
+     tag = homogenizationConfig(h)%getString('hydrogenflux')
+     select case (trim(tag))
+       case(HYDROGENFLUX_isoconc_label)
+         hydrogenflux_type(h) = HYDROGENFLUX_isoconc_ID
+       case(HYDROGENFLUX_cahnhilliard_label)
+         hydrogenflux_type(h) = HYDROGENFLUX_cahnhilliard_ID
+       case default
+         call IO_error(500_pInt,ext_msg=trim(tag))
+     end select
+
+   endif
+
  enddo
 
  do h=1_pInt, material_Nhomogenization
@@ -759,69 +656,33 @@ endif
  enddo
 
  homogenization_maxNgrains = maxval(homogenization_Ngrains,homogenization_active)
- material_parseHomogenization=line
 
-end function material_parseHomogenization
+end subroutine material_parseHomogenization
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief parses the microstructure part in the material configuration file
 !--------------------------------------------------------------------------------------------------
-character(len=65536) function material_parseMicrostructure(fileUnit)
+subroutine material_parseMicrostructure
  use prec, only: &
   dNeq
- use IO
+ use IO, only: &
+   IO_floatValue, &
+   IO_intValue, &
+   IO_stringValue, &
+   IO_stringPos, &
+   IO_error
  use mesh, only: &
    mesh_element, &
    mesh_NcpElems
 
  implicit none
- integer(pInt),    intent(in) :: fileUnit
-
- character(len=256), dimension(:), allocatable :: &
+ character(len=65536), dimension(:), allocatable :: &
    str 
- character(len=64) :: tag2
  integer(pInt), allocatable, dimension(:) :: chunkPos
- integer(pInt), allocatable, dimension(:,:) :: chunkPoss
- integer(pInt) :: e, m, constituent, i
+ integer(pInt) :: e, m, c, i
  character(len=65536) :: &
-   tag,line,devNull
- logical              :: echo
-
- allocate(MicrostructureConfig(0))
- line    = ''                                                                                       ! to have it initialized
- m       = 0_pInt
- echo    =.false.
-
- do while (trim(line) /= IO_EOF)                                                                    ! read through sections of material part
-   line = IO_read(fileUnit)
-   if (IO_isBlank(line)) cycle                                                                      ! skip empty lines
-   foundNextPart: if (IO_getTag(line,'<','>') /= '') then
-     devNull = IO_read(fileUnit, .true.)                                                            ! reset IO_read
-     exit
-   endif foundNextPart
-   nextSection: if (IO_getTag(line,'[',']') /= '') then
-     m = m + 1_pInt
-     microstructureConfig = [microstructureConfig, emptyList]
-     tag2 = IO_getTag(line,'[',']')
-     GfortranBug86033: if (.not. allocated(microstructure_name)) then
-       allocate(microstructure_name(1),source=tag2)
-     else GfortranBug86033
-       microstructure_name  = [microstructure_name,tag2]
-     endif GfortranBug86033
-   endif nextSection
-   chunkPos = IO_stringPos(line)
-   tag = IO_lc(IO_stringValue(trim(line),chunkPos,1_pInt))                                          ! extract key
-   inSection: if (m > 0_pInt) then
-     chunkPos = IO_stringPos(line)
-     call microstructureConfig(m)%add(IO_lc(trim(line)),chunkPos)
-   else inSection
-     echo = (trim(tag) == '/echo/')
-   endif inSection
- enddo
-
- material_Nmicrostructure = size(microstructureConfig)
- if (material_Nmicrostructure < 1_pInt) call IO_error(160_pInt,ext_msg=material_partMicrostructure)
+   tag
 
  allocate(microstructure_crystallite(material_Nmicrostructure),          source=0_pInt)
  allocate(microstructure_Nconstituents(material_Nmicrostructure),        source=0_pInt)
@@ -845,166 +706,63 @@ character(len=65536) function material_parseMicrostructure(fileUnit)
  allocate(microstructure_fraction(microstructure_maxNconstituents,material_Nmicrostructure),source=0.0_pReal)
 
  do m=1_pInt, material_Nmicrostructure
-     call microstructureConfig(m)%getRaws('(constituent)',str,chunkPoss)
-     do constituent = 1_pInt, size(str)
-        do i = 2_pInt,6_pInt,2_pInt
-           tag = IO_lc(IO_stringValue(str(constituent),chunkPoss(:,constituent),i))
+   str = microstructureConfig(m)%getStrings('(constituent)',raw=.true.)
+   do c = 1_pInt, size(str)
+     chunkPos = IO_stringPos(str(c))
 
-           select case (tag)
-             case('phase')
-               microstructure_phase(constituent,m) =    IO_intValue(str(constituent),chunkPoss(:,constituent),i+1_pInt)
-                 
-             case('texture')
-               microstructure_texture(constituent,m) =  IO_intValue(str(constituent),chunkPoss(:,constituent),i+1_pInt)
+     do i = 1_pInt,5_pInt,2_pInt
+        tag = IO_stringValue(str(c),chunkPos,i)
 
-             case('fraction')
-               microstructure_fraction(constituent,m) =  IO_floatValue(str(constituent),chunkPoss(:,constituent),i+1_pInt)
+        select case (tag)
+          case('phase')
+            microstructure_phase(c,m) =    IO_intValue(str(c),chunkPos,i+1_pInt)
+          case('texture')
+            microstructure_texture(c,m) =  IO_intValue(str(c),chunkPos,i+1_pInt)
+          case('fraction')
+            microstructure_fraction(c,m) =  IO_floatValue(str(c),chunkPos,i+1_pInt)
+        end select
+     
+     enddo
+   enddo
+ enddo
 
-           end select
-       enddo
-enddo
-enddo
- !sanity check
  do m = 1_pInt, material_Nmicrostructure
    if (dNeq(sum(microstructure_fraction(:,m)),1.0_pReal)) &
      call IO_error(153_pInt,ext_msg=microstructure_name(m))
  enddo
 
- material_parseMicrostructure = line
-end function material_parseMicrostructure
+end subroutine material_parseMicrostructure
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief parses the crystallite part in the material configuration file
 !--------------------------------------------------------------------------------------------------
-character(len=65536) function material_parseCrystallite(fileUnit)
- use IO, only: &
-   IO_read, &
-   IO_error, &
-   IO_getTag, &
-   IO_lc, &
-   IO_stringPos, &
-   IO_stringValue, &
-   IO_isBlank, &
-   IO_EOF
+subroutine material_parseCrystallite
 
  implicit none
- integer(pInt),    intent(in) :: fileUnit
- integer(pInt), allocatable, dimension(:) :: chunkPos
-
- character(len=64) ::  tag2
  integer(pInt)        :: c
- character(len=65536) :: line, tag,devNull
- logical              :: echo
 
- allocate(crystalliteConfig(0))
- c = 0_pInt
- do while (trim(line) /= IO_EOF)                                                                    ! read through sections of material part
-   line = IO_read(fileUnit)
-   if (IO_isBlank(line)) cycle                                                                      ! skip empty lines
-   foundNextPart: if (IO_getTag(line,'<','>') /= '') then
-     devNull = IO_read(fileUnit, .true.)                                                               ! reset IO_read
-     exit
-   endif foundNextPart
-   nextSection: if (IO_getTag(line,'[',']') /= '') then
-     c = c + 1_pInt
-     crystalliteConfig = [crystalliteConfig, emptyList]
-     tag2 = IO_getTag(line,'[',']')
-     GfortranBug86033: if (.not. allocated(crystallite_name)) then
-       allocate(crystallite_name(1),source=tag2)
-     else GfortranBug86033
-       crystallite_name  = [crystallite_name,tag2]
-     endif GfortranBug86033
-   endif nextSection
-   chunkPos = IO_stringPos(line)
-   tag = IO_lc(IO_stringValue(trim(line),chunkPos,1_pInt))                                          ! extract key
-   inSection: if (c > 0_pInt) then
-     chunkPos = IO_stringPos(line)
-     call crystalliteConfig(c)%add(IO_lc(trim(line)),chunkPos)
-   else inSection
-     echo = (trim(tag) == '/echo/')
-   endif inSection
- enddo
-
- material_Ncrystallite = size(crystalliteConfig)
- if (material_Ncrystallite < 1_pInt) call IO_error(160_pInt,ext_msg=material_partCrystallite)
-
- allocate(crystallite_Noutput(material_Ncrystallite),           source=0_pInt)
+ allocate(crystallite_Noutput(material_Ncrystallite),source=0_pInt)
  do c=1_pInt, material_Ncrystallite
    crystallite_Noutput(c) =  crystalliteConfig(c)%countKeys('(output)')
  enddo
 
- material_parseCrystallite = line
-end function material_parseCrystallite
+end subroutine material_parseCrystallite
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief parses the phase part in the material configuration file
 !--------------------------------------------------------------------------------------------------
-character(len=65536) function material_parsePhase(fileUnit)
- use chained_list, only: &
-   emptyList 
+subroutine material_parsePhase
  use IO, only: &
-   IO_read, &
-   IO_globalTagInPart, &
-   IO_countSections, &
    IO_error, &
-   IO_countTagInPart, &
    IO_getTag, &
-   IO_spotTagInPart, &
-   IO_lc, &
-   IO_isBlank, &
-   IO_stringValue, &
-   IO_stringPos, &
-   IO_EOF
+   IO_stringValue
 
  implicit none
- integer(pInt),    intent(in) :: fileUnit
-
-
- integer(pInt), allocatable, dimension(:) :: chunkPos
  integer(pInt) :: sourceCtr, kinematicsCtr, stiffDegradationCtr, p
- character(len=65536) :: &
-  tag,line,devNull
- character(len=64) ::  tag2
- character(len=64), dimension(:), allocatable :: &
-   str 
- logical              :: echo
+ character(len=256), dimension(:), allocatable ::  str 
 
- allocate(phaseConfig(0))
- line    = ''                                                                                       ! to have it initialized
- p = 0_pInt                                                                                         !  - " -
- echo    =.false.
-
- do while (trim(line) /= IO_EOF)                                                                    ! read through sections of material part
-   line = IO_read(fileUnit)
-   if (IO_isBlank(line)) cycle                                                                      ! skip empty lines
-   foundNextPart: if (IO_getTag(line,'<','>') /= '') then
-     devNull = IO_read(fileUnit, .true.)                                                            ! reset IO_read
-     exit
-   endif foundNextPart
-   nextSection: if (IO_getTag(line,'[',']') /= '') then
-     p = p + 1_pInt
-     phaseConfig = [phaseConfig, emptyList]
-     tag2 = IO_getTag(line,'[',']')
-     GfortranBug86033: if (.not. allocated(phase_name)) then
-       allocate(phase_name(1),source=tag2)
-     else GfortranBug86033
-       phase_name  = [phase_name,tag2]
-     endif GfortranBug86033
-   endif nextSection
-   chunkPos = IO_stringPos(line)
-   tag = IO_lc(IO_stringValue(trim(line),chunkPos,1_pInt))                                          ! extract key
-   inSection: if (p > 0_pInt) then
-     chunkPos = IO_stringPos(line)
-     call phaseConfig(p)%add(IO_lc(trim(line)),chunkPos)
-   else inSection
-     echo = (trim(tag) == '/echo/')
-   endif inSection
- enddo
-
- material_Nphase = size(phaseConfig)
- if (material_Nphase < 1_pInt) call IO_error(160_pInt,ext_msg=material_partPhase)
 
  allocate(phase_elasticity(material_Nphase),source=ELASTICITY_undefined_ID)
  allocate(phase_plasticity(material_Nphase),source=PLASTICITY_undefined_ID)
@@ -1117,85 +875,35 @@ character(len=65536) function material_parsePhase(fileUnit)
    phase_plasticityInstance(p)  = count(phase_plasticity(1:p)  == phase_plasticity(p))
  enddo
 
-     material_parsePhase = line
-end function material_parsePhase
+end subroutine material_parsePhase
 
 !--------------------------------------------------------------------------------------------------
 !> @brief parses the texture part in the material configuration file
 !--------------------------------------------------------------------------------------------------
-character(len=65536) function material_parseTexture(fileUnit)
+subroutine material_parseTexture
  use prec, only: &
    dNeq
  use IO, only: &
-   IO_read, &
-   IO_globalTagInPart, &
-   IO_countSections, &
    IO_error, &
-   IO_countTagInPart, &
-   IO_getTag, &
-   IO_spotTagInPart, &
-   IO_lc, &
-   IO_isBlank, &
-   IO_floatValue, &
-   IO_stringValue, &
    IO_stringPos, &
-   IO_EOF
+   IO_floatValue, &
+   IO_stringValue
  use math, only: &
    inRad, &
    math_sampleRandomOri, &
    math_I3, &
-   math_det33, &
-   math_inv33
+   math_det33
 
  implicit none
- integer(pInt),    intent(in) :: fileUnit
+ integer(pInt) :: section, gauss, fiber, j, t, i
+ character(len=65536), dimension(:), allocatable ::  lines
+ integer(pInt), dimension(:), allocatable :: chunkPos
+ character(len=65536) :: tag
 
-
- integer(pInt), allocatable, dimension(:) :: chunkPos
- integer(pInt) :: Nsections, section, gauss, fiber, j, t, i
- character(len=64) ::  tag2
- character(len=256), dimension(:), allocatable ::  bla
- logical              :: echo
-
- character(len=65536) :: line, tag,devNull
-
- allocate(textureConfig(0))
-
- t = 0_pInt
- do while (trim(line) /= IO_EOF)                                                                    ! read through sections of material part
-   line = IO_read(fileUnit)
-   if (IO_isBlank(line)) cycle                                                                      ! skip empty lines
-   foundNextPart: if (IO_getTag(line,'<','>') /= '') then
-     devNull = IO_read(fileUnit, .true.)                                                            ! reset IO_read
-     exit
-   endif foundNextPart
-   nextSection: if (IO_getTag(line,'[',']') /= '') then
-     t = t + 1_pInt
-     textureConfig = [textureConfig, emptyList]
-     tag2 = IO_getTag(line,'[',']')
-     GfortranBug86033: if (.not. allocated(texture_name)) then
-       allocate(texture_name(1),source=tag2)
-     else GfortranBug86033
-       texture_name  = [texture_name,tag2]
-     endif GfortranBug86033
-   endif nextSection
-   chunkPos = IO_stringPos(line)
-   tag = IO_lc(IO_stringValue(trim(line),chunkPos,1_pInt))                                          ! extract key
-   inSection: if (t > 0_pInt) then
-     chunkPos = IO_stringPos(line)
-     call textureConfig(t)%add(IO_lc(trim(line)),chunkPos)
-   else inSection
-     echo = (trim(tag) == '/echo/')
-   endif inSection
- enddo
-
- material_Ntexture = size(textureConfig)
- if (material_Ntexture < 1_pInt) call IO_error(160_pInt,ext_msg=material_partTexture)
-
- allocate(texture_ODFfile(material_Ntexture));           texture_ODFfile=''
- allocate(texture_symmetry(material_Ntexture),           source=1_pInt)
- allocate(texture_Ngauss(material_Ntexture),             source=0_pInt)
- allocate(texture_Nfiber(material_Ntexture),             source=0_pInt)
+ allocate(texture_ODFfile(material_Ntexture)); texture_ODFfile=''
+ allocate(texture_symmetry(material_Ntexture), source=1_pInt)
+ allocate(texture_Ngauss(material_Ntexture),   source=0_pInt)
+ allocate(texture_Nfiber(material_Ntexture),   source=0_pInt)
 
  do t=1_pInt, material_Ntexture
    texture_Ngauss(t) =  textureConfig(t)%countKeys('(gauss)') &
@@ -1214,109 +922,111 @@ character(len=65536) function material_parseTexture(fileUnit)
    section = t
    gauss = 0_pInt
    fiber = 0_pInt
-   bla = textureConfig(t)%getStringsRaw()
+   
+   if (textureConfig(t)%keyExists('axes')) then
+     lines = textureConfig(t)%getStrings('axes')
+     do j = 1_pInt, 3_pInt                                                                          ! look for "x", "y", and "z" entries
+       select case (lines(j))
+         case('x', '+x')
+           texture_transformation(j,1:3,t) = [ 1.0_pReal, 0.0_pReal, 0.0_pReal]                     ! original axis is now +x-axis
+         case('-x')
+           texture_transformation(j,1:3,t) = [-1.0_pReal, 0.0_pReal, 0.0_pReal]                     ! original axis is now -x-axis
+         case('y', '+y')
+           texture_transformation(j,1:3,t) = [ 0.0_pReal, 1.0_pReal, 0.0_pReal]                     ! original axis is now +y-axis
+         case('-y')
+           texture_transformation(j,1:3,t) = [ 0.0_pReal,-1.0_pReal, 0.0_pReal]                     ! original axis is now -y-axis
+         case('z', '+z')
+           texture_transformation(j,1:3,t) = [ 0.0_pReal, 0.0_pReal, 1.0_pReal]                     ! original axis is now +z-axis
+         case('-z')
+           texture_transformation(j,1:3,t) = [ 0.0_pReal, 0.0_pReal,-1.0_pReal]                     ! original axis is now -z-axis
+         case default
+           call IO_error(157_pInt,t)
+       end select
+     enddo
+     if(dNeq(math_det33(texture_transformation(1:3,1:3,t)),1.0_pReal)) call IO_error(157_pInt,t)
+   endif
 
-   lines: do i=1_pInt, size(bla)
-     line = bla(i)
+   tag=''
+   texture_ODFfile(t) = textureConfig(t)%getString('hybridia',defaultVal=tag)
 
-     chunkPos = IO_stringPos(line)
-     tag = IO_lc(IO_stringValue(line,chunkPos,1_pInt))                                             ! extract key
-     textureType: select case(tag)
+   if (textureConfig(t)%keyExists('symmetry')) then
+     select case (textureConfig(t)%getString('symmetry'))
+       case('orthotropic')
+         texture_symmetry(t) = 4_pInt
+       case('monoclinic')
+         texture_symmetry(t) = 2_pInt
+       case default
+         texture_symmetry(t) = 1_pInt
+     end select
+   endif
 
-       case ('axes', 'rotation') textureType
-         do j = 1_pInt, 3_pInt                                                                      ! look for "x", "y", and "z" entries
-           tag = IO_lc(IO_stringValue(line,chunkPos,j+1_pInt))
-           select case (tag)
-             case('x', '+x')
-               texture_transformation(j,1:3,section) = [ 1.0_pReal, 0.0_pReal, 0.0_pReal]           ! original axis is now +x-axis
-             case('-x')
-               texture_transformation(j,1:3,section) = [-1.0_pReal, 0.0_pReal, 0.0_pReal]           ! original axis is now -x-axis
-             case('y', '+y')
-               texture_transformation(j,1:3,section) = [ 0.0_pReal, 1.0_pReal, 0.0_pReal]           ! original axis is now +y-axis
-             case('-y')
-               texture_transformation(j,1:3,section) = [ 0.0_pReal,-1.0_pReal, 0.0_pReal]           ! original axis is now -y-axis
-             case('z', '+z')
-               texture_transformation(j,1:3,section) = [ 0.0_pReal, 0.0_pReal, 1.0_pReal]           ! original axis is now +z-axis
-             case('-z')
-               texture_transformation(j,1:3,section) = [ 0.0_pReal, 0.0_pReal,-1.0_pReal]           ! original axis is now -z-axis
-             case default
-               call IO_error(157_pInt,section)
-           end select
-         enddo
-
-         if(dNeq(math_det33(texture_transformation(1:3,1:3,section)),1.0_pReal)) &
-           call IO_error(157_pInt,section)
-
-       case ('hybridia') textureType
-         texture_ODFfile(section) = IO_stringValue(line,chunkPos,2_pInt)
-
-       case ('symmetry') textureType
-         tag = IO_lc(IO_stringValue(line,chunkPos,2_pInt))
-         select case (tag)
-           case('orthotropic')
-             texture_symmetry(section) = 4_pInt
-           case('monoclinic')
-             texture_symmetry(section) = 2_pInt
-           case default
-             texture_symmetry(section) = 1_pInt
+   if (textureConfig(t)%keyExists('(random)')) then
+     lines = textureConfig(t)%getStrings('(random)',raw=.true.)
+     do i = 1_pInt, size(lines)
+       gauss = gauss + 1_pInt
+       texture_Gauss(1:3,gauss,t) = math_sampleRandomOri()
+       chunkPos = IO_stringPos(lines(i))
+       do j = 1_pInt,3_pInt,2_pInt
+         select case (IO_stringValue(lines(i),chunkPos,j))
+           case('scatter')
+             texture_Gauss(4,gauss,t) = IO_floatValue(lines(i),chunkPos,j+1_pInt)*inRad
+           case('fraction')
+             texture_Gauss(5,gauss,t) = IO_floatValue(lines(i),chunkPos,j+1_pInt)
          end select
+       enddo
+     enddo
+   endif
 
-       case ('(random)') textureType
-         gauss = gauss + 1_pInt
-         texture_Gauss(1:3,gauss,section) = math_sampleRandomOri()
-         do j = 2_pInt,4_pInt,2_pInt
-           tag = IO_lc(IO_stringValue(line,chunkPos,j))
-           select case (tag)
-             case('scatter')
-                 texture_Gauss(4,gauss,section) = IO_floatValue(line,chunkPos,j+1_pInt)*inRad
-             case('fraction')
-                 texture_Gauss(5,gauss,section) = IO_floatValue(line,chunkPos,j+1_pInt)
-           end select
-         enddo
+   lines = textureConfig(t)%getStringsRaw()
+
+   do i=1_pInt, size(lines)
+
+     chunkPos = IO_stringPos(lines(i))
+     tag = IO_stringValue(lines(i),chunkPos,1_pInt)                                                     ! extract key
+     textureType: select case(tag)
 
        case ('(gauss)') textureType
          gauss = gauss + 1_pInt
          do j = 2_pInt,10_pInt,2_pInt
-           tag = IO_lc(IO_stringValue(line,chunkPos,j))
+           tag = IO_stringValue(lines(i),chunkPos,j)
            select case (tag)
              case('phi1')
-                 texture_Gauss(1,gauss,section) = IO_floatValue(line,chunkPos,j+1_pInt)*inRad
+                 texture_Gauss(1,gauss,t) = IO_floatValue(lines(i),chunkPos,j+1_pInt)*inRad
              case('phi')
-                 texture_Gauss(2,gauss,section) = IO_floatValue(line,chunkPos,j+1_pInt)*inRad
+                 texture_Gauss(2,gauss,t) = IO_floatValue(lines(i),chunkPos,j+1_pInt)*inRad
              case('phi2')
-                 texture_Gauss(3,gauss,section) = IO_floatValue(line,chunkPos,j+1_pInt)*inRad
+                 texture_Gauss(3,gauss,t) = IO_floatValue(lines(i),chunkPos,j+1_pInt)*inRad
              case('scatter')
-                 texture_Gauss(4,gauss,section) = IO_floatValue(line,chunkPos,j+1_pInt)*inRad
+                 texture_Gauss(4,gauss,t) = IO_floatValue(lines(i),chunkPos,j+1_pInt)*inRad
              case('fraction')
-                 texture_Gauss(5,gauss,section) = IO_floatValue(line,chunkPos,j+1_pInt)
+                 texture_Gauss(5,gauss,t) = IO_floatValue(lines(i),chunkPos,j+1_pInt)
            end select
          enddo
 
        case ('(fiber)') textureType
          fiber = fiber + 1_pInt
          do j = 2_pInt,12_pInt,2_pInt
-           tag = IO_lc(IO_stringValue(line,chunkPos,j))
+           tag = IO_stringValue(lines(i),chunkPos,j)
            select case (tag)
              case('alpha1')
-                 texture_Fiber(1,fiber,section) = IO_floatValue(line,chunkPos,j+1_pInt)*inRad
+                 texture_Fiber(1,fiber,t) = IO_floatValue(lines(i),chunkPos,j+1_pInt)*inRad
              case('alpha2')
-                 texture_Fiber(2,fiber,section) = IO_floatValue(line,chunkPos,j+1_pInt)*inRad
+                 texture_Fiber(2,fiber,t) = IO_floatValue(lines(i),chunkPos,j+1_pInt)*inRad
              case('beta1')
-                 texture_Fiber(3,fiber,section) = IO_floatValue(line,chunkPos,j+1_pInt)*inRad
+                 texture_Fiber(3,fiber,t) = IO_floatValue(lines(i),chunkPos,j+1_pInt)*inRad
              case('beta2')
-                 texture_Fiber(4,fiber,section) = IO_floatValue(line,chunkPos,j+1_pInt)*inRad
+                 texture_Fiber(4,fiber,t) = IO_floatValue(lines(i),chunkPos,j+1_pInt)*inRad
              case('scatter')
-                 texture_Fiber(5,fiber,section) = IO_floatValue(line,chunkPos,j+1_pInt)*inRad
+                 texture_Fiber(5,fiber,t) = IO_floatValue(lines(i),chunkPos,j+1_pInt)*inRad
              case('fraction')
-                 texture_Fiber(6,fiber,section) = IO_floatValue(line,chunkPos,j+1_pInt)
+                 texture_Fiber(6,fiber,t) = IO_floatValue(lines(i),chunkPos,j+1_pInt)
            end select
          enddo
      end select textureType
-   enddo lines
+   enddo
  enddo
 
-     material_parseTexture = line
-end function material_parseTexture
+end subroutine material_parseTexture
 
 
 !--------------------------------------------------------------------------------------------------
@@ -1432,10 +1142,8 @@ subroutine material_populateGrains
  allocate(orientationOfGrain(3,maxval(Ngrains)),source=0.0_pReal)                                   ! reserve memory for maximum case
 
  if (iand(myDebug,debug_levelBasic) /= 0_pInt) then
-   !$OMP CRITICAL (write2out)
      write(6,'(/,a/)') ' MATERIAL grain population'
      write(6,'(a32,1x,a32,1x,a6)') 'homogenization_name','microstructure_name','grain#'
-   !$OMP END CRITICAL (write2out)
  endif
  homogenizationLoop: do homog = 1_pInt,material_Nhomogenization
    dGrains = homogenization_Ngrains(homog)                                                          ! grain number per material point
@@ -1443,11 +1151,8 @@ subroutine material_populateGrains
      activePair: if (Ngrains(homog,micro) > 0_pInt) then
        myNgrains = Ngrains(homog,micro)                                                             ! assign short name for total number of grains to populate
        myNconstituents = microstructure_Nconstituents(micro)                                        ! assign short name for number of constituents
-       if (iand(myDebug,debug_levelBasic) /= 0_pInt) then
-         !$OMP CRITICAL (write2out)
-           write(6,'(/,a32,1x,a32,1x,i6)') homogenization_name(homog),microstructure_name(micro),myNgrains
-         !$OMP END CRITICAL (write2out)
-       endif
+       if (iand(myDebug,debug_levelBasic) /= 0_pInt) &
+         write(6,'(/,a32,1x,a32,1x,i6)') homogenization_name(homog),microstructure_name(micro),myNgrains
 
 
 !--------------------------------------------------------------------------------------------------

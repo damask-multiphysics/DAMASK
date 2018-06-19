@@ -982,6 +982,10 @@ pure function IO_stringPos(string)
    if ( string(left:left) == '#' ) exit
    IO_stringPos = [IO_stringPos,int(left, pInt), int(right, pInt)]
    IO_stringPos(1) = IO_stringPos(1)+1_pInt
+   endOfString: if (right < left) then
+     IO_stringPos(IO_stringPos(1)*2+1) = len_trim(string)
+     exit
+   endif endOfString
  enddo
 
 end function IO_stringPos
@@ -1545,6 +1549,17 @@ subroutine IO_error(error_ID,el,ip,g,instance,ext_msg)
    msg = 'zero entry on stiffness diagonal'
  case (136_pInt)
    msg = 'zero entry on stiffness diagonal for transformed phase'
+
+!--------------------------------------------------------------------------------------------------
+! errors related to the parsing of material.config
+ case (140_pInt)
+   msg = 'key not found'
+ case (141_pInt)
+   msg = 'number of chunks in string differs'
+ case (142_pInt)
+   msg = 'empty list'
+ case (143_pInt)
+   msg = 'no value found for key'
 
 !--------------------------------------------------------------------------------------------------
 ! material error messages and related messages in mesh

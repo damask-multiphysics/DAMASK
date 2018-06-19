@@ -97,7 +97,8 @@ use IO
    PLASTICITY_ISOTROPIC_label, &
    PLASTICITY_ISOTROPIC_ID, &
    material_phase, &
-   plasticState, &
+   plasticState
+ use config, only: &
    MATERIAL_partPhase, &
    phaseConfig
    

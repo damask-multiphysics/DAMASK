@@ -59,12 +59,13 @@ subroutine constitutive_init()
    IO_timeStamp
  use mesh, only: &
    FE_geomtype
- use material, only: &
-   material_phase, &
+ use config, only: &
    material_Nphase, &
    material_localFileExt, &
-   material_configFile, &
    phase_name, &
+   material_configFile
+ use material, only: &
+   material_phase, &
    phase_plasticity, &
    phase_plasticityInstance, &
    phase_Nsources, &
