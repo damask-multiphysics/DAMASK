@@ -147,7 +147,6 @@ integer(pInt) function count(this,key)
  class(tPartitionedStringList), intent(in) :: this
  character(len=*), intent(in)              :: key
  type(tPartitionedStringList), pointer     :: item
- integer(pInt) :: i
 
  count = 0_pInt
 
@@ -326,9 +325,7 @@ function getStrings(this,key,defaultVal,raw)
 
  cumulative = (key(1:1) == '(' .and. key(len_trim(key):len_trim(key)) == ')')
  split = merge(.not. raw,.true.,present(raw))
- found = present(defaultVal)
- if (present(defaultVal)) getStrings = defaultVal
-
+ found = .false.
 
  item => this%next
  do while (associated(item))
@@ -363,8 +360,13 @@ function getStrings(this,key,defaultVal,raw)
    item => item%next
  end do
 
+ if (present(defaultVal) .and. .not. found) then
+   getStrings = defaultVal
+   found = .true.
+ endif
  if (.not. found) call IO_error(140_pInt,ext_msg=key)
-end function
+
+end function getStrings
 
 
 !--------------------------------------------------------------------------------------------------
@@ -388,13 +390,9 @@ function getInts(this,key,defaultVal)
                                                         cumulative
 
  cumulative = (key(1:1) == '(' .and. key(len_trim(key):len_trim(key)) == ')')
- found = present(defaultVal)
+ found = .false.
 
- if (present(defaultVal)) then
-   getInts = defaultVal
- else
-   allocate(getInts(0))
- endif
+ allocate(getInts(0))
 
  item => this%next
  do while (associated(item))
@@ -412,6 +410,10 @@ function getInts(this,key,defaultVal)
    item => item%next
  end do
 
+ if (present(defaultVal) .and. .not. found) then
+   getInts = defaultVal
+   found = .true.
+ endif
  if (.not. found) call IO_error(140_pInt,ext_msg=key)
 
 end function getInts
@@ -438,13 +440,9 @@ function getFloats(this,key,defaultVal)
                                                         cumulative
 
  cumulative = (key(1:1) == '(' .and. key(len_trim(key):len_trim(key)) == ')')
- found = present(defaultVal)
+ found = .false.
 
- if (present(defaultVal)) then
-   getFloats = defaultVal
- else
-   allocate(getFloats(0))
- endif
+ allocate(getFloats(0))
 
  item => this%next
  do while (associated(item))
@@ -462,6 +460,10 @@ function getFloats(this,key,defaultVal)
    item => item%next
  end do
 
+ if (present(defaultVal) .and. .not. found) then
+   getFloats = defaultVal
+   found = .true.
+ endif
  if (.not. found) call IO_error(140_pInt,ext_msg=key)
 
 end function getFloats

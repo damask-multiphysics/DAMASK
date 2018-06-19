@@ -1,6 +1,7 @@
 !--------------------------------------------------------------------------------------------------
 !> @author Philip Eisenlohr, Michigan State University
 !> @author Zhuowen Zhao, Michigan State University
+!> @author   Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
 !> @brief Introducing Voce-type kinematic hardening rule into crystal plasticity  
 !! formulation using a power law fitting
 !--------------------------------------------------------------------------------------------------
@@ -231,6 +232,7 @@ subroutine plastic_kinehardening_init(fileUnit)
        allocate(param(instance)%nonSchmidCoeff(Nchunks_nonSchmid),      source=0.0_pReal)
        if(allocated(tempPerSlip)) deallocate(tempPerSlip)
        allocate(tempPerSlip(Nchunks_SlipFamilies))
+       allocate(param(instance)%outputID(0))
      endif
      cycle                                                                                          ! skip to next line
    endif

@@ -268,7 +268,8 @@ subroutine crystallite_init
 
 
  do c = 1_pInt, material_Ncrystallite
-   str =  crystalliteConfig(c)%getStrings('(output)')!,defaultVal=[])
+   if (crystalliteConfig(c)%keyExists('output') )then
+   str =  crystalliteConfig(c)%getStrings('(output)')
    do o = 1_pInt, size(str)
      crystallite_output(o,c) = str(o)
      outputName: select case(str(o))
@@ -319,7 +320,8 @@ subroutine crystallite_init
            case default outputName
              call IO_error(105_pInt,ext_msg=tag//' (Crystallite)')
          end select outputName
-enddo
+   enddo
+   endif
  enddo
 
 
