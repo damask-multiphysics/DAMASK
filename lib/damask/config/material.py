@@ -149,46 +149,20 @@ class Material():
       line = line.split('#')[0].strip()                   # kill comments and extra whitespace
       line = line.split('/echo/')[0].strip()              # remove '/echo/' tags
       line = line.lower()                                 # be case insensitive
+      print(line)
       if line:                                            # content survives...
-        match_part = re_part.match(line.split()[0])
+        match_part = re_part.match(line)
         if match_part:                                    # found <part> separator
           active = (match_part.group(1) == part)          # only active in <part>
           continue
         if active:
-          match_sec  = re_sec.match(line.split()[0])
+          match_sec  = re_sec.match(line)
           if match_sec:                                   # found [section]
             name_section = match_sec.group(1)             # remember name ...
             if '__order__' not in self.data[part]: self.data[part]['__order__'] = []
             self.data[part]['__order__'].append(name_section)  # ... and position
             self.data[part][name_section] = {'__order__':[]}
             continue
-          # This part accesses the data in the files mentioned in the curly brackets. For now the file should be present in the working folder
-          #trying to generalize the file and its location. 
-          if line:
-            match_include = re_include.match(line.split()[0])
-            if match_include:
-              sub_file = match_include.group(1).split('/')[1]    #get the file name which has to be opened to get the data
-              #code to search for file when it is located anywhere
-              path_file = os.environ['PATH']
-              path_file = path_file[:(path_file.find("DAMASK") + len("DAMASK"))]
-              for root, dirs, files in os.walk(path_file):
-                if sub_file in files:
-                  target_path = os.path.join(root, sub_file)  #this would give the path for the sub_file
-                  with open(target_path,'r') as f1:   #using the target_path to open the file
-                    subdata = f1.readlines()
-                  subdata = [a for a in subdata if a != '\n']   #removes '\n' elements from the list
-                if subdata:
-                  for entry in subdata:
-                    if sections == [] or name_section in sections:  # respect subset
-                      items = entry.split()
-                      if items[0] not in self.data[part][name_section]:         # first encounter of key?
-                        self.data[part][name_section][items[0]] = []            # create item
-                        self.data[part][name_section]['__order__'].append(items[0])
-                      if items[0].startswith('(') and items[0].endswith(')'):   # multiple "(key)"
-                        self.data[part][name_section][items[0]].append(items[1:])
-                      else:                                                     # plain key
-                        self.data[part][name_section][items[0]] = items[1:]
-              continue 
 
           if sections == [] or name_section in sections:  # respect subset
             items = line.split()
@@ -201,24 +175,26 @@ class Material():
               self.data[part][name_section][items[0]] = items[1:]
                   
   def read(self,file=None):
+    fileNames = [None] * 10 
+    fileNames[0] = file
     re_include  = re.compile(r'^{(.+)}$')                 # pattern for include
     c = []
     with open(file,'r') as f:
       for entry in f:
-        match_include = re_include.match(entry.split()[0])
-        if match_include:
-          sub_file = match_include.group(1).split('/')[-1]    #get the file name which has to be opened to get the data, 
-          #code to search for file when it is located anywhere
-          path_file = os.environ['PATH']
-          path_file = path_file[:(path_file.find("DAMASK") + len("DAMASK"))]
-          for root, dirs, files in os.walk(path_file):
-            if sub_file in files:
-              target_path = os.path.join(root, sub_file)  #this would give the path for the sub_file
-              with open(target_path,'r') as f1:   #using the target_path to open the file
-                for data in f1:
-                  c = c.append(data)
+        if not entry.strip(): continue
+        match = re_include.match(entry.split()[0])
+        if match:
+          if match.group(1).startswith('/'):
+            sub_file = match.group(1)
+          else:
+            pass
+          with open(sub_file,'r') as f1:   #using the target_path to open the file
+            for l in f1.readlines(): c.append(l)
         else:
-          c = c.append(entry)
+          c.append(entry)
+
+    for l in c:
+      print(l)
     for p in self.parts:
       self.parse_data(part=p, content=c)
       
