@@ -670,6 +670,7 @@ subroutine material_parseMicrostructure
    IO_floatValue, &
    IO_intValue, &
    IO_stringValue, &
+   IO_stringPos, &
    IO_error
  use mesh, only: &
    mesh_element, &
@@ -678,7 +679,7 @@ subroutine material_parseMicrostructure
  implicit none
  character(len=65536), dimension(:), allocatable :: &
    str 
- integer(pInt), allocatable, dimension(:,:) :: chunkPoss
+ integer(pInt), allocatable, dimension(:) :: chunkPos
  integer(pInt) :: e, m, c, i
  character(len=65536) :: &
    tag
@@ -705,18 +706,20 @@ subroutine material_parseMicrostructure
  allocate(microstructure_fraction(microstructure_maxNconstituents,material_Nmicrostructure),source=0.0_pReal)
 
  do m=1_pInt, material_Nmicrostructure
-   call microstructureConfig(m)%getRaws('(constituent)',str,chunkPoss)
+   str = microstructureConfig(m)%getStrings('(constituent)',raw=.true.)
    do c = 1_pInt, size(str)
-     do i = 2_pInt,6_pInt,2_pInt
-        tag = IO_stringValue(str(c),chunkPoss(:,c),i)
+     chunkPos = IO_stringPos(str(c))
+
+     do i = 1_pInt,5_pInt,2_pInt
+        tag = IO_stringValue(str(c),chunkPos,i)
 
         select case (tag)
           case('phase')
-            microstructure_phase(c,m) =    IO_intValue(str(c),chunkPoss(:,c),i+1_pInt)
+            microstructure_phase(c,m) =    IO_intValue(str(c),chunkPos,i+1_pInt)
           case('texture')
-            microstructure_texture(c,m) =  IO_intValue(str(c),chunkPoss(:,c),i+1_pInt)
+            microstructure_texture(c,m) =  IO_intValue(str(c),chunkPos,i+1_pInt)
           case('fraction')
-            microstructure_fraction(c,m) =  IO_floatValue(str(c),chunkPoss(:,c),i+1_pInt)
+            microstructure_fraction(c,m) =  IO_floatValue(str(c),chunkPos,i+1_pInt)
         end select
      
      enddo

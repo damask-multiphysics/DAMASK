@@ -23,10 +23,6 @@ module linked_list
 
      procedure :: keyExists      => exist
      procedure :: countKeys      => count
-     procedure :: getStringsRaw  => strings
-
-     procedure :: getRaw         => getRaw
-     procedure :: getRaws        => getRaws
 
      procedure :: getFloat       => getFloat
      procedure :: getFloatArray  => getFloats
@@ -34,6 +30,7 @@ module linked_list
      procedure :: getInt         => getInt
      procedure :: getIntArray    => getInts
 
+     procedure :: getStringsRaw  => strings
      procedure :: getString      => getString
      procedure :: getStrings     => getStrings
 
@@ -196,89 +193,6 @@ end function strings
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief gets first string that matches given key (i.e. first chunk)
-!> @details returns raw string and start/end position of chunks in this string
-!--------------------------------------------------------------------------------------------------
-subroutine getRaw(this,key,string,stringPos)
- use IO, only : &
-   IO_error, &
-   IO_stringValue
-
- implicit none
- class(tPartitionedStringList),            intent(in)  :: this
- character(len=*),                         intent(in)  :: key
- character(len=*),                         intent(out) :: string
- integer(pInt), dimension(:), allocatable, intent(out) :: stringPos
- type(tPartitionedStringList), pointer                 :: item
- logical                                               :: found
- 
- found = .false.
-
- item => this%next
- do while (associated(item) .and. .not. found)
-   found = trim(IO_stringValue(item%string%val,item%string%pos,1)) == trim(key)
-   if (found) then
-     stringPos = item%string%pos
-     string    = item%string%val
-   endif
-   item => item%next
- end do
-
- if (.not. found) call IO_error(140_pInt,ext_msg=key)
-
-end subroutine getRaw
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief gets all strings that matches given key (i.e. first chunk)
-!> @details returns raw strings and start/end positions of chunks in these strings.
-! Will fail if number of positions in strings differs.
-!--------------------------------------------------------------------------------------------------
-subroutine getRaws(this,key,string,stringPos)
- use IO, only: &
-   IO_error, &
-   IO_stringValue
-
- implicit none
- class(tPartitionedStringList),                     intent(in)  :: this
- character(len=*),                                  intent(in)  :: key
- character(len=65536), dimension(:),   allocatable, intent(out) :: string
- integer(pInt),        dimension(:,:), allocatable, intent(out) :: stringPos
- 
- character(len=65536)                      :: string_tmp
- integer(pInt)                             :: posSize
- integer(pInt),  dimension(:), allocatable :: stringPosFlat
- type(tPartitionedStringList), pointer     :: item
-
- posSize = -1_pInt
- item => this%next
- do 
-   if (.not. associated(item)) then
-     if (posSize < 0_pInt) call IO_error(140_pInt,ext_msg=key)
-     stringPos = reshape(stringPosFlat,[posSize,size(string)])
-     exit
-   endif
-   foundKey: if (trim(IO_stringValue(item%string%val,item%string%pos,1))==trim(key)) then
-     if (posSize < 0_pInt) then
-       posSize = size(item%string%pos)
-       stringPosFlat = item%string%pos
-       allocate(string(1))
-       string(1) = item%string%val
-     else
-       if (size(item%string%pos) /= posSize) &
-         call IO_error(141_pInt,ext_msg=trim(item%string%val),el=posSize)
-       stringPosFlat = [stringPosFlat,item%string%pos]
-       string_tmp = item%string%val
-       string = [string,string_tmp]
-     endif 
-   endif foundKey
-   item => item%next
- end do
-
-end subroutine getRaws
-
-
-!--------------------------------------------------------------------------------------------------
 !> @brief gets float value of first string that matches given key (i.e. first chunk)
 !> @details gets one float value. If key is not found exits with error unless default is given
 !--------------------------------------------------------------------------------------------------
@@ -367,7 +281,7 @@ character(len=65536) function getString(this,key,defaultVal,raw)
                                                         split
 
  if (present(defaultVal)) getString = defaultVal
- split = merge(raw,.true.,present(raw))
+ split = merge(.not. raw,.true.,present(raw))
  found = present(defaultVal)
 
  item => this%next
@@ -411,9 +325,8 @@ function getStrings(this,key,defaultVal,raw)
                                                        cumulative
 
  cumulative = (key(1:1) == '(' .and. key(len_trim(key):len_trim(key)) == ')')
- split = merge(raw,.true.,present(raw))
+ split = merge(.not. raw,.true.,present(raw))
  found = present(defaultVal)
-
  if (present(defaultVal)) getStrings = defaultVal
 
 
@@ -451,7 +364,6 @@ function getStrings(this,key,defaultVal,raw)
  end do
 
  if (.not. found) call IO_error(140_pInt,ext_msg=key)
-
 end function
 
 
