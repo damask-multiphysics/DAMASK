@@ -268,7 +268,7 @@ subroutine crystallite_init
 
 
  do c = 1_pInt, material_Ncrystallite
-   if (crystalliteConfig(c)%keyExists('output') )then
+   if (crystalliteConfig(c)%keyExists('(output)') )then
    str =  crystalliteConfig(c)%getStrings('(output)')
    do o = 1_pInt, size(str)
      crystallite_output(o,c) = str(o)
