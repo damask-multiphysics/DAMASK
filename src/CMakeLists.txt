@@ -39,13 +39,9 @@ add_library(DEBUG OBJECT "debug.f90")
 add_dependencies(DEBUG NUMERICS)
 list(APPEND OBJECTFILES $<TARGET_OBJECTS:DEBUG>)
 
-add_library(CHAINED_LIST OBJECT "linked_list.f90")
-add_dependencies(CHAINED_LIST DEBUG)
-list(APPEND OBJECTFILES $<TARGET_OBJECTS:CHAINED_LIST>)
-
-add_library(CONFIG_MATERIAL OBJECT "config.f90")
-add_dependencies(CONFIG_MATERIAL CHAINED_LIST)
-list(APPEND OBJECTFILES $<TARGET_OBJECTS:CONFIG_MATERIAL>)
+add_library(CONFIG OBJECT "config.f90")
+add_dependencies(CONFIG DEBUG)
+list(APPEND OBJECTFILES $<TARGET_OBJECTS:CONFIG>)
 
 add_library(FEsolving OBJECT "FEsolving.f90")
 add_dependencies(FEsolving DEBUG)
@@ -70,7 +66,7 @@ elseif (PROJECT_NAME STREQUAL "DAMASK_FEM")
 endif()
 
 add_library(MATERIAL OBJECT "material.f90")
-add_dependencies(MATERIAL MESH CONFIG_MATERIAL)
+add_dependencies(MATERIAL MESH CONFIG)
 list(APPEND OBJECTFILES $<TARGET_OBJECTS:MATERIAL>)
 
 add_library(DAMASK_HELPERS OBJECT "lattice.f90")

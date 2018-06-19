@@ -8,7 +8,6 @@
 !--------------------------------------------------------------------------------------------------
 module material
  use config
- use linked_list
  use prec, only: &
    pReal, &
    pInt, &
