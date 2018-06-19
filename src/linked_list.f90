@@ -297,19 +297,19 @@ real(pReal) function getFloat(this,key,defaultVal)
  logical                                             :: found
 
  if (present(defaultVal)) getFloat = defaultVal
- found = .false.
+ found = present(defaultVal)
  
  item => this%next
- do while (associated(item) .and. .not. found)
-   found = trim(IO_stringValue(item%string%val,item%string%pos,1)) == trim(key)
-   if (found) then
+ do while (associated(item))
+   if (trim(IO_stringValue(item%string%val,item%string%pos,1)) == trim(key)) then
+     found = .true.
      if (item%string%pos(1) < 2_pInt) call IO_error(143_pInt,ext_msg=key)
      getFloat = IO_FloatValue(item%string%val,item%string%pos,2)
    endif
    item => item%next
  end do
 
- if (.not. found .and. .not. present(defaultVal)) call IO_error(140_pInt,ext_msg=key)
+ if (.not. found) call IO_error(140_pInt,ext_msg=key)
 
 end function getFloat
 
@@ -332,19 +332,19 @@ integer(pInt) function getInt(this,key,defaultVal)
  logical                                             :: found
 
  if (present(defaultVal)) getInt = defaultVal
- found = .false.
+ found = present(defaultVal)
  
  item => this%next
- do while (associated(item) .and. .not. found)
-   found = trim(IO_stringValue(item%string%val,item%string%pos,1)) == trim(key)
-   if (found) then
+ do while (associated(item))
+   if (trim(IO_stringValue(item%string%val,item%string%pos,1)) == trim(key)) then
+     found = .true.
      if (item%string%pos(1) < 2_pInt) call IO_error(143_pInt,ext_msg=key)
      getInt = IO_IntValue(item%string%val,item%string%pos,2)
    endif
    item => item%next
  end do
 
- if (.not. found .and. .not. present(defaultVal)) call IO_error(140_pInt,ext_msg=key)
+ if (.not. found) call IO_error(140_pInt,ext_msg=key)
 
 end function getInt
 
@@ -369,12 +369,12 @@ character(len=65536) function getString(this,key,defaultVal,raw)
 
  if (present(defaultVal)) getString = defaultVal
  split = merge(raw,.true.,present(raw))
- found = .false.
+ found = present(defaultVal)
 
  item => this%next
- do while (associated(item) .and. .not. found)
-   found = trim(IO_stringValue(item%string%val,item%string%pos,1)) == trim(key)
-   if (found) then
+ do while (associated(item))
+   if (trim(IO_stringValue(item%string%val,item%string%pos,1)) == trim(key)) then
+     found = .true.
      if (split) then
        if (item%string%pos(1) < 2_pInt) call IO_error(143_pInt,ext_msg=key)
        getString = IO_StringValue(item%string%val,item%string%pos,2)
@@ -385,7 +385,7 @@ character(len=65536) function getString(this,key,defaultVal,raw)
    item => item%next
  end do
 
- if (.not. found .and. .not. present(defaultVal)) call IO_error(140_pInt,ext_msg=key)
+ if (.not. found) call IO_error(140_pInt,ext_msg=key)
 
 end function getString
 
