@@ -431,7 +431,7 @@ function getFloats(this,key,defaultVal)
  real(pReal),      dimension(:), allocatable         :: getFloats
  class(tPartitionedStringList), intent(in)           :: this
  character(len=*),              intent(in)           :: key
- integer(pInt), dimension(:),   intent(in), optional :: defaultVal
+ real(pReal), dimension(:),   intent(in), optional :: defaultVal
  type(tPartitionedStringList),  pointer              :: item
  integer(pInt)                                       :: i
  logical                                             :: found, &
