@@ -374,11 +374,12 @@ character(len=65536) function getString(this,key,defaultVal,raw)
  do while (associated(item))
    if (trim(IO_stringValue(item%string%val,item%string%pos,1)) == trim(key)) then
      found = .true.
+     if (item%string%pos(1) < 2_pInt) call IO_error(143_pInt,ext_msg=key)
+
      if (split) then
-       if (item%string%pos(1) < 2_pInt) call IO_error(143_pInt,ext_msg=key)
        getString = IO_StringValue(item%string%val,item%string%pos,2)
      else
-       getString = trim(item%string%val(item%string%pos(4):))                                  ! raw string starting a second chunk
+       getString = trim(item%string%val(item%string%pos(4):))                                       ! raw string starting a second chunk
      endif
    endif
    item => item%next
@@ -393,36 +394,64 @@ end function getString
 !> @brief ...
 !> @details ...
 !--------------------------------------------------------------------------------------------------
-function getStrings(this,key)
-  use IO
+function getStrings(this,key,defaultVal,raw)
+ use IO
 
-  implicit none
-  character(len=64),dimension(:), allocatable :: getStrings
-  class(tPartitionedStringList),   intent(in) :: this
-  character(len=*),                intent(in) :: key
-  type(tPartitionedStringList), pointer       :: item
-  character(len=64)                           :: str
-  integer(pInt)                               :: i
+ implicit none
+ character(len=65536),dimension(:), allocatable :: getStrings
+ class(tPartitionedStringList),   intent(in) :: this
+ character(len=*),                intent(in) :: key
+ character(len=65536),dimension(:),         intent(in), optional :: defaultVal
+ logical,                       intent(in), optional :: raw
+ type(tPartitionedStringList), pointer       :: item
+ character(len=65536)                           :: str
+ integer(pInt)                               :: i
+ logical                                             :: found, &
+                                                        split, &
+                                                       cumulative
+
+ cumulative = (key(1:1) == '(' .and. key(len_trim(key):len_trim(key)) == ')')
+ split = merge(raw,.true.,present(raw))
+ found = present(defaultVal)
+
+ if (present(defaultVal)) getStrings = defaultVal
 
 
-  item => this%next
-  do 
-    if (.not. associated(item)) then
-      if (.not. allocated(getStrings)) allocate(getStrings(0),source=str)
-      exit
-    endif
-    if (trim(IO_stringValue(item%string%val,item%string%pos,1)) == trim(key)) then
-      if (item%string%pos(1) < 2) print*, "NOT WORKING"
-      str = IO_StringValue(item%string%val,item%string%pos,2)
+ item => this%next
+ do while (associated(item))
+   if (trim(IO_stringValue(item%string%val,item%string%pos,1)) == trim(key)) then
+     found = .true.
+     if (allocated(getStrings) .and. .not. cumulative) deallocate(getStrings)
+     if (item%string%pos(1) < 2_pInt) call IO_error(143_pInt,ext_msg=key)
+     
+     arrayAllocated: if (.not. allocated(getStrings)) then
+       if (split) then
+         str = IO_StringValue(item%string%val,item%string%pos,2_pInt)
+         allocate(getStrings(1),source=str)
+         do i=3_pInt,item%string%pos(1)
+           str = IO_StringValue(item%string%val,item%string%pos,i)
+           getStrings = [getStrings,str]
+         enddo
+       else
+         str = item%string%val(item%string%pos(4):)
+         getStrings = [str]
+       endif
+     else arrayAllocated
+       if (split) then
+         do i=2_pInt,item%string%pos(1)
+           str = IO_StringValue(item%string%val,item%string%pos,i)
+           getStrings = [getStrings,str]
+         enddo
+       else
+         getStrings = [getStrings,str]
+       endif
+     endif arrayAllocated
+   endif
+   item => item%next
+ end do
 
- GfortranBug86033: if (.not. allocated(getStrings)) then
-   allocate(getStrings(1),source=str)
- else GfortranBug86033
-   getStrings  = [getStrings,str]
- endif GfortranBug86033
-    endif
-    item => item%next
-  end do
+ if (.not. found) call IO_error(140_pInt,ext_msg=key)
+
 end function
 
 
