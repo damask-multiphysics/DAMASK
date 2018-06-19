@@ -17,7 +17,6 @@ module linked_list
  type, public :: tPartitionedStringList
    type(tPartitionedString)               :: string
    type(tPartitionedStringList),  pointer :: next => null()
-   type(tPartitionedStringList),  pointer :: prev => null()
    contains
      procedure :: add            => add
      procedure :: show           => show
@@ -30,10 +29,10 @@ module linked_list
      procedure :: getRaws        => getRaws
 
      procedure :: getFloat       => getFloat
-     procedure :: getFloatArray  => getFloatArray
+     procedure :: getFloatArray  => getFloats
 
      procedure :: getInt         => getInt
-     procedure :: getIntArray    => getIntArray
+     procedure :: getIntArray    => getInts
 
      procedure :: getString      => getString
      procedure :: getStrings     => getStrings
@@ -431,14 +430,14 @@ end function
 !> @brief gets array of int values for given key
 !> @details if key is not found exits with error unless default is given
 !--------------------------------------------------------------------------------------------------
-function getIntArray(this,key,defaultVal)
+function getInts(this,key,defaultVal)
  use IO, only: &
    IO_error, &
    IO_stringValue, &
    IO_IntValue
 
  implicit none
- integer(pInt), dimension(:), allocatable            :: getIntArray
+ integer(pInt), dimension(:), allocatable            :: getInts
  class(tPartitionedStringList), intent(in)           :: this
  character(len=*),              intent(in)           :: key
  integer(pInt), dimension(:),   intent(in), optional :: defaultVal
@@ -448,79 +447,83 @@ function getIntArray(this,key,defaultVal)
                                                         cumulative
 
  cumulative = (key(1:1) == '(' .and. key(len_trim(key):len_trim(key)) == ')')
- found = .false.
+ found = present(defaultVal)
 
  if (present(defaultVal)) then
-   getIntArray = defaultVal
+   getInts = defaultVal
  else
-   allocate(getIntArray(0))
+   allocate(getInts(0))
  endif
 
  item => this%next
- do while (associated(item) .and. (.not. found .or. cumulative))
-   found = trim(IO_stringValue(item%string%val,item%string%pos,1)) == trim(key)
-   if (found) then
+ do while (associated(item))
+   if (trim(IO_stringValue(item%string%val,item%string%pos,1)) == trim(key)) then
+     found = .true.
      if (.not. cumulative) then
-       deallocate(getIntArray) ! use here rhs allocation with empty list
-       allocate(getIntArray(0))
+       deallocate(getInts) ! use here rhs allocation with empty list
+       allocate(getInts(0))
      endif
      if (item%string%pos(1) < 2_pInt) call IO_error(143_pInt,ext_msg=key)
      do i = 2_pInt, item%string%pos(1)
-       getIntArray = [getIntArray,IO_IntValue(item%string%val,item%string%pos,i)]
+       getInts = [getInts,IO_IntValue(item%string%val,item%string%pos,i)]
      enddo
    endif
    item => item%next
  end do
 
- if (.not. found .and. .not. present(defaultVal)) call IO_error(140_pInt,ext_msg=key)
+ if (.not. found) call IO_error(140_pInt,ext_msg=key)
 
-end function getIntArray
-
+end function getInts
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief gets array of float values for given key
 !> @details if key is not found exits with error unless default is given
 !--------------------------------------------------------------------------------------------------
-function getFloatArray(this,key,defaultVal)
+function getFloats(this,key,defaultVal)
  use IO, only: &
    IO_error, &
    IO_stringValue, &
    IO_FloatValue
 
  implicit none
- real(pReal), dimension(:), allocatable              :: getFloatArray
+ real(pReal),      dimension(:), allocatable         :: getFloats
  class(tPartitionedStringList), intent(in)           :: this
  character(len=*),              intent(in)           :: key
- real(pReal), dimension(:),     intent(in), optional :: defaultVal
+ integer(pInt), dimension(:),   intent(in), optional :: defaultVal
  type(tPartitionedStringList),  pointer              :: item
  integer(pInt)                                       :: i
- logical                                             :: found
+ logical                                             :: found, &
+                                                        cumulative
 
- found = .false.
+ cumulative = (key(1:1) == '(' .and. key(len_trim(key):len_trim(key)) == ')')
+ found = present(defaultVal)
 
  if (present(defaultVal)) then
-   getFloatArray = defaultVal
+   getFloats = defaultVal
  else
-   allocate(getFloatArray(0))
+   allocate(getFloats(0))
  endif
 
  item => this%next
- do while (associated(item) .and. .not. found)
-   found = trim(IO_stringValue(item%string%val,item%string%pos,1)) == trim(key)
-   if (found) then
+ do while (associated(item))
+   if (trim(IO_stringValue(item%string%val,item%string%pos,1)) == trim(key)) then
+     found = .true.
+     if (.not. cumulative) then
+       deallocate(getFloats) ! use here rhs allocation with empty list
+       allocate(getFloats(0))
+     endif
      if (item%string%pos(1) < 2_pInt) call IO_error(143_pInt,ext_msg=key)
      do i = 2_pInt, item%string%pos(1)
-       getFloatArray = [getFloatArray,IO_FloatValue(item%string%val,item%string%pos,i)]
+       getFloats = [getFloats,IO_FloatValue(item%string%val,item%string%pos,i)]
      enddo
    endif
    item => item%next
  end do
 
- if (.not. found .and. .not. present(defaultVal)) call IO_error(140_pInt,ext_msg=key)
+ if (.not. found) call IO_error(140_pInt,ext_msg=key)
 
-end function getFloatArray
-
+end function getFloats
 
 
 end module linked_list
