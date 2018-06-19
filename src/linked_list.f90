@@ -25,10 +25,10 @@ module linked_list
      procedure :: countKeys      => count
 
      procedure :: getFloat       => getFloat
-     procedure :: getFloatArray  => getFloats
+     procedure :: getFloats      => getFloats
 
      procedure :: getInt         => getInt
-     procedure :: getIntArray    => getInts
+     procedure :: getInts        => getInts
 
      procedure :: getStringsRaw  => strings
      procedure :: getString      => getString
