@@ -201,8 +201,24 @@ class Material():
               self.data[part][name_section][items[0]] = items[1:]
                   
   def read(self,file=None):
+    re_include  = re.compile(r'^{(.+)}$')                 # pattern for include
+    c = []
     with open(file,'r') as f:
-      c = f.readlines()
+      for entry in f:
+        match_include = re_include.match(entry.split()[0])
+        if match_include:
+          sub_file = match_include.group(1).split('/')[-1]    #get the file name which has to be opened to get the data, 
+          #code to search for file when it is located anywhere
+          path_file = os.environ['PATH']
+          path_file = path_file[:(path_file.find("DAMASK") + len("DAMASK"))]
+          for root, dirs, files in os.walk(path_file):
+            if sub_file in files:
+              target_path = os.path.join(root, sub_file)  #this would give the path for the sub_file
+              with open(target_path,'r') as f1:   #using the target_path to open the file
+                for data in f1:
+                  c = c.append(data)
+        else:
+          c = c.append(entry)
     for p in self.parts:
       self.parse_data(part=p, content=c)
       
