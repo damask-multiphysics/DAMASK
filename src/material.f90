@@ -922,6 +922,61 @@ subroutine material_parseTexture
    section = t
    gauss = 0_pInt
    fiber = 0_pInt
+   
+   if (textureConfig(t)%keyExists('axes')) then
+     lines = textureConfig(t)%getStrings('axes')
+     do j = 1_pInt, 3_pInt                                                                          ! look for "x", "y", and "z" entries
+       select case (lines(j))
+         case('x', '+x')
+           texture_transformation(j,1:3,t) = [ 1.0_pReal, 0.0_pReal, 0.0_pReal]                     ! original axis is now +x-axis
+         case('-x')
+           texture_transformation(j,1:3,t) = [-1.0_pReal, 0.0_pReal, 0.0_pReal]                     ! original axis is now -x-axis
+         case('y', '+y')
+           texture_transformation(j,1:3,t) = [ 0.0_pReal, 1.0_pReal, 0.0_pReal]                     ! original axis is now +y-axis
+         case('-y')
+           texture_transformation(j,1:3,t) = [ 0.0_pReal,-1.0_pReal, 0.0_pReal]                     ! original axis is now -y-axis
+         case('z', '+z')
+           texture_transformation(j,1:3,t) = [ 0.0_pReal, 0.0_pReal, 1.0_pReal]                     ! original axis is now +z-axis
+         case('-z')
+           texture_transformation(j,1:3,t) = [ 0.0_pReal, 0.0_pReal,-1.0_pReal]                     ! original axis is now -z-axis
+         case default
+           call IO_error(157_pInt,t)
+       end select
+     enddo
+     if(dNeq(math_det33(texture_transformation(1:3,1:3,t)),1.0_pReal)) call IO_error(157_pInt,t)
+   endif
+
+   tag=''
+   texture_ODFfile(t) = textureConfig(t)%getString('hybridia',defaultVal=tag)
+
+   if (textureConfig(t)%keyExists('symmetry')) then
+     select case (textureConfig(t)%getString('symmetry'))
+       case('orthotropic')
+         texture_symmetry(t) = 4_pInt
+       case('monoclinic')
+         texture_symmetry(t) = 2_pInt
+       case default
+         texture_symmetry(t) = 1_pInt
+     end select
+   endif
+
+   if (textureConfig(t)%keyExists('(random)')) then
+     lines = textureConfig(t)%getStrings('(random)',raw=.true.)
+     do i = 1_pInt, size(lines)
+       gauss = gauss + 1_pInt
+       texture_Gauss(1:3,gauss,t) = math_sampleRandomOri()
+       chunkPos = IO_stringPos(lines(i))
+       do j = 1_pInt,3_pInt,2_pInt
+         select case (IO_stringValue(lines(i),chunkPos,j))
+           case('scatter')
+             texture_Gauss(4,gauss,t) = IO_floatValue(lines(i),chunkPos,j+1_pInt)*inRad
+           case('fraction')
+             texture_Gauss(5,gauss,t) = IO_floatValue(lines(i),chunkPos,j+1_pInt)
+         end select
+       enddo
+     enddo
+   endif
+
    lines = textureConfig(t)%getStringsRaw()
 
    do i=1_pInt, size(lines)
@@ -929,57 +984,6 @@ subroutine material_parseTexture
      chunkPos = IO_stringPos(lines(i))
      tag = IO_stringValue(lines(i),chunkPos,1_pInt)                                                     ! extract key
      textureType: select case(tag)
-
-       case ('axes', 'rotation') textureType
-         do j = 1_pInt, 3_pInt                                                                      ! look for "x", "y", and "z" entries
-           tag = IO_stringValue(lines(i),chunkPos,j+1_pInt)
-           select case (tag)
-             case('x', '+x')
-               texture_transformation(j,1:3,t) = [ 1.0_pReal, 0.0_pReal, 0.0_pReal]           ! original axis is now +x-axis
-             case('-x')
-               texture_transformation(j,1:3,t) = [-1.0_pReal, 0.0_pReal, 0.0_pReal]           ! original axis is now -x-axis
-             case('y', '+y')
-               texture_transformation(j,1:3,t) = [ 0.0_pReal, 1.0_pReal, 0.0_pReal]           ! original axis is now +y-axis
-             case('-y')
-               texture_transformation(j,1:3,t) = [ 0.0_pReal,-1.0_pReal, 0.0_pReal]           ! original axis is now -y-axis
-             case('z', '+z')
-               texture_transformation(j,1:3,t) = [ 0.0_pReal, 0.0_pReal, 1.0_pReal]           ! original axis is now +z-axis
-             case('-z')
-               texture_transformation(j,1:3,t) = [ 0.0_pReal, 0.0_pReal,-1.0_pReal]           ! original axis is now -z-axis
-             case default
-               call IO_error(157_pInt,t)
-           end select
-         enddo
-
-         if(dNeq(math_det33(texture_transformation(1:3,1:3,t)),1.0_pReal)) &
-           call IO_error(157_pInt,t)
-
-       case ('hybridia') textureType
-         texture_ODFfile(t) = IO_stringValue(lines(i),chunkPos,2_pInt)
-
-       case ('symmetry') textureType
-         tag = IO_stringValue(lines(i),chunkPos,2_pInt)
-         select case (tag)
-           case('orthotropic')
-             texture_symmetry(t) = 4_pInt
-           case('monoclinic')
-             texture_symmetry(t) = 2_pInt
-           case default
-             texture_symmetry(t) = 1_pInt
-         end select
-
-       case ('(random)') textureType
-         gauss = gauss + 1_pInt
-         texture_Gauss(1:3,gauss,t) = math_sampleRandomOri()
-         do j = 2_pInt,4_pInt,2_pInt
-           tag = IO_stringValue(lines(i),chunkPos,j)
-           select case (tag)
-             case('scatter')
-                 texture_Gauss(4,gauss,t) = IO_floatValue(lines(i),chunkPos,j+1_pInt)*inRad
-             case('fraction')
-                 texture_Gauss(5,gauss,t) = IO_floatValue(lines(i),chunkPos,j+1_pInt)
-           end select
-         enddo
 
        case ('(gauss)') textureType
          gauss = gauss + 1_pInt
