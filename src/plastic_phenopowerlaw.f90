@@ -1,5 +1,6 @@
 !> @author Franz Roters, Max-Planck-Institut für Eisenforschung GmbH
 !> @author Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
+!> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
 !> @brief material subroutine for phenomenological crystal plasticity formulation using a powerlaw
 !! fitting
 !--------------------------------------------------------------------------------------------------
@@ -227,7 +228,7 @@ subroutine plastic_phenopowerlaw_init
      prm%aTolShear      = phaseConfig(phase)%getFloat('atol_shear',defaultVal=1.0e-6_pReal)
      prm%aTolTwinfrac   = phaseConfig(phase)%getFloat('atol_twinfrac',defaultVal=1.0e-6_pReal)
 
-     outputs = phaseConfig(phase)%getStrings('(output)')
+     outputs = phaseConfig(phase)%getStrings('(output)',defaultVal=[character(len=65536)::])
      allocate(prm%outputID(0))
      do i=1_pInt, size(outputs)
        outputID = undefined_ID
@@ -317,6 +318,7 @@ subroutine plastic_phenopowerlaw_init
      sizeDotState = sizeState
      plasticState(phase)%sizeState = sizeState
      plasticState(phase)%sizeDotState = sizeDotState
+     plasticState(phase)%sizePostResults = sum(plastic_phenopowerlaw_sizePostResult(:,instance))
      plasticState(phase)%nSlip = sum(prm%Nslip)
      plasticState(phase)%nTwin = sum(prm%Ntwin)
      allocate(plasticState(phase)%aTolState          (   sizeState),             source=0.0_pReal)
