@@ -332,26 +332,6 @@ TextureComponents:
     - release
 
 ###################################################################################################
-Marc_compileIfort2014:
-  stage: compileMarc2014
-  script:
-    - module load $IntelCompiler16_0 $MSC2014
-    - Marc_compileIfort/test.py -m 2014
-  except:
-    - master
-    - release
-
-###################################################################################################
-Marc_compileIfort2014.2:
-  stage: compileMarc2014.2
-  script:
-    - module load $IntelCompiler16_0 $MSC2014_2
-    - Marc_compileIfort/test.py -m 2014.2
-  except:
-    - master
-    - release
-
-###################################################################################################
 Marc_compileIfort2015:
   stage: compileMarc2015
   script:
