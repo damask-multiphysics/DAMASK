@@ -24,13 +24,13 @@ unset -f set
 # add DAMASK_BIN if present
 [ "x$DAMASK_BIN != x" ] && PATH=$DAMASK_BIN:$PATH
 
-SOLVER=$(type -p DAMASK_spectral || true 2>/dev/null)
-[ "x$SOLVER == x" ] && SOLVER=$(blink 'Not found!')
+SOLVER=$(which DAMASK_spectral || true 2>/dev/null)
+[ "x$SOLVER" = "x" ] && SOLVER=$(blink 'Not found!')
 
-PROCESSING=$(type -p postResults || true 2>/dev/null)
-[ "x$PROCESSING == x" ] && PROCESSING=$(blink 'Not found!')
+PROCESSING=$(which postResults || true 2>/dev/null)
+[ "x$PROCESSING" = "x" ] && PROCESSING=$(blink 'Not found!')
 
-[ "x$DAMASK_NUM_THREADS == x" ] && DAMASK_NUM_THREADS=1
+[ "x$DAMASK_NUM_THREADS" = "x" ] && DAMASK_NUM_THREADS=1
 
 # currently, there is no information that unlimited causes problems
 # still,  http://software.intel.com/en-us/forums/topic/501500 suggest to fix it
