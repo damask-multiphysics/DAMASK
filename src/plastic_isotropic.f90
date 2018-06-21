@@ -106,7 +106,7 @@ use IO
 
  implicit none
  
- type(tParameters), pointer :: p
+ type(tParameters), pointer :: prm
  
  integer(pInt) :: &
    o, &
@@ -120,7 +120,7 @@ use IO
  character(len=65536) :: &
    extmsg    = ''
  integer(pInt) :: NipcMyPhase,i
- character(len=64), dimension(:), allocatable :: outputs
+ character(len=65536), dimension(:), allocatable :: outputs
 
  write(6,'(/,a)')   ' <<<+-  constitutive_'//PLASTICITY_ISOTROPIC_label//' init  -+>>>'
  write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
@@ -144,26 +144,26 @@ use IO
  do phase = 1_pInt, size(phase_plasticityInstance)
    if (phase_plasticity(phase) == PLASTICITY_ISOTROPIC_ID) then
      instance = phase_plasticityInstance(phase)
-     p => param(instance)                                                                           ! shorthand pointer to parameter object of my constitutive law
-     p%tau0            =  phaseConfig(phase)%getFloat('tau0')
-     p%tausat          =  phaseConfig(phase)%getFloat('tausat')
-     p%gdot0           =  phaseConfig(phase)%getFloat('gdot0')
-     p%n               =  phaseConfig(phase)%getFloat('n')
-     p%h0              =  phaseConfig(phase)%getFloat('h0')
-     p%fTaylor         =  phaseConfig(phase)%getFloat('m')
-     p%h0_slopeLnRate  =  phaseConfig(phase)%getFloat('h0_slopelnrate', defaultVal=0.0_pReal)          ! ToDo: alias allowed?
-     p%tausat_SinhFitA =  phaseConfig(phase)%getFloat('tausat_sinhfita',defaultVal=0.0_pReal)
-     p%tausat_SinhFitB =  phaseConfig(phase)%getFloat('tausat_sinhfitb',defaultVal=0.0_pReal)
-     p%tausat_SinhFitC =  phaseConfig(phase)%getFloat('tausat_sinhfitc',defaultVal=0.0_pReal)
-     p%tausat_SinhFitD =  phaseConfig(phase)%getFloat('tausat_sinhfitd',defaultVal=0.0_pReal)
-     p%a               =  phaseConfig(phase)%getFloat('a')                                          ! ToDo: alias
-     p%aTolFlowStress =  phaseConfig(phase)%getFloat('atol_flowstress',defaultVal=1.0_pReal)
-     p%aTolShear =  phaseConfig(phase)%getFloat('atol_shear',defaultVal=1.0e-6_pReal)
+     prm => param(instance)                                                                         ! shorthand pointer to parameter object of my constitutive law
+     prm%tau0            =  phaseConfig(phase)%getFloat('tau0')
+     prm%tausat          =  phaseConfig(phase)%getFloat('tausat')
+     prm%gdot0           =  phaseConfig(phase)%getFloat('gdot0')
+     prm%n               =  phaseConfig(phase)%getFloat('n')
+     prm%h0              =  phaseConfig(phase)%getFloat('h0')
+     prm%fTaylor         =  phaseConfig(phase)%getFloat('m')
+     prm%h0_slopeLnRate  =  phaseConfig(phase)%getFloat('h0_slopelnrate', defaultVal=0.0_pReal)
+     prm%tausat_SinhFitA =  phaseConfig(phase)%getFloat('tausat_sinhfita',defaultVal=0.0_pReal)
+     prm%tausat_SinhFitB =  phaseConfig(phase)%getFloat('tausat_sinhfitb',defaultVal=0.0_pReal)
+     prm%tausat_SinhFitC =  phaseConfig(phase)%getFloat('tausat_sinhfitc',defaultVal=0.0_pReal)
+     prm%tausat_SinhFitD =  phaseConfig(phase)%getFloat('tausat_sinhfitd',defaultVal=0.0_pReal)
+     prm%a               =  phaseConfig(phase)%getFloat('a')
+     prm%aTolFlowStress  =  phaseConfig(phase)%getFloat('atol_flowstress',defaultVal=1.0_pReal)
+     prm%aTolShear       =  phaseConfig(phase)%getFloat('atol_shear',defaultVal=1.0e-6_pReal)
     
-     p%dilatation      = phaseConfig(phase)%keyExists('/dilatation/')
+     prm%dilatation      = phaseConfig(phase)%keyExists('/dilatation/')
 
-     outputs = phaseConfig(phase)%getStrings('(output)')
-     allocate(p%outputID(0))
+     outputs = phaseConfig(phase)%getStrings('(output)',defaultVal=[character(len=65536)::])
+     allocate(prm%outputID(0))
      do i=1_pInt, size(outputs)
        select case(outputs(i))
          case ('flowstress')
@@ -171,28 +171,28 @@ use IO
            plastic_isotropic_output(plastic_isotropic_Noutput(instance),instance) = outputs(i)
            plasticState(phase)%sizePostResults =  plasticState(phase)%sizePostResults + 1_pInt
            plastic_isotropic_sizePostResult(i,instance) = 1_pInt
-           p%outputID = [p%outputID,flowstress_ID]
+           prm%outputID = [prm%outputID,flowstress_ID]
          case ('strainrate')
            plastic_isotropic_Noutput(instance) = plastic_isotropic_Noutput(instance) + 1_pInt
            plastic_isotropic_output(plastic_isotropic_Noutput(instance),instance) = outputs(i)
            plasticState(phase)%sizePostResults = &
              plasticState(phase)%sizePostResults + 1_pInt
            plastic_isotropic_sizePostResult(i,instance) = 1_pInt
-           p%outputID = [p%outputID,strainrate_ID]
+           prm%outputID = [prm%outputID,strainrate_ID]
        end select
      enddo
 
 !--------------------------------------------------------------------------------------------------
 !  sanity checks
      extmsg = ''
-     if (p%aTolShear        <= 0.0_pReal) extmsg = trim(extmsg)//"'aTolShear' "
-     if (p%tau0              < 0.0_pReal) extmsg = trim(extmsg)//"'tau0' "
-     if (p%gdot0            <= 0.0_pReal) extmsg = trim(extmsg)//"'gdot0' "
-     if (p%n                <= 0.0_pReal) extmsg = trim(extmsg)//"'n' "
-     if (p%tausat           <= p%tau0)    extmsg = trim(extmsg)//"'tausat' "
-     if (p%a                <= 0.0_pReal) extmsg = trim(extmsg)//"'a' " 
-     if (p%fTaylor          <= 0.0_pReal) extmsg = trim(extmsg)//"'m' "
-     if (p%aTolFlowstress   <= 0.0_pReal) extmsg = trim(extmsg)//"'atol_flowstress' "
+     if (prm%aTolShear        <= 0.0_pReal) extmsg = trim(extmsg)//"'aTolShear' "
+     if (prm%tau0              < 0.0_pReal) extmsg = trim(extmsg)//"'tau0' "
+     if (prm%gdot0            <= 0.0_pReal) extmsg = trim(extmsg)//"'gdot0' "
+     if (prm%n                <= 0.0_pReal) extmsg = trim(extmsg)//"'n' "
+     if (prm%tausat           <= prm%tau0)    extmsg = trim(extmsg)//"'tausat' "
+     if (prm%a                <= 0.0_pReal) extmsg = trim(extmsg)//"'a' " 
+     if (prm%fTaylor          <= 0.0_pReal) extmsg = trim(extmsg)//"'m' "
+     if (prm%aTolFlowstress   <= 0.0_pReal) extmsg = trim(extmsg)//"'atol_flowstress' "
      if (extmsg /= '') call IO_error(211_pInt,ip=instance,&
                             ext_msg=trim(extmsg)//'('//PLASTICITY_ISOTROPIC_label//')')
 
@@ -228,13 +228,13 @@ use IO
 
      state(instance)%flowstress             => plasticState(phase)%state    (1,1:NipcMyPhase)
      dotState(instance)%flowstress          => plasticState(phase)%dotState (1,1:NipcMyPhase)
-     plasticState(phase)%state0(1,1:NipcMyPhase) = p%tau0
-     plasticState(phase)%aTolState(1)       =  p%aTolFlowstress
+     plasticState(phase)%state0(1,1:NipcMyPhase) = prm%tau0
+     plasticState(phase)%aTolState(1)       =  prm%aTolFlowstress
 
      state(instance)%accumulatedShear       => plasticState(phase)%state    (2,1:NipcMyPhase)
      dotState(instance)%accumulatedShear    => plasticState(phase)%dotState (2,1:NipcMyPhase)
      plasticState(phase)%state0 (2,1:NipcMyPhase) = 0.0_pReal
-     plasticState(phase)%aTolState(2)       =  p%aTolShear
+     plasticState(phase)%aTolState(2)       =  prm%aTolShear
      ! global alias
      plasticState(phase)%slipRate           => plasticState(phase)%dotState(2:2,1:NipcMyPhase)
      plasticState(phase)%accumulatedSlip    => plasticState(phase)%state   (2:2,1:NipcMyPhase)
@@ -282,7 +282,7 @@ subroutine plastic_isotropic_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,ipc,ip,el)
    ip, &                                                                                            !< integration point
    el                                                                                               !< element
 
- type(tParameters), pointer :: p
+ type(tParameters), pointer :: prm
  
  real(pReal), dimension(3,3) :: &
    Tstar_dev_33                                                                                     !< deviatoric part of the 2nd Piola Kirchhoff stress tensor as 2nd order tensor
@@ -298,7 +298,7 @@ subroutine plastic_isotropic_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,ipc,ip,el)
 
  of = phasememberAt(ipc,ip,el)                                                                      ! phasememberAt should be tackled by material and be renamed to material_phasemember
  instance = phase_plasticityInstance(material_phase(ipc,ip,el))
- p => param(instance)
+ prm => param(instance)
  
  Tstar_dev_33 = math_deviatoric33(math_Mandel6to33(Tstar_v))                                        ! deviatoric part of 2nd Piola-Kirchhoff stress
  squarenorm_Tstar_dev = math_mul33xx33(Tstar_dev_33,Tstar_dev_33)
@@ -308,11 +308,11 @@ subroutine plastic_isotropic_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,ipc,ip,el)
    Lp = 0.0_pReal
    dLp_dTstar99 = 0.0_pReal
  else
-   gamma_dot = p%gdot0 &
-             * ( sqrt(1.5_pReal) * norm_Tstar_dev / p%fTaylor / state(instance)%flowstress(of) ) &
-             **p%n
+   gamma_dot = prm%gdot0 &
+             * ( sqrt(1.5_pReal) * norm_Tstar_dev / prm%fTaylor / state(instance)%flowstress(of) ) &
+             **prm%n
 
-   Lp = Tstar_dev_33/norm_Tstar_dev * gamma_dot/p%fTaylor 
+   Lp = Tstar_dev_33/norm_Tstar_dev * gamma_dot/prm%fTaylor 
 
    if (iand(debug_level(debug_constitutive), debug_levelExtensive) /= 0_pInt &
        .and. ((el == debug_e .and. ip == debug_i .and. ipc == debug_g) &
@@ -326,13 +326,13 @@ subroutine plastic_isotropic_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,ipc,ip,el)
 !--------------------------------------------------------------------------------------------------
 ! Calculation of the tangent of Lp
    forall (k=1_pInt:3_pInt,l=1_pInt:3_pInt,m=1_pInt:3_pInt,n=1_pInt:3_pInt) &
-     dLp_dTstar_3333(k,l,m,n) = (p%n-1.0_pReal) * &
+     dLp_dTstar_3333(k,l,m,n) = (prm%n-1.0_pReal) * &
                                       Tstar_dev_33(k,l)*Tstar_dev_33(m,n) / squarenorm_Tstar_dev
    forall (k=1_pInt:3_pInt,l=1_pInt:3_pInt) &
      dLp_dTstar_3333(k,l,k,l) = dLp_dTstar_3333(k,l,k,l) + 1.0_pReal
    forall (k=1_pInt:3_pInt,m=1_pInt:3_pInt) &
      dLp_dTstar_3333(k,k,m,m) = dLp_dTstar_3333(k,k,m,m) - 1.0_pReal/3.0_pReal
-   dLp_dTstar99 = math_Plain3333to99(gamma_dot / p%fTaylor * &
+   dLp_dTstar99 = math_Plain3333to99(gamma_dot / prm%fTaylor * &
                                       dLp_dTstar_3333 / norm_Tstar_dev)
  end if
 end subroutine plastic_isotropic_LpAndItsTangent
@@ -364,7 +364,7 @@ subroutine plastic_isotropic_LiAndItsTangent(Li,dLi_dTstar_3333,Tstar_v,ipc,ip,e
    ip, &                                                                                            !< integration point
    el                                                                                               !< element
 
- type(tParameters), pointer :: p
+ type(tParameters), pointer :: prm
  
  real(pReal), dimension(3,3) :: &
    Tstar_sph_33                                                                                     !< sphiatoric part of the 2nd Piola Kirchhoff stress tensor as 2nd order tensor
@@ -378,28 +378,28 @@ subroutine plastic_isotropic_LiAndItsTangent(Li,dLi_dTstar_3333,Tstar_v,ipc,ip,e
 
  of = phasememberAt(ipc,ip,el)                                                                      ! phasememberAt should be tackled by material and be renamed to material_phasemember
  instance = phase_plasticityInstance(material_phase(ipc,ip,el))
- p => param(instance)
+ prm => param(instance)
  
  Tstar_sph_33 = math_spherical33(math_Mandel6to33(Tstar_v))                                         ! spherical part of 2nd Piola-Kirchhoff stress
  squarenorm_Tstar_sph = math_mul33xx33(Tstar_sph_33,Tstar_sph_33)
  norm_Tstar_sph = sqrt(squarenorm_Tstar_sph) 
 
- if (p%dilatation .and. norm_Tstar_sph > 0.0_pReal) then                              ! Tstar == 0 or J2 plascitiy --> both Li and dLi_dTstar are zero
-   gamma_dot = p%gdot0 &
-               * (sqrt(1.5_pReal) * norm_Tstar_sph / p%fTaylor / state(instance)%flowstress(of) ) &
-               **p%n
+ if (prm%dilatation .and. norm_Tstar_sph > 0.0_pReal) then                              ! Tstar == 0 or J2 plascitiy --> both Li and dLi_dTstar are zero
+   gamma_dot = prm%gdot0 &
+               * (sqrt(1.5_pReal) * norm_Tstar_sph / prm%fTaylor / state(instance)%flowstress(of) ) &
+               **prm%n
 
-   Li = Tstar_sph_33/norm_Tstar_sph * gamma_dot/p%fTaylor
+   Li = Tstar_sph_33/norm_Tstar_sph * gamma_dot/prm%fTaylor
 
    !--------------------------------------------------------------------------------------------------
    ! Calculation of the tangent of Li
    forall (k=1_pInt:3_pInt,l=1_pInt:3_pInt,m=1_pInt:3_pInt,n=1_pInt:3_pInt) &
-     dLi_dTstar_3333(k,l,m,n) = (p%n-1.0_pReal) * &
+     dLi_dTstar_3333(k,l,m,n) = (prm%n-1.0_pReal) * &
                                       Tstar_sph_33(k,l)*Tstar_sph_33(m,n) / squarenorm_Tstar_sph
    forall (k=1_pInt:3_pInt,l=1_pInt:3_pInt) &
      dLi_dTstar_3333(k,l,k,l) = dLi_dTstar_3333(k,l,k,l) + 1.0_pReal
 
-   dLi_dTstar_3333 = gamma_dot / p%fTaylor * &
+   dLi_dTstar_3333 = gamma_dot / prm%fTaylor * &
                                       dLi_dTstar_3333 / norm_Tstar_sph
  else
   Li = 0.0_pReal
@@ -428,7 +428,7 @@ subroutine plastic_isotropic_dotState(Tstar_v,ipc,ip,el)
    ipc, &                                                                                           !< component-ID of integration point
    ip, &                                                                                            !< integration point
    el                                                                                               !< element
- type(tParameters), pointer :: p
+ type(tParameters), pointer :: prm
  real(pReal), dimension(6) :: &
    Tstar_dev_v                                                                                      !< deviatoric 2nd Piola Kirchhoff stress tensor in Mandel notation
  real(pReal) :: &
@@ -442,11 +442,11 @@ subroutine plastic_isotropic_dotState(Tstar_v,ipc,ip,el)
 
  of = phasememberAt(ipc,ip,el)                                                                      ! phasememberAt should be tackled by material and be renamed to material_phasemember
  instance = phase_plasticityInstance(material_phase(ipc,ip,el))
- p => param(instance)
+ prm => param(instance)
  
 !--------------------------------------------------------------------------------------------------
 ! norm of (deviatoric) 2nd Piola-Kirchhoff stress
- if (p%dilatation) then
+ if (prm%dilatation) then
    norm_Tstar_v = sqrt(math_mul6x6(Tstar_v,Tstar_v))
  else
    Tstar_dev_v(1:3) = Tstar_v(1:3) - sum(Tstar_v(1:3))/3.0_pReal
@@ -455,26 +455,26 @@ subroutine plastic_isotropic_dotState(Tstar_v,ipc,ip,el)
  end if
 !--------------------------------------------------------------------------------------------------
 ! strain rate 
- gamma_dot = p%gdot0 * ( sqrt(1.5_pReal) * norm_Tstar_v & 
+ gamma_dot = prm%gdot0 * ( sqrt(1.5_pReal) * norm_Tstar_v & 
             / &!-----------------------------------------------------------------------------------
-           (p%fTaylor*state(instance)%flowstress(of) ))**p%n
+           (prm%fTaylor*state(instance)%flowstress(of) ))**prm%n
  
 !--------------------------------------------------------------------------------------------------
 ! hardening coefficient
  if (abs(gamma_dot) > 1e-12_pReal) then
-   if (dEq0(p%tausat_SinhFitA)) then
-     saturation = p%tausat
+   if (dEq0(prm%tausat_SinhFitA)) then
+     saturation = prm%tausat
    else
-     saturation = p%tausat &
-                + asinh( (gamma_dot / p%tausat_SinhFitA&
-                         )**(1.0_pReal / p%tausat_SinhFitD)&
-                       )**(1.0_pReal / p%tausat_SinhFitC) &
-                   / ( p%tausat_SinhFitB &
-                       * (gamma_dot / p%gdot0)**(1.0_pReal / p%n) &
+     saturation = prm%tausat &
+                + asinh( (gamma_dot / prm%tausat_SinhFitA&
+                         )**(1.0_pReal / prm%tausat_SinhFitD)&
+                       )**(1.0_pReal / prm%tausat_SinhFitC) &
+                   / ( prm%tausat_SinhFitB &
+                       * (gamma_dot / prm%gdot0)**(1.0_pReal / prm%n) &
                      )
    endif
-   hardening = ( p%h0 + p%h0_slopeLnRate * log(gamma_dot) ) &
-               * abs( 1.0_pReal - state(instance)%flowstress(of)/saturation )**p%a &
+   hardening = ( prm%h0 + prm%h0_slopeLnRate * log(gamma_dot) ) &
+               * abs( 1.0_pReal - state(instance)%flowstress(of)/saturation )**prm%a &
                * sign(1.0_pReal, 1.0_pReal - state(instance)%flowstress(of)/saturation)
  else
    hardening = 0.0_pReal
@@ -505,7 +505,7 @@ function plastic_isotropic_postResults(Tstar_v,ipc,ip,el)
    ip, &                                                                                            !< integration point
    el                                                                                               !< element
 
- type(tParameters), pointer :: p
+ type(tParameters), pointer :: prm
  
  real(pReal), dimension(plasticState(material_phase(ipc,ip,el))%sizePostResults) :: &
                                            plastic_isotropic_postResults
@@ -522,11 +522,11 @@ function plastic_isotropic_postResults(Tstar_v,ipc,ip,el)
 
  of = phasememberAt(ipc,ip,el)                                                                      ! phasememberAt should be tackled by material and be renamed to material_phasemember
  instance = phase_plasticityInstance(material_phase(ipc,ip,el))
- p => param(instance)
+ prm => param(instance)
  
 !--------------------------------------------------------------------------------------------------
 ! norm of (deviatoric) 2nd Piola-Kirchhoff stress
- if (p%dilatation) then
+ if (prm%dilatation) then
    norm_Tstar_v = sqrt(math_mul6x6(Tstar_v,Tstar_v))
  else
    Tstar_dev_v(1:3) = Tstar_v(1:3) - sum(Tstar_v(1:3))/3.0_pReal
@@ -538,15 +538,15 @@ function plastic_isotropic_postResults(Tstar_v,ipc,ip,el)
  plastic_isotropic_postResults = 0.0_pReal
 
  outputsLoop: do o = 1_pInt,plastic_isotropic_Noutput(instance)
-   select case(p%outputID(o))
+   select case(prm%outputID(o))
      case (flowstress_ID)
        plastic_isotropic_postResults(c+1_pInt) = state(instance)%flowstress(of)
        c = c + 1_pInt
      case (strainrate_ID)
        plastic_isotropic_postResults(c+1_pInt) = &
-                p%gdot0 * (            sqrt(1.5_pReal) * norm_Tstar_v & 
+                prm%gdot0 * (            sqrt(1.5_pReal) * norm_Tstar_v & 
              / &!----------------------------------------------------------------------------------
-              (p%fTaylor * state(instance)%flowstress(of)) ) ** p%n
+              (prm%fTaylor * state(instance)%flowstress(of)) ) ** prm%n
        c = c + 1_pInt
    end select
  enddo outputsLoop

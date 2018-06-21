@@ -8,7 +8,6 @@
 !--------------------------------------------------------------------------------------------------
 module material
  use config
- use linked_list
  use prec, only: &
    pReal, &
    pInt, &
@@ -226,7 +225,7 @@ module material
    phase_localPlasticity                                                                            !< flags phases with local constitutive law
 
 
- character(len=256), dimension(:), allocatable, private :: &
+ character(len=65536), dimension(:), allocatable, private :: &
    texture_ODFfile                                                                                  !< name of each ODF file
 
  integer(pInt), private :: &
@@ -761,7 +760,7 @@ subroutine material_parsePhase
 
  implicit none
  integer(pInt) :: sourceCtr, kinematicsCtr, stiffDegradationCtr, p
- character(len=256), dimension(:), allocatable ::  str 
+ character(len=65536), dimension(:), allocatable ::  str 
 
 
  allocate(phase_elasticity(material_Nphase),source=ELASTICITY_undefined_ID)
