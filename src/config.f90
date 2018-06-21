@@ -24,8 +24,8 @@ module config
      procedure :: add            => add
      procedure :: show           => show
 
-     procedure :: keyExists      => exist
-     procedure :: countKeys      => count
+     procedure :: keyExists      => keyExists
+     procedure :: countKeys      => countKeys
 
      procedure :: getFloat       => getFloat
      procedure :: getFloats      => getFloats
@@ -305,7 +305,7 @@ end subroutine show
 !--------------------------------------------------------------------------------------------------
 !> @brief reports wether a given key (string value at first position) exists in the list
 !--------------------------------------------------------------------------------------------------
-logical function exist(this,key)
+logical function keyExists(this,key)
  use IO, only: &
    IO_stringValue
 
@@ -314,22 +314,22 @@ logical function exist(this,key)
  character(len=*), intent(in)              :: key
  type(tPartitionedStringList), pointer     :: item
 
- exist = .false.
+ keyExists = .false.
 
  item => this%next
- do while (associated(item) .and. .not. exist)
-   exist = trim(IO_stringValue(item%string%val,item%string%pos,1)) == trim(key)
+ do while (associated(item) .and. .not. keyExists)
+   keyExists = trim(IO_stringValue(item%string%val,item%string%pos,1)) == trim(key)
    item => item%next
  end do
 
-end function exist
+end function keyExists
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief count number of key appearances
 !> @details traverses list and counts each occurrence of specified key
 !--------------------------------------------------------------------------------------------------
-integer(pInt) function count(this,key)
+integer(pInt) function countKeys(this,key)
  use IO, only: &
    IO_stringValue
 
@@ -339,21 +339,20 @@ integer(pInt) function count(this,key)
  character(len=*), intent(in)              :: key
  type(tPartitionedStringList), pointer     :: item
 
- count = 0_pInt
+ countKeys = 0_pInt
 
  item => this%next
  do while (associated(item))
    if (trim(IO_stringValue(item%string%val,item%string%pos,1)) == trim(key)) &
-     count = count + 1_pInt
+     countKeys = countKeys + 1_pInt
    item => item%next
  end do
 
-end function count
+end function countKeys
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief returns all strings in the list
-!> @details returns raw string without start/end position of chunks
+!> @brief DEPRECATED: REMOVE SOON
 !--------------------------------------------------------------------------------------------------
 function strings(this)
  use IO, only: &
@@ -621,10 +620,10 @@ function getFloats(this,key,defaultVal)
    IO_FloatValue
 
  implicit none
- real(pReal),      dimension(:), allocatable         :: getFloats
+ real(pReal),     dimension(:), allocatable          :: getFloats
  class(tPartitionedStringList), intent(in)           :: this
  character(len=*),              intent(in)           :: key
- integer(pInt), dimension(:),   intent(in), optional :: defaultVal
+ real(pReal),   dimension(:),   intent(in), optional :: defaultVal
  type(tPartitionedStringList),  pointer              :: item
  integer(pInt)                                       :: i
  logical                                             :: found, &
