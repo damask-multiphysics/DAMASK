@@ -811,59 +811,55 @@ subroutine material_parsePhase
  allocate(phase_stiffnessDegradation(maxval(phase_NstiffnessDegradations),material_Nphase), &
           source=STIFFNESS_DEGRADATION_undefined_ID)
  do p=1_pInt, material_Nphase
-   if (phase_Nsources(p) /= 0_pInt) then
-     str = phaseConfig(p)%getStrings('(source)')
-     do sourceCtr = 1_pInt, size(str)
-       select case (trim(str(sourceCtr)))
-         case (SOURCE_thermal_dissipation_label)
-           phase_source(sourceCtr,p) = SOURCE_thermal_dissipation_ID
-         case (SOURCE_thermal_externalheat_label)
-           phase_source(sourceCtr,p) = SOURCE_thermal_externalheat_ID
-         case (SOURCE_damage_isoBrittle_label)
-           phase_source(sourceCtr,p) = SOURCE_damage_isoBrittle_ID
-         case (SOURCE_damage_isoDuctile_label)
-           phase_source(sourceCtr,p) = SOURCE_damage_isoDuctile_ID
-         case (SOURCE_damage_anisoBrittle_label)
-           phase_source(sourceCtr,p) = SOURCE_damage_anisoBrittle_ID
-         case (SOURCE_damage_anisoDuctile_label)
-           phase_source(sourceCtr,p) = SOURCE_damage_anisoDuctile_ID
-         case (SOURCE_vacancy_phenoplasticity_label)
-           phase_source(sourceCtr,p) = SOURCE_vacancy_phenoplasticity_ID
-         case (SOURCE_vacancy_irradiation_label)
-           phase_source(sourceCtr,p) = SOURCE_vacancy_irradiation_ID
-         case (SOURCE_vacancy_thermalfluc_label)
-           phase_source(sourceCtr,p) = SOURCE_vacancy_thermalfluc_ID
-       end select
-     enddo
-   endif
-   if (phase_Nkinematics(p) /= 0_pInt) then
-     str = phaseConfig(p)%getStrings('(kinematics)')
-     do kinematicsCtr = 1_pInt, size(str)
-       select case (trim(str(kinematicsCtr)))
-         case (KINEMATICS_cleavage_opening_label)
-           phase_kinematics(kinematicsCtr,p) = KINEMATICS_cleavage_opening_ID
-         case (KINEMATICS_slipplane_opening_label)
-           phase_kinematics(kinematicsCtr,p) = KINEMATICS_slipplane_opening_ID
-         case (KINEMATICS_thermal_expansion_label)
-           phase_kinematics(kinematicsCtr,p) = KINEMATICS_thermal_expansion_ID
-         case (KINEMATICS_vacancy_strain_label)
-           phase_kinematics(kinematicsCtr,p) = KINEMATICS_vacancy_strain_ID
-         case (KINEMATICS_hydrogen_strain_label)
-           phase_kinematics(kinematicsCtr,p) = KINEMATICS_hydrogen_strain_ID
-       end select
-     enddo
-   endif
-   if (phase_NstiffnessDegradations(p) /= 0_pInt) then
-     str = phaseConfig(p)%getStrings('(stiffness_degradation)')
-     do stiffDegradationCtr = 1_pInt, size(str)
-       select case (trim(str(stiffDegradationCtr)))
-         case (STIFFNESS_DEGRADATION_damage_label)
-           phase_stiffnessDegradation(stiffDegradationCtr,p) = STIFFNESS_DEGRADATION_damage_ID
-         case (STIFFNESS_DEGRADATION_porosity_label)
-           phase_stiffnessDegradation(stiffDegradationCtr,p) = STIFFNESS_DEGRADATION_porosity_ID
-      end select
-     enddo
-   endif
+   str = phaseConfig(p)%getStrings('(source)',defaultVal=[character(len=65536)::])
+   do sourceCtr = 1_pInt, size(str)
+     select case (trim(str(sourceCtr)))
+       case (SOURCE_thermal_dissipation_label)
+         phase_source(sourceCtr,p) = SOURCE_thermal_dissipation_ID
+       case (SOURCE_thermal_externalheat_label)
+         phase_source(sourceCtr,p) = SOURCE_thermal_externalheat_ID
+       case (SOURCE_damage_isoBrittle_label)
+         phase_source(sourceCtr,p) = SOURCE_damage_isoBrittle_ID
+       case (SOURCE_damage_isoDuctile_label)
+         phase_source(sourceCtr,p) = SOURCE_damage_isoDuctile_ID
+       case (SOURCE_damage_anisoBrittle_label)
+         phase_source(sourceCtr,p) = SOURCE_damage_anisoBrittle_ID
+       case (SOURCE_damage_anisoDuctile_label)
+         phase_source(sourceCtr,p) = SOURCE_damage_anisoDuctile_ID
+       case (SOURCE_vacancy_phenoplasticity_label)
+         phase_source(sourceCtr,p) = SOURCE_vacancy_phenoplasticity_ID
+       case (SOURCE_vacancy_irradiation_label)
+         phase_source(sourceCtr,p) = SOURCE_vacancy_irradiation_ID
+       case (SOURCE_vacancy_thermalfluc_label)
+         phase_source(sourceCtr,p) = SOURCE_vacancy_thermalfluc_ID
+     end select
+   enddo
+
+   str = phaseConfig(p)%getStrings('(kinematics)',defaultVal=[character(len=65536)::])
+   do kinematicsCtr = 1_pInt, size(str)
+     select case (trim(str(kinematicsCtr)))
+       case (KINEMATICS_cleavage_opening_label)
+         phase_kinematics(kinematicsCtr,p) = KINEMATICS_cleavage_opening_ID
+       case (KINEMATICS_slipplane_opening_label)
+         phase_kinematics(kinematicsCtr,p) = KINEMATICS_slipplane_opening_ID
+       case (KINEMATICS_thermal_expansion_label)
+         phase_kinematics(kinematicsCtr,p) = KINEMATICS_thermal_expansion_ID
+       case (KINEMATICS_vacancy_strain_label)
+         phase_kinematics(kinematicsCtr,p) = KINEMATICS_vacancy_strain_ID
+       case (KINEMATICS_hydrogen_strain_label)
+         phase_kinematics(kinematicsCtr,p) = KINEMATICS_hydrogen_strain_ID
+     end select
+   enddo
+
+   str = phaseConfig(p)%getStrings('(stiffness_degradation)',defaultVal=[character(len=65536)::])
+   do stiffDegradationCtr = 1_pInt, size(str)
+     select case (trim(str(stiffDegradationCtr)))
+       case (STIFFNESS_DEGRADATION_damage_label)
+         phase_stiffnessDegradation(stiffDegradationCtr,p) = STIFFNESS_DEGRADATION_damage_ID
+       case (STIFFNESS_DEGRADATION_porosity_label)
+         phase_stiffnessDegradation(stiffDegradationCtr,p) = STIFFNESS_DEGRADATION_porosity_ID
+    end select
+   enddo
  enddo
 
  allocate(phase_plasticityInstance(material_Nphase),   source=0_pInt)
