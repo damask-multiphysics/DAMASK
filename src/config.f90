@@ -20,6 +20,7 @@ module config
  type, public :: tPartitionedStringList
    type(tPartitionedString)               :: string
    type(tPartitionedStringList),  pointer :: next => null()
+
    contains
      procedure :: add            => add
      procedure :: show           => show
@@ -28,14 +29,14 @@ module config
      procedure :: countKeys      => countKeys
 
      procedure :: getFloat       => getFloat
-     procedure :: getFloats      => getFloats
-
      procedure :: getInt         => getInt
+     procedure :: getString      => getString
+
+     procedure :: getFloats      => getFloats
      procedure :: getInts        => getInts
+     procedure :: getStrings     => getStrings
 
      procedure :: getStringsRaw  => strings
-     procedure :: getString      => getString
-     procedure :: getStrings     => getStrings
 
  end type tPartitionedStringList
 
@@ -352,38 +353,9 @@ end function countKeys
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief DEPRECATED: REMOVE SOON
-!--------------------------------------------------------------------------------------------------
-function strings(this)
- use IO, only: &
-   IO_error, &
-   IO_stringValue
-
- implicit none
- class(tPartitionedStringList),      intent(in)  :: this
- character(len=65536), dimension(:), allocatable :: strings
- character(len=65536)                            :: string
- type(tPartitionedStringList),  pointer          :: item
-
- item => this%next
- do while (associated(item))
-   string = item%string%val
-   GfortranBug86033: if (.not. allocated(strings)) then
-     allocate(strings(1),source=string)
-   else GfortranBug86033
-     strings = [strings,string]
-   endif GfortranBug86033
-   item => item%next
- end do
-
- if (size(strings) < 0_pInt) call IO_error(142_pInt)                           ! better to check for "allocated"?
-
-end function strings
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief gets float value of first string that matches given key (i.e. first chunk)
-!> @details gets one float value. If key is not found exits with error unless default is given
+!> @brief gets float value of for a given key from a linked list
+!> @details gets the last value if the key occurs more than once. If key is not found exits with 
+!! error unless default is given
 !--------------------------------------------------------------------------------------------------
 real(pReal) function getFloat(this,key,defaultVal)
  use IO, only : &
@@ -417,8 +389,9 @@ end function getFloat
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief gets integer value for given key
-!> @details gets one integer value. If key is not found exits with error unless default is given
+!> @brief gets integer value of for a given key from a linked list
+!> @details gets the last value if the key occurs more than once. If key is not found exits with 
+!! error unless default is given
 !--------------------------------------------------------------------------------------------------
 integer(pInt) function getInt(this,key,defaultVal)
  use IO, only: &
@@ -452,8 +425,10 @@ end function getInt
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief gets string value for given key
-!> @details if key is not found exits with error unless default is given
+!> @brief gets string value of for a given key from a linked list
+!> @details gets the last value if the key occurs more than once. If key is not found exits with 
+!! error unless default is given. If raw is true, the the complete string is returned, otherwise 
+!! the individual chunks are returned
 !--------------------------------------------------------------------------------------------------
 character(len=65536) function getString(this,key,defaultVal,raw)
  use IO, only: &
@@ -494,74 +469,60 @@ end function getString
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief ...
-!> @details ...
+!> @brief gets array of float values of for a given key from a linked list
+!> @details for cumulative keys, "()", values from all occurrences are return. Otherwise only all
+!! values from the last occurrence. If key is not found exits with error unless default is given.
 !--------------------------------------------------------------------------------------------------
-function getStrings(this,key,defaultVal,raw)
- use IO
+function getFloats(this,key,defaultVal)
+ use IO, only: &
+   IO_error, &
+   IO_stringValue, &
+   IO_FloatValue
 
  implicit none
- character(len=65536),dimension(:), allocatable :: getStrings
- class(tPartitionedStringList),   intent(in) :: this
- character(len=*),                intent(in) :: key
- character(len=65536),dimension(:),         intent(in), optional :: defaultVal
- logical,                       intent(in), optional :: raw
- type(tPartitionedStringList), pointer       :: item
- character(len=65536)                           :: str
- integer(pInt)                               :: i
+ real(pReal),     dimension(:), allocatable          :: getFloats
+ class(tPartitionedStringList), intent(in)           :: this
+ character(len=*),              intent(in)           :: key
+ real(pReal),   dimension(:),   intent(in), optional :: defaultVal
+ type(tPartitionedStringList),  pointer              :: item
+ integer(pInt)                                       :: i
  logical                                             :: found, &
-                                                        split, &
-                                                       cumulative
+                                                        cumulative
 
  cumulative = (key(1:1) == '(' .and. key(len_trim(key):len_trim(key)) == ')')
- split = merge(.not. raw,.true.,present(raw))
  found = .false.
+
+ allocate(getFloats(0))
 
  item => this%next
  do while (associated(item))
    if (trim(IO_stringValue(item%string%val,item%string%pos,1)) == trim(key)) then
      found = .true.
-     if (allocated(getStrings) .and. .not. cumulative) deallocate(getStrings)
+     if (.not. cumulative) then
+       deallocate(getFloats) ! use here rhs allocation with empty list
+       allocate(getFloats(0))
+     endif
      if (item%string%pos(1) < 2_pInt) call IO_error(143_pInt,ext_msg=key)
-     
-     arrayAllocated: if (.not. allocated(getStrings)) then
-       if (split) then
-         str = IO_StringValue(item%string%val,item%string%pos,2_pInt)
-         allocate(getStrings(1),source=str)
-         do i=3_pInt,item%string%pos(1)
-           str = IO_StringValue(item%string%val,item%string%pos,i)
-           getStrings = [getStrings,str]
-         enddo
-       else
-         str = item%string%val(item%string%pos(4):)
-         getStrings = [str]
-       endif
-     else arrayAllocated
-       if (split) then
-         do i=2_pInt,item%string%pos(1)
-           str = IO_StringValue(item%string%val,item%string%pos,i)
-           getStrings = [getStrings,str]
-         enddo
-       else
-         getStrings = [getStrings,str]
-       endif
-     endif arrayAllocated
+     do i = 2_pInt, item%string%pos(1)
+       getFloats = [getFloats,IO_FloatValue(item%string%val,item%string%pos,i)]
+     enddo
    endif
    item => item%next
  end do
 
  if (present(defaultVal) .and. .not. found) then
-   getStrings = defaultVal
+   getFloats = defaultVal
    found = .true.
  endif
  if (.not. found) call IO_error(140_pInt,ext_msg=key)
 
-end function getStrings
+end function getFloats
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief gets array of int values for given key
-!> @details if key is not found exits with error unless default is given
+!> @brief gets array of integer values of for a given key from a linked list
+!> @details for cumulative keys, "()", values from all occurrences are return. Otherwise only all
+!! values from the last occurrence. If key is not found exits with error unless default is given.
 !--------------------------------------------------------------------------------------------------
 function getInts(this,key,defaultVal)
  use IO, only: &
@@ -610,53 +571,104 @@ end function getInts
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief gets array of float values for given key
-!> @details if key is not found exits with error unless default is given
+!> @brief gets array of string values of for a given key from a linked list
+!> @details for cumulative keys, "()", values from all occurrences are return. Otherwise only all
+!! values from the last occurrence. If key is not found exits with error unless default is given.
+!! If raw is true, the the complete string is returned, otherwise the individual chunks are returned
 !--------------------------------------------------------------------------------------------------
-function getFloats(this,key,defaultVal)
+function getStrings(this,key,defaultVal,raw)
  use IO, only: &
    IO_error, &
-   IO_stringValue, &
-   IO_FloatValue
+   IO_StringValue
 
  implicit none
- real(pReal),     dimension(:), allocatable          :: getFloats
- class(tPartitionedStringList), intent(in)           :: this
- character(len=*),              intent(in)           :: key
- real(pReal),   dimension(:),   intent(in), optional :: defaultVal
- type(tPartitionedStringList),  pointer              :: item
- integer(pInt)                                       :: i
- logical                                             :: found, &
-                                                        cumulative
+ character(len=65536),dimension(:), allocatable           :: getStrings
+ class(tPartitionedStringList),      intent(in)           :: this
+ character(len=*),                   intent(in)           :: key
+ character(len=65536),dimension(:),  intent(in), optional :: defaultVal
+ logical,                            intent(in), optional :: raw
+ type(tPartitionedStringList), pointer                    :: item
+ character(len=65536)                                     :: str
+ integer(pInt)                                            :: i
+ logical                                                  :: found, &
+                                                             split, &
+                                                             cumulative
 
  cumulative = (key(1:1) == '(' .and. key(len_trim(key):len_trim(key)) == ')')
+ split = merge(.not. raw,.true.,present(raw))
  found = .false.
-
- allocate(getFloats(0))
 
  item => this%next
  do while (associated(item))
    if (trim(IO_stringValue(item%string%val,item%string%pos,1)) == trim(key)) then
      found = .true.
-     if (.not. cumulative) then
-       deallocate(getFloats) ! use here rhs allocation with empty list
-       allocate(getFloats(0))
-     endif
+     if (allocated(getStrings) .and. .not. cumulative) deallocate(getStrings)
      if (item%string%pos(1) < 2_pInt) call IO_error(143_pInt,ext_msg=key)
-     do i = 2_pInt, item%string%pos(1)
-       getFloats = [getFloats,IO_FloatValue(item%string%val,item%string%pos,i)]
-     enddo
+     
+     notAllocated: if (.not. allocated(getStrings)) then
+       if (split) then
+         str = IO_StringValue(item%string%val,item%string%pos,2_pInt)
+         allocate(getStrings(1),source=str)
+         do i=3_pInt,item%string%pos(1)
+           str = IO_StringValue(item%string%val,item%string%pos,i)
+           getStrings = [getStrings,str]
+         enddo
+       else
+         str = item%string%val(item%string%pos(4):)
+         getStrings = [str]
+       endif
+     else notAllocated
+       if (split) then
+         do i=2_pInt,item%string%pos(1)
+           str = IO_StringValue(item%string%val,item%string%pos,i)
+           getStrings = [getStrings,str]
+         enddo
+       else
+         getStrings = [getStrings,str]
+       endif
+     endif notAllocated
    endif
    item => item%next
  end do
 
  if (present(defaultVal) .and. .not. found) then
-   getFloats = defaultVal
+   getStrings = defaultVal
    found = .true.
  endif
  if (.not. found) call IO_error(140_pInt,ext_msg=key)
 
-end function getFloats
+end function getStrings
+
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief DEPRECATED: REMOVE SOON
+!--------------------------------------------------------------------------------------------------
+function strings(this)
+ use IO, only: &
+   IO_error, &
+   IO_stringValue
+
+ implicit none
+ class(tPartitionedStringList),      intent(in)  :: this
+ character(len=65536), dimension(:), allocatable :: strings
+ character(len=65536)                            :: string
+ type(tPartitionedStringList),  pointer          :: item
+
+ item => this%next
+ do while (associated(item))
+   string = item%string%val
+   GfortranBug86033: if (.not. allocated(strings)) then
+     allocate(strings(1),source=string)
+   else GfortranBug86033
+     strings = [strings,string]
+   endif GfortranBug86033
+   item => item%next
+ end do
+
+ if (size(strings) < 0_pInt) call IO_error(142_pInt)                           ! better to check for "allocated"?
+
+end function strings
 
 
 end module config
