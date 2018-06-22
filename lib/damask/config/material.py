@@ -3,6 +3,7 @@
 import re
 import os
 
+
 class Section():
   def __init__(self,data = {'__order__':[]},part = ''):
     classes = {
@@ -172,25 +173,60 @@ class Material():
               self.data[part][name_section][items[0]].append(items[1:])
             else:                                                     # plain key
               self.data[part][name_section][items[0]] = items[1:]
-                  
-  def read(self,file=None):
-    fileNames = [None] * 10 
-    fileNames[0] = file
+  
+  c = []
+  def myRead(c,sub_file):
     re_include  = re.compile(r'^{(.+)}$')                 # pattern for include
-    c = []
-    with open(file,'r') as f:
+    with open(sub_file,'r') as f:
       for entry in f:
-        if not entry.strip(): continue
+        if not entry.strip():
+          continue
         match = re_include.match(entry.split()[0])
         if match:
           if match.group(1).startswith('/'):
             sub_file = match.group(1)
           else:
-            sub_file = os.path.normpath(os.path.dirname(file).join(match.group(1)))
-          with open(sub_file,'r') as f1:   #using the target_path to open the file
-            for l in f1.readlines(): c.append(l)
-        else:
-          c.append(entry)
+            sub_file = os.path.normpath(os.path.dirname(sub_file).join(match.group(1)))
+          with open(sub_file,'r') as f1:
+            for l in f1.readlines():
+              if l not in c:
+                c.append(l)
+              else:
+                continue
+          myRead(c,sub_file)
+        else: 
+          if entry not in c:
+            c.append(entry)
+          else:
+            continue
+    return c,sub_file
+
+  def read(self,file=None):
+    fileNames = [None] * 10 
+    fileNames[0] = file
+    re_include  = re.compile(r'^{(.+)}$')                 # pattern for include
+    c = []
+    i = 0
+    for files in fileNames:
+      if files is not None:
+        with open(file,'r') as f:
+          for entry in f:
+            if not entry.strip(): 
+              continue
+            match = re_include.match(entry.split()[0])
+            if match:
+              if match.group(1).startswith('/'):
+                sub_file = match.group(1)
+              else:
+                sub_file = os.path.normpath(os.path.dirname(file).join(match.group(1)))
+              i = i + 1
+              fileNames[i] = sub_file
+              myRead(c,sub_file)
+            else:
+              if entry not in c:
+                c.append(entry)
+              else:
+                continue
 
     for l in c:
       print(l)
