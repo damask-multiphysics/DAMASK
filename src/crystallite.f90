@@ -192,7 +192,7 @@ subroutine crystallite_init
    myNcomponents, &                                                                                 !< number of components at current IP
    mySize
 
- character(len=64), dimension(:), allocatable :: str
+ character(len=65536), dimension(:), allocatable :: str
  character(len=65536) :: &
    tag = ''
 
@@ -268,7 +268,13 @@ subroutine crystallite_init
 
 
  do c = 1_pInt, material_Ncrystallite
-   str =  crystalliteConfig(c)%getStrings('(output)',defaultVal=[character(len=65536)::])
+#if defined(__GFORTRAN__)
+   str = ['GfortranBug86277']
+   str = crystalliteConfig(c)%getStrings('(output)',defaultVal=str)
+   if (str(1) == 'GfortranBug86277') str = [character(len=65536)::]
+#else
+   str = crystalliteConfig(c)%getStrings('(output)',defaultVal=[character(len=65536)::])
+#endif
    do o = 1_pInt, size(str)
      crystallite_output(o,c) = str(o)
      outputName: select case(str(o))

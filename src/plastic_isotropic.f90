@@ -162,7 +162,13 @@ use IO
     
      prm%dilatation      = phaseConfig(phase)%keyExists('/dilatation/')
 
+#if defined(__GFORTRAN__)
+     outputs = ['GfortranBug86277']
+     outputs = phaseConfig(phase)%getStrings('(output)',defaultVal=outputs)
+     if (outputs(1) == 'GfortranBug86277') outputs = [character(len=65536)::]
+#else
      outputs = phaseConfig(phase)%getStrings('(output)',defaultVal=[character(len=65536)::])
+#endif
      allocate(prm%outputID(0))
      do i=1_pInt, size(outputs)
        select case(outputs(i))
