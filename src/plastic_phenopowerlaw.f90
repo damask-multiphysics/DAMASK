@@ -157,7 +157,7 @@ subroutine plastic_phenopowerlaw_init
 
  character(len=512) :: &
    extmsg    = ''
- character(len=64), dimension(:), allocatable :: outputs
+ character(len=65536), dimension(:), allocatable :: outputs
 
  write(6,'(/,a)')   ' <<<+-  constitutive_'//PLASTICITY_PHENOPOWERLAW_label//' init  -+>>>'
  write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
@@ -228,7 +228,13 @@ subroutine plastic_phenopowerlaw_init
      prm%aTolShear      = phaseConfig(phase)%getFloat('atol_shear',defaultVal=1.0e-6_pReal)
      prm%aTolTwinfrac   = phaseConfig(phase)%getFloat('atol_twinfrac',defaultVal=1.0e-6_pReal)
 
+#if defined(__GFORTRAN__)
+     outputs = ['GfortranBug86277']
+     outputs = phaseConfig(phase)%getStrings('(output)',defaultVal=outputs)
+     if (outputs(1) == 'GfortranBug86277') outputs = [character(len=65536)::]
+#else
      outputs = phaseConfig(phase)%getStrings('(output)',defaultVal=[character(len=65536)::])
+#endif
      allocate(prm%outputID(0))
      do i=1_pInt, size(outputs)
        outputID = undefined_ID
