@@ -283,33 +283,37 @@ subroutine plastic_phenopowerlaw_init
 
      extmsg = ''
      if (sum(prm%Nslip) > 0_pInt) then
-       if (size(prm%tau0_slip) /= size(prm%nslip)) extmsg = trim(extmsg)//" shape(tau0_slip) "
-       if (size(prm%tausat_slip) /= size(prm%nslip)) extmsg = trim(extmsg)//" shape(tausat_slip) "
-       if (size(prm%H_int) /= size(prm%nslip)) extmsg = trim(extmsg)//" shape(h_int) "
+       if (size(prm%tau0_slip) /= size(prm%Nslip))   call IO_error(211_pInt,ip=instance, &
+              ext_msg='shape(tau0_slip) ('//PLASTICITY_PHENOPOWERLAW_label//')')
+       if (size(prm%tausat_slip) /= size(prm%Nslip)) call IO_error(211_pInt,ip=instance, &
+              ext_msg='shape(tausat_slip) ('//PLASTICITY_PHENOPOWERLAW_label//')')
+       if (size(prm%H_int) /= size(prm%Nslip))       call IO_error(211_pInt,ip=instance, &
+              ext_msg='shape(H_int) ('//PLASTICITY_PHENOPOWERLAW_label//')')
 
        if (any(prm%tau0_slip < 0.0_pReal .and. prm%Nslip > 0_pInt)) &
-         extmsg = trim(extmsg)//" 'tau0_slip' "
+         extmsg = trim(extmsg)//"tau0_slip "
        if (any(prm%tausat_slip < prm%tau0_slip .and. prm%Nslip > 0_pInt)) &
-         extmsg = trim(extmsg)//" 'tausat_slip' "
+         extmsg = trim(extmsg)//"tausat_slip "
 
-       if (prm%gdot0_slip <= 0.0_pReal) extmsg = trim(extmsg)//" 'gdot0_slip' "
+       if (prm%gdot0_slip <= 0.0_pReal) extmsg = trim(extmsg)//" gdot0_slip "
        if (dEq0(prm%a_slip))            extmsg = trim(extmsg)//" a_slip " ! ToDo: negative values ok?
        if (dEq0(prm%n_slip))            extmsg = trim(extmsg)//" n_slip " ! ToDo: negative values ok?
      endif 
 
      if (sum(prm%Ntwin) > 0_pInt) then
-       if (size(prm%tau0_twin) /= size(prm%ntwin)) extmsg = trim(extmsg)//" shape(tau0_twin) "
+       if (size(prm%tau0_twin) /= size(prm%ntwin)) call IO_error(211_pInt,ip=instance,&
+              ext_msg='shape(tau0_twin) ('//PLASTICITY_PHENOPOWERLAW_label//')')
 
        if (any(prm%tau0_twin < 0.0_pReal .and. prm%Ntwin > 0_pInt)) &
-         extmsg = trim(extmsg)//" 'tau0_twin' "
+         extmsg = trim(extmsg)//"tau0_twin "
 
-       if (prm%gdot0_twin <= 0.0_pReal) extmsg = trim(extmsg)//" 'gdot0_twin' "
-       if (dEq0(prm%n_twin))            extmsg = trim(extmsg)//" n_twin " ! ToDo: negative values ok?
+       if (prm%gdot0_twin <= 0.0_pReal) extmsg = trim(extmsg)//"gdot0_twin "
+       if (dEq0(prm%n_twin))            extmsg = trim(extmsg)//"n_twin " ! ToDo: negative values ok?
      endif
 
-     if (prm%aTolResistance <= 0.0_pReal)  extmsg = trim(extmsg)//" 'aTolresistance' "
-     if (prm%aTolShear      <= 0.0_pReal)  extmsg = trim(extmsg)//" 'aTolShear' "
-     if (prm%aTolTwinfrac   <= 0.0_pReal)  extmsg = trim(extmsg)//" 'atoltwinfrac' "
+     if (prm%aTolResistance <= 0.0_pReal) extmsg = trim(extmsg)//"aTolresistance "
+     if (prm%aTolShear      <= 0.0_pReal) extmsg = trim(extmsg)//"aTolShear "
+     if (prm%aTolTwinfrac   <= 0.0_pReal) extmsg = trim(extmsg)//"atoltwinfrac "
 
      if (extmsg /= '') call IO_error(211_pInt,ip=instance,&
                                    ext_msg=trim(extmsg)//'('//PLASTICITY_PHENOPOWERLAW_label//')')
