@@ -242,7 +242,7 @@ subroutine plastic_phenopowerlaw_init
           case ('resistance_slip')
             outputID = resistance_slip_ID
             outputSize = sum(prm%Nslip)
-          case ('acumulatedshear_slip','accumulated_shear_slip')
+          case ('accumulatedshear_slip')
             outputID = accumulatedshear_slip_ID
             outputSize = sum(prm%Nslip)
           case ('shearrate_slip')
@@ -255,7 +255,7 @@ subroutine plastic_phenopowerlaw_init
           case ('resistance_twin')
             outputID = resistance_twin_ID
             outputSize = sum(prm%Ntwin)
-          case ('accumulatedshear_twin','accumulated_shear_twin')
+          case ('accumulatedshear_twin')
             outputID = accumulatedshear_twin_ID
             outputSize = sum(prm%Ntwin)
           case ('shearrate_twin')
