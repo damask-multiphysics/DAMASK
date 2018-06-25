@@ -36,8 +36,6 @@ module config
      procedure :: getInts        => getInts
      procedure :: getStrings     => getStrings
 
-     procedure :: getStringsRaw  => strings
-
  end type tPartitionedStringList
 
  type(tPartitionedStringList), public :: emptyList
@@ -638,37 +636,6 @@ function getStrings(this,key,defaultVal,raw)
  if (.not. found) call IO_error(140_pInt,ext_msg=key)
 
 end function getStrings
-
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief DEPRECATED: REMOVE SOON
-!--------------------------------------------------------------------------------------------------
-function strings(this)
- use IO, only: &
-   IO_error, &
-   IO_stringValue
-
- implicit none
- class(tPartitionedStringList),      intent(in)  :: this
- character(len=65536), dimension(:), allocatable :: strings
- character(len=65536)                            :: string
- type(tPartitionedStringList),  pointer          :: item
-
- item => this%next
- do while (associated(item))
-   string = item%string%val
-   GfortranBug86033: if (.not. allocated(strings)) then
-     allocate(strings(1),source=string)
-   else GfortranBug86033
-     strings = [strings,string]
-   endif GfortranBug86033
-   item => item%next
- end do
-
- if (size(strings) < 0_pInt) call IO_error(142_pInt)                           ! better to check for "allocated"?
-
-end function strings
 
 
 end module config
