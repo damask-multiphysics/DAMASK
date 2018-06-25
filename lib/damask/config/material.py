@@ -174,67 +174,28 @@ class Material():
             else:                                                     # plain key
               self.data[part][name_section][items[0]] = items[1:]
   
-  c = []
-  def myRead(c,sub_file):
-    re_include  = re.compile(r'^{(.+)}$')                 # pattern for include
-    with open(sub_file,'r') as f:
-      for entry in f:
-        if not entry.strip():
-          continue
-        match = re_include.match(entry.split()[0])
-        if match:
-          if match.group(1).startswith('/'):
-            sub_file = match.group(1)
-          else:
-            sub_file = os.path.normpath(os.path.dirname(sub_file).join(match.group(1)))
-          with open(sub_file,'r') as f1:
-            for l in f1.readlines():
-              if l not in c:
-                c.append(l)
-              else:
-                continue
-          myRead(c,sub_file)
-        else: 
-          if entry not in c:
-            c.append(entry)
-          else:
-            continue
-    return c,sub_file
+
 
   def read(self,file=None):
-    fileNames = [None] * 10 
-    fileNames[0] = file
-    re_include  = re.compile(r'^{(.+)}$')                 # pattern for include
-    c = []
-    i = 0
-    for files in fileNames:
-      if files is not None:
-        with open(file,'r') as f:
-          for entry in f:
-            if not entry.strip(): 
-              continue
-            match = re_include.match(entry.split()[0])
-            if match:
-              if match.group(1).startswith('/'):
-                sub_file = match.group(1)
-              else:
-                sub_file = os.path.normpath(os.path.dirname(file).join(match.group(1)))
-              i = i + 1
-              fileNames[i] = sub_file
-              myRead(c,sub_file)
-            else:
-              if entry not in c:
-                c.append(entry)
-              else:
-                continue
-
-    for l in c:
-      print(l)
+    
+    def readInclude(filename):
+      result = []
+      re_include  = re.compile(r'^{(.+)}$')
+      with open(filename) as f: myData = f.readlines()
+      for line in myData:
+        match = re_include.match(line.split()[0]) if line.strip() else False
+        if match:
+          result += readInclude(match.group(1) if match.group(1).startswith('/') else
+                                os.path.normpath(os.path.join(os.path.dirname(filename),match.group(1))))
+        else:
+          result.append(line)
+      return result
+    
+    c = readInclude(file)
     for p in self.parts:
       self.parse_data(part=p, content=c)
       
   def write(self,file='material.config', overwrite=False):
-    import os
     i = 0
     saveFile = file
     while not overwrite and os.path.exists(saveFile):
