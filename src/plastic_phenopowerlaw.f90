@@ -149,6 +149,7 @@ subroutine plastic_phenopowerlaw_init
 
  integer(pInt), dimension(0), parameter :: emptyInt = [integer(pInt)::]
  real(pReal),   dimension(0), parameter :: emptyReal = [real(pReal)::]
+ character(len=65536),   dimension(0), parameter :: emptyString = [character(len=65536)::]
 
  type(tParameters), pointer :: prm
 
@@ -189,7 +190,7 @@ subroutine plastic_phenopowerlaw_init
        prm%H_int                = phaseConfig(phase)%getFloats('h_int',&
                                 defaultVal=[(0.0_pReal,i=1_pInt,size(prm%Nslip))])
        prm%nonSchmidCoeff       = phaseConfig(phase)%getFloats('nonschmid_coefficients',&
-                                defaultVal = [real(pReal)::1] )
+                                defaultVal = emptyReal )
 
        prm%gdot0_slip           = phaseConfig(phase)%getFloat('gdot0_slip')
        prm%n_slip               = phaseConfig(phase)%getFloat('n_slip')
@@ -228,13 +229,7 @@ subroutine plastic_phenopowerlaw_init
      prm%aTolShear      = phaseConfig(phase)%getFloat('atol_shear',defaultVal=1.0e-6_pReal)
      prm%aTolTwinfrac   = phaseConfig(phase)%getFloat('atol_twinfrac',defaultVal=1.0e-6_pReal)
 
-#if defined(__GFORTRAN__)
-     outputs = ['GfortranBug86277']
-     outputs = phaseConfig(phase)%getStrings('(output)',defaultVal=outputs)
-     if (outputs(1) == 'GfortranBug86277') outputs = [character(len=65536)::]
-#else
-     outputs = phaseConfig(phase)%getStrings('(output)',defaultVal=[character(len=65536)::])
-#endif
+     outputs = phaseConfig(phase)%getStrings('(output)',defaultVal=emptyString)
      allocate(prm%outputID(0))
      do i=1_pInt, size(outputs)
        outputID = undefined_ID
@@ -615,8 +610,7 @@ subroutine plastic_phenopowerlaw_dotState(Tstar_v,ipc,ip,el)
    lattice_maxNtwinFamily, &
    lattice_NslipSystem, &
    lattice_NtwinSystem, &
-   lattice_shearTwin, &
-   lattice_NnonSchmid
+   lattice_shearTwin
  use material, only: &
    material_phase, &
    phaseAt, phasememberAt, &
@@ -686,7 +680,7 @@ subroutine plastic_phenopowerlaw_dotState(Tstar_v,ipc,ip,el)
 ! Calculation of dot gamma
      tau_slip_pos  = dot_product(Tstar_v,lattice_Sslip_v(1:6,1,index_myFamily+i,ph))
      tau_slip_neg  = tau_slip_pos
-     nonSchmidSystems: do k = 1,lattice_NnonSchmid(ph)
+     nonSchmidSystems: do k = 1,size(param(instance)%nonSchmidCoeff)
        tau_slip_pos = tau_slip_pos + param(instance)%nonSchmidCoeff(k)* &
                                    dot_product(Tstar_v,lattice_Sslip_v(1:6,2*k,  index_myFamily+i,ph))
        tau_slip_neg = tau_slip_neg +param(instance)%nonSchmidCoeff(k)* &
