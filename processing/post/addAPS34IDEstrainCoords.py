@@ -74,7 +74,7 @@ for name in filenames:
   
 # ------------------------------------------ process data ------------------------------------------
   theta=-0.75*np.pi
-  RotMat2TSL=np.array([[1., 0., 0.],
+  RotMat2TSL=np.array([[1.,  0.,            0.],
                        [0.,  np.cos(theta), np.sin(theta)],                                         # Orientation to account for -135 deg
                        [0., -np.sin(theta), np.cos(theta)]])                                        # rotation for TSL convention
   vec         = np.zeros(4)

@@ -251,7 +251,8 @@ subroutine plastic_dislotwin_init(fileUnit)
    PLASTICITY_DISLOTWIN_label, &
    PLASTICITY_DISLOTWIN_ID, &
    material_phase, &  
-   plasticState, & 
+   plasticState
+ use config, only: &
    MATERIAL_partPhase
  use lattice
  use numerics,only: &

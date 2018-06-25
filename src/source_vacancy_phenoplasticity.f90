@@ -67,9 +67,10 @@ subroutine source_vacancy_phenoplasticity_init(fileUnit)
    phase_Noutput, &
    SOURCE_vacancy_phenoplasticity_label, &
    SOURCE_vacancy_phenoplasticity_ID, &
-   material_Nphase, &
    material_phase, &  
-   sourceState, &
+   sourceState
+ use config, only: &
+   material_Nphase, &
    MATERIAL_partPhase
  use numerics,only: &
    numerics_integrator

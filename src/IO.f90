@@ -900,10 +900,10 @@ function IO_spotTagInPart(fileUnit,part,tag,Nsections)
  do while (trim(line) /= IO_EOF)
    line = IO_read(fileUnit)
    if (IO_isBlank(line)) cycle                                                                      ! skip empty lines
-   if (IO_getTag(line,'<','>') /= '') then                                                          ! stop at next part
+   foundNextPart: if (IO_getTag(line,'<','>') /= '') then
      line = IO_read(fileUnit, .true.)                                                               ! reset IO_read
      exit
-   endif
+   endif foundNextPart
    if (IO_getTag(line,'[',']') /= '') section = section + 1_pInt                                    ! found [section] identifier
    if (section > 0_pInt) then
      chunkPos = IO_stringPos(line)
@@ -925,13 +925,10 @@ logical function IO_globalTagInPart(fileUnit,part,tag)
  character(len=*),intent(in)                :: part, &                                              !< part in which tag is searched for
                                                tag                                                  !< tag to search for
 
-
  integer(pInt), allocatable, dimension(:) :: chunkPos
- integer(pInt)                            :: section
  character(len=65536)                     :: line
 
  IO_globalTagInPart = .false.                                                                       ! assume to nowhere spot tag
- section = 0_pInt
  line =''
 
  rewind(fileUnit)
@@ -942,16 +939,20 @@ logical function IO_globalTagInPart(fileUnit,part,tag)
  do while (trim(line) /= IO_EOF)
    line = IO_read(fileUnit)
    if (IO_isBlank(line)) cycle                                                                      ! skip empty lines
-   if (IO_getTag(line,'<','>') /= '') then                                                          ! stop at next part
+   foundNextPart: if (IO_getTag(line,'<','>') /= '') then
      line = IO_read(fileUnit, .true.)                                                               ! reset IO_read
      exit
-   endif
-   if (IO_getTag(line,'[',']') /= '') section = section + 1_pInt                                    ! found [section] identifier
-   if (section == 0_pInt) then
-     chunkPos = IO_stringPos(line)
-     if (tag == trim(IO_lc(IO_stringValue(line,chunkPos,1_pInt)))) &                                ! match
-       IO_globalTagInPart = .true.
-   endif
+   endif foundNextPart
+   foundFirstSection: if (IO_getTag(line,'[',']') /= '') then
+     line = IO_read(fileUnit, .true.)                                                               ! reset IO_read
+     exit
+   endif foundFirstSection
+   chunkPos = IO_stringPos(line)
+   match: if (tag == trim(IO_lc(IO_stringValue(line,chunkPos,1_pInt)))) then
+     IO_globalTagInPart = .true.
+     line = IO_read(fileUnit, .true.)                                                               ! reset IO_read
+     exit
+   endif match
  enddo
 
 end function IO_globalTagInPart
@@ -981,6 +982,10 @@ pure function IO_stringPos(string)
    if ( string(left:left) == '#' ) exit
    IO_stringPos = [IO_stringPos,int(left, pInt), int(right, pInt)]
    IO_stringPos(1) = IO_stringPos(1)+1_pInt
+   endOfString: if (right < left) then
+     IO_stringPos(IO_stringPos(1)*2+1) = len_trim(string)
+     exit
+   endif endOfString
  enddo
 
 end function IO_stringPos
@@ -1544,6 +1549,17 @@ subroutine IO_error(error_ID,el,ip,g,instance,ext_msg)
    msg = 'zero entry on stiffness diagonal'
  case (136_pInt)
    msg = 'zero entry on stiffness diagonal for transformed phase'
+
+!--------------------------------------------------------------------------------------------------
+! errors related to the parsing of material.config
+ case (140_pInt)
+   msg = 'key not found'
+ case (141_pInt)
+   msg = 'number of chunks in string differs'
+ case (142_pInt)
+   msg = 'empty list'
+ case (143_pInt)
+   msg = 'no value found for key'
 
 !--------------------------------------------------------------------------------------------------
 ! material error messages and related messages in mesh

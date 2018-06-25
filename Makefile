@@ -25,7 +25,6 @@ build/FEM:
 
 .PHONY: marc
 marc:
-	@./installation/symLink_Code.sh
 	@./installation/mods_MarcMentat/apply_DAMASK_modifications.sh ${MAKEFLAGS}
 
 .PHONY: clean
