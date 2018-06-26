@@ -57,6 +57,8 @@ subroutine constitutive_init()
    IO_write_jobFile, &
    IO_write_jobIntFile, &
    IO_timeStamp
+ use config, only: &
+   config_deallocate
  use mesh, only: &
    FE_geomtype
  use config, only: &
@@ -189,6 +191,8 @@ subroutine constitutive_init()
  if (any(phase_kinematics == KINEMATICS_vacancy_strain_ID))    call kinematics_vacancy_strain_init(FILEUNIT)
  if (any(phase_kinematics == KINEMATICS_hydrogen_strain_ID))   call kinematics_hydrogen_strain_init(FILEUNIT)
  close(FILEUNIT)
+
+ call config_deallocate('material.config/phase')
 
  write(6,'(/,a)')   ' <<<+-  constitutive init  -+>>>'
  write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
@@ -335,30 +339,6 @@ subroutine constitutive_init()
                                                     maxval(sourceState(p)%p(:)%sizePostResults))
  enddo PhaseLoop2
 
-
-#ifdef TODO
-!--------------------------------------------------------------------------------------------------
-! report
- constitutive_maxSizeState       = maxval(constitutive_sizeState)
- constitutive_plasticity_maxSizeDotState    = maxval(constitutive_sizeDotState)
-
- if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0_pInt) then
-   write(6,'(a32,1x,7(i8,1x))')   'constitutive_state0:          ', shape(constitutive_state0)
-   write(6,'(a32,1x,7(i8,1x))')   'constitutive_partionedState0: ', shape(constitutive_partionedState0)
-   write(6,'(a32,1x,7(i8,1x))')   'constitutive_subState0:       ', shape(constitutive_subState0)
-   write(6,'(a32,1x,7(i8,1x))')   'constitutive_state:           ', shape(constitutive_state)
-   write(6,'(a32,1x,7(i8,1x))')   'constitutive_aTolState:       ', shape(constitutive_aTolState)
-   write(6,'(a32,1x,7(i8,1x))')   'constitutive_dotState:        ', shape(constitutive_dotState)
-   write(6,'(a32,1x,7(i8,1x))')   'constitutive_deltaState:      ', shape(constitutive_deltaState)
-   write(6,'(a32,1x,7(i8,1x))')   'constitutive_sizeState:       ', shape(constitutive_sizeState)
-   write(6,'(a32,1x,7(i8,1x))')   'constitutive_sizeDotState:    ', shape(constitutive_sizeDotState)
-   write(6,'(a32,1x,7(i8,1x),/)') 'constitutive_sizePostResults: ', shape(constitutive_sizePostResults)
-   write(6,'(a32,1x,7(i8,1x))')   'maxSizeState:       ', constitutive_maxSizeState
-   write(6,'(a32,1x,7(i8,1x))')   'maxSizeDotState:    ', constitutive_plasticity_maxSizeDotState
-   write(6,'(a32,1x,7(i8,1x))')   'maxSizePostResults: ', constitutive_plasticity_maxSizePostResults
- endif
- flush(6)
-#endif
 
 
 end subroutine constitutive_init

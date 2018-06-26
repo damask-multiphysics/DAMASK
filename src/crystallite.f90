@@ -171,7 +171,10 @@ subroutine crystallite_init
    IO_write_jobFile, &
    IO_error
  use material
- use config
+ use config, only: &
+  config_crystallite, &
+  crystallite_name, &
+  config_deallocate
  use constitutive, only: &
    constitutive_initialFi, &
    constitutive_microstructure                                                                     ! derived (shortcut) quantities of given state
@@ -259,21 +262,21 @@ subroutine crystallite_init
  allocate(crystallite_clearToCutback(iMax,eMax),             source=.true.)
  allocate(crystallite_neighborEnforcedCutback(iMax,eMax),    source=.false.)
  allocate(crystallite_output(maxval(crystallite_Noutput), &
-                             material_Ncrystallite)) ;       crystallite_output = ''
+                             size(config_crystallite))) ;       crystallite_output = ''
  allocate(crystallite_outputID(maxval(crystallite_Noutput), &
-                             material_Ncrystallite),         source=undefined_ID)
- allocate(crystallite_sizePostResults(material_Ncrystallite),source=0_pInt)
+                             size(config_crystallite)),         source=undefined_ID)
+ allocate(crystallite_sizePostResults(size(config_crystallite)),source=0_pInt)
  allocate(crystallite_sizePostResult(maxval(crystallite_Noutput), &
-                                     material_Ncrystallite), source=0_pInt)
+                                     size(config_crystallite)), source=0_pInt)
 
 
- do c = 1_pInt, material_Ncrystallite
+ do c = 1_pInt, size(config_crystallite)
 #if defined(__GFORTRAN__)
    str = ['GfortranBug86277']
-   str = crystalliteConfig(c)%getStrings('(output)',defaultVal=str)
+   str = config_crystallite(c)%getStrings('(output)',defaultVal=str)
    if (str(1) == 'GfortranBug86277') str = [character(len=65536)::]
 #else
-   str = crystalliteConfig(c)%getStrings('(output)',defaultVal=[character(len=65536)::])
+   str = config_crystallite(c)%getStrings('(output)',defaultVal=[character(len=65536)::])
 #endif
    do o = 1_pInt, size(str)
      crystallite_output(o,c) = str(o)
@@ -329,7 +332,7 @@ subroutine crystallite_init
  enddo
 
 
- do r = 1_pInt,material_Ncrystallite
+ do r = 1_pInt,size(config_crystallite)
    do o = 1_pInt,crystallite_Noutput(r)
      select case(crystallite_outputID(o,r))
        case(phase_ID,texture_ID,volume_ID,grainrotationx_ID,grainrotationy_ID,grainrotationz_ID)
@@ -354,14 +357,14 @@ subroutine crystallite_init
 
  crystallite_maxSizePostResults = &
    maxval(crystallite_sizePostResults(microstructure_crystallite),microstructure_active)
-
+ 
 
 !--------------------------------------------------------------------------------------------------
 ! write description file for crystallite output
  if (worldrank == 0_pInt) then
    call IO_write_jobFile(FILEUNIT,'outputCrystallite')
 
-   do r = 1_pInt,material_Ncrystallite
+   do r = 1_pInt,size(config_crystallite)
      if (any(microstructure_crystallite(mesh_element(4,:)) == r)) then
        write(FILEUNIT,'(/,a,/)') '['//trim(crystallite_name(r))//']'
        do o = 1_pInt,crystallite_Noutput(r)
@@ -372,6 +375,8 @@ subroutine crystallite_init
 
    close(FILEUNIT)
  endif
+
+ call config_deallocate('material.config/crystallite')
 
 !--------------------------------------------------------------------------------------------------
 ! initialize
