@@ -40,7 +40,7 @@ module config
 
  type(tPartitionedStringList), public :: emptyList
 
- type(tPartitionedStringList), public, protected, allocatable, dimension(:) :: &
+ type(tPartitionedStringList), public, protected, allocatable, dimension(:) :: &                    ! QUESTION: rename to config_XXX?
    phaseConfig, &
    microstructureConfig, &
    homogenizationConfig, &
@@ -201,7 +201,7 @@ subroutine parseFile(line,&
    line = IO_read(fileUnit)
    if (IO_isBlank(line)) cycle                                                                      ! skip empty lines
    foundNextPart: if (IO_getTag(line,'<','>') /= '') then
-     devNull = IO_read(fileUnit, .true.)                                                            ! reset IO_read
+     devNull = IO_read(fileUnit, .true.)                                                            ! reset IO_read to close any recursively included files
      exit
    endif foundNextPart
    nextSection: if (IO_getTag(line,'[',']') /= '') then
@@ -213,6 +213,7 @@ subroutine parseFile(line,&
      else GfortranBug86033
        sectionNames  = [sectionNames,tag]
      endif GfortranBug86033
+     cycle
    endif nextSection
    chunkPos = IO_stringPos(line)
    tag = IO_lc(IO_stringValue(trim(line),chunkPos,1_pInt))                                          ! extract key
@@ -368,8 +369,8 @@ real(pReal) function getFloat(this,key,defaultVal)
  type(tPartitionedStringList),  pointer              :: item
  logical                                             :: found
 
- if (present(defaultVal)) getFloat = defaultVal
  found = present(defaultVal)
+ if (found) getFloat = defaultVal
  
  item => this%next
  do while (associated(item))
@@ -404,8 +405,8 @@ integer(pInt) function getInt(this,key,defaultVal)
  type(tPartitionedStringList),  pointer              :: item
  logical                                             :: found
 
- if (present(defaultVal)) getInt = defaultVal
  found = present(defaultVal)
+ if (found) getInt = defaultVal
  
  item => this%next
  do while (associated(item))
@@ -440,11 +441,11 @@ character(len=65536) function getString(this,key,defaultVal,raw)
  logical,                       intent(in), optional :: raw
  type(tPartitionedStringList),  pointer              :: item
  logical                                             :: found, &
-                                                        split
+                                                        whole
 
- if (present(defaultVal)) getString = trim(defaultVal)
- split = merge(.not. raw,.true.,present(raw))
+ whole = merge(raw,.false.,present(raw))                                                            ! whole string or white space splitting
  found = present(defaultVal)
+ if (found) getString = trim(defaultVal)
 
  item => this%next
  do while (associated(item))
@@ -452,10 +453,10 @@ character(len=65536) function getString(this,key,defaultVal,raw)
      found = .true.
      if (item%string%pos(1) < 2_pInt) call IO_error(143_pInt,ext_msg=key)
 
-     if (split) then
-       getString = IO_StringValue(item%string%val,item%string%pos,2)
-     else
+     if (whole) then
        getString = trim(item%string%val(item%string%pos(4):))                                       ! raw string starting a second chunk
+     else
+       getString = IO_StringValue(item%string%val,item%string%pos,2)
      endif
    endif
    item => item%next
@@ -463,7 +464,7 @@ character(len=65536) function getString(this,key,defaultVal,raw)
 
  if (.not. found) call IO_error(140_pInt,ext_msg=key)
  if (present(defaultVal)) then
-   if(len_trim(getString)/=len_trim(defaultVal)) call IO_error(0_pInt,ext_msg='getString')
+   if (len_trim(getString) /= len_trim(defaultVal)) call IO_error(0_pInt,ext_msg='getString')
  endif
 end function getString
 
@@ -510,11 +511,9 @@ function getFloats(this,key,defaultVal)
    item => item%next
  end do
 
- if (present(defaultVal) .and. .not. found) then
-   getFloats = defaultVal
-   found = .true.
+ if (.not. found) then
+   if (present(defaultVal)) then; getFloats = defaultVal; else; call IO_error(140_pInt,ext_msg=key); endif
  endif
- if (.not. found) call IO_error(140_pInt,ext_msg=key)
 
 end function getFloats
 
@@ -561,11 +560,9 @@ function getInts(this,key,defaultVal)
    item => item%next
  end do
 
- if (present(defaultVal) .and. .not. found) then
-   getInts = defaultVal
-   found = .true.
+ if (.not. found) then
+   if (present(defaultVal)) then; getInts = defaultVal; else; call IO_error(140_pInt,ext_msg=key); endif
  endif
- if (.not. found) call IO_error(140_pInt,ext_msg=key)
 
 end function getInts
 
@@ -591,11 +588,11 @@ function getStrings(this,key,defaultVal,raw)
  character(len=65536)                                     :: str
  integer(pInt)                                            :: i
  logical                                                  :: found, &
-                                                             split, &
+                                                             whole, &
                                                              cumulative
 
  cumulative = (key(1:1) == '(' .and. key(len_trim(key):len_trim(key)) == ')')
- split = merge(.not. raw,.true.,present(raw))
+ whole = merge(raw,.false.,present(raw))
  found = .false.
 
  item => this%next
@@ -606,36 +603,34 @@ function getStrings(this,key,defaultVal,raw)
      if (item%string%pos(1) < 2_pInt) call IO_error(143_pInt,ext_msg=key)
      
      notAllocated: if (.not. allocated(getStrings)) then
-       if (split) then
+       if (whole) then
+         str = item%string%val(item%string%pos(4):)
+         getStrings = [str]
+       else
          str = IO_StringValue(item%string%val,item%string%pos,2_pInt)
          allocate(getStrings(1),source=str)
          do i=3_pInt,item%string%pos(1)
            str = IO_StringValue(item%string%val,item%string%pos,i)
            getStrings = [getStrings,str]
          enddo
-       else
-         str = item%string%val(item%string%pos(4):)
-         getStrings = [str]
        endif
      else notAllocated
-       if (split) then
+       if (whole) then
+         getStrings = [getStrings,str]
+       else
          do i=2_pInt,item%string%pos(1)
            str = IO_StringValue(item%string%val,item%string%pos,i)
            getStrings = [getStrings,str]
          enddo
-       else
-         getStrings = [getStrings,str]
        endif
      endif notAllocated
    endif
    item => item%next
  end do
 
- if (present(defaultVal) .and. .not. found) then
-   getStrings = defaultVal
-   found = .true.
+ if (.not. found) then
+   if (present(defaultVal)) then; getStrings = defaultVal; else; call IO_error(140_pInt,ext_msg=key); endif
  endif
- if (.not. found) call IO_error(140_pInt,ext_msg=key)
 
 end function getStrings
 
