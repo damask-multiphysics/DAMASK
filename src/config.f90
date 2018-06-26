@@ -24,6 +24,7 @@ module config
    contains
      procedure :: add            => add
      procedure :: show           => show
+     procedure :: free           => free
 
      procedure :: keyExists      => keyExists
      procedure :: countKeys      => countKeys
@@ -166,8 +167,9 @@ subroutine config_init()
 
 end subroutine config_init
 
+
 !--------------------------------------------------------------------------------------------------
-!> @brief parses the homogenization part in the material configuration file
+!> @brief parses the material.config file
 !--------------------------------------------------------------------------------------------------
 subroutine parseFile(line,&
                      sectionNames,part,fileUnit)
@@ -229,6 +231,7 @@ subroutine parseFile(line,&
      call part(s)%show()
    end do
  end if 
+
 end subroutine parseFile
 
 !--------------------------------------------------------------------------------------------------
@@ -283,23 +286,24 @@ end subroutine show
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief deallocates all elements of a given list
-!> @details Strings are printed in order of insertion (FIFO)
+!> @brief cleans entire list
+!> @details list head is remains alive
 !--------------------------------------------------------------------------------------------------
-!    subroutine free_all()
-!      implicit none
-!                 
-!      type(node), pointer :: item
-!         
-!      do        
-!        item => first
-!         
-!        if (associated(item) .eqv. .FALSE.) exit
-!          
-!        first => first%next
-!        deallocate(item)
-!      end do                     
-!    end subroutine free_all
+subroutine free(this)
+
+  implicit none
+  class(tPartitionedStringList),  target, intent(in) :: this
+  type(tPartitionedStringList),   pointer            :: new, item
+
+  item => this%next
+  do while (associated(item%next))
+    new => item
+    deallocate(item)
+    item => new%next
+  enddo
+  deallocate(item)
+
+end subroutine free
 
 
 !--------------------------------------------------------------------------------------------------
