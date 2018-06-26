@@ -1,6 +1,7 @@
 !--------------------------------------------------------------------------------------------------
 !> @author Franz Roters, Max-Planck-Institut für Eisenforschung GmbH
 !> @author Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
+!> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
 !> @brief Parses material config file, either solverJobName.materialConfig or material.config
 !> @details reads the material configuration file, where solverJobName.materialConfig takes
 !! precedence over material.config and parses the sections 'homogenization', 'crystallite',
