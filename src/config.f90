@@ -450,6 +450,9 @@ character(len=65536) function getString(this,key,defaultVal,raw)
  whole = merge(raw,.false.,present(raw))                                                            ! whole string or white space splitting
  found = present(defaultVal)
  if (found) getString = trim(defaultVal)
+ if (found) then
+   if (len_trim(getString) /= len_trim(defaultVal)) call IO_error(0_pInt,ext_msg='getString')
+ endif
 
  item => this%next
  do while (associated(item))
@@ -467,9 +470,7 @@ character(len=65536) function getString(this,key,defaultVal,raw)
  end do
 
  if (.not. found) call IO_error(140_pInt,ext_msg=key)
- if (present(defaultVal)) then
-   if (len_trim(getString) /= len_trim(defaultVal)) call IO_error(0_pInt,ext_msg='getString')
- endif
+
 end function getString
 
 
