@@ -1014,7 +1014,7 @@ subroutine material_parseTexture
     
     
    if (textureConfig(t)%keyExists('(fiber)')) then
-     gauss = gauss + 1_pInt
+     fiber = fiber + 1_pInt
      strings = textureConfig(t)%getStrings('(fiber)',raw= .true.)
      do i = 1_pInt, size(strings)
        chunkPos = IO_stringPos(strings(i))
