@@ -77,10 +77,15 @@ module config
    MATERIAL_localFileExt       = 'materialConfig'                                                   !< extension of solver job name depending material configuration file
 
 
-public :: config_init
+ public :: &
+   config_init, &
+   config_deallocate
 
 contains
 
+!--------------------------------------------------------------------------------------------------
+!> @brief reads material.config and stores its content per part
+!--------------------------------------------------------------------------------------------------
 subroutine config_init()
 #if defined(__GFORTRAN__) || __INTEL_COMPILER >= 1800
  use, intrinsic :: iso_fortran_env, only: &
@@ -109,12 +114,11 @@ subroutine config_init()
   line, &
   part
 
-
- myDebug = debug_level(debug_material)
-
  write(6,'(/,a)') ' <<<+-  config init  -+>>>'
  write(6,'(a15,a)')   ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
+
+ myDebug = debug_level(debug_material)
 
  if (.not. IO_open_jobFile_stat(FILEUNIT,material_localFileExt)) &                                  ! no local material configuration present...
    call IO_open_file(FILEUNIT,material_configFile)                                                  ! ...open material.config file
@@ -163,7 +167,6 @@ subroutine config_init()
  if (material_Nphase < 1_pInt) call IO_error(160_pInt,ext_msg=material_partPhase)
  material_Ntexture = size(textureConfig)
  if (material_Ntexture < 1_pInt) call IO_error(160_pInt,ext_msg=material_partTexture)
-
 
 end subroutine config_init
 
@@ -233,6 +236,54 @@ subroutine parseFile(line,&
  end if 
 
 end subroutine parseFile
+
+subroutine config_deallocate(what)
+ use IO, only: &
+   IO_error
+
+ implicit none
+ character(len=*), intent(in) :: what
+ integer(pInt) :: i
+
+ select case(what)
+
+   case('material.config/phase')
+     do i=1, size(phaseConfig)
+       call phaseConfig(i)%free
+     enddo
+     deallocate(phaseConfig)
+
+   case('material.config/microstructure')
+     do i=1, size(microstructureConfig)
+       call microstructureConfig(i)%free
+     enddo
+     deallocate(microstructureConfig)
+
+   case('material.config/crystallite')
+     do i=1, size(crystalliteConfig)
+       call crystalliteConfig(i)%free
+     enddo
+     deallocate(crystalliteConfig)
+
+   case('material.config/homogenization')
+     do i=1, size(homogenizationConfig)
+       call homogenizationConfig(i)%free
+     enddo
+     deallocate(homogenizationConfig)
+
+   case('material.config/texture')
+     do i=1, size(textureConfig)
+       call textureConfig(i)%free
+     enddo
+     deallocate(textureConfig)
+
+   case default
+     call IO_error(0_pInt,ext_msg='config_deallocate')
+
+ end select
+
+end subroutine config_deallocate
+
 
 !--------------------------------------------------------------------------------------------------
 !> @brief add element
