@@ -42,11 +42,11 @@ module config
  type(tPartitionedStringList), public :: emptyList
 
  type(tPartitionedStringList), public, protected, allocatable, dimension(:) :: &                    ! QUESTION: rename to config_XXX?
-   phaseConfig, &
-   microstructureConfig, &
-   homogenizationConfig, &
-   textureConfig, &
-   crystalliteConfig
+   config_phase, &
+   config_microstructure, &
+   config_homogenization, &
+   config_texture, &
+   config_crystallite
  
  character(len=64), dimension(:), allocatable, public, protected :: &
    phase_name, &                                                                                    !< name of each phase
@@ -64,7 +64,7 @@ module config
  character(len=*), parameter, private  :: &
    MATERIAL_partTexture        = 'texture'                                                          !< keyword for texture part
 
-! ToDo: Remove, use size(phaseConfig) etc
+! ToDo: Remove, use size(config_phase) etc
  integer(pInt), public, protected :: &
    material_Nphase, &                                                                               !< number of phases
    material_Nhomogenization, &                                                                      !< number of homogenizations
@@ -131,23 +131,23 @@ subroutine config_init()
    select case (trim(part))
     
      case (trim(material_partPhase))
-       call parseFile(line,phase_name,phaseConfig,FILEUNIT)
+       call parseFile(line,phase_name,config_phase,FILEUNIT)
        if (iand(myDebug,debug_levelBasic) /= 0_pInt) write(6,'(a)') ' Phase parsed'; flush(6)
     
      case (trim(material_partMicrostructure))
-       call parseFile(line,microstructure_name,microstructureConfig,FILEUNIT)
+       call parseFile(line,microstructure_name,config_microstructure,FILEUNIT)
        if (iand(myDebug,debug_levelBasic) /= 0_pInt) write(6,'(a)') ' Microstructure parsed'; flush(6)
     
      case (trim(material_partCrystallite))
-       call parseFile(line,crystallite_name,crystalliteConfig,FILEUNIT)
+       call parseFile(line,crystallite_name,config_crystallite,FILEUNIT)
        if (iand(myDebug,debug_levelBasic) /= 0_pInt) write(6,'(a)') ' Crystallite parsed'; flush(6)
     
      case (trim(material_partHomogenization))
-       call parseFile(line,homogenization_name,homogenizationConfig,FILEUNIT)
+       call parseFile(line,homogenization_name,config_homogenization,FILEUNIT)
        if (iand(myDebug,debug_levelBasic) /= 0_pInt) write(6,'(a)') ' Homogenization parsed'; flush(6)
     
      case (trim(material_partTexture))
-       call parseFile(line,texture_name,textureConfig,FILEUNIT)
+       call parseFile(line,texture_name,config_texture,FILEUNIT)
        if (iand(myDebug,debug_levelBasic) /= 0_pInt) write(6,'(a)') ' Texture parsed'; flush(6)
 
      case default
@@ -157,15 +157,15 @@ subroutine config_init()
 
  enddo
 
- material_Nhomogenization = size(homogenizationConfig)
+ material_Nhomogenization = size(config_homogenization)
  if (material_Nhomogenization < 1_pInt) call IO_error(160_pInt,ext_msg=material_partHomogenization)
- material_Nmicrostructure = size(microstructureConfig)
+ material_Nmicrostructure = size(config_microstructure)
  if (material_Nmicrostructure < 1_pInt) call IO_error(160_pInt,ext_msg=material_partMicrostructure)
- material_Ncrystallite = size(crystalliteConfig)
+ material_Ncrystallite = size(config_crystallite)
  if (material_Ncrystallite < 1_pInt) call IO_error(160_pInt,ext_msg=material_partCrystallite)
- material_Nphase = size(phaseConfig)
+ material_Nphase = size(config_phase)
  if (material_Nphase < 1_pInt) call IO_error(160_pInt,ext_msg=material_partPhase)
- if (size(textureConfig) < 1_pInt) call IO_error(160_pInt,ext_msg=material_partTexture)
+ if (size(config_texture) < 1_pInt) call IO_error(160_pInt,ext_msg=material_partTexture)
 
 end subroutine config_init
 
@@ -247,34 +247,34 @@ subroutine config_deallocate(what)
  select case(what)
 
    case('material.config/phase')
-     do i=1, size(phaseConfig)
-       call phaseConfig(i)%free
+     do i=1, size(config_phase)
+       call config_phase(i)%free
      enddo
-     deallocate(phaseConfig)
+     deallocate(config_phase)
 
    case('material.config/microstructure')
-     do i=1, size(microstructureConfig)
-       call microstructureConfig(i)%free
+     do i=1, size(config_microstructure)
+       call config_microstructure(i)%free
      enddo
-     deallocate(microstructureConfig)
+     deallocate(config_microstructure)
 
    case('material.config/crystallite')
-     do i=1, size(crystalliteConfig)
-       call crystalliteConfig(i)%free
+     do i=1, size(config_crystallite)
+       call config_crystallite(i)%free
      enddo
-     deallocate(crystalliteConfig)
+     deallocate(config_crystallite)
 
    case('material.config/homogenization')
-     do i=1, size(homogenizationConfig)
-       call homogenizationConfig(i)%free
+     do i=1, size(config_homogenization)
+       call config_homogenization(i)%free
      enddo
-     deallocate(homogenizationConfig)
+     deallocate(config_homogenization)
 
    case('material.config/texture')
-     do i=1, size(textureConfig)
-       call textureConfig(i)%free
+     do i=1, size(config_texture)
+       call config_texture(i)%free
      enddo
-     deallocate(textureConfig)
+     deallocate(config_texture)
 
    case default
      call IO_error(0_pInt,ext_msg='config_deallocate')

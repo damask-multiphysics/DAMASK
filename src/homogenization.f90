@@ -104,7 +104,7 @@ subroutine homogenization_init
   config_deallocate, &
   material_configFile, &
   material_localFileExt, &
-  homogenizationConfig, &
+  config_homogenization, &
   homogenization_name
  use material
  use homogenization_none
@@ -202,7 +202,7 @@ subroutine homogenization_init
 ! write description file for homogenization output
  mainProcess2: if (worldrank == 0) then
    call IO_write_jobFile(FILEUNIT,'outputHomogenization')
-   do p = 1,size(homogenizationConfig)
+   do p = 1,size(config_homogenization)
      if (any(material_homog == p)) then
        i = homogenization_typeInstance(p)                                                               ! which instance of this homogenization type
        valid = .true.                                                                                   ! assume valid
@@ -402,7 +402,7 @@ subroutine homogenization_init
  vacancyflux_maxSizePostResults    = 0_pInt
  porosity_maxSizePostResults       = 0_pInt
  hydrogenflux_maxSizePostResults   = 0_pInt
- do p = 1,size(homogenizationConfig)
+ do p = 1,size(config_homogenization)
    homogenization_maxSizePostResults = max(homogenization_maxSizePostResults,homogState       (p)%sizePostResults)
    thermal_maxSizePostResults        = max(thermal_maxSizePostResults,       thermalState     (p)%sizePostResults)
    damage_maxSizePostResults         = max(damage_maxSizePostResults        ,damageState      (p)%sizePostResults)

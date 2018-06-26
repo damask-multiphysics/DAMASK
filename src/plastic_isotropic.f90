@@ -100,7 +100,7 @@ use IO
    plasticState
  use config, only: &
    MATERIAL_partPhase, &
-   phaseConfig
+   config_phase
    
  use lattice  
 
@@ -145,29 +145,29 @@ use IO
    if (phase_plasticity(phase) == PLASTICITY_ISOTROPIC_ID) then
      instance = phase_plasticityInstance(phase)
      prm => param(instance)                                                                         ! shorthand pointer to parameter object of my constitutive law
-     prm%tau0            =  phaseConfig(phase)%getFloat('tau0')
-     prm%tausat          =  phaseConfig(phase)%getFloat('tausat')
-     prm%gdot0           =  phaseConfig(phase)%getFloat('gdot0')
-     prm%n               =  phaseConfig(phase)%getFloat('n')
-     prm%h0              =  phaseConfig(phase)%getFloat('h0')
-     prm%fTaylor         =  phaseConfig(phase)%getFloat('m')
-     prm%h0_slopeLnRate  =  phaseConfig(phase)%getFloat('h0_slopelnrate', defaultVal=0.0_pReal)
-     prm%tausat_SinhFitA =  phaseConfig(phase)%getFloat('tausat_sinhfita',defaultVal=0.0_pReal)
-     prm%tausat_SinhFitB =  phaseConfig(phase)%getFloat('tausat_sinhfitb',defaultVal=0.0_pReal)
-     prm%tausat_SinhFitC =  phaseConfig(phase)%getFloat('tausat_sinhfitc',defaultVal=0.0_pReal)
-     prm%tausat_SinhFitD =  phaseConfig(phase)%getFloat('tausat_sinhfitd',defaultVal=0.0_pReal)
-     prm%a               =  phaseConfig(phase)%getFloat('a')
-     prm%aTolFlowStress  =  phaseConfig(phase)%getFloat('atol_flowstress',defaultVal=1.0_pReal)
-     prm%aTolShear       =  phaseConfig(phase)%getFloat('atol_shear',defaultVal=1.0e-6_pReal)
+     prm%tau0            =  config_phase(phase)%getFloat('tau0')
+     prm%tausat          =  config_phase(phase)%getFloat('tausat')
+     prm%gdot0           =  config_phase(phase)%getFloat('gdot0')
+     prm%n               =  config_phase(phase)%getFloat('n')
+     prm%h0              =  config_phase(phase)%getFloat('h0')
+     prm%fTaylor         =  config_phase(phase)%getFloat('m')
+     prm%h0_slopeLnRate  =  config_phase(phase)%getFloat('h0_slopelnrate', defaultVal=0.0_pReal)
+     prm%tausat_SinhFitA =  config_phase(phase)%getFloat('tausat_sinhfita',defaultVal=0.0_pReal)
+     prm%tausat_SinhFitB =  config_phase(phase)%getFloat('tausat_sinhfitb',defaultVal=0.0_pReal)
+     prm%tausat_SinhFitC =  config_phase(phase)%getFloat('tausat_sinhfitc',defaultVal=0.0_pReal)
+     prm%tausat_SinhFitD =  config_phase(phase)%getFloat('tausat_sinhfitd',defaultVal=0.0_pReal)
+     prm%a               =  config_phase(phase)%getFloat('a')
+     prm%aTolFlowStress  =  config_phase(phase)%getFloat('atol_flowstress',defaultVal=1.0_pReal)
+     prm%aTolShear       =  config_phase(phase)%getFloat('atol_shear',defaultVal=1.0e-6_pReal)
     
-     prm%dilatation      = phaseConfig(phase)%keyExists('/dilatation/')
+     prm%dilatation      = config_phase(phase)%keyExists('/dilatation/')
 
 #if defined(__GFORTRAN__)
      outputs = ['GfortranBug86277']
-     outputs = phaseConfig(phase)%getStrings('(output)',defaultVal=outputs)
+     outputs = config_phase(phase)%getStrings('(output)',defaultVal=outputs)
      if (outputs(1) == 'GfortranBug86277') outputs = [character(len=65536)::]
 #else
-     outputs = phaseConfig(phase)%getStrings('(output)',defaultVal=[character(len=65536)::])
+     outputs = config_phase(phase)%getStrings('(output)',defaultVal=[character(len=65536)::])
 #endif
      allocate(prm%outputID(0))
      do i=1_pInt, size(outputs)
