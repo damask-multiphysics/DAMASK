@@ -132,7 +132,7 @@ subroutine plastic_phenopowerlaw_init
    plasticState
  use config, only: &
    MATERIAL_partPhase, &
-   phaseConfig
+   config_phase
  use lattice
  use numerics,only: &
    numerics_integrator
@@ -181,43 +181,43 @@ subroutine plastic_phenopowerlaw_init
      instance = phase_plasticityInstance(phase)
      prm => param(instance)
 
-     prm%Nslip            =  phaseConfig(phase)%getInts('nslip',defaultVal=emptyInt)
+     prm%Nslip            =  config_phase(phase)%getInts('nslip',defaultVal=emptyInt)
      !if (size > Nchunks_SlipFamilies + 1_pInt) call IO_error(150_pInt,ext_msg=extmsg)
      if (sum(prm%Nslip) > 0_pInt) then
-       prm%tau0_slip            = phaseConfig(phase)%getFloats('tau0_slip')
-       prm%tausat_slip          = phaseConfig(phase)%getFloats('tausat_slip')
-       prm%interaction_SlipSlip = phaseConfig(phase)%getFloats('interaction_slipslip')
-       prm%H_int                = phaseConfig(phase)%getFloats('h_int',&
+       prm%tau0_slip            = config_phase(phase)%getFloats('tau0_slip')
+       prm%tausat_slip          = config_phase(phase)%getFloats('tausat_slip')
+       prm%interaction_SlipSlip = config_phase(phase)%getFloats('interaction_slipslip')
+       prm%H_int                = config_phase(phase)%getFloats('h_int',&
                                 defaultVal=[(0.0_pReal,i=1_pInt,size(prm%Nslip))])
-       prm%nonSchmidCoeff       = phaseConfig(phase)%getFloats('nonschmid_coefficients',&
+       prm%nonSchmidCoeff       = config_phase(phase)%getFloats('nonschmid_coefficients',&
                                 defaultVal = emptyReal )
 
-       prm%gdot0_slip           = phaseConfig(phase)%getFloat('gdot0_slip')
-       prm%n_slip               = phaseConfig(phase)%getFloat('n_slip')
-       prm%a_slip               = phaseConfig(phase)%getFloat('a_slip')
-       prm%h0_SlipSlip          = phaseConfig(phase)%getFloat('h0_slipslip')
+       prm%gdot0_slip           = config_phase(phase)%getFloat('gdot0_slip')
+       prm%n_slip               = config_phase(phase)%getFloat('n_slip')
+       prm%a_slip               = config_phase(phase)%getFloat('a_slip')
+       prm%h0_SlipSlip          = config_phase(phase)%getFloat('h0_slipslip')
      endif
 
-     prm%Ntwin            =  phaseConfig(phase)%getInts('ntwin', defaultVal=emptyInt)
+     prm%Ntwin            =  config_phase(phase)%getInts('ntwin', defaultVal=emptyInt)
      !if (size > Nchunks_SlipFamilies + 1_pInt) call IO_error(150_pInt,ext_msg=extmsg)
      if (sum(prm%Ntwin) > 0_pInt) then
-       prm%tau0_twin       =  phaseConfig(phase)%getFloats('tau0_twin')
-       prm%interaction_TwinTwin = phaseConfig(phase)%getFloats('interaction_twintwin')
+       prm%tau0_twin       =  config_phase(phase)%getFloats('tau0_twin')
+       prm%interaction_TwinTwin = config_phase(phase)%getFloats('interaction_twintwin')
 
-       prm%gdot0_twin  = phaseConfig(phase)%getFloat('gdot0_twin')
-       prm%n_twin      = phaseConfig(phase)%getFloat('n_twin')
-       prm%spr         = phaseConfig(phase)%getFloat('s_pr')
-       prm%twinB       = phaseConfig(phase)%getFloat('twin_b')
-       prm%twinC       = phaseConfig(phase)%getFloat('twin_c')
-       prm%twinD       = phaseConfig(phase)%getFloat('twin_d')
-       prm%twinE       = phaseConfig(phase)%getFloat('twin_e')
-       prm%h0_TwinTwin = phaseConfig(phase)%getFloat('h0_twintwin')
+       prm%gdot0_twin  = config_phase(phase)%getFloat('gdot0_twin')
+       prm%n_twin      = config_phase(phase)%getFloat('n_twin')
+       prm%spr         = config_phase(phase)%getFloat('s_pr')
+       prm%twinB       = config_phase(phase)%getFloat('twin_b')
+       prm%twinC       = config_phase(phase)%getFloat('twin_c')
+       prm%twinD       = config_phase(phase)%getFloat('twin_d')
+       prm%twinE       = config_phase(phase)%getFloat('twin_e')
+       prm%h0_TwinTwin = config_phase(phase)%getFloat('h0_twintwin')
      endif
 
      if (sum(prm%Nslip) > 0_pInt .and. sum(prm%Ntwin) > 0_pInt) then
-       prm%interaction_SlipTwin = phaseConfig(phase)%getFloats('interaction_sliptwin')
-       prm%interaction_TwinSlip = phaseConfig(phase)%getFloats('interaction_twinslip')
-       prm%h0_TwinSlip = phaseConfig(phase)%getFloat('h0_twinslip')
+       prm%interaction_SlipTwin = config_phase(phase)%getFloats('interaction_sliptwin')
+       prm%interaction_TwinSlip = config_phase(phase)%getFloats('interaction_twinslip')
+       prm%h0_TwinSlip = config_phase(phase)%getFloat('h0_twinslip')
      endif
 
      allocate(prm%matrix_SlipSlip(sum(prm%Nslip),sum(prm%Nslip)),source =0.0_pReal)
@@ -225,11 +225,11 @@ subroutine plastic_phenopowerlaw_init
      allocate(prm%matrix_TwinSlip(sum(prm%Ntwin),sum(prm%Nslip)),source =0.0_pReal)
      allocate(prm%matrix_TwinTwin(sum(prm%Ntwin),sum(prm%Ntwin)),source =0.0_pReal)
 
-     prm%aTolResistance = phaseConfig(phase)%getFloat('atol_resistance',defaultVal=1.0_pReal)
-     prm%aTolShear      = phaseConfig(phase)%getFloat('atol_shear',defaultVal=1.0e-6_pReal)
-     prm%aTolTwinfrac   = phaseConfig(phase)%getFloat('atol_twinfrac',defaultVal=1.0e-6_pReal)
+     prm%aTolResistance = config_phase(phase)%getFloat('atol_resistance',defaultVal=1.0_pReal)
+     prm%aTolShear      = config_phase(phase)%getFloat('atol_shear',defaultVal=1.0e-6_pReal)
+     prm%aTolTwinfrac   = config_phase(phase)%getFloat('atol_twinfrac',defaultVal=1.0e-6_pReal)
 
-     outputs = phaseConfig(phase)%getStrings('(output)',defaultVal=emptyString)
+     outputs = config_phase(phase)%getStrings('(output)',defaultVal=emptyString)
      allocate(prm%outputID(0))
      do i=1_pInt, size(outputs)
        outputID = undefined_ID
