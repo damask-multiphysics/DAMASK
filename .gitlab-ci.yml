@@ -52,23 +52,23 @@ variables:
   IntelCompiler16_0:               "Compiler/Intel/16.0 Libraries/IMKL/2016"
   IntelCompiler17_0:               "Compiler/Intel/17.0 Libraries/IMKL/2017"
   IntelCompiler18_1:               "Compiler/Intel/18.1 Libraries/IMKL/2018"
-  GNUCompiler5_3:                  "Compiler/GNU/5.3"
+  GNUCompiler7_3:                  "Compiler/GNU/7.3"
   # ------------ Defaults ----------------------------------------------
   IntelCompiler:                   "$IntelCompiler18_1"
-  GNUCompiler:                     "$GNUCompiler5_3"
+  GNUCompiler:                     "$GNUCompiler7_3"
   # ++++++++++++ MPI +++++++++++++++++++++++++++++++++++++++++++++++++++
   MPICH3_2Intel17_0:               "MPI/Intel/17.0/MPICH/3.2"
   MPICH3_2Intel18_1:               "MPI/Intel/18.1/MPICH/3.2.1"
-  MPICH3_2GNU5_3:                  "MPI/GNU/5.3/MPICH/3.2.1"
+  MPICH3_2GNU7_3:                  "MPI/GNU/7.3/MPICH/3.2.1"
   # ------------ Defaults ----------------------------------------------
-  MPICH_GNU:                       "$MPICH3_2GNU5_3"
+  MPICH_GNU:                       "$MPICH3_2GNU7_3"
   MPICH_Intel:                     "$MPICH3_2Intel18_1"
   # ++++++++++++ PETSc +++++++++++++++++++++++++++++++++++++++++++++++++
   PETSc3_9_1MPICH3_2Intel18_1:     "Libraries/PETSc/3.9.1/Intel-18.1-MPICH-3.2.1"
-  PETSc3_9_1MPICH3_2GNU5_3:        "Libraries/PETSc/3.9.1/GNU-5.3-MPICH-3.2.1"
+  PETSc3_9_1MPICH3_2GNU7_3:        "Libraries/PETSc/3.9.1/GNU-7.3-MPICH-3.2.1"
   # ------------ Defaults ----------------------------------------------
   PETSc_MPICH_Intel:               "$PETSc3_9_1MPICH3_2Intel18_1"
-  PETSc_MPICH_GNU:                 "$PETSc3_9_1MPICH3_2GNU5_3"
+  PETSc_MPICH_GNU:                 "$PETSc3_9_1MPICH3_2GNU7_3"
   # ++++++++++++ FEM +++++++++++++++++++++++++++++++++++++++++++++++++++
   Abaqus2016:                      "FEM/Abaqus/2016"
   Abaqus2017:                      "FEM/Abaqus/2017"
@@ -327,26 +327,6 @@ HybridIA:
 TextureComponents:
   stage: spectral
   script: TextureComponents/test.py
-  except:
-    - master
-    - release
-
-###################################################################################################
-Marc_compileIfort2014:
-  stage: compileMarc2014
-  script:
-    - module load $IntelCompiler16_0 $MSC2014
-    - Marc_compileIfort/test.py -m 2014
-  except:
-    - master
-    - release
-
-###################################################################################################
-Marc_compileIfort2014.2:
-  stage: compileMarc2014.2
-  script:
-    - module load $IntelCompiler16_0 $MSC2014_2
-    - Marc_compileIfort/test.py -m 2014.2
   except:
     - master
     - release
