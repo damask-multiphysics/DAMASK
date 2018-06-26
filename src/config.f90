@@ -60,12 +60,12 @@ module config
    MATERIAL_partHomogenization = 'homogenization', &                                                !< keyword for homogenization part
    MATERIAL_partCrystallite    = 'crystallite', &                                                   !< keyword for crystallite part
    MATERIAL_partPhase          = 'phase', &                                                         !< keyword for phase part
-   MATERIAL_partMicrostructure = 'microstructure', &                                                !< keyword for microstructure part
+   MATERIAL_partMicrostructure = 'microstructure'                                                   !< keyword for microstructure part
+ character(len=*), parameter, private  :: &
    MATERIAL_partTexture        = 'texture'                                                          !< keyword for texture part
 
 ! ToDo: Remove, use size(phaseConfig) etc
  integer(pInt), public, protected :: &
-   material_Ntexture, &                                                                             !< number of textures
    material_Nphase, &                                                                               !< number of phases
    material_Nhomogenization, &                                                                      !< number of homogenizations
    material_Nmicrostructure, &                                                                      !< number of microstructures
@@ -165,8 +165,7 @@ subroutine config_init()
  if (material_Ncrystallite < 1_pInt) call IO_error(160_pInt,ext_msg=material_partCrystallite)
  material_Nphase = size(phaseConfig)
  if (material_Nphase < 1_pInt) call IO_error(160_pInt,ext_msg=material_partPhase)
- material_Ntexture = size(textureConfig)
- if (material_Ntexture < 1_pInt) call IO_error(160_pInt,ext_msg=material_partTexture)
+ if (size(textureConfig) < 1_pInt) call IO_error(160_pInt,ext_msg=material_partTexture)
 
 end subroutine config_init
 

@@ -100,8 +100,13 @@ subroutine homogenization_init
  use crystallite, only: &
    crystallite_maxSizePostResults
 #endif
+ use config, only: &
+  config_deallocate, &
+  material_configFile, &
+  material_localFileExt, &
+  homogenizationConfig, &
+  homogenization_name
  use material
- use config
  use homogenization_none
  use homogenization_isostrain
  use homogenization_RGC
@@ -197,7 +202,7 @@ subroutine homogenization_init
 ! write description file for homogenization output
  mainProcess2: if (worldrank == 0) then
    call IO_write_jobFile(FILEUNIT,'outputHomogenization')
-   do p = 1,material_Nhomogenization
+   do p = 1,size(homogenizationConfig)
      if (any(material_homog == p)) then
        i = homogenization_typeInstance(p)                                                               ! which instance of this homogenization type
        valid = .true.                                                                                   ! assume valid
@@ -370,6 +375,8 @@ subroutine homogenization_init
    close(FILEUNIT)
  endif mainProcess2
 
+ call config_deallocate('material.config/homogenization')
+
 !--------------------------------------------------------------------------------------------------
 ! allocate and initialize global variables
  allocate(materialpoint_dPdF(3,3,3,3,mesh_maxNips,mesh_NcpElems),       source=0.0_pReal)
@@ -395,7 +402,7 @@ subroutine homogenization_init
  vacancyflux_maxSizePostResults    = 0_pInt
  porosity_maxSizePostResults       = 0_pInt
  hydrogenflux_maxSizePostResults   = 0_pInt
- do p = 1,material_Nhomogenization
+ do p = 1,size(homogenizationConfig)
    homogenization_maxSizePostResults = max(homogenization_maxSizePostResults,homogState       (p)%sizePostResults)
    thermal_maxSizePostResults        = max(thermal_maxSizePostResults,       thermalState     (p)%sizePostResults)
    damage_maxSizePostResults         = max(damage_maxSizePostResults        ,damageState      (p)%sizePostResults)
