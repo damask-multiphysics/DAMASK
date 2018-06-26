@@ -111,7 +111,7 @@ subroutine config_init()
 
  myDebug = debug_level(debug_material)
 
- write(6,'(/,a)') ' <<<+-  material init  -+>>>'
+ write(6,'(/,a)') ' <<<+-  config init  -+>>>'
  write(6,'(a15,a)')   ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
 
@@ -442,7 +442,7 @@ character(len=65536) function getString(this,key,defaultVal,raw)
  logical                                             :: found, &
                                                         split
 
- if (present(defaultVal)) getString = defaultVal
+ if (present(defaultVal)) getString = trim(defaultVal)
  split = merge(.not. raw,.true.,present(raw))
  found = present(defaultVal)
 
@@ -462,6 +462,7 @@ character(len=65536) function getString(this,key,defaultVal,raw)
  end do
 
  if (.not. found) call IO_error(140_pInt,ext_msg=key)
+ if (present(defaultVal) .and. len_trim(getString)/=len_trim(defaultVal)) write(6,*) 'mist';flush(6)
 
 end function getString
 
