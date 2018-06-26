@@ -449,8 +449,8 @@ character(len=65536) function getString(this,key,defaultVal,raw)
 
  whole = merge(raw,.false.,present(raw))                                                            ! whole string or white space splitting
  found = present(defaultVal)
- if (found) getString = trim(defaultVal)
  if (found) then
+   getString = trim(defaultVal)
    if (len_trim(getString) /= len_trim(defaultVal)) call IO_error(0_pInt,ext_msg='getString')
  endif
 
@@ -504,10 +504,7 @@ function getFloats(this,key,defaultVal)
  do while (associated(item))
    if (trim(IO_stringValue(item%string%val,item%string%pos,1)) == trim(key)) then
      found = .true.
-     if (.not. cumulative) then
-       deallocate(getFloats) ! use here rhs allocation with empty list
-       allocate(getFloats(0))
-     endif
+     if (.not. cumulative) getFloats = [real(pReal)::]
      if (item%string%pos(1) < 2_pInt) call IO_error(143_pInt,ext_msg=key)
      do i = 2_pInt, item%string%pos(1)
        getFloats = [getFloats,IO_FloatValue(item%string%val,item%string%pos,i)]
@@ -553,10 +550,7 @@ function getInts(this,key,defaultVal)
  do while (associated(item))
    if (trim(IO_stringValue(item%string%val,item%string%pos,1)) == trim(key)) then
      found = .true.
-     if (.not. cumulative) then
-       deallocate(getInts) ! use here rhs allocation with empty list
-       allocate(getInts(0))
-     endif
+     if (.not. cumulative) getInts = [integer(pInt)::]
      if (item%string%pos(1) < 2_pInt) call IO_error(143_pInt,ext_msg=key)
      do i = 2_pInt, item%string%pos(1)
        getInts = [getInts,IO_IntValue(item%string%val,item%string%pos,i)]
