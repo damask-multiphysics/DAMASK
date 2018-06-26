@@ -908,7 +908,7 @@ subroutine material_parseTexture
 
  implicit none
  integer(pInt) :: section, gauss, fiber, j, t, i
- character(len=65536), dimension(:), allocatable ::  lines
+ character(len=65536), dimension(:), allocatable ::  strings                                     ! Values for given key in material config 
  integer(pInt), dimension(:), allocatable :: chunkPos
  character(len=65536) :: tag
 
@@ -936,9 +936,9 @@ subroutine material_parseTexture
    fiber = 0_pInt
    
    if (textureConfig(t)%keyExists('axes')) then
-     lines = textureConfig(t)%getStrings('axes')
+     strings = textureConfig(t)%getStrings('axes')
      do j = 1_pInt, 3_pInt                                                                          ! look for "x", "y", and "z" entries
-       select case (lines(j))
+       select case (strings(j))
          case('x', '+x')
            texture_transformation(j,1:3,t) = [ 1.0_pReal, 0.0_pReal, 0.0_pReal]                     ! original axis is now +x-axis
          case('-x')
@@ -973,70 +973,71 @@ subroutine material_parseTexture
    endif
 
    if (textureConfig(t)%keyExists('(random)')) then
-     lines = textureConfig(t)%getStrings('(random)',raw=.true.)
-     do i = 1_pInt, size(lines)
+     strings = textureConfig(t)%getStrings('(random)',raw=.true.)
+     do i = 1_pInt, size(strings)
        gauss = gauss + 1_pInt
        texture_Gauss(1:3,gauss,t) = math_sampleRandomOri()
-       chunkPos = IO_stringPos(lines(i))
+       chunkPos = IO_stringPos(strings(i))
        do j = 1_pInt,3_pInt,2_pInt
-         select case (IO_stringValue(lines(i),chunkPos,j))
+         select case (IO_stringValue(strings(i),chunkPos,j))
            case('scatter')
-             texture_Gauss(4,gauss,t) = IO_floatValue(lines(i),chunkPos,j+1_pInt)*inRad
+             texture_Gauss(4,gauss,t) = IO_floatValue(strings(i),chunkPos,j+1_pInt)*inRad
            case('fraction')
-             texture_Gauss(5,gauss,t) = IO_floatValue(lines(i),chunkPos,j+1_pInt)
+             texture_Gauss(5,gauss,t) = IO_floatValue(strings(i),chunkPos,j+1_pInt)
          end select
        enddo
      enddo
    endif
 
-   lines = textureConfig(t)%getStringsRaw()
-
-   do i=1_pInt, size(lines)
-
-     chunkPos = IO_stringPos(lines(i))
-     tag = IO_stringValue(lines(i),chunkPos,1_pInt)                                                     ! extract key
-     textureType: select case(tag)
-
-       case ('(gauss)') textureType
-         gauss = gauss + 1_pInt
-         do j = 2_pInt,10_pInt,2_pInt
-           tag = IO_stringValue(lines(i),chunkPos,j)
-           select case (tag)
+   
+   if (textureConfig(t)%keyExists('(gauss)')) then
+     gauss = gauss + 1_pInt
+     strings = textureConfig(t)%getStrings('(gauss)',raw= .true.)
+     do i = 1_pInt , size(strings)
+       chunkPos = IO_stringPos(strings(i))
+       do j = 1_pInt,9_pInt,2_pInt
+         select case (IO_stringValue(strings(i),chunkPos,j))
              case('phi1')
-                 texture_Gauss(1,gauss,t) = IO_floatValue(lines(i),chunkPos,j+1_pInt)*inRad
+                 texture_Gauss(1,gauss,t) = IO_floatValue(strings(i),chunkPos,j+1_pInt)*inRad
              case('phi')
-                 texture_Gauss(2,gauss,t) = IO_floatValue(lines(i),chunkPos,j+1_pInt)*inRad
+                 texture_Gauss(2,gauss,t) = IO_floatValue(strings(i),chunkPos,j+1_pInt)*inRad
              case('phi2')
-                 texture_Gauss(3,gauss,t) = IO_floatValue(lines(i),chunkPos,j+1_pInt)*inRad
+                 texture_Gauss(3,gauss,t) = IO_floatValue(strings(i),chunkPos,j+1_pInt)*inRad
              case('scatter')
-                 texture_Gauss(4,gauss,t) = IO_floatValue(lines(i),chunkPos,j+1_pInt)*inRad
+                 texture_Gauss(4,gauss,t) = IO_floatValue(strings(i),chunkPos,j+1_pInt)*inRad
              case('fraction')
-                 texture_Gauss(5,gauss,t) = IO_floatValue(lines(i),chunkPos,j+1_pInt)
-           end select
-         enddo
-
-       case ('(fiber)') textureType
-         fiber = fiber + 1_pInt
-         do j = 2_pInt,12_pInt,2_pInt
-           tag = IO_stringValue(lines(i),chunkPos,j)
-           select case (tag)
+                 texture_Gauss(5,gauss,t) = IO_floatValue(strings(i),chunkPos,j+1_pInt)
+          end select
+      enddo
+     enddo
+   endif
+    
+    
+   if (textureConfig(t)%keyExists('(fiber)')) then
+     gauss = gauss + 1_pInt
+     strings = textureConfig(t)%getStrings('(fiber)',raw= .true.)
+     do i = 1_pInt, size(strings)
+       chunkPos = IO_stringPos(strings(i))
+       do j = 1_pInt,11_pInt,2_pInt
+         select case (IO_stringValue(strings(i),chunkPos,j))
              case('alpha1')
-                 texture_Fiber(1,fiber,t) = IO_floatValue(lines(i),chunkPos,j+1_pInt)*inRad
+                 texture_Fiber(1,fiber,t) = IO_floatValue(strings(i),chunkPos,j+1_pInt)*inRad
              case('alpha2')
-                 texture_Fiber(2,fiber,t) = IO_floatValue(lines(i),chunkPos,j+1_pInt)*inRad
+                 texture_Fiber(2,fiber,t) = IO_floatValue(strings(i),chunkPos,j+1_pInt)*inRad
              case('beta1')
-                 texture_Fiber(3,fiber,t) = IO_floatValue(lines(i),chunkPos,j+1_pInt)*inRad
+                 texture_Fiber(3,fiber,t) = IO_floatValue(strings(i),chunkPos,j+1_pInt)*inRad
              case('beta2')
-                 texture_Fiber(4,fiber,t) = IO_floatValue(lines(i),chunkPos,j+1_pInt)*inRad
+                 texture_Fiber(4,fiber,t) = IO_floatValue(strings(i),chunkPos,j+1_pInt)*inRad
              case('scatter')
-                 texture_Fiber(5,fiber,t) = IO_floatValue(lines(i),chunkPos,j+1_pInt)*inRad
+                 texture_Fiber(5,fiber,t) = IO_floatValue(strings(i),chunkPos,j+1_pInt)*inRad
              case('fraction')
-                 texture_Fiber(6,fiber,t) = IO_floatValue(lines(i),chunkPos,j+1_pInt)
-           end select
-         enddo
-     end select textureType
-   enddo
- enddo
+                 texture_Fiber(6,fiber,t) = IO_floatValue(strings(i),chunkPos,j+1_pInt)
+          end select
+       enddo
+     enddo
+   endif
+ enddo    
+  
 
 end subroutine material_parseTexture
 
