@@ -2,7 +2,7 @@
 # usage:  source DAMASK.sh
 
 function canonicalPath {
-  python -c "import os,sys; print(os.path.realpath(os.path.expanduser(sys.argv[1])))" $1
+  python -c "import os,sys; print(os.path.normpath(os.path.realpath(os.path.expanduser(sys.argv[1]))))" $1
 }
 
 function blink {
@@ -17,12 +17,8 @@ else
   DAMASK_ROOT=${STAT##* }
 fi
 
-# transition compatibility (renamed $DAMASK_ROOT/DAMASK_env.sh to $DAMASK_ROOT/env/DAMASK.sh)
-if [ ${BASH_SOURCE##*/} == "DAMASK.sh" ]; then
-  DAMASK_ROOT="$DAMASK_ROOT/.."
-fi
+DAMASK_ROOT=$(canonicalPath "$DAMASK_ROOT/../")
 
-DAMASK_ROOT=$(canonicalPath $DAMASK_ROOT)
 
 # shorthand command to change to DAMASK_ROOT directory
 eval "function DAMASK_root() { cd $DAMASK_ROOT; }"
