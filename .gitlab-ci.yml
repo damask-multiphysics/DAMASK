@@ -7,7 +7,6 @@ stages:
   - compileSpectralGNU
   - prepareSpectral
   - spectral
-  - compileMarc2015
   - compileMarc2016
   - marc
   - compileAbaqus2016
