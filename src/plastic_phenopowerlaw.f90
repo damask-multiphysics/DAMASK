@@ -141,15 +141,15 @@ subroutine plastic_phenopowerlaw_init
 
  integer(pInt) :: &
    maxNinstance, &
-   instance,phase,j,k, f,o, i,&
+   instance,p,j,k, f,o, i,&
    NipcMyPhase, outputSize, &
    offset_slip, index_myFamily, index_otherFamily, &
    sizeState,sizeDotState, &
    startIndex, endIndex
 
- integer(pInt), dimension(0), parameter :: emptyInt = [integer(pInt)::]
- real(pReal),   dimension(0), parameter :: emptyReal = [real(pReal)::]
- character(len=65536),   dimension(0), parameter :: emptyString = [character(len=65536)::]
+ integer(pInt),          dimension(0), parameter :: emptyIntArray = [integer(pInt)::]
+ real(pReal),            dimension(0), parameter :: emptyRealArray = [real(pReal)::]
+ character(len=65536),   dimension(0), parameter :: emptyStringArray = [character(len=65536)::]
 
  type(tParameters), pointer :: prm
 
@@ -176,48 +176,48 @@ subroutine plastic_phenopowerlaw_init
  allocate(state(maxNinstance))
  allocate(dotState(maxNinstance))
 
- do phase = 1_pInt, size(phase_plasticityInstance)
-   if (phase_plasticity(phase) == PLASTICITY_PHENOPOWERLAW_ID) then
-     instance = phase_plasticityInstance(phase)
+ do p = 1_pInt, size(phase_plasticityInstance)
+   if (phase_plasticity(p) == PLASTICITY_PHENOPOWERLAW_ID) then
+     instance = phase_plasticityInstance(p)
      prm => param(instance)
 
-     prm%Nslip            =  config_phase(phase)%getInts('nslip',defaultVal=emptyInt)
+     prm%Nslip            =  config_phase(p)%getInts('nslip',defaultVal=emptyIntArray)
      !if (size > Nchunks_SlipFamilies + 1_pInt) call IO_error(150_pInt,ext_msg=extmsg)
      if (sum(prm%Nslip) > 0_pInt) then
-       prm%tau0_slip            = config_phase(phase)%getFloats('tau0_slip')
-       prm%tausat_slip          = config_phase(phase)%getFloats('tausat_slip')
-       prm%interaction_SlipSlip = config_phase(phase)%getFloats('interaction_slipslip')
-       prm%H_int                = config_phase(phase)%getFloats('h_int',&
+       prm%tau0_slip            = config_phase(p)%getFloats('tau0_slip')
+       prm%tausat_slip          = config_phase(p)%getFloats('tausat_slip')
+       prm%interaction_SlipSlip = config_phase(p)%getFloats('interaction_slipslip')
+       prm%H_int                = config_phase(p)%getFloats('h_int',&
                                 defaultVal=[(0.0_pReal,i=1_pInt,size(prm%Nslip))])
-       prm%nonSchmidCoeff       = config_phase(phase)%getFloats('nonschmid_coefficients',&
-                                defaultVal = emptyReal )
+       prm%nonSchmidCoeff       = config_phase(p)%getFloats('nonschmid_coefficients',&
+                                defaultVal = emptyRealArray )
 
-       prm%gdot0_slip           = config_phase(phase)%getFloat('gdot0_slip')
-       prm%n_slip               = config_phase(phase)%getFloat('n_slip')
-       prm%a_slip               = config_phase(phase)%getFloat('a_slip')
-       prm%h0_SlipSlip          = config_phase(phase)%getFloat('h0_slipslip')
+       prm%gdot0_slip           = config_phase(p)%getFloat('gdot0_slip')
+       prm%n_slip               = config_phase(p)%getFloat('n_slip')
+       prm%a_slip               = config_phase(p)%getFloat('a_slip')
+       prm%h0_SlipSlip          = config_phase(p)%getFloat('h0_slipslip')
      endif
 
-     prm%Ntwin            =  config_phase(phase)%getInts('ntwin', defaultVal=emptyInt)
+     prm%Ntwin            =  config_phase(p)%getInts('ntwin', defaultVal=emptyIntArray)
      !if (size > Nchunks_SlipFamilies + 1_pInt) call IO_error(150_pInt,ext_msg=extmsg)
      if (sum(prm%Ntwin) > 0_pInt) then
-       prm%tau0_twin       =  config_phase(phase)%getFloats('tau0_twin')
-       prm%interaction_TwinTwin = config_phase(phase)%getFloats('interaction_twintwin')
+       prm%tau0_twin       =  config_phase(p)%getFloats('tau0_twin')
+       prm%interaction_TwinTwin = config_phase(p)%getFloats('interaction_twintwin')
 
-       prm%gdot0_twin  = config_phase(phase)%getFloat('gdot0_twin')
-       prm%n_twin      = config_phase(phase)%getFloat('n_twin')
-       prm%spr         = config_phase(phase)%getFloat('s_pr')
-       prm%twinB       = config_phase(phase)%getFloat('twin_b')
-       prm%twinC       = config_phase(phase)%getFloat('twin_c')
-       prm%twinD       = config_phase(phase)%getFloat('twin_d')
-       prm%twinE       = config_phase(phase)%getFloat('twin_e')
-       prm%h0_TwinTwin = config_phase(phase)%getFloat('h0_twintwin')
+       prm%gdot0_twin  = config_phase(p)%getFloat('gdot0_twin')
+       prm%n_twin      = config_phase(p)%getFloat('n_twin')
+       prm%spr         = config_phase(p)%getFloat('s_pr')
+       prm%twinB       = config_phase(p)%getFloat('twin_b')
+       prm%twinC       = config_phase(p)%getFloat('twin_c')
+       prm%twinD       = config_phase(p)%getFloat('twin_d')
+       prm%twinE       = config_phase(p)%getFloat('twin_e')
+       prm%h0_TwinTwin = config_phase(p)%getFloat('h0_twintwin')
      endif
 
      if (sum(prm%Nslip) > 0_pInt .and. sum(prm%Ntwin) > 0_pInt) then
-       prm%interaction_SlipTwin = config_phase(phase)%getFloats('interaction_sliptwin')
-       prm%interaction_TwinSlip = config_phase(phase)%getFloats('interaction_twinslip')
-       prm%h0_TwinSlip = config_phase(phase)%getFloat('h0_twinslip')
+       prm%interaction_SlipTwin = config_phase(p)%getFloats('interaction_sliptwin')
+       prm%interaction_TwinSlip = config_phase(p)%getFloats('interaction_twinslip')
+       prm%h0_TwinSlip = config_phase(p)%getFloat('h0_twinslip')
      endif
 
      allocate(prm%matrix_SlipSlip(sum(prm%Nslip),sum(prm%Nslip)),source =0.0_pReal)
@@ -225,11 +225,11 @@ subroutine plastic_phenopowerlaw_init
      allocate(prm%matrix_TwinSlip(sum(prm%Ntwin),sum(prm%Nslip)),source =0.0_pReal)
      allocate(prm%matrix_TwinTwin(sum(prm%Ntwin),sum(prm%Ntwin)),source =0.0_pReal)
 
-     prm%aTolResistance = config_phase(phase)%getFloat('atol_resistance',defaultVal=1.0_pReal)
-     prm%aTolShear      = config_phase(phase)%getFloat('atol_shear',defaultVal=1.0e-6_pReal)
-     prm%aTolTwinfrac   = config_phase(phase)%getFloat('atol_twinfrac',defaultVal=1.0e-6_pReal)
+     prm%aTolResistance = config_phase(p)%getFloat('atol_resistance',defaultVal=1.0_pReal)
+     prm%aTolShear      = config_phase(p)%getFloat('atol_shear',defaultVal=1.0e-6_pReal)
+     prm%aTolTwinfrac   = config_phase(p)%getFloat('atol_twinfrac',defaultVal=1.0e-6_pReal)
 
-     outputs = config_phase(phase)%getStrings('(output)',defaultVal=emptyString)
+     outputs = config_phase(p)%getStrings('(output)',defaultVal=emptyStringArray)
      allocate(prm%outputID(0))
      do i=1_pInt, size(outputs)
        outputID = undefined_ID
@@ -315,33 +315,33 @@ subroutine plastic_phenopowerlaw_init
 
 !--------------------------------------------------------------------------------------------------
 ! allocate state arrays
-     NipcMyPhase = count(material_phase == phase)                                                   ! number of IPCs containing my phase
+     NipcMyPhase = count(material_phase == p)                                                   ! number of IPCs containing my phase
      sizeState = size(['tau_slip     ','accshear_slip']) * sum(prm%nslip) &
                + size(['tau_twin     ','accshear_twin']) * sum(prm%ntwin) &
                + size(['sum(gamma)', 'sum(f)    '])
 
      sizeDotState = sizeState
-     plasticState(phase)%sizeState = sizeState
-     plasticState(phase)%sizeDotState = sizeDotState
-     plasticState(phase)%sizePostResults = sum(plastic_phenopowerlaw_sizePostResult(:,instance))
-     plasticState(phase)%nSlip = sum(prm%Nslip)
-     plasticState(phase)%nTwin = sum(prm%Ntwin)
-     allocate(plasticState(phase)%aTolState          (   sizeState),             source=0.0_pReal)
-     allocate(plasticState(phase)%state0             (   sizeState,NipcMyPhase), source=0.0_pReal)
-     allocate(plasticState(phase)%partionedState0    (   sizeState,NipcMyPhase), source=0.0_pReal)
-     allocate(plasticState(phase)%subState0          (   sizeState,NipcMyPhase), source=0.0_pReal)
-     allocate(plasticState(phase)%state              (   sizeState,NipcMyPhase), source=0.0_pReal)
+     plasticState(p)%sizeState = sizeState
+     plasticState(p)%sizeDotState = sizeDotState
+     plasticState(p)%sizePostResults = sum(plastic_phenopowerlaw_sizePostResult(:,instance))
+     plasticState(p)%nSlip = sum(prm%Nslip)
+     plasticState(p)%nTwin = sum(prm%Ntwin)
+     allocate(plasticState(p)%aTolState          (   sizeState),             source=0.0_pReal)
+     allocate(plasticState(p)%state0             (   sizeState,NipcMyPhase), source=0.0_pReal)
+     allocate(plasticState(p)%partionedState0    (   sizeState,NipcMyPhase), source=0.0_pReal)
+     allocate(plasticState(p)%subState0          (   sizeState,NipcMyPhase), source=0.0_pReal)
+     allocate(plasticState(p)%state              (   sizeState,NipcMyPhase), source=0.0_pReal)
 
-     allocate(plasticState(phase)%dotState           (sizeDotState,NipcMyPhase), source=0.0_pReal)
-     allocate(plasticState(phase)%deltaState               (0_pInt,NipcMyPhase), source=0.0_pReal)
+     allocate(plasticState(p)%dotState           (sizeDotState,NipcMyPhase), source=0.0_pReal)
+     allocate(plasticState(p)%deltaState               (0_pInt,NipcMyPhase), source=0.0_pReal)
      if (any(numerics_integrator == 1_pInt)) then
-       allocate(plasticState(phase)%previousDotState (sizeDotState,NipcMyPhase),source=0.0_pReal)
-       allocate(plasticState(phase)%previousDotState2(sizeDotState,NipcMyPhase),source=0.0_pReal)
+       allocate(plasticState(p)%previousDotState (sizeDotState,NipcMyPhase),source=0.0_pReal)
+       allocate(plasticState(p)%previousDotState2(sizeDotState,NipcMyPhase),source=0.0_pReal)
      endif
      if (any(numerics_integrator == 4_pInt)) &
-       allocate(plasticState(phase)%RK4dotState      (sizeDotState,NipcMyPhase), source=0.0_pReal)
+       allocate(plasticState(p)%RK4dotState      (sizeDotState,NipcMyPhase), source=0.0_pReal)
      if (any(numerics_integrator == 5_pInt)) &
-       allocate(plasticState(phase)%RKCK45dotState (6,sizeDotState,NipcMyPhase), source=0.0_pReal)
+       allocate(plasticState(p)%RKCK45dotState (6,sizeDotState,NipcMyPhase), source=0.0_pReal)
 
 !--------------------------------------------------------------------------------------------------
 ! calculate hardening matrices
@@ -354,9 +354,9 @@ subroutine plastic_phenopowerlaw_init
            otherSlipSystems: do k = 1_pInt,prm%Nslip(o)
              prm%matrix_SlipSlip(index_myFamily+j,index_otherFamily+k) = &
                  prm%interaction_SlipSlip(lattice_interactionSlipSlip( &
-                                                                   sum(lattice_NslipSystem(1:f-1,phase))+j, &
-                                                                   sum(lattice_NslipSystem(1:o-1,phase))+k, &
-                                                                   phase))
+                                                                   sum(lattice_NslipSystem(1:f-1,p))+j, &
+                                                                   sum(lattice_NslipSystem(1:o-1,p))+k, &
+                                                                   p))
          enddo otherSlipSystems; enddo otherSlipFamilies
 
          twinFamilies: do o = 1_pInt,size(prm%Ntwin,1)
@@ -364,9 +364,9 @@ subroutine plastic_phenopowerlaw_init
            twinSystems: do k = 1_pInt,prm%Ntwin(o)
              prm%matrix_SlipTwin(index_myFamily+j,index_otherFamily+k) = &
                  prm%interaction_SlipTwin(lattice_interactionSlipTwin( &
-                                                                   sum(lattice_NslipSystem(1:f-1_pInt,phase))+j, &
-                                                                   sum(lattice_NtwinSystem(1:o-1_pInt,phase))+k, &
-                                                                   phase))
+                                                                   sum(lattice_NslipSystem(1:f-1_pInt,p))+j, &
+                                                                   sum(lattice_NtwinSystem(1:o-1_pInt,p))+k, &
+                                                                   p))
          enddo twinSystems; enddo twinFamilies
        enddo mySlipSystems
      enddo mySlipFamilies
@@ -379,9 +379,9 @@ subroutine plastic_phenopowerlaw_init
            slipSystems: do k = 1_pInt,prm%Nslip(o)
              prm%matrix_TwinSlip(index_myFamily+j,index_otherFamily+k) = &
                  prm%interaction_TwinSlip(lattice_interactionTwinSlip( &
-                                                                   sum(lattice_NtwinSystem(1:f-1_pInt,phase))+j, &
-                                                                   sum(lattice_NslipSystem(1:o-1_pInt,phase))+k, &
-                                                                   phase))
+                                                                   sum(lattice_NtwinSystem(1:f-1_pInt,p))+j, &
+                                                                   sum(lattice_NslipSystem(1:o-1_pInt,p))+k, &
+                                                                   p))
          enddo slipSystems; enddo slipFamilies
 
          otherTwinFamilies: do o = 1_pInt,size(prm%Ntwin,1)
@@ -389,9 +389,9 @@ subroutine plastic_phenopowerlaw_init
            otherTwinSystems: do k = 1_pInt,prm%Ntwin(o)
              prm%matrix_TwinTwin(index_myFamily+j,index_otherFamily+k) = &
                  prm%interaction_TwinTwin(lattice_interactionTwinTwin( &
-                                                                   sum(lattice_NtwinSystem(1:f-1_pInt,phase))+j, &
-                                                                   sum(lattice_NtwinSystem(1:o-1_pInt,phase))+k, &
-                                                                   phase))
+                                                                   sum(lattice_NtwinSystem(1:f-1_pInt,p))+j, &
+                                                                   sum(lattice_NtwinSystem(1:o-1_pInt,p))+k, &
+                                                                   p))
          enddo otherTwinSystems; enddo otherTwinFamilies
        enddo myTwinSystems
      enddo myTwinFamilies
@@ -399,54 +399,54 @@ subroutine plastic_phenopowerlaw_init
 !--------------------------------------------------------------------------------------------------
 ! locally defined state aliases and initialization of state0 and aTolState
      startIndex = 1_pInt
-     endIndex   = plasticState(phase)%nSlip
-     state   (instance)%s_slip=>plasticState(phase)%state   (startIndex:endIndex,:)
-     dotState(instance)%s_slip=>plasticState(phase)%dotState(startIndex:endIndex,:)
-     plasticState(phase)%state0(startIndex:endIndex,:) = &
+     endIndex   = plasticState(p)%nSlip
+     state   (instance)%s_slip=>plasticState(p)%state   (startIndex:endIndex,:)
+     dotState(instance)%s_slip=>plasticState(p)%dotState(startIndex:endIndex,:)
+     plasticState(p)%state0(startIndex:endIndex,:) = &
        spread(math_expand(prm%tau0_slip, prm%Nslip), 2, NipcMyPhase)
 
-     plasticState(phase)%aTolState(startIndex:endIndex) = prm%aTolResistance
+     plasticState(p)%aTolState(startIndex:endIndex) = prm%aTolResistance
 
      startIndex = endIndex + 1_pInt
-     endIndex   = endIndex + plasticState(phase)%nTwin
-     state   (instance)%s_twin=>plasticState(phase)%state   (startIndex:endIndex,:)
-     dotState(instance)%s_twin=>plasticState(phase)%dotState(startIndex:endIndex,:)
-     plasticState(phase)%state0(startIndex:endIndex,:) = &
+     endIndex   = endIndex + plasticState(p)%nTwin
+     state   (instance)%s_twin=>plasticState(p)%state   (startIndex:endIndex,:)
+     dotState(instance)%s_twin=>plasticState(p)%dotState(startIndex:endIndex,:)
+     plasticState(p)%state0(startIndex:endIndex,:) = &
        spread(math_expand(prm%tau0_twin, prm%Ntwin), 2, NipcMyPhase)
-     plasticState(phase)%aTolState(startIndex:endIndex) = prm%aTolResistance
+     plasticState(p)%aTolState(startIndex:endIndex) = prm%aTolResistance
 
      startIndex = endIndex + 1_pInt
      endIndex   = endIndex + 1_pInt
-     state   (instance)%sumGamma=>plasticState(phase)%state   (startIndex,:)
-     dotState(instance)%sumGamma=>plasticState(phase)%dotState(startIndex,:)
-     plasticState(phase)%aTolState(startIndex:endIndex) = prm%aTolShear
+     state   (instance)%sumGamma=>plasticState(p)%state   (startIndex,:)
+     dotState(instance)%sumGamma=>plasticState(p)%dotState(startIndex,:)
+     plasticState(p)%aTolState(startIndex:endIndex) = prm%aTolShear
 
      startIndex = endIndex + 1_pInt
      endIndex   = endIndex + 1_pInt
-     state   (instance)%sumF=>plasticState(phase)%state   (startIndex,:)
-     dotState(instance)%sumF=>plasticState(phase)%dotState(startIndex,:)
-     plasticState(phase)%aTolState(startIndex:endIndex) = prm%aTolTwinFrac
+     state   (instance)%sumF=>plasticState(p)%state   (startIndex,:)
+     dotState(instance)%sumF=>plasticState(p)%dotState(startIndex,:)
+     plasticState(p)%aTolState(startIndex:endIndex) = prm%aTolTwinFrac
 
      startIndex = endIndex + 1_pInt
-     endIndex   = endIndex + plasticState(phase)%nSlip
-     state   (instance)%accshear_slip=>plasticState(phase)%state   (startIndex:endIndex,:)
-     dotState(instance)%accshear_slip=>plasticState(phase)%dotState(startIndex:endIndex,:)
-     plasticState(phase)%aTolState(startIndex:endIndex) = prm%aTolShear
+     endIndex   = endIndex + plasticState(p)%nSlip
+     state   (instance)%accshear_slip=>plasticState(p)%state   (startIndex:endIndex,:)
+     dotState(instance)%accshear_slip=>plasticState(p)%dotState(startIndex:endIndex,:)
+     plasticState(p)%aTolState(startIndex:endIndex) = prm%aTolShear
      ! global alias
-     plasticState(phase)%slipRate =>plasticState(phase)%dotState(startIndex:endIndex,:)
-     plasticState(phase)%accumulatedSlip =>plasticState(phase)%state(startIndex:endIndex,:)
+     plasticState(p)%slipRate =>plasticState(p)%dotState(startIndex:endIndex,:)
+     plasticState(p)%accumulatedSlip =>plasticState(p)%state(startIndex:endIndex,:)
 
      startIndex = endIndex + 1_pInt
-     endIndex   = endIndex + plasticState(phase)%nTwin
-     state   (instance)%accshear_twin=>plasticState(phase)%state   (startIndex:endIndex,:)
-     dotState(instance)%accshear_twin=>plasticState(phase)%dotState(startIndex:endIndex,:)
-     plasticState(phase)%aTolState(startIndex:endIndex) = prm%aTolShear
+     endIndex   = endIndex + plasticState(p)%nTwin
+     state   (instance)%accshear_twin=>plasticState(p)%state   (startIndex:endIndex,:)
+     dotState(instance)%accshear_twin=>plasticState(p)%dotState(startIndex:endIndex,:)
+     plasticState(p)%aTolState(startIndex:endIndex) = prm%aTolShear
 
-     offset_slip = plasticState(phase)%nSlip+plasticState(phase)%nTwin+2_pInt
-     plasticState(phase)%slipRate => &
-       plasticState(phase)%dotState(offset_slip+1:offset_slip+plasticState(phase)%nSlip,1:NipcMyPhase)
-     plasticState(phase)%accumulatedSlip => &
-       plasticState(phase)%state(offset_slip+1:offset_slip+plasticState(phase)%nSlip,1:NipcMyPhase)
+     offset_slip = plasticState(p)%nSlip+plasticState(p)%nTwin+2_pInt
+     plasticState(p)%slipRate => &
+       plasticState(p)%dotState(offset_slip+1:offset_slip+plasticState(p)%nSlip,1:NipcMyPhase)
+     plasticState(p)%accumulatedSlip => &
+       plasticState(p)%state(offset_slip+1:offset_slip+plasticState(p)%nSlip,1:NipcMyPhase)
 
    endif
  enddo
