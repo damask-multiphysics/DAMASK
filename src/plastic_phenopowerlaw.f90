@@ -668,9 +668,9 @@ subroutine plastic_phenopowerlaw_dotState(Tstar_v,ipc,ip,el)
 
 !--------------------------------------------------------------------------------------------------
 ! system-independent (nonlinear) prefactors to M_Xx (X influenced by x) matrices
- c_SlipSlip = prm%h0_slipslip*(1.0_pReal + prm%twinC*stt%sumF(of)** prm%twinB)
- c_TwinSlip = prm%h0_TwinSlip*stt%sumGamma(of)**prm%twinE
- c_TwinTwin = prm%h0_TwinTwin*stt%sumF(of)**prm%twinD
+ c_SlipSlip = prm%h0_slipslip * (1.0_pReal + prm%twinC*stt%sumF(of)** prm%twinB)
+ c_TwinSlip = prm%h0_TwinSlip * stt%sumGamma(of)**prm%twinE
+ c_TwinTwin = prm%h0_TwinTwin * stt%sumF(of)**prm%twinD
 
 !--------------------------------------------------------------------------------------------------
 !  calculate left and right vectors and calculate dot gammas
@@ -723,19 +723,13 @@ subroutine plastic_phenopowerlaw_dotState(Tstar_v,ipc,ip,el)
 
 !--------------------------------------------------------------------------------------------------
 ! calculate the overall hardening based on above
- j = 0_pInt
- slipFamilies2: do f = 1_pInt,size(prm%Nslip,1)
-   slipSystems2: do i = 1_pInt,prm%Nslip(f)
-     j = j+1_pInt
-     dotState(instance)%s_slip(j,of) = &                                                            ! evolution of slip resistance j
-       c_SlipSlip * left_SlipSlip(j) * &
-       dot_product(prm%interaction_SlipSlip(j,1:prm%totalNslip),right_SlipSlip*abs(gdot_slip)) + &  ! dot gamma_slip modulated by right-side slip factor
-       dot_product(prm%interaction_SlipTwin(j,1:prm%totalNtwin),gdot_twin)                          ! dot gamma_twin modulated by right-side twin factor
-     dotState(instance)%sumGamma(of) = dotState(instance)%sumGamma(of) + &
-                                                        abs(gdot_slip(j))
-     dotState(instance)%accshear_slip(j,of) = abs(gdot_slip(j))
-   enddo slipSystems2
- enddo slipFamilies2
+ do j = 1_pInt,prm%totalNslip
+   dotState(instance)%s_slip(j,of) = c_SlipSlip * left_SlipSlip(j) * &                              ! evolution of slip resistance j
+     dot_product(prm%interaction_SlipSlip(j,1:prm%totalNslip),right_SlipSlip*abs(gdot_slip)) + &    ! dot gamma_slip modulated by right-side slip factor
+     dot_product(prm%interaction_SlipTwin(j,1:prm%totalNtwin),gdot_twin)                            ! dot gamma_twin modulated by right-side twin factor
+ enddo
+ dotState(instance)%sumGamma(of) = dotState(instance)%sumGamma(of) + sum(abs(gdot_slip))
+ dotState(instance)%accshear_slip(1:prm%totalNslip,of) = abs(gdot_slip)
 
  j = 0_pInt
  twinFamilies2: do f = 1_pInt,size(prm%Ntwin,1)
@@ -801,8 +795,8 @@ function plastic_phenopowerlaw_postResults(Tstar_v,ipc,ip,el)
  plastic_phenopowerlaw_postResults = 0.0_pReal
  c = 0_pInt
 
- outputsLoop: do o = 1_pInt,size(param(instance)%outputID)
-   select case(param(instance)%outputID(o))
+ outputsLoop: do o = 1_pInt,size(prm%outputID)
+   select case(prm%outputID(o))
      case (resistance_slip_ID)
        plastic_phenopowerlaw_postResults(c+1_pInt:c+prm%totalNslip) = state(instance)%s_slip(1:prm%totalNslip,of)
        c = c + prm%totalNslip
@@ -813,22 +807,22 @@ function plastic_phenopowerlaw_postResults(Tstar_v,ipc,ip,el)
 
      case (shearrate_slip_ID)
        j = 0_pInt
-       slipFamilies1: do f = 1_pInt,size(param(instance)%Nslip,1)
+       slipFamilies1: do f = 1_pInt,size(prm%Nslip,1)
          index_myFamily = sum(lattice_NslipSystem(1:f-1_pInt,ph))                                ! at which index starts my family
-         slipSystems1: do i = 1_pInt,param(instance)%Nslip(f)
+         slipSystems1: do i = 1_pInt,prm%Nslip(f)
            j = j + 1_pInt
            tau_slip_pos  = dot_product(Tstar_v,lattice_Sslip_v(1:6,1,index_myFamily+i,ph))
            tau_slip_neg  = tau_slip_pos
            do k = 1,lattice_NnonSchmid(ph)
-             tau_slip_pos = tau_slip_pos +param(instance)%nonSchmidCoeff(k)* &
+             tau_slip_pos = tau_slip_pos +prm%nonSchmidCoeff(k)* &
                                    dot_product(Tstar_v,lattice_Sslip_v(1:6,2*k,index_myFamily+i,ph))
-             tau_slip_neg = tau_slip_neg +param(instance)%nonSchmidCoeff(k)* &
+             tau_slip_neg = tau_slip_neg +prm%nonSchmidCoeff(k)* &
                                    dot_product(Tstar_v,lattice_Sslip_v(1:6,2*k+1,index_myFamily+i,ph))
            enddo
-           plastic_phenopowerlaw_postResults(c+j) = param(instance)%gdot0_slip*0.5_pReal* &
-                    ((abs(tau_slip_pos)/state(instance)%s_slip(j,of))**param(instance)%n_slip &
+           plastic_phenopowerlaw_postResults(c+j) = prm%gdot0_slip*0.5_pReal* &
+                    ((abs(tau_slip_pos)/state(instance)%s_slip(j,of))**prm%n_slip &
                     *sign(1.0_pReal,tau_slip_pos) &
-                    +(abs(tau_slip_neg)/(state(instance)%s_slip(j,of)))**param(instance)%n_slip &
+                    +(abs(tau_slip_neg)/(state(instance)%s_slip(j,of)))**prm%n_slip &
                     *sign(1.0_pReal,tau_slip_neg))
          enddo slipSystems1
        enddo slipFamilies1
@@ -836,9 +830,9 @@ function plastic_phenopowerlaw_postResults(Tstar_v,ipc,ip,el)
 
      case (resolvedstress_slip_ID)
        j = 0_pInt
-       slipFamilies2: do f = 1_pInt,size(param(instance)%Nslip,1)
+       slipFamilies2: do f = 1_pInt,size(prm%Nslip,1)
          index_myFamily = sum(lattice_NslipSystem(1:f-1_pInt,ph))                                ! at which index starts my family
-         slipSystems2: do i = 1_pInt,param(instance)%Nslip(f)
+         slipSystems2: do i = 1_pInt,prm%Nslip(f)
            j = j + 1_pInt
            plastic_phenopowerlaw_postResults(c+j) = &
                              dot_product(Tstar_v,lattice_Sslip_v(1:6,1,index_myFamily+i,ph))
@@ -862,24 +856,24 @@ function plastic_phenopowerlaw_postResults(Tstar_v,ipc,ip,el)
        c = c + prm%totalNtwin
      case (shearrate_twin_ID)
        j = 0_pInt
-       twinFamilies1: do f = 1_pInt,size(param(instance)%Ntwin,1)
+       twinFamilies1: do f = 1_pInt,size(prm%Ntwin,1)
          index_myFamily = sum(lattice_NtwinSystem(1:f-1_pInt,ph))                                ! at which index starts my family
-         twinSystems1: do i = 1_pInt,param(instance)%Ntwin(f)
+         twinSystems1: do i = 1_pInt,prm%Ntwin(f)
            j = j + 1_pInt
            tau = dot_product(Tstar_v,lattice_Stwin_v(1:6,index_myFamily+i,ph))
            plastic_phenopowerlaw_postResults(c+j) = (1.0_pReal-state(instance)%sumF(of))*&  ! 1-F
-                                                         param(instance)%gdot0_twin*&
+                                                         prm%gdot0_twin*&
                                                          (abs(tau)/state(instance)%s_twin(j,of))**&
-                                           param(instance)%n_twin*max(0.0_pReal,sign(1.0_pReal,tau))
+                                           prm%n_twin*max(0.0_pReal,sign(1.0_pReal,tau))
          enddo twinSystems1
        enddo twinFamilies1
        c = c + prm%totalNtwin
 
      case (resolvedstress_twin_ID)
        j = 0_pInt
-       twinFamilies2: do f = 1_pInt,size(param(instance)%Ntwin,1)
+       twinFamilies2: do f = 1_pInt,size(prm%Ntwin,1)
          index_myFamily = sum(lattice_NtwinSystem(1:f-1_pInt,ph))                                ! at which index starts my family
-         twinSystems2: do i = 1_pInt,param(instance)%Ntwin(f)
+         twinSystems2: do i = 1_pInt,prm%Ntwin(f)
            j = j + 1_pInt
            plastic_phenopowerlaw_postResults(c+j) = &
                              dot_product(Tstar_v,lattice_Stwin_v(1:6,index_myFamily+i,ph))
