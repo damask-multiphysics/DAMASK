@@ -7,8 +7,6 @@ stages:
   - compileSpectralGNU
   - prepareSpectral
   - spectral
-  - compileMarc2014
-  - compileMarc2014.2
   - compileMarc2015
   - compileMarc2016
   - marc
@@ -331,15 +329,6 @@ TextureComponents:
     - master
     - release
 
-###################################################################################################
-Marc_compileIfort2015:
-  stage: compileMarc2015
-  script:
-    - module load $IntelCompiler16_0 $MSC2015
-    - Marc_compileIfort/test.py -m 2015
-  except:
-    - master
-    - release
 
 ###################################################################################################
 Marc_compileIfort2016:
