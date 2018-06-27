@@ -319,8 +319,8 @@ subroutine plastic_phenopowerlaw_init
 !--------------------------------------------------------------------------------------------------
 ! allocate state arrays
    NipcMyPhase = count(material_phase == p)                                                   ! number of IPCs containing my phase
-   sizeState = size(['tau_slip     ','accshear_slip']) * sum(prm%nslip) &
-             + size(['tau_twin     ','accshear_twin']) * sum(prm%ntwin) &
+   sizeState = size(['tau_slip     ','accshear_slip']) * prm%TotalNslip &
+             + size(['tau_twin     ','accshear_twin']) * prm%TotalNtwin &
              + size(['sum(gamma)', 'sum(f)    '])
 
    sizeDotState = sizeState
@@ -651,9 +651,9 @@ subroutine plastic_phenopowerlaw_dotState(Tstar_v,ipc,ip,el)
    tau_slip_pos,tau_slip_neg,tau_twin
 
  real(pReal), dimension(plasticState(material_phase(ipc,ip,el))%Nslip) :: &
-   gdot_slip,left_SlipSlip,left_SlipTwin,right_SlipSlip,right_TwinSlip
+   gdot_slip,left_SlipSlip,right_SlipSlip
  real(pReal), dimension(plasticState(material_phase(ipc,ip,el))%Ntwin) :: &
-   gdot_twin,left_TwinSlip,left_TwinTwin,right_SlipTwin,right_TwinTwin
+   gdot_twin
  type(tParameters), pointer :: prm
  type(tPhenopowerlawState), pointer :: stt
 
@@ -681,13 +681,11 @@ subroutine plastic_phenopowerlaw_dotState(Tstar_v,ipc,ip,el)
    slipSystems1: do i = 1_pInt,prm%Nslip(f)
      j = j+1_pInt
      left_SlipSlip(j) = 1.0_pReal + prm%H_int(f)                         ! modified no system-dependent left part
-     left_SlipTwin(j) = 1.0_pReal                                                                   ! no system-dependent left part
      right_SlipSlip(j) = abs(1.0_pReal-stt%s_slip(j,of) / &
                                     (prm%tausat_slip(f)+ssat_offset)) &
                          **prm%a_slip&
                          *sign(1.0_pReal,1.0_pReal-stt%s_slip(j,of) / &
                                     (prm%tausat_slip(f)+ssat_offset))
-     right_TwinSlip(j) = 1.0_pReal                                                                  ! no system-dependent part
 
 !--------------------------------------------------------------------------------------------------
 ! Calculation of dot gamma
@@ -712,10 +710,6 @@ subroutine plastic_phenopowerlaw_dotState(Tstar_v,ipc,ip,el)
    index_myFamily = sum(lattice_NtwinSystem(1:f-1_pInt,ph))                                         ! at which index starts my family
    twinSystems1: do i = 1_pInt,prm%Ntwin(f)
      j = j+1_pInt
-     left_TwinSlip(j)  = 1.0_pReal                                                                  ! no system-dependent left part
-     left_TwinTwin(j)  = 1.0_pReal                                                                  ! no system-dependent left part
-     right_SlipTwin(j) = 1.0_pReal                                                                  ! no system-dependent right part
-     right_TwinTwin(j) = 1.0_pReal                                                                  ! no system-dependent right part
 
 !--------------------------------------------------------------------------------------------------
 ! Calculation of dot vol frac
@@ -735,10 +729,8 @@ subroutine plastic_phenopowerlaw_dotState(Tstar_v,ipc,ip,el)
      j = j+1_pInt
      dotState(instance)%s_slip(j,of) = &                                                            ! evolution of slip resistance j
        c_SlipSlip * left_SlipSlip(j) * &
-       dot_product(prm%interaction_SlipSlip(j,1:prm%totalNslip), &
-                   right_SlipSlip*abs(gdot_slip)) + &                                               ! dot gamma_slip modulated by right-side slip factor
-       dot_product(prm%interaction_SlipTwin(j,1:prm%totalNtwin), &
-                   right_SlipTwin*gdot_twin)                                                        ! dot gamma_twin modulated by right-side twin factor
+       dot_product(prm%interaction_SlipSlip(j,1:prm%totalNslip),right_SlipSlip*abs(gdot_slip)) + &  ! dot gamma_slip modulated by right-side slip factor
+       dot_product(prm%interaction_SlipTwin(j,1:prm%totalNtwin),gdot_twin)                          ! dot gamma_twin modulated by right-side twin factor
      dotState(instance)%sumGamma(of) = dotState(instance)%sumGamma(of) + &
                                                         abs(gdot_slip(j))
      dotState(instance)%accshear_slip(j,of) = abs(gdot_slip(j))
@@ -750,13 +742,9 @@ subroutine plastic_phenopowerlaw_dotState(Tstar_v,ipc,ip,el)
    index_myFamily = sum(lattice_NtwinSystem(1:f-1_pInt,ph))                                         ! at which index starts my family
    twinSystems2: do i = 1_pInt,prm%Ntwin(f)
      j = j+1_pInt
-     dotState(instance)%s_twin(j,of) = &                                                      ! evolution of twin resistance j
-       c_TwinSlip * left_TwinSlip(j) * &
-       dot_product(prm%interaction_TwinSlip(j,1:prm%totalNslip), &
-                   right_TwinSlip*abs(gdot_slip)) + &                                               ! dot gamma_slip modulated by right-side slip factor
-       c_TwinTwin * left_TwinTwin(j) * &
-       dot_product(prm%interaction_TwinTwin(j,1:prm%totalNtwin), &
-                   right_TwinTwin*gdot_twin)                                                        ! dot gamma_twin modulated by right-side twin factor
+     dotState(instance)%s_twin(j,of) = &                                                            ! evolution of twin resistance j
+       c_TwinSlip * dot_product(prm%interaction_TwinSlip(j,1:prm%totalNslip),abs(gdot_slip)) + &    ! dot gamma_slip modulated by right-side slip factor
+       c_TwinTwin * dot_product(prm%interaction_TwinTwin(j,1:prm%totalNtwin),gdot_twin)             ! dot gamma_twin modulated by right-side twin factor
      if (state(instance)%sumF(of) < 0.98_pReal) &                                                   ! ensure twin volume fractions stays below 1.0
        dotState(instance)%sumF(of) = dotState(instance)%sumF(of) + &
                                                       gdot_twin(j)/lattice_shearTwin(index_myFamily+i,ph)
