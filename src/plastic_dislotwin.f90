@@ -43,34 +43,16 @@ module plastic_dislotwin
  real(pReal),                         dimension(:,:,:,:,:,:), allocatable,         private :: &
    Ctrans3333                                                                 !< trans elasticity matrix for each instance
  real(pReal),                         dimension(:,:),         allocatable,         private :: &
-   QedgePerSlipFamily, &                                                     !< activation energy for glide [J] for each slip family and instance
-   QedgePerSlipSystem, &                                                     !< activation energy for glide [J] for each slip system and instance
-   v0PerSlipFamily, &                                                        !< dislocation velocity prefactor [m/s] for each family and instance
-   v0PerSlipSystem, &                                                        !< dislocation velocity prefactor [m/s] for each slip system and instance
-   tau_peierlsPerSlipFamily, &                                               !< Peierls stress [Pa] for each family and instance
-   Ndot0PerTwinFamily, &                                                     !< twin nucleation rate [1/m³s] for each twin family and instance
-   Ndot0PerTwinSystem, &                                                     !< twin nucleation rate [1/m³s] for each twin system and instance
-   Ndot0PerTransFamily, &                                                    !< trans nucleation rate [1/m³s] for each trans family and instance
-   Ndot0PerTransSystem, &                                                    !< trans nucleation rate [1/m³s] for each trans system and instance
    tau_r_twin, &                                                             !< stress to bring partial close together for each twin system and instance
    tau_r_trans, &                                                            !< stress to bring partial close together for each trans system and instance
-   twinsizePerTwinFamily, &                                                  !< twin thickness [m] for each twin family and instance
-   twinsizePerTwinSystem, &                                                  !< twin thickness [m] for each twin system and instance
-   CLambdaSlipPerSlipFamily, &                                               !< Adj. parameter for distance between 2 forest dislocations for each slip family and instance
-   CLambdaSlipPerSlipSystem, &                                               !< Adj. parameter for distance between 2 forest dislocations for each slip system and instance
-   lamellarsizePerTransFamily, &                                             !< martensite lamellar thickness [m] for each trans family and instance
-   lamellarsizePerTransSystem, &                                             !< martensite lamellar thickness [m] for each trans system and instance
    interaction_SlipSlip, &                                                   !< coefficients for slip-slip interaction for each interaction type and instance
    interaction_SlipTwin, &                                                   !< coefficients for slip-twin interaction for each interaction type and instance
    interaction_TwinSlip, &                                                   !< coefficients for twin-slip interaction for each interaction type and instance
    interaction_TwinTwin, &                                                   !< coefficients for twin-twin interaction for each interaction type and instance
    interaction_SlipTrans, &                                                  !< coefficients for slip-trans interaction for each interaction type and instance
    interaction_TransSlip, &                                                  !< coefficients for trans-slip interaction for each interaction type and instance
-   interaction_TransTrans, &                                                 !< coefficients for trans-trans interaction for each interaction type and instance
-   pPerSlipFamily, &                                                         !< p-exponent in glide velocity
-   qPerSlipFamily, &                                                         !< q-exponent in glide velocity
-   rPerTwinFamily, &                                                         !< r-exponent in twin nucleation rate
-   sPerTransFamily                                                           !< s-exponent in trans nucleation rate
+   interaction_TransTrans                                                   !< coefficients for trans-trans interaction for each interaction type and instance
+   
  real(pReal),                         dimension(:,:,:),       allocatable,         private :: &
    interactionMatrix_SlipSlip, &                                             !< interaction matrix of the different slip systems for each instance
    interactionMatrix_SlipTwin, &                                             !< interaction matrix of slip systems with twin systems for each instance
@@ -155,9 +137,19 @@ module plastic_dislotwin
      rhoDip0, & !< initial dipole dislocation density per slip system
      burgers_slip, &                                                   !< absolute length of burgers vector [m] for each slip systems
      burgers_twin, &                                                   !< absolute length of burgers vector [m] for each slip systems
-     burgers_trans                                                   !< absolute length of burgers vector [m] for each twin family and instance
-
-
+     burgers_trans, &                                                  !< absolute length of burgers vector [m] for each twin family and instance
+     QedgePerSlipSystem,&                                                !< activation energy for glide [J] for each slip system and instance
+     v0PerSlipSystem, &                                                    !dislocation velocity prefactor [m/s] for each slip system and instance
+     tau_peierlsPerSlipFamily,&                                            !< Peierls stress [Pa] for each family and instance
+     Ndot0PerTwinSystem, &                                                 !< twin nucleation rate [1/m³s] for each twin system and instance
+     Ndot0PerTransSystem, &                                                !< trans nucleation rate [1/m³s] for each trans system and instance
+     twinsizePerTwinSystem, &                                                  !< twin thickness [m] for each twin system and instance
+     CLambdaSlipPerSlipSystem, &                                               !< Adj. parameter for distance between 2 forest dislocations for each slip system and instance
+     lamellarsizePerTransSystem, &                                             !< martensite lamellar thickness [m] for each trans system and instance
+     pPerSlipFamily, &                                                         !< p-exponent in glide velocity
+     qPerSlipFamily, &                                                         !< q-exponent in glide velocity
+     rPerTwinFamily, &                                                         !< r-exponent in twin nucleation rate
+     sPerTransFamily                                                           !< s-exponent in trans nucleation rate
   end type 
   
   type(tParameters), dimension(:), allocatable, private, target :: param                                !< containers of constitutive parameters (len Ninstance)
@@ -327,24 +319,6 @@ subroutine plastic_dislotwin_init(fileUnit)
  allocate(Nslip(lattice_maxNslipFamily,maxNinstance),        source=0_pInt)
  allocate(Ntwin(lattice_maxNtwinFamily,maxNinstance),        source=0_pInt)
  allocate(Ntrans(lattice_maxNtransFamily,maxNinstance),      source=0_pInt)
-
- allocate(QedgePerSlipFamily(lattice_maxNslipFamily,maxNinstance), &
-                                                                                    source=0.0_pReal)
- allocate(v0PerSlipFamily(lattice_maxNslipFamily,maxNinstance), &
-                                                                                    source=0.0_pReal)
- allocate(tau_peierlsPerSlipFamily(lattice_maxNslipFamily,maxNinstance), &
-                                                                                    source=0.0_pReal)
- allocate(pPerSlipFamily(lattice_maxNslipFamily,maxNinstance),source=0.0_pReal)
- allocate(qPerSlipFamily(lattice_maxNslipFamily,maxNinstance),source=0.0_pReal)
- allocate(Ndot0PerTwinFamily(lattice_maxNtwinFamily,maxNinstance), &
-                                                                                    source=0.0_pReal)
- allocate(Ndot0PerTransFamily(lattice_maxNtransFamily,maxNinstance), &
-                                                                                    source=0.0_pReal)
- allocate(twinsizePerTwinFamily(lattice_maxNtwinFamily,maxNinstance), &
-                                                                                    source=0.0_pReal)
- allocate(CLambdaSlipPerSlipFamily(lattice_maxNslipFamily,maxNinstance), &
-                                                                                    source=0.0_pReal)
- allocate(rPerTwinFamily(lattice_maxNtwinFamily,maxNinstance),source=0.0_pReal)
  allocate(interaction_SlipSlip(lattice_maxNinteraction,maxNinstance), &
                                                                                     source=0.0_pReal)
  allocate(interaction_SlipTwin(lattice_maxNinteraction,maxNinstance), &
@@ -361,9 +335,8 @@ subroutine plastic_dislotwin_init(fileUnit)
                                                                                     source=0.0_pReal)
  allocate(sbSv(6,6,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), &
                                                                                     source=0.0_pReal)
- allocate(lamellarsizePerTransFamily(lattice_maxNtransFamily,maxNinstance), &
-                                                                                    source=0.0_pReal)
- allocate(sPerTransFamily(lattice_maxNtransFamily,maxNinstance),source=0.0_pReal) 
+
+ 
 
  do phase = 1_pInt, size(phase_plasticityInstance)
    if (phase_plasticity(phase) == PLASTICITY_DISLOTWIN_ID) then
@@ -376,26 +349,52 @@ subroutine plastic_dislotwin_init(fileUnit)
        prm%rho0 = phaseConfig(phase)%getFloats('rhoedge0')
        prm%rhoDip0 = phaseConfig(phase)%getFloats('rhoedgedip0')
        prm%burgers_slip = phaseConfig(phase)%getFloats('slipburgers')
-       
+       !prm%burgers_slip = math_expand(prm%burgers_slip,Nslip(:,instance))
+       prm%burgers_slip = math_expand(prm%burgers_slip,prm%Nslip(:))
+       prm%QedgePerSlipSystem = phaseConfig(phase)%getFloats('qedge')
+       !prm%QedgePerSlipSystem = math_expand(prm%QedgePerSlipSystem,Nslip(:,instance))
+       prm%QedgePerSlipSystem = math_expand(prm%QedgePerSlipSystem,prm%Nslip(:))
        prm%aTolRho = phaseConfig(phase)%getFloat('atol_rho')
-
+       prm%v0PerSlipSystem = phaseConfig(phase)%getFloats('v0')
+       prm%v0PerSlipSystem = math_expand(prm%v0PerSlipSystem,Nslip(:,instance))
+       prm%tau_peierlsPerSlipFamily = phaseConfig(phase)%getFloats('tau_peierls',defaultVal=[0.0_pReal])
        prm%CEdgeDipMinDistance = phaseConfig(phase)%getFloat('cedgedipmindistance')
+       prm%CLambdaSlipPerSlipSystem = phaseConfig(phase)%getFloats('clambdaslip')
+       !prm%CLambdaSlipPerSlipSystem= math_expand(prm%CLambdaSlipPerSlipSystem,Nslip(:,instance))
+       prm%CLambdaSlipPerSlipSystem= math_expand(prm%CLambdaSlipPerSlipSystem,prm%Nslip(:))
+       write(6,*)   Nslip(:,instance)
+       write (6,*) (prm%CLambdaSlipPerSlipSystem(1_pInt))
+       prm%pPerSlipFamily = phaseConfig(phase)%getFloats('p_slip')
+       prm%qPerSlipFamily = phaseConfig(phase)%getFloats('q_slip')
      endif
 
      prm%Ntwin            =  phaseConfig(phase)%getInts('ntwin', defaultVal=emptyInt)
      !if (size > Nchunks_SlipFamilies + 1_pInt) call IO_error(150_pInt,ext_msg=extmsg)
      if (sum(prm%Ntwin) > 0_pInt) then
-          prm%burgers_twin = phaseConfig(phase)%getFloats('twinburgers')
+       prm%burgers_twin = phaseConfig(phase)%getFloats('twinburgers')
+      ! prm%burgers_twin = math_expand(prm%burgers_twin,Ntwin(:,instance))
+       prm%burgers_twin = math_expand(prm%burgers_twin,prm%Ntwin(:))
        prm%xc_twin = phaseConfig(phase)%getFloat('xc_twin')
               
        prm%aTolTwinFrac = phaseConfig(phase)%getFloat('atol_twinfrac')
        prm%L0_twin = phaseConfig(phase)%getFloat('l0_twin')
+       if (lattice_structure(phase) /= LATTICE_fcc_ID) then
+         prm%Ndot0PerTwinSystem = phaseConfig(phase)%getFloats('ndot0_twin') 
+         prm%Ndot0PerTwinSystem = math_expand(prm%Ndot0PerTwinSystem,prm%Ntwin(:))
+       endif
+        ! prm%Ndot0PerTwinSystem = math_expand(prm%Ndot0PerTwinSystem,Ntwin(:,instance))
+       prm%twinsizePerTwinSystem = phaseConfig(phase)%getFloats('twinsize')
+       prm%twinsizePerTwinSystem= math_expand(prm%twinsizePerTwinSystem,prm%Ntwin(:))
+      ! prm%twinsizePerTwinSystem= math_expand(prm%twinsizePerTwinSystem,Ntwin(:,instance))
+       prm%rPerTwinFamily = phaseConfig(phase)%getFloats('r_twin')
      endif
      
      prm%Ntrans            =  phaseConfig(phase)%getInts('ntrans', defaultVal=emptyInt)
      !if (size > Nchunks_SlipFamilies + 1_pInt) call IO_error(150_pInt,ext_msg=extmsg)
      if (sum(prm%Ntrans) > 0_pInt) then
-     prm%burgers_trans = phaseConfig(phase)%getFloats('transburgers')
+       prm%burgers_trans = phaseConfig(phase)%getFloats('transburgers')
+      ! prm%burgers_trans = math_expand(prm%burgers_trans,Ntrans(:,instance))
+       prm%burgers_trans = math_expand(prm%burgers_trans,prm%Ntrans(:))
        prm%Cthresholdtrans = phaseConfig(phase)%getFloat('cthresholdtrans', defaultVal=0.0_pReal) ! ToDo: How to handle that???
        prm%transStackHeight = phaseConfig(phase)%getFloat('transstackheight', defaultVal=0.0_pReal) ! ToDo: How to handle that???
        prm%Cmfptrans = phaseConfig(phase)%getFloat('cmfptrans', defaultVal=0.0_pReal) ! ToDo: How to handle that???
@@ -403,6 +402,15 @@ subroutine plastic_dislotwin_init(fileUnit)
        prm%xc_trans = phaseConfig(phase)%getFloat('xc_trans', defaultVal=0.0_pReal) ! ToDo: How to handle that???
        prm%L0_trans = phaseConfig(phase)%getFloat('l0_trans')
        prm%aTolTransFrac = phaseConfig(phase)%getFloat('atol_transfrac')
+       if (lattice_structure(phase) /= LATTICE_fcc_ID) then
+          prm%Ndot0PerTransSystem = phaseConfig(phase)%getFloats('ndot0_trans')
+         ! prm%Ndot0PerTransSystem = math_expand(prm%Ndot0PerTransSystem,Ntrans(:,instance))
+          prm%Ndot0PerTransSystem = math_expand(prm%Ndot0PerTransSystem,prm%Ntrans(:))
+       endif
+       prm%lamellarsizePerTransSystem = phaseConfig(phase)%getFloats('lamellarsize')
+      ! prm%lamellarsizePerTransSystem = math_expand(prm%lamellarsizePerTransSystem,Ntrans(:,instance))
+       prm%lamellarsizePerTransSystem = math_expand(prm%lamellarsizePerTransSystem,prm%Ntrans(:))
+       prm%sPerTransFamily = phaseConfig(phase)%getFloats('s_trans',defaultVal=[0.0_pReal])
      endif
      
      if (sum(prm%Ntwin) > 0_pInt  .or. sum(prm%Ntrans) > 0_pInt) then
@@ -425,44 +433,7 @@ subroutine plastic_dislotwin_init(fileUnit)
      prm%SolidSolutionStrength = phaseConfig(phase)%getFloat('solidsolutionstrength')
      prm%dipoleFormationFactor= phaseConfig(phase)%getFloat('dipoleformationfactor', defaultVal=0.0_pReal) ! ToDo: How to handle that???
      prm%sbQedge = phaseConfig(phase)%getFloat('qedgepersbsystem')
-     
-     
-     
-     
-       ! case ('p_shearband')
-         ! prm%pShearBand = IO_floatValue(line,chunkPos,2_pInt)
-       ! case ('q_shearband')
-         ! prm%qShearBand = IO_floatValue(line,chunkPos,2_pInt)
-       ! case ('d0')
-         ! prm%D0 = IO_floatValue(line,chunkPos,2_pInt)
-       ! case ('qsd')
-         ! prm%Qsd = IO_floatValue(line,chunkPos,2_pInt)
-
-       ! case ('atol_twinfrac')
-         ! prm%aTolTwinFrac = IO_floatValue(line,chunkPos,2_pInt)
-       ! case ('atol_transfrac')
-         ! prm%aTolTransFrac = IO_floatValue(line,chunkPos,2_pInt)
-       ! case ('solidsolutionstrength')
-         ! prm%SolidSolutionStrength = IO_floatValue(line,chunkPos,2_pInt)
-       ! case ('l0_twin')
-         ! prm%L0_twin = IO_floatValue(line,chunkPos,2_pInt)
-
-       ! case ('vcrossslip')
-              ! prm%VcrossSlip = IO_floatValue(line,chunkPos,2_pInt)
-       ! case ('cedgedipmindistance')
-         ! prm%CEdgeDipMinDistance = IO_floatValue(line,chunkPos,2_pInt)
-
-       ! case ('sfe_0k')
-         ! prm%SFE_0K = IO_floatValue(line,chunkPos,2_pInt)
-       ! case ('dsfe_dt')
-         ! prm%dSFE_dT = IO_floatValue(line,chunkPos,2_pInt)
-       ! case ('dipoleformationfactor')
-         ! prm%dipoleFormationFactor = IO_floatValue(line,chunkPos,2_pInt)
-
-       ! case ('qedgepersbsystem')
-         ! prm%sbQedge = IO_floatValue(line,chunkPos,2_pInt)
-         
-         
+    
      outputs = phaseConfig(phase)%getStrings('(output)', defaultVal=emptyString)
      allocate(prm%outputID(0))
      do i= 1_pInt, size(outputs)
@@ -626,26 +597,7 @@ subroutine plastic_dislotwin_init(fileUnit)
            
            Nslip(j,instance) = IO_intValue(line,chunkPos,1_pInt+j)
          enddo
-       case ('qedge','v0','clambdaslip','tau_peierls','p_slip','q_slip')
-         do j = 1_pInt, Nchunks_SlipFamilies
-           tempPerSlip(j) = IO_floatValue(line,chunkPos,1_pInt+j)
-         enddo
-         select case(tag)
-           case ('qedge')
-             QedgePerSlipFamily(1:Nchunks_SlipFamilies,instance) = tempPerSlip(1:Nchunks_SlipFamilies)
-           case ('v0')
-             v0PerSlipFamily(1:Nchunks_SlipFamilies,instance) = tempPerSlip(1:Nchunks_SlipFamilies)
-           case ('clambdaslip')
-             CLambdaSlipPerSlipFamily(1:Nchunks_SlipFamilies,instance) = tempPerSlip(1:Nchunks_SlipFamilies)
-           case ('tau_peierls')
-             if (lattice_structure(phase) /= LATTICE_bcc_ID) &
-               call IO_warning(42_pInt,ext_msg=trim(tag)//' for non-bcc ('//PLASTICITY_DISLOTWIN_label//')')
-             tau_peierlsPerSlipFamily(1:Nchunks_SlipFamilies,instance) = tempPerSlip(1:Nchunks_SlipFamilies)
-           case ('p_slip')
-             pPerSlipFamily(1:Nchunks_SlipFamilies,instance) = tempPerSlip(1:Nchunks_SlipFamilies)
-           case ('q_slip')
-             qPerSlipFamily(1:Nchunks_SlipFamilies,instance) = tempPerSlip(1:Nchunks_SlipFamilies)
-         end select
+
 !--------------------------------------------------------------------------------------------------
 ! parameters depending on slip number of twin families
        case ('ntwin')
@@ -657,20 +609,7 @@ subroutine plastic_dislotwin_init(fileUnit)
          do j = 1_pInt, Nchunks_TwinFamilies
              Ntwin(j,instance) = IO_intValue(line,chunkPos,1_pInt+j)
          enddo
-       case ('ndot0_twin','twinsize','twinburgers','r_twin')
-         do j = 1_pInt, Nchunks_TwinFamilies
-           tempPerTwin(j) = IO_floatValue(line,chunkPos,1_pInt+j)
-         enddo
-         select case(tag)
-           case ('ndot0_twin')
-             if (lattice_structure(phase) == LATTICE_fcc_ID) &
-               call IO_warning(42_pInt,ext_msg=trim(tag)//' for fcc ('//PLASTICITY_DISLOTWIN_label//')')
-             Ndot0PerTwinFamily(1:Nchunks_TwinFamilies,instance) = tempPerTwin(1:Nchunks_TwinFamilies)
-           case ('twinsize')
-             twinsizePerTwinFamily(1:Nchunks_TwinFamilies,instance) = tempPerTwin(1:Nchunks_TwinFamilies)
-           case ('r_twin')
-             rPerTwinFamily(1:Nchunks_TwinFamilies,instance) = tempPerTwin(1:Nchunks_TwinFamilies)
-         end select
+       
 !--------------------------------------------------------------------------------------------------
 ! parameters depending on number of transformation system families
        case ('ntrans')
@@ -682,20 +621,6 @@ subroutine plastic_dislotwin_init(fileUnit)
          do j = 1_pInt, Nchunks_TransFamilies
            Ntrans(j,instance) = IO_intValue(line,chunkPos,1_pInt+j)
          enddo
-       case ('ndot0_trans','lamellarsize','transburgers','s_trans')
-         do j = 1_pInt, Nchunks_TransFamilies
-           tempPerTrans(j) = IO_floatValue(line,chunkPos,1_pInt+j)
-         enddo
-         select case(tag)
-           case ('ndot0_trans')
-             if (lattice_structure(phase) == LATTICE_fcc_ID) &
-               call IO_warning(42_pInt,ext_msg=trim(tag)//' for fcc ('//PLASTICITY_DISLOTWIN_label//')')
-             Ndot0PerTransFamily(1:Nchunks_TransFamilies,instance) = tempPerTrans(1:Nchunks_TransFamilies)
-           case ('lamellarsize')
-             lamellarsizePerTransFamily(1:Nchunks_TransFamilies,instance) = tempPerTrans(1:Nchunks_TransFamilies)
-           case ('s_trans')
-             sPerTransFamily(1:Nchunks_TransFamilies,instance) = tempPerTrans(1:Nchunks_TransFamilies)
-         end select
 !--------------------------------------------------------------------------------------------------
 ! parameters depending on number of interactions
        case ('interaction_slipslip','interactionslipslip')
@@ -763,18 +688,18 @@ subroutine plastic_dislotwin_init(fileUnit)
          !   call IO_error(211_pInt,el=instance,ext_msg='rhoEdgeDip0 ('//PLASTICITY_DISLOTWIN_label//')')
         !  if (burgersPerSlipFamily(f,instance) <= 0.0_pReal) &
         !    call IO_error(211_pInt,el=instance,ext_msg='slipBurgers ('//PLASTICITY_DISLOTWIN_label//')')
-          if (v0PerSlipFamily(f,instance) <= 0.0_pReal) &
-            call IO_error(211_pInt,el=instance,ext_msg='v0 ('//PLASTICITY_DISLOTWIN_label//')')
-          if (tau_peierlsPerSlipFamily(f,instance) < 0.0_pReal) &
-            call IO_error(211_pInt,el=instance,ext_msg='tau_peierls ('//PLASTICITY_DISLOTWIN_label//')')
+          !if (v0PerSlipFamily(f,instance) <= 0.0_pReal) &
+           ! call IO_error(211_pInt,el=instance,ext_msg='v0 ('//PLASTICITY_DISLOTWIN_label//')')
+          !if (prm%tau_peierlsPerSlipFamily(f) < 0.0_pReal) &
+           ! call IO_error(211_pInt,el=instance,ext_msg='tau_peierls ('//PLASTICITY_DISLOTWIN_label//')')
         endif
       enddo
       do f = 1_pInt,lattice_maxNtwinFamily
         if (Ntwin(f,instance) > 0_pInt) then
          ! if (burgersPerTwinFamily(f,instance) <= 0.0_pReal) &
          !   call IO_error(211_pInt,el=instance,ext_msg='twinburgers ('//PLASTICITY_DISLOTWIN_label//')')
-          if (Ndot0PerTwinFamily(f,instance) < 0.0_pReal) &
-            call IO_error(211_pInt,el=instance,ext_msg='ndot0_twin ('//PLASTICITY_DISLOTWIN_label//')')
+          !if (Ndot0PerTwinFamily(f,instance) < 0.0_pReal) &
+           ! call IO_error(211_pInt,el=instance,ext_msg='ndot0_twin ('//PLASTICITY_DISLOTWIN_label//')')
         endif
       enddo
       if (param(instance)%CAtomicVolume <= 0.0_pReal) &
@@ -832,16 +757,8 @@ subroutine plastic_dislotwin_init(fileUnit)
  maxTotalNtwin  = maxval(totalNtwin)
  maxTotalNtrans = maxval(totalNtrans)
 
- allocate(QedgePerSlipSystem(maxTotalNslip, maxNinstance),      source=0.0_pReal)
- allocate(v0PerSlipSystem(maxTotalNslip, maxNinstance),         source=0.0_pReal)
- allocate(Ndot0PerTwinSystem(maxTotalNtwin, maxNinstance),      source=0.0_pReal)
- allocate(Ndot0PerTransSystem(maxTotalNtrans, maxNinstance),    source=0.0_pReal)
  allocate(tau_r_twin(maxTotalNtwin, maxNinstance),              source=0.0_pReal)
  allocate(tau_r_trans(maxTotalNtrans, maxNinstance),            source=0.0_pReal)
- allocate(twinsizePerTwinSystem(maxTotalNtwin, maxNinstance),   source=0.0_pReal)
- allocate(CLambdaSlipPerSlipSystem(maxTotalNslip, maxNinstance),source=0.0_pReal)
- allocate(lamellarsizePerTransSystem(maxTotalNtrans, maxNinstance),source=0.0_pReal)
-
  allocate(interactionMatrix_SlipSlip(maxval(totalNslip),&  ! slip resistance from slip activity
                                                             maxval(totalNslip),&
                                                             maxNinstance), source=0.0_pReal)
@@ -974,9 +891,7 @@ subroutine plastic_dislotwin_init(fileUnit)
          plasticState(phase)%state   (offset_slip+1:offset_slip+plasticState(phase)%nslip,1:NofMyPhase)
 
          
-     prm%burgers_slip = math_expand(prm%burgers_slip,Nslip(:,instance))
-     prm%burgers_twin = math_expand(prm%burgers_twin,Ntwin(:,instance))
-     prm%burgers_trans = math_expand(prm%burgers_trans,Ntrans(:,instance))
+
     !* Process slip related parameters ------------------------------------------------ 
      slipFamiliesLoop: do f = 1_pInt,lattice_maxNslipFamily
        index_myFamily = sum(Nslip(1:f-1_pInt,instance))                      ! index in truncated slip system list
@@ -986,18 +901,6 @@ subroutine plastic_dislotwin_init(fileUnit)
        !  dislocation velocity prefactor,
        !  mean free path prefactor,
        !  and minimum dipole distance
- 
-
- 
-         QedgePerSlipSystem(index_myFamily+j,instance) = &
-         QedgePerSlipFamily(f,instance)
- 
-         v0PerSlipSystem(index_myFamily+j,instance) = &
-         v0PerSlipFamily(f,instance)
- 
-         CLambdaSlipPerSlipSystem(index_myFamily+j,instance) = &
-         CLambdaSlipPerSlipFamily(f,instance)
-  
        !* Calculation of forest projections for edge dislocations
        !* Interaction matrices
          do o = 1_pInt,lattice_maxNslipFamily
@@ -1043,13 +946,6 @@ subroutine plastic_dislotwin_init(fileUnit)
  
        !  nucleation rate prefactor,
        !  and twin size
-
-         Ndot0PerTwinSystem(index_myFamily+j,instance)  = &
-         Ndot0PerTwinFamily(f,instance)
-
-         twinsizePerTwinSystem(index_myFamily+j,instance) = &
-         twinsizePerTwinFamily(f,instance)
- 
        !* Rotate twin elasticity matrices
          index_otherFamily = sum(lattice_NtwinSystem(1:f-1_pInt,phase))                             ! index in full lattice twin list
          do l = 1_pInt,3_pInt; do m = 1_pInt,3_pInt; do n = 1_pInt,3_pInt; do o = 1_pInt,3_pInt
@@ -1098,13 +994,6 @@ subroutine plastic_dislotwin_init(fileUnit)
        !* Burgers vector,
        !  nucleation rate prefactor,
        !  and martensite size
-
-         Ndot0PerTransSystem(index_myFamily+j,instance)  = &
-         Ndot0PerTransFamily(f,instance)
-
-         lamellarsizePerTransSystem(index_myFamily+j,instance) = &
-         lamellarsizePerTransFamily(f,instance)
-
        !* Rotate trans elasticity matrices
        index_otherFamily = sum(lattice_NtransSystem(1:f-1_pInt,phase))                               ! index in full lattice trans list
          do l = 1_pInt,3_pInt; do m = 1_pInt,3_pInt; do n = 1_pInt,3_pInt; do o = 1_pInt,3_pInt
@@ -1210,7 +1099,7 @@ subroutine plastic_dislotwin_init(fileUnit)
      forall (i = 1_pInt:ns) &
        invLambdaSlip0(i) = sqrt(dot_product(math_expand(prm%rho0,Nslip(instance,:))+ &
        math_expand(prm%rhoDip0,Nslip(instance,:)),forestProjectionEdge(1:ns,i,instance)))/ &
-                           CLambdaSlipPerSlipSystem(i,instance)
+                           prm%CLambdaSlipPerSlipSystem(i)
      plasticState(phase)%state0(startIndex:endIndex,:) = &
        spread(math_expand(invLambdaSlip0,Nslip(instance,:)),2, NofMyPhase)
      
@@ -1276,7 +1165,7 @@ subroutine plastic_dislotwin_init(fileUnit)
      state(instance)%twinVolume=>plasticState(phase)%state(startIndex:endIndex,:)
      TwinVolume0= spread(0.0_pReal,1,nt)
      forall (i = 1_pInt:nt) TwinVolume0(i) = &
-       (PI/4.0_pReal)*twinsizePerTwinSystem(i,instance)*MeanFreePathTwin0(i)**2.0_pReal
+       (PI/4.0_pReal)*prm%twinsizePerTwinSystem(i)*MeanFreePathTwin0(i)**2.0_pReal
      plasticState(phase)%state0(startIndex:endIndex,:) = &
         spread(math_expand(TwinVolume0,Ntwin(instance,:)),2, NofMyPhase)
 
@@ -1285,7 +1174,7 @@ subroutine plastic_dislotwin_init(fileUnit)
      state(instance)%martensiteVolume=>plasticState(phase)%state(startIndex:endIndex,:)
      MartensiteVolume0= spread(0.0_pReal,1,nr)
      forall (i = 1_pInt:nr) MartensiteVolume0(i) = &
-       (PI/4.0_pReal)*lamellarsizePerTransSystem(i,instance)*MeanFreePathTrans0(i)**2.0_pReal
+       (PI/4.0_pReal)*prm%lamellarsizePerTransSystem(i)*MeanFreePathTrans0(i)**2.0_pReal
      plasticState(phase)%state0(startIndex:endIndex,:) = &
        spread(math_expand(MartensiteVolume0,Ntrans(instance,:)),2, NofMyPhase)
 
@@ -1408,20 +1297,20 @@ subroutine plastic_dislotwin_microstructure(temperature,ipc,ip,el)
  !* rescaled twin volume fraction for topology
  forall (t = 1_pInt:nt) &
    fOverStacksize(t) = &
-     state(instance)%twinFraction(t,of)/twinsizePerTwinSystem(t,instance)
+     state(instance)%twinFraction(t,of)/prm%twinsizePerTwinSystem(t)
 
  !* rescaled trans volume fraction for topology
  forall (r = 1_pInt:nr) &
    ftransOverLamellarSize(r) = &
      (state(instance)%stressTransFraction(r,of)+state(instance)%strainTransFraction(r,of))/&
-      lamellarsizePerTransSystem(r,instance)
+      prm%lamellarsizePerTransSystem(r)
  
  !* 1/mean free distance between 2 forest dislocations seen by a moving dislocation
  forall (s = 1_pInt:ns) &
    state(instance)%invLambdaSlip(s,of) = &
      sqrt(dot_product((state(instance)%rhoEdge(1_pInt:ns,of)+state(instance)%rhoEdgeDip(1_pInt:ns,of)),&
                       forestProjectionEdge(1:ns,s,instance)))/ &
-     CLambdaSlipPerSlipSystem(s,instance)
+     prm%CLambdaSlipPerSlipSystem(s)
 
  !* 1/mean free distance between 2 twin stacks from different systems seen by a moving dislocation
  !$OMP CRITICAL (evilmatmul)
@@ -1506,13 +1395,13 @@ subroutine plastic_dislotwin_microstructure(temperature,ipc,ip,el)
  !* final twin volume after growth
  forall (t = 1_pInt:nt) &
    state(instance)%twinVolume(t,of) = &
-     (pi/4.0_pReal)*twinsizePerTwinSystem(t,instance)*&
+     (pi/4.0_pReal)*prm%twinsizePerTwinSystem(t)*&
      state(instance)%mfp_twin(t,of)**2.0_pReal
 
  !* final martensite volume after growth
  forall (r = 1_pInt:nr) &
    state(instance)%martensiteVolume(r,of) = &
-     (pi/4.0_pReal)*lamellarsizePerTransSystem(r,instance)*&
+     (pi/4.0_pReal)*prm%lamellarsizePerTransSystem(r)*&
      state(instance)%mfp_trans(r,of)**(2.0_pReal)
 
  !* equilibrium separation of partial dislocations (twin)
@@ -1646,27 +1535,27 @@ prm => param(instance)
       if((abs(tau_slip(j))-state(instance)%threshold_stress_slip(j,of)) > tol_math_check) then
       !* Stress ratios
         stressRatio =((abs(tau_slip(j))- state(instance)%threshold_stress_slip(j,of))/&
-          (param(instance)%SolidSolutionStrength+tau_peierlsPerSlipFamily(f,instance)))
-        StressRatio_p       = stressRatio** pPerSlipFamily(f,instance)
-        StressRatio_pminus1 = stressRatio**(pPerSlipFamily(f,instance)-1.0_pReal)
+          (param(instance)%SolidSolutionStrength+prm%tau_peierlsPerSlipFamily(f)))
+        StressRatio_p       = stressRatio** prm%pPerSlipFamily(f)
+        StressRatio_pminus1 = stressRatio**(prm%pPerSlipFamily(f)-1.0_pReal)
       !* Boltzmann ratio
-        BoltzmannRatio = QedgePerSlipSystem(j,instance)/(kB*Temperature)
+        BoltzmannRatio = prm%QedgePerSlipSystem(j)/(kB*Temperature)
       !* Initial shear rates
         DotGamma0 = &
           state(instance)%rhoEdge(j,of)*prm%burgers_slip(j)*&
-          v0PerSlipSystem(j,instance)
+          prm%v0PerSlipSystem(j)
  
         !* Shear rates due to slip
         gdot_slip(j) = DotGamma0 &
-                     * exp(-BoltzmannRatio*(1-StressRatio_p) ** qPerSlipFamily(f,instance)) &
+                     * exp(-BoltzmannRatio*(1-StressRatio_p) ** prm%qPerSlipFamily(f)) &
                      * sign(1.0_pReal,tau_slip(j))
  
         !* Derivatives of shear rates
         dgdot_dtauslip(j) = &
-          abs(gdot_slip(j))*BoltzmannRatio*pPerSlipFamily(f,instance)&
-          *qPerSlipFamily(f,instance)/&
-          (param(instance)%SolidSolutionStrength+tau_peierlsPerSlipFamily(f,instance))*&
-          StressRatio_pminus1*(1-StressRatio_p)**(qPerSlipFamily(f,instance)-1.0_pReal)
+          abs(gdot_slip(j))*BoltzmannRatio*prm%pPerSlipFamily(f)&
+          *prm%qPerSlipFamily(f)/&
+          (param(instance)%SolidSolutionStrength+prm%tau_peierlsPerSlipFamily(f))*&
+          StressRatio_pminus1*(1-StressRatio_p)**(prm%qPerSlipFamily(f)-1.0_pReal)
       endif
  
       !* Plastic velocity gradient for dislocation glide
@@ -1763,7 +1652,7 @@ prm => param(instance)
 
       !* Stress ratios
       if (tau_twin(j) > tol_math_check) then
-        StressRatio_r = (state(instance)%threshold_stress_twin(j,of)/tau_twin(j))**rPerTwinFamily(f,instance)
+        StressRatio_r = (state(instance)%threshold_stress_twin(j,of)/tau_twin(j))**prm%rPerTwinFamily(f)
         !* Shear rates and their derivatives due to twin
         select case(lattice_structure(ph))
           case (LATTICE_fcc_ID)
@@ -1779,12 +1668,12 @@ prm => param(instance)
               Ndot0_twin=0.0_pReal
             end if
           case default
-            Ndot0_twin=Ndot0PerTwinSystem(j,instance)
+            Ndot0_twin=prm%Ndot0PerTwinSystem(j)
         end select
         gdot_twin(j) = &
           (1.0_pReal-sumf-sumftr)*lattice_shearTwin(index_myFamily+i,ph)*&
           state(instance)%twinVolume(j,of)*Ndot0_twin*exp(-StressRatio_r)
-        dgdot_dtautwin(j) = ((gdot_twin(j)*rPerTwinFamily(f,instance))/tau_twin(j))*StressRatio_r
+        dgdot_dtautwin(j) = ((gdot_twin(j)*prm%rPerTwinFamily(f))/tau_twin(j))*StressRatio_r
       endif
  
       !* Plastic velocity gradient for mechanical twinning
@@ -1813,7 +1702,7 @@ prm => param(instance)
 
       !* Stress ratios
       if (tau_trans(j) > tol_math_check) then
-        StressRatio_s = (state(instance)%threshold_stress_trans(j,of)/tau_trans(j))**sPerTransFamily(f,instance)
+        StressRatio_s = (state(instance)%threshold_stress_trans(j,of)/tau_trans(j))**prm%sPerTransFamily(f)
         !* Shear rates and their derivatives due to transformation
         select case(lattice_structure(ph))
           case (LATTICE_fcc_ID)
@@ -1829,12 +1718,12 @@ prm => param(instance)
               Ndot0_trans=0.0_pReal
             end if
           case default
-            Ndot0_trans=Ndot0PerTransSystem(j,instance)
+            Ndot0_trans=prm%Ndot0PerTransSystem(j)
         end select
         gdot_trans(j) = &
           (1.0_pReal-sumf-sumftr)*&
           state(instance)%martensiteVolume(j,of)*Ndot0_trans*exp(-StressRatio_s)
-        dgdot_dtautrans(j) = ((gdot_trans(j)*sPerTransFamily(f,instance))/tau_trans(j))*StressRatio_s
+        dgdot_dtautrans(j) = ((gdot_trans(j)*prm%sPerTransFamily(f))/tau_trans(j))*StressRatio_s
       endif
 
       !* Plastic velocity gradient for phase transformation
@@ -1944,19 +1833,19 @@ prm => param(instance)
       if((abs(tau_slip(j))-state(instance)%threshold_stress_slip(j,of)) > tol_math_check) then
       !* Stress ratios
         stressRatio =((abs(tau_slip(j))- state(instance)%threshold_stress_slip(j,of))/&
-          (param(instance)%SolidSolutionStrength+tau_peierlsPerSlipFamily(f,instance)))
-        StressRatio_p       = stressRatio** pPerSlipFamily(f,instance)
-        StressRatio_pminus1 = stressRatio**(pPerSlipFamily(f,instance)-1.0_pReal)
+          (param(instance)%SolidSolutionStrength+prm%tau_peierlsPerSlipFamily(f)))
+        StressRatio_p       = stressRatio** prm%pPerSlipFamily(f)
+        StressRatio_pminus1 = stressRatio**(prm%pPerSlipFamily(f)-1.0_pReal)
       !* Boltzmann ratio
-        BoltzmannRatio = QedgePerSlipSystem(j,instance)/(kB*Temperature)
+        BoltzmannRatio = prm%QedgePerSlipSystem(j)/(kB*Temperature)
       !* Initial shear rates
         DotGamma0 = &
           plasticState(ph)%state(j, of)*prm%burgers_slip(j)*&
-          v0PerSlipSystem(j,instance)
+          prm%v0PerSlipSystem(j)
  
       !* Shear rates due to slip
         gdot_slip(j) = DotGamma0*exp(-BoltzmannRatio*(1_pInt-StressRatio_p)** &
-                     qPerSlipFamily(f,instance))*sign(1.0_pReal,tau_slip(j))
+                     prm%qPerSlipFamily(f))*sign(1.0_pReal,tau_slip(j))
       endif
       !* Multiplication
       DotRhoMultiplication = abs(gdot_slip(j))/&
@@ -2031,7 +1920,7 @@ prm => param(instance)
       !* Stress ratios
       if (tau_twin(j) > tol_math_check) then
         StressRatio_r = (state(instance)%threshold_stress_twin(j,of)/&
-                         tau_twin(j))**rPerTwinFamily(f,instance)
+                         tau_twin(j))**prm%rPerTwinFamily(f)
         !* Shear rates and their derivatives due to twin
         select case(lattice_structure(ph))
           case (LATTICE_fcc_ID)
@@ -2047,7 +1936,7 @@ prm => param(instance)
               Ndot0_twin=0.0_pReal
             end if
           case default
-            Ndot0_twin=Ndot0PerTwinSystem(j,instance)
+            Ndot0_twin=prm%Ndot0PerTwinSystem(j)
         end select
         dotState(instance)%twinFraction(j,of) = &
           (1.0_pReal-sumf-sumftr)*&
@@ -2072,7 +1961,7 @@ prm => param(instance)
       !* Stress ratios
       if (tau_trans(j) > tol_math_check) then
         StressRatio_s = (state(instance)%threshold_stress_trans(j,of)/&
-                         tau_trans(j))**sPerTransFamily(f,instance)
+                         tau_trans(j))**prm%sPerTransFamily(f)
         !* Shear rates and their derivatives due to transformation
         select case(lattice_structure(ph))
           case (LATTICE_fcc_ID)
@@ -2088,7 +1977,7 @@ prm => param(instance)
               Ndot0_trans=0.0_pReal
             end if
           case default
-            Ndot0_trans=Ndot0PerTransSystem(j,instance)
+            Ndot0_trans=prm%Ndot0PerTransSystem(j)
         end select
         dotState(instance)%strainTransFraction(j,of) = &
           (1.0_pReal-sumf-sumftr)*&
@@ -2200,20 +2089,20 @@ function plastic_dislotwin_postResults(Tstar_v,Temperature,ipc,ip,el)
               !* Stress ratios
                 stressRatio = ((abs(tau)-state(ph)%threshold_stress_slip(j,of))/&
                                 (param(instance)%SolidSolutionStrength+&
-                                 tau_peierlsPerSlipFamily(f,instance)))
-                StressRatio_p       = stressRatio** pPerSlipFamily(f,instance)
-                StressRatio_pminus1 = stressRatio**(pPerSlipFamily(f,instance)-1.0_pReal)
+                                 prm%tau_peierlsPerSlipFamily(f)))
+                StressRatio_p       = stressRatio** prm%pPerSlipFamily(f)
+                StressRatio_pminus1 = stressRatio**(prm%pPerSlipFamily(f)-1.0_pReal)
               !* Boltzmann ratio
-                BoltzmannRatio = QedgePerSlipSystem(j,instance)/(kB*Temperature)
+                BoltzmannRatio = prm%QedgePerSlipSystem(j)/(kB*Temperature)
               !* Initial shear rates
                 DotGamma0 = &
                   state(instance)%rhoEdge(j,of)*prm%burgers_slip(j)* &
-                  v0PerSlipSystem(j,instance)
+                  prm%v0PerSlipSystem(j)
  
               !* Shear rates due to slip
                 plastic_dislotwin_postResults(c+j) = &
                   DotGamma0*exp(-BoltzmannRatio*(1_pInt-StressRatio_p)**&
-                               qPerSlipFamily(f,instance))*sign(1.0_pReal,tau)
+                               prm%qPerSlipFamily(f))*sign(1.0_pReal,tau)
               else
                 plastic_dislotwin_postResults(c+j) = 0.0_pReal
               endif
@@ -2306,22 +2195,22 @@ function plastic_dislotwin_postResults(Tstar_v,Temperature,ipc,ip,el)
                !* Stress ratios
                  StressRatio_p = ((abs(tau)-state(instance)%threshold_stress_slip(j,of))/&
                                  (param(instance)%SolidSolutionStrength+&
-                                  tau_peierlsPerSlipFamily(f,instance)))&
-                                                    **pPerSlipFamily(f,instance)
+                                  prm%tau_peierlsPerSlipFamily(f)))&
+                                                    **prm%pPerSlipFamily(f)
                  StressRatio_pminus1 = ((abs(tau)-state(instance)%threshold_stress_slip(j,of))/&
                                        (param(instance)%SolidSolutionStrength+&
-                                        tau_peierlsPerSlipFamily(f,instance)))&
-                                                    **(pPerSlipFamily(f,instance)-1.0_pReal)
+                                        prm%tau_peierlsPerSlipFamily(f)))&
+                                                    **(prm%pPerSlipFamily(f)-1.0_pReal)
                !* Boltzmann ratio
-                 BoltzmannRatio = QedgePerSlipSystem(j,instance)/(kB*Temperature)
+                 BoltzmannRatio = prm%QedgePerSlipSystem(j)/(kB*Temperature)
                !* Initial shear rates
                  DotGamma0 = &
                    state(instance)%rhoEdge(j,of)*prm%burgers_slip(j)* &
-                   v0PerSlipSystem(j,instance)
+                   prm%v0PerSlipSystem(j)
  
                !* Shear rates due to slip
                  gdot_slip(j) = DotGamma0*exp(-BoltzmannRatio*(1_pInt-StressRatio_p)**&
-                                qPerSlipFamily(f,instance))*sign(1.0_pReal,tau)
+                                prm%qPerSlipFamily(f))*sign(1.0_pReal,tau)
                else
                  gdot_slip(j) = 0.0_pReal
                endif
@@ -2353,10 +2242,10 @@ function plastic_dislotwin_postResults(Tstar_v,Temperature,ipc,ip,el)
                     Ndot0_twin=0.0_pReal
                   end if
                   case default
-                    Ndot0_twin=Ndot0PerTwinSystem(j,instance)
+                    Ndot0_twin=prm%Ndot0PerTwinSystem(j)
                 end select
                 StressRatio_r = (state(instance)%threshold_stress_twin(j,of)/tau) &
-                                                   **rPerTwinFamily(f,instance)
+                                                   **prm%rPerTwinFamily(f)
                 plastic_dislotwin_postResults(c+j) = &
                   (param(instance)%MaxTwinFraction-sumf)*lattice_shearTwin(index_myFamily+i,ph)*&
                   state(instance)%twinVolume(j,of)*Ndot0_twin*exp(-StressRatio_r)
@@ -2398,30 +2287,30 @@ function plastic_dislotwin_postResults(Tstar_v,Temperature,ipc,ip,el)
              !* Stress ratios
                StressRatio_p = ((abs(tau)-state(instance)%threshold_stress_slip(j,of))/&
                                (param(instance)%SolidSolutionStrength+&
-                                tau_peierlsPerSlipFamily(f,instance)))&
-                                                  **pPerSlipFamily(f,instance)
+                                prm%tau_peierlsPerSlipFamily(f)))&
+                                                  **prm%pPerSlipFamily(f)
                StressRatio_pminus1 = ((abs(tau)-state(instance)%threshold_stress_slip(j,of))/&
                                      (param(instance)%SolidSolutionStrength+&
-                                      tau_peierlsPerSlipFamily(f,instance)))&
-                                                  **(pPerSlipFamily(f,instance)-1.0_pReal)
+                                      prm%tau_peierlsPerSlipFamily(f)))&
+                                                  **(prm%pPerSlipFamily(f)-1.0_pReal)
              !* Boltzmann ratio
-               BoltzmannRatio = QedgePerSlipSystem(j,instance)/(kB*Temperature)
+               BoltzmannRatio = prm%QedgePerSlipSystem(j)/(kB*Temperature)
              !* Initial shear rates
                DotGamma0 = &
                  state(instance)%rhoEdge(j,of)*prm%burgers_slip(j)* &
-                 v0PerSlipSystem(j,instance)
+                 prm%v0PerSlipSystem(j)
 
              !* Shear rates due to slip
                gdot_slip(j) = DotGamma0*exp(-BoltzmannRatio*(1_pInt-StressRatio_p)**&
-                            qPerSlipFamily(f,instance))*sign(1.0_pReal,tau)
+                            prm%qPerSlipFamily(f))*sign(1.0_pReal,tau)
 
              !* Derivatives of shear rates
                dgdot_dtauslip = &
-                 abs(gdot_slip(j))*BoltzmannRatio*pPerSlipFamily(f,instance)&
-                 *qPerSlipFamily(f,instance)/&
+                 abs(gdot_slip(j))*BoltzmannRatio*prm%pPerSlipFamily(f)&
+                 *prm%qPerSlipFamily(f)/&
                  (param(instance)%SolidSolutionStrength+&
-                  tau_peierlsPerSlipFamily(f,instance))*&
-                 StressRatio_pminus1*(1-StressRatio_p)**(qPerSlipFamily(f,instance)-1.0_pReal)
+                  prm%tau_peierlsPerSlipFamily(f))*&
+                 StressRatio_pminus1*(1-StressRatio_p)**(prm%qPerSlipFamily(f)-1.0_pReal)
              
              else
                gdot_slip(j) = 0.0_pReal
