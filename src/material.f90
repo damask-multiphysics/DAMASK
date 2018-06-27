@@ -1,13 +1,13 @@
 !--------------------------------------------------------------------------------------------------
 !> @author Franz Roters, Max-Planck-Institut für Eisenforschung GmbH
 !> @author Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
+!> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
 !> @brief Parses material config file, either solverJobName.materialConfig or material.config
 !> @details reads the material configuration file, where solverJobName.materialConfig takes
 !! precedence over material.config and parses the sections 'homogenization', 'crystallite',
 !! 'phase', 'texture', and 'microstucture'
 !--------------------------------------------------------------------------------------------------
 module material
- use config
  use prec, only: &
    pReal, &
    pInt, &
@@ -351,6 +351,17 @@ subroutine material_init()
    debug_material, &
    debug_levelBasic, &
    debug_levelExtensive
+ use config, only: &
+   config_crystallite, &
+   config_homogenization, &
+   config_microstructure, &
+   config_phase, &
+   config_texture, &
+   homogenization_name, &
+   microstructure_name, &
+   phase_name, &
+   texture_name, &
+   config_deallocate
  use mesh, only: &
    mesh_maxNips, &
    mesh_NcpElems, &
@@ -391,44 +402,44 @@ subroutine material_init()
  call material_parseTexture()
  if (iand(myDebug,debug_levelBasic) /= 0_pInt) write(6,'(a)') ' Texture parsed'; flush(6)
 
- allocate(plasticState       (material_Nphase))
- allocate(sourceState        (material_Nphase))
- do myPhase = 1,material_Nphase
+ allocate(plasticState       (size(config_phase)))
+ allocate(sourceState        (size(config_phase)))
+ do myPhase = 1,size(config_phase)
    allocate(sourceState(myPhase)%p(phase_Nsources(myPhase)))
  enddo
 
- allocate(homogState         (material_Nhomogenization))
- allocate(thermalState       (material_Nhomogenization))
- allocate(damageState        (material_Nhomogenization))
- allocate(vacancyfluxState   (material_Nhomogenization))
- allocate(porosityState      (material_Nhomogenization))
- allocate(hydrogenfluxState  (material_Nhomogenization))
+ allocate(homogState         (size(config_homogenization)))
+ allocate(thermalState       (size(config_homogenization)))
+ allocate(damageState        (size(config_homogenization)))
+ allocate(vacancyfluxState   (size(config_homogenization)))
+ allocate(porosityState      (size(config_homogenization)))
+ allocate(hydrogenfluxState  (size(config_homogenization)))
 
- allocate(thermalMapping     (material_Nhomogenization))
- allocate(damageMapping      (material_Nhomogenization))
- allocate(vacancyfluxMapping (material_Nhomogenization))
- allocate(porosityMapping    (material_Nhomogenization))
- allocate(hydrogenfluxMapping(material_Nhomogenization))
+ allocate(thermalMapping     (size(config_homogenization)))
+ allocate(damageMapping      (size(config_homogenization)))
+ allocate(vacancyfluxMapping (size(config_homogenization)))
+ allocate(porosityMapping    (size(config_homogenization)))
+ allocate(hydrogenfluxMapping(size(config_homogenization)))
 
- allocate(temperature        (material_Nhomogenization))
- allocate(damage             (material_Nhomogenization))
- allocate(vacancyConc        (material_Nhomogenization))
- allocate(porosity           (material_Nhomogenization))
- allocate(hydrogenConc       (material_Nhomogenization))
+ allocate(temperature        (size(config_homogenization)))
+ allocate(damage             (size(config_homogenization)))
+ allocate(vacancyConc        (size(config_homogenization)))
+ allocate(porosity           (size(config_homogenization)))
+ allocate(hydrogenConc       (size(config_homogenization)))
 
- allocate(temperatureRate    (material_Nhomogenization))
- allocate(vacancyConcRate    (material_Nhomogenization))
- allocate(hydrogenConcRate   (material_Nhomogenization))
+ allocate(temperatureRate    (size(config_homogenization)))
+ allocate(vacancyConcRate    (size(config_homogenization)))
+ allocate(hydrogenConcRate   (size(config_homogenization)))
 
- do m = 1_pInt,material_Nmicrostructure
+ do m = 1_pInt,size(config_microstructure)
    if(microstructure_crystallite(m) < 1_pInt .or. &
-      microstructure_crystallite(m) > material_Ncrystallite) &
+      microstructure_crystallite(m) > size(config_crystallite)) &
         call IO_error(150_pInt,m,ext_msg='crystallite')
    if(minval(microstructure_phase(1:microstructure_Nconstituents(m),m)) < 1_pInt .or. &
-      maxval(microstructure_phase(1:microstructure_Nconstituents(m),m)) > material_Nphase) &
+      maxval(microstructure_phase(1:microstructure_Nconstituents(m),m)) > size(config_phase)) &
         call IO_error(150_pInt,m,ext_msg='phase')
    if(minval(microstructure_texture(1:microstructure_Nconstituents(m),m)) < 1_pInt .or. &
-      maxval(microstructure_texture(1:microstructure_Nconstituents(m),m)) > material_Ntexture) &
+      maxval(microstructure_texture(1:microstructure_Nconstituents(m),m)) > size(config_texture)) &
         call IO_error(150_pInt,m,ext_msg='texture')
    if(microstructure_Nconstituents(m) < 1_pInt) &
         call IO_error(151_pInt,m)
@@ -437,11 +448,11 @@ subroutine material_init()
  debugOut: if (iand(myDebug,debug_levelExtensive) /= 0_pInt) then
    write(6,'(/,a,/)') ' MATERIAL configuration'
    write(6,'(a32,1x,a16,1x,a6)') 'homogenization                  ','type            ','grains'
-   do h = 1_pInt,material_Nhomogenization
+   do h = 1_pInt,size(config_homogenization)
      write(6,'(1x,a32,1x,a16,1x,i6)') homogenization_name(h),homogenization_type(h),homogenization_Ngrains(h)
    enddo
    write(6,'(/,a14,18x,1x,a11,1x,a12,1x,a13)') 'microstructure','crystallite','constituents','homogeneous'
-   do m = 1_pInt,material_Nmicrostructure
+   do m = 1_pInt,size(config_microstructure)
      write(6,'(1x,a32,1x,i11,1x,i12,1x,l13)') microstructure_name(m), &
                                         microstructure_crystallite(m), &
                                         microstructure_Nconstituents(m), &
@@ -458,6 +469,7 @@ subroutine material_init()
  endif debugOut
 
  call material_populateGrains
+ call config_deallocate('material.config/microstructure')
 
  allocate(phaseAt                   (  homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems),source=0_pInt)
  allocate(phasememberAt             (  homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems),source=0_pInt)
@@ -465,9 +477,9 @@ subroutine material_init()
  allocate(mappingCrystallite        (2,homogenization_maxNgrains,             mesh_NcpElems),source=0_pInt)
  allocate(mappingHomogenizationConst(                            mesh_maxNips,mesh_NcpElems),source=1_pInt)
 
- allocate(ConstitutivePosition  (material_Nphase),         source=0_pInt)
- allocate(HomogenizationPosition(material_Nhomogenization),source=0_pInt)
- allocate(CrystallitePosition   (material_Nphase),         source=0_pInt)
+ allocate(ConstitutivePosition  (size(config_phase)),         source=0_pInt)
+ allocate(HomogenizationPosition(size(config_homogenization)),source=0_pInt)
+ allocate(CrystallitePosition   (size(config_phase)),         source=0_pInt)
 
  ElemLoop:do e = 1_pInt,mesh_NcpElems
  myHomog = mesh_element(3,e)
@@ -484,7 +496,7 @@ subroutine material_init()
  enddo ElemLoop
 
 ! hack needed to initialize field values used during constitutive and crystallite initializations
- do myHomog = 1,material_Nhomogenization
+ do myHomog = 1,size(config_homogenization)
    thermalMapping     (myHomog)%p => mappingHomogenizationConst
    damageMapping      (myHomog)%p => mappingHomogenizationConst
    vacancyfluxMapping (myHomog)%p => mappingHomogenizationConst
@@ -508,7 +520,7 @@ end subroutine material_init
 !--------------------------------------------------------------------------------------------------
 subroutine material_parseHomogenization
  use config, only : &
-   homogenizationConfig
+   config_homogenization
  use IO, only: &
    IO_error
  use mesh, only: &
@@ -518,54 +530,54 @@ subroutine material_parseHomogenization
  integer(pInt)        :: h
  character(len=65536) :: tag
 
- allocate(homogenization_type(material_Nhomogenization),           source=HOMOGENIZATION_undefined_ID)
- allocate(thermal_type(material_Nhomogenization),                  source=THERMAL_isothermal_ID)
- allocate(damage_type (material_Nhomogenization),                  source=DAMAGE_none_ID)
- allocate(vacancyflux_type(material_Nhomogenization),              source=VACANCYFLUX_isoconc_ID)
- allocate(porosity_type (material_Nhomogenization),                source=POROSITY_none_ID)
- allocate(hydrogenflux_type(material_Nhomogenization),             source=HYDROGENFLUX_isoconc_ID)
- allocate(homogenization_typeInstance(material_Nhomogenization),   source=0_pInt)
- allocate(thermal_typeInstance(material_Nhomogenization),          source=0_pInt)
- allocate(damage_typeInstance(material_Nhomogenization),           source=0_pInt)
- allocate(vacancyflux_typeInstance(material_Nhomogenization),      source=0_pInt)
- allocate(porosity_typeInstance(material_Nhomogenization),         source=0_pInt)
- allocate(hydrogenflux_typeInstance(material_Nhomogenization),     source=0_pInt)
- allocate(homogenization_Ngrains(material_Nhomogenization),        source=0_pInt)
- allocate(homogenization_Noutput(material_Nhomogenization),        source=0_pInt)
- allocate(homogenization_active(material_Nhomogenization),         source=.false.)  !!!!!!!!!!!!!!!
- allocate(thermal_initialT(material_Nhomogenization),              source=300.0_pReal)
- allocate(damage_initialPhi(material_Nhomogenization),             source=1.0_pReal)
- allocate(vacancyflux_initialCv(material_Nhomogenization),         source=0.0_pReal)
- allocate(porosity_initialPhi(material_Nhomogenization),           source=1.0_pReal)
- allocate(hydrogenflux_initialCh(material_Nhomogenization),        source=0.0_pReal)
+ allocate(homogenization_type(size(config_homogenization)),           source=HOMOGENIZATION_undefined_ID)
+ allocate(thermal_type(size(config_homogenization)),                  source=THERMAL_isothermal_ID)
+ allocate(damage_type (size(config_homogenization)),                  source=DAMAGE_none_ID)
+ allocate(vacancyflux_type(size(config_homogenization)),              source=VACANCYFLUX_isoconc_ID)
+ allocate(porosity_type (size(config_homogenization)),                source=POROSITY_none_ID)
+ allocate(hydrogenflux_type(size(config_homogenization)),             source=HYDROGENFLUX_isoconc_ID)
+ allocate(homogenization_typeInstance(size(config_homogenization)),   source=0_pInt)
+ allocate(thermal_typeInstance(size(config_homogenization)),          source=0_pInt)
+ allocate(damage_typeInstance(size(config_homogenization)),           source=0_pInt)
+ allocate(vacancyflux_typeInstance(size(config_homogenization)),      source=0_pInt)
+ allocate(porosity_typeInstance(size(config_homogenization)),         source=0_pInt)
+ allocate(hydrogenflux_typeInstance(size(config_homogenization)),     source=0_pInt)
+ allocate(homogenization_Ngrains(size(config_homogenization)),        source=0_pInt)
+ allocate(homogenization_Noutput(size(config_homogenization)),        source=0_pInt)
+ allocate(homogenization_active(size(config_homogenization)),         source=.false.)  !!!!!!!!!!!!!!!
+ allocate(thermal_initialT(size(config_homogenization)),              source=300.0_pReal)
+ allocate(damage_initialPhi(size(config_homogenization)),             source=1.0_pReal)
+ allocate(vacancyflux_initialCv(size(config_homogenization)),         source=0.0_pReal)
+ allocate(porosity_initialPhi(size(config_homogenization)),           source=1.0_pReal)
+ allocate(hydrogenflux_initialCh(size(config_homogenization)),        source=0.0_pReal)
 
- forall (h = 1_pInt:material_Nhomogenization) homogenization_active(h) = any(mesh_element(3,:) == h)
+ forall (h = 1_pInt:size(config_homogenization)) homogenization_active(h) = any(mesh_element(3,:) == h)
 
 
- do h=1_pInt, material_Nhomogenization
-   homogenization_Noutput(h) = homogenizationConfig(h)%countKeys('(output)')
+ do h=1_pInt, size(config_homogenization)
+   homogenization_Noutput(h) = config_homogenization(h)%countKeys('(output)')
 
-   tag = homogenizationConfig(h)%getString('mech')
+   tag = config_homogenization(h)%getString('mech')
    select case (trim(tag))
      case(HOMOGENIZATION_NONE_label)
        homogenization_type(h) = HOMOGENIZATION_NONE_ID
        homogenization_Ngrains(h) = 1_pInt
      case(HOMOGENIZATION_ISOSTRAIN_label)
        homogenization_type(h) = HOMOGENIZATION_ISOSTRAIN_ID
-       homogenization_Ngrains(h) = homogenizationConfig(h)%getInt('nconstituents')
+       homogenization_Ngrains(h) = config_homogenization(h)%getInt('nconstituents')
      case(HOMOGENIZATION_RGC_label)
        homogenization_type(h) = HOMOGENIZATION_RGC_ID
-       homogenization_Ngrains(h) = homogenizationConfig(h)%getInt('nconstituents')
+       homogenization_Ngrains(h) = config_homogenization(h)%getInt('nconstituents')
      case default
        call IO_error(500_pInt,ext_msg=trim(tag))
    end select
    
    homogenization_typeInstance(h) = count(homogenization_type==homogenization_type(h))
 
-   if (homogenizationConfig(h)%keyExists('thermal')) then
-     thermal_initialT(h) =  homogenizationConfig(h)%getFloat('t0',defaultVal=300.0_pReal)
+   if (config_homogenization(h)%keyExists('thermal')) then
+     thermal_initialT(h) =  config_homogenization(h)%getFloat('t0',defaultVal=300.0_pReal)
 
-     tag = homogenizationConfig(h)%getString('thermal')
+     tag = config_homogenization(h)%getString('thermal')
      select case (trim(tag))
        case(THERMAL_isothermal_label)
          thermal_type(h) = THERMAL_isothermal_ID
@@ -579,10 +591,10 @@ subroutine material_parseHomogenization
 
    endif
 
-   if (homogenizationConfig(h)%keyExists('damage')) then
-     damage_initialPhi(h) =  homogenizationConfig(h)%getFloat('initialdamage',defaultVal=1.0_pReal)
+   if (config_homogenization(h)%keyExists('damage')) then
+     damage_initialPhi(h) =  config_homogenization(h)%getFloat('initialdamage',defaultVal=1.0_pReal)
 
-     tag = homogenizationConfig(h)%getString('damage')
+     tag = config_homogenization(h)%getString('damage')
      select case (trim(tag))
        case(DAMAGE_NONE_label)
          damage_type(h) = DAMAGE_none_ID
@@ -596,10 +608,10 @@ subroutine material_parseHomogenization
 
    endif
    
-   if (homogenizationConfig(h)%keyExists('vacancyflux')) then
-     vacancyflux_initialCv(h) = homogenizationConfig(h)%getFloat('cv0',defaultVal=0.0_pReal)
+   if (config_homogenization(h)%keyExists('vacancyflux')) then
+     vacancyflux_initialCv(h) = config_homogenization(h)%getFloat('cv0',defaultVal=0.0_pReal)
 
-     tag = homogenizationConfig(h)%getString('vacancyflux')
+     tag = config_homogenization(h)%getString('vacancyflux')
      select case (trim(tag))
        case(VACANCYFLUX_isoconc_label)
          vacancyflux_type(h) = VACANCYFLUX_isoconc_ID
@@ -613,10 +625,10 @@ subroutine material_parseHomogenization
    
    endif
 
-   if (homogenizationConfig(h)%keyExists('porosity')) then
+   if (config_homogenization(h)%keyExists('porosity')) then
      !ToDo?
 
-     tag = homogenizationConfig(h)%getString('porosity')
+     tag = config_homogenization(h)%getString('porosity')
      select case (trim(tag))
        case(POROSITY_NONE_label)
          porosity_type(h) = POROSITY_none_ID
@@ -628,10 +640,10 @@ subroutine material_parseHomogenization
 
    endif
 
-   if (homogenizationConfig(h)%keyExists('hydrogenflux')) then
-     hydrogenflux_initialCh(h) = homogenizationConfig(h)%getFloat('ch0',defaultVal=0.0_pReal)
+   if (config_homogenization(h)%keyExists('hydrogenflux')) then
+     hydrogenflux_initialCh(h) = config_homogenization(h)%getFloat('ch0',defaultVal=0.0_pReal)
 
-     tag = homogenizationConfig(h)%getString('hydrogenflux')
+     tag = config_homogenization(h)%getString('hydrogenflux')
      select case (trim(tag))
        case(HYDROGENFLUX_isoconc_label)
          hydrogenflux_type(h) = HYDROGENFLUX_isoconc_ID
@@ -645,7 +657,7 @@ subroutine material_parseHomogenization
 
  enddo
 
- do h=1_pInt, material_Nhomogenization
+ do h=1_pInt, size(config_homogenization)
    homogenization_typeInstance(h)  = count(homogenization_type(1:h)  == homogenization_type(h))
    thermal_typeInstance(h)         = count(thermal_type       (1:h)  == thermal_type       (h))
    damage_typeInstance(h)          = count(damage_type        (1:h)  == damage_type        (h))
@@ -671,6 +683,9 @@ subroutine material_parseMicrostructure
    IO_stringValue, &
    IO_stringPos, &
    IO_error
+ use config, only: &
+   config_microstructure, &
+   microstructure_name
  use mesh, only: &
    mesh_element, &
    mesh_NcpElems
@@ -683,29 +698,29 @@ subroutine material_parseMicrostructure
  character(len=65536) :: &
    tag
 
- allocate(microstructure_crystallite(material_Nmicrostructure),          source=0_pInt)
- allocate(microstructure_Nconstituents(material_Nmicrostructure),        source=0_pInt)
- allocate(microstructure_active(material_Nmicrostructure),               source=.false.)
- allocate(microstructure_elemhomo(material_Nmicrostructure),             source=.false.)
+ allocate(microstructure_crystallite(size(config_microstructure)),          source=0_pInt)
+ allocate(microstructure_Nconstituents(size(config_microstructure)),        source=0_pInt)
+ allocate(microstructure_active(size(config_microstructure)),               source=.false.)
+ allocate(microstructure_elemhomo(size(config_microstructure)),             source=.false.)
 
- if(any(mesh_element(4,1:mesh_NcpElems) > material_Nmicrostructure)) &
+ if(any(mesh_element(4,1:mesh_NcpElems) > size(config_microstructure))) &
   call IO_error(155_pInt,ext_msg='More microstructures in geometry than sections in material.config')
 
  forall (e = 1_pInt:mesh_NcpElems) microstructure_active(mesh_element(4,e)) = .true.                ! current microstructure used in model? Elementwise view, maximum N operations for N elements
 
- do m=1_pInt, material_Nmicrostructure
-   microstructure_Nconstituents(m) =  microstructureConfig(m)%countKeys('(constituent)')
-   microstructure_crystallite(m)   =  microstructureConfig(m)%getInt('crystallite')
-   microstructure_elemhomo(m)      =  microstructureConfig(m)%keyExists('/elementhomogeneous/')
+ do m=1_pInt, size(config_microstructure)
+   microstructure_Nconstituents(m) =  config_microstructure(m)%countKeys('(constituent)')
+   microstructure_crystallite(m)   =  config_microstructure(m)%getInt('crystallite')
+   microstructure_elemhomo(m)      =  config_microstructure(m)%keyExists('/elementhomogeneous/')
  enddo
 
  microstructure_maxNconstituents = maxval(microstructure_Nconstituents)
- allocate(microstructure_phase   (microstructure_maxNconstituents,material_Nmicrostructure),source=0_pInt)
- allocate(microstructure_texture (microstructure_maxNconstituents,material_Nmicrostructure),source=0_pInt)
- allocate(microstructure_fraction(microstructure_maxNconstituents,material_Nmicrostructure),source=0.0_pReal)
+ allocate(microstructure_phase   (microstructure_maxNconstituents,size(config_microstructure)),source=0_pInt)
+ allocate(microstructure_texture (microstructure_maxNconstituents,size(config_microstructure)),source=0_pInt)
+ allocate(microstructure_fraction(microstructure_maxNconstituents,size(config_microstructure)),source=0.0_pReal)
 
- do m=1_pInt, material_Nmicrostructure
-   str = microstructureConfig(m)%getStrings('(constituent)',raw=.true.)
+ do m=1_pInt, size(config_microstructure)
+   str = config_microstructure(m)%getStrings('(constituent)',raw=.true.)
    do c = 1_pInt, size(str)
      chunkPos = IO_stringPos(str(c))
 
@@ -725,11 +740,11 @@ subroutine material_parseMicrostructure
    enddo
  enddo
 
- do m = 1_pInt, material_Nmicrostructure
+ do m = 1_pInt, size(config_microstructure)
    if (dNeq(sum(microstructure_fraction(:,m)),1.0_pReal)) &
      call IO_error(153_pInt,ext_msg=microstructure_name(m))
  enddo
-
+ 
 end subroutine material_parseMicrostructure
 
 
@@ -737,13 +752,15 @@ end subroutine material_parseMicrostructure
 !> @brief parses the crystallite part in the material configuration file
 !--------------------------------------------------------------------------------------------------
 subroutine material_parseCrystallite
+ use config, only: &
+   config_crystallite
 
  implicit none
  integer(pInt)        :: c
 
- allocate(crystallite_Noutput(material_Ncrystallite),source=0_pInt)
- do c=1_pInt, material_Ncrystallite
-   crystallite_Noutput(c) =  crystalliteConfig(c)%countKeys('(output)')
+ allocate(crystallite_Noutput(size(config_crystallite)),source=0_pInt)
+ do c=1_pInt, size(config_crystallite)
+   crystallite_Noutput(c) =  config_crystallite(c)%countKeys('(output)')
  enddo
 
 end subroutine material_parseCrystallite
@@ -757,35 +774,37 @@ subroutine material_parsePhase
    IO_error, &
    IO_getTag, &
    IO_stringValue
+ use config, only: &
+   config_phase
 
  implicit none
  integer(pInt) :: sourceCtr, kinematicsCtr, stiffDegradationCtr, p
  character(len=65536), dimension(:), allocatable ::  str 
 
 
- allocate(phase_elasticity(material_Nphase),source=ELASTICITY_undefined_ID)
- allocate(phase_plasticity(material_Nphase),source=PLASTICITY_undefined_ID)
- allocate(phase_Nsources(material_Nphase),              source=0_pInt)
- allocate(phase_Nkinematics(material_Nphase),           source=0_pInt)
- allocate(phase_NstiffnessDegradations(material_Nphase),source=0_pInt)
- allocate(phase_Noutput(material_Nphase),               source=0_pInt)
- allocate(phase_localPlasticity(material_Nphase),       source=.false.)
+ allocate(phase_elasticity(size(config_phase)),source=ELASTICITY_undefined_ID)
+ allocate(phase_plasticity(size(config_phase)),source=PLASTICITY_undefined_ID)
+ allocate(phase_Nsources(size(config_phase)),              source=0_pInt)
+ allocate(phase_Nkinematics(size(config_phase)),           source=0_pInt)
+ allocate(phase_NstiffnessDegradations(size(config_phase)),source=0_pInt)
+ allocate(phase_Noutput(size(config_phase)),               source=0_pInt)
+ allocate(phase_localPlasticity(size(config_phase)),       source=.false.)
 
- do p=1_pInt, material_Nphase
-   phase_Noutput(p) =                 phaseConfig(p)%countKeys('(output)')
-   phase_Nsources(p) =                phaseConfig(p)%countKeys('(source)')
-   phase_Nkinematics(p) =             phaseConfig(p)%countKeys('(kinematics)')
-   phase_NstiffnessDegradations(p) =  phaseConfig(p)%countKeys('(stiffness_degradation)')
-   phase_localPlasticity(p) = .not.   phaseConfig(p)%KeyExists('/nonlocal/')
+ do p=1_pInt, size(config_phase)
+   phase_Noutput(p) =                 config_phase(p)%countKeys('(output)')
+   phase_Nsources(p) =                config_phase(p)%countKeys('(source)')
+   phase_Nkinematics(p) =             config_phase(p)%countKeys('(kinematics)')
+   phase_NstiffnessDegradations(p) =  config_phase(p)%countKeys('(stiffness_degradation)')
+   phase_localPlasticity(p) = .not.   config_phase(p)%KeyExists('/nonlocal/')
 
-   select case (phaseConfig(p)%getString('elasticity'))
+   select case (config_phase(p)%getString('elasticity'))
      case (ELASTICITY_HOOKE_label)
        phase_elasticity(p) = ELASTICITY_HOOKE_ID
      case default
-       call IO_error(200_pInt,ext_msg=trim(phaseConfig(p)%getString('elasticity')))
+       call IO_error(200_pInt,ext_msg=trim(config_phase(p)%getString('elasticity')))
    end select
 
-   select case (phaseConfig(p)%getString('plasticity'))
+   select case (config_phase(p)%getString('plasticity'))
      case (PLASTICITY_NONE_label)
        phase_plasticity(p) = PLASTICITY_NONE_ID
      case (PLASTICITY_ISOTROPIC_label)
@@ -801,22 +820,22 @@ subroutine material_parsePhase
      case (PLASTICITY_NONLOCAL_label)
        phase_plasticity(p) = PLASTICITY_NONLOCAL_ID
      case default
-       call IO_error(201_pInt,ext_msg=trim(phaseConfig(p)%getString('plasticity')))
+       call IO_error(201_pInt,ext_msg=trim(config_phase(p)%getString('plasticity')))
    end select
 
  enddo
 
- allocate(phase_source(maxval(phase_Nsources),material_Nphase), source=SOURCE_undefined_ID)
- allocate(phase_kinematics(maxval(phase_Nkinematics),material_Nphase), source=KINEMATICS_undefined_ID)
- allocate(phase_stiffnessDegradation(maxval(phase_NstiffnessDegradations),material_Nphase), &
+ allocate(phase_source(maxval(phase_Nsources),size(config_phase)), source=SOURCE_undefined_ID)
+ allocate(phase_kinematics(maxval(phase_Nkinematics),size(config_phase)), source=KINEMATICS_undefined_ID)
+ allocate(phase_stiffnessDegradation(maxval(phase_NstiffnessDegradations),size(config_phase)), &
           source=STIFFNESS_DEGRADATION_undefined_ID)
- do p=1_pInt, material_Nphase
+ do p=1_pInt, size(config_phase)
 #if defined(__GFORTRAN__)
    str = ['GfortranBug86277']
-   str = phaseConfig(p)%getStrings('(source)',defaultVal=str)
+   str = config_phase(p)%getStrings('(source)',defaultVal=str)
    if (str(1) == 'GfortranBug86277') str = [character(len=65536)::]
 #else
-   str = phaseConfig(p)%getStrings('(source)',defaultVal=[character(len=65536)::])
+   str = config_phase(p)%getStrings('(source)',defaultVal=[character(len=65536)::])
 #endif
    do sourceCtr = 1_pInt, size(str)
      select case (trim(str(sourceCtr)))
@@ -843,10 +862,10 @@ subroutine material_parsePhase
 
 #if defined(__GFORTRAN__)
    str = ['GfortranBug86277']
-   str = phaseConfig(p)%getStrings('(kinematics)',defaultVal=str)
+   str = config_phase(p)%getStrings('(kinematics)',defaultVal=str)
    if (str(1) == 'GfortranBug86277') str = [character(len=65536)::]
 #else
-   str = phaseConfig(p)%getStrings('(kinematics)',defaultVal=[character(len=65536)::])
+   str = config_phase(p)%getStrings('(kinematics)',defaultVal=[character(len=65536)::])
 #endif
    do kinematicsCtr = 1_pInt, size(str)
      select case (trim(str(kinematicsCtr)))
@@ -864,10 +883,10 @@ subroutine material_parsePhase
    enddo
 #if defined(__GFORTRAN__)
    str = ['GfortranBug86277']
-   str = phaseConfig(p)%getStrings('(stiffness_degradation)',defaultVal=str)
+   str = config_phase(p)%getStrings('(stiffness_degradation)',defaultVal=str)
    if (str(1) == 'GfortranBug86277') str = [character(len=65536)::]
 #else
-   str = phaseConfig(p)%getStrings('(stiffness_degradation)',defaultVal=[character(len=65536)::])
+   str = config_phase(p)%getStrings('(stiffness_degradation)',defaultVal=[character(len=65536)::])
 #endif
    do stiffDegradationCtr = 1_pInt, size(str)
      select case (trim(str(stiffDegradationCtr)))
@@ -879,10 +898,10 @@ subroutine material_parsePhase
    enddo
  enddo
 
- allocate(phase_plasticityInstance(material_Nphase),   source=0_pInt)
- allocate(phase_elasticityInstance(material_Nphase),   source=0_pInt)
+ allocate(phase_plasticityInstance(size(config_phase)),   source=0_pInt)
+ allocate(phase_elasticityInstance(size(config_phase)),   source=0_pInt)
 
- do p=1_pInt, material_Nphase
+ do p=1_pInt, size(config_phase)
    phase_elasticityInstance(p)  = count(phase_elasticity(1:p)  == phase_elasticity(p))
    phase_plasticityInstance(p)  = count(phase_plasticity(1:p)  == phase_plasticity(p))
  enddo
@@ -900,6 +919,9 @@ subroutine material_parseTexture
    IO_stringPos, &
    IO_floatValue, &
    IO_stringValue
+ use config, only: &
+   config_texture, &
+   config_deallocate
  use math, only: &
    inRad, &
    math_sampleRandomOri, &
@@ -912,31 +934,31 @@ subroutine material_parseTexture
  integer(pInt), dimension(:), allocatable :: chunkPos
  character(len=65536) :: tag
 
- allocate(texture_ODFfile(material_Ntexture)); texture_ODFfile=''
- allocate(texture_symmetry(material_Ntexture), source=1_pInt)
- allocate(texture_Ngauss(material_Ntexture),   source=0_pInt)
- allocate(texture_Nfiber(material_Ntexture),   source=0_pInt)
+ allocate(texture_ODFfile(size(config_texture))); texture_ODFfile=''
+ allocate(texture_symmetry(size(config_texture)), source=1_pInt)
+ allocate(texture_Ngauss(size(config_texture)),   source=0_pInt)
+ allocate(texture_Nfiber(size(config_texture)),   source=0_pInt)
 
- do t=1_pInt, material_Ntexture
-   texture_Ngauss(t) =  textureConfig(t)%countKeys('(gauss)') &
-                     +  textureConfig(t)%countKeys('(random)')
-   texture_Nfiber(t) =  textureConfig(t)%countKeys('(fiber)')
+ do t=1_pInt, size(config_texture)
+   texture_Ngauss(t) =  config_texture(t)%countKeys('(gauss)') &
+                     +  config_texture(t)%countKeys('(random)')
+   texture_Nfiber(t) =  config_texture(t)%countKeys('(fiber)')
  enddo
 
  texture_maxNgauss = maxval(texture_Ngauss)
  texture_maxNfiber = maxval(texture_Nfiber)
- allocate(texture_Gauss (5,texture_maxNgauss,material_Ntexture), source=0.0_pReal)
- allocate(texture_Fiber (6,texture_maxNfiber,material_Ntexture), source=0.0_pReal)
- allocate(texture_transformation(3,3,material_Ntexture),         source=0.0_pReal)
-          texture_transformation = spread(math_I3,3,material_Ntexture)
+ allocate(texture_Gauss (5,texture_maxNgauss,size(config_texture)), source=0.0_pReal)
+ allocate(texture_Fiber (6,texture_maxNfiber,size(config_texture)), source=0.0_pReal)
+ allocate(texture_transformation(3,3,size(config_texture)),         source=0.0_pReal)
+          texture_transformation = spread(math_I3,3,size(config_texture))
 
- do t=1_pInt, material_Ntexture
+ do t=1_pInt, size(config_texture)
    section = t
    gauss = 0_pInt
    fiber = 0_pInt
    
-   if (textureConfig(t)%keyExists('axes')) then
-     strings = textureConfig(t)%getStrings('axes')
+   if (config_texture(t)%keyExists('axes')) then
+     strings = config_texture(t)%getStrings('axes')
      do j = 1_pInt, 3_pInt                                                                          ! look for "x", "y", and "z" entries
        select case (strings(j))
          case('x', '+x')
@@ -959,10 +981,10 @@ subroutine material_parseTexture
    endif
 
    tag=''
-   texture_ODFfile(t) = textureConfig(t)%getString('hybridia',defaultVal=tag)
+   texture_ODFfile(t) = config_texture(t)%getString('hybridia',defaultVal=tag)
 
-   if (textureConfig(t)%keyExists('symmetry')) then
-     select case (textureConfig(t)%getString('symmetry'))
+   if (config_texture(t)%keyExists('symmetry')) then
+     select case (config_texture(t)%getString('symmetry'))
        case('orthotropic')
          texture_symmetry(t) = 4_pInt
        case('monoclinic')
@@ -972,8 +994,8 @@ subroutine material_parseTexture
      end select
    endif
 
-   if (textureConfig(t)%keyExists('(random)')) then
-     strings = textureConfig(t)%getStrings('(random)',raw=.true.)
+   if (config_texture(t)%keyExists('(random)')) then
+     strings = config_texture(t)%getStrings('(random)',raw=.true.)
      do i = 1_pInt, size(strings)
        gauss = gauss + 1_pInt
        texture_Gauss(1:3,gauss,t) = math_sampleRandomOri()
@@ -990,9 +1012,9 @@ subroutine material_parseTexture
    endif
 
    
-   if (textureConfig(t)%keyExists('(gauss)')) then
+   if (config_texture(t)%keyExists('(gauss)')) then
      gauss = gauss + 1_pInt
-     strings = textureConfig(t)%getStrings('(gauss)',raw= .true.)
+     strings = config_texture(t)%getStrings('(gauss)',raw= .true.)
      do i = 1_pInt , size(strings)
        chunkPos = IO_stringPos(strings(i))
        do j = 1_pInt,9_pInt,2_pInt
@@ -1013,9 +1035,9 @@ subroutine material_parseTexture
    endif
     
     
-   if (textureConfig(t)%keyExists('(fiber)')) then
-     gauss = gauss + 1_pInt
-     strings = textureConfig(t)%getStrings('(fiber)',raw= .true.)
+   if (config_texture(t)%keyExists('(fiber)')) then
+     fiber = fiber + 1_pInt
+     strings = config_texture(t)%getStrings('(fiber)',raw= .true.)
      do i = 1_pInt, size(strings)
        chunkPos = IO_stringPos(strings(i))
        do j = 1_pInt,11_pInt,2_pInt
@@ -1037,7 +1059,8 @@ subroutine material_parseTexture
      enddo
    endif
  enddo    
-  
+ 
+ call config_deallocate('material.config/texture') 
 
 end subroutine material_parseTexture
 
@@ -1066,6 +1089,11 @@ subroutine material_populateGrains
    mesh_ipVolume, &
    FE_Nips, &
    FE_geomtype
+ use config, only: &
+   config_homogenization, &
+   config_microstructure, &
+   homogenization_name, &
+   microstructure_name 
  use IO, only: &
    IO_error, &
    IO_hybridIA
@@ -1102,8 +1130,8 @@ subroutine material_populateGrains
  allocate(material_texture(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems),      source=0_pInt)
  allocate(material_EulerAngles(3,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems),source=0.0_pReal)
 
- allocate(Ngrains(material_Nhomogenization,material_Nmicrostructure),                  source=0_pInt)
- allocate(Nelems(material_Nhomogenization,material_Nmicrostructure),                   source=0_pInt)
+ allocate(Ngrains(size(config_homogenization),size(config_microstructure)),            source=0_pInt)
+ allocate(Nelems (size(config_homogenization),size(config_microstructure)),            source=0_pInt)
 
 ! populating homogenization schemes in each
 !--------------------------------------------------------------------------------------------------
@@ -1118,9 +1146,9 @@ subroutine material_populateGrains
    micro = mesh_element(4,e)
    Nelems(homog,micro) = Nelems(homog,micro) + 1_pInt
  enddo
- allocate(elemsOfHomogMicro(material_Nhomogenization,material_Nmicrostructure))
- do homog = 1,material_Nhomogenization
-   do micro = 1,material_Nmicrostructure
+ allocate(elemsOfHomogMicro(size(config_homogenization),size(config_microstructure)))
+ do homog = 1,size(config_homogenization)
+   do micro = 1,size(config_microstructure)
      if (Nelems(homog,micro) > 0_pInt) then
        allocate(elemsOfHomogMicro(homog,micro)%p(Nelems(homog,micro)))
        elemsOfHomogMicro(homog,micro)%p = 0_pInt
@@ -1135,9 +1163,9 @@ subroutine material_populateGrains
    t    = FE_geomtype(mesh_element(2,e))
    homog = mesh_element(3,e)
    micro = mesh_element(4,e)
-   if (homog < 1_pInt .or. homog > material_Nhomogenization) &                                      ! out of bounds
+   if (homog < 1_pInt .or. homog > size(config_homogenization)) &                                      ! out of bounds
      call IO_error(154_pInt,e,0_pInt,0_pInt)
-   if (micro < 1_pInt .or. micro > material_Nmicrostructure) &                                      ! out of bounds
+   if (micro < 1_pInt .or. micro > size(config_microstructure)) &                                      ! out of bounds
      call IO_error(155_pInt,e,0_pInt,0_pInt)
    if (microstructure_elemhomo(micro)) then                                                         ! how many grains are needed at this element?
      dGrains = homogenization_Ngrains(homog)                                                        ! only one set of Ngrains (other IPs are plain copies)
@@ -1158,9 +1186,9 @@ subroutine material_populateGrains
      write(6,'(/,a/)') ' MATERIAL grain population'
      write(6,'(a32,1x,a32,1x,a6)') 'homogenization_name','microstructure_name','grain#'
  endif
- homogenizationLoop: do homog = 1_pInt,material_Nhomogenization
+ homogenizationLoop: do homog = 1_pInt,size(config_homogenization)
    dGrains = homogenization_Ngrains(homog)                                                          ! grain number per material point
-   microstructureLoop: do micro = 1_pInt,material_Nmicrostructure                                                       ! all pairs of homog and micro
+   microstructureLoop: do micro = 1_pInt,size(config_microstructure)                                                       ! all pairs of homog and micro
      activePair: if (Ngrains(homog,micro) > 0_pInt) then
        myNgrains = Ngrains(homog,micro)                                                             ! assign short name for total number of grains to populate
        myNconstituents = microstructure_Nconstituents(micro)                                        ! assign short name for number of constituents
