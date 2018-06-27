@@ -345,6 +345,8 @@ subroutine free(this)
   class(tPartitionedStringList),  target, intent(in) :: this
   type(tPartitionedStringList),   pointer            :: new, item
 
+  if (.not. associated(this%next)) return
+
   item => this%next
   do while (associated(item%next))
     new => item
