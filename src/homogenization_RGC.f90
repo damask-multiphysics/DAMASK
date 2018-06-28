@@ -100,6 +100,7 @@ subroutine homogenization_RGC_init(fileUnit)
    FE_geomtype
  use IO
  use material
+ use config
 
  implicit none
  integer(pInt), intent(in) :: fileUnit                                                              !< file pointer to material configuration
@@ -166,52 +167,30 @@ subroutine homogenization_RGC_init(fileUnit)
        tag = IO_lc(IO_stringValue(line,chunkPos,1_pInt))                                           ! extract key
        select case(tag)
          case ('(output)')
+             homogenization_RGC_Noutput(i) = homogenization_RGC_Noutput(i) + 1_pInt
+             homogenization_RGC_output(homogenization_RGC_Noutput(i),i) = &
+                                                           IO_lc(IO_stringValue(line,chunkPos,2_pInt))         
            select case(IO_lc(IO_stringValue(line,chunkPos,2_pInt)))
              case('constitutivework')
-               homogenization_RGC_Noutput(i) = homogenization_RGC_Noutput(i) + 1_pInt
                homogenization_RGC_outputID(homogenization_RGC_Noutput(i),i) = constitutivework_ID
-               homogenization_RGC_output(homogenization_RGC_Noutput(i),i) = &
-                 IO_lc(IO_stringValue(line,chunkPos,2_pInt))
              case('penaltyenergy')
-               homogenization_RGC_Noutput(i) = homogenization_RGC_Noutput(i) + 1_pInt
                homogenization_RGC_outputID(homogenization_RGC_Noutput(i),i) = penaltyenergy_ID
-               homogenization_RGC_output(homogenization_RGC_Noutput(i),i) = &
-                 IO_lc(IO_stringValue(line,chunkPos,2_pInt))
              case('volumediscrepancy')
-               homogenization_RGC_Noutput(i) = homogenization_RGC_Noutput(i) + 1_pInt
                homogenization_RGC_outputID(homogenization_RGC_Noutput(i),i) = volumediscrepancy_ID
-               homogenization_RGC_output(homogenization_RGC_Noutput(i),i) = &
-                 IO_lc(IO_stringValue(line,chunkPos,2_pInt))
              case('averagerelaxrate')
-               homogenization_RGC_Noutput(i) = homogenization_RGC_Noutput(i) + 1_pInt
                homogenization_RGC_outputID(homogenization_RGC_Noutput(i),i) = averagerelaxrate_ID
-               homogenization_RGC_output(homogenization_RGC_Noutput(i),i) = &
-                 IO_lc(IO_stringValue(line,chunkPos,2_pInt))
              case('maximumrelaxrate')
-               homogenization_RGC_Noutput(i) = homogenization_RGC_Noutput(i) + 1_pInt
                homogenization_RGC_outputID(homogenization_RGC_Noutput(i),i) = maximumrelaxrate_ID
-               homogenization_RGC_output(homogenization_RGC_Noutput(i),i) = &
-                 IO_lc(IO_stringValue(line,chunkPos,2_pInt))
              case('magnitudemismatch')
-               homogenization_RGC_Noutput(i) = homogenization_RGC_Noutput(i) + 1_pInt
                homogenization_RGC_outputID(homogenization_RGC_Noutput(i),i) = magnitudemismatch_ID
-               homogenization_RGC_output(homogenization_RGC_Noutput(i),i) = &
-                 IO_lc(IO_stringValue(line,chunkPos,2_pInt))
              case('ipcoords')
-               homogenization_RGC_Noutput(i) = homogenization_RGC_Noutput(i) + 1_pInt
                homogenization_RGC_outputID(homogenization_RGC_Noutput(i),i) = ipcoords_ID
-               homogenization_RGC_output(homogenization_RGC_Noutput(i),i) = &
-                 IO_lc(IO_stringValue(line,chunkPos,2_pInt))
              case('avgdefgrad','avgf')
-               homogenization_RGC_Noutput(i) = homogenization_RGC_Noutput(i) + 1_pInt
                homogenization_RGC_outputID(homogenization_RGC_Noutput(i),i) = avgdefgrad_ID
-               homogenization_RGC_output(homogenization_RGC_Noutput(i),i) = &
-                 IO_lc(IO_stringValue(line,chunkPos,2_pInt))
              case('avgp','avgfirstpiola','avg1stpiola')
-               homogenization_RGC_Noutput(i) = homogenization_RGC_Noutput(i) + 1_pInt
                homogenization_RGC_outputID(homogenization_RGC_Noutput(i),i) = avgfirstpiola_ID
-               homogenization_RGC_output(homogenization_RGC_Noutput(i),i) = &
-                 IO_lc(IO_stringValue(line,chunkPos,2_pInt))
+             case default
+               homogenization_RGC_Noutput(i) = homogenization_RGC_Noutput(i) -1_pInt  ! correct for invalid
 
            end select
          case ('clustersize')

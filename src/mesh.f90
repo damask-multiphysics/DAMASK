@@ -118,11 +118,6 @@ module mesh
  logical, private :: noPart                                                                         !< for cases where the ABAQUS input file does not use part/assembly information
 #endif
 
-#ifdef Spectral
-#include <petsc/finclude/petscsys.h>
- include 'fftw3-mpi.f03'
-#endif
-
 ! These definitions should actually reside in the FE-solver specific part (different for MARC/ABAQUS)
 ! Hence, I suggest to prefix with "FE_"
 
@@ -482,6 +477,10 @@ subroutine mesh_init(ip,el)
    compiler_version, &
    compiler_options
 #endif
+#ifdef Spectral
+#include <petsc/finclude/petscsys.h>
+ use PETScsys
+#endif
  use DAMASK_interface
  use IO, only: &
 #ifdef Abaqus
@@ -516,6 +515,7 @@ subroutine mesh_init(ip,el)
 
  implicit none
 #ifdef Spectral
+ include 'fftw3-mpi.f03'
  integer(C_INTPTR_T) :: devNull, local_K, local_K_offset
  integer :: ierr, worldsize
 #endif
@@ -523,8 +523,6 @@ subroutine mesh_init(ip,el)
  integer(pInt), intent(in) :: el, ip
  integer(pInt) :: j
  logical :: myDebug
-
- external :: MPI_comm_size
 
  write(6,'(/,a)')   ' <<<+-  mesh init  -+>>>'
  write(6,'(a15,a)') ' Current time: ',IO_timeStamp()

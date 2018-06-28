@@ -62,16 +62,18 @@ subroutine CPFEM_initAll(el,ip)
    numerics_init
  use debug, only: &
    debug_init
+ use config, only: &
+   config_init
  use FEsolving, only: &
    FE_init
  use math, only: &
    math_init
  use mesh, only: &
    mesh_init
- use lattice, only: &
-   lattice_init
  use material, only: &
    material_init
+ use lattice, only: &
+   lattice_init
  use constitutive, only: &
    constitutive_init
  use crystallite, only: &
@@ -93,6 +95,7 @@ subroutine CPFEM_initAll(el,ip)
      call IO_init
      call numerics_init
      call debug_init
+     call config_init
      call math_init
      call FE_init
      call mesh_init(ip, el)                                                                        ! pass on coordinates to alter calcMode of first ip
@@ -143,7 +146,8 @@ subroutine CPFEM_init
    material_phase, &
    homogState, &
    phase_plasticity, &
-   plasticState, &
+   plasticState
+ use config, only: &
    material_Nhomogenization
  use crystallite, only: &
    crystallite_F0, &
@@ -310,7 +314,8 @@ subroutine CPFEM_general(mode, parallelExecution, ffn, ffn1, temperature_inp, dt
    thermal_type, &
    THERMAL_conduction_ID, &
    phase_Nsources, &
-   material_homog, &
+   material_homog
+ use config, only: &
    material_Nhomogenization
  use crystallite, only: &
    crystallite_partionedF,&

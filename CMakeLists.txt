@@ -5,8 +5,8 @@ cmake_minimum_required (VERSION 2.8.8 FATAL_ERROR)
 #---------------------------------------------------------------------------------------
 # Find PETSc from system environment
 set(PETSC_DIR $ENV{PETSC_DIR})
-if ("${PETSC_DIR}" STREQUAL "")
-  message (FATAL_ERROR "PETSC_DIR is not defined")
+if (PETSC_DIR STREQUAL "")
+  message (FATAL_ERROR "PETSc location (PETSC_DIR) is not defined")
 endif ()
 
 set (petsc_conf_variables "${PETSC_DIR}/lib/petsc/conf/variables")
@@ -105,52 +105,54 @@ set (CMAKE_C_COMPILER       "${PETSC_MPICC}")
 # Now start to care about DAMASK
 
 # DAMASK solver defines project to build
-if ("${DAMASK_SOLVER}" STREQUAL "SPECTRAL")
+if (DAMASK_SOLVER STREQUAL "SPECTRAL")
     project (DAMASK_spectral Fortran C)
     add_definitions (-DSpectral)
     message ("Building Spectral Solver\n")
-elseif ("${DAMASK_SOLVER}" STREQUAL "FEM")
+elseif (DAMASK_SOLVER STREQUAL "FEM")
     project (DAMASK_FEM Fortran C)
     add_definitions (-DFEM)
     message ("Building FEM Solver\n")
+else ()
+    message (FATAL_ERROR "Build target (DAMASK_SOLVER) is not defined")
 endif ()
 
 # set linker commands (needs to be done after defining the project)
 set (CMAKE_LINKER           "${PETSC_LINKER}")
 
-if ("${CMAKE_BUILD_TYPE}" STREQUAL "")
+if (CMAKE_BUILD_TYPE STREQUAL "")
   set (CMAKE_BUILD_TYPE "RELEASE")
 endif ()
 
 # Predefined sets for OPTIMIZATION/OPENMP based on BUILD_TYPE
-if ("${CMAKE_BUILD_TYPE}" STREQUAL "DEBUG" OR "${CMAKE_BUILD_TYPE}" STREQUAL "SYNTAXONLY" )
+if (CMAKE_BUILD_TYPE STREQUAL "DEBUG" OR CMAKE_BUILD_TYPE STREQUAL "SYNTAXONLY")
     set (DEBUG_FLAGS "${DEBUG_FLAGS} -DDEBUG")
     set (PARALLEL "OFF")
     set (OPTI "OFF")
-elseif ("${CMAKE_BUILD_TYPE}" STREQUAL "RELEASE")
+elseif (CMAKE_BUILD_TYPE STREQUAL "RELEASE")
     set (PARALLEL "ON")
     set (OPTI "DEFENSIVE")
-elseif ("${CMAKE_BUILD_TYPE}" STREQUAL "PERFORMANCE")
+elseif (CMAKE_BUILD_TYPE STREQUAL "PERFORMANCE")
     set (PARALLEL "ON")
     set (OPTI "AGGRESSIVE")
 endif ()
 
 # $OPTIMIZATION takes precedence over $BUILD_TYPE defaults
-if ("${OPTIMIZATION}" STREQUAL "")
+if (OPTIMIZATION STREQUAL "")
     set (OPTIMIZATION "${OPTI}")
 else ()
     set (OPTIMIZATION "${OPTIMIZATION}")
 endif ()
 
 # $OPENMP takes precedence over $BUILD_TYPE defaults
-if ("${OPENMP}" STREQUAL "")
+if (OPENMP STREQUAL "")
     set (OPENMP "${PARALLEL}")
 else ()
     set(OPENMP "${OPENMP}")
 endif ()
 
 # syntax check only (mainly for pre-receive hook, works only with gfortran)
-if ("${CMAKE_BUILD_TYPE}" STREQUAL "SYNTAXONLY" )
+if (CMAKE_BUILD_TYPE STREQUAL "SYNTAXONLY")
     set (BUILDCMD_POST "${BUILDCMD_POST} -fsyntax-only")
 endif ()
 
@@ -188,22 +190,24 @@ set (DAMASK_INCLUDE_FLAGS "${DAMASK_INCLUDE_FLAGS} ${PETSC_INCLUDES}")
 ###################################################################################################
 # Intel Compiler
 ###################################################################################################
-if (${CMAKE_Fortran_COMPILER_ID} STREQUAL "Intel")
+if (CMAKE_Fortran_COMPILER_ID STREQUAL "Intel")
 
   if (OPENMP)
     set (OPENMP_FLAGS "-qopenmp -parallel")
   endif ()
 
-  if ("${OPTIMIZATION}" STREQUAL "OFF")
-      set (OPTIMIZATION_FLAGS    "-O0 -no-ip")
-  elseif ("${OPTIMIZATION}" STREQUAL "DEFENSIVE")
-      set (OPTIMIZATION_FLAGS    "-O2")
-  elseif ("${OPTIMIZATION}" STREQUAL "AGGRESSIVE")
-      set (OPTIMIZATION_FLAGS    "-ipo -O3 -no-prec-div -fp-model fast=2 -xHost")
-      # -fast = -ipo, -O3, -no-prec-div, -static, -fp-model fast=2, and -xHost"
+  if (OPTIMIZATION STREQUAL "OFF")
+    set (OPTIMIZATION_FLAGS    "-O0 -no-ip")
+  elseif (OPTIMIZATION STREQUAL "DEFENSIVE")
+    set (OPTIMIZATION_FLAGS    "-O2")
+  elseif (OPTIMIZATION STREQUAL "AGGRESSIVE")
+    set (OPTIMIZATION_FLAGS    "-ipo -O3 -no-prec-div -fp-model fast=2 -xHost")
+    # -fast = -ipo, -O3, -no-prec-div, -static, -fp-model fast=2, and -xHost"
   endif ()
 
-  set (STANDARD_CHECK "-stand f08 -standard-semantics")
+  # -assume std_mod_proc_name (included in -standard-semantics) causes problems if other modules
+  # (PETSc, HDF5) are not compiled with this option (https://software.intel.com/en-us/forums/intel-fortran-compiler-for-linux-and-mac-os-x/topic/62172)
+  set (STANDARD_CHECK "-stand f08 -standard-semantics -assume nostd_mod_proc_name")
   set (LINKER_FLAGS   "${LINKER_FLAGS} -shared-intel")
   # Link against shared Intel libraries instead of static ones
 
@@ -214,13 +218,6 @@ if (${CMAKE_Fortran_COMPILER_ID} STREQUAL "Intel")
 
   set (COMPILE_FLAGS "${COMPILE_FLAGS} -ftz")
   # flush underflow to zero, automatically set if -O[1,2,3]
-
-  set (COMPILE_FLAGS "${COMPILE_FLAGS} -assume")
-  # assume ...
-  set (COMPILE_FLAGS "${COMPILE_FLAGS} byterecl")
-  #   ... record length is given in bytes (also set by -standard-semantics)
-  set (COMPILE_FLAGS "${COMPILE_FLAGS},fpe_summary")  
-  #   ... print list of floating point exceptions occured during execution
 
   set (COMPILE_FLAGS "${COMPILE_FLAGS} -diag-disable")
   # disables warnings ...
@@ -313,18 +310,18 @@ if (${CMAKE_Fortran_COMPILER_ID} STREQUAL "Intel")
 ###################################################################################################
 # GNU Compiler
 ###################################################################################################
-elseif(${CMAKE_Fortran_COMPILER_ID} STREQUAL "GNU")
+elseif(CMAKE_Fortran_COMPILER_ID STREQUAL "GNU")
 
   if (OPENMP)
     set (OPENMP_FLAGS "-fopenmp")
   endif ()
 
-  if ("${OPTIMIZATION}" STREQUAL "OFF")
-      set (OPTIMIZATION_FLAGS "-O0"       )
-  elseif ("${OPTIMIZATION}" STREQUAL "DEFENSIVE")
-      set (OPTIMIZATION_FLAGS "-O2")
-  elseif ("${OPTIMIZATION}" STREQUAL "AGGRESSIVE")
-      set (OPTIMIZATION_FLAGS "-O3 -ffast-math -funroll-loops -ftree-vectorize")
+  if (OPTIMIZATION STREQUAL "OFF")
+    set (OPTIMIZATION_FLAGS "-O0"       )
+  elseif (OPTIMIZATION STREQUAL "DEFENSIVE")
+    set (OPTIMIZATION_FLAGS "-O2")
+  elseif (OPTIMIZATION STREQUAL "AGGRESSIVE")
+    set (OPTIMIZATION_FLAGS "-O3 -ffast-math -funroll-loops -ftree-vectorize")
   endif ()
 
   set (STANDARD_CHECK "-std=f2008ts -pedantic-errors" )
@@ -448,12 +445,15 @@ elseif(${CMAKE_Fortran_COMPILER_ID} STREQUAL "GNU")
 
   # Additional options
   # -fdefault-integer-8: Use it to set precision to 8 bytes for integer, don't use it for the standard case of pInt=4 (there is no -fdefault-integer-4)
+else ()
+  message (FATAL_ERROR "Compiler type (CMAKE_Fortran_COMPILER_ID) not recognized")
 endif ()
+
 
 set (CMAKE_Fortran_FLAGS_${CMAKE_BUILD_TYPE} "${BUILDCMD_PRE} ${OPENMP_FLAGS} ${STANDARD_CHECK} ${OPTIMIZATION_FLAGS} ${COMPILE_FLAGS} ${PRECISION_FLAGS}")
 set (CMAKE_Fortran_LINK_EXECUTABLE           "${BUILDCMD_PRE} ${CMAKE_LINKER} ${OPENMP_FLAGS}   ${OPTIMIZATION_FLAGS} ${LINKER_FLAGS}")
 
-if ("${CMAKE_BUILD_TYPE}" STREQUAL "DEBUG")
+if (CMAKE_BUILD_TYPE STREQUAL "DEBUG")
   set (CMAKE_Fortran_FLAGS_${CMAKE_BUILD_TYPE} "${CMAKE_Fortran_FLAGS_${CMAKE_BUILD_TYPE}} ${DEBUG_FLAGS}")
   set (CMAKE_Fortran_LINK_EXECUTABLE           "${CMAKE_Fortran_LINK_EXECUTABLE} ${DEBUG_FLAGS}")
 endif ()
@@ -469,15 +469,15 @@ message ("Fortran Linker Command:\n${CMAKE_Fortran_LINK_EXECUTABLE}\n")
 add_subdirectory (src)
 
 # INSTALL BUILT BINARIES
-if ("${CMAKE_BUILD_TYPE}" STREQUAL "SYNTAXONLY")
+if (CMAKE_BUILD_TYPE STREQUAL "SYNTAXONLY")
    exec_program (mktemp ARGS -d OUTPUT_VARIABLE BLACK_HOLE)
    install (PROGRAMS    ${PROJECT_BINARY_DIR}/src/prec.mod
             DESTINATION ${BLACK_HOLE})
 else ()
-   if ("${PROJECT_NAME}" STREQUAL "DAMASK_spectral")
+   if (PROJECT_NAME STREQUAL "DAMASK_spectral")
        install (PROGRAMS    ${PROJECT_BINARY_DIR}/src/DAMASK_spectral
                 DESTINATION ${CMAKE_INSTALL_PREFIX})
-   elseif ("${PROJECT_NAME}" STREQUAL "DAMASK_FEM")
+   elseif (PROJECT_NAME STREQUAL "DAMASK_FEM")
        install (PROGRAMS    ${PROJECT_BINARY_DIR}/src/DAMASK_FEM
                 DESTINATION ${CMAKE_INSTALL_PREFIX})
    endif ()

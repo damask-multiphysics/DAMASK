@@ -73,9 +73,10 @@ subroutine source_thermal_externalheat_init(fileUnit)
    phase_Noutput, &
    SOURCE_thermal_externalheat_label, &
    SOURCE_thermal_externalheat_ID, &
-   material_Nphase, &
    material_phase, &  
-   sourceState, &
+   sourceState
+ use config, only: &
+   material_Nphase, &
    MATERIAL_partPhase
  use numerics,only: &
    numerics_integrator
