@@ -78,7 +78,8 @@ subroutine kinematics_slipplane_opening_init(fileUnit)
    phase_Nkinematics, &
    phase_Noutput, &
    KINEMATICS_slipplane_opening_label, &
-   KINEMATICS_slipplane_opening_ID, &
+   KINEMATICS_slipplane_opening_ID
+ use config, only: &
    material_Nphase, &
    MATERIAL_partPhase
  use lattice, only: &
