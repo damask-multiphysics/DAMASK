@@ -370,11 +370,11 @@ subroutine plastic_kinehardening_init(fileUnit)
 !--------------------------------------------------------------------------------------------------
 !  sanity checks
  
-     if (any(plastic_kinehardening_Nslip(1:nSlipFamilies,instance) > 0_pInt &
-             .and. param(instance)%crss0(1:nSlipFamilies)           < 0.0_pReal)) extmsg = trim(extmsg)//' crss0'
-     if (any(plastic_kinehardening_Nslip(1:nSlipFamilies,instance) > 0_pInt &
-             .and. param(instance)%tau1(1:nSlipFamilies)          <= 0.0_pReal)) extmsg = trim(extmsg)//' tau1'
-     if (any(plastic_kinehardening_Nslip(1:nSlipFamilies,instance) > 0_pInt &
+     if (any(plastic_kinehardening_Nslip (1:nSlipFamilies,instance) > 0_pInt &
+             .and. param(instance)%crss0 (1:nSlipFamilies)          < 0.0_pReal)) extmsg = trim(extmsg)//' crss0'
+     if (any(plastic_kinehardening_Nslip (1:nSlipFamilies,instance) > 0_pInt &
+             .and. param(instance)%tau1  (1:nSlipFamilies)         <= 0.0_pReal)) extmsg = trim(extmsg)//' tau1'
+     if (any(plastic_kinehardening_Nslip (1:nSlipFamilies,instance) > 0_pInt &
              .and. param(instance)%tau1_b(1:nSlipFamilies)         < 0.0_pReal)) extmsg = trim(extmsg)//' tau1_b'
      if (param(instance)%gdot0            <= 0.0_pReal) extmsg = trim(extmsg)//' gdot0'
      if (param(instance)%n_slip           <= 0.0_pReal) extmsg = trim(extmsg)//' n_slip'
