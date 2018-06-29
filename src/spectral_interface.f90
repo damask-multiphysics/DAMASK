@@ -222,7 +222,6 @@ end subroutine DAMASK_interface_init
 !--------------------------------------------------------------------------------------------------
 !> @brief extract working directory from given argument or from location of geometry file,
 !!        possibly converting relative arguments to absolut path
-!> @todo  change working directory with call chdir(storeWorkingDirectory)?
 !--------------------------------------------------------------------------------------------------
 character(len=1024) function storeWorkingDirectory(workingDirectoryArg)
  use system_routines, only: &
@@ -231,7 +230,6 @@ character(len=1024) function storeWorkingDirectory(workingDirectoryArg)
 
  implicit none
  character(len=*),  intent(in) :: workingDirectoryArg                                               !< working directory argument
- character(len=1024)           :: cwd
  logical                       :: error
  external                      :: quit
 
@@ -239,16 +237,13 @@ character(len=1024) function storeWorkingDirectory(workingDirectoryArg)
    absolutePath: if (workingDirectoryArg(1:1) == '/') then
      storeWorkingDirectory = workingDirectoryArg
    else absolutePath
-     error = getCWD(cwd)
+     error = getCWD(storeWorkingDirectory)
      if (error) call quit(1_pInt)
-     storeWorkingDirectory = trim(cwd)//'/'//workingDirectoryArg
+     storeWorkingDirectory = trim(storeWorkingDirectory)//'/'//workingDirectoryArg
    endif absolutePath
-   if (storeWorkingDirectory(len(trim(storeWorkingDirectory)):len(trim(storeWorkingDirectory))) /= '/') &
-     storeWorkingDirectory = trim(storeWorkingDirectory)//'/'                                       ! if path seperator is not given, append it
  else wdGiven
-     error = getCWD(cwd)                                                                            ! relative path given as command line argument
-     if (error) call quit(1_pInt)
-     storeWorkingDirectory = trim(cwd)//'/'
+   error = getCWD(storeWorkingDirectory)                                                            ! relative path given as command line argument
+   if (error) call quit(1_pInt)
  endif wdGiven
 
  storeWorkingDirectory = trim(rectifyPath(storeWorkingDirectory))
@@ -256,6 +251,9 @@ character(len=1024) function storeWorkingDirectory(workingDirectoryArg)
      write(6,'(a20,a,a16)') ' working directory "',trim(storeWorkingDirectory),'" does not exist'
      call quit(1_pInt)
  endif
+
+ if (storeWorkingDirectory(len_trim(storeWorkingDirectory):len_trim(storeWorkingDirectory)) /= '/') &
+     storeWorkingDirectory = trim(storeWorkingDirectory)//'/'                                       ! if path seperator is not given, append it
 
 end function storeWorkingDirectory
 
@@ -301,35 +299,23 @@ end function getSolverJobName
 !> @brief basename of geometry file with extension from command line arguments
 !--------------------------------------------------------------------------------------------------
 character(len=1024) function getGeometryFile(geometryParameter)
- use system_routines, only: &
-   getCWD
 
  implicit none
  character(len=1024), intent(in) :: &
    geometryParameter
- character(len=1024) :: &
-   cwd
  integer :: posExt, posSep
- logical :: error
  external  :: quit
 
- getGeometryFile = geometryParameter
+ getGeometryFile = trim(geometryParameter)
  posExt = scan(getGeometryFile,'.',back=.true.)
  posSep = scan(getGeometryFile,'/',back=.true.)
 
- if (posExt <= posSep) getGeometryFile = trim(getGeometryFile)//('.geom')                           ! no extension present
- if (scan(getGeometryFile,'/') /= 1) then                                                           ! relative path given as command line argument
-!   error = getcwd(cwd)
-!   if (error) call quit(1_pInt)
-!   getGeometryFile = rectifyPath(trim(workingDirectory)//'/'//getGeometryFile)
-   getGeometryFile = rectifyPath(trim(getSolverWorkingDirectoryName())//trim(getGeometryFile))
- else
-   getGeometryFile = rectifyPath(getGeometryFile)
- endif
- write(*,*) 'getsolv.. ', (getSolverWorkingDirectoryName())
- write(*,*) 'getGeometryFile.. ', (getGeometryFile)
+ if (posExt <= posSep) getGeometryFile = trim(getGeometryFile)//('.geom')
+ if (scan(getGeometryFile,'/') /= 1) &
+   getGeometryFile = trim(getSolverWorkingDirectoryName())//trim(getGeometryFile)
 
- getGeometryFile = makeRelativePath(getSolverWorkingDirectoryName(), getGeometryFile)
+ getGeometryFile = makeRelativePath(getSolverWorkingDirectoryName(), rectifyPath(getGeometryFile))
+
 
 end function getGeometryFile
 
@@ -338,39 +324,29 @@ end function getGeometryFile
 !> @brief relative path of loadcase from command line arguments
 !--------------------------------------------------------------------------------------------------
 character(len=1024) function getLoadCaseFile(loadCaseParameter)
- use system_routines, only: &
-   getCWD
 
  implicit none
  character(len=1024), intent(in) :: &
    loadCaseParameter
- character(len=1024) :: &
-   cwd
  integer :: posExt, posSep
- logical :: error
  external  :: quit
 
- getLoadCaseFile = loadcaseParameter
+ getLoadCaseFile = trim(loadCaseParameter)
  posExt = scan(getLoadCaseFile,'.',back=.true.)
  posSep = scan(getLoadCaseFile,'/',back=.true.)
 
- if (posExt <= posSep) getLoadCaseFile = trim(getLoadCaseFile)//('.load')                           ! no extension present
- if (scan(getLoadCaseFile,'/') /= 1) then                                                           ! relative path given as command line argument
-!   error = getcwd(cwd)
-!   if (error) call quit(1_pInt)
-!   getLoadCaseFile = rectifyPath(trim(workingDirectory)//'/'//getLoadCaseFile)
-   getLoadCaseFile = rectifyPath(trim(getSolverWorkingDirectoryName())//trim(getLoadCaseFile))
- else
-   getLoadCaseFile = rectifyPath(getLoadCaseFile)
- endif
+ if (posExt <= posSep) getLoadCaseFile = trim(getLoadCaseFile)//('.load')
+ if (scan(getLoadCaseFile,'/') /= 1) &
+   getLoadCaseFile = trim(getSolverWorkingDirectoryName())//trim(getLoadCaseFile)
 
- getLoadCaseFile = makeRelativePath(getSolverWorkingDirectoryName(), getLoadCaseFile)
+ getLoadCaseFile = makeRelativePath(getSolverWorkingDirectoryName(), rectifyPath(getLoadCaseFile))
 
 end function getLoadCaseFile
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief remove ../ and /./ from path
+!> @brief remove ../ and /./ from path.
+!> @details works only if absolute path is given
 !--------------------------------------------------------------------------------------------------
 function rectifyPath(path)
 
@@ -384,14 +360,14 @@ function rectifyPath(path)
  l = len_trim(path)
  rectifyPath = path
  do i = l,3,-1
-   if (rectifyPath(i-2:i) == '/'//'.'//'/') &
+   if (rectifyPath(i-2:i) == '/./') &
      rectifyPath(i-1:l) = rectifyPath(i+1:l)//'  '
  enddo
 
 !--------------------------------------------------------------------------------------------------
 ! remove ../ and corresponding directory from rectifyPath
  l = len_trim(rectifyPath)
- i = index(rectifyPath(i:l),'..'//'/')
+ i = index(rectifyPath(i:l),'../')
  j = 0
  do while (i > j)
     j = scan(rectifyPath(1:i-2),'/',back=.true.)
@@ -401,7 +377,7 @@ function rectifyPath(path)
       rectifyPath(j+1:k-1) = rectifyPath(j+2:k)
       rectifyPath(k:k) = ' '
     endif
-    i = j+index(rectifyPath(j+1:l),'..'//'/')
+    i = j+index(rectifyPath(j+1:l),'../')
  enddo
  if(len_trim(rectifyPath) == 0) rectifyPath = '/'
 
