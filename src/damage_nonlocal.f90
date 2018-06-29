@@ -75,7 +75,8 @@ subroutine damage_nonlocal_init(fileUnit)
    damageState, &
    damageMapping, &
    damage, &
-   damage_initialPhi, &
+   damage_initialPhi
+ use config, only: &
    material_partHomogenization
 
  implicit none

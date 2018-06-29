@@ -100,6 +100,12 @@ subroutine homogenization_init
  use crystallite, only: &
    crystallite_maxSizePostResults
 #endif
+ use config, only: &
+  config_deallocate, &
+  material_configFile, &
+  material_localFileExt, &
+  config_homogenization, &
+  homogenization_name
  use material
  use homogenization_none
  use homogenization_isostrain
@@ -196,7 +202,7 @@ subroutine homogenization_init
 ! write description file for homogenization output
  mainProcess2: if (worldrank == 0) then
    call IO_write_jobFile(FILEUNIT,'outputHomogenization')
-   do p = 1,material_Nhomogenization
+   do p = 1,size(config_homogenization)
      if (any(material_homog == p)) then
        i = homogenization_typeInstance(p)                                                               ! which instance of this homogenization type
        valid = .true.                                                                                   ! assume valid
@@ -369,6 +375,8 @@ subroutine homogenization_init
    close(FILEUNIT)
  endif mainProcess2
 
+ call config_deallocate('material.config/homogenization')
+
 !--------------------------------------------------------------------------------------------------
 ! allocate and initialize global variables
  allocate(materialpoint_dPdF(3,3,3,3,mesh_maxNips,mesh_NcpElems),       source=0.0_pReal)
@@ -394,7 +402,7 @@ subroutine homogenization_init
  vacancyflux_maxSizePostResults    = 0_pInt
  porosity_maxSizePostResults       = 0_pInt
  hydrogenflux_maxSizePostResults   = 0_pInt
- do p = 1,material_Nhomogenization
+ do p = 1,size(config_homogenization)
    homogenization_maxSizePostResults = max(homogenization_maxSizePostResults,homogState       (p)%sizePostResults)
    thermal_maxSizePostResults        = max(thermal_maxSizePostResults,       thermalState     (p)%sizePostResults)
    damage_maxSizePostResults         = max(damage_maxSizePostResults        ,damageState      (p)%sizePostResults)
@@ -443,11 +451,9 @@ subroutine homogenization_init
  allocate(materialpoint_results(materialpoint_sizeResults,mesh_maxNips,mesh_NcpElems))
 #endif
 
- mainProcess: if (worldrank == 0) then
-   write(6,'(/,a)')   ' <<<+-  homogenization init  -+>>>'
-   write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
+ write(6,'(/,a)')   ' <<<+-  homogenization init  -+>>>'
+ write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
- endif mainProcess
 
  if (iand(debug_level(debug_homogenization), debug_levelBasic) /= 0_pInt) then
 #ifdef TODO
@@ -475,7 +481,7 @@ subroutine homogenization_init
  flush(6)
 
  if (debug_g < 1 .or. debug_g > homogenization_Ngrains(mesh_element(3,debug_e))) &
-   call IO_error(602_pInt,ext_msg='component (grain)', el=debug_e, g=debug_g)
+   call IO_error(602_pInt,ext_msg='constituent', el=debug_e, g=debug_g)
 
 end subroutine homogenization_init
 

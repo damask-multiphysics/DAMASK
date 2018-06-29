@@ -355,8 +355,8 @@ program DAMASK_spectral
    select case (loadCases(1)%ID(field))
      case(FIELD_MECH_ID)
        select case (spectral_solver)
-         case (DAMASK_spectral_SolverBasicPETSc_label)
-           call basicPETSc_init
+         case (DAMASK_spectral_SolverBasic_label)
+           call basic_init
            
          case (DAMASK_spectral_SolverPolarisation_label)
            if(iand(debug_level(debug_spectral),debug_levelBasic)/= 0) &
@@ -513,8 +513,8 @@ program DAMASK_spectral
            select case(loadCases(currentLoadCase)%ID(field))
              case(FIELD_MECH_ID)
                select case (spectral_solver)
-                 case (DAMASK_spectral_SolverBasicPETSc_label)
-                   call BasicPETSc_forward (&
+                 case (DAMASK_spectral_SolverBasic_label)
+                   call Basic_forward (&
                        guess,timeinc,timeIncOld,remainingLoadCaseTime, &
                        deformation_BC     = loadCases(currentLoadCase)%deformation, &
                        stress_BC          = loadCases(currentLoadCase)%stress, &
@@ -542,8 +542,8 @@ program DAMASK_spectral
              select case(loadCases(currentLoadCase)%ID(field))
                case(FIELD_MECH_ID)
                  select case (spectral_solver)
-                   case (DAMASK_spectral_SolverBasicPETSc_label)
-                     solres(field) = BasicPETSC_solution (&
+                   case (DAMASK_spectral_SolverBasic_label)
+                     solres(field) = Basic_solution (&
                          incInfo,timeinc,timeIncOld, &
                          stress_BC          = loadCases(currentLoadCase)%stress, &
                          rotation_BC        = loadCases(currentLoadCase)%rotation)

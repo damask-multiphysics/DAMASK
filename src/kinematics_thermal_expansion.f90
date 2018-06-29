@@ -68,7 +68,8 @@ subroutine kinematics_thermal_expansion_init(fileUnit)
    phase_Nkinematics, &
    phase_Noutput, &
    KINEMATICS_thermal_expansion_label, &
-   KINEMATICS_thermal_expansion_ID, &
+   KINEMATICS_thermal_expansion_ID
+ use config, only: &
    material_Nphase, &
    MATERIAL_partPhase
 
