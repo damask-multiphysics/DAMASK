@@ -455,11 +455,6 @@ subroutine plastic_phenopowerlaw_init
    dotState(instance)%accshear_twin=>plasticState(p)%dotState(startIndex:endIndex,:)
    plasticState(p)%aTolState(startIndex:endIndex) = prm%aTolShear
 
-   offset_slip = plasticState(p)%nSlip+plasticState(p)%nTwin+2_pInt
-   plasticState(p)%slipRate => &
-     plasticState(p)%dotState(offset_slip+1:offset_slip+plasticState(p)%nSlip,1:NipcMyPhase)
-   plasticState(p)%accumulatedSlip => &
-     plasticState(p)%state(offset_slip+1:offset_slip+plasticState(p)%nSlip,1:NipcMyPhase)
 
  enddo
 
