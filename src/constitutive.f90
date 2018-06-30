@@ -141,7 +141,7 @@ subroutine constitutive_init()
  integer(pInt), parameter :: FILEUNIT = 200_pInt
  integer(pInt) :: &
    o, &                                                                                             !< counter in output loop
-   p, &                                                                                             !< counter in phase loop
+   ph, &                                                                                            !< counter in phase loop
    s, &                                                                                             !< counter in source loop
    ins                                                                                              !< instance of plasticity/source
 
@@ -202,11 +202,11 @@ subroutine constitutive_init()
 !--------------------------------------------------------------------------------------------------
 ! write description file for constitutive output
    call IO_write_jobFile(FILEUNIT,'outputConstitutive')
-   PhaseLoop: do p = 1_pInt,material_Nphase
-     activePhase: if (any(material_phase == p)) then
-       ins = phase_plasticityInstance(p)
+   PhaseLoop: do ph = 1_pInt,material_Nphase
+     activePhase: if (any(material_phase == ph)) then
+       ins = phase_plasticityInstance(ph)
        knownPlasticity = .true.                                                                     ! assume valid
-       plasticityType: select case(phase_plasticity(p))
+       plasticityType: select case(phase_plasticity(ph))
          case (PLASTICITY_NONE_ID) plasticityType
            outputName = PLASTICITY_NONE_label
            thisOutput => null()
@@ -238,62 +238,62 @@ subroutine constitutive_init()
          case default plasticityType
            knownPlasticity = .false.
        end select plasticityType
-       write(FILEUNIT,'(/,a,/)') '['//trim(phase_name(p))//']'
+       write(FILEUNIT,'(/,a,/)') '['//trim(phase_name(ph))//']'
        if (knownPlasticity) then
-
          write(FILEUNIT,'(a)') '(plasticity)'//char(9)//trim(outputName)
-         if (phase_plasticity(p) /= PLASTICITY_NONE_ID) then
+         if (phase_plasticity(ph) /= PLASTICITY_NONE_ID) then
            OutputPlasticityLoop: do o = 1_pInt,size(thisOutput(:,ins))
              if(len(trim(thisOutput(o,ins))) > 0_pInt) &
                write(FILEUNIT,'(a,i4)') trim(thisOutput(o,ins))//char(9),thisSize(o,ins)
            enddo OutputPlasticityLoop
          endif
        endif
-       SourceLoop: do s = 1_pInt, phase_Nsources(p)
+       
+       SourceLoop: do s = 1_pInt, phase_Nsources(ph)
          knownSource = .true.                                                                       ! assume valid
-         sourceType: select case (phase_source(s,p))
+         sourceType: select case (phase_source(s,ph))
            case (SOURCE_thermal_dissipation_ID) sourceType
-             ins = source_thermal_dissipation_instance(p)
+             ins = source_thermal_dissipation_instance(ph)
              outputName = SOURCE_thermal_dissipation_label
              thisOutput => source_thermal_dissipation_output
              thisSize   => source_thermal_dissipation_sizePostResult
            case (SOURCE_thermal_externalheat_ID) sourceType
-             ins = source_thermal_externalheat_instance(p)
+             ins = source_thermal_externalheat_instance(ph)
              outputName = SOURCE_thermal_externalheat_label
              thisOutput => source_thermal_externalheat_output
              thisSize   => source_thermal_externalheat_sizePostResult
            case (SOURCE_damage_isoBrittle_ID) sourceType
-             ins = source_damage_isoBrittle_instance(p)
+             ins = source_damage_isoBrittle_instance(ph)
              outputName = SOURCE_damage_isoBrittle_label
              thisOutput => source_damage_isoBrittle_output
              thisSize   => source_damage_isoBrittle_sizePostResult
            case (SOURCE_damage_isoDuctile_ID) sourceType
-             ins = source_damage_isoDuctile_instance(p)
+             ins = source_damage_isoDuctile_instance(ph)
              outputName = SOURCE_damage_isoDuctile_label
              thisOutput => source_damage_isoDuctile_output
              thisSize   => source_damage_isoDuctile_sizePostResult
            case (SOURCE_damage_anisoBrittle_ID) sourceType
-             ins = source_damage_anisoBrittle_instance(p)
+             ins = source_damage_anisoBrittle_instance(ph)
              outputName = SOURCE_damage_anisoBrittle_label
              thisOutput => source_damage_anisoBrittle_output
              thisSize   => source_damage_anisoBrittle_sizePostResult
            case (SOURCE_damage_anisoDuctile_ID) sourceType
-             ins = source_damage_anisoDuctile_instance(p)
+             ins = source_damage_anisoDuctile_instance(ph)
              outputName = SOURCE_damage_anisoDuctile_label
              thisOutput => source_damage_anisoDuctile_output
              thisSize   => source_damage_anisoDuctile_sizePostResult
            case (SOURCE_vacancy_phenoplasticity_ID) sourceType
-             ins = source_vacancy_phenoplasticity_instance(p)
+             ins = source_vacancy_phenoplasticity_instance(ph)
              outputName = SOURCE_vacancy_phenoplasticity_label
              thisOutput => source_vacancy_phenoplasticity_output
              thisSize   => source_vacancy_phenoplasticity_sizePostResult
            case (SOURCE_vacancy_irradiation_ID) sourceType
-             ins = source_vacancy_irradiation_instance(p)
+             ins = source_vacancy_irradiation_instance(ph)
              outputName = SOURCE_vacancy_irradiation_label
              thisOutput => source_vacancy_irradiation_output
              thisSize   => source_vacancy_irradiation_sizePostResult
            case (SOURCE_vacancy_thermalfluc_ID) sourceType
-             ins = source_vacancy_thermalfluc_instance(p)
+             ins = source_vacancy_thermalfluc_instance(ph)
              outputName = SOURCE_vacancy_thermalfluc_label
              thisOutput => source_vacancy_thermalfluc_output
              thisSize   => source_vacancy_thermalfluc_sizePostResult
@@ -318,27 +318,26 @@ subroutine constitutive_init()
  constitutive_source_maxSizeDotState = 0_pInt
  constitutive_source_maxSizePostResults = 0_pInt
 
- PhaseLoop2:do p = 1_pInt,material_Nphase
+ PhaseLoop2:do ph = 1_pInt,material_Nphase
 !--------------------------------------------------------------------------------------------------
 ! partition and inititalize state
-   plasticState(p)%partionedState0 = plasticState(p)%State0
-   plasticState(p)%State           = plasticState(p)%State0
-   forall(s = 1_pInt:phase_Nsources(p))
-     sourceState(p)%p(s)%partionedState0 = sourceState(p)%p(s)%State0
-     sourceState(p)%p(s)%State           = sourceState(p)%p(s)%State0
+   plasticState(ph)%partionedState0 = plasticState(ph)%state0
+   plasticState(ph)%state           = plasticState(ph)%partionedState0
+   forall(s = 1_pInt:phase_Nsources(ph))
+     sourceState(ph)%p(s)%partionedState0 = sourceState(ph)%p(s)%state0
+     sourceState(ph)%p(s)%state           = sourceState(ph)%p(s)%partionedState0
    end forall
 !--------------------------------------------------------------------------------------------------
 ! determine max size of state and output
    constitutive_plasticity_maxSizeDotState    = max(constitutive_plasticity_maxSizeDotState,    &
-                                                    plasticState(p)%sizeDotState)
+                                                    plasticState(ph)%sizeDotState)
    constitutive_plasticity_maxSizePostResults = max(constitutive_plasticity_maxSizePostResults, &
-                                                    plasticState(p)%sizePostResults)
+                                                    plasticState(ph)%sizePostResults)
    constitutive_source_maxSizeDotState        = max(constitutive_source_maxSizeDotState, &
-                                                    maxval(sourceState(p)%p(:)%sizeDotState))
+                                                    maxval(sourceState(ph)%p(:)%sizeDotState))
    constitutive_source_maxSizePostResults     = max(constitutive_source_maxSizePostResults, &
-                                                    maxval(sourceState(p)%p(:)%sizePostResults))
+                                                    maxval(sourceState(ph)%p(:)%sizePostResults))
  enddo PhaseLoop2
-
 
 
 end subroutine constitutive_init
