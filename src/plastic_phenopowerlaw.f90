@@ -613,15 +613,12 @@ subroutine plastic_phenopowerlaw_dotState(Tstar_v,ipc,ip,el)
  use lattice, only: &
    lattice_Sslip_v, &
    lattice_Stwin_v, &
-   lattice_maxNslipFamily, &
-   lattice_maxNtwinFamily, &
    lattice_NslipSystem, &
    lattice_NtwinSystem, &
    lattice_shearTwin
  use material, only: &
    material_phase, &
-   phaseAt, phasememberAt, &
-   plasticState, &
+   phasememberAt, &
    phase_plasticityInstance
 
  implicit none
@@ -633,7 +630,7 @@ subroutine plastic_phenopowerlaw_dotState(Tstar_v,ipc,ip,el)
    el                                                                                               !< element                                                                                    !< microstructure state
 
  integer(pInt) :: &
-   instance,ph, &
+   ph, &
    f,i,j,k, &
    index_myFamily, &
    of
@@ -642,21 +639,22 @@ subroutine plastic_phenopowerlaw_dotState(Tstar_v,ipc,ip,el)
    ssat_offset, &
    tau_slip_pos,tau_slip_neg,tau_twin
 
- real(pReal), dimension(plasticState(material_phase(ipc,ip,el))%Nslip) :: &
+ real(pReal), dimension(param(phase_plasticityInstance(material_phase(ipc,ip,el)))%totalNslip) :: &
    gdot_slip,left_SlipSlip,right_SlipSlip
- real(pReal), dimension(plasticState(material_phase(ipc,ip,el))%Ntwin) :: &
+ real(pReal), dimension(param(phase_plasticityInstance(material_phase(ipc,ip,el)))%totalNtwin) :: &
    gdot_twin
- type(tParameters), pointer :: prm
- type(tPhenopowerlawState), pointer :: stt
+
+ type(tParameters),         pointer :: prm
+ type(tPhenopowerlawState), pointer :: dst,stt
 
  of = phasememberAt(ipc,ip,el)
- ph = phaseAt(ipc,ip,el)
- instance = phase_plasticityInstance(ph)
- prm => param(instance)
- stt => state(instance)
+ ph = material_phase(ipc,ip,el)
 
+ prm => param(phase_plasticityInstance(ph))
+ stt => state(phase_plasticityInstance(ph))
+ dst => dotState(phase_plasticityInstance(ph))
 
- plasticState(ph)%dotState(:,of) = 0.0_pReal
+ dst%whole(:,of) = 0.0_pReal
 
 !--------------------------------------------------------------------------------------------------
 ! system-independent (nonlinear) prefactors to M_Xx (X influenced by x) matrices
@@ -673,11 +671,8 @@ subroutine plastic_phenopowerlaw_dotState(Tstar_v,ipc,ip,el)
    slipSystems1: do i = 1_pInt,prm%Nslip(f)
      j = j+1_pInt
      left_SlipSlip(j) = 1.0_pReal + prm%H_int(f)                         ! modified no system-dependent left part
-     right_SlipSlip(j) = abs(1.0_pReal-stt%s_slip(j,of) / &
-                                    (prm%tausat_slip(f)+ssat_offset)) &
-                         **prm%a_slip&
-                         *sign(1.0_pReal,1.0_pReal-stt%s_slip(j,of) / &
-                                    (prm%tausat_slip(f)+ssat_offset))
+     right_SlipSlip(j) = abs(1.0_pReal-stt%s_slip(j,of) / (prm%tausat_slip(f)+ssat_offset)) **prm%a_slip &
+                       * sign(1.0_pReal,1.0_pReal-stt%s_slip(j,of) / (prm%tausat_slip(f)+ssat_offset))
 
 !--------------------------------------------------------------------------------------------------
 ! Calculation of dot gamma
@@ -694,8 +689,6 @@ subroutine plastic_phenopowerlaw_dotState(Tstar_v,ipc,ip,el)
                    +(abs(tau_slip_neg)/(stt%s_slip(j,of)))**prm%n_slip*sign(1.0_pReal,tau_slip_neg))
    enddo slipSystems1
  enddo slipFamilies1
-
-
 
  j = 0_pInt
  twinFamilies1: do f = 1_pInt,size(prm%Ntwin,1)
@@ -716,30 +709,29 @@ subroutine plastic_phenopowerlaw_dotState(Tstar_v,ipc,ip,el)
 !--------------------------------------------------------------------------------------------------
 ! calculate the overall hardening based on above
  do j = 1_pInt,prm%totalNslip
-   dotState(instance)%s_slip(j,of) = c_SlipSlip * left_SlipSlip(j) * &                              ! evolution of slip resistance j
+   dst%s_slip(j,of) = c_SlipSlip * left_SlipSlip(j) * &                                         ! evolution of slip resistance j
      dot_product(prm%interaction_SlipSlip(j,1:prm%totalNslip),right_SlipSlip*abs(gdot_slip)) + &    ! dot gamma_slip modulated by right-side slip factor
      dot_product(prm%interaction_SlipTwin(j,1:prm%totalNtwin),gdot_twin)                            ! dot gamma_twin modulated by right-side twin factor
  enddo
- dotState(instance)%sumGamma(of) = dotState(instance)%sumGamma(of) + sum(abs(gdot_slip))
- dotState(instance)%accshear_slip(1:prm%totalNslip,of) = abs(gdot_slip)
+ dst%sumGamma(of) = dst%sumGamma(of) + sum(abs(gdot_slip))
+ dst%accshear_slip(1:prm%totalNslip,of) = abs(gdot_slip)
 
  j = 0_pInt
  twinFamilies2: do f = 1_pInt,size(prm%Ntwin,1)
    index_myFamily = sum(lattice_NtwinSystem(1:f-1_pInt,ph))                                         ! at which index starts my family
    twinSystems2: do i = 1_pInt,prm%Ntwin(f)
      j = j+1_pInt
-     dotState(instance)%s_twin(j,of) = &                                                            ! evolution of twin resistance j
+     dst%s_twin(j,of) = &                                                                       ! evolution of twin resistance j
        c_TwinSlip * dot_product(prm%interaction_TwinSlip(j,1:prm%totalNslip),abs(gdot_slip)) + &    ! dot gamma_slip modulated by right-side slip factor
        c_TwinTwin * dot_product(prm%interaction_TwinTwin(j,1:prm%totalNtwin),gdot_twin)             ! dot gamma_twin modulated by right-side twin factor
-     if (state(instance)%sumF(of) < 0.98_pReal) &                                                   ! ensure twin volume fractions stays below 1.0
-       dotState(instance)%sumF(of) = dotState(instance)%sumF(of) + &
-                                                      gdot_twin(j)/lattice_shearTwin(index_myFamily+i,ph)
-      dotState(instance)%accshear_twin(j,of) = abs(gdot_twin(j))
+     if (stt%sumF(of) < 0.98_pReal) &                                                               ! ensure twin volume fractions stays below 1.0
+       dst%sumF(of) = dst%sumF(of) + gdot_twin(j)/lattice_shearTwin(index_myFamily+i,ph)
+      dst%accshear_twin(j,of) = abs(gdot_twin(j))
    enddo twinSystems2
  enddo twinFamilies2
 
-
 end subroutine plastic_phenopowerlaw_dotState
+
 
 !--------------------------------------------------------------------------------------------------
 !> @brief return array of constitutive results
