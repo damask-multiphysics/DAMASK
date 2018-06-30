@@ -740,13 +740,11 @@ function plastic_phenopowerlaw_postResults(Tstar_v,ipc,ip,el)
  use material, only: &
    material_phase, &
    plasticState, &
-   phaseAt, phasememberAt, &
+   phasememberAt, &
    phase_plasticityInstance
  use lattice, only: &
    lattice_Sslip_v, &
    lattice_Stwin_v, &
-   lattice_maxNslipFamily, &
-   lattice_maxNtwinFamily, &
    lattice_NslipSystem, &
    lattice_NtwinSystem, &
    lattice_NnonSchmid
@@ -763,17 +761,21 @@ function plastic_phenopowerlaw_postResults(Tstar_v,ipc,ip,el)
    plastic_phenopowerlaw_postResults
 
  integer(pInt) :: &
-   instance,ph, of, &
+   ph, of, &
    o,f,i,c,j,k, &
    index_myFamily
  real(pReal) :: &
    tau_slip_pos,tau_slip_neg,tau
- type(tParameters), pointer :: prm
+
+ type(tParameters),         pointer :: prm
+ type(tPhenopowerlawState), pointer :: stt, dst
 
  of = phasememberAt(ipc,ip,el)
- ph = phaseAt(ipc,ip,el)
- instance = phase_plasticityInstance(ph)
- prm => param(instance)
+ ph = material_phase(ipc,ip,el)
+
+ stt => state(phase_plasticityInstance(ph))
+ dst => dotstate(phase_plasticityInstance(ph))
+ prm => param(phase_plasticityInstance(ph))
 
 
  plastic_phenopowerlaw_postResults = 0.0_pReal
@@ -782,11 +784,11 @@ function plastic_phenopowerlaw_postResults(Tstar_v,ipc,ip,el)
  outputsLoop: do o = 1_pInt,size(prm%outputID)
    select case(prm%outputID(o))
      case (resistance_slip_ID)
-       plastic_phenopowerlaw_postResults(c+1_pInt:c+prm%totalNslip) = state(instance)%s_slip(1:prm%totalNslip,of)
+       plastic_phenopowerlaw_postResults(c+1_pInt:c+prm%totalNslip) = stt%s_slip(1:prm%totalNslip,of)
        c = c + prm%totalNslip
 
      case (accumulatedshear_slip_ID)
-       plastic_phenopowerlaw_postResults(c+1_pInt:c+prm%totalNslip) = state(instance)%accshear_slip(1:prm%totalNslip,of)
+       plastic_phenopowerlaw_postResults(c+1_pInt:c+prm%totalNslip) = stt%accshear_slip(1:prm%totalNslip,of)
        c = c + prm%totalNslip
 
      case (shearrate_slip_ID)
@@ -804,9 +806,9 @@ function plastic_phenopowerlaw_postResults(Tstar_v,ipc,ip,el)
                                    dot_product(Tstar_v,lattice_Sslip_v(1:6,2*k+1,index_myFamily+i,ph))
            enddo
            plastic_phenopowerlaw_postResults(c+j) = prm%gdot0_slip*0.5_pReal* &
-                    ((abs(tau_slip_pos)/state(instance)%s_slip(j,of))**prm%n_slip &
+                    ((abs(tau_slip_pos)/stt%s_slip(j,of))**prm%n_slip &
                     *sign(1.0_pReal,tau_slip_pos) &
-                    +(abs(tau_slip_neg)/(state(instance)%s_slip(j,of)))**prm%n_slip &
+                    +(abs(tau_slip_neg)/(stt%s_slip(j,of)))**prm%n_slip &
                     *sign(1.0_pReal,tau_slip_neg))
          enddo slipSystems1
        enddo slipFamilies1
@@ -825,18 +827,17 @@ function plastic_phenopowerlaw_postResults(Tstar_v,ipc,ip,el)
        c = c + prm%totalNslip
 
      case (totalshear_ID)
-       plastic_phenopowerlaw_postResults(c+1_pInt) = &
-                             state(instance)%sumGamma(of)
+       plastic_phenopowerlaw_postResults(c+1_pInt) = stt%sumGamma(of)
        c = c + 1_pInt
 
      case (resistance_twin_ID)
        plastic_phenopowerlaw_postResults(c+1_pInt:c+prm%totalNtwin) = &
-                            state(instance)%s_twin(1:prm%totalNtwin,of)
+                            stt%s_twin(1:prm%totalNtwin,of)
        c = c + prm%totalNtwin
 
      case (accumulatedshear_twin_ID)
        plastic_phenopowerlaw_postResults(c+1_pInt:c+prm%totalNtwin) = &
-                             state(instance)%accshear_twin(1:prm%totalNtwin,of)
+                             stt%accshear_twin(1:prm%totalNtwin,of)
        c = c + prm%totalNtwin
      case (shearrate_twin_ID)
        j = 0_pInt
@@ -845,9 +846,9 @@ function plastic_phenopowerlaw_postResults(Tstar_v,ipc,ip,el)
          twinSystems1: do i = 1_pInt,prm%Ntwin(f)
            j = j + 1_pInt
            tau = dot_product(Tstar_v,lattice_Stwin_v(1:6,index_myFamily+i,ph))
-           plastic_phenopowerlaw_postResults(c+j) = (1.0_pReal-state(instance)%sumF(of))*&  ! 1-F
+           plastic_phenopowerlaw_postResults(c+j) = (1.0_pReal-stt%sumF(of))*&  ! 1-F
                                                          prm%gdot0_twin*&
-                                                         (abs(tau)/state(instance)%s_twin(j,of))**&
+                                                         (abs(tau)/stt%s_twin(j,of))**&
                                            prm%n_twin*max(0.0_pReal,sign(1.0_pReal,tau))
          enddo twinSystems1
        enddo twinFamilies1
@@ -866,7 +867,7 @@ function plastic_phenopowerlaw_postResults(Tstar_v,ipc,ip,el)
        c = c + prm%totalNtwin
 
      case (totalvolfrac_twin_ID)
-       plastic_phenopowerlaw_postResults(c+1_pInt) = state(instance)%sumF(of)
+       plastic_phenopowerlaw_postResults(c+1_pInt) = stt%sumF(of)
        c = c + 1_pInt
 
    end select
