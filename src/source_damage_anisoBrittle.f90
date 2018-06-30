@@ -91,9 +91,10 @@ subroutine source_damage_anisoBrittle_init(fileUnit)
    phase_Noutput, &
    SOURCE_damage_anisoBrittle_label, &
    SOURCE_damage_anisoBrittle_ID, &
+   material_phase, &
+   sourceState
+ use config, only: &
    material_Nphase, &
-   material_phase, &  
-   sourceState, &
    MATERIAL_partPhase
  use numerics,only: &
    numerics_integrator

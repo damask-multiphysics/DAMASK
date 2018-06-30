@@ -27,6 +27,7 @@ subroutine thermal_isothermal_init()
  use IO, only: &
    IO_timeStamp
  use material
+ use config
  
  implicit none
  integer(pInt) :: &
