@@ -720,11 +720,6 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
                hydrogenfluxState(mappingHomogenization(2,i,e))%State(    :,mappingHomogenization(1,i,e))! ...internal hydrogen transport state
            materialpoint_subF0(1:3,1:3,i,e) = materialpoint_subF(1:3,1:3,i,e)                       ! ...def grad
            !$OMP FLUSH(materialpoint_subF0)
-         elseif (materialpoint_requested(i,e)) then steppingNeeded                                  ! already at final time (??)
-           if (iand(debug_level(debug_homogenization), debug_levelBasic) /= 0_pInt) then
-             !$OMP CRITICAL (distributionHomog)
-             !$OMP END CRITICAL (distributionHomog)
-           endif
          endif steppingNeeded
 
        else converged
