@@ -96,11 +96,10 @@ module spectral_utilities
    integer(kind(FIELD_UNDEFINED_ID)), allocatable :: ID(:)
  end type tLoadCase
 
- type, public :: tSolutionParams                                                                    !< @todo use here the type definition for a full loadcase including mask
-   real(pReal), dimension(3,3) :: stress_BC, rotation_BC
+ type, public :: tSolutionParams                                                                    !< @todo use here the type definition for a full loadcase
+   real(pReal), dimension(3,3) :: stress_mask, stress_BC, rotation_BC
    real(pReal) :: timeinc
    real(pReal) :: timeincOld
-   real(pReal) :: density
  end type tSolutionParams
 
  type, public :: phaseFieldDataBin                                                                  !< set of parameters defining a phase field
