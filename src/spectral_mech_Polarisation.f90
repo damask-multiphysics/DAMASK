@@ -27,7 +27,6 @@ module spectral_mech_Polarisation
 !--------------------------------------------------------------------------------------------------
 ! derived types
  type(tSolutionParams), private :: params
- real(pReal), private, dimension(3,3) :: mask_stress = 0.0_pReal
 
 !--------------------------------------------------------------------------------------------------
 ! PETSc data
@@ -289,7 +288,7 @@ type(tSolutionState) function Polarisation_solution(incInfoIn,timeinc,timeinc_ol
 
 !--------------------------------------------------------------------------------------------------
 ! set module wide availabe data
- mask_stress        = stress_BC%maskFloat
+ params%stress_mask = stress_BC%maskFloat
  params%stress_BC   = stress_BC%values
  params%rotation_BC = rotation_BC
  params%timeinc     = timeinc
@@ -315,7 +314,11 @@ end function Polarisation_solution
 !--------------------------------------------------------------------------------------------------
 !> @brief forms the Polarisation residual vector
 !--------------------------------------------------------------------------------------------------
-subroutine Polarisation_formResidual(in,x_scal,f_scal,dummy,ierr)
+subroutine Polarisation_formResidual(in, &                                                         ! DMDA info (needs to be named "in" for XRANGE, etc. macros to work)
+                                     FandF_tau, &                                                  ! defgrad fields on grid
+                                     residuum, &                                                   ! residuum fields on grid
+                                     dummy, &
+                                     ierr)
  use numerics, only: &
    itmax, &
    itmin, &
@@ -352,9 +355,9 @@ subroutine Polarisation_formResidual(in,x_scal,f_scal,dummy,ierr)
  implicit none
  DMDALocalInfo, dimension(DMDA_LOCAL_INFO_SIZE) :: in
  PetscScalar, &
-   target, dimension(3,3,2, XG_RANGE,YG_RANGE,ZG_RANGE), intent(in) :: x_scal
+   target, dimension(3,3,2, XG_RANGE,YG_RANGE,ZG_RANGE), intent(in) :: FandF_tau
  PetscScalar, &
-   target, dimension(3,3,2,  X_RANGE, Y_RANGE, Z_RANGE), intent(out) :: f_scal
+   target, dimension(3,3,2,  X_RANGE, Y_RANGE, Z_RANGE), intent(out) :: residuum
  PetscScalar, pointer, dimension(:,:,:,:,:) :: &
    F, &
    F_tau, &
@@ -368,20 +371,20 @@ subroutine Polarisation_formResidual(in,x_scal,f_scal,dummy,ierr)
  integer(pInt) :: &
    i, j, k, e
 
- F                 => x_scal(1:3,1:3,1,&
-                             XG_RANGE,YG_RANGE,ZG_RANGE)
- F_tau             => x_scal(1:3,1:3,2,&
-                             XG_RANGE,YG_RANGE,ZG_RANGE)
- residual_F        => f_scal(1:3,1:3,1,&
-                              X_RANGE, Y_RANGE, Z_RANGE)
- residual_F_tau    => f_scal(1:3,1:3,2,&
-                              X_RANGE, Y_RANGE, Z_RANGE)
+ F                 => FandF_tau(1:3,1:3,1,&
+                                XG_RANGE,YG_RANGE,ZG_RANGE)
+ F_tau             => FandF_tau(1:3,1:3,2,&
+                                XG_RANGE,YG_RANGE,ZG_RANGE)
+ residual_F        => residuum(1:3,1:3,1,&
+                                X_RANGE, Y_RANGE, Z_RANGE)
+ residual_F_tau    => residuum(1:3,1:3,2,&
+                                X_RANGE, Y_RANGE, Z_RANGE)
 
  F_av = sum(sum(sum(F,dim=5),dim=4),dim=3) * wgt
  call MPI_Allreduce(MPI_IN_PLACE,F_av,9,MPI_DOUBLE,MPI_SUM,PETSC_COMM_WORLD,ierr)
  
  call SNESGetNumberFunctionEvals(snes,nfuncs,ierr); CHKERRQ(ierr)
- call SNESGetIterationNumber(snes,PETScIter,ierr); CHKERRQ(ierr)
+ call SNESGetIterationNumber(snes,PETScIter,ierr);  CHKERRQ(ierr)
 
  if (nfuncs == 0 .and. PETScIter == 0) totalIter = -1_pInt                                            ! new increment
 !--------------------------------------------------------------------------------------------------
@@ -494,8 +497,8 @@ subroutine Polarisation_converged(snes_local,PETScIter,xnorm,snorm,fnorm,reason,
 !--------------------------------------------------------------------------------------------------
 ! stress BC handling
  F_aim = F_aim - math_mul3333xx33(S, ((P_av - params%stress_BC)))                                   ! S = 0.0 for no bc
- err_BC = maxval(abs((1.0_pReal-mask_stress) * math_mul3333xx33(C_scale,F_aim-F_av) + &
-                                mask_stress  * (P_av-params%stress_BC)))                            ! mask = 0.0 for no bc
+ err_BC = maxval(abs((1.0_pReal-params%stress_mask) * math_mul3333xx33(C_scale,F_aim-F_av) + &
+                                params%stress_mask  * (P_av-params%stress_BC)))                     ! mask = 0.0 for no bc
 
 !--------------------------------------------------------------------------------------------------
 ! error calculation
