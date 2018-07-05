@@ -115,7 +115,7 @@ module plastic_dislotwin
      r, &                                                         !< r-exponent in twin nucleation rate
      s                                                           !< s-exponent in trans nucleation rate
    real(pReal),                  dimension(:,:),            allocatable,           private :: & 
-        interaction_SlipSlip, &                                                   !< coefficients for slip-slip interaction for each interaction type and instance
+   interaction_SlipSlip, &                                                   !< coefficients for slip-slip interaction for each interaction type and instance
    interaction_SlipTwin, &                                                   !< coefficients for slip-twin interaction for each interaction type and instance
    interaction_TwinSlip, &                                                   !< coefficients for twin-slip interaction for each interaction type and instance
    interaction_TwinTwin, &                                                   !< coefficients for twin-twin interaction for each interaction type and instance
@@ -310,6 +310,7 @@ subroutine plastic_dislotwin_init(fileUnit)
        prm%v0 = config_phase(p)%getFloats('v0')
        prm%v0 = math_expand(prm%v0,prm%Nslip)
 
+       prm%interaction_SlipSlip = spread(config_phase(p)%getFloats('interaction_slipslip'),2,1)     
 
        prm%CEdgeDipMinDistance      = config_phase(p)%getFloat('cedgedipmindistance')
 
@@ -328,58 +329,71 @@ subroutine plastic_dislotwin_init(fileUnit)
    if (any(prm%Ntwin < 0_pInt))                                          call IO_error(150_pInt,ext_msg='Ntwin')
    prm%totalNtwin = sum(prm%Ntwin)
    
-     if (prm%totalNtwin > 0_pInt) then
-       prm%burgers_twin = config_phase(p)%getFloats('twinburgers')
-       prm%burgers_twin = math_expand(prm%burgers_twin,prm%Ntwin)
-       
-       prm%xc_twin = config_phase(p)%getFloat('xc_twin')
+   if (prm%totalNtwin > 0_pInt) then
+     prm%burgers_twin = config_phase(p)%getFloats('twinburgers')
+     prm%burgers_twin = math_expand(prm%burgers_twin,prm%Ntwin)
+     
+     prm%xc_twin = config_phase(p)%getFloat('xc_twin')
 
 
-       if (lattice_structure(p) /= LATTICE_fcc_ID) then
-         prm%Ndot0_twin = config_phase(p)%getFloats('ndot0_twin') 
-         prm%Ndot0_twin = math_expand(prm%Ndot0_twin,prm%Ntwin)
-       endif
-
-       prm%twinsize = config_phase(p)%getFloats('twinsize')
-       prm%twinsize= math_expand(prm%twinsize,prm%Ntwin)
-       
-       prm%r = config_phase(p)%getFloats('r_twin')
-       
-              
-       prm%L0_twin = config_phase(p)%getFloat('l0_twin')
-       
-
+     prm%interaction_TwinTwin = spread(config_phase(p)%getFloats('interaction_twintwin'),2,1)     
+     if (lattice_structure(p) /= LATTICE_fcc_ID) then
+       prm%Ndot0_twin = config_phase(p)%getFloats('ndot0_twin') 
+       prm%Ndot0_twin = math_expand(prm%Ndot0_twin,prm%Ntwin)
      endif
-     
-     prm%Ntrans            =  config_phase(p)%getInts('ntrans', defaultVal=emptyInt)
-     !if (size > Nchunks_SlipFamilies + 1_pInt) call IO_error(150_pInt,ext_msg=extmsg)
-     if (sum(prm%Ntrans) > 0_pInt) then
-       prm%burgers_trans = config_phase(p)%getFloats('transburgers')
-       prm%burgers_trans = math_expand(prm%burgers_trans,prm%Ntrans)
-       
-       prm%Cthresholdtrans = config_phase(p)%getFloat('cthresholdtrans', defaultVal=0.0_pReal) ! ToDo: How to handle that???
-       prm%transStackHeight = config_phase(p)%getFloat('transstackheight', defaultVal=0.0_pReal) ! ToDo: How to handle that???
-       prm%Cmfptrans = config_phase(p)%getFloat('cmfptrans', defaultVal=0.0_pReal) ! ToDo: How to handle that???
-       prm%deltaG = config_phase(p)%getFloat('deltag')
-       prm%xc_trans = config_phase(p)%getFloat('xc_trans', defaultVal=0.0_pReal) ! ToDo: How to handle that???
-       prm%L0_trans = config_phase(p)%getFloat('l0_trans')
 
-       if (lattice_structure(p) /= LATTICE_fcc_ID) then
-          prm%Ndot0_trans = config_phase(p)%getFloats('ndot0_trans')
-          prm%Ndot0_trans = math_expand(prm%Ndot0_trans,prm%Ntrans)
-       endif
-       prm%lamellarsizePerTransSystem = config_phase(p)%getFloats('lamellarsize')
-       prm%lamellarsizePerTransSystem = math_expand(prm%lamellarsizePerTransSystem,prm%Ntrans)
-       prm%s = config_phase(p)%getFloats('s_trans',defaultVal=[0.0_pReal])
+     prm%twinsize = config_phase(p)%getFloats('twinsize')
+     prm%twinsize= math_expand(prm%twinsize,prm%Ntwin)
+     
+     prm%r = config_phase(p)%getFloats('r_twin')
+     
+            
+     prm%L0_twin = config_phase(p)%getFloat('l0_twin')
+     
+
+   endif
+   
+   prm%Ntrans            =  config_phase(p)%getInts('ntrans', defaultVal=emptyInt)
+   prm%totalNtrans = sum(prm%Ntrans)
+   !if (size > Nchunks_SlipFamilies + 1_pInt) call IO_error(150_pInt,ext_msg=extmsg)
+   if (prm%totalNtrans > 0_pInt) then
+     prm%burgers_trans = config_phase(p)%getFloats('transburgers')
+     prm%burgers_trans = math_expand(prm%burgers_trans,prm%Ntrans)
+     
+     prm%Cthresholdtrans = config_phase(p)%getFloat('cthresholdtrans', defaultVal=0.0_pReal) ! ToDo: How to handle that???
+     prm%transStackHeight = config_phase(p)%getFloat('transstackheight', defaultVal=0.0_pReal) ! ToDo: How to handle that???
+     prm%Cmfptrans = config_phase(p)%getFloat('cmfptrans', defaultVal=0.0_pReal) ! ToDo: How to handle that???
+     prm%deltaG = config_phase(p)%getFloat('deltag')
+     prm%xc_trans = config_phase(p)%getFloat('xc_trans', defaultVal=0.0_pReal) ! ToDo: How to handle that???
+     prm%L0_trans = config_phase(p)%getFloat('l0_trans')
+
+     prm%interaction_TransTrans = spread(config_phase(p)%getFloats('interaction_transtrans'),2,1)     
+     if (lattice_structure(p) /= LATTICE_fcc_ID) then
+        prm%Ndot0_trans = config_phase(p)%getFloats('ndot0_trans')
+        prm%Ndot0_trans = math_expand(prm%Ndot0_trans,prm%Ntrans)
      endif
-     
-     if (sum(prm%Ntwin) > 0_pInt  .or. sum(prm%Ntrans) > 0_pInt) then
-       prm%SFE_0K = config_phase(p)%getFloat('sfe_0k')
-       prm%dSFE_dT = config_phase(p)%getFloat('dsfe_dt')
-       prm%VcrossSlip = config_phase(p)%getFloat('vcrossslip')
-     endif
-     
-     
+     prm%lamellarsizePerTransSystem = config_phase(p)%getFloats('lamellarsize')
+     prm%lamellarsizePerTransSystem = math_expand(prm%lamellarsizePerTransSystem,prm%Ntrans)
+     prm%s = config_phase(p)%getFloats('s_trans',defaultVal=[0.0_pReal])
+   endif
+   
+   if (sum(prm%Ntwin) > 0_pInt  .or. sum(prm%Ntrans) > 0_pInt) then
+     prm%SFE_0K = config_phase(p)%getFloat('sfe_0k')
+     prm%dSFE_dT = config_phase(p)%getFloat('dsfe_dt')
+     prm%VcrossSlip = config_phase(p)%getFloat('vcrossslip')
+   endif
+   
+   if (prm%totalNslip > 0_pInt .and. prm%totalNtwin > 0_pInt) then
+    prm%interaction_SlipTwin = spread(config_phase(p)%getFloats('interaction_sliptwin'),2,1)     
+    prm%interaction_TwinSlip = spread(config_phase(p)%getFloats('interaction_twinslip'),2,1)
+    endif    
+
+   if (prm%totalNslip > 0_pInt .and. prm%totalNtrans > 0_pInt) then
+      prm%interaction_TransSlip = spread(config_phase(p)%getFloats('interaction_transslip'),2,1)     
+      prm%interaction_SlipTrans = spread(config_phase(p)%getFloats('interaction_sliptrans'),2,1)     
+   endif    
+
+
      prm%aTolRho       = config_phase(p)%getFloat('atol_rho')
      prm%aTolTwinFrac  = config_phase(p)%getFloat('atol_twinfrac')
      prm%aTolTransFrac = config_phase(p)%getFloat('atol_transfrac')
@@ -637,20 +651,15 @@ subroutine plastic_dislotwin_init(fileUnit)
      plasticState(p)%accumulatedSlip => &
          plasticState(p)%state   (offset_slip+1:offset_slip+plasticState(p)%nslip,1:NofMyPhase)
 
-         
+     allocate(temp1(prm%totalNslip,prm%totalNslip), source =0.0_pReal)
+     allocate(temp2(prm%totalNslip,prm%totalNtwin), source =0.0_pReal)        
+     allocate(temp3(prm%totalNslip,prm%totalNtrans),source =0.0_pReal)        
 
-    !* Process slip related parameters ------------------------------------------------ 
-     slipFamiliesLoop: do f = 1_pInt,lattice_maxNslipFamily
-       index_myFamily = sum(prm%Nslip(1:f-1_pInt))                      ! index in truncated slip system list
+     mySlipFamilies: do f = 1_pInt,size(prm%Nslip,1)
+       index_myFamily = sum(prm%Nslip(1:f-1_pInt))
+
        slipSystemsLoop: do j = 1_pInt,prm%Nslip(f)
-
-       !* Burgers vector, 
-       !  dislocation velocity prefactor,
-       !  mean free path prefactor,
-       !  and minimum dipole distance
-       !* Calculation of forest projections for edge dislocations
-       !* Interaction matrices
-         do o = 1_pInt,lattice_maxNslipFamily
+         do o = 1_pInt, size(prm%Nslip,1)
            index_otherFamily = sum(prm%Nslip(1:o-1_pInt))
            do k = 1_pInt,prm%Nslip(o)                                   ! loop over (active) systems in other family (slip)
              forestProjectionEdge(index_myFamily+j,index_otherFamily+k,instance) = &
@@ -663,7 +672,7 @@ subroutine plastic_dislotwin_init(fileUnit)
                                                                  p),1 )
          enddo; enddo
   
-         do o = 1_pInt,lattice_maxNtwinFamily
+         do o = 1_pInt,size(prm%Ntwin,1)
            index_otherFamily = sum(prm%Ntwin(1:o-1_pInt))
            do k = 1_pInt,prm%Ntwin(o)                                   ! loop over (active) systems in other family (twin)
              temp2(index_myFamily+j,index_otherFamily+k) = &
@@ -673,7 +682,7 @@ subroutine plastic_dislotwin_init(fileUnit)
                                                                  p),1 )
          enddo; enddo
 
-         do o = 1_pInt,lattice_maxNtransFamily
+         do o = 1_pInt,size(prm%Ntrans,1)
            index_otherFamily = sum(prm%Ntrans(1:o-1_pInt))
            do k = 1_pInt,prm%Ntrans(o)                                  ! loop over (active) systems in other family (trans)
              temp3(index_myFamily+j,index_otherFamily+k) = &
@@ -684,11 +693,18 @@ subroutine plastic_dislotwin_init(fileUnit)
          enddo; enddo
   
        enddo slipSystemsLoop
-     enddo slipFamiliesLoop
-     
+     enddo mySlipFamilies
+     prm%interaction_SlipSlip  = temp1; deallocate(temp1)    
+     prm%interaction_SlipTwin  = temp2; deallocate(temp2)    
+     prm%interaction_SlipTrans = temp3; deallocate(temp3)    
+
+ 
+     allocate(temp1(prm%totalNtwin,prm%totalNslip), source =0.0_pReal)
+     allocate(temp2(prm%totalNtwin,prm%totalNtwin), source =0.0_pReal)        
+
      Ctwin3333 = 0.0_pReal
-    !* Process twin related parameters ------------------------------------------------
-     twinFamiliesLoop: do f = 1_pInt,lattice_maxNtwinFamily
+
+     twinFamiliesLoop: do f = 1_pInt, size(prm%Ntwin,1)
        index_myFamily = sum(prm%Ntwin(1:f-1_pInt))                      ! index in truncated twin system list
        twinSystemsLoop: do j = 1_pInt,prm%Ntwin(f)
  
@@ -711,7 +727,7 @@ subroutine plastic_dislotwin_init(fileUnit)
            math_Mandel3333to66(Ctwin3333(1:3,1:3,1:3,1:3,index_myFamily+j))
  
       !* Interaction matrices
-         do o = 1_pInt,lattice_maxNslipFamily
+         do o = 1_pInt,size(prm%Nslip,1)
            index_otherFamily = sum(prm%Nslip(1:o-1_pInt))
            do k = 1_pInt,prm%Nslip(o)                                   ! loop over (active) systems in other family (slip)
              temp1(index_myFamily+j,index_otherFamily+k) = &
@@ -721,7 +737,7 @@ subroutine plastic_dislotwin_init(fileUnit)
                                                                  p),1 )
          enddo; enddo
  
-         do o = 1_pInt,lattice_maxNtwinFamily
+         do o = 1_pInt,size(prm%Ntwin,1)
            index_otherFamily = sum(prm%Ntwin(1:o-1_pInt))
            do k = 1_pInt,prm%Ntwin(o)                                   ! loop over (active) systems in other family (twin)
              temp2(index_myFamily+j,index_otherFamily+k) = &
@@ -733,16 +749,18 @@ subroutine plastic_dislotwin_init(fileUnit)
  
        enddo twinSystemsLoop
      enddo twinFamiliesLoop
+     prm%interaction_TwinSlip  = temp1; deallocate(temp1)    
+     prm%interaction_TwinTwin  = temp2; deallocate(temp2)    
 
-    !* Process transformation related parameters ------------------------------------------------
-     transFamiliesLoop: do f = 1_pInt,lattice_maxNtransFamily
+ 
+     allocate(temp1(prm%totalNtrans,prm%totalNslip), source =0.0_pReal)
+     allocate(temp2(prm%totalNtrans,prm%totalNtrans), source =0.0_pReal)        
+
+
+     transFamiliesLoop: do f = 1_pInt,size(prm%Ntrans,1)
        index_myFamily = sum(prm%Ntrans(1:f-1_pInt))                      ! index in truncated trans system list
        transSystemsLoop: do j = 1_pInt,prm%Ntrans(f)
 
-       !* Burgers vector,
-       !  nucleation rate prefactor,
-       !  and martensite size
-       !* Rotate trans elasticity matrices
        Ctrans3333 = 0.0_pReal
        index_otherFamily = sum(lattice_NtransSystem(1:f-1_pInt,p))                               ! index in full lattice trans list
          do l = 1_pInt,3_pInt; do m = 1_pInt,3_pInt; do n = 1_pInt,3_pInt; do o = 1_pInt,3_pInt
@@ -760,7 +778,7 @@ subroutine plastic_dislotwin_init(fileUnit)
            math_Mandel3333to66(Ctrans3333(1:3,1:3,1:3,1:3,index_myFamily+j))
 
        !* Interaction matrices
-         do o = 1_pInt,lattice_maxNslipFamily
+         do o = 1_pInt,size(prm%Nslip,1)
            index_otherFamily = sum(prm%Nslip(1:o-1_pInt))
            do k = 1_pInt,prm%Nslip(o)                                   ! loop over (active) systems in other family (slip)
              temp1(index_myFamily+j,index_otherFamily+k) = &
@@ -770,7 +788,7 @@ subroutine plastic_dislotwin_init(fileUnit)
                                                                  p) ,1 )
          enddo; enddo
 
-         do o = 1_pInt,lattice_maxNtransFamily
+         do o = 1_pInt,size(prm%Ntrans,1)
            index_otherFamily = sum(prm%Ntrans(1:o-1_pInt))
            do k = 1_pInt,prm%Ntrans(o)                                  ! loop over (active) systems in other family (trans)
              temp2(index_myFamily+j,index_otherFamily+k) = &
@@ -781,19 +799,23 @@ subroutine plastic_dislotwin_init(fileUnit)
          enddo; enddo
 
        !* Projection matrices for shear from slip systems to fault-band (twin) systems for strain-induced martensite nucleation
-         select case(trans_lattice_structure(p))
-           case (LATTICE_bcc_ID)
-             do o = 1_pInt,lattice_maxNtransFamily
-               index_otherFamily = sum(prm%Nslip(1:o-1_pInt))
-               do k = 1_pInt,prm%Nslip(o)                                   ! loop over (active) systems in other family (trans)
-                 temp3(index_myFamily+j,index_otherFamily+k) = &
-                       lattice_projectionTrans( sum(lattice_NtransSystem(1:f-1,p))+j, &
-                                                sum(lattice_NslipSystem(1:o-1,p))+k, p)
-             enddo; enddo
-         end select 
+       !  select case(trans_lattice_structure(p))
+       !    case (LATTICE_bcc_ID)
+       !      do o = 1_pInt,sum(prm%Ntrans,1)
+       !        index_otherFamily = sum(prm%Nslip(1:o-1_pInt))
+       !        do k = 1_pInt,prm%Nslip(o)                                   ! loop over (active) systems in other family (trans)
+       !          temp3(index_myFamily+j,index_otherFamily+k) = &
+       !                lattice_projectionTrans( sum(lattice_NtransSystem(1:f-1,p))+j, &
+       !                                         sum(lattice_NslipSystem(1:o-1,p))+k, p)
+       !      enddo; enddo
+       !  end select 
 
        enddo transSystemsLoop
      enddo transFamiliesLoop
+
+     
+     prm%interaction_TransSlip  = temp1; deallocate(temp1)    
+     prm%interaction_TransTrans  = temp2; deallocate(temp2)    
 
      startIndex=1_pInt
      endIndex=prm%totalNslip
@@ -1750,8 +1772,6 @@ function plastic_dislotwin_postResults(Tstar_v,Temperature,ipc,ip,el)
  use lattice, only: &
    lattice_Sslip_v, &
    lattice_Stwin_v, &
-   lattice_maxNslipFamily, &
-   lattice_maxNtwinFamily, &
    lattice_NslipSystem, &
    lattice_NtwinSystem, &
    lattice_shearTwin, &
@@ -1917,7 +1937,7 @@ function plastic_dislotwin_postResults(Tstar_v,Temperature,ipc,ip,el)
         if (prm%totalNtwin > 0_pInt) then
         
           j = 0_pInt
-          do f = 1_pInt,lattice_maxNslipFamily                                                      ! loop over all slip families
+          do f = 1_pInt,size(prm%Nslip,1)
              index_myFamily = sum(lattice_NslipSystem(1:f-1_pInt,ph))                               ! at which index starts my family
              do i = 1_pInt,prm%Nslip(f)                                      ! process each (active) slip system in family
                 j = j + 1_pInt
@@ -1951,7 +1971,7 @@ function plastic_dislotwin_postResults(Tstar_v,Temperature,ipc,ip,el)
           enddo;enddo
 
           j = 0_pInt
-          do f = 1_pInt,lattice_maxNtwinFamily                                                      ! loop over all twin families
+          do f = 1_pInt,size(prm%Ntwin,1)
             index_myFamily = sum(lattice_NtwinSystem(1:f-1_pInt,ph))                                ! at which index starts my family
             do i = 1,prm%Ntwin(f)                                            ! process each (active) twin system in family
               j = j + 1_pInt
@@ -1997,7 +2017,7 @@ function plastic_dislotwin_postResults(Tstar_v,Temperature,ipc,ip,el)
       case (resolved_stress_twin_ID)
         if (prm%totalNtwin > 0_pInt) then
           j = 0_pInt
-          do f = 1_pInt,lattice_maxNtwinFamily                                                      ! loop over all slip families
+          do f = 1_pInt,size(prm%Ntwin,1)
             index_myFamily = sum(lattice_NtwinSystem(1:f-1_pInt,ph))                                ! at which index starts my family
             do i = 1_pInt,prm%Ntwin(f)                                  ! process each (active) slip system in family
               j = j + 1_pInt
@@ -2010,7 +2030,7 @@ function plastic_dislotwin_postResults(Tstar_v,Temperature,ipc,ip,el)
         c = c + prm%totalNtwin
       case (stress_exponent_ID)
         j = 0_pInt
-        do f = 1_pInt,lattice_maxNslipFamily                                                        ! loop over all slip families
+        do f = 1_pInt,size(prm%Nslip,1)
           index_myFamily = sum(lattice_NslipSystem(1:f-1_pInt,ph))                                  ! at which index starts my family
           do i = 1_pInt,prm%Nslip(f)                                    ! process each (active) slip system in family
              j = j + 1_pInt
