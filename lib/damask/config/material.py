@@ -173,15 +173,17 @@ class Material():
 
 
   def read(self,filename=None):
-    
+    """Reads material.config file"""
     def recursiveRead(filename):
+      """Takes care of include statements like '{}'"""
       result = []
       re_include  = re.compile(r'^{(.+)}$')
       with open(filename) as f: lines = f.readlines()
       for line in lines:
         match = re_include.match(line.split()[0]) if line.strip() else False
-        result += [line] if match else recursiveRead(match.group(1) if match.group(1).startswith('/') else
-                                                     os.path.normpath(os.path.join(os.path.dirname(filename),match.group(1))))
+        result += [line] if not match else \
+                  recursiveRead(match.group(1) if match.group(1).startswith('/') else
+                                os.path.normpath(os.path.join(os.path.dirname(filename),match.group(1))))
       return result
     
     c = recursiveRead(filename)
@@ -189,6 +191,7 @@ class Material():
       self.parse(part=p, content=c)
       
   def write(self,filename='material.config', overwrite=False):
+    """Writes to material.config"""
     i = 0
     outname = filename
     while os.path.exists(outname) and not overwrite:
