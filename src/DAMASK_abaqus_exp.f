@@ -256,7 +256,7 @@ subroutine vumat(nBlock, nDir, nshr, nStateV, nFieldV, nProps, lAnneal, &
 
    endif
    cp_en = mesh_FEasCP('elem',nBlock(4_pInt+n))
-   mesh_ipCoordinates(1:3,n,cp_en) = mesh_unitlength * coordMp(n,1:3)
+   mesh_ipCoordinates(1:3,nblock(2),cp_en) = mesh_unitlength * coordMp(n,1:3)
 
    call CPFEM_general(computationMode,.false.,defgrd0,defgrd1,temp,timeInc,cp_en,nBlock(2),stress,ddsdde)
   
