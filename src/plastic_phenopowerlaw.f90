@@ -557,7 +557,7 @@ subroutine plastic_phenopowerlaw_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,ipc,ip,
                (gdot_slip_pos+gdot_slip_neg)*lattice_Sslip(1:3,1:3,1,index_myFamily+i,ph)
 
      ! Calculation of the tangent of Lp
-     if (dNeq0(gdot_slip_pos)) then  !@ Philip: Needed? No division
+     if (dNeq0(tau_slip_pos)) then
        dgdot_dtauslip_pos = gdot_slip_pos*prm%n_slip/tau_slip_pos
        forall (k=1_pInt:3_pInt,l=1_pInt:3_pInt,m=1_pInt:3_pInt,n=1_pInt:3_pInt) &
          dLp_dTstar3333(k,l,m,n) = dLp_dTstar3333(k,l,m,n) + &
@@ -565,7 +565,7 @@ subroutine plastic_phenopowerlaw_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,ipc,ip,
                                                      nonSchmid_tensor(m,n,1)
      endif
 
-     if (dNeq0(gdot_slip_neg)) then !@ Philip: Needed? No division
+     if (dNeq0(tau_slip_neg)) then
        dgdot_dtauslip_neg = gdot_slip_neg*prm%n_slip/tau_slip_neg
        forall (k=1_pInt:3_pInt,l=1_pInt:3_pInt,m=1_pInt:3_pInt,n=1_pInt:3_pInt) &
          dLp_dTstar3333(k,l,m,n) = dLp_dTstar3333(k,l,m,n) + &
