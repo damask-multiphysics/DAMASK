@@ -62,8 +62,6 @@ module spectral_mech_basic
  integer(pInt), private :: &
    totalIter = 0_pInt                                                                               !< total iteration in current increment
 
- real(pReal), private, dimension(3,3) :: mask_stress = 0.0_pReal
-
  public :: &
    basic_init, &
    basic_solution, &
@@ -234,12 +232,12 @@ type(tSolutionState) function basic_solution(incInfoIn,timeinc,timeinc_old,stres
 
 !--------------------------------------------------------------------------------------------------
 ! input data for solution
- character(len=*), intent(in) :: &
+ character(len=*),            intent(in) :: &
    incInfoIn
- real(pReal), intent(in) :: &
+ real(pReal),                 intent(in) :: &
    timeinc, &                                                                                       !< increment time for current solution
    timeinc_old                                                                                      !< increment time of last successful increment
- type(tBoundaryCondition),      intent(in) :: &
+ type(tBoundaryCondition),    intent(in) :: &
    stress_BC
  real(pReal), dimension(3,3), intent(in) :: rotation_BC
  
@@ -261,7 +259,7 @@ type(tSolutionState) function basic_solution(incInfoIn,timeinc,timeinc_old,stres
 
 !--------------------------------------------------------------------------------------------------
 ! set module wide availabe data
- mask_stress        = stress_BC%maskFloat
+ params%stress_mask = stress_BC%maskFloat
  params%stress_BC   = stress_BC%values
  params%rotation_BC = rotation_BC
  params%timeinc     = timeinc
@@ -287,7 +285,11 @@ end function basic_solution
 !--------------------------------------------------------------------------------------------------
 !> @brief forms the basic residual vector
 !--------------------------------------------------------------------------------------------------
-subroutine Basic_formResidual(in,x_scal,f_scal,dummy,ierr)
+subroutine Basic_formResidual(in, &                                                                ! DMDA info (needs to be named "in" for XRANGE, etc. macros to work)
+                              F, &                                                                 ! defgrad field on grid
+                              residuum, &                                                          ! residuum field on grid
+                              dummy, &
+                              ierr)
  use numerics, only: &
    itmax, &
    itmin
@@ -316,9 +318,9 @@ subroutine Basic_formResidual(in,x_scal,f_scal,dummy,ierr)
  implicit none
  DMDALocalInfo, dimension(DMDA_LOCAL_INFO_SIZE) :: in
  PetscScalar, &
-   dimension(3,3, XG_RANGE,YG_RANGE,ZG_RANGE), intent(in) :: x_scal                         !< what is this?
+   dimension(3,3, XG_RANGE,YG_RANGE,ZG_RANGE), intent(in) :: F
  PetscScalar, &
-   dimension(3,3, X_RANGE,Y_RANGE,Z_RANGE),   intent(out) :: f_scal                         !< what is this?
+   dimension(3,3, X_RANGE,Y_RANGE,Z_RANGE),   intent(out) :: residuum
  PetscInt :: &
    PETScIter, &
    nfuncs
@@ -347,28 +349,29 @@ subroutine Basic_formResidual(in,x_scal,f_scal,dummy,ierr)
 
 !--------------------------------------------------------------------------------------------------
 ! evaluate constitutive response
- call Utilities_constitutiveResponse(f_scal,P_av,C_volAvg,C_minMaxAvg, &
-                                     x_scal,params%timeinc, params%rotation_BC)
+ call Utilities_constitutiveResponse(residuum, &                                                  ! "residuum" gets field of first PK stress (to save memory)
+                                     P_av,C_volAvg,C_minMaxAvg, &
+                                     F,params%timeinc,params%rotation_BC)
  call MPI_Allreduce(MPI_IN_PLACE,terminallyIll,1,MPI_LOGICAL,MPI_LOR,PETSC_COMM_WORLD,ierr)
   
 !--------------------------------------------------------------------------------------------------
 ! stress BC handling
  deltaF_aim = math_mul3333xx33(S, P_av - params%stress_BC)
  F_aim = F_aim - deltaF_aim
- err_BC = maxval(abs(mask_stress * (P_av - params%stress_BC)))                                  ! mask = 0.0 when no stress bc
+ err_BC = maxval(abs(params%stress_mask * (P_av - params%stress_BC)))                               ! mask = 0.0 when no stress bc
 
 !--------------------------------------------------------------------------------------------------
 ! updated deformation gradient using fix point algorithm of basic scheme
  tensorField_real = 0.0_pReal
- tensorField_real(1:3,1:3,1:grid(1),1:grid(2),1:grid3) = f_scal
+ tensorField_real(1:3,1:3,1:grid(1),1:grid(2),1:grid3) = residuum                                   ! store fPK field for subsequent FFT forward transform
  call utilities_FFTtensorForward()                                                                  ! FFT forward of global "tensorField_real"
- err_div = Utilities_divergenceRMS()                                                                ! divRMS of tensorField_fourier
+ err_div = Utilities_divergenceRMS()                                                                ! divRMS of tensorField_fourier for later use
  call utilities_fourierGammaConvolution(math_rotate_backward33(deltaF_aim,params%rotation_BC))      ! convolution of Gamma and tensorField_fourier, with arg 
  call utilities_FFTtensorBackward()                                                                 ! FFT backward of global tensorField_fourier
  
 !--------------------------------------------------------------------------------------------------
 ! constructing residual
- f_scal = tensorField_real(1:3,1:3,1:grid(1),1:grid(2),1:grid3)                                     ! Gamma*P gives correction towards div(P) = 0, so needs to be zero, too
+ residuum = tensorField_real(1:3,1:3,1:grid(1),1:grid(2),1:grid3)                                   ! Gamma*P gives correction towards div(P) = 0, so needs to be zero, too
 
 end subroutine Basic_formResidual
 
@@ -391,9 +394,9 @@ subroutine Basic_converged(snes_local,PETScIter,xnorm,snorm,fnorm,reason,dummy,i
  SNES :: snes_local
  PetscInt :: PETScIter
  PetscReal :: &
-   xnorm, &
-   snorm, &
-   fnorm
+   xnorm, &                                                                                       ! not used
+   snorm, &                                                                                       ! not used
+   fnorm                                                                                          ! not used
  SNESConvergedReason :: reason
  PetscObject :: dummy
  PetscErrorCode :: ierr
@@ -457,16 +460,16 @@ subroutine Basic_forward(guess,timeinc,timeinc_old,loadCaseTime,deformation_BC,s
     restartWrite
 
   implicit none
-  logical, intent(in) :: &
+  logical,                     intent(in) :: &
     guess
-  real(pReal), intent(in) :: &
+  real(pReal),                 intent(in) :: &
     timeinc_old, &
     timeinc, &
     loadCaseTime                                                                                     !< remaining time of current load case
   type(tBoundaryCondition),    intent(in) :: &
     stress_BC, &
     deformation_BC
-  real(pReal), dimension(3,3), intent(in) ::&
+  real(pReal), dimension(3,3), intent(in) :: &
     rotation_BC
   PetscErrorCode :: ierr 
   PetscScalar, dimension(:,:,:,:), pointer :: F

@@ -551,9 +551,7 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
    debug_levelExtensive, &
    debug_levelSelective, &
    debug_e, &
-   debug_i, &
-   debug_MaterialpointLoopDistribution, &
-   debug_MaterialpointStateLoopDistribution
+   debug_i
 
  implicit none
  real(pReal), intent(in) :: dt                                                                      !< time increment
@@ -722,13 +720,6 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
                hydrogenfluxState(mappingHomogenization(2,i,e))%State(    :,mappingHomogenization(1,i,e))! ...internal hydrogen transport state
            materialpoint_subF0(1:3,1:3,i,e) = materialpoint_subF(1:3,1:3,i,e)                       ! ...def grad
            !$OMP FLUSH(materialpoint_subF0)
-         elseif (materialpoint_requested(i,e)) then steppingNeeded                                  ! already at final time (??)
-           if (iand(debug_level(debug_homogenization), debug_levelBasic) /= 0_pInt) then
-             !$OMP CRITICAL (distributionHomog)
-               debug_MaterialpointLoopDistribution(min(nHomog+1,NiterationHomog)) = &
-               debug_MaterialpointLoopDistribution(min(nHomog+1,NiterationHomog)) + 1
-             !$OMP END CRITICAL (distributionHomog)
-           endif
          endif steppingNeeded
 
        else converged
@@ -871,8 +862,6 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
            if (materialpoint_converged(i,e)) then
              if (iand(debug_level(debug_homogenization), debug_levelBasic) /= 0_pInt) then
                !$OMP CRITICAL (distributionMPState)
-                 debug_MaterialpointStateLoopdistribution(NiterationMPstate) = &
-                   debug_MaterialpointStateLoopdistribution(NiterationMPstate) + 1_pInt
                !$OMP END CRITICAL (distributionMPState)
              endif
            endif

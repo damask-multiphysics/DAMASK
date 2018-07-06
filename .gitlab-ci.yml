@@ -424,20 +424,11 @@ SpectralRuntime:
     - release
 
 ###################################################################################################
-AbaqusExp:
-  stage: createDocumentation
-  script:
-    - module load $IntelCompiler $MPICH_Intel $PETSc_MPICH_Intel $Doxygen
-    - $DAMASKROOT/PRIVATE/documenting/runDoxygen.sh $DAMASKROOT abaqus_exp
-  except:
-    - master
-    - release
-
 AbaqusStd:
   stage: createDocumentation
   script:
     - module load $IntelCompiler $MPICH_Intel $PETSc_MPICH_Intel $Doxygen
-    - $DAMASKROOT/PRIVATE/documenting/runDoxygen.sh $DAMASKROOT abaqus_std
+    - $DAMASKROOT/PRIVATE/documenting/runDoxygen.sh $DAMASKROOT abaqus
   except:
     - master
     - release
