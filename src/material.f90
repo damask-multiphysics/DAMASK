@@ -692,7 +692,7 @@ subroutine material_parseMicrostructure
 
  implicit none
  character(len=65536), dimension(:), allocatable :: &
-   str 
+   strings
  integer(pInt), allocatable, dimension(:) :: chunkPos
  integer(pInt) :: e, m, c, i
  character(len=65536) :: &
@@ -719,21 +719,22 @@ subroutine material_parseMicrostructure
  allocate(microstructure_texture (microstructure_maxNconstituents,size(config_microstructure)),source=0_pInt)
  allocate(microstructure_fraction(microstructure_maxNconstituents,size(config_microstructure)),source=0.0_pReal)
 
+ allocate(strings(1))                                                                               ! Intel 16.0 Bug
  do m=1_pInt, size(config_microstructure)
-   str = config_microstructure(m)%getStrings('(constituent)',raw=.true.)
-   do c = 1_pInt, size(str)
-     chunkPos = IO_stringPos(str(c))
+   strings = config_microstructure(m)%getStrings('(constituent)',raw=.true.)
+   do c = 1_pInt, size(strings)
+     chunkPos = IO_stringPos(strings(c))
 
      do i = 1_pInt,5_pInt,2_pInt
-        tag = IO_stringValue(str(c),chunkPos,i)
+        tag = IO_stringValue(strings(c),chunkPos,i)
 
         select case (tag)
           case('phase')
-            microstructure_phase(c,m) =    IO_intValue(str(c),chunkPos,i+1_pInt)
+            microstructure_phase(c,m) =    IO_intValue(strings(c),chunkPos,i+1_pInt)
           case('texture')
-            microstructure_texture(c,m) =  IO_intValue(str(c),chunkPos,i+1_pInt)
+            microstructure_texture(c,m) =  IO_intValue(strings(c),chunkPos,i+1_pInt)
           case('fraction')
-            microstructure_fraction(c,m) =  IO_floatValue(str(c),chunkPos,i+1_pInt)
+            microstructure_fraction(c,m) =  IO_floatValue(strings(c),chunkPos,i+1_pInt)
         end select
      
      enddo

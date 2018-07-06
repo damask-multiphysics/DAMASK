@@ -29,8 +29,8 @@ class Environment():
       
   def isAvailable(self,software,Nneeded =-1):
     licensesNeeded = {'abaqus'  :5,
-                      'standard':5,
-                      'explicit':5}
+                      'standard':5
+                      }
     if Nneeded == -1: Nneeded = licensesNeeded[software]
     try:
       cmd = """ ssh mulicense2 "/lm-status | grep 'Users of %s: ' | cut -d' ' -f7,13" """%software

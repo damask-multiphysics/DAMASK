@@ -46,20 +46,10 @@ module debug
  integer(pInt),protected, dimension(debug_maxNtype+2_pInt),  public :: &                            ! specific ones, and 2 for "all" and "other"
    debug_level                    = 0_pInt
 
- integer(pLongInt), public :: &
-   debug_cumLpCalls              = 0_pLongInt, &                                                    !< total number of calls to LpAndItsTangent
-   debug_cumDeltaStateCalls      = 0_pLongInt, &                                                    !< total number of calls to deltaState
-   debug_cumDotStateCalls        = 0_pLongInt                                                       !< total number of calls to dotState
-
  integer(pInt), protected, public :: &
    debug_e                       = 1_pInt, &
    debug_i                       = 1_pInt, &
    debug_g                       = 1_pInt
-
- integer(pLongInt), public :: &
-   debug_cumLpTicks              = 0_pLongInt, &                                                    !< total cpu ticks spent in LpAndItsTangent
-   debug_cumDeltaStateTicks      = 0_pLongInt, &                                                    !< total cpu ticks spent in deltaState
-   debug_cumDotStateTicks        = 0_pLongInt                                                       !< total cpu ticks spent in dotState
 
  integer(pInt), dimension(2), public :: &
    debug_stressMaxLocation       = 0_pInt, &
@@ -67,16 +57,6 @@ module debug
    debug_jacobianMaxLocation     = 0_pInt, &
    debug_jacobianMinLocation     = 0_pInt
 
-
- integer(pInt), dimension(:), allocatable, public :: &
-   debug_CrystalliteLoopDistribution, &                                                             !< distribution of crystallite cutbacks
-   debug_MaterialpointStateLoopDistribution, &
-   debug_MaterialpointLoopDistribution
-
- integer(pInt), dimension(:,:), allocatable, public :: &
-   debug_StressLoopLiDistribution, &                                                                !< distribution of stress iterations until convergence
-   debug_StressLoopLpDistribution, &                                                                !< distribution of stress iterations until convergence
-   debug_StateLoopDistribution                                                                      !< distribution of state iterations until convergence
 
  real(pReal), public :: &
    debug_stressMax               = -huge(1.0_pReal), &
@@ -107,12 +87,7 @@ subroutine debug_init
    compiler_version, &
    compiler_options
 #endif
- use numerics, only: &
-   nStress, &
-   nState, &
-   nCryst, &
-   nMPstate, &
-   nHomog
+
  use IO, only: &
    IO_read, &
    IO_error, &
@@ -136,13 +111,6 @@ subroutine debug_init
  write(6,'(/,a)')   ' <<<+-  debug init  -+>>>'
  write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
-
- allocate(debug_StressLoopLpDistribution(nStress+1,2), source=0_pInt)
- allocate(debug_StressLoopLiDistribution(nStress+1,2), source=0_pInt)
- allocate(debug_StateLoopDistribution(nState+1,2), source=0_pInt)
- allocate(debug_CrystalliteLoopDistribution(nCryst+1), source=0_pInt)
- allocate(debug_MaterialpointStateLoopDistribution(nMPstate), source=0_pInt)
- allocate(debug_MaterialpointLoopDistribution(nHomog+1), source=0_pInt)
 
 !--------------------------------------------------------------------------------------------------
 ! try to open the config file
@@ -297,18 +265,6 @@ subroutine debug_reset
 
  implicit none
 
- debug_StressLoopLpDistribution            = 0_pInt
- debug_StressLoopLiDistribution            = 0_pInt
- debug_StateLoopDistribution               = 0_pInt
- debug_CrystalliteLoopDistribution         = 0_pInt
- debug_MaterialpointStateLoopDistribution  = 0_pInt
- debug_MaterialpointLoopDistribution       = 0_pInt
- debug_cumLpTicks                          = 0_pLongInt
- debug_cumDeltaStateTicks                  = 0_pLongInt
- debug_cumDotStateTicks                    = 0_pLongInt
- debug_cumLpCalls                          = 0_pInt
- debug_cumDeltaStateCalls                  = 0_pInt
- debug_cumDotStateCalls                    = 0_pInt
  debug_stressMaxLocation                   = 0_pInt
  debug_stressMinLocation                   = 0_pInt
  debug_jacobianMaxLocation                 = 0_pInt
@@ -325,123 +281,12 @@ end subroutine debug_reset
 !> @brief writes debug statements to standard out
 !--------------------------------------------------------------------------------------------------
 subroutine debug_info
- use numerics, only: &
-   nStress, &
-   nState, &
-   nCryst, &
-   nMPstate, &
-   nHomog
 
  implicit none
- integer(pInt)     :: j,integral
- integer(pLongInt) :: tickrate
  character(len=1)  :: exceed
 
- call system_clock(count_rate=tickrate)
-
+ 
  !$OMP CRITICAL (write2out)
-   debugOutputCryst: if (iand(debug_level(debug_CRYSTALLITE),debug_LEVELBASIC) /= 0) then
-     write(6,'(/,a,/)') ' DEBUG Info (from previous cycle)'
-     write(6,'(a33,1x,i12)')      'total calls to LpAndItsTangent  :',debug_cumLpCalls
-     if (debug_cumLpCalls > 0_pInt) then
-       write(6,'(a33,1x,f12.3)')  'total CPU time/s                :',&
-         real(debug_cumLpTicks,pReal)/real(tickrate,pReal)
-       write(6,'(a33,1x,f12.6)')  'avg CPU time/microsecs per call :',&
-         real(debug_cumLpTicks,pReal)*1.0e6_pReal/real(tickrate*debug_cumLpCalls,pReal)
-     endif
-     write(6,'(/,a33,1x,i12)')     'total calls to collectDotState  :',debug_cumDotStateCalls
-     if (debug_cumdotStateCalls > 0_pInt) then
-       write(6,'(a33,1x,f12.3)')  'total CPU time/s                :',&
-         real(debug_cumDotStateTicks,pReal)/real(tickrate,pReal)
-       write(6,'(a33,1x,f12.6)')  'avg CPU time/microsecs per call :',&
-         real(debug_cumDotStateTicks,pReal)*1.0e6_pReal/real(tickrate*debug_cumDotStateCalls,pReal)
-     endif
-     write(6,'(/,a33,1x,i12)')    'total calls to collectDeltaState:',debug_cumDeltaStateCalls
-     if (debug_cumDeltaStateCalls > 0_pInt) then
-       write(6,'(a33,1x,f12.3)')  'total CPU time/s                :',&
-         real(debug_cumDeltaStateTicks,pReal)/real(tickrate,pReal)
-       write(6,'(a33,1x,f12.6)')  'avg CPU time/microsecs per call :',&
-         real(debug_cumDeltaStateTicks,pReal)*1.0e6_pReal/real(tickrate*debug_cumDeltaStateCalls,pReal)
-     endif
-
-     integral = 0_pInt
-     write(6,'(3/,a)') 'distribution_StressLoopLp :    stress  stiffness'
-     do j=1_pInt,nStress+1_pInt
-       if (any(debug_StressLoopLpDistribution(j,:)     /= 0_pInt )) then
-         integral = integral + j*(debug_StressLoopLpDistribution(j,1) + debug_StressLoopLpDistribution(j,2))
-         exceed = ' '
-         if (j > nStress) exceed = '+'                                                              ! last entry gets "+"
-         write(6,'(i25,a1,i10,1x,i10)') min(nStress,j),exceed,debug_StressLoopLpDistribution(j,1),&
-                                                              debug_StressLoopLpDistribution(j,2)
-       endif
-     enddo
-     write(6,'(a15,i10,2(1x,i10))') '          total',integral,sum(debug_StressLoopLpDistribution(:,1)), &
-                                                               sum(debug_StressLoopLpDistribution(:,2))
-
-     integral = 0_pInt
-     write(6,'(3/,a)') 'distribution_StressLoopLi :    stress  stiffness'
-     do j=1_pInt,nStress+1_pInt
-       if (any(debug_StressLoopLiDistribution(j,:)     /= 0_pInt )) then
-         integral = integral + j*(debug_StressLoopLiDistribution(j,1) + debug_StressLoopLiDistribution(j,2))
-         exceed = ' '
-         if (j > nStress) exceed = '+'                                                              ! last entry gets "+"
-         write(6,'(i25,a1,i10,1x,i10)') min(nStress,j),exceed,debug_StressLoopLiDistribution(j,1),&
-                                                              debug_StressLoopLiDistribution(j,2)
-       endif
-     enddo
-     write(6,'(a15,i10,2(1x,i10))') '          total',integral,sum(debug_StressLoopLiDistribution(:,1)), &
-                                                               sum(debug_StressLoopLiDistribution(:,2))
-
-     integral = 0_pInt
-     write(6,'(2/,a)') 'distribution_CrystalliteStateLoop :'
-     do j=1_pInt,nState+1_pInt
-       if (any(debug_StateLoopDistribution(j,:) /= 0)) then
-         integral = integral + j*(debug_StateLoopDistribution(j,1) + debug_StateLoopDistribution(j,2))
-         exceed = ' '
-         if (j > nState) exceed = '+'                                                               ! last entry gets "+"
-         write(6,'(i25,a1,i10,1x,i10)') min(nState,j),exceed,debug_StateLoopDistribution(j,1),&
-                                                             debug_StateLoopDistribution(j,2)
-       endif
-     enddo
-     write(6,'(a15,i10,2(1x,i10))') '          total',integral,sum(debug_StateLoopDistribution(:,1)), &
-                                                               sum(debug_StateLoopDistribution(:,2))
-
-     integral = 0_pInt
-     write(6,'(2/,a)') 'distribution_CrystalliteCutbackLoop :'
-     do j=1_pInt,nCryst+1_pInt
-       if (debug_CrystalliteLoopDistribution(j) /= 0) then
-         integral = integral + j*debug_CrystalliteLoopDistribution(j)
-         exceed = ' '
-         if (j > nCryst) exceed = '+'
-         write(6,'(i25,a1,i10)') min(nCryst,j),exceed,debug_CrystalliteLoopDistribution(j)
-       endif
-     enddo
-     write(6,'(a15,i10,1x,i10)') '          total',integral,sum(debug_CrystalliteLoopDistribution)
-   endif debugOutputCryst
-
-   debugOutputHomog: if (iand(debug_level(debug_HOMOGENIZATION),debug_LEVELBASIC) /= 0) then
-     integral = 0_pInt
-     write(6,'(2/,a)') 'distribution_MaterialpointStateLoop :'
-     do j=1_pInt,nMPstate
-       if (debug_MaterialpointStateLoopDistribution(j) /= 0) then
-         integral = integral + j*debug_MaterialpointStateLoopDistribution(j)
-         write(6,'(i25,1x,i10)') j,debug_MaterialpointStateLoopDistribution(j)
-       endif
-     enddo
-     write(6,'(a15,i10,1x,i10)') '          total',integral,sum(debug_MaterialpointStateLoopDistribution)
-
-     integral = 0_pInt
-     write(6,'(2/,a)') 'distribution_MaterialpointCutbackLoop :'
-     do j=1_pInt,nHomog+1_pInt
-       if (debug_MaterialpointLoopDistribution(j) /= 0) then
-         integral = integral + j*debug_MaterialpointLoopDistribution(j)
-         exceed = ' '
-         if (j > nHomog) exceed = '+'
-         write(6,'(i25,a1,i10)') min(nHomog,j),exceed,debug_MaterialpointLoopDistribution(j)
-       endif
-     enddo
-     write(6,'(a15,i10,1x,i10)') '          total',integral,sum(debug_MaterialpointLoopDistribution)
-   endif debugOutputHomog
 
    debugOutputCPFEM: if (iand(debug_level(debug_CPFEM),debug_LEVELBASIC) /= 0 &
                       .and. any(debug_stressMinLocation /= 0_pInt) &

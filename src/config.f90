@@ -531,7 +531,7 @@ end function getString
 !> @details for cumulative keys, "()", values from all occurrences are return. Otherwise only all
 !! values from the last occurrence. If key is not found exits with error unless default is given.
 !--------------------------------------------------------------------------------------------------
-function getFloats(this,key,defaultVal)
+function getFloats(this,key,defaultVal,requiredShape)
  use IO, only: &
    IO_error, &
    IO_stringValue, &
@@ -542,6 +542,7 @@ function getFloats(this,key,defaultVal)
  class(tPartitionedStringList), intent(in)           :: this
  character(len=*),              intent(in)           :: key
  real(pReal),   dimension(:),   intent(in), optional :: defaultVal
+ integer(pInt), dimension(:),   intent(in), optional :: requiredShape
  type(tPartitionedStringList),  pointer              :: item
  integer(pInt)                                       :: i
  logical                                             :: found, &
@@ -577,7 +578,7 @@ end function getFloats
 !> @details for cumulative keys, "()", values from all occurrences are return. Otherwise only all
 !! values from the last occurrence. If key is not found exits with error unless default is given.
 !--------------------------------------------------------------------------------------------------
-function getInts(this,key,defaultVal)
+function getInts(this,key,defaultVal,requiredShape)
  use IO, only: &
    IO_error, &
    IO_stringValue, &
@@ -587,7 +588,8 @@ function getInts(this,key,defaultVal)
  integer(pInt), dimension(:), allocatable            :: getInts
  class(tPartitionedStringList), intent(in)           :: this
  character(len=*),              intent(in)           :: key
- integer(pInt), dimension(:),   intent(in), optional :: defaultVal
+ integer(pInt), dimension(:),   intent(in), optional :: defaultVal, &
+                                                        requiredShape
  type(tPartitionedStringList),  pointer              :: item
  integer(pInt)                                       :: i
  logical                                             :: found, &
@@ -624,7 +626,7 @@ end function getInts
 !! values from the last occurrence. If key is not found exits with error unless default is given.
 !! If raw is true, the the complete string is returned, otherwise the individual chunks are returned
 !--------------------------------------------------------------------------------------------------
-function getStrings(this,key,defaultVal,raw)
+function getStrings(this,key,defaultVal,requiredShape,raw)
  use IO, only: &
    IO_error, &
    IO_StringValue
@@ -634,6 +636,7 @@ function getStrings(this,key,defaultVal,raw)
  class(tPartitionedStringList),      intent(in)           :: this
  character(len=*),                   intent(in)           :: key
  character(len=65536),dimension(:),  intent(in), optional :: defaultVal
+ integer(pInt),       dimension(:),  intent(in), optional :: requiredShape
  logical,                            intent(in), optional :: raw
  type(tPartitionedStringList), pointer                    :: item
  character(len=65536)                                     :: str
