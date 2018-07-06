@@ -1,3 +1,4 @@
+!--------------------------------------------------------------------------------------------------
 !> @author Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
 !> @brief material subroutine incoprorating dislocation and twinning physics
 !> @details to be done
@@ -80,7 +81,7 @@ module plastic_dislotwin
      sbQedge, &                                                                                    !< value for shearband systems Qedge
      SFE_0K, &                                                                                     !< stacking fault energy at zero K
      dSFE_dT, &                                                                                    !< temperature dependance of stacking fault energy
-     dipoleFormationFactor = 1.0_pReal, &                                                                      !< scaling factor for dipole formation: 0: off, 1: on. other values not useful
+     dipoleFormationFactor, &                                                                      !< scaling factor for dipole formation: 0: off, 1: on. other values not useful
      aTolRho, &                                                                                    !< absolute tolerance for integration of dislocation density
      aTolTwinFrac, &                                                                               !< absolute tolerance for integration of twin volume fraction
      aTolTransFrac, &                                                                              !< absolute tolerance for integration of trans volume fraction
@@ -405,7 +406,7 @@ subroutine plastic_dislotwin_init(fileUnit)
      prm%D0 = config_phase(p)%getFloat('d0')
      prm%Qsd = config_phase(p)%getFloat('qsd')
      prm%SolidSolutionStrength = config_phase(p)%getFloat('solidsolutionstrength')
-     prm%dipoleFormationFactor= config_phase(p)%getFloat('dipoleformationfactor', defaultVal=0.0_pReal) ! ToDo: How to handle that???
+     prm%dipoleFormationFactor= config_phase(p)%getFloat('dipoleformationfactor', defaultVal=1.0_pReal) ! ToDo: How to handle that???
      
      prm%sbResistance = config_phase(p)%getFloat('shearbandresistance',defaultVal=0.0_pReal)
      prm%sbVelocity   = config_phase(p)%getFloat('shearbandvelocity',defaultVal=0.0_pReal)
@@ -950,7 +951,7 @@ subroutine plastic_dislotwin_init(fileUnit)
        spread(math_expand(MartensiteVolume0,prm%Ntrans),2, NofMyPhase)
 
    endif myPhase2
- 
+
  enddo initializeInstances
 end subroutine plastic_dislotwin_init
 
@@ -1438,7 +1439,6 @@ prm => param(instance)
  
       !* Plastic velocity gradient for mechanical twinning
       Lp = Lp + gdot_twin(j)*lattice_Stwin(:,:,index_myFamily+i,ph)
- 
       !* Calculation of the tangent of Lp
       forall (k=1_pInt:3_pInt,l=1_pInt:3_pInt,m=1_pInt:3_pInt,n=1_pInt:3_pInt) &
         dLp_dTstar3333(k,l,m,n) = &
@@ -1568,7 +1568,7 @@ subroutine plastic_dislotwin_dotState(Tstar_v,Temperature,ipc,ip,el)
  ph = phaseAt(ipc,ip,el)
  instance  = phase_plasticityInstance(ph)
 
-prm => param(instance)
+ prm => param(instance)
  !* Total twin volume fraction
  sumf = sum(state(instance)%twinFraction(1_pInt:prm%totalNtwin,of)) ! safe for prm%totalNtwin == 0
  plasticState(ph)%dotState(:,of) = 0.0_pReal
@@ -1603,7 +1603,7 @@ prm => param(instance)
  
       !* Shear rates due to slip
         gdot_slip(j) = DotGamma0*exp(-BoltzmannRatio*(1_pInt-StressRatio_p)** &
-                     prm%q(f))*sign(1.0_pReal,tau_slip(j))
+                       prm%q(f))*sign(1.0_pReal,tau_slip(j))
       endif
       !* Multiplication
       DotRhoMultiplication = abs(gdot_slip(j))/&
@@ -1651,7 +1651,6 @@ prm => param(instance)
                           (EdgeDipDistance-EdgeDipMinDistance)
         endif
       endif
- 
       !* Edge dislocation density rate of change
       dotState(instance)%rhoEdge(j,of) = &
         DotRhoMultiplication-DotRhoDipFormation-DotRhoEdgeEdgeAnnihilation
@@ -1746,7 +1745,7 @@ prm => param(instance)
       endif
 
    enddo
- enddo
+ enddo 
 
 end subroutine plastic_dislotwin_dotState
 
