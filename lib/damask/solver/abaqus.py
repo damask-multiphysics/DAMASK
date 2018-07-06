@@ -25,4 +25,4 @@ class Abaqus(Solver):
       detectedVersion = process.stdout.readlines()[1].split()[1]
       if self.version != detectedVersion:
         raise Exception('found Abaqus version %s, but requested %s'%(detectedVersion,self.version))
-    return '%s -job %s -user %s/src/DAMASK_abaqus_std interactive'%(cmd,model,env.rootDir())
+    return '%s -job %s -user %s/src/DAMASK_abaqus interactive'%(cmd,model,env.rootDir())
