@@ -528,25 +528,6 @@ subroutine mesh_init(ip,el)
  write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
 
- if (allocated(mesh_mapFEtoCPelem))           deallocate(mesh_mapFEtoCPelem)
- if (allocated(mesh_mapFEtoCPnode))           deallocate(mesh_mapFEtoCPnode)
- if (allocated(mesh_node0))                   deallocate(mesh_node0)
- if (allocated(mesh_node))                    deallocate(mesh_node)
- if (allocated(mesh_element))                 deallocate(mesh_element)
- if (allocated(mesh_cell))                    deallocate(mesh_cell)
- if (allocated(mesh_cellnode))                deallocate(mesh_cellnode)
- if (allocated(mesh_cellnodeParent))          deallocate(mesh_cellnodeParent)
- if (allocated(mesh_ipCoordinates))           deallocate(mesh_ipCoordinates)
- if (allocated(mesh_ipArea))                  deallocate(mesh_ipArea)
- if (allocated(mesh_ipAreaNormal))            deallocate(mesh_ipAreaNormal)
- if (allocated(mesh_sharedElem))              deallocate(mesh_sharedElem)
- if (allocated(mesh_ipNeighborhood))          deallocate(mesh_ipNeighborhood)
- if (allocated(mesh_ipVolume))                deallocate(mesh_ipVolume)
- if (allocated(mesh_nodeTwins))               deallocate(mesh_nodeTwins)
- if (allocated(FE_nodesAtIP))                 deallocate(FE_nodesAtIP)
- if (allocated(FE_ipNeighbor))                deallocate(FE_ipNeighbor)
- if (allocated(FE_cellnodeParentnodeWeights)) deallocate(FE_cellnodeParentnodeWeights)
- if (allocated(FE_subNodeOnIPFace))           deallocate(FE_subNodeOnIPFace)
  call mesh_build_FEdata                                                                             ! get properties of the different types of elements
  mesh_unitlength = numerics_unitlength                                                              ! set physical extent of a length unit in mesh
 
@@ -673,11 +654,9 @@ subroutine mesh_init(ip,el)
    call IO_error(602_pInt,ext_msg='IP')                                                             ! selected element does not have requested IP
 
  FEsolving_execElem = [ 1_pInt,mesh_NcpElems ]                                                      ! parallel loop bounds set to comprise all DAMASK elements
- if (allocated(FEsolving_execIP)) deallocate(FEsolving_execIP)
  allocate(FEsolving_execIP(2_pInt,mesh_NcpElems)); FEsolving_execIP = 1_pInt                        ! parallel loop bounds set to comprise from first IP...
  forall (j = 1_pInt:mesh_NcpElems) FEsolving_execIP(2,j) = FE_Nips(FE_geomtype(mesh_element(2,j)))  ! ...up to own IP count for each element
 
- if (allocated(calcMode)) deallocate(calcMode)
  allocate(calcMode(mesh_maxNips,mesh_NcpElems))
  calcMode = .false.                                                                                 ! pretend to have collected what first call is asking (F = I)
  calcMode(ip,mesh_FEasCP('elem',el)) = .true.                                                       ! first ip,el needs to be already pingponged to "calc"
@@ -802,9 +781,6 @@ subroutine mesh_build_cellconnectivity
    mesh_cellnodeParent(1,n) = cellnodeParent(1,n)
    mesh_cellnodeParent(2,n) = cellnodeParent(2,n)
  endforall
-
- deallocate(matchingNode2cellnode)
- deallocate(cellnodeParent)
 
 end subroutine mesh_build_cellconnectivity
 
@@ -1390,8 +1366,6 @@ subroutine mesh_spectral_build_elements(fileUnit)
    mesh_maxValStateVar(2) = max(mesh_maxValStateVar(2),mesh_element(4,e))
  enddo
 
- deallocate(microstructures)
- deallocate(mesh_microGlobal)
  if (e /= mesh_NcpElems) call IO_error(880_pInt,e)
 
 end subroutine mesh_spectral_build_elements
@@ -3097,8 +3071,6 @@ subroutine mesh_build_sharedElems
    enddo
  enddo
 
- deallocate(node_seen)
-
 end subroutine mesh_build_sharedElems
 
 
@@ -3300,12 +3272,12 @@ subroutine mesh_tell_statistics
  if (mesh_maxValStateVar(2) < 1_pInt) call IO_error(error_ID=180_pInt)                              ! no microstructure specified
 
  allocate (mesh_HomogMicro(mesh_maxValStateVar(1),mesh_maxValStateVar(2))); mesh_HomogMicro = 0_pInt
-do e = 1_pInt,mesh_NcpElems
-  if (mesh_element(3,e) < 1_pInt) call IO_error(error_ID=170_pInt,el=e)                             ! no homogenization specified
-  if (mesh_element(4,e) < 1_pInt) call IO_error(error_ID=180_pInt,el=e)                             ! no microstructure specified
-  mesh_HomogMicro(mesh_element(3,e),mesh_element(4,e)) = &
-  mesh_HomogMicro(mesh_element(3,e),mesh_element(4,e)) + 1_pInt                                     ! count combinations of homogenization and microstructure
-enddo
+ do e = 1_pInt,mesh_NcpElems
+   if (mesh_element(3,e) < 1_pInt) call IO_error(error_ID=170_pInt,el=e)                             ! no homogenization specified
+   if (mesh_element(4,e) < 1_pInt) call IO_error(error_ID=180_pInt,el=e)                             ! no microstructure specified
+   mesh_HomogMicro(mesh_element(3,e),mesh_element(4,e)) = &
+   mesh_HomogMicro(mesh_element(3,e),mesh_element(4,e)) + 1_pInt                                     ! count combinations of homogenization and microstructure
+ enddo
 !$OMP CRITICAL (write2out)
   if (iand(myDebug,debug_levelBasic) /= 0_pInt) then
     write(6,'(/,a,/)') ' Input Parser: STATISTICS'
@@ -3407,8 +3379,6 @@ enddo
     enddo
   endif
 !$OMP END CRITICAL (write2out)
-
- deallocate(mesh_HomogMicro)
 
 end subroutine mesh_tell_statistics
 
@@ -3558,8 +3528,6 @@ checkCandidateFaceTwins: do dir = 1_pInt,3_pInt
     enddo checkCandidateFace
   endif
 enddo checkCandidate
-
-deallocate(element_seen)
 
 end subroutine mesh_faceMatch
 
