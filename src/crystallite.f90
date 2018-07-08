@@ -3256,11 +3256,6 @@ logical function crystallite_integrateStress(&
                                      p, &
                                      jacoCounterLp, &
                                      jacoCounterLi                                                    ! counters to check for Jacobian update
- integer(pLongInt) ::                tick = 0_pLongInt, &
-                                     tock = 0_pLongInt, &
-                                     tickrate, &
-                                     maxticks
-
  external :: &
    dgesv
 
