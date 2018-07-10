@@ -55,9 +55,9 @@ subroutine DAMASK_interface_init()
  implicit none
  character(len=1024) :: &
    commandLine, &                                                                                   !< command line call as string
-   loadCaseArg   ='', &                                                                             !< -l argument given to DAMASK_spectral.exe
-   geometryArg   ='', &                                                                             !< -g argument given to DAMASK_spectral.exe
-   workingDirArg ='', &                                                                             !< -w argument given to DAMASK_spectral.exe
+   loadcaseArg   = '', &                                                                            !< -l argument given to DAMASK_spectral.exe
+   geometryArg   = '', &                                                                            !< -g argument given to DAMASK_spectral.exe
+   workingDirArg = '', &                                                                            !< -w argument given to DAMASK_spectral.exe
    hostName, &                                                                                      !< name of machine on which DAMASK_spectral.exe is execute (might require export HOSTNAME)
    userName, &                                                                                      !< name of user calling DAMASK_spectral.exe
    tag
@@ -112,7 +112,7 @@ subroutine DAMASK_interface_init()
 
  call date_and_time(values = dateAndTime)
  write(6,'(/,a)') ' <<<+-  DAMASK_spectral  -+>>>'
- write(6,'(/,a)') ' Roters et al., Computational Materials Science, 2018'
+ write(6,'(a,/)') ' Roters et al., Computational Materials Science, 2018'
  write(6,'(/,a)')              ' Version: '//DAMASKVERSION
  write(6,'(a,2(i2.2,a),i4.4)') ' Date:    ',dateAndTime(3),'/',&
                                             dateAndTime(2),'/',&
@@ -126,9 +126,8 @@ subroutine DAMASK_interface_init()
  
  call get_command(commandLine)
  chunkPos = IIO_stringPos(commandLine)
- do i = 1, chunkPos(1)
-   tag = IIO_stringValue(commandLine,chunkPos,i)                                                    ! extract key
-   select case(tag)
+ do i = 2_pInt, chunkPos(1)
+   select case(IIO_stringValue(commandLine,chunkPos,i))                                             ! extract key
      case ('-h','--help')
        write(6,'(a)')  ' #######################################################################'
        write(6,'(a)')  ' DAMASK_spectral:'
@@ -177,18 +176,20 @@ subroutine DAMASK_interface_init()
        write(6,'(a,/)')'        Prints this message and exits'
        call quit(0_pInt)                                                                            ! normal Termination
      case ('-l', '--load', '--loadcase')
-       loadcaseArg = IIO_stringValue(commandLine,chunkPos,i+1_pInt)
+       if ( i < chunkPos(1)) loadcaseArg = trim(IIO_stringValue(commandLine,chunkPos,i+1_pInt))
      case ('-g', '--geom', '--geometry')
-       geometryArg = IIO_stringValue(commandLine,chunkPos,i+1_pInt)
+       if (i < chunkPos(1)) geometryArg = trim(IIO_stringValue(commandLine,chunkPos,i+1_pInt))
      case ('-w', '-d', '--wd', '--directory', '--workingdir', '--workingdirectory')
-       workingDirArg = IIO_stringValue(commandLine,chunkPos,i+1_pInt)
+       if (i < chunkPos(1)) workingDirArg = trim(IIO_stringValue(commandLine,chunkPos,i+1_pInt))
      case ('-r', '--rs', '--restart')
-       spectralRestartInc = IIO_IntValue(commandLine,chunkPos,i+1_pInt)
-       appendToOutFile = .true.
+       if (i < chunkPos(1)) then
+         spectralRestartInc = IIO_IntValue(commandLine,chunkPos,i+1_pInt)
+         appendToOutFile = .true.
+       endif
    end select
  enddo
- 
- if (len(trim(loadcaseArg)) == 0 .or. len(trim(geometryArg)) == 0) then
+
+ if (len_trim(loadcaseArg) == 0 .or. len_trim(geometryArg) == 0) then
    write(6,'(a)') ' Please specify geometry AND load case (-h for help)'
    call quit(1_pInt)
  endif
@@ -410,14 +411,12 @@ end function makeRelativePath
 pure function IIO_stringValue(string,chunkPos,myChunk)
  
  implicit none
- integer(pInt),   dimension(:),                intent(in) :: chunkPos                               !< positions of start and end of each tag/chunk in given string
- integer(pInt),                                intent(in) :: myChunk                                !< position number of desired chunk
- character(len=1+chunkPos(myChunk*2+1)-chunkPos(myChunk*2))   :: IIO_stringValue
- character(len=*),                             intent(in) :: string                                 !< raw input with known start and end of each chunk
+ integer(pInt),    dimension(:),               intent(in)   :: chunkPos                             !< positions of start and end of each tag/chunk in given string
+ integer(pInt),                                intent(in)   :: myChunk                              !< position number of desired chunk
+ character(len=chunkPos(myChunk*2+1)-chunkPos(myChunk*2)+1) :: IIO_stringValue
+ character(len=*),                             intent(in)   :: string                               !< raw input with known start and end of each chunk
 
- 
- IIO_stringValue = merge('',string(chunkPos(myChunk*2):chunkPos(myChunk*2+1)),&
-                         (myChunk > chunkPos(1) .or. myChunk < 1_pInt))
+ IIO_stringValue = string(chunkPos(myChunk*2):chunkPos(myChunk*2+1))
 
 end function IIO_stringValue
 
