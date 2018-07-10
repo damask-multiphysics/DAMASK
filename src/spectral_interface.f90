@@ -32,7 +32,6 @@ module DAMASK_interface
    makeRelativePath, &
    IIO_stringValue, &
    IIO_intValue, &
-   IIO_lc, &
    IIO_stringPos
 contains
 
@@ -128,7 +127,7 @@ subroutine DAMASK_interface_init()
  call get_command(commandLine)
  chunkPos = IIO_stringPos(commandLine)
  do i = 1, chunkPos(1)
-   tag = IIO_lc(IIO_stringValue(commandLine,chunkPos,i))                                            ! extract key
+   tag = IIO_stringValue(commandLine,chunkPos,i)                                                    ! extract key
    select case(tag)
      case ('-h','--help')
        write(6,'(a)')  ' #######################################################################'
@@ -224,7 +223,6 @@ end subroutine DAMASK_interface_init
 !--------------------------------------------------------------------------------------------------
 character(len=1024) function setWorkingDirectory(workingDirectoryArg)
  use system_routines, only: &
-   isDirectory, &
    getCWD, &
    setCWD
 
@@ -247,16 +245,12 @@ character(len=1024) function setWorkingDirectory(workingDirectoryArg)
  endif wdGiven
 
  setWorkingDirectory = trim(rectifyPath(setWorkingDirectory))
- if(.not. isDirectory(trim(setWorkingDirectory))) then                                              ! check if the directory exists
-     write(6,'(a20,a,a16)') ' working directory "',trim(setWorkingDirectory),'" does not exist'
-     call quit(1_pInt)
- endif
 
- if (setWorkingDirectory(len_trim(setWorkingDirectory):len_trim(setWorkingDirectory)) /= '/') &
-     setWorkingDirectory = trim(setWorkingDirectory)//'/'                                           ! if path seperator is not given, append it
- 
- error = setCWD(setWorkingDirectory(1:len_trim(setWorkingDirectory)-1))                             ! path seperator at end causes problems
- if (error) call quit(1_pInt)
+ error = setCWD(trim(setWorkingDirectory))
+ if(error) then
+   write(6,'(a20,a,a16)') ' working directory "',trim(setWorkingDirectory),'" does not exist'
+   call quit(1_pInt)
+ endif
 
 end function setWorkingDirectory
 
@@ -303,9 +297,9 @@ character(len=1024) function getGeometryFile(geometryParameter)
 
  if (posExt <= posSep) getGeometryFile = trim(getGeometryFile)//('.geom')
  if (scan(getGeometryFile,'/') /= 1) &
-   getGeometryFile = trim(workingDirectory)//trim(getGeometryFile)
+   getGeometryFile = trim(workingDirectory)//'/'//trim(getGeometryFile)
 
- getGeometryFile = makeRelativePath(workingDirectory, rectifyPath(getGeometryFile))
+ getGeometryFile = makeRelativePath(workingDirectory, getGeometryFile)
 
 
 end function getGeometryFile
@@ -328,15 +322,15 @@ character(len=1024) function getLoadCaseFile(loadCaseParameter)
 
  if (posExt <= posSep) getLoadCaseFile = trim(getLoadCaseFile)//('.load')
  if (scan(getLoadCaseFile,'/') /= 1) &
-   getLoadCaseFile = trim(workingDirectory)//trim(getLoadCaseFile)
+   getLoadCaseFile = trim(workingDirectory)//'/'//trim(getLoadCaseFile)
 
- getLoadCaseFile = makeRelativePath(workingDirectory, rectifyPath(getLoadCaseFile))
+ getLoadCaseFile = makeRelativePath(workingDirectory, getLoadCaseFile)
 
 end function getLoadCaseFile
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief remove ../ and /./ from path.
+!> @brief remove ../, /./, and // from path.
 !> @details works only if absolute path is given
 !--------------------------------------------------------------------------------------------------
 function rectifyPath(path)
@@ -351,8 +345,15 @@ function rectifyPath(path)
  l = len_trim(path)
  rectifyPath = path
  do i = l,3,-1
-   if (rectifyPath(i-2:i) == '/./') &
-     rectifyPath(i-1:l) = rectifyPath(i+1:l)//'  '
+   if (rectifyPath(i-2:i) == '/./') rectifyPath(i-1:l) = rectifyPath(i+1:l)//'  '
+ enddo
+
+!--------------------------------------------------------------------------------------------------
+! remove // from path
+ l = len_trim(path)
+ rectifyPath = path
+ do i = l,2,-1
+   if (rectifyPath(i-1:i) == '//') rectifyPath(i-1:l) = rectifyPath(i:l)//' '
  enddo
 
 !--------------------------------------------------------------------------------------------------
@@ -381,20 +382,24 @@ end function rectifyPath
 character(len=1024) function makeRelativePath(a,b)
 
  implicit none
- character (len=*) :: a,b
+ character (len=*), intent(in) :: a,b
+ character (len=1024)          :: a_cleaned,b_cleaned
  integer :: i,posLastCommonSlash,remainingSlashes !no pInt
 
  posLastCommonSlash = 0
  remainingSlashes = 0
+ a_cleaned = rectifyPath(trim(a)//'/')
+ b_cleaned = rectifyPath(b)
 
- do i = 1, min(1024,len_trim(a),len_trim(b))
-   if (a(i:i) /= b(i:i)) exit
-   if (a(i:i) == '/') posLastCommonSlash = i
+ do i = 1, min(1024,len_trim(a_cleaned),len_trim(rectifyPath(b_cleaned)))
+   if (a_cleaned(i:i) /= b_cleaned(i:i)) exit
+   if (a_cleaned(i:i) == '/') posLastCommonSlash = i
  enddo
- do i = posLastCommonSlash+1,len_trim(a)
-   if (a(i:i) == '/') remainingSlashes = remainingSlashes + 1
+ do i = posLastCommonSlash+1,len_trim(a_cleaned)
+   if (a_cleaned(i:i) == '/') remainingSlashes = remainingSlashes + 1
  enddo
- makeRelativePath = repeat('..'//'/',remainingSlashes)//b(posLastCommonSlash+1:len_trim(b))
+
+ makeRelativePath = repeat('..'//'/',remainingSlashes)//b_cleaned(posLastCommonSlash+1:len_trim(b_cleaned))
 
 end function makeRelativePath
 
@@ -411,11 +416,8 @@ pure function IIO_stringValue(string,chunkPos,myChunk)
  character(len=*),                             intent(in) :: string                                 !< raw input with known start and end of each chunk
 
  
- valuePresent: if (myChunk > chunkPos(1) .or. myChunk < 1_pInt) then
-   IIO_stringValue = ''
- else valuePresent
-   IIO_stringValue = string(chunkPos(myChunk*2):chunkPos(myChunk*2+1))
- endif valuePresent
+ IIO_stringValue = merge('',string(chunkPos(myChunk*2):chunkPos(myChunk*2+1))
+                         (myChunk > chunkPos(1) .or. myChunk < 1_pInt))
 
 end function IIO_stringValue
 
@@ -440,29 +442,6 @@ integer(pInt) pure function IIO_intValue(string,chunkPos,myChunk)
 100 IIO_intValue = huge(1_pInt)
 
 end function IIO_intValue
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief taken from IO, check IO_lc for documentation 
-!--------------------------------------------------------------------------------------------------
-pure function IIO_lc(string)
-
- implicit none
- character(len=*), intent(in) :: string                                                             !< string to convert
- character(len=len(string))   :: IIO_lc
-
- character(26), parameter :: LOWER = 'abcdefghijklmnopqrstuvwxyz'
- character(26), parameter :: UPPER = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ' 
- 
- integer                      :: i,n                                                                ! no pInt (len returns default integer)
-
- IIO_lc = string
- do i=1,len(string)
-   n = index(UPPER,IIO_lc(i:i))
-   if (n/=0) IIO_lc(i:i) = LOWER(n:n)
- enddo
-
-end function IIO_lc
 
 
 !--------------------------------------------------------------------------------------------------
