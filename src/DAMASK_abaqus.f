@@ -3,38 +3,42 @@
 !> @author Franz Roters, Max-Planck-Institut für Eisenforschung GmbH
 !> @author Koen Janssens, Paul Scherrer Institut
 !> @author Arun Prakash, Fraunhofer IWM
+!> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
 !> @brief interfaces DAMASK with Abaqus/Standard
 !> @details put the included file abaqus_v6.env in either your home or model directory, 
 !> it is a minimum Abaqus environment file  containing all changes necessary to use the 
 !> DAMASK subroutine (see Abaqus documentation for more information on the use of abaqus_v6.env)
 !--------------------------------------------------------------------------------------------------
-
-#ifndef INT
-#define INT 4
-#endif
-
-#ifndef FLOAT
-#define FLOAT 8
-#endif
-
 #define Abaqus
 
 #include "prec.f90"
 
 module DAMASK_interface
 
-implicit none
-character(len=4), dimension(2),  parameter :: INPUTFILEEXTENSION = ['.pes','.inp']
-character(len=4),                parameter :: LOGFILEEXTENSION   =  '.log'
+ implicit none
+ private
+ character(len=4), dimension(2),  parameter, public :: INPUTFILEEXTENSION = ['.pes','.inp']
+ character(len=4),                parameter, public :: LOGFILEEXTENSION   =  '.log'
+ 
+ public :: &
+  DAMASK_interface_init, &
+  getSolverJobName
 
 contains
 
 !--------------------------------------------------------------------------------------------------
-!> @brief just reporting 
+!> @brief reports and sets working directory
 !--------------------------------------------------------------------------------------------------
 subroutine DAMASK_interface_init
+ use ifport, only: &
+   CHDIR
+ 
+ implicit none
  integer, dimension(8) :: &
    dateAndTime                                                                                      ! type default integer
+ integer :: lenOutDir,ierr
+ character(len=256) :: wd
+
  call date_and_time(values = dateAndTime)
  write(6,'(/,a)') ' <<<+-  DAMASK_abaqus_std  -+>>>'
  write(6,'(/,a)') ' Roters et al., Computational Materials Science, 2018'
@@ -46,24 +50,14 @@ subroutine DAMASK_interface_init
                                             dateAndTime(6),':',&
                                             dateAndTime(7)  
  write(6,'(/,a)') ' <<<+-  DAMASK_interface init  -+>>>'
+
+ call getoutdir(wd, lenOutDir)
+ ierr = CHDIR(wd)
+ if (ierr /= 0) call quit(0)
+
 #include "compilation_info.f90"  
 
 end subroutine DAMASK_interface_init
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief using Abaqus/Standard function to get working directory name
-!--------------------------------------------------------------------------------------------------
-character(1024) function getSolverWorkingDirectoryName()
-
- implicit none
- integer :: lenOutDir
-
- getSolverWorkingDirectoryName=''
- call getoutdir(getSolverWorkingDirectoryName, lenOutDir)
- getSolverWorkingDirectoryName=trim(getSolverWorkingDirectoryName)//'/'
- 
-end function getSolverWorkingDirectoryName
 
 
 !--------------------------------------------------------------------------------------------------
@@ -79,10 +73,17 @@ character(1024) function getSolverJobName()
 
 end function getSolverJobName
 
+
 end module DAMASK_interface
 
-#include "commercialFEM_fileList.f90"
 
+
+
+#include "commercialFEM_fileList.f90"
+ 
+!--------------------------------------------------------------------------------------------------
+!> @brief This is the Abaqus std user subroutine for defining material behavior
+!--------------------------------------------------------------------------------------------------
 subroutine UMAT(STRESS,STATEV,DDSDDE,SSE,SPD,SCD,&
                 RPL,DDSDDT,DRPLDE,DRPLDT,STRAN,DSTRAN,&
                 TIME,DTIME,TEMP,DTEMP,PREDEF,DPRED,CMNAME,NDI,NSHR,NTENS,&

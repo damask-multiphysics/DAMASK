@@ -19,14 +19,13 @@ module DAMASK_interface
  character(len=1024), public, protected :: &
    geometryFile = '', &                                                                             !< parameter given for geometry file
    loadCaseFile = ''                                                                                !< parameter given for load case file
- character(len=1024), private           :: workingDirectory                                         !< accessed by getSolverWorkingDirectoryName for compatibility reasons
+ character(len=1024), private           :: workingDirectory
 
  public :: &
-   getSolverWorkingDirectoryName, &
    getSolverJobName, &
    DAMASK_interface_init
  private :: &
-   storeWorkingDirectory, &
+   setWorkingDirectory, &
    getGeometryFile, &
    getLoadCaseFile, &
    rectifyPath, &
@@ -195,7 +194,7 @@ subroutine DAMASK_interface_init()
    call quit(1_pInt)
  endif
 
- workingDirectory = trim(storeWorkingDirectory(trim(workingDirArg)))
+ workingDirectory = trim(setWorkingDirectory(trim(workingDirArg)))
  geometryFile = getGeometryFile(geometryArg)
  loadCaseFile = getLoadCaseFile(loadCaseArg)
 
@@ -208,7 +207,7 @@ subroutine DAMASK_interface_init()
    write(6,'(a,a)')    ' Working dir argument:   ', trim(workingDirArg)
  write(6,'(a,a)')      ' Geometry argument:      ', trim(geometryArg)
  write(6,'(a,a)')      ' Loadcase argument:      ', trim(loadcaseArg)
- write(6,'(a,a)')      ' Working directory:      ', trim(getSolverWorkingDirectoryName())
+ write(6,'(a,a)')      ' Working directory:      ', trim(workingDirectory)
  write(6,'(a,a)')      ' Geometry file:          ', trim(geometryFile)
  write(6,'(a,a)')      ' Loadcase file:          ', trim(loadCaseFile)
  write(6,'(a,a)')      ' Solver job name:        ', trim(getSolverJobName())
@@ -223,10 +222,11 @@ end subroutine DAMASK_interface_init
 !> @brief extract working directory from given argument or from location of geometry file,
 !!        possibly converting relative arguments to absolut path
 !--------------------------------------------------------------------------------------------------
-character(len=1024) function storeWorkingDirectory(workingDirectoryArg)
+character(len=1024) function setWorkingDirectory(workingDirectoryArg)
  use system_routines, only: &
    isDirectory, &
-   getCWD
+   getCWD, &
+   setCWD
 
  implicit none
  character(len=*),  intent(in) :: workingDirectoryArg                                               !< working directory argument
@@ -235,39 +235,30 @@ character(len=1024) function storeWorkingDirectory(workingDirectoryArg)
 
  wdGiven: if (len(workingDirectoryArg)>0) then
    absolutePath: if (workingDirectoryArg(1:1) == '/') then
-     storeWorkingDirectory = workingDirectoryArg
+     setWorkingDirectory = workingDirectoryArg
    else absolutePath
-     error = getCWD(storeWorkingDirectory)
+     error = getCWD(setWorkingDirectory)
      if (error) call quit(1_pInt)
-     storeWorkingDirectory = trim(storeWorkingDirectory)//'/'//workingDirectoryArg
+     setWorkingDirectory = trim(setWorkingDirectory)//'/'//workingDirectoryArg
    endif absolutePath
  else wdGiven
-   error = getCWD(storeWorkingDirectory)                                                            ! relative path given as command line argument
+   error = getCWD(setWorkingDirectory)                                                              ! relative path given as command line argument
    if (error) call quit(1_pInt)
  endif wdGiven
 
- storeWorkingDirectory = trim(rectifyPath(storeWorkingDirectory))
- if(.not. isDirectory(trim(storeWorkingDirectory))) then                                            ! check if the directory exists
-     write(6,'(a20,a,a16)') ' working directory "',trim(storeWorkingDirectory),'" does not exist'
+ setWorkingDirectory = trim(rectifyPath(setWorkingDirectory))
+ if(.not. isDirectory(trim(setWorkingDirectory))) then                                              ! check if the directory exists
+     write(6,'(a20,a,a16)') ' working directory "',trim(setWorkingDirectory),'" does not exist'
      call quit(1_pInt)
  endif
 
- if (storeWorkingDirectory(len_trim(storeWorkingDirectory):len_trim(storeWorkingDirectory)) /= '/') &
-     storeWorkingDirectory = trim(storeWorkingDirectory)//'/'                                       ! if path seperator is not given, append it
+ if (setWorkingDirectory(len_trim(setWorkingDirectory):len_trim(setWorkingDirectory)) /= '/') &
+     setWorkingDirectory = trim(setWorkingDirectory)//'/'                                           ! if path seperator is not given, append it
+ 
+ error = setCWD(setWorkingDirectory(1:len_trim(setWorkingDirectory)-1))                             ! path seperator at end causes problems
+ if (error) call quit(1_pInt)
 
-end function storeWorkingDirectory
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief simply returns the private string workingDir 
-!--------------------------------------------------------------------------------------------------
-character(len=1024) function getSolverWorkingDirectoryName()
-
- implicit none
-
- getSolverWorkingDirectoryName = workingDirectory
-
-end function getSolverWorkingDirectoryName
+end function setWorkingDirectory
 
 
 !--------------------------------------------------------------------------------------------------
@@ -312,9 +303,9 @@ character(len=1024) function getGeometryFile(geometryParameter)
 
  if (posExt <= posSep) getGeometryFile = trim(getGeometryFile)//('.geom')
  if (scan(getGeometryFile,'/') /= 1) &
-   getGeometryFile = trim(getSolverWorkingDirectoryName())//trim(getGeometryFile)
+   getGeometryFile = trim(workingDirectory)//trim(getGeometryFile)
 
- getGeometryFile = makeRelativePath(getSolverWorkingDirectoryName(), rectifyPath(getGeometryFile))
+ getGeometryFile = makeRelativePath(workingDirectory, rectifyPath(getGeometryFile))
 
 
 end function getGeometryFile
@@ -337,9 +328,9 @@ character(len=1024) function getLoadCaseFile(loadCaseParameter)
 
  if (posExt <= posSep) getLoadCaseFile = trim(getLoadCaseFile)//('.load')
  if (scan(getLoadCaseFile,'/') /= 1) &
-   getLoadCaseFile = trim(getSolverWorkingDirectoryName())//trim(getLoadCaseFile)
+   getLoadCaseFile = trim(workingDirectory)//trim(getLoadCaseFile)
 
- getLoadCaseFile = makeRelativePath(getSolverWorkingDirectoryName(), rectifyPath(getLoadCaseFile))
+ getLoadCaseFile = makeRelativePath(workingDirectory, rectifyPath(getLoadCaseFile))
 
 end function getLoadCaseFile
 

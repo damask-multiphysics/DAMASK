@@ -283,8 +283,6 @@ end subroutine debug_reset
 subroutine debug_info
 
  implicit none
- character(len=1)  :: exceed
-
  
  !$OMP CRITICAL (write2out)
 
