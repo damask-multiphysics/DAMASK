@@ -416,7 +416,7 @@ pure function IIO_stringValue(string,chunkPos,myChunk)
  character(len=*),                             intent(in) :: string                                 !< raw input with known start and end of each chunk
 
  
- IIO_stringValue = merge('',string(chunkPos(myChunk*2):chunkPos(myChunk*2+1))
+ IIO_stringValue = merge('',string(chunkPos(myChunk*2):chunkPos(myChunk*2+1)),&
                          (myChunk > chunkPos(1) .or. myChunk < 1_pInt))
 
 end function IIO_stringValue
