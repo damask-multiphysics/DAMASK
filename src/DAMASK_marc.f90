@@ -67,7 +67,10 @@ subroutine DAMASK_interface_init
  inquire(5, name=wd)                                                                                ! determine inputputfile
  wd = wd(1:scan(wd,'/',back=.true.))
  ierr = CHDIR(wd)
- if (ierr /= 0) call quit(0)
+ if (ierr /= 0) then
+   write(6,'(a20,a,a16)') ' working directory "',trim(wd),'" does not exist'
+   call quit(1)
+ endif
 
 end subroutine DAMASK_interface_init
 

@@ -53,7 +53,10 @@ subroutine DAMASK_interface_init
 
  call getoutdir(wd, lenOutDir)
  ierr = CHDIR(wd)
- if (ierr /= 0) call quit(0)
+ if (ierr /= 0) then
+   write(6,'(a20,a,a16)') ' working directory "',trim(wd),'" does not exist'
+   call quit(1)
+ endif
 
 #include "compilation_info.f90"  
 
