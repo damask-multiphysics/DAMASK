@@ -9,7 +9,6 @@ stages:
   - spectral
   - compileMarc2017
   - marc
-  - compileAbaqus2016
   - compileAbaqus2017
   - example
   - performance
@@ -67,7 +66,6 @@ variables:
   PETSc_MPICH_Intel:               "$PETSc3_9_1MPICH3_2Intel18_1"
   PETSc_MPICH_GNU:                 "$PETSc3_9_1MPICH3_2GNU7_3"
   # ++++++++++++ FEM +++++++++++++++++++++++++++++++++++++++++++++++++++
-  Abaqus2016:                      "FEM/Abaqus/2016"
   Abaqus2017:                      "FEM/Abaqus/2017"
   MSC2017:                         "FEM/MSC/2017"
   # ------------ Defaults ----------------------------------------------
@@ -369,16 +367,6 @@ J2_plasticBehavior:
   script:
     - module load $IntelCompiler17_0 $MSC
     - J2_plasticBehavior/test.py
-  except:
-    - master
-    - release
-
-###################################################################################################
-Abaqus_compile2016:
-  stage: compileAbaqus2016
-  script:
-    - module load $IntelCompiler16_0 $Abaqus2016
-    - Abaqus_compileIfort/test.py -a 2016
   except:
     - master
     - release
