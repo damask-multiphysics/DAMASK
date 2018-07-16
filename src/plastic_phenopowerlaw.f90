@@ -61,7 +61,7 @@ module plastic_phenopowerlaw
      tau0_twin, &                                                                                   !< initial critical shear stress for twin
      tausat_slip, &                                                                                 !< maximum critical shear stress for slip
      nonSchmidCoeff, &
-     H_int                                                                                         !< per family hardening activity (optional)
+     H_int                                                                                          !< per family hardening activity (optional)
    real(pReal),   dimension(:,:),   allocatable :: &
      interaction_SlipSlip, &                                                                        !< slip resistance from slip activity
      interaction_SlipTwin, &                                                                        !< slip resistance from twin activity
@@ -69,10 +69,10 @@ module plastic_phenopowerlaw
      interaction_TwinTwin                                                                           !< twin resistance from twin activity
 
  integer(kind(undefined_ID)),         dimension(:),   allocatable          :: &
-   outputID                                                                                     !< ID of each post result output
+   outputID                                                                                         !< ID of each post result output
  end type
 
- type(tParameters), dimension(:), allocatable, target, private :: param                                     !< containers of constitutive parameters (len Ninstance)
+ type(tParameters), dimension(:), allocatable, private :: param                                     !< containers of constitutive parameters (len Ninstance)
 
  type, private :: tPhenopowerlawState
    real(pReal), pointer,     dimension(:,:) :: &
@@ -154,7 +154,7 @@ subroutine plastic_phenopowerlaw_init
  real(pReal),            dimension(0), parameter :: emptyRealArray = [real(pReal)::]
  character(len=65536),   dimension(0), parameter :: emptyStringArray = [character(len=65536)::]
 
- type(tParameters), pointer :: prm
+ type(tParameters) :: prm
 
  integer(kind(undefined_ID))                 :: &
    outputID                                                                                     !< ID of each post result output
@@ -182,7 +182,7 @@ subroutine plastic_phenopowerlaw_init
  do p = 1_pInt, size(phase_plasticityInstance)
    if (phase_plasticity(p) /= PLASTICITY_PHENOPOWERLAW_ID) cycle
    instance = phase_plasticityInstance(p)
-   prm => param(instance)
+   associate(prm => param(instance))
 
    prm%Nslip =  config_phase(p)%getInts('nslip',defaultVal=emptyIntArray)
    if (size(prm%Nslip) > count(lattice_NslipSystem(:,p) > 0_pInt))       call IO_error(150_pInt,ext_msg='Nslip')
@@ -457,7 +457,8 @@ subroutine plastic_phenopowerlaw_init
    plasticState(p)%aTolState(startIndex:endIndex) = prm%aTolShear
    
    dotState(instance)%whole        =>plasticState(p)%dotState
-
+   
+   end associate
  enddo
 
 end subroutine plastic_phenopowerlaw_init
@@ -511,14 +512,13 @@ subroutine plastic_phenopowerlaw_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,ipc,ip,
    dLp_dTstar3333                                                                                   !< derivative of Lp with respect to Tstar as 4th order tensor
  real(pReal), dimension(3,3,2) :: &
    nonSchmid_tensor
- type(tParameters),         pointer :: prm
- type(tPhenopowerlawState), pointer :: stt
+ type(tParameters)          :: prm
+ type(tPhenopowerlawState)  :: stt
 
  of = phasememberAt(ipc,ip,el)
  ph = material_phase(ipc,ip,el)
 
- prm     => param(phase_plasticityInstance(ph))
- stt     => state(phase_plasticityInstance(ph))
+ associate(prm => param(phase_plasticityInstance(ph)), stt => state(phase_plasticityInstance(ph)))
 
  Lp = 0.0_pReal
  dLp_dTstar3333 = 0.0_pReal
@@ -603,7 +603,7 @@ subroutine plastic_phenopowerlaw_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,ipc,ip,
 
  dLp_dTstar99 = math_Plain3333to99(dLp_dTstar3333)
 
-
+ end associate
 end subroutine plastic_phenopowerlaw_LpAndItsTangent
 
 !--------------------------------------------------------------------------------------------------
@@ -644,15 +644,13 @@ subroutine plastic_phenopowerlaw_dotState(Tstar_v,ipc,ip,el)
  real(pReal), dimension(param(phase_plasticityInstance(material_phase(ipc,ip,el)))%totalNtwin) :: &
    gdot_twin
 
- type(tParameters),         pointer :: prm
- type(tPhenopowerlawState), pointer :: dst,stt
+ type(tParameters)         :: prm
+ type(tPhenopowerlawState) :: dst,stt
 
  of = phasememberAt(ipc,ip,el)
  ph = material_phase(ipc,ip,el)
-
- prm => param(phase_plasticityInstance(ph))
- stt => state(phase_plasticityInstance(ph))
- dst => dotState(phase_plasticityInstance(ph))
+ associate( prm => param(phase_plasticityInstance(ph)), stt => state(phase_plasticityInstance(ph)), dst => &
+dotState(phase_plasticityInstance(ph)))
 
  dst%whole(:,of) = 0.0_pReal
 
@@ -729,7 +727,7 @@ subroutine plastic_phenopowerlaw_dotState(Tstar_v,ipc,ip,el)
       dst%accshear_twin(j,of) = abs(gdot_twin(j))
    enddo twinSystems2
  enddo twinFamilies2
-
+ end associate
 end subroutine plastic_phenopowerlaw_dotState
 
 
@@ -767,16 +765,14 @@ function plastic_phenopowerlaw_postResults(Tstar_v,ipc,ip,el)
  real(pReal) :: &
    tau_slip_pos,tau_slip_neg,tau
 
- type(tParameters),         pointer :: prm
- type(tPhenopowerlawState), pointer :: stt, dst
+ type(tParameters)          :: prm
+ type(tPhenopowerlawState)  :: stt, dst
 
  of = phasememberAt(ipc,ip,el)
  ph = material_phase(ipc,ip,el)
 
- stt => state(phase_plasticityInstance(ph))
- dst => dotstate(phase_plasticityInstance(ph))
- prm => param(phase_plasticityInstance(ph))
-
+ associate( prm => param(phase_plasticityInstance(ph)), stt => state(phase_plasticityInstance(ph)), dst => &
+dotState(phase_plasticityInstance(ph)))
 
  plastic_phenopowerlaw_postResults = 0.0_pReal
  c = 0_pInt
@@ -872,7 +868,7 @@ function plastic_phenopowerlaw_postResults(Tstar_v,ipc,ip,el)
 
    end select
  enddo outputsLoop
-
+ end associate
 end function plastic_phenopowerlaw_postResults
 
 end module plastic_phenopowerlaw
