@@ -92,12 +92,12 @@ subroutine config_init()
    compiler_version, &
    compiler_options
 #endif
+ use DAMASK_interface, only: &
+   getSolverJobName
  use IO, only: &
    IO_error, &
-   IO_open_file, &
-   IO_read, &
    IO_lc, &
-   IO_open_jobFile_stat, &
+   IO_recursiveRead, &
    IO_getTag, &
    IO_timeStamp, &
    IO_EOF
@@ -107,12 +107,13 @@ subroutine config_init()
    debug_levelBasic
 
  implicit none
- integer(pInt), parameter :: FILEUNIT = 200_pInt
- integer(pInt)            :: myDebug
+ integer(pInt)            :: myDebug,i
 
  character(len=65536) :: &                                                                          
   line, &
   part
+ character(len=65536), dimension(:), allocatable :: fileContent
+ logical :: jobSpecificConfig
 
  write(6,'(/,a)') ' <<<+-  config init  -+>>>'
  write(6,'(a15,a)')   ' Current time: ',IO_timeStamp()
@@ -120,42 +121,42 @@ subroutine config_init()
 
  myDebug = debug_level(debug_material)
 
- if (.not. IO_open_jobFile_stat(FILEUNIT,material_localFileExt)) &                                  ! no local material configuration present...
-   call IO_open_file(FILEUNIT,material_configFile)                                                  ! ...open material.config file
+ inquire(file=trim(getSolverJobName())//'.'//material_localFileExt,exist=jobSpecificConfig)
+ if(jobSpecificConfig) then
+   fileContent = IO_recursiveRead(trim(getSolverJobName())//'.'//material_localFileExt)
+ else
+   fileContent = IO_recursiveRead('material.config')
+ endif
 
- rewind(fileUnit)
- line        = ''                                                                                   ! to have it initialized
- do while (trim(line) /= IO_EOF)
+ do i=1, size(fileContent)
+   line = trim(fileContent(i))
    part = IO_lc(IO_getTag(line,'<','>'))
-
    select case (trim(part))
     
      case (trim(material_partPhase))
-       call parseFile(line,phase_name,config_phase,FILEUNIT)
+       call parseFile(line,phase_name,config_phase,fileContent(i+1:)) !(i+1:) save for empty part at (at end of file)?
        if (iand(myDebug,debug_levelBasic) /= 0_pInt) write(6,'(a)') ' Phase parsed'; flush(6)
     
      case (trim(material_partMicrostructure))
-       call parseFile(line,microstructure_name,config_microstructure,FILEUNIT)
+       call parseFile(line,microstructure_name,config_microstructure,fileContent(i+1:))
        if (iand(myDebug,debug_levelBasic) /= 0_pInt) write(6,'(a)') ' Microstructure parsed'; flush(6)
     
      case (trim(material_partCrystallite))
-       call parseFile(line,crystallite_name,config_crystallite,FILEUNIT)
+       call parseFile(line,crystallite_name,config_crystallite,fileContent(i+1:))
        if (iand(myDebug,debug_levelBasic) /= 0_pInt) write(6,'(a)') ' Crystallite parsed'; flush(6)
     
      case (trim(material_partHomogenization))
-       call parseFile(line,homogenization_name,config_homogenization,FILEUNIT)
+       call parseFile(line,homogenization_name,config_homogenization,fileContent(i+1:))
        if (iand(myDebug,debug_levelBasic) /= 0_pInt) write(6,'(a)') ' Homogenization parsed'; flush(6)
     
      case (trim(material_partTexture))
-       call parseFile(line,texture_name,config_texture,FILEUNIT)
+       call parseFile(line,texture_name,config_texture,fileContent(i+1:))
        if (iand(myDebug,debug_levelBasic) /= 0_pInt) write(6,'(a)') ' Texture parsed'; flush(6)
-
-     case default
-       line = IO_read(fileUnit)
 
    end select
 
  enddo
+ deallocate(fileContent)
 
  material_Nhomogenization = size(config_homogenization)
  if (material_Nhomogenization < 1_pInt) call IO_error(160_pInt,ext_msg=material_partHomogenization)
@@ -174,25 +175,23 @@ end subroutine config_init
 !> @brief parses the material.config file
 !--------------------------------------------------------------------------------------------------
 subroutine parseFile(line,&
-                     sectionNames,part,fileUnit)
+                     sectionNames,part,fileContent)
  use IO, only: &
-   IO_read, &
    IO_error, &
    IO_lc, &
    IO_getTag, &
    IO_isBlank, &
    IO_stringValue, &
-   IO_stringPos, &
-   IO_EOF
+   IO_stringPos
 
  implicit none
- integer(pInt),    intent(in) :: fileUnit
  character(len=*),  dimension(:), allocatable, intent(inout)  :: sectionNames
- type(tPartitionedStringList), allocatable, dimension(:), intent(inout) :: part
+ type(tPartitionedStringList), allocatable, dimension(:), intent(out) :: part
+ character(len=65536), dimension(:), intent(in) :: fileContent
  character(len=65536),intent(out) :: line
 
  integer(pInt), allocatable, dimension(:) :: chunkPos
- integer(pInt)        :: s
+ integer(pInt)        :: s,i
  character(len=65536) :: devNull
  character(len=64)    :: tag
  logical              :: echo
@@ -201,13 +200,10 @@ subroutine parseFile(line,&
  allocate(part(0))
 
  s = 0_pInt
- do while (trim(line) /= IO_EOF)                                                                    ! read through sections of material part
-   line = IO_read(fileUnit)
+ do i=1, size(fileContent)
+   line = trim(fileContent(i))
    if (IO_isBlank(line)) cycle                                                                      ! skip empty lines
-   foundNextPart: if (IO_getTag(line,'<','>') /= '') then
-     devNull = IO_read(fileUnit, .true.)                                                            ! reset IO_read to close any recursively included files
-     exit
-   endif foundNextPart
+   if (IO_getTag(line,'<','>') /= '') exit
    nextSection: if (IO_getTag(line,'[',']') /= '') then
      s = s + 1_pInt
      part = [part, emptyList]
