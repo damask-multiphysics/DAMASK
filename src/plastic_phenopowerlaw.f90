@@ -86,7 +86,7 @@ module plastic_phenopowerlaw
      sumF
  end type
 
- type(tPhenopowerlawState), allocatable, dimension(:), target,  private :: &
+ type(tPhenopowerlawState), allocatable, dimension(:), private :: &
    dotState, &
    state
 
