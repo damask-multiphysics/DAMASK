@@ -347,6 +347,7 @@ subroutine plastic_dislotwin_init(fileUnit)
      prm%twinsize= math_expand(prm%twinsize,prm%Ntwin)
      
      prm%r = config_phase(p)%getFloats('r_twin')
+     prm%r = math_expand(prm%r,prm%Ntwin)
      
             
      prm%L0_twin = config_phase(p)%getFloat('l0_twin')
@@ -1041,9 +1042,8 @@ subroutine plastic_dislotwin_microstructure(temperature,ipc,ip,el)
    sumf,sfe,sumftr
     real(pReal), dimension(:), allocatable :: &
    x0
- real(pReal), dimension(plasticState(material_phase(ipc,ip,el))%Ntwin) :: fOverStacksize
- real(pReal), dimension(plasticState(material_phase(ipc,ip,el))%Ntrans) :: &
-   ftransOverLamellarSize
+ real(pReal), dimension(plasticState(material_phase(ipc,ip,el))%Ntwin)  :: fOverStacksize
+ real(pReal), dimension(plasticState(material_phase(ipc,ip,el))%Ntrans) :: ftransOverLamellarSize
    
  type(tParameters), pointer :: prm
 
@@ -1061,13 +1061,11 @@ subroutine plastic_dislotwin_microstructure(temperature,ipc,ip,el)
           sum(state(instance)%strainTransFraction(1_pInt:prm%totalNtrans,of))
 
  !* Stacking fault energy
- sfe = param(instance)%SFE_0K + & 
-       param(instance)%dSFE_dT * Temperature
+ sfe = param(instance)%SFE_0K + param(instance)%dSFE_dT * Temperature
  
  !* rescaled twin volume fraction for topology
 
- fOverStacksize = &
-     state(instance)%twinFraction(1_pInt:prm%totalNtwin,of)/prm%twinsize
+ fOverStacksize = state(instance)%twinFraction(1_pInt:prm%totalNtwin,of)/prm%twinsize
 
  !* rescaled trans volume fraction for topology
  ftransOverLamellarSize = &
@@ -1111,77 +1109,62 @@ subroutine plastic_dislotwin_microstructure(temperature,ipc,ip,el)
  do s = 1_pInt,prm%totalNslip
     if ((prm%totalNtwin > 0_pInt) .or. (prm%totalNtrans > 0_pInt)) then
        state(instance)%mfp_slip(s,of) = &
-         param(instance)%GrainSize/(1.0_pReal+param(instance)%GrainSize*&
-         (state(instance)%invLambdaSlip(s,of) + &
-          state(instance)%invLambdaSlipTwin(s,of) + &
-          state(instance)%invLambdaSlipTrans(s,of)))
+         prm%GrainSize/(1.0_pReal+prm%GrainSize*&
+         (state(instance)%invLambdaSlip(s,of) + state(instance)%invLambdaSlipTwin(s,of) + state(instance)%invLambdaSlipTrans(s,of)))
     else
        state(instance)%mfp_slip(s,of) = &  
-         param(instance)%GrainSize/&
-         (1.0_pReal+param(instance)%GrainSize*(state(instance)%invLambdaSlip(s,of))) !!!!!! correct?
+         prm%GrainSize/&
+         (1.0_pReal+prm%GrainSize*(state(instance)%invLambdaSlip(s,of))) !!!!!! correct?
     endif
  enddo
 
  !* mean free path between 2 obstacles seen by a growing twin
-
-   state(instance)%mfp_twin(:,of) = &
-     param(instance)%Cmfptwin*param(instance)%GrainSize/&
-       (1.0_pReal+param(instance)%GrainSize*state(ph)%invLambdaTwin(:,of))
+ state(instance)%mfp_twin(:,of) = prm%Cmfptwin*prm%GrainSize/&
+                                     (1.0_pReal+prm%GrainSize*state(instance)%invLambdaTwin(:,of))
  
  !* mean free path between 2 obstacles seen by a growing martensite
-
-   state(instance)%mfp_trans(:,of) = &
-     param(instance)%Cmfptrans*param(instance)%GrainSize/&
-      (1.0_pReal+param(instance)%GrainSize*state(instance)%invLambdaTrans(:,of))
+ state(instance)%mfp_trans(:,of) = prm%Cmfptrans*prm%GrainSize/&
+                                     (1.0_pReal+prm%GrainSize*state(instance)%invLambdaTrans(:,of))
 
  !* threshold stress for dislocation motion
  forall (s = 1_pInt:prm%totalNslip) &
    state(instance)%threshold_stress_slip(s,of) = &
      lattice_mu(ph)*prm%burgers_slip(s)*&
-     sqrt(dot_product((state(instance)%rhoEdge(1_pInt:prm%totalNslip,of)+state(instance)%rhoEdgeDip(1_pInt:prm%totalNslip,of)),&
+     sqrt(dot_product(state(instance)%rhoEdge(1_pInt:prm%totalNslip,of)+state(instance)%rhoEdgeDip(1_pInt:prm%totalNslip,of),&
                       prm%interaction_SlipSlip(s,1:prm%totalNslip)))
 
  !* threshold stress for growing twin
    state(instance)%threshold_stress_twin(:,of) = &
-     param(instance)%Cthresholdtwin* &
-       (sfe/(3.0_pReal**prm%burgers_twin &
+     prm%Cthresholdtwin* &
+       (sfe/(3.0_pReal*prm%burgers_twin) &
         + 3.0_pReal*prm%burgers_twin*lattice_mu(ph)/&
-            (param(instance)%L0_twin*prm%burgers_slip)) &
-        )
+            (param(instance)%L0_twin*prm%burgers_slip))
 
  !* threshold stress for growing martensite
 
    state(instance)%threshold_stress_trans(:,of) = &
-     param(instance)%Cthresholdtrans* &
+     prm%Cthresholdtrans* &
        (sfe/(3.0_pReal*prm%burgers_trans) &
         + 3.0_pReal*prm%burgers_trans*lattice_mu(ph)/&
-            (param(instance)%L0_trans*prm%burgers_slip)&
-        + param(instance)%transStackHeight*param(instance)%deltaG/ &
+            (prm%L0_trans*prm%burgers_slip)&
+        + prm%transStackHeight*prm%deltaG/ &
             (3.0_pReal*prm%burgers_trans) &
         )    
  !* final twin volume after growth
-   state(instance)%twinVolume(:,of) = &
-     (pi/4.0_pReal)*prm%twinsize*&
-     state(instance)%mfp_twin(:,of)**2.0_pReal
+ state(instance)%twinVolume(:,of) = (PI/4.0_pReal)*prm%twinsize*state(instance)%mfp_twin(:,of)**2.0_pReal
 
  !* final martensite volume after growth
-   state(instance)%martensiteVolume(:,of) = &
-     (pi/4.0_pReal)*prm%lamellarsizePerTransSystem*&
-     state(instance)%mfp_trans(:,of)**(2.0_pReal)
+  state(instance)%martensiteVolume(:,of) = (PI/4.0_pReal)*prm%lamellarsizePerTransSystem*state(instance)%mfp_trans(:,of)**2.0_pReal
 
-                  !* equilibrium separation of partial dislocations (twin)
-   x0 = lattice_mu(ph)*prm%burgers_twin**(2.0_pReal)/&
-     (sfe*8.0_pReal*pi)*(2.0_pReal+lattice_nu(ph))/(1.0_pReal-lattice_nu(ph))
-   tau_r_twin(:,instance)= &
-        lattice_mu(ph)*prm%burgers_twin/(2.0_pReal*pi)*&     
-        (1/(x0+param(instance)%xc_twin)+cos(pi/3.0_pReal)/x0)
- !* equilibrium separation of partial dislocations (trans)
-
-   x0 = lattice_mu(ph)*prm%burgers_trans**(2.0_pReal)/&
-     (sfe*8.0_pReal*pi)*(2.0_pReal+lattice_nu(ph))/(1.0_pReal-lattice_nu(ph))
-   tau_r_trans(:,instance)= &
-        lattice_mu(ph)*prm%burgers_trans/(2.0_pReal*pi)*&     
-        (1/(x0+param(instance)%xc_trans)+cos(pi/3.0_pReal)/x0)
+ !* equilibrium separation of partial dislocations (twin)
+ x0 = lattice_mu(ph)*prm%burgers_twin**2.0_pReal/(sfe*8.0_pReal*PI)*(2.0_pReal+lattice_nu(ph))/(1.0_pReal-lattice_nu(ph))
+ tau_r_twin(:,instance)= lattice_mu(ph)*prm%burgers_twin/(2.0_pReal*PI)*&     
+        (1/(x0+prm%xc_twin)+cos(pi/3.0_pReal)/x0)
+ 
+!* equilibrium separation of partial dislocations (trans)
+ x0 = lattice_mu(ph)*prm%burgers_trans**2.0_pReal/(sfe*8.0_pReal*PI)*(2.0_pReal+lattice_nu(ph))/(1.0_pReal-lattice_nu(ph))
+ tau_r_trans(:,instance)= lattice_mu(ph)*prm%burgers_trans/(2.0_pReal*PI)*&     
+        (1/(x0+prm%xc_trans)+cos(pi/3.0_pReal)/x0)
 
 
 end subroutine plastic_dislotwin_microstructure
@@ -1296,7 +1279,7 @@ prm => param(instance)
       if((abs(tau_slip(j))-state(instance)%threshold_stress_slip(j,of)) > tol_math_check) then
       !* Stress ratios
         stressRatio =((abs(tau_slip(j))- state(instance)%threshold_stress_slip(j,of))/&
-          (param(instance)%SolidSolutionStrength+prm%tau_peierlsPerSlipFamily(f)))
+          (prm%SolidSolutionStrength+prm%tau_peierlsPerSlipFamily(f)))
         StressRatio_p       = stressRatio** prm%p(f)
         StressRatio_pminus1 = stressRatio**(prm%p(f)-1.0_pReal)
       !* Boltzmann ratio
@@ -1315,7 +1298,7 @@ prm => param(instance)
         dgdot_dtauslip(j) = &
           abs(gdot_slip(j))*BoltzmannRatio*prm%p(f)&
           *prm%q(f)/&
-          (param(instance)%SolidSolutionStrength+prm%tau_peierlsPerSlipFamily(f))*&
+          (prm%SolidSolutionStrength+prm%tau_peierlsPerSlipFamily(f))*&
           StressRatio_pminus1*(1-StressRatio_p)**(prm%q(f)-1.0_pReal)
       endif
  
@@ -1434,7 +1417,7 @@ prm => param(instance)
         gdot_twin(j) = &
           (1.0_pReal-sumf-sumftr)*lattice_shearTwin(index_myFamily+i,ph)*&
           state(instance)%twinVolume(j,of)*Ndot0_twin*exp(-StressRatio_r)
-        dgdot_dtautwin(j) = ((gdot_twin(j)*prm%r(f))/tau_twin(j))*StressRatio_r
+        dgdot_dtautwin(j) = ((gdot_twin(j)*prm%r(j))/tau_twin(j))*StressRatio_r
       endif
  
       !* Plastic velocity gradient for mechanical twinning
@@ -1677,7 +1660,7 @@ subroutine plastic_dislotwin_dotState(Tstar_v,Temperature,ipc,ip,el)
       !* Stress ratios
       if (tau_twin(j) > tol_math_check) then
         StressRatio_r = (state(instance)%threshold_stress_twin(j,of)/&
-                         tau_twin(j))**prm%r(f)
+                         tau_twin(j))**prm%r(j)
         !* Shear rates and their derivatives due to twin
         select case(lattice_structure(ph))
           case (LATTICE_fcc_ID)
@@ -1746,7 +1729,8 @@ subroutine plastic_dislotwin_dotState(Tstar_v,Temperature,ipc,ip,el)
 
    enddo
  enddo 
-
+ if (el==12) write(6,*) Tstar_v                                                                     
+ if (el==12) write(6,*) plasticState(ph)%dotState(:,of),ph,of,el 
 end subroutine plastic_dislotwin_dotState
 
  
@@ -1998,7 +1982,7 @@ function plastic_dislotwin_postResults(Tstar_v,Temperature,ipc,ip,el)
                     Ndot0_twin=prm%Ndot0_twin(j)
                 end select
                 StressRatio_r = (state(instance)%threshold_stress_twin(j,of)/tau) &
-                                                   **prm%r(f)
+                                                   **prm%r(j)
                 plastic_dislotwin_postResults(c+j) = &
                   (param(instance)%MaxTwinFraction-sumf)*lattice_shearTwin(index_myFamily+i,ph)*&
                   state(instance)%twinVolume(j,of)*Ndot0_twin*exp(-StressRatio_r)
