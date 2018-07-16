@@ -125,6 +125,8 @@ subroutine config_init()
  if(jobSpecificConfig) then
    fileContent = IO_recursiveRead(trim(getSolverJobName())//'.'//material_localFileExt)
  else
+   inquire(file='material.config',exist=jobSpecificConfig)
+   if(.not. jobSpecificConfig) call IO_error(0_pInt)
    fileContent = IO_recursiveRead('material.config')
  endif
 
