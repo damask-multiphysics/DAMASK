@@ -109,10 +109,10 @@ subroutine config_init()
  implicit none
  integer(pInt)            :: myDebug,i
 
- character(len=65536) :: &                                                                          
+ character(len=256) :: &
   line, &
   part
- character(len=65536), dimension(:), allocatable :: fileContent
+ character(len=256), dimension(:), allocatable :: fileContent
  logical :: jobSpecificConfig
 
  write(6,'(/,a)') ' <<<+-  config init  -+>>>'
@@ -187,12 +187,11 @@ subroutine parseFile(line,&
  implicit none
  character(len=*),  dimension(:), allocatable, intent(inout)  :: sectionNames
  type(tPartitionedStringList), allocatable, dimension(:), intent(out) :: part
- character(len=65536), dimension(:), intent(in) :: fileContent
- character(len=65536),intent(out) :: line
+ character(len=256), dimension(:), intent(in) :: fileContent
+ character(len=256),intent(out) :: line
 
  integer(pInt), allocatable, dimension(:) :: chunkPos
  integer(pInt)        :: s,i
- character(len=65536) :: devNull
  character(len=64)    :: tag
  logical              :: echo
 

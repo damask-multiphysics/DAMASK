@@ -180,9 +180,9 @@ recursive function IO_recursiveRead(fileName) result(fileContent)
 
   implicit none
   character(len=*), intent(in)                   :: fileName
-  character(len=1024), dimension(:), allocatable :: fileContent
-  character(len=1024), dimension(:), allocatable :: includedContent
-  character(len=1024) :: line
+  character(len=256), dimension(:), allocatable :: fileContent
+  character(len=256), dimension(:), allocatable :: includedContent
+  character(len=256) :: line
   character(len=:), allocatable :: rawData
   integer(pInt) :: fileLength, fileUnit,startPos,endPos,&
              myTotalLines,l,includedLines, missingLines,i
@@ -207,6 +207,7 @@ recursive function IO_recursiveRead(fileName) result(fileContent)
   do while (startPos <= len(rawData))
     l = l + 1
     endPos = endPos + scan(rawData(startPos:),new_line(''))
+    if(endPos - startPos >256) write(6,*) 'mist'
     line = rawData(startPos:endPos-1)
     startPos = endPos + 1
 
