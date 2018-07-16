@@ -125,7 +125,7 @@ module plastic_dislotwin
    interaction_TransTrans                                                   !< coefficients for trans-trans interaction for each interaction type and instance
   end type 
   
-  type(tParameters), dimension(:), allocatable, private, target :: param                                !< containers of constitutive parameters (len Ninstance)
+  type(tParameters), dimension(:), allocatable, private,target :: param                                !< containers of constitutive parameters (len Ninstance)
  
  
  type, private :: tDislotwinState
@@ -258,7 +258,7 @@ subroutine plastic_dislotwin_init(fileUnit)
  character(len=65536),   dimension(0), parameter :: emptyString = [character(len=65536)::]
 
 
- type(tParameters), pointer :: prm
+ type(tParameters),pointer :: prm
 
   
  write(6,'(/,a)')   ' <<<+-  constitutive_'//PLASTICITY_DISLOTWIN_label//' init  -+>>>'
@@ -522,9 +522,9 @@ subroutine plastic_dislotwin_init(fileUnit)
 
  
  sanityChecks: do p = 1_pInt, size(phase_plasticity)
-    myPhase: if (phase_plasticity(p) == PLASTICITY_dislotwin_ID) then
+    if (phase_plasticity(p) /= PLASTICITY_dislotwin_ID) cycle
       instance = phase_plasticityInstance(p)
-
+      prm => param(instance)
       do f = 1_pInt,lattice_maxNslipFamily
         !  if (rhoEdge0(f,instance) < 0.0_pReal) &
         !    call IO_error(211_pInt,el=instance,ext_msg='rhoEdge0 ('//PLASTICITY_DISLOTWIN_label//')')
@@ -583,7 +583,6 @@ subroutine plastic_dislotwin_init(fileUnit)
 
 !--------------------------------------------------------------------------------------------------
 ! Determine total number of active slip or twin systems
-   endif myPhase
  enddo sanityChecks
  
  ! ToDo: this should be stored somewhere else. Will work only for one instance now
@@ -605,10 +604,10 @@ subroutine plastic_dislotwin_init(fileUnit)
  allocate(dotState(maxNinstance))
 
  initializeInstances: do p = 1_pInt, size(phase_plasticity)
-    myPhase2: if (phase_plasticity(p) == PLASTICITY_dislotwin_ID) then
+    if (phase_plasticity(p) /= PLASTICITY_dislotwin_ID) cycle
      NofMyPhase=count(material_phase==p)
      instance = phase_plasticityInstance(p)
- 
+     prm => param(instance) 
 !--------------------------------------------------------------------------------------------------
 ! allocate state arrays
 
@@ -951,8 +950,6 @@ subroutine plastic_dislotwin_init(fileUnit)
      plasticState(p)%state0(startIndex:endIndex,:) = &
        spread(math_expand(MartensiteVolume0,prm%Ntrans),2, NofMyPhase)
 
-   endif myPhase2
-
  enddo initializeInstances
 end subroutine plastic_dislotwin_init
 
@@ -976,7 +973,7 @@ function plastic_dislotwin_homogenizedC(ipc,ip,el)
     ipc, &                                                                                          !< component-ID of integration point
     ip, &                                                                                           !< integration point
     el                                                                                              !< element
-type(tParameters), pointer :: prm
+ type(tParameters):: prm
  integer(pInt) :: instance,i, &
                   ph, &
                   of
@@ -986,7 +983,7 @@ type(tParameters), pointer :: prm
  of = phasememberAt(ipc,ip,el)
  ph = phaseAt(ipc,ip,el)
  instance = phase_plasticityInstance(ph)
-  prm => param(instance)
+ associate( prm => param(instance))
 
 
  !* Total twin volume fraction
@@ -1007,7 +1004,7 @@ type(tParameters), pointer :: prm
                    + (state(instance)%stressTransFraction(i,of) + state(instance)%strainTransFraction(i,of))*&
                      Ctrans66(1:6,1:6,i,instance)
  enddo
-
+ end associate
  end function plastic_dislotwin_homogenizedC
  
 !--------------------------------------------------------------------------------------------------
@@ -1045,14 +1042,14 @@ subroutine plastic_dislotwin_microstructure(temperature,ipc,ip,el)
  real(pReal), dimension(plasticState(material_phase(ipc,ip,el))%Ntwin)  :: fOverStacksize
  real(pReal), dimension(plasticState(material_phase(ipc,ip,el))%Ntrans) :: ftransOverLamellarSize
    
- type(tParameters), pointer :: prm
+ type(tParameters):: prm
 
  
  !* Shortened notation
  of = phasememberAt(ipc,ip,el)
  ph = phaseAt(ipc,ip,el)
  instance = phase_plasticityInstance(ph)
- prm => param(instance)
+ associate(prm => param(instance))
  !* Total twin volume fraction
  sumf = sum(state(instance)%twinFraction(1_pInt:prm%totalNtwin,of)) ! safe for prm%totalNtwin == 0
  
@@ -1166,7 +1163,7 @@ subroutine plastic_dislotwin_microstructure(temperature,ipc,ip,el)
  tau_r_trans(:,instance)= lattice_mu(ph)*prm%burgers_trans/(2.0_pReal*PI)*&     
         (1/(x0+prm%xc_trans)+cos(pi/3.0_pReal)/x0)
 
-
+end associate
 end subroutine plastic_dislotwin_microstructure
 
 
@@ -1249,7 +1246,7 @@ subroutine plastic_dislotwin_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,Temperature
         0, 1, 1  &
         ],pReal),[ 3,6])
         
-  type(tParameters), pointer :: prm
+  type(tParameters) :: prm
   
  !* Shortened notation
  of = phasememberAt(ipc,ip,el)
@@ -1261,7 +1258,7 @@ subroutine plastic_dislotwin_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,Temperature
  dLp_dTstar3333 = 0.0_pReal
  
  
-prm => param(instance)
+associate(prm => param(instance))
 !--------------------------------------------------------------------------------------------------
 ! Dislocation glide part
  gdot_slip = 0.0_pReal
@@ -1481,7 +1478,7 @@ prm => param(instance)
 
    enddo transSystemsLoop
  enddo transFamiliesLoop
-
+ end associate
  dLp_dTstar99 = math_Plain3333to99(dLp_dTstar3333)
  
 end subroutine plastic_dislotwin_LpAndItsTangent
@@ -1544,14 +1541,14 @@ subroutine plastic_dislotwin_dotState(Tstar_v,Temperature,ipc,ip,el)
  real(pReal), dimension(plasticState(material_phase(ipc,ip,el))%Ntrans) :: &
               tau_trans
 
- type(tParameters), pointer :: prm
+ type(tParameters) :: prm
 
  !* Shortened notation
  of = phasememberAt(ipc,ip,el)
  ph = phaseAt(ipc,ip,el)
  instance  = phase_plasticityInstance(ph)
 
- prm => param(instance)
+ associate(prm => param(instance))
  !* Total twin volume fraction
  sumf = sum(state(instance)%twinFraction(1_pInt:prm%totalNtwin,of)) ! safe for prm%totalNtwin == 0
  plasticState(ph)%dotState(:,of) = 0.0_pReal
@@ -1729,6 +1726,7 @@ subroutine plastic_dislotwin_dotState(Tstar_v,Temperature,ipc,ip,el)
 
    enddo
  enddo 
+end associate
 end subroutine plastic_dislotwin_dotState
 
  
@@ -1786,7 +1784,7 @@ function plastic_dislotwin_postResults(Tstar_v,Temperature,ipc,ip,el)
  real(pReal), dimension(3,3) :: eigVectors
  real(pReal), dimension (3) :: eigValues
  
-  type(tParameters), pointer :: prm
+  type(tParameters) :: prm
  
  !* Shortened notation
  of = phasememberAt(ipc,ip,el)
@@ -1794,7 +1792,7 @@ function plastic_dislotwin_postResults(Tstar_v,Temperature,ipc,ip,el)
  instance  = phase_plasticityInstance(ph)
 
 
- prm => param(instance)
+ associate(prm => param(instance))
  !* Total twin volume fraction
  sumf = sum(state(instance)%twinFraction(1_pInt:prm%totalNtwin,of))                          ! safe for prm%totalNtwin == 0
  
@@ -2079,6 +2077,7 @@ function plastic_dislotwin_postResults(Tstar_v,Temperature,ipc,ip,el)
         c = c + prm%totalNtrans
     end select
  enddo
+ end associate
 end function plastic_dislotwin_postResults
 
 end module plastic_dislotwin
