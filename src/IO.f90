@@ -22,6 +22,7 @@ module IO
  public :: &
    IO_init, &
    IO_read, &
+   IO_recursiveRead, &
    IO_checkAndRewind, &
    IO_open_file_stat, &
    IO_open_jobFile_stat, &
@@ -100,6 +101,7 @@ end subroutine IO_init
 !--------------------------------------------------------------------------------------------------
 !> @brief recursively reads a line from a text file.
 !!        Recursion is triggered by "{path/to/inputfile}" in a line
+!> @details unstable and buggy
 !--------------------------------------------------------------------------------------------------
 recursive function IO_read(fileUnit,reset) result(line)
 
@@ -170,6 +172,58 @@ recursive function IO_read(fileUnit,reset) result(line)
 
 end function IO_read
 
+!--------------------------------------------------------------------------------------------------
+!> @brief recursively reads a text file.
+!!        Recursion is triggered by "{path/to/inputfile}" in a line
+!--------------------------------------------------------------------------------------------------
+recursive function IO_recursiveRead(fileName) result(fileContent)
+
+  implicit none
+  character(len=*), intent(in)                   :: fileName
+  character(len=1024), dimension(:), allocatable :: fileContent
+  character(len=1024), dimension(:), allocatable :: includedContent
+  character(len=1024) :: line
+  character(len=:), allocatable :: rawData
+  integer(pInt) :: fileLength, fileUnit,startPos,endPos,&
+             myTotalLines,l,includedLines, missingLines,i
+
+  inquire(file = fileName, size=fileLength)
+  open(newunit=fileUnit, file = fileName, access = "STREAM")
+  allocate(character(len=fileLength)::rawData)
+  read(fileUnit) rawData
+  close(fileUnit)
+
+  myTotalLines = 0
+  do l=1, len(rawData)
+    if (rawData(l:l) == new_line('')) myTotalLines = myTotalLines+1
+  enddo
+  allocate(fileContent(myTotalLines))
+
+  startPos = 1
+  endPos = 0
+
+  includedLines=0
+  l=0
+  do while (startPos <= len(rawData))
+    l = l + 1
+    endPos = endPos + scan(rawData(startPos:),new_line(''))
+    line = rawData(startPos:endPos-1)
+    startPos = endPos + 1
+
+    recursion: if(scan(trim(line),'{') < scan(trim(line),'}')) then
+      myTotalLines    = myTotalLines - 1
+      includedContent = IO_recursiveRead(trim(line(scan(line,'{')+1:scan(line,'}')-1)))
+      includedLines   = includedLines +size(includedContent)
+      missingLines =  myTotalLines+includedLines - size(fileContent(1:l-1)) -size(includedContent)
+      fileContent  = [fileContent(1:l-1),includedContent,[(line,i=1,missingLines)]]
+      l=l-1+size(includedContent)
+    else recursion
+      fileContent(l) = line
+    endif recursion
+
+  enddo
+
+end function IO_recursiveRead
 
 !--------------------------------------------------------------------------------------------------
 !> @brief checks if unit is opened for reading, if true rewinds. Otherwise stops with
