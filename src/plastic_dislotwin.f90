@@ -336,7 +336,7 @@ subroutine plastic_dislotwin_init(fileUnit)
      
      prm%xc_twin = config_phase(p)%getFloat('xc_twin')
      prm%Cthresholdtwin = config_phase(p)%getFloat('cthresholdtwin', defaultVal=0.0_pReal)
-
+     prm%Cmfptwin       = config_phase(p)%getFloat('cmfptwin', defaultVal=0.0_pReal) ! ToDo: How to handle that???
 
      prm%interaction_TwinTwin = spread(config_phase(p)%getFloats('interaction_twintwin'),2,1)     
      if (lattice_structure(p) /= LATTICE_fcc_ID) then
