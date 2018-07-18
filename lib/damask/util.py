@@ -1,5 +1,4 @@
 # -*- coding: UTF-8 no BOM -*-
-
 import sys,time,random,threading,os,subprocess,shlex
 import numpy as np
 from optparse import Option
@@ -94,12 +93,11 @@ def execute(cmd,
                              stdout = subprocess.PIPE,
                              stderr = subprocess.PIPE,
                              stdin  = subprocess.PIPE)
-  out,error = [i.replace("\x08","") for i in (process.communicate() if streamIn is None 
-                                         else process.communicate(streamIn.read()))]
+  out,error = [i.replace(b"\x08",b"") for i in (process.communicate() if streamIn is None
+                                                else process.communicate(streamIn.read()))]
   os.chdir(initialPath)
   if process.returncode != 0: raise RuntimeError('{} failed with returncode {}'.format(cmd,process.returncode))
   return out,error
-
 
 def coordGridAndSize(coordinates):
   """Determines grid count and overall physical size along each dimension of an ordered array of coordinates"""
