@@ -25,7 +25,7 @@ echo +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 }
 
 function thirdLevel {
-echo ----------------------------------------------------------------------------------------------
+echo -e '\n----------------------------------------------------------------------------------------------'
 echo $1
 echo ----------------------------------------------------------------------------------------------
 }
@@ -121,7 +121,7 @@ done
 
 firstLevel "Abaqus"
 cd installation/mods_Abaqus                                                                         # to have the right environment file
-for executable in abaqus abq2016 abq2017; do
+for executable in abaqus abq2017 abq2018; do
   getDetails $executable 'information=all'
 done
 cd ../..
