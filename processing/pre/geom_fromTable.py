@@ -152,7 +152,7 @@ for name in filenames:
     continue
 
   table.data_readArray([options.pos] \
-                       + ([label] if isinstance(label, types.StringTypes) else label) \
+                       + (label if isinstance(label, list) else [label]) \
                        + ([options.phase] if options.phase else []))
   
   if coordDim == 2:
@@ -165,9 +165,9 @@ for name in filenames:
 # --------------- figure out size and grid ---------------------------------------------------------
 
   coords = [np.unique(table.data[:,i]) for i in range(3)]
-  mincorner = np.array(map(min,coords))
-  maxcorner = np.array(map(max,coords))
-  grid   = np.array(map(len,coords),'i')
+  mincorner = np.array(list(map(min,coords)))
+  maxcorner = np.array(list(map(max,coords)))
+  grid   = np.array(list(map(len,coords)),'i')
   size   = grid/np.maximum(np.ones(3,'d'), grid-1.0) * (maxcorner-mincorner)                        # size from edge to edge = dim * n/(n-1) 
   size   = np.where(grid > 1, size, min(size[grid > 1]/grid[grid > 1]))                             # spacing for grid==1 set to smallest among other spacings
   delta  = size/np.maximum(np.ones(3,'d'), grid)
