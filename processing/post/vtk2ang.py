@@ -421,8 +421,6 @@ for filename in filenames:
     meshActor.GetProperty().SetOpacity(0.2)
     meshActor.GetProperty().SetColor(1.0,1.0,0)
     meshActor.GetProperty().BackfaceCullingOn()
-    # meshActor.GetProperty().SetEdgeColor(1,1,0.5)
-    # meshActor.GetProperty().EdgeVisibilityOn()
     
     boxpoints = vtk.vtkPoints()
     for n in range(8):

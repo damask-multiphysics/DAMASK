@@ -100,13 +100,13 @@ for name in filenames:
 
     for column in items[datatype]['column']:                                                        # loop over all requested labels
       table.data[column:column+items[datatype]['dim']] = \
-        q * np.array(map(float,table.data[column:column+items[datatype]['dim']]))
+        q * np.array(list(map(float,table.data[column:column+items[datatype]['dim']])))
 
     datatype = 'tensor'
 
     for column in items[datatype]['column']:                                                        # loop over all requested labels
       table.data[column:column+items[datatype]['dim']] = \
-        np.dot(R,np.dot(np.array(map(float,table.data[column:column+items[datatype]['dim']])).\
+        np.dot(R,np.dot(np.array(list(map(float,table.data[column:column+items[datatype]['dim']]))).\
                         reshape(items[datatype]['shape']),R.transpose())).reshape(items[datatype]['dim'])
 
     outputAlive = table.data_write()                                                                # output processed line

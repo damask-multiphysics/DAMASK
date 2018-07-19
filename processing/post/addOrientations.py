@@ -80,7 +80,7 @@ parser.set_defaults(output = [],
 
 (options, filenames) = parser.parse_args()
 
-options.output = map(lambda x: x.lower(), options.output)
+options.output = list(map(lambda x: x.lower(), options.output))
 if options.output == [] or (not set(options.output).issubset(set(outputChoices))):
   parser.error('output must be chosen from {}.'.format(', '.join(outputChoices)))
 
@@ -147,21 +147,21 @@ for name in filenames:
   outputAlive = True
   while outputAlive and table.data_read():                                                          # read next data line of ASCII table
     if inputtype == 'eulers':
-      o = damask.Orientation(Eulers   = np.array(map(float,table.data[column:column+3]))*toRadians,
+      o = damask.Orientation(Eulers   = np.array(list(map(float,table.data[column:column+3])))*toRadians,
                              symmetry = options.symmetry).reduced()
     elif inputtype == 'rodrigues':
-      o = damask.Orientation(Rodrigues= np.array(map(float,table.data[column:column+3])),
+      o = damask.Orientation(Rodrigues= np.array(list(map(float,table.data[column:column+3]))),
                              symmetry = options.symmetry).reduced()
     elif inputtype == 'matrix':
-      o = damask.Orientation(matrix   = np.array(map(float,table.data[column:column+9])).reshape(3,3).transpose(),
+      o = damask.Orientation(matrix   = np.array(list(map(float,table.data[column:column+9]))).reshape(3,3).transpose(),
                              symmetry = options.symmetry).reduced()
     elif inputtype == 'frame':
-      o = damask.Orientation(matrix = np.array(map(float,table.data[column[0]:column[0]+3] + \
-                                                         table.data[column[1]:column[1]+3] + \
-                                                         table.data[column[2]:column[2]+3])).reshape(3,3),
+      o = damask.Orientation(matrix = np.array(list(map(float,table.data[column[0]:column[0]+3] + \
+                                                              table.data[column[1]:column[1]+3] + \
+                                                              table.data[column[2]:column[2]+3]))).reshape(3,3),
                              symmetry = options.symmetry).reduced()
     elif inputtype == 'quaternion':
-      o = damask.Orientation(quaternion = np.array(map(float,table.data[column:column+4])),
+      o = damask.Orientation(quaternion = np.array(list(map(float,table.data[column:column+4]))),
                              symmetry   = options.symmetry).reduced()
 
     o.quaternion = r*o.quaternion*R                                                                 # apply additional lab and crystal frame rotations

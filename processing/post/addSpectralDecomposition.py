@@ -86,7 +86,7 @@ for name in filenames:
   while outputAlive and table.data_read():                                                          # read next data line of ASCII table
     for type, data in items.items():
       for column in data['column']:
-        (u,v) = np.linalg.eigh(np.array(map(float,table.data[column:column+data['dim']])).reshape(data['shape']))
+        (u,v) = np.linalg.eigh(np.array(list(map(float,table.data[column:column+data['dim']]))).reshape(data['shape']))
         if options.rh and np.dot(np.cross(v[:,0], v[:,1]), v[:,2]) < 0.0 : v[:, 2] *= -1.0          # ensure right-handed eigenvector basis
         table.data_append(list(u))                                                                  # vector of max,mid,min eigval
         table.data_append(list(v.transpose().reshape(data['dim'])))                                 # 3x3=9 combo vector of max,mid,min eigvec coordinates

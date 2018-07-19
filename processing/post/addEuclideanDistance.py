@@ -102,7 +102,7 @@ parser.add_option('-t',
                   help = 'feature type {{{}}} '.format(', '.join(map(lambda x:'/'.join(x['names']),features))) )
 parser.add_option('-n',
                   '--neighborhood',
-                  dest = 'neighborhood', choices = neighborhoods.keys(), metavar = 'string',
+                  dest = 'neighborhood', choices = list(neighborhoods.keys()), metavar = 'string',
                   help = 'neighborhood type [neumann] {{{}}}'.format(', '.join(neighborhoods.keys())))
 parser.add_option('-s',
                   '--scale',
