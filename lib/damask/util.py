@@ -59,9 +59,9 @@ def report_geom(info,
                 what = ['grid','size','origin','homogenization','microstructures']):
   """Reports (selected) geometry information"""
   output = {
-            'grid'   : 'grid     a b c:  {}'.format(' x '.join(map(str,info['grid'  ]))),
-            'size'   : 'size     x y z:  {}'.format(' x '.join(map(str,info['size'  ]))),
-            'origin' : 'origin   x y z:  {}'.format(' : '.join(map(str,info['origin']))),
+            'grid'   : 'grid     a b c:  {}'.format(' x '.join(list(map(str,info['grid'  ])))),
+            'size'   : 'size     x y z:  {}'.format(' x '.join(list(map(str,info['size'  ])))),
+            'origin' : 'origin   x y z:  {}'.format(' : '.join(list(map(str,info['origin'])))),
             'homogenization' :  'homogenization:  {}'.format(info['homogenization']),
             'microstructures' : 'microstructures: {}'.format(info['microstructures']),
            }
@@ -103,9 +103,9 @@ def coordGridAndSize(coordinates):
   """Determines grid count and overall physical size along each dimension of an ordered array of coordinates"""
   dim    = coordinates.shape[1]
   coords = [np.unique(coordinates[:,i]) for i in range(dim)]
-  mincorner = np.array(map(min,coords))
-  maxcorner = np.array(map(max,coords))
-  grid   = np.array(map(len,coords),'i')
+  mincorner = np.array(list(map(min,coords)))
+  maxcorner = np.array(list(map(max,coords)))
+  grid   = np.array(list(map(len,coords)),'i')
   size   = grid/np.maximum(np.ones(dim,'d'), grid-1.0) * (maxcorner-mincorner)                      # size from edge to edge = dim * n/(n-1) 
   size   = np.where(grid > 1, size, min(size[grid > 1]/grid[grid > 1]))                             # spacing for grid==1 equal to smallest among other ones
   return grid,size
