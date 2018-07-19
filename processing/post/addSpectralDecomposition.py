@@ -58,7 +58,7 @@ for name in filenames:
   errors  = []
   remarks = []
   
-  for type, data in items.iteritems():
+  for type, data in items.items():
     for what in data['labels']:
       dim = table.label_dimension(what)
       if dim != data['dim']: remarks.append('column {} is not a {}...'.format(what,type))
@@ -84,7 +84,7 @@ for name in filenames:
 
   outputAlive = True
   while outputAlive and table.data_read():                                                          # read next data line of ASCII table
-    for type, data in items.iteritems():
+    for type, data in items.items():
       for column in data['column']:
         (u,v) = np.linalg.eigh(np.array(map(float,table.data[column:column+data['dim']])).reshape(data['shape']))
         if options.rh and np.dot(np.cross(v[:,0], v[:,1]), v[:,2]) < 0.0 : v[:, 2] *= -1.0          # ensure right-handed eigenvector basis

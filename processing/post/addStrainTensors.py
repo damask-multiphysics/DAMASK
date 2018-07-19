@@ -101,7 +101,7 @@ for name in filenames:
   errors  = []
   remarks = []
   
-  for type, data in items.iteritems():
+  for type, data in items.items():
     for what in data['labels']:
       dim = table.label_dimension(what)
       if dim != data['dim']: remarks.append('column {} is not a {}...'.format(what,type))

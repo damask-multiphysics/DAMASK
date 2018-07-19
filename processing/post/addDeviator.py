@@ -66,7 +66,7 @@ for name in filenames:
   remarks = []
   column = {}
   
-  for type, data in items.iteritems():
+  for type, data in items.items():
     for what in data['labels']:
       dim = table.label_dimension(what)
       if dim != data['dim']: remarks.append('column {} is not a {}.'.format(what,type))
@@ -83,7 +83,7 @@ for name in filenames:
 # ------------------------------------------ assemble header --------------------------------------
 
   table.info_append(scriptID + '\t' + ' '.join(sys.argv[1:]))
-  for type, data in items.iteritems():
+  for type, data in items.items():
     for label in data['active']:
       table.labels_append(['{}_dev({})'.format(i+1,label) for i in range(data['dim'])] + \
                          (['sph({})'.format(label)] if options.spherical else []))                  # extend ASCII header with new labels
@@ -93,7 +93,7 @@ for name in filenames:
 
   outputAlive = True
   while outputAlive and table.data_read():                                                          # read next data line of ASCII table
-    for type, data in items.iteritems():
+    for type, data in items.items():
       for column in data['column']:
         table.data_append(deviator(map(float,table.data[column:
                                                         column+data['dim']]),options.spherical))
