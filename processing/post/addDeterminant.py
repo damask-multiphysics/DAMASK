@@ -83,8 +83,7 @@ for name in filenames:
   while outputAlive and table.data_read():                                                          # read next data line of ASCII table
     for type, data in items.items():
       for column in data['column']:
-        table.data_append(determinant(map(float,table.data[column:
-                                                           column+data['dim']])))
+        table.data_append(determinant(list(map(float,table.data[column: column+data['dim']]))))
     outputAlive = table.data_write()                                                                # output processed line
 
 # ------------------------------------------ output finalization -----------------------------------

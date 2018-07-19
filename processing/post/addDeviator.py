@@ -95,8 +95,8 @@ for name in filenames:
   while outputAlive and table.data_read():                                                          # read next data line of ASCII table
     for type, data in items.items():
       for column in data['column']:
-        table.data_append(deviator(map(float,table.data[column:
-                                                        column+data['dim']]),options.spherical))
+        table.data_append(deviator(list(map(float,table.data[column:
+                                                        column+data['dim']])),options.spherical))
     outputAlive = table.data_write()                                                                # output processed line
 
 # ------------------------------------------ output finalization -----------------------------------
