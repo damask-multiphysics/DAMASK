@@ -282,19 +282,12 @@ for name in filenames:
   table.data_readArray([options.defgrad,options.pos])
   table.data_rewind()
 
-  if len(table.data.shape) < 2: table.data.shape += (1,)                                            # expand to 2D shape
   if table.data[:,9:].shape[1] < 3:
     table.data = np.hstack((table.data,
                             np.zeros((table.data.shape[0],
                                       3-table.data[:,9:].shape[1]),dtype='f')))                     # fill coords up to 3D with zeros
 
-  coords = [np.unique(table.data[:,9+i]) for i in range(3)]
-  mincorner = np.array(map(min,coords))
-  maxcorner = np.array(map(max,coords))
-  grid   = np.array(map(len,coords),'i')
-  size   = grid/np.maximum(np.ones(3,'d'), grid-1.0) * (maxcorner-mincorner)                        # size from edge to edge = dim * n/(n-1) 
-  size   = np.where(grid > 1, size, min(size[grid > 1]/grid[grid > 1]))                             # spacing for grid==1 set to smallest among other spacings
-
+  grid,size = damask.util.coordGridAndSize(table.data[:,9:12])
   N = grid.prod()
 
   if N != len(table.data): errors.append('data count {} does not match grid {}x{}x{}.'.format(N,*grid))
