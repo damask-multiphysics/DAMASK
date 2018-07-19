@@ -36,8 +36,8 @@ class bcolors:
 def srepr(arg,glue = '\n'):
   """Joins arguments as individual lines"""
   if (not hasattr(arg, "strip") and
-          hasattr(arg, "__getitem__") or
-          hasattr(arg, "__iter__")):
+          (hasattr(arg, "__getitem__") or
+           hasattr(arg, "__iter__"))):
      return glue.join(str(x) for x in arg)
   return arg if isinstance(arg,str) else repr(arg)
 
