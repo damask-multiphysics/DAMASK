@@ -57,12 +57,12 @@ module plastic_dislotwin
  
   type,private :: tParameters
    integer(kind(undefined_ID)),         dimension(:),         allocatable,          private :: &
-   outputID                                                                                      !< ID of each post result output
+     outputID                                                                                       !< ID of each post result output
    
    real(pReal) :: &
-     CAtomicVolume, &                                                                           !< atomic volume in Bugers vector unit
-     D0, &                                                                                        !< prefactor for self-diffusion coefficient
-     Qsd, &                                                                                              !< activation energy for dislocation climb
+     CAtomicVolume, &                                                                               !< atomic volume in Bugers vector unit
+     D0, &                                                                                          !< prefactor for self-diffusion coefficient
+     Qsd, &                                                                                         !< activation energy for dislocation climb
      GrainSize, &                                                                                  !<grain size
      pShearBand, &                                                                                 !< p-exponent in shear band velocity
      qShearBand, &                                                                                 !< q-exponent in shear band velocity
@@ -230,9 +230,10 @@ subroutine plastic_dislotwin_init(fileUnit)
  integer(pInt) :: maxNinstance,&
                   f,instance,j,i,k,l,m,n,o,p,q,r,s,p1, &
                   offset_slip, index_myFamily, index_otherFamily, &
-                  startIndex, endIndex, outputID,outputSize
+                  startIndex, endIndex, outputSize
  integer(pInt) :: sizeState, sizeDotState, sizeDeltaState
  integer(pInt) :: NofMyPhase   
+ integer(kind(undefined_ID)) outputID
  
   real(pReal),                         dimension(:,:,:,:,:), allocatable :: &
    Ctwin3333, &                                                                 !< twin elasticity matrix for each instance
