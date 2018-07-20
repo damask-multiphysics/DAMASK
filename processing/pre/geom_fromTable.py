@@ -1,7 +1,7 @@
 #!/usr/bin/env python2.7
 # -*- coding: UTF-8 no BOM -*-
 
-import os,sys,math,types,time
+import os,sys,math,time
 import scipy.spatial, numpy as np
 from optparse import OptionParser
 import damask
