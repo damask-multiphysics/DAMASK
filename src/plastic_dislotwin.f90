@@ -283,6 +283,8 @@ subroutine plastic_dislotwin_init(fileUnit)
  allocate(plastic_dislotwin_output(maxval(phase_Noutput),maxNinstance))
           plastic_dislotwin_output = ''
  allocate(param(maxNinstance))
+ allocate(state(maxNinstance))
+ allocate(dotState(maxNinstance))
  allocate(sbSv(6,6,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), source=0.0_pReal)
 
  
@@ -398,9 +400,9 @@ subroutine plastic_dislotwin_init(fileUnit)
    endif    
 
 
-     prm%aTolRho       = config_phase(p)%getFloat('atol_rho')
-     prm%aTolTwinFrac  = config_phase(p)%getFloat('atol_twinfrac')
-     prm%aTolTransFrac = config_phase(p)%getFloat('atol_transfrac')
+     prm%aTolRho       = config_phase(p)%getFloat('atol_rho', defaultVal=0.0_pReal)
+     prm%aTolTwinFrac  = config_phase(p)%getFloat('atol_twinfrac', defaultVal=0.0_pReal)
+     prm%aTolTransFrac = config_phase(p)%getFloat('atol_transfrac', defaultVal=0.0_pReal)
 
      prm%CAtomicVolume = config_phase(p)%getFloat('catomicvolume')
      prm%GrainSize =  config_phase(p)%getFloat('grainsize')
@@ -410,13 +412,14 @@ subroutine plastic_dislotwin_init(fileUnit)
      prm%Qsd = config_phase(p)%getFloat('qsd')
      prm%SolidSolutionStrength = config_phase(p)%getFloat('solidsolutionstrength')
      prm%dipoleFormationFactor= config_phase(p)%getFloat('dipoleformationfactor', defaultVal=1.0_pReal) ! ToDo: How to handle that???
-     
-     prm%sbResistance = config_phase(p)%getFloat('shearbandresistance',defaultVal=0.0_pReal)
      prm%sbVelocity   = config_phase(p)%getFloat('shearbandvelocity',defaultVal=0.0_pReal)
-     prm%sbQedge = config_phase(p)%getFloat('qedgepersbsystem')
-     prm%pShearBand = config_phase(p)%getFloat('p_shearband')
-     prm%qShearBand = config_phase(p)%getFloat('q_shearband')
-    
+     if (prm%sbVelocity > 0.0_pReal) then  
+       prm%sbResistance = config_phase(p)%getFloat('shearbandresistance')
+       prm%sbQedge = config_phase(p)%getFloat('qedgepersbsystem')
+       prm%pShearBand = config_phase(p)%getFloat('p_shearband')
+       prm%qShearBand = config_phase(p)%getFloat('q_shearband')
+     endif
+ 
      outputs = config_phase(p)%getStrings('(output)', defaultVal=emptyString)
      allocate(prm%outputID(0))
      do i= 1_pInt, size(outputs)
@@ -520,13 +523,8 @@ subroutine plastic_dislotwin_init(fileUnit)
         endif
 
  enddo
- enddo
 
  
- sanityChecks: do p = 1_pInt, size(phase_plasticity)
-    if (phase_plasticity(p) /= PLASTICITY_dislotwin_ID) cycle
-      instance = phase_plasticityInstance(p)
-      prm => param(instance)
       do f = 1_pInt,lattice_maxNslipFamily
         !  if (rhoEdge0(f,instance) < 0.0_pReal) &
         !    call IO_error(211_pInt,el=instance,ext_msg='rhoEdge0 ('//PLASTICITY_DISLOTWIN_label//')')
@@ -569,13 +567,13 @@ subroutine plastic_dislotwin_init(fileUnit)
         if (prm%aTolTransFrac <= 0.0_pReal) &
           call IO_error(211_pInt,el=instance,ext_msg='aTolTransFrac ('//PLASTICITY_DISLOTWIN_label//')')
       endif
-      if (prm%sbResistance < 0.0_pReal) &
-        call IO_error(211_pInt,el=instance,ext_msg='sbResistance ('//PLASTICITY_DISLOTWIN_label//')')
-      if (prm%sbVelocity < 0.0_pReal) &
-        call IO_error(211_pInt,el=instance,ext_msg='sbVelocity ('//PLASTICITY_DISLOTWIN_label//')')
-      if (prm%sbVelocity > 0.0_pReal .and. &
-          prm%pShearBand <= 0.0_pReal) &
-        call IO_error(211_pInt,el=instance,ext_msg='pShearBand ('//PLASTICITY_DISLOTWIN_label//')')
+      !if (prm%sbResistance < 0.0_pReal) &
+      !  call IO_error(211_pInt,el=instance,ext_msg='sbResistance ('//PLASTICITY_DISLOTWIN_label//')')
+      !if (prm%sbVelocity < 0.0_pReal) &
+      !  call IO_error(211_pInt,el=instance,ext_msg='sbVelocity ('//PLASTICITY_DISLOTWIN_label//')')
+      !if (prm%sbVelocity > 0.0_pReal .and. &
+      !    prm%pShearBand <= 0.0_pReal) &
+      !  call IO_error(211_pInt,el=instance,ext_msg='pShearBand ('//PLASTICITY_DISLOTWIN_label//')')
       if (dNeq0(prm%dipoleFormationFactor) .and. &
           dNeq(prm%dipoleFormationFactor, 1.0_pReal)) &
         call IO_error(211_pInt,el=instance,ext_msg='dipoleFormationFactor ('//PLASTICITY_DISLOTWIN_label//')')
@@ -583,11 +581,10 @@ subroutine plastic_dislotwin_init(fileUnit)
           prm%qShearBand <= 0.0_pReal) &
         call IO_error(211_pInt,el=instance,ext_msg='qShearBand ('//PLASTICITY_DISLOTWIN_label//')')
 
-!--------------------------------------------------------------------------------------------------
-! Determine total number of active slip or twin systems
- enddo sanityChecks
+ enddo 
  
  ! ToDo: this should be stored somewhere else. Works only for the whole instance!!
+! prm%totalNtwin should be the maximum over all totalNtwins!
  allocate(tau_r_twin(prm%totalNtwin, maxNinstance),              source=0.0_pReal)
  allocate(tau_r_trans(prm%totalNtrans, maxNinstance),            source=0.0_pReal)
 
@@ -600,8 +597,6 @@ subroutine plastic_dislotwin_init(fileUnit)
  allocate(Ctwin3333(3,3,3,3,prm%totalNtwin),        source=0.0_pReal)
  allocate(Ctrans3333(3,3,3,3,prm%totalNtrans),      source=0.0_pReal)
  
- allocate(state(maxNinstance))
- allocate(dotState(maxNinstance))
 
  initializeInstances: do p = 1_pInt, size(phase_plasticity)
     if (phase_plasticity(p) /= PLASTICITY_dislotwin_ID) cycle
@@ -1306,7 +1301,7 @@ associate(prm => param(instance))
  
 !--------------------------------------------------------------------------------------------------
 ! Shear banding (shearband) part
- if(dNeq0(prm%sbVelocity) .and. dNeq0(prm%sbResistance)) then
+ if(dNeq0(prm%sbVelocity)) then
    gdot_sb = 0.0_pReal
    dgdot_dtausb = 0.0_pReal
    call math_eigenValuesVectorsSym(math_Mandel6to33(Tstar_v),eigValues,eigVectors,error)
