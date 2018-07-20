@@ -92,7 +92,7 @@ for name in filenames:
             }
 
   substituted = np.copy(microstructure)
-  for k, v in sub.iteritems(): substituted[microstructure==k] = v                                   # substitute microstructure indices
+  for k, v in sub.items(): substituted[microstructure==k] = v                                   # substitute microstructure indices
 
   substituted += options.microstructure                                                             # shift microstructure indices
 

@@ -88,7 +88,7 @@ for name in filenames:
   outputAlive = True
   while outputAlive and table.data_read():                                                          # read next data line of ASCII table
     for column in columns:
-      table.data_append(E_hkl(map(float,table.data[column:column+3]),options.hkl))
+      table.data_append(E_hkl(list(map(float,table.data[column:column+3])),options.hkl))
     outputAlive = table.data_write()                                                                # output processed line
 
 # ------------------------------------------ output finalization -----------------------------------  

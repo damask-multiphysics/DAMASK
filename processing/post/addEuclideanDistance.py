@@ -102,7 +102,7 @@ parser.add_option('-t',
                   help = 'feature type {{{}}} '.format(', '.join(map(lambda x:'/'.join(x['names']),features))) )
 parser.add_option('-n',
                   '--neighborhood',
-                  dest = 'neighborhood', choices = neighborhoods.keys(), metavar = 'string',
+                  dest = 'neighborhood', choices = list(neighborhoods.keys()), metavar = 'string',
                   help = 'neighborhood type [neumann] {{{}}}'.format(', '.join(neighborhoods.keys())))
 parser.add_option('-s',
                   '--scale',
@@ -151,10 +151,8 @@ for name in filenames:
   remarks = []
   column = {}
   
-  coordDim = table.label_dimension(options.pos)
-  if not 3 >= coordDim >= 1:
+  if not 3 >= table.label_dimension(options.pos) >= 1:
     errors.append('coordinates "{}" need to have one, two, or three dimensions.'.format(options.pos))
-  else: coordCol = table.label_index(options.pos)
   
   if table.label_dimension(options.id) != 1: errors.append('grain identifier {} not found.'.format(options.id))
   else: idCol = table.label_index(options.id)
@@ -178,11 +176,7 @@ for name in filenames:
 
   table.data_readArray()
 
-  coords = [np.unique(table.data[:,coordCol+i]) for i in range(coordDim)]
-  mincorner = np.array(map(min,coords))
-  maxcorner = np.array(map(max,coords))
-  grid   = np.array(map(len,coords)+[1]*(3-len(coords)),'i')
-
+  grid,size = damask.util.coordGridAndSize(table.data[:,table.label_indexrange(options.pos)])
   N = grid.prod()
 
   if N != len(table.data): errors.append('data count {} does not match grid {}.'.format(N,'x'.join(map(str,grid))))
