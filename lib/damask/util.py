@@ -93,8 +93,10 @@ def execute(cmd,
                              stdout = subprocess.PIPE,
                              stderr = subprocess.PIPE,
                              stdin  = subprocess.PIPE)
-  out,error = [i.replace(b"\x08",b"") for i in (process.communicate() if streamIn is None
-                                                else process.communicate(streamIn.read()))]
+  out,error = [i for i in (process.communicate() if streamIn is None
+                                                 else process.communicate(streamIn.read().encode('utf-8')))]
+  out   = out.decode('utf-8').replace('\x08','')
+  error = error.decode('utf-8').replace('\x08','')
   os.chdir(initialPath)
   if process.returncode != 0: raise RuntimeError('{} failed with returncode {}'.format(cmd,process.returncode))
   return out,error
