@@ -16,7 +16,7 @@ module lattice
  integer(pInt), parameter, public :: &
    LATTICE_maxNslipFamily     =  13_pInt, &                                                         !< max # of slip system families over lattice structures
    LATTICE_maxNtwinFamily     =  4_pInt, &                                                          !< max # of twin system families over lattice structures
-   LATTICE_maxNtransFamily    =  2_pInt, &                                                          !< max # of transformation system families over lattice structures
+   LATTICE_maxNtransFamily    =  1_pInt, &                                                          !< max # of transformation system families over lattice structures
    LATTICE_maxNcleavageFamily =  3_pInt                                                             !< max # of transformation system families over lattice structures
 
  integer(pInt), allocatable, dimension(:,:), protected, public :: &
@@ -82,7 +82,7 @@ module lattice
    LATTICE_fcc_NtwinSystem = int([12, 0, 0, 0],pInt)                                                !< # of twin systems per family for fcc
 
  integer(pInt), dimension(LATTICE_maxNtransFamily), parameter, public :: &
-   LATTICE_fcc_NtransSystem = int([12, 0],pInt)                                                     !< # of transformation systems per family for fcc
+   LATTICE_fcc_NtransSystem = int([12],pInt)                                                        !< # of transformation systems per family for fcc
 
  integer(pInt), dimension(LATTICE_maxNcleavageFamily), parameter, public :: &
    LATTICE_fcc_NcleavageSystem = int([3, 4, 0],pInt)                                                !< # of cleavage systems per family for fcc
@@ -365,10 +365,10 @@ module lattice
    LATTICE_bcc_NtwinSystem = int([ 12, 0, 0, 0], pInt)                                              !< # of twin systems per family for bcc
 
  integer(pInt), dimension(LATTICE_maxNtransFamily), parameter, public :: &
-   LATTICE_bcc_NtransSystem = int([0,0],pInt)                                                       !< # of transformation systems per family for bcc
+   LATTICE_bcc_NtransSystem = int([0],pInt)                                                         !< # of transformation systems per family for bcc
 
  integer(pInt), dimension(LATTICE_maxNcleavageFamily), parameter, public :: &
-   LATTICE_bcc_NcleavageSystem = int([3,6,0],pInt)                                                  !< # of cleavage systems per family for bcc
+   LATTICE_bcc_NcleavageSystem = int([3, 6, 0],pInt)                                                !< # of cleavage systems per family for bcc
 
  integer(pInt), parameter, private  :: &
    LATTICE_bcc_Nslip      = sum(lattice_bcc_NslipSystem), &                                         !< total # of slip systems for bcc
@@ -562,10 +562,10 @@ module lattice
    lattice_hex_NtwinSystem = int([ 6, 6, 6, 6],pInt)                                                !< # of slip systems per family for hex
 
  integer(pInt), dimension(LATTICE_maxNtransFamily), parameter, public :: &
-   LATTICE_hex_NtransSystem = int([0,0],pInt)                                                       !< # of transformation systems per family for hex
+   LATTICE_hex_NtransSystem = int([0],pInt)                                                         !< # of transformation systems per family for hex
 
  integer(pInt), dimension(LATTICE_maxNcleavageFamily), parameter, public :: &
-   LATTICE_hex_NcleavageSystem = int([3,0,0],pInt)                                                  !< # of cleavage systems per family for hex
+   LATTICE_hex_NcleavageSystem = int([3, 0, 0],pInt)                                                !< # of cleavage systems per family for hex
 
  integer(pInt), parameter, private  :: &
    LATTICE_hex_Nslip      = sum(lattice_hex_NslipSystem), &                                         !< total # of slip systems for hex
@@ -844,10 +844,10 @@ module lattice
    LATTICE_bct_NtwinSystem = int([0, 0, 0, 0], pInt)                                                !< # of twin systems per family for bct
 
  integer(pInt), dimension(LATTICE_maxNtransFamily), parameter, public :: &
-   LATTICE_bct_NtransSystem = int([0,0],pInt)                                                       !< # of transformation systems per family for bct
+   LATTICE_bct_NtransSystem = int([0],pInt)                                                         !< # of transformation systems per family for bct
 
  integer(pInt), dimension(LATTICE_maxNcleavageFamily), parameter, public :: &
-   LATTICE_bct_NcleavageSystem = int([0,0,0],pInt)                                                  !< # of cleavage systems per family for bct
+   LATTICE_bct_NcleavageSystem = int([0, 0, 0],pInt)                                                !< # of cleavage systems per family for bct
 
  integer(pInt), parameter, private  :: &
    LATTICE_bct_Nslip      = sum(lattice_bct_NslipSystem), &                                         !< total # of slip systems for bct
@@ -1004,17 +1004,17 @@ module lattice
    LATTICE_iso_NtwinSystem = int([0, 0, 0, 0], pInt)                                                !< # of twin systems per family for iso
 
  integer(pInt), dimension(LATTICE_maxNtransFamily), parameter, public :: &
-   LATTICE_iso_NtransSystem = int([0, 0],pInt)                                                      !< # of transformation systems per family for iso
+   LATTICE_iso_NtransSystem = int([0],pInt)                                                         !< # of transformation systems per family for iso
 
  integer(pInt), dimension(LATTICE_maxNcleavageFamily), parameter, public :: &
-   LATTICE_iso_NcleavageSystem = int([3,0,0],pInt)                                                  !< # of cleavage systems per family for iso
+   LATTICE_iso_NcleavageSystem = int([3, 0, 0],pInt)                                                !< # of cleavage systems per family for iso
 
  integer(pInt), parameter, private  :: &
-   LATTICE_iso_Nslip      = 0_pInt, & !sum(lattice_iso_NslipSystem), &                              !< total # of slip systems for iso
-   LATTICE_iso_Ntwin      = 0_pInt, & !sum(lattice_iso_NtwinSystem), &                              !< total # of twin systems for iso
+   LATTICE_iso_Nslip      = sum(lattice_iso_NslipSystem), &                                         !< total # of slip systems for iso
+   LATTICE_iso_Ntwin      = sum(lattice_iso_NtwinSystem), &                                         !< total # of twin systems for iso
    LATTICE_iso_NnonSchmid = 0_pInt, &                                                               !< total # of non-Schmid contributions for iso
-   LATTICE_iso_Ntrans     = 0_pInt, & !sum(lattice_iso_NtransSystem), &                             !< total # of transformation systems for iso
-   LATTICE_iso_Ncleavage  = 3_pInt    !sum(lattice_iso_NcleavageSystem)                             !< total # of cleavage systems for iso
+   LATTICE_iso_Ntrans     = sum(lattice_iso_NtransSystem), &                                        !< total # of transformation systems for iso
+   LATTICE_iso_Ncleavage  = sum(lattice_iso_NcleavageSystem)                                        !< total # of cleavage systems for iso
 
  real(pReal), dimension(3+3,LATTICE_iso_Ncleavage), parameter, private :: &
    LATTICE_iso_systemCleavage = reshape(real([&
@@ -1033,10 +1033,10 @@ module lattice
    LATTICE_ortho_NtwinSystem = int([0, 0, 0, 0], pInt)                                              !< # of twin systems per family for ortho
 
  integer(pInt), dimension(LATTICE_maxNtransFamily), parameter, public :: &
-   LATTICE_ortho_NtransSystem = int([0, 0],pInt)                                                    !< # of transformation systems per family for ortho
+   LATTICE_ortho_NtransSystem = int([0],pInt)                                                       !< # of transformation systems per family for ortho
 
  integer(pInt), dimension(LATTICE_maxNcleavageFamily), parameter, public :: &
-   LATTICE_ortho_NcleavageSystem = int([1,1,1],pInt)                                                !< # of cleavage systems per family for ortho
+   LATTICE_ortho_NcleavageSystem = int([1, 1, 1],pInt)                                              !< # of cleavage systems per family for ortho
 
  integer(pInt), parameter, private  :: &
    LATTICE_ortho_Nslip      = sum(lattice_ortho_NslipSystem), &                                     !< total # of slip systems for ortho
@@ -1055,18 +1055,38 @@ module lattice
 
  integer(pInt), parameter, public :: &
    LATTICE_maxNslip        = maxval([LATTICE_fcc_Nslip,LATTICE_bcc_Nslip,LATTICE_hex_Nslip, &
-                                     LATTICE_bct_Nslip,LATTICE_iso_Nslip,LATTICE_ortho_Nslip]), &      !< max # of slip systems over lattice structures
+                                     LATTICE_bct_Nslip,LATTICE_iso_Nslip,LATTICE_ortho_Nslip]), &   !< max # of slip systems over lattice structures
    LATTICE_maxNtwin        = maxval([LATTICE_fcc_Ntwin,LATTICE_bcc_Ntwin,LATTICE_hex_Ntwin, &
-                                     LATTICE_bct_Ntwin,LATTICE_iso_Ntwin,LATTICE_ortho_Ntwin]), &      !< max # of twin systems over lattice structures
+                                     LATTICE_bct_Ntwin,LATTICE_iso_Ntwin,LATTICE_ortho_Ntwin]), &   !< max # of twin systems over lattice structures
    LATTICE_maxNnonSchmid   = maxval([LATTICE_fcc_NnonSchmid,LATTICE_bcc_NnonSchmid, &
                                      LATTICE_hex_NnonSchmid,LATTICE_bct_NnonSchmid, &
-                                     LATTICE_iso_NnonSchmid,LATTICE_ortho_NnonSchmid]), &              !< max # of non-Schmid contributions over lattice structures
+                                     LATTICE_iso_NnonSchmid,LATTICE_ortho_NnonSchmid]), &           !< max # of non-Schmid contributions over lattice structures
    LATTICE_maxNtrans       = maxval([LATTICE_fcc_Ntrans,LATTICE_bcc_Ntrans,LATTICE_hex_Ntrans, &
-                                     LATTICE_bct_Ntrans,LATTICE_iso_Ntrans,LATTICE_ortho_Ntrans]), &   !< max # of transformation systems over lattice structures
+                                     LATTICE_bct_Ntrans,LATTICE_iso_Ntrans,LATTICE_ortho_Ntrans]), &!< max # of transformation systems over lattice structures
    LATTICE_maxNcleavage    = maxval([LATTICE_fcc_Ncleavage,LATTICE_bcc_Ncleavage, &
                                      LATTICE_hex_Ncleavage,LATTICE_bct_Ncleavage, &
-                                     LATTICE_iso_Ncleavage,LATTICE_ortho_Ncleavage])        , &        !< max # of cleavage systems over lattice structures
-   LATTICE_maxNinteraction    = 182_pInt                                                            !< max # of interaction types (in hardening matrix part)
+                                     LATTICE_iso_Ncleavage,LATTICE_ortho_Ncleavage]), &             !< max # of cleavage systems over lattice structures
+   LATTICE_maxNinteraction = maxval([ &
+                                     maxval(lattice_fcc_interactionSlipSlip), &
+                                     maxval(lattice_bcc_interactionSlipSlip), &
+                                     maxval(lattice_hex_interactionSlipSlip), &
+                                     maxval(lattice_bct_interactionSlipSlip), &
+                                     !
+                                     maxval(lattice_fcc_interactionSlipTwin), &
+                                     maxval(lattice_bcc_interactionSlipTwin), &
+                                     maxval(lattice_hex_interactionSlipTwin), &
+                                  !  maxval(lattice_bct_interactionSlipTwin), &
+                                     !
+                                     maxval(lattice_fcc_interactionTwinSlip), &
+                                     maxval(lattice_bcc_interactionTwinSlip), &
+                                     maxval(lattice_hex_interactionTwinSlip), &
+                                  !  maxval(lattice_bct_interactionTwinSlip), &
+                                     !
+                                     maxval(lattice_fcc_interactionTwinTwin), &
+                                     maxval(lattice_bcc_interactionTwinTwin), &
+                                     maxval(lattice_hex_interactionTwinTwin)  &
+                                  !  maxval(lattice_bct_interactionTwinTwin)))
+                                   ])                                                               !< max # of interaction types (in hardening matrix part)
 
  real(pReal),                          dimension(:,:,:),     allocatable, public, protected :: &
    lattice_C66,   lattice_trans_C66
@@ -1249,10 +1269,6 @@ subroutine lattice_init
    IO_timeStamp
  use config, only: &
    config_phase
- use debug, only: &
-   debug_level, &
-   debug_lattice, &
-   debug_levelBasic
 
  implicit none
  integer(pInt) :: Nphases
@@ -1260,7 +1276,7 @@ subroutine lattice_init
    tag  = ''
  integer(pInt) :: section = 0_pInt,i,p
  real(pReal),  dimension(:), allocatable :: &
-   CoverA, &                                                                                        !!!!!!< c/a ratio for low symmetry type lattice
+   CoverA, &                                                                                        !< c/a ratio for low symmetry type lattice
    CoverA_trans, &                                                                                  !< c/a ratio for transformed hex type lattice
    a_fcc, &                                                                                         !< lattice parameter a for fcc austenite
    a_bcc                                                                                            !< lattice paramater a for bcc martensite
@@ -1268,28 +1284,6 @@ subroutine lattice_init
  write(6,'(/,a)') ' <<<+-  lattice init  -+>>>'
  write(6,'(a15,a)')   ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
-
- if (LATTICE_maxNinteraction /= max(&
-   maxval(lattice_fcc_interactionSlipSlip), &
-   maxval(lattice_bcc_interactionSlipSlip), &
-   maxval(lattice_hex_interactionSlipSlip), &
-   maxval(lattice_bct_interactionSlipSlip), &
-   !
-   maxval(lattice_fcc_interactionSlipTwin), &
-   maxval(lattice_bcc_interactionSlipTwin), &
-   maxval(lattice_hex_interactionSlipTwin), &
-!  maxval(lattice_bct_interactionSlipTwin), &
-   !
-   maxval(lattice_fcc_interactionTwinSlip), &
-   maxval(lattice_bcc_interactionTwinSlip), &
-   maxval(lattice_hex_interactionTwinSlip), &
-!  maxval(lattice_bct_interactionTwinSlip), &
-   !
-   maxval(lattice_fcc_interactionTwinTwin), &
-   maxval(lattice_bcc_interactionTwinTwin), &
-   maxval(lattice_hex_interactionTwinTwin))) &
-!  maxval(lattice_bct_interactionTwinTwin))) &
-   call IO_error(0_pInt,ext_msg = 'LATTICE_maxNinteraction')
 
  Nphases = size(config_phase)
 
@@ -1368,23 +1362,22 @@ subroutine lattice_init
  allocate(a_fcc(Nphases),source=0.0_pReal)
  allocate(a_bcc(Nphases),source=0.0_pReal)
 
- do section = 1, size(config_phase)
- p = section
- tag = config_phase(p)%getString('lattice_structure')
- select case(trim(tag))
-           case('iso','isotropic')
-             lattice_structure(p) = LATTICE_iso_ID
-           case('fcc')
-             lattice_structure(p) = LATTICE_fcc_ID
-           case('bcc')
-             lattice_structure(p) = LATTICE_bcc_ID
-           case('hex','hexagonal')
-             lattice_structure(p) = LATTICE_hex_ID
-           case('bct')
-             lattice_structure(p) = LATTICE_bct_ID
-           case('ort','orthorhombic')
-             lattice_structure(p) = LATTICE_ort_ID
-end select
+ do p = 1, size(config_phase)
+   tag = config_phase(p)%getString('lattice_structure')
+   select case(trim(tag))
+     case('iso','isotropic')
+       lattice_structure(p) = LATTICE_iso_ID
+     case('fcc')
+       lattice_structure(p) = LATTICE_fcc_ID
+     case('bcc')
+       lattice_structure(p) = LATTICE_bcc_ID
+     case('hex','hexagonal')
+       lattice_structure(p) = LATTICE_hex_ID
+     case('bct')
+       lattice_structure(p) = LATTICE_bct_ID
+     case('ort','orthorhombic')
+       lattice_structure(p) = LATTICE_ort_ID
+   end select
 
 !     case('trans_lattice_structure')
 !       select case(trim(IO_lc(IO_stringValue(line,chunkPos,2_pInt))))
@@ -1394,44 +1387,30 @@ end select
 !           trans_lattice_structure(section) = LATTICE_hex_ID
 !       end select
 
+   lattice_C66(1,1,p) = config_phase(p)%getFloat('c11',defaultVal=0.0_pReal)
+   lattice_C66(1,2,p) = config_phase(p)%getFloat('c12',defaultVal=0.0_pReal)
+   lattice_C66(1,3,p) = config_phase(p)%getFloat('c13',defaultVal=0.0_pReal)
+   lattice_C66(2,3,p) = config_phase(p)%getFloat('c23',defaultVal=0.0_pReal)
+   lattice_C66(3,3,p) = config_phase(p)%getFloat('c33',defaultVal=0.0_pReal)
+   lattice_C66(4,4,p) = config_phase(p)%getFloat('c44',defaultVal=0.0_pReal)
+   lattice_C66(5,5,p) = config_phase(p)%getFloat('c55',defaultVal=0.0_pReal)
+   lattice_C66(6,6,p) = config_phase(p)%getFloat('c66',defaultVal=0.0_pReal)
 
-       lattice_C66(1,1,section) = config_phase(p)%getFloat('c11',defaultVal=0.0_pReal)
-       lattice_C66(1,2,section) = config_phase(p)%getFloat('c12',defaultVal=0.0_pReal)
-       lattice_C66(1,3,section) = config_phase(p)%getFloat('c13',defaultVal=0.0_pReal)
-       lattice_C66(2,3,section) = config_phase(p)%getFloat('c23',defaultVal=0.0_pReal)
-       lattice_C66(3,3,section) = config_phase(p)%getFloat('c33',defaultVal=0.0_pReal)
-       lattice_C66(4,4,section) = config_phase(p)%getFloat('c44',defaultVal=0.0_pReal)
-       lattice_C66(5,5,section) = config_phase(p)%getFloat('c55',defaultVal=0.0_pReal)
-       lattice_C66(6,6,section) = config_phase(p)%getFloat('c66',defaultVal=0.0_pReal)
+   lattice_trans_C66(1,1,p) = config_phase(p)%getFloat('c11_trans',defaultVal=0.0_pReal)
+   lattice_trans_C66(1,2,p) = config_phase(p)%getFloat('c12_trans',defaultVal=0.0_pReal)
+   lattice_trans_C66(1,3,p) = config_phase(p)%getFloat('c13_trans',defaultVal=0.0_pReal)
+   lattice_trans_C66(2,2,p) = config_phase(p)%getFloat('c22_trans',defaultVal=0.0_pReal)
+   lattice_trans_C66(2,3,p) = config_phase(p)%getFloat('c23_trans',defaultVal=0.0_pReal)
+   lattice_trans_C66(3,3,p) = config_phase(p)%getFloat('c33_trans',defaultVal=0.0_pReal)
+   lattice_trans_C66(4,4,p) = config_phase(p)%getFloat('c44_trans',defaultVal=0.0_pReal)
+   lattice_trans_C66(5,5,p) = config_phase(p)%getFloat('c55_trans',defaultVal=0.0_pReal)
+   lattice_trans_C66(6,6,p) = config_phase(p)%getFloat('c66_trans',defaultVal=0.0_pReal)
 
-!     case ('c11_trans')
-!       lattice_trans_C66(1,1,section) = IO_floatValue(line,chunkPos,2_pInt)
-!     case ('c12_trans')
-!       lattice_trans_C66(1,2,section) = IO_floatValue(line,chunkPos,2_pInt)
-!     case ('c13_trans')
-!       lattice_trans_C66(1,3,section) = IO_floatValue(line,chunkPos,2_pInt)
-!     case ('c22_trans')
-!       lattice_trans_C66(2,2,section) = IO_floatValue(line,chunkPos,2_pInt)
-!     case ('c23_trans')
-!       lattice_trans_C66(2,3,section) = IO_floatValue(line,chunkPos,2_pInt)
-!     case ('c33_trans')
-!       lattice_trans_C66(3,3,section) = IO_floatValue(line,chunkPos,2_pInt)
-!     case ('c44_trans')
-!       lattice_trans_C66(4,4,section) = IO_floatValue(line,chunkPos,2_pInt)
-!     case ('c55_trans')
-!       lattice_trans_C66(5,5,section) = IO_floatValue(line,chunkPos,2_pInt)
-!     case ('c66_trans')
-!       lattice_trans_C66(6,6,section) = IO_floatValue(line,chunkPos,2_pInt)
-!
-!     case ('covera_ratio','c/a_ratio','c/a')
-!       CoverA(section) = IO_floatValue(line,chunkPos,2_pInt)
-!     case ('c/a_trans','c/a_martensite','c/a_mart')
-!       CoverA_trans(section) = IO_floatValue(line,chunkPos,2_pInt)
-!     case ('a_fcc')
-!       a_fcc(section) = IO_floatValue(line,chunkPos,2_pInt)
-!     case ('a_bcc')
-!       a_bcc(section) = IO_floatValue(line,chunkPos,2_pInt)
-!
+   CoverA(p)       = config_phase(p)%getFloat('c/a',defaultVal=0.0_pReal)
+   CoverA_trans(p) = config_phase(p)%getFloat('c/a_trans',defaultVal=0.0_pReal)
+   a_fcc(p)        = config_phase(p)%getFloat('a_fcc',defaultVal=0.0_pReal)
+   a_bcc(p)        = config_phase(p)%getFloat('a_bcc',defaultVal=0.0_pReal)
+
 !     case ('thermal_conductivity11')
 !       lattice_thermalConductivity33(1,1,section) = IO_floatValue(line,chunkPos,2_pInt)
 !     case ('thermal_conductivity22')
@@ -1450,73 +1429,40 @@ end select
 !         do i = 2_pInt, min(4,chunkPos(1))                                                        ! read up to three parameters (constant, linear, quadratic with T)
 !           lattice_thermalExpansion33(3,3,i-1_pInt,section) = IO_floatValue(line,chunkPos,i)
 !         enddo
-!     case ('specific_heat')
-!       lattice_specificHeat(section) = IO_floatValue(line,chunkPos,2_pInt)
-!     case ('vacancyformationenergy')
-!       lattice_vacancyFormationEnergy(section) = IO_floatValue(line,chunkPos,2_pInt)
-!     case ('vacancysurfaceenergy')
-!       lattice_vacancySurfaceEnergy(section) = IO_floatValue(line,chunkPos,2_pInt)
-!     case ('vacancyvolume')
-!       lattice_vacancyVol(section) = IO_floatValue(line,chunkPos,2_pInt)
-!     case ('hydrogenformationenergy')
-!       lattice_hydrogenFormationEnergy(section) = IO_floatValue(line,chunkPos,2_pInt)
-!     case ('hydrogensurfaceenergy')
-!       lattice_hydrogenSurfaceEnergy(section) = IO_floatValue(line,chunkPos,2_pInt)
-!     case ('hydrogenvolume')
-!       lattice_hydrogenVol(section) = IO_floatValue(line,chunkPos,2_pInt)
-!     case ('mass_density')
-!       lattice_massDensity(section) = IO_floatValue(line,chunkPos,2_pInt)
-!     case ('reference_temperature')
-!       lattice_referenceTemperature(section) = IO_floatValue(line,chunkPos,2_pInt)
-!     case ('damage_diffusion11')
-!       lattice_DamageDiffusion33(1,1,section) = IO_floatValue(line,chunkPos,2_pInt)
-!     case ('damage_diffusion22')
-!       lattice_DamageDiffusion33(2,2,section) = IO_floatValue(line,chunkPos,2_pInt)
-!     case ('damage_diffusion33')
-!       lattice_DamageDiffusion33(3,3,section) = IO_floatValue(line,chunkPos,2_pInt)
-!     case ('damage_mobility')
-!       lattice_DamageMobility(section) = IO_floatValue(line,chunkPos,2_pInt)
-!     case ('vacancyflux_diffusion11')
-!       lattice_vacancyfluxDiffusion33(1,1,section) = IO_floatValue(line,chunkPos,2_pInt)
-!     case ('vacancyflux_diffusion22')
-!       lattice_vacancyfluxDiffusion33(2,2,section) = IO_floatValue(line,chunkPos,2_pInt)
-!     case ('vacancyflux_diffusion33')
-!       lattice_vacancyfluxDiffusion33(3,3,section) = IO_floatValue(line,chunkPos,2_pInt)
-!     case ('vacancyflux_mobility11')
-!       lattice_vacancyfluxMobility33(1,1,section) = IO_floatValue(line,chunkPos,2_pInt)
-!     case ('vacancyflux_mobility22')
-!       lattice_vacancyfluxMobility33(2,2,section) = IO_floatValue(line,chunkPos,2_pInt)
-!     case ('vacancyflux_mobility33')
-!       lattice_vacancyfluxMobility33(3,3,section) = IO_floatValue(line,chunkPos,2_pInt)
-!     case ('porosity_diffusion11')
-!       lattice_PorosityDiffusion33(1,1,section) = IO_floatValue(line,chunkPos,2_pInt)
-!     case ('porosity_diffusion22')
-!       lattice_PorosityDiffusion33(2,2,section) = IO_floatValue(line,chunkPos,2_pInt)
-!     case ('porosity_diffusion33')
-!       lattice_PorosityDiffusion33(3,3,section) = IO_floatValue(line,chunkPos,2_pInt)
-!     case ('porosity_mobility')
-!       lattice_PorosityMobility(section) = IO_floatValue(line,chunkPos,2_pInt)
-!     case ('hydrogenflux_diffusion11')
-!       lattice_hydrogenfluxDiffusion33(1,1,section) = IO_floatValue(line,chunkPos,2_pInt)
-!     case ('hydrogenflux_diffusion22')
-!       lattice_hydrogenfluxDiffusion33(2,2,section) = IO_floatValue(line,chunkPos,2_pInt)
-!     case ('hydrogenflux_diffusion33')
-!       lattice_hydrogenfluxDiffusion33(3,3,section) = IO_floatValue(line,chunkPos,2_pInt)
-!     case ('hydrogenflux_mobility11')
-!       lattice_hydrogenfluxMobility33(1,1,section) = IO_floatValue(line,chunkPos,2_pInt)
-!     case ('hydrogenflux_mobility22')
-!       lattice_hydrogenfluxMobility33(2,2,section) = IO_floatValue(line,chunkPos,2_pInt)
-!     case ('hydrogenflux_mobility33')
-!       lattice_hydrogenfluxMobility33(3,3,section) = IO_floatValue(line,chunkPos,2_pInt)
-!     case ('vacancy_eqcv')
-!       lattice_equilibriumVacancyConcentration(section) = IO_floatValue(line,chunkPos,2_pInt)
-!     case ('hydrogen_eqch')
-!       lattice_equilibriumHydrogenConcentration(section) = IO_floatValue(line,chunkPos,2_pInt)
-!     end select
-!   endif
-! enddo
 
+   lattice_specificHeat(p) = config_phase(p)%getFloat( 'specific_heat',defaultVal=0.0_pReal)
+   lattice_vacancyFormationEnergy(p) = config_phase(p)%getFloat( 'vacancyformationenergy',defaultVal=0.0_pReal)
+   lattice_vacancySurfaceEnergy(p) = config_phase(p)%getFloat( 'vacancyvolume',defaultVal=0.0_pReal)
+   lattice_vacancyVol(p) = config_phase(p)%getFloat( 'vacancysurfaceenergy',defaultVal=0.0_pReal)
+   lattice_hydrogenFormationEnergy(p) = config_phase(p)%getFloat( 'hydrogenformationenergy',defaultVal=0.0_pReal)
+   lattice_hydrogenSurfaceEnergy(p) = config_phase(p)%getFloat( 'hydrogensurfaceenergy',defaultVal=0.0_pReal)
+   lattice_hydrogenVol(p) = config_phase(p)%getFloat( 'hydrogenvolume',defaultVal=0.0_pReal)
+   lattice_massDensity(p) = config_phase(p)%getFloat( 'mass_density',defaultVal=0.0_pReal)
+   lattice_referenceTemperature(p) = config_phase(p)%getFloat( 'reference_temperature',defaultVal=0.0_pReal)
+   lattice_DamageDiffusion33(1,1,p) = config_phase(p)%getFloat( 'damage_diffusion11',defaultVal=0.0_pReal)
+   lattice_DamageDiffusion33(2,2,p) = config_phase(p)%getFloat( 'damage_diffusion22',defaultVal=0.0_pReal)
+   lattice_DamageDiffusion33(3,3,p) = config_phase(p)%getFloat( 'damage_diffusion33',defaultVal=0.0_pReal)
+   lattice_DamageMobility(p) = config_phase(p)%getFloat( 'damage_mobility',defaultVal=0.0_pReal)
+   lattice_vacancyfluxDiffusion33(1,1,p) = config_phase(p)%getFloat( 'vacancyflux_diffusion11',defaultVal=0.0_pReal)
+   lattice_vacancyfluxDiffusion33(2,2,p) = config_phase(p)%getFloat( 'vacancyflux_diffusion22',defaultVal=0.0_pReal)
+   lattice_vacancyfluxDiffusion33(3,3,p) = config_phase(p)%getFloat( 'vacancyflux_diffusion33',defaultVal=0.0_pReal)
+   lattice_vacancyfluxMobility33(1,1,p) = config_phase(p)%getFloat( 'vacancyflux_mobility11',defaultVal=0.0_pReal)
+   lattice_vacancyfluxMobility33(2,2,p) = config_phase(p)%getFloat( 'vacancyflux_mobility22',defaultVal=0.0_pReal)
+   lattice_vacancyfluxMobility33(3,3,p) = config_phase(p)%getFloat( 'vacancyflux_mobility33',defaultVal=0.0_pReal)
+   lattice_PorosityDiffusion33(1,1,p) = config_phase(p)%getFloat( 'porosity_diffusion11',defaultVal=0.0_pReal)
+   lattice_PorosityDiffusion33(2,2,p) = config_phase(p)%getFloat( 'porosity_diffusion22',defaultVal=0.0_pReal)
+   lattice_PorosityDiffusion33(3,3,p) = config_phase(p)%getFloat( 'porosity_diffusion33',defaultVal=0.0_pReal)
+   lattice_PorosityMobility(p) = config_phase(p)%getFloat( 'porosity_mobility',defaultVal=0.0_pReal)
+   lattice_hydrogenfluxDiffusion33(1,1,p) = config_phase(p)%getFloat( 'hydrogenflux_diffusion11',defaultVal=0.0_pReal)
+   lattice_hydrogenfluxDiffusion33(2,2,p) = config_phase(p)%getFloat( 'hydrogenflux_diffusion22',defaultVal=0.0_pReal)
+   lattice_hydrogenfluxDiffusion33(3,3,p) = config_phase(p)%getFloat( 'hydrogenflux_diffusion33',defaultVal=0.0_pReal)
+   lattice_hydrogenfluxMobility33(1,1,p) = config_phase(p)%getFloat( 'hydrogenflux_mobility11',defaultVal=0.0_pReal)
+   lattice_hydrogenfluxMobility33(2,2,p) = config_phase(p)%getFloat( 'hydrogenflux_mobility22',defaultVal=0.0_pReal)
+   lattice_hydrogenfluxMobility33(3,3,p) = config_phase(p)%getFloat( 'hydrogenflux_mobility33',defaultVal=0.0_pReal)
+   lattice_equilibriumVacancyConcentration(p) = config_phase(p)%getFloat( 'vacancy_eqcv',defaultVal=0.0_pReal)
+   lattice_equilibriumHydrogenConcentration(p) = config_phase(p)%getFloat( 'hydrogen_eqch',defaultVal=0.0_pReal)
  enddo
+
  do i = 1_pInt,Nphases
    if ((CoverA(i) < 1.0_pReal .or. CoverA(i) > 2.0_pReal) &
        .and. lattice_structure(i) == LATTICE_hex_ID) call IO_error(131_pInt,el=i)                        ! checking physical significance of c/a
@@ -1682,16 +1628,16 @@ subroutine lattice_initializeStructure(myPhase,CoverA,CoverA_trans,a_fcc,a_bcc)
      myNtwin  = lattice_fcc_Ntwin
      myNtrans = lattice_fcc_Ntrans
      myNcleavage = lattice_fcc_Ncleavage
-     do i = 1_pInt,myNslip                                                                           ! assign slip system vectors
+     do i = 1_pInt,myNslip                                                                          ! assign slip system vectors
        sd(1:3,i) = lattice_fcc_systemSlip(1:3,i)
        sn(1:3,i) = lattice_fcc_systemSlip(4:6,i)
      enddo
-     do i = 1_pInt,myNtwin                                                                           ! assign twin system vectors and shears
+     do i = 1_pInt,myNtwin                                                                          ! assign twin system vectors and shears
        td(1:3,i) = lattice_fcc_systemTwin(1:3,i)
        tn(1:3,i) = lattice_fcc_systemTwin(4:6,i)
        ts(i)     = lattice_fcc_shearTwin(i)
      enddo
-     do i = 1_pInt, myNcleavage                                                                      ! assign cleavage system vectors
+     do i = 1_pInt, myNcleavage                                                                     ! assign cleavage system vectors
        cd(1:3,i) = lattice_fcc_systemCleavage(1:3,i)/norm2(lattice_fcc_systemCleavage(1:3,i))
        cn(1:3,i) = lattice_fcc_systemCleavage(4:6,i)/norm2(lattice_fcc_systemCleavage(4:6,i))
        ct(1:3,i) = math_crossproduct(cd(1:3,i),cn(1:3,i))
@@ -1699,16 +1645,16 @@ subroutine lattice_initializeStructure(myPhase,CoverA,CoverA_trans,a_fcc,a_bcc)
 
      ! Phase transformation
      select case(trans_lattice_structure(myPhase))
-       case (LATTICE_bcc_ID)                                                                         ! fcc to bcc transformation
+       case (LATTICE_bcc_ID)                                                                        ! fcc to bcc transformation
          do i = 1_pInt,myNtrans
-           Rtr(1:3,1:3,i) = math_axisAngleToR(lattice_fccTobcc_systemTrans(1:3,i), &                 ! Pitsch rotation
+           Rtr(1:3,1:3,i) = math_axisAngleToR(lattice_fccTobcc_systemTrans(1:3,i), &                ! Pitsch rotation
                               lattice_fccTobcc_systemTrans(4,i)*INRAD)
-           Btr(1:3,1:3,i) = math_axisAngleToR(lattice_fccTobcc_bainRot(1:3,i), &                     ! Rotation of fcc to Bain coordinate system
+           Btr(1:3,1:3,i) = math_axisAngleToR(lattice_fccTobcc_bainRot(1:3,i), &                    ! Rotation of fcc to Bain coordinate system
                               lattice_fccTobcc_bainRot(4,i)*INRAD)
            xtr(1:3,i) = real(LATTICE_fccTobcc_bainVariant(1:3,i),pReal)
            ytr(1:3,i) = real(LATTICE_fccTobcc_bainVariant(4:6,i),pReal)
            ztr(1:3,i) = real(LATTICE_fccTobcc_bainVariant(7:9,i),pReal)
-           Utr(1:3,1:3,i) = 0.0_pReal                                                                ! Bain deformation
+           Utr(1:3,1:3,i) = 0.0_pReal                                                               ! Bain deformation
            if ((a_fcc > 0.0_pReal) .and. (a_bcc > 0.0_pReal)) then
              Utr(1:3,1:3,i) = (a_bcc/a_fcc)*math_tensorproduct33(xtr(1:3,i), xtr(1:3,i)) + &
               sqrt(2.0_pReal)*(a_bcc/a_fcc)*math_tensorproduct33(ytr(1:3,i), ytr(1:3,i)) + &
