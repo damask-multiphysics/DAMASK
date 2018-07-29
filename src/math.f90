@@ -160,7 +160,7 @@ module math
    math_rotate_forward33, &
    math_rotate_backward33, &
    math_rotate_forward3333, &
-   math_limit
+   math_clip
  private :: &
    math_check, &
    halton
@@ -1363,16 +1363,16 @@ pure function math_RtoEuler(R)
  sqhk =sqrt(R(1,3)*R(1,3)+R(2,3)*R(2,3))
 
 ! calculate PHI
- math_RtoEuler(2) = acos(math_limit(R(3,3)/sqhkl,-1.0_pReal, 1.0_pReal))
+ math_RtoEuler(2) = acos(math_clip(R(3,3)/sqhkl,-1.0_pReal, 1.0_pReal))
 
  if((math_RtoEuler(2) < 1.0e-8_pReal) .or. (pi-math_RtoEuler(2) < 1.0e-8_pReal)) then
    math_RtoEuler(3) = 0.0_pReal
-   math_RtoEuler(1) = acos(math_limit(R(1,1)/squvw, -1.0_pReal, 1.0_pReal))
+   math_RtoEuler(1) = acos(math_clip(R(1,1)/squvw, -1.0_pReal, 1.0_pReal))
    if(R(2,1) > 0.0_pReal) math_RtoEuler(1) = 2.0_pReal*pi-math_RtoEuler(1)
  else
-   math_RtoEuler(3) = acos(math_limit(R(2,3)/sqhk, -1.0_pReal, 1.0_pReal))
+   math_RtoEuler(3) = acos(math_clip(R(2,3)/sqhk, -1.0_pReal, 1.0_pReal))
    if(R(1,3) < 0.0) math_RtoEuler(3) = 2.0_pReal*pi-math_RtoEuler(3)
-   math_RtoEuler(1) = acos(math_limit(-R(3,2)/sin(math_RtoEuler(2)), -1.0_pReal, 1.0_pReal))
+   math_RtoEuler(1) = acos(math_clip(-R(3,2)/sin(math_RtoEuler(2)), -1.0_pReal, 1.0_pReal))
    if(R(3,1) < 0.0) math_RtoEuler(1) = 2.0_pReal*pi-math_RtoEuler(1)
  end if
 
@@ -1654,7 +1654,7 @@ pure function math_qToEuler(qPassive)
  math_qToEuler(2) = acos(1.0_pReal-2.0_pReal*(q(2)**2+q(3)**2))
 
  if (abs(math_qToEuler(2)) < 1.0e-6_pReal) then
-   math_qToEuler(1) = sign(2.0_pReal*acos(math_limit(q(1),-1.0_pReal, 1.0_pReal)),q(4))
+   math_qToEuler(1) = sign(2.0_pReal*acos(math_clip(q(1),-1.0_pReal, 1.0_pReal)),q(4))
    math_qToEuler(3) = 0.0_pReal
  else
    math_qToEuler(1) = atan2(+q(1)*q(3)+q(2)*q(4), q(1)*q(2)-q(3)*q(4))
@@ -1681,7 +1681,7 @@ pure function math_qToAxisAngle(Q)
  real(pReal) :: halfAngle, sinHalfAngle
  real(pReal), dimension(4) :: math_qToAxisAngle
 
- halfAngle = acos(math_limit(Q(1),-1.0_pReal,1.0_pReal))
+ halfAngle = acos(math_clip(Q(1),-1.0_pReal,1.0_pReal))
  sinHalfAngle = sin(halfAngle)
 
  smallRotation: if (sinHalfAngle <= 1.0e-4_pReal) then
@@ -1741,7 +1741,7 @@ real(pReal) pure function math_EulerMisorientation(EulerA,EulerB)
  cosTheta = (math_trace33(math_mul33x33(math_EulerToR(EulerB), &
                               transpose(math_EulerToR(EulerA)))) - 1.0_pReal) * 0.5_pReal
 
- math_EulerMisorientation = acos(math_limit(cosTheta,-1.0_pReal,1.0_pReal))
+ math_EulerMisorientation = acos(math_clip(cosTheta,-1.0_pReal,1.0_pReal))
 
 end function math_EulerMisorientation
 
@@ -2052,7 +2052,7 @@ function math_eigenvectorBasisSym33(m)
    EB(3,3,3)=1.0_pReal
  else threeSimilarEigenvalues
    rho=sqrt(-3.0_pReal*P**3.0_pReal)/9.0_pReal
-   phi=acos(math_limit(-Q/rho*0.5_pReal,-1.0_pReal,1.0_pReal))
+   phi=acos(math_clip(-Q/rho*0.5_pReal,-1.0_pReal,1.0_pReal))
    values = 2.0_pReal*rho**(1.0_pReal/3.0_pReal)* &
                              [cos(phi/3.0_pReal), &
                               cos((phi+2.0_pReal*PI)/3.0_pReal), &
@@ -2117,7 +2117,7 @@ function math_eigenvectorBasisSym33_log(m)
    EB(3,3,3)=1.0_pReal
  else threeSimilarEigenvalues
    rho=sqrt(-3.0_pReal*P**3.0_pReal)/9.0_pReal
-   phi=acos(math_limit(-Q/rho*0.5_pReal,-1.0_pReal,1.0_pReal))
+   phi=acos(math_clip(-Q/rho*0.5_pReal,-1.0_pReal,1.0_pReal))
    values = 2.0_pReal*rho**(1.0_pReal/3.0_pReal)* &
                              [cos(phi/3.0_pReal), &
                               cos((phi+2.0_pReal*PI)/3.0_pReal), &
@@ -2229,7 +2229,7 @@ function math_eigenvaluesSym33(m)
    math_eigenvaluesSym33 = math_eigenvaluesSym(m)
  else
    rho=sqrt(-3.0_pReal*P**3.0_pReal)/9.0_pReal
-   phi=acos(math_limit(-Q/rho*0.5_pReal,-1.0_pReal,1.0_pReal))
+   phi=acos(math_clip(-Q/rho*0.5_pReal,-1.0_pReal,1.0_pReal))
    math_eigenvaluesSym33 = 2.0_pReal*rho**(1.0_pReal/3.0_pReal)* &
                          [cos(phi/3.0_pReal), &
                           cos((phi+2.0_pReal*PI)/3.0_pReal), &
@@ -2614,7 +2614,7 @@ end function math_rotate_forward3333
 !> @brief limits a scalar value to a certain range (either one or two sided)
 ! Will return NaN if left > right
 !--------------------------------------------------------------------------------------------------
-real(pReal) pure function math_limit(a, left, right)
+real(pReal) pure function math_clip(a, left, right)
  use, intrinsic :: &
    IEEE_arithmetic
 
@@ -2623,14 +2623,14 @@ real(pReal) pure function math_limit(a, left, right)
  real(pReal), intent(in), optional :: left, right
 
    
- math_limit = min ( &
+ math_clip = min ( &
                    max (merge(left, -huge(a), present(left)), a), &
                         merge(right, huge(a), present(right)) &
                   )
 
  if (present(left) .and. present(right)) &
-   math_limit = merge (IEEE_value(1.0_pReal,IEEE_quiet_NaN),math_limit, left>right)
+   math_clip = merge (IEEE_value(1.0_pReal,IEEE_quiet_NaN),math_clip, left>right)
 
-end function math_limit
+end function math_clip
 
 end module math
