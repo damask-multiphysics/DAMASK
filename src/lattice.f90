@@ -1379,13 +1379,14 @@ subroutine lattice_init
        lattice_structure(p) = LATTICE_ort_ID
    end select
 
-!     case('trans_lattice_structure')
-!       select case(trim(IO_lc(IO_stringValue(line,chunkPos,2_pInt))))
-!         case('bcc')
-!           trans_lattice_structure(section) = LATTICE_bcc_ID
-!         case('hex','hexagonal')
-!           trans_lattice_structure(section) = LATTICE_hex_ID
-!       end select
+   tag = 'undefined'
+   tag = config_phase(p)%getString('trans_lattice_structure',defaultVal=tag)
+   select case(trim(tag))
+     case('bcc')
+        trans_lattice_structure(section) = LATTICE_bcc_ID
+     case('hex','hexagonal')
+        trans_lattice_structure(section) = LATTICE_hex_ID
+   end select
 
    lattice_C66(1,1,p) = config_phase(p)%getFloat('c11',defaultVal=0.0_pReal)
    lattice_C66(1,2,p) = config_phase(p)%getFloat('c12',defaultVal=0.0_pReal)
@@ -1411,12 +1412,10 @@ subroutine lattice_init
    a_fcc(p)        = config_phase(p)%getFloat('a_fcc',defaultVal=0.0_pReal)
    a_bcc(p)        = config_phase(p)%getFloat('a_bcc',defaultVal=0.0_pReal)
 
-!     case ('thermal_conductivity11')
-!       lattice_thermalConductivity33(1,1,section) = IO_floatValue(line,chunkPos,2_pInt)
-!     case ('thermal_conductivity22')
-!       lattice_thermalConductivity33(2,2,section) = IO_floatValue(line,chunkPos,2_pInt)
-!     case ('thermal_conductivity33')
-!       lattice_thermalConductivity33(3,3,section) = IO_floatValue(line,chunkPos,2_pInt)
+   lattice_thermalConductivity33(1,1,p) = config_phase(p)%getFloat('thermal_conductivity11')
+   lattice_thermalConductivity33(2,2,p) = config_phase(p)%getFloat('thermal_conductivity22')
+   lattice_thermalConductivity33(3,3,p) = config_phase(p)%getFloat('thermal_conductivity33')
+
 !     case ('thermal_expansion11')
 !         do i = 2_pInt, min(4,chunkPos(1))                                                        ! read up to three parameters (constant, linear, quadratic with T)
 !           lattice_thermalExpansion33(1,1,i-1_pInt,section) = IO_floatValue(line,chunkPos,i)
