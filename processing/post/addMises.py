@@ -70,7 +70,7 @@ for name in filenames:
   errors  = []
   remarks = []
   
-  for type, data in items.iteritems():
+  for type, data in items.items():
     for what in data['labels']:
       dim = table.label_dimension(what)
       if dim != data['dim']: remarks.append('column {} is not a {}...'.format(what,type))
@@ -94,7 +94,7 @@ for name in filenames:
 
   outputAlive = True
   while outputAlive and table.data_read():                                                          # read next data line of ASCII table
-    for type, data in items.iteritems():
+    for type, data in items.items():
       for column in data['column']:
         table.data_append(Mises(type,
                                 np.array(table.data[column:column+data['dim']],'d').reshape(data['shape'])))

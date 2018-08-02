@@ -55,9 +55,9 @@ parser.set_defaults(canal = 25e-6,
 
 (options,filename) = parser.parse_args()
 
-if np.any(options.grid < 2):
+if np.any(np.array(options.grid) < 2):
   parser('invalid grid a b c.')
-if np.any(options.size <= 0.0):
+if np.any(np.array(options.size) <= 0.0):
   parser('invalid size x y z.')
 
 # --- open input files ----------------------------------------------------------------------------
@@ -114,12 +114,8 @@ for y in range(info['grid'][1]):
       info['microstructures'] += 1
 
 #--- report ---------------------------------------------------------------------------------------
-damask.util.croak(['grid     a b c:  %s'%(' x '.join(map(str,info['grid']))),
-                   'size     x y z:  %s'%(' x '.join(map(str,info['size']))),
-                   'origin   x y z:  %s'%(' : '.join(map(str,info['origin']))),
-                   'homogenization:  %i'%info['homogenization'],
-                   'microstructures: %i'%info['microstructures']])
-# -------------------------------------- switch according to task ----------------------------------
+damask.util.report_geom(info,['grid','size','origin','homogenization','microstructures'])
+
 formatwidth = 1+int(math.floor(math.log10(info['microstructures']-1)))
 header = [scriptID + ' ' + ' '.join(sys.argv[1:])]
 header.append('<microstructure>')

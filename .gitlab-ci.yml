@@ -12,6 +12,7 @@ stages:
   - compileAbaqus2017
   - example
   - performance
+  - createPackage
   - createDocumentation
   - saveDocumentation
   - updateMaster
@@ -410,6 +411,13 @@ SpectralRuntime:
   except:
     - master
     - release
+
+###################################################################################################
+createTar:
+  stage: createPackage
+  script:
+    - cd $(mktemp -d)
+    - $DAMASKROOT/PRIVATE/releasing/deployMe.sh $CI_COMMIT_SHA
 
 ###################################################################################################
 AbaqusStd:
