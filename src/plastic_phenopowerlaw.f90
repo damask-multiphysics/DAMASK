@@ -591,7 +591,7 @@ subroutine plastic_phenopowerlaw_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,ipc,ip,
      Lp = Lp + gdot_twin*lattice_Stwin(1:3,1:3,index_myFamily+i,ph)
 
      ! Calculation of the tangent of Lp
-     if (dNeq0(gdot_twin)) then !@ Philip: Needed? No division
+     if (dNeq0(gdot_twin)) then
        dgdot_dtautwin = gdot_twin*prm%n_twin/tau_twin
        forall (k=1_pInt:3_pInt,l=1_pInt:3_pInt,m=1_pInt:3_pInt,n=1_pInt:3_pInt) &
          dLp_dTstar3333(k,l,m,n) = dLp_dTstar3333(k,l,m,n) + &
@@ -605,6 +605,7 @@ subroutine plastic_phenopowerlaw_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,ipc,ip,
 
  end associate
 end subroutine plastic_phenopowerlaw_LpAndItsTangent
+
 
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates the rate of change of microstructure
@@ -649,8 +650,9 @@ subroutine plastic_phenopowerlaw_dotState(Tstar_v,ipc,ip,el)
 
  of = phasememberAt(ipc,ip,el)
  ph = material_phase(ipc,ip,el)
- associate( prm => param(phase_plasticityInstance(ph)), stt => state(phase_plasticityInstance(ph)), dst => &
-dotState(phase_plasticityInstance(ph)))
+ associate( prm => param(phase_plasticityInstance(ph)), &
+            stt => state(phase_plasticityInstance(ph)), &
+            dst => dotState(phase_plasticityInstance(ph)))
 
  dst%whole(:,of) = 0.0_pReal
 
@@ -668,7 +670,7 @@ dotState(phase_plasticityInstance(ph)))
    index_myFamily = sum(lattice_NslipSystem(1:f-1_pInt,ph))                                         ! at which index starts my family
    slipSystems1: do i = 1_pInt,prm%Nslip(f)
      j = j+1_pInt
-     left_SlipSlip(j) = 1.0_pReal + prm%H_int(f)                         ! modified no system-dependent left part
+     left_SlipSlip(j) = 1.0_pReal + prm%H_int(f)                                                    ! modified no system-dependent left part
      right_SlipSlip(j) = abs(1.0_pReal-stt%s_slip(j,of) / (prm%tausat_slip(f)+ssat_offset)) **prm%a_slip &
                        * sign(1.0_pReal,1.0_pReal-stt%s_slip(j,of) / (prm%tausat_slip(f)+ssat_offset))
 
@@ -707,7 +709,7 @@ dotState(phase_plasticityInstance(ph)))
 !--------------------------------------------------------------------------------------------------
 ! calculate the overall hardening based on above
  do j = 1_pInt,prm%totalNslip
-   dst%s_slip(j,of) = c_SlipSlip * left_SlipSlip(j) * &                                         ! evolution of slip resistance j
+   dst%s_slip(j,of) = c_SlipSlip * left_SlipSlip(j) * &                                             ! evolution of slip resistance j
      dot_product(prm%interaction_SlipSlip(j,1:prm%totalNslip),right_SlipSlip*abs(gdot_slip)) + &    ! dot gamma_slip modulated by right-side slip factor
      dot_product(prm%interaction_SlipTwin(j,1:prm%totalNtwin),gdot_twin)                            ! dot gamma_twin modulated by right-side twin factor
  enddo
@@ -719,12 +721,12 @@ dotState(phase_plasticityInstance(ph)))
    index_myFamily = sum(lattice_NtwinSystem(1:f-1_pInt,ph))                                         ! at which index starts my family
    twinSystems2: do i = 1_pInt,prm%Ntwin(f)
      j = j+1_pInt
-     dst%s_twin(j,of) = &                                                                       ! evolution of twin resistance j
+     dst%s_twin(j,of) = &                                                                           ! evolution of twin resistance j
        c_TwinSlip * dot_product(prm%interaction_TwinSlip(j,1:prm%totalNslip),abs(gdot_slip)) + &    ! dot gamma_slip modulated by right-side slip factor
        c_TwinTwin * dot_product(prm%interaction_TwinTwin(j,1:prm%totalNtwin),gdot_twin)             ! dot gamma_twin modulated by right-side twin factor
      if (stt%sumF(of) < 0.98_pReal) &                                                               ! ensure twin volume fractions stays below 1.0
        dst%sumF(of) = dst%sumF(of) + gdot_twin(j)/lattice_shearTwin(index_myFamily+i,ph)
-      dst%accshear_twin(j,of) = abs(gdot_twin(j))
+     dst%accshear_twin(j,of) = abs(gdot_twin(j))
    enddo twinSystems2
  enddo twinFamilies2
  end associate
@@ -771,8 +773,9 @@ function plastic_phenopowerlaw_postResults(Tstar_v,ipc,ip,el)
  of = phasememberAt(ipc,ip,el)
  ph = material_phase(ipc,ip,el)
 
- associate( prm => param(phase_plasticityInstance(ph)), stt => state(phase_plasticityInstance(ph)), dst => &
-dotState(phase_plasticityInstance(ph)))
+ associate( prm => param(phase_plasticityInstance(ph)), &
+            stt => state(phase_plasticityInstance(ph)), &
+            dst => dotState(phase_plasticityInstance(ph)))
 
  plastic_phenopowerlaw_postResults = 0.0_pReal
  c = 0_pInt
@@ -828,13 +831,14 @@ dotState(phase_plasticityInstance(ph)))
 
      case (resistance_twin_ID)
        plastic_phenopowerlaw_postResults(c+1_pInt:c+prm%totalNtwin) = &
-                            stt%s_twin(1:prm%totalNtwin,of)
+                             stt%s_twin(1:prm%totalNtwin,of)
        c = c + prm%totalNtwin
 
      case (accumulatedshear_twin_ID)
        plastic_phenopowerlaw_postResults(c+1_pInt:c+prm%totalNtwin) = &
                              stt%accshear_twin(1:prm%totalNtwin,of)
        c = c + prm%totalNtwin
+
      case (shearrate_twin_ID)
        j = 0_pInt
        twinFamilies1: do f = 1_pInt,size(prm%Ntwin,1)
