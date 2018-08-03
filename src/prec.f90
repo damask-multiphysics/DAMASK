@@ -28,13 +28,13 @@ module prec
 
  integer(pInt), allocatable, dimension(:) :: realloc_lhs_test
  
- type, public :: p_vec                                                                              !< variable length datatype used for storage of state
+ type, public :: group_scalar                                                                       !< variable length datatype used for storage of state
    real(pReal), dimension(:), pointer :: p
- end type p_vec
+ end type group_scalar
 
- type, public :: p_intvec
+ type, public :: group_int
    integer(pInt), dimension(:), pointer :: p
- end type p_intvec
+ end type group_int
 
 !http://stackoverflow.com/questions/3948210/can-i-have-a-pointer-to-an-item-in-an-allocatable-array
  type, public :: tState
