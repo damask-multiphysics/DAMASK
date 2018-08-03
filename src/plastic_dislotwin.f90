@@ -17,9 +17,6 @@ module plastic_dislotwin
  
  real(pReal),                                                 parameter,           private :: &
    kB = 1.38e-23_pReal                                                                         !< Boltzmann constant in J/Kelvin
- real(pReal),                         dimension(:,:,:,:),     allocatable,         private :: &
-   Ctwin66,&                                                                   !< twin elasticity matrix in Mandel notation for each instance
-   Ctrans66                                                                   !< trans elasticity matrix in Mandel notation for each instance
  real(pReal),                         dimension(:,:),         allocatable,         private :: &
    tau_r_twin, &                                                             !< stress to bring partial close together for each twin system and instance
    tau_r_trans                                                            !< stress to bring partial close together for each trans system and instance
@@ -123,6 +120,9 @@ module plastic_dislotwin
    interaction_SlipTrans, &                                                  !< coefficients for slip-trans interaction for each interaction type and instance
    interaction_TransSlip, &                                                  !< coefficients for trans-slip interaction for each interaction type and instance
    interaction_TransTrans                                                   !< coefficients for trans-trans interaction for each interaction type and instance
+   real(pReal),                  dimension(:,:,:),            allocatable,           private :: & 
+     Ctwin66, &
+     Ctrans66
   end type 
   
   type(tParameters), dimension(:), allocatable, private,target :: param                                !< containers of constitutive parameters (len Ninstance)
@@ -196,18 +196,9 @@ subroutine plastic_dislotwin_init(fileUnit)
    mesh_maxNips, &
    mesh_NcpElems
  use IO, only: &
-   IO_read, &
-   IO_lc, &
-   IO_getTag, &
-   IO_isBlank, &
-   IO_stringPos, &
-   IO_stringValue, &
-   IO_floatValue, &
-   IO_intValue, &
    IO_warning, &
    IO_error, &
-   IO_timeStamp, &
-   IO_EOF
+   IO_timeStamp
  use material, only: &
    homogenization_maxNgrains, &
    phase_plasticity, &
@@ -236,8 +227,8 @@ subroutine plastic_dislotwin_init(fileUnit)
  integer(kind(undefined_ID)) outputID
  
   real(pReal),                         dimension(:,:,:,:,:), allocatable :: &
-   Ctwin3333, &                                                                 !< twin elasticity matrix for each instance
-   Ctrans3333                                                                 !< trans elasticity matrix for each instance
+   Ctwin3333, &                                                                 !< twin elasticity matrix
+   Ctrans3333                                                                 !< trans elasticity matrix
  
  real(pReal),  allocatable, dimension(:) :: &
      invLambdaSlip0,&
@@ -582,20 +573,9 @@ subroutine plastic_dislotwin_init(fileUnit)
         call IO_error(211_pInt,el=instance,ext_msg='qShearBand ('//PLASTICITY_DISLOTWIN_label//')')
 
  enddo 
- 
- ! ToDo: this should be stored somewhere else. Works only for the whole instance!!
-! prm%totalNtwin should be the maximum over all totalNtwins!
- allocate(tau_r_twin(prm%totalNtwin, maxNinstance),              source=0.0_pReal)
- allocate(tau_r_trans(prm%totalNtrans, maxNinstance),            source=0.0_pReal)
 
  allocate(forestProjectionEdge(prm%totalNslip,prm%totalNslip,maxNinstance), source=0.0_pReal)
  allocate(projectionMatrix_Trans(prm%totalNtrans,prm%totalNslip,maxNinstance), source=0.0_pReal)
- 
- allocate(Ctwin66(6,6,prm%totalNtwin,maxNinstance),              source=0.0_pReal)
- allocate(Ctrans66(6,6,prm%totalNtrans,maxNinstance),            source=0.0_pReal)
-
- allocate(Ctwin3333(3,3,3,3,prm%totalNtwin),        source=0.0_pReal)
- allocate(Ctrans3333(3,3,3,3,prm%totalNtrans),      source=0.0_pReal)
  
 
  initializeInstances: do p = 1_pInt, size(phase_plasticity)
@@ -694,11 +674,12 @@ subroutine plastic_dislotwin_init(fileUnit)
      prm%interaction_SlipTwin  = temp2; deallocate(temp2)    
      prm%interaction_SlipTrans = temp3; deallocate(temp3)    
 
- 
-     allocate(temp1(prm%totalNtwin,prm%totalNslip), source =0.0_pReal)
-     allocate(temp2(prm%totalNtwin,prm%totalNtwin), source =0.0_pReal)        
 
-     Ctwin3333 = 0.0_pReal
+     allocate(temp1(prm%totalNtwin,prm%totalNslip), source =0.0_pReal)
+     allocate(temp2(prm%totalNtwin,prm%totalNtwin), source =0.0_pReal)     
+     allocate(prm%Ctwin66(6,6,prm%totalNtwin),       source=0.0_pReal)
+     if (allocated(Ctwin3333)) deallocate(Ctwin3333)
+     allocate(Ctwin3333(3,3,3,3,prm%totalNtwin),  source=0.0_pReal)
 
      twinFamiliesLoop: do f = 1_pInt, size(prm%Ntwin,1)
        index_myFamily = sum(prm%Ntwin(1:f-1_pInt))                      ! index in truncated twin system list
@@ -719,7 +700,7 @@ subroutine plastic_dislotwin_init(fileUnit)
                lattice_Qtwin(o,s,index_otherFamily+j,p)
            enddo; enddo; enddo; enddo
          enddo; enddo; enddo; enddo
-         Ctwin66(1:6,1:6,index_myFamily+j,instance) = &
+         prm%Ctwin66(1:6,1:6,index_myFamily+j) = &
            math_Mandel3333to66(Ctwin3333(1:3,1:3,1:3,1:3,index_myFamily+j))
  
       !* Interaction matrices
@@ -749,16 +730,17 @@ subroutine plastic_dislotwin_init(fileUnit)
      prm%interaction_TwinTwin  = temp2; deallocate(temp2)    
 
  
-     allocate(temp1(prm%totalNtrans,prm%totalNslip), source =0.0_pReal)
+     allocate(temp1(prm%totalNtrans,prm%totalNslip),  source =0.0_pReal)
      allocate(temp2(prm%totalNtrans,prm%totalNtrans), source =0.0_pReal)        
-
+     allocate(prm%Ctrans66(6,6,prm%totalNtrans)       ,source=0.0_pReal)
+     if (allocated(Ctrans3333)) deallocate(Ctrans3333)
+     allocate(Ctrans3333(3,3,3,3,prm%totalNtrans),  source=0.0_pReal)
 
      transFamiliesLoop: do f = 1_pInt,size(prm%Ntrans,1)
-       index_myFamily = sum(prm%Ntrans(1:f-1_pInt))                      ! index in truncated trans system list
+       index_myFamily = sum(prm%Ntrans(1:f-1_pInt))                                                 ! index in truncated trans system list
        transSystemsLoop: do j = 1_pInt,prm%Ntrans(f)
 
-       Ctrans3333 = 0.0_pReal
-       index_otherFamily = sum(lattice_NtransSystem(1:f-1_pInt,p))                               ! index in full lattice trans list
+       index_otherFamily = sum(lattice_NtransSystem(1:f-1_pInt,p))                                  ! index in full lattice trans list
          do l = 1_pInt,3_pInt; do m = 1_pInt,3_pInt; do n = 1_pInt,3_pInt; do o = 1_pInt,3_pInt
            do p1 = 1_pInt,3_pInt; do q = 1_pInt,3_pInt; do r = 1_pInt,3_pInt; do s = 1_pInt,3_pInt
              Ctrans3333(l,m,n,o,index_myFamily+j) = &
@@ -770,7 +752,7 @@ subroutine plastic_dislotwin_init(fileUnit)
                lattice_Qtrans(o,s,index_otherFamily+j,p)
            enddo; enddo; enddo; enddo
          enddo; enddo; enddo; enddo
-         Ctrans66(1:6,1:6,index_myFamily+j,instance) = &
+         prm%Ctrans66(1:6,1:6,index_myFamily+j) = &
            math_Mandel3333to66(Ctrans3333(1:3,1:3,1:3,1:3,index_myFamily+j))
 
        !* Interaction matrices
@@ -949,10 +931,13 @@ subroutine plastic_dislotwin_init(fileUnit)
        spread(math_expand(MartensiteVolume0,prm%Ntrans),2, NofMyPhase)
 
  enddo initializeInstances
+ 
+ ! ToDo: this should be stored somewhere else. Works only for the whole instance!!
+ ! ToDo: prm%totalNtwin should be the maximum over all totalNtwins!
+ allocate(tau_r_twin(prm%totalNtwin, maxNinstance),              source=0.0_pReal)
+ allocate(tau_r_trans(prm%totalNtrans, maxNinstance),            source=0.0_pReal)
+
 end subroutine plastic_dislotwin_init
-
-
-
 
 !--------------------------------------------------------------------------------------------------
 !> @brief returns the homogenized elasticity matrix
@@ -997,12 +982,12 @@ function plastic_dislotwin_homogenizedC(ipc,ip,el)
  plastic_dislotwin_homogenizedC = (1.0_pReal-sumf-sumftr)*lattice_C66(1:6,1:6,ph)
  do i=1_pInt,prm%totalNtwin
     plastic_dislotwin_homogenizedC = plastic_dislotwin_homogenizedC &
-                   + ste%twinFraction(i,of)*Ctwin66(1:6,1:6,i,instance)
+                   + ste%twinFraction(i,of)*prm%Ctwin66(1:6,1:6,i)
  enddo
  do i=1_pInt,prm%totalNtrans
     plastic_dislotwin_homogenizedC = plastic_dislotwin_homogenizedC &
                    + (ste%stressTransFraction(i,of) + ste%strainTransFraction(i,of))*&
-                     Ctrans66(1:6,1:6,i,instance)
+                     prm%Ctrans66(1:6,1:6,i)
  enddo
  end associate
  end function plastic_dislotwin_homogenizedC
@@ -1037,10 +1022,10 @@ subroutine plastic_dislotwin_microstructure(temperature,ipc,ip,el)
    of
  real(pReal) :: &
    sumf,sfe,sumftr
-    real(pReal), dimension(:), allocatable :: &
-   x0
- real(pReal), dimension(plasticState(material_phase(ipc,ip,el))%Ntwin)  :: fOverStacksize
- real(pReal), dimension(plasticState(material_phase(ipc,ip,el))%Ntrans) :: ftransOverLamellarSize
+ real(pReal), dimension(:), allocatable :: &
+   x0, &
+   fOverStacksize, &
+   ftransOverLamellarSize
    
  type(tParameters):: prm
  type(tDislotwinState) :: ste
@@ -1051,13 +1036,14 @@ subroutine plastic_dislotwin_microstructure(temperature,ipc,ip,el)
  ph = phaseAt(ipc,ip,el)
  instance = phase_plasticityInstance(ph)
 
- associate(prm => param(instance), ste => state(instance))
- !* Total twin volume fraction
- sumf   = sum(ste%twinFraction(1:prm%totalNtwin,of)) ! safe for prm%totalNtwin == 0
+ associate(prm => param(instance), &
+           ste => state(instance))
+
+ sumf   = sum(ste%twinFraction(1:prm%totalNtwin,of))
+
  sumftr = sum(ste%stressTransFraction(1:prm%totalNtrans,of)) + &
           sum(ste%strainTransFraction(1:prm%totalNtrans,of))
 
- !* Stacking fault energy
  sfe = prm%SFE_0K + prm%dSFE_dT * Temperature
  
  !* rescaled volume fraction for topology
@@ -1097,7 +1083,7 @@ subroutine plastic_dislotwin_microstructure(temperature,ipc,ip,el)
 
  !* mean free path between 2 obstacles seen by a moving dislocation
  do s = 1_pInt,prm%totalNslip
-    if ((prm%totalNtwin > 0_pInt) .or. (prm%totalNtrans > 0_pInt)) then              ! ToDo: This is two simplified
+    if ((prm%totalNtwin > 0_pInt) .or. (prm%totalNtrans > 0_pInt)) then              ! ToDo: This is too simplified
        ste%mfp_slip(s,of) = &
          prm%GrainSize/(1.0_pReal+prm%GrainSize*&
          (ste%invLambdaSlip(s,of) + ste%invLambdaSlipTwin(s,of) + ste%invLambdaSlipTrans(s,of)))
@@ -1130,11 +1116,13 @@ subroutine plastic_dislotwin_microstructure(temperature,ipc,ip,el)
   ste%twinVolume(:,of) = (PI/4.0_pReal)*prm%twinsize*ste%mfp_twin(:,of)**2.0_pReal
   ste%martensiteVolume(:,of) = (PI/4.0_pReal)*prm%lamellarsizePerTransSystem*ste%mfp_trans(:,of)**2.0_pReal
 
+
+
+!ToDo: MD: This does not work for non-isothermal simulations!!!!!
  !* equilibrium separation of partial dislocations (twin)
  x0 = lattice_mu(ph)*prm%burgers_twin**2.0_pReal/(sfe*8.0_pReal*PI)*(2.0_pReal+lattice_nu(ph))/(1.0_pReal-lattice_nu(ph))
  tau_r_twin(:,instance)= lattice_mu(ph)*prm%burgers_twin/(2.0_pReal*PI)*&     
         (1/(x0+prm%xc_twin)+cos(pi/3.0_pReal)/x0)
- 
 !* equilibrium separation of partial dislocations (trans)
  x0 = lattice_mu(ph)*prm%burgers_trans**2.0_pReal/(sfe*8.0_pReal*PI)*(2.0_pReal+lattice_nu(ph))/(1.0_pReal-lattice_nu(ph))
  tau_r_trans(:,instance)= lattice_mu(ph)*prm%burgers_trans/(2.0_pReal*PI)*&     
