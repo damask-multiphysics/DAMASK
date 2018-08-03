@@ -187,7 +187,7 @@ subroutine HDF5_closeGroup(ID)
  integer                    :: hdferr
 
  call h5gclose_f(ID, hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg = 'HDF5_closeGroup: h5gclose_f (el is ID)', el = ID)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg = 'HDF5_closeGroup: h5gclose_f (el is ID)', el = int(ID,pInt))
 
 end subroutine HDF5_closeGroup
 
