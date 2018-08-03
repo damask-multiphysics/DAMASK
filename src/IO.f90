@@ -250,18 +250,14 @@ end subroutine IO_checkAndRewind
 !> @details like IO_open_file_stat, but error is handled via call to IO_error and not via return
 !!          value
 !--------------------------------------------------------------------------------------------------
-subroutine IO_open_file(fileUnit,relPath)
- use DAMASK_interface, only: &
-   getSolverWorkingDirectoryName
+subroutine IO_open_file(fileUnit,path)
 
  implicit none
  integer(pInt),      intent(in) :: fileUnit                                                         !< file unit
- character(len=*),   intent(in) :: relPath                                                          !< relative path from working directory
+ character(len=*),   intent(in) :: path                                                             !< relative path from working directory
 
  integer(pInt)                  :: myStat
- character(len=1024)            :: path
 
- path = trim(getSolverWorkingDirectoryName())//relPath
  open(fileUnit,status='old',iostat=myStat,file=path)
  if (myStat /= 0_pInt) call IO_error(100_pInt,el=myStat,ext_msg=path)
 
@@ -273,18 +269,14 @@ end subroutine IO_open_file
 !!          directory
 !> @details Like IO_open_file, but error is handled via return value and not via call to IO_error
 !--------------------------------------------------------------------------------------------------
-logical function IO_open_file_stat(fileUnit,relPath)
- use DAMASK_interface, only: &
-   getSolverWorkingDirectoryName
+logical function IO_open_file_stat(fileUnit,path)
 
  implicit none
  integer(pInt),      intent(in) :: fileUnit                                                         !< file unit
- character(len=*),   intent(in) :: relPath                                                          !< relative path from working directory
+ character(len=*),   intent(in) :: path                                                             !< relative path from working directory
 
  integer(pInt)                  :: myStat
- character(len=1024)            :: path
 
- path = trim(getSolverWorkingDirectoryName())//relPath
  open(fileUnit,status='old',iostat=myStat,file=path)
  IO_open_file_stat = (myStat == 0_pInt)
 
@@ -299,7 +291,6 @@ end function IO_open_file_stat
 !--------------------------------------------------------------------------------------------------
 subroutine IO_open_jobFile(fileUnit,ext)
  use DAMASK_interface, only: &
-   getSolverWorkingDirectoryName, &
    getSolverJobName
 
  implicit none
@@ -309,7 +300,7 @@ subroutine IO_open_jobFile(fileUnit,ext)
  integer(pInt)                  :: myStat
  character(len=1024)            :: path
 
- path = trim(getSolverWorkingDirectoryName())//trim(getSolverJobName())//'.'//ext
+ path = trim(getSolverJobName())//'.'//ext
  open(fileUnit,status='old',iostat=myStat,file=path)
  if (myStat /= 0_pInt) call IO_error(100_pInt,el=myStat,ext_msg=path)
 
@@ -324,7 +315,6 @@ end subroutine IO_open_jobFile
 !--------------------------------------------------------------------------------------------------
 logical function IO_open_jobFile_stat(fileUnit,ext)
  use DAMASK_interface, only: &
-   getSolverWorkingDirectoryName, &
    getSolverJobName
 
  implicit none
@@ -334,7 +324,7 @@ logical function IO_open_jobFile_stat(fileUnit,ext)
  integer(pInt)                  :: myStat
  character(len=1024)            :: path
 
- path = trim(getSolverWorkingDirectoryName())//trim(getSolverJobName())//'.'//ext
+ path = trim(getSolverJobName())//'.'//ext
  open(fileUnit,status='old',iostat=myStat,file=path)
  IO_open_jobFile_stat = (myStat == 0_pInt)
 
@@ -347,7 +337,6 @@ end function IO_open_JobFile_stat
 !--------------------------------------------------------------------------------------------------
 subroutine IO_open_inputFile(fileUnit,modelName)
  use DAMASK_interface, only: &
-   getSolverWorkingDirectoryName,&
    getSolverJobName, &
    inputFileExtension
 
@@ -361,23 +350,23 @@ subroutine IO_open_inputFile(fileUnit,modelName)
  integer(pInt)                  :: fileType
 
  fileType = 1_pInt                                                                                  ! assume .pes
- path = trim(getSolverWorkingDirectoryName())//trim(modelName)//inputFileExtension(fileType)        ! attempt .pes, if it exists: it should be used
+ path = trim(modelName)//inputFileExtension(fileType)                                               ! attempt .pes, if it exists: it should be used
  open(fileUnit+1,status='old',iostat=myStat,file=path)
  if(myStat /= 0_pInt) then                                                                          ! if .pes does not work / exist; use conventional extension, i.e.".inp"
     fileType = 2_pInt
-    path = trim(getSolverWorkingDirectoryName())//trim(modelName)//inputFileExtension(fileType)
+    path = trim(modelName)//inputFileExtension(fileType)
     open(fileUnit+1,status='old',iostat=myStat,file=path)
  endif
  if (myStat /= 0_pInt) call IO_error(100_pInt,el=myStat,ext_msg=path)
 
- path = trim(getSolverWorkingDirectoryName())//trim(modelName)//inputFileExtension(fileType)//'_assembly'
+ path = trim(modelName)//inputFileExtension(fileType)//'_assembly'
  open(fileUnit,iostat=myStat,file=path)
  if (myStat /= 0_pInt) call IO_error(100_pInt,el=myStat,ext_msg=path)
     if (.not.abaqus_assembleInputFile(fileUnit,fileUnit+1_pInt)) call IO_error(103_pInt)            ! strip comments and concatenate any "include"s
  close(fileUnit+1_pInt)
 #endif
 #ifdef Marc4DAMASK
-   path = trim(getSolverWorkingDirectoryName())//trim(modelName)//inputFileExtension
+   path = trim(modelName)//inputFileExtension
    open(fileUnit,status='old',iostat=myStat,file=path)
    if (myStat /= 0_pInt) call IO_error(100_pInt,el=myStat,ext_msg=path)
 #endif
@@ -391,7 +380,6 @@ end subroutine IO_open_inputFile
 !--------------------------------------------------------------------------------------------------
 subroutine IO_open_logFile(fileUnit)
  use DAMASK_interface, only: &
-   getSolverWorkingDirectoryName, &
    getSolverJobName, &
    LogFileExtension
 
@@ -401,7 +389,7 @@ subroutine IO_open_logFile(fileUnit)
  integer(pInt)                  :: myStat
  character(len=1024)            :: path
 
- path = trim(getSolverWorkingDirectoryName())//trim(getSolverJobName())//LogFileExtension
+ path = trim(getSolverJobName())//LogFileExtension
  open(fileUnit,status='old',iostat=myStat,file=path)
  if (myStat /= 0_pInt) call IO_error(100_pInt,el=myStat,ext_msg=path)
 
@@ -415,7 +403,6 @@ end subroutine IO_open_logFile
 !--------------------------------------------------------------------------------------------------
 subroutine IO_write_jobFile(fileUnit,ext)
  use DAMASK_interface,  only: &
-   getSolverWorkingDirectoryName, &
    getSolverJobName
 
  implicit none
@@ -425,7 +412,7 @@ subroutine IO_write_jobFile(fileUnit,ext)
  integer(pInt)                  :: myStat
  character(len=1024)            :: path
 
- path = trim(getSolverWorkingDirectoryName())//trim(getSolverJobName())//'.'//ext
+ path = trim(getSolverJobName())//'.'//ext
  open(fileUnit,status='replace',iostat=myStat,file=path)
  if (myStat /= 0_pInt) call IO_error(100_pInt,el=myStat,ext_msg=path)
 
@@ -438,7 +425,6 @@ end subroutine IO_write_jobFile
 !--------------------------------------------------------------------------------------------------
 subroutine IO_write_jobRealFile(fileUnit,ext,recMultiplier)
  use DAMASK_interface, only: &
-   getSolverWorkingDirectoryName, &
    getSolverJobName
 
  implicit none
@@ -449,7 +435,7 @@ subroutine IO_write_jobRealFile(fileUnit,ext,recMultiplier)
  integer(pInt)                            :: myStat
  character(len=1024)                      :: path
 
- path = trim(getSolverWorkingDirectoryName())//trim(getSolverJobName())//'.'//ext
+ path = trim(getSolverJobName())//'.'//ext
  if (present(recMultiplier)) then
    open(fileUnit,status='replace',form='unformatted',access='direct', &
                                                    recl=pReal*recMultiplier,iostat=myStat,file=path)
@@ -469,7 +455,6 @@ end subroutine IO_write_jobRealFile
 !--------------------------------------------------------------------------------------------------
 subroutine IO_write_jobIntFile(fileUnit,ext,recMultiplier)
  use DAMASK_interface,  only: &
-   getSolverWorkingDirectoryName, &
    getSolverJobName
 
  implicit none
@@ -480,7 +465,7 @@ subroutine IO_write_jobIntFile(fileUnit,ext,recMultiplier)
  integer(pInt)                            :: myStat
  character(len=1024)                      :: path
 
- path = trim(getSolverWorkingDirectoryName())//trim(getSolverJobName())//'.'//ext
+ path = trim(getSolverJobName())//'.'//ext
  if (present(recMultiplier)) then
    open(fileUnit,status='replace',form='unformatted',access='direct', &
                  recl=pInt*recMultiplier,iostat=myStat,file=path)
@@ -499,8 +484,6 @@ end subroutine IO_write_jobIntFile
 !!        located in current working directory
 !--------------------------------------------------------------------------------------------------
 subroutine IO_read_realFile(fileUnit,ext,modelName,recMultiplier)
- use DAMASK_interface, only: &
-   getSolverWorkingDirectoryName
 
  implicit none
  integer(pInt),      intent(in)           :: fileUnit                                               !< file unit
@@ -511,7 +494,7 @@ subroutine IO_read_realFile(fileUnit,ext,modelName,recMultiplier)
  integer(pInt)                            :: myStat
  character(len=1024)                      :: path
 
- path = trim(getSolverWorkingDirectoryName())//trim(modelName)//'.'//ext
+ path = trim(modelName)//'.'//ext
  if (present(recMultiplier)) then
    open(fileUnit,status='old',form='unformatted',access='direct', &
                  recl=pReal*recMultiplier,iostat=myStat,file=path)
@@ -529,8 +512,6 @@ end subroutine IO_read_realFile
 !!        located in current working directory
 !--------------------------------------------------------------------------------------------------
 subroutine IO_read_intFile(fileUnit,ext,modelName,recMultiplier)
- use DAMASK_interface, only: &
-   getSolverWorkingDirectoryName
 
  implicit none
  integer(pInt),      intent(in)           :: fileUnit                                               !< file unit
@@ -541,7 +522,7 @@ subroutine IO_read_intFile(fileUnit,ext,modelName,recMultiplier)
  integer(pInt)                            :: myStat
  character(len=1024)                      :: path
 
- path = trim(getSolverWorkingDirectoryName())//trim(modelName)//'.'//ext
+ path = trim(modelName)//'.'//ext
  if (present(recMultiplier)) then
    open(fileUnit,status='old',form='unformatted',access='direct', &
                  recl=pInt*recMultiplier,iostat=myStat,file=path)
@@ -1062,11 +1043,7 @@ function IO_stringValue(string,chunkPos,myChunk,silent)
 
  logical                                                  :: warn
 
- if (.not. present(silent)) then
-   warn = .false.
- else
-   warn = silent
- endif
+ warn = merge(silent,.false.,present(silent))
 
  IO_stringValue = ''
  valuePresent: if (myChunk > chunkPos(1) .or. myChunk < 1_pInt) then
@@ -1589,6 +1566,8 @@ subroutine IO_error(error_ID,el,ip,g,instance,ext_msg)
    msg = '{input} recursion limit reached'
  case (105_pInt)
    msg = 'unknown output:'
+ case (106_pInt)
+   msg = 'working directory does not exist:'
 
 !--------------------------------------------------------------------------------------------------
 ! lattice error messages
@@ -1960,8 +1939,6 @@ end function IO_verifyFloatValue
 !> including "include"s
 !--------------------------------------------------------------------------------------------------
 recursive function abaqus_assembleInputFile(unit1,unit2) result(createSuccess)
- use DAMASK_interface, only: &
-   getSolverWorkingDirectoryName
 
  implicit none
  integer(pInt), intent(in)                :: unit1, &
@@ -1978,7 +1955,7 @@ recursive function abaqus_assembleInputFile(unit1,unit2) result(createSuccess)
    chunkPos = IO_stringPos(line)
 
    if (IO_lc(IO_StringValue(line,chunkPos,1_pInt))=='*include') then
-     fname = trim(getSolverWorkingDirectoryName())//trim(line(9+scan(line(9:),'='):))
+     fname = trim(line(9+scan(line(9:),'='):))
      inquire(file=fname, exist=fexist)
      if (.not.(fexist)) then
        !$OMP CRITICAL (write2out)
