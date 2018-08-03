@@ -1276,6 +1276,7 @@ subroutine lattice_init
    tag  = ''
  integer(pInt) :: section = 0_pInt,i,p
  real(pReal),  dimension(:), allocatable :: &
+   temp, &
    CoverA, &                                                                                        !< c/a ratio for low symmetry type lattice
    CoverA_trans, &                                                                                  !< c/a ratio for transformed hex type lattice
    a_fcc, &                                                                                         !< lattice parameter a for fcc austenite
@@ -1416,18 +1417,12 @@ subroutine lattice_init
    lattice_thermalConductivity33(2,2,p) = config_phase(p)%getFloat('thermal_conductivity22')
    lattice_thermalConductivity33(3,3,p) = config_phase(p)%getFloat('thermal_conductivity33')
 
-!     case ('thermal_expansion11')
-!         do i = 2_pInt, min(4,chunkPos(1))                                                        ! read up to three parameters (constant, linear, quadratic with T)
-!           lattice_thermalExpansion33(1,1,i-1_pInt,section) = IO_floatValue(line,chunkPos,i)
-!         enddo
-!     case ('thermal_expansion22')
-!         do i = 2_pInt, min(4,chunkPos(1))                                                        ! read up to three parameters (constant, linear, quadratic with T)
-!           lattice_thermalExpansion33(2,2,i-1_pInt,section) = IO_floatValue(line,chunkPos,i)
-!         enddo
-!     case ('thermal_expansion33')
-!         do i = 2_pInt, min(4,chunkPos(1))                                                        ! read up to three parameters (constant, linear, quadratic with T)
-!           lattice_thermalExpansion33(3,3,i-1_pInt,section) = IO_floatValue(line,chunkPos,i)
-!         enddo
+   temp = config_phase(p)%getFloats('thermal_expansion11')                                          ! read up to three parameters (constant, linear, quadratic with T)
+   lattice_thermalExpansion33(1,1,1:size(temp),p) = temp
+   temp = config_phase(p)%getFloats('thermal_expansion22')                                          ! read up to three parameters (constant, linear, quadratic with T)
+   lattice_thermalExpansion33(2,2,1:size(temp),p) = temp
+   temp = config_phase(p)%getFloats('thermal_expansion33')                                          ! read up to three parameters (constant, linear, quadratic with T)
+   lattice_thermalExpansion33(3,3,1:size(temp),p) = temp
 
    lattice_specificHeat(p) = config_phase(p)%getFloat( 'specific_heat',defaultVal=0.0_pReal)
    lattice_vacancyFormationEnergy(p) = config_phase(p)%getFloat( 'vacancyformationenergy',defaultVal=0.0_pReal)
