@@ -82,7 +82,7 @@ for name in filenames:
                              [coords[i][j-1] + coords[i][j] for j in range(1,len(coords[i]))] + \
                              [3.0 * coords[i][-1] - coords[i][-1 - int(len(coords[i]) > 1)]]) for i in range(3)]
 
-  grid = np.array(map(len,coords),'i')
+  grid = np.array(list(map(len,coords)),'i')
   N = grid.prod() if options.mode == 'point' else (grid-1).prod()
 
   if N != len(table.data):

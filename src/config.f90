@@ -667,6 +667,7 @@ function getStrings(this,key,defaultVal,requiredShape,raw)
        endif
      else notAllocated
        if (whole) then
+         str = item%string%val(item%string%pos(4):)
          getStrings = [getStrings,str]
        else
          do i=2_pInt,item%string%pos(1)

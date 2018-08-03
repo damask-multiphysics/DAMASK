@@ -344,7 +344,7 @@ def rcbParser(content,M,size,tolerance,idcolumn,segmentcolumn):
           else:
             myNeighbors[grainNeighbors[leg][side]] = 1
     if myNeighbors:                                                                                 # do I have any neighbors (i.e., non-bounding box segment)
-      candidateGrains = sorted(myNeighbors.iteritems(), key=lambda p: (p[1],p[0]), reverse=True)    # sort grain counting
+      candidateGrains = sorted(myNeighbors.items(), key=lambda p: (p[1],p[0]), reverse=True)    # sort grain counting
                                                                                                     # most frequent one not yet seen?
       rcData['grainMapping'].append(candidateGrains[0 if candidateGrains[0][0] not in rcData['grainMapping'] else 1][0]) # must be me then
                                                                                                     # special case of bi-crystal situation...

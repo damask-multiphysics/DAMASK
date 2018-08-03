@@ -36,8 +36,8 @@ class bcolors:
 def srepr(arg,glue = '\n'):
   """Joins arguments as individual lines"""
   if (not hasattr(arg, "strip") and
-          hasattr(arg, "__getitem__") or
-          hasattr(arg, "__iter__")):
+          (hasattr(arg, "__getitem__") or
+           hasattr(arg, "__iter__"))):
      return glue.join(str(x) for x in arg)
   return arg if isinstance(arg,str) else repr(arg)
 
@@ -59,9 +59,9 @@ def report_geom(info,
                 what = ['grid','size','origin','homogenization','microstructures']):
   """Reports (selected) geometry information"""
   output = {
-            'grid'   : 'grid     a b c:  {}'.format(' x '.join(map(str,info['grid'  ]))),
-            'size'   : 'size     x y z:  {}'.format(' x '.join(map(str,info['size'  ]))),
-            'origin' : 'origin   x y z:  {}'.format(' : '.join(map(str,info['origin']))),
+            'grid'   : 'grid     a b c:  {}'.format(' x '.join(list(map(str,info['grid'  ])))),
+            'size'   : 'size     x y z:  {}'.format(' x '.join(list(map(str,info['size'  ])))),
+            'origin' : 'origin   x y z:  {}'.format(' : '.join(list(map(str,info['origin'])))),
             'homogenization' :  'homogenization:  {}'.format(info['homogenization']),
             'microstructures' : 'microstructures: {}'.format(info['microstructures']),
            }
@@ -93,8 +93,10 @@ def execute(cmd,
                              stdout = subprocess.PIPE,
                              stderr = subprocess.PIPE,
                              stdin  = subprocess.PIPE)
-  out,error = [i.replace(b"\x08",b"") for i in (process.communicate() if streamIn is None
-                                                else process.communicate(streamIn.read()))]
+  out,error = [i for i in (process.communicate() if streamIn is None
+                                                 else process.communicate(streamIn.read().encode('utf-8')))]
+  out   = out.decode('utf-8').replace('\x08','')
+  error = error.decode('utf-8').replace('\x08','')
   os.chdir(initialPath)
   if process.returncode != 0: raise RuntimeError('{} failed with returncode {}'.format(cmd,process.returncode))
   return out,error
@@ -103,9 +105,9 @@ def coordGridAndSize(coordinates):
   """Determines grid count and overall physical size along each dimension of an ordered array of coordinates"""
   dim    = coordinates.shape[1]
   coords = [np.unique(coordinates[:,i]) for i in range(dim)]
-  mincorner = np.array(map(min,coords))
-  maxcorner = np.array(map(max,coords))
-  grid   = np.array(map(len,coords),'i')
+  mincorner = np.array(list(map(min,coords)))
+  maxcorner = np.array(list(map(max,coords)))
+  grid   = np.array(list(map(len,coords)),'i')
   size   = grid/np.maximum(np.ones(dim,'d'), grid-1.0) * (maxcorner-mincorner)                      # size from edge to edge = dim * n/(n-1) 
   size   = np.where(grid > 1, size, min(size[grid > 1]/grid[grid > 1]))                             # spacing for grid==1 equal to smallest among other ones
   return grid,size

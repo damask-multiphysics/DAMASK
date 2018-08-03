@@ -64,7 +64,6 @@ for name in filenames:
   remarks = []
   
   if table.label_dimension(options.pos) != 3:  errors.append('coordinates "{}" are not a vector.'.format(options.pos))
-  else: colCoord = table.label_index(options.pos)
 
   colElem = table.label_index('elem')
   
@@ -79,12 +78,7 @@ for name in filenames:
   table.data_readArray(options.pos)
   table.data_rewind()
 
-  coords = [np.unique(table.data[:,i]) for i in range(3)]
-  mincorner = np.array(map(min,coords))
-  maxcorner = np.array(map(max,coords))
-  grid   = np.array(map(len,coords),'i')
-  size   = grid/np.maximum(np.ones(3,'d'), grid-1.0) * (maxcorner-mincorner)                        # size from edge to edge = dim * n/(n-1) 
-  size   = np.where(grid > 1, size, min(size[grid > 1]/grid[grid > 1]))                             # spacing for grid==1 set to smallest among other spacings
+  grid,size = damask.util.coordGridAndSize(table.data)
   
   packing = np.array(options.packing,'i')
   outSize = grid*packing
@@ -113,7 +107,7 @@ for name in filenames:
   for c in range(outSize[2]):
     for b in range(outSize[1]):
       for a in range(outSize[0]):
-        data[a,b,c,colCoord:colCoord+3] = [a+0.5,b+0.5,c+0.5]*elementSize
+        data[a,b,c,table.label_indexrange(options.pos)] = [a+0.5,b+0.5,c+0.5]*elementSize
         if colElem != -1: data[a,b,c,colElem] = elem
         table.data = data[a,b,c,:].tolist()
         outputAlive = table.data_write()                                                            # output processed line

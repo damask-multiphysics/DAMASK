@@ -270,7 +270,7 @@ for name in filenames:
   ODF['limit'] = np.radians(limits[1,:])                                                            # right hand limits in radians
   ODF['center'] = 0.0 if all(limits[0,:]<1e-8) else 0.5                                             # vertex or cell centered
 
-  ODF['interval'] = np.array(map(len,[np.unique(table.data[:,i]) for i in range(3)]),'i')           # steps are number of distict values
+  ODF['interval'] = np.array(list(map(len,[np.unique(table.data[:,i]) for i in range(3)])),'i')     # steps are number of distict values
   ODF['nBins'] = ODF['interval'].prod()
   ODF['delta'] = np.radians(np.array(limits[1,0:3]-limits[0,0:3])/(ODF['interval']-1))              # step size
 

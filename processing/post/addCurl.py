@@ -138,7 +138,6 @@ for name in filenames:
 # --------------- figure out size and grid ---------------------------------------------------------
 
   table.data_readArray()
-
   grid,size = damask.util.coordGridAndSize(table.data[:,table.label_indexrange(options.pos)])
 
 # ------------------------------------------ process value field -----------------------------------
