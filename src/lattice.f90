@@ -1054,40 +1054,44 @@ module lattice
      ],pReal),[ 3_pInt + 3_pInt,LATTICE_ortho_Ncleavage])
 
  integer(pInt), parameter, public :: &
-   LATTICE_maxNslip        = maxval([LATTICE_fcc_Nslip,LATTICE_bcc_Nslip,LATTICE_hex_Nslip, &
-                                     LATTICE_bct_Nslip,LATTICE_iso_Nslip,LATTICE_ortho_Nslip]), &   !< max # of slip systems over lattice structures
-   LATTICE_maxNtwin        = maxval([LATTICE_fcc_Ntwin,LATTICE_bcc_Ntwin,LATTICE_hex_Ntwin, &
-                                     LATTICE_bct_Ntwin,LATTICE_iso_Ntwin,LATTICE_ortho_Ntwin]), &   !< max # of twin systems over lattice structures
-   LATTICE_maxNnonSchmid   = maxval([LATTICE_fcc_NnonSchmid,LATTICE_bcc_NnonSchmid, &
-                                     LATTICE_hex_NnonSchmid,LATTICE_bct_NnonSchmid, &
-                                     LATTICE_iso_NnonSchmid,LATTICE_ortho_NnonSchmid]), &           !< max # of non-Schmid contributions over lattice structures
-   LATTICE_maxNtrans       = maxval([LATTICE_fcc_Ntrans,LATTICE_bcc_Ntrans,LATTICE_hex_Ntrans, &
-                                     LATTICE_bct_Ntrans,LATTICE_iso_Ntrans,LATTICE_ortho_Ntrans]), &!< max # of transformation systems over lattice structures
-   LATTICE_maxNcleavage    = maxval([LATTICE_fcc_Ncleavage,LATTICE_bcc_Ncleavage, &
-                                     LATTICE_hex_Ncleavage,LATTICE_bct_Ncleavage, &
-                                     LATTICE_iso_Ncleavage,LATTICE_ortho_Ncleavage]), &             !< max # of cleavage systems over lattice structures
-   LATTICE_maxNinteraction = maxval([ &
-                                     maxval(lattice_fcc_interactionSlipSlip), &
-                                     maxval(lattice_bcc_interactionSlipSlip), &
-                                     maxval(lattice_hex_interactionSlipSlip), &
-                                     maxval(lattice_bct_interactionSlipSlip), &
+   LATTICE_maxNslip        = max(LATTICE_fcc_Nslip,LATTICE_bcc_Nslip,LATTICE_hex_Nslip, &
+                                 LATTICE_bct_Nslip,LATTICE_iso_Nslip,LATTICE_ortho_Nslip), &        !< max # of slip systems over lattice structures
+   LATTICE_maxNtwin        = max(LATTICE_fcc_Ntwin,LATTICE_bcc_Ntwin,LATTICE_hex_Ntwin, &
+                                 LATTICE_bct_Ntwin,LATTICE_iso_Ntwin,LATTICE_ortho_Ntwin), &        !< max # of twin systems over lattice structures
+   LATTICE_maxNnonSchmid   = max(LATTICE_fcc_NnonSchmid,LATTICE_bcc_NnonSchmid, &
+                                 LATTICE_hex_NnonSchmid,LATTICE_bct_NnonSchmid, &
+                                 LATTICE_iso_NnonSchmid,LATTICE_ortho_NnonSchmid), &                !< max # of non-Schmid contributions over lattice structures
+   LATTICE_maxNtrans       = max(LATTICE_fcc_Ntrans,LATTICE_bcc_Ntrans,LATTICE_hex_Ntrans, &
+                                 LATTICE_bct_Ntrans,LATTICE_iso_Ntrans,LATTICE_ortho_Ntrans), &     !< max # of transformation systems over lattice structures
+   LATTICE_maxNcleavage    = max(LATTICE_fcc_Ncleavage,LATTICE_bcc_Ncleavage, &
+                                 LATTICE_hex_Ncleavage,LATTICE_bct_Ncleavage, &
+                                 LATTICE_iso_Ncleavage,LATTICE_ortho_Ncleavage), &                  !< max # of cleavage systems over lattice structures
+#if defined(__GFORTRAN__) 
+   ! only supported in gcc 8
+   LATTICE_maxNinteraction = 182_pInt
+#else 
+   LATTICE_maxNinteraction = max(&
+                                 maxval(lattice_fcc_interactionSlipSlip), &
+                                 maxval(lattice_bcc_interactionSlipSlip), &
+                                 maxval(lattice_hex_interactionSlipSlip), &
+                                 maxval(lattice_bct_interactionSlipSlip), &
                                      !
-                                     maxval(lattice_fcc_interactionSlipTwin), &
-                                     maxval(lattice_bcc_interactionSlipTwin), &
-                                     maxval(lattice_hex_interactionSlipTwin), &
-                                  !  maxval(lattice_bct_interactionSlipTwin), &
+                                 maxval(lattice_fcc_interactionSlipTwin), &
+                                 maxval(lattice_bcc_interactionSlipTwin), &
+                                 maxval(lattice_hex_interactionSlipTwin), &
+                                !maxval(lattice_bct_interactionSlipTwin), &
                                      !
-                                     maxval(lattice_fcc_interactionTwinSlip), &
-                                     maxval(lattice_bcc_interactionTwinSlip), &
-                                     maxval(lattice_hex_interactionTwinSlip), &
-                                  !  maxval(lattice_bct_interactionTwinSlip), &
+                                 maxval(lattice_fcc_interactionTwinSlip), &
+                                 maxval(lattice_bcc_interactionTwinSlip), &
+                                 maxval(lattice_hex_interactionTwinSlip), &
+                                !maxval(lattice_bct_interactionTwinSlip), &
                                      !
-                                     maxval(lattice_fcc_interactionTwinTwin), &
-                                     maxval(lattice_bcc_interactionTwinTwin), &
-                                     maxval(lattice_hex_interactionTwinTwin)  &
-                                  !  maxval(lattice_bct_interactionTwinTwin)))
-                                   ])                                                               !< max # of interaction types (in hardening matrix part)
-
+                                 maxval(lattice_fcc_interactionTwinTwin), &
+                                 maxval(lattice_bcc_interactionTwinTwin), &
+                                 maxval(lattice_hex_interactionTwinTwin)  &
+                                !maxval(lattice_bct_interactionTwinTwin)))
+                                )                                                                   !< max # of interaction types (in hardening matrix part)
+#endif
  real(pReal),                          dimension(:,:,:),     allocatable, public, protected :: &
    lattice_C66,   lattice_trans_C66
  real(pReal),                              dimension(:,:,:,:,:),   allocatable, public, protected :: &
