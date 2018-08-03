@@ -277,5 +277,3 @@ class Material():
     self.data[part.lower()][section.lower()][key.lower()] = value
     if newlen is not oldlen:
       print('Length of value was changed from %i to %i!'%(oldlen,newlen))
-    
-
