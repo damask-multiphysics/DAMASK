@@ -75,8 +75,8 @@ for name in filenames:
 
   outputAlive = True
   while outputAlive and table.data_read():                                                          # read next data line of ASCII table
-    F = np.array(map(float,table.data[column[options.defgrad]:column[options.defgrad]+9]),'d').reshape(3,3)
-    P = np.array(map(float,table.data[column[options.stress ]:column[options.stress ]+9]),'d').reshape(3,3)
+    F = np.array(list(map(float,table.data[column[options.defgrad]:column[options.defgrad]+9])),'d').reshape(3,3)
+    P = np.array(list(map(float,table.data[column[options.stress ]:column[options.stress ]+9])),'d').reshape(3,3)
     table.data_append(list(1.0/np.linalg.det(F)*np.dot(P,F.T).reshape(9)))                          # [Cauchy] = (1/det(F)) * [P].[F_transpose]
     outputAlive = table.data_write()                                                                # output processed line
 

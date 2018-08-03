@@ -506,8 +506,7 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
    debug_levelSelective, &
    debug_e, &
    debug_i, &
-   debug_g, &
-   debug_CrystalliteLoopDistribution
+   debug_g
  use IO, only: &
    IO_warning, &
    IO_error
@@ -922,13 +921,6 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
              else                                                                                    ! this crystallite just converged for the entire timestep
                crystallite_todo(c,i,e) = .false.                                                     ! so done here
                !$OMP FLUSH(crystallite_todo)
-               if (iand(debug_level(debug_crystallite),debug_levelBasic) /= 0_pInt &
-                   .and. formerSubStep > 0.0_pReal) then
-                 !$OMP CRITICAL (distributionCrystallite)
-                   debug_CrystalliteLoopDistribution(min(nCryst+1_pInt,NiterationCrystallite)) = &
-                     debug_CrystalliteLoopDistribution(min(nCryst+1_pInt,NiterationCrystallite)) + 1_pInt
-                 !$OMP END CRITICAL (distributionCrystallite)
-               endif
              endif
 
            ! --- cutback ---
@@ -1235,8 +1227,7 @@ subroutine crystallite_integrateStateRK4()
    debug_crystallite, &
    debug_levelBasic, &
    debug_levelExtensive, &
-   debug_levelSelective, &
-   debug_StateLoopDistribution
+   debug_levelSelective
  use FEsolving, only: &
    FEsolving_execElem, &
    FEsolving_execIP
@@ -1492,15 +1483,7 @@ subroutine crystallite_integrateStateRK4()
  ! --- SET CONVERGENCE FLAG ---
 
  do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                     ! iterate over elements, ips and grains
-   if (crystallite_todo(g,i,e)) then
-     crystallite_converged(g,i,e) = .true.                                                                ! if still "to do" then converged per definitionem
-     if (iand(debug_level(debug_crystallite), debug_levelBasic) /= 0_pInt) then
-       !$OMP CRITICAL (distributionState)
-         debug_StateLoopDistribution(4,numerics_integrationMode) = &
-           debug_StateLoopDistribution(4,numerics_integrationMode) + 1_pInt
-       !$OMP END CRITICAL (distributionState)
-     endif
-   endif
+   crystallite_converged(g,i,e) = crystallite_todo(g,i,e) .or. crystallite_converged(g,i,e)               ! if still "to do" then converged per definitionem
  enddo; enddo; enddo
 
 
@@ -1532,8 +1515,7 @@ subroutine crystallite_integrateStateRKCK45()
    debug_crystallite, &
    debug_levelBasic, &
    debug_levelExtensive, &
-   debug_levelSelective, &
-   debug_StateLoopDistribution
+   debug_levelSelective
  use numerics, only: &
    rTol_crystalliteState, &
    numerics_integrationMode
@@ -1996,15 +1978,7 @@ subroutine crystallite_integrateStateRKCK45()
 ! --- SET CONVERGENCE FLAG ---
  !$OMP DO
    do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                    ! iterate over elements, ips and grains
-     if (crystallite_todo(g,i,e)) then
-       crystallite_converged(g,i,e) = .true.                                                               ! if still "to do" then converged per definition
-       if (iand(debug_level(debug_crystallite), debug_levelBasic) /= 0_pInt) then
-         !$OMP CRITICAL (distributionState)
-           debug_StateLoopDistribution(6,numerics_integrationMode) = &
-             debug_StateLoopDistribution(6,numerics_integrationMode) + 1_pInt
-         !$OMP END CRITICAL (distributionState)
-       endif
-     endif
+     crystallite_converged(g,i,e) = crystallite_todo(g,i,e) .or. crystallite_converged(g,i,e)              ! if still "to do" then converged per definition
    enddo; enddo; enddo
  !$OMP ENDDO
 
@@ -2037,8 +2011,7 @@ subroutine crystallite_integrateStateAdaptiveEuler()
    debug_crystallite, &
    debug_levelBasic, &
    debug_levelExtensive, &
-   debug_levelSelective, &
-   debug_StateLoopDistribution
+   debug_levelSelective
  use numerics, only: &
    rTol_crystalliteState, &
    numerics_integrationMode
@@ -2342,8 +2315,6 @@ subroutine crystallite_integrateStateAdaptiveEuler()
            crystallite_converged(g,i,e) = .true.                                                             ! ... converged per definitionem
            if (iand(debug_level(debug_crystallite), debug_levelBasic) /= 0_pInt) then
              !$OMP CRITICAL (distributionState)
-               debug_StateLoopDistribution(2,numerics_integrationMode) = &
-                 debug_StateLoopDistribution(2,numerics_integrationMode) + 1_pInt
              !$OMP END CRITICAL (distributionState)
            endif
          endif
@@ -2356,15 +2327,7 @@ subroutine crystallite_integrateStateAdaptiveEuler()
 
    !$OMP PARALLEL DO
      do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                    ! iterate over elements, ips and grains
-       if (crystallite_todo(g,i,e)) then
-         crystallite_converged(g,i,e) = .true.                                                               ! ... converged per definitionem
-         if (iand(debug_level(debug_crystallite), debug_levelBasic) /= 0_pInt) then
-           !$OMP CRITICAL (distributionState)
-             debug_StateLoopDistribution(2,numerics_integrationMode) = &
-               debug_StateLoopDistribution(2,numerics_integrationMode) + 1_pInt
-           !$OMP END CRITICAL (distributionState)
-         endif
-       endif
+       crystallite_converged(g,i,e) = crystallite_todo(g,i,e) .or. crystallite_converged(g,i,e)              ! ... converged per definitionem
      enddo; enddo; enddo
    !$OMP END PARALLEL DO
 
@@ -2399,8 +2362,7 @@ subroutine crystallite_integrateStateEuler()
    debug_crystallite, &
    debug_levelBasic, &
    debug_levelExtensive, &
-   debug_levelSelective, &
-   debug_StateLoopDistribution
+   debug_levelSelective
  use numerics, only: &
    numerics_integrationMode, &
    numerics_timeSyncing
@@ -2581,15 +2543,7 @@ eIter = FEsolving_execElem(1:2)
 
  !$OMP DO
    do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                    ! iterate over elements, ips and grains
-     if (crystallite_todo(g,i,e) .and. .not. crystallite_converged(g,i,e)) then
-       crystallite_converged(g,i,e) = .true.                                                               ! if still "to do" then converged per definitionem
-       if (iand(debug_level(debug_crystallite), debug_levelBasic) /= 0_pInt) then
-         !$OMP CRITICAL (distributionState)
-           debug_StateLoopDistribution(1,numerics_integrationMode) = &
-             debug_StateLoopDistribution(1,numerics_integrationMode) + 1_pInt
-         !$OMP END CRITICAL (distributionState)
-       endif
-     endif
+     crystallite_converged(g,i,e) = crystallite_todo(g,i,e) .or. crystallite_converged(g,i,e)              ! if still "to do" then converged per definitionem
    enddo; enddo; enddo
  !$OMP ENDDO
 
@@ -2624,8 +2578,7 @@ subroutine crystallite_integrateStateFPI()
    debug_crystallite, &
    debug_levelBasic, &
    debug_levelExtensive, &
-   debug_levelSelective, &
-   debug_StateLoopDistribution
+   debug_levelSelective
  use numerics, only: &
    nState, &
    numerics_integrationMode, &
@@ -2997,16 +2950,8 @@ subroutine crystallite_integrateStateFPI()
                           .or. abs(sourceStateResiduum(1:mySizeSourceDotState,mySource)) < &
                                rTol_crystalliteState * abs(tempSourceState(1:mySizeSourceDotState,mySource)))
          enddo
-         if (converged) then
-           crystallite_converged(g,i,e) = .true.                                                                   ! ... converged per definition
+         if (converged) crystallite_converged(g,i,e) = .true.                                                                   ! ... converged per definition
 
-           if (iand(debug_level(debug_crystallite), debug_levelBasic) /= 0_pInt) then
-             !$OMP CRITICAL (distributionState)
-               debug_StateLoopDistribution(NiterationState,numerics_integrationMode) = &
-                 debug_StateLoopDistribution(NiterationState,numerics_integrationMode) + 1_pInt
-             !$OMP END CRITICAL (distributionState)
-           endif
-         endif
          plasticState(p)%state(1:mySizePlasticDotState,c) = &
            tempPlasticState(1:mySizePlasticDotState)
          do mySource = 1_pInt, phase_Nsources(p)
@@ -3215,19 +3160,16 @@ logical function crystallite_integrateStress(&
                          subStepSizeLp, &
                          subStepSizeLi
  use debug, only:        debug_level, &
-                         debug_crystallite, &
-                         debug_levelBasic, &
-                         debug_levelExtensive, &
-                         debug_levelSelective, &
 #ifdef DEBUG
                          debug_e, &
                          debug_i, &
                          debug_g, &
 #endif
-                         debug_cumLpCalls, &
-                         debug_cumLpTicks, &
-                         debug_StressLoopLpDistribution, &
-                         debug_StressLoopLiDistribution
+                         debug_crystallite, &
+                         debug_levelBasic, &
+                         debug_levelExtensive, &
+                         debug_levelSelective
+
  use constitutive, only: constitutive_LpAndItsTangent, &
                          constitutive_LiAndItsTangent, &
                          constitutive_TandItsTangent
@@ -3314,11 +3256,6 @@ logical function crystallite_integrateStress(&
                                      p, &
                                      jacoCounterLp, &
                                      jacoCounterLi                                                    ! counters to check for Jacobian update
- integer(pLongInt) ::                tick = 0_pLongInt, &
-                                     tock = 0_pLongInt, &
-                                     tickrate, &
-                                     maxticks
-
  external :: &
    dgesv
 
@@ -3328,7 +3265,7 @@ logical function crystallite_integrateStress(&
  if (iand(debug_level(debug_crystallite), debug_levelExtensive) /= 0_pInt &
      .and. ((el == debug_e .and. ip == debug_i .and. ipc == debug_g) &
             .or. .not. iand(debug_level(debug_crystallite), debug_levelSelective) /= 0_pInt)) &
-   write(6,'(a,i8,1x,i2,1x,i3)') '<< CRYST >> integrateStress at el ip ipc ',el,ip,ipc
+ write(6,'(a,i8,1x,i2,1x,i3)') '<< CRYST >> integrateStress at el ip ipc ',el,ip,ipc
 #endif
 
  !* only integrate over fraction of timestep?
@@ -3432,9 +3369,6 @@ logical function crystallite_integrateStress(&
 
      !* calculate plastic velocity gradient and its tangent from constitutive law
 
-     if (iand(debug_level(debug_crystallite), debug_levelBasic) /= 0_pInt) &
-       call system_clock(count=tick,count_rate=tickrate,count_max=maxticks)
-
 #ifdef DEBUG
      if (iand(debug_level(debug_crystallite), debug_levelExtensive) /= 0_pInt &
          .and. ((el == debug_e .and. ip == debug_i .and. ipc == debug_g) &
@@ -3448,16 +3382,6 @@ logical function crystallite_integrateStress(&
 #endif
      call constitutive_LpAndItsTangent(Lp_constitutive, dLp_dT3333, dLp_dFi3333, &
                                        Tstar_v, Fi_new, ipc, ip, el)
-
-     if (iand(debug_level(debug_crystallite), debug_levelBasic) /= 0_pInt) then
-       call system_clock(count=tock,count_rate=tickrate,count_max=maxticks)
-       !$OMP CRITICAL (debugTimingLpTangent)
-         debug_cumLpCalls = debug_cumLpCalls + 1_pInt
-         debug_cumLpTicks = debug_cumLpTicks + tock-tick
-         !$OMP FLUSH (debug_cumLpTicks)
-         if (tock < tick) debug_cumLpTicks = debug_cumLpTicks + maxticks
-       !$OMP END CRITICAL (debugTimingLpTangent)
-     endif
 
 #ifdef DEBUG
      if (iand(debug_level(debug_crystallite), debug_levelExtensive) /= 0_pInt &
@@ -3556,13 +3480,6 @@ logical function crystallite_integrateStress(&
 
    enddo LpLoop
 
-   if (iand(debug_level(debug_crystallite), debug_levelBasic) /= 0_pInt) then
-     !$OMP CRITICAL (distributionStress)
-      debug_StressLoopLpDistribution(NiterationStressLp,numerics_integrationMode) = &
-        debug_StressLoopLpDistribution(NiterationStressLp,numerics_integrationMode) + 1_pInt
-     !$OMP END CRITICAL (distributionStress)
-   endif
-
    !* calculate intermediate velocity gradient and its tangent from constitutive law
 
    call constitutive_LiAndItsTangent(Li_constitutive, dLi_dT3333, dLi_dFi3333, &
@@ -3642,13 +3559,6 @@ logical function crystallite_integrateStress(&
 
    Liguess = Liguess + steplengthLi * deltaLi
  enddo LiLoop
-
- if (iand(debug_level(debug_crystallite), debug_levelBasic) /= 0_pInt) then
-   !$OMP CRITICAL (distributionStress)
-    debug_StressLoopLiDistribution(NiterationStressLi,numerics_integrationMode) = &
-      debug_StressLoopLiDistribution(NiterationStressLi,numerics_integrationMode) + 1_pInt
-   !$OMP END CRITICAL (distributionStress)
- endif
 
  !* calculate new plastic and elastic deformation gradient
 

@@ -1,6 +1,8 @@
 # -*- coding: UTF-8 no BOM -*-
 
 import re
+import os
+
 
 class Section():
   def __init__(self,data = {'__order__':[]},part = ''):
@@ -13,10 +15,7 @@ class Section():
               }
     self.parameters = {}
     for key in data:
-      if type(data[key]) is not list:
-        self.parameters[key] = [data[key]]
-      else:
-        self.parameters[key] = data[key]
+      self.parameters[key] = data[key] if isinstance(data[key], list) else [data[key]]
 
     if '__order__' not in self.parameters:
       self.parameters['__order__'] = list(self.parameters.keys())
@@ -28,8 +27,7 @@ class Section():
     multiKey = '(%s)'%key
     if multiKey not in self.parameters: self.parameters[multiKey] = []
     if multiKey not in self.parameters['__order__']: self.parameters['__order__'] += [multiKey]
-    if type(data) == list: self.parameters[multiKey] += [[item] for item in data]
-    else:                  self.parameters[multiKey] += [[data]]
+    self.parameters[multiKey] += [[item] for item in data] if isinstance(data, list) else [[data]]
       
   def data(self):
     return self.parameters
@@ -61,14 +59,8 @@ class Texture(Section):
     
   def add_component(self,theType,properties):
     
-    if 'scatter' not in list(map(str.lower,list(properties.keys()))):
-      scatter = 0.0
-    else: 
-      scatter = properties['scatter']
-    if 'fraction' not in list(map(str.lower,list(properties.keys()))):
-      fraction = 1.0
-    else:
-      fraction = properties['fraction']
+    scatter  = properties['scatter']  if 'scatter'  in list(map(str.lower,list(properties.keys()))) else 0.0
+    fraction = properties['fraction'] if 'fraction' in list(map(str.lower,list(properties.keys()))) else 1.0
 
     try:
       multiKey = theType.lower()
@@ -120,22 +112,28 @@ class Material():
     self.verbose = verbose
            
   def __repr__(self):
-    """Returns current configuration to be used as material.config"""
+    """Returns current data structure in material.config format"""
     me = []
     for part in self.parts:
-      if self.verbose: print('doing '+part)
-      me += ['','#-----------------------------#','<%s>'%part,'#-----------------------------#',]
+      if self.verbose: print('processing <{}>'.format(part))
+      me += ['',
+             '#-----------------------------#',
+             '<{}>'.format(part),
+             '#-----------------------------#',
+            ]
       for section in self.data[part]['__order__']:
-        me += ['','[%s] %s'%(section,'-'*max(0,27-len(section))),'',]
+        me += ['',
+               '[{}] {}'.format(section,'#'*max(0,27-len(section))),
+               '',
+              ]
         for key in self.data[part][section]['__order__']:
           if key.startswith('(') and key.endswith(')'):                       # multiple (key)
-            me += ['%s\t%s'%(key,' '.join(values)) for values in self.data[part][section][key]]
+            me += ['{}\t{}'.format(key,' '.join(values)) for values in self.data[part][section][key]]
           else:                                                               # plain key
-            me += ['%s\t%s'%(key,' '.join(map(str,self.data[part][section][key])))]
-          
-    return '\n'.join(me)
+            me += ['{}\t{}'.format(key,' '.join(map(str,self.data[part][section][key])))]
+    return '\n'.join(me) + '\n'
 
-  def parse_data(self, part=None, sections=[], content=None):
+  def parse(self, part=None, sections=[], content=None):
 
     re_part = re.compile(r'^<(.+)>$')                     # pattern for part
     re_sec  = re.compile(r'^\[(.+)\]$')                   # pattern for section
@@ -147,21 +145,22 @@ class Material():
       line = line.split('#')[0].strip()                   # kill comments and extra whitespace
       line = line.split('/echo/')[0].strip()              # remove '/echo/' tags
       line = line.lower()                                 # be case insensitive
+
       if line:                                            # content survives...
-        match_part = re_part.match(line.split()[0])
-        if match_part:                                    # found <part> separator
+        match_part = re_part.match(line)
+        if match_part:                                    # found <...> separator
           active = (match_part.group(1) == part)          # only active in <part>
           continue
         if active:
-          match_sec  = re_sec.match(line.split()[0])
+          match_sec  = re_sec.match(line)
           if match_sec:                                   # found [section]
             name_section = match_sec.group(1)             # remember name ...
             if '__order__' not in self.data[part]: self.data[part]['__order__'] = []
             self.data[part]['__order__'].append(name_section)  # ... and position
             self.data[part][name_section] = {'__order__':[]}
             continue
-          
-          if sections == [] or name_section in sections:  # respect subset
+
+          if sections == [] or name_section in sections:  # possibly restrict to subset
             items = line.split()
             if items[0] not in self.data[part][name_section]:         # first encounter of key?
               self.data[part][name_section][items[0]] = []            # create item
@@ -170,35 +169,47 @@ class Material():
               self.data[part][name_section][items[0]].append(items[1:])
             else:                                                     # plain key
               self.data[part][name_section][items[0]] = items[1:]
-                  
-  def read(self,file=None):
-    f=open(file,'r')
-    c=f.readlines()
-    f.close()
+  
+
+
+  def read(self,filename=None):
+    """Reads material.config file"""
+    def recursiveRead(filename):
+      """Takes care of include statements like '{}'"""
+      result = []
+      re_include  = re.compile(r'^{(.+)}$')
+      with open(filename) as f: lines = f.readlines()
+      for line in lines:
+        match = re_include.match(line.split()[0]) if line.strip() else False
+        result += [line] if not match else \
+                  recursiveRead(match.group(1) if match.group(1).startswith('/') else
+                                os.path.normpath(os.path.join(os.path.dirname(filename),match.group(1))))
+      return result
+    
+    c = recursiveRead(filename)
     for p in self.parts:
-      self.parse_data(part=p, content=c)
-       
-  def write(self,file='material.config', overwrite=False):
-    import os
+      self.parse(part=p, content=c)
+      
+  def write(self,filename='material.config', overwrite=False):
+    """Writes to material.config"""
     i = 0
-    saveFile = file
-    while not overwrite and os.path.exists(saveFile):
+    outname = filename
+    while os.path.exists(outname) and not overwrite:
      i += 1
-     saveFile = file+'_%i'%i
+     outname = '{}_{}'.format(filename,i)
 
-    if self.verbose: print('Writing material data to file %s'%saveFile)
-    f=open(saveFile,'w')
-    f.write(str(self)+'\n')                                          #newline at end
-    f.close()
-    return saveFile
+    if self.verbose: print('Writing material data to {}'.format(outname))
+    with open(outname,'w') as f:
+      f.write(str(self))
+    return outname
 
-  def add_section(self, part=None, section=None, initialData=None, merge = False):
+  def add_section(self, part=None, section=None, initialData=None, merge=False):
     """adding/updating"""
     part    = part.lower()
     section = section.lower()
-    if part not in self.parts: raise Exception('invalid part %s'%part)
+    if part not in self.parts: raise Exception('invalid part {}'.format(part))
 
-    if type(initialData) is not dict:
+    if not isinstance(initialData, dict):
       initialData = initialData.data()
     
     if section not in self.data[part]: self.data[part]['__order__'] += [section]
@@ -228,17 +239,17 @@ class Material():
     components=dict((k.lower(), v) for k,v in components.items())
    
     for key in ['phase','texture','fraction','crystallite']:
-      if type(components[key]) is not list:
-        try:
-          components[key] = [components[key].lower()]
-        except AttributeError:
-          components[key] = [components[key]]
-      else:
+      if isinstance(components[key], list):
         for i, x in enumerate(components[key]):
           try:
             components[key][i] = x.lower()
           except AttributeError:
             pass
+      else:
+        try:
+          components[key] = [components[key].lower()]
+        except AttributeError:
+          components[key] = [components[key]]
             
     for (phase,texture,fraction,crystallite) in zip(components['phase'],components['texture'],
                                                     components['fraction'],components['crystallite']):
@@ -266,15 +277,3 @@ class Material():
     self.data[part.lower()][section.lower()][key.lower()] = value
     if newlen is not oldlen:
       print('Length of value was changed from %i to %i!'%(oldlen,newlen))
-    
-  def add_value(self, part=None, 
-                         section=None, 
-                         key=None, 
-                         value=None):
-    if not isinstance(value,list): 
-      if not isinstance(value,str):
-        value = '%s'%value
-      value = [value]
-    print('adding %s:%s:%s with value %s '%(part.lower(),section.lower(),key.lower(),value))
-    self.data[part.lower()][section.lower()][key.lower()] = value
-    self.data[part.lower()][section.lower()]['__order__'] += [key.lower()]

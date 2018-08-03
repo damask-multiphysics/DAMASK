@@ -15,8 +15,7 @@ scriptID   = ' '.join([scriptName,damask.version])
 def meshgrid2(*arrs):
   """Code inspired by http://stackoverflow.com/questions/1827489/numpy-meshgrid-in-3d"""
   arrs = tuple(reversed(arrs))
-  arrs = tuple(arrs)
-  lens = np.array(map(len, arrs))
+  lens = np.array(list(map(len, arrs)))
   dim = len(arrs)
   ans = []
   for i, arr in enumerate(arrs):

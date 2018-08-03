@@ -12,20 +12,37 @@ echo +  Send to damask@mpie.de for support
 echo +  view with \'cat $OUTFILE\'
 echo ===========================================
 
+function firstLevel {
+echo -e '\n\n=============================================================================================='
+echo $1
+echo ==============================================================================================
+}
+
+function secondLevel {
+echo ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+echo $1
+echo ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+}
+
+function thirdLevel {
+echo -e '\n----------------------------------------------------------------------------------------------'
+echo $1
+echo ----------------------------------------------------------------------------------------------
+}
+
 function getDetails {
 if which $1 &> /dev/null; then
-  echo ----------------------------------------------------------------------------------------------
-  echo $1:
-  echo ----------------------------------------------------------------------------------------------
+  secondLevel $1:
   echo + location:
   which $1
   echo + $1 $2:
   $1 $2
-  echo -e '\n'
 else
   echo $1 not found
 fi
+echo
 }
+
 
 # redirect STDOUT and STDERR to logfile
 # https://stackoverflow.com/questions/11229385/redirect-all-output-in-a-bash-script-when-using-set-x^
@@ -38,28 +55,18 @@ DAMASK_ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 echo XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 echo System report for \'$(hostname)\' created on $(date '+%Y-%m-%d %H:%M:%S') by \'$(whoami)\'
 echo XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
-echo
-echo ==============================================================================================
-echo DAMASK settings
-echo ==============================================================================================
-echo ----------------------------------------------------------------------------------------------
-echo DAMASK_ROOT:
-echo ----------------------------------------------------------------------------------------------
+
+firstLevel "DAMASK settings"
+secondLevel "DAMASK_ROOT"
 echo $DAMASK_ROOT
 echo
-echo ----------------------------------------------------------------------------------------------
-echo Version:
-echo ----------------------------------------------------------------------------------------------
+secondLevel "Version"
 cat  VERSION
 echo
-echo ----------------------------------------------------------------------------------------------
-echo Settings in CONFIG:
-echo ----------------------------------------------------------------------------------------------
+secondLevel "Settings in CONFIG"
 cat  CONFIG
-echo
-echo ==============================================================================================
-echo System
-echo ==============================================================================================
+
+firstLevel "System"
 uname -a
 echo
 echo PATH: $PATH
@@ -69,74 +76,52 @@ echo SHELL: $SHELL
 echo PETSC_ARCH: $PETSC_ARCH
 echo PETSC_DIR: $PETSC_DIR
 ls $PETSC_DIR/lib
-echo 
-echo ==============================================================================================
-echo Python
-echo ==============================================================================================
 
+firstLevel "Python"
 DEFAULT_PYTHON=python2.7
 for executable in python python2 python3 python2.7; do
   getDetails $executable '--version'
 done
-echo ----------------------------------------------------------------------------------------------
-echo Details on $DEFAULT_PYTHON:
-echo ----------------------------------------------------------------------------------------------
+secondLevel "Details on $DEFAULT_PYTHON:"
 echo $(ls -la $(which $DEFAULT_PYTHON))
 for module in numpy scipy;do
-  echo -e '\n----------------------------------------------------------------------------------------------'
-  echo $module
-  echo ----------------------------------------------------------------------------------------------
+  thirdLevel $module
   $DEFAULT_PYTHON -c "import $module; \
                       print('Version: {}'.format($module.__version__)); \
                       print('Location: {}'.format($module.__file__))"
 done
-echo ----------------------------------------------------------------------------------------------
-echo vtk
-echo ----------------------------------------------------------------------------------------------
+thirdLevel vtk
 $DEFAULT_PYTHON -c "import vtk; \
                     print('Version: {}'.format(vtk.vtkVersion.GetVTKVersion())); \
                     print('Location: {}'.format(vtk.__file__))"
-echo ----------------------------------------------------------------------------------------------
-echo h5py
-echo ----------------------------------------------------------------------------------------------
+thirdLevel h5py
 $DEFAULT_PYTHON -c "import h5py; \
                     print('Version: {}'.format(h5py.version.version)); \
                     print('Location: {}'.format(h5py.__file__))"
-echo
-echo ==============================================================================================
-echo GCC
-echo ==============================================================================================
+
+firstLevel "GNU Compiler Collection"
 for executable in gcc g++ gfortran ;do
   getDetails $executable '--version'
 done
-echo
-echo ==============================================================================================
-echo Intel Compiler Suite
-echo ==============================================================================================
+
+firstLevel "Intel Compiler Suite"
 for executable in icc icpc ifort ;do
   getDetails $executable '--version'
 done
-echo
-echo ==============================================================================================
-echo MPI Wrappers
-echo ==============================================================================================
+
+firstLevel "MPI Wrappers"
 for executable in mpicc mpiCC mpic++ mpicpc mpicxx mpifort mpif90 mpif77; do
   getDetails $executable '-show'
 done
-echo
-echo ==============================================================================================
-echo MPI Launchers
-echo ==============================================================================================
+
+firstLevel "MPI Launchers"
 for executable in mpirun mpiexec; do
   getDetails $executable '--version'
 done
-echo
-echo ==============================================================================================
-echo Abaqus
-echo ==============================================================================================
+
+firstLevel "Abaqus"
 cd installation/mods_Abaqus                                                                         # to have the right environment file
-for executable in abaqus abq2016 abq2017; do
+for executable in abaqus abq2017 abq2018; do
   getDetails $executable 'information=all'
 done
 cd ../..
-

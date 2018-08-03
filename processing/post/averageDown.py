@@ -76,7 +76,6 @@ for name in filenames:
   remarks = []
   
   if table.label_dimension(options.pos) != 3:  errors.append('coordinates {} are not a vector.'.format(options.pos))
-  else: colCoord = table.label_index(options.pos)
 
   if remarks != []: damask.util.croak(remarks)
   if errors  != []:
@@ -94,14 +93,7 @@ for name in filenames:
   table.data_readArray()
 
   if (any(options.grid) == 0 or any(options.size) == 0.0):
-    coords = [np.unique(table.data[:,colCoord+i]) for i in range(3)]
-    mincorner = np.array(map(min,coords))
-    maxcorner = np.array(map(max,coords))
-    grid   = np.array(map(len,coords),'i')
-    size   = grid/np.maximum(np.ones(3,'d'), grid-1.0) * (maxcorner-mincorner)                      # size from edge to edge = dim * n/(n-1) 
-    size   = np.where(grid > 1, size, min(size[grid > 1]/grid[grid > 1]))                           # spacing for grid==1 set to smallest among other spacings
-    delta  = size/np.maximum(np.ones(3,'d'), grid)
-    origin = mincorner - 0.5*delta                                                                  # shift from cell center to corner
+    grid,size = damask.util.coordGridAndSize(table.data[:,table.label_indexrange(options.pos)])
 
   else:
     grid   = np.array(options.grid,'i')
@@ -129,16 +121,15 @@ for name in filenames:
 
 #--- generate grid --------------------------------------------------------------------------------
 
-  if colCoord:
-    x = (0.5 + shift[0] + np.arange(packedGrid[0],dtype=float))/packedGrid[0]*size[0] + origin[0]
-    y = (0.5 + shift[1] + np.arange(packedGrid[1],dtype=float))/packedGrid[1]*size[1] + origin[1]
-    z = (0.5 + shift[2] + np.arange(packedGrid[2],dtype=float))/packedGrid[2]*size[2] + origin[2]
+  x = (0.5 + shift[0] + np.arange(packedGrid[0],dtype=float))/packedGrid[0]*size[0] + origin[0]
+  y = (0.5 + shift[1] + np.arange(packedGrid[1],dtype=float))/packedGrid[1]*size[1] + origin[1]
+  z = (0.5 + shift[2] + np.arange(packedGrid[2],dtype=float))/packedGrid[2]*size[2] + origin[2]
 
-    xx = np.tile(          x,                packedGrid[1]* packedGrid[2])
-    yy = np.tile(np.repeat(y,packedGrid[0]                ),packedGrid[2])
-    zz =         np.repeat(z,packedGrid[0]*packedGrid[1])
+  xx = np.tile(          x,                packedGrid[1]* packedGrid[2])
+  yy = np.tile(np.repeat(y,packedGrid[0]                ),packedGrid[2])
+  zz =         np.repeat(z,packedGrid[0]*packedGrid[1])
 
-    table.data[:,colCoord:colCoord+3] = np.squeeze(np.dstack((xx,yy,zz)))
+  table.data[:,table.label_indexragen(options.pos)] = np.squeeze(np.dstack((xx,yy,zz)))
 
 # ------------------------------------------ output result -----------------------------------------  
 

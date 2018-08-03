@@ -252,15 +252,15 @@ for name in filenames:
   outputAlive = True
   while outputAlive and table.data_read():                                                          # read next data line of ASCII table
     if inputtype == 'eulers':
-      o = damask.Orientation(Eulers   = np.array(map(float,table.data[column:column+3]))*toRadians,)
+      o = damask.Orientation(Eulers = np.array(list(map(float,table.data[column:column+3])))*toRadians,)
     elif inputtype == 'matrix':
-      o = damask.Orientation(matrix   = np.array(map(float,table.data[column:column+9])).reshape(3,3).transpose(),)
+      o = damask.Orientation(matrix = np.array(list(map(float,table.data[column:column+9]))).reshape(3,3).transpose(),)
     elif inputtype == 'frame':
-      o = damask.Orientation(matrix = np.array(map(float,table.data[column[0]:column[0]+3] + \
-                                                         table.data[column[1]:column[1]+3] + \
-                                                         table.data[column[2]:column[2]+3])).reshape(3,3),)
+      o = damask.Orientation(matrix = np.array(list(map(float,table.data[column[0]:column[0]+3] + \
+                                                              table.data[column[1]:column[1]+3] + \
+                                                              table.data[column[2]:column[2]+3]))).reshape(3,3),)
     elif inputtype == 'quaternion':
-      o = damask.Orientation(quaternion = np.array(map(float,table.data[column:column+4])),)
+      o = damask.Orientation(quaternion = np.array(list(map(float,table.data[column:column+4]))),)
 
     rotForce  = o.quaternion.conjugated() * force
     rotNormal = o.quaternion.conjugated() * normal

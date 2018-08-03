@@ -101,7 +101,7 @@ for name in filenames:
   errors  = []
   remarks = []
   
-  for type, data in items.iteritems():
+  for type, data in items.items():
     for what in data['labels']:
       dim = table.label_dimension(what)
       if dim != data['dim']: remarks.append('column {} is not a {}...'.format(what,type))
@@ -132,7 +132,7 @@ for name in filenames:
 
   while outputAlive and table.data_read():                                                          # read next data line of ASCII table
     for column in items['tensor']['column']:                                                        # loop over all requested defgrads
-      F = np.array(map(float,table.data[column:column+items['tensor']['dim']]),'d').reshape(items['tensor']['shape'])
+      F = np.array(list(map(float,table.data[column:column+items['tensor']['dim']])),'d').reshape(items['tensor']['shape'])
       (U,S,Vh) = np.linalg.svd(F)                                                                   # singular value decomposition
       R = np.dot(U,Vh)                                                                              # rotation of polar decomposition
       stretch['U'] = np.dot(np.linalg.inv(R),F)                                                     # F = RU

@@ -9,10 +9,10 @@ stages:
   - spectral
   - compileMarc2017
   - marc
-  - compileAbaqus2016
   - compileAbaqus2017
   - example
   - performance
+  - createPackage
   - createDocumentation
   - saveDocumentation
   - updateMaster
@@ -67,7 +67,6 @@ variables:
   PETSc_MPICH_Intel:               "$PETSc3_9_1MPICH3_2Intel18_1"
   PETSc_MPICH_GNU:                 "$PETSc3_9_1MPICH3_2GNU7_3"
   # ++++++++++++ FEM +++++++++++++++++++++++++++++++++++++++++++++++++++
-  Abaqus2016:                      "FEM/Abaqus/2016"
   Abaqus2017:                      "FEM/Abaqus/2017"
   MSC2017:                         "FEM/MSC/2017"
   # ------------ Defaults ----------------------------------------------
@@ -374,16 +373,6 @@ J2_plasticBehavior:
     - release
 
 ###################################################################################################
-Abaqus_compile2016:
-  stage: compileAbaqus2016
-  script:
-    - module load $IntelCompiler16_0 $Abaqus2016
-    - Abaqus_compileIfort/test.py -a 2016
-  except:
-    - master
-    - release
-
-###################################################################################################
 Abaqus_compile2017:
   stage: compileAbaqus2017
   script:
@@ -424,20 +413,18 @@ SpectralRuntime:
     - release
 
 ###################################################################################################
-AbaqusExp:
-  stage: createDocumentation
+createTar:
+  stage: createPackage
   script:
-    - module load $IntelCompiler $MPICH_Intel $PETSc_MPICH_Intel $Doxygen
-    - $DAMASKROOT/PRIVATE/documenting/runDoxygen.sh $DAMASKROOT abaqus_exp
-  except:
-    - master
-    - release
+    - cd $(mktemp -d)
+    - $DAMASKROOT/PRIVATE/releasing/deployMe.sh $CI_COMMIT_SHA
 
+###################################################################################################
 AbaqusStd:
   stage: createDocumentation
   script:
     - module load $IntelCompiler $MPICH_Intel $PETSc_MPICH_Intel $Doxygen
-    - $DAMASKROOT/PRIVATE/documenting/runDoxygen.sh $DAMASKROOT abaqus_std
+    - $DAMASKROOT/PRIVATE/documenting/runDoxygen.sh $DAMASKROOT abaqus
   except:
     - master
     - release

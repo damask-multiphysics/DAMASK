@@ -217,12 +217,12 @@ subroutine numerics_init
 #include <petsc/finclude/petscsys.h>
    use petscsys
 #endif
-#if defined(Spectral) || defined(FEM)
-!$ use OMP_LIB, only: omp_set_num_threads                                                           ! Use the standard conforming module file for omp if using the spectral solver
+#if !defined(Marc4DAMASK)
+!$ use OMP_LIB, only: omp_set_num_threads                                                           ! Standard conforming module
  implicit none
 #else  
  implicit none
-!$ include "omp_lib.h"                                                                              ! use the not F90 standard conforming include file to prevent crashes with some versions of MSC.Marc
+!$ include "omp_lib.h"                                                                              ! MSC.Marc includes this file on !its own, avoid conflict with the OMP_LIB module
 #endif
  integer(pInt), parameter ::                 FILEUNIT = 300_pInt
 !$ integer ::                                gotDAMASK_NUM_THREADS = 1
