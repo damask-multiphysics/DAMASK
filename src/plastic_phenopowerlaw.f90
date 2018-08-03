@@ -320,7 +320,7 @@ subroutine plastic_phenopowerlaw_init
 
 !--------------------------------------------------------------------------------------------------
 ! allocate state arrays
-   NipcMyPhase = count(material_phase == p)                                                   ! number of IPCs containing my phase
+   NipcMyPhase = count(material_phase == p)                                                         ! number of IPCs containing my phase
    sizeState = size(['tau_slip     ','accshear_slip']) * prm%TotalNslip &
              + size(['tau_twin     ','accshear_twin']) * prm%TotalNtwin &
              + size(['sum(gamma)', 'sum(f)    '])
@@ -357,6 +357,16 @@ subroutine plastic_phenopowerlaw_init
      index_myFamily = sum(prm%Nslip(1:f-1_pInt))
 
      mySlipSystems: do j = 1_pInt,prm%Nslip(f)
+       !prm%Schmid_pos(1:3,1:3,index_myFamily+j) = lattice_Sslip(1:3,1:3,1,index_myFamily+j,p)
+       !prm%Schmid_neg(1:3,1:3,index_myFamily+j) = lattice_Sslip(1:3,1:3,2,index_myFamily+j,p)
+       !do k = 1,size(prm%nonSchmidCoeff)
+       !  prm%nonSchmid_pos(1:3,1:3,k,index_myFamily+j) = lattice_Sslip(1:3,1:3,2*k,  index_myFamily+j,p)
+       !  prm%nonSchmid_neg(1:3,1:3,k,index_myFamily+j) = lattice_Sslip(1:3,1:3,2*k+1,index_myFamily+j,p)
+       !  !nonSchmid_tensor(1:3,1:3,1) = nonSchmid_tensor(1:3,1:3,1) + prm%nonSchmidCoeff(k)*&
+       !  !                                    lattice_Sslip(1:3,1:3,2*k,index_myFamily+i,ph)
+       !  !nonSchmid_tensor(1:3,1:3,2) = nonSchmid_tensor(1:3,1:3,2) + prm%nonSchmidCoeff(k)*&
+       !  !                                    lattice_Sslip(1:3,1:3,2*k+1,index_myFamily+i,ph)
+       !enddo
        otherSlipFamilies: do o = 1_pInt,size(prm%Nslip,1)
          index_otherFamily = sum(prm%Nslip(1:o-1_pInt))
          otherSlipSystems: do k = 1_pInt,prm%Nslip(o)
@@ -467,17 +477,16 @@ end subroutine plastic_phenopowerlaw_init
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates plastic velocity gradient and its tangent
 !--------------------------------------------------------------------------------------------------
-subroutine plastic_phenopowerlaw_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,ipc,ip,el)
+subroutine plastic_phenopowerlaw_LpAndItsTangent(Lp,dLp_dMstar99,Mstar,ipc,ip,el)
  use prec, only: &
    dNeq0
  use math, only: &
+   math_mul33xx33,&
    math_Plain3333to99, &
    math_Mandel6to33
  use lattice, only: &
    lattice_Sslip, &
-   lattice_Sslip_v, &
    lattice_Stwin, &
-   lattice_Stwin_v, &
    lattice_NslipSystem, &
    lattice_NtwinSystem
  use material, only: &
@@ -488,15 +497,15 @@ subroutine plastic_phenopowerlaw_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,ipc,ip,
  implicit none
  real(pReal), dimension(3,3), intent(out) :: &
    Lp                                                                                               !< plastic velocity gradient
- real(pReal), dimension(9,9), intent(out) :: &
-   dLp_dTstar99                                                                                     !< derivative of Lp with respect to 2nd Piola Kirchhoff stress
+ real(pReal), dimension(9,9), intent(out) :: & 
+   dLp_dMstar99                                                                                     !< derivative of Lp with respect to the Mandel stress
 
  integer(pInt),               intent(in) :: &
    ipc, &                                                                                           !< component-ID of integration point
    ip, &                                                                                            !< integration point
    el                                                                                               !< element
- real(pReal), dimension(6),   intent(in) :: &
-   Tstar_v                                                                                          !< 2nd Piola Kirchhoff stress tensor in Mandel notation
+ real(pReal), dimension(3,3), intent(in) :: &
+   Mstar                                                                                            !< Mandel stress
 
  integer(pInt) :: &
    index_myFamily, &
@@ -509,7 +518,7 @@ subroutine plastic_phenopowerlaw_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,ipc,ip,
    dgdot_dtauslip_pos,dgdot_dtauslip_neg, &
    gdot_twin,dgdot_dtautwin,tau_twin
  real(pReal), dimension(3,3,3,3) :: &
-   dLp_dTstar3333                                                                                   !< derivative of Lp with respect to Tstar as 4th order tensor
+   dLp_dMstar3333                                                                                   !< derivative of Lp with respect to Mstar as 4th order tensor
  real(pReal), dimension(3,3,2) :: &
    nonSchmid_tensor
  type(tParameters)          :: prm
@@ -518,30 +527,31 @@ subroutine plastic_phenopowerlaw_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,ipc,ip,
  of = phasememberAt(ipc,ip,el)
  ph = material_phase(ipc,ip,el)
 
- associate(prm => param(phase_plasticityInstance(ph)), stt => state(phase_plasticityInstance(ph)))
+ associate(prm => param(phase_plasticityInstance(ph)),&
+           stt => state(phase_plasticityInstance(ph)))
 
  Lp = 0.0_pReal
- dLp_dTstar3333 = 0.0_pReal
- dLp_dTstar99 = 0.0_pReal
+ dLp_dMstar3333 = 0.0_pReal
+ dLp_dMstar99 = 0.0_pReal
 
 !--------------------------------------------------------------------------------------------------
 ! Slip part
  j = 0_pInt
  slipFamilies: do f = 1_pInt,size(prm%Nslip,1)
-   index_myFamily = sum(lattice_NslipSystem(1:f-1_pInt,ph))                                          ! at which index starts my family
+   index_myFamily = sum(lattice_NslipSystem(1:f-1_pInt,ph))                                         ! at which index starts my family
    slipSystems: do i = 1_pInt,prm%Nslip(f)
      j = j+1_pInt
 
      ! Calculation of Lp
-     tau_slip_pos  = dot_product(Tstar_v,lattice_Sslip_v(1:6,1,index_myFamily+i,ph))
+     tau_slip_pos  = math_mul33xx33(Mstar,lattice_Sslip(1:3,1:3,1,index_myFamily+i,ph))
      tau_slip_neg  = tau_slip_pos
      nonSchmid_tensor(1:3,1:3,1) = lattice_Sslip(1:3,1:3,1,index_myFamily+i,ph)
      nonSchmid_tensor(1:3,1:3,2) = nonSchmid_tensor(1:3,1:3,1)
      do k = 1,size(prm%nonSchmidCoeff)
        tau_slip_pos = tau_slip_pos + prm%nonSchmidCoeff(k)* &
-                                   dot_product(Tstar_v,lattice_Sslip_v(1:6,2*k,index_myFamily+i,ph))
+                                   math_mul33xx33(Mstar,lattice_Sslip(1:3,1:3,2*k,index_myFamily+i,ph))
        tau_slip_neg = tau_slip_neg + prm%nonSchmidCoeff(k)* &
-                                   dot_product(Tstar_v,lattice_Sslip_v(1:6,2*k+1,index_myFamily+i,ph))
+                                   math_mul33xx33(Mstar,lattice_Sslip(1:3,1:3,2*k+1,index_myFamily+i,ph))
        nonSchmid_tensor(1:3,1:3,1) = nonSchmid_tensor(1:3,1:3,1) + prm%nonSchmidCoeff(k)*&
                                            lattice_Sslip(1:3,1:3,2*k,index_myFamily+i,ph)
        nonSchmid_tensor(1:3,1:3,2) = nonSchmid_tensor(1:3,1:3,2) + prm%nonSchmidCoeff(k)*&
@@ -560,7 +570,7 @@ subroutine plastic_phenopowerlaw_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,ipc,ip,
      if (dNeq0(tau_slip_pos)) then
        dgdot_dtauslip_pos = gdot_slip_pos*prm%n_slip/tau_slip_pos
        forall (k=1_pInt:3_pInt,l=1_pInt:3_pInt,m=1_pInt:3_pInt,n=1_pInt:3_pInt) &
-         dLp_dTstar3333(k,l,m,n) = dLp_dTstar3333(k,l,m,n) + &
+         dLp_dMstar3333(k,l,m,n) = dLp_dMstar3333(k,l,m,n) + &
                                    dgdot_dtauslip_pos*lattice_Sslip(k,l,1,index_myFamily+i,ph)* &
                                                      nonSchmid_tensor(m,n,1)
      endif
@@ -568,7 +578,7 @@ subroutine plastic_phenopowerlaw_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,ipc,ip,
      if (dNeq0(tau_slip_neg)) then
        dgdot_dtauslip_neg = gdot_slip_neg*prm%n_slip/tau_slip_neg
        forall (k=1_pInt:3_pInt,l=1_pInt:3_pInt,m=1_pInt:3_pInt,n=1_pInt:3_pInt) &
-         dLp_dTstar3333(k,l,m,n) = dLp_dTstar3333(k,l,m,n) + &
+         dLp_dMstar3333(k,l,m,n) = dLp_dMstar3333(k,l,m,n) + &
                                    dgdot_dtauslip_neg*lattice_Sslip(k,l,1,index_myFamily+i,ph)* &
                                                      nonSchmid_tensor(m,n,2)
      endif
@@ -584,7 +594,7 @@ subroutine plastic_phenopowerlaw_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,ipc,ip,
      j = j+1_pInt
 
      ! Calculation of Lp
-     tau_twin  = dot_product(Tstar_v,lattice_Stwin_v(1:6,index_myFamily+i,ph))
+     tau_twin  = math_mul33xx33(Mstar,lattice_Stwin(1:3,1:3,index_myFamily+i,ph))
      gdot_twin = (1.0_pReal-stt%sumF(of))*prm%gdot0_twin*&
                     (abs(tau_twin)/stt%s_twin(j,of))**&
                     prm%n_twin*max(0.0_pReal,sign(1.0_pReal,tau_twin))
@@ -594,14 +604,14 @@ subroutine plastic_phenopowerlaw_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,ipc,ip,
      if (dNeq0(gdot_twin)) then
        dgdot_dtautwin = gdot_twin*prm%n_twin/tau_twin
        forall (k=1_pInt:3_pInt,l=1_pInt:3_pInt,m=1_pInt:3_pInt,n=1_pInt:3_pInt) &
-         dLp_dTstar3333(k,l,m,n) = dLp_dTstar3333(k,l,m,n) + &
+         dLp_dMstar3333(k,l,m,n) = dLp_dMstar3333(k,l,m,n) + &
                                    dgdot_dtautwin*lattice_Stwin(k,l,index_myFamily+i,ph)* &
                                                   lattice_Stwin(m,n,index_myFamily+i,ph)
      endif
    enddo twinSystems
  enddo twinFamilies
 
- dLp_dTstar99 = math_Plain3333to99(dLp_dTstar3333)
+ dLp_dMstar99 = math_Plain3333to99(dLp_dMstar3333)
 
  end associate
 end subroutine plastic_phenopowerlaw_LpAndItsTangent
@@ -650,9 +660,9 @@ subroutine plastic_phenopowerlaw_dotState(Tstar_v,ipc,ip,el)
 
  of = phasememberAt(ipc,ip,el)
  ph = material_phase(ipc,ip,el)
- associate( prm => param(phase_plasticityInstance(ph)), &
-            stt => state(phase_plasticityInstance(ph)), &
-            dst => dotState(phase_plasticityInstance(ph)))
+ associate(prm => param(phase_plasticityInstance(ph)), &
+           stt => state(phase_plasticityInstance(ph)), &
+           dst => dotState(phase_plasticityInstance(ph)))
 
  dst%whole(:,of) = 0.0_pReal
 

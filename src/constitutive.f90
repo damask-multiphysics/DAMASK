@@ -482,7 +482,8 @@ subroutine constitutive_LpAndItsTangent(Lp, dLp_dTstar3333, dLp_dFi3333, Tstar_v
  real(pReal), dimension(9,9) :: &
    dLp_dMstar                                                                                       !< derivative of Lp with respect to Mstar (4th-order tensor)
  real(pReal), dimension(3,3) :: &
-   temp_33
+   temp_33, &
+   Mstar
  integer(pInt) :: &
    ho, &                                                                                            !< homogenization
    tme                                                                                              !< thermal member position
@@ -492,7 +493,8 @@ subroutine constitutive_LpAndItsTangent(Lp, dLp_dTstar3333, dLp_dFi3333, Tstar_v
  ho = material_homog(ip,el)
  tme = thermalMapping(ho)%p(ip,el)
 
- Mstar_v = math_Mandel33to6(math_mul33x33(math_mul33x33(transpose(Fi),Fi),math_Mandel6to33(Tstar_v)))
+ Mstar   = math_mul33x33(math_mul33x33(transpose(Fi),Fi),math_Mandel6to33(Tstar_v))
+ Mstar_v = math_Mandel33to6(Mstar)
 
  plasticityType: select case (phase_plasticity(material_phase(ipc,ip,el)))
    case (PLASTICITY_NONE_ID) plasticityType
@@ -501,7 +503,7 @@ subroutine constitutive_LpAndItsTangent(Lp, dLp_dTstar3333, dLp_dFi3333, Tstar_v
    case (PLASTICITY_ISOTROPIC_ID) plasticityType
      call plastic_isotropic_LpAndItsTangent       (Lp,dLp_dMstar,Mstar_v,ipc,ip,el)
    case (PLASTICITY_PHENOPOWERLAW_ID) plasticityType
-     call plastic_phenopowerlaw_LpAndItsTangent   (Lp,dLp_dMstar,Mstar_v,ipc,ip,el)
+     call plastic_phenopowerlaw_LpAndItsTangent   (Lp,dLp_dMstar,Mstar,ipc,ip,el)
    case (PLASTICITY_KINEHARDENING_ID) plasticityType
      call plastic_kinehardening_LpAndItsTangent   (Lp,dLp_dMstar,Mstar_v,ipc,ip,el)  
    case (PLASTICITY_NONLOCAL_ID) plasticityType
