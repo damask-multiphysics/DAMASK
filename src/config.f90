@@ -107,13 +107,13 @@ subroutine config_init()
    debug_levelBasic
 
  implicit none
- integer(pInt)            :: myDebug,i
+ integer(pInt) :: myDebug,i
 
  character(len=256) :: &
   line, &
   part
  character(len=256), dimension(:), allocatable :: fileContent
- logical :: jobSpecificConfig
+ logical :: fileExists
 
  write(6,'(/,a)') ' <<<+-  config init  -+>>>'
  write(6,'(a15,a)')   ' Current time: ',IO_timeStamp()
@@ -121,12 +121,12 @@ subroutine config_init()
 
  myDebug = debug_level(debug_material)
 
- inquire(file=trim(getSolverJobName())//'.'//material_localFileExt,exist=jobSpecificConfig)
- if(jobSpecificConfig) then
+ inquire(file=trim(getSolverJobName())//'.'//material_localFileExt,exist=fileExists)
+ if(fileExists) then
    fileContent = IO_recursiveRead(trim(getSolverJobName())//'.'//material_localFileExt)
  else
-   inquire(file='material.config',exist=jobSpecificConfig)
-   if(.not. jobSpecificConfig) call IO_error(0_pInt)
+   inquire(file='material.config',exist=fileExists)
+   if(.not. fileExists) call IO_error(100_pInt,ext_msg='material.config')
    fileContent = IO_recursiveRead('material.config')
  endif
 
@@ -136,7 +136,7 @@ subroutine config_init()
    select case (trim(part))
     
      case (trim(material_partPhase))
-       call parseFile(line,phase_name,config_phase,fileContent(i+1:)) !(i+1:) save for empty part at (at end of file)?
+       call parseFile(line,phase_name,config_phase,fileContent(i+1:))
        if (iand(myDebug,debug_levelBasic) /= 0_pInt) write(6,'(a)') ' Phase parsed'; flush(6)
     
      case (trim(material_partMicrostructure))
@@ -158,7 +158,6 @@ subroutine config_init()
    end select
 
  enddo
- deallocate(fileContent)
 
  material_Nhomogenization = size(config_homogenization)
  if (material_Nhomogenization < 1_pInt) call IO_error(160_pInt,ext_msg=material_partHomogenization)
@@ -233,6 +232,9 @@ subroutine parseFile(line,&
 
 end subroutine parseFile
 
+!--------------------------------------------------------------------------------------------------
+!> @brief deallocates the linked lists that store the content of the configuration files
+!--------------------------------------------------------------------------------------------------
 subroutine config_deallocate(what)
  use IO, only: &
    IO_error
@@ -279,6 +281,12 @@ subroutine config_deallocate(what)
  end select
 
 end subroutine config_deallocate
+
+
+!##################################################################################################
+! The folowing functions are part of the tPartitionedStringList object
+!##################################################################################################
+
 
 
 !--------------------------------------------------------------------------------------------------
