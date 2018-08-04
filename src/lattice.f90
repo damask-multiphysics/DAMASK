@@ -1417,15 +1417,15 @@ subroutine lattice_init
    a_fcc(p)        = config_phase(p)%getFloat('a_fcc',defaultVal=0.0_pReal)
    a_bcc(p)        = config_phase(p)%getFloat('a_bcc',defaultVal=0.0_pReal)
 
-   lattice_thermalConductivity33(1,1,p) = config_phase(p)%getFloat('thermal_conductivity11')
-   lattice_thermalConductivity33(2,2,p) = config_phase(p)%getFloat('thermal_conductivity22')
-   lattice_thermalConductivity33(3,3,p) = config_phase(p)%getFloat('thermal_conductivity33')
+   lattice_thermalConductivity33(1,1,p) = config_phase(p)%getFloat('thermal_conductivity11',defaultVal=0.0_pReal)
+   lattice_thermalConductivity33(2,2,p) = config_phase(p)%getFloat('thermal_conductivity22',defaultVal=0.0_pReal)
+   lattice_thermalConductivity33(3,3,p) = config_phase(p)%getFloat('thermal_conductivity33',defaultVal=0.0_pReal)
 
-   temp = config_phase(p)%getFloats('thermal_expansion11')                                          ! read up to three parameters (constant, linear, quadratic with T)
+   temp = config_phase(p)%getFloats('thermal_expansion11',defaultVal=[0.0_pReal])                   ! read up to three parameters (constant, linear, quadratic with T)
    lattice_thermalExpansion33(1,1,1:size(temp),p) = temp
-   temp = config_phase(p)%getFloats('thermal_expansion22')                                          ! read up to three parameters (constant, linear, quadratic with T)
+   temp = config_phase(p)%getFloats('thermal_expansion22',defaultVal=[0.0_pReal])                   ! read up to three parameters (constant, linear, quadratic with T)
    lattice_thermalExpansion33(2,2,1:size(temp),p) = temp
-   temp = config_phase(p)%getFloats('thermal_expansion33')                                          ! read up to three parameters (constant, linear, quadratic with T)
+   temp = config_phase(p)%getFloats('thermal_expansion33',defaultVal=[0.0_pReal])                   ! read up to three parameters (constant, linear, quadratic with T)
    lattice_thermalExpansion33(3,3,1:size(temp),p) = temp
 
    lattice_specificHeat(p) = config_phase(p)%getFloat( 'specific_heat',defaultVal=0.0_pReal)
