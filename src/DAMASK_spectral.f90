@@ -20,11 +20,12 @@ program DAMASK_spectral
    pReal, &
    tol_math_check, &
    dNeq
+ use system_routines, only: &
+   getCWD
  use DAMASK_interface, only: &
    DAMASK_interface_init, &
    loadCaseFile, &
    geometryFile, &
-   getSolverWorkingDirectoryName, &
    getSolverJobName, &
    appendToOutFile
  use IO, only: &
@@ -133,7 +134,9 @@ program DAMASK_spectral
    lastRestartWritten = 0_pInt, &                                                                   !< total increment # at which last restart information was written
    stagIter
  character(len=6)  :: loadcase_string
- character(len=1024)  :: incInfo                                                                    !< string parsed to solution with information about current load case
+ character(len=1024) :: &
+   incInfo, &                                                                                       !< string parsed to solution with information about current load case
+   workingDir
  type(tLoadCase), allocatable, dimension(:) :: loadCases                                            !< array of all load cases
  type(tSolutionState), allocatable, dimension(:) :: solres
  integer(MPI_OFFSET_KIND) :: fileOffset
@@ -381,10 +384,11 @@ program DAMASK_spectral
 ! write header of output file
  if (worldrank == 0) then
    if (.not. appendToOutFile) then                                                                  ! after restart, append to existing results file
-     open(newunit=resUnit,file=trim(getSolverWorkingDirectoryName())//trim(getSolverJobName())//&
+     if (getCWD(workingDir)) call IO_error(106_pInt,ext_msg=trim(workingDir))
+     open(newunit=resUnit,file=trim(getSolverJobName())//&
                                  '.spectralOut',form='UNFORMATTED',status='REPLACE')
      write(resUnit) 'load:',       trim(loadCaseFile)                                               ! ... and write header
-     write(resUnit) 'workingdir:', trim(getSolverWorkingDirectoryName())
+     write(resUnit) 'workingdir:', trim(workingDir)
      write(resUnit) 'geometry:',   trim(geometryFile)
      write(resUnit) 'grid:',       grid
      write(resUnit) 'size:',       geomSize
@@ -397,14 +401,14 @@ program DAMASK_spectral
      write(resUnit) 'startingIncrement:', restartInc                                                ! start with writing out the previous inc
      write(resUnit) 'eoh'
      close(resUnit)                                                                                 ! end of header
-     open(newunit=statUnit,file=trim(getSolverWorkingDirectoryName())//trim(getSolverJobName())//&
+     open(newunit=statUnit,file=trim(getSolverJobName())//&
                                  '.sta',form='FORMATTED',status='REPLACE')
      write(statUnit,'(a)') 'Increment Time CutbackLevel Converged IterationsNeeded'                 ! statistics file
      if (iand(debug_level(debug_spectral),debug_levelBasic) /= 0) &
        write(6,'(/,a)') ' header of result and statistics file written out'
      flush(6)
    else                                                                                             ! open new files ...
-     open(newunit=statUnit,file=trim(getSolverWorkingDirectoryName())//trim(getSolverJobName())//&
+     open(newunit=statUnit,file=trim(getSolverJobName())//&
                                  '.sta',form='FORMATTED', position='APPEND', status='OLD')
    endif
  endif
@@ -415,8 +419,7 @@ program DAMASK_spectral
  outputSize(worldrank+1) = size(materialpoint_results,kind=MPI_OFFSET_KIND)*int(pReal,MPI_OFFSET_KIND)
  call MPI_allreduce(MPI_IN_PLACE,outputSize,worldsize,MPI_LONG,MPI_SUM,PETSC_COMM_WORLD,ierr)       ! get total output size over each process
  if (ierr /= 0_pInt) call IO_error(error_ID=894_pInt, ext_msg='MPI_allreduce')
- call MPI_file_open(PETSC_COMM_WORLD, &
-                    trim(getSolverWorkingDirectoryName())//trim(getSolverJobName())//'.spectralOut', &
+ call MPI_file_open(PETSC_COMM_WORLD, trim(getSolverJobName())//'.spectralOut', &
                     MPI_MODE_WRONLY + MPI_MODE_APPEND, &
                     MPI_INFO_NULL, &
                     resUnit, &
