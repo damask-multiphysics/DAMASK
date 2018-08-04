@@ -176,48 +176,65 @@ end function IO_read
 !> @brief recursively reads a text file.
 !!        Recursion is triggered by "{path/to/inputfile}" in a line
 !--------------------------------------------------------------------------------------------------
-recursive function IO_recursiveRead(fileName) result(fileContent)
+recursive function IO_recursiveRead(fileName,cnt) result(fileContent)
 
   implicit none
-  character(len=*), intent(in)                   :: fileName
-  character(len=256), dimension(:), allocatable :: fileContent
+  character(len=*),   intent(in)                :: fileName
+  integer(pInt),      intent(in), optional      :: cnt                                              !< recursion counter
+  character(len=256), dimension(:), allocatable :: fileContent                                      !< file content, separated per lines
   character(len=256), dimension(:), allocatable :: includedContent
-  character(len=256) :: line
-  character(len=:), allocatable :: rawData
-  integer(pInt) :: fileLength, fileUnit,startPos,endPos,&
-             myTotalLines,l,includedLines, missingLines,i
+  character(len=256)                            :: line
+  character(len=256), parameter                 :: dummy = 'https://damask.mpie.de'                 !< to fill up remaining array
+  character(len=:),                 allocatable :: rawData
+  integer(pInt) ::  &
+    fileLength, &
+    fileUnit, &
+    startPos, endPos, &
+    myTotalLines, &                                                                                 !< # lines read from file without include statements
+    includedLines, &                                                                                !< # lines included from other file(s)
+    missingLines, &                                                                                 !< # lines missing from current file
+    l,i
 
+  if (merge(cnt,0_pInt,present(cnt))>10_pInt) call IO_error(106_pInt,ext_msg=trim(fileName))
+
+!--------------------------------------------------------------------------------------------------
+! read data as stream
   inquire(file = fileName, size=fileLength)
   open(newunit=fileUnit, file = fileName, access = "STREAM")
   allocate(character(len=fileLength)::rawData)
   read(fileUnit) rawData
   close(fileUnit)
 
-  myTotalLines = 0
-  do l=1, len(rawData)
+!--------------------------------------------------------------------------------------------------
+! count lines to allocate string array
+  myTotalLines = 0_pInt
+  do l=1_pInt, len(rawData)
     if (rawData(l:l) == new_line('')) myTotalLines = myTotalLines+1
   enddo
   allocate(fileContent(myTotalLines))
 
-  startPos = 1
-  endPos = 0
+!--------------------------------------------------------------------------------------------------
+! split raw data at end of line and handle includes
+  startPos = 1_pInt
+  endPos = 0_pInt
 
-  includedLines=0
-  l=0
+  includedLines=0_pInt
+  l=0_pInt
   do while (startPos <= len(rawData))
-    l = l + 1
+    l = l + 1_pInt
     endPos = endPos + scan(rawData(startPos:),new_line(''))
-    if(endPos - startPos >256) write(6,*) 'mist'
-    line = rawData(startPos:endPos-1)
-    startPos = endPos + 1
+    if(endPos - startPos >256) call IO_error(107_pInt,ext_msg=trim(fileName))
+    line = rawData(startPos:endPos-1_pInt)
+    startPos = endPos + 1_pInt
 
     recursion: if(scan(trim(line),'{') < scan(trim(line),'}')) then
-      myTotalLines    = myTotalLines - 1
-      includedContent = IO_recursiveRead(trim(line(scan(line,'{')+1:scan(line,'}')-1)))
-      includedLines   = includedLines +size(includedContent)
-      missingLines =  myTotalLines+includedLines - size(fileContent(1:l-1)) -size(includedContent)
-      fileContent  = [fileContent(1:l-1),includedContent,[(line,i=1,missingLines)]]
-      l=l-1+size(includedContent)
+      myTotalLines    = myTotalLines - 1_pInt
+      includedContent = IO_recursiveRead(trim(line(scan(line,'{')+1_pInt:scan(line,'}')-1_pInt)), &
+                        merge(cnt,1_pInt,present(cnt)))                                             ! to track recursion depth
+      includedLines   = includedLines + size(includedContent)
+      missingLines    = myTotalLines + includedLines - size(fileContent(1:l-1)) -size(includedContent)
+      fileContent     = [ fileContent(1:l-1_pInt), includedContent, [(dummy,i=1,missingLines)] ]    ! add content and grow array
+      l = l - 1_pInt + size(includedContent)
     else recursion
       fileContent(l) = line
     endif recursion
@@ -226,6 +243,7 @@ recursive function IO_recursiveRead(fileName) result(fileContent)
 
 end function IO_recursiveRead
 
+
 !--------------------------------------------------------------------------------------------------
 !> @brief checks if unit is opened for reading, if true rewinds. Otherwise stops with
 !!        error message
@@ -233,7 +251,7 @@ end function IO_recursiveRead
 subroutine IO_checkAndRewind(fileUnit)
 
  implicit none
- integer(pInt), intent(in) :: fileUnit                                                                !< file unit
+ integer(pInt), intent(in) :: fileUnit                                                              !< file unit
  logical                   :: fileOpened
  character(len=15)         :: fileRead
 
@@ -1568,6 +1586,8 @@ subroutine IO_error(error_ID,el,ip,g,instance,ext_msg)
    msg = 'unknown output:'
  case (106_pInt)
    msg = 'working directory does not exist:'
+ case (107_pInt)
+   msg = 'line length exceeds limit of 256'
 
 !--------------------------------------------------------------------------------------------------
 ! lattice error messages
