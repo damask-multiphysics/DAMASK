@@ -4,9 +4,8 @@
 !> @brief    Interfacing between the spectral solver and the material subroutines provided
 !!           by DAMASK
 !> @details  Interfacing between the spectral solver and the material subroutines provided
-!>           by DAMASK. Interpretating the command line arguments or, in case of called from f2py, 
-!>           the arguments parsed to the init routine to get load case, geometry file, working 
-!>           directory, etc.
+!>           by DAMASK. Interpretating the command line arguments to get load case, geometry file, 
+!>           and working directory.
 !--------------------------------------------------------------------------------------------------
 module DAMASK_interface
  use prec, only: &
