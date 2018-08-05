@@ -27,9 +27,8 @@ module numerics
    worldsize                  =  0_pInt                                                             !< MPI worldsize (/=0 for MPI simulations only)
  integer(4), protected, public :: &
    DAMASK_NumThreadsInt       =  0                                                                  !< value stored in environment variable DAMASK_NUM_THREADS, set to zero if no OpenMP directive
- integer(pInt), public :: &
-   numerics_integrationMode   =  0_pInt                                                             !< integrationMode 1 = central solution; integrationMode 2 = perturbation, Default 0: undefined, is not read from file
- integer(pInt), dimension(2) , protected, public :: &
+!> ToDo: numerics_integrator in an array for historical reasons, only element 1 is used!
+ integer(pInt), dimension(2), protected, public :: &
    numerics_integrator        =  1_pInt                                                             !< method used for state integration (central & perturbed state), Default 1: fix-point iteration for both states
  real(pReal), protected, public :: &
    relevantStrain             =  1.0e-7_pReal, &                                                    !< strain increment considered significant (used by crystallite to determine whether strain inc is considered significant)
@@ -317,9 +316,7 @@ subroutine numerics_init
        case ('atol_crystallitestress')
          aTol_crystalliteStress = IO_floatValue(line,chunkPos,2_pInt)
        case ('integrator')
-         numerics_integrator(1) = IO_intValue(line,chunkPos,2_pInt)
-       case ('integratorstiffness')
-         numerics_integrator(2) = IO_intValue(line,chunkPos,2_pInt)
+         numerics_integrator = IO_intValue(line,chunkPos,2_pInt)
        case ('usepingpong')
          usepingpong = IO_intValue(line,chunkPos,2_pInt) > 0_pInt
        case ('timesyncing')
@@ -531,7 +528,7 @@ subroutine numerics_init
  write(6,'(a24,1x,es8.1)')  ' rTol_crystalliteState:  ',rTol_crystalliteState
  write(6,'(a24,1x,es8.1)')  ' rTol_crystalliteStress: ',rTol_crystalliteStress
  write(6,'(a24,1x,es8.1)')  ' aTol_crystalliteStress: ',aTol_crystalliteStress
- write(6,'(a24,2(1x,i8))')  ' integrator:             ',numerics_integrator
+ write(6,'(a24,1x,es8.1)')  ' integtator:             ',numerics_integrator
  write(6,'(a24,1x,L8)')     ' timeSyncing:            ',numerics_timeSyncing
  write(6,'(a24,1x,L8)')     ' use ping pong scheme:   ',usepingpong
  write(6,'(a24,1x,es8.1,/)')' unitlength:             ',numerics_unitlength
