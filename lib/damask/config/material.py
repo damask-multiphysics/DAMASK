@@ -277,3 +277,16 @@ class Material():
     self.data[part.lower()][section.lower()][key.lower()] = value
     if newlen is not oldlen:
       print('Length of value was changed from %i to %i!'%(oldlen,newlen))
+
+
+  def add_value(self, part=None,
+                  section=None,
+                  key=None,
+                  value=None):
+    if not isinstance(value,list):
+      if not isinstance(value,str):
+        value = '%s'%value
+      value = [value]
+    print('adding %s:%s:%s with value %s '%(part.lower(),section.lower(),key.lower(),value))
+    self.data[part.lower()][section.lower()][key.lower()] = value
+    self.data[part.lower()][section.lower()]['__order__'] += [key.lower()]
