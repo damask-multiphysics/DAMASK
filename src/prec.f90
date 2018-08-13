@@ -41,8 +41,8 @@ module prec
    integer(pInt) :: &
      sizeState        = 0_pInt, &                                                                   !< size of state
      sizeDotState     = 0_pInt, &                                                                   !< size of dot state, i.e. state(1:sizeDot) follows time evolution by dotState rates
-     offsetDeltaState = 0_pInt, &                                                                   !< offset of delta state
-     sizeDeltaState   = 0_pInt, &                                                                   !< size of delta state, i.e. state(offset+1:offset+sizeDot) follows time evolution by deltaState increments
+     offsetDeltaState = 0_pInt, &                                                                   !< index offset of delta state
+     sizeDeltaState   = 0_pInt, &                                                                   !< size of delta state, i.e. state(offset+1:offset+sizeDelta) follows time evolution by deltaState increments
      sizePostResults  = 0_pInt                                                                      !< size of output data
    real(pReal), pointer,     dimension(:), contiguous :: &
      atolState
@@ -146,7 +146,7 @@ logical elemental pure function dEq(a,b,tol)
  real(pReal), intent(in), optional :: tol
  real(pReal), parameter            :: eps = 2.220446049250313E-16                                   ! DBL_EPSILON in C
 
- dEq = merge(.True., .False.,abs(a-b) <= merge(tol,eps,present(tol))*maxval(abs([a,b])))
+ dEq = merge(.True.,.False.,abs(a-b) <= merge(tol,eps,present(tol))*maxval(abs([a,b])))
 end function dEq
 
 
@@ -163,7 +163,7 @@ logical elemental pure function dNeq(a,b,tol)
  real(pReal), intent(in), optional :: tol
  real(pReal), parameter            :: eps = 2.220446049250313E-16                                   ! DBL_EPSILON in C
 
- dNeq = merge(.False., .True.,abs(a-b) <= merge(tol,eps,present(tol))*maxval(abs([a,b])))
+ dNeq = merge(.False.,.True.,abs(a-b) <= merge(tol,eps,present(tol))*maxval(abs([a,b])))
 end function dNeq
 
 
@@ -180,7 +180,7 @@ logical elemental pure function dEq0(a,tol)
  real(pReal), intent(in), optional :: tol
  real(pReal), parameter            :: eps = 2.2250738585072014E-308                                 ! smallest non-denormalized number
 
- dEq0 = merge(.True., .False.,abs(a) <= merge(tol,eps,present(tol)))
+ dEq0 = merge(.True.,.False.,abs(a) <= merge(tol,eps,present(tol)))
 end function dEq0
 
 
@@ -197,7 +197,7 @@ logical elemental pure function dNeq0(a,tol)
  real(pReal), intent(in), optional :: tol
  real(pReal), parameter            :: eps = 2.2250738585072014E-308                                 ! smallest non-denormalized number
 
- dNeq0 = merge(.False., .True.,abs(a) <= merge(tol,eps,present(tol)))
+ dNeq0 = merge(.False.,.True.,abs(a) <= merge(tol,eps,present(tol)))
 end function dNeq0
 
 
@@ -215,7 +215,7 @@ logical elemental pure function cEq(a,b,tol)
  real(pReal),    intent(in), optional :: tol
  real(pReal),    parameter            :: eps = 2.220446049250313E-16                                ! DBL_EPSILON in C
 
- cEq = merge(.True., .False.,abs(a-b) <= merge(tol,eps,present(tol))*maxval(abs([a,b])))
+ cEq = merge(.True.,.False.,abs(a-b) <= merge(tol,eps,present(tol))*maxval(abs([a,b])))
 end function cEq
 
 
@@ -233,7 +233,7 @@ logical elemental pure function cNeq(a,b,tol)
  real(pReal),    intent(in), optional :: tol
  real(pReal),    parameter            :: eps = 2.220446049250313E-16                                ! DBL_EPSILON in C
 
- cNeq = merge(.False., .True.,abs(a-b) <= merge(tol,eps,present(tol))*maxval(abs([a,b])))
+ cNeq = merge(.False.,.True.,abs(a-b) <= merge(tol,eps,present(tol))*maxval(abs([a,b])))
 end function cNeq
 
 end module prec
