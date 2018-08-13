@@ -440,25 +440,25 @@ subroutine plastic_phenopowerlaw_init
 !--------------------------------------------------------------------------------------------------
 ! locally defined state aliases and initialization of state0 and aTolState
    startIndex = 1_pInt
-   endIndex   = plasticState(p)%nSlip
-   state   (instance)%s_slip=>plasticState(p)%state   (startIndex:endIndex,:)
-   dotState(instance)%s_slip=>plasticState(p)%dotState(startIndex:endIndex,:)
+   endIndex   = prm%totalNslip
+   state   (instance)%s_slip => plasticState(p)%state   (startIndex:endIndex,:)
+   dotState(instance)%s_slip => plasticState(p)%dotState(startIndex:endIndex,:)
    plasticState(p)%state0(startIndex:endIndex,:) = &
      spread(math_expand(prm%tau0_slip, prm%Nslip), 2, NipcMyPhase)
    plasticState(p)%aTolState(startIndex:endIndex) = prm%aTolResistance
 
    startIndex = endIndex + 1_pInt
-   endIndex   = endIndex + plasticState(p)%nTwin
-   state   (instance)%s_twin=>plasticState(p)%state   (startIndex:endIndex,:)
-   dotState(instance)%s_twin=>plasticState(p)%dotState(startIndex:endIndex,:)
+   endIndex   = endIndex + prm%totalNtwin
+   state   (instance)%s_twin => plasticState(p)%state   (startIndex:endIndex,:)
+   dotState(instance)%s_twin => plasticState(p)%dotState(startIndex:endIndex,:)
    plasticState(p)%state0(startIndex:endIndex,:) = &
      spread(math_expand(prm%tau0_twin, prm%Ntwin), 2, NipcMyPhase)
    plasticState(p)%aTolState(startIndex:endIndex) = prm%aTolResistance
 
    startIndex = endIndex + 1_pInt
    endIndex   = endIndex + 1_pInt
-   state   (instance)%sumGamma=>plasticState(p)%state   (startIndex,:)
-   dotState(instance)%sumGamma=>plasticState(p)%dotState(startIndex,:)
+   state   (instance)%sumGamma => plasticState(p)%state   (startIndex,:)
+   dotState(instance)%sumGamma => plasticState(p)%dotState(startIndex,:)
    plasticState(p)%aTolState(startIndex:endIndex) = prm%aTolShear
 
    startIndex = endIndex + 1_pInt
@@ -468,21 +468,21 @@ subroutine plastic_phenopowerlaw_init
    plasticState(p)%aTolState(startIndex:endIndex) = prm%aTolTwinFrac
 
    startIndex = endIndex + 1_pInt
-   endIndex   = endIndex + plasticState(p)%nSlip
-   state   (instance)%accshear_slip=>plasticState(p)%state   (startIndex:endIndex,:)
-   dotState(instance)%accshear_slip=>plasticState(p)%dotState(startIndex:endIndex,:)
+   endIndex   = endIndex + prm%totalNslip
+   state   (instance)%accshear_slip => plasticState(p)%state   (startIndex:endIndex,:)
+   dotState(instance)%accshear_slip => plasticState(p)%dotState(startIndex:endIndex,:)
    plasticState(p)%aTolState(startIndex:endIndex) = prm%aTolShear
    ! global alias
-   plasticState(p)%slipRate =>plasticState(p)%dotState(startIndex:endIndex,:)
-   plasticState(p)%accumulatedSlip =>plasticState(p)%state(startIndex:endIndex,:)
+   plasticState(p)%slipRate        => plasticState(p)%dotState(startIndex:endIndex,:)
+   plasticState(p)%accumulatedSlip => plasticState(p)%state(startIndex:endIndex,:)
 
    startIndex = endIndex + 1_pInt
-   endIndex   = endIndex + plasticState(p)%nTwin
-   state   (instance)%accshear_twin=>plasticState(p)%state   (startIndex:endIndex,:)
-   dotState(instance)%accshear_twin=>plasticState(p)%dotState(startIndex:endIndex,:)
+   endIndex   = endIndex + prm%totalNtwin
+   state   (instance)%accshear_twin => plasticState(p)%state   (startIndex:endIndex,:)
+   dotState(instance)%accshear_twin => plasticState(p)%dotState(startIndex:endIndex,:)
    plasticState(p)%aTolState(startIndex:endIndex) = prm%aTolShear
    
-   dotState(instance)%whole        =>plasticState(p)%dotState
+   dotState(instance)%whole => plasticState(p)%dotState
    
    end associate
  enddo
