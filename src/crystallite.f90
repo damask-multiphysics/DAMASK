@@ -494,7 +494,6 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
    subStepMinCryst, &
    subStepSizeCryst, &
    stepIncreaseCryst, &
-   nCryst, &
    numerics_integrator, &
    numerics_integrationMode, &
    numerics_timeSyncing
@@ -1215,8 +1214,6 @@ end subroutine crystallite_stressAndItsTangent
 subroutine crystallite_integrateStateRK4()
  use, intrinsic :: &
    IEEE_arithmetic
- use numerics, only: &
-   numerics_integrationMode
  use debug, only: &
 #ifdef DEBUG
    debug_e, &
@@ -1517,8 +1514,7 @@ subroutine crystallite_integrateStateRKCK45()
    debug_levelExtensive, &
    debug_levelSelective
  use numerics, only: &
-   rTol_crystalliteState, &
-   numerics_integrationMode
+   rTol_crystalliteState
  use FEsolving, only: &
    FEsolving_execElem, &
    FEsolving_execIP
@@ -2581,7 +2577,6 @@ subroutine crystallite_integrateStateFPI()
    debug_levelSelective
  use numerics, only: &
    nState, &
-   numerics_integrationMode, &
    rTol_crystalliteState
  use FEsolving, only: &
    FEsolving_execElem, &
@@ -3156,7 +3151,6 @@ logical function crystallite_integrateStress(&
                          aTol_crystalliteStress, &
                          rTol_crystalliteStress, &
                          iJacoLpresiduum, &
-                         numerics_integrationMode, &
                          subStepSizeLp, &
                          subStepSizeLi
  use debug, only:        debug_level, &
