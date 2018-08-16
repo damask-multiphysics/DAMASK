@@ -494,7 +494,6 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
    subStepMinHomog, &
    subStepSizeHomog, &
    stepIncreaseHomog, &
-   nHomog, &
    nMPstate
  use math, only: &
    math_transpose33

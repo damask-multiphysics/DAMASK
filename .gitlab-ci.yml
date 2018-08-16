@@ -418,6 +418,9 @@ createTar:
   script:
     - cd $(mktemp -d)
     - $DAMASKROOT/PRIVATE/releasing/deployMe.sh $CI_COMMIT_SHA
+  except:
+    - master
+    - release
 
 ###################################################################################################
 AbaqusStd:
