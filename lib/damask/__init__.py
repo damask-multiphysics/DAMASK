@@ -6,6 +6,8 @@ import os
 with open(os.path.join(os.path.dirname(__file__),'../../VERSION')) as f:
   version = f.readline()[:-1]
 
+name = 'damask'
+
 from .environment import Environment      # noqa
 from .asciitable  import ASCIItable       # noqa
     
