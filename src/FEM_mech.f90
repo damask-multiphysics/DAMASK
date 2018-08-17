@@ -23,7 +23,7 @@ module FEM_mech
 
  implicit none
  private
-#include <petsc/finclude/petsc.h90>
+#include <petsc/finclude/petsc.h>
    
 !--------------------------------------------------------------------------------------------------
 ! derived types

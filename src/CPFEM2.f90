@@ -50,8 +50,8 @@ subroutine CPFEM_initAll(el,ip)
    IO_init
  use DAMASK_interface
 #ifdef FEM
- use FEZoo, only: &
-   FEZoo_init
+ use FEM_Zoo, only: &
+   FEM_Zoo_init
 #endif
 
  implicit none
@@ -62,7 +62,7 @@ subroutine CPFEM_initAll(el,ip)
  call prec_init
  call IO_init
 #ifdef FEM
- call FEZoo_init
+ call FEM_Zoo_init
 #endif
  call numerics_init
  call debug_init

@@ -6,7 +6,6 @@ module FEM_Zoo
  use prec, only: pReal, pInt, p_vec
 
  implicit none
-#include <petsc/finclude/petsc.h90>
  private
  integer(pInt), parameter, public:: &
    maxOrder = 5                                                                            !< current max interpolation set at cubic (intended to be arbitrary)
@@ -35,26 +34,23 @@ contains
 !> @brief initializes FEM interpolation data
 !--------------------------------------------------------------------------------------------------
 subroutine FEM_Zoo_init
- use, intrinsic :: iso_fortran_env
+#if defined(__GFORTRAN__) || __INTEL_COMPILER >= 1800
+ use, intrinsic :: iso_fortran_env, only: &
+   compiler_version, &
+   compiler_options
+#endif
  use IO, only: &
    IO_timeStamp
  use math, only: &
    math_binomial  
    
  implicit none
- PetscInt :: worldrank
- PetscErrorCode :: ierr
- external :: &
-   MPI_Comm_rank, &
-   MPI_abort
   
- call MPI_Comm_rank(PETSC_COMM_WORLD,worldrank,ierr);CHKERRQ(ierr)
- if (worldrank == 0) then
-   write(6,'(/,a)')   ' <<<+-  FEM_Zoo init  -+>>>'
-   write(6,'(a)')     ' $Id: FEM_Zoo.f90 4354 2015-08-04 15:04:53Z MPIE\p.shanthraj $'
-   write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
+ write(6,'(/,a)')   ' <<<+-  FEM_Zoo init  -+>>>'
+ write(6,'(a)')     ' $Id: FEM_Zoo.f90 4354 2015-08-04 15:04:53Z MPIE\p.shanthraj $'
+ write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
- endif 
+
 !--------------------------------------------------------------------------------------------------
 ! 2D linear
  FEM_Zoo_nQuadrature(2,1) = 1

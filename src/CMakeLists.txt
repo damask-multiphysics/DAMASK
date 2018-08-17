@@ -57,7 +57,7 @@ if (PROJECT_NAME STREQUAL "DAMASK_spectral")
       add_dependencies(MESH DAMASK_MATH)
       list(APPEND OBJECTFILES $<TARGET_OBJECTS:MESH>)
 elseif (PROJECT_NAME STREQUAL "DAMASK_FEM")
-      add_library(FEZoo OBJECT "FEZoo.f90")
+      add_library(FEZoo OBJECT "FEM_zoo.f90")
       add_dependencies(FEZoo DAMASK_MATH)
       list(APPEND OBJECTFILES $<TARGET_OBJECTS:FEZoo>)
       add_library(MESH  OBJECT "meshFEM.f90")
@@ -186,14 +186,9 @@ elseif (PROJECT_NAME STREQUAL "DAMASK_FEM")
       add_dependencies(FEM_UTILITIES DAMASK_CPFE)
 
       add_library(FEM_SOLVER OBJECT
-      "FEM_hydrogenflux.f90"
-      "FEM_porosity.f90"
-      "FEM_vacancyflux.f90"
-      "FEM_damage.f90"
-      "FEM_thermal.f90"
       "FEM_mech.f90")
       add_dependencies(FEM_SOLVER FEM_UTILITIES)
 
-      add_executable(DAMASK_FEM "DAMASK_FEM_driver.f90")
+      add_executable(DAMASK_FEM "DAMASK_FEM.f90")
       add_dependencies(DAMASK_FEM FEM_SOLVER)
 endif()

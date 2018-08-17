@@ -210,7 +210,7 @@ subroutine DAMASK_interface_init()
  write(6,'(a,a)')      ' Geometry file:          ', trim(geometryFile)
  write(6,'(a,a)')      ' Loadcase file:          ', trim(loadCaseFile)
  write(6,'(a,a)')      ' Solver job name:        ', trim(getSolverJobName())
- if (SpectralRestartInc > 0_pInt) &
+ if (FEMRestartInc > 0_pInt) &
    write(6,'(a,i6.6)') ' Restart from increment: ', FEMRestartInc
  write(6,'(a,l1,/)')   ' Append to result file:  ', appendToOutFile
 

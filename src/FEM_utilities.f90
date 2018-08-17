@@ -3,14 +3,16 @@
 !> @brief Utilities used by the FEM solver
 !--------------------------------------------------------------------------------------------------
 module FEM_utilities
- use, intrinsic :: iso_c_binding
- use prec, only: &
-   pReal, &
-   pInt
+#include <petsc/finclude/petscis.h>
+#include <petsc/finclude/petscdmda.h>
+ use prec, only: pReal, pInt
+
+use PETScdmda
+use PETScis
 
  implicit none
  private
-#include <petsc/finclude/petsc.h90>
+#include <petsc/finclude/petsc.h>
 !--------------------------------------------------------------------------------------------------
 ! 
  logical,       public             :: cutBack = .false.                                             !< cut back of BVP solver in case convergence is not achieved or a material point is terminally ill
@@ -141,36 +143,13 @@ module FEM_utilities
    COMPONENT_MGTWIN_PHI_ID
 
  external :: &
-   MPI_abort, &
    MPI_Allreduce, &
-   PetscOptionsClear, &
    PetscOptionsInsertString, &
    PetscObjectSetName, &
-   VecCreateMPI, &
-   VecSetFromOptions, &
-   VecGetSize, &
-   VecAssemblyBegin, &
-   VecAssemblyEnd, &
-   VecView, &
-   VecDestroy, &
-   ISCreateGeneral, &
-   ISDuplicate, &
-   ISDifference, &
-   ISGetSize, &
-   ISLocalToGlobalMappingApplyIS, &
-   ISDestroy, &
-   DMGetDimension, &
-   DMGetLocalToGlobalMapping, &
-   DMGetLabel, &
-   DMGetStratumSize, &
-   DMGetStratumIS, &
    DMPlexGetHeightStratum, &
    DMGetLabelIdIS, &
    DMPlexGetChart, &
    DMPlexLabelComplete, &
-   PetscSectionGetStorageSize, &
-   PetscSectionGetFieldDof, &
-   PetscSectionGetFieldOffset, &
    PetscViewerHDF5Open, &
    PetscViewerHDF5PushGroup, &
    PetscViewerHDF5PopGroup, &
@@ -195,12 +174,7 @@ subroutine utilities_init()
    worldsize, & 
    worldrank, &
    petsc_defaultOptions, &
-   petsc_options, &
-   structOrder, &
-   thermalOrder, &
-   damageOrder, &
-   soluteOrder, &
-   mgtwinOrder
+   petsc_options
  use debug, only: &
    debug_level, &
    debug_SPECTRAL, &
@@ -215,22 +189,12 @@ subroutine utilities_init()
    mesh_maxNips, &
    geomMesh, &
    mesh_element
- use homogenization, only: &
-   homogOutput, &
-   crystalliteOutput, &
-   phaseOutput
  use material, only: &
-   material_Nhomogenization, &
-   material_Ncrystallite, &
-   material_Nphase, &
    homogenization_Ngrains, &
    homogenization_maxNgrains, &
    material_homog, &
    material_phase, &
-   microstructure_crystallite, &
-   homogenization_name, &
-   crystallite_name, &
-   phase_name
+   microstructure_crystallite
 
  implicit none
 
@@ -262,27 +226,15 @@ subroutine utilities_init()
                 trim(PETScDebug), &
                 ' add more using the PETSc_Options keyword in numerics.config '
  flush(6)
- call PetscOptionsClear(PETSC_NULL_OBJECT,ierr)
+ call PetscOptionsClear(PETSC_NULL_OPTIONS,ierr)
  CHKERRQ(ierr)
- if(debugPETSc) call PetscOptionsInsertString(PETSC_NULL_OBJECT,trim(PETSCDEBUG),ierr)
+ if(debugPETSc) call PetscOptionsInsertString(PETSC_NULL_OPTIONS,trim(PETSCDEBUG),ierr)
  CHKERRQ(ierr)
- call PetscOptionsInsertString(PETSC_NULL_OBJECT,trim(petsc_defaultOptions),ierr)
- call PetscOptionsInsertString(PETSC_NULL_OBJECT,trim(petsc_options),ierr)
+ call PetscOptionsInsertString(PETSC_NULL_OPTIONS,trim(petsc_defaultOptions),ierr)
+ call PetscOptionsInsertString(PETSC_NULL_OPTIONS,trim(petsc_options),ierr)
  CHKERRQ(ierr)
- write(petsc_optionsPhysics,'(a,i0)') '-mechFE_petscspace_order '   , structOrder
- call PetscOptionsInsertString(PETSC_NULL_OBJECT,trim(petsc_optionsPhysics),ierr)
- CHKERRQ(ierr)
- write(petsc_optionsPhysics,'(a,i0)') '-thermalFE_petscspace_order ', thermalOrder
- call PetscOptionsInsertString(PETSC_NULL_OBJECT,trim(petsc_optionsPhysics),ierr)
- CHKERRQ(ierr)
- write(petsc_optionsPhysics,'(a,i0)') '-damageFE_petscspace_order ' , damageOrder
- call PetscOptionsInsertString(PETSC_NULL_OBJECT,trim(petsc_optionsPhysics),ierr)
- CHKERRQ(ierr)
- write(petsc_optionsPhysics,'(a,i0)') '-soluteFE_petscspace_order ', soluteOrder
- call PetscOptionsInsertString(PETSC_NULL_OBJECT,trim(petsc_optionsPhysics),ierr)
- CHKERRQ(ierr)
- write(petsc_optionsPhysics,'(a,i0)') '-mgtwinFE_petscspace_order ', mgtwinOrder
- call PetscOptionsInsertString(PETSC_NULL_OBJECT,trim(petsc_optionsPhysics),ierr)
+ !write(petsc_optionsPhysics,'(a,i0)') '-mechFE_petscspace_order '   , structOrder
+ call PetscOptionsInsertString(PETSC_NULL_OPTIONS,trim(petsc_optionsPhysics),ierr)
  CHKERRQ(ierr)
  
  wgt = 1.0/real(mesh_maxNips*mesh_NcpElemsGlobal,pReal)
@@ -368,129 +320,126 @@ subroutine utilities_init()
  call PetscObjectSetName(coordinatesVec, 'NodalCoordinates',ierr)
  call VecSetFromOptions(coordinatesVec, ierr); CHKERRQ(ierr)
  
- allocate(mappingCells(worldsize), source = 0)
- allocate(homogenizationResultsVec(material_Nhomogenization                          ))
- allocate(crystalliteResultsVec   (material_Ncrystallite,   homogenization_maxNgrains))
- allocate(phaseResultsVec         (material_Nphase,         homogenization_maxNgrains))
- do homog = 1, material_Nhomogenization
-   mappingCells = 0_pInt; mappingCells(worldrank+1) = homogOutput(homog)%sizeIpCells
-   call MPI_Allreduce(MPI_IN_PLACE,mappingCells,worldsize,MPI_INT,MPI_SUM,PETSC_COMM_WORLD,ierr)
-   call VecCreateMPI(PETSC_COMM_WORLD,mappingCells(worldrank+1),sum(mappingCells), &
-                     homogenizationResultsVec(homog),ierr);CHKERRQ(ierr)
-   if (sum(mappingCells) > 0) then
-     call VecCreateMPI(PETSC_COMM_WORLD,mappingCells(worldrank+1)*2**dimPlex,sum(mappingCells)*2**dimPlex, &
-                       connectivityVec,ierr);CHKERRQ(ierr)
-     call PetscObjectSetName(connectivityVec,'mapping_'//trim(homogenization_name(homog)),ierr)
-     CHKERRQ(ierr)
-     call VecGetArrayF90(connectivityVec,results,ierr); CHKERRQ(ierr) 
-     results = 0.0_pReal; ctr = 1_pInt
-     do cell = cellStart, cellEnd-1; do qPt = 1, mesh_maxNips
-       if (material_homog(qPt,cell+1) == homog) then
-         results(ctr:ctr+2**dimPlex-1) = real(reshape(connectivity(1:2**dimPlex,mesh_maxNips*cell+qPt), &
-                                                      shape=[2**dimPlex]))
-         ctr = ctr + 2**dimPlex
-       endif  
-     enddo; enddo
-     call VecRestoreArrayF90(connectivityVec, results, ierr); CHKERRQ(ierr)
-     call VecAssemblyBegin(connectivityVec, ierr); CHKERRQ(ierr)
-     call VecAssemblyEnd  (connectivityVec, ierr); CHKERRQ(ierr)
-     call VecView(connectivityVec, resUnit, ierr); CHKERRQ(ierr)
-     call VecDestroy(connectivityVec, ierr); CHKERRQ(ierr)
-   endif
- enddo  
- do cryst = 1, material_Ncrystallite; do grain = 1, homogenization_maxNgrains
-   mappingCells              = 0_pInt
-   mappingCells(worldrank+1) = crystalliteOutput(cryst,grain)%sizeIpCells
-   call MPI_Allreduce(MPI_IN_PLACE,mappingCells,worldsize,MPI_INT,MPI_SUM,PETSC_COMM_WORLD,ierr)
-   call VecCreateMPI(PETSC_COMM_WORLD,mappingCells(worldrank+1),sum(mappingCells), &
-                     crystalliteResultsVec(cryst,grain),ierr);CHKERRQ(ierr)
-   if (sum(mappingCells) > 0) then
-     call VecCreateMPI(PETSC_COMM_WORLD,mappingCells(worldrank+1)*2**dimPlex,sum(mappingCells)*2**dimPlex, &
-                       connectivityVec,ierr);CHKERRQ(ierr)
-     write(grainStr,'(a,i0)') 'Grain',grain
-     call PetscObjectSetName(connectivityVec,'mapping_'// &
-                                             trim(crystallite_name(cryst))//'_'// &
-                                             trim(grainStr),ierr)
-     CHKERRQ(ierr)
-     call VecGetArrayF90(connectivityVec, results, ierr); CHKERRQ(ierr) 
-     results = 0.0_pReal; ctr = 1_pInt
-     do cell = cellStart, cellEnd-1; do qPt = 1, mesh_maxNips
-       if (homogenization_Ngrains    (mesh_element(3,cell+1)) >= grain .and. &
-           microstructure_crystallite(mesh_element(4,cell+1)) == cryst) then
-         results(ctr:ctr+2**dimPlex-1) = real(reshape(connectivity(1:2**dimPlex,mesh_maxNips*cell+qPt), &
-                                                      shape=[2**dimPlex]))
-         ctr = ctr + 2**dimPlex
-       endif  
-     enddo; enddo
-     call VecRestoreArrayF90(connectivityVec, results, ierr); CHKERRQ(ierr)
-     call VecAssemblyBegin(connectivityVec, ierr); CHKERRQ(ierr)
-     call VecAssemblyEnd  (connectivityVec, ierr); CHKERRQ(ierr)
-     call VecView(connectivityVec, resUnit, ierr); CHKERRQ(ierr)
-     call VecDestroy(connectivityVec, ierr); CHKERRQ(ierr)
-   endif
- enddo; enddo
- do phase = 1, material_Nphase; do grain = 1, homogenization_maxNgrains
-   mappingCells              = 0_pInt
-   mappingCells(worldrank+1) = phaseOutput(phase,grain)%sizeIpCells
-   call MPI_Allreduce(MPI_IN_PLACE,mappingCells,worldsize,MPI_INT,MPI_SUM,PETSC_COMM_WORLD,ierr)
-   call VecCreateMPI(PETSC_COMM_WORLD,mappingCells(worldrank+1),sum(mappingCells), &
-                     phaseResultsVec(phase,grain),ierr);CHKERRQ(ierr)
-   if (sum(mappingCells) > 0) then
-     call VecCreateMPI(PETSC_COMM_WORLD,mappingCells(worldrank+1)*2**dimPlex,sum(mappingCells)*2**dimPlex, &
-                       connectivityVec,ierr);CHKERRQ(ierr)
-     write(grainStr,'(a,i0)') 'Grain',grain
-     call PetscObjectSetName(connectivityVec,&
-                             'mapping_'//trim(phase_name(phase))//'_'// &
-                             trim(grainStr),ierr)
-     CHKERRQ(ierr)
-     call VecGetArrayF90(connectivityVec, results, ierr)
-     CHKERRQ(ierr) 
-     results = 0.0_pReal; ctr = 1_pInt
-     do cell = cellStart, cellEnd-1; do qPt = 1, mesh_maxNips
-       if (material_phase(grain,qPt,cell+1) == phase) then
-         results(ctr:ctr+2**dimPlex-1) = real(reshape(connectivity(1:2**dimPlex,mesh_maxNips*cell+qPt), &
-                                                      shape=[2**dimPlex]))
-         ctr = ctr + 2**dimPlex
-       endif  
-     enddo; enddo
-     call VecRestoreArrayF90(connectivityVec, results, ierr)
-     CHKERRQ(ierr)
-     call VecAssemblyBegin(connectivityVec, ierr);CHKERRQ(ierr)
-     call VecAssemblyEnd  (connectivityVec, ierr);CHKERRQ(ierr)
-     call VecView(connectivityVec, resUnit, ierr);CHKERRQ(ierr)
-     call VecDestroy(connectivityVec, ierr); CHKERRQ(ierr)
-   endif
- enddo; enddo  
- if (worldrank == 0_pInt) then
-   do homog = 1, material_Nhomogenization
-     call VecGetSize(homogenizationResultsVec(homog),mappingCells(1),ierr)
-     CHKERRQ(ierr)
-     if (mappingCells(1) > 0) &
-       write(headerID, '(a,i0)') 'number of homog_'// &
-                                 trim(homogenization_name(homog))//'_'// &
-                                 'cells : ', mappingCells(1)
-   enddo
-   do cryst = 1, material_Ncrystallite; do grain = 1, homogenization_maxNgrains
-     call VecGetSize(crystalliteResultsVec(cryst,grain),mappingCells(1),ierr)
-     CHKERRQ(ierr)
-     write(grainStr,'(a,i0)') 'Grain',grain
-     if (mappingCells(1) > 0) &
-       write(headerID, '(a,i0)') 'number of cryst_'// &
-                                 trim(crystallite_name(cryst))//'_'// &
-                                 trim(grainStr)//'_'// &
-                                 'cells : ', mappingCells(1)
-   enddo; enddo
-   do phase = 1, material_Nphase; do grain = 1, homogenization_maxNgrains
-     call VecGetSize(phaseResultsVec(phase,grain),mappingCells(1),ierr)
-     CHKERRQ(ierr)
-     write(grainStr,'(a,i0)') 'Grain',grain
-     if (mappingCells(1) > 0) &
-       write(headerID, '(a,i0)') 'number of phase_'// &
-                                 trim(phase_name(phase))//'_'//trim(grainStr)//'_'// &
-                                 'cells : ', mappingCells(1)
-   enddo; enddo  
-   close(headerID) 
- endif 
+ !allocate(mappingCells(worldsize), source = 0)
+ !do homog = 1, material_Nhomogenization
+ !  mappingCells = 0_pInt; mappingCells(worldrank+1) = homogOutput(homog)%sizeIpCells
+ !  call MPI_Allreduce(MPI_IN_PLACE,mappingCells,worldsize,MPI_INT,MPI_SUM,PETSC_COMM_WORLD,ierr)
+ !  call VecCreateMPI(PETSC_COMM_WORLD,mappingCells(worldrank+1),sum(mappingCells), &
+ !                    homogenizationResultsVec(homog),ierr);CHKERRQ(ierr)
+ !  if (sum(mappingCells) > 0) then
+ !    call VecCreateMPI(PETSC_COMM_WORLD,mappingCells(worldrank+1)*2**dimPlex,sum(mappingCells)*2**dimPlex, &
+ !                      connectivityVec,ierr);CHKERRQ(ierr)
+ !    call PetscObjectSetName(connectivityVec,'mapping_'//trim(homogenization_name(homog)),ierr)
+ !    CHKERRQ(ierr)
+ !    call VecGetArrayF90(connectivityVec,results,ierr); CHKERRQ(ierr) 
+ !    results = 0.0_pReal; ctr = 1_pInt
+ !    do cell = cellStart, cellEnd-1; do qPt = 1, mesh_maxNips
+ !      if (material_homog(qPt,cell+1) == homog) then
+ !        results(ctr:ctr+2**dimPlex-1) = real(reshape(connectivity(1:2**dimPlex,mesh_maxNips*cell+qPt), &
+ !                                                     shape=[2**dimPlex]))
+ !        ctr = ctr + 2**dimPlex
+ !      endif  
+ !    enddo; enddo
+ !    call VecRestoreArrayF90(connectivityVec, results, ierr); CHKERRQ(ierr)
+ !    call VecAssemblyBegin(connectivityVec, ierr); CHKERRQ(ierr)
+ !    call VecAssemblyEnd  (connectivityVec, ierr); CHKERRQ(ierr)
+ !    call VecView(connectivityVec, resUnit, ierr); CHKERRQ(ierr)
+ !    call VecDestroy(connectivityVec, ierr); CHKERRQ(ierr)
+ !  endif
+ !enddo  
+ !do cryst = 1, material_Ncrystallite; do grain = 1, homogenization_maxNgrains
+ !  mappingCells              = 0_pInt
+ !  mappingCells(worldrank+1) = crystalliteOutput(cryst,grain)%sizeIpCells
+ !  call MPI_Allreduce(MPI_IN_PLACE,mappingCells,worldsize,MPI_INT,MPI_SUM,PETSC_COMM_WORLD,ierr)
+ !  call VecCreateMPI(PETSC_COMM_WORLD,mappingCells(worldrank+1),sum(mappingCells), &
+ !                    crystalliteResultsVec(cryst,grain),ierr);CHKERRQ(ierr)
+ !  if (sum(mappingCells) > 0) then
+ !    call VecCreateMPI(PETSC_COMM_WORLD,mappingCells(worldrank+1)*2**dimPlex,sum(mappingCells)*2**dimPlex, &
+ !                      connectivityVec,ierr);CHKERRQ(ierr)
+ !    write(grainStr,'(a,i0)') 'Grain',grain
+ !    call PetscObjectSetName(connectivityVec,'mapping_'// &
+ !                                            trim(crystallite_name(cryst))//'_'// &
+ !                                            trim(grainStr),ierr)
+ !    CHKERRQ(ierr)
+ !    call VecGetArrayF90(connectivityVec, results, ierr); CHKERRQ(ierr) 
+ !    results = 0.0_pReal; ctr = 1_pInt
+ !    do cell = cellStart, cellEnd-1; do qPt = 1, mesh_maxNips
+ !      if (homogenization_Ngrains    (mesh_element(3,cell+1)) >= grain .and. &
+ !          microstructure_crystallite(mesh_element(4,cell+1)) == cryst) then
+ !        results(ctr:ctr+2**dimPlex-1) = real(reshape(connectivity(1:2**dimPlex,mesh_maxNips*cell+qPt), &
+ !                                                     shape=[2**dimPlex]))
+ !        ctr = ctr + 2**dimPlex
+ !      endif  
+ !    enddo; enddo
+ !    call VecRestoreArrayF90(connectivityVec, results, ierr); CHKERRQ(ierr)
+ !    call VecAssemblyBegin(connectivityVec, ierr); CHKERRQ(ierr)
+ !    call VecAssemblyEnd  (connectivityVec, ierr); CHKERRQ(ierr)
+ !    call VecView(connectivityVec, resUnit, ierr); CHKERRQ(ierr)
+ !    call VecDestroy(connectivityVec, ierr); CHKERRQ(ierr)
+ !  endif
+ !enddo; enddo
+ !do phase = 1, material_Nphase; do grain = 1, homogenization_maxNgrains
+ !  mappingCells              = 0_pInt
+ !  mappingCells(worldrank+1) = phaseOutput(phase,grain)%sizeIpCells
+ !  call MPI_Allreduce(MPI_IN_PLACE,mappingCells,worldsize,MPI_INT,MPI_SUM,PETSC_COMM_WORLD,ierr)
+ !  call VecCreateMPI(PETSC_COMM_WORLD,mappingCells(worldrank+1),sum(mappingCells), &
+ !                    phaseResultsVec(phase,grain),ierr);CHKERRQ(ierr)
+ !  if (sum(mappingCells) > 0) then
+ !    call VecCreateMPI(PETSC_COMM_WORLD,mappingCells(worldrank+1)*2**dimPlex,sum(mappingCells)*2**dimPlex, &
+ !                      connectivityVec,ierr);CHKERRQ(ierr)
+ !    write(grainStr,'(a,i0)') 'Grain',grain
+ !    call PetscObjectSetName(connectivityVec,&
+ !                            'mapping_'//trim(phase_name(phase))//'_'// &
+ !                            trim(grainStr),ierr)
+ !    CHKERRQ(ierr)
+ !    call VecGetArrayF90(connectivityVec, results, ierr)
+ !    CHKERRQ(ierr) 
+ !    results = 0.0_pReal; ctr = 1_pInt
+ !    do cell = cellStart, cellEnd-1; do qPt = 1, mesh_maxNips
+ !      if (material_phase(grain,qPt,cell+1) == phase) then
+ !        results(ctr:ctr+2**dimPlex-1) = real(reshape(connectivity(1:2**dimPlex,mesh_maxNips*cell+qPt), &
+ !                                                     shape=[2**dimPlex]))
+ !        ctr = ctr + 2**dimPlex
+ !      endif  
+ !    enddo; enddo
+ !    call VecRestoreArrayF90(connectivityVec, results, ierr)
+ !    CHKERRQ(ierr)
+ !    call VecAssemblyBegin(connectivityVec, ierr);CHKERRQ(ierr)
+ !    call VecAssemblyEnd  (connectivityVec, ierr);CHKERRQ(ierr)
+ !    call VecView(connectivityVec, resUnit, ierr);CHKERRQ(ierr)
+ !    call VecDestroy(connectivityVec, ierr); CHKERRQ(ierr)
+ !  endif
+ !enddo; enddo  
+ !if (worldrank == 0_pInt) then
+ !  do homog = 1, material_Nhomogenization
+ !    call VecGetSize(homogenizationResultsVec(homog),mappingCells(1),ierr)
+ !    CHKERRQ(ierr)
+ !    if (mappingCells(1) > 0) &
+ !      write(headerID, '(a,i0)') 'number of homog_'// &
+ !                                trim(homogenization_name(homog))//'_'// &
+ !                                'cells : ', mappingCells(1)
+ !  enddo
+ !  do cryst = 1, material_Ncrystallite; do grain = 1, homogenization_maxNgrains
+ !    call VecGetSize(crystalliteResultsVec(cryst,grain),mappingCells(1),ierr)
+ !    CHKERRQ(ierr)
+ !    write(grainStr,'(a,i0)') 'Grain',grain
+ !    if (mappingCells(1) > 0) &
+ !      write(headerID, '(a,i0)') 'number of cryst_'// &
+ !                                trim(crystallite_name(cryst))//'_'// &
+ !                                trim(grainStr)//'_'// &
+ !                                'cells : ', mappingCells(1)
+ !  enddo; enddo
+ !  do phase = 1, material_Nphase; do grain = 1, homogenization_maxNgrains
+ !    call VecGetSize(phaseResultsVec(phase,grain),mappingCells(1),ierr)
+ !    CHKERRQ(ierr)
+ !    write(grainStr,'(a,i0)') 'Grain',grain
+ !    if (mappingCells(1) > 0) &
+ !      write(headerID, '(a,i0)') 'number of phase_'// &
+ !                                trim(phase_name(phase))//'_'//trim(grainStr)//'_'// &
+ !                                'cells : ', mappingCells(1)
+ !  enddo; enddo  
+ !  close(headerID) 
+ !endif 
 
 end subroutine utilities_init
 
@@ -509,13 +458,12 @@ subroutine utilities_constitutiveResponse(timeinc,P_av,forwardData)
    math_det33
  use FEsolving, only: &
    restartWrite
- use CPFEM2, only: &
-   CPFEM_general
  use homogenization, only: &
    materialpoint_F0, &
    materialpoint_F, &
    materialpoint_P, &
-   materialpoint_dPdF
+   materialpoint_dPdF, &
+   materialpoint_stressAndItsTangent
  use mesh, only: &
    mesh_NcpElems  
  
@@ -560,8 +508,8 @@ subroutine utilities_constitutiveResponse(timeinc,P_av,forwardData)
    flush(6)
  endif
   
- call CPFEM_general(age,timeinc)
- 
+ call materialpoint_stressAndItsTangent(.true.,timeinc)                                             ! calculate P field
+
  call debug_info()
  
  restartWrite = .false.                                                                             ! reset restartWrite status
@@ -791,27 +739,24 @@ end subroutine utilities_indexActiveSet
 !--------------------------------------------------------------------------------------------------
 subroutine utilities_destroy()
  use material, only: &
-   material_Nhomogenization, &
-   material_Ncrystallite, &
-   material_Nphase, &
    homogenization_Ngrains
 
- implicit none
- PetscInt       :: homog, cryst, grain, phase 
- PetscErrorCode :: ierr
+ !implicit none
+ !PetscInt       :: homog, cryst, grain, phase 
+ !PetscErrorCode :: ierr
 
- call PetscViewerHDF5PopGroup(resUnit, ierr); CHKERRQ(ierr)
- call VecDestroy(coordinatesVec,ierr); CHKERRQ(ierr)
- do homog = 1, material_Nhomogenization
-   call VecDestroy(homogenizationResultsVec(homog),ierr);CHKERRQ(ierr)
-   do cryst = 1, material_Ncrystallite; do grain = 1, homogenization_Ngrains(homog)
-     call VecDestroy(crystalliteResultsVec(cryst,grain),ierr);CHKERRQ(ierr)
-   enddo; enddo
-   do phase = 1, material_Nphase; do grain = 1, homogenization_Ngrains(homog)
-     call VecDestroy(phaseResultsVec(phase,grain),ierr);CHKERRQ(ierr)
-   enddo; enddo  
- enddo      
- call PetscViewerDestroy(resUnit, ierr); CHKERRQ(ierr)
+ !call PetscViewerHDF5PopGroup(resUnit, ierr); CHKERRQ(ierr)
+ !call VecDestroy(coordinatesVec,ierr); CHKERRQ(ierr)
+ !do homog = 1, material_Nhomogenization
+ !  call VecDestroy(homogenizationResultsVec(homog),ierr);CHKERRQ(ierr)
+ !  do cryst = 1, material_Ncrystallite; do grain = 1, homogenization_Ngrains(homog)
+ !    call VecDestroy(crystalliteResultsVec(cryst,grain),ierr);CHKERRQ(ierr)
+ !  enddo; enddo
+ !  do phase = 1, material_Nphase; do grain = 1, homogenization_Ngrains(homog)
+ !    call VecDestroy(phaseResultsVec(phase,grain),ierr);CHKERRQ(ierr)
+ !  enddo; enddo  
+ !enddo      
+ !call PetscViewerDestroy(resUnit, ierr); CHKERRQ(ierr)
 
 end subroutine utilities_destroy
 
