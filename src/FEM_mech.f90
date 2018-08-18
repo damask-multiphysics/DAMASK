@@ -9,6 +9,8 @@ module FEM_mech
 
 use PETScdmda
 use PETScsnes
+use PETScDM
+use PETScDMplex
  use prec, only: & 
    pInt, &
    pReal
@@ -75,9 +77,6 @@ use PETScsnes
    PetscDSGetDiscretization, &
    PetscDualSpaceGetFunctional, &
    DMGetLabelSize, &
-   DMPlexCopyCoordinates, &
-   DMPlexGetHeightStratum, &
-   DMPlexGetDepthStratum, &
    DMSNESSetFunctionLocal, &
    DMSNESSetJacobianLocal, &
    SNESSetOptionsPrefix, &
@@ -209,7 +208,7 @@ subroutine FEM_mech_init(fieldBC)
    endif  
  enddo; enddo
  call DMPlexCreateSection(mech_mesh,dimPlex,1,pNumComp,pNumDof, &
-                          numBC,pBcField,pBcComps,pBcPoints,PETSC_NULL_VEC, &
+                          numBC,pBcField,pBcComps,pBcPoints,PETSC_NULL_IS, &
                           section,ierr)
  CHKERRQ(ierr)
  call DMSetDefaultSection(mech_mesh,section,ierr); CHKERRQ(ierr)
@@ -607,7 +606,7 @@ subroutine FEM_mech_formJacobian(dm_local,xx_local,Jac_pre,Jac,dummy,ierr)
  
 !--------------------------------------------------------------------------------------------------
 ! apply boundary conditions 
- call DMPlexCreateRigidBody(dm_local,matnull,ierr); CHKERRQ(ierr)
+ !call DMPlexCreateRigidBody(dm_local,matnull,ierr); CHKERRQ(ierr) MD: linker error
  call MatSetNullSpace(Jac,matnull,ierr); CHKERRQ(ierr)
  call MatSetNearNullSpace(Jac,matnull,ierr); CHKERRQ(ierr)
  call MatNullSpaceDestroy(matnull,ierr); CHKERRQ(ierr)

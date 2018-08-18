@@ -175,20 +175,24 @@ if (PROJECT_NAME STREQUAL "DAMASK_spectral")
       "spectral_mech_Basic.f90")
       add_dependencies(SPECTRAL_SOLVER SPECTRAL_UTILITIES)
       list(APPEND OBJECTFILES $<TARGET_OBJECTS:SPECTRAL_SOLVER>)
+
       if(NOT CMAKE_BUILD_TYPE STREQUAL "SYNTAXONLY")
         add_executable(DAMASK_spectral "DAMASK_spectral.f90" ${OBJECTFILES})
       else()
         add_library(DAMASK_spectral OBJECT "DAMASK_spectral.f90")
       endif()
+
       add_dependencies(DAMASK_spectral SPECTRAL_SOLVER)
 elseif (PROJECT_NAME STREQUAL "DAMASK_FEM")
       add_library(FEM_UTILITIES OBJECT "FEM_utilities.f90")
       add_dependencies(FEM_UTILITIES DAMASK_CPFE)
+      list(APPEND OBJECTFILES $<TARGET_OBJECTS:FEM_UTILITIES>)
 
       add_library(FEM_SOLVER OBJECT
       "FEM_mech.f90")
       add_dependencies(FEM_SOLVER FEM_UTILITIES)
+      list(APPEND OBJECTFILES $<TARGET_OBJECTS:FEM_SOLVER>)
 
-      add_executable(DAMASK_FEM "DAMASK_FEM.f90")
+      add_executable(DAMASK_FEM "DAMASK_FEM.f90" ${OBJECTFILES})
       add_dependencies(DAMASK_FEM FEM_SOLVER)
 endif()
