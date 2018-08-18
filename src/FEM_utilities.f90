@@ -3,8 +3,7 @@
 !> @brief Utilities used by the FEM solver
 !--------------------------------------------------------------------------------------------------
 module FEM_utilities
-#include <petsc/finclude/petscis.h>
-#include <petsc/finclude/petscdmda.h>
+#include <petsc/finclude/petsc.h>
  use prec, only: pReal, pInt
 
 use PETScdmda
@@ -12,7 +11,6 @@ use PETScis
 
  implicit none
  private
-#include <petsc/finclude/petsc.h>
 !--------------------------------------------------------------------------------------------------
 ! 
  logical,       public             :: cutBack = .false.                                             !< cut back of BVP solver in case convergence is not achieved or a material point is terminally ill
@@ -187,14 +185,9 @@ subroutine utilities_init()
  use mesh, only: &
    mesh_NcpElemsGlobal, &
    mesh_maxNips, &
-   geomMesh, &
-   mesh_element
+   geomMesh
  use material, only: &
-   homogenization_Ngrains, &
-   homogenization_maxNgrains, &
-   material_homog, &
-   material_phase, &
-   microstructure_crystallite
+   material_homog
 
  implicit none
 
@@ -204,17 +197,13 @@ subroutine utilities_init()
  PetscInt,    dimension(:), pointer :: points
  PetscInt,    allocatable           :: nEntities(:), nOutputCells(:), nOutputNodes(:), mappingCells(:)
  PetscInt                           :: cellStart, cellEnd, cell, ip, dim, ctr, qPt
- PetscInt                           :: homog, cryst, grain, phase 
  PetscInt,              allocatable :: connectivity(:,:)
  Vec                                :: connectivityVec
- PetscScalar, dimension(:), pointer :: results
  PetscErrorCode                     :: ierr
 
- if (worldrank == 0) then
-   write(6,'(/,a)')   ' <<<+-  DAMASK_FEM_utilities init  -+>>>'
-   write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
+ write(6,'(/,a)')   ' <<<+-  DAMASK_FEM_utilities init  -+>>>'
+ write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
- endif
  
 !--------------------------------------------------------------------------------------------------
 ! set debugging parameters
@@ -738,8 +727,8 @@ end subroutine utilities_indexActiveSet
 !> @brief cleans up
 !--------------------------------------------------------------------------------------------------
 subroutine utilities_destroy()
- use material, only: &
-   homogenization_Ngrains
+ !use material, only: &
+ !  homogenization_Ngrains
 
  !implicit none
  !PetscInt       :: homog, cryst, grain, phase 

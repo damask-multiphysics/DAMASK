@@ -5,6 +5,10 @@
 !> @brief FEM PETSc solver
 !--------------------------------------------------------------------------------------------------
 module FEM_mech
+#include <petsc/finclude/petsc.h>
+
+use PETScdmda
+use PETScsnes
  use prec, only: & 
    pInt, &
    pReal
@@ -23,7 +27,6 @@ module FEM_mech
 
  implicit none
  private
-#include <petsc/finclude/petsc.h>
    
 !--------------------------------------------------------------------------------------------------
 ! derived types
@@ -40,7 +43,7 @@ module FEM_mech
  SNES,                           private :: mech_snes
  Vec,                            private :: solution, solution_rate, solution_local
  PetscInt,                       private :: dimPlex, cellDof, nQuadrature, nBasis
- PetscReal, allocatable, target, private :: qPoints(:), qWeights(:)
+ PetscReal, allocatable, target,dimension(:), private :: qPoints, qWeights
  MatNullSpace,                   private :: matnull
 
 !--------------------------------------------------------------------------------------------------
@@ -55,32 +58,11 @@ module FEM_mech
    FEM_mech_init, &
    FEM_mech_solution ,&
    FEM_mech_forward, &
-   FEM_mech_output, &
    FEM_mech_destroy
 
  external :: &
-   MPI_abort, &
    MPI_Allreduce, &
-   VecCopy, &
-   VecSet, &
-   VecISSet, &
-   VecScale, &
-   VecWAXPY, &
-   VecAXPY, &
-   VecGetSize, &
-   VecAssemblyBegin, &
-   VecAssemblyEnd, &
-   VecView, &
-   VecDestroy, &
-   MatSetOption, &
-   MatSetLocalToGlobalMapping, &
-   MatSetNearNullSpace, &
-   MatZeroEntries, &
    MatZeroRowsColumnsLocalIS, &
-   MatAssemblyBegin, &
-   MatAssemblyEnd, &
-   MatScale, &
-   MatNullSpaceCreateRigidBody, &
    PetscQuadratureCreate, &
    PetscFECreateDefault, &
    PetscFESetQuadrature, &
@@ -92,39 +74,14 @@ module FEM_mech
    PetscDSGetTotalDimension, &
    PetscDSGetDiscretization, &
    PetscDualSpaceGetFunctional, &
-   DMClone, &
-   DMCreateGlobalVector, &
-   DMGetDS, &
-   DMGetDimension, &
-   DMGetDefaultSection, &
-   DMGetDefaultGlobalSection, &
-   DMGetLocalToGlobalMapping, &
-   DMGetLocalVector, &
    DMGetLabelSize, &
    DMPlexCopyCoordinates, &
    DMPlexGetHeightStratum, &
    DMPlexGetDepthStratum, &
-   DMLocalToGlobalBegin, &
-   DMLocalToGlobalEnd, &
-   DMGlobalToLocalBegin, &
-   DMGlobalToLocalEnd, &
-   DMRestoreLocalVector, &
    DMSNESSetFunctionLocal, &
    DMSNESSetJacobianLocal, &
-   SNESCreate, &
    SNESSetOptionsPrefix, &
-   SNESSetDM, &
-   SNESSetMaxLinearSolveFailures, &
    SNESSetConvergenceTest, &
-   SNESSetTolerances, &
-   SNESSetFromOptions, &
-   SNESGetDM, &
-   SNESGetConvergedReason, &
-   SNESGetIterationNumber, &
-   SNESSolve, &
-   SNESDestroy, &
-   PetscViewerHDF5PushGroup, &
-   PetscViewerHDF5PopGroup, &
    PetscObjectSetName
    
 contains
@@ -177,12 +134,10 @@ subroutine FEM_mech_init(fieldBC)
  PetscInt                               :: cellStart, cellEnd, cell, basis 
  character(len=7)                       :: prefix = 'mechFE_'
  PetscErrorCode                         :: ierr
-
- if (worldrank == 0) then
-   write(6,'(/,a)') ' <<<+-  FEM_mech init  -+>>>'
-   write(6,'(a15,a)')   ' Current time: ',IO_timeStamp()
+ 
+ write(6,'(/,a)') ' <<<+-  FEM_mech init  -+>>>'
+ write(6,'(a15,a)')   ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
- endif
 
 !--------------------------------------------------------------------------------------------------
 ! Setup FEM mech mesh
@@ -248,13 +203,13 @@ subroutine FEM_mech_init(fieldBC)
        call ISRestoreIndicesF90(bcPoint,pBcPoint,ierr); CHKERRQ(ierr)
        call ISDestroy(bcPoint,ierr); CHKERRQ(ierr)
      else
-       call ISCreateGeneral(PETSC_COMM_WORLD,0,0,PETSC_COPY_VALUES,bcPoints(numBC),ierr)
+       call ISCreateGeneral(PETSC_COMM_WORLD,0,[0],PETSC_COPY_VALUES,bcPoints(numBC),ierr)
        CHKERRQ(ierr)
      endif  
    endif  
  enddo; enddo
  call DMPlexCreateSection(mech_mesh,dimPlex,1,pNumComp,pNumDof, &
-                          numBC,pBcField,pBcComps,pBcPoints,PETSC_NULL_OBJECT, &
+                          numBC,pBcField,pBcComps,pBcPoints,PETSC_NULL_VEC, &
                           section,ierr)
  CHKERRQ(ierr)
  call DMSetDefaultSection(mech_mesh,section,ierr); CHKERRQ(ierr)
@@ -270,12 +225,12 @@ subroutine FEM_mech_init(fieldBC)
  call DMCreateGlobalVector(mech_mesh,solution        ,ierr); CHKERRQ(ierr)                           !< locally owned displacement Dofs
  call DMCreateGlobalVector(mech_mesh,solution_rate   ,ierr); CHKERRQ(ierr)                           !< locally owned velocity Dofs to guess solution at next load step
  call DMCreateLocalVector (mech_mesh,solution_local  ,ierr); CHKERRQ(ierr)                           !< locally owned velocity Dofs to guess solution at next load step
- call DMSNESSetFunctionLocal(mech_mesh,FEM_mech_formResidual,PETSC_NULL_OBJECT,ierr)                 !< function to evaluate residual forces
+ call DMSNESSetFunctionLocal(mech_mesh,FEM_mech_formResidual,PETSC_NULL_VEC,ierr)                 !< function to evaluate residual forces
  CHKERRQ(ierr)
- call DMSNESSetJacobianLocal(mech_mesh,FEM_mech_formJacobian,PETSC_NULL_OBJECT,ierr)                 !< function to evaluate stiffness matrix
+ call DMSNESSetJacobianLocal(mech_mesh,FEM_mech_formJacobian,PETSC_NULL_VEC,ierr)                 !< function to evaluate stiffness matrix
  CHKERRQ(ierr)
  call SNESSetMaxLinearSolveFailures(mech_snes, huge(1), ierr); CHKERRQ(ierr)                         !< ignore linear solve failures 
- call SNESSetConvergenceTest(mech_snes,FEM_mech_converged,PETSC_NULL_OBJECT,PETSC_NULL_FUNCTION,ierr)
+ call SNESSetConvergenceTest(mech_snes,FEM_mech_converged,PETSC_NULL_VEC,PETSC_NULL_FUNCTION,ierr)
  CHKERRQ(ierr)
  call SNESSetTolerances(mech_snes,1.0,0.0,0.0,itmax,itmax,ierr)
  CHKERRQ(ierr)
@@ -357,7 +312,7 @@ type(tSolutionState) function FEM_mech_solution( &
  params%timeincOld = timeinc_old
  params%fieldBC = fieldBC
 
- call SNESSolve(mech_snes,PETSC_NULL_OBJECT,solution,ierr); CHKERRQ(ierr)                           ! solve mech_snes based on solution guess (result in solution)
+ call SNESSolve(mech_snes,PETSC_NULL_VEC,solution,ierr); CHKERRQ(ierr)                           ! solve mech_snes based on solution guess (result in solution)
  call SNESGetConvergedReason(mech_snes,reason,ierr); CHKERRQ(ierr)                                  ! solution converged?
  terminallyIll = .false.
 
@@ -370,10 +325,8 @@ type(tSolutionState) function FEM_mech_solution( &
    CHKERRQ(ierr)
  endif
 
- if (worldrank == 0) then 
-   write(6,'(/,a)') ' ==========================================================================='
-   flush(6) 
- endif
+ write(6,'(/,a)') ' ==========================================================================='
+ flush(6) 
 
 end function FEM_mech_solution
 
@@ -765,215 +718,6 @@ subroutine FEM_mech_converged(snes_local,PETScIter,xnorm,snorm,fnorm,reason,dumm
  
 end subroutine FEM_mech_converged
 
-!--------------------------------------------------------------------------------------------------
-!> @brief output routine
-!--------------------------------------------------------------------------------------------------
-subroutine FEM_mech_output(inc,fieldBC)
- use material, only: &
-   material_Nhomogenization, &
-   material_Ncrystallite, &
-   material_Nphase, &
-   homogenization_maxNgrains, &
-   homogenization_name, &
-   crystallite_name, &
-   phase_name
- use homogenization, only: &
-   homogOutput, &
-   crystalliteOutput, &
-   phaseOutput
- use numerics, only: &
-   integrationOrder
- use FEM_utilities, only: &
-   resUnit, &
-   coordinatesVec, &
-   homogenizationResultsVec, &
-   crystalliteResultsVec, &
-   phaseResultsVec
-
- implicit none
- integer(pInt), intent(in)          :: inc
- type(tFieldBC),intent(in)          :: fieldBC
- DM                                 :: dm_local
- PetscDS                            :: prob
- Vec                                :: localVec
- PetscScalar, dimension(:), pointer :: x_scal, coordinates, results
- PetscSection                       :: section
- PetscReal,                 pointer :: basisField(:), basisFieldDer(:)
- PetscInt                           :: nodeStart, nodeEnd, node
- PetscInt                           :: faceStart, faceEnd, face
- PetscInt                           :: cellStart, cellEnd, cell
- PetscInt                           :: field, qPt, qOffset, fOffset, dim, gType, cSize 
- PetscInt                           :: homog, cryst, grain, phase, res, resSize 
- PetscErrorCode                     :: ierr
- character(len=1024)                :: resultPartition, incPartition, homogPartition, &
-                                       crystPartition, phasePartition, &
-                                       grainStr
- integer(pInt)                      :: ctr 
-
- write(incPartition,'(a11,i0)') '/Increment_',inc 
- call PetscViewerHDF5PushGroup(resUnit, trim(incPartition), ierr); CHKERRQ(ierr)
- call SNESGetDM(mech_snes,dm_local,ierr); CHKERRQ(ierr)                                                 !< retrieve mesh info from mech_snes into dm_local
- call DMGetDS(dm_local,prob,ierr); CHKERRQ(ierr)                                                        !< retrieve discretization from mesh and store in prob
- call DMGetDefaultSection(dm_local,section,ierr); CHKERRQ(ierr)                                         !< retrieve section (degrees of freedom)
- call DMGetLocalVector(dm_local,localVec,ierr); CHKERRQ(ierr)                                           !< retrieve local vector
- call VecCopy(solution_local,localVec,ierr); CHKERRQ(ierr)
-
- call VecGetArrayF90(coordinatesVec, coordinates, ierr); CHKERRQ(ierr) 
- ctr = 1_pInt
- select case (integrationOrder)
-   case(1_pInt)                                                                                         !< first order quadrature
-     call DMPlexGetDepthStratum(dm_local,0,nodeStart,nodeEnd,ierr); CHKERRQ(ierr)                       !< get index range of entities at dimension 0 (i.e., all nodes)
-     do node = nodeStart, nodeEnd-1                                                                     !< loop over all nodes in mesh
-       call DMPlexVecGetClosure(dm_local,section,localVec,node,x_scal,ierr)                             !< x_scal = localVec (i.e. solution) at node
-       CHKERRQ(ierr)
-       do dim = 1, dimPlex
-         coordinates(ctr) = x_scal(dim); ctr = ctr + 1_pInt                                             !< coordinates of node
-       enddo
-       call DMPlexVecRestoreClosure(dm_local,section,localVec,node,x_scal,ierr)                         !< disassociate x_scal pointer
-       CHKERRQ(ierr)
-     enddo 
-   case(2_pInt)                                                                                         !< second order quadrature
-     call DMPlexGetHeightStratum(dm_local,0,cellStart,cellEnd,ierr)                                     !< get index range of highest dimension object (i.e. cells of mesh) TODO 3D assumption!!
-     CHKERRQ(ierr)
-     do cell = cellStart, cellEnd-1                                                                     !< loop over all elements 
-       call DMPlexVecGetClosure(dm_local,section,localVec,cell,x_scal,ierr)
-       CHKERRQ(ierr)
-       do dim = 1, dimPlex
-         coordinates(ctr) = sum(x_scal(dim:cellDof:dimPlex))/real(nBasis)                               !< coordinates of cell center
-         ctr = ctr + 1_pInt
-       enddo
-       call DMPlexVecRestoreClosure(dm_local,section,localVec,cell,x_scal,ierr)
-       CHKERRQ(ierr)
-     enddo 
-     call DMPlexGetDepthStratum(dm_local,0,nodeStart,nodeEnd,ierr)                                      !< get index range of entities at dimension 0 (i.e., all nodes)
-     CHKERRQ(ierr)
-     do node = nodeStart, nodeEnd-1                                                                     !< loop over all nodes
-       call DMPlexVecGetClosure(dm_local,section,localVec,node,x_scal,ierr)
-       CHKERRQ(ierr)
-       do dim = 1, dimPlex
-         coordinates(ctr) = x_scal(dim)                                                                 !< coordinates of cell corners
-         ctr = ctr + 1_pInt
-       enddo
-       call DMPlexVecRestoreClosure(dm_local,section,localVec,node,x_scal,ierr)
-       CHKERRQ(ierr)
-     enddo 
-     do gType = 1, dimPlex-1
-       call DMPlexGetHeightStratum(dm_local,gType,faceStart,faceEnd,ierr)                               !< get index range of entities at dimension N-1 (i.e., all faces)
-       CHKERRQ(ierr)
-       do face = faceStart, faceEnd-1                                                                   !< loop over all elements 
-         call DMPlexVecGetClosure(dm_local,section,localVec,face,x_scal,ierr)
-         CHKERRQ(ierr)
-         cSize = size(x_scal)
-         do dim = 1, dimPlex
-           coordinates(ctr) = sum(x_scal(dim:cSize:dimPlex))/real(cSize/dimPlex)                        !< coordinates of edge/face centers TODO quadratic element assumption used here!
-           ctr = ctr + 1_pInt
-         enddo
-         call DMPlexVecRestoreClosure(dm_local,section,localVec,face,x_scal,ierr)
-         CHKERRQ(ierr)
-       enddo
-     enddo   
-   case default
-     call DMPlexGetHeightStratum(dm_local,0,cellStart,cellEnd,ierr)                                     !< get index range of elements (mesh cells)
-     CHKERRQ(ierr)
-     do cell = cellStart, cellEnd-1                                                                     !< loop over all elements 
-       call DMPlexVecGetClosure(dm_local, &                                                             !< mesh
-                                section, &                                                              !< distribution of DoF on mesh
-                                localVec, &                                                             !< overall solution vector (i.e. all DoFs)...
-                                cell, &                                                                 !< ...at this cell
-                                x_scal, &                                                               !< store all DoFs of closure (faces, edges, nodes if present) into x_scal
-                                ierr)                                                                   !< --> get coordinates of closure entities with DoFs
-       CHKERRQ(ierr)
-       qOffset = 0
-       do qPt = 1, nQuadrature                                                                          !< loop over each quad point in cell
-         fOffset = 0
-         do field = 0, dimPlex-1                                                                        !< loop over each solution field (e.g., x,y,z coordinates)
-           call PetscDSGetTabulation(prob,field,basisField,basisFieldDer,ierr)                          !< retrieve shape function at each quadrature point for field
-           CHKERRQ(ierr)
-           coordinates(ctr) = real(sum(basisField(qOffset+1:qOffset+nBasis)* &
-                              x_scal(fOffset+1:fOffset+nBasis)), pReal)                                 !< interpolate field value (in x_scal) to quad points
-           ctr = ctr + 1_pInt
-           fOffset = fOffset + nBasis                                                                   !< wind forward by one field
-         enddo  
-         qOffset = qOffset + nBasis                                                                     !< wind forward by one quad point
-       enddo  
-       call DMPlexVecRestoreClosure(dm_local,section,localVec,cell,x_scal,ierr)
-       CHKERRQ(ierr)
-     enddo 
- end select    
- call VecRestoreArrayF90(coordinatesVec, coordinates, ierr); CHKERRQ(ierr)
- call VecAssemblyBegin(coordinatesVec, ierr); CHKERRQ(ierr)
- call VecAssemblyEnd  (coordinatesVec, ierr); CHKERRQ(ierr)
- call VecView(coordinatesVec, resUnit, ierr); CHKERRQ(ierr)
- call DMRestoreLocalVector(dm_local,localVec,ierr); CHKERRQ(ierr)
- 
- do homog = 1, material_Nhomogenization
-   call VecGetSize(homogenizationResultsVec(homog),resSize,ierr)
-   if (resSize > 0) then
-     homogPartition = trim(incPartition)//'/Homog_'//trim(homogenization_name(homog))
-     call PetscViewerHDF5PushGroup(resUnit, homogPartition, ierr)
-     CHKERRQ(ierr)
-     do res = 1, homogOutput(homog)%sizeResults
-       write(resultPartition,'(a12,i0)') 'homogResult_',res 
-       call PetscObjectSetName(homogenizationResultsVec(homog),trim(resultPartition),ierr)
-       CHKERRQ(ierr)
-       call VecGetArrayF90(homogenizationResultsVec(homog),results,ierr);CHKERRQ(ierr)     
-       results = homogOutput(homog)%output(res,:)
-       call VecRestoreArrayF90(homogenizationResultsVec(homog), results, ierr)
-       CHKERRQ(ierr)
-       call VecAssemblyBegin(homogenizationResultsVec(homog), ierr); CHKERRQ(ierr)
-       call VecAssemblyEnd  (homogenizationResultsVec(homog), ierr); CHKERRQ(ierr)
-       call VecView(homogenizationResultsVec(homog), resUnit, ierr); CHKERRQ(ierr)
-     enddo 
-     call PetscViewerHDF5PopGroup(resUnit, ierr); CHKERRQ(ierr)
-   endif
- enddo   
- do cryst = 1, material_Ncrystallite; do grain = 1, homogenization_maxNgrains
-   call VecGetSize(crystalliteResultsVec(cryst,grain),resSize,ierr)
-   if (resSize > 0) then
-     write(grainStr,'(a,i0)') 'Grain',grain
-     crystPartition = trim(incPartition)//'/Crystallite_'//trim(crystallite_name(cryst))//'_'//trim(grainStr)
-     call PetscViewerHDF5PushGroup(resUnit, crystPartition, ierr)
-     CHKERRQ(ierr)
-     do res = 1, crystalliteOutput(cryst,grain)%sizeResults
-       write(resultPartition,'(a18,i0)') 'crystalliteResult_',res 
-       call PetscObjectSetName(crystalliteResultsVec(cryst,grain),trim(resultPartition),ierr)
-       CHKERRQ(ierr)
-       call VecGetArrayF90(crystalliteResultsVec(cryst,grain),results,ierr)
-       CHKERRQ(ierr) 
-       results = crystalliteOutput(cryst,grain)%output(res,:)
-       call VecRestoreArrayF90(crystalliteResultsVec(cryst,grain), results, ierr)
-       CHKERRQ(ierr)
-       call VecAssemblyBegin(crystalliteResultsVec(cryst,grain), ierr);CHKERRQ(ierr)
-       call VecAssemblyEnd  (crystalliteResultsVec(cryst,grain), ierr);CHKERRQ(ierr)
-       call VecView(crystalliteResultsVec(cryst,grain), resUnit, ierr);CHKERRQ(ierr)
-     enddo
-     call PetscViewerHDF5PopGroup(resUnit, ierr); CHKERRQ(ierr)
-   endif
- enddo; enddo 
- do phase = 1, material_Nphase; do grain = 1, homogenization_maxNgrains
-   call VecGetSize(phaseResultsVec(phase,grain),resSize,ierr)
-   if (resSize > 0) then
-     write(grainStr,'(a,i0)') 'Grain',grain
-     phasePartition = trim(incPartition)//'/Phase_'//trim(phase_name(phase))//'_'//trim(grainStr)
-     call PetscViewerHDF5PushGroup(resUnit, phasePartition, ierr)
-     CHKERRQ(ierr)
-     do res = 1, phaseOutput(phase,grain)%sizeResults
-       write(resultPartition,'(a12,i0)') 'phaseResult_',res  
-       call PetscObjectSetName(phaseResultsVec(phase,grain),trim(resultPartition),ierr)
-       CHKERRQ(ierr)
-       call VecGetArrayF90(phaseResultsVec(phase,grain),results,ierr);CHKERRQ(ierr) 
-       results = phaseOutput(phase,grain)%output(res,:)
-       call VecRestoreArrayF90(phaseResultsVec(phase,grain), results, ierr)
-       CHKERRQ(ierr)
-       call VecAssemblyBegin(phaseResultsVec(phase,grain), ierr); CHKERRQ(ierr)
-       call VecAssemblyEnd  (phaseResultsVec(phase,grain), ierr); CHKERRQ(ierr)
-       call VecView(phaseResultsVec(phase,grain), resUnit, ierr); CHKERRQ(ierr)
-     enddo  
-     call PetscViewerHDF5PopGroup(resUnit, ierr); CHKERRQ(ierr) 
-   endif
- enddo; enddo
- 
-end subroutine FEM_mech_output
 
 !--------------------------------------------------------------------------------------------------
 !> @brief destroy routine
