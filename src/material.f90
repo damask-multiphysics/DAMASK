@@ -16,8 +16,8 @@ module material
    tSourceState, &
    tHomogMapping, &
    tPhaseMapping, &
-   p_vec, &
-   p_intvec
+   group_scalar, &
+   group_int
 
  implicit none
  private
@@ -268,7 +268,7 @@ module material
    porosityMapping, &                                                                               !< mapping for porosity state/fields
    hydrogenfluxMapping                                                                              !< mapping for hydrogen conc state/fields
 
- type(p_vec),         allocatable, dimension(:), public :: &
+ type(group_scalar),  allocatable, dimension(:), public :: &
    temperature, &                                                                                   !< temperature field
    damage, &                                                                                        !< damage field
    vacancyConc, &                                                                                   !< vacancy conc field
@@ -1120,8 +1120,8 @@ subroutine material_populateGrains
                   phaseID,textureID,dGrains,myNgrains,myNorientations,myNconstituents, &
                   grain,constituentGrain,ipGrain,symExtension, ip
  real(pReal) :: deviation,extreme,rnd
- integer(pInt),  dimension (:,:),   allocatable :: Nelems                                           ! counts number of elements in homog, micro array
- type(p_intvec), dimension (:,:), allocatable :: elemsOfHomogMicro                                  ! lists element number in homog, micro array
+ integer(pInt),         dimension (:,:), allocatable :: Nelems                                           ! counts number of elements in homog, micro array
+ type(group_int), dimension (:,:), allocatable :: elemsOfHomogMicro                                ! lists element number in homog, micro array
 
  myDebug = debug_level(debug_material)
 

@@ -7,7 +7,7 @@ module vacancyflux_cahnhilliard
  use prec, only: &
    pReal, &
    pInt, &
-   p_vec
+   group_scalar
 
  implicit none
  private
@@ -26,7 +26,7 @@ module vacancyflux_cahnhilliard
  real(pReal),                         dimension(:),           allocatable,        private :: &
    vacancyflux_cahnhilliard_flucAmplitude
 
- type(p_vec),                         dimension(:),           allocatable,        private :: &
+ type(group_scalar),                  dimension(:),           allocatable,        private :: &
    vacancyflux_cahnhilliard_thermalFluc
 
  real(pReal),                                                 parameter,           private :: &
