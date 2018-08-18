@@ -511,8 +511,6 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
    subStepMinCryst, &
    subStepSizeCryst, &
    stepIncreaseCryst, &
-   numerics_integrator, &
-   numerics_integrationMode, &
    numerics_timeSyncing
  use debug, only: &
    debug_level, &
