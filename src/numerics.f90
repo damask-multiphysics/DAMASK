@@ -26,7 +26,7 @@ module numerics
    worldsize                  =  0_pInt                                                             !< MPI worldsize (/=0 for MPI simulations only)
  integer(4), protected, public :: &
    DAMASK_NumThreadsInt       =  0                                                                  !< value stored in environment variable DAMASK_NUM_THREADS, set to zero if no OpenMP directive
-!> ToDo: numerics_integrator in an array for historical reasons, only element 1 is used!
+ !< ToDo: numerics_integrator is an array for historical reasons, only element 1 is used!
  integer(pInt), dimension(2), protected, public :: &
    numerics_integrator        =  1_pInt                                                             !< method used for state integration (central & perturbed state), Default 1: fix-point iteration for both states
  real(pReal), protected, public :: &
@@ -525,7 +525,7 @@ subroutine numerics_init
  write(6,'(a24,1x,es8.1)')  ' rTol_crystalliteState:  ',rTol_crystalliteState
  write(6,'(a24,1x,es8.1)')  ' rTol_crystalliteStress: ',rTol_crystalliteStress
  write(6,'(a24,1x,es8.1)')  ' aTol_crystalliteStress: ',aTol_crystalliteStress
- write(6,'(a24,1x,es8.1)')  ' integtator:             ',numerics_integrator
+ write(6,'(a24,2(1x,i8))')  ' integrator:             ',numerics_integrator
  write(6,'(a24,1x,L8)')     ' timeSyncing:            ',numerics_timeSyncing
  write(6,'(a24,1x,L8)')     ' use ping pong scheme:   ',usepingpong
  write(6,'(a24,1x,es8.1,/)')' unitlength:             ',numerics_unitlength
