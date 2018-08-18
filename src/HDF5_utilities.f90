@@ -452,7 +452,7 @@ subroutine HDF5_backwardMappingPhase(material_phase,phasememberat,phase_name,dat
    if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_backwardMappingPhase: h5pcreate_f') 
    call h5pset_dxpl_mpio_f(plist_id, H5FD_MPIO_COLLECTIVE_F, hdferr)
    if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_backwardMappingPhase: h5pset_dxpl_mpio_f')
-#ifdef PETSC
+#endif
 
 !--------------------------------------------------------------------------------------------------
   ! write data by fields in the datatype. Fields order is not important.
@@ -572,7 +572,7 @@ subroutine HDF5_mappingHomog(material_homog,homogmemberat,homogenization_name,da
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingHomog: h5pcreate_f') 
  call h5pset_dxpl_mpio_f(plist_id, H5FD_MPIO_COLLECTIVE_F, hdferr)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingHomog: h5pset_dxpl_mpio_f')
-#ifdef PETSC
+#endif
  
 !--------------------------------------------------------------------------------------------------
 ! write data by fields in the datatype. Fields order is not important.
@@ -685,7 +685,7 @@ subroutine HDF5_backwardMappingHomog(material_homog,homogmemberat,homogenization
    if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_backwardMappingHomog: h5pcreate_f') 
    call h5pset_dxpl_mpio_f(plist_id, H5FD_MPIO_COLLECTIVE_F, hdferr)
    if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_backwardMappingHomog: h5pset_dxpl_mpio_f')
-#ifdef PETSC
+#endif
     
 !--------------------------------------------------------------------------------------------------
   ! write data by fields in the datatype. Fields order is not important.
@@ -818,7 +818,7 @@ subroutine HDF5_mappingCrystallite(crystalliteAt,crystmemberAt,crystallite_name,
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingCrystallite: h5pcreate_f') 
  call h5pset_dxpl_mpio_f(plist_id, H5FD_MPIO_COLLECTIVE_F, hdferr)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingCrystallite: h5pset_dxpl_mpio_f')
-#ifdef PETSC
+#endif
  
 !--------------------------------------------------------------------------------------------------
 ! write data by fields in the datatype. Fields order is not important.
@@ -950,7 +950,7 @@ subroutine HDF5_backwardMappingCrystallite(crystalliteAt,crystmemberAt,crystalli
    if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_backwardMappingCrystallite: h5pcreate_f') 
    call h5pset_dxpl_mpio_f(plist_id, H5FD_MPIO_COLLECTIVE_F, hdferr)
    if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_backwardMappingCrystallite: h5pset_dxpl_mpio_f')
-#ifdef PETSC
+#endif
      
 !--------------------------------------------------------------------------------------------------
   ! write data by fields in the datatype. Fields order is not important.      
@@ -1103,7 +1103,7 @@ subroutine HDF5_writeVectorDataset(group,dataset,label,SIunit,dataspace_size,mpi
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_writeVectorDataset: h5pcreate_f') 
  call h5pset_dxpl_mpio_f(plist_id, H5FD_MPIO_COLLECTIVE_F, hdferr)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_writeVectorDataset: h5pset_dxpl_mpio_f')
-#ifdef PETSC
+#endif
  
  ! Write the dataset collectively
  call h5dwrite_f(dset_id, H5T_NATIVE_DOUBLE, dataset, int([vectorSize, dataspace_size],HSIZE_T), hdferr, &
@@ -1165,7 +1165,7 @@ subroutine HDF5_writeTensorDataset(group,dataset,label,SIunit,dataspace_size,mpi
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_writeTensorDataset: h5pcreate_f') 
  call h5pset_dxpl_mpio_f(plist_id, H5FD_MPIO_COLLECTIVE_F, hdferr)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_writeTensorDataset: h5pset_dxpl_mpio_f')
-#ifdef PETSC
+#endif
  
  ! Write the dataset collectively
  call h5dwrite_f(dset_id, H5T_NATIVE_DOUBLE, dataset, int([tensorSize, dataspace_size],HSIZE_T), hdferr, &
@@ -1258,7 +1258,7 @@ subroutine HDF5_writeScalarDataset(group,dataset,label,SIunit,dataspace_size,mpi
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_writeScalarDataset: h5pcreate_f') 
  call h5pset_dxpl_mpio_f(plist_id, H5FD_MPIO_COLLECTIVE_F, hdferr)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_writeScalarDataset: h5pset_dxpl_mpio_f')
-#ifdef PETSC
+#endif
  
  ! Write the dataset collectively
  call h5dwrite_f(dset_id, H5T_NATIVE_DOUBLE, dataset, int([dataspace_size],HSIZE_T), hdferr, &
