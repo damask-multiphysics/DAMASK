@@ -285,7 +285,6 @@ subroutine debug_info
  implicit none
  
  !$OMP CRITICAL (write2out)
-
    debugOutputCPFEM: if (iand(debug_level(debug_CPFEM),debug_LEVELBASIC) /= 0 &
                       .and. any(debug_stressMinLocation /= 0_pInt) &
                       .and. any(debug_stressMaxLocation /= 0_pInt) ) then
