@@ -160,7 +160,7 @@ subroutine constitutive_init()
 ! parse plasticities from config file
  if (any(phase_plasticity == PLASTICITY_NONE_ID))          call plastic_none_init
  if (any(phase_plasticity == PLASTICITY_ISOTROPIC_ID))     call plastic_isotropic_init
- if (any(phase_plasticity == PLASTICITY_PHENOPOWERLAW_ID)) call plastic_phenopowerlaw_init(FILEUNIT)
+ if (any(phase_plasticity == PLASTICITY_PHENOPOWERLAW_ID)) call plastic_phenopowerlaw_init
  if (any(phase_plasticity == PLASTICITY_KINEHARDENING_ID)) call plastic_kinehardening_init(FILEUNIT)
  if (any(phase_plasticity == PLASTICITY_DISLOTWIN_ID))     call plastic_dislotwin_init(FILEUNIT)
  if (any(phase_plasticity == PLASTICITY_DISLOUCLA_ID))     call plastic_disloucla_init(FILEUNIT)
@@ -864,18 +864,10 @@ subroutine constitutive_collectDotState(Tstar_v, FeArray, FpArray, subdt, subfra
    FpArray                                                                                          !< plastic deformation gradient
  real(pReal),  intent(in), dimension(6) :: &
    Tstar_v                                                                                          !< 2nd Piola Kirchhoff stress tensor (Mandel)
- integer(pLongInt) :: &
-   tick = 0_pLongInt, &
-   tock = 0_pLongInt, &
-   tickrate, &
-   maxticks
  integer(pInt) :: &
    ho, &                                                                                            !< homogenization
    tme, &                                                                                           !< thermal member position
    s                                                                                                !< counter in source loop
-
- if (iand(debug_level(debug_constitutive), debug_levelBasic) /= 0_pInt) &
-   call system_clock(count=tick,count_rate=tickrate,count_max=maxticks)
 
  ho  = material_homog(    ip,el)
  tme = thermalMapping(ho)%p(ip,el)
@@ -957,13 +949,6 @@ subroutine constitutive_collectDeltaState(Tstar_v, Fe, ipc, ip, el)
    Fe                                                                                               !< elastic deformation gradient
  integer(pInt) :: &
    s                                                                                                !< counter in source loop
- integer(pLongInt) :: &
-   tick, tock, &
-   tickrate, &
-   maxticks
-
- if (iand(debug_level(debug_constitutive), debug_levelBasic) /= 0_pInt) &
-   call system_clock(count=tick,count_rate=tickrate,count_max=maxticks)
 
  plasticityType: select case (phase_plasticity(material_phase(ipc,ip,el)))
    case (PLASTICITY_KINEHARDENING_ID) plasticityType

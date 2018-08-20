@@ -19,7 +19,9 @@ if ( "x$DAMASK_NUM_THREADS" == "x" ) then
 endif
 
 # currently, there is no information that unlimited causes problems
-# still,  http://software.intel.com/en-us/forums/topic/501500 suggest to fix it
+# still, http://software.intel.com/en-us/forums/topic/501500 suggest to fix it
+# more info https://jblevins.org/log/segfault
+#           https://stackoverflow.com/questions/79923/what-and-where-are-the-stack-and-heap
 # http://superuser.com/questions/220059/what-parameters-has-ulimit
 limit datasize  unlimited  # maximum  heap size (kB)
 limit stacksize unlimited  # maximum stack size (kB)

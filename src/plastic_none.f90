@@ -4,16 +4,9 @@
 !> @brief material subroutine for purely elastic material
 !--------------------------------------------------------------------------------------------------
 module plastic_none
- use prec, only: &
-   pInt
 
  implicit none
  private
- integer(pInt),                       dimension(:),     allocatable,          public, protected :: &
-   plastic_none_sizePostResults
-
- integer(pInt),                       dimension(:,:),   allocatable, target,  public :: &
-   plastic_none_sizePostResult                                                                 !< size of each post result output
 
  public :: &
    plastic_none_init
@@ -31,6 +24,8 @@ subroutine plastic_none_init
    compiler_version, &
    compiler_options
 #endif
+ use prec, only: &
+   pInt
  use debug, only: &
    debug_level, &
    debug_constitutive, &
@@ -51,18 +46,13 @@ subroutine plastic_none_init
  integer(pInt) :: &
    maxNinstance, &
    phase, &
-   NofMyPhase, &
-   sizeState, &
-   sizeDotState, &
-   sizeDeltaState
+   NofMyPhase
  
  write(6,'(/,a)')   ' <<<+-  constitutive_'//PLASTICITY_NONE_label//' init  -+>>>'
  write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
  
  maxNinstance = int(count(phase_plasticity == PLASTICITY_none_ID),pInt)
- if (maxNinstance == 0_pInt) return
-
  if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0_pInt) &
    write(6,'(a16,1x,i5,/)') '# instances:',maxNinstance
 
@@ -70,36 +60,24 @@ subroutine plastic_none_init
    if (phase_plasticity(phase) == PLASTICITY_none_ID) then
    NofMyPhase=count(material_phase==phase)
 
-     sizeState    = 0_pInt
-     plasticState(phase)%sizeState = sizeState
-     sizeDotState = sizeState
-     plasticState(phase)%sizeDotState = sizeDotState
-     sizeDeltaState = 0_pInt
-     plasticState(phase)%sizeDeltaState = sizeDeltaState
-     plasticState(phase)%sizePostResults = 0_pInt
-     plasticState(phase)%nSlip  = 0_pInt
-     plasticState(phase)%nTwin  = 0_pInt
-     plasticState(phase)%nTrans = 0_pInt
-     allocate(plasticState(phase)%aTolState          (sizeState))
-     allocate(plasticState(phase)%state0             (sizeState,NofMyPhase))
-     allocate(plasticState(phase)%partionedState0    (sizeState,NofMyPhase))
-     allocate(plasticState(phase)%subState0          (sizeState,NofMyPhase))
-     allocate(plasticState(phase)%state              (sizeState,NofMyPhase))
+     allocate(plasticState(phase)%aTolState          (0_pInt))
+     allocate(plasticState(phase)%state0             (0_pInt,NofMyPhase))
+     allocate(plasticState(phase)%partionedState0    (0_pInt,NofMyPhase))
+     allocate(plasticState(phase)%subState0          (0_pInt,NofMyPhase))
+     allocate(plasticState(phase)%state              (0_pInt,NofMyPhase))
 
-     allocate(plasticState(phase)%dotState           (sizeDotState,NofMyPhase))
-     allocate(plasticState(phase)%deltaState        (sizeDeltaState,NofMyPhase))
+     allocate(plasticState(phase)%dotState           (0_pInt,NofMyPhase))
+     allocate(plasticState(phase)%deltaState         (0_pInt,NofMyPhase))
      if (any(numerics_integrator == 1_pInt)) then
-       allocate(plasticState(phase)%previousDotState (sizeDotState,NofMyPhase))
-       allocate(plasticState(phase)%previousDotState2(sizeDotState,NofMyPhase))
+       allocate(plasticState(phase)%previousDotState (0_pInt,NofMyPhase))
+       allocate(plasticState(phase)%previousDotState2(0_pInt,NofMyPhase))
      endif
      if (any(numerics_integrator == 4_pInt)) &
-       allocate(plasticState(phase)%RK4dotState      (sizeDotState,NofMyPhase))
+       allocate(plasticState(phase)%RK4dotState      (0_pInt,NofMyPhase))
      if (any(numerics_integrator == 5_pInt)) &
-       allocate(plasticState(phase)%RKCK45dotState (6,sizeDotState,NofMyPhase))
+       allocate(plasticState(phase)%RKCK45dotState (6,0_pInt,NofMyPhase))
    endif
  enddo initializeInstances
-
- allocate(plastic_none_sizePostResults(maxNinstance), source=0_pInt)
 
 end subroutine plastic_none_init
 

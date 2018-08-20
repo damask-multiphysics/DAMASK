@@ -1,15 +1,3 @@
-#define QUOTE(x) #x
-#define PASTE(x,y) x ## y
-
-#ifndef INT
-#define INT 4
-#endif
-
-#ifndef FLOAT
-#define FLOAT 8
-#endif
-
-#include "prec.f90"
 !--------------------------------------------------------------------------------------------------
 !> @author Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
 !> @author Franz Roters, Max-Planck-Institut für Eisenforschung GmbH
@@ -17,13 +5,12 @@
 !> @author W.A. Counts
 !> @author Denny Tjahjanto, Max-Planck-Institut für Eisenforschung GmbH
 !> @author Christoph Kords, Max-Planck-Institut für Eisenforschung GmbH
-!> @brief Material subroutine for MSC.Marc
+!> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
+!> @brief Interfaces DAMASK with MSC.Marc
 !> @details Usage:
 !> @details   - choose material as hypela2
 !> @details   - set statevariable 2 to index of homogenization
 !> @details   - set statevariable 3 to index of microstructure
-!> @details   - make sure the file "material.config" exists in the working directory
-!> @details   - make sure the file "numerics.config" exists in the working directory
 !> @details   - use nonsymmetric option for solver (e.g. direct profile or multifrontal sparse, the latter seems to be faster!)
 !> @details   - in case of ddm (domain decomposition) a SYMMETRIC solver has to be used, i.e uncheck "non-symmetric"
 !> @details  Marc subroutines used:
@@ -34,23 +21,36 @@
 !> @details   - concom: lovl, inc
 !> @details   - creeps: timinc
 !--------------------------------------------------------------------------------------------------
+#define QUOTE(x) #x
+#define PASTE(x,y) x ## y
+
+#include "prec.f90"
+
 module DAMASK_interface
 
  implicit none
- character(len=4), parameter :: InputFileExtension = '.dat'
- character(len=4), parameter :: LogFileExtension = '.log'
+ private
+ character(len=4), parameter, public :: InputFileExtension = '.dat'
+ character(len=4), parameter, public :: LogFileExtension = '.log'
+ 
+ public :: &
+  DAMASK_interface_init, &
+  getSolverJobName
 
 contains
 
-
 !--------------------------------------------------------------------------------------------------
-!> @brief only output of current version
+!> @brief reports and sets working directory
 !--------------------------------------------------------------------------------------------------
 subroutine DAMASK_interface_init
+ use ifport, only: &
+   CHDIR
 
  implicit none
  integer, dimension(8) :: &
    dateAndTime                                                                                      ! type default integer
+ integer :: ierr
+ character(len=1024) :: wd
 
  call date_and_time(values = dateAndTime)
  write(6,'(/,a)') ' <<<+-  DAMASK_Marc  -+>>>'
@@ -64,25 +64,15 @@ subroutine DAMASK_interface_init
                                             dateAndTime(7)
  write(6,'(/,a)') ' <<<+-  DAMASK_interface init  -+>>>'
 #include "compilation_info.f90"
+ inquire(5, name=wd)                                                                                ! determine inputputfile
+ wd = wd(1:scan(wd,'/',back=.true.))
+ ierr = CHDIR(wd)
+ if (ierr /= 0) then
+   write(6,'(a20,a,a16)') ' working directory "',trim(wd),'" does not exist'
+   call quit(1)
+ endif
 
 end subroutine DAMASK_interface_init
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief returns the current workingDir
-!--------------------------------------------------------------------------------------------------
-function getSolverWorkingDirectoryName()
-
- implicit none
- character(1024) getSolverWorkingDirectoryName, inputName
- character(len=*), parameter :: pathSep = achar(47)//achar(92)                                      ! forward and backward slash
-
- getSolverWorkingDirectoryName=''
- inputName=''
- inquire(5, name=inputName)                                                                         ! determine inputputfile
- getSolverWorkingDirectoryName=inputName(1:scan(inputName,pathSep,back=.true.))
-
-end function getSolverWorkingDirectoryName
 
 
 !--------------------------------------------------------------------------------------------------
@@ -109,6 +99,9 @@ end function getSolverJobName
 
 end module DAMASK_interface
 
+
+
+
 #include "commercialFEM_fileList.f90"
 
 !--------------------------------------------------------------------------------------------------
@@ -118,17 +111,6 @@ end module DAMASK_interface
 !> @details
 !> @details (2) Use the -> 'Plasticity,3' card(=update+finite+large disp+constant d)
 !> @details     in the parameter section of input deck (updated Lagrangian formulation).
-!> @details
-!> @details     The following operation obtains U (stretch tensor) at t=n+1 :
-!> @details
-!> @details     call scla(un1,0.d0,itel,itel,1)
-!> @details     do k=1,3
-!> @details      do i=1,3
-!> @details       do  j=1,3
-!> @details        un1(i,j)=un1(i,j)+dsqrt(strechn1(k))*eigvn1(i,k)*eigvn1(j,k)
-!> @details       enddo
-!> @details      enddo
-!> @details     enddo
 !--------------------------------------------------------------------------------------------------
 subroutine hypela2(d,g,e,de,s,t,dt,ngens,m,nn,kcus,matus,ndi,nshear,disp, &
                    dispt,coord,ffn,frotn,strechn,eigvn,ffn1,frotn1, &
