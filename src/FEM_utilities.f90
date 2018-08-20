@@ -469,8 +469,7 @@ subroutine utilities_constitutiveResponse(timeinc,P_av,forwardData)
  real(pReal)   :: defgradDetMin, defgradDetMax, defgradDet
  PetscErrorCode :: ierr
 
- if (worldrank == 0) &
-   write(6,'(/,a)') ' ... evaluating constitutive response ......................................'
+ write(6,'(/,a)') ' ... evaluating constitutive response ......................................'
 
  age = .False.
  if (forwardData) then                                                                              ! aging results

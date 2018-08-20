@@ -196,7 +196,7 @@ end subroutine CPFEM_init
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief perform initialization at first call, update variables and call the actual material model
+!> @brief forwards data after successful increment
 !--------------------------------------------------------------------------------------------------
 subroutine CPFEM_age()
  use prec, only: &
@@ -212,16 +212,6 @@ subroutine CPFEM_age()
    debug_levelSelective
  use FEsolving, only: &
    restartWrite
- use math, only: &
-   math_identity2nd, &
-   math_mul33x33, &
-   math_det33, &
-   math_transpose33, &
-   math_I3, &
-   math_Mandel3333to66, &
-   math_Mandel66to3333, &
-   math_Mandel33to6, &
-   math_Mandel6to33
  use material, only: &
    plasticState, &
    sourceState, &
