@@ -20,14 +20,12 @@ program DAMASK_spectral
    pReal, &
    tol_math_check, &
    dNeq
- use system_routines, only: &
-   getCWD
  use DAMASK_interface, only: &
    DAMASK_interface_init, &
    loadCaseFile, &
    geometryFile, &
    getSolverJobName, &
-   interface_appendToOutFile
+   interface_restartInc
  use IO, only: &
    IO_read, &
    IO_isBlank, &
@@ -383,8 +381,7 @@ program DAMASK_spectral
 !--------------------------------------------------------------------------------------------------
 ! write header of output file
  if (worldrank == 0) then
-   if (.not. interface_appendToOutFile) then                                                        ! after restart, append to existing results file
-     if (getCWD(workingDir)) call IO_error(106_pInt,ext_msg=trim(workingDir))
+   writeHeader: if (interface_restartInc < 1_pInt) then
      open(newunit=resUnit,file=trim(getSolverJobName())//&
                                  '.spectralOut',form='UNFORMATTED',status='REPLACE')
      write(resUnit) 'load:',       trim(loadCaseFile)                                               ! ... and write header
@@ -407,10 +404,10 @@ program DAMASK_spectral
      if (iand(debug_level(debug_spectral),debug_levelBasic) /= 0) &
        write(6,'(/,a)') ' header of result and statistics file written out'
      flush(6)
-   else                                                                                             ! open new files ...
+   else writeHeader
      open(newunit=statUnit,file=trim(getSolverJobName())//&
                                  '.sta',form='FORMATTED', position='APPEND', status='OLD')
-   endif
+   endif writeHeader
  endif
 
 !--------------------------------------------------------------------------------------------------
@@ -431,7 +428,7 @@ program DAMASK_spectral
  call MPI_file_seek (resUnit,fileOffset,MPI_SEEK_SET,ierr)
  if (ierr /= 0_pInt) call IO_error(error_ID=894_pInt, ext_msg='MPI_file_seek')
 
- if (.not. interface_appendToOutFile) then                                                          ! if not restarting, write 0th increment
+ writeUndeformed: if (interface_restartInc < 1_pInt) then
    write(6,'(1/,a)') ' ... writing initial configuration to file ........................'
    do i = 1, size(materialpoint_results,3)/(maxByteOut/(materialpoint_sizeResults*pReal))+1         ! slice the output of my process in chunks not exceeding the limit for one output
      outputIndex = int([(i-1_pInt)*((maxRealOut)/materialpoint_sizeResults)+1_pInt, &               ! QUESTION: why not starting i at 0 instead of murky 1?
@@ -443,7 +440,7 @@ program DAMASK_spectral
      if (ierr /= 0_pInt) call IO_error(error_ID=894_pInt, ext_msg='MPI_file_write')
    enddo
    fileOffset = fileOffset + sum(outputSize)                                                        ! forward to current file position
- endif
+ endif writeUndeformed
 !--------------------------------------------------------------------------------------------------
 ! looping over loadcases
  loadCaseLooping: do currentLoadCase = 1_pInt, size(loadCases)

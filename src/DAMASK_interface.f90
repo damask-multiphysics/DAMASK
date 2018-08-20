@@ -15,12 +15,11 @@ module DAMASK_interface
 
  implicit none
  private
- logical,             public, protected :: interface_appendToOutFile = .false.                      !< Append to existing spectralOut file (in case of restart, not in case of regridding)
- integer(pInt),       public, protected :: interface_restartInc = 0_pInt                            !< Increment at which calculation starts
+ integer(pInt),       public, protected :: &
+   interface_restartInc = 0_pInt                                                                    !< Increment at which calculation starts
  character(len=1024), public, protected :: &
    geometryFile = '', &                                                                             !< parameter given for geometry file
    loadCaseFile = ''                                                                                !< parameter given for load case file
- character(len=1024), private           :: workingDirectory
 
  public :: &
    getSolverJobName, &
@@ -66,7 +65,8 @@ subroutine DAMASK_interface_init()
 #endif
  use PETScSys
  use system_routines, only: &
-   getHostName
+   getHostName, &
+   getCWD
 
  implicit none
  character(len=1024) :: &
@@ -74,9 +74,7 @@ subroutine DAMASK_interface_init()
    loadcaseArg   = '', &                                                                            !< -l argument given to the executable
    geometryArg   = '', &                                                                            !< -g argument given to the executable
    workingDirArg = '', &                                                                            !< -w argument given to the executable
-   hostName, &                                                                                      !< name of machine (might require export HOSTNAME)
-   userName, &                                                                                      !< name of user calling the executable
-   tag
+   userName                                                                                         !< name of user calling the executable
  integer :: &
    i, &
 #ifdef _OPENMP
@@ -89,7 +87,6 @@ subroutine DAMASK_interface_init()
  integer, dimension(8) :: &
    dateAndTime                                                                                      ! type default integer
  PetscErrorCode :: ierr
- logical        :: error
  external :: &
    quit,&
    PETScErrorF, &                                                                                   ! is called in the CHKERRQ macro
@@ -189,7 +186,6 @@ subroutine DAMASK_interface_init()
      case ('-r', '--rs', '--restart')
        if (i < chunkPos(1)) then
          interface_restartInc = IIO_IntValue(commandLine,chunkPos,i+1_pInt)
-         interface_appendToOutFile = .true.
        endif
    end select
  enddo
@@ -199,26 +195,25 @@ subroutine DAMASK_interface_init()
    call quit(1_pInt)
  endif
 
- workingDirectory = trim(setWorkingDirectory(trim(workingDirArg)))
+ if (len_trim(workingDirArg) > 0) call setWorkingDirectory(trim(workingDirArg))
  geometryFile = getGeometryFile(geometryArg)
  loadCaseFile = getLoadCaseFile(loadCaseArg)
 
  call get_environment_variable('USER',userName)
- error = getHostName(hostName)
- write(6,'(a,a)')      ' Host name:              ', trim(hostName)
+ ! ToDo: https://stackoverflow.com/questions/8953424/how-to-get-the-username-in-c-c-in-linux
+ write(6,'(a,a)')      ' Host name:              ', trim(getHostName())
  write(6,'(a,a)')      ' User name:              ', trim(userName)
  write(6,'(a,a)')      ' Command line call:      ', trim(commandLine)
  if (len(trim(workingDirArg)) > 0) &
    write(6,'(a,a)')    ' Working dir argument:   ', trim(workingDirArg)
  write(6,'(a,a)')      ' Geometry argument:      ', trim(geometryArg)
  write(6,'(a,a)')      ' Loadcase argument:      ', trim(loadcaseArg)
- write(6,'(a,a)')      ' Working directory:      ', trim(workingDirectory)
+ write(6,'(a,a)')      ' Working directory:      ', trim(getCWD())
  write(6,'(a,a)')      ' Geometry file:          ', trim(geometryFile)
  write(6,'(a,a)')      ' Loadcase file:          ', trim(loadCaseFile)
  write(6,'(a,a)')      ' Solver job name:        ', trim(getSolverJobName())
  if (interface_restartInc > 0_pInt) &
    write(6,'(a,i6.6)') ' Restart from increment: ', interface_restartInc
- write(6,'(a,l1,/)')   ' Append to result file:  ', interface_appendToOutFile
 
 end subroutine DAMASK_interface_init
 
@@ -227,38 +222,32 @@ end subroutine DAMASK_interface_init
 !> @brief extract working directory from given argument or from location of geometry file,
 !!        possibly converting relative arguments to absolut path
 !--------------------------------------------------------------------------------------------------
-character(len=1024) function setWorkingDirectory(workingDirectoryArg)
+subroutine setWorkingDirectory(workingDirectoryArg)
  use system_routines, only: &
    getCWD, &
    setCWD
 
  implicit none
  character(len=*),  intent(in) :: workingDirectoryArg                                               !< working directory argument
- logical                       :: error
+ character(len=1024)           :: workingDirectory                                                  !< working directory argument
  external                      :: quit
+ logical                       :: error
 
- wdGiven: if (len(workingDirectoryArg)>0) then
-   absolutePath: if (workingDirectoryArg(1:1) == '/') then
-     setWorkingDirectory = workingDirectoryArg
-   else absolutePath
-     error = getCWD(setWorkingDirectory)
-     if (error) call quit(1_pInt)
-     setWorkingDirectory = trim(setWorkingDirectory)//'/'//workingDirectoryArg
-   endif absolutePath
- else wdGiven
-   error = getCWD(setWorkingDirectory)                                                              ! relative path given as command line argument
-   if (error) call quit(1_pInt)
- endif wdGiven
+ absolutePath: if (workingDirectoryArg(1:1) == '/') then
+   workingDirectory = workingDirectoryArg
+ else absolutePath
+   workingDirectory = getCWD()
+   workingDirectory = trim(workingDirectory)//'/'//workingDirectoryArg
+ endif absolutePath
 
- setWorkingDirectory = trim(rectifyPath(setWorkingDirectory))
-
- error = setCWD(trim(setWorkingDirectory))
+ workingDirectory = trim(rectifyPath(workingDirectory))
+ error = setCWD(trim(workingDirectory))
  if(error) then
-   write(6,'(a20,a,a16)') ' working directory "',trim(setWorkingDirectory),'" does not exist'
+   write(6,'(a20,a,a16)') ' working directory "',trim(workingDirectory),'" does not exist'
    call quit(1_pInt)
  endif
 
-end function setWorkingDirectory
+end subroutine setWorkingDirectory
 
 
 !--------------------------------------------------------------------------------------------------
@@ -290,18 +279,15 @@ end function getSolverJobName
 !> @brief basename of geometry file with extension from command line arguments
 !--------------------------------------------------------------------------------------------------
 character(len=1024) function getGeometryFile(geometryParameter)
+ use system_routines, only: &
+   getCWD
 
  implicit none
- character(len=1024), intent(in) :: &
-   geometryParameter
- external  :: quit
+ character(len=1024), intent(in) :: geometryParameter
 
  getGeometryFile = trim(geometryParameter)
-
- if (scan(getGeometryFile,'/') /= 1) &
-   getGeometryFile = trim(workingDirectory)//'/'//trim(getGeometryFile)
-
- getGeometryFile = makeRelativePath(workingDirectory, getGeometryFile)
+ if (scan(getGeometryFile,'/') /= 1) getGeometryFile = trim(getCWD())//'/'//trim(getGeometryFile)
+ getGeometryFile = makeRelativePath(trim(getCWD()), getGeometryFile)
 
 
 end function getGeometryFile
@@ -311,18 +297,15 @@ end function getGeometryFile
 !> @brief relative path of loadcase from command line arguments
 !--------------------------------------------------------------------------------------------------
 character(len=1024) function getLoadCaseFile(loadCaseParameter)
+ use system_routines, only: &
+   getCWD
 
  implicit none
- character(len=1024), intent(in) :: &
-   loadCaseParameter
- external  :: quit
+ character(len=1024), intent(in) :: loadCaseParameter
 
  getLoadCaseFile = trim(loadCaseParameter)
-
- if (scan(getLoadCaseFile,'/') /= 1) &
-   getLoadCaseFile = trim(workingDirectory)//'/'//trim(getLoadCaseFile)
-
- getLoadCaseFile = makeRelativePath(workingDirectory, getLoadCaseFile)
+ if (scan(getLoadCaseFile,'/') /= 1) getLoadCaseFile = trim(getCWD())//'/'//trim(getLoadCaseFile)
+ getLoadCaseFile = makeRelativePath(trim(getCWD()), getLoadCaseFile)
 
 end function getLoadCaseFile
 

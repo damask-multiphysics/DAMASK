@@ -78,28 +78,31 @@ end function isDirectory
 !--------------------------------------------------------------------------------------------------
 !> @brief gets the current working directory
 !--------------------------------------------------------------------------------------------------
-logical function getCWD(str)
+character(len=1024) function getCWD()
   use, intrinsic :: ISO_C_Binding, only: &
     C_INT, &
     C_CHAR, &
     C_NULL_CHAR
 
   implicit none
-  character(len=*), intent(out) :: str
   character(kind=C_CHAR), dimension(1024) :: strFixedLength                                         ! C string is an array
   integer(C_INT) :: stat
   integer :: i
 
-  str = repeat('',len(str))
   call getCurrentWorkDir_C(strFixedLength,stat)
-  do i=1,1024                                                                                       ! copy array components until Null string is found
-    if (strFixedLength(i) /= C_NULL_CHAR) then
-      str(i:i)=strFixedLength(i)
-    else
-      exit
-    endif
-  enddo
-  getCWD=merge(.True.,.False.,stat /= 0_C_INT)
+  if (stat /= 0_C_INT) then
+    getCWD = 'Error occured when getting currend working directory'
+  else
+    getCWD = repeat('',len(getCWD))
+    do i=1,1024                                                                                       ! copy array components until Null string is found
+      if (strFixedLength(i) /= C_NULL_CHAR) then
+        getCWD(i:i)=strFixedLength(i)
+      else
+        getCWD(i:i)=char(0)
+        exit
+      endif
+    enddo
+  endif
 
 end function getCWD
 
@@ -107,28 +110,30 @@ end function getCWD
 !--------------------------------------------------------------------------------------------------
 !> @brief gets the current host name
 !--------------------------------------------------------------------------------------------------
-logical function getHostName(str)
+character(len=1024) function getHostName()
   use, intrinsic :: ISO_C_Binding, only: &
     C_INT, &
     C_CHAR, &
     C_NULL_CHAR
 
   implicit none
-  character(len=*), intent(out) :: str
   character(kind=C_CHAR), dimension(1024) :: strFixedLength                                         ! C string is an array
   integer(C_INT) :: stat
   integer :: i
 
-  str = repeat('',len(str))
   call getHostName_C(strFixedLength,stat)
-  do i=1,1024                                                                                       ! copy array components until Null string is found
-    if (strFixedLength(i) /= C_NULL_CHAR) then
-      str(i:i)=strFixedLength(i)
-    else
-      exit
-    endif
-  enddo
-  getHostName=merge(.True.,.False.,stat /= 0_C_INT)
+  if (stat /= 0_C_INT) then
+    getHostName = 'Error occured when getting host name'
+  else
+    getHostName = repeat('',len(getHostName))
+    do i=1,1024                                                                                       ! copy array components until Null string is found
+      if (strFixedLength(i) /= C_NULL_CHAR) then
+        getHostName(i:i)=strFixedLength(i)
+      else
+        exit
+      endif
+    enddo
+  endif
 
 end function getHostName
 
