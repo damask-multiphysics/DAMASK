@@ -154,12 +154,6 @@ subroutine mesh_init(ip,el)
  write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
 
- if (allocated(mesh_node0))                   deallocate(mesh_node0)
- if (allocated(mesh_node))                    deallocate(mesh_node)
- if (allocated(mesh_element))                 deallocate(mesh_element)
- if (allocated(mesh_ipCoordinates))           deallocate(mesh_ipCoordinates)
- if (allocated(mesh_ipVolume))                deallocate(mesh_ipVolume)
-
  call DMPlexCreateFromFile(PETSC_COMM_WORLD,geometryFile,PETSC_TRUE,globalMesh,ierr)
  CHKERRQ(ierr)
  call DMGetDimension(globalMesh,dimPlex,ierr)
@@ -334,11 +328,9 @@ subroutine mesh_FEM_build_ipCoordinates(dimPlex,qPoints)
  PetscInt                  :: cellStart, cellEnd, cell, qPt, dirI, dirJ, qOffset
  PetscErrorCode            :: ierr
 
- if (.not. allocated(mesh_ipCoordinates)) then
-   allocate(mesh_ipCoordinates(3,mesh_maxNips,mesh_NcpElems))
-   mesh_ipCoordinates = 0.0_pReal
- endif
- 
+
+ allocate(mesh_ipCoordinates(3,mesh_maxNips,mesh_NcpElems),source=0.0_pReal)
+
  pV0 => v0
  pCellJ => cellJ
  pInvcellJ => invcellJ
