@@ -53,7 +53,6 @@ end subroutine HDF5_Utilities_init
 subroutine HDF5_createJobFile
  use hdf5
  use DAMASK_interface, only: &
-   getSolverWorkingDirectoryName, &
    getSolverJobName
 
  implicit none
@@ -84,7 +83,7 @@ subroutine HDF5_createJobFile
 
 !--------------------------------------------------------------------------------------------------
 ! open file
- path = trim(getSolverWorkingDirectoryName())//trim(getSolverJobName())//'.'//'hdf5'
+ path = trim(getSolverJobName())//'.'//'hdf5'
  !call h5fcreate_f(path,H5F_ACC_TRUNC_F,resultsFile,hdferr)
  call h5fcreate_f(path,H5F_ACC_TRUNC_F,resultsFile,hdferr,access_prp = plist_id)
  if (hdferr < 0) call IO_error(100_pInt,ext_msg=path)
