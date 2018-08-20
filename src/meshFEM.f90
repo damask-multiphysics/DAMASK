@@ -97,7 +97,6 @@ use PETScis
    mesh_cellCenterCoordinates
 
  external :: &
-   MPI_Bcast, &
    DMPlexCreateFromFile, &
    DMPlexDistribute, &
    DMPlexCopyCoordinates, &

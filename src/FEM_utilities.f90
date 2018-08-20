@@ -141,7 +141,6 @@ use PETScis
    COMPONENT_MGTWIN_PHI_ID
 
  external :: &
-   MPI_Allreduce, &
    PetscOptionsInsertString, &
    PetscObjectSetName, &
    DMPlexGetHeightStratum, &
