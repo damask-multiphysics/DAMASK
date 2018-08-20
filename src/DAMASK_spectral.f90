@@ -27,7 +27,7 @@ program DAMASK_spectral
    loadCaseFile, &
    geometryFile, &
    getSolverJobName, &
-   appendToOutFile
+   interface_appendToOutFile
  use IO, only: &
    IO_read, &
    IO_isBlank, &
@@ -383,7 +383,7 @@ program DAMASK_spectral
 !--------------------------------------------------------------------------------------------------
 ! write header of output file
  if (worldrank == 0) then
-   if (.not. appendToOutFile) then                                                                  ! after restart, append to existing results file
+   if (.not. interface_appendToOutFile) then                                                        ! after restart, append to existing results file
      if (getCWD(workingDir)) call IO_error(106_pInt,ext_msg=trim(workingDir))
      open(newunit=resUnit,file=trim(getSolverJobName())//&
                                  '.spectralOut',form='UNFORMATTED',status='REPLACE')
@@ -431,7 +431,7 @@ program DAMASK_spectral
  call MPI_file_seek (resUnit,fileOffset,MPI_SEEK_SET,ierr)
  if (ierr /= 0_pInt) call IO_error(error_ID=894_pInt, ext_msg='MPI_file_seek')
 
- if (.not. appendToOutFile) then                                                                    ! if not restarting, write 0th increment
+ if (.not. interface_appendToOutFile) then                                                          ! if not restarting, write 0th increment
    write(6,'(1/,a)') ' ... writing initial configuration to file ........................'
    do i = 1, size(materialpoint_results,3)/(maxByteOut/(materialpoint_sizeResults*pReal))+1         ! slice the output of my process in chunks not exceeding the limit for one output
      outputIndex = int([(i-1_pInt)*((maxRealOut)/materialpoint_sizeResults)+1_pInt, &               ! QUESTION: why not starting i at 0 instead of murky 1?

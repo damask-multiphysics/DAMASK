@@ -1,9 +1,11 @@
 !--------------------------------------------------------------------------------------------------
+!> @author   Jaeyong Jung, Max-Planck-Institut für Eisenforschung GmbH
+!> @author   Pratheek Shanthraj, Max-Planck-Institut für Eisenforschung GmbH
 !> @author   Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
 !> @author   Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
-!> @brief    Interfacing between the spectral solver and the material subroutines provided
+!> @brief    Interfacing between the PETSc-based solvers and the material subroutines provided
 !!           by DAMASK
-!> @details  Interfacing between the spectral solver and the material subroutines provided
+!> @details  Interfacing between the PETSc-based solvers and the material subroutines provided
 !>           by DAMASK. Interpretating the command line arguments to get load case, geometry file, 
 !>           and working directory.
 !--------------------------------------------------------------------------------------------------
@@ -13,8 +15,8 @@ module DAMASK_interface
 
  implicit none
  private
- logical,             public, protected :: appendToOutFile = .false.                                !< Append to existing spectralOut file (in case of restart, not in case of regridding)
- integer(pInt),       public, protected :: spectralRestartInc = 0_pInt                              !< Increment at which calculation starts
+ logical,             public, protected :: interface_appendToOutFile = .false.                      !< Append to existing spectralOut file (in case of restart, not in case of regridding)
+ integer(pInt),       public, protected :: interface_restartInc = 0_pInt                            !< Increment at which calculation starts
  character(len=1024), public, protected :: &
    geometryFile = '', &                                                                             !< parameter given for geometry file
    loadCaseFile = ''                                                                                !< parameter given for load case file
@@ -54,11 +56,11 @@ subroutine DAMASK_interface_init()
  implicit none
  character(len=1024) :: &
    commandLine, &                                                                                   !< command line call as string
-   loadcaseArg   = '', &                                                                            !< -l argument given to DAMASK_spectral.exe
-   geometryArg   = '', &                                                                            !< -g argument given to DAMASK_spectral.exe
-   workingDirArg = '', &                                                                            !< -w argument given to DAMASK_spectral.exe
-   hostName, &                                                                                      !< name of machine on which DAMASK_spectral.exe is execute (might require export HOSTNAME)
-   userName, &                                                                                      !< name of user calling DAMASK_spectral.exe
+   loadcaseArg   = '', &                                                                            !< -l argument given to the executable
+   geometryArg   = '', &                                                                            !< -g argument given to the executable
+   workingDirArg = '', &                                                                            !< -w argument given to the executable
+   hostName, &                                                                                      !< name of machine (might require export HOSTNAME)
+   userName, &                                                                                      !< name of user calling the executable
    tag
  integer :: &
    i, &
@@ -110,7 +112,7 @@ subroutine DAMASK_interface_init()
  endif mainProcess
 
  call date_and_time(values = dateAndTime)
- write(6,'(/,a)') ' <<<+-  DAMASK_spectral  -+>>>'
+ write(6,'(/,a)') ' <<<+-  DAMASK_interface init  -+>>>'
  write(6,'(a,/)') ' Roters et al., Computational Materials Science, 2018'
  write(6,'(/,a)')              ' Version: '//DAMASKVERSION
  write(6,'(a,2(i2.2,a),i4.4)') ' Date:    ',dateAndTime(3),'/',&
@@ -120,7 +122,6 @@ subroutine DAMASK_interface_init()
                                             dateAndTime(6),':',&
                                             dateAndTime(7)  
  write(6,'(/,a,i4.1)') ' MPI processes: ',worldsize
- write(6,'(/,a)') ' <<<+-  DAMASK_interface init  -+>>>'
 #include "compilation_info.f90"
  
  call get_command(commandLine)
@@ -129,9 +130,8 @@ subroutine DAMASK_interface_init()
    select case(IIO_stringValue(commandLine,chunkPos,i))                                             ! extract key
      case ('-h','--help')
        write(6,'(a)')  ' #######################################################################'
-       write(6,'(a)')  ' DAMASK_spectral:'
-       write(6,'(a)')  ' The spectral method boundary value problem solver for'
-       write(6,'(a)')  ' the Düsseldorf Advanced Material Simulation Kit'
+       write(6,'(a)')  ' DAMASK Command Line Interface:'
+       write(6,'(a)')  ' For PETSc-based solvers for the Düsseldorf Advanced Material Simulation Kit'
        write(6,'(a,/)')' #######################################################################'
        write(6,'(a,/)')' Valid command line switches:'
        write(6,'(a)')  '    --geom         (-g, --geometry)'
@@ -141,23 +141,14 @@ subroutine DAMASK_interface_init()
        write(6,'(a)')  '    --help         (-h)'
        write(6,'(/,a)')' -----------------------------------------------------------------------'
        write(6,'(a)')  ' Mandatory arguments:'
-       write(6,'(/,a)')'   --geom PathToGeomFile/NameOfGeom.geom'
-       write(6,'(a)')  '        Specifies the location of the geometry definition file,' 
-       write(6,'(a)')  '            if no extension is given, .geom will be appended.' 
-       write(6,'(a)')  '        "PathToGeomFile" will be the working directory if not specified'
-       write(6,'(a)')  '            via --workingdir.'
-       write(6,'(a)')  '        Make sure the file "material.config" exists in the working'
-       write(6,'(a)')  '            directory.'   
-       write(6,'(a)')  '        For further configuration place "numerics.config"'
-       write(6,'(a)')'            and "numerics.config" in that directory.'
-       write(6,'(/,a)')'   --load PathToLoadFile/NameOfLoadFile.load'
-       write(6,'(a)')  '        Specifies the location of the load case definition file,' 
-       write(6,'(a)')  '            if no extension is given, .load will be appended.' 
+       write(6,'(/,a)')'   --geom PathToGeomFile/NameOfGeom'
+       write(6,'(a)')  '        Specifies the location of the geometry definition file.'
+       write(6,'(/,a)')'   --load PathToLoadFile/NameOfLoadFile'
+       write(6,'(a)')  '        Specifies the location of the load case definition file.'
        write(6,'(/,a)')' -----------------------------------------------------------------------'
        write(6,'(a)')  ' Optional arguments:'
        write(6,'(/,a)')'   --workingdirectory PathToWorkingDirectory'
-       write(6,'(a)')  '        Specifies the working directory and overwrites the default'
-       write(6,'(a)')  '            "PathToGeomFile".'
+       write(6,'(a)')  '        Specifies the working directory and overwrites the default ./'
        write(6,'(a)')  '        Make sure the file "material.config" exists in the working'
        write(6,'(a)')  '            directory.'   
        write(6,'(a)')  '        For further configuration place "numerics.config"'
@@ -166,7 +157,7 @@ subroutine DAMASK_interface_init()
        write(6,'(a)')  '        Reads in increment XX and continues with calculating'
        write(6,'(a)')  '            increment XX+1 based on this.'
        write(6,'(a)')  '        Appends to existing results file'
-       write(6,'(a)')  '            "NameOfGeom_NameOfLoadFile.spectralOut".'
+       write(6,'(a)')  '            "NameOfGeom_NameOfLoadFile".'
        write(6,'(a)')  '        Works only if the restart information for increment XX'
        write(6,'(a)')  '            is available in the working directory.'
        write(6,'(/,a)')' -----------------------------------------------------------------------'
@@ -182,8 +173,8 @@ subroutine DAMASK_interface_init()
        if (i < chunkPos(1)) workingDirArg = trim(IIO_stringValue(commandLine,chunkPos,i+1_pInt))
      case ('-r', '--rs', '--restart')
        if (i < chunkPos(1)) then
-         spectralRestartInc = IIO_IntValue(commandLine,chunkPos,i+1_pInt)
-         appendToOutFile = .true.
+         interface_restartInc = IIO_IntValue(commandLine,chunkPos,i+1_pInt)
+         interface_appendToOutFile = .true.
        endif
    end select
  enddo
@@ -210,9 +201,9 @@ subroutine DAMASK_interface_init()
  write(6,'(a,a)')      ' Geometry file:          ', trim(geometryFile)
  write(6,'(a,a)')      ' Loadcase file:          ', trim(loadCaseFile)
  write(6,'(a,a)')      ' Solver job name:        ', trim(getSolverJobName())
- if (SpectralRestartInc > 0_pInt) &
-   write(6,'(a,i6.6)') ' Restart from increment: ', spectralRestartInc
- write(6,'(a,l1,/)')   ' Append to result file:  ', appendToOutFile
+ if (interface_restartInc > 0_pInt) &
+   write(6,'(a,i6.6)') ' Restart from increment: ', interface_restartInc
+ write(6,'(a,l1,/)')   ' Append to result file:  ', interface_appendToOutFile
 
 end subroutine DAMASK_interface_init
 
@@ -288,14 +279,10 @@ character(len=1024) function getGeometryFile(geometryParameter)
  implicit none
  character(len=1024), intent(in) :: &
    geometryParameter
- integer :: posExt, posSep
  external  :: quit
 
  getGeometryFile = trim(geometryParameter)
- posExt = scan(getGeometryFile,'.',back=.true.)
- posSep = scan(getGeometryFile,'/',back=.true.)
 
- if (posExt <= posSep) getGeometryFile = trim(getGeometryFile)//('.geom')
  if (scan(getGeometryFile,'/') /= 1) &
    getGeometryFile = trim(workingDirectory)//'/'//trim(getGeometryFile)
 
@@ -313,14 +300,10 @@ character(len=1024) function getLoadCaseFile(loadCaseParameter)
  implicit none
  character(len=1024), intent(in) :: &
    loadCaseParameter
- integer :: posExt, posSep
  external  :: quit
 
  getLoadCaseFile = trim(loadCaseParameter)
- posExt = scan(getLoadCaseFile,'.',back=.true.)
- posSep = scan(getLoadCaseFile,'/',back=.true.)
 
- if (posExt <= posSep) getLoadCaseFile = trim(getLoadCaseFile)//('.load')
  if (scan(getLoadCaseFile,'/') /= 1) &
    getLoadCaseFile = trim(workingDirectory)//'/'//trim(getLoadCaseFile)
 
