@@ -16,7 +16,7 @@ module material
    tSourceState, &
    tHomogMapping, &
    tPhaseMapping, &
-   group_scalar, &
+   group_float, &
    group_int
 
  implicit none
@@ -268,7 +268,7 @@ module material
    porosityMapping, &                                                                               !< mapping for porosity state/fields
    hydrogenfluxMapping                                                                              !< mapping for hydrogen conc state/fields
 
- type(group_scalar),  allocatable, dimension(:), public :: &
+ type(group_float),  allocatable, dimension(:), public :: &
    temperature, &                                                                                   !< temperature field
    damage, &                                                                                        !< damage field
    vacancyConc, &                                                                                   !< vacancy conc field

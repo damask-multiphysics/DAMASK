@@ -28,9 +28,9 @@ module prec
 
  integer(pInt), allocatable, dimension(:) :: realloc_lhs_test
  
- type, public :: group_scalar                                                                       !< variable length datatype used for storage of state
+ type, public :: group_float                                                                       !< variable length datatype used for storage of state
    real(pReal), dimension(:), pointer :: p
- end type group_scalar
+ end type group_float
 
  type, public :: group_int
    integer(pInt), dimension(:), pointer :: p

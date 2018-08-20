@@ -16,8 +16,7 @@ program DAMASK_FEM
  use DAMASK_interface, only: &
    DAMASK_interface_init, &
    loadCaseFile, &
-   getSolverJobName, &
-   appendToOutFile
+   getSolverJobName
  use IO, only: &
    IO_read, &
    IO_isBlank, &

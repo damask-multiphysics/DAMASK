@@ -3,7 +3,7 @@
 !> @brief Interpolation data used by the FEM solver
 !--------------------------------------------------------------------------------------------------
 module FEM_Zoo     
- use prec, only: pReal, pInt, p_vec
+ use prec, only: pReal, pInt, group_float
 
  implicit none
  private
@@ -20,7 +20,7 @@ module FEM_Zoo
                           -1.0_pReal, -1.0_pReal,  1.0_pReal], shape=[3,4])
  integer(pInt), dimension(3,maxOrder), public, protected :: &
    FEM_Zoo_nQuadrature                                                                       !< number of quadrature points for a given spatial dimension(1-3) and interpolation order(1-maxOrder)
- type(p_vec),   dimension(3,maxOrder), public, protected :: &
+ type(group_float),   dimension(3,maxOrder), public, protected :: &
    FEM_Zoo_QuadratureWeights, &                                                              !< quadrature weights for each quadrature rule 
    FEM_Zoo_QuadraturePoints                                                                  !< quadrature point coordinates (in simplical system) for each quadrature rule
 
