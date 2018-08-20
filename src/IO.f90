@@ -153,7 +153,7 @@ recursive function IO_read(fileUnit,reset) result(line)
    pathOn(stack) = path(1:scan(path,SEP,.true.))//input                                             ! glue include to current file's dir
  endif
 
- open(newunit=unitOn(stack),iostat=myStat,file=pathOn(stack),action='read')                         ! open included file
+ open(newunit=unitOn(stack),iostat=myStat,file=pathOn(stack),action='read',status='old',position='rewind')                         ! open included file
  if (myStat /= 0_pInt) call IO_error(100_pInt,el=myStat,ext_msg=pathOn(stack))
 
  line = IO_read(fileUnit)
@@ -193,14 +193,17 @@ recursive function IO_recursiveRead(fileName,cnt) result(fileContent)
     myTotalLines, &                                                                                 !< # lines read from file without include statements
     includedLines, &                                                                                !< # lines included from other file(s)
     missingLines, &                                                                                 !< # lines missing from current file
-    l,i
+    l,i, &
+    myStat
 
   if (merge(cnt,0_pInt,present(cnt))>10_pInt) call IO_error(106_pInt,ext_msg=trim(fileName))
 
 !--------------------------------------------------------------------------------------------------
 ! read data as stream
   inquire(file = fileName, size=fileLength)
-  open(newunit=fileUnit, file = fileName, access = "STREAM")
+  open(newunit=fileUnit, file=fileName, access='stream',&
+       status='old', position='rewind', action='read',iostat=myStat)
+  if(myStat /= 0_pInt) call IO_error(100_pInt,ext_msg=trim(fileName))
   allocate(character(len=fileLength)::rawData)
   read(fileUnit) rawData
   close(fileUnit)
@@ -276,7 +279,7 @@ subroutine IO_open_file(fileUnit,path)
 
  integer(pInt)                  :: myStat
 
- open(fileUnit,status='old',iostat=myStat,file=path)
+ open(fileUnit,status='old',iostat=myStat,file=path,action='read',position='rewind')
  if (myStat /= 0_pInt) call IO_error(100_pInt,el=myStat,ext_msg=path)
 
 end subroutine IO_open_file
@@ -295,7 +298,8 @@ logical function IO_open_file_stat(fileUnit,path)
 
  integer(pInt)                  :: myStat
 
- open(fileUnit,status='old',iostat=myStat,file=path)
+ open(fileUnit,status='old',iostat=myStat,file=path,action='read',position='rewind')
+ if (myStat /= 0_pInt) close(fileUnit)
  IO_open_file_stat = (myStat == 0_pInt)
 
 end function IO_open_file_stat
@@ -319,7 +323,7 @@ subroutine IO_open_jobFile(fileUnit,ext)
  character(len=1024)            :: path
 
  path = trim(getSolverJobName())//'.'//ext
- open(fileUnit,status='old',iostat=myStat,file=path)
+ open(fileUnit,status='old',iostat=myStat,file=path,action='read',position='rewind')
  if (myStat /= 0_pInt) call IO_error(100_pInt,el=myStat,ext_msg=path)
 
 end subroutine IO_open_jobFile
@@ -343,7 +347,8 @@ logical function IO_open_jobFile_stat(fileUnit,ext)
  character(len=1024)            :: path
 
  path = trim(getSolverJobName())//'.'//ext
- open(fileUnit,status='old',iostat=myStat,file=path)
+ open(fileUnit,status='old',iostat=myStat,file=path,action='read',position='rewind')
+ if (myStat /= 0_pInt) close(fileUnit)
  IO_open_jobFile_stat = (myStat == 0_pInt)
 
 end function IO_open_JobFile_stat
@@ -369,11 +374,11 @@ subroutine IO_open_inputFile(fileUnit,modelName)
 
  fileType = 1_pInt                                                                                  ! assume .pes
  path = trim(modelName)//inputFileExtension(fileType)                                               ! attempt .pes, if it exists: it should be used
- open(fileUnit+1,status='old',iostat=myStat,file=path)
+ open(fileUnit+1,status='old',iostat=myStat,file=path,action='read',position='rewind')
  if(myStat /= 0_pInt) then                                                                          ! if .pes does not work / exist; use conventional extension, i.e.".inp"
     fileType = 2_pInt
     path = trim(modelName)//inputFileExtension(fileType)
-    open(fileUnit+1,status='old',iostat=myStat,file=path)
+    open(fileUnit+1,status='old',iostat=myStat,file=path,action='read',position='rewind')
  endif
  if (myStat /= 0_pInt) call IO_error(100_pInt,el=myStat,ext_msg=path)
 
@@ -408,7 +413,7 @@ subroutine IO_open_logFile(fileUnit)
  character(len=1024)            :: path
 
  path = trim(getSolverJobName())//LogFileExtension
- open(fileUnit,status='old',iostat=myStat,file=path)
+ open(fileUnit,status='old',iostat=myStat,file=path,action='read',position='rewind')
  if (myStat /= 0_pInt) call IO_error(100_pInt,el=myStat,ext_msg=path)
 
 end subroutine IO_open_logFile
