@@ -54,17 +54,11 @@ use PETScis
 
  logical, dimension(3), public, protected :: mesh_periodicSurface                                   !< flag indicating periodic outer surfaces (used for fluxes)
 
- integer(pInt), dimension(:,:), allocatable, target, private :: &
-   mesh_mapFEtoCPelem, &                                                                            !< [sorted FEid, corresponding CPid]
-   mesh_mapFEtoCPnode                                                                               !< [sorted FEid, corresponding CPid]
-
  DM, public :: geomMesh
  
  integer(pInt), dimension(:), allocatable, public, protected :: &
    mesh_boundaries
 
-! These definitions should actually reside in the FE-solver specific part (different for MARC/ABAQUS)
-! Hence, I suggest to prefix with "FE_"
 
  integer(pInt), parameter, public :: &
    FE_Nelemtypes =  1_pInt, &
@@ -91,7 +85,6 @@ use PETScis
 
  public :: &
    mesh_init, &
-   mesh_FEasCP, &
    mesh_FEM_build_ipVolumes, &
    mesh_FEM_build_ipCoordinates, &
    mesh_cellCenterCoordinates
@@ -161,8 +154,6 @@ subroutine mesh_init(ip,el)
  write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
 
- if (allocated(mesh_mapFEtoCPelem))           deallocate(mesh_mapFEtoCPelem)
- if (allocated(mesh_mapFEtoCPnode))           deallocate(mesh_mapFEtoCPnode)
  if (allocated(mesh_node0))                   deallocate(mesh_node0)
  if (allocated(mesh_node))                    deallocate(mesh_node)
  if (allocated(mesh_element))                 deallocate(mesh_element)
@@ -232,7 +223,6 @@ subroutine mesh_init(ip,el)
  call DMGetStratumSize(geomMesh,'depth',0,mesh_Nnodes,ierr)
  CHKERRQ(ierr)
  mesh_NcpElems = mesh_Nelems
- call mesh_FEM_mapNodesAndElems
 
  FE_Nips(FE_geomtype(1_pInt)) = FEM_Zoo_nQuadrature(dimPlex,integrationOrder)
  mesh_maxNnodes = FE_Nnodes(1_pInt)
@@ -243,8 +233,8 @@ subroutine mesh_init(ip,el)
  allocate (mesh_element (4_pInt+mesh_maxNnodes,mesh_NcpElems)); mesh_element = 0_pInt
  do j = 1, mesh_NcpElems
    mesh_element( 1,j) = j
-   mesh_element( 2,j) = 1_pInt                                                              ! elem type
-   mesh_element( 3,j) = 1_pInt                                                              ! homogenization
+   mesh_element( 2,j) = 1_pInt                                                                      ! elem type
+   mesh_element( 3,j) = 1_pInt                                                                      ! homogenization
    call DMGetLabelValue(geomMesh,'material',j-1,mesh_element(4,j),ierr)
    CHKERRQ(ierr)
  end do 
@@ -264,59 +254,9 @@ subroutine mesh_init(ip,el)
  if (allocated(calcMode)) deallocate(calcMode)
  allocate(calcMode(mesh_maxNips,mesh_NcpElems))
  calcMode = .false.                                                                                 ! pretend to have collected what first call is asking (F = I)
- calcMode(ip,mesh_FEasCP('elem',el)) = .true.                                                       ! first ip,el needs to be already pingponged to "calc"
+ calcMode(ip,el) = .true.                                                                           ! first ip,el needs to be already pingponged to "calc"
 
 end subroutine mesh_init
-
-!--------------------------------------------------------------------------------------------------
-!> @brief Gives the FE to CP ID mapping by binary search through lookup array
-!! valid questions (what) are 'elem', 'node'
-!--------------------------------------------------------------------------------------------------
-integer(pInt) function mesh_FEasCP(what,myID)
- use IO, only: &
-   IO_lc
-
- implicit none
- character(len=*), intent(in) :: what
- integer(pInt),    intent(in) :: myID
- 
- integer(pInt), dimension(:,:), pointer :: lookupMap
- integer(pInt) :: lower,upper,center
- 
- mesh_FEasCP = 0_pInt
- select case(IO_lc(what(1:4)))
-   case('elem')
-     lookupMap => mesh_mapFEtoCPelem
-   case('node')
-     lookupMap => mesh_mapFEtoCPnode
-   case default
-     return
- endselect
- 
- lower = 1_pInt
- upper = int(size(lookupMap,2_pInt),pInt)
- 
- if (lookupMap(1_pInt,lower) == myID) then                                                          ! check at bounds QUESTION is it valid to extend bounds by 1 and just do binary search w/o init check at bounds?
-   mesh_FEasCP = lookupMap(2_pInt,lower)
-   return
- elseif (lookupMap(1_pInt,upper) == myID) then
-   mesh_FEasCP = lookupMap(2_pInt,upper)
-   return
- endif
- 
- binarySearch: do while (upper-lower > 1_pInt)
-   center = (lower+upper)/2_pInt
-   if (lookupMap(1_pInt,center) < myID) then
-     lower = center
-   elseif (lookupMap(1_pInt,center) > myID) then
-     upper = center
-   else
-     mesh_FEasCP = lookupMap(2_pInt,center)
-     exit
-   endif
- enddo binarySearch
- 
-end function mesh_FEasCP
 
 
 !--------------------------------------------------------------------------------------------------
@@ -420,24 +360,5 @@ subroutine mesh_FEM_build_ipCoordinates(dimPlex,qPoints)
  enddo  
 
 end subroutine mesh_FEM_build_ipCoordinates
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief fake map node from FE ID to internal (consecutive) representation for node and element
-!! Allocates global array 'mesh_mapFEtoCPnode' and 'mesh_mapFEtoCPelem'
-!--------------------------------------------------------------------------------------------------
-subroutine mesh_FEM_mapNodesAndElems
- use math, only: &
-   math_range
-
- implicit none
- allocate (mesh_mapFEtoCPnode(2_pInt,mesh_Nnodes), source = 0_pInt)
- allocate (mesh_mapFEtoCPelem(2_pInt,mesh_NcpElems), source = 0_pInt)
-
- mesh_mapFEtoCPnode = spread(math_range(mesh_Nnodes),1,2)
- mesh_mapFEtoCPelem = spread(math_range(mesh_NcpElems),1,2)
-
-end subroutine mesh_FEM_mapNodesAndElems
-
 
 end module mesh
