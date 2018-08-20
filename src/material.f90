@@ -370,7 +370,7 @@ subroutine material_init()
    FE_geomtype
 
  implicit none
- integer(pInt), parameter :: FILEUNIT = 200_pInt
+ integer(pInt), parameter :: FILEUNIT = 210_pInt
  integer(pInt)            :: m,c,h, myDebug, myPhase, myHomog
  integer(pInt) :: &
   g, &                                                                                              !< grain number

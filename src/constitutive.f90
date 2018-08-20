@@ -138,7 +138,7 @@ subroutine constitutive_init()
  use kinematics_hydrogen_strain
 
  implicit none
- integer(pInt), parameter :: FILEUNIT = 200_pInt
+ integer(pInt), parameter :: FILEUNIT = 204_pInt
  integer(pInt) :: &
    o, &                                                                                             !< counter in output loop
    ph, &                                                                                            !< counter in phase loop
