@@ -234,6 +234,7 @@ end subroutine parseFile
 
 !--------------------------------------------------------------------------------------------------
 !> @brief deallocates the linked lists that store the content of the configuration files
+! commenting out removes erratic errors with gfortran 7.3
 !--------------------------------------------------------------------------------------------------
 subroutine config_deallocate(what)
  use IO, only: &
@@ -243,42 +244,42 @@ subroutine config_deallocate(what)
  character(len=*), intent(in) :: what
  integer(pInt) :: i
 
- select case(what)
-
-   case('material.config/phase')
-     do i=1, size(config_phase)
-       call config_phase(i)%free
-     enddo
-     deallocate(config_phase)
-
-   case('material.config/microstructure')
-     do i=1, size(config_microstructure)
-       call config_microstructure(i)%free
-     enddo
-     deallocate(config_microstructure)
-
-   case('material.config/crystallite')
-     do i=1, size(config_crystallite)
-       call config_crystallite(i)%free
-     enddo
-     deallocate(config_crystallite)
-
-   case('material.config/homogenization')
-     do i=1, size(config_homogenization)
-       call config_homogenization(i)%free
-     enddo
-     deallocate(config_homogenization)
-
-   case('material.config/texture')
-     do i=1, size(config_texture)
-       call config_texture(i)%free
-     enddo
-     deallocate(config_texture)
-
-   case default
-     call IO_error(0_pInt,ext_msg='config_deallocate')
-
- end select
+! select case(what)
+!
+!   case('material.config/phase')
+!     do i=1, size(config_phase)
+!       call config_phase(i)%free
+!     enddo
+!     deallocate(config_phase)
+!
+!   case('material.config/microstructure')
+!     do i=1, size(config_microstructure)
+!       call config_microstructure(i)%free
+!     enddo
+!     deallocate(config_microstructure)
+!
+!   case('material.config/crystallite')
+!     do i=1, size(config_crystallite)
+!       call config_crystallite(i)%free
+!     enddo
+!     deallocate(config_crystallite)
+!
+!   case('material.config/homogenization')
+!     do i=1, size(config_homogenization)
+!       call config_homogenization(i)%free
+!     enddo
+!     deallocate(config_homogenization)
+!
+!   case('material.config/texture')
+!     do i=1, size(config_texture)
+!       call config_texture(i)%free
+!     enddo
+!     deallocate(config_texture)
+!
+!   case default
+!     call IO_error(0_pInt,ext_msg='config_deallocate')
+!
+! end select
 
 end subroutine config_deallocate
 
@@ -342,7 +343,7 @@ end subroutine show
 
 !--------------------------------------------------------------------------------------------------
 !> @brief cleans entire list
-!> @details list head is remains alive
+!> @details list head remains alive
 !--------------------------------------------------------------------------------------------------
 subroutine free(this)
 
