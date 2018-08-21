@@ -241,29 +241,29 @@ subroutine plastic_phenopowerlaw_init
      select case(outputs(i))
         case ('resistance_slip')
           outputID = resistance_slip_ID
-          outputSize = sum(prm%Nslip)
+          outputSize = prm%totalNslip
         case ('accumulatedshear_slip')
           outputID = accumulatedshear_slip_ID
-          outputSize = sum(prm%Nslip)
+          outputSize = prm%totalNslip
         case ('shearrate_slip')
           outputID = shearrate_slip_ID
-          outputSize = sum(prm%Nslip)
+          outputSize = prm%totalNslip
         case ('resolvedstress_slip')
           outputID = resolvedstress_slip_ID
-          outputSize = sum(prm%Nslip)
+          outputSize = prm%totalNslip
 
         case ('resistance_twin')
           outputID = resistance_twin_ID
-          outputSize = sum(prm%Ntwin)
+          outputSize = prm%totalNtwin
         case ('accumulatedshear_twin')
           outputID = accumulatedshear_twin_ID
-          outputSize = sum(prm%Ntwin)
+          outputSize = prm%totalNtwin
         case ('shearrate_twin')
           outputID = shearrate_twin_ID
-          outputSize = sum(prm%Ntwin)
+          outputSize = prm%totalNtwin
         case ('resolvedstress_twin')
           outputID = resolvedstress_twin_ID
-          outputSize = sum(prm%Ntwin)
+          outputSize = prm%totalNtwin
 
         case ('totalvolfrac_twin')
           outputID = totalvolfrac_twin_ID
