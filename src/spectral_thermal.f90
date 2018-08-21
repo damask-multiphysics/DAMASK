@@ -65,8 +65,6 @@ subroutine spectral_thermal_init
    compiler_options
 #endif
  use IO, only: &
-   IO_intOut, &
-   IO_read_realFile, &
    IO_timeStamp
  use spectral_utilities, only: &
    wgt

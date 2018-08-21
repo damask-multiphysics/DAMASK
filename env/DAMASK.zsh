@@ -33,7 +33,9 @@ PROCESSING=$(which postResults || true 2>/dev/null)
 [ "x$DAMASK_NUM_THREADS" = "x" ] && DAMASK_NUM_THREADS=1
 
 # currently, there is no information that unlimited causes problems
-# still,  http://software.intel.com/en-us/forums/topic/501500 suggest to fix it
+# still, http://software.intel.com/en-us/forums/topic/501500 suggest to fix it
+# more info https://jblevins.org/log/segfault
+#           https://stackoverflow.com/questions/79923/what-and-where-are-the-stack-and-heap
 # http://superuser.com/questions/220059/what-parameters-has-ulimit
 ulimit -d unlimited 2>/dev/null # maximum  heap size (kB)
 ulimit -s unlimited 2>/dev/null # maximum stack size (kB)

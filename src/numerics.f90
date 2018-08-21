@@ -93,7 +93,7 @@ module numerics
 ! spectral parameters:
 #ifdef Spectral
  real(pReal), protected, public :: &
-   err_div_tolAbs             =  1.0e-10_pReal, &                                                   !< absolute tolerance for equilibrium
+   err_div_tolAbs             =  1.0e-4_pReal, &                                                    !< absolute tolerance for equilibrium
    err_div_tolRel             =  5.0e-4_pReal, &                                                    !< relative tolerance for equilibrium
    err_curl_tolAbs            =  1.0e-10_pReal, &                                                   !< absolute tolerance for compatibility
    err_curl_tolRel            =  5.0e-4_pReal, &                                                    !< relative tolerance for compatibility
