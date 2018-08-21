@@ -47,7 +47,7 @@ variables:
   # ===============================================================================================
   # ++++++++++++ Compiler ++++++++++++++++++++++++++++++++++++++++++++++
   IntelCompiler16_0:               "Compiler/Intel/16.0 Libraries/IMKL/2016"
-  IntelCompiler16_4:               "Compiler/Intel/16.4"
+  IntelCompiler16_4:               "Compiler/Intel/16.4 Libraries/IMKL/2016-4"
   IntelCompiler17_0:               "Compiler/Intel/17.0 Libraries/IMKL/2017"
   IntelCompiler18_1:               "Compiler/Intel/18.1 Libraries/IMKL/2018"
   GNUCompiler7_3:                  "Compiler/GNU/7.3"
