@@ -36,10 +36,6 @@ module IO
    IO_hybridIA, &
    IO_isBlank, &
    IO_getTag, &
-   IO_countSections, &
-   IO_countTagInPart, &
-   IO_spotTagInPart, &
-   IO_globalTagInPart, &
    IO_stringPos, &
    IO_stringValue, &
    IO_fixedStringValue ,&
@@ -837,184 +833,23 @@ pure function IO_getTag(string,openChar,closeChar)
                            closeChar                                                                !< indicates end of tag
 
  character(len=*), parameter   :: SEP=achar(32)//achar(9)//achar(10)//achar(13)                     ! whitespaces
-
  integer :: left,right                                                                              ! no pInt
 
  IO_getTag = ''
- left  = scan(string,openChar)
- right = merge(scan(string,closeChar), scan(string(left:),closeChar),openChar /= closeChar)
+
+
+ if (openChar /= closeChar) then
+   left  = scan(string,openChar)
+   right = scan(string,closeChar)
+ else
+   left  = scan(string,openChar)
+   right = left + merge(scan(string(left+1:),openChar),0_pInt,len(string) > left)
+ endif
 
  if (left == verify(string,SEP) .and. right > left) &                                               ! openChar is first and closeChar occurs
    IO_getTag = string(left+1:right-1)
 
 end function IO_getTag
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief count number of [sections] in <part> for given file handle
-!--------------------------------------------------------------------------------------------------
-integer(pInt) function IO_countSections(fileUnit,part)
-
- implicit none
- integer(pInt),      intent(in) :: fileUnit                                                         !< file handle
- character(len=*),   intent(in) :: part                                                             !< part name in which sections are counted
-
- character(len=65536)           :: line
-
- line = ''
- IO_countSections = 0_pInt
- rewind(fileUnit)
-
- do while (trim(line) /= IO_EOF .and. IO_lc(IO_getTag(line,'<','>')) /= part)                       ! search for part
-   line = IO_read(fileUnit)
- enddo
-
- do while (trim(line) /= IO_EOF)
-   line = IO_read(fileUnit)
-   if (IO_isBlank(line)) cycle                                                                      ! skip empty lines
-   if (IO_getTag(line,'<','>') /= '') then                                                          ! stop at next part
-     line = IO_read(fileUnit, .true.)                                                               ! reset IO_read
-     exit
-   endif
-   if (IO_getTag(line,'[',']') /= '') &                                                             ! found [section] identifier
-     IO_countSections = IO_countSections + 1_pInt
- enddo
-
-end function IO_countSections
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief returns array of tag counts within <part> for at most N [sections]
-!--------------------------------------------------------------------------------------------------
-function IO_countTagInPart(fileUnit,part,tag,Nsections)
-
- implicit none
- integer(pInt),   intent(in)                :: Nsections                                            !< maximum number of sections in which tag is searched for
- integer(pInt),   dimension(Nsections)      :: IO_countTagInPart
- integer(pInt),   intent(in)                :: fileUnit                                             !< file handle
- character(len=*),intent(in)                :: part, &                                              !< part in which tag is searched for
-                                               tag                                                  !< tag to search for
-
-
- integer(pInt),   dimension(Nsections)      :: counter
- integer(pInt), allocatable, dimension(:)   :: chunkPos
- integer(pInt)                              :: section
- character(len=65536)                       :: line
-
- line = ''
- counter = 0_pInt
- section = 0_pInt
-
- rewind(fileUnit)
- do while (trim(line) /= IO_EOF .and. IO_lc(IO_getTag(line,'<','>')) /= part)                       ! search for part
-   line = IO_read(fileUnit)
- enddo
-
- do while (trim(line) /= IO_EOF)
-   line = IO_read(fileUnit)
-   if (IO_isBlank(line)) cycle                                                                      ! skip empty lines
-   if (IO_getTag(line,'<','>') /= '') then                                                          ! stop at next part
-     line = IO_read(fileUnit, .true.)                                                               ! reset IO_read
-     exit
-   endif
-   if (IO_getTag(line,'[',']') /= '') section = section + 1_pInt                                    ! found [section] identifier
-   if (section > 0) then
-     chunkPos = IO_stringPos(line)
-     if (tag == trim(IO_lc(IO_stringValue(line,chunkPos,1_pInt)))) &                                ! match
-       counter(section) = counter(section) + 1_pInt
-   endif
- enddo
-
- IO_countTagInPart = counter
-
-end function IO_countTagInPart
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief returns array of tag presence within <part> for at most N [sections]
-!--------------------------------------------------------------------------------------------------
-function IO_spotTagInPart(fileUnit,part,tag,Nsections)
-
- implicit none
- integer(pInt),   intent(in)                :: Nsections                                            !< maximum number of sections in which tag is searched for
- logical,         dimension(Nsections)      :: IO_spotTagInPart
- integer(pInt),   intent(in)                :: fileUnit                                             !< file handle
- character(len=*),intent(in)                :: part, &                                              !< part in which tag is searched for
-                                               tag                                                  !< tag to search for
-
-
- integer(pInt), allocatable, dimension(:) :: chunkPos
- integer(pInt)                            :: section
- character(len=65536)                     :: line
-
- IO_spotTagInPart = .false.                                                                         ! assume to nowhere spot tag
- section = 0_pInt
- line = ''
-
- rewind(fileUnit)
- do while (trim(line) /= IO_EOF .and. IO_lc(IO_getTag(line,'<','>')) /= part)                       ! search for part
-   line = IO_read(fileUnit)
- enddo
-
- do while (trim(line) /= IO_EOF)
-   line = IO_read(fileUnit)
-   if (IO_isBlank(line)) cycle                                                                      ! skip empty lines
-   foundNextPart: if (IO_getTag(line,'<','>') /= '') then
-     line = IO_read(fileUnit, .true.)                                                               ! reset IO_read
-     exit
-   endif foundNextPart
-   if (IO_getTag(line,'[',']') /= '') section = section + 1_pInt                                    ! found [section] identifier
-   if (section > 0_pInt) then
-     chunkPos = IO_stringPos(line)
-     if (tag == trim(IO_lc(IO_stringValue(line,chunkPos,1_pInt)))) &                                ! match
-       IO_spotTagInPart(section) = .true.
-   endif
- enddo
-
- end function IO_spotTagInPart
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief return logical whether tag is present within <part> before any [sections]
-!--------------------------------------------------------------------------------------------------
-logical function IO_globalTagInPart(fileUnit,part,tag)
-
- implicit none
- integer(pInt),   intent(in)                :: fileUnit                                             !< file handle
- character(len=*),intent(in)                :: part, &                                              !< part in which tag is searched for
-                                               tag                                                  !< tag to search for
-
- integer(pInt), allocatable, dimension(:) :: chunkPos
- character(len=65536)                     :: line
-
- IO_globalTagInPart = .false.                                                                       ! assume to nowhere spot tag
- line =''
-
- rewind(fileUnit)
- do while (trim(line) /= IO_EOF .and. IO_lc(IO_getTag(line,'<','>')) /= part)                       ! search for part
-   line = IO_read(fileUnit)
- enddo
-
- do while (trim(line) /= IO_EOF)
-   line = IO_read(fileUnit)
-   if (IO_isBlank(line)) cycle                                                                      ! skip empty lines
-   foundNextPart: if (IO_getTag(line,'<','>') /= '') then
-     line = IO_read(fileUnit, .true.)                                                               ! reset IO_read
-     exit
-   endif foundNextPart
-   foundFirstSection: if (IO_getTag(line,'[',']') /= '') then
-     line = IO_read(fileUnit, .true.)                                                               ! reset IO_read
-     exit
-   endif foundFirstSection
-   chunkPos = IO_stringPos(line)
-   match: if (tag == trim(IO_lc(IO_stringValue(line,chunkPos,1_pInt)))) then
-     IO_globalTagInPart = .true.
-     line = IO_read(fileUnit, .true.)                                                               ! reset IO_read
-     exit
-   endif match
- enddo
-
-end function IO_globalTagInPart
 
 
 !--------------------------------------------------------------------------------------------------
