@@ -833,16 +833,16 @@ pure function IO_getTag(string,openChar,closeChar)
  character(len=*), intent(in)  :: string                                                            !< string to check for tag
  character(len=len_trim(string)) :: IO_getTag
 
- character(len=*), intent(in)  :: openChar, &                                                       !< indicates beginning of tag
-                                  closeChar                                                         !< indicates end of tag
+ character, intent(in)  :: openChar, &                                                              !< indicates beginning of tag
+                           closeChar                                                                !< indicates end of tag
 
  character(len=*), parameter   :: SEP=achar(32)//achar(9)//achar(10)//achar(13)                     ! whitespaces
 
  integer :: left,right                                                                              ! no pInt
 
  IO_getTag = ''
- left = scan(string,openChar)
- right = scan(string,closeChar)
+ left  = scan(string,openChar)
+ right = merge(scan(string,closeChar), scan(string(left:),closeChar),openChar /= closeChar)
 
  if (left == verify(string,SEP) .and. right > left) &                                               ! openChar is first and closeChar occurs
    IO_getTag = string(left+1:right-1)
