@@ -85,23 +85,22 @@ character(len=1024) function getCWD()
     C_NULL_CHAR
 
   implicit none
-  character(kind=C_CHAR), dimension(1024) :: strFixedLength                                         ! C string is an array
+  character(kind=C_CHAR), dimension(1024) :: charArray                                              ! C string is an array
   integer(C_INT) :: stat
   integer :: i
 
-  call getCurrentWorkDir_C(strFixedLength,stat)
+  call getCurrentWorkDir_C(charArray,stat)
   if (stat /= 0_C_INT) then
     getCWD = 'Error occured when getting currend working directory'
   else
     getCWD = repeat('',len(getCWD))
-    do i=1,1024                                                                                       ! copy array components until Null string is found
-      if (strFixedLength(i) /= C_NULL_CHAR) then
-        getCWD(i:i)=strFixedLength(i)
+    arrayToString: do i=1,len(getCWD)
+      if (charArray(i) /= C_NULL_CHAR) then
+        getCWD(i:i)=charArray(i)
       else
-        getCWD(i:i)=char(0)
         exit
       endif
-    enddo
+    enddo arrayToString
   endif
 
 end function getCWD
@@ -117,22 +116,22 @@ character(len=1024) function getHostName()
     C_NULL_CHAR
 
   implicit none
-  character(kind=C_CHAR), dimension(1024) :: strFixedLength                                         ! C string is an array
+  character(kind=C_CHAR), dimension(1024) :: charArray                                              ! C string is an array
   integer(C_INT) :: stat
   integer :: i
 
-  call getHostName_C(strFixedLength,stat)
+  call getHostName_C(charArray,stat)
   if (stat /= 0_C_INT) then
     getHostName = 'Error occured when getting host name'
   else
     getHostName = repeat('',len(getHostName))
-    do i=1,1024                                                                                       ! copy array components until Null string is found
-      if (strFixedLength(i) /= C_NULL_CHAR) then
-        getHostName(i:i)=strFixedLength(i)
+    arrayToString: do i=1,len(getHostName)
+      if (charArray(i) /= C_NULL_CHAR) then
+        getHostName(i:i)=charArray(i)
       else
         exit
       endif
-    enddo
+    enddo arrayToString
   endif
 
 end function getHostName
