@@ -45,8 +45,6 @@ module config
 
  end type tPartitionedStringList
 
- type(tPartitionedStringList), public :: emptyList
-
  type(tPartitionedStringList), public, protected, allocatable, dimension(:) :: &
    config_phase, &
    config_microstructure, &
@@ -197,6 +195,7 @@ subroutine parseFile(line,sectionNames,part,&
  character(len=pStringLen),                 dimension(:), intent(in)  :: fileContent
 
  integer(pInt),                allocatable, dimension(:)              :: partPosition
+ type(tPartitionedStringList) :: emptyList
  integer(pInt)        :: i
  logical              :: echo
 
@@ -364,11 +363,11 @@ subroutine finalizeArray(this)
   type(tPartitionedStringList),  pointer :: temp ! bug in Gfortran?
 
   do i=1, size(this)
-    if (associated(this(i)%next)) then
+    !if (associated(this(i)%next)) then
       temp => this(i)%next
       !deallocate(this(i)) !internal compiler error: in gfc_build_final_call, at fortran/trans.c:975
       deallocate(temp)
-    endif
+    !endif
   enddo
 
 end subroutine finalizeArray
