@@ -194,41 +194,39 @@ subroutine parseFile(line,sectionNames,part,&
  type(tPartitionedStringList), allocatable, dimension(:), intent(out) :: part
  character(len=pStringLen),                 dimension(:), intent(in)  :: fileContent
 
- integer(pInt),                allocatable, dimension(:)              :: partPosition
- type(tPartitionedStringList) :: emptyList
- integer(pInt)        :: i
+ integer(pInt),                allocatable, dimension(:)              :: partPosition               ! position of [] tags + last line in section
+ integer(pInt)        :: i, j
  logical              :: echo
 
  echo = .false. 
- allocate(part(0))
  allocate(partPosition(0))
-
+ 
  do i = 1_pInt, size(fileContent)
    line = trim(fileContent(i))
    if (IO_getTag(line,'<','>') /= '') exit
    nextSection: if (IO_getTag(line,'[',']') /= '') then
-     part         = [part, emptyList]
      partPosition = [partPosition, i]
      cycle
    endif nextSection
-   inSection: if (size(part) > 0_pInt) then
-     call part(size(part))%add(trim(adjustl(line)))
-   else inSection
-     if (trim(IO_getTag(line,'/','/')) == 'echo') echo = .true.
-   endif inSection
+   if (size(partPosition) < 1_pInt) &
+     echo = (trim(IO_getTag(line,'/','/')) == 'echo') .or. echo
  enddo
 
  allocate(sectionNames(size(partPosition)))
- do i = 1_pInt, size(partPosition)
-   sectionNames(i) = trim(adjustl(fileContent(partPosition(i))))
- enddo
+ allocate(part(size(partPosition)))
 
- if (echo) then
-   do i = 1, size(sectionNames)
-     write(6,'(a)') 'section',i, '"'//trim(sectionNames(i))//'"'
+ partPosition = [partPosition, i]                                                                   ! needed when actually storing content
+
+ do i = 1_pInt, size(partPosition) -1_pInt
+   sectionNames(i) = trim(adjustl(fileContent(partPosition(i))))
+   do j = partPosition(i) + 1_pInt,  partPosition(i+1) -1_pInt
+     call part(i)%add(trim(adjustl(fileContent(j))))
+   enddo
+   if (echo) then
+     write(6,*) 'section',i, '"'//trim(sectionNames(i))//'"'
      call part(i)%show()
-   end do
- end if 
+   endif
+ enddo
 
 end subroutine parseFile
 
@@ -316,7 +314,7 @@ subroutine show(this)
 
  item => this
  do while (associated(item%next))
-   write(6,'(a)') trim(item%string%val)
+   write(6,'(a)') ' '//trim(item%string%val)
    item => item%next
  end do
 
