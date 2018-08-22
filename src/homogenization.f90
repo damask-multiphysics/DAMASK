@@ -103,6 +103,7 @@ subroutine homogenization_init
  use config, only: &
   material_configFile, &
   material_localFileExt, &
+  config_deallocate, &
   config_homogenization, &
   homogenization_name
  use material
@@ -374,7 +375,7 @@ subroutine homogenization_init
    close(FILEUNIT)
  endif mainProcess2
 
- deallocate(config_homogenization)
+ call config_deallocate('material.config/homogenization')
 
 !--------------------------------------------------------------------------------------------------
 ! allocate and initialize global variables

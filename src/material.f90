@@ -919,6 +919,7 @@ subroutine material_parseTexture
    IO_floatValue, &
    IO_stringValue
  use config, only: &
+   config_deallocate, &
    config_texture
  use math, only: &
    inRad, &
@@ -1058,7 +1059,7 @@ subroutine material_parseTexture
    endif
  enddo    
  
- deallocate(config_texture)
+ call config_deallocate('material.config/texture')
 
 end subroutine material_parseTexture
 
@@ -1090,6 +1091,7 @@ subroutine material_populateGrains
  use config, only: &
    config_homogenization, &
    config_microstructure, &
+   config_deallocate, &
    homogenization_name, &
    microstructure_name 
  use IO, only: &
@@ -1426,7 +1428,7 @@ subroutine material_populateGrains
  deallocate(texture_transformation)
  deallocate(Nelems)
  deallocate(elemsOfHomogMicro)
- deallocate(config_microstructure)
+ call config_deallocate('material.config/microstructure')
 
 end subroutine material_populateGrains
 

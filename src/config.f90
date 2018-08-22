@@ -47,7 +47,7 @@ module config
 
  type(tPartitionedStringList), public :: emptyList
 
- type(tPartitionedStringList), public, allocatable, dimension(:) :: &
+ type(tPartitionedStringList), public, protected, allocatable, dimension(:) :: &
    config_phase, &
    config_microstructure, &
    config_homogenization, &
@@ -82,9 +82,9 @@ module config
    MATERIAL_configFile         = 'material.config', &                                               !< generic name for material configuration file
    MATERIAL_localFileExt       = 'materialConfig'                                                   !< extension of solver job name depending material configuration file
 
-
  public :: &
-   config_init
+   config_init, &
+   config_deallocate
 
 contains
 
@@ -137,7 +137,7 @@ subroutine config_init()
    fileContent = IO_recursiveRead('material.config')
  endif
 
- do i=1, size(fileContent)
+ do i = 1_pInt, size(fileContent)
    line = trim(fileContent(i))
    part = IO_lc(IO_getTag(line,'<','>'))
    select case (trim(part))
@@ -188,11 +188,7 @@ subroutine parseFile(line,sectionNames,part,&
    pStringLen
  use IO, only: &
    IO_error, &
-   IO_lc, &
-   IO_getTag, &
-   IO_isBlank, &
-   IO_stringValue, &
-   IO_stringPos
+   IO_getTag
 
  implicit none
  character(len=pStringLen),                               intent(out) :: line
@@ -200,44 +196,38 @@ subroutine parseFile(line,sectionNames,part,&
  type(tPartitionedStringList), allocatable, dimension(:), intent(out) :: part
  character(len=pStringLen),                 dimension(:), intent(in)  :: fileContent
 
- character(len=64),            allocatable, dimension(:)              :: sectionNamesTemp           ! Circumvent Gfortran bug
- integer(pInt), allocatable, dimension(:) :: chunkPos
- integer(pInt)        :: s,i
- character(len=64)    :: tag
+ integer(pInt),                allocatable, dimension(:)              :: partPosition
+ integer(pInt)        :: i
  logical              :: echo
 
  echo = .false. 
  allocate(part(0))
- tag=''
- allocate(sectionNamesTemp(0),source=tag)
+ allocate(partPosition(0))
 
- s = 0_pInt
- do i=1, size(fileContent)
+ do i = 1_pInt, size(fileContent)
    line = trim(fileContent(i))
-   if (IO_isBlank(line)) cycle                                                                      ! skip empty lines
    if (IO_getTag(line,'<','>') /= '') exit
    nextSection: if (IO_getTag(line,'[',']') /= '') then
-     s = s + 1_pInt
-     part = [part, emptyList]
-     tag = IO_getTag(line,'[',']')
-     sectionNamesTemp  = [sectionNamesTemp,tag]
+     part         = [part, emptyList]
+     partPosition = [partPosition, i]
      cycle
    endif nextSection
-   chunkPos = IO_stringPos(line)
-   tag = IO_lc(IO_stringValue(trim(line),chunkPos,1_pInt))                                          ! extract key
-   inSection: if (s > 0_pInt) then
-     call part(s)%add(IO_lc(trim(line)))
+   inSection: if (size(part) > 0_pInt) then
+     call part(size(part))%add(trim(adjustl(line)))
    else inSection
-     echo = (trim(tag) == '/echo/')
+     if (trim(IO_getTag(line,'/','/')) == 'echo') echo = .true.
    endif inSection
  enddo
 
- sectionNames = sectionNamesTemp
+ allocate(sectionNames(size(partPosition)))
+ do i = 1_pInt, size(partPosition)
+   sectionNames(i) = trim(adjustl(fileContent(partPosition(i))))
+ enddo
 
  if (echo) then
-   do s = 1, size(sectionNames)
-     write(6,*) 'section',s, '"'//trim(sectionNames(i))//'"'
-     call part(s)%show()
+   do i = 1, size(sectionNames)
+     write(6,'(a)') 'section',i, '"'//trim(sectionNames(i))//'"'
+     call part(i)%show()
    end do
  end if 
 
@@ -252,7 +242,6 @@ subroutine config_deallocate(what)
 
  implicit none
  character(len=*), intent(in) :: what
- integer(pInt) :: i
 
  select case(trim(what))
 
@@ -336,7 +325,7 @@ end subroutine show
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief cleans entire list
+!> @brief empties list and frees associated memory
 !> @details explicit interface to reset list. Triggers final statement (and following chain reaction)
 !--------------------------------------------------------------------------------------------------
 subroutine free(this)
@@ -350,8 +339,8 @@ end subroutine free
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief cleans entire list
-!> @details called when variable goes out of scope. Triggers chain reaction.
+!> @brief empties list and frees associated memory
+!> @details called when variable goes out of scope. Triggers chain reaction for list
 !--------------------------------------------------------------------------------------------------
 recursive subroutine finalize(this)
 
@@ -364,15 +353,15 @@ end subroutine finalize
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief cleans entire list
-!> @details called when variable goes out of scope. Triggers chain reaction.
+!> @brief cleans entire array of linke lists
+!> @details called when variable goes out of scope.
 !--------------------------------------------------------------------------------------------------
 subroutine finalizeArray(this)
 
   implicit none
   integer :: i
   type(tPartitionedStringList),  intent(inout), dimension(:) :: this
-  type(tPartitionedStringList),  pointer :: temp ! bug in Gfortran
+  type(tPartitionedStringList),  pointer :: temp ! bug in Gfortran?
 
   do i=1, size(this)
     if (associated(this(i)%next)) then

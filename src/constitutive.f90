@@ -65,7 +65,8 @@ subroutine constitutive_init()
    material_Nphase, &
    material_localFileExt, &
    phase_name, &
-   material_configFile
+   material_configFile, &
+   config_deallocate
  use material, only: &
    material_phase, &
    phase_plasticity, &
@@ -192,7 +193,7 @@ subroutine constitutive_init()
  if (any(phase_kinematics == KINEMATICS_hydrogen_strain_ID))   call kinematics_hydrogen_strain_init(FILEUNIT)
  close(FILEUNIT)
 
- deallocate(config_phase)
+ call config_deallocate('material.config/phase')
 
  write(6,'(/,a)')   ' <<<+-  constitutive init  -+>>>'
  write(6,'(a15,a)') ' Current time: ',IO_timeStamp()

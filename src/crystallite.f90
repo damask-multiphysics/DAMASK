@@ -172,6 +172,7 @@ subroutine crystallite_init
    IO_error
  use material
  use config, only: &
+  config_deallocate, &
   config_crystallite, &
   crystallite_name
  use constitutive, only: &
@@ -375,7 +376,7 @@ subroutine crystallite_init
    close(FILEUNIT)
  endif
 
- deallocate(config_crystallite)
+ call config_deallocate('material.config/crystallite')
 
 !--------------------------------------------------------------------------------------------------
 ! initialize
