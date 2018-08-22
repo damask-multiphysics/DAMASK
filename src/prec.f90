@@ -23,6 +23,7 @@ module prec
  NO SUITABLE PRECISION FOR INTEGER SELECTED, STOPPING COMPILATION
 #endif
 
+ integer,     parameter, public :: pStringLen = 256                                                 !< default string lenth
  integer,     parameter, public :: pLongInt  = 8                                                    !< integer representation 64 bit (was selected_int_kind(12), number with at least up to +- 1e12)
  real(pReal), parameter, public :: tol_math_check = 1.0e-8_pReal                                    !< tolerance for internal math self-checks (rotation)
 
