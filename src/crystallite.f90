@@ -173,8 +173,7 @@ subroutine crystallite_init
  use material
  use config, only: &
   config_crystallite, &
-  crystallite_name, &
-  config_deallocate
+  crystallite_name
  use constitutive, only: &
    constitutive_initialFi, &
    constitutive_microstructure                                                                     ! derived (shortcut) quantities of given state
@@ -376,7 +375,7 @@ subroutine crystallite_init
    close(FILEUNIT)
  endif
 
- call config_deallocate('material.config/crystallite')
+ deallocate(config_crystallite)
 
 !--------------------------------------------------------------------------------------------------
 ! initialize

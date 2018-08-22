@@ -58,7 +58,7 @@ subroutine constitutive_init()
    IO_write_jobIntFile, &
    IO_timeStamp
  use config, only: &
-   config_deallocate
+   config_phase
  use mesh, only: &
    FE_geomtype
  use config, only: &
@@ -192,7 +192,7 @@ subroutine constitutive_init()
  if (any(phase_kinematics == KINEMATICS_hydrogen_strain_ID))   call kinematics_hydrogen_strain_init(FILEUNIT)
  close(FILEUNIT)
 
- call config_deallocate('material.config/phase')
+ deallocate(config_phase)
 
  write(6,'(/,a)')   ' <<<+-  constitutive init  -+>>>'
  write(6,'(a15,a)') ' Current time: ',IO_timeStamp()

@@ -23,7 +23,13 @@ module config
    contains
      procedure :: add            => add
      procedure :: show           => show
-     !procedure :: free           => free
+     procedure :: free           => free
+
+! currently, a finalize is needed for all shapes of tPartitionedStringList.
+! with Fortran 2015, we can define one recursive elemental function
+! https://software.intel.com/en-us/forums/intel-visual-fortran-compiler-for-windows/topic/543326
+     final     :: finalize, &
+                  finalizeArray 
 
      procedure :: keyExists      => keyExists
      procedure :: countKeys      => countKeys
@@ -35,13 +41,13 @@ module config
      procedure :: getFloats      => getFloats
      procedure :: getInts        => getInts
      procedure :: getStrings     => getStrings
-   final :: free
+
 
  end type tPartitionedStringList
 
  type(tPartitionedStringList), public :: emptyList
 
- type(tPartitionedStringList), public, protected, allocatable, dimension(:) :: &                    ! QUESTION: rename to config_XXX?
+ type(tPartitionedStringList), public, allocatable, dimension(:) :: &
    config_phase, &
    config_microstructure, &
    config_homogenization, &
@@ -78,8 +84,7 @@ module config
 
 
  public :: &
-   config_init, &
-   config_deallocate
+   config_init
 
 contains
 
@@ -92,6 +97,8 @@ subroutine config_init()
    compiler_version, &
    compiler_options
 #endif
+ use prec, only: &
+   pStringLen
  use DAMASK_interface, only: &
    getSolverJobName
  use IO, only: &
@@ -109,10 +116,10 @@ subroutine config_init()
  implicit none
  integer(pInt) :: myDebug,i
 
- character(len=256) :: &
+ character(len=pStringLen) :: &
   line, &
   part
- character(len=256), dimension(:), allocatable :: fileContent
+ character(len=pStringLen), dimension(:), allocatable :: fileContent
  logical :: fileExists
 
  write(6,'(/,a)') ' <<<+-  config init  -+>>>'
@@ -175,8 +182,10 @@ end subroutine config_init
 !--------------------------------------------------------------------------------------------------
 !> @brief parses the material.config file
 !--------------------------------------------------------------------------------------------------
-subroutine parseFile(line,&
-                     sectionNames,part,fileContent)
+subroutine parseFile(line,sectionNames,part,&
+                     fileContent)
+ use prec, only: &
+   pStringLen
  use IO, only: &
    IO_error, &
    IO_lc, &
@@ -186,11 +195,12 @@ subroutine parseFile(line,&
    IO_stringPos
 
  implicit none
- character(len=*),  dimension(:), allocatable, intent(inout)  :: sectionNames
+ character(len=pStringLen),                               intent(out) :: line
+ character(len=64),            allocatable, dimension(:), intent(out) :: sectionNames
  type(tPartitionedStringList), allocatable, dimension(:), intent(out) :: part
- character(len=256), dimension(:), intent(in) :: fileContent
- character(len=256),intent(out) :: line
+ character(len=pStringLen),                 dimension(:), intent(in)  :: fileContent
 
+ character(len=64),            allocatable, dimension(:)              :: sectionNamesTemp           ! Circumvent Gfortran bug
  integer(pInt), allocatable, dimension(:) :: chunkPos
  integer(pInt)        :: s,i
  character(len=64)    :: tag
@@ -198,6 +208,8 @@ subroutine parseFile(line,&
 
  echo = .false. 
  allocate(part(0))
+ tag=''
+ allocate(sectionNamesTemp(0),source=tag)
 
  s = 0_pInt
  do i=1, size(fileContent)
@@ -208,11 +220,7 @@ subroutine parseFile(line,&
      s = s + 1_pInt
      part = [part, emptyList]
      tag = IO_getTag(line,'[',']')
-     GfortranBug86033: if (.not. allocated(sectionNames)) then
-       allocate(sectionNames(1),source=tag)
-     else GfortranBug86033
-       sectionNames  = [sectionNames,tag]
-     endif GfortranBug86033
+     sectionNamesTemp  = [sectionNamesTemp,tag]
      cycle
    endif nextSection
    chunkPos = IO_stringPos(line)
@@ -224,8 +232,11 @@ subroutine parseFile(line,&
    endif inSection
  enddo
 
+ sectionNames = sectionNamesTemp
+
  if (echo) then
    do s = 1, size(sectionNames)
+     write(6,*) 'section',s, '"'//trim(sectionNames(i))//'"'
      call part(s)%show()
    end do
  end if 
@@ -234,7 +245,6 @@ end subroutine parseFile
 
 !--------------------------------------------------------------------------------------------------
 !> @brief deallocates the linked lists that store the content of the configuration files
-! commenting out removes erratic errors with gfortran 7.3
 !--------------------------------------------------------------------------------------------------
 subroutine config_deallocate(what)
  use IO, only: &
@@ -244,36 +254,21 @@ subroutine config_deallocate(what)
  character(len=*), intent(in) :: what
  integer(pInt) :: i
 
- select case(what)
+ select case(trim(what))
 
    case('material.config/phase')
-     !do i=1, size(config_phase)
-     !  call config_phase(i)%free
-     !enddo
      deallocate(config_phase)
 
    case('material.config/microstructure')
-     !do i=1, size(config_microstructure)
-     !  call config_microstructure(i)%free
-     !enddo
      deallocate(config_microstructure)
 
    case('material.config/crystallite')
-     !do i=1, size(config_crystallite)
-     !  call config_crystallite(i)%free
-     !enddo
      deallocate(config_crystallite)
 
    case('material.config/homogenization')
-     !do i=1, size(config_homogenization)
-     !  call config_homogenization(i)%free
-     !enddo
      deallocate(config_homogenization)
 
    case('material.config/texture')
-     !do i=1, size(config_texture)
-     !  call config_texture(i)%free
-     !enddo
      deallocate(config_texture)
 
    case default
@@ -294,7 +289,7 @@ end subroutine config_deallocate
 !> @brief add element
 !> @details Adds a string together with the start/end position of chunks in this string. The new 
 !! element is added at the end of the list. Empty strings are not added. All strings are converted
-!! to lower case
+!! to lower case. The data is not stored in the new element but in the current.
 !--------------------------------------------------------------------------------------------------
 subroutine add(this,string)
   use IO, only: &
@@ -305,19 +300,18 @@ subroutine add(this,string)
   implicit none
   class(tPartitionedStringList),  target, intent(in) :: this
   character(len=*),                       intent(in) :: string
-  type(tPartitionedStringList),   pointer            :: new, item
+  type(tPartitionedStringList),   pointer            :: new, temp
 
   if (IO_isBlank(string)) return
 
   allocate(new)
-  new%string%val = IO_lc       (trim(string))
-  new%string%pos = IO_stringPos(trim(string))
-
-  item => this
-  do while (associated(item%next))
-    item => item%next
+  temp => this
+  do while (associated(temp%next))
+    temp => temp%next
   enddo
-  item%next => new
+  temp%string%val = IO_lc       (trim(string))
+  temp%string%pos = IO_stringPos(trim(string))
+  temp%next => new
 
 end subroutine add
 
@@ -329,11 +323,11 @@ end subroutine add
 subroutine show(this)
 
  implicit none
- class(tPartitionedStringList) :: this
- type(tPartitionedStringList), pointer :: item
+ class(tPartitionedStringList), target, intent(in) :: this
+ type(tPartitionedStringList),  pointer            :: item
 
- item => this%next
- do while (associated(item))
+ item => this
+ do while (associated(item%next))
    write(6,'(a)') trim(item%string%val)
    item => item%next
  end do
@@ -343,25 +337,52 @@ end subroutine show
 
 !--------------------------------------------------------------------------------------------------
 !> @brief cleans entire list
-!> @details list head remains alive
+!> @details explicit interface to reset list. Triggers final statement (and following chain reaction)
 !--------------------------------------------------------------------------------------------------
 subroutine free(this)
 
   implicit none
-  type(tPartitionedStringList),  target, intent(in) :: this
-  type(tPartitionedStringList),   pointer            :: new, item
+  class(tPartitionedStringList),  intent(inout) :: this
 
-  if (.not. associated(this%next)) return
-
-  item => this%next
-  do while (associated(item%next))
-    new => item
-    deallocate(item)
-    item => new%next
-  enddo
-  deallocate(item)
+  if(associated(this%next)) deallocate(this%next)
 
 end subroutine free
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief cleans entire list
+!> @details called when variable goes out of scope. Triggers chain reaction.
+!--------------------------------------------------------------------------------------------------
+recursive subroutine finalize(this)
+
+  implicit none
+  type(tPartitionedStringList),  intent(inout) :: this
+
+  if(associated(this%next)) deallocate(this%next)
+
+end subroutine finalize
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief cleans entire list
+!> @details called when variable goes out of scope. Triggers chain reaction.
+!--------------------------------------------------------------------------------------------------
+subroutine finalizeArray(this)
+
+  implicit none
+  integer :: i
+  type(tPartitionedStringList),  intent(inout), dimension(:) :: this
+  type(tPartitionedStringList),  pointer :: temp ! bug in Gfortran
+
+  do i=1, size(this)
+    if (associated(this(i)%next)) then
+      temp => this(i)%next
+      !deallocate(this(i)) !internal compiler error: in gfc_build_final_call, at fortran/trans.c:975
+      deallocate(temp)
+    endif
+  enddo
+
+end subroutine finalizeArray
 
 
 !--------------------------------------------------------------------------------------------------
@@ -372,14 +393,14 @@ logical function keyExists(this,key)
    IO_stringValue
 
  implicit none
- class(tPartitionedStringList), intent(in) :: this
- character(len=*), intent(in)              :: key
- type(tPartitionedStringList), pointer     :: item
+ class(tPartitionedStringList), target, intent(in) :: this
+ character(len=*),                      intent(in) :: key
+ type(tPartitionedStringList),  pointer            :: item
 
  keyExists = .false.
 
- item => this%next
- do while (associated(item) .and. .not. keyExists)
+ item => this
+ do while (associated(item%next) .and. .not. keyExists)
    keyExists = trim(IO_stringValue(item%string%val,item%string%pos,1)) == trim(key)
    item => item%next
  end do
@@ -397,14 +418,14 @@ integer(pInt) function countKeys(this,key)
 
  implicit none
 
- class(tPartitionedStringList), intent(in) :: this
- character(len=*), intent(in)              :: key
- type(tPartitionedStringList), pointer     :: item
+ class(tPartitionedStringList), target, intent(in) :: this
+ character(len=*),                      intent(in) :: key
+ type(tPartitionedStringList),  pointer            :: item
 
  countKeys = 0_pInt
 
- item => this%next
- do while (associated(item))
+ item => this
+ do while (associated(item%next))
    if (trim(IO_stringValue(item%string%val,item%string%pos,1)) == trim(key)) &
      countKeys = countKeys + 1_pInt
    item => item%next
@@ -425,17 +446,17 @@ real(pReal) function getFloat(this,key,defaultVal)
    IO_FloatValue
 
  implicit none
- class(tPartitionedStringList), intent(in)           :: this
- character(len=*),              intent(in)           :: key
- real(pReal),                   intent(in), optional :: defaultVal
- type(tPartitionedStringList),  pointer              :: item
- logical                                             :: found
+ class(tPartitionedStringList), target, intent(in)           :: this
+ character(len=*),                      intent(in)           :: key
+ real(pReal),                           intent(in), optional :: defaultVal
+ type(tPartitionedStringList), pointer                       :: item
+ logical                                                     :: found
 
  found = present(defaultVal)
  if (found) getFloat = defaultVal
  
- item => this%next
- do while (associated(item))
+ item => this
+ do while (associated(item%next))
    if (trim(IO_stringValue(item%string%val,item%string%pos,1)) == trim(key)) then
      found = .true.
      if (item%string%pos(1) < 2_pInt) call IO_error(143_pInt,ext_msg=key)
@@ -461,17 +482,17 @@ integer(pInt) function getInt(this,key,defaultVal)
    IO_IntValue
 
  implicit none
- class(tPartitionedStringList), intent(in)           :: this
- character(len=*),              intent(in)           :: key
- integer(pInt),                 intent(in), optional :: defaultVal
- type(tPartitionedStringList),  pointer              :: item
- logical                                             :: found
+ class(tPartitionedStringList), target, intent(in)           :: this
+ character(len=*),                      intent(in)           :: key
+ integer(pInt),                         intent(in), optional :: defaultVal
+ type(tPartitionedStringList), pointer                       :: item
+ logical                                                     :: found
 
  found = present(defaultVal)
  if (found) getInt = defaultVal
  
- item => this%next
- do while (associated(item))
+ item => this
+ do while (associated(item%next))
    if (trim(IO_stringValue(item%string%val,item%string%pos,1)) == trim(key)) then
      found = .true.
      if (item%string%pos(1) < 2_pInt) call IO_error(143_pInt,ext_msg=key)
@@ -497,13 +518,13 @@ character(len=65536) function getString(this,key,defaultVal,raw)
    IO_stringValue
 
  implicit none
- class(tPartitionedStringList), intent(in)           :: this
- character(len=*),              intent(in)           :: key
- character(len=65536),          intent(in), optional :: defaultVal
- logical,                       intent(in), optional :: raw
- type(tPartitionedStringList),  pointer              :: item
- logical                                             :: found, &
-                                                        whole
+ class(tPartitionedStringList), target, intent(in)           :: this
+ character(len=*),                      intent(in)           :: key
+ character(len=65536),                  intent(in), optional :: defaultVal
+ logical,                               intent(in), optional :: raw
+ type(tPartitionedStringList),  pointer                      :: item
+ logical                                                     :: found, &
+                                                                whole
 
  whole = merge(raw,.false.,present(raw))                                                            ! whole string or white space splitting
  found = present(defaultVal)
@@ -512,8 +533,8 @@ character(len=65536) function getString(this,key,defaultVal,raw)
    if (len_trim(getString) /= len_trim(defaultVal)) call IO_error(0_pInt,ext_msg='getString')
  endif
 
- item => this%next
- do while (associated(item))
+ item => this
+ do while (associated(item%next))
    if (trim(IO_stringValue(item%string%val,item%string%pos,1)) == trim(key)) then
      found = .true.
      if (item%string%pos(1) < 2_pInt) call IO_error(143_pInt,ext_msg=key)
@@ -545,7 +566,7 @@ function getFloats(this,key,defaultVal,requiredShape)
 
  implicit none
  real(pReal),     dimension(:), allocatable          :: getFloats
- class(tPartitionedStringList), intent(in)           :: this
+ class(tPartitionedStringList), target, intent(in)   :: this
  character(len=*),              intent(in)           :: key
  real(pReal),   dimension(:),   intent(in), optional :: defaultVal
  integer(pInt), dimension(:),   intent(in), optional :: requiredShape
@@ -559,8 +580,8 @@ function getFloats(this,key,defaultVal,requiredShape)
 
  allocate(getFloats(0))
 
- item => this%next
- do while (associated(item))
+ item => this
+ do while (associated(item%next))
    if (trim(IO_stringValue(item%string%val,item%string%pos,1)) == trim(key)) then
      found = .true.
      if (.not. cumulative) getFloats = [real(pReal)::]
@@ -592,7 +613,7 @@ function getInts(this,key,defaultVal,requiredShape)
 
  implicit none
  integer(pInt), dimension(:), allocatable            :: getInts
- class(tPartitionedStringList), intent(in)           :: this
+ class(tPartitionedStringList), target, intent(in)   :: this
  character(len=*),              intent(in)           :: key
  integer(pInt), dimension(:),   intent(in), optional :: defaultVal, &
                                                         requiredShape
@@ -606,8 +627,8 @@ function getInts(this,key,defaultVal,requiredShape)
 
  allocate(getInts(0))
 
- item => this%next
- do while (associated(item))
+ item => this
+ do while (associated(item%next))
    if (trim(IO_stringValue(item%string%val,item%string%pos,1)) == trim(key)) then
      found = .true.
      if (.not. cumulative) getInts = [integer(pInt)::]
@@ -639,7 +660,7 @@ function getStrings(this,key,defaultVal,requiredShape,raw)
 
  implicit none
  character(len=65536),dimension(:), allocatable           :: getStrings
- class(tPartitionedStringList),      intent(in)           :: this
+ class(tPartitionedStringList), target, intent(in)        :: this
  character(len=*),                   intent(in)           :: key
  character(len=65536),dimension(:),  intent(in), optional :: defaultVal
  integer(pInt),       dimension(:),  intent(in), optional :: requiredShape
@@ -655,8 +676,8 @@ function getStrings(this,key,defaultVal,requiredShape,raw)
  whole = merge(raw,.false.,present(raw))
  found = .false.
 
- item => this%next
- do while (associated(item))
+ item => this
+ do while (associated(item%next))
    if (trim(IO_stringValue(item%string%val,item%string%pos,1)) == trim(key)) then
      found = .true.
      if (allocated(getStrings) .and. .not. cumulative) deallocate(getStrings)

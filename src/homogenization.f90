@@ -101,7 +101,6 @@ subroutine homogenization_init
    crystallite_maxSizePostResults
 #endif
  use config, only: &
-  config_deallocate, &
   material_configFile, &
   material_localFileExt, &
   config_homogenization, &
@@ -375,7 +374,7 @@ subroutine homogenization_init
    close(FILEUNIT)
  endif mainProcess2
 
- call config_deallocate('material.config/homogenization')
+ deallocate(config_homogenization)
 
 !--------------------------------------------------------------------------------------------------
 ! allocate and initialize global variables
