@@ -318,21 +318,20 @@ function rectifyPath(path)
 
  implicit none
  character(len=*) :: path
- character(len=len_trim(path)) :: rectifyPath
+ character(len=1024) :: rectifyPath
  integer :: i,j,k,l                                                                                 ! no pInt
 
 !--------------------------------------------------------------------------------------------------
 ! remove /./ from path
- l = len_trim(path)
- rectifyPath = path
+ rectifyPath = trim(path)
+ l = len_trim(rectifyPath)
  do i = l,3,-1
    if (rectifyPath(i-2:i) == '/./') rectifyPath(i-1:l) = rectifyPath(i+1:l)//'  '
  enddo
 
 !--------------------------------------------------------------------------------------------------
 ! remove // from path
- l = len_trim(path)
- rectifyPath = path
+ l = len_trim(rectifyPath)
  do i = l,2,-1
    if (rectifyPath(i-1:i) == '//') rectifyPath(i-1:l) = rectifyPath(i:l)//' '
  enddo
