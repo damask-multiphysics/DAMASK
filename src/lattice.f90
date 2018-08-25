@@ -2164,6 +2164,46 @@ end function lattice_interactionTransTrans2
 
 
 !--------------------------------------------------------------------------------------------------
+!> @brief Calculates Schmid matrix for active slip systems
+!--------------------------------------------------------------------------------------------------
+function lattice_SchmidSlip(Nslip,structure,cOverA)
+ use IO, only: &
+   IO_error
+ use math, only: &
+   math_tensorproduct33
+
+ implicit none
+ integer(pInt),    dimension(:),            intent(in) :: Nslip                              !< number of active slip systems per family
+ character(len=*),                          intent(in) :: structure                          !< lattice structure
+ real(pReal),     dimension(3,3,sum(Nslip))            :: lattice_SchmidSlip
+ real(pReal),                               intent(in), optional :: &
+   cOverA
+
+ real(pReal),     dimension(3,3,sum(Nslip))            :: coordinateSystem
+ integer(pInt) :: i
+
+ select case(structure)
+   case('fcc')
+     coordinateSystem = buildCoordinateSystem(Nslip,int(lattice_fcc_systemSlip,pInt),structure)
+   case('bcc')
+     coordinateSystem = buildCoordinateSystem(Nslip,int(lattice_bcc_systemSlip,pInt),structure)
+   case('hex','hexagonal')                                                                          !ToDo: "No alias policy": long or short?
+     coordinateSystem = buildCoordinateSystem(Nslip,int(lattice_hex_systemSlip,pInt),structure,cOverA)
+   case('bct')
+     coordinateSystem = buildCoordinateSystem(Nslip,int(lattice_bct_systemslip,pInt),structure,cOverA)
+   case default
+     write(6,*) 'mist'
+ end select
+
+ do i = 1, sum(Nslip)
+   lattice_SchmidSlip(1:3,1:3,i) = &
+                             math_tensorproduct33(coordinateSystem(1:3,1,i),coordinateSystem(1:3,2,i))
+ enddo
+
+end function lattice_SchmidSlip
+
+
+!--------------------------------------------------------------------------------------------------
 !> @brief Populates reduced interaction matrix
 !--------------------------------------------------------------------------------------------------
 pure function buildInteraction(activeA,activeB,maxA,maxB,values,matrix)
@@ -2196,5 +2236,70 @@ pure function buildInteraction(activeA,activeB,maxA,maxB,values,matrix)
  enddo mySystems;enddo myFamilies
 
 end function buildInteraction
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief build a local coordinate system in a slip, twin, trans, cleavage system
+!--------------------------------------------------------------------------------------------------
+pure function buildCoordinateSystem(active,system,structure,cOverA)
+ use math, only: &
+   math_crossproduct
+
+ implicit none
+ integer(pInt), dimension(:), intent(in) :: &
+   active
+ integer(pInt), dimension(:,:), intent(in) :: &
+   system
+ character(len=*),            intent(in) :: &
+   structure                                                                                        !< lattice structure
+ real(pReal),                 intent(in), optional :: &
+   cOverA
+ real(pReal), dimension(3,3,sum(active)) :: &
+  buildCoordinateSystem
+
+ real(pReal), dimension(3) :: &
+   direction, normal
+ integer(pInt) :: ir, ig, mf, ms
+
+ ir = 0_pInt
+ myFamilies: do mf = 1_pInt,size(active,1)
+   mySystems: do ms = 1_pInt,active(mf)
+     ir = ir + 1_pInt
+     ig = sum(system(:,1:mf-1))+ms
+
+     select case(trim(structure))
+
+       case ('fcc','bcc')
+         direction = real(system(1:3,ig),pReal)
+         normal    = real(system(4:6,ig),pReal)
+   
+       case ('hex')
+         ! direction [uvtw]->[3u/2 (u+2v)*sqrt(3)/2 w*(c/a)])
+         direction(1) =  real(system(1,ig),pReal)*1.5_pReal
+         direction(2) = (real(system(1,ig),pReal)+2.0_pReal*real(system(2,ig),pReal))*0.5_pReal*sqrt(3.0_pReal)
+         direction(3) =  real(system(4,ig),pReal)*CoverA
+
+         ! plane (hkil)->(h (h+2k)/sqrt(3) l/(c/a))
+         normal(1) =  real(system(5,ig),pReal)
+         normal(2) = (real(system(5,ig),pReal)+2.0_pReal*real(system(6,ig),pReal))/ sqrt(3.0_pReal)
+         normal(3) =  real(system(8,ig),pReal)/CoverA
+
+       case ('bct')
+         direction(1:2) = real(system(1:2,ig),pReal)
+         direction(3)   = real(system(3,ig),pReal)*CoverA
+
+         normal(1:2) = real(system(4:5,ig),pReal)
+         normal(3)   = real(system(6,ig),pReal)/CoverA
+
+     end select
+
+     buildCoordinateSystem(1:3,1,ir) = direction/norm2(direction)                                   ! make unit vector
+     buildCoordinateSystem(1:3,2,ir) = normal/norm2(normal)                                         ! make unit vector
+     buildCoordinateSystem(1:3,3,ir) = math_crossproduct(direction,normal)
+
+   enddo mySystems
+ enddo myFamilies
+
+end function buildCoordinateSystem
 
 end module lattice
