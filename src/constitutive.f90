@@ -529,12 +529,11 @@ subroutine constitutive_LpAndItsTangent(Lp, dLp_dTstar, dLp_dFi, Tstar6, Fi, ipc
 
  end select plasticityType
 
- forall(i = 1_pInt:3_pInt, j = 1_pInt:3_pInt) &
+ do concurrent(i = 1_pInt:3_pInt, j = 1_pInt:3_pInt)
    dLp_dFi(i,j,1:3,1:3) = math_mul33x33(math_mul33x33(Fi,Tstar),transpose(dLp_dTstar(i,j,1:3,1:3))) + &
                           math_mul33x33(math_mul33x33(Fi,dLp_dTstar(i,j,1:3,1:3)),Tstar)
-
- forall(i = 1_pInt:3_pInt, j = 1_pInt:3_pInt) &
    dLp_dTstar(i,j,1:3,1:3) = math_mul33x33(math_mul33x33(transpose(Fi),Fi),dLp_dTstar(i,j,1:3,1:3))
+ enddo 
 
 end subroutine constitutive_LpAndItsTangent
 
