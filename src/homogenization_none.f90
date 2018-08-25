@@ -33,26 +33,24 @@ subroutine homogenization_none_init()
  
  implicit none
  integer(pInt) :: &
-   homog, &
+   h, &
    NofMyHomog
 
  write(6,'(/,a)')   ' <<<+-  homogenization_'//HOMOGENIZATION_NONE_label//' init  -+>>>'
  write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
 
- initializeInstances: do homog = 1_pInt, material_Nhomogenization
+ do h = 1_pInt, size(homogenization_type)
+   if (homogenization_type(h) /= HOMOGENIZATION_NONE_ID) cycle
    
-   myhomog: if (homogenization_type(homog) == HOMOGENIZATION_none_ID) then
-     NofMyHomog = count(material_homog == homog)
-     homogState(homog)%sizeState = 0_pInt
-     homogState(homog)%sizePostResults = 0_pInt
-     allocate(homogState(homog)%state0   (0_pInt,NofMyHomog), source=0.0_pReal)
-     allocate(homogState(homog)%subState0(0_pInt,NofMyHomog), source=0.0_pReal)
-     allocate(homogState(homog)%state    (0_pInt,NofMyHomog), source=0.0_pReal)
+   NofMyHomog = count(material_homog == h)
+   homogState(h)%sizeState = 0_pInt
+   homogState(h)%sizePostResults = 0_pInt
+   allocate(homogState(h)%state0   (0_pInt,NofMyHomog), source=0.0_pReal)
+   allocate(homogState(h)%subState0(0_pInt,NofMyHomog), source=0.0_pReal)
+   allocate(homogState(h)%state    (0_pInt,NofMyHomog), source=0.0_pReal)
 
-   endif myhomog
- enddo initializeInstances
-
+ enddo
 
 end subroutine homogenization_none_init
 
