@@ -612,7 +612,7 @@ end subroutine plastic_phenopowerlaw_LpAndItsTangent
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates the rate of change of microstructure
 !--------------------------------------------------------------------------------------------------
-subroutine plastic_phenopowerlaw_dotState(Tstar_v,ipc,ip,el)
+subroutine plastic_phenopowerlaw_dotState(Mstar6,ipc,ip,el)
  use lattice, only: &
    lattice_Sslip_v, &
    lattice_Stwin_v, &
@@ -626,7 +626,7 @@ subroutine plastic_phenopowerlaw_dotState(Tstar_v,ipc,ip,el)
 
  implicit none
  real(pReal), dimension(6),  intent(in) :: &
-   Tstar_v                                                                                          !< 2nd Piola Kirchhoff stress tensor in Mandel notation
+   Mstar6                                                                                           !< Mandel stress
  integer(pInt),              intent(in) :: &
    ipc, &                                                                                           !< component-ID of integration point
    ip, &                                                                                            !< integration point
@@ -678,13 +678,13 @@ subroutine plastic_phenopowerlaw_dotState(Tstar_v,ipc,ip,el)
 
 !--------------------------------------------------------------------------------------------------
 ! Calculation of dot gamma
-     tau_slip_pos  = dot_product(Tstar_v,lattice_Sslip_v(1:6,1,index_myFamily+i,ph))
+     tau_slip_pos  = dot_product(Mstar6,lattice_Sslip_v(1:6,1,index_myFamily+i,ph))
      tau_slip_neg  = tau_slip_pos
      nonSchmidSystems: do k = 1,size(prm%nonSchmidCoeff)
        tau_slip_pos = tau_slip_pos &
-                    + dot_product(Tstar_v,prm%nonSchmidCoeff(k)*lattice_Sslip_v(1:6,2*k,  index_myFamily+i,ph))
+                    + dot_product(Mstar6,prm%nonSchmidCoeff(k)*lattice_Sslip_v(1:6,2*k,  index_myFamily+i,ph))
        tau_slip_neg = tau_slip_neg &
-                    + dot_product(Tstar_v,prm%nonSchmidCoeff(k)*lattice_Sslip_v(1:6,2*k+1,index_myFamily+i,ph))
+                    + dot_product(Mstar6,prm%nonSchmidCoeff(k)*lattice_Sslip_v(1:6,2*k+1,index_myFamily+i,ph))
      enddo nonSchmidSystems
      gdot_slip(j) = prm%gdot0_slip*0.5_pReal* &
                   ( (abs(tau_slip_pos)/(stt%s_slip(j,of)))**prm%n_slip*sign(1.0_pReal,tau_slip_pos) &
@@ -700,7 +700,7 @@ subroutine plastic_phenopowerlaw_dotState(Tstar_v,ipc,ip,el)
 
 !--------------------------------------------------------------------------------------------------
 ! Calculation of dot vol frac
-     tau_twin  = dot_product(Tstar_v,lattice_Stwin_v(1:6,index_myFamily+i,ph))
+     tau_twin  = dot_product(Mstar6,lattice_Stwin_v(1:6,index_myFamily+i,ph))
      gdot_twin(j) = (1.0_pReal-stt%sumF(of))*&                                       ! 1-F
                     prm%gdot0_twin*&
                     (abs(tau_twin)/stt%s_twin(j,of))**&
@@ -738,7 +738,7 @@ end subroutine plastic_phenopowerlaw_dotState
 !--------------------------------------------------------------------------------------------------
 !> @brief return array of constitutive results
 !--------------------------------------------------------------------------------------------------
-function plastic_phenopowerlaw_postResults(Tstar_v,ipc,ip,el)
+function plastic_phenopowerlaw_postResults(Mstar6,ipc,ip,el)
  use material, only: &
    material_phase, &
    plasticState, &
@@ -753,7 +753,7 @@ function plastic_phenopowerlaw_postResults(Tstar_v,ipc,ip,el)
 
  implicit none
  real(pReal), dimension(6), intent(in) :: &
-   Tstar_v                                                                                          !< 2nd Piola Kirchhoff stress tensor in Mandel notation
+   Mstar6                                                                                           !< Mandel stress
  integer(pInt),             intent(in) :: &
    ipc, &                                                                                           !< component-ID of integration point
    ip, &                                                                                            !< integration point
@@ -798,13 +798,13 @@ function plastic_phenopowerlaw_postResults(Tstar_v,ipc,ip,el)
          index_myFamily = sum(lattice_NslipSystem(1:f-1_pInt,ph))                                ! at which index starts my family
          slipSystems1: do i = 1_pInt,prm%Nslip(f)
            j = j + 1_pInt
-           tau_slip_pos  = dot_product(Tstar_v,lattice_Sslip_v(1:6,1,index_myFamily+i,ph))
+           tau_slip_pos  = dot_product(Mstar6,lattice_Sslip_v(1:6,1,index_myFamily+i,ph))
            tau_slip_neg  = tau_slip_pos
            do k = 1,lattice_NnonSchmid(ph)
              tau_slip_pos = tau_slip_pos +prm%nonSchmidCoeff(k)* &
-                                   dot_product(Tstar_v,lattice_Sslip_v(1:6,2*k,index_myFamily+i,ph))
+                                   dot_product(Mstar6,lattice_Sslip_v(1:6,2*k,index_myFamily+i,ph))
              tau_slip_neg = tau_slip_neg +prm%nonSchmidCoeff(k)* &
-                                   dot_product(Tstar_v,lattice_Sslip_v(1:6,2*k+1,index_myFamily+i,ph))
+                                   dot_product(Mstar6,lattice_Sslip_v(1:6,2*k+1,index_myFamily+i,ph))
            enddo
            plastic_phenopowerlaw_postResults(c+j) = prm%gdot0_slip*0.5_pReal* &
                     ((abs(tau_slip_pos)/stt%s_slip(j,of))**prm%n_slip &
@@ -822,7 +822,7 @@ function plastic_phenopowerlaw_postResults(Tstar_v,ipc,ip,el)
          slipSystems2: do i = 1_pInt,prm%Nslip(f)
            j = j + 1_pInt
            plastic_phenopowerlaw_postResults(c+j) = &
-                             dot_product(Tstar_v,lattice_Sslip_v(1:6,1,index_myFamily+i,ph))
+                             dot_product(Mstar6,lattice_Sslip_v(1:6,1,index_myFamily+i,ph))
          enddo slipSystems2
        enddo slipFamilies2
        c = c + prm%totalNslip
@@ -847,7 +847,7 @@ function plastic_phenopowerlaw_postResults(Tstar_v,ipc,ip,el)
          index_myFamily = sum(lattice_NtwinSystem(1:f-1_pInt,ph))                                ! at which index starts my family
          twinSystems1: do i = 1_pInt,prm%Ntwin(f)
            j = j + 1_pInt
-           tau = dot_product(Tstar_v,lattice_Stwin_v(1:6,index_myFamily+i,ph))
+           tau = dot_product(Mstar6,lattice_Stwin_v(1:6,index_myFamily+i,ph))
            plastic_phenopowerlaw_postResults(c+j) = (1.0_pReal-stt%sumF(of))*&  ! 1-F
                                                          prm%gdot0_twin*&
                                                          (abs(tau)/stt%s_twin(j,of))**&
@@ -863,7 +863,7 @@ function plastic_phenopowerlaw_postResults(Tstar_v,ipc,ip,el)
          twinSystems2: do i = 1_pInt,prm%Ntwin(f)
            j = j + 1_pInt
            plastic_phenopowerlaw_postResults(c+j) = &
-                             dot_product(Tstar_v,lattice_Stwin_v(1:6,index_myFamily+i,ph))
+                             dot_product(Mstar6,lattice_Stwin_v(1:6,index_myFamily+i,ph))
          enddo twinSystems2
        enddo twinFamilies2
        c = c + prm%totalNtwin
