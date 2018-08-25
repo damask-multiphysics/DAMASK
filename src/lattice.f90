@@ -40,31 +40,19 @@ module lattice
 
  real(pReal), allocatable, dimension(:,:,:,:), protected, public :: &
    lattice_Sslip_v, &                                                                               !< Mandel notation of lattice_Sslip
-   lattice_Scleavage_v                                                                              !< Mandel notation of lattice_Scleavege
-
- real(pReal), allocatable, dimension(:,:,:), protected, public :: &
-   lattice_sn, &                                                                                    !< normal direction of slip system
-   lattice_sd, &                                                                                    !< slip direction of slip system
-   lattice_st                                                                                       !< sd x sn
-
-! rotation and Schmid matrices, normal, shear direction and d x n of twin systems
- real(pReal), allocatable, dimension(:,:,:,:), protected, public  :: &
+   lattice_Scleavage_v, &                                                                           !< Mandel notation of lattice_Scleavege
+   lattice_Qtrans, &                                                                                !< Total rotation: Q = R*B
+   lattice_Strans, &                                                                                !< Eigendeformation tensor for phase transformation
    lattice_Stwin, &
    lattice_Qtwin
 
  real(pReal), allocatable, dimension(:,:,:), protected, public :: &
+   lattice_sn, &                                                                                    !< normal direction of slip system
+   lattice_st, &                                                                                    !< sd x sn
+   lattice_sd, &                                                                                    !< slip direction of slip system
    lattice_Stwin_v, &
-   lattice_tn, &
-   lattice_td, &
-   lattice_tt
-
- real(pReal), allocatable, dimension(:,:,:), protected, public :: &
    lattice_Strans_v, &                                                                              !< Eigendeformation tensor in vector form
    lattice_projectionTrans                                                                          !< Matrix for projection of slip to fault-band (twin) systems for strain-induced martensite nucleation
-
- real(pReal), allocatable, dimension(:,:,:,:), protected, public :: &
-   lattice_Qtrans, &                                                                                !< Total rotation: Q = R*B
-   lattice_Strans                                                                                   !< Eigendeformation tensor for phase transformation
 
  real(pReal), allocatable, dimension(:,:), protected, public :: &
    lattice_shearTwin, &                                                                             !< characteristic twin shear
@@ -72,6 +60,11 @@ module lattice
 
  integer(pInt), allocatable, dimension(:), protected, public :: &
    lattice_NnonSchmid                                                                               !< total # of non-Schmid contributions for each structure
+
+ real(pReal), allocatable, dimension(:,:,:), private :: &
+   lattice_tn, &
+   lattice_td, &
+   lattice_tt
 
 !--------------------------------------------------------------------------------------------------
 ! face centered cubic
@@ -1137,9 +1130,7 @@ module lattice
  integer(kind(LATTICE_undefined_ID)),        dimension(:),       allocatable, public, protected :: &
    lattice_structure, trans_lattice_structure
 
-
-
-integer(pInt), dimension(2), parameter, private :: &
+ integer(pInt), dimension(2), parameter, private :: &
    lattice_NsymOperations = [24_pInt,12_pInt]
 
 real(pReal), dimension(4,36), parameter, private :: &
@@ -1264,16 +1255,10 @@ subroutine lattice_init
  allocate(lattice_Sslip_v(6,1+2*lattice_maxNnonSchmid,lattice_maxNslip,Nphases),source=0.0_pReal)
  allocate(lattice_Scleavage(3,3,3,lattice_maxNslip,Nphases),source=0.0_pReal)
  allocate(lattice_Scleavage_v(6,3,lattice_maxNslip,Nphases),source=0.0_pReal)
- allocate(lattice_sd(3,lattice_maxNslip,Nphases),source=0.0_pReal)
- allocate(lattice_st(3,lattice_maxNslip,Nphases),source=0.0_pReal)
- allocate(lattice_sn(3,lattice_maxNslip,Nphases),source=0.0_pReal)
 
- allocate(lattice_Qtwin(3,3,lattice_maxNtwin,Nphases),source=0.0_pReal)
+  allocate(lattice_Qtwin(3,3,lattice_maxNtwin,Nphases),source=0.0_pReal)
  allocate(lattice_Stwin(3,3,lattice_maxNtwin,Nphases),source=0.0_pReal)
  allocate(lattice_Stwin_v(6,lattice_maxNtwin,Nphases),source=0.0_pReal)
- allocate(lattice_td(3,lattice_maxNtwin,Nphases),source=0.0_pReal)
- allocate(lattice_tt(3,lattice_maxNtwin,Nphases),source=0.0_pReal)
- allocate(lattice_tn(3,lattice_maxNtwin,Nphases),source=0.0_pReal)
 
  allocate(lattice_shearTwin(lattice_maxNtwin,Nphases),source=0.0_pReal)
  allocate(lattice_shearTrans(lattice_maxNtrans,Nphases),source=0.0_pReal)
@@ -1300,6 +1285,14 @@ subroutine lattice_init
  allocate(CoverA_trans(Nphases),source=0.0_pReal)
  allocate(a_fcc(Nphases),source=0.0_pReal)
  allocate(a_bcc(Nphases),source=0.0_pReal)
+
+ allocate(lattice_td(3,lattice_maxNtwin,Nphases),source=0.0_pReal)
+ allocate(lattice_tt(3,lattice_maxNtwin,Nphases),source=0.0_pReal)
+ allocate(lattice_tn(3,lattice_maxNtwin,Nphases),source=0.0_pReal)
+ allocate(lattice_sd(3,lattice_maxNslip,Nphases),source=0.0_pReal)
+ allocate(lattice_st(3,lattice_maxNslip,Nphases),source=0.0_pReal)
+ allocate(lattice_sn(3,lattice_maxNslip,Nphases),source=0.0_pReal)
+
 
  do p = 1, size(config_phase)
    tag = config_phase(p)%getString('lattice_structure')
