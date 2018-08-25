@@ -1300,6 +1300,7 @@ subroutine crystallite_integrateStateRK4()
      if (crystallite_todo(g,i,e)) &
        call constitutive_collectDotState(crystallite_Tstar_v(1:6,g,i,e), &
                                          crystallite_Fe, &
+                                         crystallite_Fi(1:3,1:3,g,i,e), &
                                          crystallite_Fp, &
                                          crystallite_subdt(g,i,e), crystallite_subFrac, g,i,e)
    enddo; enddo; enddo
@@ -1442,6 +1443,7 @@ subroutine crystallite_integrateStateRK4()
          if (crystallite_todo(g,i,e)) &
            call constitutive_collectDotState(crystallite_Tstar_v(1:6,g,i,e), &
                                              crystallite_Fe, &
+                                             crystallite_Fi(1:3,1:3,g,i,e), &
                                              crystallite_Fp, &
                                              timeStepFraction(n)*crystallite_subdt(g,i,e), &               ! fraction of original timestep
                                              crystallite_subFrac, g,i,e)
@@ -1609,6 +1611,7 @@ subroutine crystallite_integrateStateRKCK45()
      if (crystallite_todo(g,i,e)) &
        call constitutive_collectDotState(crystallite_Tstar_v(1:6,g,i,e), &
                                          crystallite_Fe, &
+                                         crystallite_Fi(1:3,1:3,g,i,e), &
                                          crystallite_Fp, &
                                          crystallite_subdt(g,i,e), crystallite_subFrac, g,i,e)
    enddo; enddo; enddo
@@ -1761,6 +1764,7 @@ subroutine crystallite_integrateStateRKCK45()
        if (crystallite_todo(g,i,e)) &
          call constitutive_collectDotState(crystallite_Tstar_v(1:6,g,i,e), &
                                            crystallite_Fe, &
+                                           crystallite_Fi(1:3,1:3,g,i,e), &
                                            crystallite_Fp, &
                                            C(stage)*crystallite_subdt(g,i,e), & ! fraction of original timestep
                                            crystallite_subFrac, g,i,e)
@@ -2088,6 +2092,7 @@ subroutine crystallite_integrateStateAdaptiveEuler()
        if (crystallite_todo(g,i,e)) &
          call constitutive_collectDotState(crystallite_Tstar_v(1:6,g,i,e), &
                                            crystallite_Fe, &
+                                           crystallite_Fi(1:3,1:3,g,i,e), &
                                            crystallite_Fp, &
                                            crystallite_subdt(g,i,e), crystallite_subFrac, g,i,e)
     enddo; enddo; enddo
@@ -2209,6 +2214,7 @@ subroutine crystallite_integrateStateAdaptiveEuler()
        if (crystallite_todo(g,i,e)) &
          call constitutive_collectDotState(crystallite_Tstar_v(1:6,g,i,e), &
                                            crystallite_Fe, &
+                                           crystallite_Fi(1:3,1:3,g,i,e), &
                                            crystallite_Fp, &
                                            crystallite_subdt(g,i,e), crystallite_subFrac, g,i,e)
      enddo; enddo; enddo
@@ -2417,6 +2423,7 @@ eIter = FEsolving_execElem(1:2)
        if (crystallite_todo(g,i,e) .and. .not. crystallite_converged(g,i,e)) &
          call constitutive_collectDotState(crystallite_Tstar_v(1:6,g,i,e), &
                                            crystallite_Fe, &
+                                           crystallite_Fi(1:3,1:3,g,i,e), &
                                            crystallite_Fp, &
                                            crystallite_subdt(g,i,e), crystallite_subFrac, g,i,e)
      enddo; enddo; enddo
@@ -2677,6 +2684,7 @@ subroutine crystallite_integrateStateFPI()
      if (crystallite_todo(g,i,e)) &
        call constitutive_collectDotState(crystallite_Tstar_v(1:6,g,i,e), &
                                          crystallite_Fe, &
+                                         crystallite_Fi(1:3,1:3,g,i,e), &
                                          crystallite_Fp, &
                                          crystallite_subdt(g,i,e), crystallite_subFrac, g,i,e)
    enddo; enddo; enddo
@@ -2799,6 +2807,7 @@ subroutine crystallite_integrateStateFPI()
        if (crystallite_todo(g,i,e) .and. .not. crystallite_converged(g,i,e)) &
          call constitutive_collectDotState(crystallite_Tstar_v(1:6,g,i,e), &
                                            crystallite_Fe, &
+                                           crystallite_Fi(1:3,1:3,g,i,e), &
                                            crystallite_Fp, &
                                            crystallite_subdt(g,i,e), crystallite_subFrac, g,i,e)
      enddo; enddo; enddo
@@ -3057,7 +3066,10 @@ logical function crystallite_stateJump(ipc,ip,el)
  c = phasememberAt(ipc,ip,el)
  p = phaseAt(ipc,ip,el)
 
- call constitutive_collectDeltaState(crystallite_Tstar_v(1:6,ipc,ip,el), crystallite_Fe(1:3,1:3,ipc,ip,el), ipc,ip,el)
+ call constitutive_collectDeltaState(crystallite_Tstar_v(1:6,ipc,ip,el), &
+                                     crystallite_Fe(1:3,1:3,ipc,ip,el), &
+                                     crystallite_Fi(1:3,1:3,ipc,ip,el), &
+                                     ipc,ip,el)
 
  myOffsetPlasticDeltaState = plasticState(p)%offsetDeltaState
  mySizePlasticDeltaState   = plasticState(p)%sizeDeltaState
