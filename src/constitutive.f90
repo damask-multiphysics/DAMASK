@@ -493,7 +493,7 @@ subroutine constitutive_LpAndItsTangent(Lp, dLp_dTstar, dLp_dFi, Tstar6, Fi, ipc
  tme = thermalMapping(ho)%p(ip,el)
 
  Tstar  = math_Mandel6to33(Tstar6)
- Mstar  = math_mul33x33(math_mul33x33(transpose(Fi),Fi),Tstar))
+ Mstar  = math_mul33x33(math_mul33x33(transpose(Fi),Fi),Tstar)
 
  plasticityType: select case (phase_plasticity(material_phase(ipc,ip,el)))
    case (PLASTICITY_NONE_ID) plasticityType
@@ -531,7 +531,7 @@ subroutine constitutive_LpAndItsTangent(Lp, dLp_dTstar, dLp_dFi, Tstar6, Fi, ipc
 
  forall(i = 1_pInt:3_pInt, j = 1_pInt:3_pInt) &
    dLp_dFi(i,j,1:3,1:3) = math_mul33x33(math_mul33x33(Fi,Tstar),transpose(dLp_dTstar(i,j,1:3,1:3))) + &
-                          math_mul33x33(math_mul33x33(Fi,dLp_dTstar(i,j,1:3,1:3)),Tstar))
+                          math_mul33x33(math_mul33x33(Fi,dLp_dTstar(i,j,1:3,1:3)),Tstar)
 
  forall(i = 1_pInt:3_pInt, j = 1_pInt:3_pInt) &
    dLp_dTstar(i,j,1:3,1:3) = math_mul33x33(math_mul33x33(transpose(Fi),Fi),dLp_dTstar(i,j,1:3,1:3))
