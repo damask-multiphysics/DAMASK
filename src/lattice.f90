@@ -2117,4 +2117,157 @@ pure function lattice_qDisorientation(Q1, Q2, struct)
 
 end function lattice_qDisorientation
 
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Populates reduced slip-slip interaction matrix
+!> ToDo: prefix "2" needed as long as deprecated array lattice_interactionSlipSlip exists
+!--------------------------------------------------------------------------------------------------
+function lattice_interactionSlipSlip2(Nslip,interactionValues,structure)
+ use IO, only: &
+   IO_error
+
+ implicit none
+ integer(pInt),    dimension(:),                   intent(in) :: Nslip                              !< number of active slip systems per family
+ real(pReal),      dimension(:),                   intent(in) :: interactionValues                  !< interaction values slip-slip
+ character(len=*),                                 intent(in) :: structure                          !< lattice structure
+ real(pReal),     dimension(sum(Nslip),sum(Nslip))            :: lattice_interactionSlipSlip2
+
+ integer(pInt),   dimension(:),                   allocatable :: NslipMax
+ integer(pInt),   dimension(:,:),                 allocatable :: interactionSlipSlip
+
+ select case(structure)
+   case('fcc')
+     interactionSlipSlip = lattice_fcc_interactionSlipSlip
+     NslipMax            = lattice_fcc_Nslip
+   case('bcc')
+     interactionSlipSlip = lattice_bcc_interactionSlipSlip
+     NslipMax            = lattice_bcc_Nslip
+   case('hex','hexagonal')                                                                          !ToDo: "No alias policy": long or short?
+     interactionSlipSlip = lattice_hex_interactionTwinTwin
+     NslipMax            = lattice_hex_Nslip
+   case('bct')
+     interactionSlipSlip = lattice_bct_interactionSlipSlip
+     NslipMax            = lattice_bct_Nslip
+   case default
+     write(6,*) 'mist'
+ end select
+
+ !if (size(Ntwin) > count(Ntwin > 0_pInt))   call IO_error(150_pInt,ext_msg='Ntwin')
+ !if (any(NtwinMax(1:size(Ntwin)) -Ntwin < 0_pInt)) call IO_error(150_pInt,ext_msg='Ntwin')
+
+ lattice_interactionSlipSlip2 = &
+   buildInteraction(Nslip,Nslip,NslipMax,NslipMax,interactionValues,interactionSlipSlip)
+
+end function lattice_interactionSlipSlip2
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Populates reduced twin-twin interaction matrix
+!> ToDo: prefix "2" needed as long as deprecated array lattice_interactionTwinTwin exists
+!--------------------------------------------------------------------------------------------------
+function lattice_interactionTwinTwin2(Ntwin,interactionValues,structure)
+ use IO, only: &
+   IO_error
+
+ implicit none
+ integer(pInt),    dimension(:),                   intent(in) :: Ntwin                              !< number of active twin systems per family
+ real(pReal),      dimension(:),                   intent(in) :: interactionValues                  !< interaction values twin-twin
+ character(len=*),                                 intent(in) :: structure                          !< lattice structure
+ real(pReal),     dimension(sum(Ntwin),sum(Ntwin))            :: lattice_interactionTwinTwin2
+
+ integer(pInt),   dimension(:),                   allocatable :: NtwinMax
+ integer(pInt),   dimension(:,:),                 allocatable :: interactionTwinTwin
+
+ select case(structure)
+   case('fcc')
+     interactionTwinTwin = lattice_fcc_interactionTwinTwin
+     NtwinMax            = lattice_fcc_Ntwin
+   case('bcc')
+     interactionTwinTwin = lattice_bcc_interactionTwinTwin
+     NtwinMax            = lattice_bcc_Ntwin
+   case('hex','hexagonal')                                                                          !ToDo: "No alias policy": long or short?
+     interactionTwinTwin = lattice_hex_interactionTwinTwin
+     NtwinMax            = lattice_hex_Ntwin
+   case default
+     write(6,*) 'mist'
+ end select
+
+ !if (size(Ntwin) > count(Ntwin > 0_pInt))   call IO_error(150_pInt,ext_msg='Ntwin')
+ !if (any(NtwinMax(1:size(Ntwin)) -Ntwin < 0_pInt)) call IO_error(150_pInt,ext_msg='Ntwin')
+
+ lattice_interactionTwinTwin2 = &
+   buildInteraction(Ntwin,Ntwin,NtwinMax,NtwinMax,interactionValues,interactionTwinTwin)
+
+end function lattice_interactionTwinTwin2
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Populates reduced trans-trans interaction matrix
+!> ToDo: prefix "2" needed as long as deprecated array lattice_interactionTransTrans exists
+!--------------------------------------------------------------------------------------------------
+function lattice_interactionTransTrans2(Ntrans,interactionValues,structure,targetStructure)
+ use IO, only: &
+   IO_error
+
+ implicit none
+ integer(pInt),    dimension(:),                   intent(in) :: Ntrans                             !< number of active twin systems per family
+ real(pReal),      dimension(:),                   intent(in) :: interactionValues                  !< interaction values twin-twin
+ character(len=*),                                 intent(in) :: &
+   structure, &                                                                                     !< lattice structure of parent crystal
+   targetStructure                                                                                  !< lattice structure of transformed crystal
+ real(pReal),     dimension(sum(Ntrans),sum(Ntrans))          :: lattice_interactionTransTrans2
+
+ integer(pInt),   dimension(:),                   allocatable :: NtransMax
+ integer(pInt),   dimension(:,:),                 allocatable :: interactionTransTrans
+
+ if (trim(structure) == 'fcc' .and. trim(targetStructure) == 'hex') then
+   interactionTransTrans = lattice_fccToHex_interactionTransTrans
+   NtransMax             = lattice_fcc_Ntrans
+ else
+   write(6,*) 'mist'
+ end if
+
+ !if (size(Ntwin) > count(Ntwin > 0_pInt))   call IO_error(150_pInt,ext_msg='Ntwin')
+ !if (any(NtwinMax(1:size(Ntwin)) -Ntwin < 0_pInt)) call IO_error(150_pInt,ext_msg='Ntwin')
+
+ lattice_interactionTransTrans2 = &
+   buildInteraction(Ntrans,Ntrans,NtransMax,NtransMax,interactionValues,interactionTransTrans)
+
+end function lattice_interactionTransTrans2
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Populates reduced interaction matrix
+!--------------------------------------------------------------------------------------------------
+pure function buildInteraction(activeA,activeB,maxA,maxB,values,matrix)
+ use IO, only: &
+   IO_error
+
+ implicit none
+ integer(pInt), dimension(:),           intent(in) :: &
+    activeA, &
+    activeB, &
+    maxA, &
+    maxB
+ real(pReal),   dimension(:),           intent(in)   :: values                                      !< interaction values
+ integer(pInt), dimension(:,:),         intent(in)   :: matrix
+ real(pReal),   dimension(sum(activeA),sum(activeB)) :: buildInteraction
+
+ integer(pInt) :: &
+   index_myFamily, index_otherFamily, &
+   mf, ms, of, os
+
+ myFamilies: do mf = 1_pInt,size(activeA,1)
+  index_myFamily = sum(activeA(1:mf-1_pInt))
+     mySystems: do ms = 1_pInt,activeA(mf)
+       otherFamilies: do of = 1_pInt,size(activeB,1)
+         index_otherFamily = sum(activeB(1:of-1_pInt))
+         otherSystems: do os = 1_pInt,activeB(of)
+           buildInteraction(index_myFamily+ms,index_otherFamily+os) = &
+                                         values(matrix(sum(maxA(1:mf-1))+ms, sum(maxB(1:of-1))+os))
+       enddo otherSystems; enddo otherFamilies;
+ enddo mySystems;enddo myFamilies
+
+end function buildInteraction
+
 end module lattice
