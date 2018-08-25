@@ -619,6 +619,9 @@ subroutine plastic_phenopowerlaw_dotState(Mstar6,ipc,ip,el)
    lattice_NslipSystem, &
    lattice_NtwinSystem, &
    lattice_shearTwin
+ use math, only: &
+   math_mul33xx33, &
+   math_Mandel6to33 
  use material, only: &
    material_phase, &
    phasememberAt, &
@@ -642,6 +645,8 @@ subroutine plastic_phenopowerlaw_dotState(Mstar6,ipc,ip,el)
    ssat_offset, &
    tau_slip_pos,tau_slip_neg,tau_twin
 
+ real(pReal), dimension(3,3) :: &
+   Mstar
  real(pReal), dimension(param(phase_plasticityInstance(material_phase(ipc,ip,el)))%totalNslip) :: &
    gdot_slip,left_SlipSlip,right_SlipSlip
  real(pReal), dimension(param(phase_plasticityInstance(material_phase(ipc,ip,el)))%totalNtwin) :: &
@@ -657,6 +662,7 @@ subroutine plastic_phenopowerlaw_dotState(Mstar6,ipc,ip,el)
            dst => dotState(phase_plasticityInstance(ph)))
 
  dst%whole(:,of) = 0.0_pReal
+ Mstar = math_Mandel6to33(Mstar6)
 
 !--------------------------------------------------------------------------------------------------
 ! system-independent (nonlinear) prefactors to M_Xx (X influenced by x) matrices
@@ -678,13 +684,11 @@ subroutine plastic_phenopowerlaw_dotState(Mstar6,ipc,ip,el)
 
 !--------------------------------------------------------------------------------------------------
 ! Calculation of dot gamma
-     tau_slip_pos  = dot_product(Mstar6,lattice_Sslip_v(1:6,1,index_myFamily+i,ph))
+     tau_slip_pos  = math_mul33xx33(Mstar,prm%Schmid_slip(1:3,1:3,j))
      tau_slip_neg  = tau_slip_pos
      nonSchmidSystems: do k = 1,size(prm%nonSchmidCoeff)
-       tau_slip_pos = tau_slip_pos &
-                    + dot_product(Mstar6,prm%nonSchmidCoeff(k)*lattice_Sslip_v(1:6,2*k,  index_myFamily+i,ph))
-       tau_slip_neg = tau_slip_neg &
-                    + dot_product(Mstar6,prm%nonSchmidCoeff(k)*lattice_Sslip_v(1:6,2*k+1,index_myFamily+i,ph))
+       tau_slip_pos = tau_slip_pos + math_mul33xx33(Mstar,prm%nonSchmid_pos(1:3,1:3,k,j))
+       tau_slip_neg = tau_slip_neg + math_mul33xx33(Mstar,prm%nonSchmid_neg(1:3,1:3,k,j))
      enddo nonSchmidSystems
      gdot_slip(j) = prm%gdot0_slip*0.5_pReal* &
                   ( (abs(tau_slip_pos)/(stt%s_slip(j,of)))**prm%n_slip*sign(1.0_pReal,tau_slip_pos) &
