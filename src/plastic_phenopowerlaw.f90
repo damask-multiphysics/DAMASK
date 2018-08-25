@@ -68,10 +68,7 @@ module plastic_phenopowerlaw
      interaction_TwinSlip, &                                                                        !< twin resistance from slip activity
      interaction_TwinTwin                                                                           !< twin resistance from twin activity
    real(pReal),   dimension(:,:,:),   allocatable :: &
-     Schmid_pos, &
-     Schmid_neg, &
-     nonSchmid_tensor_pos, &
-     nonSchmid_tensor_neg
+     Schmid_slip
    real(pReal),   dimension(:,:,:,:),   allocatable :: &
      nonSchmid_pos, &
      nonSchmid_neg
@@ -359,10 +356,7 @@ subroutine plastic_phenopowerlaw_init
 ! calculate hardening matrices
    allocate(temp1(prm%totalNslip,prm%totalNslip),source = 0.0_pReal)
    allocate(temp2(prm%totalNslip,prm%totalNtwin),source = 0.0_pReal)
-   allocate(prm%Schmid_pos(3,3,prm%totalNslip),source   = 0.0_pReal)
-   allocate(prm%Schmid_neg(3,3,prm%totalNslip),source   = 0.0_pReal)
-   allocate(prm%nonSchmid_tensor_pos(3,3,prm%totalNslip),source   = 0.0_pReal)
-   allocate(prm%nonSchmid_tensor_neg(3,3,prm%totalNslip),source   = 0.0_pReal)
+   allocate(prm%Schmid_slip(3,3,prm%totalNslip),source   = 0.0_pReal)
    allocate(prm%nonSchmid_pos(3,3,size(prm%nonSchmidCoeff),prm%totalNslip),source = 0.0_pReal)
    allocate(prm%nonSchmid_neg(3,3,size(prm%nonSchmidCoeff),prm%totalNslip),source = 0.0_pReal)
    i = 0_pInt
@@ -371,17 +365,12 @@ subroutine plastic_phenopowerlaw_init
 
      mySlipSystems: do j = 1_pInt,prm%Nslip(f)
        i = i + 1_pInt
-       prm%Schmid_pos(1:3,1:3,i) = lattice_Sslip(1:3,1:3,1,index_myFamily+j,p)
-       prm%Schmid_neg(1:3,1:3,i) = lattice_Sslip(1:3,1:3,2,index_myFamily+j,p)
-       prm%nonSchmid_tensor_pos(1:3,1:3,i) = prm%Schmid_pos(1:3,1:3,i)
-       prm%nonSchmid_tensor_neg(1:3,1:3,i) = prm%Schmid_neg(1:3,1:3,i)
+       prm%Schmid_slip(1:3,1:3,i) = lattice_Sslip(1:3,1:3,1,index_myFamily+j,p)
        do k = 1,size(prm%nonSchmidCoeff)
-         prm%nonSchmid_pos(1:3,1:3,k,i) = lattice_Sslip(1:3,1:3,2*k,  index_myFamily+j,p)
-         prm%nonSchmid_neg(1:3,1:3,k,i) = lattice_Sslip(1:3,1:3,2*k+1,index_myFamily+j,p)
-         prm%nonSchmid_tensor_pos(1:3,1:3,i) = prm%nonSchmid_tensor_pos(1:3,1:3,i) + prm%nonSchmidCoeff(k)*&
-                                                    lattice_Sslip(1:3,1:3,2*k,index_myFamily+j,p)
-         prm%nonSchmid_tensor_neg(1:3,1:3,i) = prm%nonSchmid_tensor_neg(1:3,1:3,i) + prm%nonSchmidCoeff(k)*&
-                                                    lattice_Sslip(1:3,1:3,2*k+1,index_myFamily+j,p)
+         prm%nonSchmid_pos(1:3,1:3,k,i) = lattice_Sslip(1:3,1:3,2*k,  index_myFamily+j,p) &
+                                        * prm%nonSchmidCoeff(k)
+         prm%nonSchmid_neg(1:3,1:3,k,i) = lattice_Sslip(1:3,1:3,2*k+1,index_myFamily+j,p) &
+                                        * prm%nonSchmidCoeff(k)
        enddo
        otherSlipFamilies: do o = 1_pInt,size(prm%Nslip,1)
          index_otherFamily = sum(prm%Nslip(1:o-1_pInt))
@@ -559,19 +548,19 @@ pure subroutine plastic_phenopowerlaw_LpAndItsTangent(Lp,dLp_dMstar99,Mstar,ipc,
      j = j+1_pInt
 
      ! Calculation of Lp
-     tau_slip_pos  = math_mul33xx33(Mstar,lattice_Sslip(1:3,1:3,1,index_myFamily+i,ph))
+     tau_slip_pos  = math_mul33xx33(Mstar,prm%Schmid_slip)
      tau_slip_neg  = tau_slip_pos
      nonSchmid_tensor(1:3,1:3,1) = lattice_Sslip(1:3,1:3,1,index_myFamily+i,ph)
      nonSchmid_tensor(1:3,1:3,2) = nonSchmid_tensor(1:3,1:3,1)
      do k = 1,size(prm%nonSchmidCoeff)
-       tau_slip_pos = tau_slip_pos + prm%nonSchmidCoeff(k)* &
-                                   math_mul33xx33(Mstar,lattice_Sslip(1:3,1:3,2*k,index_myFamily+i,ph))
-       tau_slip_neg = tau_slip_neg + prm%nonSchmidCoeff(k)* &
-                                   math_mul33xx33(Mstar,lattice_Sslip(1:3,1:3,2*k+1,index_myFamily+i,ph))
-       nonSchmid_tensor(1:3,1:3,1) = nonSchmid_tensor(1:3,1:3,1) + prm%nonSchmidCoeff(k)*&
-                                           lattice_Sslip(1:3,1:3,2*k,index_myFamily+i,ph)
-       nonSchmid_tensor(1:3,1:3,2) = nonSchmid_tensor(1:3,1:3,2) + prm%nonSchmidCoeff(k)*&
-                                           lattice_Sslip(1:3,1:3,2*k+1,index_myFamily+i,ph)
+       tau_slip_pos = tau_slip_pos &
+                    + math_mul33xx33(Mstar,prm%nonSchmidCoeff(k)*lattice_Sslip(1:3,1:3,2*k,index_myFamily+i,ph))
+       tau_slip_neg = tau_slip_neg &
+                    + math_mul33xx33(Mstar,prm%nonSchmidCoeff(k)*lattice_Sslip(1:3,1:3,2*k+1,index_myFamily+i,ph))
+       nonSchmid_tensor(1:3,1:3,1) = nonSchmid_tensor(1:3,1:3,1) + &
+                                           prm%nonSchmidCoeff(k)*lattice_Sslip(1:3,1:3,2*k,index_myFamily+i,ph)
+       nonSchmid_tensor(1:3,1:3,2) = nonSchmid_tensor(1:3,1:3,2) + &
+                                           prm%nonSchmidCoeff(k)*lattice_Sslip(1:3,1:3,2*k+1,index_myFamily+i,ph)
      enddo
      gdot_slip_pos = 0.5_pReal*prm%gdot0_slip* &
                     ((abs(tau_slip_pos)/(stt%s_slip(j,of)))**prm%n_slip)*sign(1.0_pReal,tau_slip_pos)
@@ -705,10 +694,10 @@ subroutine plastic_phenopowerlaw_dotState(Tstar_v,ipc,ip,el)
      tau_slip_pos  = dot_product(Tstar_v,lattice_Sslip_v(1:6,1,index_myFamily+i,ph))
      tau_slip_neg  = tau_slip_pos
      nonSchmidSystems: do k = 1,size(prm%nonSchmidCoeff)
-       tau_slip_pos = tau_slip_pos + prm%nonSchmidCoeff(k)* &
-                                   dot_product(Tstar_v,lattice_Sslip_v(1:6,2*k,  index_myFamily+i,ph))
-       tau_slip_neg = tau_slip_neg +prm%nonSchmidCoeff(k)* &
-                                   dot_product(Tstar_v,lattice_Sslip_v(1:6,2*k+1,index_myFamily+i,ph))
+       tau_slip_pos = tau_slip_pos &
+                    + dot_product(Tstar_v,prm%nonSchmidCoeff(k)*lattice_Sslip_v(1:6,2*k,  index_myFamily+i,ph))
+       tau_slip_neg = tau_slip_neg &
+                    + dot_product(Tstar_v,prm%nonSchmidCoeff(k)*lattice_Sslip_v(1:6,2*k+1,index_myFamily+i,ph))
      enddo nonSchmidSystems
      gdot_slip(j) = prm%gdot0_slip*0.5_pReal* &
                   ( (abs(tau_slip_pos)/(stt%s_slip(j,of)))**prm%n_slip*sign(1.0_pReal,tau_slip_pos) &
