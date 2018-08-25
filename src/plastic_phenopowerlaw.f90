@@ -61,7 +61,8 @@ module plastic_phenopowerlaw
      tau0_twin, &                                                                                   !< initial critical shear stress for twin
      tausat_slip, &                                                                                 !< maximum critical shear stress for slip
      nonSchmidCoeff, &
-     H_int                                                                                          !< per family hardening activity (optional)
+     H_int, &                                                                                       !< per family hardening activity (optional) !ToDo: Better name!
+     shear_twin                                                                                     !< characteristic shear for twins
    real(pReal),   dimension(:,:),   allocatable :: &
      interaction_SlipSlip, &                                                                        !< slip resistance from slip activity
      interaction_SlipTwin, &                                                                        !< slip resistance from twin activity
@@ -159,7 +160,7 @@ subroutine plastic_phenopowerlaw_init
 
  type(tParameters) :: prm
 
- integer(kind(undefined_ID))                 :: &
+ integer(kind(undefined_ID)) :: &
    outputID                                                                                     !< ID of each post result output
 
  character(len=512) :: &
@@ -291,7 +292,6 @@ subroutine plastic_phenopowerlaw_init
             ext_msg='shape(tausat_slip) ('//PLASTICITY_PHENOPOWERLAW_label//')')
      if (size(prm%H_int) /= size(prm%Nslip))       call IO_error(211_pInt,ip=instance, &
             ext_msg='shape(H_int) ('//PLASTICITY_PHENOPOWERLAW_label//')')
-     prm%H_int = math_expand(prm%H_int,prm%Nslip)
 
      if (any(prm%tau0_slip < 0.0_pReal .and. prm%Nslip > 0_pInt)) &
        extmsg = trim(extmsg)//"tau0_slip "
@@ -301,6 +301,9 @@ subroutine plastic_phenopowerlaw_init
      if (prm%gdot0_slip <= 0.0_pReal) extmsg = trim(extmsg)//" gdot0_slip "
      if (dEq0(prm%a_slip))            extmsg = trim(extmsg)//" a_slip " ! ToDo: negative values ok?
      if (dEq0(prm%n_slip))            extmsg = trim(extmsg)//" n_slip " ! ToDo: negative values ok?
+
+     prm%H_int = math_expand(prm%H_int,prm%Nslip)
+     prm%tausat_slip = math_expand(prm%tausat_slip,prm%Nslip)
    endif 
 
    if (prm%totalNtwin > 0_pInt) then
@@ -397,15 +400,17 @@ subroutine plastic_phenopowerlaw_init
    prm%interaction_SlipTwin = temp2; deallocate(temp2)
    
 
-   allocate(temp1(prm%totalNtwin,prm%totalNslip),source =0.0_pReal)
-   allocate(temp2(prm%totalNtwin,prm%totalNtwin),source =0.0_pReal)
-   allocate(prm%Schmid_twin(3,3,prm%totalNtwin),source   = 0.0_pReal)
+   allocate(temp1(prm%totalNtwin,prm%totalNslip),source = 0.0_pReal)
+   allocate(temp2(prm%totalNtwin,prm%totalNtwin),source = 0.0_pReal)
+   allocate(prm%Schmid_twin(3,3,prm%totalNtwin),source  = 0.0_pReal)
+   allocate(prm%shear_twin(prm%totalNtwin),source       = 0.0_pReal)
    i = 0_pInt
    myTwinFamilies: do f = 1_pInt,size(prm%Ntwin,1)                                    ! >>> interaction twin -- X
      index_myFamily = sum(prm%Ntwin(1:f-1_pInt))
      myTwinSystems: do j = 1_pInt,prm%Ntwin(f)
        i = i + 1_pInt
        prm%Schmid_twin(1:3,1:3,i) = lattice_Stwin(1:3,1:3,index_myFamily+j,p)
+       prm%shear_twin(i)          = lattice_shearTwin(index_myFamily+j,p)
        slipFamilies: do o = 1_pInt,size(prm%Nslip,1)
          index_otherFamily = sum(prm%Nslip(1:o-1_pInt))
          slipSystems: do k = 1_pInt,prm%Nslip(o)
@@ -597,9 +602,6 @@ end subroutine plastic_phenopowerlaw_LpAndItsTangent
 !> @brief calculates the rate of change of microstructure
 !--------------------------------------------------------------------------------------------------
 subroutine plastic_phenopowerlaw_dotState(Mstar6,ipc,ip,el)
- use lattice, only: &
-   lattice_NtwinSystem, &
-   lattice_shearTwin
  use math, only: &
    math_mul33xx33, &
    math_Mandel6to33 
@@ -618,7 +620,7 @@ subroutine plastic_phenopowerlaw_dotState(Mstar6,ipc,ip,el)
 
  integer(pInt) :: &
    ph, &
-   f,i,j,k, &
+   j,k, &
    index_myFamily, &
    of
  real(pReal) :: &
@@ -655,8 +657,8 @@ subroutine plastic_phenopowerlaw_dotState(Mstar6,ipc,ip,el)
  ssat_offset = prm%spr*sqrt(stt%sumF(of))
  do j = 1_pInt, prm%totalNslip
    left_SlipSlip(j) = 1.0_pReal + prm%H_int(j)                                                      ! modified no system-dependent left part
-   right_SlipSlip(j) = abs(1.0_pReal-stt%s_slip(j,of) / (prm%tausat_slip(f)+ssat_offset)) **prm%a_slip &
-                     * sign(1.0_pReal,1.0_pReal-stt%s_slip(j,of) / (prm%tausat_slip(f)+ssat_offset))
+   right_SlipSlip(j) = abs(1.0_pReal-stt%s_slip(j,of) / (prm%tausat_slip(j)+ssat_offset)) **prm%a_slip &
+                     * sign(1.0_pReal,1.0_pReal-stt%s_slip(j,of) / (prm%tausat_slip(j)+ssat_offset))
 
    tau_slip_pos  = math_mul33xx33(Mstar,prm%Schmid_slip(1:3,1:3,j))
    tau_slip_neg  = tau_slip_pos
@@ -677,7 +679,7 @@ subroutine plastic_phenopowerlaw_dotState(Mstar6,ipc,ip,el)
 
 !--------------------------------------------------------------------------------------------------
 ! calculate the overall hardening based on above
- do j = 1_pInt,prm%totalNslip
+ do j = 1_pInt, prm%totalNslip
    dst%s_slip(j,of) = c_SlipSlip * left_SlipSlip(j) * &                                             ! evolution of slip resistance j
      dot_product(prm%interaction_SlipSlip(j,1:prm%totalNslip),right_SlipSlip*abs(gdot_slip)) + &    ! dot gamma_slip modulated by right-side slip factor
      dot_product(prm%interaction_SlipTwin(j,1:prm%totalNtwin),gdot_twin)                            ! dot gamma_twin modulated by right-side twin factor
@@ -685,20 +687,14 @@ subroutine plastic_phenopowerlaw_dotState(Mstar6,ipc,ip,el)
  dst%sumGamma(of) = dst%sumGamma(of) + sum(abs(gdot_slip))
  dst%accshear_slip(1:prm%totalNslip,of) = abs(gdot_slip)
 
- ph = material_phase(ipc,ip,el)
- j = 0_pInt
- twinFamilies2: do f = 1_pInt,size(prm%Ntwin,1)
-   index_myFamily = sum(lattice_NtwinSystem(1:f-1_pInt,ph))                                         ! at which index starts my family
-   twinSystems2: do i = 1_pInt,prm%Ntwin(f)
-     j = j+1_pInt
-     dst%s_twin(j,of) = &                                                                           ! evolution of twin resistance j
-       c_TwinSlip * dot_product(prm%interaction_TwinSlip(j,1:prm%totalNslip),abs(gdot_slip)) + &    ! dot gamma_slip modulated by right-side slip factor
-       c_TwinTwin * dot_product(prm%interaction_TwinTwin(j,1:prm%totalNtwin),gdot_twin)             ! dot gamma_twin modulated by right-side twin factor
-     if (stt%sumF(of) < 0.98_pReal) &                                                               ! ensure twin volume fractions stays below 1.0
-       dst%sumF(of) = dst%sumF(of) + gdot_twin(j)/lattice_shearTwin(index_myFamily+i,ph)
-     dst%accshear_twin(j,of) = abs(gdot_twin(j))
-   enddo twinSystems2
- enddo twinFamilies2
+ do j = 1_pInt, prm%totalNtwin
+   dst%s_twin(j,of) = &                                                                             ! evolution of twin resistance j
+     c_TwinSlip * dot_product(prm%interaction_TwinSlip(j,1:prm%totalNslip),abs(gdot_slip)) + &      ! dot gamma_slip modulated by right-side slip factor
+     c_TwinTwin * dot_product(prm%interaction_TwinTwin(j,1:prm%totalNtwin),gdot_twin)               ! dot gamma_twin modulated by right-side twin factor
+   if (stt%sumF(of) < 0.98_pReal) &                                                                 ! ensure twin volume fractions stays below 1.0
+     dst%sumF(of) = dst%sumF(of) + gdot_twin(j)/prm%shear_twin(j)
+   dst%accshear_twin(j,of) = abs(gdot_twin(j))
+ enddo
  end associate
 
 end subroutine plastic_phenopowerlaw_dotState
@@ -740,7 +736,7 @@ function plastic_phenopowerlaw_postResults(Mstar6,ipc,ip,el)
    ph, of, &
    o,c,j,k
  real(pReal) :: &
-   tau_slip_pos,tau_slip_neg,tau
+   tau_slip_pos,tau_slip_neg,tau_twin
 
  type(tParameters)          :: prm
  type(tPhenopowerlawState)  :: stt
@@ -798,10 +794,10 @@ function plastic_phenopowerlaw_postResults(Mstar6,ipc,ip,el)
 
      case (shearrate_twin_ID)
        do j = 1_pInt, prm%totalNtwin
-         tau = math_mul33xx33(Mstar,prm%Schmid_slip(1:3,1:3,j))
+         tau_twin = math_mul33xx33(Mstar,prm%Schmid_slip(1:3,1:3,j))
          plastic_phenopowerlaw_postResults(c+j) = (1.0_pReal-stt%sumF(of))*&  ! 1-F
-                                                 prm%gdot0_twin*(abs(tau)/stt%s_twin(j,of))**&
-                                           prm%n_twin*max(0.0_pReal,sign(1.0_pReal,tau))
+                                                 prm%gdot0_twin*(abs(tau_twin)/stt%s_twin(j,of))**&
+                                           prm%n_twin*max(0.0_pReal,sign(1.0_pReal,tau_twin))
        enddo
        c = c + prm%totalNtwin
 
@@ -818,6 +814,7 @@ function plastic_phenopowerlaw_postResults(Mstar6,ipc,ip,el)
    end select
  enddo outputsLoop
  end associate
+
 end function plastic_phenopowerlaw_postResults
 
 end module plastic_phenopowerlaw
