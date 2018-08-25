@@ -482,8 +482,7 @@ subroutine constitutive_LpAndItsTangent(Lp, dLp_dTstar, dLp_dFi, Tstar6, Fi, ipc
    dLp_dMstar99                                                                                     !< derivative of Lp with respect to Mstar (matrix notation)
  real(pReal), dimension(3,3) :: &
    Mstar, &                                                                                         !< Mandel stress work conjugate with Lp
-   Tstar, &                                                                                         !< 2nd Piola-Kirchhoff stress
-   temp_33
+   Tstar                                                                                            !< 2nd Piola-Kirchhoff stress
  integer(pInt) :: &
    ho, &                                                                                            !< homogenization
    tme                                                                                              !< thermal member position
@@ -530,15 +529,12 @@ subroutine constitutive_LpAndItsTangent(Lp, dLp_dTstar, dLp_dFi, Tstar6, Fi, ipc
 
  end select plasticityType
 
- temp_33 = math_mul33x33(Fi,Tstar)
  forall(i = 1_pInt:3_pInt, j = 1_pInt:3_pInt) &
-   dLp_dFi(i,j,1:3,1:3) = math_mul33x33(temp_33,transpose(dLp_dTstar(i,j,1:3,1:3))) + &
+   dLp_dFi(i,j,1:3,1:3) = math_mul33x33(math_mul33x33(Fi,Tstar),transpose(dLp_dTstar(i,j,1:3,1:3))) + &
                           math_mul33x33(math_mul33x33(Fi,dLp_dTstar(i,j,1:3,1:3)),Tstar))
 
- temp_33 = math_mul33x33(transpose(Fi),Fi)
-
  forall(i = 1_pInt:3_pInt, j = 1_pInt:3_pInt) &
-   dLp_dTstar(i,j,1:3,1:3) = math_mul33x33(temp_33,dLp_dTstar(i,j,1:3,1:3))
+   dLp_dTstar(i,j,1:3,1:3) = math_mul33x33(math_mul33x33(transpose(Fi),Fi),dLp_dTstar(i,j,1:3,1:3))
 
 end subroutine constitutive_LpAndItsTangent
 
