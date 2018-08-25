@@ -1278,7 +1278,7 @@ subroutine lattice_init
  integer(pInt) :: Nphases
  character(len=65536) :: &
    tag  = ''
- integer(pInt) :: section = 0_pInt,i,p
+ integer(pInt) :: i,p
  real(pReal),  dimension(:), allocatable :: &
    temp, &
    CoverA, &                                                                                        !< c/a ratio for low symmetry type lattice
@@ -1388,9 +1388,9 @@ subroutine lattice_init
    tag = config_phase(p)%getString('trans_lattice_structure',defaultVal=tag)
    select case(trim(tag))
      case('bcc')
-        trans_lattice_structure(section) = LATTICE_bcc_ID
+        trans_lattice_structure(p) = LATTICE_bcc_ID
      case('hex','hexagonal')
-        trans_lattice_structure(section) = LATTICE_hex_ID
+        trans_lattice_structure(p) = LATTICE_hex_ID
    end select
 
    lattice_C66(1,1,p) = config_phase(p)%getFloat('c11',defaultVal=0.0_pReal)
