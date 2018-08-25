@@ -147,7 +147,7 @@ subroutine homogenization_init
  if (any(homogenization_type == HOMOGENIZATION_NONE_ID)) &
    call homogenization_none_init()
  if (any(homogenization_type == HOMOGENIZATION_ISOSTRAIN_ID)) &
-   call homogenization_isostrain_init(FILEUNIT)
+   call homogenization_isostrain_init()
  if (any(homogenization_type == HOMOGENIZATION_RGC_ID)) &
    call homogenization_RGC_init(FILEUNIT)
 
@@ -207,16 +207,11 @@ subroutine homogenization_init
        i = homogenization_typeInstance(p)                                                               ! which instance of this homogenization type
        valid = .true.                                                                                   ! assume valid
        select case(homogenization_type(p))                                                              ! split per homogenization type
-         case (HOMOGENIZATION_NONE_ID)
+         case (HOMOGENIZATION_NONE_ID,HOMOGENIZATION_ISOSTRAIN_ID)
            outputName = HOMOGENIZATION_NONE_label
            thisNoutput => null()
            thisOutput => null()
            thisSize   => null()
-         case (HOMOGENIZATION_ISOSTRAIN_ID)
-           outputName = HOMOGENIZATION_ISOSTRAIN_label
-           thisNoutput => homogenization_isostrain_Noutput
-           thisOutput => homogenization_isostrain_output
-           thisSize   => homogenization_isostrain_sizePostResult
          case (HOMOGENIZATION_RGC_ID)
            outputName = HOMOGENIZATION_RGC_label
            thisNoutput => homogenization_RGC_Noutput
@@ -1246,8 +1241,6 @@ function homogenization_postResults(ip,el)
    POROSITY_phasefield_ID, &
    HYDROGENFLUX_isoconc_ID, &
    HYDROGENFLUX_cahnhilliard_ID
- use homogenization_isostrain, only: &
-   homogenization_isostrain_postResults
  use homogenization_RGC, only: &
    homogenization_RGC_postResults
  use thermal_adiabatic, only: &
@@ -1286,15 +1279,8 @@ function homogenization_postResults(ip,el)
  startPos = 1_pInt
  endPos   = homogState(mappingHomogenization(2,ip,el))%sizePostResults
  chosenHomogenization: select case (homogenization_type(mesh_element(3,el)))
-   case (HOMOGENIZATION_NONE_ID) chosenHomogenization
+   case (HOMOGENIZATION_NONE_ID,HOMOGENIZATION_ISOSTRAIN_ID) chosenHomogenization
 
-   case (HOMOGENIZATION_ISOSTRAIN_ID) chosenHomogenization
-     homogenization_postResults(startPos:endPos) = &
-       homogenization_isostrain_postResults(&
-                                  ip, &
-                                  el, &
-                                  materialpoint_P(1:3,1:3,ip,el), &
-                                  materialpoint_F(1:3,1:3,ip,el))
    case (HOMOGENIZATION_RGC_ID) chosenHomogenization
      homogenization_postResults(startPos:endPos) = &
        homogenization_RGC_postResults(&
