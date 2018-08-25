@@ -291,6 +291,7 @@ subroutine plastic_phenopowerlaw_init
             ext_msg='shape(tausat_slip) ('//PLASTICITY_PHENOPOWERLAW_label//')')
      if (size(prm%H_int) /= size(prm%Nslip))       call IO_error(211_pInt,ip=instance, &
             ext_msg='shape(H_int) ('//PLASTICITY_PHENOPOWERLAW_label//')')
+     prm%H_int = math_expand(prm%H_int,prm%Nslip)
 
      if (any(prm%tau0_slip < 0.0_pReal .and. prm%Nslip > 0_pInt)) &
        extmsg = trim(extmsg)//"tau0_slip "
@@ -511,9 +512,8 @@ pure subroutine plastic_phenopowerlaw_LpAndItsTangent(Lp,dLp_dMstar99,Mstar,ipc,
 
  integer(pInt) :: &
    index_myFamily, &
-   f,i,j,k,l,m,n, &
-   of, &
-   ph
+   j,k,l,m,n, &
+   of
  real(pReal) :: &
    tau_slip_pos,tau_slip_neg, &
    gdot_slip_pos,gdot_slip_neg, &
@@ -525,10 +525,9 @@ pure subroutine plastic_phenopowerlaw_LpAndItsTangent(Lp,dLp_dMstar99,Mstar,ipc,
  type(tPhenopowerlawState)  :: stt
 
  of = phasememberAt(ipc,ip,el)
- ph = material_phase(ipc,ip,el)
 
- associate(prm => param(phase_plasticityInstance(ph)),&
-           stt => state(phase_plasticityInstance(ph)))
+ associate(prm => param(phase_plasticityInstance(material_phase(ipc,ip,el))),&
+           stt => state(phase_plasticityInstance(material_phase(ipc,ip,el))))
 
  Lp = 0.0_pReal
  dLp_dMstar = 0.0_pReal
@@ -599,7 +598,6 @@ end subroutine plastic_phenopowerlaw_LpAndItsTangent
 !--------------------------------------------------------------------------------------------------
 subroutine plastic_phenopowerlaw_dotState(Mstar6,ipc,ip,el)
  use lattice, only: &
-   lattice_NslipSystem, &
    lattice_NtwinSystem, &
    lattice_shearTwin
  use math, only: &
@@ -639,10 +637,9 @@ subroutine plastic_phenopowerlaw_dotState(Mstar6,ipc,ip,el)
  type(tPhenopowerlawState) :: dst,stt
 
  of = phasememberAt(ipc,ip,el)
- ph = material_phase(ipc,ip,el)
- associate(prm => param(phase_plasticityInstance(ph)), &
-           stt => state(phase_plasticityInstance(ph)), &
-           dst => dotState(phase_plasticityInstance(ph)))
+ associate(prm => param(phase_plasticityInstance(material_phase(ipc,ip,el))), &
+           stt => state(phase_plasticityInstance(material_phase(ipc,ip,el))), &
+           dst => dotState(phase_plasticityInstance(material_phase(ipc,ip,el))))
 
  dst%whole(:,of) = 0.0_pReal
  Mstar = math_Mandel6to33(Mstar6)
@@ -656,30 +653,23 @@ subroutine plastic_phenopowerlaw_dotState(Mstar6,ipc,ip,el)
 !--------------------------------------------------------------------------------------------------
 !  calculate left and right vectors
  ssat_offset = prm%spr*sqrt(stt%sumF(of))
- j = 0_pInt
- slipFamilies1: do f =1_pInt,size(prm%Nslip,1)
-   index_myFamily = sum(lattice_NslipSystem(1:f-1_pInt,ph))                                         ! at which index starts my family
-   slipSystems1: do i = 1_pInt,prm%Nslip(f)
-     j = j+1_pInt
-     left_SlipSlip(j) = 1.0_pReal + prm%H_int(f)                                                    ! modified no system-dependent left part
-     right_SlipSlip(j) = abs(1.0_pReal-stt%s_slip(j,of) / (prm%tausat_slip(f)+ssat_offset)) **prm%a_slip &
-                       * sign(1.0_pReal,1.0_pReal-stt%s_slip(j,of) / (prm%tausat_slip(f)+ssat_offset))
+ do j = 1_pInt, prm%totalNslip
+   left_SlipSlip(j) = 1.0_pReal + prm%H_int(j)                                                      ! modified no system-dependent left part
+   right_SlipSlip(j) = abs(1.0_pReal-stt%s_slip(j,of) / (prm%tausat_slip(f)+ssat_offset)) **prm%a_slip &
+                     * sign(1.0_pReal,1.0_pReal-stt%s_slip(j,of) / (prm%tausat_slip(f)+ssat_offset))
 
-     tau_slip_pos  = math_mul33xx33(Mstar,prm%Schmid_slip(1:3,1:3,j))
-     tau_slip_neg  = tau_slip_pos
-     nonSchmidSystems: do k = 1,size(prm%nonSchmidCoeff)
-       tau_slip_pos = tau_slip_pos + math_mul33xx33(Mstar,prm%nonSchmid_pos(1:3,1:3,k,j))
-       tau_slip_neg = tau_slip_neg + math_mul33xx33(Mstar,prm%nonSchmid_neg(1:3,1:3,k,j))
-     enddo nonSchmidSystems
-     gdot_slip(j) = prm%gdot0_slip*0.5_pReal* &
-                  ( (abs(tau_slip_pos)/(stt%s_slip(j,of)))**prm%n_slip*sign(1.0_pReal,tau_slip_pos) &
-                   +(abs(tau_slip_neg)/(stt%s_slip(j,of)))**prm%n_slip*sign(1.0_pReal,tau_slip_neg))
-   enddo slipSystems1
- enddo slipFamilies1
+   tau_slip_pos  = math_mul33xx33(Mstar,prm%Schmid_slip(1:3,1:3,j))
+   tau_slip_neg  = tau_slip_pos
+   nonSchmidSystems: do k = 1,size(prm%nonSchmidCoeff)
+     tau_slip_pos = tau_slip_pos + math_mul33xx33(Mstar,prm%nonSchmid_pos(1:3,1:3,k,j))
+     tau_slip_neg = tau_slip_neg + math_mul33xx33(Mstar,prm%nonSchmid_neg(1:3,1:3,k,j))
+   enddo nonSchmidSystems
+   gdot_slip(j) = prm%gdot0_slip*0.5_pReal* &
+                ( (abs(tau_slip_pos)/(stt%s_slip(j,of)))**prm%n_slip*sign(1.0_pReal,tau_slip_pos) &
+                 +(abs(tau_slip_neg)/(stt%s_slip(j,of)))**prm%n_slip*sign(1.0_pReal,tau_slip_neg))
+ enddo
 
  do j = 1_pInt, prm%totalNtwin
-!--------------------------------------------------------------------------------------------------
-! Calculation of dot vol frac
    tau_twin  = math_mul33xx33(Mstar,prm%Schmid_twin(1:3,1:3,j))
    gdot_twin(j) = (1.0_pReal-stt%sumF(of))*prm%gdot0_twin* (abs(tau_twin)/stt%s_twin(j,of))**prm%n_twin &
                 * max(0.0_pReal,sign(1.0_pReal,tau_twin))
@@ -695,6 +685,7 @@ subroutine plastic_phenopowerlaw_dotState(Mstar6,ipc,ip,el)
  dst%sumGamma(of) = dst%sumGamma(of) + sum(abs(gdot_slip))
  dst%accshear_slip(1:prm%totalNslip,of) = abs(gdot_slip)
 
+ ph = material_phase(ipc,ip,el)
  j = 0_pInt
  twinFamilies2: do f = 1_pInt,size(prm%Ntwin,1)
    index_myFamily = sum(lattice_NtwinSystem(1:f-1_pInt,ph))                                         ! at which index starts my family
@@ -709,6 +700,7 @@ subroutine plastic_phenopowerlaw_dotState(Mstar6,ipc,ip,el)
    enddo twinSystems2
  enddo twinFamilies2
  end associate
+
 end subroutine plastic_phenopowerlaw_dotState
 
 
@@ -746,19 +738,15 @@ function plastic_phenopowerlaw_postResults(Mstar6,ipc,ip,el)
 
  integer(pInt) :: &
    ph, of, &
-   o,f,i,c,j,k
+   o,c,j,k
  real(pReal) :: &
    tau_slip_pos,tau_slip_neg,tau
 
  type(tParameters)          :: prm
- type(tPhenopowerlawState)  :: stt, dst
+ type(tPhenopowerlawState)  :: stt
 
- of = phasememberAt(ipc,ip,el)
- ph = material_phase(ipc,ip,el)
-
- associate( prm => param(phase_plasticityInstance(ph)), &
-            stt => state(phase_plasticityInstance(ph)), &
-            dst => dotState(phase_plasticityInstance(ph)))
+ associate( prm => param(phase_plasticityInstance(material_phase(ipc,ip,el))), &
+            stt => state(phase_plasticityInstance(material_phase(ipc,ip,el))) )
  Mstar = math_Mandel6to33(Mstar6)
 
  plastic_phenopowerlaw_postResults = 0.0_pReal
