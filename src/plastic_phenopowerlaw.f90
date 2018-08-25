@@ -524,8 +524,6 @@ pure subroutine plastic_phenopowerlaw_LpAndItsTangent(Lp,dLp_dMstar99,Mstar,ipc,
    gdot_twin,dgdot_dtautwin,tau_twin
  real(pReal), dimension(3,3,3,3) :: &
    dLp_dMstar3333                                                                                   !< derivative of Lp with respect to Mstar as 4th order tensor
- real(pReal), dimension(3,3,2) :: &
-   nonSchmid_tensor
  type(tParameters)          :: prm
  type(tPhenopowerlawState)  :: stt
 
@@ -548,19 +546,13 @@ pure subroutine plastic_phenopowerlaw_LpAndItsTangent(Lp,dLp_dMstar99,Mstar,ipc,
      j = j+1_pInt
 
      ! Calculation of Lp
-     tau_slip_pos  = math_mul33xx33(Mstar,prm%Schmid_slip)
+     tau_slip_pos  = math_mul33xx33(Mstar,prm%Schmid_slip(1:3,1:3,j))
      tau_slip_neg  = tau_slip_pos
-     nonSchmid_tensor(1:3,1:3,1) = lattice_Sslip(1:3,1:3,1,index_myFamily+i,ph)
-     nonSchmid_tensor(1:3,1:3,2) = nonSchmid_tensor(1:3,1:3,1)
      do k = 1,size(prm%nonSchmidCoeff)
        tau_slip_pos = tau_slip_pos &
-                    + math_mul33xx33(Mstar,prm%nonSchmidCoeff(k)*lattice_Sslip(1:3,1:3,2*k,index_myFamily+i,ph))
+                    + math_mul33xx33(Mstar,prm%nonSchmid_pos(1:3,1:3,k,j))
        tau_slip_neg = tau_slip_neg &
-                    + math_mul33xx33(Mstar,prm%nonSchmidCoeff(k)*lattice_Sslip(1:3,1:3,2*k+1,index_myFamily+i,ph))
-       nonSchmid_tensor(1:3,1:3,1) = nonSchmid_tensor(1:3,1:3,1) + &
-                                           prm%nonSchmidCoeff(k)*lattice_Sslip(1:3,1:3,2*k,index_myFamily+i,ph)
-       nonSchmid_tensor(1:3,1:3,2) = nonSchmid_tensor(1:3,1:3,2) + &
-                                           prm%nonSchmidCoeff(k)*lattice_Sslip(1:3,1:3,2*k+1,index_myFamily+i,ph)
+                    + math_mul33xx33(Mstar,prm%nonSchmid_neg(1:3,1:3,k,j))
      enddo
      gdot_slip_pos = 0.5_pReal*prm%gdot0_slip* &
                     ((abs(tau_slip_pos)/(stt%s_slip(j,of)))**prm%n_slip)*sign(1.0_pReal,tau_slip_pos)
@@ -569,23 +561,23 @@ pure subroutine plastic_phenopowerlaw_LpAndItsTangent(Lp,dLp_dMstar99,Mstar,ipc,
                     ((abs(tau_slip_neg)/(stt%s_slip(j,of)))**prm%n_slip)*sign(1.0_pReal,tau_slip_neg)
 
      Lp = Lp + (1.0_pReal-stt%sumF(of))*& 
-               (gdot_slip_pos+gdot_slip_neg)*lattice_Sslip(1:3,1:3,1,index_myFamily+i,ph)
+               (gdot_slip_pos+gdot_slip_neg)*prm%Schmid_slip(1:3,1:3,j)
 
      ! Calculation of the tangent of Lp
      if (dNeq0(tau_slip_pos)) then
        dgdot_dtauslip_pos = gdot_slip_pos*prm%n_slip/tau_slip_pos
        forall (k=1_pInt:3_pInt,l=1_pInt:3_pInt,m=1_pInt:3_pInt,n=1_pInt:3_pInt) &
-         dLp_dMstar3333(k,l,m,n) = dLp_dMstar3333(k,l,m,n) + &
-                                   dgdot_dtauslip_pos*lattice_Sslip(k,l,1,index_myFamily+i,ph)* &
-                                                     nonSchmid_tensor(m,n,1)
+         dLp_dMstar3333(k,l,m,n) = dLp_dMstar3333(k,l,m,n) &
+                                 + dgdot_dtauslip_pos*prm%Schmid_slip(k,l,j) &
+                                   *(prm%Schmid_slip(m,n,j) + sum(prm%nonSchmid_pos(m,n,:,j)))
      endif
 
      if (dNeq0(tau_slip_neg)) then
        dgdot_dtauslip_neg = gdot_slip_neg*prm%n_slip/tau_slip_neg
        forall (k=1_pInt:3_pInt,l=1_pInt:3_pInt,m=1_pInt:3_pInt,n=1_pInt:3_pInt) &
-         dLp_dMstar3333(k,l,m,n) = dLp_dMstar3333(k,l,m,n) + &
-                                   dgdot_dtauslip_neg*lattice_Sslip(k,l,1,index_myFamily+i,ph)* &
-                                                     nonSchmid_tensor(m,n,2)
+         dLp_dMstar3333(k,l,m,n) = dLp_dMstar3333(k,l,m,n) &
+                                 + dgdot_dtauslip_neg*prm%Schmid_slip(k,l,j) &
+                                   *(prm%Schmid_slip(m,n,j) + sum(prm%nonSchmid_neg(m,n,:,j)))
      endif
    enddo slipSystems
  enddo slipFamilies
