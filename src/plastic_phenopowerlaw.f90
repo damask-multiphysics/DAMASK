@@ -68,7 +68,8 @@ module plastic_phenopowerlaw
      interaction_TwinSlip, &                                                                        !< twin resistance from slip activity
      interaction_TwinTwin                                                                           !< twin resistance from twin activity
    real(pReal),   dimension(:,:,:),   allocatable :: &
-     Schmid_slip
+     Schmid_slip, &
+     Schmid_twin
    real(pReal),   dimension(:,:,:,:),   allocatable :: &
      nonSchmid_pos, &
      nonSchmid_neg
@@ -397,9 +398,13 @@ subroutine plastic_phenopowerlaw_init
 
    allocate(temp1(prm%totalNtwin,prm%totalNslip),source =0.0_pReal)
    allocate(temp2(prm%totalNtwin,prm%totalNtwin),source =0.0_pReal)
+   allocate(prm%Schmid_twin(3,3,prm%totalNtwin),source   = 0.0_pReal)
+   i = 0_pInt
    myTwinFamilies: do f = 1_pInt,size(prm%Ntwin,1)                                    ! >>> interaction twin -- X
      index_myFamily = sum(prm%Ntwin(1:f-1_pInt))
      myTwinSystems: do j = 1_pInt,prm%Ntwin(f)
+       i = i + 1_pInt
+       prm%Schmid_twin(1:3,1:3,i) = lattice_Stwin(1:3,1:3,index_myFamily+j,p)
        slipFamilies: do o = 1_pInt,size(prm%Nslip,1)
          index_otherFamily = sum(prm%Nslip(1:o-1_pInt))
          slipSystems: do k = 1_pInt,prm%Nslip(o)
@@ -486,11 +491,6 @@ pure subroutine plastic_phenopowerlaw_LpAndItsTangent(Lp,dLp_dMstar99,Mstar,ipc,
  use math, only: &
    math_mul33xx33,&
    math_Plain3333to99
- use lattice, only: &
-   lattice_Sslip, &
-   lattice_Stwin, &
-   lattice_NslipSystem, &
-   lattice_NtwinSystem
  use material, only: &
    phasememberAt, &
    material_phase, &
@@ -538,7 +538,6 @@ pure subroutine plastic_phenopowerlaw_LpAndItsTangent(Lp,dLp_dMstar99,Mstar,ipc,
 ! Slip part
  do j = 1_pInt, prm%totalNslip
 
-   ! Calculation of Lp
    tau_slip_pos  = math_mul33xx33(Mstar,prm%Schmid_slip(1:3,1:3,j))
    tau_slip_neg  = tau_slip_pos
    do k = 1,size(prm%nonSchmidCoeff)
@@ -549,14 +548,12 @@ pure subroutine plastic_phenopowerlaw_LpAndItsTangent(Lp,dLp_dMstar99,Mstar,ipc,
    enddo
    gdot_slip_pos = 0.5_pReal*prm%gdot0_slip* &
                   ((abs(tau_slip_pos)/(stt%s_slip(j,of)))**prm%n_slip)*sign(1.0_pReal,tau_slip_pos)
-
    gdot_slip_neg = 0.5_pReal*prm%gdot0_slip* &
                   ((abs(tau_slip_neg)/(stt%s_slip(j,of)))**prm%n_slip)*sign(1.0_pReal,tau_slip_neg)
 
    Lp = Lp + (1.0_pReal-stt%sumF(of))*& 
              (gdot_slip_pos+gdot_slip_neg)*prm%Schmid_slip(1:3,1:3,j)
 
-   ! Calculation of the tangent of Lp
    if (dNeq0(tau_slip_pos)) then
      dgdot_dtauslip_pos = gdot_slip_pos*prm%n_slip/tau_slip_pos
      forall (k=1_pInt:3_pInt,l=1_pInt:3_pInt,m=1_pInt:3_pInt,n=1_pInt:3_pInt) &
@@ -576,29 +573,20 @@ pure subroutine plastic_phenopowerlaw_LpAndItsTangent(Lp,dLp_dMstar99,Mstar,ipc,
 
 !--------------------------------------------------------------------------------------------------
 ! Twinning part
- j = 0_pInt
- twinFamilies: do f = 1_pInt,size(prm%Ntwin,1)
-   index_myFamily = sum(lattice_NtwinSystem(1:f-1_pInt,ph))                                      ! at which index starts my family
-   twinSystems: do i = 1_pInt,prm%Ntwin(f)
-     j = j+1_pInt
+ do j = 1_pInt, prm%totalNtwin
 
-     ! Calculation of Lp
-     tau_twin  = math_mul33xx33(Mstar,lattice_Stwin(1:3,1:3,index_myFamily+i,ph))
-     gdot_twin = (1.0_pReal-stt%sumF(of))*prm%gdot0_twin*&
-                    (abs(tau_twin)/stt%s_twin(j,of))**&
-                    prm%n_twin*max(0.0_pReal,sign(1.0_pReal,tau_twin))
-     Lp = Lp + gdot_twin*lattice_Stwin(1:3,1:3,index_myFamily+i,ph)
+   tau_twin  = math_mul33xx33(Mstar,prm%Schmid_twin(1:3,1:3,j))
+   gdot_twin = (1.0_pReal-stt%sumF(of))*prm%gdot0_twin*(abs(tau_twin)/stt%s_twin(j,of))**prm%n_twin&
+             * max(0.0_pReal,sign(1.0_pReal,tau_twin))
+   Lp = Lp + gdot_twin*prm%Schmid_twin(1:3,1:3,j)
 
-     ! Calculation of the tangent of Lp
-     if (dNeq0(gdot_twin)) then
-       dgdot_dtautwin = gdot_twin*prm%n_twin/tau_twin
-       forall (k=1_pInt:3_pInt,l=1_pInt:3_pInt,m=1_pInt:3_pInt,n=1_pInt:3_pInt) &
-         dLp_dMstar(k,l,m,n) = dLp_dMstar(k,l,m,n) &
-                             + dgdot_dtautwin*lattice_Stwin(k,l,index_myFamily+i,ph)* &
-                                                  lattice_Stwin(m,n,index_myFamily+i,ph)
-     endif
-   enddo twinSystems
- enddo twinFamilies
+   if (dNeq0(gdot_twin)) then
+     dgdot_dtautwin = gdot_twin*prm%n_twin/tau_twin
+     forall (k=1_pInt:3_pInt,l=1_pInt:3_pInt,m=1_pInt:3_pInt,n=1_pInt:3_pInt) &
+       dLp_dMstar(k,l,m,n) = dLp_dMstar(k,l,m,n) &
+                           + dgdot_dtautwin*prm%Schmid_twin(k,l,j)*prm%Schmid_twin(m,n,j)
+   endif
+ enddo
 
  dLp_dMstar99 = math_Plain3333to99(dLp_dMstar)
 
@@ -611,8 +599,6 @@ end subroutine plastic_phenopowerlaw_LpAndItsTangent
 !--------------------------------------------------------------------------------------------------
 subroutine plastic_phenopowerlaw_dotState(Mstar6,ipc,ip,el)
  use lattice, only: &
-   lattice_Sslip_v, &
-   lattice_Stwin_v, &
    lattice_NslipSystem, &
    lattice_NtwinSystem, &
    lattice_shearTwin
@@ -668,7 +654,7 @@ subroutine plastic_phenopowerlaw_dotState(Mstar6,ipc,ip,el)
  c_TwinTwin = prm%h0_TwinTwin * stt%sumF(of)**prm%twinD
 
 !--------------------------------------------------------------------------------------------------
-!  calculate left and right vectors and calculate dot gammas
+!  calculate left and right vectors
  ssat_offset = prm%spr*sqrt(stt%sumF(of))
  j = 0_pInt
  slipFamilies1: do f =1_pInt,size(prm%Nslip,1)
@@ -679,8 +665,6 @@ subroutine plastic_phenopowerlaw_dotState(Mstar6,ipc,ip,el)
      right_SlipSlip(j) = abs(1.0_pReal-stt%s_slip(j,of) / (prm%tausat_slip(f)+ssat_offset)) **prm%a_slip &
                        * sign(1.0_pReal,1.0_pReal-stt%s_slip(j,of) / (prm%tausat_slip(f)+ssat_offset))
 
-!--------------------------------------------------------------------------------------------------
-! Calculation of dot gamma
      tau_slip_pos  = math_mul33xx33(Mstar,prm%Schmid_slip(1:3,1:3,j))
      tau_slip_neg  = tau_slip_pos
      nonSchmidSystems: do k = 1,size(prm%nonSchmidCoeff)
@@ -693,21 +677,13 @@ subroutine plastic_phenopowerlaw_dotState(Mstar6,ipc,ip,el)
    enddo slipSystems1
  enddo slipFamilies1
 
- j = 0_pInt
- twinFamilies1: do f = 1_pInt,size(prm%Ntwin,1)
-   index_myFamily = sum(lattice_NtwinSystem(1:f-1_pInt,ph))                                         ! at which index starts my family
-   twinSystems1: do i = 1_pInt,prm%Ntwin(f)
-     j = j+1_pInt
-
+ do j = 1_pInt, prm%totalNtwin
 !--------------------------------------------------------------------------------------------------
 ! Calculation of dot vol frac
-     tau_twin  = dot_product(Mstar6,lattice_Stwin_v(1:6,index_myFamily+i,ph))
-     gdot_twin(j) = (1.0_pReal-stt%sumF(of))*&                                       ! 1-F
-                    prm%gdot0_twin*&
-                    (abs(tau_twin)/stt%s_twin(j,of))**&
-                    prm%n_twin*max(0.0_pReal,sign(1.0_pReal,tau_twin))
-    enddo twinSystems1
-  enddo twinFamilies1
+   tau_twin  = math_mul33xx33(Mstar,prm%Schmid_twin(1:3,1:3,j))
+   gdot_twin(j) = (1.0_pReal-stt%sumF(of))*prm%gdot0_twin* (abs(tau_twin)/stt%s_twin(j,of))**prm%n_twin &
+                * max(0.0_pReal,sign(1.0_pReal,tau_twin))
+ enddo
 
 !--------------------------------------------------------------------------------------------------
 ! calculate the overall hardening based on above
@@ -770,8 +746,7 @@ function plastic_phenopowerlaw_postResults(Mstar6,ipc,ip,el)
 
  integer(pInt) :: &
    ph, of, &
-   o,f,i,c,j,k, &
-   index_myFamily
+   o,f,i,c,j,k
  real(pReal) :: &
    tau_slip_pos,tau_slip_neg,tau
 
@@ -800,33 +775,23 @@ function plastic_phenopowerlaw_postResults(Mstar6,ipc,ip,el)
        c = c + prm%totalNslip
 
      case (shearrate_slip_ID)
-       j = 0_pInt
-       slipFamilies1: do f =1_pInt,size(prm%Nslip,1)
-         index_myFamily = sum(lattice_NslipSystem(1:f-1_pInt,ph))                                   ! at which index starts my family
-         slipSystems1: do i = 1_pInt,prm%Nslip(f)
-           j = j+1_pInt
-           tau_slip_pos  = math_mul33xx33(Mstar,prm%Schmid_slip(1:3,1:3,j))
-           tau_slip_neg  = tau_slip_pos
-           nonSchmidSystems: do k = 1,size(prm%nonSchmidCoeff)
-             tau_slip_pos = tau_slip_pos + math_mul33xx33(Mstar,prm%nonSchmid_pos(1:3,1:3,k,j))
-             tau_slip_neg = tau_slip_neg + math_mul33xx33(Mstar,prm%nonSchmid_neg(1:3,1:3,k,j))
-           enddo nonSchmidSystems
-           plastic_phenopowerlaw_postResults(c+j) = prm%gdot0_slip*0.5_pReal* &
-                        ( (abs(tau_slip_pos)/(stt%s_slip(j,of)))**prm%n_slip*sign(1.0_pReal,tau_slip_pos) &
-                         +(abs(tau_slip_neg)/(stt%s_slip(j,of)))**prm%n_slip*sign(1.0_pReal,tau_slip_neg))
-         enddo slipSystems1
-       enddo slipFamilies1
+       do j = 1_pInt, prm%totalNslip
+         tau_slip_pos  = math_mul33xx33(Mstar,prm%Schmid_slip(1:3,1:3,j))
+         tau_slip_neg  = tau_slip_pos
+         nonSchmidSystems: do k = 1,size(prm%nonSchmidCoeff)
+           tau_slip_pos = tau_slip_pos + math_mul33xx33(Mstar,prm%nonSchmid_pos(1:3,1:3,k,j))
+           tau_slip_neg = tau_slip_neg + math_mul33xx33(Mstar,prm%nonSchmid_neg(1:3,1:3,k,j))
+         enddo nonSchmidSystems
+         plastic_phenopowerlaw_postResults(c+j) = prm%gdot0_slip*0.5_pReal* &
+                      ( (abs(tau_slip_pos)/(stt%s_slip(j,of)))**prm%n_slip*sign(1.0_pReal,tau_slip_pos) &
+                       +(abs(tau_slip_neg)/(stt%s_slip(j,of)))**prm%n_slip*sign(1.0_pReal,tau_slip_neg))
+       enddo
        c = c + prm%totalNslip
 
      case (resolvedstress_slip_ID)
-       j = 0_pInt
-       slipFamilies2: do f = 1_pInt,size(prm%Nslip,1)
-         index_myFamily = sum(lattice_NslipSystem(1:f-1_pInt,ph))                                ! at which index starts my family
-         slipSystems2: do i = 1_pInt,prm%Nslip(f)
-           j = j + 1_pInt
-           plastic_phenopowerlaw_postResults(c+j) = math_mul33xx33(Mstar,prm%Schmid_slip(1:3,1:3,j))
-         enddo slipSystems2
-       enddo slipFamilies2
+       do j = 1_pInt, prm%totalNslip
+         plastic_phenopowerlaw_postResults(c+j) = math_mul33xx33(Mstar,prm%Schmid_slip(1:3,1:3,j))
+       enddo
        c = c + prm%totalNslip
 
      case (totalshear_ID)
@@ -844,30 +809,18 @@ function plastic_phenopowerlaw_postResults(Mstar6,ipc,ip,el)
        c = c + prm%totalNtwin
 
      case (shearrate_twin_ID)
-       j = 0_pInt
-       twinFamilies1: do f = 1_pInt,size(prm%Ntwin,1)
-         index_myFamily = sum(lattice_NtwinSystem(1:f-1_pInt,ph))                                ! at which index starts my family
-         twinSystems1: do i = 1_pInt,prm%Ntwin(f)
-           j = j + 1_pInt
-           tau = dot_product(Mstar6,lattice_Stwin_v(1:6,index_myFamily+i,ph))
-           plastic_phenopowerlaw_postResults(c+j) = (1.0_pReal-stt%sumF(of))*&  ! 1-F
-                                                         prm%gdot0_twin*&
-                                                         (abs(tau)/stt%s_twin(j,of))**&
+       do j = 1_pInt, prm%totalNtwin
+         tau = math_mul33xx33(Mstar,prm%Schmid_slip(1:3,1:3,j))
+         plastic_phenopowerlaw_postResults(c+j) = (1.0_pReal-stt%sumF(of))*&  ! 1-F
+                                                 prm%gdot0_twin*(abs(tau)/stt%s_twin(j,of))**&
                                            prm%n_twin*max(0.0_pReal,sign(1.0_pReal,tau))
-         enddo twinSystems1
-       enddo twinFamilies1
+       enddo
        c = c + prm%totalNtwin
 
      case (resolvedstress_twin_ID)
-       j = 0_pInt
-       twinFamilies2: do f = 1_pInt,size(prm%Ntwin,1)
-         index_myFamily = sum(lattice_NtwinSystem(1:f-1_pInt,ph))                                ! at which index starts my family
-         twinSystems2: do i = 1_pInt,prm%Ntwin(f)
-           j = j + 1_pInt
-           plastic_phenopowerlaw_postResults(c+j) = &
-                             dot_product(Mstar6,lattice_Stwin_v(1:6,index_myFamily+i,ph))
-         enddo twinSystems2
-       enddo twinFamilies2
+       do j = 1_pInt, prm%totalNtwin
+         plastic_phenopowerlaw_postResults(c+j) = math_mul33xx33(Mstar,prm%Schmid_slip(1:3,1:3,j))
+       enddo
        c = c + prm%totalNtwin
 
      case (totalvolfrac_twin_ID)
