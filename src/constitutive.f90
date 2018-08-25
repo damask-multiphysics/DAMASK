@@ -470,19 +470,19 @@ subroutine constitutive_LpAndItsTangent(Lp, dLp_dTstar, dLp_dFi, Tstar6, Fi, ipc
    ip, &                                                                                            !< integration point
    el                                                                                               !< element
  real(pReal),   intent(in),  dimension(6) :: &
-   Tstar6                                                                                           !< 2nd Piola-Kirchhoff stress
+   Tstar6                                                                                           !< 2nd Piola-Kirchhoff stress (vector notation)
  real(pReal),   intent(in),  dimension(3,3) :: &
    Fi                                                                                               !< intermediate deformation gradient
  real(pReal),   intent(out), dimension(3,3) :: &
    Lp                                                                                               !< plastic velocity gradient
  real(pReal),   intent(out), dimension(3,3,3,3) :: &
-   dLp_dTstar, &                                                                                    !< derivative of Lp with respect to Tstar (4th-order tensor)
-   dLp_dFi                                                                                          !< derivative of Lp with respect to Fi (4th-order tensor)
- real(pReal), dimension(6) :: &
-   Mstar6                                                                                           !< Mandel stress work conjugate with Lp
+   dLp_dTstar, &                                                                                    !< derivative of Lp with respect to Tstar
+   dLp_dFi                                                                                          !< derivative of Lp with respect to Fi
  real(pReal), dimension(9,9) :: &
-   dLp_dMstar99                                                                                     !< derivative of Lp with respect to Mstar (4th-order tensor)
+   dLp_dMstar99                                                                                     !< derivative of Lp with respect to Mstar (matrix notation)
  real(pReal), dimension(3,3) :: &
+   Mstar, &                                                                                         !< Mandel stress work conjugate with Lp
+   Tstar, &                                                                                         !< 2nd Piola-Kirchhoff stress
    temp_33
  integer(pInt) :: &
    ho, &                                                                                            !< homogenization
@@ -493,34 +493,47 @@ subroutine constitutive_LpAndItsTangent(Lp, dLp_dTstar, dLp_dFi, Tstar6, Fi, ipc
  ho = material_homog(ip,el)
  tme = thermalMapping(ho)%p(ip,el)
 
- Mstar6 = math_Mandel33to6(math_mul33x33(math_mul33x33(transpose(Fi),Fi),math_Mandel6to33(Tstar6)))
+ Tstar  = math_Mandel6to33(Tstar6)
+ Mstar  = math_mul33x33(math_mul33x33(transpose(Fi),Fi),Tstar))
 
  plasticityType: select case (phase_plasticity(material_phase(ipc,ip,el)))
    case (PLASTICITY_NONE_ID) plasticityType
      Lp = 0.0_pReal
-     dLp_dMstar99 = 0.0_pReal
+     dLp_dTstar = 0.0_pReal
+
    case (PLASTICITY_ISOTROPIC_ID) plasticityType
-     call plastic_isotropic_LpAndItsTangent       (Lp,dLp_dMstar99,Mstar6,ipc,ip,el)
+     call plastic_isotropic_LpAndItsTangent       (Lp,dLp_dMstar99, math_Mandel33to6(Mstar),ipc,ip,el)
+     dLp_dTstar = math_Plain99to3333(dLp_dMstar99)                                                  ! ToDo: We revert here the last statement in plastic_xx_LpAndItsTanget
+
    case (PLASTICITY_PHENOPOWERLAW_ID) plasticityType
-     call plastic_phenopowerlaw_LpAndItsTangent   (Lp,dLp_dMstar99,Mstar6,ipc,ip,el)
+     call plastic_phenopowerlaw_LpAndItsTangent   (Lp,dLp_dMstar99, math_Mandel33to6(Mstar),ipc,ip,el)
+     dLp_dTstar = math_Plain99to3333(dLp_dMstar99)                                                  ! ToDo: We revert here the last statement in plastic_xx_LpAndItsTanget
+
    case (PLASTICITY_KINEHARDENING_ID) plasticityType
-     call plastic_kinehardening_LpAndItsTangent   (Lp,dLp_dMstar99,Mstar6,ipc,ip,el)
+     call plastic_kinehardening_LpAndItsTangent   (Lp,dLp_dMstar99, math_Mandel33to6(Mstar),ipc,ip,el)
+     dLp_dTstar = math_Plain99to3333(dLp_dMstar99)                                                  ! ToDo: We revert here the last statement in plastic_xx_LpAndItsTanget
+
    case (PLASTICITY_NONLOCAL_ID) plasticityType
-     call plastic_nonlocal_LpAndItsTangent        (Lp,dLp_dMstar99,Mstar6, &
+     call plastic_nonlocal_LpAndItsTangent        (Lp,dLp_dMstar99, math_Mandel33to6(Mstar), &
                                                    temperature(ho)%p(tme),ip,el)
+     dLp_dTstar = math_Plain99to3333(dLp_dMstar99)                                                  ! ToDo: We revert here the last statement in plastic_xx_LpAndItsTanget
+
    case (PLASTICITY_DISLOTWIN_ID) plasticityType
-     call plastic_dislotwin_LpAndItsTangent       (Lp,dLp_dMstar99,Mstar6, &
+     call plastic_dislotwin_LpAndItsTangent       (Lp,dLp_dMstar99, math_Mandel33to6(Mstar), &
                                                    temperature(ho)%p(tme),ipc,ip,el)
+     dLp_dTstar = math_Plain99to3333(dLp_dMstar99)                                                  ! ToDo: We revert here the last statement in plastic_xx_LpAndItsTanget
+
    case (PLASTICITY_DISLOUCLA_ID) plasticityType
-     call plastic_disloucla_LpAndItsTangent       (Lp,dLp_dMstar99,Mstar6, &
+     call plastic_disloucla_LpAndItsTangent       (Lp,dLp_dMstar99, math_Mandel33to6(Mstar), &
                                                    temperature(ho)%p(tme), ipc,ip,el)
+     dLp_dTstar = math_Plain99to3333(dLp_dMstar99)                                                  ! ToDo: We revert here the last statement in plastic_xx_LpAndItsTanget
+
  end select plasticityType
 
- dLp_dTstar = math_Plain99to3333(dLp_dMstar99)
- temp_33 = math_mul33x33(Fi,math_Mandel6to33(Tstar6))
+ temp_33 = math_mul33x33(Fi,Tstar)
  forall(i = 1_pInt:3_pInt, j = 1_pInt:3_pInt) &
    dLp_dFi(i,j,1:3,1:3) = math_mul33x33(temp_33,transpose(dLp_dTstar(i,j,1:3,1:3))) + &
-                              math_mul33x33(math_mul33x33(Fi,dLp_dTstar(i,j,1:3,1:3)),math_Mandel6to33(Tstar6))
+                          math_mul33x33(math_mul33x33(Fi,dLp_dTstar(i,j,1:3,1:3)),Tstar))
 
  temp_33 = math_mul33x33(transpose(Fi),Fi)
 
