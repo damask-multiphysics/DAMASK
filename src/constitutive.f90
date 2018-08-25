@@ -345,6 +345,7 @@ end subroutine constitutive_init
 
 !--------------------------------------------------------------------------------------------------
 !> @brief returns the homogenize elasticity matrix
+!> ToDo: homogenizedC66 would be more consistent
 !--------------------------------------------------------------------------------------------------
 function constitutive_homogenizedC(ipc,ip,el)
  use prec, only: &
@@ -429,7 +430,7 @@ end subroutine constitutive_microstructure
 !--------------------------------------------------------------------------------------------------
 !> @brief  contains the constitutive equation for calculating the velocity gradient
 !--------------------------------------------------------------------------------------------------
-subroutine constitutive_LpAndItsTangent(Lp, dLp_dTstar3333, dLp_dFi3333, Tstar_v, Fi, ipc, ip, el)
+subroutine constitutive_LpAndItsTangent(Lp, dLp_dTstar, dLp_dFi, Tstar6, Fi, ipc, ip, el)
  use prec, only: &
    pReal
  use math, only: &
@@ -469,18 +470,18 @@ subroutine constitutive_LpAndItsTangent(Lp, dLp_dTstar3333, dLp_dFi3333, Tstar_v
    ip, &                                                                                            !< integration point
    el                                                                                               !< element
  real(pReal),   intent(in),  dimension(6) :: &
-   Tstar_v                                                                                          !< 2nd Piola-Kirchhoff stress
+   Tstar6                                                                                           !< 2nd Piola-Kirchhoff stress
  real(pReal),   intent(in),  dimension(3,3) :: &
    Fi                                                                                               !< intermediate deformation gradient
  real(pReal),   intent(out), dimension(3,3) :: &
    Lp                                                                                               !< plastic velocity gradient
  real(pReal),   intent(out), dimension(3,3,3,3) :: &
-   dLp_dTstar3333, &                                                                                !< derivative of Lp with respect to Tstar (4th-order tensor)
-   dLp_dFi3333                                                                                      !< derivative of Lp with respect to Fi (4th-order tensor)
+   dLp_dTstar, &                                                                                    !< derivative of Lp with respect to Tstar (4th-order tensor)
+   dLp_dFi                                                                                          !< derivative of Lp with respect to Fi (4th-order tensor)
  real(pReal), dimension(6) :: &
-   Mstar_v                                                                                          !< Mandel stress work conjugate with Lp
+   Mstar6                                                                                           !< Mandel stress work conjugate with Lp
  real(pReal), dimension(9,9) :: &
-   dLp_dMstar                                                                                       !< derivative of Lp with respect to Mstar (4th-order tensor)
+   dLp_dMstar99                                                                                     !< derivative of Lp with respect to Mstar (4th-order tensor)
  real(pReal), dimension(3,3) :: &
    temp_33
  integer(pInt) :: &
@@ -492,39 +493,39 @@ subroutine constitutive_LpAndItsTangent(Lp, dLp_dTstar3333, dLp_dFi3333, Tstar_v
  ho = material_homog(ip,el)
  tme = thermalMapping(ho)%p(ip,el)
 
- Mstar_v = math_Mandel33to6(math_mul33x33(math_mul33x33(transpose(Fi),Fi),math_Mandel6to33(Tstar_v)))
+ Mstar6 = math_Mandel33to6(math_mul33x33(math_mul33x33(transpose(Fi),Fi),math_Mandel6to33(Tstar6)))
 
  plasticityType: select case (phase_plasticity(material_phase(ipc,ip,el)))
    case (PLASTICITY_NONE_ID) plasticityType
      Lp = 0.0_pReal
-     dLp_dMstar = 0.0_pReal
+     dLp_dMstar99 = 0.0_pReal
    case (PLASTICITY_ISOTROPIC_ID) plasticityType
-     call plastic_isotropic_LpAndItsTangent       (Lp,dLp_dMstar,Mstar_v,ipc,ip,el)
+     call plastic_isotropic_LpAndItsTangent       (Lp,dLp_dMstar99,Mstar6,ipc,ip,el)
    case (PLASTICITY_PHENOPOWERLAW_ID) plasticityType
-     call plastic_phenopowerlaw_LpAndItsTangent   (Lp,dLp_dMstar,Mstar_v,ipc,ip,el)
+     call plastic_phenopowerlaw_LpAndItsTangent   (Lp,dLp_dMstar99,Mstar6,ipc,ip,el)
    case (PLASTICITY_KINEHARDENING_ID) plasticityType
-     call plastic_kinehardening_LpAndItsTangent   (Lp,dLp_dMstar,Mstar_v,ipc,ip,el)  
+     call plastic_kinehardening_LpAndItsTangent   (Lp,dLp_dMstar99,Mstar6,ipc,ip,el)
    case (PLASTICITY_NONLOCAL_ID) plasticityType
-     call plastic_nonlocal_LpAndItsTangent        (Lp,dLp_dMstar,Mstar_v, &
+     call plastic_nonlocal_LpAndItsTangent        (Lp,dLp_dMstar99,Mstar6, &
                                                    temperature(ho)%p(tme),ip,el)
    case (PLASTICITY_DISLOTWIN_ID) plasticityType
-     call plastic_dislotwin_LpAndItsTangent       (Lp,dLp_dMstar,Mstar_v, &
+     call plastic_dislotwin_LpAndItsTangent       (Lp,dLp_dMstar99,Mstar6, &
                                                    temperature(ho)%p(tme),ipc,ip,el)
    case (PLASTICITY_DISLOUCLA_ID) plasticityType
-     call plastic_disloucla_LpAndItsTangent       (Lp,dLp_dMstar,Mstar_v, &
+     call plastic_disloucla_LpAndItsTangent       (Lp,dLp_dMstar99,Mstar6, &
                                                    temperature(ho)%p(tme), ipc,ip,el)
  end select plasticityType
 
- dLp_dTstar3333 = math_Plain99to3333(dLp_dMstar)
- temp_33 = math_mul33x33(Fi,math_Mandel6to33(Tstar_v))
+ dLp_dTstar = math_Plain99to3333(dLp_dMstar99)
+ temp_33 = math_mul33x33(Fi,math_Mandel6to33(Tstar6))
  forall(i = 1_pInt:3_pInt, j = 1_pInt:3_pInt) &
-   dLp_dFi3333(i,j,1:3,1:3) = math_mul33x33(temp_33,transpose(dLp_dTstar3333(i,j,1:3,1:3))) + &
-                              math_mul33x33(math_mul33x33(Fi,dLp_dTstar3333(i,j,1:3,1:3)),math_Mandel6to33(Tstar_v))
+   dLp_dFi(i,j,1:3,1:3) = math_mul33x33(temp_33,transpose(dLp_dTstar(i,j,1:3,1:3))) + &
+                              math_mul33x33(math_mul33x33(Fi,dLp_dTstar(i,j,1:3,1:3)),math_Mandel6to33(Tstar6))
 
  temp_33 = math_mul33x33(transpose(Fi),Fi)
 
  forall(i = 1_pInt:3_pInt, j = 1_pInt:3_pInt) &
-   dLp_dTstar3333(i,j,1:3,1:3) = math_mul33x33(temp_33,dLp_dTstar3333(i,j,1:3,1:3))
+   dLp_dTstar(i,j,1:3,1:3) = math_mul33x33(temp_33,dLp_dTstar(i,j,1:3,1:3))
 
 end subroutine constitutive_LpAndItsTangent
 
@@ -532,7 +533,7 @@ end subroutine constitutive_LpAndItsTangent
 !--------------------------------------------------------------------------------------------------
 !> @brief  contains the constitutive equation for calculating the velocity gradient
 !--------------------------------------------------------------------------------------------------
-subroutine constitutive_LiAndItsTangent(Li, dLi_dTstar3333, dLi_dFi3333, Tstar_v, Fi, ipc, ip, el)
+subroutine constitutive_LiAndItsTangent(Li, dLi_dTstar3333, dLi_dFi3333, Tstar6, Fi, ipc, ip, el)
  use prec, only: &
    pReal
  use math, only: &
@@ -570,7 +571,7 @@ subroutine constitutive_LiAndItsTangent(Li, dLi_dTstar3333, dLi_dFi3333, Tstar_v
    ip, &                                                                                            !< integration point
    el                                                                                               !< element
  real(pReal),   intent(in),  dimension(6) :: &
-   Tstar_v                                                                                          !< 2nd Piola-Kirchhoff stress
+   Tstar6                                                                                           !< 2nd Piola-Kirchhoff stress
  real(pReal),   intent(in),  dimension(3,3) :: &
    Fi                                                                                               !< intermediate deformation gradient
  real(pReal),   intent(out), dimension(3,3) :: &
@@ -598,7 +599,7 @@ subroutine constitutive_LiAndItsTangent(Li, dLi_dTstar3333, dLi_dFi3333, Tstar_v
 
  plasticityType: select case (phase_plasticity(material_phase(ipc,ip,el)))
    case (PLASTICITY_isotropic_ID) plasticityType
-     call plastic_isotropic_LiAndItsTangent(my_Li, my_dLi_dTstar, Tstar_v, ipc, ip, el)
+     call plastic_isotropic_LiAndItsTangent(my_Li, my_dLi_dTstar, Tstar6, ipc, ip, el)
    case default plasticityType
      my_Li = 0.0_pReal
      my_dLi_dTstar = 0.0_pReal
@@ -610,9 +611,9 @@ subroutine constitutive_LiAndItsTangent(Li, dLi_dTstar3333, dLi_dFi3333, Tstar_v
  KinematicsLoop: do k = 1_pInt, phase_Nkinematics(material_phase(ipc,ip,el))
    kinematicsType: select case (phase_kinematics(k,material_phase(ipc,ip,el)))
      case (KINEMATICS_cleavage_opening_ID) kinematicsType
-       call kinematics_cleavage_opening_LiAndItsTangent(my_Li, my_dLi_dTstar, Tstar_v, ipc, ip, el)
+       call kinematics_cleavage_opening_LiAndItsTangent(my_Li, my_dLi_dTstar, Tstar6, ipc, ip, el)
      case (KINEMATICS_slipplane_opening_ID) kinematicsType
-       call kinematics_slipplane_opening_LiAndItsTangent(my_Li, my_dLi_dTstar, Tstar_v, ipc, ip, el)
+       call kinematics_slipplane_opening_LiAndItsTangent(my_Li, my_dLi_dTstar, Tstar6, ipc, ip, el)
      case (KINEMATICS_thermal_expansion_ID) kinematicsType
        call kinematics_thermal_expansion_LiAndItsTangent(my_Li, my_dLi_dTstar, ipc, ip, el)
      case (KINEMATICS_vacancy_strain_ID) kinematicsType
@@ -798,7 +799,7 @@ end subroutine constitutive_hooke_TandItsTangent
 !--------------------------------------------------------------------------------------------------
 !> @brief contains the constitutive equation for calculating the rate of change of microstructure
 !--------------------------------------------------------------------------------------------------
-subroutine constitutive_collectDotState(Tstar_v, FeArray, FpArray, subdt, subfracArray,ipc, ip, el)
+subroutine constitutive_collectDotState(Tstar6, FeArray, FpArray, subdt, subfracArray,ipc, ip, el)
  use prec, only: &
    pReal, &
    pLongInt
@@ -863,7 +864,7 @@ subroutine constitutive_collectDotState(Tstar_v, FeArray, FpArray, subdt, subfra
    FeArray, &                                                                                       !< elastic deformation gradient
    FpArray                                                                                          !< plastic deformation gradient
  real(pReal),  intent(in), dimension(6) :: &
-   Tstar_v                                                                                          !< 2nd Piola Kirchhoff stress tensor (Mandel)
+   Tstar6                                                                                          !< 2nd Piola Kirchhoff stress tensor (Mandel)
  integer(pInt) :: &
    ho, &                                                                                            !< homogenization
    tme, &                                                                                           !< thermal member position
@@ -874,26 +875,26 @@ subroutine constitutive_collectDotState(Tstar_v, FeArray, FpArray, subdt, subfra
 
  plasticityType: select case (phase_plasticity(material_phase(ipc,ip,el)))
    case (PLASTICITY_ISOTROPIC_ID) plasticityType
-     call plastic_isotropic_dotState    (Tstar_v,ipc,ip,el)
+     call plastic_isotropic_dotState    (Tstar6,ipc,ip,el)
    case (PLASTICITY_PHENOPOWERLAW_ID) plasticityType
-     call plastic_phenopowerlaw_dotState(Tstar_v,ipc,ip,el)
+     call plastic_phenopowerlaw_dotState(Tstar6,ipc,ip,el)
    case (PLASTICITY_KINEHARDENING_ID) plasticityType
-     call plastic_kinehardening_dotState(Tstar_v,ipc,ip,el)
+     call plastic_kinehardening_dotState(Tstar6,ipc,ip,el)
    case (PLASTICITY_DISLOTWIN_ID) plasticityType
-     call plastic_dislotwin_dotState    (Tstar_v,temperature(ho)%p(tme), &
+     call plastic_dislotwin_dotState    (Tstar6,temperature(ho)%p(tme), &
                                          ipc,ip,el)
    case (PLASTICITY_DISLOUCLA_ID) plasticityType
-     call plastic_disloucla_dotState    (Tstar_v,temperature(ho)%p(tme), &
+     call plastic_disloucla_dotState    (Tstar6,temperature(ho)%p(tme), &
                                          ipc,ip,el)
    case (PLASTICITY_NONLOCAL_ID) plasticityType
-     call plastic_nonlocal_dotState     (Tstar_v,FeArray,FpArray,temperature(ho)%p(tme), &
+     call plastic_nonlocal_dotState     (Tstar6,FeArray,FpArray,temperature(ho)%p(tme), &
                                          subdt,subfracArray,ip,el)
  end select plasticityType
 
  SourceLoop: do s = 1_pInt, phase_Nsources(material_phase(ipc,ip,el))
     sourceType: select case (phase_source(s,material_phase(ipc,ip,el)))
      case (SOURCE_damage_anisoBrittle_ID) sourceType
-       call source_damage_anisoBrittle_dotState (Tstar_v, ipc, ip, el)
+       call source_damage_anisoBrittle_dotState (Tstar6, ipc, ip, el)
      case (SOURCE_damage_isoDuctile_ID) sourceType
        call source_damage_isoDuctile_dotState   (         ipc, ip, el)
      case (SOURCE_damage_anisoDuctile_ID) sourceType
@@ -909,7 +910,7 @@ end subroutine constitutive_collectDotState
 !> @brief for constitutive models having an instantaneous change of state
 !> will return false if delta state is not needed/supported by the constitutive model
 !--------------------------------------------------------------------------------------------------
-subroutine constitutive_collectDeltaState(Tstar_v, Fe, ipc, ip, el)
+subroutine constitutive_collectDeltaState(Tstar6, Fe, ipc, ip, el)
  use prec, only: &
    pReal, &
    pLongInt
@@ -944,7 +945,7 @@ subroutine constitutive_collectDeltaState(Tstar_v, Fe, ipc, ip, el)
    ip, &                                                                                            !< integration point
    el                                                                                               !< element
  real(pReal),   intent(in),  dimension(6) :: &
-   Tstar_v                                                                                          !< 2nd Piola-Kirchhoff stress
+   Tstar6                                                                                          !< 2nd Piola-Kirchhoff stress
  real(pReal),   intent(in), dimension(3,3) :: &
    Fe                                                                                               !< elastic deformation gradient
  integer(pInt) :: &
@@ -952,9 +953,9 @@ subroutine constitutive_collectDeltaState(Tstar_v, Fe, ipc, ip, el)
 
  plasticityType: select case (phase_plasticity(material_phase(ipc,ip,el)))
    case (PLASTICITY_KINEHARDENING_ID) plasticityType
-     call plastic_kinehardening_deltaState(Tstar_v,ipc,ip,el)
+     call plastic_kinehardening_deltaState(Tstar6,ipc,ip,el)
    case (PLASTICITY_NONLOCAL_ID) plasticityType
-     call plastic_nonlocal_deltaState(Tstar_v,ip,el)
+     call plastic_nonlocal_deltaState(Tstar6,ip,el)
  end select plasticityType
 
  SourceLoop: do s = 1_pInt, phase_Nsources(material_phase(ipc,ip,el))
@@ -975,7 +976,7 @@ end subroutine constitutive_collectDeltaState
 !--------------------------------------------------------------------------------------------------
 !> @brief returns array of constitutive results
 !--------------------------------------------------------------------------------------------------
-function constitutive_postResults(Tstar_v, FeArray, ipc, ip, el)
+function constitutive_postResults(Tstar6, FeArray, ipc, ip, el)
  use prec, only: &
    pReal
  use mesh, only: &
@@ -1035,7 +1036,7 @@ function constitutive_postResults(Tstar_v, FeArray, ipc, ip, el)
  real(pReal),  intent(in), dimension(3,3,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems) :: &
    FeArray                                                                                          !< elastic deformation gradient
  real(pReal),  intent(in), dimension(6) :: &
-   Tstar_v                                                                                          !< 2nd Piola Kirchhoff stress tensor (Mandel)
+   Tstar6                                                                                          !< 2nd Piola Kirchhoff stress tensor (Mandel)
  integer(pInt) :: &
    startPos, endPos
  integer(pInt) :: &
@@ -1053,22 +1054,22 @@ function constitutive_postResults(Tstar_v, FeArray, ipc, ip, el)
 
  plasticityType: select case (phase_plasticity(material_phase(ipc,ip,el)))
    case (PLASTICITY_ISOTROPIC_ID) plasticityType
-     constitutive_postResults(startPos:endPos) = plastic_isotropic_postResults(Tstar_v,ipc,ip,el)
+     constitutive_postResults(startPos:endPos) = plastic_isotropic_postResults(Tstar6,ipc,ip,el)
    case (PLASTICITY_PHENOPOWERLAW_ID) plasticityType
      constitutive_postResults(startPos:endPos) = &
-       plastic_phenopowerlaw_postResults(Tstar_v,ipc,ip,el)
+       plastic_phenopowerlaw_postResults(Tstar6,ipc,ip,el)
    case (PLASTICITY_KINEHARDENING_ID) plasticityType
      constitutive_postResults(startPos:endPos) = &
-       plastic_kinehardening_postResults(Tstar_v,ipc,ip,el)    
+       plastic_kinehardening_postResults(Tstar6,ipc,ip,el)
    case (PLASTICITY_DISLOTWIN_ID) plasticityType
      constitutive_postResults(startPos:endPos) = &
-       plastic_dislotwin_postResults(Tstar_v,temperature(ho)%p(tme),ipc,ip,el)
+       plastic_dislotwin_postResults(Tstar6,temperature(ho)%p(tme),ipc,ip,el)
    case (PLASTICITY_DISLOUCLA_ID) plasticityType
      constitutive_postResults(startPos:endPos) = &
-       plastic_disloucla_postResults(Tstar_v,temperature(ho)%p(tme),ipc,ip,el)
+       plastic_disloucla_postResults(Tstar6,temperature(ho)%p(tme),ipc,ip,el)
    case (PLASTICITY_NONLOCAL_ID) plasticityType
      constitutive_postResults(startPos:endPos) = &
-       plastic_nonlocal_postResults (Tstar_v,FeArray,ip,el)
+       plastic_nonlocal_postResults (Tstar6,FeArray,ip,el)
  end select plasticityType
 
  SourceLoop: do s = 1_pInt, phase_Nsources(material_phase(ipc,ip,el))
