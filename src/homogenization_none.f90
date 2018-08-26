@@ -28,9 +28,13 @@ subroutine homogenization_none_init()
    pInt 
  use IO, only: &
    IO_timeStamp
- use material
- use config
- 
+ use material, only: &
+   homogenization_type, &
+   material_homog, &
+   homogState, &
+   HOMOGENIZATION_NONE_LABEL, &
+   HOMOGENIZATION_NONE_ID
+
  implicit none
  integer(pInt) :: &
    h, &
