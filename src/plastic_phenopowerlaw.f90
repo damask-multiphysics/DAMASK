@@ -666,14 +666,14 @@ subroutine plastic_phenopowerlaw_dotState(Mstar6,ipc,ip,el)
      tau_slip_pos = tau_slip_pos + math_mul33xx33(Mstar,prm%nonSchmid_pos(1:3,1:3,k,j))
      tau_slip_neg = tau_slip_neg + math_mul33xx33(Mstar,prm%nonSchmid_neg(1:3,1:3,k,j))
    enddo nonSchmidSystems
-   gdot_slip(j) = prm%gdot0_slip*0.5_pReal* &
+   gdot_slip(j) = prm%gdot0_slip*0.5_pReal* &                                                       !ToDo: save to dotState
                 ( (abs(tau_slip_pos)/(stt%s_slip(j,of)))**prm%n_slip*sign(1.0_pReal,tau_slip_pos) &
                  +(abs(tau_slip_neg)/(stt%s_slip(j,of)))**prm%n_slip*sign(1.0_pReal,tau_slip_neg))
  enddo
 
  do j = 1_pInt, prm%totalNtwin
    tau_twin  = math_mul33xx33(Mstar,prm%Schmid_twin(1:3,1:3,j))
-   gdot_twin(j) = (1.0_pReal-stt%sumF(of))*prm%gdot0_twin* (abs(tau_twin)/stt%s_twin(j,of))**prm%n_twin &
+   gdot_twin(j) = (1.0_pReal-stt%sumF(of))*prm%gdot0_twin* (abs(tau_twin)/stt%s_twin(j,of))**prm%n_twin & !ToDo: save to dotState
                 * max(0.0_pReal,sign(1.0_pReal,tau_twin))
  enddo
 
@@ -733,7 +733,7 @@ function plastic_phenopowerlaw_postResults(Mstar6,ipc,ip,el)
    plastic_phenopowerlaw_postResults
 
  integer(pInt) :: &
-   ph, of, &
+   of, &
    o,c,j,k
  real(pReal) :: &
    tau_slip_pos,tau_slip_neg,tau_twin
@@ -741,6 +741,7 @@ function plastic_phenopowerlaw_postResults(Mstar6,ipc,ip,el)
  type(tParameters)          :: prm
  type(tPhenopowerlawState)  :: stt
 
+ of = phasememberAt(ipc,ip,el)
  associate( prm => param(phase_plasticityInstance(material_phase(ipc,ip,el))), &
             stt => state(phase_plasticityInstance(material_phase(ipc,ip,el))) )
  Mstar = math_Mandel6to33(Mstar6)
