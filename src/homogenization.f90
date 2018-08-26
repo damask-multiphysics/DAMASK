@@ -207,8 +207,13 @@ subroutine homogenization_init
        i = homogenization_typeInstance(p)                                                               ! which instance of this homogenization type
        valid = .true.                                                                                   ! assume valid
        select case(homogenization_type(p))                                                              ! split per homogenization type
-         case (HOMOGENIZATION_NONE_ID,HOMOGENIZATION_ISOSTRAIN_ID)
+         case (HOMOGENIZATION_NONE_ID)
            outputName = HOMOGENIZATION_NONE_label
+           thisNoutput => null()
+           thisOutput => null()
+           thisSize   => null()
+         case (HOMOGENIZATION_ISOSTRAIN_ID)
+           outputName = HOMOGENIZATION_ISOSTRAIN_label
            thisNoutput => null()
            thisOutput => null()
            thisSize   => null()
@@ -224,7 +229,8 @@ subroutine homogenization_init
        if (valid) then
          write(FILEUNIT,'(a)') '(type)'//char(9)//trim(outputName)
          write(FILEUNIT,'(a,i4)') '(ngrains)'//char(9),homogenization_Ngrains(p)
-         if (homogenization_type(p) /= HOMOGENIZATION_NONE_ID) then
+         if (homogenization_type(p) /= HOMOGENIZATION_NONE_ID .and. &
+             homogenization_type(p) /= HOMOGENIZATION_ISOSTRAIN_ID) then
            do e = 1,thisNoutput(i)
              write(FILEUNIT,'(a,i4)') trim(thisOutput(e,i))//char(9),thisSize(e,i)
            enddo
