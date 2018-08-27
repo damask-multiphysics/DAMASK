@@ -360,8 +360,7 @@ subroutine material_init()
    homogenization_name, &
    microstructure_name, &
    phase_name, &
-   texture_name, &
-   config_deallocate
+   texture_name
  use mesh, only: &
    mesh_maxNips, &
    mesh_NcpElems, &
@@ -370,7 +369,7 @@ subroutine material_init()
    FE_geomtype
 
  implicit none
- integer(pInt), parameter :: FILEUNIT = 200_pInt
+ integer(pInt), parameter :: FILEUNIT = 210_pInt
  integer(pInt)            :: m,c,h, myDebug, myPhase, myHomog
  integer(pInt) :: &
   g, &                                                                                              !< grain number
@@ -469,7 +468,6 @@ subroutine material_init()
  endif debugOut
 
  call material_populateGrains
- call config_deallocate('material.config/microstructure')
 
  allocate(phaseAt                   (  homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems),source=0_pInt)
  allocate(phasememberAt             (  homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems),source=0_pInt)
@@ -921,8 +919,8 @@ subroutine material_parseTexture
    IO_floatValue, &
    IO_stringValue
  use config, only: &
-   config_texture, &
-   config_deallocate
+   config_deallocate, &
+   config_texture
  use math, only: &
    inRad, &
    math_sampleRandomOri, &
@@ -1061,7 +1059,7 @@ subroutine material_parseTexture
    endif
  enddo    
  
- call config_deallocate('material.config/texture') 
+ call config_deallocate('material.config/texture')
 
 end subroutine material_parseTexture
 
@@ -1093,6 +1091,7 @@ subroutine material_populateGrains
  use config, only: &
    config_homogenization, &
    config_microstructure, &
+   config_deallocate, &
    homogenization_name, &
    microstructure_name 
  use IO, only: &
@@ -1429,6 +1428,7 @@ subroutine material_populateGrains
  deallocate(texture_transformation)
  deallocate(Nelems)
  deallocate(elemsOfHomogMicro)
+ call config_deallocate('material.config/microstructure')
 
 end subroutine material_populateGrains
 

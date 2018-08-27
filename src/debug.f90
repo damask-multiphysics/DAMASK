@@ -102,7 +102,7 @@ subroutine debug_init
    IO_EOF
 
  implicit none
- integer(pInt), parameter                 :: FILEUNIT    = 300_pInt
+ integer(pInt), parameter                 :: FILEUNIT    = 330_pInt
 
  integer(pInt)                            :: i, what
  integer(pInt), allocatable, dimension(:) :: chunkPos
