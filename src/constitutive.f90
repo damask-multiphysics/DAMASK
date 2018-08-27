@@ -430,7 +430,7 @@ end subroutine constitutive_microstructure
 !--------------------------------------------------------------------------------------------------
 !> @brief  contains the constitutive equation for calculating the velocity gradient
 !--------------------------------------------------------------------------------------------------
-subroutine constitutive_LpAndItsTangent(Lp, dLp_dTstar, dLp_dFi, Tstar6, Fi, ipc, ip, el)
+subroutine constitutive_LpAndItsTangent(Lp, dLp_dMstar, dLp_dFi, Tstar6, Fi, ipc, ip, el)
  use prec, only: &
    pReal
  use math, only: &
@@ -476,7 +476,7 @@ subroutine constitutive_LpAndItsTangent(Lp, dLp_dTstar, dLp_dFi, Tstar6, Fi, ipc
  real(pReal),   intent(out), dimension(3,3) :: &
    Lp                                                                                               !< plastic velocity gradient
  real(pReal),   intent(out), dimension(3,3,3,3) :: &
-   dLp_dTstar, &                                                                                    !< derivative of Lp with respect to Tstar
+   dLp_dMstar, &                                                                                    !< derivative of Lp with respect to Mandel stress
    dLp_dFi                                                                                          !< derivative of Lp with respect to Fi
  real(pReal), dimension(9,9) :: &
    dLp_dMstar99                                                                                     !< derivative of Lp with respect to Mstar (matrix notation)
@@ -499,41 +499,41 @@ subroutine constitutive_LpAndItsTangent(Lp, dLp_dTstar, dLp_dFi, Tstar6, Fi, ipc
 
    case (PLASTICITY_NONE_ID) plasticityType
      Lp = 0.0_pReal
-     dLp_dTstar = 0.0_pReal
+     dLp_dMstar = 0.0_pReal
 
    case (PLASTICITY_ISOTROPIC_ID) plasticityType
      call plastic_isotropic_LpAndItsTangent       (Lp,dLp_dMstar99, math_Mandel33to6(Mstar),ipc,ip,el)
-     dLp_dTstar = math_Plain99to3333(dLp_dMstar99)                                                  ! ToDo: We revert here the last statement in plastic_xx_LpAndItsTanget
+     dLp_dMstar = math_Plain99to3333(dLp_dMstar99)                                                  ! ToDo: We revert here the last statement in plastic_xx_LpAndItsTanget
 
    case (PLASTICITY_PHENOPOWERLAW_ID) plasticityType
      call plastic_phenopowerlaw_LpAndItsTangent   (Lp,dLp_dMstar99, math_Mandel33to6(Mstar),ipc,ip,el)
-     dLp_dTstar = math_Plain99to3333(dLp_dMstar99)                                                  ! ToDo: We revert here the last statement in plastic_xx_LpAndItsTanget
+     dLp_dMstar = math_Plain99to3333(dLp_dMstar99)                                                  ! ToDo: We revert here the last statement in plastic_xx_LpAndItsTanget
 
    case (PLASTICITY_KINEHARDENING_ID) plasticityType
      call plastic_kinehardening_LpAndItsTangent   (Lp,dLp_dMstar99, math_Mandel33to6(Mstar),ipc,ip,el)
-     dLp_dTstar = math_Plain99to3333(dLp_dMstar99)                                                  ! ToDo: We revert here the last statement in plastic_xx_LpAndItsTanget
+     dLp_dMstar = math_Plain99to3333(dLp_dMstar99)                                                  ! ToDo: We revert here the last statement in plastic_xx_LpAndItsTanget
 
    case (PLASTICITY_NONLOCAL_ID) plasticityType
      call plastic_nonlocal_LpAndItsTangent        (Lp,dLp_dMstar99, math_Mandel33to6(Mstar), &
                                                    temperature(ho)%p(tme),ip,el)
-     dLp_dTstar = math_Plain99to3333(dLp_dMstar99)                                                  ! ToDo: We revert here the last statement in plastic_xx_LpAndItsTanget
+     dLp_dMstar = math_Plain99to3333(dLp_dMstar99)                                                  ! ToDo: We revert here the last statement in plastic_xx_LpAndItsTanget
 
    case (PLASTICITY_DISLOTWIN_ID) plasticityType
      call plastic_dislotwin_LpAndItsTangent       (Lp,dLp_dMstar99, math_Mandel33to6(Mstar), &
                                                    temperature(ho)%p(tme),ipc,ip,el)
-     dLp_dTstar = math_Plain99to3333(dLp_dMstar99)                                                  ! ToDo: We revert here the last statement in plastic_xx_LpAndItsTanget
+     dLp_dMstar = math_Plain99to3333(dLp_dMstar99)                                                  ! ToDo: We revert here the last statement in plastic_xx_LpAndItsTanget
 
    case (PLASTICITY_DISLOUCLA_ID) plasticityType
      call plastic_disloucla_LpAndItsTangent       (Lp,dLp_dMstar99, math_Mandel33to6(Mstar), &
                                                    temperature(ho)%p(tme), ipc,ip,el)
-     dLp_dTstar = math_Plain99to3333(dLp_dMstar99)                                                  ! ToDo: We revert here the last statement in plastic_xx_LpAndItsTanget
+     dLp_dMstar = math_Plain99to3333(dLp_dMstar99)                                                  ! ToDo: We revert here the last statement in plastic_xx_LpAndItsTanget
 
  end select plasticityType
 
  do concurrent(i = 1_pInt:3_pInt, j = 1_pInt:3_pInt)
-   dLp_dFi(i,j,1:3,1:3) = math_mul33x33(math_mul33x33(Fi,Tstar),transpose(dLp_dTstar(i,j,1:3,1:3))) + &
-                          math_mul33x33(math_mul33x33(Fi,dLp_dTstar(i,j,1:3,1:3)),Tstar)
-   dLp_dTstar(i,j,1:3,1:3) = math_mul33x33(math_mul33x33(transpose(Fi),Fi),dLp_dTstar(i,j,1:3,1:3))
+   dLp_dFi(i,j,1:3,1:3) = math_mul33x33(math_mul33x33(Fi,Tstar),transpose(dLp_dMstar(i,j,1:3,1:3))) + &
+                          math_mul33x33(math_mul33x33(Fi,dLp_dMstar(i,j,1:3,1:3)),Tstar)
+   dLp_dMstar(i,j,1:3,1:3) = math_mul33x33(math_mul33x33(transpose(Fi),Fi),dLp_dMstar(i,j,1:3,1:3))
  enddo 
 
 end subroutine constitutive_LpAndItsTangent
@@ -879,7 +879,6 @@ subroutine constitutive_collectDotState(Tstar6, FeArray, Fi, FpArray, subdt, sub
  real(pReal),  intent(in), dimension(6) :: &
    Tstar6                                                                                           !< 2nd Piola Kirchhoff stress (vector notation)
  real(pReal),              dimension(3,3) :: &
-   Tstar, &                                                                                         !< 2nd Piola Kirchhoff stress tensor
    Mstar
  integer(pInt) :: &
    ho, &                                                                                            !< homogenization
@@ -889,8 +888,7 @@ subroutine constitutive_collectDotState(Tstar6, FeArray, Fi, FpArray, subdt, sub
  ho  = material_homog(    ip,el)
  tme = thermalMapping(ho)%p(ip,el)
 
- Tstar  = math_Mandel6to33(Tstar6)
- Mstar  = math_mul33x33(math_mul33x33(transpose(Fi),Fi),Tstar)
+ Mstar  = math_mul33x33(math_mul33x33(transpose(Fi),Fi),math_Mandel6to33(Tstar6))
 
  plasticityType: select case (phase_plasticity(material_phase(ipc,ip,el)))
 
@@ -986,13 +984,11 @@ subroutine constitutive_collectDeltaState(Tstar6, Fe, Fi, ipc, ip, el)
    Fe, &                                                                                            !< elastic deformation gradient
    Fi                                                                                               !< intermediate deformation gradient
  real(pReal),               dimension(3,3) :: &
-   Tstar, &                                                                                         !< 2nd Piola Kirchhoff stress tensor
    Mstar
  integer(pInt) :: &
    s                                                                                                !< counter in source loop
 
- Tstar  = math_Mandel6to33(Tstar6)
- Mstar  = math_mul33x33(math_mul33x33(transpose(Fi),Fi),Tstar)
+ Mstar  = math_mul33x33(math_mul33x33(transpose(Fi),Fi),math_Mandel6to33(Tstar6))
 
  plasticityType: select case (phase_plasticity(material_phase(ipc,ip,el)))
 
