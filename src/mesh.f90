@@ -95,9 +95,11 @@ module mesh
  integer(pInt), dimension(:,:), allocatable, private :: &
    mesh_cellnodeParent                                                                              !< cellnode's parent element ID, cellnode's intra-element ID
 
+#if defined(Marc4DAMASK) || defined(Abaqus)
  integer(pInt), dimension(:,:), allocatable, target, private :: &
    mesh_mapFEtoCPelem, &                                                                            !< [sorted FEid, corresponding CPid]
    mesh_mapFEtoCPnode                                                                               !< [sorted FEid, corresponding CPid]
+#endif
 
  integer(pInt),dimension(:,:,:), allocatable, private :: &
    mesh_cell                                                                                        !< cell connectivity for each element,ip/cell
@@ -402,7 +404,9 @@ module mesh
 
  public :: &
    mesh_init, &
+#if defined(Marc4DAMASK) || defined(Abaqus)
    mesh_FEasCP, &
+#endif
    mesh_build_cellnodes, &
    mesh_build_ipVolumes, &
    mesh_build_ipCoordinates, &
@@ -420,7 +424,6 @@ module mesh
 #ifdef Spectral
    mesh_spectral_getHomogenization, &
    mesh_spectral_count, &
-   mesh_spectral_mapNodesAndElems, &
    mesh_spectral_count_cpSizes, &
    mesh_spectral_build_nodes, &
    mesh_spectral_build_elements, &
@@ -552,8 +555,6 @@ subroutine mesh_init(ip,el)
  if (myDebug) write(6,'(a)') ' Grid partitioned'; flush(6)
  call mesh_spectral_count()
  if (myDebug) write(6,'(a)') ' Counted nodes/elements'; flush(6)
- call mesh_spectral_mapNodesAndElems
- if (myDebug) write(6,'(a)') ' Mapped nodes and elements'; flush(6)
  call mesh_spectral_count_cpSizes
  if (myDebug) write(6,'(a)') ' Built CP statistics'; flush(6)
  call mesh_spectral_build_nodes()
@@ -659,12 +660,16 @@ subroutine mesh_init(ip,el)
 
  allocate(calcMode(mesh_maxNips,mesh_NcpElems))
  calcMode = .false.                                                                                 ! pretend to have collected what first call is asking (F = I)
+#if defined(Marc4DAMASK) || defined(Abaqus)
  calcMode(ip,mesh_FEasCP('elem',el)) = .true.                                                       ! first ip,el needs to be already pingponged to "calc"
-
+#else
+ calcMode(ip,el) = .true.                                                                           ! first ip,el needs to be already pingponged to "calc"
+#endif
 
 end subroutine mesh_init
 
 
+#if defined(Marc4DAMASK) || defined(Abaqus)
 !--------------------------------------------------------------------------------------------------
 !> @brief Gives the FE to CP ID mapping by binary search through lookup array
 !! valid questions (what) are 'elem', 'node'
@@ -713,7 +718,7 @@ integer(pInt) function mesh_FEasCP(what,myID)
  enddo binarySearch
 
 end function mesh_FEasCP
-
+#endif
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Split CP elements into cells.
@@ -1186,24 +1191,6 @@ subroutine mesh_spectral_count()
  mesh_NcpElemsGlobal = product(grid)
 
 end subroutine mesh_spectral_count
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief fake map node from FE ID to internal (consecutive) representation for node and element
-!! Allocates global array 'mesh_mapFEtoCPnode' and 'mesh_mapFEtoCPelem'
-!--------------------------------------------------------------------------------------------------
-subroutine mesh_spectral_mapNodesAndElems
- use math, only: &
-   math_range
-
- implicit none
- allocate (mesh_mapFEtoCPnode(2_pInt,mesh_Nnodes), source = 0_pInt)
- allocate (mesh_mapFEtoCPelem(2_pInt,mesh_NcpElems), source = 0_pInt)
-
- mesh_mapFEtoCPnode = spread(math_range(mesh_Nnodes),1,2)
- mesh_mapFEtoCPelem = spread(math_range(mesh_NcpElems),1,2)
-
-end subroutine mesh_spectral_mapNodesAndElems
 
 
 !--------------------------------------------------------------------------------------------------
