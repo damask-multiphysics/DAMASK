@@ -109,11 +109,9 @@ use IO
  type(tParameters), pointer :: prm
  
  integer(pInt) :: &
-   o, &
    phase, & 
    instance, &
    maxNinstance, &
-   mySize, &
    sizeDotState, &
    sizeState, &
    sizeDeltaState
@@ -136,7 +134,6 @@ use IO
           plastic_isotropic_output = ''
  allocate(plastic_isotropic_Noutput(maxNinstance),                              source=0_pInt)
 
-! inernal variable 
  allocate(param(maxNinstance))                                                                      ! one container of parameters per instance
  allocate(state(maxNinstance))                                                                      ! internal state aliases
  allocate(dotState(maxNinstance))
