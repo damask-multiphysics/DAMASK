@@ -162,7 +162,7 @@ subroutine homogenization_RGC_init(fileUnit)
    homogenization_RGC_orientation = spread(spread(math_I3,3,mesh_maxNips),4,mesh_NcpElems)          ! initialize to identity
  
  rewind(fileUnit)
- do while (trim(line) /= IO_EOF .and. IO_lc(IO_getTag(line,'<','>'))/=material_partHomogenization) ! wind forward to <homogenization>
+ do while (trim(line) /= IO_EOF .and. IO_lc(IO_getTag(line,'<','>'))/=material_partHomogenization)  ! wind forward to <homogenization>
    line = IO_read(fileUnit)
  enddo
 
@@ -200,12 +200,7 @@ subroutine homogenization_RGC_init(fileUnit)
                homogenization_RGC_outputID(homogenization_RGC_Noutput(i),i) = maximumrelaxrate_ID
              case('magnitudemismatch')
                homogenization_RGC_outputID(homogenization_RGC_Noutput(i),i) = magnitudemismatch_ID
-             case('ipcoords')
-               homogenization_RGC_outputID(homogenization_RGC_Noutput(i),i) = ipcoords_ID
-             case('avgdefgrad','avgf')
-               homogenization_RGC_outputID(homogenization_RGC_Noutput(i),i) = avgdefgrad_ID
-             case('avgp','avgfirstpiola','avg1stpiola')
-               homogenization_RGC_outputID(homogenization_RGC_Noutput(i),i) = avgfirstpiola_ID
+
              case default
                homogenization_RGC_Noutput(i) = homogenization_RGC_Noutput(i) -1_pInt  ! correct for invalid
 
