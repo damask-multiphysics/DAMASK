@@ -430,7 +430,7 @@ end subroutine constitutive_microstructure
 !--------------------------------------------------------------------------------------------------
 !> @brief  contains the constitutive equation for calculating the velocity gradient
 !--------------------------------------------------------------------------------------------------
-subroutine constitutive_LpAndItsTangents(Lp, dLp_dMstar, dLp_dFi, S6, Fi, ipc, ip, el)
+subroutine constitutive_LpAndItsTangents(Lp, dLp_dS, dLp_dFi, S6, Fi, ipc, ip, el)
  use prec, only: &
    pReal
  use math, only: &
@@ -476,12 +476,14 @@ subroutine constitutive_LpAndItsTangents(Lp, dLp_dMstar, dLp_dFi, S6, Fi, ipc, i
  real(pReal),   intent(out), dimension(3,3) :: &
    Lp                                                                                               !< plastic velocity gradient
  real(pReal),   intent(out), dimension(3,3,3,3) :: &
-   dLp_dMstar, &                                                                                    !< derivative of Lp with respect to Mandel stress
+   dLp_dS, &
    dLp_dFi                                                                                          !< derivative of Lp with respect to Fi
+ real(pReal), dimension(3,3,3,3) :: &
+   dLp_dMp                                                                                          !< derivative of Lp with respect to Mandel stress
  real(pReal), dimension(9,9) :: &
-   dLp_dMstar99                                                                                     !< derivative of Lp with respect to Mstar (matrix notation)
+   dLp_dMp99                                                                                        !< derivative of Lp with respect to Mstar (matrix notation)
  real(pReal), dimension(3,3) :: &
-   Mstar, &                                                                                         !< Mandel stress work conjugate with Lp
+   Mp, &                                                                                            !< Mandel stress work conjugate with Lp
    S                                                                                                !< 2nd Piola-Kirchhoff stress
  integer(pInt) :: &
    ho, &                                                                                            !< homogenization
@@ -493,47 +495,47 @@ subroutine constitutive_LpAndItsTangents(Lp, dLp_dMstar, dLp_dFi, S6, Fi, ipc, i
  tme = thermalMapping(ho)%p(ip,el)
 
  S  = math_Mandel6to33(S6)
- Mstar  = math_mul33x33(math_mul33x33(transpose(Fi),Fi),S)
+ Mp  = math_mul33x33(math_mul33x33(transpose(Fi),Fi),S)
 
  plasticityType: select case (phase_plasticity(material_phase(ipc,ip,el)))
 
    case (PLASTICITY_NONE_ID) plasticityType
      Lp = 0.0_pReal
-     dLp_dMstar = 0.0_pReal
+     dLp_dMp = 0.0_pReal
 
    case (PLASTICITY_ISOTROPIC_ID) plasticityType
-     call plastic_isotropic_LpAndItsTangent       (Lp,dLp_dMstar99, math_Mandel33to6(Mstar),ipc,ip,el)
-     dLp_dMstar = math_Plain99to3333(dLp_dMstar99)                                                  ! ToDo: We revert here the last statement in plastic_xx_LpAndItsTanget
+     call plastic_isotropic_LpAndItsTangent       (Lp,dLp_dMp99, math_Mandel33to6(Mp),ipc,ip,el)
+     dLp_dMp = math_Plain99to3333(dLp_dMp99)                                                        ! ToDo: We revert here the last statement in plastic_xx_LpAndItsTanget
 
    case (PLASTICITY_PHENOPOWERLAW_ID) plasticityType
-     call plastic_phenopowerlaw_LpAndItsTangent   (Lp,dLp_dMstar99, math_Mandel33to6(Mstar),ipc,ip,el)
-     dLp_dMstar = math_Plain99to3333(dLp_dMstar99)                                                  ! ToDo: We revert here the last statement in plastic_xx_LpAndItsTanget
+     call plastic_phenopowerlaw_LpAndItsTangent   (Lp,dLp_dMp99, math_Mandel33to6(Mp),ipc,ip,el)
+     dLp_dMp = math_Plain99to3333(dLp_dMp99)                                                        ! ToDo: We revert here the last statement in plastic_xx_LpAndItsTanget
 
    case (PLASTICITY_KINEHARDENING_ID) plasticityType
-     call plastic_kinehardening_LpAndItsTangent   (Lp,dLp_dMstar99, math_Mandel33to6(Mstar),ipc,ip,el)
-     dLp_dMstar = math_Plain99to3333(dLp_dMstar99)                                                  ! ToDo: We revert here the last statement in plastic_xx_LpAndItsTanget
+     call plastic_kinehardening_LpAndItsTangent   (Lp,dLp_dMp99, math_Mandel33to6(Mp),ipc,ip,el)
+     dLp_dMp = math_Plain99to3333(dLp_dMp99)                                                        ! ToDo: We revert here the last statement in plastic_xx_LpAndItsTanget
 
    case (PLASTICITY_NONLOCAL_ID) plasticityType
-     call plastic_nonlocal_LpAndItsTangent        (Lp,dLp_dMstar99, math_Mandel33to6(Mstar), &
+     call plastic_nonlocal_LpAndItsTangent        (Lp,dLp_dMp99, math_Mandel33to6(Mp), &
                                                    temperature(ho)%p(tme),ip,el)
-     dLp_dMstar = math_Plain99to3333(dLp_dMstar99)                                                  ! ToDo: We revert here the last statement in plastic_xx_LpAndItsTanget
+     dLp_dMp = math_Plain99to3333(dLp_dMp99)                                                        ! ToDo: We revert here the last statement in plastic_xx_LpAndItsTanget
 
    case (PLASTICITY_DISLOTWIN_ID) plasticityType
-     call plastic_dislotwin_LpAndItsTangent       (Lp,dLp_dMstar99, math_Mandel33to6(Mstar), &
+     call plastic_dislotwin_LpAndItsTangent       (Lp,dLp_dMp99, math_Mandel33to6(Mp), &
                                                    temperature(ho)%p(tme),ipc,ip,el)
-     dLp_dMstar = math_Plain99to3333(dLp_dMstar99)                                                  ! ToDo: We revert here the last statement in plastic_xx_LpAndItsTanget
+     dLp_dMp = math_Plain99to3333(dLp_dMp99)                                                        ! ToDo: We revert here the last statement in plastic_xx_LpAndItsTanget
 
    case (PLASTICITY_DISLOUCLA_ID) plasticityType
-     call plastic_disloucla_LpAndItsTangent       (Lp,dLp_dMstar99, math_Mandel33to6(Mstar), &
+     call plastic_disloucla_LpAndItsTangent       (Lp,dLp_dMp99, math_Mandel33to6(Mp), &
                                                    temperature(ho)%p(tme), ipc,ip,el)
-     dLp_dMstar = math_Plain99to3333(dLp_dMstar99)                                                  ! ToDo: We revert here the last statement in plastic_xx_LpAndItsTanget
+     dLp_dMp = math_Plain99to3333(dLp_dMp99)                                                        ! ToDo: We revert here the last statement in plastic_xx_LpAndItsTanget
 
  end select plasticityType
 
  do concurrent(i = 1_pInt:3_pInt, j = 1_pInt:3_pInt)
-   dLp_dFi(i,j,1:3,1:3) = math_mul33x33(math_mul33x33(Fi,S),transpose(dLp_dMstar(i,j,1:3,1:3))) + &
-                          math_mul33x33(math_mul33x33(Fi,dLp_dMstar(i,j,1:3,1:3)),S)
-   dLp_dMstar(i,j,1:3,1:3) = math_mul33x33(math_mul33x33(transpose(Fi),Fi),dLp_dMstar(i,j,1:3,1:3))
+   dLp_dFi(i,j,1:3,1:3) = math_mul33x33(math_mul33x33(Fi,S),transpose(dLp_dMp(i,j,1:3,1:3))) + &
+                          math_mul33x33(math_mul33x33(Fi,dLp_dMp(i,j,1:3,1:3)),S)
+   dLp_dS(i,j,1:3,1:3)  = math_mul33x33(math_mul33x33(transpose(Fi),Fi),dLp_dMp(i,j,1:3,1:3))       ! ToDo: @PS: why not:   dLp_dMp:(FiT Fi)
  enddo 
 
 end subroutine constitutive_LpAndItsTangents
@@ -604,7 +606,7 @@ subroutine constitutive_LiAndItsTangents(Li, dLi_dS, dLi_dFi, S6, Fi, ipc, ip, e
 
  Li = 0.0_pReal
  dLi_dS  = 0.0_pReal
- dLi_dFi     = 0.0_pReal
+ dLi_dFi = 0.0_pReal
 
  plasticityType: select case (phase_plasticity(material_phase(ipc,ip,el)))
    case (PLASTICITY_isotropic_ID) plasticityType
@@ -641,11 +643,11 @@ subroutine constitutive_LiAndItsTangents(Li, dLi_dS, dLi_dFi, S6, Fi, ipc, ip, e
  detFi = math_det33(Fi)
  Li = math_mul33x33(math_mul33x33(Fi,Li),FiInv)*detFi                                               !< push forward to intermediate configuration
  temp_33 = math_mul33x33(FiInv,Li)
- forall(i = 1_pInt:3_pInt, j = 1_pInt:3_pInt)
-   dLi_dS(1:3,1:3,i,j) = math_mul33x33(math_mul33x33(Fi,dLi_dS(1:3,1:3,i,j)),FiInv)*detFi
-   dLi_dFi   (1:3,1:3,i,j) = dLi_dFi(1:3,1:3,i,j) + Li*FiInv(j,i)
-   dLi_dFi   (1:3,i,1:3,j) = dLi_dFi(1:3,i,1:3,j) + math_I3*temp_33(j,i) + Li*FiInv(j,i)
- end forall
+ do concurrent(i = 1_pInt:3_pInt, j = 1_pInt:3_pInt)
+   dLi_dS(1:3,1:3,i,j)  = math_mul33x33(math_mul33x33(Fi,dLi_dS(1:3,1:3,i,j)),FiInv)*detFi
+   dLi_dFi(1:3,1:3,i,j) = dLi_dFi(1:3,1:3,i,j) + Li*FiInv(j,i)
+   dLi_dFi(1:3,i,1:3,j) = dLi_dFi(1:3,i,1:3,j) + math_I3*temp_33(j,i) + Li*FiInv(j,i)
+ end do
 
 end subroutine constitutive_LiAndItsTangents
 
