@@ -540,7 +540,7 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
    phase_Nsources, &
    phaseAt, phasememberAt
  use constitutive, only:  &
-   constitutive_TandItsTangent, &
+   constitutive_SandItsTangents, &
    constitutive_LpAndItsTangent, &
    constitutive_LiAndItsTangent
 
@@ -1065,7 +1065,7 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
          invFp = math_inv33(crystallite_partionedFp0(1:3,1:3,c,i,e))
          Fe_guess = math_mul33x33(math_mul33x33(crystallite_partionedF(1:3,1:3,c,i,e), invFp), &
                                   math_inv33(crystallite_partionedFi0(1:3,1:3,c,i,e)))
-         call constitutive_TandItsTangent(Tstar,dSdFe,dSdFi,Fe_guess,crystallite_partionedFi0(1:3,1:3,c,i,e),c,i,e)
+         call constitutive_SandItsTangents(Tstar,dSdFe,dSdFi,Fe_guess,crystallite_partionedFi0(1:3,1:3,c,i,e),c,i,e)
          crystallite_P(1:3,1:3,c,i,e) = math_mul33x33(math_mul33x33(crystallite_partionedF(1:3,1:3,c,i,e), invFp), &
                                                       math_mul33x33(Tstar,transpose(invFp)))
        endif
@@ -1099,7 +1099,7 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
      myNcomponents = homogenization_Ngrains(mesh_element(3,e))
      do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)                                            ! iterate over IPs of this element to be processed
        do c = 1_pInt,myNcomponents
-         call constitutive_TandItsTangent(temp_33,dSdFe,dSdFi,crystallite_Fe(1:3,1:3,c,i,e), &
+         call constitutive_SandItsTangents(temp_33,dSdFe,dSdFi,crystallite_Fe(1:3,1:3,c,i,e), &
                                           crystallite_Fi(1:3,1:3,c,i,e),c,i,e)                     ! call constitutive law to calculate elastic stress tangent
 
          call constitutive_LiAndItsTangent(temp_33,dLidS,dLidFi,crystallite_Tstar_v(1:6,c,i,e), &
@@ -3178,7 +3178,7 @@ logical function crystallite_integrateStress(&
 
  use constitutive, only: constitutive_LpAndItsTangent, &
                          constitutive_LiAndItsTangent, &
-                         constitutive_TandItsTangent
+                         constitutive_SandItsTangents
  use math, only:         math_mul33x33, &
                          math_mul33xx33, &
                          math_mul3333xx3333, &
@@ -3369,7 +3369,7 @@ logical function crystallite_integrateStress(&
 
      B  = math_I3 - dt*Lpguess
      Fe = math_mul33x33(math_mul33x33(A,B), invFi_new)                                                  ! current elastic deformation tensor
-     call constitutive_TandItsTangent(Tstar, dT_dFe3333, dT_dFi3333, &
+     call constitutive_SandItsTangents(Tstar, dT_dFe3333, dT_dFi3333, &
                                       Fe, Fi_new, ipc, ip, el)                                          ! call constitutive law to calculate 2nd Piola-Kirchhoff stress and its derivative in unloaded configuration
      Tstar_v = math_Mandel33to6(Tstar)
 

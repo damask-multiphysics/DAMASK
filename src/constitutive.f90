@@ -22,13 +22,13 @@ module constitutive
    constitutive_LpAndItsTangent, &
    constitutive_LiAndItsTangent, &
    constitutive_initialFi, &
-   constitutive_TandItsTangent, &
+   constitutive_SandItsTangents, &
    constitutive_collectDotState, &
    constitutive_collectDeltaState, &
    constitutive_postResults
 
  private :: &
-   constitutive_hooke_TandItsTangent
+   constitutive_hooke_SandItsTangents
 
 contains
 
@@ -705,10 +705,10 @@ end function constitutive_initialFi
 
 !--------------------------------------------------------------------------------------------------
 !> @brief returns the 2nd Piola-Kirchhoff stress tensor and its tangent with respect to
-!> the elastic deformation gradient depending on the selected elastic law (so far no case switch
-!! because only Hooke is implemented
+!> the elastic/intermediate deformation gradients depending on the selected elastic law 
+!! (so far no case switch because only Hooke is implemented)
 !--------------------------------------------------------------------------------------------------
-subroutine constitutive_TandItsTangent(T, dT_dFe, dT_dFi, Fe, Fi, ipc, ip, el)
+subroutine constitutive_SandItsTangents(S, dS_dFe, dS_dFi, Fe, Fi, ipc, ip, el)
  use prec, only: &
    pReal
 
@@ -721,22 +721,22 @@ subroutine constitutive_TandItsTangent(T, dT_dFe, dT_dFi, Fe, Fi, ipc, ip, el)
    Fe, &                                                                                            !< elastic deformation gradient
    Fi                                                                                               !< intermediate deformation gradient
  real(pReal),   intent(out), dimension(3,3) :: &
-   T                                                                                                !< 2nd Piola-Kirchhoff stress tensor
+   S                                                                                                !< 2nd Piola-Kirchhoff stress tensor
  real(pReal),   intent(out), dimension(3,3,3,3) :: &
-   dT_dFe, &                                                                                        !< derivative of 2nd P-K stress with respect to elastic deformation gradient
-   dT_dFi                                                                                           !< derivative of 2nd P-K stress with respect to intermediate deformation gradient
+   dS_dFe, &                                                                                        !< derivative of 2nd P-K stress with respect to elastic deformation gradient
+   dS_dFi                                                                                           !< derivative of 2nd P-K stress with respect to intermediate deformation gradient
 
- call constitutive_hooke_TandItsTangent(T, dT_dFe, dT_dFi, Fe, Fi, ipc, ip, el)
+ call constitutive_hooke_SandItsTangents(S, dS_dFe, dS_dFi, Fe, Fi, ipc, ip, el)
 
 
-end subroutine constitutive_TandItsTangent
+end subroutine constitutive_SandItsTangents
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief returns the 2nd Piola-Kirchhoff stress tensor and its tangent with respect to
-!> the elastic deformation gradient using hookes law
+!> the elastic and intermeidate deformation gradients using Hookes law
 !--------------------------------------------------------------------------------------------------
-subroutine constitutive_hooke_TandItsTangent(T, dT_dFe, dT_dFi, Fe, Fi, ipc, ip, el)
+subroutine constitutive_hooke_SandItsTangents(S, dS_dFe, dS_dFi, Fe, Fi, ipc, ip, el)
  use prec, only: &
    pReal
  use math, only : &
@@ -765,10 +765,10 @@ subroutine constitutive_hooke_TandItsTangent(T, dT_dFe, dT_dFi, Fe, Fi, ipc, ip,
    Fe, &                                                                                            !< elastic deformation gradient
    Fi                                                                                               !< intermediate deformation gradient
  real(pReal),   intent(out), dimension(3,3) :: &
-   T                                                                                                !< 2nd Piola-Kirchhoff stress tensor in lattice configuration
+   S                                                                                                !< 2nd Piola-Kirchhoff stress tensor in lattice configuration
  real(pReal),   intent(out), dimension(3,3,3,3) :: &
-   dT_dFe, &                                                                                        !< derivative of 2nd P-K stress with respect to elastic deformation gradient
-   dT_dFi                                                                                           !< derivative of 2nd P-K stress with respect to intermediate deformation gradient
+   dS_dFe, &                                                                                        !< derivative of 2nd P-K stress with respect to elastic deformation gradient
+   dS_dFi                                                                                           !< derivative of 2nd P-K stress with respect to intermediate deformation gradient
  real(pReal), dimension(3,3) :: E
  real(pReal), dimension(3,3,3,3) :: C
  integer(pInt) :: &
@@ -791,16 +791,16 @@ subroutine constitutive_hooke_TandItsTangent(T, dT_dFe, dT_dFi, Fe, Fi, ipc, ip,
  enddo DegradationLoop
 
  E = 0.5_pReal*(math_mul33x33(transpose(Fe),Fe)-math_I3)                                            !< Green-Lagrange strain in unloaded configuration
- T = math_mul3333xx33(C,math_mul33x33(math_mul33x33(transpose(Fi),E),Fi))                           !< 2PK stress in lattice configuration in work conjugate with GL strain pulled back to lattice configuration
+ S = math_mul3333xx33(C,math_mul33x33(math_mul33x33(transpose(Fi),E),Fi))                           !< 2PK stress in lattice configuration in work conjugate with GL strain pulled back to lattice configuration
 
- dT_dFe = 0.0_pReal
+ dS_dFe = 0.0_pReal
  forall (i=1_pInt:3_pInt, j=1_pInt:3_pInt)
-   dT_dFe(i,j,1:3,1:3) = &
-     math_mul33x33(Fe,math_mul33x33(math_mul33x33(Fi,C(i,j,1:3,1:3)),transpose(Fi)))                !< dT_ij/dFe_kl = C_ijmn * Fi_lm * Fi_on * Fe_ko
-   dT_dFi(i,j,1:3,1:3) = 2.0_pReal*math_mul33x33(math_mul33x33(E,Fi),C(i,j,1:3,1:3))                !< dT_ij/dFi_kl = C_ijln * E_km * Fe_mn
+   dS_dFe(i,j,1:3,1:3) = &
+     math_mul33x33(Fe,math_mul33x33(math_mul33x33(Fi,C(i,j,1:3,1:3)),transpose(Fi)))                !< dS_ij/dFe_kl = C_ijmn * Fi_lm * Fi_on * Fe_ko
+   dS_dFi(i,j,1:3,1:3) = 2.0_pReal*math_mul33x33(math_mul33x33(E,Fi),C(i,j,1:3,1:3))                !< dS_ij/dFi_kl = C_ijln * E_km * Fe_mn
  end forall
 
-end subroutine constitutive_hooke_TandItsTangent
+end subroutine constitutive_hooke_SandItsTangents
 
 
 !--------------------------------------------------------------------------------------------------
