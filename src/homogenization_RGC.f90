@@ -1,9 +1,10 @@
 !--------------------------------------------------------------------------------------------------
+!> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
 !> @author Denny Tjahjanto, Max-Planck-Institut für Eisenforschung GmbH
 !> @author Franz Roters, Max-Planck-Institut für Eisenforschung GmbH
 !> @author Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
 !> @brief Relaxed grain cluster (RGC) homogenization scheme
-!> Ngrains is defined as p x q x r (cluster)
+!> Nconstituents is defined as p x q x r (cluster)
 !--------------------------------------------------------------------------------------------------
 module homogenization_RGC
  use prec, only: &
@@ -61,6 +62,8 @@ module homogenization_RGC
  end enum
  integer(kind(undefined_ID)), dimension(:,:),     allocatable,       private :: &
    homogenization_RGC_outputID                                                                 !< ID of each post result output
+
+ type(tParameters), dimension(:), allocatable, private :: param                                     !< containers of constitutive parameters (len Ninstance)
 
  public :: &
    homogenization_RGC_init, &
@@ -124,13 +127,14 @@ subroutine homogenization_RGC_init(fileUnit)
  integer :: &
    homog, &
    NofMyHomog, &
-   o, &
+   o, h, &
    instance, &
    sizeHState
  integer(pInt) :: section=0_pInt, maxNinstance, i,j,e, mySize, myInstance
  character(len=65536) :: &
    tag = '', &
    line = ''
+ type(tParameters) :: prm
  
  write(6,'(/,a)')   ' <<<+-  homogenization_'//HOMOGENIZATION_RGC_label//' init  -+>>>'
  write(6,'(/,a)')   ' Tjahjanto et al., International Journal of Material Forming, 2(1):939–942, 2009'
@@ -161,6 +165,20 @@ subroutine homogenization_RGC_init(fileUnit)
  allocate(homogenization_RGC_orientation(3,3,mesh_maxNips,mesh_NcpElems),        source=0.0_pReal)
    homogenization_RGC_orientation = spread(spread(math_I3,3,mesh_maxNips),4,mesh_NcpElems)          ! initialize to identity
  
+ do h = 1_pInt, size(homogenization_type)
+   if (homogenization_type(h) /= HOMOGENIZATION_RGC_ID) cycle
+   instance = homogenization_typeInstance(h)
+   associate(prm => param(instance))
+   prm%Nconstituents = config_homogenization(h)%getInts('clustersize',requiredShape=[3])
+   if (homogenization_Ngrains(section) /= product(prm%Nconstituents)) &
+     call IO_error(211_pInt,ext_msg=trim(tag)//' ('//HOMOGENIZATION_RGC_label//')')
+   prm%xiAlpha = config_homogenization(h)%getFloat('scalingparameter')
+   prm%ciAlpha = config_homogenization(h)%getFloat('overproportionality')
+   prm%dAlpha  = config_homogenization(h)%getFloats('grainsize',requiredShape=[3])
+   prm%angles  = config_homogenization(h)%getFloats('clusterorientation', requiredShape=[3])
+   end associate
+ enddo  
+
  rewind(fileUnit)
  do while (trim(line) /= IO_EOF .and. IO_lc(IO_getTag(line,'<','>'))/=material_partHomogenization)  ! wind forward to <homogenization>
    line = IO_read(fileUnit)
