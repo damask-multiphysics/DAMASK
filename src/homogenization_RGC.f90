@@ -21,16 +21,32 @@ module homogenization_RGC
    homogenization_RGC_output                                                                        ! name of each post result output
  integer(pInt),              dimension(:),       allocatable,target, public :: &
    homogenization_RGC_Noutput                                                                 !< number of outputs per homog instance
+
+ type, private :: tParameters                                                                       !< container type for internal constitutive parameters
+   integer(pInt), dimension(:), allocatable :: &
+     Nconstituents
+   real(pReal) :: &
+     xiAlpha, &
+     ciAlpha
+   real(pReal), dimension(:), allocatable :: &
+     dAlpha, &
+     angles
+ end type
+
+! BEGIN DEPRECATED
  integer(pInt),              dimension(:,:),     allocatable,        private :: &
    homogenization_RGC_Ngrains
  real(pReal),                dimension(:,:),     allocatable,        private :: &
    homogenization_RGC_dAlpha, &
    homogenization_RGC_angles
- real(pReal),                dimension(:,:,:,:), allocatable,        private :: &
-   homogenization_RGC_orientation
  real(pReal),                dimension(:),       allocatable,        private :: &
    homogenization_RGC_xiAlpha, &
    homogenization_RGC_ciAlpha
+! END DEPRECATED
+
+ real(pReal),                dimension(:,:,:,:), allocatable,        private :: &
+   homogenization_RGC_orientation
+
  enum, bind(c) 
    enumerator :: undefined_ID, &
                  constitutivework_ID, &
@@ -126,10 +142,11 @@ subroutine homogenization_RGC_init(fileUnit)
 
  maxNinstance = int(count(homogenization_type == HOMOGENIZATION_RGC_ID),pInt)
  if (maxNinstance == 0_pInt) return
-  if (iand(debug_level(debug_HOMOGENIZATION),debug_levelBasic) /= 0_pInt) &
+ if (iand(debug_level(debug_HOMOGENIZATION),debug_levelBasic) /= 0_pInt) &
    write(6,'(a16,1x,i5,/)') '# instances:',maxNinstance
  allocate(homogenization_RGC_sizeState(maxNinstance),                            source=0_pInt)
  allocate(homogenization_RGC_sizePostResults(maxNinstance),                      source=0_pInt)
+
  allocate(homogenization_RGC_Noutput(maxNinstance),                              source=0_pInt)
  allocate(homogenization_RGC_Ngrains(3,maxNinstance),                            source=0_pInt)
  allocate(homogenization_RGC_ciAlpha(maxNinstance),                              source=0.0_pReal)
@@ -149,7 +166,7 @@ subroutine homogenization_RGC_init(fileUnit)
    line = IO_read(fileUnit)
  enddo
 
- parsingFile: do while (trim(line) /= IO_EOF)                                                                    ! read through sections of homogenization part
+ parsingFile: do while (trim(line) /= IO_EOF)                                                       ! read through sections of homogenization part
    line = IO_read(fileUnit)
    if (IO_isBlank(line)) cycle                                                                      ! skip empty lines
    if (IO_getTag(line,'<','>') /= '') then                                                          ! stop at next part
