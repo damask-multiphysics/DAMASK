@@ -1363,12 +1363,16 @@ function IO_continuousIntValues(fileUnit,maxN,lookupName,lookupMap,lookupMaxN)
 pure function IO_intOut(intToPrint)
 
   implicit none
-  character(len=19) :: N_Digits                                                                     ! maximum digits for 64 bit integer
-  character(len=40) :: IO_intOut
   integer(pInt), intent(in) :: intToPrint
+  character(len=41) :: IO_intOut
+  integer(pInt)     :: N_digits
+  character(len=19) :: width                                                                        ! maximum digits for 64 bit integer
+  character(len=20) :: min_width                                                                    ! longer for negative values
 
-  write(N_Digits, '(I19.19)') 1_pInt + int(log10(real(intToPrint)),pInt)
-  IO_intOut = 'I'//trim(N_Digits)//'.'//trim(N_Digits)
+  N_digits =  1_pInt + int(log10(real(max(abs(intToPrint),1_pInt))),pInt)
+  write(width, '(I19.19)') N_digits
+  write(min_width, '(I20.20)') N_digits + merge(1_pInt,0_pInt,intToPrint < 0_pInt)
+  IO_intOut = 'I'//trim(min_width)//'.'//trim(width)
 
 end function IO_intOut
 
