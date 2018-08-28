@@ -137,8 +137,9 @@ subroutine homogenization_isostrain_partitionDeformation(F,avgF,el)
 
  instance = homogenization_typeInstance(mesh_element(3,el))
  associate(prm => param(instance))
- F = 0.0_pReal
  F(1:3,1:3,1:prm%Nconstituents) = spread(avgF,3,prm%Nconstituents)
+ if (homogenization_maxNgrains > prm%Nconstituents) &
+   F(1:3,1:3,prm%Nconstituents+1_pInt:homogenization_maxNgrains) = 0.0_pReal
  end associate
 
 end subroutine homogenization_isostrain_partitionDeformation
