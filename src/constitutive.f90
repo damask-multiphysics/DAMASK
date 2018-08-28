@@ -19,8 +19,8 @@ module constitutive
    constitutive_init, &
    constitutive_homogenizedC, &
    constitutive_microstructure, &
-   constitutive_LpAndItsTangent, &
-   constitutive_LiAndItsTangent, &
+   constitutive_LpAndItsTangents, &
+   constitutive_LiAndItsTangents, &
    constitutive_initialFi, &
    constitutive_SandItsTangents, &
    constitutive_collectDotState, &
@@ -430,7 +430,7 @@ end subroutine constitutive_microstructure
 !--------------------------------------------------------------------------------------------------
 !> @brief  contains the constitutive equation for calculating the velocity gradient
 !--------------------------------------------------------------------------------------------------
-subroutine constitutive_LpAndItsTangent(Lp, dLp_dMstar, dLp_dFi, S6, Fi, ipc, ip, el)
+subroutine constitutive_LpAndItsTangents(Lp, dLp_dMstar, dLp_dFi, S6, Fi, ipc, ip, el)
  use prec, only: &
    pReal
  use math, only: &
@@ -536,13 +536,13 @@ subroutine constitutive_LpAndItsTangent(Lp, dLp_dMstar, dLp_dFi, S6, Fi, ipc, ip
    dLp_dMstar(i,j,1:3,1:3) = math_mul33x33(math_mul33x33(transpose(Fi),Fi),dLp_dMstar(i,j,1:3,1:3))
  enddo 
 
-end subroutine constitutive_LpAndItsTangent
+end subroutine constitutive_LpAndItsTangents
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief  contains the constitutive equation for calculating the velocity gradient
 !--------------------------------------------------------------------------------------------------
-subroutine constitutive_LiAndItsTangent(Li, dLi_dS, dLi_dFi, S6, Fi, ipc, ip, el)
+subroutine constitutive_LiAndItsTangents(Li, dLi_dS, dLi_dFi, S6, Fi, ipc, ip, el)
  use prec, only: &
    pReal
  use math, only: &
@@ -647,7 +647,7 @@ subroutine constitutive_LiAndItsTangent(Li, dLi_dS, dLi_dFi, S6, Fi, ipc, ip, el
    dLi_dFi   (1:3,i,1:3,j) = dLi_dFi(1:3,i,1:3,j) + math_I3*temp_33(j,i) + Li*FiInv(j,i)
  end forall
 
-end subroutine constitutive_LiAndItsTangent
+end subroutine constitutive_LiAndItsTangents
 
 
 !--------------------------------------------------------------------------------------------------

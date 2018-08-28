@@ -541,8 +541,8 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
    phaseAt, phasememberAt
  use constitutive, only:  &
    constitutive_SandItsTangents, &
-   constitutive_LpAndItsTangent, &
-   constitutive_LiAndItsTangent
+   constitutive_LpAndItsTangents, &
+   constitutive_LiAndItsTangents
 
  implicit none
  logical, intent(in) :: &
@@ -1102,7 +1102,7 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
          call constitutive_SandItsTangents(temp_33,dSdFe,dSdFi,crystallite_Fe(1:3,1:3,c,i,e), &
                                           crystallite_Fi(1:3,1:3,c,i,e),c,i,e)                     ! call constitutive law to calculate elastic stress tangent
 
-         call constitutive_LiAndItsTangent(temp_33,dLidS,dLidFi,crystallite_Tstar_v(1:6,c,i,e), &
+         call constitutive_LiAndItsTangents(temp_33,dLidS,dLidFi,crystallite_Tstar_v(1:6,c,i,e), &
                                            crystallite_Fi(1:3,1:3,c,i,e), &
                                            c,i,e)                                                  ! call constitutive law to calculate Li tangent in lattice configuration
          if (sum(abs(dLidS)) < tol_math_check) then
@@ -1129,7 +1129,7 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
            dLidS = math_mul3333xx3333(dLidFi,dFidS) + dLidS
          endif
 
-         call constitutive_LpAndItsTangent(temp_33,dLpdS,dLpdFi,crystallite_Tstar_v(1:6,c,i,e), &
+         call constitutive_LpAndItsTangents(temp_33,dLpdS,dLpdFi,crystallite_Tstar_v(1:6,c,i,e), &
                                            crystallite_Fi(1:3,1:3,c,i,e),c,i,e)                    ! call constitutive law to calculate Lp tangent in lattice configuration
          dLpdS = math_mul3333xx3333(dLpdFi,dFidS) + dLpdS
 
@@ -3176,8 +3176,8 @@ logical function crystallite_integrateStress(&
                          debug_levelExtensive, &
                          debug_levelSelective
 
- use constitutive, only: constitutive_LpAndItsTangent, &
-                         constitutive_LiAndItsTangent, &
+ use constitutive, only: constitutive_LpAndItsTangents, &
+                         constitutive_LiAndItsTangents, &
                          constitutive_SandItsTangents
  use math, only:         math_mul33x33, &
                          math_mul33xx33, &
@@ -3386,7 +3386,7 @@ logical function crystallite_integrateStress(&
        write(6,'(a,/,6(e20.10,1x))')         '<< CRYST >> Tstar', Tstar_v
      endif
 #endif
-     call constitutive_LpAndItsTangent(Lp_constitutive, dLp_dT3333, dLp_dFi3333, &
+     call constitutive_LpAndItsTangents(Lp_constitutive, dLp_dT3333, dLp_dFi3333, &
                                        Tstar_v, Fi_new, ipc, ip, el)
 
 #ifdef DEBUG
@@ -3488,7 +3488,7 @@ logical function crystallite_integrateStress(&
 
    !* calculate intermediate velocity gradient and its tangent from constitutive law
 
-   call constitutive_LiAndItsTangent(Li_constitutive, dLi_dT3333, dLi_dFi3333, &
+   call constitutive_LiAndItsTangents(Li_constitutive, dLi_dT3333, dLi_dFi3333, &
                                      Tstar_v, Fi_new, ipc, ip, el)
 
 #ifdef DEBUG
