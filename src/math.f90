@@ -36,13 +36,13 @@ module math
 
  real(pReal), dimension(6), parameter, private :: &
    nrmMandel = [&
-     1.0_pReal,                1.0_pReal,                1.0_pReal,&
-     1.414213562373095_pReal,  1.414213562373095_pReal,  1.414213562373095_pReal ]                  !< weighting for Mandel notation (forward)
+     1.0_pReal,       1.0_pReal,       1.0_pReal, &
+     sqrt(2.0_pReal), sqrt(2.0_pReal), sqrt(2.0_pReal) ]                                            !< weighting for Mandel notation (forward)
 
  real(pReal), dimension(6), parameter , public :: &
    invnrmMandel = [&
-     1.0_pReal,                1.0_pReal,                1.0_pReal,&
-     0.7071067811865476_pReal, 0.7071067811865476_pReal, 0.7071067811865476_pReal ]                 !< weighting for Mandel notation (backward)
+     1.0_pReal,                 1.0_pReal,                 1.0_pReal, &
+     1.0_pReal/sqrt(2.0_pReal), 1.0_pReal/sqrt(2.0_pReal), 1.0_pReal/sqrt(2.0_pReal) ]              !< weighting for Mandel notation (backward)
 
  integer(pInt), dimension (2,6), parameter, private :: &
    mapVoigt = reshape([&
