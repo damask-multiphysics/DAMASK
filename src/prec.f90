@@ -7,6 +7,7 @@
 !> @brief    setting precision for real and int type
 !--------------------------------------------------------------------------------------------------
 module prec
+! ToDo:    use, intrinsic :: iso_fortran_env, only : I8 => int64, WP => real64 
  implicit none
  private 
 #if (FLOAT==8)
@@ -23,14 +24,15 @@ module prec
  NO SUITABLE PRECISION FOR INTEGER SELECTED, STOPPING COMPILATION
 #endif
 
+ integer,     parameter, public :: pStringLen = 256                                                 !< default string lenth
  integer,     parameter, public :: pLongInt  = 8                                                    !< integer representation 64 bit (was selected_int_kind(12), number with at least up to +- 1e12)
  real(pReal), parameter, public :: tol_math_check = 1.0e-8_pReal                                    !< tolerance for internal math self-checks (rotation)
 
  integer(pInt), allocatable, dimension(:) :: realloc_lhs_test
  
- type, public :: group_scalar                                                                       !< variable length datatype used for storage of state
+ type, public :: group_float                                                                       !< variable length datatype used for storage of state
    real(pReal), dimension(:), pointer :: p
- end type group_scalar
+ end type group_float
 
  type, public :: group_int
    integer(pInt), dimension(:), pointer :: p

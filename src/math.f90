@@ -12,7 +12,7 @@ module math
 
  implicit none
  private
- real(pReal),    parameter, public :: PI = 3.141592653589793_pReal                                  !< ratio of a circle's circumference to its diameter
+ real(pReal),    parameter, public :: PI = acos(-1.0_pReal)                                         !< ratio of a circle's circumference to its diameter
  real(pReal),    parameter, public :: INDEG = 180.0_pReal/PI                                        !< conversion from radian into degree
  real(pReal),    parameter, public :: INRAD = PI/180.0_pReal                                        !< conversion from degree into radian
  complex(pReal), parameter, public :: TWOPIIMG = (0.0_pReal,2.0_pReal)*(PI,0.0_pReal)               !< Re(0.0), Im(2xPi)

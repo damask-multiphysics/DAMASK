@@ -22,6 +22,7 @@ module IO
  public :: &
    IO_init, &
    IO_read, &
+   IO_recursiveRead, &
    IO_checkAndRewind, &
    IO_open_file_stat, &
    IO_open_jobFile_stat, &
@@ -35,10 +36,6 @@ module IO
    IO_hybridIA, &
    IO_isBlank, &
    IO_getTag, &
-   IO_countSections, &
-   IO_countTagInPart, &
-   IO_spotTagInPart, &
-   IO_globalTagInPart, &
    IO_stringPos, &
    IO_stringValue, &
    IO_fixedStringValue ,&
@@ -100,6 +97,7 @@ end subroutine IO_init
 !--------------------------------------------------------------------------------------------------
 !> @brief recursively reads a line from a text file.
 !!        Recursion is triggered by "{path/to/inputfile}" in a line
+!> @details unstable and buggy
 !--------------------------------------------------------------------------------------------------
 recursive function IO_read(fileUnit,reset) result(line)
 
@@ -151,7 +149,7 @@ recursive function IO_read(fileUnit,reset) result(line)
    pathOn(stack) = path(1:scan(path,SEP,.true.))//input                                             ! glue include to current file's dir
  endif
 
- open(newunit=unitOn(stack),iostat=myStat,file=pathOn(stack),action='read')                         ! open included file
+ open(newunit=unitOn(stack),iostat=myStat,file=pathOn(stack),action='read',status='old',position='rewind')                         ! open included file
  if (myStat /= 0_pInt) call IO_error(100_pInt,el=myStat,ext_msg=pathOn(stack))
 
  line = IO_read(fileUnit)
@@ -170,6 +168,80 @@ recursive function IO_read(fileUnit,reset) result(line)
 
 end function IO_read
 
+!--------------------------------------------------------------------------------------------------
+!> @brief recursively reads a text file.
+!!        Recursion is triggered by "{path/to/inputfile}" in a line
+!--------------------------------------------------------------------------------------------------
+recursive function IO_recursiveRead(fileName,cnt) result(fileContent)
+
+  implicit none
+  character(len=*),   intent(in)                :: fileName
+  integer(pInt),      intent(in), optional      :: cnt                                              !< recursion counter
+  character(len=256), dimension(:), allocatable :: fileContent                                      !< file content, separated per lines
+  character(len=256), dimension(:), allocatable :: includedContent
+  character(len=256)                            :: line
+  character(len=256), parameter                 :: dummy = 'https://damask.mpie.de'                 !< to fill up remaining array
+  character(len=:),                 allocatable :: rawData
+  integer(pInt) ::  &
+    fileLength, &
+    fileUnit, &
+    startPos, endPos, &
+    myTotalLines, &                                                                                 !< # lines read from file without include statements
+    includedLines, &                                                                                !< # lines included from other file(s)
+    missingLines, &                                                                                 !< # lines missing from current file
+    l,i, &
+    myStat
+
+  if (merge(cnt,0_pInt,present(cnt))>10_pInt) call IO_error(106_pInt,ext_msg=trim(fileName))
+
+!--------------------------------------------------------------------------------------------------
+! read data as stream
+  inquire(file = fileName, size=fileLength)
+  open(newunit=fileUnit, file=fileName, access='stream',&
+       status='old', position='rewind', action='read',iostat=myStat)
+  if(myStat /= 0_pInt) call IO_error(100_pInt,ext_msg=trim(fileName))
+  allocate(character(len=fileLength)::rawData)
+  read(fileUnit) rawData
+  close(fileUnit)
+
+!--------------------------------------------------------------------------------------------------
+! count lines to allocate string array
+  myTotalLines = 0_pInt
+  do l=1_pInt, len(rawData)
+    if (rawData(l:l) == new_line('')) myTotalLines = myTotalLines+1
+  enddo
+  allocate(fileContent(myTotalLines))
+
+!--------------------------------------------------------------------------------------------------
+! split raw data at end of line and handle includes
+  startPos = 1_pInt
+  endPos = 0_pInt
+
+  includedLines=0_pInt
+  l=0_pInt
+  do while (startPos <= len(rawData))
+    l = l + 1_pInt
+    endPos = endPos + scan(rawData(startPos:),new_line(''))
+    if(endPos - startPos >256) call IO_error(107_pInt,ext_msg=trim(fileName))
+    line = rawData(startPos:endPos-1_pInt)
+    startPos = endPos + 1_pInt
+
+    recursion: if(scan(trim(line),'{') < scan(trim(line),'}')) then
+      myTotalLines    = myTotalLines - 1_pInt
+      includedContent = IO_recursiveRead(trim(line(scan(line,'{')+1_pInt:scan(line,'}')-1_pInt)), &
+                        merge(cnt,1_pInt,present(cnt)))                                             ! to track recursion depth
+      includedLines   = includedLines + size(includedContent)
+      missingLines    = myTotalLines + includedLines - size(fileContent(1:l-1)) -size(includedContent)
+      fileContent     = [ fileContent(1:l-1_pInt), includedContent, [(dummy,i=1,missingLines)] ]    ! add content and grow array
+      l = l - 1_pInt + size(includedContent)
+    else recursion
+      fileContent(l) = line
+    endif recursion
+
+  enddo
+
+end function IO_recursiveRead
+
 
 !--------------------------------------------------------------------------------------------------
 !> @brief checks if unit is opened for reading, if true rewinds. Otherwise stops with
@@ -178,7 +250,7 @@ end function IO_read
 subroutine IO_checkAndRewind(fileUnit)
 
  implicit none
- integer(pInt), intent(in) :: fileUnit                                                                !< file unit
+ integer(pInt), intent(in) :: fileUnit                                                              !< file unit
  logical                   :: fileOpened
  character(len=15)         :: fileRead
 
@@ -203,7 +275,7 @@ subroutine IO_open_file(fileUnit,path)
 
  integer(pInt)                  :: myStat
 
- open(fileUnit,status='old',iostat=myStat,file=path)
+ open(fileUnit,status='old',iostat=myStat,file=path,action='read',position='rewind')
  if (myStat /= 0_pInt) call IO_error(100_pInt,el=myStat,ext_msg=path)
 
 end subroutine IO_open_file
@@ -222,7 +294,8 @@ logical function IO_open_file_stat(fileUnit,path)
 
  integer(pInt)                  :: myStat
 
- open(fileUnit,status='old',iostat=myStat,file=path)
+ open(fileUnit,status='old',iostat=myStat,file=path,action='read',position='rewind')
+ if (myStat /= 0_pInt) close(fileUnit)
  IO_open_file_stat = (myStat == 0_pInt)
 
 end function IO_open_file_stat
@@ -246,7 +319,7 @@ subroutine IO_open_jobFile(fileUnit,ext)
  character(len=1024)            :: path
 
  path = trim(getSolverJobName())//'.'//ext
- open(fileUnit,status='old',iostat=myStat,file=path)
+ open(fileUnit,status='old',iostat=myStat,file=path,action='read',position='rewind')
  if (myStat /= 0_pInt) call IO_error(100_pInt,el=myStat,ext_msg=path)
 
 end subroutine IO_open_jobFile
@@ -270,7 +343,8 @@ logical function IO_open_jobFile_stat(fileUnit,ext)
  character(len=1024)            :: path
 
  path = trim(getSolverJobName())//'.'//ext
- open(fileUnit,status='old',iostat=myStat,file=path)
+ open(fileUnit,status='old',iostat=myStat,file=path,action='read',position='rewind')
+ if (myStat /= 0_pInt) close(fileUnit)
  IO_open_jobFile_stat = (myStat == 0_pInt)
 
 end function IO_open_JobFile_stat
@@ -296,11 +370,11 @@ subroutine IO_open_inputFile(fileUnit,modelName)
 
  fileType = 1_pInt                                                                                  ! assume .pes
  path = trim(modelName)//inputFileExtension(fileType)                                               ! attempt .pes, if it exists: it should be used
- open(fileUnit+1,status='old',iostat=myStat,file=path)
+ open(fileUnit+1,status='old',iostat=myStat,file=path,action='read',position='rewind')
  if(myStat /= 0_pInt) then                                                                          ! if .pes does not work / exist; use conventional extension, i.e.".inp"
     fileType = 2_pInt
     path = trim(modelName)//inputFileExtension(fileType)
-    open(fileUnit+1,status='old',iostat=myStat,file=path)
+    open(fileUnit+1,status='old',iostat=myStat,file=path,action='read',position='rewind')
  endif
  if (myStat /= 0_pInt) call IO_error(100_pInt,el=myStat,ext_msg=path)
 
@@ -335,7 +409,7 @@ subroutine IO_open_logFile(fileUnit)
  character(len=1024)            :: path
 
  path = trim(getSolverJobName())//LogFileExtension
- open(fileUnit,status='old',iostat=myStat,file=path)
+ open(fileUnit,status='old',iostat=myStat,file=path,action='read',position='rewind')
  if (myStat /= 0_pInt) call IO_error(100_pInt,el=myStat,ext_msg=path)
 
 end subroutine IO_open_logFile
@@ -755,188 +829,27 @@ pure function IO_getTag(string,openChar,closeChar)
  character(len=*), intent(in)  :: string                                                            !< string to check for tag
  character(len=len_trim(string)) :: IO_getTag
 
- character(len=*), intent(in)  :: openChar, &                                                       !< indicates beginning of tag
-                                  closeChar                                                         !< indicates end of tag
+ character, intent(in)  :: openChar, &                                                              !< indicates beginning of tag
+                           closeChar                                                                !< indicates end of tag
 
  character(len=*), parameter   :: SEP=achar(32)//achar(9)//achar(10)//achar(13)                     ! whitespaces
-
  integer :: left,right                                                                              ! no pInt
 
  IO_getTag = ''
- left = scan(string,openChar)
- right = scan(string,closeChar)
+
+
+ if (openChar /= closeChar) then
+   left  = scan(string,openChar)
+   right = scan(string,closeChar)
+ else
+   left  = scan(string,openChar)
+   right = left + merge(scan(string(left+1:),openChar),0_pInt,len(string) > left)
+ endif
 
  if (left == verify(string,SEP) .and. right > left) &                                               ! openChar is first and closeChar occurs
    IO_getTag = string(left+1:right-1)
 
 end function IO_getTag
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief count number of [sections] in <part> for given file handle
-!--------------------------------------------------------------------------------------------------
-integer(pInt) function IO_countSections(fileUnit,part)
-
- implicit none
- integer(pInt),      intent(in) :: fileUnit                                                         !< file handle
- character(len=*),   intent(in) :: part                                                             !< part name in which sections are counted
-
- character(len=65536)           :: line
-
- line = ''
- IO_countSections = 0_pInt
- rewind(fileUnit)
-
- do while (trim(line) /= IO_EOF .and. IO_lc(IO_getTag(line,'<','>')) /= part)                       ! search for part
-   line = IO_read(fileUnit)
- enddo
-
- do while (trim(line) /= IO_EOF)
-   line = IO_read(fileUnit)
-   if (IO_isBlank(line)) cycle                                                                      ! skip empty lines
-   if (IO_getTag(line,'<','>') /= '') then                                                          ! stop at next part
-     line = IO_read(fileUnit, .true.)                                                               ! reset IO_read
-     exit
-   endif
-   if (IO_getTag(line,'[',']') /= '') &                                                             ! found [section] identifier
-     IO_countSections = IO_countSections + 1_pInt
- enddo
-
-end function IO_countSections
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief returns array of tag counts within <part> for at most N [sections]
-!--------------------------------------------------------------------------------------------------
-function IO_countTagInPart(fileUnit,part,tag,Nsections)
-
- implicit none
- integer(pInt),   intent(in)                :: Nsections                                            !< maximum number of sections in which tag is searched for
- integer(pInt),   dimension(Nsections)      :: IO_countTagInPart
- integer(pInt),   intent(in)                :: fileUnit                                             !< file handle
- character(len=*),intent(in)                :: part, &                                              !< part in which tag is searched for
-                                               tag                                                  !< tag to search for
-
-
- integer(pInt),   dimension(Nsections)      :: counter
- integer(pInt), allocatable, dimension(:)   :: chunkPos
- integer(pInt)                              :: section
- character(len=65536)                       :: line
-
- line = ''
- counter = 0_pInt
- section = 0_pInt
-
- rewind(fileUnit)
- do while (trim(line) /= IO_EOF .and. IO_lc(IO_getTag(line,'<','>')) /= part)                       ! search for part
-   line = IO_read(fileUnit)
- enddo
-
- do while (trim(line) /= IO_EOF)
-   line = IO_read(fileUnit)
-   if (IO_isBlank(line)) cycle                                                                      ! skip empty lines
-   if (IO_getTag(line,'<','>') /= '') then                                                          ! stop at next part
-     line = IO_read(fileUnit, .true.)                                                               ! reset IO_read
-     exit
-   endif
-   if (IO_getTag(line,'[',']') /= '') section = section + 1_pInt                                    ! found [section] identifier
-   if (section > 0) then
-     chunkPos = IO_stringPos(line)
-     if (tag == trim(IO_lc(IO_stringValue(line,chunkPos,1_pInt)))) &                                ! match
-       counter(section) = counter(section) + 1_pInt
-   endif
- enddo
-
- IO_countTagInPart = counter
-
-end function IO_countTagInPart
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief returns array of tag presence within <part> for at most N [sections]
-!--------------------------------------------------------------------------------------------------
-function IO_spotTagInPart(fileUnit,part,tag,Nsections)
-
- implicit none
- integer(pInt),   intent(in)                :: Nsections                                            !< maximum number of sections in which tag is searched for
- logical,         dimension(Nsections)      :: IO_spotTagInPart
- integer(pInt),   intent(in)                :: fileUnit                                             !< file handle
- character(len=*),intent(in)                :: part, &                                              !< part in which tag is searched for
-                                               tag                                                  !< tag to search for
-
-
- integer(pInt), allocatable, dimension(:) :: chunkPos
- integer(pInt)                            :: section
- character(len=65536)                     :: line
-
- IO_spotTagInPart = .false.                                                                         ! assume to nowhere spot tag
- section = 0_pInt
- line = ''
-
- rewind(fileUnit)
- do while (trim(line) /= IO_EOF .and. IO_lc(IO_getTag(line,'<','>')) /= part)                       ! search for part
-   line = IO_read(fileUnit)
- enddo
-
- do while (trim(line) /= IO_EOF)
-   line = IO_read(fileUnit)
-   if (IO_isBlank(line)) cycle                                                                      ! skip empty lines
-   foundNextPart: if (IO_getTag(line,'<','>') /= '') then
-     line = IO_read(fileUnit, .true.)                                                               ! reset IO_read
-     exit
-   endif foundNextPart
-   if (IO_getTag(line,'[',']') /= '') section = section + 1_pInt                                    ! found [section] identifier
-   if (section > 0_pInt) then
-     chunkPos = IO_stringPos(line)
-     if (tag == trim(IO_lc(IO_stringValue(line,chunkPos,1_pInt)))) &                                ! match
-       IO_spotTagInPart(section) = .true.
-   endif
- enddo
-
- end function IO_spotTagInPart
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief return logical whether tag is present within <part> before any [sections]
-!--------------------------------------------------------------------------------------------------
-logical function IO_globalTagInPart(fileUnit,part,tag)
-
- implicit none
- integer(pInt),   intent(in)                :: fileUnit                                             !< file handle
- character(len=*),intent(in)                :: part, &                                              !< part in which tag is searched for
-                                               tag                                                  !< tag to search for
-
- integer(pInt), allocatable, dimension(:) :: chunkPos
- character(len=65536)                     :: line
-
- IO_globalTagInPart = .false.                                                                       ! assume to nowhere spot tag
- line =''
-
- rewind(fileUnit)
- do while (trim(line) /= IO_EOF .and. IO_lc(IO_getTag(line,'<','>')) /= part)                       ! search for part
-   line = IO_read(fileUnit)
- enddo
-
- do while (trim(line) /= IO_EOF)
-   line = IO_read(fileUnit)
-   if (IO_isBlank(line)) cycle                                                                      ! skip empty lines
-   foundNextPart: if (IO_getTag(line,'<','>') /= '') then
-     line = IO_read(fileUnit, .true.)                                                               ! reset IO_read
-     exit
-   endif foundNextPart
-   foundFirstSection: if (IO_getTag(line,'[',']') /= '') then
-     line = IO_read(fileUnit, .true.)                                                               ! reset IO_read
-     exit
-   endif foundFirstSection
-   chunkPos = IO_stringPos(line)
-   match: if (tag == trim(IO_lc(IO_stringValue(line,chunkPos,1_pInt)))) then
-     IO_globalTagInPart = .true.
-     line = IO_read(fileUnit, .true.)                                                               ! reset IO_read
-     exit
-   endif match
- enddo
-
-end function IO_globalTagInPart
 
 
 !--------------------------------------------------------------------------------------------------
@@ -1513,6 +1426,8 @@ subroutine IO_error(error_ID,el,ip,g,instance,ext_msg)
    msg = 'unknown output:'
  case (106_pInt)
    msg = 'working directory does not exist:'
+ case (107_pInt)
+   msg = 'line length exceeds limit of 256'
 
 !--------------------------------------------------------------------------------------------------
 ! lattice error messages
