@@ -130,7 +130,7 @@ subroutine homogenization_RGC_init(fileUnit)
    o, h, &
    instance, &
    sizeHState
- integer(pInt) :: section=0_pInt, maxNinstance, i,j,e, mySize, myInstance
+ integer(pInt) :: section=0_pInt, maxNinstance, i,j,e, mySize
  character(len=65536) :: &
    tag = '', &
    line = ''
@@ -198,6 +198,16 @@ subroutine homogenization_RGC_init(fileUnit)
      endif
    enddo elementLooping
 
+   if (iand(debug_level(debug_homogenization),debug_levelExtensive) /= 0_pInt) then
+     write(6,'(a15,1x,i4,/)')     'instance:  ', instance
+     write(6,'(a25,3(1x,i8))')    'cluster size:         ',(prm%Nconstituents(j),j=1_pInt,3_pInt)
+     write(6,'(a25,1x,e10.3)')    'scaling parameter:    ', prm%xiAlpha
+     write(6,'(a25,1x,e10.3)')    'over-proportionality: ', prm%ciAlpha
+     write(6,'(a25,3(1x,e10.3))') 'grain size:           ',(prm%dAlpha(j),j=1_pInt,3_pInt)
+     write(6,'(a25,3(1x,e10.3))') 'cluster orientation:  ',(prm%angles(j),j=1_pInt,3_pInt)
+   endif
+
+   homogenization_RGC_Ngrains(:,instance) = prm%nConstituents
    end associate
  enddo  
 
@@ -269,39 +279,6 @@ subroutine homogenization_RGC_init(fileUnit)
    endif
  enddo parsingFile
 
-!--------------------------------------------------------------------------------------------------
-! * assigning cluster orientations
- elementLooping: do e = 1_pInt,mesh_NcpElems
-   if (homogenization_type(mesh_element(3,e)) == HOMOGENIZATION_RGC_ID) then
-     myInstance = homogenization_typeInstance(mesh_element(3,e))
-     if (all (homogenization_RGC_angles(1:3,myInstance) >= 399.9_pReal)) then
-       homogenization_RGC_orientation(1:3,1:3,1,e) = math_EulerToR(math_sampleRandomOri())
-       do i = 1_pInt,FE_Nips(FE_geomtype(mesh_element(2,e)))
-         if (microstructure_elemhomo(mesh_element(4,e))) then
-           homogenization_RGC_orientation(1:3,1:3,i,e) = homogenization_RGC_orientation(1:3,1:3,1,e)
-         else
-           homogenization_RGC_orientation(1:3,1:3,i,e) = math_EulerToR(math_sampleRandomOri())
-         endif
-       enddo
-     else
-       do i = 1_pInt,FE_Nips(FE_geomtype(mesh_element(2,e)))
-         homogenization_RGC_orientation(1:3,1:3,i,e) = &
-                                   math_EulerToR(homogenization_RGC_angles(1:3,myInstance)*inRad)
-       enddo
-     endif
-   endif
- enddo elementLooping
-
- if (iand(debug_level(debug_homogenization),debug_levelExtensive) /= 0_pInt) then
-   do i = 1_pInt,maxNinstance
-     write(6,'(a15,1x,i4,/)')     'instance:  ', i
-     write(6,'(a25,3(1x,i8))')    'cluster size:         ',(homogenization_RGC_Ngrains(j,i),j=1_pInt,3_pInt)
-     write(6,'(a25,1x,e10.3)')    'scaling parameter:    ', homogenization_RGC_xiAlpha(i)
-     write(6,'(a25,1x,e10.3)')    'over-proportionality: ', homogenization_RGC_ciAlpha(i)
-     write(6,'(a25,3(1x,e10.3))') 'grain size:           ',(homogenization_RGC_dAlpha(j,i),j=1_pInt,3_pInt)
-     write(6,'(a25,3(1x,e10.3))') 'cluster orientation:  ',(homogenization_RGC_angles(j,i),j=1_pInt,3_pInt)
-   enddo
- endif
 !--------------------------------------------------------------------------------------------------
  initializeInstances: do homog = 1_pInt, material_Nhomogenization
    myHomog: if (homogenization_type(homog) == HOMOGENIZATION_RGC_ID) then
@@ -1425,17 +1402,15 @@ end function homogenization_RGC_grain1to3
 !--------------------------------------------------------------------------------------------------
 !> @brief map grain ID from in 3D (local position) to in 1D (global array)
 !--------------------------------------------------------------------------------------------------
-pure function homogenization_RGC_grain3to1(grain3,homID)
+pure function homogenization_RGC_grain3to1(grain3,instance)
 
  implicit none
  integer(pInt), dimension (3), intent(in) :: grain3                                                 !< grain ID in 3D array (pos.x,pos.y,pos.z)
+ integer(pInt), intent(in) :: instance                                                              ! homogenization ID
  integer(pInt)                :: homogenization_RGC_grain3to1                                      
  integer(pInt), dimension (3) :: nGDim
- integer(pInt), intent(in) :: homID                                                                 ! homogenization ID
 
-!--------------------------------------------------------------------------------------------------
-! get the grain ID
- nGDim = homogenization_RGC_Ngrains(1:3,homID)
+ nGDim = param(instance)%Nconstituents
  homogenization_RGC_grain3to1 = grain3(1) + nGDim(1)*(grain3(2)-1_pInt) + nGDim(1)*nGDim(2)*(grain3(3)-1_pInt)
 
 end function homogenization_RGC_grain3to1
@@ -1444,14 +1419,14 @@ end function homogenization_RGC_grain3to1
 !--------------------------------------------------------------------------------------------------
 !> @brief maps interface ID from 4D (normal and local position) into 1D (global array)
 !--------------------------------------------------------------------------------------------------
-integer(pInt) pure function homogenization_RGC_interface4to1(iFace4D, homID)
+integer(pInt) pure function homogenization_RGC_interface4to1(iFace4D, instance)
  
  implicit none
  integer(pInt), dimension (4), intent(in) :: iFace4D                                                !< interface ID in 4D array (n.dir,pos.x,pos.y,pos.z)
  integer(pInt), dimension (3) :: nGDim,nIntFace
- integer(pInt), intent(in) :: homID                                                                 !< homogenization ID
+ integer(pInt), intent(in) :: instance
 
- nGDim = homogenization_RGC_Ngrains(1:3,homID)
+ nGDim = param(instance)%Nconstituents
  
 !--------------------------------------------------------------------------------------------------
 ! compute the total number of interfaces, which ...
@@ -1483,15 +1458,15 @@ end function homogenization_RGC_interface4to1
 !--------------------------------------------------------------------------------------------------
 !> @brief maps interface ID from 1D (global array) into 4D (normal and local position)
 !--------------------------------------------------------------------------------------------------
-function homogenization_RGC_interface1to4(iFace1D, homID)
+pure function homogenization_RGC_interface1to4(iFace1D, instance)
  
  implicit none
  integer(pInt), dimension (4) :: homogenization_RGC_interface1to4
  integer(pInt), intent(in)    :: iFace1D                                                            !< interface ID in 1D array
  integer(pInt), dimension (3) :: nGDim,nIntFace
- integer(pInt), intent(in) :: homID                                                                 !< homogenization ID
+ integer(pInt), intent(in) :: instance
 
- nGDim = homogenization_RGC_Ngrains(:,homID)
+ nGDim = param(instance)%Nconstituents
 
 !--------------------------------------------------------------------------------------------------
 ! compute the total number of interfaces, which ...
