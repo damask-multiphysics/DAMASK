@@ -151,6 +151,8 @@ subroutine homogenization_RGC_init(fileUnit)
  allocate(homogenization_RGC_sizeState(maxNinstance),                            source=0_pInt)
  allocate(homogenization_RGC_sizePostResults(maxNinstance),                      source=0_pInt)
 
+ allocate(param(maxNinstance))                                                                      ! one container of parameters per instance
+
  allocate(homogenization_RGC_Noutput(maxNinstance),                              source=0_pInt)
  allocate(homogenization_RGC_Ngrains(3,maxNinstance),                            source=0_pInt)
  allocate(homogenization_RGC_ciAlpha(maxNinstance),                              source=0.0_pReal)
@@ -164,13 +166,13 @@ subroutine homogenization_RGC_init(fileUnit)
                                                                                  source=0_pInt)
  allocate(homogenization_RGC_orientation(3,3,mesh_maxNips,mesh_NcpElems),        source=0.0_pReal)
    homogenization_RGC_orientation = spread(spread(math_I3,3,mesh_maxNips),4,mesh_NcpElems)          ! initialize to identity
- 
+
  do h = 1_pInt, size(homogenization_type)
    if (homogenization_type(h) /= HOMOGENIZATION_RGC_ID) cycle
    instance = homogenization_typeInstance(h)
    associate(prm => param(instance))
    prm%Nconstituents = config_homogenization(h)%getInts('clustersize',requiredShape=[3])
-   if (homogenization_Ngrains(section) /= product(prm%Nconstituents)) &
+   if (homogenization_Ngrains(h) /= product(prm%Nconstituents)) &
      call IO_error(211_pInt,ext_msg=trim(tag)//' ('//HOMOGENIZATION_RGC_label//')')
    prm%xiAlpha = config_homogenization(h)%getFloat('scalingparameter')
    prm%ciAlpha = config_homogenization(h)%getFloat('overproportionality')
