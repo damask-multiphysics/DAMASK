@@ -7,6 +7,7 @@
 !> @brief    setting precision for real and int type
 !--------------------------------------------------------------------------------------------------
 module prec
+! ToDo:    use, intrinsic :: iso_fortran_env, only : I8 => int64, WP => real64 
  implicit none
  private 
 #if (FLOAT==8)
@@ -23,26 +24,27 @@ module prec
  NO SUITABLE PRECISION FOR INTEGER SELECTED, STOPPING COMPILATION
 #endif
 
+ integer,     parameter, public :: pStringLen = 256                                                 !< default string lenth
  integer,     parameter, public :: pLongInt  = 8                                                    !< integer representation 64 bit (was selected_int_kind(12), number with at least up to +- 1e12)
  real(pReal), parameter, public :: tol_math_check = 1.0e-8_pReal                                    !< tolerance for internal math self-checks (rotation)
 
  integer(pInt), allocatable, dimension(:) :: realloc_lhs_test
  
- type, public :: p_vec                                                                              !< variable length datatype used for storage of state
+ type, public :: group_float                                                                       !< variable length datatype used for storage of state
    real(pReal), dimension(:), pointer :: p
- end type p_vec
+ end type group_float
 
- type, public :: p_intvec
+ type, public :: group_int
    integer(pInt), dimension(:), pointer :: p
- end type p_intvec
+ end type group_int
 
 !http://stackoverflow.com/questions/3948210/can-i-have-a-pointer-to-an-item-in-an-allocatable-array
  type, public :: tState
    integer(pInt) :: &
      sizeState        = 0_pInt, &                                                                   !< size of state
      sizeDotState     = 0_pInt, &                                                                   !< size of dot state, i.e. state(1:sizeDot) follows time evolution by dotState rates
-     offsetDeltaState = 0_pInt, &                                                                   !< offset of delta state
-     sizeDeltaState   = 0_pInt, &                                                                   !< size of delta state, i.e. state(offset+1:offset+sizeDot) follows time evolution by deltaState increments
+     offsetDeltaState = 0_pInt, &                                                                   !< index offset of delta state
+     sizeDeltaState   = 0_pInt, &                                                                   !< size of delta state, i.e. state(offset+1:offset+sizeDelta) follows time evolution by deltaState increments
      sizePostResults  = 0_pInt                                                                      !< size of output data
    real(pReal), pointer,     dimension(:), contiguous :: &
      atolState
@@ -146,7 +148,7 @@ logical elemental pure function dEq(a,b,tol)
  real(pReal), intent(in), optional :: tol
  real(pReal), parameter            :: eps = 2.220446049250313E-16                                   ! DBL_EPSILON in C
 
- dEq = merge(.True., .False.,abs(a-b) <= merge(tol,eps,present(tol))*maxval(abs([a,b])))
+ dEq = merge(.True.,.False.,abs(a-b) <= merge(tol,eps,present(tol))*maxval(abs([a,b])))
 end function dEq
 
 
@@ -163,7 +165,7 @@ logical elemental pure function dNeq(a,b,tol)
  real(pReal), intent(in), optional :: tol
  real(pReal), parameter            :: eps = 2.220446049250313E-16                                   ! DBL_EPSILON in C
 
- dNeq = merge(.False., .True.,abs(a-b) <= merge(tol,eps,present(tol))*maxval(abs([a,b])))
+ dNeq = merge(.False.,.True.,abs(a-b) <= merge(tol,eps,present(tol))*maxval(abs([a,b])))
 end function dNeq
 
 
@@ -180,7 +182,7 @@ logical elemental pure function dEq0(a,tol)
  real(pReal), intent(in), optional :: tol
  real(pReal), parameter            :: eps = 2.2250738585072014E-308                                 ! smallest non-denormalized number
 
- dEq0 = merge(.True., .False.,abs(a) <= merge(tol,eps,present(tol)))
+ dEq0 = merge(.True.,.False.,abs(a) <= merge(tol,eps,present(tol)))
 end function dEq0
 
 
@@ -197,7 +199,7 @@ logical elemental pure function dNeq0(a,tol)
  real(pReal), intent(in), optional :: tol
  real(pReal), parameter            :: eps = 2.2250738585072014E-308                                 ! smallest non-denormalized number
 
- dNeq0 = merge(.False., .True.,abs(a) <= merge(tol,eps,present(tol)))
+ dNeq0 = merge(.False.,.True.,abs(a) <= merge(tol,eps,present(tol)))
 end function dNeq0
 
 
@@ -215,7 +217,7 @@ logical elemental pure function cEq(a,b,tol)
  real(pReal),    intent(in), optional :: tol
  real(pReal),    parameter            :: eps = 2.220446049250313E-16                                ! DBL_EPSILON in C
 
- cEq = merge(.True., .False.,abs(a-b) <= merge(tol,eps,present(tol))*maxval(abs([a,b])))
+ cEq = merge(.True.,.False.,abs(a-b) <= merge(tol,eps,present(tol))*maxval(abs([a,b])))
 end function cEq
 
 
@@ -233,7 +235,7 @@ logical elemental pure function cNeq(a,b,tol)
  real(pReal),    intent(in), optional :: tol
  real(pReal),    parameter            :: eps = 2.220446049250313E-16                                ! DBL_EPSILON in C
 
- cNeq = merge(.False., .True.,abs(a-b) <= merge(tol,eps,present(tol))*maxval(abs([a,b])))
+ cNeq = merge(.False.,.True.,abs(a-b) <= merge(tol,eps,present(tol))*maxval(abs([a,b])))
 end function cNeq
 
 end module prec

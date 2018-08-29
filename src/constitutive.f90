@@ -58,14 +58,15 @@ subroutine constitutive_init()
    IO_write_jobIntFile, &
    IO_timeStamp
  use config, only: &
-   config_deallocate
+   config_phase
  use mesh, only: &
    FE_geomtype
  use config, only: &
    material_Nphase, &
    material_localFileExt, &
    phase_name, &
-   material_configFile
+   material_configFile, &
+   config_deallocate
  use material, only: &
    material_phase, &
    phase_plasticity, &
@@ -138,7 +139,7 @@ subroutine constitutive_init()
  use kinematics_hydrogen_strain
 
  implicit none
- integer(pInt), parameter :: FILEUNIT = 200_pInt
+ integer(pInt), parameter :: FILEUNIT = 204_pInt
  integer(pInt) :: &
    o, &                                                                                             !< counter in output loop
    ph, &                                                                                            !< counter in phase loop
@@ -866,18 +867,10 @@ subroutine constitutive_collectDotState(Tstar_v, FeArray, FpArray, subdt, subfra
    FpArray                                                                                          !< plastic deformation gradient
  real(pReal),  intent(in), dimension(6) :: &
    Tstar_v                                                                                          !< 2nd Piola Kirchhoff stress tensor (Mandel)
- integer(pLongInt) :: &
-   tick = 0_pLongInt, &
-   tock = 0_pLongInt, &
-   tickrate, &
-   maxticks
  integer(pInt) :: &
    ho, &                                                                                            !< homogenization
    tme, &                                                                                           !< thermal member position
    s                                                                                                !< counter in source loop
-
- if (iand(debug_level(debug_constitutive), debug_levelBasic) /= 0_pInt) &
-   call system_clock(count=tick,count_rate=tickrate,count_max=maxticks)
 
  ho  = material_homog(    ip,el)
  tme = thermalMapping(ho)%p(ip,el)
@@ -959,13 +952,6 @@ subroutine constitutive_collectDeltaState(Tstar_v, Fe, ipc, ip, el)
    Fe                                                                                               !< elastic deformation gradient
  integer(pInt) :: &
    s                                                                                                !< counter in source loop
- integer(pLongInt) :: &
-   tick, tock, &
-   tickrate, &
-   maxticks
-
- if (iand(debug_level(debug_constitutive), debug_levelBasic) /= 0_pInt) &
-   call system_clock(count=tick,count_rate=tickrate,count_max=maxticks)
 
  plasticityType: select case (phase_plasticity(material_phase(ipc,ip,el)))
    case (PLASTICITY_KINEHARDENING_ID) plasticityType

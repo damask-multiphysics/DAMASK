@@ -3,8 +3,8 @@ stages:
   - prepareAll
   - preprocessing
   - postprocessing
-  - compileSpectralIntel
-  - compileSpectralGNU
+  - compilePETScIntel
+  - compilePETScGNU
   - prepareSpectral
   - spectral
   - compileMarc2017
@@ -186,8 +186,8 @@ Post_ParaviewRelated:
     - release
 
 ###################################################################################################
-Compile_Intel:
-  stage: compileSpectralIntel
+Compile_Spectral_Intel:
+  stage: compilePETScIntel
   script:
     - module load $IntelCompiler $MPICH_Intel $PETSc_MPICH_Intel
     - SpectralAll_compile/test.py
@@ -195,12 +195,30 @@ Compile_Intel:
     - master
     - release
 
+Compile_FEM_Intel:
+  stage: compilePETScIntel
+  script:
+    - module load $IntelCompiler $MPICH_Intel $PETSc_MPICH_Intel
+    - FEM_compile/test.py
+  except:
+    - master
+    - release
+
 ###################################################################################################
-Compile_GNU:
-  stage: compileSpectralGNU
+Compile_Spectral_GNU:
+  stage: compilePETScGNU
   script:
     - module load $GNUCompiler $MPICH_GNU $PETSc_MPICH_GNU
     - SpectralAll_compile/test.py
+  except:
+    - master
+    - release
+
+Compile_FEM_GNU:
+  stage: compilePETScGNU
+  script:
+    - module load $GNUCompiler $MPICH_GNU $PETSc_MPICH_GNU
+    - FEM_compile/test.py
   except:
     - master
     - release
@@ -418,6 +436,9 @@ createTar:
   script:
     - cd $(mktemp -d)
     - $DAMASKROOT/PRIVATE/releasing/deployMe.sh $CI_COMMIT_SHA
+  except:
+    - master
+    - release
 
 ###################################################################################################
 AbaqusStd:

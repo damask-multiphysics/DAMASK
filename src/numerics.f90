@@ -16,7 +16,6 @@ module numerics
  integer(pInt), protected, public :: &
    iJacoStiffness             =  1_pInt, &                                                          !< frequency of stiffness update
    iJacoLpresiduum            =  1_pInt, &                                                          !< frequency of Jacobian update of residuum in Lp
-   nHomog                     = 20_pInt, &                                                          !< homogenization loop limit (only for debugging info, loop limit is determined by "subStepMinHomog")
    nMPstate                   = 10_pInt, &                                                          !< materialpoint state loop limit
    nCryst                     = 20_pInt, &                                                          !< crystallite loop limit (only for debugging info, loop limit is determined by "subStepMinCryst")
    nState                     = 10_pInt, &                                                          !< state loop limit
@@ -95,7 +94,7 @@ module numerics
 ! spectral parameters:
 #ifdef Spectral
  real(pReal), protected, public :: &
-   err_div_tolAbs             =  1.0e-10_pReal, &                                                   !< absolute tolerance for equilibrium
+   err_div_tolAbs             =  1.0e-4_pReal, &                                                    !< absolute tolerance for equilibrium
    err_div_tolRel             =  5.0e-4_pReal, &                                                    !< relative tolerance for equilibrium
    err_curl_tolAbs            =  1.0e-10_pReal, &                                                   !< absolute tolerance for compatibility
    err_curl_tolRel            =  5.0e-4_pReal, &                                                    !< relative tolerance for compatibility
@@ -284,8 +283,6 @@ subroutine numerics_init
          pert_Fg = IO_floatValue(line,chunkPos,2_pInt)
        case ('pert_method')
          pert_method = IO_intValue(line,chunkPos,2_pInt)
-       case ('nhomog')
-         nHomog = IO_intValue(line,chunkPos,2_pInt)
        case ('nmpstate')
          nMPstate = IO_intValue(line,chunkPos,2_pInt)
        case ('ncryst')
@@ -536,7 +533,6 @@ subroutine numerics_init
  write(6,'(a24,1x,L8)')     ' use ping pong scheme:   ',usepingpong
  write(6,'(a24,1x,es8.1,/)')' unitlength:             ',numerics_unitlength
 
- write(6,'(a24,1x,i8)')     ' nHomog:                 ',nHomog
  write(6,'(a24,1x,es8.1)')  ' subStepMinHomog:        ',subStepMinHomog
  write(6,'(a24,1x,es8.1)')  ' subStepSizeHomog:       ',subStepSizeHomog
  write(6,'(a24,1x,es8.1)')  ' stepIncreaseHomog:      ',stepIncreaseHomog
@@ -646,7 +642,6 @@ subroutine numerics_init
  if (pert_Fg <= 0.0_pReal)                 call IO_error(301_pInt,ext_msg='pert_Fg')
  if (pert_method <= 0_pInt .or. pert_method >= 4_pInt) &
                                            call IO_error(301_pInt,ext_msg='pert_method')
- if (nHomog < 1_pInt)                      call IO_error(301_pInt,ext_msg='nHomog')
  if (nMPstate < 1_pInt)                    call IO_error(301_pInt,ext_msg='nMPstate')
  if (nCryst < 1_pInt)                      call IO_error(301_pInt,ext_msg='nCryst')
  if (nState < 1_pInt)                      call IO_error(301_pInt,ext_msg='nState')
