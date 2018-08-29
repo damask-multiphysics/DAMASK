@@ -360,8 +360,8 @@ subroutine plastic_phenopowerlaw_init
    allocate(temp1(prm%totalNslip,prm%totalNslip),source = 0.0_pReal)
    allocate(temp2(prm%totalNslip,prm%totalNtwin),source = 0.0_pReal)
    allocate(prm%Schmid_slip(3,3,prm%totalNslip),source   = 0.0_pReal)
-   allocate(prm%nonSchmid_pos(3,3,size(prm%nonSchmidCoeff)+1,prm%totalNslip),source = 0.0_pReal)
-   allocate(prm%nonSchmid_neg(3,3,size(prm%nonSchmidCoeff)+1,prm%totalNslip),source = 0.0_pReal)
+   allocate(prm%nonSchmid_pos(3,3,size(prm%nonSchmidCoeff),prm%totalNslip),source = 0.0_pReal)
+   allocate(prm%nonSchmid_neg(3,3,size(prm%nonSchmidCoeff),prm%totalNslip),source = 0.0_pReal)
    i = 0_pInt
    mySlipFamilies: do f = 1_pInt,size(prm%Nslip,1)                                    ! >>> interaction slip -- X
      index_myFamily = sum(prm%Nslip(1:f-1_pInt))
@@ -369,14 +369,12 @@ subroutine plastic_phenopowerlaw_init
      mySlipSystems: do j = 1_pInt,prm%Nslip(f)
        i = i + 1_pInt
        prm%Schmid_slip(1:3,1:3,i) = lattice_Sslip(1:3,1:3,1,sum(lattice_Nslipsystem(1:f-1,p))+j,p)
-       !prm%nonSchmid_pos(1:3,1:3,1,i) = lattice_Sslip(1:3,1:3,1,sum(lattice_Nslipsystem(1:f-1,p))+j,p)
-       !prm%nonSchmid_neg(1:3,1:3,1,i) = lattice_Sslip(1:3,1:3,1,sum(lattice_Nslipsystem(1:f-1,p))+j,p)
-       !do k = 1,size(prm%nonSchmidCoeff)
-       !  prm%nonSchmid_pos(1:3,1:3,k+1,i) = lattice_Sslip(1:3,1:3,2*k,  index_myFamily+j,p) &
-       !                                 * prm%nonSchmidCoeff(k)
-       !  prm%nonSchmid_neg(1:3,1:3,k+1,i) = lattice_Sslip(1:3,1:3,2*k+1,index_myFamily+j,p) &
-       !                                 * prm%nonSchmidCoeff(k)
-       !enddo
+       do k = 1,size(prm%nonSchmidCoeff)
+         prm%nonSchmid_pos(1:3,1:3,k+1,i) = lattice_Sslip(1:3,1:3,2*k,  index_myFamily+j,p) &
+                                        * prm%nonSchmidCoeff(k)
+         prm%nonSchmid_neg(1:3,1:3,k+1,i) = lattice_Sslip(1:3,1:3,2*k+1,index_myFamily+j,p) &
+                                        * prm%nonSchmidCoeff(k)
+       enddo
        otherSlipFamilies: do o = 1_pInt,size(prm%Nslip,1)
          index_otherFamily = sum(prm%Nslip(1:o-1_pInt))
          otherSlipSystems: do k = 1_pInt,prm%Nslip(o)
