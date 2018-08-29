@@ -3240,15 +3240,15 @@ logical function crystallite_integrateStress(&
  real(pReal), dimension(9,9) ::      dRLp_dLp, &                                                     ! partial derivative of residuum (Jacobian for NEwton-Raphson scheme)
                                      dRLp_dLp2, &                                                    ! working copy of dRdLp
                                      dRLi_dLi                                                        ! partial derivative of residuumI (Jacobian for NEwton-Raphson scheme)
- real(pReal), dimension(3,3,3,3)::   dT_dFe3333, &                                                   ! partial derivative of 2nd Piola-Kirchhoff stress
-                                     dT_dFi3333, &
-                                     dFe_dLp3333, &                                                  ! partial derivative of elastic deformation gradient
-                                     dFe_dLi3333, &
-                                     dFi_dLi3333, &
-                                     dLp_dFi3333, &
-                                     dLi_dFi3333, &
-                                     dLp_dT3333, &
-                                     dLi_dT3333
+ real(pReal), dimension(3,3,3,3)::   dS_dFe, &                                                   ! partial derivative of 2nd Piola-Kirchhoff stress
+                                     dS_dFi, &
+                                     dFe_dLp, &                                                  ! partial derivative of elastic deformation gradient
+                                     dFe_dLi, &
+                                     dFi_dLi, &
+                                     dLp_dFi, &
+                                     dLi_dFi, &
+                                     dLp_dS, &
+                                     dLi_dS
  real(pReal)                         detInvFi, &                                                     ! determinant of InvFi
                                      steplengthLp, &
                                      steplengthLi, &
@@ -3369,7 +3369,7 @@ logical function crystallite_integrateStress(&
 
      B  = math_I3 - dt*Lpguess
      Fe = math_mul33x33(math_mul33x33(A,B), invFi_new)                                                  ! current elastic deformation tensor
-     call constitutive_SandItsTangents(Tstar, dT_dFe3333, dT_dFi3333, &
+     call constitutive_SandItsTangents(Tstar, dS_dFe, dS_dFi, &
                                       Fe, Fi_new, ipc, ip, el)                                          ! call constitutive law to calculate 2nd Piola-Kirchhoff stress and its derivative in unloaded configuration
      Tstar_v = math_Mandel33to6(Tstar)
 
@@ -3386,7 +3386,7 @@ logical function crystallite_integrateStress(&
        write(6,'(a,/,6(e20.10,1x))')         '<< CRYST >> Tstar', Tstar_v
      endif
 #endif
-     call constitutive_LpAndItsTangents(Lp_constitutive, dLp_dT3333, dLp_dFi3333, &
+     call constitutive_LpAndItsTangents(Lp_constitutive, dLp_dS, dLp_dFi, &
                                        Tstar_v, Fi_new, ipc, ip, el)
 
 #ifdef DEBUG
@@ -3437,18 +3437,18 @@ logical function crystallite_integrateStress(&
      !* calculate Jacobian for correction term
 
      if (mod(jacoCounterLp, iJacoLpresiduum) == 0_pInt) then
-       dFe_dLp3333 = 0.0_pReal
+       dFe_dLp = 0.0_pReal
        forall(o=1_pInt:3_pInt,p=1_pInt:3_pInt) &
-         dFe_dLp3333(o,1:3,p,1:3) = A(o,p)*transpose(invFi_new)                                ! dFe_dLp(i,j,k,l) = -dt * A(i,k) invFi(l,j)
-       dFe_dLp3333 = - dt * dFe_dLp3333
+         dFe_dLp(o,1:3,p,1:3) = A(o,p)*transpose(invFi_new)                                ! dFe_dLp(i,j,k,l) = -dt * A(i,k) invFi(l,j)
+       dFe_dLp = - dt * dFe_dLp
        dRLp_dLp    =   math_identity2nd(9_pInt) &
-                     - math_Plain3333to99(math_mul3333xx3333(math_mul3333xx3333(dLp_dT3333,dT_dFe3333),dFe_dLp3333))
+                     - math_Plain3333to99(math_mul3333xx3333(math_mul3333xx3333(dLp_dS,dS_dFe),dFe_dLp))
 #ifdef DEBUG
        if (iand(debug_level(debug_crystallite), debug_levelExtensive) /= 0_pInt &
            .and. ((el == debug_e .and. ip == debug_i .and. ipc == debug_g) &
                   .or. .not. iand(debug_level(debug_crystallite), debug_levelSelective) /= 0_pInt)) then
-         write(6,'(a,/,9(12x,9(e12.4,1x)/))') '<< CRYST >> dLp_dT', math_Plain3333to99(dLp_dT3333)
-         write(6,'(a,1x,e20.10)') '<< CRYST >> dLp_dT norm', norm2(math_Plain3333to99(dLp_dT3333))
+         write(6,'(a,/,9(12x,9(e12.4,1x)/))') '<< CRYST >> dLp_dS', math_Plain3333to99(dLp_dS)
+         write(6,'(a,1x,e20.10)') '<< CRYST >> dLp_dS norm', norm2(math_Plain3333to99(dLp_dS))
          write(6,'(a,/,9(12x,9(e12.4,1x)/))') '<< CRYST >> dRLp_dLp', dRLp_dLp - math_identity2nd(9_pInt)
          write(6,'(a,1x,e20.10)') '<< CRYST >> dRLp_dLp norm', norm2(dRLp_dLp - math_identity2nd(9_pInt))
        endif
@@ -3466,9 +3466,9 @@ logical function crystallite_integrateStress(&
                       .or. .not. iand(debug_level(debug_crystallite), debug_levelSelective) /= 0_pInt)) then
              write(6,*)
              write(6,'(a,/,9(12x,9(e15.3,1x)/))') '<< CRYST >> dR_dLp',transpose(dRLp_dLp)
-             write(6,'(a,/,9(12x,9(e15.3,1x)/))') '<< CRYST >> dFe_dLp',transpose(math_Plain3333to99(dFe_dLp3333))
-             write(6,'(a,/,9(12x,9(e15.3,1x)/))') '<< CRYST >> dT_dFe_constitutive',transpose(math_Plain3333to99(dT_dFe3333))
-             write(6,'(a,/,9(12x,9(e15.3,1x)/))') '<< CRYST >> dLp_dT_constitutive',transpose(math_Plain3333to99(dLp_dT3333))
+             write(6,'(a,/,9(12x,9(e15.3,1x)/))') '<< CRYST >> dFe_dLp',transpose(math_Plain3333to99(dFe_dLp))
+             write(6,'(a,/,9(12x,9(e15.3,1x)/))') '<< CRYST >> dS_dFe_constitutive',transpose(math_Plain3333to99(dS_dFe))
+             write(6,'(a,/,9(12x,9(e15.3,1x)/))') '<< CRYST >> dLp_dS_constitutive',transpose(math_Plain3333to99(dLp_dS))
              write(6,'(a,/,3(12x,3(e20.7,1x)/))') '<< CRYST >> A',transpose(A)
              write(6,'(a,/,3(12x,3(e20.7,1x)/))') '<< CRYST >> B',transpose(B)
              write(6,'(a,/,3(12x,3(e20.7,1x)/))') '<< CRYST >> Lp_constitutive',transpose(Lp_constitutive)
@@ -3488,7 +3488,7 @@ logical function crystallite_integrateStress(&
 
    !* calculate intermediate velocity gradient and its tangent from constitutive law
 
-   call constitutive_LiAndItsTangents(Li_constitutive, dLi_dT3333, dLi_dFi3333, &
+   call constitutive_LiAndItsTangents(Li_constitutive, dLi_dS, dLi_dFi, &
                                      Tstar_v, Fi_new, ipc, ip, el)
 
 #ifdef DEBUG
@@ -3523,19 +3523,19 @@ logical function crystallite_integrateStress(&
 
    if (mod(jacoCounterLi, iJacoLpresiduum) == 0_pInt) then
      temp_33     = math_mul33x33(math_mul33x33(A,B),invFi_current)
-     dFe_dLi3333 = 0.0_pReal
-     dFi_dLi3333 = 0.0_pReal
+     dFe_dLi = 0.0_pReal
+     dFi_dLi = 0.0_pReal
      forall(o=1_pInt:3_pInt,p=1_pInt:3_pInt)
-       dFe_dLi3333(1:3,o,1:3,p) = -dt*math_I3(o,p)*temp_33                                          ! dFe_dLp(i,j,k,l) = -dt * A(i,k) invFi(l,j)
-       dFi_dLi3333(1:3,o,1:3,p) = -dt*math_I3(o,p)*invFi_current
+       dFe_dLi(1:3,o,1:3,p) = -dt*math_I3(o,p)*temp_33                                          ! dFe_dLp(i,j,k,l) = -dt * A(i,k) invFi(l,j)
+       dFi_dLi(1:3,o,1:3,p) = -dt*math_I3(o,p)*invFi_current
      end forall
      forall(o=1_pInt:3_pInt,p=1_pInt:3_pInt) &
-       dFi_dLi3333(1:3,1:3,o,p) = math_mul33x33(math_mul33x33(Fi_new,dFi_dLi3333(1:3,1:3,o,p)),Fi_new)
+       dFi_dLi(1:3,1:3,o,p) = math_mul33x33(math_mul33x33(Fi_new,dFi_dLi(1:3,1:3,o,p)),Fi_new)
 
      dRLi_dLi  = math_identity2nd(9_pInt) &
-               - math_Plain3333to99(math_mul3333xx3333(dLi_dT3333, math_mul3333xx3333(dT_dFe3333, dFe_dLi3333) + &
-                                                                   math_mul3333xx3333(dT_dFi3333, dFi_dLi3333)))  &
-               - math_Plain3333to99(math_mul3333xx3333(dLi_dFi3333, dFi_dLi3333))
+               - math_Plain3333to99(math_mul3333xx3333(dLi_dS, math_mul3333xx3333(dS_dFe, dFe_dLi) + &
+                                                                   math_mul3333xx3333(dS_dFi, dFi_dLi)))  &
+               - math_Plain3333to99(math_mul3333xx3333(dLi_dFi, dFi_dLi))
      work = math_plain33to9(residuumLi)
      call dgesv(9,1,dRLi_dLi,9,ipiv,work,9,ierr)                                                    ! solve dRLi/dLp * delta Li = -res for delta Li
      if (ierr /= 0_pInt) then
@@ -3548,9 +3548,9 @@ logical function crystallite_integrateStress(&
                     .or. .not. iand(debug_level(debug_crystallite), debug_levelSelective) /= 0_pInt)) then
            write(6,*)
            write(6,'(a,/,9(12x,9(e15.3,1x)/))') '<< CRYST >> dR_dLi',transpose(dRLi_dLi)
-           write(6,'(a,/,9(12x,9(e15.3,1x)/))') '<< CRYST >> dFe_dLi',transpose(math_Plain3333to99(dFe_dLi3333))
-           write(6,'(a,/,9(12x,9(e15.3,1x)/))') '<< CRYST >> dT_dFi_constitutive',transpose(math_Plain3333to99(dT_dFi3333))
-           write(6,'(a,/,9(12x,9(e15.3,1x)/))') '<< CRYST >> dLi_dT_constitutive',transpose(math_Plain3333to99(dLi_dT3333))
+           write(6,'(a,/,9(12x,9(e15.3,1x)/))') '<< CRYST >> dFe_dLi',transpose(math_Plain3333to99(dFe_dLi))
+           write(6,'(a,/,9(12x,9(e15.3,1x)/))') '<< CRYST >> dS_dFi_constitutive',transpose(math_Plain3333to99(dS_dFi))
+           write(6,'(a,/,9(12x,9(e15.3,1x)/))') '<< CRYST >> dLi_dS_constitutive',transpose(math_Plain3333to99(dLi_dS))
            write(6,'(a,/,3(12x,3(e20.7,1x)/))') '<< CRYST >> Li_constitutive',transpose(Li_constitutive)
            write(6,'(a,/,3(12x,3(e20.7,1x)/))') '<< CRYST >> Liguess',transpose(Liguess)
          endif
