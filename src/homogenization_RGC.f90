@@ -165,7 +165,6 @@ subroutine homogenization_RGC_init(fileUnit)
  allocate(homogenization_RGC_sizePostResult(maxval(homogenization_Noutput),maxNinstance),&
                                                                                  source=0_pInt)
  allocate(homogenization_RGC_orientation(3,3,mesh_maxNips,mesh_NcpElems),        source=0.0_pReal)
-   homogenization_RGC_orientation = spread(spread(math_I3,3,mesh_maxNips),4,mesh_NcpElems)          ! initialize to identity
 
  do h = 1_pInt, size(homogenization_type)
    if (homogenization_type(h) /= HOMOGENIZATION_RGC_ID) cycle
@@ -177,7 +176,28 @@ subroutine homogenization_RGC_init(fileUnit)
    prm%xiAlpha = config_homogenization(h)%getFloat('scalingparameter')
    prm%ciAlpha = config_homogenization(h)%getFloat('overproportionality')
    prm%dAlpha  = config_homogenization(h)%getFloats('grainsize',requiredShape=[3])
-   prm%angles  = config_homogenization(h)%getFloats('clusterorientation', requiredShape=[3])
+   prm%angles  = config_homogenization(h)%getFloats('clusterorientation',requiredShape=[3],&
+                                                    defaultVal=[400.0_pReal,400.0_pReal,400.0_pReal])
+
+!--------------------------------------------------------------------------------------------------
+! * assigning cluster orientations
+   elementLooping: do e = 1_pInt,mesh_NcpElems
+     if (homogenization_typeInstance(mesh_element(3,e)) == instance) then
+       noOrientationGiven: if (all (prm%angles >= 399.9_pReal)) then
+         homogenization_RGC_orientation(1:3,1:3,1,e) = math_EulerToR(math_sampleRandomOri())
+         do i = 2_pInt,FE_Nips(FE_geomtype(mesh_element(2,e)))
+           homogenization_RGC_orientation(1:3,1:3,i,e) = merge(homogenization_RGC_orientation(1:3,1:3,1,e), &
+                                                               math_EulerToR(math_sampleRandomOri()), &
+                                                               microstructure_elemhomo(mesh_element(4,e)))
+         enddo
+       else noOrientationGiven
+         do i = 1_pInt,FE_Nips(FE_geomtype(mesh_element(2,e)))
+           homogenization_RGC_orientation(1:3,1:3,i,e) = math_EulerToR(prm%angles*inRad)
+         enddo
+       endif noOrientationGiven
+     endif
+   enddo elementLooping
+
    end associate
  enddo  
 
