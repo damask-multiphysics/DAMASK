@@ -370,9 +370,9 @@ subroutine plastic_phenopowerlaw_init
        i = i + 1_pInt
        prm%Schmid_slip(1:3,1:3,i) = lattice_Sslip(1:3,1:3,1,sum(lattice_Nslipsystem(1:f-1,p))+j,p)
        do k = 1,size(prm%nonSchmidCoeff)
-         prm%nonSchmid_pos(1:3,1:3,k+1,i) = lattice_Sslip(1:3,1:3,2*k,  index_myFamily+j,p) &
+         prm%nonSchmid_pos(1:3,1:3,k,i) = lattice_Sslip(1:3,1:3,2*k,  index_myFamily+j,p) &
                                         * prm%nonSchmidCoeff(k)
-         prm%nonSchmid_neg(1:3,1:3,k+1,i) = lattice_Sslip(1:3,1:3,2*k+1,index_myFamily+j,p) &
+         prm%nonSchmid_neg(1:3,1:3,k,i) = lattice_Sslip(1:3,1:3,2*k+1,index_myFamily+j,p) &
                                         * prm%nonSchmidCoeff(k)
        enddo
        otherSlipFamilies: do o = 1_pInt,size(prm%Nslip,1)
@@ -547,12 +547,10 @@ subroutine plastic_phenopowerlaw_LpAndItsTangent(Lp,dLp_dMstar99,Mstar_v,ipc,ip,
 
    tau_slip_pos  = math_mul33xx33(S,prm%Schmid_slip(1:3,1:3,j))
    tau_slip_neg  = tau_slip_pos
-   !do k = 1,size(prm%nonSchmidCoeff)
-   !  tau_slip_pos = tau_slip_pos &
-   !               + math_mul33xx33(Mstar,prm%nonSchmid_pos(1:3,1:3,k,j))
-   !  tau_slip_neg = tau_slip_neg &
-   !               + math_mul33xx33(Mstar,prm%nonSchmid_neg(1:3,1:3,k,j))
-   !enddo
+   do k = 1,size(prm%nonSchmidCoeff)
+     tau_slip_pos = tau_slip_pos + math_mul33xx33(S,prm%nonSchmid_pos(1:3,1:3,k,j))
+     tau_slip_neg = tau_slip_neg + math_mul33xx33(S,prm%nonSchmid_neg(1:3,1:3,k,j))
+   enddo
    gdot_slip_pos = 0.5_pReal*prm%gdot0_slip &
                  * sign(abs(tau_slip_pos/stt%s_slip(j,of))**prm%n_slip,  tau_slip_pos)
    gdot_slip_neg = 0.5_pReal*prm%gdot0_slip &
@@ -563,14 +561,14 @@ subroutine plastic_phenopowerlaw_LpAndItsTangent(Lp,dLp_dMstar99,Mstar_v,ipc,ip,
    if (dNeq0(tau_slip_pos)) then
      dgdot_dtauslip_pos = gdot_slip_pos*prm%n_slip/tau_slip_pos
      forall (k=1_pInt:3_pInt,l=1_pInt:3_pInt,m=1_pInt:3_pInt,n=1_pInt:3_pInt) &
-       dLp_dMstar(k,l,m,n) = dLp_dMstar(k,l,m,n) &
-                           + dgdot_dtauslip_pos*prm%Schmid_slip(k,l,j)*prm%Schmid_slip(m,n,j)!sum(prm%nonSchmid_pos(m,n,:,j),3)
+       dLp_dMstar(k,l,m,n) = dLp_dMstar(k,l,m,n) + dgdot_dtauslip_pos &
+                           * prm%Schmid_slip(k,l,j)*(prm%Schmid_slip(m,n,j) + sum(prm%nonSchmid_pos(m,n,:,j)))
    endif
    if (dNeq0(tau_slip_neg)) then
      dgdot_dtauslip_neg = gdot_slip_neg*prm%n_slip/tau_slip_neg
      forall (k=1_pInt:3_pInt,l=1_pInt:3_pInt,m=1_pInt:3_pInt,n=1_pInt:3_pInt) &
-       dLp_dMstar(k,l,m,n) = dLp_dMstar(k,l,m,n) &
-                           + dgdot_dtauslip_neg*prm%Schmid_slip(k,l,j)*prm%Schmid_slip(m,n,j)!sum(prm%nonSchmid_neg(m,n,:,j),3)
+       dLp_dMstar(k,l,m,n) = dLp_dMstar(k,l,m,n) + dgdot_dtauslip_neg &
+                           * prm%Schmid_slip(k,l,j)*(prm%Schmid_slip(m,n,j) + sum(prm%nonSchmid_neg(m,n,:,j)))
    endif
 
  enddo
@@ -662,10 +660,10 @@ subroutine plastic_phenopowerlaw_dotState(Mstar6,ipc,ip,el)
 
    tau_slip_pos  = math_mul33xx33(S,prm%Schmid_slip(1:3,1:3,j))
    tau_slip_neg  = tau_slip_pos
-   !nonSchmidSystems: do k = 1,size(prm%nonSchmidCoeff)
-   !  tau_slip_pos = tau_slip_pos + math_mul33xx33(Mstar,prm%nonSchmid_pos(1:3,1:3,k,j))
-   !  tau_slip_neg = tau_slip_neg + math_mul33xx33(Mstar,prm%nonSchmid_neg(1:3,1:3,k,j))
-   !enddo nonSchmidSystems
+   nonSchmidSystems: do k = 1,size(prm%nonSchmidCoeff)
+     tau_slip_pos = tau_slip_pos + math_mul33xx33(S,prm%nonSchmid_pos(1:3,1:3,k,j))
+     tau_slip_neg = tau_slip_neg + math_mul33xx33(S,prm%nonSchmid_neg(1:3,1:3,k,j))
+   enddo nonSchmidSystems
    gdot_slip(j) = prm%gdot0_slip*0.5_pReal* &                                                       !ToDo: save to dotState
                 (  sign(abs(tau_slip_pos/stt%s_slip(j,of))**prm%n_slip,  tau_slip_pos) &
                  + sign(abs(tau_slip_neg/stt%s_slip(j,of))**prm%n_slip,  tau_slip_neg))
@@ -703,7 +701,7 @@ end subroutine plastic_phenopowerlaw_dotState
 !--------------------------------------------------------------------------------------------------
 !> @brief return array of constitutive results
 !--------------------------------------------------------------------------------------------------
-function plastic_phenopowerlaw_postResults(Mstar6,ipc,ip,el)
+function plastic_phenopowerlaw_postResults(Mstar6,ipc,ip,el) result(postResults)
  use material, only: &
    material_phase, &
    plasticState, &
@@ -730,7 +728,7 @@ function plastic_phenopowerlaw_postResults(Mstar6,ipc,ip,el)
  real(pReal), dimension(3,3) :: &
    S                                                                                                !< Second-Piola Kirchhoff stress
  real(pReal), dimension(plasticState(material_phase(ipc,ip,el))%sizePostResults) :: &
-   plastic_phenopowerlaw_postResults
+   postResults
 
  integer(pInt) :: &
    of, &
@@ -745,29 +743,29 @@ function plastic_phenopowerlaw_postResults(Mstar6,ipc,ip,el)
  associate( prm => param(phase_plasticityInstance(material_phase(ipc,ip,el))), &
             stt => state(phase_plasticityInstance(material_phase(ipc,ip,el))) )
 
- plastic_phenopowerlaw_postResults = 0.0_pReal
+ postResults = 0.0_pReal
  c = 0_pInt
  S = math_Mandel6to33(Mstar6)
 
  outputsLoop: do o = 1_pInt,size(prm%outputID)
    select case(prm%outputID(o))
      case (resistance_slip_ID)
-       plastic_phenopowerlaw_postResults(c+1_pInt:c+prm%totalNslip) = stt%s_slip(1:prm%totalNslip,of)
+       postResults(c+1_pInt:c+prm%totalNslip) = stt%s_slip(1:prm%totalNslip,of)
        c = c + prm%totalNslip
 
      case (accumulatedshear_slip_ID)
-       plastic_phenopowerlaw_postResults(c+1_pInt:c+prm%totalNslip) = stt%accshear_slip(1:prm%totalNslip,of)
+       postResults(c+1_pInt:c+prm%totalNslip) = stt%accshear_slip(1:prm%totalNslip,of)
        c = c + prm%totalNslip
 
      case (shearrate_slip_ID)
        do j = 1_pInt, prm%totalNslip
          tau_slip_pos  = math_mul33xx33(S,prm%Schmid_slip(1:3,1:3,j))
          tau_slip_neg  = tau_slip_pos
-         !nonSchmidSystems: do k = 1,size(prm%nonSchmidCoeff)
-         !  tau_slip_pos = tau_slip_pos + math_mul33xx33(Mstar,prm%nonSchmid_pos(1:3,1:3,k,j))
-         !  tau_slip_neg = tau_slip_neg + math_mul33xx33(Mstar,prm%nonSchmid_neg(1:3,1:3,k,j))
-         !enddo nonSchmidSystems
-         plastic_phenopowerlaw_postResults(c+j) = prm%gdot0_slip*0.5_pReal* &
+         nonSchmidSystems: do k = 1,size(prm%nonSchmidCoeff)
+           tau_slip_pos = tau_slip_pos + math_mul33xx33(S,prm%nonSchmid_pos(1:3,1:3,k,j))
+           tau_slip_neg = tau_slip_neg + math_mul33xx33(S,prm%nonSchmid_neg(1:3,1:3,k,j))
+         enddo nonSchmidSystems
+         postResults(c+j) = prm%gdot0_slip*0.5_pReal* &
                       ( sign(abs(tau_slip_pos/stt%s_slip(j,of))**prm%n_slip,   tau_slip_pos) &
                        +sign(abs(tau_slip_neg/stt%s_slip(j,of))**prm%n_slip,   tau_slip_neg))
        enddo
@@ -775,41 +773,39 @@ function plastic_phenopowerlaw_postResults(Mstar6,ipc,ip,el)
 
      case (resolvedstress_slip_ID)
        do j = 1_pInt, prm%totalNslip
-         plastic_phenopowerlaw_postResults(c+j) = math_mul33xx33(S,prm%Schmid_slip(1:3,1:3,j))
+         postResults(c+j) = math_mul33xx33(S,prm%Schmid_slip(1:3,1:3,j))
        enddo
        c = c + prm%totalNslip
 
      case (totalshear_ID)
-       plastic_phenopowerlaw_postResults(c+1_pInt) = stt%sumGamma(of)
+       postResults(c+1_pInt) = stt%sumGamma(of)
        c = c + 1_pInt
 
      case (resistance_twin_ID)
-       plastic_phenopowerlaw_postResults(c+1_pInt:c+prm%totalNtwin) = &
-                             stt%s_twin(1:prm%totalNtwin,of)
+       postResults(c+1_pInt:c+prm%totalNtwin) = stt%s_twin(1:prm%totalNtwin,of)
        c = c + prm%totalNtwin
 
      case (accumulatedshear_twin_ID)
-       plastic_phenopowerlaw_postResults(c+1_pInt:c+prm%totalNtwin) = &
-                             stt%accshear_twin(1:prm%totalNtwin,of)
+       postResults(c+1_pInt:c+prm%totalNtwin) = stt%accshear_twin(1:prm%totalNtwin,of)
        c = c + prm%totalNtwin
 
      case (shearrate_twin_ID)
        do j = 1_pInt, prm%totalNtwin
          tau_twin  = math_mul33xx33(S,prm%Schmid_twin(1:3,1:3,j))
-         plastic_phenopowerlaw_postResults(c+j) = (1.0_pReal-stt%sumF(of))*&  ! 1-F
-                                                 prm%gdot0_twin*(abs(tau_twin)/stt%s_twin(j,of))**&
-                                           prm%n_twin*max(0.0_pReal,sign(1.0_pReal,tau_twin))
+         postResults(c+j) = merge((1.0_pReal-stt%sumF(of))*prm%gdot0_twin * &
+                                 (abs(tau_twin)/stt%s_twin(j,of))**prm%n_twin, &
+                                 0.0_pReal, tau_twin>0.0_pReal)
        enddo
        c = c + prm%totalNtwin
 
      case (resolvedstress_twin_ID)
        do j = 1_pInt, prm%totalNtwin
-         plastic_phenopowerlaw_postResults(c+j) = math_mul33xx33(S,prm%Schmid_twin(1:3,1:3,j))
+         postResults(c+j) = math_mul33xx33(S,prm%Schmid_twin(1:3,1:3,j))
        enddo
        c = c + prm%totalNtwin
 
      case (totalvolfrac_twin_ID)
-       plastic_phenopowerlaw_postResults(c+1_pInt) = stt%sumF(of)
+       postResults(c+1_pInt) = stt%sumF(of)
        c = c + 1_pInt
 
    end select
