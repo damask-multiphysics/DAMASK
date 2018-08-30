@@ -72,18 +72,18 @@ module homogenization_RGC
    homogenization_RGC_updateState, &
    homogenization_RGC_postResults
  private :: &
-   homogenization_RGC_stressPenalty, &
-   homogenization_RGC_volumePenalty, &
-   homogenization_RGC_grainDeformation, &
-   homogenization_RGC_surfaceCorrection, &
-   homogenization_RGC_equivalentModuli, &
-   homogenization_RGC_relaxationVector, &
-   homogenization_RGC_interfaceNormal, &
-   homogenization_RGC_getInterface, &
-   homogenization_RGC_grain1to3, &
-   homogenization_RGC_grain3to1, &
-   homogenization_RGC_interface4to1, &
-   homogenization_RGC_interface1to4
+   stressPenalty, &
+   volumePenalty, &
+   grainDeformation, &
+   surfaceCorrection, &
+   equivalentModuli, &
+   relaxationVector, &
+   interfaceNormal, &
+   getInterface, &
+   grain1to3, &
+   grain3to1, &
+   interface4to1, &
+   interface1to4
 
 contains
 
@@ -363,13 +363,13 @@ subroutine homogenization_RGC_partitionDeformation(F,avgF,ip,el)
  instance = homogenization_typeInstance(mesh_element(3,el))
  F = 0.0_pReal
  do iGrain = 1_pInt,homogenization_Ngrains(mesh_element(3,el))
-   iGrain3 = homogenization_RGC_grain1to3(iGrain,instance)
+   iGrain3 = grain1to3(iGrain,instance)
    do iFace = 1_pInt,nFace
-     intFace = homogenization_RGC_getInterface(iFace,iGrain3)                                       ! identifying 6 interfaces of each grain
+     intFace = getInterface(iFace,iGrain3)                                       ! identifying 6 interfaces of each grain
 
-     aVect = homogenization_RGC_relaxationVector(intFace,instance, ip, el)                          ! get the relaxation vectors for each interface from global relaxation vector array
+     aVect = relaxationVector(intFace,instance, ip, el)                          ! get the relaxation vectors for each interface from global relaxation vector array
 
-     nVect = homogenization_RGC_interfaceNormal(intFace,ip,el)                                      ! get the normal of each interface
+     nVect = interfaceNormal(intFace,ip,el)                                      ! get the normal of each interface
      forall (i=1_pInt:3_pInt,j=1_pInt:3_pInt) &
      F(i,j,iGrain) = F(i,j,iGrain) + aVect(i)*nVect(j)                                              ! calculating deformation relaxations due to interface relaxation
    enddo
@@ -492,11 +492,11 @@ function homogenization_RGC_updateState(P,F,F0,avgF,dt,dPdF,ip,el)
 
 !--------------------------------------------------------------------------------------------------
 ! computing interface mismatch and stress penalty tensor for all interfaces of all grains
- call homogenization_RGC_stressPenalty(R,NN,avgF,F,ip,el,instance)
+ call stressPenalty(R,NN,avgF,F,ip,el,instance)
 
 !--------------------------------------------------------------------------------------------------
 ! calculating volume discrepancy and stress penalty related to overall volume discrepancy 
- call homogenization_RGC_volumePenalty(D,volDiscrep,F,avgF,ip,el)
+ call volumePenalty(D,volDiscrep,F,avgF,ip,el)
 
 !--------------------------------------------------------------------------------------------------
 ! debugging the mismatch, stress and penalties of grains
@@ -519,22 +519,22 @@ function homogenization_RGC_updateState(P,F,F0,avgF,dt,dPdF,ip,el)
 !------------------------------------------------------------------------------------------------
 ! computing the residual stress from the balance of traction at all (interior) interfaces
  do iNum = 1_pInt,nIntFaceTot
-   faceID = homogenization_RGC_interface1to4(iNum,instance)                                         ! identifying the interface ID in local coordinate system (4-dimensional index)
+   faceID = interface1to4(iNum,instance)                                         ! identifying the interface ID in local coordinate system (4-dimensional index)
 
 !--------------------------------------------------------------------------------------------------
 ! identify the left/bottom/back grain (-|N)
    iGr3N = faceID(2:4)                                                                              ! identifying the grain ID in local coordinate system (3-dimensional index)
-   iGrN = homogenization_RGC_grain3to1(iGr3N,instance)                                              ! translate the local grain ID into global coordinate system (1-dimensional index)
-   intFaceN = homogenization_RGC_getInterface(2_pInt*faceID(1),iGr3N)
-   normN = homogenization_RGC_interfaceNormal(intFaceN,ip,el)                                       ! get the interface normal
+   iGrN = grain3to1(iGr3N,instance)                                              ! translate the local grain ID into global coordinate system (1-dimensional index)
+   intFaceN = getInterface(2_pInt*faceID(1),iGr3N)
+   normN = interfaceNormal(intFaceN,ip,el)                                       ! get the interface normal
    
 !--------------------------------------------------------------------------------------------------
 ! identify the right/up/front grain (+|P)
    iGr3P = iGr3N
    iGr3P(faceID(1)) = iGr3N(faceID(1))+1_pInt                                                       ! identifying the grain ID in local coordinate system (3-dimensional index)
-   iGrP = homogenization_RGC_grain3to1(iGr3P,instance)                                              ! translate the local grain ID into global coordinate system (1-dimensional index)
-   intFaceP = homogenization_RGC_getInterface(2_pInt*faceID(1)-1_pInt,iGr3P)
-   normP = homogenization_RGC_interfaceNormal(intFaceP,ip,el)                                       ! get the interface normal
+   iGrP = grain3to1(iGr3P,instance)                                              ! translate the local grain ID into global coordinate system (1-dimensional index)
+   intFaceP = getInterface(2_pInt*faceID(1)-1_pInt,iGr3P)
+   normP = interfaceNormal(intFaceP,ip,el)                                       ! get the interface normal
 
 !--------------------------------------------------------------------------------------------------
 ! compute the residual of traction at the interface (in local system, 4-dimensional index)
@@ -678,18 +678,18 @@ function homogenization_RGC_updateState(P,F,F0,avgF,dt,dPdF,ip,el)
 ! ... of the constitutive stress tangent, assembled from dPdF or material constitutive model "smatrix"
  allocate(smatrix(3*nIntFaceTot,3*nIntFaceTot), source=0.0_pReal)
  do iNum = 1_pInt,nIntFaceTot
-   faceID = homogenization_RGC_interface1to4(iNum,instance)                                         ! assembling of local dPdF into global Jacobian matrix
+   faceID = interface1to4(iNum,instance)                                         ! assembling of local dPdF into global Jacobian matrix
    
 !--------------------------------------------------------------------------------------------------
 ! identify the left/bottom/back grain (-|N)
    iGr3N = faceID(2:4)                                                                              ! identifying the grain ID in local coordinate sytem
-   iGrN = homogenization_RGC_grain3to1(iGr3N,instance)                                              ! translate into global grain ID
-   intFaceN = homogenization_RGC_getInterface(2_pInt*faceID(1),iGr3N)                               ! identifying the connecting interface in local coordinate system
-   normN = homogenization_RGC_interfaceNormal(intFaceN,ip,el)                                       ! get the interface normal
+   iGrN = grain3to1(iGr3N,instance)                                              ! translate into global grain ID
+   intFaceN = getInterface(2_pInt*faceID(1),iGr3N)                               ! identifying the connecting interface in local coordinate system
+   normN = interfaceNormal(intFaceN,ip,el)                                       ! get the interface normal
    do iFace = 1_pInt,nFace
-     intFaceN = homogenization_RGC_getInterface(iFace,iGr3N)                                        ! identifying all interfaces that influence relaxation of the above interface
-     mornN = homogenization_RGC_interfaceNormal(intFaceN,ip,el)                                     ! get normal of the interfaces
-     iMun = homogenization_RGC_interface4to1(intFaceN,instance)                                     ! translate the interfaces ID into local 4-dimensional index
+     intFaceN = getInterface(iFace,iGr3N)                                        ! identifying all interfaces that influence relaxation of the above interface
+     mornN = interfaceNormal(intFaceN,ip,el)                                     ! get normal of the interfaces
+     iMun = interface4to1(intFaceN,instance)                                     ! translate the interfaces ID into local 4-dimensional index
      if (iMun > 0) then                                                                             ! get the corresponding tangent
        do i=1_pInt,3_pInt; do j=1_pInt,3_pInt; do k=1_pInt,3_pInt; do l=1_pInt,3_pInt
          smatrix(3*(iNum-1)+i,3*(iMun-1)+j) = smatrix(3*(iNum-1)+i,3*(iMun-1)+j) + dPdF(i,k,j,l,iGrN)*normN(k)*mornN(l)
@@ -703,13 +703,13 @@ function homogenization_RGC_updateState(P,F,F0,avgF,dt,dPdF,ip,el)
 ! identify the right/up/front grain (+|P)
    iGr3P = iGr3N
    iGr3P(faceID(1)) = iGr3N(faceID(1))+1_pInt                                                       ! identifying the grain ID in local coordinate sytem
-   iGrP = homogenization_RGC_grain3to1(iGr3P,instance)                                              ! translate into global grain ID
-   intFaceP = homogenization_RGC_getInterface(2_pInt*faceID(1)-1_pInt,iGr3P)                        ! identifying the connecting interface in local coordinate system
-   normP = homogenization_RGC_interfaceNormal(intFaceP,ip,el)                                       ! get the interface normal
+   iGrP = grain3to1(iGr3P,instance)                                              ! translate into global grain ID
+   intFaceP = getInterface(2_pInt*faceID(1)-1_pInt,iGr3P)                        ! identifying the connecting interface in local coordinate system
+   normP = interfaceNormal(intFaceP,ip,el)                                       ! get the interface normal
    do iFace = 1_pInt,nFace
-     intFaceP = homogenization_RGC_getInterface(iFace,iGr3P)                                        ! identifying all interfaces that influence relaxation of the above interface
-     mornP = homogenization_RGC_interfaceNormal(intFaceP,ip,el)                                     ! get normal of the interfaces
-     iMun = homogenization_RGC_interface4to1(intFaceP,instance)                                     ! translate the interfaces ID into local 4-dimensional index
+     intFaceP = getInterface(iFace,iGr3P)                                        ! identifying all interfaces that influence relaxation of the above interface
+     mornP = interfaceNormal(intFaceP,ip,el)                                     ! get normal of the interfaces
+     iMun = interface4to1(intFaceP,instance)                                     ! translate the interfaces ID into local 4-dimensional index
      if (iMun > 0_pInt) then                                                                        ! get the corresponding tangent
        do i=1_pInt,3_pInt; do j=1_pInt,3_pInt; do k=1_pInt,3_pInt; do l=1_pInt,3_pInt
          smatrix(3*(iNum-1)+i,3*(iMun-1)+j) = smatrix(3*(iNum-1)+i,3*(iMun-1)+j) + dPdF(i,k,j,l,iGrP)*normP(k)*mornP(l)
@@ -741,30 +741,30 @@ function homogenization_RGC_updateState(P,F,F0,avgF,dt,dPdF,ip,el)
    p_relax = relax
    p_relax(ipert) = relax(ipert) + pPert_RGC                                                        ! perturb the relaxation vector
    homogState(mappingHomogenization(2,ip,el))%state(1:3*nIntFaceTot,mappingHomogenization(1,ip,el)) = p_relax
-   call homogenization_RGC_grainDeformation(pF,avgF,ip,el)                                          ! compute the grains deformation from perturbed state
-   call homogenization_RGC_stressPenalty(pR,pNN,avgF,pF,ip,el,instance)                             ! compute stress penalty due to interface mismatch from perturbed state
-   call homogenization_RGC_volumePenalty(pD,volDiscrep,pF,avgF,ip,el)                               ! compute stress penalty due to volume discrepancy from perturbed state
+   call grainDeformation(pF,avgF,ip,el)                                          ! compute the grains deformation from perturbed state
+   call stressPenalty(pR,pNN,avgF,pF,ip,el,instance)                             ! compute stress penalty due to interface mismatch from perturbed state
+   call volumePenalty(pD,volDiscrep,pF,avgF,ip,el)                               ! compute stress penalty due to volume discrepancy from perturbed state
 
 !--------------------------------------------------------------------------------------------------
 ! computing the global stress residual array from the perturbed state
    p_resid = 0.0_pReal
    do iNum = 1_pInt,nIntFaceTot
-     faceID = homogenization_RGC_interface1to4(iNum,instance)                                       ! identifying the interface ID in local coordinate system (4-dimensional index)
+     faceID = interface1to4(iNum,instance)                                       ! identifying the interface ID in local coordinate system (4-dimensional index)
 
 !--------------------------------------------------------------------------------------------------
 ! identify the left/bottom/back grain (-|N)
      iGr3N = faceID(2:4)                                                                            ! identifying the grain ID in local coordinate system (3-dimensional index)
-     iGrN = homogenization_RGC_grain3to1(iGr3N,instance)                                            ! translate the local grain ID into global coordinate system (1-dimensional index)
-     intFaceN = homogenization_RGC_getInterface(2_pInt*faceID(1),iGr3N)                             ! identifying the interface ID of the grain
-     normN = homogenization_RGC_interfaceNormal(intFaceN,ip,el)                                     ! get the corresponding interface normal
+     iGrN = grain3to1(iGr3N,instance)                                            ! translate the local grain ID into global coordinate system (1-dimensional index)
+     intFaceN = getInterface(2_pInt*faceID(1),iGr3N)                             ! identifying the interface ID of the grain
+     normN = interfaceNormal(intFaceN,ip,el)                                     ! get the corresponding interface normal
  
 !--------------------------------------------------------------------------------------------------
 ! identify the right/up/front grain (+|P)
      iGr3P = iGr3N
      iGr3P(faceID(1)) = iGr3N(faceID(1))+1_pInt                                                     ! identifying the grain ID in local coordinate system (3-dimensional index)
-     iGrP = homogenization_RGC_grain3to1(iGr3P,instance)                                            ! translate the local grain ID into global coordinate system (1-dimensional index)
-     intFaceP = homogenization_RGC_getInterface(2_pInt*faceID(1)-1_pInt,iGr3P)                      ! identifying the interface ID of the grain
-     normP = homogenization_RGC_interfaceNormal(intFaceP,ip,el)                                     ! get the corresponding normal
+     iGrP = grain3to1(iGr3P,instance)                                            ! translate the local grain ID into global coordinate system (1-dimensional index)
+     intFaceP = getInterface(2_pInt*faceID(1)-1_pInt,iGr3P)                      ! identifying the interface ID of the grain
+     normP = interfaceNormal(intFaceP,ip,el)                                     ! get the corresponding normal
  
 !--------------------------------------------------------------------------------------------------
 ! compute the residual stress (contribution of mismatch and volume penalties) from perturbed state 
@@ -939,7 +939,7 @@ end subroutine homogenization_RGC_averageStressAndItsTangent
 !--------------------------------------------------------------------------------------------------
 !> @brief return array of homogenization results for post file inclusion 
 !--------------------------------------------------------------------------------------------------
-pure function homogenization_RGC_postResults(ip,el,avgP,avgF)
+pure function homogenization_RGC_postResults(ip,el,avgP,avgF) result(postResults)
  use mesh, only: &
    mesh_element, &
    mesh_ipCoordinates
@@ -960,7 +960,7 @@ pure function homogenization_RGC_postResults(ip,el,avgP,avgF)
  integer(pInt) instance,o,c,nIntFaceTot
  type(tParameters) :: prm
  real(pReal), dimension(homogenization_RGC_sizePostResults(homogenization_typeInstance(mesh_element(3,el)))) :: &
-   homogenization_RGC_postResults
+   postResults
 
  instance = homogenization_typeInstance(mesh_element(3,el))
  associate(prm => param(instance))
@@ -969,44 +969,35 @@ pure function homogenization_RGC_postResults(ip,el,avgP,avgF)
             + prm%Nconstituents(1)*        prm%Nconstituents(2)*       (prm%Nconstituents(3)-1_pInt)
 
  c = 0_pInt
- homogenization_RGC_postResults = 0.0_pReal
+ postResults = 0.0_pReal
  do o = 1_pInt,homogenization_Noutput(mesh_element(3,el))
    select case(homogenization_RGC_outputID(o,instance))
-     case (avgdefgrad_ID)
-       homogenization_RGC_postResults(c+1_pInt:c+9_pInt) = reshape(avgF,[9])
-       c = c + 9_pInt
-     case (avgfirstpiola_ID)
-       homogenization_RGC_postResults(c+1_pInt:c+9_pInt) = reshape(avgP,[9])
-       c = c + 9_pInt
-     case (ipcoords_ID)
-       homogenization_RGC_postResults(c+1_pInt:c+3_pInt) = mesh_ipCoordinates(1:3,ip,el)             ! current ip coordinates
-       c = c + 3_pInt
      case (constitutivework_ID)
-       homogenization_RGC_postResults(c+1) = homogState(mappingHomogenization(2,ip,el))% &
+       postResults(c+1) = homogState(mappingHomogenization(2,ip,el))% &
                                                               state(3*nIntFaceTot+1,mappingHomogenization(1,ip,el))
        c = c + 1_pInt
      case (magnitudemismatch_ID)
-       homogenization_RGC_postResults(c+1) = homogState(mappingHomogenization(2,ip,el))% &
+       postResults(c+1) = homogState(mappingHomogenization(2,ip,el))% &
                                            state(3*nIntFaceTot+2,mappingHomogenization(1,ip,el))
-       homogenization_RGC_postResults(c+2) = homogState(mappingHomogenization(2,ip,el))% &
+       postResults(c+2) = homogState(mappingHomogenization(2,ip,el))% &
                                            state(3*nIntFaceTot+3,mappingHomogenization(1,ip,el))
-       homogenization_RGC_postResults(c+3) = homogState(mappingHomogenization(2,ip,el))% &
+       postResults(c+3) = homogState(mappingHomogenization(2,ip,el))% &
                                            state(3*nIntFaceTot+4,mappingHomogenization(1,ip,el))
        c = c + 3_pInt
      case (penaltyenergy_ID)
-       homogenization_RGC_postResults(c+1) = homogState(mappingHomogenization(2,ip,el))% &
+       postResults(c+1) = homogState(mappingHomogenization(2,ip,el))% &
                                            state(3*nIntFaceTot+5,mappingHomogenization(1,ip,el))
        c = c + 1_pInt
      case (volumediscrepancy_ID)
-       homogenization_RGC_postResults(c+1) = homogState(mappingHomogenization(2,ip,el))% &
+       postResults(c+1) = homogState(mappingHomogenization(2,ip,el))% &
                                            state(3*nIntFaceTot+6,mappingHomogenization(1,ip,el))
        c = c + 1_pInt
      case (averagerelaxrate_ID)
-       homogenization_RGC_postResults(c+1) = homogState(mappingHomogenization(2,ip,el))% &
+       postResults(c+1) = homogState(mappingHomogenization(2,ip,el))% &
                                            state(3*nIntFaceTot+7,mappingHomogenization(1,ip,el))
        c = c + 1_pInt
      case (maximumrelaxrate_ID)
-       homogenization_RGC_postResults(c+1) = homogState(mappingHomogenization(2,ip,el))% &
+       postResults(c+1) = homogState(mappingHomogenization(2,ip,el))% &
                                            state(3*nIntFaceTot+8,mappingHomogenization(1,ip,el))
        c = c + 1_pInt
    end select
@@ -1018,7 +1009,7 @@ end function homogenization_RGC_postResults
 !--------------------------------------------------------------------------------------------------
 !> @brief calculate stress-like penalty due to deformation mismatch
 !--------------------------------------------------------------------------------------------------
-subroutine homogenization_RGC_stressPenalty(rPen,nMis,avgF,fDef,ip,el,instance)
+subroutine stressPenalty(rPen,nMis,avgF,fDef,ip,el,instance)
  use debug, only: &
    debug_level, &
    debug_homogenization,&
@@ -1061,7 +1052,7 @@ subroutine homogenization_RGC_stressPenalty(rPen,nMis,avgF,fDef,ip,el,instance)
 !--------------------------------------------------------------------------------------------------
 ! get the correction factor the modulus of penalty stress representing the evolution of area of 
 ! the interfaces due to deformations
- surfCorr = homogenization_RGC_surfaceCorrection(avgF,ip,el)
+ surfCorr = surfaceCorrection(avgF,ip,el)
 
 !--------------------------------------------------------------------------------------------------
 ! debugging the surface correction factor
@@ -1076,15 +1067,15 @@ subroutine homogenization_RGC_stressPenalty(rPen,nMis,avgF,fDef,ip,el,instance)
 !--------------------------------------------------------------------------------------------------
 ! computing the mismatch and penalty stress tensor of all grains 
  do iGrain = 1_pInt,homogenization_Ngrains(mesh_element(3,el))
-   Gmoduli = homogenization_RGC_equivalentModuli(iGrain,ip,el)
+   Gmoduli = equivalentModuli(iGrain,ip,el)
    muGrain = Gmoduli(1)                                                                              ! collecting the equivalent shear modulus of grain
    bgGrain = Gmoduli(2)                                                                              ! and the lengthh of Burgers vector
-   iGrain3 = homogenization_RGC_grain1to3(iGrain,instance)                                              ! get the grain ID in local 3-dimensional index (x,y,z)-position
+   iGrain3 = grain1to3(iGrain,instance)                                              ! get the grain ID in local 3-dimensional index (x,y,z)-position
 
 !* Looping over all six interfaces of each grain
    do iFace = 1_pInt,nFace
-     intFace = homogenization_RGC_getInterface(iFace,iGrain3)                                        ! get the 4-dimensional index of the interface in local numbering system of the grain
-     nVect = homogenization_RGC_interfaceNormal(intFace,ip,el)                                       ! get the interface normal
+     intFace = getInterface(iFace,iGrain3)                                        ! get the 4-dimensional index of the interface in local numbering system of the grain
+     nVect = interfaceNormal(intFace,ip,el)                                       ! get the interface normal
      iGNghb3 = iGrain3                                                                               ! identify the neighboring grain across the interface
      iGNghb3(abs(intFace(1))) = iGNghb3(abs(intFace(1))) + int(real(intFace(1),pReal)/real(abs(intFace(1)),pReal),pInt)
      if (iGNghb3(1) < 1)        iGNghb3(1) = nGDim(1)                                               ! with periodicity along e1 direction
@@ -1093,8 +1084,8 @@ subroutine homogenization_RGC_stressPenalty(rPen,nMis,avgF,fDef,ip,el,instance)
      if (iGNghb3(2) > nGDim(2)) iGNghb3(2) = 1_pInt
      if (iGNghb3(3) < 1)        iGNghb3(3) = nGDim(3)                                               ! with periodicity along e3 direction
      if (iGNghb3(3) > nGDim(3)) iGNghb3(3) = 1_pInt
-     iGNghb  = homogenization_RGC_grain3to1(iGNghb3,instance)                                          ! get the ID of the neighboring grain
-     Gmoduli = homogenization_RGC_equivalentModuli(iGNghb,ip,el)                                    ! collecting the shear modulus and Burgers vector of the neighbor
+     iGNghb  = grain3to1(iGNghb3,instance)                                          ! get the ID of the neighboring grain
+     Gmoduli = equivalentModuli(iGNghb,ip,el)                                    ! collecting the shear modulus and Burgers vector of the neighbor
      muGNghb = Gmoduli(1)
      bgGNghb = Gmoduli(2)
      gDef = 0.5_pReal*(fDef(1:3,1:3,iGNghb) - fDef(1:3,1:3,iGrain))                                 ! compute the difference/jump in deformation gradeint across the neighbor
@@ -1152,13 +1143,13 @@ subroutine homogenization_RGC_stressPenalty(rPen,nMis,avgF,fDef,ip,el,instance)
 
  enddo
 
-end subroutine homogenization_RGC_stressPenalty
+end subroutine stressPenalty
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief calculate stress-like penalty due to volume discrepancy 
 !--------------------------------------------------------------------------------------------------
-subroutine homogenization_RGC_volumePenalty(vPen,vDiscrep,fDef,fAvg,ip,el) 
+subroutine volumePenalty(vPen,vDiscrep,fDef,fAvg,ip,el) 
  use debug, only: &
    debug_level, &
    debug_homogenization,&
@@ -1220,20 +1211,20 @@ subroutine homogenization_RGC_volumePenalty(vPen,vDiscrep,fDef,fAvg,ip,el)
    endif
  enddo
 
-end subroutine homogenization_RGC_volumePenalty
+end subroutine volumePenalty
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief compute the correction factor accouted for surface evolution (area change) due to 
 ! deformation
 !--------------------------------------------------------------------------------------------------
-function homogenization_RGC_surfaceCorrection(avgF,ip,el)
+function surfaceCorrection(avgF,ip,el)
  use math, only: &
    math_invert33, &
    math_mul33x33
  
  implicit none
- real(pReal), dimension(3)               :: homogenization_RGC_surfaceCorrection
+ real(pReal), dimension(3)               :: surfaceCorrection
  real(pReal), dimension(3,3), intent(in) :: avgF                                                    !< average F
  integer(pInt),               intent(in) :: ip,&                                                    !< integration point number
    el                                                                                               !< element number
@@ -1246,25 +1237,25 @@ function homogenization_RGC_surfaceCorrection(avgF,ip,el)
 
  avgC = math_mul33x33(transpose(avgF),avgF)
  call math_invert33(avgC,invC,detF,error)
- homogenization_RGC_surfaceCorrection = 0.0_pReal
+ surfaceCorrection = 0.0_pReal
  do iBase = 1_pInt,3_pInt
    intFace = [iBase,1_pInt,1_pInt,1_pInt]
-   nVect = homogenization_RGC_interfaceNormal(intFace,ip,el)                                        ! get the normal of the interface
+   nVect = interfaceNormal(intFace,ip,el)                                        ! get the normal of the interface
    do i = 1_pInt,3_pInt; do j = 1_pInt,3_pInt
-     homogenization_RGC_surfaceCorrection(iBase) = &                                                ! compute the component of (the inverse of) the stretch in the direction of the normal
-       homogenization_RGC_surfaceCorrection(iBase) + invC(i,j)*nVect(i)*nVect(j)
+     surfaceCorrection(iBase) = &                                                ! compute the component of (the inverse of) the stretch in the direction of the normal
+       surfaceCorrection(iBase) + invC(i,j)*nVect(i)*nVect(j)
    enddo; enddo
-   homogenization_RGC_surfaceCorrection(iBase) = &                                                  ! get the surface correction factor (area contraction/enlargement)
-     sqrt(homogenization_RGC_surfaceCorrection(iBase))*detF
+   surfaceCorrection(iBase) = &                                                  ! get the surface correction factor (area contraction/enlargement)
+     sqrt(surfaceCorrection(iBase))*detF
  enddo
 
-end function homogenization_RGC_surfaceCorrection
+end function surfaceCorrection
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief compute the equivalent shear and bulk moduli from the elasticity tensor
 !--------------------------------------------------------------------------------------------------
-function homogenization_RGC_equivalentModuli(grainID,ip,el)
+function equivalentModuli(grainID,ip,el)
  use constitutive, only: &
    constitutive_homogenizedC
 
@@ -1274,7 +1265,7 @@ function homogenization_RGC_equivalentModuli(grainID,ip,el)
    ip, &                                                                                            !< integration point number
    el                                                                                               !< element number
  real(pReal), dimension (6,6) :: elasTens
- real(pReal), dimension(2)    :: homogenization_RGC_equivalentModuli
+ real(pReal), dimension(2)    :: equivalentModuli
  real(pReal) :: &
    cEquiv_11, &
    cEquiv_12, &
@@ -1288,26 +1279,26 @@ function homogenization_RGC_equivalentModuli(grainID,ip,el)
  cEquiv_12 = (elasTens(1,2) + elasTens(2,3) + elasTens(3,1) + &
               elasTens(1,3) + elasTens(2,1) + elasTens(3,2))/6.0_pReal
  cEquiv_44 = (elasTens(4,4) + elasTens(5,5) + elasTens(6,6))/3.0_pReal
- homogenization_RGC_equivalentModuli(1) = 0.2_pReal*(cEquiv_11 - cEquiv_12) + 0.6_pReal*cEquiv_44
+ equivalentModuli(1) = 0.2_pReal*(cEquiv_11 - cEquiv_12) + 0.6_pReal*cEquiv_44
 
 !--------------------------------------------------------------------------------------------------
 ! obtain the length of Burgers vector (could be model dependend)
- homogenization_RGC_equivalentModuli(2) = 2.5e-10_pReal
+ equivalentModuli(2) = 2.5e-10_pReal
 
-end function homogenization_RGC_equivalentModuli
+end function equivalentModuli
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief collect relaxation vectors of an interface
 !--------------------------------------------------------------------------------------------------
-function homogenization_RGC_relaxationVector(intFace,instance, ip, el)
+function relaxationVector(intFace,instance, ip, el)
   use material, only: &
    homogState, &
    mappingHomogenization
 
  implicit none
  integer(pInt),                intent(in) :: ip, el 
- real(pReal),   dimension (3)             :: homogenization_RGC_relaxationVector
+ real(pReal),   dimension (3)             :: relaxationVector
  integer(pInt), dimension (4), intent(in) :: intFace                                                !< set of interface ID in 4D array (normal and position)
  integer(pInt), dimension (3) ::             nGDim
  integer(pInt) :: &
@@ -1316,19 +1307,19 @@ function homogenization_RGC_relaxationVector(intFace,instance, ip, el)
 
 !--------------------------------------------------------------------------------------------------
 ! collect the interface relaxation vector from the global state array
- homogenization_RGC_relaxationVector = 0.0_pReal
+ relaxationVector = 0.0_pReal
  nGDim = homogenization_RGC_Ngrains(1:3,instance)
- iNum = homogenization_RGC_interface4to1(intFace,instance)                                             ! identify the position of the interface in global state array
- if (iNum > 0_pInt) homogenization_RGC_relaxationVector = homogState(mappingHomogenization(2,ip,el))% &
+ iNum = interface4to1(intFace,instance)                                             ! identify the position of the interface in global state array
+ if (iNum > 0_pInt) relaxationVector = homogState(mappingHomogenization(2,ip,el))% &
                                                             state((3*iNum-2):(3*iNum),mappingHomogenization(1,ip,el))             ! get the corresponding entries
 
-end function homogenization_RGC_relaxationVector
+end function relaxationVector
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief identify the normal of an interface 
 !--------------------------------------------------------------------------------------------------
-function homogenization_RGC_interfaceNormal(intFace,ip,el)
+function interfaceNormal(intFace,ip,el)
  use debug, only: &
    debug_homogenization,&
    debug_levelExtensive
@@ -1336,7 +1327,7 @@ function homogenization_RGC_interfaceNormal(intFace,ip,el)
    math_mul33x3
  
  implicit none
- real(pReal),   dimension (3)  ::            homogenization_RGC_interfaceNormal
+ real(pReal),   dimension (3)  ::            interfaceNormal
  integer(pInt), dimension (4), intent(in) :: intFace                                                !< interface ID in 4D array (normal and position)
  integer(pInt),                intent(in) :: &
    ip, &                                                                                            !< integration point number
@@ -1345,81 +1336,81 @@ function homogenization_RGC_interfaceNormal(intFace,ip,el)
 
 !--------------------------------------------------------------------------------------------------
 ! get the normal of the interface, identified from the value of intFace(1)
- homogenization_RGC_interfaceNormal = 0.0_pReal
+ interfaceNormal = 0.0_pReal
  nPos = abs(intFace(1))                                                                             ! identify the position of the interface in global state array
- homogenization_RGC_interfaceNormal(nPos) = real(intFace(1)/abs(intFace(1)),pReal)                  ! get the normal vector w.r.t. cluster axis
+ interfaceNormal(nPos) = real(intFace(1)/abs(intFace(1)),pReal)                  ! get the normal vector w.r.t. cluster axis
 
- homogenization_RGC_interfaceNormal = &
-   math_mul33x3(homogenization_RGC_orientation(1:3,1:3,ip,el),homogenization_RGC_interfaceNormal)
+ interfaceNormal = &
+   math_mul33x3(homogenization_RGC_orientation(1:3,1:3,ip,el),interfaceNormal)
                                                                                                     ! map the normal vector into sample coordinate system (basis)
 
-end function homogenization_RGC_interfaceNormal
+end function interfaceNormal
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief collect six faces of a grain in 4D (normal and position)
 !--------------------------------------------------------------------------------------------------
-function homogenization_RGC_getInterface(iFace,iGrain3)
+function getInterface(iFace,iGrain3)
 
  implicit none
- integer(pInt), dimension (4) ::             homogenization_RGC_getInterface
+ integer(pInt), dimension (4) ::             getInterface
  integer(pInt), dimension (3), intent(in) :: iGrain3                                                !< grain ID in 3D array
  integer(pInt),                intent(in) :: iFace                                                  !< face index (1..6) mapped like (-e1,-e2,-e3,+e1,+e2,+e3) or iDir = (-1,-2,-3,1,2,3)
  integer(pInt) ::                            iDir
  
 !* Direction of interface normal
  iDir = (int(real(iFace-1_pInt,pReal)/2.0_pReal,pInt)+1_pInt)*(-1_pInt)**iFace
- homogenization_RGC_getInterface(1) = iDir
+ getInterface(1) = iDir
  
 !--------------------------------------------------------------------------------------------------
 ! identify the interface position by the direction of its normal
- homogenization_RGC_getInterface(2:4) = iGrain3
+ getInterface(2:4) = iGrain3
  if (iDir < 0_pInt) &                                                                               ! to have a correlation with coordinate/position in real space
-   homogenization_RGC_getInterface(1_pInt-iDir) = homogenization_RGC_getInterface(1_pInt-iDir)-1_pInt
+   getInterface(1_pInt-iDir) = getInterface(1_pInt-iDir)-1_pInt
 
-end function homogenization_RGC_getInterface
+end function getInterface
 
 !--------------------------------------------------------------------------------------------------
 !> @brief map grain ID from in 1D (global array) to in 3D (local position)
 !--------------------------------------------------------------------------------------------------
-function homogenization_RGC_grain1to3(grain1,instance)
+function grain1to3(grain1,instance)
  
  implicit none
- integer(pInt), dimension (3) ::            homogenization_RGC_grain1to3
+ integer(pInt), dimension (3) ::            grain1to3
  integer(pInt),               intent(in) :: &
    grain1,&                                                                                         !< grain ID in 1D array
    instance
  integer(pInt), dimension (3) ::            nGDim
 
  nGDim = param(instance)%Nconstituents
- homogenization_RGC_grain1to3(3) = 1_pInt+(grain1-1_pInt)/(nGDim(1)*nGDim(2))
- homogenization_RGC_grain1to3(2) = 1_pInt+mod((grain1-1_pInt)/nGDim(1),nGDim(2))
- homogenization_RGC_grain1to3(1) = 1_pInt+mod((grain1-1_pInt),nGDim(1))
+ grain1to3(3) = 1_pInt+(grain1-1_pInt)/(nGDim(1)*nGDim(2))
+ grain1to3(2) = 1_pInt+mod((grain1-1_pInt)/nGDim(1),nGDim(2))
+ grain1to3(1) = 1_pInt+mod((grain1-1_pInt),nGDim(1))
 
-end function homogenization_RGC_grain1to3
+end function grain1to3
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief map grain ID from in 3D (local position) to in 1D (global array)
 !--------------------------------------------------------------------------------------------------
-pure function homogenization_RGC_grain3to1(grain3,instance)
+pure function grain3to1(grain3,instance)
 
  implicit none
  integer(pInt), dimension (3), intent(in) :: grain3                                                 !< grain ID in 3D array (pos.x,pos.y,pos.z)
  integer(pInt), intent(in) :: instance                                                              ! homogenization ID
- integer(pInt)                :: homogenization_RGC_grain3to1                                      
+ integer(pInt)                :: grain3to1                                      
  integer(pInt), dimension (3) :: nGDim
 
  nGDim = param(instance)%Nconstituents
- homogenization_RGC_grain3to1 = grain3(1) + nGDim(1)*(grain3(2)-1_pInt) + nGDim(1)*nGDim(2)*(grain3(3)-1_pInt)
+ grain3to1 = grain3(1) + nGDim(1)*(grain3(2)-1_pInt) + nGDim(1)*nGDim(2)*(grain3(3)-1_pInt)
 
-end function homogenization_RGC_grain3to1
+end function grain3to1
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief maps interface ID from 4D (normal and local position) into 1D (global array)
 !--------------------------------------------------------------------------------------------------
-integer(pInt) pure function homogenization_RGC_interface4to1(iFace4D, instance)
+integer(pInt) pure function interface4to1(iFace4D, instance)
  
  implicit none
  integer(pInt), dimension (4), intent(in) :: iFace4D                                                !< interface ID in 4D array (n.dir,pos.x,pos.y,pos.z)
@@ -1434,34 +1425,34 @@ integer(pInt) pure function homogenization_RGC_interface4to1(iFace4D, instance)
  nIntFace(2) = nGDim(1)*(nGDim(2)-1_pInt)*nGDim(3)                                                 ! ... normal //e2
  nIntFace(3) = nGDim(1)*nGDim(2)*(nGDim(3)-1_pInt)                                                 ! ... normal //e3
 
- homogenization_RGC_interface4to1 = -1_pInt
+ interface4to1 = -1_pInt
  
 !--------------------------------------------------------------------------------------------------
 ! get the corresponding interface ID in 1D global array
  if (abs(iFace4D(1)) == 1_pInt) then                                                                ! interface with normal //e1
-   homogenization_RGC_interface4to1 = iFace4D(3) + nGDim(2)*(iFace4D(4)-1_pInt) &
+   interface4to1 = iFace4D(3) + nGDim(2)*(iFace4D(4)-1_pInt) &
                                       + nGDim(2)*nGDim(3)*(iFace4D(2)-1_pInt)
-   if ((iFace4D(2) == 0_pInt) .or. (iFace4D(2) == nGDim(1))) homogenization_RGC_interface4to1 = 0_pInt
+   if ((iFace4D(2) == 0_pInt) .or. (iFace4D(2) == nGDim(1))) interface4to1 = 0_pInt
  elseif (abs(iFace4D(1)) == 2_pInt) then                                                            ! interface with normal //e2
-   homogenization_RGC_interface4to1 = iFace4D(4) + nGDim(3)*(iFace4D(2)-1_pInt) &
+   interface4to1 = iFace4D(4) + nGDim(3)*(iFace4D(2)-1_pInt) &
                                       + nGDim(3)*nGDim(1)*(iFace4D(3)-1_pInt) + nIntFace(1)
-   if ((iFace4D(3) == 0_pInt) .or. (iFace4D(3) == nGDim(2))) homogenization_RGC_interface4to1 = 0_pInt
+   if ((iFace4D(3) == 0_pInt) .or. (iFace4D(3) == nGDim(2))) interface4to1 = 0_pInt
  elseif (abs(iFace4D(1)) == 3_pInt) then                                                            ! interface with normal //e3
-   homogenization_RGC_interface4to1 = iFace4D(2) + nGDim(1)*(iFace4D(3)-1_pInt) &
+   interface4to1 = iFace4D(2) + nGDim(1)*(iFace4D(3)-1_pInt) &
                                       + nGDim(1)*nGDim(2)*(iFace4D(4)-1_pInt) + nIntFace(1) + nIntFace(2)
-   if ((iFace4D(4) == 0_pInt) .or. (iFace4D(4) == nGDim(3))) homogenization_RGC_interface4to1 = 0_pInt
+   if ((iFace4D(4) == 0_pInt) .or. (iFace4D(4) == nGDim(3))) interface4to1 = 0_pInt
  endif
 
-end function homogenization_RGC_interface4to1
+end function interface4to1
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief maps interface ID from 1D (global array) into 4D (normal and local position)
 !--------------------------------------------------------------------------------------------------
-pure function homogenization_RGC_interface1to4(iFace1D, instance)
+pure function interface1to4(iFace1D, instance)
  
  implicit none
- integer(pInt), dimension (4) :: homogenization_RGC_interface1to4
+ integer(pInt), dimension (4) :: interface1to4
  integer(pInt), intent(in)    :: iFace1D                                                            !< interface ID in 1D array
  integer(pInt), dimension (3) :: nGDim,nIntFace
  integer(pInt), intent(in) :: instance
@@ -1477,57 +1468,57 @@ pure function homogenization_RGC_interface1to4(iFace1D, instance)
 !--------------------------------------------------------------------------------------------------
 ! get the corresponding interface ID in 4D (normal and local position)
  if (iFace1D > 0 .and. iFace1D <= nIntFace(1)) then                                                 ! interface with normal //e1
-   homogenization_RGC_interface1to4(1) = 1_pInt
-   homogenization_RGC_interface1to4(3) = mod((iFace1D-1_pInt),nGDim(2))+1_pInt
-   homogenization_RGC_interface1to4(4) = mod(&
+   interface1to4(1) = 1_pInt
+   interface1to4(3) = mod((iFace1D-1_pInt),nGDim(2))+1_pInt
+   interface1to4(4) = mod(&
                                              int(&
                                                  real(iFace1D-1_pInt,pReal)/&
                                                  real(nGDim(2),pReal)&
                                                  ,pInt)&
                                              ,nGDim(3))+1_pInt
-   homogenization_RGC_interface1to4(2) = int(&
+   interface1to4(2) = int(&
                                              real(iFace1D-1_pInt,pReal)/&
                                              real(nGDim(2),pReal)/&
                                              real(nGDim(3),pReal)&
                                              ,pInt)+1_pInt
  elseif (iFace1D > nIntFace(1) .and. iFace1D <= (nIntFace(2) + nIntFace(1))) then                   ! interface with normal //e2
-   homogenization_RGC_interface1to4(1) = 2_pInt
-   homogenization_RGC_interface1to4(4) = mod((iFace1D-nIntFace(1)-1_pInt),nGDim(3))+1_pInt
-   homogenization_RGC_interface1to4(2) = mod(&
+   interface1to4(1) = 2_pInt
+   interface1to4(4) = mod((iFace1D-nIntFace(1)-1_pInt),nGDim(3))+1_pInt
+   interface1to4(2) = mod(&
                                              int(&
                                                  real(iFace1D-nIntFace(1)-1_pInt,pReal)/&
                                                  real(nGDim(3),pReal)&
                                                  ,pInt)&
                                               ,nGDim(1))+1_pInt
-   homogenization_RGC_interface1to4(3) = int(&
+   interface1to4(3) = int(&
                                              real(iFace1D-nIntFace(1)-1_pInt,pReal)/&
                                              real(nGDim(3),pReal)/&
                                              real(nGDim(1),pReal)&
                                              ,pInt)+1_pInt
  elseif (iFace1D > nIntFace(2) + nIntFace(1) .and. iFace1D <= (nIntFace(3) + nIntFace(2) + nIntFace(1))) then ! interface with normal //e3
-   homogenization_RGC_interface1to4(1) = 3_pInt
-   homogenization_RGC_interface1to4(2) = mod((iFace1D-nIntFace(2)-nIntFace(1)-1_pInt),nGDim(1))+1_pInt
-   homogenization_RGC_interface1to4(3) = mod(&
+   interface1to4(1) = 3_pInt
+   interface1to4(2) = mod((iFace1D-nIntFace(2)-nIntFace(1)-1_pInt),nGDim(1))+1_pInt
+   interface1to4(3) = mod(&
                                              int(&
                                                  real(iFace1D-nIntFace(2)-nIntFace(1)-1_pInt,pReal)/&
                                                  real(nGDim(1),pReal)&
                                                  ,pInt)&
                                              ,nGDim(2))+1_pInt
-   homogenization_RGC_interface1to4(4) = int(&
+   interface1to4(4) = int(&
                                              real(iFace1D-nIntFace(2)-nIntFace(1)-1_pInt,pReal)/&
                                              real(nGDim(1),pReal)/&
                                              real(nGDim(2),pReal)&
                                              ,pInt)+1_pInt
  endif
 
-end function homogenization_RGC_interface1to4
+end function interface1to4
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief calculating the grain deformation gradient (the same with 
 ! homogenization_RGC_partionDeformation, but used only for perturbation scheme)
 !--------------------------------------------------------------------------------------------------
-subroutine homogenization_RGC_grainDeformation(F, avgF, ip, el)
+subroutine grainDeformation(F, avgF, ip, el)
  use mesh, only: &
    mesh_element
  use material, only: &
@@ -1552,17 +1543,17 @@ subroutine homogenization_RGC_grainDeformation(F, avgF, ip, el)
  instance = homogenization_typeInstance(mesh_element(3,el))
  F = 0.0_pReal
  do iGrain = 1_pInt,homogenization_Ngrains(mesh_element(3,el))
-   iGrain3 = homogenization_RGC_grain1to3(iGrain,instance)
+   iGrain3 = grain1to3(iGrain,instance)
    do iFace = 1_pInt,nFace
-     intFace = homogenization_RGC_getInterface(iFace,iGrain3)
-     aVect = homogenization_RGC_relaxationVector(intFace,instance, ip, el)
-     nVect = homogenization_RGC_interfaceNormal(intFace,ip,el)
+     intFace = getInterface(iFace,iGrain3)
+     aVect = relaxationVector(intFace,instance, ip, el)
+     nVect = interfaceNormal(intFace,ip,el)
      forall (i=1_pInt:3_pInt,j=1_pInt:3_pInt) &
      F(i,j,iGrain) = F(i,j,iGrain) + aVect(i)*nVect(j)                                              ! effective relaxations
    enddo
    F(1:3,1:3,iGrain) = F(1:3,1:3,iGrain) + avgF                                                     ! relaxed deformation gradient
  enddo
 
-end subroutine homogenization_RGC_grainDeformation
+end subroutine grainDeformation
 
 end module homogenization_RGC
