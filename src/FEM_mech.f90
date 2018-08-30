@@ -152,6 +152,7 @@ subroutine FEM_mech_init(fieldBC)
  qPointsP => qPoints
  qWeightsP => qWeights
  call PetscQuadratureCreate(PETSC_COMM_SELF,mechQuad,ierr); CHKERRQ(ierr)
+ CHKERRQ(ierr)
  call PetscQuadratureSetData(mechQuad,dimPlex,nQuadrature,qPointsP,qWeightsP,ierr)
  CHKERRQ(ierr)
  call PetscFECreateDefault(mech_mesh,dimPlex,dimPlex,PETSC_TRUE,prefix, &
@@ -166,6 +167,7 @@ subroutine FEM_mech_init(fieldBC)
 
 !--------------------------------------------------------------------------------------------------
 ! Setup FEM mech boundary conditions
+ write(6,*) 'starting to set up boundary conditions';flush(6)
  call DMGetLabel(mech_mesh,'Face Sets',BCLabel,ierr); CHKERRQ(ierr)
  call DMPlexLabelComplete(mech_mesh,BCLabel,ierr); CHKERRQ(ierr)
  call DMGetDefaultSection(mech_mesh,section,ierr); CHKERRQ(ierr)
@@ -188,6 +190,7 @@ subroutine FEM_mech_init(fieldBC)
  do field = 1, dimPlex; do faceSet = 1, mesh_Nboundaries
    if (fieldBC%componentBC(field)%Mask(faceSet)) then
      numBC = numBC + 1
+     write(6,*) 'adding boundary condition', numBC
      call ISCreateGeneral(PETSC_COMM_WORLD,1,[field-1],PETSC_COPY_VALUES,bcComps(numBC),ierr)
      CHKERRQ(ierr)
      call DMGetStratumSize(mech_mesh,'Face Sets',mesh_boundaries(faceSet),bcSize,ierr)
