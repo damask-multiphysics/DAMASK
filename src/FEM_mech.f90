@@ -49,8 +49,7 @@ module FEM_mech
  SNES,                           private :: mech_snes
  Vec,                            private :: solution, solution_rate, solution_local
  PetscInt,                       private :: dimPlex, cellDof, nQuadrature, nBasis
- PetscReal, allocatable, target,dimension(:), private :: qWeights
- PetscInt, allocatable, target,dimension(:), private :: qPoints
+ PetscReal, allocatable, target, private :: qPoints(:), qWeights(:)
  MatNullSpace,                   private :: matnull
 
 !--------------------------------------------------------------------------------------------------
@@ -100,17 +99,15 @@ subroutine FEM_mech_init(fieldBC)
  DMLabel                                :: BCLabel
  PetscInt,          allocatable, target :: numComp(:), numDoF(:), bcField(:)
  PetscInt,                      pointer :: pNumComp(:), pNumDof(:), pBcField(:), pBcPoint(:)
- PetscInt                               :: numBC, bcSize
+ PetscInt                               :: numBC, bcSize, xx
  IS                                     :: bcPoint
  IS,                allocatable, target :: bcComps(:), bcPoints(:)
  IS,                            pointer :: pBcComps(:), pBcPoints(:)
  PetscSection                           :: section
  PetscInt                               :: field, faceSet, topologDim, nNodalPoints
- PetscReal,                     pointer :: qWeightsP(:), &
-                                           nodalWeightsP(:)
- PetscInt,                     pointer :: qPointsP(:),nodalPointsP(:)
- PetscReal,         allocatable, target :: nodalWeights(:)
- PetscInt,         allocatable, target :: nodalPoints(:)
+ PetscReal,                     pointer :: qPointsP(:), qWeightsP(:), &
+                                           nodalPointsP(:), nodalWeightsP(:)
+ PetscReal,         allocatable, target :: nodalPoints(:), nodalWeights(:)
  PetscScalar,                   pointer :: px_scal(:)
  PetscScalar,       allocatable, target ::  x_scal(:)
  PetscReal                              :: detJ
@@ -149,7 +146,8 @@ subroutine FEM_mech_init(fieldBC)
  write(6,*) 'setup FEM mech disc2';flush(6)
  call PetscQuadratureCreate(PETSC_COMM_SELF,mechQuad,ierr); CHKERRQ(ierr)
  CHKERRQ(ierr)
- call PetscQuadratureSetData(mechQuad,dimPlex,nQuadrature,qPointsP,qWeightsP,ierr)
+ call PetscQuadratureSetData(mechQuad,dimPlex,xx,nQuadrature,qPointsP,qWeightsP,ierr)
+ ! description for xx not on http://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/DT/PetscQuadratureSetData.html
  CHKERRQ(ierr)
  call PetscFECreateDefault(mech_mesh,dimPlex,dimPlex,PETSC_TRUE,prefix, &
                            integrationOrder,mechFE,ierr); CHKERRQ(ierr)
@@ -264,7 +262,8 @@ subroutine FEM_mech_init(fieldBC)
    do basis = 0, nBasis-1
      call PetscDualSpaceGetFunctional(mechDualSpace,basis,functional,ierr)
      CHKERRQ(ierr)
-     call PetscQuadratureGetData(functional,dimPlex,nNodalPoints,nodalPointsP,nodalWeightsP,ierr)
+     call PetscQuadratureGetData(functional,dimPlex,xx,nNodalPoints,nodalPointsP,nodalWeightsP,ierr)
+     ! description for xx not on http://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/DT/PetscQuadratureSetData.html
      CHKERRQ(ierr)
      x_scal(basis*dimPlex+1:(basis+1)*dimPlex) = pV0 + matmul(transpose(cellJMat),nodalPointsP + 1.0)
    enddo
