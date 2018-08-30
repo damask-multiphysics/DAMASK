@@ -172,9 +172,9 @@ subroutine crystallite_init
    IO_error
  use material
  use config, only: &
+  config_deallocate, &
   config_crystallite, &
-  crystallite_name, &
-  config_deallocate
+  crystallite_name
  use constitutive, only: &
    constitutive_initialFi, &
    constitutive_microstructure                                                                     ! derived (shortcut) quantities of given state

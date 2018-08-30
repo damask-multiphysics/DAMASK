@@ -58,14 +58,15 @@ subroutine constitutive_init()
    IO_write_jobIntFile, &
    IO_timeStamp
  use config, only: &
-   config_deallocate
+   config_phase
  use mesh, only: &
    FE_geomtype
  use config, only: &
    material_Nphase, &
    material_localFileExt, &
    phase_name, &
-   material_configFile
+   material_configFile, &
+   config_deallocate
  use material, only: &
    material_phase, &
    phase_plasticity, &
@@ -138,7 +139,7 @@ subroutine constitutive_init()
  use kinematics_hydrogen_strain
 
  implicit none
- integer(pInt), parameter :: FILEUNIT = 200_pInt
+ integer(pInt), parameter :: FILEUNIT = 204_pInt
  integer(pInt) :: &
    o, &                                                                                             !< counter in output loop
    ph, &                                                                                            !< counter in phase loop
