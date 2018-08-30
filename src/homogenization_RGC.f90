@@ -23,27 +23,6 @@ module homogenization_RGC
  integer(pInt),              dimension(:),       allocatable,target, public :: &
    homogenization_RGC_Noutput                                                                 !< number of outputs per homog instance
 
- type, private :: tParameters                                                                       !< container type for internal constitutive parameters
-   integer(pInt), dimension(:), allocatable :: &
-     Nconstituents
-   real(pReal) :: &
-     xiAlpha, &
-     ciAlpha
-   real(pReal), dimension(:), allocatable :: &
-     dAlpha, &
-     angles
- end type
-
-! BEGIN DEPRECATED
- integer(pInt),              dimension(:,:),     allocatable,        private :: &
-   homogenization_RGC_Ngrains
- real(pReal),                dimension(:,:),     allocatable,        private :: &
-   homogenization_RGC_angles
-! END DEPRECATED
-
- real(pReal),                dimension(:,:,:,:), allocatable,        private :: &
-   homogenization_RGC_orientation
-
  enum, bind(c) 
    enumerator :: undefined_ID, &
                  constitutivework_ID, &
@@ -56,7 +35,29 @@ module homogenization_RGC
                  avgdefgrad_ID,&
                  avgfirstpiola_ID
  end enum
- integer(kind(undefined_ID)), dimension(:,:),     allocatable,       private :: &
+ 
+ type, private :: tParameters                                                                       !< container type for internal constitutive parameters
+   integer(pInt), dimension(:), allocatable :: &
+     Nconstituents
+   real(pReal) :: &
+     xiAlpha, &
+     ciAlpha
+   real(pReal), dimension(:), allocatable :: &
+     dAlpha, &
+     angles
+   integer(kind(undefined_ID)),         dimension(:),   allocatable   :: &
+     outputID                                                                                       !< ID of each post result output
+ end type
+
+! BEGIN DEPRECATED
+ integer(pInt),              dimension(:,:),     allocatable,        private :: &
+   homogenization_RGC_Ngrains
+! END DEPRECATED
+
+ real(pReal),                dimension(:,:,:,:), allocatable,        private :: &
+   homogenization_RGC_orientation
+
+integer(kind(undefined_ID)), dimension(:,:),     allocatable,       private :: &
    homogenization_RGC_outputID                                                                 !< ID of each post result output
 
  type(tParameters), dimension(:), allocatable, private :: param                                     !< containers of constitutive parameters (len Ninstance)
@@ -119,24 +120,25 @@ subroutine homogenization_RGC_init(fileUnit)
 
  implicit none
  integer(pInt), intent(in) :: fileUnit                                                              !< file pointer to material configuration
- integer(pInt), allocatable, dimension(:) :: chunkPos
  integer :: &
    homog, &
    NofMyHomog, &
    o, h, &
+   outputSize, &
    instance, &
    sizeHState
  integer(pInt) :: section=0_pInt, maxNinstance, i,j,e, mySize
- character(len=65536) :: &
-   tag = '', &
-   line = ''
+ character(len=65536),   dimension(0), parameter :: emptyStringArray = [character(len=65536)::]
+ integer(kind(undefined_ID))                 :: &
+   outputID                                                                                     !< ID of each post result output
+ character(len=65536), dimension(:), allocatable :: outputs
  type(tParameters) :: prm
  
  write(6,'(/,a)')   ' <<<+-  homogenization_'//HOMOGENIZATION_RGC_label//' init  -+>>>'
  write(6,'(/,a)')   ' Tjahjanto et al., International Journal of Material Forming, 2(1):939–942, 2009'
- write(6,'(/,a)')   ' https://doi.org/10.1007/s12289-009-0619-1'
+ write(6,'(a)')     ' https://doi.org/10.1007/s12289-009-0619-1'
  write(6,'(/,a)')   ' Tjahjanto et al., Modelling and Simulation in Materials Science and Engineering, 18:015006, 2010'
- write(6,'(/,a)')   ' https://doi.org/10.1088/0965-0393/18/1/015006'
+ write(6,'(a)')     ' https://doi.org/10.1088/0965-0393/18/1/015006'
  write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
 
@@ -162,14 +164,49 @@ subroutine homogenization_RGC_init(fileUnit)
    if (homogenization_type(h) /= HOMOGENIZATION_RGC_ID) cycle
    instance = homogenization_typeInstance(h)
    associate(prm => param(instance))
+
    prm%Nconstituents = config_homogenization(h)%getInts('clustersize',requiredShape=[3])
+   homogenization_RGC_Ngrains(:,instance) = prm%Nconstituents
    if (homogenization_Ngrains(h) /= product(prm%Nconstituents)) &
-     call IO_error(211_pInt,ext_msg=trim(tag)//' ('//HOMOGENIZATION_RGC_label//')')
+     call IO_error(211_pInt,ext_msg='clustersize ('//HOMOGENIZATION_RGC_label//')')
    prm%xiAlpha = config_homogenization(h)%getFloat('scalingparameter')
    prm%ciAlpha = config_homogenization(h)%getFloat('overproportionality')
    prm%dAlpha  = config_homogenization(h)%getFloats('grainsize',requiredShape=[3])
    prm%angles  = config_homogenization(h)%getFloats('clusterorientation',requiredShape=[3],&
                                                     defaultVal=[400.0_pReal,400.0_pReal,400.0_pReal])
+
+   outputs = config_homogenization(h)%getStrings('(output)',defaultVal=emptyStringArray)
+   allocate(prm%outputID(0))
+
+   do i=1_pInt, size(outputs)
+     outputID = undefined_ID
+     select case(outputs(i))
+       case('constitutivework')
+         outputID = constitutivework_ID
+         outputSize = 1_pInt
+       case('penaltyenergy')
+         outputID = penaltyenergy_ID
+         outputSize = 1_pInt
+       case('volumediscrepancy')
+         outputID = volumediscrepancy_ID
+         outputSize = 1_pInt
+       case('averagerelaxrate')
+         outputID = averagerelaxrate_ID
+         outputSize = 1_pInt
+       case('maximumrelaxrate')
+         outputID = maximumrelaxrate_ID
+         outputSize = 1_pInt
+       case('magnitudemismatch')
+         outputID = magnitudemismatch_ID
+         outputSize = 3_pInt
+       case default
+      if (outputID /= undefined_ID) then
+        homogenization_RGC_output(i,instance) = outputs(i)
+        homogenization_RGC_sizePostResult(i,instance) = outputSize
+        prm%outputID = [prm%outputID , outputID]
+      endif
+     end select
+   enddo
 
 !--------------------------------------------------------------------------------------------------
 ! * assigning cluster orientations
@@ -199,65 +236,8 @@ subroutine homogenization_RGC_init(fileUnit)
      write(6,'(a25,3(1x,e10.3))') 'cluster orientation:  ',(prm%angles(j),j=1_pInt,3_pInt)
    endif
 
-   homogenization_RGC_Ngrains(:,instance) = prm%nConstituents
    end associate
  enddo  
-
- rewind(fileUnit)
- do while (trim(line) /= IO_EOF .and. IO_lc(IO_getTag(line,'<','>'))/=material_partHomogenization)  ! wind forward to <homogenization>
-   line = IO_read(fileUnit)
- enddo
-
- parsingFile: do while (trim(line) /= IO_EOF)                                                       ! read through sections of homogenization part
-   line = IO_read(fileUnit)
-   if (IO_isBlank(line)) cycle                                                                      ! skip empty lines
-   if (IO_getTag(line,'<','>') /= '') then                                                          ! stop at next part
-     line = IO_read(fileUnit, .true.)                                                               ! reset IO_read
-     exit                                                                                           
-   endif
-   if (IO_getTag(line,'[',']') /= '') then                                                          ! next section
-     section = section + 1_pInt
-     cycle
-   endif
-   if (section > 0_pInt ) then                                                                      ! do not short-circuit here (.and. with next if-statement). It's not safe in Fortran
-     if (homogenization_type(section) == HOMOGENIZATION_RGC_ID) then                                ! one of my sections
-       i = homogenization_typeInstance(section)                                                     ! which instance of my type is present homogenization
-       chunkPos = IO_stringPos(line)
-       tag = IO_lc(IO_stringValue(line,chunkPos,1_pInt))                                           ! extract key
-       select case(tag)
-         case ('(output)')
-             homogenization_RGC_Noutput(i) = homogenization_RGC_Noutput(i) + 1_pInt
-             homogenization_RGC_output(homogenization_RGC_Noutput(i),i) = &
-                                                           IO_lc(IO_stringValue(line,chunkPos,2_pInt))         
-           select case(IO_lc(IO_stringValue(line,chunkPos,2_pInt)))
-             case('constitutivework')
-               homogenization_RGC_outputID(homogenization_RGC_Noutput(i),i) = constitutivework_ID
-             case('penaltyenergy')
-               homogenization_RGC_outputID(homogenization_RGC_Noutput(i),i) = penaltyenergy_ID
-             case('volumediscrepancy')
-               homogenization_RGC_outputID(homogenization_RGC_Noutput(i),i) = volumediscrepancy_ID
-             case('averagerelaxrate')
-               homogenization_RGC_outputID(homogenization_RGC_Noutput(i),i) = averagerelaxrate_ID
-             case('maximumrelaxrate')
-               homogenization_RGC_outputID(homogenization_RGC_Noutput(i),i) = maximumrelaxrate_ID
-             case('magnitudemismatch')
-               homogenization_RGC_outputID(homogenization_RGC_Noutput(i),i) = magnitudemismatch_ID
-
-             case default
-               homogenization_RGC_Noutput(i) = homogenization_RGC_Noutput(i) -1_pInt  ! correct for invalid
-
-           end select
-         case ('clustersize')
-           homogenization_RGC_Ngrains(1,i) = IO_intValue(line,chunkPos,2_pInt)
-           homogenization_RGC_Ngrains(2,i) = IO_intValue(line,chunkPos,3_pInt)
-           homogenization_RGC_Ngrains(3,i) = IO_intValue(line,chunkPos,4_pInt)
-           if (homogenization_Ngrains(section) /= product(homogenization_RGC_Ngrains(1:3,i))) &
-             call IO_error(211_pInt,ext_msg=trim(tag)//' ('//HOMOGENIZATION_RGC_label//')')
-
-       end select
-     endif  
-   endif
- enddo parsingFile
 
 !--------------------------------------------------------------------------------------------------
  initializeInstances: do homog = 1_pInt, material_Nhomogenization
@@ -265,27 +245,6 @@ subroutine homogenization_RGC_init(fileUnit)
      NofMyHomog = count(material_homog == homog)
      instance = homogenization_typeInstance(homog)
 
-! *  Determine size of postResults array
-     outputsLoop: do o = 1_pInt, homogenization_RGC_Noutput(instance)
-       select case(homogenization_RGC_outputID(o,instance))
-        case(constitutivework_ID,penaltyenergy_ID,volumediscrepancy_ID, &
-            averagerelaxrate_ID,maximumrelaxrate_ID)
-         mySize = 1_pInt
-        case(ipcoords_ID,magnitudemismatch_ID)
-         mySize = 3_pInt
-        case(avgdefgrad_ID,avgfirstpiola_ID)
-         mySize = 9_pInt
-        case default
-         mySize = 0_pInt
-       end select
-
-       outputFound: if (mySize > 0_pInt) then
-        homogenization_RGC_sizePostResult(o,instance) = mySize
-        homogenization_RGC_sizePostResults(instance) = &
-          homogenization_RGC_sizePostResults(instance) + mySize
-       endif outputFound
-     enddo outputsLoop
-     
      sizeHState = &
          3_pInt*(homogenization_RGC_Ngrains(1,instance)-1_pInt)* &
                homogenization_RGC_Ngrains(2,instance)*homogenization_RGC_Ngrains(3,instance) &
@@ -306,8 +265,6 @@ subroutine homogenization_RGC_init(fileUnit)
    endif myHomog
  enddo initializeInstances
  
-
-
 end subroutine homogenization_RGC_init
 
 
