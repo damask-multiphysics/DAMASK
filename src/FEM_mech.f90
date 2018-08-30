@@ -5,12 +5,16 @@
 !> @brief FEM PETSc solver
 !--------------------------------------------------------------------------------------------------
 module FEM_mech
+#include <petsc/finclude/petscdmplex.h>
+#include <petsc/finclude/petscdm.h>
+#include <petsc/finclude/petscdmda.h>
 #include <petsc/finclude/petsc.h>
 
-use PETScdmda
-use PETScsnes
-use PETScDM
-use PETScDMplex
+ use PETScdmda
+ use PETScsnes
+ use PETScDM
+ use PETScDMplex
+ use PETSC
  use prec, only: & 
    pInt, &
    pReal
@@ -45,7 +49,8 @@ use PETScDMplex
  SNES,                           private :: mech_snes
  Vec,                            private :: solution, solution_rate, solution_local
  PetscInt,                       private :: dimPlex, cellDof, nQuadrature, nBasis
- PetscReal, allocatable, target,dimension(:), private :: qPoints, qWeights
+ PetscReal, allocatable, target,dimension(:), private :: qWeights
+ PetscInt, allocatable, target,dimension(:), private :: qPoints
  MatNullSpace,                   private :: matnull
 
 !--------------------------------------------------------------------------------------------------
@@ -62,26 +67,6 @@ use PETScDMplex
    FEM_mech_forward, &
    FEM_mech_destroy
 
- external :: &
-   MatZeroRowsColumnsLocalIS, &
-   PetscQuadratureCreate, &
-   PetscFECreateDefault, &
-   PetscFESetQuadrature, &
-   PetscFEGetDimension, &
-   PetscFEDestroy, &
-   PetscFEGetDualSpace, &
-   PetscQuadratureDestroy, &
-   PetscDSSetDiscretization, &
-   PetscDSGetTotalDimension, &
-   PetscDSGetDiscretization, &
-   PetscDualSpaceGetFunctional, &
-   DMGetLabelSize, &
-   DMSNESSetFunctionLocal, &
-   DMSNESSetJacobianLocal, &
-   SNESSetOptionsPrefix, &
-   SNESSetConvergenceTest, &
-   PetscObjectSetName
-   
 contains
 
 !--------------------------------------------------------------------------------------------------
@@ -121,9 +106,11 @@ subroutine FEM_mech_init(fieldBC)
  IS,                            pointer :: pBcComps(:), pBcPoints(:)
  PetscSection                           :: section
  PetscInt                               :: field, faceSet, topologDim, nNodalPoints
- PetscReal,                     pointer :: qPointsP(:), qWeightsP(:), &
-                                           nodalPointsP(:), nodalWeightsP(:)
- PetscReal,         allocatable, target :: nodalPoints(:), nodalWeights(:)
+ PetscReal,                     pointer :: qWeightsP(:), &
+                                           nodalWeightsP(:)
+ PetscInt,                     pointer :: qPointsP(:),nodalPointsP(:)
+ PetscReal,         allocatable, target :: nodalWeights(:)
+ PetscInt,         allocatable, target :: nodalPoints(:)
  PetscScalar,                   pointer :: px_scal(:)
  PetscScalar,       allocatable, target ::  x_scal(:)
  PetscReal                              :: detJ
@@ -139,18 +126,27 @@ subroutine FEM_mech_init(fieldBC)
 
 !--------------------------------------------------------------------------------------------------
 ! Setup FEM mech mesh
+ write(6,*) 'A';flush(6)
  call DMClone(geomMesh,mech_mesh,ierr); CHKERRQ(ierr)
+ write(6,*) 'B';flush(6)
  call DMGetDimension(mech_mesh,dimPlex,ierr); CHKERRQ(ierr)
+ write(6,*) 'C';flush(6)
 
 !--------------------------------------------------------------------------------------------------
 ! Setup FEM mech discretization
+ write(6,*) 'setup FEM mech disc';flush(6)
  allocate(qPoints(dimPlex*FEM_Zoo_nQuadrature(dimPlex,integrationOrder)))
  allocate(qWeights(FEM_Zoo_nQuadrature(dimPlex,integrationOrder)))
+ write(6,*) '0';flush(6)
  qPoints = FEM_Zoo_QuadraturePoints(dimPlex,integrationOrder)%p
+ write(6,*) '1';flush(6)
  qWeights = FEM_Zoo_QuadratureWeights(dimPlex,integrationOrder)%p
+ write(6,*) '2';flush(6)
  nQuadrature = FEM_Zoo_nQuadrature(dimPlex,integrationOrder)
+ write(6,*) '3';flush(6)
  qPointsP => qPoints
  qWeightsP => qWeights
+ write(6,*) 'setup FEM mech disc2';flush(6)
  call PetscQuadratureCreate(PETSC_COMM_SELF,mechQuad,ierr); CHKERRQ(ierr)
  CHKERRQ(ierr)
  call PetscQuadratureSetData(mechQuad,dimPlex,nQuadrature,qPointsP,qWeightsP,ierr)
