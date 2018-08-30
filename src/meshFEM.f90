@@ -8,10 +8,12 @@
 !> results
 !--------------------------------------------------------------------------------------------------
 module mesh     
+#include <petsc/finclude/petscdmplex.h>
 #include <petsc/finclude/petscis.h>
 #include <petsc/finclude/petscdmda.h>
  use prec, only: pReal, pInt
 
+use PETScdmplex
 use PETScdmda
 use PETScis
 
@@ -89,15 +91,6 @@ use PETScis
    mesh_FEM_build_ipCoordinates, &
    mesh_cellCenterCoordinates
 
- external :: &
-   DMPlexCreateFromFile, &
-   DMPlexDistribute, &
-   DMPlexCopyCoordinates, &
-   DMGetStratumSize, &
-   DMPlexGetHeightStratum, &
-   DMPlexGetLabelValue, &
-   DMPlexSetLabelValue
-   
 contains
 
 
