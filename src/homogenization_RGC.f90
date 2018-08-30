@@ -38,11 +38,7 @@ module homogenization_RGC
  integer(pInt),              dimension(:,:),     allocatable,        private :: &
    homogenization_RGC_Ngrains
  real(pReal),                dimension(:,:),     allocatable,        private :: &
-   homogenization_RGC_dAlpha, &
    homogenization_RGC_angles
- real(pReal),                dimension(:),       allocatable,        private :: &
-   homogenization_RGC_xiAlpha, &
-   homogenization_RGC_ciAlpha
 ! END DEPRECATED
 
  real(pReal),                dimension(:,:,:,:), allocatable,        private :: &
@@ -155,10 +151,6 @@ subroutine homogenization_RGC_init(fileUnit)
 
  allocate(homogenization_RGC_Noutput(maxNinstance),                              source=0_pInt)
  allocate(homogenization_RGC_Ngrains(3,maxNinstance),                            source=0_pInt)
- allocate(homogenization_RGC_ciAlpha(maxNinstance),                              source=0.0_pReal)
- allocate(homogenization_RGC_xiAlpha(maxNinstance),                              source=0.0_pReal)
- allocate(homogenization_RGC_dAlpha(3,maxNinstance),                             source=0.0_pReal)
- allocate(homogenization_RGC_angles(3,maxNinstance),                             source=400.0_pReal)
  allocate(homogenization_RGC_output(maxval(homogenization_Noutput),maxNinstance))
                                                               homogenization_RGC_output=''
  allocate(homogenization_RGC_outputID(maxval(homogenization_Noutput),maxNinstance),source=undefined_ID)
@@ -261,18 +253,6 @@ subroutine homogenization_RGC_init(fileUnit)
            homogenization_RGC_Ngrains(3,i) = IO_intValue(line,chunkPos,4_pInt)
            if (homogenization_Ngrains(section) /= product(homogenization_RGC_Ngrains(1:3,i))) &
              call IO_error(211_pInt,ext_msg=trim(tag)//' ('//HOMOGENIZATION_RGC_label//')')
-         case ('scalingparameter')
-           homogenization_RGC_xiAlpha(i) = IO_floatValue(line,chunkPos,2_pInt)
-         case ('overproportionality')
-           homogenization_RGC_ciAlpha(i) = IO_floatValue(line,chunkPos,2_pInt)
-         case ('grainsize')
-           homogenization_RGC_dAlpha(1,i) = IO_floatValue(line,chunkPos,2_pInt)
-           homogenization_RGC_dAlpha(2,i) = IO_floatValue(line,chunkPos,3_pInt)
-           homogenization_RGC_dAlpha(3,i) = IO_floatValue(line,chunkPos,4_pInt)
-         case ('clusterorientation')
-           homogenization_RGC_angles(1,i) = IO_floatValue(line,chunkPos,2_pInt)
-           homogenization_RGC_angles(2,i) = IO_floatValue(line,chunkPos,3_pInt)
-           homogenization_RGC_angles(3,i) = IO_floatValue(line,chunkPos,4_pInt)
 
        end select
      endif  
@@ -895,7 +875,6 @@ subroutine homogenization_RGC_averageStressAndItsTangent(avgP,dAvgPdAvgF,P,dPdF,
  use mesh,  only: mesh_element
  use material, only: &
   homogenization_maxNgrains, &
-  homogenization_Ngrains, &
   homogenization_typeInstance 
  use math, only: math_Plain3333to99
  
@@ -1042,6 +1021,7 @@ subroutine stressPenalty(rPen,nMis,avgF,fDef,ip,el,instance)
  integer(pInt) :: iGrain,iGNghb,iFace,i,j,k,l
  real(pReal)   :: muGrain,muGNghb,nDefNorm,bgGrain,bgGNghb
  
+ type(tParameters) :: prm
  integer(pInt),                                             parameter  :: nFace = 6_pInt
  real(pReal),                                               parameter  :: nDefToler = 1.0e-10_pReal
 
@@ -1054,6 +1034,7 @@ subroutine stressPenalty(rPen,nMis,avgF,fDef,ip,el,instance)
 ! the interfaces due to deformations
  surfCorr = surfaceCorrection(avgF,ip,el)
 
+ associate(prm => param(instance))
 !--------------------------------------------------------------------------------------------------
 ! debugging the surface correction factor
  if (iand(debug_level(debug_homogenization),debug_levelExtensive) /= 0_pInt &
@@ -1120,9 +1101,9 @@ subroutine stressPenalty(rPen,nMis,avgF,fDef,ip,el,instance)
 ! compute the stress penalty of all interfaces
      do i = 1_pInt,3_pInt; do j = 1_pInt,3_pInt
        do k = 1_pInt,3_pInt; do l = 1_pInt,3_pInt
-         rPen(i,j,iGrain) = rPen(i,j,iGrain) + 0.5_pReal*(muGrain*bgGrain + muGNghb*bgGNghb)*homogenization_RGC_xiAlpha(instance) &
-                                               *surfCorr(abs(intFace(1)))/homogenization_RGC_dAlpha(abs(intFace(1)),instance) &
-                                               *cosh(homogenization_RGC_ciAlpha(instance)*nDefNorm) &
+         rPen(i,j,iGrain) = rPen(i,j,iGrain) + 0.5_pReal*(muGrain*bgGrain + muGNghb*bgGNghb)*prm%xiAlpha &
+                                               *surfCorr(abs(intFace(1)))/prm%dAlpha(abs(intFace(1))) &
+                                               *cosh(prm%ciAlpha*nDefNorm) &
                                                *0.5_pReal*nVect(l)*nDef(i,k)/nDefNorm*math_civita(k,l,j) &
                                                *tanh(nDefNorm/xSmoo_RGC)
        enddo; enddo
@@ -1142,6 +1123,7 @@ subroutine stressPenalty(rPen,nMis,avgF,fDef,ip,el,instance)
    endif
 
  enddo
+ end associate
 
 end subroutine stressPenalty
 
@@ -1338,7 +1320,7 @@ function interfaceNormal(intFace,ip,el)
 ! get the normal of the interface, identified from the value of intFace(1)
  interfaceNormal = 0.0_pReal
  nPos = abs(intFace(1))                                                                             ! identify the position of the interface in global state array
- interfaceNormal(nPos) = real(intFace(1)/abs(intFace(1)),pReal)                  ! get the normal vector w.r.t. cluster axis
+ interfaceNormal(nPos) = real(intFace(1)/abs(intFace(1)),pReal)                                     ! get the normal vector w.r.t. cluster axis
 
  interfaceNormal = &
    math_mul33x3(homogenization_RGC_orientation(1:3,1:3,ip,el),interfaceNormal)
@@ -1383,9 +1365,9 @@ function grain1to3(grain1,instance)
  integer(pInt), dimension (3) ::            nGDim
 
  nGDim = param(instance)%Nconstituents
- grain1to3(3) = 1_pInt+(grain1-1_pInt)/(nGDim(1)*nGDim(2))
- grain1to3(2) = 1_pInt+mod((grain1-1_pInt)/nGDim(1),nGDim(2))
- grain1to3(1) = 1_pInt+mod((grain1-1_pInt),nGDim(1))
+ grain1to3 = 1_pInt + [mod((grain1-1_pInt),nGDim(1)), &
+                       mod((grain1-1_pInt)/nGDim(1),nGDim(2)), &
+                       (grain1-1_pInt)/(nGDim(1)*nGDim(2))]
 
 end function grain1to3
 
@@ -1397,9 +1379,9 @@ pure function grain3to1(grain3,instance)
 
  implicit none
  integer(pInt), dimension (3), intent(in) :: grain3                                                 !< grain ID in 3D array (pos.x,pos.y,pos.z)
- integer(pInt), intent(in) :: instance                                                              ! homogenization ID
- integer(pInt)                :: grain3to1                                      
- integer(pInt), dimension (3) :: nGDim
+ integer(pInt),                intent(in) :: instance                                                              ! homogenization ID
+ integer(pInt)                            :: grain3to1                                      
+ integer(pInt), dimension (3)             :: nGDim
 
  nGDim = param(instance)%Nconstituents
  grain3to1 = grain3(1) + nGDim(1)*(grain3(2)-1_pInt) + nGDim(1)*nGDim(2)*(grain3(3)-1_pInt)
@@ -1414,8 +1396,8 @@ integer(pInt) pure function interface4to1(iFace4D, instance)
  
  implicit none
  integer(pInt), dimension (4), intent(in) :: iFace4D                                                !< interface ID in 4D array (n.dir,pos.x,pos.y,pos.z)
+ integer(pInt),                intent(in) :: instance
  integer(pInt), dimension (3) :: nGDim,nIntFace
- integer(pInt), intent(in) :: instance
 
  nGDim = param(instance)%Nconstituents
  
@@ -1452,10 +1434,10 @@ end function interface4to1
 pure function interface1to4(iFace1D, instance)
  
  implicit none
- integer(pInt), dimension (4) :: interface1to4
- integer(pInt), intent(in)    :: iFace1D                                                            !< interface ID in 1D array
- integer(pInt), dimension (3) :: nGDim,nIntFace
- integer(pInt), intent(in) :: instance
+ integer(pInt), dimension (4)            :: interface1to4
+ integer(pInt),               intent(in) :: iFace1D                                                            !< interface ID in 1D array
+ integer(pInt),               intent(in) :: instance
+ integer(pInt), dimension (3)            :: nGDim,nIntFace
 
  nGDim = param(instance)%Nconstituents
 
@@ -1542,7 +1524,7 @@ subroutine grainDeformation(F, avgF, ip, el)
 ! compute the deformation gradient of individual grains due to relaxations
  instance = homogenization_typeInstance(mesh_element(3,el))
  F = 0.0_pReal
- do iGrain = 1_pInt,homogenization_Ngrains(mesh_element(3,el))
+ do iGrain = 1_pInt,sum(param(instance)%Nconstituents)
    iGrain3 = grain1to3(iGrain,instance)
    do iFace = 1_pInt,nFace
      intFace = getInterface(iFace,iGrain3)
