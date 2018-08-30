@@ -3,9 +3,11 @@
 !> @brief Utilities used by the FEM solver
 !--------------------------------------------------------------------------------------------------
 module FEM_utilities
+#include <petsc/finclude/petscdmplex.h>
 #include <petsc/finclude/petsc.h>
  use prec, only: pReal, pInt
 
+use PETScdmplex
 use PETScdmda
 use PETScis
 
@@ -139,18 +141,6 @@ use PETScis
    COMPONENT_SOLUTE_CVaH_ID, &
    COMPONENT_SOLUTE_CVaHPOT_ID, &
    COMPONENT_MGTWIN_PHI_ID
-
- external :: &
-   PetscOptionsInsertString, &
-   PetscObjectSetName, &
-   DMPlexGetHeightStratum, &
-   DMGetLabelIdIS, &
-   DMPlexGetChart, &
-   DMPlexLabelComplete, &
-   PetscViewerHDF5Open, &
-   PetscViewerHDF5PushGroup, &
-   PetscViewerHDF5PopGroup, &
-   PetscViewerDestroy
 
 contains 
 
