@@ -123,27 +123,18 @@ subroutine FEM_mech_init(fieldBC)
 
 !--------------------------------------------------------------------------------------------------
 ! Setup FEM mech mesh
- write(6,*) 'A';flush(6)
  call DMClone(geomMesh,mech_mesh,ierr); CHKERRQ(ierr)
- write(6,*) 'B';flush(6)
  call DMGetDimension(mech_mesh,dimPlex,ierr); CHKERRQ(ierr)
- write(6,*) 'C';flush(6)
 
 !--------------------------------------------------------------------------------------------------
 ! Setup FEM mech discretization
- write(6,*) 'setup FEM mech disc';flush(6)
  allocate(qPoints(dimPlex*FEM_Zoo_nQuadrature(dimPlex,integrationOrder)))
  allocate(qWeights(FEM_Zoo_nQuadrature(dimPlex,integrationOrder)))
- write(6,*) '0';flush(6)
  qPoints = FEM_Zoo_QuadraturePoints(dimPlex,integrationOrder)%p
- write(6,*) '1';flush(6)
  qWeights = FEM_Zoo_QuadratureWeights(dimPlex,integrationOrder)%p
- write(6,*) '2';flush(6)
  nQuadrature = FEM_Zoo_nQuadrature(dimPlex,integrationOrder)
- write(6,*) '3';flush(6)
  qPointsP => qPoints
  qWeightsP => qWeights
- write(6,*) 'setup FEM mech disc2';flush(6)
  call PetscQuadratureCreate(PETSC_COMM_SELF,mechQuad,ierr); CHKERRQ(ierr)
  CHKERRQ(ierr)
  call PetscQuadratureSetData(mechQuad,dimPlex,xx,nQuadrature,qPointsP,qWeightsP,ierr)
