@@ -514,7 +514,7 @@ subroutine plastic_phenopowerlaw_LpAndItsTangent(Lp,dLp_dMstar99,Mstar_v,ipc,ip,
    ip, &                                                                                            !< integration point
    el                                                                                               !< element
  real(pReal), dimension(6), intent(in) :: &
-   Mstar_v                                                                                            !< Mandel stress
+   Mstar_v                                                                                          !< Mandel stress
 
  integer(pInt) :: &
    index_myFamily, &
@@ -528,7 +528,7 @@ subroutine plastic_phenopowerlaw_LpAndItsTangent(Lp,dLp_dMstar99,Mstar_v,ipc,ip,
  real(pReal), dimension(3,3) :: &
    S                                                                                                !< Second-Piola Kirchhoff stress
  real(pReal), dimension(3,3,3,3) :: &
-   dLp_dMstar                                                                                       !< derivative of Lp with respect to Mstar as 4th order tensor
+   dLp_dS                                                                                           !< derivative of Lp with respect to Mstar as 4th order tensor
  type(tParameters)          :: prm
  type(tPhenopowerlawState)  :: stt
 
@@ -538,12 +538,11 @@ subroutine plastic_phenopowerlaw_LpAndItsTangent(Lp,dLp_dMstar99,Mstar_v,ipc,ip,
            stt => state(phase_plasticityInstance(material_phase(ipc,ip,el))))
 
  Lp = 0.0_pReal
- dLp_dMstar = 0.0_pReal
+ dLp_dS = 0.0_pReal
 
  S = math_Mandel6to33(Mstar_v)
-!--------------------------------------------------------------------------------------------------
-! Slip part
- do j = 1_pInt, prm%totalNslip
+
+ slipSystems: do j = 1_pInt, prm%totalNslip
 
    tau_slip_pos  = math_mul33xx33(S,prm%Schmid_slip(1:3,1:3,j))
    tau_slip_neg  = tau_slip_pos
@@ -561,36 +560,36 @@ subroutine plastic_phenopowerlaw_LpAndItsTangent(Lp,dLp_dMstar99,Mstar_v,ipc,ip,
    if (dNeq0(tau_slip_pos)) then
      dgdot_dtauslip_pos = gdot_slip_pos*prm%n_slip/tau_slip_pos
      forall (k=1_pInt:3_pInt,l=1_pInt:3_pInt,m=1_pInt:3_pInt,n=1_pInt:3_pInt) &
-       dLp_dMstar(k,l,m,n) = dLp_dMstar(k,l,m,n) + dgdot_dtauslip_pos &
-                           * prm%Schmid_slip(k,l,j)*(prm%Schmid_slip(m,n,j) + sum(prm%nonSchmid_pos(m,n,:,j)))
+       dLp_dS(k,l,m,n) = dLp_dS(k,l,m,n) &
+                       + dgdot_dtauslip_pos * prm%Schmid_slip(k,l,j) &
+                                            *(prm%Schmid_slip(m,n,j) + sum(prm%nonSchmid_pos(m,n,:,j)))
    endif
    if (dNeq0(tau_slip_neg)) then
      dgdot_dtauslip_neg = gdot_slip_neg*prm%n_slip/tau_slip_neg
      forall (k=1_pInt:3_pInt,l=1_pInt:3_pInt,m=1_pInt:3_pInt,n=1_pInt:3_pInt) &
-       dLp_dMstar(k,l,m,n) = dLp_dMstar(k,l,m,n) + dgdot_dtauslip_neg &
-                           * prm%Schmid_slip(k,l,j)*(prm%Schmid_slip(m,n,j) + sum(prm%nonSchmid_neg(m,n,:,j)))
+       dLp_dS(k,l,m,n) = dLp_dS(k,l,m,n) &
+                       + dgdot_dtauslip_neg * prm%Schmid_slip(k,l,j) &
+                                            *(prm%Schmid_slip(m,n,j) + sum(prm%nonSchmid_neg(m,n,:,j)))
    endif
 
- enddo
+ enddo slipSystems
 
-!--------------------------------------------------------------------------------------------------
-! Twinning part
- do j = 1_pInt, prm%totalNtwin
+ twinSystems: do j = 1_pInt, prm%totalNtwin
 
    tau_twin  = math_mul33xx33(S,prm%Schmid_twin(1:3,1:3,j))
-   gdot_twin = (1.0_pReal-stt%sumF(of))*prm%gdot0_twin*(abs(tau_twin)/stt%s_twin(j,of))**prm%n_twin&
+   gdot_twin = (1.0_pReal-stt%sumF(of))*prm%gdot0_twin*(abs(tau_twin)/stt%s_twin(j,of))**prm%n_twin &
              * max(0.0_pReal,sign(1.0_pReal,tau_twin))
    Lp = Lp + gdot_twin*prm%Schmid_twin(1:3,1:3,j)
 
    if (dNeq0(gdot_twin)) then
      dgdot_dtautwin = gdot_twin*prm%n_twin/tau_twin
      forall (k=1_pInt:3_pInt,l=1_pInt:3_pInt,m=1_pInt:3_pInt,n=1_pInt:3_pInt) &
-       dLp_dMstar(k,l,m,n) = dLp_dMstar(k,l,m,n) &
-                           + dgdot_dtautwin*prm%Schmid_twin(k,l,j)*prm%Schmid_twin(m,n,j)
+       dLp_dS(k,l,m,n) = dLp_dS(k,l,m,n) &
+                       + dgdot_dtautwin*prm%Schmid_twin(k,l,j)*prm%Schmid_twin(m,n,j)
    endif
- enddo
+ enddo twinSystems
 
- dLp_dMstar99 = math_Plain3333to99(dLp_dMstar)
+ dLp_dMstar99 = math_Plain3333to99(dLp_dS)
 
  end associate
 end subroutine plastic_phenopowerlaw_LpAndItsTangent
@@ -653,7 +652,7 @@ subroutine plastic_phenopowerlaw_dotState(Mstar6,ipc,ip,el)
 !--------------------------------------------------------------------------------------------------
 !  calculate left and right vectors
  ssat_offset = prm%spr*sqrt(stt%sumF(of))
- do j = 1_pInt, prm%totalNslip
+ slipSystems: do j = 1_pInt, prm%totalNslip
    left_SlipSlip(j) = 1.0_pReal + prm%H_int(j)                                                      ! modified no system-dependent left part
    right_SlipSlip(j) = abs(1.0_pReal-stt%s_slip(j,of) / (prm%tausat_slip(j)+ssat_offset)) **prm%a_slip &
                      * sign(1.0_pReal,1.0_pReal-stt%s_slip(j,of) / (prm%tausat_slip(j)+ssat_offset))
@@ -667,13 +666,13 @@ subroutine plastic_phenopowerlaw_dotState(Mstar6,ipc,ip,el)
    gdot_slip(j) = prm%gdot0_slip*0.5_pReal* &                                                       !ToDo: save to dotState
                 (  sign(abs(tau_slip_pos/stt%s_slip(j,of))**prm%n_slip,  tau_slip_pos) &
                  + sign(abs(tau_slip_neg/stt%s_slip(j,of))**prm%n_slip,  tau_slip_neg))
- enddo
+ enddo slipSystems
 
- do j = 1_pInt, prm%totalNtwin
+ twinSystems: do j = 1_pInt, prm%totalNtwin
    tau_twin  = math_mul33xx33(S,prm%Schmid_twin(1:3,1:3,j))
    gdot_twin(j) = (1.0_pReal-stt%sumF(of))*prm%gdot0_twin* abs(tau_twin/stt%s_twin(j,of))**prm%n_twin & !ToDo: save to dotState
                 * max(0.0_pReal,sign(1.0_pReal,tau_twin))
- enddo
+ enddo twinSystems
 
 !--------------------------------------------------------------------------------------------------
 ! calculate the overall hardening based on above
@@ -710,12 +709,6 @@ function plastic_phenopowerlaw_postResults(Mstar6,ipc,ip,el) result(postResults)
  use math, only: &
    math_mul33xx33, &
    math_Mandel6to33 
- use lattice, only: &
-   lattice_Sslip_v, &
-   lattice_Stwin_v, &
-   lattice_NslipSystem, &
-   lattice_NtwinSystem, &
-   lattice_NnonSchmid
 
  implicit none
  real(pReal), dimension(6), intent(in) :: &
