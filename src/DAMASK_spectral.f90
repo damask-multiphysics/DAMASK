@@ -87,7 +87,6 @@ program DAMASK_spectral
 ! variables related to information from load case and geom file
  real(pReal), dimension(9) :: temp_valueVector = 0.0_pReal                                          !< temporarily from loadcase file when reading in tensors (initialize to 0.0)
  logical,     dimension(9) :: temp_maskVector  = .false.                                            !< temporarily from loadcase file when reading in tensors
- integer(pInt) :: fileUnit, myStat
  integer(pInt), allocatable, dimension(:) :: chunkPos
 
  integer(pInt) :: &
@@ -124,7 +123,8 @@ program DAMASK_spectral
    totalIncsCounter = 0_pInt, &                                                                     !< total # of increments
    convergedCounter = 0_pInt, &                                                                     !< # of converged increments
    notConvergedCounter = 0_pInt, &                                                                  !< # of non-converged increments
-   resUnit = 0_pInt, &                                                                              !< file unit for results writing
+   fileUnit = 0_pInt, &                                                                             !< file unit for reading load case and writing results
+   myStat, &
    statUnit = 0_pInt, &                                                                             !< file unit for statistics output
    lastRestartWritten = 0_pInt, &                                                                   !< total increment # at which last restart information was written
    stagIter
@@ -223,7 +223,7 @@ program DAMASK_spectral
      newLoadCase%ID(field) = FIELD_DAMAGE_ID
    endif damageActive
 
-   do i = 1_pInt, chunkPos(1)
+   readIn: do i = 1_pInt, chunkPos(1)
      select case (IO_lc(IO_stringValue(line,chunkPos,i)))
        case('fdot','dotf','l','velocitygrad','velgrad','velocitygradient','f')                      ! assign values for the deformation BC matrix
          temp_valueVector = 0.0_pReal
@@ -288,9 +288,10 @@ program DAMASK_spectral
          enddo
          newLoadCase%rotation = math_plain9to33(temp_valueVector)
      end select
-   enddo
+   enddo readIn
+
    currentLoadCase = currentLoadCase + 1_pInt
-   if(currentLoadCase == 1_pInt) newLoadCase%followFormerTrajectory = .false.                       ! cannot guess along trajectory for first inc of first load case
+   newLoadCase%followFormerTrajectory = merge(.true.,.false.,currentLoadCase > 1_pInt)              ! by default, guess from previous load case
 
    reportAndCheck: if (worldrank == 0) then
      write (loadcase_string, '(i6)' ) currentLoadCase
@@ -372,22 +373,22 @@ program DAMASK_spectral
 ! write header of output file
  if (worldrank == 0) then
    writeHeader: if (interface_restartInc < 1_pInt) then
-     open(newunit=resUnit,file=trim(getSolverJobName())//&
+     open(newunit=fileUnit,file=trim(getSolverJobName())//&
                                  '.spectralOut',form='UNFORMATTED',status='REPLACE')
-     write(resUnit) 'load:',       trim(loadCaseFile)                                               ! ... and write header
-     write(resUnit) 'workingdir:', trim(workingDir)
-     write(resUnit) 'geometry:',   trim(geometryFile)
-     write(resUnit) 'grid:',       grid
-     write(resUnit) 'size:',       geomSize
-     write(resUnit) 'materialpoint_sizeResults:', materialpoint_sizeResults
-     write(resUnit) 'loadcases:',  size(loadCases)
-     write(resUnit) 'frequencies:', loadCases%outputfrequency                                       ! one entry per LoadCase
-     write(resUnit) 'times:',      loadCases%time                                                   ! one entry per LoadCase
-     write(resUnit) 'logscales:',  loadCases%logscale
-     write(resUnit) 'increments:', loadCases%incs                                                   ! one entry per LoadCase
-     write(resUnit) 'startingIncrement:', restartInc                                                ! start with writing out the previous inc
-     write(resUnit) 'eoh'
-     close(resUnit)                                                                                 ! end of header
+     write(fileUnit) 'load:',       trim(loadCaseFile)                                               ! ... and write header
+     write(fileUnit) 'workingdir:', trim(workingDir)
+     write(fileUnit) 'geometry:',   trim(geometryFile)
+     write(fileUnit) 'grid:',       grid
+     write(fileUnit) 'size:',       geomSize
+     write(fileUnit) 'materialpoint_sizeResults:', materialpoint_sizeResults
+     write(fileUnit) 'loadcases:',  size(loadCases)
+     write(fileUnit) 'frequencies:', loadCases%outputfrequency                                       ! one entry per LoadCase
+     write(fileUnit) 'times:',      loadCases%time                                                   ! one entry per LoadCase
+     write(fileUnit) 'logscales:',  loadCases%logscale
+     write(fileUnit) 'increments:', loadCases%incs                                                   ! one entry per LoadCase
+     write(fileUnit) 'startingIncrement:', restartInc                                                ! start with writing out the previous inc
+     write(fileUnit) 'eoh'
+     close(fileUnit)                                                                                 ! end of header
      open(newunit=statUnit,file=trim(getSolverJobName())//&
                                  '.sta',form='FORMATTED',status='REPLACE')
      write(statUnit,'(a)') 'Increment Time CutbackLevel Converged IterationsNeeded'                 ! statistics file
@@ -409,13 +410,13 @@ program DAMASK_spectral
  call MPI_file_open(PETSC_COMM_WORLD, trim(getSolverJobName())//'.spectralOut', &
                     MPI_MODE_WRONLY + MPI_MODE_APPEND, &
                     MPI_INFO_NULL, &
-                    resUnit, &
+                    fileUnit, &
                     ierr)
  if (ierr /= 0_pInt) call IO_error(error_ID=894_pInt, ext_msg='MPI_file_open')
- call MPI_file_get_position(resUnit,fileOffset,ierr)                                                ! get offset from header
+ call MPI_file_get_position(fileUnit,fileOffset,ierr)                                                ! get offset from header
  if (ierr /= 0_pInt) call IO_error(error_ID=894_pInt, ext_msg='MPI_file_get_position')
  fileOffset = fileOffset + sum(outputSize(1:worldrank))                                             ! offset of my process in file (header + processes before me)
- call MPI_file_seek (resUnit,fileOffset,MPI_SEEK_SET,ierr)
+ call MPI_file_seek (fileUnit,fileOffset,MPI_SEEK_SET,ierr)
  if (ierr /= 0_pInt) call IO_error(error_ID=894_pInt, ext_msg='MPI_file_seek')
 
  writeUndeformed: if (interface_restartInc < 1_pInt) then
@@ -423,7 +424,7 @@ program DAMASK_spectral
    do i = 1, size(materialpoint_results,3)/(maxByteOut/(materialpoint_sizeResults*pReal))+1         ! slice the output of my process in chunks not exceeding the limit for one output
      outputIndex = int([(i-1_pInt)*((maxRealOut)/materialpoint_sizeResults)+1_pInt, &               ! QUESTION: why not starting i at 0 instead of murky 1?
                              min(i*((maxRealOut)/materialpoint_sizeResults),size(materialpoint_results,3))],pLongInt)
-     call MPI_file_write(resUnit,reshape(materialpoint_results(:,:,outputIndex(1):outputIndex(2)), &
+     call MPI_file_write(fileUnit,reshape(materialpoint_results(:,:,outputIndex(1):outputIndex(2)), &
                                  [(outputIndex(2)-outputIndex(1)+1)*int(materialpoint_sizeResults,pLongInt)]), &
                          int((outputIndex(2)-outputIndex(1)+1)*int(materialpoint_sizeResults,pLongInt)), &
                          MPI_DOUBLE, MPI_STATUS_IGNORE, ierr)
@@ -565,7 +566,7 @@ program DAMASK_spectral
            write(6,'(/,a)') ' cutting back '
          else                                                                                       ! no more options to continue
            call IO_warning(850_pInt)
-           call MPI_file_close(resUnit,ierr)
+           call MPI_file_close(fileUnit,ierr)
            close(statUnit)
            call quit(-1_pInt*(lastRestartWritten+1_pInt))                                           ! quit and provide information about last restart inc written
          endif
@@ -588,12 +589,12 @@ program DAMASK_spectral
          write(6,'(1/,a)') ' ... writing results to file ......................................'
          flush(6)
          call materialpoint_postResults()
-         call MPI_file_seek (resUnit,fileOffset,MPI_SEEK_SET,ierr)
+         call MPI_file_seek (fileUnit,fileOffset,MPI_SEEK_SET,ierr)
          if (ierr /= 0_pInt) call IO_error(894_pInt, ext_msg='MPI_file_seek')
          do i=1, size(materialpoint_results,3)/(maxByteOut/(materialpoint_sizeResults*pReal))+1     ! slice the output of my process in chunks not exceeding the limit for one output
            outputIndex=int([(i-1_pInt)*((maxRealOut)/materialpoint_sizeResults)+1_pInt, &
                       min(i*((maxRealOut)/materialpoint_sizeResults),size(materialpoint_results,3))],pLongInt)
-           call MPI_file_write(resUnit,reshape(materialpoint_results(:,:,outputIndex(1):outputIndex(2)),&
+           call MPI_file_write(fileUnit,reshape(materialpoint_results(:,:,outputIndex(1):outputIndex(2)),&
                                        [(outputIndex(2)-outputIndex(1)+1)*int(materialpoint_sizeResults,pLongInt)]), &
                                int((outputIndex(2)-outputIndex(1)+1)*int(materialpoint_sizeResults,pLongInt)),&
                                MPI_DOUBLE, MPI_STATUS_IGNORE, ierr)
@@ -623,7 +624,7 @@ program DAMASK_spectral
    real(convergedCounter, pReal)/&
    real(notConvergedCounter + convergedCounter,pReal)*100.0_pReal, ' %) increments converged!'
  flush(6)
- call MPI_file_close(resUnit,ierr)
+ call MPI_file_close(fileUnit,ierr)
  close(statUnit)
 
  if (notConvergedCounter > 0_pInt) call quit(3_pInt)                                                ! error if some are not converged
