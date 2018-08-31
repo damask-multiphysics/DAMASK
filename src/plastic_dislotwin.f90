@@ -1247,31 +1247,31 @@ subroutine plastic_dislotwin_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,Temperature
  dgdot_dtauslip = 0.0_pReal
  slipSystems: do j = 1_pInt, prm%totalNslip
 
-      tau_slip(j) = math_mul33xx33(S,prm%Schmid_slip(1:3,1:3,j))
+   tau_slip(j) = math_mul33xx33(S,prm%Schmid_slip(1:3,1:3,j))
 
-      if((abs(tau_slip(j))-state(instance)%threshold_stress_slip(j,of)) > tol_math_check) then
-        stressRatio =((abs(tau_slip(j))- state(instance)%threshold_stress_slip(j,of))/&
-          (prm%SolidSolutionStrength+prm%tau_peierls(j)))
-        StressRatio_p       = stressRatio** prm%p(j)
-        StressRatio_pminus1 = stressRatio**(prm%p(j)-1.0_pReal)
-        BoltzmannRatio = prm%Qedge(j)/(kB*Temperature)
-      !* Initial shear rates
-        DotGamma0 = state(instance)%rhoEdge(j,of)*prm%burgers_slip(j)* prm%v0(j)
+   if((abs(tau_slip(j))-state(instance)%threshold_stress_slip(j,of)) > tol_math_check) then
+     stressRatio =((abs(tau_slip(j))- state(instance)%threshold_stress_slip(j,of))/&
+       (prm%SolidSolutionStrength+prm%tau_peierls(j)))
+     StressRatio_p       = stressRatio** prm%p(j)
+     StressRatio_pminus1 = stressRatio**(prm%p(j)-1.0_pReal)
+     BoltzmannRatio = prm%Qedge(j)/(kB*Temperature)
+   !* Initial shear rates
+     DotGamma0 = state(instance)%rhoEdge(j,of)*prm%burgers_slip(j)* prm%v0(j)
  
-        !* Shear rates due to slip
-        gdot_slip(j) = DotGamma0 *sign(exp(-BoltzmannRatio*(1-StressRatio_p)** prm%q(j)), tau_slip(j))
+     !* Shear rates due to slip
+     gdot_slip(j) = DotGamma0 *sign(exp(-BoltzmannRatio*(1-StressRatio_p)** prm%q(j)), tau_slip(j))
  
-        !* Derivatives of shear rates
-        dgdot_dtauslip(j) = abs(gdot_slip(j))*BoltzmannRatio*prm%p(j) * prm%q(j) &
-                          / (prm%SolidSolutionStrength+prm%tau_peierls(j)) &
-                          * StressRatio_pminus1*(1-StressRatio_p)**(prm%q(j)-1.0_pReal)
-      endif
+     !* Derivatives of shear rates
+     dgdot_dtauslip(j) = abs(gdot_slip(j))*BoltzmannRatio*prm%p(j) * prm%q(j) &
+                       / (prm%SolidSolutionStrength+prm%tau_peierls(j)) &
+                       * StressRatio_pminus1*(1-StressRatio_p)**(prm%q(j)-1.0_pReal)
+   endif
  
-      Lp = Lp + gdot_slip(j)*prm%Schmid_slip(1:3,1:3,j)
+   Lp = Lp + gdot_slip(j)*prm%Schmid_slip(1:3,1:3,j)
  
-      forall (k=1_pInt:3_pInt,l=1_pInt:3_pInt,m=1_pInt:3_pInt,n=1_pInt:3_pInt) &
-        dLp_dTstar3333(k,l,m,n) = dLp_dTstar3333(k,l,m,n) &
-                                + dgdot_dtauslip(j) * prm%Schmid_slip(k,l,j) * prm%Schmid_slip(m,n,j)
+   forall (k=1_pInt:3_pInt,l=1_pInt:3_pInt,m=1_pInt:3_pInt,n=1_pInt:3_pInt) &
+     dLp_dTstar3333(k,l,m,n) = dLp_dTstar3333(k,l,m,n) &
+                             + dgdot_dtauslip(j) * prm%Schmid_slip(k,l,j) * prm%Schmid_slip(m,n,j)
  enddo slipSystems
  
 !--------------------------------------------------------------------------------------------------
@@ -1330,10 +1330,8 @@ subroutine plastic_dislotwin_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,Temperature
      Lp = Lp + gdot_sb(j)*sb_Smatrix
  
      forall (k=1_pInt:3_pInt,l=1_pInt:3_pInt,m=1_pInt:3_pInt,n=1_pInt:3_pInt) &
-       dLp_dTstar3333(k,l,m,n) = &
-       dLp_dTstar3333(k,l,m,n) + dgdot_dtausb(j)*&
-                                 sb_Smatrix(k,l)*&
-                                 sb_Smatrix(m,n)
+       dLp_dTstar3333(k,l,m,n) = dLp_dTstar3333(k,l,m,n) &
+                               + dgdot_dtausb(j)* sb_Smatrix(k,l) * sb_Smatrix(m,n)
    enddo
  end if
  
@@ -1517,14 +1515,9 @@ subroutine plastic_dislotwin_dotState(Tstar_v,Temperature,ipc,ip,el)
  
  !* Dislocation density evolution
  gdot_slip = 0.0_pReal
- j = 0_pInt
- do f = 1_pInt,size(prm%Nslip,1)
-   index_myFamily = sum(lattice_NslipSystem(1:f-1_pInt,ph))   ! at which index starts my family
-   do i = 1_pInt,prm%Nslip(f)          ! process each (active) slip system in family
-      j = j+1_pInt
- 
+ slipSystems: do j = 1_pInt, prm%totalNslip
       !* Resolved shear stress on slip system
-      tau_slip(j) = math_mul33xx33(S,lattice_Sslip(1:3,1:3,1,index_myFamily+i,ph))
+      tau_slip(j) = math_mul33xx33(S,prm%Schmid_slip(1:3,1:3,j))
 
       if((abs(tau_slip(j))-state(instance)%threshold_stress_slip(j,of)) > tol_math_check) then
       !* Stress ratios
@@ -1595,8 +1588,7 @@ subroutine plastic_dislotwin_dotState(Tstar_v,Temperature,ipc,ip,el)
       !* Dotstate for accumulated shear due to slip
       dotState(instance)%accshear_slip(j,of) = abs(gdot_slip(j))
  
-   enddo
- enddo
+ enddo slipSystems
  
  !* Twin volume fraction evolution
  j = 0_pInt
@@ -1606,7 +1598,7 @@ subroutine plastic_dislotwin_dotState(Tstar_v,Temperature,ipc,ip,el)
       j = j+1_pInt
  
       !* Resolved shear stress on twin system
-      tau_twin(j) = math_mul33xx33(S,lattice_Stwin(1:3,1:3,index_myFamily+i,ph))
+      tau_twin(j) = math_mul33xx33(S,prm%Schmid_slip(1:3,1:3,j))
       !* Stress ratios
       if (tau_twin(j) > tol_math_check) then
         StressRatio_r = (state(instance)%threshold_stress_twin(j,of)/&
