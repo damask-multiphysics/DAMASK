@@ -143,6 +143,12 @@ program DAMASK_spectral
  integer(pInt), parameter :: maxRealOut = maxByteOut/pReal
  integer(pLongInt), dimension(2) :: outputIndex
  integer :: ierr
+ procedure(basic_init), pointer :: &
+   mech_init
+ procedure(basic_forward), pointer :: &
+   mech_forward
+ procedure(basic_solution), pointer :: &
+   mech_solution
 
  external :: &
    quit
@@ -162,6 +168,26 @@ program DAMASK_spectral
  if (any(thermal_type  == THERMAL_conduction_ID  )) nActiveFields = nActiveFields + 1
  if (any(damage_type   == DAMAGE_nonlocal_ID     )) nActiveFields = nActiveFields + 1
  allocate(solres(nActiveFields))
+
+!--------------------------------------------------------------------------------------------------
+! assign mechanics solver depending on selected type
+ select case (spectral_solver)
+   case (DAMASK_spectral_SolverBasic_label)
+     mech_init     => basic_init
+     mech_forward  => basic_forward
+     mech_solution => basic_solution
+
+   case (DAMASK_spectral_SolverPolarisation_label)
+     if(iand(debug_level(debug_spectral),debug_levelBasic)/= 0) &
+       call IO_warning(42_pInt, ext_msg='debug Divergence')
+     mech_init     => polarisation_init
+     mech_forward  => polarisation_forward
+     mech_solution => polarisation_solution
+
+   case default
+     call IO_error(error_ID = 891_pInt, ext_msg = trim(spectral_solver))
+
+ end select
 
 !--------------------------------------------------------------------------------------------------
 ! reading basic information from load case file and allocate data structure containing load cases
@@ -189,7 +215,7 @@ program DAMASK_spectral
  allocate (loadCases(N_n))                                                                          ! array of load cases
  loadCases%stress%myType='stress'
 
-  do i = 1, size(loadCases)
+ do i = 1, size(loadCases)
    allocate(loadCases(i)%ID(nActiveFields))
    field = 1
    loadCases(i)%ID(field) = FIELD_MECH_ID           ! mechanical active by default
@@ -355,25 +381,13 @@ program DAMASK_spectral
  do field = 1, nActiveFields
    select case (loadCases(1)%ID(field))
      case(FIELD_MECH_ID)
-       select case (spectral_solver)
-         case (DAMASK_spectral_SolverBasic_label)
-           call basic_init
-           
-         case (DAMASK_spectral_SolverPolarisation_label)
-           if(iand(debug_level(debug_spectral),debug_levelBasic)/= 0) &
-           call IO_warning(42_pInt, ext_msg='debug Divergence')
-           call Polarisation_init
-
-         case default
-           call IO_error(error_ID = 891_pInt, ext_msg = trim(spectral_solver))
-       
-       end select 
+       call mech_init
      
       case(FIELD_THERMAL_ID)
        call spectral_thermal_init
 
      case(FIELD_DAMAGE_ID)
-       call spectral_damage_init()
+       call spectral_damage_init
 
    end select
  enddo
@@ -512,24 +526,14 @@ program DAMASK_spectral
          do field = 1, nActiveFields
            select case(loadCases(currentLoadCase)%ID(field))
              case(FIELD_MECH_ID)
-               select case (spectral_solver)
-                 case (DAMASK_spectral_SolverBasic_label)
-                   call Basic_forward (&
+               call mech_forward (&
                        guess,timeinc,timeIncOld,remainingLoadCaseTime, &
                        deformation_BC     = loadCases(currentLoadCase)%deformation, &
                        stress_BC          = loadCases(currentLoadCase)%stress, &
                        rotation_BC        = loadCases(currentLoadCase)%rotation)
 
-                 case (DAMASK_spectral_SolverPolarisation_label)
-                   call Polarisation_forward (&
-                       guess,timeinc,timeIncOld,remainingLoadCaseTime, &
-                       deformation_BC     = loadCases(currentLoadCase)%deformation, &
-                       stress_BC          = loadCases(currentLoadCase)%stress, &
-                       rotation_BC        = loadCases(currentLoadCase)%rotation)
-               end select
-
-           case(FIELD_THERMAL_ID); call spectral_thermal_forward()
-           case(FIELD_DAMAGE_ID);  call spectral_damage_forward()
+             case(FIELD_THERMAL_ID); call spectral_thermal_forward()
+             case(FIELD_DAMAGE_ID);  call spectral_damage_forward()
            end select
          enddo
 
@@ -541,20 +545,10 @@ program DAMASK_spectral
            do field = 1, nActiveFields
              select case(loadCases(currentLoadCase)%ID(field))
                case(FIELD_MECH_ID)
-                 select case (spectral_solver)
-                   case (DAMASK_spectral_SolverBasic_label)
-                     solres(field) = Basic_solution (&
-                         incInfo,timeinc,timeIncOld, &
-                         stress_BC          = loadCases(currentLoadCase)%stress, &
-                         rotation_BC        = loadCases(currentLoadCase)%rotation)
-
-                   case (DAMASK_spectral_SolverPolarisation_label)
-                     solres(field) = Polarisation_solution (&
-                         incInfo,timeinc,timeIncOld, &
-                         stress_BC          = loadCases(currentLoadCase)%stress, &
-                         rotation_BC        = loadCases(currentLoadCase)%rotation)
-
-                 end select
+                 solres(field) = mech_solution (&
+                                        incInfo,timeinc,timeIncOld, &
+                                        stress_BC          = loadCases(currentLoadCase)%stress, &
+                                        rotation_BC        = loadCases(currentLoadCase)%rotation)
 
                case(FIELD_THERMAL_ID)
                  solres(field) = spectral_thermal_solution(timeinc,timeIncOld,remainingLoadCaseTime)
