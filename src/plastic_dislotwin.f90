@@ -111,7 +111,8 @@ module plastic_dislotwin
      p, &                                                         !< p-exponent in glide velocity
      q, &                                                         !< q-exponent in glide velocity
      r, &                                                         !< r-exponent in twin nucleation rate
-     s                                                           !< s-exponent in trans nucleation rate
+     s, &                                                           !< s-exponent in trans nucleation rate
+     shear_twin                                                                                     !< characteristic shear for twins
    real(pReal),                  dimension(:,:),            allocatable,           private :: & 
      interaction_SlipSlip, &                                                   !< coefficients for slip-slip interaction for each interaction type and instance
      interaction_SlipTwin, &                                                   !< coefficients for slip-twin interaction for each interaction type and instance
@@ -575,7 +576,9 @@ subroutine plastic_dislotwin_init(fileUnit)
       if (prm%sbVelocity > 0.0_pReal .and. &
           prm%qShearBand <= 0.0_pReal) &
         call IO_error(211_pInt,el=instance,ext_msg='qShearBand ('//PLASTICITY_DISLOTWIN_label//')')
-
+     
+      prm%p = math_expand(prm%p,prm%Nslip)
+      prm%q = math_expand(prm%q,prm%Nslip)
  enddo 
 
  allocate(forestProjectionEdge(prm%totalNslip,prm%totalNslip,maxNinstance), source=0.0_pReal)
@@ -1259,8 +1262,8 @@ subroutine plastic_dislotwin_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,Temperature
       !* Stress ratios
         stressRatio =((abs(tau_slip(j))- state(instance)%threshold_stress_slip(j,of))/&
           (prm%SolidSolutionStrength+prm%tau_peierlsPerSlipFamily(f)))
-        StressRatio_p       = stressRatio** prm%p(f)
-        StressRatio_pminus1 = stressRatio**(prm%p(f)-1.0_pReal)
+        StressRatio_p       = stressRatio** prm%p(j)
+        StressRatio_pminus1 = stressRatio**(prm%p(j)-1.0_pReal)
       !* Boltzmann ratio
         BoltzmannRatio = prm%Qedge(j)/(kB*Temperature)
       !* Initial shear rates
@@ -1270,15 +1273,15 @@ subroutine plastic_dislotwin_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,Temperature
  
         !* Shear rates due to slip
         gdot_slip(j) = DotGamma0 &
-                     * exp(-BoltzmannRatio*(1-StressRatio_p) ** prm%q(f)) &
+                     * exp(-BoltzmannRatio*(1-StressRatio_p) ** prm%q(j)) &
                      * sign(1.0_pReal,tau_slip(j))
  
         !* Derivatives of shear rates
         dgdot_dtauslip(j) = &
-          abs(gdot_slip(j))*BoltzmannRatio*prm%p(f)&
-          *prm%q(f)/&
+          abs(gdot_slip(j))*BoltzmannRatio*prm%p(j)&
+          *prm%q(j)/&
           (prm%SolidSolutionStrength+prm%tau_peierlsPerSlipFamily(f))*&
-          StressRatio_pminus1*(1-StressRatio_p)**(prm%q(f)-1.0_pReal)
+          StressRatio_pminus1*(1-StressRatio_p)**(prm%q(j)-1.0_pReal)
       endif
  
       !* Plastic velocity gradient for dislocation glide
@@ -1560,8 +1563,8 @@ subroutine plastic_dislotwin_dotState(Tstar_v,Temperature,ipc,ip,el)
       !* Stress ratios
         stressRatio =((abs(tau_slip(j))- state(instance)%threshold_stress_slip(j,of))/&
           (prm%SolidSolutionStrength+prm%tau_peierlsPerSlipFamily(f)))
-        StressRatio_p       = stressRatio** prm%p(f)
-        StressRatio_pminus1 = stressRatio**(prm%p(f)-1.0_pReal)
+        StressRatio_p       = stressRatio** prm%p(j)
+        StressRatio_pminus1 = stressRatio**(prm%p(j)-1.0_pReal)
       !* Boltzmann ratio
         BoltzmannRatio = prm%Qedge(j)/(kB*Temperature)
       !* Initial shear rates
@@ -1569,7 +1572,7 @@ subroutine plastic_dislotwin_dotState(Tstar_v,Temperature,ipc,ip,el)
  
       !* Shear rates due to slip
         gdot_slip(j) = DotGamma0*exp(-BoltzmannRatio*(1_pInt-StressRatio_p)** &
-                       prm%q(f))*sign(1.0_pReal,tau_slip(j))
+                       prm%q(j))*sign(1.0_pReal,tau_slip(j))
       endif
       !* Multiplication
       DotRhoMultiplication = abs(gdot_slip(j))/(prm%burgers_slip(j)*state(instance)%mfp_slip(j,of))
@@ -1810,8 +1813,8 @@ function plastic_dislotwin_postResults(Tstar_v,Temperature,ipc,ip,el)
                 stressRatio = ((abs(tau)-state(ph)%threshold_stress_slip(j,of))/&
                                 (prm%SolidSolutionStrength+&
                                  prm%tau_peierlsPerSlipFamily(f)))
-                StressRatio_p       = stressRatio** prm%p(f)
-                StressRatio_pminus1 = stressRatio**(prm%p(f)-1.0_pReal)
+                StressRatio_p       = stressRatio** prm%p(j)
+                StressRatio_pminus1 = stressRatio**(prm%p(j)-1.0_pReal)
               !* Boltzmann ratio
                 BoltzmannRatio = prm%Qedge(j)/(kB*Temperature)
               !* Initial shear rates
@@ -1822,7 +1825,7 @@ function plastic_dislotwin_postResults(Tstar_v,Temperature,ipc,ip,el)
               !* Shear rates due to slip
                 plastic_dislotwin_postResults(c+j) = &
                   DotGamma0*exp(-BoltzmannRatio*(1_pInt-StressRatio_p)**&
-                               prm%q(f))*sign(1.0_pReal,tau)
+                               prm%q(j))*sign(1.0_pReal,tau)
               else
                 plastic_dislotwin_postResults(c+j) = 0.0_pReal
               endif
@@ -1915,11 +1918,11 @@ function plastic_dislotwin_postResults(Tstar_v,Temperature,ipc,ip,el)
                  StressRatio_p = ((abs(tau)-state(instance)%threshold_stress_slip(j,of))/&
                                  (prm%SolidSolutionStrength+&
                                   prm%tau_peierlsPerSlipFamily(f)))&
-                                                    **prm%p(f)
+                                                    **prm%p(j)
                  StressRatio_pminus1 = ((abs(tau)-state(instance)%threshold_stress_slip(j,of))/&
                                        (prm%SolidSolutionStrength+&
                                         prm%tau_peierlsPerSlipFamily(f)))&
-                                                    **(prm%p(f)-1.0_pReal)
+                                                    **(prm%p(j)-1.0_pReal)
                !* Boltzmann ratio
                  BoltzmannRatio = prm%Qedge(j)/(kB*Temperature)
                !* Initial shear rates
@@ -1929,7 +1932,7 @@ function plastic_dislotwin_postResults(Tstar_v,Temperature,ipc,ip,el)
  
                !* Shear rates due to slip
                  gdot_slip(j) = DotGamma0*exp(-BoltzmannRatio*(1_pInt-StressRatio_p)**&
-                                prm%q(f))*sign(1.0_pReal,tau)
+                                prm%q(j))*sign(1.0_pReal,tau)
                else
                  gdot_slip(j) = 0.0_pReal
                endif
@@ -2007,11 +2010,11 @@ function plastic_dislotwin_postResults(Tstar_v,Temperature,ipc,ip,el)
                StressRatio_p = ((abs(tau)-state(instance)%threshold_stress_slip(j,of))/&
                                (prm%SolidSolutionStrength+&
                                 prm%tau_peierlsPerSlipFamily(f)))&
-                                                  **prm%p(f)
+                                                  **prm%p(j)
                StressRatio_pminus1 = ((abs(tau)-state(instance)%threshold_stress_slip(j,of))/&
                                      (prm%SolidSolutionStrength+&
                                       prm%tau_peierlsPerSlipFamily(f)))&
-                                                  **(prm%p(f)-1.0_pReal)
+                                                  **(prm%p(j)-1.0_pReal)
              !* Boltzmann ratio
                BoltzmannRatio = prm%Qedge(j)/(kB*Temperature)
              !* Initial shear rates
@@ -2021,15 +2024,15 @@ function plastic_dislotwin_postResults(Tstar_v,Temperature,ipc,ip,el)
 
              !* Shear rates due to slip
                gdot_slip(j) = DotGamma0*exp(-BoltzmannRatio*(1_pInt-StressRatio_p)**&
-                            prm%q(f))*sign(1.0_pReal,tau)
+                            prm%q(j))*sign(1.0_pReal,tau)
 
              !* Derivatives of shear rates
                dgdot_dtauslip = &
-                 abs(gdot_slip(j))*BoltzmannRatio*prm%p(f)&
-                 *prm%q(f)/&
+                 abs(gdot_slip(j))*BoltzmannRatio*prm%p(j)&
+                 *prm%q(j)/&
                  (prm%SolidSolutionStrength+&
                   prm%tau_peierlsPerSlipFamily(f))*&
-                 StressRatio_pminus1*(1-StressRatio_p)**(prm%q(f)-1.0_pReal)
+                 StressRatio_pminus1*(1-StressRatio_p)**(prm%q(j)-1.0_pReal)
              
              else
                gdot_slip(j) = 0.0_pReal
