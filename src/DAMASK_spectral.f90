@@ -190,13 +190,16 @@ program DAMASK_spectral
 
 !--------------------------------------------------------------------------------------------------
 ! reading information from load case file and to sanity checks 
- allocate (loadCases(0))                                                                          ! array of load cases
+ allocate (loadCases(0))                                                                            ! array of load cases
  open(newunit=fileunit,iostat=myStat,file=trim(loadCaseFile),action='read')
  if (myStat /= 0_pInt) call IO_error(100_pInt,el=myStat,ext_msg=trim(loadCaseFile))
  do
    read(fileUnit, '(A)', iostat=myStat) line
    if ( myStat /= 0_pInt) exit
    if (IO_isBlank(line)) cycle                                                                      ! skip empty lines
+
+   currentLoadCase = currentLoadCase + 1_pInt
+
    chunkPos = IO_stringPos(line)
    do i = 1_pInt, chunkPos(1)                                                                       ! reading compulsory parameters for loadcase
      select case (IO_lc(IO_stringValue(line,chunkPos,i)))
@@ -207,13 +210,13 @@ program DAMASK_spectral
        case('n','incs','increments','steps','logincs','logincrements','logsteps')
          N_n = N_n + 1_pInt
      end select
-   enddo                                                                                            ! count all identifiers to allocate memory and do sanity check
-   if ((N_def /= N_n) .or. (N_n /= N_t) .or. N_n < 1_pInt) &                                          ! sanity check
-     call IO_error(error_ID=837_pInt,ext_msg = trim(loadCaseFile))                                    ! error message for incomplete loadcase
+   enddo
+   if ((N_def /= N_n) .or. (N_n /= N_t) .or. N_n < 1_pInt) &                                        ! sanity check
+     call IO_error(error_ID=837_pInt,el=currentLoadCase,ext_msg = trim(loadCaseFile))               ! error message for incomplete loadcase
 
    newLoadCase%stress%myType='stress'
    field = 1
-   newLoadCase%ID(field) = FIELD_MECH_ID                                          ! mechanical active by default
+   newLoadCase%ID(field) = FIELD_MECH_ID                                                            ! mechanical active by default
    thermalActive: if (any(thermal_type  == THERMAL_conduction_ID)) then
      field = field + 1
      newLoadCase%ID(field) = FIELD_THERMAL_ID
@@ -290,7 +293,6 @@ program DAMASK_spectral
      end select
    enddo readIn
 
-   currentLoadCase = currentLoadCase + 1_pInt
    newLoadCase%followFormerTrajectory = merge(.true.,.false.,currentLoadCase > 1_pInt)              ! by default, guess from previous load case
 
    reportAndCheck: if (worldrank == 0) then
