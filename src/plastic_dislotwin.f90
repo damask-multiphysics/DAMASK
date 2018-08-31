@@ -102,7 +102,7 @@ module plastic_dislotwin
      burgers_trans, &                                                  !< absolute length of burgers vector [m] for each twin family and instance
      Qedge,&                                                !< activation energy for glide [J] for each slip system and instance
      v0, &                                                    !dislocation velocity prefactor [m/s] for each slip system and instance
-     tau_peierlsPerSlipFamily,&                                            !< Peierls stress [Pa] for each family and instance
+     tau_peierls,&                                            !< Peierls stress [Pa] for each family and instance
      Ndot0_twin, &                                                 !< twin nucleation rate [1/m³s] for each twin system and instance
      Ndot0_trans, &                                                !< trans nucleation rate [1/m³s] for each trans system and instance
      twinsize, &                                                  !< twin thickness [m] for each twin system and instance
@@ -317,7 +317,7 @@ subroutine plastic_dislotwin_init(fileUnit)
        prm%CLambdaSlipPerSlipSystem = config_phase(p)%getFloats('clambdaslip')
        prm%CLambdaSlipPerSlipSystem= math_expand(prm%CLambdaSlipPerSlipSystem,prm%Nslip)
 
-       prm%tau_peierlsPerSlipFamily = config_phase(p)%getFloats('tau_peierls',defaultVal=[0.0_pReal])
+       prm%tau_peierls = config_phase(p)%getFloats('tau_peierls',defaultVal=[0.0_pReal])
 
        prm%p = config_phase(p)%getFloats('p_slip')
        prm%q = config_phase(p)%getFloats('q_slip')
@@ -579,6 +579,7 @@ subroutine plastic_dislotwin_init(fileUnit)
      
       prm%p = math_expand(prm%p,prm%Nslip)
       prm%q = math_expand(prm%q,prm%Nslip)
+      prm%tau_peierls = math_expand(prm%tau_peierls,prm%Nslip)
  enddo 
 
  allocate(forestProjectionEdge(prm%totalNslip,prm%totalNslip,maxNinstance), source=0.0_pReal)
@@ -1261,7 +1262,7 @@ subroutine plastic_dislotwin_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,Temperature
       if((abs(tau_slip(j))-state(instance)%threshold_stress_slip(j,of)) > tol_math_check) then
       !* Stress ratios
         stressRatio =((abs(tau_slip(j))- state(instance)%threshold_stress_slip(j,of))/&
-          (prm%SolidSolutionStrength+prm%tau_peierlsPerSlipFamily(f)))
+          (prm%SolidSolutionStrength+prm%tau_peierls(j)))
         StressRatio_p       = stressRatio** prm%p(j)
         StressRatio_pminus1 = stressRatio**(prm%p(j)-1.0_pReal)
       !* Boltzmann ratio
@@ -1280,7 +1281,7 @@ subroutine plastic_dislotwin_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,Temperature
         dgdot_dtauslip(j) = &
           abs(gdot_slip(j))*BoltzmannRatio*prm%p(j)&
           *prm%q(j)/&
-          (prm%SolidSolutionStrength+prm%tau_peierlsPerSlipFamily(f))*&
+          (prm%SolidSolutionStrength+prm%tau_peierls(j))*&
           StressRatio_pminus1*(1-StressRatio_p)**(prm%q(j)-1.0_pReal)
       endif
  
@@ -1562,7 +1563,7 @@ subroutine plastic_dislotwin_dotState(Tstar_v,Temperature,ipc,ip,el)
       if((abs(tau_slip(j))-state(instance)%threshold_stress_slip(j,of)) > tol_math_check) then
       !* Stress ratios
         stressRatio =((abs(tau_slip(j))- state(instance)%threshold_stress_slip(j,of))/&
-          (prm%SolidSolutionStrength+prm%tau_peierlsPerSlipFamily(f)))
+          (prm%SolidSolutionStrength+prm%tau_peierls(j)))
         StressRatio_p       = stressRatio** prm%p(j)
         StressRatio_pminus1 = stressRatio**(prm%p(j)-1.0_pReal)
       !* Boltzmann ratio
@@ -1812,7 +1813,7 @@ function plastic_dislotwin_postResults(Tstar_v,Temperature,ipc,ip,el)
               !* Stress ratios
                 stressRatio = ((abs(tau)-state(ph)%threshold_stress_slip(j,of))/&
                                 (prm%SolidSolutionStrength+&
-                                 prm%tau_peierlsPerSlipFamily(f)))
+                                 prm%tau_peierls(j)))
                 StressRatio_p       = stressRatio** prm%p(j)
                 StressRatio_pminus1 = stressRatio**(prm%p(j)-1.0_pReal)
               !* Boltzmann ratio
@@ -1917,11 +1918,11 @@ function plastic_dislotwin_postResults(Tstar_v,Temperature,ipc,ip,el)
                !* Stress ratios
                  StressRatio_p = ((abs(tau)-state(instance)%threshold_stress_slip(j,of))/&
                                  (prm%SolidSolutionStrength+&
-                                  prm%tau_peierlsPerSlipFamily(f)))&
+                                  prm%tau_peierls(j)))&
                                                     **prm%p(j)
                  StressRatio_pminus1 = ((abs(tau)-state(instance)%threshold_stress_slip(j,of))/&
                                        (prm%SolidSolutionStrength+&
-                                        prm%tau_peierlsPerSlipFamily(f)))&
+                                        prm%tau_peierls(j)))&
                                                     **(prm%p(j)-1.0_pReal)
                !* Boltzmann ratio
                  BoltzmannRatio = prm%Qedge(j)/(kB*Temperature)
@@ -2009,11 +2010,11 @@ function plastic_dislotwin_postResults(Tstar_v,Temperature,ipc,ip,el)
              !* Stress ratios
                StressRatio_p = ((abs(tau)-state(instance)%threshold_stress_slip(j,of))/&
                                (prm%SolidSolutionStrength+&
-                                prm%tau_peierlsPerSlipFamily(f)))&
+                                prm%tau_peierls(j)))&
                                                   **prm%p(j)
                StressRatio_pminus1 = ((abs(tau)-state(instance)%threshold_stress_slip(j,of))/&
                                      (prm%SolidSolutionStrength+&
-                                      prm%tau_peierlsPerSlipFamily(f)))&
+                                      prm%tau_peierls(j)))&
                                                   **(prm%p(j)-1.0_pReal)
              !* Boltzmann ratio
                BoltzmannRatio = prm%Qedge(j)/(kB*Temperature)
@@ -2031,7 +2032,7 @@ function plastic_dislotwin_postResults(Tstar_v,Temperature,ipc,ip,el)
                  abs(gdot_slip(j))*BoltzmannRatio*prm%p(j)&
                  *prm%q(j)/&
                  (prm%SolidSolutionStrength+&
-                  prm%tau_peierlsPerSlipFamily(f))*&
+                  prm%tau_peierls(j))*&
                  StressRatio_pminus1*(1-StressRatio_p)**(prm%q(j)-1.0_pReal)
              
              else
