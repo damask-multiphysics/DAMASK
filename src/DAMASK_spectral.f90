@@ -133,6 +133,7 @@ program DAMASK_spectral
    incInfo, &                                                                                       !< string parsed to solution with information about current load case
    workingDir
  type(tLoadCase), allocatable, dimension(:) :: loadCases                                            !< array of all load cases
+ type(tLoadCase) :: newLoadCase
  type(tSolutionState), allocatable, dimension(:) :: solres
  integer(MPI_OFFSET_KIND) :: fileOffset
  integer(MPI_OFFSET_KIND), dimension(:), allocatable :: outputSize
@@ -188,6 +189,7 @@ program DAMASK_spectral
 
 !--------------------------------------------------------------------------------------------------
 ! reading basic information from load case file and allocate data structure containing load cases
+ allocate (loadCases(0))                                                                          ! array of load cases
  open(newunit=fileunit,iostat=myStat,file=trim(loadCaseFile),action='read')
  if (myStat /= 0_pInt) call IO_error(100_pInt,el=myStat,ext_msg=trim(loadCaseFile))
  do
@@ -205,29 +207,27 @@ program DAMASK_spectral
          N_n = N_n + 1_pInt
      end select
    enddo                                                                                            ! count all identifiers to allocate memory and do sanity check
- enddo
-
- if ((N_def /= N_n) .or. (N_n /= N_t) .or. N_n < 1_pInt) &                                          ! sanity check
-   call IO_error(error_ID=837_pInt,ext_msg = trim(loadCaseFile))                                    ! error message for incomplete loadcase
- allocate (loadCases(N_n))                                                                          ! array of load cases
- loadCases%stress%myType='stress'
-
- do i = 1, size(loadCases)
-   allocate(loadCases(i)%ID(nActiveFields))
+   if ((N_def /= N_n) .or. (N_n /= N_t) .or. N_n < 1_pInt) &                                          ! sanity check
+     call IO_error(error_ID=837_pInt,ext_msg = trim(loadCaseFile))                                    ! error message for incomplete loadcase
+   loadCases = [loadCases,newLoadCase]
+   currentLoadCase = currentLoadCase + 1_pInt
+   loadCases(currentLoadCase)%stress%myType='stress'
+   allocate(loadCases(currentLoadCase)%ID(nActiveFields))
    field = 1
-   loadCases(i)%ID(field) = FIELD_MECH_ID           ! mechanical active by default
+   loadCases(currentLoadCase)%ID(field) = FIELD_MECH_ID                                          ! mechanical active by default
    thermalActive: if (any(thermal_type  == THERMAL_conduction_ID)) then
      field = field + 1
-     loadCases(i)%ID(field) = FIELD_THERMAL_ID
+     loadCases(currentLoadCase)%ID(field) = FIELD_THERMAL_ID
    endif thermalActive
    damageActive: if (any(damage_type   == DAMAGE_nonlocal_ID)) then
      field = field + 1
-     loadCases(i)%ID(field) = FIELD_DAMAGE_ID
+     loadCases(currentLoadCase)%ID(field) = FIELD_DAMAGE_ID
    endif damageActive
  enddo
 
 !--------------------------------------------------------------------------------------------------
 ! reading the load case and assign values to the allocated data structure
+ currentLoadCase = 0_pInt
  rewind(FILEUNIT)
  do
    read(fileUnit, '(A)', iostat=myStat) line
@@ -380,7 +380,7 @@ program DAMASK_spectral
      case(FIELD_MECH_ID)
        call mech_init
      
-      case(FIELD_THERMAL_ID)
+     case(FIELD_THERMAL_ID)
        call spectral_thermal_init
 
      case(FIELD_DAMAGE_ID)
