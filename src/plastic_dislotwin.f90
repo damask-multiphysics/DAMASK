@@ -1188,17 +1188,14 @@ subroutine plastic_dislotwin_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,Temperature
 
  integer(pInt) :: instance,ph,of,j,k,l,m,n,s1,s2
  real(pReal) :: sumf,sumftr,StressRatio_p,StressRatio_pminus1,&
-                StressRatio_r,BoltzmannRatio,DotGamma0,Ndot0_twin,stressRatio, &
+                StressRatio_r,BoltzmannRatio,Ndot0_twin,stressRatio, &
     Ndot0_trans,StressRatio_s, &
-    tau_twin, tau_trans, &
-    gdot_twin,dgdot_dtautwin, &
-    gdot_trans,dgdot_dtautrans, &
-    dgdot_dtauslip, &
-    tau_slip
+    dgdot_dtau, &
+    tau
  real(pReal), dimension(3,3,3,3) :: dLp_dS
  real(pReal), dimension(plasticState(material_phase(ipc,ip,el))%Nslip) :: &
     gdot_slip
- real(pReal):: gdot_sb,dgdot_dtausb,tau_sb
+ real(pReal):: gdot_sb,gdot_twin,gdot_trans
  real(pReal), dimension(3,3) :: eigVectors, sb_Smatrix
  real(pReal), dimension(3)   :: eigValues, sb_s, sb_m
  logical :: error
@@ -1241,31 +1238,30 @@ subroutine plastic_dislotwin_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,Temperature
 !--------------------------------------------------------------------------------------------------
 ! Dislocation glide part
  slipSystems: do j = 1_pInt, prm%totalNslip
-   tau_slip = math_mul33xx33(S,prm%Schmid_slip(1:3,1:3,j))
+   tau = math_mul33xx33(S,prm%Schmid_slip(1:3,1:3,j))
 
-   significantSlipStress: if((abs(tau_slip)-state(instance)%threshold_stress_slip(j,of)) > tol_math_check) then
-     stressRatio =((abs(tau_slip)- state(instance)%threshold_stress_slip(j,of))/&
+   significantSlipStress: if((abs(tau)-state(instance)%threshold_stress_slip(j,of)) > tol_math_check) then
+     stressRatio =((abs(tau)- state(instance)%threshold_stress_slip(j,of))/&
        (prm%SolidSolutionStrength+prm%tau_peierls(j)))
      StressRatio_p       = stressRatio** prm%p(j)
      StressRatio_pminus1 = stressRatio**(prm%p(j)-1.0_pReal) ! ToDo: no very helpful
      BoltzmannRatio = prm%Qedge(j)/(kB*Temperature)
-     DotGamma0 = state(instance)%rhoEdge(j,of)*prm%burgers_slip(j)* prm%v0(j)
-     gdot_slip(j) = DotGamma0 *sign(exp(-BoltzmannRatio*(1-StressRatio_p)** prm%q(j)), tau_slip)
+     gdot_slip(j) = state(instance)%rhoEdge(j,of)*prm%burgers_slip(j)* prm%v0(j) &
+                  * sign(exp(-BoltzmannRatio*(1-StressRatio_p)** prm%q(j)), tau)
  
      !* Derivatives of shear rates
-     dgdot_dtauslip = abs(gdot_slip(j))*BoltzmannRatio*prm%p(j) * prm%q(j) &
+     dgdot_dtau = abs(gdot_slip(j))*BoltzmannRatio*prm%p(j) * prm%q(j) &
                     / (prm%SolidSolutionStrength+prm%tau_peierls(j)) &
                     * StressRatio_pminus1*(1-StressRatio_p)**(prm%q(j)-1.0_pReal)
    else significantSlipStress
      gdot_slip(j)   = 0.0_pReal
-     dgdot_dtauslip = 0.0_pReal
+     dgdot_dtau = 0.0_pReal
    endif significantSlipStress
  
    Lp = Lp + gdot_slip(j)*prm%Schmid_slip(1:3,1:3,j)
- 
    forall (k=1_pInt:3_pInt,l=1_pInt:3_pInt,m=1_pInt:3_pInt,n=1_pInt:3_pInt) &
      dLp_dS(k,l,m,n) = dLp_dS(k,l,m,n) &
-                             + dgdot_dtauslip * prm%Schmid_slip(k,l,j) * prm%Schmid_slip(m,n,j)
+                     + dgdot_dtau * prm%Schmid_slip(k,l,j) * prm%Schmid_slip(m,n,j)
  enddo slipSystems
  
 !--------------------------------------------------------------------------------------------------
@@ -1276,12 +1272,13 @@ subroutine plastic_dislotwin_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,Temperature
  !* Total transformed volume fraction
  sumftr = sum(state(instance)%stressTransFraction(1_pInt:prm%totalNtrans,of)) + &
           sum(state(instance)%strainTransFraction(1_pInt:prm%totalNtrans,of))
- Lp = Lp * (1.0_pReal - sumf - sumftr)
+ Lp     = Lp * (1.0_pReal - sumf - sumftr)
  dLp_dS = dLp_dS * (1.0_pReal - sumf - sumftr)
  
 !--------------------------------------------------------------------------------------------------
 ! Shear banding (shearband) part
  if(dNeq0(prm%sbVelocity)) then
+    BoltzmannRatio = prm%sbQedge/(kB*Temperature)
    call math_eigenValuesVectorsSym(S,eigValues,eigVectors,error)
    do j = 1_pInt,6_pInt
      sb_s = 0.5_pReal*sqrt(2.0_pReal)*math_mul33x3(eigVectors,sb_sComposition(1:3,j))
@@ -1291,76 +1288,72 @@ subroutine plastic_dislotwin_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,Temperature
    
      !* Calculation of Lp
      !* Resolved shear stress on shear banding system
-     tau_sb = dot_product(Tstar_v,sbSv(1:6,j,ipc,ip,el))
+     tau = dot_product(Tstar_v,sbSv(1:6,j,ipc,ip,el))
    
      !* Stress ratios
-     if (abs(tau_sb) < tol_math_check) then
+     if (abs(tau) < tol_math_check) then
        StressRatio_p = 0.0_pReal
        StressRatio_pminus1 = 0.0_pReal
      else
-       StressRatio_p       = (abs(tau_sb)/prm%sbResistance)**prm%pShearBand
-       StressRatio_pminus1 = (abs(tau_sb)/prm%sbResistance)**(prm%pShearBand-1.0_pReal)
+       StressRatio_p       = (abs(tau)/prm%sbResistance)**prm%pShearBand
+       StressRatio_pminus1 = (abs(tau)/prm%sbResistance)**(prm%pShearBand-1.0_pReal)
      endif
-
-     BoltzmannRatio = prm%sbQedge/(kB*Temperature)
-     gdot_sb = sign(prm%sbVelocity*exp(-BoltzmannRatio*(1_pInt-StressRatio_p)**prm%qShearBand), tau_sb)
-     dgdot_dtausb = ((abs(gdot_sb)*BoltzmannRatio* prm%pShearBand*prm%qShearBand)/ prm%sbResistance) &
-                  * StressRatio_pminus1*(1_pInt-StressRatio_p)**(prm%qShearBand-1.0_pReal)
+     gdot_sb = sign(prm%sbVelocity*exp(-BoltzmannRatio*(1_pInt-StressRatio_p)**prm%qShearBand), tau)
+     dgdot_dtau = ((abs(gdot_sb)*BoltzmannRatio* prm%pShearBand*prm%qShearBand)/ prm%sbResistance) &
+                * StressRatio_pminus1*(1_pInt-StressRatio_p)**(prm%qShearBand-1.0_pReal)
  
      Lp = Lp + gdot_sb*sb_Smatrix
- 
      forall (k=1_pInt:3_pInt,l=1_pInt:3_pInt,m=1_pInt:3_pInt,n=1_pInt:3_pInt) &
        dLp_dS(k,l,m,n) = dLp_dS(k,l,m,n) &
-                               + dgdot_dtausb * sb_Smatrix(k,l) * sb_Smatrix(m,n)
+                       + dgdot_dtau * sb_Smatrix(k,l) * sb_Smatrix(m,n)
    enddo
  end if
  
  twinSystems: do j = 1_pInt, prm%totalNtwin
-   tau_twin = math_mul33xx33(S,prm%Schmid_twin(1:3,1:3,j))
-   significantTwinStress: if (tau_twin > tol_math_check) then
-     StressRatio_r = (state(instance)%threshold_stress_twin(j,of)/tau_twin)**prm%r(j)
+   tau = math_mul33xx33(S,prm%Schmid_twin(1:3,1:3,j))
+   significantTwinStress: if (tau > tol_math_check) then
+     StressRatio_r = (state(instance)%threshold_stress_twin(j,of)/tau)**prm%r(j)
      isFCCtwin: if (lattice_structure(ph) == LATTICE_FCC_ID) then
        s1=prm%fcc_twinNucleationSlipPair(1,j)
        s2=prm%fcc_twinNucleationSlipPair(2,j)
-       if (tau_twin < tau_r_twin(j,instance)) then
-         Ndot0_twin=(abs(gdot_slip(s1))*(state(instance)%rhoEdge(s2,of)+state(ph)%rhoEdgeDip(s2,of))+&  !!!!! correct?
+       if (tau < tau_r_twin(j,instance)) then
+         Ndot0_twin=(abs(gdot_slip(s1))*(state(instance)%rhoEdge(s2,of)+state(instance)%rhoEdgeDip(s2,of))+&  !!!!! correct?
                 abs(gdot_slip(s2))*(state(instance)%rhoEdge(s1,of)+state(instance)%rhoEdgeDip(s1,of)))/&
                (prm%L0_twin*prm%burgers_slip(j))*&
                (1.0_pReal-exp(-prm%VcrossSlip/(kB*Temperature)*&
-               (tau_r_twin(j,instance)-tau_twin)))
+               (tau_r_twin(j,instance)-tau)))
        else
          Ndot0_twin=0.0_pReal
        end if
      else isFCCtwin
        Ndot0_twin=prm%Ndot0_twin(j)
      endif isFCCtwin
-     gdot_twin = (1.0_pReal-sumf-sumftr)*prm%shear_twin(j)*&
-       state(instance)%twinVolume(j,of)*Ndot0_twin*exp(-StressRatio_r)
-     dgdot_dtautwin = ((gdot_twin*prm%r(j))/tau_twin)*StressRatio_r
+     gdot_twin = (1.0_pReal-sumf-sumftr)* prm%shear_twin(j) * state(instance)%twinVolume(j,of) &
+               * Ndot0_twin*exp(-StressRatio_r)
+     dgdot_dtau = ((gdot_twin*prm%r(j))/tau)*StressRatio_r
    else significantTwinStress
      gdot_twin      = 0.0_pReal
-     dgdot_dtautwin = 0.0_pReal
+     dgdot_dtau = 0.0_pReal
    endif significantTwinStress
  
    Lp = Lp + gdot_twin*prm%Schmid_twin(1:3,1:3,j)
    forall (k=1_pInt:3_pInt,l=1_pInt:3_pInt,m=1_pInt:3_pInt,n=1_pInt:3_pInt) &
      dLp_dS(k,l,m,n) = dLp_dS(k,l,m,n) &
-                             + dgdot_dtautwin* prm%Schmid_twin(k,l,j)*prm%Schmid_twin(m,n,j)
+                     + dgdot_dtau* prm%Schmid_twin(k,l,j)*prm%Schmid_twin(m,n,j)
  enddo twinSystems
 
  transSystems: do j = 1_pInt, prm%totalNtrans
-   tau_trans = math_mul33xx33(S,prm%Schmid_trans(1:3,1:3,j))
-   significantTransStress: if (tau_trans > tol_math_check) then
-     StressRatio_s = (state(instance)%threshold_stress_trans(j,of)/tau_trans)**prm%s(j)
+   tau = math_mul33xx33(S,prm%Schmid_trans(1:3,1:3,j))
+   significantTransStress: if (tau > tol_math_check) then
+     StressRatio_s = (state(instance)%threshold_stress_trans(j,of)/tau)**prm%s(j)
      isFCCtrans: if (lattice_structure(ph) == LATTICE_FCC_ID) then
        s1=prm%fcc_twinNucleationSlipPair(1,j)
        s2=prm%fcc_twinNucleationSlipPair(2,j)
-       if (tau_trans < tau_r_trans(j,instance)) then
+       if (tau < tau_r_trans(j,instance)) then
          Ndot0_trans=(abs(gdot_slip(s1))*(state(instance)%rhoEdge(s2,of)+state(instance)%rhoEdgeDip(s2,of))+&  !!!!! correct?
                            abs(gdot_slip(s2))*(state(instance)%rhoEdge(s1,of)+state(instance)%rhoEdgeDip(s1,of)))/&
                           (prm%L0_trans*prm%burgers_slip(j))*&
-                          (1.0_pReal-exp(-prm%VcrossSlip/(kB*Temperature)*&
-                          (tau_r_trans(j,instance)-tau_trans)))
+                          (1.0_pReal-exp(-prm%VcrossSlip/(kB*Temperature)*(tau_r_trans(j,instance)-tau)))
        else
          Ndot0_trans=0.0_pReal
        end if
@@ -1369,17 +1362,16 @@ subroutine plastic_dislotwin_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,Temperature
      endif isFCCtrans
      gdot_trans      = (1.0_pReal-sumf-sumftr)* state(instance)%martensiteVolume(j,of) &
                      * Ndot0_trans*exp(-StressRatio_s)
-     dgdot_dtautrans = ((gdot_trans*prm%s(j))/tau_trans)*StressRatio_s
+     dgdot_dtau = ((gdot_trans*prm%s(j))/tau)*StressRatio_s
    else significantTransStress
      gdot_trans      = 0.0_pReal
-     dgdot_dtautrans = 0.0_pReal
+     dgdot_dtau = 0.0_pReal
    endif significantTransStress
 
    Lp = Lp + gdot_trans*prm%Schmid_trans(1:3,1:3,j)
-
    forall (k=1_pInt:3_pInt,l=1_pInt:3_pInt,m=1_pInt:3_pInt,n=1_pInt:3_pInt) &
      dLp_dS(k,l,m,n) = dLp_dS(k,l,m,n) &
-                             + dgdot_dtautrans * prm%Schmid_trans(k,l,j)* prm%Schmid_trans(m,n,j)
+                     + dgdot_dtau * prm%Schmid_trans(k,l,j)* prm%Schmid_trans(m,n,j)
  enddo transSystems
  end associate
 
@@ -1422,13 +1414,11 @@ subroutine plastic_dislotwin_dotState(Tstar_v,Temperature,ipc,ip,el)
  integer(pInt) :: instance,j,s1,s2, &
                   ph, &
                   of
- real(pReal) :: sumf,sumftr,StressRatio_p,BoltzmannRatio,DotGamma0,&
+ real(pReal) :: sumf,sumftr,StressRatio_p,BoltzmannRatio,&
              EdgeDipMinDistance,AtomicVolume,VacancyDiffusion,StressRatio_r,Ndot0_twin,stressRatio,&
              Ndot0_trans,StressRatio_s,EdgeDipDistance, ClimbVelocity,DotRhoEdgeDipClimb,DotRhoEdgeDipAnnihilation, &
              DotRhoDipFormation,DotRhoMultiplication,DotRhoEdgeEdgeAnnihilation, &
-            tau_twin, &
-            tau_trans, &
-            tau_slip
+            tau
  real(pReal), dimension(plasticState(material_phase(ipc,ip,el))%Nslip) :: &
  gdot_slip
 
@@ -1454,25 +1444,25 @@ subroutine plastic_dislotwin_dotState(Tstar_v,Temperature,ipc,ip,el)
           sum(state(instance)%strainTransFraction(1_pInt:prm%totalNtrans,of))
  
  slipSystems: do j = 1_pInt, prm%totalNslip
-   tau_slip = math_mul33xx33(S,prm%Schmid_slip(1:3,1:3,j))
-   significantSlipStress1: if((abs(tau_slip)-state(instance)%threshold_stress_slip(j,of)) > tol_math_check) then
-     stressRatio =((abs(tau_slip)- state(instance)%threshold_stress_slip(j,of))/&
+   tau = math_mul33xx33(S,prm%Schmid_slip(1:3,1:3,j))
+   significantSlipStress1: if((abs(tau)-state(instance)%threshold_stress_slip(j,of)) > tol_math_check) then
+     stressRatio =((abs(tau)- state(instance)%threshold_stress_slip(j,of))/&
        (prm%SolidSolutionStrength+prm%tau_peierls(j)))
      StressRatio_p  = stressRatio** prm%p(j)
      BoltzmannRatio = prm%Qedge(j)/(kB*Temperature)
-     DotGamma0 = plasticState(ph)%state(j, of)*prm%burgers_slip(j)*prm%v0(j)
-     gdot_slip(j) = DotGamma0*exp(-BoltzmannRatio*(1_pInt-StressRatio_p)**prm%q(j))*sign(1.0_pReal,tau_slip)
+     gdot_slip(j) = state(instance)%rhoEdge(j,of)*prm%burgers_slip(j)*prm%v0(j) &
+                  * sign(exp(-BoltzmannRatio*(1_pInt-StressRatio_p)**prm%q(j)),tau)
    else significantSlipStress1
      gdot_slip(j) = 0.0_pReal
    endif significantSlipStress1
    DotRhoMultiplication = abs(gdot_slip(j))/(prm%burgers_slip(j)*state(instance)%mfp_slip(j,of))
 
    EdgeDipMinDistance = prm%CEdgeDipMinDistance*prm%burgers_slip(j)
-   significantSlipStress2: if (dEq0(tau_slip)) then
+   significantSlipStress2: if (dEq0(tau)) then
      DotRhoDipFormation = 0.0_pReal
    else significantSlipStress2
      EdgeDipDistance = (3.0_pReal*lattice_mu(ph)*prm%burgers_slip(j))/&
-                                                          (16.0_pReal*PI*abs(tau_slip))
+                                                          (16.0_pReal*PI*abs(tau))
      if (EdgeDipDistance>state(instance)%mfp_slip(j,of)) EdgeDipDistance=state(instance)%mfp_slip(j,of)
      if (EdgeDipDistance<EdgeDipMinDistance)             EdgeDipDistance=EdgeDipMinDistance
      DotRhoDipFormation =  ((2.0_pReal*(EdgeDipDistance-EdgeDipMinDistance))/prm%burgers_slip(j))*&
@@ -1489,7 +1479,7 @@ subroutine plastic_dislotwin_dotState(Tstar_v,Temperature,ipc,ip,el)
    !* Dislocation dipole climb
    AtomicVolume     = prm%CAtomicVolume*prm%burgers_slip(j)**(3.0_pReal) ! no need to calculate this over and over again
    VacancyDiffusion = prm%D0*exp(-prm%Qsd/(kB*Temperature))
-   if (dEq0(tau_slip)) then
+   if (dEq0(tau)) then
      DotRhoEdgeDipClimb = 0.0_pReal
    else
      if (dEq0(EdgeDipDistance-EdgeDipMinDistance)) then
@@ -1507,17 +1497,17 @@ subroutine plastic_dislotwin_dotState(Tstar_v,Temperature,ipc,ip,el)
  enddo slipSystems
  
  twinSystems: do j = 1_pInt, prm%totalNtwin
-   tau_twin = math_mul33xx33(S,prm%Schmid_slip(1:3,1:3,j))
-   significantTwinStress: if (tau_twin > tol_math_check) then
-     StressRatio_r = (state(instance)%threshold_stress_twin(j,of)/tau_twin)**prm%r(j)
+   tau = math_mul33xx33(S,prm%Schmid_slip(1:3,1:3,j))
+   significantTwinStress: if (tau > tol_math_check) then
+     StressRatio_r = (state(instance)%threshold_stress_twin(j,of)/tau)**prm%r(j)
      isFCCtwin: if (lattice_structure(ph) == LATTICE_FCC_ID) then
        s1=prm%fcc_twinNucleationSlipPair(1,j)
        s2=prm%fcc_twinNucleationSlipPair(2,j)
-       if (tau_twin < tau_r_twin(j,instance)) then
+       if (tau < tau_r_twin(j,instance)) then
          Ndot0_twin=(abs(gdot_slip(s1))*(state(instance)%rhoEdge(s2,of)+state(instance)%rhoEdgeDip(s2,of))+&
                      abs(gdot_slip(s2))*(state(instance)%rhoEdge(s1,of)+state(instance)%rhoEdgeDip(s1,of)))/&
                  (prm%L0_twin*prm%burgers_slip(j))*(1.0_pReal-exp(-prm%VcrossSlip/(kB*Temperature)*&
-                 (tau_r_twin(j,instance)-tau_twin)))
+                 (tau_r_twin(j,instance)-tau)))
        else
          Ndot0_twin=0.0_pReal
        end if
@@ -1531,17 +1521,17 @@ subroutine plastic_dislotwin_dotState(Tstar_v,Temperature,ipc,ip,el)
  enddo twinSystems
 
  transSystems: do j = 1_pInt, prm%totalNtrans
-   tau_trans = math_mul33xx33(S,prm%Schmid_trans(1:3,1:3,j))
-   significantTransStress: if (tau_trans > tol_math_check) then
-     StressRatio_s = (state(instance)%threshold_stress_trans(j,of)/tau_trans)**prm%s(j)
+   tau = math_mul33xx33(S,prm%Schmid_trans(1:3,1:3,j))
+   significantTransStress: if (tau > tol_math_check) then
+     StressRatio_s = (state(instance)%threshold_stress_trans(j,of)/tau)**prm%s(j)
      isFCCtrans: if (lattice_structure(ph) == LATTICE_FCC_ID) then
        s1=prm%fcc_twinNucleationSlipPair(1,j)
        s2=prm%fcc_twinNucleationSlipPair(2,j)
-       if (tau_trans < tau_r_trans(j,instance)) then
+       if (tau < tau_r_trans(j,instance)) then
          Ndot0_trans=(abs(gdot_slip(s1))*(state(instance)%rhoEdge(s2,of)+state(instance)%rhoEdgeDip(s2,of))+&
                       abs(gdot_slip(s2))*(state(instance)%rhoEdge(s1,of)+state(instance)%rhoEdgeDip(s1,of)))/&
                           (prm%L0_trans*prm%burgers_slip(j))*(1.0_pReal-exp(-prm%VcrossSlip/(kB*Temperature)*&
-                          (tau_r_trans(j,instance)-tau_trans)))
+                          (tau_r_trans(j,instance)-tau)))
        else
          Ndot0_trans=0.0_pReal
        end if
