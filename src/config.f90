@@ -141,23 +141,23 @@ subroutine config_init()
    select case (trim(part))
     
      case (trim(material_partPhase))
-       call parseFile(line,phase_name,config_phase,fileContent(i+1:))
+       call parseFile(phase_name,config_phase,line,fileContent(i+1:))
        if (iand(myDebug,debug_levelBasic) /= 0_pInt) write(6,'(a)') ' Phase parsed'; flush(6)
     
      case (trim(material_partMicrostructure))
-       call parseFile(line,microstructure_name,config_microstructure,fileContent(i+1:))
+       call parseFile(microstructure_name,config_microstructure,line,fileContent(i+1:))
        if (iand(myDebug,debug_levelBasic) /= 0_pInt) write(6,'(a)') ' Microstructure parsed'; flush(6)
     
      case (trim(material_partCrystallite))
-       call parseFile(line,crystallite_name,config_crystallite,fileContent(i+1:))
+       call parseFile(crystallite_name,config_crystallite,line,fileContent(i+1:))
        if (iand(myDebug,debug_levelBasic) /= 0_pInt) write(6,'(a)') ' Crystallite parsed'; flush(6)
     
      case (trim(material_partHomogenization))
-       call parseFile(line,homogenization_name,config_homogenization,fileContent(i+1:))
+       call parseFile(homogenization_name,config_homogenization,line,fileContent(i+1:))
        if (iand(myDebug,debug_levelBasic) /= 0_pInt) write(6,'(a)') ' Homogenization parsed'; flush(6)
     
      case (trim(material_partTexture))
-       call parseFile(line,texture_name,config_texture,fileContent(i+1:))
+       call parseFile(texture_name,config_texture,line,fileContent(i+1:))
        if (iand(myDebug,debug_levelBasic) /= 0_pInt) write(6,'(a)') ' Texture parsed'; flush(6)
 
    end select
@@ -180,7 +180,7 @@ end subroutine config_init
 !--------------------------------------------------------------------------------------------------
 !> @brief parses the material.config file
 !--------------------------------------------------------------------------------------------------
-subroutine parseFile(line,sectionNames,part,&
+subroutine parseFile(sectionNames,part,line, &
                      fileContent)
  use prec, only: &
    pStringLen
@@ -189,16 +189,18 @@ subroutine parseFile(line,sectionNames,part,&
    IO_getTag
 
  implicit none
- character(len=pStringLen),                               intent(out) :: line
- character(len=64),            allocatable, dimension(:), intent(out) :: sectionNames
- type(tPartitionedStringList), allocatable, dimension(:), intent(out) :: part
- character(len=pStringLen),                 dimension(:), intent(in)  :: fileContent
+ character(len=64),            allocatable, dimension(:), intent(out)   :: sectionNames
+ type(tPartitionedStringList), allocatable, dimension(:), intent(inout) :: part
+ character(len=pStringLen),                               intent(inout) :: line
+ character(len=pStringLen),                 dimension(:), intent(in)    :: fileContent
 
- integer(pInt),                allocatable, dimension(:)              :: partPosition               ! position of [] tags + last line in section
+ integer(pInt),                allocatable, dimension(:)                :: partPosition             ! position of [] tags + last line in section
  integer(pInt)        :: i, j
  logical              :: echo
 
  echo = .false. 
+
+ if (allocated(part)) call IO_error(161_pInt,ext_msg=trim(line))
  allocate(partPosition(0))
  
  do i = 1_pInt, size(fileContent)
@@ -351,7 +353,7 @@ end subroutine finalize
 
 !--------------------------------------------------------------------------------------------------
 !> @brief cleans entire array of linke lists
-!> @details called when variable goes out of scope.
+!> @details called when variable goes out of scope and deallocates the list at each array entry
 !--------------------------------------------------------------------------------------------------
 subroutine finalizeArray(this)
 
@@ -361,11 +363,11 @@ subroutine finalizeArray(this)
   type(tPartitionedStringList),  pointer :: temp ! bug in Gfortran?
 
   do i=1, size(this)
-    !if (associated(this(i)%next)) then
+    if (associated(this(i)%next)) then
       temp => this(i)%next
       !deallocate(this(i)) !internal compiler error: in gfc_build_final_call, at fortran/trans.c:975
       deallocate(temp)
-    !endif
+    endif
   enddo
 
 end subroutine finalizeArray

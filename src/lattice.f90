@@ -111,6 +111,9 @@ module lattice
      -1,-1, 0,    -1, 1,-1  &                                                                       ! D6
      ],pReal),[ 3_pInt + 3_pInt,LATTICE_fcc_Nslip])                                                 !< Slip system <110>{111} directions. Sorted according to Eisenlohr & Hantcherli
 
+ character(len=*), dimension(1), parameter, public :: LATTICE_FCC_SLIPFAMILY_NAME = &
+   ['<0 1 -1>{1 1 1}']
+
  real(pReal), dimension(3+3,LATTICE_fcc_Ntwin), parameter, private :: &
    LATTICE_fcc_systemTwin = reshape(real( [&
      -2, 1, 1,     1, 1, 1, &
@@ -126,6 +129,9 @@ module lattice
      -1,-2,-1,    -1, 1,-1, &
      -1, 1, 2,    -1, 1,-1  &
      ],pReal),[ 3_pInt + 3_pInt,LATTICE_fcc_Ntwin])                                                 !< Twin system <112>{111} directions. Sorted according to Eisenlohr & Hantcherli
+
+ character(len=*), dimension(1), parameter, public :: LATTICE_FCC_TWINFAMILY_NAME = &
+   ['<-2 1 1>{1 1 1}']
 
  real(pReal), dimension(3+3,LATTICE_fcc_Ntrans), parameter, private :: &
    LATTICE_fccTohex_systemTrans = reshape(real( [&
@@ -433,6 +439,10 @@ module lattice
    !  1,-1, 1,     3, 2,-1  &
      ],pReal),[ 3_pInt + 3_pInt ,LATTICE_bcc_Nslip])
 
+ character(len=*), dimension(2), parameter, public :: LATTICE_BCC_SLIPFAMILY_NAME = &
+   ['<1 -1 1>{0 1 1}', &
+    '<1 -1 1>{2 1 1}']
+
  real(pReal), dimension(3+3,LATTICE_bcc_Ntwin), parameter, private :: &
    LATTICE_bcc_systemTwin = reshape(real([&
     ! Twin system <111>{112}
@@ -449,6 +459,9 @@ module lattice
      -1, 1, 1,     1,-1, 2, &
       1, 1, 1,     1, 1,-2  &
      ],pReal),[ 3_pInt + 3_pInt,LATTICE_bcc_Ntwin])
+
+ character(len=*), dimension(1), parameter, public :: LATTICE_BCC_TWINFAMILY_NAME = &
+   ['<1 1 1>{2 1 1}']
 
  real(pReal), dimension(LATTICE_bcc_Ntwin), parameter, private :: &
    LATTICE_bcc_shearTwin = 0.5_pReal*sqrt(2.0_pReal)
@@ -618,6 +631,14 @@ module lattice
       1,  1, -2,  3,    -1, -1,  2,  2  &
      ],pReal),[ 4_pInt + 4_pInt,LATTICE_hex_Nslip])                                                 !< slip systems for hex sorted by A. Alankar & P. Eisenlohr
 
+ character(len=*), dimension(6), parameter, public :: LATTICE_HEX_SLIPFAMILY_NAME = &
+   ['<1 1 . 1>{0 0 . 1}  ', &
+    '<1 1 . 1>{1 0 . 0}  ', &
+    '<1 0 . 0>{1 1 . 0}  ', &
+    '<1 1 . 0>{-1 1 . 1} ', &
+    '<1 1 . 3>{-1 0 . 1} ', &
+    '<1 1 . 3>{-1 -1 . 2}']
+
  real(pReal), dimension(4+4,LATTICE_hex_Ntwin), parameter, private :: &
    LATTICE_hex_systemTwin =  reshape(real([&
     ! Compression or Tension =f(twinning shear=f(c/a)) for each metal ! (according to Yoo 1981)
@@ -649,6 +670,12 @@ module lattice
       1, -2,  1, -3,     1, -2,  1,  2, &
       1,  1, -2, -3,     1,  1, -2,  2  &
      ],pReal),[ 4_pInt + 4_pInt ,LATTICE_hex_Ntwin])                                                !< twin systems for hex, order follows Prof. Tom Bieler's scheme; but numbering in data was restarted from 1
+
+ character(len=*), dimension(4), parameter, public :: LATTICE_HEX_TWINFAMILY_NAME = &
+   ['<-1 0 . 1>{1 0 . 2} ', &
+    '<1 1 . 6>{-1 -1 . 1}', &
+    '<1 0 . -2>{1 0 . 1} ', &
+    '<1 1 . -3>{1 1 . 2} ']
 
  integer(pInt), dimension(LATTICE_hex_Ntwin), parameter, private :: &
    LATTICE_hex_shearTwin = reshape(int( [&   ! indicator to formula further below
@@ -925,6 +952,21 @@ module lattice
      -1, 1, 1,     -1,-2, 1, &
       1, 1, 1,      1,-2, 1  &
       ],pReal),[ 3_pInt + 3_pInt,LATTICE_bct_Nslip])                                                 !< slip systems for bct sorted by Bieler
+
+ character(len=*), dimension(13), parameter, public :: LATTICE_BCT_SLIPFAMILY_NAME = &
+   ['{1 0 0)<0 0 1] ', &
+    '{1 1 0)<0 0 1] ', &
+    '{1 0 0)<0 1 0] ', &
+    '{1 1 0)<1 -1 1]', &
+    '{1 1 0)<1 -1 0]', &
+    '{1 0 0)<0 1 1] ', &
+    '{0 0 1)<0 1 0] ', &
+    '{0 0 1)<1 1 0] ', &
+    '{0 1 1)<0 1 -1]', &
+    '{0 1 1)<1 -1 1]', &
+    '{0 1 1)<1 0 0] ', &
+    '{2 1 1)<0 1 -1]', &
+    '{2 1 1)<-1 1 1]']
 
  integer(pInt), dimension(LATTICE_bct_Nslip,LATTICE_bct_Nslip), parameter, public :: &
    LATTICE_bct_interactionSlipSlip = reshape(int( [&
