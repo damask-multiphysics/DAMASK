@@ -58,15 +58,9 @@ echo "Editor: $EDITOR"
 echo ''
 echo 'adapting Marc tools...'
 theDIR=$INSTALLDIR/marc$VERSION/tools
-for filename in 'comp_damask' \
-                'comp_damask_l' \
-                'comp_damask_h' \
-                'comp_damask_mp' \
+for filename in 'comp_damask_mp' \
                 'comp_damask_lmp' \
                 'comp_damask_hmp' \
-                'run_damask' \
-                'run_damask_l' \
-                'run_damask_h' \
                 'run_damask_mp' \
                 'run_damask_lmp' \
                 'run_damask_hmp' \
@@ -85,15 +79,9 @@ for filename in 'edit_window' \
                 'submit4' \
                 'submit5' \
                 'submit6' \
-                'submit7' \
-                'submit8' \
-                'submit9' \
                 'kill4' \
                 'kill5' \
-                'kill6' \
-                'kill7' \
-                'kill8' \
-                'kill9'; do
+                'kill6'; do
   cp $SCRIPTLOCATION/$VERSION/Mentat_bin/$filename $theDIR
   echo $theDIR/$filename | xargs perl -pi -e "s:%INSTALLDIR%:${INSTALLDIR}:g"
   echo $theDIR/$filename | xargs perl -pi -e "s:%VERSION%:${VERSION}:g"
@@ -122,8 +110,8 @@ echo ''
 echo 'setting file access rights...'
 for filename in marc$VERSION/tools/run_damask* \
                 marc$VERSION/tools/comp_damask* \
-                mentat$VERSION/bin/submit{4..9} \
-                mentat$VERSION/bin/kill{4..9} ; do
+                mentat$VERSION/bin/submit{4..6} \
+                mentat$VERSION/bin/kill{4..6} ; do
   chmod 755 $INSTALLDIR/${filename}
 done
 
@@ -142,10 +130,7 @@ if [ -d "$BIN_DIR" ]; then
     echo 'creating symlinks ...'
     echo''
     theDIR=$INSTALLDIR/marc$VERSION/tools
-    for filename in 'run_damask' \
-                    'run_damask_l' \
-                    'run_damask_h' \
-                    'run_damask_mp' \
+    for filename in 'run_damask_mp' \
                     'run_damask_lmp' \
                     'run_damask_hmp'; do
       echo ${filename:4}$VERSION
