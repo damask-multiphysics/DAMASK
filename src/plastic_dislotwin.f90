@@ -583,356 +583,356 @@ subroutine plastic_dislotwin_init(fileUnit)
  
 
  initializeInstances: do p = 1_pInt, size(phase_plasticity)
-    if (phase_plasticity(p) /= PLASTICITY_dislotwin_ID) cycle
-     NofMyPhase=count(material_phase==p)
-     instance = phase_plasticityInstance(p)
-     prm => param(instance) 
+   if (phase_plasticity(p) /= PLASTICITY_dislotwin_ID) cycle
+   NofMyPhase=count(material_phase==p)
+   instance = phase_plasticityInstance(p)
+   prm => param(instance) 
 !--------------------------------------------------------------------------------------------------
 ! allocate state arrays
 
-     sizeDotState     = int(size(['rho         ','rhoDip      ','accshearslip']),pInt) * prm%totalNslip &
-                      + int(size(['twinFraction','accsheartwin']),pInt) * prm%totalNtwin &
-                      + int(size(['stressTransFraction','strainTransFraction']),pInt) * prm%totalNtrans
-     sizeDeltaState   =  0_pInt
-     sizeState        = sizeDotState &
-                      + int(size(['invLambdaSlip     ','invLambdaSlipTwin ','invLambdaSlipTrans',&
-                                  'meanFreePathSlip  ','tauSlipThreshold  ']),pInt) * prm%totalNslip &
-                      + int(size(['invLambdaTwin   ','meanFreePathTwin','tauTwinThreshold',&
-                                  'twinVolume      ']),pInt) * prm%totalNtwin &
-                      + int(size(['invLambdaTrans   ','meanFreePathTrans','tauTransThreshold', &
-                                  'martensiteVolume ']),pInt) * prm%totalNtrans
-                
-     plasticState(p)%sizeState = sizeState
-     plasticState(p)%sizeDotState = sizeDotState
-     plasticState(p)%sizeDeltaState = sizeDeltaState
-     plasticState(p)%sizePostResults = sum(plastic_dislotwin_sizePostResult(:,instance))
-     plasticState(p)%nSlip = prm%totalNslip
-     plasticState(p)%nTwin = prm%totalNtwin
-     plasticState(p)%nTrans= prm%totalNtrans
-     allocate(plasticState(p)%aTolState           (sizeState),                source=0.0_pReal)
-     allocate(plasticState(p)%state0              (sizeState,NofMyPhase),     source=0.0_pReal)
-     allocate(plasticState(p)%partionedState0     (sizeState,NofMyPhase),     source=0.0_pReal)
-     allocate(plasticState(p)%subState0           (sizeState,NofMyPhase),     source=0.0_pReal)
-     allocate(plasticState(p)%state               (sizeState,NofMyPhase),     source=0.0_pReal)
+   sizeDotState     = int(size(['rho         ','rhoDip      ','accshearslip']),pInt) * prm%totalNslip &
+                    + int(size(['twinFraction','accsheartwin']),pInt) * prm%totalNtwin &
+                    + int(size(['stressTransFraction','strainTransFraction']),pInt) * prm%totalNtrans
+   sizeDeltaState   =  0_pInt
+   sizeState        = sizeDotState &
+                    + int(size(['invLambdaSlip     ','invLambdaSlipTwin ','invLambdaSlipTrans',&
+                                'meanFreePathSlip  ','tauSlipThreshold  ']),pInt) * prm%totalNslip &
+                    + int(size(['invLambdaTwin   ','meanFreePathTwin','tauTwinThreshold',&
+                                'twinVolume      ']),pInt) * prm%totalNtwin &
+                    + int(size(['invLambdaTrans   ','meanFreePathTrans','tauTransThreshold', &
+                                'martensiteVolume ']),pInt) * prm%totalNtrans
+              
+   plasticState(p)%sizeState = sizeState
+   plasticState(p)%sizeDotState = sizeDotState
+   plasticState(p)%sizeDeltaState = sizeDeltaState
+   plasticState(p)%sizePostResults = sum(plastic_dislotwin_sizePostResult(:,instance))
+   plasticState(p)%nSlip = prm%totalNslip
+   plasticState(p)%nTwin = prm%totalNtwin
+   plasticState(p)%nTrans= prm%totalNtrans
+   allocate(plasticState(p)%aTolState           (sizeState),                source=0.0_pReal)
+   allocate(plasticState(p)%state0              (sizeState,NofMyPhase),     source=0.0_pReal)
+   allocate(plasticState(p)%partionedState0     (sizeState,NofMyPhase),     source=0.0_pReal)
+   allocate(plasticState(p)%subState0           (sizeState,NofMyPhase),     source=0.0_pReal)
+   allocate(plasticState(p)%state               (sizeState,NofMyPhase),     source=0.0_pReal)
 
-     allocate(plasticState(p)%dotState            (sizeDotState,NofMyPhase),  source=0.0_pReal)
-     allocate(plasticState(p)%deltaState        (sizeDeltaState,NofMyPhase),  source=0.0_pReal)
-     if (any(numerics_integrator == 1_pInt)) then
-       allocate(plasticState(p)%previousDotState  (sizeDotState,NofMyPhase),  source=0.0_pReal)
-       allocate(plasticState(p)%previousDotState2 (sizeDotState,NofMyPhase),  source=0.0_pReal)
-     endif
-     if (any(numerics_integrator == 4_pInt)) &
-       allocate(plasticState(p)%RK4dotState       (sizeDotState,NofMyPhase),  source=0.0_pReal)
-     if (any(numerics_integrator == 5_pInt)) &
-       allocate(plasticState(p)%RKCK45dotState    (6,sizeDotState,NofMyPhase),source=0.0_pReal)
-     offset_slip = 2_pInt*plasticState(p)%nslip
-     plasticState(p)%slipRate        => &
-         plasticState(p)%dotState(offset_slip+1:offset_slip+plasticState(p)%nslip,1:NofMyPhase)
-     plasticState(p)%accumulatedSlip => &
-         plasticState(p)%state   (offset_slip+1:offset_slip+plasticState(p)%nslip,1:NofMyPhase)
+   allocate(plasticState(p)%dotState            (sizeDotState,NofMyPhase),  source=0.0_pReal)
+   allocate(plasticState(p)%deltaState        (sizeDeltaState,NofMyPhase),  source=0.0_pReal)
+   if (any(numerics_integrator == 1_pInt)) then
+     allocate(plasticState(p)%previousDotState  (sizeDotState,NofMyPhase),  source=0.0_pReal)
+     allocate(plasticState(p)%previousDotState2 (sizeDotState,NofMyPhase),  source=0.0_pReal)
+   endif
+   if (any(numerics_integrator == 4_pInt)) &
+     allocate(plasticState(p)%RK4dotState       (sizeDotState,NofMyPhase),  source=0.0_pReal)
+   if (any(numerics_integrator == 5_pInt)) &
+     allocate(plasticState(p)%RKCK45dotState    (6,sizeDotState,NofMyPhase),source=0.0_pReal)
+   offset_slip = 2_pInt*plasticState(p)%nslip
+   plasticState(p)%slipRate        => &
+       plasticState(p)%dotState(offset_slip+1:offset_slip+plasticState(p)%nslip,1:NofMyPhase)
+   plasticState(p)%accumulatedSlip => &
+       plasticState(p)%state   (offset_slip+1:offset_slip+plasticState(p)%nslip,1:NofMyPhase)
 
-     allocate(temp1(prm%totalNslip,prm%totalNslip), source =0.0_pReal)
-     allocate(temp2(prm%totalNslip,prm%totalNtwin), source =0.0_pReal)        
-     allocate(temp3(prm%totalNslip,prm%totalNtrans),source =0.0_pReal)        
+   allocate(temp1(prm%totalNslip,prm%totalNslip), source =0.0_pReal)
+   allocate(temp2(prm%totalNslip,prm%totalNtwin), source =0.0_pReal)        
+   allocate(temp3(prm%totalNslip,prm%totalNtrans),source =0.0_pReal)        
 
-     mySlipFamilies: do f = 1_pInt,size(prm%Nslip,1)
-       index_myFamily = sum(prm%Nslip(1:f-1_pInt))
+   mySlipFamilies: do f = 1_pInt,size(prm%Nslip,1)
+     index_myFamily = sum(prm%Nslip(1:f-1_pInt))
 
-       slipSystemsLoop: do j = 1_pInt,prm%Nslip(f)
-         do o = 1_pInt, size(prm%Nslip,1)
-           index_otherFamily = sum(prm%Nslip(1:o-1_pInt))
-           do k = 1_pInt,prm%Nslip(o)                                   ! loop over (active) systems in other family (slip)
-             forestProjectionEdge(index_myFamily+j,index_otherFamily+k,instance) = &
-               abs(math_mul3x3(lattice_sn(:,sum(lattice_NslipSystem(1:f-1,p))+j,p), &
-                               lattice_st(:,sum(lattice_NslipSystem(1:o-1,p))+k,p)))
-             temp1(index_myFamily+j,index_otherFamily+k) = &
-                   prm%interaction_SlipSlip(lattice_interactionSlipSlip( &
-                                                                 sum(lattice_NslipSystem(1:f-1,p))+j, &
-                                                                 sum(lattice_NslipSystem(1:o-1,p))+k, &
-                                                                 p),1 )
-         enddo; enddo
+     slipSystemsLoop: do j = 1_pInt,prm%Nslip(f)
+       do o = 1_pInt, size(prm%Nslip,1)
+         index_otherFamily = sum(prm%Nslip(1:o-1_pInt))
+         do k = 1_pInt,prm%Nslip(o)                                   ! loop over (active) systems in other family (slip)
+           forestProjectionEdge(index_myFamily+j,index_otherFamily+k,instance) = &
+             abs(math_mul3x3(lattice_sn(:,sum(lattice_NslipSystem(1:f-1,p))+j,p), &
+                             lattice_st(:,sum(lattice_NslipSystem(1:o-1,p))+k,p)))
+           temp1(index_myFamily+j,index_otherFamily+k) = &
+                 prm%interaction_SlipSlip(lattice_interactionSlipSlip( &
+                                                               sum(lattice_NslipSystem(1:f-1,p))+j, &
+                                                               sum(lattice_NslipSystem(1:o-1,p))+k, &
+                                                               p),1 )
+       enddo; enddo
   
-         do o = 1_pInt,size(prm%Ntwin,1)
-           index_otherFamily = sum(prm%Ntwin(1:o-1_pInt))
-           do k = 1_pInt,prm%Ntwin(o)                                   ! loop over (active) systems in other family (twin)
-             temp2(index_myFamily+j,index_otherFamily+k) = &
-                   prm%interaction_SlipTwin(lattice_interactionSlipTwin( &
-                                                                 sum(lattice_NslipSystem(1:f-1_pInt,p))+j, &
-                                                                 sum(lattice_NtwinSystem(1:o-1_pInt,p))+k, &
-                                                                 p),1 )
-         enddo; enddo
+       do o = 1_pInt,size(prm%Ntwin,1)
+         index_otherFamily = sum(prm%Ntwin(1:o-1_pInt))
+         do k = 1_pInt,prm%Ntwin(o)                                   ! loop over (active) systems in other family (twin)
+           temp2(index_myFamily+j,index_otherFamily+k) = &
+                 prm%interaction_SlipTwin(lattice_interactionSlipTwin( &
+                                                               sum(lattice_NslipSystem(1:f-1_pInt,p))+j, &
+                                                               sum(lattice_NtwinSystem(1:o-1_pInt,p))+k, &
+                                                               p),1 )
+       enddo; enddo
 
-         do o = 1_pInt,size(prm%Ntrans,1)
-           index_otherFamily = sum(prm%Ntrans(1:o-1_pInt))
-           do k = 1_pInt,prm%Ntrans(o)                                  ! loop over (active) systems in other family (trans)
-             temp3(index_myFamily+j,index_otherFamily+k) = &
-                   prm%interaction_SlipTrans(lattice_interactionSlipTrans( &
-                                                                 sum(lattice_NslipSystem(1:f-1_pInt,p))+j, &
-                                                                 sum(lattice_NtransSystem(1:o-1_pInt,p))+k, &
-                                                                 p),1 )
-         enddo; enddo
+       do o = 1_pInt,size(prm%Ntrans,1)
+         index_otherFamily = sum(prm%Ntrans(1:o-1_pInt))
+         do k = 1_pInt,prm%Ntrans(o)                                  ! loop over (active) systems in other family (trans)
+           temp3(index_myFamily+j,index_otherFamily+k) = &
+                 prm%interaction_SlipTrans(lattice_interactionSlipTrans( &
+                                                               sum(lattice_NslipSystem(1:f-1_pInt,p))+j, &
+                                                               sum(lattice_NtransSystem(1:o-1_pInt,p))+k, &
+                                                               p),1 )
+       enddo; enddo
   
-       enddo slipSystemsLoop
-     enddo mySlipFamilies
-     prm%interaction_SlipSlip  = temp1; deallocate(temp1)    
-     prm%interaction_SlipTwin  = temp2; deallocate(temp2)    
-     prm%interaction_SlipTrans = temp3; deallocate(temp3)    
+     enddo slipSystemsLoop
+   enddo mySlipFamilies
+   prm%interaction_SlipSlip  = temp1; deallocate(temp1)    
+   prm%interaction_SlipTwin  = temp2; deallocate(temp2)    
+   prm%interaction_SlipTrans = temp3; deallocate(temp3)    
 
 
-     allocate(temp1(prm%totalNtwin,prm%totalNslip), source =0.0_pReal)
-     allocate(temp2(prm%totalNtwin,prm%totalNtwin), source =0.0_pReal)     
-     allocate(prm%Ctwin66(6,6,prm%totalNtwin),       source=0.0_pReal)
-     if (allocated(Ctwin3333)) deallocate(Ctwin3333)
-     allocate(Ctwin3333(3,3,3,3,prm%totalNtwin),  source=0.0_pReal)
+   allocate(temp1(prm%totalNtwin,prm%totalNslip), source =0.0_pReal)
+   allocate(temp2(prm%totalNtwin,prm%totalNtwin), source =0.0_pReal)     
+   allocate(prm%Ctwin66(6,6,prm%totalNtwin),       source=0.0_pReal)
+   if (allocated(Ctwin3333)) deallocate(Ctwin3333)
+   allocate(Ctwin3333(3,3,3,3,prm%totalNtwin),  source=0.0_pReal)
 
-     twinFamiliesLoop: do f = 1_pInt, size(prm%Ntwin,1)
-       index_myFamily = sum(prm%Ntwin(1:f-1_pInt))                      ! index in truncated twin system list
-       twinSystemsLoop: do j = 1_pInt,prm%Ntwin(f)
+   twinFamiliesLoop: do f = 1_pInt, size(prm%Ntwin,1)
+     index_myFamily = sum(prm%Ntwin(1:f-1_pInt))                      ! index in truncated twin system list
+     twinSystemsLoop: do j = 1_pInt,prm%Ntwin(f)
  
-       !  nucleation rate prefactor,
-       !  and twin size
-       !* Rotate twin elasticity matrices
-         index_otherFamily = sum(lattice_NtwinSystem(1:f-1_pInt,p))                             ! index in full lattice twin list
-         do l = 1_pInt,3_pInt; do m = 1_pInt,3_pInt; do n = 1_pInt,3_pInt; do o = 1_pInt,3_pInt
-           do p1 = 1_pInt,3_pInt; do q = 1_pInt,3_pInt; do r = 1_pInt,3_pInt; do s = 1_pInt,3_pInt
-             Ctwin3333(l,m,n,o,index_myFamily+j) = &
-             Ctwin3333(l,m,n,o,index_myFamily+j) + &
-               lattice_C3333(p1,q,r,s,p) * &
-               lattice_Qtwin(l,p1,index_otherFamily+j,p) * &
-               lattice_Qtwin(m,q,index_otherFamily+j,p) * &
-               lattice_Qtwin(n,r,index_otherFamily+j,p) * &
-               lattice_Qtwin(o,s,index_otherFamily+j,p)
-           enddo; enddo; enddo; enddo
+     !  nucleation rate prefactor,
+     !  and twin size
+     !* Rotate twin elasticity matrices
+       index_otherFamily = sum(lattice_NtwinSystem(1:f-1_pInt,p))                             ! index in full lattice twin list
+       do l = 1_pInt,3_pInt; do m = 1_pInt,3_pInt; do n = 1_pInt,3_pInt; do o = 1_pInt,3_pInt
+         do p1 = 1_pInt,3_pInt; do q = 1_pInt,3_pInt; do r = 1_pInt,3_pInt; do s = 1_pInt,3_pInt
+           Ctwin3333(l,m,n,o,index_myFamily+j) = &
+           Ctwin3333(l,m,n,o,index_myFamily+j) + &
+             lattice_C3333(p1,q,r,s,p) * &
+             lattice_Qtwin(l,p1,index_otherFamily+j,p) * &
+             lattice_Qtwin(m,q,index_otherFamily+j,p) * &
+             lattice_Qtwin(n,r,index_otherFamily+j,p) * &
+             lattice_Qtwin(o,s,index_otherFamily+j,p)
          enddo; enddo; enddo; enddo
-         prm%Ctwin66(1:6,1:6,index_myFamily+j) = &
-           math_Mandel3333to66(Ctwin3333(1:3,1:3,1:3,1:3,index_myFamily+j))
+       enddo; enddo; enddo; enddo
+       prm%Ctwin66(1:6,1:6,index_myFamily+j) = &
+         math_Mandel3333to66(Ctwin3333(1:3,1:3,1:3,1:3,index_myFamily+j))
  
-      !* Interaction matrices
-         do o = 1_pInt,size(prm%Nslip,1)
-           index_otherFamily = sum(prm%Nslip(1:o-1_pInt))
-           do k = 1_pInt,prm%Nslip(o)                                   ! loop over (active) systems in other family (slip)
-             temp1(index_myFamily+j,index_otherFamily+k) = &
-                   prm%interaction_TwinSlip(lattice_interactionTwinSlip( &
-                                                                 sum(lattice_NtwinSystem(1:f-1_pInt,p))+j, &
-                                                                 sum(lattice_NslipSystem(1:o-1_pInt,p))+k, &
-                                                                 p),1 )
-         enddo; enddo
+    !* Interaction matrices
+       do o = 1_pInt,size(prm%Nslip,1)
+         index_otherFamily = sum(prm%Nslip(1:o-1_pInt))
+         do k = 1_pInt,prm%Nslip(o)                                   ! loop over (active) systems in other family (slip)
+           temp1(index_myFamily+j,index_otherFamily+k) = &
+                 prm%interaction_TwinSlip(lattice_interactionTwinSlip( &
+                                                               sum(lattice_NtwinSystem(1:f-1_pInt,p))+j, &
+                                                               sum(lattice_NslipSystem(1:o-1_pInt,p))+k, &
+                                                               p),1 )
+       enddo; enddo
  
-         do o = 1_pInt,size(prm%Ntwin,1)
-           index_otherFamily = sum(prm%Ntwin(1:o-1_pInt))
-           do k = 1_pInt,prm%Ntwin(o)                                   ! loop over (active) systems in other family (twin)
-             temp2(index_myFamily+j,index_otherFamily+k) = &
-                  prm%interaction_TwinTwin(lattice_interactionTwinTwin( &
-                                                                 sum(lattice_NtwinSystem(1:f-1_pInt,p))+j, &
-                                                                 sum(lattice_NtwinSystem(1:o-1_pInt,p))+k, &
-                                                                 p),1 )
-         enddo; enddo
+       do o = 1_pInt,size(prm%Ntwin,1)
+         index_otherFamily = sum(prm%Ntwin(1:o-1_pInt))
+         do k = 1_pInt,prm%Ntwin(o)                                   ! loop over (active) systems in other family (twin)
+           temp2(index_myFamily+j,index_otherFamily+k) = &
+                prm%interaction_TwinTwin(lattice_interactionTwinTwin( &
+                                                               sum(lattice_NtwinSystem(1:f-1_pInt,p))+j, &
+                                                               sum(lattice_NtwinSystem(1:o-1_pInt,p))+k, &
+                                                               p),1 )
+       enddo; enddo
  
-       enddo twinSystemsLoop
-     enddo twinFamiliesLoop
-     prm%interaction_TwinSlip  = temp1; deallocate(temp1)    
-     prm%interaction_TwinTwin  = temp2; deallocate(temp2)    
+     enddo twinSystemsLoop
+   enddo twinFamiliesLoop
+   prm%interaction_TwinSlip  = temp1; deallocate(temp1)    
+   prm%interaction_TwinTwin  = temp2; deallocate(temp2)    
 
  
-     allocate(temp1(prm%totalNtrans,prm%totalNslip),  source =0.0_pReal)
-     allocate(temp2(prm%totalNtrans,prm%totalNtrans), source =0.0_pReal)        
-     allocate(prm%Ctrans66(6,6,prm%totalNtrans)       ,source=0.0_pReal)
-     if (allocated(Ctrans3333)) deallocate(Ctrans3333)
-     allocate(Ctrans3333(3,3,3,3,prm%totalNtrans),  source=0.0_pReal)
+   allocate(temp1(prm%totalNtrans,prm%totalNslip),  source =0.0_pReal)
+   allocate(temp2(prm%totalNtrans,prm%totalNtrans), source =0.0_pReal)        
+   allocate(prm%Ctrans66(6,6,prm%totalNtrans)       ,source=0.0_pReal)
+   if (allocated(Ctrans3333)) deallocate(Ctrans3333)
+   allocate(Ctrans3333(3,3,3,3,prm%totalNtrans),  source=0.0_pReal)
 
-     transFamiliesLoop: do f = 1_pInt,size(prm%Ntrans,1)
-       index_myFamily = sum(prm%Ntrans(1:f-1_pInt))                                                 ! index in truncated trans system list
-       transSystemsLoop: do j = 1_pInt,prm%Ntrans(f)
+   transFamiliesLoop: do f = 1_pInt,size(prm%Ntrans,1)
+     index_myFamily = sum(prm%Ntrans(1:f-1_pInt))                                                 ! index in truncated trans system list
+     transSystemsLoop: do j = 1_pInt,prm%Ntrans(f)
 
-       index_otherFamily = sum(lattice_NtransSystem(1:f-1_pInt,p))                                  ! index in full lattice trans list
-         do l = 1_pInt,3_pInt; do m = 1_pInt,3_pInt; do n = 1_pInt,3_pInt; do o = 1_pInt,3_pInt
-           do p1 = 1_pInt,3_pInt; do q = 1_pInt,3_pInt; do r = 1_pInt,3_pInt; do s = 1_pInt,3_pInt
-             Ctrans3333(l,m,n,o,index_myFamily+j) = &
-             Ctrans3333(l,m,n,o,index_myFamily+j) + &
-               lattice_trans_C3333(p1,q,r,s,p) * &
-               lattice_Qtrans(l,p1,index_otherFamily+j,p) * &
-               lattice_Qtrans(m,q,index_otherFamily+j,p) * &
-               lattice_Qtrans(n,r,index_otherFamily+j,p) * &
-               lattice_Qtrans(o,s,index_otherFamily+j,p)
-           enddo; enddo; enddo; enddo
+     index_otherFamily = sum(lattice_NtransSystem(1:f-1_pInt,p))                                  ! index in full lattice trans list
+       do l = 1_pInt,3_pInt; do m = 1_pInt,3_pInt; do n = 1_pInt,3_pInt; do o = 1_pInt,3_pInt
+         do p1 = 1_pInt,3_pInt; do q = 1_pInt,3_pInt; do r = 1_pInt,3_pInt; do s = 1_pInt,3_pInt
+           Ctrans3333(l,m,n,o,index_myFamily+j) = &
+           Ctrans3333(l,m,n,o,index_myFamily+j) + &
+             lattice_trans_C3333(p1,q,r,s,p) * &
+             lattice_Qtrans(l,p1,index_otherFamily+j,p) * &
+             lattice_Qtrans(m,q,index_otherFamily+j,p) * &
+             lattice_Qtrans(n,r,index_otherFamily+j,p) * &
+             lattice_Qtrans(o,s,index_otherFamily+j,p)
          enddo; enddo; enddo; enddo
-         prm%Ctrans66(1:6,1:6,index_myFamily+j) = &
-           math_Mandel3333to66(Ctrans3333(1:3,1:3,1:3,1:3,index_myFamily+j))
+       enddo; enddo; enddo; enddo
+       prm%Ctrans66(1:6,1:6,index_myFamily+j) = &
+         math_Mandel3333to66(Ctrans3333(1:3,1:3,1:3,1:3,index_myFamily+j))
 
-       !* Interaction matrices
-         do o = 1_pInt,size(prm%Nslip,1)
-           index_otherFamily = sum(prm%Nslip(1:o-1_pInt))
-           do k = 1_pInt,prm%Nslip(o)                                   ! loop over (active) systems in other family (slip)
-             temp1(index_myFamily+j,index_otherFamily+k) = &
-                   prm%interaction_TransSlip(lattice_interactionTransSlip( &
-                                                                 sum(lattice_NtransSystem(1:f-1_pInt,p))+j, &
-                                                                 sum(lattice_NslipSystem(1:o-1_pInt,p))+k, &
-                                                                 p) ,1 )
-         enddo; enddo
+     !* Interaction matrices
+       do o = 1_pInt,size(prm%Nslip,1)
+         index_otherFamily = sum(prm%Nslip(1:o-1_pInt))
+         do k = 1_pInt,prm%Nslip(o)                                   ! loop over (active) systems in other family (slip)
+           temp1(index_myFamily+j,index_otherFamily+k) = &
+                 prm%interaction_TransSlip(lattice_interactionTransSlip( &
+                                                               sum(lattice_NtransSystem(1:f-1_pInt,p))+j, &
+                                                               sum(lattice_NslipSystem(1:o-1_pInt,p))+k, &
+                                                               p) ,1 )
+       enddo; enddo
 
-         do o = 1_pInt,size(prm%Ntrans,1)
-           index_otherFamily = sum(prm%Ntrans(1:o-1_pInt))
-           do k = 1_pInt,prm%Ntrans(o)                                  ! loop over (active) systems in other family (trans)
-             temp2(index_myFamily+j,index_otherFamily+k) = &
-                   prm%interaction_TransTrans(lattice_interactionTransTrans( &
-                                                                 sum(lattice_NtransSystem(1:f-1_pInt,p))+j, &
-                                                                 sum(lattice_NtransSystem(1:o-1_pInt,p))+k, &
-                                                                 p),1 )
-         enddo; enddo
+       do o = 1_pInt,size(prm%Ntrans,1)
+         index_otherFamily = sum(prm%Ntrans(1:o-1_pInt))
+         do k = 1_pInt,prm%Ntrans(o)                                  ! loop over (active) systems in other family (trans)
+           temp2(index_myFamily+j,index_otherFamily+k) = &
+                 prm%interaction_TransTrans(lattice_interactionTransTrans( &
+                                                               sum(lattice_NtransSystem(1:f-1_pInt,p))+j, &
+                                                               sum(lattice_NtransSystem(1:o-1_pInt,p))+k, &
+                                                               p),1 )
+       enddo; enddo
 
-       !* Projection matrices for shear from slip systems to fault-band (twin) systems for strain-induced martensite nucleation
-       !  select case(trans_lattice_structure(p))
-       !    case (LATTICE_bcc_ID)
-       !      do o = 1_pInt,sum(prm%Ntrans,1)
-       !        index_otherFamily = sum(prm%Nslip(1:o-1_pInt))
-       !        do k = 1_pInt,prm%Nslip(o)                                   ! loop over (active) systems in other family (trans)
-       !          temp3(index_myFamily+j,index_otherFamily+k) = &
-       !                lattice_projectionTrans( sum(lattice_NtransSystem(1:f-1,p))+j, &
-       !                                         sum(lattice_NslipSystem(1:o-1,p))+k, p)
-       !      enddo; enddo
-       !  end select 
+     !* Projection matrices for shear from slip systems to fault-band (twin) systems for strain-induced martensite nucleation
+     !  select case(trans_lattice_structure(p))
+     !    case (LATTICE_bcc_ID)
+     !      do o = 1_pInt,sum(prm%Ntrans,1)
+     !        index_otherFamily = sum(prm%Nslip(1:o-1_pInt))
+     !        do k = 1_pInt,prm%Nslip(o)                                   ! loop over (active) systems in other family (trans)
+     !          temp3(index_myFamily+j,index_otherFamily+k) = &
+     !                lattice_projectionTrans( sum(lattice_NtransSystem(1:f-1,p))+j, &
+     !                                         sum(lattice_NslipSystem(1:o-1,p))+k, p)
+     !      enddo; enddo
+     !  end select 
 
-       enddo transSystemsLoop
-     enddo transFamiliesLoop
+     enddo transSystemsLoop
+   enddo transFamiliesLoop
 
-     
-     prm%interaction_TransSlip  = temp1; deallocate(temp1)    
-     prm%interaction_TransTrans  = temp2; deallocate(temp2)    
+   
+   prm%interaction_TransSlip  = temp1; deallocate(temp1)    
+   prm%interaction_TransTrans  = temp2; deallocate(temp2)    
 
-     startIndex=1_pInt
-     endIndex=prm%totalNslip
-     state(instance)%rhoEdge=>plasticState(p)%state(startIndex:endIndex,:)
-     dotState(instance)%rhoEdge=>plasticState(p)%dotState(startIndex:endIndex,:)
-     plasticState(p)%state0(startIndex:endIndex,:) = &
-        spread(math_expand(prm%rho0,prm%Nslip),2,NofMyPhase)
-     plasticState(p)%aTolState(startIndex:endIndex) = prm%aTolRho
+   startIndex=1_pInt
+   endIndex=prm%totalNslip
+   state(instance)%rhoEdge=>plasticState(p)%state(startIndex:endIndex,:)
+   dotState(instance)%rhoEdge=>plasticState(p)%dotState(startIndex:endIndex,:)
+   plasticState(p)%state0(startIndex:endIndex,:) = &
+      spread(math_expand(prm%rho0,prm%Nslip),2,NofMyPhase)
+   plasticState(p)%aTolState(startIndex:endIndex) = prm%aTolRho
 
-     startIndex=endIndex+1
-     endIndex=endIndex+prm%totalNslip
-     state(instance)%rhoEdgeDip=>plasticState(p)%state(startIndex:endIndex,:)
-     dotState(instance)%rhoEdgeDip=>plasticState(p)%dotState(startIndex:endIndex,:)
-     plasticState(p)%state0(startIndex:endIndex,:) = &
-        spread(math_expand(prm%rhoDip0,prm%Nslip),2,NofMyPhase)
-     plasticState(p)%aTolState(startIndex:endIndex) = prm%aTolRho
-     
-     startIndex=endIndex+1
-     endIndex=endIndex+prm%totalNslip
-     state(instance)%accshear_slip=>plasticState(p)%state(startIndex:endIndex,:)
-     dotState(instance)%accshear_slip=>plasticState(p)%dotState(startIndex:endIndex,:)
-     plasticState(p)%aTolState(startIndex:endIndex) = 1.0e6_pReal
-     
-     startIndex=endIndex+1
-     endIndex=endIndex+prm%totalNtwin
-     state(instance)%twinFraction=>plasticState(p)%state(startIndex:endIndex,:)
-     dotState(instance)%twinFraction=>plasticState(p)%dotState(startIndex:endIndex,:)
-     plasticState(p)%aTolState(startIndex:endIndex) = prm%aTolTwinFrac
-     
-     startIndex=endIndex+1
-     endIndex=endIndex+prm%totalNtwin
-     state(instance)%accshear_twin=>plasticState(p)%state(startIndex:endIndex,:)
-     dotState(instance)%accshear_twin=>plasticState(p)%dotState(startIndex:endIndex,:)
-     plasticState(p)%aTolState(startIndex:endIndex) = 1.0e6_pReal
-     
-     startIndex=endIndex+1
-     endIndex=endIndex+prm%totalNtrans
-     state(instance)%stressTransFraction=>plasticState(p)%state(startIndex:endIndex,:)
-     dotState(instance)%stressTransFraction=>plasticState(p)%dotState(startIndex:endIndex,:)
-     plasticState(p)%aTolState(startIndex:endIndex) = prm%aTolTransFrac
-     
-     startIndex=endIndex+1
-     endIndex=endIndex+prm%totalNtrans
-     state(instance)%strainTransFraction=>plasticState(p)%state(startIndex:endIndex,:)
-     dotState(instance)%strainTransFraction=>plasticState(p)%dotState(startIndex:endIndex,:)
-     plasticState(p)%aTolState(startIndex:endIndex) = prm%aTolTransFrac
-     
-     startIndex=endIndex+1
-     endIndex=endIndex+prm%totalNslip
-     state(instance)%invLambdaSlip=>plasticState(p)%state(startIndex:endIndex,:)
-     invLambdaSlip0 = spread(0.0_pReal,1,prm%totalNslip)
-     forall (i = 1_pInt:prm%totalNslip) &
-       invLambdaSlip0(i) = sqrt(dot_product(math_expand(prm%rho0,prm%Nslip)+ &
-       math_expand(prm%rhoDip0,prm%Nslip),forestProjectionEdge(1:prm%totalNslip,i,instance)))/ &
-                           prm%CLambdaSlipPerSlipSystem(i)
-     plasticState(p)%state0(startIndex:endIndex,:) = &
-       spread(math_expand(invLambdaSlip0,prm%Nslip),2, NofMyPhase)
-     
-     startIndex=endIndex+1
-     endIndex=endIndex+prm%totalNslip
-     state(instance)%invLambdaSlipTwin=>plasticState(p)%state(startIndex:endIndex,:)
-     plasticState(p)%state0(startIndex:endIndex,:) = 0.0_pReal
+   startIndex=endIndex+1
+   endIndex=endIndex+prm%totalNslip
+   state(instance)%rhoEdgeDip=>plasticState(p)%state(startIndex:endIndex,:)
+   dotState(instance)%rhoEdgeDip=>plasticState(p)%dotState(startIndex:endIndex,:)
+   plasticState(p)%state0(startIndex:endIndex,:) = &
+      spread(math_expand(prm%rhoDip0,prm%Nslip),2,NofMyPhase)
+   plasticState(p)%aTolState(startIndex:endIndex) = prm%aTolRho
+   
+   startIndex=endIndex+1
+   endIndex=endIndex+prm%totalNslip
+   state(instance)%accshear_slip=>plasticState(p)%state(startIndex:endIndex,:)
+   dotState(instance)%accshear_slip=>plasticState(p)%dotState(startIndex:endIndex,:)
+   plasticState(p)%aTolState(startIndex:endIndex) = 1.0e6_pReal
+   
+   startIndex=endIndex+1
+   endIndex=endIndex+prm%totalNtwin
+   state(instance)%twinFraction=>plasticState(p)%state(startIndex:endIndex,:)
+   dotState(instance)%twinFraction=>plasticState(p)%dotState(startIndex:endIndex,:)
+   plasticState(p)%aTolState(startIndex:endIndex) = prm%aTolTwinFrac
+   
+   startIndex=endIndex+1
+   endIndex=endIndex+prm%totalNtwin
+   state(instance)%accshear_twin=>plasticState(p)%state(startIndex:endIndex,:)
+   dotState(instance)%accshear_twin=>plasticState(p)%dotState(startIndex:endIndex,:)
+   plasticState(p)%aTolState(startIndex:endIndex) = 1.0e6_pReal
+   
+   startIndex=endIndex+1
+   endIndex=endIndex+prm%totalNtrans
+   state(instance)%stressTransFraction=>plasticState(p)%state(startIndex:endIndex,:)
+   dotState(instance)%stressTransFraction=>plasticState(p)%dotState(startIndex:endIndex,:)
+   plasticState(p)%aTolState(startIndex:endIndex) = prm%aTolTransFrac
+   
+   startIndex=endIndex+1
+   endIndex=endIndex+prm%totalNtrans
+   state(instance)%strainTransFraction=>plasticState(p)%state(startIndex:endIndex,:)
+   dotState(instance)%strainTransFraction=>plasticState(p)%dotState(startIndex:endIndex,:)
+   plasticState(p)%aTolState(startIndex:endIndex) = prm%aTolTransFrac
+   
+   startIndex=endIndex+1
+   endIndex=endIndex+prm%totalNslip
+   state(instance)%invLambdaSlip=>plasticState(p)%state(startIndex:endIndex,:)
+   invLambdaSlip0 = spread(0.0_pReal,1,prm%totalNslip)
+   forall (i = 1_pInt:prm%totalNslip) &
+     invLambdaSlip0(i) = sqrt(dot_product(math_expand(prm%rho0,prm%Nslip)+ &
+     math_expand(prm%rhoDip0,prm%Nslip),forestProjectionEdge(1:prm%totalNslip,i,instance)))/ &
+                         prm%CLambdaSlipPerSlipSystem(i)
+   plasticState(p)%state0(startIndex:endIndex,:) = &
+     spread(math_expand(invLambdaSlip0,prm%Nslip),2, NofMyPhase)
+   
+   startIndex=endIndex+1
+   endIndex=endIndex+prm%totalNslip
+   state(instance)%invLambdaSlipTwin=>plasticState(p)%state(startIndex:endIndex,:)
+   plasticState(p)%state0(startIndex:endIndex,:) = 0.0_pReal
 
-     startIndex=endIndex+1
-     endIndex=endIndex+prm%totalNtwin
-     state(instance)%invLambdaTwin=>plasticState(p)%state(startIndex:endIndex,:)
-     plasticState(p)%state0(startIndex:endIndex,:) = 0.0_pReal
+   startIndex=endIndex+1
+   endIndex=endIndex+prm%totalNtwin
+   state(instance)%invLambdaTwin=>plasticState(p)%state(startIndex:endIndex,:)
+   plasticState(p)%state0(startIndex:endIndex,:) = 0.0_pReal
 
-     startIndex=endIndex+1
-     endIndex=endIndex+prm%totalNslip
-     state(instance)%invLambdaSlipTrans=>plasticState(p)%state(startIndex:endIndex,:)
-     plasticState(p)%state0(startIndex:endIndex,:) = 0.0_pReal
+   startIndex=endIndex+1
+   endIndex=endIndex+prm%totalNslip
+   state(instance)%invLambdaSlipTrans=>plasticState(p)%state(startIndex:endIndex,:)
+   plasticState(p)%state0(startIndex:endIndex,:) = 0.0_pReal
 
-     startIndex=endIndex+1
-     endIndex=endIndex+prm%totalNtrans
-     state(instance)%invLambdaTrans=>plasticState(p)%state(startIndex:endIndex,:)
-     plasticState(p)%state0(startIndex:endIndex,:) = 0.0_pReal
+   startIndex=endIndex+1
+   endIndex=endIndex+prm%totalNtrans
+   state(instance)%invLambdaTrans=>plasticState(p)%state(startIndex:endIndex,:)
+   plasticState(p)%state0(startIndex:endIndex,:) = 0.0_pReal
 
-     startIndex=endIndex+1
-     endIndex=endIndex+prm%totalNslip
-     state(instance)%mfp_slip=>plasticState(p)%state(startIndex:endIndex,:)
-     MeanFreePathSlip0 = prm%GrainSize/(1.0_pReal+invLambdaSlip0*prm%GrainSize)
-     plasticState(p)%state0(startIndex:endIndex,:) = &
-       spread(math_expand(MeanFreePathSlip0,prm%Nslip),2, NofMyPhase)
-     
-     startIndex=endIndex+1
-     endIndex=endIndex+prm%totalNtwin
-     state(instance)%mfp_twin=>plasticState(p)%state(startIndex:endIndex,:)
-     MeanFreePathTwin0 = spread(prm%GrainSize,1,prm%totalNtwin)
-     plasticState(p)%state0(startIndex:endIndex,:) = &
-       spread(math_expand(MeanFreePathTwin0,prm%Ntwin),2, NofMyPhase)
+   startIndex=endIndex+1
+   endIndex=endIndex+prm%totalNslip
+   state(instance)%mfp_slip=>plasticState(p)%state(startIndex:endIndex,:)
+   MeanFreePathSlip0 = prm%GrainSize/(1.0_pReal+invLambdaSlip0*prm%GrainSize)
+   plasticState(p)%state0(startIndex:endIndex,:) = &
+     spread(math_expand(MeanFreePathSlip0,prm%Nslip),2, NofMyPhase)
+   
+   startIndex=endIndex+1
+   endIndex=endIndex+prm%totalNtwin
+   state(instance)%mfp_twin=>plasticState(p)%state(startIndex:endIndex,:)
+   MeanFreePathTwin0 = spread(prm%GrainSize,1,prm%totalNtwin)
+   plasticState(p)%state0(startIndex:endIndex,:) = &
+     spread(math_expand(MeanFreePathTwin0,prm%Ntwin),2, NofMyPhase)
 
-     startIndex=endIndex+1
-     endIndex=endIndex+prm%totalNtrans
-     state(instance)%mfp_trans=>plasticState(p)%state(startIndex:endIndex,:)
-     MeanFreePathTrans0 = spread(prm%GrainSize,1,prm%totalNtrans)
-     plasticState(p)%state0(startIndex:endIndex,:) = &
-       spread(math_expand(MeanFreePathTrans0,prm%Ntrans),2, NofMyPhase)
+   startIndex=endIndex+1
+   endIndex=endIndex+prm%totalNtrans
+   state(instance)%mfp_trans=>plasticState(p)%state(startIndex:endIndex,:)
+   MeanFreePathTrans0 = spread(prm%GrainSize,1,prm%totalNtrans)
+   plasticState(p)%state0(startIndex:endIndex,:) = &
+     spread(math_expand(MeanFreePathTrans0,prm%Ntrans),2, NofMyPhase)
 
-     startIndex=endIndex+1
-     endIndex=endIndex+prm%totalNslip
-     state(instance)%threshold_stress_slip=>plasticState(p)%state(startIndex:endIndex,:)
-     tauSlipThreshold0 = spread(0.0_pReal,1,prm%totalNslip)
-     forall (i = 1_pInt:prm%totalNslip) tauSlipThreshold0(i) = &
-       lattice_mu(p)*prm%burgers_slip(i) * &
-       sqrt(dot_product(math_expand(prm%rho0 + prm%rhoDip0,prm%Nslip),&
-                        prm%interaction_SlipSlip(i,1:prm%totalNslip)))
-     plasticState(p)%state0(startIndex:endIndex,:) = &
-       spread(math_expand(tauSlipThreshold0,prm%Nslip),2, NofMyPhase)
+   startIndex=endIndex+1
+   endIndex=endIndex+prm%totalNslip
+   state(instance)%threshold_stress_slip=>plasticState(p)%state(startIndex:endIndex,:)
+   tauSlipThreshold0 = spread(0.0_pReal,1,prm%totalNslip)
+   forall (i = 1_pInt:prm%totalNslip) tauSlipThreshold0(i) = &
+     lattice_mu(p)*prm%burgers_slip(i) * &
+     sqrt(dot_product(math_expand(prm%rho0 + prm%rhoDip0,prm%Nslip),&
+                      prm%interaction_SlipSlip(i,1:prm%totalNslip)))
+   plasticState(p)%state0(startIndex:endIndex,:) = &
+     spread(math_expand(tauSlipThreshold0,prm%Nslip),2, NofMyPhase)
 
-     startIndex=endIndex+1
-     endIndex=endIndex+prm%totalNtwin
-     state(instance)%threshold_stress_twin=>plasticState(p)%state(startIndex:endIndex,:)
+   startIndex=endIndex+1
+   endIndex=endIndex+prm%totalNtwin
+   state(instance)%threshold_stress_twin=>plasticState(p)%state(startIndex:endIndex,:)
 
-     startIndex=endIndex+1
-     endIndex=endIndex+prm%totalNtrans
-     state(instance)%threshold_stress_trans=>plasticState(p)%state(startIndex:endIndex,:)
+   startIndex=endIndex+1
+   endIndex=endIndex+prm%totalNtrans
+   state(instance)%threshold_stress_trans=>plasticState(p)%state(startIndex:endIndex,:)
 
-     startIndex=endIndex+1
-     endIndex=endIndex+prm%totalNtwin
-     state(instance)%twinVolume=>plasticState(p)%state(startIndex:endIndex,:)
-     TwinVolume0= spread(0.0_pReal,1,prm%totalNtwin)
-     forall (i = 1_pInt:prm%totalNtwin) TwinVolume0(i) = &
-       (PI/4.0_pReal)*prm%twinsize(i)*MeanFreePathTwin0(i)**2.0_pReal
-     plasticState(p)%state0(startIndex:endIndex,:) = &
-        spread(math_expand(TwinVolume0,prm%Ntwin),2, NofMyPhase)
+   startIndex=endIndex+1
+   endIndex=endIndex+prm%totalNtwin
+   state(instance)%twinVolume=>plasticState(p)%state(startIndex:endIndex,:)
+   TwinVolume0= spread(0.0_pReal,1,prm%totalNtwin)
+   forall (i = 1_pInt:prm%totalNtwin) TwinVolume0(i) = &
+     (PI/4.0_pReal)*prm%twinsize(i)*MeanFreePathTwin0(i)**2.0_pReal
+   plasticState(p)%state0(startIndex:endIndex,:) = &
+      spread(math_expand(TwinVolume0,prm%Ntwin),2, NofMyPhase)
 
-     startIndex=endIndex+1
-     endIndex=endIndex+prm%totalNtrans
-     state(instance)%martensiteVolume=>plasticState(p)%state(startIndex:endIndex,:)
-     MartensiteVolume0= spread(0.0_pReal,1,prm%totalNtrans)
-     forall (i = 1_pInt:prm%totalNtrans) MartensiteVolume0(i) = &
-       (PI/4.0_pReal)*prm%lamellarsizePerTransSystem(i)*MeanFreePathTrans0(i)**2.0_pReal
-     plasticState(p)%state0(startIndex:endIndex,:) = &
-       spread(math_expand(MartensiteVolume0,prm%Ntrans),2, NofMyPhase)
+   startIndex=endIndex+1
+   endIndex=endIndex+prm%totalNtrans
+   state(instance)%martensiteVolume=>plasticState(p)%state(startIndex:endIndex,:)
+   MartensiteVolume0= spread(0.0_pReal,1,prm%totalNtrans)
+   forall (i = 1_pInt:prm%totalNtrans) MartensiteVolume0(i) = &
+     (PI/4.0_pReal)*prm%lamellarsizePerTransSystem(i)*MeanFreePathTrans0(i)**2.0_pReal
+   plasticState(p)%state0(startIndex:endIndex,:) = &
+     spread(math_expand(MartensiteVolume0,prm%Ntrans),2, NofMyPhase)
 
  enddo initializeInstances
  
