@@ -1171,10 +1171,6 @@ subroutine plastic_dislotwin_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,Temperature
    phase_plasticityInstance, &
    phaseAt, phasememberAt
  use lattice, only: &
-   lattice_Sslip, &
-   lattice_Sslip_v, &
-   lattice_Stwin, &
-   lattice_Stwin_v, &
    lattice_Strans, &
    lattice_Strans_v, &
    lattice_maxNslipFamily,&
@@ -1249,53 +1245,34 @@ subroutine plastic_dislotwin_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,Temperature
 ! Dislocation glide part
  gdot_slip = 0.0_pReal
  dgdot_dtauslip = 0.0_pReal
- j = 0_pInt
- slipFamiliesLoop: do f = 1_pInt,size(prm%Nslip,1)
-   index_myFamily = sum(lattice_NslipSystem(1:f-1_pInt,ph)) ! at which index starts my family
-   slipSystemsLoop: do i = 1_pInt,prm%Nslip(f)
-      j = j+1_pInt
- 
-      !* Calculation of Lp
-      !* Resolved shear stress on slip system
-      tau_slip(j) = math_mul33xx33(S,lattice_Sslip(1:3,1:3,1,index_myFamily+i,ph))
+ slipSystems: do j = 1_pInt, prm%totalNslip
+
+      tau_slip(j) = math_mul33xx33(S,prm%Schmid_slip(1:3,1:3,j))
 
       if((abs(tau_slip(j))-state(instance)%threshold_stress_slip(j,of)) > tol_math_check) then
-      !* Stress ratios
         stressRatio =((abs(tau_slip(j))- state(instance)%threshold_stress_slip(j,of))/&
           (prm%SolidSolutionStrength+prm%tau_peierls(j)))
         StressRatio_p       = stressRatio** prm%p(j)
         StressRatio_pminus1 = stressRatio**(prm%p(j)-1.0_pReal)
-      !* Boltzmann ratio
         BoltzmannRatio = prm%Qedge(j)/(kB*Temperature)
       !* Initial shear rates
-        DotGamma0 = &
-          state(instance)%rhoEdge(j,of)*prm%burgers_slip(j)*&
-          prm%v0(j)
+        DotGamma0 = state(instance)%rhoEdge(j,of)*prm%burgers_slip(j)* prm%v0(j)
  
         !* Shear rates due to slip
-        gdot_slip(j) = DotGamma0 &
-                     * exp(-BoltzmannRatio*(1-StressRatio_p) ** prm%q(j)) &
-                     * sign(1.0_pReal,tau_slip(j))
+        gdot_slip(j) = DotGamma0 *sign(exp(-BoltzmannRatio*(1-StressRatio_p)** prm%q(j)), tau_slip(j))
  
         !* Derivatives of shear rates
-        dgdot_dtauslip(j) = &
-          abs(gdot_slip(j))*BoltzmannRatio*prm%p(j)&
-          *prm%q(j)/&
-          (prm%SolidSolutionStrength+prm%tau_peierls(j))*&
-          StressRatio_pminus1*(1-StressRatio_p)**(prm%q(j)-1.0_pReal)
+        dgdot_dtauslip(j) = abs(gdot_slip(j))*BoltzmannRatio*prm%p(j) * prm%q(j) &
+                          / (prm%SolidSolutionStrength+prm%tau_peierls(j)) &
+                          * StressRatio_pminus1*(1-StressRatio_p)**(prm%q(j)-1.0_pReal)
       endif
  
-      !* Plastic velocity gradient for dislocation glide
-      Lp = Lp + gdot_slip(j)*lattice_Sslip(:,:,1,index_myFamily+i,ph)
+      Lp = Lp + gdot_slip(j)*prm%Schmid_slip(1:3,1:3,j)
  
-      !* Calculation of the tangent of Lp
       forall (k=1_pInt:3_pInt,l=1_pInt:3_pInt,m=1_pInt:3_pInt,n=1_pInt:3_pInt) &
-        dLp_dTstar3333(k,l,m,n) = &
-        dLp_dTstar3333(k,l,m,n) + dgdot_dtauslip(j)*&
-                                  lattice_Sslip(k,l,1,index_myFamily+i,ph)*&
-                                  lattice_Sslip(m,n,1,index_myFamily+i,ph)
-   enddo slipSystemsLoop
- enddo slipFamiliesLoop
+        dLp_dTstar3333(k,l,m,n) = dLp_dTstar3333(k,l,m,n) &
+                                + dgdot_dtauslip(j) * prm%Schmid_slip(k,l,j) * prm%Schmid_slip(m,n,j)
+ enddo slipSystems
  
 !--------------------------------------------------------------------------------------------------
 ! correct Lp and dLp_dTstar3333 for twinned and transformed fraction 
@@ -1335,7 +1312,6 @@ subroutine plastic_dislotwin_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,Temperature
                  **(prm%pShearBand-1.0_pReal)
       endif
 
-     !* Boltzmann ratio
      BoltzmannRatio = prm%sbQedge/(kB*Temperature)
      !* Initial shear rates
      DotGamma0 = prm%sbVelocity
@@ -1351,10 +1327,8 @@ subroutine plastic_dislotwin_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,Temperature
        prm%sbResistance)*&
        StressRatio_pminus1*(1_pInt-StressRatio_p)**(prm%qShearBand-1.0_pReal)
  
-     !* Plastic velocity gradient for shear banding
      Lp = Lp + gdot_sb(j)*sb_Smatrix
  
-     !* Calculation of the tangent of Lp
      forall (k=1_pInt:3_pInt,l=1_pInt:3_pInt,m=1_pInt:3_pInt,n=1_pInt:3_pInt) &
        dLp_dTstar3333(k,l,m,n) = &
        dLp_dTstar3333(k,l,m,n) + dgdot_dtausb(j)*&
@@ -1363,8 +1337,6 @@ subroutine plastic_dislotwin_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,Temperature
    enddo
  end if
  
-!--------------------------------------------------------------------------------------------------
-! Mechanical twinning part
  gdot_twin = 0.0_pReal
  dgdot_dtautwin = 0.0_pReal
  j = 0_pInt
@@ -1373,9 +1345,7 @@ subroutine plastic_dislotwin_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,Temperature
    twinSystemsLoop: do i = 1_pInt,prm%Ntwin(f)
       j = j+1_pInt
  
-      !* Calculation of Lp
-      !* Resolved shear stress on twin system
-      tau_twin(j) = math_mul33xx33(S,lattice_Stwin(1:3,1:3,index_myFamily+i,ph))
+      tau_twin(j) = math_mul33xx33(S,prm%Schmid_twin(1:3,1:3,j))
 
       !* Stress ratios
       if (tau_twin(j) > tol_math_check) then
@@ -1403,14 +1373,10 @@ subroutine plastic_dislotwin_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,Temperature
         dgdot_dtautwin(j) = ((gdot_twin(j)*prm%r(j))/tau_twin(j))*StressRatio_r
       endif
  
-      !* Plastic velocity gradient for mechanical twinning
-      Lp = Lp + gdot_twin(j)*lattice_Stwin(:,:,index_myFamily+i,ph)
-      !* Calculation of the tangent of Lp
+      Lp = Lp + gdot_twin(j)*prm%Schmid_twin(1:3,1:3,j)
       forall (k=1_pInt:3_pInt,l=1_pInt:3_pInt,m=1_pInt:3_pInt,n=1_pInt:3_pInt) &
-        dLp_dTstar3333(k,l,m,n) = &
-        dLp_dTstar3333(k,l,m,n) + dgdot_dtautwin(j)*&
-                                  lattice_Stwin(k,l,index_myFamily+i,ph)*&
-                                  lattice_Stwin(m,n,index_myFamily+i,ph)
+        dLp_dTstar3333(k,l,m,n) = dLp_dTstar3333(k,l,m,n) &
+                                + dgdot_dtautwin(j)* prm%Schmid_twin(k,l,j)*prm%Schmid_twin(m,n,j)
    enddo twinSystemsLoop
  enddo twinFamiliesLoop
 
