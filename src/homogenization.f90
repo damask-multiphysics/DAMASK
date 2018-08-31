@@ -85,9 +85,9 @@ subroutine homogenization_init
  use crystallite, only: &
    crystallite_maxSizePostResults
  use config, only: &
-  config_deallocate, &
   material_configFile, &
   material_localFileExt, &
+  config_deallocate, &
   config_homogenization, &
   homogenization_name
  use material
