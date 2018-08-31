@@ -634,11 +634,14 @@ subroutine plastic_dislotwin_init(fileUnit)
    allocate(temp1(prm%totalNslip,prm%totalNslip), source =0.0_pReal)
    allocate(temp2(prm%totalNslip,prm%totalNtwin), source =0.0_pReal)        
    allocate(temp3(prm%totalNslip,prm%totalNtrans),source =0.0_pReal)        
-
+   allocate(prm%Schmid_slip(3,3,prm%totalNslip),source   = 0.0_pReal)
+   i = 0_pInt
    mySlipFamilies: do f = 1_pInt,size(prm%Nslip,1)
      index_myFamily = sum(prm%Nslip(1:f-1_pInt))
 
      slipSystemsLoop: do j = 1_pInt,prm%Nslip(f)
+       i = i + 1_pInt
+       prm%Schmid_slip(1:3,1:3,i) = lattice_Sslip(1:3,1:3,1,sum(lattice_Nslipsystem(1:f-1,p))+j,p)
        do o = 1_pInt, size(prm%Nslip,1)
          index_otherFamily = sum(prm%Nslip(1:o-1_pInt))
          do k = 1_pInt,prm%Nslip(o)                                   ! loop over (active) systems in other family (slip)
@@ -684,11 +687,15 @@ subroutine plastic_dislotwin_init(fileUnit)
    allocate(prm%Ctwin66(6,6,prm%totalNtwin),       source=0.0_pReal)
    if (allocated(Ctwin3333)) deallocate(Ctwin3333)
    allocate(Ctwin3333(3,3,3,3,prm%totalNtwin),  source=0.0_pReal)
-
+   allocate(prm%Schmid_twin(3,3,prm%totalNtwin),source  = 0.0_pReal)
+   allocate(prm%shear_twin(prm%totalNtwin),source       = 0.0_pReal)
+   i = 0_pInt
    twinFamiliesLoop: do f = 1_pInt, size(prm%Ntwin,1)
      index_myFamily = sum(prm%Ntwin(1:f-1_pInt))                      ! index in truncated twin system list
      twinSystemsLoop: do j = 1_pInt,prm%Ntwin(f)
- 
+       i = i + 1_pInt
+       prm%Schmid_twin(1:3,1:3,i) = lattice_Stwin(1:3,1:3,sum(lattice_NTwinsystem(1:f-1,p))+j,p)
+       prm%shear_twin(i)          = lattice_shearTwin(sum(lattice_Ntwinsystem(1:f-1,p))+j,p)
      !  nucleation rate prefactor,
      !  and twin size
      !* Rotate twin elasticity matrices
@@ -739,21 +746,23 @@ subroutine plastic_dislotwin_init(fileUnit)
    allocate(prm%Ctrans66(6,6,prm%totalNtrans)       ,source=0.0_pReal)
    if (allocated(Ctrans3333)) deallocate(Ctrans3333)
    allocate(Ctrans3333(3,3,3,3,prm%totalNtrans),  source=0.0_pReal)
-
+   allocate(prm%Schmid_trans(3,3,prm%totalNtrans),source  = 0.0_pReal)
+   i = 0_pInt
    transFamiliesLoop: do f = 1_pInt,size(prm%Ntrans,1)
      index_myFamily = sum(prm%Ntrans(1:f-1_pInt))                                                 ! index in truncated trans system list
      transSystemsLoop: do j = 1_pInt,prm%Ntrans(f)
-
-     index_otherFamily = sum(lattice_NtransSystem(1:f-1_pInt,p))                                  ! index in full lattice trans list
+       i = i + 1_pInt
+       prm%Schmid_trans(1:3,1:3,i) = lattice_Strans(1:3,1:3,sum(lattice_Ntranssystem(1:f-1,p))+j,p)
+       index_otherFamily = sum(lattice_NtransSystem(1:f-1_pInt,p))                                  ! index in full lattice trans list
        do l = 1_pInt,3_pInt; do m = 1_pInt,3_pInt; do n = 1_pInt,3_pInt; do o = 1_pInt,3_pInt
          do p1 = 1_pInt,3_pInt; do q = 1_pInt,3_pInt; do r = 1_pInt,3_pInt; do s = 1_pInt,3_pInt
            Ctrans3333(l,m,n,o,index_myFamily+j) = &
-           Ctrans3333(l,m,n,o,index_myFamily+j) + &
-             lattice_trans_C3333(p1,q,r,s,p) * &
-             lattice_Qtrans(l,p1,index_otherFamily+j,p) * &
-             lattice_Qtrans(m,q,index_otherFamily+j,p) * &
-             lattice_Qtrans(n,r,index_otherFamily+j,p) * &
-             lattice_Qtrans(o,s,index_otherFamily+j,p)
+             Ctrans3333(l,m,n,o,index_myFamily+j) + &
+               lattice_trans_C3333(p1,q,r,s,p) * &
+               lattice_Qtrans(l,p1,index_otherFamily+j,p) * &
+               lattice_Qtrans(m,q,index_otherFamily+j,p) * &
+               lattice_Qtrans(n,r,index_otherFamily+j,p) * &
+               lattice_Qtrans(o,s,index_otherFamily+j,p)
          enddo; enddo; enddo; enddo
        enddo; enddo; enddo; enddo
        prm%Ctrans66(1:6,1:6,index_myFamily+j) = &
