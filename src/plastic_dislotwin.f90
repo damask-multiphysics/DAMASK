@@ -1554,7 +1554,7 @@ end subroutine plastic_dislotwin_dotState
 !--------------------------------------------------------------------------------------------------
 !> @brief return array of constitutive results
 !--------------------------------------------------------------------------------------------------
-function plastic_dislotwin_postResults(Tstar_v,Temperature,ipc,ip,el)
+function plastic_dislotwin_postResults(Tstar_v,Temperature,ipc,ip,el) result(postResults)
  use prec, only: &
    tol_math_check, &
    dEq0
@@ -1591,7 +1591,7 @@ function plastic_dislotwin_postResults(Tstar_v,Temperature,ipc,ip,el)
    el                                                                                               !< element
 
  real(pReal), dimension(plasticState(material_phase(ipc,ip,el))%sizePostResults) :: &
-                                           plastic_dislotwin_postResults
+                                           postResults
  integer(pInt) :: &
    instance,&
    f,o,i,c,j,index_myFamily,&
@@ -1622,15 +1622,15 @@ function plastic_dislotwin_postResults(Tstar_v,Temperature,ipc,ip,el)
  
  !* Required output
  c = 0_pInt
- plastic_dislotwin_postResults = 0.0_pReal
+ postResults = 0.0_pReal
  do o = 1_pInt,size(prm%outputID)
     select case(prm%outputID(o))
  
       case (edge_density_ID)
-        plastic_dislotwin_postResults(c+1_pInt:c+prm%totalNslip) = state(instance)%rhoEdge(1_pInt:prm%totalNslip,of)
+        postResults(c+1_pInt:c+prm%totalNslip) = state(instance)%rhoEdge(1_pInt:prm%totalNslip,of)
         c = c + prm%totalNslip
       case (dipole_density_ID)
-        plastic_dislotwin_postResults(c+1_pInt:c+prm%totalNslip) = state(instance)%rhoEdgeDip(1_pInt:prm%totalNslip,of)
+        postResults(c+1_pInt:c+prm%totalNslip) = state(instance)%rhoEdgeDip(1_pInt:prm%totalNslip,of)
         c = c + prm%totalNslip
       case (shear_rate_slip_ID)
         j = 0_pInt
@@ -1655,20 +1655,20 @@ function plastic_dislotwin_postResults(Tstar_v,Temperature,ipc,ip,el)
                 DotGamma0 = state(instance)%rhoEdge(j,of)*prm%burgers_slip(j)* prm%v0(j)
  
               !* Shear rates due to slip
-                plastic_dislotwin_postResults(c+j) = DotGamma0*exp(-BoltzmannRatio*(1_pInt-StressRatio_p)**&
+                postResults(c+j) = DotGamma0*exp(-BoltzmannRatio*(1_pInt-StressRatio_p)**&
                                prm%q(j))*sign(1.0_pReal,tau)
               else
-                plastic_dislotwin_postResults(c+j) = 0.0_pReal
+                postResults(c+j) = 0.0_pReal
               endif
               
         enddo ; enddo
         c = c + prm%totalNslip
       case (accumulated_shear_slip_ID)
-       plastic_dislotwin_postResults(c+1_pInt:c+prm%totalNslip) = &
+       postResults(c+1_pInt:c+prm%totalNslip) = &
                       state(instance)%accshear_slip(1_pInt:prm%totalNslip,of)
         c = c + prm%totalNslip
       case (mfp_slip_ID)
-        plastic_dislotwin_postResults(c+1_pInt:c+prm%totalNslip) =&
+        postResults(c+1_pInt:c+prm%totalNslip) =&
                       state(instance)%mfp_slip(1_pInt:prm%totalNslip,of)
         c = c + prm%totalNslip
       case (resolved_stress_slip_ID)
@@ -1677,12 +1677,12 @@ function plastic_dislotwin_postResults(Tstar_v,Temperature,ipc,ip,el)
            index_myFamily = sum(lattice_NslipSystem(1:f-1_pInt,ph))                                 ! at which index starts my family
            do i = 1_pInt,prm%Nslip(f)                                        ! process each (active) slip system in family
               j = j + 1_pInt
-              plastic_dislotwin_postResults(c+j) =&
+              postResults(c+j) =&
                                 math_mul33xx33(S,lattice_Sslip(1:3,1:3,1,index_myFamily+i,ph))
         enddo; enddo
         c = c + prm%totalNslip
       case (threshold_stress_slip_ID)
-        plastic_dislotwin_postResults(c+1_pInt:c+prm%totalNslip) = &
+        postResults(c+1_pInt:c+prm%totalNslip) = &
                                 state(instance)%threshold_stress_slip(1_pInt:prm%totalNslip,of)
         c = c + prm%totalNslip
       case (edge_dipole_distance_ID)
@@ -1691,18 +1691,18 @@ function plastic_dislotwin_postResults(Tstar_v,Temperature,ipc,ip,el)
            index_myFamily = sum(lattice_NslipSystem(1:f-1_pInt,ph))                                 ! at which index starts my family
            do i = 1_pInt,prm%Nslip(f)                                         ! process each (active) slip system in family
               j = j + 1_pInt
-              plastic_dislotwin_postResults(c+j) = &
+              postResults(c+j) = &
                 (3.0_pReal*lattice_mu(ph)*prm%burgers_slip(j))/&
                 (16.0_pReal*pi*abs(math_mul33xx33(S,lattice_Sslip(1:3,1:3,1,index_myFamily+i,ph))))
-              plastic_dislotwin_postResults(c+j)=min(plastic_dislotwin_postResults(c+j),&
+              postResults(c+j)=min(postResults(c+j),&
                                                             state(instance)%mfp_slip(j,of))
- !            plastic_dislotwin_postResults(c+j)=max(plastic_dislotwin_postResults(c+j),&
+ !            postResults(c+j)=max(postResults(c+j),&
  !                                                            plasticState(ph)%state(4*ns+2*nt+2*nr+j, of))
         enddo; enddo
         c = c + prm%totalNslip
        case (resolved_stress_shearband_ID)
          do j = 1_pInt,6_pInt                                                                       ! loop over all shearband families
-            plastic_dislotwin_postResults(c+j) = dot_product(Tstar_v,sbSv(1:6,j,ipc,ip,el))
+            postResults(c+j) = dot_product(Tstar_v,sbSv(1:6,j,ipc,ip,el))
          enddo
          c = c + 6_pInt
        case (shear_rate_shearband_ID)
@@ -1724,13 +1724,13 @@ function plastic_dislotwin_postResults(Tstar_v,Temperature,ipc,ip,el)
               !* Initial shear rates
               DotGamma0 = prm%sbVelocity
               ! Shear rate due to shear band
-              plastic_dislotwin_postResults(c+j) = &
+              postResults(c+j) = &
           DotGamma0*exp(-BoltzmannRatio*(1_pInt-StressRatio_p)**prm%qShearBand)*&
                 sign(1.0_pReal,tau)
          enddo 
         c = c + 6_pInt
       case (twin_fraction_ID)
-        plastic_dislotwin_postResults(c+1_pInt:c+prm%totalNtwin) = state(instance)%twinFraction(1_pInt:prm%totalNtwin,of)
+        postResults(c+1_pInt:c+prm%totalNtwin) = state(instance)%twinFraction(1_pInt:prm%totalNtwin,of)
         c = c + prm%totalNtwin
       case (shear_rate_twin_ID)
         if (prm%totalNtwin > 0_pInt) then
@@ -1799,7 +1799,7 @@ function plastic_dislotwin_postResults(Tstar_v,Temperature,ipc,ip,el)
                 end select
                 StressRatio_r = (state(instance)%threshold_stress_twin(j,of)/tau) &
                                                    **prm%r(j)
-                plastic_dislotwin_postResults(c+j) = &
+                postResults(c+j) = &
                   (prm%MaxTwinFraction-sumf)*lattice_shearTwin(index_myFamily+i,ph)*&
                   state(instance)%twinVolume(j,of)*Ndot0_twin*exp(-StressRatio_r)
               endif
@@ -1808,10 +1808,10 @@ function plastic_dislotwin_postResults(Tstar_v,Temperature,ipc,ip,el)
         endif
         c = c + prm%totalNtwin
       case (accumulated_shear_twin_ID)
-       plastic_dislotwin_postResults(c+1_pInt:c+prm%totalNtwin) = state(instance)%accshear_twin(1_pInt:prm%totalNtwin,of)
+       postResults(c+1_pInt:c+prm%totalNtwin) = state(instance)%accshear_twin(1_pInt:prm%totalNtwin,of)
         c = c + prm%totalNtwin     
       case (mfp_twin_ID)
-        plastic_dislotwin_postResults(c+1_pInt:c+prm%totalNtwin) = state(instance)%mfp_twin(1_pInt:prm%totalNtwin,of)
+        postResults(c+1_pInt:c+prm%totalNtwin) = state(instance)%mfp_twin(1_pInt:prm%totalNtwin,of)
         c = c + prm%totalNtwin
       case (resolved_stress_twin_ID)
         if (prm%totalNtwin > 0_pInt) then
@@ -1820,12 +1820,12 @@ function plastic_dislotwin_postResults(Tstar_v,Temperature,ipc,ip,el)
             index_myFamily = sum(lattice_NtwinSystem(1:f-1_pInt,ph))                                ! at which index starts my family
             do i = 1_pInt,prm%Ntwin(f)                                  ! process each (active) slip system in family
               j = j + 1_pInt
-              plastic_dislotwin_postResults(c+j) = math_mul33xx33(S,lattice_Stwin(1:3,1:3,index_myFamily+i,ph))
+              postResults(c+j) = math_mul33xx33(S,lattice_Stwin(1:3,1:3,index_myFamily+i,ph))
           enddo; enddo
         endif
         c = c + prm%totalNtwin
       case (threshold_stress_twin_ID)
-        plastic_dislotwin_postResults(c+1_pInt:c+prm%totalNtwin) = state(instance)%threshold_stress_twin(1_pInt:prm%totalNtwin,of)
+        postResults(c+1_pInt:c+prm%totalNtwin) = state(instance)%threshold_stress_twin(1_pInt:prm%totalNtwin,of)
         c = c + prm%totalNtwin
       case (stress_exponent_ID)
         j = 0_pInt
@@ -1871,27 +1871,27 @@ function plastic_dislotwin_postResults(Tstar_v,Temperature,ipc,ip,el)
              endif
 
              !* Stress exponent
-             plastic_dislotwin_postResults(c+j) = &
+             postResults(c+j) = &
                merge(0.0_pReal,(tau/gdot_slip(j))*dgdot_dtauslip,dEq0(gdot_slip(j)))
          enddo ; enddo
          c = c + prm%totalNslip
       case (sb_eigenvalues_ID)
-        plastic_dislotwin_postResults(c+1_pInt:c+3_pInt) = math_eigenvaluesSym33(S)
+        postResults(c+1_pInt:c+3_pInt) = math_eigenvaluesSym33(S)
         c = c + 3_pInt
       case (sb_eigenvectors_ID)
         call math_eigenValuesVectorsSym33(S,eigValues,eigVectors)
-        plastic_dislotwin_postResults(c+1_pInt:c+9_pInt) = reshape(eigVectors,[9])
+        postResults(c+1_pInt:c+9_pInt) = reshape(eigVectors,[9])
         c = c + 9_pInt
       case (stress_trans_fraction_ID)
-        plastic_dislotwin_postResults(c+1_pInt:c+prm%totalNtrans) = &
+        postResults(c+1_pInt:c+prm%totalNtrans) = &
           state(instance)%stressTransFraction(1_pInt:prm%totalNtrans,of)
         c = c + prm%totalNtrans
       case (strain_trans_fraction_ID)
-        plastic_dislotwin_postResults(c+1_pInt:c+prm%totalNtrans) = &
+        postResults(c+1_pInt:c+prm%totalNtrans) = &
           state(instance)%strainTransFraction(1_pInt:prm%totalNtrans,of)
         c = c + prm%totalNtrans
       case (trans_fraction_ID)
-        plastic_dislotwin_postResults(c+1_pInt:c+prm%totalNtrans) = &
+        postResults(c+1_pInt:c+prm%totalNtrans) = &
           state(instance)%stressTransFraction(1_pInt:prm%totalNtrans,of) + &
           state(instance)%strainTransFraction(1_pInt:prm%totalNtrans,of)
         c = c + prm%totalNtrans
