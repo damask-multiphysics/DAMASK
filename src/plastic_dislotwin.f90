@@ -112,7 +112,7 @@ module plastic_dislotwin
      q, &                                                         !< q-exponent in glide velocity
      r, &                                                         !< r-exponent in twin nucleation rate
      s, &                                                           !< s-exponent in trans nucleation rate
-     shear_twin                                                                                     !< characteristic shear for twins
+     shear_twin                                                                               !< characteristic shear for twins
    real(pReal),                  dimension(:,:),            allocatable,           private :: & 
      interaction_SlipSlip, &                                                   !< coefficients for slip-slip interaction for each interaction type and instance
      interaction_SlipTwin, &                                                   !< coefficients for slip-twin interaction for each interaction type and instance
@@ -120,7 +120,8 @@ module plastic_dislotwin
      interaction_TwinTwin, &                                                   !< coefficients for twin-twin interaction for each interaction type and instance
      interaction_SlipTrans, &                                                  !< coefficients for slip-trans interaction for each interaction type and instance
      interaction_TransSlip, &                                                  !< coefficients for trans-slip interaction for each interaction type and instance
-     interaction_TransTrans                                                   !< coefficients for trans-trans interaction for each interaction type and instance
+     interaction_TransTrans, &                                                 !< coefficients for trans-trans interaction for each interaction type and instance
+     fcc_twinNucleationSlipPair
    real(pReal),   dimension(:,:,:),   allocatable :: &
      Schmid_trans, &
      Schmid_slip, &
@@ -264,7 +265,7 @@ subroutine plastic_dislotwin_init(fileUnit)
  write(6,'(/,a)')   ' F.Roters et al., Computational Materials Science, 39:91–95, 2007'
  write(6,'(a)')     ' https://doi.org/10.1016/j.commatsci.2006.04.014'
  write(6,'(/,a)')   ' Wong et al., Acta Materialia, 118:140–151, 2016'
- write(6,'(a,/)')     ' https://doi.org/10.1016/j.actamat.2016.07.032'
+ write(6,'(a,/)')   ' https://doi.org/10.1016/j.actamat.2016.07.032'
  write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
  
@@ -692,6 +693,8 @@ subroutine plastic_dislotwin_init(fileUnit)
    if (allocated(Ctwin3333)) deallocate(Ctwin3333)
    allocate(Ctwin3333(3,3,3,3,prm%totalNtwin),  source=0.0_pReal)
    allocate(prm%Schmid_twin(3,3,prm%totalNtwin),source  = 0.0_pReal)
+   if (lattice_structure(p) == LATTICE_fcc_ID) &
+     allocate(prm%fcc_twinNucleationSlipPair(2,prm%totalNtwin),source = 0.0_pReal)
    allocate(prm%shear_twin(prm%totalNtwin),source       = 0.0_pReal)
    i = 0_pInt
    twinFamiliesLoop: do f = 1_pInt, size(prm%Ntwin,1)
@@ -700,8 +703,8 @@ subroutine plastic_dislotwin_init(fileUnit)
        i = i + 1_pInt
        prm%Schmid_twin(1:3,1:3,i) = lattice_Stwin(1:3,1:3,sum(lattice_NTwinsystem(1:f-1,p))+j,p)
        prm%shear_twin(i)          = lattice_shearTwin(sum(lattice_Ntwinsystem(1:f-1,p))+j,p)
-     !  nucleation rate prefactor,
-     !  and twin size
+       if (lattice_structure(p) == LATTICE_fcc_ID) prm%fcc_twinNucleationSlipPair(1:2,i) = &
+                      lattice_fcc_twinNucleationSlipPair(1:2,sum(lattice_Ntwinsystem(1:f-1,p))+j)
      !* Rotate twin elasticity matrices
        index_otherFamily = sum(lattice_NtwinSystem(1:f-1_pInt,p))                             ! index in full lattice twin list
        do l = 1_pInt,3_pInt; do m = 1_pInt,3_pInt; do n = 1_pInt,3_pInt; do o = 1_pInt,3_pInt
@@ -1179,9 +1182,7 @@ subroutine plastic_dislotwin_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,Temperature
    lattice_NslipSystem, &
    lattice_NtwinSystem, &
    lattice_NtransSystem, &
-   lattice_shearTwin, &
    lattice_structure, &
-   lattice_fcc_twinNucleationSlipPair, &
    LATTICE_fcc_ID
  
  implicit none
@@ -1349,24 +1350,23 @@ subroutine plastic_dislotwin_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,Temperature
       if (tau_twin(j) > tol_math_check) then
         StressRatio_r = (state(instance)%threshold_stress_twin(j,of)/tau_twin(j))**prm%r(f)
         !* Shear rates and their derivatives due to twin
-        select case(lattice_structure(ph))
-          case (LATTICE_fcc_ID)
-            s1=lattice_fcc_twinNucleationSlipPair(1,index_myFamily+i)
-            s2=lattice_fcc_twinNucleationSlipPair(2,index_myFamily+i)
-            if (tau_twin(j) < tau_r_twin(j,instance)) then
-              Ndot0_twin=(abs(gdot_slip(s1))*(state(instance)%rhoEdge(s2,of)+state(ph)%rhoEdgeDip(s2,of))+&  !!!!! correct?
-                     abs(gdot_slip(s2))*(state(instance)%rhoEdge(s1,of)+state(instance)%rhoEdgeDip(s1,of)))/&
-                    (prm%L0_twin*prm%burgers_slip(j))*&
-                    (1.0_pReal-exp(-prm%VcrossSlip/(kB*Temperature)*&
-                    (tau_r_twin(j,instance)-tau_twin(j))))
-            else
-              Ndot0_twin=0.0_pReal
-            end if
-          case default
-            Ndot0_twin=prm%Ndot0_twin(j)
-        end select
+        if (lattice_structure(ph) == LATTICE_FCC_ID) then
+          s1=prm%fcc_twinNucleationSlipPair(1,j)
+          s2=prm%fcc_twinNucleationSlipPair(2,j)
+          if (tau_twin(j) < tau_r_twin(j,instance)) then
+            Ndot0_twin=(abs(gdot_slip(s1))*(state(instance)%rhoEdge(s2,of)+state(ph)%rhoEdgeDip(s2,of))+&  !!!!! correct?
+                   abs(gdot_slip(s2))*(state(instance)%rhoEdge(s1,of)+state(instance)%rhoEdgeDip(s1,of)))/&
+                  (prm%L0_twin*prm%burgers_slip(j))*&
+                  (1.0_pReal-exp(-prm%VcrossSlip/(kB*Temperature)*&
+                  (tau_r_twin(j,instance)-tau_twin(j))))
+          else
+            Ndot0_twin=0.0_pReal
+          end if
+        else
+          Ndot0_twin=prm%Ndot0_twin(j)
+        endif
         gdot_twin(j) = &
-          (1.0_pReal-sumf-sumftr)*lattice_shearTwin(index_myFamily+i,ph)*&
+          (1.0_pReal-sumf-sumftr)*prm%shear_twin(j)*&
           state(instance)%twinVolume(j,of)*Ndot0_twin*exp(-StressRatio_r)
         dgdot_dtautwin(j) = ((gdot_twin(j)*prm%r(j))/tau_twin(j))*StressRatio_r
       endif
@@ -1396,8 +1396,8 @@ subroutine plastic_dislotwin_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,Temperature
         !* Shear rates and their derivatives due to transformation
         select case(lattice_structure(ph))
           case (LATTICE_fcc_ID)
-            s1=lattice_fcc_twinNucleationSlipPair(1,index_myFamily+i)
-            s2=lattice_fcc_twinNucleationSlipPair(2,index_myFamily+i)
+            s1=prm%fcc_twinNucleationSlipPair(1,j)
+            s2=prm%fcc_twinNucleationSlipPair(2,j)
             if (tau_trans(j) < tau_r_trans(j,instance)) then
               Ndot0_trans=(abs(gdot_slip(s1))*(state(instance)%rhoEdge(s2,of)+state(instance)%rhoEdgeDip(s2,of))+&  !!!!! correct?
                            abs(gdot_slip(s2))*(state(instance)%rhoEdge(s1,of)+state(instance)%rhoEdgeDip(s1,of)))/&
@@ -1516,77 +1516,74 @@ subroutine plastic_dislotwin_dotState(Tstar_v,Temperature,ipc,ip,el)
  !* Dislocation density evolution
  gdot_slip = 0.0_pReal
  slipSystems: do j = 1_pInt, prm%totalNslip
-      !* Resolved shear stress on slip system
-      tau_slip(j) = math_mul33xx33(S,prm%Schmid_slip(1:3,1:3,j))
+   tau_slip(j) = math_mul33xx33(S,prm%Schmid_slip(1:3,1:3,j))
 
-      if((abs(tau_slip(j))-state(instance)%threshold_stress_slip(j,of)) > tol_math_check) then
-      !* Stress ratios
-        stressRatio =((abs(tau_slip(j))- state(instance)%threshold_stress_slip(j,of))/&
-          (prm%SolidSolutionStrength+prm%tau_peierls(j)))
-        StressRatio_p       = stressRatio** prm%p(j)
-        StressRatio_pminus1 = stressRatio**(prm%p(j)-1.0_pReal)
-      !* Boltzmann ratio
-        BoltzmannRatio = prm%Qedge(j)/(kB*Temperature)
-      !* Initial shear rates
-        DotGamma0 = plasticState(ph)%state(j, of)*prm%burgers_slip(j)*prm%v0(j)
+   if((abs(tau_slip(j))-state(instance)%threshold_stress_slip(j,of)) > tol_math_check) then
+     stressRatio =((abs(tau_slip(j))- state(instance)%threshold_stress_slip(j,of))/&
+       (prm%SolidSolutionStrength+prm%tau_peierls(j)))
+     StressRatio_p       = stressRatio** prm%p(j)
+     StressRatio_pminus1 = stressRatio**(prm%p(j)-1.0_pReal)
+     BoltzmannRatio = prm%Qedge(j)/(kB*Temperature)
+   !* Initial shear rates
+     DotGamma0 = plasticState(ph)%state(j, of)*prm%burgers_slip(j)*prm%v0(j)
  
-      !* Shear rates due to slip
-        gdot_slip(j) = DotGamma0*exp(-BoltzmannRatio*(1_pInt-StressRatio_p)** &
-                       prm%q(j))*sign(1.0_pReal,tau_slip(j))
-      endif
-      !* Multiplication
-      DotRhoMultiplication = abs(gdot_slip(j))/(prm%burgers_slip(j)*state(instance)%mfp_slip(j,of))
+   !* Shear rates due to slip
+     gdot_slip(j) = DotGamma0*exp(-BoltzmannRatio*(1_pInt-StressRatio_p)** &
+                    prm%q(j))*sign(1.0_pReal,tau_slip(j))
+   endif
+   !* Multiplication
+   DotRhoMultiplication = abs(gdot_slip(j))/(prm%burgers_slip(j)*state(instance)%mfp_slip(j,of))
 
-      !* Dipole formation
-      EdgeDipMinDistance = prm%CEdgeDipMinDistance*prm%burgers_slip(j)
-      if (dEq0(tau_slip(j))) then
-        DotRhoDipFormation = 0.0_pReal
-      else
-        EdgeDipDistance = &
-          (3.0_pReal*lattice_mu(ph)*prm%burgers_slip(j))/&
-          (16.0_pReal*pi*abs(tau_slip(j)))
-        if (EdgeDipDistance>state(instance)%mfp_slip(j,of)) EdgeDipDistance=state(instance)%mfp_slip(j,of)
-        if (EdgeDipDistance<EdgeDipMinDistance)       EdgeDipDistance=EdgeDipMinDistance
-        DotRhoDipFormation = &
-          ((2.0_pReal*(EdgeDipDistance-EdgeDipMinDistance))/prm%burgers_slip(j))*&
-          state(instance)%rhoEdge(j,of)*abs(gdot_slip(j))*prm%dipoleFormationFactor
-      endif
+   !* Dipole formation
+   EdgeDipMinDistance = prm%CEdgeDipMinDistance*prm%burgers_slip(j)
+   if (dEq0(tau_slip(j))) then
+     DotRhoDipFormation = 0.0_pReal
+   else
+     EdgeDipDistance = &
+       (3.0_pReal*lattice_mu(ph)*prm%burgers_slip(j))/&
+       (16.0_pReal*pi*abs(tau_slip(j)))
+     if (EdgeDipDistance>state(instance)%mfp_slip(j,of)) EdgeDipDistance=state(instance)%mfp_slip(j,of)
+     if (EdgeDipDistance<EdgeDipMinDistance)       EdgeDipDistance=EdgeDipMinDistance
+     DotRhoDipFormation = &
+       ((2.0_pReal*(EdgeDipDistance-EdgeDipMinDistance))/prm%burgers_slip(j))*&
+       state(instance)%rhoEdge(j,of)*abs(gdot_slip(j))*prm%dipoleFormationFactor
+   endif
  
-      !* Spontaneous annihilation of 2 single edge dislocations
-      DotRhoEdgeEdgeAnnihilation = &
-        ((2.0_pReal*EdgeDipMinDistance)/prm%burgers_slip(j))*&
-        state(instance)%rhoEdge(j,of)*abs(gdot_slip(j))
+   !* Spontaneous annihilation of 2 single edge dislocations
+   DotRhoEdgeEdgeAnnihilation = &
+     ((2.0_pReal*EdgeDipMinDistance)/prm%burgers_slip(j))*&
+     state(instance)%rhoEdge(j,of)*abs(gdot_slip(j))
  
-      !* Spontaneous annihilation of a single edge dislocation with a dipole constituent
-      DotRhoEdgeDipAnnihilation = &
-        ((2.0_pReal*EdgeDipMinDistance)/prm%burgers_slip(j))*&
-        state(instance)%rhoEdgeDip(j,of)*abs(gdot_slip(j))
+   !* Spontaneous annihilation of a single edge dislocation with a dipole constituent
+   DotRhoEdgeDipAnnihilation = &
+     ((2.0_pReal*EdgeDipMinDistance)/prm%burgers_slip(j))*&
+     state(instance)%rhoEdgeDip(j,of)*abs(gdot_slip(j))
  
-      !* Dislocation dipole climb
-      AtomicVolume = &
-        prm%CAtomicVolume*prm%burgers_slip(j)**(3.0_pReal)
-      VacancyDiffusion = &
-        prm%D0*exp(-prm%Qsd/(kB*Temperature))
-      if (dEq0(tau_slip(j))) then
-        DotRhoEdgeDipClimb = 0.0_pReal
-      else
-        if (dEq0(EdgeDipDistance-EdgeDipMinDistance)) then
-          DotRhoEdgeDipClimb = 0.0_pReal
-        else
-          ClimbVelocity = 3.0_pReal*lattice_mu(ph)*VacancyDiffusion*AtomicVolume/ &
-                          (2.0_pReal*pi*kB*Temperature*(EdgeDipDistance+EdgeDipMinDistance))
-          DotRhoEdgeDipClimb = 4.0_pReal*ClimbVelocity*state(instance)%rhoEdgeDip(j,of)/ &
-                          (EdgeDipDistance-EdgeDipMinDistance)
-        endif
-      endif
-      !* Edge dislocation density rate of change
-      dotState(instance)%rhoEdge(j,of) = DotRhoMultiplication-DotRhoDipFormation-DotRhoEdgeEdgeAnnihilation
+   !* Dislocation dipole climb
+   AtomicVolume = &
+     prm%CAtomicVolume*prm%burgers_slip(j)**(3.0_pReal)
+   VacancyDiffusion = &
+     prm%D0*exp(-prm%Qsd/(kB*Temperature))
+   if (dEq0(tau_slip(j))) then
+     DotRhoEdgeDipClimb = 0.0_pReal
+   else
+     if (dEq0(EdgeDipDistance-EdgeDipMinDistance)) then
+       DotRhoEdgeDipClimb = 0.0_pReal
+     else
+       ClimbVelocity = 3.0_pReal*lattice_mu(ph)*VacancyDiffusion*AtomicVolume/ &
+                       (2.0_pReal*pi*kB*Temperature*(EdgeDipDistance+EdgeDipMinDistance))
+       DotRhoEdgeDipClimb = 4.0_pReal*ClimbVelocity*state(instance)%rhoEdgeDip(j,of)/ &
+                       (EdgeDipDistance-EdgeDipMinDistance)
+     endif
+   endif
+   !* Edge dislocation density rate of change
+   dotState(instance)%rhoEdge(j,of) = DotRhoMultiplication-DotRhoDipFormation-DotRhoEdgeEdgeAnnihilation
  
-      !* Edge dislocation dipole density rate of change
-      dotState(instance)%rhoEdgeDip(j,of) = DotRhoDipFormation-DotRhoEdgeDipAnnihilation-DotRhoEdgeDipClimb
+   !* Edge dislocation dipole density rate of change
+   dotState(instance)%rhoEdgeDip(j,of) = DotRhoDipFormation-DotRhoEdgeDipAnnihilation-DotRhoEdgeDipClimb
  
-      !* Dotstate for accumulated shear due to slip
-      dotState(instance)%accshear_slip(j,of) = abs(gdot_slip(j))
+   !* Dotstate for accumulated shear due to slip
+   dotState(instance)%accshear_slip(j,of) = abs(gdot_slip(j))
  
  enddo slipSystems
  
@@ -1637,7 +1634,6 @@ subroutine plastic_dislotwin_dotState(Tstar_v,Temperature,ipc,ip,el)
    do i = 1_pInt,prm%Ntrans(f)         ! process each (active) trans system in family
       j = j+1_pInt
 
-      !* Resolved shear stress on transformation system
       tau_trans(j) = math_mul33xx33(S,lattice_Strans(1:3,1:3,index_myFamily+i,ph))
 
       !* Stress ratios
