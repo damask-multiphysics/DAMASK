@@ -14,7 +14,6 @@ module homogenization_RGC
  implicit none
  private
  integer(pInt),              dimension(:),       allocatable,        public :: &
-   homogenization_RGC_sizeState, &
    homogenization_RGC_sizePostResults
  integer(pInt),              dimension(:,:),     allocatable,target, public :: &
    homogenization_RGC_sizePostResult
@@ -49,16 +48,12 @@ module homogenization_RGC
      outputID                                                                                       !< ID of each post result output
  end type
 
-! BEGIN DEPRECATED
+! START: Could be improved
  integer(pInt),              dimension(:,:),     allocatable,        private :: &
    homogenization_RGC_Ngrains
-! END DEPRECATED
-
  real(pReal),                dimension(:,:,:,:), allocatable,        private :: &
    homogenization_RGC_orientation
-
-integer(kind(undefined_ID)), dimension(:,:),     allocatable,       private :: &
-   homogenization_RGC_outputID                                                                 !< ID of each post result output
+! END: Could be improved
 
  type(tParameters), dimension(:), allocatable, private :: param                                     !< containers of constitutive parameters (len Ninstance)
 
@@ -121,7 +116,6 @@ subroutine homogenization_RGC_init(fileUnit)
  implicit none
  integer(pInt), intent(in) :: fileUnit                                                              !< file pointer to material configuration
  integer :: &
-   homog, &
    NofMyHomog, &
    o, h, &
    outputSize, &
@@ -146,18 +140,16 @@ subroutine homogenization_RGC_init(fileUnit)
  if (maxNinstance == 0_pInt) return
  if (iand(debug_level(debug_HOMOGENIZATION),debug_levelBasic) /= 0_pInt) &
    write(6,'(a16,1x,i5,/)') '# instances:',maxNinstance
- allocate(homogenization_RGC_sizeState(maxNinstance),                            source=0_pInt)
  allocate(homogenization_RGC_sizePostResults(maxNinstance),                      source=0_pInt)
 
  allocate(param(maxNinstance))                                                                      ! one container of parameters per instance
 
  allocate(homogenization_RGC_Noutput(maxNinstance),                              source=0_pInt)
- allocate(homogenization_RGC_Ngrains(3,maxNinstance),                            source=0_pInt)
  allocate(homogenization_RGC_output(maxval(homogenization_Noutput),maxNinstance))
                                                               homogenization_RGC_output=''
- allocate(homogenization_RGC_outputID(maxval(homogenization_Noutput),maxNinstance),source=undefined_ID)
  allocate(homogenization_RGC_sizePostResult(maxval(homogenization_Noutput),maxNinstance),&
                                                                                  source=0_pInt)
+ allocate(homogenization_RGC_Ngrains(3,maxNinstance),                            source=0_pInt)
  allocate(homogenization_RGC_orientation(3,3,mesh_maxNips,mesh_NcpElems),        source=0.0_pReal)
 
  do h = 1_pInt, size(homogenization_type)
@@ -236,34 +228,23 @@ subroutine homogenization_RGC_init(fileUnit)
      write(6,'(a25,3(1x,e10.3))') 'cluster orientation:  ',(prm%angles(j),j=1_pInt,3_pInt)
    endif
 
+   NofMyHomog = count(material_homog == h)
+
+   sizeHState = &
+         3_pInt*(prm%Nconstituents(1)-1_pInt)*prm%Nconstituents(2)*prm%Nconstituents(3) &
+       + 3_pInt*prm%Nconstituents(1)*(prm%Nconstituents(2)-1_pInt)* prm%Nconstituents(3) &
+       + 3_pInt*prm%Nconstituents(1)*prm%Nconstituents(2)*(prm%Nconstituents(3)-1_pInt) &
+       + 8_pInt   ! (1) Average constitutive work, (2-4) Overall mismatch, (5) Average penalty energy, 
+                  ! (6) Volume discrepancy, (7) Avg relaxation rate component, (8) Max relaxation rate component
+                  
+   homogState(h)%sizeState = sizeHState
+   homogState(h)%sizePostResults = homogenization_RGC_sizePostResults(instance)
+   allocate(homogState(h)%state0   (sizeHState,NofMyHomog), source=0.0_pReal)
+   allocate(homogState(h)%subState0(sizeHState,NofMyHomog), source=0.0_pReal)
+   allocate(homogState(h)%state    (sizeHState,NofMyHomog), source=0.0_pReal)
+
    end associate
  enddo  
-
-!--------------------------------------------------------------------------------------------------
- initializeInstances: do homog = 1_pInt, material_Nhomogenization
-   myHomog: if (homogenization_type(homog) == HOMOGENIZATION_RGC_ID) then
-     NofMyHomog = count(material_homog == homog)
-     instance = homogenization_typeInstance(homog)
-
-     sizeHState = &
-         3_pInt*(homogenization_RGC_Ngrains(1,instance)-1_pInt)* &
-               homogenization_RGC_Ngrains(2,instance)*homogenization_RGC_Ngrains(3,instance) &
-         + 3_pInt*homogenization_RGC_Ngrains(1,instance)*(homogenization_RGC_Ngrains(2,instance)-1_pInt)* &
-               homogenization_RGC_Ngrains(3,instance) &
-         + 3_pInt*homogenization_RGC_Ngrains(1,instance)*homogenization_RGC_Ngrains(2,instance)* &
-              (homogenization_RGC_Ngrains(3,instance)-1_pInt) &
-         + 8_pInt   ! (1) Average constitutive work, (2-4) Overall mismatch, (5) Average penalty energy, 
-                    ! (6) Volume discrepancy, (7) Avg relaxation rate component, (8) Max relaxation rate component
-                    
-! allocate state arrays
-     homogState(homog)%sizeState = sizeHState
-     homogState(homog)%sizePostResults = homogenization_RGC_sizePostResults(instance)
-     allocate(homogState(homog)%state0   (sizeHState,NofMyHomog), source=0.0_pReal)
-     allocate(homogState(homog)%subState0(sizeHState,NofMyHomog), source=0.0_pReal)
-     allocate(homogState(homog)%state    (sizeHState,NofMyHomog), source=0.0_pReal)
-
-   endif myHomog
- enddo initializeInstances
  
 end subroutine homogenization_RGC_init
 
@@ -906,8 +887,8 @@ pure function homogenization_RGC_postResults(ip,el,avgP,avgF) result(postResults
 
  c = 0_pInt
  postResults = 0.0_pReal
- do o = 1_pInt,homogenization_Noutput(mesh_element(3,el))
-   select case(homogenization_RGC_outputID(o,instance))
+ outputsLoop: do o = 1_pInt,size(prm%outputID)
+   select case(prm%outputID(o))
      case (constitutivework_ID)
        postResults(c+1) = homogState(mappingHomogenization(2,ip,el))% &
                                                               state(3*nIntFaceTot+1,mappingHomogenization(1,ip,el))
@@ -937,7 +918,7 @@ pure function homogenization_RGC_postResults(ip,el,avgP,avgF) result(postResults
                                            state(3*nIntFaceTot+8,mappingHomogenization(1,ip,el))
        c = c + 1_pInt
    end select
- enddo
+ enddo outputsLoop
  end associate
 end function homogenization_RGC_postResults
 
