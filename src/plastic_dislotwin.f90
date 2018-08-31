@@ -397,8 +397,8 @@ subroutine plastic_dislotwin_init(fileUnit)
    endif    
 
    if (prm%totalNslip > 0_pInt .and. prm%totalNtrans > 0_pInt) then
-      prm%interaction_TransSlip = spread(config_phase(p)%getFloats('interaction_transslip'),2,1)     
-      prm%interaction_SlipTrans = spread(config_phase(p)%getFloats('interaction_sliptrans'),2,1)     
+     prm%interaction_TransSlip = spread(config_phase(p)%getFloats('interaction_transslip'),2,1)     
+     prm%interaction_SlipTrans = spread(config_phase(p)%getFloats('interaction_sliptrans'),2,1)     
    endif    
 
 
@@ -427,66 +427,53 @@ subroutine plastic_dislotwin_init(fileUnit)
      do i= 1_pInt, size(outputs)
         outputID = undefined_ID
         select case(outputs(i))
-
            case ('edge_density')
              outputID = edge_density_ID
-             outputSize = sum(prm%Nslip)
-
+             outputSize = prm%totalNslip
            case ('dipole_density')
              outputID = dipole_density_ID
-             outputSize = sum(prm%Nslip)
-
+             outputSize = prm%totalNslip
            case ('shear_rate_slip','shearrate_slip')
              outputID = shear_rate_slip_ID
-             outputSize = sum(prm%Nslip)
-
+             outputSize = prm%totalNslip
            case ('accumulated_shear_slip')
              outputID = accumulated_shear_slip_ID
-             outputSize = sum(prm%Nslip)
-
+             outputSize = prm%totalNslip
            case ('mfp_slip')
              outputID = mfp_slip_ID
-             outputSize = sum(prm%Nslip)
-
+             outputSize = prm%totalNslip
            case ('resolved_stress_slip')
              outputID = resolved_stress_slip_ID
-             outputSize = sum(prm%Nslip)
-
+             outputSize = prm%totalNslip
            case ('threshold_stress_slip')
              outputID= threshold_stress_slip_ID
-             outputSize = sum(prm%Nslip)
-
+             outputSize = prm%totalNslip
            case ('edge_dipole_distance')
              outputID = edge_dipole_distance_ID
-             outputSize = sum(prm%Nslip)
-
+             outputSize = prm%totalNslip
            case ('stress_exponent')
              outputID = stress_exponent_ID
-             outputSize = sum(prm%Nslip)
+             outputSize = prm%totalNslip
 
            case ('twin_fraction')
              outputID = twin_fraction_ID
-             outputSize = sum(prm%Ntwin)
+             outputSize = prm%totalNtwin
 
            case ('shear_rate_twin','shearrate_twin')
-             outputID= shear_rate_twin_ID
-             outputSize = sum(prm%Ntwin)
-
+             outputID = shear_rate_twin_ID
+             outputSize = prm%totalNtwin
            case ('accumulated_shear_twin')
              outputID = accumulated_shear_twin_ID
-             outputSize = sum(prm%Ntwin)
-             
+             outputSize = prm%totalNtwin
            case ('mfp_twin')
              outputID = mfp_twin_ID
-             outputSize = sum(prm%Ntwin)
-             
+             outputSize = prm%totalNtwin
            case ('resolved_stress_twin')
              outputID = resolved_stress_twin_ID
-             outputSize = sum(prm%Ntwin)
-             
+             outputSize = prm%totalNtwin
            case ('threshold_stress_twin')
              outputID = threshold_stress_twin_ID
-             outputSize = sum(prm%Ntwin)
+             outputSize = prm%totalNtwin
              
            case ('resolved_stress_shearband')
              outputID = resolved_stress_shearband_ID
@@ -495,26 +482,22 @@ subroutine plastic_dislotwin_init(fileUnit)
            case ('shear_rate_shearband','shearrate_shearband')
              outputID = shear_rate_shearband_ID
              outputSize = 6_pInt
-             
            case ('sb_eigenvalues')
              outputID = sb_eigenvalues_ID
              outputSize = 3_pInt
-             
            case ('sb_eigenvectors')
              outputID = sb_eigenvectors_ID
              outputSize = 3_pInt
              
            case ('stress_trans_fraction')
              outputID = stress_trans_fraction_ID
-             outputSize = sum(prm%Ntrans)
-             
+             outputSize = prm%totalNtrans
            case ('strain_trans_fraction')
              outputID = strain_trans_fraction_ID
-             outputSize = sum(prm%Ntrans)
-             
+             outputSize = prm%totalNtrans
            case ('trans_fraction','total_trans_fraction')
              outputID = trans_fraction_ID
-             outputSize = sum(prm%Ntrans)
+             outputSize = prm%totalNtrans
             
           end select
           
