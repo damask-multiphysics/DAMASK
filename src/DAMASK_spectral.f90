@@ -27,9 +27,7 @@ program DAMASK_spectral
    getSolverJobName, &
    interface_restartInc
  use IO, only: &
-   IO_read, &
    IO_isBlank, &
-   IO_open_file, &
    IO_stringPos, &
    IO_stringValue, &
    IO_floatValue, &
@@ -38,8 +36,7 @@ program DAMASK_spectral
    IO_lc, &
    IO_intOut, &
    IO_warning, &
-   IO_timeStamp, &
-   IO_EOF
+   IO_timeStamp
  use debug, only: &
    debug_level, &
    debug_spectral, &
@@ -90,7 +87,7 @@ program DAMASK_spectral
 ! variables related to information from load case and geom file
  real(pReal), dimension(9) :: temp_valueVector = 0.0_pReal                                          !< temporarily from loadcase file when reading in tensors (initialize to 0.0)
  logical,     dimension(9) :: temp_maskVector  = .false.                                            !< temporarily from loadcase file when reading in tensors
- integer(pInt), parameter  :: FILEUNIT         = 234_pInt                                           !< file unit, DAMASK IO does not support newunit feature
+ integer(pInt) :: fileUnit, myStat
  integer(pInt), allocatable, dimension(:) :: chunkPos
 
  integer(pInt) :: &
@@ -191,11 +188,11 @@ program DAMASK_spectral
 
 !--------------------------------------------------------------------------------------------------
 ! reading basic information from load case file and allocate data structure containing load cases
- call IO_open_file(FILEUNIT,trim(loadCaseFile))
- rewind(FILEUNIT)
+ open(newunit=fileunit,iostat=myStat,file=trim(loadCaseFile),action='read')
+ if (myStat /= 0_pInt) call IO_error(100_pInt,el=myStat,ext_msg=trim(loadCaseFile))
  do
-   line = IO_read(FILEUNIT)
-   if (trim(line) == IO_EOF) exit
+   read(fileUnit, '(A)', iostat=myStat) line
+   if ( myStat /= 0_pInt) exit
    if (IO_isBlank(line)) cycle                                                                      ! skip empty lines
    chunkPos = IO_stringPos(line)
    do i = 1_pInt, chunkPos(1)                                                                       ! reading compulsory parameters for loadcase
@@ -233,8 +230,8 @@ program DAMASK_spectral
 ! reading the load case and assign values to the allocated data structure
  rewind(FILEUNIT)
  do
-   line = IO_read(FILEUNIT)
-   if (trim(line) == IO_EOF) exit
+   read(fileUnit, '(A)', iostat=myStat) line
+   if ( myStat /= 0_pInt) exit
    if (IO_isBlank(line)) cycle                                                                      ! skip empty lines
    currentLoadCase = currentLoadCase + 1_pInt
    chunkPos = IO_stringPos(line)
