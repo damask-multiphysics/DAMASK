@@ -113,13 +113,17 @@ module plastic_dislotwin
      r, &                                                         !< r-exponent in twin nucleation rate
      s                                                           !< s-exponent in trans nucleation rate
    real(pReal),                  dimension(:,:),            allocatable,           private :: & 
-   interaction_SlipSlip, &                                                   !< coefficients for slip-slip interaction for each interaction type and instance
-   interaction_SlipTwin, &                                                   !< coefficients for slip-twin interaction for each interaction type and instance
-   interaction_TwinSlip, &                                                   !< coefficients for twin-slip interaction for each interaction type and instance
-   interaction_TwinTwin, &                                                   !< coefficients for twin-twin interaction for each interaction type and instance
-   interaction_SlipTrans, &                                                  !< coefficients for slip-trans interaction for each interaction type and instance
-   interaction_TransSlip, &                                                  !< coefficients for trans-slip interaction for each interaction type and instance
-   interaction_TransTrans                                                   !< coefficients for trans-trans interaction for each interaction type and instance
+     interaction_SlipSlip, &                                                   !< coefficients for slip-slip interaction for each interaction type and instance
+     interaction_SlipTwin, &                                                   !< coefficients for slip-twin interaction for each interaction type and instance
+     interaction_TwinSlip, &                                                   !< coefficients for twin-slip interaction for each interaction type and instance
+     interaction_TwinTwin, &                                                   !< coefficients for twin-twin interaction for each interaction type and instance
+     interaction_SlipTrans, &                                                  !< coefficients for slip-trans interaction for each interaction type and instance
+     interaction_TransSlip, &                                                  !< coefficients for trans-slip interaction for each interaction type and instance
+     interaction_TransTrans                                                   !< coefficients for trans-trans interaction for each interaction type and instance
+   real(pReal),   dimension(:,:,:),   allocatable :: &
+     Schmid_trans, &
+     Schmid_slip, &
+     Schmid_twin
    real(pReal),                  dimension(:,:,:),            allocatable,           private :: & 
      Ctwin66, &
      Ctrans66
@@ -1146,6 +1150,7 @@ subroutine plastic_dislotwin_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,Temperature
    math_eigenValuesVectorsSym, &
    math_tensorproduct33, &
    math_symmetric33, &
+   math_mul33xx33, &
    math_mul33x3
  use material, only: &
    material_phase, &
@@ -1211,7 +1216,9 @@ subroutine plastic_dislotwin_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,Temperature
         0, 1, 1  &
         ],pReal),[ 3,6])
         
-  type(tParameters) :: prm
+ real(pReal), dimension(3,3) :: &
+   S                                                                                                !< Second-Piola Kirchhoff stress
+ type(tParameters) :: prm
   
  !* Shortened notation
  of = phasememberAt(ipc,ip,el)
@@ -1222,8 +1229,9 @@ subroutine plastic_dislotwin_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,Temperature
  Lp = 0.0_pReal
  dLp_dTstar3333 = 0.0_pReal
  
- 
-associate(prm => param(instance))
+ S = math_Mandel6to33(Tstar_v)
+
+ associate(prm => param(instance))
 !--------------------------------------------------------------------------------------------------
 ! Dislocation glide part
  gdot_slip = 0.0_pReal
@@ -1236,7 +1244,7 @@ associate(prm => param(instance))
  
       !* Calculation of Lp
       !* Resolved shear stress on slip system
-      tau_slip(j) = dot_product(Tstar_v,lattice_Sslip_v(:,1,index_myFamily+i,ph))
+      tau_slip(j) = math_mul33xx33(S,lattice_Sslip(1:3,1:3,1,index_myFamily+i,ph))
 
       if((abs(tau_slip(j))-state(instance)%threshold_stress_slip(j,of)) > tol_math_check) then
       !* Stress ratios
@@ -1292,7 +1300,7 @@ associate(prm => param(instance))
  if(dNeq0(prm%sbVelocity)) then
    gdot_sb = 0.0_pReal
    dgdot_dtausb = 0.0_pReal
-   call math_eigenValuesVectorsSym(math_Mandel6to33(Tstar_v),eigValues,eigVectors,error)
+   call math_eigenValuesVectorsSym(S,eigValues,eigVectors,error)
    do j = 1_pInt,6_pInt
      sb_s = 0.5_pReal*sqrt(2.0_pReal)*math_mul33x3(eigVectors,sb_sComposition(1:3,j))
      sb_m = 0.5_pReal*sqrt(2.0_pReal)*math_mul33x3(eigVectors,sb_mComposition(1:3,j))
@@ -1354,7 +1362,7 @@ associate(prm => param(instance))
  
       !* Calculation of Lp
       !* Resolved shear stress on twin system
-      tau_twin(j) = dot_product(Tstar_v,lattice_Stwin_v(:,index_myFamily+i,ph))
+      tau_twin(j) = math_mul33xx33(S,lattice_Stwin(1:3,1:3,index_myFamily+i,ph))
 
       !* Stress ratios
       if (tau_twin(j) > tol_math_check) then
@@ -1403,7 +1411,7 @@ associate(prm => param(instance))
       j = j+1_pInt
 
       !* Resolved shear stress on transformation system
-      tau_trans(j) = dot_product(Tstar_v,lattice_Strans_v(:,index_myFamily+i,ph))
+      tau_trans(j) = math_mul33xx33(S,lattice_Strans(1:3,1:3,index_myFamily+i,ph))
 
       !* Stress ratios
       if (tau_trans(j) > tol_math_check) then
@@ -1457,6 +1465,8 @@ subroutine plastic_dislotwin_dotState(Tstar_v,Temperature,ipc,ip,el)
    tol_math_check, &
    dEq0
  use math, only: &
+   math_mul33xx33, &
+   math_Mandel6to33, &
    pi
  use material, only: &
    material_phase, &
@@ -1464,9 +1474,9 @@ subroutine plastic_dislotwin_dotState(Tstar_v,Temperature,ipc,ip,el)
    plasticState, &
    phaseAt, phasememberAt
  use lattice,  only: &
-   lattice_Sslip_v, &
-   lattice_Stwin_v, &
-   lattice_Strans_v, &
+   lattice_Sslip, &
+   lattice_Stwin, &
+   lattice_Strans, &
    lattice_maxNslipFamily, &
    lattice_maxNtwinFamily, &
    lattice_maxNtransFamily, &
@@ -1506,12 +1516,16 @@ subroutine plastic_dislotwin_dotState(Tstar_v,Temperature,ipc,ip,el)
  real(pReal), dimension(plasticState(material_phase(ipc,ip,el))%Ntrans) :: &
               tau_trans
 
+ real(pReal), dimension(3,3) :: &
+   S                                                                                                !< Second-Piola Kirchhoff stress
  type(tParameters) :: prm
 
  !* Shortened notation
  of = phasememberAt(ipc,ip,el)
  ph = phaseAt(ipc,ip,el)
  instance  = phase_plasticityInstance(ph)
+
+ S = math_Mandel6to33(Tstar_v)
 
  associate(prm => param(instance))
  !* Total twin volume fraction
@@ -1531,7 +1545,7 @@ subroutine plastic_dislotwin_dotState(Tstar_v,Temperature,ipc,ip,el)
       j = j+1_pInt
  
       !* Resolved shear stress on slip system
-      tau_slip(j) = dot_product(Tstar_v,lattice_Sslip_v(:,1,index_myFamily+i,ph))
+      tau_slip(j) = math_mul33xx33(S,lattice_Sslip(1:3,1:3,1,index_myFamily+i,ph))
 
       if((abs(tau_slip(j))-state(instance)%threshold_stress_slip(j,of)) > tol_math_check) then
       !* Stress ratios
@@ -1613,7 +1627,7 @@ subroutine plastic_dislotwin_dotState(Tstar_v,Temperature,ipc,ip,el)
       j = j+1_pInt
  
       !* Resolved shear stress on twin system
-      tau_twin(j) = dot_product(Tstar_v,lattice_Stwin_v(:,index_myFamily+i,ph))
+      tau_twin(j) = math_mul33xx33(S,lattice_Stwin(1:3,1:3,index_myFamily+i,ph))
       !* Stress ratios
       if (tau_twin(j) > tol_math_check) then
         StressRatio_r = (state(instance)%threshold_stress_twin(j,of)/&
@@ -1653,7 +1667,7 @@ subroutine plastic_dislotwin_dotState(Tstar_v,Temperature,ipc,ip,el)
       j = j+1_pInt
 
       !* Resolved shear stress on transformation system
-      tau_trans(j) = dot_product(Tstar_v,lattice_Strans_v(:,index_myFamily+i,ph))
+      tau_trans(j) = math_mul33xx33(S,lattice_Strans(1:3,1:3,index_myFamily+i,ph))
 
       !* Stress ratios
       if (tau_trans(j) > tol_math_check) then
@@ -1700,6 +1714,7 @@ function plastic_dislotwin_postResults(Tstar_v,Temperature,ipc,ip,el)
    dEq0
  use math, only: &
    pi, &
+   math_mul33xx33, &
    math_Mandel6to33, &
    math_eigenValuesSym33, &
    math_eigenValuesVectorsSym33
@@ -1709,8 +1724,8 @@ function plastic_dislotwin_postResults(Tstar_v,Temperature,ipc,ip,el)
    phase_plasticityInstance,& 
    phaseAt, phasememberAt
  use lattice, only: &
-   lattice_Sslip_v, &
-   lattice_Stwin_v, &
+   lattice_Sslip, &
+   lattice_Stwin, &
    lattice_NslipSystem, &
    lattice_NtwinSystem, &
    lattice_shearTwin, &
@@ -1744,13 +1759,16 @@ function plastic_dislotwin_postResults(Tstar_v,Temperature,ipc,ip,el)
  real(pReal), dimension(3,3) :: eigVectors
  real(pReal), dimension (3) :: eigValues
  
-  type(tParameters) :: prm
+ real(pReal), dimension(3,3) :: &
+   S                                                                                                !< Second-Piola Kirchhoff stress
+ type(tParameters) :: prm
  
  !* Shortened notation
  of = phasememberAt(ipc,ip,el)
  ph = phaseAt(ipc,ip,el)
  instance  = phase_plasticityInstance(ph)
 
+ S = math_Mandel6to33(Tstar_v)
 
  associate(prm => param(instance))
  !* Total twin volume fraction
@@ -1776,7 +1794,7 @@ function plastic_dislotwin_postResults(Tstar_v,Temperature,ipc,ip,el)
               j = j + 1_pInt                                                                        ! could be taken from state by now!
  
               !* Resolved shear stress on slip system
-              tau = dot_product(Tstar_v,lattice_Sslip_v(:,1,index_myFamily+i,ph))
+              tau = math_mul33xx33(S,lattice_Sslip(1:3,1:3,1,index_myFamily+i,ph))
               !* Stress ratios
               if((abs(tau)-state(instance)%threshold_stress_slip(j,of)) > tol_math_check) then
               !* Stress ratios
@@ -1817,7 +1835,7 @@ function plastic_dislotwin_postResults(Tstar_v,Temperature,ipc,ip,el)
            do i = 1_pInt,prm%Nslip(f)                                        ! process each (active) slip system in family
               j = j + 1_pInt
               plastic_dislotwin_postResults(c+j) =&
-                                dot_product(Tstar_v,lattice_Sslip_v(:,1,index_myFamily+i,ph))
+                                math_mul33xx33(S,lattice_Sslip(1:3,1:3,1,index_myFamily+i,ph))
         enddo; enddo
         c = c + prm%totalNslip
       case (threshold_stress_slip_ID)
@@ -1832,7 +1850,7 @@ function plastic_dislotwin_postResults(Tstar_v,Temperature,ipc,ip,el)
               j = j + 1_pInt
               plastic_dislotwin_postResults(c+j) = &
                 (3.0_pReal*lattice_mu(ph)*prm%burgers_slip(j))/&
-                (16.0_pReal*pi*abs(dot_product(Tstar_v,lattice_Sslip_v(:,1,index_myFamily+i,ph))))
+                (16.0_pReal*pi*abs(math_mul33xx33(S,lattice_Sslip(1:3,1:3,1,index_myFamily+i,ph))))
               plastic_dislotwin_postResults(c+j)=min(plastic_dislotwin_postResults(c+j),&
                                                             state(instance)%mfp_slip(j,of))
  !            plastic_dislotwin_postResults(c+j)=max(plastic_dislotwin_postResults(c+j),&
@@ -1841,8 +1859,7 @@ function plastic_dislotwin_postResults(Tstar_v,Temperature,ipc,ip,el)
         c = c + prm%totalNslip
        case (resolved_stress_shearband_ID)
          do j = 1_pInt,6_pInt                                                                       ! loop over all shearband families
-            plastic_dislotwin_postResults(c+j) = dot_product(Tstar_v, &
-                                                       sbSv(1:6,j,ipc,ip,el))
+            plastic_dislotwin_postResults(c+j) = dot_product(Tstar_v,sbSv(1:6,j,ipc,ip,el))
          enddo
          c = c + 6_pInt
        case (shear_rate_shearband_ID)
@@ -1882,7 +1899,7 @@ function plastic_dislotwin_postResults(Tstar_v,Temperature,ipc,ip,el)
                 j = j + 1_pInt
  
                !* Resolved shear stress on slip system
-               tau = dot_product(Tstar_v,lattice_Sslip_v(:,1,index_myFamily+i,ph))
+               tau = math_mul33xx33(S,lattice_Sslip(1:3,1:3,1,index_myFamily+i,ph))
                !* Stress ratios
                if((abs(tau)-state(instance)%threshold_stress_slip(j,of)) > tol_math_check) then
                !* Stress ratios
@@ -1915,7 +1932,7 @@ function plastic_dislotwin_postResults(Tstar_v,Temperature,ipc,ip,el)
             do i = 1,prm%Ntwin(f)                                            ! process each (active) twin system in family
               j = j + 1_pInt
 
-              tau = dot_product(Tstar_v,lattice_Stwin_v(:,index_myFamily+i,ph))
+              tau = math_mul33xx33(S,lattice_Stwin(1:3,1:3,index_myFamily+i,ph))
 
 
               !* Shear rates due to twin
@@ -1960,7 +1977,7 @@ function plastic_dislotwin_postResults(Tstar_v,Temperature,ipc,ip,el)
             index_myFamily = sum(lattice_NtwinSystem(1:f-1_pInt,ph))                                ! at which index starts my family
             do i = 1_pInt,prm%Ntwin(f)                                  ! process each (active) slip system in family
               j = j + 1_pInt
-              plastic_dislotwin_postResults(c+j) = dot_product(Tstar_v,lattice_Stwin_v(:,index_myFamily+i,ph))
+              plastic_dislotwin_postResults(c+j) = math_mul33xx33(S,lattice_Stwin(1:3,1:3,index_myFamily+i,ph))
           enddo; enddo
         endif
         c = c + prm%totalNtwin
@@ -1975,7 +1992,7 @@ function plastic_dislotwin_postResults(Tstar_v,Temperature,ipc,ip,el)
              j = j + 1_pInt
 
              !* Resolved shear stress on slip system
-             tau = dot_product(Tstar_v,lattice_Sslip_v(:,1,index_myFamily+i,ph))
+             tau = math_mul33xx33(S,lattice_Sslip(1:3,1:3,1,index_myFamily+i,ph))
              if((abs(tau)-state(instance)%threshold_stress_slip(j,of)) > tol_math_check) then
              !* Stress ratios
                StressRatio_p = ((abs(tau)-state(instance)%threshold_stress_slip(j,of))/&
@@ -2016,10 +2033,10 @@ function plastic_dislotwin_postResults(Tstar_v,Temperature,ipc,ip,el)
          enddo ; enddo
          c = c + prm%totalNslip
       case (sb_eigenvalues_ID)
-        plastic_dislotwin_postResults(c+1_pInt:c+3_pInt) = math_eigenvaluesSym33(math_Mandel6to33(Tstar_v))
+        plastic_dislotwin_postResults(c+1_pInt:c+3_pInt) = math_eigenvaluesSym33(S)
         c = c + 3_pInt
       case (sb_eigenvectors_ID)
-        call math_eigenValuesVectorsSym33(math_Mandel6to33(Tstar_v),eigValues,eigVectors)
+        call math_eigenValuesVectorsSym33(S,eigValues,eigVectors)
         plastic_dislotwin_postResults(c+1_pInt:c+9_pInt) = reshape(eigVectors,[9])
         c = c + 9_pInt
       case (stress_trans_fraction_ID)
