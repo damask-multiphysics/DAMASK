@@ -223,18 +223,7 @@ program DAMASK_spectral
      field = field + 1
      loadCases(currentLoadCase)%ID(field) = FIELD_DAMAGE_ID
    endif damageActive
- enddo
 
-!--------------------------------------------------------------------------------------------------
-! reading the load case and assign values to the allocated data structure
- currentLoadCase = 0_pInt
- rewind(FILEUNIT)
- do
-   read(fileUnit, '(A)', iostat=myStat) line
-   if ( myStat /= 0_pInt) exit
-   if (IO_isBlank(line)) cycle                                                                      ! skip empty lines
-   currentLoadCase = currentLoadCase + 1_pInt
-   chunkPos = IO_stringPos(line)
    do i = 1_pInt, chunkPos(1)
      select case (IO_lc(IO_stringValue(line,chunkPos,i)))
        case('fdot','dotf','l','velocitygrad','velgrad','velocitygradient','f')                      ! assign values for the deformation BC matrix
@@ -303,8 +292,10 @@ program DAMASK_spectral
          enddo
          loadCases(currentLoadCase)%rotation = math_plain9to33(temp_valueVector)
      end select
- enddo; enddo
- close(FILEUNIT)
+   enddo
+ enddo
+
+ close(fileUnit)
  
 !--------------------------------------------------------------------------------------------------
 ! consistency checks and output of load case
