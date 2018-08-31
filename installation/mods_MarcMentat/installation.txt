@@ -21,16 +21,10 @@ The structure of this directory should be (VERSION = 20XX or 20XX.Y)
 ./installation.txt                              this text
 ./apply_MPIE_modifications                      script file to apply modifications to the installation
 ./VERSION/Marc_tools/comp_user.original         original file from installation
-./VERSION/Marc_tools/comp_damask                modified version using -O1 optimization
-./VERSION/Marc_tools/comp_damask_l              modified version using -O0 optimization
-./VERSION/Marc_tools/comp_damask_h              modified version using -O2 optimization
 ./VERSION/Marc_tools/comp_damask_mp             modified version using -O1 optimization and OpenMP
 ./VERSION/Marc_tools/comp_damask_lmp            modified version using -O0 optimization and OpenMP
 ./VERSION/Marc_tools/comp_damask_hmp            modified version using -O2 optimization and OpenMP
 ./VERSION/Marc_tools/run_marc.original          original file from installation
-./VERSION/Marc_tools/run_damask                 modified version using -O1 optimization
-./VERSION/Marc_tools/run_damask_l               modified version using -O0 optimization
-./VERSION/Marc_tools/run_damask_h               modified version using -O2 optimization
 ./VERSION/Marc_tools/run_damask_mp              modified version using -O1 optimization and OpenMP
 ./VERSION/Marc_tools/run_damask_lmp             modified version using -O0 optimization and OpenMP
 ./VERSION/Marc_tools/run_damask_hmp             modified version using -O2 optimization and OpenMP
@@ -42,14 +36,8 @@ The structure of this directory should be (VERSION = 20XX or 20XX.Y)
 ./VERSION/Mentat_bin/submit4                    modified version of original calling run_h_marc
 ./VERSION/Mentat_bin/submit5                    modified version of original calling run_marc
 ./VERSION/Mentat_bin/submit6                    modified version of original calling run_l_marc
-./VERSION/Mentat_bin/submit7                    modified version of original calling run_hmp_marc
-./VERSION/Mentat_bin/submit8                    modified version of original calling run_mp_marc
-./VERSION/Mentat_bin/submit9                    modified version of original calling run_lmp_marc
 ./VERSION/Mentat_bin/kill4                      kill file for submit4, identical to original kill1
 ./VERSION/Mentat_bin/kill5                      kill file for submit5, identical to original kill1
 ./VERSION/Mentat_bin/kill6                      kill file for submit6, identical to original kill1
-./VERSION/Mentat_bin/kill7                      kill file for submit7, identical to original kill1
-./VERSION/Mentat_bin/kill8                      kill file for submit8, identical to original kill1
-./VERSION/Mentat_bin/kill9                      kill file for submit9, identical to original kill1
 ./VERSION/Mentat_menus/job_run.ms.original      original file from installation
 ./VERSION/Mentat_menus/job_run.ms               modified version adding DAMASK menu to run menu
