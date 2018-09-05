@@ -37,11 +37,8 @@ module plastic_dislotwin
                  threshold_stress_twin_ID, &
                  resolved_stress_shearband_ID, &
                  shear_rate_shearband_ID, &
-                 sb_eigenvalues_ID, &
-                 sb_eigenvectors_ID, &
                  stress_trans_fraction_ID, &
                  strain_trans_fraction_ID, &
-                 trans_fraction_ID
  end enum
  
   type,private :: tParameters
@@ -1689,10 +1686,6 @@ function plastic_dislotwin_postResults(Tstar_v,Temperature,ipc,ip,el) result(pos
        c = c + prm%totalNtrans
      case (strain_trans_fraction_ID)
        postResults(c+1_pInt:c+prm%totalNtrans) = stt%strainTransFraction(1_pInt:prm%totalNtrans,of)
-       c = c + prm%totalNtrans
-     case (trans_fraction_ID) !ToDo: deprecated
-       postResults(c+1_pInt:c+prm%totalNtrans) = stt%stressTransFraction(1_pInt:prm%totalNtrans,of) &
-                                               + stt%strainTransFraction(1_pInt:prm%totalNtrans,of)
        c = c + prm%totalNtrans
    end select
  enddo
