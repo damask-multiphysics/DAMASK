@@ -21,12 +21,9 @@ module plastic_dislotwin
 ! START: Do something here
  real(pReal),                         dimension(:,:),         allocatable,         private :: &
    tau_r_twin, &                                                             !< stress to bring partial close together for each twin system and instance
-   tau_r_trans                                                            !< stress to bring partial close together for each trans system and instance
+   tau_r_trans                                                               !< stress to bring partial close together for each trans system and instance
  real(pReal),                         dimension(:,:,:),       allocatable,         private :: &
-   forestProjectionEdge, &                                                   !< matrix of forest projections of edge dislocations for each instance
-   projectionMatrix_Trans                                                    !< matrix for projection of slip system shear on fault band (twin) systems for each instance
- real(pReal),                         dimension(:,:,:,:,:),   allocatable,         private :: &
-   sbSv
+   forestProjectionEdge                                                      !< matrix of forest projections of edge dislocations for each instance
 ! END: Do something here
 
  enum, bind(c) 
@@ -161,7 +158,27 @@ module plastic_dislotwin
      threshold_stress_trans, &
      twinVolume, &
      martensiteVolume
- end type
+ end type tDislotwinState
+
+ type, private :: tDislotwinMicrostructure
+  
+   real(pReal), pointer,     dimension(:,:) :: &
+     invLambdaSlip, &
+     invLambdaSlipTwin, &
+     invLambdaTwin, &
+     invLambdaSlipTrans, &
+     invLambdaTrans, &
+     mfp_slip, &
+     mfp_twin, &
+     mfp_trans, &
+     threshold_stress_slip, &
+     threshold_stress_twin, &
+     threshold_stress_trans, &
+     twinVolume, &
+     martensiteVolume, &
+     tau_r_twin, &
+     tau_r_trans
+ end type tDislotwinMicrostructure
 
  type(tDislotwinState), allocatable, dimension(:), private :: &
    state, &
@@ -286,8 +303,6 @@ subroutine plastic_dislotwin_init(fileUnit)
  allocate(param(maxNinstance))
  allocate(state(maxNinstance))
  allocate(dotState(maxNinstance))
-
- allocate(sbSv(6,6,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), source=0.0_pReal)
 
  do p = 1_pInt, size(phase_plasticityInstance)
    if (phase_plasticity(p) /= PLASTICITY_DISLOTWIN_ID) cycle
@@ -564,7 +579,6 @@ subroutine plastic_dislotwin_init(fileUnit)
  enddo 
 ! ToDo: this works only for one instance!
  allocate(forestProjectionEdge(prm%totalNslip,prm%totalNslip,maxNinstance), source=0.0_pReal)
- allocate(projectionMatrix_Trans(prm%totalNtrans,prm%totalNslip,maxNinstance), source=0.0_pReal)
  
 
  initializeInstances: do p = 1_pInt, size(phase_plasticity)
@@ -1170,7 +1184,7 @@ subroutine plastic_dislotwin_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,Temperature
  real(pReal), dimension(plasticState(material_phase(ipc,ip,el))%Nslip) :: &
     gdot_slip
  real(pReal):: gdot_sb,gdot_twin,gdot_trans
- real(pReal), dimension(3,3) :: eigVectors, sb_Smatrix
+ real(pReal), dimension(3,3) :: eigVectors, Schmid_shearBand
  real(pReal), dimension(3)   :: eigValues, sb_s, sb_m
  logical :: error
  real(pReal), dimension(3,6), parameter :: &
@@ -1244,7 +1258,7 @@ subroutine plastic_dislotwin_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,Temperature
  Lp     = Lp     * (1.0_pReal - sumf - sumftr)
  dLp_dS = dLp_dS * (1.0_pReal - sumf - sumftr)
  
- shearBanding: if(dNeq0(prm%sbVelocity)) then
+ shearBandingContribution: if(dNeq0(prm%sbVelocity)) then
 
    BoltzmannRatio = prm%sbQedge/(kB*Temperature)
    call math_eigenValuesVectorsSym(S,eigValues,eigVectors,error)
@@ -1252,30 +1266,24 @@ subroutine plastic_dislotwin_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,Temperature
    do j = 1_pInt,6_pInt
      sb_s = 0.5_pReal*sqrt(2.0_pReal)*math_mul33x3(eigVectors,sb_sComposition(1:3,j))
      sb_m = 0.5_pReal*sqrt(2.0_pReal)*math_mul33x3(eigVectors,sb_mComposition(1:3,j))
-     sb_Smatrix = math_tensorproduct33(sb_s,sb_m)
-     sbSv(1:6,j,ipc,ip,el) = math_Mandel33to6(math_symmetric33(sb_Smatrix))
-
-     tau = dot_product(Tstar_v,sbSv(1:6,j,ipc,ip,el))
+     Schmid_shearBand = math_tensorproduct33(sb_s,sb_m)
+     tau = math_mul33xx33(S,Schmid_shearBand)
    
-     !* Stress ratios
-     if (abs(tau) < tol_math_check) then
-       StressRatio_p = 0.0_pReal
-       StressRatio_pminus1 = 0.0_pReal
-     else
+     significantShearBandStress: if (abs(tau) > tol_math_check) then
        StressRatio_p       = (abs(tau)/prm%sbResistance)**prm%pShearBand
        StressRatio_pminus1 = (abs(tau)/prm%sbResistance)**(prm%pShearBand-1.0_pReal)
-     endif
-     gdot_sb = sign(prm%sbVelocity*exp(-BoltzmannRatio*(1_pInt-StressRatio_p)**prm%qShearBand), tau)
-     dgdot_dtau = ((abs(gdot_sb)*BoltzmannRatio* prm%pShearBand*prm%qShearBand)/ prm%sbResistance) &
-                * StressRatio_pminus1*(1_pInt-StressRatio_p)**(prm%qShearBand-1.0_pReal)
+       gdot_sb = sign(prm%sbVelocity*exp(-BoltzmannRatio*(1_pInt-StressRatio_p)**prm%qShearBand), tau)
+       dgdot_dtau = ((abs(gdot_sb)*BoltzmannRatio* prm%pShearBand*prm%qShearBand)/ prm%sbResistance) &
+                  * StressRatio_pminus1*(1_pInt-StressRatio_p)**(prm%qShearBand-1.0_pReal)
  
-     Lp = Lp + gdot_sb*sb_Smatrix
-     forall (k=1_pInt:3_pInt,l=1_pInt:3_pInt,m=1_pInt:3_pInt,n=1_pInt:3_pInt) &
-       dLp_dS(k,l,m,n) = dLp_dS(k,l,m,n) &
-                       + dgdot_dtau * sb_Smatrix(k,l) * sb_Smatrix(m,n)
+       Lp = Lp + gdot_sb * Schmid_shearBand
+       forall (k=1_pInt:3_pInt,l=1_pInt:3_pInt,m=1_pInt:3_pInt,n=1_pInt:3_pInt) &
+         dLp_dS(k,l,m,n) = dLp_dS(k,l,m,n) &
+                       + dgdot_dtau * Schmid_shearBand(k,l) * Schmid_shearBand(m,n)
+     endif significantShearBandStress
    enddo
 
- endif shearBanding
+ endif shearBandingContribution
  
  twinContibution: do j = 1_pInt, prm%totalNtwin
 
@@ -1650,27 +1658,27 @@ function plastic_dislotwin_postResults(Tstar_v,Temperature,ipc,ip,el) result(pos
  !                                                       plasticState(ph)%state(4*ns+2*nt+2*nr+j, of))
        enddo
        c = c + prm%totalNslip
-      case (resolved_stress_shearband_ID)
-        do j = 1_pInt,6_pInt                                                                       ! loop over all shearband families
-           postResults(c+j) = dot_product(Tstar_v,sbSv(1:6,j,ipc,ip,el))
-        enddo
-        c = c + 6_pInt
-      case (shear_rate_shearband_ID)
-        do j = 1_pInt,6_pInt                                                                       ! loop over all shearbands
-          tau = dot_product(Tstar_v,sbSv(1:6,j,ipc,ip,el))
-          if (abs(tau) < tol_math_check) then
-            StressRatio_p = 0.0_pReal
-            StressRatio_pminus1 = 0.0_pReal
-          else
-            StressRatio_p = (abs(tau)/prm%sbResistance)**prm%pShearBand
-            StressRatio_pminus1 = (abs(tau)/prm%sbResistance)**(prm%pShearBand-1.0_pReal)
-          endif
-          BoltzmannRatio = prm%sbQedge/(kB*Temperature)
-          DotGamma0 = prm%sbVelocity
-          postResults(c+j) = DotGamma0*exp(-BoltzmannRatio*(1_pInt-StressRatio_p)**prm%qShearBand)*&
-                             sign(1.0_pReal,tau)
-        enddo 
-       c = c + 6_pInt
+ !     case (resolved_stress_shearband_ID)
+ !       do j = 1_pInt,6_pInt                                                                       ! loop over all shearband families
+ !          postResults(c+j) = dot_product(Tstar_v,sbSv(1:6,j,ipc,ip,el))
+ !       enddo
+ !       c = c + 6_pInt
+ !     case (shear_rate_shearband_ID)
+ !       do j = 1_pInt,6_pInt                                                                       ! loop over all shearbands
+ !         tau = dot_product(Tstar_v,sbSv(1:6,j,ipc,ip,el))
+ !         if (abs(tau) < tol_math_check) then
+ !           StressRatio_p = 0.0_pReal
+ !           StressRatio_pminus1 = 0.0_pReal
+ !         else
+ !           StressRatio_p = (abs(tau)/prm%sbResistance)**prm%pShearBand
+ !           StressRatio_pminus1 = (abs(tau)/prm%sbResistance)**(prm%pShearBand-1.0_pReal)
+ !         endif
+ !         BoltzmannRatio = prm%sbQedge/(kB*Temperature)
+ !         DotGamma0 = prm%sbVelocity
+ !         postResults(c+j) = DotGamma0*exp(-BoltzmannRatio*(1_pInt-StressRatio_p)**prm%qShearBand)*&
+ !                            sign(1.0_pReal,tau)
+ !       enddo 
+ !      c = c + 6_pInt
      case (twin_fraction_ID)
        postResults(c+1_pInt:c+prm%totalNtwin) = stt%twinFraction(1_pInt:prm%totalNtwin,of)
        c = c + prm%totalNtwin
