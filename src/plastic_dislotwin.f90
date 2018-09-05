@@ -1,4 +1,8 @@
 !--------------------------------------------------------------------------------------------------
+!> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
+!> @author Su Leen Wong, Max-Planck-Institut für Eisenforschung GmbH
+!> @author Nan Jia, Max-Planck-Institut für Eisenforschung GmbH
+!> @author Franz Roters, Max-Planck-Institut für Eisenforschung GmbH
 !> @author Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
 !> @brief material subroutine incoprorating dislocation and twinning physics
 !> @details to be done
@@ -38,7 +42,7 @@ module plastic_dislotwin
                  resolved_stress_shearband_ID, &
                  shear_rate_shearband_ID, &
                  stress_trans_fraction_ID, &
-                 strain_trans_fraction_ID, &
+                 strain_trans_fraction_ID
  end enum
  
   type,private :: tParameters
@@ -131,8 +135,7 @@ module plastic_dislotwin
  
  
  type, private :: tDislotwinState
-  
-   real(pReal), pointer,     dimension(:,:) :: &
+   real(pReal), pointer, dimension(:,:) :: &
      rhoEdge, &
      rhoEdgeDip, &
      accshear_slip, &
@@ -290,6 +293,7 @@ subroutine plastic_dislotwin_init(fileUnit)
  allocate(plastic_dislotwin_sizePostResult(maxval(phase_Noutput),Ninstances),source=0_pInt)
  allocate(plastic_dislotwin_output(maxval(phase_Noutput),Ninstances))
           plastic_dislotwin_output = ''
+
  allocate(param(Ninstances))
  allocate(state(Ninstances))
  allocate(dotState(Ninstances))
@@ -501,9 +505,6 @@ subroutine plastic_dislotwin_init(fileUnit)
          outputSize = prm%totalNtrans
        case ('strain_trans_fraction')
          outputID = strain_trans_fraction_ID
-         outputSize = prm%totalNtrans
-       case ('trans_fraction','total_trans_fraction')
-         outputID = trans_fraction_ID
          outputSize = prm%totalNtrans
         
      end select
@@ -938,7 +939,8 @@ function plastic_dislotwin_homogenizedC(ipc,ip,el)
  enddo
  end associate
  end function plastic_dislotwin_homogenizedC
- 
+
+
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates derived quantities from state
 !--------------------------------------------------------------------------------------------------
