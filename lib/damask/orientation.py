@@ -27,7 +27,7 @@ class Rodrigues:
 
 # ******************************************************************************************
 class Quaternion:
-    """
+    u"""
     Orientation represented as unit quaternion.
     
     All methods and naming conventions based on Rowenhorst_etal2015
@@ -344,13 +344,8 @@ class Quaternion:
       return np.inf*np.ones(3) if self.w == 0.0 else np.array([self.x, self.y, self.z])/self.w
 
     def asEulers(self,
-                 degrees = False,
-                ):
-      """
-      Orientation as Bunge-Euler angles.
-
-      """
-
+                 degrees = False):
+      """Orientation as Bunge-Euler angles."""
       q03 = self.w**2+self.z**2
       q12 = self.x**2+self.y**2
       chi = np.sqrt(q03*q12)

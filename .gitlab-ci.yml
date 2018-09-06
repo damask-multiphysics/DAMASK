@@ -29,6 +29,11 @@ before_script:
     done
   - source $DAMASKROOT/env/DAMASK.sh
   - cd $DAMASKROOT/PRIVATE/testing
+  - echo Job start:" $(date)"
+
+###################################################################################################
+after_script:
+  - echo Job end:" $(date)"
 
 ###################################################################################################
 variables:
