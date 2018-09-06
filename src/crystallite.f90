@@ -174,10 +174,11 @@ subroutine crystallite_init
  use config, only: &
   config_deallocate, &
   config_crystallite, &
-  crystallite_name
+  crystallite_name, &
+  material_Nphase
  use constitutive, only: &
    constitutive_initialFi, &
-   constitutive_microstructure                                                                     ! derived (shortcut) quantities of given state
+   constitutive_microstructure                                                                      ! derived (shortcut) quantities of given state
 
  implicit none
 
@@ -187,7 +188,8 @@ subroutine crystallite_init
    i, &                                                                                             !< counter in integration point loop
    e, &                                                                                             !< counter in element loop
    o = 0_pInt, &                                                                                    !< counter in output loop
-   r, &                                                                                             !< counter in crystallite loop
+   r, &  
+   ph, &                                                                                            !< counter in crystallite loop
    cMax, &                                                                                          !< maximum number of  integration point components
    iMax, &                                                                                          !< maximum number of integration points
    eMax, &                                                                                          !< maximum number of elements
@@ -421,6 +423,19 @@ subroutine crystallite_init
    enddo
  !$OMP END PARALLEL DO
 
+ do ph = 1_pInt,material_Nphase
+!--------------------------------------------------------------------------------------------------
+! propagate dependent states to materialpoint and boundary value problem level
+   plasticState(ph)%partionedState0(plasticState(ph)%offsetDeltaState+plasticState(ph)%sizeDeltaState: &
+                                    plasticState(ph)%sizeState,:) &
+           = plasticState(ph)%state(plasticState(ph)%offsetDeltaState+plasticState(ph)%sizeDeltaState: &
+                                    plasticState(ph)%sizeState,:)
+   plasticState(ph)%state0         (plasticState(ph)%offsetDeltaState+plasticState(ph)%sizeDeltaState: &
+                                    plasticState(ph)%sizeState,:) &
+           = plasticState(ph)%state(plasticState(ph)%offsetDeltaState+plasticState(ph)%sizeDeltaState: &
+                                    plasticState(ph)%sizeState,:)
+ enddo
+
  call crystallite_stressAndItsTangent(.true.)                                                       ! request elastic answers
  crystallite_fallbackdPdF = crystallite_dPdF                                                        ! use initial elastic stiffness as fallback
 
@@ -614,6 +629,7 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
        if (crystallite_requested(c,i,e)) then
          plasticState    (phaseAt(c,i,e))%subState0(      :,phasememberAt(c,i,e)) = &
          plasticState    (phaseAt(c,i,e))%partionedState0(:,phasememberAt(c,i,e))
+
          do mySource = 1_pInt, phase_Nsources(phaseAt(c,i,e))
            sourceState(phaseAt(c,i,e))%p(mySource)%subState0(      :,phasememberAt(c,i,e)) = &
            sourceState(phaseAt(c,i,e))%p(mySource)%partionedState0(:,phasememberAt(c,i,e))
@@ -990,7 +1006,7 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
 
    timeSyncing2: if(numerics_timeSyncing) then
      if (any(.not. crystallite_localPlasticity .and. .not. crystallite_todo .and. .not. crystallite_converged &
-             .and. crystallite_subStep <= subStepMinCryst)) then                                      ! no way of rescuing a nonlocal ip that violated the lower time step limit, ...
+             .and. crystallite_subStep <= subStepMinCryst)) then                                     ! no way of rescuing a nonlocal ip that violated the lower time step limit, ...
        if (iand(debug_level(debug_crystallite),debug_levelExtensive) /= 0_pInt) then
          elementLooping4: do e = FEsolving_execElem(1),FEsolving_execElem(2)
            myNcomponents = homogenization_Ngrains(mesh_element(3,e))
@@ -1004,7 +1020,7 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
          enddo elementLooping4
        endif
        where(.not. crystallite_localPlasticity)
-         crystallite_todo = .false.                                                                       ! ... so let all nonlocal ips die peacefully
+         crystallite_todo = .false.                                                                  ! ... so let all nonlocal ips die peacefully
          crystallite_subStep = 0.0_pReal
        endwhere
      endif
@@ -1056,9 +1072,9 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
 
  elementLooping5: do e = FEsolving_execElem(1),FEsolving_execElem(2)
    myNcomponents = homogenization_Ngrains(mesh_element(3,e))
-   do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)                                                  ! iterate over IPs of this element to be processed
+   do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)                                              ! iterate over IPs of this element to be processed
      do c = 1,myNcomponents
-       if (.not. crystallite_converged(c,i,e)) then                                                    ! respond fully elastically (might be not required due to becoming terminally ill anyway)
+       if (.not. crystallite_converged(c,i,e)) then                                                ! respond fully elastically (might be not required due to becoming terminally ill anyway)
          if(iand(debug_level(debug_crystallite), debug_levelBasic) /= 0_pInt) &
            write(6,'(a,i8,1x,a,i8,a,1x,i2,1x,i3,/)') '<< CRYST >> no convergence: respond fully elastic at el (elFE) ip ipc ', &
              e,'(',mesh_element(1,e),')',i,c
