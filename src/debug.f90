@@ -109,6 +109,9 @@ subroutine debug_init
  character(len=65536)                     :: tag, line
 
  write(6,'(/,a)')   ' <<<+-  debug init  -+>>>'
+#ifdef DEBUG
+ write(6,'(a)') achar(27)//'[31m <<<+-  DEBUG version  -+>>>'//achar(27)//'[0m'
+#endif
  write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
 
