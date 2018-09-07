@@ -2382,8 +2382,7 @@ use, intrinsic :: &
 use prec,     only: dNeq0, &
                     dNeq, &
                     dEq0
-use numerics, only: numerics_integrationMode, &
-                    numerics_timeSyncing
+use numerics, only: numerics_timeSyncing
 use IO,       only: IO_error
 use debug,    only: debug_level, &
                     debug_constitutive, &
@@ -2942,14 +2941,12 @@ rhoDot = rhoDotFlux &
        + rhoDotAthermalAnnihilation &
        + rhoDotThermalAnnihilation 
 
-if (numerics_integrationMode == 1_pInt) then                                                        ! save rates for output if in central integration mode
-  rhoDotFluxOutput(1:ns,1:8,1_pInt,ip,el) = rhoDotFlux(1:ns,1:8)
-  rhoDotMultiplicationOutput(1:ns,1:2,1_pInt,ip,el) = rhoDotMultiplication(1:ns,[1,3])
-  rhoDotSingle2DipoleGlideOutput(1:ns,1:2,1_pInt,ip,el) = rhoDotSingle2DipoleGlide(1:ns,9:10)
-  rhoDotAthermalAnnihilationOutput(1:ns,1:2,1_pInt,ip,el) = rhoDotAthermalAnnihilation(1:ns,9:10)
-  rhoDotThermalAnnihilationOutput(1:ns,1:2,1_pInt,ip,el) = rhoDotThermalAnnihilation(1:ns,9:10)
-  rhoDotEdgeJogsOutput(1:ns,1_pInt,ip,el) = 2.0_pReal * rhoDotThermalAnnihilation(1:ns,1)
-endif
+rhoDotFluxOutput(1:ns,1:8,1_pInt,ip,el) = rhoDotFlux(1:ns,1:8)
+rhoDotMultiplicationOutput(1:ns,1:2,1_pInt,ip,el) = rhoDotMultiplication(1:ns,[1,3])
+rhoDotSingle2DipoleGlideOutput(1:ns,1:2,1_pInt,ip,el) = rhoDotSingle2DipoleGlide(1:ns,9:10)
+rhoDotAthermalAnnihilationOutput(1:ns,1:2,1_pInt,ip,el) = rhoDotAthermalAnnihilation(1:ns,9:10)
+rhoDotThermalAnnihilationOutput(1:ns,1:2,1_pInt,ip,el) = rhoDotThermalAnnihilation(1:ns,9:10)
+rhoDotEdgeJogsOutput(1:ns,1_pInt,ip,el) = 2.0_pReal * rhoDotThermalAnnihilation(1:ns,1)
 
 
 #ifdef DEBUG
