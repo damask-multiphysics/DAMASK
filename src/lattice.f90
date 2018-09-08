@@ -19,6 +19,7 @@ module lattice
    LATTICE_maxNtransFamily    =  1_pInt, &                                                          !< max # of transformation system families over lattice structures
    LATTICE_maxNcleavageFamily =  3_pInt                                                             !< max # of transformation system families over lattice structures
 
+! BEGIN DEPRECATED
  integer(pInt), allocatable, dimension(:,:), protected, public :: &
    lattice_NslipSystem, &                                                                           !< total # of slip systems in each family
    lattice_NtwinSystem, &                                                                           !< total # of twin systems in each family
@@ -65,6 +66,8 @@ module lattice
    lattice_tn, &
    lattice_td, &
    lattice_tt
+! END DEPRECATED
+
 
 !--------------------------------------------------------------------------------------------------
 ! face centered cubic
@@ -2226,15 +2229,15 @@ function lattice_SchmidSlip(Nslip,structure,cOverA)
 
  select case(structure)
    case('fcc')
-     coordinateSystem = buildCoordinateSystem(Nslip,int(lattice_fcc_systemSlip,pInt),structure)
+     coordinateSystem = buildCoordinateSystem(Nslip,int(LATTICE_FCC_SYSTEMSLIP,pInt),structure)
    case('bcc')
-     coordinateSystem = buildCoordinateSystem(Nslip,int(lattice_bcc_systemSlip,pInt),structure)
+     coordinateSystem = buildCoordinateSystem(Nslip,int(LATTICE_BCC_SYSTEMSLIP,pInt),structure)
    case('hex','hexagonal')                                                                          !ToDo: "No alias policy": long or short?
-     coordinateSystem = buildCoordinateSystem(Nslip,int(lattice_hex_systemSlip,pInt),structure,cOverA)
+     coordinateSystem = buildCoordinateSystem(Nslip,int(LATTICE_HEX_SYSTEMSLIP,pInt),'hex',cOverA)
    case('bct')
-     coordinateSystem = buildCoordinateSystem(Nslip,int(lattice_bct_systemslip,pInt),structure,cOverA)
+     coordinateSystem = buildCoordinateSystem(Nslip,int(LATTICE_BCT_SYSTEMSLIP,pInt),structure,cOverA)
    case default
-     write(6,*) 'mist'
+     call IO_error(130_pInt,ext_msg=trim(structure)//' (lattice_SchmidSlip)')
  end select
 
  do i = 1, sum(Nslip)
@@ -2246,20 +2249,56 @@ end function lattice_SchmidSlip
 
 
 !--------------------------------------------------------------------------------------------------
+!> @brief Calculates Schmid matrix for active twin systems
+!--------------------------------------------------------------------------------------------------
+function lattice_SchmidTwin(Ntwin,structure,cOverA)
+ use IO, only: &
+   IO_error
+ use math, only: &
+   math_tensorproduct33
+
+ implicit none
+ integer(pInt),    dimension(:),            intent(in) :: Ntwin                              !< number of active twin systems per family
+ character(len=*),                          intent(in) :: structure                          !< lattice structure
+ real(pReal),     dimension(3,3,sum(Ntwin))            :: lattice_SchmidTwin
+ real(pReal),                               intent(in), optional :: &
+   cOverA
+
+ real(pReal),     dimension(3,3,sum(Ntwin))            :: coordinateSystem
+ integer(pInt) :: i
+
+ select case(structure)
+   case('fcc')
+     coordinateSystem = buildCoordinateSystem(Nslip,int(LATTICE_FCC_SYSTEMTWIN,pInt),structure)
+   case('bcc')
+     coordinateSystem = buildCoordinateSystem(Nslip,int(LATTICE_BCC_SYSTEMTWIN,pInt),structure)
+   case('hex','hexagonal')                                                                          !ToDo: "No alias policy": long or short?
+     coordinateSystem = buildCoordinateSystem(Nslip,int(LATTICE_HEX_SYSTEMTWIN,pInt),'hex',cOverA)
+   case default
+     call IO_error(130_pInt,ext_msg=trim(structure)//' (lattice_SchmidTwin)')
+ end select
+
+ do i = 1, sum(Nslip)
+   lattice_SchmidTwin(1:3,1:3,i) = &
+                             math_tensorproduct33(coordinateSystem(1:3,1,i),coordinateSystem(1:3,2,i))
+ enddo
+
+end function lattice_SchmidTwin
+
+
+!--------------------------------------------------------------------------------------------------
 !> @brief Populates reduced interaction matrix
 !--------------------------------------------------------------------------------------------------
 pure function buildInteraction(activeA,activeB,maxA,maxB,values,matrix)
- use IO, only: &
-   IO_error
 
  implicit none
  integer(pInt), dimension(:),           intent(in) :: &
-    activeA, &
-    activeB, &
-    maxA, &
-    maxB
+    activeA, &                                                                                      !< number of active systems as specified in material.config
+    activeB, &                                                                                      !< number of active systems as specified in material.config
+    maxA, &                                                                                         !< number of maximum available systems
+    maxB                                                                                            !< number of maximum available systems
  real(pReal),   dimension(:),           intent(in)   :: values                                      !< interaction values
- integer(pInt), dimension(:,:),         intent(in)   :: matrix
+ integer(pInt), dimension(:,:),         intent(in)   :: matrix                                      !< full interaction matrix
  real(pReal),   dimension(sum(activeA),sum(activeB)) :: buildInteraction
 
  integer(pInt) :: &
@@ -2301,7 +2340,11 @@ pure function buildCoordinateSystem(active,system,structure,cOverA)
 
  real(pReal), dimension(3) :: &
    direction, normal
- integer(pInt) :: ir, ig, mf, ms
+ integer(pInt) :: &
+   ir, &                                                                                            !< index in reduced matrix
+   ig, &                                                                                            !< index in full matrix
+   mf, &                                                                                            !< index of my family
+   ms                                                                                               !< index of my system in current family
 
  ir = 0_pInt
  myFamilies: do mf = 1_pInt,size(active,1)
@@ -2317,21 +2360,18 @@ pure function buildCoordinateSystem(active,system,structure,cOverA)
    
        case ('hex')
          ! direction [uvtw]->[3u/2 (u+2v)*sqrt(3)/2 w*(c/a)])
-         direction(1) =  real(system(1,ig),pReal)*1.5_pReal
-         direction(2) = (real(system(1,ig),pReal)+2.0_pReal*real(system(2,ig),pReal))*0.5_pReal*sqrt(3.0_pReal)
-         direction(3) =  real(system(4,ig),pReal)*CoverA
+         direction = [ real(system(1,ig),pReal)*1.5_pReal, &
+                      (real(system(1,ig),pReal)+2.0_pReal*real(system(2,ig),pReal))*sqrt(0.75_pReal), &
+                       real(system(4,ig),pReal)*CoverA ]
 
          ! plane (hkil)->(h (h+2k)/sqrt(3) l/(c/a))
-         normal(1) =  real(system(5,ig),pReal)
-         normal(2) = (real(system(5,ig),pReal)+2.0_pReal*real(system(6,ig),pReal))/ sqrt(3.0_pReal)
-         normal(3) =  real(system(8,ig),pReal)/CoverA
+         normal    = [ real(system(5,ig),pReal), &
+                      (real(system(5,ig),pReal)+2.0_pReal*real(system(6,ig),pReal))/ sqrt(3.0_pReal), &
+                       real(system(8,ig),pReal)/CoverA ]
 
        case ('bct')
-         direction(1:2) = real(system(1:2,ig),pReal)
-         direction(3)   = real(system(3,ig),pReal)*CoverA
-
-         normal(1:2) = real(system(4:5,ig),pReal)
-         normal(3)   = real(system(6,ig),pReal)/CoverA
+         direction = [real(system(1:2,ig),pReal),real(system(3,ig),pReal)*CoverA]
+         normal    = [real(system(4:5,ig),pReal),real(system(6,ig),pReal)/CoverA]
 
      end select
 
