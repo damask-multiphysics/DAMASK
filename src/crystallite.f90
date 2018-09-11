@@ -440,18 +440,18 @@ subroutine crystallite_init
    enddo
  !$OMP END PARALLEL DO
 
- do ph = 1_pInt,material_Nphase
 !--------------------------------------------------------------------------------------------------
 ! propagate dependent states to materialpoint and boundary value problem level
-   plasticState(ph)%partionedState0(plasticState(ph)%offsetDeltaState+plasticState(ph)%sizeDeltaState: &
-                                    plasticState(ph)%sizeState,:) &
-           = plasticState(ph)%state(plasticState(ph)%offsetDeltaState+plasticState(ph)%sizeDeltaState: &
-                                    plasticState(ph)%sizeState,:)
-   plasticState(ph)%state0         (plasticState(ph)%offsetDeltaState+plasticState(ph)%sizeDeltaState: &
-                                    plasticState(ph)%sizeState,:) &
-           = plasticState(ph)%state(plasticState(ph)%offsetDeltaState+plasticState(ph)%sizeDeltaState: &
-                                    plasticState(ph)%sizeState,:)
- enddo
+! do ph = 1_pInt,material_Nphase
+!   plasticState(ph)%partionedState0(plasticState(ph)%offsetDeltaState+plasticState(ph)%sizeDeltaState: &
+!                                    plasticState(ph)%sizeState,:) &
+!           = plasticState(ph)%state(plasticState(ph)%offsetDeltaState+plasticState(ph)%sizeDeltaState: &
+!                                    plasticState(ph)%sizeState,:)
+!   plasticState(ph)%state0         (plasticState(ph)%offsetDeltaState+plasticState(ph)%sizeDeltaState: &
+!                                    plasticState(ph)%sizeState,:) &
+!           = plasticState(ph)%state(plasticState(ph)%offsetDeltaState+plasticState(ph)%sizeDeltaState: &
+!                                    plasticState(ph)%sizeState,:)
+! enddo
 
  call crystallite_stressAndItsTangent(.true.)                                                       ! request elastic answers
  crystallite_fallbackdPdF = crystallite_dPdF                                                        ! use initial elastic stiffness as fallback
