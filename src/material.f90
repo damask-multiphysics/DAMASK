@@ -16,8 +16,8 @@ module material
    tSourceState, &
    tHomogMapping, &
    tPhaseMapping, &
-   p_vec, &
-   p_intvec
+   group_float, &
+   group_int
 
  implicit none
  private
@@ -268,7 +268,7 @@ module material
    porosityMapping, &                                                                               !< mapping for porosity state/fields
    hydrogenfluxMapping                                                                              !< mapping for hydrogen conc state/fields
 
- type(p_vec),         allocatable, dimension(:), public :: &
+ type(group_float),  allocatable, dimension(:), public :: &
    temperature, &                                                                                   !< temperature field
    damage, &                                                                                        !< damage field
    vacancyConc, &                                                                                   !< vacancy conc field
@@ -360,8 +360,7 @@ subroutine material_init()
    homogenization_name, &
    microstructure_name, &
    phase_name, &
-   texture_name, &
-   config_deallocate
+   texture_name
  use mesh, only: &
    mesh_maxNips, &
    mesh_NcpElems, &
@@ -370,7 +369,7 @@ subroutine material_init()
    FE_geomtype
 
  implicit none
- integer(pInt), parameter :: FILEUNIT = 200_pInt
+ integer(pInt), parameter :: FILEUNIT = 210_pInt
  integer(pInt)            :: m,c,h, myDebug, myPhase, myHomog
  integer(pInt) :: &
   g, &                                                                                              !< grain number
@@ -469,7 +468,6 @@ subroutine material_init()
  endif debugOut
 
  call material_populateGrains
- call config_deallocate('material.config/microstructure')
 
  allocate(phaseAt                   (  homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems),source=0_pInt)
  allocate(phasememberAt             (  homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems),source=0_pInt)
@@ -921,8 +919,8 @@ subroutine material_parseTexture
    IO_floatValue, &
    IO_stringValue
  use config, only: &
-   config_texture, &
-   config_deallocate
+   config_deallocate, &
+   config_texture
  use math, only: &
    inRad, &
    math_sampleRandomOri, &
@@ -1061,7 +1059,7 @@ subroutine material_parseTexture
    endif
  enddo    
  
- call config_deallocate('material.config/texture') 
+ call config_deallocate('material.config/texture')
 
 end subroutine material_parseTexture
 
@@ -1093,6 +1091,7 @@ subroutine material_populateGrains
  use config, only: &
    config_homogenization, &
    config_microstructure, &
+   config_deallocate, &
    homogenization_name, &
    microstructure_name 
  use IO, only: &
@@ -1120,8 +1119,8 @@ subroutine material_populateGrains
                   phaseID,textureID,dGrains,myNgrains,myNorientations,myNconstituents, &
                   grain,constituentGrain,ipGrain,symExtension, ip
  real(pReal) :: deviation,extreme,rnd
- integer(pInt),  dimension (:,:),   allocatable :: Nelems                                           ! counts number of elements in homog, micro array
- type(p_intvec), dimension (:,:), allocatable :: elemsOfHomogMicro                                  ! lists element number in homog, micro array
+ integer(pInt),         dimension (:,:), allocatable :: Nelems                                           ! counts number of elements in homog, micro array
+ type(group_int), dimension (:,:), allocatable :: elemsOfHomogMicro                                ! lists element number in homog, micro array
 
  myDebug = debug_level(debug_material)
 
@@ -1429,6 +1428,7 @@ subroutine material_populateGrains
  deallocate(texture_transformation)
  deallocate(Nelems)
  deallocate(elemsOfHomogMicro)
+ call config_deallocate('material.config/microstructure')
 
 end subroutine material_populateGrains
 

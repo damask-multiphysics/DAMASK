@@ -17,13 +17,7 @@ list(APPEND OBJECTFILES $<TARGET_OBJECTS:SYSTEM_ROUTINES>)
 add_library(PREC OBJECT "prec.f90")
 list(APPEND OBJECTFILES $<TARGET_OBJECTS:PREC>)
 
-if (PROJECT_NAME STREQUAL "DAMASK_spectral")
-      add_library(DAMASK_INTERFACE OBJECT "spectral_interface.f90")
-elseif (PROJECT_NAME STREQUAL "DAMASK_FEM")
-      add_library(DAMASK_INTERFACE OBJECT "FEM_interface.f90")
-else ()
-    message (FATAL_ERROR "Build target (PROJECT_NAME) is not defined")
-endif()
+add_library(DAMASK_INTERFACE OBJECT "DAMASK_interface.f90")
 add_dependencies(DAMASK_INTERFACE PREC SYSTEM_ROUTINES)
 list(APPEND OBJECTFILES $<TARGET_OBJECTS:DAMASK_INTERFACE>)
 
@@ -31,8 +25,12 @@ add_library(IO OBJECT "IO.f90")
 add_dependencies(IO DAMASK_INTERFACE)
 list(APPEND OBJECTFILES $<TARGET_OBJECTS:IO>)
 
+add_library(HDF5_UTILITIES OBJECT "HDF5_utilities.f90")
+add_dependencies(HDF5_UTILITIES IO)
+list(APPEND OBJECTFILES $<TARGET_OBJECTS:HDF5_UTILITIES>)
+
 add_library(NUMERICS OBJECT "numerics.f90")
-add_dependencies(NUMERICS IO)
+add_dependencies(NUMERICS HDF5_UTILITIES)
 list(APPEND OBJECTFILES $<TARGET_OBJECTS:NUMERICS>)
 
 add_library(DEBUG OBJECT "debug.f90")
@@ -57,7 +55,7 @@ if (PROJECT_NAME STREQUAL "DAMASK_spectral")
       add_dependencies(MESH DAMASK_MATH)
       list(APPEND OBJECTFILES $<TARGET_OBJECTS:MESH>)
 elseif (PROJECT_NAME STREQUAL "DAMASK_FEM")
-      add_library(FEZoo OBJECT "FEZoo.f90")
+      add_library(FEZoo OBJECT "FEM_zoo.f90")
       add_dependencies(FEZoo DAMASK_MATH)
       list(APPEND OBJECTFILES $<TARGET_OBJECTS:FEZoo>)
       add_library(MESH  OBJECT "meshFEM.f90")
@@ -175,25 +173,24 @@ if (PROJECT_NAME STREQUAL "DAMASK_spectral")
       "spectral_mech_Basic.f90")
       add_dependencies(SPECTRAL_SOLVER SPECTRAL_UTILITIES)
       list(APPEND OBJECTFILES $<TARGET_OBJECTS:SPECTRAL_SOLVER>)
+
       if(NOT CMAKE_BUILD_TYPE STREQUAL "SYNTAXONLY")
         add_executable(DAMASK_spectral "DAMASK_spectral.f90" ${OBJECTFILES})
       else()
         add_library(DAMASK_spectral OBJECT "DAMASK_spectral.f90")
       endif()
+
       add_dependencies(DAMASK_spectral SPECTRAL_SOLVER)
 elseif (PROJECT_NAME STREQUAL "DAMASK_FEM")
       add_library(FEM_UTILITIES OBJECT "FEM_utilities.f90")
       add_dependencies(FEM_UTILITIES DAMASK_CPFE)
+      list(APPEND OBJECTFILES $<TARGET_OBJECTS:FEM_UTILITIES>)
 
       add_library(FEM_SOLVER OBJECT
-      "FEM_hydrogenflux.f90"
-      "FEM_porosity.f90"
-      "FEM_vacancyflux.f90"
-      "FEM_damage.f90"
-      "FEM_thermal.f90"
       "FEM_mech.f90")
       add_dependencies(FEM_SOLVER FEM_UTILITIES)
+      list(APPEND OBJECTFILES $<TARGET_OBJECTS:FEM_SOLVER>)
 
-      add_executable(DAMASK_FEM "DAMASK_FEM_driver.f90")
+      add_executable(DAMASK_FEM "DAMASK_FEM.f90" ${OBJECTFILES})
       add_dependencies(DAMASK_FEM FEM_SOLVER)
 endif()

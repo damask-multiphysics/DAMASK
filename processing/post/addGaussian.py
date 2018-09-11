@@ -83,7 +83,7 @@ for name in filenames:
   if table.label_dimension(options.pos) != 3: errors.append('coordinates {} are not a vector.'.format(options.pos))
   else: colCoord = table.label_index(options.pos)
 
-  for type, data in items.iteritems():
+  for type, data in items.items():
     for what in (data['labels'] if data['labels'] is not None else []):
       dim = table.label_dimension(what)
       if dim != data['dim']: remarks.append('column {} is not a {}.'.format(what,type))
@@ -100,7 +100,7 @@ for name in filenames:
 # ------------------------------------------ assemble header --------------------------------------
 
   table.info_append(scriptID + '\t' + ' '.join(sys.argv[1:]))
-  for type, data in items.iteritems():
+  for type, data in items.items():
     for label in data['active']:
       table.labels_append(['Gauss{}({})'.format(options.sigma,label)])                              # extend ASCII header with new labels
   table.head_write()
@@ -114,7 +114,7 @@ for name in filenames:
 # ------------------------------------------ process value field -----------------------------------
 
   stack = [table.data]
-  for type, data in items.iteritems():
+  for type, data in items.items():
     for i,label in enumerate(data['active']):
       stack.append(ndimage.filters.gaussian_filter(table.data[:,data['column'][i]],
                                                    options.sigma,options.order,

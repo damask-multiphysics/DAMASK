@@ -102,13 +102,16 @@ subroutine debug_init
    IO_EOF
 
  implicit none
- integer(pInt), parameter                 :: FILEUNIT    = 300_pInt
+ integer(pInt), parameter                 :: FILEUNIT    = 330_pInt
 
  integer(pInt)                            :: i, what
  integer(pInt), allocatable, dimension(:) :: chunkPos
  character(len=65536)                     :: tag, line
 
  write(6,'(/,a)')   ' <<<+-  debug init  -+>>>'
+#ifdef DEBUG
+ write(6,'(a)') achar(27)//'[31m <<<+-  DEBUG version  -+>>>'//achar(27)//'[0m'
+#endif
  write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
 
@@ -283,11 +286,8 @@ end subroutine debug_reset
 subroutine debug_info
 
  implicit none
- character(len=1)  :: exceed
-
  
  !$OMP CRITICAL (write2out)
-
    debugOutputCPFEM: if (iand(debug_level(debug_CPFEM),debug_LEVELBASIC) /= 0 &
                       .and. any(debug_stressMinLocation /= 0_pInt) &
                       .and. any(debug_stressMaxLocation /= 0_pInt) ) then

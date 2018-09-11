@@ -114,6 +114,7 @@ module crystallite
  end enum
  integer(kind(undefined_ID)),dimension(:,:),   allocatable,          private :: &
    crystallite_outputID                                                                             !< ID of each post result output
+ procedure(), pointer :: integrateState
 
  public :: &
    crystallite_init, &
@@ -122,6 +123,7 @@ module crystallite
    crystallite_push33ToRef, &
    crystallite_postResults
  private :: &
+   integrateState, &
    crystallite_integrateStateFPI, &
    crystallite_integrateStateEuler, &
    crystallite_integrateStateAdaptiveEuler, &
@@ -149,6 +151,7 @@ subroutine crystallite_init
    debug_crystallite, &
    debug_levelBasic
  use numerics, only: &
+   numerics_integrator, &
    worldrank, &
    usePingPong
  use math, only: &
@@ -172,12 +175,13 @@ subroutine crystallite_init
    IO_error
  use material
  use config, only: &
+  config_deallocate, &
   config_crystallite, &
   crystallite_name, &
-  config_deallocate
+  material_Nphase
  use constitutive, only: &
    constitutive_initialFi, &
-   constitutive_microstructure                                                                     ! derived (shortcut) quantities of given state
+   constitutive_microstructure                                                                      ! derived (shortcut) quantities of given state
 
  implicit none
 
@@ -187,7 +191,8 @@ subroutine crystallite_init
    i, &                                                                                             !< counter in integration point loop
    e, &                                                                                             !< counter in element loop
    o = 0_pInt, &                                                                                    !< counter in output loop
-   r, &                                                                                             !< counter in crystallite loop
+   r, &  
+   ph, &                                                                                            !< counter in crystallite loop
    cMax, &                                                                                          !< maximum number of  integration point components
    iMax, &                                                                                          !< maximum number of integration points
    eMax, &                                                                                          !< maximum number of elements
@@ -268,6 +273,20 @@ subroutine crystallite_init
  allocate(crystallite_sizePostResults(size(config_crystallite)),source=0_pInt)
  allocate(crystallite_sizePostResult(maxval(crystallite_Noutput), &
                                      size(config_crystallite)), source=0_pInt)
+
+ select case(numerics_integrator(1))
+   case(1_pInt)
+     integrateState => crystallite_integrateStateFPI
+   case(2_pInt)
+     integrateState => crystallite_integrateStateEuler
+   case(3_pInt)
+     integrateState => crystallite_integrateStateAdaptiveEuler
+   case(4_pInt)
+     integrateState => crystallite_integrateStateRK4
+   case(5_pInt)
+     integrateState => crystallite_integrateStateRKCK45
+ end select
+
 
 
  do c = 1_pInt, size(config_crystallite)
@@ -421,6 +440,19 @@ subroutine crystallite_init
    enddo
  !$OMP END PARALLEL DO
 
+ do ph = 1_pInt,material_Nphase
+!--------------------------------------------------------------------------------------------------
+! propagate dependent states to materialpoint and boundary value problem level
+   plasticState(ph)%partionedState0(plasticState(ph)%offsetDeltaState+plasticState(ph)%sizeDeltaState: &
+                                    plasticState(ph)%sizeState,:) &
+           = plasticState(ph)%state(plasticState(ph)%offsetDeltaState+plasticState(ph)%sizeDeltaState: &
+                                    plasticState(ph)%sizeState,:)
+   plasticState(ph)%state0         (plasticState(ph)%offsetDeltaState+plasticState(ph)%sizeDeltaState: &
+                                    plasticState(ph)%sizeState,:) &
+           = plasticState(ph)%state(plasticState(ph)%offsetDeltaState+plasticState(ph)%sizeDeltaState: &
+                                    plasticState(ph)%sizeState,:)
+ enddo
+
  call crystallite_stressAndItsTangent(.true.)                                                       ! request elastic answers
  crystallite_fallbackdPdF = crystallite_dPdF                                                        ! use initial elastic stiffness as fallback
 
@@ -494,9 +526,6 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
    subStepMinCryst, &
    subStepSizeCryst, &
    stepIncreaseCryst, &
-   nCryst, &
-   numerics_integrator, &
-   numerics_integrationMode, &
    numerics_timeSyncing
  use debug, only: &
    debug_level, &
@@ -615,6 +644,7 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
        if (crystallite_requested(c,i,e)) then
          plasticState    (phaseAt(c,i,e))%subState0(      :,phasememberAt(c,i,e)) = &
          plasticState    (phaseAt(c,i,e))%partionedState0(:,phasememberAt(c,i,e))
+
          do mySource = 1_pInt, phase_Nsources(phaseAt(c,i,e))
            sourceState(phaseAt(c,i,e))%p(mySource)%subState0(      :,phasememberAt(c,i,e)) = &
            sourceState(phaseAt(c,i,e))%p(mySource)%partionedState0(:,phasememberAt(c,i,e))
@@ -648,7 +678,6 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
  endif singleRun
 
  NiterationCrystallite = 0_pInt
- numerics_integrationMode = 1_pInt
  cutbackLooping: do while (any(crystallite_todo(:,startIP:endIP,FEsolving_execELem(1):FEsolving_execElem(2))))
 
    if (iand(debug_level(debug_crystallite),debug_levelExtensive) /= 0_pInt) &
@@ -991,7 +1020,7 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
 
    timeSyncing2: if(numerics_timeSyncing) then
      if (any(.not. crystallite_localPlasticity .and. .not. crystallite_todo .and. .not. crystallite_converged &
-             .and. crystallite_subStep <= subStepMinCryst)) then                                      ! no way of rescuing a nonlocal ip that violated the lower time step limit, ...
+             .and. crystallite_subStep <= subStepMinCryst)) then                                     ! no way of rescuing a nonlocal ip that violated the lower time step limit, ...
        if (iand(debug_level(debug_crystallite),debug_levelExtensive) /= 0_pInt) then
          elementLooping4: do e = FEsolving_execElem(1),FEsolving_execElem(2)
            myNcomponents = homogenization_Ngrains(mesh_element(3,e))
@@ -1005,7 +1034,7 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
          enddo elementLooping4
        endif
        where(.not. crystallite_localPlasticity)
-         crystallite_todo = .false.                                                                       ! ... so let all nonlocal ips die peacefully
+         crystallite_todo = .false.                                                                  ! ... so let all nonlocal ips die peacefully
          crystallite_subStep = 0.0_pReal
        endwhere
      endif
@@ -1026,25 +1055,7 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
 
    ! --- integrate --- requires fully defined state array (basic + dependent state)
 
-   if (any(crystallite_todo)) then
-     if (iand(debug_level(debug_crystallite),debug_levelExtensive) /= 0_pInt) then
-       write(6,'(/,a,i3)') '<< CRYST >> using state integrator ',numerics_integrator(numerics_integrationMode)
-       flush(6)
-     endif
-     select case(numerics_integrator(numerics_integrationMode))
-       case(1_pInt)
-         call crystallite_integrateStateFPI()
-       case(2_pInt)
-         call crystallite_integrateStateEuler()
-       case(3_pInt)
-         call crystallite_integrateStateAdaptiveEuler()
-       case(4_pInt)
-         call crystallite_integrateStateRK4()
-       case(5_pInt)
-         call crystallite_integrateStateRKCK45()
-     end select
-   endif
-
+   if (any(crystallite_todo)) call integrateState()
    where(.not. crystallite_converged .and. crystallite_subStep > subStepMinCryst) &                  ! do not try non-converged & fully cutbacked any further
      crystallite_todo = .true.
 
@@ -1057,9 +1068,9 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
 
  elementLooping5: do e = FEsolving_execElem(1),FEsolving_execElem(2)
    myNcomponents = homogenization_Ngrains(mesh_element(3,e))
-   do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)                                                  ! iterate over IPs of this element to be processed
+   do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)                                              ! iterate over IPs of this element to be processed
      do c = 1,myNcomponents
-       if (.not. crystallite_converged(c,i,e)) then                                                    ! respond fully elastically (might be not required due to becoming terminally ill anyway)
+       if (.not. crystallite_converged(c,i,e)) then                                                ! respond fully elastically (might be not required due to becoming terminally ill anyway)
          if(iand(debug_level(debug_crystallite), debug_levelBasic) /= 0_pInt) &
            write(6,'(a,i8,1x,a,i8,a,1x,i2,1x,i3,/)') '<< CRYST >> no convergence: respond fully elastic at el (elFE) ip ipc ', &
              e,'(',mesh_element(1,e),')',i,c
@@ -1215,8 +1226,6 @@ end subroutine crystallite_stressAndItsTangent
 subroutine crystallite_integrateStateRK4()
  use, intrinsic :: &
    IEEE_arithmetic
- use numerics, only: &
-   numerics_integrationMode
  use debug, only: &
 #ifdef DEBUG
    debug_e, &
@@ -1517,8 +1526,7 @@ subroutine crystallite_integrateStateRKCK45()
    debug_levelExtensive, &
    debug_levelSelective
  use numerics, only: &
-   rTol_crystalliteState, &
-   numerics_integrationMode
+   rTol_crystalliteState
  use FEsolving, only: &
    FEsolving_execElem, &
    FEsolving_execIP
@@ -2013,8 +2021,7 @@ subroutine crystallite_integrateStateAdaptiveEuler()
    debug_levelExtensive, &
    debug_levelSelective
  use numerics, only: &
-   rTol_crystalliteState, &
-   numerics_integrationMode
+   rTol_crystalliteState
  use FEsolving, only: &
    FEsolving_execElem, &
    FEsolving_execIP
@@ -2082,7 +2089,6 @@ subroutine crystallite_integrateStateAdaptiveEuler()
  sourceStateResiduum = 0.0_pReal
  relSourceStateResiduum = 0.0_pReal
 
- integrationMode: if (numerics_integrationMode == 1_pInt) then
 
  !$OMP PARALLEL
    ! --- DOT STATE (EULER INTEGRATION) ---
@@ -2182,7 +2188,6 @@ subroutine crystallite_integrateStateAdaptiveEuler()
      enddo; enddo; enddo
    !$OMP ENDDO
  !$OMP END PARALLEL
- endif integrationMode
 
 
  ! --- STRESS INTEGRATION (EULER INTEGRATION) ---
@@ -2201,9 +2206,6 @@ subroutine crystallite_integrateStateAdaptiveEuler()
      endif
    enddo; enddo; enddo
  !$OMP END PARALLEL DO
-
-
- if (numerics_integrationMode == 1_pInt) then
 
    !$OMP PARALLEL
    ! --- DOT STATE (HEUN METHOD) ---
@@ -2323,17 +2325,6 @@ subroutine crystallite_integrateStateAdaptiveEuler()
    !$OMP ENDDO
  !$OMP END PARALLEL
 
- elseif (numerics_integrationMode > 1) then ! stiffness calculation
-
-   !$OMP PARALLEL DO
-     do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                    ! iterate over elements, ips and grains
-       crystallite_converged(g,i,e) = crystallite_todo(g,i,e) .or. crystallite_converged(g,i,e)              ! ... converged per definitionem
-     enddo; enddo; enddo
-   !$OMP END PARALLEL DO
-
- endif
-
-
 
  ! --- NONLOCAL CONVERGENCE CHECK ---
 
@@ -2364,7 +2355,6 @@ subroutine crystallite_integrateStateEuler()
    debug_levelExtensive, &
    debug_levelSelective
  use numerics, only: &
-   numerics_integrationMode, &
    numerics_timeSyncing
  use FEsolving, only: &
    FEsolving_execElem, &
@@ -2411,7 +2401,6 @@ eIter = FEsolving_execElem(1:2)
 
  singleRun = (eIter(1) == eIter(2) .and. iIter(1,eIter(1)) == iIter(2,eIter(2)))
 
- if (numerics_integrationMode == 1_pInt) then
  !$OMP PARALLEL
 
    ! --- DOT STATE  ---
@@ -2516,7 +2505,6 @@ eIter = FEsolving_execElem(1:2)
    enddo; enddo; enddo
    !$OMP ENDDO
   !$OMP END PARALLEL
- endif
 
 
  !$OMP PARALLEL
@@ -2581,7 +2569,6 @@ subroutine crystallite_integrateStateFPI()
    debug_levelSelective
  use numerics, only: &
    nState, &
-   numerics_integrationMode, &
    rTol_crystalliteState
  use FEsolving, only: &
    FEsolving_execElem, &
@@ -3156,7 +3143,6 @@ logical function crystallite_integrateStress(&
                          aTol_crystalliteStress, &
                          rTol_crystalliteStress, &
                          iJacoLpresiduum, &
-                         numerics_integrationMode, &
                          subStepSizeLp, &
                          subStepSizeLi
  use debug, only:        debug_level, &

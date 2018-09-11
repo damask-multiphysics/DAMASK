@@ -3,8 +3,8 @@ stages:
   - prepareAll
   - preprocessing
   - postprocessing
-  - compileSpectralIntel
-  - compileSpectralGNU
+  - compilePETScIntel
+  - compilePETScGNU
   - prepareSpectral
   - spectral
   - compileMarc2017
@@ -29,6 +29,11 @@ before_script:
     done
   - source $DAMASKROOT/env/DAMASK.sh
   - cd $DAMASKROOT/PRIVATE/testing
+  - echo Job start:" $(date)"
+
+###################################################################################################
+after_script:
+  - echo Job end:" $(date)"
 
 ###################################################################################################
 variables:
@@ -47,6 +52,7 @@ variables:
   # ===============================================================================================
   # ++++++++++++ Compiler ++++++++++++++++++++++++++++++++++++++++++++++
   IntelCompiler16_0:               "Compiler/Intel/16.0 Libraries/IMKL/2016"
+  IntelCompiler16_4:               "Compiler/Intel/16.4 Libraries/IMKL/2016-4"
   IntelCompiler17_0:               "Compiler/Intel/17.0 Libraries/IMKL/2017"
   IntelCompiler18_1:               "Compiler/Intel/18.1 Libraries/IMKL/2018"
   GNUCompiler7_3:                  "Compiler/GNU/7.3"
@@ -186,8 +192,8 @@ Post_ParaviewRelated:
     - release
 
 ###################################################################################################
-Compile_Intel:
-  stage: compileSpectralIntel
+Compile_Spectral_Intel:
+  stage: compilePETScIntel
   script:
     - module load $IntelCompiler $MPICH_Intel $PETSc_MPICH_Intel
     - SpectralAll_compile/test.py
@@ -195,12 +201,30 @@ Compile_Intel:
     - master
     - release
 
+Compile_FEM_Intel:
+  stage: compilePETScIntel
+  script:
+    - module load $IntelCompiler $MPICH_Intel $PETSc_MPICH_Intel
+    - FEM_compile/test.py
+  except:
+    - master
+    - release
+
 ###################################################################################################
-Compile_GNU:
-  stage: compileSpectralGNU
+Compile_Spectral_GNU:
+  stage: compilePETScGNU
   script:
     - module load $GNUCompiler $MPICH_GNU $PETSc_MPICH_GNU
     - SpectralAll_compile/test.py
+  except:
+    - master
+    - release
+
+Compile_FEM_GNU:
+  stage: compilePETScGNU
+  script:
+    - module load $GNUCompiler $MPICH_GNU $PETSc_MPICH_GNU
+    - FEM_compile/test.py
   except:
     - master
     - release
@@ -329,7 +353,7 @@ TextureComponents:
 Marc_compileIfort2017:
   stage: compileMarc2017
   script:
-    - module load $IntelCompiler17_0 $MSC2017
+    - module load $IntelCompiler16_4 $MSC2017
     - Marc_compileIfort/test.py -m 2017
   except:
     - master
@@ -339,7 +363,7 @@ Marc_compileIfort2017:
 Hex_elastic:
   stage: marc
   script:
-    - module load $IntelCompiler17_0 $MSC
+    - module load $IntelCompiler16_4 $MSC
     - Hex_elastic/test.py
   except:
     - master
@@ -348,7 +372,7 @@ Hex_elastic:
 CubicFCC_elastic:
   stage: marc
   script:
-    - module load $IntelCompiler17_0 $MSC
+    - module load $IntelCompiler16_4 $MSC
     - CubicFCC_elastic/test.py
   except:
     - master
@@ -357,7 +381,7 @@ CubicFCC_elastic:
 CubicBCC_elastic:
   stage: marc
   script:
-    - module load $IntelCompiler17_0 $MSC
+    - module load $IntelCompiler16_4 $MSC
     - CubicBCC_elastic/test.py
   except:
     - master
@@ -366,7 +390,7 @@ CubicBCC_elastic:
 J2_plasticBehavior:
   stage: marc
   script:
-    - module load $IntelCompiler17_0 $MSC
+    - module load $IntelCompiler16_4 $MSC
     - J2_plasticBehavior/test.py
   except:
     - master
@@ -376,7 +400,7 @@ J2_plasticBehavior:
 Abaqus_compile2017:
   stage: compileAbaqus2017
   script:
-    - module load $IntelCompiler16_0 $Abaqus2017
+    - module load $IntelCompiler16_4 $Abaqus2017
     - Abaqus_compileIfort/test.py -a 2017
   except:
     - master
@@ -392,7 +416,7 @@ SpectralExample:
 AbaqusExample:
   stage: example
   script:
-    - module load $IntelCompiler16_0 $Abaqus
+    - module load $IntelCompiler16_4 $Abaqus
     - Abaqus_example/test.py
   only:
     - development
@@ -418,6 +442,9 @@ createTar:
   script:
     - cd $(mktemp -d)
     - $DAMASKROOT/PRIVATE/releasing/deployMe.sh $CI_COMMIT_SHA
+  except:
+    - master
+    - release
 
 ###################################################################################################
 AbaqusStd:

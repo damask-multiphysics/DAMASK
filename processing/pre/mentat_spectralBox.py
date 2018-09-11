@@ -77,7 +77,14 @@ def mesh(r,d):
   "%f %f %f"%(-d[0],d[1],d[2]),
   "%f %f %f"%(-d[0],d[1],0.0),
   "*add_elements",
-  range(1,9),
+  "1",
+  "2",
+  "3",
+  "4",
+  "5",
+  "6",
+  "7",
+  "8",
   "*sub_divisions",
   "%i %i %i"%(r[2],r[1],r[0]),
   "*subdivide_elements",
@@ -201,7 +208,7 @@ if options.port:
   except:
     parser.error('no valid Mentat release found.')
 
-# --- loop over input files -------------------------------------------------------------------------
+# --- loop over input files ------------------------------------------------------------------------
 
 if filenames == []: filenames = [None]
 
@@ -236,7 +243,7 @@ for name in filenames:
 
 # --- read data ------------------------------------------------------------------------------------
 
-  microstructure = table.microstructure_read(info['grid']).reshape(info['grid'].prod(),order='F')          # read microstructure
+  microstructure = table.microstructure_read(info['grid']).reshape(info['grid'].prod(),order='F')   # read microstructure
 
   cmds = [\
     init(),

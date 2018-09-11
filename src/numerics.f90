@@ -16,7 +16,6 @@ module numerics
  integer(pInt), protected, public :: &
    iJacoStiffness             =  1_pInt, &                                                          !< frequency of stiffness update
    iJacoLpresiduum            =  1_pInt, &                                                          !< frequency of Jacobian update of residuum in Lp
-   nHomog                     = 20_pInt, &                                                          !< homogenization loop limit (only for debugging info, loop limit is determined by "subStepMinHomog")
    nMPstate                   = 10_pInt, &                                                          !< materialpoint state loop limit
    nCryst                     = 20_pInt, &                                                          !< crystallite loop limit (only for debugging info, loop limit is determined by "subStepMinCryst")
    nState                     = 10_pInt, &                                                          !< state loop limit
@@ -27,9 +26,8 @@ module numerics
    worldsize                  =  0_pInt                                                             !< MPI worldsize (/=0 for MPI simulations only)
  integer(4), protected, public :: &
    DAMASK_NumThreadsInt       =  0                                                                  !< value stored in environment variable DAMASK_NUM_THREADS, set to zero if no OpenMP directive
- integer(pInt), public :: &
-   numerics_integrationMode   =  0_pInt                                                             !< integrationMode 1 = central solution; integrationMode 2 = perturbation, Default 0: undefined, is not read from file
- integer(pInt), dimension(2) , protected, public :: &
+ !< ToDo: numerics_integrator is an array for historical reasons, only element 1 is used!
+ integer(pInt), dimension(2), protected, public :: &
    numerics_integrator        =  1_pInt                                                             !< method used for state integration (central & perturbed state), Default 1: fix-point iteration for both states
  real(pReal), protected, public :: &
    relevantStrain             =  1.0e-7_pReal, &                                                    !< strain increment considered significant (used by crystallite to determine whether strain inc is considered significant)
@@ -95,7 +93,7 @@ module numerics
 ! spectral parameters:
 #ifdef Spectral
  real(pReal), protected, public :: &
-   err_div_tolAbs             =  1.0e-10_pReal, &                                                   !< absolute tolerance for equilibrium
+   err_div_tolAbs             =  1.0e-4_pReal, &                                                    !< absolute tolerance for equilibrium
    err_div_tolRel             =  5.0e-4_pReal, &                                                    !< relative tolerance for equilibrium
    err_curl_tolAbs            =  1.0e-10_pReal, &                                                   !< absolute tolerance for compatibility
    err_curl_tolRel            =  5.0e-4_pReal, &                                                    !< relative tolerance for compatibility
@@ -284,8 +282,6 @@ subroutine numerics_init
          pert_Fg = IO_floatValue(line,chunkPos,2_pInt)
        case ('pert_method')
          pert_method = IO_intValue(line,chunkPos,2_pInt)
-       case ('nhomog')
-         nHomog = IO_intValue(line,chunkPos,2_pInt)
        case ('nmpstate')
          nMPstate = IO_intValue(line,chunkPos,2_pInt)
        case ('ncryst')
@@ -317,9 +313,7 @@ subroutine numerics_init
        case ('atol_crystallitestress')
          aTol_crystalliteStress = IO_floatValue(line,chunkPos,2_pInt)
        case ('integrator')
-         numerics_integrator(1) = IO_intValue(line,chunkPos,2_pInt)
-       case ('integratorstiffness')
-         numerics_integrator(2) = IO_intValue(line,chunkPos,2_pInt)
+         numerics_integrator = IO_intValue(line,chunkPos,2_pInt)
        case ('usepingpong')
          usepingpong = IO_intValue(line,chunkPos,2_pInt) > 0_pInt
        case ('timesyncing')
@@ -536,7 +530,6 @@ subroutine numerics_init
  write(6,'(a24,1x,L8)')     ' use ping pong scheme:   ',usepingpong
  write(6,'(a24,1x,es8.1,/)')' unitlength:             ',numerics_unitlength
 
- write(6,'(a24,1x,i8)')     ' nHomog:                 ',nHomog
  write(6,'(a24,1x,es8.1)')  ' subStepMinHomog:        ',subStepMinHomog
  write(6,'(a24,1x,es8.1)')  ' subStepSizeHomog:       ',subStepSizeHomog
  write(6,'(a24,1x,es8.1)')  ' stepIncreaseHomog:      ',stepIncreaseHomog
@@ -646,7 +639,6 @@ subroutine numerics_init
  if (pert_Fg <= 0.0_pReal)                 call IO_error(301_pInt,ext_msg='pert_Fg')
  if (pert_method <= 0_pInt .or. pert_method >= 4_pInt) &
                                            call IO_error(301_pInt,ext_msg='pert_method')
- if (nHomog < 1_pInt)                      call IO_error(301_pInt,ext_msg='nHomog')
  if (nMPstate < 1_pInt)                    call IO_error(301_pInt,ext_msg='nMPstate')
  if (nCryst < 1_pInt)                      call IO_error(301_pInt,ext_msg='nCryst')
  if (nState < 1_pInt)                      call IO_error(301_pInt,ext_msg='nState')
