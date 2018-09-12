@@ -1460,7 +1460,63 @@ subroutine plastic_dislotwin_dotState(Tstar_v,Temperature,ipc,ip,el)
  end associate
 end subroutine plastic_dislotwin_dotState
 
- 
+
+!--------------------------------------------------------------------------------------------------
+!> @brief calculates shear rates on slip systems
+!--------------------------------------------------------------------------------------------------
+subroutine kinetics_slip(prm,stt,mse,of,S,temperature,gdot_slip,dgdot_dtau_slip)
+ use prec, only: &
+  tol_math_check, &
+  dNeq0
+ use math, only: &
+   math_mul33xx33
+
+ implicit none
+ type(tParameters), intent(in) :: &
+   prm
+ type(tDislotwinState), intent(in) :: &
+   stt
+ integer(pInt),     intent(in) :: &
+   of
+ type(tDislotwinMicrostructure) :: &
+   mse
+ real, dimension(prm%totalNslip), intent(out) :: &
+   gdot_slip
+ real, dimension(prm%totalNslip), optional, intent(out) :: &
+   dgdot_dtau_slip
+ real(pReal), dimension(3,3), intent(in) :: &
+   S
+ real(pReal), intent(in) :: &
+   temperature
+
+ real, dimension(prm%totalNslip) :: &
+   tau_slip, &
+   stressRatio, &
+   StressRatio_p, &
+   BoltzmannRatio
+ integer(pInt) :: i 
+
+ do i = 1_pInt, prm%totalNslip
+   tau_slip = math_mul33xx33(S,prm%Schmid_slip(1:3,1:3,i))
+ enddo
+
+ where((abs(tau_slip)-mse%threshold_stress_slip(:,of)) > tol_math_check)
+   stressRatio = ((abs(tau_slip)- mse%threshold_stress_slip(:,of))/&
+                   (prm%SolidSolutionStrength+prm%tau_peierls(:)))
+   StressRatio_p       = stressRatio** prm%p
+   BoltzmannRatio      = prm%Qedge/(kB*Temperature)
+   gdot_slip = stt%rhoEdge(:,of)*prm%burgers_slip* prm%v0 &
+                  * sign(exp(-BoltzmannRatio*(1.0_pReal-StressRatio_p)** prm%q), tau_slip)
+   dgdot_dtau_slip = abs(gdot_slip)*BoltzmannRatio*prm%p * prm%q &
+                   / (prm%SolidSolutionStrength+prm%tau_peierls) &
+                   * stressRatio**(prm%p-1.0_pReal)*(1.0_pReal-StressRatio_p)**(prm%q-1.0_pReal)
+ else where
+   gdot_slip = 0.0_pReal
+   dgdot_dtau_slip = 0.0_pReal
+ end where
+
+
+end subroutine
  
 !--------------------------------------------------------------------------------------------------
 !> @brief return array of constitutive results
