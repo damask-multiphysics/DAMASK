@@ -2090,6 +2090,26 @@ pure function lattice_qDisorientation(Q1, Q2, struct)
 
 end function lattice_qDisorientation
 
+!function lattice_C66_twin
+!
+! select case(structure)
+!   case('fcc')
+!     coordinateSystem = buildCoordinateSystem(Ntwin,int(LATTICE_FCC_SYSTEMTWIN,pInt),structure)
+!   case('bcc')
+!     coordinateSystem = buildCoordinateSystem(Ntwin,int(LATTICE_BCC_SYSTEMTWIN,pInt),structure)
+!   case('hex','hexagonal')                                                                          !ToDo: "No alias policy": long or short?
+!     coordinateSystem = buildCoordinateSystem(Ntwin,int(LATTICE_HEX_SYSTEMTWIN,pInt),'hex',cOverA)
+!   case default
+!     call IO_error(130_pInt,ext_msg=trim(structure)//' (lattice_SchmidMatrix_twin)')
+! end select
+!
+! do i = 1, sum(Ntwin)
+!   R = math_axisAngleToR(coordinateSystem(1:3,2,i), 180.0_pReal * INRAD)                            ! ToDo: Why always 180 deg?
+!   math_rotate_forward3333(C,R)
+!   C_twin66(1:6,1:6,i) = math_Mandel3333to66(C_twin)
+! enddo
+ 
+end function
 
 !function lattice_nonSchmidMatrix
 !  coordinateSystem = buildCoordinateSystem(Nslip,int(LATTICE_BCC_SYSTEMSLIP,pInt),structure)
@@ -2238,7 +2258,7 @@ end function lattice_interactionTransTrans2
 !--------------------------------------------------------------------------------------------------
 !> @brief Calculates Schmid matrix for active slip systems
 !--------------------------------------------------------------------------------------------------
-function lattice_SchmidMatrix_slip(Nslip,structure,cOverA)
+function lattice_SchmidMatrix_slip(Nslip,structure,cOverA) result(SchmidMatrix)
  use IO, only: &
    IO_error
  use math, only: &
@@ -2247,7 +2267,7 @@ function lattice_SchmidMatrix_slip(Nslip,structure,cOverA)
  implicit none
  integer(pInt),    dimension(:),            intent(in) :: Nslip                              !< number of active slip systems per family
  character(len=*),                          intent(in) :: structure                          !< lattice structure
- real(pReal),     dimension(3,3,sum(Nslip))            :: lattice_SchmidMatrix_slip
+ real(pReal),     dimension(3,3,sum(Nslip))            :: SchmidMatrix
  real(pReal),                               intent(in), optional :: &
    cOverA
 
@@ -2268,8 +2288,9 @@ function lattice_SchmidMatrix_slip(Nslip,structure,cOverA)
  end select
 
  do i = 1, sum(Nslip)
-   lattice_SchmidMatrix_slip(1:3,1:3,i) = &
-                             math_tensorproduct33(coordinateSystem(1:3,1,i),coordinateSystem(1:3,2,i))
+   SchmidMatrix(1:3,1:3,i) = math_tensorproduct33(coordinateSystem(1:3,1,i),coordinateSystem(1:3,2,i))
+   if (abs(math_trace33(SchmidMatrix(1:3,1:3,i))) > tol_math_check) &
+     call IO_error(0_pInt,i,ext_msg = 'dilatational Schmid matrix for slip')
  enddo
 
 end function lattice_SchmidMatrix_slip
