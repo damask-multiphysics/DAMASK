@@ -1130,6 +1130,8 @@ module lattice
                                 !maxval(lattice_bct_interactionTwinTwin)))
                                 )                                                                   !< max # of interaction types (in hardening matrix part)
 #endif
+ real(pReal),                          dimension(:,:,:),     allocatable, private :: &
+  temp66
  real(pReal),                          dimension(:,:,:),     allocatable, public, protected :: &
    lattice_C66,   lattice_trans_C66
  real(pReal),                              dimension(:,:,:,:,:),   allocatable, public, protected :: &
@@ -1370,15 +1372,15 @@ subroutine lattice_init
    lattice_C66(5,5,p) = config_phase(p)%getFloat('c55',defaultVal=0.0_pReal)
    lattice_C66(6,6,p) = config_phase(p)%getFloat('c66',defaultVal=0.0_pReal)
 
-   lattice_trans_C66(1,1,p) = config_phase(p)%getFloat('c11_trans',defaultVal=0.0_pReal)
-   lattice_trans_C66(1,2,p) = config_phase(p)%getFloat('c12_trans',defaultVal=0.0_pReal)
-   lattice_trans_C66(1,3,p) = config_phase(p)%getFloat('c13_trans',defaultVal=0.0_pReal)
-   lattice_trans_C66(2,2,p) = config_phase(p)%getFloat('c22_trans',defaultVal=0.0_pReal)
-   lattice_trans_C66(2,3,p) = config_phase(p)%getFloat('c23_trans',defaultVal=0.0_pReal)
-   lattice_trans_C66(3,3,p) = config_phase(p)%getFloat('c33_trans',defaultVal=0.0_pReal)
-   lattice_trans_C66(4,4,p) = config_phase(p)%getFloat('c44_trans',defaultVal=0.0_pReal)
-   lattice_trans_C66(5,5,p) = config_phase(p)%getFloat('c55_trans',defaultVal=0.0_pReal)
-   lattice_trans_C66(6,6,p) = config_phase(p)%getFloat('c66_trans',defaultVal=0.0_pReal)
+   temp66(1,1,p) = config_phase(p)%getFloat('c11_trans',defaultVal=0.0_pReal)
+   temp66(1,2,p) = config_phase(p)%getFloat('c12_trans',defaultVal=0.0_pReal)
+   temp66(1,3,p) = config_phase(p)%getFloat('c13_trans',defaultVal=0.0_pReal)
+   temp66(2,2,p) = config_phase(p)%getFloat('c22_trans',defaultVal=0.0_pReal)
+   temp66(2,3,p) = config_phase(p)%getFloat('c23_trans',defaultVal=0.0_pReal)
+   temp66(3,3,p) = config_phase(p)%getFloat('c33_trans',defaultVal=0.0_pReal)
+   temp66(4,4,p) = config_phase(p)%getFloat('c44_trans',defaultVal=0.0_pReal)
+   temp66(5,5,p) = config_phase(p)%getFloat('c55_trans',defaultVal=0.0_pReal)
+   temp66(6,6,p) = config_phase(p)%getFloat('c66_trans',defaultVal=0.0_pReal)
 
    CoverA(p)       = config_phase(p)%getFloat('c/a',defaultVal=0.0_pReal)
    CoverA_trans(p) = config_phase(p)%getFloat('c/a_trans',defaultVal=0.0_pReal)
@@ -1522,9 +1524,9 @@ subroutine lattice_initializeStructure(myPhase,CoverA,CoverA_trans,a_fcc,a_bcc)
    case (LATTICE_fcc_ID)
      select case(trans_lattice_structure(myPhase))
        case (LATTICE_bcc_ID)
-         lattice_trans_C66(1:6,1:6,myPhase) = lattice_C66(1:6,1:6,myPhase)
+         temp66(1:6,1:6,myPhase) = lattice_C66(1:6,1:6,myPhase)
          lattice_trans_C3333(1:3,1:3,1:3,1:3,myPhase) = lattice_C3333(1:3,1:3,1:3,1:3,myPhase)
-         lattice_trans_C66(1:6,1:6,myPhase) = math_Mandel3333to66(lattice_trans_C3333(1:3,1:3,1:3,1:3,myPhase))
+         temp66(1:6,1:6,myPhase) = math_Mandel3333to66(lattice_trans_C3333(1:3,1:3,1:3,1:3,myPhase))
          do i = 1_pInt, 6_pInt
            if (abs(lattice_trans_C66(i,i,myPhase))<tol_math_check) &
            call IO_error(135_pInt,el=i,ip=myPhase,ext_msg='matrix diagonal "el"ement of phase "ip" in fcc-->bcc transformation')
@@ -1539,18 +1541,18 @@ subroutine lattice_initializeStructure(myPhase,CoverA,CoverA_trans,a_fcc,a_bcc)
                                                              /(3.0_pReal*sqrt(2.0_pReal))
          A = c14bar**(2.0_pReal)/c44bar
          B = c14bar**(2.0_pReal)/(0.5_pReal*(c11bar - c12bar))
-         lattice_trans_C66(1,1,myPhase) = c11bar - A
-         lattice_trans_C66(1,2,myPhase) = c12bar + A
-         lattice_trans_C66(1,3,myPhase) = c13bar
-         lattice_trans_C66(3,3,myPhase) = c33bar
-         lattice_trans_C66(4,4,myPhase) = c44bar - B
+         temp66(1,1,myPhase) = c11bar - A
+         temp66(1,2,myPhase) = c12bar + A
+         temp66(1,3,myPhase) = c13bar
+         temp66(3,3,myPhase) = c33bar
+         temp66(4,4,myPhase) = c44bar - B
 
-         lattice_trans_C66(1:6,1:6,myPhase) = lattice_symmetrizeC66(trans_lattice_structure(myPhase),&
+         temp66(1:6,1:6,myPhase) = lattice_symmetrizeC66(trans_lattice_structure(myPhase),&
                                                                     lattice_trans_C66(1:6,1:6,myPhase))
-         lattice_trans_C3333(1:3,1:3,1:3,1:3,myPhase) = math_Voigt66to3333(lattice_trans_C66(1:6,1:6,myPhase))
-         lattice_trans_C66(1:6,1:6,myPhase) = math_Mandel3333to66(lattice_trans_C3333(1:3,1:3,1:3,1:3,myPhase))
+         lattice_trans_C3333(1:3,1:3,1:3,1:3,myPhase) = math_Voigt66to3333(temp66(1:6,1:6,myPhase))
+         temp66(1:6,1:6,myPhase) = math_Mandel3333to66(lattice_trans_C3333(1:3,1:3,1:3,1:3,myPhase))
          do i = 1_pInt, 6_pInt
-           if (abs(lattice_trans_C66(i,i,myPhase))<tol_math_check) &
+           if (abs(temp66(i,i,myPhase))<tol_math_check) &
            call IO_error(135_pInt,el=i,ip=myPhase,ext_msg='matrix diagonal "el"ement of phase "ip" in fcc-->hex transformation')
          enddo
      end select
@@ -2113,6 +2115,86 @@ function lattice_C66_twin(Ntwin,C66,structure,CoverA)
  
 end function
 
+
+!function lattice_C66_trans(Ntrans,C66_parent,C66_targetstructure_parent,cOverA_parent,structure_target,cOverA_target)
+! use IO, only: &
+!   IO_error
+! use math, only: &
+!   INRAD, &
+!   math_axisAngleToR, &
+!   math_Mandel3333to66, &
+!   math_Mandel66to3333, &
+!   math_rotate_forward3333
+!
+! implicit none
+! integer(pInt),    dimension(:),            intent(in) :: Ntrans                                     !< number of active twin systems per family
+! character(len=*),                          intent(in) :: &
+!   structure_target, &                                !< lattice structure
+!   structure_parent                                !< lattice structure
+! real(pReal),      dimension(6,6),          intent(in) :: C66_target
+! real(pReal),                               intent(in) :: cOverA_parent, cOverA_target
+! real(pReal),     dimension(6,6,sum(Ntarget))            :: lattice_C66_trans
+!
+! real(pReal),     dimension(3,3,sum(Ntarget))            :: coordinateSystem
+!
+! real(pReal),     dimension(3,3)                       :: R
+! integer(pInt) :: i
+!
+! if (trim(structure) == 'fcc' .and. trim(targetStructure) == 'hex') then
+!         c11bar = (lattice_C66(1,1,myPhase) + lattice_C66(1,2,myPhase) + 2.0_pReal*lattice_C66(4,4,myPhase))/2.0_pReal
+!         c12bar = (lattice_C66(1,1,myPhase) + 5.0_pReal*lattice_C66(1,2,myPhase) - 2.0_pReal*lattice_C66(4,4,myPhase))/6.0_pReal
+!         c33bar = (lattice_C66(1,1,myPhase) + 2.0_pReal*lattice_C66(1,2,myPhase) + 4.0_pReal*lattice_C66(4,4,myPhase))/3.0_pReal
+!         c13bar = (lattice_C66(1,1,myPhase) + 2.0_pReal*lattice_C66(1,2,myPhase) - 2.0_pReal*lattice_C66(4,4,myPhase))/3.0_pReal
+!         c44bar = (lattice_C66(1,1,myPhase) - lattice_C66(1,2,myPhase) + lattice_C66(4,4,myPhase))/3.0_pReal
+!         c14bar = (lattice_C66(1,1,myPhase) - lattice_C66(1,2,myPhase) - 2.0_pReal*lattice_C66(4,4,myPhase)) &
+!                                                             /(3.0_pReal*sqrt(2.0_pReal))
+!         A = c14bar**(2.0_pReal)/c44bar
+!         B = c14bar**(2.0_pReal)/(0.5_pReal*(c11bar - c12bar))
+!         temp66(1,1,myPhase) = c11bar - A
+!         temp66(1,2,myPhase) = c12bar + A
+!         temp66(1,3,myPhase) = c13bar
+!         temp66(3,3,myPhase) = c33bar
+!         temp66(4,4,myPhase) = c44bar - B
+!
+!         temp66(1:6,1:6,myPhase) = lattice_symmetrizeC66(trans_lattice_structure(myPhase),&
+!                                                                    lattice_trans_C66(1:6,1:6,myPhase))
+!         lattice_trans_C3333(1:3,1:3,1:3,1:3,myPhase) = math_Voigt66to3333(temp66(1:6,1:6,myPhase))
+!         temp66(1:6,1:6,myPhase) = math_Mandel3333to66(lattice_trans_C3333(1:3,1:3,1:3,1:3,myPhase))
+!         do i = 1_pInt, 6_pInt
+!           if (abs(temp66(i,i,myPhase))<tol_math_check) &
+!           call IO_error(135_pInt,el=i,ip=myPhase,ext_msg='matrix diagonal "el"ement of phase "ip" in fcc-->hex transformation')
+!         enddo
+! 
+!! Elasticity matrices for transformed phase
+! select case(lattice_structure(myPhase))
+!   case (LATTICE_fcc_ID)
+!     select case(trans_lattice_structure(myPhase))
+!       case (LATTICE_bcc_ID)
+!         temp66(1:6,1:6,myPhase) = lattice_C66(1:6,1:6,myPhase)
+!         lattice_trans_C3333(1:3,1:3,1:3,1:3,myPhase) = lattice_C3333(1:3,1:3,1:3,1:3,myPhase)
+!         temp66(1:6,1:6,myPhase) = math_Mandel3333to66(lattice_trans_C3333(1:3,1:3,1:3,1:3,myPhase))
+!         do i = 1_pInt, 6_pInt
+!           if (abs(lattice_trans_C66(i,i,myPhase))<tol_math_check) &
+!           call IO_error(135_pInt,el=i,ip=myPhase,ext_msg='matrix diagonal "el"ement of phase "ip" in fcc-->bcc transformation')
+!         enddo
+!       case (LATTICE_hex_ID)
+!select case(structure)
+!   case('fcc')
+!     coordinateSystem = buildCoordinateSystem(Ntwin,int(LATTICE_FCC_SYSTEMTWIN,pInt),structure)
+!   case('bcc')
+!     coordinateSystem = buildCoordinateSystem(Ntwin,int(LATTICE_BCC_SYSTEMTWIN,pInt),structure)
+!   case('hex','hexagonal')                                                                          !ToDo: "No alias policy": long or short?
+!     coordinateSystem = buildCoordinateSystem(Ntwin,int(LATTICE_HEX_SYSTEMTWIN,pInt),'hex',cOverA)
+!   case default
+!     call IO_error(130_pInt,ext_msg=trim(structure)//' (lattice_C66_twin)')
+! end select
+! do i = 1, sum(Ntwin)
+!   R = math_axisAngleToR(coordinateSystem(1:3,2,i), 180.0_pReal * INRAD)                            ! ToDo: Why always 180 deg?
+!   lattice_C66_twin(1:6,1:6,i) = math_Mandel3333to66(math_rotate_forward3333(math_Mandel66to3333(C66),R))
+! enddo
+! 
+!end function
+
 !function lattice_nonSchmidMatrix
 !  coordinateSystem = buildCoordinateSystem(Nslip,int(LATTICE_BCC_SYSTEMSLIP,pInt),structure)
 !
@@ -2374,6 +2456,7 @@ end function buildInteraction
 
 !--------------------------------------------------------------------------------------------------
 !> @brief build a local coordinate system in a slip, twin, trans, cleavage system
+!> @details: Order: Direction, plane (normal), and common perpendicular
 !--------------------------------------------------------------------------------------------------
 pure function buildCoordinateSystem(active,system,structure,cOverA)
  use math, only: &
