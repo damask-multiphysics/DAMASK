@@ -201,6 +201,7 @@ subroutine plastic_dislotwin_init(fileUnit)
    debug_constitutive,&
    debug_levelBasic
  use math, only: &
+   math_rotate_forward3333, &
    math_Mandel3333to66, &
    math_Voigt66to3333, &
    math_mul3x3, &
@@ -240,9 +241,8 @@ subroutine plastic_dislotwin_init(fileUnit)
  integer(pInt) :: NofMyPhase   
  integer(kind(undefined_ID)) outputID
  
-  real(pReal),   dimension(:,:,:,:,:), allocatable :: &
-   Ctwin3333, &                                                                 !< twin elasticity matrix
-   Ctrans3333                                                                 !< trans elasticity matrix
+  real(pReal),   dimension(3,3,3,3) :: &
+   temp3333
  
  real(pReal),  allocatable, dimension(:) :: &
      invLambdaSlip0,&
@@ -673,8 +673,6 @@ subroutine plastic_dislotwin_init(fileUnit)
    allocate(temp1(prm%totalNtwin,prm%totalNslip), source =0.0_pReal)
    allocate(temp2(prm%totalNtwin,prm%totalNtwin), source =0.0_pReal)     
    allocate(prm%C66_twin(6,6,prm%totalNtwin),       source=0.0_pReal)
-   if (allocated(Ctwin3333)) deallocate(Ctwin3333)
-   allocate(Ctwin3333(3,3,3,3,prm%totalNtwin),  source=0.0_pReal)
    allocate(prm%Schmid_twin(3,3,prm%totalNtwin),source  = 0.0_pReal)
    if (lattice_structure(p) == LATTICE_fcc_ID) &
      allocate(prm%fcc_twinNucleationSlipPair(2,prm%totalNtwin),source = 0_pInt)
@@ -689,20 +687,21 @@ subroutine plastic_dislotwin_init(fileUnit)
        if (lattice_structure(p) == LATTICE_fcc_ID) prm%fcc_twinNucleationSlipPair(1:2,i) = &
                       lattice_fcc_twinNucleationSlipPair(1:2,sum(lattice_Ntwinsystem(1:f-1,p))+j)
      !* Rotate twin elasticity matrices
+       temp3333 = 0.0_pReal
        index_otherFamily = sum(lattice_NtwinSystem(1:f-1_pInt,p))                             ! index in full lattice twin list
        do l = 1_pInt,3_pInt; do m = 1_pInt,3_pInt; do n = 1_pInt,3_pInt; do o = 1_pInt,3_pInt
          do p1 = 1_pInt,3_pInt; do q = 1_pInt,3_pInt; do r = 1_pInt,3_pInt; do s = 1_pInt,3_pInt
-           Ctwin3333(l,m,n,o,index_myFamily+j) = &
-           Ctwin3333(l,m,n,o,index_myFamily+j) + &
-             lattice_C3333(p1,q,r,s,p) * &
+           temp3333(l,m,n,o) = &
+           temp3333(l,m,n,o) + &
              lattice_Qtwin(l,p1,index_otherFamily+j,p) * &
              lattice_Qtwin(m,q,index_otherFamily+j,p) * &
              lattice_Qtwin(n,r,index_otherFamily+j,p) * &
-             lattice_Qtwin(o,s,index_otherFamily+j,p)
+             lattice_Qtwin(o,s,index_otherFamily+j,p) * lattice_C3333(p1,q,r,s,p)
          enddo; enddo; enddo; enddo
        enddo; enddo; enddo; enddo
-       prm%C66_twin(1:6,1:6,index_myFamily+j) = &
-         math_Mandel3333to66(Ctwin3333(1:3,1:3,1:3,1:3,index_myFamily+j))
+       prm%C66_twin(1:6,1:6,index_myFamily+j) = math_Mandel3333to66(temp3333)
+       if (any(dNeq0(temp3333-math_rotate_forward3333(lattice_trans_C3333(1:3,1:3,1:3,1:3,p),&
+                          lattice_Qtwin(1:3,1:3,index_otherFamily+j,p))))) print*, 'mist'
  
     !* Interaction matrices
        do o = 1_pInt,size(prm%Nslip,1)
@@ -733,31 +732,29 @@ subroutine plastic_dislotwin_init(fileUnit)
  
    allocate(temp1(prm%totalNtrans,prm%totalNslip),  source =0.0_pReal)
    allocate(temp2(prm%totalNtrans,prm%totalNtrans), source =0.0_pReal)        
-   allocate(prm%C66_trans(6,6,prm%totalNtrans)       ,source=0.0_pReal)
-   if (allocated(Ctrans3333)) deallocate(Ctrans3333)
-   allocate(Ctrans3333(3,3,3,3,prm%totalNtrans),  source=0.0_pReal)
+   allocate(prm%C66_trans(6,6,prm%totalNtrans)     ,source=0.0_pReal)
    allocate(prm%Schmid_trans(3,3,prm%totalNtrans),source  = 0.0_pReal)
    i = 0_pInt
    transFamiliesLoop: do f = 1_pInt,size(prm%Ntrans,1)
-     index_myFamily = sum(prm%Ntrans(1:f-1_pInt))                                                 ! index in truncated trans system list
+     index_myFamily = sum(prm%Ntrans(1:f-1_pInt))                                                   ! index in truncated trans system list
      transSystemsLoop: do j = 1_pInt,prm%Ntrans(f)
        i = i + 1_pInt
        prm%Schmid_trans(1:3,1:3,i) = lattice_Strans(1:3,1:3,sum(lattice_Ntranssystem(1:f-1,p))+j,p)
        index_otherFamily = sum(lattice_NtransSystem(1:f-1_pInt,p))                                  ! index in full lattice trans list
+       temp3333 = 0.0_pReal
        do l = 1_pInt,3_pInt; do m = 1_pInt,3_pInt; do n = 1_pInt,3_pInt; do o = 1_pInt,3_pInt
          do p1 = 1_pInt,3_pInt; do q = 1_pInt,3_pInt; do r = 1_pInt,3_pInt; do s = 1_pInt,3_pInt
-           Ctrans3333(l,m,n,o,index_myFamily+j) = &
-             Ctrans3333(l,m,n,o,index_myFamily+j) + &
-               lattice_trans_C3333(p1,q,r,s,p) * &
+           temp3333(l,m,n,o) = &
+             temp3333(l,m,n,o) + &
                lattice_Qtrans(l,p1,index_otherFamily+j,p) * &
                lattice_Qtrans(m,q,index_otherFamily+j,p) * &
                lattice_Qtrans(n,r,index_otherFamily+j,p) * &
-               lattice_Qtrans(o,s,index_otherFamily+j,p)
+               lattice_Qtrans(o,s,index_otherFamily+j,p)* lattice_trans_C3333(p1,q,r,s,p)
          enddo; enddo; enddo; enddo
        enddo; enddo; enddo; enddo
-       prm%C66_trans(1:6,1:6,index_myFamily+j) = &
-         math_Mandel3333to66(Ctrans3333(1:3,1:3,1:3,1:3,index_myFamily+j))
-
+       prm%C66_trans(1:6,1:6,index_myFamily+j) = math_Mandel3333to66(temp3333)
+       if (any(dNeq0(temp3333-math_rotate_forward3333(lattice_trans_C3333(1:3,1:3,1:3,1:3,p),&
+                          lattice_Qtrans(1:3,1:3,index_otherFamily+j,p))))) print*, 'mist'
      !* Interaction matrices
        do o = 1_pInt,size(prm%Nslip,1)
          index_otherFamily = sum(prm%Nslip(1:o-1_pInt))
