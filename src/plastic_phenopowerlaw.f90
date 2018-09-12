@@ -614,11 +614,11 @@ subroutine plastic_phenopowerlaw_dotState(Mstar6,ipc,ip,el)
  real(pReal), dimension(3,3) :: &
    S                                                                                                !< Second-Piola Kirchhoff stress
  real(pReal), dimension(param(phase_plasticityInstance(material_phase(ipc,ip,el)))%totalNslip) :: &
-   gdot_slip_abs,left_SlipSlip,right_SlipSlip, &
+   left_SlipSlip,right_SlipSlip, &
    tau_slip_pos,tau_slip_neg, &
    gdot_slip_pos,gdot_slip_neg
  real(pReal), dimension(param(phase_plasticityInstance(material_phase(ipc,ip,el)))%totalNtwin) :: &
-   gdot_twin,tau_twin
+   tau_twin
 
  type(tParameters)         :: prm
  type(tPhenopowerlawState) :: dst,stt
@@ -639,39 +639,38 @@ subroutine plastic_phenopowerlaw_dotState(Mstar6,ipc,ip,el)
 
 !--------------------------------------------------------------------------------------------------
 !  calculate left and right vectors
+ left_SlipSlip  = 1.0_pReal + prm%H_int
  ssat_offset = prm%spr*sqrt(stt%sumF(of))
- slipSystems: do j = 1_pInt, prm%totalNslip
-   left_SlipSlip(j) = 1.0_pReal + prm%H_int(j)                                                      ! modified no system-dependent left part
-   right_SlipSlip(j) = abs(1.0_pReal-stt%s_slip(j,of) / (prm%tausat_slip(j)+ssat_offset)) **prm%a_slip &
-                     * sign(1.0_pReal,1.0_pReal-stt%s_slip(j,of) / (prm%tausat_slip(j)+ssat_offset))
-
- enddo slipSystems
+ right_SlipSlip = abs(1.0_pReal-stt%s_slip(:,of) / (prm%tausat_slip+ssat_offset)) **prm%a_slip &
+                * sign(1.0_pReal,1.0_pReal-stt%s_slip(:,of) / (prm%tausat_slip+ssat_offset))
 
 !--------------------------------------------------------------------------------------------------
 ! shear rates
  call resolvedStress_slip(prm,S,tau_slip_pos,tau_slip_neg)
  call shearRates_slip(prm,stt,of,tau_slip_pos,tau_slip_neg,gdot_slip_pos,gdot_slip_neg)
- gdot_slip_abs = abs(gdot_slip_pos+gdot_slip_neg)
+ dst%accshear_slip(:,of) = abs(gdot_slip_pos+gdot_slip_neg)
+ dst%sumGamma(of) = sum(dst%accshear_slip(:,of))
  call resolvedStress_twin(prm,S,tau_twin)
- call shearRates_twin(prm,stt,of,tau_twin,gdot_twin)
+ call shearRates_twin(prm,stt,of,tau_twin,dst%accshear_twin(:,of))
+ if (stt%sumF(of) < 0.98_pReal) dst%sumF(of) = sum(dst%accshear_twin(:,of)/prm%shear_twin)
 
 !--------------------------------------------------------------------------------------------------
 ! hardening
  hardeningSlip: do j = 1_pInt, prm%totalNslip
-   dst%s_slip(j,of) = c_SlipSlip * left_SlipSlip(j) * &
-     dot_product(prm%interaction_SlipSlip(j,1:prm%totalNslip),right_SlipSlip*gdot_slip_abs) + &     ! dot gamma_slip modulated by right-side slip factor
-     dot_product(prm%interaction_SlipTwin(j,1:prm%totalNtwin),gdot_twin)
+   dst%s_slip(j,of) = &
+     c_SlipSlip * left_SlipSlip(j) &
+     * dot_product(prm%interaction_SlipSlip(j,:),right_SlipSlip*dst%accshear_slip(:,of)) &
+                    + & 
+     dot_product(prm%interaction_SlipTwin(j,:),dst%accshear_twin(:,of))
  enddo hardeningSlip
- dst%sumGamma(of) = dst%sumGamma(of) + sum(gdot_slip_abs)
- dst%accshear_slip(1:prm%totalNslip,of) = gdot_slip_abs
 
  hardeningTwin: do j = 1_pInt, prm%totalNtwin
    dst%s_twin(j,of) = &
-     c_TwinSlip * dot_product(prm%interaction_TwinSlip(j,1:prm%totalNslip),gdot_slip_abs) + &
-     c_TwinTwin * dot_product(prm%interaction_TwinTwin(j,1:prm%totalNtwin),gdot_twin)
-   if (stt%sumF(of) < 0.98_pReal) &                                                                 ! ensure twin volume fractions stays below 1.0
-     dst%sumF(of) = dst%sumF(of) + gdot_twin(j)/prm%shear_twin(j)
-   dst%accshear_twin(j,of) = abs(gdot_twin(j))
+     c_TwinSlip &
+     * dot_product(prm%interaction_TwinSlip(j,:),dst%accshear_slip(:,of)) &
+                    + &
+     c_TwinTwin &
+     * dot_product(prm%interaction_TwinTwin(j,:),dst%accshear_twin(:,of))
  enddo hardeningTwin
 
  end associate
