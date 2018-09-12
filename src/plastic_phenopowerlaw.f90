@@ -220,10 +220,6 @@ subroutine plastic_phenopowerlaw_init
      prm%gdot0_twin  = config_phase(p)%getFloat('gdot0_twin')
      prm%n_twin      = config_phase(p)%getFloat('n_twin')
      prm%spr         = config_phase(p)%getFloat('s_pr')
-     prm%twinB       = config_phase(p)%getFloat('twin_b')
-     prm%twinC       = config_phase(p)%getFloat('twin_c')
-     prm%twinD       = config_phase(p)%getFloat('twin_d')
-     prm%twinE       = config_phase(p)%getFloat('twin_e')
      prm%h0_TwinTwin = config_phase(p)%getFloat('h0_twintwin')
    endif
 
@@ -232,6 +228,11 @@ subroutine plastic_phenopowerlaw_init
      prm%interaction_TwinSlip = spread(config_phase(p)%getFloats('interaction_twinslip'),2,1)
      prm%h0_TwinSlip = config_phase(p)%getFloat('h0_twinslip')
    endif
+
+   prm%twinB       = config_phase(p)%getFloat('twin_b',defaultVal=1.0_pReal)
+   prm%twinC       = config_phase(p)%getFloat('twin_c',defaultVal=0.0_pReal)
+   prm%twinD       = config_phase(p)%getFloat('twin_d',defaultVal=0.0_pReal)
+   prm%twinE       = config_phase(p)%getFloat('twin_e',defaultVal=0.0_pReal)
 
    prm%aTolResistance = config_phase(p)%getFloat('atol_resistance',defaultVal=1.0_pReal)
    prm%aTolShear      = config_phase(p)%getFloat('atol_shear',defaultVal=1.0e-6_pReal)
