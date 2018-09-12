@@ -747,14 +747,14 @@ subroutine resolvedStress_slip(prm,S,tau_slip_pos,tau_slip_neg)
    tau_slip_pos, &
    tau_slip_neg
 
- integer(pInt) :: j, k
+ integer(pInt) :: i,j
 
- do j = 1_pInt, prm%totalNslip
-   tau_slip_pos  = math_mul33xx33(S,prm%Schmid_slip(1:3,1:3,j))
-   tau_slip_neg  = tau_slip_pos
-   do k = 1,size(prm%nonSchmidCoeff)
-     tau_slip_pos = tau_slip_pos + math_mul33xx33(S,prm%nonSchmid_pos(1:3,1:3,k,j))
-     tau_slip_neg = tau_slip_neg + math_mul33xx33(S,prm%nonSchmid_neg(1:3,1:3,k,j))
+ do i = 1_pInt, prm%totalNslip
+   tau_slip_pos(i) = math_mul33xx33(S,prm%Schmid_slip(1:3,1:3,i))
+   tau_slip_neg(i) = tau_slip_pos(i)
+   do j = 1,size(prm%nonSchmidCoeff)
+     tau_slip_pos(i) = tau_slip_pos(i) + math_mul33xx33(S,prm%nonSchmid_pos(1:3,1:3,j,i))
+     tau_slip_neg(i) = tau_slip_neg(i) + math_mul33xx33(S,prm%nonSchmid_neg(1:3,1:3,j,i))
    enddo
  enddo
 
@@ -776,10 +776,10 @@ subroutine resolvedStress_twin(prm,S,tau_twin)
  real, dimension(prm%totalNtwin), intent(out) :: &
    tau_twin
 
- integer(pInt) :: j
+ integer(pInt) :: i
 
- do j = 1_pInt, prm%totalNtwin
-   tau_twin(j)  = math_mul33xx33(S,prm%Schmid_twin(1:3,1:3,j))
+ do i = 1_pInt, prm%totalNtwin
+   tau_twin(i)  = math_mul33xx33(S,prm%Schmid_twin(1:3,1:3,i))
  enddo
 
 end subroutine resolvedStress_twin
