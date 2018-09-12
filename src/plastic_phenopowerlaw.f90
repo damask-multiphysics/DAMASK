@@ -614,8 +614,7 @@ subroutine plastic_phenopowerlaw_dotState(Mstar6,ipc,ip,el)
  real(pReal), dimension(3,3) :: &
    S                                                                                                !< Second-Piola Kirchhoff stress
  real(pReal), dimension(param(phase_plasticityInstance(material_phase(ipc,ip,el)))%totalNslip) :: &
-   gdot_slip_abs,left_SlipSlip,right_SlipSlip
- real(pReal), dimension(param(phase_plasticityInstance(material_phase(ipc,ip,el)))%totalNslip) :: &
+   gdot_slip_abs,left_SlipSlip,right_SlipSlip, &
    tau_slip_pos,tau_slip_neg, &
    gdot_slip_pos,gdot_slip_neg
  real(pReal), dimension(param(phase_plasticityInstance(material_phase(ipc,ip,el)))%totalNtwin) :: &
@@ -652,7 +651,7 @@ subroutine plastic_phenopowerlaw_dotState(Mstar6,ipc,ip,el)
 ! shear rates
  call resolvedStress_slip(prm,S,tau_slip_pos,tau_slip_neg)
  call shearRates_slip(prm,stt,of,tau_slip_pos,tau_slip_neg,gdot_slip_pos,gdot_slip_neg)
- gdot_slip_abs = abs(0.5_pReal*(gdot_slip_pos+gdot_slip_neg))
+ gdot_slip_abs = abs(gdot_slip_pos+gdot_slip_neg)
  call resolvedStress_twin(prm,S,tau_twin)
  call shearRates_twin(prm,stt,of,tau_twin,gdot_twin)
 
