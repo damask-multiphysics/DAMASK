@@ -25,8 +25,12 @@ add_library(IO OBJECT "IO.f90")
 add_dependencies(IO DAMASK_INTERFACE)
 list(APPEND OBJECTFILES $<TARGET_OBJECTS:IO>)
 
+add_library(HDF5_UTILITIES OBJECT "HDF5_utilities.f90")
+add_dependencies(HDF5_UTILITIES IO)
+list(APPEND OBJECTFILES $<TARGET_OBJECTS:HDF5_UTILITIES>)
+
 add_library(NUMERICS OBJECT "numerics.f90")
-add_dependencies(NUMERICS IO)
+add_dependencies(NUMERICS HDF5_UTILITIES)
 list(APPEND OBJECTFILES $<TARGET_OBJECTS:NUMERICS>)
 
 add_library(DEBUG OBJECT "debug.f90")
