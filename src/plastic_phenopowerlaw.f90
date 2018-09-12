@@ -440,6 +440,7 @@ subroutine plastic_phenopowerlaw_init
    startIndex = 1_pInt
    endIndex   = prm%totalNslip
    state   (instance)%s_slip => plasticState(p)%state   (startIndex:endIndex,:)
+   state   (instance)%s_slip = spread(math_expand(prm%tau0_slip, prm%Nslip), 2, NipcMyPhase)
    dotState(instance)%s_slip => plasticState(p)%dotState(startIndex:endIndex,:)
    plasticState(p)%state0(startIndex:endIndex,:) = &
      spread(math_expand(prm%tau0_slip, prm%Nslip), 2, NipcMyPhase)
@@ -448,6 +449,7 @@ subroutine plastic_phenopowerlaw_init
    startIndex = endIndex + 1_pInt
    endIndex   = endIndex + prm%totalNtwin
    state   (instance)%s_twin => plasticState(p)%state   (startIndex:endIndex,:)
+   state   (instance)%s_twin = spread(math_expand(prm%tau0_twin, prm%Ntwin), 2, NipcMyPhase)
    dotState(instance)%s_twin => plasticState(p)%dotState(startIndex:endIndex,:)
    plasticState(p)%state0(startIndex:endIndex,:) = &
      spread(math_expand(prm%tau0_twin, prm%Ntwin), 2, NipcMyPhase)
