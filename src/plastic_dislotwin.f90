@@ -399,9 +399,10 @@ subroutine plastic_dislotwin_init(fileUnit)
      prm%lamellarsizePerTransSystem = config_phase(p)%getFloats('lamellarsize')
      prm%lamellarsizePerTransSystem = math_expand(prm%lamellarsizePerTransSystem,prm%Ntrans)
      prm%s = config_phase(p)%getFloats('s_trans',defaultVal=[0.0_pReal])
+     prm%s = math_expand(prm%s,prm%Ntrans)
    endif
    
-   if (sum(prm%Ntwin) > 0_pInt  .or. sum(prm%Ntrans) > 0_pInt) then
+   if (sum(prm%Ntwin) > 0_pInt  .or. prm%totalNtrans > 0_pInt) then
      prm%SFE_0K = config_phase(p)%getFloat('sfe_0k')
      prm%dSFE_dT = config_phase(p)%getFloat('dsfe_dt')
      prm%VcrossSlip = config_phase(p)%getFloat('vcrossslip')
