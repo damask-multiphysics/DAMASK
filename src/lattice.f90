@@ -1135,10 +1135,7 @@ module lattice
  real(pReal),                              dimension(:,:,:,:,:),   allocatable, public, protected :: &
    lattice_C3333, lattice_trans_C3333
  real(pReal),                              dimension(:),   allocatable, public, protected :: &
-   lattice_mu, &
-   lattice_nu, &
-   lattice_trans_mu, &
-   lattice_trans_nu
+   lattice_mu, lattice_nu
  real(pReal),                              dimension(:,:,:,:), allocatable, public, protected :: &  ! with higher-order parameters (e.g. temperature-dependent)
    lattice_thermalExpansion33
  real(pReal),                              dimension(:,:,:),   allocatable, public, protected :: &
@@ -1292,8 +1289,6 @@ subroutine lattice_init
 
  allocate(lattice_mu(Nphases),       source=0.0_pReal)
  allocate(lattice_nu(Nphases),       source=0.0_pReal)
- allocate(lattice_trans_mu(Nphases), source=0.0_pReal)
- allocate(lattice_trans_nu(Nphases), source=0.0_pReal)
 
  allocate(lattice_NnonSchmid(Nphases), source=0_pInt)
  allocate(lattice_Sslip(3,3,1+2*lattice_maxNnonSchmid,lattice_maxNslip,Nphases),source=0.0_pReal)
@@ -1528,8 +1523,6 @@ subroutine lattice_initializeStructure(myPhase,CoverA,CoverA_trans,a_fcc,a_bcc)
      select case(trans_lattice_structure(myPhase))
        case (LATTICE_bcc_ID)
          lattice_trans_C66(1:6,1:6,myPhase) = lattice_C66(1:6,1:6,myPhase)
-         lattice_trans_mu(myPhase) = lattice_mu(myPhase)
-         lattice_trans_nu(myPhase) = lattice_nu(myPhase)
          lattice_trans_C3333(1:3,1:3,1:3,1:3,myPhase) = lattice_C3333(1:3,1:3,1:3,1:3,myPhase)
          lattice_trans_C66(1:6,1:6,myPhase) = math_Mandel3333to66(lattice_trans_C3333(1:3,1:3,1:3,1:3,myPhase))
          do i = 1_pInt, 6_pInt
@@ -1554,15 +1547,6 @@ subroutine lattice_initializeStructure(myPhase,CoverA,CoverA_trans,a_fcc,a_bcc)
 
          lattice_trans_C66(1:6,1:6,myPhase) = lattice_symmetrizeC66(trans_lattice_structure(myPhase),&
                                                                     lattice_trans_C66(1:6,1:6,myPhase))
-         lattice_trans_mu(myPhase) = 0.2_pReal *(  lattice_trans_C66(1,1,myPhase) &
-                                                 - lattice_trans_C66(1,2,myPhase) &
-                                                 + 3.0_pReal*lattice_trans_C66(4,4,myPhase))
-         lattice_trans_nu(myPhase) = (  lattice_trans_C66(1,1,myPhase) &
-                                      + 4.0_pReal*lattice_trans_C66(1,2,myPhase) &
-                                      - 2.0_pReal*lattice_trans_C66(4,4,myPhase)) &
-                                                             /(  4.0_pReal*lattice_trans_C66(1,1,myPhase) &
-                                                               + 6.0_pReal*lattice_trans_C66(1,2,myPhase) &
-                                                               + 2.0_pReal*lattice_trans_C66(4,4,myPhase))
          lattice_trans_C3333(1:3,1:3,1:3,1:3,myPhase) = math_Voigt66to3333(lattice_trans_C66(1:6,1:6,myPhase))
          lattice_trans_C66(1:6,1:6,myPhase) = math_Mandel3333to66(lattice_trans_C3333(1:3,1:3,1:3,1:3,myPhase))
          do i = 1_pInt, 6_pInt
@@ -2090,24 +2074,42 @@ pure function lattice_qDisorientation(Q1, Q2, struct)
 
 end function lattice_qDisorientation
 
-!function lattice_C66_twin
-!
-! select case(structure)
-!   case('fcc')
-!     coordinateSystem = buildCoordinateSystem(Ntwin,int(LATTICE_FCC_SYSTEMTWIN,pInt),structure)
-!   case('bcc')
-!     coordinateSystem = buildCoordinateSystem(Ntwin,int(LATTICE_BCC_SYSTEMTWIN,pInt),structure)
-!   case('hex','hexagonal')                                                                          !ToDo: "No alias policy": long or short?
-!     coordinateSystem = buildCoordinateSystem(Ntwin,int(LATTICE_HEX_SYSTEMTWIN,pInt),'hex',cOverA)
-!   case default
-!     call IO_error(130_pInt,ext_msg=trim(structure)//' (lattice_SchmidMatrix_twin)')
-! end select
-!
-! do i = 1, sum(Ntwin)
-!   R = math_axisAngleToR(coordinateSystem(1:3,2,i), 180.0_pReal * INRAD)                            ! ToDo: Why always 180 deg?
-!   math_rotate_forward3333(C,R)
-!   C_twin66(1:6,1:6,i) = math_Mandel3333to66(C_twin)
-! enddo
+function lattice_C66_twin(Ntwin,C66,structure,CoverA)
+ use IO, only: &
+   IO_error
+ use math, only: &
+   INRAD, &
+   math_axisAngleToR, &
+   math_Mandel3333to66, &
+   math_Mandel66to3333, &
+   math_rotate_forward3333
+
+ implicit none
+ integer(pInt),    dimension(:),            intent(in) :: Ntwin                                     !< number of active twin systems per family
+ character(len=*),                          intent(in) :: structure                                 !< lattice structure
+ real(pReal),      dimension(6,6),          intent(in) :: C66
+ real(pReal),                               intent(in) :: cOverA
+ real(pReal),     dimension(6,6,sum(Ntwin))            :: lattice_C66_twin
+
+ real(pReal),     dimension(3,3,sum(Ntwin))            :: coordinateSystem
+
+ real(pReal),     dimension(3,3)                       :: R
+ integer(pInt) :: i
+
+ select case(structure)
+   case('fcc')
+     coordinateSystem = buildCoordinateSystem(Ntwin,int(LATTICE_FCC_SYSTEMTWIN,pInt),structure)
+   case('bcc')
+     coordinateSystem = buildCoordinateSystem(Ntwin,int(LATTICE_BCC_SYSTEMTWIN,pInt),structure)
+   case('hex','hexagonal')                                                                          !ToDo: "No alias policy": long or short?
+     coordinateSystem = buildCoordinateSystem(Ntwin,int(LATTICE_HEX_SYSTEMTWIN,pInt),'hex',cOverA)
+   case default
+     call IO_error(130_pInt,ext_msg=trim(structure)//' (lattice_C66_twin)')
+ end select
+ do i = 1, sum(Ntwin)
+   R = math_axisAngleToR(coordinateSystem(1:3,2,i), 180.0_pReal * INRAD)                            ! ToDo: Why always 180 deg?
+   lattice_C66_twin(1:6,1:6,i) = math_Mandel3333to66(math_rotate_forward3333(math_Mandel66to3333(C66),R))
+ enddo
  
 end function
 
@@ -2259,9 +2261,12 @@ end function lattice_interactionTransTrans2
 !> @brief Calculates Schmid matrix for active slip systems
 !--------------------------------------------------------------------------------------------------
 function lattice_SchmidMatrix_slip(Nslip,structure,cOverA) result(SchmidMatrix)
+ use prec, only: &
+   tol_math_check
  use IO, only: &
    IO_error
  use math, only: &
+   math_trace33, &
    math_tensorproduct33
 
  implicit none
