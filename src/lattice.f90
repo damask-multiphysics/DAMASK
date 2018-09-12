@@ -1957,6 +1957,7 @@ pure function lattice_symmetrizeC66(struct,C66)
 
  end function lattice_symmetrizeC66
 
+
 !--------------------------------------------------------------------------------------------------
 !> @brief Symmetrizes 2nd order tensor according to lattice type
 !--------------------------------------------------------------------------------------------------
@@ -2090,6 +2091,32 @@ pure function lattice_qDisorientation(Q1, Q2, struct)
 end function lattice_qDisorientation
 
 
+!function lattice_nonSchmidMatrix
+!  coordinateSystem = buildCoordinateSystem(Nslip,int(LATTICE_BCC_SYSTEMSLIP,pInt),structure)
+!
+!  do i = 1_pInt,myNslip                                                                          ! assign slip system vectors
+!       direction = coordinateSystem(1:3,1,i)
+!       normal    = coordinateSystem(1:3,1,i)
+!       ! "np" and "nn" according to Gröger_etal2008, Acta Materialia 56 (2008) 5412–5425, table 1 (corresponds to their "n1" for positive and negative slip direction respectively)
+!       np = math_mul33x3(math_axisAngleToR(sdU,+60.0_pReal*INRAD), normal)
+!       ! Schmid matrices with non-Schmid contributions according to Koester_etal2012, Acta Materialia 60 (2012) 3894–3901, eq. (17) ("n1" is replaced by either "np" or "nn" according to either positive or negative slip direction)
+!       nonSchmidMatrix_pos(1:3,1:3,1,i) = math_tensorproduct33(direction, np)
+!       nonSchmidMatrix_pos(1:3,1:3,2,i) = math_tensorproduct33(math_crossproduct(normal, direction), normal)
+!       nonSchmidMatrix_pos(1:3,1:3,3,i) = math_tensorproduct33(math_crossproduct(np, direction), np)
+!       nonSchmidMatrix_pos(1:3,1:3,4,i) = math_tensorproduct33(normal, normal)
+!       nonSchmidMatrix_pos(1:3,1:3,5,i) = math_tensorproduct33(math_crossproduct(normal, direction), math_crossproduct(normal, direction))
+!       nonSchmidMatrix_pos(1:3,1:3,6,i) = math_tensorproduct33(direction, direction)
+!
+!       nn = math_mul33x3(math_axisAngleToR(-sdU,60.0_pReal*INRAD), normal)
+!       sns(1:3,1:3,2,1,i) = math_tensorproduct33(-sdU, nn)
+!       sns(1:3,1:3,2,2,i) = math_tensorproduct33(math_crossproduct(snU, -sdU), snU)
+!       sns(1:3,1:3,2,3,i) = math_tensorproduct33(math_crossproduct(nn, -sdU), nn)
+!       sns(1:3,1:3,2,4,i) = math_tensorproduct33(snU, snU)
+!       sns(1:3,1:3,2,5,i) = math_tensorproduct33(math_crossproduct(snU, -sdU), math_crossproduct(snU, -sdU))
+!       sns(1:3,1:3,2,6,i) = math_tensorproduct33(-sdU, -sdU)
+!     enddo
+!end function lattice_nonSchmidMatrix
+
 !--------------------------------------------------------------------------------------------------
 !> @brief Populates reduced slip-slip interaction matrix
 !> ToDo: prefix "2" needed as long as deprecated array lattice_interactionSlipSlip exists
@@ -2121,11 +2148,11 @@ function lattice_interactionSlipSlip2(Nslip,interactionValues,structure)
      interactionSlipSlip = lattice_bct_interactionSlipSlip
      NslipMax            = lattice_bct_Nslip
    case default
-     write(6,*) 'mist'
+     call IO_error(132_pInt,ext_msg=trim(structure)//' (slip slip interaction)')
  end select
 
- !if (size(Ntwin) > count(Ntwin > 0_pInt))   call IO_error(150_pInt,ext_msg='Ntwin')
- !if (any(NtwinMax(1:size(Ntwin)) -Ntwin < 0_pInt)) call IO_error(150_pInt,ext_msg='Ntwin')
+ if (any(Nslip(1:size(Nslip)) - Nslip < 0_pInt)) &
+   call IO_error(145_pInt,ext_msg='Ntrans '//trim(structure))
 
  lattice_interactionSlipSlip2 = &
    buildInteraction(Nslip,Nslip,NslipMax,NslipMax,interactionValues,interactionSlipSlip)
@@ -2161,11 +2188,11 @@ function lattice_interactionTwinTwin2(Ntwin,interactionValues,structure)
      interactionTwinTwin = lattice_hex_interactionTwinTwin
      NtwinMax            = lattice_hex_Ntwin
    case default
-     write(6,*) 'mist'
+     call IO_error(132_pInt,ext_msg=trim(structure)//' (twin twin interaction)')
  end select
 
- !if (size(Ntwin) > count(Ntwin > 0_pInt))   call IO_error(150_pInt,ext_msg='Ntwin')
- !if (any(NtwinMax(1:size(Ntwin)) -Ntwin < 0_pInt)) call IO_error(150_pInt,ext_msg='Ntwin')
+ if (any(Ntwin(1:size(Ntwin)) - Ntwin < 0_pInt)) &
+   call IO_error(145_pInt,ext_msg='Ntrans '//trim(structure))
 
  lattice_interactionTwinTwin2 = &
    buildInteraction(Ntwin,Ntwin,NtwinMax,NtwinMax,interactionValues,interactionTwinTwin)
@@ -2196,11 +2223,11 @@ function lattice_interactionTransTrans2(Ntrans,interactionValues,structure,targe
    interactionTransTrans = lattice_fccToHex_interactionTransTrans
    NtransMax             = lattice_fcc_Ntrans
  else
-   write(6,*) 'mist'
+   call IO_error(132_pInt,ext_msg=trim(structure)//' => '//trim(targetStructure))
  end if
 
- !if (size(Ntwin) > count(Ntwin > 0_pInt))   call IO_error(150_pInt,ext_msg='Ntwin')
- !if (any(NtwinMax(1:size(Ntwin)) -Ntwin < 0_pInt)) call IO_error(150_pInt,ext_msg='Ntwin')
+ if (any(Ntrans(1:size(Ntrans)) - Ntrans < 0_pInt)) &
+   call IO_error(145_pInt,ext_msg='Ntrans '//trim(structure))
 
  lattice_interactionTransTrans2 = &
    buildInteraction(Ntrans,Ntrans,NtransMax,NtransMax,interactionValues,interactionTransTrans)
@@ -2211,7 +2238,7 @@ end function lattice_interactionTransTrans2
 !--------------------------------------------------------------------------------------------------
 !> @brief Calculates Schmid matrix for active slip systems
 !--------------------------------------------------------------------------------------------------
-function lattice_SchmidSlip(Nslip,structure,cOverA)
+function lattice_SchmidMatrix_slip(Nslip,structure,cOverA)
  use IO, only: &
    IO_error
  use math, only: &
@@ -2220,7 +2247,7 @@ function lattice_SchmidSlip(Nslip,structure,cOverA)
  implicit none
  integer(pInt),    dimension(:),            intent(in) :: Nslip                              !< number of active slip systems per family
  character(len=*),                          intent(in) :: structure                          !< lattice structure
- real(pReal),     dimension(3,3,sum(Nslip))            :: lattice_SchmidSlip
+ real(pReal),     dimension(3,3,sum(Nslip))            :: lattice_SchmidMatrix_slip
  real(pReal),                               intent(in), optional :: &
    cOverA
 
@@ -2237,21 +2264,21 @@ function lattice_SchmidSlip(Nslip,structure,cOverA)
    case('bct')
      coordinateSystem = buildCoordinateSystem(Nslip,int(LATTICE_BCT_SYSTEMSLIP,pInt),structure,cOverA)
    case default
-     call IO_error(130_pInt,ext_msg=trim(structure)//' (lattice_SchmidSlip)')
+     call IO_error(130_pInt,ext_msg=trim(structure)//' (lattice_SchmidMatrix_slip)')
  end select
 
  do i = 1, sum(Nslip)
-   lattice_SchmidSlip(1:3,1:3,i) = &
+   lattice_SchmidMatrix_slip(1:3,1:3,i) = &
                              math_tensorproduct33(coordinateSystem(1:3,1,i),coordinateSystem(1:3,2,i))
  enddo
 
-end function lattice_SchmidSlip
+end function lattice_SchmidMatrix_slip
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Calculates Schmid matrix for active twin systems
 !--------------------------------------------------------------------------------------------------
-function lattice_SchmidTwin(Ntwin,structure,cOverA)
+function lattice_SchmidMatrix_twin(Ntwin,structure,cOverA)
  use IO, only: &
    IO_error
  use math, only: &
@@ -2260,7 +2287,7 @@ function lattice_SchmidTwin(Ntwin,structure,cOverA)
  implicit none
  integer(pInt),    dimension(:),            intent(in) :: Ntwin                              !< number of active twin systems per family
  character(len=*),                          intent(in) :: structure                          !< lattice structure
- real(pReal),     dimension(3,3,sum(Ntwin))            :: lattice_SchmidTwin
+ real(pReal),     dimension(3,3,sum(Ntwin))            :: lattice_SchmidMatrix_Twin
  real(pReal),                               intent(in), optional :: &
    cOverA
 
@@ -2269,21 +2296,21 @@ function lattice_SchmidTwin(Ntwin,structure,cOverA)
 
  select case(structure)
    case('fcc')
-     coordinateSystem = buildCoordinateSystem(Nslip,int(LATTICE_FCC_SYSTEMTWIN,pInt),structure)
+     coordinateSystem = buildCoordinateSystem(Ntwin,int(LATTICE_FCC_SYSTEMTWIN,pInt),structure)
    case('bcc')
-     coordinateSystem = buildCoordinateSystem(Nslip,int(LATTICE_BCC_SYSTEMTWIN,pInt),structure)
+     coordinateSystem = buildCoordinateSystem(Ntwin,int(LATTICE_BCC_SYSTEMTWIN,pInt),structure)
    case('hex','hexagonal')                                                                          !ToDo: "No alias policy": long or short?
-     coordinateSystem = buildCoordinateSystem(Nslip,int(LATTICE_HEX_SYSTEMTWIN,pInt),'hex',cOverA)
+     coordinateSystem = buildCoordinateSystem(Ntwin,int(LATTICE_HEX_SYSTEMTWIN,pInt),'hex',cOverA)
    case default
-     call IO_error(130_pInt,ext_msg=trim(structure)//' (lattice_SchmidTwin)')
+     call IO_error(130_pInt,ext_msg=trim(structure)//' (lattice_SchmidMatrix_twin)')
  end select
 
- do i = 1, sum(Nslip)
-   lattice_SchmidTwin(1:3,1:3,i) = &
+ do i = 1, sum(Ntwin)
+   lattice_SchmidMatrix_twin(1:3,1:3,i) = &
                              math_tensorproduct33(coordinateSystem(1:3,1,i),coordinateSystem(1:3,2,i))
  enddo
 
-end function lattice_SchmidTwin
+end function lattice_SchmidMatrix_twin
 
 
 !--------------------------------------------------------------------------------------------------
