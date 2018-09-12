@@ -495,8 +495,6 @@ end subroutine plastic_phenopowerlaw_init
 !> @brief calculates plastic velocity gradient and its tangent
 !--------------------------------------------------------------------------------------------------
 subroutine plastic_phenopowerlaw_LpAndItsTangent(Lp,dLp_dMstar99,Mstar_v,ipc,ip,el)
- use prec, only: &
-   dNeq0
  use math, only: &
    math_Mandel6to33, &
    math_Plain3333to99
@@ -519,70 +517,55 @@ subroutine plastic_phenopowerlaw_LpAndItsTangent(Lp,dLp_dMstar99,Mstar_v,ipc,ip,
    Mstar_v                                                                                          !< Mandel stress
 
  integer(pInt) :: &
-   index_myFamily, &
    j,k,l,m,n, &
    of
- real(pReal) :: &
-   dgdot_dtauslip_pos,dgdot_dtauslip_neg, &
-   dgdot_dtautwin
  real(pReal), dimension(3,3) :: &
    S                                                                                                !< Second-Piola Kirchhoff stress
  real(pReal), dimension(3,3,3,3) :: &
    dLp_dS                                                                                           !< derivative of Lp with respect to Mstar as 4th order tensor
  real(pReal), dimension(param(phase_plasticityInstance(material_phase(ipc,ip,el)))%totalNslip) :: &
-   tau_slip_pos,tau_slip_neg, &
+   dgdot_dtauslip_pos,dgdot_dtauslip_neg, &
    gdot_slip_pos,gdot_slip_neg
  real(pReal), dimension(param(phase_plasticityInstance(material_phase(ipc,ip,el)))%totalNtwin) :: &
-   gdot_twin,tau_twin
+   gdot_twin,dgdot_dtautwin
 
  type(tParameters)          :: prm
  type(tPhenopowerlawState)  :: stt
 
+! BEGIN DEPRECATED
  of = phasememberAt(ipc,ip,el)
-
+ S = math_Mandel6to33(Mstar_v)
  associate(prm => param(phase_plasticityInstance(material_phase(ipc,ip,el))),&
            stt => state(phase_plasticityInstance(material_phase(ipc,ip,el))))
+! END DEPRECATED
 
  Lp = 0.0_pReal
  dLp_dS = 0.0_pReal
 
- S = math_Mandel6to33(Mstar_v)
-
- call resolvedStress_slip(prm,S,tau_slip_pos,tau_slip_neg)
- call shearRates_slip(prm,stt,of,tau_slip_pos,tau_slip_neg,gdot_slip_pos,gdot_slip_neg)
+ call kinetics_slip(prm,stt,of,S,gdot_slip_pos,gdot_slip_neg,dgdot_dtauslip_pos,dgdot_dtauslip_neg)
  slipSystems: do j = 1_pInt, prm%totalNslip
    Lp = Lp + (1.0_pReal-stt%sumF(of))*(gdot_slip_pos(j)+gdot_slip_neg(j))*prm%Schmid_slip(1:3,1:3,j)
-   if (dNeq0(tau_slip_pos(j))) then
-     dgdot_dtauslip_pos = gdot_slip_pos(j)*prm%n_slip/tau_slip_pos(j)
-     forall (k=1_pInt:3_pInt,l=1_pInt:3_pInt,m=1_pInt:3_pInt,n=1_pInt:3_pInt) &
-       dLp_dS(k,l,m,n) = dLp_dS(k,l,m,n) &
-                       + dgdot_dtauslip_pos * prm%Schmid_slip(k,l,j) &
-                                            *(prm%Schmid_slip(m,n,j) + sum(prm%nonSchmid_pos(m,n,:,j)))
-   endif
-   if (dNeq0(tau_slip_neg(j))) then
-     dgdot_dtauslip_neg = gdot_slip_neg(j)*prm%n_slip/tau_slip_neg(j)
-     forall (k=1_pInt:3_pInt,l=1_pInt:3_pInt,m=1_pInt:3_pInt,n=1_pInt:3_pInt) &
-       dLp_dS(k,l,m,n) = dLp_dS(k,l,m,n) &
-                       + dgdot_dtauslip_neg * prm%Schmid_slip(k,l,j) &
-                                            *(prm%Schmid_slip(m,n,j) + sum(prm%nonSchmid_neg(m,n,:,j)))
-   endif
+   forall (k=1_pInt:3_pInt,l=1_pInt:3_pInt,m=1_pInt:3_pInt,n=1_pInt:3_pInt) &
+     dLp_dS(k,l,m,n) = dLp_dS(k,l,m,n) &
+                     + dgdot_dtauslip_pos(j) * prm%Schmid_slip(k,l,j) &
+                                             *(prm%Schmid_slip(m,n,j) + sum(prm%nonSchmid_pos(m,n,:,j)))
+   forall (k=1_pInt:3_pInt,l=1_pInt:3_pInt,m=1_pInt:3_pInt,n=1_pInt:3_pInt) &
+     dLp_dS(k,l,m,n) = dLp_dS(k,l,m,n) &
+                     + dgdot_dtauslip_neg(j) * prm%Schmid_slip(k,l,j) &
+                                             *(prm%Schmid_slip(m,n,j) + sum(prm%nonSchmid_neg(m,n,:,j)))
  enddo slipSystems
 
- call resolvedStress_twin(prm,S,tau_twin)
- call shearRates_twin(prm,stt,of,tau_twin,gdot_twin)
+ call kinetics_twin(prm,stt,of,S,gdot_twin,dgdot_dtautwin)
  twinSystems: do j = 1_pInt, prm%totalNtwin
    Lp = Lp + gdot_twin(j)*prm%Schmid_twin(1:3,1:3,j)
-   if (dNeq0(gdot_twin(j))) then
-     dgdot_dtautwin = gdot_twin(j)*prm%n_twin/tau_twin(j)
-     forall (k=1_pInt:3_pInt,l=1_pInt:3_pInt,m=1_pInt:3_pInt,n=1_pInt:3_pInt) &
-       dLp_dS(k,l,m,n) = dLp_dS(k,l,m,n) &
-                       + dgdot_dtautwin*prm%Schmid_twin(k,l,j)*prm%Schmid_twin(m,n,j)
-   endif
+   forall (k=1_pInt:3_pInt,l=1_pInt:3_pInt,m=1_pInt:3_pInt,n=1_pInt:3_pInt) &
+     dLp_dS(k,l,m,n) = dLp_dS(k,l,m,n) &
+                     + dgdot_dtautwin(j)*prm%Schmid_twin(k,l,j)*prm%Schmid_twin(m,n,j)
  enddo twinSystems
-
- dLp_dMstar99 = math_Plain3333to99(dLp_dS)
-
  end associate
+
+ dLp_dMstar99 = math_Plain3333to99(dLp_dS) ! DEPRECATED
+
 end subroutine plastic_phenopowerlaw_LpAndItsTangent
 
 
@@ -608,7 +591,6 @@ subroutine plastic_phenopowerlaw_dotState(Mstar6,ipc,ip,el)
  integer(pInt) :: &
    ph, &
    j,k, &
-   index_myFamily, &
    of
  real(pReal) :: &
    c_SlipSlip,c_TwinSlip,c_TwinTwin, &
@@ -618,10 +600,7 @@ subroutine plastic_phenopowerlaw_dotState(Mstar6,ipc,ip,el)
    S                                                                                                !< Second-Piola Kirchhoff stress
  real(pReal), dimension(param(phase_plasticityInstance(material_phase(ipc,ip,el)))%totalNslip) :: &
    left_SlipSlip,right_SlipSlip, &
-   tau_slip_pos,tau_slip_neg, &
    gdot_slip_pos,gdot_slip_neg
- real(pReal), dimension(param(phase_plasticityInstance(material_phase(ipc,ip,el)))%totalNtwin) :: &
-   tau_twin
 
  type(tParameters)         :: prm
  type(tPhenopowerlawState) :: dst,stt
@@ -649,12 +628,10 @@ subroutine plastic_phenopowerlaw_dotState(Mstar6,ipc,ip,el)
 
 !--------------------------------------------------------------------------------------------------
 ! shear rates
- call resolvedStress_slip(prm,S,tau_slip_pos,tau_slip_neg)
- call shearRates_slip(prm,stt,of,tau_slip_pos,tau_slip_neg,gdot_slip_pos,gdot_slip_neg)
+ call kinetics_slip(prm,stt,of,S,gdot_slip_pos,gdot_slip_neg)
  dst%accshear_slip(:,of) = abs(gdot_slip_pos+gdot_slip_neg)
  dst%sumGamma(of) = sum(dst%accshear_slip(:,of))
- call resolvedStress_twin(prm,S,tau_twin)
- call shearRates_twin(prm,stt,of,tau_twin,dst%accshear_twin(:,of))
+ call kinetics_twin(prm,stt,of,S,dst%accshear_twin(:,of))
  if (stt%sumF(of) < 0.98_pReal) dst%sumF(of) = sum(dst%accshear_twin(:,of)/prm%shear_twin)
 
 !--------------------------------------------------------------------------------------------------
@@ -684,70 +661,34 @@ end subroutine plastic_phenopowerlaw_dotState
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates shear rates on slip systems
 !--------------------------------------------------------------------------------------------------
-subroutine shearRates_slip(prm,stt,of,tau_slip_pos,tau_slip_neg,gdot_slip_pos,gdot_slip_neg)
-
- implicit none
- type(tParameters), intent(in) :: &
-   prm
- type(tPhenopowerlawState), intent(in) :: &
-   stt
- integer(pInt),     intent(in) :: &
-   of
- real, dimension(prm%totalNslip), intent(in) :: &
-   tau_slip_pos, &
-   tau_slip_neg
- real, dimension(prm%totalNslip), intent(out) :: &
-   gdot_slip_pos, &
-   gdot_slip_neg
-
- gdot_slip_pos = 0.5_pReal*prm%gdot0_slip &
-               * sign(abs(tau_slip_pos/stt%s_slip(:,of))**prm%n_slip,  tau_slip_pos)
- gdot_slip_neg = 0.5_pReal*prm%gdot0_slip &
-               * sign(abs(tau_slip_neg/stt%s_slip(:,of))**prm%n_slip,  tau_slip_neg)
-
-end subroutine shearRates_slip
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief calculates shear rates on twin systems
-!--------------------------------------------------------------------------------------------------
-subroutine shearRates_twin(prm,stt,of,tau_twin,gdot_twin)
-
- implicit none
- type(tParameters), intent(in) :: &
-   prm
- type(tPhenopowerlawState), intent(in) :: &
-   stt
- integer(pInt),     intent(in) :: &
-   of
- real, dimension(prm%totalNtwin), intent(in) :: &
-   tau_twin
- real, dimension(prm%totalNtwin), intent(out) :: &
-   gdot_twin
-
- gdot_twin = merge((1.0_pReal-stt%sumF(of))*prm%gdot0_twin*(abs(tau_twin)/stt%s_twin(:,of))**prm%n_twin, &
-                   0.0_pReal, tau_twin>0.0_pReal)
-
-end subroutine shearRates_twin
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief calculates resolved stress on slip systems
-!--------------------------------------------------------------------------------------------------
-subroutine resolvedStress_slip(prm,S,tau_slip_pos,tau_slip_neg)
+subroutine kinetics_slip(prm,stt,of,S,gdot_slip_pos,gdot_slip_neg, &
+                           dgdot_dtau_slip_pos,dgdot_dtau_slip_neg)
+ use prec, only: &
+  dNeq0
  use math, only: &
    math_mul33xx33
 
  implicit none
  type(tParameters), intent(in) :: &
    prm
+ type(tPhenopowerlawState), intent(in) :: &
+   stt
+ integer(pInt),     intent(in) :: &
+   of
+ real, dimension(prm%totalNslip), intent(out) :: &
+   gdot_slip_pos, &
+   gdot_slip_neg
+ real, dimension(prm%totalNslip), optional, intent(out) :: &
+   dgdot_dtau_slip_pos, &
+   dgdot_dtau_slip_neg
  real(pReal), dimension(3,3), intent(in) :: &
    S
- real, dimension(prm%totalNslip), intent(out) :: &
+
+ real, dimension(prm%totalNslip) :: &
    tau_slip_pos, &
    tau_slip_neg
 
- integer(pInt) :: i,j
+ integer(pInt) :: i, j
 
  do i = 1_pInt, prm%totalNslip
    tau_slip_pos(i) = math_mul33xx33(S,prm%Schmid_slip(1:3,1:3,i))
@@ -758,31 +699,70 @@ subroutine resolvedStress_slip(prm,S,tau_slip_pos,tau_slip_neg)
    enddo
  enddo
 
-end subroutine resolvedStress_slip
+
+ gdot_slip_pos = 0.5_pReal*prm%gdot0_slip &
+               * sign(abs(tau_slip_pos/stt%s_slip(:,of))**prm%n_slip,  tau_slip_pos)
+ gdot_slip_neg = 0.5_pReal*prm%gdot0_slip &
+               * sign(abs(tau_slip_neg/stt%s_slip(:,of))**prm%n_slip,  tau_slip_neg)
+
+ if (present(dgdot_dtau_slip_pos)) then 
+   where(dNeq0(tau_slip_pos))
+     dgdot_dtau_slip_pos = gdot_slip_pos*prm%n_slip/tau_slip_pos
+   else where
+     dgdot_dtau_slip_pos = 0.0_pReal
+   end where
+ endif
+ if (present(dgdot_dtau_slip_neg)) then 
+   where(dNeq0(tau_slip_neg))
+     dgdot_dtau_slip_neg = gdot_slip_neg*prm%n_slip/tau_slip_neg
+   else where
+     dgdot_dtau_slip_neg = 0.0_pReal
+   end where
+ endif
+
+end subroutine kinetics_slip
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief calculates resolved stress on twin systems
+!> @brief calculates shear rates on twin systems
 !--------------------------------------------------------------------------------------------------
-subroutine resolvedStress_twin(prm,S,tau_twin)
+subroutine kinetics_twin(prm,stt,of,S,gdot_twin,dgdot_dtau_twin)
+ use prec, only: &
+  dNeq0
  use math, only: &
    math_mul33xx33
 
  implicit none
  type(tParameters), intent(in) :: &
    prm
+ type(tPhenopowerlawState), intent(in) :: &
+   stt
+ integer(pInt),     intent(in) :: &
+   of
  real(pReal), dimension(3,3), intent(in) :: &
    S
  real, dimension(prm%totalNtwin), intent(out) :: &
+   gdot_twin
+ real, dimension(prm%totalNtwin), optional, intent(out) :: &
+   dgdot_dtau_twin
+
+ real, dimension(prm%totalNtwin) :: &
    tau_twin
-
  integer(pInt) :: i
-
  do i = 1_pInt, prm%totalNtwin
    tau_twin(i)  = math_mul33xx33(S,prm%Schmid_twin(1:3,1:3,i))
  enddo
+ gdot_twin = merge((1.0_pReal-stt%sumF(of))*prm%gdot0_twin*(abs(tau_twin)/stt%s_twin(:,of))**prm%n_twin, &
+                   0.0_pReal, tau_twin>0.0_pReal)
+ if (present(dgdot_dtau_twin)) then 
+   where(dNeq0(tau_twin))
+     dgdot_dtau_twin = gdot_twin*prm%n_twin/tau_twin
+   else where
+     dgdot_dtau_twin = 0.0_pReal
+   end where
+ endif
 
-end subroutine resolvedStress_twin
+end subroutine kinetics_twin
 
 
 !--------------------------------------------------------------------------------------------------
@@ -813,9 +793,10 @@ function plastic_phenopowerlaw_postResults(Mstar6,ipc,ip,el) result(postResults)
 
  integer(pInt) :: &
    of, &
-   o,c
+   o,c,i,j
+ real(pReal) :: &
+   tau_slip_pos, tau_slip_neg
  real(pReal), dimension(param(phase_plasticityInstance(material_phase(ipc,ip,el)))%totalNslip) :: &
-   tau_slip_pos,tau_slip_neg, &
    gdot_slip_pos,gdot_slip_neg
  real(pReal), dimension(param(phase_plasticityInstance(material_phase(ipc,ip,el)))%totalNtwin) :: &
    gdot_twin,tau_twin
@@ -841,13 +822,19 @@ function plastic_phenopowerlaw_postResults(Mstar6,ipc,ip,el) result(postResults)
        postResults(c+1_pInt:c+prm%totalNslip) = stt%accshear_slip(1:prm%totalNslip,of)
        c = c + prm%totalNslip
      case (shearrate_slip_ID)
-       call resolvedStress_slip(prm,S,tau_slip_pos,tau_slip_neg)
-       call shearRates_slip(prm,stt,of,tau_slip_pos,tau_slip_neg,gdot_slip_pos,gdot_slip_neg)
+       call kinetics_slip(prm,stt,of,S,gdot_slip_pos,gdot_slip_neg)
        postResults(c+1_pInt:c+prm%totalNslip) = gdot_slip_pos+gdot_slip_neg
        c = c + prm%totalNslip
      case (resolvedstress_slip_ID)
-       call resolvedStress_slip(prm,S,tau_slip_pos,tau_slip_neg)
-       postResults(c+1_pInt:c+prm%totalNslip) = 0.5_pReal*(tau_slip_pos+tau_slip_neg)
+       do i = 1_pInt, prm%totalNslip
+         tau_slip_pos = math_mul33xx33(S,prm%Schmid_slip(1:3,1:3,i))
+         tau_slip_neg = tau_slip_pos
+         do j = 1,size(prm%nonSchmidCoeff)
+           tau_slip_pos = tau_slip_pos + math_mul33xx33(S,prm%nonSchmid_pos(1:3,1:3,j,i))
+           tau_slip_neg = tau_slip_neg + math_mul33xx33(S,prm%nonSchmid_neg(1:3,1:3,j,i))
+         enddo
+         postResults(c+i) = 0.5_pReal*(tau_slip_pos+tau_slip_neg)
+       enddo
        c = c + prm%totalNslip
 
      case (resistance_twin_ID)
@@ -857,13 +844,12 @@ function plastic_phenopowerlaw_postResults(Mstar6,ipc,ip,el) result(postResults)
        postResults(c+1_pInt:c+prm%totalNtwin) = stt%accshear_twin(1:prm%totalNtwin,of)
        c = c + prm%totalNtwin
      case (shearrate_twin_ID)
-       call resolvedStress_twin(prm,S,tau_twin)
-       call shearRates_twin(prm,stt,of,tau_twin,gdot_twin)
-       postResults(c+1_pInt:c+prm%totalNtwin) = gdot_twin
+       call kinetics_twin(prm,stt,of,S,postResults(c+1_pInt:c+prm%totalNtwin))
        c = c + prm%totalNtwin
      case (resolvedstress_twin_ID)
-       call resolvedStress_twin(prm,S,tau_twin)
-       postResults(c+1_pInt:c+prm%totalNtwin) = tau_twin
+       do i = 1_pInt, prm%totalNtwin
+         postResults(c+i) = math_mul33xx33(S,prm%Schmid_twin(1:3,1:3,i))
+       enddo
        c = c + prm%totalNtwin
 
      case (totalvolfrac_twin_ID)
