@@ -1264,6 +1264,7 @@ subroutine lattice_init
  allocate(lattice_structure(Nphases),source = LATTICE_undefined_ID)
  allocate(trans_lattice_structure(Nphases),source = LATTICE_undefined_ID)
  allocate(lattice_C66(6,6,Nphases),  source=0.0_pReal)
+ allocate(temp66(6,6,Nphases),  source=0.0_pReal)
  allocate(lattice_C3333(3,3,3,3,Nphases),  source=0.0_pReal)
  allocate(lattice_trans_C66(6,6,Nphases),  source=0.0_pReal)
  allocate(lattice_trans_C3333(3,3,3,3,Nphases),  source=0.0_pReal)
