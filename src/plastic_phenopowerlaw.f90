@@ -675,16 +675,16 @@ subroutine kinetics_slip(prm,stt,of,S,gdot_slip_pos,gdot_slip_neg, &
    stt
  integer(pInt),     intent(in) :: &
    of
- real, dimension(prm%totalNslip), intent(out) :: &
+ real(pReal), dimension(prm%totalNslip), intent(out) :: &
    gdot_slip_pos, &
    gdot_slip_neg
- real, dimension(prm%totalNslip), optional, intent(out) :: &
+ real(pReal), dimension(prm%totalNslip), optional, intent(out) :: &
    dgdot_dtau_slip_pos, &
    dgdot_dtau_slip_neg
  real(pReal), dimension(3,3), intent(in) :: &
    S
 
- real, dimension(prm%totalNslip) :: &
+ real(pReal), dimension(prm%totalNslip) :: &
    tau_slip_pos, &
    tau_slip_neg
 
@@ -741,14 +741,15 @@ subroutine kinetics_twin(prm,stt,of,S,gdot_twin,dgdot_dtau_twin)
    of
  real(pReal), dimension(3,3), intent(in) :: &
    S
- real, dimension(prm%totalNtwin), intent(out) :: &
+ real(pReal), dimension(prm%totalNtwin), intent(out) :: &
    gdot_twin
- real, dimension(prm%totalNtwin), optional, intent(out) :: &
+ real(pReal), dimension(prm%totalNtwin), optional, intent(out) :: &
    dgdot_dtau_twin
 
- real, dimension(prm%totalNtwin) :: &
+ real(pReal), dimension(prm%totalNtwin) :: &
    tau_twin
  integer(pInt) :: i
+
  do i = 1_pInt, prm%totalNtwin
    tau_twin(i)  = math_mul33xx33(S,prm%Schmid_twin(1:3,1:3,i))
  enddo
