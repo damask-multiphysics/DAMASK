@@ -244,36 +244,36 @@ subroutine plastic_phenopowerlaw_init
      outputID = undefined_ID
      select case(outputs(i))
         case ('resistance_slip')
-          outputID = resistance_slip_ID
+          outputID = merge(resistance_slip_ID,undefined_ID,prm%totalNslip>0_pInt)
           outputSize = prm%totalNslip
         case ('accumulatedshear_slip')
-          outputID = accumulatedshear_slip_ID
+          outputID = merge(accumulatedshear_slip_ID,undefined_ID,prm%totalNslip>0_pInt)
           outputSize = prm%totalNslip
         case ('shearrate_slip')
-          outputID = shearrate_slip_ID
+          outputID = merge(shearrate_slip_ID,undefined_ID,prm%totalNslip>0_pInt)
           outputSize = prm%totalNslip
         case ('resolvedstress_slip')
-          outputID = resolvedstress_slip_ID
+          outputID = merge(resolvedstress_slip_ID,undefined_ID,prm%totalNslip>0_pInt)
           outputSize = prm%totalNslip
 
         case ('resistance_twin')
-          outputID = resistance_twin_ID
+          outputID = merge(resistance_twin_ID,undefined_ID,prm%totalNtwin>0_pInt)
           outputSize = prm%totalNtwin
         case ('accumulatedshear_twin')
-          outputID = accumulatedshear_twin_ID
+          outputID = merge(accumulatedshear_twin_ID,undefined_ID,prm%totalNtwin>0_pInt)
           outputSize = prm%totalNtwin
         case ('shearrate_twin')
-          outputID = shearrate_twin_ID
+          outputID = merge(shearrate_twin_ID,undefined_ID,prm%totalNtwin>0_pInt)
           outputSize = prm%totalNtwin
         case ('resolvedstress_twin')
-          outputID = resolvedstress_twin_ID
+          outputID = merge(resolvedstress_twin_ID,undefined_ID,prm%totalNtwin>0_pInt)
           outputSize = prm%totalNtwin
 
-        case ('totalvolfrac_twin')
-          outputID = totalvolfrac_twin_ID
-          outputSize = 1_pInt
         case ('totalshear')
-          outputID = totalshear_ID
+          outputID = merge(totalshear_ID,undefined_ID,prm%totalNslip>0_pInt)
+          outputSize = 1_pInt
+        case ('totalvolfrac_twin')
+          outputID = merge(totalvolfrac_twin_ID,undefined_ID,prm%totalNtwin>0_pInt)
           outputSize = 1_pInt
       end select
 
@@ -798,8 +798,6 @@ function plastic_phenopowerlaw_postResults(Mstar6,ipc,ip,el) result(postResults)
    tau_slip_pos, tau_slip_neg
  real(pReal), dimension(param(phase_plasticityInstance(material_phase(ipc,ip,el)))%totalNslip) :: &
    gdot_slip_pos,gdot_slip_neg
- real(pReal), dimension(param(phase_plasticityInstance(material_phase(ipc,ip,el)))%totalNtwin) :: &
-   gdot_twin,tau_twin
 
  type(tParameters)          :: prm
  type(tPhenopowerlawState)  :: stt
@@ -852,11 +850,11 @@ function plastic_phenopowerlaw_postResults(Mstar6,ipc,ip,el) result(postResults)
        enddo
        c = c + prm%totalNtwin
 
-     case (totalvolfrac_twin_ID)
-       postResults(c+1_pInt) = stt%sumF(of)
-       c = c + 1_pInt
      case (totalshear_ID)
        postResults(c+1_pInt) = stt%sumGamma(of)
+       c = c + 1_pInt
+     case (totalvolfrac_twin_ID)
+       postResults(c+1_pInt) = stt%sumF(of)
        c = c + 1_pInt
 
    end select
