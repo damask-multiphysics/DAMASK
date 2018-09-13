@@ -1481,6 +1481,8 @@ subroutine IO_error(error_ID,el,ip,g,instance,ext_msg)
    msg = 'illegal texture transformation specified'
  case (160_pInt)
    msg = 'no entries in config part'
+ case (161_pInt)
+   msg = 'config part found twice'
  case (165_pInt)
    msg = 'homogenization configuration'
  case (170_pInt)
@@ -1578,7 +1580,7 @@ subroutine IO_error(error_ID,el,ip,g,instance,ext_msg)
  case (845_pInt)
    msg = 'incomplete information in spectral mesh header'
  case (846_pInt)
-   msg = 'not a rotation defined for loadcase rotation'
+   msg = 'rotation for load case rotation ill-defined (R:RT != I)'
  case (847_pInt)
    msg = 'update of gamma operator not possible when pre-calculated'
  case (880_pInt)
