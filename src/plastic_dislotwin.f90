@@ -448,50 +448,50 @@ subroutine plastic_dislotwin_init(fileUnit)
      outputID = undefined_ID
      select case(outputs(i))
        case ('edge_density')
-         outputID = edge_density_ID
+         outputID = merge(edge_density_ID,undefined_ID,prm%totalNslip > 0_pInt)
          outputSize = prm%totalNslip
        case ('dipole_density')
-         outputID = dipole_density_ID
+         outputID = merge(dipole_density_ID,undefined_ID,prm%totalNslip > 0_pInt)
          outputSize = prm%totalNslip
        case ('shear_rate_slip','shearrate_slip')
-         outputID = shear_rate_slip_ID
+         outputID = merge(shear_rate_slip_ID,undefined_ID,prm%totalNslip > 0_pInt)
          outputSize = prm%totalNslip
        case ('accumulated_shear_slip')
-         outputID = accumulated_shear_slip_ID
+         outputID = merge(accumulated_shear_slip_ID,undefined_ID,prm%totalNslip > 0_pInt)
          outputSize = prm%totalNslip
        case ('mfp_slip')
-         outputID = mfp_slip_ID
+         outputID = merge(mfp_slip_ID,undefined_ID,prm%totalNslip > 0_pInt)
          outputSize = prm%totalNslip
        case ('resolved_stress_slip')
-         outputID = resolved_stress_slip_ID
+         outputID = merge(resolved_stress_slip_ID,undefined_ID,prm%totalNslip > 0_pInt)
          outputSize = prm%totalNslip
        case ('threshold_stress_slip')
-         outputID= threshold_stress_slip_ID
+         outputID= merge(threshold_stress_slip_ID,undefined_ID,prm%totalNslip > 0_pInt)
          outputSize = prm%totalNslip
        case ('edge_dipole_distance')
-         outputID = edge_dipole_distance_ID
+         outputID = merge(edge_dipole_distance_ID,undefined_ID,prm%totalNslip > 0_pInt)
          outputSize = prm%totalNslip
        case ('stress_exponent')
-         outputID = stress_exponent_ID
+         outputID = merge(stress_exponent_ID,undefined_ID,prm%totalNslip > 0_pInt)
          outputSize = prm%totalNslip
 
        case ('twin_fraction')
-         outputID = twin_fraction_ID
+         outputID = merge(twin_fraction_ID,undefined_ID,prm%totalNtwin >0_pInt)
          outputSize = prm%totalNtwin
        case ('shear_rate_twin','shearrate_twin')
-         outputID = shear_rate_twin_ID
+         outputID = merge(shear_rate_twin_ID,undefined_ID,prm%totalNtwin >0_pInt)
          outputSize = prm%totalNtwin
        case ('accumulated_shear_twin')
-         outputID = accumulated_shear_twin_ID
+         outputID = merge(accumulated_shear_twin_ID,undefined_ID,prm%totalNtwin >0_pInt)
          outputSize = prm%totalNtwin
        case ('mfp_twin')
-         outputID = mfp_twin_ID
+         outputID = merge(mfp_twin_ID,undefined_ID,prm%totalNtwin >0_pInt)
          outputSize = prm%totalNtwin
        case ('resolved_stress_twin')
-         outputID = resolved_stress_twin_ID
+         outputID = merge(resolved_stress_twin_ID,undefined_ID,prm%totalNtwin >0_pInt)
          outputSize = prm%totalNtwin
        case ('threshold_stress_twin')
-         outputID = threshold_stress_twin_ID
+         outputID = merge(threshold_stress_twin_ID,undefined_ID,prm%totalNtwin >0_pInt)
          outputSize = prm%totalNtwin
          
        case ('resolved_stress_shearband')
