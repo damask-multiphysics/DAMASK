@@ -842,14 +842,25 @@ subroutine plastic_dislotwin_init(fileUnit)
 
    dst%whole => plasticState(p)%dotState
 
+   allocate(mse%invLambdaSlip(prm%totalNslip,NofMyPhase),source=0.0_pReal)
    allocate(mse%invLambdaSlipTwin(prm%totalNslip,NofMyPhase),source=0.0_pReal)
    allocate(mse%invLambdaTwin(prm%totalNtwin,NofMyPhase),source=0.0_pReal)
    allocate(mse%invLambdaSlipTrans(prm%totalNtrans,NofMyPhase),source=0.0_pReal)
    allocate(mse%invLambdaTrans(prm%totalNtrans,NofMyPhase),source=0.0_pReal)
+
+   allocate(mse%mfp_slip(prm%totalNslip,NofMyPhase),  source=0.0_pReal)
+   allocate(mse%mfp_twin(prm%totalNtwin,NofMyPhase),  source=0.0_pReal)
+   allocate(mse%mfp_trans(prm%totalNtrans,NofMyPhase),source=0.0_pReal)
+
+   allocate(mse%threshold_stress_slip(prm%totalNslip,NofMyPhase),  source=0.0_pReal)
    allocate(mse%threshold_stress_twin(prm%totalNtwin,NofMyPhase),  source=0.0_pReal)
    allocate(mse%threshold_stress_trans(prm%totalNtrans,NofMyPhase),source=0.0_pReal)
+
    allocate(mse%tau_r_twin(prm%totalNtwin,NofMyPhase),   source=0.0_pReal)
    allocate(mse%tau_r_trans(prm%totalNtrans,NofMyPhase), source=0.0_pReal)
+
+   allocate(mse%twinVolume(prm%totalNtwin,NofMyPhase),   source=0.0_pReal)
+   allocate(mse%martensiteVolume(prm%totalNtrans,NofMyPhase), source=0.0_pReal)
 
    end associate
  enddo
