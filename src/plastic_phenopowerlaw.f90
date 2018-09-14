@@ -187,56 +187,99 @@ subroutine plastic_phenopowerlaw_init
    if (phase_plasticity(p) /= PLASTICITY_PHENOPOWERLAW_ID) cycle
    instance = phase_plasticityInstance(p)
    associate(prm => param(instance))
+   extmsg = ''
 
-   prm%Nslip = config_phase(p)%getInts('nslip',defaultVal=emptyIntArray)
-   if (size(prm%Nslip) > count(lattice_NslipSystem(:,p) > 0_pInt))       call IO_error(150_pInt,ext_msg='Nslip')
-   if (any(lattice_NslipSystem(1:size(prm%Nslip),p)-prm%Nslip < 0_pInt)) call IO_error(150_pInt,ext_msg='Nslip')
+   prm%Nslip      = config_phase(p)%getInts('nslip',defaultVal=emptyIntArray)
    prm%totalNslip = sum(prm%Nslip)
+   if (size(prm%Nslip) > count(lattice_NslipSystem(:,p) > 0_pInt)) &
+     call IO_error(150_pInt,ext_msg='Nslip')
+   if (any(lattice_NslipSystem(1:size(prm%Nslip),p)-prm%Nslip < 0_pInt)) &
+     call IO_error(150_pInt,ext_msg='Nslip')
 
    if (prm%totalNslip > 0_pInt) then
-     prm%tau0_slip            = config_phase(p)%getFloats('tau0_slip')
-     prm%tausat_slip          = config_phase(p)%getFloats('tausat_slip')
-     prm%interaction_SlipSlip = spread(config_phase(p)%getFloats('interaction_slipslip'),2,1)
-     prm%H_int                = config_phase(p)%getFloats('h_int',&
-                              defaultVal=[(0.0_pReal,i=1_pInt,size(prm%Nslip))])
+     ! reading in slip related parameters
+     prm%tau0_slip            = config_phase(p)%getFloats('tau0_slip',   requiredShape=shape(prm%Nslip))
+     prm%tausat_slip          = config_phase(p)%getFloats('tausat_slip', requiredShape=shape(prm%Nslip))
+     prm%interaction_SlipSlip = spread(config_phase(p)%getFloats('interaction_slipslip', &
+                                                                         requiredShape=shape(prm%Nslip)),2,1)
+     prm%H_int                = config_phase(p)%getFloats('h_int',       requiredShape=shape(prm%Nslip), &
+                                                                         defaultVal=[(0.0_pReal,i=1_pInt,size(prm%Nslip))])
      prm%nonSchmidCoeff       = config_phase(p)%getFloats('nonschmid_coefficients',&
-                              defaultVal = emptyRealArray )
+                                                                         defaultVal = emptyRealArray )
 
      prm%gdot0_slip           = config_phase(p)%getFloat('gdot0_slip')
      prm%n_slip               = config_phase(p)%getFloat('n_slip')
      prm%a_slip               = config_phase(p)%getFloat('a_slip')
      prm%h0_SlipSlip          = config_phase(p)%getFloat('h0_slipslip')
+
+     ! sanity checks for slip related parameters
+     if (any(prm%tau0_slip < 0.0_pReal .and. prm%Nslip > 0_pInt)) &
+       extmsg = trim(extmsg)//"tau0_slip "
+     if (any(prm%tausat_slip < prm%tau0_slip .and. prm%Nslip > 0_pInt)) &
+       extmsg = trim(extmsg)//"tausat_slip "
+
+     if (prm%gdot0_slip <= 0.0_pReal) extmsg = trim(extmsg)//"gdot0_slip "
+     if (dEq0(prm%a_slip))            extmsg = trim(extmsg)//"a_slip "                              ! ToDo: negative values ok?
+     if (dEq0(prm%n_slip))            extmsg = trim(extmsg)//"n_slip "                              ! ToDo: negative values ok?
+
+     ! expand slip related parameters from system => family
+     prm%tau0_slip   = math_expand(prm%tausat_slip,prm%Nslip)
+     prm%tausat_slip = math_expand(prm%tausat_slip,prm%Nslip)
+     prm%H_int       = math_expand(prm%H_int,prm%Nslip)
    endif
 
-   prm%Ntwin = config_phase(p)%getInts('ntwin', defaultVal=emptyIntArray)
-   if (size(prm%Ntwin) > count(lattice_NtwinSystem(:,p) > 0_pInt))       call IO_error(150_pInt,ext_msg='Ntwin')
-   if (any(lattice_NtwinSystem(1:size(prm%Ntwin),p)-prm%Ntwin < 0_pInt)) call IO_error(150_pInt,ext_msg='Ntwin')
+   prm%Ntwin      = config_phase(p)%getInts('ntwin', defaultVal=emptyIntArray)
    prm%totalNtwin = sum(prm%Ntwin)
+   if (size(prm%Ntwin) > count(lattice_NtwinSystem(:,p) > 0_pInt)) &
+     call IO_error(150_pInt,ext_msg='Ntwin')
+   if (any(lattice_NtwinSystem(1:size(prm%Ntwin),p)-prm%Ntwin < 0_pInt)) &
+     call IO_error(150_pInt,ext_msg='Ntwin')
 
    if (prm%totalNtwin > 0_pInt) then
-     prm%tau0_twin       =  config_phase(p)%getFloats('tau0_twin')
-     prm%interaction_TwinTwin = spread(config_phase(p)%getFloats('interaction_twintwin'),2,1)
+     ! reading in twin related parameters
+     prm%tau0_twin            =  config_phase(p)%getFloats('tau0_twin',   requiredShape=shape(prm%Ntwin))
+     prm%interaction_TwinTwin = spread(config_phase(p)%getFloats('interaction_twintwin', &
+                                                                          requiredShape=shape(prm%Ntwin)),2,1)
 
      prm%gdot0_twin  = config_phase(p)%getFloat('gdot0_twin')
      prm%n_twin      = config_phase(p)%getFloat('n_twin')
      prm%spr         = config_phase(p)%getFloat('s_pr')
      prm%h0_TwinTwin = config_phase(p)%getFloat('h0_twintwin')
+
+     ! sanity checks for twin related parameters
+     if (any(prm%tau0_twin < 0.0_pReal .and. prm%Ntwin > 0_pInt)) &
+       extmsg = trim(extmsg)//"tau0_slip "
+     if (prm%gdot0_twin <= 0.0_pReal) extmsg = trim(extmsg)//"gdot0_twin "
+     if (dEq0(prm%n_twin))            extmsg = trim(extmsg)//"n_twin "                              ! ToDo: negative values ok?
+
+     ! expand slip related parameters from system => family
+     prm%tau0_twin   = math_expand(prm%tau0_twin,prm%Ntwin)
    endif
 
    if (prm%totalNslip > 0_pInt .and. prm%totalNtwin > 0_pInt) then
      prm%interaction_SlipTwin = spread(config_phase(p)%getFloats('interaction_sliptwin'),2,1)
      prm%interaction_TwinSlip = spread(config_phase(p)%getFloats('interaction_twinslip'),2,1)
      prm%h0_TwinSlip = config_phase(p)%getFloat('h0_twinslip')
+   else
+     prm%h0_TwinSlip = 0.0_pReal
    endif
 
+   ! optional parameters that should be defined
    prm%twinB       = config_phase(p)%getFloat('twin_b',defaultVal=1.0_pReal)
    prm%twinC       = config_phase(p)%getFloat('twin_c',defaultVal=0.0_pReal)
    prm%twinD       = config_phase(p)%getFloat('twin_d',defaultVal=0.0_pReal)
    prm%twinE       = config_phase(p)%getFloat('twin_e',defaultVal=0.0_pReal)
 
    prm%aTolResistance = config_phase(p)%getFloat('atol_resistance',defaultVal=1.0_pReal)
-   prm%aTolShear      = config_phase(p)%getFloat('atol_shear',defaultVal=1.0e-6_pReal)
-   prm%aTolTwinfrac   = config_phase(p)%getFloat('atol_twinfrac',defaultVal=1.0e-6_pReal)
+   prm%aTolShear      = config_phase(p)%getFloat('atol_shear',     defaultVal=1.0e-6_pReal)
+   prm%aTolTwinfrac   = config_phase(p)%getFloat('atol_twinfrac',  defaultVal=1.0e-6_pReal)
+
+   if (prm%aTolResistance <= 0.0_pReal) extmsg = trim(extmsg)//"aTolresistance "
+   if (prm%aTolShear      <= 0.0_pReal) extmsg = trim(extmsg)//"aTolShear "
+   if (prm%aTolTwinfrac   <= 0.0_pReal) extmsg = trim(extmsg)//"atoltwinfrac "
+
+   if (extmsg /= '') call IO_error(211_pInt,ip=instance,&
+                                 ext_msg=trim(extmsg)//'('//PLASTICITY_PHENOPOWERLAW_label//')')
 
    outputs = config_phase(p)%getStrings('(output)',defaultVal=emptyStringArray)
    allocate(prm%outputID(0))
@@ -284,46 +327,6 @@ subroutine plastic_phenopowerlaw_init
       endif
 
    end do
-
-   extmsg = ''
-   if (prm%totalNslip > 0_pInt) then
-     if (size(prm%tau0_slip) /= size(prm%Nslip))   call IO_error(211_pInt,ip=instance, &
-            ext_msg='shape(tau0_slip) ('//PLASTICITY_PHENOPOWERLAW_label//')')
-     if (size(prm%tausat_slip) /= size(prm%Nslip)) call IO_error(211_pInt,ip=instance, &
-            ext_msg='shape(tausat_slip) ('//PLASTICITY_PHENOPOWERLAW_label//')')
-     if (size(prm%H_int) /= size(prm%Nslip))       call IO_error(211_pInt,ip=instance, &
-            ext_msg='shape(H_int) ('//PLASTICITY_PHENOPOWERLAW_label//')')
-
-     if (any(prm%tau0_slip < 0.0_pReal .and. prm%Nslip > 0_pInt)) &
-       extmsg = trim(extmsg)//"tau0_slip "
-     if (any(prm%tausat_slip < prm%tau0_slip .and. prm%Nslip > 0_pInt)) &
-       extmsg = trim(extmsg)//"tausat_slip "
-
-     if (prm%gdot0_slip <= 0.0_pReal) extmsg = trim(extmsg)//" gdot0_slip "
-     if (dEq0(prm%a_slip))            extmsg = trim(extmsg)//" a_slip " ! ToDo: negative values ok?
-     if (dEq0(prm%n_slip))            extmsg = trim(extmsg)//" n_slip " ! ToDo: negative values ok?
-
-     prm%H_int = math_expand(prm%H_int,prm%Nslip)
-     prm%tausat_slip = math_expand(prm%tausat_slip,prm%Nslip)
-   endif 
-
-   if (prm%totalNtwin > 0_pInt) then
-     if (size(prm%tau0_twin) /= size(prm%ntwin)) call IO_error(211_pInt,ip=instance,&
-            ext_msg='shape(tau0_twin) ('//PLASTICITY_PHENOPOWERLAW_label//')')
-
-     if (any(prm%tau0_twin < 0.0_pReal .and. prm%Ntwin > 0_pInt)) &
-       extmsg = trim(extmsg)//"tau0_twin "
-
-     if (prm%gdot0_twin <= 0.0_pReal) extmsg = trim(extmsg)//"gdot0_twin "
-     if (dEq0(prm%n_twin))            extmsg = trim(extmsg)//"n_twin " ! ToDo: negative values ok?
-   endif
-
-   if (prm%aTolResistance <= 0.0_pReal) extmsg = trim(extmsg)//"aTolresistance "
-   if (prm%aTolShear      <= 0.0_pReal) extmsg = trim(extmsg)//"aTolShear "
-   if (prm%aTolTwinfrac   <= 0.0_pReal) extmsg = trim(extmsg)//"atoltwinfrac "
-
-   if (extmsg /= '') call IO_error(211_pInt,ip=instance,&
-                                 ext_msg=trim(extmsg)//'('//PLASTICITY_PHENOPOWERLAW_label//')')
 
 !--------------------------------------------------------------------------------------------------
 ! allocate state arrays
@@ -441,14 +444,14 @@ subroutine plastic_phenopowerlaw_init
    startIndex = 1_pInt
    endIndex   = prm%totalNslip
    state   (instance)%s_slip => plasticState(p)%state   (startIndex:endIndex,:)
-   state   (instance)%s_slip = spread(math_expand(prm%tau0_slip, prm%Nslip), 2, NipcMyPhase)
+   state   (instance)%s_slip = spread(prm%tau0_slip, 2, NipcMyPhase)
    dotState(instance)%s_slip => plasticState(p)%dotState(startIndex:endIndex,:)
    plasticState(p)%aTolState(startIndex:endIndex) = prm%aTolResistance
 
    startIndex = endIndex + 1_pInt
    endIndex   = endIndex + prm%totalNtwin
    state   (instance)%s_twin => plasticState(p)%state   (startIndex:endIndex,:)
-   state   (instance)%s_twin = spread(math_expand(prm%tau0_twin, prm%Ntwin), 2, NipcMyPhase)
+   state   (instance)%s_twin = spread(prm%tau0_twin, 2, NipcMyPhase)
    dotState(instance)%s_twin => plasticState(p)%dotState(startIndex:endIndex,:)
    plasticState(p)%aTolState(startIndex:endIndex) = prm%aTolResistance
 
