@@ -517,7 +517,7 @@ subroutine plastic_phenopowerlaw_LpAndItsTangent(Lp,dLp_dMstar99,Mstar_v,ipc,ip,
    Mstar_v                                                                                          !< Mandel stress
 
  integer(pInt) :: &
-   j,k,l,m,n, &
+   i,k,l,m,n, &
    of
  real(pReal), dimension(3,3) :: &
    S                                                                                                !< Second-Piola Kirchhoff stress
@@ -543,24 +543,24 @@ subroutine plastic_phenopowerlaw_LpAndItsTangent(Lp,dLp_dMstar99,Mstar_v,ipc,ip,
  dLp_dS = 0.0_pReal
 
  call kinetics_slip(prm,stt,of,S,gdot_slip_pos,gdot_slip_neg,dgdot_dtauslip_pos,dgdot_dtauslip_neg)
- slipSystems: do j = 1_pInt, prm%totalNslip
-   Lp = Lp + (1.0_pReal-stt%sumF(of))*(gdot_slip_pos(j)+gdot_slip_neg(j))*prm%Schmid_slip(1:3,1:3,j)
+ slipSystems: do i = 1_pInt, prm%totalNslip
+   Lp = Lp + (1.0_pReal-stt%sumF(of))*(gdot_slip_pos(i)+gdot_slip_neg(i))*prm%Schmid_slip(1:3,1:3,i)
    forall (k=1_pInt:3_pInt,l=1_pInt:3_pInt,m=1_pInt:3_pInt,n=1_pInt:3_pInt) &
      dLp_dS(k,l,m,n) = dLp_dS(k,l,m,n) &
-                     + dgdot_dtauslip_pos(j) * prm%Schmid_slip(k,l,j) &
-                                             *(prm%Schmid_slip(m,n,j) + sum(prm%nonSchmid_pos(m,n,:,j)))
+                     + dgdot_dtauslip_pos(i) * prm%Schmid_slip(k,l,i) &
+                                             *(prm%Schmid_slip(m,n,i) + sum(prm%nonSchmid_pos(m,n,:,i)))
    forall (k=1_pInt:3_pInt,l=1_pInt:3_pInt,m=1_pInt:3_pInt,n=1_pInt:3_pInt) &
      dLp_dS(k,l,m,n) = dLp_dS(k,l,m,n) &
-                     + dgdot_dtauslip_neg(j) * prm%Schmid_slip(k,l,j) &
-                                             *(prm%Schmid_slip(m,n,j) + sum(prm%nonSchmid_neg(m,n,:,j)))
+                     + dgdot_dtauslip_neg(i) * prm%Schmid_slip(k,l,i) &
+                                             *(prm%Schmid_slip(m,n,i) + sum(prm%nonSchmid_neg(m,n,:,i)))
  enddo slipSystems
 
  call kinetics_twin(prm,stt,of,S,gdot_twin,dgdot_dtautwin)
- twinSystems: do j = 1_pInt, prm%totalNtwin
-   Lp = Lp + gdot_twin(j)*prm%Schmid_twin(1:3,1:3,j)
+ twinSystems: do i = 1_pInt, prm%totalNtwin
+   Lp = Lp + gdot_twin(i)*prm%Schmid_twin(1:3,1:3,i)
    forall (k=1_pInt:3_pInt,l=1_pInt:3_pInt,m=1_pInt:3_pInt,n=1_pInt:3_pInt) &
      dLp_dS(k,l,m,n) = dLp_dS(k,l,m,n) &
-                     + dgdot_dtautwin(j)*prm%Schmid_twin(k,l,j)*prm%Schmid_twin(m,n,j)
+                     + dgdot_dtautwin(i)*prm%Schmid_twin(k,l,i)*prm%Schmid_twin(m,n,i)
  enddo twinSystems
  end associate
 
@@ -590,7 +590,7 @@ subroutine plastic_phenopowerlaw_dotState(Mstar6,ipc,ip,el)
 
  integer(pInt) :: &
    ph, &
-   j,k, &
+   i,k, &
    of
  real(pReal) :: &
    c_SlipSlip,c_TwinSlip,c_TwinTwin, &
@@ -636,21 +636,21 @@ subroutine plastic_phenopowerlaw_dotState(Mstar6,ipc,ip,el)
 
 !--------------------------------------------------------------------------------------------------
 ! hardening
- hardeningSlip: do j = 1_pInt, prm%totalNslip
-   dst%s_slip(j,of) = &
-     c_SlipSlip * left_SlipSlip(j) &
-     * dot_product(prm%interaction_SlipSlip(j,:),right_SlipSlip*dst%accshear_slip(:,of)) &
+ hardeningSlip: do i = 1_pInt, prm%totalNslip
+   dst%s_slip(i,of) = &
+     c_SlipSlip * left_SlipSlip(i) &
+     * dot_product(prm%interaction_SlipSlip(i,:),right_SlipSlip*dst%accshear_slip(:,of)) &
                     + & 
-     dot_product(prm%interaction_SlipTwin(j,:),dst%accshear_twin(:,of))
+     dot_product(prm%interaction_SlipTwin(i,:),dst%accshear_twin(:,of))
  enddo hardeningSlip
 
- hardeningTwin: do j = 1_pInt, prm%totalNtwin
-   dst%s_twin(j,of) = &
+ hardeningTwin: do i = 1_pInt, prm%totalNtwin
+   dst%s_twin(i,of) = &
      c_TwinSlip &
-     * dot_product(prm%interaction_TwinSlip(j,:),dst%accshear_slip(:,of)) &
+     * dot_product(prm%interaction_TwinSlip(i,:),dst%accshear_slip(:,of)) &
                     + &
      c_TwinTwin &
-     * dot_product(prm%interaction_TwinTwin(j,:),dst%accshear_twin(:,of))
+     * dot_product(prm%interaction_TwinTwin(i,:),dst%accshear_twin(:,of))
  enddo hardeningTwin
 
  end associate
