@@ -599,14 +599,14 @@ subroutine plastic_phenopowerlaw_dotState(Mstar6,ipc,ip,el)
    gdot_slip_pos,gdot_slip_neg
 
  type(tParameters)         :: prm
- type(tPhenopowerlawState) :: dst,stt
+ type(tPhenopowerlawState) :: dot,stt
 
  of = phasememberAt(ipc,ip,el)
  associate(prm => param(phase_plasticityInstance(material_phase(ipc,ip,el))), &
            stt => state(phase_plasticityInstance(material_phase(ipc,ip,el))), &
-           dst => dotState(phase_plasticityInstance(material_phase(ipc,ip,el))))
+           dot => dotState(phase_plasticityInstance(material_phase(ipc,ip,el))))
 
- dst%whole(:,of) = 0.0_pReal
+ dot%whole(:,of) = 0.0_pReal
  S = math_Mandel6to33(Mstar6)
 
 !--------------------------------------------------------------------------------------------------
@@ -625,28 +625,28 @@ subroutine plastic_phenopowerlaw_dotState(Mstar6,ipc,ip,el)
 !--------------------------------------------------------------------------------------------------
 ! shear rates
  call kinetics_slip(prm,stt,of,S,gdot_slip_pos,gdot_slip_neg)
- dst%accshear_slip(:,of) = abs(gdot_slip_pos+gdot_slip_neg)
- dst%sumGamma(of) = sum(dst%accshear_slip(:,of))
- call kinetics_twin(prm,stt,of,S,dst%accshear_twin(:,of))
- if (stt%sumF(of) < 0.98_pReal) dst%sumF(of) = sum(dst%accshear_twin(:,of)/prm%shear_twin)
+ dot%accshear_slip(:,of) = abs(gdot_slip_pos+gdot_slip_neg)
+ dot%sumGamma(of) = sum(dot%accshear_slip(:,of))
+ call kinetics_twin(prm,stt,of,S,dot%accshear_twin(:,of))
+ if (stt%sumF(of) < 0.98_pReal) dot%sumF(of) = sum(dot%accshear_twin(:,of)/prm%shear_twin)
 
 !--------------------------------------------------------------------------------------------------
 ! hardening
  hardeningSlip: do i = 1_pInt, prm%totalNslip
-   dst%s_slip(i,of) = &
+   dot%s_slip(i,of) = &
      c_SlipSlip * left_SlipSlip(i) &
-     * dot_product(prm%interaction_SlipSlip(i,:),right_SlipSlip*dst%accshear_slip(:,of)) &
+     * dot_product(prm%interaction_SlipSlip(i,:),right_SlipSlip*dot%accshear_slip(:,of)) &
                     + & 
-       dot_product(prm%interaction_SlipTwin(i,:),dst%accshear_twin(:,of))
+       dot_product(prm%interaction_SlipTwin(i,:),dot%accshear_twin(:,of))
  enddo hardeningSlip
 
  hardeningTwin: do i = 1_pInt, prm%totalNtwin
-   dst%s_twin(i,of) = &
+   dot%s_twin(i,of) = &
      c_TwinSlip &
-     * dot_product(prm%interaction_TwinSlip(i,:),dst%accshear_slip(:,of)) &
+     * dot_product(prm%interaction_TwinSlip(i,:),dot%accshear_slip(:,of)) &
                     + &
      c_TwinTwin &
-     * dot_product(prm%interaction_TwinTwin(i,:),dst%accshear_twin(:,of))
+     * dot_product(prm%interaction_TwinTwin(i,:),dot%accshear_twin(:,of))
  enddo hardeningTwin
 
  end associate
