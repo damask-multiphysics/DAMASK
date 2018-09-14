@@ -443,8 +443,6 @@ subroutine plastic_phenopowerlaw_init
    state   (instance)%s_slip => plasticState(p)%state   (startIndex:endIndex,:)
    state   (instance)%s_slip = spread(math_expand(prm%tau0_slip, prm%Nslip), 2, NipcMyPhase)
    dotState(instance)%s_slip => plasticState(p)%dotState(startIndex:endIndex,:)
-   plasticState(p)%state0(startIndex:endIndex,:) = &
-     spread(math_expand(prm%tau0_slip, prm%Nslip), 2, NipcMyPhase)
    plasticState(p)%aTolState(startIndex:endIndex) = prm%aTolResistance
 
    startIndex = endIndex + 1_pInt
@@ -452,8 +450,6 @@ subroutine plastic_phenopowerlaw_init
    state   (instance)%s_twin => plasticState(p)%state   (startIndex:endIndex,:)
    state   (instance)%s_twin = spread(math_expand(prm%tau0_twin, prm%Ntwin), 2, NipcMyPhase)
    dotState(instance)%s_twin => plasticState(p)%dotState(startIndex:endIndex,:)
-   plasticState(p)%state0(startIndex:endIndex,:) = &
-     spread(math_expand(prm%tau0_twin, prm%Ntwin), 2, NipcMyPhase)
    plasticState(p)%aTolState(startIndex:endIndex) = prm%aTolResistance
 
    startIndex = endIndex + 1_pInt
@@ -641,7 +637,7 @@ subroutine plastic_phenopowerlaw_dotState(Mstar6,ipc,ip,el)
      c_SlipSlip * left_SlipSlip(i) &
      * dot_product(prm%interaction_SlipSlip(i,:),right_SlipSlip*dst%accshear_slip(:,of)) &
                     + & 
-     dot_product(prm%interaction_SlipTwin(i,:),dst%accshear_twin(:,of))
+       dot_product(prm%interaction_SlipTwin(i,:),dst%accshear_twin(:,of))
  enddo hardeningSlip
 
  hardeningTwin: do i = 1_pInt, prm%totalNtwin
@@ -659,7 +655,9 @@ end subroutine plastic_phenopowerlaw_dotState
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief calculates shear rates on slip systems
+!> @brief calculates shear rates on slip systems and derivatives with respect to resolved stress
+!> @details: Shear rates are calculated only optionally. NOTE: Agains the common convention, the 
+!> result (i.e. intent(out)) variables are the last to have the optional arguments at the end
 !--------------------------------------------------------------------------------------------------
 subroutine kinetics_slip(prm,stt,of,S,gdot_slip_pos,gdot_slip_neg, &
                            dgdot_dtau_slip_pos,dgdot_dtau_slip_neg)
@@ -723,7 +721,9 @@ end subroutine kinetics_slip
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief calculates shear rates on twin systems
+!> @brief calculates shear rates on twin systems and derivatives with respect to resolved stress
+!> @details: Shear rates are calculated only optionally. NOTE: Agains the common convention, the 
+!> result (i.e. intent(out)) variables are the last to have the optional arguments at the end
 !--------------------------------------------------------------------------------------------------
 subroutine kinetics_twin(prm,stt,of,S,gdot_twin,dgdot_dtau_twin)
  use prec, only: &
@@ -753,7 +753,8 @@ subroutine kinetics_twin(prm,stt,of,S,gdot_twin,dgdot_dtau_twin)
    tau_twin(i)  = math_mul33xx33(S,prm%Schmid_twin(1:3,1:3,i))
  enddo
  gdot_twin = merge((1.0_pReal-stt%sumF(of))*prm%gdot0_twin*(abs(tau_twin)/stt%s_twin(:,of))**prm%n_twin, &
-                   0.0_pReal, tau_twin>0.0_pReal)
+                    0.0_pReal, tau_twin>0.0_pReal)
+
  if (present(dgdot_dtau_twin)) then 
    where(dNeq0(tau_twin))
      dgdot_dtau_twin = gdot_twin*prm%n_twin/tau_twin
@@ -808,7 +809,7 @@ function plastic_phenopowerlaw_postResults(Mstar6,ipc,ip,el) result(postResults)
 
  postResults = 0.0_pReal
  c = 0_pInt
- S = math_Mandel6to33(Mstar6)
+ S = math_Mandel6to33(Mstar6) !DEPRECATED
 
  outputsLoop: do o = 1_pInt,size(prm%outputID)
    select case(prm%outputID(o))
