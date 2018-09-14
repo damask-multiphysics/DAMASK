@@ -1433,11 +1433,11 @@ subroutine kinetics_slip(prm,stt,mse,of,S,temperature,gdot_slip,dgdot_dtau_slip)
    of
  type(tDislotwinMicrostructure) :: &
    mse
- real, dimension(prm%totalNslip), intent(out) :: &
+ real(pReal), dimension(prm%totalNslip), intent(out) :: &
    gdot_slip
- real, dimension(prm%totalNslip), optional, intent(out) :: &
+ real(pReal), dimension(prm%totalNslip), optional, intent(out) :: &
    dgdot_dtau_slip
- real, dimension(prm%totalNslip) :: &
+ real(pReal), dimension(prm%totalNslip) :: &
    dgdot_dtau
  real(pReal), dimension(3,3), intent(in) :: &
    S
@@ -1493,11 +1493,11 @@ subroutine kinetics_twin(prm,stt,mse,of,S,temperature,gdot_slip,gdot_twin,dgdot_
    of
  type(tDislotwinMicrostructure) :: &
    mse
- real, dimension(prm%totalNslip), intent(out) :: &
+ real(pReal), dimension(prm%totalNslip), intent(out) :: &
    gdot_slip
- real, dimension(prm%totalNtwin), intent(out) :: &
+ real(pReal), dimension(prm%totalNtwin), intent(out) :: &
    gdot_twin
- real, dimension(prm%totalNtwin), optional, intent(out) :: &
+ real(pReal), dimension(prm%totalNtwin), optional, intent(out) :: &
    dgdot_dtau_twin
  real(pReal), dimension(3,3), intent(in) :: &
    S
