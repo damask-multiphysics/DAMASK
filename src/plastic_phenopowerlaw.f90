@@ -699,7 +699,6 @@ subroutine kinetics_slip(prm,stt,of,S,gdot_slip_pos,gdot_slip_neg, &
    enddo
  enddo
 
-
  gdot_slip_pos = 0.5_pReal*prm%gdot0_slip &
                * sign(abs(tau_slip_pos/stt%s_slip(:,of))**prm%n_slip,  tau_slip_pos)
  gdot_slip_neg = 0.5_pReal*prm%gdot0_slip &
@@ -828,10 +827,10 @@ function plastic_phenopowerlaw_postResults(Mstar6,ipc,ip,el) result(postResults)
        do i = 1_pInt, prm%totalNslip
          tau_slip_pos = math_mul33xx33(S,prm%Schmid_slip(1:3,1:3,i))
          tau_slip_neg = tau_slip_pos
-         do j = 1,size(prm%nonSchmidCoeff)
-           tau_slip_pos = tau_slip_pos + math_mul33xx33(S,prm%nonSchmid_pos(1:3,1:3,j,i))
-           tau_slip_neg = tau_slip_neg + math_mul33xx33(S,prm%nonSchmid_neg(1:3,1:3,j,i))
-         enddo
+         !do j = 1,size(prm%nonSchmidCoeff)
+         !  tau_slip_pos = tau_slip_pos + math_mul33xx33(S,prm%nonSchmid_pos(1:3,1:3,j,i))
+         !  tau_slip_neg = tau_slip_neg + math_mul33xx33(S,prm%nonSchmid_neg(1:3,1:3,j,i))
+         !enddo
          postResults(c+i) = 0.5_pReal*(tau_slip_pos+tau_slip_neg)
        enddo
        c = c + prm%totalNslip
