@@ -1133,7 +1133,7 @@ module lattice
  real(pReal),                          dimension(:,:,:),     allocatable, private :: &
   temp66
  real(pReal),                          dimension(:,:,:),     allocatable, public, protected :: &
-   lattice_C66,   lattice_trans_C66
+   lattice_C66
  real(pReal),                              dimension(:,:,:,:,:),   allocatable, public, protected :: &
    lattice_C3333, lattice_trans_C3333
  real(pReal),                              dimension(:),   allocatable, public, protected :: &
@@ -1266,7 +1266,6 @@ subroutine lattice_init
  allocate(lattice_C66(6,6,Nphases),  source=0.0_pReal)
  allocate(temp66(6,6,Nphases),  source=0.0_pReal)
  allocate(lattice_C3333(3,3,3,3,Nphases),  source=0.0_pReal)
- allocate(lattice_trans_C66(6,6,Nphases),  source=0.0_pReal)
  allocate(lattice_trans_C3333(3,3,3,3,Nphases),  source=0.0_pReal)
  allocate(lattice_thermalExpansion33     (3,3,3,Nphases), source=0.0_pReal)                       ! constant, linear, quadratic coefficients
  allocate(lattice_thermalConductivity33  (3,3,Nphases), source=0.0_pReal)
@@ -1528,7 +1527,7 @@ subroutine lattice_initializeStructure(myPhase,CoverA,CoverA_trans,a_fcc,a_bcc)
          lattice_trans_C3333(1:3,1:3,1:3,1:3,myPhase) = lattice_C3333(1:3,1:3,1:3,1:3,myPhase)
          temp66(1:6,1:6,myPhase) = math_Mandel3333to66(lattice_trans_C3333(1:3,1:3,1:3,1:3,myPhase))
          do i = 1_pInt, 6_pInt
-           if (abs(lattice_trans_C66(i,i,myPhase))<tol_math_check) &
+           if (abs(temp66(i,i,myPhase))<tol_math_check) &
            call IO_error(135_pInt,el=i,ip=myPhase,ext_msg='matrix diagonal "el"ement of phase "ip" in fcc-->bcc transformation')
          enddo
        case (LATTICE_hex_ID)
@@ -1548,7 +1547,7 @@ subroutine lattice_initializeStructure(myPhase,CoverA,CoverA_trans,a_fcc,a_bcc)
          temp66(4,4,myPhase) = c44bar - B
 
          temp66(1:6,1:6,myPhase) = lattice_symmetrizeC66(trans_lattice_structure(myPhase),&
-                                                                    lattice_trans_C66(1:6,1:6,myPhase))
+                                                                    temp66(1:6,1:6,myPhase))
          lattice_trans_C3333(1:3,1:3,1:3,1:3,myPhase) = math_Voigt66to3333(temp66(1:6,1:6,myPhase))
          temp66(1:6,1:6,myPhase) = math_Mandel3333to66(lattice_trans_C3333(1:3,1:3,1:3,1:3,myPhase))
          do i = 1_pInt, 6_pInt
