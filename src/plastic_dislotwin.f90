@@ -268,7 +268,7 @@ subroutine plastic_dislotwin_init(fileUnit)
    prm
  type(tDislotwinState) :: &
    stt, &
-   dst
+   dot
  type(tDislotwinMicrostructure) :: &
    mse
 
@@ -302,7 +302,7 @@ subroutine plastic_dislotwin_init(fileUnit)
  do p = 1_pInt, size(phase_plasticityInstance)
    if (phase_plasticity(p) /= PLASTICITY_DISLOTWIN_ID) cycle
    associate(prm => param(phase_plasticityInstance(p)), &
-             dst => dotState(phase_plasticityInstance(p)), &
+             dot => dotState(phase_plasticityInstance(p)), &
              stt => state(phase_plasticityInstance(p)), &
              mse => microstructure(phase_plasticityInstance(p)))
 
@@ -797,7 +797,7 @@ subroutine plastic_dislotwin_init(fileUnit)
    startIndex=1_pInt
    endIndex=prm%totalNslip
    stt%rhoEdge=>plasticState(p)%state(startIndex:endIndex,:)
-   dst%rhoEdge=>plasticState(p)%dotState(startIndex:endIndex,:)
+   dot%rhoEdge=>plasticState(p)%dotState(startIndex:endIndex,:)
    plasticState(p)%state0(startIndex:endIndex,:) = &
       spread(math_expand(prm%rho0,prm%Nslip),2,NofMyPhase)
    plasticState(p)%aTolState(startIndex:endIndex) = prm%aTolRho
@@ -805,7 +805,7 @@ subroutine plastic_dislotwin_init(fileUnit)
    startIndex=endIndex+1
    endIndex=endIndex+prm%totalNslip
    stt%rhoEdgeDip=>plasticState(p)%state(startIndex:endIndex,:)
-   dst%rhoEdgeDip=>plasticState(p)%dotState(startIndex:endIndex,:)
+   dot%rhoEdgeDip=>plasticState(p)%dotState(startIndex:endIndex,:)
    plasticState(p)%state0(startIndex:endIndex,:) = &
       spread(math_expand(prm%rhoDip0,prm%Nslip),2,NofMyPhase)
    plasticState(p)%aTolState(startIndex:endIndex) = prm%aTolRho
@@ -813,34 +813,34 @@ subroutine plastic_dislotwin_init(fileUnit)
    startIndex=endIndex+1
    endIndex=endIndex+prm%totalNslip
    stt%accshear_slip=>plasticState(p)%state(startIndex:endIndex,:)
-   dst%accshear_slip=>plasticState(p)%dotState(startIndex:endIndex,:)
+   dot%accshear_slip=>plasticState(p)%dotState(startIndex:endIndex,:)
    plasticState(p)%aTolState(startIndex:endIndex) = 1.0e6_pReal
    
    startIndex=endIndex+1
    endIndex=endIndex+prm%totalNtwin
    stt%twinFraction=>plasticState(p)%state(startIndex:endIndex,:)
-   dst%twinFraction=>plasticState(p)%dotState(startIndex:endIndex,:)
+   dot%twinFraction=>plasticState(p)%dotState(startIndex:endIndex,:)
    plasticState(p)%aTolState(startIndex:endIndex) = prm%aTolTwinFrac
    
    startIndex=endIndex+1
    endIndex=endIndex+prm%totalNtwin
    stt%accshear_twin=>plasticState(p)%state(startIndex:endIndex,:)
-   dst%accshear_twin=>plasticState(p)%dotState(startIndex:endIndex,:)
+   dot%accshear_twin=>plasticState(p)%dotState(startIndex:endIndex,:)
    plasticState(p)%aTolState(startIndex:endIndex) = 1.0e6_pReal
    
    startIndex=endIndex+1
    endIndex=endIndex+prm%totalNtrans
    stt%stressTransFraction=>plasticState(p)%state(startIndex:endIndex,:)
-   dst%stressTransFraction=>plasticState(p)%dotState(startIndex:endIndex,:)
+   dot%stressTransFraction=>plasticState(p)%dotState(startIndex:endIndex,:)
    plasticState(p)%aTolState(startIndex:endIndex) = prm%aTolTransFrac
    
    startIndex=endIndex+1
    endIndex=endIndex+prm%totalNtrans
    stt%strainTransFraction=>plasticState(p)%state(startIndex:endIndex,:)
-   dst%strainTransFraction=>plasticState(p)%dotState(startIndex:endIndex,:)
+   dot%strainTransFraction=>plasticState(p)%dotState(startIndex:endIndex,:)
    plasticState(p)%aTolState(startIndex:endIndex) = prm%aTolTransFrac
 
-   dst%whole => plasticState(p)%dotState
+   dot%whole => plasticState(p)%dotState
 
    allocate(mse%invLambdaSlip(prm%totalNslip,NofMyPhase),source=0.0_pReal)
    allocate(mse%invLambdaSlipTwin(prm%totalNslip,NofMyPhase),source=0.0_pReal)
@@ -1294,7 +1294,7 @@ subroutine plastic_dislotwin_dotState(Tstar_v,Temperature,ipc,ip,el)
  real(pReal), dimension(3,3) :: &
    S                                                                                                !< Second-Piola Kirchhoff stress
  type(tParameters) :: prm
- type(tDislotwinState) :: stt, dst
+ type(tDislotwinState) :: stt, dot
  type(tDislotwinMicrostructure) :: mse
 
  !* Shortened notation
@@ -1306,10 +1306,10 @@ subroutine plastic_dislotwin_dotState(Tstar_v,Temperature,ipc,ip,el)
 
  associate(prm => param(phase_plasticityInstance(material_phase(ipc,ip,el))), &
            stt => state(phase_plasticityInstance(material_phase(ipc,ip,el))), &
-           dst => dotstate(phase_plasticityInstance(material_phase(ipc,ip,el))), &
+           dot => dotstate(phase_plasticityInstance(material_phase(ipc,ip,el))), &
            mse => microstructure(phase_plasticityInstance(material_phase(ipc,ip,el))))
 
- dst%whole(:,of) = 0.0_pReal
+ dot%whole(:,of) = 0.0_pReal
 
  sumf_twin  = sum(stt%twinFraction(1_pInt:prm%totalNtwin,of))
  sumf_trans = sum(stt%stressTransFraction(1_pInt:prm%totalNtrans,of)) + &
@@ -1367,9 +1367,9 @@ subroutine plastic_dislotwin_dotState(Tstar_v,Temperature,ipc,ip,el)
                        (EdgeDipDistance-EdgeDipMinDistance)
      endif
    endif
-   dst%rhoEdge(i,of)    = DotRhoMultiplication-DotRhoDipFormation-DotRhoEdgeEdgeAnnihilation
-   dst%rhoEdgeDip(i,of) = DotRhoDipFormation-DotRhoEdgeDipAnnihilation-DotRhoEdgeDipClimb
-   dst%accshear_slip(i,of) = abs(gdot_slip(i))
+   dot%rhoEdge(i,of)    = DotRhoMultiplication-DotRhoDipFormation-DotRhoEdgeEdgeAnnihilation
+   dot%rhoEdgeDip(i,of) = DotRhoDipFormation-DotRhoEdgeDipAnnihilation-DotRhoEdgeDipClimb
+   dot%accshear_slip(i,of) = abs(gdot_slip(i))
  enddo slipState
  
  twinState: do i = 1_pInt, prm%totalNtwin
@@ -1392,9 +1392,9 @@ subroutine plastic_dislotwin_dotState(Tstar_v,Temperature,ipc,ip,el)
      else isFCCtwin
        Ndot0_twin=prm%Ndot0_twin(i)
      endif isFCCtwin
-     dst%twinFraction(i,of) = (1.0_pReal-sumf_twin-sumf_trans)*&
+     dot%twinFraction(i,of) = (1.0_pReal-sumf_twin-sumf_trans)*&
                                    mse%twinVolume(i,of)*Ndot0_twin*exp(-StressRatio_r)
-     dst%accshear_twin(i,of) = dst%twinFraction(i,of) * prm%shear_twin(i)
+     dot%accshear_twin(i,of) = dot%twinFraction(i,of) * prm%shear_twin(i)
    endif significantTwinStress
  
  enddo twinState
@@ -1419,10 +1419,10 @@ subroutine plastic_dislotwin_dotState(Tstar_v,Temperature,ipc,ip,el)
      else isFCCtrans
        Ndot0_trans=prm%Ndot0_trans(i)
      endif isFCCtrans
-     dst%strainTransFraction(i,of) = (1.0_pReal-sumf_twin-sumf_trans)*&
+     dot%strainTransFraction(i,of) = (1.0_pReal-sumf_twin-sumf_trans)*&
                              mse%martensiteVolume(i,of)*Ndot0_trans*exp(-StressRatio_s)
         !* Dotstate for accumulated shear due to transformation
-        !dst%accshear_trans(i,of) = dst%strainTransFraction(i,of) * &
+        !dot%accshear_trans(i,of) = dot%strainTransFraction(i,of) * &
         !                                                  lattice_sheartrans(index_myfamily+i,ph)
    endif significantTransStress
  
