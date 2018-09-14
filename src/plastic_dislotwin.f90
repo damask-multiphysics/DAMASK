@@ -1075,7 +1075,7 @@ subroutine plastic_dislotwin_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,Temperature
     tau
  real(pReal), dimension(3,3,3,3) :: dLp_dS
  real(pReal), dimension(param(phase_plasticityInstance(material_phase(ipc,ip,el)))%totalNslip) :: &
-    gdot_slip
+    gdot_slip,dgdot_dtau_slip
  real(pReal):: gdot_sb,gdot_twin,gdot_trans
  real(pReal), dimension(3,3) :: eigVectors, Schmid_shearBand
  real(pReal), dimension(3)   :: eigValues, sb_s, sb_m
@@ -1119,31 +1119,12 @@ subroutine plastic_dislotwin_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,Temperature
  dLp_dS = 0.0_pReal 
  S = math_Mandel6to33(Tstar_v)
 
+ call kinetics_slip(prm,stt,mse,of,S,temperature,gdot_slip,dgdot_dtau_slip)
  slipContribution: do i = 1_pInt, prm%totalNslip
-
-   tau = math_mul33xx33(S,prm%Schmid_slip(1:3,1:3,i))
-
-   significantSlipStress: if((abs(tau)-mse%threshold_stress_slip(i,of)) > tol_math_check) then
-     stressRatio = ((abs(tau)- mse%threshold_stress_slip(i,of))/&
-                   (prm%SolidSolutionStrength+prm%tau_peierls(i)))
-     StressRatio_p       = stressRatio** prm%p(i)
-     StressRatio_pminus1 = stressRatio**(prm%p(i)-1.0_pReal) ! ToDo: no very helpful
-     BoltzmannRatio      = prm%Qedge(i)/(kB*Temperature)
-     
-     gdot_slip(i) = stt%rhoEdge(i,of)*prm%burgers_slip(i)* prm%v0(i) &
-                  * sign(exp(-BoltzmannRatio*(1-StressRatio_p)** prm%q(i)), tau)
-     dgdot_dtau = abs(gdot_slip(i))*BoltzmannRatio*prm%p(i) * prm%q(i) &
-                / (prm%SolidSolutionStrength+prm%tau_peierls(i)) &
-                * StressRatio_pminus1*(1-StressRatio_p)**(prm%q(i)-1.0_pReal)
-
-     Lp = Lp + gdot_slip(i)*prm%Schmid_slip(1:3,1:3,i)
-     forall (k=1_pInt:3_pInt,l=1_pInt:3_pInt,m=1_pInt:3_pInt,n=1_pInt:3_pInt) &
-       dLp_dS(k,l,m,n) = dLp_dS(k,l,m,n) &
-                       + dgdot_dtau * prm%Schmid_slip(k,l,i) * prm%Schmid_slip(m,n,i)
-   else significantSlipStress
-     gdot_slip(i) = 0.0_pReal
-   endif significantSlipStress
-
+   Lp = Lp + gdot_slip(i)*prm%Schmid_slip(1:3,1:3,i)
+   forall (k=1_pInt:3_pInt,l=1_pInt:3_pInt,m=1_pInt:3_pInt,n=1_pInt:3_pInt) &
+     dLp_dS(k,l,m,n) = dLp_dS(k,l,m,n) &
+                     + dgdot_dtau_slip(i) * prm%Schmid_slip(k,l,i) * prm%Schmid_slip(m,n,i)
  enddo slipContribution
  
  !ToDo: Why do this before shear banding?
@@ -1177,6 +1158,7 @@ subroutine plastic_dislotwin_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,Temperature
 
  endif shearBandingContribution
  
+ !call kinetics_twin(prm,stt,mse,of,S,temperature,gdot_slip,gdot_twin,dgdot_dtau_twin)
  twinContibution: do i = 1_pInt, prm%totalNtwin
 
    tau = math_mul33xx33(S,prm%Schmid_twin(1:3,1:3,i))
