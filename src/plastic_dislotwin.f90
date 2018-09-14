@@ -448,50 +448,50 @@ subroutine plastic_dislotwin_init(fileUnit)
      outputID = undefined_ID
      select case(outputs(i))
        case ('edge_density')
-         outputID = edge_density_ID
+         outputID = merge(edge_density_ID,undefined_ID,prm%totalNslip > 0_pInt)
          outputSize = prm%totalNslip
        case ('dipole_density')
-         outputID = dipole_density_ID
+         outputID = merge(dipole_density_ID,undefined_ID,prm%totalNslip > 0_pInt)
          outputSize = prm%totalNslip
        case ('shear_rate_slip','shearrate_slip')
-         outputID = shear_rate_slip_ID
+         outputID = merge(shear_rate_slip_ID,undefined_ID,prm%totalNslip > 0_pInt)
          outputSize = prm%totalNslip
        case ('accumulated_shear_slip')
-         outputID = accumulated_shear_slip_ID
+         outputID = merge(accumulated_shear_slip_ID,undefined_ID,prm%totalNslip > 0_pInt)
          outputSize = prm%totalNslip
        case ('mfp_slip')
-         outputID = mfp_slip_ID
+         outputID = merge(mfp_slip_ID,undefined_ID,prm%totalNslip > 0_pInt)
          outputSize = prm%totalNslip
        case ('resolved_stress_slip')
-         outputID = resolved_stress_slip_ID
+         outputID = merge(resolved_stress_slip_ID,undefined_ID,prm%totalNslip > 0_pInt)
          outputSize = prm%totalNslip
        case ('threshold_stress_slip')
-         outputID= threshold_stress_slip_ID
+         outputID= merge(threshold_stress_slip_ID,undefined_ID,prm%totalNslip > 0_pInt)
          outputSize = prm%totalNslip
        case ('edge_dipole_distance')
-         outputID = edge_dipole_distance_ID
+         outputID = merge(edge_dipole_distance_ID,undefined_ID,prm%totalNslip > 0_pInt)
          outputSize = prm%totalNslip
        case ('stress_exponent')
-         outputID = stress_exponent_ID
+         outputID = merge(stress_exponent_ID,undefined_ID,prm%totalNslip > 0_pInt)
          outputSize = prm%totalNslip
 
        case ('twin_fraction')
-         outputID = twin_fraction_ID
+         outputID = merge(twin_fraction_ID,undefined_ID,prm%totalNtwin >0_pInt)
          outputSize = prm%totalNtwin
        case ('shear_rate_twin','shearrate_twin')
-         outputID = shear_rate_twin_ID
+         outputID = merge(shear_rate_twin_ID,undefined_ID,prm%totalNtwin >0_pInt)
          outputSize = prm%totalNtwin
        case ('accumulated_shear_twin')
-         outputID = accumulated_shear_twin_ID
+         outputID = merge(accumulated_shear_twin_ID,undefined_ID,prm%totalNtwin >0_pInt)
          outputSize = prm%totalNtwin
        case ('mfp_twin')
-         outputID = mfp_twin_ID
+         outputID = merge(mfp_twin_ID,undefined_ID,prm%totalNtwin >0_pInt)
          outputSize = prm%totalNtwin
        case ('resolved_stress_twin')
-         outputID = resolved_stress_twin_ID
+         outputID = merge(resolved_stress_twin_ID,undefined_ID,prm%totalNtwin >0_pInt)
          outputSize = prm%totalNtwin
        case ('threshold_stress_twin')
-         outputID = threshold_stress_twin_ID
+         outputID = merge(threshold_stress_twin_ID,undefined_ID,prm%totalNtwin >0_pInt)
          outputSize = prm%totalNtwin
          
        case ('resolved_stress_shearband')
@@ -840,53 +840,27 @@ subroutine plastic_dislotwin_init(fileUnit)
    dst%strainTransFraction=>plasticState(p)%dotState(startIndex:endIndex,:)
    plasticState(p)%aTolState(startIndex:endIndex) = prm%aTolTransFrac
 
-   invLambdaSlip0 = spread(0.0_pReal,1,prm%totalNslip)                                   ! calculation required? Seems to be the same as in microstructure
-   forall (i = 1_pInt:prm%totalNslip) &
-     invLambdaSlip0(i) = sqrt(dot_product(math_expand(prm%rho0,prm%Nslip)+ &
-     math_expand(prm%rhoDip0,prm%Nslip),prm%forestProjectionEdge(1:prm%totalNslip,i)))/ &
-                         prm%CLambdaSlip(i)
-   mse%invLambdaSlip = spread(math_expand(invLambdaSlip0,prm%Nslip),2, NofMyPhase)
+   dst%whole => plasticState(p)%dotState
 
-
+   allocate(mse%invLambdaSlip(prm%totalNslip,NofMyPhase),source=0.0_pReal)
    allocate(mse%invLambdaSlipTwin(prm%totalNslip,NofMyPhase),source=0.0_pReal)
    allocate(mse%invLambdaTwin(prm%totalNtwin,NofMyPhase),source=0.0_pReal)
    allocate(mse%invLambdaSlipTrans(prm%totalNtrans,NofMyPhase),source=0.0_pReal)
    allocate(mse%invLambdaTrans(prm%totalNtrans,NofMyPhase),source=0.0_pReal)
 
-   MeanFreePathSlip0  = prm%GrainSize/(1.0_pReal+invLambdaSlip0*prm%GrainSize)
-   mse%mfp_slip       = spread(math_expand(MeanFreePathSlip0,prm%Nslip),2, NofMyPhase)
-   
-   MeanFreePathTwin0  = spread(prm%GrainSize,1,prm%totalNtwin)
-   mse%mfp_twin       = spread(math_expand(MeanFreePathTwin0,prm%Ntwin),2, NofMyPhase)
+   allocate(mse%mfp_slip(prm%totalNslip,NofMyPhase),  source=0.0_pReal)
+   allocate(mse%mfp_twin(prm%totalNtwin,NofMyPhase),  source=0.0_pReal)
+   allocate(mse%mfp_trans(prm%totalNtrans,NofMyPhase),source=0.0_pReal)
 
-   MeanFreePathTrans0 = spread(prm%GrainSize,1,prm%totalNtrans)
-   mse%mfp_trans      = spread(math_expand(MeanFreePathTrans0,prm%Ntrans),2, NofMyPhase)
-
-   tauSlipThreshold0  = spread(0.0_pReal,1,prm%totalNslip)
-   forall (i = 1_pInt:prm%totalNslip) tauSlipThreshold0(i) = &
-     prm%mu*prm%burgers_slip(i) * sqrt(dot_product(math_expand(prm%rho0 + prm%rhoDip0,prm%Nslip),&
-                                                   prm%interaction_SlipSlip(i,1:prm%totalNslip)))
-   mse%threshold_stress_slip = spread(math_expand(tauSlipThreshold0,prm%Nslip),2, NofMyPhase)
-
+   allocate(mse%threshold_stress_slip(prm%totalNslip,NofMyPhase),  source=0.0_pReal)
    allocate(mse%threshold_stress_twin(prm%totalNtwin,NofMyPhase),  source=0.0_pReal)
    allocate(mse%threshold_stress_trans(prm%totalNtrans,NofMyPhase),source=0.0_pReal)
 
-   TwinVolume0= spread(0.0_pReal,1,prm%totalNtwin)
-   forall (i = 1_pInt:prm%totalNtwin) TwinVolume0(i) = &
-     (PI/4.0_pReal)*prm%twinsize(i)*MeanFreePathTwin0(i)**2.0_pReal
-   mse%twinVolume = &
-      spread(math_expand(TwinVolume0,prm%Ntwin),2, NofMyPhase)
-
-   MartensiteVolume0= spread(0.0_pReal,1,prm%totalNtrans)
-   forall (i = 1_pInt:prm%totalNtrans) MartensiteVolume0(i) = &
-     (PI/4.0_pReal)*prm%lamellarsizePerTransSystem(i)*MeanFreePathTrans0(i)**2.0_pReal
-   mse%martensiteVolume = &
-     spread(math_expand(MartensiteVolume0,prm%Ntrans),2, NofMyPhase)
-
-   dst%whole => plasticState(p)%dotState
-
    allocate(mse%tau_r_twin(prm%totalNtwin,NofMyPhase),   source=0.0_pReal)
    allocate(mse%tau_r_trans(prm%totalNtrans,NofMyPhase), source=0.0_pReal)
+
+   allocate(mse%twinVolume(prm%totalNtwin,NofMyPhase),   source=0.0_pReal)
+   allocate(mse%martensiteVolume(prm%totalNtrans,NofMyPhase), source=0.0_pReal)
 
    end associate
  enddo
@@ -916,7 +890,6 @@ function plastic_dislotwin_homogenizedC(ipc,ip,el)
                   of
  real(pReal) :: sumf_twin, sumf_trans
 
- !* Shortened notation
  of = phasememberAt(ipc,ip,el)
  associate(prm => param(phase_plasticityInstance(material_phase(ipc,ip,el))),&
            stt => state(phase_plasticityInstance(material_phase(ipc,ip,el))))
