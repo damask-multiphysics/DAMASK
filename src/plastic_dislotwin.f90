@@ -1451,7 +1451,7 @@ subroutine kinetics_slip(prm,stt,mse,of,S,temperature,gdot_slip,dgdot_dtau_slip)
  integer(pInt) :: i 
 
  do i = 1_pInt, prm%totalNslip
-   tau = math_mul33xx33(S,prm%Schmid_slip(1:3,1:3,i))
+   tau(i) = math_mul33xx33(S,prm%Schmid_slip(1:3,1:3,i))
  enddo
 
  significantStress: where((abs(tau)-mse%threshold_stress_slip(:,of)) > tol_math_check)
@@ -1512,7 +1512,7 @@ subroutine kinetics_twin(prm,stt,mse,of,S,temperature,gdot_slip,gdot_twin,dgdot_
  integer(pInt) :: i,s1,s2
 
  do i = 1_pInt, prm%totalNtwin
-   tau = math_mul33xx33(S,prm%Schmid_twin(1:3,1:3,i))
+   tau(i) = math_mul33xx33(S,prm%Schmid_twin(1:3,1:3,i))
    isFCC: if (prm%isFCC) then
      s1=prm%fcc_twinNucleationSlipPair(1,i)
      s2=prm%fcc_twinNucleationSlipPair(2,i)
