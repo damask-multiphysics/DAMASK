@@ -5,6 +5,7 @@
 !> @brief FEM PETSc solver
 !--------------------------------------------------------------------------------------------------
 module FEM_mech
+use PETSC
 #include <petsc/finclude/petscdmplex.h>
 #include <petsc/finclude/petscdm.h>
 #include <petsc/finclude/petscdmda.h>
@@ -99,7 +100,7 @@ subroutine FEM_mech_init(fieldBC)
  DMLabel                                :: BCLabel
  PetscInt,          allocatable, target :: numComp(:), numDoF(:), bcField(:)
  PetscInt,                      pointer :: pNumComp(:), pNumDof(:), pBcField(:), pBcPoint(:)
- PetscInt                               :: numBC, bcSize, xx
+ PetscInt                               :: numBC, bcSize, nc
  IS                                     :: bcPoint
  IS,                allocatable, target :: bcComps(:), bcPoints(:)
  IS,                            pointer :: pBcComps(:), pBcPoints(:)
@@ -137,8 +138,9 @@ subroutine FEM_mech_init(fieldBC)
  qWeightsP => qWeights
  call PetscQuadratureCreate(PETSC_COMM_SELF,mechQuad,ierr); CHKERRQ(ierr)
  CHKERRQ(ierr)
- call PetscQuadratureSetData(mechQuad,dimPlex,xx,nQuadrature,qPointsP,qWeightsP,ierr)
- ! description for xx not on http://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/DT/PetscQuadratureSetData.html
+ ! what is the number of components, nc?
+ nc = 3
+ call PetscQuadratureSetData(mechQuad,dimPlex,nc,nQuadrature,qPointsP,qWeightsP,ierr)
  CHKERRQ(ierr)
  call PetscFECreateDefault(mech_mesh,dimPlex,dimPlex,PETSC_TRUE,prefix, &
                            integrationOrder,mechFE,ierr); CHKERRQ(ierr)
@@ -253,8 +255,7 @@ subroutine FEM_mech_init(fieldBC)
    do basis = 0, nBasis-1
      call PetscDualSpaceGetFunctional(mechDualSpace,basis,functional,ierr)
      CHKERRQ(ierr)
-     call PetscQuadratureGetData(functional,dimPlex,xx,nNodalPoints,nodalPointsP,nodalWeightsP,ierr)
-     ! description for xx not on http://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/DT/PetscQuadratureSetData.html
+     call PetscQuadratureGetData(functional,dimPlex,nc,nNodalPoints,nodalPointsP,nodalWeightsP,ierr)
      CHKERRQ(ierr)
      x_scal(basis*dimPlex+1:(basis+1)*dimPlex) = pV0 + matmul(transpose(cellJMat),nodalPointsP + 1.0)
    enddo
