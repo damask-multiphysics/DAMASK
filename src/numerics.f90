@@ -146,40 +146,7 @@ module numerics
                              &-mech_pc_type ml &
                              &-mech_mg_levels_ksp_type chebyshev &
                              &-mech_mg_levels_pc_type sor &
-                             &-mech_pc_ml_nullspace user &
-                             &-damage_snes_type vinewtonrsls &
-                             &-damage_snes_atol 1e-8 &
-                             &-damage_ksp_type preonly &
-                             &-damage_ksp_max_it 25 &
-                             &-damage_pc_type cholesky &
-                             &-damage_pc_factor_mat_solver_package mumps &
-                             &-thermal_snes_type newtonls &
-                             &-thermal_snes_linesearch_type cp &
-                             &-thermal_ksp_type fgmres &
-                             &-thermal_ksp_max_it 25 &
-                             &-thermal_snes_atol 1e-3 &
-                             &-thermal_pc_type hypre &
-                             &-vacancy_snes_type newtonls &
-                             &-vacancy_snes_linesearch_type cp &
-                             &-vacancy_snes_atol 1e-9 &
-                             &-vacancy_ksp_type fgmres &
-                             &-vacancy_ksp_max_it 25 &
-                             &-vacancy_pc_type ml &
-                             &-vacancy_mg_levels_ksp_type chebyshev &
-                             &-vacancy_mg_levels_pc_type sor &
-                             &-porosity_snes_type newtonls &
-                             &-porosity_snes_atol 1e-8 &
-                             &-porosity_ksp_type fgmres &
-                             &-porosity_ksp_max_it 25 &
-                             &-porosity_pc_type hypre &
-                             &-hydrogen_snes_type newtonls &
-                             &-hydrogen_snes_linesearch_type cp &
-                             &-hydrogen_snes_atol 1e-9 &
-                             &-hydrogen_ksp_type fgmres &
-                             &-hydrogen_ksp_max_it 25 &
-                             &-hydrogen_pc_type ml &
-                             &-hydrogen_mg_levels_ksp_type chebyshev &
-                             &-hydrogen_mg_levels_pc_type sor ', &
+                             &-mech_pc_ml_nullspace user ',&
    petsc_options           = ''
 #endif
 
