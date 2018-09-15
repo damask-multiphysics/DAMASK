@@ -284,11 +284,17 @@ character(len=1024) function getGeometryFile(geometryParameter)
 
  implicit none
  character(len=1024), intent(in) :: geometryParameter
+ logical                         :: file_exists
 
  getGeometryFile = trim(geometryParameter)
  if (scan(getGeometryFile,'/') /= 1) getGeometryFile = trim(getCWD())//'/'//trim(getGeometryFile)
  getGeometryFile = makeRelativePath(trim(getCWD()), getGeometryFile)
 
+ inquire(file=trim(getGeometryFile), exist=file_exists)
+ if (.not. file_exists) then
+   write(6,'(a)') ' Geometry file does not exists ('//trim(getGeometryFile)//')'
+   call quit(1_pInt)
+ endif
 
 end function getGeometryFile
 
@@ -302,10 +308,17 @@ character(len=1024) function getLoadCaseFile(loadCaseParameter)
 
  implicit none
  character(len=1024), intent(in) :: loadCaseParameter
+ logical                         :: file_exists
 
  getLoadCaseFile = trim(loadCaseParameter)
  if (scan(getLoadCaseFile,'/') /= 1) getLoadCaseFile = trim(getCWD())//'/'//trim(getLoadCaseFile)
  getLoadCaseFile = makeRelativePath(trim(getCWD()), getLoadCaseFile)
+
+ inquire(file=trim(getLoadCaseFile), exist=file_exists)
+ if (.not. file_exists) then
+   write(6,'(a)') ' Geometry file does not exists ('//trim(getLoadCaseFile)//')'
+   call quit(1_pInt)
+ endif
 
 end function getLoadCaseFile
 
