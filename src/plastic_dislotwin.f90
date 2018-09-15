@@ -797,17 +797,15 @@ subroutine plastic_dislotwin_init(fileUnit)
    startIndex=1_pInt
    endIndex=prm%totalNslip
    stt%rhoEdge=>plasticState(p)%state(startIndex:endIndex,:)
+   stt%rhoEdge= spread(math_expand(prm%rho0,prm%Nslip),2,NofMyPhase)
    dot%rhoEdge=>plasticState(p)%dotState(startIndex:endIndex,:)
-   plasticState(p)%state0(startIndex:endIndex,:) = &
-      spread(math_expand(prm%rho0,prm%Nslip),2,NofMyPhase)
    plasticState(p)%aTolState(startIndex:endIndex) = prm%aTolRho
 
    startIndex=endIndex+1
    endIndex=endIndex+prm%totalNslip
    stt%rhoEdgeDip=>plasticState(p)%state(startIndex:endIndex,:)
+   stt%rhoEdgeDip= spread(math_expand(prm%rhoDip0,prm%Nslip),2,NofMyPhase)
    dot%rhoEdgeDip=>plasticState(p)%dotState(startIndex:endIndex,:)
-   plasticState(p)%state0(startIndex:endIndex,:) = &
-      spread(math_expand(prm%rhoDip0,prm%Nslip),2,NofMyPhase)
    plasticState(p)%aTolState(startIndex:endIndex) = prm%aTolRho
    
    startIndex=endIndex+1
@@ -840,6 +838,7 @@ subroutine plastic_dislotwin_init(fileUnit)
    dot%strainTransFraction=>plasticState(p)%dotState(startIndex:endIndex,:)
    plasticState(p)%aTolState(startIndex:endIndex) = prm%aTolTransFrac
 
+   plasticState(p)%state0 = plasticState(p)%state
    dot%whole => plasticState(p)%dotState
 
    allocate(mse%invLambdaSlip(prm%totalNslip,NofMyPhase),source=0.0_pReal)
