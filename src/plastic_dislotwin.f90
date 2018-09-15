@@ -1523,62 +1523,62 @@ subroutine kinetics_twin(prm,stt,mse,of,S,temperature,gdot_slip,gdot_twin,dgdot_
 end subroutine
 
  
-!!--------------------------------------------------------------------------------------------------
-!!> @brief calculates shear rates on transformation systems
-!!--------------------------------------------------------------------------------------------------
-!subroutine kinetics_trans(prm,stt,mse,of,S,temperature,gdot_slip,gdot_twin,dgdot_dtau_twin)
-! use prec, only: &
-!   tol_math_check, &
-!   dNeq0
-! use math, only: &
-!   math_mul33xx33
-!
-! implicit none
-! type(tParameters), intent(in) :: &
-!   prm
-! type(tDislotwinState), intent(in) :: &
-!   stt
-! integer(pInt),     intent(in) :: &
-!   of
-! type(tDislotwinMicrostructure) :: &
-!   mse
-! real(pReal), dimension(prm%totalNslip), intent(out) :: &
-!   gdot_slip
-! real(pReal), dimension(prm%totalNtwin), intent(out) :: &
-!   gdot_twin
-! real(pReal), dimension(prm%totalNtwin), optional, intent(out) :: &
-!   dgdot_dtau_twin
-! real(pReal), dimension(3,3), intent(in) :: &
-!   S
-! real(pReal), intent(in) :: &
-!   temperature
-!
-! real, dimension(prm%totalNtwin) :: &
-!   tau, &
-!   Ndot0_twin, &
-!   stressRatio_r, &
-!   dgdot_dtau
-!
-! integer(pInt) :: i,s1,s2
-!
-! do i = 1_pInt, prm%totalNtrans
-!   tau(i) = math_mul33xx33(S,prm%Schmid_trans(1:3,1:3,i))
-!   isFCC: if (prm%isFCC) then
-!     s1=prm%fcc_twinNucleationSlipPair(1,i)
-!     s2=prm%fcc_twinNucleationSlipPair(2,i)
-!     if (tau(i) < mse%tau_r_trans(i,of)) then
-!       Ndot0_trans=(abs(gdot_slip(s1))*(stt%rhoEdge(s2,of)+stt%rhoEdgeDip(s2,of))+&  ! s1/s2 mixing correct?
-!                   abs(gdot_slip(s2))*(stt%rhoEdge(s1,of)+stt%rhoEdgeDip(s1,of)))/&
-!               (prm%L0_trans*prm%burgers_slip(i))*&                               ! burgers_slip correct?
-!               (1.0_pReal-exp(-prm%VcrossSlip/(kB*Temperature)*&
-!               (mse%tau_r_trans(i,of)-tau)))
-!     else
-!       Ndot0_trans=0.0_pReal
-!     end if
-!   else isFCC
-!     Ndot0_trans=prm%Ndot0_trans(i)
-!   endif isFCC
-! enddo
+!--------------------------------------------------------------------------------------------------
+!> @brief calculates shear rates on transformation systems
+!--------------------------------------------------------------------------------------------------
+subroutine kinetics_trans(prm,stt,mse,of,S,temperature,gdot_slip,gdot_trans,dgdot_dtau_trans)
+ use prec, only: &
+   tol_math_check, &
+   dNeq0
+ use math, only: &
+   math_mul33xx33
+
+ implicit none
+ type(tParameters), intent(in) :: &
+   prm
+ type(tDislotwinState), intent(in) :: &
+   stt
+ integer(pInt),     intent(in) :: &
+   of
+ type(tDislotwinMicrostructure) :: &
+   mse
+ real(pReal), dimension(prm%totalNslip), intent(out) :: &
+   gdot_slip
+ real(pReal), dimension(prm%totalNtrans), intent(out) :: &
+   gdot_trans
+ real(pReal), dimension(prm%totalNtrans), optional, intent(out) :: &
+   dgdot_dtau_trans
+ real(pReal), dimension(3,3), intent(in) :: &
+   S
+ real(pReal), intent(in) :: &
+   temperature
+
+ real, dimension(prm%totalNtrans) :: &
+   tau, &
+   Ndot0_trans, &
+   stressRatio_r, &
+   dgdot_dtau
+
+ integer(pInt) :: i,s1,s2
+
+ do i = 1_pInt, prm%totalNtrans
+   tau(i) = math_mul33xx33(S,prm%Schmid_trans(1:3,1:3,i))
+   isFCC: if (prm%isFCC) then
+     s1=prm%fcc_twinNucleationSlipPair(1,i)
+     s2=prm%fcc_twinNucleationSlipPair(2,i)
+     if (tau(i) < mse%tau_r_trans(i,of)) then
+       Ndot0_trans=(abs(gdot_slip(s1))*(stt%rhoEdge(s2,of)+stt%rhoEdgeDip(s2,of))+&  ! s1/s2 mixing correct?
+                   abs(gdot_slip(s2))*(stt%rhoEdge(s1,of)+stt%rhoEdgeDip(s1,of)))/&
+               (prm%L0_trans*prm%burgers_slip(i))*&                               ! burgers_slip correct?
+               (1.0_pReal-exp(-prm%VcrossSlip/(kB*Temperature)*&
+               (mse%tau_r_trans(i,of)-tau)))
+     else
+       Ndot0_trans=0.0_pReal
+     end if
+   else isFCC
+     Ndot0_trans=prm%Ndot0_trans(i)
+   endif isFCC
+ enddo
 !
 !  
 !     endif isFCCtrans
@@ -1603,7 +1603,7 @@ end subroutine
 !
 ! if(present(dgdot_dtau_twin)) dgdot_dtau_twin = dgdot_dtau
 !
-!end subroutine
+end subroutine
 
 !--------------------------------------------------------------------------------------------------
 !> @brief return array of constitutive results
