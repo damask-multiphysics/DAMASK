@@ -440,7 +440,9 @@ subroutine constitutive_LpAndItsTangents(Lp, dLp_dS, dLp_dFi, S6, Fi, ipc, ip, e
    math_Mandel33to6, &
    math_Plain99to3333
  use material, only: &
+   phasememberAt, &
    phase_plasticity, &
+   phase_plasticityInstance, &
    material_phase, &
    material_homog, &
    temperature, &
@@ -490,7 +492,7 @@ subroutine constitutive_LpAndItsTangents(Lp, dLp_dS, dLp_dFi, S6, Fi, ipc, ip, e
    ho, &                                                                                            !< homogenization
    tme                                                                                              !< thermal member position
  integer(pInt) :: &
-   i, j
+   i, j, instance, of
 
  ho = material_homog(ip,el)
  tme = thermalMapping(ho)%p(ip,el)
@@ -509,8 +511,9 @@ subroutine constitutive_LpAndItsTangents(Lp, dLp_dS, dLp_dFi, S6, Fi, ipc, ip, e
      dLp_dMp = math_Plain99to3333(dLp_dMp99)                                                        ! ToDo: We revert here the last statement in plastic_xx_LpAndItsTanget
 
    case (PLASTICITY_PHENOPOWERLAW_ID) plasticityType
-     call plastic_phenopowerlaw_LpAndItsTangent   (Lp,dLp_dMp99, math_Mandel33to6(Mp),ipc,ip,el)
-     dLp_dMp = math_Plain99to3333(dLp_dMp99)                                                        ! ToDo: We revert here the last statement in plastic_xx_LpAndItsTanget
+     of = phasememberAt(ipc,ip,el)
+     instance = phase_plasticityInstance(material_phase(ipc,ip,el))
+     call plastic_phenopowerlaw_LpAndItsTangent   (Lp,dLp_dMp, Mp,ipc,ip,el)
 
    case (PLASTICITY_KINEHARDENING_ID) plasticityType
      call plastic_kinehardening_LpAndItsTangent   (Lp,dLp_dMp99, math_Mandel33to6(Mp),ipc,ip,el)
@@ -825,6 +828,8 @@ subroutine constitutive_collectDotState(S6, FeArray, Fi, FpArray, subdt, subfrac
    mesh_NcpElems, &
    mesh_maxNips
  use material, only: &
+   phasememberAt, &
+   phase_plasticityInstance, &
    phase_plasticity, &
    phase_source, &
    phase_Nsources, &
@@ -882,38 +887,41 @@ subroutine constitutive_collectDotState(S6, FeArray, Fi, FpArray, subdt, subfrac
  real(pReal),  intent(in), dimension(6) :: &
    S6                                                                                               !< 2nd Piola Kirchhoff stress (vector notation)
  real(pReal),              dimension(3,3) :: &
-   Mstar
+   Mp
  integer(pInt) :: &
    ho, &                                                                                            !< homogenization
    tme, &                                                                                           !< thermal member position
-   s                                                                                                !< counter in source loop
+   s, &                                                                                                !< counter in source loop
+   instance, of
 
  ho  = material_homog(    ip,el)
  tme = thermalMapping(ho)%p(ip,el)
 
- Mstar  = math_mul33x33(math_mul33x33(transpose(Fi),Fi),math_Mandel6to33(S6))
+ Mp  = math_mul33x33(math_mul33x33(transpose(Fi),Fi),math_Mandel6to33(S6))
 
  plasticityType: select case (phase_plasticity(material_phase(ipc,ip,el)))
 
    case (PLASTICITY_ISOTROPIC_ID) plasticityType
-     call plastic_isotropic_dotState    (math_Mandel33to6(Mstar),ipc,ip,el)
+     call plastic_isotropic_dotState    (math_Mandel33to6(Mp),ipc,ip,el)
 
    case (PLASTICITY_PHENOPOWERLAW_ID) plasticityType
-     call plastic_phenopowerlaw_dotState(math_Mandel33to6(Mstar),ipc,ip,el)
+     of = phasememberAt(ipc,ip,el)
+     instance = phase_plasticityInstance(material_phase(ipc,ip,el))
+     call plastic_phenopowerlaw_dotState(Mp,ipc,ip,el)
 
    case (PLASTICITY_KINEHARDENING_ID) plasticityType
-     call plastic_kinehardening_dotState(math_Mandel33to6(Mstar),ipc,ip,el)
+     call plastic_kinehardening_dotState(math_Mandel33to6(Mp),ipc,ip,el)
 
    case (PLASTICITY_DISLOTWIN_ID) plasticityType
-     call plastic_dislotwin_dotState    (math_Mandel33to6(Mstar),temperature(ho)%p(tme), &
+     call plastic_dislotwin_dotState    (math_Mandel33to6(Mp),temperature(ho)%p(tme), &
                                          ipc,ip,el)
 
    case (PLASTICITY_DISLOUCLA_ID) plasticityType
-     call plastic_disloucla_dotState    (math_Mandel33to6(Mstar),temperature(ho)%p(tme), &
+     call plastic_disloucla_dotState    (math_Mandel33to6(Mp),temperature(ho)%p(tme), &
                                          ipc,ip,el)
 
    case (PLASTICITY_NONLOCAL_ID) plasticityType
-     call plastic_nonlocal_dotState     (math_Mandel33to6(Mstar),FeArray,FpArray,temperature(ho)%p(tme), &
+     call plastic_nonlocal_dotState     (math_Mandel33to6(Mp),FeArray,FpArray,temperature(ho)%p(tme), &
                                          subdt,subfracArray,ip,el)
  end select plasticityType
 
