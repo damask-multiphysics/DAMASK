@@ -747,7 +747,7 @@ end subroutine kinetics_twin
 !--------------------------------------------------------------------------------------------------
 !> @brief return array of constitutive results
 !--------------------------------------------------------------------------------------------------
-function plastic_phenopowerlaw_postResults(Mp6,ipc,ip,el) result(postResults)
+function plastic_phenopowerlaw_postResults(Mp,instance,of) result(postResults)
  use material, only: &
    material_phase, &
    plasticState, &
@@ -758,36 +758,29 @@ function plastic_phenopowerlaw_postResults(Mp6,ipc,ip,el) result(postResults)
    math_Mandel6to33
 
  implicit none
- real(pReal), dimension(6), intent(in) :: &
-   Mp6                                                                                              !< Mandel stress
+ real(pReal), dimension(3,3), intent(in) :: &
+   Mp                                                                                               !< Mandel stress
  integer(pInt),             intent(in) :: &
-   ipc, &                                                                                           !< component-ID of integration point
-   ip, &                                                                                            !< integration point
-   el                                                                                               !< element
+   instance, &
+   of
 
- real(pReal), dimension(3,3) :: &
-   Mp                                                                                               !< Second-Piola Kirchhoff stress
- real(pReal), dimension(plasticState(material_phase(ipc,ip,el))%sizePostResults) :: &
+ real(pReal), dimension(sum(plastic_phenopowerlaw_sizePostResult(:,instance))) :: &
    postResults
 
  integer(pInt) :: &
-   of, &
    o,c,i,j
  real(pReal) :: &
    tau_slip_pos, tau_slip_neg
- real(pReal), dimension(param(phase_plasticityInstance(material_phase(ipc,ip,el)))%totalNslip) :: &
+ real(pReal), dimension(param(instance)%totalNslip) :: &
    gdot_slip_pos,gdot_slip_neg
 
  type(tParameters)          :: prm
  type(tPhenopowerlawState)  :: stt
 
- of = phasememberAt(ipc,ip,el)
- associate( prm => param(phase_plasticityInstance(material_phase(ipc,ip,el))), &
-            stt => state(phase_plasticityInstance(material_phase(ipc,ip,el))) )
+ associate( prm => param(instance), stt => state(instance))
 
  postResults = 0.0_pReal
  c = 0_pInt
- Mp = math_Mandel6to33(Mp6) !DEPRECATED
 
  outputsLoop: do o = 1_pInt,size(prm%outputID)
    select case(prm%outputID(o))

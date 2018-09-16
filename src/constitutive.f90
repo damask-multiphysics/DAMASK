@@ -513,7 +513,7 @@ subroutine constitutive_LpAndItsTangents(Lp, dLp_dS, dLp_dFi, S6, Fi, ipc, ip, e
    case (PLASTICITY_PHENOPOWERLAW_ID) plasticityType
      of = phasememberAt(ipc,ip,el)
      instance = phase_plasticityInstance(material_phase(ipc,ip,el))
-     call plastic_phenopowerlaw_LpAndItsTangent   (Lp,dLp_dMp, Mp,ipc,ip,el)
+     call plastic_phenopowerlaw_LpAndItsTangent   (Lp,dLp_dMp, Mp,instance,of)
 
    case (PLASTICITY_KINEHARDENING_ID) plasticityType
      call plastic_kinehardening_LpAndItsTangent   (Lp,dLp_dMp99, math_Mandel33to6(Mp),ipc,ip,el)
@@ -821,6 +821,7 @@ subroutine constitutive_collectDotState(S6, FeArray, Fi, FpArray, subdt, subfrac
    debug_constitutive, &
    debug_levelBasic
  use math, only: &
+   math_mul33x33, &
    math_Mandel6to33, &
    math_Mandel33to6, &
    math_mul33x33
@@ -907,7 +908,7 @@ subroutine constitutive_collectDotState(S6, FeArray, Fi, FpArray, subdt, subfrac
    case (PLASTICITY_PHENOPOWERLAW_ID) plasticityType
      of = phasememberAt(ipc,ip,el)
      instance = phase_plasticityInstance(material_phase(ipc,ip,el))
-     call plastic_phenopowerlaw_dotState(Mp,ipc,ip,el)
+     call plastic_phenopowerlaw_dotState(Mp,instance,of)
 
    case (PLASTICITY_KINEHARDENING_ID) plasticityType
      call plastic_kinehardening_dotState(math_Mandel33to6(Mp),ipc,ip,el)
@@ -1035,13 +1036,18 @@ end subroutine constitutive_collectDeltaState
 !--------------------------------------------------------------------------------------------------
 !> @brief returns array of constitutive results
 !--------------------------------------------------------------------------------------------------
-function constitutive_postResults(S6, FeArray, ipc, ip, el)
+function constitutive_postResults(S6, Fi, FeArray, ipc, ip, el)
  use prec, only: &
    pReal
+ use math, only: &
+  math_Mandel6to33, &
+  math_mul33x33
  use mesh, only: &
    mesh_NcpElems, &
    mesh_maxNips
  use material, only: &
+   phasememberAt, &
+   phase_plasticityInstance, &
    plasticState, &
    sourceState, &
    phase_plasticity, &
@@ -1092,18 +1098,24 @@ function constitutive_postResults(S6, FeArray, ipc, ip, el)
  real(pReal), dimension(plasticState(material_phase(ipc,ip,el))%sizePostResults + &
                         sum(sourceState(material_phase(ipc,ip,el))%p(:)%sizePostResults)) :: &
    constitutive_postResults
+ real(pReal),  intent(in), dimension(3,3) :: &
+   Fi                                                                                               !< intermediate deformation gradient
  real(pReal),  intent(in), dimension(3,3,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems) :: &
    FeArray                                                                                          !< elastic deformation gradient
  real(pReal),  intent(in), dimension(6) :: &
    S6                                                                                               !< 2nd Piola Kirchhoff stress (vector notation)
+ real(pReal), dimension(3,3) :: &
+   Mp                                                                                               !< Mandel stress
  integer(pInt) :: &
    startPos, endPos
  integer(pInt) :: &
    ho, &                                                                                            !< homogenization
    tme, &                                                                                           !< thermal member position
-   s                                                                                                !< counter in source loop
+   s, of, instance                                                                                  !< counter in source loop
 
  constitutive_postResults = 0.0_pReal
+
+ Mp  = math_mul33x33(math_mul33x33(transpose(Fi),Fi),math_Mandel6to33(S6))
 
  ho = material_homog(    ip,el)
  tme = thermalMapping(ho)%p(ip,el)
@@ -1113,10 +1125,13 @@ function constitutive_postResults(S6, FeArray, ipc, ip, el)
 
  plasticityType: select case (phase_plasticity(material_phase(ipc,ip,el)))
    case (PLASTICITY_ISOTROPIC_ID) plasticityType
-     constitutive_postResults(startPos:endPos) = plastic_isotropic_postResults(S6,ipc,ip,el)
-   case (PLASTICITY_PHENOPOWERLAW_ID) plasticityType
      constitutive_postResults(startPos:endPos) = &
-       plastic_phenopowerlaw_postResults(S6,ipc,ip,el)
+       plastic_isotropic_postResults(S6,ipc,ip,el)
+   case (PLASTICITY_PHENOPOWERLAW_ID) plasticityType
+     of = phasememberAt(ipc,ip,el)
+     instance = phase_plasticityInstance(material_phase(ipc,ip,el))
+     constitutive_postResults(startPos:endPos) = &
+       plastic_phenopowerlaw_postResults(Mp,instance,of)
    case (PLASTICITY_KINEHARDENING_ID) plasticityType
      constitutive_postResults(startPos:endPos) = &
        plastic_kinehardening_postResults(S6,ipc,ip,el)
