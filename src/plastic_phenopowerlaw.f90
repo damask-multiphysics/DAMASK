@@ -502,11 +502,7 @@ end subroutine plastic_phenopowerlaw_init
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates plastic velocity gradient and its tangent
 !--------------------------------------------------------------------------------------------------
-subroutine plastic_phenopowerlaw_LpAndItsTangent(Lp,dLp_dMp,Mp,ipc,ip,el)
- use material, only: &
-   phasememberAt, &
-   material_phase, &
-   phase_plasticityInstance
+subroutine plastic_phenopowerlaw_LpAndItsTangent(Lp,dLp_dMp,Mp,instance,of)
 
  implicit none
  real(pReal), dimension(3,3), intent(out) :: &
@@ -514,30 +510,24 @@ subroutine plastic_phenopowerlaw_LpAndItsTangent(Lp,dLp_dMp,Mp,ipc,ip,el)
  real(pReal), dimension(3,3,3,3), intent(out) :: &
    dLp_dMp                                                                                          !< derivative of Lp with respect to the Mandel stress
 
- integer(pInt),               intent(in) :: &
-   ipc, &                                                                                           !< component-ID of integration point
-   ip, &                                                                                            !< integration point
-   el                                                                                               !< element
  real(pReal), dimension(3,3), intent(in) :: &
    Mp                                                                                               !< Mandel stress
+ integer(pInt),               intent(in) :: &
+   instance, &
+   of
 
  integer(pInt) :: &
-   i,k,l,m,n, &
-   of
- real(pReal), dimension(param(phase_plasticityInstance(material_phase(ipc,ip,el)))%totalNslip) :: &
+   i,k,l,m,n
+ real(pReal), dimension(param(instance)%totalNslip) :: &
    dgdot_dtauslip_pos,dgdot_dtauslip_neg, &
    gdot_slip_pos,gdot_slip_neg
- real(pReal), dimension(param(phase_plasticityInstance(material_phase(ipc,ip,el)))%totalNtwin) :: &
+ real(pReal), dimension(param(instance)%totalNtwin) :: &
    gdot_twin,dgdot_dtautwin
 
  type(tParameters)          :: prm
  type(tPhenopowerlawState)  :: stt
 
-! BEGIN DEPRECATED
- of = phasememberAt(ipc,ip,el)
- associate(prm => param(phase_plasticityInstance(material_phase(ipc,ip,el))),&
-           stt => state(phase_plasticityInstance(material_phase(ipc,ip,el))))
-! END DEPRECATED
+ associate(prm => param(instance), stt => state(instance))
 
  Lp = 0.0_pReal
  dLp_dMp = 0.0_pReal
@@ -571,39 +561,29 @@ end subroutine plastic_phenopowerlaw_LpAndItsTangent
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates the rate of change of microstructure
 !--------------------------------------------------------------------------------------------------
-subroutine plastic_phenopowerlaw_dotState(Mp,ipc,ip,el)
- use material, only: &
-   material_phase, &
-   phasememberAt, &
-   phase_plasticityInstance
+subroutine plastic_phenopowerlaw_dotState(Mp,instance,of)
 
  implicit none
  real(pReal), dimension(3,3),  intent(in) :: &
    Mp                                                                                               !< Mandel stress
  integer(pInt),              intent(in) :: &
-   ipc, &                                                                                           !< component-ID of integration point
-   ip, &                                                                                            !< integration point
-   el                                                                                               !< element                                                                                    !< microstructure state
+   instance, &
+   of
 
  integer(pInt) :: &
-   ph, &
-   i,k, &
-   of
+   i,k
  real(pReal) :: &
    c_SlipSlip,c_TwinSlip,c_TwinTwin, &
    xi_slip_sat_offset
 
- real(pReal), dimension(param(phase_plasticityInstance(material_phase(ipc,ip,el)))%totalNslip) :: &
+ real(pReal), dimension(param(instance)%totalNslip) :: &
    left_SlipSlip,right_SlipSlip, &
    gdot_slip_pos,gdot_slip_neg
 
  type(tParameters)         :: prm
  type(tPhenopowerlawState) :: dot,stt
 
- of = phasememberAt(ipc,ip,el)
- associate(prm => param(phase_plasticityInstance(material_phase(ipc,ip,el))), &
-           stt => state(phase_plasticityInstance(material_phase(ipc,ip,el))), &
-           dot => dotState(phase_plasticityInstance(material_phase(ipc,ip,el))))
+ associate(prm => param(instance),  stt => state(instance),  dot => dotState(instance))
 
  dot%whole(:,of) = 0.0_pReal
 
