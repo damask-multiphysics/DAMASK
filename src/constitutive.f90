@@ -522,9 +522,8 @@ subroutine constitutive_LpAndItsTangents(Lp, dLp_dS, dLp_dFi, S6, Fi, ipc, ip, e
      dLp_dMp = math_Plain99to3333(dLp_dMp99)                                                        ! ToDo: We revert here the last statement in plastic_xx_LpAndItsTanget
 
    case (PLASTICITY_DISLOTWIN_ID) plasticityType
-     call plastic_dislotwin_LpAndItsTangent       (Lp,dLp_dMp99, math_Mandel33to6(Mp), &
+     call plastic_dislotwin_LpAndItsTangent       (Lp,dLp_dMp, Mp, &
                                                    temperature(ho)%p(tme),ipc,ip,el)
-     dLp_dMp = math_Plain99to3333(dLp_dMp99)                                                        ! ToDo: We revert here the last statement in plastic_xx_LpAndItsTanget
 
    case (PLASTICITY_DISLOUCLA_ID) plasticityType
      call plastic_disloucla_LpAndItsTangent       (Lp,dLp_dMp99, math_Mandel33to6(Mp), &
@@ -905,7 +904,7 @@ subroutine constitutive_collectDotState(S6, FeArray, Fi, FpArray, subdt, subfrac
      call plastic_kinehardening_dotState(math_Mandel33to6(Mstar),ipc,ip,el)
 
    case (PLASTICITY_DISLOTWIN_ID) plasticityType
-     call plastic_dislotwin_dotState    (math_Mandel33to6(Mstar),temperature(ho)%p(tme), &
+     call plastic_dislotwin_dotState    (Mstar,temperature(ho)%p(tme), &
                                          ipc,ip,el)
 
    case (PLASTICITY_DISLOUCLA_ID) plasticityType
