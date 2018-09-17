@@ -142,8 +142,11 @@ subroutine FEM_mech_init(fieldBC)
  nc = dimPlex
  call PetscQuadratureSetData(mechQuad,dimPlex,nc,nQuadrature,qPointsP,qWeightsP,ierr)
  CHKERRQ(ierr)
- call PetscFECreateDefault(PETSC_COMM_SELF,mech_mesh,dimPlex,nc,PETSC_TRUE,prefix, &
+ call PetscFECreateDefault(mech_mesh,dimPlex,nc,PETSC_TRUE,prefix, &
                            integrationOrder,mechFE,ierr); CHKERRQ(ierr)
+! call PetscFECreateDefault(PETSC_COMM_SELF,mech_mesh,dimPlex,nc,PETSC_TRUE,prefix, &
+!                           integrationOrder,mechFE,ierr); CHKERRQ(ierr)
+!   Polar decomposition failed in run time
  call PetscFESetQuadrature(mechFE,mechQuad,ierr); CHKERRQ(ierr)
  call PetscFEGetDimension(mechFE,nBasis,ierr); CHKERRQ(ierr)
  call DMGetDS(mech_mesh,mechDS,ierr); CHKERRQ(ierr)
