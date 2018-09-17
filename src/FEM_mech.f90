@@ -5,7 +5,6 @@
 !> @brief FEM PETSc solver
 !--------------------------------------------------------------------------------------------------
 module FEM_mech
-use PETSC
 #include <petsc/finclude/petscdmplex.h>
 #include <petsc/finclude/petscdm.h>
 #include <petsc/finclude/petscdmda.h>
@@ -15,7 +14,6 @@ use PETSC
  use PETScsnes
  use PETScDM
  use PETScDMplex
- use PETSC
  use prec, only: & 
    pInt, &
    pReal
