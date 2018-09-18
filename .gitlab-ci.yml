@@ -67,11 +67,13 @@ variables:
   MPICH_GNU:                       "$MPICH3_2GNU7_3"
   MPICH_Intel:                     "$MPICH3_2Intel18_1"
   # ++++++++++++ PETSc +++++++++++++++++++++++++++++++++++++++++++++++++
+  PETSc3_10_0MPICH3_2Intel18_1:    "Libraries/PETSc/3.10.0/Intel-18.1-MPICH-3.2.1"
+  PETSc3_10_0MPICH3_2GNU7_3:       "Libraries/PETSc/3.10.0/GNU-7.3-MPICH-3.2.1"
   PETSc3_9_1MPICH3_2Intel18_1:     "Libraries/PETSc/3.9.1/Intel-18.1-MPICH-3.2.1"
   PETSc3_9_1MPICH3_2GNU7_3:        "Libraries/PETSc/3.9.1/GNU-7.3-MPICH-3.2.1"
   # ------------ Defaults ----------------------------------------------
-  PETSc_MPICH_Intel:               "$PETSc3_9_1MPICH3_2Intel18_1"
-  PETSc_MPICH_GNU:                 "$PETSc3_9_1MPICH3_2GNU7_3"
+  PETSc_MPICH_Intel:               "$PETSc3_10_0MPICH3_2Intel18_1"
+  PETSc_MPICH_GNU:                 "$PETSc3_10_0MPICH3_2GNU7_3"
   # ++++++++++++ FEM +++++++++++++++++++++++++++++++++++++++++++++++++++
   Abaqus2017:                      "FEM/Abaqus/2017"
   MSC2017:                         "FEM/MSC/2017"
