@@ -57,7 +57,6 @@ module crystallite
    crystallite_Fe, &                                                                                !< current "elastic" def grad (end of converged time step)
    crystallite_P                                                                                    !< 1st Piola-Kirchhoff stress per grain
  real(pReal),                dimension(:,:,:,:,:),    allocatable, private :: &
-   crystallite_subFe0,&                                                                             !< "elastic" def grad at start of crystallite inc
    crystallite_invFp, &                                                                             !< inverse of current plastic def grad (end of converged time step)
    crystallite_subFp0,&                                                                             !< plastic def grad at start of crystallite inc
    crystallite_invFi, &                                                                             !< inverse of current intermediate def grad (end of converged time step)
@@ -233,7 +232,6 @@ subroutine crystallite_init
  allocate(crystallite_Fi(3,3,cMax,iMax,eMax),                source=0.0_pReal)
  allocate(crystallite_invFi(3,3,cMax,iMax,eMax),             source=0.0_pReal)
  allocate(crystallite_Fe(3,3,cMax,iMax,eMax),                source=0.0_pReal)
- allocate(crystallite_subFe0(3,3,cMax,iMax,eMax),            source=0.0_pReal)
  allocate(crystallite_Lp0(3,3,cMax,iMax,eMax),               source=0.0_pReal)
  allocate(crystallite_partionedLp0(3,3,cMax,iMax,eMax),      source=0.0_pReal)
  allocate(crystallite_subLp0(3,3,cMax,iMax,eMax),            source=0.0_pReal)
@@ -473,7 +471,6 @@ subroutine crystallite_init
    write(6,'(a35,1x,7(i8,1x))') 'crystallite_partionedLi0:          ', shape(crystallite_partionedLi0)
    write(6,'(a35,1x,7(i8,1x))') 'crystallite_subF:                  ', shape(crystallite_subF)
    write(6,'(a35,1x,7(i8,1x))') 'crystallite_subF0:                 ', shape(crystallite_subF0)
-   write(6,'(a35,1x,7(i8,1x))') 'crystallite_subFe0:                ', shape(crystallite_subFe0)
    write(6,'(a35,1x,7(i8,1x))') 'crystallite_subFp0:                ', shape(crystallite_subFp0)
    write(6,'(a35,1x,7(i8,1x))') 'crystallite_subFi0:                ', shape(crystallite_subFi0)
    write(6,'(a35,1x,7(i8,1x))') 'crystallite_subLp0:                ', shape(crystallite_subLp0)
@@ -651,9 +648,6 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
          crystallite_dPdF0(1:3,1:3,1:3,1:3,c,i,e) = crystallite_partioneddPdF0(1:3,1:3,1:3,1:3,c,i,e) ! ...stiffness
          crystallite_subF0(1:3,1:3,c,i,e) = crystallite_partionedF0(1:3,1:3,c,i,e)                    ! ...def grad
          crystallite_subTstar0_v(1:6,c,i,e) = crystallite_partionedTstar0_v(1:6,c,i,e)                !...2nd PK stress
-         crystallite_subFe0(1:3,1:3,c,i,e) = math_mul33x33(math_mul33x33(crystallite_subF0(1:3,1:3,c,i,e), &
-                                                                         math_inv33(crystallite_subFp0(1:3,1:3,c,i,e))), &
-                                                           math_inv33(crystallite_subFi0(1:3,1:3,c,i,e)))! only needed later on for stiffness calculation
          crystallite_subFrac(c,i,e) = 0.0_pReal
          crystallite_subStep(c,i,e) = 1.0_pReal/subStepSizeCryst
          crystallite_todo(c,i,e) = .true.
@@ -915,9 +909,6 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
                crystallite_subLi0(1:3,1:3,c,i,e) = crystallite_Li(1:3,1:3,c,i,e)                     ! ...intermediate velocity gradient
                crystallite_subFp0(1:3,1:3,c,i,e) = crystallite_Fp(1:3,1:3,c,i,e)                     ! ...plastic def grad
                crystallite_subFi0(1:3,1:3,c,i,e) = crystallite_Fi(1:3,1:3,c,i,e)                     ! ...intermediate def grad
-               crystallite_subFe0(1:3,1:3,c,i,e) = math_mul33x33(math_mul33x33(crystallite_subF (1:3,1:3,c,i,e), &
-                                                                               crystallite_invFp(1:3,1:3,c,i,e)), &
-                                                                 crystallite_invFi(1:3,1:3,c,i,e))  ! only needed later on for stiffness calculation
                !if abbrevation, make c and p private in omp
                plasticState    (phaseAt(c,i,e))%subState0(:,phasememberAt(c,i,e)) = &
                plasticState    (phaseAt(c,i,e))%state(    :,phasememberAt(c,i,e))
