@@ -71,8 +71,6 @@ module crystallite
    crystallite_dPdF, &                                                                              !< current individual dPdF per grain (end of converged time step)
    crystallite_dPdF0, &                                                                             !< individual dPdF per grain at start of FE inc
    crystallite_partioneddPdF0                                                                       !< individual dPdF per grain at start of homog inc
- real(pReal),                dimension(:,:,:,:,:,:,:), allocatable, private :: &
-   crystallite_fallbackdPdF                                                                         !< dPdF fallback for non-converged grains (elastic prediction)
  logical,                    dimension(:,:,:),         allocatable, public :: &
    crystallite_requested                                                                            !< flag to request crystallite calculation
  logical,                    dimension(:,:,:),         allocatable, public, protected :: &
@@ -247,7 +245,6 @@ subroutine crystallite_init
  allocate(crystallite_dPdF(3,3,3,3,cMax,iMax,eMax),          source=0.0_pReal)
  allocate(crystallite_dPdF0(3,3,3,3,cMax,iMax,eMax),         source=0.0_pReal)
  allocate(crystallite_partioneddPdF0(3,3,3,3,cMax,iMax,eMax),source=0.0_pReal)
- allocate(crystallite_fallbackdPdF(3,3,3,3,cMax,iMax,eMax),  source=0.0_pReal)
  allocate(crystallite_dt(cMax,iMax,eMax),                    source=0.0_pReal)
  allocate(crystallite_subdt(cMax,iMax,eMax),                 source=0.0_pReal)
  allocate(crystallite_subFrac(cMax,iMax,eMax),               source=0.0_pReal)
@@ -454,7 +451,6 @@ subroutine crystallite_init
 ! enddo
 
  call crystallite_stressAndItsTangent(.true.)                                                       ! request elastic answers
- crystallite_fallbackdPdF = crystallite_dPdF                                                        ! use initial elastic stiffness as fallback
 
 !--------------------------------------------------------------------------------------------------
 ! debug output
@@ -490,7 +486,6 @@ subroutine crystallite_init
    write(6,'(a35,1x,7(i8,1x))') 'crystallite_dPdF:                  ', shape(crystallite_dPdF)
    write(6,'(a35,1x,7(i8,1x))') 'crystallite_dPdF0:                 ', shape(crystallite_dPdF0)
    write(6,'(a35,1x,7(i8,1x))') 'crystallite_partioneddPdF0:        ', shape(crystallite_partioneddPdF0)
-   write(6,'(a35,1x,7(i8,1x))') 'crystallite_fallbackdPdF:          ', shape(crystallite_fallbackdPdF)
    write(6,'(a35,1x,7(i8,1x))') 'crystallite_orientation:           ', shape(crystallite_orientation)
    write(6,'(a35,1x,7(i8,1x))') 'crystallite_orientation0:          ', shape(crystallite_orientation0)
    write(6,'(a35,1x,7(i8,1x))') 'crystallite_rotation:              ', shape(crystallite_rotation)
