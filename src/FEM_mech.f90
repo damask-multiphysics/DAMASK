@@ -241,12 +241,17 @@ subroutine FEM_mech_init(fieldBC)
  call PetscFEGetDualSpace(mechFE,mechDualSpace,ierr); CHKERRQ(ierr)
  call DMPlexGetHeightStratum(mech_mesh,0,cellStart,cellEnd,ierr)
  CHKERRQ(ierr)
+ write(6,*) 'cellDof', cellDof;flush(6)
+   write(6,*) 'cell start and end-1',cellStart,cellEnd-1;flush(6)
  do cell = cellStart, cellEnd-1                                                                     !< loop over all elements 
+   write(6,*) 'cell',cell;flush(6)
    x_scal = 0.0
    call  DMPlexComputeCellGeometryAffineFEM(mech_mesh,cell,pV0,pCellJ,pInvcellJ,detJ,ierr) 
    CHKERRQ(ierr)
    cellJMat = reshape(pCellJ,shape=[dimPlex,dimPlex])
    do basis = 0, nBasis-1
+   write(6,*) 'nBasis-1',nBasis-1;flush(6)
+   write(6,*) 'basis',basis;flush(6)
      call PetscDualSpaceGetFunctional(mechDualSpace,basis,functional,ierr)
      CHKERRQ(ierr)
      call PetscQuadratureGetData(functional,dimPlex,nc,nNodalPoints,nodalPointsP,nodalWeightsP,ierr)
