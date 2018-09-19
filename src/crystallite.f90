@@ -435,19 +435,6 @@ subroutine crystallite_init
    enddo
  !$OMP END PARALLEL DO
 
-!--------------------------------------------------------------------------------------------------
-! propagate dependent states to materialpoint and boundary value problem level
-! do ph = 1_pInt,material_Nphase
-!   plasticState(ph)%partionedState0(plasticState(ph)%offsetDeltaState+plasticState(ph)%sizeDeltaState: &
-!                                    plasticState(ph)%sizeState,:) &
-!           = plasticState(ph)%state(plasticState(ph)%offsetDeltaState+plasticState(ph)%sizeDeltaState: &
-!                                    plasticState(ph)%sizeState,:)
-!   plasticState(ph)%state0         (plasticState(ph)%offsetDeltaState+plasticState(ph)%sizeDeltaState: &
-!                                    plasticState(ph)%sizeState,:) &
-!           = plasticState(ph)%state(plasticState(ph)%offsetDeltaState+plasticState(ph)%sizeDeltaState: &
-!                                    plasticState(ph)%sizeState,:)
-! enddo
-
  call crystallite_stressAndItsTangent(.true.)                                                       ! request elastic answers
 
 !--------------------------------------------------------------------------------------------------
