@@ -24,19 +24,16 @@ use PETScis
  real(pReal),   public                :: wgt                                                        !< weighting factor 1/Nelems
  real(pReal),   public                :: wgtDof                                                     !< weighting factor 1/Nelems
  real(pReal),   public                :: C_volAvg(3,3,3,3)
- 
+  
 !--------------------------------------------------------------------------------------------------
 ! output data
  Vec,                            public :: coordinatesVec
-
 !--------------------------------------------------------------------------------------------------
 ! field labels information
  character(len=*),                         parameter,            public :: &
-   FIELD_MECH_label     = 'mechanical', &
-   FIELD_THERMAL_label  = 'thermal', &
-   FIELD_DAMAGE_label   = 'damage', &
-   FIELD_SOLUTE_label   = 'solute', &
-   FIELD_MGTWIN_label   = 'mgtwin'
+   FIELD_MECH_label     = 'mechanical'
+
+ integer(pInt), parameter :: structOrder = 2_pInt
  
  enum, bind(c)
    enumerator :: FIELD_UNDEFINED_ID, &
@@ -207,7 +204,7 @@ subroutine utilities_init()
  call PetscOptionsInsertString(PETSC_NULL_OPTIONS,trim(petsc_defaultOptions),ierr)
  call PetscOptionsInsertString(PETSC_NULL_OPTIONS,trim(petsc_options),ierr)
  CHKERRQ(ierr)
- !write(petsc_optionsPhysics,'(a,i0)') '-mechFE_petscspace_order '   , structOrder
+ write(petsc_optionsPhysics,'(a,i0)') '-mechFE_petscspace_order '   , structOrder
  call PetscOptionsInsertString(PETSC_NULL_OPTIONS,trim(petsc_optionsPhysics),ierr)
  CHKERRQ(ierr)
  

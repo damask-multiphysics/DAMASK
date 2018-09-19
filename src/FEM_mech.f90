@@ -23,9 +23,6 @@ module FEM_mech
    tSolutionState, &
    tFieldBC, &
    tComponentBC
- use numerics, only: &
-   worldrank, &
-   worldsize  
  use mesh, only: &
    mesh_Nboundaries, &
    mesh_boundaries
@@ -64,7 +61,7 @@ module FEM_mech
    FEM_mech_solution ,&
    FEM_mech_forward, &
    FEM_mech_destroy
-
+ external :: PETScerrorf
 contains
 
 !--------------------------------------------------------------------------------------------------
@@ -80,7 +77,6 @@ subroutine FEM_mech_init(fieldBC)
  use mesh, only: &
    geomMesh
  use numerics, only: &
-   worldrank, &
    itmax, &
    integrationOrder
  use FEM_Zoo, only: &
@@ -672,6 +668,7 @@ end subroutine FEM_mech_forward
 !--------------------------------------------------------------------------------------------------
 subroutine FEM_mech_converged(snes_local,PETScIter,xnorm,snorm,fnorm,reason,dummy,ierr)
  use numerics, only: &
+   worldrank, &
    err_struct_tolAbs, &
    err_struct_tolRel
  use IO, only: &
