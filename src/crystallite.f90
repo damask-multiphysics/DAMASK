@@ -38,6 +38,9 @@ module crystallite
    crystallite_orientation, &                                                                       !< orientation as quaternion
    crystallite_orientation0, &                                                                      !< initial orientation as quaternion
    crystallite_rotation                                                                             !< grain rotation away from initial orientation as axis-angle (in degrees) in crystal reference frame
+ real(pReal),               dimension(:,:,:,:,:),    allocatable, public, protected :: &
+   crystallite_Fe, &                                                                                !< current "elastic" def grad (end of converged time step)
+   crystallite_P                                                                                    !< 1st Piola-Kirchhoff stress per grain
  real(pReal),               dimension(:,:,:,:,:),    allocatable, public :: &
    crystallite_Fp, &                                                                                !< current plastic def grad (end of converged time step)
    crystallite_Fp0, &                                                                               !< plastic def grad at start of FE inc
@@ -50,12 +53,10 @@ module crystallite
    crystallite_partionedF0, &                                                                       !< def grad at start of homog inc
    crystallite_Lp, &                                                                                !< current plastic velocitiy grad (end of converged time step)
    crystallite_Lp0, &                                                                               !< plastic velocitiy grad at start of FE inc
-   crystallite_partionedLp0,&                                                                       !< plastic velocity grad at start of homog inc
+   crystallite_partionedLp0, &                                                                      !< plastic velocity grad at start of homog inc
    crystallite_Li, &                                                                                !< current intermediate velocitiy grad (end of converged time step)
    crystallite_Li0, &                                                                               !< intermediate velocitiy grad at start of FE inc
-   crystallite_partionedLi0,&                                                                       !< intermediate velocity grad at start of homog inc
-   crystallite_Fe, &                                                                                !< current "elastic" def grad (end of converged time step)
-   crystallite_P                                                                                    !< 1st Piola-Kirchhoff stress per grain
+   crystallite_partionedLi0                                                                         !< intermediate velocity grad at start of homog inc
  real(pReal),                dimension(:,:,:,:,:),    allocatable, private :: &
    crystallite_invFp, &                                                                             !< inverse of current plastic def grad (end of converged time step)
    crystallite_subFp0,&                                                                             !< plastic def grad at start of crystallite inc
