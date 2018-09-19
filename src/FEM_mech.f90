@@ -14,6 +14,7 @@ module FEM_mech
  use PETScsnes
  use PETScDM
  use PETScDMplex
+ use PETScDT
  use prec, only: & 
    pInt, &
    pReal
@@ -100,8 +101,8 @@ subroutine FEM_mech_init(fieldBC)
  IS,                            pointer :: pBcComps(:), pBcPoints(:)
  PetscSection                           :: section
  PetscInt                               :: field, faceSet, topologDim, nNodalPoints
- PetscReal,                     pointer :: qPointsP(:), qWeightsP(:), &
-                                           nodalPointsP(:), nodalWeightsP(:)
+ PetscReal,      dimension(:)     ,  pointer :: qPointsP, qWeightsP, &
+                                           nodalPointsP, nodalWeightsP
  PetscReal,         allocatable, target :: nodalPoints(:), nodalWeights(:)
  PetscScalar,                   pointer :: px_scal(:)
  PetscScalar,       allocatable, target ::  x_scal(:)
@@ -111,7 +112,8 @@ subroutine FEM_mech_init(fieldBC)
  PetscInt                               :: cellStart, cellEnd, cell, basis 
  character(len=7)                       :: prefix = 'mechFE_'
  PetscErrorCode                         :: ierr
- 
+ PetscReal, allocatable, target, dimension(:) :: qWeights
+
  write(6,'(/,a)') ' <<<+-  FEM_mech init  -+>>>'
  write(6,'(a15,a)')   ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
@@ -123,8 +125,6 @@ subroutine FEM_mech_init(fieldBC)
 
 !--------------------------------------------------------------------------------------------------
 ! Setup FEM mech discretization
- allocate(qPoints(dimPlex*FEM_Zoo_nQuadrature(dimPlex,integrationOrder)))
- allocate(qWeights(FEM_Zoo_nQuadrature(dimPlex,integrationOrder)))
  qPoints = FEM_Zoo_QuadraturePoints(dimPlex,integrationOrder)%p
  qWeights = FEM_Zoo_QuadratureWeights(dimPlex,integrationOrder)%p
  nQuadrature = FEM_Zoo_nQuadrature(dimPlex,integrationOrder)
