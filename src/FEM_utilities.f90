@@ -23,7 +23,6 @@ use PETScis
 ! grid related information information
  real(pReal),   public                :: wgt                                                        !< weighting factor 1/Nelems
  real(pReal),   public                :: wgtDof                                                     !< weighting factor 1/Nelems
- real(pReal),   public                :: C_volAvg(3,3,3,3)
   
 !--------------------------------------------------------------------------------------------------
 ! output data
@@ -118,23 +117,12 @@ use PETScis
    utilities_indexActiveSet, &
    utilities_destroy, &
    FIELD_MECH_ID, &
-   FIELD_THERMAL_ID, &
-   FIELD_DAMAGE_ID, &
-   FIELD_SOLUTE_ID, &
-   FIELD_MGTWIN_ID, &
    COMPONENT_MECH_X_ID, &
    COMPONENT_MECH_Y_ID, &
    COMPONENT_MECH_Z_ID, &
-   COMPONENT_THERMAL_T_ID, &
-   COMPONENT_DAMAGE_PHI_ID, &
-   COMPONENT_SOLUTE_CV_ID, &
-   COMPONENT_SOLUTE_CVPOT_ID, &
-   COMPONENT_SOLUTE_CH_ID, &
-   COMPONENT_SOLUTE_CHPOT_ID, &
-   COMPONENT_SOLUTE_CVaH_ID, &
-   COMPONENT_SOLUTE_CVaHPOT_ID, &
-   COMPONENT_MGTWIN_PHI_ID
+   COMPONENT_THERMAL_T_ID
 
+ external :: PETScErrorF
 contains 
 
 !--------------------------------------------------------------------------------------------------
@@ -173,14 +161,11 @@ subroutine utilities_init()
 
  implicit none
 
- character(len=1024)                :: petsc_optionsPhysics, grainStr
+ character(len=1024)                :: petsc_optionsPhysics
  integer(pInt)                      :: dimPlex
  integer(pInt)                      :: headerID = 205_pInt
- PetscInt,    dimension(:), pointer :: points
- PetscInt,    allocatable           :: nEntities(:), nOutputCells(:), nOutputNodes(:), mappingCells(:)
- PetscInt                           :: cellStart, cellEnd, cell, ip, dim, ctr, qPt
- PetscInt,              allocatable :: connectivity(:,:)
- Vec                                :: connectivityVec
+ PetscInt,    allocatable           :: nEntities(:), nOutputCells(:), nOutputNodes(:)
+ PetscInt                           :: dim
  PetscErrorCode                     :: ierr
 
  write(6,'(/,a)')   ' <<<+-  DAMASK_FEM_utilities init  -+>>>'
@@ -246,8 +231,6 @@ subroutine utilities_constitutiveResponse(timeinc,P_av,forwardData)
  use debug, only: &
    debug_reset, &
    debug_info
- use numerics, only: &
-   worldrank
  use math, only: &
    math_transpose33, &
    math_rotate_forward33, &
@@ -255,10 +238,8 @@ subroutine utilities_constitutiveResponse(timeinc,P_av,forwardData)
  use FEsolving, only: &
    restartWrite
  use homogenization, only: &
-   materialpoint_F0, &
    materialpoint_F, &
    materialpoint_P, &
-   materialpoint_dPdF, &
    materialpoint_stressAndItsTangent
  use mesh, only: &
    mesh_NcpElems  
@@ -311,9 +292,7 @@ subroutine utilities_constitutiveResponse(timeinc,P_av,forwardData)
  cutBack = .false.                                                                                  ! reset cutBack status
  
  P_av = sum(sum(materialpoint_P,dim=4),dim=3) * wgt                                                    ! average of P 
- C_volAvg = sum(sum(materialpoint_dPdF,dim=6),dim=5) * wgt
  call MPI_Allreduce(MPI_IN_PLACE,P_av,9,MPI_DOUBLE,MPI_SUM,PETSC_COMM_WORLD,ierr)
- call MPI_Allreduce(MPI_IN_PLACE,C_volAvg,81,MPI_DOUBLE,MPI_SUM,PETSC_COMM_WORLD, ierr)
 
 end subroutine utilities_constitutiveResponse
 
