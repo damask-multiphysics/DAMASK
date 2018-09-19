@@ -1855,9 +1855,6 @@ subroutine crystallite_integrateStateRKCK45()
            relSourceStateResiduum(s,mySource,g,i,e) = &
               sourceStateResiduum(s,mySource,g,i,e) / sourceState(p)%p(mySource)%state(s,cc)
        enddo
-       !$OMP FLUSH(relPlasticStateResiduum)
-       !$OMP FLUSH(relSourceStateResiduum)
-! @Martin: do we need flushing? why..?
        crystallite_todo(g,i,e) = all(abs(relPlasticStateResiduum(1:mySizePlasticDotState,g,i,e)) < &
                                      rTol_crystalliteState .or. &
                                      abs(plasticStateResiduum(1:mySizePlasticDotState,g,i,e)) < &
