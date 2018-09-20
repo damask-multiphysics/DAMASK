@@ -243,12 +243,20 @@ subroutine CPFEM_age()
  use IO, only: &
    IO_write_jobRealFile, &
    IO_warning
- use DAMASK_interface
+ use HDF5_utilities, only: &
+   HDF5_createFile, &
+   HDF5_closeFile, &
+   HDF5_closeGroup, &
+   HDF5_addGroup2
+ use HDF5
+ use DAMASK_interface, only: &
+   getSolverJobName
 
  implicit none
 
  integer(pInt) ::                                    i, k, l, m, ph, homog, mySource
  character(len=32) :: rankStr
+ integer(HID_T) :: fileHandle
 
 if (iand(debug_level(debug_CPFEM), debug_levelBasic) /= 0_pInt) &
   write(6,'(a)') '<< CPFEM >> aging states'
@@ -281,6 +289,11 @@ if (restartWrite) then
     write(6,'(a)') '<< CPFEM >> writing state variables of last converged step to binary files'
 
   write(rankStr,'(a1,i0)')'_',worldrank
+
+  fileHandle = HDF5_createFile(trim(getSolverJobName())//trim(rankStr)//'.hdf5_restart')
+
+  call HDF5_closeGroup(HDF5_addGroup2(fileHandle,'HelloWorld'))
+  call HDF5_closeFile(fileHandle)
 
   call IO_write_jobRealFile(777,'recordedPhase'//trim(rankStr),size(material_phase))
   write (777,rec=1) material_phase;       close (777)

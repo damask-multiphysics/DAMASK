@@ -27,7 +27,10 @@ module HDF5_Utilities
    HDF5_writeScalarDataset, &
    HDF5_writeTensorDataset, &
    HDF5_closeJobFile, &
-   HDF5_removeLink
+   HDF5_removeLink, &
+   HDF5_createFile, &
+   HDF5_closeFile, &
+   HDF5_addGroup2
 contains
 
 subroutine HDF5_Utilities_init
@@ -94,6 +97,41 @@ end subroutine HDF5_createJobFile
 
 
 !--------------------------------------------------------------------------------------------------
+!> @brief creates and initializes HDF5 output files
+!--------------------------------------------------------------------------------------------------
+ integer(HID_T) function HDF5_createFile(path)
+ use hdf5
+ use DAMASK_interface, only: &
+   getSolverJobName
+
+ implicit none
+ integer              :: hdferr
+ 
+ integer(SIZE_T)      :: typeSize 
+ character(len=*), intent(in)  :: path
+#ifdef PETSc
+#include <petsc/finclude/petscsys.h> 
+#endif
+  call h5open_f(hdferr) !############################################################ DANGEROUS
+#ifdef PETSC
+ call h5pcreate_f(H5P_FILE_ACCESS_F, plist_id, hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_Utilities_init: h5pcreate_f') 
+ call h5pset_fapl_mpio_f(plist_id, PETSC_COMM_WORLD, MPI_INFO_NULL, hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_Utilities_init: h5pset_fapl_mpio_f') 
+#endif
+
+!--------------------------------------------------------------------------------------------------
+! open file
+ !call h5fcreate_f(path,H5F_ACC_TRUNC_F,resultsFile,hdferr)
+ call h5fcreate_f(path,H5F_ACC_TRUNC_F,HDF5_createFile,hdferr,access_prp = plist_id)
+ if (hdferr < 0) call IO_error(100_pInt,ext_msg=path)
+ !call HDF5_addStringAttribute(HDF5_createFile,'createdBy',DAMASKVERSION)
+ call h5pclose_f(plist_id, hdferr)  !neu
+
+end function HDF5_createFile
+
+
+!--------------------------------------------------------------------------------------------------
 !> @brief creates and initializes HDF5 output file
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_closeJobFile()
@@ -104,9 +142,26 @@ subroutine HDF5_closeJobFile()
  call HDF5_removeLink('current')
  call h5fclose_f(resultsFile,hdferr)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_closeJobFile: h5fclose_f',el=hdferr)
- CALL h5close_f(hdferr)
+ call h5close_f(hdferr)
 
 end subroutine HDF5_closeJobFile
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief creates and initializes HDF5 output file
+!--------------------------------------------------------------------------------------------------
+subroutine HDF5_closeFile(fileHandle)
+ use hdf5
+ 
+ implicit none
+ integer :: hdferr
+ integer(HID_T), intent(in) :: fileHandle
+ call h5fclose_f(fileHandle,hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_closeFile: h5fclose_f',el=hdferr)
+ call h5close_f(hdferr)!############################################################ DANGEROUS
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_closeFile: h5close_f',el=hdferr)
+
+end subroutine HDF5_closeFile
 
 
 !--------------------------------------------------------------------------------------------------
@@ -124,6 +179,21 @@ integer(HID_T) function HDF5_addGroup(path)
 
 end function HDF5_addGroup
 
+
+!--------------------------------------------------------------------------------------------------
+!> @brief adds a new group to the results file, or if loc is present at the given location
+!--------------------------------------------------------------------------------------------------
+integer(HID_T) function HDF5_addGroup2(fileHandle,path)
+ use hdf5
+
+ implicit none
+ character(len=*), intent(in) :: path
+ integer(HID_T), intent(in) :: fileHandle
+ integer                      :: hdferr
+ 
+ call h5gcreate_f(fileHandle, trim(path), HDF5_addGroup2, hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg = 'HDF5_addGroup2: h5gcreate_f ('//trim(path)//')')
+end function HDF5_addGroup2
 
 
 !--------------------------------------------------------------------------------------------------
@@ -1212,7 +1282,6 @@ subroutine HDF5_addVectorDataset(group,nnodes,vectorSize,label,SIunit)
  call h5sclose_f(space_id, hdferr)
 
 end subroutine HDF5_addVectorDataset
-
 
 
 !--------------------------------------------------------------------------------------------------
