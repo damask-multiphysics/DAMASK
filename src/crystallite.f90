@@ -142,12 +142,14 @@ subroutine crystallite_init
    compiler_version, &
    compiler_options
 #endif
+#ifdef DEBUG
  use debug, only: &
    debug_info, &
    debug_reset, &
    debug_level, &
    debug_crystallite, &
    debug_levelBasic
+#endif
  use numerics, only: &
    numerics_integrator, &
    worldrank, &
@@ -437,8 +439,7 @@ subroutine crystallite_init
 
  call crystallite_stressAndItsTangent(.true.)                                                       ! request elastic answers
 
-!--------------------------------------------------------------------------------------------------
-! debug output
+#ifdef DEBUG
  if (iand(debug_level(debug_crystallite), debug_levelBasic) /= 0_pInt) then
    write(6,'(a35,1x,7(i8,1x))') 'crystallite_Fe:                    ', shape(crystallite_Fe)
    write(6,'(a35,1x,7(i8,1x))') 'crystallite_Fp:                    ', shape(crystallite_Fp)
@@ -490,6 +491,7 @@ subroutine crystallite_init
 
  call debug_info
  call debug_reset
+#endif
 
 end subroutine crystallite_init
 
@@ -591,7 +593,7 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
  real(pReal), dimension(9,9)::        temp_99
  logical :: error
 
-
+#ifdef DEBUG
  if (iand(debug_level(debug_crystallite),debug_levelSelective) /= 0_pInt &
      .and. FEsolving_execElem(1) <= debug_e &
      .and.                          debug_e <= FEsolving_execElem(2)) then
@@ -610,6 +612,7 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
    write(6,'(a,/,3(12x,3(f14.9,1x)/))') '<< CRYST >> Li0', &
                                          transpose(crystallite_partionedLi0(1:3,1:3,debug_g,debug_i,debug_e))
  endif
+#endif
 
 !--------------------------------------------------------------------------------------------------
 ! initialize to starting condition
@@ -741,8 +744,10 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
        if (all(crystallite_localPlasticity .or. crystallite_converged)) then
          if (all(crystallite_localPlasticity .or. crystallite_subStep + crystallite_subFrac >= 1.0_pReal)) then
            crystallite_clearToWindForward = .true.   ! final wind forward
+#ifdef DEBUG
            if (iand(debug_level(debug_crystallite),debug_levelExtensive) /= 0_pInt) &
              write(6,'(a,i6)') '<< CRYST >> final wind forward'
+#endif
          else
            !$OMP PARALLEL DO
            do e = FEsolving_execElem(1),FEsolving_execElem(2)
@@ -751,8 +756,10 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
              enddo
            enddo
            !$OMP END PARALLEL DO
+#ifdef DEBUG
            if (iand(debug_level(debug_crystallite),debug_levelExtensive) /= 0_pInt) &
              write(6,'(a,i6)') '<< CRYST >> wind forward'
+#endif
          endif
        else
          subFracIntermediate = maxval(crystallite_subFrac, mask=.not.crystallite_localPlasticity)
@@ -838,8 +845,10 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
              enddo
            enddo
            !$OMP END PARALLEL DO
+#ifdef DEBUG
            if (iand(debug_level(debug_crystallite),debug_levelExtensive) /= 0_pInt) &
              write(6,'(a,i6)') '<< CRYST >> time synchronization: cutback'
+#endif
          else
            !$OMP PARALLEL DO
            do e = FEsolving_execElem(1),FEsolving_execElem(2)
@@ -848,8 +857,10 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
              enddo
            enddo
            !$OMP END PARALLEL DO
+#ifdef DEBUG
            if (iand(debug_level(debug_crystallite),debug_levelExtensive) /= 0_pInt) &
              write(6,'(a,i6)') '<< CRYST >> cutback'
+#endif
          endif
        endif
      endif
@@ -979,6 +990,7 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
    timeSyncing2: if(numerics_timeSyncing) then
      if (any(.not. crystallite_localPlasticity .and. .not. crystallite_todo .and. .not. crystallite_converged &
              .and. crystallite_subStep <= subStepMinCryst)) then                                     ! no way of rescuing a nonlocal ip that violated the lower time step limit, ...
+#ifdef DEBUG
        if (iand(debug_level(debug_crystallite),debug_levelExtensive) /= 0_pInt) then
          elementLooping4: do e = FEsolving_execElem(1),FEsolving_execElem(2)
            do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
@@ -990,6 +1002,7 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
            enddo
          enddo elementLooping4
        endif
+#endif
        where(.not. crystallite_localPlasticity)
          crystallite_todo = .false.                                                                  ! ... so let all nonlocal ips die peacefully
          crystallite_subStep = 0.0_pReal
@@ -997,6 +1010,7 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
      endif
    endif timeSyncing2
 
+#ifdef DEBUG
    if (iand(debug_level(debug_crystallite),debug_levelExtensive) /= 0_pInt) then
      write(6,'(/,a,f8.5)') '<< CRYST >> min(subStep) ',minval(crystallite_subStep)
      write(6,'(a,f8.5)')   '<< CRYST >> max(subStep) ',maxval(crystallite_subStep)
@@ -1009,9 +1023,9 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
        flush(6)
      endif
    endif
+#endif
 
    ! --- integrate --- requires fully defined state array (basic + dependent state)
-
    if (any(crystallite_todo)) call integrateState()
    where(.not. crystallite_converged .and. crystallite_subStep > subStepMinCryst) &                  ! do not try non-converged & fully cutbacked any further
      crystallite_todo = .true.
@@ -1027,9 +1041,11 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
    do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)                                              ! iterate over IPs of this element to be processed
      do c = 1,homogenization_Ngrains(mesh_element(3,e))
        if (.not. crystallite_converged(c,i,e)) then                                                ! respond fully elastically (might be not required due to becoming terminally ill anyway)
+#ifdef DEBUG
          if(iand(debug_level(debug_crystallite), debug_levelBasic) /= 0_pInt) &
            write(6,'(a,i8,1x,a,i8,a,1x,i2,1x,i3,/)') '<< CRYST >> no convergence: respond fully elastic at el (elFE) ip ipc ', &
              e,'(',mesh_element(1,e),')',i,c
+#endif
          invFp = math_inv33(crystallite_partionedFp0(1:3,1:3,c,i,e))
          Fe_guess = math_mul33x33(math_mul33x33(crystallite_partionedF(1:3,1:3,c,i,e), invFp), &
                                   math_inv33(crystallite_partionedFi0(1:3,1:3,c,i,e)))
@@ -1037,6 +1053,7 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
          crystallite_P(1:3,1:3,c,i,e) = math_mul33x33(math_mul33x33(crystallite_partionedF(1:3,1:3,c,i,e), invFp), &
                                                       math_mul33x33(Tstar,transpose(invFp)))
        endif
+#ifdef DEBUG
        if (iand(debug_level(debug_crystallite), debug_levelExtensive) /= 0_pInt &
            .and. ((e == debug_e .and. i == debug_i .and. c == debug_g) &
                   .or. .not. iand(debug_level(debug_crystallite),debug_levelSelective) /= 0_pInt)) then
@@ -1053,6 +1070,7 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
                                           transpose(crystallite_Li(1:3,1:3,c,i,e))
          flush(6)
        endif
+#endif
      enddo
    enddo
  enddo elementLooping5
