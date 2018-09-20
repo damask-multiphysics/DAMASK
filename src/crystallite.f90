@@ -122,13 +122,13 @@ module crystallite
    crystallite_postResults
  private :: &
    integrateState, &
-   crystallite_integrateStateFPI, &
-   crystallite_integrateStateEuler, &
-   crystallite_integrateStateAdaptiveEuler, &
-   crystallite_integrateStateRK4, &
-   crystallite_integrateStateRKCK45, &
-   crystallite_integrateStress, &
-   crystallite_stateJump
+   integrateStateFPI, &
+   integrateStateEuler, &
+   integrateStateAdaptiveEuler, &
+   integrateStateRK4, &
+   integrateStateRKCK45, &
+   integrateStress, &
+   stateJump
 
 contains
 
@@ -272,15 +272,15 @@ subroutine crystallite_init
 
  select case(numerics_integrator(1))
    case(1_pInt)
-     integrateState => crystallite_integrateStateFPI
+     integrateState => integrateStateFPI
    case(2_pInt)
-     integrateState => crystallite_integrateStateEuler
+     integrateState => integrateStateEuler
    case(3_pInt)
-     integrateState => crystallite_integrateStateAdaptiveEuler
+     integrateState => integrateStateAdaptiveEuler
    case(4_pInt)
-     integrateState => crystallite_integrateStateRK4
+     integrateState => integrateStateRK4
    case(5_pInt)
-     integrateState => crystallite_integrateStateRKCK45
+     integrateState => integrateStateRKCK45
  end select
 
 
@@ -1201,7 +1201,7 @@ end subroutine crystallite_stressAndItsTangent
 !--------------------------------------------------------------------------------------------------
 !> @brief integrate stress, state with 4th order explicit Runge Kutta method
 !--------------------------------------------------------------------------------------------------
-subroutine crystallite_integrateStateRK4()
+subroutine integrateStateRK4()
  use, intrinsic :: &
    IEEE_arithmetic
 #ifdef DEBUG
@@ -1382,7 +1382,7 @@ subroutine crystallite_integrateStateRK4()
      do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                    ! iterate over elements, ips and grains
        !$OMP FLUSH(crystallite_todo)
        if (crystallite_todo(g,i,e)) then
-         crystallite_todo(g,i,e) = crystallite_stateJump(g,i,e)
+         crystallite_todo(g,i,e) = stateJump(g,i,e)
          !$OMP FLUSH(crystallite_todo)
          if (.not. crystallite_todo(g,i,e) .and. .not. crystallite_localPlasticity(g,i,e)) then              ! if broken non-local...
            !$OMP CRITICAL (checkTodo)
@@ -1413,7 +1413,7 @@ subroutine crystallite_integrateStateRK4()
      do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                  ! iterate over elements, ips and grains
        !$OMP FLUSH(crystallite_todo)
        if (crystallite_todo(g,i,e)) then
-         crystallite_todo(g,i,e) = crystallite_integrateStress(g,i,e,timeStepFraction(n))                  ! fraction of original times step
+         crystallite_todo(g,i,e) = integrateStress(g,i,e,timeStepFraction(n))                  ! fraction of original times step
          !$OMP FLUSH(crystallite_todo)
          if (.not. crystallite_todo(g,i,e) .and. .not. crystallite_localPlasticity(g,i,e)) then            ! if broken non-local...
            !$OMP CRITICAL (checkTodo)
@@ -1484,14 +1484,14 @@ subroutine crystallite_integrateStateRK4()
    endif
  endif
 
-end subroutine crystallite_integrateStateRK4
+end subroutine integrateStateRK4
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief integrate stress, state with 5th order Runge-Kutta Cash-Karp method with
 !> adaptive step size  (use 5th order solution to advance = "local extrapolation")
 !--------------------------------------------------------------------------------------------------
-subroutine crystallite_integrateStateRKCK45()
+subroutine integrateStateRKCK45()
  use, intrinsic :: &
    IEEE_arithmetic
 #ifdef DEBUG
@@ -1703,7 +1703,7 @@ subroutine crystallite_integrateStateRKCK45()
      do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                   ! iterate over elements, ips and grains
        !$OMP FLUSH(crystallite_todo)
        if (crystallite_todo(g,i,e)) then
-         crystallite_todo(g,i,e) = crystallite_stateJump(g,i,e)
+         crystallite_todo(g,i,e) = stateJump(g,i,e)
          !$OMP FLUSH(crystallite_todo)
          if (.not. crystallite_todo(g,i,e) .and. .not. crystallite_localPlasticity(g,i,e)) then             ! if broken non-local...
            !$OMP CRITICAL (checkTodo)
@@ -1734,7 +1734,7 @@ subroutine crystallite_integrateStateRKCK45()
      do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                  ! iterate over elements, ips and grains
        !$OMP FLUSH(crystallite_todo)
        if (crystallite_todo(g,i,e)) then
-         crystallite_todo(g,i,e) =  crystallite_integrateStress(g,i,e,C(stage))                            ! fraction of original time step
+         crystallite_todo(g,i,e) =  integrateStress(g,i,e,C(stage))                            ! fraction of original time step
          !$OMP FLUSH(crystallite_todo)
          if (.not. crystallite_todo(g,i,e) .and. .not. crystallite_localPlasticity(g,i,e)) then            ! if broken non-local...
            !$OMP CRITICAL (checkTodo)
@@ -1923,7 +1923,7 @@ subroutine crystallite_integrateStateRKCK45()
    do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                    ! iterate over elements, ips and grains
      !$OMP FLUSH(crystallite_todo)
      if (crystallite_todo(g,i,e)) then
-       crystallite_todo(g,i,e) = crystallite_stateJump(g,i,e)
+       crystallite_todo(g,i,e) = stateJump(g,i,e)
        !$OMP FLUSH(crystallite_todo)
        if (.not. crystallite_todo(g,i,e) .and. .not. crystallite_localPlasticity(g,i,e)) then              ! if broken non-local...
          !$OMP CRITICAL (checkTodo)
@@ -1954,7 +1954,7 @@ subroutine crystallite_integrateStateRKCK45()
    do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                    ! iterate over elements, ips and grains
      !$OMP FLUSH(crystallite_todo)
      if (crystallite_todo(g,i,e)) then
-       crystallite_todo(g,i,e) = crystallite_integrateStress(g,i,e)
+       crystallite_todo(g,i,e) = integrateStress(g,i,e)
        !$OMP FLUSH(crystallite_todo)
        if (.not. crystallite_todo(g,i,e) .and. .not. crystallite_localPlasticity(g,i,e)) then              ! if broken non-local...
          !$OMP CRITICAL (checkTodo)
@@ -1985,13 +1985,13 @@ subroutine crystallite_integrateStateRKCK45()
  if ((.not. singleRun) .and. any(.not. crystallite_converged .and. .not. crystallite_localPlasticity)) &  ! any non-local not yet converged (or broken)...
    crystallite_converged = crystallite_converged .and. crystallite_localPlasticity                       ! ...restart all non-local as not converged
 
-end subroutine crystallite_integrateStateRKCK45
+end subroutine integrateStateRKCK45
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief integrate stress, state with 1st order Euler method with adaptive step size
 !--------------------------------------------------------------------------------------------------
-subroutine crystallite_integrateStateAdaptiveEuler()
+subroutine integrateStateAdaptiveEuler()
  use, intrinsic :: &
    IEEE_arithmetic
 #ifdef DEBUG
@@ -2150,7 +2150,7 @@ subroutine crystallite_integrateStateAdaptiveEuler()
      do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                  ! iterate over elements, ips and grains
        !$OMP FLUSH(crystallite_todo)
        if (crystallite_todo(g,i,e)) then
-         crystallite_todo(g,i,e) = crystallite_stateJump(g,i,e)
+         crystallite_todo(g,i,e) = stateJump(g,i,e)
          !$OMP FLUSH(crystallite_todo)
          if (.not. crystallite_todo(g,i,e) .and. .not. crystallite_localPlasticity(g,i,e)) then            ! if broken non-local...
            !$OMP CRITICAL (checkTodo)
@@ -2182,7 +2182,7 @@ subroutine crystallite_integrateStateAdaptiveEuler()
    do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                    ! iterate over elements, ips and grains
      !$OMP FLUSH(crystallite_todo)
      if (crystallite_todo(g,i,e)) then
-       crystallite_todo(g,i,e) = crystallite_integrateStress(g,i,e)
+       crystallite_todo(g,i,e) = integrateStress(g,i,e)
        !$OMP FLUSH(crystallite_todo)
        if (.not. crystallite_todo(g,i,e) .and. .not. crystallite_localPlasticity(g,i,e)) then              ! if broken non-local...
          !$OMP CRITICAL (checkTodo)
@@ -2311,13 +2311,13 @@ subroutine crystallite_integrateStateAdaptiveEuler()
     crystallite_converged = crystallite_converged .and. crystallite_localPlasticity                          ! ...restart all non-local as not converged
 
 
-end subroutine crystallite_integrateStateAdaptiveEuler
+end subroutine integrateStateAdaptiveEuler
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief integrate stress, and state with 1st order explicit Euler method
 !--------------------------------------------------------------------------------------------------
-subroutine crystallite_integrateStateEuler()
+subroutine integrateStateEuler()
  use, intrinsic :: &
    IEEE_arithmetic
 #ifdef DEBUG
@@ -2458,7 +2458,7 @@ eIter = FEsolving_execElem(1:2)
      do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                   ! iterate over elements, ips and grains
        !$OMP FLUSH(crystallite_todo)
        if (crystallite_todo(g,i,e) .and. .not. crystallite_converged(g,i,e)) then
-         crystallite_todo(g,i,e) = crystallite_stateJump(g,i,e)
+         crystallite_todo(g,i,e) = stateJump(g,i,e)
          !$OMP FLUSH(crystallite_todo)
          if (.not. crystallite_todo(g,i,e) .and. .not. crystallite_localPlasticity(g,i,e) &                 ! if broken non-local...
              .and. .not. numerics_timeSyncing) then
@@ -2492,7 +2492,7 @@ eIter = FEsolving_execElem(1:2)
    do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                    ! iterate over elements, ips and grains
      !$OMP FLUSH(crystallite_todo)
      if (crystallite_todo(g,i,e) .and. .not. crystallite_converged(g,i,e)) then
-       crystallite_todo(g,i,e) = crystallite_integrateStress(g,i,e)
+       crystallite_todo(g,i,e) = integrateStress(g,i,e)
        !$OMP FLUSH(crystallite_todo)
        if (.not. crystallite_todo(g,i,e) .and. .not. crystallite_localPlasticity(g,i,e) &                  ! if broken non-local...
            .and. .not. numerics_timeSyncing) then
@@ -2524,14 +2524,14 @@ eIter = FEsolving_execElem(1:2)
      crystallite_converged = crystallite_converged .and. crystallite_localPlasticity                       ! ...restart all non-local as not converged
  endif
 
-end subroutine crystallite_integrateStateEuler
+end subroutine integrateStateEuler
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief integrate stress, state with adaptive 1st order explicit Euler method
 !> using Fixed Point Iteration to adapt the stepsize
 !--------------------------------------------------------------------------------------------------
-subroutine crystallite_integrateStateFPI()
+subroutine integrateStateFPI()
  use, intrinsic :: &
    IEEE_arithmetic
 #ifdef DEBUG
@@ -2750,7 +2750,7 @@ subroutine crystallite_integrateStateFPI()
      do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                  ! iterate over elements, ips and grains
        !$OMP FLUSH(crystallite_todo)
        if (crystallite_todo(g,i,e) .and. .not. crystallite_converged(g,i,e)) then
-         crystallite_todo(g,i,e) = crystallite_integrateStress(g,i,e)
+         crystallite_todo(g,i,e) = integrateStress(g,i,e)
          !$OMP FLUSH(crystallite_todo)
          if (.not. crystallite_todo(g,i,e) .and. .not. crystallite_localPlasticity(g,i,e)) then            ! broken non-local...
            !$OMP CRITICAL (checkTodo)
@@ -2938,7 +2938,7 @@ subroutine crystallite_integrateStateFPI()
      do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                    ! iterate over elements, ips and grains
        !$OMP FLUSH(crystallite_todo)
        if (crystallite_todo(g,i,e) .and. crystallite_converged(g,i,e)) then                                  ! converged and still alive...
-         crystallite_todo(g,i,e) = crystallite_stateJump(g,i,e)
+         crystallite_todo(g,i,e) = stateJump(g,i,e)
          !$OMP FLUSH(crystallite_todo)
          if (.not. crystallite_todo(g,i,e)) then                                                             ! if state jump fails, then convergence is broken
            crystallite_converged(g,i,e) = .false.
@@ -2988,14 +2988,14 @@ subroutine crystallite_integrateStateFPI()
    enddo elemLoop
 
  enddo crystalliteLooping
-end subroutine crystallite_integrateStateFPI
+end subroutine integrateStateFPI
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates a jump in the state according to the current state and the current stress
 !> returns true, if state jump was successfull or not needed. false indicates NaN in delta state
 !--------------------------------------------------------------------------------------------------
-logical function crystallite_stateJump(ipc,ip,el)
+logical function stateJump(ipc,ip,el)
  use, intrinsic :: &
    IEEE_arithmetic
  use prec, only: &
@@ -3045,7 +3045,7 @@ logical function crystallite_stateJump(ipc,ip,el)
  mySizePlasticDeltaState   = plasticState(p)%sizeDeltaState
 
  if( any(IEEE_is_NaN(plasticState(p)%deltaState(1:mySizePlasticDeltaState,c)))) then                                       ! NaN occured in deltaState
-   crystallite_stateJump = .false.
+   stateJump = .false.
    return
  endif
 
@@ -3059,7 +3059,7 @@ logical function crystallite_stateJump(ipc,ip,el)
    myOffsetSourceDeltaState = sourceState(p)%p(mySource)%offsetDeltaState
    mySizeSourceDeltaState   = sourceState(p)%p(mySource)%sizeDeltaState
    if (any(IEEE_is_NaN(sourceState(p)%p(mySource)%deltaState(1:mySizeSourceDeltaState,c)))) then   ! NaN occured in deltaState
-     crystallite_stateJump = .false.
+     stateJump = .false.
      return
    endif
    sourceState(p)%p(mySource)%state(myOffsetSourceDeltaState + 1_pInt                : &
@@ -3082,9 +3082,9 @@ logical function crystallite_stateJump(ipc,ip,el)
  endif
 #endif
 
- crystallite_stateJump = .true.
+ stateJump = .true.
 
-end function crystallite_stateJump
+end function stateJump
 
 
 !--------------------------------------------------------------------------------------------------
@@ -3118,7 +3118,7 @@ end function crystallite_push33ToRef
 !> @brief calculation of stress (P) with time integration based on a residuum in Lp and
 !> intermediate acceleration of the Newton-Raphson correction
 !--------------------------------------------------------------------------------------------------
-logical function crystallite_integrateStress(&
+logical function integrateStress(&
       ipc,&                                                                                       ! grain number
       ip,&                                                                                        ! integration point number
       el,&                                                                                        ! element number
@@ -3236,7 +3236,7 @@ logical function crystallite_integrateStress(&
    dgesv
 
  !* be pessimistic
- crystallite_integrateStress = .false.
+ integrateStress = .false.
 #ifdef DEBUG
  if (iand(debug_level(debug_crystallite), debug_levelExtensive) /= 0_pInt &
      .and. ((el == debug_e .and. ip == debug_i .and. ipc == debug_g) &
@@ -3575,7 +3575,7 @@ logical function crystallite_integrateStress(&
 
  !* set return flag to true
 
- crystallite_integrateStress = .true.
+ integrateStress = .true.
 #ifdef DEBUG
  if (iand(debug_level(debug_crystallite),debug_levelExtensive) /= 0_pInt &
      .and. ((el == debug_e .and. ip == debug_i .and. ipc == debug_g) &
@@ -3590,7 +3590,7 @@ logical function crystallite_integrateStress(&
  endif
 #endif
 
-end function crystallite_integrateStress
+end function integrateStress
 
 
 !--------------------------------------------------------------------------------------------------
