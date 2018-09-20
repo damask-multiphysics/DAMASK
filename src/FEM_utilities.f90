@@ -32,8 +32,6 @@ use PETScis
  character(len=*),                         parameter,            public :: &
    FIELD_MECH_label     = 'mechanical'
 
- integer(pInt), parameter :: structOrder = 2_pInt
- 
  enum, bind(c)
    enumerator :: FIELD_UNDEFINED_ID, &
                  FIELD_MECH_ID, &
@@ -138,6 +136,7 @@ subroutine utilities_init()
    IO_timeStamp, &
    IO_open_file
  use numerics, only: &                        
+   structOrder, &
    integrationOrder, &
    worldsize, & 
    worldrank, &
