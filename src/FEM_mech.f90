@@ -5,7 +5,6 @@
 !> @brief FEM PETSc solver
 !--------------------------------------------------------------------------------------------------
 module FEM_mech
-use PETSC
 #include <petsc/finclude/petscdmplex.h>
 #include <petsc/finclude/petscdm.h>
 #include <petsc/finclude/petscdmda.h>
@@ -15,7 +14,7 @@ use PETSC
  use PETScsnes
  use PETScDM
  use PETScDMplex
- use PETSC
+ use PETScDT
  use prec, only: & 
    pInt, &
    pReal
@@ -25,9 +24,6 @@ use PETSC
    tSolutionState, &
    tFieldBC, &
    tComponentBC
- use numerics, only: &
-   worldrank, &
-   worldsize  
  use mesh, only: &
    mesh_Nboundaries, &
    mesh_boundaries
@@ -66,7 +62,7 @@ use PETSC
    FEM_mech_solution ,&
    FEM_mech_forward, &
    FEM_mech_destroy
-
+ external :: PETScerrorf
 contains
 
 !--------------------------------------------------------------------------------------------------
@@ -82,7 +78,6 @@ subroutine FEM_mech_init(fieldBC)
  use mesh, only: &
    geomMesh
  use numerics, only: &
-   worldrank, &
    itmax, &
    integrationOrder
  use FEM_Zoo, only: &
@@ -106,8 +101,8 @@ subroutine FEM_mech_init(fieldBC)
  IS,                            pointer :: pBcComps(:), pBcPoints(:)
  PetscSection                           :: section
  PetscInt                               :: field, faceSet, topologDim, nNodalPoints
- PetscReal,                     pointer :: qPointsP(:), qWeightsP(:), &
-                                           nodalPointsP(:), nodalWeightsP(:)
+ PetscReal,      dimension(:)     ,  pointer :: qPointsP, qWeightsP, &
+                                           nodalPointsP, nodalWeightsP
  PetscReal,         allocatable, target :: nodalPoints(:), nodalWeights(:)
  PetscScalar,                   pointer :: px_scal(:)
  PetscScalar,       allocatable, target ::  x_scal(:)
@@ -117,7 +112,8 @@ subroutine FEM_mech_init(fieldBC)
  PetscInt                               :: cellStart, cellEnd, cell, basis 
  character(len=7)                       :: prefix = 'mechFE_'
  PetscErrorCode                         :: ierr
- 
+ PetscReal, allocatable, target, dimension(:) :: qWeights
+
  write(6,'(/,a)') ' <<<+-  FEM_mech init  -+>>>'
  write(6,'(a15,a)')   ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
@@ -129,8 +125,6 @@ subroutine FEM_mech_init(fieldBC)
 
 !--------------------------------------------------------------------------------------------------
 ! Setup FEM mech discretization
- allocate(qPoints(dimPlex*FEM_Zoo_nQuadrature(dimPlex,integrationOrder)))
- allocate(qWeights(FEM_Zoo_nQuadrature(dimPlex,integrationOrder)))
  qPoints = FEM_Zoo_QuadraturePoints(dimPlex,integrationOrder)%p
  qWeights = FEM_Zoo_QuadratureWeights(dimPlex,integrationOrder)%p
  nQuadrature = FEM_Zoo_nQuadrature(dimPlex,integrationOrder)
@@ -250,12 +244,17 @@ subroutine FEM_mech_init(fieldBC)
  call PetscFEGetDualSpace(mechFE,mechDualSpace,ierr); CHKERRQ(ierr)
  call DMPlexGetHeightStratum(mech_mesh,0,cellStart,cellEnd,ierr)
  CHKERRQ(ierr)
+ write(6,*) 'cellDof', cellDof;flush(6)
+   write(6,*) 'cell start and end-1',cellStart,cellEnd-1;flush(6)
  do cell = cellStart, cellEnd-1                                                                     !< loop over all elements 
+   write(6,*) 'cell',cell;flush(6)
    x_scal = 0.0
    call  DMPlexComputeCellGeometryAffineFEM(mech_mesh,cell,pV0,pCellJ,pInvcellJ,detJ,ierr) 
    CHKERRQ(ierr)
    cellJMat = reshape(pCellJ,shape=[dimPlex,dimPlex])
    do basis = 0, nBasis-1
+   write(6,*) 'nBasis-1',nBasis-1;flush(6)
+   write(6,*) 'basis',basis;flush(6)
      call PetscDualSpaceGetFunctional(mechDualSpace,basis,functional,ierr)
      CHKERRQ(ierr)
      call PetscQuadratureGetData(functional,dimPlex,nc,nNodalPoints,nodalPointsP,nodalWeightsP,ierr)
@@ -677,6 +676,7 @@ end subroutine FEM_mech_forward
 !--------------------------------------------------------------------------------------------------
 subroutine FEM_mech_converged(snes_local,PETScIter,xnorm,snorm,fnorm,reason,dummy,ierr)
  use numerics, only: &
+   worldrank, &
    err_struct_tolAbs, &
    err_struct_tolRel
  use IO, only: &

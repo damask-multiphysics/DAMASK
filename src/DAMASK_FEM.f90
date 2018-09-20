@@ -42,9 +42,9 @@ program DAMASK_FEM
    restartWrite, &
    restartInc
  use numerics, only: &
+   worldrank, &
    maxCutBack, &
-   stagItMax, &
-   worldrank
+   stagItMax
  use mesh, only: &
    mesh_Nboundaries, &
    mesh_boundaries, &   
@@ -73,11 +73,7 @@ program DAMASK_FEM
    COMPONENT_SOLUTE_CVaH_ID, &
    COMPONENT_SOLUTE_CVaHPOT_ID, &
    COMPONENT_MGTWIN_PHI_ID, &
-   FIELD_MECH_label, &
-   FIELD_THERMAL_label, &
-   FIELD_DAMAGE_label, &
-   FIELD_SOLUTE_label, &
-   FIELD_MGTWIN_label
+   FIELD_MECH_label
  use FEM_mech
  
  implicit none
@@ -404,18 +400,6 @@ program DAMASK_FEM
        select case (loadCases(currentLoadCase)%fieldBC(field)%ID)
          case(FIELD_MECH_ID)
            write(6,'(2x,a)') 'Field '//trim(FIELD_MECH_label)
-       
-         case(FIELD_THERMAL_ID)
-           write(6,'(2x,a)') 'Field '//trim(FIELD_THERMAL_label)
-              
-         case(FIELD_DAMAGE_ID)
-           write(6,'(2x,a)') 'Field '//trim(FIELD_DAMAGE_label)
-           
-         case(FIELD_MGTWIN_ID)
-           write(6,'(2x,a)') 'Field '//trim(FIELD_MGTWIN_label)  
-       
-         case(FIELD_SOLUTE_ID)
-           write(6,'(2x,a)') 'Field '//trim(FIELD_SOLUTE_label)
        
        end select
        do faceSet = 1_pInt, mesh_Nboundaries
