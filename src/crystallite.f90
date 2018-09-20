@@ -194,8 +194,6 @@ subroutine crystallite_init
    mySize
 
  character(len=65536), dimension(:), allocatable :: str
- character(len=65536) :: &
-   tag = ''
 
  write(6,'(/,a)')   ' <<<+-  crystallite init  -+>>>'
  write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
@@ -326,7 +324,7 @@ subroutine crystallite_init
            case ('neighboringelement') outputName
              crystallite_outputID(o,c) = neighboringelement_ID
            case default outputName
-             call IO_error(105_pInt,ext_msg=tag//' (Crystallite)')
+             call IO_error(105_pInt,ext_msg=trim(str(o))//' (Crystallite)')
          end select outputName
    enddo
  enddo
@@ -424,51 +422,11 @@ subroutine crystallite_init
 
 #ifdef DEBUG
  if (iand(debug_level(debug_crystallite), debug_levelBasic) /= 0_pInt) then
-   write(6,'(a35,1x,7(i8,1x))') 'crystallite_Fe:                    ', shape(crystallite_Fe)
-   write(6,'(a35,1x,7(i8,1x))') 'crystallite_Fp:                    ', shape(crystallite_Fp)
-   write(6,'(a35,1x,7(i8,1x))') 'crystallite_Fi:                    ', shape(crystallite_Fi)
-   write(6,'(a35,1x,7(i8,1x))') 'crystallite_Lp:                    ', shape(crystallite_Lp)
-   write(6,'(a35,1x,7(i8,1x))') 'crystallite_Li:                    ', shape(crystallite_Li)
-   write(6,'(a35,1x,7(i8,1x))') 'crystallite_F0:                    ', shape(crystallite_F0)
-   write(6,'(a35,1x,7(i8,1x))') 'crystallite_Fp0:                   ', shape(crystallite_Fp0)
-   write(6,'(a35,1x,7(i8,1x))') 'crystallite_Fi0:                   ', shape(crystallite_Fi0)
-   write(6,'(a35,1x,7(i8,1x))') 'crystallite_Lp0:                   ', shape(crystallite_Lp0)
-   write(6,'(a35,1x,7(i8,1x))') 'crystallite_Li0:                   ', shape(crystallite_Li0)
-   write(6,'(a35,1x,7(i8,1x))') 'crystallite_partionedF:            ', shape(crystallite_partionedF)
-   write(6,'(a35,1x,7(i8,1x))') 'crystallite_partionedF0:           ', shape(crystallite_partionedF0)
-   write(6,'(a35,1x,7(i8,1x))') 'crystallite_partionedFp0:          ', shape(crystallite_partionedFp0)
-   write(6,'(a35,1x,7(i8,1x))') 'crystallite_partionedFi0:          ', shape(crystallite_partionedFi0)
-   write(6,'(a35,1x,7(i8,1x))') 'crystallite_partionedLp0:          ', shape(crystallite_partionedLp0)
-   write(6,'(a35,1x,7(i8,1x))') 'crystallite_partionedLi0:          ', shape(crystallite_partionedLi0)
-   write(6,'(a35,1x,7(i8,1x))') 'crystallite_subF:                  ', shape(crystallite_subF)
-   write(6,'(a35,1x,7(i8,1x))') 'crystallite_subF0:                 ', shape(crystallite_subF0)
-   write(6,'(a35,1x,7(i8,1x))') 'crystallite_subFp0:                ', shape(crystallite_subFp0)
-   write(6,'(a35,1x,7(i8,1x))') 'crystallite_subFi0:                ', shape(crystallite_subFi0)
-   write(6,'(a35,1x,7(i8,1x))') 'crystallite_subLp0:                ', shape(crystallite_subLp0)
-   write(6,'(a35,1x,7(i8,1x))') 'crystallite_subLi0:                ', shape(crystallite_subLi0)
-   write(6,'(a35,1x,7(i8,1x))') 'crystallite_P:                     ', shape(crystallite_P)
-   write(6,'(a35,1x,7(i8,1x))') 'crystallite_Tstar_v:               ', shape(crystallite_Tstar_v)
-   write(6,'(a35,1x,7(i8,1x))') 'crystallite_Tstar0_v:              ', shape(crystallite_Tstar0_v)
-   write(6,'(a35,1x,7(i8,1x))') 'crystallite_partionedTstar0_v:     ', shape(crystallite_partionedTstar0_v)
-   write(6,'(a35,1x,7(i8,1x))') 'crystallite_subTstar0_v:           ', shape(crystallite_subTstar0_v)
-   write(6,'(a35,1x,7(i8,1x))') 'crystallite_dPdF:                  ', shape(crystallite_dPdF)
-   write(6,'(a35,1x,7(i8,1x))') 'crystallite_dPdF0:                 ', shape(crystallite_dPdF0)
-   write(6,'(a35,1x,7(i8,1x))') 'crystallite_partioneddPdF0:        ', shape(crystallite_partioneddPdF0)
-   write(6,'(a35,1x,7(i8,1x))') 'crystallite_orientation:           ', shape(crystallite_orientation)
-   write(6,'(a35,1x,7(i8,1x))') 'crystallite_orientation0:          ', shape(crystallite_orientation0)
-   write(6,'(a35,1x,7(i8,1x))') 'crystallite_rotation:              ', shape(crystallite_rotation)
-   write(6,'(a35,1x,7(i8,1x))') 'crystallite_disorientation:        ', shape(crystallite_disorientation)
-   write(6,'(a35,1x,7(i8,1x))') 'crystallite_dt:                    ', shape(crystallite_dt)
-   write(6,'(a35,1x,7(i8,1x))') 'crystallite_subdt:                 ', shape(crystallite_subdt)
-   write(6,'(a35,1x,7(i8,1x))') 'crystallite_subFrac:               ', shape(crystallite_subFrac)
-   write(6,'(a35,1x,7(i8,1x))') 'crystallite_subStep:               ', shape(crystallite_subStep)
-   write(6,'(a35,1x,7(i8,1x))') 'crystallite_localPlasticity:       ', shape(crystallite_localPlasticity)
-   write(6,'(a35,1x,7(i8,1x))') 'crystallite_requested:             ', shape(crystallite_requested)
-   write(6,'(a35,1x,7(i8,1x))') 'crystallite_todo:                  ', shape(crystallite_todo)
-   write(6,'(a35,1x,7(i8,1x))') 'crystallite_converged:             ', shape(crystallite_converged)
-   write(6,'(a35,1x,7(i8,1x))') 'crystallite_sizePostResults:       ', shape(crystallite_sizePostResults)
-   write(6,'(a35,1x,7(i8,1x))') 'crystallite_sizePostResult:        ', shape(crystallite_sizePostResult)
-   write(6,'(/,a35,1x,i10)')    'Number of nonlocal grains:         ',count(.not. crystallite_localPlasticity)
+   write(6,'(a42,1x,i10)') '    # of elements:                       ', eMax
+   write(6,'(a42,1x,i10)') 'max # of integration points/element:     ', iMax
+   write(6,'(a42,1x,i10)') 'max # of constituents/integration point: ', cMax
+   write(6,'(a42,1x,i10)') 'max # of neigbours/integration point:    ', nMax
+   write(6,'(a42,1x,i10)') '    # of nonlocal constituents:          ',count(.not. crystallite_localPlasticity)
    flush(6)
  endif
 
@@ -3722,10 +3680,6 @@ function crystallite_postResults(ipc, ip, el)
                         1+plasticState(material_phase(ipc,ip,el))%sizePostResults + &
                           sum(sourceState(material_phase(ipc,ip,el))%p(:)%sizePostResults)) :: &
    crystallite_postResults
- real(pReal), dimension(3,3) :: &
-   Ee
- real(pReal), dimension(4) :: &
-   rotation
  real(pReal) :: &
    detF
  integer(pInt) :: &
