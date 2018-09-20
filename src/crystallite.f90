@@ -177,8 +177,7 @@ subroutine crystallite_init
  use config, only: &
   config_deallocate, &
   config_crystallite, &
-  crystallite_name, &
-  material_Nphase
+  crystallite_name
  use constitutive, only: &
    constitutive_initialFi, &
    constitutive_microstructure                                                                      ! derived (shortcut) quantities of given state
@@ -192,7 +191,6 @@ subroutine crystallite_init
    e, &                                                                                             !< counter in element loop
    o = 0_pInt, &                                                                                    !< counter in output loop
    r, &  
-   ph, &                                                                                            !< counter in crystallite loop
    cMax, &                                                                                          !< maximum number of  integration point components
    iMax, &                                                                                          !< maximum number of integration points
    eMax, &                                                                                          !< maximum number of elements
@@ -508,6 +506,7 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
    subStepSizeCryst, &
    stepIncreaseCryst, &
    numerics_timeSyncing
+#ifdef DEBUG
  use debug, only: &
    debug_level, &
    debug_crystallite, &
@@ -517,6 +516,7 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
    debug_e, &
    debug_i, &
    debug_g
+#endif
  use IO, only: &
    IO_warning, &
    IO_error
@@ -656,10 +656,10 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
 
  NiterationCrystallite = 0_pInt
  cutbackLooping: do while (any(crystallite_todo(:,startIP:endIP,FEsolving_execELem(1):FEsolving_execElem(2))))
-
+#ifdef DEBUG
    if (iand(debug_level(debug_crystallite),debug_levelExtensive) /= 0_pInt) &
      write(6,'(a,i6)') '<< CRYST >> crystallite iteration ',NiterationCrystallite
-
+#endif
    timeSyncing1: if (any(.not. crystallite_localPlasticity) .and. numerics_timeSyncing) then
 
     ! Time synchronization can only be used for nonlocal calculations, and only there it makes sense.
@@ -678,6 +678,7 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
        ! and its not clear how to fix this, so all nonlocals become terminally ill.
 
        if (any(crystallite_syncSubFrac .and. .not. crystallite_converged(1,:,:))) then
+#ifdef DEBUG
          if (iand(debug_level(debug_crystallite),debug_levelExtensive) /= 0_pInt) then
            do e = FEsolving_execElem(1),FEsolving_execElem(2)
              do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
@@ -686,6 +687,7 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
              enddo
            enddo
          endif
+#endif
          crystallite_syncSubFrac = .false.
          where(.not. crystallite_localPlasticity)
            crystallite_substep = 0.0_pReal
@@ -700,8 +702,10 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
            enddo
          enddo
          !$OMP END PARALLEL DO
+#ifdef DEBUG
          if (iand(debug_level(debug_crystallite),debug_levelExtensive) /= 0_pInt) &
            write(6,'(a,i6)') '<< CRYST >> time synchronization: wind forward'
+#endif
        endif
 
      elseif (any(crystallite_syncSubFracCompleted)) then
@@ -717,8 +721,10 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
            crystallite_clearToCutback(i,e) = crystallite_localPlasticity(1,i,e) .or. .not. crystallite_converged(1,i,e)
          enddo
        enddo
+#ifdef DEBUG
        if (iand(debug_level(debug_crystallite),debug_levelExtensive) /= 0_pInt) &
          write(6,'(a,i6)') '<< CRYST >> time synchronization: done, proceed with cutback'
+#endif
      else
 
        ! Normal calculation.
@@ -1198,17 +1204,17 @@ end subroutine crystallite_stressAndItsTangent
 subroutine crystallite_integrateStateRK4()
  use, intrinsic :: &
    IEEE_arithmetic
- use debug, only: &
 #ifdef DEBUG
+ use debug, only: &
    debug_e, &
    debug_i, &
    debug_g, &
-#endif
    debug_level, &
    debug_crystallite, &
    debug_levelBasic, &
    debug_levelExtensive, &
    debug_levelSelective
+#endif
  use FEsolving, only: &
    FEsolving_execElem, &
    FEsolving_execIP
@@ -1488,17 +1494,17 @@ end subroutine crystallite_integrateStateRK4
 subroutine crystallite_integrateStateRKCK45()
  use, intrinsic :: &
    IEEE_arithmetic
- use debug, only: &
 #ifdef DEBUG
+ use debug, only: &
    debug_e, &
    debug_i, &
    debug_g, &
-#endif
    debug_level, &
    debug_crystallite, &
    debug_levelBasic, &
    debug_levelExtensive, &
    debug_levelSelective
+#endif
  use numerics, only: &
    rTol_crystalliteState
  use FEsolving, only: &
@@ -1574,8 +1580,10 @@ subroutine crystallite_integrateStateRKCK45()
    singleRun                                                                                        ! flag indicating computation for single (g,i,e) triple
 
  eIter = FEsolving_execElem(1:2)
+#ifdef DEBUG
  if (iand(debug_level(debug_crystallite), debug_levelExtensive) /= 0_pInt) &
    write(6,'(a,1x,i1)') '<< CRYST >> Runge--Kutta step',1
+#endif
 
  ! --- LOOP ITERATOR FOR ELEMENT, GRAIN, IP ---
  do e = eIter(1),eIter(2)
@@ -1970,9 +1978,10 @@ subroutine crystallite_integrateStateRKCK45()
 
 
  ! --- nonlocal convergence check ---
-
+#ifdef DEBUG
  if (iand(debug_level(debug_crystallite), debug_levelExtensive) /= 0_pInt) &
    write(6,'(a,i8,a,i2,/)') '<< CRYST >> ', count(crystallite_converged(:,:,:)), ' grains converged'    ! if not requesting Integration of just a single IP
+#endif
  if ((.not. singleRun) .and. any(.not. crystallite_converged .and. .not. crystallite_localPlasticity)) &  ! any non-local not yet converged (or broken)...
    crystallite_converged = crystallite_converged .and. crystallite_localPlasticity                       ! ...restart all non-local as not converged
 
@@ -1985,17 +1994,17 @@ end subroutine crystallite_integrateStateRKCK45
 subroutine crystallite_integrateStateAdaptiveEuler()
  use, intrinsic :: &
    IEEE_arithmetic
- use debug, only: &
 #ifdef DEBUG
+ use debug, only: &
    debug_e, &
    debug_i, &
    debug_g, &
-#endif
    debug_level, &
    debug_crystallite, &
    debug_levelBasic, &
    debug_levelExtensive, &
    debug_levelSelective
+#endif
  use numerics, only: &
    rTol_crystalliteState
  use FEsolving, only: &
@@ -2294,9 +2303,10 @@ subroutine crystallite_integrateStateAdaptiveEuler()
 
 
  ! --- NONLOCAL CONVERGENCE CHECK ---
-
+#ifdef DEBUG
  if (iand(debug_level(debug_crystallite), debug_levelExtensive) /= 0_pInt) &
    write(6,'(a,i8,a,i2,/)') '<< CRYST >> ', count(crystallite_converged(:,:,:)), ' grains converged'
+#endif
  if ((.not. singleRun) .and. any(.not. crystallite_converged .and. .not. crystallite_localPlasticity)) &     ! any non-local not yet converged (or broken)...
     crystallite_converged = crystallite_converged .and. crystallite_localPlasticity                          ! ...restart all non-local as not converged
 
@@ -2310,17 +2320,17 @@ end subroutine crystallite_integrateStateAdaptiveEuler
 subroutine crystallite_integrateStateEuler()
  use, intrinsic :: &
    IEEE_arithmetic
- use debug, only: &
 #ifdef DEBUG
+ use debug, only: &
    debug_e, &
    debug_i, &
    debug_g, &
-#endif
    debug_level, &
    debug_crystallite, &
    debug_levelBasic, &
    debug_levelExtensive, &
    debug_levelSelective
+#endif
  use numerics, only: &
    numerics_timeSyncing
  use FEsolving, only: &
@@ -2524,17 +2534,17 @@ end subroutine crystallite_integrateStateEuler
 subroutine crystallite_integrateStateFPI()
  use, intrinsic :: &
    IEEE_arithmetic
- use debug, only: &
 #ifdef DEBUG
+ use debug, only: &
    debug_e, &
    debug_i, &
    debug_g, &
-#endif
    debug_level,&
    debug_crystallite, &
    debug_levelBasic, &
    debug_levelExtensive, &
    debug_levelSelective
+#endif
  use numerics, only: &
    nState, &
    rTol_crystalliteState
@@ -2598,8 +2608,10 @@ subroutine crystallite_integrateStateFPI()
 
  singleRun = (eIter(1) == eIter(2) .and. iIter(1,eIter(1)) == iIter(2,eIter(2)))
 
+#ifdef DEBUG
  if (iand(debug_level(debug_crystallite), debug_levelExtensive) /= 0_pInt) &
    write(6,'(a,i8,a)') '<< CRYST >> ', count(crystallite_todo(:,:,:)),' grains todo at start of state integration'
+#endif
 
 !--------------------------------------------------------------------------------------------------
 ! initialize dotState
@@ -2654,8 +2666,10 @@ subroutine crystallite_integrateStateFPI()
          NaN = NaN .or. any(IEEE_is_NaN(sourceState(p)%p(mySource)%dotState(:,c)))
        enddo
        if (NaN) then                                                                                       ! NaN occured in any dotState
+#ifdef DEBUG
          if (iand(debug_level(debug_crystallite), debug_levelExtensive) /= 0_pInt) &
            write(6,*) '<< CRYST >> dotstate ',plasticState(p)%dotState(:,c)
+#endif
          if (.not. crystallite_localPlasticity(g,i,e)) then                                                ! if broken is a non-local...
            !$OMP CRITICAL (checkTodo)
              crystallite_todo = crystallite_todo .and. crystallite_localPlasticity                         ! ...all non-locals done (and broken)
@@ -2669,9 +2683,10 @@ subroutine crystallite_integrateStateFPI()
  !$OMP ENDDO
 
  ! --- UPDATE STATE  ---
+#ifdef DEBUG
  if (iand(debug_level(debug_crystallite), debug_levelExtensive) /= 0_pInt) &
    write(6,'(a,i8,a)') '<< CRYST >> ', count(crystallite_todo(:,:,:)),' grains todo after preguess of state'
-
+#endif
 
  !$OMP DO PRIVATE(mySizePlasticDotState,mySizeSourceDotState,p,c)
    do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                    ! iterate over elements, ips and grains
@@ -2727,9 +2742,10 @@ subroutine crystallite_integrateStateFPI()
 
    ! --- STRESS INTEGRATION ---
 
+#ifdef DEBUG
    if (iand(debug_level(debug_crystallite), debug_levelExtensive) /= 0_pInt) &
      write(6,'(a,i8,a)') '<< CRYST >> ', count(crystallite_todo(:,:,:)),' grains todo before stress integration'
-
+#endif
    !$OMP DO
      do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                  ! iterate over elements, ips and grains
        !$OMP FLUSH(crystallite_todo)
@@ -2745,13 +2761,10 @@ subroutine crystallite_integrateStateFPI()
      enddo; enddo; enddo
    !$OMP ENDDO
 
-   !$OMP SINGLE
-   !$OMP CRITICAL (write2out)
+#ifdef DEBUG
    if (iand(debug_level(debug_crystallite), debug_levelExtensive) /= 0_pInt) &
      write(6,'(a,i8,a)') '<< CRYST >> ', count(crystallite_todo(:,:,:)),' grains todo after stress integration'
-   !$OMP END CRITICAL (write2out)
-   !$OMP END SINGLE
-
+#endif
 
    ! --- DOT STATE  ---
 
@@ -2940,10 +2953,11 @@ subroutine crystallite_integrateStateFPI()
    !$OMP ENDDO
    !$OMP END PARALLEL
 
+#ifdef DEBUG
    if (iand(debug_level(debug_crystallite), debug_levelExtensive) /= 0_pInt) &
      write(6,'(a,i8,a,i2)') '<< CRYST >> ', count(crystallite_converged(:,:,:)), &
                             ' grains converged after state integration #', NiterationState
-
+#endif
 
    ! --- NON-LOCAL CONVERGENCE CHECK ---
 
@@ -2952,12 +2966,15 @@ subroutine crystallite_integrateStateFPI()
        crystallite_converged = crystallite_converged .and. crystallite_localPlasticity                     ! ...restart all non-local as not converged
    endif
 
+#ifdef DEBUG
    if (iand(debug_level(debug_crystallite), debug_levelExtensive) /= 0_pInt) then
      write(6,'(a,i8,a)')      '<< CRYST >> ', count(crystallite_converged(:,:,:)), &
                               ' grains converged after non-local check'
      write(6,'(a,i8,a,i2,/)') '<< CRYST >> ', count(crystallite_todo(:,:,:)), &
                               ' grains todo after state integration #', NiterationState
    endif
+#endif
+
    ! --- CHECK IF DONE WITH INTEGRATION ---
 
    doneWithIntegration = .true.
@@ -3118,16 +3135,16 @@ logical function crystallite_integrateStress(&
                          iJacoLpresiduum, &
                          subStepSizeLp, &
                          subStepSizeLi
- use debug, only:        debug_level, &
 #ifdef DEBUG
+ use debug, only:        debug_level, &
                          debug_e, &
                          debug_i, &
                          debug_g, &
-#endif
                          debug_crystallite, &
                          debug_levelBasic, &
                          debug_levelExtensive, &
                          debug_levelSelective
+#endif
 
  use constitutive, only: constitutive_LpAndItsTangents, &
                          constitutive_LiAndItsTangents, &
