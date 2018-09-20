@@ -90,9 +90,6 @@ module crystallite
                  phase_ID, &
                  texture_ID, &
                  volume_ID, &
-                 grainrotationx_ID, &
-                 grainrotationy_ID, &
-                 grainrotationz_ID, &
                  orientation_ID, &
                  grainrotation_ID, &
                  eulerangles_ID, &
@@ -102,8 +99,6 @@ module crystallite
                  fi_ID, &
                  lp_ID, &
                  li_ID, &
-                 e_ID, &
-                 ee_ID, &
                  p_ID, &
                  s_ID, &
                  elasmatrix_ID, &
@@ -302,12 +297,6 @@ subroutine crystallite_init
              crystallite_outputID(o,c) = texture_ID
            case ('volume') outputName
              crystallite_outputID(o,c) = volume_ID
-           case ('grainrotationx') outputName
-             crystallite_outputID(o,c) = grainrotationx_ID
-           case ('grainrotationy') outputName
-             crystallite_outputID(o,c) = grainrotationy_ID
-           case ('grainrotationz') outputName
-             crystallite_outputID(o,c) = grainrotationx_ID
            case ('orientation') outputName
              crystallite_outputID(o,c) = orientation_ID
            case ('grainrotation') outputName
@@ -326,10 +315,6 @@ subroutine crystallite_init
              crystallite_outputID(o,c) = lp_ID
            case ('li') outputName
              crystallite_outputID(o,c) = li_ID
-           case ('e') outputName
-             crystallite_outputID(o,c) = e_ID
-           case ('ee') outputName
-             crystallite_outputID(o,c) = ee_ID
            case ('p','firstpiola','1stpiola') outputName
              crystallite_outputID(o,c) = p_ID
            case ('s','tstar','secondpiola','2ndpiola') outputName
@@ -350,13 +335,13 @@ subroutine crystallite_init
  do r = 1_pInt,size(config_crystallite)
    do o = 1_pInt,crystallite_Noutput(r)
      select case(crystallite_outputID(o,r))
-       case(phase_ID,texture_ID,volume_ID,grainrotationx_ID,grainrotationy_ID,grainrotationz_ID)
+       case(phase_ID,texture_ID,volume_ID)
          mySize = 1_pInt
        case(orientation_ID,grainrotation_ID)
          mySize = 4_pInt
        case(eulerangles_ID)
          mySize = 3_pInt
-       case(defgrad_ID,fe_ID,fp_ID,fi_ID,lp_ID,li_ID,e_ID,ee_ID,p_ID,s_ID)
+       case(defgrad_ID,fe_ID,fp_ID,fi_ID,lp_ID,li_ID,p_ID,s_ID)
          mySize = 9_pInt
        case(elasmatrix_ID)
          mySize = 36_pInt
@@ -3706,9 +3691,7 @@ function crystallite_postResults(ipc, ip, el)
    math_det33, &
    math_I3, &
    inDeg, &
-   math_Mandel6to33, &
-   math_qMul, &
-   math_qConj
+   math_Mandel6to33
  use mesh, only: &
    mesh_element, &
    mesh_ipVolume, &
@@ -3786,18 +3769,6 @@ function crystallite_postResults(ipc, ip, el)
        crystallite_postResults(c+1:c+mySize) = &
            math_qToEulerAxisAngle(crystallite_rotation(1:4,ipc,ip,el))                              ! grain rotation away from initial orientation as axis-angle in sample reference coordinates
        crystallite_postResults(c+4) = inDeg * crystallite_postResults(c+4)                          ! angle in degree
-     case (grainrotationx_ID)
-       mySize = 1_pInt
-       rotation = math_qToEulerAxisAngle(crystallite_rotation(1:4,ipc,ip,el))                       ! grain rotation away from initial orientation as axis-angle in sample reference coordinates
-       crystallite_postResults(c+1) = inDeg * rotation(1) * rotation(4)                             ! angle in degree
-     case (grainrotationy_ID)
-       mySize = 1_pInt
-       rotation = math_qToEulerAxisAngle(crystallite_rotation(1:4,ipc,ip,el))                       ! grain rotation away from initial orientation as axis-angle in sample reference coordinates
-       crystallite_postResults(c+1) = inDeg * rotation(2) * rotation(4)                             ! angle in degree
-     case (grainrotationz_ID)
-       mySize = 1_pInt
-       rotation = math_qToEulerAxisAngle(crystallite_rotation(1:4,ipc,ip,el))                       ! grain rotation away from initial orientation as axis-angle in sample reference coordinates
-       crystallite_postResults(c+1) = inDeg * rotation(3) * rotation(4)                             ! angle in degree
 
 ! remark: tensor output is of the form 11,12,13, 21,22,23, 31,32,33
 ! thus row index i is slow, while column index j is fast. reminder: "row is slow"
@@ -3806,20 +3777,10 @@ function crystallite_postResults(ipc, ip, el)
        mySize = 9_pInt
        crystallite_postResults(c+1:c+mySize) = &
          reshape(transpose(crystallite_partionedF(1:3,1:3,ipc,ip,el)),[mySize])
-     case (e_ID)
-       mySize = 9_pInt
-       crystallite_postResults(c+1:c+mySize) = 0.5_pReal * reshape((math_mul33x33( &
-                                               transpose(crystallite_partionedF(1:3,1:3,ipc,ip,el)), &
-                                               crystallite_partionedF(1:3,1:3,ipc,ip,el)) - math_I3),[mySize])
      case (fe_ID)
        mySize = 9_pInt
        crystallite_postResults(c+1:c+mySize) = &
          reshape(transpose(crystallite_Fe(1:3,1:3,ipc,ip,el)),[mySize])
-     case (ee_ID)
-       Ee = 0.5_pReal *(math_mul33x33(transpose(crystallite_Fe(1:3,1:3,ipc,ip,el)), &
-                                               crystallite_Fe(1:3,1:3,ipc,ip,el)) - math_I3)
-       mySize = 9_pInt
-       crystallite_postResults(c+1:c+mySize) = reshape(Ee,[mySize])
      case (fp_ID)
        mySize = 9_pInt
        crystallite_postResults(c+1:c+mySize) = &
