@@ -494,6 +494,7 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
    crystallite_converged, &
    crystallite_stressAndItsTangent, &
    crystallite_orientations
+#ifdef DEBUG
  use debug, only: &
    debug_level, &
    debug_homogenization, &
@@ -502,6 +503,7 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
    debug_levelSelective, &
    debug_e, &
    debug_i
+#endif
 
  implicit none
  real(pReal), intent(in) :: dt                                                                      !< time increment
@@ -515,18 +517,16 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
    mySource, &
    myNgrains
 
-!--------------------------------------------------------------------------------------------------
-! initialize to starting condition
+#ifdef DEBUG
  if (iand(debug_level(debug_homogenization), debug_levelBasic) /= 0_pInt) then
-   !$OMP CRITICAL (write2out)
      write(6,'(/a,i5,1x,i2)') '<< HOMOG >> Material Point start at el ip ', debug_e, debug_i
 
      write(6,'(a,/,3(12x,3(f14.9,1x)/))') '<< HOMOG >> F0', &
                                      transpose(materialpoint_F0(1:3,1:3,debug_i,debug_e))
      write(6,'(a,/,3(12x,3(f14.9,1x)/))') '<< HOMOG >> F', &
                                      transpose(materialpoint_F(1:3,1:3,debug_i,debug_e))
-   !$OMP END CRITICAL (write2out)
  endif
+#endif
 
 !--------------------------------------------------------------------------------------------------
 ! initialize restoration points of ...
@@ -746,8 +746,9 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
 
        if (materialpoint_subStep(i,e) > subStepMinHomog) then
          materialpoint_requested(i,e) = .true.
-         materialpoint_subF(1:3,1:3,i,e) = materialpoint_subF0(1:3,1:3,i,e) + &
-                                         materialpoint_subStep(i,e) * (materialpoint_F(1:3,1:3,i,e) - materialpoint_F0(1:3,1:3,i,e))
+         materialpoint_subF(1:3,1:3,i,e) = materialpoint_subF0(1:3,1:3,i,e) &
+                                         + materialpoint_subStep(i,e) * (materialpoint_F(1:3,1:3,i,e) &
+                                         - materialpoint_F0(1:3,1:3,i,e))
          materialpoint_subdt(i,e) = materialpoint_subStep(i,e) * dt
          materialpoint_doneAndHappy(1:2,i,e) = [.false.,.true.]
        endif
@@ -825,9 +826,7 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
    enddo elementLooping4
    !$OMP END PARALLEL DO
  else
-   !$OMP CRITICAL (write2out)
    write(6,'(/,a,/)') '<< HOMOG >> Material Point terminally ill'
-   !$OMP END CRITICAL (write2out)
  endif
 
 end subroutine materialpoint_stressAndItsTangent
