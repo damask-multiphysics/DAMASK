@@ -121,7 +121,6 @@ use PETScis
    COMPONENT_MECH_Z_ID, &
    COMPONENT_THERMAL_T_ID
 
- external :: PETScErrorF
 contains 
 
 !--------------------------------------------------------------------------------------------------

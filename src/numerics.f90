@@ -192,8 +192,6 @@ subroutine numerics_init
    tag ,&
    line
 !$ character(len=6) DAMASK_NumThreadsString                                                         ! environment variable DAMASK_NUM_THREADS
- external :: &
-   PETScErrorF                                                                                      ! is called in the CHKERRQ macro
 
 #ifdef PETSc
  call MPI_Comm_rank(PETSC_COMM_WORLD,worldrank,ierr);CHKERRQ(ierr)

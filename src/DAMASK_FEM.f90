@@ -118,11 +118,8 @@ program DAMASK_FEM
 
  external :: &
    MPI_abort, &
-   DMGetDimension, &
-   DMGetLabelSize, &
-   DMGetLabelIdIS, &
-   ISDestroy, &
    quit
+
 !--------------------------------------------------------------------------------------------------
 ! init DAMASK (all modules)
  call CPFEM_initAll(el = 1_pInt, ip = 1_pInt)

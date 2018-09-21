@@ -62,7 +62,6 @@ module FEM_mech
    FEM_mech_solution ,&
    FEM_mech_forward, &
    FEM_mech_destroy
- external :: PETScerrorf
 contains
 
 !--------------------------------------------------------------------------------------------------

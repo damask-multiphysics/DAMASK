@@ -88,9 +88,7 @@ subroutine DAMASK_interface_init()
    dateAndTime                                                                                      ! type default integer
  PetscErrorCode :: ierr
  external :: &
-   quit,&
-   PETScErrorF, &                                                                                   ! is called in the CHKERRQ macro
-   PETScInitialize
+   quit
 
  open(6, encoding='UTF-8')                                                                          ! for special characters in output
 

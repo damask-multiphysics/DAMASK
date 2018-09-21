@@ -73,8 +73,6 @@ module spectral_mech_Polarisation
    Polarisation_init, &
    Polarisation_solution, &
    Polarisation_forward
- external :: &
-   PETScErrorF                                                                                      ! is called in the CHKERRQ macro
 
 contains
 
@@ -130,11 +128,6 @@ subroutine Polarisation_init
  integer(pInt) :: proc
  character(len=1024) :: rankStr
  
- external :: &
-   SNESSetOptionsPrefix, &
-   SNESSetConvergenceTest, &
-   DMDASNESsetFunctionLocal
-   
  write(6,'(/,a)') ' <<<+-  DAMASK_spectral_solverPolarisation init  -+>>>'
  write(6,'(/,a)') ' Shanthraj et al., International Journal of Plasticity, 66:31–45, 2015'
  write(6,'(a,/)') ' https://doi.org/10.1016/j.ijplas.2014.02.006'
@@ -271,9 +264,6 @@ type(tSolutionState) function Polarisation_solution(incInfoIn,timeinc,timeinc_ol
 ! PETSc Data
  PetscErrorCode :: ierr   
  SNESConvergedReason :: reason
-
- external :: &
-   SNESSolve
 
  incInfo = incInfoIn
 
