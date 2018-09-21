@@ -4,7 +4,8 @@
 !--------------------------------------------------------------------------------------------------
 module FEM_utilities
 #include <petsc/finclude/petscdmplex.h>
-#include <petsc/finclude/petsc.h>
+#include <petsc/finclude/petscdmda.h>
+#include <petsc/finclude/petscis.h>
  use prec, only: pReal, pInt
 
 use PETScdmplex
