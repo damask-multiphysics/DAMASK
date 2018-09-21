@@ -135,10 +135,10 @@ subroutine FEM_mech_init(fieldBC)
  nc = dimPlex
  call PetscQuadratureSetData(mechQuad,dimPlex,nc,nQuadrature,qPointsP,qWeightsP,ierr)
  CHKERRQ(ierr)
- call PetscFECreateDefault(mech_mesh,dimPlex,nc,PETSC_TRUE,prefix, &
-                           integrationOrder,mechFE,ierr); CHKERRQ(ierr)
-! call PetscFECreateDefault(PETSC_COMM_SELF,mech_mesh,dimPlex,nc,PETSC_TRUE,prefix, &
+! call PetscFECreateDefault(mech_mesh,dimPlex,nc,PETSC_TRUE,prefix, &
 !                           integrationOrder,mechFE,ierr); CHKERRQ(ierr)
+ call PetscFECreateDefault(PETSC_COMM_SELF,dimPlex,nc,PETSC_TRUE,prefix, &
+                           integrationOrder,mechFE,ierr); CHKERRQ(ierr)
 !   Polar decomposition failed in run time
  call PetscFESetQuadrature(mechFE,mechQuad,ierr); CHKERRQ(ierr)
  call PetscFEGetDimension(mechFE,nBasis,ierr); CHKERRQ(ierr)
@@ -153,7 +153,7 @@ subroutine FEM_mech_init(fieldBC)
  write(6,*) 'starting to set up boundary conditions';flush(6)
  call DMGetLabel(mech_mesh,'Face Sets',BCLabel,ierr); CHKERRQ(ierr)
  call DMPlexLabelComplete(mech_mesh,BCLabel,ierr); CHKERRQ(ierr)
- call DMGetDefaultSection(mech_mesh,section,ierr); CHKERRQ(ierr)
+ call DMGetSection(mech_mesh,section,ierr); CHKERRQ(ierr)
  allocate(numComp(1), source=dimPlex); pNumComp => numComp
  allocate(numDof(dimPlex+1), source = 0); pNumDof  => numDof
  do topologDim = 0, dimPlex
@@ -196,7 +196,7 @@ subroutine FEM_mech_init(fieldBC)
                           numBC,pBcField,pBcComps,pBcPoints,PETSC_NULL_IS, &
                           section,ierr)
  CHKERRQ(ierr)
- call DMSetDefaultSection(mech_mesh,section,ierr); CHKERRQ(ierr)
+ call DMSetSection(mech_mesh,section,ierr); CHKERRQ(ierr)
  do faceSet = 1, numBC
    call ISDestroy(bcPoints(faceSet),ierr); CHKERRQ(ierr)
  enddo
@@ -236,7 +236,7 @@ subroutine FEM_mech_init(fieldBC)
  pV0 => v0
  pCellJ => cellJ
  pInvcellJ => invcellJ
- call DMGetDefaultSection(mech_mesh,section,ierr); CHKERRQ(ierr)
+ call DMGetSection(mech_mesh,section,ierr); CHKERRQ(ierr)
  call DMGetDS(mech_mesh,mechDS,ierr); CHKERRQ(ierr)
  call PetscDSGetDiscretization(mechDS,0,mechFE,ierr)
  CHKERRQ(ierr)
@@ -362,7 +362,7 @@ subroutine FEM_mech_formResidual(dm_local,xx_local,f_local,dummy,ierr)
  pV0 => v0
  pCellJ => cellJ
  pInvcellJ => invcellJ
- call DMGetDefaultSection(dm_local,section,ierr); CHKERRQ(ierr)
+ call DMGetSection(dm_local,section,ierr); CHKERRQ(ierr)
  call DMGetDS(dm_local,prob,ierr); CHKERRQ(ierr)
  call PetscDSGetTabulation(prob,0,basisField,basisFieldDer,ierr)
  CHKERRQ(ierr)
@@ -511,8 +511,8 @@ subroutine FEM_mech_formJacobian(dm_local,xx_local,Jac_pre,Jac,dummy,ierr)
  call MatZeroEntries(Jac,ierr); CHKERRQ(ierr)
  call DMGetDS(dm_local,prob,ierr); CHKERRQ(ierr)
  call PetscDSGetTabulation(prob,0,basisField,basisFieldDer,ierr)
- call DMGetDefaultSection(dm_local,section,ierr); CHKERRQ(ierr)
- call DMGetDefaultGlobalSection(dm_local,gSection,ierr); CHKERRQ(ierr)
+ call DMGetSection(dm_local,section,ierr); CHKERRQ(ierr)
+ call DMGetGlobalSection(dm_local,gSection,ierr); CHKERRQ(ierr)
  
  call DMGetLocalVector(dm_local,x_local,ierr); CHKERRQ(ierr)
  call VecWAXPY(x_local,1.0,xx_local,solution_local,ierr); CHKERRQ(ierr)
@@ -596,7 +596,7 @@ subroutine FEM_mech_formJacobian(dm_local,xx_local,Jac_pre,Jac,dummy,ierr)
  
 !--------------------------------------------------------------------------------------------------
 ! apply boundary conditions 
- !call DMPlexCreateRigidBody(dm_local,matnull,ierr); CHKERRQ(ierr) MD: linker error
+ call DMPlexCreateRigidBody(dm_local,matnull,ierr); CHKERRQ(ierr) !MD: linker error
  call MatSetNullSpace(Jac,matnull,ierr); CHKERRQ(ierr)
  call MatSetNearNullSpace(Jac,matnull,ierr); CHKERRQ(ierr)
  call MatNullSpaceDestroy(matnull,ierr); CHKERRQ(ierr)
@@ -637,7 +637,7 @@ subroutine FEM_mech_forward(guess,timeinc,timeinc_old,fieldBC)
    ForwardData = .True.
    materialpoint_F0 = materialpoint_F
    call SNESGetDM(mech_snes,dm_local,ierr); CHKERRQ(ierr)                                                 !< retrieve mesh info from mech_snes into dm_local
-   call DMGetDefaultSection(dm_local,section,ierr); CHKERRQ(ierr)
+   call DMGetSection(dm_local,section,ierr); CHKERRQ(ierr)
    call DMGetLocalVector(dm_local,x_local,ierr); CHKERRQ(ierr)
    call VecSet(x_local,0.0,ierr); CHKERRQ(ierr)
    call DMGlobalToLocalBegin(dm_local,solution,INSERT_VALUES,x_local,ierr)                       !< retrieve my partition of global solution vector
