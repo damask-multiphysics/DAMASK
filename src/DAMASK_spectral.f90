@@ -151,7 +151,6 @@ program DAMASK_spectral
  external :: &
    quit
 
-
 !--------------------------------------------------------------------------------------------------
 ! init DAMASK (all modules)
  call CPFEM_initAll(el = 1_pInt, ip = 1_pInt)
@@ -659,9 +658,6 @@ subroutine quit(stop_id)
  PetscErrorCode :: ierr = 0
  logical :: ErrorInQuit
  
- external :: &
-   PETScFinalize
-
  call PETScFinalize(ierr)
  if (ierr /= 0) write(6,'(a)') ' Error in PETScFinalize'
 #ifdef _OPENMP

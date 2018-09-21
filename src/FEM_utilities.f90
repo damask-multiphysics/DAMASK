@@ -4,7 +4,8 @@
 !--------------------------------------------------------------------------------------------------
 module FEM_utilities
 #include <petsc/finclude/petscdmplex.h>
-#include <petsc/finclude/petsc.h>
+#include <petsc/finclude/petscdmda.h>
+#include <petsc/finclude/petscis.h>
  use prec, only: pReal, pInt
 
 use PETScdmplex
@@ -32,8 +33,6 @@ use PETScis
  character(len=*),                         parameter,            public :: &
    FIELD_MECH_label     = 'mechanical'
 
- integer(pInt), parameter :: structOrder = 2_pInt
- 
  enum, bind(c)
    enumerator :: FIELD_UNDEFINED_ID, &
                  FIELD_MECH_ID, &
@@ -122,7 +121,6 @@ use PETScis
    COMPONENT_MECH_Z_ID, &
    COMPONENT_THERMAL_T_ID
 
- external :: PETScErrorF
 contains 
 
 !--------------------------------------------------------------------------------------------------
@@ -138,6 +136,7 @@ subroutine utilities_init()
    IO_timeStamp, &
    IO_open_file
  use numerics, only: &                        
+   structOrder, &
    integrationOrder, &
    worldsize, & 
    worldrank, &

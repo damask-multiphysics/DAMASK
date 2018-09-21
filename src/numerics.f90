@@ -127,12 +127,7 @@ module numerics
 #ifdef FEM
  integer(pInt), protected, public :: &
    integrationOrder           =  2_pInt, &                                                          !< order of quadrature rule required
-   structOrder                =  2_pInt, &                                                          !< order of displacement shape functions
-   thermalOrder               =  2_pInt, &                                                          !< order of temperature field shape functions
-   damageOrder                =  2_pInt, &                                                          !< order of damage field shape functions
-   vacancyfluxOrder           =  2_pInt, &                                                          !< order of vacancy concentration and chemical potential field shape functions
-   porosityOrder              =  2_pInt, &                                                          !< order of porosity field shape functions
-   hydrogenfluxOrder          =  2_pInt                                                             !< order of hydrogen concentration and chemical potential field shape functions  
+   structOrder                =  2_pInt                                                             !< order of displacement shape functions
  logical, protected, public :: & 
    BBarStabilisation          = .false.                                                  
  character(len=4096), protected, public :: &
@@ -197,8 +192,6 @@ subroutine numerics_init
    tag ,&
    line
 !$ character(len=6) DAMASK_NumThreadsString                                                         ! environment variable DAMASK_NUM_THREADS
- external :: &
-   PETScErrorF                                                                                      ! is called in the CHKERRQ macro
 
 #ifdef PETSc
  call MPI_Comm_rank(PETSC_COMM_WORLD,worldrank,ierr);CHKERRQ(ierr)
@@ -425,16 +418,6 @@ subroutine numerics_init
          integrationorder = IO_intValue(line,chunkPos,2_pInt)
        case ('structorder')
          structorder = IO_intValue(line,chunkPos,2_pInt)
-       case ('thermalorder')
-         thermalorder = IO_intValue(line,chunkPos,2_pInt)
-       case ('damageorder')
-         damageorder = IO_intValue(line,chunkPos,2_pInt)
-       case ('vacancyfluxorder')
-         vacancyfluxOrder = IO_intValue(line,chunkPos,2_pInt)
-       case ('porosityorder')
-         porosityOrder = IO_intValue(line,chunkPos,2_pInt)
-       case ('hydrogenfluxorder')
-         hydrogenfluxOrder = IO_intValue(line,chunkPos,2_pInt)
        case ('petsc_options')
          petsc_options = trim(line(chunkPos(4):))
        case ('bbarstabilisation')
@@ -587,11 +570,6 @@ subroutine numerics_init
 #ifdef FEM
  write(6,'(a24,1x,i8)')      ' integrationOrder:       ',integrationOrder
  write(6,'(a24,1x,i8)')      ' structOrder:            ',structOrder
- write(6,'(a24,1x,i8)')      ' thermalOrder:           ',thermalOrder
- write(6,'(a24,1x,i8)')      ' damageOrder:            ',damageOrder
- write(6,'(a24,1x,i8)')      ' vacancyfluxOrder:       ',vacancyfluxOrder
- write(6,'(a24,1x,i8)')      ' porosityOrder:          ',porosityOrder 
- write(6,'(a24,1x,i8)')      ' hydrogenfluxOrder:      ',hydrogenfluxOrder
  write(6,'(a24,1x,a)')       ' PETSc_options:          ',trim(petsc_defaultOptions)//' '//trim(petsc_options)
  write(6,'(a24,1x,L8)')      ' B-Bar stabilisation:    ',BBarStabilisation
 #endif

@@ -57,22 +57,9 @@ program DAMASK_FEM
    maxFields, &
    nActiveFields, &
    FIELD_MECH_ID, &
-   FIELD_THERMAL_ID, &
-   FIELD_DAMAGE_ID, &
-   FIELD_SOLUTE_ID, &
-   FIELD_MGTWIN_ID, &
    COMPONENT_MECH_X_ID, &
    COMPONENT_MECH_Y_ID, &
    COMPONENT_MECH_Z_ID, &
-   COMPONENT_THERMAL_T_ID, &
-   COMPONENT_DAMAGE_PHI_ID, &
-   COMPONENT_SOLUTE_CV_ID, &
-   COMPONENT_SOLUTE_CVPOT_ID, &
-   COMPONENT_SOLUTE_CH_ID, &
-   COMPONENT_SOLUTE_CHPOT_ID, &
-   COMPONENT_SOLUTE_CVaH_ID, &
-   COMPONENT_SOLUTE_CVaHPOT_ID, &
-   COMPONENT_MGTWIN_PHI_ID, &
    FIELD_MECH_label
  use FEM_mech
  
@@ -131,11 +118,8 @@ program DAMASK_FEM
 
  external :: &
    MPI_abort, &
-   DMGetDimension, &
-   DMGetLabelSize, &
-   DMGetLabelIdIS, &
-   ISDestroy, &
    quit
+
 !--------------------------------------------------------------------------------------------------
 ! init DAMASK (all modules)
  call CPFEM_initAll(el = 1_pInt, ip = 1_pInt)
@@ -264,124 +248,6 @@ program DAMASK_FEM
              enddo
            endif
          enddo  
-       case('temp','temperature')                                                                   ! thermal field                                                                      
-         do field = 1, nActiveFields
-           if (loadCases(currentLoadCase)%fieldBC(field)%ID == FIELD_THERMAL_ID) then
-             do component = 1, loadcases(currentLoadCase)%fieldBC(field)%nComponents
-               if (loadCases(currentLoadCase)%fieldBC(field)%componentBC(component)%ID == COMPONENT_THERMAL_T_ID) then
-                 loadCases(currentLoadCase)%fieldBC(field)%componentBC(component)%Mask (currentFaceSet) = &
-                     .true.
-                 loadCases(currentLoadCase)%fieldBC(field)%componentBC(component)%Value(currentFaceSet) = &
-                     IO_floatValue(line,chunkPos,i+1_pInt)
-               endif
-             enddo
-           endif
-         enddo  
-       case('mgtwin')                                                                               ! mgtwin field                                                                      
-         do field = 1, nActiveFields
-           if (loadCases(currentLoadCase)%fieldBC(field)%ID == FIELD_MGTWIN_ID) then
-             do component = 1, loadcases(currentLoadCase)%fieldBC(field)%nComponents
-               if (loadCases(currentLoadCase)%fieldBC(field)%componentBC(component)%ID == COMPONENT_MGTWIN_PHI_ID) then
-                 loadCases(currentLoadCase)%fieldBC(field)%componentBC(component)%Mask (currentFaceSet) = &
-                     .true.
-                 loadCases(currentLoadCase)%fieldBC(field)%componentBC(component)%Value(currentFaceSet) = &
-                     IO_floatValue(line,chunkPos,i+1_pInt)
-               endif
-             enddo
-           endif
-         enddo 
-       case('damage')                                                                             
-         do field = 1, nActiveFields
-           if (loadCases(currentLoadCase)%fieldBC(field)%ID == FIELD_DAMAGE_ID) then
-             do component = 1, loadcases(currentLoadCase)%fieldBC(field)%nComponents
-               if (loadCases(currentLoadCase)%fieldBC(field)%componentBC(component)%ID == COMPONENT_DAMAGE_PHI_ID) then
-                 loadCases(currentLoadCase)%fieldBC(field)%componentBC(component)%Mask (currentFaceSet) = &
-                     .true.
-                 loadCases(currentLoadCase)%fieldBC(field)%componentBC(component)%Value(currentFaceSet) = &
-                     IO_floatValue(line,chunkPos,i+1_pInt)
-               endif
-             enddo
-           endif
-         enddo  
-       case('cv')                                                                             
-         do field = 1, nActiveFields
-           if (loadCases(currentLoadCase)%fieldBC(field)%ID == FIELD_SOLUTE_ID) then
-             do component = 1, loadcases(currentLoadCase)%fieldBC(field)%nComponents
-               if (loadCases(currentLoadCase)%fieldBC(field)%componentBC(component)%ID == COMPONENT_SOLUTE_CV_ID) then
-                 loadCases(currentLoadCase)%fieldBC(field)%componentBC(component)%Mask (currentFaceSet) = &
-                     .true.
-                 loadCases(currentLoadCase)%fieldBC(field)%componentBC(component)%Value(currentFaceSet) = &
-                     IO_floatValue(line,chunkPos,i+1_pInt)
-               endif
-             enddo
-           endif
-         enddo  
-       case('cvpot')                                                                             
-         do field = 1, nActiveFields
-           if (loadCases(currentLoadCase)%fieldBC(field)%ID == FIELD_SOLUTE_ID) then
-             do component = 1, loadcases(currentLoadCase)%fieldBC(field)%nComponents
-               if (loadCases(currentLoadCase)%fieldBC(field)%componentBC(component)%ID == COMPONENT_SOLUTE_CVPOT_ID) then
-                 loadCases(currentLoadCase)%fieldBC(field)%componentBC(component)%Mask (currentFaceSet) = &
-                     .true.
-                 loadCases(currentLoadCase)%fieldBC(field)%componentBC(component)%Value(currentFaceSet) = &
-                     IO_floatValue(line,chunkPos,i+1_pInt)
-               endif
-             enddo
-           endif
-         enddo  
-       case('ch')                                                                             
-         do field = 1, nActiveFields
-           if (loadCases(currentLoadCase)%fieldBC(field)%ID == FIELD_SOLUTE_ID) then
-             do component = 1, loadcases(currentLoadCase)%fieldBC(field)%nComponents
-               if (loadCases(currentLoadCase)%fieldBC(field)%componentBC(component)%ID == COMPONENT_SOLUTE_CH_ID) then
-                 loadCases(currentLoadCase)%fieldBC(field)%componentBC(component)%Mask (currentFaceSet) = &
-                     .true.
-                 loadCases(currentLoadCase)%fieldBC(field)%componentBC(component)%Value(currentFaceSet) = &
-                     IO_floatValue(line,chunkPos,i+1_pInt)
-               endif
-             enddo
-           endif
-         enddo  
-       case('chpot')                                                                             
-         do field = 1, nActiveFields
-           if (loadCases(currentLoadCase)%fieldBC(field)%ID == FIELD_SOLUTE_ID) then
-             do component = 1, loadcases(currentLoadCase)%fieldBC(field)%nComponents
-               if (loadCases(currentLoadCase)%fieldBC(field)%componentBC(component)%ID == COMPONENT_SOLUTE_CHPOT_ID) then
-                 loadCases(currentLoadCase)%fieldBC(field)%componentBC(component)%Mask (currentFaceSet) = &
-                     .true.
-                 loadCases(currentLoadCase)%fieldBC(field)%componentBC(component)%Value(currentFaceSet) = &
-                     IO_floatValue(line,chunkPos,i+1_pInt)
-               endif
-             enddo
-           endif
-         enddo  
-       case('cvah')                                                                             
-         do field = 1, nActiveFields
-           if (loadCases(currentLoadCase)%fieldBC(field)%ID == FIELD_SOLUTE_ID) then
-             do component = 1, loadcases(currentLoadCase)%fieldBC(field)%nComponents
-               if (loadCases(currentLoadCase)%fieldBC(field)%componentBC(component)%ID == COMPONENT_SOLUTE_CVaH_ID) then
-                 loadCases(currentLoadCase)%fieldBC(field)%componentBC(component)%Mask (currentFaceSet) = &
-                     .true.
-                 loadCases(currentLoadCase)%fieldBC(field)%componentBC(component)%Value(currentFaceSet) = &
-                     IO_floatValue(line,chunkPos,i+1_pInt)
-               endif
-             enddo
-           endif
-         enddo  
-       case('cvahpot')                                                                             
-         do field = 1, nActiveFields
-           if (loadCases(currentLoadCase)%fieldBC(field)%ID == FIELD_SOLUTE_ID) then
-             do component = 1, loadcases(currentLoadCase)%fieldBC(field)%nComponents
-               if (loadCases(currentLoadCase)%fieldBC(field)%componentBC(component)%ID == COMPONENT_SOLUTE_CVaHPOT_ID) then
-                 loadCases(currentLoadCase)%fieldBC(field)%componentBC(component)%Mask (currentFaceSet) = &
-                     .true.
-                 loadCases(currentLoadCase)%fieldBC(field)%componentBC(component)%Value(currentFaceSet) = &
-                     IO_floatValue(line,chunkPos,i+1_pInt)
-               endif
-             enddo
-           endif
-         enddo  
-
      end select
  enddo; enddo
  close(FILEUNIT)

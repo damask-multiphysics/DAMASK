@@ -50,8 +50,6 @@ module spectral_damage
    spectral_damage_init, &
    spectral_damage_solution, &
    spectral_damage_forward
- external :: &
-   PETScErrorF                                                                                      ! is called in the CHKERRQ macro
 
 contains
 
@@ -85,11 +83,6 @@ subroutine spectral_damage_init()
  Vec :: uBound, lBound
  PetscErrorCode :: ierr
  character(len=100) :: snes_type
- external :: &
-   SNESSetOptionsPrefix, &
-   SNESGetType, &
-   DMDAGetCorners, &
-   DMDASNESSetFunctionLocal
 
  write(6,'(/,a)') ' <<<+-  spectral_damage init  -+>>>'
  write(6,'(/,a)') ' Shanthraj et al., Handbook of Mechanics of Materials, volume in press, '
@@ -193,11 +186,6 @@ type(tSolutionState) function spectral_damage_solution(timeinc,timeinc_old,loadC
 ! PETSc Data
  PetscErrorCode :: ierr   
  SNESConvergedReason :: reason
-
- external :: &
-   VecMin, &
-   VecMax, &
-   SNESSolve
 
  spectral_damage_solution%converged =.false.
  
