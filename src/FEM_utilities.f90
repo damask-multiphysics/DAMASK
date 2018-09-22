@@ -188,7 +188,7 @@ subroutine utilities_init()
  call PetscOptionsInsertString(PETSC_NULL_OPTIONS,trim(petsc_defaultOptions),ierr)
  call PetscOptionsInsertString(PETSC_NULL_OPTIONS,trim(petsc_options),ierr)
  CHKERRQ(ierr)
- write(petsc_optionsPhysics,'(a,i0)') '-mechFE_petscspace_order '   , structOrder
+ write(petsc_optionsPhysics,'(a,i0)') '-mechFE_petscspace_degree '   , structOrder
  call PetscOptionsInsertString(PETSC_NULL_OPTIONS,trim(petsc_optionsPhysics),ierr)
  CHKERRQ(ierr)
  
