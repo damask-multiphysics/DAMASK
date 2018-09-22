@@ -5,4 +5,4 @@
 *.outputHomogenization
 *.spectralOut
 *.sta
-*.vtk
+*.vt*
