@@ -43,24 +43,23 @@ subroutine DAMASK_interface_init()
  use, intrinsic :: &
    iso_fortran_env
 #include <petsc/finclude/petscsys.h>
-#if PETSC_VERSION_MAJOR!=3 || PETSC_VERSION_MINOR!=9
+#if PETSC_VERSION_MAJOR!=3 || PETSC_VERSION_MINOR!=10
 ===================================================================================================
-  3.9.x 3.9.x 3.9.x 3.9.x 3.9.x 3.9.x 3.9.x 3.9.x 3.9.x 3.9.x 3.9.x 3.9.x 3.9.x 3.9.x 3.9.x 3.9.x
+ 3.10.x 3.10.x 3.10.x 3.10.x 3.10.x 3.10.x 3.10.x 3.10.x 3.10.x 3.10.x 3.10.x 3.10.x 3.10.x 3.10.x
 ===================================================================================================
-=======   THIS VERSION OF DAMASK REQUIRES PETSc 3.9.x   ===========================================
-==========   THIS VERSION OF DAMASK REQUIRES PETSc 3.9.x   ========================================
-=============   THIS VERSION OF DAMASK REQUIRES PETSc 3.9.x   =====================================
-================   THIS VERSION OF DAMASK REQUIRES PETSc 3.9.x   ==================================
-===================   THIS VERSION OF DAMASK REQUIRES PETSc 3.9.x   ===============================
-======================   THIS VERSION OF DAMASK REQUIRES PETSc 3.9.x   ============================
-=========================   THIS VERSION OF DAMASK REQUIRES PETSc 3.9.x   ========================= 
-============================   THIS VERSION OF DAMASK REQUIRES PETSc 3.9.x   ======================
-===============================   THIS VERSION OF DAMASK REQUIRES PETSc 3.9.x   ===================
-==================================   THIS VERSION OF DAMASK REQUIRES PETSc 3.9.x   ================
-=====================================   THIS VERSION OF DAMASK REQUIRES PETSc 3.9.x   =============
-========================================   THIS VERSION OF DAMASK REQUIRES PETSc 3.9.x   ==========
+=======   THIS VERSION OF DAMASK REQUIRES PETSc 3.10.x   ==========================================
+==========   THIS VERSION OF DAMASK REQUIRES PETSc 3.10.x   =======================================
+=============   THIS VERSION OF DAMASK REQUIRES PETSc 3.10.x   ====================================
+================   THIS VERSION OF DAMASK REQUIRES PETSc 3.10.x   =================================
+===================   THIS VERSION OF DAMASK REQUIRES PETSc 3.10.x   ==============================
+======================   THIS VERSION OF DAMASK REQUIRES PETSc 3.10.x   ===========================
+=========================   THIS VERSION OF DAMASK REQUIRES PETSc 3.10.x   ========================
+============================   THIS VERSION OF DAMASK REQUIRES PETSc 3.10.x   =====================
+===============================   THIS VERSION OF DAMASK REQUIRES PETSc 3.10.x   ==================
+==================================   THIS VERSION OF DAMASK REQUIRES PETSc 3.10.x   ===============
+=====================================   THIS VERSION OF DAMASK REQUIRES PETSc 3.10.x   ============
 ===================================================================================================
-  3.9.x 3.9.x 3.9.x 3.9.x 3.9.x 3.9.x 3.9.x 3.9.x 3.9.x 3.9.x 3.9.x 3.9.x 3.9.x 3.9.x 3.9.x 3.9.x
+ 3.10.x 3.10.x 3.10.x 3.10.x 3.10.x 3.10.x 3.10.x 3.10.x 3.10.x 3.10.x 3.10.x 3.10.x 3.10.x 3.10.x
 ===================================================================================================
 #endif
  use PETScSys
