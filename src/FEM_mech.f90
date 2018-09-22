@@ -7,10 +7,8 @@
 module FEM_mech
 #include <petsc/finclude/petscdmplex.h>
 #include <petsc/finclude/petscdm.h>
-#include <petsc/finclude/petscdmda.h>
 #include <petsc/finclude/petsc.h>
 
- use PETScdmda
  use PETScsnes
  use PETScDM
  use PETScDMplex
@@ -111,7 +109,6 @@ subroutine FEM_mech_init(fieldBC)
  PetscInt                               :: cellStart, cellEnd, cell, basis 
  character(len=7)                       :: prefix = 'mechFE_'
  PetscErrorCode                         :: ierr
- PetscReal, allocatable, target, dimension(:) :: qWeights
 
  write(6,'(/,a)') ' <<<+-  FEM_mech init  -+>>>'
  write(6,'(a15,a)')   ' Current time: ',IO_timeStamp()
@@ -131,17 +128,14 @@ subroutine FEM_mech_init(fieldBC)
  qWeightsP => qWeights
  call PetscQuadratureCreate(PETSC_COMM_SELF,mechQuad,ierr); CHKERRQ(ierr)
  CHKERRQ(ierr)
- ! what is the number of components, nc?
  nc = dimPlex
  call PetscQuadratureSetData(mechQuad,dimPlex,nc,nQuadrature,qPointsP,qWeightsP,ierr)
  CHKERRQ(ierr)
-! call PetscFECreateDefault(mech_mesh,dimPlex,nc,PETSC_TRUE,prefix, &
-!                           integrationOrder,mechFE,ierr); CHKERRQ(ierr)
  call PetscFECreateDefault(PETSC_COMM_SELF,dimPlex,nc,PETSC_TRUE,prefix, &
                            integrationOrder,mechFE,ierr); CHKERRQ(ierr)
-!   Polar decomposition failed in run time
  call PetscFESetQuadrature(mechFE,mechQuad,ierr); CHKERRQ(ierr)
  call PetscFEGetDimension(mechFE,nBasis,ierr); CHKERRQ(ierr)
+ nBasis = nBasis/nc
  call DMGetDS(mech_mesh,mechDS,ierr); CHKERRQ(ierr)
  call PetscDSAddDiscretization(mechDS,mechFE,ierr); CHKERRQ(ierr)
  call PetscDSGetTotalDimension(mechDS,cellDof,ierr); CHKERRQ(ierr)
@@ -248,7 +242,7 @@ subroutine FEM_mech_init(fieldBC)
    call  DMPlexComputeCellGeometryAffineFEM(mech_mesh,cell,pV0,pCellJ,pInvcellJ,detJ,ierr) 
    CHKERRQ(ierr)
    cellJMat = reshape(pCellJ,shape=[dimPlex,dimPlex])
-   do basis = 0, nBasis/dimPlex-1
+   do basis = 0, nBasis-1
      call PetscDualSpaceGetFunctional(mechDualSpace,basis,functional,ierr)
      CHKERRQ(ierr)
      call PetscQuadratureGetData(functional,dimPlex,nc,nNodalPoints,nodalPointsP,nodalWeightsP,ierr)
@@ -328,6 +322,7 @@ subroutine FEM_mech_formResidual(dm_local,xx_local,f_local,dummy,ierr)
    materialpoint_F, &
    materialpoint_P
  use math, only: &
+   math_I3, &
    math_det33, &
    math_inv33  
  use FEsolving, only: &
@@ -363,7 +358,8 @@ subroutine FEM_mech_formResidual(dm_local,xx_local,f_local,dummy,ierr)
  CHKERRQ(ierr)
  call DMPlexGetHeightStratum(dm_local,0,cellStart,cellEnd,ierr); CHKERRQ(ierr)
  call DMGetLocalVector(dm_local,x_local,ierr); CHKERRQ(ierr)
- call VecWAXPY(x_local,1.0,xx_local,solution_local,ierr); CHKERRQ(ierr)
+ !call VecWAXPY(x_local,1.0,xx_local,solution_local,ierr); CHKERRQ(ierr)
+ call VecCopy(xx_local,x_local,ierr); CHKERRQ(ierr)
  do field = 1, dimPlex; do face = 1, mesh_Nboundaries
    if (params%fieldBC%componentBC(field)%Mask(face)) then
      call DMGetStratumSize(dm_local,'Face Sets',mesh_boundaries(face),bcSize,ierr)
@@ -396,6 +392,7 @@ subroutine FEM_mech_formResidual(dm_local,xx_local,f_local,dummy,ierr)
        enddo
      enddo
      materialpoint_F(1:dimPlex,1:dimPlex,qPt+1,cell+1) = &
+       math_I3 + &
        reshape(matmul(BMat,x_scal),shape=[dimPlex,dimPlex], order=[2,1])
    enddo    
    if (BBarStabilisation) then
@@ -591,7 +588,7 @@ subroutine FEM_mech_formJacobian(dm_local,xx_local,Jac_pre,Jac,dummy,ierr)
  
 !--------------------------------------------------------------------------------------------------
 ! apply boundary conditions 
- call DMPlexCreateRigidBody(dm_local,matnull,ierr); CHKERRQ(ierr) !MD: linker error
+ call DMPlexCreateRigidBody(dm_local,matnull,ierr); CHKERRQ(ierr)
  call MatSetNullSpace(Jac,matnull,ierr); CHKERRQ(ierr)
  call MatSetNearNullSpace(Jac,matnull,ierr); CHKERRQ(ierr)
  call MatNullSpaceDestroy(matnull,ierr); CHKERRQ(ierr)
