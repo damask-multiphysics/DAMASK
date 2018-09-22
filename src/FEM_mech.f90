@@ -140,6 +140,7 @@ subroutine FEM_mech_init(fieldBC)
 !   Polar decomposition failed in run time
  call PetscFESetQuadrature(mechFE,mechQuad,ierr); CHKERRQ(ierr)
  call PetscFEGetDimension(mechFE,nBasis,ierr); CHKERRQ(ierr)
+ nBasis = nBasis/nc
  call DMGetDS(mech_mesh,mechDS,ierr); CHKERRQ(ierr)
  call PetscDSAddDiscretization(mechDS,mechFE,ierr); CHKERRQ(ierr)
  call PetscDSGetTotalDimension(mechDS,cellDof,ierr); CHKERRQ(ierr)
