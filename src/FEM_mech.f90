@@ -109,7 +109,6 @@ subroutine FEM_mech_init(fieldBC)
  PetscInt                               :: cellStart, cellEnd, cell, basis 
  character(len=7)                       :: prefix = 'mechFE_'
  PetscErrorCode                         :: ierr
- PetscReal, allocatable, target, dimension(:) :: qWeights
 
  write(6,'(/,a)') ' <<<+-  FEM_mech init  -+>>>'
  write(6,'(a15,a)')   ' Current time: ',IO_timeStamp()
