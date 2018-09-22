@@ -411,7 +411,7 @@ subroutine utilities_projectBCValues(localVec,section,field,comp,bcPointsIS,BCVa
    call PetscSectionGetFieldOffset(section,bcPoints(point),field,offset,ierr)
    CHKERRQ(ierr)
    do dof = offset+comp+1, offset+numDof, numComp
-     localArray(dof) = localArray(dof) + BCValue + BCDotValue*timeinc
+     localArray(dof) = BCValue + BCDotValue*timeinc
    enddo
  enddo    
  call VecRestoreArrayF90(localVec,localArray,ierr); CHKERRQ(ierr)

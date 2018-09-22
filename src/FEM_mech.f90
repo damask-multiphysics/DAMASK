@@ -327,6 +327,7 @@ subroutine FEM_mech_formResidual(dm_local,xx_local,f_local,dummy,ierr)
    materialpoint_F, &
    materialpoint_P
  use math, only: &
+   math_I3, &
    math_det33, &
    math_inv33  
  use FEsolving, only: &
@@ -362,7 +363,8 @@ subroutine FEM_mech_formResidual(dm_local,xx_local,f_local,dummy,ierr)
  CHKERRQ(ierr)
  call DMPlexGetHeightStratum(dm_local,0,cellStart,cellEnd,ierr); CHKERRQ(ierr)
  call DMGetLocalVector(dm_local,x_local,ierr); CHKERRQ(ierr)
- call VecWAXPY(x_local,1.0,xx_local,solution_local,ierr); CHKERRQ(ierr)
+ !call VecWAXPY(x_local,1.0,xx_local,solution_local,ierr); CHKERRQ(ierr)
+ call VecCopy(xx_local,x_local,ierr); CHKERRQ(ierr)
  do field = 1, dimPlex; do face = 1, mesh_Nboundaries
    if (params%fieldBC%componentBC(field)%Mask(face)) then
      call DMGetStratumSize(dm_local,'Face Sets',mesh_boundaries(face),bcSize,ierr)
@@ -395,6 +397,7 @@ subroutine FEM_mech_formResidual(dm_local,xx_local,f_local,dummy,ierr)
        enddo
      enddo
      materialpoint_F(1:dimPlex,1:dimPlex,qPt+1,cell+1) = &
+       math_I3 + &
        reshape(matmul(BMat,x_scal),shape=[dimPlex,dimPlex], order=[2,1])
    enddo    
    if (BBarStabilisation) then
