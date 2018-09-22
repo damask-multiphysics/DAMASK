@@ -163,6 +163,16 @@ program DAMASK_FEM
        case(FIELD_MECH_ID)
          loadCases(i)%fieldBC(field)%nComponents = dimPlex                                        !< X, Y (, Z) displacements
          allocate(loadCases(i)%fieldBC(field)%componentBC(loadCases(i)%fieldBC(field)%nComponents))
+         do component = 1, loadCases(i)%fieldBC(field)%nComponents
+           select case (component)
+             case (1)
+               loadCases(i)%fieldBC(field)%componentBC(component)%ID = COMPONENT_MECH_X_ID
+             case (2)
+               loadCases(i)%fieldBC(field)%componentBC(component)%ID = COMPONENT_MECH_Y_ID
+             case (3)
+               loadCases(i)%fieldBC(field)%componentBC(component)%ID = COMPONENT_MECH_Z_ID
+           end select
+         enddo  
      end select
      do component = 1, loadCases(i)%fieldBC(field)%nComponents
        allocate(loadCases(i)%fieldBC(field)%componentBC(component)%Value(mesh_Nboundaries), source = 0.0_pReal)
