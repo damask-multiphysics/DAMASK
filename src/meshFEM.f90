@@ -58,7 +58,7 @@ use PETScis
 
  DM, public :: geomMesh
  
- integer(pInt), dimension(:), allocatable, public, protected :: &
+ PetscInt, dimension(:), allocatable, public, protected :: &
    mesh_boundaries
 
 
