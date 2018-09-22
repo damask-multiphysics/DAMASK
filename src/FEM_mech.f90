@@ -7,10 +7,8 @@
 module FEM_mech
 #include <petsc/finclude/petscdmplex.h>
 #include <petsc/finclude/petscdm.h>
-#include <petsc/finclude/petscdmda.h>
 #include <petsc/finclude/petsc.h>
 
- use PETScdmda
  use PETScsnes
  use PETScDM
  use PETScDMplex
