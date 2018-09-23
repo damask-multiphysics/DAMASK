@@ -1310,7 +1310,7 @@ subroutine mesh_spectral_build_elements(fileUnit)
  e = 0_pInt
  do while (e < mesh_NcpElems)                                                                       ! fill expected number of elements, stop at end of data (or blank line!)
    e = e+1_pInt                                                                                     ! valid element entry
-   mesh_element( 1,e) = e                                                                           ! FE id
+   mesh_element( 1,e) = -1_pInt                                                                     ! DEPRECATED
    mesh_element( 2,e) = elemType                                                                    ! elem type
    mesh_element( 3,e) = homog                                                                       ! homogenization
    mesh_element( 4,e) = mesh_microGlobal(e+elemOffset)                                              ! microstructure
@@ -2025,7 +2025,7 @@ subroutine mesh_marc_build_elements(fileUnit)
        chunkPos = IO_stringPos(line)
        e = mesh_FEasCP('elem',IO_intValue(line,chunkPos,1_pInt))
        if (e /= 0_pInt) then                                                                        ! disregard non CP elems
-         mesh_element(1,e) = IO_IntValue (line,chunkPos,1_pInt)                                     ! FE id
+         mesh_element(1,e) = -1_pInt                                                                ! DEPRECATED
          t = FE_mapElemtype(IO_StringValue(line,chunkPos,2_pInt))                                   ! elem type
          if (mesh_elemType /= t .and. mesh_elemType /= -1_pInt) &
            call IO_error(191,el=t,ip=mesh_elemType)
@@ -2710,7 +2710,7 @@ subroutine mesh_abaqus_build_elements(fileUnit)
        chunkPos = IO_stringPos(line)                                                                ! limit to 64 nodes max
        e = mesh_FEasCP('elem',IO_intValue(line,chunkPos,1_pInt))
        if (e /= 0_pInt) then                                                                        ! disregard non CP elems
-         mesh_element(1,e) = IO_intValue(line,chunkPos,1_pInt)                                      ! FE id
+         mesh_element(1,e) = -1_pInt                                                                ! DEPRECATED
          if (mesh_elemType /= t .and. mesh_elemType /= -1_pInt) &
            call IO_error(191,el=t,ip=mesh_elemType)
          mesh_elemType = t

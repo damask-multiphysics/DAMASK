@@ -217,7 +217,7 @@ subroutine mesh_init(ip,el)
  
  allocate (mesh_element (4_pInt,mesh_NcpElems)); mesh_element = 0_pInt
  do j = 1, mesh_NcpElems
-   mesh_element( 1,j) = j
+   mesh_element( 1,j) = -1_pInt                                                                     ! DEPRECATED
    mesh_element( 2,j) = mesh_elemType                                                               ! elem type
    mesh_element( 3,j) = 1_pInt                                                                      ! homogenization
    call DMGetLabelValue(geomMesh,'material',j-1,mesh_element(4,j),ierr)
