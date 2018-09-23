@@ -22,8 +22,7 @@ module mesh
    mesh_maxNips, &                                                                                  !< max number of IPs in any CP element
    mesh_maxNipNeighbors, &                                                                          !< max number of IP neighbors in any CP element
    mesh_maxNsharedElems, &                                                                          !< max number of CP elements sharing a node
-   mesh_maxNcellnodes, &                                                                            !< max number of cell nodes in any CP element
-   mesh_Nelems                                                                                      !< total number of elements in mesh
+   mesh_maxNcellnodes                                                                               !< max number of cell nodes in any CP element
 
  integer(pInt), dimension(:,:), allocatable, public, protected :: &
    mesh_element, &                                                                                  !< FEid, type(internal representation), material, texture, node indices as CP IDs
@@ -347,6 +346,7 @@ integer(pInt), dimension(:,:), allocatable, private :: &
 
 #if defined(Marc4DAMASK) || defined(Abaqus)
  integer(pInt), private :: &
+   mesh_Nelems, &                                                                                   !< total number of elements in mesh (including non-DAMASK elements)
    mesh_maxNnodes, &                                                                                !< max number of nodes in any CP element
    mesh_NelemSets
  character(len=64), dimension(:), allocatable, private :: &
@@ -618,8 +618,10 @@ subroutine mesh_init(ip,el)
    call mesh_tell_statistics
  endif
 
+#if defined(Marc4DAMASK) || defined(Abaqus)
  if (usePingPong .and. (mesh_Nelems /= mesh_NcpElems)) &
    call IO_error(600_pInt)                                                                          ! ping-pong must be disabled when having non-DAMASK elements
+#endif
  if (debug_e < 1 .or. debug_e > mesh_NcpElems) &
    call IO_error(602_pInt,ext_msg='element')                                                        ! selected element does not exist
  if (debug_i < 1 .or. debug_i > FE_Nips(FE_geomtype(mesh_element(2_pInt,debug_e)))) &
@@ -1155,8 +1157,7 @@ subroutine mesh_spectral_count()
 
  implicit none
 
- mesh_Nelems  = product(grid(1:2))*grid3
- mesh_NcpElems= mesh_Nelems
+ mesh_NcpElems= product(grid(1:2))*grid3
  mesh_Nnodes  = product(grid(1:2) + 1_pInt)*(grid3 + 1_pInt)
 
  mesh_NcpElemsGlobal = product(grid)
@@ -3247,7 +3248,6 @@ subroutine mesh_tell_statistics
 !$OMP CRITICAL (write2out)
   if (iand(myDebug,debug_levelBasic) /= 0_pInt) then
     write(6,'(/,a,/)') ' Input Parser: STATISTICS'
-    write(6,*) mesh_Nelems,           ' : total number of elements in mesh'
     write(6,*) mesh_NcpElems,         ' : total number of CP elements in mesh'
     write(6,*) mesh_Nnodes,           ' : total number of nodes in mesh'
     write(6,'(/,a,/)') ' Input Parser: HOMOGENIZATION/MICROSTRUCTURE'
