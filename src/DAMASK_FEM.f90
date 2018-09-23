@@ -142,7 +142,7 @@ program DAMASK_FEM
    quit
 !--------------------------------------------------------------------------------------------------
 ! init DAMASK (all modules)
- call CPFEM_initAll(el = 1_pInt, ip = 1_pInt)
+ call CPFEM_initAll
    write(6,'(/,a)')   ' <<<+-  DAMASK_FEM init  -+>>>'
    write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"

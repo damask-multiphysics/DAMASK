@@ -497,7 +497,7 @@ subroutine mesh_init(ip,el)
  integer :: ierr, worldsize
 #endif
  integer(pInt), parameter :: FILEUNIT = 222_pInt
- integer(pInt), intent(in) :: el, ip
+ integer(pInt), intent(in), optional :: el, ip
  integer(pInt) :: j
  logical :: myDebug
 

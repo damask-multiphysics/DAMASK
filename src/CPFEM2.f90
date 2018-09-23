@@ -18,7 +18,7 @@ contains
 !--------------------------------------------------------------------------------------------------
 !> @brief call (thread safe) all module initializations
 !--------------------------------------------------------------------------------------------------
-subroutine CPFEM_initAll(el,ip)
+subroutine CPFEM_initAll()
  use prec, only: &
    pInt
  use prec, only: &
@@ -55,10 +55,8 @@ subroutine CPFEM_initAll(el,ip)
 #endif
 
  implicit none
- integer(pInt), intent(in) ::                        el, &                                          !< FE el number
-                                                     ip                                             !< FE integration point number
 
- call DAMASK_interface_init                                                                    ! Spectral and FEM interface to commandline
+ call DAMASK_interface_init                                                                         ! Spectral and FEM interface to commandline
  call prec_init
  call IO_init
 #ifdef FEM
@@ -69,7 +67,7 @@ subroutine CPFEM_initAll(el,ip)
  call config_init
  call math_init
  call FE_init
- call mesh_init(ip, el)                                                                        ! pass on coordinates to alter calcMode of first ip
+ call mesh_init
  call lattice_init
  call material_init
  call constitutive_init
