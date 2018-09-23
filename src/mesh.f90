@@ -29,6 +29,10 @@ module mesh
    mesh_maxNcellnodes                                                                               !< max number of cell nodes in any CP element
 !!!! BEGIN DEPRECATED !!!!!
 
+ integer(pInt), dimension(:), allocatable, public, protected :: &
+   mesh_homogenization, &                                                                           !< homogenization ID of each element
+   mesh_microstructure                                                                              !< homogenization ID of each element
+
  integer(pInt), dimension(:,:), allocatable, public, protected :: &
    mesh_element, &                                                                                  !< FEid, type(internal representation), material, texture, node indices as CP IDs
    mesh_sharedElem, &                                                                               !< entryCount and list of elements containing node
@@ -640,6 +644,9 @@ subroutine mesh_init(ip,el)
 ! hence, xxPerElem instead of maxXX
  mesh_NipsPerElem       = mesh_maxNips
  mesh_NcellnodesPerElem = mesh_maxNcellnodes
+! better name
+ mesh_homogenization    = mesh_element(3,:)
+ mesh_microstructure    = mesh_element(4,:)
 !!!!!!!!!!!!!!!!!!!!!!!!
 
 end subroutine mesh_init
@@ -1248,7 +1255,7 @@ subroutine mesh_spectral_build_elements(fileUnit)
    elemOffset
  integer(pInt),     dimension(:), allocatable :: &
    microstructures, &
-   mesh_microGlobal
+   microGlobal
  integer(pInt),     dimension(1,1) :: &
    dummySet = 0_pInt
  character(len=65536) :: &
@@ -1287,7 +1294,7 @@ subroutine mesh_spectral_build_elements(fileUnit)
  enddo
  allocate (mesh_element    (4_pInt+8_pInt,mesh_NcpElems), source = 0_pInt)
  allocate (microstructures (1_pInt+maxIntCount),  source = 1_pInt)
- allocate (mesh_microGlobal(mesh_NcpElemsGlobal), source = 1_pInt)
+ allocate (microGlobal(mesh_NcpElemsGlobal), source = 1_pInt)
 
 !--------------------------------------------------------------------------------------------------
 ! read in microstructures
@@ -1301,7 +1308,7 @@ subroutine mesh_spectral_build_elements(fileUnit)
    microstructures = IO_continuousIntValues(fileUnit,maxIntCount,dummyName,dummySet,0_pInt)         ! get affected elements
    do i = 1_pInt,microstructures(1_pInt)
      e = e+1_pInt                                                                                   ! valid element entry
-     mesh_microGlobal(e) = microstructures(1_pInt+i)
+     microGlobal(e) = microstructures(1_pInt+i)
    enddo
  enddo
 
@@ -1313,7 +1320,7 @@ subroutine mesh_spectral_build_elements(fileUnit)
    mesh_element( 1,e) = -1_pInt                                                                     ! DEPRECATED
    mesh_element( 2,e) = elemType                                                                    ! elem type
    mesh_element( 3,e) = homog                                                                       ! homogenization
-   mesh_element( 4,e) = mesh_microGlobal(e+elemOffset)                                              ! microstructure
+   mesh_element( 4,e) = microGlobal(e+elemOffset)                                                   ! microstructure
    mesh_element( 5,e) = e + (e-1_pInt)/grid(1) + &
                                      ((e-1_pInt)/(grid(1)*grid(2)))*(grid(1)+1_pInt)                ! base node
    mesh_element( 6,e) = mesh_element(5,e) + 1_pInt

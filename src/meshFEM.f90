@@ -32,6 +32,10 @@ use PETScis
    mesh_maxNips, &                                                                                  !< max number of IPs in any CP element
 !!!! BEGIN DEPRECATED !!!!!
 
+ integer(pInt), dimension(:), allocatable, public, protected :: &
+   mesh_homogenization, &                                                                           !< homogenization ID of each element
+   mesh_microstructure                                                                              !< homogenization ID of each element
+
  real(pReal), public, protected :: charLength
  
  integer(pInt), dimension(:,:), allocatable, public, protected :: &
@@ -238,6 +242,9 @@ subroutine mesh_init(ip,el)
 ! for a homogeneous mesh, all elements have the same number of IPs and and cell nodes.
 ! hence, xxPerElem instead of maxXX
  mesh_NipsPerElem       = mesh_maxNips
+! better name
+ mesh_homogenization    = mesh_element(3,:)
+ mesh_microstructure    = mesh_element(4,:)
 !!!!!!!!!!!!!!!!!!!!!!!!
 
 end subroutine mesh_init
