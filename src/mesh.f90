@@ -335,7 +335,7 @@ integer(pInt), dimension(:,:), allocatable, private :: &
       4  & ! element  21 (3D 20node 27ip)
   ],pInt)
 
-#ifdef Spectral
+#if defined(Spectral)
  integer(pInt), dimension(3), public, protected :: &
    grid                                                                                             !< (global) grid
  integer(pInt), public, protected :: &
@@ -347,9 +347,7 @@ integer(pInt), dimension(:,:), allocatable, private :: &
  real(pReal), public, protected :: &
    size3, &                                                                                         !< (local) size in 3rd direction
    size3offset                                                                                      !< (local) size offset in 3rd direction
-#endif
-
-#if defined(Marc4DAMASK) || defined(Abaqus)
+#elif defined(Marc4DAMASK) || defined(Abaqus)
  integer(pInt), private :: &
    mesh_Nelems, &                                                                                   !< total number of elements in mesh (including non-DAMASK elements)
    mesh_maxNnodes, &                                                                                !< max number of nodes in any CP element
@@ -364,47 +362,54 @@ integer(pInt), dimension(:,:), allocatable, private :: &
    mesh_mapFEtoCPelem, &                                                                            !< [sorted FEid, corresponding CPid]
    mesh_mapFEtoCPnode                                                                               !< [sorted FEid, corresponding CPid]
 #endif
-
-#ifdef Marc4DAMASK
+#if defined(Marc4DAMASK)
  integer(pInt), private :: &
    MarcVersion, &                                                                                   !< Version of input file format (Marc only)
    hypoelasticTableStyle, &                                                                         !< Table style (Marc only)
    initialcondTableStyle                                                                            !< Table style (Marc only)
  integer(pInt), dimension(:), allocatable, private :: &
    Marc_matNumber                                                                                   !< array of material numbers for hypoelastic material (Marc only)
-#endif
-
-#ifdef Abaqus
+#elif defined(Abaqus)
  logical, private :: noPart                                                                         !< for cases where the ABAQUS input file does not use part/assembly information
 #endif
 
  public :: &
    mesh_init, &
-#if defined(Marc4DAMASK) || defined(Abaqus)
-   mesh_FEasCP, &
-#endif
    mesh_build_cellnodes, &
    mesh_build_ipVolumes, &
    mesh_build_ipCoordinates, &
    mesh_cellCenterCoordinates, &
    mesh_get_Ncellnodes, &
    mesh_get_unitlength, &
-   mesh_get_nodeAtIP
-#ifdef Spectral
- public :: &
+   mesh_get_nodeAtIP, &
+#if defined(Spectral)
    mesh_spectral_getGrid, &
    mesh_spectral_getSize
+#elif defined(Marc4DAMASK) || defined(Abaqus)
+   mesh_FEasCP
 #endif
 
  private :: &
-#ifdef Spectral
+   mesh_get_damaskOptions, &
+   mesh_build_cellconnectivity, &
+   mesh_build_ipAreas, &
+   mesh_tell_statistics, &
+   FE_mapElemtype, &
+   mesh_faceMatch, &
+   mesh_build_FEdata, &
+#if defined(Spectral)
    mesh_spectral_getHomogenization, &
    mesh_spectral_count, &
    mesh_spectral_count_cpSizes, &
    mesh_spectral_build_nodes, &
    mesh_spectral_build_elements, &
-   mesh_spectral_build_ipNeighborhood, &
-#elif defined Marc4DAMASK
+   mesh_spectral_build_ipNeighborhood
+#elif defined(Marc4DAMASK) || defined(Abaqus)
+   mesh_build_nodeTwins, &
+   mesh_build_sharedElems, &
+   mesh_build_ipNeighborhood, &
+#endif
+#if defined(Marc4DAMASK)
    mesh_marc_get_fileFormat, &
    mesh_marc_get_tableStyles, &
    mesh_marc_get_matNumber, &
@@ -416,8 +421,8 @@ integer(pInt), dimension(:,:), allocatable, private :: &
    mesh_marc_map_nodes, &
    mesh_marc_build_nodes, &
    mesh_marc_count_cpSizes, &
-   mesh_marc_build_elements, &
-#elif defined Abaqus
+   mesh_marc_build_elements
+#elif defined(Abaqus)
    mesh_abaqus_count_nodesAndElements, &
    mesh_abaqus_count_elementSets, &
    mesh_abaqus_count_materials, &
@@ -428,20 +433,8 @@ integer(pInt), dimension(:,:), allocatable, private :: &
    mesh_abaqus_map_nodes, &
    mesh_abaqus_build_nodes, &
    mesh_abaqus_count_cpSizes, &
-   mesh_abaqus_build_elements, &
+   mesh_abaqus_build_elements
 #endif
-#if defined(Marc4DAMASK) || defined(Abaqus)
-   mesh_build_nodeTwins, &
-   mesh_build_sharedElems, &
-   mesh_build_ipNeighborhood, &
-#endif
-   mesh_get_damaskOptions, &
-   mesh_build_cellconnectivity, &
-   mesh_build_ipAreas, &
-   mesh_tell_statistics, &
-   FE_mapElemtype, &
-   mesh_faceMatch, &
-   mesh_build_FEdata
 
 contains
 
