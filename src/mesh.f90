@@ -13,7 +13,6 @@ module mesh
  private
  integer(pInt), public, protected :: &
    mesh_NcpElems, &                                                                                 !< total number of CP elements in local mesh
-   mesh_NelemSets, &
    mesh_ElemType, &                                                                                 !< Element type of the mesh (only support homogeneous meshes)
    mesh_maxNelemInSet, &
    mesh_Nmaterials, &
@@ -348,6 +347,8 @@ integer(pInt), dimension(:,:), allocatable, private :: &
 #endif
 
 #if defined(Marc4DAMASK) || defined(Abaqus)
+ integer(pInt), private :: &
+   mesh_NelemSets
  character(len=64), dimension(:), allocatable, private :: &
    mesh_nameElemSet, &                                                                              !< names of elementSet
    mesh_nameMaterial, &                                                                             !< names of material in solid section
