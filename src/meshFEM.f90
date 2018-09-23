@@ -59,27 +59,17 @@ use PETScis
  integer(pInt), dimension(:), allocatable, public, protected :: &
    mesh_boundaries
 
-
- integer(pInt), parameter, public :: &
-   FE_Nelemtypes =  1_pInt, &
-   FE_Ngeomtypes =  1_pInt, &
-   FE_Ncelltypes =  1_pInt, &
-   FE_maxNnodes  =  1_pInt, &
-   FE_maxNips    = 14_pInt
                       
- integer(pInt), dimension(FE_Nelemtypes), parameter, public :: FE_geomtype = &                      !< geometry type of particular element type
+ integer(pInt), dimension(1_pInt), parameter, public :: FE_geomtype = &                      !< geometry type of particular element type
  int([1],pInt)
 
- integer(pInt), dimension(FE_Ngeomtypes), parameter, public  :: FE_celltype = &                     !< cell type that is used by each geometry type
+ integer(pInt), dimension(1_pInt), parameter, public  :: FE_celltype = &                     !< cell type that is used by each geometry type
  int([1],pInt)
 
- integer(pInt), dimension(FE_Nelemtypes), parameter, public :: FE_Nnodes = &                        !< number of nodes that constitute a specific type of element
- int([0],pInt) 
-
- integer(pInt), dimension(FE_Ngeomtypes),            public :: FE_Nips = &                          !< number of IPs in a specific type of element
+ integer(pInt), dimension(1_pInt),            public :: FE_Nips = &                          !< number of IPs in a specific type of element
  int([0],pInt)
 
- integer(pInt), dimension(FE_Ncelltypes), parameter, public :: FE_NipNeighbors = &                  !< number of ip neighbors / cell faces in a specific cell type
+ integer(pInt), dimension(1_pInt), parameter, public :: FE_NipNeighbors = &                  !< number of ip neighbors / cell faces in a specific cell type
  int([6],pInt)
 
 
@@ -222,7 +212,7 @@ subroutine mesh_init(ip,el)
  call mesh_FEM_build_ipCoordinates(dimPlex,FEM_Zoo_QuadraturePoints(dimPlex,integrationOrder)%p)
  call mesh_FEM_build_ipVolumes(dimPlex)
  
- allocate (mesh_element (4_pInt+FE_nodes(1_pInt),mesh_NcpElems)); mesh_element = 0_pInt
+ allocate (mesh_element (4_pInt,mesh_NcpElems)); mesh_element = 0_pInt
  do j = 1, mesh_NcpElems
    mesh_element( 1,j) = j
    mesh_element( 2,j) = mesh_elemType                                                               ! elem type
