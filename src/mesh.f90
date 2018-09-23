@@ -482,12 +482,12 @@ subroutine mesh_init(ip,el)
    numerics_unitlength, &
    worldrank
  use FEsolving, only: &
-   FEsolving_execElem, &
 #ifndef Spectral
    modelName, &
-   calcMode
+   calcMode, &
 #endif
-   FEsolving_execIP, &
+   FEsolving_execElem, &
+   FEsolving_execIP
 
  implicit none
 #ifdef Spectral

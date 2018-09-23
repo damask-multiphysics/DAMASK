@@ -25,11 +25,11 @@ use PETScis
    mesh_NcpElems, &                                                                                 !< total number of CP elements in mesh
    mesh_NcpElemsGlobal, &
    mesh_Nnodes, &                                                                                   !< total number of nodes in mesh
-   mesh_maxNipNeighbors, &                                                                          !< max number of IP neighbors in any CP element
+   mesh_NipsPerElem, &                                                                              !< number of IPs in per element
    mesh_maxNipNeighbors
 !!!! BEGIN DEPRECATED !!!!!
  integer(pInt), public, protected :: &
-   mesh_maxNips, &                                                                                  !< max number of IPs in any CP element
+   mesh_maxNips                                                                                     !< max number of IPs in any CP element
 !!!! BEGIN DEPRECATED !!!!!
 
  integer(pInt), dimension(:), allocatable, public, protected :: &
