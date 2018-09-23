@@ -39,7 +39,8 @@ use PETScis
  real(pReal), public, protected :: charLength
  
  integer(pInt), dimension(:,:), allocatable, public, protected :: &
-   mesh_element                                                                                     !< FEid, type(internal representation), material, texture, node indices as CP IDs
+   mesh_CPnodeID, &
+   mesh_element !DEPRECATED
 
  real(pReal), dimension(:,:), allocatable, public :: &
    mesh_node                                                                                        !< node x,y,z coordinates (after deformation! ONLY FOR MARC!!!)
@@ -245,6 +246,7 @@ subroutine mesh_init(ip,el)
 ! better name
  mesh_homogenization    = mesh_element(3,:)
  mesh_microstructure    = mesh_element(4,:)
+ mesh_CPnodeID          = mesh_element(5:4+mesh_NipsPerElem,:)
 !!!!!!!!!!!!!!!!!!!!!!!!
 
 end subroutine mesh_init

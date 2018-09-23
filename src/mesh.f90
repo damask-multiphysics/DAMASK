@@ -34,7 +34,8 @@ module mesh
    mesh_microstructure                                                                              !< homogenization ID of each element
 
  integer(pInt), dimension(:,:), allocatable, public, protected :: &
-   mesh_element, &                                                                                  !< FEid, type(internal representation), material, texture, node indices as CP IDs
+   mesh_CPnodeID, &
+   mesh_element, & !DEPRECATED
    mesh_sharedElem, &                                                                               !< entryCount and list of elements containing node
    mesh_nodeTwins                                                                                   !< node twins are surface nodes that lie exactly on opposite sides of the mesh (surfaces nodes with equal coordinate values in two dimensions)
 
@@ -647,6 +648,7 @@ subroutine mesh_init(ip,el)
 ! better name
  mesh_homogenization    = mesh_element(3,:)
  mesh_microstructure    = mesh_element(4,:)
+ mesh_CPnodeID          = mesh_element(5:4+mesh_NipsPerElem,:)
 !!!!!!!!!!!!!!!!!!!!!!!!
 
 end subroutine mesh_init
@@ -1292,9 +1294,9 @@ subroutine mesh_spectral_build_elements(fileUnit)
    i = IO_countContinuousIntValues(fileUnit)
    maxIntCount = max(maxIntCount, i)
  enddo
- allocate (mesh_element    (4_pInt+8_pInt,mesh_NcpElems), source = 0_pInt)
- allocate (microstructures (1_pInt+maxIntCount),  source = 1_pInt)
- allocate (microGlobal(mesh_NcpElemsGlobal), source = 1_pInt)
+ allocate(mesh_element    (4_pInt+8_pInt,mesh_NcpElems), source = 0_pInt)
+ allocate(microstructures (1_pInt+maxIntCount),  source = 1_pInt)
+ allocate(microGlobal(mesh_NcpElemsGlobal), source = 1_pInt)
 
 !--------------------------------------------------------------------------------------------------
 ! read in microstructures
@@ -2016,7 +2018,7 @@ subroutine mesh_marc_build_elements(fileUnit)
  integer(pInt), dimension(1_pInt+mesh_NcpElems) :: contInts
  integer(pInt) :: i,j,t,sv,myVal,e,nNodesAlreadyRead
 
- allocate (mesh_element(4_pInt+mesh_maxNnodes,mesh_NcpElems), source=0_pInt)
+ allocate(mesh_element(4_pInt+mesh_maxNnodes,mesh_NcpElems), source=0_pInt)
  mesh_elemType = -1_pInt
 
 610 FORMAT(A300)
@@ -2687,7 +2689,7 @@ subroutine mesh_abaqus_build_elements(fileUnit)
  character (len=64) :: materialName,elemSetName
  character(len=300) :: line
 
- allocate (mesh_element (4_pInt+mesh_maxNnodes,mesh_NcpElems), source=0_pInt)
+ allocate(mesh_element (4_pInt+mesh_maxNnodes,mesh_NcpElems), source=0_pInt)
  mesh_elemType = -1_pInt
 
 610 FORMAT(A300)
