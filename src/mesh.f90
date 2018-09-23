@@ -19,7 +19,6 @@ module mesh
    mesh_Nnodes, &                                                                                   !< total number of nodes in mesh
    mesh_Ncellnodes, &                                                                               !< total number of cell nodes in mesh (including duplicates)
    mesh_Ncells, &                                                                                   !< total number of cells in mesh
-   mesh_maxNnodes, &                                                                                !< max number of nodes in any CP element
    mesh_maxNips, &                                                                                  !< max number of IPs in any CP element
    mesh_maxNipNeighbors, &                                                                          !< max number of IP neighbors in any CP element
    mesh_maxNsharedElems, &                                                                          !< max number of CP elements sharing a node
@@ -348,6 +347,7 @@ integer(pInt), dimension(:,:), allocatable, private :: &
 
 #if defined(Marc4DAMASK) || defined(Abaqus)
  integer(pInt), private :: &
+   mesh_maxNnodes, &                                                                                !< max number of nodes in any CP element
    mesh_NelemSets
  character(len=64), dimension(:), allocatable, private :: &
    mesh_nameElemSet, &                                                                              !< names of elementSet
@@ -1166,7 +1166,7 @@ end subroutine mesh_spectral_count
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Gets maximum count of nodes, IPs, IP neighbors, and subNodes among cpElements.
-!! Sets global values 'mesh_maxNnodes', 'mesh_maxNips', 'mesh_maxNipNeighbors',
+!! Sets global values 'mesh_maxNips', 'mesh_maxNipNeighbors',
 !! and 'mesh_maxNcellnodes'
 !--------------------------------------------------------------------------------------------------
 subroutine mesh_spectral_count_cpSizes
@@ -1178,7 +1178,6 @@ subroutine mesh_spectral_count_cpSizes
  g = FE_geomtype(t)
  c = FE_celltype(g)
 
- mesh_maxNnodes =       FE_Nnodes(t)
  mesh_maxNips =         FE_Nips(g)
  mesh_maxNipNeighbors = FE_NipNeighbors(c)
  mesh_maxNcellnodes =   FE_Ncellnodes(g)
@@ -1282,7 +1281,7 @@ subroutine mesh_spectral_build_elements(fileUnit)
    i = IO_countContinuousIntValues(fileUnit)
    maxIntCount = max(maxIntCount, i)
  enddo
- allocate (mesh_element    (4_pInt+mesh_maxNnodes,mesh_NcpElems), source = 0_pInt)
+ allocate (mesh_element    (4_pInt+8_pInt,mesh_NcpElems), source = 0_pInt)
  allocate (microstructures (1_pInt+maxIntCount),  source = 1_pInt)
  allocate (mesh_microGlobal(mesh_NcpElemsGlobal), source = 1_pInt)
 
