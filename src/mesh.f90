@@ -19,10 +19,15 @@ module mesh
    mesh_Nnodes, &                                                                                   !< total number of nodes in mesh
    mesh_Ncellnodes, &                                                                               !< total number of cell nodes in mesh (including duplicates)
    mesh_Ncells, &                                                                                   !< total number of cells in mesh
-   mesh_maxNips, &                                                                                  !< max number of IPs in any CP element
+   mesh_NipsPerElem, &                                                                              !< number of IPs in per element
+   mesh_NcellnodesPerElem, &                                                                        !< number of cell nodes per  element
    mesh_maxNipNeighbors, &                                                                          !< max number of IP neighbors in any CP element
-   mesh_maxNsharedElems, &                                                                          !< max number of CP elements sharing a node
+   mesh_maxNsharedElems                                                                             !< max number of CP elements sharing a node
+!!!! BEGIN DEPRECATED !!!!!
+ integer(pInt), public, protected :: &
+   mesh_maxNips, &                                                                                  !< max number of IPs in any CP element
    mesh_maxNcellnodes                                                                               !< max number of cell nodes in any CP element
+!!!! BEGIN DEPRECATED !!!!!
 
  integer(pInt), dimension(:,:), allocatable, public, protected :: &
    mesh_element, &                                                                                  !< FEid, type(internal representation), material, texture, node indices as CP IDs
@@ -638,6 +643,13 @@ subroutine mesh_init(ip,el)
 #else
  calcMode(ip,el) = .true.                                                                           ! first ip,el needs to be already pingponged to "calc"
 #endif
+
+!!!! COMPATIBILITY HACK !!!!
+! for a homogeneous mesh, all elements have the same number of IPs and and cell nodes.
+! hence, xxPerElem instead of maxXX
+ mesh_NipsPerElem       = mesh_maxNips
+ mesh_NcellnodesPerElem = mesh_maxNcellnodes
+!!!!!!!!!!!!!!!!!!!!!!!!
 
 end subroutine mesh_init
 
