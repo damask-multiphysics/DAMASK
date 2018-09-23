@@ -17,6 +17,8 @@ use PETScis
 
  implicit none
  private
+ integer(pInt), public, parameter :: &
+   mesh_ElemType=1_pInt                                                                             !< Element type of the mesh (only support homogeneous meshes)
 
  integer(pInt), public, protected :: &
    mesh_Nboundaries, &
@@ -25,8 +27,7 @@ use PETScis
    mesh_Nnodes, &                                                                                   !< total number of nodes in mesh
    mesh_maxNnodes, &                                                                                !< max number of nodes in any CP element
    mesh_maxNips, &                                                                                  !< max number of IPs in any CP element
-   mesh_maxNipNeighbors, &
-   mesh_Nelems                                                                                      !< total number of elements in mesh
+   mesh_maxNipNeighbors
 
  real(pReal), public, protected :: charLength
  
@@ -212,11 +213,10 @@ subroutine mesh_init(ip,el)
  endif  
  call DMDestroy(globalMesh,ierr); CHKERRQ(ierr)
  
- call DMGetStratumSize(geomMesh,'depth',dimPlex,mesh_Nelems,ierr)
+ call DMGetStratumSize(geomMesh,'depth',dimPlex,mesh_NcpElems,ierr)
  CHKERRQ(ierr)
  call DMGetStratumSize(geomMesh,'depth',0,mesh_Nnodes,ierr)
  CHKERRQ(ierr)
- mesh_NcpElems = mesh_Nelems
 
  FE_Nips(FE_geomtype(1_pInt)) = FEM_Zoo_nQuadrature(dimPlex,integrationOrder)
  mesh_maxNnodes = FE_Nnodes(1_pInt)
@@ -227,14 +227,12 @@ subroutine mesh_init(ip,el)
  allocate (mesh_element (4_pInt+mesh_maxNnodes,mesh_NcpElems)); mesh_element = 0_pInt
  do j = 1, mesh_NcpElems
    mesh_element( 1,j) = j
-   mesh_element( 2,j) = 1_pInt                                                                      ! elem type
+   mesh_element( 2,j) = mesh_elemType                                                               ! elem type
    mesh_element( 3,j) = 1_pInt                                                                      ! homogenization
    call DMGetLabelValue(geomMesh,'material',j-1,mesh_element(4,j),ierr)
    CHKERRQ(ierr)
  end do 
 
- if (usePingPong .and. (mesh_Nelems /= mesh_NcpElems)) &
-   call IO_error(600_pInt)                                                                          ! ping-pong must be disabled when having non-DAMASK elements
  if (debug_e < 1 .or. debug_e > mesh_NcpElems) &
    call IO_error(602_pInt,ext_msg='element')                                                        ! selected element does not exist
  if (debug_i < 1 .or. debug_i > FE_Nips(FE_geomtype(mesh_element(2_pInt,debug_e)))) &
