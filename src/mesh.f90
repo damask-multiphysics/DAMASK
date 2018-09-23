@@ -3,7 +3,6 @@
 !> @author Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
 !> @author Christoph Koords, Max-Planck-Institut für Eisenforschung GmbH
 !> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
-!> @author Krishna Komerla, Max-Planck-Institut für Eisenforschung GmbH
 !> @brief Sets up the mesh for the solvers MSC.Marc, Abaqus and the spectral solver
 !--------------------------------------------------------------------------------------------------
 module mesh
@@ -15,6 +14,7 @@ module mesh
  integer(pInt), public, protected :: &
    mesh_NcpElems, &                                                                                 !< total number of CP elements in local mesh
    mesh_NelemSets, &
+   mesh_ElemType, &                                                                                 !< Element type of the mesh (only support homogeneous meshes)
    mesh_maxNelemInSet, &
    mesh_Nmaterials, &
    mesh_Nnodes, &                                                                                   !< total number of nodes in mesh
@@ -2023,7 +2023,8 @@ subroutine mesh_marc_build_elements(fileUnit)
                  IO_skipChunks, &
                  IO_stringPos, &
                  IO_intValue, &
-                 IO_continuousIntValues
+                 IO_continuousIntValues, &
+                 IO_error
 
  implicit none
  integer(pInt), intent(in) :: fileUnit
@@ -2034,7 +2035,8 @@ subroutine mesh_marc_build_elements(fileUnit)
  integer(pInt), dimension(1_pInt+mesh_NcpElems) :: contInts
  integer(pInt) :: i,j,t,sv,myVal,e,nNodesAlreadyRead
 
- allocate (mesh_element(4_pInt+mesh_maxNnodes,mesh_NcpElems)) ; mesh_element = 0_pInt
+ allocate (mesh_element(4_pInt+mesh_maxNnodes,mesh_NcpElems), source=0_pInt)
+ mesh_elemType = -1_pInt
 
 610 FORMAT(A300)
 
@@ -2049,8 +2051,11 @@ subroutine mesh_marc_build_elements(fileUnit)
        chunkPos = IO_stringPos(line)
        e = mesh_FEasCP('elem',IO_intValue(line,chunkPos,1_pInt))
        if (e /= 0_pInt) then                                                                        ! disregard non CP elems
-         mesh_element(1,e) = IO_IntValue (line,chunkPos,1_pInt)                                        ! FE id
-         t = FE_mapElemtype(IO_StringValue(line,chunkPos,2_pInt))                                      ! elem type
+         mesh_element(1,e) = IO_IntValue (line,chunkPos,1_pInt)                                     ! FE id
+         t = FE_mapElemtype(IO_StringValue(line,chunkPos,2_pInt))                                   ! elem type
+         if (mesh_elemType /= t .and. mesh_elemType /= -1_pInt) &
+           call IO_error(191,el=t,ip=mesh_elemType)
+         mesh_elemType = t
          mesh_element(2,e) = t
          nNodesAlreadyRead = 0_pInt
          do j = 1_pInt,chunkPos(1)-2_pInt
@@ -2688,8 +2693,8 @@ subroutine mesh_abaqus_build_elements(fileUnit)
                  IO_intValue, &
                  IO_extractValue, &
                  IO_floatValue, &
-                 IO_error, &
-                 IO_countDataLines
+                 IO_countDataLines, &
+                 IO_error
 
  implicit none
  integer(pInt), intent(in) :: fileUnit
@@ -2701,7 +2706,8 @@ subroutine mesh_abaqus_build_elements(fileUnit)
  character (len=64) :: materialName,elemSetName
  character(len=300) :: line
 
- allocate (mesh_element (4_pInt+mesh_maxNnodes,mesh_NcpElems)) ; mesh_element = 0_pInt
+ allocate (mesh_element (4_pInt+mesh_maxNnodes,mesh_NcpElems), source=0_pInt)
+ mesh_elemType = -1_pInt
 
 610 FORMAT(A300)
 
@@ -2720,17 +2726,20 @@ subroutine mesh_abaqus_build_elements(fileUnit)
          IO_lc(IO_stringValue(line,chunkPos,2_pInt)) /= 'matrix'   .and. &
          IO_lc(IO_stringValue(line,chunkPos,2_pInt)) /= 'response' ) &
      ) then
-     t = FE_mapElemtype(IO_extractValue(IO_lc(IO_stringValue(line,chunkPos,2_pInt)),'type'))          ! remember elem type
+     t = FE_mapElemtype(IO_extractValue(IO_lc(IO_stringValue(line,chunkPos,2_pInt)),'type'))        ! remember elem type
      c = IO_countDataLines(fileUnit)
      do i = 1_pInt,c
        backspace(fileUnit)
      enddo
      do i = 1_pInt,c
        read (fileUnit,610,END=620) line
-       chunkPos = IO_stringPos(line)                                                       ! limit to 64 nodes max
+       chunkPos = IO_stringPos(line)                                                                ! limit to 64 nodes max
        e = mesh_FEasCP('elem',IO_intValue(line,chunkPos,1_pInt))
-       if (e /= 0_pInt) then                                                                       ! disregard non CP elems
-         mesh_element(1,e) = IO_intValue(line,chunkPos,1_pInt)                                        ! FE id
+       if (e /= 0_pInt) then                                                                        ! disregard non CP elems
+         mesh_element(1,e) = IO_intValue(line,chunkPos,1_pInt)                                      ! FE id
+         if (mesh_elemType /= t .and. mesh_elemType /= -1_pInt) &
+           call IO_error(191,el=t,ip=mesh_elemType)
+         mesh_elemType = t
          mesh_element(2,e) = t                                                                     ! elem type
          nNodesAlreadyRead = 0_pInt
          do j = 1_pInt,chunkPos(1)-1_pInt
