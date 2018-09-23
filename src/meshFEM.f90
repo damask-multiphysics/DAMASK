@@ -25,7 +25,6 @@ use PETScis
    mesh_NcpElems, &                                                                                 !< total number of CP elements in mesh
    mesh_NcpElemsGlobal, &
    mesh_Nnodes, &                                                                                   !< total number of nodes in mesh
-   mesh_maxNnodes, &                                                                                !< max number of nodes in any CP element
    mesh_maxNips, &                                                                                  !< max number of IPs in any CP element
    mesh_maxNipNeighbors
 
@@ -219,12 +218,11 @@ subroutine mesh_init(ip,el)
  CHKERRQ(ierr)
 
  FE_Nips(FE_geomtype(1_pInt)) = FEM_Zoo_nQuadrature(dimPlex,integrationOrder)
- mesh_maxNnodes = FE_Nnodes(1_pInt)
  mesh_maxNips = FE_Nips(1_pInt)
  call mesh_FEM_build_ipCoordinates(dimPlex,FEM_Zoo_QuadraturePoints(dimPlex,integrationOrder)%p)
  call mesh_FEM_build_ipVolumes(dimPlex)
  
- allocate (mesh_element (4_pInt+mesh_maxNnodes,mesh_NcpElems)); mesh_element = 0_pInt
+ allocate (mesh_element (4_pInt+FE_nodes(1_pInt),mesh_NcpElems)); mesh_element = 0_pInt
  do j = 1, mesh_NcpElems
    mesh_element( 1,j) = j
    mesh_element( 2,j) = mesh_elemType                                                               ! elem type
