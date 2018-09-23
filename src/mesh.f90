@@ -13,7 +13,7 @@ module mesh
  private
  integer(pInt), public, protected :: &
    mesh_NcpElems, &                                                                                 !< total number of CP elements in local mesh
-   mesh_ElemType, &                                                                                 !< Element type of the mesh (only support homogeneous meshes)
+   mesh_elemType, &                                                                                 !< Element type of the mesh (only support homogeneous meshes)
    mesh_maxNelemInSet, &
    mesh_Nmaterials, &
    mesh_Nnodes, &                                                                                   !< total number of nodes in mesh

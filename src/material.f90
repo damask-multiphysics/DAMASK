@@ -199,6 +199,7 @@ module material
 
  integer(pInt), dimension(:,:,:), allocatable, public :: &
    material_phase                                                                                   !< phase (index) of each grain,IP,element
+! DEPRECATED. DID WE EVER ALLOWED DIFFERENT HOMOGENIZATION SCHEMES WITHIN ONE ELEMENT?
  integer(pInt), dimension(:,:), allocatable, public :: &
    material_homog                                                                                   !< homogenization (index) of each IP,element
  type(tPlasticState), allocatable, dimension(:), public :: &
@@ -362,10 +363,10 @@ subroutine material_init()
    phase_name, &
    texture_name
  use mesh, only: &
+   mesh_homogenization, &
+   mesh_NipsPerElem, &
    mesh_maxNips, &
    mesh_NcpElems, &
-   mesh_element, &
-   FE_Nips, &
    FE_geomtype
 
  implicit none
@@ -480,11 +481,11 @@ subroutine material_init()
  allocate(CrystallitePosition   (size(config_phase)),         source=0_pInt)
 
  ElemLoop:do e = 1_pInt,mesh_NcpElems
- myHomog = mesh_element(3,e)
-   IPloop:do i = 1_pInt,FE_Nips(FE_geomtype(mesh_element(2,e)))
+ myHomog = mesh_homogenization(e)
+   IPloop:do i = 1_pInt, mesh_NipsPerElem
      HomogenizationPosition(myHomog) = HomogenizationPosition(myHomog) + 1_pInt
      mappingHomogenization(1:2,i,e) = [HomogenizationPosition(myHomog),myHomog]
-     GrainLoop:do g = 1_pInt,homogenization_Ngrains(mesh_element(3,e))
+     GrainLoop:do g = 1_pInt,homogenization_Ngrains(myHomog)
        phase = material_phase(g,i,e)
        ConstitutivePosition(phase) = ConstitutivePosition(phase)+1_pInt                             ! not distinguishing between instances of same phase
        phaseAt(g,i,e)              = phase
@@ -519,10 +520,10 @@ end subroutine material_init
 subroutine material_parseHomogenization
  use config, only : &
    config_homogenization
+ use mesh, only: &
+   mesh_homogenization
  use IO, only: &
    IO_error
- use mesh, only: &
-   mesh_element
 
  implicit none
  integer(pInt)        :: h
@@ -549,7 +550,8 @@ subroutine material_parseHomogenization
  allocate(porosity_initialPhi(size(config_homogenization)),           source=1.0_pReal)
  allocate(hydrogenflux_initialCh(size(config_homogenization)),        source=0.0_pReal)
 
- forall (h = 1_pInt:size(config_homogenization)) homogenization_active(h) = any(mesh_element(3,:) == h)
+ forall (h = 1_pInt:size(config_homogenization)) &
+   homogenization_active(h) = any(mesh_homogenization == h)
 
 
  do h=1_pInt, size(config_homogenization)
@@ -685,7 +687,7 @@ subroutine material_parseMicrostructure
    config_microstructure, &
    microstructure_name
  use mesh, only: &
-   mesh_element, &
+   mesh_microstructure, &
    mesh_NcpElems
 
  implicit none
@@ -701,10 +703,11 @@ subroutine material_parseMicrostructure
  allocate(microstructure_active(size(config_microstructure)),               source=.false.)
  allocate(microstructure_elemhomo(size(config_microstructure)),             source=.false.)
 
- if(any(mesh_element(4,1:mesh_NcpElems) > size(config_microstructure))) &
+ if(any(mesh_microstructure > size(config_microstructure))) &
   call IO_error(155_pInt,ext_msg='More microstructures in geometry than sections in material.config')
 
- forall (e = 1_pInt:mesh_NcpElems) microstructure_active(mesh_element(4,e)) = .true.                ! current microstructure used in model? Elementwise view, maximum N operations for N elements
+ forall (e = 1_pInt:mesh_NcpElems) &
+   microstructure_active(mesh_microstructure(e)) = .true.                                           ! current microstructure used in model? Elementwise view, maximum N operations for N elements
 
  do m=1_pInt, size(config_microstructure)
    microstructure_Nconstituents(m) =  config_microstructure(m)%countKeys('(constituent)')
@@ -1082,11 +1085,13 @@ subroutine material_populateGrains
    math_sampleFiberOri, &
    math_symmetricEulers
  use mesh, only: &
-   mesh_element, &
+   mesh_NipsPerElem, &
+   mesh_elemType, &
+   mesh_homogenization, &
+   mesh_microstructure, &
    mesh_maxNips, &
    mesh_NcpElems, &
    mesh_ipVolume, &
-   FE_Nips, &
    FE_geomtype
  use config, only: &
    config_homogenization, &
@@ -1136,14 +1141,14 @@ subroutine material_populateGrains
 ! populating homogenization schemes in each
 !--------------------------------------------------------------------------------------------------
  do e = 1_pInt, mesh_NcpElems
-   material_homog(1_pInt:FE_Nips(FE_geomtype(mesh_element(2,e))),e) = mesh_element(3,e)
+   material_homog(1_pInt:mesh_NipsPerElem,e) = mesh_homogenization(e)
  enddo
 
 !--------------------------------------------------------------------------------------------------
 ! precounting of elements for each homog/micro pair
  do e = 1_pInt, mesh_NcpElems
-   homog = mesh_element(3,e)
-   micro = mesh_element(4,e)
+   homog = mesh_homogenization(e)
+   micro = mesh_microstructure(e)
    Nelems(homog,micro) = Nelems(homog,micro) + 1_pInt
  enddo
  allocate(elemsOfHomogMicro(size(config_homogenization),size(config_microstructure)))
@@ -1160,9 +1165,9 @@ subroutine material_populateGrains
 ! identify maximum grain count per IP (from element) and find grains per homog/micro pair
  Nelems = 0_pInt                                                                                    ! reuse as counter
  elementLooping: do e = 1_pInt,mesh_NcpElems
-   t    = FE_geomtype(mesh_element(2,e))
-   homog = mesh_element(3,e)
-   micro = mesh_element(4,e)
+   t     = mesh_elemType
+   homog = mesh_homogenization(e)
+   micro = mesh_microstructure(e)
    if (homog < 1_pInt .or. homog > size(config_homogenization)) &                                      ! out of bounds
      call IO_error(154_pInt,e,0_pInt,0_pInt)
    if (micro < 1_pInt .or. micro > size(config_microstructure)) &                                      ! out of bounds
@@ -1170,7 +1175,7 @@ subroutine material_populateGrains
    if (microstructure_elemhomo(micro)) then                                                         ! how many grains are needed at this element?
      dGrains = homogenization_Ngrains(homog)                                                        ! only one set of Ngrains (other IPs are plain copies)
    else
-     dGrains = homogenization_Ngrains(homog) * FE_Nips(t)                                           ! each IP has Ngrains
+     dGrains = homogenization_Ngrains(homog) * mesh_NipsPerElem                                     ! each IP has Ngrains
    endif
    Ngrains(homog,micro) = Ngrains(homog,micro) + dGrains                                            ! total grain count
    Nelems(homog,micro)  = Nelems(homog,micro) + 1_pInt                                              ! total element count
@@ -1183,8 +1188,8 @@ subroutine material_populateGrains
  allocate(orientationOfGrain(3,maxval(Ngrains)),source=0.0_pReal)                                   ! reserve memory for maximum case
 
  if (iand(myDebug,debug_levelBasic) /= 0_pInt) then
-     write(6,'(/,a/)') ' MATERIAL grain population'
-     write(6,'(a32,1x,a32,1x,a6)') 'homogenization_name','microstructure_name','grain#'
+   write(6,'(/,a/)') ' MATERIAL grain population'
+   write(6,'(a32,1x,a32,1x,a6)') 'homogenization_name','microstructure_name','grain#'
  endif
  homogenizationLoop: do homog = 1_pInt,size(config_homogenization)
    dGrains = homogenization_Ngrains(homog)                                                          ! grain number per material point
@@ -1204,16 +1209,16 @@ subroutine material_populateGrains
 
        do hme = 1_pInt, Nelems(homog,micro)
          e = elemsOfHomogMicro(homog,micro)%p(hme)                                                  ! my combination of homog and micro, only perform calculations for elements with homog, micro combinations which is indexed in cpElemsindex
-         t = FE_geomtype(mesh_element(2,e))
+         t = mesh_elemType
          if (microstructure_elemhomo(micro)) then                                                   ! homogeneous distribution of grains over each element's IPs
-           volumeOfGrain(grain+1_pInt:grain+dGrains) = sum(mesh_ipVolume(1:FE_Nips(t),e))/&
+           volumeOfGrain(grain+1_pInt:grain+dGrains) = sum(mesh_ipVolume(1:mesh_NipsPerElem,e))/&
                                                                          real(dGrains,pReal)        ! each grain combines size of all IPs in that element
            grain = grain + dGrains                                                                  ! wind forward by Ngrains@IP
          else
-           forall (i = 1_pInt:FE_Nips(t)) &                                                         ! loop over IPs
+           forall (i = 1_pInt:mesh_NipsPerElem) &                                                   ! loop over IPs
              volumeOfGrain(grain+(i-1)*dGrains+1_pInt:grain+i*dGrains) = &
                mesh_ipVolume(i,e)/real(dGrains,pReal)                                               ! assign IPvolume/Ngrains@IP to all grains of IP
-           grain = grain + FE_Nips(t) * dGrains                                                     ! wind forward by Nips*Ngrains@IP
+           grain = grain + mesh_NipsPerElem * dGrains                                               ! wind forward by Nips*Ngrains@IP
          endif
        enddo
 
@@ -1367,11 +1372,11 @@ subroutine material_populateGrains
 
        do hme = 1_pInt, Nelems(homog,micro)
          e = elemsOfHomogMicro(homog,micro)%p(hme)                                                  ! only perform calculations for elements with homog, micro combinations which is indexed in cpElemsindex
-         t = FE_geomtype(mesh_element(2,e))
+         t = mesh_elemType
          if (microstructure_elemhomo(micro)) then                                                   ! homogeneous distribution of grains over each element's IPs
            m = 1_pInt                                                                               ! process only first IP
          else
-           m = FE_Nips(t)                                                                           ! process all IPs
+           m = mesh_NipsPerElem
          endif
 
          do i = 1_pInt, m                                                                           ! loop over necessary IPs
@@ -1409,7 +1414,7 @@ subroutine material_populateGrains
 
          enddo
 
-         do i = i, FE_Nips(t)                                                                       ! loop over IPs to (possibly) distribute copies from first IP
+         do i = i, mesh_NipsPerElem                                                                 ! loop over IPs to (possibly) distribute copies from first IP
            material_volume (1_pInt:dGrains,i,e) = material_volume (1_pInt:dGrains,1,e)
            material_phase  (1_pInt:dGrains,i,e) = material_phase  (1_pInt:dGrains,1,e)
            material_texture(1_pInt:dGrains,i,e) = material_texture(1_pInt:dGrains,1,e)
