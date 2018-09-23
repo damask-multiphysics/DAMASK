@@ -128,15 +128,11 @@ subroutine FEM_mech_init(fieldBC)
  qWeightsP => qWeights
  call PetscQuadratureCreate(PETSC_COMM_SELF,mechQuad,ierr); CHKERRQ(ierr)
  CHKERRQ(ierr)
- ! what is the number of components, nc?
  nc = dimPlex
  call PetscQuadratureSetData(mechQuad,dimPlex,nc,nQuadrature,qPointsP,qWeightsP,ierr)
  CHKERRQ(ierr)
-! call PetscFECreateDefault(mech_mesh,dimPlex,nc,PETSC_TRUE,prefix, &
-!                           integrationOrder,mechFE,ierr); CHKERRQ(ierr)
  call PetscFECreateDefault(PETSC_COMM_SELF,dimPlex,nc,PETSC_TRUE,prefix, &
                            integrationOrder,mechFE,ierr); CHKERRQ(ierr)
-!   Polar decomposition failed in run time
  call PetscFESetQuadrature(mechFE,mechQuad,ierr); CHKERRQ(ierr)
  call PetscFEGetDimension(mechFE,nBasis,ierr); CHKERRQ(ierr)
  nBasis = nBasis/nc
@@ -148,7 +144,6 @@ subroutine FEM_mech_init(fieldBC)
 
 !--------------------------------------------------------------------------------------------------
 ! Setup FEM mech boundary conditions
- write(6,*) 'starting to set up boundary conditions';flush(6)
  call DMGetLabel(mech_mesh,'Face Sets',BCLabel,ierr); CHKERRQ(ierr)
  call DMPlexLabelComplete(mech_mesh,BCLabel,ierr); CHKERRQ(ierr)
  call DMGetSection(mech_mesh,section,ierr); CHKERRQ(ierr)
@@ -171,7 +166,6 @@ subroutine FEM_mech_init(fieldBC)
  do field = 1, dimPlex; do faceSet = 1, mesh_Nboundaries
    if (fieldBC%componentBC(field)%Mask(faceSet)) then
      numBC = numBC + 1
-     write(6,*) 'adding boundary condition', numBC
      call ISCreateGeneral(PETSC_COMM_WORLD,1,[field-1],PETSC_COPY_VALUES,bcComps(numBC),ierr)
      CHKERRQ(ierr)
      call DMGetStratumSize(mech_mesh,'Face Sets',mesh_boundaries(faceSet),bcSize,ierr)
@@ -246,12 +240,12 @@ subroutine FEM_mech_init(fieldBC)
    call  DMPlexComputeCellGeometryAffineFEM(mech_mesh,cell,pV0,pCellJ,pInvcellJ,detJ,ierr) 
    CHKERRQ(ierr)
    cellJMat = reshape(pCellJ,shape=[dimPlex,dimPlex])
-   do basis = 0, nBasis-1
+   do basis = 0, nBasis*dimPlex-1, dimPlex
      call PetscDualSpaceGetFunctional(mechDualSpace,basis,functional,ierr)
      CHKERRQ(ierr)
      call PetscQuadratureGetData(functional,dimPlex,nc,nNodalPoints,nodalPointsP,nodalWeightsP,ierr)
      CHKERRQ(ierr)
-     x_scal(basis*dimPlex+1:(basis+1)*dimPlex) = pV0 + matmul(transpose(cellJMat),nodalPointsP + 1.0)
+     x_scal(basis+1:basis+dimPlex) = pV0 + matmul(transpose(cellJMat),nodalPointsP + 1.0)
    enddo
    px_scal => x_scal
    call DMPlexVecSetClosure(mech_mesh,section,solution_local,cell,px_scal,INSERT_ALL_VALUES,ierr)
@@ -326,7 +320,6 @@ subroutine FEM_mech_formResidual(dm_local,xx_local,f_local,dummy,ierr)
    materialpoint_F, &
    materialpoint_P
  use math, only: &
-   math_I3, &
    math_det33, &
    math_inv33  
  use FEsolving, only: &
@@ -362,8 +355,7 @@ subroutine FEM_mech_formResidual(dm_local,xx_local,f_local,dummy,ierr)
  CHKERRQ(ierr)
  call DMPlexGetHeightStratum(dm_local,0,cellStart,cellEnd,ierr); CHKERRQ(ierr)
  call DMGetLocalVector(dm_local,x_local,ierr); CHKERRQ(ierr)
- !call VecWAXPY(x_local,1.0,xx_local,solution_local,ierr); CHKERRQ(ierr)
- call VecCopy(xx_local,x_local,ierr); CHKERRQ(ierr)
+ call VecWAXPY(x_local,1.0,xx_local,solution_local,ierr); CHKERRQ(ierr)
  do field = 1, dimPlex; do face = 1, mesh_Nboundaries
    if (params%fieldBC%componentBC(field)%Mask(face)) then
      call DMGetStratumSize(dm_local,'Face Sets',mesh_boundaries(face),bcSize,ierr)
@@ -391,12 +383,11 @@ subroutine FEM_mech_formResidual(dm_local,xx_local,f_local,dummy,ierr)
        do comp = 0, dimPlex-1
          cidx = basis*dimPlex+comp
          BMat(comp*dimPlex+1:(comp+1)*dimPlex,basis*dimPlex+comp+1) = &
-           matmul(IcellJMat,basisFieldDer((qPt*nBasis*dimPlex+cidx  )*dimPlex+1: &
-                                          (qPt*nBasis*dimPlex+cidx+1)*dimPlex   ))
+           matmul(IcellJMat,basisFieldDer((((qPt*nBasis + basis)*dimPlex + comp)*dimPlex+comp  )*dimPlex+1: &
+                                          (((qPt*nBasis + basis)*dimPlex + comp)*dimPlex+comp+1)*dimPlex))
        enddo
      enddo
      materialpoint_F(1:dimPlex,1:dimPlex,qPt+1,cell+1) = &
-       math_I3 + &
        reshape(matmul(BMat,x_scal),shape=[dimPlex,dimPlex], order=[2,1])
    enddo    
    if (BBarStabilisation) then
@@ -433,8 +424,8 @@ subroutine FEM_mech_formResidual(dm_local,xx_local,f_local,dummy,ierr)
        do comp = 0, dimPlex-1
          cidx = basis*dimPlex+comp
          BMat(comp*dimPlex+1:(comp+1)*dimPlex,basis*dimPlex+comp+1) = &
-           matmul(IcellJMat,basisFieldDer((qPt*nBasis*dimPlex+cidx  )*dimPlex+1: &
-                                          (qPt*nBasis*dimPlex+cidx+1)*dimPlex   ))
+           matmul(IcellJMat,basisFieldDer((((qPt*nBasis + basis)*dimPlex + comp)*dimPlex+comp  )*dimPlex+1: &
+                                          (((qPt*nBasis + basis)*dimPlex + comp)*dimPlex+comp+1)*dimPlex))
        enddo
      enddo
      f_scal = f_scal + &
@@ -542,8 +533,8 @@ subroutine FEM_mech_formJacobian(dm_local,xx_local,Jac_pre,Jac,dummy,ierr)
        do comp = 0, dimPlex-1
          cidx = basis*dimPlex+comp
          BMat(comp*dimPlex+1:(comp+1)*dimPlex,basis*dimPlex+comp+1) = &
-           matmul(IcellJMat,basisFieldDer((qPt*nBasis*dimPlex+cidx  )*dimPlex+1: &
-                                          (qPt*nBasis*dimPlex+cidx+1)*dimPlex   ))
+           matmul(IcellJMat,basisFieldDer((((qPt*nBasis + basis)*dimPlex + comp)*dimPlex+comp  )*dimPlex+1: &
+                                          (((qPt*nBasis + basis)*dimPlex + comp)*dimPlex+comp+1)*dimPlex))
        enddo
      enddo
      MatA = matmul(reshape(reshape(materialpoint_dPdF(1:dimPlex,1:dimPlex,1:dimPlex,1:dimPlex,qPt+1,cell+1), &
