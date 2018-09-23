@@ -27,20 +27,6 @@ module mesh
    mesh_maxNcellnodes, &                                                                            !< max number of cell nodes in any CP element
    mesh_Nelems                                                                                      !< total number of elements in mesh
 
-#ifdef Spectral
- integer(pInt), dimension(3), public, protected :: &
-   grid                                                                                             !< (global) grid
- integer(pInt), public, protected :: &
-   mesh_NcpElemsGlobal, &                                                                           !< total number of CP elements in global mesh
-   grid3, &                                                                                         !< (local) grid in 3rd direction
-   grid3Offset                                                                                      !< (local) grid offset in 3rd direction
- real(pReal), dimension(3), public, protected :: &
-   geomSize
- real(pReal), public, protected :: &
-   size3, &                                                                                         !< (local) size in 3rd direction
-   size3offset                                                                                      !< (local) size offset in 3rd direction
-#endif
-
  integer(pInt), dimension(:,:), allocatable, public, protected :: &
    mesh_element, &                                                                                  !< FEid, type(internal representation), material, texture, node indices as CP IDs
    mesh_sharedElem, &                                                                               !< entryCount and list of elements containing node
@@ -71,35 +57,11 @@ module mesh
 
  logical, dimension(3), public, protected :: mesh_periodicSurface                                   !< flag indicating periodic outer surfaces (used for fluxes)
 
-#ifdef Marc4DAMASK
- integer(pInt), private :: &
-   MarcVersion, &                                                                                   !< Version of input file format (Marc only)
-   hypoelasticTableStyle, &                                                                         !< Table style (Marc only)
-   initialcondTableStyle                                                                            !< Table style (Marc only)
- integer(pInt), dimension(:), allocatable, private :: &
-   Marc_matNumber                                                                                   !< array of material numbers for hypoelastic material (Marc only)
-#endif
-
  integer(pInt), dimension(2), private :: &
    mesh_maxValStateVar = 0_pInt
 
-#ifndef Spectral
- character(len=64), dimension(:), allocatable, private :: &
-   mesh_nameElemSet, &                                                                              !< names of elementSet
-   mesh_nameMaterial, &                                                                             !< names of material in solid section
-   mesh_mapMaterial                                                                                 !< name of elementSet for material
-
- integer(pInt), dimension(:,:), allocatable, private :: &
-   mesh_mapElemSet                                                                                  !< list of elements in elementSet
-#endif
- integer(pInt), dimension(:,:), allocatable, private :: &
+integer(pInt), dimension(:,:), allocatable, private :: &
    mesh_cellnodeParent                                                                              !< cellnode's parent element ID, cellnode's intra-element ID
-
-#if defined(Marc4DAMASK) || defined(Abaqus)
- integer(pInt), dimension(:,:), allocatable, target, private :: &
-   mesh_mapFEtoCPelem, &                                                                            !< [sorted FEid, corresponding CPid]
-   mesh_mapFEtoCPnode                                                                               !< [sorted FEid, corresponding CPid]
-#endif
 
  integer(pInt),dimension(:,:,:), allocatable, private :: &
    mesh_cell                                                                                        !< cell connectivity for each element,ip/cell
@@ -115,10 +77,6 @@ module mesh
 
  integer(pInt), dimension(:,:,:,:), allocatable, private :: &
    FE_subNodeOnIPFace
-
-#ifdef Abaqus
- logical, private :: noPart                                                                         !< for cases where the ABAQUS input file does not use part/assembly information
-#endif
 
 ! These definitions should actually reside in the FE-solver specific part (different for MARC/ABAQUS)
 ! Hence, I suggest to prefix with "FE_"
@@ -375,32 +333,44 @@ module mesh
       4  & ! element  21 (3D 20node 27ip)
   ],pInt)
 
+#ifdef Spectral
+ integer(pInt), dimension(3), public, protected :: &
+   grid                                                                                             !< (global) grid
+ integer(pInt), public, protected :: &
+   mesh_NcpElemsGlobal, &                                                                           !< total number of CP elements in global mesh
+   grid3, &                                                                                         !< (local) grid in 3rd direction
+   grid3Offset                                                                                      !< (local) grid offset in 3rd direction
+ real(pReal), dimension(3), public, protected :: &
+   geomSize
+ real(pReal), public, protected :: &
+   size3, &                                                                                         !< (local) size in 3rd direction
+   size3offset                                                                                      !< (local) size offset in 3rd direction
+#endif
 
-!  integer(pInt), dimension(FE_Nelemtypes), parameter, private ::  MESH_VTKELEMTYPE = &
-!  int([ &
-!       5, & ! element   6 (2D 3node 1ip)
-!      22, & ! element 125 (2D 6node 3ip)
-!       9, & ! element  11 (2D 4node 4ip)
-!      23, & ! element  27 (2D 8node 9ip)
-!      23, & ! element  54 (2D 8node 4ip)
-!      10, & ! element 134 (3D 4node 1ip)
-!      10, & ! element 157 (3D 5node 4ip)
-!      24, & ! element 127 (3D 10node 4ip)
-!      13, & ! element 136 (3D 6node 6ip)
-!      12, & ! element 117 (3D 8node 1ip)
-!      12, & ! element   7 (3D 8node 8ip)
-!      25, & ! element  57 (3D 20node 8ip)
-!      25  & ! element  21 (3D 20node 27ip)
-!   ],pInt)
-! 
-!  integer(pInt), dimension(FE_Ncelltypes), parameter, private ::  MESH_VTKCELLTYPE = &
-!  int([ &
-!       5, & ! (2D 3node)
-!       9, & ! (2D 4node)
-!      10, & ! (3D 4node)
-!      12  & ! (3D 8node)
-!   ],pInt)
+#if defined(Marc4DAMASK) || defined(Abaqus)
+ character(len=64), dimension(:), allocatable, private :: &
+   mesh_nameElemSet, &                                                                              !< names of elementSet
+   mesh_nameMaterial, &                                                                             !< names of material in solid section
+   mesh_mapMaterial                                                                                 !< name of elementSet for material
+ integer(pInt), dimension(:,:), allocatable, private :: &
+   mesh_mapElemSet                                                                                  !< list of elements in elementSet
+ integer(pInt), dimension(:,:), allocatable, target, private :: &
+   mesh_mapFEtoCPelem, &                                                                            !< [sorted FEid, corresponding CPid]
+   mesh_mapFEtoCPnode                                                                               !< [sorted FEid, corresponding CPid]
+#endif
 
+#ifdef Marc4DAMASK
+ integer(pInt), private :: &
+   MarcVersion, &                                                                                   !< Version of input file format (Marc only)
+   hypoelasticTableStyle, &                                                                         !< Table style (Marc only)
+   initialcondTableStyle                                                                            !< Table style (Marc only)
+ integer(pInt), dimension(:), allocatable, private :: &
+   Marc_matNumber                                                                                   !< array of material numbers for hypoelastic material (Marc only)
+#endif
+
+#ifdef Abaqus
+ logical, private :: noPart                                                                         !< for cases where the ABAQUS input file does not use part/assembly information
+#endif
 
  public :: &
    mesh_init, &
@@ -454,7 +424,7 @@ module mesh
    mesh_abaqus_count_cpSizes, &
    mesh_abaqus_build_elements, &
 #endif
-#ifndef Spectral
+#if defined(Marc4DAMASK) || defined(Abaqus)
    mesh_build_nodeTwins, &
    mesh_build_sharedElems, &
    mesh_build_ipNeighborhood, &
