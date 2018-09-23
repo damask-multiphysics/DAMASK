@@ -481,9 +481,9 @@ subroutine mesh_init(ip,el)
    FEsolving_execElem, &
 #ifndef Spectral
    modelName, &
+   calcMode
 #endif
    FEsolving_execIP, &
-   calcMode
 
  implicit none
 #ifdef Spectral
@@ -629,12 +629,10 @@ subroutine mesh_init(ip,el)
  allocate(FEsolving_execIP(2_pInt,mesh_NcpElems), source=1_pInt)                                    ! parallel loop bounds set to comprise from first IP...
  forall (j = 1_pInt:mesh_NcpElems) FEsolving_execIP(2,j) = FE_Nips(FE_geomtype(mesh_element(2,j)))  ! ...up to own IP count for each element
 
+#if defined(Marc4DAMASK) || defined(Abaqus)
  allocate(calcMode(mesh_maxNips,mesh_NcpElems))
  calcMode = .false.                                                                                 ! pretend to have collected what first call is asking (F = I)
-#if defined(Marc4DAMASK) || defined(Abaqus)
  calcMode(ip,mesh_FEasCP('elem',el)) = .true.                                                       ! first ip,el needs to be already pingponged to "calc"
-#else
- calcMode(ip,el) = .true.                                                                           ! first ip,el needs to be already pingponged to "calc"
 #endif
 
 !!!! COMPATIBILITY HACK !!!!

@@ -25,8 +25,12 @@ use PETScis
    mesh_NcpElems, &                                                                                 !< total number of CP elements in mesh
    mesh_NcpElemsGlobal, &
    mesh_Nnodes, &                                                                                   !< total number of nodes in mesh
-   mesh_maxNips, &                                                                                  !< max number of IPs in any CP element
+   mesh_maxNipNeighbors, &                                                                          !< max number of IP neighbors in any CP element
    mesh_maxNipNeighbors
+!!!! BEGIN DEPRECATED !!!!!
+ integer(pInt), public, protected :: &
+   mesh_maxNips, &                                                                                  !< max number of IPs in any CP element
+!!!! BEGIN DEPRECATED !!!!!
 
  real(pReal), public, protected :: charLength
  
@@ -117,8 +121,7 @@ subroutine mesh_init(ip,el)
    worldsize
  use FEsolving, only: &
    FEsolving_execElem, &
-   FEsolving_execIP, &
-   calcMode
+   FEsolving_execIP
  use FEM_Zoo, only: &
    FEM_Zoo_nQuadrature, &
    FEM_Zoo_QuadraturePoints
@@ -231,10 +234,11 @@ subroutine mesh_init(ip,el)
  allocate(FEsolving_execIP(2_pInt,mesh_NcpElems)); FEsolving_execIP = 1_pInt                        ! parallel loop bounds set to comprise from first IP...
  forall (j = 1_pInt:mesh_NcpElems) FEsolving_execIP(2,j) = FE_Nips(FE_geomtype(mesh_element(2,j)))  ! ...up to own IP count for each element
  
- if (allocated(calcMode)) deallocate(calcMode)
- allocate(calcMode(mesh_maxNips,mesh_NcpElems))
- calcMode = .false.                                                                                 ! pretend to have collected what first call is asking (F = I)
- calcMode(ip,el) = .true.                                                                           ! first ip,el needs to be already pingponged to "calc"
+!!!! COMPATIBILITY HACK !!!!
+! for a homogeneous mesh, all elements have the same number of IPs and and cell nodes.
+! hence, xxPerElem instead of maxXX
+ mesh_NipsPerElem       = mesh_maxNips
+!!!!!!!!!!!!!!!!!!!!!!!!
 
 end subroutine mesh_init
 
