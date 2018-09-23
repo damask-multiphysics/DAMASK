@@ -628,7 +628,7 @@ subroutine mesh_init(ip,el)
    call IO_error(602_pInt,ext_msg='IP')                                                             ! selected element does not have requested IP
 
  FEsolving_execElem = [ 1_pInt,mesh_NcpElems ]                                                      ! parallel loop bounds set to comprise all DAMASK elements
- allocate(FEsolving_execIP(2_pInt,mesh_NcpElems)); FEsolving_execIP = 1_pInt                        ! parallel loop bounds set to comprise from first IP...
+ allocate(FEsolving_execIP(2_pInt,mesh_NcpElems), source=1_pInt)                                    ! parallel loop bounds set to comprise from first IP...
  forall (j = 1_pInt:mesh_NcpElems) FEsolving_execIP(2,j) = FE_Nips(FE_geomtype(mesh_element(2,j)))  ! ...up to own IP count for each element
 
  allocate(calcMode(mesh_maxNips,mesh_NcpElems))
@@ -1686,8 +1686,8 @@ subroutine mesh_marc_map_elementSets(fileUnit)
  character(len=300) :: line
  integer(pInt) :: elemSet = 0_pInt
 
- allocate (mesh_nameElemSet(mesh_NelemSets))                     ; mesh_nameElemSet = ''
- allocate (mesh_mapElemSet(1_pInt+mesh_maxNelemInSet,mesh_NelemSets)) ; mesh_mapElemSet = 0_pInt
+ allocate (mesh_nameElemSet(mesh_NelemSets)); mesh_nameElemSet = ''
+ allocate (mesh_mapElemSet(1_pInt+mesh_maxNelemInSet,mesh_NelemSets), source=0_pInt)
 
 610 FORMAT(A300)
 
@@ -1784,7 +1784,7 @@ subroutine mesh_marc_map_elements(fileUnit)
  integer(pInt), dimension (1_pInt+mesh_NcpElems) :: contInts
  integer(pInt) :: i,cpElem = 0_pInt
 
- allocate (mesh_mapFEtoCPelem(2,mesh_NcpElems)) ; mesh_mapFEtoCPelem = 0_pInt
+ allocate (mesh_mapFEtoCPelem(2,mesh_NcpElems), source = 0_pInt)
 
 610 FORMAT(A300)
 
@@ -1854,7 +1854,7 @@ subroutine mesh_marc_map_nodes(fileUnit)
  integer(pInt), dimension (mesh_Nnodes) :: node_count
  integer(pInt) :: i
 
- allocate (mesh_mapFEtoCPnode(2_pInt,mesh_Nnodes)) ; mesh_mapFEtoCPnode = 0_pInt
+ allocate (mesh_mapFEtoCPnode(2_pInt,mesh_Nnodes) source=0_pInt)
 
 610 FORMAT(A300)
 
@@ -1901,8 +1901,8 @@ subroutine mesh_marc_build_nodes(fileUnit)
  character(len=300) :: line
  integer(pInt) :: i,j,m
 
- allocate ( mesh_node0 (3,mesh_Nnodes) ); mesh_node0 = 0.0_pReal
- allocate ( mesh_node  (3,mesh_Nnodes) ); mesh_node  = 0.0_pReal
+ allocate ( mesh_node0 (3,mesh_Nnodes), source=0.0_pReal)
+ allocate ( mesh_node  (3,mesh_Nnodes), source=0.0_pReal)
 
 610 FORMAT(A300)
 
@@ -2256,8 +2256,8 @@ subroutine mesh_abaqus_map_elementSets(fileUnit)
  integer(pInt) :: elemSet = 0_pInt,i
  logical :: inPart = .false.
 
- allocate (mesh_nameElemSet(mesh_NelemSets))                          ; mesh_nameElemSet = ''
- allocate (mesh_mapElemSet(1_pInt+mesh_maxNelemInSet,mesh_NelemSets)) ; mesh_mapElemSet  = 0_pInt
+ allocate (mesh_nameElemSet(mesh_NelemSets)); mesh_nameElemSet = ''
+ allocate (mesh_mapElemSet(1_pInt+mesh_maxNelemInSet,mesh_NelemSets),source=0_pInt)
 
 610 FORMAT(A300)
 
@@ -2308,8 +2308,8 @@ subroutine mesh_abaqus_map_materials(fileUnit)
  logical :: inPart = .false.
  character(len=64) :: elemSetName,materialName
 
- allocate (mesh_nameMaterial(mesh_Nmaterials)) ; mesh_nameMaterial = ''
- allocate (mesh_mapMaterial(mesh_Nmaterials)) ;  mesh_mapMaterial = ''
+ allocate (mesh_nameMaterial(mesh_Nmaterials)); mesh_nameMaterial = ''
+ allocate (mesh_mapMaterial(mesh_Nmaterials));  mesh_mapMaterial = ''
 
 610 FORMAT(A300)
 
@@ -2426,7 +2426,7 @@ subroutine mesh_abaqus_map_elements(fileUnit)
  logical :: materialFound = .false.
  character (len=64) materialName,elemSetName                                                        ! why limited to 64? ABAQUS?
 
- allocate (mesh_mapFEtoCPelem(2,mesh_NcpElems)) ; mesh_mapFEtoCPelem = 0_pInt
+ allocate (mesh_mapFEtoCPelem(2,mesh_NcpElems), source = 0_pInt)
 
 610 FORMAT(A300)
 
@@ -2489,7 +2489,7 @@ subroutine mesh_abaqus_map_nodes(fileUnit)
  integer(pInt) :: i,c,cpNode = 0_pInt
  logical :: inPart = .false.
 
- allocate (mesh_mapFEtoCPnode(2_pInt,mesh_Nnodes)) ; mesh_mapFEtoCPnode = 0_pInt
+ allocate (mesh_mapFEtoCPnode(2_pInt,mesh_Nnodes), source=0_pInt)
 
 610 FORMAT(A300)
 
@@ -2551,8 +2551,8 @@ subroutine mesh_abaqus_build_nodes(fileUnit)
  integer(pInt) :: i,j,m,c
  logical :: inPart
 
- allocate ( mesh_node0 (3,mesh_Nnodes) ); mesh_node0 = 0.0_pReal
- allocate ( mesh_node  (3,mesh_Nnodes) ); mesh_node  = 0.0_pReal
+ allocate ( mesh_node0 (3,mesh_Nnodes), source=0.0_pReal)
+ allocate ( mesh_node  (3,mesh_Nnodes), source=0.0_pReal)
 
 610 FORMAT(A300)
 
@@ -2990,7 +2990,7 @@ subroutine mesh_build_sharedElems
                  myDim, &                                                                            ! dimension index
                  nodeTwin                                                                            ! node twin in the specified dimension
  integer(pInt), dimension (mesh_Nnodes) :: node_count
- integer(pInt), dimension (:), allocatable :: node_seen
+ integer(pInt), dimension(:), allocatable :: node_seen
 
  allocate(node_seen(maxval(FE_NmatchingNodes)))
 
@@ -3015,8 +3015,7 @@ subroutine mesh_build_sharedElems
 
  mesh_maxNsharedElems = int(maxval(node_count),pInt)                                                 ! most shared node
 
- allocate(mesh_sharedElem(1+mesh_maxNsharedElems,mesh_Nnodes))
- mesh_sharedElem = 0_pInt
+ allocate(mesh_sharedElem(1+mesh_maxNsharedElems,mesh_Nnodes),source=0_pInt)
 
  do e = 1_pInt,mesh_NcpElems
    g = FE_geomtype(mesh_element(2,e))                                                                ! get elemGeomType
@@ -3238,7 +3237,7 @@ subroutine mesh_tell_statistics
  if (mesh_maxValStateVar(1) < 1_pInt) call IO_error(error_ID=170_pInt)                              ! no homogenization specified
  if (mesh_maxValStateVar(2) < 1_pInt) call IO_error(error_ID=180_pInt)                              ! no microstructure specified
 
- allocate (mesh_HomogMicro(mesh_maxValStateVar(1),mesh_maxValStateVar(2))); mesh_HomogMicro = 0_pInt
+ allocate (mesh_HomogMicro(mesh_maxValStateVar(1),mesh_maxValStateVar(2)),source = 0_pInt)
  do e = 1_pInt,mesh_NcpElems
    if (mesh_element(3,e) < 1_pInt) call IO_error(error_ID=170_pInt,el=e)                             ! no homogenization specified
    if (mesh_element(4,e) < 1_pInt) call IO_error(error_ID=180_pInt,el=e)                             ! no microstructure specified
@@ -3502,11 +3501,11 @@ subroutine mesh_build_FEdata
 
  implicit none
  integer(pInt) :: me
- allocate(FE_nodesAtIP(FE_maxmaxNnodesAtIP,FE_maxNips,FE_Ngeomtypes)); FE_nodesAtIP = 0_pInt
- allocate(FE_ipNeighbor(FE_maxNipNeighbors,FE_maxNips,FE_Ngeomtypes)); FE_ipNeighbor = 0_pInt
- allocate(FE_cell(FE_maxNcellnodesPerCell,FE_maxNips,FE_Ngeomtypes)); FE_cell = 0_pInt
- allocate(FE_cellnodeParentnodeWeights(FE_maxNnodes,FE_maxNcellnodes,FE_Nelemtypes)); FE_cellnodeParentnodeWeights = 0.0_pReal
- allocate(FE_cellface(FE_maxNcellnodesPerCellface,FE_maxNcellfaces,FE_Ncelltypes)); FE_cellface = 0_pInt
+ allocate(FE_nodesAtIP(FE_maxmaxNnodesAtIP,FE_maxNips,FE_Ngeomtypes), source=0_pInt)
+ allocate(FE_ipNeighbor(FE_maxNipNeighbors,FE_maxNips,FE_Ngeomtypes), source=0_pInt)
+ allocate(FE_cell(FE_maxNcellnodesPerCell,FE_maxNips,FE_Ngeomtypes),  source=0_pInt)
+ allocate(FE_cellnodeParentnodeWeights(FE_maxNnodes,FE_maxNcellnodes,FE_Nelemtypes), source=0.0_pReal)
+ allocate(FE_cellface(FE_maxNcellnodesPerCellface,FE_maxNcellfaces,FE_Ncelltypes),  source=0_pInt)
 
 
  !*** fill FE_nodesAtIP with data ***
