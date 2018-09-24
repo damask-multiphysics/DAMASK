@@ -60,17 +60,14 @@ variables:
   IntelCompiler:                   "$IntelCompiler18_1"
   GNUCompiler:                     "$GNUCompiler7_3"
   # ++++++++++++ MPI +++++++++++++++++++++++++++++++++++++++++++++++++++
-  MPICH3_2Intel17_0:               "MPI/Intel/17.0/MPICH/3.2"
   MPICH3_2Intel18_1:               "MPI/Intel/18.1/MPICH/3.2.1"
   MPICH3_2GNU7_3:                  "MPI/GNU/7.3/MPICH/3.2.1"
   # ------------ Defaults ----------------------------------------------
-  MPICH_GNU:                       "$MPICH3_2GNU7_3"
   MPICH_Intel:                     "$MPICH3_2Intel18_1"
+  MPICH_GNU:                       "$MPICH3_2GNU7_3"
   # ++++++++++++ PETSc +++++++++++++++++++++++++++++++++++++++++++++++++
   PETSc3_10_0MPICH3_2Intel18_1:    "Libraries/PETSc/3.10.0/Intel-18.1-MPICH-3.2.1"
   PETSc3_10_0MPICH3_2GNU7_3:       "Libraries/PETSc/3.10.0/GNU-7.3-MPICH-3.2.1"
-  PETSc3_9_1MPICH3_2Intel18_1:     "Libraries/PETSc/3.9.1/Intel-18.1-MPICH-3.2.1"
-  PETSc3_9_1MPICH3_2GNU7_3:        "Libraries/PETSc/3.9.1/GNU-7.3-MPICH-3.2.1"
   # ------------ Defaults ----------------------------------------------
   PETSc_MPICH_Intel:               "$PETSc3_10_0MPICH3_2Intel18_1"
   PETSc_MPICH_GNU:                 "$PETSc3_10_0MPICH3_2GNU7_3"
