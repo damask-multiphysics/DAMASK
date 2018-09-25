@@ -247,8 +247,13 @@ subroutine CPFEM_age()
    HDF5_createFile, &
    HDF5_closeFile, &
    HDF5_closeGroup, &
-   HDF5_addGroup2
- use HDF5
+   HDF5_addGroup2, &
+   HDF5_writeScalarDataset3, &
+   HDF5_writeScalarDataset4, &
+   HDF5_writeScalarDataset5, &
+   HDF5_writeScalarDataset7, &
+   HDF5_addScalarDataset2
+ use hdf5
  use DAMASK_interface, only: &
    getSolverJobName
 
@@ -257,6 +262,8 @@ subroutine CPFEM_age()
  integer(pInt) ::                                    i, k, l, m, ph, homog, mySource
  character(len=32) :: rankStr
  integer(HID_T) :: fileHandle
+ integer        :: hdferr
+ integer(HSIZE_T)  :: hdfsize
 
 if (iand(debug_level(debug_CPFEM), debug_levelBasic) /= 0_pInt) &
   write(6,'(a)') '<< CPFEM >> aging states'
@@ -291,8 +298,19 @@ if (restartWrite) then
   write(rankStr,'(a1,i0)')'_',worldrank
 
   fileHandle = HDF5_createFile(trim(getSolverJobName())//trim(rankStr)//'.hdf5_restart')
-
-  call HDF5_closeGroup(HDF5_addGroup2(fileHandle,'HelloWorld'))
+  
+  !call HDF5_closeGroup(HDF5_addGroup2(fileHandle,'recordedPhase'))
+  !hdfsize = size(material_phase)
+  !call h5dwrite_f(HDF5_addGroup2(fileHandle,'recordedPhase'), H5T_NATIVE_INTEGER, material_phase, hdfsize, hdferr)
+  
+  call HDF5_addScalarDataset2(fileHandle,shape(material_phase),'recordedPhase')
+  call HDF5_writeScalarDataset3(fileHandle,real(material_phase,pReal),'recordedPhase',shape(material_phase))
+  call HDF5_addScalarDataset2(fileHandle,shape(crystallite_F0),'convergedF')
+  call HDF5_writeScalarDataset5(fileHandle,real(crystallite_F0,pReal),'convergedF',shape(crystallite_F0))
+  call HDF5_addScalarDataset2(fileHandle,shape(crystallite_Fp0),'convergedFp')
+  call HDF5_writeScalarDataset5(fileHandle,real(crystallite_Fp0,pReal),'convergedFp',shape(crystallite_Fp0))
+  
+  !call HDF5_closeGroup(HDF5_addGroup2(fileHandle,'recordedPhase'))
   call HDF5_closeFile(fileHandle)
 
   call IO_write_jobRealFile(777,'recordedPhase'//trim(rankStr),size(material_phase))

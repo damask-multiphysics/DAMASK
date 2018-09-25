@@ -30,7 +30,9 @@ module HDF5_Utilities
    HDF5_removeLink, &
    HDF5_createFile, &
    HDF5_closeFile, &
-   HDF5_addGroup2
+   HDF5_addGroup2, HDF5_addScalarDataset2, HDF5_writeScalarDataset3, HDF5_writeScalarDataset4, HDF5_writeScalarDataset5, &
+   HDF5_writeScalarDataset7
+   
 contains
 
 subroutine HDF5_Utilities_init
@@ -1047,6 +1049,7 @@ subroutine HDF5_backwardMappingCrystallite(crystalliteAt,crystmemberAt,crystalli
 end subroutine HDF5_backwardMappingCrystallite
 
 
+
 !--------------------------------------------------------------------------------------------------
 !> @brief adds the unique cell to node mapping
 !--------------------------------------------------------------------------------------------------
@@ -1087,7 +1090,6 @@ subroutine HDF5_mappingCells(mapping)
  call HDF5_closeGroup(mapping_ID)
 
 end subroutine HDF5_mappingCells
-
 
 
 
@@ -1340,6 +1342,213 @@ subroutine HDF5_writeScalarDataset(group,dataset,label,SIunit,dataspace_size,mpi
  
 end subroutine HDF5_writeScalarDataset
 
+!--------------------------------------------------------------------------------------------------
+!> @brief creates a new scalar dataset in the given group location
+!--------------------------------------------------------------------------------------------------
+subroutine HDF5_writeScalarDataset3(group,dataset,label,dataspace_size)
+ use hdf5
+
+ implicit none
+ integer(HID_T),   intent(in) :: group
+ character(len=*), intent(in) :: label
+ integer(pInt),    intent(in),dimension(:) :: dataspace_size
+ real(pReal),      intent(in), dimension(:,:,:) :: dataset
+
+ integer        :: hdferr
+ integer(HID_T) :: dset_id, space_id, memspace, plist_id
+ 
+ integer(HSIZE_T),  dimension(1) :: counter
+ integer(HSSIZE_T), dimension(1) :: fileOffset
+ 
+ call h5dopen_f(group, label, dset_id, hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_writeScalarDataset: h5dopen_f')
+
+ ! Define and select hyperslabs
+ counter = size(dataset)                    ! how big i am
+ fileOffset  = 0                    ! where i start to write my data
+ 
+ call h5screate_simple_f(1, counter, memspace, hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_writeScalarDataset: h5screate_simple_f')
+ call h5dget_space_f(dset_id, space_id, hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_writeScalarDataset: h5dget_space_f')
+ !call h5sselect_hyperslab_f(space_id, H5S_SELECT_SET_F, fileOffset, counter, hdferr)
+ !if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_writeScalarDataset: h5sselect_hyperslab_f')
+ 
+ ! Create property list for collective dataset write
+#ifdef PETSc
+  call h5pcreate_f(H5P_DATASET_XFER_F, plist_id, hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_writeScalarDataset: h5pcreate_f') 
+ call h5pset_dxpl_mpio_f(plist_id, H5FD_MPIO_COLLECTIVE_F, hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_writeScalarDataset: h5pset_dxpl_mpio_f')
+#endif
+ 
+ ! Write the dataset collectively
+ call h5dwrite_f(dset_id, H5T_NATIVE_DOUBLE, dataset, int(dataspace_size,HSIZE_T), hdferr, &
+                 file_space_id = space_id, mem_space_id = memspace)!, xfer_prp = plist_id)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_writeScalarDataset: h5dwrite_f')
+ 
+ call h5sclose_f(space_id, hdferr)
+ call h5sclose_f(memspace, hdferr)
+ call h5dclose_f(dset_id, hdferr)
+ call h5pclose_f(plist_id, hdferr)
+ 
+end subroutine HDF5_writeScalarDataset3
+
+!--------------------------------------------------------------------------------------------------
+!> @brief creates a new scalar dataset in the given group location
+!--------------------------------------------------------------------------------------------------
+subroutine HDF5_writeScalarDataset4(group,dataset,label,dataspace_size)
+ use hdf5
+
+ implicit none
+ integer(HID_T),   intent(in) :: group
+ character(len=*), intent(in) :: label
+ integer(pInt),    intent(in),dimension(:) :: dataspace_size
+ real(pReal),      intent(in), dimension(:,:,:,:) :: dataset
+
+ integer        :: hdferr
+ integer(HID_T) :: dset_id, space_id, memspace, plist_id
+ 
+ integer(HSIZE_T),  dimension(1) :: counter
+ integer(HSSIZE_T), dimension(1) :: fileOffset
+ 
+ call h5dopen_f(group, label, dset_id, hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_writeScalarDataset: h5dopen_f')
+
+ ! Define and select hyperslabs
+ counter = size(dataset)                    ! how big i am
+ fileOffset  = 0                    ! where i start to write my data
+ 
+ call h5screate_simple_f(1, counter, memspace, hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_writeScalarDataset: h5screate_simple_f')
+ call h5dget_space_f(dset_id, space_id, hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_writeScalarDataset: h5dget_space_f')
+ !call h5sselect_hyperslab_f(space_id, H5S_SELECT_SET_F, fileOffset, counter, hdferr)
+ !if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_writeScalarDataset: h5sselect_hyperslab_f')
+ 
+ ! Create property list for collective dataset write
+#ifdef PETSc
+  call h5pcreate_f(H5P_DATASET_XFER_F, plist_id, hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_writeScalarDataset: h5pcreate_f') 
+ call h5pset_dxpl_mpio_f(plist_id, H5FD_MPIO_COLLECTIVE_F, hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_writeScalarDataset: h5pset_dxpl_mpio_f')
+#endif
+ 
+ ! Write the dataset collectively
+ call h5dwrite_f(dset_id, H5T_NATIVE_DOUBLE, dataset, int(dataspace_size,HSIZE_T), hdferr, &
+                 file_space_id = space_id, mem_space_id = memspace)!, xfer_prp = plist_id)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_writeScalarDataset: h5dwrite_f')
+ 
+ call h5sclose_f(space_id, hdferr)
+ call h5sclose_f(memspace, hdferr)
+ call h5dclose_f(dset_id, hdferr)
+ call h5pclose_f(plist_id, hdferr)
+ 
+end subroutine HDF5_writeScalarDataset4
+
+!--------------------------------------------------------------------------------------------------
+!> @brief creates a new scalar dataset in the given group location
+!--------------------------------------------------------------------------------------------------
+subroutine HDF5_writeScalarDataset5(group,dataset,label,dataspace_size)
+ use hdf5
+
+ implicit none
+ integer(HID_T),   intent(in) :: group
+ character(len=*), intent(in) :: label
+ integer(pInt),    intent(in),dimension(:) :: dataspace_size
+ real(pReal),      intent(in), dimension(:,:,:,:,:) :: dataset
+
+ integer        :: hdferr
+ integer(HID_T) :: dset_id, space_id, memspace, plist_id
+ 
+ integer(HSIZE_T),  dimension(1) :: counter
+ integer(HSSIZE_T), dimension(1) :: fileOffset
+ 
+ call h5dopen_f(group, label, dset_id, hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_writeScalarDataset: h5dopen_f')
+
+ ! Define and select hyperslabs
+ counter = size(dataset)                    ! how big i am
+ fileOffset  = 0                    ! where i start to write my data
+ 
+ call h5screate_simple_f(1, counter, memspace, hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_writeScalarDataset: h5screate_simple_f')
+ call h5dget_space_f(dset_id, space_id, hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_writeScalarDataset: h5dget_space_f')
+ !call h5sselect_hyperslab_f(space_id, H5S_SELECT_SET_F, fileOffset, counter, hdferr)
+ !if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_writeScalarDataset: h5sselect_hyperslab_f')
+ 
+ ! Create property list for collective dataset write
+#ifdef PETSc
+  call h5pcreate_f(H5P_DATASET_XFER_F, plist_id, hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_writeScalarDataset: h5pcreate_f') 
+ call h5pset_dxpl_mpio_f(plist_id, H5FD_MPIO_COLLECTIVE_F, hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_writeScalarDataset: h5pset_dxpl_mpio_f')
+#endif
+ 
+ ! Write the dataset collectively
+ call h5dwrite_f(dset_id, H5T_NATIVE_DOUBLE, dataset, int(dataspace_size,HSIZE_T), hdferr, &
+                 file_space_id = space_id, mem_space_id = memspace)!, xfer_prp = plist_id)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_writeScalarDataset: h5dwrite_f')
+ 
+ call h5sclose_f(space_id, hdferr)
+ call h5sclose_f(memspace, hdferr)
+ call h5dclose_f(dset_id, hdferr)
+ call h5pclose_f(plist_id, hdferr)
+ 
+end subroutine HDF5_writeScalarDataset5
+
+!--------------------------------------------------------------------------------------------------
+!> @brief creates a new scalar dataset in the given group location
+!--------------------------------------------------------------------------------------------------
+subroutine HDF5_writeScalarDataset7(group,dataset,label,dataspace_size)
+ use hdf5
+
+ implicit none
+ integer(HID_T),   intent(in) :: group
+ character(len=*), intent(in) :: label
+ integer(pInt),    intent(in),dimension(:) :: dataspace_size
+ real(pReal),      intent(in), dimension(:,:,:,:,:,:,:) :: dataset
+
+ integer        :: hdferr
+ integer(HID_T) :: dset_id, space_id, memspace, plist_id
+ 
+ integer(HSIZE_T),  dimension(1) :: counter
+ integer(HSSIZE_T), dimension(1) :: fileOffset
+ 
+ call h5dopen_f(group, label, dset_id, hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_writeScalarDataset: h5dopen_f')
+
+ ! Define and select hyperslabs
+ counter = size(dataset)                    ! how big i am
+ fileOffset  = 0                    ! where i start to write my data
+ 
+ call h5screate_simple_f(1, counter, memspace, hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_writeScalarDataset: h5screate_simple_f')
+ call h5dget_space_f(dset_id, space_id, hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_writeScalarDataset: h5dget_space_f')
+ !call h5sselect_hyperslab_f(space_id, H5S_SELECT_SET_F, fileOffset, counter, hdferr)
+ !if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_writeScalarDataset: h5sselect_hyperslab_f')
+ 
+ ! Create property list for collective dataset write
+#ifdef PETSc
+  call h5pcreate_f(H5P_DATASET_XFER_F, plist_id, hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_writeScalarDataset: h5pcreate_f') 
+ call h5pset_dxpl_mpio_f(plist_id, H5FD_MPIO_COLLECTIVE_F, hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_writeScalarDataset: h5pset_dxpl_mpio_f')
+#endif
+ 
+ ! Write the dataset collectively
+ call h5dwrite_f(dset_id, H5T_NATIVE_DOUBLE, dataset, int(dataspace_size,HSIZE_T), hdferr, &
+                 file_space_id = space_id, mem_space_id = memspace)!, xfer_prp = plist_id)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_writeScalarDataset: h5dwrite_f')
+ 
+ call h5sclose_f(space_id, hdferr)
+ call h5sclose_f(memspace, hdferr)
+ call h5dclose_f(dset_id, hdferr)
+ call h5pclose_f(plist_id, hdferr)
+ 
+end subroutine HDF5_writeScalarDataset7
 
 !--------------------------------------------------------------------------------------------------
 !> @brief creates a new scalar dataset in the given group location
@@ -1374,6 +1583,39 @@ subroutine HDF5_addScalarDataset(group,nnodes,label,SIunit)
  call h5sclose_f(space_id, hdferr)
 
 end subroutine HDF5_addScalarDataset
+
+!--------------------------------------------------------------------------------------------------
+!> @brief creates a new scalar dataset in the given group location
+!--------------------------------------------------------------------------------------------------
+subroutine HDF5_addScalarDataset2(fileHandle,dataShape,label)
+ use hdf5
+
+ implicit none
+ integer(HID_T),   intent(in) :: fileHandle
+ integer(pInt), dimension(:),    intent(in) :: dataShape
+ character(len=*), intent(in) :: label
+
+ integer        :: hdferr
+ integer(HID_T) :: space_id, dset_id
+
+!--------------------------------------------------------------------------------------------------
+! create dataspace
+ call h5screate_simple_f(size(dataShape), int(dataShape,HSIZE_T), space_id, hdferr, &
+                            int(dataShape,HSIZE_T))
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_addScalarDataset: h5screate_simple_f')
+
+!--------------------------------------------------------------------------------------------------
+! create Dataset
+ call h5dcreate_f(fileHandle, trim(label),H5T_NATIVE_DOUBLE, space_id, dset_id, hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_addScalarDataset: h5dcreate_f')
+
+!--------------------------------------------------------------------------------------------------
+!close types, dataspaces
+ call h5dclose_f(dset_id, hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_addScalarDataset: h5dclose_f')
+ call h5sclose_f(space_id, hdferr)
+
+end subroutine HDF5_addScalarDataset2
 
 
 
