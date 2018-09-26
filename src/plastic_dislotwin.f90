@@ -1098,8 +1098,6 @@ subroutine plastic_dislotwin_LpAndItsTangent(Lp,dLp_dMp,Mp,Temperature,ipc,ip,el
         0, 1, 1  &
         ],pReal),[ 3,6])
         
- real(pReal), dimension(3,3) :: &
-   S                                                                                                !< Second-Piola Kirchhoff stress
  type(tParameters)     :: prm                                                                       !< parameters of present instance
  type(tDislotwinState) :: ste                                                                       !< state of present instance
 
@@ -1138,7 +1136,7 @@ subroutine plastic_dislotwin_LpAndItsTangent(Lp,dLp_dMp,Mp,Temperature,ipc,ip,el
      sb_s = 0.5_pReal*sqrt(2.0_pReal)*math_mul33x3(eigVectors,sb_sComposition(1:3,i))
      sb_m = 0.5_pReal*sqrt(2.0_pReal)*math_mul33x3(eigVectors,sb_mComposition(1:3,i))
      Schmid_shearBand = math_tensorproduct33(sb_s,sb_m)
-     tau = math_mul33xx33(S,Schmid_shearBand)
+     tau = math_mul33xx33(Mp,Schmid_shearBand)
    
      significantShearBandStress: if (abs(tau) > tol_math_check) then
        StressRatio_p       = (abs(tau)/prm%sbResistance)**prm%pShearBand
