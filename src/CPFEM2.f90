@@ -305,8 +305,10 @@ if (restartWrite) then
   
   call HDF5_addScalarDataset2(fileHandle,shape(material_phase),'recordedPhase')
   call HDF5_writeScalarDataset3(fileHandle,real(material_phase,pReal),'recordedPhase',shape(material_phase))
+  
   call HDF5_addScalarDataset2(fileHandle,shape(crystallite_F0),'convergedF')
   call HDF5_writeScalarDataset5(fileHandle,real(crystallite_F0,pReal),'convergedF',shape(crystallite_F0))
+  
   call HDF5_addScalarDataset2(fileHandle,shape(crystallite_Fp0),'convergedFp')
   call HDF5_writeScalarDataset5(fileHandle,real(crystallite_Fp0,pReal),'convergedFp',shape(crystallite_Fp0))
   
