@@ -69,7 +69,7 @@ class ASCIItable():
 # ------------------------------------------------------------------
   def _removeCRLF(self,
                   string):
-    """delete any carriage return and line feed from string"""
+    """Delete any carriage return and line feed from string"""
     try:
       return string.replace('\n','').replace('\r','')
     except AttributeError:
