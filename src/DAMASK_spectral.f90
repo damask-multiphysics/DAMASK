@@ -628,7 +628,7 @@ program DAMASK_spectral
  call MPI_file_close(fileUnit,ierr)
  close(statUnit)
 
- if (notConvergedCounter > 0_pInt) call quit(3_pInt)                                                ! error if some are not converged
+ if (notConvergedCounter > 0_pInt) call quit(2_pInt)                                                ! error if some are not converged
  call quit(0_pInt)                                                                                  ! no complains ;)
 
 end program DAMASK_spectral
@@ -636,11 +636,10 @@ end program DAMASK_spectral
 
 !--------------------------------------------------------------------------------------------------
 !> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
-!> @brief quit subroutine to mimic behavior of FEM solvers
-!> @details exits the Spectral solver and reports time and duration. Exit code 0 signals
-!> everything went fine. Exit code 1 signals an error, message according to IO_error. Exit code
-!> 2 signals no converged solution and increment of last saved restart information is written to
-!> stderr. Exit code 3 signals no severe problems, but some increments did not converge
+!> @brief quit subroutine
+!> @details exits the program and reports current time and duration. Exit code 0 signals
+!> everything is fine. Exit code 1 signals an error, message according to IO_error. Exit code
+!> 2 signals no severe problems, but some increments did not converge
 !--------------------------------------------------------------------------------------------------
 subroutine quit(stop_id)
 #include <petsc/finclude/petscsys.h>
@@ -650,6 +649,7 @@ subroutine quit(stop_id)
 #endif
  use prec, only: &
    pInt
+ use PetscSys
 
  implicit none
  integer(pInt), intent(in) :: stop_id
@@ -676,12 +676,7 @@ subroutine quit(stop_id)
                                                       dateAndTime(7)
 
  if (stop_id == 0_pInt .and. .not. ErrorInQuit) stop 0                                              ! normal termination
- if (stop_id <  0_pInt .and. .not. ErrorInQuit) then                                                ! terminally ill, restart might help
-   write(0,'(a,i6)') 'restart information available at ', stop_id*(-1_pInt)
-   stop 2
- endif
- if (stop_id == 3_pInt .and. .not. ErrorInQuit) stop 3                                              ! not all incs converged
- 
+ if (stop_id == 2_pInt .and. .not. ErrorInQuit) stop 2                                              ! not all incs converged
  stop 1                                                                                             ! error (message from IO_error)
 
 end subroutine quit

@@ -473,42 +473,55 @@ program DAMASK_FEM
                                    real(notConvergedCounter + convergedCounter,pReal)*100.0_pReal, &
                                    ' %) increments converged!'
  endif
- if (notConvergedCounter > 0_pInt) call quit(3_pInt)                                                ! error if some are not converged
+ if (notConvergedCounter > 0_pInt) call quit(2_pInt)                                                ! error if some are not converged
  call quit(0_pInt)                                                                                  ! no complains ;)
 
-end program DAMASK_FEM 
+end program DAMASK_FEM
 
 
 !--------------------------------------------------------------------------------------------------
 !> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
-!> @brief quit subroutine to mimic behavior of FEM solvers
-!> @details exits the Spectral solver and reports time and duration. Exit code 0 signals
-!> everything went fine. Exit code 1 signals an error, message according to IO_error. Exit code 
-!> 2 signals request for regridding, increment of last saved restart information is written to
-!> stderr. Exit code 3 signals no severe problems, but some increments did not converge
+!> @brief quit subroutine
+!> @details exits the program and reports current time and duration. Exit code 0 signals
+!> everything is fine. Exit code 1 signals an error, message according to IO_error. Exit code
+!> 2 signals no severe problems, but some increments did not converge
 !--------------------------------------------------------------------------------------------------
 subroutine quit(stop_id)
+#include <petsc/finclude/petscsys.h>
+#ifdef _OPENMP
+ use MPI, only: &
+   MPI_finalize
+#endif
  use prec, only: &
    pInt
-   
+ use PetscSys
+
  implicit none
  integer(pInt), intent(in) :: stop_id
  integer, dimension(8) :: dateAndTime                                                               ! type default integer
-
+ integer(pInt) :: error = 0_pInt
+ PetscErrorCode :: ierr = 0
+ logical :: ErrorInQuit
+ 
+ call PETScFinalize(ierr)
+ if (ierr /= 0) write(6,'(a)') ' Error in PETScFinalize'
+#ifdef _OPENMP
+ call MPI_finalize(error)
+ if (error /= 0) write(6,'(a)') ' Error in MPI_finalize'
+#endif
+ ErrorInQuit = (ierr /= 0 .or. error /= 0_pInt)
+ 
  call date_and_time(values = dateAndTime)
  write(6,'(/,a)') 'DAMASK terminated on:'
  write(6,'(a,2(i2.2,a),i4.4)') 'Date:               ',dateAndTime(3),'/',&
                                                       dateAndTime(2),'/',&
-                                                      dateAndTime(1) 
+                                                      dateAndTime(1)
  write(6,'(a,2(i2.2,a),i2.2)') 'Time:               ',dateAndTime(5),':',&
                                                       dateAndTime(6),':',&
-                                                      dateAndTime(7)  
- if (stop_id == 0_pInt) stop 0                                                                      ! normal termination
- if (stop_id <  0_pInt) then                                                                        ! trigger regridding
-   write(0,'(a,i6)') 'restart information available at ', stop_id*(-1_pInt)
-   stop 2
- endif
- if (stop_id == 3_pInt) stop 3                                                                      ! not all incs converged
+                                                      dateAndTime(7)
+
+ if (stop_id == 0_pInt .and. .not. ErrorInQuit) stop 0                                              ! normal termination
+ if (stop_id == 2_pInt .and. .not. ErrorInQuit) stop 2                                              ! not all incs converged
  stop 1                                                                                             ! error (message from IO_error)
 
 end subroutine quit

@@ -227,8 +227,8 @@ subroutine setWorkingDirectory(workingDirectoryArg)
  implicit none
  character(len=*),  intent(in) :: workingDirectoryArg                                               !< working directory argument
  character(len=1024)           :: workingDirectory                                                  !< working directory argument
- external                      :: quit
  logical                       :: error
+ external                      :: quit
 
  absolutePath: if (workingDirectoryArg(1:1) == '/') then
    workingDirectory = workingDirectoryArg
@@ -282,6 +282,7 @@ character(len=1024) function getGeometryFile(geometryParameter)
  implicit none
  character(len=1024), intent(in) :: geometryParameter
  logical                         :: file_exists
+ external                        :: quit
 
  getGeometryFile = trim(geometryParameter)
  if (scan(getGeometryFile,'/') /= 1) getGeometryFile = trim(getCWD())//'/'//trim(getGeometryFile)
@@ -306,6 +307,7 @@ character(len=1024) function getLoadCaseFile(loadCaseParameter)
  implicit none
  character(len=1024), intent(in) :: loadCaseParameter
  logical                         :: file_exists
+ external                        :: quit
 
  getLoadCaseFile = trim(loadCaseParameter)
  if (scan(getLoadCaseFile,'/') /= 1) getLoadCaseFile = trim(getCWD())//'/'//trim(getLoadCaseFile)
