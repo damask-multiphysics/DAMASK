@@ -1866,7 +1866,7 @@ subroutine mesh_marc_map_nodes(fileUnit)
  integer(pInt), dimension (mesh_Nnodes) :: node_count
  integer(pInt) :: i
 
- allocate (mesh_mapFEtoCPnode(2_pInt,mesh_Nnodes) source=0_pInt)
+ allocate (mesh_mapFEtoCPnode(2_pInt,mesh_Nnodes),source=0_pInt)
 
 610 FORMAT(A300)
 
