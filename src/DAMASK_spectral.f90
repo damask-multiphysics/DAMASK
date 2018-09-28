@@ -468,8 +468,6 @@ program DAMASK_spectral
      else skipping
        stepFraction = 0_pInt                                                                        ! fraction scaled by stepFactor**cutLevel
 
-!--------------------------------------------------------------------------------------------------
-! loop over sub step
        subStepLooping: do while (stepFraction < subStepFactor**cutBackLevel)
          remainingLoadCaseTime = loadCases(currentLoadCase)%time+time0 - time
          time = time + timeinc                                                                      ! forward target time

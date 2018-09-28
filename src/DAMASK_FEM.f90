@@ -13,7 +13,7 @@ program DAMASK_FEM
    compiler_options
 #endif
 #include <petsc/finclude/petscsys.h>
- use PETScsys
+ use PetscDM
  use prec, only: &
    pInt, &
    pReal, &
@@ -33,10 +33,6 @@ program DAMASK_FEM
    IO_intOut, &
    IO_warning, &
    IO_timeStamp
- use debug, only: &
-   debug_level, &
-   debug_spectral, &
-   debug_levelBasic
  use math                                                                                           ! need to include the whole module for FFTW
  use CPFEM2, only: &
    CPFEM_initAll
@@ -339,15 +335,16 @@ program DAMASK_FEM
      endif
      timeinc = timeinc * real(subStepFactor,pReal)**real(-cutBackLevel,pReal)                       ! depending on cut back level, decrease time step
 
-     forwarding: if(totalIncsCounter >= restartInc) then
-       stepFraction = 0_pInt
+     skipping: if (totalIncsCounter <= restartInc) then                                             ! not yet at restart inc?
+       time = time + timeinc                                                                        ! just advance time, skip already performed calculation
+       guess = .true.                                                                               ! QUESTION:why forced guessing instead of inheriting loadcase preference
+     else skipping
+       stepFraction = 0_pInt                                                                        ! fraction scaled by stepFactor**cutLevel
 
-!--------------------------------------------------------------------------------------------------
-! loop over sub incs 
-       subIncLooping: do while (stepFraction/subStepFactor**cutBackLevel <1_pInt)
-         time = time + timeinc                                                                      ! forward time
-         stepFraction = stepFraction + 1_pInt 
-         remainingLoadCaseTime = time0 - time + loadCases(currentLoadCase)%time + timeInc
+       subStepLooping: do while (stepFraction < subStepFactor**cutBackLevel)
+         remainingLoadCaseTime = loadCases(currentLoadCase)%time+time0 - time
+         time = time + timeinc                                                                      ! forward target time
+         stepFraction = stepFraction + 1_pInt                                                       ! count step
            
 !--------------------------------------------------------------------------------------------------
 ! report begin of new step
@@ -392,7 +389,9 @@ program DAMASK_FEM
                        incInfo,timeinc,timeIncOld,loadCases(currentLoadCase)%fieldBC(field))
 
              end select
+
              if(.not. solres(field)%converged) exit                                                ! no solution found
+
            enddo
            stagIter = stagIter + 1_pInt
            stagIterate =            stagIter < stagItMax &
@@ -423,50 +422,49 @@ program DAMASK_FEM
            if (worldrank == 0)  write(statUnit,*) totalIncsCounter, time, cutBackLevel, &
                              solres%converged, solres%iterationsNeeded                              ! write statistics about accepted solution
          endif
-       enddo subIncLooping
+       enddo subStepLooping
+
        cutBackLevel = max(0_pInt, cutBackLevel - 1_pInt)                                            ! try half number of subincs next inc
-       if(all(solres(:)%converged)) then                                                                    ! report converged inc
+
+       if (all(solres(:)%converged)) then
          convergedCounter = convergedCounter + 1_pInt
-         if (worldrank == 0) then
-         write(6,'(/,a,'//IO_intOut(totalIncsCounter)//',a)') &
-                                     ' increment ', totalIncsCounter, ' converged'
-         endif
+         write(6,'(/,a,'//IO_intOut(totalIncsCounter)//',a)') &                                     ! report converged inc
+                                   ' increment ', totalIncsCounter, ' converged'
        else
-         if (worldrank == 0) then
-         write(6,'(/,a,'//IO_intOut(totalIncsCounter)//',a)') &                                     ! report non-converged inc
-                                     ' increment ', totalIncsCounter, ' NOT converged'
-         endif
          notConvergedCounter = notConvergedCounter + 1_pInt
+         write(6,'(/,a,'//IO_intOut(totalIncsCounter)//',a)') &                                     ! report non-converged inc
+                                   ' increment ', totalIncsCounter, ' NOT converged'
        endif; flush(6)
+
        if (mod(inc,loadCases(currentLoadCase)%outputFrequency) == 0_pInt) then                      ! at output frequency
-         if (worldrank == 0) then
-         write(6,'(1/,a)') ' ... writing results to file ......................................'
-         endif
+         write(6,'(1/,a)') ' ToDo: ... writing results to file ......................................'
        endif
-       if( loadCases(currentLoadCase)%restartFrequency > 0_pInt .and. &                             ! at frequency of writing restart information set restart parameter for FEsolving 
-                      mod(inc,loadCases(currentLoadCase)%restartFrequency) == 0_pInt) then          ! ToDo first call to CPFEM_general will write? 
-         restartWrite = .true.
-         lastRestartWritten = inc
-       endif 
-     else forwarding
-       time = time + timeinc
-       guess = .true.
-     endif forwarding
+       if (              loadCases(currentLoadCase)%restartFrequency > 0_pInt &                     ! writing of restart info requested ...
+           .and. mod(inc,loadCases(currentLoadCase)%restartFrequency) == 0_pInt) then               ! ... and at frequency of writing restart information
+         restartWrite = .true.                                                                      ! set restart parameter for FEsolving
+         lastRestartWritten = inc                                                                   ! QUESTION: first call to CPFEM_general will write?
+       endif
+
+     endif skipping
 
     enddo incLooping
+
  enddo loadCaseLooping
+ 
  
 !--------------------------------------------------------------------------------------------------
 ! report summary of whole calculation
- if (worldrank == 0) then
  write(6,'(/,a)') ' ###########################################################################'
- write(6,'(1x,i6.6,a,i6.6,a,f5.1,a)') convergedCounter, ' out of ', &
-                                   notConvergedCounter + convergedCounter, ' (', &
-                                   real(convergedCounter, pReal)/&
-                                   real(notConvergedCounter + convergedCounter,pReal)*100.0_pReal, &
-                                   ' %) increments converged!'
- endif
+ write(6,'(1x,'//IO_intOut(convergedCounter)//',a,'//IO_intOut(notConvergedCounter + convergedCounter)//',a,f5.1,a)') &
+   convergedCounter, ' out of ', &
+   notConvergedCounter + convergedCounter, ' (', &
+   real(convergedCounter, pReal)/&
+   real(notConvergedCounter + convergedCounter,pReal)*100.0_pReal, ' %) increments converged!'
+ flush(6)
+ call MPI_file_close(fileUnit,ierr)
+ close(statUnit)
+
  if (notConvergedCounter > 0_pInt) call quit(2_pInt)                                                ! error if some are not converged
- call quit(0_pInt)                                                                                  ! no complains ;)
+ call quit(0_pInt)                                                                        ! no complains ;)
 
 end program DAMASK_FEM
