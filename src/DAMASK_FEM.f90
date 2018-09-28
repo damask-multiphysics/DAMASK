@@ -7,8 +7,13 @@
 !> results
 !--------------------------------------------------------------------------------------------------
 program DAMASK_FEM 
- use, intrinsic :: &
-   iso_fortran_env                                                                                  ! to get compiler_version and compiler_options (at least for gfortran >4.6 at the moment)
+#if defined(__GFORTRAN__) || __INTEL_COMPILER >= 1800
+ use, intrinsic :: iso_fortran_env, only: &
+   compiler_version, &
+   compiler_options
+#endif
+#include <petsc/finclude/petscsys.h>
+ use PETScsys
  use prec, only: &
    pInt, &
    pReal, &
@@ -64,7 +69,6 @@ program DAMASK_FEM
  use FEM_mech
  
  implicit none
-#include <petsc/finclude/petsc.h>
 
 !--------------------------------------------------------------------------------------------------
 ! variables related to information from load case and geom file
@@ -102,8 +106,7 @@ program DAMASK_FEM
    convergedCounter = 0_pInt, &                                                                     !< No. of converged increments
    notConvergedCounter = 0_pInt, &                                                                  !< No. of non-converged increments
    statUnit = 0_pInt, &                                                                             !< file unit for statistics output
-   lastRestartWritten = 0_pInt                                                                      !< total increment No. at which last restart information was written
- integer(pInt) :: &
+   lastRestartWritten = 0_pInt, &                                                                   !< total increment No. at which last restart information was written
    stagIter, &
    component
  logical :: &
@@ -117,7 +120,6 @@ program DAMASK_FEM
  PetscErrorCode :: ierr
 
  external :: &
-   MPI_abort, &
    quit
 
 !--------------------------------------------------------------------------------------------------
