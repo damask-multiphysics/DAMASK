@@ -88,7 +88,6 @@ program DAMASK_spectral
  real(pReal), dimension(9) :: temp_valueVector = 0.0_pReal                                          !< temporarily from loadcase file when reading in tensors (initialize to 0.0)
  logical,     dimension(9) :: temp_maskVector  = .false.                                            !< temporarily from loadcase file when reading in tensors
  integer(pInt), allocatable, dimension(:) :: chunkPos
-
  integer(pInt) :: &
    N_t   = 0_pInt, &                                                                                !< # of time indicators found in load case file
    N_n   = 0_pInt, &                                                                                !< # of increment specifiers found in load case file
@@ -130,8 +129,7 @@ program DAMASK_spectral
    stagIter
  character(len=6)  :: loadcase_string
  character(len=1024) :: &
-   incInfo, &                                                                                       !< string parsed to solution with information about current load case
-   workingDir
+   incInfo
  type(tLoadCase), allocatable, dimension(:) :: loadCases                                            !< array of all load cases
  type(tLoadCase) :: newLoadCase
  type(tSolutionState), allocatable, dimension(:) :: solres
@@ -140,7 +138,7 @@ program DAMASK_spectral
  integer(pInt), parameter :: maxByteOut = 2147483647-4096                                           !< limit of one file output write https://trac.mpich.org/projects/mpich/ticket/1742
  integer(pInt), parameter :: maxRealOut = maxByteOut/pReal
  integer(pLongInt), dimension(2) :: outputIndex
- integer :: ierr
+ PetscErrorCode :: ierr
  procedure(basic_init), pointer :: &
    mech_init
  procedure(basic_forward), pointer :: &
@@ -377,7 +375,7 @@ program DAMASK_spectral
      open(newunit=fileUnit,file=trim(getSolverJobName())//&
                                  '.spectralOut',form='UNFORMATTED',status='REPLACE')
      write(fileUnit) 'load:',       trim(loadCaseFile)                                               ! ... and write header
-     write(fileUnit) 'workingdir:', trim(workingDir)
+     write(fileUnit) 'workingdir:', 'n/a'
      write(fileUnit) 'geometry:',   trim(geometryFile)
      write(fileUnit) 'grid:',       grid
      write(fileUnit) 'size:',       geomSize
@@ -433,14 +431,12 @@ program DAMASK_spectral
    enddo
    fileOffset = fileOffset + sum(outputSize)                                                        ! forward to current file position
  endif writeUndeformed
-!--------------------------------------------------------------------------------------------------
-! looping over load cases
+
+
  loadCaseLooping: do currentLoadCase = 1_pInt, size(loadCases)
    time0 = time                                                                                     ! load case start time
    guess = loadCases(currentLoadCase)%followFormerTrajectory                                        ! change of load case? homogeneous guess for the first inc
 
-!--------------------------------------------------------------------------------------------------
-! loop over incs defined in input file for current load case
    incLooping: do inc = 1_pInt, loadCases(currentLoadCase)%incs
      totalIncsCounter = totalIncsCounter + 1_pInt
 

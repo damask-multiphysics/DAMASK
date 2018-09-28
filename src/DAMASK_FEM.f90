@@ -23,9 +23,7 @@ program DAMASK_FEM
    loadCaseFile, &
    getSolverJobName
  use IO, only: &
-   IO_read, &
    IO_isBlank, &
-   IO_open_file, &
    IO_stringPos, &
    IO_stringValue, &
    IO_floatValue, &
@@ -34,8 +32,7 @@ program DAMASK_FEM
    IO_lc, &
    IO_intOut, &
    IO_warning, &
-   IO_timeStamp, &
-   IO_EOF
+   IO_timeStamp
  use debug, only: &
    debug_level, &
    debug_spectral, &
@@ -72,9 +69,7 @@ program DAMASK_FEM
 
 !--------------------------------------------------------------------------------------------------
 ! variables related to information from load case and geom file
- integer(pInt), parameter  :: FILEUNIT           = 234_pInt                                         !< file unit, DAMASK IO does not support newunit feature
  integer(pInt), allocatable, dimension(:) :: chunkPos                                               ! this is longer than needed for geometry parsing
- 
  integer(pInt) :: &
    N_def = 0_pInt                                                                                   !< # of rate of deformation specifiers found in load case file
  character(len=65536) :: &
@@ -82,7 +77,6 @@ program DAMASK_FEM
 
 !--------------------------------------------------------------------------------------------------
 ! loop variables, convergence etc.
-
  integer(pInt), parameter :: &
    subStepFactor = 2_pInt                                                                           !< for each substep, divide the last time increment by 2.0
  real(pReal) :: &
@@ -92,7 +86,8 @@ program DAMASK_FEM
    timeIncOld = 0.0_pReal, &                                                                        !< previous time interval
    remainingLoadCaseTime = 0.0_pReal                                                                !< remaining time of current load case
  logical :: &
-   guess                                                                                            !< guess along former trajectory
+   guess, &                                                                                         !< guess along former trajectory
+   stagIterate
  integer(pInt) :: &
    i, &
    errorID, &
@@ -102,17 +97,18 @@ program DAMASK_FEM
    currentLoadcase = 0_pInt, &                                                                      !< current load case
    currentFace = 0_pInt, &
    inc, &                                                                                           !< current increment in current load case
-   totalIncsCounter = 0_pInt, &                                                                     !< total No. of increments
-   convergedCounter = 0_pInt, &                                                                     !< No. of converged increments
-   notConvergedCounter = 0_pInt, &                                                                  !< No. of non-converged increments
+   totalIncsCounter = 0_pInt, &                                                                     !< total # of increments
+   convergedCounter = 0_pInt, &                                                                     !< # of converged increments
+   notConvergedCounter = 0_pInt, &                                                                  !< # of non-converged increments
+   fileUnit = 0_pInt, &                                                                             !< file unit for reading load case and writing results
+   myStat, &
    statUnit = 0_pInt, &                                                                             !< file unit for statistics output
    lastRestartWritten = 0_pInt, &                                                                   !< total increment No. at which last restart information was written
    stagIter, &
-   component
- logical :: &
-   stagIterate  
+   component  
  character(len=6)  :: loadcase_string
- character(len=1024)  :: incInfo                                                                    !< string parsed to solution with information about current load case
+ character(len=1024) :: &
+   incInfo
  type(tLoadCase), allocatable, dimension(:) :: loadCases                                            !< array of all load cases
  type(tSolutionState), allocatable, dimension(:) :: solres
  PetscInt :: faceSet, currentFaceSet
@@ -125,8 +121,8 @@ program DAMASK_FEM
 !--------------------------------------------------------------------------------------------------
 ! init DAMASK (all modules)
  call CPFEM_initAll(el = 1_pInt, ip = 1_pInt)
-   write(6,'(/,a)')   ' <<<+-  DAMASK_FEM init  -+>>>'
-   write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
+ write(6,'(/,a)')   ' <<<+-  DAMASK_FEM init  -+>>>'
+ write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
  
 ! reading basic information from load case file and allocate data structure containing load cases
@@ -136,12 +132,13 @@ program DAMASK_FEM
 
 !--------------------------------------------------------------------------------------------------
 ! reading basic information from load case file and allocate data structure containing load cases
- call IO_open_file(FILEUNIT,trim(loadCaseFile))
- rewind(FILEUNIT)
+ open(newunit=fileunit,iostat=myStat,file=trim(loadCaseFile),action='read')
+ if (myStat /= 0_pInt) call IO_error(100_pInt,el=myStat,ext_msg=trim(loadCaseFile))
  do
-   line = IO_read(FILEUNIT)
-   if (trim(line) == IO_EOF) exit
+   read(fileUnit, '(A)', iostat=myStat) line
+   if ( myStat /= 0_pInt) exit
    if (IO_isBlank(line)) cycle                                                                      ! skip empty lines
+
    chunkPos = IO_stringPos(line)
    do i = 1_pInt, chunkPos(1)                                                                      ! reading compulsory parameters for loadcase
      select case (IO_lc(IO_stringValue(line,chunkPos,i)))
@@ -185,11 +182,11 @@ program DAMASK_FEM
 
 !--------------------------------------------------------------------------------------------------
 ! reading the load case and assign values to the allocated data structure
- rewind(FILEUNIT)
  do
-   line = IO_read(FILEUNIT)
-   if (trim(line) == IO_EOF) exit
+   read(fileUnit, '(A)', iostat=myStat) line
+   if ( myStat /= 0_pInt) exit
    if (IO_isBlank(line)) cycle                                                                      ! skip empty lines
+
    chunkPos = IO_stringPos(line)
    do i = 1_pInt, chunkPos(1)
      select case (IO_lc(IO_stringValue(line,chunkPos,i)))
@@ -262,7 +259,7 @@ program DAMASK_FEM
          enddo  
      end select
  enddo; enddo
- close(FILEUNIT)
+ close(fileUnit)
  
 !--------------------------------------------------------------------------------------------------
 ! consistency checks and output of load case
@@ -303,7 +300,7 @@ program DAMASK_FEM
  endif
 
 !--------------------------------------------------------------------------------------------------
-! doing initialization depending on selected solver 
+! doing initialization depending on active solvers
  call Utilities_init()
  do field = 1, nActiveFields
    select case (loadCases(1)%fieldBC(field)%ID)
@@ -312,42 +309,35 @@ program DAMASK_FEM
    end select
  enddo   
 
-!--------------------------------------------------------------------------------------------------
-! loopping over loadcases
- loadCaseLooping: do currentLoadCase = 1_pInt, size(loadCases)
-   time0 = time                                                                                     ! currentLoadCase start time                
-   if (loadCases(currentLoadCase)%followFormerTrajectory) then
-     guess = .true.
-   else
-     guess = .false.                                                                                ! change of load case, homogeneous guess for the first inc
-   endif
 
-!--------------------------------------------------------------------------------------------------
-! loop oper incs defined in input file for current currentLoadCase
+ loadCaseLooping: do currentLoadCase = 1_pInt, size(loadCases)
+   time0 = time                                                                                     ! load case start time
+   guess = loadCases(currentLoadCase)%followFormerTrajectory                                        ! change of load case? homogeneous guess for the first inc
+
    incLooping: do inc = 1_pInt, loadCases(currentLoadCase)%incs
      totalIncsCounter = totalIncsCounter + 1_pInt                                                 
 
 !--------------------------------------------------------------------------------------------------
 ! forwarding time
-     timeIncOld = timeinc
+     timeIncOld = timeinc                                                                           ! last timeinc that brought former inc to an end
      if (loadCases(currentLoadCase)%logscale == 0_pInt) then                                        ! linear scale
-       timeinc = loadCases(currentLoadCase)%time/loadCases(currentLoadCase)%incs                    ! only valid for given linear time scale. will be overwritten later in case loglinear scale is used
+       timeinc = loadCases(currentLoadCase)%time/real(loadCases(currentLoadCase)%incs,pReal)
      else
-       if (currentLoadCase == 1_pInt) then                                                          ! 1st currentLoadCase of logarithmic scale            
-         if (inc == 1_pInt) then                                                                    ! 1st inc of 1st currentLoadCase of logarithmic scale
+       if (currentLoadCase == 1_pInt) then                                                          ! 1st load case of logarithmic scale
+         if (inc == 1_pInt) then                                                                    ! 1st inc of 1st load case of logarithmic scale
            timeinc = loadCases(1)%time*(2.0_pReal**real(    1_pInt-loadCases(1)%incs ,pReal))       ! assume 1st inc is equal to 2nd 
-         else                                                                                       ! not-1st inc of 1st currentLoadCase of logarithmic scale
+         else                                                                                       ! not-1st inc of 1st load case of logarithmic scale
            timeinc = loadCases(1)%time*(2.0_pReal**real(inc-1_pInt-loadCases(1)%incs ,pReal))
          endif
-       else                                                                                         ! not-1st currentLoadCase of logarithmic scale
+       else                                                                                         ! not-1st load case of logarithmic scale
          timeinc = time0 * &
               ( (1.0_pReal + loadCases(currentLoadCase)%time/time0 )**(real(          inc,pReal)/&
                                                     real(loadCases(currentLoadCase)%incs ,pReal))&
-               -(1.0_pReal + loadCases(currentLoadCase)%time/time0 )**(real( (inc-1_pInt),pReal)/&
+               -(1.0_pReal + loadCases(currentLoadCase)%time/time0 )**(real( inc-1_pInt  ,pReal)/&
                                                      real(loadCases(currentLoadCase)%incs ,pReal)))
        endif
      endif
-     timeinc = timeinc / 2.0_pReal**real(cutBackLevel,pReal)                                        ! depending on cut back level, decrease time step
+     timeinc = timeinc * real(subStepFactor,pReal)**real(-cutBackLevel,pReal)                       ! depending on cut back level, decrease time step
 
      forwarding: if(totalIncsCounter >= restartInc) then
        stepFraction = 0_pInt
@@ -360,8 +350,7 @@ program DAMASK_FEM
          remainingLoadCaseTime = time0 - time + loadCases(currentLoadCase)%time + timeInc
            
 !--------------------------------------------------------------------------------------------------
-! report begin of new increment
-         if (worldrank == 0) then
+! report begin of new step
            write(6,'(/,a)') ' ###########################################################################'
            write(6,'(1x,a,es12.5'//&
                    ',a,'//IO_intOut(inc)//',a,'//IO_intOut(loadCases(currentLoadCase)%incs)//&
@@ -371,12 +360,14 @@ program DAMASK_FEM
                    's: Increment ', inc, '/', loadCases(currentLoadCase)%incs,&
                    '-', stepFraction, '/', subStepFactor**cutBackLevel,&
                    ' of load case ', currentLoadCase,'/',size(loadCases)
-           flush(6)
-           write(incInfo,'(a,'//IO_intOut(totalIncsCounter)//',a,'//IO_intOut(sum(loadCases%incs))//&
-                 ',a,'//IO_intOut(stepFraction)//',a,'//IO_intOut(subStepFactor**cutBackLevel)//')') &
+         write(incInfo,&
+                 '(a,'//IO_intOut(totalIncsCounter)//&
+                 ',a,'//IO_intOut(sum(loadCases%incs))//&
+                 ',a,'//IO_intOut(stepFraction)//&
+                 ',a,'//IO_intOut(subStepFactor**cutBackLevel)//')') &
                  'Increment ',totalIncsCounter,'/',sum(loadCases%incs),&
                  '-',stepFraction, '/', subStepFactor**cutBackLevel
-         endif
+         flush(6)
 
 !--------------------------------------------------------------------------------------------------
 ! forward fields
@@ -404,9 +395,9 @@ program DAMASK_FEM
              if(.not. solres(field)%converged) exit                                                ! no solution found
            enddo
            stagIter = stagIter + 1_pInt
-           stagIterate = stagIter < stagItMax .and. &
-                         all(solres(:)%converged) .and. &
-                         .not. all(solres(:)%stagConverged)
+           stagIterate =            stagIter < stagItMax &
+                        .and.       all(solres(:)%converged) &
+                        .and. .not. all(solres(:)%stagConverged)                                    ! stationary with respect to staggered iteration
          enddo     
            
 ! check solution 
