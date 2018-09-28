@@ -178,6 +178,7 @@ program DAMASK_FEM
 
 !--------------------------------------------------------------------------------------------------
 ! reading the load case and assign values to the allocated data structure
+ rewind(fileUnit)
  do
    read(fileUnit, '(A)', iostat=myStat) line
    if ( myStat /= 0_pInt) exit
@@ -261,8 +262,7 @@ program DAMASK_FEM
 ! consistency checks and output of load case
  loadCases(1)%followFormerTrajectory = .false.                                                      ! cannot guess along trajectory for first inc of first currentLoadCase
  errorID = 0_pInt
- if (worldrank == 0) then
-   checkLoadcases: do currentLoadCase = 1_pInt, size(loadCases)
+ checkLoadcases: do currentLoadCase = 1_pInt, size(loadCases)
      write (loadcase_string, '(i6)' ) currentLoadCase
      write(6,'(1x,a,i6)') 'load case: ', currentLoadCase
      if (.not. loadCases(currentLoadCase)%followFormerTrajectory) &
@@ -292,8 +292,7 @@ program DAMASK_FEM
      write(6,'(2x,a,i5,/)')    'restart frequency:  ', &
                 loadCases(currentLoadCase)%restartfrequency
      if (errorID > 0_pInt) call IO_error(error_ID = errorID, ext_msg = loadcase_string)               ! exit with error message
-   enddo checkLoadcases
- endif
+ enddo checkLoadcases
 
 !--------------------------------------------------------------------------------------------------
 ! doing initialization depending on active solvers
