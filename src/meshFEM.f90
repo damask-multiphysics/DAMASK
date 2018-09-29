@@ -104,7 +104,7 @@ contains
 !> @brief initializes the mesh by calling all necessary private routines the mesh module
 !! Order and routines strongly depend on type of solver
 !--------------------------------------------------------------------------------------------------
-subroutine mesh_init(ip,el)
+subroutine mesh_init()
  use DAMASK_interface
  use, intrinsic :: iso_fortran_env                                                                  ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
  use IO, only: &
@@ -133,7 +133,6 @@ subroutine mesh_init(ip,el)
  
  implicit none
  integer(pInt), parameter :: FILEUNIT = 222_pInt
- integer(pInt), intent(in) :: el, ip
  integer(pInt) :: j
  integer(pInt), allocatable, dimension(:) :: chunkPos
  integer :: dimPlex
