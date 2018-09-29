@@ -65,7 +65,7 @@ if np.any(np.array(options.size) <= 0.0):
 if filename == []: filename = [None]
 
 table = damask.ASCIItable(outname = filename[0],
-                          buffered = False)
+                          buffered = False, labeled=False)
 
 damask.util.report(scriptName,filename[0])
 
