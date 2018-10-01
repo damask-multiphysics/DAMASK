@@ -168,7 +168,8 @@ subroutine plastic_phenopowerlaw_init
    outputID                                                                                     !< ID of each post result output
 
  character(len=512) :: &
-   extmsg    = ''
+   extmsg    = '', &
+   structure = ''
  character(len=65536), dimension(:), allocatable :: outputs
 
  write(6,'(/,a)')   ' <<<+-  constitutive_'//PLASTICITY_PHENOPOWERLAW_label//' init  -+>>>'
@@ -193,6 +194,8 @@ subroutine plastic_phenopowerlaw_init
    associate(prm => param(instance),stt => state(instance),dot => dotState(instance))
    extmsg = ''
 
+   structure      = config_phase(p)%getString('lattice_structure')
+
    prm%Nslip      = config_phase(p)%getInts('nslip',defaultVal=emptyIntArray)
    prm%totalNslip = sum(prm%Nslip)
    if (size(prm%Nslip) > count(lattice_NslipSystem(:,p) > 0_pInt)) &
@@ -201,6 +204,9 @@ subroutine plastic_phenopowerlaw_init
      call IO_error(150_pInt,ext_msg='Nslip')
 
    slipActive: if (prm%totalNslip > 0_pInt) then
+
+     prm%Schmid_slip          = lattice_SchmidMatrix_slip(prm%Nslip,structure(1:3),&
+                                                          config_phase(p)%getFloat('c/a',defaultVal=0.0_pReal))
      ! reading in slip related parameters
      prm%xi_slip_0            = config_phase(p)%getFloats('tau0_slip',   requiredShape=shape(prm%Nslip))
      prm%xi_slip_sat          = config_phase(p)%getFloats('tausat_slip', requiredShape=shape(prm%Nslip))
@@ -242,6 +248,8 @@ subroutine plastic_phenopowerlaw_init
      call IO_error(150_pInt,ext_msg='Ntwin')
 
    twinActive: if (prm%totalNtwin > 0_pInt) then
+     prm%Schmid_twin          = lattice_SchmidMatrix_twin(prm%Ntwin,structure(1:3),&
+                                                          config_phase(p)%getFloat('c/a',defaultVal=0.0_pReal))
      ! reading in twin related parameters
      prm%xi_twin_0            = config_phase(p)%getFloats('tau0_twin',requiredShape=shape(prm%Ntwin))
      prm%interaction_TwinTwin = spread(config_phase(p)%getFloats('interaction_twintwin', &
@@ -371,7 +379,6 @@ subroutine plastic_phenopowerlaw_init
 ! calculate hardening matrices
    allocate(temp1(prm%totalNslip,prm%totalNslip),source = 0.0_pReal)
    allocate(temp2(prm%totalNslip,prm%totalNtwin),source = 0.0_pReal)
-   allocate(prm%Schmid_slip(3,3,prm%totalNslip),source   = 0.0_pReal)
    allocate(prm%nonSchmid_pos(3,3,size(prm%nonSchmidCoeff),prm%totalNslip),source = 0.0_pReal)
    allocate(prm%nonSchmid_neg(3,3,size(prm%nonSchmidCoeff),prm%totalNslip),source = 0.0_pReal)
    i = 0_pInt
@@ -380,7 +387,6 @@ subroutine plastic_phenopowerlaw_init
 
      mySlipSystems: do j = 1_pInt,prm%Nslip(f)
        i = i + 1_pInt
-       prm%Schmid_slip(1:3,1:3,i) = lattice_Sslip(1:3,1:3,1,sum(lattice_Nslipsystem(1:f-1,p))+j,p)
        do k = 1,size(prm%nonSchmidCoeff)
          prm%nonSchmid_pos(1:3,1:3,k,i) = lattice_Sslip(1:3,1:3,2*k,  index_myFamily+j,p) &
                                         * prm%nonSchmidCoeff(k)
@@ -414,14 +420,12 @@ subroutine plastic_phenopowerlaw_init
 
    allocate(temp1(prm%totalNtwin,prm%totalNslip),source = 0.0_pReal)
    allocate(temp2(prm%totalNtwin,prm%totalNtwin),source = 0.0_pReal)
-   allocate(prm%Schmid_twin(3,3,prm%totalNtwin),source  = 0.0_pReal)
-   allocate(prm%gamma_twin_char(prm%totalNtwin),source       = 0.0_pReal)
+   allocate(prm%gamma_twin_char(prm%totalNtwin),source  = 0.0_pReal)
    i = 0_pInt
    myTwinFamilies: do f = 1_pInt,size(prm%Ntwin,1)                                    ! >>> interaction twin -- X
      index_myFamily = sum(prm%Ntwin(1:f-1_pInt))
      myTwinSystems: do j = 1_pInt,prm%Ntwin(f)
        i = i + 1_pInt
-       prm%Schmid_twin(1:3,1:3,i) = lattice_Stwin(1:3,1:3,sum(lattice_NTwinsystem(1:f-1,p))+j,p)
        prm%gamma_twin_char(i)          = lattice_shearTwin(sum(lattice_Ntwinsystem(1:f-1,p))+j,p)
        slipFamilies: do o = 1_pInt,size(prm%Nslip,1)
          index_otherFamily = sum(prm%Nslip(1:o-1_pInt))
