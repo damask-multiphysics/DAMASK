@@ -1,14 +1,14 @@
 # -*- coding: UTF-8 no BOM -*-
 
-import os,sys
+import os, sys
 import numpy as np
 
 # ------------------------------------------------------------------
 # python 3 has no unicode object, this ensures that the code works on Python 2&3
 try:
-  test=isinstance('test', unicode)
-except(NameError):
-  unicode=str
+  test = isinstance('test', unicode)
+except NameError:
+  unicode = str
 
 # ------------------------------------------------------------------
 class ASCIItable():
@@ -63,16 +63,17 @@ class ASCIItable():
                             x):
     try:
       return float(x)
-    except:
+    except ValueError:
       return 0.0
 
 # ------------------------------------------------------------------
   def _removeCRLF(self,
-              string):
+                  string):
+    """Delete any carriage return and line feed from string"""
     try:
       return string.replace('\n','').replace('\r','')
-    except:
-      return string
+    except AttributeError:
+      return str(string)
 
 
 # ------------------------------------------------------------------
@@ -93,22 +94,22 @@ class ASCIItable():
 
 # ------------------------------------------------------------------
   def input_close(self):
-    try:
+#    try:
       if self.__IO__['in'] != sys.stdin: self.__IO__['in'].close()
-    except:
-      pass
+#    except:
+#      pass
 
 # ------------------------------------------------------------------
   def output_write(self,
                    what):
     """Aggregate a single row (string) or list of (possibly containing further lists of) rows into output"""
-    if not isinstance(what, (str, unicode)):
+    if isinstance(what, (str, unicode)):
+      self.__IO__['output'] += [what]
+    else:
       try:
         for item in what: self.output_write(item)
-      except:
+      except TypeError:
         self.__IO__['output'] += [str(what)]
-    else:
-      self.__IO__['output'] += [what]
 
     return self.__IO__['buffered'] or self.output_flush()
 
@@ -129,10 +130,10 @@ class ASCIItable():
 # ------------------------------------------------------------------
   def output_close(self,
                    dismiss = False):
-    try:
-      if self.__IO__['out'] != sys.stdout: self.__IO__['out'].close()
-    except:
-      pass
+#    try:
+    if self.__IO__['out'] != sys.stdout: self.__IO__['out'].close()
+#    except:
+#      pass
     if dismiss and os.path.isfile(self.__IO__['out'].name):
       os.remove(self.__IO__['out'].name)
     elif self.__IO__['inPlace']:
@@ -150,7 +151,7 @@ class ASCIItable():
 
     try:
       self.__IO__['in'].seek(0)
-    except:
+    except IOError:
       pass
 
     firstline = self.__IO__['in'].readline().strip()
@@ -170,7 +171,7 @@ class ASCIItable():
     else:                                                                                           # other table format
       try:
         self.__IO__['in'].seek(0)                                                                   # try to rewind
-      except:
+      except IOError:
         self.__IO__['readBuffer'] = [firstline]                                                     # or at least save data in buffer
 
       while self.data_read(advance = False, respectLabels = False):
@@ -197,7 +198,9 @@ class ASCIItable():
     """Write current header information (info + labels)"""
     head = ['{}\theader'.format(len(self.info)+self.__IO__['labeled'])] if header else []
     head.append(self.info)
-    if self.__IO__['labeled']: head.append('\t'.join(map(self._quote,self.tags)))
+    if self.__IO__['labeled']:
+      head.append('\t'.join(map(self._quote,self.tags)))
+      if len(self.tags) == 0: raise ValueError('no labels present.')
     
     return self.output_write(head)
 
@@ -257,13 +260,13 @@ class ASCIItable():
                     what,
                     reset = False):
     """Add item or list to existing set of labels (and switch on labeling)"""
-    if not isinstance(what, (str, unicode)):
+    if isinstance(what, (str, unicode)):
+      self.tags += [self._removeCRLF(what)]
+    else:
       try:
         for item in what: self.labels_append(item)
-      except:
+      except TypeError:
         self.tags += [self._removeCRLF(str(what))]
-    else:
-      self.tags += [self._removeCRLF(what)]
 
     self.__IO__['labeled'] = True                                                                  # switch on processing (in particular writing) of tags
     if reset: self.__IO__['tags'] = list(self.tags)                                                # subsequent data_read uses current tags as data size
@@ -410,13 +413,13 @@ class ASCIItable():
   def info_append(self,
                   what):
     """Add item or list to existing set of infos"""
-    if not isinstance(what, (str, unicode)):
+    if isinstance(what, (str, unicode)):
+      self.info += [self._removeCRLF(what)]
+    else:
       try:
         for item in what: self.info_append(item)
-      except:
+      except TypeError:
         self.info += [self._removeCRLF(str(what))]
-    else:
-      self.info += [self._removeCRLF(what)]
 
 # ------------------------------------------------------------------
   def info_clear(self):
@@ -468,10 +471,8 @@ class ASCIItable():
     """Read whole data of all (given) labels as numpy array"""
     from collections import Iterable
 
-    try:
-      self.data_rewind()                                                                            # try to wind back to start of data
-    except:
-      pass                                                                                          # assume/hope we are at data start already...
+    try:      self.data_rewind()                                                                    # try to wind back to start of data
+    except:   pass                                                                                  # assume/hope we are at data start already...
 
     if labels is None or labels == []:
       use = None                                                                                    # use all columns (and keep labels intact)
@@ -530,13 +531,13 @@ class ASCIItable():
 # ------------------------------------------------------------------
   def data_append(self,
                   what):
-    if not isinstance(what, (str, unicode)):
+    if isinstance(what, (str, unicode)):
+      self.data += [what]
+    else:
       try:
         for item in what: self.data_append(item)
-      except:
+      except TypeError:
         self.data += [str(what)]
-    else:
-      self.data += [what]
 
 # ------------------------------------------------------------------
   def data_set(self,
@@ -581,7 +582,7 @@ class ASCIItable():
       if len(items) > 2:
         if   items[1].lower() == 'of':
           items = np.ones(datatype(items[0]))*datatype(items[2])
-        elif items[1].lower() == 'to': 
+        elif items[1].lower() == 'to':
           items = np.linspace(datatype(items[0]),datatype(items[2]),
                               abs(datatype(items[2])-datatype(items[0]))+1,dtype=int)
         else:                          items = list(map(datatype,items))

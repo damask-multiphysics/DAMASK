@@ -1,1 +1,9 @@
+*.C_ref
+*.mesh
+*.outputConstitutive
+*.outputCrystallite
+*.outputHomogenization
+*.spectralOut
+*.sta
+*.vt*
 postProc
