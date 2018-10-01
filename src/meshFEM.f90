@@ -8,10 +8,12 @@
 !> results
 !--------------------------------------------------------------------------------------------------
 module mesh     
+#include <petsc/finclude/petscdmplex.h>
 #include <petsc/finclude/petscis.h>
 #include <petsc/finclude/petscdmda.h>
  use prec, only: pReal, pInt
 
+use PETScdmplex
 use PETScdmda
 use PETScis
 
@@ -65,7 +67,7 @@ use PETScis
 
  DM, public :: geomMesh
  
- integer(pInt), dimension(:), allocatable, public, protected :: &
+ PetscInt, dimension(:), allocatable, public, protected :: &
    mesh_boundaries
 
                       
@@ -88,15 +90,6 @@ use PETScis
    mesh_FEM_build_ipCoordinates, &
    mesh_cellCenterCoordinates
 
- external :: &
-   DMPlexCreateFromFile, &
-   DMPlexDistribute, &
-   DMPlexCopyCoordinates, &
-   DMGetStratumSize, &
-   DMPlexGetHeightStratum, &
-   DMPlexGetLabelValue, &
-   DMPlexSetLabelValue
-   
 contains
 
 
@@ -151,14 +144,19 @@ subroutine mesh_init()
  write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
 
+ ! read in file
  call DMPlexCreateFromFile(PETSC_COMM_WORLD,geometryFile,PETSC_TRUE,globalMesh,ierr)
  CHKERRQ(ierr)
+ ! get spatial dimension (2 or 3?)
  call DMGetDimension(globalMesh,dimPlex,ierr)
  CHKERRQ(ierr)
+ write(6,*) 'dimension',dimPlex;flush(6)
  call DMGetStratumSize(globalMesh,'depth',dimPlex,mesh_NcpElemsGlobal,ierr)
  CHKERRQ(ierr)
+ ! get number of IDs in face sets (for boundary conditions?)
  call DMGetLabelSize(globalMesh,'Face Sets',mesh_Nboundaries,ierr)
  CHKERRQ(ierr)
+ write(6,*) 'number of "Face Sets"',mesh_Nboundaries;flush(6)
  call MPI_Bcast(mesh_Nboundaries,1,MPI_INTEGER,0,PETSC_COMM_WORLD,ierr)
  call MPI_Bcast(mesh_NcpElemsGlobal,1,MPI_INTEGER,0,PETSC_COMM_WORLD,ierr)
  call MPI_Bcast(dimPlex,1,MPI_INTEGER,0,PETSC_COMM_WORLD,ierr)
@@ -174,7 +172,9 @@ subroutine mesh_init()
  enddo  
  if (nFaceSets > 0) call ISRestoreIndicesF90(faceSetIS,pFaceSets,ierr)
  call MPI_Bcast(mesh_boundaries,mesh_Nboundaries,MPI_INTEGER,0,PETSC_COMM_WORLD,ierr)
- 
+
+ ! this read in function should ignore C and C++ style comments
+ ! it is used for BC only?
  if (worldrank == 0) then
    j = 0
    flag = .false.
@@ -183,8 +183,8 @@ subroutine mesh_init()
      read(FILEUNIT,'(a512)') line
      if (trim(line) == IO_EOF) exit                                                                    ! skip empty lines
      if (trim(line) == '$Elements') then
-       read(FILEUNIT,'(a512)') line
-       read(FILEUNIT,'(a512)') line
+       read(FILEUNIT,'(a512)') line ! number of elements (ignore)
+       read(FILEUNIT,'(a512)') line 
        flag = .true.  
      endif
      if (trim(line) == '$EndElements') exit
