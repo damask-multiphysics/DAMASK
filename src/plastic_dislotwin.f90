@@ -1042,7 +1042,7 @@ end subroutine plastic_dislotwin_microstructure
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates plastic velocity gradient and its tangent
 !--------------------------------------------------------------------------------------------------
-subroutine plastic_dislotwin_LpAndItsTangent(Lp,dLp_dMp,Mp,Temperature,ipc,ip,el)
+subroutine plastic_dislotwin_LpAndItsTangent(Lp,dLp_dMp,Mp,Temperature,instance,of)
  use prec, only: &
    tol_math_check, &
    dNeq0
@@ -1058,21 +1058,21 @@ subroutine plastic_dislotwin_LpAndItsTangent(Lp,dLp_dMp,Mp,Temperature,ipc,ip,el
    phasememberAt
  
  implicit none
- integer(pInt), intent(in)                  :: ipc,ip,el
- real(pReal), intent(in)                    :: Temperature
- real(pReal), dimension(3,3),   intent(in)  :: Mp
- real(pReal), dimension(3,3), intent(out)   :: Lp
- real(pReal), dimension(3,3,3,3), intent(out)   :: dLp_dMp
+ real(pReal), dimension(3,3),     intent(out) :: Lp
+ real(pReal), dimension(3,3,3,3), intent(out) :: dLp_dMp
+ real(pReal), dimension(3,3),     intent(in)  :: Mp
+ integer(pInt),                   intent(in)  :: instance,of
+ real(pReal),                     intent(in)  :: Temperature
 
- integer(pInt) :: of,i,k,l,m,n,s1,s2
+ integer(pInt) :: i,k,l,m,n,s1,s2
  real(pReal) :: f_unrotated,StressRatio_p,&
                 StressRatio_r,BoltzmannRatio,Ndot0_twin,stressRatio, &
     Ndot0_trans,StressRatio_s, &
     dgdot_dtau, &
     tau
- real(pReal), dimension(param(phase_plasticityInstance(material_phase(ipc,ip,el)))%totalNslip) :: &
+ real(pReal), dimension(param(instance)%totalNslip) :: &
     gdot_slip,dgdot_dtau_slip
- real(pReal), dimension(param(phase_plasticityInstance(material_phase(ipc,ip,el)))%totalNtwin) :: &
+ real(pReal), dimension(param(instance)%totalNtwin) :: &
     gdot_twin,dgdot_dtau_twin
  real(pReal):: gdot_sb,gdot_trans
  real(pReal), dimension(3,3) :: eigVectors, Schmid_shearBand
@@ -1101,11 +1101,7 @@ subroutine plastic_dislotwin_LpAndItsTangent(Lp,dLp_dMp,Mp,Temperature,ipc,ip,el
  type(tParameters)     :: prm                                                                       !< parameters of present instance
  type(tDislotwinState) :: ste                                                                       !< state of present instance
 
- of = phasememberAt(ipc,ip,el)
-
- associate(prm => param(phase_plasticityInstance(material_phase(ipc,ip,el))),&
-           stt => state(phase_plasticityInstance(material_phase(ipc,ip,el))), &
-           mse => microstructure(phase_plasticityInstance(material_phase(ipc,ip,el))))
+ associate(prm => param(instance), stt => state(instance), mse => microstructure(instance))
 
  f_unrotated = 1.0_pReal &
              - sum(stt%twinFraction(1_pInt:prm%totalNtwin,of)) &
@@ -1206,7 +1202,7 @@ end subroutine plastic_dislotwin_LpAndItsTangent
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates the rate of change of microstructure
 !--------------------------------------------------------------------------------------------------
-subroutine plastic_dislotwin_dotState(Mp,Temperature,ipc,ip,el)
+subroutine plastic_dislotwin_dotState(Mp,Temperature,instance,of)
  use prec, only: &
    tol_math_check, &
    dEq0
@@ -1223,21 +1219,19 @@ subroutine plastic_dislotwin_dotState(Mp,Temperature,ipc,ip,el)
  implicit none
  real(pReal), dimension(3,3),  intent(in):: &
    Mp                                                                                               !< Mandel stress
- real(pReal),                intent(in) :: &
+ real(pReal),                  intent(in) :: &
    temperature                                                                                      !< temperature at integration point
- integer(pInt),              intent(in) :: &
-   ipc, &                                                                                           !< component-ID of integration point
-   ip, &                                                                                            !< integration point
-   el                                                                                               !< element
+ integer(pInt),                intent(in) :: &
+   instance, &
+   of
 
- integer(pInt) :: i,s1,s2, &
-                  of
+ integer(pInt) :: i,s1,s2
  real(pReal) :: f_unrotated,StressRatio_p,BoltzmannRatio,&
              EdgeDipMinDistance,AtomicVolume,VacancyDiffusion,StressRatio_r,Ndot0_twin,stressRatio,&
              Ndot0_trans,StressRatio_s,EdgeDipDistance, ClimbVelocity,DotRhoEdgeDipClimb,DotRhoEdgeDipAnnihilation, &
              DotRhoDipFormation,DotRhoMultiplication,DotRhoEdgeEdgeAnnihilation, &
             tau
- real(pReal), dimension(plasticState(material_phase(ipc,ip,el))%Nslip) :: &
+ real(pReal), dimension(plasticState(instance)%Nslip) :: &
  gdot_slip
 
 
@@ -1245,14 +1239,9 @@ subroutine plastic_dislotwin_dotState(Mp,Temperature,ipc,ip,el)
  type(tDislotwinState) :: stt, dot
  type(tDislotwinMicrostructure) :: mse
 
- !* Shortened notation
- of = phasememberAt(ipc,ip,el)
 
-
- associate(prm => param(phase_plasticityInstance(material_phase(ipc,ip,el))), &
-           stt => state(phase_plasticityInstance(material_phase(ipc,ip,el))), &
-           dot => dotstate(phase_plasticityInstance(material_phase(ipc,ip,el))), &
-           mse => microstructure(phase_plasticityInstance(material_phase(ipc,ip,el))))
+ associate(prm => param(instance),    stt => state(instance), &
+           dot => dotstate(instance), mse => microstructure(instance))
 
  dot%whole(:,of) = 0.0_pReal
 
@@ -1436,7 +1425,8 @@ pure subroutine kinetics_slip(prm,stt,mse,of,Mp,temperature,gdot_slip,dgdot_dtau
  if(present(dgdot_dtau_slip)) dgdot_dtau_slip = dgdot_dtau
 
 end subroutine
- 
+
+
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates shear rates on slip systems
 !--------------------------------------------------------------------------------------------------
@@ -1594,7 +1584,7 @@ end subroutine
 !--------------------------------------------------------------------------------------------------
 !> @brief return array of constitutive results
 !--------------------------------------------------------------------------------------------------
-function plastic_dislotwin_postResults(Tstar_v,Temperature,ipc,ip,el) result(postResults)
+function plastic_dislotwin_postResults(Mp,Temperature,instance,of) result(postResults)
  use prec, only: &
    tol_math_check, &
    dEq0
@@ -1609,42 +1599,33 @@ function plastic_dislotwin_postResults(Tstar_v,Temperature,ipc,ip,el) result(pos
    phasememberAt
 
  implicit none
- real(pReal), dimension(6),  intent(in) :: &
-   Tstar_v                                                                                          !< 2nd Piola Kirchhoff stress tensor in Mandel notation
+ real(pReal), dimension(3,3),intent(in) :: &
+   Mp                                                                                               !< 2nd Piola Kirchhoff stress tensor in Mandel notation
  real(pReal),                intent(in) :: &
    temperature                                                                                      !< temperature at integration point
  integer(pInt),              intent(in) :: &
-   ipc, &                                                                                           !< component-ID of integration point
-   ip, &                                                                                            !< integration point
-   el                                                                                               !< element
+   instance, &
+   of
 
- real(pReal), dimension(plasticState(material_phase(ipc,ip,el))%sizePostResults) :: &
-                                           postResults
+ real(pReal), dimension(sum(plastic_dislotwin_sizePostResult(:,instance))) :: &
+   postResults
+
  integer(pInt) :: &
    o,c,j,&
-   s1,s2, &
-   of
+   s1,s2
  real(pReal) :: sumf_twin,tau,StressRatio_p,StressRatio_pminus1,BoltzmannRatio,DotGamma0,StressRatio_r,Ndot0_twin,dgdot_dtauslip, &
    stressRatio
- real(preal), dimension(param(phase_plasticityInstance(material_phase(ipc,ip,el)))%totalNslip) :: &
+ real(preal), dimension(param(instance)%totalNslip) :: &
    gdot_slip
  
- real(pReal), dimension(3,3) :: &
-   S                                                                                                !< Second-Piola Kirchhoff stress
  type(tParameters) :: prm
  type(tDislotwinState) :: stt
  type(tDislotwinMicrostructure) :: mse
  
- !* Shortened notation
- of = phasememberAt(ipc,ip,el)
 
- S = math_Mandel6to33(Tstar_v)
+ associate(prm => param(instance), stt => state(instance), mse => microstructure(instance))
 
- associate(prm => param(phase_plasticityInstance(material_phase(ipc,ip,el))), &
-           stt => state(phase_plasticityInstance(material_phase(ipc,ip,el))), &
-           mse => microstructure(phase_plasticityInstance(material_phase(ipc,ip,el))))
-
- sumf_twin = sum(stt%twinFraction(1_pInt:prm%totalNtwin,of))                          ! safe for prm%totalNtwin == 0
+ sumf_twin = sum(stt%twinFraction(1_pInt:prm%totalNtwin,of))
  
  c = 0_pInt
  postResults = 0.0_pReal
@@ -1659,7 +1640,7 @@ function plastic_dislotwin_postResults(Tstar_v,Temperature,ipc,ip,el) result(pos
        c = c + prm%totalNslip
      case (shear_rate_slip_ID)
        do j = 1_pInt, prm%totalNslip
-         tau = math_mul33xx33(S,prm%Schmid_slip(1:3,1:3,j))
+         tau = math_mul33xx33(Mp,prm%Schmid_slip(1:3,1:3,j))
          if((abs(tau)-mse%threshold_stress_slip(j,of)) > tol_math_check) then
            stressRatio = ((abs(tau)-mse%threshold_stress_slip(j,of))/&
                            (prm%SolidSolutionStrength+&
@@ -1685,7 +1666,7 @@ function plastic_dislotwin_postResults(Tstar_v,Temperature,ipc,ip,el) result(pos
        c = c + prm%totalNslip
      case (resolved_stress_slip_ID)
        do j = 1_pInt, prm%totalNslip
-         postResults(c+j) = math_mul33xx33(S,prm%Schmid_slip(1:3,1:3,j))
+         postResults(c+j) = math_mul33xx33(Mp,prm%Schmid_slip(1:3,1:3,j))
        enddo
        c = c + prm%totalNslip
      case (threshold_stress_slip_ID)
@@ -1694,7 +1675,7 @@ function plastic_dislotwin_postResults(Tstar_v,Temperature,ipc,ip,el) result(pos
      case (edge_dipole_distance_ID)
        do j = 1_pInt, prm%totalNslip
          postResults(c+j) = (3.0_pReal*prm%mu*prm%burgers_slip(j)) &
-                          / (16.0_pReal*PI*abs(math_mul33xx33(S,prm%Schmid_slip(1:3,1:3,j))))
+                          / (16.0_pReal*PI*abs(math_mul33xx33(Mp,prm%Schmid_slip(1:3,1:3,j))))
          postResults(c+j)=min(postResults(c+j),mse%mfp_slip(j,of))
  !       postResults(c+j)=max(postResults(c+j),&
  !                                                       plasticState(ph)%state(4*ns+2*nt+2*nr+j, of))
@@ -1726,7 +1707,7 @@ function plastic_dislotwin_postResults(Tstar_v,Temperature,ipc,ip,el) result(pos
        c = c + prm%totalNtwin
      case (shear_rate_twin_ID)
        do j = 1_pInt, prm%totalNslip
-         tau = math_mul33xx33(S,prm%Schmid_slip(1:3,1:3,j))
+         tau = math_mul33xx33(Mp,prm%Schmid_slip(1:3,1:3,j))
          if((abs(tau)-mse%threshold_stress_slip(j,of)) > tol_math_check) then
            StressRatio_p = ((abs(tau)-mse%threshold_stress_slip(j,of))/&
                            (prm%SolidSolutionStrength+&
@@ -1747,7 +1728,7 @@ function plastic_dislotwin_postResults(Tstar_v,Temperature,ipc,ip,el) result(pos
        enddo
 
        do j = 1_pInt, prm%totalNtwin
-         tau = math_mul33xx33(S,prm%Schmid_twin(1:3,1:3,j))
+         tau = math_mul33xx33(Mp,prm%Schmid_twin(1:3,1:3,j))
 
          if ( tau > 0.0_pReal ) then
            isFCCtwin: if (prm%isFCC) then
@@ -1778,7 +1759,7 @@ function plastic_dislotwin_postResults(Tstar_v,Temperature,ipc,ip,el) result(pos
        c = c + prm%totalNtwin
      case (resolved_stress_twin_ID)
        do j = 1_pInt, prm%totalNtwin
-         postResults(c+j) = math_mul33xx33(S,prm%Schmid_twin(1:3,1:3,j))
+         postResults(c+j) = math_mul33xx33(Mp,prm%Schmid_twin(1:3,1:3,j))
        enddo
        c = c + prm%totalNtwin
      case (threshold_stress_twin_ID)
@@ -1786,7 +1767,7 @@ function plastic_dislotwin_postResults(Tstar_v,Temperature,ipc,ip,el) result(pos
        c = c + prm%totalNtwin
      case (stress_exponent_ID)
        do j = 1_pInt, prm%totalNslip
-         tau = math_mul33xx33(S,prm%Schmid_slip(1:3,1:3,j))
+         tau = math_mul33xx33(Mp,prm%Schmid_slip(1:3,1:3,j))
          if((abs(tau)-mse%threshold_stress_slip(j,of)) > tol_math_check) then
            StressRatio_p = ((abs(tau)-mse%threshold_stress_slip(j,of))/&
                            (prm%SolidSolutionStrength+&

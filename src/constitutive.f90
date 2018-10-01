@@ -513,7 +513,7 @@ subroutine constitutive_LpAndItsTangents(Lp, dLp_dS, dLp_dFi, S6, Fi, ipc, ip, e
    case (PLASTICITY_PHENOPOWERLAW_ID) plasticityType
      of = phasememberAt(ipc,ip,el)
      instance = phase_plasticityInstance(material_phase(ipc,ip,el))
-     call plastic_phenopowerlaw_LpAndItsTangent   (Lp,dLp_dMp, Mp,instance,of)
+     call plastic_phenopowerlaw_LpAndItsTangent   (Lp,dLp_dMp,Mp,instance,of)
 
    case (PLASTICITY_KINEHARDENING_ID) plasticityType
      call plastic_kinehardening_LpAndItsTangent   (Lp,dLp_dMp99, math_Mandel33to6(Mp),ipc,ip,el)
@@ -525,8 +525,9 @@ subroutine constitutive_LpAndItsTangents(Lp, dLp_dS, dLp_dFi, S6, Fi, ipc, ip, e
      dLp_dMp = math_Plain99to3333(dLp_dMp99)                                                        ! ToDo: We revert here the last statement in plastic_xx_LpAndItsTanget
 
    case (PLASTICITY_DISLOTWIN_ID) plasticityType
-     call plastic_dislotwin_LpAndItsTangent       (Lp,dLp_dMp, Mp, &
-                                                   temperature(ho)%p(tme),ipc,ip,el)
+     of = phasememberAt(ipc,ip,el)
+     instance = phase_plasticityInstance(material_phase(ipc,ip,el))
+     call plastic_dislotwin_LpAndItsTangent       (Lp,dLp_dMp,Mp,temperature(ho)%p(tme),instance,of)
 
    case (PLASTICITY_DISLOUCLA_ID) plasticityType
      call plastic_disloucla_LpAndItsTangent       (Lp,dLp_dMp99, math_Mandel33to6(Mp), &
@@ -913,8 +914,9 @@ subroutine constitutive_collectDotState(S6, FeArray, Fi, FpArray, subdt, subfrac
      call plastic_kinehardening_dotState(math_Mandel33to6(Mp),ipc,ip,el)
 
    case (PLASTICITY_DISLOTWIN_ID) plasticityType
-     call plastic_dislotwin_dotState    (math_Mandel33to6(Mp),temperature(ho)%p(tme), &
-                                         ipc,ip,el)
+     of = phasememberAt(ipc,ip,el)
+     instance = phase_plasticityInstance(material_phase(ipc,ip,el))
+     call plastic_dislotwin_dotState    (Mp,temperature(ho)%p(tme),instance,of)
 
    case (PLASTICITY_DISLOUCLA_ID) plasticityType
      call plastic_disloucla_dotState    (math_Mandel33to6(Mp),temperature(ho)%p(tme), &
@@ -1126,20 +1128,27 @@ function constitutive_postResults(S6, Fi, FeArray, ipc, ip, el)
    case (PLASTICITY_ISOTROPIC_ID) plasticityType
      constitutive_postResults(startPos:endPos) = &
        plastic_isotropic_postResults(S6,ipc,ip,el)
+
    case (PLASTICITY_PHENOPOWERLAW_ID) plasticityType
      of = phasememberAt(ipc,ip,el)
      instance = phase_plasticityInstance(material_phase(ipc,ip,el))
      constitutive_postResults(startPos:endPos) = &
        plastic_phenopowerlaw_postResults(Mp,instance,of)
+
    case (PLASTICITY_KINEHARDENING_ID) plasticityType
      constitutive_postResults(startPos:endPos) = &
        plastic_kinehardening_postResults(S6,ipc,ip,el)
+
    case (PLASTICITY_DISLOTWIN_ID) plasticityType
+     of = phasememberAt(ipc,ip,el)
+     instance = phase_plasticityInstance(material_phase(ipc,ip,el))
      constitutive_postResults(startPos:endPos) = &
-       plastic_dislotwin_postResults(S6,temperature(ho)%p(tme),ipc,ip,el)
+       plastic_dislotwin_postResults(Mp,temperature(ho)%p(tme),instance,of)
+
    case (PLASTICITY_DISLOUCLA_ID) plasticityType
      constitutive_postResults(startPos:endPos) = &
        plastic_disloucla_postResults(S6,temperature(ho)%p(tme),ipc,ip,el)
+
    case (PLASTICITY_NONLOCAL_ID) plasticityType
      constitutive_postResults(startPos:endPos) = &
        plastic_nonlocal_postResults (S6,FeArray,ip,el)
