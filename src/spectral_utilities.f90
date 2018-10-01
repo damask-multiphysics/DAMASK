@@ -146,8 +146,6 @@ module spectral_utilities
    FIELD_DAMAGE_ID
  private :: &
    utilities_getFreqDerivative
- external :: &
-   PETScErrorF                                                                                      ! is called in the CHKERRQ macro
 
 contains
 
@@ -209,8 +207,6 @@ subroutine utilities_init()
    scalarSize = 1_C_INTPTR_T, &
    vecSize = 3_C_INTPTR_T, &
    tensorSize = 9_C_INTPTR_T
- external :: &
-   PetscOptionsInsertString
 
  write(6,'(/,a)') ' <<<+-  spectral_utilities init  -+>>>'
  write(6,'(/,a)') ' Eisenlohr et al., International Journal of Plasticity, 46:37–53, 2013'
