@@ -942,10 +942,10 @@ pure function homogenization_RGC_postResults(ip,el,avgP,avgF)
  do o = 1_pInt,homogenization_Noutput(mesh_element(3,el))
    select case(homogenization_RGC_outputID(o,homID))
      case (avgdefgrad_ID)
-       homogenization_RGC_postResults(c+1_pInt:c+9_pInt) = reshape(avgF,[9])
+       homogenization_RGC_postResults(c+1_pInt:c+9_pInt) = reshape(transpose(avgF),[9])
        c = c + 9_pInt
      case (avgfirstpiola_ID)
-       homogenization_RGC_postResults(c+1_pInt:c+9_pInt) = reshape(avgP,[9])
+       homogenization_RGC_postResults(c+1_pInt:c+9_pInt) = reshape(transpose(avgP),[9])
        c = c + 9_pInt
      case (ipcoords_ID)
        homogenization_RGC_postResults(c+1_pInt:c+3_pInt) = mesh_ipCoordinates(1:3,ip,el)             ! current ip coordinates
