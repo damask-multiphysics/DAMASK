@@ -1226,7 +1226,9 @@ real(pReal), dimension(4,36), parameter, private :: &
   LATTICE_bct_ID, &
   LATTICE_hex_ID, &
   lattice_SchmidMatrix_slip, &
-  lattice_SchmidMatrix_twin
+  lattice_SchmidMatrix_twin, &
+  lattice_interactionSlipSlip2, &
+  lattice_interactionTwinTwin2
 
 contains
 
