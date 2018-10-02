@@ -41,7 +41,7 @@ use PETScis
  real(pReal), public, protected :: charLength
  
  integer(pInt), dimension(:,:), allocatable, public, protected :: &
-   mesh_CPnodeID, &
+   !mesh_CPnodeID, &
    mesh_element !DEPRECATED
 
  real(pReal), dimension(:,:), allocatable, public :: &
@@ -245,7 +245,6 @@ subroutine mesh_init()
 ! better name
  mesh_homogenization    = mesh_element(3,:)
  mesh_microstructure    = mesh_element(4,:)
- mesh_CPnodeID          = mesh_element(5:4+mesh_NipsPerElem,:)
 !!!!!!!!!!!!!!!!!!!!!!!!
 
 end subroutine mesh_init
