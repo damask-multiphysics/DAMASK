@@ -127,12 +127,7 @@ module numerics
 #ifdef FEM
  integer(pInt), protected, public :: &
    integrationOrder           =  2_pInt, &                                                          !< order of quadrature rule required
-   structOrder                =  2_pInt, &                                                          !< order of displacement shape functions
-   thermalOrder               =  2_pInt, &                                                          !< order of temperature field shape functions
-   damageOrder                =  2_pInt, &                                                          !< order of damage field shape functions
-   vacancyfluxOrder           =  2_pInt, &                                                          !< order of vacancy concentration and chemical potential field shape functions
-   porosityOrder              =  2_pInt, &                                                          !< order of porosity field shape functions
-   hydrogenfluxOrder          =  2_pInt                                                             !< order of hydrogen concentration and chemical potential field shape functions  
+   structOrder                =  2_pInt                                                             !< order of displacement shape functions
  logical, protected, public :: & 
    BBarStabilisation          = .false.                                                  
  character(len=4096), protected, public :: &
@@ -146,40 +141,7 @@ module numerics
                              &-mech_pc_type ml &
                              &-mech_mg_levels_ksp_type chebyshev &
                              &-mech_mg_levels_pc_type sor &
-                             &-mech_pc_ml_nullspace user &
-                             &-damage_snes_type vinewtonrsls &
-                             &-damage_snes_atol 1e-8 &
-                             &-damage_ksp_type preonly &
-                             &-damage_ksp_max_it 25 &
-                             &-damage_pc_type cholesky &
-                             &-damage_pc_factor_mat_solver_package mumps &
-                             &-thermal_snes_type newtonls &
-                             &-thermal_snes_linesearch_type cp &
-                             &-thermal_ksp_type fgmres &
-                             &-thermal_ksp_max_it 25 &
-                             &-thermal_snes_atol 1e-3 &
-                             &-thermal_pc_type hypre &
-                             &-vacancy_snes_type newtonls &
-                             &-vacancy_snes_linesearch_type cp &
-                             &-vacancy_snes_atol 1e-9 &
-                             &-vacancy_ksp_type fgmres &
-                             &-vacancy_ksp_max_it 25 &
-                             &-vacancy_pc_type ml &
-                             &-vacancy_mg_levels_ksp_type chebyshev &
-                             &-vacancy_mg_levels_pc_type sor &
-                             &-porosity_snes_type newtonls &
-                             &-porosity_snes_atol 1e-8 &
-                             &-porosity_ksp_type fgmres &
-                             &-porosity_ksp_max_it 25 &
-                             &-porosity_pc_type hypre &
-                             &-hydrogen_snes_type newtonls &
-                             &-hydrogen_snes_linesearch_type cp &
-                             &-hydrogen_snes_atol 1e-9 &
-                             &-hydrogen_ksp_type fgmres &
-                             &-hydrogen_ksp_max_it 25 &
-                             &-hydrogen_pc_type ml &
-                             &-hydrogen_mg_levels_ksp_type chebyshev &
-                             &-hydrogen_mg_levels_pc_type sor ', &
+                             &-mech_pc_ml_nullspace user ',&
    petsc_options           = ''
 #endif
 
@@ -230,8 +192,6 @@ subroutine numerics_init
    tag ,&
    line
 !$ character(len=6) DAMASK_NumThreadsString                                                         ! environment variable DAMASK_NUM_THREADS
- external :: &
-   PETScErrorF                                                                                      ! is called in the CHKERRQ macro
 
 #ifdef PETSc
  call MPI_Comm_rank(PETSC_COMM_WORLD,worldrank,ierr);CHKERRQ(ierr)
@@ -458,16 +418,6 @@ subroutine numerics_init
          integrationorder = IO_intValue(line,chunkPos,2_pInt)
        case ('structorder')
          structorder = IO_intValue(line,chunkPos,2_pInt)
-       case ('thermalorder')
-         thermalorder = IO_intValue(line,chunkPos,2_pInt)
-       case ('damageorder')
-         damageorder = IO_intValue(line,chunkPos,2_pInt)
-       case ('vacancyfluxorder')
-         vacancyfluxOrder = IO_intValue(line,chunkPos,2_pInt)
-       case ('porosityorder')
-         porosityOrder = IO_intValue(line,chunkPos,2_pInt)
-       case ('hydrogenfluxorder')
-         hydrogenfluxOrder = IO_intValue(line,chunkPos,2_pInt)
        case ('petsc_options')
          petsc_options = trim(line(chunkPos(4):))
        case ('bbarstabilisation')
@@ -620,11 +570,6 @@ subroutine numerics_init
 #ifdef FEM
  write(6,'(a24,1x,i8)')      ' integrationOrder:       ',integrationOrder
  write(6,'(a24,1x,i8)')      ' structOrder:            ',structOrder
- write(6,'(a24,1x,i8)')      ' thermalOrder:           ',thermalOrder
- write(6,'(a24,1x,i8)')      ' damageOrder:            ',damageOrder
- write(6,'(a24,1x,i8)')      ' vacancyfluxOrder:       ',vacancyfluxOrder
- write(6,'(a24,1x,i8)')      ' porosityOrder:          ',porosityOrder 
- write(6,'(a24,1x,i8)')      ' hydrogenfluxOrder:      ',hydrogenfluxOrder
  write(6,'(a24,1x,a)')       ' PETSc_options:          ',trim(petsc_defaultOptions)//' '//trim(petsc_options)
  write(6,'(a24,1x,L8)')      ' B-Bar stabilisation:    ',BBarStabilisation
 #endif
