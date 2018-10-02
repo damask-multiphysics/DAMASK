@@ -1405,8 +1405,11 @@ pure subroutine kinetics_slip(prm,stt,mse,of,Mp,temperature,gdot_slip,dgdot_dtau
    stressRatio, &
    StressRatio_p, &
    BoltzmannRatio, &
-   v_wait_inverse, &                                  !< inverse of the effective velocity of a dislocation waiting at obstacles
-   v_run_inverse, &                                   !< inverse of the velocity of a free moving dislocation
+   v_wait_inverse, &                                  !< inverse of the effective velocity of a dislocation waiting at obstacles (unsigned)
+   v_run_inverse, &                                   !< inverse of the velocity of a free moving dislocation (unsigned)
+   dV_wait_inverse_dTau, &
+   dV_run_inverse_dTau, &
+   dV_dTau, &
    tau_eff                                            !< effective resolved stress
  integer(pInt) :: i 
 
@@ -1425,9 +1428,14 @@ pure subroutine kinetics_slip(prm,stt,mse,of,Mp,temperature,gdot_slip,dgdot_dtau
 
    gdot_slip = sign(stt%rhoEdge(:,of)*prm%burgers_slip/(v_wait_inverse+v_run_inverse),tau)
 
-   dgdot_dtau = abs(gdot_slip)*BoltzmannRatio*prm%p * prm%q &
-              / (prm%SolidSolutionStrength+prm%tau_peierls) &
-              * stressRatio**(prm%p-1.0_pReal)*(1.0_pReal-StressRatio_p)**(prm%q-1.0_pReal)
+   dV_wait_inverse_dTau = v_wait_inverse * prm%p * prm%q * BoltzmannRatio &
+                        * (stressRatio**(prm%p-1.0_pReal)) &
+                        * (1.0_pReal-StressRatio_p)**(prm%q-1.0_pReal) &
+                        / (prm%SolidSolutionStrength+prm%tau_peierls)
+   dV_run_inverse_dTau  = v_run_inverse/tau_eff
+   dV_dTau              = (dV_wait_inverse_dTau+dV_run_inverse_dTau) &
+                        / (v_wait_inverse+v_run_inverse)**2.0_pReal
+   dgdot_dtau = dV_dTau*stt%rhoEdge(:,of)*prm%burgers_slip
  else where significantStress
    gdot_slip = 0.0_pReal
    dgdot_dtau = 0.0_pReal
