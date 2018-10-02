@@ -109,7 +109,8 @@ module plastic_dislotwin
      q, &                                                         !< q-exponent in glide velocity
      r, &                                                         !< r-exponent in twin nucleation rate
      s, &                                                           !< s-exponent in trans nucleation rate
-     shear_twin                                                                               !< characteristic shear for twins
+     shear_twin, &                                                                              !< characteristic shear for twins
+     B                                                                                          !< drag coefficient
    real(pReal),                  dimension(:,:),            allocatable,           private :: & 
      interaction_SlipSlip, &                                                   !< coefficients for slip-slip interaction for each interaction type and instance
      interaction_SlipTwin, &                                                   !< coefficients for slip-twin interaction for each interaction type and instance
@@ -325,6 +326,9 @@ subroutine plastic_dislotwin_init(fileUnit)
      prm%burgers_slip = config_phase(p)%getFloats('slipburgers')
      if (size(prm%burgers_slip) /= size(prm%Nslip)) call IO_error(150_pInt,ext_msg='slipburgers')
      prm%burgers_slip = math_expand(prm%burgers_slip,prm%Nslip)
+
+     prm%B = config_phase(p)%getFloats('B',defaultVal=[(0.0_pReal, i=1,size(prm%Nslip))])
+     prm%B = math_expand(prm%B,prm%Nslip)
 
      prm%Qedge = config_phase(p)%getFloats('qedge')
      prm%Qedge = math_expand(prm%Qedge,prm%Nslip)
