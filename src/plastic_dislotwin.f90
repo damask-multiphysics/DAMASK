@@ -1404,20 +1404,27 @@ pure subroutine kinetics_slip(prm,stt,mse,of,Mp,temperature,gdot_slip,dgdot_dtau
    tau, &
    stressRatio, &
    StressRatio_p, &
-   BoltzmannRatio
+   BoltzmannRatio, &
+   v_wait_inverse, &                                  !< inverse of the effective velocity of a dislocation waiting at obstacles
+   v_run_inverse, &                                   !< inverse of the velocity of a free moving dislocation
+   tau_eff                                            !< effective resolved stress
  integer(pInt) :: i 
 
  do i = 1_pInt, prm%totalNslip
    tau(i) = math_mul33xx33(Mp,prm%Schmid_slip(1:3,1:3,i))
  enddo
+ 
+ tau_eff = abs(tau)-mse%threshold_stress_slip(:,of)
 
- significantStress: where((abs(tau)-mse%threshold_stress_slip(:,of)) > tol_math_check)
-   stressRatio = ((abs(tau)- mse%threshold_stress_slip(:,of))/&
-                   (prm%SolidSolutionStrength+prm%tau_peierls(:)))
-   StressRatio_p       = stressRatio** prm%p
-   BoltzmannRatio      = prm%Qedge/(kB*Temperature)
-   gdot_slip = stt%rhoEdge(:,of)*prm%burgers_slip* prm%v0 &
-                  * sign(exp(-BoltzmannRatio*(1.0_pReal-StressRatio_p)** prm%q), tau)
+ significantStress: where(tau_eff > tol_math_check)
+   stressRatio    = tau_eff/(prm%SolidSolutionStrength+prm%tau_peierls)
+   StressRatio_p  = stressRatio** prm%p
+   BoltzmannRatio = prm%Qedge/(kB*Temperature)
+   v_wait_inverse = prm%v0**(-1.0_pReal) * exp(BoltzmannRatio*(1.0_pReal-StressRatio_p)** prm%q)
+   v_run_inverse  = prm%B/(tau_eff*prm%burgers_slip)
+
+   gdot_slip = sign(stt%rhoEdge(:,of)*prm%burgers_slip/(v_wait_inverse+v_run_inverse),tau)
+
    dgdot_dtau = abs(gdot_slip)*BoltzmannRatio*prm%p * prm%q &
               / (prm%SolidSolutionStrength+prm%tau_peierls) &
               * stressRatio**(prm%p-1.0_pReal)*(1.0_pReal-StressRatio_p)**(prm%q-1.0_pReal)
@@ -1428,11 +1435,11 @@ pure subroutine kinetics_slip(prm,stt,mse,of,Mp,temperature,gdot_slip,dgdot_dtau
  
  if(present(dgdot_dtau_slip)) dgdot_dtau_slip = dgdot_dtau
 
-end subroutine
+end subroutine kinetics_slip
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief calculates shear rates on slip systems
+!> @brief calculates shear rates on twin systems
 !--------------------------------------------------------------------------------------------------
 pure subroutine kinetics_twin(prm,stt,mse,of,Mp,temperature,gdot_slip,gdot_twin,dgdot_dtau_twin)
  use prec, only: &
@@ -1475,7 +1482,7 @@ pure subroutine kinetics_twin(prm,stt,mse,of,Mp,temperature,gdot_slip,gdot_twin,
      s1=prm%fcc_twinNucleationSlipPair(1,i)
      s2=prm%fcc_twinNucleationSlipPair(2,i)
      if (tau(i) < mse%tau_r_twin(i,of)) then
-       Ndot0_twin=(abs(gdot_slip(s1))*(stt%rhoEdge(s2,of)+stt%rhoEdgeDip(s2,of))+&  !!!!! correct?
+       Ndot0_twin=(abs(gdot_slip(s1))*(stt%rhoEdge(s2,of)+stt%rhoEdgeDip(s2,of))+&
                    abs(gdot_slip(s2))*(stt%rhoEdge(s1,of)+stt%rhoEdgeDip(s1,of)))/&
                (prm%L0_twin*prm%burgers_slip(i))*&
                (1.0_pReal-exp(-prm%VcrossSlip/(kB*Temperature)*&
@@ -1500,7 +1507,7 @@ pure subroutine kinetics_twin(prm,stt,mse,of,Mp,temperature,gdot_slip,gdot_twin,
 
  if(present(dgdot_dtau_twin)) dgdot_dtau_twin = dgdot_dtau
 
-end subroutine
+end subroutine kinetics_twin
 
  
 !--------------------------------------------------------------------------------------------------
@@ -1547,8 +1554,8 @@ pure subroutine kinetics_trans(prm,stt,mse,of,Mp,temperature,gdot_slip,gdot_tran
      s1=prm%fcc_twinNucleationSlipPair(1,i)
      s2=prm%fcc_twinNucleationSlipPair(2,i)
      if (tau(i) < mse%tau_r_trans(i,of)) then
-       Ndot0_trans=(abs(gdot_slip(s1))*(stt%rhoEdge(s2,of)+stt%rhoEdgeDip(s2,of))+&  ! s1/s2 mixing correct?
-                   abs(gdot_slip(s2))*(stt%rhoEdge(s1,of)+stt%rhoEdgeDip(s1,of)))/&
+       Ndot0_trans=(abs(gdot_slip(s1))*(stt%rhoEdge(s2,of)+stt%rhoEdgeDip(s2,of))+&
+                    abs(gdot_slip(s2))*(stt%rhoEdge(s1,of)+stt%rhoEdgeDip(s1,of)))/&
                (prm%L0_trans*prm%burgers_slip(i))*&                               ! burgers_slip correct?
                (1.0_pReal-exp(-prm%VcrossSlip/(kB*Temperature)*&
                (mse%tau_r_trans(i,of)-tau)))
@@ -1583,7 +1590,7 @@ pure subroutine kinetics_trans(prm,stt,mse,of,Mp,temperature,gdot_slip,gdot_tran
 !
 ! if(present(dgdot_dtau_twin)) dgdot_dtau_twin = dgdot_dtau
 !
-end subroutine
+end subroutine kinetics_trans
 
 !--------------------------------------------------------------------------------------------------
 !> @brief return array of constitutive results
