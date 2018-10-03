@@ -151,8 +151,6 @@ subroutine plastic_phenopowerlaw_init
    sizeState,sizeDotState, &
    startIndex, endIndex
 
- real(pReal), dimension(:,:), allocatable :: temp1
-
  integer(pInt),          dimension(0), parameter :: emptyIntArray = [integer(pInt)::]
  real(pReal),            dimension(0), parameter :: emptyRealArray = [real(pReal)::]
  character(len=65536),   dimension(0), parameter :: emptyStringArray = [character(len=65536)::]
@@ -272,8 +270,12 @@ subroutine plastic_phenopowerlaw_init
    endif twinActive
 
    slipAndTwinActive: if (prm%totalNslip > 0_pInt .and. prm%totalNtwin > 0_pInt) then
-     prm%interaction_SlipTwin = spread(config_phase(p)%getFloats('interaction_sliptwin'),2,1)
-     prm%interaction_TwinSlip = spread(config_phase(p)%getFloats('interaction_twinslip'),2,1)
+     prm%interaction_SlipTwin = lattice_interactionSlipTwin2(prm%Nslip,prm%Ntwin,&
+                                       config_phase(p)%getFloats('interaction_sliptwin'), &
+                                                                      structure(1:3))
+     prm%interaction_TwinSlip = lattice_interactionTwinSlip2(prm%Ntwin,prm%Nslip,&
+                                       config_phase(p)%getFloats('interaction_twinslip'), &
+                                                                      structure(1:3))
      prm%h0_TwinSlip = config_phase(p)%getFloat('h0_twinslip')
    else slipAndTwinActive
      prm%h0_TwinSlip = 0.0_pReal
@@ -350,6 +352,8 @@ subroutine plastic_phenopowerlaw_init
              + size(['tau_twin  ','gamma_twin']) * prm%TotalNtwin &
              + size(['sum(gamma)','sum(f)    '])
 
+!--------------------------------------------------------------------------------------------------
+! ToDo: This could be done by a function (in constitutive?)
    sizeDotState = sizeState
    plasticState(p)%sizeState = sizeState
    plasticState(p)%sizeDotState = sizeDotState
@@ -376,7 +380,6 @@ subroutine plastic_phenopowerlaw_init
 
 !--------------------------------------------------------------------------------------------------
 ! calculate hardening matrices
-   allocate(temp1(prm%totalNslip,prm%totalNtwin),source = 0.0_pReal)
    allocate(prm%nonSchmid_pos(3,3,prm%totalNslip),source = 0.0_pReal)
    allocate(prm%nonSchmid_neg(3,3,prm%totalNslip),source = 0.0_pReal)
    i = 0_pInt
@@ -395,21 +398,9 @@ subroutine plastic_phenopowerlaw_init
                                       + lattice_Sslip(1:3,1:3,2*k+1,index_myFamily+j,p) &
                                                                             * prm%nonSchmidCoeff(k)
        enddo
-       twinFamilies: do o = 1_pInt,size(prm%Ntwin,1)
-         index_otherFamily = sum(prm%Ntwin(1:o-1_pInt))
-         twinSystems: do k = 1_pInt,prm%Ntwin(o)
-           temp1(index_myFamily+j,index_otherFamily+k) = &
-               prm%interaction_SlipTwin(lattice_interactionSlipTwin( &
-                                                                 sum(lattice_NslipSystem(1:f-1_pInt,p))+j, &
-                                                                 sum(lattice_NtwinSystem(1:o-1_pInt,p))+k, &
-                                                                 p),1)
-       enddo twinSystems; enddo twinFamilies
      enddo mySlipSystems
    enddo mySlipFamilies
-   prm%interaction_SlipTwin = temp1; deallocate(temp1)
 
-
-   allocate(temp1(prm%totalNtwin,prm%totalNslip),source = 0.0_pReal)
    allocate(prm%gamma_twin_char(prm%totalNtwin),source  = 0.0_pReal)
    i = 0_pInt
    myTwinFamilies: do f = 1_pInt,size(prm%Ntwin,1)                                    ! >>> interaction twin -- X
@@ -417,18 +408,8 @@ subroutine plastic_phenopowerlaw_init
      myTwinSystems: do j = 1_pInt,prm%Ntwin(f)
        i = i + 1_pInt
        prm%gamma_twin_char(i)          = lattice_shearTwin(sum(lattice_Ntwinsystem(1:f-1,p))+j,p)
-       slipFamilies: do o = 1_pInt,size(prm%Nslip,1)
-         index_otherFamily = sum(prm%Nslip(1:o-1_pInt))
-         slipSystems: do k = 1_pInt,prm%Nslip(o)
-           temp1(index_myFamily+j,index_otherFamily+k) = &
-               prm%interaction_TwinSlip(lattice_interactionTwinSlip( &
-                                                                 sum(lattice_NtwinSystem(1:f-1_pInt,p))+j, &
-                                                                 sum(lattice_NslipSystem(1:o-1_pInt,p))+k, &
-                                                                 p),1)
-       enddo slipSystems; enddo slipFamilies
      enddo myTwinSystems
    enddo myTwinFamilies
-   prm%interaction_TwinSlip = temp1; deallocate(temp1)
 
 !--------------------------------------------------------------------------------------------------
 ! locally defined state aliases and initialization of state0 and aTolState
