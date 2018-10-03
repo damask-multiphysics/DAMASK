@@ -1304,7 +1304,7 @@ subroutine lattice_init
  allocate(lattice_Scleavage(3,3,3,lattice_maxNslip,Nphases),source=0.0_pReal)
  allocate(lattice_Scleavage_v(6,3,lattice_maxNslip,Nphases),source=0.0_pReal)
 
-  allocate(lattice_Qtwin(3,3,lattice_maxNtwin,Nphases),source=0.0_pReal)
+ allocate(lattice_Qtwin(3,3,lattice_maxNtwin,Nphases),source=0.0_pReal)
  allocate(lattice_Stwin(3,3,lattice_maxNtwin,Nphases),source=0.0_pReal)
  allocate(lattice_Stwin_v(6,lattice_maxNtwin,Nphases),source=0.0_pReal)
 
@@ -2081,6 +2081,7 @@ pure function lattice_qDisorientation(Q1, Q2, struct)
 
 end function lattice_qDisorientation
 
+
 function lattice_C66_twin(Ntwin,C66,structure,CoverA)
  use IO, only: &
    IO_error
@@ -2221,31 +2222,48 @@ function lattice_C66_trans(Ntrans,C66_parent,structure_parent,cOverA_parent, &
 
  end function
 
-!function lattice_nonSchmidMatrix
-!  coordinateSystem = buildCoordinateSystem(Nslip,int(LATTICE_BCC_SYSTEMSLIP,pInt),structure)
-!
-!  do i = 1_pInt,myNslip                                                                          ! assign slip system vectors
-!       direction = coordinateSystem(1:3,1,i)
-!       normal    = coordinateSystem(1:3,1,i)
-!       ! "np" and "nn" according to Gröger_etal2008, Acta Materialia 56 (2008) 5412–5425, table 1 (corresponds to their "n1" for positive and negative slip direction respectively)
-!       np = math_mul33x3(math_axisAngleToR(sdU,+60.0_pReal*INRAD), normal)
 !       ! Schmid matrices with non-Schmid contributions according to Koester_etal2012, Acta Materialia 60 (2012) 3894–3901, eq. (17) ("n1" is replaced by either "np" or "nn" according to either positive or negative slip direction)
-!       nonSchmidMatrix_pos(1:3,1:3,1,i) = math_tensorproduct33(direction, np)
-!       nonSchmidMatrix_pos(1:3,1:3,2,i) = math_tensorproduct33(math_crossproduct(normal, direction), normal)
-!       nonSchmidMatrix_pos(1:3,1:3,3,i) = math_tensorproduct33(math_crossproduct(np, direction), np)
-!       nonSchmidMatrix_pos(1:3,1:3,4,i) = math_tensorproduct33(normal, normal)
-!       nonSchmidMatrix_pos(1:3,1:3,5,i) = math_tensorproduct33(math_crossproduct(normal, direction), math_crossproduct(normal, direction))
-!       nonSchmidMatrix_pos(1:3,1:3,6,i) = math_tensorproduct33(direction, direction)
-!
-!       nn = math_mul33x3(math_axisAngleToR(-sdU,60.0_pReal*INRAD), normal)
-!       sns(1:3,1:3,2,1,i) = math_tensorproduct33(-sdU, nn)
-!       sns(1:3,1:3,2,2,i) = math_tensorproduct33(math_crossproduct(snU, -sdU), snU)
-!       sns(1:3,1:3,2,3,i) = math_tensorproduct33(math_crossproduct(nn, -sdU), nn)
-!       sns(1:3,1:3,2,4,i) = math_tensorproduct33(snU, snU)
-!       sns(1:3,1:3,2,5,i) = math_tensorproduct33(math_crossproduct(snU, -sdU), math_crossproduct(snU, -sdU))
-!       sns(1:3,1:3,2,6,i) = math_tensorproduct33(-sdU, -sdU)
-!     enddo
-!end function lattice_nonSchmidMatrix
+!       ! "np" and "nn" according to Gröger_etal2008, Acta Materialia 56 (2008) 5412–5425, table 1 (corresponds to their "n1" for positive and negative slip direction respectively)
+function lattice_nonSchmidMatrix(Nslip,nonSchmidCoefficients,sense) result(nonSchmidMatrix)
+ use math, only: &
+  INRAD, &
+  math_tensorproduct33, &
+  math_crossproduct, &
+  math_mul33x3, &
+  math_axisAngleToR
+ implicit none
+ integer(pInt),    dimension(:),                   intent(in) :: Nslip                              !< number of active slip systems per family
+ real(pReal),      dimension(6),                   intent(in) :: nonSchmidCoefficients
+ integer(pInt),                                    intent(in) :: sense                              !< sense (-1,+1)
+
+ real(pReal),     dimension(1:3,1:3,sum(Nslip))               :: nonSchmidMatrix
+
+ real(pReal),     dimension(1:3,1:3,sum(Nslip))               :: coordinateSystem
+ real(pReal),   dimension(:),                   allocatable :: direction
+ real(pReal),   dimension(:),                   allocatable :: normal,np
+ integer(pInt) :: i
+
+ if (abs(sense) /= 1_pInt) write(6,*) 'mist'
+ coordinateSystem        = buildCoordinateSystem(Nslip,int(LATTICE_BCC_SYSTEMSLIP,pInt),'bcc')
+ coordinateSystem(1:3,1,sum(Nslip)) = coordinateSystem(1:3,1,sum(Nslip)) *real(sense,pReal)
+ nonSchmidMatrix = lattice_SchmidMatrix_slip(Nslip,'bcc')
+
+ do i = 1_pInt,sum(Nslip)
+   direction = coordinateSystem(1:3,1,i)
+   normal    = coordinateSystem(1:3,2,i)
+   np = math_mul33x3(math_axisAngleToR(+direction,60.0_pReal*INRAD), normal)
+     nonSchmidMatrix(1:3,1:3,i) &
+       = nonSchmidMatrix(1:3,1:3,i) &
+       + nonSchmidCoefficients(1) * math_tensorproduct33(direction, np) &
+       + nonSchmidCoefficients(2) * math_tensorproduct33(math_crossproduct(normal, direction), normal) &
+       + nonSchmidCoefficients(3) * math_tensorproduct33(math_crossproduct(np, direction), np) &
+       + nonSchmidCoefficients(4) * math_tensorproduct33(normal, normal) &
+       + nonSchmidCoefficients(5) * math_tensorproduct33(math_crossproduct(normal, direction), &
+                                                         math_crossproduct(normal, normal)) &
+       + nonSchmidCoefficients(6) * math_tensorproduct33(direction, direction)
+ enddo
+end function lattice_nonSchmidMatrix
+
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Populates reduced slip-slip interaction matrix
@@ -2376,7 +2394,7 @@ end function lattice_interactionSlipTwin2
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Populates reduced slip-twin interaction matrix
+!> @brief Populates reduced twin-slip interaction matrix
 !> ToDo: prefix "2" needed as long as deprecated array lattice_interactionTwinTwin exists
 !--------------------------------------------------------------------------------------------------
 function lattice_interactionTwinSlip2(Ntwin,Nslip,interactionValues,structure)
