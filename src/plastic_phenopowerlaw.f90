@@ -376,7 +376,7 @@ subroutine plastic_phenopowerlaw_init
 
 !--------------------------------------------------------------------------------------------------
 ! calculate hardening matrices
-   allocate(temp1(prm%totalNslip,prm%totalNslip),source = 0.0_pReal)
+   allocate(temp1(prm%totalNslip,prm%totalNtwin),source = 0.0_pReal)
    allocate(prm%nonSchmid_pos(3,3,prm%totalNslip),source = 0.0_pReal)
    allocate(prm%nonSchmid_neg(3,3,prm%totalNslip),source = 0.0_pReal)
    i = 0_pInt
