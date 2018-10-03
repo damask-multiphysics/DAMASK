@@ -70,8 +70,7 @@ module plastic_phenopowerlaw
      interaction_TwinTwin                                                                           !< twin resistance from twin activity
    real(pReal),   dimension(:,:,:),   allocatable :: &
      Schmid_slip, &
-     Schmid_twin
-   real(pReal),   dimension(:,:,:,:),   allocatable :: &
+     Schmid_twin, &
      nonSchmid_pos, &
      nonSchmid_neg
  integer(kind(undefined_ID)),         dimension(:),   allocatable          :: &
@@ -378,19 +377,23 @@ subroutine plastic_phenopowerlaw_init
 !--------------------------------------------------------------------------------------------------
 ! calculate hardening matrices
    allocate(temp1(prm%totalNslip,prm%totalNslip),source = 0.0_pReal)
-   allocate(prm%nonSchmid_pos(3,3,size(prm%nonSchmidCoeff),prm%totalNslip),source = 0.0_pReal)
-   allocate(prm%nonSchmid_neg(3,3,size(prm%nonSchmidCoeff),prm%totalNslip),source = 0.0_pReal)
+   allocate(prm%nonSchmid_pos(3,3,prm%totalNslip),source = 0.0_pReal)
+   allocate(prm%nonSchmid_neg(3,3,prm%totalNslip),source = 0.0_pReal)
    i = 0_pInt
    mySlipFamilies: do f = 1_pInt,size(prm%Nslip,1)                                    ! >>> interaction slip -- X
      index_myFamily = sum(prm%Nslip(1:f-1_pInt))
 
      mySlipSystems: do j = 1_pInt,prm%Nslip(f)
        i = i + 1_pInt
+       prm%nonSchmid_pos(1:3,1:3,i) = lattice_Sslip(1:3,1:3,1,  index_myFamily+j,p)
+       prm%nonSchmid_neg(1:3,1:3,i) = lattice_Sslip(1:3,1:3,1,  index_myFamily+j,p)
        do k = 1,size(prm%nonSchmidCoeff)
-         prm%nonSchmid_pos(1:3,1:3,k,i) = lattice_Sslip(1:3,1:3,2*k,  index_myFamily+j,p) &
-                                        * prm%nonSchmidCoeff(k)
-         prm%nonSchmid_neg(1:3,1:3,k,i) = lattice_Sslip(1:3,1:3,2*k+1,index_myFamily+j,p) &
-                                        * prm%nonSchmidCoeff(k)
+         prm%nonSchmid_pos(1:3,1:3,i) = prm%nonSchmid_pos(1:3,1:3,i) &
+                                      + lattice_Sslip(1:3,1:3,2*k,  index_myFamily+j,p) &
+                                                                            * prm%nonSchmidCoeff(k)
+         prm%nonSchmid_neg(1:3,1:3,i) = prm%nonSchmid_neg(1:3,1:3,i) &
+                                      + lattice_Sslip(1:3,1:3,2*k+1,index_myFamily+j,p) &
+                                                                            * prm%nonSchmidCoeff(k)
        enddo
        twinFamilies: do o = 1_pInt,size(prm%Ntwin,1)
          index_otherFamily = sum(prm%Ntwin(1:o-1_pInt))
@@ -517,12 +520,10 @@ subroutine plastic_phenopowerlaw_LpAndItsTangent(Lp,dLp_dMp,Mp,instance,of)
    Lp = Lp + (1.0_pReal-stt%sumF(of))*(gdot_slip_pos(i)+gdot_slip_neg(i))*prm%Schmid_slip(1:3,1:3,i)
    forall (k=1_pInt:3_pInt,l=1_pInt:3_pInt,m=1_pInt:3_pInt,n=1_pInt:3_pInt) &
      dLp_dMp(k,l,m,n) = dLp_dMp(k,l,m,n) &
-                      + dgdot_dtauslip_pos(i) * prm%Schmid_slip(k,l,i) &
-                                              *(prm%Schmid_slip(m,n,i) + sum(prm%nonSchmid_pos(m,n,:,i)))
+                      + dgdot_dtauslip_pos(i) * prm%Schmid_slip(k,l,i) * prm%nonSchmid_pos(m,n,i)
    forall (k=1_pInt:3_pInt,l=1_pInt:3_pInt,m=1_pInt:3_pInt,n=1_pInt:3_pInt) &
      dLp_dMp(k,l,m,n) = dLp_dMp(k,l,m,n) &
-                      + dgdot_dtauslip_neg(i) * prm%Schmid_slip(k,l,i) &
-                                              *(prm%Schmid_slip(m,n,i) + sum(prm%nonSchmid_neg(m,n,:,i)))
+                      + dgdot_dtauslip_neg(i) * prm%Schmid_slip(k,l,i) * prm%nonSchmid_neg(m,n,i)
  enddo slipSystems
 
  call kinetics_twin(prm,stt,of,Mp,gdot_twin,dgdot_dtautwin)
@@ -643,15 +644,11 @@ subroutine kinetics_slip(prm,stt,of,Mp,gdot_slip_pos,gdot_slip_neg, &
  real(pReal), dimension(prm%totalNslip) :: &
    tau_slip_pos, &
    tau_slip_neg
- integer(pInt) :: i, j
+ integer(pInt) :: i
 
  do i = 1_pInt, prm%totalNslip
-   tau_slip_pos(i) = math_mul33xx33(Mp,prm%Schmid_slip(1:3,1:3,i))
-   tau_slip_neg(i) = tau_slip_pos(i)
-   do j = 1,size(prm%nonSchmidCoeff)
-     tau_slip_pos(i) = tau_slip_pos(i) + math_mul33xx33(Mp,prm%nonSchmid_pos(1:3,1:3,j,i))
-     tau_slip_neg(i) = tau_slip_neg(i) + math_mul33xx33(Mp,prm%nonSchmid_neg(1:3,1:3,j,i))
-   enddo
+   tau_slip_pos(i) = math_mul33xx33(Mp,prm%nonSchmid_pos(1:3,1:3,i))
+   tau_slip_neg(i) = math_mul33xx33(Mp,prm%nonSchmid_neg(1:3,1:3,i))
  enddo
 
  gdot_slip_pos = 0.5_pReal*prm%gdot0_slip &
