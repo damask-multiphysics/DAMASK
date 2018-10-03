@@ -2264,17 +2264,17 @@ function lattice_interactionSlipSlip2(Nslip,interactionValues,structure)
 
  select case(structure)
    case('fcc')
-     interactionSlipSlip = lattice_fcc_interactionSlipSlip
-     NslipMax            = lattice_fcc_Nslip
+     interactionSlipSlip = LATTICE_FCC_INTERACTIONSLIPSLIP
+     NslipMax            = LATTICE_FCC_NSLIPSYSTEM
    case('bcc')
-     interactionSlipSlip = lattice_bcc_interactionSlipSlip
-     NslipMax            = lattice_bcc_Nslip
+     interactionSlipSlip = LATTICE_BCC_INTERACTIONSLIPSLIP
+     NslipMax            = LATTICE_BCC_NSLIPSYSTEM
    case('hex','hexagonal')                                                                          !ToDo: "No alias policy": long or short?
-     interactionSlipSlip = lattice_hex_interactionTwinTwin
-     NslipMax            = lattice_hex_Nslip
+     interactionSlipSlip = LATTICE_HEX_INTERACTIONSLIPSLIP
+     NslipMax            = LATTICE_HEX_NSLIPSYSTEM
    case('bct')
-     interactionSlipSlip = lattice_bct_interactionSlipSlip
-     NslipMax            = lattice_bct_Nslip
+     interactionSlipSlip = LATTICE_BCT_INTERACTIONSLIPSLIP
+     NslipMax            = LATTICE_BCT_NSLIPSYSTEM
    case default
      call IO_error(132_pInt,ext_msg=trim(structure)//' (slip slip interaction)')
  end select
@@ -2307,14 +2307,14 @@ function lattice_interactionTwinTwin2(Ntwin,interactionValues,structure)
 
  select case(structure)
    case('fcc')
-     interactionTwinTwin = lattice_fcc_interactionTwinTwin
-     NtwinMax            = lattice_fcc_Ntwin
+     interactionTwinTwin = LATTICE_FCC_INTERACTIONTWINTWIN
+     NtwinMax            = LATTICE_FCC_NTWINSYSTEM
    case('bcc')
-     interactionTwinTwin = lattice_bcc_interactionTwinTwin
-     NtwinMax            = lattice_bcc_Ntwin
+     interactionTwinTwin = LATTICE_BCC_INTERACTIONTWINTWIN
+     NtwinMax            = LATTICE_BCC_NTWINSYSTEM
    case('hex','hexagonal')                                                                          !ToDo: "No alias policy": long or short?
-     interactionTwinTwin = lattice_hex_interactionTwinTwin
-     NtwinMax            = lattice_hex_Ntwin
+     interactionTwinTwin = LATTICE_HEX_INTERACTIONTWINTWIN
+     NtwinMax            = LATTICE_HEX_NTWINSYSTEM
    case default
      call IO_error(132_pInt,ext_msg=trim(structure)//' (twin twin interaction)')
  end select
