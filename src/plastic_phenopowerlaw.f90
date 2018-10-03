@@ -349,7 +349,7 @@ subroutine plastic_phenopowerlaw_init
    NipcMyPhase = count(material_phase == p)                                                         ! number of IPCs containing my phase
    sizeState = size(['tau_slip  ','gamma_slip']) * prm%TotalNslip &
              + size(['tau_twin  ','gamma_twin']) * prm%TotalNtwin &
-             + size(['sum(gamma)', 'sum(f)    '])
+             + size(['sum(gamma)','sum(f)    '])
 
    sizeDotState = sizeState
    plasticState(p)%sizeState = sizeState
@@ -551,7 +551,7 @@ subroutine plastic_phenopowerlaw_dotState(Mp,instance,of)
    of
 
  integer(pInt) :: &
-   i,k
+   i
  real(pReal) :: &
    c_SlipSlip,c_TwinSlip,c_TwinTwin, &
    xi_slip_sat_offset
@@ -643,7 +643,6 @@ subroutine kinetics_slip(prm,stt,of,Mp,gdot_slip_pos,gdot_slip_neg, &
  real(pReal), dimension(prm%totalNslip) :: &
    tau_slip_pos, &
    tau_slip_neg
-
  integer(pInt) :: i, j
 
  do i = 1_pInt, prm%totalNslip
