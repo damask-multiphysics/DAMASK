@@ -501,10 +501,8 @@ subroutine plastic_phenopowerlaw_LpAndItsTangent(Lp,dLp_dMp,Mp,instance,of)
    Lp = Lp + (1.0_pReal-stt%sumF(of))*(gdot_slip_pos(i)+gdot_slip_neg(i))*prm%Schmid_slip(1:3,1:3,i)
    forall (k=1_pInt:3_pInt,l=1_pInt:3_pInt,m=1_pInt:3_pInt,n=1_pInt:3_pInt) &
      dLp_dMp(k,l,m,n) = dLp_dMp(k,l,m,n) &
-                      + dgdot_dtauslip_pos(i) * prm%Schmid_slip(k,l,i) * prm%nonSchmid_pos(m,n,i)
-   forall (k=1_pInt:3_pInt,l=1_pInt:3_pInt,m=1_pInt:3_pInt,n=1_pInt:3_pInt) &
-     dLp_dMp(k,l,m,n) = dLp_dMp(k,l,m,n) &
-                      + dgdot_dtauslip_neg(i) * prm%Schmid_slip(k,l,i) * prm%nonSchmid_neg(m,n,i)
+                      + dgdot_dtauslip_pos(i) * (prm%Schmid_slip(k,l,i) + prm%nonSchmid_pos(m,n,i)) &
+                      + dgdot_dtauslip_neg(i) * (prm%Schmid_slip(k,l,i) + prm%nonSchmid_neg(m,n,i))
  enddo slipSystems
 
  call kinetics_twin(prm,stt,of,Mp,gdot_twin,dgdot_dtautwin)
