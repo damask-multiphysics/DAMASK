@@ -2329,6 +2329,96 @@ end function lattice_interactionTwinTwin2
 
 
 !--------------------------------------------------------------------------------------------------
+!> @brief Populates reduced slip-twin interaction matrix
+!> ToDo: prefix "2" needed as long as deprecated array lattice_interactionTwinTwin exists
+!--------------------------------------------------------------------------------------------------
+function lattice_interactionSlipTwin2(Nslip,Ntwin,interactionValues,structure)
+ use IO, only: &
+   IO_error
+
+ implicit none
+ integer(pInt),    dimension(:),                   intent(in) :: Nslip                              !< number of active slip systems per family
+ integer(pInt),    dimension(:),                   intent(in) :: Ntwin                              !< number of active twin systems per family
+ real(pReal),      dimension(:),                   intent(in) :: interactionValues                  !< interaction values twin-twin
+ character(len=*),                                 intent(in) :: structure                          !< lattice structure
+ real(pReal),     dimension(sum(Nslip),sum(Ntwin))            :: lattice_interactionSlipTwin2
+
+ integer(pInt),   dimension(:),                   allocatable :: NslipMax
+ integer(pInt),   dimension(:),                   allocatable :: NtwinMax
+ integer(pInt),   dimension(:,:),                 allocatable :: interactionSlipTwin
+
+ select case(structure)
+   case('fcc')
+     interactionSlipTwin = LATTICE_FCC_INTERACTIONSLIPTWIN
+     NslipMax            = LATTICE_FCC_NSLIPSYSTEM
+     NtwinMax            = LATTICE_FCC_NTWINSYSTEM
+   case('bcc')
+     interactionSlipTwin = LATTICE_BCC_INTERACTIONSLIPTWIN
+     NslipMax            = LATTICE_BCC_NSLIPSYSTEM
+     NtwinMax            = LATTICE_BCC_NTWINSYSTEM
+   case('hex','hexagonal')                                                                          !ToDo: "No alias policy": long or short?
+     interactionSlipTwin = LATTICE_HEX_INTERACTIONSLIPTWIN
+     NslipMax            = LATTICE_HEX_NSLIPSYSTEM
+     NtwinMax            = LATTICE_HEX_NTWINSYSTEM
+   case default
+     call IO_error(132_pInt,ext_msg=trim(structure)//' (slip twin interaction)')
+ end select
+
+ if (any(Ntwin(1:size(Ntwin)) - Ntwin < 0_pInt)) &
+   call IO_error(145_pInt,ext_msg='Ntrans '//trim(structure))
+
+ lattice_interactionSlipTwin2 = &
+   buildInteraction(Nslip,Ntwin,NslipMax,NtwinMax,interactionValues,interactionSlipTwin)
+
+end function lattice_interactionSlipTwin2
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Populates reduced slip-twin interaction matrix
+!> ToDo: prefix "2" needed as long as deprecated array lattice_interactionTwinTwin exists
+!--------------------------------------------------------------------------------------------------
+function lattice_interactionTwinSlip2(Ntwin,Nslip,interactionValues,structure)
+ use IO, only: &
+   IO_error
+
+ implicit none
+ integer(pInt),    dimension(:),                   intent(in) :: Nslip                              !< number of active slip systems per family
+ integer(pInt),    dimension(:),                   intent(in) :: Ntwin                              !< number of active twin systems per family
+ real(pReal),      dimension(:),                   intent(in) :: interactionValues                  !< interaction values twin-twin
+ character(len=*),                                 intent(in) :: structure                          !< lattice structure
+ real(pReal),     dimension(sum(Ntwin),sum(Nslip))            :: lattice_interactionTwinSlip2
+
+ integer(pInt),   dimension(:),                   allocatable :: NslipMax
+ integer(pInt),   dimension(:),                   allocatable :: NtwinMax
+ integer(pInt),   dimension(:,:),                 allocatable :: interactionTwinSlip
+
+ select case(structure)
+   case('fcc')
+     interactionTwinSlip = LATTICE_FCC_INTERACTIONTWINSLIP
+     NtwinMax            = LATTICE_FCC_NTWINSYSTEM
+     NslipMax            = LATTICE_FCC_NSLIPSYSTEM
+   case('bcc')
+     interactionTwinSlip = LATTICE_BCC_INTERACTIONTWINSLIP
+     NtwinMax            = LATTICE_BCC_NTWINSYSTEM
+     NslipMax            = LATTICE_BCC_NSLIPSYSTEM
+   case('hex','hexagonal')                                                                          !ToDo: "No alias policy": long or short?
+     interactionTwinSlip = LATTICE_HEX_INTERACTIONTWINSLIP
+     NtwinMax            = LATTICE_HEX_NTWINSYSTEM
+     NslipMax            = LATTICE_HEX_NSLIPSYSTEM
+   case default
+     call IO_error(132_pInt,ext_msg=trim(structure)//' (slip twin interaction)')
+ end select
+
+ if (any(Ntwin(1:size(Ntwin)) - Ntwin < 0_pInt)) &
+   call IO_error(145_pInt,ext_msg='Ntrans '//trim(structure))
+
+ lattice_interactionTwinSlip2 = &
+   buildInteraction(Ntwin,Nslip,NtwinMax,NslipMax,interactionValues,interactionTwinSlip)
+
+end function lattice_interactionTwinSlip2
+
+
+!--------------------------------------------------------------------------------------------------
 !> @brief Populates reduced trans-trans interaction matrix
 !> ToDo: prefix "2" needed as long as deprecated array lattice_interactionTransTrans exists
 !--------------------------------------------------------------------------------------------------
