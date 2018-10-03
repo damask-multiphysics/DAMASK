@@ -13,13 +13,13 @@ module lattice
 
  implicit none
  private
+! BEGIN DEPRECATED
  integer(pInt), parameter, public :: &
    LATTICE_maxNslipFamily     =  13_pInt, &                                                         !< max # of slip system families over lattice structures
    LATTICE_maxNtwinFamily     =  4_pInt, &                                                          !< max # of twin system families over lattice structures
    LATTICE_maxNtransFamily    =  1_pInt, &                                                          !< max # of transformation system families over lattice structures
    LATTICE_maxNcleavageFamily =  3_pInt                                                             !< max # of transformation system families over lattice structures
 
-! BEGIN DEPRECATED
  integer(pInt), allocatable, dimension(:,:), protected, public :: &
    lattice_NslipSystem, &                                                                           !< total # of slip systems in each family
    lattice_NtwinSystem, &                                                                           !< total # of twin systems in each family
@@ -1091,6 +1091,7 @@ module lattice
       1, 0, 0,     0, 0, 1  &
      ],pReal),[ 3_pInt + 3_pInt,LATTICE_ortho_Ncleavage])
 
+! BEGIN DEPRECATED
  integer(pInt), parameter, public :: &
    LATTICE_maxNslip        = max(LATTICE_fcc_Nslip,LATTICE_bcc_Nslip,LATTICE_hex_Nslip, &
                                  LATTICE_bct_Nslip,LATTICE_iso_Nslip,LATTICE_ortho_Nslip), &        !< max # of slip systems over lattice structures
@@ -1130,6 +1131,7 @@ module lattice
                                 !maxval(lattice_bct_interactionTwinTwin)))
                                 )                                                                   !< max # of interaction types (in hardening matrix part)
 #endif
+!END DEPRECATED
  real(pReal),                          dimension(:,:,:),     allocatable, private :: &
   temp66
  real(pReal),                          dimension(:,:,:),     allocatable, public, protected :: &
