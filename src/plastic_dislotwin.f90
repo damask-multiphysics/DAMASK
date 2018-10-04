@@ -382,6 +382,7 @@ subroutine plastic_dislotwin_init(fileUnit)
      prm%r = math_expand(prm%r,prm%Ntwin)
      
      prm%L0_twin = config_phase(p)%getFloat('l0_twin')
+     prm%MaxTwinFraction = config_phase(p)%getFloat('maxtwinfraction') ! ToDo: only used in postResults
    else
      allocate(prm%twinsize(0))
      allocate(prm%burgers_twin(0))
@@ -442,7 +443,7 @@ subroutine plastic_dislotwin_init(fileUnit)
 
    prm%CAtomicVolume = config_phase(p)%getFloat('catomicvolume')
    prm%GrainSize =  config_phase(p)%getFloat('grainsize')
-   prm%MaxTwinFraction = config_phase(p)%getFloat('maxtwinfraction') ! ToDo: only used in postResults
+
 
    prm%D0 = config_phase(p)%getFloat('d0')
    prm%Qsd = config_phase(p)%getFloat('qsd')
