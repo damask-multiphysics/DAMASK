@@ -1269,20 +1269,11 @@ subroutine plastic_dislotwin_dotState(Mp,Temperature,instance,of)
              - sum(stt%stressTransFraction(1_pInt:prm%totalNtrans,of)) &
              - sum(stt%strainTransFraction(1_pInt:prm%totalNtrans,of))
 
- slipState: do i = 1_pInt, prm%totalNslip
-
+ slipState1: do i = 1_pInt, prm%totalNslip
    tau = math_mul33xx33(Mp,prm%Schmid_slip(1:3,1:3,i))
-
-   significantSlipStress1: if((abs(tau)-mse%threshold_stress_slip(i,of)) > tol_math_check) then
-     stressRatio =((abs(tau)- mse%threshold_stress_slip(i,of))/&
-       (prm%SolidSolutionStrength+prm%tau_peierls(i)))
-     StressRatio_p  = stressRatio** prm%p(i)
-     BoltzmannRatio = prm%Qedge(i)/(kB*Temperature)
-     gdot_slip(i) = stt%rhoEdge(i,of)*prm%burgers_slip(i)*prm%v0(i) &
-                  * sign(exp(-BoltzmannRatio*(1_pInt-StressRatio_p)**prm%q(i)),tau)
-   else significantSlipStress1
-     gdot_slip(i) = 0.0_pReal
-   endif significantSlipStress1
+ enddo slipState1
+ call kinetics_slip(prm,stt,mse,of,Mp,temperature,gdot_slip)
+ slipState2: do i = 1_pInt, prm%totalNslip
 
    DotRhoMultiplication = abs(gdot_slip(i))/(prm%burgers_slip(i)*mse%mfp_slip(i,of))
    EdgeDipMinDistance = prm%CEdgeDipMinDistance*prm%burgers_slip(i)
@@ -1324,7 +1315,7 @@ subroutine plastic_dislotwin_dotState(Mp,Temperature,instance,of)
    dot%rhoEdge(i,of)    = DotRhoMultiplication-DotRhoDipFormation-DotRhoEdgeEdgeAnnihilation
    dot%rhoEdgeDip(i,of) = DotRhoDipFormation-DotRhoEdgeDipAnnihilation-DotRhoEdgeDipClimb
    dot%accshear_slip(i,of) = abs(gdot_slip(i))
- enddo slipState
+ enddo slipState2
  
  twinState: do i = 1_pInt, prm%totalNtwin
    
@@ -1433,7 +1424,7 @@ pure subroutine kinetics_slip(prm,stt,mse,of,Mp,temperature,gdot_slip,dgdot_dtau
  enddo
  
  tau_eff = abs(tau)-mse%threshold_stress_slip(:,of)
-
+   
  significantStress: where(tau_eff > tol_math_check)
    stressRatio    = tau_eff/(prm%SolidSolutionStrength+prm%tau_peierls)
    StressRatio_p  = stressRatio** prm%p
@@ -1649,7 +1640,7 @@ function plastic_dislotwin_postResults(Mp,Temperature,instance,of) result(postRe
    s1,s2
  real(pReal) :: sumf_twin,tau,StressRatio_p,StressRatio_pminus1,BoltzmannRatio,DotGamma0,StressRatio_r,Ndot0_twin,dgdot_dtauslip, &
    stressRatio
- real(preal), dimension(param(instance)%totalNslip) :: &
+ real(pReal), dimension(param(instance)%totalNslip) :: &
    gdot_slip
  
  type(tParameters) :: prm
@@ -1673,24 +1664,7 @@ function plastic_dislotwin_postResults(Mp,Temperature,instance,of) result(postRe
        postResults(c+1_pInt:c+prm%totalNslip) = stt%rhoEdgeDip(1_pInt:prm%totalNslip,of)
        c = c + prm%totalNslip
      case (shear_rate_slip_ID)
-       do j = 1_pInt, prm%totalNslip
-         tau = math_mul33xx33(Mp,prm%Schmid_slip(1:3,1:3,j))
-         if((abs(tau)-mse%threshold_stress_slip(j,of)) > tol_math_check) then
-           stressRatio = ((abs(tau)-mse%threshold_stress_slip(j,of))/&
-                           (prm%SolidSolutionStrength+&
-                            prm%tau_peierls(j)))
-           StressRatio_p       = stressRatio** prm%p(j)
-           StressRatio_pminus1 = stressRatio**(prm%p(j)-1.0_pReal)
-           BoltzmannRatio = prm%Qedge(j)/(kB*Temperature)
-
-           DotGamma0 = stt%rhoEdge(j,of)*prm%burgers_slip(j)* prm%v0(j)
- 
-           postResults(c+j) = DotGamma0*exp(-BoltzmannRatio*(1_pInt-StressRatio_p)**&
-                          prm%q(j))*sign(1.0_pReal,tau)
-         else
-           postResults(c+j) = 0.0_pReal
-         endif
-       enddo
+       call kinetics_slip(prm,stt,mse,of,Mp,temperature,postResults(c+1:c+prm%totalNslip))
        c = c + prm%totalNslip
      case (accumulated_shear_slip_ID)
       postResults(c+1_pInt:c+prm%totalNslip)  = stt%accshear_slip(1_pInt:prm%totalNslip,of)
