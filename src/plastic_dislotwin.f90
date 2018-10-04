@@ -338,15 +338,21 @@ subroutine plastic_dislotwin_init(fileUnit)
 
      prm%interaction_SlipSlip = spread(config_phase(p)%getFloats('interaction_slipslip'),2,1)     
 
-     prm%CEdgeDipMinDistance      = config_phase(p)%getFloat('cedgedipmindistance')
 
      prm%CLambdaSlip = config_phase(p)%getFloats('clambdaslip')
      prm%CLambdaSlip= math_expand(prm%CLambdaSlip,prm%Nslip)
 
-     prm%tau_peierls = config_phase(p)%getFloats('tau_peierls',defaultVal=[0.0_pReal])
+     prm%tau_peierls = config_phase(p)%getFloats('tau_peierls',defaultVal=[(0.0_pReal, i=1,size(prm%Nslip))])
+     prm%tau_peierls = math_expand(prm%tau_peierls,prm%Nslip)
 
      prm%p = config_phase(p)%getFloats('p_slip')
+     prm%p = math_expand(prm%p,prm%Nslip)
      prm%q = config_phase(p)%getFloats('q_slip')
+     prm%q = math_expand(prm%p,prm%Nslip)
+
+     prm%CEdgeDipMinDistance      = config_phase(p)%getFloat('cedgedipmindistance')
+   else
+     allocate(prm%burgers_slip(0))
    endif
 
    prm%Ntwin =  config_phase(p)%getInts('ntwin', defaultVal=emptyInt)
@@ -375,12 +381,13 @@ subroutine plastic_dislotwin_init(fileUnit)
      prm%r = config_phase(p)%getFloats('r_twin')
      prm%r = math_expand(prm%r,prm%Ntwin)
      
-            
      prm%L0_twin = config_phase(p)%getFloat('l0_twin')
-     
-
+   else
+     allocate(prm%twinsize(0))
+     allocate(prm%burgers_twin(0))
+     allocate(prm%r(0))
    endif
-   
+  
    prm%Ntrans            =  config_phase(p)%getInts('ntrans', defaultVal=emptyInt)
    prm%totalNtrans = sum(prm%Ntrans)
    !if (size > Nchunks_SlipFamilies + 1_pInt) call IO_error(150_pInt,ext_msg=extmsg)
@@ -404,6 +411,9 @@ subroutine plastic_dislotwin_init(fileUnit)
      prm%lamellarsizePerTransSystem = math_expand(prm%lamellarsizePerTransSystem,prm%Ntrans)
      prm%s = config_phase(p)%getFloats('s_trans',defaultVal=[0.0_pReal])
      prm%s = math_expand(prm%s,prm%Ntrans)
+   else
+     allocate(prm%lamellarsizePerTransSystem(0))
+     allocate(prm%burgers_trans(0))
    endif
    
    if (sum(prm%Ntwin) > 0_pInt  .or. prm%totalNtrans > 0_pInt) then
@@ -962,9 +972,11 @@ subroutine plastic_dislotwin_microstructure(temperature,ipc,ip,el)
  sfe = prm%SFE_0K + prm%dSFE_dT * Temperature
  
  !* rescaled volume fraction for topology
- fOverStacksize         =  stt%twinFraction(1_pInt:prm%totalNtwin,of)/prm%twinsize  !ToDo: This is per system
+ fOverStacksize         =  stt%twinFraction(1_pInt:prm%totalNtwin,of)/prm%twinsize  !ToDo: this is per system
  ftransOverLamellarSize =  sumf_trans/prm%lamellarsizePerTransSystem                !ToDo: But this not ...
- 
+ !Todo: Physically ok, but naming could be adjusted
+
+
  !* 1/mean free distance between 2 forest dislocations seen by a moving dislocation
  forall (i = 1_pInt:prm%totalNslip) &
    mse%invLambdaSlip(i,of) = &
@@ -1020,12 +1032,14 @@ subroutine plastic_dislotwin_microstructure(temperature,ipc,ip,el)
                       prm%interaction_SlipSlip(i,1:prm%totalNslip)))
 
  !* threshold stress for growing twin/martensite
+ if(prm%totalNtwin == prm%totalNslip) &
  mse%threshold_stress_twin(:,of) = prm%Cthresholdtwin* &
      (sfe/(3.0_pReal*prm%burgers_twin)+ 3.0_pReal*prm%burgers_twin*prm%mu/ &
            (prm%L0_twin*prm%burgers_slip)) ! slip burgers here correct?
- mse%threshold_stress_trans(:,of) = prm%Cthresholdtrans* &
-       (sfe/(3.0_pReal*prm%burgers_trans) + 3.0_pReal*prm%burgers_trans*prm%mu/&
-            (prm%L0_trans*prm%burgers_slip) + prm%transStackHeight*prm%deltaG/ (3.0_pReal*prm%burgers_trans) )    
+ if(prm%totalNtrans == prm%totalNslip) &
+   mse%threshold_stress_trans(:,of) = prm%Cthresholdtrans* &
+         (sfe/(3.0_pReal*prm%burgers_trans) + 3.0_pReal*prm%burgers_trans*prm%mu/&
+              (prm%L0_trans*prm%burgers_slip) + prm%transStackHeight*prm%deltaG/ (3.0_pReal*prm%burgers_trans) )    
  
   ! final volume after growth
  mse%twinVolume(:,of) = (PI/4.0_pReal)*prm%twinsize*mse%mfp_twin(:,of)**2.0_pReal
