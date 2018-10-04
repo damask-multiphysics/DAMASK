@@ -1229,6 +1229,7 @@ real(pReal), dimension(4,36), parameter, private :: &
   LATTICE_hex_ID, &
   lattice_SchmidMatrix_slip, &
   lattice_SchmidMatrix_twin, &
+  lattice_nonSchmidMatrix, &
   lattice_interactionSlipSlip2, &
   lattice_interactionTwinTwin2, &
   lattice_interactionSlipTwin2, &
@@ -2226,13 +2227,14 @@ function lattice_C66_trans(Ntrans,C66_parent,structure_parent,cOverA_parent, &
 
 !       ! Schmid matrices with non-Schmid contributions according to Koester_etal2012, Acta Materialia 60 (2012) 3894–3901, eq. (17) ("n1" is replaced by either "np" or "nn" according to either positive or negative slip direction)
 !       ! "np" and "nn" according to Gröger_etal2008, Acta Materialia 56 (2008) 5412–5425, table 1 (corresponds to their "n1" for positive and negative slip direction respectively)
+
 function lattice_nonSchmidMatrix(Nslip,nonSchmidCoefficients,sense) result(nonSchmidMatrix)
  use math, only: &
-  INRAD, &
-  math_tensorproduct33, &
-  math_crossproduct, &
-  math_mul33x3, &
-  math_axisAngleToR
+   INRAD, &
+   math_tensorproduct33, &
+   math_crossproduct, &
+   math_mul33x3, &
+   math_axisAngleToR
  implicit none
  integer(pInt),    dimension(:),                   intent(in) :: Nslip                              !< number of active slip systems per family
  real(pReal),      dimension(6),                   intent(in) :: nonSchmidCoefficients
@@ -2253,7 +2255,7 @@ function lattice_nonSchmidMatrix(Nslip,nonSchmidCoefficients,sense) result(nonSc
  do i = 1_pInt,sum(Nslip)
    direction = coordinateSystem(1:3,1,i)
    normal    = coordinateSystem(1:3,2,i)
-   np = math_mul33x3(math_axisAngleToR(+direction,60.0_pReal*INRAD), normal)
+   np = math_mul33x3(math_axisAngleToR(direction,60.0_pReal*INRAD), normal)
      nonSchmidMatrix(1:3,1:3,i) &
        = nonSchmidMatrix(1:3,1:3,i) &
        + nonSchmidCoefficients(1) * math_tensorproduct33(direction, np) &

@@ -213,7 +213,8 @@ subroutine plastic_phenopowerlaw_init
                                                                          defaultVal=[(0.0_pReal,i=1_pInt,size(prm%Nslip))])
      prm%nonSchmidCoeff       = config_phase(p)%getFloats('nonschmid_coefficients',&
                                                                          defaultVal = emptyRealArray )
-
+     prm%nonSchmid_pos        = lattice_nonSchmidMatrix(prm%Nslip,prm%nonSchmidCoeff,+1_pInt)
+     prm%nonSchmid_neg        = lattice_nonSchmidMatrix(prm%Nslip,prm%nonSchmidCoeff,-1_pInt)
      prm%gdot0_slip           = config_phase(p)%getFloat('gdot0_slip')
      prm%n_slip               = config_phase(p)%getFloat('n_slip')
      prm%a_slip               = config_phase(p)%getFloat('a_slip')
@@ -381,32 +382,9 @@ subroutine plastic_phenopowerlaw_init
      allocate(plasticState(p)%RKCK45dotState (6,sizeDotState,NipcMyPhase), source=0.0_pReal)
 
 
-!--------------------------------------------------------------------------------------------------
-! calculate hardening matrices
-   allocate(prm%nonSchmid_pos(3,3,prm%totalNslip),source = 0.0_pReal)
-   allocate(prm%nonSchmid_neg(3,3,prm%totalNslip),source = 0.0_pReal)
-   i = 0_pInt
-   mySlipFamilies: do f = 1_pInt,size(prm%Nslip,1)                                    ! >>> interaction slip -- X
-     index_myFamily = sum(prm%Nslip(1:f-1_pInt))
-
-     mySlipSystems: do j = 1_pInt,prm%Nslip(f)
-       i = i + 1_pInt
-       prm%nonSchmid_pos(1:3,1:3,i) = lattice_Sslip(1:3,1:3,1,  index_myFamily+j,p)
-       prm%nonSchmid_neg(1:3,1:3,i) = lattice_Sslip(1:3,1:3,1,  index_myFamily+j,p)
-       do k = 1,size(prm%nonSchmidCoeff)
-         prm%nonSchmid_pos(1:3,1:3,i) = prm%nonSchmid_pos(1:3,1:3,i) &
-                                      + lattice_Sslip(1:3,1:3,2*k,  index_myFamily+j,p) &
-                                                                            * prm%nonSchmidCoeff(k)
-         prm%nonSchmid_neg(1:3,1:3,i) = prm%nonSchmid_neg(1:3,1:3,i) &
-                                      + lattice_Sslip(1:3,1:3,2*k+1,index_myFamily+j,p) &
-                                                                            * prm%nonSchmidCoeff(k)
-       enddo
-     enddo mySlipSystems
-   enddo mySlipFamilies
-
    allocate(prm%gamma_twin_char(prm%totalNtwin),source  = 0.0_pReal)
    i = 0_pInt
-   myTwinFamilies: do f = 1_pInt,size(prm%Ntwin,1)                                    ! >>> interaction twin -- X
+   myTwinFamilies: do f = 1_pInt,size(prm%Ntwin,1)
      index_myFamily = sum(prm%Ntwin(1:f-1_pInt))
      myTwinSystems: do j = 1_pInt,prm%Ntwin(f)
        i = i + 1_pInt
