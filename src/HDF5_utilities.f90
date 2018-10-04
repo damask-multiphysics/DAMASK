@@ -22,6 +22,7 @@ module HDF5_Utilities
    HDF5_addGroup ,&
    HDF5_closeGroup ,&
    HDF5_openGroup, &
+   HDF5_openGroup2, &
    HDF5_forwardResults, &
    HDF5_writeVectorDataset, &
    HDF5_writeScalarDataset, &
@@ -30,7 +31,9 @@ module HDF5_Utilities
    HDF5_removeLink, &
    HDF5_createFile, &
    HDF5_closeFile, &
-   HDF5_addGroup2, HDF5_addScalarDataset2, HDF5_writeScalarDataset3
+   HDF5_addGroup2, HDF5_addScalarDataset2, HDF5_writeScalarDataset3, &
+   HDF5_openFile, &
+   HDF5_readDataSet
 contains
 
 subroutine HDF5_Utilities_init
@@ -146,6 +149,22 @@ subroutine HDF5_closeJobFile()
 
 end subroutine HDF5_closeJobFile
 
+!--------------------------------------------------------------------------------------------------
+!> @brief open and initializes HDF5 output file
+!--------------------------------------------------------------------------------------------------
+integer(HID_T) function HDF5_openFile(filePath)
+ use hdf5
+ 
+ implicit none
+ integer :: hdferr
+ character(len=*), intent(in) :: filePath
+
+ call h5open_f(hdferr)!############################################################ DANGEROUS
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_openFile: h5open_f',el=hdferr)
+ call h5fopen_f(filePath,H5F_ACC_RDONLY_F,HDF5_openFile,hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_openFile: h5fopen_f',el=hdferr)
+
+end function HDF5_openFile
 
 !--------------------------------------------------------------------------------------------------
 !> @brief creates and initializes HDF5 output file
@@ -162,7 +181,6 @@ subroutine HDF5_closeFile(fileHandle)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_closeFile: h5close_f',el=hdferr)
 
 end subroutine HDF5_closeFile
-
 
 !--------------------------------------------------------------------------------------------------
 !> @brief adds a new group to the results file, or if loc is present at the given location
@@ -210,6 +228,22 @@ integer(HID_T) function HDF5_openGroup(path)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg = 'HDF5_openGroup: h5gopen_f ('//trim(path)//')')
 
 end function HDF5_openGroup
+
+!--------------------------------------------------------------------------------------------------
+!> @brief open a existing group of the results file
+!--------------------------------------------------------------------------------------------------
+integer(HID_T) function HDF5_openGroup2(FileReadID,path)
+ use hdf5
+
+ implicit none
+ character(len=*), intent(in) :: path
+ integer                      :: hdferr
+ integer(HID_T), intent(in)    :: FileReadID
+ write(6,*) FileReadID,'hello';flush(6)
+ call h5gopen_f(FileReadID, trim(path), HDF5_openGroup2, hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg = 'HDF5_openGroup2: h5gopen_f ('//trim(path)//')')
+
+end function HDF5_openGroup2
 
 
 !--------------------------------------------------------------------------------------------------
@@ -1417,6 +1451,25 @@ end subroutine HDF5_writeScalarDataset3
  ! if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_writeScalarDataset3: h5sclose_f')
  
 ! end subroutine HDF5_writeScalarDatasetLoop
+
+!--------------------------------------------------------------------------------------------------
+!> @brief read datasets from a hdf5 file
+!--------------------------------------------------------------------------------------------------
+subroutine HDF5_readDataSet(FileReadID,NameDataSet,DataSet,myshape)
+ use hdf5
+ 
+ implicit none
+ integer(HID_T), intent(in) :: FileReadID
+ character(len=*), intent(in) :: NameDataSet
+ real(pReal), intent(inout), dimension(*) :: DataSet
+ integer(HSIZE_T), intent(in), dimension(:) :: myshape
+ integer(HID_T) :: dset_id
+ integer :: hdferr
+ 
+ call h5dopen_f(FileReadID,NameDataSet,dset_id,hdferr)
+ call h5dread_f(dset_id,H5T_NATIVE_DOUBLE,DataSet,myshape,hdferr)
+ 
+end subroutine HDF5_readDataSet
 
 !--------------------------------------------------------------------------------------------------
 !> @brief creates a new scalar dataset in the given group location

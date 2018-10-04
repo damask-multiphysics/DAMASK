@@ -91,7 +91,7 @@ subroutine CPFEM_init
    compiler_options
 #endif
  use prec, only: &
-   pInt, pReal
+   pInt, pReal, pLongInt
  use IO, only: &
    IO_read_realFile,&
    IO_read_intFile, &
@@ -122,11 +122,23 @@ subroutine CPFEM_init
    crystallite_Li0, &
    crystallite_dPdF0, &
    crystallite_Tstar0_v
+ use hdf5
+ use HDF5_utilities, only: &
+   HDF5_openFile, &
+   HDF5_openGroup2, &
+   HDF5_readDataSet
+ use DAMASK_interface, only: &
+   getSolverJobName
 
  implicit none
  integer(pInt) :: k,l,m,ph,homog
  character(len=1024) :: rankStr
- 
+ integer(HID_T) :: fileReadID, groupPlasticID
+ integer        :: hdferr
+ real(pReal), dimension(:,:,:), allocatable :: dummy3
+ real(pReal), dimension(:,:,:,:,:), allocatable :: dummy5
+ !dummy = material_phase
+ !write(6,*) shape(dummy), flush(6)
 
  mainProcess: if (worldrank == 0) then 
    write(6,'(/,a)')   ' <<<+-  CPFEM init  -+>>>'
@@ -134,15 +146,39 @@ subroutine CPFEM_init
 #include "compilation_info.f90"
    flush(6)
  endif mainProcess
-
+ !restartRead = .true.
  ! *** restore the last converged values of each essential variable from the binary file
  if (restartRead) then
    if (iand(debug_level(debug_CPFEM), debug_levelExtensive) /= 0_pInt) then
-     write(6,'(a)') '<< CPFEM >> restored state variables of last converged step from binary files'
+     !write(6,'(a)') '<< CPFEM >> restored state variables of last converged step from binary files'
+     write(6,'(a)') '<< CPFEM >> restored state variables of last converged step from hdf5 file'
      flush(6)
    endif
    
    write(rankStr,'(a1,i0)')'_',worldrank
+
+   fileReadID = HDF5_openFile(trim(getSolverJobName())//trim(rankStr)//'.hdf5')
+   
+   allocate(dummy3(size(material_phase,1),size(material_phase,2),size(material_phase,3)))
+   call HDF5_readDataSet(fileReadID,'recordedPhase',dummy3,int(shape(material_phase),pLongInt))
+   material_phase = dummy3
+   deallocate(dummy3)
+   
+   allocate(dummy5(size(crystallite_F0,1),size(crystallite_F0,2),size(crystallite_F0,3), &
+            size(crystallite_F0,4),size(crystallite_F0,5)))
+   call HDF5_readDataSet(fileReadID,'convergedF',dummy5,int(shape(crystallite_F0),pLongInt))
+   crystallite_F0 = dummy5
+   deallocate(dummy5)
+   ! call HDF5_readDataSet(fileReadID,'convergedF')
+   ! call HDF5_readDataSet(fileReadID,'convergedFp')
+   ! call HDF5_readDataSet(fileReadID,'convergedFi')
+   ! call HDF5_readDataSet(fileReadID,'convergedLp')
+   ! call HDF5_readDataSet(fileReadID,'convergedLi')
+   ! call HDF5_readDataSet(fileReadID,'convergeddPdF')
+   ! call HDF5_readDataSet(fileReadID,'convergedTstar')
+   
+   ! groupPlasticID = HDF5_openGroup2(fileReadID,'PlasticPhases')
+   ! call HDF5_readDataSet(groupPlasticID,'convergedStateConst')
 
    call IO_read_intFile(777,'recordedPhase'//trim(rankStr),modelName,size(material_phase))
    read (777,rec=1) material_phase;       close (777)
@@ -259,7 +295,7 @@ subroutine CPFEM_age()
 
  integer(pInt) ::                                    i, k, l, m, ph, homog, mySource
  character(len=32) :: rankStr
- integer(HID_T) :: fileHandle, groupHandle
+ integer(HID_T) :: fileHandle, groupPlastic, groupHomog
  integer        :: hdferr
  integer(HSIZE_T)  :: hdfsize
  
@@ -310,8 +346,15 @@ if (restartWrite) then
   call HDF5_writeScalarDataset3(fileHandle,crystallite_dPdF0,'convergeddPdF',shape(crystallite_dPdF0))
   call HDF5_writeScalarDataset3(fileHandle,crystallite_Tstar0_v,'convergedTstar',shape(crystallite_Tstar0_v))
   
-  groupHandle = HDF5_addGroup2(fileHandle,'PlasticPhases')
-  !call HDF5_writeScalarDatasetLoop(fileHandle,plasticState(ph)%state0,'convergedStateConst',shape())
+  groupPlastic = HDF5_addGroup2(fileHandle,'PlasticPhases')
+  do ph = 1_pInt,size(phase_plasticity)
+    call HDF5_writeScalarDataset3(groupPlastic,plasticState(ph)%state0,'convergedStateConst',shape(plasticState(ph)%state0))
+  enddo
+  
+  groupHomog = HDF5_addGroup2(fileHandle,'material_Nhomogenization')
+  do homog = 1_pInt, material_Nhomogenization
+    call HDF5_writeScalarDataset3(groupHomog,homogState(homog)%state0,'convergedStateHomog',shape(homogState(homog)%state0))
+  enddo
   
   call HDF5_closeFile(fileHandle)
 
