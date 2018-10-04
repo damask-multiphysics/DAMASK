@@ -234,6 +234,7 @@ subroutine plastic_phenopowerlaw_init
      prm%xi_slip_sat = math_expand(prm%xi_slip_sat,prm%Nslip)
      prm%H_int       = math_expand(prm%H_int,prm%Nslip)
    else slipActive
+     allocate(prm%interaction_SlipSlip(0,0))
      allocate(prm%xi_slip_0(0))
    endif slipActive
 
@@ -266,6 +267,7 @@ subroutine plastic_phenopowerlaw_init
      ! expand slip related parameters from system => family
      prm%xi_twin_0   = math_expand(prm%xi_twin_0,prm%Ntwin)
    else twinActive
+     allocate(prm%interaction_TwinTwin(0,0))
      allocate(prm%xi_twin_0(0))
    endif twinActive
 
@@ -276,8 +278,9 @@ subroutine plastic_phenopowerlaw_init
      prm%interaction_TwinSlip = lattice_interactionTwinSlip2(prm%Ntwin,prm%Nslip,&
                                        config_phase(p)%getFloats('interaction_twinslip'), &
                                                                       structure(1:3))
-     prm%h0_TwinSlip = config_phase(p)%getFloat('h0_twinslip')
    else slipAndTwinActive
+     allocate(prm%interaction_SlipTwin(prm%totalNslip,prm%TotalNtwin))                              ! at least one dimension 0
+     allocate(prm%interaction_TwinSlip(prm%totalNtwin,prm%TotalNslip))                              ! at least one dimension 0
      prm%h0_TwinSlip = 0.0_pReal
    endif slipAndTwinActive
 
