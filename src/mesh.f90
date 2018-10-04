@@ -30,11 +30,11 @@ module mesh
 !!!! BEGIN DEPRECATED !!!!!
 
  integer(pInt), dimension(:), allocatable, public, protected :: &
-   mesh_homogenization, &                                                                           !< homogenization ID of each element
-   mesh_microstructure                                                                              !< homogenization ID of each element
+   mesh_homogenizationAt, &                                                                         !< homogenization ID of each element
+   mesh_microstructureAt                                                                            !< microstructure ID of each element
 
  integer(pInt), dimension(:,:), allocatable, public, protected :: &
-   mesh_CPnodeID, &
+   mesh_CPnodeID, &                                                                                 !< nodes forming an element
    mesh_element, & !DEPRECATED
    mesh_sharedElem, &                                                                               !< entryCount and list of elements containing node
    mesh_nodeTwins                                                                                   !< node twins are surface nodes that lie exactly on opposite sides of the mesh (surfaces nodes with equal coordinate values in two dimensions)
@@ -646,8 +646,8 @@ subroutine mesh_init(ip,el)
  mesh_NipsPerElem       = mesh_maxNips
  mesh_NcellnodesPerElem = mesh_maxNcellnodes
 ! better name
- mesh_homogenization    = mesh_element(3,:)
- mesh_microstructure    = mesh_element(4,:)
+ mesh_homogenizationAt  = mesh_element(3,:)
+ mesh_microstructureAt  = mesh_element(4,:)
  mesh_CPnodeID          = mesh_element(5:4+mesh_NipsPerElem,:)
 !!!!!!!!!!!!!!!!!!!!!!!!
 

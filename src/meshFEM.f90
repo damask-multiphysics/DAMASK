@@ -35,13 +35,10 @@ use PETScis
 !!!! BEGIN DEPRECATED !!!!!
 
  integer(pInt), dimension(:), allocatable, public, protected :: &
-   mesh_homogenization, &                                                                           !< homogenization ID of each element
-   mesh_microstructure                                                                              !< homogenization ID of each element
-
- real(pReal), public, protected :: charLength
+   mesh_homogenizationAt, &                                                                         !< homogenization ID of each element
+   mesh_microstructureAt                                                                            !< microstructure ID of each element
  
  integer(pInt), dimension(:,:), allocatable, public, protected :: &
-   !mesh_CPnodeID, &
    mesh_element !DEPRECATED
 
  real(pReal), dimension(:,:), allocatable, public :: &
@@ -241,10 +238,10 @@ subroutine mesh_init()
 !!!! COMPATIBILITY HACK !!!!
 ! for a homogeneous mesh, all elements have the same number of IPs and and cell nodes.
 ! hence, xxPerElem instead of maxXX
- mesh_NipsPerElem       = mesh_maxNips
+ mesh_NipsPerElem      = mesh_maxNips
 ! better name
- mesh_homogenization    = mesh_element(3,:)
- mesh_microstructure    = mesh_element(4,:)
+ mesh_homogenizationAt = mesh_element(3,:)
+ mesh_microstructureAt = mesh_element(4,:)
 !!!!!!!!!!!!!!!!!!!!!!!!
 
 end subroutine mesh_init

@@ -363,7 +363,7 @@ subroutine material_init()
    phase_name, &
    texture_name
  use mesh, only: &
-   mesh_homogenization, &
+   mesh_homogenizationAt, &
    mesh_NipsPerElem, &
    mesh_maxNips, &
    mesh_NcpElems, &
@@ -481,7 +481,7 @@ subroutine material_init()
  allocate(CrystallitePosition   (size(config_phase)),         source=0_pInt)
 
  ElemLoop:do e = 1_pInt,mesh_NcpElems
- myHomog = mesh_homogenization(e)
+ myHomog = mesh_homogenizationAt(e)
    IPloop:do i = 1_pInt, mesh_NipsPerElem
      HomogenizationPosition(myHomog) = HomogenizationPosition(myHomog) + 1_pInt
      mappingHomogenization(1:2,i,e) = [HomogenizationPosition(myHomog),myHomog]
@@ -521,7 +521,7 @@ subroutine material_parseHomogenization
  use config, only : &
    config_homogenization
  use mesh, only: &
-   mesh_homogenization
+   mesh_homogenizationAt
  use IO, only: &
    IO_error
 
@@ -551,7 +551,7 @@ subroutine material_parseHomogenization
  allocate(hydrogenflux_initialCh(size(config_homogenization)),        source=0.0_pReal)
 
  forall (h = 1_pInt:size(config_homogenization)) &
-   homogenization_active(h) = any(mesh_homogenization == h)
+   homogenization_active(h) = any(mesh_homogenizationAt == h)
 
 
  do h=1_pInt, size(config_homogenization)
@@ -687,7 +687,7 @@ subroutine material_parseMicrostructure
    config_microstructure, &
    microstructure_name
  use mesh, only: &
-   mesh_microstructure, &
+   mesh_microstructureAt, &
    mesh_NcpElems
 
  implicit none
@@ -703,11 +703,11 @@ subroutine material_parseMicrostructure
  allocate(microstructure_active(size(config_microstructure)),               source=.false.)
  allocate(microstructure_elemhomo(size(config_microstructure)),             source=.false.)
 
- if(any(mesh_microstructure > size(config_microstructure))) &
+ if(any(mesh_microstructureAt > size(config_microstructure))) &
   call IO_error(155_pInt,ext_msg='More microstructures in geometry than sections in material.config')
 
  forall (e = 1_pInt:mesh_NcpElems) &
-   microstructure_active(mesh_microstructure(e)) = .true.                                           ! current microstructure used in model? Elementwise view, maximum N operations for N elements
+   microstructure_active(mesh_microstructureAt(e)) = .true.                                         ! current microstructure used in model? Elementwise view, maximum N operations for N elements
 
  do m=1_pInt, size(config_microstructure)
    microstructure_Nconstituents(m) =  config_microstructure(m)%countKeys('(constituent)')
@@ -1087,8 +1087,8 @@ subroutine material_populateGrains
  use mesh, only: &
    mesh_NipsPerElem, &
    mesh_elemType, &
-   mesh_homogenization, &
-   mesh_microstructure, &
+   mesh_homogenizationAt, &
+   mesh_microstructureAt, &
    mesh_maxNips, &
    mesh_NcpElems, &
    mesh_ipVolume, &
@@ -1141,14 +1141,14 @@ subroutine material_populateGrains
 ! populating homogenization schemes in each
 !--------------------------------------------------------------------------------------------------
  do e = 1_pInt, mesh_NcpElems
-   material_homog(1_pInt:mesh_NipsPerElem,e) = mesh_homogenization(e)
+   material_homog(1_pInt:mesh_NipsPerElem,e) = mesh_homogenizationAt(e)
  enddo
 
 !--------------------------------------------------------------------------------------------------
 ! precounting of elements for each homog/micro pair
  do e = 1_pInt, mesh_NcpElems
-   homog = mesh_homogenization(e)
-   micro = mesh_microstructure(e)
+   homog = mesh_homogenizationAt(e)
+   micro = mesh_microstructureAt(e)
    Nelems(homog,micro) = Nelems(homog,micro) + 1_pInt
  enddo
  allocate(elemsOfHomogMicro(size(config_homogenization),size(config_microstructure)))
@@ -1166,8 +1166,8 @@ subroutine material_populateGrains
  Nelems = 0_pInt                                                                                    ! reuse as counter
  elementLooping: do e = 1_pInt,mesh_NcpElems
    t     = mesh_elemType
-   homog = mesh_homogenization(e)
-   micro = mesh_microstructure(e)
+   homog = mesh_homogenizationAt(e)
+   micro = mesh_microstructureAt(e)
    if (homog < 1_pInt .or. homog > size(config_homogenization)) &                                      ! out of bounds
      call IO_error(154_pInt,e,0_pInt,0_pInt)
    if (micro < 1_pInt .or. micro > size(config_microstructure)) &                                      ! out of bounds
