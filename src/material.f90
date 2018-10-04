@@ -169,6 +169,7 @@ module material
    homogenization_maxNgrains                                                                        !< max number of grains in any USED homogenization
 
  integer(pInt), dimension(:), allocatable, public, protected :: &
+   material_homogenizationAt, &                                                                     !< homogenization ID of each element (copy of mesh_homogenizationAt)
    phase_Nsources, &                                                                                !< number of source mechanisms active in each phase
    phase_Nkinematics, &                                                                             !< number of kinematic mechanisms active in each phase
    phase_NstiffnessDegradations, &                                                                  !< number of stiffness degradation mechanisms active in each phase
@@ -199,9 +200,10 @@ module material
 
  integer(pInt), dimension(:,:,:), allocatable, public :: &
    material_phase                                                                                   !< phase (index) of each grain,IP,element
-! DEPRECATED. DID WE EVER ALLOWED DIFFERENT HOMOGENIZATION SCHEMES WITHIN ONE ELEMENT?
+! BEGIN DEPRECATED: use material_homogenizationAt
  integer(pInt), dimension(:,:), allocatable, public :: &
    material_homog                                                                                   !< homogenization (index) of each IP,element
+! END DEPRECATED
  type(tPlasticState), allocatable, dimension(:), public :: &
    plasticState
  type(tSourceState),  allocatable, dimension(:), public :: &
@@ -1132,6 +1134,7 @@ subroutine material_populateGrains
  allocate(material_volume(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems),       source=0.0_pReal)
  allocate(material_phase(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems),        source=0_pInt)
  allocate(material_homog(mesh_maxNips,mesh_NcpElems),                                  source=0_pInt)
+ allocate(material_homogenizationAt,source=mesh_homogenizationAt)
  allocate(material_texture(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems),      source=0_pInt)
  allocate(material_EulerAngles(3,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems),source=0.0_pReal)
 
