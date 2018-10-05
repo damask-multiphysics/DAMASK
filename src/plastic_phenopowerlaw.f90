@@ -637,7 +637,7 @@ end subroutine plastic_phenopowerlaw_dotState
 !> @details: Shear rates are calculated only optionally. NOTE: Agains the common convention, the
 !> result (i.e. intent(out)) variables are the last to have the optional arguments at the end
 !--------------------------------------------------------------------------------------------------
-subroutine kinetics_slip(prm,stt,of,Mp,gdot_slip_pos,gdot_slip_neg, &
+pure subroutine kinetics_slip(prm,stt,of,Mp,gdot_slip_pos,gdot_slip_neg, &
                            dgdot_dtau_slip_pos,dgdot_dtau_slip_neg)
  use prec, only: &
   dNeq0
@@ -703,7 +703,7 @@ end subroutine kinetics_slip
 !> @details: Shear rates are calculated only optionally. NOTE: Agains the common convention, the
 !> result (i.e. intent(out)) variables are the last to have the optional arguments at the end
 !--------------------------------------------------------------------------------------------------
-subroutine kinetics_twin(prm,stt,of,Mp,gdot_twin,dgdot_dtau_twin)
+pure subroutine kinetics_twin(prm,stt,of,Mp,gdot_twin,dgdot_dtau_twin)
  use prec, only: &
   dNeq0
  use math, only: &
