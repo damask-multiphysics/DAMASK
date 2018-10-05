@@ -327,7 +327,7 @@ subroutine plastic_dislotwin_init(fileUnit)
      if (size(prm%burgers_slip) /= size(prm%Nslip)) call IO_error(150_pInt,ext_msg='slipburgers')
      prm%burgers_slip = math_expand(prm%burgers_slip,prm%Nslip)
 
-     prm%B = config_phase(p)%getFloats('B',defaultVal=[(0.0_pReal, i=1,size(prm%Nslip))])
+     prm%B = config_phase(p)%getFloats('b',defaultVal=[(0.0_pReal, i=1,size(prm%Nslip))])
      prm%B = math_expand(prm%B,prm%Nslip)
 
      prm%Qedge = config_phase(p)%getFloats('qedge')
