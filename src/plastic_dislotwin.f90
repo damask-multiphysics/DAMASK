@@ -348,7 +348,7 @@ subroutine plastic_dislotwin_init(fileUnit)
      prm%p = config_phase(p)%getFloats('p_slip')
      prm%p = math_expand(prm%p,prm%Nslip)
      prm%q = config_phase(p)%getFloats('q_slip')
-     prm%q = math_expand(prm%p,prm%Nslip)
+     prm%q = math_expand(prm%q,prm%Nslip)
 
      prm%CEdgeDipMinDistance      = config_phase(p)%getFloat('cedgedipmindistance')
    else
