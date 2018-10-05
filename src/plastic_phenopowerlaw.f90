@@ -769,8 +769,6 @@ function plastic_phenopowerlaw_postResults(Mp,instance,of) result(postResults)
 
  integer(pInt) :: &
    o,c,i,j
- real(pReal) :: &
-   tau_slip_pos, tau_slip_neg
  real(pReal), dimension(param(instance)%totalNslip) :: &
    gdot_slip_pos,gdot_slip_neg
 
@@ -797,13 +795,7 @@ function plastic_phenopowerlaw_postResults(Mp,instance,of) result(postResults)
        c = c + prm%totalNslip
      case (resolvedstress_slip_ID)
        do i = 1_pInt, prm%totalNslip
-         tau_slip_pos = math_mul33xx33(Mp,prm%Schmid_slip(1:3,1:3,i))
-         tau_slip_neg = tau_slip_pos
-         !do j = 1,size(prm%nonSchmidCoeff)
-         !  tau_slip_pos = tau_slip_pos + math_mul33xx33(S,prm%nonSchmid_pos(1:3,1:3,j,i))
-         !  tau_slip_neg = tau_slip_neg + math_mul33xx33(S,prm%nonSchmid_neg(1:3,1:3,j,i))
-         !enddo
-         postResults(c+i) = 0.5_pReal*(tau_slip_pos+tau_slip_neg)
+         postResults(c+i) = math_mul33xx33(Mp,prm%Schmid_slip(1:3,1:3,i))
        enddo
        c = c + prm%totalNslip
 
