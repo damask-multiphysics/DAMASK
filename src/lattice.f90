@@ -2084,6 +2084,52 @@ pure function lattice_qDisorientation(Q1, Q2, struct)
 
 end function lattice_qDisorientation
 
+function lattice_characteristicShear_Twin(Ntwin,structure,CoverA) result(characteristicShear)
+ use IO, only: &
+   IO_error
+
+ implicit none
+ integer(pInt),    dimension(:),            intent(in) :: Ntwin                                    !< number of active twin systems per family
+ character(len=3),                          intent(in) :: structure
+ real(pReal),                               intent(in) :: cOverA
+ real(pReal),     dimension(sum(Ntwin)) :: characteristicShear
+ integer(pInt) :: &
+   ir, &                                                                                            !< index in reduced list
+   ig, &                                                                                            !< index in full list
+   mf, &                                                                                            !< index of my family
+   ms                                                                                               !< index of my system in current family
+
+ select case(structure)
+   case('fcc')
+     characteristicShear = LATTICE_FCC_SHEARTWIN
+   case('bcc')
+     characteristicShear = LATTICE_BCC_SHEARTWIN
+   case('hex')
+     ir = 0_pInt
+     myFamilies: do mf = 1_pInt,size(Ntwin,1)
+       mySystems: do ms = 1_pInt,Ntwin(mf)
+         ir = ir + 1_pInt
+         ig = sum(LATTICE_HEX_NTWINSYSTEM(1:mf-1))+ms
+         characteristicShear = LATTICE_BCC_SHEARTWIN
+         select case(LATTICE_HEX_SHEARTWIN(ig))                                                     ! from Christian & Mahajan 1995 p.29
+           case (1_pInt)                                                                            ! <-10.1>{10.2}
+             characteristicShear(ir) = (3.0_pReal-cOverA*cOverA)/sqrt(3.0_pReal)/CoverA
+           case (2_pInt)                                                                            ! <11.6>{-1-1.1}
+             characteristicShear(ir) = 1.0_pReal/cOverA
+           case (3_pInt)                                                                            ! <10.-2>{10.1}
+             characteristicShear(ir) = (4.0_pReal*cOverA*cOverA-9.0_pReal)/4.0_pReal &
+                                     / sqrt(3.0_pReal)/cOverA
+             !characteristicShear(ir) = (4.0_pReal*cOverA*cOverA-9.0_pReal)/sqrt(48.0_pReal)/cOverA
+           case (4_pInt)                                                                            ! <11.-3>{11.2}
+             characteristicShear(ir) = 2.0_pReal*(cOverA*cOverA-2.0_pReal)/3.0_pReal/cOverA
+         end select
+       enddo mySystems
+     enddo myFamilies
+ end select
+end function lattice_characteristicShear_Twin
+
+
+
 
 function lattice_C66_twin(Ntwin,C66,structure,CoverA)
  use IO, only: &

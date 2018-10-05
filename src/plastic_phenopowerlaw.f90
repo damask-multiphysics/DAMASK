@@ -162,7 +162,7 @@ subroutine plastic_phenopowerlaw_init
    dot
 
  integer(kind(undefined_ID)) :: &
-   outputID                                                                                     !< ID of each post result output
+   outputID                                                                                         !< ID of each post result output
 
  character(len=512) :: &
    extmsg    = '', &
