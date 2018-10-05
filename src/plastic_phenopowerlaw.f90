@@ -272,6 +272,9 @@ subroutine plastic_phenopowerlaw_init
      allocate(prm%xi_twin_0(0))
    endif twinActive
 
+   prm%gamma_twin_char = lattice_characteristicShear_twin(prm%Ntwin,structure(1:3),&
+   config_phase(p)%getFloat('c/a',defaultVal=0.0_pReal))
+
    slipAndTwinActive: if (prm%totalNslip > 0_pInt .and. prm%totalNtwin > 0_pInt) then
      prm%interaction_SlipTwin = lattice_interactionSlipTwin2(prm%Nslip,prm%Ntwin,&
                                        config_phase(p)%getFloats('interaction_sliptwin'), &
@@ -382,15 +385,6 @@ subroutine plastic_phenopowerlaw_init
      allocate(plasticState(p)%RKCK45dotState (6,sizeDotState,NipcMyPhase), source=0.0_pReal)
 
 
-   allocate(prm%gamma_twin_char(prm%totalNtwin),source  = 0.0_pReal)
-   i = 0_pInt
-   myTwinFamilies: do f = 1_pInt,size(prm%Ntwin,1)
-     index_myFamily = sum(prm%Ntwin(1:f-1_pInt))
-     myTwinSystems: do j = 1_pInt,prm%Ntwin(f)
-       i = i + 1_pInt
-       prm%gamma_twin_char(i)          = lattice_shearTwin(sum(lattice_Ntwinsystem(1:f-1,p))+j,p)
-     enddo myTwinSystems
-   enddo myTwinFamilies
 
 !--------------------------------------------------------------------------------------------------
 ! locally defined state aliases and initialization of state0 and aTolState
