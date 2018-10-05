@@ -2099,7 +2099,7 @@ function lattice_characteristicShear_Twin(Ntwin,structure,CoverA) result(charact
    ig, &                                                                                            !< index in full list
    mf, &                                                                                            !< index of my family
    ms                                                                                               !< index of my system in current family
- return
+
  ir = 0_pInt
  myFamilies: do mf = 1_pInt,size(Ntwin,1)
    mySystems: do ms = 1_pInt,Ntwin(mf)
@@ -2303,18 +2303,18 @@ function lattice_nonSchmidMatrix(Nslip,nonSchmidCoefficients,sense) result(nonSc
    direction = coordinateSystem(1:3,1,i)
    normal    = coordinateSystem(1:3,2,i)
    np = math_mul33x3(math_axisAngleToR(direction,60.0_pReal*INRAD), normal)
-   if (size(nonSchmidCoefficients)>1) nonSchmidMatrix(1:3,1:3,i) = nonSchmidMatrix(1:3,1:3,i) &
+   if (size(nonSchmidCoefficients)>0) nonSchmidMatrix(1:3,1:3,i) = nonSchmidMatrix(1:3,1:3,i) &
      + nonSchmidCoefficients(1) * math_tensorproduct33(direction, np)
-   if (size(nonSchmidCoefficients)>2) nonSchmidMatrix(1:3,1:3,i) = nonSchmidMatrix(1:3,1:3,i) &
+   if (size(nonSchmidCoefficients)>1) nonSchmidMatrix(1:3,1:3,i) = nonSchmidMatrix(1:3,1:3,i) &
      + nonSchmidCoefficients(2) * math_tensorproduct33(math_crossproduct(normal, direction), normal)
-   if (size(nonSchmidCoefficients)>3) nonSchmidMatrix(1:3,1:3,i) = nonSchmidMatrix(1:3,1:3,i) &
+   if (size(nonSchmidCoefficients)>2) nonSchmidMatrix(1:3,1:3,i) = nonSchmidMatrix(1:3,1:3,i) &
      + nonSchmidCoefficients(3) * math_tensorproduct33(math_crossproduct(np, direction), np)
-   if (size(nonSchmidCoefficients)>4) nonSchmidMatrix(1:3,1:3,i) = nonSchmidMatrix(1:3,1:3,i) &
+   if (size(nonSchmidCoefficients)>3) nonSchmidMatrix(1:3,1:3,i) = nonSchmidMatrix(1:3,1:3,i) &
      + nonSchmidCoefficients(4) * math_tensorproduct33(normal, normal)
-   if (size(nonSchmidCoefficients)>5) nonSchmidMatrix(1:3,1:3,i) = nonSchmidMatrix(1:3,1:3,i) &
+   if (size(nonSchmidCoefficients)>4) nonSchmidMatrix(1:3,1:3,i) = nonSchmidMatrix(1:3,1:3,i) &
      + nonSchmidCoefficients(5) * math_tensorproduct33(math_crossproduct(normal, direction), &
                                                          math_crossproduct(normal, normal))
-   if (size(nonSchmidCoefficients)>6) nonSchmidMatrix(1:3,1:3,i) = nonSchmidMatrix(1:3,1:3,i) &
+   if (size(nonSchmidCoefficients)>5) nonSchmidMatrix(1:3,1:3,i) = nonSchmidMatrix(1:3,1:3,i) &
      + nonSchmidCoefficients(6) * math_tensorproduct33(direction, direction)
  enddo
 end function lattice_nonSchmidMatrix
