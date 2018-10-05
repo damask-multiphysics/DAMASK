@@ -10,6 +10,11 @@ module HDF5_Utilities
  integer(HID_T), private :: resultsFile, currentIncID, plist_id
  integer(pInt),  private :: currentInc
 
+ interface HDF5_read
+   module procedure HDF5_read_double_1
+   module procedure HDF5_read_double_5
+ end interface HDF5_read
+
  public :: &
    HDF5_Utilities_init, &
    HDF5_mappingPhase, &
@@ -31,9 +36,9 @@ module HDF5_Utilities
    HDF5_removeLink, &
    HDF5_createFile, &
    HDF5_closeFile, &
-   HDF5_addGroup2, HDF5_addScalarDataset2, HDF5_writeScalarDataset3, &
-   HDF5_openFile, &
-   HDF5_readDataSet
+   HDF5_writeScalarDataset3, &
+   HDF5_addGroup2, HDF5_read, &
+   HDF5_openFile
 contains
 
 subroutine HDF5_Utilities_init
@@ -1334,7 +1339,7 @@ subroutine HDF5_writeScalarDataset(group,dataset,label,SIunit,dataspace_size,mpi
  integer(HID_T) :: dset_id, space_id, memspace, plist_id
  
  integer(HSIZE_T),  dimension(1) :: counter
- integer(HSSIZE_T), dimension(1) :: fileOffset
+ integer(HSIZE_T), dimension(1) :: fileOffset
  
  nNodes = size(dataset)
  if (nNodes < 1) return
@@ -1452,24 +1457,62 @@ end subroutine HDF5_writeScalarDataset3
  
 ! end subroutine HDF5_writeScalarDatasetLoop
 
+subroutine HDF5_read_double_1(D,ID,label)
+ implicit none
+ real(pReal), dimension(:), intent(out) :: D
+ integer(HID_T),            intent(in)  :: ID
+ character(len=*), intent(in) :: label
+ call  HDF5_read_double_generic(D,ID,label,shape(D))
+end subroutine HDF5_read_double_1
+
+subroutine HDF5_read_double_5(D,ID,label)
+ implicit none
+ real(pReal), dimension(:,:,:,:,:), intent(out) :: D
+ integer(HID_T),                    intent(in)  :: ID
+ character(len=*), intent(in) :: label
+ call  HDF5_read_double_generic(D,ID,label,shape(D))
+end subroutine HDF5_read_double_5
+
+subroutine HDF5_read_double_generic(D,ID,label,myShape)
+ use hdf5
+ implicit none
+ real(pReal), dimension(*), intent(out) :: D
+ integer, dimension(:),intent(in) :: myShape
+ !  real, dimension(:), allocatable :: D1
+ !   real, dimension(:,:), allocatable :: D2
+ !   real, dimension(:,:,:), allocatable :: D3
+ integer(HID_T),                    intent(in) :: ID
+ character(len=*),                  intent(in) :: label
+ 
+ integer(HID_T) :: dset_id
+ integer :: hdferr
+
+ call h5dopen_f(ID,label,dset_id,hdferr)
+ call h5dread_f(dset_id,H5T_NATIVE_DOUBLE,D,int(myshape,HID_T),hdferr)
+ 
+end subroutine
+
 !--------------------------------------------------------------------------------------------------
 !> @brief read datasets from a hdf5 file
 !--------------------------------------------------------------------------------------------------
-subroutine HDF5_readDataSet(FileReadID,NameDataSet,DataSet,myshape)
- use hdf5
- 
- implicit none
- integer(HID_T), intent(in) :: FileReadID
- character(len=*), intent(in) :: NameDataSet
- real(pReal), intent(inout), dimension(*) :: DataSet
- integer(HSIZE_T), intent(in), dimension(:) :: myshape
- integer(HID_T) :: dset_id
- integer :: hdferr
- 
- call h5dopen_f(FileReadID,NameDataSet,dset_id,hdferr)
- call h5dread_f(dset_id,H5T_NATIVE_DOUBLE,DataSet,myshape,hdferr)
- 
-end subroutine HDF5_readDataSet
+!
+!subroutine HDF5_read_double_2(DataSet,FileReadID,NameDataSet) !,myshape)
+! use hdf5
+! 
+! implicit none
+! integer(HID_T), intent(in) :: FileReadID
+! character(len=*), intent(in) :: NameDataSet
+! real(pReal), intent(out), dimension(:,:,:,:,:) :: DataSet
+! !integer(HSIZE_T), intent(in), dimension(:) :: myshape
+! integer(HSIZE_T), dimension(:),allocatable :: myshape
+! integer(HID_T) :: dset_id
+! integer :: hdferr
+!
+! myShape = int(shape(DataSet),HSIZE_T)
+! call h5dopen_f(FileReadID,NameDataSet,dset_id,hdferr)
+! call h5dread_f(dset_id,H5T_NATIVE_DOUBLE,DataSet,myshape,hdferr)
+! 
+!end subroutine
 
 !--------------------------------------------------------------------------------------------------
 !> @brief creates a new scalar dataset in the given group location
