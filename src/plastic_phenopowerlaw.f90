@@ -212,8 +212,13 @@ subroutine plastic_phenopowerlaw_init
                                                                          defaultVal=[(0.0_pReal,i=1_pInt,size(prm%Nslip))])
      prm%nonSchmidCoeff       = config_phase(p)%getFloats('nonschmid_coefficients',&
                                                                          defaultVal = emptyRealArray )
-     prm%nonSchmid_pos        = lattice_nonSchmidMatrix(prm%Nslip,prm%nonSchmidCoeff,+1_pInt)
-     prm%nonSchmid_neg        = lattice_nonSchmidMatrix(prm%Nslip,prm%nonSchmidCoeff,-1_pInt)
+     if(structure=='bcc') then
+      prm%nonSchmid_pos        = lattice_nonSchmidMatrix(prm%Nslip,prm%nonSchmidCoeff,+1_pInt)
+      prm%nonSchmid_neg        = lattice_nonSchmidMatrix(prm%Nslip,prm%nonSchmidCoeff,-1_pInt)
+     else
+      prm%nonSchmid_pos        = prm%Schmid_slip
+      prm%nonSchmid_neg        = prm%Schmid_slip
+     endif
      prm%gdot0_slip           = config_phase(p)%getFloat('gdot0_slip')
      prm%n_slip               = config_phase(p)%getFloat('n_slip')
      prm%a_slip               = config_phase(p)%getFloat('a_slip')
