@@ -2099,19 +2099,18 @@ function lattice_characteristicShear_Twin(Ntwin,structure,CoverA) result(charact
    ig, &                                                                                            !< index in full list
    mf, &                                                                                            !< index of my family
    ms                                                                                               !< index of my system in current family
-
- select case(structure)
-   case('fcc')
-     characteristicShear = LATTICE_FCC_SHEARTWIN
-   case('bcc')
-     characteristicShear = LATTICE_BCC_SHEARTWIN
-   case('hex')
-     ir = 0_pInt
-     myFamilies: do mf = 1_pInt,size(Ntwin,1)
-       mySystems: do ms = 1_pInt,Ntwin(mf)
-         ir = ir + 1_pInt
-         ig = sum(LATTICE_HEX_NTWINSYSTEM(1:mf-1))+ms
-         characteristicShear = LATTICE_BCC_SHEARTWIN
+ return
+ ir = 0_pInt
+ myFamilies: do mf = 1_pInt,size(Ntwin,1)
+   mySystems: do ms = 1_pInt,Ntwin(mf)
+     ir = ir + 1_pInt
+     ig = sum(LATTICE_HEX_NTWINSYSTEM(1:mf-1))+ms
+     select case(structure)
+       case('fcc')
+         characteristicShear(ir) = LATTICE_FCC_SHEARTWIN(ig)
+       case('bcc')
+         characteristicShear(ir) = LATTICE_BCC_SHEARTWIN(ig)
+       case('hex')
          select case(LATTICE_HEX_SHEARTWIN(ig))                                                     ! from Christian & Mahajan 1995 p.29
            case (1_pInt)                                                                            ! <-10.1>{10.2}
              characteristicShear(ir) = (3.0_pReal-cOverA*cOverA)/sqrt(3.0_pReal)/CoverA
@@ -2124,9 +2123,10 @@ function lattice_characteristicShear_Twin(Ntwin,structure,CoverA) result(charact
            case (4_pInt)                                                                            ! <11.-3>{11.2}
              characteristicShear(ir) = 2.0_pReal*(cOverA*cOverA-2.0_pReal)/3.0_pReal/cOverA
          end select
-       enddo mySystems
-     enddo myFamilies
- end select
+     end select
+   enddo mySystems
+ enddo myFamilies
+
 end function lattice_characteristicShear_Twin
 
 

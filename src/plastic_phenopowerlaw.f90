@@ -145,9 +145,8 @@ subroutine plastic_phenopowerlaw_init
 
  integer(pInt) :: &
    maxNinstance, &
-   instance,p,j,k, f,o, i,&
+   instance,p,j,k, o, i,&
    NipcMyPhase, outputSize, &
-   index_myFamily, index_otherFamily, &
    sizeState,sizeDotState, &
    startIndex, endIndex
 
@@ -383,7 +382,6 @@ subroutine plastic_phenopowerlaw_init
      allocate(plasticState(p)%RK4dotState      (sizeDotState,NipcMyPhase), source=0.0_pReal)
    if (any(numerics_integrator == 5_pInt)) &
      allocate(plasticState(p)%RKCK45dotState (6,sizeDotState,NipcMyPhase), source=0.0_pReal)
-
 
 
 !--------------------------------------------------------------------------------------------------
