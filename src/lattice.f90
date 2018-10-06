@@ -2085,6 +2085,10 @@ pure function lattice_qDisorientation(Q1, Q2, struct)
 
 end function lattice_qDisorientation
 
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Provides characteristtic shear for twinning
+!--------------------------------------------------------------------------------------------------
 function lattice_characteristicShear_Twin(Ntwin,structure,CoverA) result(characteristicShear)
  use IO, only: &
    IO_error
@@ -2107,10 +2111,13 @@ function lattice_characteristicShear_Twin(Ntwin,structure,CoverA) result(charact
      ig = sum(LATTICE_HEX_NTWINSYSTEM(1:mf-1))+ms
      select case(structure)
        case('fcc')
+         ig = sum(LATTICE_FCC_NTWINSYSTEM(1:mf-1))+ms
          characteristicShear(ir) = LATTICE_FCC_SHEARTWIN(ig)
        case('bcc')
+         ig = sum(LATTICE_BCC_NTWINSYSTEM(1:mf-1))+ms
          characteristicShear(ir) = LATTICE_BCC_SHEARTWIN(ig)
        case('hex')
+         ig = sum(LATTICE_HEX_NTWINSYSTEM(1:mf-1))+ms
          select case(LATTICE_HEX_SHEARTWIN(ig))                                                     ! from Christian & Mahajan 1995 p.29
            case (1_pInt)                                                                            ! <-10.1>{10.2}
              characteristicShear(ir) = (3.0_pReal-cOverA*cOverA)/sqrt(3.0_pReal)/CoverA
@@ -2130,8 +2137,9 @@ function lattice_characteristicShear_Twin(Ntwin,structure,CoverA) result(charact
 end function lattice_characteristicShear_Twin
 
 
-
-
+!--------------------------------------------------------------------------------------------------
+!> @brief Calculates rotated elasticity matrices for twinning
+!--------------------------------------------------------------------------------------------------
 function lattice_C66_twin(Ntwin,C66,structure,CoverA)
  use IO, only: &
    IO_error
@@ -2172,109 +2180,126 @@ function lattice_C66_twin(Ntwin,C66,structure,CoverA)
 end function
 
 
-function lattice_C66_trans(Ntrans,C66_parent,structure_parent,cOverA_parent, &
-                                  C66_target,structure_target,cOverA_target)
+!--------------------------------------------------------------------------------------------------
+!> @brief Calculates rotated elasticity matrices for transformation
+!--------------------------------------------------------------------------------------------------
+function lattice_C66_trans(Ntrans,C_parent66,structure_parent, &
+                                  C_target66,structure_target)
+ use prec, only: &
+  tol_math_check
  use IO, only: &
    IO_error
  use math, only: &
    INRAD, &
+   MATH_I3, &
    math_axisAngleToR, &
    math_Mandel3333to66, &
    math_Mandel66to3333, &
-   math_rotate_forward3333
+   math_rotate_forward3333, &
+   math_mul33x33, &
+   math_tensorproduct33, &
+  math_crossproduct
 
  implicit none
  integer(pInt),    dimension(:),            intent(in) :: Ntrans                                     !< number of active twin systems per family
  character(len=*),                          intent(in) :: &
    structure_target, &                                !< lattice structure
    structure_parent                                !< lattice structure
- real(pReal),      dimension(6,6),          intent(in) :: C66_target, C66_parent
- real(pReal),                               intent(in) :: cOverA_parent, cOverA_target
- real(pReal),     dimension(6,6,sum(Ntrans))            :: lattice_C66_trans, C_bar66, C_target_unrotated66
+ real(pReal),      dimension(6,6),          intent(in) :: C_parent66, C_target66
+ real(pReal),     dimension(6,6)            :: C_bar66, C_target_unrotated66
+ real(pReal),     dimension(6,6,sum(Ntrans))            :: lattice_C66_trans
 
- real(pReal),     dimension(3,3,sum(Ntrans))            :: coordinateSystem
-
- real(pReal),     dimension(3,3)                       :: R
- real(pReal) :: A, B
+ real(pReal),     dimension(3,3)                       :: R,B,U,Q,S,ss,sd,st
+ real(pReal),     dimension(3)                       :: x,y,z
+ real(pReal) :: a_bcc, a_fcc, CoverA_trans
  integer(pInt) :: i
 
-! if (trim(structure_parent) == 'fcc' .and. trim(structure_target) == 'hex') then
-!   C_bar66(1,1) = (C66_parent(1,1) + C66_parent(1,2) + 2.0_pReal*C66_parent(4,4))/2.0_pReal
-!   C_bar66(1,2) = (C66_parent(1,1) + 5.0_pReal*C66_parent(1,2) - 2.0_pReal*C66_parent(4,4))/6.0_pReal
-!   C_bar66(3,3) = (C66_parent(1,1) + 2.0_pReal*C66_parent(1,2) + 4.0_pReal*C66_parent(4,4))/3.0_pReal
-!   C_bar66(1,3) = (C66_parent(1,1) + 2.0_pReal*C66_parent(1,2) - 2.0_pReal*C66_parent(4,4))/3.0_pReal
-!   C_bar66(4,4) = (C66_parent(1,1) - C66_parent(1,2) + C66_parent(4,4))/3.0_pReal
-!   C_bar66(1,4) = (C66_parent(1,1) - C66_parent(1,2) - 2.0_pReal*C66_parent(4,4)) /(3.0_pReal*sqrt(2.0_pReal))
-!   A = C_bar(1,4)**2.0_pReal/C_bar66(4,4)
-!   B = C_bar(1,4)**2.0_pReal/(0.5_pReal*(C_bar66(1,1) - C_bar66(1,2)))
-!   C_target_unrotated66(1,1) = C_bar66(1,1) - A
-!   C_target_unrotated66(1,2) = C_bar66(1,2) + A
-!   C_target_unrotated66(1,3) = C_bar66(1,3)
-!   C_target_unrotated66(3,3) = C_bar66(3,3)
-!   C_target_unrotated66(4,4) = C_bar66(4,4) - B
-!   C_target_unrotated66 = lattice_symmetrizeC66(LATTICE_HEX_ID,C_target_unrotated)
-! elseif (trim(structure_parent) == 'fcc' .and. trim(structure_target) == 'bcc') then
-!   C_target_unrotated66 = C_parent66
-! endif 
-! do i = 1_pInt, 6_pInt
-!   if (abs(C_target_unrotated66(i,i))<tol_math_check) &
-!   call IO_error(135_pInt,el=i,ext_msg='matrix diagonal "el"ement in transformation')
-! enddo
-!
-! do i = 1, sum(Ntwin)
+ if (trim(structure_parent) /= 'hex') write(6,*) "Mist"
+
+!--------------------------------------------------------------------------------------------------
+! elasticity matrix of the target phase in cube orientation
+ if (trim(structure_target) == 'hex') then
+   C_bar66(1,1) = (C_parent66(1,1) + C_parent66(1,2) + 2.0_pReal*C_parent66(4,4))/2.0_pReal
+   C_bar66(1,2) = (C_parent66(1,1) + 5.0_pReal*C_parent66(1,2) - 2.0_pReal*C_parent66(4,4))/6.0_pReal
+   C_bar66(3,3) = (C_parent66(1,1) + 2.0_pReal*C_parent66(1,2) + 4.0_pReal*C_parent66(4,4))/3.0_pReal
+   C_bar66(1,3) = (C_parent66(1,1) + 2.0_pReal*C_parent66(1,2) - 2.0_pReal*C_parent66(4,4))/3.0_pReal
+   C_bar66(4,4) = (C_parent66(1,1) - C_parent66(1,2) + C_parent66(4,4))/3.0_pReal
+   C_bar66(1,4) = (C_parent66(1,1) - C_parent66(1,2) - 2.0_pReal*C_parent66(4,4)) /(3.0_pReal*sqrt(2.0_pReal))
+
+   C_target_unrotated66 = 0.0_pReal
+   C_target_unrotated66(1,1) = C_bar66(1,1) - C_bar66(1,4)**2.0_pReal/C_bar66(4,4)
+   C_target_unrotated66(1,2) = C_bar66(1,2) + C_bar66(1,4)**2.0_pReal/C_bar66(4,4)
+   C_target_unrotated66(1,3) = C_bar66(1,3)
+   C_target_unrotated66(3,3) = C_bar66(3,3)
+   C_target_unrotated66(4,4) = C_bar66(4,4) -  C_bar66(1,4)**2.0_pReal/(0.5_pReal*(C_bar66(1,1) - C_bar66(1,2)))
+   C_target_unrotated66 = lattice_symmetrizeC66(LATTICE_HEX_ID,C_target_unrotated66)
+ elseif (trim(structure_target) == 'bcc') then
+   C_target_unrotated66 = C_parent66
+ else
+   write(6,*) "Mist"
+ endif
+
+ do i = 1_pInt, 6_pInt
+   if (abs(C_target_unrotated66(i,i))<tol_math_check) &
+   call IO_error(135_pInt,el=i,ext_msg='matrix diagonal "el"ement in transformation')
+ enddo
+
+ if (trim(structure_parent) == 'fcc' .and. trim(structure_target) == 'hex') then
+   do i = 1_pInt,sum(Ntrans)!!!!!!!!!!!!!! NEED TO BE FIXED
+     R = math_axisAngleToR(lattice_fccTobcc_systemTrans(1:3,i), &                ! Pitsch rotation
+                           lattice_fccTobcc_systemTrans(4,i)*INRAD)
+     B = math_axisAngleToR(lattice_fccTobcc_bainRot(1:3,i), &                    ! Rotation of fcc to Bain coordinate system
+                           lattice_fccTobcc_bainRot(4,i)*INRAD)
+     x = real(LATTICE_fccTobcc_bainVariant(1:3,i),pReal)
+     y = real(LATTICE_fccTobcc_bainVariant(4:6,i),pReal)
+     z = real(LATTICE_fccTobcc_bainVariant(7:9,i),pReal)
+
+     BainDeformation: if ((a_fcc > 0.0_pReal) .and. (a_bcc > 0.0_pReal)) then
+       U = (a_bcc/a_fcc)*math_tensorproduct33(x,x) + &
+           (a_bcc/a_fcc)*math_tensorproduct33(y,y) * sqrt(2.0_pReal) + &
+           (a_bcc/a_fcc)*math_tensorproduct33(z,z) * sqrt(2.0_pReal)
+     else BainDeformation
+       U = 0.0_pReal
+     endif BainDeformation
+     Q = math_mul33x33(R,B)
+     S = math_mul33x33(R,U) - MATH_I3
+   enddo
+ elseif (trim(structure_target) == 'bcc') then
+   ss      = MATH_I3
+   ss(1,3) = sqrt(0.125_pReal)
+   sd      = MATH_I3
+   if (CoverA_trans > 1.0_pReal .and. CoverA_trans < 2.0_pReal) then
+     sd(3,3) = CoverA_trans/sqrt(8.0_pReal/3.0_pReal)
+   endif
+   st = math_mul33x33(sd,ss)
+   do i = 1_pInt,sum(Ntrans)!!!!!!!!!!!!!! NEED TO BE FIXED
+     R(1:3,1) = lattice_fccTohex_systemTrans(1:3,i)/norm2(lattice_fccTohex_systemTrans(1:3,i))
+     R(1:3,3) = lattice_fccTohex_systemTrans(4:6,i)/norm2(lattice_fccTohex_systemTrans(4:6,i))
+     R(1:3,2) = -math_crossproduct(R(1:3,1),R(1:3,3))
+     Q = R
+     S = math_mul33x33(R, math_mul33x33(st, transpose(R))) - MATH_I3
+     !           trs(i)     = lattice_fccTohex_shearTrans(i)
+   enddo
+ else
+   write(6,*) "Mist"
+ endif
+
+
+ do i = 1, sum(Ntrans)
 !   R = math_axisAngleToR(coordinateSystem(1:3,2,i), 180.0_pReal * INRAD)                            ! ToDo: Why always 180 deg?
 !   lattice_C66_trans(1:6,1:6,i) = math_Mandel3333to66(math_rotate_forward3333(math_Mandel66to3333(C66),R))
-! enddo
-!     ! Phase transformation
-!     select case(trans_lattice_structure(myPhase))
-!       case (LATTICE_bcc_ID)                                                                        ! fcc to bcc transformation
-!         do i = 1_pInt,myNtrans
-!           Rtr(1:3,1:3,i) = math_axisAngleToR(lattice_fccTobcc_systemTrans(1:3,i), &                ! Pitsch rotation
-!                              lattice_fccTobcc_systemTrans(4,i)*INRAD)
-!           Btr(1:3,1:3,i) = math_axisAngleToR(lattice_fccTobcc_bainRot(1:3,i), &                    ! Rotation of fcc to Bain coordinate system
-!                              lattice_fccTobcc_bainRot(4,i)*INRAD)
-!           xtr(1:3,i) = real(LATTICE_fccTobcc_bainVariant(1:3,i),pReal)
-!           ytr(1:3,i) = real(LATTICE_fccTobcc_bainVariant(4:6,i),pReal)
-!           ztr(1:3,i) = real(LATTICE_fccTobcc_bainVariant(7:9,i),pReal)
-!           Utr(1:3,1:3,i) = 0.0_pReal                                                               ! Bain deformation
-!           if ((a_fcc > 0.0_pReal) .and. (a_bcc > 0.0_pReal)) then
-!             Utr(1:3,1:3,i) = (a_bcc/a_fcc)*math_tensorproduct33(xtr(1:3,i), xtr(1:3,i)) + &
-!              sqrt(2.0_pReal)*(a_bcc/a_fcc)*math_tensorproduct33(ytr(1:3,i), ytr(1:3,i)) + &
-!              sqrt(2.0_pReal)*(a_bcc/a_fcc)*math_tensorproduct33(ztr(1:3,i), ztr(1:3,i))
-!           endif
-!           Qtr(1:3,1:3,i) = math_mul33x33(Rtr(1:3,1:3,i), Btr(1:3,1:3,i))
-!           Str(1:3,1:3,i) = math_mul33x33(Rtr(1:3,1:3,i), Utr(1:3,1:3,i)) - MATH_I3
-!         enddo
-!       case (LATTICE_hex_ID)
-!         sstr(1:3,1:3) = MATH_I3
-!         sstr(1,3)     = sqrt(2.0_pReal)/4.0_pReal
-!         sdtr(1:3,1:3) = MATH_I3
-!         if (CoverA_trans > 1.0_pReal .and. CoverA_trans < 2.0_pReal) then
-!           sdtr(3,3) = CoverA_trans/sqrt(8.0_pReal/3.0_pReal)
-!         endif
-!         sttr = math_mul33x33(sdtr, sstr)
-!         do i = 1_pInt,myNtrans
-!           xtr(1:3,i) = lattice_fccTohex_systemTrans(1:3,i)/norm2(lattice_fccTohex_systemTrans(1:3,i))
-!           ztr(1:3,i) = lattice_fccTohex_systemTrans(4:6,i)/norm2(lattice_fccTohex_systemTrans(4:6,i))
-!           ytr(1:3,i) = -math_crossproduct(xtr(1:3,i), ztr(1:3,i))
-!           Rtr(1:3,1,i) = xtr(1:3,i)
-!           Rtr(1:3,2,i) = ytr(1:3,i)
-!           Rtr(1:3,3,i) = ztr(1:3,i)
-!           Qtr(1:3,1:3,i) = Rtr(1:3,1:3,i)
-!           Str(1:3,1:3,i) = math_mul33x33(Rtr(1:3,1:3,i), math_mul33x33(sttr, math_transpose33(Rtr(1:3,1:3,i))))
-!           Str(1:3,1:3,i) = Str(1:3,1:3,i) - MATH_I3
-!           trs(i)     = lattice_fccTohex_shearTrans(i)
-!         enddo
-!       case default
-!         Qtr = 0.0_pReal
-!         Str = 0.0_pReal
-!     end select
+ enddo
+end function
 
- end function
 
-!       ! Schmid matrices with non-Schmid contributions according to Koester_etal2012, Acta Materialia 60 (2012) 3894–3901, eq. (17) ("n1" is replaced by either "np" or "nn" according to either positive or negative slip direction)
-!       ! "np" and "nn" according to Gröger_etal2008, Acta Materialia 56 (2008) 5412–5425, table 1 (corresponds to their "n1" for positive and negative slip direction respectively)
 
+!--------------------------------------------------------------------------------------------------
+!> @brief Non-schmid tensor
+! Schmid matrices with non-Schmid contributions according to Koester_etal2012, Acta Materialia 60 (2012)
+! 3894–3901, eq. (17) ("n1" is replaced by either "np" or "nn" according to either positive or negative slip direction)
+! "np" and "nn" according to Gröger_etal2008, Acta Materialia 56 (2008) 5412–5425, table 1
+! (corresponds to their "n1" for positive and negative slip direction respectively)
+!--------------------------------------------------------------------------------------------------
 function lattice_nonSchmidMatrix(Nslip,nonSchmidCoefficients,sense) result(nonSchmidMatrix)
  use math, only: &
    INRAD, &
@@ -2700,8 +2725,8 @@ pure function buildCoordinateSystem(active,system,structure,cOverA)
 
      end select
 
-     buildCoordinateSystem(1:3,1,ir) = direction/norm2(direction)                                   ! make unit vector
-     buildCoordinateSystem(1:3,2,ir) = normal/norm2(normal)                                         ! make unit vector
+     buildCoordinateSystem(1:3,1,ir) = direction/norm2(direction)
+     buildCoordinateSystem(1:3,2,ir) = normal/norm2(normal)
      buildCoordinateSystem(1:3,3,ir) = math_crossproduct(direction,normal)
 
    enddo mySystems
