@@ -2164,11 +2164,11 @@ function lattice_C66_twin(Ntwin,C66,structure,CoverA)
 
  select case(structure)
    case('fcc')
-     coordinateSystem = buildCoordinateSystem(Ntwin,int(LATTICE_FCC_SYSTEMTWIN,pInt),structure)
+     coordinateSystem = buildCoordinateSystem(Ntwin,LATTICE_FCC_NSLIPSYSTEM,int(LATTICE_FCC_SYSTEMTWIN,pInt),structure)
    case('bcc')
-     coordinateSystem = buildCoordinateSystem(Ntwin,int(LATTICE_BCC_SYSTEMTWIN,pInt),structure)
+     coordinateSystem = buildCoordinateSystem(Ntwin,LATTICE_BCC_NSLIPSYSTEM,int(LATTICE_BCC_SYSTEMTWIN,pInt),structure)
    case('hex','hexagonal')                                                                          !ToDo: "No alias policy": long or short?
-     coordinateSystem = buildCoordinateSystem(Ntwin,int(LATTICE_HEX_SYSTEMTWIN,pInt),'hex',cOverA)
+     coordinateSystem = buildCoordinateSystem(Ntwin,LATTICE_HEX_NSLIPSYSTEM,int(LATTICE_HEX_SYSTEMTWIN,pInt),'hex',cOverA)
    case default
      call IO_error(130_pInt,ext_msg=trim(structure)//' (lattice_C66_twin)')
  end select
@@ -2320,8 +2320,8 @@ function lattice_nonSchmidMatrix(Nslip,nonSchmidCoefficients,sense) result(nonSc
  integer(pInt) :: i
 
  if (abs(sense) /= 1_pInt) write(6,*) 'mist'
- coordinateSystem        = buildCoordinateSystem(Nslip,int(LATTICE_BCC_SYSTEMSLIP,pInt),'bcc')
- coordinateSystem(1:3,1,sum(Nslip)) = coordinateSystem(1:3,1,sum(Nslip)) *real(sense,pReal)
+ coordinateSystem        = buildCoordinateSystem(Nslip,LATTICE_BCC_NSLIPSYSTEM,int(LATTICE_BCC_SYSTEMSLIP,pInt),'bcc')
+ coordinateSystem(1:3,1,1:sum(Nslip)) = coordinateSystem(1:3,1,1:sum(Nslip)) *real(sense,pReal)
  nonSchmidMatrix = lattice_SchmidMatrix_slip(Nslip,'bcc')
 
  do i = 1_pInt,sum(Nslip)
@@ -2577,13 +2577,13 @@ function lattice_SchmidMatrix_slip(Nslip,structure,cOverA) result(SchmidMatrix)
 
  select case(structure)
    case('fcc')
-     coordinateSystem = buildCoordinateSystem(Nslip,int(LATTICE_FCC_SYSTEMSLIP,pInt),structure)
+     coordinateSystem = buildCoordinateSystem(Nslip,LATTICE_BCC_NSLIPSYSTEM,int(LATTICE_FCC_SYSTEMSLIP,pInt),structure)
    case('bcc')
-     coordinateSystem = buildCoordinateSystem(Nslip,int(LATTICE_BCC_SYSTEMSLIP,pInt),structure)
+     coordinateSystem = buildCoordinateSystem(Nslip,LATTICE_FCC_NSLIPSYSTEM,int(LATTICE_BCC_SYSTEMSLIP,pInt),structure)
    case('hex','hexagonal')                                                                          !ToDo: "No alias policy": long or short?
-     coordinateSystem = buildCoordinateSystem(Nslip,int(LATTICE_HEX_SYSTEMSLIP,pInt),'hex',cOverA)
+     coordinateSystem = buildCoordinateSystem(Nslip,LATTICE_HEX_NSLIPSYSTEM,int(LATTICE_HEX_SYSTEMSLIP,pInt),'hex',cOverA)
    case('bct')
-     coordinateSystem = buildCoordinateSystem(Nslip,int(LATTICE_BCT_SYSTEMSLIP,pInt),structure,cOverA)
+     coordinateSystem = buildCoordinateSystem(Nslip,LATTICE_BCT_NSLIPSYSTEM,int(LATTICE_BCT_SYSTEMSLIP,pInt),structure,cOverA)
    case default
      call IO_error(130_pInt,ext_msg=trim(structure)//' (lattice_SchmidMatrix_slip)')
  end select
@@ -2618,11 +2618,11 @@ function lattice_SchmidMatrix_twin(Ntwin,structure,cOverA)
 
  select case(structure)
    case('fcc')
-     coordinateSystem = buildCoordinateSystem(Ntwin,int(LATTICE_FCC_SYSTEMTWIN,pInt),structure)
+     coordinateSystem = buildCoordinateSystem(Ntwin,LATTICE_FCC_NTWINSYSTEM,int(LATTICE_FCC_SYSTEMTWIN,pInt),structure)
    case('bcc')
-     coordinateSystem = buildCoordinateSystem(Ntwin,int(LATTICE_BCC_SYSTEMTWIN,pInt),structure)
+     coordinateSystem = buildCoordinateSystem(Ntwin,LATTICE_BCC_NTWINSYSTEM,int(LATTICE_BCC_SYSTEMTWIN,pInt),structure)
    case('hex','hexagonal')                                                                          !ToDo: "No alias policy": long or short?
-     coordinateSystem = buildCoordinateSystem(Ntwin,int(LATTICE_HEX_SYSTEMTWIN,pInt),'hex',cOverA)
+     coordinateSystem = buildCoordinateSystem(Ntwin,LATTICE_HEX_NTWINSYSTEM,int(LATTICE_HEX_SYSTEMTWIN,pInt),'hex',cOverA)
    case default
      call IO_error(130_pInt,ext_msg=trim(structure)//' (lattice_SchmidMatrix_twin)')
  end select
@@ -2655,14 +2655,16 @@ pure function buildInteraction(activeA,activeB,maxA,maxB,values,matrix)
    mf, ms, of, os
 
  myFamilies: do mf = 1_pInt,size(activeA,1)
-  index_myFamily = sum(activeA(1:mf-1_pInt))
-     mySystems: do ms = 1_pInt,activeA(mf)
-       otherFamilies: do of = 1_pInt,size(activeB,1)
-         index_otherFamily = sum(activeB(1:of-1_pInt))
-         otherSystems: do os = 1_pInt,activeB(of)
-           buildInteraction(index_myFamily+ms,index_otherFamily+os) = &
-                                         values(matrix(sum(maxA(1:mf-1))+ms, sum(maxB(1:of-1))+os))
-       enddo otherSystems; enddo otherFamilies;
+   index_myFamily = sum(activeA(1:mf-1_pInt))
+   mySystems: do ms = 1_pInt,activeA(mf)
+
+     otherFamilies: do of = 1_pInt,size(activeB,1)
+     index_otherFamily = sum(activeB(1:of-1_pInt))
+       otherSystems: do os = 1_pInt,activeB(of)
+         buildInteraction(index_myFamily+ms,index_otherFamily+os) = &
+                                       values(matrix(sum(maxA(1:mf-1))+ms, sum(maxB(1:of-1))+os))
+     enddo otherSystems; enddo otherFamilies;
+
  enddo mySystems;enddo myFamilies
 
 end function buildInteraction
@@ -2672,13 +2674,14 @@ end function buildInteraction
 !> @brief build a local coordinate system in a slip, twin, trans, cleavage system
 !> @details: Order: Direction, plane (normal), and common perpendicular
 !--------------------------------------------------------------------------------------------------
-pure function buildCoordinateSystem(active,system,structure,cOverA)
+function buildCoordinateSystem(active,maximum,system,structure,cOverA)
  use math, only: &
    math_crossproduct
 
  implicit none
  integer(pInt), dimension(:), intent(in) :: &
-   active
+   active, &
+   maximum
  integer(pInt), dimension(:,:), intent(in) :: &
    system
  character(len=*),            intent(in) :: &
@@ -2691,46 +2694,46 @@ pure function buildCoordinateSystem(active,system,structure,cOverA)
  real(pReal), dimension(3) :: &
    direction, normal
  integer(pInt) :: &
-   ir, &                                                                                            !< index in reduced matrix
-   ig, &                                                                                            !< index in full matrix
-   mf, &                                                                                            !< index of my family
-   ms                                                                                               !< index of my system in current family
+   i, &                                                                                             !< index in reduced matrix
+   j, &                                                                                             !< index in full matrix
+   f, &                                                                                             !< index of my family
+   s                                                                                                !< index of my system in current family
 
- ir = 0_pInt
- myFamilies: do mf = 1_pInt,size(active,1)
-   mySystems: do ms = 1_pInt,active(mf)
-     ir = ir + 1_pInt
-     ig = sum(system(:,1:mf-1))+ms
+ i = 0_pInt
+ activeFamilies: do f = 1_pInt,size(active,1)
+   activeSystems: do s = 1_pInt,active(f)
+     i = i + 1_pInt
+     j = sum(maximum(1:f-1))+s
 
      select case(trim(structure))
 
        case ('fcc','bcc')
-         direction = real(system(1:3,ig),pReal)
-         normal    = real(system(4:6,ig),pReal)
+         direction = real(system(1:3,j),pReal)
+         normal    = real(system(4:6,j),pReal)
    
        case ('hex')
          ! direction [uvtw]->[3u/2 (u+2v)*sqrt(3)/2 w*(c/a)])
-         direction = [ real(system(1,ig),pReal)*1.5_pReal, &
-                      (real(system(1,ig),pReal)+2.0_pReal*real(system(2,ig),pReal))*sqrt(0.75_pReal), &
-                       real(system(4,ig),pReal)*CoverA ]
+         direction = [ real(system(1,j),pReal)*1.5_pReal, &
+                      (real(system(1,j),pReal)+2.0_pReal*real(system(2,j),pReal))*sqrt(0.75_pReal), &
+                       real(system(4,j),pReal)*CoverA ]
 
          ! plane (hkil)->(h (h+2k)/sqrt(3) l/(c/a))
-         normal    = [ real(system(5,ig),pReal), &
-                      (real(system(5,ig),pReal)+2.0_pReal*real(system(6,ig),pReal))/ sqrt(3.0_pReal), &
-                       real(system(8,ig),pReal)/CoverA ]
+         normal    = [ real(system(5,j),pReal), &
+                      (real(system(5,j),pReal)+2.0_pReal*real(system(6,j),pReal))/ sqrt(3.0_pReal), &
+                       real(system(8,j),pReal)/CoverA ]
 
        case ('bct')
-         direction = [real(system(1:2,ig),pReal),real(system(3,ig),pReal)*CoverA]
-         normal    = [real(system(4:5,ig),pReal),real(system(6,ig),pReal)/CoverA]
+         direction = [real(system(1:2,j),pReal),real(system(3,i),pReal)*CoverA]
+         normal    = [real(system(4:5,j),pReal),real(system(6,i),pReal)/CoverA]
 
      end select
 
-     buildCoordinateSystem(1:3,1,ir) = direction/norm2(direction)
-     buildCoordinateSystem(1:3,2,ir) = normal/norm2(normal)
-     buildCoordinateSystem(1:3,3,ir) = math_crossproduct(direction,normal)
+     buildCoordinateSystem(1:3,1,i) = direction/norm2(direction)
+     buildCoordinateSystem(1:3,2,i) = normal/norm2(normal)
+     buildCoordinateSystem(1:3,3,i) = math_crossproduct(direction,normal)
 
-   enddo mySystems
- enddo myFamilies
+   enddo activeSystems
+ enddo activeFamilies
 
 end function buildCoordinateSystem
 
