@@ -2338,7 +2338,7 @@ function lattice_nonSchmidMatrix(Nslip,nonSchmidCoefficients,sense) result(nonSc
      + nonSchmidCoefficients(4) * math_tensorproduct33(normal, normal)
    if (size(nonSchmidCoefficients)>4) nonSchmidMatrix(1:3,1:3,i) = nonSchmidMatrix(1:3,1:3,i) &
      + nonSchmidCoefficients(5) * math_tensorproduct33(math_crossproduct(normal, direction), &
-                                                         math_crossproduct(normal, normal))
+                                                       math_crossproduct(normal, direction))
    if (size(nonSchmidCoefficients)>5) nonSchmidMatrix(1:3,1:3,i) = nonSchmidMatrix(1:3,1:3,i) &
      + nonSchmidCoefficients(6) * math_tensorproduct33(direction, direction)
  enddo
