@@ -1181,43 +1181,43 @@ module lattice
 
 real(pReal), dimension(4,36), parameter, private :: &
   lattice_symOperations = reshape([&
-     1.0_pReal,                 0.0_pReal,                 0.0_pReal,                 0.0_pReal, &                      ! cubic symmetry operations
-     0.0_pReal,                 0.0_pReal,                 0.7071067811865476_pReal,  0.7071067811865476_pReal, &       !     2-fold symmetry
-     0.0_pReal,                 0.7071067811865476_pReal,  0.0_pReal,                 0.7071067811865476_pReal, &
-     0.0_pReal,                 0.7071067811865476_pReal,  0.7071067811865476_pReal,  0.0_pReal, &
-     0.0_pReal,                 0.0_pReal,                 0.7071067811865476_pReal, -0.7071067811865476_pReal, &
-     0.0_pReal,                -0.7071067811865476_pReal,  0.0_pReal,                 0.7071067811865476_pReal, &
-     0.0_pReal,                 0.7071067811865476_pReal, -0.7071067811865476_pReal,  0.0_pReal, &
-     0.5_pReal,                 0.5_pReal,                 0.5_pReal,                 0.5_pReal, &                      !     3-fold symmetry
-    -0.5_pReal,                 0.5_pReal,                 0.5_pReal,                 0.5_pReal, &
-     0.5_pReal,                -0.5_pReal,                 0.5_pReal,                 0.5_pReal, &
-    -0.5_pReal,                -0.5_pReal,                 0.5_pReal,                 0.5_pReal, &
-     0.5_pReal,                 0.5_pReal,                -0.5_pReal,                 0.5_pReal, &
-    -0.5_pReal,                 0.5_pReal,                -0.5_pReal,                 0.5_pReal, &
-     0.5_pReal,                 0.5_pReal,                 0.5_pReal,                -0.5_pReal, &
-    -0.5_pReal,                 0.5_pReal,                 0.5_pReal,                -0.5_pReal, &
-     0.7071067811865476_pReal,  0.7071067811865476_pReal,  0.0_pReal,                 0.0_pReal, &                      !     4-fold symmetry
-     0.0_pReal,                 1.0_pReal,                 0.0_pReal,                 0.0_pReal, &
-    -0.7071067811865476_pReal,  0.7071067811865476_pReal,  0.0_pReal,                 0.0_pReal, &
-     0.7071067811865476_pReal,  0.0_pReal,                 0.7071067811865476_pReal,  0.0_pReal, &
-     0.0_pReal,                 0.0_pReal,                 1.0_pReal,                 0.0_pReal, &
-    -0.7071067811865476_pReal,  0.0_pReal,                 0.7071067811865476_pReal,  0.0_pReal, &
-     0.7071067811865476_pReal,  0.0_pReal,                 0.0_pReal,                 0.7071067811865476_pReal, &
-     0.0_pReal,                 0.0_pReal,                 0.0_pReal,                 1.0_pReal, &
-    -0.7071067811865476_pReal,  0.0_pReal,                 0.0_pReal,                 0.7071067811865476_pReal, &
+     1.0_pReal,                  0.0_pReal,                  0.0_pReal,                  0.0_pReal, &                   ! cubic symmetry operations
+     0.0_pReal,                  0.0_pReal,                  1.0_pReal/sqrt(2.0_pReal),  1.0_pReal/sqrt(2.0_pReal), &   !     2-fold symmetry
+     0.0_pReal,                  1.0_pReal/sqrt(2.0_pReal),  0.0_pReal,                  1.0_pReal/sqrt(2.0_pReal), &
+     0.0_pReal,                  1.0_pReal/sqrt(2.0_pReal),  1.0_pReal/sqrt(2.0_pReal),  0.0_pReal, &
+     0.0_pReal,                  0.0_pReal,                  1.0_pReal/sqrt(2.0_pReal), -1.0_pReal/sqrt(2.0_pReal), &
+     0.0_pReal,                 -1.0_pReal/sqrt(2.0_pReal),  0.0_pReal,                  1.0_pReal/sqrt(2.0_pReal), &
+     0.0_pReal,                  1.0_pReal/sqrt(2.0_pReal), -1.0_pReal/sqrt(2.0_pReal),  0.0_pReal, &
+     0.5_pReal,                  0.5_pReal,                  0.5_pReal,                  0.5_pReal, &                   !     3-fold symmetry
+    -0.5_pReal,                  0.5_pReal,                  0.5_pReal,                  0.5_pReal, &
+     0.5_pReal,                 -0.5_pReal,                  0.5_pReal,                  0.5_pReal, &
+    -0.5_pReal,                 -0.5_pReal,                  0.5_pReal,                  0.5_pReal, &
+     0.5_pReal,                  0.5_pReal,                 -0.5_pReal,                  0.5_pReal, &
+    -0.5_pReal,                  0.5_pReal,                 -0.5_pReal,                  0.5_pReal, &
+     0.5_pReal,                  0.5_pReal,                  0.5_pReal,                 -0.5_pReal, &
+    -0.5_pReal,                  0.5_pReal,                  0.5_pReal,                 -0.5_pReal, &
+     1.0_pReal/sqrt(2.0_pReal),  1.0_pReal/sqrt(2.0_pReal),  0.0_pReal,                  0.0_pReal, &                   !     4-fold symmetry
+     0.0_pReal,                  1.0_pReal,                  0.0_pReal,                  0.0_pReal, &
+    -1.0_pReal/sqrt(2.0_pReal),  1.0_pReal/sqrt(2.0_pReal),  0.0_pReal,                  0.0_pReal, &
+     1.0_pReal/sqrt(2.0_pReal),  0.0_pReal,                  1.0_pReal/sqrt(2.0_pReal),  0.0_pReal, &
+     0.0_pReal,                  0.0_pReal,                  1.0_pReal,                  0.0_pReal, &
+    -1.0_pReal/sqrt(2.0_pReal),  0.0_pReal,                  1.0_pReal/sqrt(2.0_pReal),  0.0_pReal, &
+     1.0_pReal/sqrt(2.0_pReal),  0.0_pReal,                  0.0_pReal,                  1.0_pReal/sqrt(2.0_pReal), &
+     0.0_pReal,                  0.0_pReal,                  0.0_pReal,                  1.0_pReal, &
+    -1.0_pReal/sqrt(2.0_pReal),  0.0_pReal,                  0.0_pReal,                  1.0_pReal/sqrt(2.0_pReal), &
 !
-     1.0_pReal,                 0.0_pReal,                 0.0_pReal,                 0.0_pReal, &                      ! hexagonal symmetry operations
-     0.0_pReal,                 1.0_pReal,                 0.0_pReal,                 0.0_pReal, &                      !     2-fold symmetry
-     0.0_pReal,                 0.0_pReal,                 1.0_pReal,                 0.0_pReal, &
-     0.0_pReal,                 0.5_pReal,                 0.866025403784439_pReal,   0.0_pReal, &
-     0.0_pReal,                -0.5_pReal,                 0.866025403784439_pReal,   0.0_pReal, &
-     0.0_pReal,                 0.866025403784439_pReal,   0.5_pReal,                 0.0_pReal, &
-     0.0_pReal,                -0.866025403784439_pReal,   0.5_pReal,                 0.0_pReal, &
-     0.866025403784439_pReal,   0.0_pReal,                 0.0_pReal,                 0.5_pReal, &                      !     6-fold symmetry
-    -0.866025403784439_pReal,   0.0_pReal,                 0.0_pReal,                 0.5_pReal, &
-     0.5_pReal,                 0.0_pReal,                 0.0_pReal,                 0.866025403784439_pReal, &
-    -0.5_pReal,                 0.0_pReal,                 0.0_pReal,                 0.866025403784439_pReal, &
-     0.0_pReal,                 0.0_pReal,                 0.0_pReal,                 1.0_pReal &
+     1.0_pReal,                  0.0_pReal,                  0.0_pReal,                  0.0_pReal, &                   ! hexagonal symmetry operations
+     0.0_pReal,                  1.0_pReal,                  0.0_pReal,                  0.0_pReal, &                   !     2-fold symmetry
+     0.0_pReal,                  0.0_pReal,                  1.0_pReal,                  0.0_pReal, &
+     0.0_pReal,                  0.5_pReal,                  2.0_pReal/sqrt(3.0_pReal),  0.0_pReal, &
+     0.0_pReal,                 -0.5_pReal,                  2.0_pReal/sqrt(3.0_pReal),  0.0_pReal, &
+     0.0_pReal,                  2.0_pReal/sqrt(3.0_pReal),  0.5_pReal,                  0.0_pReal, &
+     0.0_pReal,                 -2.0_pReal/sqrt(3.0_pReal),  0.5_pReal,                  0.0_pReal, &
+     2.0_pReal/sqrt(3.0_pReal),  0.0_pReal,                  0.0_pReal,                  0.5_pReal, &                   !     6-fold symmetry
+    -2.0_pReal/sqrt(3.0_pReal),  0.0_pReal,                  0.0_pReal,                  0.5_pReal, &
+     0.5_pReal,                  0.0_pReal,                  0.0_pReal,                  2.0_pReal/sqrt(3.0_pReal), &
+    -0.5_pReal,                  0.0_pReal,                  0.0_pReal,                  2.0_pReal/sqrt(3.0_pReal), &
+     0.0_pReal,                  0.0_pReal,                  0.0_pReal,                  1.0_pReal &
      ],[4,36])  !< Symmetry operations as quaternions 24 for cubic, 12 for hexagonal = 36
 
  public :: &
