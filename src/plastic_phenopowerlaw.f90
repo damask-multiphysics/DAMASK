@@ -206,7 +206,7 @@ subroutine plastic_phenopowerlaw_init
      ! reading in slip related parameters
      prm%xi_slip_0            = config_phase(p)%getFloats('tau0_slip',   requiredShape=shape(prm%Nslip))
      prm%xi_slip_sat          = config_phase(p)%getFloats('tausat_slip', requiredShape=shape(prm%Nslip))
-     prm%interaction_SlipSlip = lattice_interactionSlipSlip2(prm%Nslip,config_phase(p)%getFloats('interaction_slipslip'), &
+     prm%interaction_SlipSlip = lattice_interaction_SlipSlip(prm%Nslip,config_phase(p)%getFloats('interaction_slipslip'), &
                                                                       structure(1:3))
      prm%H_int                = config_phase(p)%getFloats('h_int',       requiredShape=shape(prm%Nslip), &
                                                                          defaultVal=[(0.0_pReal,i=1_pInt,size(prm%Nslip))])
@@ -255,7 +255,7 @@ subroutine plastic_phenopowerlaw_init
                                                           config_phase(p)%getFloat('c/a',defaultVal=0.0_pReal))
      ! reading in twin related parameters
      prm%xi_twin_0            = config_phase(p)%getFloats('tau0_twin',requiredShape=shape(prm%Ntwin))
-     prm%interaction_TwinTwin = lattice_interactionTwinTwin2(prm%Ntwin,config_phase(p)%getFloats('interaction_twintwin'), &
+     prm%interaction_TwinTwin = lattice_interaction_TwinTwin(prm%Ntwin,config_phase(p)%getFloats('interaction_twintwin'), &
                                                                       structure(1:3))
 
      prm%gdot0_twin  = config_phase(p)%getFloat('gdot0_twin')
@@ -280,10 +280,10 @@ subroutine plastic_phenopowerlaw_init
    config_phase(p)%getFloat('c/a',defaultVal=0.0_pReal))
 
    slipAndTwinActive: if (prm%totalNslip > 0_pInt .and. prm%totalNtwin > 0_pInt) then
-     prm%interaction_SlipTwin = lattice_interactionSlipTwin2(prm%Nslip,prm%Ntwin,&
+     prm%interaction_SlipTwin = lattice_interaction_SlipTwin(prm%Nslip,prm%Ntwin,&
                                        config_phase(p)%getFloats('interaction_sliptwin'), &
                                                                       structure(1:3))
-     prm%interaction_TwinSlip = lattice_interactionTwinSlip2(prm%Ntwin,prm%Nslip,&
+     prm%interaction_TwinSlip = lattice_interaction_TwinSlip(prm%Ntwin,prm%Nslip,&
                                        config_phase(p)%getFloats('interaction_twinslip'), &
                                                                       structure(1:3))
    else slipAndTwinActive
