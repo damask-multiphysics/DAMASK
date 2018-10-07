@@ -2604,16 +2604,19 @@ end function lattice_SchmidMatrix_slip
 !--------------------------------------------------------------------------------------------------
 !> @brief Calculates Schmid matrix for active twin systems
 !--------------------------------------------------------------------------------------------------
-function lattice_SchmidMatrix_twin(Ntwin,structure,cOverA)
+function lattice_SchmidMatrix_twin(Ntwin,structure,cOverA) result(SchmidMatrix)
+ use prec, only: &
+   tol_math_check
  use IO, only: &
    IO_error
  use math, only: &
+   math_trace33, &
    math_tensorproduct33
 
  implicit none
  integer(pInt),    dimension(:),            intent(in) :: Ntwin                              !< number of active twin systems per family
  character(len=*),                          intent(in) :: structure                          !< lattice structure
- real(pReal),     dimension(3,3,sum(Ntwin))            :: lattice_SchmidMatrix_Twin
+ real(pReal),     dimension(3,3,sum(Ntwin))            :: SchmidMatrix
  real(pReal),                               intent(in), optional :: &
    cOverA
 
@@ -2632,8 +2635,9 @@ function lattice_SchmidMatrix_twin(Ntwin,structure,cOverA)
  end select
 
  do i = 1, sum(Ntwin)
-   lattice_SchmidMatrix_twin(1:3,1:3,i) = &
-                             math_tensorproduct33(coordinateSystem(1:3,1,i),coordinateSystem(1:3,2,i))
+   SchmidMatrix(1:3,1:3,i) = math_tensorproduct33(coordinateSystem(1:3,1,i),coordinateSystem(1:3,2,i))
+   if (abs(math_trace33(SchmidMatrix(1:3,1:3,i))) > tol_math_check) &
+     call IO_error(0_pInt,i,ext_msg = 'dilatational Schmid matrix for twin')
  enddo
 
 end function lattice_SchmidMatrix_twin
