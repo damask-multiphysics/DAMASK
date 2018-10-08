@@ -2096,7 +2096,8 @@ function lattice_characteristicShear_Twin(Ntwin,structure,CoverA) result(charact
  implicit none
  integer(pInt),    dimension(:),            intent(in) :: Ntwin                                    !< number of active twin systems per family
  character(len=3),                          intent(in) :: structure
- real(pReal),                               intent(in) :: cOverA
+ real(pReal),                               intent(in), optional :: &
+   cOverA
  real(pReal),     dimension(sum(Ntwin)) :: characteristicShear
  integer(pInt) :: &
    ir, &                                                                                            !< index in reduced list
@@ -2117,6 +2118,7 @@ function lattice_characteristicShear_Twin(Ntwin,structure,CoverA) result(charact
          ig = sum(LATTICE_BCC_NTWINSYSTEM(1:mf-1))+ms
          characteristicShear(ir) = LATTICE_BCC_SHEARTWIN(ig)
        case('hex')
+         if (.not. present(CoverA)) call IO_error(0_pInt)
          ig = sum(LATTICE_HEX_NTWINSYSTEM(1:mf-1))+ms
          select case(LATTICE_HEX_SHEARTWIN(ig))                                                     ! from Christian & Mahajan 1995 p.29
            case (1_pInt)                                                                            ! <-10.1>{10.2}
@@ -2155,12 +2157,12 @@ function lattice_C66_twin(Ntwin,C66,structure,CoverA)
  integer(pInt),    dimension(:),            intent(in) :: Ntwin                                     !< number of active twin systems per family
  character(len=*),                          intent(in) :: structure                                 !< lattice structure
  real(pReal),      dimension(6,6),          intent(in) :: C66
- real(pReal),                               intent(in) :: cOverA
- real(pReal),     dimension(6,6,sum(Ntwin))            :: lattice_C66_twin
+ real(pReal),      optional,                intent(in) :: cOverA
+ real(pReal),      dimension(6,6,sum(Ntwin))            :: lattice_C66_twin
 
- real(pReal),     dimension(3,3,sum(Ntwin))            :: coordinateSystem
+ real(pReal),      dimension(3,3,sum(Ntwin))            :: coordinateSystem
 
- real(pReal),     dimension(3,3)                       :: R
+ real(pReal),      dimension(3,3)                       :: R
  integer(pInt) :: i
 
  select case(structure)
@@ -2169,6 +2171,7 @@ function lattice_C66_twin(Ntwin,C66,structure,CoverA)
    case('bcc')
      coordinateSystem = buildCoordinateSystem(Ntwin,LATTICE_BCC_NSLIPSYSTEM,LATTICE_BCC_SYSTEMTWIN,structure)
    case('hex','hexagonal')                                                                          !ToDo: "No alias policy": long or short?
+     if (.not. present(CoverA)) call IO_error(0_pInt)
      coordinateSystem = buildCoordinateSystem(Ntwin,LATTICE_HEX_NSLIPSYSTEM,LATTICE_HEX_SYSTEMTWIN,'hex',cOverA)
    case default
      call IO_error(130_pInt,ext_msg=trim(structure)//' (lattice_C66_twin)')
@@ -2583,9 +2586,11 @@ function lattice_SchmidMatrix_slip(Nslip,structure,cOverA) result(SchmidMatrix)
      NslipMax    = LATTICE_FCC_NSLIPSYSTEM
      slipSystems = LATTICE_BCC_SYSTEMSLIP
    case('hex','hexagonal')                                                                          !ToDo: "No alias policy": long or short?
+     if (.not. present(CoverA)) call IO_error(0_pInt)
      NslipMax    = LATTICE_HEX_NSLIPSYSTEM
      slipSystems = LATTICE_HEX_SYSTEMSLIP
    case('bct')
+     if (.not. present(CoverA)) call IO_error(0_pInt)
      NslipMax    = LATTICE_BCT_NSLIPSYSTEM
      slipSystems = LATTICE_BCT_SYSTEMSLIP
    case default
@@ -2594,8 +2599,11 @@ function lattice_SchmidMatrix_slip(Nslip,structure,cOverA) result(SchmidMatrix)
 
  if (any(NslipMax(1:size(Nslip)) - Nslip < 0_pInt) .or. any(Nslip < 0_pInt)) &
    call IO_error(145_pInt,ext_msg='Nslip '//trim(structure))
-
- coordinateSystem = buildCoordinateSystem(Nslip,NslipMax,slipSystems,structure)
+ if (present(cOverA)) then 
+   coordinateSystem = buildCoordinateSystem(Nslip,NslipMax,slipSystems,structure,cOverA)
+ else
+   coordinateSystem = buildCoordinateSystem(Nslip,NslipMax,slipSystems,structure)
+ endif
  do i = 1, sum(Nslip)
    SchmidMatrix(1:3,1:3,i) = math_tensorproduct33(coordinateSystem(1:3,1,i),coordinateSystem(1:3,2,i))
    if (abs(math_trace33(SchmidMatrix(1:3,1:3,i))) > tol_math_check) &
@@ -2637,6 +2645,7 @@ function lattice_SchmidMatrix_twin(Ntwin,structure,cOverA) result(SchmidMatrix)
      NtwinMax    = LATTICE_BCC_NTWINSYSTEM
      twinSystems = LATTICE_BCC_SYSTEMTWIN
    case('hex','hexagonal')                                                                          !ToDo: "No alias policy": long or short?
+     if (.not. present(CoverA)) call IO_error(0_pInt)
      NtwinMax    = LATTICE_HEX_NTWINSYSTEM
      twinSystems = LATTICE_HEX_SYSTEMTWIN
    case default
@@ -2645,8 +2654,12 @@ function lattice_SchmidMatrix_twin(Ntwin,structure,cOverA) result(SchmidMatrix)
 
  if (any(NtwinMax(1:size(Ntwin)) - Ntwin < 0_pInt) .or. any(Ntwin < 0_pInt)) &
    call IO_error(145_pInt,ext_msg='Ntwin '//trim(structure))
-
- coordinateSystem = buildCoordinateSystem(Ntwin,NtwinMax,twinSystems,structure)
+ 
+ if (present(cOverA)) then 
+   coordinateSystem = buildCoordinateSystem(Ntwin,NtwinMax,twinSystems,structure,cOverA)
+ else
+   coordinateSystem = buildCoordinateSystem(Ntwin,NtwinMax,twinSystems,structure)
+ endif
  do i = 1, sum(Ntwin)
    SchmidMatrix(1:3,1:3,i) = math_tensorproduct33(coordinateSystem(1:3,1,i),coordinateSystem(1:3,2,i))
    if (abs(math_trace33(SchmidMatrix(1:3,1:3,i))) > tol_math_check) &
