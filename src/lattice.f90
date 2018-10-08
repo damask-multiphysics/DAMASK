@@ -2580,10 +2580,10 @@ function lattice_SchmidMatrix_slip(Nslip,structure,cOverA) result(SchmidMatrix)
 
  select case(structure)
    case('fcc')
-     NslipMax    = LATTICE_BCC_NSLIPSYSTEM
+     NslipMax    = LATTICE_FCC_NSLIPSYSTEM
      slipSystems = LATTICE_FCC_SYSTEMSLIP
    case('bcc')
-     NslipMax    = LATTICE_FCC_NSLIPSYSTEM
+     NslipMax    = LATTICE_BCC_NSLIPSYSTEM
      slipSystems = LATTICE_BCC_SYSTEMSLIP
    case('hex','hexagonal')                                                                          !ToDo: "No alias policy": long or short?
      if (.not. present(CoverA)) call IO_error(0_pInt)
