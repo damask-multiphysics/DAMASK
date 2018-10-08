@@ -2385,8 +2385,8 @@ function lattice_interaction_SlipSlip(Nslip,interactionValues,structure) result(
      call IO_error(132_pInt,ext_msg=trim(structure)//' (slip slip interaction)')
  end select
 
- if (size(interactionValues) > maxval(interactionTypes)) &
-   call IO_error(0_pInt) ! ToDo
+ !if (size(interactionValues) > maxval(interactionTypes)) &
+ !  call IO_error(0_pInt) ! ToDo
 
  interactionMatrix = buildInteraction(Nslip,Nslip,NslipMax,NslipMax,interactionValues,interactionTypes)
 
@@ -2424,8 +2424,8 @@ function lattice_interaction_TwinTwin(Ntwin,interactionValues,structure) result(
      call IO_error(132_pInt,ext_msg=trim(structure)//' (twin twin interaction)')
  end select
 
- if (size(interactionValues) > maxval(interactionTypes)) &
-   call IO_error(0_pInt) ! ToDo
+ !if (size(interactionValues) > maxval(interactionTypes)) &
+ !  call IO_error(0_pInt) ! ToDo
 
  interactionMatrix = buildInteraction(Ntwin,Ntwin,NtwinMax,NtwinMax,interactionValues,interactionTypes)
 
@@ -2468,8 +2468,8 @@ function lattice_interaction_SlipTwin(Nslip,Ntwin,interactionValues,structure) r
      call IO_error(132_pInt,ext_msg=trim(structure)//' (slip twin interaction)')
  end select
 
- if (size(interactionValues) > maxval(interactionTypes)) &
-   call IO_error(0_pInt) ! ToDo
+ !if (size(interactionValues) > maxval(interactionTypes)) &
+ !  call IO_error(0_pInt) ! ToDo
 
  interactionMatrix = buildInteraction(Nslip,Ntwin,NslipMax,NtwinMax,interactionValues,interactionTypes)
 
@@ -2512,8 +2512,8 @@ function lattice_interaction_TwinSlip(Ntwin,Nslip,interactionValues,structure) r
      call IO_error(132_pInt,ext_msg=trim(structure)//' (twin slip interaction)')
  end select
 
- if (size(interactionValues) > maxval(interactionTypes)) &
-   call IO_error(0_pInt) ! ToDo
+ !if (size(interactionValues) > maxval(interactionTypes)) &
+ !  call IO_error(0_pInt) ! ToDo
 
  interactionMatrix = buildInteraction(Ntwin,Nslip,NtwinMax,NslipMax,interactionValues,interactionTypes)
 
@@ -2546,8 +2546,8 @@ function lattice_interaction_TransTrans(Ntrans,interactionValues,structure,targe
    call IO_error(132_pInt,ext_msg=trim(structure)//' => '//trim(targetStructure))
  end if
 
- if (size(interactionValues) > maxval(interactionTypes)) &
-   call IO_error(0_pInt) ! ToDo
+ !if (size(interactionValues) > maxval(interactionTypes)) &
+ !  call IO_error(0_pInt) ! ToDo
 
  interactionMatrix = buildInteraction(Ntrans,Ntrans,NtransMax,NtransMax,interactionValues,interactionTypes)
 
