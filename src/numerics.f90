@@ -429,7 +429,7 @@ subroutine numerics_init
 #endif
        case default                                                                                ! found unknown keyword
          call IO_error(300_pInt,ext_msg=tag)
-     endselect
+     end select
    enddo
    close(FILEUNIT)
 
@@ -502,7 +502,7 @@ subroutine numerics_init
 
 !--------------------------------------------------------------------------------------------------
 ! Random seeding parameter
- write(6,'(a24,1x,i16,/)')    ' random_seed:            ',randomSeed
+ write(6,'(a16,1x,i16,/)')    ' random_seed:    ',randomSeed
  if (randomSeed <= 0_pInt) &
    write(6,'(a,/)')           ' random seed will be generated!'
 
