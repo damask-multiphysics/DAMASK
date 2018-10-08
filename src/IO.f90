@@ -236,7 +236,6 @@ recursive function IO_recursiveRead(fileName,cnt) result(fileContent)
       fileContent     = [ fileContent(1:l-1_pInt), includedContent, [(dummy,i=1,missingLines)] ]    ! add content and grow array
       l = l - 1_pInt + size(includedContent)
     else recursion
-      write(6,*) fileName, l, line;flush(6)
       fileContent(l) = line
     endif recursion
 
