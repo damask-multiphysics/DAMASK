@@ -2139,6 +2139,7 @@ end function lattice_characteristicShear_Twin
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Calculates rotated elasticity matrices for twinning
+!>  ToDo: Completely untested
 !--------------------------------------------------------------------------------------------------
 function lattice_C66_twin(Ntwin,C66,structure,CoverA)
  use IO, only: &
@@ -2164,11 +2165,11 @@ function lattice_C66_twin(Ntwin,C66,structure,CoverA)
 
  select case(structure)
    case('fcc')
-     coordinateSystem = buildCoordinateSystem(Ntwin,LATTICE_FCC_NSLIPSYSTEM,int(LATTICE_FCC_SYSTEMTWIN,pInt),structure)
+     coordinateSystem = buildCoordinateSystem(Ntwin,LATTICE_FCC_NSLIPSYSTEM,LATTICE_FCC_SYSTEMTWIN,structure)
    case('bcc')
-     coordinateSystem = buildCoordinateSystem(Ntwin,LATTICE_BCC_NSLIPSYSTEM,int(LATTICE_BCC_SYSTEMTWIN,pInt),structure)
+     coordinateSystem = buildCoordinateSystem(Ntwin,LATTICE_BCC_NSLIPSYSTEM,LATTICE_BCC_SYSTEMTWIN,structure)
    case('hex','hexagonal')                                                                          !ToDo: "No alias policy": long or short?
-     coordinateSystem = buildCoordinateSystem(Ntwin,LATTICE_HEX_NSLIPSYSTEM,int(LATTICE_HEX_SYSTEMTWIN,pInt),'hex',cOverA)
+     coordinateSystem = buildCoordinateSystem(Ntwin,LATTICE_HEX_NSLIPSYSTEM,LATTICE_HEX_SYSTEMTWIN,'hex',cOverA)
    case default
      call IO_error(130_pInt,ext_msg=trim(structure)//' (lattice_C66_twin)')
  end select
@@ -2182,6 +2183,7 @@ end function
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Calculates rotated elasticity matrices for transformation
+!>  ToDo: Completely untested and incomplete
 !--------------------------------------------------------------------------------------------------
 function lattice_C66_trans(Ntrans,C_parent66,structure_parent, &
                                   C_target66,structure_target)
@@ -2245,7 +2247,7 @@ function lattice_C66_trans(Ntrans,C_parent66,structure_parent, &
  enddo
 
  if (trim(structure_parent) == 'fcc' .and. trim(structure_target) == 'hex') then
-   do i = 1_pInt,sum(Ntrans)!!!!!!!!!!!!!! NEED TO BE FIXED
+   do i = 1_pInt,sum(Ntrans)!!!!!!!!!!!!!! ToDo: NEED TO BE FIXED
      R = math_axisAngleToR(lattice_fccTobcc_systemTrans(1:3,i), &                ! Pitsch rotation
                            lattice_fccTobcc_systemTrans(4,i)*INRAD)
      B = math_axisAngleToR(lattice_fccTobcc_bainRot(1:3,i), &                    ! Rotation of fcc to Bain coordinate system
@@ -2295,6 +2297,7 @@ end function
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Non-schmid tensor
+!>  ToDo: Clean description needed
 ! Schmid matrices with non-Schmid contributions according to Koester_etal2012, Acta Materialia 60 (2012)
 ! 3894–3901, eq. (17) ("n1" is replaced by either "np" or "nn" according to either positive or negative slip direction)
 ! "np" and "nn" according to Gröger_etal2008, Acta Materialia 56 (2008) 5412–5425, table 1
@@ -2320,7 +2323,7 @@ function lattice_nonSchmidMatrix(Nslip,nonSchmidCoefficients,sense) result(nonSc
  integer(pInt) :: i
 
  if (abs(sense) /= 1_pInt) write(6,*) 'mist'
- coordinateSystem        = buildCoordinateSystem(Nslip,LATTICE_BCC_NSLIPSYSTEM,int(LATTICE_BCC_SYSTEMSLIP,pInt),'bcc')
+ coordinateSystem        = buildCoordinateSystem(Nslip,LATTICE_BCC_NSLIPSYSTEM,LATTICE_BCC_SYSTEMSLIP,'bcc')
  coordinateSystem(1:3,1,1:sum(Nslip)) = coordinateSystem(1:3,1,1:sum(Nslip)) *real(sense,pReal)
  nonSchmidMatrix = lattice_SchmidMatrix_slip(Nslip,'bcc')
 
@@ -2349,7 +2352,7 @@ end function lattice_nonSchmidMatrix
 !> @brief Populates slip-slip interaction matrix
 !> details: only active slip systems are considered
 !--------------------------------------------------------------------------------------------------
-function lattice_interaction_SlipSlip(Nslip,interactionValues,structure)
+function lattice_interaction_SlipSlip(Nslip,interactionValues,structure) result(interactionMatrix)
  use IO, only: &
    IO_error
 
@@ -2357,33 +2360,32 @@ function lattice_interaction_SlipSlip(Nslip,interactionValues,structure)
  integer(pInt),    dimension(:),                   intent(in) :: Nslip                              !< number of active slip systems per family
  real(pReal),      dimension(:),                   intent(in) :: interactionValues                  !< interaction values slip-slip
  character(len=*),                                 intent(in) :: structure                          !< lattice structure
- real(pReal),     dimension(sum(Nslip),sum(Nslip))            :: lattice_interaction_SlipSlip
+ real(pReal),     dimension(sum(Nslip),sum(Nslip))            :: interactionMatrix
 
  integer(pInt),   dimension(:),                   allocatable :: NslipMax
- integer(pInt),   dimension(:,:),                 allocatable :: interactionSlipSlip
+ integer(pInt),   dimension(:,:),                 allocatable :: interactionTypes
 
  select case(structure)
    case('fcc')
-     interactionSlipSlip = LATTICE_FCC_INTERACTIONSLIPSLIP
-     NslipMax            = LATTICE_FCC_NSLIPSYSTEM
+     interactionTypes = LATTICE_FCC_INTERACTIONSLIPSLIP
+     NslipMax         = LATTICE_FCC_NSLIPSYSTEM
    case('bcc')
-     interactionSlipSlip = LATTICE_BCC_INTERACTIONSLIPSLIP
-     NslipMax            = LATTICE_BCC_NSLIPSYSTEM
+     interactionTypes = LATTICE_BCC_INTERACTIONSLIPSLIP
+     NslipMax         = LATTICE_BCC_NSLIPSYSTEM
    case('hex','hexagonal')                                                                          !ToDo: "No alias policy": long or short?
-     interactionSlipSlip = LATTICE_HEX_INTERACTIONSLIPSLIP
-     NslipMax            = LATTICE_HEX_NSLIPSYSTEM
+     interactionTypes = LATTICE_HEX_INTERACTIONSLIPSLIP
+     NslipMax         = LATTICE_HEX_NSLIPSYSTEM
    case('bct')
-     interactionSlipSlip = LATTICE_BCT_INTERACTIONSLIPSLIP
-     NslipMax            = LATTICE_BCT_NSLIPSYSTEM
+     interactionTypes = LATTICE_BCT_INTERACTIONSLIPSLIP
+     NslipMax         = LATTICE_BCT_NSLIPSYSTEM
    case default
      call IO_error(132_pInt,ext_msg=trim(structure)//' (slip slip interaction)')
  end select
 
- if (any(NslipMax(1:size(Nslip)) - Nslip < 0_pInt)) &
-   call IO_error(145_pInt,ext_msg='Nslip '//trim(structure))
+ if (size(interactionValues) > maxval(interactionTypes)) &
+   call IO_error(0_pInt) ! ToDo
 
- lattice_interaction_SlipSlip = &
-   buildInteraction(Nslip,Nslip,NslipMax,NslipMax,interactionValues,interactionSlipSlip)
+ interactionMatrix = buildInteraction(Nslip,Nslip,NslipMax,NslipMax,interactionValues,interactionTypes)
 
 end function lattice_interaction_SlipSlip
 
@@ -2392,7 +2394,7 @@ end function lattice_interaction_SlipSlip
 !> @brief Populates twin-twin interaction matrix
 !> details: only active twin systems are considered
 !--------------------------------------------------------------------------------------------------
-function lattice_interaction_TwinTwin(Ntwin,interactionValues,structure)
+function lattice_interaction_TwinTwin(Ntwin,interactionValues,structure) result(interactionMatrix)
  use IO, only: &
    IO_error
 
@@ -2400,30 +2402,29 @@ function lattice_interaction_TwinTwin(Ntwin,interactionValues,structure)
  integer(pInt),    dimension(:),                   intent(in) :: Ntwin                              !< number of active twin systems per family
  real(pReal),      dimension(:),                   intent(in) :: interactionValues                  !< interaction values twin-twin
  character(len=*),                                 intent(in) :: structure                          !< lattice structure
- real(pReal),     dimension(sum(Ntwin),sum(Ntwin))            :: lattice_interaction_TwinTwin
+ real(pReal),     dimension(sum(Ntwin),sum(Ntwin))            :: interactionMatrix
 
  integer(pInt),   dimension(:),                   allocatable :: NtwinMax
- integer(pInt),   dimension(:,:),                 allocatable :: interactionTwinTwin
+ integer(pInt),   dimension(:,:),                 allocatable :: interactionTypes
 
  select case(structure)
    case('fcc')
-     interactionTwinTwin = LATTICE_FCC_INTERACTIONTWINTWIN
-     NtwinMax            = LATTICE_FCC_NTWINSYSTEM
+     interactionTypes = LATTICE_FCC_INTERACTIONTWINTWIN
+     NtwinMax         = LATTICE_FCC_NTWINSYSTEM
    case('bcc')
-     interactionTwinTwin = LATTICE_BCC_INTERACTIONTWINTWIN
-     NtwinMax            = LATTICE_BCC_NTWINSYSTEM
+     interactionTypes = LATTICE_BCC_INTERACTIONTWINTWIN
+     NtwinMax         = LATTICE_BCC_NTWINSYSTEM
    case('hex','hexagonal')                                                                          !ToDo: "No alias policy": long or short?
-     interactionTwinTwin = LATTICE_HEX_INTERACTIONTWINTWIN
-     NtwinMax            = LATTICE_HEX_NTWINSYSTEM
+     interactionTypes = LATTICE_HEX_INTERACTIONTWINTWIN
+     NtwinMax         = LATTICE_HEX_NTWINSYSTEM
    case default
      call IO_error(132_pInt,ext_msg=trim(structure)//' (twin twin interaction)')
  end select
 
- if (any(NtwinMax(1:size(Ntwin)) - Ntwin < 0_pInt)) &
-   call IO_error(145_pInt,ext_msg='Ntwin '//trim(structure))
+ if (size(interactionValues) > maxval(interactionTypes)) &
+   call IO_error(0_pInt) ! ToDo
 
- lattice_interaction_TwinTwin = &
-   buildInteraction(Ntwin,Ntwin,NtwinMax,NtwinMax,interactionValues,interactionTwinTwin)
+ interactionMatrix = buildInteraction(Ntwin,Ntwin,NtwinMax,NtwinMax,interactionValues,interactionTypes)
 
 end function lattice_interaction_TwinTwin
 
@@ -2432,7 +2433,7 @@ end function lattice_interaction_TwinTwin
 !> @brief Populates slip-twin interaction matrix
 !> details: only active slip and twin systems are considered
 !--------------------------------------------------------------------------------------------------
-function lattice_interaction_SlipTwin(Nslip,Ntwin,interactionValues,structure)
+function lattice_interaction_SlipTwin(Nslip,Ntwin,interactionValues,structure) result(interactionMatrix)
  use IO, only: &
    IO_error
 
@@ -2441,36 +2442,33 @@ function lattice_interaction_SlipTwin(Nslip,Ntwin,interactionValues,structure)
  integer(pInt),    dimension(:),                   intent(in) :: Ntwin                              !< number of active twin systems per family
  real(pReal),      dimension(:),                   intent(in) :: interactionValues                  !< interaction values twin-twin
  character(len=*),                                 intent(in) :: structure                          !< lattice structure
- real(pReal),     dimension(sum(Nslip),sum(Ntwin))            :: lattice_interaction_SlipTwin
+ real(pReal),     dimension(sum(Nslip),sum(Ntwin))            :: interactionMatrix
 
  integer(pInt),   dimension(:),                   allocatable :: NslipMax
  integer(pInt),   dimension(:),                   allocatable :: NtwinMax
- integer(pInt),   dimension(:,:),                 allocatable :: interactionSlipTwin
+ integer(pInt),   dimension(:,:),                 allocatable :: interactionTypes
 
  select case(structure)
    case('fcc')
-     interactionSlipTwin = LATTICE_FCC_INTERACTIONSLIPTWIN
-     NslipMax            = LATTICE_FCC_NSLIPSYSTEM
-     NtwinMax            = LATTICE_FCC_NTWINSYSTEM
+     interactionTypes = LATTICE_FCC_INTERACTIONSLIPTWIN
+     NslipMax         = LATTICE_FCC_NSLIPSYSTEM
+     NtwinMax         = LATTICE_FCC_NTWINSYSTEM
    case('bcc')
-     interactionSlipTwin = LATTICE_BCC_INTERACTIONSLIPTWIN
-     NslipMax            = LATTICE_BCC_NSLIPSYSTEM
-     NtwinMax            = LATTICE_BCC_NTWINSYSTEM
+     interactionTypes = LATTICE_BCC_INTERACTIONSLIPTWIN
+     NslipMax         = LATTICE_BCC_NSLIPSYSTEM
+     NtwinMax         = LATTICE_BCC_NTWINSYSTEM
    case('hex','hexagonal')                                                                          !ToDo: "No alias policy": long or short?
-     interactionSlipTwin = LATTICE_HEX_INTERACTIONSLIPTWIN
-     NslipMax            = LATTICE_HEX_NSLIPSYSTEM
-     NtwinMax            = LATTICE_HEX_NTWINSYSTEM
+     interactionTypes = LATTICE_HEX_INTERACTIONSLIPTWIN
+     NslipMax         = LATTICE_HEX_NSLIPSYSTEM
+     NtwinMax         = LATTICE_HEX_NTWINSYSTEM
    case default
      call IO_error(132_pInt,ext_msg=trim(structure)//' (slip twin interaction)')
  end select
 
- if (any(NslipMax(1:size(Nslip)) - Nslip < 0_pInt)) &
-   call IO_error(145_pInt,ext_msg='Nslip '//trim(structure))
- if (any(NtwinMax(1:size(Ntwin)) - Ntwin < 0_pInt)) &
-   call IO_error(145_pInt,ext_msg='Ntwin '//trim(structure))
+ if (size(interactionValues) > maxval(interactionTypes)) &
+   call IO_error(0_pInt) ! ToDo
 
- lattice_interaction_SlipTwin = &
-   buildInteraction(Nslip,Ntwin,NslipMax,NtwinMax,interactionValues,interactionSlipTwin)
+ interactionMatrix = buildInteraction(Nslip,Ntwin,NslipMax,NtwinMax,interactionValues,interactionTypes)
 
 end function lattice_interaction_SlipTwin
 
@@ -2479,7 +2477,7 @@ end function lattice_interaction_SlipTwin
 !> @brief Populates twin-slip interaction matrix
 !> details: only active twin and slip systems are considered
 !--------------------------------------------------------------------------------------------------
-function lattice_interaction_TwinSlip(Ntwin,Nslip,interactionValues,structure)
+function lattice_interaction_TwinSlip(Ntwin,Nslip,interactionValues,structure) result(interactionMatrix)
  use IO, only: &
    IO_error
 
@@ -2488,36 +2486,33 @@ function lattice_interaction_TwinSlip(Ntwin,Nslip,interactionValues,structure)
  integer(pInt),    dimension(:),                   intent(in) :: Ntwin                              !< number of active twin systems per family
  real(pReal),      dimension(:),                   intent(in) :: interactionValues                  !< interaction values twin-twin
  character(len=*),                                 intent(in) :: structure                          !< lattice structure
- real(pReal),     dimension(sum(Ntwin),sum(Nslip))            :: lattice_interaction_TwinSlip
+ real(pReal),     dimension(sum(Ntwin),sum(Nslip))            :: interactionMatrix
 
  integer(pInt),   dimension(:),                   allocatable :: NslipMax
  integer(pInt),   dimension(:),                   allocatable :: NtwinMax
- integer(pInt),   dimension(:,:),                 allocatable :: interactionTwinSlip
+ integer(pInt),   dimension(:,:),                 allocatable :: interactionTypes
 
  select case(structure)
    case('fcc')
-     interactionTwinSlip = LATTICE_FCC_INTERACTIONTWINSLIP
-     NtwinMax            = LATTICE_FCC_NTWINSYSTEM
-     NslipMax            = LATTICE_FCC_NSLIPSYSTEM
+     interactionTypes = LATTICE_FCC_INTERACTIONTWINSLIP
+     NtwinMax         = LATTICE_FCC_NTWINSYSTEM
+     NslipMax         = LATTICE_FCC_NSLIPSYSTEM
    case('bcc')
-     interactionTwinSlip = LATTICE_BCC_INTERACTIONTWINSLIP
-     NtwinMax            = LATTICE_BCC_NTWINSYSTEM
-     NslipMax            = LATTICE_BCC_NSLIPSYSTEM
+     interactionTypes = LATTICE_BCC_INTERACTIONTWINSLIP
+     NtwinMax         = LATTICE_BCC_NTWINSYSTEM
+     NslipMax         = LATTICE_BCC_NSLIPSYSTEM
    case('hex','hexagonal')                                                                          !ToDo: "No alias policy": long or short?
-     interactionTwinSlip = LATTICE_HEX_INTERACTIONTWINSLIP
-     NtwinMax            = LATTICE_HEX_NTWINSYSTEM
-     NslipMax            = LATTICE_HEX_NSLIPSYSTEM
+     interactionTypes = LATTICE_HEX_INTERACTIONTWINSLIP
+     NtwinMax         = LATTICE_HEX_NTWINSYSTEM
+     NslipMax         = LATTICE_HEX_NSLIPSYSTEM
    case default
      call IO_error(132_pInt,ext_msg=trim(structure)//' (twin slip interaction)')
  end select
 
- if (any(NslipMax(1:size(Nslip)) - Nslip < 0_pInt)) &
-   call IO_error(145_pInt,ext_msg='Nslip '//trim(structure))
- if (any(NtwinMax(1:size(Ntwin)) - Ntwin < 0_pInt)) &
-   call IO_error(145_pInt,ext_msg='Ntwin '//trim(structure))
+ if (size(interactionValues) > maxval(interactionTypes)) &
+   call IO_error(0_pInt) ! ToDo
 
- lattice_interaction_TwinSlip = &
-   buildInteraction(Ntwin,Nslip,NtwinMax,NslipMax,interactionValues,interactionTwinSlip)
+ interactionMatrix = buildInteraction(Ntwin,Nslip,NtwinMax,NslipMax,interactionValues,interactionTypes)
 
 end function lattice_interaction_TwinSlip
 
@@ -2526,7 +2521,7 @@ end function lattice_interaction_TwinSlip
 !> @brief Populates trans-trans interaction matrix
 !> details: only active transformation systems are considered
 !--------------------------------------------------------------------------------------------------
-function lattice_interaction_TransTrans(Ntrans,interactionValues,structure,targetStructure)
+function lattice_interaction_TransTrans(Ntrans,interactionValues,structure,targetStructure) result(interactionMatrix)
  use IO, only: &
    IO_error
 
@@ -2536,23 +2531,22 @@ function lattice_interaction_TransTrans(Ntrans,interactionValues,structure,targe
  character(len=*),                                 intent(in) :: &
    structure, &                                                                                     !< lattice structure of parent crystal
    targetStructure                                                                                  !< lattice structure of transformed crystal
- real(pReal),     dimension(sum(Ntrans),sum(Ntrans))          :: lattice_interaction_TransTrans
+ real(pReal),     dimension(sum(Ntrans),sum(Ntrans))          :: interactionMatrix
 
  integer(pInt),   dimension(:),                   allocatable :: NtransMax
- integer(pInt),   dimension(:,:),                 allocatable :: interactionTransTrans
+ integer(pInt),   dimension(:,:),                 allocatable :: interactionTypes
 
  if (trim(structure) == 'fcc' .and. trim(targetStructure) == 'hex') then
-   interactionTransTrans = lattice_fccToHex_interactionTransTrans
-   NtransMax             = lattice_fcc_Ntrans
+   interactionTypes = lattice_fccToHex_interactionTransTrans
+   NtransMax        = lattice_fcc_Ntrans
  else
    call IO_error(132_pInt,ext_msg=trim(structure)//' => '//trim(targetStructure))
  end if
 
- if (any(NtransMax(1:size(Ntrans)) - Ntrans < 0_pInt)) &
-   call IO_error(145_pInt,ext_msg='Ntrans '//trim(structure))
+ if (size(interactionValues) > maxval(interactionTypes)) &
+   call IO_error(0_pInt) ! ToDo
 
- lattice_interaction_TransTrans = &
-   buildInteraction(Ntrans,Ntrans,NtransMax,NtransMax,interactionValues,interactionTransTrans)
+ interactionMatrix = buildInteraction(Ntrans,Ntrans,NtransMax,NtransMax,interactionValues,interactionTypes)
 
 end function lattice_interaction_TransTrans
 
@@ -2577,21 +2571,31 @@ function lattice_SchmidMatrix_slip(Nslip,structure,cOverA) result(SchmidMatrix)
    cOverA
 
  real(pReal),     dimension(3,3,sum(Nslip))            :: coordinateSystem
+ real(pReal),     dimension(:,:), allocatable          :: slipSystems
+ integer(pInt),   dimension(:), allocatable            :: NslipMax
  integer(pInt) :: i
 
  select case(structure)
    case('fcc')
-     coordinateSystem = buildCoordinateSystem(Nslip,LATTICE_BCC_NSLIPSYSTEM,int(LATTICE_FCC_SYSTEMSLIP,pInt),structure)
+     NslipMax    = LATTICE_BCC_NSLIPSYSTEM
+     slipSystems = LATTICE_FCC_SYSTEMSLIP
    case('bcc')
-     coordinateSystem = buildCoordinateSystem(Nslip,LATTICE_FCC_NSLIPSYSTEM,int(LATTICE_BCC_SYSTEMSLIP,pInt),structure)
+     NslipMax    = LATTICE_FCC_NSLIPSYSTEM
+     slipSystems = LATTICE_BCC_SYSTEMSLIP
    case('hex','hexagonal')                                                                          !ToDo: "No alias policy": long or short?
-     coordinateSystem = buildCoordinateSystem(Nslip,LATTICE_HEX_NSLIPSYSTEM,int(LATTICE_HEX_SYSTEMSLIP,pInt),'hex',cOverA)
+     NslipMax    = LATTICE_HEX_NSLIPSYSTEM
+     slipSystems = LATTICE_HEX_SYSTEMSLIP
    case('bct')
-     coordinateSystem = buildCoordinateSystem(Nslip,LATTICE_BCT_NSLIPSYSTEM,int(LATTICE_BCT_SYSTEMSLIP,pInt),structure,cOverA)
+     NslipMax    = LATTICE_BCT_NSLIPSYSTEM
+     slipSystems = LATTICE_BCT_SYSTEMSLIP
    case default
      call IO_error(130_pInt,ext_msg=trim(structure)//' (lattice_SchmidMatrix_slip)')
  end select
 
+ if (any(NslipMax(1:size(Nslip)) - Nslip < 0_pInt) .or. any(Nslip < 0_pInt)) &
+   call IO_error(145_pInt,ext_msg='Nslip '//trim(structure))
+
+ coordinateSystem = buildCoordinateSystem(Nslip,NslipMax,slipSystems,structure)
  do i = 1, sum(Nslip)
    SchmidMatrix(1:3,1:3,i) = math_tensorproduct33(coordinateSystem(1:3,1,i),coordinateSystem(1:3,2,i))
    if (abs(math_trace33(SchmidMatrix(1:3,1:3,i))) > tol_math_check) &
@@ -2621,19 +2625,28 @@ function lattice_SchmidMatrix_twin(Ntwin,structure,cOverA) result(SchmidMatrix)
    cOverA
 
  real(pReal),     dimension(3,3,sum(Ntwin))            :: coordinateSystem
+ real(pReal),     dimension(:,:), allocatable          :: twinSystems
+ integer(pInt),   dimension(:), allocatable            :: NtwinMax
  integer(pInt) :: i
 
  select case(structure)
    case('fcc')
-     coordinateSystem = buildCoordinateSystem(Ntwin,LATTICE_FCC_NTWINSYSTEM,int(LATTICE_FCC_SYSTEMTWIN,pInt),structure)
+     NtwinMax    = LATTICE_FCC_NTWINSYSTEM
+     twinSystems = LATTICE_FCC_SYSTEMTWIN
    case('bcc')
-     coordinateSystem = buildCoordinateSystem(Ntwin,LATTICE_BCC_NTWINSYSTEM,int(LATTICE_BCC_SYSTEMTWIN,pInt),structure)
+     NtwinMax    = LATTICE_BCC_NTWINSYSTEM
+     twinSystems = LATTICE_BCC_SYSTEMTWIN
    case('hex','hexagonal')                                                                          !ToDo: "No alias policy": long or short?
-     coordinateSystem = buildCoordinateSystem(Ntwin,LATTICE_HEX_NTWINSYSTEM,int(LATTICE_HEX_SYSTEMTWIN,pInt),'hex',cOverA)
+     NtwinMax    = LATTICE_HEX_NTWINSYSTEM
+     twinSystems = LATTICE_HEX_SYSTEMTWIN
    case default
      call IO_error(130_pInt,ext_msg=trim(structure)//' (lattice_SchmidMatrix_twin)')
  end select
 
+ if (any(NtwinMax(1:size(Ntwin)) - Ntwin < 0_pInt) .or. any(Ntwin < 0_pInt)) &
+   call IO_error(145_pInt,ext_msg='Ntwin '//trim(structure))
+
+ coordinateSystem = buildCoordinateSystem(Ntwin,NtwinMax,twinSystems,structure)
  do i = 1, sum(Ntwin)
    SchmidMatrix(1:3,1:3,i) = math_tensorproduct33(coordinateSystem(1:3,1,i),coordinateSystem(1:3,2,i))
    if (abs(math_trace33(SchmidMatrix(1:3,1:3,i))) > tol_math_check) &
@@ -2690,7 +2703,7 @@ function buildCoordinateSystem(active,maximum,system,structure,cOverA)
  integer(pInt), dimension(:), intent(in) :: &
    active, &
    maximum
- integer(pInt), dimension(:,:), intent(in) :: &
+ real(pReal), dimension(:,:), intent(in) :: &
    system
  character(len=*),            intent(in) :: &
    structure                                                                                        !< lattice structure
@@ -2716,23 +2729,23 @@ function buildCoordinateSystem(active,maximum,system,structure,cOverA)
      select case(trim(structure))
 
        case ('fcc','bcc')
-         direction = real(system(1:3,j),pReal)
-         normal    = real(system(4:6,j),pReal)
+         direction = system(1:3,j)
+         normal    = system(4:6,j)
    
        case ('hex')
          ! direction [uvtw]->[3u/2 (u+2v)*sqrt(3)/2 w*(c/a)])
-         direction = [ real(system(1,j),pReal)*1.5_pReal, &
-                      (real(system(1,j),pReal)+2.0_pReal*real(system(2,j),pReal))*sqrt(0.75_pReal), &
-                       real(system(4,j),pReal)*CoverA ]
+         direction = [ system(1,j)*1.5_pReal, &
+                      (system(1,j)+2.0_pReal*system(2,j))*sqrt(0.75_pReal), &
+                       system(4,j)*CoverA ]
 
          ! plane (hkil)->(h (h+2k)/sqrt(3) l/(c/a))
-         normal    = [ real(system(5,j),pReal), &
-                      (real(system(5,j),pReal)+2.0_pReal*real(system(6,j),pReal))/ sqrt(3.0_pReal), &
-                       real(system(8,j),pReal)/CoverA ]
+         normal    = [ system(5,j), &
+                      (system(5,j)+2.0_pReal*system(6,j))/ sqrt(3.0_pReal), &
+                       system(8,j)/CoverA ]
 
        case ('bct')
-         direction = [real(system(1:2,j),pReal),real(system(3,i),pReal)*CoverA]
-         normal    = [real(system(4:5,j),pReal),real(system(6,i),pReal)/CoverA]
+         direction = [system(1:2,j),system(3,i)*CoverA]
+         normal    = [system(4:5,j),system(6,i)/CoverA]
 
      end select
 
