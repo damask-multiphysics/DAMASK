@@ -10,15 +10,15 @@ module HDF5_Utilities
  integer(HID_T), private :: resultsFile, currentIncID, plist_id
  integer(pInt),  private :: currentInc
 
-  interface HDF5_read
-    module procedure HDF5_read_pReal
-    module procedure HDF5_read_pInt
-  end interface HDF5_read
+ interface HDF5_read
+   module procedure HDF5_read_pReal
+   module procedure HDF5_read_pInt
+ end interface HDF5_read
 
-  interface HDF5_write
-    module procedure HDF5_write_pReal
-    module procedure HDF5_write_pInt
-  end interface HDF5_write
+ interface HDF5_write
+   module procedure HDF5_write_pReal
+   module procedure HDF5_write_pInt
+ end interface HDF5_write
 
  public :: &
    HDF5_Utilities_init, &
@@ -41,10 +41,10 @@ module HDF5_Utilities
    HDF5_removeLink, &
    HDF5_createFile, &
    HDF5_closeFile, &
-   !HDF5_writeScalarDataset3, &
    HDF5_addGroup2, &
    HDF5_openFile, &
-   HDF5_read, HDF5_write
+   HDF5_read, &
+   HDF5_write
 contains
 
 subroutine HDF5_Utilities_init
@@ -92,7 +92,7 @@ subroutine HDF5_createJobFile
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_Utilities_init: h5tget_size_f (double)')
  if (int(pReal,SIZE_T)/=typeSize) call IO_error(0_pInt,ext_msg='pReal does not match H5T_NATIVE_DOUBLE')
  
-#ifdef PETSC
+#ifdef PETSc
  call h5pcreate_f(H5P_FILE_ACCESS_F, plist_id, hdferr)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_Utilities_init: h5pcreate_f') 
  call h5pset_fapl_mpio_f(plist_id, PETSC_COMM_WORLD, MPI_INFO_NULL, hdferr)
@@ -128,7 +128,7 @@ end subroutine HDF5_createJobFile
 #include <petsc/finclude/petscsys.h> 
 #endif
   call h5open_f(hdferr) !############################################################ DANGEROUS
-#ifdef PETSC
+#ifdef PETSc
  call h5pcreate_f(H5P_FILE_ACCESS_F, plist_id, hdferr)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_Utilities_init: h5pcreate_f') 
  call h5pset_fapl_mpio_f(plist_id, PETSC_COMM_WORLD, MPI_INFO_NULL, hdferr)
@@ -442,7 +442,7 @@ subroutine HDF5_mappingPhase(mapping,mapping2,Nconstituents,material_phase,phase
 
 !-------------------------------------------------------------------------------------------------- 
  ! Create property list for collective dataset write
-#ifdef PETSC
+#ifdef PETSc
  call h5pcreate_f(H5P_DATASET_XFER_F, plist_id, hdferr)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingPhase: h5pcreate_f') 
  call h5pset_dxpl_mpio_f(plist_id, H5FD_MPIO_COLLECTIVE_F, hdferr)
@@ -562,7 +562,7 @@ subroutine HDF5_backwardMappingPhase(material_phase,phasememberat,phase_name,dat
 
 !-------------------------------------------------------------------------------------------------- 
  ! Create property list for collective dataset write
-#ifdef PETSC
+#ifdef PETSc
    call h5pcreate_f(H5P_DATASET_XFER_F, plist_id, hdferr)
    if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_backwardMappingPhase: h5pcreate_f') 
    call h5pset_dxpl_mpio_f(plist_id, H5FD_MPIO_COLLECTIVE_F, hdferr)
@@ -682,7 +682,7 @@ subroutine HDF5_mappingHomog(material_homog,homogmemberat,homogenization_name,da
 
 !-------------------------------------------------------------------------------------------------- 
 ! Create property list for collective dataset write
-#ifdef PETSC
+#ifdef PETSc
  call h5pcreate_f(H5P_DATASET_XFER_F, plist_id, hdferr)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingHomog: h5pcreate_f') 
  call h5pset_dxpl_mpio_f(plist_id, H5FD_MPIO_COLLECTIVE_F, hdferr)
@@ -795,7 +795,7 @@ subroutine HDF5_backwardMappingHomog(material_homog,homogmemberat,homogenization
 
 !-------------------------------------------------------------------------------------------------- 
  ! Create property list for collective dataset write
-#ifdef PETSC
+#ifdef PETSc
    call h5pcreate_f(H5P_DATASET_XFER_F, plist_id, hdferr)
    if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_backwardMappingHomog: h5pcreate_f') 
    call h5pset_dxpl_mpio_f(plist_id, H5FD_MPIO_COLLECTIVE_F, hdferr)
@@ -928,7 +928,7 @@ subroutine HDF5_mappingCrystallite(crystalliteAt,crystmemberAt,crystallite_name,
 
 !-------------------------------------------------------------------------------------------------- 
  ! Create property list for collective dataset write
-#ifdef PETSC
+#ifdef PETSc
  call h5pcreate_f(H5P_DATASET_XFER_F, plist_id, hdferr)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingCrystallite: h5pcreate_f') 
  call h5pset_dxpl_mpio_f(plist_id, H5FD_MPIO_COLLECTIVE_F, hdferr)
@@ -1060,7 +1060,7 @@ subroutine HDF5_backwardMappingCrystallite(crystalliteAt,crystmemberAt,crystalli
 
 !-------------------------------------------------------------------------------------------------- 
  ! Create property list for collective dataset write
-#ifdef PETSC
+#ifdef PETSc
    call h5pcreate_f(H5P_DATASET_XFER_F, plist_id, hdferr)
    if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_backwardMappingCrystallite: h5pcreate_f') 
    call h5pset_dxpl_mpio_f(plist_id, H5FD_MPIO_COLLECTIVE_F, hdferr)
@@ -1213,7 +1213,7 @@ subroutine HDF5_writeVectorDataset(group,dataset,label,SIunit,dataspace_size,mpi
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_writeVectorDataset: h5sselect_hyperslab_f')
  
  ! Create property list for collective dataset write
-#ifdef PETSC
+#ifdef PETSc
  call h5pcreate_f(H5P_DATASET_XFER_F, plist_id, hdferr)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_writeVectorDataset: h5pcreate_f') 
  call h5pset_dxpl_mpio_f(plist_id, H5FD_MPIO_COLLECTIVE_F, hdferr)
@@ -1275,7 +1275,7 @@ subroutine HDF5_writeTensorDataset(group,dataset,label,SIunit,dataspace_size,mpi
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_writeTensorDataset: h5sselect_hyperslab_f')
  
  ! Create property list for collective dataset write
-#ifdef PETSC
+#ifdef PETSc
  call h5pcreate_f(H5P_DATASET_XFER_F, plist_id, hdferr)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_writeTensorDataset: h5pcreate_f') 
  call h5pset_dxpl_mpio_f(plist_id, H5FD_MPIO_COLLECTIVE_F, hdferr)
@@ -1367,7 +1367,7 @@ subroutine HDF5_writeScalarDataset(group,dataset,label,SIunit,dataspace_size,mpi
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_writeScalarDataset: h5sselect_hyperslab_f')
  
  ! Create property list for collective dataset write
-#ifdef PETSC
+#ifdef PETSc
  call h5pcreate_f(H5P_DATASET_XFER_F, plist_id, hdferr)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_writeScalarDataset: h5pcreate_f') 
  call h5pset_dxpl_mpio_f(plist_id, H5FD_MPIO_COLLECTIVE_F, hdferr)
