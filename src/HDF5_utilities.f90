@@ -10,10 +10,15 @@ module HDF5_Utilities
  integer(HID_T), private :: resultsFile, currentIncID, plist_id
  integer(pInt),  private :: currentInc
 
- interface HDF5_read
-   module procedure HDF5_read_double_1
-   module procedure HDF5_read_double_5
- end interface HDF5_read
+  interface HDF5_read
+    module procedure HDF5_read_pReal
+    module procedure HDF5_read_pInt
+  end interface HDF5_read
+
+  interface HDF5_write
+    module procedure HDF5_write_pReal
+    module procedure HDF5_write_pInt
+  end interface HDF5_write
 
  public :: &
    HDF5_Utilities_init, &
@@ -36,9 +41,10 @@ module HDF5_Utilities
    HDF5_removeLink, &
    HDF5_createFile, &
    HDF5_closeFile, &
-   HDF5_writeScalarDataset3, &
-   HDF5_addGroup2, HDF5_read, &
-   HDF5_openFile
+   !HDF5_writeScalarDataset3, &
+   HDF5_addGroup2, &
+   HDF5_openFile, &
+   HDF5_read, HDF5_write
 contains
 
 subroutine HDF5_Utilities_init
@@ -75,7 +81,8 @@ subroutine HDF5_createJobFile
 #endif
 
 !--------------------------------------------------------------------------------------------------
-! initialize HDF5 library and check if integer and float type size match
+!initialize HDF5 library and check if integer and float type size match
+
  call h5open_f(hdferr)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_Utilities_init: h5open_f')
  call h5tget_size_f(H5T_NATIVE_INTEGER,typeSize, hdferr)
@@ -129,7 +136,7 @@ end subroutine HDF5_createJobFile
 #endif
 
 !--------------------------------------------------------------------------------------------------
-! open file
+! create a file
  !call h5fcreate_f(path,H5F_ACC_TRUNC_F,resultsFile,hdferr)
  call h5fcreate_f(path,H5F_ACC_TRUNC_F,HDF5_createFile,hdferr,access_prp = plist_id)
  if (hdferr < 0) call IO_error(100_pInt,ext_msg=path)
@@ -140,7 +147,7 @@ end function HDF5_createFile
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief creates and initializes HDF5 output file
+!> @brief close the opened HDF5 output file
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_closeJobFile()
  use hdf5
@@ -172,7 +179,7 @@ integer(HID_T) function HDF5_openFile(filePath)
 end function HDF5_openFile
 
 !--------------------------------------------------------------------------------------------------
-!> @brief creates and initializes HDF5 output file
+!> @brief close the opened HDF5 output file
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_closeFile(fileHandle)
  use hdf5
@@ -188,7 +195,7 @@ subroutine HDF5_closeFile(fileHandle)
 end subroutine HDF5_closeFile
 
 !--------------------------------------------------------------------------------------------------
-!> @brief adds a new group to the results file, or if loc is present at the given location
+!> @brief adds a new group to the results file
 !--------------------------------------------------------------------------------------------------
 integer(HID_T) function HDF5_addGroup(path)
  use hdf5
@@ -204,7 +211,7 @@ end function HDF5_addGroup
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief adds a new group to the results file, or if loc is present at the given location
+!> @brief adds a new group to the fileHandle (additional to addGroup2)
 !--------------------------------------------------------------------------------------------------
 integer(HID_T) function HDF5_addGroup2(fileHandle,groupName)
  use hdf5
@@ -220,7 +227,7 @@ end function HDF5_addGroup2
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief adds a new group to the results file
+!> @brief open a group from the results file
 !--------------------------------------------------------------------------------------------------
 integer(HID_T) function HDF5_openGroup(path)
  use hdf5
@@ -235,7 +242,7 @@ integer(HID_T) function HDF5_openGroup(path)
 end function HDF5_openGroup
 
 !--------------------------------------------------------------------------------------------------
-!> @brief open a existing group of the results file
+!> @brief open an existing group of the results file
 !--------------------------------------------------------------------------------------------------
 integer(HID_T) function HDF5_openGroup2(FileReadID,path)
  use hdf5
@@ -244,7 +251,7 @@ integer(HID_T) function HDF5_openGroup2(FileReadID,path)
  character(len=*), intent(in) :: path
  integer                      :: hdferr
  integer(HID_T), intent(in)    :: FileReadID
- write(6,*) FileReadID,'hello';flush(6)
+ !write(6,*) FileReadID,'hello';flush(6)
  call h5gopen_f(FileReadID, trim(path), HDF5_openGroup2, hdferr)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg = 'HDF5_openGroup2: h5gopen_f ('//trim(path)//')')
 
@@ -252,7 +259,7 @@ end function HDF5_openGroup2
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief adds a new group to the results file
+!> @brief ???
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_setLink(path,link)
  use hdf5
@@ -274,7 +281,7 @@ subroutine HDF5_setLink(path,link)
 end subroutine HDF5_setLink
 
 !--------------------------------------------------------------------------------------------------
-!> @brief adds a new group to the results file
+!> @brief ???
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_removeLink(link)
  use hdf5
@@ -307,7 +314,7 @@ end subroutine HDF5_closeGroup
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief adds a new group to the results file
+!> @brief adds a StringAttribute to the results file
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_addStringAttribute(entity,attrLabel,attrValue)
  use hdf5
@@ -1131,7 +1138,7 @@ end subroutine HDF5_mappingCells
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief creates a new scalar dataset in the given group location
+!> @brief creates a new 3D Tensor dataset in the given group location   !!!TODO: really necessary?
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_addTensor3DDataset(group,Nnodes,tensorSize,label,SIunit)
  use hdf5
@@ -1167,7 +1174,7 @@ subroutine HDF5_addTensor3DDataset(group,Nnodes,tensorSize,label,SIunit)
 end subroutine HDF5_addTensor3DDataset
 
 !--------------------------------------------------------------------------------------------------
-!> @brief creates a new scalar dataset in the given group location
+!> @brief creates a new vector dataset in the given group location   !!!TODO: really necessary?
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_writeVectorDataset(group,dataset,label,SIunit,dataspace_size,mpiOffset)
  use hdf5
@@ -1226,8 +1233,8 @@ subroutine HDF5_writeVectorDataset(group,dataset,label,SIunit,dataspace_size,mpi
 end subroutine HDF5_writeVectorDataset
 
 !--------------------------------------------------------------------------------------------------
-!> @brief creates a new scalar dataset in the given group location
-!  by default, a 3x3 tensor is assumed
+!> @brief creates a new tensor dataset in the given group location
+!  by default, a 3x3 tensor is assumed                              !!!TODO: really necessary?
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_writeTensorDataset(group,dataset,label,SIunit,dataspace_size,mpiOffset)
  use hdf5
@@ -1289,7 +1296,7 @@ subroutine HDF5_writeTensorDataset(group,dataset,label,SIunit,dataspace_size,mpi
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief creates a new scalar dataset in the given group location
+!> @brief adds a new vector dataset to the given group location
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_addVectorDataset(group,nnodes,vectorSize,label,SIunit)
  use hdf5
@@ -1324,7 +1331,7 @@ end subroutine HDF5_addVectorDataset
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief creates a new scalar dataset in the given group location
+!> @brief writes to a new scalar dataset in the given group location
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_writeScalarDataset(group,dataset,label,SIunit,dataspace_size,mpiOffset)
  use hdf5
@@ -1380,142 +1387,170 @@ subroutine HDF5_writeScalarDataset(group,dataset,label,SIunit,dataspace_size,mpi
 end subroutine HDF5_writeScalarDataset
 
 !--------------------------------------------------------------------------------------------------
-!> @brief creates a new scalar dataset in the given group location
+!> @brief interfaced subroutine for reading dataset of the type pReal 
 !--------------------------------------------------------------------------------------------------
-subroutine HDF5_writeScalarDataset3(group,dataset,label,myShape)
- use hdf5
+subroutine HDF5_read_pReal(D,ID1,label)
+  use hdf5
+  implicit none
+  real(pReal), dimension(..), intent(out) :: D
 
+  integer(HID_T),                    intent(in) :: ID1
+  character(len=*),                  intent(in) :: label
+
+ 
+  call HDF5_read_pReal2(D,ID1,label,shape(D))
+contains
+ 
+ subroutine HDF5_read_pReal2(D,ID2,label,myShape)
+  use hdf5
+  implicit none
+  real(pReal), dimension(*), intent(out) :: D
+  integer(HID_T),                    intent(in) :: ID2
+  integer(pInt), dimension(:),   intent(in) :: myShape
+  character(len=*),                  intent(in) :: label
+ 
+  integer(HID_T) :: dset_id
+  integer :: hdferr
+
+  call h5dopen_f(ID2,label,dset_id,hdferr)
+  call h5dread_f(dset_id,H5T_NATIVE_DOUBLE,D,int(myShape,HSIZE_T),hdferr)
+ end subroutine
+
+end subroutine
+
+!--------------------------------------------------------------------------------------------------
+!> @brief interfaced subroutine for reading dataset of the type pInt
+!--------------------------------------------------------------------------------------------------
+subroutine HDF5_read_pInt(D,ID1,label)
+  use hdf5
+  implicit none
+  integer(pInt), dimension(..), intent(out) :: D
+
+  integer(HID_T),                    intent(in) :: ID1
+  character(len=*),                  intent(in) :: label
+
+ 
+  call HDF5_read_pInt2(D,ID1,label,shape(D))
+contains
+ 
+ subroutine HDF5_read_pInt2(D,ID2,label,myShape)
+  use hdf5
+  implicit none
+  integer(pInt), dimension(*), intent(out) :: D
+  integer(HID_T),                    intent(in) :: ID2
+  integer(pInt), dimension(:),   intent(in) :: myShape
+  character(len=*),                  intent(in) :: label
+ 
+  integer(HID_T) :: dset_id
+  integer :: hdferr
+
+  call h5dopen_f(ID2,label,dset_id,hdferr)
+  call h5dread_f(dset_id,H5T_NATIVE_INTEGER,D,int(myShape,HSIZE_T),hdferr)
+ end subroutine
+
+end subroutine
+
+!--------------------------------------------------------------------------------------------------
+!> @brief interfaced subroutine for writing dataset of the type pReal 
+!--------------------------------------------------------------------------------------------------
+subroutine HDF5_write_pReal(D,ID1,label)
+ use hdf5
  implicit none
- integer(HID_T),   intent(in) :: group
+ 
+ real(pReal), dimension(..), intent(out) :: D
+ integer(HID_T),   intent(in) :: ID1
+ character(len=*), intent(in) :: label
+
+ call HDF5_write_pReal2(D,ID1,label,shape(D))
+contains
+ 
+ subroutine HDF5_write_pReal2(D,ID2,label,myShape)
+ use hdf5
+ implicit none
+ 
+ real(pReal), dimension(*), intent(out) :: D
+ integer(HID_T),   intent(in) :: ID2
  integer(pInt), intent(in), dimension(:) :: myShape
  character(len=*), intent(in) :: label
- real(pReal),      intent(in), dimension(*) :: dataset
-
+ 
  integer        :: hdferr
  integer(HID_T) :: dset_id, space_id
-
  
  !--------------------------------------------------------------------------------------------------
 ! create dataspace
  call h5screate_simple_f(size(myShape), int(myShape,HSIZE_T), space_id, hdferr, &
                             int(myShape,HSIZE_T))
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_writeScalarDataset3: h5screate_simple_f')
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='write_pReal: h5screate_simple_f')
 
 !--------------------------------------------------------------------------------------------------
 ! create Dataset
- call h5dcreate_f(group, trim(label), H5T_NATIVE_DOUBLE, space_id, dset_id, hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_writeScalarDataset3: h5dcreate_f')
+ call h5dcreate_f(ID2, trim(label), H5T_NATIVE_DOUBLE, space_id, dset_id, hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='write_pReal: h5dcreate_f')
 
- CALL h5dwrite_f(dset_id, H5T_NATIVE_DOUBLE,dataset,int(myShape,HSIZE_T), hdferr)
-
+ CALL h5dwrite_f(dset_id, H5T_NATIVE_DOUBLE,D,int(myShape,HSIZE_T), hdferr)
  
 !--------------------------------------------------------------------------------------------------
 !close types, dataspaces
  call h5dclose_f(dset_id, hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_writeScalarDataset3: h5dclose_f')
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pReal: h5dclose_f')
  call h5sclose_f(space_id, hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_writeScalarDataset3: h5sclose_f')
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pReal: h5sclose_f')
  
-end subroutine HDF5_writeScalarDataset3
-
-!--------------------------------------------------------------------------------------------------
-!> @brief creates a new scalar dataset in the given group location
-!--------------------------------------------------------------------------------------------------
-! subroutine HDF5_writeScalarDatasetLoop(group,dataset,label,myShape)
- ! use hdf5
-
- ! implicit none
- ! integer(HID_T),   intent(in) :: group
-  ! integer(pInt),   intent(in), dimension(:) :: myShape
- ! character(len=*), intent(in) :: label
- ! real(pReal),      intent(in), dimension(*) :: dataset
-
- ! integer        :: hdferr
- ! integer(HID_T) :: dset_id, space_id
-
- 
- ! !--------------------------------------------------------------------------------------------------
-! ! create dataspace
- ! call h5screate_simple_f(size(myShape), int(myShape,HSIZE_T), space_id, hdferr, &
-                            ! int(myShape,HSIZE_T))
- ! if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_writeScalarDataset3: h5screate_simple_f')
-
-! !--------------------------------------------------------------------------------------------------
-! ! create Dataset
- ! call h5dcreate_f(group, trim(label), H5T_NATIVE_DOUBLE, space_id, dset_id, hdferr)
- ! if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_writeScalarDataset3: h5dcreate_f')
-
- ! CALL h5dwrite_f(dset_id, H5T_NATIVE_DOUBLE,dataset,int(myShape,HSIZE_T), hdferr)
-
- 
-! !--------------------------------------------------------------------------------------------------
-! !close types, dataspaces
- ! call h5dclose_f(dset_id, hdferr)
- ! if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_writeScalarDataset3: h5dclose_f')
- ! call h5sclose_f(space_id, hdferr)
- ! if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_writeScalarDataset3: h5sclose_f')
- 
-! end subroutine HDF5_writeScalarDatasetLoop
-
-subroutine HDF5_read_double_1(D,ID,label)
- implicit none
- real(pReal), dimension(:), intent(out) :: D
- integer(HID_T),            intent(in)  :: ID
- character(len=*), intent(in) :: label
- call  HDF5_read_double_generic(D,ID,label,shape(D))
-end subroutine HDF5_read_double_1
-
-subroutine HDF5_read_double_5(D,ID,label)
- implicit none
- real(pReal), dimension(:,:,:,:,:), intent(out) :: D
- integer(HID_T),                    intent(in)  :: ID
- character(len=*), intent(in) :: label
- call  HDF5_read_double_generic(D,ID,label,shape(D))
-end subroutine HDF5_read_double_5
-
-subroutine HDF5_read_double_generic(D,ID,label,myShape)
- use hdf5
- implicit none
- real(pReal), dimension(*), intent(out) :: D
- integer, dimension(:),intent(in) :: myShape
- !  real, dimension(:), allocatable :: D1
- !   real, dimension(:,:), allocatable :: D2
- !   real, dimension(:,:,:), allocatable :: D3
- integer(HID_T),                    intent(in) :: ID
- character(len=*),                  intent(in) :: label
- 
- integer(HID_T) :: dset_id
- integer :: hdferr
-
- call h5dopen_f(ID,label,dset_id,hdferr)
- call h5dread_f(dset_id,H5T_NATIVE_DOUBLE,D,int(myshape,HID_T),hdferr)
+ end subroutine 
  
 end subroutine
 
 !--------------------------------------------------------------------------------------------------
-!> @brief read datasets from a hdf5 file
+!> @brief interfaced subroutine for writing dataset of the type pInt
 !--------------------------------------------------------------------------------------------------
-!
-!subroutine HDF5_read_double_2(DataSet,FileReadID,NameDataSet) !,myshape)
-! use hdf5
-! 
-! implicit none
-! integer(HID_T), intent(in) :: FileReadID
-! character(len=*), intent(in) :: NameDataSet
-! real(pReal), intent(out), dimension(:,:,:,:,:) :: DataSet
-! !integer(HSIZE_T), intent(in), dimension(:) :: myshape
-! integer(HSIZE_T), dimension(:),allocatable :: myshape
-! integer(HID_T) :: dset_id
-! integer :: hdferr
-!
-! myShape = int(shape(DataSet),HSIZE_T)
-! call h5dopen_f(FileReadID,NameDataSet,dset_id,hdferr)
-! call h5dread_f(dset_id,H5T_NATIVE_DOUBLE,DataSet,myshape,hdferr)
-! 
-!end subroutine
+subroutine HDF5_write_pInt(D,ID1,label)
+ use hdf5
+ implicit none
+ 
+ integer(pInt), dimension(..), intent(out) :: D
+ integer(HID_T),   intent(in) :: ID1
+ character(len=*), intent(in) :: label
+
+ call HDF5_write_pInt2(D,ID1,label,shape(D))
+contains
+ 
+ subroutine HDF5_write_pInt2(D,ID2,label,myShape)
+ use hdf5
+ implicit none
+ 
+ integer(pInt), dimension(*), intent(out) :: D
+ integer(HID_T),   intent(in) :: ID2
+ integer(pInt), intent(in), dimension(:) :: myShape
+ character(len=*), intent(in) :: label
+ 
+ integer        :: hdferr
+ integer(HID_T) :: dset_id, space_id
+ 
+ !--------------------------------------------------------------------------------------------------
+! create dataspace
+ call h5screate_simple_f(size(myShape), int(myShape,HSIZE_T), space_id, hdferr, &
+                            int(myShape,HSIZE_T))
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pInt: h5screate_simple_f')
 
 !--------------------------------------------------------------------------------------------------
-!> @brief creates a new scalar dataset in the given group location
+! create Dataset
+ call h5dcreate_f(ID2, trim(label), H5T_NATIVE_INTEGER, space_id, dset_id, hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pInt: h5dcreate_f')
+
+ CALL h5dwrite_f(dset_id, H5T_NATIVE_INTEGER,D,int(myShape,HSIZE_T), hdferr)
+ 
+!--------------------------------------------------------------------------------------------------
+!close types, dataspaces
+ call h5dclose_f(dset_id, hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_HDF5_write_pInt: h5dclose_f')
+ call h5sclose_f(space_id, hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_HDF5_write_pInt: h5sclose_f')
+ 
+ end subroutine 
+end subroutine
+
+!--------------------------------------------------------------------------------------------------
+!> @brief adds a new scalar dataset to the given group location
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_addScalarDataset(group,nnodes,label,SIunit)
  use hdf5
@@ -1549,7 +1584,7 @@ subroutine HDF5_addScalarDataset(group,nnodes,label,SIunit)
 end subroutine HDF5_addScalarDataset
 
 !--------------------------------------------------------------------------------------------------
-!> @brief creates a new scalar dataset in the given group location
+!> @brief adds a new scalar dataset in the given group location       !!!TODO: to be romoved
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_addScalarDataset2(fileHandle,dataShape,label)
  use hdf5
@@ -1580,8 +1615,6 @@ subroutine HDF5_addScalarDataset2(fileHandle,dataShape,label)
  call h5sclose_f(space_id, hdferr)
 
 end subroutine HDF5_addScalarDataset2
-
-
 
 !--------------------------------------------------------------------------------------------------
 !> @brief copies the current temp results to the actual results file
