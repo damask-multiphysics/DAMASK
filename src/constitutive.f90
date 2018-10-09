@@ -536,11 +536,19 @@ subroutine constitutive_LpAndItsTangents(Lp, dLp_dS, dLp_dFi, S6, Fi, ipc, ip, e
 
  end select plasticityType
 
+#ifdef __INTEL_COMPILER
+ forall(i = 1_pInt:3_pInt, j = 1_pInt:3_pInt)
+#else
  do concurrent(i = 1_pInt:3_pInt, j = 1_pInt:3_pInt)
+#endif
    dLp_dFi(i,j,1:3,1:3) = math_mul33x33(math_mul33x33(Fi,S),transpose(dLp_dMp(i,j,1:3,1:3))) + &
                           math_mul33x33(math_mul33x33(Fi,dLp_dMp(i,j,1:3,1:3)),S)
    dLp_dS(i,j,1:3,1:3)  = math_mul33x33(math_mul33x33(transpose(Fi),Fi),dLp_dMp(i,j,1:3,1:3))       ! ToDo: @PS: why not:   dLp_dMp:(FiT Fi)
- enddo 
+#ifdef __INTEL_COMPILER
+ end forall
+#else
+ enddo
+#endif
 
 end subroutine constitutive_LpAndItsTangents
 
