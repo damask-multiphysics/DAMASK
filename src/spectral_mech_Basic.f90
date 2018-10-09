@@ -66,8 +66,6 @@ module spectral_mech_basic
    basic_init, &
    basic_solution, &
    basic_forward
- external :: &
-   PETScErrorF                                                                                      ! is called in the CHKERRQ macro
 
 contains
 
@@ -119,11 +117,6 @@ subroutine basic_init
  integer(pInt) :: proc
  character(len=1024) :: rankStr
  
- external :: &
-   SNESSetOptionsPrefix, &
-   SNESSetConvergenceTest, &
-   DMDASNESSetFunctionLocal
-   
  write(6,'(/,a)') ' <<<+-  DAMASK_spectral_solverBasic init  -+>>>'
  write(6,'(/,a)') ' Shanthraj et al., International Journal of Plasticity, 66:31–45, 2015'
  write(6,'(a,/)') ' https://doi.org/10.1016/j.ijplas.2014.02.006'
@@ -245,9 +238,6 @@ type(tSolutionState) function basic_solution(incInfoIn,timeinc,timeinc_old,stres
 ! PETSc Data
  PetscErrorCode :: ierr   
  SNESConvergedReason :: reason
-
- external :: &
-   SNESsolve
 
  incInfo = incInfoIn
 

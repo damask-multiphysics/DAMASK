@@ -3,9 +3,12 @@
 !> @brief Utilities used by the FEM solver
 !--------------------------------------------------------------------------------------------------
 module FEM_utilities
-#include <petsc/finclude/petsc.h>
+#include <petsc/finclude/petscdmplex.h>
+#include <petsc/finclude/petscdmda.h>
+#include <petsc/finclude/petscis.h>
  use prec, only: pReal, pInt
 
+use PETScdmplex
 use PETScdmda
 use PETScis
 
@@ -21,25 +24,15 @@ use PETScis
 ! grid related information information
  real(pReal),   public                :: wgt                                                        !< weighting factor 1/Nelems
  real(pReal),   public                :: wgtDof                                                     !< weighting factor 1/Nelems
- real(pReal),   public                :: C_volAvg(3,3,3,3)
- 
+  
 !--------------------------------------------------------------------------------------------------
 ! output data
- PetscViewer,                    public :: resUnit
  Vec,                            public :: coordinatesVec
- Vec,               allocatable, public :: homogenizationResultsVec(:), &
-                                           crystalliteResultsVec(:,:), &
-                                           phaseResultsVec(:,:) 
-
 !--------------------------------------------------------------------------------------------------
 ! field labels information
  character(len=*),                         parameter,            public :: &
-   FIELD_MECH_label     = 'mechanical', &
-   FIELD_THERMAL_label  = 'thermal', &
-   FIELD_DAMAGE_label   = 'damage', &
-   FIELD_SOLUTE_label   = 'solute', &
-   FIELD_MGTWIN_label   = 'mgtwin'
- 
+   FIELD_MECH_label     = 'mechanical'
+
  enum, bind(c)
    enumerator :: FIELD_UNDEFINED_ID, &
                  FIELD_MECH_ID, &
@@ -123,34 +116,10 @@ use PETScis
    utilities_indexActiveSet, &
    utilities_destroy, &
    FIELD_MECH_ID, &
-   FIELD_THERMAL_ID, &
-   FIELD_DAMAGE_ID, &
-   FIELD_SOLUTE_ID, &
-   FIELD_MGTWIN_ID, &
    COMPONENT_MECH_X_ID, &
    COMPONENT_MECH_Y_ID, &
    COMPONENT_MECH_Z_ID, &
-   COMPONENT_THERMAL_T_ID, &
-   COMPONENT_DAMAGE_PHI_ID, &
-   COMPONENT_SOLUTE_CV_ID, &
-   COMPONENT_SOLUTE_CVPOT_ID, &
-   COMPONENT_SOLUTE_CH_ID, &
-   COMPONENT_SOLUTE_CHPOT_ID, &
-   COMPONENT_SOLUTE_CVaH_ID, &
-   COMPONENT_SOLUTE_CVaHPOT_ID, &
-   COMPONENT_MGTWIN_PHI_ID
-
- external :: &
-   PetscOptionsInsertString, &
-   PetscObjectSetName, &
-   DMPlexGetHeightStratum, &
-   DMGetLabelIdIS, &
-   DMPlexGetChart, &
-   DMPlexLabelComplete, &
-   PetscViewerHDF5Open, &
-   PetscViewerHDF5PushGroup, &
-   PetscViewerHDF5PopGroup, &
-   PetscViewerDestroy
+   COMPONENT_THERMAL_T_ID
 
 contains 
 
@@ -167,6 +136,7 @@ subroutine utilities_init()
    IO_timeStamp, &
    IO_open_file
  use numerics, only: &                        
+   structOrder, &
    integrationOrder, &
    worldsize, & 
    worldrank, &
@@ -190,14 +160,11 @@ subroutine utilities_init()
 
  implicit none
 
- character(len=1024)                :: petsc_optionsPhysics, grainStr
+ character(len=1024)                :: petsc_optionsPhysics
  integer(pInt)                      :: dimPlex
  integer(pInt)                      :: headerID = 205_pInt
- PetscInt,    dimension(:), pointer :: points
- PetscInt,    allocatable           :: nEntities(:), nOutputCells(:), nOutputNodes(:), mappingCells(:)
- PetscInt                           :: cellStart, cellEnd, cell, ip, dim, ctr, qPt
- PetscInt,              allocatable :: connectivity(:,:)
- Vec                                :: connectivityVec
+ PetscInt,    allocatable           :: nEntities(:), nOutputCells(:), nOutputNodes(:)
+ PetscInt                           :: dim
  PetscErrorCode                     :: ierr
 
  write(6,'(/,a)')   ' <<<+-  DAMASK_FEM_utilities init  -+>>>'
@@ -221,15 +188,12 @@ subroutine utilities_init()
  call PetscOptionsInsertString(PETSC_NULL_OPTIONS,trim(petsc_defaultOptions),ierr)
  call PetscOptionsInsertString(PETSC_NULL_OPTIONS,trim(petsc_options),ierr)
  CHKERRQ(ierr)
- !write(petsc_optionsPhysics,'(a,i0)') '-mechFE_petscspace_order '   , structOrder
+ write(petsc_optionsPhysics,'(a,i0)') '-mechFE_petscspace_degree '   , structOrder
  call PetscOptionsInsertString(PETSC_NULL_OPTIONS,trim(petsc_optionsPhysics),ierr)
  CHKERRQ(ierr)
  
  wgt = 1.0/real(mesh_maxNips*mesh_NcpElemsGlobal,pReal)
 
- call PetscViewerHDF5Open(PETSC_COMM_WORLD, trim(getSolverJobName())//'.h5', &
-                          FILE_MODE_WRITE, resUnit, ierr); CHKERRQ(ierr)
- call PetscViewerHDF5PushGroup(resUnit, '/', ierr); CHKERRQ(ierr)  
  call DMGetDimension(geomMesh,dimPlex,ierr); CHKERRQ(ierr) 
  allocate(nEntities(dimPlex+1), source=0)
  allocate(nOutputNodes(worldsize), source = 0)
@@ -257,178 +221,6 @@ subroutine utilities_init()
    write(headerID, '(a,i0)') 'number of cells : ', sum(nOutputCells)
  endif 
 
- allocate(connectivity(2**dimPlex,nOutputCells(worldrank+1)))
- call DMPlexGetHeightStratum(geomMesh,0,cellStart,cellEnd,ierr)
- CHKERRQ(ierr)
- ctr = 0
- select case (integrationOrder)
-   case(1_pInt)
-     do cell = cellStart, cellEnd-1                                                                     !< loop over all elements 
-       call DMPlexGetTransitiveClosure(geomMesh,cell,PETSC_TRUE,points,ierr)
-       CHKERRQ(ierr)
-       if (dimPlex == 2) then
-         connectivity(:,ctr+1) =  [points( 9), points(11), points(13), points(13)]  - nEntities(dimPlex+1)
-         ctr = ctr + 1
-       else
-         connectivity(:,ctr+1) =  [points(23), points(25), points(27), points(27), &
-                                   points(29), points(29), points(29), points(29)] - nEntities(dimPlex+1)
-         ctr = ctr + 1
-       endif 
-     enddo 
-   
-   case(2_pInt)  
-     do cell = cellStart, cellEnd-1                                                                     !< loop over all elements 
-       call DMPlexGetTransitiveClosure(geomMesh,cell,PETSC_TRUE,points,ierr)
-       CHKERRQ(ierr)
-       if (dimPlex == 2) then
-         connectivity(:,ctr+1) = [points(9 ), points(3), points(1), points(7)]
-         connectivity(:,ctr+2) = [points(11), points(5), points(1), points(3)]
-         connectivity(:,ctr+3) = [points(13), points(7), points(1), points(5)]
-         ctr = ctr + 3
-       else
-         connectivity(:,ctr+1) = [points(23), points(11), points(3), points(15), points(17), points(5), points(1), points(7)]
-         connectivity(:,ctr+2) = [points(25), points(13), points(3), points(11), points(19), points(9), points(1), points(5)]
-         connectivity(:,ctr+3) = [points(27), points(15), points(3), points(13), points(21), points(7), points(1), points(9)]
-         connectivity(:,ctr+4) = [points(29), points(17), points(7), points(21), points(19), points(5), points(1), points(9)]
-         ctr = ctr + 4_pInt
-       endif  
-     enddo 
-   
-   case default
-     do cell = cellStart, cellEnd-1; do ip = 0, mesh_maxNips-1
-       connectivity(:,ctr+1) = cell*mesh_maxNips + ip
-       ctr = ctr + 1
-     enddo; enddo        
-   
- end select 
- connectivity = connectivity + sum(nOutputNodes(1:worldrank))
-
- call VecCreateMPI(PETSC_COMM_WORLD,dimPlex*nOutputNodes(worldrank+1),dimPlex*sum(nOutputNodes), &
-                   coordinatesVec,ierr);CHKERRQ(ierr)
- call PetscObjectSetName(coordinatesVec, 'NodalCoordinates',ierr)
- call VecSetFromOptions(coordinatesVec, ierr); CHKERRQ(ierr)
- 
- !allocate(mappingCells(worldsize), source = 0)
- !do homog = 1, material_Nhomogenization
- !  mappingCells = 0_pInt; mappingCells(worldrank+1) = homogOutput(homog)%sizeIpCells
- !  call MPI_Allreduce(MPI_IN_PLACE,mappingCells,worldsize,MPI_INT,MPI_SUM,PETSC_COMM_WORLD,ierr)
- !  call VecCreateMPI(PETSC_COMM_WORLD,mappingCells(worldrank+1),sum(mappingCells), &
- !                    homogenizationResultsVec(homog),ierr);CHKERRQ(ierr)
- !  if (sum(mappingCells) > 0) then
- !    call VecCreateMPI(PETSC_COMM_WORLD,mappingCells(worldrank+1)*2**dimPlex,sum(mappingCells)*2**dimPlex, &
- !                      connectivityVec,ierr);CHKERRQ(ierr)
- !    call PetscObjectSetName(connectivityVec,'mapping_'//trim(homogenization_name(homog)),ierr)
- !    CHKERRQ(ierr)
- !    call VecGetArrayF90(connectivityVec,results,ierr); CHKERRQ(ierr) 
- !    results = 0.0_pReal; ctr = 1_pInt
- !    do cell = cellStart, cellEnd-1; do qPt = 1, mesh_maxNips
- !      if (material_homog(qPt,cell+1) == homog) then
- !        results(ctr:ctr+2**dimPlex-1) = real(reshape(connectivity(1:2**dimPlex,mesh_maxNips*cell+qPt), &
- !                                                     shape=[2**dimPlex]))
- !        ctr = ctr + 2**dimPlex
- !      endif  
- !    enddo; enddo
- !    call VecRestoreArrayF90(connectivityVec, results, ierr); CHKERRQ(ierr)
- !    call VecAssemblyBegin(connectivityVec, ierr); CHKERRQ(ierr)
- !    call VecAssemblyEnd  (connectivityVec, ierr); CHKERRQ(ierr)
- !    call VecView(connectivityVec, resUnit, ierr); CHKERRQ(ierr)
- !    call VecDestroy(connectivityVec, ierr); CHKERRQ(ierr)
- !  endif
- !enddo  
- !do cryst = 1, material_Ncrystallite; do grain = 1, homogenization_maxNgrains
- !  mappingCells              = 0_pInt
- !  mappingCells(worldrank+1) = crystalliteOutput(cryst,grain)%sizeIpCells
- !  call MPI_Allreduce(MPI_IN_PLACE,mappingCells,worldsize,MPI_INT,MPI_SUM,PETSC_COMM_WORLD,ierr)
- !  call VecCreateMPI(PETSC_COMM_WORLD,mappingCells(worldrank+1),sum(mappingCells), &
- !                    crystalliteResultsVec(cryst,grain),ierr);CHKERRQ(ierr)
- !  if (sum(mappingCells) > 0) then
- !    call VecCreateMPI(PETSC_COMM_WORLD,mappingCells(worldrank+1)*2**dimPlex,sum(mappingCells)*2**dimPlex, &
- !                      connectivityVec,ierr);CHKERRQ(ierr)
- !    write(grainStr,'(a,i0)') 'Grain',grain
- !    call PetscObjectSetName(connectivityVec,'mapping_'// &
- !                                            trim(crystallite_name(cryst))//'_'// &
- !                                            trim(grainStr),ierr)
- !    CHKERRQ(ierr)
- !    call VecGetArrayF90(connectivityVec, results, ierr); CHKERRQ(ierr) 
- !    results = 0.0_pReal; ctr = 1_pInt
- !    do cell = cellStart, cellEnd-1; do qPt = 1, mesh_maxNips
- !      if (homogenization_Ngrains    (mesh_element(3,cell+1)) >= grain .and. &
- !          microstructure_crystallite(mesh_element(4,cell+1)) == cryst) then
- !        results(ctr:ctr+2**dimPlex-1) = real(reshape(connectivity(1:2**dimPlex,mesh_maxNips*cell+qPt), &
- !                                                     shape=[2**dimPlex]))
- !        ctr = ctr + 2**dimPlex
- !      endif  
- !    enddo; enddo
- !    call VecRestoreArrayF90(connectivityVec, results, ierr); CHKERRQ(ierr)
- !    call VecAssemblyBegin(connectivityVec, ierr); CHKERRQ(ierr)
- !    call VecAssemblyEnd  (connectivityVec, ierr); CHKERRQ(ierr)
- !    call VecView(connectivityVec, resUnit, ierr); CHKERRQ(ierr)
- !    call VecDestroy(connectivityVec, ierr); CHKERRQ(ierr)
- !  endif
- !enddo; enddo
- !do phase = 1, material_Nphase; do grain = 1, homogenization_maxNgrains
- !  mappingCells              = 0_pInt
- !  mappingCells(worldrank+1) = phaseOutput(phase,grain)%sizeIpCells
- !  call MPI_Allreduce(MPI_IN_PLACE,mappingCells,worldsize,MPI_INT,MPI_SUM,PETSC_COMM_WORLD,ierr)
- !  call VecCreateMPI(PETSC_COMM_WORLD,mappingCells(worldrank+1),sum(mappingCells), &
- !                    phaseResultsVec(phase,grain),ierr);CHKERRQ(ierr)
- !  if (sum(mappingCells) > 0) then
- !    call VecCreateMPI(PETSC_COMM_WORLD,mappingCells(worldrank+1)*2**dimPlex,sum(mappingCells)*2**dimPlex, &
- !                      connectivityVec,ierr);CHKERRQ(ierr)
- !    write(grainStr,'(a,i0)') 'Grain',grain
- !    call PetscObjectSetName(connectivityVec,&
- !                            'mapping_'//trim(phase_name(phase))//'_'// &
- !                            trim(grainStr),ierr)
- !    CHKERRQ(ierr)
- !    call VecGetArrayF90(connectivityVec, results, ierr)
- !    CHKERRQ(ierr) 
- !    results = 0.0_pReal; ctr = 1_pInt
- !    do cell = cellStart, cellEnd-1; do qPt = 1, mesh_maxNips
- !      if (material_phase(grain,qPt,cell+1) == phase) then
- !        results(ctr:ctr+2**dimPlex-1) = real(reshape(connectivity(1:2**dimPlex,mesh_maxNips*cell+qPt), &
- !                                                     shape=[2**dimPlex]))
- !        ctr = ctr + 2**dimPlex
- !      endif  
- !    enddo; enddo
- !    call VecRestoreArrayF90(connectivityVec, results, ierr)
- !    CHKERRQ(ierr)
- !    call VecAssemblyBegin(connectivityVec, ierr);CHKERRQ(ierr)
- !    call VecAssemblyEnd  (connectivityVec, ierr);CHKERRQ(ierr)
- !    call VecView(connectivityVec, resUnit, ierr);CHKERRQ(ierr)
- !    call VecDestroy(connectivityVec, ierr); CHKERRQ(ierr)
- !  endif
- !enddo; enddo  
- !if (worldrank == 0_pInt) then
- !  do homog = 1, material_Nhomogenization
- !    call VecGetSize(homogenizationResultsVec(homog),mappingCells(1),ierr)
- !    CHKERRQ(ierr)
- !    if (mappingCells(1) > 0) &
- !      write(headerID, '(a,i0)') 'number of homog_'// &
- !                                trim(homogenization_name(homog))//'_'// &
- !                                'cells : ', mappingCells(1)
- !  enddo
- !  do cryst = 1, material_Ncrystallite; do grain = 1, homogenization_maxNgrains
- !    call VecGetSize(crystalliteResultsVec(cryst,grain),mappingCells(1),ierr)
- !    CHKERRQ(ierr)
- !    write(grainStr,'(a,i0)') 'Grain',grain
- !    if (mappingCells(1) > 0) &
- !      write(headerID, '(a,i0)') 'number of cryst_'// &
- !                                trim(crystallite_name(cryst))//'_'// &
- !                                trim(grainStr)//'_'// &
- !                                'cells : ', mappingCells(1)
- !  enddo; enddo
- !  do phase = 1, material_Nphase; do grain = 1, homogenization_maxNgrains
- !    call VecGetSize(phaseResultsVec(phase,grain),mappingCells(1),ierr)
- !    CHKERRQ(ierr)
- !    write(grainStr,'(a,i0)') 'Grain',grain
- !    if (mappingCells(1) > 0) &
- !      write(headerID, '(a,i0)') 'number of phase_'// &
- !                                trim(phase_name(phase))//'_'//trim(grainStr)//'_'// &
- !                                'cells : ', mappingCells(1)
- !  enddo; enddo  
- !  close(headerID) 
- !endif 
-
 end subroutine utilities_init
 
 !--------------------------------------------------------------------------------------------------
@@ -438,8 +230,6 @@ subroutine utilities_constitutiveResponse(timeinc,P_av,forwardData)
  use debug, only: &
    debug_reset, &
    debug_info
- use numerics, only: &
-   worldrank
  use math, only: &
    math_transpose33, &
    math_rotate_forward33, &
@@ -447,10 +237,8 @@ subroutine utilities_constitutiveResponse(timeinc,P_av,forwardData)
  use FEsolving, only: &
    restartWrite
  use homogenization, only: &
-   materialpoint_F0, &
    materialpoint_F, &
    materialpoint_P, &
-   materialpoint_dPdF, &
    materialpoint_stressAndItsTangent
  use mesh, only: &
    mesh_NcpElems  
@@ -503,9 +291,7 @@ subroutine utilities_constitutiveResponse(timeinc,P_av,forwardData)
  cutBack = .false.                                                                                  ! reset cutBack status
  
  P_av = sum(sum(materialpoint_P,dim=4),dim=3) * wgt                                                    ! average of P 
- C_volAvg = sum(sum(materialpoint_dPdF,dim=6),dim=5) * wgt
  call MPI_Allreduce(MPI_IN_PLACE,P_av,9,MPI_DOUBLE,MPI_SUM,PETSC_COMM_WORLD,ierr)
- call MPI_Allreduce(MPI_IN_PLACE,C_volAvg,81,MPI_DOUBLE,MPI_SUM,PETSC_COMM_WORLD, ierr)
 
 end subroutine utilities_constitutiveResponse
 
