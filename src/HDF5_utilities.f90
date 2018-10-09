@@ -174,20 +174,36 @@ subroutine HDF5_closeJobFile()
 
 end subroutine HDF5_closeJobFile
 
+
 !--------------------------------------------------------------------------------------------------
 !> @brief open and initializes HDF5 output file
 !--------------------------------------------------------------------------------------------------
-integer(HID_T) function HDF5_openFile(filePath)
- use hdf5
+integer(HID_T) function HDF5_openFile(filePath,mode)
  
  implicit none
+ character(len=*), intent(in)           :: filePath
+ character,        intent(in), optional :: mode
+ character                              :: m
  integer :: hdferr
- character(len=*), intent(in) :: filePath
 
- call h5fopen_f(filePath,H5F_ACC_RDONLY_F,HDF5_openFile,hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_openFile: h5fopen_f',el=hdferr)
+ if (present(mode)) then
+   m = mode
+ else
+   m = 'r'
+ endif
+ 
+ if (m == 'w' .or. m == 'a') then
+   call h5fopen_f(filePath,H5F_ACC_RDWR_F,HDF5_openFile,hdferr)
+   if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_openFile: h5fopen_f (w/a)',el=hdferr)
+ elseif(m == 'r') then
+   call h5fopen_f(filePath,H5F_ACC_RDONLY_F,HDF5_openFile,hdferr)
+   if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_openFile: h5fopen_f (r)',el=hdferr)
+ else
+   call IO_error(1_pInt,ext_msg='HDF5_openFile: h5fopen_f unknown access mode',el=hdferr)
+ endif
 
 end function HDF5_openFile
+
 
 !--------------------------------------------------------------------------------------------------
 !> @brief close the opened HDF5 output file
