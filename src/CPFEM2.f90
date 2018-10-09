@@ -37,6 +37,8 @@ subroutine CPFEM_initAll(el,ip)
    mesh_init
  use material, only: &
    material_init
+ use HDF5_utilities, only: &
+   HDF5_utilities_init
  use lattice, only: &
    lattice_init
  use constitutive, only: &
@@ -72,6 +74,7 @@ subroutine CPFEM_initAll(el,ip)
  call mesh_init(ip, el)                                                                        ! pass on coordinates to alter calcMode of first ip
  call lattice_init
  call material_init
+ call HDF5_utilities_init
  call constitutive_init
  call crystallite_init
  call homogenization_init

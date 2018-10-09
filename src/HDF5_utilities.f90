@@ -58,9 +58,20 @@ subroutine HDF5_Utilities_init
  write(6,'(/,a)') ' <<<+-  HDF5_Utilities init  -+>>>'
 #include "compilation_info.f90"
 
- currentInc = -1_pInt
- call HDF5_createJobFile
+ !currentInc = -1_pInt ToDo
+ !call HDF5_createJobFile ToDo
 
+!--------------------------------------------------------------------------------------------------
+!initialize HDF5 library and check if integer and float type size match
+ call h5open_f(hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_Utilities_init: h5open_f')
+ call h5tget_size_f(H5T_NATIVE_INTEGER,typeSize, hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_Utilities_init: h5tget_size_f (int)')
+ if (int(pInt,SIZE_T)/=typeSize) call IO_error(0_pInt,ext_msg='pInt does not match H5T_NATIVE_INTEGER')
+ call h5tget_size_f(H5T_NATIVE_DOUBLE,typeSize, hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_Utilities_init: h5tget_size_f (double)')
+ if (int(pReal,SIZE_T)/=typeSize) call IO_error(0_pInt,ext_msg='pReal does not match H5T_NATIVE_DOUBLE')
+ 
 end subroutine HDF5_Utilities_init
 
 
@@ -74,24 +85,12 @@ subroutine HDF5_createJobFile
 
  implicit none
  integer              :: hdferr
- integer(SIZE_T)      :: typeSize 
  character(len=1024)  :: path
 #ifdef PETSc
 #include <petsc/finclude/petscsys.h> 
 #endif
 
-!--------------------------------------------------------------------------------------------------
-!initialize HDF5 library and check if integer and float type size match
 
- call h5open_f(hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_Utilities_init: h5open_f')
- call h5tget_size_f(H5T_NATIVE_INTEGER,typeSize, hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_Utilities_init: h5tget_size_f (int)')
- if (int(pInt,SIZE_T)/=typeSize) call IO_error(0_pInt,ext_msg='pInt does not match H5T_NATIVE_INTEGER')
- call h5tget_size_f(H5T_NATIVE_DOUBLE,typeSize, hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_Utilities_init: h5tget_size_f (double)')
- if (int(pReal,SIZE_T)/=typeSize) call IO_error(0_pInt,ext_msg='pReal does not match H5T_NATIVE_DOUBLE')
- 
 #ifdef PETSc
  call h5pcreate_f(H5P_FILE_ACCESS_F, plist_id, hdferr)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_Utilities_init: h5pcreate_f') 
@@ -157,7 +156,7 @@ subroutine HDF5_closeJobFile()
  call HDF5_removeLink('current')
  call h5fclose_f(resultsFile,hdferr)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_closeJobFile: h5fclose_f',el=hdferr)
- call h5close_f(hdferr)
+! call h5close_f(hdferr)
 
 end subroutine HDF5_closeJobFile
 
@@ -171,8 +170,6 @@ integer(HID_T) function HDF5_openFile(filePath)
  integer :: hdferr
  character(len=*), intent(in) :: filePath
 
- call h5open_f(hdferr)!############################################################ DANGEROUS
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_openFile: h5open_f',el=hdferr)
  call h5fopen_f(filePath,H5F_ACC_RDONLY_F,HDF5_openFile,hdferr)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_openFile: h5fopen_f',el=hdferr)
 
