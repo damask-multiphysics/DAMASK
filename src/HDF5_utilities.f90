@@ -178,10 +178,10 @@ end subroutine HDF5_closeJobFile
 !--------------------------------------------------------------------------------------------------
 !> @brief open and initializes HDF5 output file
 !--------------------------------------------------------------------------------------------------
-integer(HID_T) function HDF5_openFile(filePath,mode)
+integer(HID_T) function HDF5_openFile(fileName,mode)
  
  implicit none
- character(len=*), intent(in)           :: filePath
+ character(len=*), intent(in)           :: fileName
  character,        intent(in), optional :: mode
  character                              :: m
  integer :: hdferr
@@ -192,11 +192,14 @@ integer(HID_T) function HDF5_openFile(filePath,mode)
    m = 'r'
  endif
  
- if (m == 'w' .or. m == 'a') then
-   call h5fopen_f(filePath,H5F_ACC_RDWR_F,HDF5_openFile,hdferr)
-   if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_openFile: h5fopen_f (w/a)',el=hdferr)
+ if (   m == 'w') then
+   call h5fcreate_f(fileName,H5F_ACC_TRUNC_F,HDF5_openFile,hdferr)
+   if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_openFile: h5fcreate_f',el=hdferr)
+ elseif(m == 'a') then
+   call h5fopen_f(fileName,H5F_ACC_RDWR_F,HDF5_openFile,hdferr)
+   if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_openFile: h5fopen_f (a)',el=hdferr)
  elseif(m == 'r') then
-   call h5fopen_f(filePath,H5F_ACC_RDONLY_F,HDF5_openFile,hdferr)
+   call h5fopen_f(fileName,H5F_ACC_RDONLY_F,HDF5_openFile,hdferr)
    if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_openFile: h5fopen_f (r)',el=hdferr)
  else
    call IO_error(1_pInt,ext_msg='HDF5_openFile: h5fopen_f unknown access mode',el=hdferr)
@@ -209,15 +212,12 @@ end function HDF5_openFile
 !> @brief close the opened HDF5 output file
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_closeFile(fileHandle)
- use hdf5
  
  implicit none
  integer :: hdferr
  integer(HID_T), intent(in) :: fileHandle
  call h5fclose_f(fileHandle,hdferr)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_closeFile: h5fclose_f',el=hdferr)
- call h5close_f(hdferr)!############################################################ DANGEROUS
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_closeFile: h5close_f',el=hdferr)
 
 end subroutine HDF5_closeFile
 
