@@ -1,3 +1,9 @@
+!--------------------------------------------------------------------------------------------------
+!> @author Vitesh Shah, Max-Planck-Institut für Eisenforschung GmbH
+!> @author Yi-Chin Yang, Max-Planck-Institut für Eisenforschung GmbH
+!> @author Jennifer Nastola, Max-Planck-Institut für Eisenforschung GmbH
+!> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
+!--------------------------------------------------------------------------------------------------
 module HDF5_Utilities
   use prec
   use IO
@@ -6,15 +12,23 @@ module HDF5_Utilities
   use PETSC
 #endif
 
+ implicit none
+ private
  integer(HID_T), public, protected :: tempCoordinates, tempResults
  integer(HID_T), private :: resultsFile, currentIncID, plist_id
  integer(pInt),  private :: currentInc
 
+!--------------------------------------------------------------------------------------------------
+!> @brief reads pInt or pReal data of arbitrary shape from file
+!--------------------------------------------------------------------------------------------------
  interface HDF5_read
    module procedure HDF5_read_pReal
    module procedure HDF5_read_pInt
  end interface HDF5_read
 
+!--------------------------------------------------------------------------------------------------
+!> @brief writes pInt or pReal data of arbitrary shape to file
+!--------------------------------------------------------------------------------------------------
  interface HDF5_write
    module procedure HDF5_write_pReal
    module procedure HDF5_write_pInt
@@ -1383,69 +1397,90 @@ subroutine HDF5_writeScalarDataset(group,dataset,label,SIunit,dataspace_size,mpi
  
 end subroutine HDF5_writeScalarDataset
 
-!--------------------------------------------------------------------------------------------------
-!> @brief interfaced subroutine for reading dataset of the type pReal 
-!--------------------------------------------------------------------------------------------------
-subroutine HDF5_read_pReal(D,ID1,label)
-  use hdf5
-  implicit none
-  real(pReal), dimension(..), intent(out) :: D
-
-  integer(HID_T),                    intent(in) :: ID1
-  character(len=*),                  intent(in) :: label
-
- 
-  call HDF5_read_pReal2(D,ID1,label,shape(D))
-contains
- 
- subroutine HDF5_read_pReal2(D,ID2,label,myShape)
-  use hdf5
-  implicit none
-  real(pReal), dimension(*), intent(out) :: D
-  integer(HID_T),                    intent(in) :: ID2
-  integer(pInt), dimension(:),   intent(in) :: myShape
-  character(len=*),                  intent(in) :: label
- 
-  integer(HID_T) :: dset_id
-  integer :: hdferr
-
-  call h5dopen_f(ID2,label,dset_id,hdferr)
-  call h5dread_f(dset_id,H5T_NATIVE_DOUBLE,D,int(myShape,HSIZE_T),hdferr)
- end subroutine
-
-end subroutine
 
 !--------------------------------------------------------------------------------------------------
-!> @brief interfaced subroutine for reading dataset of the type pInt
+!> @brief subroutine for reading dataset of the type pReal
+!> reads in arbitrarly shaped data set
 !--------------------------------------------------------------------------------------------------
-subroutine HDF5_read_pInt(D,ID1,label)
-  use hdf5
-  implicit none
-  integer(pInt), dimension(..), intent(out) :: D
+subroutine HDF5_read_pReal(dataset,loc_id,datasetName)
 
-  integer(HID_T),                    intent(in) :: ID1
-  character(len=*),                  intent(in) :: label
+ implicit none
+ real(pReal),   dimension(..), intent(out) :: dataset
+ integer(HID_T),               intent(in)  :: loc_id                                                !< file or group handle
+ character(len=*),             intent(in)  :: datasetName                                           !< name of the dataset in the file
 
+ call HDF5_read_pReal_shape(dataset,loc_id,datasetName,int(shape(dataset),HSIZE_T))
+
+ contains
  
-  call HDF5_read_pInt2(D,ID1,label,shape(D))
-contains
- 
- subroutine HDF5_read_pInt2(D,ID2,label,myShape)
-  use hdf5
-  implicit none
-  integer(pInt), dimension(*), intent(out) :: D
-  integer(HID_T),                    intent(in) :: ID2
-  integer(pInt), dimension(:),   intent(in) :: myShape
-  character(len=*),                  intent(in) :: label
- 
-  integer(HID_T) :: dset_id
-  integer :: hdferr
+!--------------------------------------------------------------------------------------------------
+!> @brief shape-aware subroutine for reading dataset of the type pReal
+!> @details dimension(..) cannot be handled by h5dread_f
+!--------------------------------------------------------------------------------------------------
+ subroutine HDF5_read_pReal_shape(dataset,loc_id,datasetName,myShape)
 
-  call h5dopen_f(ID2,label,dset_id,hdferr)
-  call h5dread_f(dset_id,H5T_NATIVE_INTEGER,D,int(myShape,HSIZE_T),hdferr)
- end subroutine
+   implicit none
+   real(pReal),     dimension(*), intent(out) :: dataset
+   integer(HID_T),                intent(in)  :: loc_id                                             !< file or group handle
+   character(len=*),              intent(in)  :: datasetName                                        !< name of the dataset in the file
+   integer(HSIZE_T),dimension(:), intent(in)  :: myShape
+ 
+   integer(HID_T) :: dset_id
+   integer        :: hdferr
 
-end subroutine
+   call h5dopen_f(loc_id,datasetName,dset_id,hdferr)
+   if (hdferr /= 0) call IO_error(0_pInt,ext_msg='HDF5_read_pReal_shape: h5dopen_f')
+   call h5dread_f(dset_id,H5T_NATIVE_DOUBLE,dataset,myShape,hdferr)
+   if (hdferr /= 0) call IO_error(0_pInt,ext_msg='HDF5_read_pReal_shape: h5dread_f')
+   call h5dclose_f(dset_id,hdferr)
+   if (hdferr /= 0) call IO_error(0_pInt,ext_msg='HDF5_read_pReal_shape: h5dclose_f')
+
+ end subroutine HDF5_read_pReal_shape
+
+end subroutine HDF5_read_pReal
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief subroutine for reading dataset of the type pInt
+!> reads in arbitrarly shaped data set
+!--------------------------------------------------------------------------------------------------
+subroutine HDF5_read_pInt(dataset,loc_id,datasetName)
+
+ implicit none
+ integer(pInt), dimension(..), intent(out) :: dataset
+ integer(HID_T),               intent(in)  :: loc_id                                               !< file or group handle
+ character(len=*),             intent(in)  :: datasetName                                          !< name of the dataset in the file
+
+ call HDF5_read_pInt_shape(dataset,loc_id,datasetName,int(shape(dataset),HSIZE_T))
+
+ contains
+ 
+!--------------------------------------------------------------------------------------------------
+!> @brief shape-aware subroutine for reading dataset of the type pInt
+!> @details dimension(..) cannot be handled by h5dread_f
+!--------------------------------------------------------------------------------------------------
+ subroutine HDF5_read_pInt_shape(dataset,loc_id,datasetName,myShape)
+
+   implicit none
+   integer(pInt),   dimension(*), intent(out) :: dataset
+   integer(HID_T),                intent(in)  :: loc_id                                             !< file or group handle
+   character(len=*),              intent(in)  :: datasetName                                        !< name of the dataset in the file
+   integer(HSIZE_T),dimension(:), intent(in)  :: myShape
+ 
+   integer(HID_T) :: dset_id
+   integer        :: hdferr
+
+   call h5dopen_f(loc_id,datasetName,dset_id,hdferr)
+   if (hdferr /= 0) call IO_error(0_pInt,ext_msg='HDF5_read_pInt_shape: h5dopen_f')
+   call h5dread_f(dset_id,H5T_NATIVE_INTEGER,dataset,myShape,hdferr)
+   if (hdferr /= 0) call IO_error(0_pInt,ext_msg='HDF5_read_pInt_shape: h5dread_f')
+   call h5dclose_f(dset_id,hdferr)
+   if (hdferr /= 0) call IO_error(0_pInt,ext_msg='HDF5_read_pInt_shape: h5dclose_f')
+
+ end subroutine HDF5_read_pInt_shape
+
+end subroutine HDF5_read_pInt
+
 
 !--------------------------------------------------------------------------------------------------
 !> @brief interfaced subroutine for writing dataset of the type pReal 
