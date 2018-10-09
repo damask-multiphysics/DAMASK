@@ -14,8 +14,6 @@ module mesh
  integer(pInt), public, protected :: &
    mesh_NcpElems, &                                                                                 !< total number of CP elements in local mesh
    mesh_elemType, &                                                                                 !< Element type of the mesh (only support homogeneous meshes)
-   mesh_maxNelemInSet, &
-   mesh_Nmaterials, &
    mesh_Nnodes, &                                                                                   !< total number of nodes in mesh
    mesh_Ncellnodes, &                                                                               !< total number of cell nodes in mesh (including duplicates)
    mesh_Ncells, &                                                                                   !< total number of cells in mesh
@@ -63,6 +61,12 @@ module mesh
    mesh_ipAreaNormal                                                                                !< area normal of interface to neighboring IP (initially!)
 
  logical, dimension(3), public, protected :: mesh_periodicSurface                                   !< flag indicating periodic outer surfaces (used for fluxes)
+
+#if defined(Marc4DAMASK) || defined(Abaqus)
+ integer(pInt), private :: &
+   mesh_maxNelemInSet, &
+   mesh_Nmaterials
+#endif
 
  integer(pInt), dimension(2), private :: &
    mesh_maxValStateVar = 0_pInt
@@ -520,8 +524,12 @@ subroutine mesh_init(ip,el)
  if(worldsize>grid(3)) call IO_error(894_pInt, ext_msg='number of processes exceeds grid(3)')
 
  geomSize = mesh_spectral_getSize(fileUnit)
- devNull = fftw_mpi_local_size_3d(int(grid(3),C_INTPTR_T),int(grid(2),C_INTPTR_T),&
-                                  int(grid(1),C_INTPTR_T)/2+1,PETSC_COMM_WORLD,local_K,local_K_offset)
+ devNull = fftw_mpi_local_size_3d(int(grid(3),C_INTPTR_T), &
+                                  int(grid(2),C_INTPTR_T), &
+                                  int(grid(1),C_INTPTR_T)/2+1, &
+                                  PETSC_COMM_WORLD, &
+                                  local_K, &                                                        ! domain grid size along z
+                                  local_K_offset)                                                   ! domain grid offset along z
  grid3       = int(local_K,pInt)
  grid3Offset = int(local_K_offset,pInt)
  size3       = geomSize(3)*real(grid3,pReal)      /real(grid(3),pReal)
@@ -1251,7 +1259,7 @@ subroutine mesh_spectral_build_elements(fileUnit)
  integer(pInt) :: &
    e, i, &
    headerLength = 0_pInt, &
-   maxIntCount, &
+   maxDataPerLine, &
    homog, &
    elemType, &
    elemOffset
@@ -1287,16 +1295,16 @@ subroutine mesh_spectral_build_elements(fileUnit)
    read(fileUnit,'(a65536)') line
  enddo
 
- maxIntCount = 0_pInt
+ maxDataPerLine = 0_pInt
  i = 1_pInt
 
  do while (i > 0_pInt)
    i = IO_countContinuousIntValues(fileUnit)
-   maxIntCount = max(maxIntCount, i)
+   maxDataPerLine = max(maxDataPerLine, i)                                                          ! found a longer line?
  enddo
  allocate(mesh_element    (4_pInt+8_pInt,mesh_NcpElems), source = 0_pInt)
- allocate(microstructures (1_pInt+maxIntCount),  source = 1_pInt)
- allocate(microGlobal(mesh_NcpElemsGlobal), source = 1_pInt)
+ allocate(microstructures (1_pInt+maxDataPerLine),  source = 1_pInt)                                ! prepare to receive counter and max data size
+ allocate(microGlobal     (mesh_NcpElemsGlobal), source = 1_pInt)
 
 !--------------------------------------------------------------------------------------------------
 ! read in microstructures
@@ -1307,7 +1315,7 @@ subroutine mesh_spectral_build_elements(fileUnit)
 
  e = 0_pInt
  do while (e < mesh_NcpElemsGlobal .and. microstructures(1) > 0_pInt)                               ! fill expected number of elements, stop at end of data (or blank line!)
-   microstructures = IO_continuousIntValues(fileUnit,maxIntCount,dummyName,dummySet,0_pInt)         ! get affected elements
+   microstructures = IO_continuousIntValues(fileUnit,maxDataPerLine,dummyName,dummySet,0_pInt)      ! get affected elements
    do i = 1_pInt,microstructures(1_pInt)
      e = e+1_pInt                                                                                   ! valid element entry
      microGlobal(e) = microstructures(1_pInt+i)
