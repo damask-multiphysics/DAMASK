@@ -1144,6 +1144,10 @@ subroutine material_populateGrains
  do e = 1_pInt, mesh_NcpElems
    homog = mesh_element(3,e)
    micro = mesh_element(4,e)
+   if (homog < 1_pInt .or. homog > size(Nelems,1)) &
+     call IO_error(154_pInt,e,0_pInt,0_pInt)
+   if (micro < 1_pInt .or. micro > size(Nelems,2)) &
+     call IO_error(155_pInt,e,0_pInt,0_pInt)
    Nelems(homog,micro) = Nelems(homog,micro) + 1_pInt
  enddo
  allocate(elemsOfHomogMicro(size(config_homogenization),size(config_microstructure)))
@@ -1163,10 +1167,6 @@ subroutine material_populateGrains
    t    = FE_geomtype(mesh_element(2,e))
    homog = mesh_element(3,e)
    micro = mesh_element(4,e)
-   if (homog < 1_pInt .or. homog > size(config_homogenization)) &                                      ! out of bounds
-     call IO_error(154_pInt,e,0_pInt,0_pInt)
-   if (micro < 1_pInt .or. micro > size(config_microstructure)) &                                      ! out of bounds
-     call IO_error(155_pInt,e,0_pInt,0_pInt)
    if (microstructure_elemhomo(micro)) then                                                         ! how many grains are needed at this element?
      dGrains = homogenization_Ngrains(homog)                                                        ! only one set of Ngrains (other IPs are plain copies)
    else

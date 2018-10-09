@@ -208,7 +208,7 @@ recursive function IO_recursiveRead(fileName,cnt) result(fileContent)
 ! count lines to allocate string array
   myTotalLines = 0_pInt
   do l=1_pInt, len(rawData)
-    if (rawData(l:l) == new_line('')) myTotalLines = myTotalLines+1
+    if (rawData(l:l) == new_line('') .or. l==len(rawData)) myTotalLines = myTotalLines+1            ! end of line or end of file without new line
   enddo
   allocate(fileContent(myTotalLines))
 
@@ -222,6 +222,7 @@ recursive function IO_recursiveRead(fileName,cnt) result(fileContent)
   do while (startPos <= len(rawData))
     l = l + 1_pInt
     endPos = endPos + scan(rawData(startPos:),new_line(''))
+    if(endPos < startPos) endPos = len(rawData)                                                     ! end of file without end of line
     if(endPos - startPos >256) call IO_error(107_pInt,ext_msg=trim(fileName))
     line = rawData(startPos:endPos-1_pInt)
     startPos = endPos + 1_pInt
