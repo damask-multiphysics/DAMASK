@@ -1459,7 +1459,7 @@ subroutine IO_error(error_ID,el,ip,g,instance,ext_msg)
  case (143_pInt)
    msg = 'no value found for key'
  case (144_pInt)
-   msg = 'negative number of systems'
+   msg = 'negative number systems requested'
  case (145_pInt)
    msg = 'too many systems requested'
 
