@@ -19,21 +19,27 @@ use PETScis
 
  implicit none
  private
+ integer(pInt), public, parameter :: &
+   mesh_ElemType=1_pInt                                                                             !< Element type of the mesh (only support homogeneous meshes)
 
  integer(pInt), public, protected :: &
    mesh_Nboundaries, &
    mesh_NcpElems, &                                                                                 !< total number of CP elements in mesh
    mesh_NcpElemsGlobal, &
    mesh_Nnodes, &                                                                                   !< total number of nodes in mesh
-   mesh_maxNnodes, &                                                                                !< max number of nodes in any CP element
-   mesh_maxNips, &                                                                                  !< max number of IPs in any CP element
-   mesh_maxNipNeighbors, &
-   mesh_Nelems                                                                                      !< total number of elements in mesh
+   mesh_NipsPerElem, &                                                                              !< number of IPs in per element
+   mesh_maxNipNeighbors
+!!!! BEGIN DEPRECATED !!!!!
+ integer(pInt), public, protected :: &
+   mesh_maxNips                                                                                     !< max number of IPs in any CP element
+!!!! BEGIN DEPRECATED !!!!!
 
- real(pReal), public, protected :: charLength
+ integer(pInt), dimension(:), allocatable, public, protected :: &
+   mesh_homogenizationAt, &                                                                         !< homogenization ID of each element
+   mesh_microstructureAt                                                                            !< microstructure ID of each element
  
  integer(pInt), dimension(:,:), allocatable, public, protected :: &
-   mesh_element                                                                                     !< FEid, type(internal representation), material, texture, node indices as CP IDs
+   mesh_element !DEPRECATED
 
  real(pReal), dimension(:,:), allocatable, public :: &
    mesh_node                                                                                        !< node x,y,z coordinates (after deformation! ONLY FOR MARC!!!)
@@ -61,27 +67,17 @@ use PETScis
  PetscInt, dimension(:), allocatable, public, protected :: &
    mesh_boundaries
 
-
- integer(pInt), parameter, public :: &
-   FE_Nelemtypes =  1_pInt, &
-   FE_Ngeomtypes =  1_pInt, &
-   FE_Ncelltypes =  1_pInt, &
-   FE_maxNnodes  =  1_pInt, &
-   FE_maxNips    = 14_pInt
                       
- integer(pInt), dimension(FE_Nelemtypes), parameter, public :: FE_geomtype = &                      !< geometry type of particular element type
+ integer(pInt), dimension(1_pInt), parameter, public :: FE_geomtype = &                      !< geometry type of particular element type
  int([1],pInt)
 
- integer(pInt), dimension(FE_Ngeomtypes), parameter, public  :: FE_celltype = &                     !< cell type that is used by each geometry type
+ integer(pInt), dimension(1_pInt), parameter, public  :: FE_celltype = &                     !< cell type that is used by each geometry type
  int([1],pInt)
 
- integer(pInt), dimension(FE_Nelemtypes), parameter, public :: FE_Nnodes = &                        !< number of nodes that constitute a specific type of element
- int([0],pInt) 
-
- integer(pInt), dimension(FE_Ngeomtypes),            public :: FE_Nips = &                          !< number of IPs in a specific type of element
+ integer(pInt), dimension(1_pInt),            public :: FE_Nips = &                          !< number of IPs in a specific type of element
  int([0],pInt)
 
- integer(pInt), dimension(FE_Ncelltypes), parameter, public :: FE_NipNeighbors = &                  !< number of ip neighbors / cell faces in a specific cell type
+ integer(pInt), dimension(1_pInt), parameter, public :: FE_NipNeighbors = &                  !< number of ip neighbors / cell faces in a specific cell type
  int([6],pInt)
 
 
@@ -98,7 +94,7 @@ contains
 !> @brief initializes the mesh by calling all necessary private routines the mesh module
 !! Order and routines strongly depend on type of solver
 !--------------------------------------------------------------------------------------------------
-subroutine mesh_init(ip,el)
+subroutine mesh_init()
  use DAMASK_interface
  use, intrinsic :: iso_fortran_env                                                                  ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
  use IO, only: &
@@ -120,15 +116,13 @@ subroutine mesh_init(ip,el)
    worldsize
  use FEsolving, only: &
    FEsolving_execElem, &
-   FEsolving_execIP, &
-   calcMode
+   FEsolving_execIP
  use FEM_Zoo, only: &
    FEM_Zoo_nQuadrature, &
    FEM_Zoo_QuadraturePoints
  
  implicit none
  integer(pInt), parameter :: FILEUNIT = 222_pInt
- integer(pInt), intent(in) :: el, ip
  integer(pInt) :: j
  integer(pInt), allocatable, dimension(:) :: chunkPos
  integer :: dimPlex
@@ -212,29 +206,25 @@ subroutine mesh_init(ip,el)
  endif  
  call DMDestroy(globalMesh,ierr); CHKERRQ(ierr)
  
- call DMGetStratumSize(geomMesh,'depth',dimPlex,mesh_Nelems,ierr)
+ call DMGetStratumSize(geomMesh,'depth',dimPlex,mesh_NcpElems,ierr)
  CHKERRQ(ierr)
  call DMGetStratumSize(geomMesh,'depth',0,mesh_Nnodes,ierr)
  CHKERRQ(ierr)
- mesh_NcpElems = mesh_Nelems
 
  FE_Nips(FE_geomtype(1_pInt)) = FEM_Zoo_nQuadrature(dimPlex,integrationOrder)
- mesh_maxNnodes = FE_Nnodes(1_pInt)
  mesh_maxNips = FE_Nips(1_pInt)
  call mesh_FEM_build_ipCoordinates(dimPlex,FEM_Zoo_QuadraturePoints(dimPlex,integrationOrder)%p)
  call mesh_FEM_build_ipVolumes(dimPlex)
  
- allocate (mesh_element (4_pInt+mesh_maxNnodes,mesh_NcpElems)); mesh_element = 0_pInt
+ allocate (mesh_element (4_pInt,mesh_NcpElems)); mesh_element = 0_pInt
  do j = 1, mesh_NcpElems
-   mesh_element( 1,j) = j
-   mesh_element( 2,j) = 1_pInt                                                                      ! elem type
+   mesh_element( 1,j) = -1_pInt                                                                     ! DEPRECATED
+   mesh_element( 2,j) = mesh_elemType                                                               ! elem type
    mesh_element( 3,j) = 1_pInt                                                                      ! homogenization
    call DMGetLabelValue(geomMesh,'material',j-1,mesh_element(4,j),ierr)
    CHKERRQ(ierr)
  end do 
 
- if (usePingPong .and. (mesh_Nelems /= mesh_NcpElems)) &
-   call IO_error(600_pInt)                                                                          ! ping-pong must be disabled when having non-DAMASK elements
  if (debug_e < 1 .or. debug_e > mesh_NcpElems) &
    call IO_error(602_pInt,ext_msg='element')                                                        ! selected element does not exist
  if (debug_i < 1 .or. debug_i > FE_Nips(FE_geomtype(mesh_element(2_pInt,debug_e)))) &
@@ -245,10 +235,14 @@ subroutine mesh_init(ip,el)
  allocate(FEsolving_execIP(2_pInt,mesh_NcpElems)); FEsolving_execIP = 1_pInt                        ! parallel loop bounds set to comprise from first IP...
  forall (j = 1_pInt:mesh_NcpElems) FEsolving_execIP(2,j) = FE_Nips(FE_geomtype(mesh_element(2,j)))  ! ...up to own IP count for each element
  
- if (allocated(calcMode)) deallocate(calcMode)
- allocate(calcMode(mesh_maxNips,mesh_NcpElems))
- calcMode = .false.                                                                                 ! pretend to have collected what first call is asking (F = I)
- calcMode(ip,el) = .true.                                                                           ! first ip,el needs to be already pingponged to "calc"
+!!!! COMPATIBILITY HACK !!!!
+! for a homogeneous mesh, all elements have the same number of IPs and and cell nodes.
+! hence, xxPerElem instead of maxXX
+ mesh_NipsPerElem      = mesh_maxNips
+! better name
+ mesh_homogenizationAt = mesh_element(3,:)
+ mesh_microstructureAt = mesh_element(4,:)
+!!!!!!!!!!!!!!!!!!!!!!!!
 
 end subroutine mesh_init
 

@@ -1488,6 +1488,8 @@ subroutine IO_error(error_ID,el,ip,g,instance,ext_msg)
    msg = 'no microstructure specified via State Variable 3'
  case (190_pInt)
    msg = 'unknown element type:'
+ case (191_pInt)
+   msg = 'mesh consists of more than one element type'
 
 !--------------------------------------------------------------------------------------------------
 ! plasticity error messages
