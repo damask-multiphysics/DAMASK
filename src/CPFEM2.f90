@@ -246,7 +246,7 @@ subroutine CPFEM_age()
  implicit none
 
  integer(pInt) ::                                    i, k, l, m, ph, homog, mySource
- character(len=32) :: rankStr, groupItem
+ character(len=32) :: rankStr, PlasticItem, HomogItem
  integer(HID_T) :: fileHandle, groupPlastic, groupHomog
  integer        :: hdferr
  integer(HSIZE_T)  :: hdfsize
@@ -296,15 +296,17 @@ if (restartWrite) then
   
   groupPlastic = HDF5_addGroup2(fileHandle,'PlasticPhases')
   do ph = 1_pInt,size(phase_plasticity)
-    !write(groupItem,'(a1,i0)') ph
-    !write(6,*) groupItem
-    call HDF5_write(plasticState(ph)%state0,groupPlastic,'convergedStateConst')
+    write(PlasticItem,*) ph,'_'
+    call HDF5_write(plasticState(ph)%state0,groupPlastic,trim(PlasticItem)//'convergedStateConst')
   enddo
   call HDF5_closeGroup(groupPlastic)
 
-  groupHomog = HDF5_addGroup2(fileHandle,'material_Nhomogenization')
+  groupHomog = HDF5_addGroup2(fileHandle,'HomogStates')
   do homog = 1_pInt, material_Nhomogenization
-    call HDF5_write(homogState(homog)%state0,groupHomog,'convergedStateHomog')
+    write(6,*) homog, '-----', material_Nhomogenization, '++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++'
+    write(HomogItem,*) homog,'_'
+    write(6,*) HomogItem, '!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!'
+    call HDF5_write(homogState(homog)%state0,groupHomog,trim(HomogItem)//'convergedStateHomog')
   enddo
   call HDF5_closeGroup(groupHomog)
   
