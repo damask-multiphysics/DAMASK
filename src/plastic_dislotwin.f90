@@ -1269,11 +1269,9 @@ subroutine plastic_dislotwin_dotState(Mp,Temperature,instance,of)
              - sum(stt%stressTransFraction(1_pInt:prm%totalNtrans,of)) &
              - sum(stt%strainTransFraction(1_pInt:prm%totalNtrans,of))
 
- slipState1: do i = 1_pInt, prm%totalNslip
-   tau = math_mul33xx33(Mp,prm%Schmid_slip(1:3,1:3,i))
- enddo slipState1
  call kinetics_slip(prm,stt,mse,of,Mp,temperature,gdot_slip)
- slipState2: do i = 1_pInt, prm%totalNslip
+ slipState: do i = 1_pInt, prm%totalNslip
+   tau = math_mul33xx33(Mp,prm%Schmid_slip(1:3,1:3,i))
 
    DotRhoMultiplication = abs(gdot_slip(i))/(prm%burgers_slip(i)*mse%mfp_slip(i,of))
    EdgeDipMinDistance = prm%CEdgeDipMinDistance*prm%burgers_slip(i)
@@ -1315,7 +1313,7 @@ subroutine plastic_dislotwin_dotState(Mp,Temperature,instance,of)
    dot%rhoEdge(i,of)    = DotRhoMultiplication-DotRhoDipFormation-DotRhoEdgeEdgeAnnihilation
    dot%rhoEdgeDip(i,of) = DotRhoDipFormation-DotRhoEdgeDipAnnihilation-DotRhoEdgeDipClimb
    dot%accshear_slip(i,of) = abs(gdot_slip(i))
- enddo slipState2
+ enddo slipState
  
  twinState: do i = 1_pInt, prm%totalNtwin
    
