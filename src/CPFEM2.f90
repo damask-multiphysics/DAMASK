@@ -83,7 +83,6 @@ subroutine CPFEM_initAll(el,ip)
 
 end subroutine CPFEM_initAll
 
-
 !--------------------------------------------------------------------------------------------------
 !> @brief allocate the arrays defined in module CPFEM and initialize them
 !--------------------------------------------------------------------------------------------------
@@ -135,7 +134,7 @@ subroutine CPFEM_init
 
  implicit none
  integer(pInt) :: k,l,m,ph,homog
- character(len=1024) :: rankStr
+ character(len=1024) :: rankStr, PlasticItem, HomogItem
  integer(HID_T) :: fileReadID, groupPlasticID, groupHomogID
  integer        :: hdferr
 
@@ -158,9 +157,7 @@ subroutine CPFEM_init
    fileReadID = HDF5_openFile(trim(getSolverJobName())//trim(rankStr)//'.hdf5')
   
    call HDF5_read(material_phase,      fileReadID,'recordedPhase')
-   write(6,*) material_phase
    call HDF5_read(crystallite_F0,      fileReadID,'convergedF')
-   write(6,*) crystallite_F0
    call HDF5_read(crystallite_Fp0,     fileReadID,'convergedFp')
    call HDF5_read(crystallite_Fi0,     fileReadID,'convergedFi')
    call HDF5_read(crystallite_Lp0,     fileReadID,'convergedLp')
@@ -170,20 +167,20 @@ subroutine CPFEM_init
    
    groupPlasticID = HDF5_openGroup2(fileReadID,'PlasticPhases')
    do ph = 1_pInt,size(phase_plasticity)
-    call HDF5_read(plasticState(ph)%state0,groupPlasticID,'convergedStateConst')
-    write(6,*) plasticState(ph)%state0
+    write(PlasticItem,*) ph,'_'
+    call HDF5_read(plasticState(ph)%state0,groupPlasticID,trim(PlasticItem)//'convergedStateConst')
    enddo
    
-   groupHomogID = HDF5_openGroup2(fileReadID,'material_Nhomogenization')
+   groupHomogID = HDF5_openGroup2(fileReadID,'HomogStates')
    do homog = 1_pInt, material_Nhomogenization
-    call HDF5_read(homogState(homog)%state0, groupHomogID,'convergedStateHomog')
+    write(HomogItem,*) homog,'_'
+    call HDF5_read(homogState(homog)%state0, groupHomogID,trim(HomogItem)//'convergedStateHomog')
    enddo
    
    restartRead = .false.
  endif
 
 end subroutine CPFEM_init
-
 
 !--------------------------------------------------------------------------------------------------
 !> @brief forwards data after successful increment
@@ -250,7 +247,6 @@ subroutine CPFEM_age()
  integer(HID_T) :: fileHandle, groupPlastic, groupHomog
  integer        :: hdferr
  integer(HSIZE_T)  :: hdfsize
- 
 
 if (iand(debug_level(debug_CPFEM), debug_levelBasic) /= 0_pInt) &
   write(6,'(a)') '<< CPFEM >> aging states'
@@ -303,9 +299,7 @@ if (restartWrite) then
 
   groupHomog = HDF5_addGroup2(fileHandle,'HomogStates')
   do homog = 1_pInt, material_Nhomogenization
-    write(6,*) homog, '-----', material_Nhomogenization, '++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++'
     write(HomogItem,*) homog,'_'
-    write(6,*) HomogItem, '!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!'
     call HDF5_write(homogState(homog)%state0,groupHomog,trim(HomogItem)//'convergedStateHomog')
   enddo
   call HDF5_closeGroup(groupHomog)

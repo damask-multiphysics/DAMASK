@@ -22,7 +22,6 @@ module HDF5_Utilities
 !> @brief reads pInt or pReal data of defined shape from file
 !--------------------------------------------------------------------------------------------------
  interface HDF5_read
-   !module procedure HDF5_read_pReal_0
    module procedure HDF5_read_pReal_1
    module procedure HDF5_read_pReal_2
    module procedure HDF5_read_pReal_3
@@ -30,29 +29,14 @@ module HDF5_Utilities
    module procedure HDF5_read_pReal_5
    module procedure HDF5_read_pReal_6
    module procedure HDF5_read_pReal_7
-   ! module procedure HDF5_read_pReal_8
-   ! module procedure HDF5_read_pReal_9
-   ! module procedure HDF5_read_pReal_10
-   ! module procedure HDF5_read_pReal_11
-   ! module procedure HDF5_read_pReal_12
-   ! module procedure HDF5_read_pReal_13
-   ! module procedure HDF5_read_pReal_14
    
-   !module procedure HDF5_read_pInt_0
    module procedure HDF5_read_pInt_1
    module procedure HDF5_read_pInt_2
    module procedure HDF5_read_pInt_3
    module procedure HDF5_read_pInt_4
    module procedure HDF5_read_pInt_5
    module procedure HDF5_read_pInt_6
-   module procedure HDF5_read_pInt_7
-   ! module procedure HDF5_read_pInt_8
-   ! module procedure HDF5_read_pInt_9
-   ! module procedure HDF5_read_pInt_10
-   ! module procedure HDF5_read_pInt_11
-   ! module procedure HDF5_read_pInt_12
-   ! module procedure HDF5_read_pInt_13
-   ! module procedure HDF5_read_pInt_14             !ABOVE 8 DIMENSIONS IT GIVES ERROR: THE CALL TO H5DREAD_F DOESNT WORK
+   module procedure HDF5_read_pInt_7  !ABOVE 8 DIMENSIONS IT GIVES ERROR: THE CALL TO H5DREAD_F DOESNT WORK
    
  end interface HDF5_read
 
@@ -60,7 +44,6 @@ module HDF5_Utilities
 !> @brief writes pInt or pReal data of defined shape to file
 !--------------------------------------------------------------------------------------------------
  interface HDF5_write
-   !module procedure HDF5_write_pReal0
    module procedure HDF5_write_pReal1
    module procedure HDF5_write_pReal2
    module procedure HDF5_write_pReal3
@@ -68,30 +51,14 @@ module HDF5_Utilities
    module procedure HDF5_write_pReal5
    module procedure HDF5_write_pReal6
    module procedure HDF5_write_pReal7
-   ! module procedure HDF5_write_pReal8
-   ! module procedure HDF5_write_pReal9
-   ! module procedure HDF5_write_pReal10
-   ! module procedure HDF5_write_pReal11
-   ! module procedure HDF5_write_pReal12
-   ! module procedure HDF5_write_pReal13
-   ! module procedure HDF5_write_pReal14
    
-   
-   !module procedure HDF5_write_pInt0
    module procedure HDF5_write_pInt1
    module procedure HDF5_write_pInt2
    module procedure HDF5_write_pInt3
    module procedure HDF5_write_pInt4
    module procedure HDF5_write_pInt5
    module procedure HDF5_write_pInt6
-   module procedure HDF5_write_pInt7
-   ! module procedure HDF5_write_pInt8
-   ! module procedure HDF5_write_pInt9
-   ! module procedure HDF5_write_pInt10
-   ! module procedure HDF5_write_pInt11
-   ! module procedure HDF5_write_pInt12
-   ! module procedure HDF5_write_pInt13
-   ! module procedure HDF5_write_pInt14           !ABOVE 8 DIMENSIONS IT GIVES ERROR: THE CALL TO H5DREAD_F DOESNT WORK
+   module procedure HDF5_write_pInt7  !ABOVE 8 DIMENSIONS IT GIVES ERROR: THE CALL TO H5DREAD_F DOESNT WORK
    
  end interface HDF5_write
 
@@ -124,7 +91,7 @@ contains
 
 subroutine HDF5_Utilities_init
  use, intrinsic :: &
-   iso_fortran_env                                                                                  ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
+   iso_fortran_env  ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
 
  implicit none
  integer              :: hdferr
@@ -149,7 +116,6 @@ subroutine HDF5_Utilities_init
  
 end subroutine HDF5_Utilities_init
 
-
 !--------------------------------------------------------------------------------------------------
 !> @brief creates and initializes HDF5 output files
 !--------------------------------------------------------------------------------------------------
@@ -164,7 +130,6 @@ subroutine HDF5_createJobFile
 #ifdef PETSc
 #include <petsc/finclude/petscsys.h> 
 #endif
-
 
 #ifdef PETSc
  call h5pcreate_f(H5P_FILE_ACCESS_F, plist_id, hdferr)
@@ -192,11 +157,10 @@ end subroutine HDF5_createJobFile
  use hdf5
  use DAMASK_interface, only: &
    getSolverJobName
-
+   
  implicit none
- integer              :: hdferr
- 
- integer(SIZE_T)      :: typeSize 
+ integer                       :: hdferr
+ integer(SIZE_T)               :: typeSize 
  character(len=*), intent(in)  :: path
 #ifdef PETSc
 #include <petsc/finclude/petscsys.h> 
@@ -208,7 +172,6 @@ end subroutine HDF5_createJobFile
  call h5pset_fapl_mpio_f(plist_id, PETSC_COMM_WORLD, MPI_INFO_NULL, hdferr)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_Utilities_init: h5pset_fapl_mpio_f') 
 #endif
-
 !--------------------------------------------------------------------------------------------------
 ! create a file
  !call h5fcreate_f(path,H5F_ACC_TRUNC_F,resultsFile,hdferr)
@@ -219,7 +182,6 @@ end subroutine HDF5_createJobFile
 
 end function HDF5_createFile
 
-
 !--------------------------------------------------------------------------------------------------
 !> @brief close the opened HDF5 output file
 !--------------------------------------------------------------------------------------------------
@@ -227,14 +189,13 @@ subroutine HDF5_closeJobFile()
  use hdf5
  
  implicit none
- integer :: hdferr
+ integer  :: hdferr
  call HDF5_removeLink('current')
  call h5fclose_f(resultsFile,hdferr)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_closeJobFile: h5fclose_f',el=hdferr)
 ! call h5close_f(hdferr)
 
 end subroutine HDF5_closeJobFile
-
 
 !--------------------------------------------------------------------------------------------------
 !> @brief open and initializes HDF5 output file
@@ -253,7 +214,7 @@ integer(HID_T) function HDF5_openFile(fileName,mode)
    m = 'r'
  endif
  
- if (   m == 'w') then
+ if (m == 'w') then
    call h5fcreate_f(fileName,H5F_ACC_TRUNC_F,HDF5_openFile,hdferr)
    if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_openFile: h5fcreate_f',el=hdferr)
  elseif(m == 'a') then
@@ -267,7 +228,6 @@ integer(HID_T) function HDF5_openFile(fileName,mode)
  endif
 
 end function HDF5_openFile
-
 
 !--------------------------------------------------------------------------------------------------
 !> @brief close the opened HDF5 output file
@@ -306,11 +266,12 @@ integer(HID_T) function HDF5_addGroup2(fileHandle,groupName)
 
  implicit none
  character(len=*), intent(in) :: groupName
- integer(HID_T), intent(in) :: fileHandle
+ integer(HID_T), intent(in)   :: fileHandle
  integer                      :: hdferr
  
  call h5gcreate_f(fileHandle, trim(groupName), HDF5_addGroup2, hdferr)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg = 'HDF5_addGroup2: h5gcreate_f ('//trim(groupName)//')')
+ 
 end function HDF5_addGroup2
 
 
@@ -338,13 +299,12 @@ integer(HID_T) function HDF5_openGroup2(FileReadID,path)
  implicit none
  character(len=*), intent(in) :: path
  integer                      :: hdferr
- integer(HID_T), intent(in)    :: FileReadID
- !write(6,*) FileReadID,'hello';flush(6)
+ integer(HID_T), intent(in)   :: FileReadID
+ 
  call h5gopen_f(FileReadID, trim(path), HDF5_openGroup2, hdferr)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg = 'HDF5_openGroup2: h5gopen_f ('//trim(path)//')')
 
 end function HDF5_openGroup2
-
 
 !--------------------------------------------------------------------------------------------------
 !> @brief ???
@@ -383,8 +343,6 @@ subroutine HDF5_removeLink(link)
 
 end subroutine HDF5_removeLink
 
-
-
 !--------------------------------------------------------------------------------------------------
 !> @brief closes a group
 !--------------------------------------------------------------------------------------------------
@@ -399,7 +357,6 @@ subroutine HDF5_closeGroup(ID)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg = 'HDF5_closeGroup: h5gclose_f (el is ID)', el = int(ID,pInt))
 
 end subroutine HDF5_closeGroup
-
 
 !--------------------------------------------------------------------------------------------------
 !> @brief adds a StringAttribute to the results file
@@ -430,7 +387,6 @@ subroutine HDF5_addStringAttribute(entity,attrLabel,attrValue)
 
 end subroutine HDF5_addStringAttribute
 
-
 !--------------------------------------------------------------------------------------------------
 !> @brief adds the unique mapping from spatial position and constituent ID to results
 !--------------------------------------------------------------------------------------------------
@@ -438,24 +394,23 @@ subroutine HDF5_mappingPhase(mapping,mapping2,Nconstituents,material_phase,phase
  use hdf5
 
  implicit none
- integer(pInt),    intent(in) :: Nconstituents, dataspace_size, mpiOffset
+ integer(pInt),    intent(in)                   :: Nconstituents, dataspace_size, mpiOffset
  integer(pInt),    intent(in), dimension(:)     :: mapping, mapping2
  character(len=*), intent(in), dimension(:)     :: phase_name
  integer(pInt),    intent(in), dimension(:)     :: mpiOffset_phase
  integer(pInt),    intent(in), dimension(:,:,:) :: material_phase
  
  character(len=len(phase_name(1))), dimension(:), allocatable :: namesNA
- character(len=len(phase_name(1))) :: a
- character(len=*),parameter :: n = "NULL"
+ character(len=len(phase_name(1)))                            :: a
+ character(len=*),                  parameter                 :: n = "NULL"
  
- integer(pInt)  :: hdferr, NmatPoints, i, j, k
- integer(HID_T) :: mapping_id, dtype_id, dset_id, space_id, name_id, position_id, plist_id, memspace
- 
+ integer(pInt)   :: hdferr, NmatPoints, i, j, k
+ integer(HID_T)  :: mapping_id, dtype_id, dset_id, space_id, name_id, position_id, plist_id, memspace
  integer(HID_T)  :: dt5_id      ! Memory datatype identifier
  integer(SIZE_T) :: typesize, type_sizec, type_sizei, type_size
  
- integer(HSIZE_T),  dimension(2) :: counter
- integer(HSSIZE_T), dimension(2) :: fileOffset
+ integer(HSIZE_T),  dimension(2)                :: counter
+ integer(HSSIZE_T), dimension(2)                :: fileOffset
  integer(pInt),     dimension(:,:), allocatable :: arrOffset
 
  a = n
@@ -472,7 +427,7 @@ subroutine HDF5_mappingPhase(mapping,mapping2,Nconstituents,material_phase,phase
      enddo
    enddo
  enddo
-  
+ 
 !--------------------------------------------------------------------------------------------------
 ! create dataspace
  call h5screate_simple_f(2, int([Nconstituents,dataspace_size],HSIZE_T), space_id, hdferr, &
@@ -567,7 +522,6 @@ subroutine HDF5_mappingPhase(mapping,mapping2,Nconstituents,material_phase,phase
 
 end subroutine HDF5_mappingPhase
 
-
 !--------------------------------------------------------------------------------------------------
 !> @brief adds the backward mapping from spatial position and constituent ID to results
 !--------------------------------------------------------------------------------------------------
@@ -580,8 +534,8 @@ subroutine HDF5_backwardMappingPhase(material_phase,phasememberat,phase_name,dat
  integer(pInt),    intent(in), dimension(:)     :: dataspace_size, mpiOffset_phase
  integer(pInt),    intent(in)                   :: mpiOffset
   
- integer(pInt)  :: hdferr, NmatPoints, Nconstituents, i, j
- integer(HID_T) :: mapping_id, dtype_id, dset_id, space_id, position_id, plist_id, memspace
+ integer(pInt)   :: hdferr, NmatPoints, Nconstituents, i, j
+ integer(HID_T)  :: mapping_id, dtype_id, dset_id, space_id, position_id, plist_id, memspace
  integer(SIZE_T) :: type_size
  
  integer(pInt), dimension(:,:), allocatable :: arr
@@ -602,7 +556,6 @@ subroutine HDF5_backwardMappingPhase(material_phase,phasememberat,phase_name,dat
    enddo
  enddo 
  arr(2,:) = pack(material_phase,material_phase/=0_pInt)
- 
  
  do i=1_pInt, size(phase_name)
    write(phaseID, '(i0)') i
@@ -681,7 +634,6 @@ subroutine HDF5_backwardMappingPhase(material_phase,phasememberat,phase_name,dat
 
 end subroutine HDF5_backwardMappingPhase
 
-
 !--------------------------------------------------------------------------------------------------
 !> @brief adds the unique mapping from spatial position and constituent ID to results
 !--------------------------------------------------------------------------------------------------
@@ -694,14 +646,14 @@ subroutine HDF5_mappingHomog(material_homog,homogmemberat,homogenization_name,da
  integer(pInt),    intent(in), dimension(:)   :: mpiOffset_homog
  integer(pInt),    intent(in)                 :: dataspace_size, mpiOffset
 
- integer(pInt)  :: hdferr, NmatPoints, i, j
- integer(HID_T) :: mapping_id, dtype_id, dset_id, space_id, name_id, position_id, plist_id, memspace
+ integer(pInt)   :: hdferr, NmatPoints, i, j
+ integer(HID_T)  :: mapping_id, dtype_id, dset_id, space_id, name_id, position_id, plist_id, memspace
 
  integer(HID_T)  :: dt5_id      ! Memory datatype identifier
  integer(SIZE_T) :: typesize, type_sizec, type_sizei, type_size
  
- integer(HSIZE_T),  dimension(1) :: counter
- integer(HSSIZE_T), dimension(1) :: fileOffset
+ integer(HSIZE_T),  dimension(1)              :: counter
+ integer(HSSIZE_T), dimension(1)              :: fileOffset
  integer(pInt),     dimension(:), allocatable :: arrOffset
  
  NmatPoints = count(material_homog /=0_pInt)
@@ -709,12 +661,12 @@ subroutine HDF5_mappingHomog(material_homog,homogmemberat,homogenization_name,da
  
  allocate(arrOffset(NmatPoints))
  do i=1_pInt, NmatPoints
-   do j=1_pInt, size(homogenization_name)   
+   do j=1_pInt, size(homogenization_name)
      if(material_homog(1,i) == j) &
        arrOffset(i) = mpiOffset_homog(j)
    enddo
- enddo 
-  
+ enddo
+ 
 !--------------------------------------------------------------------------------------------------
 ! create dataspace
  call h5screate_simple_f(1, int([dataspace_size],HSIZE_T), space_id, hdferr, &
@@ -805,9 +757,7 @@ subroutine HDF5_mappingHomog(material_homog,homogmemberat,homogenization_name,da
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingHomog: h5pclose_f')
  call HDF5_closeGroup(mapping_ID)
 
-
 end subroutine HDF5_mappingHomog
-
 
 !--------------------------------------------------------------------------------------------------
 !> @brief adds the backward mapping from spatial position and constituent ID to results
@@ -825,7 +775,7 @@ subroutine HDF5_backwardMappingHomog(material_homog,homogmemberat,homogenization
  integer(HID_T)  :: mapping_id, dtype_id, dset_id, space_id, position_id, plist_id, memspace
  integer(SIZE_T) :: type_size
  
- integer(pInt), dimension(:,:), allocatable :: arr
+ integer(pInt),     dimension(:,:), allocatable :: arr
  
  integer(HSIZE_T),  dimension(1) :: counter
  integer(HSSIZE_T), dimension(1) :: fileOffset
@@ -927,16 +877,17 @@ subroutine HDF5_mappingCrystallite(crystalliteAt,crystmemberAt,crystallite_name,
  integer(pInt),    intent(in), dimension(:)     :: mpiOffset_cryst
  integer(pInt),    intent(in)                   :: dataspace_size, mpiOffset
 
- integer        :: hdferr
- integer(pInt)  :: NmatPoints, Nconstituents, i, j
- integer(HID_T) :: mapping_id, dtype_id, dset_id, space_id, name_id, plist_id, memspace
+ integer         :: hdferr
+ integer(pInt)   :: NmatPoints, Nconstituents, i, j
+ integer(HID_T)  :: mapping_id, dtype_id, dset_id, space_id, name_id, plist_id, memspace
+ 
  integer(HID_T), dimension(:), allocatable :: position_id
  
  integer(HID_T)  :: dt5_id      ! Memory datatype identifier
  integer(SIZE_T) :: typesize, type_sizec, type_sizei, type_size
      
- integer(HSIZE_T),  dimension(1) :: counter
- integer(HSSIZE_T), dimension(1) :: fileOffset
+ integer(HSIZE_T),  dimension(1)              :: counter
+ integer(HSSIZE_T), dimension(1)              :: fileOffset
  integer(pInt),     dimension(:), allocatable :: arrOffset
  
  character(len=64) :: m
@@ -1055,7 +1006,6 @@ subroutine HDF5_mappingCrystallite(crystalliteAt,crystmemberAt,crystallite_name,
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingCrystallite: h5pclose_f')
  call HDF5_closeGroup(mapping_ID)
 
-
 end subroutine HDF5_mappingCrystallite
 
 
@@ -1077,7 +1027,7 @@ subroutine HDF5_backwardMappingCrystallite(crystalliteAt,crystmemberAt,crystalli
  integer(HID_T)  :: mapping_id, dtype_id, dset_id, space_id, position_id, plist_id, memspace
  integer(SIZE_T) :: type_size
  
- integer(pInt), dimension(:,:), allocatable :: h_arr, arr
+ integer(pInt), dimension(:,:), allocatable     :: h_arr, arr
  
  integer(HSIZE_T),  dimension(1) :: counter
  integer(HSSIZE_T), dimension(1) :: fileOffset
@@ -1100,7 +1050,6 @@ subroutine HDF5_backwardMappingCrystallite(crystalliteAt,crystmemberAt,crystalli
    enddo
  enddo 
 
- 
  do i=1_pInt, size(crystallite_name) 
    if (crystallite_name(i) == 'none') cycle
    write(crystallID, '(i0)') i
@@ -1180,8 +1129,6 @@ subroutine HDF5_backwardMappingCrystallite(crystalliteAt,crystmemberAt,crystalli
 
 end subroutine HDF5_backwardMappingCrystallite
 
-
-
 !--------------------------------------------------------------------------------------------------
 !> @brief adds the unique cell to node mapping
 !--------------------------------------------------------------------------------------------------
@@ -1223,8 +1170,6 @@ subroutine HDF5_mappingCells(mapping)
 
 end subroutine HDF5_mappingCells
 
-
-
 !--------------------------------------------------------------------------------------------------
 !> @brief creates a new 3D Tensor dataset in the given group location   !!!TODO: really necessary?
 !--------------------------------------------------------------------------------------------------
@@ -1232,12 +1177,12 @@ subroutine HDF5_addTensor3DDataset(group,Nnodes,tensorSize,label,SIunit)
  use hdf5
 
  implicit none
- integer(HID_T),   intent(in) :: group
- integer(pInt),    intent(in) :: Nnodes, tensorSize
- character(len=*), intent(in) :: SIunit, label
+ integer(HID_T),   intent(in)   :: group
+ integer(pInt),    intent(in)   :: Nnodes, tensorSize
+ character(len=*), intent(in)   :: SIunit, label
 
- integer        :: hdferr
- integer(HID_T) :: space_id, dset_id
+ integer                        :: hdferr
+ integer(HID_T)                 :: space_id, dset_id
  integer(HSIZE_T), dimension(3) :: dataShape
   
  dataShape = int([tensorSize,tensorSize,Nnodes], HSIZE_T)                
@@ -1268,9 +1213,9 @@ subroutine HDF5_writeVectorDataset(group,dataset,label,SIunit,dataspace_size,mpi
  use hdf5
 
  implicit none
- integer(HID_T),   intent(in) :: group
- character(len=*), intent(in) :: SIunit,label
- integer(pInt),    intent(in) :: dataspace_size, mpiOffset
+ integer(HID_T),   intent(in)                 :: group
+ character(len=*), intent(in)                 :: SIunit,label
+ integer(pInt),    intent(in)                 :: dataspace_size, mpiOffset
  real(pReal),      intent(in), dimension(:,:) :: dataset
 
  integer        :: hdferr, vectorSize
@@ -1328,16 +1273,16 @@ subroutine HDF5_writeTensorDataset(group,dataset,label,SIunit,dataspace_size,mpi
  use hdf5
 
  implicit none
- integer(HID_T),   intent(in) :: group
- character(len=*), intent(in) :: SIunit,label
- integer(pInt),    intent(in) :: dataspace_size, mpiOffset
+ integer(HID_T),   intent(in)                   :: group
+ character(len=*), intent(in)                   :: SIunit,label
+ integer(pInt),    intent(in)                   :: dataspace_size, mpiOffset
  real(pReal),      intent(in), dimension(:,:,:) :: dataset
 
  integer        :: hdferr, tensorSize
  integer(HID_T) :: dset_id, space_id, memspace, plist_id 
  
- integer(HSIZE_T),  dimension(3) :: counter
- integer(HSSIZE_T), dimension(3) :: fileOffset
+ integer(HSIZE_T),  dimension(3)                :: counter
+ integer(HSSIZE_T), dimension(3)                :: fileOffset
  
  if(any(shape(dataset) == 0)) return
  
@@ -1382,7 +1327,6 @@ subroutine HDF5_writeTensorDataset(group,dataset,label,SIunit,dataspace_size,mpi
  
  end subroutine HDF5_writeTensorDataset
 
-
 !--------------------------------------------------------------------------------------------------
 !> @brief adds a new vector dataset to the given group location
 !--------------------------------------------------------------------------------------------------
@@ -1417,7 +1361,6 @@ subroutine HDF5_addVectorDataset(group,nnodes,vectorSize,label,SIunit)
 
 end subroutine HDF5_addVectorDataset
 
-
 !--------------------------------------------------------------------------------------------------
 !> @brief writes to a new scalar dataset in the given group location
 !--------------------------------------------------------------------------------------------------
@@ -1425,16 +1368,16 @@ subroutine HDF5_writeScalarDataset(group,dataset,label,SIunit,dataspace_size,mpi
  use hdf5
 
  implicit none
- integer(HID_T),   intent(in) :: group
- character(len=*), intent(in) :: SIunit,label
- integer(pInt),    intent(in) :: dataspace_size, mpiOffset
+ integer(HID_T),   intent(in)               :: group
+ character(len=*), intent(in)               :: SIunit,label
+ integer(pInt),    intent(in)               :: dataspace_size, mpiOffset
  real(pReal),      intent(in), dimension(:) :: dataset
 
  integer        :: hdferr, nNodes
  integer(HID_T) :: dset_id, space_id, memspace, plist_id
  
- integer(HSIZE_T),  dimension(1) :: counter
- integer(HSIZE_T), dimension(1) :: fileOffset
+ integer(HSIZE_T), dimension(1)             :: counter
+ integer(HSIZE_T), dimension(1)             :: fileOffset
  
  nNodes = size(dataset)
  if (nNodes < 1) return
@@ -1474,77 +1417,8 @@ subroutine HDF5_writeScalarDataset(group,dataset,label,SIunit,dataspace_size,mpi
  
 end subroutine HDF5_writeScalarDataset
 
-
-! !--------------------------------------------------------------------------------------------------
-! !> @brief subroutine for reading dataset of the type pReal
-! !> reads in arbitrarly shaped data set
-! !--------------------------------------------------------------------------------------------------
-! subroutine HDF5_read_pReal(dataset,loc_id,datasetName)
-
- ! implicit none
- ! real(pReal),   dimension(..), intent(out) :: dataset
- ! integer(HID_T),               intent(in)  :: loc_id                                                !< file or group handle
- ! character(len=*),             intent(in)  :: datasetName                                           !< name of the dataset in the file
-
- ! call HDF5_read_pReal_shape(dataset,loc_id,datasetName,int(shape(dataset),HSIZE_T))
-
- ! contains
- 
-! !--------------------------------------------------------------------------------------------------
-! !> @brief shape-aware subroutine for reading dataset of the type pReal
-! !> @details dimension(..) cannot be handled by h5dread_f
-! !--------------------------------------------------------------------------------------------------
- ! subroutine HDF5_read_pReal_shape(dataset,loc_id,datasetName,myShape)
-
-   ! implicit none
-   ! real(pReal),     dimension(*), intent(out) :: dataset
-   ! integer(HID_T),                intent(in)  :: loc_id                                             !< file or group handle
-   ! character(len=*),              intent(in)  :: datasetName                                        !< name of the dataset in the file
-   ! integer(HSIZE_T),dimension(:), intent(in)  :: myShape
- 
-   ! integer(HID_T) :: dset_id
-   ! integer        :: hdferr
-
-   ! call h5dopen_f(loc_id,datasetName,dset_id,hdferr)
-   ! if (hdferr /= 0) call IO_error(0_pInt,ext_msg='HDF5_read_pReal_shape: h5dopen_f')
-   ! call h5dread_f(dset_id,H5T_NATIVE_DOUBLE,dataset,myShape,hdferr)
-   ! if (hdferr /= 0) call IO_error(0_pInt,ext_msg='HDF5_read_pReal_shape: h5dread_f')
-   ! call h5dclose_f(dset_id,hdferr)
-   ! if (hdferr /= 0) call IO_error(0_pInt,ext_msg='HDF5_read_pReal_shape: h5dclose_f')
-
- ! end subroutine HDF5_read_pReal_shape
-
-! end subroutine HDF5_read_pReal
-
 !--------------------------------------------------------------------------------------------------
-!> @brief multiple subroutines for reading datasets of different ranks. Intel compiler doesnt accept 
-!> assumed rank formulation
-!--------------------------------------------------------------------------------------------------
-! !--------------------------------------------------------------------------------------------------
-! !> @brief subroutine for reading dataset of the type pReal with 0 dimensions
-! !--------------------------------------------------------------------------------------------------
-! subroutine HDF5_read_pReal_0(dataset,loc_id,datasetName)
-
- ! implicit none
- ! real(pReal),      intent(out) ::    dataset
- ! integer(HID_T),   intent(in) :: loc_id                                                             !< file or group handle
- ! character(len=*), intent(in) :: datasetName                                                        !< name of the dataset in the file
- ! integer(pInt),dimension(:), allocatable  :: myShape
- ! myShape = shape(dataset)
- ! integer        :: hdferr
- ! integer(HID_T) :: dset_id
- 
- ! call h5dopen_f(loc_id,datasetName,dset_id,hdferr)
- ! if (hdferr /= 0) call IO_error(0_pInt,ext_msg='HDF5_read_pReal_shape0: h5dopen_f')
- ! call h5dread_f(dset_id,H5T_NATIVE_DOUBLE,dataset,int(myShape,HSIZE_T),hdferr)
- ! if (hdferr /= 0) call IO_error(0_pInt,ext_msg='HDF5_read_pReal_shape0: h5dread_f')
- ! call h5dclose_f(dset_id,hdferr)
- ! if (hdferr /= 0) call IO_error(0_pInt,ext_msg='HDF5_read_pReal_shape0: h5dclose_f')
-
-! end subroutine HDF5_read_pReal_0
-
-!--------------------------------------------------------------------------------------------------
-!> @brief subroutine for reading dataset of the type pReal with 1 dimensions
+!> @brief subroutine for reading dataset of the type pReal with 1 dimension
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_read_pReal_1(dataset,loc_id,datasetName)
 
@@ -1710,244 +1584,7 @@ subroutine HDF5_read_pReal_7(dataset,loc_id,datasetName)
 end subroutine HDF5_read_pReal_7
 
 !--------------------------------------------------------------------------------------------------
-!> @brief subroutine for reading dataset of the type pReal with 8 dimensions
-!--------------------------------------------------------------------------------------------------
-! subroutine HDF5_read_pReal_8(dataset,loc_id,datasetName)
-
- ! implicit none
- ! real(pReal),      intent(out), dimension(:,:,:,:,:,:,:,:) ::    dataset
- ! integer(HID_T),   intent(in) :: loc_id                                                             !< file or group handle
- ! character(len=*), intent(in) :: datasetName                                                        !< name of the dataset in the file
- ! integer(pInt),dimension(:), allocatable  :: myShape
- 
- ! integer        :: hdferr
- ! integer(HID_T) :: dset_id
- ! myShape = shape(dataset)
- 
- ! call h5dopen_f(loc_id,datasetName,dset_id,hdferr)
- ! if (hdferr /= 0) call IO_error(0_pInt,ext_msg='HDF5_read_pReal__shape8: h5dopen_f')
- ! call h5dread_f(dset_id,H5T_NATIVE_DOUBLE,dataset,int(myShape,HSIZE_T),hdferr)
- ! if (hdferr /= 0) call IO_error(0_pInt,ext_msg='HDF5_read_pReal__shape8: h5dread_f')
- ! call h5dclose_f(dset_id,hdferr)
- ! if (hdferr /= 0) call IO_error(0_pInt,ext_msg='HDF5_read_pReal__shape8: h5dclose_f')
-
-! end subroutine HDF5_read_pReal_8
-
-! !--------------------------------------------------------------------------------------------------
-! !> @brief subroutine for reading dataset of the type pReal with 9 dimensions
-! !--------------------------------------------------------------------------------------------------
-! subroutine HDF5_read_pReal_9(dataset,loc_id,datasetName)
-
- ! implicit none
- ! real(pReal),      intent(out), dimension(:,:,:,:,:,:,:,:,:) ::    dataset
- ! integer(HID_T),   intent(in) :: loc_id                                                             !< file or group handle
- ! character(len=*), intent(in) :: datasetName                                                        !< name of the dataset in the file
- ! integer(pInt),dimension(:), allocatable  :: myShape
- 
- ! integer        :: hdferr
- ! integer(HID_T) :: dset_id
- ! myShape = shape(dataset)
- 
- ! call h5dopen_f(loc_id,datasetName,dset_id,hdferr)
- ! if (hdferr /= 0) call IO_error(0_pInt,ext_msg='HDF5_read_pReal__shape9: h5dopen_f')
- ! call h5dread_f(dset_id,H5T_NATIVE_DOUBLE,dataset,int(myShape,HSIZE_T),hdferr)
- ! if (hdferr /= 0) call IO_error(0_pInt,ext_msg='HDF5_read_pReal__shape9: h5dread_f')
- ! call h5dclose_f(dset_id,hdferr)
- ! if (hdferr /= 0) call IO_error(0_pInt,ext_msg='HDF5_read_pReal__shape9: h5dclose_f')
-
-! end subroutine HDF5_read_pReal_9
-
-! !--------------------------------------------------------------------------------------------------
-! !> @brief subroutine for reading dataset of the type pReal with 10 dimensions
-! !--------------------------------------------------------------------------------------------------
-! subroutine HDF5_read_pReal_10(dataset,loc_id,datasetName)
-
- ! implicit none
- ! real(pReal),      intent(out), dimension(:,:,:,:,:,:,:,:,:,:) ::    dataset
- ! integer(HID_T),   intent(in) :: loc_id                                                             !< file or group handle
- ! character(len=*), intent(in) :: datasetName                                                        !< name of the dataset in the file
- ! integer(pInt),dimension(:), allocatable  :: myShape
- 
- ! integer        :: hdferr
- ! integer(HID_T) :: dset_id
- ! myShape = shape(dataset)
- 
- ! call h5dopen_f(loc_id,datasetName,dset_id,hdferr)
- ! if (hdferr /= 0) call IO_error(0_pInt,ext_msg='HDF5_read_pReal__shape10: h5dopen_f')
- ! call h5dread_f(dset_id,H5T_NATIVE_DOUBLE,dataset,int(myShape,HSIZE_T),hdferr)
- ! if (hdferr /= 0) call IO_error(0_pInt,ext_msg='HDF5_read_pReal__shape10: h5dread_f')
- ! call h5dclose_f(dset_id,hdferr)
- ! if (hdferr /= 0) call IO_error(0_pInt,ext_msg='HDF5_read_pReal__shape10: h5dclose_f')
-
-! end subroutine HDF5_read_pReal_10
-
-! !--------------------------------------------------------------------------------------------------
-! !> @brief subroutine for reading dataset of the type pReal with 11 dimensions
-! !--------------------------------------------------------------------------------------------------
-! subroutine HDF5_read_pReal_11(dataset,loc_id,datasetName)
-
- ! implicit none
- ! real(pReal),      intent(out), dimension(:,:,:,:,:,:,:,:,:,:,:) ::    dataset
- ! integer(HID_T),   intent(in) :: loc_id                                                             !< file or group handle
- ! character(len=*), intent(in) :: datasetName                                                        !< name of the dataset in the file
- ! integer(pInt),dimension(:), allocatable  :: myShape
- 
- ! integer        :: hdferr
- ! integer(HID_T) :: dset_id
- ! myShape = shape(dataset)
- 
- ! call h5dopen_f(loc_id,datasetName,dset_id,hdferr)
- ! if (hdferr /= 0) call IO_error(0_pInt,ext_msg='HDF5_read_pReal__shape11: h5dopen_f')
- ! call h5dread_f(dset_id,H5T_NATIVE_DOUBLE,dataset,int(myShape,HSIZE_T),hdferr)
- ! if (hdferr /= 0) call IO_error(0_pInt,ext_msg='HDF5_read_pReal__shape11: h5dread_f')
- ! call h5dclose_f(dset_id,hdferr)
- ! if (hdferr /= 0) call IO_error(0_pInt,ext_msg='HDF5_read_pReal__shape11: h5dclose_f')
-
-! end subroutine HDF5_read_pReal_11
-
-! !--------------------------------------------------------------------------------------------------
-! !> @brief subroutine for reading dataset of the type pReal with 12 dimensions
-! !--------------------------------------------------------------------------------------------------
-! subroutine HDF5_read_pReal_12(dataset,loc_id,datasetName)
-
- ! implicit none
- ! real(pReal),      intent(out), dimension(:,:,:,:,:,:,:,:,:,:,:,:) ::    dataset
- ! integer(HID_T),   intent(in) :: loc_id                                                             !< file or group handle
- ! character(len=*), intent(in) :: datasetName                                                        !< name of the dataset in the file
- ! integer(pInt),dimension(:), allocatable  :: myShape
- 
- ! integer        :: hdferr
- ! integer(HID_T) :: dset_id
- ! myShape = shape(dataset)
- 
- ! call h5dopen_f(loc_id,datasetName,dset_id,hdferr)
- ! if (hdferr /= 0) call IO_error(0_pInt,ext_msg='HDF5_read_pReal__shape12: h5dopen_f')
- ! call h5dread_f(dset_id,H5T_NATIVE_DOUBLE,dataset,int(myShape,HSIZE_T),hdferr)
- ! if (hdferr /= 0) call IO_error(0_pInt,ext_msg='HDF5_read_pReal__shape12: h5dread_f')
- ! call h5dclose_f(dset_id,hdferr)
- ! if (hdferr /= 0) call IO_error(0_pInt,ext_msg='HDF5_read_pReal__shape12: h5dclose_f')
-
-! end subroutine HDF5_read_pReal_12
-
-! !--------------------------------------------------------------------------------------------------
-! !> @brief subroutine for reading dataset of the type pReal with 13 dimensions
-! !--------------------------------------------------------------------------------------------------
-! subroutine HDF5_read_pReal_13(dataset,loc_id,datasetName)
-
- ! implicit none
- ! real(pReal),      intent(out), dimension(:,:,:,:,:,:,:,:,:,:,:,:,:) ::    dataset
- ! integer(HID_T),   intent(in) :: loc_id                                                             !< file or group handle
- ! character(len=*), intent(in) :: datasetName                                                        !< name of the dataset in the file
- ! integer(pInt),dimension(:), allocatable  :: myShape
- 
- ! integer        :: hdferr
- ! integer(HID_T) :: dset_id
- ! myShape = shape(dataset)
- 
- ! call h5dopen_f(loc_id,datasetName,dset_id,hdferr)
- ! if (hdferr /= 0) call IO_error(0_pInt,ext_msg='HDF5_read_pReal__shape13: h5dopen_f')
- ! call h5dread_f(dset_id,H5T_NATIVE_DOUBLE,dataset,int(myShape,HSIZE_T),hdferr)
- ! if (hdferr /= 0) call IO_error(0_pInt,ext_msg='HDF5_read_pReal__shape13: h5dread_f')
- ! call h5dclose_f(dset_id,hdferr)
- ! if (hdferr /= 0) call IO_error(0_pInt,ext_msg='HDF5_read_pReal__shape13: h5dclose_f')
-
-! end subroutine HDF5_read_pReal_13
-
-! !--------------------------------------------------------------------------------------------------
-! !> @brief subroutine for reading dataset of the type pReal with 14 dimensions
-! !--------------------------------------------------------------------------------------------------
-! subroutine HDF5_read_pReal_14(dataset,loc_id,datasetName)
-
- ! implicit none
- ! real(pReal),      intent(out), dimension(:,:,:,:,:,:,:,:,:,:,:,:,:,:) ::    dataset
- ! integer(HID_T),   intent(in) :: loc_id                                                             !< file or group handle
- ! character(len=*), intent(in) :: datasetName                                                        !< name of the dataset in the file
- ! integer(pInt),dimension(:), allocatable  :: myShape
- 
- ! integer        :: hdferr
- ! integer(HID_T) :: dset_id
- ! myShape = shape(dataset)
- 
- ! call h5dopen_f(loc_id,datasetName,dset_id,hdferr)
- ! if (hdferr /= 0) call IO_error(0_pInt,ext_msg='HDF5_read_pReal__shape14: h5dopen_f')
- ! call h5dread_f(dset_id,H5T_NATIVE_DOUBLE,dataset,int(myShape,HSIZE_T),hdferr)
- ! if (hdferr /= 0) call IO_error(0_pInt,ext_msg='HDF5_read_pReal__shape14: h5dread_f')
- ! call h5dclose_f(dset_id,hdferr)
- ! if (hdferr /= 0) call IO_error(0_pInt,ext_msg='HDF5_read_pReal__shape14: h5dclose_f')
-
-! end subroutine HDF5_read_pReal_14
-
-! !--------------------------------------------------------------------------------------------------
-! !> @brief subroutine for reading dataset of the type pInt
-! !> reads in arbitrarly shaped data set
-! !--------------------------------------------------------------------------------------------------
-! subroutine HDF5_read_pInt(dataset,loc_id,datasetName)
-
- ! implicit none
- ! integer(pInt), dimension(..), intent(out) :: dataset
- ! integer(HID_T),               intent(in)  :: loc_id                                               !< file or group handle
- ! character(len=*),             intent(in)  :: datasetName                                          !< name of the dataset in the file
-
- ! call HDF5_read_pInt_shape(dataset,loc_id,datasetName,int(shape(dataset),HSIZE_T))
-
- ! contains
- 
-! !--------------------------------------------------------------------------------------------------
-! !> @brief shape-aware subroutine for reading dataset of the type pInt
-! !> @details dimension(..) cannot be handled by h5dread_f
-! !--------------------------------------------------------------------------------------------------
- ! subroutine HDF5_read_pInt_shape(dataset,loc_id,datasetName,int(myShape,HSIZE_T))
-
-   ! implicit none
-   ! integer(pInt),   dimension(*), intent(out) :: dataset
-   ! integer(HID_T),                intent(in)  :: loc_id                                             !< file or group handle
-   ! character(len=*),              intent(in)  :: datasetName                                        !< name of the dataset in the file
-   ! integer(HSIZE_T),dimension(:), intent(in)  :: int(myShape,HSIZE_T)
- 
-   ! integer(HID_T) :: dset_id
-   ! integer        :: hdferr
-
-   ! call h5dopen_f(loc_id,datasetName,dset_id,hdferr)
-   ! if (hdferr /= 0) call IO_error(0_pInt,ext_msg='HDF5_read_pInt_shape: h5dopen_f')
-   ! call h5dread_f(dset_id,H5T_NATIVE_INTEGER,dataset,myShape,hdferr)
-   ! if (hdferr /= 0) call IO_error(0_pInt,ext_msg='HDF5_read_pInt_shape: h5dread_f')
-   ! call h5dclose_f(dset_id,hdferr)
-   ! if (hdferr /= 0) call IO_error(0_pInt,ext_msg='HDF5_read_pInt_shape: h5dclose_f')
-
- ! end subroutine HDF5_read_pInt_shape
-
-! end subroutine HDF5_read_pInt
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief multiple subroutines for reading datasets of different ranks. Intel compiler doesnt accept 
-!> assumed rank formulation
-!--------------------------------------------------------------------------------------------------
-! !--------------------------------------------------------------------------------------------------
-! !> @brief subroutine for reading dataset of the type pInt with 0 dimensions
-! !--------------------------------------------------------------------------------------------------
-! subroutine HDF5_read_pInt_0(dataset,loc_id,datasetName)
-
- ! implicit none
- ! integer(pInt),      intent(out) ::    dataset
- ! integer(HID_T),   intent(in) :: loc_id                                                             !< file or group handle
- ! character(len=*), intent(in) :: datasetName                                                        !< name of the dataset in the file
- ! integer(pInt),dimension(:), allocatable  :: myShape
- ! myShape = shape(dataset)
- ! integer        :: hdferr
- ! integer(HID_T) :: dset_id
- 
- ! call h5dopen_f(loc_id,datasetName,dset_id,hdferr)
- ! if (hdferr /= 0) call IO_error(0_pInt,ext_msg='HDF5_read_pInt__shape0: h5dopen_f')
- ! call h5dread_f(dset_id,H5T_NATIVE_INTEGER,dataset,int(myShape,HSIZE_T),hdferr)
- ! if (hdferr /= 0) call IO_error(0_pInt,ext_msg='HDF5_read_pInt__shape0: h5dread_f')
- ! call h5dclose_f(dset_id,hdferr)
- ! if (hdferr /= 0) call IO_error(0_pInt,ext_msg='HDF5_read_pInt__shape0: h5dclose_f')
-
-! end subroutine HDF5_read_pInt_0
-
-!--------------------------------------------------------------------------------------------------
-!> @brief subroutine for reading dataset of the type pInt with 1 dimensions
+!> @brief subroutine for reading dataset of the type pInt with 1 dimension
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_read_pInt_1(dataset,loc_id,datasetName)
 
@@ -2113,260 +1750,6 @@ subroutine HDF5_read_pInt_7(dataset,loc_id,datasetName)
  if (hdferr /= 0) call IO_error(0_pInt,ext_msg='HDF5_read_pInt__shape7: h5dclose_f')
 
 end subroutine HDF5_read_pInt_7
-
-!--------------------------------------------------------------------------------------------------
-!> @brief subroutine for reading dataset of the type pInt with 8 dimensions
-!--------------------------------------------------------------------------------------------------
-! subroutine HDF5_read_pInt_8(dataset,loc_id,datasetName)
-
- ! implicit none
- ! integer(pInt),      intent(out), dimension(:,:,:,:,:,:,:,:) ::    dataset
- ! integer(HID_T),   intent(in) :: loc_id                                                             !< file or group handle
- ! character(len=*), intent(in) :: datasetName                                                        !< name of the dataset in the file
- ! integer(pInt),dimension(:), allocatable  :: myShape
- 
- ! integer        :: hdferr
- ! integer(HID_T) :: dset_id
- ! myShape = shape(dataset)
- 
- ! call h5dopen_f(loc_id,datasetName,dset_id,hdferr)
- ! if (hdferr /= 0) call IO_error(0_pInt,ext_msg='HDF5_read_pInt__shape8: h5dopen_f')
- ! call h5dread_f(dset_id,H5T_NATIVE_INTEGER,dataset,int(myShape,HSIZE_T),hdferr)
- ! if (hdferr /= 0) call IO_error(0_pInt,ext_msg='HDF5_read_pInt__shape8: h5dread_f')
- ! call h5dclose_f(dset_id,hdferr)
- ! if (hdferr /= 0) call IO_error(0_pInt,ext_msg='HDF5_read_pInt__shape8: h5dclose_f')
-
-! end subroutine HDF5_read_pInt_8
-
-! !--------------------------------------------------------------------------------------------------
-! !> @brief subroutine for reading dataset of the type pInt with 9 dimensions
-! !--------------------------------------------------------------------------------------------------
-! subroutine HDF5_read_pInt_9(dataset,loc_id,datasetName)
-
- ! implicit none
- ! integer(pInt),      intent(out), dimension(:,:,:,:,:,:,:,:,:) ::    dataset
- ! integer(HID_T),   intent(in) :: loc_id                                                             !< file or group handle
- ! character(len=*), intent(in) :: datasetName                                                        !< name of the dataset in the file
- ! integer(pInt),dimension(:), allocatable  :: myShape
- 
- ! integer        :: hdferr
- ! integer(HID_T) :: dset_id
- ! myShape = shape(dataset)
- 
- ! call h5dopen_f(loc_id,datasetName,dset_id,hdferr)
- ! if (hdferr /= 0) call IO_error(0_pInt,ext_msg='HDF5_read_pInt__shape9: h5dopen_f')
- ! call h5dread_f(dset_id,H5T_NATIVE_INTEGER,dataset,int(myShape,HSIZE_T),hdferr)
- ! if (hdferr /= 0) call IO_error(0_pInt,ext_msg='HDF5_read_pInt__shape9: h5dread_f')
- ! call h5dclose_f(dset_id,hdferr)
- ! if (hdferr /= 0) call IO_error(0_pInt,ext_msg='HDF5_read_pInt__shape9: h5dclose_f')
-
-! end subroutine HDF5_read_pInt_9
-
-! !--------------------------------------------------------------------------------------------------
-! !> @brief subroutine for reading dataset of the type pInt with 10 dimensions
-! !--------------------------------------------------------------------------------------------------
-! subroutine HDF5_read_pInt_10(dataset,loc_id,datasetName)
-
- ! implicit none
- ! integer(pInt),      intent(out), dimension(:,:,:,:,:,:,:,:,:,:) ::    dataset
- ! integer(HID_T),   intent(in) :: loc_id                                                             !< file or group handle
- ! character(len=*), intent(in) :: datasetName                                                        !< name of the dataset in the file
- ! integer(pInt),dimension(:), allocatable  :: myShape
- 
- ! integer        :: hdferr
- ! integer(HID_T) :: dset_id
- ! myShape = shape(dataset)
- 
- ! call h5dopen_f(loc_id,datasetName,dset_id,hdferr)
- ! if (hdferr /= 0) call IO_error(0_pInt,ext_msg='HDF5_read_pInt__shape10: h5dopen_f')
- ! call h5dread_f(dset_id,H5T_NATIVE_INTEGER,dataset,int(myShape,HSIZE_T),hdferr)
- ! if (hdferr /= 0) call IO_error(0_pInt,ext_msg='HDF5_read_pInt__shape10: h5dread_f')
- ! call h5dclose_f(dset_id,hdferr)
- ! if (hdferr /= 0) call IO_error(0_pInt,ext_msg='HDF5_read_pInt__shape10: h5dclose_f')
-
-! end subroutine HDF5_read_pInt_10
-
-! !--------------------------------------------------------------------------------------------------
-! !> @brief subroutine for reading dataset of the type pInt with 11 dimensions
-! !--------------------------------------------------------------------------------------------------
-! subroutine HDF5_read_pInt_11(dataset,loc_id,datasetName)
-
- ! implicit none
- ! integer(pInt),      intent(out), dimension(:,:,:,:,:,:,:,:,:,:,:) ::    dataset
- ! integer(HID_T),   intent(in) :: loc_id                                                             !< file or group handle
- ! character(len=*), intent(in) :: datasetName                                                        !< name of the dataset in the file
- ! integer(pInt),dimension(:), allocatable  :: myShape
- 
- ! integer        :: hdferr
- ! integer(HID_T) :: dset_id
- ! myShape = shape(dataset)
- 
- ! call h5dopen_f(loc_id,datasetName,dset_id,hdferr)
- ! if (hdferr /= 0) call IO_error(0_pInt,ext_msg='HDF5_read_pInt__shape11: h5dopen_f')
- ! call h5dread_f(dset_id,H5T_NATIVE_INTEGER,dataset,int(myShape,HSIZE_T),hdferr)
- ! if (hdferr /= 0) call IO_error(0_pInt,ext_msg='HDF5_read_pInt__shape11: h5dread_f')
- ! call h5dclose_f(dset_id,hdferr)
- ! if (hdferr /= 0) call IO_error(0_pInt,ext_msg='HDF5_read_pInt__shape11: h5dclose_f')
-
-! end subroutine HDF5_read_pInt_11
-
-! !--------------------------------------------------------------------------------------------------
-! !> @brief subroutine for reading dataset of the type pInt with 12 dimensions
-! !--------------------------------------------------------------------------------------------------
-! subroutine HDF5_read_pInt_12(dataset,loc_id,datasetName)
-
- ! implicit none
- ! integer(pInt),      intent(out), dimension(:,:,:,:,:,:,:,:,:,:,:,:) ::    dataset
- ! integer(HID_T),   intent(in) :: loc_id                                                             !< file or group handle
- ! character(len=*), intent(in) :: datasetName                                                        !< name of the dataset in the file
- ! integer(pInt),dimension(:), allocatable  :: myShape
- 
- ! integer        :: hdferr
- ! integer(HID_T) :: dset_id
- ! myShape = shape(dataset)
- 
- ! call h5dopen_f(loc_id,datasetName,dset_id,hdferr)
- ! if (hdferr /= 0) call IO_error(0_pInt,ext_msg='HDF5_read_pInt__shape12: h5dopen_f')
- ! call h5dread_f(dset_id,H5T_NATIVE_INTEGER,dataset,int(myShape,HSIZE_T),hdferr)
- ! if (hdferr /= 0) call IO_error(0_pInt,ext_msg='HDF5_read_pInt__shape12: h5dread_f')
- ! call h5dclose_f(dset_id,hdferr)
- ! if (hdferr /= 0) call IO_error(0_pInt,ext_msg='HDF5_read_pInt__shape12: h5dclose_f')
-
-! end subroutine HDF5_read_pInt_12
-
-! !--------------------------------------------------------------------------------------------------
-! !> @brief subroutine for reading dataset of the type pInt with 13 dimensions
-! !--------------------------------------------------------------------------------------------------
-! subroutine HDF5_read_pInt_13(dataset,loc_id,datasetName)
-
- ! implicit none
- ! integer(pInt),      intent(out), dimension(:,:,:,:,:,:,:,:,:,:,:,:,:) ::    dataset
- ! integer(HID_T),   intent(in) :: loc_id                                                             !< file or group handle
- ! character(len=*), intent(in) :: datasetName                                                        !< name of the dataset in the file
- ! integer(pInt),dimension(:), allocatable  :: myShape
- 
- ! integer        :: hdferr
- ! integer(HID_T) :: dset_id
- ! myShape = shape(dataset)
- 
- ! call h5dopen_f(loc_id,datasetName,dset_id,hdferr)
- ! if (hdferr /= 0) call IO_error(0_pInt,ext_msg='HDF5_read_pInt__shape13: h5dopen_f')
- ! call h5dread_f(dset_id,H5T_NATIVE_INTEGER,dataset,int(myShape,HSIZE_T),hdferr)
- ! if (hdferr /= 0) call IO_error(0_pInt,ext_msg='HDF5_read_pInt__shape13: h5dread_f')
- ! call h5dclose_f(dset_id,hdferr)
- ! if (hdferr /= 0) call IO_error(0_pInt,ext_msg='HDF5_read_pInt__shape13: h5dclose_f')
-
-! end subroutine HDF5_read_pInt_13
-
-! !--------------------------------------------------------------------------------------------------
-! !> @brief subroutine for reading dataset of the type pInt with 14 dimensions
-! !--------------------------------------------------------------------------------------------------
-! subroutine HDF5_read_pInt_14(dataset,loc_id,datasetName)
-
- ! implicit none
- ! integer(pInt),      intent(out), dimension(:,:,:,:,:,:,:,:,:,:,:,:,:,:) ::    dataset
- ! integer(HID_T),   intent(in) :: loc_id                                                             !< file or group handle
- ! character(len=*), intent(in) :: datasetName                                                        !< name of the dataset in the file
- ! integer(pInt),dimension(:), allocatable  :: myShape
- 
- ! integer        :: hdferr
- ! integer(HID_T) :: dset_id
- ! myShape = shape(dataset)
- 
- ! call h5dopen_f(loc_id,datasetName,dset_id,hdferr)
- ! if (hdferr /= 0) call IO_error(0_pInt,ext_msg='HDF5_read_pInt__shape14: h5dopen_f')
- ! call h5dread_f(dset_id,H5T_NATIVE_INTEGER,dataset,int(myShape,HSIZE_T),hdferr)
- ! if (hdferr /= 0) call IO_error(0_pInt,ext_msg='HDF5_read_pInt__shape14: h5dread_f')
- ! call h5dclose_f(dset_id,hdferr)
- ! if (hdferr /= 0) call IO_error(0_pInt,ext_msg='HDF5_read_pInt__shape14: h5dclose_f')
-
-! end subroutine HDF5_read_pInt_14
-! !--------------------------------------------------------------------------------------------------
-! !> @brief interfaced subroutine for writing dataset of the type pReal 
-! !--------------------------------------------------------------------------------------------------
-! subroutine HDF5_write_pReal(D,ID1,label)
- ! use hdf5
- ! implicit none
- 
- ! real(pReal), dimension(..), intent(out) :: D
- ! integer(HID_T),   intent(in) :: ID1
- ! character(len=*), intent(in) :: label
-
- ! call HDF5_write_pReal2(D,ID1,label,shape(D))
-! contains
- 
- ! subroutine HDF5_write_pReal2(D,ID2,label,myShape)
- ! use hdf5
- ! implicit none
- 
- ! real(pReal), dimension(*), intent(out) :: D
- ! integer(HID_T),   intent(in) :: ID2
- ! integer(pInt), intent(in), dimension(:) :: myShape
- ! character(len=*), intent(in) :: label
- 
- ! integer        :: hdferr
- ! integer(HID_T) :: dset_id, space_id
- 
- ! !--------------------------------------------------------------------------------------------------
-! ! create dataspace
- ! call h5screate_simple_f(size(myShape), int(myShape,HSIZE_T), space_id, hdferr, &
-                            ! int(myShape,HSIZE_T))
- ! if (hdferr < 0) call IO_error(1_pInt,ext_msg='write_pReal: h5screate_simple_f')
-
-! !--------------------------------------------------------------------------------------------------
-! ! create Dataset
- ! call h5dcreate_f(ID2, trim(label), H5T_NATIVE_DOUBLE, space_id, dset_id, hdferr)
- ! if (hdferr < 0) call IO_error(1_pInt,ext_msg='write_pReal: h5dcreate_f')
-
- ! CALL h5dwrite_f(dset_id, H5T_NATIVE_DOUBLE,D,int(myShape,HSIZE_T), hdferr)
- 
-! !--------------------------------------------------------------------------------------------------
-! !close types, dataspaces
- ! call h5dclose_f(dset_id, hdferr)
- ! if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pReal: h5dclose_f')
- ! call h5sclose_f(space_id, hdferr)
- ! if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pReal: h5sclose_f')
- 
- ! end subroutine 
- 
-! end subroutine
-
-!--------------------------------------------------------------------------------------------------
-!> @brief subroutine for writing dataset of the type pReal with 0 dimensions
-!--------------------------------------------------------------------------------------------------
-! subroutine HDF5_write_pReal0(dataset,loc_id,datasetName)
-
- ! implicit none
- ! real(pReal),      intent(out), dimension(:) ::    dataset
- ! integer(HID_T),   intent(in) :: loc_id                                                             !< file or group handle
- ! character(len=*), intent(in) :: datasetName                                                        !< name of the dataset in the file
-
- ! integer(pInt), dimension(:), allocatable :: myShape                                                          !<shape of the dataset
- ! integer :: hdferr
- ! integer(HID_T) :: dset_id, space_id
-
- ! myShape = shape(dataset)
-! !--------------------------------------------------------------------------------------------------
-! ! create dataspace
-! call h5screate_simple_f(size(myShape), int(myShape,HSIZE_T), space_id, hdferr, &
-                           ! int(myShape,HSIZE_T))
- ! if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pReal0: h5screate_simple_f')
-! !--------------------------------------------------------------------------------------------------
-! ! create dataset
-! call h5dcreate_f(loc_id, trim(datasetName), H5T_NATIVE_DOUBLE, space_id, dset_id, hdferr)
-! if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pReal0: h5dcreate_f')
-
-! CALL h5dwrite_f(dset_id, H5T_NATIVE_DOUBLE,dataset,int(myShape,HSIZE_T), hdferr)
-! if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pReal0: h5dcreate_f')
-
-! !--------------------------------------------------------------------------------------------------
-! !close types, dataspaces
- ! call h5dclose_f(dset_id, hdferr)
-! if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_HDF5_write_pReal0: h5dclose_f')
-! call h5sclose_f(space_id, hdferr)
-! if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_HDF5_write_pReal0: h5sclose_f')
-
-! end subroutine HDF5_write_pReal0
 
 !--------------------------------------------------------------------------------------------------
 !> @brief subroutine for writing dataset of the type pReal with 1 dimensions
@@ -2628,350 +2011,6 @@ if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_HDF5_write_pReal7: h5sclose_f
 end subroutine HDF5_write_pReal7
 
 !--------------------------------------------------------------------------------------------------
-!> @brief subroutine for writing dataset of the type pReal with 8 dimensions
-!--------------------------------------------------------------------------------------------------
-! subroutine HDF5_write_pReal8(dataset,loc_id,datasetName)
-
- ! implicit none
- ! real(pReal),      intent(out), dimension(:,:,:,:,:,:,:,:) ::    dataset
- ! integer(HID_T),   intent(in) :: loc_id                                                             !< file or group handle
- ! character(len=*), intent(in) :: datasetName                                                        !< name of the dataset in the file
-
- ! integer(pInt), dimension(:), allocatable :: myShape                                                          !<shape of the dataset
- ! integer :: hdferr
- ! integer(HID_T) :: dset_id, space_id
-
- ! myShape = shape(dataset)
-! !--------------------------------------------------------------------------------------------------
-! ! create dataspace
-! call h5screate_simple_f(size(myShape), int(myShape,HSIZE_T), space_id, hdferr, &
-                           ! int(myShape,HSIZE_T))
- ! if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pReal8: h5screate_simple_f')
-! !--------------------------------------------------------------------------------------------------
-! ! create dataset
-! call h5dcreate_f(loc_id, trim(datasetName), H5T_NATIVE_DOUBLE, space_id, dset_id, hdferr)
-! if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pReal8: h5dcreate_f')
-
-! CALL h5dwrite_f(dset_id, H5T_NATIVE_DOUBLE,dataset,int(myShape,HSIZE_T), hdferr)
-! if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pReal8: h5dcreate_f')
-
-! !--------------------------------------------------------------------------------------------------
-! !close types, dataspaces
- ! call h5dclose_f(dset_id, hdferr)
-! if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_HDF5_write_pReal8: h5dclose_f')
-! call h5sclose_f(space_id, hdferr)
-! if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_HDF5_write_pReal8: h5sclose_f')
-
-! end subroutine HDF5_write_pReal8
-
-! !--------------------------------------------------------------------------------------------------
-! !> @brief subroutine for writing dataset of the type pReal with 9 dimensions
-! !--------------------------------------------------------------------------------------------------
-! subroutine HDF5_write_pReal9(dataset,loc_id,datasetName)
-
- ! implicit none
- ! real(pReal),      intent(out), dimension(:,:,:,:,:,:,:,:,:) ::    dataset
- ! integer(HID_T),   intent(in) :: loc_id                                                             !< file or group handle
- ! character(len=*), intent(in) :: datasetName                                                        !< name of the dataset in the file
-
- ! integer(pInt), dimension(:), allocatable :: myShape                                                          !<shape of the dataset
- ! integer :: hdferr
- ! integer(HID_T) :: dset_id, space_id
-
- ! myShape = shape(dataset)
-! !--------------------------------------------------------------------------------------------------
-! ! create dataspace
-! call h5screate_simple_f(size(myShape), int(myShape,HSIZE_T), space_id, hdferr, &
-                           ! int(myShape,HSIZE_T))
- ! if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pReal9: h5screate_simple_f')
-! !--------------------------------------------------------------------------------------------------
-! ! create dataset
-! call h5dcreate_f(loc_id, trim(datasetName), H5T_NATIVE_DOUBLE, space_id, dset_id, hdferr)
-! if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pReal9: h5dcreate_f')
-
-! CALL h5dwrite_f(dset_id, H5T_NATIVE_DOUBLE,dataset,int(myShape,HSIZE_T), hdferr)
-! if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pReal9: h5dcreate_f')
-
-! !--------------------------------------------------------------------------------------------------
-! !close types, dataspaces
- ! call h5dclose_f(dset_id, hdferr)
-! if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_HDF5_write_pReal9: h5dclose_f')
-! call h5sclose_f(space_id, hdferr)
-! if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_HDF5_write_pReal9: h5sclose_f')
-
-! end subroutine HDF5_write_pReal9
-
-! !--------------------------------------------------------------------------------------------------
-! !> @brief subroutine for writing dataset of the type pReal with 10 dimensions
-! !--------------------------------------------------------------------------------------------------
-! subroutine HDF5_write_pReal10(dataset,loc_id,datasetName)
-
- ! implicit none
- ! real(pReal),      intent(out), dimension(:,:,:,:,:,:,:,:,:,:) ::    dataset
- ! integer(HID_T),   intent(in) :: loc_id                                                             !< file or group handle
- ! character(len=*), intent(in) :: datasetName                                                        !< name of the dataset in the file
-
- ! integer(pInt), dimension(:), allocatable :: myShape                                                          !<shape of the dataset
- ! integer :: hdferr
- ! integer(HID_T) :: dset_id, space_id
-
- ! myShape = shape(dataset)
-! !--------------------------------------------------------------------------------------------------
-! ! create dataspace
-! call h5screate_simple_f(size(myShape), int(myShape,HSIZE_T), space_id, hdferr, &
-                           ! int(myShape,HSIZE_T))
- ! if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pReal10: h5screate_simple_f')
-! !--------------------------------------------------------------------------------------------------
-! ! create dataset
-! call h5dcreate_f(loc_id, trim(datasetName), H5T_NATIVE_DOUBLE, space_id, dset_id, hdferr)
-! if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pReal10: h5dcreate_f')
-
-! CALL h5dwrite_f(dset_id, H5T_NATIVE_DOUBLE,dataset,int(myShape,HSIZE_T), hdferr)
-! if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pReal10: h5dcreate_f')
-
-! !--------------------------------------------------------------------------------------------------
-! !close types, dataspaces
- ! call h5dclose_f(dset_id, hdferr)
-! if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_HDF5_write_pReal10: h5dclose_f')
-! call h5sclose_f(space_id, hdferr)
-! if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_HDF5_write_pReal10: h5sclose_f')
-
-! end subroutine HDF5_write_pReal10
-
-! !--------------------------------------------------------------------------------------------------
-! !> @brief subroutine for writing dataset of the type pReal with 11 dimensions
-! !--------------------------------------------------------------------------------------------------
-! subroutine HDF5_write_pReal11(dataset,loc_id,datasetName)
-
- ! implicit none
- ! real(pReal),      intent(out), dimension(:,:,:,:,:,:,:,:,:,:,:) ::    dataset
- ! integer(HID_T),   intent(in) :: loc_id                                                             !< file or group handle
- ! character(len=*), intent(in) :: datasetName                                                        !< name of the dataset in the file
-
- ! integer(pInt), dimension(:), allocatable :: myShape                                                          !<shape of the dataset
- ! integer :: hdferr
- ! integer(HID_T) :: dset_id, space_id
-
- ! myShape = shape(dataset)
-! !--------------------------------------------------------------------------------------------------
-! ! create dataspace
-! call h5screate_simple_f(size(myShape), int(myShape,HSIZE_T), space_id, hdferr, &
-                           ! int(myShape,HSIZE_T))
- ! if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pReal11: h5screate_simple_f')
-! !--------------------------------------------------------------------------------------------------
-! ! create dataset
-! call h5dcreate_f(loc_id, trim(datasetName), H5T_NATIVE_DOUBLE, space_id, dset_id, hdferr)
-! if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pReal11: h5dcreate_f')
-
-! CALL h5dwrite_f(dset_id, H5T_NATIVE_DOUBLE,dataset,int(myShape,HSIZE_T), hdferr)
-! if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pReal11: h5dcreate_f')
-
-! !--------------------------------------------------------------------------------------------------
-! !close types, dataspaces
- ! call h5dclose_f(dset_id, hdferr)
-! if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_HDF5_write_pReal11: h5dclose_f')
-! call h5sclose_f(space_id, hdferr)
-! if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_HDF5_write_pReal11: h5sclose_f')
-
-! end subroutine HDF5_write_pReal11
-
-! !--------------------------------------------------------------------------------------------------
-! !> @brief subroutine for writing dataset of the type pReal with 12 dimensions
-! !--------------------------------------------------------------------------------------------------
-! subroutine HDF5_write_pReal12(dataset,loc_id,datasetName)
-
- ! implicit none
- ! real(pReal),      intent(out), dimension(:,:,:,:,:,:,:,:,:,:,:,:) ::    dataset
- ! integer(HID_T),   intent(in) :: loc_id                                                             !< file or group handle
- ! character(len=*), intent(in) :: datasetName                                                        !< name of the dataset in the file
-
- ! integer(pInt), dimension(:), allocatable :: myShape                                                          !<shape of the dataset
- ! integer :: hdferr
- ! integer(HID_T) :: dset_id, space_id
-
- ! myShape = shape(dataset)
-! !--------------------------------------------------------------------------------------------------
-! ! create dataspace
-! call h5screate_simple_f(size(myShape), int(myShape,HSIZE_T), space_id, hdferr, &
-                           ! int(myShape,HSIZE_T))
- ! if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pReal12: h5screate_simple_f')
-! !--------------------------------------------------------------------------------------------------
-! ! create dataset
-! call h5dcreate_f(loc_id, trim(datasetName), H5T_NATIVE_DOUBLE, space_id, dset_id, hdferr)
-! if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pReal12: h5dcreate_f')
-
-! CALL h5dwrite_f(dset_id, H5T_NATIVE_DOUBLE,dataset,int(myShape,HSIZE_T), hdferr)
-! if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pReal12: h5dcreate_f')
-
-! !--------------------------------------------------------------------------------------------------
-! !close types, dataspaces
- ! call h5dclose_f(dset_id, hdferr)
-! if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_HDF5_write_pReal12: h5dclose_f')
-! call h5sclose_f(space_id, hdferr)
-! if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_HDF5_write_pReal12: h5sclose_f')
-
-! end subroutine HDF5_write_pReal12
-
-! !--------------------------------------------------------------------------------------------------
-! !> @brief subroutine for writing dataset of the type pReal with 13 dimensions
-! !--------------------------------------------------------------------------------------------------
-! subroutine HDF5_write_pReal13(dataset,loc_id,datasetName)
-
- ! implicit none
- ! real(pReal),      intent(out), dimension(:,:,:,:,:,:,:,:,:,:,:,:,:) ::    dataset
- ! integer(HID_T),   intent(in) :: loc_id                                                             !< file or group handle
- ! character(len=*), intent(in) :: datasetName                                                        !< name of the dataset in the file
-
- ! integer(pInt), dimension(:), allocatable :: myShape                                                          !<shape of the dataset
- ! integer :: hdferr
- ! integer(HID_T) :: dset_id, space_id
-
- ! myShape = shape(dataset)
-! !--------------------------------------------------------------------------------------------------
-! ! create dataspace
-! call h5screate_simple_f(size(myShape), int(myShape,HSIZE_T), space_id, hdferr, &
-                           ! int(myShape,HSIZE_T))
- ! if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pReal13: h5screate_simple_f')
-! !--------------------------------------------------------------------------------------------------
-! ! create dataset
-! call h5dcreate_f(loc_id, trim(datasetName), H5T_NATIVE_DOUBLE, space_id, dset_id, hdferr)
-! if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pReal13: h5dcreate_f')
-
-! CALL h5dwrite_f(dset_id, H5T_NATIVE_DOUBLE,dataset,int(myShape,HSIZE_T), hdferr)
-! if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pReal13: h5dcreate_f')
-
-! !--------------------------------------------------------------------------------------------------
-! !close types, dataspaces
- ! call h5dclose_f(dset_id, hdferr)
-! if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_HDF5_write_pReal13: h5dclose_f')
-! call h5sclose_f(space_id, hdferr)
-! if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_HDF5_write_pReal13: h5sclose_f')
-
-! end subroutine HDF5_write_pReal13
-
-! !--------------------------------------------------------------------------------------------------
-! !> @brief subroutine for writing dataset of the type pReal with 14 dimensions
-! !--------------------------------------------------------------------------------------------------
-! subroutine HDF5_write_pReal14(dataset,loc_id,datasetName)
-
- ! implicit none
- ! real(pReal),      intent(out), dimension(:,:,:,:,:,:,:,:,:,:,:,:,:,:) ::    dataset
- ! integer(HID_T),   intent(in) :: loc_id                                                             !< file or group handle
- ! character(len=*), intent(in) :: datasetName                                                        !< name of the dataset in the file
-
- ! integer(pInt), dimension(:), allocatable :: myShape                                                          !<shape of the dataset
- ! integer :: hdferr
- ! integer(HID_T) :: dset_id, space_id
-
- ! myShape = shape(dataset)
-! !--------------------------------------------------------------------------------------------------
-! ! create dataspace
-! call h5screate_simple_f(size(myShape), int(myShape,HSIZE_T), space_id, hdferr, &
-                           ! int(myShape,HSIZE_T))
- ! if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pReal14: h5screate_simple_f')
-! !--------------------------------------------------------------------------------------------------
-! ! create dataset
-! call h5dcreate_f(loc_id, trim(datasetName), H5T_NATIVE_DOUBLE, space_id, dset_id, hdferr)
-! if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pReal14: h5dcreate_f')
-
-! CALL h5dwrite_f(dset_id, H5T_NATIVE_DOUBLE,dataset,int(myShape,HSIZE_T), hdferr)
-! if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pReal14: h5dcreate_f')
-
-! !--------------------------------------------------------------------------------------------------
-! !close types, dataspaces
- ! call h5dclose_f(dset_id, hdferr)
-! if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_HDF5_write_pReal14: h5dclose_f')
-! call h5sclose_f(space_id, hdferr)
-! if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_HDF5_write_pReal14: h5sclose_f')
-
-! end subroutine HDF5_write_pReal14
-
-! !--------------------------------------------------------------------------------------------------
-! !> @brief interfaced subroutine for writing dataset of the type pInt
-! !--------------------------------------------------------------------------------------------------
-! subroutine HDF5_write_pInt(D,ID1,label)
- ! use hdf5
- ! implicit none
- 
- ! integer(pInt), dimension(..), intent(out) :: D
- ! integer(HID_T),   intent(in) :: ID1
- ! character(len=*), intent(in) :: label
-
- ! call HDF5_write_pInt2(D,ID1,label,shape(D))
-! contains
- 
- ! subroutine HDF5_write_pInt2(D,ID2,label,myShape)
- ! use hdf5
- ! implicit none
- 
- ! integer(pInt), dimension(*), intent(out) :: D
- ! integer(HID_T),   intent(in) :: ID2
- ! integer(pInt), intent(in), dimension(:) :: myShape
- ! character(len=*), intent(in) :: label
- 
- ! integer        :: hdferr
- ! integer(HID_T) :: dset_id, space_id
- 
- ! !--------------------------------------------------------------------------------------------------
-! ! create dataspace
- ! call h5screate_simple_f(size(myShape), int(myShape,HSIZE_T), space_id, hdferr, &
-                            ! int(myShape,HSIZE_T))
- ! if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pInt: h5screate_simple_f')
-
-! !--------------------------------------------------------------------------------------------------
-! ! create Dataset
- ! call h5dcreate_f(ID2, trim(label), H5T_NATIVE_INTEGER, space_id, dset_id, hdferr)
- ! if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pInt: h5dcreate_f')
-
- ! CALL h5dwrite_f(dset_id, H5T_NATIVE_INTEGER,D,int(myShape,HSIZE_T), hdferr)
- 
-! !--------------------------------------------------------------------------------------------------
-! !close types, dataspaces
- ! call h5dclose_f(dset_id, hdferr)
- ! if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_HDF5_write_pInt: h5dclose_f')
- ! call h5sclose_f(space_id, hdferr)
- ! if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_HDF5_write_pInt: h5sclose_f')
- 
- ! end subroutine 
-! end subroutine
-
-! !--------------------------------------------------------------------------------------------------
-! !> @brief subroutine for writing dataset of the type pInt with 0 dimensions
-! !--------------------------------------------------------------------------------------------------
-! subroutine HDF5_write_pInt0(dataset,loc_id,datasetName)
-
- ! implicit none
- ! integer(pInt),      intent(out), dimension(:) ::    dataset
- ! integer(HID_T),   intent(in) :: loc_id                                                             !< file or group handle
- ! character(len=*), intent(in) :: datasetName                                                        !< name of the dataset in the file
-
- ! integer(pInt), dimension(:), allocatable :: myShape                                                          !<shape of the dataset
- ! integer :: hdferr
- ! integer(HID_T) :: dset_id, space_id
-
- ! myShape = shape(dataset)
-! !--------------------------------------------------------------------------------------------------
-! ! create dataspace
-! call h5screate_simple_f(size(myShape), int(myShape,HSIZE_T), space_id, hdferr, &
-                           ! int(myShape,HSIZE_T))
- ! if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pInt0: h5screate_simple_f')
-! !--------------------------------------------------------------------------------------------------
-! ! create dataset
-! call h5dcreate_f(loc_id, trim(datasetName), H5T_NATIVE_INTEGER, space_id, dset_id, hdferr)
-! if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pInt0: h5dcreate_f')
-
-! CALL h5dwrite_f(dset_id, H5T_NATIVE_INTEGER,dataset,int(myShape,HSIZE_T), hdferr)
-
-! !--------------------------------------------------------------------------------------------------
-! !close types, dataspaces
- ! call h5dclose_f(dset_id, hdferr)
-! if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_HDF5_write_pInt0: h5dclose_f')
-! call h5sclose_f(space_id, hdferr)
-! if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_HDF5_write_pInt0: h5sclose_f')
-
-! end subroutine HDF5_write_pInt0
-
-!--------------------------------------------------------------------------------------------------
 !> @brief subroutine for writing dataset of the type pInt with 1 dimensions
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_write_pInt1(dataset,loc_id,datasetName)
@@ -3223,258 +2262,6 @@ if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_HDF5_write_pInt7: h5sclose_f'
 
 end subroutine HDF5_write_pInt7
 
-! !--------------------------------------------------------------------------------------------------
-! !> @brief subroutine for writing dataset of the type pInt with 8 dimensions
-! !--------------------------------------------------------------------------------------------------
-! subroutine HDF5_write_pInt8(dataset,loc_id,datasetName)
-
- ! implicit none
- ! integer(pInt),      intent(out), dimension(:,:,:,:,:,:,:,:) ::    dataset
- ! integer(HID_T),   intent(in) :: loc_id                                                             !< file or group handle
- ! character(len=*), intent(in) :: datasetName                                                        !< name of the dataset in the file
-
- ! integer(pInt), dimension(:), allocatable :: myShape                                                          !<shape of the dataset
- ! integer :: hdferr
- ! integer(HID_T) :: dset_id, space_id
-
- ! myShape = shape(dataset)
-! !--------------------------------------------------------------------------------------------------
-! ! create dataspace
-! call h5screate_simple_f(size(myShape), int(myShape,HSIZE_T), space_id, hdferr, &
-                           ! int(myShape,HSIZE_T))
- ! if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pInt8: h5screate_simple_f')
-! !--------------------------------------------------------------------------------------------------
-! ! create dataset
-! call h5dcreate_f(loc_id, trim(datasetName), H5T_NATIVE_INTEGER, space_id, dset_id, hdferr)
-! if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pInt8: h5dcreate_f')
-
-! CALL h5dwrite_f(dset_id, H5T_NATIVE_INTEGER,dataset,int(myShape,HSIZE_T), hdferr)
-
-! !--------------------------------------------------------------------------------------------------
-! !close types, dataspaces
- ! call h5dclose_f(dset_id, hdferr)
-! if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_HDF5_write_pInt8: h5dclose_f')
-! call h5sclose_f(space_id, hdferr)
-! if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_HDF5_write_pInt8: h5sclose_f')
-
-! end subroutine HDF5_write_pInt8
-
-! !--------------------------------------------------------------------------------------------------
-! !> @brief subroutine for writing dataset of the type pInt with 9 dimensions
-! !--------------------------------------------------------------------------------------------------
-! subroutine HDF5_write_pInt9(dataset,loc_id,datasetName)
-
- ! implicit none
- ! integer(pInt),      intent(out), dimension(:,:,:,:,:,:,:,:,:) ::    dataset
- ! integer(HID_T),   intent(in) :: loc_id                                                             !< file or group handle
- ! character(len=*), intent(in) :: datasetName                                                        !< name of the dataset in the file
-
- ! integer(pInt), dimension(:), allocatable :: myShape                                                          !<shape of the dataset
- ! integer :: hdferr
- ! integer(HID_T) :: dset_id, space_id
-
- ! myShape = shape(dataset)
-! !--------------------------------------------------------------------------------------------------
-! ! create dataspace
-! call h5screate_simple_f(size(myShape), int(myShape,HSIZE_T), space_id, hdferr, &
-                           ! int(myShape,HSIZE_T))
- ! if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pInt9: h5screate_simple_f')
-! !--------------------------------------------------------------------------------------------------
-! ! create dataset
-! call h5dcreate_f(loc_id, trim(datasetName), H5T_NATIVE_INTEGER, space_id, dset_id, hdferr)
-! if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pInt9: h5dcreate_f')
-
-! CALL h5dwrite_f(dset_id, H5T_NATIVE_INTEGER,dataset,int(myShape,HSIZE_T), hdferr)
-
-! !--------------------------------------------------------------------------------------------------
-! !close types, dataspaces
- ! call h5dclose_f(dset_id, hdferr)
-! if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_HDF5_write_pInt9: h5dclose_f')
-! call h5sclose_f(space_id, hdferr)
-! if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_HDF5_write_pInt9: h5sclose_f')
-
-! end subroutine HDF5_write_pInt9
-
-! !--------------------------------------------------------------------------------------------------
-! !> @brief subroutine for writing dataset of the type pInt with 10 dimensions
-! !--------------------------------------------------------------------------------------------------
-! subroutine HDF5_write_pInt10(dataset,loc_id,datasetName)
-
- ! implicit none
- ! integer(pInt),      intent(out), dimension(:,:,:,:,:,:,:,:,:,:) ::    dataset
- ! integer(HID_T),   intent(in) :: loc_id                                                             !< file or group handle
- ! character(len=*), intent(in) :: datasetName                                                        !< name of the dataset in the file
-
- ! integer(pInt), dimension(:), allocatable :: myShape                                                          !<shape of the dataset
- ! integer :: hdferr
- ! integer(HID_T) :: dset_id, space_id
-
- ! myShape = shape(dataset)
-! !--------------------------------------------------------------------------------------------------
-! ! create dataspace
-! call h5screate_simple_f(size(myShape), int(myShape,HSIZE_T), space_id, hdferr, &
-                           ! int(myShape,HSIZE_T))
- ! if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pInt10: h5screate_simple_f')
-! !--------------------------------------------------------------------------------------------------
-! ! create dataset
-! call h5dcreate_f(loc_id, trim(datasetName), H5T_NATIVE_INTEGER, space_id, dset_id, hdferr)
-! if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pInt10: h5dcreate_f')
-
-! CALL h5dwrite_f(dset_id, H5T_NATIVE_INTEGER,dataset,int(myShape,HSIZE_T), hdferr)
-
-! !--------------------------------------------------------------------------------------------------
-! !close types, dataspaces
- ! call h5dclose_f(dset_id, hdferr)
-! if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_HDF5_write_pInt10: h5dclose_f')
-! call h5sclose_f(space_id, hdferr)
-! if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_HDF5_write_pInt10: h5sclose_f')
-
-! end subroutine HDF5_write_pInt10
-
-! !--------------------------------------------------------------------------------------------------
-! !> @brief subroutine for writing dataset of the type pInt with 11 dimensions
-! !--------------------------------------------------------------------------------------------------
-! subroutine HDF5_write_pInt11(dataset,loc_id,datasetName)
-
- ! implicit none
- ! integer(pInt),      intent(out), dimension(:,:,:,:,:,:,:,:,:,:,:) ::    dataset
- ! integer(HID_T),   intent(in) :: loc_id                                                             !< file or group handle
- ! character(len=*), intent(in) :: datasetName                                                        !< name of the dataset in the file
-
- ! integer(pInt), dimension(:), allocatable :: myShape                                                          !<shape of the dataset
- ! integer :: hdferr
- ! integer(HID_T) :: dset_id, space_id
-
- ! myShape = shape(dataset)
-! !--------------------------------------------------------------------------------------------------
-! ! create dataspace
-! call h5screate_simple_f(size(myShape), int(myShape,HSIZE_T), space_id, hdferr, &
-                           ! int(myShape,HSIZE_T))
- ! if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pInt11: h5screate_simple_f')
-! !--------------------------------------------------------------------------------------------------
-! ! create dataset
-! call h5dcreate_f(loc_id, trim(datasetName), H5T_NATIVE_INTEGER, space_id, dset_id, hdferr)
-! if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pInt11: h5dcreate_f')
-
-! CALL h5dwrite_f(dset_id, H5T_NATIVE_INTEGER,dataset,int(myShape,HSIZE_T), hdferr)
-
-! !--------------------------------------------------------------------------------------------------
-! !close types, dataspaces
- ! call h5dclose_f(dset_id, hdferr)
-! if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_HDF5_write_pInt11: h5dclose_f')
-! call h5sclose_f(space_id, hdferr)
-! if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_HDF5_write_pInt11: h5sclose_f')
-
-! end subroutine HDF5_write_pInt11
-
-! !--------------------------------------------------------------------------------------------------
-! !> @brief subroutine for writing dataset of the type pInt with 12 dimensions
-! !--------------------------------------------------------------------------------------------------
-! subroutine HDF5_write_pInt12(dataset,loc_id,datasetName)
-
- ! implicit none
- ! integer(pInt),      intent(out), dimension(:,:,:,:,:,:,:,:,:,:,:,:) ::    dataset
- ! integer(HID_T),   intent(in) :: loc_id                                                             !< file or group handle
- ! character(len=*), intent(in) :: datasetName                                                        !< name of the dataset in the file
-
- ! integer(pInt), dimension(:), allocatable :: myShape                                                          !<shape of the dataset
- ! integer :: hdferr
- ! integer(HID_T) :: dset_id, space_id
-
- ! myShape = shape(dataset)
-! !--------------------------------------------------------------------------------------------------
-! ! create dataspace
-! call h5screate_simple_f(size(myShape), int(myShape,HSIZE_T), space_id, hdferr, &
-                           ! int(myShape,HSIZE_T))
- ! if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pInt12: h5screate_simple_f')
-! !--------------------------------------------------------------------------------------------------
-! ! create dataset
-! call h5dcreate_f(loc_id, trim(datasetName), H5T_NATIVE_INTEGER, space_id, dset_id, hdferr)
-! if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pInt12: h5dcreate_f')
-
-! CALL h5dwrite_f(dset_id, H5T_NATIVE_INTEGER,dataset,int(myShape,HSIZE_T), hdferr)
-
-! !--------------------------------------------------------------------------------------------------
-! !close types, dataspaces
- ! call h5dclose_f(dset_id, hdferr)
-! if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_HDF5_write_pInt12: h5dclose_f')
-! call h5sclose_f(space_id, hdferr)
-! if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_HDF5_write_pInt12: h5sclose_f')
-
-! end subroutine HDF5_write_pInt12
-
-! !--------------------------------------------------------------------------------------------------
-! !> @brief subroutine for writing dataset of the type pInt with 13 dimensions
-! !--------------------------------------------------------------------------------------------------
-! subroutine HDF5_write_pInt13(dataset,loc_id,datasetName)
-
- ! implicit none
- ! integer(pInt),      intent(out), dimension(:,:,:,:,:,:,:,:,:,:,:,:,:) ::    dataset
- ! integer(HID_T),   intent(in) :: loc_id                                                             !< file or group handle
- ! character(len=*), intent(in) :: datasetName                                                        !< name of the dataset in the file
-
- ! integer(pInt), dimension(:), allocatable :: myShape                                                          !<shape of the dataset
- ! integer :: hdferr
- ! integer(HID_T) :: dset_id, space_id
-
- ! myShape = shape(dataset)
-! !--------------------------------------------------------------------------------------------------
-! ! create dataspace
-! call h5screate_simple_f(size(myShape), int(myShape,HSIZE_T), space_id, hdferr, &
-                           ! int(myShape,HSIZE_T))
- ! if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pInt13: h5screate_simple_f')
-! !--------------------------------------------------------------------------------------------------
-! ! create dataset
-! call h5dcreate_f(loc_id, trim(datasetName), H5T_NATIVE_INTEGER, space_id, dset_id, hdferr)
-! if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pInt13: h5dcreate_f')
-
-! CALL h5dwrite_f(dset_id, H5T_NATIVE_INTEGER,dataset,int(myShape,HSIZE_T), hdferr)
-
-! !--------------------------------------------------------------------------------------------------
-! !close types, dataspaces
- ! call h5dclose_f(dset_id, hdferr)
-! if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_HDF5_write_pInt13: h5dclose_f')
-! call h5sclose_f(space_id, hdferr)
-! if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_HDF5_write_pInt13: h5sclose_f')
-
-! end subroutine HDF5_write_pInt13
-
-! !--------------------------------------------------------------------------------------------------
-! !> @brief subroutine for writing dataset of the type pInt with 14 dimensions
-! !--------------------------------------------------------------------------------------------------
-! subroutine HDF5_write_pInt14(dataset,loc_id,datasetName)
-
- ! implicit none
- ! integer(pInt),      intent(out), dimension(:,:,:,:,:,:,:,:,:,:,:,:,:,:) ::    dataset
- ! integer(HID_T),   intent(in) :: loc_id                                                             !< file or group handle
- ! character(len=*), intent(in) :: datasetName                                                        !< name of the dataset in the file
-
- ! integer(pInt), dimension(:), allocatable :: myShape                                                          !<shape of the dataset
- ! integer :: hdferr
- ! integer(HID_T) :: dset_id, space_id
-
- ! myShape = shape(dataset)
-! !--------------------------------------------------------------------------------------------------
-! ! create dataspace
-! call h5screate_simple_f(size(myShape), int(myShape,HSIZE_T), space_id, hdferr, &
-                           ! int(myShape,HSIZE_T))
- ! if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pInt14: h5screate_simple_f')
-! !--------------------------------------------------------------------------------------------------
-! ! create dataset
-! call h5dcreate_f(loc_id, trim(datasetName), H5T_NATIVE_INTEGER, space_id, dset_id, hdferr)
-! if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pInt14: h5dcreate_f')
-
-! CALL h5dwrite_f(dset_id, H5T_NATIVE_INTEGER,dataset,int(myShape,HSIZE_T), hdferr)
-
-! !--------------------------------------------------------------------------------------------------
-! !close types, dataspaces
- ! call h5dclose_f(dset_id, hdferr)
-! if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_HDF5_write_pInt14: h5dclose_f')
-! call h5sclose_f(space_id, hdferr)
-! if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_HDF5_write_pInt14: h5sclose_f')
-
-! end subroutine HDF5_write_pInt14
-
 !--------------------------------------------------------------------------------------------------
 !> @brief adds a new scalar dataset to the given group location
 !--------------------------------------------------------------------------------------------------
@@ -3510,39 +2297,6 @@ subroutine HDF5_addScalarDataset(group,nnodes,label,SIunit)
 end subroutine HDF5_addScalarDataset
 
 !--------------------------------------------------------------------------------------------------
-!> @brief adds a new scalar dataset in the given group location       !!!TODO: to be romoved
-!--------------------------------------------------------------------------------------------------
-subroutine HDF5_addScalarDataset2(fileHandle,dataShape,label)
- use hdf5
-
- implicit none
- integer(HID_T),   intent(in) :: fileHandle
- integer(pInt), dimension(:),    intent(in) :: dataShape
- character(len=*), intent(in) :: label
-
- integer        :: hdferr
- integer(HID_T) :: space_id, dset_id
-
-!--------------------------------------------------------------------------------------------------
-! create dataspace
- call h5screate_simple_f(size(dataShape), int(dataShape,HSIZE_T), space_id, hdferr, &
-                            int(dataShape,HSIZE_T))
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_addScalarDataset: h5screate_simple_f')
-
-!--------------------------------------------------------------------------------------------------
-! create Dataset
- call h5dcreate_f(fileHandle, trim(label),H5T_NATIVE_DOUBLE, space_id, dset_id, hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_addScalarDataset: h5dcreate_f')
-
-!--------------------------------------------------------------------------------------------------
-!close types, dataspaces
- call h5dclose_f(dset_id, hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_addScalarDataset: h5dclose_f')
- call h5sclose_f(space_id, hdferr)
-
-end subroutine HDF5_addScalarDataset2
-
-!--------------------------------------------------------------------------------------------------
 !> @brief copies the current temp results to the actual results file
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_forwardResults(time)
@@ -3566,11 +2320,3 @@ subroutine HDF5_forwardResults(time)
 end subroutine HDF5_forwardResults
 
 end module HDF5_Utilities
-
-
-
-
-
-
-
-
