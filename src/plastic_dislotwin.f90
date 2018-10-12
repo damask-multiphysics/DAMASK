@@ -75,7 +75,6 @@ module plastic_dislotwin
      sbQedge, &                                                                                    !< value for shearband systems Qedge
      SFE_0K, &                                                                                     !< stacking fault energy at zero K
      dSFE_dT, &                                                                                    !< temperature dependance of stacking fault energy
-     dipoleFormationFactor, &                                                                      !< scaling factor for dipole formation: 0: off, 1: on. other values not useful
      aTolRho, &                                                                                    !< absolute tolerance for integration of dislocation density
      aTolTwinFrac, &                                                                               !< absolute tolerance for integration of twin volume fraction
      aTolTransFrac, &                                                                              !< absolute tolerance for integration of trans volume fraction
@@ -130,6 +129,8 @@ module plastic_dislotwin
      Schmid_twin, &
      C66_twin, &
      C66_trans
+   logical,                    private :: &
+     dipoleFormation                                                                                !< flag indicating consideration of dipole formation
   end type 
   
   type(tParameters), dimension(:), allocatable, private,target :: param                                !< containers of constitutive parameters (len Ninstance)
@@ -448,7 +449,8 @@ subroutine plastic_dislotwin_init(fileUnit)
    prm%D0 = config_phase(p)%getFloat('d0')
    prm%Qsd = config_phase(p)%getFloat('qsd')
    prm%SolidSolutionStrength = config_phase(p)%getFloat('solidsolutionstrength')
-   prm%dipoleFormationFactor= config_phase(p)%getFloat('dipoleformationfactor', defaultVal=1.0_pReal) ! ToDo: How to handle that???
+   if (config_phase(p)%keyExists('dipoleformationfactor')) call IO_error(1,ext_msg='use /nodipoleformation/')
+   prm%dipoleformation = .not. config_phase(p)%keyExists('/nodipoleformation')
    prm%sbVelocity   = config_phase(p)%getFloat('shearbandvelocity',defaultVal=0.0_pReal)
    if (prm%sbVelocity > 0.0_pReal) then  
      prm%sbResistance = config_phase(p)%getFloat('shearbandresistance')
@@ -582,9 +584,6 @@ subroutine plastic_dislotwin_init(fileUnit)
    !if (prm%sbVelocity > 0.0_pReal .and. &
    !    prm%pShearBand <= 0.0_pReal) &
    !  call IO_error(211_pInt,el=p,ext_msg='pShearBand ('//PLASTICITY_DISLOTWIN_label//')')
-   if (dNeq0(prm%dipoleFormationFactor) .and. &
-       dNeq(prm%dipoleFormationFactor, 1.0_pReal)) &
-     call IO_error(211_pInt,el=p,ext_msg='dipoleFormationFactor ('//PLASTICITY_DISLOTWIN_label//')')
    if (prm%sbVelocity > 0.0_pReal .and. &
        prm%qShearBand <= 0.0_pReal) &
      call IO_error(211_pInt,el=p,ext_msg='qShearBand ('//PLASTICITY_DISLOTWIN_label//')')
@@ -1283,8 +1282,9 @@ subroutine plastic_dislotwin_dotState(Mp,Temperature,instance,of)
                                                           (16.0_pReal*PI*abs(tau))
      if (EdgeDipDistance>mse%mfp_slip(i,of)) EdgeDipDistance=mse%mfp_slip(i,of)
      if (EdgeDipDistance<EdgeDipMinDistance)             EdgeDipDistance=EdgeDipMinDistance
-     DotRhoDipFormation =  ((2.0_pReal*(EdgeDipDistance-EdgeDipMinDistance))/prm%burgers_slip(i))*&
-       stt%rhoEdge(i,of)*abs(gdot_slip(i))*prm%dipoleFormationFactor
+     if (prm%dipoleFormation) &
+       DotRhoDipFormation = ((2.0_pReal*(EdgeDipDistance-EdgeDipMinDistance))/prm%burgers_slip(i)) &
+                          * stt%rhoEdge(i,of)*abs(gdot_slip(i))
    endif significantSlipStress2
  
    !* Spontaneous annihilation of 2 single edge dislocations
