@@ -1459,6 +1459,10 @@ subroutine IO_error(error_ID,el,ip,g,instance,ext_msg)
    msg = 'empty list'
  case (143_pInt)
    msg = 'no value found for key'
+ case (144_pInt)
+   msg = 'negative number systems requested'
+ case (145_pInt)
+   msg = 'too many systems requested'
 
 !--------------------------------------------------------------------------------------------------
 ! material error messages and related messages in mesh
