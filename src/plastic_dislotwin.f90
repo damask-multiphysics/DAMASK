@@ -46,7 +46,7 @@ module plastic_dislotwin
  end enum
  
   type,private :: tParameters
-   integer(kind(undefined_ID)),         dimension(:),         allocatable,          private :: &
+   integer(kind(undefined_ID)),         dimension(:),         allocatable :: &
      outputID                                                                                       !< ID of each post result output
    
    logical :: &
@@ -82,15 +82,15 @@ module plastic_dislotwin
      Cmfptrans, &                                                                                  !<
      Cthresholdtrans, &                                                                            !<
      transStackHeight                                                                              !< Stack height of hex nucleus 
-   integer(pInt),                  private :: & 
+   integer(pInt) :: & 
      totalNslip, &                                                                                          !< number of active slip systems for each family and instance
      totalNtwin, &                                                                                          !< number of active twin systems for each family and instance
     totalNtrans                                                                                            !< number of active transformation systems for each family and instance 
-   integer(pInt),                  dimension(:),            allocatable,           private :: & 
+   integer(pInt),                  dimension(:),            allocatable :: & 
      Nslip, &                                                                                          !< number of active slip systems for each family and instance
      Ntwin, &                                                                                          !< number of active twin systems for each family and instance
      Ntrans                                                                                            !< number of active transformation systems for each family and instance
-   real(pReal),                  dimension(:),            allocatable,           private :: & 
+   real(pReal),                  dimension(:),            allocatable :: & 
      rho0, & !< initial unipolar dislocation density per slip system
      rhoDip0, & !< initial dipole dislocation density per slip system
      burgers_slip, &                                                   !< absolute length of burgers vector [m] for each slip systems
@@ -110,7 +110,7 @@ module plastic_dislotwin
      s, &                                                           !< s-exponent in trans nucleation rate
      shear_twin, &                                                                              !< characteristic shear for twins
      B                                                                                          !< drag coefficient
-   real(pReal),                  dimension(:,:),            allocatable,           private :: & 
+   real(pReal),                  dimension(:,:),            allocatable :: & 
      interaction_SlipSlip, &                                                   !< coefficients for slip-slip interaction for each interaction type and instance
      interaction_SlipTwin, &                                                   !< coefficients for slip-twin interaction for each interaction type and instance
      interaction_TwinSlip, &                                                   !< coefficients for twin-slip interaction for each interaction type and instance
@@ -118,22 +118,22 @@ module plastic_dislotwin
      interaction_SlipTrans, &                                                  !< coefficients for slip-trans interaction for each interaction type and instance
      interaction_TransSlip, &                                                  !< coefficients for trans-slip interaction for each interaction type and instance
      interaction_TransTrans                                                 !< coefficients for trans-trans interaction for each interaction type and instance
-   integer(pInt),                  dimension(:,:),            allocatable,           private :: & 
+   integer(pInt),                  dimension(:,:),            allocatable :: & 
      fcc_twinNucleationSlipPair
-   real(pReal),                  dimension(:,:),            allocatable,           private :: & 
+   real(pReal),                  dimension(:,:),            allocatable :: & 
      forestProjectionEdge, &
      C66
-   real(pReal),                  dimension(:,:,:),            allocatable,           private :: &
+   real(pReal),                  dimension(:,:,:),            allocatable :: &
      Schmid_trans, &
      Schmid_slip, &
      Schmid_twin, &
      C66_twin, &
      C66_trans
-   logical,                    private :: &
+   logical :: &
      dipoleFormation                                                                                !< flag indicating consideration of dipole formation
   end type 
   
-  type(tParameters), dimension(:), allocatable, private,target :: param                                !< containers of constitutive parameters (len Ninstance)
+  type(tParameters), dimension(:), allocatable, private :: param                                    !< containers of constitutive parameters (len Ninstance)
  
  
  type, private :: tDislotwinState
