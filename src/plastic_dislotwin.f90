@@ -315,51 +315,57 @@ subroutine plastic_dislotwin_init(fileUnit)
    prm%C66 = lattice_C66(1:6,1:6,p)
 
    prm%Nslip =  config_phase(p)%getInts('nslip',defaultVal=emptyInt)
-   if (size(prm%Nslip) > count(lattice_NslipSystem(:,p) > 0_pInt))       call IO_error(150_pInt,ext_msg='Nslip')
-   if (any(lattice_NslipSystem(1:size(prm%Nslip),p)-prm%Nslip < 0_pInt)) call IO_error(150_pInt,ext_msg='Nslip')
-   if (any(prm%Nslip < 0_pInt))                                          call IO_error(150_pInt,ext_msg='Nslip')
    prm%totalNslip = sum(prm%Nslip)
 
-   if (prm%totalNslip > 0_pInt) then
-     prm%rho0 = config_phase(p)%getFloats('rhoedge0')
-     prm%rhoDip0 = config_phase(p)%getFloats('rhoedgedip0')
-
-     prm%burgers_slip = config_phase(p)%getFloats('slipburgers')
-     if (size(prm%burgers_slip) /= size(prm%Nslip)) call IO_error(150_pInt,ext_msg='slipburgers')
-     prm%burgers_slip = math_expand(prm%burgers_slip,prm%Nslip)
-
-     prm%B = config_phase(p)%getFloats('b',defaultVal=[(0.0_pReal, i=1,size(prm%Nslip))])
-     prm%B = math_expand(prm%B,prm%Nslip)
-
-     prm%Qedge = config_phase(p)%getFloats('qedge')
-     prm%Qedge = math_expand(prm%Qedge,prm%Nslip)
-
-     prm%v0 = config_phase(p)%getFloats('v0')
-     prm%v0 = math_expand(prm%v0,prm%Nslip)
+   slipActive: if (prm%totalNslip > 0_pInt) then
+     ! reading in slip related parameters
+     prm%rho0                 = config_phase(p)%getFloats('rhoedge0',   requiredShape=shape(prm%Nslip))  !ToDo: rename to rho_0
+     prm%rhoDip0              = config_phase(p)%getFloats('rhoedgedip0',requiredShape=shape(prm%Nslip))  !ToDo: rename to rho_dip_0
+     prm%v0                   = config_phase(p)%getFloats('v0',         requiredShape=shape(prm%Nslip))
+     prm%burgers_slip         = config_phase(p)%getFloats('slipburgers',requiredShape=shape(prm%Nslip))
+     prm%Qedge                = config_phase(p)%getFloats('qedge',      requiredShape=shape(prm%Nslip))  !ToDo: rename (ask Karo)
+     prm%CLambdaSlip          = config_phase(p)%getFloats('clambdaslip',requiredShape=shape(prm%Nslip))
+     prm%p                    = config_phase(p)%getFloats('p_slip',     requiredShape=shape(prm%Nslip))
+     prm%q                    = config_phase(p)%getFloats('q_slip',     requiredShape=shape(prm%Nslip))
+     prm%B                    = config_phase(p)%getFloats('b',          requiredShape=shape(prm%Nslip), &
+                                                          defaultVal=[(0.0_pReal, i=1,size(prm%Nslip))])
+     prm%tau_peierls          = config_phase(p)%getFloats('tau_peierls',requiredShape=shape(prm%Nslip), &
+                                                          defaultVal=[(0.0_pReal, i=1,size(prm%Nslip))])
 
      prm%interaction_SlipSlip = spread(config_phase(p)%getFloats('interaction_slipslip'),2,1)     
 
+     prm%CEdgeDipMinDistance  = config_phase(p)%getFloat('cedgedipmindistance')
 
-     prm%CLambdaSlip = config_phase(p)%getFloats('clambdaslip')
-     prm%CLambdaSlip= math_expand(prm%CLambdaSlip,prm%Nslip)
+     ! expand slip related parameters from family => system
+     prm%rho0         = math_expand(prm%rho0,        prm%Nslip)
+     prm%rhoDip0      = math_expand(prm%rhoDip0,     prm%Nslip)
+     prm%v0           = math_expand(prm%v0,          prm%Nslip)
+     prm%burgers_slip = math_expand(prm%burgers_slip,prm%Nslip)
+     prm%Qedge        = math_expand(prm%Qedge,       prm%Nslip)
+     prm%CLambdaSlip  = math_expand(prm%CLambdaSlip, prm%Nslip)
+     prm%p            = math_expand(prm%p,           prm%Nslip)
+     prm%q            = math_expand(prm%q,           prm%Nslip)
+     prm%B            = math_expand(prm%B,           prm%Nslip)
+     prm%tau_peierls  = math_expand(prm%tau_peierls, prm%Nslip)
 
-     prm%tau_peierls = config_phase(p)%getFloats('tau_peierls',defaultVal=[(0.0_pReal, i=1,size(prm%Nslip))])
-     prm%tau_peierls = math_expand(prm%tau_peierls,prm%Nslip)
+     ! sanity checks for slip related parameters
+     if (any(prm%rho0         <= 0.0_pReal))
+     if (any(prm%rhoDip0      <= 0.0_pReal))
+     if (any(prm%v0           <= 0.0_pReal))
+     if (any(prm%burgers_slip <= 0.0_pReal))
+     if (any(prm%Qedge        <= 0.0_pReal))
+     if (any(prm%CLambdaSlip  <= 0.0_pReal))
+     if (any(prm%B            <= 0.0_pReal))
+     if (any(prm%tau_peierls  <= 0.0_pReal))
 
-     prm%p = config_phase(p)%getFloats('p_slip')
-     prm%p = math_expand(prm%p,prm%Nslip)
-     prm%q = config_phase(p)%getFloats('q_slip')
-     prm%q = math_expand(prm%q,prm%Nslip)
+     if (any(prm%p            = (prm%p,           prm%Nslip)
+     if (any(prm%q            = math_expand(prm%q,           prm%Nslip)
 
-     prm%CEdgeDipMinDistance      = config_phase(p)%getFloat('cedgedipmindistance')
-   else
+   else slipActive
      allocate(prm%burgers_slip(0))
-   endif
+   endif slipActive
 
    prm%Ntwin =  config_phase(p)%getInts('ntwin', defaultVal=emptyInt)
-   if (size(prm%Ntwin) > count(lattice_NtwinSystem(:,p) > 0_pInt))       call IO_error(150_pInt,ext_msg='Ntwin')
-   if (any(lattice_NtwinSystem(1:size(prm%Ntwin),p)-prm%Ntwin < 0_pInt)) call IO_error(150_pInt,ext_msg='Ntwin')
-   if (any(prm%Ntwin < 0_pInt))                                          call IO_error(150_pInt,ext_msg='Ntwin')
    prm%totalNtwin = sum(prm%Ntwin)
    
    if (prm%totalNtwin > 0_pInt) then
@@ -392,7 +398,6 @@ subroutine plastic_dislotwin_init(fileUnit)
   
    prm%Ntrans            =  config_phase(p)%getInts('ntrans', defaultVal=emptyInt)
    prm%totalNtrans = sum(prm%Ntrans)
-   !if (size > Nchunks_SlipFamilies + 1_pInt) call IO_error(150_pInt,ext_msg=extmsg)
    if (prm%totalNtrans > 0_pInt) then
      prm%burgers_trans = config_phase(p)%getFloats('transburgers')
      prm%burgers_trans = math_expand(prm%burgers_trans,prm%Ntrans)
@@ -535,19 +540,7 @@ subroutine plastic_dislotwin_init(fileUnit)
    enddo
 
  
-   do f = 1_pInt,lattice_maxNslipFamily
-     !  if (rhoEdge0(f,p) < 0.0_pReal) &
-     !    call IO_error(211_pInt,el=p,ext_msg='rhoEdge0 ('//PLASTICITY_DISLOTWIN_label//')')
-     !  if (rhoEdgeDip0(f,p) < 0.0_pReal) & 
-      !   call IO_error(211_pInt,el=p,ext_msg='rhoEdgeDip0 ('//PLASTICITY_DISLOTWIN_label//')')
-     !  if (burgersPerSlipFamily(f,p) <= 0.0_pReal) &
-     !    call IO_error(211_pInt,el=p,ext_msg='slipBurgers ('//PLASTICITY_DISLOTWIN_label//')')
-       !if (v0PerSlipFamily(f,p) <= 0.0_pReal) &
-        ! call IO_error(211_pInt,el=p,ext_msg='v0 ('//PLASTICITY_DISLOTWIN_label//')')
-       !if (prm%tau_peierlsPerSlipFamily(f) < 0.0_pReal) &
-        ! call IO_error(211_pInt,el=p,ext_msg='tau_peierls ('//PLASTICITY_DISLOTWIN_label//')')
-   enddo
-   do f = 1_pInt,lattice_maxNtwinFamily
+      do f = 1_pInt,lattice_maxNtwinFamily
       ! if (burgersPerTwinFamily(f,p) <= 0.0_pReal) &
       !   call IO_error(211_pInt,el=p,ext_msg='twinburgers ('//PLASTICITY_DISLOTWIN_label//')')
        !if (Ndot0PerTwinFamily(f,p) < 0.0_pReal) &
@@ -811,14 +804,14 @@ subroutine plastic_dislotwin_init(fileUnit)
    startIndex=1_pInt
    endIndex=prm%totalNslip
    stt%rhoEdge=>plasticState(p)%state(startIndex:endIndex,:)
-   stt%rhoEdge= spread(math_expand(prm%rho0,prm%Nslip),2,NofMyPhase)
+   stt%rhoEdge= spread(prm%rho0,2,NofMyPhase)
    dot%rhoEdge=>plasticState(p)%dotState(startIndex:endIndex,:)
    plasticState(p)%aTolState(startIndex:endIndex) = prm%aTolRho
 
    startIndex=endIndex+1
    endIndex=endIndex+prm%totalNslip
    stt%rhoEdgeDip=>plasticState(p)%state(startIndex:endIndex,:)
-   stt%rhoEdgeDip= spread(math_expand(prm%rhoDip0,prm%Nslip),2,NofMyPhase)
+   stt%rhoEdgeDip= spread(prm%rhoDip0,2,NofMyPhase)
    dot%rhoEdgeDip=>plasticState(p)%dotState(startIndex:endIndex,:)
    plasticState(p)%aTolState(startIndex:endIndex) = prm%aTolRho
    
