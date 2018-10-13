@@ -655,11 +655,12 @@ subroutine constitutive_LiAndItsTangents(Li, dLi_dS, dLi_dFi, S6, Fi, ipc, ip, e
  detFi = math_det33(Fi)
  Li = math_mul33x33(math_mul33x33(Fi,Li),FiInv)*detFi                                               !< push forward to intermediate configuration
  temp_33 = math_mul33x33(FiInv,Li)
- do concurrent(i = 1_pInt:3_pInt, j = 1_pInt:3_pInt)
+
+ do i = 1_pInt,3_pInt; do j = 1_pInt,3_pInt
    dLi_dS(1:3,1:3,i,j)  = math_mul33x33(math_mul33x33(Fi,dLi_dS(1:3,1:3,i,j)),FiInv)*detFi
    dLi_dFi(1:3,1:3,i,j) = dLi_dFi(1:3,1:3,i,j) + Li*FiInv(j,i)
    dLi_dFi(1:3,i,1:3,j) = dLi_dFi(1:3,i,1:3,j) + math_I3*temp_33(j,i) + Li*FiInv(j,i)
- end do
+ end do; end do
 
 end subroutine constitutive_LiAndItsTangents
 
