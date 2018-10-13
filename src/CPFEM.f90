@@ -98,7 +98,7 @@ subroutine CPFEM_initAll(el,ip)
      call config_init
      call math_init
      call FE_init
-     call mesh_init(ip, el)                                                                        ! pass on coordinates to alter calcMode of first ip
+     call mesh_init(ip, el)
      call lattice_init
      call material_init
      call constitutive_init
@@ -314,7 +314,7 @@ subroutine CPFEM_general(mode, parallelExecution, ffn, ffn1, temperature_inp, dt
    thermal_type, &
    THERMAL_conduction_ID, &
    phase_Nsources, &
-   material_homog
+   material_homogenizationAt
  use config, only: &
    material_Nhomogenization
  use crystallite, only: &
@@ -503,7 +503,7 @@ subroutine CPFEM_general(mode, parallelExecution, ffn, ffn1, temperature_inp, dt
  if (.not. parallelExecution) then
    chosenThermal1: select case (thermal_type(mesh_element(3,elCP)))
      case (THERMAL_conduction_ID) chosenThermal1
-       temperature(material_homog(ip,elCP))%p(thermalMapping(material_homog(ip,elCP))%p(ip,elCP)) = &
+       temperature(material_homogenizationAt(elCP))%p(thermalMapping(material_homogenizationAt(elCP))%p(ip,elCP)) = &
          temperature_inp
      end select chosenThermal1
    materialpoint_F0(1:3,1:3,ip,elCP) = ffn
@@ -516,7 +516,7 @@ subroutine CPFEM_general(mode, parallelExecution, ffn, ffn1, temperature_inp, dt
    CPFEM_dcsde(1:6,1:6,ip,elCP) = CPFEM_odd_jacobian * math_identity2nd(6)
    chosenThermal2: select case (thermal_type(mesh_element(3,elCP)))
      case (THERMAL_conduction_ID) chosenThermal2
-       temperature(material_homog(ip,elCP))%p(thermalMapping(material_homog(ip,elCP))%p(ip,elCP)) = &
+       temperature(material_homogenizationAt(elCP))%p(thermalMapping(material_homogenizationAt(elCP))%p(ip,elCP)) = &
          temperature_inp
      end select chosenThermal2
    materialpoint_F0(1:3,1:3,ip,elCP) = ffn

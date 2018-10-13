@@ -1,0 +1,9 @@
+#initial elastic step
+$Loadcase 1 time 0.0005 incs 1 frequency 5
+ Face 1 X 0.01
+ Face 2 X 0.00
+$EndLoadcase
+$Loadcase 2 time 10.0 incs 200 frequency 5
+ Face 1 X 0.01
+ Face 2 X 0.00
+$EndLoadcase

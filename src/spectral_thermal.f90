@@ -50,8 +50,6 @@ module spectral_thermal
    spectral_thermal_init, &
    spectral_thermal_solution, &
    spectral_thermal_forward
- external :: &
-   PETScErrorF                                                                                      ! is called in the CHKERRQ macro
 
 contains
 
@@ -88,11 +86,6 @@ subroutine spectral_thermal_init
  PetscScalar,  dimension(:,:,:), pointer     :: x_scal
  PetscErrorCode :: ierr
 
- external :: &
-   SNESsetOptionsPrefix, &
-   DMDAgetCorners, &
-   DMDASNESsetFunctionLocal
-   
  write(6,'(/,a)') ' <<<+-  spectral_thermal init  -+>>>'
  write(6,'(/,a)') ' Shanthraj et al., Handbook of Mechanics of Materials, volume in press,'
  write(6,'(/,a)') ' chapter Spectral Solvers for Crystal Plasticity and Multi-Physics Simulations. Springer, 2018'
@@ -195,11 +188,6 @@ type(tSolutionState) function spectral_thermal_solution(timeinc,timeinc_old,load
 ! PETSc Data
  PetscErrorCode :: ierr   
  SNESConvergedReason :: reason
-
- external :: &
-   VecMin, &
-   VecMax, &
-   SNESSolve
 
  spectral_thermal_solution%converged =.false.
  

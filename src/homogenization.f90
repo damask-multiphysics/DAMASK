@@ -449,8 +449,6 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
    subStepSizeHomog, &
    stepIncreaseHomog, &
    nMPstate
- use math, only: &
-   math_transpose33
  use FEsolving, only: &
    FEsolving_execElem, &
    FEsolving_execIP, &
@@ -497,6 +495,7 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
    crystallite_converged, &
    crystallite_stressAndItsTangent, &
    crystallite_orientations
+#ifdef DEBUG
  use debug, only: &
    debug_level, &
    debug_homogenization, &
@@ -505,6 +504,7 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
    debug_levelSelective, &
    debug_e, &
    debug_i
+#endif
 
  implicit none
  real(pReal), intent(in) :: dt                                                                      !< time increment
@@ -518,18 +518,16 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
    mySource, &
    myNgrains
 
-!--------------------------------------------------------------------------------------------------
-! initialize to starting condition
+#ifdef DEBUG
  if (iand(debug_level(debug_homogenization), debug_levelBasic) /= 0_pInt) then
-   !$OMP CRITICAL (write2out)
      write(6,'(/a,i5,1x,i2)') '<< HOMOG >> Material Point start at el ip ', debug_e, debug_i
 
      write(6,'(a,/,3(12x,3(f14.9,1x)/))') '<< HOMOG >> F0', &
-                                     math_transpose33(materialpoint_F0(1:3,1:3,debug_i,debug_e))
+                                     transpose(materialpoint_F0(1:3,1:3,debug_i,debug_e))
      write(6,'(a,/,3(12x,3(f14.9,1x)/))') '<< HOMOG >> F', &
-                                     math_transpose33(materialpoint_F(1:3,1:3,debug_i,debug_e))
-   !$OMP END CRITICAL (write2out)
+                                     transpose(materialpoint_F(1:3,1:3,debug_i,debug_e))
  endif
+#endif
 
 !--------------------------------------------------------------------------------------------------
 ! initialize restoration points of ...
@@ -609,10 +607,8 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
 !---------------------------------------------------------------------------------------------------
 ! calculate new subStep and new subFrac
          materialpoint_subFrac(i,e) = materialpoint_subFrac(i,e) + materialpoint_subStep(i,e)
-         !$OMP FLUSH(materialpoint_subFrac)
          materialpoint_subStep(i,e) = min(1.0_pReal-materialpoint_subFrac(i,e), &
                                           stepIncreaseHomog*materialpoint_subStep(i,e))             ! introduce flexibility for step increase/acceleration
-         !$OMP FLUSH(materialpoint_subStep)
 
          steppingNeeded: if (materialpoint_subStep(i,e) > subStepMinHomog) then
 
@@ -672,7 +668,6 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
                hydrogenfluxState(mappingHomogenization(2,i,e))%subState0(:,mappingHomogenization(1,i,e)) = &
                hydrogenfluxState(mappingHomogenization(2,i,e))%State(    :,mappingHomogenization(1,i,e))! ...internal hydrogen transport state
            materialpoint_subF0(1:3,1:3,i,e) = materialpoint_subF(1:3,1:3,i,e)                       ! ...def grad
-           !$OMP FLUSH(materialpoint_subF0)
          endif steppingNeeded
 
        else converged
@@ -690,7 +685,6 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
            !$OMP END CRITICAL (setTerminallyIll)
          else                                                                                       ! cutback makes sense
            materialpoint_subStep(i,e) = subStepSizeHomog * materialpoint_subStep(i,e)               ! crystallite had severe trouble, so do a significant cutback
-           !$OMP FLUSH(materialpoint_subStep)
 
 #ifdef DEBUG
            if (iand(debug_level(debug_homogenization), debug_levelExtensive) /= 0_pInt &
@@ -753,8 +747,9 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
 
        if (materialpoint_subStep(i,e) > subStepMinHomog) then
          materialpoint_requested(i,e) = .true.
-         materialpoint_subF(1:3,1:3,i,e) = materialpoint_subF0(1:3,1:3,i,e) + &
-                                         materialpoint_subStep(i,e) * (materialpoint_F(1:3,1:3,i,e) - materialpoint_F0(1:3,1:3,i,e))
+         materialpoint_subF(1:3,1:3,i,e) = materialpoint_subF0(1:3,1:3,i,e) &
+                                         + materialpoint_subStep(i,e) * (materialpoint_F(1:3,1:3,i,e) &
+                                         - materialpoint_F0(1:3,1:3,i,e))
          materialpoint_subdt(i,e) = materialpoint_subStep(i,e) * dt
          materialpoint_doneAndHappy(1:2,i,e) = [.false.,.true.]
        endif
@@ -811,13 +806,6 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
              materialpoint_doneAndHappy(1:2,i,e) = homogenization_updateState(i,e)
              materialpoint_converged(i,e) = all(materialpoint_doneAndHappy(1:2,i,e))                  ! converged if done and happy
            endif
-           !$OMP FLUSH(materialpoint_converged)
-           if (materialpoint_converged(i,e)) then
-             if (iand(debug_level(debug_homogenization), debug_levelBasic) /= 0_pInt) then
-               !$OMP CRITICAL (distributionMPState)
-               !$OMP END CRITICAL (distributionMPState)
-             endif
-           endif
          endif
        enddo IpLooping3
      enddo elementLooping3
@@ -839,9 +827,7 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
    enddo elementLooping4
    !$OMP END PARALLEL DO
  else
-   !$OMP CRITICAL (write2out)
    write(6,'(/,a,/)') '<< HOMOG >> Material Point terminally ill'
-   !$OMP END CRITICAL (write2out)
  endif
 
 end subroutine materialpoint_stressAndItsTangent

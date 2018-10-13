@@ -26,9 +26,8 @@ module numerics
    worldsize                  =  0_pInt                                                             !< MPI worldsize (/=0 for MPI simulations only)
  integer(4), protected, public :: &
    DAMASK_NumThreadsInt       =  0                                                                  !< value stored in environment variable DAMASK_NUM_THREADS, set to zero if no OpenMP directive
- integer(pInt), public :: &
-   numerics_integrationMode   =  0_pInt                                                             !< integrationMode 1 = central solution; integrationMode 2 = perturbation, Default 0: undefined, is not read from file
- integer(pInt), dimension(2) , protected, public :: &
+ !< ToDo: numerics_integrator is an array for historical reasons, only element 1 is used!
+ integer(pInt), dimension(2), protected, public :: &
    numerics_integrator        =  1_pInt                                                             !< method used for state integration (central & perturbed state), Default 1: fix-point iteration for both states
  real(pReal), protected, public :: &
    relevantStrain             =  1.0e-7_pReal, &                                                    !< strain increment considered significant (used by crystallite to determine whether strain inc is considered significant)
@@ -128,12 +127,7 @@ module numerics
 #ifdef FEM
  integer(pInt), protected, public :: &
    integrationOrder           =  2_pInt, &                                                          !< order of quadrature rule required
-   structOrder                =  2_pInt, &                                                          !< order of displacement shape functions
-   thermalOrder               =  2_pInt, &                                                          !< order of temperature field shape functions
-   damageOrder                =  2_pInt, &                                                          !< order of damage field shape functions
-   vacancyfluxOrder           =  2_pInt, &                                                          !< order of vacancy concentration and chemical potential field shape functions
-   porosityOrder              =  2_pInt, &                                                          !< order of porosity field shape functions
-   hydrogenfluxOrder          =  2_pInt                                                             !< order of hydrogen concentration and chemical potential field shape functions  
+   structOrder                =  2_pInt                                                             !< order of displacement shape functions
  logical, protected, public :: & 
    BBarStabilisation          = .false.                                                  
  character(len=4096), protected, public :: &
@@ -147,40 +141,7 @@ module numerics
                              &-mech_pc_type ml &
                              &-mech_mg_levels_ksp_type chebyshev &
                              &-mech_mg_levels_pc_type sor &
-                             &-mech_pc_ml_nullspace user &
-                             &-damage_snes_type vinewtonrsls &
-                             &-damage_snes_atol 1e-8 &
-                             &-damage_ksp_type preonly &
-                             &-damage_ksp_max_it 25 &
-                             &-damage_pc_type cholesky &
-                             &-damage_pc_factor_mat_solver_package mumps &
-                             &-thermal_snes_type newtonls &
-                             &-thermal_snes_linesearch_type cp &
-                             &-thermal_ksp_type fgmres &
-                             &-thermal_ksp_max_it 25 &
-                             &-thermal_snes_atol 1e-3 &
-                             &-thermal_pc_type hypre &
-                             &-vacancy_snes_type newtonls &
-                             &-vacancy_snes_linesearch_type cp &
-                             &-vacancy_snes_atol 1e-9 &
-                             &-vacancy_ksp_type fgmres &
-                             &-vacancy_ksp_max_it 25 &
-                             &-vacancy_pc_type ml &
-                             &-vacancy_mg_levels_ksp_type chebyshev &
-                             &-vacancy_mg_levels_pc_type sor &
-                             &-porosity_snes_type newtonls &
-                             &-porosity_snes_atol 1e-8 &
-                             &-porosity_ksp_type fgmres &
-                             &-porosity_ksp_max_it 25 &
-                             &-porosity_pc_type hypre &
-                             &-hydrogen_snes_type newtonls &
-                             &-hydrogen_snes_linesearch_type cp &
-                             &-hydrogen_snes_atol 1e-9 &
-                             &-hydrogen_ksp_type fgmres &
-                             &-hydrogen_ksp_max_it 25 &
-                             &-hydrogen_pc_type ml &
-                             &-hydrogen_mg_levels_ksp_type chebyshev &
-                             &-hydrogen_mg_levels_pc_type sor ', &
+                             &-mech_pc_ml_nullspace user ',&
    petsc_options           = ''
 #endif
 
@@ -231,8 +192,6 @@ subroutine numerics_init
    tag ,&
    line
 !$ character(len=6) DAMASK_NumThreadsString                                                         ! environment variable DAMASK_NUM_THREADS
- external :: &
-   PETScErrorF                                                                                      ! is called in the CHKERRQ macro
 
 #ifdef PETSc
  call MPI_Comm_rank(PETSC_COMM_WORLD,worldrank,ierr);CHKERRQ(ierr)
@@ -314,9 +273,7 @@ subroutine numerics_init
        case ('atol_crystallitestress')
          aTol_crystalliteStress = IO_floatValue(line,chunkPos,2_pInt)
        case ('integrator')
-         numerics_integrator(1) = IO_intValue(line,chunkPos,2_pInt)
-       case ('integratorstiffness')
-         numerics_integrator(2) = IO_intValue(line,chunkPos,2_pInt)
+         numerics_integrator = IO_intValue(line,chunkPos,2_pInt)
        case ('usepingpong')
          usepingpong = IO_intValue(line,chunkPos,2_pInt) > 0_pInt
        case ('timesyncing')
@@ -461,16 +418,6 @@ subroutine numerics_init
          integrationorder = IO_intValue(line,chunkPos,2_pInt)
        case ('structorder')
          structorder = IO_intValue(line,chunkPos,2_pInt)
-       case ('thermalorder')
-         thermalorder = IO_intValue(line,chunkPos,2_pInt)
-       case ('damageorder')
-         damageorder = IO_intValue(line,chunkPos,2_pInt)
-       case ('vacancyfluxorder')
-         vacancyfluxOrder = IO_intValue(line,chunkPos,2_pInt)
-       case ('porosityorder')
-         porosityOrder = IO_intValue(line,chunkPos,2_pInt)
-       case ('hydrogenfluxorder')
-         hydrogenfluxOrder = IO_intValue(line,chunkPos,2_pInt)
        case ('petsc_options')
          petsc_options = trim(line(chunkPos(4):))
        case ('bbarstabilisation')
@@ -482,7 +429,7 @@ subroutine numerics_init
 #endif
        case default                                                                                ! found unknown keyword
          call IO_error(300_pInt,ext_msg=tag)
-     endselect
+     end select
    enddo
    close(FILEUNIT)
 
@@ -555,7 +502,7 @@ subroutine numerics_init
 
 !--------------------------------------------------------------------------------------------------
 ! Random seeding parameter
- write(6,'(a24,1x,i16,/)')    ' random_seed:            ',randomSeed
+ write(6,'(a16,1x,i16,/)')    ' random_seed:    ',randomSeed
  if (randomSeed <= 0_pInt) &
    write(6,'(a,/)')           ' random seed will be generated!'
 
@@ -623,11 +570,6 @@ subroutine numerics_init
 #ifdef FEM
  write(6,'(a24,1x,i8)')      ' integrationOrder:       ',integrationOrder
  write(6,'(a24,1x,i8)')      ' structOrder:            ',structOrder
- write(6,'(a24,1x,i8)')      ' thermalOrder:           ',thermalOrder
- write(6,'(a24,1x,i8)')      ' damageOrder:            ',damageOrder
- write(6,'(a24,1x,i8)')      ' vacancyfluxOrder:       ',vacancyfluxOrder
- write(6,'(a24,1x,i8)')      ' porosityOrder:          ',porosityOrder 
- write(6,'(a24,1x,i8)')      ' hydrogenfluxOrder:      ',hydrogenfluxOrder
  write(6,'(a24,1x,a)')       ' PETSc_options:          ',trim(petsc_defaultOptions)//' '//trim(petsc_options)
  write(6,'(a24,1x,L8)')      ' B-Bar stabilisation:    ',BBarStabilisation
 #endif
