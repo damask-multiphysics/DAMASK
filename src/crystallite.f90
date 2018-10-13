@@ -3777,8 +3777,8 @@ function crystallite_postResults(ipc, ip, el)
  c = c + 1_pInt
  if (size(crystallite_postResults)-c > 0_pInt) &
    crystallite_postResults(c+1:size(crystallite_postResults)) = &
-      constitutive_postResults(crystallite_Tstar_v(1:6,ipc,ip,el), crystallite_Fe, &
-                               ipc, ip, el)
+      constitutive_postResults(crystallite_Tstar_v(1:6,ipc,ip,el), crystallite_Fi(1:3,1:3,ipc,ip,el), &
+                               crystallite_Fe, ipc, ip, el)
 
 end function crystallite_postResults
 

@@ -88,7 +88,6 @@ program DAMASK_spectral
  real(pReal), dimension(9) :: temp_valueVector = 0.0_pReal                                          !< temporarily from loadcase file when reading in tensors (initialize to 0.0)
  logical,     dimension(9) :: temp_maskVector  = .false.                                            !< temporarily from loadcase file when reading in tensors
  integer(pInt), allocatable, dimension(:) :: chunkPos
-
  integer(pInt) :: &
    N_t   = 0_pInt, &                                                                                !< # of time indicators found in load case file
    N_n   = 0_pInt, &                                                                                !< # of increment specifiers found in load case file
@@ -130,8 +129,7 @@ program DAMASK_spectral
    stagIter
  character(len=6)  :: loadcase_string
  character(len=1024) :: &
-   incInfo, &                                                                                       !< string parsed to solution with information about current load case
-   workingDir
+   incInfo
  type(tLoadCase), allocatable, dimension(:) :: loadCases                                            !< array of all load cases
  type(tLoadCase) :: newLoadCase
  type(tSolutionState), allocatable, dimension(:) :: solres
@@ -140,7 +138,7 @@ program DAMASK_spectral
  integer(pInt), parameter :: maxByteOut = 2147483647-4096                                           !< limit of one file output write https://trac.mpich.org/projects/mpich/ticket/1742
  integer(pInt), parameter :: maxRealOut = maxByteOut/pReal
  integer(pLongInt), dimension(2) :: outputIndex
- integer :: ierr
+ PetscErrorCode :: ierr
  procedure(basic_init), pointer :: &
    mech_init
  procedure(basic_forward), pointer :: &
@@ -151,10 +149,9 @@ program DAMASK_spectral
  external :: &
    quit
 
-
 !--------------------------------------------------------------------------------------------------
 ! init DAMASK (all modules)
- call CPFEM_initAll(el = 1_pInt, ip = 1_pInt)
+ call CPFEM_initAll
  write(6,'(/,a)')   ' <<<+-  DAMASK_spectral init  -+>>>'
  write(6,'(/,a,/)') ' Roters et al., Computational Materials Science, 2018'
  write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
@@ -378,7 +375,7 @@ program DAMASK_spectral
      open(newunit=fileUnit,file=trim(getSolverJobName())//&
                                  '.spectralOut',form='UNFORMATTED',status='REPLACE')
      write(fileUnit) 'load:',       trim(loadCaseFile)                                               ! ... and write header
-     write(fileUnit) 'workingdir:', trim(workingDir)
+     write(fileUnit) 'workingdir:', 'n/a'
      write(fileUnit) 'geometry:',   trim(geometryFile)
      write(fileUnit) 'grid:',       grid
      write(fileUnit) 'size:',       geomSize
@@ -434,14 +431,12 @@ program DAMASK_spectral
    enddo
    fileOffset = fileOffset + sum(outputSize)                                                        ! forward to current file position
  endif writeUndeformed
-!--------------------------------------------------------------------------------------------------
-! looping over load cases
+
+
  loadCaseLooping: do currentLoadCase = 1_pInt, size(loadCases)
    time0 = time                                                                                     ! load case start time
    guess = loadCases(currentLoadCase)%followFormerTrajectory                                        ! change of load case? homogeneous guess for the first inc
 
-!--------------------------------------------------------------------------------------------------
-! loop over incs defined in input file for current load case
    incLooping: do inc = 1_pInt, loadCases(currentLoadCase)%incs
      totalIncsCounter = totalIncsCounter + 1_pInt
 
@@ -473,8 +468,6 @@ program DAMASK_spectral
      else skipping
        stepFraction = 0_pInt                                                                        ! fraction scaled by stepFactor**cutLevel
 
-!--------------------------------------------------------------------------------------------------
-! loop over sub step
        subStepLooping: do while (stepFraction < subStepFactor**cutBackLevel)
          remainingLoadCaseTime = loadCases(currentLoadCase)%time+time0 - time
          time = time + timeinc                                                                      ! forward target time
@@ -629,63 +622,7 @@ program DAMASK_spectral
  call MPI_file_close(fileUnit,ierr)
  close(statUnit)
 
- if (notConvergedCounter > 0_pInt) call quit(3_pInt)                                                ! error if some are not converged
+ if (notConvergedCounter > 0_pInt) call quit(2_pInt)                                                ! error if some are not converged
  call quit(0_pInt)                                                                                  ! no complains ;)
 
 end program DAMASK_spectral
-
-
-!--------------------------------------------------------------------------------------------------
-!> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
-!> @brief quit subroutine to mimic behavior of FEM solvers
-!> @details exits the Spectral solver and reports time and duration. Exit code 0 signals
-!> everything went fine. Exit code 1 signals an error, message according to IO_error. Exit code
-!> 2 signals no converged solution and increment of last saved restart information is written to
-!> stderr. Exit code 3 signals no severe problems, but some increments did not converge
-!--------------------------------------------------------------------------------------------------
-subroutine quit(stop_id)
-#include <petsc/finclude/petscsys.h>
-#ifdef _OPENMP
- use MPI, only: &
-   MPI_finalize
-#endif
- use prec, only: &
-   pInt
-
- implicit none
- integer(pInt), intent(in) :: stop_id
- integer, dimension(8) :: dateAndTime                                                               ! type default integer
- integer(pInt) :: error = 0_pInt
- PetscErrorCode :: ierr = 0
- logical :: ErrorInQuit
- 
- external :: &
-   PETScFinalize
-
- call PETScFinalize(ierr)
- if (ierr /= 0) write(6,'(a)') ' Error in PETScFinalize'
-#ifdef _OPENMP
- call MPI_finalize(error)
- if (error /= 0) write(6,'(a)') ' Error in MPI_finalize'
-#endif
- ErrorInQuit = (ierr /= 0 .or. error /= 0_pInt)
- 
- call date_and_time(values = dateAndTime)
- write(6,'(/,a)') 'DAMASK terminated on:'
- write(6,'(a,2(i2.2,a),i4.4)') 'Date:               ',dateAndTime(3),'/',&
-                                                      dateAndTime(2),'/',&
-                                                      dateAndTime(1)
- write(6,'(a,2(i2.2,a),i2.2)') 'Time:               ',dateAndTime(5),':',&
-                                                      dateAndTime(6),':',&
-                                                      dateAndTime(7)
-
- if (stop_id == 0_pInt .and. .not. ErrorInQuit) stop 0                                              ! normal termination
- if (stop_id <  0_pInt .and. .not. ErrorInQuit) then                                                ! terminally ill, restart might help
-   write(0,'(a,i6)') 'restart information available at ', stop_id*(-1_pInt)
-   stop 2
- endif
- if (stop_id == 3_pInt .and. .not. ErrorInQuit) stop 3                                              ! not all incs converged
- 
- stop 1                                                                                             ! error (message from IO_error)
-
-end subroutine quit

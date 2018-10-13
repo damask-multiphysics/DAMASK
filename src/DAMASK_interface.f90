@@ -43,24 +43,23 @@ subroutine DAMASK_interface_init()
  use, intrinsic :: &
    iso_fortran_env
 #include <petsc/finclude/petscsys.h>
-#if PETSC_VERSION_MAJOR!=3 || PETSC_VERSION_MINOR!=9
+#if PETSC_VERSION_MAJOR!=3 || PETSC_VERSION_MINOR!=10
 ===================================================================================================
-  3.9.x 3.9.x 3.9.x 3.9.x 3.9.x 3.9.x 3.9.x 3.9.x 3.9.x 3.9.x 3.9.x 3.9.x 3.9.x 3.9.x 3.9.x 3.9.x
+ 3.10.x 3.10.x 3.10.x 3.10.x 3.10.x 3.10.x 3.10.x 3.10.x 3.10.x 3.10.x 3.10.x 3.10.x 3.10.x 3.10.x
 ===================================================================================================
-=======   THIS VERSION OF DAMASK REQUIRES PETSc 3.9.x   ===========================================
-==========   THIS VERSION OF DAMASK REQUIRES PETSc 3.9.x   ========================================
-=============   THIS VERSION OF DAMASK REQUIRES PETSc 3.9.x   =====================================
-================   THIS VERSION OF DAMASK REQUIRES PETSc 3.9.x   ==================================
-===================   THIS VERSION OF DAMASK REQUIRES PETSc 3.9.x   ===============================
-======================   THIS VERSION OF DAMASK REQUIRES PETSc 3.9.x   ============================
-=========================   THIS VERSION OF DAMASK REQUIRES PETSc 3.9.x   ========================= 
-============================   THIS VERSION OF DAMASK REQUIRES PETSc 3.9.x   ======================
-===============================   THIS VERSION OF DAMASK REQUIRES PETSc 3.9.x   ===================
-==================================   THIS VERSION OF DAMASK REQUIRES PETSc 3.9.x   ================
-=====================================   THIS VERSION OF DAMASK REQUIRES PETSc 3.9.x   =============
-========================================   THIS VERSION OF DAMASK REQUIRES PETSc 3.9.x   ==========
+=======   THIS VERSION OF DAMASK REQUIRES PETSc 3.10.x   ==========================================
+==========   THIS VERSION OF DAMASK REQUIRES PETSc 3.10.x   =======================================
+=============   THIS VERSION OF DAMASK REQUIRES PETSc 3.10.x   ====================================
+================   THIS VERSION OF DAMASK REQUIRES PETSc 3.10.x   =================================
+===================   THIS VERSION OF DAMASK REQUIRES PETSc 3.10.x   ==============================
+======================   THIS VERSION OF DAMASK REQUIRES PETSc 3.10.x   ===========================
+=========================   THIS VERSION OF DAMASK REQUIRES PETSc 3.10.x   ========================
+============================   THIS VERSION OF DAMASK REQUIRES PETSc 3.10.x   =====================
+===============================   THIS VERSION OF DAMASK REQUIRES PETSc 3.10.x   ==================
+==================================   THIS VERSION OF DAMASK REQUIRES PETSc 3.10.x   ===============
+=====================================   THIS VERSION OF DAMASK REQUIRES PETSc 3.10.x   ============
 ===================================================================================================
-  3.9.x 3.9.x 3.9.x 3.9.x 3.9.x 3.9.x 3.9.x 3.9.x 3.9.x 3.9.x 3.9.x 3.9.x 3.9.x 3.9.x 3.9.x 3.9.x
+ 3.10.x 3.10.x 3.10.x 3.10.x 3.10.x 3.10.x 3.10.x 3.10.x 3.10.x 3.10.x 3.10.x 3.10.x 3.10.x 3.10.x
 ===================================================================================================
 #endif
  use PETScSys
@@ -88,9 +87,7 @@ subroutine DAMASK_interface_init()
    dateAndTime                                                                                      ! type default integer
  PetscErrorCode :: ierr
  external :: &
-   quit,&
-   PETScErrorF, &                                                                                   ! is called in the CHKERRQ macro
-   PETScInitialize
+   quit
 
  open(6, encoding='UTF-8')                                                                          ! for special characters in output
 
@@ -230,8 +227,8 @@ subroutine setWorkingDirectory(workingDirectoryArg)
  implicit none
  character(len=*),  intent(in) :: workingDirectoryArg                                               !< working directory argument
  character(len=1024)           :: workingDirectory                                                  !< working directory argument
- external                      :: quit
  logical                       :: error
+ external                      :: quit
 
  absolutePath: if (workingDirectoryArg(1:1) == '/') then
    workingDirectory = workingDirectoryArg
@@ -284,11 +281,18 @@ character(len=1024) function getGeometryFile(geometryParameter)
 
  implicit none
  character(len=1024), intent(in) :: geometryParameter
+ logical                         :: file_exists
+ external                        :: quit
 
  getGeometryFile = trim(geometryParameter)
  if (scan(getGeometryFile,'/') /= 1) getGeometryFile = trim(getCWD())//'/'//trim(getGeometryFile)
  getGeometryFile = makeRelativePath(trim(getCWD()), getGeometryFile)
 
+ inquire(file=trim(getGeometryFile), exist=file_exists)
+ if (.not. file_exists) then
+   write(6,'(a)') ' Geometry file does not exists ('//trim(getGeometryFile)//')'
+   call quit(1_pInt)
+ endif
 
 end function getGeometryFile
 
@@ -302,10 +306,18 @@ character(len=1024) function getLoadCaseFile(loadCaseParameter)
 
  implicit none
  character(len=1024), intent(in) :: loadCaseParameter
+ logical                         :: file_exists
+ external                        :: quit
 
  getLoadCaseFile = trim(loadCaseParameter)
  if (scan(getLoadCaseFile,'/') /= 1) getLoadCaseFile = trim(getCWD())//'/'//trim(getLoadCaseFile)
  getLoadCaseFile = makeRelativePath(trim(getCWD()), getLoadCaseFile)
+
+ inquire(file=trim(getLoadCaseFile), exist=file_exists)
+ if (.not. file_exists) then
+   write(6,'(a)') ' Geometry file does not exists ('//trim(getLoadCaseFile)//')'
+   call quit(1_pInt)
+ endif
 
 end function getLoadCaseFile
 
