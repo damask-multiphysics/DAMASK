@@ -1163,11 +1163,7 @@ function homogenization_postResults(ip,el)
 
    case (HOMOGENIZATION_RGC_ID) chosenHomogenization
      homogenization_postResults(startPos:endPos) = &
-       homogenization_RGC_postResults(&
-                                  ip, &
-                                  el, &
-                                  materialpoint_P(1:3,1:3,ip,el), &
-                                  materialpoint_F(1:3,1:3,ip,el))
+       homogenization_RGC_postResults(ip,el)
  end select chosenHomogenization
 
  startPos = endPos + 1_pInt
