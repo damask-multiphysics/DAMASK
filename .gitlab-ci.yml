@@ -333,13 +333,6 @@ Phenopowerlaw_singleSlip:
     - master
     - release
 
-HybridIA:
-  stage: spectral
-  script: HybridIA/test.py
-  except:
-    - master
-    - release
-
 TextureComponents:
   stage: spectral
   script: TextureComponents/test.py

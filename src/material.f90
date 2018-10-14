@@ -227,10 +227,6 @@ module material
    microstructure_elemhomo, &                                                                       !< flag to indicate homogeneous microstructure distribution over element's IPs
    phase_localPlasticity                                                                            !< flags phases with local constitutive law
 
-
- character(len=65536), dimension(:), allocatable, private :: &
-   texture_ODFfile                                                                                  !< name of each ODF file
-
  integer(pInt), private :: &
    microstructure_maxNconstituents, &                                                               !< max number of constituents in any phase
    texture_maxNgauss, &                                                                             !< max number of Gauss components in any texture
@@ -367,7 +363,6 @@ subroutine material_init()
  use mesh, only: &
    mesh_homogenizationAt, &
    mesh_NipsPerElem, &
-   mesh_maxNips, &
    mesh_NcpElems, &
    FE_geomtype
 
@@ -472,11 +467,11 @@ subroutine material_init()
 
  call material_populateGrains
 
- allocate(phaseAt                   (  homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems),source=0_pInt)
- allocate(phasememberAt             (  homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems),source=0_pInt)
- allocate(mappingHomogenization     (2,                          mesh_maxNips,mesh_NcpElems),source=0_pInt)
+ allocate(phaseAt                   (  homogenization_maxNgrains,mesh_nIPsPerElem,mesh_NcpElems),source=0_pInt)
+ allocate(phasememberAt             (  homogenization_maxNgrains,mesh_nIPsPerElem,mesh_NcpElems),source=0_pInt)
+ allocate(mappingHomogenization     (2,                          mesh_nIPsPerElem,mesh_NcpElems),source=0_pInt)
  allocate(mappingCrystallite        (2,homogenization_maxNgrains,             mesh_NcpElems),source=0_pInt)
- allocate(mappingHomogenizationConst(                            mesh_maxNips,mesh_NcpElems),source=1_pInt)
+ allocate(mappingHomogenizationConst(                            mesh_nIPsPerElem,mesh_NcpElems),source=1_pInt)
 
  allocate(ConstitutivePosition  (size(config_phase)),         source=0_pInt)
  allocate(HomogenizationPosition(size(config_homogenization)),source=0_pInt)
@@ -936,9 +931,7 @@ subroutine material_parseTexture
  integer(pInt) :: section, gauss, fiber, j, t, i
  character(len=65536), dimension(:), allocatable ::  strings                                     ! Values for given key in material config 
  integer(pInt), dimension(:), allocatable :: chunkPos
- character(len=65536) :: tag
 
- allocate(texture_ODFfile(size(config_texture))); texture_ODFfile=''
  allocate(texture_symmetry(size(config_texture)), source=1_pInt)
  allocate(texture_Ngauss(size(config_texture)),   source=0_pInt)
  allocate(texture_Nfiber(size(config_texture)),   source=0_pInt)
@@ -983,9 +976,6 @@ subroutine material_parseTexture
      enddo
      if(dNeq(math_det33(texture_transformation(1:3,1:3,t)),1.0_pReal)) call IO_error(157_pInt,t)
    endif
-
-   tag=''
-   texture_ODFfile(t) = config_texture(t)%getString('hybridia',defaultVal=tag)
 
    if (config_texture(t)%keyExists('symmetry')) then
      select case (config_texture(t)%getString('symmetry'))
@@ -1072,7 +1062,7 @@ end subroutine material_parseTexture
 !--------------------------------------------------------------------------------------------------
 !> @brief populates the grains
 !> @details populates the grains by identifying active microstructure/homogenization pairs,
-!! calculates the volume of the grains and deals with texture components and hybridIA
+!! calculates the volume of the grains and deals with texture components
 !--------------------------------------------------------------------------------------------------
 subroutine material_populateGrains
  use prec, only: &
@@ -1091,7 +1081,6 @@ subroutine material_populateGrains
    mesh_elemType, &
    mesh_homogenizationAt, &
    mesh_microstructureAt, &
-   mesh_maxNips, &
    mesh_NcpElems, &
    mesh_ipVolume, &
    FE_geomtype
@@ -1102,8 +1091,7 @@ subroutine material_populateGrains
    homogenization_name, &
    microstructure_name 
  use IO, only: &
-   IO_error, &
-   IO_hybridIA
+   IO_error
  use debug, only: &
    debug_level, &
    debug_material, &
@@ -1131,12 +1119,12 @@ subroutine material_populateGrains
 
  myDebug = debug_level(debug_material)
 
- allocate(material_volume(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems),       source=0.0_pReal)
- allocate(material_phase(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems),        source=0_pInt)
- allocate(material_homog(mesh_maxNips,mesh_NcpElems),                                  source=0_pInt)
+ allocate(material_volume(homogenization_maxNgrains,mesh_nIPsPerElem,mesh_NcpElems),       source=0.0_pReal)
+ allocate(material_phase(homogenization_maxNgrains,mesh_nIPsPerElem,mesh_NcpElems),        source=0_pInt)
+ allocate(material_homog(mesh_nIPsPerElem,mesh_NcpElems),                                  source=0_pInt)
  allocate(material_homogenizationAt,source=mesh_homogenizationAt)
- allocate(material_texture(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems),      source=0_pInt)
- allocate(material_EulerAngles(3,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems),source=0.0_pReal)
+ allocate(material_texture(homogenization_maxNgrains,mesh_nIPsPerElem,mesh_NcpElems),      source=0_pInt)
+ allocate(material_EulerAngles(3,homogenization_maxNgrains,mesh_nIPsPerElem,mesh_NcpElems),source=0.0_pReal)
 
  allocate(Ngrains(size(config_homogenization),size(config_microstructure)),            source=0_pInt)
  allocate(Nelems (size(config_homogenization),size(config_microstructure)),            source=0_pInt)
@@ -1280,39 +1268,31 @@ subroutine material_populateGrains
                                    real(texture_symmetry(textureID),pReal),pInt)                    ! max number of unique orientations (excl. symmetry)
 
 !--------------------------------------------------------------------------------------------------
-! ...has texture components
-         if (texture_ODFfile(textureID) == '') then
-           gauss: do t = 1_pInt,texture_Ngauss(textureID)                                           ! loop over Gauss components
-             do g = 1_pInt,int(real(myNorientations,pReal)*texture_Gauss(5,t,textureID),pInt)       ! loop over required grain count
-               orientationOfGrain(:,grain+constituentGrain+g) = &
-                 math_sampleGaussOri(texture_Gauss(1:3,t,textureID),&
-                                     texture_Gauss(  4,t,textureID))
-             enddo
-             constituentGrain = &
-             constituentGrain + int(real(myNorientations,pReal)*texture_Gauss(5,t,textureID))       ! advance counter for grains of current constituent
-           enddo gauss
+! has texture components
+         gauss: do t = 1_pInt,texture_Ngauss(textureID)                                             ! loop over Gauss components
+           do g = 1_pInt,int(real(myNorientations,pReal)*texture_Gauss(5,t,textureID),pInt)         ! loop over required grain count
+             orientationOfGrain(:,grain+constituentGrain+g) = &
+               math_sampleGaussOri(texture_Gauss(1:3,t,textureID),&
+                                   texture_Gauss(  4,t,textureID))
+           enddo
+           constituentGrain = &
+           constituentGrain + int(real(myNorientations,pReal)*texture_Gauss(5,t,textureID))         ! advance counter for grains of current constituent
+         enddo gauss
 
-           fiber: do t = 1_pInt,texture_Nfiber(textureID)                                           ! loop over fiber components
-             do g = 1_pInt,int(real(myNorientations,pReal)*texture_Fiber(6,t,textureID),pInt)       ! loop over required grain count
-               orientationOfGrain(:,grain+constituentGrain+g) = &
-                 math_sampleFiberOri(texture_Fiber(1:2,t,textureID),&
-                                     texture_Fiber(3:4,t,textureID),&
-                                     texture_Fiber(  5,t,textureID))
-             enddo
-             constituentGrain = &
-             constituentGrain + int(real(myNorientations,pReal)*texture_fiber(6,t,textureID),pInt)  ! advance counter for grains of current constituent
-           enddo fiber
+         fiber: do t = 1_pInt,texture_Nfiber(textureID)                                             ! loop over fiber components
+           do g = 1_pInt,int(real(myNorientations,pReal)*texture_Fiber(6,t,textureID),pInt)         ! loop over required grain count
+             orientationOfGrain(:,grain+constituentGrain+g) = &
+               math_sampleFiberOri(texture_Fiber(1:2,t,textureID),&
+                                   texture_Fiber(3:4,t,textureID),&
+                                   texture_Fiber(  5,t,textureID))
+           enddo
+           constituentGrain = &
+           constituentGrain + int(real(myNorientations,pReal)*texture_fiber(6,t,textureID),pInt)    ! advance counter for grains of current constituent
+         enddo fiber
 
-           random: do constituentGrain = constituentGrain+1_pInt,myNorientations                    ! fill remainder with random
-              orientationOfGrain(:,grain+constituentGrain) = math_sampleRandomOri()
-           enddo random
-!--------------------------------------------------------------------------------------------------
-! ...has hybrid IA
-         else
-           orientationOfGrain(1:3,grain+1_pInt:grain+myNorientations) = &
-                                            IO_hybridIA(myNorientations,texture_ODFfile(textureID))
-           if (all(dEq(orientationOfGrain(1:3,grain+1_pInt),-1.0_pReal))) call IO_error(156_pInt)
-         endif
+         random: do constituentGrain = constituentGrain+1_pInt,myNorientations                      ! fill remainder with random
+            orientationOfGrain(:,grain+constituentGrain) = math_sampleRandomOri()
+         enddo random
 
 !--------------------------------------------------------------------------------------------------
 ! ...texture transformation
