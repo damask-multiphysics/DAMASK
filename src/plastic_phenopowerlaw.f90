@@ -361,31 +361,11 @@ subroutine plastic_phenopowerlaw_init
    sizeState = size(['tau_slip  ','gamma_slip']) * prm%TotalNslip &
              + size(['tau_twin  ','gamma_twin']) * prm%TotalNtwin &
              + size(['sum(gamma)','sum(f)    '])                                                    ! ToDo: only needed if either twin or slip active!
-
-!--------------------------------------------------------------------------------------------------
-! ToDo: This could be done by a function (in constitutive?)
    sizeDotState = sizeState
-   plasticState(p)%sizeState = sizeState
-   plasticState(p)%sizeDotState = sizeDotState
-   plasticState(p)%sizePostResults = sum(plastic_phenopowerlaw_sizePostResult(:,phase_plasticityInstance(p)))
-   plasticState(p)%nSlip = prm%totalNslip
-   plasticState(p)%nTwin = prm%totalNtwin
-   allocate(plasticState(p)%aTolState          (   sizeState),             source=0.0_pReal)
-   allocate(plasticState(p)%state0             (   sizeState,NipcMyPhase), source=0.0_pReal)
-   allocate(plasticState(p)%partionedState0    (   sizeState,NipcMyPhase), source=0.0_pReal)
-   allocate(plasticState(p)%subState0          (   sizeState,NipcMyPhase), source=0.0_pReal)
-   allocate(plasticState(p)%state              (   sizeState,NipcMyPhase), source=0.0_pReal)
 
-   allocate(plasticState(p)%dotState           (sizeDotState,NipcMyPhase), source=0.0_pReal)
-   allocate(plasticState(p)%deltaState               (0_pInt,NipcMyPhase), source=0.0_pReal)
-   if (any(numerics_integrator == 1_pInt)) then
-     allocate(plasticState(p)%previousDotState (sizeDotState,NipcMyPhase),source=0.0_pReal)
-     allocate(plasticState(p)%previousDotState2(sizeDotState,NipcMyPhase),source=0.0_pReal)
-   endif
-   if (any(numerics_integrator == 4_pInt)) &
-     allocate(plasticState(p)%RK4dotState      (sizeDotState,NipcMyPhase), source=0.0_pReal)
-   if (any(numerics_integrator == 5_pInt)) &
-     allocate(plasticState(p)%RKCK45dotState (6,sizeDotState,NipcMyPhase), source=0.0_pReal)
+   call material_allocatePlasticState(p,NipcMyPhase,sizeState,sizeDotState,0_pInt, &
+                                      prm%totalNslip,prm%totalNtwin,0_pInt)
+   plasticState(p)%sizePostResults = sum(plastic_phenopowerlaw_sizePostResult(:,instance))
 
 
 !--------------------------------------------------------------------------------------------------

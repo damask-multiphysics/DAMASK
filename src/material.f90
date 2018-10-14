@@ -283,6 +283,7 @@ module material
 
  public :: &
    material_init, &
+   material_allocatePlasticState ,&
    ELASTICITY_hooke_ID ,&
    PLASTICITY_none_ID, &
    PLASTICITY_isotropic_ID, &
@@ -1067,6 +1068,55 @@ subroutine material_parseTexture
  call config_deallocate('material.config/texture')
 
 end subroutine material_parseTexture
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief allocates the plastic state of a phase
+!--------------------------------------------------------------------------------------------------
+subroutine material_allocatePlasticState(phase,NofMyPhase,sizeState,sizeDotState,sizeDeltaState,&
+                                         Nslip,Ntwin,Ntrans)
+ use numerics, only: &
+   numerics_integrator2 => numerics_integrator                                                      ! compatibility hack
+
+ implicit none
+ integer(pInt), intent(in) :: &
+   phase, &
+   NofMyPhase, &
+   sizeState, &
+   sizeDotState, &
+   sizeDeltaState, &
+   Nslip, &
+   Ntwin, &
+   Ntrans
+ integer(pInt) :: numerics_integrator                                                               ! compatibility hack
+ numerics_integrator = numerics_integrator2(1)                                                      ! compatibility hack
+
+ plasticState(phase)%sizeState      = sizeState
+ plasticState(phase)%sizeDotState   = sizeDotState
+ plasticState(phase)%sizeDeltaState = sizeDeltaState
+ plasticState(phase)%Nslip = Nslip
+ plasticState(phase)%Ntwin = Ntwin
+ plasticState(phase)%Ntrans= Ntrans
+
+ allocate(plasticState(phase)%aTolState           (sizeState),                source=0.0_pReal)
+ allocate(plasticState(phase)%state0              (sizeState,NofMyPhase),     source=0.0_pReal)
+ allocate(plasticState(phase)%partionedState0     (sizeState,NofMyPhase),     source=0.0_pReal)
+ allocate(plasticState(phase)%subState0           (sizeState,NofMyPhase),     source=0.0_pReal)
+ allocate(plasticState(phase)%state               (sizeState,NofMyPhase),     source=0.0_pReal)
+
+ allocate(plasticState(phase)%dotState            (sizeDotState,NofMyPhase),  source=0.0_pReal)
+ if (numerics_integrator == 1_pInt) then
+   allocate(plasticState(phase)%previousDotState  (sizeDotState,NofMyPhase),  source=0.0_pReal)
+   allocate(plasticState(phase)%previousDotState2 (sizeDotState,NofMyPhase),  source=0.0_pReal)
+ endif
+ if (numerics_integrator == 4_pInt) &
+   allocate(plasticState(phase)%RK4dotState       (sizeDotState,NofMyPhase),  source=0.0_pReal)
+ if (numerics_integrator == 5_pInt) &
+   allocate(plasticState(phase)%RKCK45dotState  (6,sizeDotState,NofMyPhase),  source=0.0_pReal)
+
+ allocate(plasticState(phase)%deltaState        (sizeDeltaState,NofMyPhase),  source=0.0_pReal)
+
+end subroutine material_allocatePlasticState
 
 
 !--------------------------------------------------------------------------------------------------
