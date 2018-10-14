@@ -1409,12 +1409,7 @@ subroutine material_populateGrains
    enddo microstructureLoop
  enddo homogenizationLoop
 
- deallocate(volumeOfGrain)
- deallocate(phaseOfGrain)
- deallocate(textureOfGrain)
- deallocate(orientationOfGrain)
  deallocate(texture_transformation)
- deallocate(Nelems)
  deallocate(elemsOfHomogMicro)
  call config_deallocate('material.config/microstructure')
 
