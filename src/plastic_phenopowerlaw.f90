@@ -444,10 +444,7 @@ end subroutine plastic_phenopowerlaw_init
 !> @brief calculates plastic velocity gradient and its tangent
 !--------------------------------------------------------------------------------------------------
 subroutine plastic_phenopowerlaw_LpAndItsTangent(Lp,dLp_dMp,Mp,instance,of)
- use prec, only: &
-   dNeq0
- use math, only: &
-   math_mul33xx33
+
  implicit none
  real(pReal), dimension(3,3), intent(out) :: &
    Lp                                                                                               !< plastic velocity gradient
@@ -462,10 +459,9 @@ subroutine plastic_phenopowerlaw_LpAndItsTangent(Lp,dLp_dMp,Mp,instance,of)
 
  integer(pInt) :: &
    i,k,l,m,n
- real(pReal) :: &
-   tau, &
-   gdot_slip, &
-   dgdot_dtau_slip
+ real(pReal), dimension(param(instance)%totalNslip) :: &
+   dgdot_dtauslip_pos,dgdot_dtauslip_neg, &
+   gdot_slip_pos,gdot_slip_neg
  real(pReal), dimension(param(instance)%totalNtwin) :: &
    gdot_twin,dgdot_dtautwin
 
@@ -477,42 +473,14 @@ subroutine plastic_phenopowerlaw_LpAndItsTangent(Lp,dLp_dMp,Mp,instance,of)
  Lp = 0.0_pReal
  dLp_dMp = 0.0_pReal
 
- do i = 1_pInt, prm%totalNslip
-
-   tau = math_mul33xx33(Mp,prm%nonSchmid_pos(1:3,1:3,i))
-   if (tau > 1.0e-8_pReal) then
-
-     gdot_slip = prm%gdot0_slip &
-               * sign(abs(tau/stt%xi_slip(i,of))**prm%n_slip,  tau)
-     if (size(prm%nonSchmidCoeff) > 0_pInt)  gdot_slip = 0.5 * gdot_slip
-
-     dgdot_dtau_slip = gdot_slip*prm%n_slip/tau
-
-     Lp = Lp + (1.0_pReal-stt%sumF(of))*(gdot_slip)*prm%Schmid_slip(1:3,1:3,i)
-
-     forall (k=1_pInt:3_pInt,l=1_pInt:3_pInt,m=1_pInt:3_pInt,n=1_pInt:3_pInt) &
-       dLp_dMp(k,l,m,n) = dLp_dMp(k,l,m,n) &
-                        + dgdot_dtau_slip * prm%Schmid_slip(k,l,i) * prm%nonSchmid_pos(m,n,i)
-   endif
-
-   if (size(prm%nonSchmidCoeff) > 0_pInt) then
-     
-     tau = math_mul33xx33(Mp,prm%nonSchmid_neg(1:3,1:3,i))
-     if (tau > 1.0e-8_pReal) then
-
-       gdot_slip = 0.5_pReal * prm%gdot0_slip &
-                 * sign(abs(tau/stt%xi_slip(i,of))**prm%n_slip,  tau)
-       
-       dgdot_dtau_slip = gdot_slip*prm%n_slip/tau
-
-       Lp = Lp + (1.0_pReal-stt%sumF(of))*(gdot_slip)*prm%Schmid_slip(1:3,1:3,i)
-
-       forall (k=1_pInt:3_pInt,l=1_pInt:3_pInt,m=1_pInt:3_pInt,n=1_pInt:3_pInt) &
-         dLp_dMp(k,l,m,n) = dLp_dMp(k,l,m,n) &
-                          + dgdot_dtau_slip * prm%Schmid_slip(k,l,i) * prm%nonSchmid_neg(m,n,i)
-     endif
-   endif
- enddo
+ call kinetics_slip(prm,stt,of,Mp,gdot_slip_pos,gdot_slip_neg,dgdot_dtauslip_pos,dgdot_dtauslip_neg)
+ slipSystems: do i = 1_pInt, prm%totalNslip
+   Lp = Lp + (1.0_pReal-stt%sumF(of))*(gdot_slip_pos(i)+gdot_slip_neg(i))*prm%Schmid_slip(1:3,1:3,i)
+   forall (k=1_pInt:3_pInt,l=1_pInt:3_pInt,m=1_pInt:3_pInt,n=1_pInt:3_pInt) &
+     dLp_dMp(k,l,m,n) = dLp_dMp(k,l,m,n) &
+                      + dgdot_dtauslip_pos(i) * prm%Schmid_slip(k,l,i) * prm%nonSchmid_pos(m,n,i) &
+                      + dgdot_dtauslip_neg(i) * prm%Schmid_slip(k,l,i) * prm%nonSchmid_neg(m,n,i)
+ enddo slipSystems
 
  call kinetics_twin(prm,stt,of,Mp,gdot_twin,dgdot_dtautwin)
  twinSystems: do i = 1_pInt, prm%totalNtwin
@@ -531,8 +499,7 @@ end subroutine plastic_phenopowerlaw_LpAndItsTangent
 !> @brief calculates the rate of change of microstructure
 !--------------------------------------------------------------------------------------------------
 subroutine plastic_phenopowerlaw_dotState(Mp,instance,of)
- use math, only: &
-   math_mul33xx33
+
  implicit none
  real(pReal), dimension(3,3),  intent(in) :: &
    Mp                                                                                               !< Mandel stress
@@ -544,10 +511,11 @@ subroutine plastic_phenopowerlaw_dotState(Mp,instance,of)
    i
  real(pReal) :: &
    c_SlipSlip,c_TwinSlip,c_TwinTwin, &
-   xi_slip_sat_offset,tau
+   xi_slip_sat_offset
 
  real(pReal), dimension(param(instance)%totalNslip) :: &
-   left_SlipSlip,right_SlipSlip
+   left_SlipSlip,right_SlipSlip, &
+   gdot_slip_pos,gdot_slip_neg
 
  type(tParameters)         :: prm
  type(tPhenopowerlawState) :: dot,stt
@@ -559,7 +527,7 @@ subroutine plastic_phenopowerlaw_dotState(Mp,instance,of)
 !--------------------------------------------------------------------------------------------------
 ! system-independent (nonlinear) prefactors to M_Xx (X influenced by x) matrices
  c_SlipSlip = prm%h0_slipslip * (1.0_pReal + prm%twinC*stt%sumF(of)** prm%twinB)
- c_TwinSlip = prm%h0_TwinSlip * stt%sumGamma(of)**prm%twinE                                        !ToDo: this makes no sense if totalNslip ==0
+ c_TwinSlip = prm%h0_TwinSlip * stt%sumGamma(of)**prm%twinE
  c_TwinTwin = prm%h0_TwinTwin * stt%sumF(of)**prm%twinD
 
 !--------------------------------------------------------------------------------------------------
@@ -571,23 +539,9 @@ subroutine plastic_phenopowerlaw_dotState(Mp,instance,of)
 
 !--------------------------------------------------------------------------------------------------
 ! shear rates
- do i = 1_pInt, prm%totalNslip
-   tau = math_mul33xx33(Mp,prm%nonSchmid_pos(1:3,1:3,i))
-   if (tau > 1.0e-8_pReal) then
-     dot%gamma_slip(i,of) = abs(prm%gdot0_slip &
-                          * sign(abs(tau/stt%xi_slip(i,of))**prm%n_slip,  tau))
-     if (size(prm%nonSchmidCoeff) > 0_pInt)  dot%gamma_slip(i,of) = 0.5 * dot%gamma_slip(i,of)
-   endif
-
-   if (size(prm%nonSchmidCoeff) > 0_pInt) then
-     
-     tau = math_mul33xx33(Mp,prm%nonSchmid_neg(1:3,1:3,i))
-     if (tau > 1.0e-8_pReal) &
-       dot%gamma_slip(i,of) = abs(prm%gdot0_slip *0.5_pReal &
-                            * sign(abs(tau/stt%xi_slip(i,of))**prm%n_slip,  tau))
-   endif
- enddo
-
+ call kinetics_slip(prm,stt,of,Mp,gdot_slip_pos,gdot_slip_neg)
+ dot%gamma_slip(:,of) = abs(gdot_slip_pos+gdot_slip_neg)
+ dot%sumGamma(of) = sum(dot%gamma_slip(:,of))
  call kinetics_twin(prm,stt,of,Mp,dot%gamma_twin(:,of))
  if (prm%totalNtwin > 0_pInt) dot%sumF(of) = merge(sum(dot%gamma_twin(:,of)/prm%gamma_twin_char), &
                                                    0.0_pReal, &
