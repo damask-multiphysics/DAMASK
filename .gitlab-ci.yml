@@ -405,14 +405,6 @@ SpectralExample:
   only:
     - development
 
-AbaqusExample:
-  stage: example
-  script:
-    - module load $IntelCompiler16_4 $Abaqus
-    - Abaqus_example/test.py
-  only:
-    - development
-
 ###################################################################################################
 SpectralRuntime:
   stage: performance
