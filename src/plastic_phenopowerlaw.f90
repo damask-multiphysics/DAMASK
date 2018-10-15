@@ -365,7 +365,7 @@ subroutine plastic_phenopowerlaw_init
 
    call material_allocatePlasticState(p,NipcMyPhase,sizeState,sizeDotState,0_pInt, &
                                       prm%totalNslip,prm%totalNtwin,0_pInt)
-   plasticState(p)%sizePostResults = sum(plastic_phenopowerlaw_sizePostResult(:,instance))
+   plasticState(p)%sizePostResults = sum(plastic_phenopowerlaw_sizePostResult(:,phase_plasticityInstance(p)))
 
 
 !--------------------------------------------------------------------------------------------------
