@@ -2126,9 +2126,7 @@ function lattice_characteristicShear_Twin(Ntwin,structure,CoverA) result(charact
            case (2_pInt)                                                                            ! <11.6>{-1-1.1}
              characteristicShear(ir) = 1.0_pReal/cOverA
            case (3_pInt)                                                                            ! <10.-2>{10.1}
-             characteristicShear(ir) = (4.0_pReal*cOverA*cOverA-9.0_pReal)/4.0_pReal &
-                                     / sqrt(3.0_pReal)/cOverA
-             !characteristicShear(ir) = (4.0_pReal*cOverA*cOverA-9.0_pReal)/sqrt(48.0_pReal)/cOverA
+             characteristicShear(ir) = (4.0_pReal*cOverA*cOverA-9.0_pReal)/sqrt(48.0_pReal)/cOverA 
            case (4_pInt)                                                                            ! <11.-3>{11.2}
              characteristicShear(ir) = 2.0_pReal*(cOverA*cOverA-2.0_pReal)/3.0_pReal/cOverA
          end select
@@ -2660,6 +2658,65 @@ function lattice_SchmidMatrix_twin(Ntwin,structure,cOverA) result(SchmidMatrix)
  enddo
 
 end function lattice_SchmidMatrix_twin
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Calculates Schmid matrix for active cleavage systems
+!--------------------------------------------------------------------------------------------------
+function lattice_SchmidMatrix_cleavage(Ncleavage,structure,cOverA) result(SchmidMatrix)
+ use prec, only: &
+   tol_math_check
+ use IO, only: &
+   IO_error
+ use math, only: &
+   math_trace33, &
+   math_tensorproduct33
+
+ implicit none
+ integer(pInt),    dimension(:),            intent(in) :: Ncleavage                          !< number of active cleavage systems per family
+ character(len=*),                          intent(in) :: structure                          !< lattice structure
+ real(pReal),     dimension(3,3,3,sum(Ncleavage))      :: SchmidMatrix
+ real(pReal),                               intent(in) :: cOverA
+
+ real(pReal),     dimension(3,3,sum(Ncleavage))        :: coordinateSystem
+ real(pReal),     dimension(:,:), allocatable          :: cleavageSystems
+ integer(pInt),   dimension(:), allocatable            :: NcleavageMax
+ integer(pInt) :: i
+
+ select case(structure)
+   case('iso')
+     NcleavageMax    = LATTICE_ISO_NCLEAVAGESYSTEM
+     cleavageSystems = LATTICE_ISO_SYSTEMCLEAVAGE
+   case('ort')
+     NcleavageMax    = LATTICE_ORTHO_NCLEAVAGESYSTEM
+     cleavageSystems = LATTICE_ORTHO_SYSTEMCLEAVAGE
+   case('fcc')
+     NcleavageMax    = LATTICE_FCC_NCLEAVAGESYSTEM
+     cleavageSystems = LATTICE_FCC_SYSTEMCLEAVAGE
+   case('bcc')
+     NcleavageMax    = LATTICE_BCC_NCLEAVAGESYSTEM
+     cleavageSystems = LATTICE_BCC_SYSTEMCLEAVAGE
+   case('hex','hexagonal')                                                                          !ToDo: "No alias policy": long or short?
+     NcleavageMax    = LATTICE_HEX_NCLEAVAGESYSTEM
+     cleavageSystems = LATTICE_HEX_SYSTEMCLEAVAGE
+   case default
+     call IO_error(130_pInt,ext_msg=trim(structure)//' (lattice_SchmidMatrix_cleavage)')
+ end select
+
+ if (any(NcleavageMax(1:size(Ncleavage)) - Ncleavage < 0_pInt)) &
+   call IO_error(145_pInt,ext_msg='Ncleavage '//trim(structure))
+ if (any(Ncleavage < 0_pInt)) &
+   call IO_error(144_pInt,ext_msg='Ncleavage '//trim(structure))
+
+ coordinateSystem = buildCoordinateSystem(Ncleavage,NcleavageMax,cleavageSystems,structure,cOverA)
+
+  do i = 1, sum(Ncleavage)
+   SchmidMatrix(1:3,1:3,1,i) = math_tensorproduct33(coordinateSystem(1:3,1,i),coordinateSystem(1:3,2,i))
+   SchmidMatrix(1:3,1:3,2,i) = math_tensorproduct33(coordinateSystem(1:3,3,i),coordinateSystem(1:3,2,i))
+   SchmidMatrix(1:3,1:3,3,i) = math_tensorproduct33(coordinateSystem(1:3,2,i),coordinateSystem(1:3,2,i))
+  enddo
+
+end function lattice_SchmidMatrix_cleavage
 
 
 !--------------------------------------------------------------------------------------------------
