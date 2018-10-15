@@ -283,7 +283,7 @@ module material
 
  public :: &
    material_init, &
-   material_allocatePlasticState ,&
+   material_allocatePlasticState, &
    ELASTICITY_hooke_ID ,&
    PLASTICITY_none_ID, &
    PLASTICITY_isotropic_ID, &

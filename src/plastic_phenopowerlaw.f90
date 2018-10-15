@@ -131,6 +131,7 @@ subroutine plastic_phenopowerlaw_init
    phase_plasticity, &
    phase_plasticityInstance, &
    phase_Noutput, &
+   material_allocatePlasticState, &
    PLASTICITY_PHENOPOWERLAW_LABEL, &
    PLASTICITY_PHENOPOWERLAW_ID, &
    material_phase, &
@@ -139,8 +140,6 @@ subroutine plastic_phenopowerlaw_init
    MATERIAL_partPhase, &
    config_phase
  use lattice
- use numerics,only: &
-   numerics_integrator
 
  implicit none
  integer(pInt) :: &
