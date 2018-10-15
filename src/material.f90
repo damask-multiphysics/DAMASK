@@ -486,6 +486,7 @@ subroutine material_init()
  allocate(mappingHomogenizationConst(                            mesh_nIPsPerElem,mesh_NcpElems),source=1_pInt)
 ! END DEPRECATED
 
+ allocate(material_homogenizationAt,source=mesh_homogenizationAt)
  allocate(PhaseCounter         (size(config_phase)),         source=0_pInt)
  allocate(HomogenizationCounter(size(config_homogenization)),source=0_pInt)
 
