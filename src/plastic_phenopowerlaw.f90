@@ -81,8 +81,8 @@ module plastic_phenopowerlaw
 
  type, private :: tPhenopowerlawState
    real(pReal), pointer, dimension(:) :: &
-     sumGamma, &
-     sumF
+     sumGamma, &                                                                                    ! ToDo: why not make a dependent state?
+     sumF                                                                                           ! ToDo: why not make a dependent state?
    real(pReal), pointer, dimension(:,:) :: &
      xi_slip, &
      xi_twin, &
@@ -386,7 +386,7 @@ subroutine plastic_phenopowerlaw_init
    startIndex = endIndex + 1_pInt
    endIndex   = endIndex + 1_pInt
    stt%sumGamma => plasticState(p)%state   (startIndex,:)
-   dot%sumGamma => plasticState(p)%dotState(startIndex,:)                                         ! ToDo: this is never used
+   dot%sumGamma => plasticState(p)%dotState(startIndex,:)
    plasticState(p)%aTolState(startIndex:endIndex) = prm%aTolShear
 
    startIndex = endIndex + 1_pInt
@@ -546,7 +546,7 @@ end subroutine plastic_phenopowerlaw_dotState
 
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates shear rates on slip systems and derivatives with respect to resolved stress
-!> @details: Shear rates are calculated only optionally. NOTE: Agains the common convention, the
+!> @details: Shear rates are calculated only optionally. NOTE: Against the common convention, the
 !> result (i.e. intent(out)) variables are the last to have the optional arguments at the end
 !--------------------------------------------------------------------------------------------------
 pure subroutine kinetics_slip(prm,stt,of,Mp,gdot_slip_pos,gdot_slip_neg, &
@@ -576,26 +576,39 @@ pure subroutine kinetics_slip(prm,stt,of,Mp,gdot_slip_pos,gdot_slip_neg, &
    tau_slip_pos, &
    tau_slip_neg
  integer(pInt) :: i
+ logical       :: nonSchmidActive
+
+ nonSchmidActive = size(prm%nonSchmidCoeff) > 0_pInt
 
  do i = 1_pInt, prm%totalNslip
-   tau_slip_pos(i) = math_mul33xx33(Mp,prm%nonSchmid_pos(1:3,1:3,i))
-   tau_slip_neg(i) = math_mul33xx33(Mp,prm%nonSchmid_neg(1:3,1:3,i))
+   tau_slip_pos(i) =       math_mul33xx33(Mp,prm%nonSchmid_pos(1:3,1:3,i))
+   tau_slip_neg(i) = merge(math_mul33xx33(Mp,prm%nonSchmid_neg(1:3,1:3,i)), &
+                           0.0_pReal, nonSchmidActive)
  enddo
 
- gdot_slip_pos = 0.5_pReal*prm%gdot0_slip &
-               * sign(abs(tau_slip_pos/stt%xi_slip(:,of))**prm%n_slip,  tau_slip_pos)
- gdot_slip_neg = 0.5_pReal*prm%gdot0_slip &
-               * sign(abs(tau_slip_neg/stt%xi_slip(:,of))**prm%n_slip,  tau_slip_neg)
+ where(dNeq0(tau_slip_pos))
+   gdot_slip_pos = prm%gdot0_slip * merge(0.5_pReal,1.0_pReal, nonSchmidActive) &                   ! 1/2 if non-Schmid active
+                 * sign(abs(tau_slip_pos/stt%xi_slip(:,of))**prm%n_slip,  tau_slip_pos)
+ else where
+   gdot_slip_pos = 0.0_pReal
+ end where
+
+ where(dNeq0(tau_slip_neg))
+   gdot_slip_neg = 0.5_pReal*prm%gdot0_slip &
+                 * sign(abs(tau_slip_neg/stt%xi_slip(:,of))**prm%n_slip,  tau_slip_neg)
+ else where
+   gdot_slip_neg = 0.0_pReal
+ end where
 
  if (present(dgdot_dtau_slip_pos)) then
-   where(dNeq0(tau_slip_pos))
+   where(dNeq0(gdot_slip_pos))
      dgdot_dtau_slip_pos = gdot_slip_pos*prm%n_slip/tau_slip_pos
    else where
      dgdot_dtau_slip_pos = 0.0_pReal
    end where
  endif
  if (present(dgdot_dtau_slip_neg)) then
-   where(dNeq0(tau_slip_neg))
+   where(dNeq0(gdot_slip_neg))
      dgdot_dtau_slip_neg = gdot_slip_neg*prm%n_slip/tau_slip_neg
    else where
      dgdot_dtau_slip_neg = 0.0_pReal
@@ -607,7 +620,7 @@ end subroutine kinetics_slip
 
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates shear rates on twin systems and derivatives with respect to resolved stress
-!> @details: Shear rates are calculated only optionally. NOTE: Agains the common convention, the
+!> @details: Shear rates are calculated only optionally. NOTE: Against the common convention, the
 !> result (i.e. intent(out)) variables are the last to have the optional arguments at the end
 !--------------------------------------------------------------------------------------------------
 pure subroutine kinetics_twin(prm,stt,of,Mp,gdot_twin,dgdot_dtau_twin)
@@ -637,11 +650,15 @@ pure subroutine kinetics_twin(prm,stt,of,Mp,gdot_twin,dgdot_dtau_twin)
  do i = 1_pInt, prm%totalNtwin
    tau_twin(i)  = math_mul33xx33(Mp,prm%Schmid_twin(1:3,1:3,i))
  enddo
- gdot_twin = merge((1.0_pReal-stt%sumF(of))*prm%gdot0_twin*(abs(tau_twin)/stt%xi_twin(:,of))**prm%n_twin, &
-                    0.0_pReal, tau_twin>0.0_pReal)
+ 
+ where(tau_twin > 0.0_pReal)
+   gdot_twin = (1.0_pReal-stt%sumF(of))*prm%gdot0_twin*(abs(tau_twin)/stt%xi_twin(:,of))**prm%n_twin
+ else where            
+   gdot_twin = 0.0_pReal
+ end where
 
  if (present(dgdot_dtau_twin)) then
-   where(dNeq0(tau_twin))
+   where(dNeq0(gdot_twin))
      dgdot_dtau_twin = gdot_twin*prm%n_twin/tau_twin
    else where
      dgdot_dtau_twin = 0.0_pReal
@@ -655,14 +672,8 @@ end subroutine kinetics_twin
 !> @brief return array of constitutive results
 !--------------------------------------------------------------------------------------------------
 function plastic_phenopowerlaw_postResults(Mp,instance,of) result(postResults)
- use material, only: &
-   material_phase, &
-   plasticState, &
-   phasememberAt, &
-   phase_plasticityInstance
  use math, only: &
-   math_mul33xx33, &
-   math_Mandel6to33
+   math_mul33xx33
 
  implicit none
  real(pReal), dimension(3,3), intent(in) :: &
