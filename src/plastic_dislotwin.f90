@@ -697,21 +697,10 @@ subroutine plastic_dislotwin_init(fileUnit)
        if (lattice_structure(p) == LATTICE_fcc_ID) prm%fcc_twinNucleationSlipPair(1:2,i) = &
                       lattice_fcc_twinNucleationSlipPair(1:2,sum(lattice_Ntwinsystem(1:f-1,p))+j)
      !* Rotate twin elasticity matrices
-       temp3333 = 0.0_pReal
        index_otherFamily = sum(lattice_NtwinSystem(1:f-1_pInt,p))                             ! index in full lattice twin list
-       do l = 1_pInt,3_pInt; do m = 1_pInt,3_pInt; do n = 1_pInt,3_pInt; do o = 1_pInt,3_pInt
-         do p1 = 1_pInt,3_pInt; do q = 1_pInt,3_pInt; do r = 1_pInt,3_pInt; do s = 1_pInt,3_pInt
-           temp3333(l,m,n,o) = &
-           temp3333(l,m,n,o) + &
-             lattice_Qtwin(l,p1,index_otherFamily+j,p) * &
-             lattice_Qtwin(m,q,index_otherFamily+j,p) * &
-             lattice_Qtwin(n,r,index_otherFamily+j,p) * &
-             lattice_Qtwin(o,s,index_otherFamily+j,p) * lattice_C3333(p1,q,r,s,p)
-         enddo; enddo; enddo; enddo
-       enddo; enddo; enddo; enddo
+       temp3333 = math_rotate_forward3333(lattice_C3333(1:3,1:3,1:3,1:3,p),&
+                                          lattice_Qtwin(1:3,1:3,index_otherFamily+j,p))
        prm%C66_twin(1:6,1:6,index_myFamily+j) = math_Mandel3333to66(temp3333)
-       if (any(dNeq0(temp3333-math_rotate_forward3333(lattice_trans_C3333(1:3,1:3,1:3,1:3,p),&
-                          lattice_Qtwin(1:3,1:3,index_otherFamily+j,p))))) print*, 'mist'
  
     !* Interaction matrices
        do o = 1_pInt,size(prm%Nslip,1)
@@ -739,21 +728,11 @@ subroutine plastic_dislotwin_init(fileUnit)
      transSystemsLoop: do j = 1_pInt,prm%Ntrans(f)
        i = i + 1_pInt
        prm%Schmid_trans(1:3,1:3,i) = lattice_Strans(1:3,1:3,sum(lattice_Ntranssystem(1:f-1,p))+j,p)
+     !* Rotate trans elasticity matrices
        index_otherFamily = sum(lattice_NtransSystem(1:f-1_pInt,p))                                  ! index in full lattice trans list
-       temp3333 = 0.0_pReal
-       do l = 1_pInt,3_pInt; do m = 1_pInt,3_pInt; do n = 1_pInt,3_pInt; do o = 1_pInt,3_pInt
-         do p1 = 1_pInt,3_pInt; do q = 1_pInt,3_pInt; do r = 1_pInt,3_pInt; do s = 1_pInt,3_pInt
-           temp3333(l,m,n,o) = &
-             temp3333(l,m,n,o) + &
-               lattice_Qtrans(l,p1,index_otherFamily+j,p) * &
-               lattice_Qtrans(m,q,index_otherFamily+j,p) * &
-               lattice_Qtrans(n,r,index_otherFamily+j,p) * &
-               lattice_Qtrans(o,s,index_otherFamily+j,p)* lattice_trans_C3333(p1,q,r,s,p)
-         enddo; enddo; enddo; enddo
-       enddo; enddo; enddo; enddo
+       temp3333 = math_rotate_forward3333(lattice_trans_C3333(1:3,1:3,1:3,1:3,p),&
+                                          lattice_Qtrans(1:3,1:3,index_otherFamily+j,p))
        prm%C66_trans(1:6,1:6,index_myFamily+j) = math_Mandel3333to66(temp3333)
-       if (any(dNeq0(temp3333-math_rotate_forward3333(lattice_trans_C3333(1:3,1:3,1:3,1:3,p),&
-                          lattice_Qtrans(1:3,1:3,index_otherFamily+j,p))))) print*, 'mist'
      !* Interaction matrices
        do o = 1_pInt,size(prm%Nslip,1)
          index_otherFamily = sum(prm%Nslip(1:o-1_pInt))
@@ -774,18 +753,6 @@ subroutine plastic_dislotwin_init(fileUnit)
                                                                sum(lattice_NtransSystem(1:o-1_pInt,p))+k, &
                                                                p),1 )
        enddo; enddo
-
-     !* Projection matrices for shear from slip systems to fault-band (twin) systems for strain-induced martensite nucleation
-     !  select case(trans_lattice_structure(p))
-     !    case (LATTICE_bcc_ID)
-     !      do o = 1_pInt,sum(prm%Ntrans,1)
-     !        index_otherFamily = sum(prm%Nslip(1:o-1_pInt))
-     !        do k = 1_pInt,prm%Nslip(o)                                   ! loop over (active) systems in other family (trans)
-     !          temp3(index_myFamily+j,index_otherFamily+k) = &
-     !                lattice_projectionTrans( sum(lattice_NtransSystem(1:f-1,p))+j, &
-     !                                         sum(lattice_NslipSystem(1:o-1,p))+k, p)
-     !      enddo; enddo
-     !  end select 
 
      enddo transSystemsLoop
    enddo transFamiliesLoop
