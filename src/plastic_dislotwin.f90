@@ -197,6 +197,7 @@ subroutine plastic_dislotwin_init(fileUnit)
    compiler_options
 #endif
  use prec, only: &
+   pStringLen, &
    dEq0, &
    dNeq0, &
    dNeq
@@ -237,13 +238,12 @@ subroutine plastic_dislotwin_init(fileUnit)
  implicit none
  integer(pInt), intent(in) :: fileUnit
 
- integer(pInt) :: Ninstances,&
+ integer(pInt) :: Ninstance,&
                   f,j,i,k,l,m,n,o,p,q,r,s,p1, &
                   offset_slip, index_myFamily, index_otherFamily, &
                   startIndex, endIndex, outputSize
  integer(pInt) :: sizeState, sizeDotState, sizeDeltaState
- integer(pInt) :: NofMyPhase   
- integer(kind(undefined_ID)) outputID
+ integer(pInt) :: NipcMyPhase   
  
   real(pReal),   dimension(3,3,3,3) :: &
    temp3333
@@ -258,15 +258,10 @@ subroutine plastic_dislotwin_init(fileUnit)
      MartensiteVolume0
      
  real(pReal),  allocatable, dimension(:,:) :: temp1,temp2,temp3
-
- character(len=65536) :: &
-   tag  = ''
  
- character(len=65536), dimension(:), allocatable :: outputs
- integer(pInt), dimension(0), parameter :: emptyInt = [integer(pInt)::]
- real(pReal),   dimension(0), parameter :: emptyReal = [real(pReal)::]
- character(len=65536),   dimension(0), parameter :: emptyString = [character(len=65536)::]
-
+ integer(pInt),          dimension(0), parameter :: emptyIntArray    = [integer(pInt)::]
+ real(pReal),            dimension(0), parameter :: emptyRealArray   = [real(pReal)::]
+ character(len=65536),   dimension(0), parameter :: emptyStringArray = [character(len=65536)::]
 
  type(tParameters) :: &
    prm
@@ -275,6 +270,16 @@ subroutine plastic_dislotwin_init(fileUnit)
    dot
  type(tDislotwinMicrostructure) :: &
    mse
+
+ integer(kind(undefined_ID)) :: &
+   outputID                                                                                         !< ID of each post result output
+
+ character(len=pStringLen) :: &
+   structure = '',&
+   extmsg = ''
+ character(len=65536), dimension(:), allocatable :: &
+  outputs
+
  write(6,'(/,a)')   ' <<<+-  constitutive_'//PLASTICITY_DISLOTWIN_label//' init  -+>>>'
  write(6,'(/,a)')   ' A. Ma and F. Roters, Acta Materialia, 52(12):3603–3612, 2004'
  write(6,'(a)')     ' https://doi.org/10.1016/j.actamat.2004.04.012'
@@ -285,21 +290,21 @@ subroutine plastic_dislotwin_init(fileUnit)
  write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
  
- Ninstances = int(count(phase_plasticity == PLASTICITY_DISLOTWIN_ID),pInt)
- if (Ninstances == 0_pInt) return
+ Ninstance = int(count(phase_plasticity == PLASTICITY_DISLOTWIN_ID),pInt)
+ if (Ninstance == 0_pInt) return
  
  if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0_pInt) &
-   write(6,'(a16,1x,i5,/)') '# instances:',Ninstances
+   write(6,'(a16,1x,i5,/)') '# instances:',Ninstance
  
 
- allocate(plastic_dislotwin_sizePostResult(maxval(phase_Noutput),Ninstances),source=0_pInt)
- allocate(plastic_dislotwin_output(maxval(phase_Noutput),Ninstances))
+ allocate(plastic_dislotwin_sizePostResult(maxval(phase_Noutput),Ninstance),source=0_pInt)
+ allocate(plastic_dislotwin_output(maxval(phase_Noutput),Ninstance))
           plastic_dislotwin_output = ''
 
- allocate(param(Ninstances))
- allocate(state(Ninstances))
- allocate(dotState(Ninstances))
- allocate(microstructure(Ninstances))
+ allocate(param(Ninstance))
+ allocate(state(Ninstance))
+ allocate(dotState(Ninstance))
+ allocate(microstructure(Ninstance))
 
  do p = 1_pInt, size(phase_plasticityInstance)
    if (phase_plasticity(p) /= PLASTICITY_DISLOTWIN_ID) cycle
@@ -314,7 +319,7 @@ subroutine plastic_dislotwin_init(fileUnit)
    prm%nu = lattice_nu(p)
    prm%C66 = lattice_C66(1:6,1:6,p)
 
-   prm%Nslip =  config_phase(p)%getInts('nslip',defaultVal=emptyInt)
+   prm%Nslip =  config_phase(p)%getInts('nslip',defaultVal=emptyIntArray)
    prm%totalNslip = sum(prm%Nslip)
 
    slipActive: if (prm%totalNslip > 0_pInt) then
@@ -365,7 +370,7 @@ subroutine plastic_dislotwin_init(fileUnit)
      allocate(prm%burgers_slip(0))
    endif slipActive
 
-   prm%Ntwin =  config_phase(p)%getInts('ntwin', defaultVal=emptyInt)
+   prm%Ntwin =  config_phase(p)%getInts('ntwin', defaultVal=emptyIntArray)
    prm%totalNtwin = sum(prm%Ntwin)
    
    if (prm%totalNtwin > 0_pInt) then
@@ -396,7 +401,7 @@ subroutine plastic_dislotwin_init(fileUnit)
      allocate(prm%r(0))
    endif
   
-   prm%Ntrans            =  config_phase(p)%getInts('ntrans', defaultVal=emptyInt)
+   prm%Ntrans            =  config_phase(p)%getInts('ntrans', defaultVal=emptyIntArray)
    prm%totalNtrans = sum(prm%Ntrans)
    if (prm%totalNtrans > 0_pInt) then
      prm%burgers_trans = config_phase(p)%getFloats('transburgers')
@@ -464,7 +469,7 @@ subroutine plastic_dislotwin_init(fileUnit)
      prm%qShearBand = config_phase(p)%getFloat('q_shearband')
    endif
  
-   outputs = config_phase(p)%getStrings('(output)', defaultVal=emptyString)
+   outputs = config_phase(p)%getStrings('(output)', defaultVal=emptyStringArray)
    allocate(prm%outputID(0))
    do i= 1_pInt, size(outputs)
      outputID = undefined_ID
@@ -581,12 +586,9 @@ subroutine plastic_dislotwin_init(fileUnit)
        prm%qShearBand <= 0.0_pReal) &
      call IO_error(211_pInt,el=p,ext_msg='qShearBand ('//PLASTICITY_DISLOTWIN_label//')')
    
-
-   NofMyPhase=count(material_phase==p)
-
 !--------------------------------------------------------------------------------------------------
 ! allocate state arrays
-
+   NipcMyPhase=count(material_phase==p)
    sizeDotState     = int(size(['rho         ','rhoDip      ','accshearslip']),pInt) * prm%totalNslip &
                     + int(size(['twinFraction','accsheartwin']),pInt) * prm%totalNtwin &
                     + int(size(['stressTransFraction','strainTransFraction']),pInt) * prm%totalNtrans
@@ -600,28 +602,28 @@ subroutine plastic_dislotwin_init(fileUnit)
    plasticState(p)%nTwin = prm%totalNtwin
    plasticState(p)%nTrans= prm%totalNtrans
    allocate(plasticState(p)%aTolState           (sizeState),                source=0.0_pReal)
-   allocate(plasticState(p)%state0              (sizeState,NofMyPhase),     source=0.0_pReal)
-   allocate(plasticState(p)%partionedState0     (sizeState,NofMyPhase),     source=0.0_pReal)
-   allocate(plasticState(p)%subState0           (sizeState,NofMyPhase),     source=0.0_pReal)
-   allocate(plasticState(p)%state               (sizeState,NofMyPhase),     source=0.0_pReal)
+   allocate(plasticState(p)%state0              (sizeState,NipcMyPhase),     source=0.0_pReal)
+   allocate(plasticState(p)%partionedState0     (sizeState,NipcMyPhase),     source=0.0_pReal)
+   allocate(plasticState(p)%subState0           (sizeState,NipcMyPhase),     source=0.0_pReal)
+   allocate(plasticState(p)%state               (sizeState,NipcMyPhase),     source=0.0_pReal)
 
-   allocate(plasticState(p)%dotState            (sizeDotState,NofMyPhase),  source=0.0_pReal)
-   allocate(plasticState(p)%deltaState        (sizeDeltaState,NofMyPhase),  source=0.0_pReal)
+   allocate(plasticState(p)%dotState            (sizeDotState,NipcMyPhase),  source=0.0_pReal)
+   allocate(plasticState(p)%deltaState        (sizeDeltaState,NipcMyPhase),  source=0.0_pReal)
    if (any(numerics_integrator == 1_pInt)) then
-     allocate(plasticState(p)%previousDotState  (sizeDotState,NofMyPhase),  source=0.0_pReal)
-     allocate(plasticState(p)%previousDotState2 (sizeDotState,NofMyPhase),  source=0.0_pReal)
+     allocate(plasticState(p)%previousDotState  (sizeDotState,NipcMyPhase),  source=0.0_pReal)
+     allocate(plasticState(p)%previousDotState2 (sizeDotState,NipcMyPhase),  source=0.0_pReal)
    endif
    if (any(numerics_integrator == 4_pInt)) &
-     allocate(plasticState(p)%RK4dotState       (sizeDotState,NofMyPhase),  source=0.0_pReal)
+     allocate(plasticState(p)%RK4dotState       (sizeDotState,NipcMyPhase),  source=0.0_pReal)
    if (any(numerics_integrator == 5_pInt)) &
-     allocate(plasticState(p)%RKCK45dotState    (6,sizeDotState,NofMyPhase),source=0.0_pReal)
+     allocate(plasticState(p)%RKCK45dotState    (6,sizeDotState,NipcMyPhase),source=0.0_pReal)
 
    ! ToDo: do later on
    offset_slip = 2_pInt*plasticState(p)%nslip
    plasticState(p)%slipRate        => &
-       plasticState(p)%dotState(offset_slip+1:offset_slip+plasticState(p)%nslip,1:NofMyPhase)
+       plasticState(p)%dotState(offset_slip+1:offset_slip+plasticState(p)%nslip,1:NipcMyPhase)
    plasticState(p)%accumulatedSlip => &
-       plasticState(p)%state   (offset_slip+1:offset_slip+plasticState(p)%nslip,1:NofMyPhase)
+       plasticState(p)%state   (offset_slip+1:offset_slip+plasticState(p)%nslip,1:NipcMyPhase)
 
 
    ! ToDo: All these things are repeated for each constitutive law. Lattice can provide it as a 'sevice'
@@ -804,14 +806,14 @@ subroutine plastic_dislotwin_init(fileUnit)
    startIndex=1_pInt
    endIndex=prm%totalNslip
    stt%rhoEdge=>plasticState(p)%state(startIndex:endIndex,:)
-   stt%rhoEdge= spread(prm%rho0,2,NofMyPhase)
+   stt%rhoEdge= spread(prm%rho0,2,NipcMyPhase)
    dot%rhoEdge=>plasticState(p)%dotState(startIndex:endIndex,:)
    plasticState(p)%aTolState(startIndex:endIndex) = prm%aTolRho
 
    startIndex=endIndex+1
    endIndex=endIndex+prm%totalNslip
    stt%rhoEdgeDip=>plasticState(p)%state(startIndex:endIndex,:)
-   stt%rhoEdgeDip= spread(prm%rhoDip0,2,NofMyPhase)
+   stt%rhoEdgeDip= spread(prm%rhoDip0,2,NipcMyPhase)
    dot%rhoEdgeDip=>plasticState(p)%dotState(startIndex:endIndex,:)
    plasticState(p)%aTolState(startIndex:endIndex) = prm%aTolRho
    
@@ -848,25 +850,25 @@ subroutine plastic_dislotwin_init(fileUnit)
    plasticState(p)%state0 = plasticState(p)%state
    dot%whole => plasticState(p)%dotState
 
-   allocate(mse%invLambdaSlip(prm%totalNslip,NofMyPhase),source=0.0_pReal)
-   allocate(mse%invLambdaSlipTwin(prm%totalNslip,NofMyPhase),source=0.0_pReal)
-   allocate(mse%invLambdaTwin(prm%totalNtwin,NofMyPhase),source=0.0_pReal)
-   allocate(mse%invLambdaSlipTrans(prm%totalNtrans,NofMyPhase),source=0.0_pReal)
-   allocate(mse%invLambdaTrans(prm%totalNtrans,NofMyPhase),source=0.0_pReal)
+   allocate(mse%invLambdaSlip(prm%totalNslip,NipcMyPhase),source=0.0_pReal)
+   allocate(mse%invLambdaSlipTwin(prm%totalNslip,NipcMyPhase),source=0.0_pReal)
+   allocate(mse%invLambdaTwin(prm%totalNtwin,NipcMyPhase),source=0.0_pReal)
+   allocate(mse%invLambdaSlipTrans(prm%totalNtrans,NipcMyPhase),source=0.0_pReal)
+   allocate(mse%invLambdaTrans(prm%totalNtrans,NipcMyPhase),source=0.0_pReal)
 
-   allocate(mse%mfp_slip(prm%totalNslip,NofMyPhase),  source=0.0_pReal)
-   allocate(mse%mfp_twin(prm%totalNtwin,NofMyPhase),  source=0.0_pReal)
-   allocate(mse%mfp_trans(prm%totalNtrans,NofMyPhase),source=0.0_pReal)
+   allocate(mse%mfp_slip(prm%totalNslip,NipcMyPhase),  source=0.0_pReal)
+   allocate(mse%mfp_twin(prm%totalNtwin,NipcMyPhase),  source=0.0_pReal)
+   allocate(mse%mfp_trans(prm%totalNtrans,NipcMyPhase),source=0.0_pReal)
 
-   allocate(mse%threshold_stress_slip(prm%totalNslip,NofMyPhase),  source=0.0_pReal)
-   allocate(mse%threshold_stress_twin(prm%totalNtwin,NofMyPhase),  source=0.0_pReal)
-   allocate(mse%threshold_stress_trans(prm%totalNtrans,NofMyPhase),source=0.0_pReal)
+   allocate(mse%threshold_stress_slip(prm%totalNslip,NipcMyPhase),  source=0.0_pReal)
+   allocate(mse%threshold_stress_twin(prm%totalNtwin,NipcMyPhase),  source=0.0_pReal)
+   allocate(mse%threshold_stress_trans(prm%totalNtrans,NipcMyPhase),source=0.0_pReal)
 
-   allocate(mse%tau_r_twin(prm%totalNtwin,NofMyPhase),   source=0.0_pReal)
-   allocate(mse%tau_r_trans(prm%totalNtrans,NofMyPhase), source=0.0_pReal)
+   allocate(mse%tau_r_twin(prm%totalNtwin,NipcMyPhase),   source=0.0_pReal)
+   allocate(mse%tau_r_trans(prm%totalNtrans,NipcMyPhase), source=0.0_pReal)
 
-   allocate(mse%twinVolume(prm%totalNtwin,NofMyPhase),   source=0.0_pReal)
-   allocate(mse%martensiteVolume(prm%totalNtrans,NofMyPhase), source=0.0_pReal)
+   allocate(mse%twinVolume(prm%totalNtwin,NipcMyPhase),   source=0.0_pReal)
+   allocate(mse%martensiteVolume(prm%totalNtrans,NipcMyPhase), source=0.0_pReal)
 
    end associate
  enddo
