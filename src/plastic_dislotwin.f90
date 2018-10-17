@@ -212,9 +212,6 @@ subroutine plastic_dislotwin_init(fileUnit)
    math_mul3x3, &
    math_expand,&
    PI
- use mesh, only: &
-   mesh_maxNips, &
-   mesh_NcpElems
  use IO, only: &
    IO_warning, &
    IO_error, &
@@ -239,7 +236,7 @@ subroutine plastic_dislotwin_init(fileUnit)
  integer(pInt), intent(in) :: fileUnit
 
  integer(pInt) :: Ninstance,&
-                  f,j,i,k,l,m,n,o,p,q,r,s,p1, &
+                  f,j,i,k,l,o,p, &
                   offset_slip, index_myFamily, index_otherFamily, &
                   startIndex, endIndex, outputSize
  integer(pInt) :: sizeState, sizeDotState, sizeDeltaState
@@ -250,9 +247,6 @@ subroutine plastic_dislotwin_init(fileUnit)
  
  real(pReal),  allocatable, dimension(:) :: &
      invLambdaSlip0,&
-     MeanFreePathSlip0,&
-     MeanFreePathTrans0,&
-     MeanFreePathTwin0,&
      tauSlipThreshold0,&
      TwinVolume0,&
      MartensiteVolume0
@@ -348,7 +342,7 @@ subroutine plastic_dislotwin_init(fileUnit)
 
      prm%CEdgeDipMinDistance  = config_phase(p)%getFloat('cedgedipmindistance')
 
-     ! expand slip related parameters from family => system
+     ! expand: family => system
      prm%rho0         = math_expand(prm%rho0,        prm%Nslip)
      prm%rhoDip0      = math_expand(prm%rhoDip0,     prm%Nslip)
      prm%v0           = math_expand(prm%v0,          prm%Nslip)
@@ -360,15 +354,15 @@ subroutine plastic_dislotwin_init(fileUnit)
      prm%B            = math_expand(prm%B,           prm%Nslip)
      prm%tau_peierls  = math_expand(prm%tau_peierls, prm%Nslip)
 
-     ! sanity checks for slip related parameters
-     !if (any(prm%rho0         <= 0.0_pReal))
-     !if (any(prm%rhoDip0      <= 0.0_pReal))
-     !if (any(prm%v0           <= 0.0_pReal))
-     !if (any(prm%burgers_slip <= 0.0_pReal))
-     !if (any(prm%Qedge        <= 0.0_pReal))
-     !if (any(prm%CLambdaSlip  <= 0.0_pReal))
-     !if (any(prm%B            <= 0.0_pReal))
-     !if (any(prm%tau_peierls  <= 0.0_pReal))
+     ! sanity checks
+     if (any(prm%rho0         <  0.0_pReal)) extmsg = trim(extmsg)//'rho0 '
+     if (any(prm%rhoDip0      <  0.0_pReal)) extmsg = trim(extmsg)//'rhoDip0 '
+     if (any(prm%v0           <  0.0_pReal)) extmsg = trim(extmsg)//'v0 '
+     if (any(prm%burgers_slip <= 0.0_pReal)) extmsg = trim(extmsg)//'burgers_slip '
+     if (any(prm%Qedge        <= 0.0_pReal)) extmsg = trim(extmsg)//'Qedge '
+     if (any(prm%CLambdaSlip  <= 0.0_pReal)) extmsg = trim(extmsg)//'CLambdaSlip '
+     if (any(prm%B            <  0.0_pReal)) extmsg = trim(extmsg)//'B '
+     if (any(prm%tau_peierls  <  0.0_pReal)) extmsg = trim(extmsg)//'tau_peierls '
 
    !  if (any(prm%p            = (prm%p,           prm%Nslip)
    !  if (any(prm%q            = math_expand(prm%q,           prm%Nslip)
@@ -388,27 +382,28 @@ subroutine plastic_dislotwin_init(fileUnit)
                                                              config_phase(p)%getFloats('interaction_twintwin'), &
                                                              structure(1:3))
 
-
      prm%burgers_twin = config_phase(p)%getFloats('twinburgers')
-     prm%burgers_twin = math_expand(prm%burgers_twin,prm%Ntwin)
-     
-     prm%xc_twin = config_phase(p)%getFloat('xc_twin')
-     prm%Cthresholdtwin = config_phase(p)%getFloat('cthresholdtwin', defaultVal=0.0_pReal)
-     prm%Cmfptwin       = config_phase(p)%getFloat('cmfptwin', defaultVal=0.0_pReal) ! ToDo: How to handle that???
+     prm%twinsize     = config_phase(p)%getFloats('twinsize')
+     prm%r            = config_phase(p)%getFloats('r_twin')
+
+     prm%xc_twin         = config_phase(p)%getFloat('xc_twin')
+     prm%L0_twin         = config_phase(p)%getFloat('l0_twin')
+     prm%MaxTwinFraction = config_phase(p)%getFloat('maxtwinfraction') ! ToDo: only used in postResults
+     prm%Cthresholdtwin  = config_phase(p)%getFloat('cthresholdtwin', defaultVal=0.0_pReal)
+     prm%Cmfptwin        = config_phase(p)%getFloat('cmfptwin',       defaultVal=0.0_pReal) ! ToDo: How to handle that???
+
 
      if (.not. prm%isFCC) then
        prm%Ndot0_twin = config_phase(p)%getFloats('ndot0_twin') 
        prm%Ndot0_twin = math_expand(prm%Ndot0_twin,prm%Ntwin)
      endif
 
-     prm%twinsize = config_phase(p)%getFloats('twinsize')
-     prm%twinsize= math_expand(prm%twinsize,prm%Ntwin)
+     ! expand: family => system
+     prm%burgers_twin = math_expand(prm%burgers_twin,prm%Ntwin)
+     prm%twinsize     = math_expand(prm%twinsize,prm%Ntwin)
+     prm%r            = math_expand(prm%r,prm%Ntwin)
      
-     prm%r = config_phase(p)%getFloats('r_twin')
-     prm%r = math_expand(prm%r,prm%Ntwin)
-     
-     prm%L0_twin = config_phase(p)%getFloat('l0_twin')
-     prm%MaxTwinFraction = config_phase(p)%getFloat('maxtwinfraction') ! ToDo: only used in postResults
+
    else
      allocate(prm%twinsize(0))
      allocate(prm%burgers_twin(0))
@@ -474,7 +469,7 @@ subroutine plastic_dislotwin_init(fileUnit)
    prm%Qsd = config_phase(p)%getFloat('qsd')
    prm%SolidSolutionStrength = config_phase(p)%getFloat('solidsolutionstrength')
    if (config_phase(p)%keyExists('dipoleformationfactor')) call IO_error(1,ext_msg='use /nodipoleformation/')
-   prm%dipoleformation = .not. config_phase(p)%keyExists('/nodipoleformation')
+   prm%dipoleformation = .not. config_phase(p)%keyExists('/nodipoleformation/')
    prm%sbVelocity   = config_phase(p)%getFloat('shearbandvelocity',defaultVal=0.0_pReal)
    if (prm%sbVelocity > 0.0_pReal) then  
      prm%sbResistance = config_phase(p)%getFloat('shearbandresistance')
@@ -560,8 +555,6 @@ subroutine plastic_dislotwin_init(fileUnit)
 
  
       do f = 1_pInt,lattice_maxNtwinFamily
-      ! if (burgersPerTwinFamily(f,p) <= 0.0_pReal) &
-      !   call IO_error(211_pInt,el=p,ext_msg='twinburgers ('//PLASTICITY_DISLOTWIN_label//')')
        !if (Ndot0PerTwinFamily(f,p) < 0.0_pReal) &
         ! call IO_error(211_pInt,el=p,ext_msg='ndot0_twin ('//PLASTICITY_DISLOTWIN_label//')')
    enddo
