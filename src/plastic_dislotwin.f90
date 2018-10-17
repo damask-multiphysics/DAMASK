@@ -273,8 +273,6 @@ subroutine plastic_dislotwin_init(fileUnit)
    dot
  type(tDislotwinMicrostructure) :: &
    mse
-
-  
  write(6,'(/,a)')   ' <<<+-  constitutive_'//PLASTICITY_DISLOTWIN_label//' init  -+>>>'
  write(6,'(/,a)')   ' A. Ma and F. Roters, Acta Materialia, 52(12):3603–3612, 2004'
  write(6,'(a)')     ' https://doi.org/10.1016/j.actamat.2004.04.012'
@@ -349,17 +347,17 @@ subroutine plastic_dislotwin_init(fileUnit)
      prm%tau_peierls  = math_expand(prm%tau_peierls, prm%Nslip)
 
      ! sanity checks for slip related parameters
-     if (any(prm%rho0         <= 0.0_pReal))
-     if (any(prm%rhoDip0      <= 0.0_pReal))
-     if (any(prm%v0           <= 0.0_pReal))
-     if (any(prm%burgers_slip <= 0.0_pReal))
-     if (any(prm%Qedge        <= 0.0_pReal))
-     if (any(prm%CLambdaSlip  <= 0.0_pReal))
-     if (any(prm%B            <= 0.0_pReal))
-     if (any(prm%tau_peierls  <= 0.0_pReal))
+     !if (any(prm%rho0         <= 0.0_pReal))
+     !if (any(prm%rhoDip0      <= 0.0_pReal))
+     !if (any(prm%v0           <= 0.0_pReal))
+     !if (any(prm%burgers_slip <= 0.0_pReal))
+     !if (any(prm%Qedge        <= 0.0_pReal))
+     !if (any(prm%CLambdaSlip  <= 0.0_pReal))
+     !if (any(prm%B            <= 0.0_pReal))
+     !if (any(prm%tau_peierls  <= 0.0_pReal))
 
-     if (any(prm%p            = (prm%p,           prm%Nslip)
-     if (any(prm%q            = math_expand(prm%q,           prm%Nslip)
+   !  if (any(prm%p            = (prm%p,           prm%Nslip)
+   !  if (any(prm%q            = math_expand(prm%q,           prm%Nslip)
 
    else slipActive
      allocate(prm%burgers_slip(0))
@@ -1271,13 +1269,15 @@ subroutine plastic_dislotwin_dotState(Mp,Temperature,instance,of)
    significantSlipStress2: if (dEq0(tau)) then
      DotRhoDipFormation = 0.0_pReal
    else significantSlipStress2
-     EdgeDipDistance = (3.0_pReal*prm%mu*prm%burgers_slip(i))/&
-                                                          (16.0_pReal*PI*abs(tau))
-     if (EdgeDipDistance>mse%mfp_slip(i,of)) EdgeDipDistance=mse%mfp_slip(i,of)
-     if (EdgeDipDistance<EdgeDipMinDistance)             EdgeDipDistance=EdgeDipMinDistance
-     if (prm%dipoleFormation) &
+     EdgeDipDistance = (3.0_pReal*prm%mu*prm%burgers_slip(i))/(16.0_pReal*PI*abs(tau))
+     if (EdgeDipDistance>mse%mfp_slip(i,of)) EdgeDipDistance = mse%mfp_slip(i,of)
+     if (EdgeDipDistance<EdgeDipMinDistance) EdgeDipDistance = EdgeDipMinDistance
+     if (prm%dipoleFormation) then
        DotRhoDipFormation = ((2.0_pReal*(EdgeDipDistance-EdgeDipMinDistance))/prm%burgers_slip(i)) &
                           * stt%rhoEdge(i,of)*abs(gdot_slip(i))
+     else
+       DotRhoDipFormation = 0.0_pReal
+     endif
    endif significantSlipStress2
  
    !* Spontaneous annihilation of 2 single edge dislocations
