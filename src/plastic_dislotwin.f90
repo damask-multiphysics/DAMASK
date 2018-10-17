@@ -23,101 +23,89 @@ module plastic_dislotwin
    kB = 1.38e-23_pReal                                                                         !< Boltzmann constant in J/Kelvin
 
  enum, bind(c) 
-   enumerator :: undefined_ID, &
-                 edge_density_ID, &
-                 dipole_density_ID, &
-                 shear_rate_slip_ID, &
-                 accumulated_shear_slip_ID, &
-                 mfp_slip_ID, &
-                 resolved_stress_slip_ID, &
-                 threshold_stress_slip_ID, &
-                 edge_dipole_distance_ID, &
-                 stress_exponent_ID, &
-                 twin_fraction_ID, &
-                 shear_rate_twin_ID, &
-                 accumulated_shear_twin_ID, &
-                 mfp_twin_ID, &
-                 resolved_stress_twin_ID, &
-                 threshold_stress_twin_ID, &
-                 resolved_stress_shearband_ID, &
-                 shear_rate_shearband_ID, &
-                 stress_trans_fraction_ID, &
-                 strain_trans_fraction_ID
+   enumerator :: & 
+     undefined_ID, &
+     edge_density_ID, &
+     dipole_density_ID, &
+     shear_rate_slip_ID, &
+     accumulated_shear_slip_ID, &
+     mfp_slip_ID, &
+     resolved_stress_slip_ID, &
+     threshold_stress_slip_ID, &
+     edge_dipole_distance_ID, &
+     stress_exponent_ID, &
+     twin_fraction_ID, &
+     shear_rate_twin_ID, &
+     accumulated_shear_twin_ID, &
+     mfp_twin_ID, &
+     resolved_stress_twin_ID, &
+     threshold_stress_twin_ID, &
+     resolved_stress_shearband_ID, &
+     shear_rate_shearband_ID, &
+     stress_trans_fraction_ID, &
+     strain_trans_fraction_ID
  end enum
  
-  type,private :: tParameters
-   integer(kind(undefined_ID)),         dimension(:),         allocatable :: &
-     outputID                                                                                       !< ID of each post result output
-   
-   logical :: &
-     isFCC                                                                                          !< twinning and transformation models are for fcc
+ type, private :: tParameters
    real(pReal) :: &
      mu, &
      nu, &
      CAtomicVolume, &                                                                               !< atomic volume in Bugers vector unit
      D0, &                                                                                          !< prefactor for self-diffusion coefficient
      Qsd, &                                                                                         !< activation energy for dislocation climb
-     GrainSize, &                                                                                  !<grain size
-     pShearBand, &                                                                                 !< p-exponent in shear band velocity
-     qShearBand, &                                                                                 !< q-exponent in shear band velocity
-     MaxTwinFraction, &                                                                            !<max allowed total twin volume fraction
-     CEdgeDipMinDistance, &                                                                        !<
-     Cmfptwin, &                                                                                   !<
-     Cthresholdtwin, &                                                                             !<
-     SolidSolutionStrength, &                                                                      !<strength due to elements in solid solution
-     L0_twin, &                                                                                    !< Length of twin nuclei in Burgers vectors
-     L0_trans, &                                                                                   !< Length of trans nuclei in Burgers vectors
-     xc_twin, &                                                                                    !< critical distance for formation of twin nucleus
-     xc_trans, &                                                                                   !< critical distance for formation of trans nucleus
-     VcrossSlip, &                                                                                 !< cross slip volume
-     sbResistance, &                                                                               !< value for shearband resistance (might become an internal state variable at some point)
-     sbVelocity, &                                                                                 !< value for shearband velocity_0
-     sbQedge, &                                                                                    !< value for shearband systems Qedge
-     SFE_0K, &                                                                                     !< stacking fault energy at zero K
-     dSFE_dT, &                                                                                    !< temperature dependance of stacking fault energy
-     aTolRho, &                                                                                    !< absolute tolerance for integration of dislocation density
-     aTolTwinFrac, &                                                                               !< absolute tolerance for integration of twin volume fraction
-     aTolTransFrac, &                                                                              !< absolute tolerance for integration of trans volume fraction
-     deltaG, &                                                                                     !< Free energy difference between austensite and martensite
-     Cmfptrans, &                                                                                  !<
-     Cthresholdtrans, &                                                                            !<
-     transStackHeight                                                                              !< Stack height of hex nucleus 
-   integer(pInt) :: & 
-     totalNslip, &                                                                                          !< number of active slip systems for each family and instance
-     totalNtwin, &                                                                                          !< number of active twin systems for each family and instance
-    totalNtrans                                                                                            !< number of active transformation systems for each family and instance 
-   integer(pInt),                  dimension(:),            allocatable :: & 
-     Nslip, &                                                                                          !< number of active slip systems for each family and instance
-     Ntwin, &                                                                                          !< number of active twin systems for each family and instance
-     Ntrans                                                                                            !< number of active transformation systems for each family and instance
+     GrainSize, &                                                                                   !<grain size
+     pShearBand, &                                                                                  !< p-exponent in shear band velocity
+     qShearBand, &                                                                                  !< q-exponent in shear band velocity
+     MaxTwinFraction, &                                                                             !<max allowed total twin volume fraction
+     CEdgeDipMinDistance, &                                                                         !<
+     Cmfptwin, &                                                                                    !<
+     Cthresholdtwin, &                                                                              !<
+     SolidSolutionStrength, &                                                                       !<strength due to elements in solid solution
+     L0_twin, &                                                                                     !< Length of twin nuclei in Burgers vectors
+     L0_trans, &                                                                                    !< Length of trans nuclei in Burgers vectors
+     xc_twin, &                                                                                     !< critical distance for formation of twin nucleus
+     xc_trans, &                                                                                    !< critical distance for formation of trans nucleus
+     VcrossSlip, &                                                                                  !< cross slip volume
+     sbResistance, &                                                                                !< value for shearband resistance (might become an internal state variable at some point)
+     sbVelocity, &                                                                                  !< value for shearband velocity_0
+     sbQedge, &                                                                                     !< value for shearband systems Qedge
+     SFE_0K, &                                                                                      !< stacking fault energy at zero K
+     dSFE_dT, &                                                                                     !< temperature dependance of stacking fault energy
+     aTolRho, &                                                                                     !< absolute tolerance for integration of dislocation density
+     aTolTwinFrac, &                                                                                !< absolute tolerance for integration of twin volume fraction
+     aTolTransFrac, &                                                                               !< absolute tolerance for integration of trans volume fraction
+     deltaG, &                                                                                      !< Free energy difference between austensite and martensite
+     Cmfptrans, &                                                                                   !<
+     Cthresholdtrans, &                                                                             !<
+     transStackHeight                                                                               !< Stack height of hex nucleus 
    real(pReal),                  dimension(:),            allocatable :: & 
-     rho0, & !< initial unipolar dislocation density per slip system
-     rhoDip0, & !< initial dipole dislocation density per slip system
-     burgers_slip, &                                                   !< absolute length of burgers vector [m] for each slip systems
-     burgers_twin, &                                                   !< absolute length of burgers vector [m] for each slip systems
-     burgers_trans, &                                                  !< absolute length of burgers vector [m] for each twin family and instance
-     Qedge,&                                                !< activation energy for glide [J] for each slip system and instance
-     v0, &                                                    !dislocation velocity prefactor [m/s] for each slip system and instance
-     tau_peierls,&                                            !< Peierls stress [Pa] for each family and instance
-     Ndot0_twin, &                                                 !< twin nucleation rate [1/m³s] for each twin system and instance
-     Ndot0_trans, &                                                !< trans nucleation rate [1/m³s] for each trans system and instance
-     twinsize, &                                                  !< twin thickness [m] for each twin system and instance
-     CLambdaSlip, &                                               !< Adj. parameter for distance between 2 forest dislocations for each slip system and instance
-     lamellarsizePerTransSystem, &                                             !< martensite lamellar thickness [m] for each trans system and instance
-     p, &                                                         !< p-exponent in glide velocity
-     q, &                                                         !< q-exponent in glide velocity
-     r, &                                                         !< r-exponent in twin nucleation rate
-     s, &                                                           !< s-exponent in trans nucleation rate
-     shear_twin, &                                                                              !< characteristic shear for twins
-     B                                                                                          !< drag coefficient
+     rho0, &                                                                                        !< initial unipolar dislocation density per slip system
+     rhoDip0, &                                                                                     !< initial dipole dislocation density per slip system
+     burgers_slip, &                                                                                !< absolute length of burgers vector [m] for each slip system
+     burgers_twin, &                                                                                !< absolute length of burgers vector [m] for each slip system
+     burgers_trans, &                                                                               !< absolute length of burgers vector [m] for each twin system
+     Qedge,&                                                                                        !< activation energy for glide [J] for each slip system
+     v0, &                                                                                          !< dislocation velocity prefactor [m/s] for each slip system
+     tau_peierls,&                                                                                  !< Peierls stress [Pa] for each slip system
+     Ndot0_twin, &                                                                                  !< twin nucleation rate [1/m³s] for each twin system
+     Ndot0_trans, &                                                                                 !< trans nucleation rate [1/m³s] for each trans system
+     twinsize, &                                                                                    !< twin thickness [m] for each twin system
+     CLambdaSlip, &                                                                                 !< Adj. parameter for distance between 2 forest dislocations for each slip system
+     lamellarsizePerTransSystem, &                                                                  !< martensite lamellar thickness [m] for each trans system and instance
+     p, &                                                                                           !< p-exponent in glide velocity
+     q, &                                                                                           !< q-exponent in glide velocity
+     r, &                                                                                           !< r-exponent in twin nucleation rate
+     s, &                                                                                           !< s-exponent in trans nucleation rate
+     shear_twin, &                                                                                  !< characteristic shear for twins
+     B                                                                                              !< drag coefficient
    real(pReal),                  dimension(:,:),            allocatable :: & 
-     interaction_SlipSlip, &                                                   !< coefficients for slip-slip interaction for each interaction type and instance
-     interaction_SlipTwin, &                                                   !< coefficients for slip-twin interaction for each interaction type and instance
-     interaction_TwinSlip, &                                                   !< coefficients for twin-slip interaction for each interaction type and instance
-     interaction_TwinTwin, &                                                   !< coefficients for twin-twin interaction for each interaction type and instance
-     interaction_SlipTrans, &                                                  !< coefficients for slip-trans interaction for each interaction type and instance
-     interaction_TransSlip, &                                                  !< coefficients for trans-slip interaction for each interaction type and instance
-     interaction_TransTrans                                                 !< coefficients for trans-trans interaction for each interaction type and instance
+     interaction_SlipSlip, &                                                                        !< coefficients for slip-slip interaction for each interaction type
+     interaction_SlipTwin, &                                                                        !< coefficients for slip-twin interaction for each interaction type
+     interaction_TwinSlip, &                                                                        !< coefficients for twin-slip interaction for each interaction type
+     interaction_TwinTwin, &                                                                        !< coefficients for twin-twin interaction for each interaction type
+     interaction_SlipTrans, &                                                                       !< coefficients for slip-trans interaction for each interaction type
+     interaction_TransSlip, &                                                                       !< coefficients for trans-slip interaction for each interaction type
+     interaction_TransTrans                                                                         !< coefficients for trans-trans interaction for each interaction type
    integer(pInt),                  dimension(:,:),            allocatable :: & 
      fcc_twinNucleationSlipPair
    real(pReal),                  dimension(:,:),            allocatable :: & 
@@ -131,6 +119,20 @@ module plastic_dislotwin
      C66_trans
    logical :: &
      dipoleFormation                                                                                !< flag indicating consideration of dipole formation
+
+   integer(kind(undefined_ID)),         dimension(:),         allocatable :: &
+     outputID                                                                                       !< ID of each post result output
+   
+   logical :: &
+     isFCC                                                                                          !< twinning and transformation models are for fcc
+   integer(pInt) :: & 
+     totalNslip, &                                                                                          !< number of active slip systems for each family and instance
+     totalNtwin, &                                                                                          !< number of active twin systems for each family and instance
+    totalNtrans                                                                                            !< number of active transformation systems for each family and instance 
+   integer(pInt),                  dimension(:),            allocatable :: & 
+     Nslip, &                                                                                          !< number of active slip systems for each family and instance
+     Ntwin, &                                                                                          !< number of active twin systems for each family and instance
+     Ntrans                                                                                            !< number of active transformation systems for each family and instance
   end type 
   
   type(tParameters), dimension(:), allocatable, private :: param                                    !< containers of constitutive parameters (len Ninstance)
