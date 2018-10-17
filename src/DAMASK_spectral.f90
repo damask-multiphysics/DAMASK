@@ -151,7 +151,7 @@ program DAMASK_spectral
 
 !--------------------------------------------------------------------------------------------------
 ! init DAMASK (all modules)
- call CPFEM_initAll(el = 1_pInt, ip = 1_pInt)
+ call CPFEM_initAll
  write(6,'(/,a)')   ' <<<+-  DAMASK_spectral init  -+>>>'
  write(6,'(/,a,/)') ' Roters et al., Computational Materials Science, 2018'
  write(6,'(a15,a)') ' Current time: ',IO_timeStamp()

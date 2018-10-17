@@ -386,7 +386,7 @@ subroutine constitutive_microstructure(orientations, Fe, Fp, ipc, ip, el)
  use material, only: &
    phase_plasticity, &
    material_phase, &
-   material_homog, &
+   material_homogenizationAt, &
    temperature, &
    thermalMapping, &
    PLASTICITY_dislotwin_ID, &
@@ -413,7 +413,7 @@ subroutine constitutive_microstructure(orientations, Fe, Fp, ipc, ip, el)
  real(pReal),   intent(in), dimension(:,:,:,:) :: &
    orientations                                                                                     !< crystal orientations as quaternions
 
- ho = material_homog(ip,el)
+ ho = material_homogenizationAt(el)
  tme = thermalMapping(ho)%p(ip,el)
 
  plasticityType: select case (phase_plasticity(material_phase(ipc,ip,el)))
@@ -444,7 +444,7 @@ subroutine constitutive_LpAndItsTangents(Lp, dLp_dS, dLp_dFi, S6, Fi, ipc, ip, e
    phase_plasticity, &
    phase_plasticityInstance, &
    material_phase, &
-   material_homog, &
+   material_homogenizationAt, &
    temperature, &
    thermalMapping, &
    PLASTICITY_NONE_ID, &
@@ -494,7 +494,7 @@ subroutine constitutive_LpAndItsTangents(Lp, dLp_dS, dLp_dFi, S6, Fi, ipc, ip, e
  integer(pInt) :: &
    i, j, instance, of
 
- ho = material_homog(ip,el)
+ ho = material_homogenizationAt(el)
  tme = thermalMapping(ho)%p(ip,el)
 
  S  = math_Mandel6to33(S6)
@@ -536,11 +536,19 @@ subroutine constitutive_LpAndItsTangents(Lp, dLp_dS, dLp_dFi, S6, Fi, ipc, ip, e
 
  end select plasticityType
 
+#ifdef __INTEL_COMPILER
+ forall(i = 1_pInt:3_pInt, j = 1_pInt:3_pInt)
+#else
  do concurrent(i = 1_pInt:3_pInt, j = 1_pInt:3_pInt)
+#endif
    dLp_dFi(i,j,1:3,1:3) = math_mul33x33(math_mul33x33(Fi,S),transpose(dLp_dMp(i,j,1:3,1:3))) + &
                           math_mul33x33(math_mul33x33(Fi,dLp_dMp(i,j,1:3,1:3)),S)
    dLp_dS(i,j,1:3,1:3)  = math_mul33x33(math_mul33x33(transpose(Fi),Fi),dLp_dMp(i,j,1:3,1:3))       ! ToDo: @PS: why not:   dLp_dMp:(FiT Fi)
- enddo 
+#ifdef __INTEL_COMPILER
+ end forall
+#else
+ enddo
+#endif
 
 end subroutine constitutive_LpAndItsTangents
 
@@ -647,11 +655,12 @@ subroutine constitutive_LiAndItsTangents(Li, dLi_dS, dLi_dFi, S6, Fi, ipc, ip, e
  detFi = math_det33(Fi)
  Li = math_mul33x33(math_mul33x33(Fi,Li),FiInv)*detFi                                               !< push forward to intermediate configuration
  temp_33 = math_mul33x33(FiInv,Li)
- do concurrent(i = 1_pInt:3_pInt, j = 1_pInt:3_pInt)
+
+ do i = 1_pInt,3_pInt; do j = 1_pInt,3_pInt
    dLi_dS(1:3,1:3,i,j)  = math_mul33x33(math_mul33x33(Fi,dLi_dS(1:3,1:3,i,j)),FiInv)*detFi
    dLi_dFi(1:3,1:3,i,j) = dLi_dFi(1:3,1:3,i,j) + Li*FiInv(j,i)
    dLi_dFi(1:3,i,1:3,j) = dLi_dFi(1:3,i,1:3,j) + math_I3*temp_33(j,i) + Li*FiInv(j,i)
- end do
+ end do; end do
 
 end subroutine constitutive_LiAndItsTangents
 
@@ -752,7 +761,7 @@ subroutine constitutive_hooke_SandItsTangents(S, dS_dFe, dS_dFi, Fe, Fi, ipc, ip
    math_I3
  use material, only: &
    material_phase, &
-   material_homog, &
+   material_homogenizationAt, &
    phase_NstiffnessDegradations, &
    phase_stiffnessDegradation, &
    damage, &
@@ -783,8 +792,7 @@ subroutine constitutive_hooke_SandItsTangents(S, dS_dFe, dS_dFi, Fe, Fi, ipc, ip
  integer(pInt) :: &
    i, j
 
- ho = material_homog(ip,el)
-
+ ho = material_homogenizationAt(el)
  C = math_Mandel66to3333(constitutive_homogenizedC(ipc,ip,el))
 
  DegradationLoop: do d = 1_pInt, phase_NstiffnessDegradations(material_phase(ipc,ip,el))
@@ -835,7 +843,7 @@ subroutine constitutive_collectDotState(S6, FeArray, Fi, FpArray, subdt, subfrac
    phase_source, &
    phase_Nsources, &
    material_phase, &
-   material_homog, &
+   material_homogenizationAt, &
    temperature, &
    thermalMapping, &
    homogenization_maxNgrains, &
@@ -895,7 +903,7 @@ subroutine constitutive_collectDotState(S6, FeArray, Fi, FpArray, subdt, subfrac
    s, &                                                                                                !< counter in source loop
    instance, of
 
- ho  = material_homog(    ip,el)
+ ho = material_homogenizationAt(el)
  tme = thermalMapping(ho)%p(ip,el)
 
  Mp  = math_mul33x33(math_mul33x33(transpose(Fi),Fi),math_Mandel6to33(S6))
@@ -1055,7 +1063,7 @@ function constitutive_postResults(S6, Fi, FeArray, ipc, ip, el)
    phase_source, &
    phase_Nsources, &
    material_phase, &
-   material_homog, &
+   material_homogenizationAt, &
    temperature, &
    thermalMapping, &
    homogenization_maxNgrains, &
@@ -1118,7 +1126,7 @@ function constitutive_postResults(S6, Fi, FeArray, ipc, ip, el)
 
  Mp  = math_mul33x33(math_mul33x33(transpose(Fi),Fi),math_Mandel6to33(S6))
 
- ho = material_homog(    ip,el)
+ ho = material_homogenizationAt(el)
  tme = thermalMapping(ho)%p(ip,el)
 
  startPos = 1_pInt
