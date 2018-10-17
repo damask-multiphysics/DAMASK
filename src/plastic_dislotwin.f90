@@ -319,11 +319,20 @@ subroutine plastic_dislotwin_init(fileUnit)
    prm%nu = lattice_nu(p)
    prm%C66 = lattice_C66(1:6,1:6,p)
 
+   structure          = config_phase(p)%getString('lattice_structure')
+
+
+!--------------------------------------------------------------------------------------------------
+! slip related parameters
    prm%Nslip =  config_phase(p)%getInts('nslip',defaultVal=emptyIntArray)
    prm%totalNslip = sum(prm%Nslip)
-
    slipActive: if (prm%totalNslip > 0_pInt) then
-     ! reading in slip related parameters
+     prm%Schmid_slip          = lattice_SchmidMatrix_slip(prm%Nslip,structure(1:3),&
+                                                          config_phase(p)%getFloat('c/a',defaultVal=0.0_pReal))
+     prm%interaction_SlipSlip = lattice_interaction_SlipSlip(prm%Nslip, &
+                                                             config_phase(p)%getFloats('interaction_slipslip'), &
+                                                             structure(1:3))
+
      prm%rho0                 = config_phase(p)%getFloats('rhoedge0',   requiredShape=shape(prm%Nslip))  !ToDo: rename to rho_0
      prm%rhoDip0              = config_phase(p)%getFloats('rhoedgedip0',requiredShape=shape(prm%Nslip))  !ToDo: rename to rho_dip_0
      prm%v0                   = config_phase(p)%getFloats('v0',         requiredShape=shape(prm%Nslip))
@@ -336,8 +345,6 @@ subroutine plastic_dislotwin_init(fileUnit)
                                                           defaultVal=[(0.0_pReal, i=1,size(prm%Nslip))])
      prm%tau_peierls          = config_phase(p)%getFloats('tau_peierls',requiredShape=shape(prm%Nslip), &
                                                           defaultVal=[(0.0_pReal, i=1,size(prm%Nslip))])
-
-     prm%interaction_SlipSlip = spread(config_phase(p)%getFloats('interaction_slipslip'),2,1)     
 
      prm%CEdgeDipMinDistance  = config_phase(p)%getFloat('cedgedipmindistance')
 
@@ -370,10 +377,18 @@ subroutine plastic_dislotwin_init(fileUnit)
      allocate(prm%burgers_slip(0))
    endif slipActive
 
-   prm%Ntwin =  config_phase(p)%getInts('ntwin', defaultVal=emptyIntArray)
+!--------------------------------------------------------------------------------------------------
+! twin related parameters
+   prm%Ntwin      = config_phase(p)%getInts('ntwin', defaultVal=emptyIntArray)
    prm%totalNtwin = sum(prm%Ntwin)
-   
    if (prm%totalNtwin > 0_pInt) then
+     prm%Schmid_twin          = lattice_SchmidMatrix_twin(prm%Ntwin,structure(1:3),&
+                                                          config_phase(p)%getFloat('c/a',defaultVal=0.0_pReal))
+     prm%interaction_TwinTwin = lattice_interaction_TwinTwin(prm%Ntwin,&
+                                                             config_phase(p)%getFloats('interaction_twintwin'), &
+                                                             structure(1:3))
+
+
      prm%burgers_twin = config_phase(p)%getFloats('twinburgers')
      prm%burgers_twin = math_expand(prm%burgers_twin,prm%Ntwin)
      
@@ -381,7 +396,6 @@ subroutine plastic_dislotwin_init(fileUnit)
      prm%Cthresholdtwin = config_phase(p)%getFloat('cthresholdtwin', defaultVal=0.0_pReal)
      prm%Cmfptwin       = config_phase(p)%getFloat('cmfptwin', defaultVal=0.0_pReal) ! ToDo: How to handle that???
 
-     prm%interaction_TwinTwin = spread(config_phase(p)%getFloats('interaction_twintwin'),2,1)     
      if (.not. prm%isFCC) then
        prm%Ndot0_twin = config_phase(p)%getFloats('ndot0_twin') 
        prm%Ndot0_twin = math_expand(prm%Ndot0_twin,prm%Ntwin)
@@ -626,12 +640,8 @@ subroutine plastic_dislotwin_init(fileUnit)
        plasticState(p)%state   (offset_slip+1:offset_slip+plasticState(p)%nslip,1:NipcMyPhase)
 
 
-   ! ToDo: All these things are repeated for each constitutive law. Lattice can provide it as a 'sevice'
-   ! See 44 branch
-   allocate(temp1(prm%totalNslip,prm%totalNslip), source =0.0_pReal)
    allocate(temp2(prm%totalNslip,prm%totalNtwin), source =0.0_pReal)        
    allocate(temp3(prm%totalNslip,prm%totalNtrans),source =0.0_pReal)        
-   allocate(prm%Schmid_slip(3,3,prm%totalNslip),source   = 0.0_pReal)
    allocate(prm%forestProjectionEdge(prm%totalNslip,prm%totalNslip),source   = 0.0_pReal)
    i = 0_pInt
    mySlipFamilies: do f = 1_pInt,size(prm%Nslip,1)
@@ -639,18 +649,12 @@ subroutine plastic_dislotwin_init(fileUnit)
 
      slipSystemsLoop: do j = 1_pInt,prm%Nslip(f)
        i = i + 1_pInt
-       prm%Schmid_slip(1:3,1:3,i) = lattice_Sslip(1:3,1:3,1,sum(lattice_Nslipsystem(1:f-1,p))+j,p)
        do o = 1_pInt, size(prm%Nslip,1)
          index_otherFamily = sum(prm%Nslip(1:o-1_pInt))
          do k = 1_pInt,prm%Nslip(o)                                   ! loop over (active) systems in other family (slip)
            prm%forestProjectionEdge(index_myFamily+j,index_otherFamily+k) = &
              abs(math_mul3x3(lattice_sn(:,sum(lattice_NslipSystem(1:f-1,p))+j,p), &
                              lattice_st(:,sum(lattice_NslipSystem(1:o-1,p))+k,p)))
-           temp1(index_myFamily+j,index_otherFamily+k) = &
-                 prm%interaction_SlipSlip(lattice_interactionSlipSlip( &
-                                                               sum(lattice_NslipSystem(1:f-1,p))+j, &
-                                                               sum(lattice_NslipSystem(1:o-1,p))+k, &
-                                                               p),1 )
        enddo; enddo
   
        do o = 1_pInt,size(prm%Ntwin,1)
@@ -674,16 +678,13 @@ subroutine plastic_dislotwin_init(fileUnit)
        enddo; enddo
   
      enddo slipSystemsLoop
-   enddo mySlipFamilies
-   prm%interaction_SlipSlip  = temp1; deallocate(temp1)    
+   enddo mySlipFamilies   
    prm%interaction_SlipTwin  = temp2; deallocate(temp2)    
    prm%interaction_SlipTrans = temp3; deallocate(temp3)    
 
 
-   allocate(temp1(prm%totalNtwin,prm%totalNslip), source =0.0_pReal)
-   allocate(temp2(prm%totalNtwin,prm%totalNtwin), source =0.0_pReal)     
+   allocate(temp1(prm%totalNtwin,prm%totalNslip), source =0.0_pReal)  
    allocate(prm%C66_twin(6,6,prm%totalNtwin),       source=0.0_pReal)
-   allocate(prm%Schmid_twin(3,3,prm%totalNtwin),source  = 0.0_pReal)
    if (lattice_structure(p) == LATTICE_fcc_ID) &
      allocate(prm%fcc_twinNucleationSlipPair(2,prm%totalNtwin),source = 0_pInt)
    allocate(prm%shear_twin(prm%totalNtwin),source       = 0.0_pReal)
@@ -692,7 +693,6 @@ subroutine plastic_dislotwin_init(fileUnit)
      index_myFamily = sum(prm%Ntwin(1:f-1_pInt))                      ! index in truncated twin system list
      twinSystemsLoop: do j = 1_pInt,prm%Ntwin(f)
        i = i + 1_pInt
-       prm%Schmid_twin(1:3,1:3,i) = lattice_Stwin(1:3,1:3,sum(lattice_NTwinsystem(1:f-1,p))+j,p)
        prm%shear_twin(i)          = lattice_shearTwin(sum(lattice_Ntwinsystem(1:f-1,p))+j,p)
        if (lattice_structure(p) == LATTICE_fcc_ID) prm%fcc_twinNucleationSlipPair(1:2,i) = &
                       lattice_fcc_twinNucleationSlipPair(1:2,sum(lattice_Ntwinsystem(1:f-1,p))+j)
@@ -724,20 +724,9 @@ subroutine plastic_dislotwin_init(fileUnit)
                                                                p),1 )
        enddo; enddo
  
-       do o = 1_pInt,size(prm%Ntwin,1)
-         index_otherFamily = sum(prm%Ntwin(1:o-1_pInt))
-         do k = 1_pInt,prm%Ntwin(o)                                   ! loop over (active) systems in other family (twin)
-           temp2(index_myFamily+j,index_otherFamily+k) = &
-                prm%interaction_TwinTwin(lattice_interactionTwinTwin( &
-                                                               sum(lattice_NtwinSystem(1:f-1_pInt,p))+j, &
-                                                               sum(lattice_NtwinSystem(1:o-1_pInt,p))+k, &
-                                                               p),1 )
-       enddo; enddo
- 
      enddo twinSystemsLoop
    enddo twinFamiliesLoop
    prm%interaction_TwinSlip  = temp1; deallocate(temp1)
-   prm%interaction_TwinTwin  = temp2; deallocate(temp2)    
 
  
    allocate(temp1(prm%totalNtrans,prm%totalNslip),  source =0.0_pReal)
