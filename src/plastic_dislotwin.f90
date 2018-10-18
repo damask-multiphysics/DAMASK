@@ -355,17 +355,16 @@ subroutine plastic_dislotwin_init(fileUnit)
      prm%tau_peierls  = math_expand(prm%tau_peierls, prm%Nslip)
 
      ! sanity checks
-     if (any(prm%rho0         <  0.0_pReal)) extmsg = trim(extmsg)//'rho0 '
-     if (any(prm%rhoDip0      <  0.0_pReal)) extmsg = trim(extmsg)//'rhoDip0 '
-     if (any(prm%v0           <  0.0_pReal)) extmsg = trim(extmsg)//'v0 '
-     if (any(prm%burgers_slip <= 0.0_pReal)) extmsg = trim(extmsg)//'burgers_slip '
-     if (any(prm%Qedge        <= 0.0_pReal)) extmsg = trim(extmsg)//'Qedge '
-     if (any(prm%CLambdaSlip  <= 0.0_pReal)) extmsg = trim(extmsg)//'CLambdaSlip '
-     if (any(prm%B            <  0.0_pReal)) extmsg = trim(extmsg)//'B '
-     if (any(prm%tau_peierls  <  0.0_pReal)) extmsg = trim(extmsg)//'tau_peierls '
-
-   !  if (any(prm%p            = (prm%p,           prm%Nslip)
-   !  if (any(prm%q            = math_expand(prm%q,           prm%Nslip)
+     if (any(prm%rho0         <  0.0_pReal))         extmsg = trim(extmsg)//'rho0 '
+     if (any(prm%rhoDip0      <  0.0_pReal))         extmsg = trim(extmsg)//'rhoDip0 '
+     if (any(prm%v0           <  0.0_pReal))         extmsg = trim(extmsg)//'v0 '
+     if (any(prm%burgers_slip <= 0.0_pReal))         extmsg = trim(extmsg)//'burgers_slip '
+     if (any(prm%Qedge        <= 0.0_pReal))         extmsg = trim(extmsg)//'Qedge '
+     if (any(prm%CLambdaSlip  <= 0.0_pReal))         extmsg = trim(extmsg)//'CLambdaSlip '
+     if (any(prm%B            <  0.0_pReal))         extmsg = trim(extmsg)//'B '
+     if (any(prm%tau_peierls  <  0.0_pReal))         extmsg = trim(extmsg)//'tau_peierls '
+     if (any(prm%p<=0.0_pReal .or. prm%p>1.0_pReal)) extmsg = trim(extmsg)//'p '
+     if (any(prm%q< 1.0_pReal .or. prm%q>2.0_pReal)) extmsg = trim(extmsg)//'q '
 
    else slipActive
      allocate(prm%burgers_slip(0))
