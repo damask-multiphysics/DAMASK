@@ -402,25 +402,26 @@ subroutine plastic_dislotwin_init(fileUnit)
      prm%twinsize     = math_expand(prm%twinsize,prm%Ntwin)
      prm%r            = math_expand(prm%r,prm%Ntwin)
      
-
    else
      allocate(prm%twinsize(0))
      allocate(prm%burgers_twin(0))
      allocate(prm%r(0))
    endif
   
-   prm%Ntrans            =  config_phase(p)%getInts('ntrans', defaultVal=emptyIntArray)
+!--------------------------------------------------------------------------------------------------
+! transformation related parameters
+   prm%Ntrans      = config_phase(p)%getInts('ntrans', defaultVal=emptyIntArray)
    prm%totalNtrans = sum(prm%Ntrans)
    if (prm%totalNtrans > 0_pInt) then
      prm%burgers_trans = config_phase(p)%getFloats('transburgers')
      prm%burgers_trans = math_expand(prm%burgers_trans,prm%Ntrans)
      
-     prm%Cthresholdtrans = config_phase(p)%getFloat('cthresholdtrans', defaultVal=0.0_pReal) ! ToDo: How to handle that???
+     prm%Cthresholdtrans  = config_phase(p)%getFloat('cthresholdtrans', defaultVal=0.0_pReal) ! ToDo: How to handle that???
      prm%transStackHeight = config_phase(p)%getFloat('transstackheight', defaultVal=0.0_pReal) ! ToDo: How to handle that???
-     prm%Cmfptrans = config_phase(p)%getFloat('cmfptrans', defaultVal=0.0_pReal) ! ToDo: How to handle that???
-     prm%deltaG = config_phase(p)%getFloat('deltag')
-     prm%xc_trans = config_phase(p)%getFloat('xc_trans', defaultVal=0.0_pReal) ! ToDo: How to handle that???
-     prm%L0_trans = config_phase(p)%getFloat('l0_trans')
+     prm%Cmfptrans        = config_phase(p)%getFloat('cmfptrans', defaultVal=0.0_pReal) ! ToDo: How to handle that???
+     prm%deltaG           = config_phase(p)%getFloat('deltag')
+     prm%xc_trans         = config_phase(p)%getFloat('xc_trans', defaultVal=0.0_pReal) ! ToDo: How to handle that???
+     prm%L0_trans         = config_phase(p)%getFloat('l0_trans')
 
      prm%interaction_TransTrans = spread(config_phase(p)%getFloats('interaction_transtrans'),2,1)     
      if (lattice_structure(p) /= LATTICE_fcc_ID) then
@@ -437,8 +438,8 @@ subroutine plastic_dislotwin_init(fileUnit)
    endif
    
    if (sum(prm%Ntwin) > 0_pInt  .or. prm%totalNtrans > 0_pInt) then
-     prm%SFE_0K = config_phase(p)%getFloat('sfe_0k')
-     prm%dSFE_dT = config_phase(p)%getFloat('dsfe_dt')
+     prm%SFE_0K     = config_phase(p)%getFloat('sfe_0k')
+     prm%dSFE_dT    = config_phase(p)%getFloat('dsfe_dt')
      prm%VcrossSlip = config_phase(p)%getFloat('vcrossslip')
    endif
    
@@ -477,9 +478,6 @@ subroutine plastic_dislotwin_init(fileUnit)
      prm%pShearBand = config_phase(p)%getFloat('p_shearband')
      prm%qShearBand = config_phase(p)%getFloat('q_shearband')
    endif
-
-
- 
 
        !if (Ndot0PerTwinFamily(f,p) < 0.0_pReal) &
         ! call IO_error(211_pInt,el=p,ext_msg='ndot0_twin ('//PLASTICITY_DISLOTWIN_label//')')
