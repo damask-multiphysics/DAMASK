@@ -476,6 +476,47 @@ subroutine plastic_dislotwin_init(fileUnit)
      prm%pShearBand = config_phase(p)%getFloat('p_shearband')
      prm%qShearBand = config_phase(p)%getFloat('q_shearband')
    endif
+
+
+ 
+
+       !if (Ndot0PerTwinFamily(f,p) < 0.0_pReal) &
+        ! call IO_error(211_pInt,el=p,ext_msg='ndot0_twin ('//PLASTICITY_DISLOTWIN_label//')')
+
+   if (prm%CAtomicVolume <= 0.0_pReal) &
+     call IO_error(211_pInt,el=p,ext_msg='cAtomicVolume ('//PLASTICITY_DISLOTWIN_label//')')
+   if (prm%D0 <= 0.0_pReal) &
+     call IO_error(211_pInt,el=p,ext_msg='D0 ('//PLASTICITY_DISLOTWIN_label//')')
+   if (prm%Qsd <= 0.0_pReal) &
+     call IO_error(211_pInt,el=p,ext_msg='Qsd ('//PLASTICITY_DISLOTWIN_label//')')
+   if (prm%totalNtwin > 0_pInt) then
+     if (dEq0(prm%SFE_0K) .and. &
+         dEq0(prm%dSFE_dT) .and. &
+                         lattice_structure(p) == LATTICE_fcc_ID) &
+       call IO_error(211_pInt,el=p,ext_msg='SFE0K ('//PLASTICITY_DISLOTWIN_label//')')
+     if (prm%aTolRho <= 0.0_pReal) &
+       call IO_error(211_pInt,el=p,ext_msg='aTolRho ('//PLASTICITY_DISLOTWIN_label//')')   
+     if (prm%aTolTwinFrac <= 0.0_pReal) &
+       call IO_error(211_pInt,el=p,ext_msg='aTolTwinFrac ('//PLASTICITY_DISLOTWIN_label//')')
+   endif
+   if (prm%totalNtrans > 0_pInt) then
+     if (dEq0(prm%SFE_0K) .and. &
+         dEq0(prm%dSFE_dT) .and. &
+                         lattice_structure(p) == LATTICE_fcc_ID) &
+       call IO_error(211_pInt,el=p,ext_msg='SFE0K ('//PLASTICITY_DISLOTWIN_label//')')
+     if (prm%aTolTransFrac <= 0.0_pReal) &
+       call IO_error(211_pInt,el=p,ext_msg='aTolTransFrac ('//PLASTICITY_DISLOTWIN_label//')')
+   endif
+   !if (prm%sbResistance < 0.0_pReal) &
+   !  call IO_error(211_pInt,el=p,ext_msg='sbResistance ('//PLASTICITY_DISLOTWIN_label//')')
+   !if (prm%sbVelocity < 0.0_pReal) &
+   !  call IO_error(211_pInt,el=p,ext_msg='sbVelocity ('//PLASTICITY_DISLOTWIN_label//')')
+   !if (prm%sbVelocity > 0.0_pReal .and. &
+   !    prm%pShearBand <= 0.0_pReal) &
+   !  call IO_error(211_pInt,el=p,ext_msg='pShearBand ('//PLASTICITY_DISLOTWIN_label//')')
+   if (prm%sbVelocity > 0.0_pReal .and. &
+       prm%qShearBand <= 0.0_pReal) &
+     call IO_error(211_pInt,el=p,ext_msg='qShearBand ('//PLASTICITY_DISLOTWIN_label//')')
  
    outputs = config_phase(p)%getStrings('(output)', defaultVal=emptyStringArray)
    allocate(prm%outputID(0))
@@ -552,45 +593,6 @@ subroutine plastic_dislotwin_init(fileUnit)
      endif
    enddo
 
- 
-      do f = 1_pInt,lattice_maxNtwinFamily
-       !if (Ndot0PerTwinFamily(f,p) < 0.0_pReal) &
-        ! call IO_error(211_pInt,el=p,ext_msg='ndot0_twin ('//PLASTICITY_DISLOTWIN_label//')')
-   enddo
-   if (prm%CAtomicVolume <= 0.0_pReal) &
-     call IO_error(211_pInt,el=p,ext_msg='cAtomicVolume ('//PLASTICITY_DISLOTWIN_label//')')
-   if (prm%D0 <= 0.0_pReal) &
-     call IO_error(211_pInt,el=p,ext_msg='D0 ('//PLASTICITY_DISLOTWIN_label//')')
-   if (prm%Qsd <= 0.0_pReal) &
-     call IO_error(211_pInt,el=p,ext_msg='Qsd ('//PLASTICITY_DISLOTWIN_label//')')
-   if (prm%totalNtwin > 0_pInt) then
-     if (dEq0(prm%SFE_0K) .and. &
-         dEq0(prm%dSFE_dT) .and. &
-                         lattice_structure(p) == LATTICE_fcc_ID) &
-       call IO_error(211_pInt,el=p,ext_msg='SFE0K ('//PLASTICITY_DISLOTWIN_label//')')
-     if (prm%aTolRho <= 0.0_pReal) &
-       call IO_error(211_pInt,el=p,ext_msg='aTolRho ('//PLASTICITY_DISLOTWIN_label//')')   
-     if (prm%aTolTwinFrac <= 0.0_pReal) &
-       call IO_error(211_pInt,el=p,ext_msg='aTolTwinFrac ('//PLASTICITY_DISLOTWIN_label//')')
-   endif
-   if (prm%totalNtrans > 0_pInt) then
-     if (dEq0(prm%SFE_0K) .and. &
-         dEq0(prm%dSFE_dT) .and. &
-                         lattice_structure(p) == LATTICE_fcc_ID) &
-       call IO_error(211_pInt,el=p,ext_msg='SFE0K ('//PLASTICITY_DISLOTWIN_label//')')
-     if (prm%aTolTransFrac <= 0.0_pReal) &
-       call IO_error(211_pInt,el=p,ext_msg='aTolTransFrac ('//PLASTICITY_DISLOTWIN_label//')')
-   endif
-   !if (prm%sbResistance < 0.0_pReal) &
-   !  call IO_error(211_pInt,el=p,ext_msg='sbResistance ('//PLASTICITY_DISLOTWIN_label//')')
-   !if (prm%sbVelocity < 0.0_pReal) &
-   !  call IO_error(211_pInt,el=p,ext_msg='sbVelocity ('//PLASTICITY_DISLOTWIN_label//')')
-   !if (prm%sbVelocity > 0.0_pReal .and. &
-   !    prm%pShearBand <= 0.0_pReal) &
-   !  call IO_error(211_pInt,el=p,ext_msg='pShearBand ('//PLASTICITY_DISLOTWIN_label//')')
-   if (prm%sbVelocity > 0.0_pReal .and. &
-       prm%qShearBand <= 0.0_pReal) &
-     call IO_error(211_pInt,el=p,ext_msg='qShearBand ('//PLASTICITY_DISLOTWIN_label//')')
    
 !--------------------------------------------------------------------------------------------------
 ! allocate state arrays
