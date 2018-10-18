@@ -443,11 +443,12 @@ subroutine plastic_dislotwin_init(fileUnit)
    endif
    
    if (prm%totalNslip > 0_pInt .and. prm%totalNtwin > 0_pInt) then
-    prm%interaction_SlipTwin = spread(config_phase(p)%getFloats('interaction_sliptwin'),2,1)     
-    prm%interaction_TwinSlip = spread(config_phase(p)%getFloats('interaction_twinslip'),2,1)
-    prm%p = math_expand(prm%p,prm%Nslip)
-    prm%q = math_expand(prm%q,prm%Nslip)
-    prm%tau_peierls = math_expand(prm%tau_peierls,prm%Nslip)
+     prm%interaction_SlipTwin = lattice_interaction_SlipTwin(prm%Nslip,prm%Ntwin,&
+                                                             config_phase(p)%getFloats('interaction_sliptwin'), &
+                                                             structure(1:3)) 
+     prm%interaction_TwinSlip = lattice_interaction_TwinSlip(prm%Ntwin,prm%Nslip,&
+                                                             config_phase(p)%getFloats('interaction_twinslip'), &
+                                                             structure(1:3)) 
    endif    
 
    if (prm%totalNslip > 0_pInt .and. prm%totalNtrans > 0_pInt) then
@@ -632,9 +633,7 @@ subroutine plastic_dislotwin_init(fileUnit)
        plasticState(p)%dotState(offset_slip+1:offset_slip+plasticState(p)%nslip,1:NipcMyPhase)
    plasticState(p)%accumulatedSlip => &
        plasticState(p)%state   (offset_slip+1:offset_slip+plasticState(p)%nslip,1:NipcMyPhase)
-
-
-   allocate(temp2(prm%totalNslip,prm%totalNtwin), source =0.0_pReal)        
+      
    allocate(temp3(prm%totalNslip,prm%totalNtrans),source =0.0_pReal)        
    allocate(prm%forestProjectionEdge(prm%totalNslip,prm%totalNslip),source   = 0.0_pReal)
    i = 0_pInt
@@ -650,17 +649,6 @@ subroutine plastic_dislotwin_init(fileUnit)
              abs(math_mul3x3(lattice_sn(:,sum(lattice_NslipSystem(1:f-1,p))+j,p), &
                              lattice_st(:,sum(lattice_NslipSystem(1:o-1,p))+k,p)))
        enddo; enddo
-  
-       do o = 1_pInt,size(prm%Ntwin,1)
-         index_otherFamily = sum(prm%Ntwin(1:o-1_pInt))
-         do k = 1_pInt,prm%Ntwin(o)                                   ! loop over (active) systems in other family (twin)
-           temp2(index_myFamily+j,index_otherFamily+k) = &
-                 prm%interaction_SlipTwin(lattice_interactionSlipTwin( &
-                                                               sum(lattice_NslipSystem(1:f-1_pInt,p))+j, &
-                                                               sum(lattice_NtwinSystem(1:o-1_pInt,p))+k, &
-                                                               p),1 )
-       enddo; enddo
-
        do o = 1_pInt,size(prm%Ntrans,1)
          index_otherFamily = sum(prm%Ntrans(1:o-1_pInt))
          do k = 1_pInt,prm%Ntrans(o)                                  ! loop over (active) systems in other family (trans)
@@ -673,11 +661,8 @@ subroutine plastic_dislotwin_init(fileUnit)
   
      enddo slipSystemsLoop
    enddo mySlipFamilies   
-   prm%interaction_SlipTwin  = temp2; deallocate(temp2)    
    prm%interaction_SlipTrans = temp3; deallocate(temp3)    
 
-
-   allocate(temp1(prm%totalNtwin,prm%totalNslip), source =0.0_pReal)  
    allocate(prm%C66_twin(6,6,prm%totalNtwin),       source=0.0_pReal)
    if (lattice_structure(p) == LATTICE_fcc_ID) &
      allocate(prm%fcc_twinNucleationSlipPair(2,prm%totalNtwin),source = 0_pInt)
@@ -695,21 +680,8 @@ subroutine plastic_dislotwin_init(fileUnit)
        temp3333 = math_rotate_forward3333(lattice_C3333(1:3,1:3,1:3,1:3,p),&
                                           lattice_Qtwin(1:3,1:3,index_otherFamily+j,p))
        prm%C66_twin(1:6,1:6,index_myFamily+j) = math_Mandel3333to66(temp3333)
- 
-    !* Interaction matrices
-       do o = 1_pInt,size(prm%Nslip,1)
-         index_otherFamily = sum(prm%Nslip(1:o-1_pInt))
-         do k = 1_pInt,prm%Nslip(o)                                   ! loop over (active) systems in other family (slip)
-           temp1(index_myFamily+j,index_otherFamily+k) = &
-                 prm%interaction_TwinSlip(lattice_interactionTwinSlip( &
-                                                               sum(lattice_NtwinSystem(1:f-1_pInt,p))+j, &
-                                                               sum(lattice_NslipSystem(1:o-1_pInt,p))+k, &
-                                                               p),1 )
-       enddo; enddo
- 
      enddo twinSystemsLoop
    enddo twinFamiliesLoop
-   prm%interaction_TwinSlip  = temp1; deallocate(temp1)
 
  
    allocate(temp1(prm%totalNtrans,prm%totalNslip),  source =0.0_pReal)
@@ -1388,7 +1360,7 @@ pure subroutine kinetics_slip(prm,stt,mse,of,Mp,temperature,gdot_slip,dgdot_dtau
                         / (v_wait_inverse+v_run_inverse)**2.0_pReal
    dgdot_dtau = dV_dTau*stt%rhoEdge(:,of)*prm%burgers_slip
  else where significantStress
-   gdot_slip = 0.0_pReal
+   gdot_slip  = 0.0_pReal
    dgdot_dtau = 0.0_pReal
  end where significantStress
  
