@@ -433,7 +433,7 @@ module lattice
    !  1, 1, 1,    -3, 2, 1, &
    !  1, 1,-1,     3,-2, 1, &
    !  1,-1, 1,     3, 2,-1  &
-     ],pReal),[ 3_pInt + 3_pInt ,LATTICE_bcc_Nslip])
+     ],pReal),shape(LATTICE_BCC_SYSTEMSLIP))
 
  character(len=*), dimension(2), parameter, public :: LATTICE_BCC_SLIPFAMILY_NAME = &
    ['<1 -1 1>{0 1 1}', &
@@ -454,7 +454,7 @@ module lattice
       1,-1, 1,    -1, 1, 2, &
      -1, 1, 1,     1,-1, 2, &
       1, 1, 1,     1, 1,-2  &
-     ],pReal),[ 3_pInt + 3_pInt,LATTICE_bcc_Ntwin])
+     ],pReal),shape(LATTICE_BCC_SYSTEMTWIN))
 
  character(len=*), dimension(1), parameter, public :: LATTICE_BCC_TWINFAMILY_NAME = &
    ['<1 1 1>{2 1 1}']
@@ -489,7 +489,7 @@ module lattice
      3,4,6,6,6,6,4,3,4,3,6,6, 6,5,6,3,3,5,6,6,6,1,5,6, &
      6,6,4,3,3,4,6,6,3,4,6,6, 3,6,5,6,6,6,5,3,6,5,1,6, &
      6,6,3,4,6,6,3,4,6,6,3,4, 6,3,6,5,6,6,3,5,5,6,6,1  &
-     ],pInt),[lattice_bcc_Nslip,lattice_bcc_Nslip],order=[2,1])                                     !< Slip--slip interaction types for bcc from Queyreau et al. Int J Plast 25 (2009) 361–377
+     ],pInt),shape(LATTICE_BCC_INTERACTIONSLIPSLIP),order=[2,1])                                    !< Slip--slip interaction types for bcc from Queyreau et al. Int J Plast 25 (2009) 361–377
                                                                                                     !< 1: self interaction
                                                                                                     !< 2: coplanar interaction
                                                                                                     !< 3: collinear interaction
@@ -523,7 +523,7 @@ module lattice
      3,3,3,2,2,3,3,3,3,1,3,3, &
      2,3,3,3,3,3,3,2,3,3,1,3, &
      3,2,3,3,3,3,2,3,3,3,3,1  &
-     ],pInt),[LATTICE_bcc_Nslip,LATTICE_bcc_Ntwin],order=[2,1])                                     !< Slip--twin interaction types for bcc
+     ],pInt),shape(LATTICE_BCC_INTERACTIONSLIPTWIN),order=[2,1])                                    !< Slip--twin interaction types for bcc
                                                                                                     !< 1: coplanar interaction
                                                                                                     !< 2: screw trace between slip system and twin habit plane (easy cross slip)
                                                                                                     !< 3: other interaction
@@ -544,7 +544,7 @@ module lattice
      3,3,3,2,2,3,3,3,3,1,3,3, &
      2,3,3,3,3,3,3,2,3,3,1,3, &
      3,2,3,3,3,3,2,3,3,3,3,1  &
-     ],pInt),[LATTICE_bcc_Ntwin,LATTICE_bcc_Ntwin],order=[2,1])                                     !< Twin--twin interaction types for bcc
+     ],pInt),shape(LATTICE_BCC_INTERACTIONTWINTWIN),order=[2,1])                                    !< Twin--twin interaction types for bcc
                                                                                                     !< 1: self interaction
                                                                                                     !< 2: collinear interaction
                                                                                                     !< 3: other interaction
@@ -560,7 +560,7 @@ module lattice
       1, 1, 1,    -1, 0, 1, &
      -1, 1, 1,     1, 1, 0, &
       1, 1, 1,    -1, 1, 0  &
-     ],pReal),[ 3_pInt + 3_pInt,LATTICE_bcc_Ncleavage])
+     ],pReal),shape(LATTICE_BCC_SYSTEMCLEAVAGE))
 
 !--------------------------------------------------------------------------------------------------
 ! hexagonal
@@ -625,7 +625,7 @@ module lattice
      -2,  1,  1,  3,     2, -1, -1,  2, &
       1, -2,  1,  3,    -1,  2, -1,  2, &
       1,  1, -2,  3,    -1, -1,  2,  2  &
-     ],pReal),[ 4_pInt + 4_pInt,LATTICE_hex_Nslip])                                                 !< slip systems for hex sorted by A. Alankar & P. Eisenlohr
+     ],pReal),shape(LATTICE_HEX_SYSTEMSLIP))                                                 !< slip systems for hex sorted by A. Alankar & P. Eisenlohr
 
  character(len=*), dimension(6), parameter, public :: LATTICE_HEX_SLIPFAMILY_NAME = &
    ['<1 1 . 1>{0 0 . 1}  ', &
@@ -665,7 +665,7 @@ module lattice
      -2,  1,  1, -3,    -2,  1,  1,  2, &
       1, -2,  1, -3,     1, -2,  1,  2, &
       1,  1, -2, -3,     1,  1, -2,  2  &
-     ],pReal),[ 4_pInt + 4_pInt ,LATTICE_hex_Ntwin])                                                !< twin systems for hex, order follows Prof. Tom Bieler's scheme; but numbering in data was restarted from 1
+     ],pReal),shape(LATTICE_HEX_SYSTEMTWIN))                                                !< twin systems for hex, order follows Prof. Tom Bieler's scheme; but numbering in data was restarted from 1
 
  character(len=*), dimension(4), parameter, public :: LATTICE_HEX_TWINFAMILY_NAME = &
    ['<-1 0 . 1>{1 0 . 2} ', &
@@ -742,7 +742,7 @@ module lattice
      42,42,42,  41,41,41,  40,40,40,  39,39,39,39,39,39,  38,38,38,38,38,38,38,38,38,38,38,38,  37,37,37,37,36,37, &
      42,42,42,  41,41,41,  40,40,40,  39,39,39,39,39,39,  38,38,38,38,38,38,38,38,38,38,38,38,  37,37,37,37,37,36  &
     !
-           ],pInt),[LATTICE_hex_Nslip,LATTICE_hex_Nslip],order=[2,1])                                     !< Slip--slip interaction types for hex (onion peel naming scheme)
+           ],pInt),shape(LATTICE_HEX_INTERACTIONSLIPSLIP),order=[2,1])                                     !< Slip--slip interaction types for hex (onion peel naming scheme)
 
  integer(pInt), dimension(LATTICE_hex_Nslip,LATTICE_hex_Ntwin), parameter, public :: &
    LATTICE_hex_interactionSlipTwin = reshape(int( [&
@@ -785,7 +785,7 @@ module lattice
      21,21,21,21,21,21,  22,22,22,22,22,22,  23,23,23,23,23,23,  24,24,24,24,24,24, &
      21,21,21,21,21,21,  22,22,22,22,22,22,  23,23,23,23,23,23,  24,24,24,24,24,24  &
     !
-     ],pInt),[LATTICE_hex_Nslip,LATTICE_hex_Ntwin],order=[2,1])                                     !< Slip--twin interaction types for hex (isotropic, 24 in total)
+     ],pInt),shape(LATTICE_HEX_INTERACTIONSLIPTWIN),order=[2,1])                                     !< Slip--twin interaction types for hex (isotropic, 24 in total)
 
  integer(pInt), dimension(LATTICE_hex_Ntwin,LATTICE_hex_Nslip), parameter, public :: &
    LATTICE_hex_interactionTwinSlip = reshape(int( [&
@@ -816,7 +816,7 @@ module lattice
       4, 4, 4,   8, 8, 8,  12,12,12,  16,16,16,16,16,16,  20,20,20,20,20,20,20,20,20,20,20,20,  24,24,24,24,24,24, &
       4, 4, 4,   8, 8, 8,  12,12,12,  16,16,16,16,16,16,  20,20,20,20,20,20,20,20,20,20,20,20,  24,24,24,24,24,24, &
       4, 4, 4,   8, 8, 8,  12,12,12,  16,16,16,16,16,16,  20,20,20,20,20,20,20,20,20,20,20,20,  24,24,24,24,24,24  &
-     ],pInt),[LATTICE_hex_Ntwin,LATTICE_hex_Nslip],order=[2,1])                                     !< Twin--twin interaction types for hex (isotropic, 20 in total)
+     ],pInt),shape(LATTICE_HEX_INTERACTIONTWINSLIP),order=[2,1])                                     !< Twin--twin interaction types for hex (isotropic, 20 in total)
 
  integer(pInt), dimension(LATTICE_hex_Ntwin,LATTICE_hex_Ntwin), parameter, public :: &
    LATTICE_hex_interactionTwinTwin = reshape(int( [&
@@ -847,7 +847,7 @@ module lattice
      20,20,20,20,20,20,  19,19,19,19,19,19,  18,18,18,18,18,18,  17,17,17,16,17,17, &
      20,20,20,20,20,20,  19,19,19,19,19,19,  18,18,18,18,18,18,  17,17,17,17,16,17, &
      20,20,20,20,20,20,  19,19,19,19,19,19,  18,18,18,18,18,18,  17,17,17,17,17,16  &
-     ],pInt),[lattice_hex_Ntwin,lattice_hex_Ntwin],order=[2,1])                                     !< Twin--slip interaction types for hex (isotropic, 16 in total)
+     ],pInt),shape(LATTICE_HEX_INTERACTIONTWINTWIN),order=[2,1])                                     !< Twin--slip interaction types for hex (isotropic, 16 in total)
 
  real(pReal), dimension(4+4,LATTICE_hex_Ncleavage), parameter, private :: &
    LATTICE_hex_systemCleavage = reshape(real([&
@@ -855,7 +855,7 @@ module lattice
       2,-1,-1, 0,     0, 0, 0, 1, &
       0, 0, 0, 1,     2,-1,-1, 0, &
       0, 0, 0, 1,     0, 1,-1, 0  &
-     ],pReal),[ 4_pInt + 4_pInt,LATTICE_hex_Ncleavage])
+     ],pReal),shape(LATTICE_HEX_SYSTEMCLEAVAGE))
 
 
 !--------------------------------------------------------------------------------------------------
