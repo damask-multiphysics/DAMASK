@@ -1105,8 +1105,8 @@ function homogenization_RGC_updateState(P,F,F0,avgF,dt,dPdF,ip,el)
     iGrain3 = grain1to3(iGrain,instance)
     do iFace = 1_pInt,6_pInt
       intFace = getInterface(iFace,iGrain3)
-      aVect = relaxationVector(intFace,instance, ip, el)
-      nVect = interfaceNormal(intFace,ip,el)
+      aVect   = relaxationVector(intFace,instance, ip, el)
+      nVect   = interfaceNormal(intFace,ip,el)
       forall (i=1_pInt:3_pInt,j=1_pInt:3_pInt) &
       F(i,j,iGrain) = F(i,j,iGrain) + aVect(i)*nVect(j)                                              ! effective relaxations
     enddo
@@ -1219,7 +1219,6 @@ function relaxationVector(intFace,instance, ip, el)
  integer(pInt),                intent(in) :: ip, el 
  real(pReal),   dimension (3)             :: relaxationVector
  integer(pInt), dimension (4), intent(in) :: intFace                                                !< set of interface ID in 4D array (normal and position)
- integer(pInt), dimension (3) ::             nGDim
  integer(pInt) :: &
    iNum, &
    instance                                                                                            !< homogenization ID
@@ -1227,7 +1226,6 @@ function relaxationVector(intFace,instance, ip, el)
 !--------------------------------------------------------------------------------------------------
 ! collect the interface relaxation vector from the global state array
  relaxationVector = 0.0_pReal
- nGDim = param(instance)%Nconstituents
  iNum = interface4to1(intFace,instance)                                             ! identify the position of the interface in global state array
  if (iNum > 0_pInt) relaxationVector = homogState(mappingHomogenization(2,ip,el))% &
                                                             state((3*iNum-2):(3*iNum),mappingHomogenization(1,ip,el))             ! get the corresponding entries
