@@ -74,11 +74,6 @@ module homogenization_RGC
    homogenization_RGC_updateState, &
    homogenization_RGC_postResults
  private :: &
-   stressPenalty, &
-   volumePenalty, &
-   grainDeformation, &
-   surfaceCorrection, &
-   equivalentModuli, &
    relaxationVector, &
    interfaceNormal, &
    getInterface, &
@@ -797,6 +792,328 @@ function homogenization_RGC_updateState(P,F,F0,avgF,dt,dPdF,ip,el)
    flush(6)
    !$OMP END CRITICAL (write2out)
  endif
+
+ contains
+ !--------------------------------------------------------------------------------------------------
+ !> @brief calculate stress-like penalty due to deformation mismatch
+ !--------------------------------------------------------------------------------------------------
+ subroutine stressPenalty(rPen,nMis,avgF,fDef,ip,el,instance)
+  use debug, only: &
+    debug_level, &
+    debug_homogenization,&
+    debug_levelExtensive, &
+    debug_e, &
+    debug_i
+  use mesh, only: &
+    mesh_homogenizationAt
+  use constitutive, only: &
+    constitutive_homogenizedC
+  use math, only: &
+    math_civita
+  use material, only: &
+    homogenization_maxNgrains,&
+    homogenization_Ngrains
+  use numerics, only: &
+    xSmoo_RGC
+  
+  implicit none
+  real(pReal),   dimension (3,3,homogenization_maxNgrains), intent(out) :: rPen                      !< stress-like penalty
+  real(pReal),   dimension (3,homogenization_maxNgrains),   intent(out) :: nMis                      !< total amount of mismatch
+  real(pReal),   dimension (3,3,homogenization_maxNgrains), intent(in)  :: fDef                      !< deformation gradients
+  real(pReal),   dimension (3,3),                           intent(in)  :: avgF                      !< initial effective stretch tensor
+  integer(pInt),                                            intent(in)  :: ip,el,instance
+  integer(pInt), dimension (4)   :: intFace
+  integer(pInt), dimension (3)   :: iGrain3,iGNghb3,nGDim
+  real(pReal),   dimension (3,3) :: gDef,nDef
+  real(pReal),   dimension (3)   :: nVect,surfCorr
+  real(pReal),   dimension (2)   :: Gmoduli
+  integer(pInt) :: iGrain,iGNghb,iFace,i,j,k,l
+  real(pReal)   :: muGrain,muGNghb,nDefNorm,bgGrain,bgGNghb
+  
+  type(tParameters) :: prm
+  integer(pInt),                                             parameter  :: nFace = 6_pInt
+  real(pReal),                                               parameter  :: nDefToler = 1.0e-10_pReal
+ 
+  nGDim = param(instance)%Nconstituents
+  rPen = 0.0_pReal
+  nMis = 0.0_pReal
+ 
+ !--------------------------------------------------------------------------------------------------
+ ! get the correction factor the modulus of penalty stress representing the evolution of area of 
+ ! the interfaces due to deformations
+  surfCorr = surfaceCorrection(avgF,ip,el)
+ 
+  associate(prm => param(instance))
+ !--------------------------------------------------------------------------------------------------
+ ! debugging the surface correction factor
+  if (iand(debug_level(debug_homogenization),debug_levelExtensive) /= 0_pInt &
+      .and. debug_e == el .and. debug_i == ip) then
+    !$OMP CRITICAL (write2out)
+      write(6,'(1x,a20,2(1x,i3))')'Correction factor: ',ip,el
+      write(6,'(1x,3(e11.4,1x))')(surfCorr(i), i = 1,3)
+    !$OMP END CRITICAL (write2out)
+  endif
+ 
+ !--------------------------------------------------------------------------------------------------
+ ! computing the mismatch and penalty stress tensor of all grains 
+  do iGrain = 1_pInt,homogenization_Ngrains(mesh_homogenizationAt(el))
+    Gmoduli = equivalentModuli(iGrain,ip,el)
+    muGrain = Gmoduli(1)                                                                              ! collecting the equivalent shear modulus of grain
+    bgGrain = Gmoduli(2)                                                                              ! and the lengthh of Burgers vector
+    iGrain3 = grain1to3(iGrain,instance)                                              ! get the grain ID in local 3-dimensional index (x,y,z)-position
+ 
+ !* Looping over all six interfaces of each grain
+    do iFace = 1_pInt,nFace
+      intFace = getInterface(iFace,iGrain3)                                        ! get the 4-dimensional index of the interface in local numbering system of the grain
+      nVect = interfaceNormal(intFace,ip,el)                                       ! get the interface normal
+      iGNghb3 = iGrain3                                                                               ! identify the neighboring grain across the interface
+      iGNghb3(abs(intFace(1))) = iGNghb3(abs(intFace(1))) + int(real(intFace(1),pReal)/real(abs(intFace(1)),pReal),pInt)
+      if (iGNghb3(1) < 1)        iGNghb3(1) = nGDim(1)                                               ! with periodicity along e1 direction
+      if (iGNghb3(1) > nGDim(1)) iGNghb3(1) = 1_pInt
+      if (iGNghb3(2) < 1)        iGNghb3(2) = nGDim(2)                                               ! with periodicity along e2 direction
+      if (iGNghb3(2) > nGDim(2)) iGNghb3(2) = 1_pInt
+      if (iGNghb3(3) < 1)        iGNghb3(3) = nGDim(3)                                               ! with periodicity along e3 direction
+      if (iGNghb3(3) > nGDim(3)) iGNghb3(3) = 1_pInt
+      iGNghb  = grain3to1(iGNghb3,instance)                                          ! get the ID of the neighboring grain
+      Gmoduli = equivalentModuli(iGNghb,ip,el)                                    ! collecting the shear modulus and Burgers vector of the neighbor
+      muGNghb = Gmoduli(1)
+      bgGNghb = Gmoduli(2)
+      gDef = 0.5_pReal*(fDef(1:3,1:3,iGNghb) - fDef(1:3,1:3,iGrain))                                 ! compute the difference/jump in deformation gradeint across the neighbor
+ 
+ !--------------------------------------------------------------------------------------------------
+ ! compute the mismatch tensor of all interfaces
+      nDefNorm = 0.0_pReal
+      nDef = 0.0_pReal
+      do i = 1_pInt,3_pInt; do j = 1_pInt,3_pInt
+        do k = 1_pInt,3_pInt; do l = 1_pInt,3_pInt
+          nDef(i,j) = nDef(i,j) - nVect(k)*gDef(i,l)*math_civita(j,k,l)                              ! compute the interface mismatch tensor from the jump of deformation gradient
+        enddo; enddo
+        nDefNorm = nDefNorm + nDef(i,j)*nDef(i,j)                                                    ! compute the norm of the mismatch tensor
+      enddo; enddo
+      nDefNorm = max(nDefToler,sqrt(nDefNorm))                                                       ! approximation to zero mismatch if mismatch is zero (singularity)
+      nMis(abs(intFace(1)),iGrain) = nMis(abs(intFace(1)),iGrain) + nDefNorm                         ! total amount of mismatch experienced by the grain (at all six interfaces)
+ 
+ !--------------------------------------------------------------------------------------------------
+ ! debuggin the mismatch tensor
+    if (iand(debug_level(debug_homogenization),debug_levelExtensive) /= 0_pInt &
+        .and. debug_e == el .and. debug_i == ip) then
+      !$OMP CRITICAL (write2out)
+      write(6,'(1x,a20,i2,1x,a20,1x,i3)')'Mismatch to face: ',intFace(1),'neighbor grain: ',iGNghb
+       do i = 1,3
+         write(6,'(1x,3(e11.4,1x))')(nDef(i,j), j = 1,3)
+       enddo
+       write(6,'(1x,a20,e11.4)')'with magnitude: ',nDefNorm
+      !$OMP END CRITICAL (write2out)
+    endif
+ 
+ !--------------------------------------------------------------------------------------------------
+ ! compute the stress penalty of all interfaces
+      do i = 1_pInt,3_pInt; do j = 1_pInt,3_pInt
+        do k = 1_pInt,3_pInt; do l = 1_pInt,3_pInt
+          rPen(i,j,iGrain) = rPen(i,j,iGrain) + 0.5_pReal*(muGrain*bgGrain + muGNghb*bgGNghb)*prm%xiAlpha &
+                                                *surfCorr(abs(intFace(1)))/prm%dAlpha(abs(intFace(1))) &
+                                                *cosh(prm%ciAlpha*nDefNorm) &
+                                                *0.5_pReal*nVect(l)*nDef(i,k)/nDefNorm*math_civita(k,l,j) &
+                                                *tanh(nDefNorm/xSmoo_RGC)
+        enddo; enddo
+      enddo; enddo
+    enddo
+    
+ !--------------------------------------------------------------------------------------------------
+ ! debugging the stress-like penalty
+    if (iand(debug_level(debug_homogenization),debug_levelExtensive) /= 0_pInt &
+        .and. debug_e == el .and. debug_i == ip) then
+      !$OMP CRITICAL (write2out)
+       write(6,'(1x,a20,i2)')'Penalty of grain: ',iGrain
+       do i = 1,3
+         write(6,'(1x,3(e11.4,1x))')(rPen(i,j,iGrain), j = 1,3)
+       enddo
+      !$OMP END CRITICAL (write2out)
+    endif
+ 
+  enddo
+  end associate
+ 
+ end subroutine stressPenalty
+ 
+ 
+ !--------------------------------------------------------------------------------------------------
+ !> @brief calculate stress-like penalty due to volume discrepancy 
+ !--------------------------------------------------------------------------------------------------
+ subroutine volumePenalty(vPen,vDiscrep,fDef,fAvg,ip,el) 
+  use debug, only: &
+    debug_level, &
+    debug_homogenization,&
+    debug_levelExtensive, &
+    debug_e, &
+    debug_i
+  use mesh, only: &
+    mesh_homogenizationAt
+  use math, only: &
+    math_det33, &
+    math_inv33
+  use material, only: &
+    homogenization_maxNgrains,&
+    homogenization_Ngrains
+  use numerics, only: &
+    maxVolDiscr_RGC,&
+    volDiscrMod_RGC,&
+    volDiscrPow_RGC
+ 
+  implicit none
+  real(pReal), dimension (3,3,homogenization_maxNgrains), intent(out) :: vPen                        ! stress-like penalty due to volume
+  real(pReal), intent(out)                  :: vDiscrep                                              ! total volume discrepancy
+  real(pReal), dimension (3,3,homogenization_maxNgrains), intent(in)  :: fDef                        ! deformation gradients
+  real(pReal), dimension (3,3), intent(in)  :: fAvg                                                  ! overall deformation gradient
+  integer(pInt), intent(in)                 :: ip,&                                                  ! integration point
+    el 
+  real(pReal), dimension (homogenization_maxNgrains) :: gVol
+  integer(pInt) :: iGrain,nGrain,i,j
+ 
+  nGrain = homogenization_Ngrains(mesh_homogenizationAt(el))
+ 
+ !--------------------------------------------------------------------------------------------------
+ ! compute the volumes of grains and of cluster
+  vDiscrep = math_det33(fAvg)                                                                        ! compute the volume of the cluster
+  do iGrain = 1_pInt,nGrain
+    gVol(iGrain) = math_det33(fDef(1:3,1:3,iGrain))                                                  ! compute the volume of individual grains
+    vDiscrep     = vDiscrep - gVol(iGrain)/real(nGrain,pReal)                                        ! calculate the difference/dicrepancy between
+                                                                                                     ! the volume of the cluster and the the total volume of grains
+  enddo
+ 
+ !--------------------------------------------------------------------------------------------------
+ ! calculate the stress and penalty due to volume discrepancy
+  vPen      = 0.0_pReal
+  do iGrain = 1_pInt,nGrain
+    vPen(:,:,iGrain) = -1.0_pReal/real(nGrain,pReal)*volDiscrMod_RGC*volDiscrPow_RGC/maxVolDiscr_RGC* &
+                       sign((abs(vDiscrep)/maxVolDiscr_RGC)**(volDiscrPow_RGC - 1.0),vDiscrep)* &
+                       gVol(iGrain)*transpose(math_inv33(fDef(:,:,iGrain)))
+ 
+ !--------------------------------------------------------------------------------------------------
+ ! debugging the stress-like penalty
+    if (iand(debug_level(debug_homogenization),debug_levelExtensive) /= 0_pInt &
+      .and. debug_e == el .and. debug_i == ip) then
+      !$OMP CRITICAL (write2out)
+      write(6,'(1x,a30,i2)')'Volume penalty of grain: ',iGrain
+      do i = 1,3
+        write(6,'(1x,3(e11.4,1x))')(vPen(i,j,iGrain), j = 1,3)
+      enddo
+      !$OMP END CRITICAL (write2out)
+    endif
+  enddo
+ 
+ end subroutine volumePenalty
+ 
+ 
+ !--------------------------------------------------------------------------------------------------
+ !> @brief compute the correction factor accouted for surface evolution (area change) due to 
+ ! deformation
+ !--------------------------------------------------------------------------------------------------
+ function surfaceCorrection(avgF,ip,el)
+  use math, only: &
+    math_invert33, &
+    math_mul33x33
+  
+  implicit none
+  real(pReal), dimension(3)               :: surfaceCorrection
+  real(pReal), dimension(3,3), intent(in) :: avgF                                                    !< average F
+  integer(pInt),               intent(in) :: ip,&                                                    !< integration point number
+    el                                                                                               !< element number
+  real(pReal), dimension(3,3)             :: invC
+  real(pReal), dimension(3)               :: nVect
+  real(pReal)  :: detF
+  integer(pInt) :: i,j,iBase
+  logical     ::  error
+ 
+  call math_invert33(math_mul33x33(transpose(avgF),avgF),invC,detF,error)
+ 
+  surfaceCorrection = 0.0_pReal
+  do iBase = 1_pInt,3_pInt
+    nVect = interfaceNormal([iBase,1_pInt,1_pInt,1_pInt],ip,el)                                      ! get the normal of the interface
+    do i = 1_pInt,3_pInt; do j = 1_pInt,3_pInt
+      surfaceCorrection(iBase) = surfaceCorrection(iBase) + invC(i,j)*nVect(i)*nVect(j)              ! compute the component of (the inverse of) the stretch in the direction of the normal
+    enddo; enddo
+    surfaceCorrection(iBase) = sqrt(surfaceCorrection(iBase))*detF                                   ! get the surface correction factor (area contraction/enlargement)
+  enddo
+ 
+ end function surfaceCorrection
+ 
+ 
+ !--------------------------------------------------------------------------------------------------
+ !> @brief compute the equivalent shear and bulk moduli from the elasticity tensor
+ !--------------------------------------------------------------------------------------------------
+ function equivalentModuli(grainID,ip,el)
+  use constitutive, only: &
+    constitutive_homogenizedC
+ 
+  implicit none
+  integer(pInt), intent(in)    :: &
+    grainID,&
+    ip, &                                                                                            !< integration point number
+    el                                                                                               !< element number
+  real(pReal), dimension (6,6) :: elasTens
+  real(pReal), dimension(2)    :: equivalentModuli
+  real(pReal) :: &
+    cEquiv_11, &
+    cEquiv_12, &
+    cEquiv_44
+ 
+  elasTens = constitutive_homogenizedC(grainID,ip,el)
+ 
+ !--------------------------------------------------------------------------------------------------
+ ! compute the equivalent shear modulus after Turterltaub and Suiker, JMPS (2005)
+  cEquiv_11 = (elasTens(1,1) + elasTens(2,2) + elasTens(3,3))/3.0_pReal
+  cEquiv_12 = (elasTens(1,2) + elasTens(2,3) + elasTens(3,1) + &
+               elasTens(1,3) + elasTens(2,1) + elasTens(3,2))/6.0_pReal
+  cEquiv_44 = (elasTens(4,4) + elasTens(5,5) + elasTens(6,6))/3.0_pReal
+  equivalentModuli(1) = 0.2_pReal*(cEquiv_11 - cEquiv_12) + 0.6_pReal*cEquiv_44
+ 
+ !--------------------------------------------------------------------------------------------------
+ ! obtain the length of Burgers vector (could be model dependend)
+  equivalentModuli(2) = 2.5e-10_pReal
+ 
+ end function equivalentModuli
+ 
+ 
+ !--------------------------------------------------------------------------------------------------
+ !> @brief calculating the grain deformation gradient (the same with 
+ ! homogenization_RGC_partionDeformation, but used only for perturbation scheme)
+ !--------------------------------------------------------------------------------------------------
+ subroutine grainDeformation(F, avgF, ip, el)
+  use mesh, only: &
+    mesh_homogenizationAt
+  use material, only: &
+    homogenization_maxNgrains,&
+    homogenization_typeInstance
+  
+  implicit none
+  real(pReal),   dimension (3,3,homogenization_maxNgrains), intent(out) :: F                         !< partioned F per grain
+  real(pReal),   dimension (3,3),                           intent(in)  :: avgF                      !< 
+  integer(pInt),                                            intent(in)  :: &
+    el, &                                                                                            !< element number
+    ip                                                                                               !< integration point number
+  real(pReal),   dimension (3) :: aVect,nVect
+  integer(pInt), dimension (4) :: intFace
+  integer(pInt), dimension (3) :: iGrain3
+  integer(pInt) :: instance, iGrain,iFace,i,j
+ 
+ !--------------------------------------------------------------------------------------------------
+ ! compute the deformation gradient of individual grains due to relaxations
+  instance = homogenization_typeInstance(mesh_homogenizationAt(el))
+  F = 0.0_pReal
+  do iGrain = 1_pInt,product(param(instance)%Nconstituents)
+    iGrain3 = grain1to3(iGrain,instance)
+    do iFace = 1_pInt,6_pInt
+      intFace = getInterface(iFace,iGrain3)
+      aVect = relaxationVector(intFace,instance, ip, el)
+      nVect = interfaceNormal(intFace,ip,el)
+      forall (i=1_pInt:3_pInt,j=1_pInt:3_pInt) &
+      F(i,j,iGrain) = F(i,j,iGrain) + aVect(i)*nVect(j)                                              ! effective relaxations
+    enddo
+    F(1:3,1:3,iGrain) = F(1:3,1:3,iGrain) + avgF                                                     ! relaxed deformation gradient
+  enddo
+ 
+ end subroutine grainDeformation
  
 end function homogenization_RGC_updateState
 
@@ -887,285 +1204,7 @@ pure function homogenization_RGC_postResults(ip,el) result(postResults)
 end function homogenization_RGC_postResults
 
 
-!--------------------------------------------------------------------------------------------------
-!> @brief calculate stress-like penalty due to deformation mismatch
-!--------------------------------------------------------------------------------------------------
-subroutine stressPenalty(rPen,nMis,avgF,fDef,ip,el,instance)
- use debug, only: &
-   debug_level, &
-   debug_homogenization,&
-   debug_levelExtensive, &
-   debug_e, &
-   debug_i
- use mesh, only: &
-   mesh_homogenizationAt
- use constitutive, only: &
-   constitutive_homogenizedC
- use math, only: &
-   math_civita
- use material, only: &
-   homogenization_maxNgrains,&
-   homogenization_Ngrains
- use numerics, only: &
-   xSmoo_RGC
- 
- implicit none
- real(pReal),   dimension (3,3,homogenization_maxNgrains), intent(out) :: rPen                      !< stress-like penalty
- real(pReal),   dimension (3,homogenization_maxNgrains),   intent(out) :: nMis                      !< total amount of mismatch
- real(pReal),   dimension (3,3,homogenization_maxNgrains), intent(in)  :: fDef                      !< deformation gradients
- real(pReal),   dimension (3,3),                           intent(in)  :: avgF                      !< initial effective stretch tensor
- integer(pInt),                                            intent(in)  :: ip,el,instance
- integer(pInt), dimension (4)   :: intFace
- integer(pInt), dimension (3)   :: iGrain3,iGNghb3,nGDim
- real(pReal),   dimension (3,3) :: gDef,nDef
- real(pReal),   dimension (3)   :: nVect,surfCorr
- real(pReal),   dimension (2)   :: Gmoduli
- integer(pInt) :: iGrain,iGNghb,iFace,i,j,k,l
- real(pReal)   :: muGrain,muGNghb,nDefNorm,bgGrain,bgGNghb
- 
- type(tParameters) :: prm
- integer(pInt),                                             parameter  :: nFace = 6_pInt
- real(pReal),                                               parameter  :: nDefToler = 1.0e-10_pReal
 
- nGDim = param(instance)%Nconstituents
- rPen = 0.0_pReal
- nMis = 0.0_pReal
-
-!--------------------------------------------------------------------------------------------------
-! get the correction factor the modulus of penalty stress representing the evolution of area of 
-! the interfaces due to deformations
- surfCorr = surfaceCorrection(avgF,ip,el)
-
- associate(prm => param(instance))
-!--------------------------------------------------------------------------------------------------
-! debugging the surface correction factor
- if (iand(debug_level(debug_homogenization),debug_levelExtensive) /= 0_pInt &
-     .and. debug_e == el .and. debug_i == ip) then
-   !$OMP CRITICAL (write2out)
-     write(6,'(1x,a20,2(1x,i3))')'Correction factor: ',ip,el
-     write(6,'(1x,3(e11.4,1x))')(surfCorr(i), i = 1,3)
-   !$OMP END CRITICAL (write2out)
- endif
-
-!--------------------------------------------------------------------------------------------------
-! computing the mismatch and penalty stress tensor of all grains 
- do iGrain = 1_pInt,homogenization_Ngrains(mesh_homogenizationAt(el))
-   Gmoduli = equivalentModuli(iGrain,ip,el)
-   muGrain = Gmoduli(1)                                                                              ! collecting the equivalent shear modulus of grain
-   bgGrain = Gmoduli(2)                                                                              ! and the lengthh of Burgers vector
-   iGrain3 = grain1to3(iGrain,instance)                                              ! get the grain ID in local 3-dimensional index (x,y,z)-position
-
-!* Looping over all six interfaces of each grain
-   do iFace = 1_pInt,nFace
-     intFace = getInterface(iFace,iGrain3)                                        ! get the 4-dimensional index of the interface in local numbering system of the grain
-     nVect = interfaceNormal(intFace,ip,el)                                       ! get the interface normal
-     iGNghb3 = iGrain3                                                                               ! identify the neighboring grain across the interface
-     iGNghb3(abs(intFace(1))) = iGNghb3(abs(intFace(1))) + int(real(intFace(1),pReal)/real(abs(intFace(1)),pReal),pInt)
-     if (iGNghb3(1) < 1)        iGNghb3(1) = nGDim(1)                                               ! with periodicity along e1 direction
-     if (iGNghb3(1) > nGDim(1)) iGNghb3(1) = 1_pInt
-     if (iGNghb3(2) < 1)        iGNghb3(2) = nGDim(2)                                               ! with periodicity along e2 direction
-     if (iGNghb3(2) > nGDim(2)) iGNghb3(2) = 1_pInt
-     if (iGNghb3(3) < 1)        iGNghb3(3) = nGDim(3)                                               ! with periodicity along e3 direction
-     if (iGNghb3(3) > nGDim(3)) iGNghb3(3) = 1_pInt
-     iGNghb  = grain3to1(iGNghb3,instance)                                          ! get the ID of the neighboring grain
-     Gmoduli = equivalentModuli(iGNghb,ip,el)                                    ! collecting the shear modulus and Burgers vector of the neighbor
-     muGNghb = Gmoduli(1)
-     bgGNghb = Gmoduli(2)
-     gDef = 0.5_pReal*(fDef(1:3,1:3,iGNghb) - fDef(1:3,1:3,iGrain))                                 ! compute the difference/jump in deformation gradeint across the neighbor
-
-!--------------------------------------------------------------------------------------------------
-! compute the mismatch tensor of all interfaces
-     nDefNorm = 0.0_pReal
-     nDef = 0.0_pReal
-     do i = 1_pInt,3_pInt; do j = 1_pInt,3_pInt
-       do k = 1_pInt,3_pInt; do l = 1_pInt,3_pInt
-         nDef(i,j) = nDef(i,j) - nVect(k)*gDef(i,l)*math_civita(j,k,l)                              ! compute the interface mismatch tensor from the jump of deformation gradient
-       enddo; enddo
-       nDefNorm = nDefNorm + nDef(i,j)*nDef(i,j)                                                    ! compute the norm of the mismatch tensor
-     enddo; enddo
-     nDefNorm = max(nDefToler,sqrt(nDefNorm))                                                       ! approximation to zero mismatch if mismatch is zero (singularity)
-     nMis(abs(intFace(1)),iGrain) = nMis(abs(intFace(1)),iGrain) + nDefNorm                         ! total amount of mismatch experienced by the grain (at all six interfaces)
-
-!--------------------------------------------------------------------------------------------------
-! debuggin the mismatch tensor
-   if (iand(debug_level(debug_homogenization),debug_levelExtensive) /= 0_pInt &
-       .and. debug_e == el .and. debug_i == ip) then
-     !$OMP CRITICAL (write2out)
-     write(6,'(1x,a20,i2,1x,a20,1x,i3)')'Mismatch to face: ',intFace(1),'neighbor grain: ',iGNghb
-      do i = 1,3
-        write(6,'(1x,3(e11.4,1x))')(nDef(i,j), j = 1,3)
-      enddo
-      write(6,'(1x,a20,e11.4)')'with magnitude: ',nDefNorm
-     !$OMP END CRITICAL (write2out)
-   endif
-
-!--------------------------------------------------------------------------------------------------
-! compute the stress penalty of all interfaces
-     do i = 1_pInt,3_pInt; do j = 1_pInt,3_pInt
-       do k = 1_pInt,3_pInt; do l = 1_pInt,3_pInt
-         rPen(i,j,iGrain) = rPen(i,j,iGrain) + 0.5_pReal*(muGrain*bgGrain + muGNghb*bgGNghb)*prm%xiAlpha &
-                                               *surfCorr(abs(intFace(1)))/prm%dAlpha(abs(intFace(1))) &
-                                               *cosh(prm%ciAlpha*nDefNorm) &
-                                               *0.5_pReal*nVect(l)*nDef(i,k)/nDefNorm*math_civita(k,l,j) &
-                                               *tanh(nDefNorm/xSmoo_RGC)
-       enddo; enddo
-     enddo; enddo
-   enddo
-   
-!--------------------------------------------------------------------------------------------------
-! debugging the stress-like penalty
-   if (iand(debug_level(debug_homogenization),debug_levelExtensive) /= 0_pInt &
-       .and. debug_e == el .and. debug_i == ip) then
-     !$OMP CRITICAL (write2out)
-      write(6,'(1x,a20,i2)')'Penalty of grain: ',iGrain
-      do i = 1,3
-        write(6,'(1x,3(e11.4,1x))')(rPen(i,j,iGrain), j = 1,3)
-      enddo
-     !$OMP END CRITICAL (write2out)
-   endif
-
- enddo
- end associate
-
-end subroutine stressPenalty
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief calculate stress-like penalty due to volume discrepancy 
-!--------------------------------------------------------------------------------------------------
-subroutine volumePenalty(vPen,vDiscrep,fDef,fAvg,ip,el) 
- use debug, only: &
-   debug_level, &
-   debug_homogenization,&
-   debug_levelExtensive, &
-   debug_e, &
-   debug_i
- use mesh, only: &
-   mesh_homogenizationAt
- use math, only: &
-   math_det33, &
-   math_inv33
- use material, only: &
-   homogenization_maxNgrains,&
-   homogenization_Ngrains
- use numerics, only: &
-   maxVolDiscr_RGC,&
-   volDiscrMod_RGC,&
-   volDiscrPow_RGC
-
- implicit none
- real(pReal), dimension (3,3,homogenization_maxNgrains), intent(out) :: vPen                        ! stress-like penalty due to volume
- real(pReal), intent(out)                  :: vDiscrep                                              ! total volume discrepancy
- real(pReal), dimension (3,3,homogenization_maxNgrains), intent(in)  :: fDef                        ! deformation gradients
- real(pReal), dimension (3,3), intent(in)  :: fAvg                                                  ! overall deformation gradient
- integer(pInt), intent(in)                 :: ip,&                                                  ! integration point
-   el 
- real(pReal), dimension (homogenization_maxNgrains) :: gVol
- integer(pInt) :: iGrain,nGrain,i,j
-
- nGrain = homogenization_Ngrains(mesh_homogenizationAt(el))
-
-!--------------------------------------------------------------------------------------------------
-! compute the volumes of grains and of cluster
- vDiscrep = math_det33(fAvg)                                                                        ! compute the volume of the cluster
- do iGrain = 1_pInt,nGrain
-   gVol(iGrain) = math_det33(fDef(1:3,1:3,iGrain))                                                  ! compute the volume of individual grains
-   vDiscrep     = vDiscrep - gVol(iGrain)/real(nGrain,pReal)                                        ! calculate the difference/dicrepancy between
-                                                                                                    ! the volume of the cluster and the the total volume of grains
- enddo
-
-!--------------------------------------------------------------------------------------------------
-! calculate the stress and penalty due to volume discrepancy
- vPen      = 0.0_pReal
- do iGrain = 1_pInt,nGrain
-   vPen(:,:,iGrain) = -1.0_pReal/real(nGrain,pReal)*volDiscrMod_RGC*volDiscrPow_RGC/maxVolDiscr_RGC* &
-                      sign((abs(vDiscrep)/maxVolDiscr_RGC)**(volDiscrPow_RGC - 1.0),vDiscrep)* &
-                      gVol(iGrain)*transpose(math_inv33(fDef(:,:,iGrain)))
-
-!--------------------------------------------------------------------------------------------------
-! debugging the stress-like penalty
-   if (iand(debug_level(debug_homogenization),debug_levelExtensive) /= 0_pInt &
-     .and. debug_e == el .and. debug_i == ip) then
-     !$OMP CRITICAL (write2out)
-     write(6,'(1x,a30,i2)')'Volume penalty of grain: ',iGrain
-     do i = 1,3
-       write(6,'(1x,3(e11.4,1x))')(vPen(i,j,iGrain), j = 1,3)
-     enddo
-     !$OMP END CRITICAL (write2out)
-   endif
- enddo
-
-end subroutine volumePenalty
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief compute the correction factor accouted for surface evolution (area change) due to 
-! deformation
-!--------------------------------------------------------------------------------------------------
-function surfaceCorrection(avgF,ip,el)
- use math, only: &
-   math_invert33, &
-   math_mul33x33
- 
- implicit none
- real(pReal), dimension(3)               :: surfaceCorrection
- real(pReal), dimension(3,3), intent(in) :: avgF                                                    !< average F
- integer(pInt),               intent(in) :: ip,&                                                    !< integration point number
-   el                                                                                               !< element number
- real(pReal), dimension(3,3)             :: invC
- real(pReal), dimension(3)               :: nVect
- real(pReal)  :: detF
- integer(pInt) :: i,j,iBase
- logical     ::  error
-
- call math_invert33(math_mul33x33(transpose(avgF),avgF),invC,detF,error)
-
- surfaceCorrection = 0.0_pReal
- do iBase = 1_pInt,3_pInt
-   nVect = interfaceNormal([iBase,1_pInt,1_pInt,1_pInt],ip,el)                                      ! get the normal of the interface
-   do i = 1_pInt,3_pInt; do j = 1_pInt,3_pInt
-     surfaceCorrection(iBase) = surfaceCorrection(iBase) + invC(i,j)*nVect(i)*nVect(j)              ! compute the component of (the inverse of) the stretch in the direction of the normal
-   enddo; enddo
-   surfaceCorrection(iBase) = sqrt(surfaceCorrection(iBase))*detF                                   ! get the surface correction factor (area contraction/enlargement)
- enddo
-
-end function surfaceCorrection
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief compute the equivalent shear and bulk moduli from the elasticity tensor
-!--------------------------------------------------------------------------------------------------
-function equivalentModuli(grainID,ip,el)
- use constitutive, only: &
-   constitutive_homogenizedC
-
- implicit none
- integer(pInt), intent(in)    :: &
-   grainID,&
-   ip, &                                                                                            !< integration point number
-   el                                                                                               !< element number
- real(pReal), dimension (6,6) :: elasTens
- real(pReal), dimension(2)    :: equivalentModuli
- real(pReal) :: &
-   cEquiv_11, &
-   cEquiv_12, &
-   cEquiv_44
-
- elasTens = constitutive_homogenizedC(grainID,ip,el)
-
-!--------------------------------------------------------------------------------------------------
-! compute the equivalent shear modulus after Turterltaub and Suiker, JMPS (2005)
- cEquiv_11 = (elasTens(1,1) + elasTens(2,2) + elasTens(3,3))/3.0_pReal
- cEquiv_12 = (elasTens(1,2) + elasTens(2,3) + elasTens(3,1) + &
-              elasTens(1,3) + elasTens(2,1) + elasTens(3,2))/6.0_pReal
- cEquiv_44 = (elasTens(4,4) + elasTens(5,5) + elasTens(6,6))/3.0_pReal
- equivalentModuli(1) = 0.2_pReal*(cEquiv_11 - cEquiv_12) + 0.6_pReal*cEquiv_44
-
-!--------------------------------------------------------------------------------------------------
-! obtain the length of Burgers vector (could be model dependend)
- equivalentModuli(2) = 2.5e-10_pReal
-
-end function equivalentModuli
 
 
 !--------------------------------------------------------------------------------------------------
@@ -1393,45 +1432,5 @@ pure function interface1to4(iFace1D, instance)
 
 end function interface1to4
 
-
-!--------------------------------------------------------------------------------------------------
-!> @brief calculating the grain deformation gradient (the same with 
-! homogenization_RGC_partionDeformation, but used only for perturbation scheme)
-!--------------------------------------------------------------------------------------------------
-subroutine grainDeformation(F, avgF, ip, el)
- use mesh, only: &
-   mesh_homogenizationAt
- use material, only: &
-   homogenization_maxNgrains,&
-   homogenization_typeInstance
- 
- implicit none
- real(pReal),   dimension (3,3,homogenization_maxNgrains), intent(out) :: F                         !< partioned F per grain
- real(pReal),   dimension (3,3),                           intent(in)  :: avgF                      !< 
- integer(pInt),                                            intent(in)  :: &
-   el, &                                                                                            !< element number
-   ip                                                                                               !< integration point number
- real(pReal),   dimension (3) :: aVect,nVect
- integer(pInt), dimension (4) :: intFace
- integer(pInt), dimension (3) :: iGrain3
- integer(pInt) :: instance, iGrain,iFace,i,j
-
-!--------------------------------------------------------------------------------------------------
-! compute the deformation gradient of individual grains due to relaxations
- instance = homogenization_typeInstance(mesh_homogenizationAt(el))
- F = 0.0_pReal
- do iGrain = 1_pInt,product(param(instance)%Nconstituents)
-   iGrain3 = grain1to3(iGrain,instance)
-   do iFace = 1_pInt,6_pInt
-     intFace = getInterface(iFace,iGrain3)
-     aVect = relaxationVector(intFace,instance, ip, el)
-     nVect = interfaceNormal(intFace,ip,el)
-     forall (i=1_pInt:3_pInt,j=1_pInt:3_pInt) &
-     F(i,j,iGrain) = F(i,j,iGrain) + aVect(i)*nVect(j)                                              ! effective relaxations
-   enddo
-   F(1:3,1:3,iGrain) = F(1:3,1:3,iGrain) + avgF                                                     ! relaxed deformation gradient
- enddo
-
-end subroutine grainDeformation
 
 end module homogenization_RGC
