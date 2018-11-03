@@ -249,6 +249,9 @@ subroutine homogenization_RGC_init()
    allocate(homogState(h)%subState0(sizeHState,NofMyHomog), source=0.0_pReal)
    allocate(homogState(h)%state    (sizeHState,NofMyHomog), source=0.0_pReal)
 
+   state(instance)%work          =>homogState(h)%state(nIntFaceTot+1,:)
+   state(instance)%penaltyEnergy =>homogState(h)%state(nIntFaceTot+5,:)
+
    end associate
  enddo  
  
@@ -366,11 +369,11 @@ function homogenization_RGC_updateState(P,F,F0,avgF,dt,dPdF,ip,el)
  integer(pInt), dimension (4) :: intFaceN,intFaceP,faceID
  integer(pInt), dimension (3) :: nGDim,iGr3N,iGr3P,stresLoc
  integer(pInt), dimension (2) :: residLoc
- integer(pInt) instance,iNum,i,j,nIntFaceTot,iGrN,iGrP,iMun,iFace,k,l,ipert,iGrain,nGrain
+ integer(pInt) instance,iNum,i,j,nIntFaceTot,iGrN,iGrP,iMun,iFace,k,l,ipert,iGrain,nGrain, of
  real(pReal), dimension (3,3,homogenization_maxNgrains) :: R,pF,pR,D,pD
  real(pReal), dimension (3,homogenization_maxNgrains)   :: NN,pNN
  real(pReal), dimension (3)                             :: normP,normN,mornP,mornN
- real(pReal) :: residMax,stresMax,constitutiveWork,penaltyEnergy,volDiscrep
+ real(pReal) :: residMax,stresMax,volDiscrep
  logical error
 
  integer(pInt), parameter :: nFace = 6_pInt
@@ -386,6 +389,7 @@ function homogenization_RGC_updateState(P,F,F0,avgF,dt,dPdF,ip,el)
 !--------------------------------------------------------------------------------------------------
 ! get the dimension of the cluster (grains and interfaces)
  instance  = homogenization_typeInstance(mesh_homogenizationAt(el))
+ of = mappingHomogenization(1,ip,el)
  nGDim  = param(instance)%Nconstituents
  nGrain = homogenization_Ngrains(mesh_homogenizationAt(el))
  nIntFaceTot = (nGDim(1)-1_pInt)*nGDim(2)*nGDim(3) + nGDim(1)*(nGDim(2)-1_pInt)*nGDim(3) &
@@ -395,16 +399,16 @@ function homogenization_RGC_updateState(P,F,F0,avgF,dt,dPdF,ip,el)
 ! allocate the size of the global relaxation arrays/jacobian matrices depending on the size of the cluster
  allocate(resid(3_pInt*nIntFaceTot),   source=0.0_pReal)
  allocate(tract(nIntFaceTot,3),        source=0.0_pReal)
- relax  = homogState(mappingHomogenization(2,ip,el))%state (1:3_pInt*nIntFaceTot,mappingHomogenization(1,ip,el))
+ relax  = homogState(mappingHomogenization(2,ip,el))%state (1:3_pInt*nIntFaceTot,of)
  drelax = relax &
-        - homogState(mappingHomogenization(2,ip,el))%state0(1:3_pInt*nIntFaceTot,mappingHomogenization(1,ip,el))
+        - homogState(mappingHomogenization(2,ip,el))%state0(1:3_pInt*nIntFaceTot,of)
 !--------------------------------------------------------------------------------------------------
 ! debugging the obtained state
  if (iand(debug_level(debug_homogenization),debug_levelExtensive) /= 0_pInt) then
    !$OMP CRITICAL (write2out)
    write(6,'(1x,a30)')'Obtained state: '
    do i = 1_pInt,3_pInt*nIntFaceTot
-     write(6,'(1x,2(e15.8,1x))')homogState(mappingHomogenization(2,ip,el))%state(i,mappingHomogenization(1,ip,el))
+     write(6,'(1x,2(e15.8,1x))')homogState(mappingHomogenization(2,ip,el))%state(i,of)
    enddo
    write(6,*)' '
    !$OMP END CRITICAL (write2out)
@@ -518,42 +522,39 @@ function homogenization_RGC_updateState(P,F,F0,avgF,dt,dPdF,ip,el)
 
 !--------------------------------------------------------------------------------------------------
 ! compute/update the state for postResult, i.e., all energy densities computed by time-integration
-   constitutiveWork = homogState(mappingHomogenization(2,ip,el))%state(3*nIntFaceTot+1,mappingHomogenization(1,ip,el))
-   penaltyEnergy    = homogState(mappingHomogenization(2,ip,el))%state(3*nIntFaceTot+5,mappingHomogenization(1,ip,el))
    do iGrain = 1_pInt,homogenization_Ngrains(mesh_homogenizationAt(el))                                   ! time-integration loop for the calculating the work and energy
      do i = 1_pInt,3_pInt
      do j = 1_pInt,3_pInt
-       constitutiveWork = constitutiveWork + P(i,j,iGrain)*(F(i,j,iGrain) - F0(i,j,iGrain))/real(nGrain,pReal)
-       penaltyEnergy    = penaltyEnergy    + R(i,j,iGrain)*(F(i,j,iGrain) - F0(i,j,iGrain))/real(nGrain,pReal)
+       state(instance)%work(of)          = state(instance)%work(of) &
+                                         + P(i,j,iGrain)*(F(i,j,iGrain) - F0(i,j,iGrain))/real(nGrain,pReal)
+       state(instance)%penaltyEnergy(of) = state(instance)%penaltyEnergy(of) &
+                                         + R(i,j,iGrain)*(F(i,j,iGrain) - F0(i,j,iGrain))/real(nGrain,pReal)
      enddo
      enddo
    enddo
    homogState(mappingHomogenization(2,ip,el))% &
-                        state(3*nIntFaceTot+1,mappingHomogenization(1,ip,el)) = constitutiveWork                 ! the bulk mechanical/constitutive work
+                        state(3*nIntFaceTot+2,of) = sum(NN(1,:))/real(nGrain,pReal)  ! the overall mismatch of all interface normal to e1-direction
    homogState(mappingHomogenization(2,ip,el))% &
-                        state(3*nIntFaceTot+2,mappingHomogenization(1,ip,el)) = sum(NN(1,:))/real(nGrain,pReal)  ! the overall mismatch of all interface normal to e1-direction
+                        state(3*nIntFaceTot+3,of) = sum(NN(2,:))/real(nGrain,pReal)  ! the overall mismatch of all interface normal to e2-direction
    homogState(mappingHomogenization(2,ip,el))% &
-                        state(3*nIntFaceTot+3,mappingHomogenization(1,ip,el)) = sum(NN(2,:))/real(nGrain,pReal)  ! the overall mismatch of all interface normal to e2-direction
+                        state(3*nIntFaceTot+4,of) = sum(NN(3,:))/real(nGrain,pReal)  ! the overall mismatch of all interface normal to e3-direction
+
    homogState(mappingHomogenization(2,ip,el))% &
-                        state(3*nIntFaceTot+4,mappingHomogenization(1,ip,el)) = sum(NN(3,:))/real(nGrain,pReal)  ! the overall mismatch of all interface normal to e3-direction
+                        state(3*nIntFaceTot+6,of) = volDiscrep                       ! the overall volume discrepancy
    homogState(mappingHomogenization(2,ip,el))% &
-                        state(3*nIntFaceTot+5,mappingHomogenization(1,ip,el)) = penaltyEnergy                    ! the overall penalty energy
-   homogState(mappingHomogenization(2,ip,el))% &
-                        state(3*nIntFaceTot+6,mappingHomogenization(1,ip,el)) = volDiscrep                       ! the overall volume discrepancy
-   homogState(mappingHomogenization(2,ip,el))% &
-                        state(3*nIntFaceTot+7,mappingHomogenization(1,ip,el)) = &
+                        state(3*nIntFaceTot+7,of) = &
                                         sum(abs(drelax))/dt/real(3_pInt*nIntFaceTot,pReal)                       ! the average rate of relaxation vectors
    homogState(mappingHomogenization(2,ip,el))% &
-                        state(3*nIntFaceTot+8,mappingHomogenization(1,ip,el)) = maxval(abs(drelax))/dt           ! the maximum rate of relaxation vectors
+                        state(3*nIntFaceTot+8,of) = maxval(abs(drelax))/dt           ! the maximum rate of relaxation vectors
 
    if (iand(debug_level(debug_homogenization),debug_levelExtensive) /= 0_pInt &
         .and. debug_e == el .and. debug_i == ip) then
      !$OMP CRITICAL (write2out)
-     write(6,'(1x,a30,1x,e15.8)')   'Constitutive work: ',constitutiveWork
+     write(6,'(1x,a30,1x,e15.8)')   'Constitutive work: ',state(instance)%work(of)
      write(6,'(1x,a30,3(1x,e15.8))')'Magnitude mismatch: ',sum(NN(1,:))/real(nGrain,pReal), &
                                                            sum(NN(2,:))/real(nGrain,pReal), &
                                                            sum(NN(3,:))/real(nGrain,pReal)
-     write(6,'(1x,a30,1x,e15.8)')   'Penalty energy: ',penaltyEnergy
+     write(6,'(1x,a30,1x,e15.8)')   'Penalty energy: ',state(instance)%penaltyEnergy(of)
      write(6,'(1x,a30,1x,e15.8,/)') 'Volume discrepancy: ',volDiscrep
      write(6,'(1x,a30,1x,e15.8)')   'Maximum relaxation rate: ',maxval(abs(drelax))/dt
      write(6,'(1x,a30,1x,e15.8,/)') 'Average relaxation rate: ',sum(abs(drelax))/dt/real(3_pInt*nIntFaceTot,pReal)
@@ -658,7 +659,7 @@ function homogenization_RGC_updateState(P,F,F0,avgF,dt,dPdF,ip,el)
  do ipert = 1_pInt,3_pInt*nIntFaceTot
    p_relax = relax
    p_relax(ipert) = relax(ipert) + pPert_RGC                                                        ! perturb the relaxation vector
-   homogState(mappingHomogenization(2,ip,el))%state(1:3*nIntFaceTot,mappingHomogenization(1,ip,el)) = p_relax
+   homogState(mappingHomogenization(2,ip,el))%state(1:3*nIntFaceTot,of) = p_relax
    call grainDeformation(pF,avgF,ip,el)                                          ! compute the grains deformation from perturbed state
    call stressPenalty(pR,pNN,avgF,pF,ip,el,instance)                             ! compute stress penalty due to interface mismatch from perturbed state
    call volumePenalty(pD,volDiscrep,pF,avgF,ip,el)                               ! compute stress penalty due to volume discrepancy from perturbed state
@@ -774,7 +775,7 @@ function homogenization_RGC_updateState(P,F,F0,avgF,dt,dPdF,ip,el)
    enddo
  enddo
  relax = relax + drelax                                                                             ! Updateing the state variable for the next iteration
- homogState(mappingHomogenization(2,ip,el))%state(1:3*nIntFaceTot,mappingHomogenization(1,ip,el)) = relax
+ homogState(mappingHomogenization(2,ip,el))%state(1:3*nIntFaceTot,of) = relax
  if (any(abs(drelax) > maxdRelax_RGC)) then                                                         ! Forcing cutback when the incremental change of relaxation vector becomes too large
    homogenization_RGC_updateState = [.true.,.false.]
    !$OMP CRITICAL (write2out)
@@ -790,7 +791,7 @@ function homogenization_RGC_updateState(P,F,F0,avgF,dt,dPdF,ip,el)
    !$OMP CRITICAL (write2out)
    write(6,'(1x,a30)')'Returned state: '
    do i = 1_pInt,3_pInt*nIntFaceTot
-     write(6,'(1x,2(e15.8,1x))')homogState(mappingHomogenization(2,ip,el))%state(i,mappingHomogenization(1,ip,el))
+     write(6,'(1x,2(e15.8,1x))')homogState(mappingHomogenization(2,ip,el))%state(i,of)
    enddo
    write(6,*)' '
    flush(6)
