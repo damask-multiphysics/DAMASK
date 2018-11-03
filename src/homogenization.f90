@@ -129,11 +129,11 @@ subroutine homogenization_init
 !--------------------------------------------------------------------------------------------------
 ! parse homogenization from config file 
  if (any(homogenization_type == HOMOGENIZATION_NONE_ID)) &
-   call homogenization_none_init()
+   call homogenization_none_init
  if (any(homogenization_type == HOMOGENIZATION_ISOSTRAIN_ID)) &
-   call homogenization_isostrain_init()
+   call homogenization_isostrain_init
  if (any(homogenization_type == HOMOGENIZATION_RGC_ID)) &
-   call homogenization_RGC_init(FILEUNIT)
+   call homogenization_RGC_init
 
 !--------------------------------------------------------------------------------------------------
 ! parse thermal from config file

@@ -64,8 +64,7 @@ subroutine homogenization_isostrain_init()
  integer(pInt) :: &
    h
  integer :: &
-   maxNinstance, &
-   instance
+   Ninstance
  integer :: &
    NofMyHomog                                                                                       ! no pInt (stores a system dependen value from 'count'
  character(len=65536) :: &
@@ -76,18 +75,17 @@ subroutine homogenization_isostrain_init()
  write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
 
- maxNinstance = count(homogenization_type == HOMOGENIZATION_ISOSTRAIN_ID)
- if (maxNinstance == 0) return
+ Ninstance = count(homogenization_type == HOMOGENIZATION_ISOSTRAIN_ID)
+ if (Ninstance == 0) return
  
  if (iand(debug_level(debug_HOMOGENIZATION),debug_levelBasic) /= 0_pInt) &
-   write(6,'(a16,1x,i5,/)') '# instances:',maxNinstance
+   write(6,'(a16,1x,i5,/)') '# instances:',Ninstance
 
- allocate(param(maxNinstance))                                                                      ! one container of parameters per instance
+ allocate(param(Ninstance))                                                                         ! one container of parameters per instance
 
  do h = 1_pInt, size(homogenization_type)
    if (homogenization_type(h) /= HOMOGENIZATION_ISOSTRAIN_ID) cycle
-   instance = homogenization_typeInstance(h)
-   associate(prm => param(instance))
+   associate(prm => param(homogenization_typeInstance(h)))
   
    prm%Nconstituents = config_homogenization(h)%getInt('nconstituents')
    tag = 'sum'

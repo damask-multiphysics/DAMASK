@@ -49,21 +49,23 @@ module homogenization_RGC
  end type
 
  type, private :: tRGCState
-   real(pReal), pointer,     dimension(:,:) :: &
+   real(pReal), pointer,     dimension(:) :: &
      work, &
-     mismatch, &
      penaltyEnergy, &
      volumeDiscrepancy, &
      relaxationRate_avg, &
      relaxationRage_max
- end type
+   real(pReal), pointer,     dimension(:,:) :: &
+     mismatch
+ end type tRGCState
 
 ! START: Could be improved
  real(pReal),                dimension(:,:,:,:), allocatable,        private :: &
    homogenization_RGC_orientation
 ! END: Could be improved
 
- type(tParameters), dimension(:), allocatable, private :: param                                     !< containers of constitutive parameters (len Ninstance)
+ type(tParameters), dimension(:), allocatable, private :: param                                     !< containers of parameters (len Ninstance)
+ type(tRGCState),   dimension(:), allocatable, private :: state
 
  public :: &
    homogenization_RGC_init, &
@@ -90,7 +92,7 @@ contains
 !--------------------------------------------------------------------------------------------------
 !> @brief allocates all necessary fields, reads information from material configuration file
 !--------------------------------------------------------------------------------------------------
-subroutine homogenization_RGC_init(fileUnit)
+subroutine homogenization_RGC_init()
 #if defined(__GFORTRAN__) || __INTEL_COMPILER >= 1800
  use, intrinsic :: iso_fortran_env, only: &
    compiler_version, &
@@ -121,13 +123,12 @@ subroutine homogenization_RGC_init(fileUnit)
  use config
 
  implicit none
- integer(pInt), intent(in) :: fileUnit                                                              !< file pointer to material configuration
- integer :: &
+ integer(pInt) :: &
    NofMyHomog, &
    o, h, &
    outputSize, &
    instance, &
-   sizeHState
+   sizeHState, nIntFaceTot
  integer(pInt) :: section=0_pInt, maxNinstance, i,j,e, mySize
  character(len=65536),   dimension(0), parameter :: emptyStringArray = [character(len=65536)::]
  integer(kind(undefined_ID))                 :: &
@@ -150,6 +151,7 @@ subroutine homogenization_RGC_init(fileUnit)
  allocate(homogenization_RGC_sizePostResults(maxNinstance),                      source=0_pInt)
 
  allocate(param(maxNinstance))                                                                      ! one container of parameters per instance
+ allocate(state(maxNinstance))                                                                      ! one container per instance
 
  allocate(homogenization_RGC_Noutput(maxNinstance),                              source=0_pInt)
  allocate(homogenization_RGC_output(maxval(homogenization_Noutput),maxNinstance))
@@ -200,7 +202,6 @@ subroutine homogenization_RGC_init(fileUnit)
      end select
      if (outputID /= undefined_ID) then
        homogenization_RGC_output(i,instance) = outputs(i)
-       print*, homogenization_RGC_output(i,instance)
        homogenization_RGC_sizePostResult(i,instance) = outputSize
        prm%outputID = [prm%outputID , outputID]
      endif
@@ -234,11 +235,10 @@ subroutine homogenization_RGC_init(fileUnit)
    endif
 
    NofMyHomog = count(material_homog == h)
-
-   sizeHState = &
-         3_pInt*(prm%Nconstituents(1)-1_pInt)*prm%Nconstituents(2)*prm%Nconstituents(3) &
-       + 3_pInt*prm%Nconstituents(1)*(prm%Nconstituents(2)-1_pInt)* prm%Nconstituents(3) &
-       + 3_pInt*prm%Nconstituents(1)*prm%Nconstituents(2)*(prm%Nconstituents(3)-1_pInt) &
+   nIntFaceTot = 3_pInt*(  (prm%Nconstituents(1)-1_pInt)*prm%Nconstituents(2)*prm%Nconstituents(3) &
+                         + prm%Nconstituents(1)*(prm%Nconstituents(2)-1_pInt)*prm%Nconstituents(3) &
+                         + prm%Nconstituents(1)*prm%Nconstituents(2)*(prm%Nconstituents(3)-1_pInt))
+   sizeHState = nIntFaceTot &
        + 8_pInt   ! (1) Average constitutive work, (2-4) Overall mismatch, (5) Average penalty energy, 
                   ! (6) Volume discrepancy, (7) Avg relaxation rate component, (8) Max relaxation rate component
                   
@@ -361,6 +361,7 @@ function homogenization_RGC_updateState(P,F,F0,avgF,dt,dPdF,ip,el)
  integer(pInt),                                              intent(in) :: &
    ip, &                                                                                            !< integration point number
    el                                                                                               !< element number
+
  logical, dimension(2)        :: homogenization_RGC_updateState
  integer(pInt), dimension (4) :: intFaceN,intFaceP,faceID
  integer(pInt), dimension (3) :: nGDim,iGr3N,iGr3P,stresLoc
@@ -394,12 +395,9 @@ function homogenization_RGC_updateState(P,F,F0,avgF,dt,dPdF,ip,el)
 ! allocate the size of the global relaxation arrays/jacobian matrices depending on the size of the cluster
  allocate(resid(3_pInt*nIntFaceTot),   source=0.0_pReal)
  allocate(tract(nIntFaceTot,3),        source=0.0_pReal)
- allocate(relax(3_pInt*nIntFaceTot));   relax= homogState(mappingHomogenization(2,ip,el))% &
-                                                state(1:3_pInt*nIntFaceTot,mappingHomogenization(1,ip,el))
- allocate(drelax(3_pInt*nIntFaceTot)); drelax= homogState(mappingHomogenization(2,ip,el))% &
-                                                state(1:3_pInt*nIntFaceTot,mappingHomogenization(1,ip,el)) - &
-                                               homogState(mappingHomogenization(2,ip,el))% &
-                                                state0(1:3_pInt*nIntFaceTot,mappingHomogenization(1,ip,el))
+ relax  = homogState(mappingHomogenization(2,ip,el))%state (1:3_pInt*nIntFaceTot,mappingHomogenization(1,ip,el))
+ drelax = relax &
+        - homogState(mappingHomogenization(2,ip,el))%state0(1:3_pInt*nIntFaceTot,mappingHomogenization(1,ip,el))
 !--------------------------------------------------------------------------------------------------
 ! debugging the obtained state
  if (iand(debug_level(debug_homogenization),debug_levelExtensive) /= 0_pInt) then
@@ -1145,25 +1143,21 @@ function surfaceCorrection(avgF,ip,el)
  real(pReal), dimension(3,3), intent(in) :: avgF                                                    !< average F
  integer(pInt),               intent(in) :: ip,&                                                    !< integration point number
    el                                                                                               !< element number
- real(pReal), dimension(3,3)             :: invC,avgC
+ real(pReal), dimension(3,3)             :: invC
  real(pReal), dimension(3)               :: nVect
  real(pReal)  :: detF
- integer(pInt), dimension(4)             :: intFace
  integer(pInt) :: i,j,iBase
  logical     ::  error
 
- avgC = math_mul33x33(transpose(avgF),avgF)
- call math_invert33(avgC,invC,detF,error)
+ call math_invert33(math_mul33x33(transpose(avgF),avgF),invC,detF,error)
+
  surfaceCorrection = 0.0_pReal
  do iBase = 1_pInt,3_pInt
-   intFace = [iBase,1_pInt,1_pInt,1_pInt]
-   nVect = interfaceNormal(intFace,ip,el)                                        ! get the normal of the interface
+   nVect = interfaceNormal([iBase,1_pInt,1_pInt,1_pInt],ip,el)                                      ! get the normal of the interface
    do i = 1_pInt,3_pInt; do j = 1_pInt,3_pInt
-     surfaceCorrection(iBase) = &                                                ! compute the component of (the inverse of) the stretch in the direction of the normal
-       surfaceCorrection(iBase) + invC(i,j)*nVect(i)*nVect(j)
+     surfaceCorrection(iBase) = surfaceCorrection(iBase) + invC(i,j)*nVect(i)*nVect(j)              ! compute the component of (the inverse of) the stretch in the direction of the normal
    enddo; enddo
-   surfaceCorrection(iBase) = &                                                  ! get the surface correction factor (area contraction/enlargement)
-     sqrt(surfaceCorrection(iBase))*detF
+   surfaceCorrection(iBase) = sqrt(surfaceCorrection(iBase))*detF                                   ! get the surface correction factor (area contraction/enlargement)
  enddo
 
 end function surfaceCorrection
@@ -1314,7 +1308,7 @@ pure function grain3to1(grain3,instance)
 
  implicit none
  integer(pInt), dimension (3), intent(in) :: grain3                                                 !< grain ID in 3D array (pos.x,pos.y,pos.z)
- integer(pInt),                intent(in) :: instance                                                              ! homogenization ID
+ integer(pInt),                intent(in) :: instance                                               ! homogenization ID
  integer(pInt)                            :: grain3to1                                      
  integer(pInt), dimension (3)             :: nGDim
 
