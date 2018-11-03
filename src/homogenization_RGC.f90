@@ -197,14 +197,13 @@ subroutine homogenization_RGC_init(fileUnit)
          outputID = magnitudemismatch_ID
          outputSize = 3_pInt
        case default
-      if (outputID /= undefined_ID) then
-        homogenization_RGC_output(i,instance) = outputs(i)
-        homogenization_RGC_sizePostResult(i,instance) = outputSize
-        prm%outputID = [prm%outputID , outputID]
-      endif
      end select
+     if (outputID /= undefined_ID) then
+       homogenization_RGC_output(i,instance) = outputs(i)
+       homogenization_RGC_sizePostResult(i,instance) = outputSize
+       prm%outputID = [prm%outputID , outputID]
+     endif
    enddo
-
 !--------------------------------------------------------------------------------------------------
 ! * assigning cluster orientations
    elementLooping: do e = 1_pInt,mesh_NcpElems
@@ -243,6 +242,7 @@ subroutine homogenization_RGC_init(fileUnit)
                   ! (6) Volume discrepancy, (7) Avg relaxation rate component, (8) Max relaxation rate component
                   
    homogState(h)%sizeState = sizeHState
+   homogenization_RGC_sizePostResults(instance) = sum(homogenization_RGC_sizePostResult(:,instance))
    homogState(h)%sizePostResults = homogenization_RGC_sizePostResults(instance)
    allocate(homogState(h)%state0   (sizeHState,NofMyHomog), source=0.0_pReal)
    allocate(homogState(h)%subState0(sizeHState,NofMyHomog), source=0.0_pReal)
@@ -1456,7 +1456,7 @@ subroutine grainDeformation(F, avgF, ip, el)
 ! compute the deformation gradient of individual grains due to relaxations
  instance = homogenization_typeInstance(mesh_homogenizationAt(el))
  F = 0.0_pReal
- do iGrain = 1_pInt,sum(param(instance)%Nconstituents)
+ do iGrain = 1_pInt,product(param(instance)%Nconstituents)
    iGrain3 = grain1to3(iGrain,instance)
    do iFace = 1_pInt,6_pInt
      intFace = getInterface(iFace,iGrain3)
