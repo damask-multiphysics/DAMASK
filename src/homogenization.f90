@@ -913,6 +913,7 @@ subroutine homogenization_partitionDeformation(ip,el)
  use material, only: &
    homogenization_type, &
    homogenization_maxNgrains, &
+   homogenization_typeInstance, &
    HOMOGENIZATION_NONE_ID, &
    HOMOGENIZATION_ISOSTRAIN_ID, &
    HOMOGENIZATION_RGC_ID
@@ -927,6 +928,8 @@ subroutine homogenization_partitionDeformation(ip,el)
  integer(pInt), intent(in) :: &
    ip, &                                                                                            !< integration point
    el                                                                                               !< element number
+ integer(pInt) :: &
+   instance
 
  chosenHomogenization: select case(homogenization_type(mesh_element(3,el)))
 
@@ -936,10 +939,12 @@ subroutine homogenization_partitionDeformation(ip,el)
        spread(materialpoint_subF(1:3,1:3,ip,el),3,1)
 
    case (HOMOGENIZATION_ISOSTRAIN_ID) chosenHomogenization
+     instance = homogenization_typeInstance(mesh_element(3,el))
      call homogenization_isostrain_partitionDeformation(&
                           crystallite_partionedF(1:3,1:3,1:homogenization_maxNgrains,ip,el), &
                           materialpoint_subF(1:3,1:3,ip,el),&
-                          el)
+                          instance)
+
    case (HOMOGENIZATION_RGC_ID) chosenHomogenization
      call homogenization_RGC_partitionDeformation(&
                          crystallite_partionedF(1:3,1:3,1:homogenization_maxNgrains,ip,el), &
@@ -1041,6 +1046,7 @@ subroutine homogenization_averageStressAndItsTangent(ip,el)
    mesh_element
  use material, only: &
    homogenization_type, &
+   homogenization_typeInstance, &
    homogenization_maxNgrains, &
    HOMOGENIZATION_NONE_ID, &
    HOMOGENIZATION_ISOSTRAIN_ID, &
@@ -1056,6 +1062,8 @@ subroutine homogenization_averageStressAndItsTangent(ip,el)
  integer(pInt), intent(in) :: &
    ip, &                                                                                            !< integration point
    el                                                                                               !< element number
+ integer(pInt) :: &
+   instance
 
  chosenHomogenization: select case(homogenization_type(mesh_element(3,el)))
    case (HOMOGENIZATION_NONE_ID) chosenHomogenization
@@ -1064,12 +1072,14 @@ subroutine homogenization_averageStressAndItsTangent(ip,el)
         = sum(crystallite_dPdF(1:3,1:3,1:3,1:3,1:1,ip,el),5)
 
    case (HOMOGENIZATION_ISOSTRAIN_ID) chosenHomogenization
+     instance = homogenization_typeInstance(mesh_element(3,el))
      call homogenization_isostrain_averageStressAndItsTangent(&
        materialpoint_P(1:3,1:3,ip,el), &
        materialpoint_dPdF(1:3,1:3,1:3,1:3,ip,el),&
        crystallite_P(1:3,1:3,1:homogenization_maxNgrains,ip,el), &
        crystallite_dPdF(1:3,1:3,1:3,1:3,1:homogenization_maxNgrains,ip,el), &
-       el)
+       instance)
+
    case (HOMOGENIZATION_RGC_ID) chosenHomogenization
      call homogenization_RGC_averageStressAndItsTangent(&
        materialpoint_P(1:3,1:3,ip,el), &

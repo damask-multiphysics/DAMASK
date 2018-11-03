@@ -1,4 +1,5 @@
 !--------------------------------------------------------------------------------------------------
+!> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
 !> @author Franz Roters, Max-Planck-Institut für Eisenforschung GmbH
 !> @author Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
 !> @brief Isostrain (full constraint Taylor assuption) homogenization scheme
@@ -117,25 +118,19 @@ end subroutine homogenization_isostrain_init
 !--------------------------------------------------------------------------------------------------
 !> @brief partitions the deformation gradient onto the constituents
 !--------------------------------------------------------------------------------------------------
-subroutine homogenization_isostrain_partitionDeformation(F,avgF,el)
+subroutine homogenization_isostrain_partitionDeformation(F,avgF,instance)
  use prec, only: &
    pReal
- use mesh, only: &
-   mesh_element
  use material, only: &
-   homogenization_maxNgrains, &
-   homogenization_typeInstance
+   homogenization_maxNgrains
  
  implicit none
  real(pReal),   dimension (3,3,homogenization_maxNgrains), intent(out) :: F                         !< partioned def grad per grain
  real(pReal),   dimension (3,3),                           intent(in)  :: avgF                      !< my average def grad
+ integer(pInt),                                            intent(in)  :: instance 
  type(tParameters) :: &
    prm
- integer(pInt) :: &
-   el, &
-   instance
 
- instance = homogenization_typeInstance(mesh_element(3,el))
  associate(prm => param(instance))
  F(1:3,1:3,1:prm%Nconstituents) = spread(avgF,3,prm%Nconstituents)
  if (homogenization_maxNgrains > prm%Nconstituents) &
@@ -148,27 +143,21 @@ end subroutine homogenization_isostrain_partitionDeformation
 !--------------------------------------------------------------------------------------------------
 !> @brief derive average stress and stiffness from constituent quantities 
 !--------------------------------------------------------------------------------------------------
-subroutine homogenization_isostrain_averageStressAndItsTangent(avgP,dAvgPdAvgF,P,dPdF,el)
+subroutine homogenization_isostrain_averageStressAndItsTangent(avgP,dAvgPdAvgF,P,dPdF,instance)
  use prec, only: &
    pReal
- use mesh, only: &
-   mesh_element
  use material, only: &
-   homogenization_maxNgrains, &
-   homogenization_typeInstance
+   homogenization_maxNgrains
  
  implicit none
  real(pReal),   dimension (3,3),                               intent(out) :: avgP                  !< average stress at material point
  real(pReal),   dimension (3,3,3,3),                           intent(out) :: dAvgPdAvgF            !< average stiffness at material point
  real(pReal),   dimension (3,3,homogenization_maxNgrains),     intent(in)  :: P                     !< array of current grain stresses
  real(pReal),   dimension (3,3,3,3,homogenization_maxNgrains), intent(in)  :: dPdF                  !< array of current grain stiffnesses
+ integer(pInt),                                                intent(in)  :: instance 
  type(tParameters) :: &
    prm
- integer(pInt) :: &
-   el, &
-   instance
 
- instance = homogenization_typeInstance(mesh_element(3,el))
  associate(prm => param(instance))
  select case (prm%mapping)
    case (parallel_ID)
