@@ -827,7 +827,7 @@ subroutine homogenization_RGC_averageStressAndItsTangent(avgP,dAvgPdAvgF,P,dPdF,
  integer(pInt) :: instance, i, j, Nconstituents, iGrain
 
  instance = homogenization_typeInstance(mesh_homogenizationAt(el))
- Nconstituents = sum(param(instance)%Nconstituents)
+ Nconstituents = product(param(instance)%Nconstituents)
 
 !--------------------------------------------------------------------------------------------------
 ! debugging the grain tangent
