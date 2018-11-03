@@ -125,11 +125,11 @@ subroutine homogenization_RGC_init()
  implicit none
  integer(pInt) :: &
    NofMyHomog, &
-   o, h, &
+   h, &
    outputSize, &
    instance, &
    sizeHState, nIntFaceTot
- integer(pInt) :: section=0_pInt, maxNinstance, i,j,e, mySize
+ integer(pInt) :: maxNinstance, i,j,e, mySize
  character(len=65536),   dimension(0), parameter :: emptyStringArray = [character(len=65536)::]
  integer(kind(undefined_ID))                 :: &
    outputID                                                                                     !< ID of each post result output
@@ -804,51 +804,19 @@ end function homogenization_RGC_updateState
 !--------------------------------------------------------------------------------------------------
 !> @brief derive average stress and stiffness from constituent quantities 
 !--------------------------------------------------------------------------------------------------
-subroutine homogenization_RGC_averageStressAndItsTangent(avgP,dAvgPdAvgF,P,dPdF,el)
- use debug, only: &
-  debug_level, &
-  debug_homogenization,&
-  debug_levelExtensive
- use mesh, only: &
-  mesh_homogenizationAt
+subroutine homogenization_RGC_averageStressAndItsTangent(avgP,dAvgPdAvgF,P,dPdF,instance)
  use material, only: &
-  homogenization_maxNgrains, &
-  homogenization_typeInstance 
- use math, only: math_Plain3333to99
- 
+   homogenization_maxNgrains
+
  implicit none
  real(pReal), dimension (3,3),                               intent(out) :: avgP                    !< average stress at material point
  real(pReal), dimension (3,3,3,3),                           intent(out) :: dAvgPdAvgF              !< average stiffness at material point
  real(pReal), dimension (3,3,homogenization_maxNgrains),     intent(in)  :: P                       !< array of current grain stresses
  real(pReal), dimension (3,3,3,3,homogenization_maxNgrains), intent(in)  :: dPdF                    !< array of current grain stiffnesses
- integer(pInt),                                              intent(in)  :: el                      !< element number
- real(pReal), dimension (9,9) :: dPdF99
+ integer(pInt),                                              intent(in)  :: instance
 
- integer(pInt) :: instance, i, j, Nconstituents, iGrain
-
- instance = homogenization_typeInstance(mesh_homogenizationAt(el))
- Nconstituents = product(param(instance)%Nconstituents)
-
-!--------------------------------------------------------------------------------------------------
-! debugging the grain tangent
- if (iand(debug_level(debug_homogenization), debug_levelExtensive) /= 0_pInt) then
-   !$OMP CRITICAL (write2out)
-   do iGrain = 1_pInt,Nconstituents
-     dPdF99 = math_Plain3333to99(dPdF(1:3,1:3,1:3,1:3,iGrain))
-     write(6,'(1x,a30,1x,i3)')'Stress tangent of grain: ',iGrain
-     do i = 1_pInt,9_pInt
-       write(6,'(1x,(e15.8,1x))') (dPdF99(i,j), j = 1_pInt,9_pInt)
-     enddo
-     write(6,*)' '
-   enddo
-   flush(6)
-   !$OMP END CRITICAL (write2out)
- endif
- 
-!--------------------------------------------------------------------------------------------------
-! computing the average first Piola-Kirchhoff stress P and the average tangent dPdF
- avgP = sum(P,3)/real(Nconstituents,pReal)
- dAvgPdAvgF = sum(dPdF,5)/real(Nconstituents,pReal)
+ avgP       = sum(P,3)   /real(product(param(instance)%Nconstituents),pReal)
+ dAvgPdAvgF = sum(dPdF,5)/real(product(param(instance)%Nconstituents),pReal)
 
 end subroutine homogenization_RGC_averageStressAndItsTangent
 

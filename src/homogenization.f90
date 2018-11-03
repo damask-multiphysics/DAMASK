@@ -1081,12 +1081,13 @@ subroutine homogenization_averageStressAndItsTangent(ip,el)
        instance)
 
    case (HOMOGENIZATION_RGC_ID) chosenHomogenization
+     instance = homogenization_typeInstance(mesh_element(3,el))
      call homogenization_RGC_averageStressAndItsTangent(&
        materialpoint_P(1:3,1:3,ip,el), &
        materialpoint_dPdF(1:3,1:3,1:3,1:3,ip,el),&
        crystallite_P(1:3,1:3,1:homogenization_maxNgrains,ip,el), &
        crystallite_dPdF(1:3,1:3,1:3,1:3,1:homogenization_maxNgrains,ip,el), &
-       el)
+       instance)
  end select chosenHomogenization
 
 end subroutine homogenization_averageStressAndItsTangent
