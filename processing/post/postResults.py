@@ -79,7 +79,7 @@ class MPIEspectral_result:    # mimic py_post result object
     self.dataOffset = 0
     while self.dataOffset < self.filesize:
       self.file.seek(self.dataOffset)
-      if self.file.read(3) == 'eoh': break
+      if self.file.read(3) == b'eoh': break
       self.dataOffset += 1
     self.dataOffset   += 7
 #search first for the new keywords with ':', if not found try to find the old ones
@@ -179,7 +179,7 @@ class MPIEspectral_result:    # mimic py_post result object
       self.file.seek(filepos)
 # read the starting tag in front of the keyword (Fortran indicates start and end of writing by a 4 byte tag indicating the length of the following data)
       dataLen=struct.unpack('i',self.file.read(4))[0]
-      name = self.file.read(len(identifier))                                                        # anticipate identifier
+      name = self.file.read(len(identifier)).decode(errors="ignore")                                # anticipate identifier
       start=filepos+(4+len(identifier))                                                             # position of the values for the found key
       filepos=filepos+(4+dataLen+4)                                                                 # forward to next keyword
 
@@ -202,7 +202,7 @@ class MPIEspectral_result:    # mimic py_post result object
   def _keyedString(self,identifier,default=None):
     value = default
     self.file.seek(0)
-    m = re.search(r'(.{4})%s(.*?)\1'%identifier,self.file.read(self.dataOffset),re.DOTALL)
+    m = re.search(r'(.{4})%s(.*?)\1'%identifier,self.file.read(self.dataOffset).decode(errors="ignore"),re.DOTALL)
     if m:
       value = m.group(2)
     return value
@@ -466,7 +466,7 @@ def ParseOutputFormat(filename,what,me):
   """Parse .output* files in order to get a list of outputs"""
   content = []
   format = {'outputs':{},'specials':{'brothers':[]}}
-  for prefix in ['']+map(str,range(1,17)):
+  for prefix in ['']+list(map(str,range(1,17))):
     if os.path.exists(prefix+filename+'.output'+what):
       try:
         file = open(prefix+filename+'.output'+what)
@@ -850,7 +850,7 @@ for opt in ['nodalScalar','elemScalar','elemTensor','homogenizationResult','crys
       if (opt in ['nodalScalar','elemScalar','elemTensor'] and label not in stat['IndexOfLabel'] and label not in ['elements',]) \
            or (opt in ['homogenizationResult','crystalliteResult','constitutiveResult'] \
                and (not outputFormat[opt[:-6].capitalize()]['outputs'] \
-                  or label not in zip(*outputFormat[opt[:-6].capitalize()]['outputs'])[0])):
+                  or label not in list(zip(*outputFormat[opt[:-6].capitalize()]['outputs']))[0])):
         parser.error('%s "%s" unknown...'%(opt,label))
 
 
@@ -935,8 +935,8 @@ else:
   for e in range(stat['NumberOfElements']):
     if options.verbose and e%1000 == 0: bg.set_message('scan elem %i...'%e)
     myElemID = p.element_id(e)
-    myIpCoordinates = ipCoords(p.element(e).type, map(lambda node: [node.x, node.y, node.z],
-                                                         map(p.node, map(p.node_sequence, p.element(e).items))))
+    myIpCoordinates = ipCoords(p.element(e).type, list(map(lambda node: [node.x, node.y, node.z],
+                                                         list(map(p.node, map(p.node_sequence, p.element(e).items))))))
     myIpIDs = ipIDs(p.element(e).type)
     Nips = len(myIpIDs)
     myNodeIDs = p.element(e).items[:Nips]
@@ -1023,7 +1023,7 @@ if options.verbose: bg.set_message('getting map between positions and increments
 incAtPosition = {}
 positionOfInc = {}
 
-for position in range(stat['NumberOfIncrements']):
+for position in range(int(stat['NumberOfIncrements'])):
   p.moveto(position+offset_pos)
   incAtPosition[position] = p.increment            # remember "real" increment at this position
   positionOfInc[p.increment] = position            # remember position of "real" increment
@@ -1130,7 +1130,7 @@ for incCount,position in enumerate(locations):     # walk through locations
                                       ['Crystallite']*len(options.crystalliteResult) +
                                       ['Constitutive']*len(options.constitutiveResult)
                                       ):
-          outputIndex = list(zip(*outputFormat[resultType]['outputs'])[0]).index(label)             # find the position of this output in the outputFormat
+          outputIndex = (list(zip(*outputFormat[resultType]['outputs']))[0]).index(label)             # find the position of this output in the outputFormat
           length = int(outputFormat[resultType]['outputs'][outputIndex][1])
           thisHead = heading('_',[[component,''.join( label.split() )] for component in range(int(length>1),length+int(length>1))])
           if assembleHeader: header += thisHead
