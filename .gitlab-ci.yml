@@ -275,6 +275,13 @@ Spectral_ipNeighborhood:
     - master
     - release
 
+RGC_DetectChanges:
+  stage: spectral
+  script: RGC_DetectChanges/test.py
+  except:
+    - master
+    - release
+
 Nonlocal_Damage_DetectChanges:
   stage: spectral
   script: Nonlocal_Damage_DetectChanges/test.py
