@@ -200,6 +200,7 @@ subroutine homogenization_RGC_init(fileUnit)
      end select
      if (outputID /= undefined_ID) then
        homogenization_RGC_output(i,instance) = outputs(i)
+       print*, homogenization_RGC_output(i,instance)
        homogenization_RGC_sizePostResult(i,instance) = outputSize
        prm%outputID = [prm%outputID , outputID]
      endif

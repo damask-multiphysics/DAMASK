@@ -193,17 +193,14 @@ subroutine homogenization_init
        select case(homogenization_type(p))                                                              ! split per homogenization type
          case (HOMOGENIZATION_NONE_ID)
            outputName = HOMOGENIZATION_NONE_label
-           thisNoutput => null()
            thisOutput => null()
            thisSize   => null()
          case (HOMOGENIZATION_ISOSTRAIN_ID)
            outputName = HOMOGENIZATION_ISOSTRAIN_label
-           thisNoutput => null()
            thisOutput => null()
            thisSize   => null()
          case (HOMOGENIZATION_RGC_ID)
            outputName = HOMOGENIZATION_RGC_label
-           thisNoutput => homogenization_RGC_Noutput
            thisOutput => homogenization_RGC_output
            thisSize   => homogenization_RGC_sizePostResult
          case default
@@ -215,7 +212,7 @@ subroutine homogenization_init
          write(FILEUNIT,'(a,i4)') '(ngrains)'//char(9),homogenization_Ngrains(p)
          if (homogenization_type(p) /= HOMOGENIZATION_NONE_ID .and. &
              homogenization_type(p) /= HOMOGENIZATION_ISOSTRAIN_ID) then
-           do e = 1,thisNoutput(i)
+           do e = 1,size(thisOutput(:,i))
              write(FILEUNIT,'(a,i4)') trim(thisOutput(e,i))//char(9),thisSize(e,i)
            enddo
          endif
