@@ -911,6 +911,7 @@ subroutine homogenization_partitionDeformation(ip,el)
  use mesh, only: &
    mesh_element
  use material, only: &
+   mappingHomogenization, &
    homogenization_type, &
    homogenization_maxNgrains, &
    homogenization_typeInstance, &
@@ -929,7 +930,7 @@ subroutine homogenization_partitionDeformation(ip,el)
    ip, &                                                                                            !< integration point
    el                                                                                               !< element number
  integer(pInt) :: &
-   instance
+   instance, of
 
  chosenHomogenization: select case(homogenization_type(mesh_element(3,el)))
 
@@ -946,6 +947,8 @@ subroutine homogenization_partitionDeformation(ip,el)
                           instance)
 
    case (HOMOGENIZATION_RGC_ID) chosenHomogenization
+     instance = homogenization_typeInstance(mesh_element(3,el))
+     of = mappingHomogenization(1,ip,el)
      call homogenization_RGC_partitionDeformation(&
                          crystallite_partionedF(1:3,1:3,1:homogenization_maxNgrains,ip,el), &
                          materialpoint_subF(1:3,1:3,ip,el),&
