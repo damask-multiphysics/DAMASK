@@ -68,12 +68,6 @@ module homogenization_RGC
  type(tRGCstate),   dimension(:), allocatable, private :: state
  type(tRGCdependentState),   dimension(:), allocatable, private :: dependentState
 
-
-! START: Could be improved
- real(pReal),                dimension(:,:,:,:), allocatable,        private :: &
-   homogenization_RGC_orientation
-! END: Could be improved
-
  public :: &
    homogenization_RGC_init, &
    homogenization_RGC_partitionDeformation, &
@@ -131,7 +125,7 @@ subroutine homogenization_RGC_init()
    outputSize, &
    instance, &
    sizeHState, nIntFaceTot
- integer(pInt) :: maxNinstance, i,j,e, mySize
+ integer(pInt) :: maxNinstance, i,j,e, mySize, of
  character(len=65536),   dimension(0), parameter :: emptyStringArray = [character(len=65536)::]
  integer(kind(undefined_ID))                 :: &
    outputID                                                                                     !< ID of each post result output
@@ -161,7 +155,6 @@ subroutine homogenization_RGC_init()
                                                               homogenization_RGC_output=''
  allocate(homogenization_RGC_sizePostResult(maxval(homogenization_Noutput),maxNinstance),&
                                                                                  source=0_pInt)
- allocate(homogenization_RGC_orientation(3,3,mesh_NipsPerElem,mesh_NcpElems),   source=0.0_pReal)
 
  do h = 1_pInt, size(homogenization_type)
    if (homogenization_type(h) /= HOMOGENIZATION_RGC_ID) cycle
@@ -248,16 +241,17 @@ subroutine homogenization_RGC_init()
 ! * assigning cluster orientations
    elementLooping: do e = 1_pInt,mesh_NcpElems
      if (homogenization_typeInstance(mesh_homogenizationAt(e)) == instance) then
+       of = mappingHomogenization(1,1,e)
        noOrientationGiven: if (all (prm%angles >= 399.9_pReal)) then
-         homogenization_RGC_orientation(1:3,1:3,1,e) = math_EulerToR(math_sampleRandomOri())
+         dependentState(instance)%orientation(1:3,1:3,of) = math_EulerToR(math_sampleRandomOri())
          do i = 2_pInt,mesh_NipsPerElem
-           homogenization_RGC_orientation(1:3,1:3,i,e) = merge(homogenization_RGC_orientation(1:3,1:3,1,e), &
+         dependentState(instance)%orientation(1:3,1:3,of) = merge(dependentState(instance)%orientation(1:3,1:3,of), &
                                                                math_EulerToR(math_sampleRandomOri()), &
                                                                microstructure_elemhomo(mesh_microstructureAt(e)))
          enddo
        else noOrientationGiven
          do i = 1_pInt,mesh_NipsPerElem
-           homogenization_RGC_orientation(1:3,1:3,i,e) = math_EulerToR(prm%angles*inRad)
+           dependentState(instance)%orientation(1:3,1:3,of) = math_EulerToR(prm%angles*inRad)
          enddo
        endif noOrientationGiven
      endif
@@ -1237,6 +1231,8 @@ end function relaxationVector
 function interfaceNormal(intFace,ip,el)
  use math, only: &
    math_mul33x3
+ use material, only: &
+   mappingHomogenization
  
  implicit none
  real(pReal),   dimension (3)  ::            interfaceNormal
@@ -1244,7 +1240,7 @@ function interfaceNormal(intFace,ip,el)
  integer(pInt),                intent(in) :: &
    ip, &                                                                                            !< integration point number
    el                                                                                               !< element number
- integer(pInt) ::                            nPos
+ integer(pInt) ::                            nPos,instance,of
 
 !--------------------------------------------------------------------------------------------------
 ! get the normal of the interface, identified from the value of intFace(1)
@@ -1252,8 +1248,10 @@ function interfaceNormal(intFace,ip,el)
  nPos = abs(intFace(1))                                                                             ! identify the position of the interface in global state array
  interfaceNormal(nPos) = real(intFace(1)/abs(intFace(1)),pReal)                                     ! get the normal vector w.r.t. cluster axis
 
+ of = mappingHomogenization(1,ip,el)
+ instance = mappingHomogenization(2,ip,el)
  interfaceNormal = &
-   math_mul33x3(homogenization_RGC_orientation(1:3,1:3,ip,el),interfaceNormal)
+   math_mul33x3(dependentState(instance)%orientation(1:3,1:3,of),interfaceNormal)
                                                                                                     ! map the normal vector into sample coordinate system (basis)
 
 end function interfaceNormal
