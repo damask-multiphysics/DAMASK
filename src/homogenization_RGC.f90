@@ -1230,10 +1230,9 @@ end function grain1to3
 !--------------------------------------------------------------------------------------------------
 !> @brief map grain ID from in 3D (local position) to in 1D (global array)
 !--------------------------------------------------------------------------------------------------
-pure function grain3to1(grain3,nGDim)
+integer(pInt) pure function grain3to1(grain3,nGDim)
 
  implicit none
- integer(pInt)                           :: grain3to1                                      
  integer(pInt), dimension(3), intent(in) :: grain3                                                  !< grain ID in 3D array (pos.x,pos.y,pos.z)
  integer(pInt), dimension(3), intent(in) :: nGDim
 
@@ -1253,26 +1252,40 @@ integer(pInt) pure function interface4to1(iFace4D, nGDim)
  integer(pInt), dimension(4), intent(in) :: iFace4D                                                 !< interface ID in 4D array (n.dir,pos.x,pos.y,pos.z)
  integer(pInt), dimension(3), intent(in) :: nGDim
 
- interface4to1 = -1_pInt
  
-!--------------------------------------------------------------------------------------------------
-! get the corresponding interface ID in 1D global array
- if (abs(iFace4D(1)) == 1_pInt) then                                                                ! interface with normal //e1
-   interface4to1 = iFace4D(3) + nGDim(2)*(iFace4D(4)-1_pInt) &
-                 + nGDim(2)*nGDim(3)*(iFace4D(2)-1_pInt)
-   if ((iFace4D(2) == 0_pInt) .or. (iFace4D(2) == nGDim(1))) interface4to1 = 0_pInt
- elseif (abs(iFace4D(1)) == 2_pInt) then                                                            ! interface with normal //e2
-   interface4to1 = iFace4D(4) + nGDim(3)*(iFace4D(2)-1_pInt) &
-                 + nGDim(3)*nGDim(1)*(iFace4D(3)-1_pInt) &
-                 + (nGDim(1)-1_pInt)*nGDim(2)*nGDim(3)                                              ! total number of interfaces normal //e1
-   if ((iFace4D(3) == 0_pInt) .or. (iFace4D(3) == nGDim(2))) interface4to1 = 0_pInt
- elseif (abs(iFace4D(1)) == 3_pInt) then                                                            ! interface with normal //e3
-   interface4to1 = iFace4D(2) + nGDim(1)*(iFace4D(3)-1_pInt) &
-                 + nGDim(1)*nGDim(2)*(iFace4D(4)-1_pInt) &
-                 + (nGDim(1)-1_pInt)*nGDim(2)*nGDim(3) &                                            ! total number of interfaces normal //e1
-                 + nGDim(1)*(nGDim(2)-1_pInt)*nGDim(3)                                              ! total number of interfaces normal //e2
-   if ((iFace4D(4) == 0_pInt) .or. (iFace4D(4) == nGDim(3))) interface4to1 = 0_pInt
- endif
+ select case(abs(iFace4D(1)))
+
+   case(1_pInt)
+     if ((iFace4D(2) == 0_pInt) .or. (iFace4D(2) == nGDim(1))) then
+       interface4to1 = 0_pInt
+     else
+       interface4to1 = iFace4D(3) + nGDim(2)*(iFace4D(4)-1_pInt) &
+                     + nGDim(2)*nGDim(3)*(iFace4D(2)-1_pInt)
+     endif
+
+   case(2_pInt)
+     if ((iFace4D(3) == 0_pInt) .or. (iFace4D(3) == nGDim(2))) then
+       interface4to1 = 0_pInt
+     else
+       interface4to1 = iFace4D(4) + nGDim(3)*(iFace4D(2)-1_pInt) &
+                     + nGDim(3)*nGDim(1)*(iFace4D(3)-1_pInt) &
+                     + (nGDim(1)-1_pInt)*nGDim(2)*nGDim(3)                                          ! total number of interfaces normal //e1
+     endif
+
+   case(3_pInt)
+     if ((iFace4D(4) == 0_pInt) .or. (iFace4D(4) == nGDim(3))) then
+       interface4to1 = 0_pInt
+     else
+       interface4to1 = iFace4D(2) + nGDim(1)*(iFace4D(3)-1_pInt) &
+                     + nGDim(1)*nGDim(2)*(iFace4D(4)-1_pInt) &
+                     + (nGDim(1)-1_pInt)*nGDim(2)*nGDim(3) &                                        ! total number of interfaces normal //e1
+                     + nGDim(1)*(nGDim(2)-1_pInt)*nGDim(3)                                          ! total number of interfaces normal //e2
+     endif
+
+   case default
+     interface4to1 = -1_pInt
+     
+ end select
 
 end function interface4to1
 
@@ -1290,9 +1303,9 @@ pure function interface1to4(iFace1D, nGDim)
 
 !--------------------------------------------------------------------------------------------------
 ! compute the total number of interfaces, which ...
- nIntFace(1) = (nGDim(1)-1_pInt)*nGDim(2)*nGDim(3)                                                  ! ... normal //e1
- nIntFace(2) = nGDim(1)*(nGDim(2)-1_pInt)*nGDim(3)                                                  ! ... normal //e2
- nIntFace(3) = nGDim(1)*nGDim(2)*(nGDim(3)-1_pInt)                                                  ! ... normal //e3
+ nIntFace = [(nGDim(1)-1_pInt)*nGDim(2)*nGDim(3), &                                                 ! ... normal //e1
+             nGDim(1)*(nGDim(2)-1_pInt)*nGDim(3), &                                                 ! ... normal //e2
+             nGDim(1)*nGDim(2)*(nGDim(3)-1_pInt)]                                                   ! ... normal //e3
 
 !--------------------------------------------------------------------------------------------------
 ! get the corresponding interface ID in 4D (normal and local position)
