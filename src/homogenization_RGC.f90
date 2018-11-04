@@ -1169,7 +1169,7 @@ end function homogenization_RGC_postResults
 !--------------------------------------------------------------------------------------------------
 !> @brief collect relaxation vectors of an interface
 !--------------------------------------------------------------------------------------------------
-function relaxationVector(intFace,instance,of)
+pure function relaxationVector(intFace,instance,of)
 
  implicit none
  integer(pInt),                intent(in) :: instance,of
@@ -1190,7 +1190,7 @@ end function relaxationVector
 !--------------------------------------------------------------------------------------------------
 !> @brief identify the normal of an interface 
 !--------------------------------------------------------------------------------------------------
-function interfaceNormal(intFace,instance,of)
+pure function interfaceNormal(intFace,instance,of)
  use math, only: &
    math_mul33x3
  
@@ -1216,7 +1216,7 @@ end function interfaceNormal
 !--------------------------------------------------------------------------------------------------
 !> @brief collect six faces of a grain in 4D (normal and position)
 !--------------------------------------------------------------------------------------------------
-function getInterface(iFace,iGrain3)
+pure function getInterface(iFace,iGrain3)
 
  implicit none
  integer(pInt), dimension (4) ::             getInterface
@@ -1231,15 +1231,14 @@ function getInterface(iFace,iGrain3)
 !--------------------------------------------------------------------------------------------------
 ! identify the interface position by the direction of its normal
  getInterface(2:4) = iGrain3
- if (iDir < 0_pInt) &                                                                               ! to have a correlation with coordinate/position in real space
-   getInterface(1_pInt-iDir) = getInterface(1_pInt-iDir)-1_pInt
+ if (iDir < 0_pInt) getInterface(1_pInt-iDir) = getInterface(1_pInt-iDir)-1_pInt                    ! to have a correlation with coordinate/position in real space
 
 end function getInterface
 
 !--------------------------------------------------------------------------------------------------
 !> @brief map grain ID from in 1D (global array) to in 3D (local position)
 !--------------------------------------------------------------------------------------------------
-function grain1to3(grain1,instance)
+pure function grain1to3(grain1,instance)
  
  implicit none
  integer(pInt), dimension (3) ::            grain1to3
