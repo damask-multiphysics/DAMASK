@@ -242,7 +242,7 @@ subroutine homogenization_RGC_init()
 !--------------------------------------------------------------------------------------------------
 ! * assigning cluster orientations
    elementLooping: do e = 1_pInt,mesh_NcpElems
-     if (homogenization_typeInstance(mesh_homogenizationAt(e)) == instance) then
+     if (homogenization_typeInstance(mesh_homogenizationAt(e)) == instance .and. NofMyHomog > 0_pInt) then
        noOrientationGiven: if (all (prm%angles >= 399.9_pReal)) then
          of = mappingHomogenization(1,1,e)
          dependentState(instance)%orientation(1:3,1:3,of) = math_EulerToR(math_sampleRandomOri())
@@ -653,7 +653,7 @@ function homogenization_RGC_updateState(P,F,F0,avgF,dt,dPdF,ip,el)
    p_relax = relax
    p_relax(ipert) = relax(ipert) + pPert_RGC                                                        ! perturb the relaxation vector
    homogState(mappingHomogenization(2,ip,el))%state(1:3*nIntFaceTot,of) = p_relax
-   call grainDeformation(pF,avgF,ip,el)                                          ! compute the grains deformation from perturbed state
+   call grainDeformation(pF,avgF,instance,of)                                          ! compute the grains deformation from perturbed state
    call stressPenalty(pR,pNN,avgF,pF,ip,el,instance)                             ! compute stress penalty due to interface mismatch from perturbed state
    call volumePenalty(pD,volDiscrep,pF,avgF,ip,el)                               ! compute stress penalty due to volume discrepancy from perturbed state
 
@@ -1057,40 +1057,35 @@ function homogenization_RGC_updateState(P,F,F0,avgF,dt,dPdF,ip,el)
  !> @brief calculating the grain deformation gradient (the same with 
  ! homogenization_RGC_partionDeformation, but used only for perturbation scheme)
  !--------------------------------------------------------------------------------------------------
- subroutine grainDeformation(F, avgF, ip, el)
-  use mesh, only: &
-    mesh_homogenizationAt
+ subroutine grainDeformation(F, avgF, instance, of)
   use material, only: &
-    homogenization_maxNgrains,&
-    homogenization_typeInstance
+    homogenization_maxNgrains
   
   implicit none
   real(pReal),   dimension (3,3,homogenization_maxNgrains), intent(out) :: F                         !< partioned F per grain
   real(pReal),   dimension (3,3),                           intent(in)  :: avgF                      !< 
   integer(pInt),                                            intent(in)  :: &
-    el, &                                                                                            !< element number
-    ip                                                                                               !< integration point number
+    instance, &
+    of
   real(pReal),   dimension (3) :: aVect,nVect
   integer(pInt), dimension (4) :: intFace
   integer(pInt), dimension (3) :: iGrain3
-  integer(pInt) :: instance, iGrain,iFace,i,j,of
+  integer(pInt) :: iGrain,iFace,i,j
  
   !--------------------------------------------------------------------------------------------------
   ! compute the deformation gradient of individual grains due to relaxations
-  instance = homogenization_typeInstance(mesh_homogenizationAt(el))
-  of = mappingHomogenization(1,ip,el)
-   F = 0.0_pReal
-   do iGrain = 1_pInt,product(param(instance)%Nconstituents)
-     iGrain3 = grain1to3(iGrain,instance)
-     do iFace = 1_pInt,6_pInt
-       intFace = getInterface(iFace,iGrain3)
-       aVect   = relaxationVector(intFace,instance,of)
-       nVect   = interfaceNormal(intFace,ip,el)
-       forall (i=1_pInt:3_pInt,j=1_pInt:3_pInt) &
-       F(i,j,iGrain) = F(i,j,iGrain) + aVect(i)*nVect(j)                                              ! effective relaxations
-     enddo
-     F(1:3,1:3,iGrain) = F(1:3,1:3,iGrain) + avgF                                                     ! relaxed deformation gradient
-   enddo
+  F = 0.0_pReal
+  do iGrain = 1_pInt,product(param(instance)%Nconstituents)
+    iGrain3 = grain1to3(iGrain,instance)
+    do iFace = 1_pInt,6_pInt
+      intFace = getInterface(iFace,iGrain3)
+      aVect   = relaxationVector(intFace,instance,of)
+      nVect   = interfaceNormal(intFace,instance,of)
+      forall (i=1_pInt:3_pInt,j=1_pInt:3_pInt) &
+        F(i,j,iGrain) = F(i,j,iGrain) + aVect(i)*nVect(j)                                           ! effective relaxations
+    enddo
+    F(1:3,1:3,iGrain) = F(1:3,1:3,iGrain) + avgF                                                    ! relaxed deformation gradient
+  enddo
   
  end subroutine grainDeformation
  
