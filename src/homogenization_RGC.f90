@@ -168,8 +168,7 @@ subroutine homogenization_RGC_init()
    prm%xiAlpha = config_homogenization(h)%getFloat('scalingparameter')
    prm%ciAlpha = config_homogenization(h)%getFloat('overproportionality')
    prm%dAlpha  = config_homogenization(h)%getFloats('grainsize',requiredShape=[3])
-   prm%angles  = config_homogenization(h)%getFloats('clusterorientation',requiredShape=[3],&
-                                                    defaultVal=[400.0_pReal,400.0_pReal,400.0_pReal])
+   prm%angles  = config_homogenization(h)%getFloats('clusterorientation',requiredShape=[3])
 
    outputs = config_homogenization(h)%getStrings('(output)',defaultVal=emptyStringArray)
    allocate(prm%outputID(0))
@@ -243,21 +242,10 @@ subroutine homogenization_RGC_init()
 ! * assigning cluster orientations
    elementLooping: do e = 1_pInt,mesh_NcpElems
      if (homogenization_typeInstance(mesh_homogenizationAt(e)) == instance .and. NofMyHomog > 0_pInt) then
-       noOrientationGiven: if (all (prm%angles >= 399.9_pReal)) then
-         of = mappingHomogenization(1,1,e)
-         dependentState(instance)%orientation(1:3,1:3,of) = math_EulerToR(math_sampleRandomOri())
-         do i = 2_pInt,mesh_NipsPerElem
+       do i = 1_pInt,mesh_NipsPerElem
          of = mappingHomogenization(1,i,e)
-         dependentState(instance)%orientation(1:3,1:3,of) = merge(dependentState(instance)%orientation(1:3,1:3,of), &
-                                                               math_EulerToR(math_sampleRandomOri()), &
-                                                               microstructure_elemhomo(mesh_microstructureAt(e)))
-         enddo
-       else noOrientationGiven
-         do i = 1_pInt,mesh_NipsPerElem
-           of = mappingHomogenization(1,i,e)
-           dependentState(instance)%orientation(1:3,1:3,of) = math_EulerToR(prm%angles*inRad)
-         enddo
-       endif noOrientationGiven
+         dependentState(instance)%orientation(1:3,1:3,of) = math_EulerToR(prm%angles*inRad)
+       enddo
      endif
    enddo elementLooping
    end associate
