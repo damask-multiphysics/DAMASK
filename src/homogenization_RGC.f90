@@ -108,8 +108,7 @@ subroutine homogenization_RGC_init()
    INRAD
  use mesh, only: &
    mesh_NcpElems,&
-   mesh_NipsPerElem, &
-   mesh_homogenizationAt
+   mesh_NipsPerElem
  use IO
  use material
  use config
@@ -121,7 +120,7 @@ subroutine homogenization_RGC_init()
    outputSize, &
    instance, &
    sizeHState, nIntFaceTot
- integer(pInt) :: maxNinstance, i,j,e, mySize, of
+ integer(pInt) :: maxNinstance, i,j,e, of
  character(len=65536),   dimension(0), parameter :: emptyStringArray = [character(len=65536)::]
  integer(kind(undefined_ID))                 :: &
    outputID                                                                                     !< ID of each post result output
@@ -236,7 +235,7 @@ subroutine homogenization_RGC_init()
 !--------------------------------------------------------------------------------------------------
 ! * assigning cluster orientations
    elementLooping: do e = 1_pInt,mesh_NcpElems
-     if (homogenization_typeInstance(mesh_homogenizationAt(e)) == instance .and. NofMyHomog > 0_pInt) then
+     if (homogenization_typeInstance(material_homogenizationAt(e)) == instance .and. NofMyHomog > 0_pInt) then
        do i = 1_pInt,mesh_NipsPerElem
          of = mappingHomogenization(1,i,e)
          dependentState(instance)%orientation(1:3,1:3,of) = math_EulerToR(prm%angles*inRad)
@@ -321,9 +320,8 @@ function homogenization_RGC_updateState(P,F,F0,avgF,dt,dPdF,ip,el)
    debug_i
  use math, only: &
    math_invert
- use mesh, only: &
-   mesh_homogenizationAt
  use material, only: &
+   material_homogenizationAt, &
    homogenization_maxNgrains, &
    homogenization_typeInstance, &
    homogState, &
@@ -374,10 +372,10 @@ function homogenization_RGC_updateState(P,F,F0,avgF,dt,dPdF,ip,el)
 
 !--------------------------------------------------------------------------------------------------
 ! get the dimension of the cluster (grains and interfaces)
- instance  = homogenization_typeInstance(mesh_homogenizationAt(el))
+ instance  = homogenization_typeInstance(material_homogenizationAt(el))
  of = mappingHomogenization(1,ip,el)
  nGDim  = param(instance)%Nconstituents
- nGrain = homogenization_Ngrains(mesh_homogenizationAt(el))
+ nGrain = homogenization_Ngrains(material_homogenizationAt(el))
  nIntFaceTot = (nGDim(1)-1_pInt)*nGDim(2)*nGDim(3) &
              + nGDim(1)*(nGDim(2)-1_pInt)*nGDim(3) &
              + nGDim(1)*nGDim(2)*(nGDim(3)-1_pInt)
@@ -509,7 +507,7 @@ function homogenization_RGC_updateState(P,F,F0,avgF,dt,dPdF,ip,el)
 
 !--------------------------------------------------------------------------------------------------
 ! compute/update the state for postResult, i.e., all energy densities computed by time-integration
-   do iGrain = 1_pInt,homogenization_Ngrains(mesh_homogenizationAt(el))                             ! time-integration loop for work and energy
+   do iGrain = 1_pInt,homogenization_Ngrains(material_homogenizationAt(el))                             ! time-integration loop for work and energy
      do i = 1_pInt,3_pInt;do j = 1_pInt,3_pInt
        state(instance)%work(of)          = state(instance)%work(of) &
                                          + P(i,j,iGrain)*(F(i,j,iGrain) - F0(i,j,iGrain))/real(nGrain,pReal)
@@ -907,12 +905,11 @@ function homogenization_RGC_updateState(P,F,F0,avgF,dt,dPdF,ip,el)
     debug_levelExtensive, &
     debug_e, &
     debug_i
-  use mesh, only: &
-    mesh_homogenizationAt
   use math, only: &
     math_det33, &
     math_inv33
   use material, only: &
+    material_homogenizationAt, &
     homogenization_maxNgrains,&
     homogenization_Ngrains
   use numerics, only: &
@@ -934,7 +931,7 @@ function homogenization_RGC_updateState(P,F,F0,avgF,dt,dPdF,ip,el)
   debugActive = iand(debug_level(debug_homogenization),debug_levelExtensive) /= 0_pInt &
                 .and. debug_e == el .and. debug_i == ip
 
-  nGrain = homogenization_Ngrains(mesh_homogenizationAt(el))
+  nGrain = homogenization_Ngrains(material_homogenizationAt(el))
    
  !--------------------------------------------------------------------------------------------------
  ! compute the volumes of grains and of cluster
@@ -1096,11 +1093,9 @@ end subroutine homogenization_RGC_averageStressAndItsTangent
 !> @brief return array of homogenization results for post file inclusion 
 !--------------------------------------------------------------------------------------------------
 pure function homogenization_RGC_postResults(ip,el) result(postResults)
- use mesh, only: &
-   mesh_homogenizationAt
  use material, only: &
+   material_homogenizationAt, &
    homogenization_typeInstance,&
-   homogState, &
    mappingHomogenization
  
  implicit none
@@ -1110,10 +1105,10 @@ pure function homogenization_RGC_postResults(ip,el) result(postResults)
 
  integer(pInt) instance,o,c,of
  type(tParameters) :: prm
- real(pReal), dimension(homogenization_RGC_sizePostResults(homogenization_typeInstance(mesh_homogenizationAt(el)))) :: &
+ real(pReal), dimension(homogenization_RGC_sizePostResults(homogenization_typeInstance(material_homogenizationAt(el)))) :: &
    postResults
 
- instance = homogenization_typeInstance(mesh_homogenizationAt(el))
+ instance = homogenization_typeInstance(material_homogenizationAt(el))
  associate(prm => param(instance))
  of = mappingHomogenization(1,ip,el)
 
