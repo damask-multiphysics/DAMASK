@@ -104,17 +104,12 @@ subroutine homogenization_RGC_init()
   debug_levelBasic, &
   debug_levelExtensive
  use math, only: &
-   math_Mandel3333to66,&
-   math_Voigt66to3333, &
-   math_I3, &
-   math_sampleRandomOri,&
    math_EulerToR,&
    INRAD
  use mesh, only: &
    mesh_NcpElems,&
    mesh_NipsPerElem, &
-   mesh_homogenizationAt, &
-   mesh_microstructureAt
+   mesh_homogenizationAt
  use IO
  use material
  use config
@@ -383,8 +378,9 @@ function homogenization_RGC_updateState(P,F,F0,avgF,dt,dPdF,ip,el)
  of = mappingHomogenization(1,ip,el)
  nGDim  = param(instance)%Nconstituents
  nGrain = homogenization_Ngrains(mesh_homogenizationAt(el))
- nIntFaceTot = (nGDim(1)-1_pInt)*nGDim(2)*nGDim(3) + nGDim(1)*(nGDim(2)-1_pInt)*nGDim(3) &
-               + nGDim(1)*nGDim(2)*(nGDim(3)-1_pInt)
+ nIntFaceTot = (nGDim(1)-1_pInt)*nGDim(2)*nGDim(3) &
+             + nGDim(1)*(nGDim(2)-1_pInt)*nGDim(3) &
+             + nGDim(1)*nGDim(2)*(nGDim(3)-1_pInt)
 
 !--------------------------------------------------------------------------------------------------
 ! allocate the size of the global relaxation arrays/jacobian matrices depending on the size of the cluster
@@ -612,7 +608,8 @@ function homogenization_RGC_updateState(P,F,F0,avgF,dt,dPdF,ip,el)
      iMun = interface4to1(intFaceP,param(instance)%Nconstituents)                                     ! translate the interfaces ID into local 4-dimensional index
      if (iMun > 0_pInt) then                                                                        ! get the corresponding tangent
        do i=1_pInt,3_pInt; do j=1_pInt,3_pInt; do k=1_pInt,3_pInt; do l=1_pInt,3_pInt
-         smatrix(3*(iNum-1)+i,3*(iMun-1)+j) = smatrix(3*(iNum-1)+i,3*(iMun-1)+j) + dPdF(i,k,j,l,iGrP)*normP(k)*mornP(l)
+         smatrix(3*(iNum-1)+i,3*(iMun-1)+j) = smatrix(3*(iNum-1)+i,3*(iMun-1)+j) &
+                                            + dPdF(i,k,j,l,iGrP)*normP(k)*mornP(l)
        enddo;enddo;enddo;enddo
      endif
    enddo
@@ -637,6 +634,7 @@ function homogenization_RGC_updateState(P,F,F0,avgF,dt,dPdF,ip,el)
  allocate(pmatrix(3*nIntFaceTot,3*nIntFaceTot), source=0.0_pReal)
  allocate(p_relax(3*nIntFaceTot),               source=0.0_pReal)
  allocate(p_resid(3*nIntFaceTot),               source=0.0_pReal)
+
  do ipert = 1_pInt,3_pInt*nIntFaceTot
    p_relax = relax
    p_relax(ipert) = relax(ipert) + pPert_RGC                                                        ! perturb the relaxation vector
@@ -750,11 +748,9 @@ function homogenization_RGC_updateState(P,F,F0,avgF,dt,dPdF,ip,el)
 !--------------------------------------------------------------------------------------------------
 ! calculate the state update (global relaxation vectors) for the next Newton-Raphson iteration
  drelax = 0.0_pReal
- do i = 1_pInt,3_pInt*nIntFaceTot
-   do j = 1_pInt,3_pInt*nIntFaceTot
-     drelax(i) = drelax(i) - jnverse(i,j)*resid(j)                                                  ! Calculate the correction for the state variable
-   enddo
- enddo
+ do i = 1_pInt,3_pInt*nIntFaceTot;do j = 1_pInt,3_pInt*nIntFaceTot
+   drelax(i) = drelax(i) - jnverse(i,j)*resid(j)                                                    ! Calculate the correction for the state variable
+ enddo; enddo
  relax = relax + drelax                                                                             ! Updateing the state variable for the next iteration
  homogState(mappingHomogenization(2,ip,el))%state(1:3*nIntFaceTot,of) = relax
  if (any(abs(drelax) > maxdRelax_RGC)) then                                                         ! Forcing cutback when the incremental change of relaxation vector becomes too large
@@ -790,8 +786,6 @@ function homogenization_RGC_updateState(P,F,F0,avgF,dt,dPdF,ip,el)
     debug_levelExtensive, &
     debug_e, &
     debug_i
-  use mesh, only: &
-    mesh_homogenizationAt
   use constitutive, only: &
     constitutive_homogenizedC
   use math, only: &
@@ -841,7 +835,7 @@ function homogenization_RGC_updateState(P,F,F0,avgF,dt,dPdF,ip,el)
  
  !--------------------------------------------------------------------------------------------------
  ! computing the mismatch and penalty stress tensor of all grains 
-  do iGrain = 1_pInt,product(param(instance)%Nconstituents)
+  do iGrain = 1_pInt,product(prm%Nconstituents)
     Gmoduli = equivalentModuli(iGrain,ip,el)
     muGrain = Gmoduli(1)                                                                              ! collecting the equivalent shear modulus of grain
     bgGrain = Gmoduli(2)                                                                              ! and the lengthh of Burgers vector
@@ -875,23 +869,21 @@ function homogenization_RGC_updateState(P,F,F0,avgF,dt,dPdF,ip,el)
       nDefNorm = max(nDefToler,sqrt(nDefNorm))                                                       ! approximation to zero mismatch if mismatch is zero (singularity)
       nMis(abs(intFace(1)),iGrain) = nMis(abs(intFace(1)),iGrain) + nDefNorm                         ! total amount of mismatch experienced by the grain (at all six interfaces)
  
-    if (debugActive) then
-      write(6,'(1x,a20,i2,1x,a20,1x,i3)')'Mismatch to face: ',intFace(1),'neighbor grain: ',iGNghb
-      write(6,*) transpose(nDef)
-      write(6,'(1x,a20,e11.4)')'with magnitude: ',nDefNorm
-    endif
+      if (debugActive) then
+        write(6,'(1x,a20,i2,1x,a20,1x,i3)')'Mismatch to face: ',intFace(1),'neighbor grain: ',iGNghb
+        write(6,*) transpose(nDef)
+        write(6,'(1x,a20,e11.4)')'with magnitude: ',nDefNorm
+      endif
  
  !--------------------------------------------------------------------------------------------------
  ! compute the stress penalty of all interfaces
-      do i = 1_pInt,3_pInt; do j = 1_pInt,3_pInt
-        do k = 1_pInt,3_pInt; do l = 1_pInt,3_pInt
-          rPen(i,j,iGrain) = rPen(i,j,iGrain) + 0.5_pReal*(muGrain*bgGrain + muGNghb*bgGNghb)*prm%xiAlpha &
-                                                *surfCorr(abs(intFace(1)))/prm%dAlpha(abs(intFace(1))) &
-                                                *cosh(prm%ciAlpha*nDefNorm) &
-                                                *0.5_pReal*nVect(l)*nDef(i,k)/nDefNorm*math_civita(k,l,j) &
-                                                *tanh(nDefNorm/xSmoo_RGC)
-        enddo; enddo
-      enddo; enddo
+      do i = 1_pInt,3_pInt; do j = 1_pInt,3_pInt; do k = 1_pInt,3_pInt; do l = 1_pInt,3_pInt
+        rPen(i,j,iGrain) = rPen(i,j,iGrain) + 0.5_pReal*(muGrain*bgGrain + muGNghb*bgGNghb)*prm%xiAlpha &
+                                               *surfCorr(abs(intFace(1)))/prm%dAlpha(abs(intFace(1))) &
+                                               *cosh(prm%ciAlpha*nDefNorm) &
+                                               *0.5_pReal*nVect(l)*nDef(i,k)/nDefNorm*math_civita(k,l,j) &
+                                               *tanh(nDefNorm/xSmoo_RGC)
+      enddo; enddo;enddo; enddo
     enddo
     
     if (debugActive) then

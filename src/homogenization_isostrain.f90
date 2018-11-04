@@ -40,16 +40,13 @@ subroutine homogenization_isostrain_init()
    compiler_version, &
    compiler_options
 #endif
- use prec, only: &
-   pReal
  use debug, only: &
    debug_HOMOGENIZATION, &
    debug_level, &
    debug_levelBasic
  use IO, only: &
    IO_timeStamp, &
-   IO_error, &
-   IO_warning
+   IO_error
  use material, only: &
    homogenization_type, &
    material_homog, &
@@ -103,9 +100,9 @@ subroutine homogenization_isostrain_init()
 
    homogState(h)%sizeState       = 0_pInt
    homogState(h)%sizePostResults = 0_pInt
-   allocate(homogState(h)%state0   (0_pInt,NofMyHomog), source=0.0_pReal)
-   allocate(homogState(h)%subState0(0_pInt,NofMyHomog), source=0.0_pReal)
-   allocate(homogState(h)%state    (0_pInt,NofMyHomog), source=0.0_pReal)
+   allocate(homogState(h)%state0   (0_pInt,NofMyHomog))
+   allocate(homogState(h)%subState0(0_pInt,NofMyHomog))
+   allocate(homogState(h)%state    (0_pInt,NofMyHomog))
    end associate
 
  enddo

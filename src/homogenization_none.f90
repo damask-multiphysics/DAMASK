@@ -24,7 +24,6 @@ subroutine homogenization_none_init()
    compiler_options
 #endif
  use prec, only: &
-   pReal, &
    pInt 
  use IO, only: &
    IO_timeStamp
@@ -50,9 +49,9 @@ subroutine homogenization_none_init()
    NofMyHomog = count(material_homog == h)
    homogState(h)%sizeState = 0_pInt
    homogState(h)%sizePostResults = 0_pInt
-   allocate(homogState(h)%state0   (0_pInt,NofMyHomog), source=0.0_pReal)
-   allocate(homogState(h)%subState0(0_pInt,NofMyHomog), source=0.0_pReal)
-   allocate(homogState(h)%state    (0_pInt,NofMyHomog), source=0.0_pReal)
+   allocate(homogState(h)%state0   (0_pInt,NofMyHomog))
+   allocate(homogState(h)%subState0(0_pInt,NofMyHomog))
+   allocate(homogState(h)%state    (0_pInt,NofMyHomog))
 
  enddo
 
