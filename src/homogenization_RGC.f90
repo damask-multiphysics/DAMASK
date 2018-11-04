@@ -588,7 +588,7 @@ function homogenization_RGC_updateState(P,F,F0,avgF,dt,dPdF,ip,el)
    do iFace = 1_pInt,6_pInt
      intFaceN = getInterface(iFace,iGr3N)                                        ! identifying all interfaces that influence relaxation of the above interface
      mornN = interfaceNormal(intFaceN,instance,of)
-     iMun = interface4to1(intFaceN,instance)                                     ! translate the interfaces ID into local 4-dimensional index
+     iMun = interface4to1(intFaceN,param(instance)%Nconstituents)                                     ! translate the interfaces ID into local 4-dimensional index
      if (iMun > 0) then                                                                             ! get the corresponding tangent
        do i=1_pInt,3_pInt; do j=1_pInt,3_pInt; do k=1_pInt,3_pInt; do l=1_pInt,3_pInt
          smatrix(3*(iNum-1)+i,3*(iMun-1)+j) = smatrix(3*(iNum-1)+i,3*(iMun-1)+j) &
@@ -609,7 +609,7 @@ function homogenization_RGC_updateState(P,F,F0,avgF,dt,dPdF,ip,el)
    do iFace = 1_pInt,6_pInt
      intFaceP = getInterface(iFace,iGr3P)                                        ! identifying all interfaces that influence relaxation of the above interface
      mornP = interfaceNormal(intFaceP,instance,of)
-     iMun = interface4to1(intFaceP,instance)                                     ! translate the interfaces ID into local 4-dimensional index
+     iMun = interface4to1(intFaceP,param(instance)%Nconstituents)                                     ! translate the interfaces ID into local 4-dimensional index
      if (iMun > 0_pInt) then                                                                        ! get the corresponding tangent
        do i=1_pInt,3_pInt; do j=1_pInt,3_pInt; do k=1_pInt,3_pInt; do l=1_pInt,3_pInt
          smatrix(3*(iNum-1)+i,3*(iMun-1)+j) = smatrix(3*(iNum-1)+i,3*(iMun-1)+j) + dPdF(i,k,j,l,iGrP)*normP(k)*mornP(l)
@@ -1109,56 +1109,43 @@ pure function homogenization_RGC_postResults(ip,el) result(postResults)
  use material, only: &
    homogenization_typeInstance,&
    homogState, &
-   mappingHomogenization, &  
-   homogenization_Noutput
+   mappingHomogenization
  
  implicit none
  integer(pInt), intent(in) :: &
    ip, &                                                                                            !< integration point number
    el                                                                                               !< element number
 
- integer(pInt) instance,o,c,nIntFaceTot
+ integer(pInt) instance,o,c,of
  type(tParameters) :: prm
  real(pReal), dimension(homogenization_RGC_sizePostResults(homogenization_typeInstance(mesh_homogenizationAt(el)))) :: &
    postResults
 
  instance = homogenization_typeInstance(mesh_homogenizationAt(el))
  associate(prm => param(instance))
- nIntFaceTot=(prm%Nconstituents(1)-1_pInt)*prm%Nconstituents(2)*        prm%Nconstituents(3)& 
-            + prm%Nconstituents(1)*       (prm%Nconstituents(2)-1_pInt)*prm%Nconstituents(3)&
-            + prm%Nconstituents(1)*        prm%Nconstituents(2)*       (prm%Nconstituents(3)-1_pInt)
+ of = mappingHomogenization(1,ip,el)
 
  c = 0_pInt
  postResults = 0.0_pReal
  outputsLoop: do o = 1_pInt,size(prm%outputID)
    select case(prm%outputID(o))
      case (constitutivework_ID)
-       postResults(c+1) = homogState(mappingHomogenization(2,ip,el))% &
-                                                              state(3*nIntFaceTot+1,mappingHomogenization(1,ip,el))
+       postResults(c+1) = state(instance)%work(of)
        c = c + 1_pInt
      case (magnitudemismatch_ID)
-       postResults(c+1) = homogState(mappingHomogenization(2,ip,el))% &
-                                           state(3*nIntFaceTot+2,mappingHomogenization(1,ip,el))
-       postResults(c+2) = homogState(mappingHomogenization(2,ip,el))% &
-                                           state(3*nIntFaceTot+3,mappingHomogenization(1,ip,el))
-       postResults(c+3) = homogState(mappingHomogenization(2,ip,el))% &
-                                           state(3*nIntFaceTot+4,mappingHomogenization(1,ip,el))
+       postResults(c+1:c+3) = state(instance)%mismatch(1:3,of)
        c = c + 3_pInt
      case (penaltyenergy_ID)
-       postResults(c+1) = homogState(mappingHomogenization(2,ip,el))% &
-                                           state(3*nIntFaceTot+5,mappingHomogenization(1,ip,el))
+       postResults(c+1) = state(instance)%penaltyEnergy(of)
        c = c + 1_pInt
      case (volumediscrepancy_ID)
-       postResults(c+1) = homogState(mappingHomogenization(2,ip,el))% &
-                                           state(3*nIntFaceTot+6,mappingHomogenization(1,ip,el))
+       postResults(c+1) = state(instance)%volumeDiscrepancy(of)
        c = c + 1_pInt
      case (averagerelaxrate_ID)
-       postResults(c+1) = homogState(mappingHomogenization(2,ip,el))% &
-                                           state(3*nIntFaceTot+7,mappingHomogenization(1,ip,el))
+       postResults(c+1) = state(instance)%relaxationrate_avg(of)
        c = c + 1_pInt
      case (maximumrelaxrate_ID)
-       postResults(c+1) = homogState(mappingHomogenization(2,ip,el))% &
-                                           state(3*nIntFaceTot+8,mappingHomogenization(1,ip,el))
+       postResults(c+1) = state(instance)%relaxationrate_max(of)
        c = c + 1_pInt
    end select
  enddo outputsLoop
@@ -1181,7 +1168,7 @@ pure function relaxationVector(intFace,instance,of)
 !--------------------------------------------------------------------------------------------------
 ! collect the interface relaxation vector from the global state array
  relaxationVector = 0.0_pReal
- iNum = interface4to1(intFace,instance)                                             ! identify the position of the interface in global state array
+ iNum = interface4to1(intFace,param(instance)%Nconstituents)                                        ! identify the position of the interface in global state array
  if (iNum > 0_pInt) relaxationVector = state(instance)%relaxationVector((3*iNum-2):(3*iNum),of)
 
 end function relaxationVector
@@ -1275,20 +1262,11 @@ end function grain3to1
 !--------------------------------------------------------------------------------------------------
 !> @brief maps interface ID from 4D (normal and local position) into 1D (global array)
 !--------------------------------------------------------------------------------------------------
-integer(pInt) pure function interface4to1(iFace4D, instance)
+integer(pInt) pure function interface4to1(iFace4D, nGDim)
  
  implicit none
- integer(pInt), dimension (4), intent(in) :: iFace4D                                                !< interface ID in 4D array (n.dir,pos.x,pos.y,pos.z)
- integer(pInt),                intent(in) :: instance
- integer(pInt), dimension (3) :: nGDim,nIntFace
-
- nGDim = param(instance)%Nconstituents
- 
-!--------------------------------------------------------------------------------------------------
-! compute the total number of interfaces, which ...
- nIntFace(1) = (nGDim(1)-1_pInt)*nGDim(2)*nGDim(3)                                                 ! ... normal //e1
- nIntFace(2) = nGDim(1)*(nGDim(2)-1_pInt)*nGDim(3)                                                 ! ... normal //e2
- nIntFace(3) = nGDim(1)*nGDim(2)*(nGDim(3)-1_pInt)                                                 ! ... normal //e3
+ integer(pInt), dimension(4), intent(in) :: iFace4D                                                 !< interface ID in 4D array (n.dir,pos.x,pos.y,pos.z)
+ integer(pInt), dimension(3), intent(in) :: nGDim
 
  interface4to1 = -1_pInt
  
@@ -1300,11 +1278,14 @@ integer(pInt) pure function interface4to1(iFace4D, instance)
    if ((iFace4D(2) == 0_pInt) .or. (iFace4D(2) == nGDim(1))) interface4to1 = 0_pInt
  elseif (abs(iFace4D(1)) == 2_pInt) then                                                            ! interface with normal //e2
    interface4to1 = iFace4D(4) + nGDim(3)*(iFace4D(2)-1_pInt) &
-                + nGDim(3)*nGDim(1)*(iFace4D(3)-1_pInt) + nIntFace(1)
+                 + nGDim(3)*nGDim(1)*(iFace4D(3)-1_pInt) &
+                 + (nGDim(1)-1_pInt)*nGDim(2)*nGDim(3)                                              ! total number of interfaces normal //e1
    if ((iFace4D(3) == 0_pInt) .or. (iFace4D(3) == nGDim(2))) interface4to1 = 0_pInt
  elseif (abs(iFace4D(1)) == 3_pInt) then                                                            ! interface with normal //e3
    interface4to1 = iFace4D(2) + nGDim(1)*(iFace4D(3)-1_pInt) &
-                 + nGDim(1)*nGDim(2)*(iFace4D(4)-1_pInt) + nIntFace(1) + nIntFace(2)
+                 + nGDim(1)*nGDim(2)*(iFace4D(4)-1_pInt) &
+                 + (nGDim(1)-1_pInt)*nGDim(2)*nGDim(3) &                                            ! total number of interfaces normal //e1
+                 + nGDim(1)*(nGDim(2)-1_pInt)*nGDim(3)                                              ! total number of interfaces normal //e2
    if ((iFace4D(4) == 0_pInt) .or. (iFace4D(4) == nGDim(3))) interface4to1 = 0_pInt
  endif
 
