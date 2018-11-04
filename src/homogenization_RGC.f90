@@ -282,7 +282,7 @@ subroutine homogenization_RGC_partitionDeformation(F,avgF,instance,of)
  associate(prm => param(instance))
  F = 0.0_pReal
  do iGrain = 1_pInt,product(prm%Nconstituents)
-   iGrain3 = grain1to3(iGrain,instance)
+   iGrain3 = grain1to3(iGrain,prm%Nconstituents)
    do iFace = 1_pInt,6_pInt
      intFace = getInterface(iFace,iGrain3)                                                          ! identifying 6 interfaces of each grain
      aVect = relaxationVector(intFace,instance,of)                                                  ! get the relaxation vectors for each interface from global relaxation vector array
@@ -434,12 +434,12 @@ function homogenization_RGC_updateState(P,F,F0,avgF,dt,dPdF,ip,el)
 !------------------------------------------------------------------------------------------------
 ! computing the residual stress from the balance of traction at all (interior) interfaces
  do iNum = 1_pInt,nIntFaceTot
-   faceID = interface1to4(iNum,instance)                                         ! identifying the interface ID in local coordinate system (4-dimensional index)
+   faceID = interface1to4(iNum,param(instance)%Nconstituents)                                         ! identifying the interface ID in local coordinate system (4-dimensional index)
 
 !--------------------------------------------------------------------------------------------------
 ! identify the left/bottom/back grain (-|N)
    iGr3N = faceID(2:4)                                                                              ! identifying the grain ID in local coordinate system (3-dimensional index)
-   iGrN = grain3to1(iGr3N,instance)                                              ! translate the local grain ID into global coordinate system (1-dimensional index)
+   iGrN = grain3to1(iGr3N,param(instance)%Nconstituents)                                              ! translate the local grain ID into global coordinate system (1-dimensional index)
    intFaceN = getInterface(2_pInt*faceID(1),iGr3N)
    normN = interfaceNormal(intFaceN,instance,of)
    
@@ -447,7 +447,7 @@ function homogenization_RGC_updateState(P,F,F0,avgF,dt,dPdF,ip,el)
 ! identify the right/up/front grain (+|P)
    iGr3P = iGr3N
    iGr3P(faceID(1)) = iGr3N(faceID(1))+1_pInt                                                       ! identifying the grain ID in local coordinate system (3-dimensional index)
-   iGrP = grain3to1(iGr3P,instance)                                              ! translate the local grain ID into global coordinate system (1-dimensional index)
+   iGrP = grain3to1(iGr3P,param(instance)%Nconstituents)                                              ! translate the local grain ID into global coordinate system (1-dimensional index)
    intFaceP = getInterface(2_pInt*faceID(1)-1_pInt,iGr3P)
    normP = interfaceNormal(intFaceP,instance,of)
 
@@ -577,12 +577,12 @@ function homogenization_RGC_updateState(P,F,F0,avgF,dt,dPdF,ip,el)
 ! ... of the constitutive stress tangent, assembled from dPdF or material constitutive model "smatrix"
  allocate(smatrix(3*nIntFaceTot,3*nIntFaceTot), source=0.0_pReal)
  do iNum = 1_pInt,nIntFaceTot
-   faceID = interface1to4(iNum,instance)                                         ! assembling of local dPdF into global Jacobian matrix
+   faceID = interface1to4(iNum,param(instance)%Nconstituents)                                         ! assembling of local dPdF into global Jacobian matrix
    
 !--------------------------------------------------------------------------------------------------
 ! identify the left/bottom/back grain (-|N)
    iGr3N = faceID(2:4)                                                                              ! identifying the grain ID in local coordinate sytem
-   iGrN = grain3to1(iGr3N,instance)                                              ! translate into global grain ID
+   iGrN = grain3to1(iGr3N,param(instance)%Nconstituents)                                              ! translate into global grain ID
    intFaceN = getInterface(2_pInt*faceID(1),iGr3N)                               ! identifying the connecting interface in local coordinate system
    normN = interfaceNormal(intFaceN,instance,of)
    do iFace = 1_pInt,6_pInt
@@ -603,7 +603,7 @@ function homogenization_RGC_updateState(P,F,F0,avgF,dt,dPdF,ip,el)
 ! identify the right/up/front grain (+|P)
    iGr3P = iGr3N
    iGr3P(faceID(1)) = iGr3N(faceID(1))+1_pInt                                                       ! identifying the grain ID in local coordinate sytem
-   iGrP = grain3to1(iGr3P,instance)                                              ! translate into global grain ID
+   iGrP = grain3to1(iGr3P,param(instance)%Nconstituents)                                              ! translate into global grain ID
    intFaceP = getInterface(2_pInt*faceID(1)-1_pInt,iGr3P)                        ! identifying the connecting interface in local coordinate system
    normP = interfaceNormal(intFaceP,instance,of)
    do iFace = 1_pInt,6_pInt
@@ -649,12 +649,12 @@ function homogenization_RGC_updateState(P,F,F0,avgF,dt,dPdF,ip,el)
 ! computing the global stress residual array from the perturbed state
    p_resid = 0.0_pReal
    do iNum = 1_pInt,nIntFaceTot
-     faceID = interface1to4(iNum,instance)                                       ! identifying the interface ID in local coordinate system (4-dimensional index)
+     faceID = interface1to4(iNum,param(instance)%Nconstituents)                                     ! identifying the interface ID in local coordinate system (4-dimensional index)
 
 !--------------------------------------------------------------------------------------------------
 ! identify the left/bottom/back grain (-|N)
      iGr3N = faceID(2:4)                                                                            ! identifying the grain ID in local coordinate system (3-dimensional index)
-     iGrN = grain3to1(iGr3N,instance)                                            ! translate the local grain ID into global coordinate system (1-dimensional index)
+     iGrN = grain3to1(iGr3N,param(instance)%Nconstituents)                                            ! translate the local grain ID into global coordinate system (1-dimensional index)
      intFaceN = getInterface(2_pInt*faceID(1),iGr3N)                             ! identifying the interface ID of the grain
      normN = interfaceNormal(intFaceN,instance,of)
  
@@ -662,7 +662,7 @@ function homogenization_RGC_updateState(P,F,F0,avgF,dt,dPdF,ip,el)
 ! identify the right/up/front grain (+|P)
      iGr3P = iGr3N
      iGr3P(faceID(1)) = iGr3N(faceID(1))+1_pInt                                                     ! identifying the grain ID in local coordinate system (3-dimensional index)
-     iGrP = grain3to1(iGr3P,instance)                                            ! translate the local grain ID into global coordinate system (1-dimensional index)
+     iGrP = grain3to1(iGr3P,param(instance)%Nconstituents)                                            ! translate the local grain ID into global coordinate system (1-dimensional index)
      intFaceP = getInterface(2_pInt*faceID(1)-1_pInt,iGr3P)                      ! identifying the interface ID of the grain
      normP = interfaceNormal(intFaceP,instance,of)
  
@@ -845,7 +845,7 @@ function homogenization_RGC_updateState(P,F,F0,avgF,dt,dPdF,ip,el)
     Gmoduli = equivalentModuli(iGrain,ip,el)
     muGrain = Gmoduli(1)                                                                              ! collecting the equivalent shear modulus of grain
     bgGrain = Gmoduli(2)                                                                              ! and the lengthh of Burgers vector
-    iGrain3 = grain1to3(iGrain,instance)                                              ! get the grain ID in local 3-dimensional index (x,y,z)-position
+    iGrain3 = grain1to3(iGrain,prm%Nconstituents)                                              ! get the grain ID in local 3-dimensional index (x,y,z)-position
  
  !* Looping over all six interfaces of each grain
     do iFace = 1_pInt,6_pInt
@@ -856,7 +856,7 @@ function homogenization_RGC_updateState(P,F,F0,avgF,dt,dPdF,ip,el)
                                + int(real(intFace(1),pReal)/real(abs(intFace(1)),pReal),pInt)
       where(iGNghb3 < 1)    iGNghb3 = nGDim
       where(iGNghb3 >nGDim) iGNghb3 = 1_pInt
-      iGNghb  = grain3to1(iGNghb3,instance)                                          ! get the ID of the neighboring grain
+      iGNghb  = grain3to1(iGNghb3,prm%Nconstituents)                                          ! get the ID of the neighboring grain
       Gmoduli = equivalentModuli(iGNghb,ip,el)                                    ! collecting the shear modulus and Burgers vector of the neighbor
       muGNghb = Gmoduli(1)
       bgGNghb = Gmoduli(2)
@@ -1013,12 +1013,12 @@ function homogenization_RGC_updateState(P,F,F0,avgF,dt,dPdF,ip,el)
     constitutive_homogenizedC
  
   implicit none
+  real(pReal), dimension(2)    :: equivalentModuli
   integer(pInt), intent(in)    :: &
     grainID,&
     ip, &                                                                                            !< integration point number
     el                                                                                               !< element number
-  real(pReal), dimension (6,6) :: elasTens
-  real(pReal), dimension(2)    :: equivalentModuli
+  real(pReal), dimension(6,6) :: elasTens
   real(pReal) :: &
     cEquiv_11, &
     cEquiv_12, &
@@ -1064,7 +1064,7 @@ function homogenization_RGC_updateState(P,F,F0,avgF,dt,dPdF,ip,el)
   ! compute the deformation gradient of individual grains due to relaxations
   F = 0.0_pReal
   do iGrain = 1_pInt,product(param(instance)%Nconstituents)
-    iGrain3 = grain1to3(iGrain,instance)
+    iGrain3 = grain1to3(iGrain,param(instance)%Nconstituents)
     do iFace = 1_pInt,6_pInt
       intFace = getInterface(iFace,iGrain3)
       aVect   = relaxationVector(intFace,instance,of)
@@ -1222,19 +1222,17 @@ pure function getInterface(iFace,iGrain3)
 
 end function getInterface
 
+
 !--------------------------------------------------------------------------------------------------
 !> @brief map grain ID from in 1D (global array) to in 3D (local position)
 !--------------------------------------------------------------------------------------------------
-pure function grain1to3(grain1,instance)
+pure function grain1to3(grain1,nGDim)
  
  implicit none
- integer(pInt), dimension (3) ::            grain1to3
- integer(pInt),               intent(in) :: &
-   grain1,&                                                                                         !< grain ID in 1D array
-   instance
- integer(pInt), dimension (3) ::            nGDim
+ integer(pInt), dimension(3)             :: grain1to3
+ integer(pInt),               intent(in) :: grain1                                                  !< grain ID in 1D array
+ integer(pInt), dimension(3), intent(in) :: nGDim
 
- nGDim = param(instance)%Nconstituents
  grain1to3 = 1_pInt + [mod((grain1-1_pInt),nGDim(1)), &
                        mod((grain1-1_pInt)/nGDim(1),nGDim(2)), &
                        (grain1-1_pInt)/(nGDim(1)*nGDim(2))]
@@ -1245,16 +1243,16 @@ end function grain1to3
 !--------------------------------------------------------------------------------------------------
 !> @brief map grain ID from in 3D (local position) to in 1D (global array)
 !--------------------------------------------------------------------------------------------------
-pure function grain3to1(grain3,instance)
+pure function grain3to1(grain3,nGDim)
 
  implicit none
- integer(pInt), dimension (3), intent(in) :: grain3                                                 !< grain ID in 3D array (pos.x,pos.y,pos.z)
- integer(pInt),                intent(in) :: instance                                               ! homogenization ID
- integer(pInt)                            :: grain3to1                                      
- integer(pInt), dimension (3)             :: nGDim
+ integer(pInt)                           :: grain3to1                                      
+ integer(pInt), dimension(3), intent(in) :: grain3                                                  !< grain ID in 3D array (pos.x,pos.y,pos.z)
+ integer(pInt), dimension(3), intent(in) :: nGDim
 
- nGDim = param(instance)%Nconstituents
- grain3to1 = grain3(1) + nGDim(1)*(grain3(2)-1_pInt) + nGDim(1)*nGDim(2)*(grain3(3)-1_pInt)
+ grain3to1 = grain3(1) &
+           + nGDim(1)*(grain3(2)-1_pInt) &
+           + nGDim(1)*nGDim(2)*(grain3(3)-1_pInt)
 
 end function grain3to1
 
@@ -1295,15 +1293,13 @@ end function interface4to1
 !--------------------------------------------------------------------------------------------------
 !> @brief maps interface ID from 1D (global array) into 4D (normal and local position)
 !--------------------------------------------------------------------------------------------------
-pure function interface1to4(iFace1D, instance)
+pure function interface1to4(iFace1D, nGDim)
  
  implicit none
- integer(pInt), dimension (4)            :: interface1to4
+ integer(pInt), dimension(4)             :: interface1to4
  integer(pInt),               intent(in) :: iFace1D                                                            !< interface ID in 1D array
- integer(pInt),               intent(in) :: instance
- integer(pInt), dimension (3)            :: nGDim,nIntFace
-
- nGDim = param(instance)%Nconstituents
+ integer(pInt), dimension(3), intent(in) :: nGDim
+ integer(pInt), dimension (3)            :: nIntFace
 
 !--------------------------------------------------------------------------------------------------
 ! compute the total number of interfaces, which ...
