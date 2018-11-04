@@ -778,18 +778,8 @@ function homogenization_RGC_updateState(P,F,F0,avgF,dt,dPdF,ip,el)
  !> @brief calculate stress-like penalty due to deformation mismatch
  !--------------------------------------------------------------------------------------------------
  subroutine stressPenalty(rPen,nMis,avgF,fDef,ip,el,instance)
-  use debug, only: &
-    debug_level, &
-    debug_homogenization,&
-    debug_levelExtensive, &
-    debug_e, &
-    debug_i
-  use constitutive, only: &
-    constitutive_homogenizedC
   use math, only: &
     math_civita
-  use material, only: &
-    homogenization_maxNgrains
   use numerics, only: &
     xSmoo_RGC
   
@@ -899,19 +889,9 @@ function homogenization_RGC_updateState(P,F,F0,avgF,dt,dPdF,ip,el)
  !> @brief calculate stress-like penalty due to volume discrepancy 
  !--------------------------------------------------------------------------------------------------
  subroutine volumePenalty(vPen,vDiscrep,fDef,fAvg,ip,el) 
-  use debug, only: &
-    debug_level, &
-    debug_homogenization,&
-    debug_levelExtensive, &
-    debug_e, &
-    debug_i
   use math, only: &
     math_det33, &
     math_inv33
-  use material, only: &
-    material_homogenizationAt, &
-    homogenization_maxNgrains,&
-    homogenization_Ngrains
   use numerics, only: &
     maxVolDiscr_RGC,&
     volDiscrMod_RGC,&
@@ -1035,8 +1015,6 @@ function homogenization_RGC_updateState(P,F,F0,avgF,dt,dPdF,ip,el)
  ! homogenization_RGC_partionDeformation, but used only for perturbation scheme)
  !--------------------------------------------------------------------------------------------------
  subroutine grainDeformation(F, avgF, instance, of)
-  use material, only: &
-    homogenization_maxNgrains
   
   implicit none
   real(pReal),   dimension (3,3,homogenization_maxNgrains), intent(out) :: F                         !< partioned F per grain
